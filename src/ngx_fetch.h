@@ -83,6 +83,12 @@ class NgxFetch : public PoolElement<NgxFetch> {
   void set_timeout_event(ngx_event_t* x) {
     timeout_event_ = x;
   }
+  void release_resolver() {
+    if (resolver_ctx_ != NULL && resolver_ctx_ != NGX_NO_RESOLVER) {
+      ngx_resolve_name_done(resolver_ctx_);
+      resolver_ctx_ = NULL;
+    }
+  }
 
  private:
   response_handler_pt response_handler;
@@ -121,12 +127,13 @@ class NgxFetch : public PoolElement<NgxFetch> {
   AsyncFetch* async_fetch_;
   ResponseHeadersParser parser_;
   MessageHandler* message_handler_;
-  size_t bytes_received_;
+  int64 bytes_received_;
   int64 fetch_start_ms_;
   int64 fetch_end_ms_;
   int64 timeout_ms_;
   bool done_;
   int64 content_length_;
+  bool content_length_known_;
 
   struct sockaddr_in sin_;
   ngx_log_t* log_;

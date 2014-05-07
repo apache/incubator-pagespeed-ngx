@@ -103,6 +103,10 @@ typedef struct {
   RewriteDriver* driver;
   InPlaceResourceRecorder* recorder;
   ResponseHeaders* ipro_response_headers;
+
+  // We need to remember the URL here as well since we may modify what NGX
+  // gets by stripping our special query params and honoring X-Forwarded-Proto.
+  GoogleString url_string;
 } ps_request_ctx_t;
 
 
@@ -116,6 +120,8 @@ ngx_int_t copy_response_headers_to_ngx(
     ngx_http_request_t* r,
     const ResponseHeaders& pagespeed_headers,
     PreserveCachingHeaders preserve_caching_headers);
+
+StringPiece ps_determine_host(ngx_http_request_t* r);
 
 }  // namespace net_instaweb
 

@@ -89,9 +89,7 @@ if [ "$uname_arch" = "i686" ]; then
   FLAG_MARCH='-march=i686'
 fi
 
-# Building with HTTPS fetching enabled pulls in a version of OpenSSL that causes
-# linker errors, so disable it here.
-CFLAGS="$CFLAGS -DSERF_HTTPS_FETCHING=0 $FLAG_MARCH"
+CFLAGS="$CFLAGS $FLAG_MARCH"
 
 case "$NGX_GCC_VER" in
   4.8*)
@@ -132,17 +130,10 @@ ngx_feature_path="$pagespeed_include"
 
 if $build_from_source ; then
   psol_library_binaries="\
-    $mod_pagespeed_dir/net/instaweb/automatic/pagespeed_automatic.a \
-    $mod_pagespeed_dir/out/$buildtype/obj.target/third_party/serf/libserf.a \
-    $mod_pagespeed_dir/out/$buildtype/obj.target/third_party/aprutil/libaprutil.a \
-    $mod_pagespeed_dir/out/$buildtype/obj.target/third_party/apr/libapr.a"
+    $mod_pagespeed_dir/net/instaweb/automatic/pagespeed_automatic.a"
 else
   psol_library_dir="$ngx_addon_dir/psol/lib/$buildtype/$os_name/$arch_name"
-  psol_library_binaries="\
-    $psol_library_dir/pagespeed_automatic.a \
-    $psol_library_dir/libserf.a \
-    $psol_library_dir/libaprutil.a \
-    $psol_library_dir/libapr.a"
+  psol_library_binaries="$psol_library_dir/pagespeed_automatic.a"
 fi
 
 pagespeed_libs="-lstdc++ $psol_library_binaries -lrt -pthread -lm"
@@ -182,7 +173,8 @@ if [ $ngx_found = yes ]; then
     $ps_src/ngx_rewrite_driver_factory.h \
     $ps_src/ngx_rewrite_options.h \
     $ps_src/ngx_server_context.h \
-    $ps_src/ngx_url_async_fetcher.h"
+    $ps_src/ngx_url_async_fetcher.h \
+    $psol_library_binaries"
   NGX_ADDON_SRCS="$NGX_ADDON_SRCS \
     $ps_src/log_message_handler.cc \
     $ps_src/ngx_base_fetch.cc \
@@ -194,13 +186,7 @@ if [ $ngx_found = yes ]; then
     $ps_src/ngx_rewrite_driver_factory.cc \
     $ps_src/ngx_rewrite_options.cc \
     $ps_src/ngx_server_context.cc \
-    $ps_src/ngx_url_async_fetcher.cc \
-    $mod_pagespeed_dir/out/$buildtype/obj/gen/data2c_out/instaweb/net/instaweb/apache/install/mod_pagespeed_example/mod_pagespeed_console_out.cc \
-    $mod_pagespeed_dir/out/$buildtype/obj/gen/data2c_out/instaweb/net/instaweb/apache/install/mod_pagespeed_example/mod_pagespeed_console_css_out.cc \
-    $mod_pagespeed_dir/out/$buildtype/obj/gen/data2c_out/instaweb/net/instaweb/apache/install/mod_pagespeed_example/mod_pagespeed_console_html_out.cc \
-    $mod_pagespeed_dir/net/instaweb/system/add_headers_fetcher.cc \
-    $mod_pagespeed_dir/net/instaweb/system/loopback_route_fetcher.cc \
-    $mod_pagespeed_dir/net/instaweb/system/serf_url_async_fetcher.cc"
+    $ps_src/ngx_url_async_fetcher.cc"
 
   # Make pagespeed run immediately before gzip.
   HTTP_FILTER_MODULES=$(echo $HTTP_FILTER_MODULES |\
@@ -210,6 +196,7 @@ if [ $ngx_found = yes ]; then
     sed "s/$HTTP_GZIP_FILTER_MODULE/ngx_pagespeed_etag_filter $HTTP_GZIP_FILTER_MODULE/")
   CORE_LIBS="$CORE_LIBS $pagespeed_libs"
   CORE_INCS="$CORE_INCS $pagespeed_include"
+  echo "List of modules (in reverse order of applicability): "$HTTP_FILTER_MODULES
 else
   cat << END
 $0: error: module ngx_pagespeed requires the pagespeed optimization library.

@@ -33,7 +33,6 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/system/public/in_place_resource_recorder.h"
 #include "net/instaweb/system/public/serf_url_async_fetcher.h"
 #include "net/instaweb/system/public/system_caches.h"
@@ -63,14 +62,12 @@ class UrlAsyncFetcher;
 class UrlFetcher;
 class Writer;
 
-const char NgxRewriteDriverFactory::kStaticAssetPrefix[] =
-    "/ngx_pagespeed_static/";
-
 class SharedCircularBuffer;
 
 NgxRewriteDriverFactory::NgxRewriteDriverFactory(
+    const ProcessContext& process_context,
     SystemThreadSystem* system_thread_system, StringPiece hostname, int port)
-    : SystemRewriteDriverFactory(system_thread_system,
+    : SystemRewriteDriverFactory(process_context, system_thread_system,
         NULL /* default shared memory runtime */, hostname, port),
       main_conf_(NULL),
       threads_started_(false),
@@ -82,7 +79,9 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(
       log_(NULL),
       resolver_timeout_(NGX_CONF_UNSET_MSEC),
       use_native_fetcher_(false),
-      ngx_shared_circular_buffer_(NULL) {
+      ngx_shared_circular_buffer_(NULL),
+      hostname_(hostname.as_string()),
+      port_(port) {
   InitializeDefaultOptions();
   default_options()->set_beacon_url("/ngx_pagespeed_beacon");
   SystemRewriteOptions* system_options = dynamic_cast<SystemRewriteOptions*>(
@@ -148,11 +147,6 @@ RewriteOptions* NgxRewriteDriverFactory::NewRewriteOptions() {
   return options;
 }
 
-void NgxRewriteDriverFactory::InitStaticAssetManager(
-    StaticAssetManager* static_asset_manager) {
-  static_asset_manager->set_library_url_prefix(kStaticAssetPrefix);
-}
-
 bool NgxRewriteDriverFactory::InitNgxUrlAsyncFetchers() {
   log_ = ngx_cycle->log;
   for (size_t i = 0; i < ngx_url_async_fetchers_.size(); ++i) {
@@ -175,6 +169,12 @@ NgxServerContext* NgxRewriteDriverFactory::MakeNgxServerContext(
   NgxServerContext* server_context = new NgxServerContext(this, hostname, port);
   uninitialized_server_contexts_.insert(server_context);
   return server_context;
+}
+
+ServerContext* NgxRewriteDriverFactory::NewDecodingServerContext() {
+  ServerContext* sc = new NgxServerContext(this, hostname_, port_);
+  InitStubDecodingServerContext(sc);
+  return sc;
 }
 
 ServerContext* NgxRewriteDriverFactory::NewServerContext() {

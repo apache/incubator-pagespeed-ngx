@@ -27,11 +27,29 @@ http {
   proxy_cache_path "@@PROXY_CACHE@@"  levels=1:2   keys_zone=htmlcache:60m inactive=90m  max_size=50m;
   proxy_temp_path "@@TMP_PROXY_CACHE@@";
 
+  pagespeed StatisticsPath /ngx_pagespeed_statistics;
+  pagespeed GlobalStatisticsPath /ngx_pagespeed_global_statistics;
+  pagespeed ConsolePath /pagespeed_console;
+  pagespeed MessagesPath /ngx_pagespeed_message;
+  pagespeed AdminPath /pagespeed_admin;
+  pagespeed GlobalAdminPath /pagespeed_global_admin;
+
   root "@@SERVER_ROOT@@";
+
+  # Block 5a: Decide on Cache-Control header value to use for outgoing
+  # response.
+  # Map new_cache_control_header_val to "no-cache, max-age=0" if the
+  # content is html and use the original Cache-Control header value
+  # in all other cases.
+  map $upstream_http_content_type $new_cache_control_header_val {
+    default $upstream_http_cache_control;
+    "~*text/html" "no-cache, max-age=0";
+  }
+
   pagespeed UsePerVHostStatistics on;
   pagespeed InPlaceResourceOptimization on;
   pagespeed CreateSharedMemoryMetadataCache "@@SHM_CACHE@@" 8192;
-  pagespeed PreserveUrlRelativity on;
+  pagespeed BlockingRewriteKey psatest;
 
   # CriticalImagesBeaconEnabled is now on by default, but we disable in testing.
   # With this option enabled, the inline image system test will currently fail.
@@ -39,6 +57,11 @@ http {
   # In our current system test, we aren't yet sending a beacon to identify the
   # critical images to be inlined, so we just disable the option here.
   pagespeed CriticalImagesBeaconEnabled false;
+
+  # By default, resources will not be used for inlining without explicit
+  # authorization. Supported values are off or a comma-separated list of strings
+  # from {Script,Stylesheet}.
+  pagespeed InlineResourcesWithoutExplicitAuthorization off;
 
   pagespeed Statistics on;
   pagespeed StatisticsLogging on;
@@ -53,7 +76,6 @@ http {
     server_name max-cacheable-content-length.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
-    pagespeed BlockingRewriteKey psatest;
 
     pagespeed RewriteLevel PassThrough;
     pagespeed EnableFilters rewrite_javascript;
@@ -64,6 +86,7 @@ http {
   @@RESOLVER@@
 
   server {
+    # Block 1:  Basic port, server_name definitions.
     # This server represents the external caching layer server which
     # receives user requests and proxies them to the upstream server
     # running on the PRIMARY_PORT when the response is not available in
@@ -72,58 +95,118 @@ http {
     server_name proxy_cache.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
+    # Disable PageSpeed on this server.
     pagespeed off;
 
-    set $ua_dependent_ps_capability_list "";
-    set $bypass_cache 1;
+    # Block 2: Define prefix for proxy_cache_key based on the UserAgent.
+
+    # Define placeholder PS-CapabilityList header values for large and small
+    # screens with no UA dependent optimizations. Note that these placeholder
+    # values should not contain any of ll, ii, dj, jw or ws, since these
+    # codes will end up representing optimizations to be supported for the
+    # request.
+    set $default_ps_capability_list_for_large_screens "LargeScreen.SkipUADependentOptimizations";
+    set $default_ps_capability_list_for_small_screens "TinyScreen.SkipUADependentOptimizations";
+
+    # As a fallback, the PS-CapabilityList header that is sent to the upstream
+    # PageSpeed server should be for a large screen device with no browser
+    # specific optimizations.
+    set $ps_capability_list $default_ps_capability_list_for_large_screens;
+
+    # Cache-fragment 1: Desktop User-Agents that support lazyload_images (ll),
+    # inline_images (ii) and defer_javascript (dj).
+    # Note: Wget is added for testing purposes only.
     if ($http_user_agent ~* "Chrome/|Firefox/|MSIE |Safari|Wget") {
-      # User Agents that support lazyload-images (ll), inline-images (ii) and
-      # defer-javascript (dj).
-      set $ua_dependent_ps_capability_list "ll,ii,dj:";
-      set $bypass_cache 0;
+      set $ps_capability_list "ll,ii,dj:";
     }
+    # Cache-fragment 2: Desktop User-Agents that support lazyload_images (ll),
+    # inline_images (ii), defer_javascript (dj), webp (jw) and lossless_webp
+    # (ws).
     if ($http_user_agent ~*
         "Chrome/[2][3-9]+\.|Chrome/[[3-9][0-9]+\.|Chrome/[0-9]{3,}\.") {
-      # User Agents that support lazyload-images (ll), inline-images (ii),
-      # defer-javascript (dj), webp (jw) and webp-lossless (ws).
-      set $ua_dependent_ps_capability_list "ll,ii,dj,jw,ws:";
-      set $bypass_cache 0;
+      set $ps_capability_list "ll,ii,dj,jw,ws:";
+    }
+    # Cache-fragment 3: This fragment contains (a) Desktop User-Agents that
+    # match fragments 1 or 2 but should not because they represent older
+    # versions of certain browsers or bots and (b) Tablet User-Agents that
+    # correspond to large screens. These will only get optimizations that work
+    # on all browsers and use image compression qualities applicable to large
+    # screens. Note that even Tablets that are capable of supporting inline or
+    # webp images, e.g. Android 4.1.2, will not get these advanced
+    # optimizations.
+    if ($http_user_agent ~* "Firefox/[1-2]\.|MSIE [5-8]\.|bot|Yahoo!|Ruby|RPT-HTTPClient|(Google \(\+https\:\/\/developers\.google\.com\/\+\/web\/snippet\/\))|Android|iPad|TouchPad|Silk-Accelerated|Kindle Fire") {
+      set $ps_capability_list $default_ps_capability_list_for_large_screens;
+    }
+    # Cache-fragment 4: Mobiles and small screen Tablets will use image compression
+    # qualities applicable to small screens, but all other optimizations will be
+    # those that work on all browsers.
+    if ($http_user_agent ~* "Mozilla.*Android.*Mobile*|iPhone|BlackBerry|Opera Mobi|Opera Mini|SymbianOS|UP.Browser|J-PHONE|Profile/MIDP|portalmmm|DoCoMo|Obigo|Galaxy Nexus|GT-I9300|GT-N7100|HTC One|Nexus [4|7|S]|Xoom|XT907") {
+      set $ps_capability_list $default_ps_capability_list_for_small_screens;
     }
 
-    # All User Agents that represent
-    # 1) mobiles
-    # 2) tablets
-    # 3) desktop browsers that do not have defer-javascript capability at a minimum
-    # are made to go to the pagespeed server directly bypassing the proxy_cache.
-    if ($http_user_agent ~* "Firefox/[1-2]\.|MSIE [5-8]\.") {
-      set $ua_dependent_ps_capability_list "";
-      set $bypass_cache 1;
+    # Block 3a: Bypass the cache for .pagespeed. resource. PageSpeed has its own
+    # cache for these, and these could bloat up the caching layer.
+    if ($uri ~ "\.pagespeed\.([a-z]\.)?[a-z]{2}\.[^.]{10}\.[^.]+") {
+      set $bypass_cache "1";
     }
-    if ($http_user_agent ~* "Mozilla.*Android.*Mobile*|iPhone|BlackBerry|Opera Mobi|Opera Mini|SymbianOS|UP.Browser|J-PHONE|Profile/MIDP|portalmmm|DoCoMo|Obigo") {
-      # These are Mobile User Agents. We don't cache responses for these.
-      set $ua_dependent_ps_capability_list "";
-      set $bypass_cache 1;
+
+    # For testing purposes, we never generate values that will result in a beacon 
+    # unless a test request it via "X-Allow-Beacon: yes" in its request header.
+    # This is for testing purposes, note that in a production environment, 
+    # you want 'set_random $rand 0 100;' unconditionally!
+    set $rand 5;
+
+    if ($http_x_allow_beacon ~ "yes") {
+      set_random $rand 0 100;
     }
-    if ($http_user_agent ~* "Android|iPad|TouchPad|Silk-Accelerated|Kindle Fire") {
-      # These are Tablet User Agents. We don't cache responses for these.
-      set $ua_dependent_ps_capability_list "";
+    set $should_beacon_header_val "";
+    if ($rand ~* "^[0-4]$") {
+      set $should_beacon_header_val "random_rebeaconing_key";
       set $bypass_cache 1;
     }
 
+    # Block 3b: Only cache responses to clients that support gzip.  Most clients
+    # do, and the cache holds much more if it stores gzipped responses.
+    if ($http_accept_encoding !~* gzip) {
+      set $bypass_cache "1";
+    }
+
+    # Block 4: Location block for purge requests.
     location ~ /purge(/.*) {
-      allow all;
-      proxy_cache_purge htmlcache $ua_dependent_ps_capability_list$1$is_args$args;
+      allow 127.0.0.1;
+      deny all;
+      proxy_cache_purge htmlcache $ps_capability_list$1$is_args$args;
     }
 
+    # Block 6: Location block with proxy_cache directives.
     location /mod_pagespeed_test/cachable_rewritten_html/ {
+      # 1: Upstream PageSpeed server is running at localhost:8050.
       proxy_pass http://localhost:@@PRIMARY_PORT@@;
-      proxy_set_header Host $host;
-      proxy_cache_valid 200 30s;
+      # 2: Use htmlcache as the zone for caching.
       proxy_cache htmlcache;
-      proxy_ignore_headers Cache-Control;
-      add_header X-Cache $upstream_cache_status;
-      proxy_cache_key $ua_dependent_ps_capability_list$uri$is_args$args;
+      # 3: Bypass requests that correspond to .pagespeed. resources
+      # or clients that do not support gzip etc.
       proxy_cache_bypass $bypass_cache;
+      # 4: Use the redefined proxy_cache_key and make sure the /purge/
+      # block uses the same key.
+      proxy_cache_key $ps_capability_list$uri$is_args$args;
+      # 5: Forward Host header to upstream server.
+      proxy_set_header Host $host;
+      # 6: Set the PS-CapabilityList header for PageSpeed server to respect.
+      proxy_set_header PS-CapabilityList $ps_capability_list;
+      add_header PS-CapabilityList $ps_capability_list;
+      # 7: Add a header for identifying cache hits/misses/expires. This is
+      # for debugging purposes only and can be commented out in production.
+      add_header X-Cache $upstream_cache_status;
+
+      # Block 5b: Override Cache-Control headers as needed.
+      # Hide the upstream cache control header.
+      proxy_hide_header Cache-Control;
+      # Add the inferred Cache-Control header.
+      add_header Cache-Control $new_cache_control_header_val;
+
+      proxy_set_header PS-ShouldBeacon $should_beacon_header_val;
+      proxy_hide_header PS-ShouldBeacon;
     }
   }
 
@@ -188,6 +271,7 @@ http {
     pagespeed ExperimentSpec
       "id=7;enable=recompress_images;disable=convert_jpeg_to_progressive;percent=50";
     pagespeed ExperimentSpec "id=2;enable=recompress_images;percent=50";
+    pagespeed ExperimentSpec "id=3;default;percent=0";
   }
   server {
     listen @@SECONDARY_PORT@@;
@@ -199,6 +283,7 @@ http {
     pagespeed ExperimentSpec
       "id=7;enable=recompress_images;disable=convert_jpeg_to_progressive;percent=50";
     pagespeed ExperimentSpec "id=2;enable=recompress_images;percent=50";
+    pagespeed ExperimentSpec "id=3;default;percent=0";
   }
 
   server {
@@ -241,6 +326,56 @@ http {
   }
 
   server {
+    # Setup a vhost with the critical image beacon enabled to make sure that
+    # downstream caches and rebeaconing interact correctly.
+    listen @@SECONDARY_PORT@@;
+    server_name downstreamcacherebeacon.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    pagespeed RewriteLevel PassThrough;
+    pagespeed CriticalImagesBeaconEnabled true;
+    # Enable the downstream caching feature and specify a rebeaconing key.
+    pagespeed DownstreamCachePurgeLocationPrefix "http://localhost:@@SECONDARY_PORT@@/purge";
+    pagespeed DownstreamCacheRebeaconingKey random_rebeaconing_key;
+    location ~ .*[.]html {
+      add_header Cache-Control "private, max-age=3000";
+    }
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name downstreamcacheresource.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+    pagespeed RewriteLevel PassThrough;
+    pagespeed EnableFilters rewrite_images;
+    pagespeed DownstreamCachePurgeLocationPrefix "http://localhost:@@SECONDARY_PORT@@/purge";
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name origin.rmcomments.example.com;
+#    pagespeed FileCachePath "@@FILE_CACHE@@";
+    pagespeed off;
+    add_header PageSpeedFilters remove_comments;
+  }
+  server {
+    # Set up a reverse proxy (rproxy.) and origin (origin.) as vhosts for
+    # showing that we can configure PageSpeed via response headers.
+    listen @@SECONDARY_PORT@@;
+    server_name rproxy.rmcomments.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+    pagespeed RewriteLevel PassThrough;
+    pagespeed DisableFilters add_instrumentation,remove_comments;
+    # Note that we don't enable remove_comments here; that setting
+    # comes from the response headers from origin.rmcomments.example.com
+    location / {
+      proxy_pass http://localhost:@@SECONDARY_PORT@@;
+      proxy_set_header X-Forwarded-For $remote_addr;
+      proxy_set_header Host origin.rmcomments.example.com;
+    }
+  }
+
+  server {
     listen @@SECONDARY_PORT@@;
     server_name renderedimagebeacon.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
@@ -250,6 +385,60 @@ http {
     pagespeed CriticalImagesBeaconEnabled true;
   }
 
+
+  # Build a configuration hierarchy where at the root we have turned on
+  # OptimizeForBandwidth, and in various subdirectories we override settings
+  # to make them more aggressive.
+  #
+  # In Apache we can do this all with Directory blocks, but to get the same
+  # inheretence in Nginx we need to have location blocks inside a server block.
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name optimizeforbandwidth.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    pagespeed RewriteLevel OptimizeForBandwidth;
+    pagespeed DisableFilters add_instrumentation;
+
+    location /mod_pagespeed_test/optimize_for_bandwidth/inline_css {
+      pagespeed EnableFilters inline_css;
+    }
+    location /mod_pagespeed_test/optimize_for_bandwidth/css_urls {
+      pagespeed CssPreserveURLs off;
+    }
+    location /mod_pagespeed_test/optimize_for_bandwidth/image_urls {
+      pagespeed ImagePreserveURLs off;
+    }
+    location /mod_pagespeed_test/optimize_for_bandwidth/core_filters {
+      pagespeed RewriteLevel CoreFilters;
+    }
+  }
+
+  server {
+    # For testing with a custom origin header.  In this VirtualHost,
+    # /mod_pagespeed_test is included in our DocumentRoot and thus does
+    # not need to be in any resource URL paths.  This helps us verify that
+    # we are looping back to the corect VirtualHost -- if we hit the wrong
+    # one it will not work.  Also we don't have a VirtualHost for
+    # sharedcdn.example.com, so the default Host header used for
+    # origin-mapping won't work either.  Instead, we want origin-fetches
+    # to go back to this VirtualHost so we rely on the new third optional
+    # argument to MapOriginDomain.
+    listen @@SECONDARY_PORT@@;
+    server_name customhostheader.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@_test";
+    root "@@SERVER_ROOT@@/mod_pagespeed_test";
+
+    pagespeed on;
+    pagespeed RewriteLevel PassThrough;
+    pagespeed EnableFilters rewrite_images;
+    # Don't use localhost, as ngx_pagespeed's native fetcher cannot resolve it
+    pagespeed MapOriginDomain 127.0.0.1:@@SECONDARY_PORT@@/customhostheader
+              sharedcdn.example.com/test customhostheader.example.com;
+    pagespeed JpegRecompressionQuality 50;
+    pagespeed CriticalImagesBeaconEnabled false;
+  }
+
   server {
     # Sets up a virtual host where we can specify forbidden filters without
     # affecting any other hosts.
@@ -257,7 +446,6 @@ http {
     server_name forbidden.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
-    pagespeed BlockingRewriteKey psatest;
 
     # Start with all core filters enabled ...
     pagespeed RewriteLevel CoreFilters;
@@ -266,6 +454,16 @@ http {
     pagespeed ForbidFilters rewrite_css,resize_images;
     # ... and disable but not forbid this one (to ensure we retain its URL).
     pagespeed DisableFilters inline_css;
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name unauthorizedresources.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    pagespeed RewriteLevel PassThrough;
+    pagespeed InlineResourcesWithoutExplicitAuthorization Script,Stylesheet;
+    pagespeed CssInlineMaxBytes 1000000;
   }
 
   server {
@@ -305,6 +503,9 @@ http {
     pagespeed UrlValuedAttribute img alt-src Image;
     pagespeed UrlValuedAttribute video alt-a Image;
     pagespeed UrlValuedAttribute video alt-b Image;
+
+    # Also test that we can redefine spec-defined attributes.
+    pagespeed UrlValuedAttribute blockquote cite Image;
   }
 
   server {
@@ -382,7 +583,7 @@ http {
   # Note that we test with two distinct caches.
   server {
     listen @@SECONDARY_PORT@@;
-    server_name embed-config-html.example.com;
+    server_name embed-config-html.example.org;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
     root "@@SERVER_ROOT@@/mod_pagespeed_test";
@@ -391,6 +592,9 @@ http {
     pagespeed JpegRecompressionQuality 73;
     pagespeed DisableFilters inline_css,extend_cache,inline_javascript;
     pagespeed Domain embed-config-resources.example.com;
+
+    # Share a cache keyspace with embed-config-resources.example.com.
+    pagespeed CacheFragment "embed-config";
 
     pagespeed LoadFromFile "http://embed-config-resources.example.com/"
       "@@SERVER_ROOT@@/mod_pagespeed_example/";
@@ -407,10 +611,24 @@ http {
 
     # Note that we do not set the jpeg quality here, but take
     # it from image URL query parameters that we synthesize in
-    # from embed-config-html.example.com.
+    # from embed-config-html.example.org.
+
+    # Share a cache keyspace with embed-config-html.example.org.
+    pagespeed CacheFragment "embed-config";
 
     pagespeed LoadFromFile "http://embed-config-resources.example.com/"
       "@@SERVER_ROOT@@/mod_pagespeed_example/";
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name ipro-for-browser.example.com;
+    root "@@SERVER_ROOT@@/mod_pagespeed_example";
+    pagespeed EnableFilters rewrite_images,rewrite_css;
+    pagespeed EnableFilters convert_to_webp_lossless;
+    pagespeed EnableFilters in_place_optimize_for_browser;
+    pagespeed InPlaceResourceOptimization on;
+    pagespeed FileCachePath "@@IPRO_CACHE@@";
   }
 
   server {
@@ -430,6 +648,18 @@ http {
     pagespeed CacheFlushPollIntervalSec 1;
     pagespeed RewriteLevel PassThrough;
     pagespeed EnableFilters inline_css;
+
+    # Make a non-empty subdirectory config to make sure that
+    # cache.flush updates get transmitted to nested configurations.
+    #
+    # TODO(jmarantz): This test currently fails on ngx_pagespeed, meaning we
+    # don't handle cache flushing correctly here.  Uncomment the config below to
+    # expose the error.
+    #location /mod_pagespeed_test/cache_flush/ {
+    #  pagespeed RewriteLevel PassThrough;
+    #  pagespeed EnableFilters inline_css;
+    #  pagespeed DisableFilters add_instrumentation;
+    #}
   }
 
   server {
@@ -464,6 +694,7 @@ http {
     pagespeed MapRewriteDomain cdn.example.com origin.example.com;
     pagespeed RewriteLevel PassThrough;
     pagespeed EnableFilters rewrite_css,rewrite_images;
+    pagespeed CacheFragment "example";
   }
   server {
     # Sets up a logical origin for CDNs to fetch content from, on
@@ -476,6 +707,7 @@ http {
     pagespeed MapRewriteDomain cdn.example.com origin.example.com;
     pagespeed RewriteLevel PassThrough;
     pagespeed EnableFilters rewrite_css,rewrite_images;
+    pagespeed CacheFragment "example";
   }
   server {
     # Sets up a logical cdn, which is where we tell browsers to fetch resources
@@ -531,7 +763,6 @@ http {
     server_name blocking.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
 
-    pagespeed BlockingRewriteKey psatest;
     pagespeed RewriteLevel PassThrough;
     pagespeed EnableFilters rewrite_images;
   }
@@ -601,6 +832,11 @@ http {
     location /mod_pagespeed_test/ipro/nocache/test_image_dont_reuse.png {
       add_header Cache-Control no-cache;
     }
+
+    location /mod_pagespeed_test/ipro/no-cache-control-header {
+      add_header Cache-Control "";
+      pagespeed ImplicitCacheTtlMs 333000;
+    }
   }
 
   # Test hosts to cover all possible cache configurations.  L1 will be filecache
@@ -663,12 +899,73 @@ http {
   }
 
   server {
+    listen @@SECONDARY_PORT@@;
+    server_name options-by-cookies-enabled.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@_optionsbycookieson";
+    pagespeed AllowOptionsToBeSetByCookies true;
+    pagespeed RewriteLevel PassThrough;
+    pagespeed EnableFilters collapse_whitespace;
+    pagespeed DisableFilters remove_comments,add_instrumentation;
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name options-by-cookies-disabled.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@_optionsbycookiesoff";
+    pagespeed AllowOptionsToBeSetByCookies false;
+    pagespeed DisableFilters add_instrumentation;
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name request-option-override.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@";
+    pagespeed RequestOptionOverride abc;
+    pagespeed RewriteLevel Passthrough;
+    pagespeed EnableFilters collapse_whitespace;
+    pagespeed DisableFilters remove_comments,add_instrumentation;
+  }
+
+  # Proxy + IPRO a gzip'd file for testing Issue 896.
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name ipro-proxy.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@_ipro_proxy";
+
+    pagespeed on;
+    pagespeed InPlaceResourceOptimization on;
+    pagespeed EnableFilters rewrite_domains;
+
+    location / {
+      proxy_pass
+       "http://localhost:@@PRIMARY_PORT@@/mod_pagespeed_test/ipro/mod_deflate/";
+    }
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name compressed-css.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+    pagespeed InPlaceResourceOptimization on;
+  }
+
+  server {
     listen       @@PRIMARY_PORT@@;
     server_name  localhost;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
+    location ~ ^/pagespeed_admin {
+      allow 127.0.0.1;
+      deny all;
+    }
+
     location ~ "\.pagespeed\.([a-z]\.)?[a-z]{2}\.[^.]{10}\.[^.]+" {
       add_header "" "";
+    }
+
+    # Backend for ipro-proxy.example.com
+    location /mod_pagespeed_test/ipro/mod_deflate/ {
+      pagespeed off;
     }
 
     location /mod_pagespeed_test/cachable_rewritten_html/ {
@@ -676,11 +973,14 @@ http {
       # in the proxy_cache layer.
       pagespeed DownstreamCachePurgeMethod "GET";
       pagespeed DownstreamCachePurgeLocationPrefix "http://localhost:@@SECONDARY_PORT@@/purge";
+      pagespeed DownstreamCacheRebeaconingKey "random_rebeaconing_key";
       # We use a very small deadline here to force the rewriting to not complete
       # in the very first attempt.
       pagespeed RewriteDeadlinePerFlushMs 1;
       pagespeed RewriteLevel PassThrough;
-      pagespeed EnableFilters collapse_whitespace,extend_cache,recompress_images,convert_jpeg_to_webp,defer_javascript;
+      pagespeed EnableFilters collapse_whitespace,extend_cache,recompress_images;
+      pagespeed CriticalImagesBeaconEnabled true;
+      add_header Cache-Control "public, max-age=100";
     }
 
     location /mod_pagespeed_test/disable_no_transform/index.html {
@@ -707,11 +1007,6 @@ http {
 
     pagespeed Library 43 1o978_K0_LNE5_ystNklf
     http://www.modpagespeed.com/rewrite_javascript.js;
-
-    # If X-PSA-Blocking-Rewrite request header is present and its value matches
-    # the value of BlockingRewriteKey below, the response will be fully
-    # rewritten before being flushed to the client.
-    pagespeed BlockingRewriteKey psatest;
 
     add_header X-Extra-Header 1;
 
@@ -830,6 +1125,79 @@ http {
       expires 5m;
     }
 
+    location /mod_pagespeed_test/ipro/instant/wait/ {
+      pagespeed InPlaceWaitForOptimized on;
+
+      # TODO(jefftk): When running with valgrind we need to raise the rewrite
+      # deadline or else we get "Deadline exceeded for rewrite of resource".
+      # I had thought InPlaceWaitForOptimized was supposed to disable the
+      # rewrite deadline, but it seems not to.
+      #
+      # InPlaceWaitForOptimized is definitely doing something, though: when I
+      # remove the InPlaceRewriteDeadlineMs line below and run without valgrind,
+      # purple.css is optimized via ipro on the first request but if I set
+      # InPlaceWaitForOptimized to off then it is not.
+      pagespeed InPlaceRewriteDeadlineMs 1000;
+    }
+
+    location /mod_pagespeed_test/ipro/instant/deadline/ {
+      pagespeed InPlaceRewriteDeadlineMs -1;
+    }
+
+    # Test to make sure that user-authenticated resources do not get cached and
+    # optimized.
+    location /mod_pagespeed_test/auth/ {
+       auth_basic "Restricted";
+       auth_basic_user_file "@@SERVER_ROOT@@mod_pagespeed_test/auth/passwd.conf";
+    }
+
+    location /mod_pagespeed_test/ipro/cookie/ {
+      # Add Vary:Cookie.  This should prevent us from optimizing the
+      # vary_cookie.css even though PagespeedRespectVary is off.
+      # test/nginx_system_test.sh does the fetches test with and w/o cookies.
+      add_header Vary Cookie;
+      pagespeed RespectVary off;
+      pagespeed InPlaceWaitForOptimized on;
+    }
+
+    location /mod_pagespeed_test/ipro/cookie2/ {
+      # Add Vary:Cookie2.  This should prevent us from optimizing the
+      # vary_cookie2.css even though PagespeedRespectVary is off.
+      # test/nginx_system_test.sh does the fetches test with and w/o cookie2.
+      add_header Vary Cookie2;
+      pagespeed RespectVary off;
+      pagespeed InPlaceWaitForOptimized on;
+    }
+
+    location /mod_pagespeed_test/vary/ {
+      pagespeed RespectVary on;
+    }
+
+    location ~ /mod_pagespeed_test/vary/\.(js|css)$ {
+        add_header Vary User-Agent;
+    }
+
+    location /mod_pagespeed_test/vary/no_respect/ {
+      pagespeed DisableFilters add_instrumentation,inline_css;
+      pagespeed RespectVary off;
+    }
+
+    location /mod_pagespeed_test/experimental_js_minifier/ {
+      pagespeed UseExperimentalJsMinifier on;
+    }
+
+    pagespeed FetchHttps enable;
+    location /mod_pagespeed_test/https_fetch/ {
+      pagespeed DisableFilters inline_images;
+      pagespeed MapProxyDomain
+          http://localhost:@@PRIMARY_PORT@@/https_gstatic_dot_com
+          https://www.gstatic.com/psa/static;
+    }
+
+    pagespeed LoadFromFile
+        "http://localhost:@@PRIMARY_PORT@@/mod_pagespeed_test/ipro/instant/"
+        "@@SERVER_ROOT@@/mod_pagespeed_test/ipro/instant/";
+
     pagespeed EnableFilters remove_comments;
 
     # Test LoadFromFile mapping by mapping one dir to another.
@@ -868,6 +1236,7 @@ http {
   # set up gzip
   gzip  on;
   gzip_vary on;
+  gzip_proxied any;
   # Turn on gzip for all content types that should benefit from it.
   gzip_types application/ecmascript;
   gzip_types application/javascript;

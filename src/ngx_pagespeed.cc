@@ -36,27 +36,28 @@
 #include "ngx_rewrite_options.h"
 #include "ngx_server_context.h"
 
-#include "apr_time.h"
-
 #include "net/instaweb/automatic/public/proxy_fetch.h"
+#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/request_context.h"
+#include "net/instaweb/public/global_constants.h"
+#include "net/instaweb/public/version.h"
 #include "net/instaweb/rewriter/public/experiment_matcher.h"
 #include "net/instaweb/rewriter/public/experiment_util.h"
 #include "net/instaweb/rewriter/public/process_context.h"
 #include "net/instaweb/rewriter/public/resource_fetch.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
-#include "net/instaweb/system/public/handlers.h"
 #include "net/instaweb/system/public/in_place_resource_recorder.h"
 #include "net/instaweb/system/public/system_caches.h"
 #include "net/instaweb/system/public/system_request_context.h"
 #include "net/instaweb/system/public/system_rewrite_options.h"
+#include "net/instaweb/system/public/system_server_context.h"
 #include "net/instaweb/system/public/system_thread_system.h"
-#include "net/instaweb/public/global_constants.h"
-#include "net/instaweb/public/version.h"
 #include "net/instaweb/util/public/fallback_property_page.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -69,8 +70,10 @@
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/stack_buffer.h"
-#include "pagespeed/kernel/thread/pthread_shared_mem.h"
+#include "pagespeed/kernel/base/posix_timer.h"
+#include "pagespeed/kernel/http/query_params.h"
 #include "pagespeed/kernel/html/html_keywords.h"
+#include "pagespeed/kernel/thread/pthread_shared_mem.h"
 
 extern ngx_module_t ngx_pagespeed;
 
@@ -202,6 +205,45 @@ ngx_int_t string_piece_to_buffer_chain(
 // modified from NgxBaseFetch::CopyHeadersFromTable()
 namespace {
 
+// Based on ngx_http_add_cache_control.
+ngx_int_t ps_set_cache_control(ngx_http_request_t* r, char* cache_control) {
+  // First strip existing cache-control headers.
+  ngx_table_elt_t* header;
+  NgxListIterator it(&(r->headers_out.headers.part));
+  while ((header = it.Next()) != NULL) {
+    if (STR_CASE_EQ_LITERAL(header->key, "Cache-Control")) {
+      // Response headers with hash of 0 are excluded from the response.
+      header->hash = 0;
+    }
+  }
+
+  // Now add our new cache control header.
+  if (r->headers_out.cache_control.elts == NULL) {
+    ngx_int_t rc = ngx_array_init(&r->headers_out.cache_control, r->pool,
+                                  1, sizeof(ngx_table_elt_t *));
+    if (rc != NGX_OK) {
+      return NGX_ERROR;
+    }
+  }
+  ngx_table_elt_t** cache_control_headers = static_cast<ngx_table_elt_t**>(
+      ngx_array_push(&r->headers_out.cache_control));
+  if (cache_control_headers == NULL) {
+    return NGX_ERROR;
+  }
+  cache_control_headers[0] = static_cast<ngx_table_elt_t*>(
+      ngx_list_push(&r->headers_out.headers));
+  if (cache_control_headers[0] == NULL) {
+    return NGX_ERROR;
+  }
+  cache_control_headers[0]->hash = 1;
+  ngx_str_set(&cache_control_headers[0]->key, "Cache-Control");
+  cache_control_headers[0]->value.len = strlen(cache_control);
+  cache_control_headers[0]->value.data =
+      reinterpret_cast<u_char*>(cache_control);
+
+  return NGX_OK;
+}
+
 template<class Headers>
 void copy_headers_from_table(const ngx_list_t &from, Headers* to) {
   // Standard nginx idiom for iterating over a list.  See ngx_list.h
@@ -239,15 +281,18 @@ void copy_response_headers_from_ngx(const ngx_http_request_t* r,
 
   headers->set_status_code(r->headers_out.status);
 
+  if (r->headers_out.location != NULL) {
+    headers->Add(HttpAttributes::kLocation,
+                 str_to_string_piece(r->headers_out.location->value));
+  }
+
   // Manually copy over the content type because it's not included in
   // request_->headers_out.headers.
   headers->Add(HttpAttributes::kContentType,
                str_to_string_piece(r->headers_out.content_type));
 
-  // When we don't have a date header, invent one.
-  const char* date = headers->Lookup1(HttpAttributes::kDate);
-
-  if (date == NULL) {
+  // When we don't have a date header, set one with the current time.
+  if (headers->Lookup1(HttpAttributes::kDate) == NULL) {
     headers->SetDate(ngx_current_msec);
   }
 
@@ -277,7 +322,7 @@ ngx_int_t copy_response_headers_to_ngx(
     const GoogleString& name_gs = pagespeed_headers.Name(i);
     const GoogleString& value_gs = pagespeed_headers.Value(i);
 
-    if (preserve_caching_headers != kDontPreserveHeaders) {
+    if (preserve_caching_headers == kPreserveAllCachingHeaders) {
       if (StringCaseEqual(name_gs, "ETag") ||
           StringCaseEqual(name_gs, "Expires") ||
           StringCaseEqual(name_gs, "Date") ||
@@ -285,7 +330,13 @@ ngx_int_t copy_response_headers_to_ngx(
           StringCaseEqual(name_gs, "Cache-Control")) {
         continue;
       }
-    }
+    } else if (preserve_caching_headers == kPreserveOnlyCacheControl) {
+      // Retain the original Cache-Control header, but send the recomputed
+      // values for all other cache-related headers.
+      if (StringCaseEqual(name_gs, "Cache-Control")) {
+        continue;
+      }
+    } // else we don't preserve any headers
 
     ngx_str_t name, value;
 
@@ -319,7 +370,10 @@ ngx_int_t copy_response_headers_to_ngx(
       return NGX_ERROR;
     }
 
-    if (STR_EQ_LITERAL(name, "Content-Type")) {
+    if (STR_EQ_LITERAL(name, "Cache-Control")) {
+      ps_set_cache_control(r, const_cast<char*>(value_gs.c_str()));
+      continue;
+    } else if (STR_EQ_LITERAL(name, "Content-Type")) {
       // Unlike all the other headers, content_type is just a string.
       headers_out->content_type.data = value_s;
       headers_out->content_type.len = value.len;
@@ -340,8 +394,6 @@ ngx_int_t copy_response_headers_to_ngx(
     // TODO(oschaaf): are there any other headers we should not try to
     // copy here?
     } else if (STR_EQ_LITERAL(name, "Connection")) {
-      continue;
-    } else if (STR_EQ_LITERAL(name, "Vary")) {
       continue;
     } else if (STR_EQ_LITERAL(name, "Keep-Alive")) {
       continue;
@@ -428,8 +480,11 @@ enum Response {
   kPagespeedDisabled,
   kBeacon,
   kStatistics,
+  kGlobalStatistics,
   kConsole,
   kMessages,
+  kAdmin,
+  kGlobalAdmin,
   kPagespeedSubrequest,
   kNotHeadOrGet,
   kErrorResponse,
@@ -437,12 +492,22 @@ enum Response {
 };
 }  // namespace RequestRouting
 
+char* ps_main_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf);
 char* ps_srv_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf);
 char* ps_loc_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf);
 
+// TODO(jud): Verify that all the offsets should be NGX_HTTP_SRV_CONF_OFFSET and
+// not NGX_HTTP_LOC_CONF_OFFSET or NGX_HTTP_MAIN_CONF_OFFSET.
 ngx_command_t ps_commands[] = {
   { ngx_string("pagespeed"),
-    NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1|
+    NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1|
+    NGX_CONF_TAKE2|NGX_CONF_TAKE3|NGX_CONF_TAKE4|NGX_CONF_TAKE5,
+    ps_main_configure,
+    NGX_HTTP_SRV_CONF_OFFSET,
+    0,
+    NULL },
+  { ngx_string("pagespeed"),
+    NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1|
     NGX_CONF_TAKE2|NGX_CONF_TAKE3|NGX_CONF_TAKE4|NGX_CONF_TAKE5,
     ps_srv_configure,
     NGX_HTTP_SRV_CONF_OFFSET,
@@ -467,80 +532,6 @@ void ps_ignore_sigpipe() {
   sigemptyset(&act.sa_mask);
   act.sa_flags = 0;
   sigaction(SIGPIPE, &act, NULL);
-}
-
-namespace PsConfigure {
-enum OptionLevel {
-  kServer,
-  kLocation,
-};
-}  // namespace PsConfigure
-
-// These options are copied from mod_instaweb.cc, where
-// APACHE_CONFIG_OPTIONX indicates that they can not be set at the
-// directory/location level. They are not alphabetized on purpose,
-// but rather left in the same order as in mod_instaweb.cc in case
-// we end up needing te compare.
-// TODO(oschaaf): this duplication is a short term solution.
-const char* const global_only_options[] = {
-  "BlockingRewriteKey",
-  "CacheFlushFilename",
-  "CacheFlushPollIntervalSec",
-  "DangerPermitFetchFromUnknownHosts",
-  "CriticalImagesBeaconEnabled",
-  "ExperimentalFetchFromModSpdy",
-  "FetcherTimeoutMs",
-  "FetchHttps",
-  "FetchWithGzip",
-  "FileCacheCleanIntervalMs",
-  "FileCacheInodeLimit",
-  "FileCachePath",
-  "FileCacheSizeKb",
-  "ForceCaching",
-  "ImageMaxRewritesAtOnce",
-  "ImgMaxRewritesAtOnce",
-  "InheritVHostConfig",
-  "InstallCrashHandler",
-  "LRUCacheByteLimit",
-  "LRUCacheKbPerProcess",
-  "MaxCacheableContentLength",
-  "MemcachedServers",
-  "MemcachedThreads",
-  "MemcachedTimeoutUs",
-  "MessageBufferSize",
-  "NumRewriteThreads",
-  "NumExpensiveRewriteThreads",
-  "RateLimitBackgroundFetches",
-  "ReportUnloadTime",
-  "RespectXForwardedProto",
-  "SharedMemoryLocks",
-  "SlurpDirectory",
-  "SlurpFlushLimit",
-  "SlurpReadOnly",
-  "SupportNoScriptEnabled",
-  "StatisticsLoggingChartsCSS",
-  "StatisticsLoggingChartsJS",
-  "TestProxy",
-  "TestProxySlurp",
-  "TrackOriginalContentLength",
-  "UsePerVHostStatistics",
-  "XHeaderValue",
-  "LoadFromFile",
-  "LoadFromFileMatch",
-  "LoadFromFileRule",
-  "LoadFromFileRuleMatch",
-  "UseNativeFetcher"
-};
-
-bool ps_is_global_only_option(const StringPiece& option_name) {
-  ngx_uint_t i;
-  ngx_uint_t size = sizeof(global_only_options) / sizeof(char*);
-  for (i = 0; i < size; i++) {
-    if (StringCaseEqual(global_only_options[i], option_name)) {
-      return true;
-    }
-  }
-  return false;
 }
 
 char* ps_init_dir(const StringPiece& directive,
@@ -571,8 +562,8 @@ char* ps_init_dir(const StringPiece& directive,
   }
 
   // chown if owner differs from nginx worker user.
-  ngx_core_conf_t* ccf =
-      (ngx_core_conf_t*)(ngx_get_conf(cf->cycle->conf_ctx, ngx_core_module));
+  ngx_core_conf_t* ccf = reinterpret_cast<ngx_core_conf_t*>(
+      ngx_get_conf(cf->cycle->conf_ctx, ngx_core_module));
   CHECK(ccf != NULL);
   struct stat gs_stat;
   if (stat(gs_path.c_str(), &gs_stat) != 0) {
@@ -595,7 +586,7 @@ char* ps_init_dir(const StringPiece& directive,
 char* ps_configure(ngx_conf_t* cf,
                    NgxRewriteOptions** options,
                    MessageHandler* handler,
-                   PsConfigure::OptionLevel option_level) {
+                   net_instaweb::RewriteOptions::OptionScope option_scope) {
   // args[0] is always "pagespeed"; ignore it.
   ngx_uint_t n_args = cf->args->nelts - 1;
 
@@ -608,19 +599,6 @@ char* ps_configure(ngx_conf_t* cf,
   ngx_uint_t i;
   for (i = 0 ; i < n_args ; i++) {
     args[i] = str_to_string_piece(value[i+1]);
-  }
-
-  if (StringCaseEqual("UseNativeFetcher", args[0])) {
-    if (option_level != PsConfigure::kServer) {
-      return const_cast<char*>(
-          "UseNativeFetcher can only be set in the http{} block.");
-    }
-  }
-  if (option_level == PsConfigure::kLocation && n_args > 1) {
-    if (ps_is_global_only_option(args[0])) {
-      return string_piece_to_pool_string(cf->pool, StrCat(
-          "\"", args[0], "\" cannot be set at location scope"));
-    }
   }
 
   // Some options require the worker process to be able to read and write to
@@ -645,25 +623,33 @@ char* ps_configure(ngx_conf_t* cf,
         cfg_m->driver_factory->thread_system());
   }
   const char* status = (*options)->ParseAndSetOptions(
-      args, n_args, cf->pool, handler, cfg_m->driver_factory);
+      args, n_args, cf->pool, handler, cfg_m->driver_factory, option_scope);
 
   // nginx expects us to return a string literal but doesn't mark it const.
   return const_cast<char*>(status);
+}
+
+char* ps_main_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
+  ps_srv_conf_t* cfg_s = static_cast<ps_srv_conf_t*>(
+      ngx_http_conf_get_module_srv_conf(cf, ngx_pagespeed));
+  return ps_configure(cf, &cfg_s->options, cfg_s->handler,
+                      net_instaweb::RewriteOptions::kProcessScopeStrict);
 }
 
 char* ps_srv_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
   ps_srv_conf_t* cfg_s = static_cast<ps_srv_conf_t*>(
       ngx_http_conf_get_module_srv_conf(cf, ngx_pagespeed));
   return ps_configure(cf, &cfg_s->options, cfg_s->handler,
-                      PsConfigure::kServer);
+                      net_instaweb::RewriteOptions::kServerScope);
 }
 
 char* ps_loc_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
   ps_loc_conf_t* cfg_l = static_cast<ps_loc_conf_t*>(
       ngx_http_conf_get_module_loc_conf(cf, ngx_pagespeed));
 
-  return ps_configure(cf, &cfg_l->options, cfg_l->handler,
-                      PsConfigure::kLocation);
+  return ps_configure(
+      cf, &cfg_l->options, cfg_l->handler,
+      net_instaweb::RewriteOptions::kDirectoryScope);
 }
 
 void ps_cleanup_loc_conf(void* data) {
@@ -750,6 +736,7 @@ void* ps_create_main_conf(ngx_conf_t* cf) {
   NgxRewriteDriverFactory::Initialize();
 
   cfg_m->driver_factory = new NgxRewriteDriverFactory(
+      *process_context,
       new SystemThreadSystem(),
       "" /* hostname, not used */,
       -1 /* port, not used */);
@@ -984,18 +971,9 @@ int ps_determine_port(ngx_http_request_t* r) {
 
   return port;
 }
+}  // namespace
 
-GoogleString ps_determine_url(ngx_http_request_t* r) {
-  int port = ps_determine_port(r);
-  GoogleString port_string;
-  if ((ps_is_https(r) && (port == 443 || port == -1)) ||
-      (!ps_is_https(r) && (port == 80 || port == -1))) {
-    // No port specifier needed for requests on default ports.
-    port_string = "";
-  } else {
-    port_string = StrCat(":", IntegerToString(port));
-  }
-
+StringPiece ps_determine_host(ngx_http_request_t* r) {
   StringPiece host = str_to_string_piece(r->headers_in.server);
   if (host.size() == 0) {
     // If host is unspecified, perhaps because of a pure HTTP 1.0 "GET /path",
@@ -1010,6 +988,23 @@ GoogleString ps_determine_url(ngx_http_request_t* r) {
     }
     host = str_to_string_piece(s);
   }
+  return host;
+}
+
+namespace {
+
+GoogleString ps_determine_url(ngx_http_request_t* r) {
+  int port = ps_determine_port(r);
+  GoogleString port_string;
+  if ((ps_is_https(r) && (port == 443 || port == -1)) ||
+      (!ps_is_https(r) && (port == 80 || port == -1))) {
+    // No port specifier needed for requests on default ports.
+    port_string = "";
+  } else {
+    port_string = StrCat(":", IntegerToString(port));
+  }
+
+  StringPiece host = ps_determine_host(r);
 
   return StrCat(ps_is_https(r) ? "https://" : "http://",
                 host, port_string, str_to_string_piece(r->unparsed_uri));
@@ -1282,19 +1277,16 @@ ps_loc_conf_t* ps_get_loc_config(ngx_http_request_t* r) {
 // Wrapper around GetQueryOptions()
 RewriteOptions* ps_determine_request_options(
     ngx_http_request_t* r,
+    const RewriteOptions* domain_options, /* may be null */
     RequestHeaders* request_headers,
     ResponseHeaders* response_headers,
     ps_srv_conf_t* cfg_s,
     GoogleUrl* url) {
-  // Stripping ModPagespeed query params before the property cache lookup to
-  // make cache key consistent for both lookup and storing in cache.
-  //
   // Sets option from request headers and url.
-  ServerContext::OptionsBoolPair query_options_success =
-      cfg_s->server_context->GetQueryOptions(url, request_headers,
-                                             response_headers);
-  bool get_query_options_success = query_options_success.second;
-  if (!get_query_options_success) {
+  RewriteQuery rewrite_query;
+  if (!cfg_s->server_context->GetQueryOptions(
+          domain_options, url, request_headers, response_headers,
+          &rewrite_query)) {
     // Failed to parse query params or request headers.  Treat this as if there
     // were no query params given.
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
@@ -1304,7 +1296,7 @@ RewriteOptions* ps_determine_request_options(
 
   // Will be NULL if there aren't any options set with query params or in
   // headers.
-  return query_options_success.first;
+  return rewrite_query.ReleaseOptions();
 }
 
 // Check whether this visitor is already in an experiment.  If they're not,
@@ -1321,8 +1313,9 @@ bool ps_set_experiment_state_and_cookie(ngx_http_request_t* r,
   bool need_cookie = cfg_s->server_context->experiment_matcher()->
       ClassifyIntoExperiment(*request_headers, options);
   if (need_cookie && host.length() > 0) {
-    int64 time_now_us = apr_time_now();
-    int64 expiration_time_ms = (time_now_us/1000 +
+    PosixTimer timer;
+    int64 time_now_ms = timer.NowMs();
+    int64 expiration_time_ms = (time_now_ms +
                                 options->experiment_cookie_duration_ms());
 
     // TODO(jefftk): refactor SetExperimentCookie to expose the value we want to
@@ -1381,12 +1374,13 @@ bool ps_determine_options(ngx_http_request_t* r,
   // Request-specific options, nearly always null.  If set they need to be
   // rebased on the directory options or the global options.
   RewriteOptions* request_options = ps_determine_request_options(
-      r, request_headers, response_headers, cfg_s, url);
+      r, directory_options, request_headers, response_headers, cfg_s, url);
+  bool have_request_options = request_options != NULL;
 
   // Because the caller takes ownership of any options we return, the only
   // situation in which we can avoid allocating a new RewriteOptions is if the
   // global options are ok as are.
-  if (directory_options == NULL && request_options == NULL &&
+  if (!have_request_options && directory_options == NULL &&
       !global_options->running_experiment()) {
     return true;
   }
@@ -1398,14 +1392,24 @@ bool ps_determine_options(ngx_http_request_t* r,
     *options = global_options->Clone();
   }
 
-  // Modify our options in response to request options or experiment settings,
-  // if we need to.  If there are request options then ignore the experiment
-  // because we don't want experiments to be contaminated with unexpected
-  // settings.
-  if (request_options != NULL) {
+  // Modify our options in response to request options if specified.
+  if (have_request_options) {
     (*options)->Merge(*request_options);
     delete request_options;
-  } else if ((*options)->running_experiment() && html_rewrite) {
+    request_options = NULL;
+  }
+
+  // If we're running an experiment and processing html then modify our options
+  // in response to the experiment.  Except we generally don't want experiments
+  // to be contaminated with unexpected settings, so ignore experiments if we
+  // have request-specific options.  Unless EnrollExperiment is on, probably set
+  // by a query parameter, in which case we want to go ahead and apply the
+  // experimental settings even if it means bad data, because we're just seeing
+  // what it looks like.
+  if ((*options)->running_experiment() &&
+      html_rewrite &&
+      (!have_request_options ||
+       (*options)->enroll_experiment())) {
     bool ok = ps_set_experiment_state_and_cookie(
         r, request_headers, *options, url->Host());
     if (!ok) {
@@ -1442,7 +1446,8 @@ bool ps_apply_x_forwarded_proto(ngx_http_request_t* r, GoogleString* url) {
     return false;  // No X-Forwarded-Proto header found.
   }
 
-  StringPiece x_forwarded_proto = str_to_string_piece(*x_forwarded_proto_header);
+  StringPiece x_forwarded_proto =
+      str_to_string_piece(*x_forwarded_proto_header);
   if (!STR_CASE_EQ_LITERAL(*x_forwarded_proto_header, "http") &&
       !STR_CASE_EQ_LITERAL(*x_forwarded_proto_header, "https")) {
     LOG(WARNING) << "Unsupported X-Forwarded-Proto: " << x_forwarded_proto
@@ -1568,11 +1573,6 @@ void ps_release_request_context(void* data) {
     ctx->recorder = NULL;
   }
 
-  if (ctx->ipro_response_headers != NULL) {
-    delete ctx->ipro_response_headers;
-    ctx->ipro_response_headers = NULL;
-  }
-
   ps_release_base_fetch(ctx);
   delete ctx;
 }
@@ -1605,18 +1605,33 @@ RequestRouting::Response ps_route_request(ngx_http_request_t* r,
 
   if (is_pagespeed_subrequest(r)) {
     return RequestRouting::kPagespeedSubrequest;
-  } else if (url.PathSansLeaf() == NgxRewriteDriverFactory::kStaticAssetPrefix) {
+  } else if (
+      url.PathSansLeaf() == dynamic_cast<NgxRewriteDriverFactory*>(
+          cfg_s->server_context->factory())->static_asset_prefix()) {
     return RequestRouting::kStaticContent;
-  } else if (url.PathSansQuery() == "/ngx_pagespeed_statistics" ||
-             url.PathSansQuery() == "/ngx_pagespeed_global_statistics" ) {
-    return RequestRouting::kStatistics;
-  } else if (url.PathSansQuery() == "/pagespeed_console") {
-    return RequestRouting::kConsole;
-  } else if (url.PathSansQuery() == "/ngx_pagespeed_message") {
-    return RequestRouting::kMessages;
   }
 
-  RewriteOptions* global_options = cfg_s->server_context->global_options();
+  const NgxRewriteOptions* global_options = cfg_s->server_context->config();
+
+  StringPiece path = url.PathSansQuery();
+  if (StringCaseEqual(path, global_options->statistics_path())) {
+    return RequestRouting::kStatistics;
+  } else if (StringCaseEqual(path, global_options->global_statistics_path())) {
+    return RequestRouting::kGlobalStatistics;
+  } else if (StringCaseEqual(path, global_options->console_path())) {
+    return RequestRouting::kConsole;
+  } else if (StringCaseEqual(path, global_options->messages_path())) {
+    return RequestRouting::kMessages;
+  } else if (// The admin handlers get everything under a path (/path/*) while
+             // all the other handlers only get exact matches (/path).  So match
+             // all paths starting with the handler path.
+             !global_options->admin_path().empty() &&
+             StringCaseStartsWith(path, global_options->admin_path())) {
+    return RequestRouting::kAdmin;
+  } else if (!global_options->global_admin_path().empty() &&
+             StringCaseStartsWith(path, global_options->global_admin_path())) {
+    return RequestRouting::kGlobalAdmin;
+  }
 
   const GoogleString* beacon_url;
   if (ps_is_https(r)) {
@@ -1632,7 +1647,9 @@ RequestRouting::Response ps_route_request(ngx_http_request_t* r,
   return RequestRouting::kResource;
 }
 
-ngx_int_t ps_resource_handler(ngx_http_request_t* r, bool html_rewrite) {
+ngx_int_t ps_resource_handler(ngx_http_request_t* r,
+                              bool html_rewrite,
+                              RequestRouting::Response response_category) {
   if (r != r->main) {
     return NGX_DECLINED;
   }
@@ -1642,7 +1659,9 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r, bool html_rewrite) {
 
   CHECK(!(html_rewrite && (ctx == NULL || ctx->html_rewrite == false)));
 
-  if (!html_rewrite && r->method != NGX_HTTP_GET && r->method != NGX_HTTP_HEAD) {
+  if (!html_rewrite &&
+      r->method != NGX_HTTP_GET &&
+      r->method != NGX_HTTP_HEAD) {
     return NGX_DECLINED;
   }
 
@@ -1679,7 +1698,7 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r, bool html_rewrite) {
   // parameters.  Keep url_string in sync with url.
   url.Spec().CopyToString(&url_string);
 
-  if (options->respect_x_forwarded_proto()) {
+  if (cfg_s->server_context->global_options()->respect_x_forwarded_proto()) {
     bool modified_url = ps_apply_x_forwarded_proto(r, &url_string);
     if (modified_url) {
       url.Reset(url_string);
@@ -1689,6 +1708,15 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r, bool html_rewrite) {
     }
   }
 
+  bool pagespeed_resource =
+      !html_rewrite && cfg_s->server_context->IsPagespeedResource(url);
+  bool is_an_admin_handler =
+      response_category == RequestRouting::kStatistics ||
+      response_category == RequestRouting::kGlobalStatistics ||
+      response_category == RequestRouting::kConsole ||
+      response_category == RequestRouting::kAdmin ||
+      response_category == RequestRouting::kGlobalAdmin;
+
   if (html_rewrite) {
     ps_release_base_fetch(ctx);
   } else {
@@ -1697,20 +1725,36 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r, bool html_rewrite) {
     ctx = new ps_request_ctx_t();
 
     ctx->r = r;
-    ctx->ipro_response_headers = NULL;
     ctx->write_pending = false;
     ctx->html_rewrite = false;
     ctx->in_place = false;
     ctx->pagespeed_connection = NULL;
+    ctx->preserve_caching_headers = kDontPreserveHeaders;
+
     // See build_context_for_request() in mod_instaweb.cc
+    // TODO(jefftk): Is this the right place to be modifying caching headers for
+    // html fetches?  Or should that be done later, in the headers flow for
+    // filter mode, rather than here in resource fetch mode?
     if (!options->modify_caching_headers()) {
       ctx->preserve_caching_headers = kPreserveAllCachingHeaders;
-    } else if (!options->downstream_cache_purge_location_prefix().empty()) {
-      ctx->preserve_caching_headers = kPreserveOnlyCacheControl;
-    } else {
+    } else if (!options->IsDownstreamCacheIntegrationEnabled()) {
+      // Downstream cache integration is not enabled. Disable original
+      // Cache-Control headers.
       ctx->preserve_caching_headers = kDontPreserveHeaders;
+    } else if (!pagespeed_resource && !is_an_admin_handler) {
+      ctx->preserve_caching_headers = kPreserveOnlyCacheControl;
+      // Downstream cache integration is enabled. If a rebeaconing key has been
+      // configured and there is a ShouldBeacon header with the correct key,
+      // disable original Cache-Control headers so that the instrumented page is
+      // served out with no-cache.
+      StringPiece should_beacon(request_headers->Lookup1(kPsaShouldBeacon));
+      if (options->MatchesDownstreamCacheRebeaconingKey(should_beacon)) {
+        ctx->preserve_caching_headers = kDontPreserveHeaders;
+      }
     }
+
     ctx->recorder = NULL;
+    ctx->url_string = url_string;
 
     // Set up a cleanup handler on the request.
     ngx_http_cleanup_t* cleanup = ngx_http_cleanup_add(r, 0);
@@ -1743,13 +1787,49 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r, bool html_rewrite) {
               false /* requires_blink_cohort (no longer unused) */,
               &page_callback_added));
 
-  if (!html_rewrite && cfg_s->server_context->IsPagespeedResource(url)) {
+  if (pagespeed_resource) {
     // TODO(jefftk): Set using_spdy appropriately.  See
     // ProxyInterface::ProxyRequestCallback
     ResourceFetch::Start(
         url,
         custom_options.release() /* null if there aren't custom options */,
         false /* using_spdy */, cfg_s->server_context, ctx->base_fetch);
+    return ps_async_wait_response(r);
+  } else if (is_an_admin_handler) {
+    QueryParams query_params;
+    query_params.ParseFromUrl(url);
+
+    PosixTimer timer;
+    int64 now_ms = timer.NowMs();
+    ctx->base_fetch->response_headers()->SetDateAndCaching(
+        now_ms, 0 /* max-age */, ", no-cache");
+
+    if (response_category == RequestRouting::kStatistics ||
+        response_category == RequestRouting::kGlobalStatistics) {
+      cfg_s->server_context->StatisticsPage(
+          response_category == RequestRouting::kGlobalStatistics,
+          query_params,
+          cfg_s->server_context->config(),
+          ctx->base_fetch);
+    } else if (response_category == RequestRouting::kConsole) {
+      cfg_s->server_context->ConsoleHandler(
+          *cfg_s->server_context->config(),
+          SystemServerContext::kStatistics,
+          query_params,
+          ctx->base_fetch);
+    } else if (response_category == RequestRouting::kAdmin ||
+               response_category == RequestRouting::kGlobalAdmin) {
+      cfg_s->server_context->AdminPage(
+          response_category == RequestRouting::kGlobalAdmin,
+          url,
+          query_params,
+          custom_options == NULL ? cfg_s->server_context->config()
+                                 : custom_options.get(),
+          ctx->base_fetch);
+    } else {
+      CHECK(false);
+    }
+
     return ps_async_wait_response(r);
   }
 
@@ -1896,45 +1976,6 @@ void ps_send_to_pagespeed(ngx_http_request_t* r,
   }
 #endif
 
-// Based on ngx_http_add_cache_control.
-ngx_int_t ps_set_cache_control(ngx_http_request_t* r, char* cache_control) {
-  // First strip existing cache-control headers.
-  ngx_table_elt_t* header;
-  NgxListIterator it(&(r->headers_out.headers.part));
-  while ((header = it.Next()) != NULL) {
-    if (STR_CASE_EQ_LITERAL(header->key, "Cache-Control")) {
-      // Response headers with hash of 0 are excluded from the response.
-      header->hash = 0;
-    }
-  }
-
-  // Now add our new cache control header.
-  if (r->headers_out.cache_control.elts == NULL) {
-    ngx_int_t rc = ngx_array_init(&r->headers_out.cache_control, r->pool,
-                                  1, sizeof(ngx_table_elt_t *));
-    if (rc != NGX_OK) {
-      return NGX_ERROR;
-    }
-  }
-  ngx_table_elt_t** cache_control_headers = static_cast<ngx_table_elt_t**>(
-      ngx_array_push(&r->headers_out.cache_control));
-  if (cache_control_headers == NULL) {
-    return NGX_ERROR;
-  }
-  cache_control_headers[0] = static_cast<ngx_table_elt_t*>(
-      ngx_list_push(&r->headers_out.headers));
-  if (cache_control_headers[0] == NULL) {
-    return NGX_ERROR;
-  }
-  cache_control_headers[0]->hash = 1;
-  ngx_str_set(&cache_control_headers[0]->key, "Cache-Control");
-  cache_control_headers[0]->value.len = strlen(cache_control);
-  cache_control_headers[0]->value.data =
-      reinterpret_cast<u_char*>(cache_control);
-
-  return NGX_OK;
-}
-
 void ps_strip_html_headers(ngx_http_request_t* r) {
   // We're modifying content, so switch to 'Transfer-Encoding: chunked' and
   // calculate on the fly.
@@ -2057,7 +2098,8 @@ ngx_int_t ps_html_rewrite_header_filter(ngx_http_request_t* r) {
     return ngx_http_next_header_filter(r);
   }
 
-  ngx_int_t rc = ps_resource_handler(r, true /* html rewrite */);
+  ngx_int_t rc = ps_resource_handler(r, true /* html rewrite */,
+                                     RequestRouting::kResource);
   if (rc != NGX_OK) {
     ctx->html_rewrite = false;
     return ngx_http_next_header_filter(r);
@@ -2158,12 +2200,40 @@ ngx_http_output_body_filter_pt ngx_http_next_body_filter;
 ngx_int_t ps_in_place_check_header_filter(ngx_http_request_t* r) {
   ps_request_ctx_t* ctx = ps_get_request_context(r);
 
-  if (ctx == NULL || !ctx->in_place) {
+  if (ctx == NULL) {
+    return ngx_http_next_header_filter(r);
+  }
+
+  if (ctx->recorder != NULL) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "ps in place check header filter recording: %V", &r->uri);
+
+    CHECK(!ctx->in_place);
+
+    // We didn't find this resource in cache originally, so we're recording it
+    // as it passes us by.  At this point the headers from things that run
+    // before us are set but not things that run after us, which means here is
+    // where we need to check whether there's a "Content-Encoding: gzip".  If we
+    // waited to do this in ps_in_place_body_filter we wouldn't be able to tell
+    // the difference between response headers that have "C-E: gz" because we're
+    // proxying for an upstream that gzipped the content and response headers
+    // that have it because the gzip filter (which runs after us) is going to
+    // produce gzipped output.
+    //
+    // The recorder will do this checking, so pass it the headers.
+    ResponseHeaders response_headers;
+    copy_response_headers_from_ngx(r, &response_headers);
+    ctx->recorder->ConsiderResponseHeaders(
+        InPlaceResourceRecorder::kPreliminaryHeaders, &response_headers);
+    return ngx_http_next_header_filter(r);
+  }
+
+  if (!ctx->in_place) {
     return ngx_http_next_header_filter(r);
   }
 
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                 "ps in place check header filter: %V", &r->uri);
+                 "ps in place check header filter initial: %V", &r->uri);
 
   int status_code = r->headers_out.status;
   bool status_ok = (status_code != 0) && (status_code < 400);
@@ -2172,6 +2242,9 @@ ngx_int_t ps_in_place_check_header_filter(ngx_http_request_t* r) {
   NgxServerContext* server_context = cfg_s->server_context;
   MessageHandler* message_handler = cfg_s->handler;
   GoogleString url = ps_determine_url(r);
+  // The URL we use for cache key is a bit different since it may
+  // have PageSpeed query params removed.
+  GoogleString cache_url = ctx->url_string;
 
   // continue process
   if (status_ok) {
@@ -2192,27 +2265,32 @@ ngx_int_t ps_in_place_check_header_filter(ngx_http_request_t* r) {
         kInfo,
         "Could not rewrite resource in-place "
         "because URL is not in cache: %s",
-        url.c_str());
+        cache_url.c_str());
     const SystemRewriteOptions* options = SystemRewriteOptions::DynamicCast(
         ctx->driver->options());
-    scoped_ptr<RequestHeaders> request_headers(new RequestHeaders);
-    copy_request_headers_from_ngx(r, request_headers.get());
+    RequestHeaders request_headers;
+    copy_request_headers_from_ngx(r, &request_headers);
     // This URL was not found in cache (neither the input resource nor
     // a ResourceNotCacheable entry) so we need to get it into cache
     // (or at least a note that it cannot be cached stored there).
     // We do that using an Apache output filter.
     ctx->recorder = new InPlaceResourceRecorder(
         RequestContextPtr(cfg_s->server_context->NewRequestContext(r)),
-        url,
-        request_headers.release(),
+        cache_url,
+        ctx->driver->CacheFragment(),
+        request_headers.GetProperties(),
         options->respect_vary(),
         options->ipro_max_response_bytes(),
         options->ipro_max_concurrent_recordings(),
+        options->implicit_cache_ttl_ms(),
         server_context->http_cache(),
         server_context->statistics(),
         message_handler);
     // set in memory flag for in place_body_filter
     r->filter_need_in_memory = 1;
+
+    // We don't have the response headers at all yet because we haven't yet gone
+    // to the backend.
   } else {
     server_context->rewrite_stats()->ipro_not_rewritable()->Add(1);
     message_handler->Message(kInfo,
@@ -2238,44 +2316,11 @@ ngx_int_t ps_in_place_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
                  "ps in place body filter: %V", &r->uri);
 
   InPlaceResourceRecorder* recorder = ctx->recorder;
-
-  if (ctx->ipro_response_headers == NULL) {
-    // Prepare response headers.
-    ctx->ipro_response_headers = new ResponseHeaders();
-
-    // TODO(oschaaf): We don't get a Date response header here.
-    // Currently, we invent one and set it to the current date/time.
-    // We need to investigate why we don't receive it.
-    ctx->ipro_response_headers->set_major_version(r->http_version / 1000);
-    ctx->ipro_response_headers->set_minor_version(r->http_version % 1000);
-    copy_headers_from_table(r->headers_out.headers, ctx->ipro_response_headers);
-    ctx->ipro_response_headers->set_status_code(r->headers_out.status);
-    ctx->ipro_response_headers->Add(HttpAttributes::kContentType,
-                str_to_string_piece(r->headers_out.content_type));
-    if (r->headers_out.location != NULL) {
-      ctx->ipro_response_headers->Add(HttpAttributes::kLocation,
-                  str_to_string_piece(r->headers_out.location->value));
-    }
-    StringPiece date =
-        ctx->ipro_response_headers->Lookup1(HttpAttributes::kDate);
-    if (date.empty()) {
-      ctx->ipro_response_headers->SetDate(ngx_current_msec);
-    }
-    ctx->ipro_response_headers->ComputeCaching();
-
-    // Unlike in Apache we get the final response headers before we get the
-    // content.  This means we can consider them earlier and abort the
-    // request if need be without buffering everything.
-    recorder->ConsiderResponseHeaders(
-        InPlaceResourceRecorder::kPreliminaryHeaders,
-        ctx->ipro_response_headers);
-  }
-
   for (ngx_chain_t* cl = in; cl; cl = cl->next) {
     if (ngx_buf_size(cl->buf)) {
        CHECK(ngx_buf_in_memory(cl->buf));
-       StringPiece contents(reinterpret_cast<char *>(cl->buf->pos),
-                                 ngx_buf_size(cl->buf));
+       StringPiece contents(reinterpret_cast<char*>(cl->buf->pos),
+                            ngx_buf_size(cl->buf));
        recorder->Write(contents, recorder->handler());
     }
 
@@ -2284,7 +2329,9 @@ ngx_int_t ps_in_place_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
     }
 
     if (cl->buf->last_buf || recorder->failed()) {
-      ctx->recorder->DoneAndSetHeaders(ctx->ipro_response_headers);
+      ResponseHeaders response_headers;
+      copy_response_headers_from_ngx(r, &response_headers);
+      ctx->recorder->DoneAndSetHeaders(&response_headers);
       ctx->recorder = NULL;
       break;
     }
@@ -2343,6 +2390,13 @@ ngx_int_t ps_simple_handler(ngx_http_request_t* r,
   NgxMessageHandler* message_handler = factory->ngx_message_handler();
   StringPiece request_uri_path = str_to_string_piece(r->uri);
 
+  GoogleString url_string = ps_determine_url(r);
+  GoogleUrl url(url_string);
+  QueryParams query_params;
+  if (url.IsWebValid()) {
+    query_params.ParseFromUrl(url);
+  }
+
   GoogleString output;
   StringWriter writer(&output);
   HttpStatus::Code status = HttpStatus::kOK;
@@ -2354,30 +2408,13 @@ ngx_int_t ps_simple_handler(ngx_http_request_t* r,
     case RequestRouting::kStaticContent: {
       StringPiece file_contents;
       if (!server_context->static_asset_manager()->GetAsset(
-              request_uri_path.substr(
-                  strlen(NgxRewriteDriverFactory::kStaticAssetPrefix)),
+              request_uri_path.substr(factory->static_asset_prefix().length()),
               &file_contents, &content_type, &cache_control)) {
         return NGX_DECLINED;
       }
       file_contents.CopyToString(&output);
       break;
     }
-    case RequestRouting::kStatistics:
-      error_message = StatisticsHandler(
-          factory,
-          server_context,
-          NULL,  // No SPDY-specific config in ngx_pagespeed.
-          !factory->use_per_vhost_statistics() || StringCaseStartsWith(
-              request_uri_path, "/ngx_pagespeed_global_statistics"),
-          StringPiece(reinterpret_cast<char*>(r->args.data), r->args.len),
-          &content_type,
-          &writer,
-          message_handler);
-      break;
-    case RequestRouting::kConsole:
-      ConsoleHandler(
-          server_context, server_context->config(), &writer, message_handler);
-      break;
     case RequestRouting::kMessages: {
       GoogleString log;
       StringWriter log_writer(&log);
@@ -2422,8 +2459,7 @@ ngx_int_t ps_simple_handler(ngx_http_request_t* r,
 
   char* cache_control_s = string_piece_to_pool_string(r->pool, cache_control);
   if (cache_control_s != NULL) {
-    if (FindIgnoreCase(cache_control, "private") ==
-        static_cast<int>(StringPiece::npos)) {
+    if (FindIgnoreCase(cache_control, "private") == StringPiece::npos) {
       response_headers.Add(HttpAttributes::kEtag, "W/\"0\"");
     }
   }
@@ -2618,12 +2654,16 @@ ngx_int_t ps_content_handler(ngx_http_request_t* r) {
     case RequestRouting::kBeacon:
       return ps_beacon_handler(r);
     case RequestRouting::kStaticContent:
-    case RequestRouting::kStatistics:
-    case RequestRouting::kConsole:
     case RequestRouting::kMessages:
       return ps_simple_handler(r, cfg_s->server_context, response_category);
+    case RequestRouting::kStatistics:
+    case RequestRouting::kGlobalStatistics:
+    case RequestRouting::kConsole:
+    case RequestRouting::kAdmin:
+    case RequestRouting::kGlobalAdmin:
     case RequestRouting::kResource:
-      return ps_resource_handler(r, false /* html rewrite */);
+      return ps_resource_handler(
+          r, false /* html rewrite */, response_category);
   }
 
   CHECK(0);
@@ -2872,6 +2912,8 @@ ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
   if (cfg_m->driver_factory == NULL) {
     return NGX_OK;
   }
+
+  SystemRewriteDriverFactory::InitApr();
 
   // ChildInit() will initialise all ServerContexts, which we need to
   // create ProxyFetchFactories below

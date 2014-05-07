@@ -28,7 +28,6 @@ extern "C" {
 
 #include <set>
 
-#include "apr_pools.h"
 #include "net/instaweb/system/public/system_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
@@ -46,16 +45,14 @@ class NgxUrlAsyncFetcher;
 class SharedCircularBuffer;
 class SharedMemRefererStatistics;
 class SlowWorker;
-class StaticAssetManager;
 class Statistics;
 class SystemThreadSystem;
 
 class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
  public:
-  static const char kStaticAssetPrefix[];
-
   // We take ownership of the thread system.
   explicit NgxRewriteDriverFactory(
+      const ProcessContext& process_context,
       SystemThreadSystem* system_thread_system, StringPiece hostname, int port);
   virtual ~NgxRewriteDriverFactory();
   virtual Hasher* NewHasher();
@@ -68,9 +65,7 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
   // Create a new RewriteOptions.  In this implementation it will be an
   // NgxRewriteOptions.
   virtual RewriteOptions* NewRewriteOptions();
-  // Initializes the StaticAssetManager.
-  virtual void InitStaticAssetManager(
-      StaticAssetManager* static_asset_manager);
+  virtual ServerContext* NewDecodingServerContext();
   bool InitNgxUrlAsyncFetchers();
   // Check resolver configured or not.
   bool CheckResolver();
@@ -80,7 +75,7 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
   // platform-independent statistics.
   static void InitStats(Statistics* statistics);
   NgxServerContext* MakeNgxServerContext(StringPiece hostname, int port);
-  ServerContext* NewServerContext();
+  virtual ServerContext* NewServerContext();
 
   // Starts pagespeed threads if they've not been started already.  Must be
   // called after the caller has finished any forking it intends to do.
@@ -168,6 +163,9 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
   // Owned by the superclass.
   // TODO(jefftk): merge the nginx and apache ways of doing this.
   SharedCircularBuffer* ngx_shared_circular_buffer_;
+
+  GoogleString hostname_;
+  int port_;
 
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteDriverFactory);
 };

@@ -40,7 +40,8 @@ class NgxRewriteOptions : public SystemRewriteOptions {
   static void Initialize();
   static void Terminate();
 
-  NgxRewriteOptions(const StringPiece& description, ThreadSystem* thread_system);
+  NgxRewriteOptions(const StringPiece& description,
+                    ThreadSystem* thread_system);
   explicit NgxRewriteOptions(ThreadSystem* thread_system);
   virtual ~NgxRewriteOptions() { }
 
@@ -57,7 +58,7 @@ class NgxRewriteOptions : public SystemRewriteOptions {
   // pool is a memory pool for allocating error strings.
   const char* ParseAndSetOptions(
       StringPiece* args, int n_args, ngx_pool_t* pool, MessageHandler* handler,
-      NgxRewriteDriverFactory* driver_factory);
+      NgxRewriteDriverFactory* driver_factory, OptionScope scope);
 
   // Make an identical copy of these options and return it.
   virtual NgxRewriteOptions* Clone() const;
@@ -67,6 +68,24 @@ class NgxRewriteOptions : public SystemRewriteOptions {
   static const NgxRewriteOptions* DynamicCast(const RewriteOptions* instance);
   static NgxRewriteOptions* DynamicCast(RewriteOptions* instance);
 
+  const GoogleString& statistics_path() const {
+    return statistics_path_.value();
+  }
+  const GoogleString& global_statistics_path() const {
+    return global_statistics_path_.value();
+  }
+  const GoogleString& console_path() const {
+    return console_path_.value();
+  }
+  const GoogleString& messages_path() const {
+    return messages_path_.value();
+  }
+  const GoogleString& admin_path() const {
+    return admin_path_.value();
+  }
+  const GoogleString& global_admin_path() const {
+    return global_admin_path_.value();
+  }
 
  private:
   // Helper methods for ParseAndSetOptions().  Each can:
@@ -108,13 +127,26 @@ class NgxRewriteOptions : public SystemRewriteOptions {
   static void add_ngx_option(typename OptionClass::ValueType default_value,
                              OptionClass NgxRewriteOptions::*offset,
                              const char* id,
-                             StringPiece option_name) {
-    AddProperty(default_value, offset, id, option_name, ngx_properties_);
+                             StringPiece option_name,
+                             OptionScope scope,
+                             const char* help) {
+    AddProperty(default_value, offset, id, option_name, scope, help,
+                ngx_properties_);
   }
+
+  Option<GoogleString> statistics_path_;
+  Option<GoogleString> global_statistics_path_;
+  Option<GoogleString> console_path_;
+  Option<GoogleString> messages_path_;
+  Option<GoogleString> admin_path_;
+  Option<GoogleString> global_admin_path_;
 
   // Helper for ParseAndSetOptions.  Returns whether the two directives equal,
   // ignoring case.
   bool IsDirective(StringPiece config_directive, StringPiece compare_directive);
+
+  // Returns a given option's scope.
+  RewriteOptions::OptionScope GetOptionScope(StringPiece option_name);
 
   // TODO(jefftk): support fetch proxy in server and location blocks.
 
