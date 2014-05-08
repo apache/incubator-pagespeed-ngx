@@ -1054,8 +1054,7 @@ bool ImageImpl::ComputeOutputContents() {
             (options_->preferred_webp != WEBP_NONE)) {
           ok = ConvertJpegToWebp(string_for_image, options_->webp_quality,
                                  &output_contents_);
-          VLOG(1) << "Image conversion: " << ok
-                  << " jpeg->webp for " << url_.c_str();
+          VLOG(1) << "Image conversion: " << ok << " jpeg->webp for " << url_;
           if (!ok) {
             // Image is not going to be webp-converted!
             minimal_webp_support_ = ResourceContext::LIBWEBP_NONE;
@@ -1070,8 +1069,7 @@ bool ImageImpl::ComputeOutputContents() {
           ConvertToJpegOptions(*options_.get(), &jpeg_options);
           ok = OptimizeJpegWithOptions(string_for_image, &output_contents_,
                                        jpeg_options, handler_.get());
-          VLOG(1) << "Image conversion: " << ok
-                  << " jpeg->jpeg for " << url_.c_str();
+          VLOG(1) << "Image conversion: " << ok << " jpeg->jpeg for " << url_;
         }
         break;
       case IMAGE_PNG:
@@ -1228,10 +1226,9 @@ inline bool ImageImpl::ComputeOutputContentsFromPngReader(
     image_type_ = input_type;
   }
 
-  VLOG(1) << "Image conversion: " << ok
-          << " " << dbg_input_format
-          << "->" << ImageFormatToString(ImageTypeToImageFormat(image_type_))
-          << " for " << url_.c_str();
+  VLOG(1) << "Image conversion: " << ok << " " << dbg_input_format << "->"
+          << ImageFormatToString(ImageTypeToImageFormat(image_type_)) << " for "
+          << url_;
 
   return ok;
 }

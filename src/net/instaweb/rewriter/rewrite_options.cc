@@ -3178,7 +3178,7 @@ bool RewriteOptions::ParseFromString(StringPiece value_string,
 bool RewriteOptions::ParseFromString(
     StringPiece value_string,
     protobuf::MessageLite* proto) {
-  return proto->ParseFromString(value_string.as_string());
+  return ParseProtoFromStringPiece(value_string, proto);
 }
 
 bool RewriteOptions::Enabled(Filter filter) const {

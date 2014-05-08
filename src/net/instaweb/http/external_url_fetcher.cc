@@ -95,7 +95,7 @@ void ExternalUrlFetcher::Fetch(
 
 
   handler->Message(kInfo, "%s --... %s\n", GetFetchLabel(), url.c_str());
-  VLOG(2) << "Running: " << cmd.c_str();
+  VLOG(2) << "Running: " << cmd;
   FILE* cmd_stdout = popen(cmd.c_str(), "r");
 
   bool ret = false;
