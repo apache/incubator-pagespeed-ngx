@@ -42,6 +42,8 @@ DEFINE_string(filename_prefix, "/tmp/instaweb/",
 DEFINE_string(rewrite_level, "CoreFilters",
               "Base rewrite level. Must be one of: "
               "PassThrough, CoreFilters, TestingCoreFilters, AllFilters.");
+DEFINE_string(rewrite_options, "",
+              "semicolon-separated list of name=value pairs for options");
 DEFINE_string(rewriters, "", "Comma-separated list of rewriters");
 // distributable_filters is for experimentation and may be removed later.
 DEFINE_string(distributable_filters, "",
@@ -1078,6 +1080,31 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   ret &= SetRewriters("rewriters", FLAGS_rewriters.c_str(),
                       "rewrite_level", FLAGS_rewrite_level.c_str(),
                       options, handler);
+
+  StringPieceVector option_name_values;
+  SplitStringPieceToVector(FLAGS_rewrite_options, ";", &option_name_values,
+                           true);
+  for (int i = 0, n = option_name_values.size(); i < n; ++i) {
+    stringpiece_ssize_type pos = option_name_values[i].find('=');
+    if (pos == StringPiece::npos) {
+      LOG(ERROR) << "Could not find =, expected name=value: "
+                 << option_name_values[i];
+      ret = false;
+    } else {
+      StringPiece name = option_name_values[i].substr(0, pos);
+      TrimWhitespace(&name);
+      StringPiece value = option_name_values[i].substr(pos + 1);
+      TrimWhitespace(&value);
+      GoogleString errmsg;
+      if (options->ParseAndSetOptionFromName1(name, value, &errmsg, handler) !=
+          RewriteOptions::kOptionOk) {
+        LOG(ERROR) << "Invalid option name=value: " << option_name_values[i]
+                   << ": " << errmsg;
+        ret = false;
+      }
+    }
+  }
+
   return ret;
 }
 
