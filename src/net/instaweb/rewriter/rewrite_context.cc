@@ -1294,12 +1294,7 @@ CachedResult* RewriteContext::output_partition(int i) {
 
 void RewriteContext::AddSlot(const ResourceSlotPtr& slot) {
   CHECK(!started_);
-
-  // TODO(jmarantz): eliminate this transitional code to allow JavascriptFilter
-  // to straddle the old rewrite flow and the new async flow.
-  if (slot.get() == NULL) {
-    return;
-  }
+  CHECK(slot.get() != NULL);
 
   slots_.push_back(slot);
   render_slots_.push_back(false);
