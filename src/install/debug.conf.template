@@ -727,6 +727,16 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   ModPagespeedDisableFilters remove_comments,add_instrumentation
 </VirtualHost>
 
+# For testing handling of redirected requests.
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName redirect.example.com
+  Redirect /redirect/ /
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
+  ModPagespeedRewriteLevel PassThrough
+  ModPagespeedEnableFilters add_instrumentation,collapse_whitespace
+</VirtualHost>
+
 # Proxy + IPRO a gzip'd file for testing Issue 896.
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
   ServerName ipro-proxy.example.com
