@@ -908,7 +908,7 @@ ModPagespeedUsePerVHostStatistics on
 # showing that we can configure PageSpeed via response headers.
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
   ServerName rproxy.rmcomments.example.com
-  DocumentRoot "@@APACHE_DOC_ROOT@@/bogus"
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@"
   ModPagespeedRewriteLevel PassThrough
   ModPagespeedDisableFilters add_instrumentation,remove_comments
