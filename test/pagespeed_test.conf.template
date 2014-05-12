@@ -354,7 +354,6 @@ http {
   server {
     listen @@SECONDARY_PORT@@;
     server_name origin.rmcomments.example.com;
-#    pagespeed FileCachePath "@@FILE_CACHE@@";
     pagespeed off;
     add_header PageSpeedFilters remove_comments;
   }
