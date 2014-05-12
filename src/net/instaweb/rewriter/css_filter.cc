@@ -27,6 +27,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
+#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -65,7 +66,6 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
-#include "net/instaweb/util/public/writer.h"
 #include "pagespeed/kernel/util/simple_random.h"
 #include "webutil/css/parser.h"
 
@@ -219,7 +219,7 @@ CssFilter::Context::~Context() {
 // might even end up moving some things to a separate cookieless domain.
 //
 // Note that we have to do it functionally and not in RewriteSingle since these
-// may be invoked from AbsolutifyIfNeeded, which may be invoked from a
+// may be invoked from Absolutify, which may be invoked from a
 // different thread when doing fallback due to a deadline. This also means that
 // initial_css_base_gurl_ and initial_css_trim_gurl_ must indeed just be
 // initials and not be mutated.
@@ -254,10 +254,15 @@ void CssFilter::Context::GetCssTrimUrlToUse(
   }
 }
 
-bool CssFilter::Context::AbsolutifyIfNeeded(
-    const StringPiece& output_url_base,
-    const StringPiece& input_contents, Writer* writer,
+bool CssFilter::Context::SendFallbackResponse(
+    StringPiece output_url_base,
+    StringPiece input_contents,
+    AsyncFetch* async_fetch,
     MessageHandler* handler) {
+  // Do not set the content length, since we may need to mutate the
+  // content as we stream out the bytes to correct for URL changes.
+  async_fetch->HeadersComplete();
+
   DCHECK_EQ(1, num_slots());
   ResourcePtr input_resource(slot(0)->resource());
   DCHECK(input_resource.get() != NULL);
@@ -271,7 +276,7 @@ bool CssFilter::Context::AbsolutifyIfNeeded(
   bool ret = false;
   switch (Driver()->ResolveCssUrls(css_base_gurl_to_use,
                                    css_trim_gurl_to_use.Spec(),
-                                   input_contents, writer, handler)) {
+                                   input_contents, async_fetch, handler)) {
     case RewriteDriver::kNoResolutionNeeded:
     case RewriteDriver::kWriteFailed:
       // If kNoResolutionNeeded, we just write out the input_contents, because
@@ -284,7 +289,7 @@ bool CssFilter::Context::AbsolutifyIfNeeded(
       //
       // TODO(sligocki): In the fetch path ResolveCssUrls should never fail
       // to transform URLs. We should just absolutify all the ones we can.
-      ret = writer->Write(input_contents, handler);
+      ret = async_fetch->Write(input_contents, handler);
       break;
     case RewriteDriver::kSuccess:
       ret = true;

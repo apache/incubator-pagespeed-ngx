@@ -45,6 +45,7 @@ class Stylesheet;
 namespace net_instaweb {
 
 class AssociationTransformer;
+class AsyncFetch;
 class CssImageRewriter;
 class CacheExtender;
 class HtmlCharactersNode;
@@ -59,7 +60,6 @@ class RewriteDomainTransformer;
 class Statistics;
 class UrlSegmentEncoder;
 class Variable;
-class Writer;
 
 // Find and parse all CSS in the page and apply transformations including:
 // minification, combining, refactoring, and optimizing sub-resources.
@@ -277,9 +277,10 @@ class CssFilter::Context : public SingleRewriteContext {
 
   // Specialization to absolutify URLs in input resource in case of rewrite
   // fail or deadline exceeded.
-  virtual bool AbsolutifyIfNeeded(const StringPiece& output_url_base,
-                                  const StringPiece& input_contents,
-                                  Writer* writer, MessageHandler* handler);
+  virtual bool SendFallbackResponse(StringPiece output_url_base,
+                                    StringPiece input_contents,
+                                    AsyncFetch* async_fetch,
+                                    MessageHandler* handler);
 
   CssResourceSlotFactory* slot_factory() { return &slot_factory_; }
 

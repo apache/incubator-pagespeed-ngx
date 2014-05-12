@@ -20,6 +20,7 @@
 #include "net/instaweb/rewriter/public/css_filter.h"
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/log_record.h"
@@ -199,6 +200,22 @@ class CssFilterTest : public CssRewriteTestBase {
     EXPECT_TRUE(FetchResourceUrl(StrCat(kTestDomain, css_urls[0]),
                                  &actual_output));
     EXPECT_STREQ(css_output, actual_output);
+  }
+
+  void TestFallbackFetch(const GoogleString& url, StringPiece expected_output) {
+    GoogleString content;
+    StringAsyncFetch async_fetch(rewrite_driver_->request_context(), &content);
+    bool fetched = rewrite_driver_->FetchResource(url, &async_fetch);
+    ASSERT_TRUE(fetched);
+    rewrite_driver_->WaitForShutDown();
+    ClearRewriteDriver();
+    EXPECT_TRUE(async_fetch.done());
+    EXPECT_TRUE(async_fetch.success());
+
+    EXPECT_STREQ(expected_output, content);
+    if (async_fetch.content_length_known()) {
+      EXPECT_EQ(content.size(), async_fetch.content_length());
+    }
   }
 };
 
@@ -2131,6 +2148,32 @@ TEST_F(CssFilterTest, AlternateStylesheet) {
   ValidateNoChanges("alternate_not_stylesheet",
                     StringPrintf(html_format, "alternate snowflake",
                                  "foo.css"));
+}
+
+TEST_F(CssFilterTest, AbsolutifyServingFallback) {
+  const char css_input[] =
+      "@import url(x.ss);\n"
+      "body { background: url(a.png); }\n";
+  const char expected_output[] =
+      "@import url(http://cdn.example.com/x.ss) ;"
+      "body{background:url(http://cdn.example.com/a.png)}";
+
+  UseMd5Hasher();
+  options()->ClearSignatureForTesting();
+  options()->SetRewriteLevel(RewriteOptions::kPassThrough);
+  options()->EnableFilter(RewriteOptions::kRewriteCss);
+  options()->EnableFilter(RewriteOptions::kRewriteDomains);
+  DomainLawyer* domain_lawyer = options()->WriteableDomainLawyer();
+  domain_lawyer->AddRewriteDomainMapping("http://cdn.example.com", kTestDomain,
+                                         message_handler());
+  server_context()->ComputeSignature(options());
+  SetResponseWithDefaultHeaders("foo.css", kContentTypeCss, css_input, 100);
+
+  GoogleString url = Encode(kTestDomain, "cf", "0" /* wrong hash */,
+                            "foo.css", "css");
+
+  TestFallbackFetch(url, expected_output);
+  TestFallbackFetch(url, expected_output);
 }
 
 class CssFilterTestUrlNamer : public CssFilterTest {

@@ -47,7 +47,6 @@ class RewriteDriver;
 class RewriteOptions;
 class Statistics;
 class Variable;
-class Writer;
 class FreshenMetadataUpdateManager;
 
 // RewriteContext manages asynchronous rewriting of some n >= 1 resources (think
@@ -382,15 +381,19 @@ class RewriteContext {
   // This method can run in any thread.
   void RewriteDone(RewriteResult result, int partition_index);
 
-  // Absolutify contents of an input resource and write it into writer.
+  // Sends a a response to the the client via the AsyncFetch, transforming
+  // output if needed (e.g. css absolutification) and controlling chunked
+  // encoding hints as needed.
+  //
   // This is called in case a rewrite fails in the fetch path or a deadline
   // is exceeded. Default implementation is just to write the input.
   // But contexts may need to specialize this to actually absolutify
   // subresources if the fetched resource is served on a different path
   // than the input resource.
-  virtual bool AbsolutifyIfNeeded(const StringPiece& output_url_base,
-                                  const StringPiece& input_contents,
-                                  Writer* writer, MessageHandler* handler);
+  virtual bool SendFallbackResponse(StringPiece output_url_base,
+                                    StringPiece contents,
+                                    AsyncFetch* async_fetch,
+                                    MessageHandler* handler);
 
   // Called on the parent to initiate all nested tasks.  This is so
   // that they can all be added before any of them are started.

@@ -1062,9 +1062,7 @@ class RewriteContext::FetchContext {
           // actually relax things a bit if the input was no-cache.
           ApplyInputCacheControl(response_headers);
           StringPiece contents = input_resource->contents();
-          async_fetch_->set_content_length(contents.size());
-          async_fetch_->HeadersComplete();
-          ok = rewrite_context_->AbsolutifyIfNeeded(
+          ok = rewrite_context_->SendFallbackResponse(
               original_output_url_, contents, async_fetch_, handler_);
         } else {
           GoogleString url = input_resource->url();
@@ -1118,12 +1116,10 @@ class RewriteContext::FetchContext {
       // thread.  So only add metadata to the response when not detached.
       AddMetadataHeaderIfNecessary(async_fetch_->response_headers());
     }
-    async_fetch_->set_content_length(contents.size());
-    async_fetch_->HeadersComplete();
 
-    bool ok = rewrite_context_->AbsolutifyIfNeeded(original_output_url_,
-                                                   contents, async_fetch_,
-                                                   handler_);
+    bool ok = rewrite_context_->SendFallbackResponse(
+        original_output_url_, contents, async_fetch_, handler_);
+
     // Like FetchDone, we success false if not a 200.
     ok &= headers->status_code() == HttpStatus::kOK;
     rewrite_context_->FetchCallbackDone(ok);
@@ -3032,11 +3028,13 @@ bool RewriteContext::FetchContextDetached() {
   return fetch_->detached();
 }
 
-bool RewriteContext::AbsolutifyIfNeeded(const StringPiece& /*output_url_base*/,
-                                        const StringPiece& input_contents,
-                                        Writer* writer,
-                                        MessageHandler* handler) {
-  return writer->Write(input_contents, handler);
+bool RewriteContext::SendFallbackResponse(StringPiece output_url_base,
+                                          StringPiece contents,
+                                          AsyncFetch* async_fetch,
+                                          MessageHandler* handler) {
+  async_fetch->set_content_length(contents.size());
+  async_fetch->HeadersComplete();
+  return async_fetch->Write(contents, handler);
 }
 
 AsyncFetch* RewriteContext::async_fetch() {
