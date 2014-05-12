@@ -879,6 +879,7 @@ http {
     server_name options-by-cookies-enabled.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@_optionsbycookieson";
     pagespeed AllowOptionsToBeSetByCookies true;
+    pagespeed StickyQueryParameters sticky_secret;
     pagespeed RewriteLevel PassThrough;
     pagespeed EnableFilters collapse_whitespace;
     pagespeed DisableFilters remove_comments,add_instrumentation;
