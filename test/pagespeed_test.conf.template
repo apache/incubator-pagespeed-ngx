@@ -713,6 +713,23 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    server_name custom-paths.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    pagespeed StatisticsPath /custom_pagespeed_statistics;
+    pagespeed ConsolePath /custom_pagespeed_console;
+    pagespeed MessagesPath /custom_pagespeed_message;
+    pagespeed AdminPath /custom_pagespeed_admin;
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name inherit-paths.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
     server_name notransform.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
