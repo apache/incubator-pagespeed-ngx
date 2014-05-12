@@ -2423,7 +2423,62 @@ OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --no-cookies \
        --header=Cookie:PageSpeedFilters=+remove_comments $URL)"
 check_from "$OUT" grep -q '<!--'
 check_from "$OUT" grep -q '  '
-WGET_ARGS=""
+
+# Test that we can make options sticky using cookies.
+test_filter collapse_whitespace
+HOST_NAME="http://options-by-cookies-enabled.example.com"
+URL="$HOST_NAME/mod_pagespeed_test/forbidden.html"
+start_test Sticky option cookies: initially remove_comments only
+COOKIES=""
+QPS=""
+echo wget $COOKIES $URL$QPS
+OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $COOKIES $URL$QPS)"
+check_from     "$OUT" grep -q '<!-- This comment should not be deleted -->'
+check_not_from "$OUT" grep -q '  '
+check_not_from "$OUT" grep -q 'Cookie'
+start_test Sticky option cookies: wrong token is NOT adhesive
+QPS="?PageSpeedStickyQueryParameters=wrong_secret"
+QPS+="&PageSpeedFilters=+remove_comments"
+echo wget $COOKIES $URL$QPS
+OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $COOKIES $URL$QPS)"
+check_not_from "$OUT" grep -q '<!-- This comment should not be deleted -->'
+check_not_from "$OUT" grep -q '  '
+check_not_from "$OUT" grep -q 'Set-Cookie'
+start_test Sticky option cookies: right token IS adhesive
+QPS="?PageSpeedStickyQueryParameters=sticky_secret"
+QPS+="&PageSpeedFilters=+remove_comments"
+echo wget $COOKIES $URL$QPS
+OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $COOKIES $URL$QPS)"
+check_not_from "$OUT" grep -q '<!-- This comment should not be deleted -->'
+check_not_from "$OUT" grep -q '  '
+check_from "$OUT" grep -q 'Set-Cookie: PageSpeedFilters=%2bremove_comments;'
+start_test Sticky option cookies: no token leaves option cookies untouched
+COOKIES="--no-cookies"
+COOKIES+=$(echo "$OUT" | grep "Set-Cookie:" | \
+           sed -e 's/;.*//' -e 's/^.*Set-Cookie: */ --header=Cookie:/')
+QPS=""
+echo wget $COOKIES $URL$QPS
+OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $COOKIES $URL$QPS)"
+check_not_from "$OUT" grep -q '<!-- This comment should not be deleted -->'
+check_not_from "$OUT" grep -q '  '
+check_not_from "$OUT" grep -q 'Set-Cookie'
+start_test Sticky option cookies: wrong token expires option cookies
+QPS="?PageSpeedStickyQueryParameters=off"
+echo wget $COOKIES $URL$QPS
+OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $COOKIES $URL$QPS)"
+check_not_from "$OUT" grep -q '<!-- This comment should not be deleted -->'
+check_not_from "$OUT" grep -q '  '
+check_from "$OUT" grep -q 'Cookie: PageSpeedFilters; Expires=Thu, 01 Jan 1970'
+COOKIES=$(echo "$OUT" | grep "Set-Cookie" | grep -v 'Expires=Thu, 01 Jan 19'|\
+          sed -e 's/;.*//' -e 's/^.*Set-Cookie: */ --header=Cookie:/')
+check [ -z "$COOKIES" ]
+start_test Sticky option cookies: back to remove_comments only
+QPS=""
+echo wget $COOKIES $URL$QPS
+OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $COOKIES $URL$QPS)"
+check_from     "$OUT" grep -q '<!-- This comment should not be deleted -->'
+check_not_from "$OUT" grep -q '  '
+check_not_from "$OUT" grep -q 'Cookie'
 
 start_test Request Option Override : Correct values are passed
 HOST_NAME="http://request-option-override.example.com"
@@ -2643,6 +2698,7 @@ check test $RESOURCE_MAX_AGE -gt 300
 start_test IPRO-optimized resources should have fixed size, not chunked.
 URL="$EXAMPLE_ROOT/images/Puzzle.jpg"
 URL+="?PageSpeedJpegRecompressionQuality=75"
+WGET_ARGS=""
 fetch_until -save $URL "wc -c" 90000 "--save-headers" "-lt"
 check_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" fgrep -q 'Content-Length:'
 CONTENT_LENGTH=$(extract_headers $FETCH_UNTIL_OUTFILE | \
