@@ -33,6 +33,7 @@ ApacheWriter::ApacheWriter(request_rec* r)
       headers_out_(false),
       disable_downstream_header_filters_(false),
       strip_cookies_(false),
+      squelch_output_(false),
       content_length_(AsyncFetch::kContentLengthUnknown) {
 }
 
@@ -41,7 +42,9 @@ ApacheWriter::~ApacheWriter() {
 
 bool ApacheWriter::Write(const StringPiece& str, MessageHandler* handler) {
   DCHECK(headers_out_);
-  ap_rwrite(str.data(), str.size(), request_);
+  if (!squelch_output_) {
+    ap_rwrite(str.data(), str.size(), request_);
+  }
   return true;
 }
 

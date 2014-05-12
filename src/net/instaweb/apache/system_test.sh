@@ -2456,6 +2456,14 @@ if [ $statistics_enabled = "1" ]; then
   check_stat $OLDSTATS $NEWSTATS cache_misses 0
 fi
 
+start_test Do not proxy content with unknown type
+URL="$PRIMARY_SERVER/modpagespeed_http/unknown_file.unknown"
+OUT=$($CURL --include --silent $URL)
+check_from "$OUT" fgrep -q "403 Forbidden"
+check_from "$OUT" fgrep -q \
+    "Missing Content-Type required for proxied resource"
+check_not_from "$OUT" fgrep -q "This file should not be proxied"
+
 start_test proxying from external domain should optimize images in-place.
 # Puzzle.jpg on disk is 241260 bytes, but we will optimize it with default
 # settings to 216942, but for this test let's look for anything below 230k.

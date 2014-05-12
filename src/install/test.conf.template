@@ -1,6 +1,15 @@
 <Directory "APACHE_DOC_ROOT/do_not_modify" >
   Header set Cache-control "max-age=300"
   Header set Set-cookie "test-cookie"
+
+  # Give a content-type to not_really_a_font.woff, otherwise
+  # PageSpeed will refuse to proxy it.
+  <FilesMatch "\.(woff)$">
+    DefaultType text/plain
+  </FilesMatch>
+  <FilesMatch "\.(unknown)$">
+    DefaultType None
+  </FilesMatch>
 </Directory>
 
 Redirect 204 /no_content

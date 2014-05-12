@@ -127,11 +127,19 @@ void ApacheFetch::HandleHeadersComplete() {
   status_ok_ = (status_code != 0) && (status_code < 400);
 
   if (handle_error_ || status_ok_) {
+    bool inject_error_message = false;
+
     // 304 and 204 responses aren't expected to have Content-Types.
     // All other responses should.
-    if (status_code != HttpStatus::kNotModified &&
-        status_code != HttpStatus::kNoContent) {
-      DCHECK(response_headers()->Has(HttpAttributes::kContentType));
+    if ((status_code != HttpStatus::kNotModified) &&
+        (status_code != HttpStatus::kNoContent) &&
+        !response_headers()->Has(HttpAttributes::kContentType)) {
+      status_code = HttpStatus::kForbidden;
+      status_ok_ = false;
+      response_headers()->SetStatusAndReason(HttpStatus::kForbidden);
+      response_headers()->Add(HttpAttributes::kContentType, "text/html");
+      response_headers()->RemoveAll(HttpAttributes::kCacheControl);
+      inject_error_message = true;
     }
 
     int64 now_ms = server_context_->timer()->NowMs();
@@ -148,7 +156,7 @@ void ApacheFetch::HandleHeadersComplete() {
     }
 
     // TODO(sligocki): Add X-Mod-Pagespeed header.
-    if (content_length_known()) {
+    if (content_length_known() && !inject_error_message) {
       apache_writer_.set_content_length(content_length());
     }
 
@@ -160,6 +168,12 @@ void ApacheFetch::HandleHeadersComplete() {
     response_headers()->ComputeCaching();
 
     apache_writer_.OutputHeaders(response_headers());
+
+    if (inject_error_message) {
+      apache_writer_.Write("Missing Content-Type required for proxied "
+                           "resource", server_context_->message_handler());
+      apache_writer_.set_squelch_output(true);
+    }
   }
 }
 
