@@ -2465,6 +2465,37 @@ echo wget $OPTS $URL
 OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $OPTS $URL)"
 check_from "$OUT" grep -q '<!--'
 
+start_test Signed Urls : Correct URL is passed
+HOST_NAME="http://signed-urls.example.com"
+URL="$HOST_NAME/mod_pagespeed_test/forbidden.html"
+# wget twice to get the image cached
+echo wget $URL
+OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)"
+OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)"
+URL="$HOST_NAME/mod_pagespeed_example/images"
+URL="$URL/256x192xPuzzle.jpg.pagespeed.ic.k2Oh94BW9Z."
+SIGNATURE="qV5eICwnkC"
+FINAL_URL="$URL$SIGNATURE"
+FINAL_URL+=".jpg"
+echo wget $FINAL_URL
+OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET $FINAL_URL -O 2>&1)"
+check_not_from "$OUT" grep -q 'Not Found'
+
+start_test Signed Urls : Incorrect URL is passed
+HOST_NAME="http://signed-urls.example.com"
+URL="$HOST_NAME/mod_pagespeed_test/forbidden.html"
+# wget twice to get the image cached
+echo wget $URL
+OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)"
+OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)"
+URL="$HOST_NAME/mod_pagespeed_example/images"
+URL="$URL/256x192xPuzzle.jpg.pagespeed.ic.k2Oh94BW9Z."
+FINAL_URL="$URL"
+FINAL_URL+="not-signed.jpg"
+echo wget $FINAL_URL
+OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET $FINAL_URL -O /dev/null 2>&1)"
+check_from "$OUT" grep -q "Not Found"
+
 start_test JS gzip headers
 
 JS_URL="$HOSTNAME/pagespeed_static/js_defer.$HASH.js"
