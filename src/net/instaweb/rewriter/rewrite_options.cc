@@ -227,6 +227,8 @@ const char RewriteOptions::kOverrideCachingTtlMs[] = "OverrideCachingTtlMs";
 const char RewriteOptions::kPersistBlinkBlacklist[] = "PersistBlinkBlacklist";
 const char RewriteOptions::kPreserveUrlRelativity[] = "PreserveUrlRelativity";
 const char RewriteOptions::kPrivateNotVaryForIE[] = "PrivateNotVaryForIE";
+const char RewriteOptions::kPubliclyCacheMismatchedHashesExperimental[] =
+    "PubliclyCacheMismatchedHashesExperimental";
 const char RewriteOptions::kProactivelyFreshenUserFacingRequest[] =
     "ProactivelyFreshenUserFacingRequest";
 const char RewriteOptions::kProactiveResourceFreshening[] =
@@ -1326,6 +1328,17 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       "Add query-params with configuration adjustments to rewritten "
       "URLs.");
+
+  // TODO(jmarantz): consider whether to document this option -- it
+  // potentially can hide problems in configuration or bugs.
+  AddBaseProperty(
+      false, &RewriteOptions::publicly_cache_mismatched_hashes_experimental_,
+      "pcmh",
+      kPubliclyCacheMismatchedHashesExperimental,
+      kDirectoryScope,
+      "When serving a request for a .pagespeed. URL with the wrong hash, allow "
+      "public caching based on the origin TTL.");
+
   AddBaseProperty(
       false, &RewriteOptions::in_place_rewriting_enabled_, "ipro",
       kInPlaceResourceOptimization,

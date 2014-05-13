@@ -783,6 +783,7 @@ TEST_F(RewriteContextTest, TrimRepeated404) {
 }
 
 TEST_F(RewriteContextTest, FetchNonOptimizable) {
+  options()->set_implicit_cache_ttl_ms(kOriginTtlMs + 100 * Timer::kSecondMs);
   InitTrimFilters(kRewrittenResource);
   InitResources();
   // We use MD5 hasher instead of mock hasher so that the we get the actual hash
@@ -801,11 +802,62 @@ TEST_F(RewriteContextTest, FetchNonOptimizable) {
   // Since this resource URL has a zero hash in it, this turns out to be a hash
   // mismatch. So, cache TTL should be short and the result should be marked
   // private.
-  ConstStringStarVector values;
-  headers.Lookup(HttpAttributes::kCacheControl, &values);
-  ASSERT_EQ(2, values.size());
-  EXPECT_STREQ("max-age=300", *values[0]);
-  EXPECT_STREQ("private", *values[1]);
+  EXPECT_FALSE(headers.IsProxyCacheable());
+  EXPECT_TRUE(headers.IsBrowserCacheable());
+  EXPECT_EQ(kOriginTtlMs + 0,
+            headers.CacheExpirationTimeMs() - timer()->NowMs());
+
+  // After 100 seconds, we'll only have 200 seconds left in the cache.
+  headers.Clear();
+  output.clear();
+  AdvanceTimeMs(200 * Timer::kSecondMs);
+  EXPECT_TRUE(FetchResourceUrl(Encode(kTestDomain, "tw", "0", "b.css", "css"),
+                               &output, &headers));
+  EXPECT_EQ("b", output);
+  EXPECT_FALSE(headers.IsProxyCacheable());
+  EXPECT_TRUE(headers.IsBrowserCacheable());
+  EXPECT_EQ(kOriginTtlMs - 200 * Timer::kSecondMs,
+            headers.CacheExpirationTimeMs() - timer()->NowMs());
+}
+
+TEST_F(RewriteContextTest, FetchNonOptimizableWithPublicCaching) {
+  options()->set_implicit_cache_ttl_ms(kOriginTtlMs + 100 * Timer::kSecondMs);
+  options()->set_publicly_cache_mismatched_hashes_experimental(true);
+  InitTrimFilters(kRewrittenResource);
+  InitResources();
+  // We use MD5 hasher instead of mock hasher so that the we get the actual hash
+  // of the content and not hash 0 always.
+  UseMd5Hasher();
+
+  // Fetching a resource that's not optimizable under the rewritten URL
+  // should still work in a single-input case. This is important to be more
+  // robust against JS URL manipulation.
+  GoogleString output;
+  ResponseHeaders headers;
+  EXPECT_TRUE(FetchResourceUrl(Encode(kTestDomain, "tw", "0", "b.css", "css"),
+                               &output, &headers));
+  EXPECT_EQ("b", output);
+
+  // Since this resource URL has a zero hash in it, this turns out to be a hash
+  // mismatch. However, the result should be proxy-cacheable and match the
+  // origin TTL, because we have specified
+  // set_publicly_cache_mismatched_hashes_experimental(true).
+  EXPECT_TRUE(headers.IsProxyCacheable());
+  EXPECT_EQ(kOriginTtlMs + 0,
+            headers.CacheExpirationTimeMs() - timer()->NowMs());
+
+  // After 200 seconds, we'll only have 200 seconds left in the cache.
+  headers.Clear();
+  output.clear();
+  AdvanceTimeMs(200 * Timer::kSecondMs);
+  EXPECT_TRUE(FetchResourceUrl(Encode(kTestDomain, "tw", "0", "b.css", "css"),
+                               &output, &headers));
+  EXPECT_EQ("b", output);
+  EXPECT_TRUE(headers.IsProxyCacheable());
+  // We really want this to be (kOriginTtlMs + 0), not to have the TTL decay
+  // with elapased time.
+  EXPECT_EQ(kOriginTtlMs - 200 * Timer::kSecondMs,
+            headers.CacheExpirationTimeMs() - timer()->NowMs());
 }
 
 TEST_F(RewriteContextTest, FetchNonOptimizableLowTtl) {

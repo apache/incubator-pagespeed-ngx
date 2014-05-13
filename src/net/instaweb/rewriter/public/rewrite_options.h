@@ -318,6 +318,7 @@ class RewriteOptions {
   static const char kPersistBlinkBlacklist[];
   static const char kPreserveUrlRelativity[];
   static const char kPrivateNotVaryForIE[];
+  static const char kPubliclyCacheMismatchedHashesExperimental[];
   static const char kProactivelyFreshenUserFacingRequest[];
   static const char kProactiveResourceFreshening[];
   static const char kProgressiveJpegMinBytes[];
@@ -1492,6 +1493,14 @@ class RewriteOptions {
 
   bool add_options_to_urls() const {
     return add_options_to_urls_.value();
+  }
+
+  void set_publicly_cache_mismatched_hashes_experimental(bool x) {
+    set_option(x, &publicly_cache_mismatched_hashes_experimental_);
+  }
+
+  bool publicly_cache_mismatched_hashes_experimental() const {
+    return publicly_cache_mismatched_hashes_experimental_.value();
   }
 
   void set_oblivious_pagespeed_urls(bool x) {
@@ -3390,6 +3399,13 @@ class RewriteOptions {
   // Encode relevant rewrite options as URL query-parameters so that resources
   // can be reconstructed on servers without the same configuration file.
   Option<bool> add_options_to_urls_;
+
+  // If this option is enabled, serves .pagespeed. resource URLs with
+  // mismatching hashes with the same cache expiration as the inputs.
+  // By default, we convert resources requests with the wrong hash to
+  // Cache-Control:private,max-age=300 to avoid caching stale content
+  // in proxies.
+  Option<bool> publicly_cache_mismatched_hashes_experimental_;
 
   // Should in-place-resource-optimization(IPRO) be enabled?
   Option<bool> in_place_rewriting_enabled_;

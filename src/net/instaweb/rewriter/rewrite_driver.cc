@@ -2951,6 +2951,9 @@ OptionsAwareHTTPCacheCallback::OptionsAwareHTTPCacheCallback(
   // mapping, we don't know for sure whether cookies should apply
   // to Vary:Cacheable resources.  So we pessimistically assume there
   // are cookies by initializing a blank one.
+
+  response_headers()->set_implicit_cache_ttl_ms(
+      rewrite_options->implicit_cache_ttl_ms());
 }
 
 OptionsAwareHTTPCacheCallback::~OptionsAwareHTTPCacheCallback() {}
