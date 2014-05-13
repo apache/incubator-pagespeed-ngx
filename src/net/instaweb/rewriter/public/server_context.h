@@ -120,16 +120,13 @@ class ServerContext {
   //
   // Also sets Content-Type headers if content_type is provided.
   // If content_type is null, the Content-Type header is omitted.
-  void SetDefaultLongCacheHeaders(const ContentType* content_type,
-                                  ResponseHeaders* header) const {
-    SetDefaultLongCacheHeadersWithCharset(content_type, StringPiece(), header);
-  }
-
-  // As above, but also sets charset if it's non-empty and content_type
-  // is non-NULL.
-  void SetDefaultLongCacheHeadersWithCharset(
+  //
+  // Sets charset if it's non-empty and content_type is non-NULL.
+  //
+  // If cache_control suffix is non-empty, adds that to the Cache-Control
+  void SetDefaultLongCacheHeaders(
       const ContentType* content_type, StringPiece charset,
-      ResponseHeaders* header) const;
+      StringPiece cache_control_suffix, ResponseHeaders* header) const;
 
   void set_filename_prefix(const StringPiece& file_prefix);
   void set_statistics(Statistics* x) { statistics_ = x; }

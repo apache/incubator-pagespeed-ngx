@@ -427,7 +427,8 @@ class RewriteTestBase : public RewriteOptionsTestBase {
 
   void SetDefaultLongCacheHeaders(const ContentType* content_type,
                                   ResponseHeaders* header) {
-    server_context_->SetDefaultLongCacheHeaders(content_type, header);
+    server_context_->SetDefaultLongCacheHeaders(
+        content_type, StringPiece(), StringPiece(), header);
   }
 
   void SetFetchResponse(const StringPiece& url,

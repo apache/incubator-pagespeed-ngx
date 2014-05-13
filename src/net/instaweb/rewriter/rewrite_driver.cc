@@ -3275,8 +3275,8 @@ bool RewriteDriver::Write(const ResourceVector& inputs,
   output->SetType(type);
   output->set_charset(charset);
   ResponseHeaders* meta_data = output->response_headers();
-  server_context_->SetDefaultLongCacheHeadersWithCharset(
-      type, charset, meta_data);
+  server_context_->SetDefaultLongCacheHeaders(
+      type, charset, output->cache_control_suffix(), meta_data);
   meta_data->SetStatusAndReason(HttpStatus::kOK);
   server_context_->ApplyInputCacheControl(inputs, meta_data);
   server_context_->AddOriginalContentLengthHeader(inputs, meta_data);

@@ -220,6 +220,8 @@ const char RewriteOptions::kMinImageSizeLowResolutionBytes[] =
 const char RewriteOptions::kMinResourceCacheTimeToRewriteMs[] =
     "MinResourceCacheTimeToRewriteMs";
 const char RewriteOptions::kModifyCachingHeaders[] = "ModifyCachingHeaders";
+const char RewriteOptions::kNoTransformOptimizedImages[] =
+    "NoTransformOptimizedImages";
 const char RewriteOptions::kNonCacheablesForCachePartialHtml[] =
     "NonCacheablesForCachePartialHtml";
 const char RewriteOptions::kObliviousPagespeedUrls[] = "ObliviousPagespeedUrls";
@@ -2084,6 +2086,12 @@ void RewriteOptions::AddProperties() {
       kNonCacheablesForCachePartialHtml,
       kDirectoryScope,
       NULL);  // Not applicable for mod_pagespeed.
+
+  AddBaseProperty(
+      false, &RewriteOptions::no_transform_optimized_images_, "ntoi",
+      kNoTransformOptimizedImages,
+      kDirectoryScope,
+      "Add no-transform header to cache-control for optimized images");
 
   AddBaseProperty(
       kDefaultMaxLowResImageSizeBytes,

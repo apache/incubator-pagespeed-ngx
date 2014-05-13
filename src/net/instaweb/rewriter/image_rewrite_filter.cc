@@ -910,6 +910,9 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
 
         server_context()->MergeNonCachingResponseHeaders(
             input_resource, result);
+        if (options->no_transform_optimized_images()) {
+          result->set_cache_control_suffix(",no-transform");
+        }
         if (driver()->Write(
                 ResourceVector(1, input_resource), image->Contents(),
                 output_type, StringPiece() /* no charset for images */,

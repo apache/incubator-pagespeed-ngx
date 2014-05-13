@@ -259,9 +259,9 @@ bool ResourceCombiner::WriteCombination(
     DCHECK_EQ(0, output_headers->NumAttributes());
 
     // We don't copy over all the resources from [0] because we don't
-    // want the input cache-control.  The output cache-control via
+    // want the input cache-control.  The output cache-control is set via
     // RewriteDriver::Write when it calls
-    // ServerContext::SetDefaultLongCacheHeadersWithCharset.
+    // RewriteDriver::SetDefaultLongCacheHeaders.
     server_context_->MergeNonCachingResponseHeaders(
         *combine_resources[0]->response_headers(), output_headers);
     for (int i = 1, n = combine_resources.size(); i < n; ++i) {

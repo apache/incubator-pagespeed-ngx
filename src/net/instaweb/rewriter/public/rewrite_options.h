@@ -312,6 +312,7 @@ class RewriteOptions {
   static const char kMinImageSizeLowResolutionBytes[];
   static const char kMinResourceCacheTimeToRewriteMs[];
   static const char kModifyCachingHeaders[];
+  static const char kNoTransformOptimizedImages[];
   static const char kNonCacheablesForCachePartialHtml[];
   static const char kObliviousPagespeedUrls[];
   static const char kOverrideCachingTtlMs[];
@@ -2301,6 +2302,13 @@ class RewriteOptions {
     return non_cacheables_for_cache_partial_html_.value();
   }
 
+  void set_no_transform_optimized_images(bool x) {
+    set_option(x, &no_transform_optimized_images_);
+  }
+  bool no_transform_optimized_images() const {
+    return no_transform_optimized_images_.value();
+  }
+
   void set_access_control_allow_origins(const StringPiece& p) {
     set_option(p.as_string(), &access_control_allow_origins_);
   }
@@ -3331,6 +3339,8 @@ class RewriteOptions {
   MutexedOptionInt64MergeWithMax cache_invalidation_timestamp_;
   Option<int64> css_flatten_max_bytes_;
   Option<bool> cache_small_images_unrewritten_;
+  Option<bool> no_transform_optimized_images_;
+
   // Sets limit for image optimization
   Option<int64> image_resolution_limit_bytes_;
   Option<int64> css_image_inline_max_bytes_;

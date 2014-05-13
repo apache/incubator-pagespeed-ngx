@@ -3423,4 +3423,23 @@ TEST_F(ImageRewriteTest, IproCorrectVaryHeaders) {
       response_headers.Lookup1(HttpAttributes::kVary);
 }
 
+TEST_F(ImageRewriteTest, NoTransformOptimized) {
+  options()->set_no_transform_optimized_images(true);
+  AddRecompressImageFilters();
+  rewrite_driver()->AddFilters();
+  GoogleString initial_url = StrCat(kTestDomain, kBikePngFile);
+  AddFileToMockFetcher(initial_url, kBikePngFile, kContentTypePng, 100);
+  GoogleString out_jpg_url(Encode(kTestDomain, "ic", "0", kBikePngFile, "jpg"));
+  GoogleString out_jpg;
+  ResponseHeaders response_headers;
+  EXPECT_TRUE(FetchResourceUrl(out_jpg_url, &out_jpg, &response_headers));
+  ConstStringStarVector values;
+  ASSERT_TRUE(response_headers.Lookup(HttpAttributes::kCacheControl, &values));
+  bool found = false;
+  for (int i = 0, n = values.size(); i < n; ++i) {
+    found |= *(values[i]) == "no-transform";
+  }
+  EXPECT_TRUE(found);
+}
+
 }  // namespace net_instaweb

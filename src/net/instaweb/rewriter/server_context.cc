@@ -351,10 +351,9 @@ void ServerContext::InitWorkers() {
       RewriteDriverFactory::kLowPriorityRewriteWorkers);
 }
 
-// TODO(jmarantz): consider moving this method to ResponseHeaders
-void ServerContext::SetDefaultLongCacheHeadersWithCharset(
+void ServerContext::SetDefaultLongCacheHeaders(
     const ContentType* content_type, StringPiece charset,
-    ResponseHeaders* header) const {
+    StringPiece suffix, ResponseHeaders* header) const {
   header->set_major_version(1);
   header->set_minor_version(1);
   header->SetStatusAndReason(HttpStatus::kOK);
@@ -371,7 +370,7 @@ void ServerContext::SetDefaultLongCacheHeadersWithCharset(
   }
 
   int64 now_ms = timer()->NowMs();
-  header->SetDateAndCaching(now_ms, kGeneratedMaxAgeMs);
+  header->SetDateAndCaching(now_ms, kGeneratedMaxAgeMs, suffix);
 
   // While PageSpeed claims the "Vary" header is needed to avoid proxy cache
   // issues for clients where some accept gzipped content and some don't, it

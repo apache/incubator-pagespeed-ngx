@@ -259,7 +259,7 @@ TEST_F(RewriteOptionsTest, CommaSeparatedList) {
   s.Insert(RewriteOptions::kAddInstrumentation);
   s.Insert(RewriteOptions::kLeftTrimUrls);
   s.Insert(RewriteOptions::kHtmlWriterFilter);  // enabled by default
-  const char* kList = "add_instrumentation,trim_urls";
+  static const char kList[] = "add_instrumentation,trim_urls";
   NullMessageHandler handler;
   ASSERT_TRUE(
       options_.EnableFiltersByCommaSeparatedList(kList, &handler));
@@ -284,7 +284,7 @@ TEST_F(RewriteOptionsTest, CompoundFlag) {
   s.Insert(RewriteOptions::kStripImageMetaData);
   s.Insert(RewriteOptions::kStripImageColorProfile);
   s.Insert(RewriteOptions::kHtmlWriterFilter);  // enabled by default
-  const char* kList = "rewrite_images";
+  static const char kList[] = "rewrite_images";
   NullMessageHandler handler;
   ASSERT_TRUE(
       options_.EnableFiltersByCommaSeparatedList(kList, &handler));
@@ -306,7 +306,7 @@ TEST_F(RewriteOptionsTest, CompoundFlagRecompressImages) {
   s.Insert(RewriteOptions::kStripImageMetaData);
   s.Insert(RewriteOptions::kStripImageColorProfile);
   s.Insert(RewriteOptions::kHtmlWriterFilter);  // enabled by default
-  const char* kList = "recompress_images";
+  static const char kList[] = "recompress_images";
   NullMessageHandler handler;
   ASSERT_TRUE(
       options_.EnableFiltersByCommaSeparatedList(kList, &handler));
@@ -707,7 +707,8 @@ TEST_F(RewriteOptionsTest, CoreByNameNotLevel) {
 }
 
 TEST_F(RewriteOptionsTest, PlusAndMinus) {
-  const char* kList = "core,+div_structure,-inline_css,+extend_cache_css";
+  static const char kList[] =
+      "core,+div_structure,-inline_css,+extend_cache_css";
   NullMessageHandler handler;
   options_.SetRewriteLevel(RewriteOptions::kPassThrough);
   ASSERT_TRUE(options_.AdjustFiltersByCommaSeparatedList(kList, &handler));
@@ -826,173 +827,164 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // the count explicitly (and assuming we add/delete an option value when we
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
-  // Use macro so that the failure message tells us the name of the option
-  // failing the test (using a function would obscure that) and to ensure we
-  // add every tested name to the set of tested names for further checks below.
-  std::set<StringPiece> tested_names;
-#define PassLookupOptionByName(name) \
-  EXPECT_TRUE(NULL != RewriteOptions::LookupOptionByName(name)); \
-  tested_names.insert(name)
+  const char* const option_names[] = {
+    RewriteOptions::kAccessControlAllowOrigins,
+    RewriteOptions::kAddOptionsToUrls,
+    RewriteOptions::kAllowLoggingUrlsInLogRecord,
+    RewriteOptions::kAllowOptionsToBeSetByCookies,
+    RewriteOptions::kAlwaysRewriteCss,
+    RewriteOptions::kAnalyticsID,
+    RewriteOptions::kAvoidRenamingIntrospectiveJavascript,
+    RewriteOptions::kAwaitPcacheLookup,
+    RewriteOptions::kBeaconReinstrumentTimeSec,
+    RewriteOptions::kBeaconUrl,
+    RewriteOptions::kBlinkMaxHtmlSizeRewritable,
+    RewriteOptions::kCacheFragment,
+    RewriteOptions::kCacheInvalidationTimestamp,
+    RewriteOptions::kCacheSmallImagesUnrewritten,
+    RewriteOptions::kClientDomainRewrite,
+    RewriteOptions::kCombineAcrossPaths,
+    RewriteOptions::kCriticalImagesBeaconEnabled,
+    RewriteOptions::kCriticalLineConfig,
+    RewriteOptions::kCssFlattenMaxBytes,
+    RewriteOptions::kCssImageInlineMaxBytes,
+    RewriteOptions::kCssInlineMaxBytes,
+    RewriteOptions::kCssOutlineMinBytes,
+    RewriteOptions::kCssPreserveURLs,
+    RewriteOptions::kDefaultCacheHtml,
+    RewriteOptions::kDisableBackgroundFetchesForBots,
+    RewriteOptions::kDisableRewriteOnNoTransform,
+    RewriteOptions::kDistributeFetches,
+    RewriteOptions::kDistributedRewriteKey,
+    RewriteOptions::kDistributedRewriteServers,
+    RewriteOptions::kDistributedRewriteTimeoutMs,
+    RewriteOptions::kDomainRewriteHyperlinks,
+    RewriteOptions::kDomainShardCount,
+    RewriteOptions::kDownstreamCachePurgeMethod,
+    RewriteOptions::kDownstreamCacheRebeaconingKey,
+    RewriteOptions::kDownstreamCacheRewrittenPercentageThreshold,
+    RewriteOptions::kEnableAggressiveRewritersForMobile,
+    RewriteOptions::kEnableBlinkHtmlChangeDetection,
+    RewriteOptions::kEnableBlinkHtmlChangeDetectionLogging,
+    RewriteOptions::kEnableCachePurge,
+    RewriteOptions::kEnableDeferJsExperimental,
+    RewriteOptions::kEnableExtendedInstrumentation,
+    RewriteOptions::kEnableFlushEarlyCriticalCss,
+    RewriteOptions::kEnableLazyLoadHighResImages,
+    RewriteOptions::kEnablePrioritizingScripts,
+    RewriteOptions::kEnabled,
+    RewriteOptions::kEnrollExperiment,
+    RewriteOptions::kExperimentCookieDurationMs,
+    RewriteOptions::kExperimentSlot,
+    RewriteOptions::kFetcherTimeOutMs,
+    RewriteOptions::kFinderPropertiesCacheExpirationTimeMs,
+    RewriteOptions::kFinderPropertiesCacheRefreshTimeMs,
+    RewriteOptions::kFlushBufferLimitBytes,
+    RewriteOptions::kFlushHtml,
+    RewriteOptions::kFlushMoreResourcesEarlyIfTimePermits,
+    RewriteOptions::kForbidAllDisabledFilters,
+    RewriteOptions::kHideRefererUsingMeta,
+    RewriteOptions::kIdleFlushTimeMs,
+    RewriteOptions::kImageInlineMaxBytes,
+    RewriteOptions::kImageJpegNumProgressiveScans,
+    RewriteOptions::kImageJpegNumProgressiveScansForSmallScreens,
+    RewriteOptions::kImageJpegRecompressionQuality,
+    RewriteOptions::kImageJpegRecompressionQualityForSmallScreens,
+    RewriteOptions::kImageLimitOptimizedPercent,
+    RewriteOptions::kImageLimitRenderedAreaPercent,
+    RewriteOptions::kImageLimitResizeAreaPercent,
+    RewriteOptions::kImageMaxRewritesAtOnce,
+    RewriteOptions::kImagePreserveURLs,
+    RewriteOptions::kImageRecompressionQuality,
+    RewriteOptions::kImageResolutionLimitBytes,
+    RewriteOptions::kImageWebpRecompressionQuality,
+    RewriteOptions::kImageWebpRecompressionQualityForSmallScreens,
+    RewriteOptions::kImageWebpTimeoutMs,
+    RewriteOptions::kImplicitCacheTtlMs,
+    RewriteOptions::kIncreaseSpeedTracking,
+    RewriteOptions::kInlineOnlyCriticalImages,
+    RewriteOptions::kInlineResourcesWithoutExplicitAuthorization,
+    RewriteOptions::kInPlacePreemptiveRewriteCss,
+    RewriteOptions::kInPlacePreemptiveRewriteCssImages,
+    RewriteOptions::kInPlacePreemptiveRewriteImages,
+    RewriteOptions::kInPlacePreemptiveRewriteJavascript,
+    RewriteOptions::kInPlaceResourceOptimization,
+    RewriteOptions::kInPlaceRewriteDeadlineMs,
+    RewriteOptions::kInPlaceWaitForOptimized,
+    RewriteOptions::kJsInlineMaxBytes,
+    RewriteOptions::kJsOutlineMinBytes,
+    RewriteOptions::kJsPreserveURLs,
+    RewriteOptions::kLazyloadImagesAfterOnload,
+    RewriteOptions::kLazyloadImagesBlankUrl,
+    RewriteOptions::kLogBackgroundRewrite,
+    RewriteOptions::kLogRewriteTiming,
+    RewriteOptions::kLogUrlIndices,
+    RewriteOptions::kLowercaseHtmlNames,
+    RewriteOptions::kMaxCacheableResponseContentLength,
+    RewriteOptions::kMaxCombinedCssBytes,
+    RewriteOptions::kMaxCombinedJsBytes,
+    RewriteOptions::kMaxLowResImageSizeBytes,
+    RewriteOptions::kMaxLowResToHighResImageSizePercentage,
+    RewriteOptions::kMaxHtmlCacheTimeMs,
+    RewriteOptions::kMaxHtmlParseBytes,
+    RewriteOptions::kMaxImageBytesForWebpInCss,
+    RewriteOptions::kMaxImageSizeLowResolutionBytes,
+    RewriteOptions::kMaxInlinedPreviewImagesIndex,
+    RewriteOptions::kMaxPrefetchJsElements,
+    RewriteOptions::kMaxRewriteInfoLogSize,
+    RewriteOptions::kMaxUrlSegmentSize,
+    RewriteOptions::kMaxUrlSize,
+    RewriteOptions::kMetadataCacheStalenessThresholdMs,
+    RewriteOptions::kMinCacheTtlMs,
+    RewriteOptions::kMinImageSizeLowResolutionBytes,
+    RewriteOptions::kMinResourceCacheTimeToRewriteMs,
+    RewriteOptions::kModifyCachingHeaders,
+    RewriteOptions::kNoTransformOptimizedImages,
+    RewriteOptions::kNonCacheablesForCachePartialHtml,
+    RewriteOptions::kObliviousPagespeedUrls,
+    RewriteOptions::kOverrideCachingTtlMs,
+    RewriteOptions::kPersistBlinkBlacklist,
+    RewriteOptions::kPreserveUrlRelativity,
+    RewriteOptions::kPrivateNotVaryForIE,
+    RewriteOptions::kPubliclyCacheMismatchedHashesExperimental,
+    RewriteOptions::kProactivelyFreshenUserFacingRequest,
+    RewriteOptions::kProactiveResourceFreshening,
+    RewriteOptions::kProgressiveJpegMinBytes,
+    RewriteOptions::kRejectBlacklisted,
+    RewriteOptions::kRejectBlacklistedStatusCode,
+    RewriteOptions::kReportUnloadTime,
+    RewriteOptions::kRequestOptionOverride,
+    RewriteOptions::kRespectVary,
+    RewriteOptions::kRespectXForwardedProto,
+    RewriteOptions::kRewriteDeadlineMs,
+    RewriteOptions::kRewriteLevel,
+    RewriteOptions::kRewriteRandomDropPercentage,
+    RewriteOptions::kRewriteUncacheableResources,
+    RewriteOptions::kRunningExperiment,
+    RewriteOptions::kServeGhostClickBusterWithSplitHtml,
+    RewriteOptions::kServeSplitHtmlInTwoChunks,
+    RewriteOptions::kServeStaleIfFetchError,
+    RewriteOptions::kServeWebpToAnyAgent,
+    RewriteOptions::kServeXhrAccessControlHeaders,
+    RewriteOptions::kServeStaleWhileRevalidateThresholdSec,
+    RewriteOptions::kSupportNoScriptEnabled,
+    RewriteOptions::kTestOnlyPrioritizeCriticalCssDontApplyOriginalCss,
+    RewriteOptions::kUseBlankImageForInlinePreview,
+    RewriteOptions::kUseExperimentalJsMinifier,
+    RewriteOptions::kUseFallbackPropertyCacheValues,
+    RewriteOptions::kUseSelectorsForCriticalCss,
+    RewriteOptions::kUseSmartDiffInBlink,
+    RewriteOptions::kXModPagespeedHeaderValue,
+    RewriteOptions::kXPsaBlockingRewrite,
+  };
 
-  // Generic options that are registered by name by AddProperty().
-  PassLookupOptionByName(RewriteOptions::kAccessControlAllowOrigins);
-  PassLookupOptionByName(RewriteOptions::kAddOptionsToUrls);
-  PassLookupOptionByName(RewriteOptions::kAllowLoggingUrlsInLogRecord);
-  PassLookupOptionByName(RewriteOptions::kAllowOptionsToBeSetByCookies);
-  PassLookupOptionByName(RewriteOptions::kAlwaysRewriteCss);
-  PassLookupOptionByName(RewriteOptions::kAnalyticsID);
-  PassLookupOptionByName(RewriteOptions::kAvoidRenamingIntrospectiveJavascript);
-  PassLookupOptionByName(RewriteOptions::kAwaitPcacheLookup);
-  PassLookupOptionByName(RewriteOptions::kBeaconReinstrumentTimeSec);
-  PassLookupOptionByName(RewriteOptions::kBeaconUrl);
-  PassLookupOptionByName(RewriteOptions::kBlinkMaxHtmlSizeRewritable);
-  PassLookupOptionByName(RewriteOptions::kCacheFragment);
-  PassLookupOptionByName(RewriteOptions::kCacheInvalidationTimestamp);
-  PassLookupOptionByName(RewriteOptions::kCacheSmallImagesUnrewritten);
-  PassLookupOptionByName(RewriteOptions::kClientDomainRewrite);
-  PassLookupOptionByName(RewriteOptions::kCombineAcrossPaths);
-  PassLookupOptionByName(RewriteOptions::kCriticalImagesBeaconEnabled);
-  PassLookupOptionByName(RewriteOptions::kCriticalLineConfig);
-  PassLookupOptionByName(RewriteOptions::kCssFlattenMaxBytes);
-  PassLookupOptionByName(RewriteOptions::kCssImageInlineMaxBytes);
-  PassLookupOptionByName(RewriteOptions::kCssInlineMaxBytes);
-  PassLookupOptionByName(RewriteOptions::kCssOutlineMinBytes);
-  PassLookupOptionByName(RewriteOptions::kCssPreserveURLs);
-  PassLookupOptionByName(RewriteOptions::kDefaultCacheHtml);
-  PassLookupOptionByName(RewriteOptions::kDisableBackgroundFetchesForBots);
-  PassLookupOptionByName(RewriteOptions::kDisableRewriteOnNoTransform);
-  PassLookupOptionByName(RewriteOptions::kDistributeFetches);
-  PassLookupOptionByName(RewriteOptions::kDistributedRewriteKey);
-  PassLookupOptionByName(RewriteOptions::kDistributedRewriteServers);
-  PassLookupOptionByName(RewriteOptions::kDistributedRewriteTimeoutMs);
-  PassLookupOptionByName(RewriteOptions::kDomainRewriteHyperlinks);
-  PassLookupOptionByName(RewriteOptions::kDomainShardCount);
-  PassLookupOptionByName(RewriteOptions::kDownstreamCachePurgeMethod);
-  PassLookupOptionByName(RewriteOptions::kDownstreamCacheRebeaconingKey);
-  PassLookupOptionByName(RewriteOptions::
-                         kDownstreamCacheRewrittenPercentageThreshold);
-  PassLookupOptionByName(RewriteOptions::kEnableAggressiveRewritersForMobile);
-  PassLookupOptionByName(RewriteOptions::kEnableBlinkHtmlChangeDetection);
-  PassLookupOptionByName(RewriteOptions::
-                         kEnableBlinkHtmlChangeDetectionLogging);
-  PassLookupOptionByName(RewriteOptions::kEnableCachePurge);
-  PassLookupOptionByName(RewriteOptions::kEnableDeferJsExperimental);
-  PassLookupOptionByName(RewriteOptions::kEnableExtendedInstrumentation);
-  PassLookupOptionByName(RewriteOptions::kEnableFlushEarlyCriticalCss);
-  PassLookupOptionByName(RewriteOptions::kEnableLazyLoadHighResImages);
-  PassLookupOptionByName(RewriteOptions::kEnablePrioritizingScripts);
-  PassLookupOptionByName(RewriteOptions::kEnabled);
-  PassLookupOptionByName(RewriteOptions::kEnrollExperiment);
-  PassLookupOptionByName(RewriteOptions::kExperimentCookieDurationMs);
-  PassLookupOptionByName(RewriteOptions::kExperimentSlot);
-  PassLookupOptionByName(RewriteOptions::kFetcherTimeOutMs);
-  PassLookupOptionByName(RewriteOptions::
-                         kFinderPropertiesCacheExpirationTimeMs);
-  PassLookupOptionByName(RewriteOptions::kFinderPropertiesCacheRefreshTimeMs);
-  PassLookupOptionByName(RewriteOptions::kFlushBufferLimitBytes);
-  PassLookupOptionByName(RewriteOptions::kFlushHtml);
-  PassLookupOptionByName(RewriteOptions::kFlushMoreResourcesEarlyIfTimePermits);
-  PassLookupOptionByName(RewriteOptions::kForbidAllDisabledFilters);
-  PassLookupOptionByName(RewriteOptions::kHideRefererUsingMeta);
-  PassLookupOptionByName(RewriteOptions::kIdleFlushTimeMs);
-  PassLookupOptionByName(RewriteOptions::kImageInlineMaxBytes);
-  PassLookupOptionByName(RewriteOptions::kImageJpegNumProgressiveScans);
-  PassLookupOptionByName(RewriteOptions::
-                         kImageJpegNumProgressiveScansForSmallScreens);
-  PassLookupOptionByName(RewriteOptions::kImageJpegRecompressionQuality);
-  PassLookupOptionByName(RewriteOptions::
-                         kImageJpegRecompressionQualityForSmallScreens);
-  PassLookupOptionByName(RewriteOptions::kImageLimitOptimizedPercent);
-  PassLookupOptionByName(RewriteOptions::kImageLimitRenderedAreaPercent);
-  PassLookupOptionByName(RewriteOptions::kImageLimitResizeAreaPercent);
-  PassLookupOptionByName(RewriteOptions::kImageMaxRewritesAtOnce);
-  PassLookupOptionByName(RewriteOptions::kImagePreserveURLs);
-  PassLookupOptionByName(RewriteOptions::kImageRecompressionQuality);
-  PassLookupOptionByName(RewriteOptions::kImageResolutionLimitBytes);
-  PassLookupOptionByName(RewriteOptions::kImageWebpRecompressionQuality);
-  PassLookupOptionByName(RewriteOptions::
-                         kImageWebpRecompressionQualityForSmallScreens);
-  PassLookupOptionByName(RewriteOptions::kImageWebpTimeoutMs);
-  PassLookupOptionByName(RewriteOptions::kImplicitCacheTtlMs);
-  PassLookupOptionByName(RewriteOptions::kIncreaseSpeedTracking);
-  PassLookupOptionByName(RewriteOptions::kInlineOnlyCriticalImages);
-  PassLookupOptionByName(
-      RewriteOptions::kInlineResourcesWithoutExplicitAuthorization);
-  PassLookupOptionByName(RewriteOptions::kInPlacePreemptiveRewriteCss);
-  PassLookupOptionByName(RewriteOptions::kInPlacePreemptiveRewriteCssImages);
-  PassLookupOptionByName(RewriteOptions::kInPlacePreemptiveRewriteImages);
-  PassLookupOptionByName(RewriteOptions::kInPlacePreemptiveRewriteJavascript);
-  PassLookupOptionByName(RewriteOptions::kInPlaceResourceOptimization);
-  PassLookupOptionByName(RewriteOptions::kInPlaceRewriteDeadlineMs);
-  PassLookupOptionByName(RewriteOptions::kInPlaceWaitForOptimized);
-  PassLookupOptionByName(RewriteOptions::kJsInlineMaxBytes);
-  PassLookupOptionByName(RewriteOptions::kJsOutlineMinBytes);
-  PassLookupOptionByName(RewriteOptions::kJsPreserveURLs);
-  PassLookupOptionByName(RewriteOptions::kLazyloadImagesAfterOnload);
-  PassLookupOptionByName(RewriteOptions::kLazyloadImagesBlankUrl);
-  PassLookupOptionByName(RewriteOptions::kLogBackgroundRewrite);
-  PassLookupOptionByName(RewriteOptions::kLogRewriteTiming);
-  PassLookupOptionByName(RewriteOptions::kLogUrlIndices);
-  PassLookupOptionByName(RewriteOptions::kLowercaseHtmlNames);
-  PassLookupOptionByName(RewriteOptions::kMaxCacheableResponseContentLength);
-  PassLookupOptionByName(RewriteOptions::kMaxCombinedCssBytes);
-  PassLookupOptionByName(RewriteOptions::kMaxCombinedJsBytes);
-  PassLookupOptionByName(RewriteOptions::kMaxLowResImageSizeBytes);
-  PassLookupOptionByName(
-      RewriteOptions::kMaxLowResToHighResImageSizePercentage);
-  PassLookupOptionByName(RewriteOptions::kMaxHtmlCacheTimeMs);
-  PassLookupOptionByName(RewriteOptions::kMaxHtmlParseBytes);
-  PassLookupOptionByName(RewriteOptions::kMaxImageBytesForWebpInCss);
-  PassLookupOptionByName(RewriteOptions::kMaxImageSizeLowResolutionBytes);
-  PassLookupOptionByName(RewriteOptions::kMaxInlinedPreviewImagesIndex);
-  PassLookupOptionByName(RewriteOptions::kMaxPrefetchJsElements);
-  PassLookupOptionByName(RewriteOptions::kMaxRewriteInfoLogSize);
-  PassLookupOptionByName(RewriteOptions::kMaxUrlSegmentSize);
-  PassLookupOptionByName(RewriteOptions::kMaxUrlSize);
-  PassLookupOptionByName(RewriteOptions::kMetadataCacheStalenessThresholdMs);
-  PassLookupOptionByName(RewriteOptions::kMinCacheTtlMs);
-  PassLookupOptionByName(RewriteOptions::kMinImageSizeLowResolutionBytes);
-  PassLookupOptionByName(RewriteOptions::kMinResourceCacheTimeToRewriteMs);
-  PassLookupOptionByName(RewriteOptions::kModifyCachingHeaders);
-  PassLookupOptionByName(RewriteOptions::kNonCacheablesForCachePartialHtml);
-  PassLookupOptionByName(RewriteOptions::kObliviousPagespeedUrls);
-  PassLookupOptionByName(RewriteOptions::kOverrideCachingTtlMs);
-  PassLookupOptionByName(RewriteOptions::kPersistBlinkBlacklist);
-  PassLookupOptionByName(RewriteOptions::kPreserveUrlRelativity);
-  PassLookupOptionByName(RewriteOptions::kPrivateNotVaryForIE);
-  PassLookupOptionByName(
-      RewriteOptions::kPubliclyCacheMismatchedHashesExperimental);
-  PassLookupOptionByName(RewriteOptions::kProactivelyFreshenUserFacingRequest);
-  PassLookupOptionByName(RewriteOptions::kProactiveResourceFreshening);
-  PassLookupOptionByName(RewriteOptions::kProgressiveJpegMinBytes);
-  PassLookupOptionByName(RewriteOptions::kRejectBlacklisted);
-  PassLookupOptionByName(RewriteOptions::kRejectBlacklistedStatusCode);
-  PassLookupOptionByName(RewriteOptions::kReportUnloadTime);
-  PassLookupOptionByName(RewriteOptions::kRequestOptionOverride);
-  PassLookupOptionByName(RewriteOptions::kRespectVary);
-  PassLookupOptionByName(RewriteOptions::kRespectXForwardedProto);
-  PassLookupOptionByName(RewriteOptions::kRewriteDeadlineMs);
-  PassLookupOptionByName(RewriteOptions::kRewriteLevel);
-  PassLookupOptionByName(RewriteOptions::kRewriteRandomDropPercentage);
-  PassLookupOptionByName(RewriteOptions::kRewriteUncacheableResources);
-  PassLookupOptionByName(RewriteOptions::kRunningExperiment);
-  PassLookupOptionByName(RewriteOptions::kServeGhostClickBusterWithSplitHtml);
-  PassLookupOptionByName(RewriteOptions::kServeSplitHtmlInTwoChunks);
-  PassLookupOptionByName(RewriteOptions::kServeStaleIfFetchError);
-  PassLookupOptionByName(RewriteOptions::kServeWebpToAnyAgent);
-  PassLookupOptionByName(RewriteOptions::kServeXhrAccessControlHeaders);
-  PassLookupOptionByName(RewriteOptions::
-                         kServeStaleWhileRevalidateThresholdSec);
-  PassLookupOptionByName(RewriteOptions::kSupportNoScriptEnabled);
-  PassLookupOptionByName(RewriteOptions::
-                         kTestOnlyPrioritizeCriticalCssDontApplyOriginalCss);
-  PassLookupOptionByName(RewriteOptions::kUseBlankImageForInlinePreview);
-  PassLookupOptionByName(RewriteOptions::kUseExperimentalJsMinifier);
-  PassLookupOptionByName(RewriteOptions::kUseFallbackPropertyCacheValues);
-  PassLookupOptionByName(RewriteOptions::kUseSelectorsForCriticalCss);
-  PassLookupOptionByName(RewriteOptions::kUseSmartDiffInBlink);
-  PassLookupOptionByName(RewriteOptions::kXModPagespeedHeaderValue);
-  PassLookupOptionByName(RewriteOptions::kXPsaBlockingRewrite);
+  // Check that every option can be looked up by name.
+  std::set<StringPiece> tested_names;
+  for (int i = 0; i < arraysize(option_names); ++i) {
+    EXPECT_TRUE(NULL != RewriteOptions::LookupOptionByName(option_names[i]))
+        << option_names[i] << " cannot be looked up by name!";
+    tested_names.insert(option_names[i]);
+  }
 
   // Now go through the named options in all_properties_ and check that each
   // one has been tested.
@@ -1009,8 +1001,8 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
   EXPECT_EQ(named_properties, tested_names.size());
 
   // Check that case doesn't matter when looking up directives.
-  PassLookupOptionByName("EnableRewriting");  // As declared.
-  PassLookupOptionByName("eNaBlErEWrItIng");  // mutated.
+  EXPECT_TRUE(NULL != RewriteOptions::LookupOptionByName("EnableRewriting"));
+  EXPECT_TRUE(NULL != RewriteOptions::LookupOptionByName("eNaBlErEWrItIng"));
 }
 
 // All the non-base option names are explicitly enumerated here. Modifications

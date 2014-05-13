@@ -375,8 +375,8 @@ void RewriteContextTestBase::InitResourcesToDomain(const char* domain) {
 
   // trimmable, with charset.
   ResponseHeaders encoded_css_header;
-  server_context()->SetDefaultLongCacheHeadersWithCharset(
-      &kContentTypeCss, "koi8-r", &encoded_css_header);
+  server_context()->SetDefaultLongCacheHeaders(
+      &kContentTypeCss, "koi8-r", StringPiece(), &encoded_css_header);
   SetFetchResponse(StrCat(domain, "a_ru.css"), encoded_css_header,
                    " a = \xc1 ");
 

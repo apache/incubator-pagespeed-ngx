@@ -22,6 +22,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_OUTPUT_RESOURCE_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_OUTPUT_RESOURCE_H_
 
+#include "base/logging.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -198,6 +199,17 @@ class OutputResource : public Resource {
 
   virtual bool UseHttpCache() const { return true; }
 
+  // Extra suffix to be added to Cache-Control in the response headers
+  // when serving the response.  E.g. a filter might want to set
+  // no-transform on its output.
+  const GoogleString& cache_control_suffix() const {
+    return cache_control_suffix_;
+  }
+  void set_cache_control_suffix(const GoogleString& x) {
+    DCHECK(cache_control_suffix_.empty());
+    cache_control_suffix_ = x;
+  }
+
  protected:
   virtual ~OutputResource();
   REFCOUNT_FRIEND_DECLARATION(OutputResource);
@@ -245,6 +257,8 @@ class OutputResource : public Resource {
   GoogleString resolved_base_;
   GoogleString unmapped_base_;
   GoogleString original_base_;
+
+  GoogleString cache_control_suffix_;
 
   ResourceNamer full_name_;
 
