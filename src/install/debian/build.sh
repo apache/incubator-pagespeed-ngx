@@ -88,7 +88,7 @@ do_package_in_fakeroot() {
   FAKEROOTFILE=$(mktemp -t fakeroot.tmp.XXXXXX) || exit 1
   fakeroot -s "${FAKEROOTFILE}" -- \
     chown -R ${APACHE_USER}:${APACHE_USER} ${STAGEDIR}${MOD_PAGESPEED_CACHE}
-  fakeroot -s "${FAKEROOTFILE}" -- \
+  fakeroot -s "${FAKEROOTFILE}" -i "${FAKEROOTFILE}" -- \
     chown -R ${APACHE_USER}:${APACHE_USER} ${STAGEDIR}${MOD_PAGESPEED_LOG}
   fakeroot -i "${FAKEROOTFILE}" -- \
     dpkg-deb -b "${STAGEDIR}" .
