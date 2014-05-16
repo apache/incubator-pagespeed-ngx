@@ -124,9 +124,16 @@ TimedBool ResourceCombiner::AddResourceNoFetch(const ResourcePtr& resource,
     AccumulateCombinedSize(resource);
 
     resources_.push_back(resource);
-    if (ContentSizeTooBig() || UrlTooBig()) {
-      // TODO(ksimbili) : Propagate the correct reason-string to the caller.
-      handler->Message(kInfo, "Cannot combine: contents/url size too big");
+    const char* failure_reason = NULL;
+    if (ContentSizeTooBig()) {
+      failure_reason = "combined contents too big.";
+    } else if (UrlTooBig()) {
+      failure_reason = "combined url too long.";
+    }
+    if (failure_reason != NULL) {
+      handler->Message(
+          kInfo, "Cannot combine %s: %s",
+          resource->url().c_str(), failure_reason);
       RemoveLastResource();
       added = false;
     }
