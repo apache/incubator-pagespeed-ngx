@@ -2396,7 +2396,9 @@ test_decent_browsers "New Opera" \
 WGETRC=$OLD_WGETRC
 WGET_ARGS=""
 
+# Test that we can set options using cookies.
 test_filter collapse_whitespace
+
 start_test Cookie options on: by default comments not removed, whitespace is
 HOST_NAME="http://options-by-cookies-enabled.example.com"
 URL="$HOST_NAME/mod_pagespeed_test/forbidden.html"
@@ -2404,12 +2406,22 @@ echo wget $URL
 OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)"
 check_from     "$OUT" grep -q '<!--'
 check_not_from "$OUT" grep -q '  '
+
 start_test Cookie options on: set option by cookie takes effect
+echo wget --header=Cookie:PageSpeedFilters=%2bremove_comments $URL
+OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --no-cookies \
+       --header=Cookie:PageSpeedFilters=%2bremove_comments $URL)"
+check_not_from "$OUT" grep -q '<!--'
+check_not_from "$OUT" grep -q '  '
+
+start_test Cookie options on: invalid cookie does not take effect
+# The '+' must be encoded as %2b for the cookie parsing code to accept it.
 echo wget --header=Cookie:PageSpeedFilters=+remove_comments $URL
 OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --no-cookies \
        --header=Cookie:PageSpeedFilters=+remove_comments $URL)"
-check_not_from "$OUT" grep -q '<!--'
+check_from     "$OUT" grep -q '<!--'
 check_not_from "$OUT" grep -q '  '
+
 start_test Cookie options off: by default comments nor whitespace removed
 HOST_NAME="http://options-by-cookies-disabled.example.com"
 URL="$HOST_NAME/mod_pagespeed_test/forbidden.html"
@@ -2417,65 +2429,68 @@ echo wget $URL
 OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)"
 check_from "$OUT" grep -q '<!--'
 check_from "$OUT" grep -q '  '
+
 start_test Cookie options off: set option by cookie has no effect
-echo wget --header=Cookie:PageSpeedFilters=+remove_comments $URL
+echo wget --header=Cookie:PageSpeedFilters=%2bremove_comments $URL
 OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --no-cookies \
-       --header=Cookie:PageSpeedFilters=+remove_comments $URL)"
+       --header=Cookie:PageSpeedFilters=%2bremove_comments $URL)"
 check_from "$OUT" grep -q '<!--'
 check_from "$OUT" grep -q '  '
 
 # Test that we can make options sticky using cookies.
-test_filter collapse_whitespace
 HOST_NAME="http://options-by-cookies-enabled.example.com"
 URL="$HOST_NAME/mod_pagespeed_test/forbidden.html"
+
 start_test Sticky option cookies: initially remove_comments only
 COOKIES=""
-QPS=""
-echo wget $COOKIES $URL$QPS
-OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $COOKIES $URL$QPS)"
+PARAMS=""
+echo wget $COOKIES $URL$PARAMS
+OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $COOKIES $URL$PARAMS)"
 check_from     "$OUT" grep -q '<!-- This comment should not be deleted -->'
 check_not_from "$OUT" grep -q '  '
 check_not_from "$OUT" grep -q 'Cookie'
-start_test Sticky option cookies: wrong token is NOT adhesive
-QPS="?PageSpeedStickyQueryParameters=wrong_secret"
-QPS+="&PageSpeedFilters=+remove_comments"
-echo wget $COOKIES $URL$QPS
-OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $COOKIES $URL$QPS)"
+
+start_test Sticky option cookies: wrong token has no effect
+PARAMS="?PageSpeedStickyQueryParameters=wrong_secret"
+PARAMS+="&PageSpeedFilters=+remove_comments"
+echo wget $COOKIES $URL$PARAMS
+OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $COOKIES $URL$PARAMS)"
 check_not_from "$OUT" grep -q '<!-- This comment should not be deleted -->'
 check_not_from "$OUT" grep -q '  '
 check_not_from "$OUT" grep -q 'Set-Cookie'
+
 start_test Sticky option cookies: right token IS adhesive
-QPS="?PageSpeedStickyQueryParameters=sticky_secret"
-QPS+="&PageSpeedFilters=+remove_comments"
-echo wget $COOKIES $URL$QPS
-OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $COOKIES $URL$QPS)"
+PARAMS="?PageSpeedStickyQueryParameters=sticky_secret"
+PARAMS+="&PageSpeedFilters=+remove_comments"
+echo wget $COOKIES $URL$PARAMS
+OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $COOKIES $URL$PARAMS)"
 check_not_from "$OUT" grep -q '<!-- This comment should not be deleted -->'
 check_not_from "$OUT" grep -q '  '
 check_from "$OUT" grep -q 'Set-Cookie: PageSpeedFilters=%2bremove_comments;'
+
 start_test Sticky option cookies: no token leaves option cookies untouched
-COOKIES="--no-cookies"
-COOKIES+=$(echo "$OUT" | grep "Set-Cookie:" | \
-           sed -e 's/;.*//' -e 's/^.*Set-Cookie: */ --header=Cookie:/')
-QPS=""
-echo wget $COOKIES $URL$QPS
-OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $COOKIES $URL$QPS)"
+COOKIES=--no-cookies$(echo "$OUT" | extract_cookies)
+PARAMS=""
+echo wget $COOKIES $URL$PARAMS
+OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $COOKIES $URL$PARAMS)"
 check_not_from "$OUT" grep -q '<!-- This comment should not be deleted -->'
 check_not_from "$OUT" grep -q '  '
 check_not_from "$OUT" grep -q 'Set-Cookie'
+
 start_test Sticky option cookies: wrong token expires option cookies
-QPS="?PageSpeedStickyQueryParameters=off"
-echo wget $COOKIES $URL$QPS
-OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $COOKIES $URL$QPS)"
+PARAMS="?PageSpeedStickyQueryParameters=off"
+echo wget $COOKIES $URL$PARAMS
+OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $COOKIES $URL$PARAMS)"
 check_not_from "$OUT" grep -q '<!-- This comment should not be deleted -->'
 check_not_from "$OUT" grep -q '  '
 check_from "$OUT" grep -q 'Cookie: PageSpeedFilters; Expires=Thu, 01 Jan 1970'
-COOKIES=$(echo "$OUT" | grep "Set-Cookie" | grep -v 'Expires=Thu, 01 Jan 19'|\
-          sed -e 's/;.*//' -e 's/^.*Set-Cookie: */ --header=Cookie:/')
+COOKIES=$(echo "$OUT" | grep -v 'Expires=Thu, 01 Jan 1970'| extract_cookies)
 check [ -z "$COOKIES" ]
+
 start_test Sticky option cookies: back to remove_comments only
-QPS=""
-echo wget $COOKIES $URL$QPS
-OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $COOKIES $URL$QPS)"
+PARAMS=""
+echo wget $COOKIES $URL$PARAMS
+OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $COOKIES $URL$PARAMS)"
 check_from     "$OUT" grep -q '<!-- This comment should not be deleted -->'
 check_not_from "$OUT" grep -q '  '
 check_not_from "$OUT" grep -q 'Cookie'
