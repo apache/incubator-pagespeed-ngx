@@ -522,6 +522,60 @@ if [ "$HOSTNAME" = "localhost:$PRIMARY_PORT" ] ; then
   AUTH=""
 fi
 
+start_test "Custom statistics paths in server block"
+
+# Served on normal paths by default.
+URL="inherit-paths.example.com/ngx_pagespeed_statistics"
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)
+check_from "$OUT" grep cache_time_us
+
+URL="inherit-paths.example.com/ngx_pagespeed_message"
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)
+check_from "$OUT" grep Info
+
+URL="inherit-paths.example.com/pagespeed_console"
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)
+check_from "$OUT" grep console_div
+
+URL="inherit-paths.example.com/pagespeed_admin/"
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)
+check_from "$OUT" grep Admin
+
+# Not served on normal paths when overriden.
+URL="custom-paths.example.com/ngx_pagespeed_statistics"
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)
+check_not_from "$OUT" grep cache_time_us
+
+URL="custom-paths.example.com/ngx_pagespeed_message"
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)
+check_not_from "$OUT" grep Info
+
+URL="custom-paths.example.com/pagespeed_console"
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)
+check_not_from "$OUT" grep console_div
+
+URL="custom-paths.example.com/pagespeed_admin/"
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)
+check_not_from "$OUT" grep Admin
+
+# Served on custom paths when overriden
+URL="custom-paths.example.com/custom_pagespeed_statistics"
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)
+check_from "$OUT" grep cache_time_us
+
+URL="custom-paths.example.com/custom_pagespeed_message"
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)
+check_from "$OUT" grep Info
+
+URL="custom-paths.example.com/custom_pagespeed_console"
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)
+check_from "$OUT" grep console_div
+
+URL="custom-paths.example.com/custom_pagespeed_admin/"
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)
+check_from "$OUT" grep Admin
+
+
 WGET_ARGS=""
 function gunzip_grep_0ff() {
   gunzip - | fgrep -q "color:#00f"
