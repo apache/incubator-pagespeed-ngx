@@ -1288,8 +1288,8 @@ RewriteOptions* ps_determine_request_options(
   // Sets option from request headers and url.
   RewriteQuery rewrite_query;
   if (!cfg_s->server_context->GetQueryOptions(
-          domain_options, url, request_headers, response_headers,
-          request_context.get(), &rewrite_query)) {
+          request_context, domain_options, url, request_headers,
+          response_headers, &rewrite_query)) {
     // Failed to parse query params or request headers.  Treat this as if there
     // were no query params given.
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
