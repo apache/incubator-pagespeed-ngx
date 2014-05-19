@@ -248,6 +248,7 @@
         '<(DEPTH)/pagespeed/kernel/base/null_statistics_test.cc',
         '<(DEPTH)/pagespeed/kernel/base/pool_test.cc',
         '<(DEPTH)/pagespeed/kernel/base/ref_counted_ptr_test.cc',
+        '<(DEPTH)/pagespeed/kernel/base/sha1_signature_test.cc',
         '<(DEPTH)/pagespeed/kernel/base/shared_string_test.cc',
         '<(DEPTH)/pagespeed/kernel/base/source_map_test.cc',
         '<(DEPTH)/pagespeed/kernel/base/split_statistics_test.cc',

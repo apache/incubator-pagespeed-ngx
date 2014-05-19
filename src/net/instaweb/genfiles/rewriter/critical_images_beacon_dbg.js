@@ -383,6 +383,40 @@ goog.MODIFY_FUNCTION_PROTOTYPES && (Function.prototype.bind = Function.prototype
 }, Function.prototype.mixin = function(source) {
   goog.mixin(this.prototype, source);
 });
+goog.defineClass = function(superClass, def) {
+  var constructor = def.constructor, statics = def.statics;
+  if (!constructor || constructor == Object.prototype.constructor) {
+    throw Error("constructor property is required.");
+  }
+  var cls = goog.defineClass.createSealingConstructor_(constructor);
+  superClass && goog.inherits(cls, superClass);
+  delete def.constructor;
+  delete def.statics;
+  goog.defineClass.applyProperties_(cls.prototype, def);
+  null != statics && (statics instanceof Function ? statics(cls) : goog.defineClass.applyProperties_(cls, statics));
+  return cls;
+};
+goog.defineClass.SEAL_CLASS_INSTANCES = goog.DEBUG;
+goog.defineClass.createSealingConstructor_ = function(ctr) {
+  if (goog.defineClass.SEAL_CLASS_INSTANCES && Object.seal instanceof Function) {
+    var wrappedCtr = function() {
+      var instance = ctr.apply(this, arguments) || this;
+      this.constructor === wrappedCtr && Object.seal(instance);
+      return instance;
+    };
+    return wrappedCtr;
+  }
+  return ctr;
+};
+goog.defineClass.OBJECT_PROTOTYPE_FIELDS_ = "constructor hasOwnProperty isPrototypeOf propertyIsEnumerable toLocaleString toString valueOf".split(" ");
+goog.defineClass.applyProperties_ = function(target, source) {
+  for (var key in source) {
+    Object.prototype.hasOwnProperty.call(source, key) && (target[key] = source[key]);
+  }
+  for (var i = 0;i < goog.defineClass.OBJECT_PROTOTYPE_FIELDS_.length;i++) {
+    key = goog.defineClass.OBJECT_PROTOTYPE_FIELDS_[i], Object.prototype.hasOwnProperty.call(source, key) && (target[key] = source[key]);
+  }
+};
 goog.debug = {};
 goog.debug.Error = function(opt_msg) {
   if (Error.captureStackTrace) {

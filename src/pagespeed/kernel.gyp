@@ -103,7 +103,9 @@
         'kernel/base/posix_timer.cc',
         'kernel/base/request_trace.cc',
         'kernel/base/rolling_hash.cc',
+        'kernel/base/sha1_signature.cc',
         'kernel/base/shared_string.cc',
+        'kernel/base/signature.cc',
         'kernel/base/source_map.cc',
         'kernel/base/split_statistics.cc',
         'kernel/base/split_writer.cc',
@@ -114,6 +116,7 @@
       'dependencies': [
         'pagespeed_base_core',
         '<(DEPTH)/third_party/jsoncpp/jsoncpp.gyp:jsoncpp',
+        '<(DEPTH)/third_party/serf/openssl.gyp:openssl',
       ],
     },
     {
