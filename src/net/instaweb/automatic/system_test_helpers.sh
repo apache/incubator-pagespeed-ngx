@@ -511,3 +511,22 @@ function extract_headers {
   last_line_number=$(grep --text -n \^${carriage_return}\$ $1 | cut -f1 -d:)
   head --lines=$last_line_number "$1" | sed -e "s/$carriage_return//"
 }
+
+# Extracts the cookies from a 'wget --save-headers' dump.
+function extract_cookies {
+  grep "Set-Cookie" | \
+  sed -e 's/;.*//' -e 's/^.*Set-Cookie: */ --header=Cookie:/'
+}
+
+# Returns the "URL" suitable for either Apache, Nginx, or rewrite_proxy.
+function generate_url {
+  DOMAIN="$1"  # Must not have leading 'http://'
+  PATH="$2"    # Must have leading '/'.
+  if [ -z "${STATIC_DOMAIN:-}" ]; then
+    RESULT="http://$DOMAIN$PATH"
+  else
+    RESULT="--header X-Google-Pagespeed-Config-Domain:$DOMAIN"
+    RESULT+=" $STATIC_DOMAIN$PATH"
+  fi
+  echo $RESULT
+}

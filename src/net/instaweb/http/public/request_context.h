@@ -157,6 +157,13 @@ class RequestContext : public RefCounted<RequestContext> {
     request_id_ = x;
   }
 
+  const GoogleString& sticky_query_parameters_token() const {
+    return sticky_query_parameters_token_;
+  }
+  void set_sticky_query_parameters_token(StringPiece x) {
+    x.CopyToString(&sticky_query_parameters_token_);
+  }
+
   // Authorized a particular external domain to be fetched from. The caller of
   // this method MUST ensure that the domain is not some internal site within
   // the firewall/LAN hosting the server. Note that this doesn't affect
@@ -374,8 +381,12 @@ class RequestContext : public RefCounted<RequestContext> {
   bool accepts_webp_;
   GoogleString minimal_private_suffix_;
 
-  SplitRequestType split_request_type_;;
+  SplitRequestType split_request_type_;
   int64 request_id_;
+
+  // The token specified by query parameter or header that must match the
+  // configured value for options to be converted to cookies.
+  GoogleString sticky_query_parameters_token_;
 
   DISALLOW_COPY_AND_ASSIGN(RequestContext);
 };

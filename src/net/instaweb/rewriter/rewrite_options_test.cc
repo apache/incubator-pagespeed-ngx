@@ -942,6 +942,7 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
     RewriteOptions::kNoTransformOptimizedImages,
     RewriteOptions::kNonCacheablesForCachePartialHtml,
     RewriteOptions::kObliviousPagespeedUrls,
+    RewriteOptions::kOptionCookiesDurationMs,
     RewriteOptions::kOverrideCachingTtlMs,
     RewriteOptions::kPersistBlinkBlacklist,
     RewriteOptions::kPreserveUrlRelativity,
@@ -967,6 +968,7 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
     RewriteOptions::kServeWebpToAnyAgent,
     RewriteOptions::kServeXhrAccessControlHeaders,
     RewriteOptions::kServeStaleWhileRevalidateThresholdSec,
+    RewriteOptions::kStickyQueryParameters,
     RewriteOptions::kSupportNoScriptEnabled,
     RewriteOptions::kTestOnlyPrioritizeCriticalCssDontApplyOriginalCss,
     RewriteOptions::kUseBlankImageForInlinePreview,
@@ -1454,6 +1456,20 @@ TEST_F(RewriteOptionsTest, ParseAndSetOptionFromName3) {
                 &msg, &handler));
   EXPECT_EQ("Format is size md5 url; bad md5 #@#)@(#@) or "
             "URL http://www.example.com/url.js", msg);
+}
+
+TEST_F(RewriteOptionsTest, SetOptionFromQuery) {
+  // Unknown option.
+  EXPECT_EQ(RewriteOptions::kOptionNameUnknown,
+            options_.SetOptionFromQuery("arghh", ""));
+  // Known option with a bad value.
+  EXPECT_EQ(RewriteOptions::kOptionValueInvalid,
+            options_.SetOptionFromQuery(RewriteOptions::kCssFlattenMaxBytes,
+                                        "nuh-uh"));
+  // Known option with a good value.
+  EXPECT_EQ(RewriteOptions::kOptionOk,
+            options_.SetOptionFromQuery(RewriteOptions::kCssFlattenMaxBytes,
+                                        "123"));
 }
 
 TEST_F(RewriteOptionsTest, ExperimentSpecTest) {

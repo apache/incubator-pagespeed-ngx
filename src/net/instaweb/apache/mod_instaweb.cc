@@ -469,7 +469,7 @@ InstawebContext* build_context_for_request(request_rec* request) {
     return NULL;
   }
 
-  instaweb_handler.RemoveStrippedResponseHeadersFromApacheReequest();
+  instaweb_handler.RemoveStrippedResponseHeadersFromApacheRequest();
   ServerContext::ScanSplitHtmlRequest(instaweb_handler.request_context(),
                                       options, &final_url);
 
@@ -478,6 +478,8 @@ InstawebContext* build_context_for_request(request_rec* request) {
       instaweb_handler.ReleaseRequestHeaders(),
       *content_type, server_context,
       final_url, instaweb_handler.request_context(),
+      instaweb_handler.pagespeed_query_params(),
+      instaweb_handler.pagespeed_option_cookies(),
       instaweb_handler.use_custom_options(),
       *options);
 

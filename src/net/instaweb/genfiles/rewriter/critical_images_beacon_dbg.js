@@ -584,6 +584,9 @@ goog.string.HTML_ENTITY_PATTERN_ = /&([^;\s<&]+);?/g;
 goog.string.whitespaceEscape = function(str, opt_xml) {
   return goog.string.newLineToBr(str.replace(/  /g, " &#160;"), opt_xml);
 };
+goog.string.preserveSpaces = function(str) {
+  return str.replace(/(^|[\n ]) /g, "$1" + goog.string.Unicode.NBSP);
+};
 goog.string.stripQuotes = function(str, quoteChars) {
   for (var length = quoteChars.length, i = 0;i < length;i++) {
     var quoteChar = 1 == length ? quoteChars : quoteChars.charAt(i);

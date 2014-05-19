@@ -18,6 +18,7 @@
 #include "net/instaweb/rewriter/public/device_properties.h"
 #include "net/instaweb/util/public/gtest_prod.h"
 #include "net/instaweb/util/public/query_params.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "pagespeed/kernel/base/basictypes.h"
@@ -60,16 +61,19 @@ class RewriteQuery {
   ~RewriteQuery();
 
   // Scans request_url's query parameters and request_headers for "ModPagespeed"
-  // and "PageSpeed" flags, creating and populating *'options' if any were found
-  // they were all parsed successfully.  If any were parsed unsuccessfully
-  // kInvalid is returned.  If none found, kNoneFound is returned. It also
-  // removes the flags from the query_params of the url and the request_headers
-  // and populates pagespeed_query_params() with the removed query parameters.
+  // and "PageSpeed" flags, creating and populating options_ or request_context
+  // if any were found that were all parsed successfully. If any were parsed
+  // unsuccessfully, kInvalid is returned. If none were found, kNoneFound is
+  // returned. Also removes the options from the query_params of the url and the
+  // request_headers, populates pagespeed_query_params() with the removed query
+  // parameters, and populates pagespeed_option_cookies() with any PageSpeed
+  // option cookies in the request headers (which are NOT removed).
   //
-  // First queries are processed, then request headers, then response headers.
-  // Therefore parameters set by response headers take precedence over request
-  // headers over query parameters. The exception is filter disables, which
-  // always take precedence over enables, even those processed later.
+  // First cookies are processed, then query parameters, then request headers,
+  // then response headers. Therefore parameters set by response headers take
+  // precedence over request headers over query parameters over cookies. The
+  // exception is filter disables, which always take precedence over enables,
+  // even those processed later.
   //
   // If NULL is passed for request_headers or response_headers those particular
   // headers will be skipped in the scan.
@@ -85,6 +89,7 @@ class RewriteQuery {
   Status Scan(bool allow_related_options,
               bool allow_options_to_be_specified_by_cookies,
               const GoogleString& request_option_override,
+              const RequestContextPtr& request_context,
               RewriteDriverFactory* factory,
               ServerContext* server_context,
               GoogleUrl* request_url,
@@ -100,10 +105,11 @@ class RewriteQuery {
   // assumes that headers will be stripped from the headers if options are found
   // and that headers will not grow in this call.
   template <class HeaderT>
-  static Status ScanHeader(HeaderT* headers,
-                           RequestProperties* request_properties,
-                           bool allow_options,
+  static Status ScanHeader(bool allow_options,
                            const GoogleString& request_option_override,
+                           const RequestContextPtr& request_context,
+                           HeaderT* headers,
+                           RequestProperties* request_properties,
                            RewriteOptions* options,
                            MessageHandler* handler);
 
@@ -122,6 +128,9 @@ class RewriteQuery {
   const QueryParams& query_params() const { return query_params_; }
   const QueryParams& pagespeed_query_params() const {
     return pagespeed_query_params_;
+  }
+  const QueryParams& pagespeed_option_cookies() const {
+    return pagespeed_option_cookies_;
   }
   const RewriteOptions* options() const { return options_.get(); }
   RewriteOptions* ReleaseOptions() { return options_.release(); }
@@ -174,6 +183,7 @@ class RewriteQuery {
   static Status ScanNameValue(const StringPiece& name,
                               const StringPiece& value,
                               bool allow_options,
+                              const RequestContextPtr& request_context,
                               RequestProperties* request_properties,
                               RewriteOptions* options,
                               MessageHandler* handler);
@@ -211,6 +221,7 @@ class RewriteQuery {
 
   QueryParams query_params_;
   QueryParams pagespeed_query_params_;
+  QueryParams pagespeed_option_cookies_;
   scoped_ptr<RewriteOptions> options_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteQuery);

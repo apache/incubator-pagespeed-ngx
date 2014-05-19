@@ -896,6 +896,7 @@ RewriteOptions* ServerContext::NewOptions() {
 }
 
 bool ServerContext::GetQueryOptions(
+    const RequestContextPtr& request_context,
     const RewriteOptions* domain_options, GoogleUrl* request_url,
     RequestHeaders* request_headers, ResponseHeaders* response_headers,
     RewriteQuery* rewrite_query) {
@@ -907,8 +908,8 @@ bool ServerContext::GetQueryOptions(
   return RewriteQuery::IsOK(rewrite_query->Scan(
       domain_options->add_options_to_urls(),
       domain_options->allow_options_to_be_set_by_cookies(),
-      domain_options->request_option_override(), factory(), this, request_url,
-      request_headers, response_headers, message_handler_));
+      domain_options->request_option_override(), request_context, factory(),
+      this, request_url, request_headers, response_headers, message_handler_));
 }
 
 bool ServerContext::ScanSplitHtmlRequest(const RequestContextPtr& ctx,

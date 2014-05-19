@@ -1,7 +1,7 @@
-(function(){var orig_date = Date, random_count = 0, date_count = 0, random_seed = 0.462, time_seed = 1204251968254;
+(function(){var orig_date = Date, random_count = 0, date_count = 0, random_seed = .462, time_seed = 1204251968254;
 Math.random = function() {
   random_count++;
-  25 < random_count && (random_seed += 0.1, random_count = 1);
+  25 < random_count && (random_seed += .1, random_count = 1);
   return random_seed % 1;
 };
 Date = function() {

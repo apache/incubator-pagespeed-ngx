@@ -19,7 +19,6 @@
 
 #include "base/logging.h"
 #include "net/instaweb/apache/apache_server_context.h"
-#include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/header_util.h"
 #include "net/instaweb/apache/mod_instaweb.h"
 #include "net/instaweb/http/public/content_type.h"
@@ -37,7 +36,9 @@
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/stack_buffer.h"
 #include "pagespeed/kernel/base/atomic_bool.h"
+#include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/http/google_url.h"
+#include "pagespeed/kernel/http/query_params.h"
 
 #include "apr_strings.h"
 #include "http_config.h"
@@ -91,6 +92,8 @@ InstawebContext::InstawebContext(request_rec* request,
                                  ApacheServerContext* server_context,
                                  const GoogleString& absolute_url,
                                  const RequestContextPtr& request_context,
+                                 const QueryParams& pagespeed_query_params,
+                                 const QueryParams& pagespeed_option_cookies,
                                  bool use_custom_options,
                                  const RewriteOptions& options)
     : content_encoding_(kNone),
@@ -125,6 +128,21 @@ InstawebContext::InstawebContext(request_rec* request,
         custom_options, request_context);
   } else {
     rewrite_driver_ = server_context_->NewRewriteDriver(request_context);
+  }
+
+  // Set or clear sticky option cookies as appropriate.
+  rewrite_driver_->set_pagespeed_query_params(
+      pagespeed_query_params.ToEscapedString());
+  rewrite_driver_->set_pagespeed_option_cookies(
+      pagespeed_option_cookies.ToEscapedString());
+  GoogleUrl gurl(absolute_url_);
+  ResponseHeaders resp_headers;  // Temporary headers for our cookies.
+  if (rewrite_driver_->SetOrClearPageSpeedOptionCookies(gurl, &resp_headers)) {
+    // TODO(matterbury): Rationalize how we add/update response headers.
+    // This context has a response_headers_ member that's barely used, although
+    // it is used by the related RewriteDriver; should we just add these to that
+    // and rely on them being converted to Apache headers later?
+    ResponseHeadersToApacheRequest(resp_headers, request);
   }
 
   const char* user_agent = apr_table_get(request->headers_in,
@@ -397,12 +415,12 @@ void InstawebContext::SetExperimentStateAndCookie(request_rec* request,
       ClassifyIntoExperiment(*request_headers_, options);
   if (need_cookie) {
     ResponseHeaders resp_headers;
-    AprTimer timer;
     const char* url = apr_table_get(request->notes, kPagespeedOriginalUrl);
     int experiment_value = options->experiment_id();
     server_context_->experiment_matcher()->StoreExperimentData(
         experiment_value, url,
-        timer.NowMs() + options->experiment_cookie_duration_ms(),
+        (server_context_->timer()->NowMs() +
+         options->experiment_cookie_duration_ms()),
         &resp_headers);
     ResponseHeadersToApacheRequest(resp_headers, request);
   }

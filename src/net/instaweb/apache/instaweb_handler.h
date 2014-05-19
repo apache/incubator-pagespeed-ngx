@@ -133,9 +133,15 @@ class InstawebHandler {
   const RequestContextPtr request_context() const { return request_context_; }
   bool use_custom_options() const { return custom_options_.get() != NULL; }
   const QueryParams& query_params() { return rewrite_query_.query_params(); }
+  const QueryParams& pagespeed_query_params() {
+    return rewrite_query_.pagespeed_query_params();
+  }
+  const QueryParams& pagespeed_option_cookies() {
+    return rewrite_query_.pagespeed_option_cookies();
+  }
 
   void SetupSpdyConnectionIfNeeded();
-  void RemoveStrippedResponseHeadersFromApacheReequest();
+  void RemoveStrippedResponseHeadersFromApacheRequest();
 
   // Makes a driver from the request_context and options.  Note that
   // this can only be called once, as it potentially mutates the options

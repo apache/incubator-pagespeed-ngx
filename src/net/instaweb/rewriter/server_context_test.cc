@@ -344,10 +344,10 @@ class ServerContextTest : public RewriteTestBase {
     RewriteOptions* copy_options = domain_options != NULL ?
         domain_options->Clone() : NULL;
     RewriteQuery rewrite_query;
-    bool success =
-        server_context()->GetQueryOptions(NULL, &gurl, request_headers, NULL,
-                                          &rewrite_query);
-    EXPECT_TRUE(success);
+    RequestContextPtr null_request_context;
+    EXPECT_TRUE(server_context()->GetQueryOptions(
+        null_request_context, NULL, &gurl, request_headers, NULL,
+        &rewrite_query));
     RewriteOptions* options =
         server_context()->GetCustomOptions(request_headers, copy_options,
                                            rewrite_query.ReleaseOptions());
@@ -403,8 +403,10 @@ TEST_F(ServerContextTest, CustomOptionsWithNoUrlNamerOptions) {
   // options to be uncomputable.
   GoogleUrl gurl("http://example.com/?PageSpeedFilters=bogus_filter");
   RewriteQuery rewrite_query;
+  RequestContextPtr null_request_context;
   EXPECT_FALSE(server_context()->GetQueryOptions(
-      options.get(), &gurl, &request_headers, NULL, &rewrite_query));
+      null_request_context, options.get(), &gurl, &request_headers, NULL,
+      &rewrite_query));
 
   // The default url_namer does not yield any name-derived options, and we
   // have not specified any URL params or request-headers, and kXRequestedWith
@@ -498,8 +500,10 @@ TEST_F(ServerContextTest, CustomOptionsWithUrlNamerOptions) {
   // options to be uncomputable.
   GoogleUrl gurl("http://example.com/?PageSpeedFilters=bogus_filter");
   RewriteQuery rewrite_query;
+  RequestContextPtr null_request_context;
   EXPECT_FALSE(server_context()->GetQueryOptions(
-      options.get(), &gurl, &request_headers, NULL, &rewrite_query));
+      null_request_context, options.get(), &gurl, &request_headers, NULL,
+      &rewrite_query));
 
   request_headers.Add(
       HttpAttributes::kXRequestedWith, "bogus");

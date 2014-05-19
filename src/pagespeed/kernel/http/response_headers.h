@@ -28,6 +28,7 @@
 
 namespace net_instaweb {
 
+class GoogleUrl;
 class HttpResponseHeaders;
 class MessageHandler;
 class Writer;
@@ -327,6 +328,17 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // '*attribute_value' iff it isn't NULL.
   bool HasAnyCookiesWithAttribute(StringPiece attribute_name,
                                   StringPiece* attribute_value);
+
+  // Set or clears the given query parameters as response header cookies,
+  // skipping any in to_exclude. query_params and option_cookies are both
+  // query parameters (name=value separated by '&'s) and are treated as
+  // untrusted data. Sets the cookies' Expires attributes to the given value.
+  // Returns true if any cookies were set, false if not.
+  bool SetQueryParamsAsCookies(const GoogleUrl& gurl, StringPiece query_params,
+                               const StringPieceVector& to_exclude,
+                               int64 expiration_time);
+  bool ClearOptionCookies(const GoogleUrl& gurl, StringPiece option_cookies,
+                          const StringPieceVector& to_exclude);
 
  protected:
   virtual void UpdateHook();

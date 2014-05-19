@@ -225,6 +225,8 @@ const char RewriteOptions::kNoTransformOptimizedImages[] =
 const char RewriteOptions::kNonCacheablesForCachePartialHtml[] =
     "NonCacheablesForCachePartialHtml";
 const char RewriteOptions::kObliviousPagespeedUrls[] = "ObliviousPagespeedUrls";
+const char RewriteOptions::kOptionCookiesDurationMs[] =
+    "OptionCookiesDurationMs";
 const char RewriteOptions::kOverrideCachingTtlMs[] = "OverrideCachingTtlMs";
 const char RewriteOptions::kPersistBlinkBlacklist[] = "PersistBlinkBlacklist";
 const char RewriteOptions::kPreserveUrlRelativity[] = "PreserveUrlRelativity";
@@ -259,6 +261,7 @@ const char RewriteOptions::kServeStaleWhileRevalidateThresholdSec[] =
     "ServeStaleWhileRevalidateThresholdSec";
 const char RewriteOptions::kServeXhrAccessControlHeaders[] =
     "ServeXhrAccessControlHeaders";
+const char RewriteOptions::kStickyQueryParameters[] = "StickyQueryParameters";
 const char RewriteOptions::kSupportNoScriptEnabled[] = "SupportNoScriptEnabled";
 const char
     RewriteOptions::kTestOnlyPrioritizeCriticalCssDontApplyOriginalCss[] =
@@ -481,6 +484,9 @@ const int RewriteOptions::kDefaultMaxUrlSegmentSize = 1024;
 
 // Maximum JS elements to prefetch early when defer JS filter is enabled.
 const int RewriteOptions::kDefaultMaxPrefetchJsElements = 0;
+
+// Expiration limit for cookies that set PageSpeed options: 10 minutes.
+const int64 RewriteOptions::kDefaultOptionCookiesDurationMs = 10 * 60 * 1000;
 
 #ifdef NDEBUG
 const int RewriteOptions::kDefaultRewriteDeadlineMs = 10;
@@ -2126,6 +2132,24 @@ void RewriteOptions::AddProperties() {
       "Set a cache fragment to allow servers with different hostnames to "
       "share a cache.  Allowed: letters, numbers, underscores, and hyphens.");
 
+  AddBaseProperty(
+      "",
+      &RewriteOptions::sticky_query_parameters_,
+      "sqp",
+      kStickyQueryParameters,
+      kDirectoryScope,
+      "The token that must be set by the PageSpeedStickyQueryParameters query "
+      "parameter/header in a request to enable the setting of cookies for all "
+      "other PageSpeed query parameters/headers in the request. Blank means "
+      "it is disabled.");
+  AddBaseProperty(
+      kDefaultOptionCookiesDurationMs,
+      &RewriteOptions::option_cookies_duration_ms_,
+      "ocd",
+      kOptionCookiesDurationMs,
+      kDirectoryScope,
+      "The max-age in ms of cookies that set PageSpeed options.");
+
   // Test-only, so no enum.
   AddRequestProperty(
       false, &RewriteOptions::test_instant_fetch_rewrite_deadline_, "tifrwd");
@@ -2997,7 +3021,7 @@ RewriteOptions::OptionSettingResult RewriteOptions::ParseAndSetOptionFromName1(
   } else if (StringCaseEqual(name, kRetainComment)) {
     RetainComment(arg);
   } else if (StringCaseEqual(name, kBlockingRewriteRefererUrls)) {
-      EnableBlockingRewriteForRefererUrlPattern(arg);
+    EnableBlockingRewriteForRefererUrlPattern(arg);
   } else {
     result = RewriteOptions::kOptionNameUnknown;
   }

@@ -315,6 +315,7 @@ class RewriteOptions {
   static const char kNoTransformOptimizedImages[];
   static const char kNonCacheablesForCachePartialHtml[];
   static const char kObliviousPagespeedUrls[];
+  static const char kOptionCookiesDurationMs[];
   static const char kOverrideCachingTtlMs[];
   static const char kPersistBlinkBlacklist[];
   static const char kPreserveUrlRelativity[];
@@ -338,6 +339,7 @@ class RewriteOptions {
   static const char kServeStaleIfFetchError[];
   static const char kServeStaleWhileRevalidateThresholdSec[];
   static const char kServeXhrAccessControlHeaders[];
+  static const char kStickyQueryParameters[];
   static const char kSupportNoScriptEnabled[];
   static const char kTestOnlyPrioritizeCriticalCssDontApplyOriginalCss[];
   static const char kUseBlankImageForInlinePreview[];
@@ -632,6 +634,7 @@ class RewriteOptions {
   static const int kDefaultDomainShardCount;
   static const int64 kDefaultBlinkHtmlChangeDetectionTimeMs;
   static const int kDefaultMaxPrefetchJsElements;
+  static const int64 kDefaultOptionCookiesDurationMs;
 
   // IE limits URL size overall to about 2k characters.  See
   // http://support.microsoft.com/kb/208427/EN-US
@@ -2351,6 +2354,20 @@ class RewriteOptions {
     return cache_fragment_.value();
   }
 
+  void set_sticky_query_parameters(StringPiece p) {
+    set_option(p.as_string(), &sticky_query_parameters_);
+  }
+  const GoogleString& sticky_query_parameters() const {
+    return sticky_query_parameters_.value();
+  }
+
+  void set_option_cookies_duration_ms(int64 x) {
+    set_option(x, &option_cookies_duration_ms_);
+  }
+  int64 option_cookies_duration_ms() const {
+    return option_cookies_duration_ms_.value();
+  }
+
   // Merge src into 'this'.  Generally, options that are explicitly
   // set in src will override those explicitly set in 'this' (except that
   // filters forbidden in 'this' cannot be enabled by 'src'), although
@@ -3777,6 +3794,13 @@ class RewriteOptions {
 
   // Pass this string in url to allow for pagespeed options.
   Option<GoogleString> request_option_override_;
+
+  // sticky_query_parameters_ is the token specified in the configuration that
+  // must be specified in a request's query parameters/headers for the other
+  // options in the request to be converted to cookies.
+  // option_cookies_duration_ms_ is how long the cookie will live for when set.
+  Option<GoogleString> sticky_query_parameters_;
+  Option<int64> option_cookies_duration_ms_;
 
   // If set, how to fragment the http cache.  Otherwise the server's hostname,
   // from the Host header, is used.

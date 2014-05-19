@@ -31,6 +31,7 @@
 #include "pagespeed/kernel/base/time_util.h"
 #include "pagespeed/kernel/base/timer.h"  // for Timer
 #include "pagespeed/kernel/http/content_type.h"
+#include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/http/http.pb.h"
 #include "pagespeed/kernel/http/http_names.h"
 #include "pagespeed/kernel/http/request_headers.h"
@@ -172,6 +173,23 @@ class ResponseHeadersTest : public testing::Test {
     properties.has_cookie2 = has_cookie2;
     return response_headers_.IsProxyCacheable(
         properties, respect_vary, has_validator);
+  }
+
+  void CheckCookies(const ResponseHeaders& headers, StringPiece name,
+                    StringPiece value, int64 expiration) {
+    GoogleString expiration_string;
+    ConvertTimeToString(expiration, &expiration_string);
+    expiration_string = StrCat(" Expires=", expiration_string);
+    StringPieceVector values;
+    StringPieceVector attributes;
+    EXPECT_TRUE(headers.HasCookie(name, &values, &attributes));
+    EXPECT_EQ(1, values.size());
+    EXPECT_EQ(value, values[0]);
+    EXPECT_EQ(4, attributes.size());
+    EXPECT_EQ(expiration_string, attributes[0]);
+    EXPECT_EQ(" Domain=test.com", attributes[1]);
+    EXPECT_EQ(" Path=/", attributes[2]);
+    EXPECT_EQ(" HttpOnly", attributes[3]);
   }
 
   template<class Proto>
@@ -2002,6 +2020,56 @@ TEST_F(ResponseHeadersTest, CopyToProto) {
   EXPECT_EQ("bar", headers_proto.header(0).value());
   EXPECT_EQ("baz", headers_proto.header(1).name());
   EXPECT_EQ("boo", headers_proto.header(1).value());
+}
+
+TEST_F(ResponseHeadersTest, SetQueryParamsAsCookies) {
+  const char kBaseHeaders[] =
+      "HTTP/1.0 0 (null)\r\nfoo: bar\r\nbaz: boo\r\n\r\n";
+  ResponseHeaders headers;
+  headers.Add("foo", "bar");
+  headers.Add("baz", "boo");
+  EXPECT_EQ(kBaseHeaders, headers.ToString());
+
+  const GoogleUrl kTestUrl("http://test.com/index.html");
+  const char kPageSpeedQueryParams[] =
+      "PageSpeedFilters=+inline_css&xyzzy=plugh&notme=nuh-uh&empty=&null";
+  StringPieceVector to_exclude;
+  to_exclude.push_back("notme");
+  EXPECT_FALSE(headers.SetQueryParamsAsCookies(
+      kTestUrl, "", to_exclude, MockTimer::kApr_5_2010_ms));
+  EXPECT_TRUE(headers.SetQueryParamsAsCookies(
+      kTestUrl, kPageSpeedQueryParams, to_exclude, MockTimer::kApr_5_2010_ms));
+  CheckCookies(headers, "PageSpeedFilters", "%2binline_css",
+               MockTimer::kApr_5_2010_ms);
+  CheckCookies(headers, "xyzzy", "plugh", MockTimer::kApr_5_2010_ms);
+  CheckCookies(headers, "empty", "", MockTimer::kApr_5_2010_ms);
+  CheckCookies(headers, "null", "", MockTimer::kApr_5_2010_ms);
+  EXPECT_TRUE(headers.Sanitize());
+  EXPECT_EQ(kBaseHeaders, headers.ToString());
+}
+
+TEST_F(ResponseHeadersTest, ClearOptionCookies) {
+  const char kBaseHeaders[] =
+      "HTTP/1.0 0 (null)\r\nfoo: bar\r\nbaz: boo\r\n\r\n";
+  ResponseHeaders headers;
+  headers.Add("foo", "bar");
+  headers.Add("baz", "boo");
+  EXPECT_EQ(kBaseHeaders, headers.ToString());
+
+  const GoogleUrl kTestUrl("http://test.com/index.html");
+  const char kPageSpeedQueryParams[] =
+      "PageSpeedFilters=+inline_css&xyzzy=plugh&notme=nuh-uh&empty=&null";
+  StringPieceVector to_exclude;
+  to_exclude.push_back("notme");
+  EXPECT_FALSE(headers.ClearOptionCookies(kTestUrl, "", to_exclude));
+  EXPECT_TRUE(headers.ClearOptionCookies(kTestUrl, kPageSpeedQueryParams,
+                                         to_exclude));
+  CheckCookies(headers, "PageSpeedFilters", "", 0);
+  CheckCookies(headers, "xyzzy", "", 0);
+  CheckCookies(headers, "empty", "", 0);
+  CheckCookies(headers, "null", "", 0);
+  EXPECT_TRUE(headers.Sanitize());
+  EXPECT_EQ(kBaseHeaders, headers.ToString());
 }
 
 }  // namespace net_instaweb

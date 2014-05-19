@@ -25,6 +25,7 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/query_params.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_multi_map.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -37,6 +38,8 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+
+namespace net_instaweb {
 
 namespace {
 
@@ -52,9 +55,19 @@ const char kProxyOptionMode[] = "m";
 const char kProxyOptionImageQualityPreference[] = "iqp";
 const char kProxyOptionValidVersionValue[] = "1";
 
-}  // namespace
+StringPiece SanitizeValueAsQP(StringPiece untrusted_value,
+                              GoogleUrl* storage) {
+  // This is ever so slightly hacky: we dummy up an URL with a QP where the
+  // value of the QP is the untrusted value, then we discard everything
+  // prior to the possibly-modified value in the resulting GoogleUrl.
+  const char kUrlBase[] = "http://www.example.com/?x=";
+  storage->Reset(StrCat(kUrlBase, untrusted_value));
+  StringPiece sanitized_value = storage->Spec();
+  return StringPiece(sanitized_value.data() + STATIC_STRLEN(kUrlBase),
+                     sanitized_value.size() - STATIC_STRLEN(kUrlBase));
+}
 
-namespace net_instaweb {
+}  // namespace
 
 const char RewriteQuery::kModPagespeed[] = "ModPagespeed";
 const char RewriteQuery::kPageSpeed[] = "PageSpeed";
@@ -66,10 +79,11 @@ const char RewriteQuery::kNoscriptValue[] = "noscript";
 
 template <class HeaderT>
 RewriteQuery::Status RewriteQuery::ScanHeader(
-    HeaderT* headers,
-    RequestProperties* request_properties,
     bool allow_options,
     const GoogleString& request_option_override,
+    const RequestContextPtr& request_context,
+    HeaderT* headers,
+    RequestProperties* request_properties,
     RewriteOptions* options,
     MessageHandler* handler) {
   Status status = kNoneFound;
@@ -100,8 +114,8 @@ RewriteQuery::Status RewriteQuery::ScanHeader(
   for (int i = 0, n = headers->NumAttributes(); i < n; ++i) {
     const StringPiece name(headers->Name(i));
     const GoogleString& value = headers->Value(i);
-    switch (ScanNameValue(name, value, allow_options, request_properties,
-                          options, handler)) {
+    switch (ScanNameValue(name, value, allow_options, request_context,
+                          request_properties, options, handler)) {
       case kNoneFound:
         break;
       case kSuccess:
@@ -134,15 +148,16 @@ RewriteQuery::RewriteQuery() {
 RewriteQuery::~RewriteQuery() {
 }
 
-// Scan for option-sets in query parameters, request and response headers, and
-// Cookies. We only allow a limited number of options to be set. In particular,
-// some options are risky to set this way, such as image inline threshold,
-// which exposes a DOS vulnerability and a risk of poisoning our internal cache,
-// and domain adjustments, which can introduce a security vulnerability.
+// Scan for option-sets in cookies, query params, request and response headers.
+// We only allow a limited number of options to be set. In particular, some
+// options are risky to set this way, such as image inline threshold, which
+// exposes a DOS vulnerability and a risk of poisoning our internal cache, and
+// domain adjustments, which can introduce a security vulnerability.
 RewriteQuery::Status RewriteQuery::Scan(
     bool allow_related_options,
     bool allow_options_to_be_specified_by_cookies,
     const GoogleString& request_option_override,
+    const RequestContextPtr& request_context,
     RewriteDriverFactory* factory,
     ServerContext* server_context,
     GoogleUrl* request_url,
@@ -152,6 +167,7 @@ RewriteQuery::Status RewriteQuery::Scan(
   Status status = kNoneFound;
   query_params_.Clear();
   pagespeed_query_params_.Clear();
+  pagespeed_option_cookies_.Clear();
   options_.reset(NULL);
 
   // To support serving resources from servers that don't share the
@@ -228,14 +244,51 @@ RewriteQuery::Status RewriteQuery::Scan(
     }
   }
 
-  // Scan for options set in cookies. They can be overridden by QPs or headers.
-  RequestHeaders::CookieMultimapConstIter it = all_cookies.begin();
-  RequestHeaders::CookieMultimapConstIter end = all_cookies.end();
-  for (; it != end; ++it) {
-    if (ScanNameValue(it->first, it->second.first, allow_options,
-                      request_properties.get(), options_.get(), handler)
-        == kSuccess) {
-      status = kSuccess;
+  // Scan for options set as cookies. They can be overridden by QPs or headers.
+  // An explanation of the life cycle of a PageSpeed option cookie:
+  // * Initially the value is passed in as a GoogleUrl query parameter.
+  // * GoogleUrl does minimal escaping, mainly removing whitespace and
+  //   percent-encoding control characters.
+  // * That is parsed by QueryParams (above), which does no further escaping.
+  // * Since cookie values have restrictions on the characters allowed in the
+  //   value (e.g. no ';'s), we GoogleUrl::Escape the value, which does
+  //   significant percent-escaping (nearly everything except alphanumeric).
+  //   This is done in ResponseHeaders::SetPageSpeedQueryParamsAsCookies().
+  // [So now we're here, where we use the cookie values set by the above steps]
+  // * We GoogleUrl::Unescape the cookie value to reverse the previous step.
+  //   Note that GoogleUrl::Unescape(GoogleUrl::Escape(x)) is the identify
+  //   function, so we expect the value to be GoogleUrl minimally escaped.
+  // * We sanitize the unescaped cookie value by dummying up a GoogleUrl with
+  //   the value as a query parameter value, hence re-minimally escaping it.
+  // * We then escape this sanitized value since that's the process that we
+  //   went through above: if this escaped value equals the cookie value then
+  //   the cookie value seems authentic -and- the unescaped value must also be
+  //   sanitized, meaning it's safe to pass to our value parsing logic. If the
+  //   escaped value does -not- equal the cookie value, it means the cookie has
+  //   characters that we cannot have put there, and we assume that someone has
+  //   manually set it in an attempt to circumvent our precautions, so we
+  //   ignore the cookie completely.
+  RequestHeaders::CookieMultimapConstIter it, end;
+  for (it = all_cookies.begin(), end = all_cookies.end(); it != end; ++it) {
+    GoogleUrl gurl;
+    GoogleString unescaped = GoogleUrl::UnescapeIgnorePlus(it->second.first);
+    StringPiece sanitized = SanitizeValueAsQP(unescaped, &gurl);
+    GoogleString escaped = GoogleUrl::Escape(sanitized);
+    if (unescaped == sanitized && escaped == it->second.first) {
+      RequestContextPtr null_request_context;
+      if (ScanNameValue(it->first, unescaped, allow_options,
+                        null_request_context, request_properties.get(),
+                        options_.get(), handler) == kSuccess) {
+        pagespeed_option_cookies_.AddEscaped(it->first, unescaped);
+        status = kSuccess;
+      }
+      // A PageSpeed cookies with an invalid value will not be cleared. This
+      // is unfortunate but OK since they'll never apply (due to the invalid
+      // value) and will eventually expire anyway.
+    } else {
+      handler->Message(kInfo, "Cookie value seems mangled: "
+                       "cookie='%s', escaped='%s'",
+                       it->second.first.as_string().c_str(), escaped.c_str());
     }
   }
 
@@ -250,7 +303,7 @@ RewriteQuery::Status RewriteQuery::Scan(
       GlobalReplaceSubstring(" " , "+", &unescaped_value);
       switch (ScanNameValue(
           query_params_.name(i), unescaped_value, allow_options,
-          request_properties.get(), options_.get(), handler)) {
+          request_context, request_properties.get(), options_.get(), handler)) {
         case kNoneFound:
           // If this is not a PageSpeed-related query-parameter, then save it
           // in its escaped form.
@@ -282,8 +335,8 @@ RewriteQuery::Status RewriteQuery::Scan(
   }
 
   switch (ScanHeader<RequestHeaders>(
-      request_headers, request_properties.get(), allow_options,
-      request_option_override, options_.get(), handler)) {
+      allow_options, request_option_override, request_context, request_headers,
+      request_properties.get(), options_.get(), handler)) {
     case kNoneFound:
       break;
     case kSuccess:
@@ -296,8 +349,8 @@ RewriteQuery::Status RewriteQuery::Scan(
   }
 
   switch (ScanHeader<ResponseHeaders>(
-      response_headers, request_properties.get(), allow_options,
-      request_option_override, options_.get(), handler)) {
+      allow_options, request_option_override, request_context, response_headers,
+      request_properties.get(), options_.get(), handler)) {
     case kNoneFound:
       break;
     case kSuccess:
@@ -393,6 +446,7 @@ bool RewriteQuery::MayHaveCustomOptions(
 
 RewriteQuery::Status RewriteQuery::ScanNameValue(
     const StringPiece& name, const StringPiece& value, bool allow_options,
+    const RequestContextPtr& request_context,
     RequestProperties* request_properties, RewriteOptions* options,
     MessageHandler* handler) {
   Status status = kNoneFound;
@@ -469,7 +523,14 @@ RewriteQuery::Status RewriteQuery::ScanNameValue(
         status = kSuccess;
         break;
       case RewriteOptions::kOptionNameUnknown:
-        status = kNoneFound;
+        if (request_context.get() != NULL &&
+            StringCaseEqual(name_suffix,
+                            RewriteOptions::kStickyQueryParameters)) {
+          request_context->set_sticky_query_parameters_token(trimmed_value);
+          status = kSuccess;
+        } else {
+          status = kNoneFound;
+        }
         break;
       case RewriteOptions::kOptionValueInvalid:
         status = kInvalid;

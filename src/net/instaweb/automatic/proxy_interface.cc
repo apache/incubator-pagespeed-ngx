@@ -216,9 +216,10 @@ void ProxyInterface::GetRewriteOptionsDone(RequestData* request_data,
 
   // Parse the query options, headers, and cookies.
   RewriteQuery query;
-  if (!server_context_->GetQueryOptions(domain_options, request_url,
+  if (!server_context_->GetQueryOptions(async_fetch->request_context(),
+                                        domain_options, request_url,
                                         async_fetch->request_headers(),
-                                        NULL, &query)) {
+                                        NULL /* response_headers */, &query)) {
     async_fetch->response_headers()->SetStatusAndReason(
         HttpStatus::kMethodNotAllowed);
     async_fetch->Write("Invalid PageSpeed query-params/request headers",
@@ -353,10 +354,14 @@ void ProxyInterface::GetRewriteOptionsDone(RequestData* request_data,
     // TODO(mmohabey): Factor out the below checks so that they are not
     // repeated in BlinkUtil::IsBlinkRequest().
 
-    // Copy over any stripped query parameters so we can re-add them if we
+    // Copy over any PageSpeed query parameters so we can re-add them if we
     // receive a redirection response to our fetch request.
     driver->set_pagespeed_query_params(
         query.pagespeed_query_params().ToEscapedString());
+    // Copy over any PageSpeed cookies so we know which ones to clear in
+    // ProxyFetch::HandleHeadersComplete().
+    driver->set_pagespeed_option_cookies(
+        query.pagespeed_option_cookies().ToEscapedString());
 
     if (driver->options() != NULL && driver->options()->enabled() &&
         property_callback != NULL &&

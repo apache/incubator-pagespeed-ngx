@@ -359,7 +359,7 @@ void ProxyFetchPropertyCallbackCollector::ExecuteConnectProxyFetch(
   if (!options->await_pcache_lookup()) {
     std::set<ProxyFetchPropertyCallback*>::iterator iter;
     for (iter = pending_callbacks_.begin(); iter != pending_callbacks_.end();
-        ++iter) {
+         ++iter) {
       // Finish all the PropertyCache lookups as soon as possible as origin
       // starts sending content.
       (*iter)->FastFinishLookup();
@@ -591,6 +591,12 @@ void ProxyFetch::HandleHeadersComplete() {
     }
   }
 
+  // Set or clear sticky option cookies as appropriate.
+  if (response_headers() != NULL) {
+    GoogleUrl gurl(url_);
+    driver_->SetOrClearPageSpeedOptionCookies(gurl, response_headers());
+  }
+
   // Figure out semantic info from response_headers_
   claims_html_ = response_headers()->IsHtmlLike();
   if (original_content_fetch_ != NULL) {
@@ -599,7 +605,7 @@ void ProxyFetch::HandleHeadersComplete() {
 
     if (!server_context_->ProxiesHtml() && claims_html_) {
       LOG(DFATAL) << "Investigate how servers that don't proxy HTML can be "
-          "initiated with original_content_fetch_ non-null";
+                     "initiated with original_content_fetch_ non-null";
       headers->SetStatusAndReason(HttpStatus::kForbidden);
     }
     original_content_fetch_->HeadersComplete();
@@ -1068,7 +1074,6 @@ void ProxyFetch::ExecuteQueued() {
   }
 }
 
-
 void ProxyFetch::Finish(bool success) {
   ProxyFetchPropertyCallbackCollector* detach_callback = NULL;
   {
@@ -1102,7 +1107,7 @@ void ProxyFetch::Finish(bool success) {
   if (driver_ != NULL) {
     if (started_parse_) {
       driver_->FinishParseAsync(
-        MakeFunction(this, &ProxyFetch::CompleteFinishParse, success));
+          MakeFunction(this, &ProxyFetch::CompleteFinishParse, success));
       return;
 
     } else {

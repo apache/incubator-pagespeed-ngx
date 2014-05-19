@@ -344,14 +344,18 @@ void InstawebHandler::ComputeCustomOptions() {
   // hard to fix, so instead we're documenting that you must make sure the
   // configuration for your resources matches the configuration for your html
   // files.
-  ApacheConfig* directory_options = static_cast<ApacheConfig*>
-      ap_get_module_config(request_->per_dir_config, &pagespeed_module);
-  if ((directory_options != NULL) && directory_options->modified()) {
-    custom_options_.reset(
-        server_context_->apache_factory()->NewRewriteOptions());
-    custom_options_->Merge(*options_);
-    directory_options->Freeze();
-    custom_options_->Merge(*directory_options);
+  {
+    // In subscope so directory_options can't be used later by mistake since
+    // it should only be used for computing the custom options.
+    ApacheConfig* directory_options = static_cast<ApacheConfig*>
+        ap_get_module_config(request_->per_dir_config, &pagespeed_module);
+    if ((directory_options != NULL) && directory_options->modified()) {
+      custom_options_.reset(
+          server_context_->apache_factory()->NewRewriteOptions());
+      custom_options_->Merge(*options_);
+      directory_options->Freeze();
+      custom_options_->Merge(*directory_options);
+    }
   }
 
   // TODO(sligocki): Move inside PSOL.
@@ -369,8 +373,9 @@ void InstawebHandler::ComputeCustomOptions() {
                                  &response_headers_);
   num_response_attributes_ = response_headers_.NumAttributes();
 
-  if (!server_context_->GetQueryOptions((directory_options != NULL)
-                                        ? directory_options : options_,
+  if (!server_context_->GetQueryOptions(request_context(),
+                                        (custom_options_.get() != NULL)
+                                        ? custom_options_.get() : options_,
                                         &stripped_gurl_, request_headers_.get(),
                                         &response_headers_, &rewrite_query_)) {
     server_context_->message_handler()->Message(
@@ -397,7 +402,7 @@ void InstawebHandler::ComputeCustomOptions() {
   }
 }
 
-void InstawebHandler::RemoveStrippedResponseHeadersFromApacheReequest() {
+void InstawebHandler::RemoveStrippedResponseHeadersFromApacheRequest() {
   // Write back the modified response headers if any have been stripped by
   // GetQueryOptions (which indicates that options were found).
   // Note: GetQueryOptions should not add or mutate headers, only remove
@@ -429,13 +434,20 @@ void InstawebHandler::RemoveStrippedResponseHeadersFromApacheReequest() {
       // Use ScanHeader's parsing logic to find and strip the PageSpeed
       // options from the headers. Use NULL for device_properties as no
       // device property information is needed for the stripping.
-      RewriteQuery::ScanHeader(
-          &tmp_err_resp_headers, NULL /* device_properties */,
-          true /* enable options */, "" /* request option override */,
-          &unused_opts1, server_context_->message_handler());
-      RewriteQuery::ScanHeader(&tmp_resp_headers, NULL /* device_properties */,
-                               true /* enable options */,
-                               "" /* request option override */, &unused_opts2,
+      RequestContextPtr null_request_context;
+      RewriteQuery::ScanHeader(true /* enable options */,
+                               "" /* request option override */,
+                               null_request_context,
+                               &tmp_err_resp_headers,
+                               NULL /* device_properties */,
+                               &unused_opts1,
+                               server_context_->message_handler());
+      RewriteQuery::ScanHeader(true /* enable options */,
+                               "" /* request option override */,
+                               null_request_context,
+                               &tmp_resp_headers,
+                               NULL /* device_properties */,
+                               &unused_opts2,
                                server_context_->message_handler());
 
       // Write the stripped headers back to the Apache record.

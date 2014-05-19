@@ -1129,9 +1129,25 @@ class RewriteDriver : public HtmlParse {
     return pagespeed_query_params_;
   }
 
+  void set_pagespeed_option_cookies(StringPiece x) {
+    x.CopyToString(&pagespeed_option_cookies_);
+  }
+  StringPiece pagespeed_option_cookies() const {
+    return pagespeed_option_cookies_;
+  }
+
   // We fragment the cache based on the hostname we got from the request, unless
   // that was overridden in the options with a cache_fragment.
   const GoogleString& CacheFragment() const;
+
+  // Utility function to set/clear cookies for PageSpeed options. gurl is the
+  // URL of the request from which the host is extracted for a cookie attribute.
+  // TODO(matterbury): Get the URL from 'this' which we can't do now because it
+  // isn't set until we've decided that the content of requested URL is HTML.
+  // Returns true if any Set-Cookie headers are added, in which case
+  // ComputeCaching has been called on response_headers.
+  bool SetOrClearPageSpeedOptionCookies(const GoogleUrl& gurl,
+                                        ResponseHeaders* response_headers);
 
  protected:
   virtual void DetermineEnabledFiltersImpl();
@@ -1658,6 +1674,9 @@ class RewriteDriver : public HtmlParse {
 
   // Any PageSpeed options stripped from the original URL.
   GoogleString pagespeed_query_params_;
+
+  // Any PageSpeed option cookies from the original request.
+  GoogleString pagespeed_option_cookies_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriver);
 };

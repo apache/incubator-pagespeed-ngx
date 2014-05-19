@@ -704,6 +704,7 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   DocumentRoot "@@APACHE_DOC_ROOT@@"
   ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@_optionsbycookieson"
   ModPagespeedAllowOptionsToBeSetByCookies true
+  ModPagespeedStickyQueryParameters sticky_secret
   ModPagespeedRewriteLevel PassThrough
   ModPagespeedEnableFilters collapse_whitespace
   ModPagespeedDisableFilters remove_comments,add_instrumentation
@@ -1509,6 +1510,7 @@ Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedModifyCachingHeaders true
 #ALL_DIRECTIVES ModPagespeedNumExpensiveRewriteThreads 2
 #ALL_DIRECTIVES ModPagespeedNumRewriteThreads 4
+#ALL_DIRECTIVES ModPagespeedOptionCookiesDurationMs 12345
 #ALL_DIRECTIVES ModPagespeedPreserveUrlRelativity on
 #ALL_DIRECTIVES ModPagespeedProgressiveJpegMinBytes 1000
 #ALL_DIRECTIVES ModPagespeedRateLimitBackgroundFetches true
@@ -1534,6 +1536,7 @@ Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedStatisticsLoggingFile /tmp/log/stats.log
 #ALL_DIRECTIVES ModPagespeedStatisticsLoggingIntervalMs 3000
 #ALL_DIRECTIVES ModPagespeedStatisticsLoggingMaxFileSizeKb 1024
+#ALL_DIRECTIVES ModPagespeedStickyQueryParameters something-private
 #ALL_DIRECTIVES ModPagespeedSupportNoScriptEnabled true
 #ALL_DIRECTIVES ModPagespeedTestProxy off
 #ALL_DIRECTIVES ModPagespeedUrlValuedAttribute span src Hyperlink

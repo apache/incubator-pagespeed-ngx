@@ -34,9 +34,11 @@
 #include "pagespeed/kernel/base/writer.h"
 #include "pagespeed/kernel/http/caching_headers.h"
 #include "pagespeed/kernel/http/content_type.h"
+#include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/http/headers.h"
 #include "pagespeed/kernel/http/http.pb.h"
 #include "pagespeed/kernel/http/http_names.h"
+#include "pagespeed/kernel/http/query_params.h"
 #include "pagespeed/kernel/http/request_headers.h"
 
 namespace net_instaweb {
@@ -983,6 +985,78 @@ bool ResponseHeaders::HasAnyCookiesWithAttribute(StringPiece attribute_name,
     }
   }
   return false;
+}
+
+bool ResponseHeaders::SetQueryParamsAsCookies(
+    const GoogleUrl& gurl, StringPiece query_params,
+    const StringPieceVector& options_to_exclude, int64 expiration_time) {
+  bool result = false;
+  // Domain (aka host).
+  StringPiece host = gurl.Host();
+  // Expiration time.
+  GoogleString expires;
+  ConvertTimeToString(expiration_time, &expires);
+  // Go through each query param and set a cookie for it.
+  QueryParams params;
+  params.ParseFromUntrustedString(query_params);
+  for (int i = 0, n = params.size(); i < n; ++i) {
+    StringPiece name = params.name(i);
+    bool skipit = false;
+    for (int j = 0, n = options_to_exclude.size(); j < n; ++j) {
+      if (name == options_to_exclude[j]) {
+        skipit = true;
+        break;
+      }
+    }
+    if (!skipit) {
+      // See RewriteQuery::Scan() for the discussion about why we apparently
+      // double-escape by GoogleUrl escaping the QueryParams escaped value.
+      const GoogleString* value = params.EscapedValue(i);
+      GoogleString escaped_value;
+      if (value != NULL) {
+        escaped_value = StrCat("=", GoogleUrl::Escape(*value));
+      }
+      GoogleString cookie = StrCat(
+          name, escaped_value, "; Expires=", expires, "; Domain=", host,
+          "; Path=/; HttpOnly");
+      Add(HttpAttributes::kSetCookie, cookie);
+      result = true;
+    }
+  }
+  return result;
+}
+
+bool ResponseHeaders::ClearOptionCookies(
+    const GoogleUrl& gurl, StringPiece option_cookies,
+    const StringPieceVector& options_to_exclude) {
+  bool result = false;
+  // Domain (aka host).
+  StringPiece host = gurl.Host();
+  // Expiration time. Zero is "the start of the epoch" and is the conventional
+  // way to immediately expire a cookie per:
+  // http://en.wikipedia.org/wiki/HTTP_cookie#Expires_and_Max-Age
+  GoogleString expires;
+  ConvertTimeToString(0, &expires);
+  // Go through each option cookie and clear each one.
+  QueryParams params;
+  params.ParseFromUntrustedString(option_cookies);
+  for (int i = 0, n = params.size(); i < n; ++i) {
+    StringPiece name = params.name(i);
+    bool skipit = false;
+    for (int j = 0, n = options_to_exclude.size(); j < n; ++j) {
+      if (name == options_to_exclude[j]) {
+        skipit = true;
+        break;
+      }
+    }
+    if (!skipit) {
+      GoogleString cookie = StrCat(params.name(i), "; Expires=", expires,
+                                   "; Domain=", host, "; Path=/; HttpOnly");
+      Add(HttpAttributes::kSetCookie, cookie);
+      result = true;
+    }
+  }
+  return result;
 }
 
 void ResponseHeaders::UpdateHook() {

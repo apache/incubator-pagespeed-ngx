@@ -20,6 +20,7 @@
 
 #include "net/instaweb/automatic/public/proxy_fetch.h"
 
+#include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
@@ -28,9 +29,10 @@
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/rewrite_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -83,11 +85,61 @@ class MockProxyFetch : public ProxyFetch {
 
   bool complete() const { return complete_; }
 
+  RewriteDriver* driver() const { return driver_; }
+
  private:
   bool complete_;
   DISALLOW_COPY_AND_ASSIGN(MockProxyFetch);
 };
 
+// A wrapper around MockProxyFetch that manages all objects on the heap and
+// initializes things for no parsing and then parses a token script. You must
+// NOT call Done() on the MockProxyFetch object as we do it in our destructor.
+class ManagedMockProxyFetch {
+ public:
+  ManagedMockProxyFetch(ServerContext* server_context,
+                        bool allow_options_to_be_set_by_cookies,
+                        StringPiece sticky_query_parameters,
+                        StringPiece sticky_query_parameters_token,
+                        StringPiece query_params, StringPiece option_cookies) {
+    server_context->global_options()->ClearSignatureForTesting();
+    server_context->global_options()->set_allow_options_to_be_set_by_cookies(
+        allow_options_to_be_set_by_cookies);
+    server_context->global_options()->set_sticky_query_parameters(
+        sticky_query_parameters);
+    // Suppresses parsing and the invocation of mock_proxy_fetch_->Done().
+    server_context->global_options()->set_max_html_parse_bytes(0L);
+    server_context->global_options()->ComputeSignature();
+    message_handler_.reset(new NullMessageHandler());
+    async_fetch_.reset(new StringAsyncFetch(
+        RequestContext::NewTestRequestContext(
+            server_context->thread_system())));
+    async_fetch_->response_headers()->Add("Content-Type", "text/html");
+    async_fetch_->response_headers()->ComputeCaching();
+    async_fetch_->request_context()->set_sticky_query_parameters_token(
+        sticky_query_parameters_token);
+    fetch_factory_.reset(new ProxyFetchFactory(server_context));
+    mock_proxy_fetch_ = new MockProxyFetch(async_fetch_.get(),
+                                           fetch_factory_.get(),
+                                           server_context);
+    mock_proxy_fetch_->driver()->set_pagespeed_query_params(query_params);
+    mock_proxy_fetch_->driver()->set_pagespeed_option_cookies(option_cookies);
+    mock_proxy_fetch_->Write("<html>HTML</html>.", message_handler_.get());
+    mock_proxy_fetch_->Flush(message_handler_.get());
+  }
+
+  ~ManagedMockProxyFetch() {
+    mock_proxy_fetch_->Done(true);
+  }
+
+  MockProxyFetch* mock_proxy_fetch() const { return mock_proxy_fetch_; }
+
+ private:
+  scoped_ptr<NullMessageHandler> message_handler_;
+  scoped_ptr<StringAsyncFetch> async_fetch_;
+  scoped_ptr<ProxyFetchFactory> fetch_factory_;
+  MockProxyFetch* mock_proxy_fetch_;  // Not scoped_ptr as it self-deletes.
+};
 
 class ProxyFetchPropertyCallbackCollectorTest : public RewriteTestBase {
  public:
@@ -191,7 +243,6 @@ class ProxyFetchPropertyCallbackCollectorTest : public RewriteTestBase {
   void TestAddPostlookupTask(bool add_before_done,
                              bool add_before_proxy_fetch) {
     EnableCollectorPrefix();
-    GoogleString kUrl("http://www.test.com/");
     scoped_ptr<ProxyFetchPropertyCallbackCollector> collector;
     collector.reset(MakeCollector());
     ProxyFetchPropertyCallback* page_callback = AddCallback(
@@ -431,7 +482,6 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, FallbackPagePostLookupRace) {
   EnableCollectorPrefix();
   // This test will check PostLookup tasks should not have Null
   // fallback_property_page.
-  GoogleString kUrl("http://www.test.com/");
   scoped_ptr<ProxyFetchPropertyCallbackCollector> collector;
   collector.reset(MakeCollector());
   ProxyFetchPropertyCallback* page_callback = AddCallback(
@@ -460,7 +510,6 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, FallbackPagePostLookupRace) {
 
 
 TEST_F(ProxyFetchPropertyCallbackCollectorTest, TestOptionsValid) {
-  GoogleString kUrl("http://www.test.com/");
   RewriteOptions* options = new RewriteOptions(thread_system_.get());
   ProxyFetchPropertyCallbackCollector* collector =
       new ProxyFetchPropertyCallbackCollector(
@@ -481,6 +530,106 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, TestOptionsValid) {
   sync->Signal(ProxyFetch::kCollectorDetachStart);
   page_callback->Done(true);
   sync->Wait(ProxyFetch::kCollectorFinish);
+}
+
+TEST_F(ProxyFetchTest, TestStickyPageSpeedOptions) {
+  // The various options we set as cookies.
+  StringPieceVector pagespeed_options;
+  pagespeed_options.push_back("PageSpeedImageRecompressionQuality=77");
+  pagespeed_options.push_back("ModPagespeedImageLimitOptimizedPercent=55");
+  pagespeed_options.push_back("ModPagespeedCssInlineMaxBytes=19");
+  GoogleString cookies = JoinCollection(pagespeed_options, "&");
+  // Add the sticky query param as a QP to show that it's not set as a cookie.
+  GoogleString params = StrCat("PageSpeedStickyQueryParameters=on&", cookies);
+  // For producing the expected response headers cookies string.
+  const char kCookiesPrefix[] = "[\"";
+  const char kCookieSetExpires[] = "; Expires=Tue, 02 Feb 2010 19:01:26 GMT";
+  const char kCookieClearExpires[] = "; Expires=Thu, 01 Jan 1970 00:00:00 GMT";
+  const char kCookieAttrs[] = "; Domain=www.google.com; Path=/; HttpOnly";
+  const char kCookiesSeparator[] = "\",\"";
+  const char kCookiesSuffix[] = "\"]";
+  GoogleString current_cookies =
+      StrCat(kCookiesPrefix,
+             JoinCollection(pagespeed_options, StrCat(kCookieSetExpires,
+                                                      kCookieAttrs,
+                                                      kCookiesSeparator)),
+             kCookieSetExpires, kCookieAttrs, kCookiesSuffix);
+  GoogleString expired_cookies =
+      StrCat(kCookiesPrefix,
+             JoinCollection(pagespeed_options, StrCat(kCookieClearExpires,
+                                                      kCookieAttrs,
+                                                      kCookiesSeparator)),
+             kCookieClearExpires, kCookieAttrs, kCookiesSuffix);
+  // Strip out the values from the expiration cookies. Pardon the hackiness.
+  GlobalReplaceSubstring("=77;", ";", &expired_cookies);
+  GlobalReplaceSubstring("=55;", ";", &expired_cookies);
+  GlobalReplaceSubstring("=19;", ";", &expired_cookies);
+
+  // 0. Allow options to be set by cookie but don't allow them to be sticky.
+  {
+    ManagedMockProxyFetch managed_mock(server_context_, true, "", "right value",
+                                       params, "");
+    MockProxyFetch* mock_proxy_fetch = managed_mock.mock_proxy_fetch();
+    GoogleString response_cookies;
+    EXPECT_FALSE(mock_proxy_fetch->response_headers()->GetCookieString(
+        &response_cookies));
+    EXPECT_STREQ("", response_cookies);
+  }
+  // 1. Allow options to be set by cookie, allow them to be sticky, but don't
+  //    ask for stickiness in the request.
+  {
+    ManagedMockProxyFetch managed_mock(server_context_, true, "right value", "",
+                                       params, "");
+    MockProxyFetch* mock_proxy_fetch = managed_mock.mock_proxy_fetch();
+    GoogleString response_cookies;
+    EXPECT_FALSE(mock_proxy_fetch->response_headers()->GetCookieString(
+        &response_cookies));
+    EXPECT_STREQ("", response_cookies);
+  }
+  // 2. Don't allow options to be set by cookie, allow them to be made sticky,
+  //    don't ask for stickiness in the request, but pass in some already-set
+  //    cookies - these should be expired for us.
+  {
+    ManagedMockProxyFetch managed_mock(server_context_, false, "right value",
+                                       "", "", cookies);
+    MockProxyFetch* mock_proxy_fetch = managed_mock.mock_proxy_fetch();
+    GoogleString response_cookies;
+    EXPECT_TRUE(mock_proxy_fetch->response_headers()->GetCookieString(
+        &response_cookies));
+    EXPECT_STREQ(expired_cookies, response_cookies);
+  }
+  // 3. Allow options to be set by cookie, allow them to be made sticky, and
+  //    ask for stickiness in the request.
+  {
+    ManagedMockProxyFetch managed_mock(server_context_, true, "right value",
+                                       "right value", params, "");
+    MockProxyFetch* mock_proxy_fetch = managed_mock.mock_proxy_fetch();
+    GoogleString response_cookies;
+    EXPECT_TRUE(mock_proxy_fetch->response_headers()->GetCookieString(
+        &response_cookies));
+    EXPECT_STREQ(current_cookies, response_cookies);
+  }
+  // 4. Pass in some options-as-cookies without any query params or changes.
+  //    We expect no cookies in the response as the browser has them already.
+  {
+    ManagedMockProxyFetch managed_mock(server_context_, true, "right value", "",
+                                       "", cookies);
+    MockProxyFetch* mock_proxy_fetch = managed_mock.mock_proxy_fetch();
+    GoogleString response_cookies;
+    EXPECT_FALSE(mock_proxy_fetch->response_headers()->GetCookieString(
+        &response_cookies));
+    EXPECT_STREQ("", response_cookies);
+  }
+  // 5. Explicitly ask for sticky options-by-cookies to be cleared.
+  {
+    ManagedMockProxyFetch managed_mock(server_context_, true, "right value",
+                                       "different value", "", cookies);
+    MockProxyFetch* mock_proxy_fetch = managed_mock.mock_proxy_fetch();
+    GoogleString response_cookies;
+    EXPECT_TRUE(mock_proxy_fetch->response_headers()->GetCookieString(
+        &response_cookies));
+    EXPECT_STREQ(expired_cookies, response_cookies);
+  }
 }
 
 }  // namespace net_instaweb
