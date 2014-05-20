@@ -1275,4 +1275,8 @@ const ProcessContext& RewriteTestBase::process_context() {
   return rewrite_test_base_process_context;
 }
 
+int RewriteTestBase::TimedValue(StringPiece name) {
+  return statistics()->GetTimedVariable(name)->Get(TimedVariable::START);
+}
+
 }  // namespace net_instaweb

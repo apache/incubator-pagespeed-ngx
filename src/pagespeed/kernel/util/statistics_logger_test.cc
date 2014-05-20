@@ -334,8 +334,8 @@ TEST_F(StatisticsLoggerTest, ConsistentNumberArgs) {
 }
 
 TEST_F(StatisticsLoggerTest, FromStats) {
-  stats_.GetVariable(kUnloggedVariable)->Set(2300);
-  stats_.GetVariable("num_flushes")->Set(300);
+  stats_.GetVariable(kUnloggedVariable)->Add(2300);
+  stats_.GetVariable("num_flushes")->Add(300);
 
   GoogleString logger_output;
   StringWriter logger_writer(&logger_output);

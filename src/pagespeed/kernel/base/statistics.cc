@@ -46,16 +46,19 @@ class MessageHandler;
 Variable::~Variable() {
 }
 
-int64 Variable::SetReturningPreviousValue(int64 value) {
+UpDownCounter::~UpDownCounter() {
+}
+
+int64 UpDownCounter::SetReturningPreviousValue(int64 value) {
   int64 previous_value = Get();
   Set(value);
   return previous_value;
 }
 
-MutexedVariable::~MutexedVariable() {
+MutexedUpDownCounter::~MutexedUpDownCounter() {
 }
 
-int64 MutexedVariable::Get() const {
+int64 MutexedUpDownCounter::Get() const {
   if (mutex() != NULL) {
     ScopedMutex hold_lock(mutex());
     return GetLockHeld();
@@ -64,14 +67,14 @@ int64 MutexedVariable::Get() const {
   }
 }
 
-void MutexedVariable::Set(int64 new_value) {
+void MutexedUpDownCounter::Set(int64 new_value) {
   if (mutex() != NULL) {
     ScopedMutex hold_lock(mutex());
     SetLockHeld(new_value);
   }
 }
 
-int64 MutexedVariable::SetReturningPreviousValue(int64 new_value) {
+int64 MutexedUpDownCounter::SetReturningPreviousValue(int64 new_value) {
   if (mutex() != NULL) {
     ScopedMutex hold_lock(mutex());
     return SetReturningPreviousValueLockHeld(new_value);
@@ -80,7 +83,7 @@ int64 MutexedVariable::SetReturningPreviousValue(int64 new_value) {
   }
 }
 
-int64 MutexedVariable::Add(int delta) {
+int64 MutexedUpDownCounter::AddHelper(int delta) {
   if (mutex() != NULL) {
     ScopedMutex hold_lock(mutex());
     return AddLockHeld(delta);
@@ -89,11 +92,11 @@ int64 MutexedVariable::Add(int delta) {
   }
 }
 
-void MutexedVariable::SetLockHeld(int64 new_value) {
+void MutexedUpDownCounter::SetLockHeld(int64 new_value) {
   SetReturningPreviousValueLockHeld(new_value);
 }
 
-int64 MutexedVariable::AddLockHeld(int delta) {
+int64 MutexedUpDownCounter::AddLockHeld(int delta) {
   int64 value = GetLockHeld() + delta;
   SetLockHeld(value);
   return value;
@@ -185,13 +188,13 @@ void Histogram::Render(int index, Writer* writer, MessageHandler* handler) {
 Statistics::~Statistics() {
 }
 
-Variable* Statistics::AddGlobalVariable(const StringPiece& name) {
-  return AddVariable(name);
+UpDownCounter* Statistics::AddGlobalUpDownCounter(const StringPiece& name) {
+  return AddUpDownCounter(name);
 }
 
 FakeTimedVariable* Statistics::NewFakeTimedVariable(
     const StringPiece& name, int index) {
-  return new FakeTimedVariable(AddVariable(name));
+  return new FakeTimedVariable(AddUpDownCounter(name));
 }
 
 namespace {

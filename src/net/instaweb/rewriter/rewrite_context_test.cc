@@ -4672,15 +4672,11 @@ TEST_F(RewriteContextTest, DropFetchesAndRecover) {
 
   // Let's take a look at the rate-controlling fetcher's stats and make
   // sure they are sane.
-  Variable* queued_fetches = statistics()->GetVariable(
-      RateController::kQueuedFetchCount);
-  Variable* dropped_fetches = statistics()->GetVariable(
-      RateController::kDroppedFetchCount);
-  Variable* fetch_queue_size = statistics()->GetVariable(
+  UpDownCounter* fetch_queue_size = statistics()->GetUpDownCounter(
       RateController::kCurrentGlobalFetchQueueSize);
   EXPECT_EQ(TestRewriteDriverFactory::kFetchesPerHostQueuedRequestThreshold,
-            queued_fetches->Get());
-  EXPECT_EQ(kExcessResources, dropped_fetches->Get());
+            TimedValue(RateController::kQueuedFetchCount));
+  EXPECT_EQ(kExcessResources, TimedValue(RateController::kDroppedFetchCount));
   EXPECT_EQ(TestRewriteDriverFactory::kMaxFetchGlobalQueueSize,
             fetch_queue_size->Get());
 

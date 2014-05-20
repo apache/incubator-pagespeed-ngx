@@ -50,7 +50,7 @@ CountHistogram* SimpleStats::NewHistogram(const StringPiece& name) {
   return new CountHistogram(thread_system_->NewMutex());
 }
 
-SimpleStatsVariable* SimpleStats::NewVariable(
+SimpleStatsVariable* SimpleStats::NewUpDownCounter(
     const StringPiece& name, int index) {
   return new SimpleStatsVariable(thread_system_->NewMutex());
 }

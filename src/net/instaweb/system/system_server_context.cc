@@ -117,7 +117,7 @@ void SystemServerContext::FlushCacheIfNecessary() {
       }
       if (cache_flush_count_ == NULL) {
         cache_flush_count_ = statistics()->GetVariable(kCacheFlushCount);
-        cache_flush_timestamp_ms_ = statistics()->GetVariable(
+        cache_flush_timestamp_ms_ = statistics()->GetUpDownCounter(
             kCacheFlushTimestampMs);
       }
     }
@@ -209,7 +209,7 @@ void SystemServerContext::CreateLocalStatistics(
 
 void SystemServerContext::InitStats(Statistics* statistics) {
   statistics->AddVariable(kCacheFlushCount);
-  statistics->AddVariable(kCacheFlushTimestampMs);
+  statistics->AddUpDownCounter(kCacheFlushTimestampMs);
   statistics->AddVariable(kStatistics404Count);
   Histogram* html_rewrite_time_us_histogram =
       statistics->AddHistogram(kHtmlRewriteTimeUsHistogram);

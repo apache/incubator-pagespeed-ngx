@@ -30,27 +30,10 @@ PSA_JS_LIBRARY_URL_PREFIX="mod_pagespeed_static"
 CACHE_FLUSH_TEST=${CACHE_FLUSH_TEST:-off}
 NO_VHOST_MERGE=${NO_VHOST_MERGE:-off}
 SUDO=${SUDO:-}
+SECONDARY_HOSTNAME=${SECONDARY_HOSTNAME:-}
 # TODO(jkarlin): Should we just use a vhost instead?  If so, remember to update
 # all scripts that use TEST_PROXY_ORIGIN.
 PAGESPEED_TEST_HOST=${PAGESPEED_TEST_HOST:-modpagespeed.com}
-
-# Extract secondary hostname when set. Currently it's only set when doing the
-# cache flush test, but it can be used in other tests we run in that run.
-# Note that we use $1 not $HOSTNAME as that is only set up later by _helpers.sh.
-if [ "$CACHE_FLUSH_TEST" = "on" ]; then
-  # Replace any trailing :<port> with :<secondary-port>.
-  SECONDARY_HOSTNAME=${1/%:*/:$APACHE_SECONDARY_PORT}
-  if [ "$SECONDARY_HOSTNAME" = "$1" ]; then
-    SECONDARY_HOSTNAME=${1}:$APACHE_SECONDARY_PORT
-  fi
-
-  # To fetch from the secondary test root, we must set
-  # http_proxy=${SECONDARY_HOSTNAME} during fetches.
-  SECONDARY_TEST_ROOT=http://secondary.example.com/mod_pagespeed_test
-else
-  # Force the variable to be set albeit blank so tests don't fail.
-  : ${SECONDARY_HOSTNAME:=}
-fi
 
 # Run General system tests.
 #
@@ -86,6 +69,20 @@ function run_post_cache_flush() {
     $test
   done
 }
+
+# Extract secondary hostname when set. Currently it's only set
+# when doing the cache flush test, but it can be used in other
+# tests we run in that run.
+if [ "$CACHE_FLUSH_TEST" = "on" ]; then
+  SECONDARY_HOSTNAME=$(echo $HOSTNAME | sed -e "s/:.*$/:$APACHE_SECONDARY_PORT/g")
+  if [ "$SECONDARY_HOSTNAME" = "$HOSTNAME" ]; then
+    SECONDARY_HOSTNAME=${HOSTNAME}:$APACHE_SECONDARY_PORT
+  fi
+
+  # To fetch from the secondary test root, we must set
+  # http_proxy=${SECONDARY_HOSTNAME} during fetches.
+  SECONDARY_TEST_ROOT=http://secondary.example.com/mod_pagespeed_test
+fi
 
 rm -rf $OUTDIR
 mkdir -p $OUTDIR
@@ -2371,7 +2368,34 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
 
   WGETRC=$OLD_WGETRC
 
-  # Test RequestOptionOverride.
+  test_filter collapse_whitespace
+  start_test Cookie options on: by default comments not removed, whitespace is
+  HOST_NAME="http://options-by-cookies-enabled.example.com"
+  URL="$HOST_NAME/mod_pagespeed_test/forbidden.html"
+  echo wget $URL
+  OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)"
+  check_from     "$OUT" grep -q '<!--'
+  check_not_from "$OUT" grep -q '  '
+  start_test Cookie options on: set option by cookie takes effect
+  echo wget --header=Cookie:PageSpeedFilters=+remove_comments $URL
+  OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --no-cookies \
+         --header=Cookie:PageSpeedFilters=+remove_comments $URL)"
+  check_not_from "$OUT" grep -q '<!--'
+  check_not_from "$OUT" grep -q '  '
+  start_test Cookie options off: by default comments nor whitespace removed
+  HOST_NAME="http://options-by-cookies-disabled.example.com"
+  URL="$HOST_NAME/mod_pagespeed_test/forbidden.html"
+  echo wget $URL
+  OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)"
+  check_from "$OUT" grep -q '<!--'
+  check_from "$OUT" grep -q '  '
+  start_test Cookie options off: set option by cookie has no effect
+  echo wget --header=Cookie:PageSpeedFilters=+remove_comments $URL
+  OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --no-cookies \
+         --header=Cookie:PageSpeedFilters=+remove_comments $URL)"
+  check_from "$OUT" grep -q '<!--'
+  check_from "$OUT" grep -q '  '
+
   start_test Request Option Override : Correct values are passed
   HOST_NAME="http://request-option-override.example.com"
   OPTS="?ModPagespeed=on"

@@ -39,6 +39,7 @@ class Hasher;
 class MessageHandler;
 class SharedString;
 class Statistics;
+class UpDownCounter;
 class Variable;
 
 // Interface to memcached via the apr_memcache2*, as documented in
@@ -146,8 +147,8 @@ class AprMemCache : public CacheInterface {
   AtomicBool shutdown_;
 
   Variable* timeouts_;
-  Variable* last_error_checkpoint_ms_;
-  Variable* error_burst_size_;
+  UpDownCounter* last_error_checkpoint_ms_;
+  UpDownCounter* error_burst_size_;
 
   bool is_machine_local_;
   MessageHandler* message_handler_;

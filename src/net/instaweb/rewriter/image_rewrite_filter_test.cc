@@ -2380,8 +2380,8 @@ TEST_F(ImageRewriteTest, NestedConcurrentRewritesLimit) {
 
   // Set the current # of rewrites very high, so we stop doing more
   // due to "load".
-  Variable* ongoing_rewrites =
-      statistics()->GetVariable(ImageRewriteFilter::kImageOngoingRewrites);
+  UpDownCounter* ongoing_rewrites =
+      statistics()->GetUpDownCounter(ImageRewriteFilter::kImageOngoingRewrites);
   ongoing_rewrites->Set(100);
 
   // If the nested context is too busy, we don't want the parent to partially
@@ -3229,8 +3229,8 @@ TEST_F(ImageRewriteTest, TooBusyReturnsOriginalResource) {
 
   // Set the current # of rewrites very high, so we stop doing more rewrites
   // due to "load".
-  Variable* ongoing_rewrites =
-      statistics()->GetVariable(ImageRewriteFilter::kImageOngoingRewrites);
+  UpDownCounter* ongoing_rewrites =
+      statistics()->GetUpDownCounter(ImageRewriteFilter::kImageOngoingRewrites);
   ongoing_rewrites->Set(100);
 
   TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypePng, "", "",

@@ -18,7 +18,9 @@
 
 #include "net/instaweb/system/public/apr_mem_cache.h"
 
-#include "apr_pools.h"
+#include <memory>
+
+#include "apr_pools.h"  // NOLINT
 
 #include "base/logging.h"
 #include "net/instaweb/system/public/apr_thread_compatible_pool.h"
@@ -73,9 +75,9 @@ AprMemCache::AprMemCache(const StringPiece& servers, int thread_limit,
       hasher_(hasher),
       timer_(timer),
       timeouts_(statistics->GetVariable(kMemCacheTimeouts)),
-      last_error_checkpoint_ms_(statistics->GetVariable(
+      last_error_checkpoint_ms_(statistics->GetUpDownCounter(
           kLastErrorCheckpointMs)),
-      error_burst_size_(statistics->GetVariable(kErrorBurstSize)),
+      error_burst_size_(statistics->GetUpDownCounter(kErrorBurstSize)),
       is_machine_local_(true),
       message_handler_(handler) {
   servers.CopyToString(&server_spec_);
@@ -123,8 +125,8 @@ AprMemCache::~AprMemCache() {
 
 void AprMemCache::InitStats(Statistics* statistics) {
   statistics->AddVariable(kMemCacheTimeouts);
-  statistics->AddVariable(kLastErrorCheckpointMs);
-  statistics->AddVariable(kErrorBurstSize);
+  statistics->AddUpDownCounter(kLastErrorCheckpointMs);
+  statistics->AddUpDownCounter(kErrorBurstSize);
 }
 
 bool AprMemCache::Connect() {

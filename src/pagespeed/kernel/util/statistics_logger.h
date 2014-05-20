@@ -31,7 +31,7 @@
 namespace net_instaweb {
 
 class MessageHandler;
-class MutexedVariable;
+class MutexedUpDownCounter;
 class Statistics;
 class StatisticsLogfileReader;
 class Timer;
@@ -42,7 +42,7 @@ class StatisticsLogger {
   // Does not take ownership of any objects passed in.
   StatisticsLogger(
       int64 update_interval_ms, int64 max_logfile_size_kb,
-      const StringPiece& log_file, MutexedVariable* last_dump_timestamp,
+      const StringPiece& log_file, MutexedUpDownCounter* last_dump_timestamp,
       MessageHandler* message_handler, Statistics* stats,
       FileSystem* file_system, Timer* timer);
   ~StatisticsLogger();
@@ -95,7 +95,7 @@ class StatisticsLogger {
 
   // The last_dump_timestamp not only contains the time of the last dump,
   // it also controls locking so that multiple threads can't dump at once.
-  MutexedVariable* last_dump_timestamp_;
+  MutexedUpDownCounter* last_dump_timestamp_;
   MessageHandler* message_handler_;
   Statistics* statistics_;  // Needed so we can dump the stats contained here.
   // file_system_ and timer_ are owned by someone who called the constructor

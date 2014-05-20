@@ -29,7 +29,6 @@
 #include "net/instaweb/util/public/mock_property_page.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
@@ -89,12 +88,11 @@ class CriticalCssFinderTest : public RewriteTestBase {
   }
 
   void CheckCriticalCssFinderStats(int hits, int expiries, int not_found) {
-    EXPECT_EQ(hits, statistics()->GetVariable(
-        CriticalCssFinder::kCriticalCssValidCount)->Get());
-    EXPECT_EQ(expiries, statistics()->GetVariable(
-        CriticalCssFinder::kCriticalCssExpiredCount)->Get());
-    EXPECT_EQ(not_found, statistics()->GetVariable(
-        CriticalCssFinder::kCriticalCssNotFoundCount)->Get());
+    EXPECT_EQ(hits, TimedValue(CriticalCssFinder::kCriticalCssValidCount));
+    EXPECT_EQ(expiries,
+              TimedValue(CriticalCssFinder::kCriticalCssExpiredCount));
+    EXPECT_EQ(not_found,
+              TimedValue(CriticalCssFinder::kCriticalCssNotFoundCount));
   }
 
  protected:

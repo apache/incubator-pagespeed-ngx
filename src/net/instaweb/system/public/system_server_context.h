@@ -41,6 +41,7 @@ class Statistics;
 class SystemCaches;
 class SystemRewriteDriverFactory;
 class SystemRewriteOptions;
+class UpDownCounter;
 class UrlAsyncFetcherStats;
 class Variable;
 class Writer;
@@ -209,7 +210,7 @@ class SystemServerContext : public ServerContext {
   int64 last_cache_flush_check_sec_;  // seconds since 1970
 
   Variable* cache_flush_count_;
-  Variable* cache_flush_timestamp_ms_;
+  UpDownCounter* cache_flush_timestamp_ms_;
 
   Histogram* html_rewrite_time_us_histogram_;
 

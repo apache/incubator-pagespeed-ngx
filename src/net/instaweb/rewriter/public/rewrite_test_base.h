@@ -732,6 +732,9 @@ class RewriteTestBase : public RewriteOptionsTestBase {
     return HTTPCache::CompositeKey(url, rewrite_driver_->CacheFragment());
   }
 
+  // Returns the value of a TimedVariable, specified by name.
+  int TimedValue(StringPiece name);
+
   // The mock fetchers & stats are global across all Factories used in the
   // tests.
   MockUrlFetcher mock_url_fetcher_;

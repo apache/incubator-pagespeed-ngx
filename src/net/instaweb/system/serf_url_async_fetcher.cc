@@ -1077,7 +1077,8 @@ SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(const char* proxy, apr_pool_t* pool,
   time_duration_ms_ =
       statistics->GetVariable(SerfStats::kSerfFetchTimeDurationMs);
   cancel_count_ = statistics->GetVariable(SerfStats::kSerfFetchCancelCount);
-  active_count_ = statistics->GetVariable(SerfStats::kSerfFetchActiveCount);
+  active_count_ = statistics->GetUpDownCounter(
+      SerfStats::kSerfFetchActiveCount);
   timeout_count_ = statistics->GetVariable(SerfStats::kSerfFetchTimeoutCount);
   failure_count_ = statistics->GetVariable(SerfStats::kSerfFetchFailureCount);
   cert_errors_ = statistics->GetVariable(SerfStats::kSerfFetchCertErrors);
@@ -1391,7 +1392,7 @@ void SerfUrlAsyncFetcher::InitStats(Statistics* statistics) {
   statistics->AddVariable(SerfStats::kSerfFetchByteCount);
   statistics->AddVariable(SerfStats::kSerfFetchTimeDurationMs);
   statistics->AddVariable(SerfStats::kSerfFetchCancelCount);
-  statistics->AddVariable(SerfStats::kSerfFetchActiveCount);
+  statistics->AddUpDownCounter(SerfStats::kSerfFetchActiveCount);
   statistics->AddVariable(SerfStats::kSerfFetchTimeoutCount);
   statistics->AddVariable(SerfStats::kSerfFetchFailureCount);
   statistics->AddVariable(SerfStats::kSerfFetchCertErrors);

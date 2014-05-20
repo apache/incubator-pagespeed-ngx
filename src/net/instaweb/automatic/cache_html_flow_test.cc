@@ -67,7 +67,6 @@
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_synchronizer.h"
@@ -81,6 +80,7 @@ namespace net_instaweb {
 
 class AbstractMutex;
 class AsyncFetch;
+class Statistics;
 
 namespace {
 
@@ -794,18 +794,15 @@ class CacheHtmlFlowTest : public ProxyInterfaceTestBase {
   void CheckStats(int diff_matches, int diff_mismatches,
                   int smart_diff_matches, int smart_diff_mismatches,
                   int hits, int misses) {
-    EXPECT_EQ(diff_matches, statistics()->FindVariable(
-        CacheHtmlFlow::kNumCacheHtmlMatches)->Get());
-    EXPECT_EQ(diff_mismatches, statistics()->FindVariable(
-        CacheHtmlFlow::kNumCacheHtmlMismatches)->Get());
-    EXPECT_EQ(smart_diff_matches, statistics()->FindVariable(
-        CacheHtmlFlow::kNumCacheHtmlSmartdiffMatches)->Get());
-    EXPECT_EQ(smart_diff_mismatches, statistics()->FindVariable(
-        CacheHtmlFlow::kNumCacheHtmlSmartdiffMismatches)->Get());
-    EXPECT_EQ(hits, statistics()->FindVariable(
-        CacheHtmlFlow::kNumCacheHtmlHits)->Get());
-    EXPECT_EQ(misses, statistics()->FindVariable(
-        CacheHtmlFlow::kNumCacheHtmlMisses)->Get());
+    EXPECT_EQ(diff_matches, TimedValue(CacheHtmlFlow::kNumCacheHtmlMatches));
+    EXPECT_EQ(diff_mismatches, TimedValue(
+        CacheHtmlFlow::kNumCacheHtmlMismatches));
+    EXPECT_EQ(smart_diff_matches, TimedValue(
+        CacheHtmlFlow::kNumCacheHtmlSmartdiffMatches));
+    EXPECT_EQ(smart_diff_mismatches, TimedValue(
+        CacheHtmlFlow::kNumCacheHtmlSmartdiffMismatches));
+    EXPECT_EQ(hits, TimedValue(CacheHtmlFlow::kNumCacheHtmlHits));
+    EXPECT_EQ(misses, TimedValue(CacheHtmlFlow::kNumCacheHtmlMisses));
   }
 
   void TestCacheHtmlChangeDetection(bool use_smart_diff) {
@@ -931,8 +928,7 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlCacheMissAndHit) {
   // First request updates the property cache with cached html.
   FetchFromProxyWaitForBackground("text.html", true, &text, &response_headers);
   VerifyNonCacheHtmlResponse(response_headers);
-  EXPECT_EQ(1, statistics()->FindVariable(
-      ProxyInterface::kCacheHtmlRequestCount)->Get());
+  EXPECT_EQ(1, TimedValue(ProxyInterface::kCacheHtmlRequestCount));
   VerifyCacheHtmlLoggingInfo(
       CacheHtmlLoggingInfo::CACHE_HTML_MISS_TRIGGERED_REWRITE, false,
       "http://test.com/text.html");
@@ -1191,8 +1187,7 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlHeaderOverThreshold) {
   // 1 Miss for Blink Cohort.
   EXPECT_EQ(2, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(1, statistics()->FindVariable(
-      ProxyInterface::kCacheHtmlRequestCount)->Get());
+  EXPECT_EQ(1, TimedValue(ProxyInterface::kCacheHtmlRequestCount));
 }
 
 TEST_F(CacheHtmlFlowTest, Non200StatusCode) {
@@ -1300,8 +1295,7 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlWithHttpsUrl) {
              GetJsDisableScriptSnippet(options_.get()),
              "<script type=\"text/javascript\" src=\"/psajs/js_defer.0.js\">"
              "</script></body></html>"), text);
-  EXPECT_EQ(0, statistics()->FindVariable(
-      ProxyInterface::kCacheHtmlRequestCount)->Get());
+  EXPECT_EQ(0, TimedValue(ProxyInterface::kCacheHtmlRequestCount));
 }
 
 TEST_F(CacheHtmlFlowTest, TestCacheHtmlWithWhitespace) {
@@ -1309,12 +1303,9 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlWithWhitespace) {
   ResponseHeaders response_headers;
   FetchFromProxyWaitForBackground(
       "ws_text.html", true, &text, &response_headers);
-  EXPECT_EQ(0, statistics()->FindVariable(
-      CacheHtmlFlow::kNumCacheHtmlHits)->Get());
-  EXPECT_EQ(1, statistics()->FindVariable(
-      CacheHtmlFlow::kNumCacheHtmlMisses)->Get());
-  EXPECT_EQ(1, statistics()->FindVariable(
-      ProxyInterface::kCacheHtmlRequestCount)->Get());
+  EXPECT_EQ(0, TimedValue(CacheHtmlFlow::kNumCacheHtmlHits));
+  EXPECT_EQ(1, TimedValue(CacheHtmlFlow::kNumCacheHtmlMisses));
+  EXPECT_EQ(1, TimedValue(ProxyInterface::kCacheHtmlRequestCount));
 }
 
 TEST_F(CacheHtmlFlowTest, TestCacheHtmlFlushSubresources) {
@@ -1329,8 +1320,7 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlFlushSubresources) {
                  "?PageSpeedFilters=+extend_cache_css,-inline_css", true,
                  request_headers, &text, &response_headers, NULL, false);
   VerifyNonCacheHtmlResponse(response_headers);
-  EXPECT_EQ(0, statistics()->FindVariable(
-      ProxyInterface::kCacheHtmlRequestCount)->Get());
+  EXPECT_EQ(0, TimedValue(ProxyInterface::kCacheHtmlRequestCount));
 
   // Requesting again.
   flush_early_info_finder_->Clear();
@@ -1339,8 +1329,7 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlFlushSubresources) {
                  "?PageSpeedFilters=+extend_cache_css,-inline_css", true,
                  request_headers, &text, &response_headers, NULL, false);
   VerifyFlushSubresourcesResponse(text, true);
-  EXPECT_EQ(0, statistics()->FindVariable(
-      ProxyInterface::kCacheHtmlRequestCount)->Get());
+  EXPECT_EQ(0, TimedValue(ProxyInterface::kCacheHtmlRequestCount));
 }
 
 TEST_F(CacheHtmlFlowTest, TestCacheHtmlFlowUrlCacheInvalidation) {
@@ -1440,8 +1429,7 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlFlowWithHeadRequest) {
   request_headers.set_method(RequestHeaders::kHead);
   FetchFromProxy("text.html", true, request_headers,
                  &text, &response_headers, false);
-  EXPECT_EQ(0, statistics()->FindVariable(
-      ProxyInterface::kCacheHtmlRequestCount)->Get());
+  EXPECT_EQ(0, TimedValue(ProxyInterface::kCacheHtmlRequestCount));
 }
 
 TEST_F(CacheHtmlFlowTest, TestCacheHtmlFlowDataMissDelayCache) {
@@ -1488,8 +1476,7 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlFlowDataMissDelayCache) {
   VerifyNonCacheHtmlResponse(response_headers);
   EXPECT_EQ(2, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(1, statistics()->FindVariable(
-      ProxyInterface::kCacheHtmlRequestCount)->Get());
+  EXPECT_EQ(1, TimedValue(ProxyInterface::kCacheHtmlRequestCount));
 }
 
 TEST_F(CacheHtmlFlowTest, TestCacheHtmlFlowWithDifferentUserAgents) {
@@ -1503,8 +1490,7 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlFlowWithDifferentUserAgents) {
                  &response_headers, NULL, false, false);
   EXPECT_STREQ(kHtmlInput, text);
   VerifyBlacklistUserAgent(response_headers);
-  EXPECT_EQ(0, statistics()->FindVariable(
-      ProxyInterface::kCacheHtmlRequestCount)->Get());
+  EXPECT_EQ(0, TimedValue(ProxyInterface::kCacheHtmlRequestCount));
   ClearStats();
 
   // NULL User Agent.
@@ -1517,8 +1503,7 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlFlowWithDifferentUserAgents) {
              GetJsDisableScriptSnippet(options_.get()),
              "<script type=\"text/javascript\" src=\"/psajs/js_defer.0.js\">"
              "</script></body></html>"), text);
-  EXPECT_EQ(0, statistics()->FindVariable(
-      ProxyInterface::kCacheHtmlRequestCount)->Get());
+  EXPECT_EQ(0, TimedValue(ProxyInterface::kCacheHtmlRequestCount));
   ClearStats();
 
   // Empty User Agent.
@@ -1531,8 +1516,7 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlFlowWithDifferentUserAgents) {
              GetJsDisableScriptSnippet(options_.get()),
              "<script type=\"text/javascript\" src=\"/psajs/js_defer.0.js\">"
              "</script></body></html>"), text);
-  EXPECT_EQ(0, statistics()->FindVariable(
-      ProxyInterface::kCacheHtmlRequestCount)->Get());
+  EXPECT_EQ(0, TimedValue(ProxyInterface::kCacheHtmlRequestCount));
   ClearStats();
 
   // Mobile User Agent.
@@ -1545,8 +1529,7 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlFlowWithDifferentUserAgents) {
   FetchFromProxy("text.html", true, request_headers, &text, &response_headers,
                  true);
   VerifyNonCacheHtmlResponse(response_headers);
-  EXPECT_EQ(1, statistics()->FindVariable(
-      ProxyInterface::kCacheHtmlRequestCount)->Get());
+  EXPECT_EQ(1, TimedValue(ProxyInterface::kCacheHtmlRequestCount));
 
   ClearStats();
   // Hit case.

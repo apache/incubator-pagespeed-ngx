@@ -104,7 +104,7 @@ class CacheExtenderTest : public RewriteTestBase {
     SetResponseWithDefaultHeaders("introspective.js", kContentTypeJavascript,
                                   kJsDataIntrospective, ttl);
     // Reset stats.
-    num_cache_extended_->Set(0);
+    num_cache_extended_->Clear();
   }
 
   // Generate HTML loading 3 resources with the specified URLs

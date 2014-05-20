@@ -85,7 +85,7 @@ const char* const kOtherLoggedVars[] = {
 
 StatisticsLogger::StatisticsLogger(
     int64 update_interval_ms, int64 max_logfile_size_kb,
-    const StringPiece& logfile_name, MutexedVariable* last_dump_timestamp,
+    const StringPiece& logfile_name, MutexedUpDownCounter* last_dump_timestamp,
     MessageHandler* message_handler, Statistics* stats,
     FileSystem* file_system, Timer* timer)
     : last_dump_timestamp_(last_dump_timestamp),
@@ -164,8 +164,14 @@ void StatisticsLogger::DumpConsoleVarsToWriter(
   for (std::set<GoogleString>::const_iterator iter = variables_to_log_.begin();
        iter != variables_to_log_.end(); ++iter) {
     GoogleString var_name = *iter;
-    GoogleString var_as_str = Integer64ToString(
-        statistics_->GetVariable(var_name)->Get());
+    Variable* var = statistics_->FindVariable(var_name);
+    if (var == NULL) {
+      // Some Variable* have been changed to UpDownCounter in order to
+      // impose a constraint that Variable* should be monotonically
+      // increasing.
+      var = statistics_->FindUpDownCounter(var_name);
+    }
+    GoogleString var_as_str = Integer64ToString(var->Get());
     writer->Write(StringPrintf("%s: %s\n", var_name.c_str(),
         var_as_str.c_str()), message_handler_);
   }

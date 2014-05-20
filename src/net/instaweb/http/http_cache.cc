@@ -86,13 +86,13 @@ HTTPCache::HTTPCache(CacheInterface* cache, Timer* timer, Hasher* hasher,
       disable_html_caching_on_https_(false),
       cache_time_us_(stats->GetVariable(kCacheTimeUs)),
       cache_hits_(stats->GetVariable(kCacheHits)),
-      cache_misses_(stats->GetVariable(kCacheMisses)),
+      cache_misses_(stats->GetUpDownCounter(kCacheMisses)),
       cache_backend_hits_(stats->GetVariable(kCacheBackendHits)),
       cache_backend_misses_(stats->GetVariable(kCacheBackendMisses)),
-      cache_fallbacks_(stats->GetVariable(kCacheFallbacks)),
+      cache_fallbacks_(stats->GetUpDownCounter(kCacheFallbacks)),
       cache_expirations_(stats->GetVariable(kCacheExpirations)),
-      cache_inserts_(stats->GetVariable(kCacheInserts)),
-      cache_deletes_(stats->GetVariable(kCacheDeletes)),
+      cache_inserts_(stats->GetUpDownCounter(kCacheInserts)),
+      cache_deletes_(stats->GetUpDownCounter(kCacheDeletes)),
       name_(FormatName(cache->Name())) {
   remember_not_cacheable_ttl_seconds_ = kRememberNotCacheableTtlSec;
   remember_fetch_failed_ttl_seconds_ = kRememberFetchFailedTtlSec;
@@ -506,13 +506,13 @@ void HTTPCache::Delete(const GoogleString& key, const GoogleString& fragment) {
 void HTTPCache::InitStats(Statistics* statistics) {
   statistics->AddVariable(kCacheTimeUs);
   statistics->AddVariable(kCacheHits);
-  statistics->AddVariable(kCacheMisses);
+  statistics->AddUpDownCounter(kCacheMisses);
   statistics->AddVariable(kCacheBackendHits);
   statistics->AddVariable(kCacheBackendMisses);
-  statistics->AddVariable(kCacheFallbacks);
+  statistics->AddUpDownCounter(kCacheFallbacks);
   statistics->AddVariable(kCacheExpirations);
-  statistics->AddVariable(kCacheInserts);
-  statistics->AddVariable(kCacheDeletes);
+  statistics->AddUpDownCounter(kCacheInserts);
+  statistics->AddUpDownCounter(kCacheDeletes);
 }
 
 GoogleString HTTPCache::FormatEtag(StringPiece hash) {

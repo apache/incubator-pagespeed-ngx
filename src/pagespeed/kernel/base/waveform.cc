@@ -35,7 +35,7 @@ namespace net_instaweb {
 class MessageHandler;
 
 Waveform::Waveform(ThreadSystem* thread_system, Timer* timer, int capacity,
-                   Variable* metric)
+                   UpDownCounter* metric)
     : timer_(timer),
       capacity_(capacity),
       samples_(new TimeValue[capacity]),

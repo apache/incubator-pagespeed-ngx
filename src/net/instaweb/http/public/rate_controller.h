@@ -35,8 +35,8 @@ class MessageHandler;
 class Statistics;
 class ThreadSystem;
 class TimedVariable;
+class UpDownCounter;
 class UrlAsyncFetcher;
-class Variable;
 
 // Controller which limits the number of outgoing fetches per domain. If the
 // fetch is for a user-facing request, this sends the request out anyway and
@@ -106,7 +106,7 @@ class RateController {
   TimedVariable* dropped_fetch_count_;
   // Using a variable here, since we want to be able to track this in the server
   // statistics.
-  Variable* current_global_fetch_queue_size_;
+  UpDownCounter* current_global_fetch_queue_size_;
 
   AtomicBool shutdown_;
 

@@ -85,13 +85,17 @@ class CriticalSelectorFinderTest : public RewriteTestBase {
     SetDummyRequestHeaders();
   }
 
+  int TimedValue(StringPiece name) {
+    return statistics()->GetTimedVariable(name)->Get(TimedVariable::START);
+  }
+
   void CheckCriticalSelectorFinderStats(int hits, int expiries, int not_found) {
-    EXPECT_EQ(hits, statistics()->GetVariable(
-        CriticalSelectorFinder::kCriticalSelectorsValidCount)->Get());
-    EXPECT_EQ(expiries, statistics()->GetVariable(
-        CriticalSelectorFinder::kCriticalSelectorsExpiredCount)->Get());
-    EXPECT_EQ(not_found, statistics()->GetVariable(
-        CriticalSelectorFinder::kCriticalSelectorsNotFoundCount)->Get());
+    EXPECT_EQ(hits, TimedValue(
+        CriticalSelectorFinder::kCriticalSelectorsValidCount));
+    EXPECT_EQ(expiries, TimedValue(
+        CriticalSelectorFinder::kCriticalSelectorsExpiredCount));
+    EXPECT_EQ(not_found, TimedValue(
+        CriticalSelectorFinder::kCriticalSelectorsNotFoundCount));
   }
 
   GoogleString CriticalSelectorsString() {

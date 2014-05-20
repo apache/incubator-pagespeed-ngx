@@ -70,7 +70,7 @@ TEST_F(WaveformTest, Header) {
 
 // Instantiate a waveform and make sure one of the values shows up.
 TEST_F(WaveformTest, BasicGraph) {
-  Variable* variable = stats_.AddVariable("test1");
+  UpDownCounter* variable = stats_.AddUpDownCounter("test1");
 
   Waveform waveform(thread_system_.get(), &timer_, 10, variable);
   timer_.SetTimeUs(MockTimer::kApr_5_2010_ms);
@@ -107,7 +107,7 @@ TEST_F(WaveformTest, BasicGraph) {
 
 // Instantiate a waveform and make sure one of the values shows up.
 TEST_F(WaveformTest, Delta) {
-  Variable* variable = stats_.AddVariable("test1");
+  UpDownCounter* variable = stats_.AddUpDownCounter("test1");
   Waveform waveform(thread_system_.get(), &timer_, 10, variable);
   timer_.SetTimeUs(MockTimer::kApr_5_2010_ms);
   waveform.AddDelta(10);

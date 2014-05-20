@@ -37,6 +37,7 @@ class Hasher;
 class MessageHandler;
 class Statistics;
 class Timer;
+class UpDownCounter;
 class Variable;
 
 // Implements HTTP caching semantics, including cache expiration and
@@ -300,13 +301,20 @@ class HTTPCache {
   bool IsExpired(const ResponseHeaders& headers);
   bool IsExpired(const ResponseHeaders& headers, int64 now_ms);
 
+  // Stats for the HTTP cache.  The UpDownCounters here are declared as such
+  // becuase WriteThroughHTTPCache decrements some of the counts in order to
+  // correct for a cache MISS on the L1 that turns out to be a HIT in L2.
+  //
+  // TODO(jmarantz): Eliminate the need for correction, e.g. by doing
+  // the stat-recording only in the WriteThroughHTTPCache and not
+  // in the sub-caches, which can be supplied (say) NullStatistics interfaces.
   Variable* cache_time_us()     { return cache_time_us_; }
   Variable* cache_hits()        { return cache_hits_; }
-  Variable* cache_misses()      { return cache_misses_; }
-  Variable* cache_fallbacks()   { return cache_fallbacks_; }
+  UpDownCounter* cache_misses()    { return cache_misses_; }
+  UpDownCounter* cache_fallbacks() { return cache_fallbacks_; }
   Variable* cache_expirations() { return cache_expirations_; }
-  Variable* cache_inserts()     { return cache_inserts_; }
-  Variable* cache_deletes()     { return cache_deletes_; }
+  UpDownCounter* cache_inserts()   { return cache_inserts_; }
+  UpDownCounter* cache_deletes()   { return cache_deletes_; }
 
   int64 remember_not_cacheable_ttl_seconds() {
     return remember_not_cacheable_ttl_seconds_;
@@ -395,16 +403,16 @@ class HTTPCache {
   // # of Find() requests which are found in cache and are still valid.
   Variable* cache_hits_;
   // # of other Find() requests that fail or are expired.
-  Variable* cache_misses_;
+  UpDownCounter* cache_misses_;
   // # of Find() requests which are found in backend cache (whether or not
   // they are valid).
   Variable* cache_backend_hits_;
   // # of Find() requests not found in backend cache.
   Variable* cache_backend_misses_;
-  Variable* cache_fallbacks_;
+  UpDownCounter* cache_fallbacks_;
   Variable* cache_expirations_;
-  Variable* cache_inserts_;
-  Variable* cache_deletes_;
+  UpDownCounter* cache_inserts_;
+  UpDownCounter* cache_deletes_;
 
   GoogleString name_;
   int64 remember_not_cacheable_ttl_seconds_;

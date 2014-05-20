@@ -32,7 +32,7 @@ class AbstractMutex;
 class ThreadSystem;
 
 // These variables are thread-safe.
-class SimpleStatsVariable : public MutexedVariable {
+class SimpleStatsVariable : public MutexedUpDownCounter {
  public:
   explicit SimpleStatsVariable(AbstractMutex* mutex);
   virtual ~SimpleStatsVariable();
@@ -63,7 +63,11 @@ class SimpleStats : public ScalarStatisticsTemplate<SimpleStatsVariable> {
 
  protected:
   virtual CountHistogram* NewHistogram(const StringPiece& name);
-  virtual SimpleStatsVariable* NewVariable(const StringPiece& name, int index);
+  virtual SimpleStatsVariable* NewUpDownCounter(const StringPiece& name,
+                                             int index);
+  virtual SimpleStatsVariable* NewVariable(const StringPiece& name, int index) {
+    return NewUpDownCounter(name, index);
+  }
 
  private:
   ThreadSystem* thread_system_;

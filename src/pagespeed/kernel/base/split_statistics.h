@@ -41,6 +41,25 @@ class Writer;
 
 // A statistics variable that forwards writes to two other Variable objects,
 // but reads only from one.
+class SplitUpDownCounter : public UpDownCounter {
+ public:
+  // UpDownCounter 'rw' will be used to read and write, variable 'w'
+  // will be used for writes only. Does not take ownership of either
+  // 'rw' or 'w'. 'rw' and 'w' must be non-NULL.
+  SplitUpDownCounter(UpDownCounter* rw, UpDownCounter* w);
+  virtual ~SplitUpDownCounter();
+  virtual void Set(int64 new_value);
+  virtual int64 SetReturningPreviousValue(int64 new_value);
+  virtual int64 Get() const;
+  virtual StringPiece GetName() const;
+  virtual int64 AddHelper(int delta);
+
+ private:
+  UpDownCounter* rw_;
+  UpDownCounter* w_;
+  DISALLOW_COPY_AND_ASSIGN(SplitUpDownCounter);
+};
+
 class SplitVariable : public Variable {
  public:
   // Variable 'rw' will be used to read and write, variable 'w'
@@ -48,11 +67,10 @@ class SplitVariable : public Variable {
   // 'rw' or 'w'. 'rw' and 'w' must be non-NULL.
   SplitVariable(Variable* rw, Variable* w);
   virtual ~SplitVariable();
-  virtual void Set(int64 new_value);
-  virtual int64 SetReturningPreviousValue(int64 new_value);
   virtual int64 Get() const;
   virtual StringPiece GetName() const;
-  virtual int64 Add(int delta);
+  virtual int64 AddHelper(int delta);
+  virtual void Clear();
 
  private:
   Variable* rw_;
@@ -124,17 +142,18 @@ class SplitTimedVariable : public TimedVariable {
 };
 
 class SplitStatistics
-    : public StatisticsTemplate<SplitVariable, SplitHistogram,
-                                SplitTimedVariable> {
+    : public StatisticsTemplate<SplitVariable, SplitUpDownCounter,
+                                SplitHistogram, SplitTimedVariable> {
  public:
   // Initializes a statistics splitter which proxies 'local' but also forwards
   // writes to 'global' for aggregation with other SplitStatistics instances.
   // Takes ownership of 'local', but not thread_system or global.
   //
-  // Note that before AddVariable or similar methods are invoked on this object
-  // (which is usually done by static ::InitStats(Statistics* methods) they
-  // must have been invoked on both local and global statistics objects for
-  // the same object names.
+  // Note that before AddUpDownCounter or similar methods are invoked on
+  // this object (which is usually done by static
+  // ::InitStats(Statistics* methods) they must have been invoked on
+  // both local and global statistics objects for the same object
+  // names.
   SplitStatistics(ThreadSystem* thread_system,
                   Statistics* local,
                   Statistics* global);
@@ -148,8 +167,11 @@ class SplitStatistics
   }
 
  protected:
+  virtual SplitUpDownCounter* NewUpDownCounter(const StringPiece& name,
+                                               int index);
   virtual SplitVariable* NewVariable(const StringPiece& name, int index);
-  virtual SplitVariable* NewGlobalVariable(const StringPiece& name, int index);
+  virtual SplitUpDownCounter* NewGlobalUpDownCounter(const StringPiece& name,
+                                             int index);
   virtual SplitHistogram* NewHistogram(const StringPiece& name);
   virtual SplitTimedVariable* NewTimedVariable(const StringPiece& name,
                                                int index);

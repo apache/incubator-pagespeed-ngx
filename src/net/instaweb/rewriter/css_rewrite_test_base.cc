@@ -65,19 +65,19 @@ bool CssRewriteTestBase::ValidateRewriteInlineCss(
 }
 
 void CssRewriteTestBase::ResetStats() {
-  num_blocks_rewritten_->Set(0);
-  num_fallback_rewrites_->Set(0);
-  num_parse_failures_->Set(0);
-  num_rewrites_dropped_->Set(0);
-  total_bytes_saved_->Set(0);
-  total_original_bytes_->Set(0);
-  num_uses_->Set(0);
-  num_flatten_imports_charset_mismatch_->Set(0);
-  num_flatten_imports_invalid_url_->Set(0);
-  num_flatten_imports_limit_exceeded_->Set(0);
-  num_flatten_imports_minify_failed_->Set(0);
-  num_flatten_imports_recursion_->Set(0);
-  num_flatten_imports_complex_queries_->Set(0);
+  num_blocks_rewritten_->Clear();
+  num_fallback_rewrites_->Clear();
+  num_parse_failures_->Clear();
+  num_rewrites_dropped_->Clear();
+  total_bytes_saved_->Clear();
+  total_original_bytes_->Clear();
+  num_uses_->Clear();
+  num_flatten_imports_charset_mismatch_->Clear();
+  num_flatten_imports_invalid_url_->Clear();
+  num_flatten_imports_limit_exceeded_->Clear();
+  num_flatten_imports_minify_failed_->Clear();
+  num_flatten_imports_recursion_->Clear();
+  num_flatten_imports_complex_queries_->Clear();
 }
 
 bool CssRewriteTestBase::ValidateWithStats(

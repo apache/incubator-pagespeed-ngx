@@ -53,7 +53,7 @@ class Timer;
 // warning message will be logged).  If the variable fails to initialize in the
 // process that happens to serve a statistics page, then the variable will show
 // up with value -1.
-class SharedMemVariable : public MutexedVariable {
+class SharedMemVariable : public MutexedUpDownCounter {
  public:
   virtual ~SharedMemVariable() {}
   virtual StringPiece GetName() const { return name_; }
@@ -177,8 +177,8 @@ class SharedMemHistogram : public Histogram {
   DISALLOW_COPY_AND_ASSIGN(SharedMemHistogram);
 };
 
-class SharedMemStatistics : public StatisticsTemplate<SharedMemVariable,
-    SharedMemHistogram, FakeTimedVariable> {
+class SharedMemStatistics : public StatisticsTemplate<
+  SharedMemVariable, SharedMemVariable, SharedMemHistogram, FakeTimedVariable> {
  public:
   SharedMemStatistics(int64 logging_interval_ms,
                       int64 max_logfile_size_kb,
@@ -219,7 +219,11 @@ class SharedMemStatistics : public StatisticsTemplate<SharedMemVariable,
   }
 
  protected:
-  virtual SharedMemVariable* NewVariable(const StringPiece& name, int index);
+  virtual SharedMemVariable* NewUpDownCounter(const StringPiece& name,
+                                              int index);
+  virtual SharedMemVariable* NewVariable(const StringPiece& name, int index) {
+    return NewUpDownCounter(name, index);
+  }
   virtual SharedMemHistogram* NewHistogram(const StringPiece& name);
   virtual FakeTimedVariable* NewTimedVariable(const StringPiece& name,
                                               int index);

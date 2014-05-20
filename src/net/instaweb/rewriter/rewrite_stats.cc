@@ -149,7 +149,7 @@ void RewriteStats::InitStats(Statistics* statistics) {
   statistics->AddVariable(kNumResourceFetchFailures);
 
   for (int i = 0; i < RewriteDriverFactory::kNumWorkerPools; ++i) {
-    statistics->AddVariable(kWaveFormCounters[i]);
+    statistics->AddUpDownCounter(kWaveFormCounters[i]);
   }
 }
 
@@ -231,7 +231,7 @@ RewriteStats::RewriteStats(Statistics* stats,
   for (int i = 0; i < RewriteDriverFactory::kNumWorkerPools; ++i) {
     thread_queue_depths_.push_back(
         new Waveform(thread_system, timer, kNumWaveformSamples,
-                     stats->GetVariable(kWaveFormCounters[i])));
+                     stats->GetUpDownCounter(kWaveFormCounters[i])));
   }
 }
 

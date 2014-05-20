@@ -232,7 +232,7 @@ RateController::RateController(
   CHECK_GE(max_global_queue_size, per_host_queued_request_threshold);
   queued_fetch_count_ = statistics->GetTimedVariable(kQueuedFetchCount);
   dropped_fetch_count_ = statistics->GetTimedVariable(kDroppedFetchCount);
-  current_global_fetch_queue_size_ = statistics->GetVariable(
+  current_global_fetch_queue_size_ = statistics->GetUpDownCounter(
       kCurrentGlobalFetchQueueSize);
 }
 
@@ -319,7 +319,7 @@ void RateController::Fetch(UrlAsyncFetcher* fetcher,
 }
 
 void RateController::InitStats(Statistics* statistics) {
-  statistics->AddVariable(kCurrentGlobalFetchQueueSize);
+  statistics->AddUpDownCounter(kCurrentGlobalFetchQueueSize);
   statistics->AddTimedVariable(kQueuedFetchCount,
                                UrlAsyncFetcher::kStatisticsGroup);
   statistics->AddTimedVariable(kDroppedFetchCount,

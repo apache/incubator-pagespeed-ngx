@@ -442,8 +442,8 @@ SharedMemStatistics::SharedMemStatistics(
 SharedMemStatistics::~SharedMemStatistics() {
 }
 
-SharedMemVariable* SharedMemStatistics::NewVariable(const StringPiece& name,
-                                                    int index) {
+SharedMemVariable* SharedMemStatistics::NewUpDownCounter(
+    const StringPiece& name, int index) {
   if (frozen_) {
     LOG(ERROR) << "Cannot add variable " << name
                << " after SharedMemStatistics is frozen!";
@@ -470,16 +470,25 @@ FakeTimedVariable* SharedMemStatistics::NewTimedVariable(
 
 bool SharedMemStatistics::InitMutexes(size_t per_var,
                                       MessageHandler* message_handler) {
-  for (size_t i = 0; i < variables_size(); ++i) {
+  size_t pos = 0;
+  for (size_t i = 0; i < variables_size(); ++i, pos += per_var) {
     SharedMemVariable* var = variables(i);
-    if (!segment_->InitializeSharedMutex(i * per_var, message_handler)) {
+    if (!segment_->InitializeSharedMutex(pos, message_handler)) {
       message_handler->Message(
           kError, "Unable to create mutex for statistics variable %s",
           var->name_.c_str());
       return false;
     }
   }
-  size_t pos = variables_size() * per_var;
+  for (size_t i = 0; i < up_down_size(); ++i, pos += per_var) {
+    SharedMemVariable* var = up_downs(i);
+    if (!segment_->InitializeSharedMutex(pos, message_handler)) {
+      message_handler->Message(
+          kError, "Unable to create mutex for statistics variable %s",
+          var->name_.c_str());
+      return false;
+    }
+  }
   for (size_t i = 0; i < histograms_size();) {
     if (!segment_->InitializeSharedMutex(pos, message_handler)) {
       message_handler->Message(
@@ -500,7 +509,7 @@ bool SharedMemStatistics::Init(bool parent,
 
   // Compute size of shared memory
   size_t per_var = shm_runtime_->SharedMutexSize() + sizeof(int64);
-  size_t total = variables_size() * per_var;
+  size_t total = (variables_size() + up_down_size()) * per_var;
   for (size_t i = 0; i < histograms_size(); ++i) {
     SharedMemHistogram* hist = histograms(i);
     total += hist->AllocationSize(shm_runtime_);
@@ -537,15 +546,23 @@ bool SharedMemStatistics::Init(bool parent,
   }
 
   // Now make the variable objects actually point to the right things.
-  for (size_t i = 0; i < variables_size(); ++i) {
+  size_t pos = 0;
+  for (size_t i = 0; i < variables_size(); ++i, pos += per_var) {
     if (ok) {
-      variables(i)->AttachTo(segment_.get(), i * per_var, message_handler);
+      variables(i)->AttachTo(segment_.get(), pos, message_handler);
     } else {
       variables(i)->Reset();
     }
   }
+  // Now make the up_down_counter objects actually point to the right things.
+  for (size_t i = 0; i < up_down_size(); ++i, pos += per_var) {
+    if (ok) {
+      up_downs(i)->AttachTo(segment_.get(), pos, message_handler);
+    } else {
+      up_downs(i)->Reset();
+    }
+  }
   // Initialize Histogram buffers.
-  size_t pos = variables_size() * per_var;
   for (size_t i = 0; i < histograms_size();) {
     SharedMemHistogram* hist = histograms(i);
     if (ok) {

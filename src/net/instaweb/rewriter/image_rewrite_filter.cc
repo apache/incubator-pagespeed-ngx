@@ -542,7 +542,8 @@ ImageRewriteFilter::ImageRewriteFilter(RewriteDriver* driver)
   image_rewrite_latency_failed_ms_ =
       stats->GetHistogram(kImageRewriteLatencyFailedMs);
 
-  Variable* image_ongoing_rewrites = stats->GetVariable(kImageOngoingRewrites);
+  UpDownCounter* image_ongoing_rewrites =
+      stats->GetUpDownCounter(kImageOngoingRewrites);
   work_bound_.reset(
       new StatisticsWorkBound(image_ongoing_rewrites,
                               driver->options()->image_max_rewrites_at_once()));
@@ -579,7 +580,7 @@ void ImageRewriteFilter::InitStats(Statistics* statistics) {
   statistics->AddVariable(kImageRewriteLatencyTotalMs);
   // We want image_ongoing_rewrites to be global even if we do per-vhost
   // stats, as it's used for a StatisticsWorkBound.
-  statistics->AddGlobalVariable(kImageOngoingRewrites);
+  statistics->AddGlobalUpDownCounter(kImageOngoingRewrites);
   statistics->AddHistogram(kImageRewriteLatencyOkMs);
   statistics->AddHistogram(kImageRewriteLatencyFailedMs);
 

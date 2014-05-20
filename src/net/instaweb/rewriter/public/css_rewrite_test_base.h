@@ -44,7 +44,8 @@ class CssRewriteTestBase : public RewriteTestBase {
     num_parse_failures_ = statistics()->GetVariable(CssFilter::kParseFailures);
     num_rewrites_dropped_ =
         statistics()->GetVariable(CssFilter::kRewritesDropped);
-    total_bytes_saved_ = statistics()->GetVariable(CssFilter::kTotalBytesSaved);
+    total_bytes_saved_ = statistics()->GetUpDownCounter(
+        CssFilter::kTotalBytesSaved);
     total_original_bytes_ =
         statistics()->GetVariable(CssFilter::kTotalOriginalBytes);
     num_uses_ = statistics()->GetVariable(CssFilter::kUses);
