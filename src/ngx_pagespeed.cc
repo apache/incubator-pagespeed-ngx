@@ -1280,19 +1280,27 @@ RewriteOptions* ps_determine_request_options(
     const RewriteOptions* domain_options, /* may be null */
     RequestHeaders* request_headers,
     ResponseHeaders* response_headers,
+    RequestContextPtr request_context,
     ps_srv_conf_t* cfg_s,
-    GoogleUrl* url) {
+    GoogleUrl* url,
+    GoogleString* pagespeed_query_params,
+    GoogleString* pagespeed_option_cookies) {
   // Sets option from request headers and url.
   RewriteQuery rewrite_query;
   if (!cfg_s->server_context->GetQueryOptions(
-          domain_options, url, request_headers, response_headers,
-          &rewrite_query)) {
+          request_context, domain_options, url, request_headers,
+          response_headers, &rewrite_query)) {
     // Failed to parse query params or request headers.  Treat this as if there
     // were no query params given.
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                  "ps_route rerquest: parsing headers or query params failed.");
+                  "ps_route request: parsing headers or query params failed.");
     return NULL;
   }
+
+  *pagespeed_query_params =
+      rewrite_query.pagespeed_query_params().ToEscapedString();
+  *pagespeed_option_cookies =
+      rewrite_query.pagespeed_option_cookies().ToEscapedString();
 
   // Will be NULL if there aren't any options set with query params or in
   // headers.
@@ -1348,7 +1356,7 @@ bool ps_set_experiment_state_and_cookie(ngx_http_request_t* r,
 }
 
 // There are many sources of options:
-//  - the request (query parameters and headers)
+//  - the request (query parameters, headers, and cookies)
 //  - location block
 //  - global server options
 //  - experiment framework
@@ -1359,9 +1367,12 @@ bool ps_determine_options(ngx_http_request_t* r,
                           RequestHeaders* request_headers,
                           ResponseHeaders* response_headers,
                           RewriteOptions** options,
+                          RequestContextPtr request_context,
+                          ps_srv_conf_t* cfg_s,
                           GoogleUrl* url,
+                          GoogleString* pagespeed_query_params,
+                          GoogleString* pagespeed_option_cookies,
                           bool html_rewrite) {
-  ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
   ps_loc_conf_t* cfg_l = ps_get_loc_config(r);
 
   // Global options for this server.  Never null.
@@ -1374,7 +1385,8 @@ bool ps_determine_options(ngx_http_request_t* r,
   // Request-specific options, nearly always null.  If set they need to be
   // rebased on the directory options or the global options.
   RewriteOptions* request_options = ps_determine_request_options(
-      r, directory_options, request_headers, response_headers, cfg_s, url);
+      r, directory_options, request_headers, response_headers, request_context,
+      cfg_s, url, pagespeed_query_params, pagespeed_option_cookies);
   bool have_request_options = request_options != NULL;
 
   // Because the caller takes ownership of any options we return, the only
@@ -1497,7 +1509,8 @@ void ps_release_base_fetch(ps_request_ctx_t* ctx) {
 }
 
 // TODO(chaizhenhua): merge into NgxBaseFetch ctor
-ngx_int_t ps_create_base_fetch(ps_request_ctx_t* ctx) {
+ngx_int_t ps_create_base_fetch(ps_request_ctx_t* ctx,
+                               RequestContextPtr request_context) {
   ngx_http_request_t* r = ctx->r;
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
   int file_descriptors[2];
@@ -1539,8 +1552,7 @@ ngx_int_t ps_create_base_fetch(ps_request_ctx_t* ctx) {
   // the BaseFetch ourselves.
   ctx->base_fetch = new NgxBaseFetch(
       r, file_descriptors[1], cfg_s->server_context,
-      RequestContextPtr(cfg_s->server_context->NewRequestContext(r)),
-      ctx->preserve_caching_headers);
+      request_context, ctx->preserve_caching_headers);
 
   return NGX_OK;
 }
@@ -1676,10 +1688,16 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
   copy_request_headers_from_ngx(r, request_headers.get());
   copy_response_headers_from_ngx(r, response_headers.get());
 
+  RequestContextPtr request_context(
+      cfg_s->server_context->NewRequestContext(r));
   RewriteOptions* options = NULL;
+  GoogleString pagespeed_query_params;
+  GoogleString pagespeed_option_cookies;
 
   if (!ps_determine_options(r, request_headers.get(), response_headers.get(),
-                            &options, &url, html_rewrite)) {
+                            &options, request_context, cfg_s, &url,
+                            &pagespeed_query_params, &pagespeed_option_cookies,
+                            html_rewrite)) {
     return NGX_ERROR;
   }
 
@@ -1767,8 +1785,8 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
     ngx_http_set_ctx(r, ctx, ngx_pagespeed);
   }
 
-  if (ps_create_base_fetch(ctx)!= NGX_OK) {
-    // Do not need to release request context.
+  if (ps_create_base_fetch(ctx, request_context) != NGX_OK) {
+    // Do not need to release request context 'ctx'.
     // http_pool_cleanup will call ps_release_request_context
     return NGX_ERROR;
   }
@@ -1856,6 +1874,8 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
       driver->SetUserAgent(user_agent);
     }
     driver->SetRequestHeaders(*ctx->base_fetch->request_headers());
+    driver->set_pagespeed_query_params(pagespeed_query_params);
+    driver->set_pagespeed_option_cookies(pagespeed_option_cookies);
 
     // TODO(jefftk): FlushEarlyFlow would go here.
 
