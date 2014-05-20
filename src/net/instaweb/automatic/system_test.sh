@@ -953,6 +953,8 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   check_not_from "$OUT" grep -q '<!-- This comment should not be deleted -->'
   check_not_from "$OUT" grep -q '  '
   check_from "$OUT" grep -q 'Set-Cookie: PageSpeedFilters=%2bremove_comments;'
+  # We know we got the right cookie, now check that we got the right number.
+  check [ $(echo "$OUT" | egrep -c 'Set-Cookie:') = 1 ]
 
   start_test Sticky option cookies: no token leaves option cookies untouched
   COOKIES=$(echo "$OUT" | extract_cookies)
