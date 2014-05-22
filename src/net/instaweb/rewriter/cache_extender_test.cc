@@ -497,6 +497,73 @@ TEST_F(CacheExtenderTest, ExtendIfShardedToHttps) {
                        Encode("https://shard0.com/", "ce", "0", "c.js", "js")));
 }
 
+TEST_F(CacheExtenderTest, ExtendIfShardedAndRewritingAndMappingHttps) {
+  // This test started out trying to unit test mod_pagespeed issue #400 by
+  // replicating the settings the poster used. They didn't work, basically
+  // because the wildcard directive for *test.com conflicted with the later
+  // non-wildcard ones. After much experimentation we came up with these
+  // settings (without wildcards) that seem to do what the poster wants.
+  InitTest(kLongTtlSec);
+  SetResponseWithDefaultHeaders(StrCat("http://www.test.com/", kCssFile),
+                                kContentTypeCss, kCssData, kLongTtlSec);
+  SetResponseWithDefaultHeaders("http://www.test.com/b.jpg", kContentTypeJpeg,
+                                kImageData, kLongTtlSec);
+  SetResponseWithDefaultHeaders("http://www.test.com/c.js",
+                                kContentTypeJavascript, kJsData, kLongTtlSec);
+
+  // Set up the mappings that -should- work for issue 400.
+  ASSERT_TRUE(AddRewriteDomainMapping("http://cdn.com",
+                                      "http://test.com,http://www.test.com"));
+  ASSERT_TRUE(AddRewriteDomainMapping("https://cdn.com",
+                                      "https://test.com,https://www.test.com"));
+  ASSERT_TRUE(AddShard("http://cdn.com",
+                       "http://s1.cdn.com,http://s2.cdn.com"));
+  ASSERT_TRUE(AddShard("https://cdn.com",
+                       "https://s1.cdn.com,https://s2.cdn.com"));
+  ASSERT_TRUE(AddOriginDomainMapping("http://test.com", "https://test.com"));
+  ASSERT_TRUE(AddOriginDomainMapping("http://test.com",
+                                     "https://www.test.com"));
+
+  // shard0 is always selected in the test because of our mock hasher
+  // that always returns 0.
+  ValidateExpected("extend_if_sharded_rewriting_mapping_bare_domain_http",
+                   GenerateHtml("http://test.com/sub/a.css?v=1",
+                                "http://test.com/b.jpg",
+                                "http://test.com/c.js"),
+                   GenerateHtml(
+                       Encode("http://s1.cdn.com/sub/", "ce", "0", kCssTail,
+                              "css"),
+                       Encode("http://s1.cdn.com/", "ce", "0", "b.jpg", "jpg"),
+                       Encode("http://s1.cdn.com/", "ce", "0", "c.js", "js")));
+  ValidateExpected("extend_if_sharded_rewriting_mapping_bare_domain_https",
+                   GenerateHtml("https://test.com/sub/a.css?v=1",
+                                "https://test.com/b.jpg",
+                                "https://test.com/c.js"),
+                   GenerateHtml(
+                       Encode("https://s1.cdn.com/sub/", "ce", "0", kCssTail,
+                              "css"),
+                       Encode("https://s1.cdn.com/", "ce", "0", "b.jpg", "jpg"),
+                       Encode("https://s1.cdn.com/", "ce", "0", "c.js", "js")));
+  ValidateExpected("extend_if_sharded_rewriting_mapping_www_domain_http",
+                   GenerateHtml("http://www.test.com/sub/a.css?v=1",
+                                "http://www.test.com/b.jpg",
+                                "http://www.test.com/c.js"),
+                   GenerateHtml(
+                       Encode("http://s1.cdn.com/sub/", "ce", "0", kCssTail,
+                              "css"),
+                       Encode("http://s1.cdn.com/", "ce", "0", "b.jpg", "jpg"),
+                       Encode("http://s1.cdn.com/", "ce", "0", "c.js", "js")));
+  ValidateExpected("extend_if_sharded_rewriting_mapping_www_domain_https",
+                   GenerateHtml("https://www.test.com/sub/a.css?v=1",
+                                "https://www.test.com/b.jpg",
+                                "https://www.test.com/c.js"),
+                   GenerateHtml(
+                       Encode("https://s1.cdn.com/sub/", "ce", "0", kCssTail,
+                              "css"),
+                       Encode("https://s1.cdn.com/", "ce", "0", "b.jpg", "jpg"),
+                       Encode("https://s1.cdn.com/", "ce", "0", "c.js", "js")));
+}
+
 // TODO(jmarantz): consider implementing and testing the sharding and
 // domain-rewriting of uncacheable resources -- just don't sign the URLs.
 
