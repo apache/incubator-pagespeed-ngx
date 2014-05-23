@@ -271,15 +271,17 @@ RewriteQuery::Status RewriteQuery::Scan(
   RequestHeaders::CookieMultimapConstIter it, end;
   for (it = all_cookies.begin(), end = all_cookies.end(); it != end; ++it) {
     GoogleUrl gurl;
-    GoogleString unescaped = GoogleUrl::UnescapeIgnorePlus(it->second.first);
+    StringPiece cookie_name = it->first;
+    StringPiece cookie_value = it->second.first;
+    GoogleString unescaped = GoogleUrl::UnescapeIgnorePlus(cookie_value);
     StringPiece sanitized = SanitizeValueAsQP(unescaped, &gurl);
     GoogleString escaped = GoogleUrl::Escape(sanitized);
-    if (unescaped == sanitized && escaped == it->second.first) {
+    if (unescaped == sanitized && escaped == cookie_value) {
       RequestContextPtr null_request_context;
-      if (ScanNameValue(it->first, unescaped, allow_options,
+      if (ScanNameValue(cookie_name, unescaped, allow_options,
                         null_request_context, request_properties.get(),
                         options_.get(), handler) == kSuccess) {
-        pagespeed_option_cookies_.AddEscaped(it->first, unescaped);
+        pagespeed_option_cookies_.AddEscaped(cookie_name, unescaped);
         status = kSuccess;
       }
       // A PageSpeed cookies with an invalid value will not be cleared. This
@@ -288,7 +290,7 @@ RewriteQuery::Status RewriteQuery::Scan(
     } else {
       handler->Message(kInfo, "Cookie value seems mangled: "
                        "cookie='%s', escaped='%s'",
-                       it->second.first.as_string().c_str(), escaped.c_str());
+                       cookie_value.as_string().c_str(), escaped.c_str());
     }
   }
 
