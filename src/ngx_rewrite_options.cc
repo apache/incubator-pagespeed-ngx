@@ -46,9 +46,10 @@ const char kGlobalAdminPath[] = "GlobalAdminPath";
 
 // These options are copied from mod_instaweb.cc, where APACHE_CONFIG_OPTIONX
 // indicates that they can not be set at the directory/location level. They set
-// options in the RewriteDriverFactory, so they do not appear in RewriteOptions.
-// They are not alphabetized on purpose, but rather left in the same order as in
-// mod_instaweb.cc in case we end up needing to compare.
+// options in the RewriteDriverFactory, so they're entirely global and do not
+// appear in RewriteOptions.  They are not alphabetized on purpose, but rather
+// left in the same order as in mod_instaweb.cc in case we end up needing to
+// compare.
 // TODO(oschaaf): this duplication is a short term solution.
 const char* const server_only_options[] = {
   "FetcherTimeoutMs",
@@ -61,6 +62,7 @@ const char* const server_only_options[] = {
   "MessageBufferSize",
   "NumRewriteThreads",
   "NumExpensiveRewriteThreads",
+  "StaticAssetPrefix",
   "TrackOriginalContentLength",
   "UsePerVHostStatistics",  // TODO(anupama): What to do about "No longer used"
   "BlockingRewriteRefererUrls",
@@ -309,8 +311,11 @@ const char* NgxRewriteOptions::ParseAndSetOptions(
       result = ParseAndSetOptionHelper<SystemRewriteDriverFactory>(
           arg, driver_factory,
           &SystemRewriteDriverFactory::set_track_original_content_length);
+    } else if (IsDirective(directive, "StaticAssetPrefix")) {
+      driver_factory->set_static_asset_prefix(arg);
+      result = RewriteOptions::kOptionOk;
     } else {
-      result = ParseAndSetOptionFromName1(directive, args[1], &msg, handler);
+      result = ParseAndSetOptionFromName1(directive, arg, &msg, handler);
     }
   } else if (n_args == 3) {
     // Short-term special handling, until this moves to common code.
