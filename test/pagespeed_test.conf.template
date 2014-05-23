@@ -34,6 +34,8 @@ http {
   pagespeed AdminPath /pagespeed_admin;
   pagespeed GlobalAdminPath /pagespeed_global_admin;
 
+  pagespeed StaticAssetPrefix /pagespeed_custom_static/;
+
   root "@@SERVER_ROOT@@";
 
   # Block 5a: Decide on Cache-Control header value to use for outgoing

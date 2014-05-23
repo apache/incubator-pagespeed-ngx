@@ -259,7 +259,7 @@ if [ ! -e "$SYSTEM_TEST_FILE" ] ; then
   exit 2
 fi
 
-PSA_JS_LIBRARY_URL_PREFIX="pagespeed_static"
+PSA_JS_LIBRARY_URL_PREFIX="pagespeed_custom_static"
 
 # An expected failure can be indicated like: "~In-place resource optimization~"
 PAGESPEED_EXPECTED_FAILURES="
@@ -2204,7 +2204,7 @@ keepalive_test "keepalive-beacon-post.example.com" "/ngx_pagespeed_beacon"\
 
 start_test keepalive with static resources
 keepalive_test "keepalive-static.example.com"\
-  "/pagespeed_static/js_defer.0.js" ""
+  "/pagespeed_custom_static/js_defer.0.js" ""
 
 # Test for MaxCombinedCssBytes. The html used in the test, 'combine_css.html',
 # has 4 CSS files in the following order.
@@ -2239,7 +2239,7 @@ CONNECTION=$(extract_headers $FETCH_UNTIL_OUTFILE | fgrep "Connection:")
 check_not_from "$CONNECTION" fgrep -qi "Keep-Alive, Keep-Alive"
 check_from "$CONNECTION" fgrep -qi "Keep-Alive"
 
-start_test pagespeed_static defer js served with correct headers.
+start_test pagespeed_custom_static defer js served with correct headers.
 # First, determine which hash js_defer is served with. We need a correct hash
 # to get it served up with an Etag, which is one of the things we want to test.
 URL="$HOSTNAME/mod_pagespeed_example/defer_javascript.html?PageSpeed=on&PageSpeedFilters=defer_javascript"
@@ -2397,6 +2397,49 @@ WGETRC=$OLD_WGETRC
 WGET_ARGS=""
 
 JS_URL="$HOSTNAME/pagespeed_static/js_defer.$HASH.js"
+start_test Request Option Override : Correct values are passed
+HOST_NAME="http://request-option-override.example.com"
+OPTS="?ModPagespeed=on"
+OPTS+="&ModPagespeedFilters=+collapse_whitespace,+remove_comments"
+OPTS+="&PageSpeedRequestOptionOverride=abc"
+URL="$HOST_NAME/mod_pagespeed_test/forbidden.html$OPTS"
+OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)"
+echo wget $URL
+check_not_from "$OUT" grep -q '<!--'
+
+start_test Request Option Override : Incorrect values are passed
+HOST_NAME="http://request-option-override.example.com"
+OPTS="?ModPagespeed=on"
+OPTS+="&ModPagespeedFilters=+collapse_whitespace,+remove_comments"
+OPTS+="&PageSpeedRequestOptionOverride=notabc"
+URL="$HOST_NAME/mod_pagespeed_test/forbidden.html$OPTS"
+OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)"
+echo wget $URL
+check_from "$OUT" grep -q '<!--'
+
+start_test Request Option Override : Correct values are passed as headers
+HOST_NAME="http://request-option-override.example.com"
+OPTS="--header=ModPagespeed:on"
+OPTS+=" --header=ModPagespeedFilters:+collapse_whitespace,+remove_comments"
+OPTS+=" --header=PageSpeedRequestOptionOverride:abc"
+URL="$HOST_NAME/mod_pagespeed_test/forbidden.html"
+echo wget $OPTS $URL
+OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $OPTS $URL)"
+check_not_from "$OUT" grep -q '<!--'
+
+start_test Request Option Override : Incorrect values are passed as headers
+HOST_NAME="http://request-option-override.example.com"
+OPTS="--header=ModPagespeed:on"
+OPTS+=" --header=ModPagespeedFilters:+collapse_whitespace,+remove_comments"
+OPTS+=" --header=PageSpeedRequestOptionOverride:notabc"
+URL="$HOST_NAME/mod_pagespeed_test/forbidden.html"
+echo wget $OPTS $URL
+OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $OPTS $URL)"
+check_from "$OUT" grep -q '<!--'
+
+start_test JS gzip headers
+
+JS_URL="$HOSTNAME/pagespeed_custom_static/js_defer.$HASH.js"
 JS_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
   $JS_URL 2>&1)
 check_from "$JS_HEADERS" egrep -qi 'HTTP/1[.]. 200 OK'
