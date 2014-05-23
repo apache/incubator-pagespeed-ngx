@@ -21,43 +21,27 @@
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/thread_system.h"
-#include "pagespeed/kernel/util/platform.h"
 
 namespace net_instaweb {
 
-SimpleStatsVariable::~SimpleStatsVariable() {
-}
-
 // TODO(jmarantz): Remove this constructor and pass in thread-system explicitly.
-SimpleStats::SimpleStats()
-    : thread_system_(Platform::CreateThreadSystem()),
-      own_thread_system_(true) {
+SimpleStats::SimpleStats() {
 }
 
-SimpleStats::SimpleStats(ThreadSystem* thread_system)
-    : thread_system_(thread_system),
-      own_thread_system_(false) {
+SimpleStats::SimpleStats(ThreadSystem* thread_system) {
+  SetThreadSystem(thread_system);
 }
 
 SimpleStats::~SimpleStats() {
-  if (own_thread_system_) {
-    delete thread_system_;
-  }
-  thread_system_ = NULL;
 }
 
-CountHistogram* SimpleStats::NewHistogram(const StringPiece& name) {
-  return new CountHistogram(thread_system_->NewMutex());
-}
-
-SimpleStatsVariable* SimpleStats::NewUpDownCounter(
-    const StringPiece& name, int index) {
-  return new SimpleStatsVariable(thread_system_->NewMutex());
-}
-
-SimpleStatsVariable::SimpleStatsVariable(AbstractMutex* mutex)
+SimpleStatsVariable::SimpleStatsVariable(StringPiece /*name*/,
+                                         Statistics* statistics)
     : value_(0),
-      mutex_(mutex) {
+      mutex_(statistics->thread_system()->NewMutex()) {
+}
+
+SimpleStatsVariable::~SimpleStatsVariable() {
 }
 
 int64 SimpleStatsVariable::GetLockHeld() const {

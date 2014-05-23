@@ -53,8 +53,9 @@ class Timer;
 // warning message will be logged).  If the variable fails to initialize in the
 // process that happens to serve a statistics page, then the variable will show
 // up with value -1.
-class SharedMemVariable : public MutexedUpDownCounter {
+class SharedMemVariable : public MutexedScalar {
  public:
+  SharedMemVariable(StringPiece name, Statistics* stats);
   virtual ~SharedMemVariable() {}
   virtual StringPiece GetName() const { return name_; }
 
@@ -90,6 +91,8 @@ class SharedMemVariable : public MutexedUpDownCounter {
 
 class SharedMemHistogram : public Histogram {
  public:
+  SharedMemHistogram(StringPiece name, Statistics* stats);
+
   virtual ~SharedMemHistogram();
   virtual void Add(double value);
   virtual void Clear();
@@ -135,7 +138,6 @@ class SharedMemHistogram : public Histogram {
 
  private:
   friend class SharedMemStatistics;
-  SharedMemHistogram();
   void AttachTo(AbstractSharedMemSegment* segment, size_t offset,
                 MessageHandler* message_handler);
 
@@ -177,8 +179,9 @@ class SharedMemHistogram : public Histogram {
   DISALLOW_COPY_AND_ASSIGN(SharedMemHistogram);
 };
 
-class SharedMemStatistics : public StatisticsTemplate<
-  SharedMemVariable, SharedMemVariable, SharedMemHistogram, FakeTimedVariable> {
+typedef ScalarStatisticsTemplate<SharedMemVariable, SharedMemHistogram,
+                                 FakeTimedVariable> SharedMemStatisticsBase;
+class SharedMemStatistics : public SharedMemStatisticsBase {
  public:
   SharedMemStatistics(int64 logging_interval_ms,
                       int64 max_logfile_size_kb,
@@ -219,14 +222,9 @@ class SharedMemStatistics : public StatisticsTemplate<
   }
 
  protected:
-  virtual SharedMemVariable* NewUpDownCounter(const StringPiece& name,
-                                              int index);
-  virtual SharedMemVariable* NewVariable(const StringPiece& name, int index) {
-    return NewUpDownCounter(name, index);
-  }
-  virtual SharedMemHistogram* NewHistogram(const StringPiece& name);
-  virtual FakeTimedVariable* NewTimedVariable(const StringPiece& name,
-                                              int index);
+  virtual Var* NewVariable(StringPiece name);
+  virtual UpDown* NewUpDownCounter(StringPiece name);
+  virtual Hist* NewHistogram(StringPiece name);
 
  private:
   // Create mutexes in the segment, with per_var bytes being used,

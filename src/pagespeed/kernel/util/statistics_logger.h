@@ -20,7 +20,6 @@
 
 #include <cstddef>
 #include <map>
-#include <set>
 #include <vector>
 
 #include "pagespeed/kernel/base/basictypes.h"
@@ -31,7 +30,7 @@
 namespace net_instaweb {
 
 class MessageHandler;
-class MutexedUpDownCounter;
+class MutexedScalar;
 class Statistics;
 class StatisticsLogfileReader;
 class Timer;
@@ -42,7 +41,7 @@ class StatisticsLogger {
   // Does not take ownership of any objects passed in.
   StatisticsLogger(
       int64 update_interval_ms, int64 max_logfile_size_kb,
-      const StringPiece& log_file, MutexedUpDownCounter* last_dump_timestamp,
+      const StringPiece& log_file, MutexedScalar* last_dump_timestamp,
       MessageHandler* message_handler, Statistics* stats,
       FileSystem* file_system, Timer* timer);
   ~StatisticsLogger();
@@ -51,7 +50,7 @@ class StatisticsLogger {
   // Variable data is a time series collected from with data points from
   // start_time to end_time. Granularity is the minimum time difference
   // between each successive data point.
-  void DumpJSON(const std::set<GoogleString>& var_titles,
+  void DumpJSON(const StringSet& var_titles,
                 int64 start_time, int64 end_time, int64 granularity_ms,
                 Writer* writer, MessageHandler* message_handler) const;
 
@@ -71,7 +70,7 @@ class StatisticsLogger {
   // Export statistics to a writer. Only export stats needed for console.
   // current_time_ms: The time at which the dump was triggered.
   void DumpConsoleVarsToWriter(int64 current_time_ms, Writer* writer);
-  void ParseDataFromReader(const std::set<GoogleString>& var_titles,
+  void ParseDataFromReader(const StringSet& var_titles,
                            StatisticsLogfileReader* reader,
                            std::vector<int64>* list_of_timestamps,
                            VarMap* parsed_var_data) const;
@@ -95,7 +94,7 @@ class StatisticsLogger {
 
   // The last_dump_timestamp not only contains the time of the last dump,
   // it also controls locking so that multiple threads can't dump at once.
-  MutexedUpDownCounter* last_dump_timestamp_;
+  MutexedScalar* last_dump_timestamp_;
   MessageHandler* message_handler_;
   Statistics* statistics_;  // Needed so we can dump the stats contained here.
   // file_system_ and timer_ are owned by someone who called the constructor
@@ -105,7 +104,7 @@ class StatisticsLogger {
   const int64 update_interval_ms_;
   const int64 max_logfile_size_kb_;
   GoogleString logfile_name_;
-  std::set<GoogleString> variables_to_log_;
+  StringSet variables_to_log_;
 
   DISALLOW_COPY_AND_ASSIGN(StatisticsLogger);
 };

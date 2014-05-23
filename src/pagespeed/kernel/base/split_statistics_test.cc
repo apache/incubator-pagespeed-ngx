@@ -35,6 +35,7 @@ namespace net_instaweb {
 namespace {
 
 const char kVarA[] = "a";
+const char kUpDownA[] = "aA";
 const char kVarB[] = "b";
 const char kVarGlobal[] = "global";
 const char kHist[] = "histogram";
@@ -80,6 +81,7 @@ class SplitStatisticsTest : public testing::Test {
  protected:
   void InitStats(Statistics* s) {
     s->AddVariable(kVarA);
+    s->AddUpDownCounter(kUpDownA);
     s->AddVariable(kVarB);
     s->AddGlobalUpDownCounter(kVarGlobal);
 
@@ -188,8 +190,7 @@ TEST_F(SplitStatisticsTest, Set) {
 }
 
 TEST_F(SplitStatisticsTest, TestSetReturningPrevious) {
-  UpDownCounter* var =
-      dynamic_cast<UpDownCounter*>(global_->GetVariable(kVarA));
+  UpDownCounter* var = global_->GetUpDownCounter(kUpDownA);
   EXPECT_EQ(0, var->SetReturningPreviousValue(5));
   EXPECT_EQ(5, var->SetReturningPreviousValue(-3));
   EXPECT_EQ(-3, var->SetReturningPreviousValue(10));

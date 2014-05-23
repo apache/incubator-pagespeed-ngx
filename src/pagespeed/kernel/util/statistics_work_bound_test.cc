@@ -25,9 +25,10 @@
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/util/simple_stats.h"
+#include "pagespeed/kernel/base/statistics_template.h"
 
 namespace net_instaweb {
-class Variable;
+class UpDownCounter;
 
 namespace {
 
@@ -35,15 +36,15 @@ class StatisticsWorkBoundTest : public testing::Test {
  public:
   StatisticsWorkBoundTest()
       : stats_(),
-        var1_(stats_.AddVariable("var1")),
-        var2_(stats_.AddVariable("var2")) { }
+        var1_(stats_.AddUpDownCounter("var1")),
+        var2_(stats_.AddUpDownCounter("var2")) { }
 
  protected:
   SimpleStats stats_;
-  Variable* var1_;
-  Variable* var2_;
+  UpDownCounter* var1_;
+  UpDownCounter* var2_;
 
-  StatisticsWorkBound* MakeBound(Variable* var, int bound) {
+  StatisticsWorkBound* MakeBound(UpDownCounter* var, int bound) {
     StatisticsWorkBound* result = new StatisticsWorkBound(var, bound);
     CHECK(NULL != result);
     return result;

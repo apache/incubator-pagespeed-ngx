@@ -23,7 +23,7 @@
 
 namespace net_instaweb {
 
-class Variable;
+class UpDownCounter;
 
 // A WorkBound implementation in terms of statistics.  This is a bit of a hack
 // that gets things implemented quickly (especially given the complexity of
@@ -34,13 +34,13 @@ class StatisticsWorkBound : public WorkBound {
  public:
   // Note that ownership of variable remains with the creating Statistics
   // object.  If the bound is 0, the bound is actually infinite.
-  StatisticsWorkBound(Variable* variable, int bound);
+  StatisticsWorkBound(UpDownCounter* variable, int bound);
   virtual ~StatisticsWorkBound();
 
   virtual bool TryToWork();
   virtual void WorkComplete();
  private:
-  Variable* variable_;
+  UpDownCounter* counter_;
   int bound_;
 };
 

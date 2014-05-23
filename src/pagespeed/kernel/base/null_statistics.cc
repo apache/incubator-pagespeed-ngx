@@ -17,19 +17,14 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "pagespeed/kernel/base/null_statistics.h"
-#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 
-NullStatisticsVariable::~NullStatisticsVariable() {
+NullStatistics::NullStatistics()
+    : ScalarStatisticsTemplate<NullStatisticsVariable>(&null_thread_system_) {
 }
 
 NullStatistics::~NullStatistics() {
-}
-
-NullStatisticsVariable* NullStatistics::NewVariable(
-    const StringPiece& name, int index) {
-  return new NullStatisticsVariable;
 }
 
 }  // namespace net_instaweb

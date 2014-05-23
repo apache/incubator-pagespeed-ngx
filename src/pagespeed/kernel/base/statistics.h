@@ -24,6 +24,7 @@
 #include "base/logging.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/null_thread_system.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -32,7 +33,9 @@
 namespace net_instaweb {
 
 class MessageHandler;
+class Statistics;
 class StatisticsLogger;
+class ThreadSystem;
 class Writer;
 
 // Variables can normally only be increased, not decreased.  However, for
@@ -48,26 +51,18 @@ class Variable {
   // implementation has some sensible way of doing so.
   virtual StringPiece GetName() const = 0;
 
-  // Adds 'delta' to the variable's value, returning the result.  This
-  // is virtual so that subclasses can add platform-specific atomicity.
+  // Adds 'delta' to the variable's value, returning the result.
   // TODO(sligocki): s/int/int64/
-  int64 Add(int delta) {
-#ifndef NDEBUG
-    CheckNotNegative(delta);
-#endif
-    return AddHelper(delta);
+  int64 Add(int non_negative_delta) {
+    DCHECK_LE(0, non_negative_delta);
+    return AddHelper(non_negative_delta);
   }
 
   virtual void Clear() = 0;
 
  protected:
+  // This is virtual so that subclasses can add platform-specific atomicity.
   virtual int64 AddHelper(int delta) = 0;
-
-#ifndef NDEBUG
-  virtual void CheckNotNegative(int delta) {
-    DCHECK_LE(0, delta);
-  }
-#endif
 };
 
 // UpDownCounters are variables that can also be decreased (e.g. Add
@@ -78,9 +73,14 @@ class Variable {
 // type bookkeeping in tests, etc.
 //
 // TODO(jmarantz): consider renaming Variable->Counter, UpDownCounter->Variable.
-class UpDownCounter : public Variable {
+class UpDownCounter {
  public:
   virtual ~UpDownCounter();
+
+  virtual int64 Get() const = 0;
+  // Return some name representing the variable, provided that the specific
+  // implementation has some sensible way of doing so.
+  virtual StringPiece GetName() const = 0;
 
   // Sets the specified value, returning the previous value.  This can be
   // used to by two competing threads/processes to deterimine which thread
@@ -94,39 +94,34 @@ class UpDownCounter : public Variable {
 
   virtual void Set(int64 value) = 0;
   void Clear() { Set(0); }
+  int64 Add(int delta) { return AddHelper(delta); }
 
  protected:
-  virtual int64 AddHelper(int delta) {
-    int64 value = Get() + delta;
-    Set(value);
-    return value;
-  }
-
-#ifndef NDEBUG
-  virtual void CheckNotNegative(int delta) {
-    // No such requirement for UpDownCounter.
-  }
-#endif
+  // This is virtual so that subclasses can add platform-specific atomicity.
+  virtual int64 AddHelper(int delta) = 0;
 };
 
-// UpDownCounter protected by a mutex. Mutex must fully protect access to
-// underlying variable. For example, in mod_pagespeed and
+// Scalar value protected by a mutex. Mutex must fully protect access
+// to underlying scalar. For example, in mod_pagespeed and
 // ngx_pagespeed, variables are stored in shared memory and accessible
 // from any process on a machine, so the mutex must provide protection
 // across separate processes.
 //
 // StatisticsLogger depends upon these mutexes being cross-process so that
 // several processes using the same file system don't clobber each others logs.
-class MutexedUpDownCounter : public UpDownCounter {
+//
+// TODO(jmarantz): this could be done using templates rather than using virtual
+// methods, as MutexedScalar does not implement an abstract interface.
+class MutexedScalar {
  public:
-  virtual ~MutexedUpDownCounter();
+  virtual ~MutexedScalar();
 
   // Subclasses should not define these methods, instead define the *LockHeld()
   // methods below.
-  virtual int64 Get() const;
-  virtual void Set(int64 value);
-  virtual int64 SetReturningPreviousValue(int64 value);
-  virtual int64 AddHelper(int delta);
+  int64 Get() const;
+  void Set(int64 value);
+  int64 SetReturningPreviousValue(int64 value);
+  int64 AddHelper(int delta);
 
  protected:
   friend class StatisticsLogger;
@@ -263,7 +258,7 @@ class Histogram {
 class CountHistogram : public Histogram {
  public:
   // Takes ownership of mutex.
-  explicit CountHistogram(AbstractMutex* mutex);
+  explicit CountHistogram(StringPiece name, Statistics* statistics);
   virtual ~CountHistogram();
   virtual void Add(double value) {
     ScopedMutex hold(lock());
@@ -320,8 +315,7 @@ class TimedVariable {
 // TimedVariable implementation that only updates a basic UpDownCounter.
 class FakeTimedVariable : public TimedVariable {
  public:
-  explicit FakeTimedVariable(Variable* var) : var_(var) {
-  }
+  FakeTimedVariable(StringPiece name, Statistics* stats);
   virtual ~FakeTimedVariable();
   // Update the stat value. delta is in milliseconds.
   virtual void IncBy(int64 delta) {
@@ -350,6 +344,15 @@ class FakeTimedVariable : public TimedVariable {
 // Base class for implementations of monitoring statistics.
 class Statistics {
  public:
+  explicit Statistics(ThreadSystem* ts)
+      : own_thread_system_(false),
+        thread_system_(ts) {
+  }
+
+  Statistics()
+      : own_thread_system_(true),
+        thread_system_(new NullThreadSystem) {
+  }
   virtual ~Statistics();
 
   // Add a new variable, or returns an existing one of that name.
@@ -437,9 +440,25 @@ class Statistics {
   // Return the StatisticsLogger associated with this Statistics.
   virtual StatisticsLogger* console_logger() { return NULL; }
 
+  void SetThreadSystem(ThreadSystem* x);
+  ThreadSystem* thread_system() const { return thread_system_; }
+
+  // Testing helper method to look up a statistics numeric value by name.
+  // Please do not use this in production code.  This finds the current
+  // value whether it is stored in a Variable, UpDownCounter, or TimedVariable.
+  //
+  // If the statistics is not found, the program check-fails.
+  int64 LookupValue(StringPiece stat_name);
+
  protected:
   // A helper for subclasses that do not fully implement timed variables.
-  FakeTimedVariable* NewFakeTimedVariable(const StringPiece& name, int index);
+  FakeTimedVariable* NewFakeTimedVariable(StringPiece name);
+
+ private:
+  bool own_thread_system_;
+  ThreadSystem* thread_system_;
+
+  DISALLOW_COPY_AND_ASSIGN(Statistics);
 };
 
 }  // namespace net_instaweb

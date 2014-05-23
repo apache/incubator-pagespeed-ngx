@@ -23,12 +23,12 @@ class SimpleStatsTest : public testing::Test {
 };
 
 TEST_F(SimpleStatsTest, TestSimpleUpDownCounters) {
-  UpDownCounter* c0 = stats_.AddVariable("c0");
-  UpDownCounter* c1 = stats_.AddVariable("c1");
-  UpDownCounter* c2 = stats_.AddVariable("c2");
-  EXPECT_EQ(c0, stats_.FindVariable("c0"));
-  EXPECT_EQ(c1, stats_.AddVariable("c1"));
-  EXPECT_TRUE(stats_.FindVariable("not_defined") == NULL);
+  UpDownCounter* c0 = stats_.AddUpDownCounter("c0");
+  UpDownCounter* c1 = stats_.AddUpDownCounter("c1");
+  UpDownCounter* c2 = stats_.AddUpDownCounter("c2");
+  EXPECT_EQ(c0, stats_.FindUpDownCounter("c0"));
+  EXPECT_EQ(c1, stats_.AddUpDownCounter("c1"));
+  EXPECT_TRUE(stats_.FindUpDownCounter("not_defined") == NULL);
   c0->Set(0);
   c1->Set(1);
   c2->Set(2);

@@ -54,9 +54,38 @@ const char kTimestampVariable[] = "timestamp_";
 }  // namespace
 
 // Our shared memory storage format is an array of (mutex, int64).
-SharedMemVariable::SharedMemVariable(const StringPiece& name)
+SharedMemVariable::SharedMemVariable(StringPiece name, Statistics* stats)
     : name_(name.as_string()),
       value_ptr_(NULL) {
+}
+
+SharedMemStatistics::Var* SharedMemStatistics::NewVariable(StringPiece name) {
+  if (frozen_) {
+    LOG(ERROR) << "Cannot add variable " << name
+               << " after SharedMemStatistics is frozen!";
+    return NULL;
+  }
+  return new Var(name, this);
+}
+
+SharedMemStatistics::UpDown* SharedMemStatistics::NewUpDownCounter(
+    StringPiece name) {
+  if (frozen_) {
+    LOG(ERROR) << "Cannot add up/down counter " << name
+               << " after SharedMemStatistics is frozen!";
+    return NULL;
+  }
+  return new UpDown(name, this);
+}
+
+SharedMemStatistics::Hist* SharedMemStatistics::NewHistogram(
+    StringPiece name) {
+  if (frozen_) {
+    LOG(ERROR) << "Cannot add histogram " << name
+               << " after SharedMemStatistics is frozen!";
+    return NULL;
+  }
+  return new Hist(name, this);
 }
 
 int64 SharedMemVariable::GetLockHeld() const {
@@ -91,7 +120,7 @@ AbstractMutex* SharedMemVariable::mutex() const {
   return mutex_.get();
 }
 
-SharedMemHistogram::SharedMemHistogram()
+SharedMemHistogram::SharedMemHistogram(StringPiece name, Statistics* stats)
     : num_buckets_(kDefaultNumBuckets + kOutOfBoundsCatcherBuckets),
       buffer_(NULL) {
 }
@@ -427,10 +456,11 @@ SharedMemStatistics::SharedMemStatistics(
       frozen_(false) {
   if (logging) {
     if (logging_file.size() > 0) {
-      SharedMemVariable* timestamp_var = AddVariable(kTimestampVariable);
+      SharedMemVariable* timestamp_impl =
+          AddVariable(kTimestampVariable)->impl();
       console_logger_.reset(new StatisticsLogger(
           logging_interval_ms, max_logfile_size_kb, logging_file,
-          timestamp_var, message_handler, this, file_system, timer));
+          timestamp_impl, message_handler, this, file_system, timer));
     } else {
       message_handler->Message(kError,
           "Error: ModPagespeedStatisticsLoggingFile is required if "
@@ -442,50 +472,24 @@ SharedMemStatistics::SharedMemStatistics(
 SharedMemStatistics::~SharedMemStatistics() {
 }
 
-SharedMemVariable* SharedMemStatistics::NewUpDownCounter(
-    const StringPiece& name, int index) {
-  if (frozen_) {
-    LOG(ERROR) << "Cannot add variable " << name
-               << " after SharedMemStatistics is frozen!";
-    return NULL;
-  } else {
-    SharedMemVariable* var = new SharedMemVariable(name);
-    return var;
-  }
-}
-
-SharedMemHistogram* SharedMemStatistics::NewHistogram(const StringPiece& name) {
-  if (frozen_) {
-    LOG(ERROR) << "Cannot add histogram after SharedMemStatistics is frozen!";
-    return NULL;
-  } else {
-    return new SharedMemHistogram();
-  }
-}
-
-FakeTimedVariable* SharedMemStatistics::NewTimedVariable(
-    const StringPiece& name, int index) {
-  return NewFakeTimedVariable(name, index);
-}
-
 bool SharedMemStatistics::InitMutexes(size_t per_var,
                                       MessageHandler* message_handler) {
   size_t pos = 0;
   for (size_t i = 0; i < variables_size(); ++i, pos += per_var) {
-    SharedMemVariable* var = variables(i);
+    Variable* var = variables(i);
     if (!segment_->InitializeSharedMutex(pos, message_handler)) {
       message_handler->Message(
           kError, "Unable to create mutex for statistics variable %s",
-          var->name_.c_str());
+          var->GetName().as_string().c_str());
       return false;
     }
   }
   for (size_t i = 0; i < up_down_size(); ++i, pos += per_var) {
-    SharedMemVariable* var = up_downs(i);
+    UpDownCounter* var = up_downs(i);
     if (!segment_->InitializeSharedMutex(pos, message_handler)) {
       message_handler->Message(
           kError, "Unable to create mutex for statistics variable %s",
-          var->name_.c_str());
+          var->GetName().as_string().c_str());
       return false;
     }
   }
@@ -549,17 +553,17 @@ bool SharedMemStatistics::Init(bool parent,
   size_t pos = 0;
   for (size_t i = 0; i < variables_size(); ++i, pos += per_var) {
     if (ok) {
-      variables(i)->AttachTo(segment_.get(), pos, message_handler);
+      variables(i)->impl()->AttachTo(segment_.get(), pos, message_handler);
     } else {
-      variables(i)->Reset();
+      variables(i)->impl()->Reset();
     }
   }
   // Now make the up_down_counter objects actually point to the right things.
   for (size_t i = 0; i < up_down_size(); ++i, pos += per_var) {
     if (ok) {
-      up_downs(i)->AttachTo(segment_.get(), pos, message_handler);
+      up_downs(i)->impl()->AttachTo(segment_.get(), pos, message_handler);
     } else {
-      up_downs(i)->Reset();
+      up_downs(i)->impl()->Reset();
     }
   }
   // Initialize Histogram buffers.

@@ -201,8 +201,7 @@ SplitStatistics::SplitStatistics(
 SplitStatistics::~SplitStatistics() {
 }
 
-SplitUpDownCounter* SplitStatistics::NewUpDownCounter(const StringPiece& name,
-                                                int index /*unused*/) {
+SplitUpDownCounter* SplitStatistics::NewUpDownCounter(StringPiece name) {
   UpDownCounter* local_var = local_->FindUpDownCounter(name);
   CHECK(local_var != NULL);
 
@@ -210,11 +209,10 @@ SplitUpDownCounter* SplitStatistics::NewUpDownCounter(const StringPiece& name,
   CHECK(global_var != NULL);
 
   return new SplitUpDownCounter(local_var /* read/write */,
-                             global_var /* write only */);
+                                global_var /* write only */);
 }
 
-SplitVariable* SplitStatistics::NewVariable(const StringPiece& name,
-                                            int index /*unused*/) {
+SplitVariable* SplitStatistics::NewVariable(StringPiece name) {
   Variable* local_var = local_->FindVariable(name);
   CHECK(local_var != NULL);
 
@@ -225,8 +223,7 @@ SplitVariable* SplitStatistics::NewVariable(const StringPiece& name,
                            global_var /* write only */);
 }
 
-SplitUpDownCounter* SplitStatistics::NewGlobalUpDownCounter(
-    const StringPiece& name, int index /* unused */) {
+SplitUpDownCounter* SplitStatistics::NewGlobalUpDownCounter(StringPiece name) {
   UpDownCounter* local_var = local_->FindUpDownCounter(name);
   CHECK(local_var != NULL);
 
@@ -236,10 +233,10 @@ SplitUpDownCounter* SplitStatistics::NewGlobalUpDownCounter(
   // For NewGlobalUpDownCounter we reverse global and local from their usual
   // behavior in NewVariable, doing reads from the global/aggregate.
   return new SplitUpDownCounter(global_var /* read/write */,
-                             local_var /* write only */);
+                                local_var /* write only */);
 }
 
-SplitHistogram* SplitStatistics::NewHistogram(const StringPiece& name) {
+SplitHistogram* SplitStatistics::NewHistogram(StringPiece name) {
   Histogram* local_histo = local_->FindHistogram(name);
   CHECK(local_histo != NULL);
 
@@ -251,8 +248,7 @@ SplitHistogram* SplitStatistics::NewHistogram(const StringPiece& name) {
                             global_histo /* write only */);
 }
 
-SplitTimedVariable* SplitStatistics::NewTimedVariable(const StringPiece& name,
-                                                      int index /*unused*/) {
+SplitTimedVariable* SplitStatistics::NewTimedVariable(StringPiece name) {
   TimedVariable* local_timed_var = local_->FindTimedVariable(name);
   CHECK(local_timed_var != NULL);
 

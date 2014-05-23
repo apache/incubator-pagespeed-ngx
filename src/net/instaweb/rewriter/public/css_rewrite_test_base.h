@@ -217,7 +217,7 @@ class CssRewriteTestBase : public RewriteTestBase {
   Variable* num_fallback_rewrites_;
   Variable* num_parse_failures_;
   Variable* num_rewrites_dropped_;
-  Variable* total_bytes_saved_;
+  UpDownCounter* total_bytes_saved_;
   Variable* total_original_bytes_;
   Variable* num_uses_;
   Variable* num_flatten_imports_charset_mismatch_;

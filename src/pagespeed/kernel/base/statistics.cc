@@ -29,6 +29,7 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/string_writer.h"
+#include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/base/writer.h"
 
 namespace {
@@ -55,10 +56,10 @@ int64 UpDownCounter::SetReturningPreviousValue(int64 value) {
   return previous_value;
 }
 
-MutexedUpDownCounter::~MutexedUpDownCounter() {
+MutexedScalar::~MutexedScalar() {
 }
 
-int64 MutexedUpDownCounter::Get() const {
+int64 MutexedScalar::Get() const {
   if (mutex() != NULL) {
     ScopedMutex hold_lock(mutex());
     return GetLockHeld();
@@ -67,14 +68,14 @@ int64 MutexedUpDownCounter::Get() const {
   }
 }
 
-void MutexedUpDownCounter::Set(int64 new_value) {
+void MutexedScalar::Set(int64 new_value) {
   if (mutex() != NULL) {
     ScopedMutex hold_lock(mutex());
     SetLockHeld(new_value);
   }
 }
 
-int64 MutexedUpDownCounter::SetReturningPreviousValue(int64 new_value) {
+int64 MutexedScalar::SetReturningPreviousValue(int64 new_value) {
   if (mutex() != NULL) {
     ScopedMutex hold_lock(mutex());
     return SetReturningPreviousValueLockHeld(new_value);
@@ -83,7 +84,7 @@ int64 MutexedUpDownCounter::SetReturningPreviousValue(int64 new_value) {
   }
 }
 
-int64 MutexedUpDownCounter::AddHelper(int delta) {
+int64 MutexedScalar::AddHelper(int delta) {
   if (mutex() != NULL) {
     ScopedMutex hold_lock(mutex());
     return AddLockHeld(delta);
@@ -92,11 +93,11 @@ int64 MutexedUpDownCounter::AddHelper(int delta) {
   }
 }
 
-void MutexedUpDownCounter::SetLockHeld(int64 new_value) {
+void MutexedScalar::SetLockHeld(int64 new_value) {
   SetReturningPreviousValueLockHeld(new_value);
 }
 
-int64 MutexedUpDownCounter::AddLockHeld(int delta) {
+int64 MutexedScalar::AddLockHeld(int delta) {
   int64 value = GetLockHeld() + delta;
   SetLockHeld(value);
   return value;
@@ -105,13 +106,17 @@ int64 MutexedUpDownCounter::AddLockHeld(int delta) {
 Histogram::~Histogram() {
 }
 
-CountHistogram::CountHistogram(AbstractMutex* mutex)
-    : mutex_(mutex), count_(0) {}
+CountHistogram::CountHistogram(StringPiece /*name*/, Statistics* statistics)
+    : mutex_(statistics->thread_system()->NewMutex()), count_(0) {}
 
 CountHistogram::~CountHistogram() {
 }
 
 TimedVariable::~TimedVariable() {
+}
+
+FakeTimedVariable::FakeTimedVariable(StringPiece name, Statistics* stats)
+    : var_(stats->AddVariable(name)) {
 }
 
 FakeTimedVariable::~FakeTimedVariable() {
@@ -186,15 +191,22 @@ void Histogram::Render(int index, Writer* writer, MessageHandler* handler) {
 }
 
 Statistics::~Statistics() {
+  if (own_thread_system_) {
+    delete thread_system_;
+    thread_system_ = NULL;
+  }
+}
+
+void Statistics::SetThreadSystem(ThreadSystem* thread_system) {
+  if (own_thread_system_) {
+    delete thread_system_;
+    own_thread_system_ = false;
+  }
+  thread_system_ = thread_system;
 }
 
 UpDownCounter* Statistics::AddGlobalUpDownCounter(const StringPiece& name) {
   return AddUpDownCounter(name);
-}
-
-FakeTimedVariable* Statistics::NewFakeTimedVariable(
-    const StringPiece& name, int index) {
-  return new FakeTimedVariable(AddUpDownCounter(name));
 }
 
 namespace {
@@ -371,6 +383,23 @@ void Statistics::RenderTimedVariables(Writer* writer,
     // Write table ending part.
     writer->Write(end, message_handler);
   }
+}
+
+int64 Statistics::LookupValue(StringPiece stat_name) {
+  Variable* var = FindVariable(stat_name);
+  if (var != NULL) {
+    return var->Get();
+  }
+  UpDownCounter* counter = FindUpDownCounter(stat_name);
+  if (counter != NULL) {
+    return counter->Get();
+  }
+  TimedVariable* tvar = FindTimedVariable(stat_name);
+  if (tvar != NULL) {
+    return tvar->Get(TimedVariable::START);
+  }
+  LOG(FATAL) << "Could not find stat: " << stat_name;
+  return 0;
 }
 
 }  // namespace net_instaweb

@@ -167,14 +167,11 @@ class SplitStatistics
   }
 
  protected:
-  virtual SplitUpDownCounter* NewUpDownCounter(const StringPiece& name,
-                                               int index);
-  virtual SplitVariable* NewVariable(const StringPiece& name, int index);
-  virtual SplitUpDownCounter* NewGlobalUpDownCounter(const StringPiece& name,
-                                             int index);
-  virtual SplitHistogram* NewHistogram(const StringPiece& name);
-  virtual SplitTimedVariable* NewTimedVariable(const StringPiece& name,
-                                               int index);
+  virtual SplitUpDownCounter* NewUpDownCounter(StringPiece name);
+  virtual SplitVariable* NewVariable(StringPiece name);
+  virtual SplitUpDownCounter* NewGlobalUpDownCounter(StringPiece name);
+  virtual SplitHistogram* NewHistogram(StringPiece name);
+  virtual SplitTimedVariable* NewTimedVariable(StringPiece name);
 
  private:
   ThreadSystem* thread_system_;

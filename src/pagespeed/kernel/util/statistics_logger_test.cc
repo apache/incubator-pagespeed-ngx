@@ -18,6 +18,7 @@
 #include "pagespeed/kernel/util/statistics_logger.h"
 
 #include <map>
+#include <set>
 #include <vector>
 
 #include "pagespeed/kernel/base/file_system.h"
@@ -28,6 +29,7 @@
 #include "pagespeed/kernel/base/mock_timer.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/statistics.h"
+#include "pagespeed/kernel/base/statistics_template.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/string_writer.h"
@@ -62,7 +64,7 @@ class StatisticsLoggerTest : public ::testing::Test {
         // statistics. There are integration tests in
         // SharedMemStatisticsTestBase which test those interactions.
         logger_(kLoggingIntervalMs, kMaxLogfileSizeKb, kStatsLogFile,
-                stats_.AddVariable(kTimestampVarName), &handler_,
+                stats_.AddVariable(kTimestampVarName)->impl(), &handler_,
                 &stats_, &file_system_, &timer_) {
     logger_.InitStatsForTest();
     // Another non-logged statistics.

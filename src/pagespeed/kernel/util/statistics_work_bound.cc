@@ -23,28 +23,28 @@
 
 namespace net_instaweb {
 
-StatisticsWorkBound::StatisticsWorkBound(Variable* variable, int bound)
-    : variable_((bound == 0) ? NULL : variable), bound_(bound) { }
+StatisticsWorkBound::StatisticsWorkBound(UpDownCounter* counter, int bound)
+    : counter_((bound == 0) ? NULL : counter), bound_(bound) { }
 StatisticsWorkBound::~StatisticsWorkBound() { }
 
 bool StatisticsWorkBound::TryToWork() {
   bool ok = true;
-  if (variable_ != NULL) {
+  if (counter_ != NULL) {
     // We conservatively increment, then test, and decrement on failure.  This
     // guarantees that two incrementors don't both get through when we're within
     // 1 of the bound, at the cost of occasionally rejecting them both.
-    variable_->Add(1);
-    ok = (variable_->Get() <= bound_);
+    counter_->Add(1);
+    ok = (counter_->Get() <= bound_);
     if (!ok) {
-      variable_->Add(-1);
+      counter_->Add(-1);
     }
   }
   return ok;
 }
 
 void StatisticsWorkBound::WorkComplete() {
-  if (variable_ != NULL) {
-    variable_->Add(-1);
+  if (counter_ != NULL) {
+    counter_->Add(-1);
   }
 }
 
