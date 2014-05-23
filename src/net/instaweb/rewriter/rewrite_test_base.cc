@@ -185,6 +185,7 @@ RewriteTestBase::RewriteTestBase(
 
 void RewriteTestBase::Init() {
   DCHECK(statistics_ != NULL);
+  statistics_->SetThreadSystem(factory_->thread_system());
   RewriteDriverFactory::Initialize();
   TestRewriteDriverFactory::InitStats(statistics_.get());
   factory_->SetStatistics(statistics_.get());

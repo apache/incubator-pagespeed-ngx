@@ -110,6 +110,7 @@ TestRewriteDriverFactory::TestRewriteDriverFactory(
       counting_distributed_async_fetcher_(NULL),
       mem_file_system_(NULL),
       mock_hasher_(NULL),
+      simple_stats_(thread_system()),
       mock_message_handler_(NULL),
       mock_html_message_handler_(NULL),
       use_beacon_results_in_filters_(false),
