@@ -41,6 +41,7 @@ class SimpleRandom {
       : z_(10), w_(25), mutex_(mutex) {}
   ~SimpleRandom() {}
   uint32 Next();
+  inline uint32 NextLockHeld();
 
   GoogleString GenerateHighEntropyString(int size);
 

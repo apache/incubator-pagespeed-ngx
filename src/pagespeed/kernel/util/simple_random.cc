@@ -24,6 +24,10 @@ namespace net_instaweb {
 
 uint32 SimpleRandom::Next() {
   ScopedMutex lock(mutex_.get());
+  return NextLockHeld();
+}
+
+uint32 SimpleRandom::NextLockHeld() {
   z_ = 36969 * (z_ & 65535) + (z_ >> 16);
   w_ = 18000 * (w_ & 65535) + (w_ >> 16);
   uint32 pseudo_random_number = (z_ << 16) + w_;
@@ -35,7 +39,7 @@ GoogleString SimpleRandom::GenerateHighEntropyString(int size) {
   GoogleString value;
   value.reserve(size);
   for (int i = 0; i < size; ++i) {
-    value.push_back(static_cast<char>(Next() & 0xff));
+    value.push_back(static_cast<char>(NextLockHeld() & 0xff));
   }
   return value;
 }
