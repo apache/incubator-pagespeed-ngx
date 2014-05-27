@@ -74,6 +74,7 @@ FileRewriter::FileRewriter(const ProcessContext& process_context,
                            bool echo_errors_to_stdout)
     : RewriteDriverFactory(process_context, Platform::CreateThreadSystem()),
       gflags_(gflags),
+      simple_stats_(thread_system()),
       echo_errors_to_stdout_(echo_errors_to_stdout) {
   net_instaweb::RewriteDriverFactory::InitStats(&simple_stats_);
   SetStatistics(&simple_stats_);

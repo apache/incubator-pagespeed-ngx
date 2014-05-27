@@ -34,11 +34,11 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
+#include "pagespeed/kernel/util/simple_stats.h"
 
 namespace net_instaweb {
 
 class ResponseHeaders;
-class SimpleStats;
 class UrlAsyncFetcher;
 
 class FetcherTest : public testing::Test {
@@ -53,9 +53,6 @@ class FetcherTest : public testing::Test {
   static const char kErrorMessage[];
 
   FetcherTest();
-
-  static void SetUpTestCase();
-  static void TearDownTestCase();
 
   // Helpful classes for testing.
 
@@ -137,7 +134,7 @@ class FetcherTest : public testing::Test {
   WaitUrlAsyncFetcher wait_url_async_fetcher_;
   CountingUrlAsyncFetcher counting_fetcher_;
   scoped_ptr<ThreadSystem> thread_system_;
-  static SimpleStats* statistics_;
+  SimpleStats statistics_;
 
  private:
   void Populate(const char* cache_control,

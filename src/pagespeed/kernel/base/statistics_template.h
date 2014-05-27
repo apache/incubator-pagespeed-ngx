@@ -33,7 +33,6 @@
 
 namespace net_instaweb {
 class MessageHandler;
-class ThreadSystem;
 
 // This class makes it easier to define new Statistics implementations
 // by providing a templatized implementation of variable registration and
@@ -42,7 +41,6 @@ template<class Var, class UpDown, class Hist,
          class TimedVar> class StatisticsTemplate
     : public Statistics {
  public:
-  explicit StatisticsTemplate(ThreadSystem* ts) : Statistics(ts) {}
   StatisticsTemplate() {}
   virtual ~StatisticsTemplate() {
     STLDeleteContainerPointers(variables_.begin(), variables_.end());
@@ -336,10 +334,6 @@ class ScalarStatisticsTemplate
   typedef HistC Hist;
   typedef TVarC TVar;
 
-  explicit ScalarStatisticsTemplate(ThreadSystem* ts)
-      : StatisticsTemplate<VarTemplate<Impl>, UpDownTemplate<Impl>,
-                           Hist, TVar>(ts) {
-  }
   ScalarStatisticsTemplate() {}
   virtual ~ScalarStatisticsTemplate() {}
 
@@ -350,10 +344,6 @@ class ScalarStatisticsTemplate
 
   virtual UpDown* NewUpDownCounter(StringPiece name) {
     return new UpDown(name, this);
-  }
-
-  virtual Hist* NewHistogram(StringPiece name) {
-    return new Hist(name, this);
   }
 
   virtual TVar* NewTimedVariable(StringPiece name) {

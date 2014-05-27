@@ -16,15 +16,22 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
+
 #include "pagespeed/kernel/base/null_statistics.h"
+
+#include "pagespeed/kernel/base/null_mutex.h"
+#include "pagespeed/kernel/base/statistics.h"
 
 namespace net_instaweb {
 
-NullStatistics::NullStatistics()
-    : ScalarStatisticsTemplate<NullStatisticsVariable>(&null_thread_system_) {
+NullStatistics::NullStatistics() {
 }
 
 NullStatistics::~NullStatistics() {
+}
+
+CountHistogram* NullStatistics::NewHistogram(StringPiece /*name*/) {
+  return new CountHistogram(new NullMutex);
 }
 
 }  // namespace net_instaweb

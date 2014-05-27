@@ -179,9 +179,8 @@ class SharedMemHistogram : public Histogram {
   DISALLOW_COPY_AND_ASSIGN(SharedMemHistogram);
 };
 
-typedef ScalarStatisticsTemplate<SharedMemVariable, SharedMemHistogram,
-                                 FakeTimedVariable> SharedMemStatisticsBase;
-class SharedMemStatistics : public SharedMemStatisticsBase {
+class SharedMemStatistics : public ScalarStatisticsTemplate<
+  SharedMemVariable, SharedMemHistogram, FakeTimedVariable> {
  public:
   SharedMemStatistics(int64 logging_interval_ms,
                       int64 max_logfile_size_kb,

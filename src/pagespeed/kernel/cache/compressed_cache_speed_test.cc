@@ -34,10 +34,13 @@
 #include "pagespeed/kernel/base/benchmark.h"
 #include "pagespeed/kernel/base/cache_interface.h"
 #include "pagespeed/kernel/base/null_mutex.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/shared_string.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/cache/compressed_cache.h"
 #include "pagespeed/kernel/cache/lru_cache.h"
+#include "pagespeed/kernel/util/platform.h"
 #include "pagespeed/kernel/util/simple_random.h"
 #include "pagespeed/kernel/util/simple_stats.h"
 
@@ -60,7 +63,9 @@ void TestCachePayload(int payload_size, int chunk_size, int iters) {
   while (static_cast<int>(value.size()) < payload_size) {
     value += chunk;
   }
-  net_instaweb::SimpleStats stats;
+  scoped_ptr<net_instaweb::ThreadSystem> thread_system(
+      net_instaweb::Platform::CreateThreadSystem());
+  net_instaweb::SimpleStats stats(thread_system.get());
   net_instaweb::CompressedCache::InitStats(&stats);
   net_instaweb::LRUCache* lru_cache =
       new net_instaweb::LRUCache(value.size() * 2);

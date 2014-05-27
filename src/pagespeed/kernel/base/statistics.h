@@ -24,7 +24,6 @@
 #include "base/logging.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
-#include "pagespeed/kernel/base/null_thread_system.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -35,7 +34,6 @@ namespace net_instaweb {
 class MessageHandler;
 class Statistics;
 class StatisticsLogger;
-class ThreadSystem;
 class Writer;
 
 // Variables can normally only be increased, not decreased.  However, for
@@ -258,7 +256,7 @@ class Histogram {
 class CountHistogram : public Histogram {
  public:
   // Takes ownership of mutex.
-  explicit CountHistogram(StringPiece name, Statistics* statistics);
+  explicit CountHistogram(AbstractMutex* mutex);
   virtual ~CountHistogram();
   virtual void Add(double value) {
     ScopedMutex hold(lock());
@@ -344,15 +342,7 @@ class FakeTimedVariable : public TimedVariable {
 // Base class for implementations of monitoring statistics.
 class Statistics {
  public:
-  explicit Statistics(ThreadSystem* ts)
-      : own_thread_system_(false),
-        thread_system_(ts) {
-  }
-
-  Statistics()
-      : own_thread_system_(true),
-        thread_system_(new NullThreadSystem) {
-  }
+  Statistics() {}
   virtual ~Statistics();
 
   // Add a new variable, or returns an existing one of that name.
@@ -440,9 +430,6 @@ class Statistics {
   // Return the StatisticsLogger associated with this Statistics.
   virtual StatisticsLogger* console_logger() { return NULL; }
 
-  void SetThreadSystem(ThreadSystem* x);
-  ThreadSystem* thread_system() const { return thread_system_; }
-
   // Testing helper method to look up a statistics numeric value by name.
   // Please do not use this in production code.  This finds the current
   // value whether it is stored in a Variable, UpDownCounter, or TimedVariable.
@@ -450,14 +437,7 @@ class Statistics {
   // If the statistics is not found, the program check-fails.
   int64 LookupValue(StringPiece stat_name);
 
- protected:
-  // A helper for subclasses that do not fully implement timed variables.
-  FakeTimedVariable* NewFakeTimedVariable(StringPiece name);
-
  private:
-  bool own_thread_system_;
-  ThreadSystem* thread_system_;
-
   DISALLOW_COPY_AND_ASSIGN(Statistics);
 };
 

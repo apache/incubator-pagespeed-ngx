@@ -24,8 +24,9 @@
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
-#include "pagespeed/kernel/util/simple_stats.h"
 #include "pagespeed/kernel/base/statistics_template.h"
+#include "pagespeed/kernel/util/platform.h"
+#include "pagespeed/kernel/util/simple_stats.h"
 
 namespace net_instaweb {
 class UpDownCounter;
@@ -35,7 +36,7 @@ namespace {
 class StatisticsWorkBoundTest : public testing::Test {
  public:
   StatisticsWorkBoundTest()
-      : stats_(),
+      : stats_(Platform::CreateThreadSystem(), true),
         var1_(stats_.AddUpDownCounter("var1")),
         var2_(stats_.AddUpDownCounter("var2")) { }
 

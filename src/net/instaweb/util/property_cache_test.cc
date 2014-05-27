@@ -55,6 +55,7 @@ class PropertyCacheTest : public testing::Test {
       : lru_cache_(kMaxCacheSize),
         thread_system_(Platform::CreateThreadSystem()),
         timer_(thread_system_->NewMutex(), MockTimer::kApr_5_2010_ms),
+        stats_(thread_system_.get()),
         cache_property_store_(
             "test/", &lru_cache_, &timer_, &stats_, thread_system_.get()),
         property_cache_(&cache_property_store_,

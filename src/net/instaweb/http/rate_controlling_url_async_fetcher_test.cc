@@ -87,6 +87,7 @@ class RateControllingUrlAsyncFetcherTest : public ::testing::Test {
  protected:
   RateControllingUrlAsyncFetcherTest()
       : thread_system_(Platform::CreateThreadSystem()),
+        stats_(thread_system_.get()),
         timer_(thread_system_->NewMutex(), MockTimer::kApr_5_2010_ms),
         domain1_url1_("http://www.d1.com/url1"),
         domain2_url1_("http://www.d2.com/url1"),
@@ -124,9 +125,9 @@ class RateControllingUrlAsyncFetcherTest : public ::testing::Test {
         RateController::kCurrentGlobalFetchQueueSize)->Get();
   }
 
-  SimpleStats stats_;
   MockUrlFetcher mock_fetcher_;
   scoped_ptr<ThreadSystem> thread_system_;
+  SimpleStats stats_;
   scoped_ptr<RateControllingUrlAsyncFetcher> rate_controlling_fetcher_;
   scoped_ptr<WaitUrlAsyncFetcher> wait_fetcher_;
   scoped_ptr<CountingUrlAsyncFetcher> counting_fetcher_;

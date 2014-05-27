@@ -65,6 +65,7 @@ class TwoLevelPropertyStoreTest : public testing::Test {
        delay_cache_1_(&lru_cache_1_, thread_system_.get()),
        delay_cache_2_(&lru_cache_2_, thread_system_.get()),
        timer_(thread_system_->NewMutex(), MockTimer::kApr_5_2010_ms),
+       stats_(thread_system_.get()),
        cache_property_store_1_(
            kCache1, &delay_cache_1_, &timer_, &stats_, thread_system_.get()),
        cache_property_store_2_(

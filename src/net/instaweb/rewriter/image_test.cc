@@ -41,11 +41,13 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
+#include "pagespeed/kernel/base/statistics_template.h"
+#include "pagespeed/kernel/image/image_util.h"
 #include "pagespeed/kernel/image/jpeg_optimizer_test_helper.h"
 #include "pagespeed/kernel/image/jpeg_utils.h"
 #include "pagespeed/kernel/image/read_image.h"
-#include "pagespeed/kernel/image/scanline_interface.h"
 #include "pagespeed/kernel/image/test_utils.h"
+#include "pagespeed/kernel/util/platform.h"
 
 using pagespeed_testing::image_compression::GetColorProfileMarker;
 using pagespeed_testing::image_compression::GetExifDataMarker;
@@ -74,7 +76,8 @@ const char kMessagePatternFailedToDecoode[] = "*failed to decode the image*";
 
 class ConversionVarChecker {
  public:
-  explicit ConversionVarChecker(Image::CompressionOptions* options) {
+  explicit ConversionVarChecker(Image::CompressionOptions* options)
+      : simple_stats_(Platform::CreateThreadSystem(), true) {
     webp_conversion_variables_.Get(
         Image::ConversionVariables::FROM_GIF)->timeout_count =
         simple_stats_.AddVariable("gif_webp_timeout");

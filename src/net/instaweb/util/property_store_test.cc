@@ -36,6 +36,7 @@ class PropertyStoreTest : public testing::Test {
       : thread_system_(Platform::CreateThreadSystem()),
         num_callback_with_false_called_(0),
         num_callback_with_true_called_(0),
+        stats_(thread_system_.get()),
         timer_(thread_system_->NewMutex(), MockTimer::kApr_5_2010_ms) {
     PropertyStoreGetCallback::InitStats(&stats_);
   }

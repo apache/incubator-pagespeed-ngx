@@ -8,12 +8,13 @@
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/statistics.h"
+#include "pagespeed/kernel/util/platform.h"
 
 namespace net_instaweb {
 
 class SimpleStatsTest : public testing::Test {
  public:
-  SimpleStatsTest() { }
+  SimpleStatsTest() : stats_(Platform::CreateThreadSystem(), true) { }
 
  protected:
   SimpleStats stats_;

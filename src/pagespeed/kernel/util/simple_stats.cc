@@ -24,22 +24,41 @@
 
 namespace net_instaweb {
 
-// TODO(jmarantz): Remove this constructor and pass in thread-system explicitly.
-SimpleStats::SimpleStats() {
+SimpleStats::SimpleStats(ThreadSystem* thread_system)
+    : own_thread_system_(false),
+      thread_system_(thread_system) {
 }
 
-SimpleStats::SimpleStats(ThreadSystem* thread_system) {
-  SetThreadSystem(thread_system);
+SimpleStats::SimpleStats(ThreadSystem* thread_system, bool owned)
+    : own_thread_system_(owned),
+      thread_system_(thread_system) {
 }
 
 SimpleStats::~SimpleStats() {
+  if (own_thread_system_) {
+    delete thread_system_;
+    thread_system_ = NULL;
+  }
 }
 
-SimpleStatsVariable::SimpleStatsVariable(StringPiece /*name*/,
-                                         Statistics* statistics)
-    : value_(0),
-      mutex_(statistics->thread_system()->NewMutex()) {
+CountHistogram* SimpleStats::NewHistogram(StringPiece /*name*/) {
+  return new CountHistogram(thread_system_->NewMutex());
 }
+
+SimpleStats::Var* SimpleStats::NewVariable(StringPiece name) {
+  Var* var = new Var(name, this);
+  var->impl()->set_mutex(thread_system_->NewMutex());
+  return var;
+}
+
+SimpleStats::UpDown* SimpleStats::NewUpDownCounter(StringPiece name) {
+  UpDown* up_down = new UpDown(name, this);
+  up_down->impl()->set_mutex(thread_system_->NewMutex());
+  return up_down;
+}
+
+SimpleStatsVariable::SimpleStatsVariable(StringPiece name, Statistics* stats)
+    : value_(0) {}
 
 SimpleStatsVariable::~SimpleStatsVariable() {
 }

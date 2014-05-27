@@ -112,6 +112,7 @@ class WriteThroughHTTPCacheTest : public testing::Test {
       : thread_system_(Platform::CreateThreadSystem()),
         mock_timer_(thread_system_->NewMutex(), ParseDate(kStartDate)),
         cache1_(kMaxSize), cache2_(kMaxSize),
+        simple_stats_(thread_system_.get()),
         key_("http://www.test.com/1"),
         key2_("http://www.test.com/2"),
         fragment_("www.test.com"),

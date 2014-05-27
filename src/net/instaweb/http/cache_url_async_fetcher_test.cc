@@ -50,6 +50,7 @@
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
 #include "pagespeed/kernel/base/function.h"
+#include "pagespeed/kernel/base/statistics_template.h"
 #include "pagespeed/kernel/thread/queued_worker_pool.h"
 
 namespace net_instaweb {
@@ -222,6 +223,7 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
   CacheUrlAsyncFetcherTest()
       : lru_cache_(1000),
         thread_system_(Platform::CreateThreadSystem()),
+        statistics_(thread_system_.get()),
         timer_(thread_system_->NewMutex(), MockTimer::kApr_5_2010_ms),
         cache_url_("http://www.example.com/cacheable.html"),
         cache_css_url_("http://www.example.com/cacheable.css"),
@@ -586,10 +588,9 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
     headers->ComputeCaching();
   }
 
-  SimpleStats statistics_;
-
   LRUCache lru_cache_;
   scoped_ptr<ThreadSystem> thread_system_;
+  SimpleStats statistics_;
   MockTimer timer_;
   MockHasher mock_hasher_;
   scoped_ptr<HTTPCache> http_cache_;

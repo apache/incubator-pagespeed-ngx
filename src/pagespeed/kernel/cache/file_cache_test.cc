@@ -50,7 +50,8 @@ class FileCacheTest : public CacheTestBase {
         file_system_(thread_system_.get(), &mock_timer_),
         kCleanIntervalMs(Timer::kMinuteMs),
         kTargetSize(12),  // Small enough to overflow with a few strings.
-        kTargetInodeLimit(10) {
+        kTargetInodeLimit(10),
+        stats_(thread_system_.get()) {
     FileCache::InitStats(&stats_);
     cache_.reset(new FileCache(GTestTempDir(), &file_system_, &worker_,
                                new FileCache::CachePolicy(

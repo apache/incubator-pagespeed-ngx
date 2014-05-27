@@ -51,7 +51,8 @@ class CacheStatsTest : public testing::Test {
       : lru_cache_(kMaxSize),
         thread_system_(Platform::CreateThreadSystem()),
         delay_cache_(new DelayCache(&lru_cache_, thread_system_.get())),
-        timer_(thread_system_->NewMutex(), MockTimer::kApr_5_2010_ms) {
+        timer_(thread_system_->NewMutex(), MockTimer::kApr_5_2010_ms),
+        stats_(thread_system_.get()) {
     CacheStats::InitStats("test", &stats_);
     cache_stats_.reset(new CacheStats("test", delay_cache_.get(), &timer_,
                                       &stats_));

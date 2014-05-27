@@ -19,6 +19,7 @@
 #ifndef PAGESPEED_KERNEL_UTIL_SIMPLE_STATS_H_
 #define PAGESPEED_KERNEL_UTIL_SIMPLE_STATS_H_
 
+#include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/statistics.h"
@@ -34,9 +35,11 @@ class ThreadSystem;
 // These variables are thread-safe.
 class SimpleStatsVariable : public MutexedScalar {
  public:
-  SimpleStatsVariable(StringPiece name, Statistics* statistics);
+  SimpleStatsVariable(StringPiece name, Statistics* stats);
   virtual ~SimpleStatsVariable();
   virtual StringPiece GetName() const { return StringPiece(NULL); }
+
+  void set_mutex(AbstractMutex* mutex) { mutex_.reset(mutex); }
 
  protected:
   virtual AbstractMutex* mutex() const { return mutex_.get(); }
@@ -52,16 +55,31 @@ class SimpleStatsVariable : public MutexedScalar {
 // Simple name/value pair statistics implementation.
 class SimpleStats : public ScalarStatisticsTemplate<SimpleStatsVariable> {
  public:
-  // TODO(jmarantz): this form will ultimately be removed so that you
-  // are required to pass a thread system to the constructor.
-  SimpleStats();
-
   // SimpleStats will not take ownership of thread_system.  The thread system is
   // used to instantiate mutexes to allow SimpleStatsVariable to be thread-safe.
   explicit SimpleStats(ThreadSystem* thread_system);
+
+  // In this constructor, SimpleStats will take ownership of the thread system,
+  // making it a little easier to initialize as
+  // stats_(Platform::CreateThreadSystem()).
+  //
+  // TODO(jmarantz): this is probably not worth it; remove this constructor form
+  // and fix the call-sites in a follow-up.
+  SimpleStats(ThreadSystem* thread_system, bool owned);
+
   virtual ~SimpleStats();
 
+  void SetThreadSystem(ThreadSystem* x);
+  ThreadSystem* thread_system() const { return thread_system_; }
+
+  virtual CountHistogram* NewHistogram(StringPiece name);
+  virtual Var* NewVariable(StringPiece name);
+  virtual UpDown* NewUpDownCounter(StringPiece name);
+
  private:
+  bool own_thread_system_;
+  ThreadSystem* thread_system_;
+
   DISALLOW_COPY_AND_ASSIGN(SimpleStats);
 };
 

@@ -29,7 +29,6 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/string_writer.h"
-#include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/base/writer.h"
 
 namespace {
@@ -106,8 +105,8 @@ int64 MutexedScalar::AddLockHeld(int delta) {
 Histogram::~Histogram() {
 }
 
-CountHistogram::CountHistogram(StringPiece /*name*/, Statistics* statistics)
-    : mutex_(statistics->thread_system()->NewMutex()), count_(0) {}
+CountHistogram::CountHistogram(AbstractMutex* mutex)
+    : mutex_(mutex), count_(0) {}
 
 CountHistogram::~CountHistogram() {
 }
@@ -191,18 +190,6 @@ void Histogram::Render(int index, Writer* writer, MessageHandler* handler) {
 }
 
 Statistics::~Statistics() {
-  if (own_thread_system_) {
-    delete thread_system_;
-    thread_system_ = NULL;
-  }
-}
-
-void Statistics::SetThreadSystem(ThreadSystem* thread_system) {
-  if (own_thread_system_) {
-    delete thread_system_;
-    own_thread_system_ = false;
-  }
-  thread_system_ = thread_system;
 }
 
 UpDownCounter* Statistics::AddGlobalUpDownCounter(const StringPiece& name) {

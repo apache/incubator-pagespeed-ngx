@@ -60,6 +60,7 @@ class StatisticsLoggerTest : public ::testing::Test {
         timer_(thread_system_->NewMutex(), MockTimer::kApr_5_2010_ms),
         handler_(thread_system_->NewMutex()),
         file_system_(thread_system_.get(), &timer_),
+        stats_(thread_system_.get()),
         // Note: These unit tests don't need access to timestamp variable or
         // statistics. There are integration tests in
         // SharedMemStatisticsTestBase which test those interactions.

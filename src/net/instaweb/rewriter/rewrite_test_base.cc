@@ -132,7 +132,6 @@ const char kMessagePatternShrinkImage[] = "*Shrinking image*";
 
 RewriteTestBase::RewriteTestBase()
     : test_distributed_fetcher_(this),
-      statistics_(new SimpleStats()),
       factory_(new TestRewriteDriverFactory(rewrite_test_base_process_context,
                                             GTestTempDir(),
                                             &mock_url_fetcher_,
@@ -147,6 +146,7 @@ RewriteTestBase::RewriteTestBase()
       other_options_(other_factory_->NewRewriteOptions()),
       kEtag0(HTTPCache::FormatEtag("0")),
       expected_nonce_(0) {
+  statistics_.reset(new SimpleStats(factory_->thread_system()));
   Init();
 }
 
@@ -173,19 +173,18 @@ RewriteTestBase::RewriteTestBase(Statistics* statistics)
 RewriteTestBase::RewriteTestBase(
     std::pair<TestRewriteDriverFactory*, TestRewriteDriverFactory*> factories)
     : test_distributed_fetcher_(this),
-      statistics_(new SimpleStats()),
       factory_(factories.first),
       other_factory_(factories.second),
       use_managed_rewrite_drivers_(false),
       options_(factory_->NewRewriteOptions()),
       other_options_(other_factory_->NewRewriteOptions()),
       expected_nonce_(0) {
+  statistics_.reset(new SimpleStats(factory_->thread_system()));
   Init();
 }
 
 void RewriteTestBase::Init() {
   DCHECK(statistics_ != NULL);
-  statistics_->SetThreadSystem(factory_->thread_system());
   RewriteDriverFactory::Initialize();
   TestRewriteDriverFactory::InitStats(statistics_.get());
   factory_->SetStatistics(statistics_.get());
@@ -371,7 +370,7 @@ void RewriteTestBase::ServeResourceFromNewContext(
     const GoogleString& resource_url,
     const StringPiece& expected_content) {
   // New objects for the new server.
-  SimpleStats stats;
+  SimpleStats stats(factory_->thread_system());
   scoped_ptr<TestRewriteDriverFactory> new_factory(MakeTestFactory());
   TestRewriteDriverFactory::InitStats(&stats);
   new_factory->SetUseTestUrlNamer(factory_->use_test_url_namer());
