@@ -2443,7 +2443,7 @@ ngx_int_t ps_simple_handler(ngx_http_request_t* r,
                      "Please check if it's enabled in pagespeed.conf.\n",
                      message_handler);
       } else {
-        HtmlKeywords::WritePre(log, &writer, message_handler);
+        HtmlKeywords::WritePre(log, "", &writer, message_handler);
       }
       break;
     }
