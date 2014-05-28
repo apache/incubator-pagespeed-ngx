@@ -116,10 +116,12 @@ class HtmlKeywords {
                               keyword);
   }
 
-  // Wraps text in a pre-tag and sends it to writer, returning false if the
-  // writer failed.
-  static bool WritePre(StringPiece text, Writer* writer,
-                       MessageHandler* handler);
+  // Wraps text in a pre-tag using the specified style arguments and sends it
+  // to writer, returning false if the writer failed.
+  // E.g. style could be "color:red;".
+  // if style is empty then it is simply a pre-tag without attributes.
+  static bool WritePre(StringPiece text, StringPiece style,
+                       Writer* writer, MessageHandler* handler);
 
  private:
   typedef int32 KeywordPair;  // Encoded via shift & OR.

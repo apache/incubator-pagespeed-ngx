@@ -800,7 +800,7 @@ void SystemServerContext::PrintCaches(bool is_global, AdminSource source,
       system_caches_->PrintCacheStats(
           static_cast<SystemCaches::StatFlags>(flags), &backend_stats);
       if (!backend_stats.empty()) {
-        HtmlKeywords::WritePre(backend_stats, fetch, message_handler());
+        HtmlKeywords::WritePre(backend_stats, "", fetch, message_handler());
       }
 
       // Practice what we preach: put the blocking JS in the tail.
@@ -815,7 +815,7 @@ void SystemServerContext::PrintNormalConfig(AdminSource source,
                                             AsyncFetch* fetch) {
   AdminHtml admin_html("config", "", source, fetch, message_handler());
   HtmlKeywords::WritePre(
-      global_system_rewrite_options()->OptionsToString(),
+      global_system_rewrite_options()->OptionsToString(), "",
       fetch, message_handler());
 }
 
@@ -826,8 +826,8 @@ void SystemServerContext::PrintSpdyConfig(AdminSource source,
   if (spdy_config == NULL) {
     fetch->Write("SPDY-specific configuration missing.", message_handler());
   } else {
-    HtmlKeywords::WritePre(spdy_config->OptionsToString(), fetch,
-                           message_handler());
+    HtmlKeywords::WritePre(spdy_config->OptionsToString(), "",
+                           fetch, message_handler());
   }
 }
 
@@ -838,8 +838,30 @@ void SystemServerContext::MessageHistoryHandler(AdminSource source,
   StringWriter log_writer(&log);
   AdminHtml admin_html("message_history", "", source, fetch, message_handler());
   if (message_handler()->Dump(&log_writer)) {
-    // Write pre-tag for Dump to keep good format.
-    HtmlKeywords::WritePre(log, fetch, message_handler());
+    // Write pre-tag and color messages.
+    // We are not looking at the actual error.log.
+    // The syntax has been formatted here: ApacheMessageHandler::MessageVImpl
+    // in net/instaweb/apache/apache_message_handler.cc:131
+    // TODO(xqyin): Change the formatter for both Apache and Nginx to omit the
+    // severity syntax. Add a letter code at the beginning of each message to
+    // classify the type of it. Then don't need to use StringPiece::Find.
+    StringPieceVector components;
+    SplitStringPieceToVector(log, "\n", &components, false);
+    for (int i = 0, size = components.size(); i < size; ++i) {
+      if (components[i].find("[Error]") != StringPiece::npos) {
+        HtmlKeywords::WritePre(components[i], "color:red; margin:0;",
+                               fetch, message_handler());
+      } else if (components[i].find("[Warning]") != StringPiece::npos) {
+        HtmlKeywords::WritePre(components[i], "color:blue; margin:0;",
+                               fetch, message_handler());
+      } else if (components[i].find("[Fatal]") != StringPiece::npos) {
+        HtmlKeywords::WritePre(components[i], "color:orange; margin:0;",
+                               fetch, message_handler());
+      } else {
+        HtmlKeywords::WritePre(components[i], "margin:0;",
+                               fetch, message_handler());
+      }
+    }
   } else {
     fetch->Write("<p>Writing to mod_pagespeed_message failed. \n"
                  "Please check if it's enabled in pagespeed.conf.</p>\n",
@@ -911,7 +933,7 @@ void SystemServerContext::AdminPage(
       fetch->response_headers()->SetStatusAndReason(HttpStatus::kNotFound);
       fetch->response_headers()->Add(HttpAttributes::kContentType, "text/html");
       fetch->Write("Unknown admin page: ", message_handler());
-      HtmlKeywords::WritePre(leaf, fetch, message_handler());
+      HtmlKeywords::WritePre(leaf, "", fetch, message_handler());
 
       // It's possible that the handler is installed on /a/b/c, and we
       // are now reporting "unknown admin page: c".  This is kind of a guess,

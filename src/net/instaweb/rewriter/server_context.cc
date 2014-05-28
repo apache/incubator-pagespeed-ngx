@@ -1229,7 +1229,7 @@ class MetadataCacheResultCallback
                            result->revalidate[i]->DebugString(), "\n"),
                     handler_);
     }
-    HtmlKeywords::WritePre(cache_dump, fetch_, handler_);
+    HtmlKeywords::WritePre(cache_dump, "", fetch_, handler_);
     fetch_->Done(true);
     delete this;
   }

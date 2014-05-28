@@ -625,7 +625,7 @@ void SystemCaches::PrintCacheStats(StatFlags flags, GoogleString* out) {
         StrAppend(out, "Shared memory metadata cache '", p->first,
                   "' statistics:<br>");
         StringWriter writer(out);
-        HtmlKeywords::WritePre(cache_info->cache_backend->DumpStats(),
+        HtmlKeywords::WritePre(cache_info->cache_backend->DumpStats(), "",
                                &writer, factory_->message_handler());
       }
     }
