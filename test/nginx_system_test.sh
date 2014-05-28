@@ -2633,6 +2633,18 @@ OUTFILE=$OUTDIR/etags
 $WGET -o $OUTFILE -O /dev/null --header "If-None-Match: $ETAG" $URL
 check fgrep -q "awaiting response... 304" $OUTFILE
 
+# Test if the warning messages are colored in message_history page.
+# We color the messages in message_history page to make it clearer to read.
+# Red for Error messages. Blue for Warning messages.
+# Orange for Fatal messages. Black by default.
+# Won't test Error messages and Fatal messages in this test.
+# TODO(xqyin): test all the types of messages in future unit test.
+start_test Messages are colored in message_history
+INJECT=$($CURL --silent $HOSTNAME/?PageSpeed=Warning_trigger)
+OUT=$($WGET -q -O - $HOSTNAME/pagespeed_admin/message_history | \
+  grep Warning_trigger)
+check_from "$OUT" fgrep -q "color:blue;"
+
 start_test PageSpeed resources should have a content length.
 URL="$EXAMPLE_ROOT/styles/W.rewrite_css_images.css.pagespeed.cf.Hash.css"
 OUT=$($WGET_DUMP --save-headers $URL)
