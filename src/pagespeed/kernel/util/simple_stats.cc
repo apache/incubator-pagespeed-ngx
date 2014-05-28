@@ -25,20 +25,10 @@
 namespace net_instaweb {
 
 SimpleStats::SimpleStats(ThreadSystem* thread_system)
-    : own_thread_system_(false),
-      thread_system_(thread_system) {
-}
-
-SimpleStats::SimpleStats(ThreadSystem* thread_system, bool owned)
-    : own_thread_system_(owned),
-      thread_system_(thread_system) {
+    : thread_system_(thread_system) {
 }
 
 SimpleStats::~SimpleStats() {
-  if (own_thread_system_) {
-    delete thread_system_;
-    thread_system_ = NULL;
-  }
 }
 
 CountHistogram* SimpleStats::NewHistogram(StringPiece /*name*/) {

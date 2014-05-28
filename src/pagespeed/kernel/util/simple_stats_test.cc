@@ -7,16 +7,22 @@
 
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/statistics.h"
+#include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/util/platform.h"
 
 namespace net_instaweb {
 
 class SimpleStatsTest : public testing::Test {
  public:
-  SimpleStatsTest() : stats_(Platform::CreateThreadSystem(), true) { }
+  SimpleStatsTest()
+      : thread_system_(Platform::CreateThreadSystem()),
+        stats_(thread_system_.get()) {
+  }
 
  protected:
+  scoped_ptr<ThreadSystem> thread_system_;
   SimpleStats stats_;
 
  private:

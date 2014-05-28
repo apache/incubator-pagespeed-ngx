@@ -25,6 +25,7 @@
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/js/js_tokenizer.h"
 #include "pagespeed/kernel/util/platform.h"
 
@@ -139,7 +140,8 @@ class JsCodeBlockTest : public ::testing::Test,
                         public ::testing::WithParamInterface<bool> {
  protected:
   JsCodeBlockTest()
-      : stats_(Platform::CreateThreadSystem(), true),
+      : thread_system_(Platform::CreateThreadSystem()),
+        stats_(thread_system_.get()),
         use_experimental_minifier_(GetParam()),
         after_compilation_(use_experimental_minifier_
                            ? kAfterCompilationNew
@@ -209,6 +211,7 @@ class JsCodeBlockTest : public ::testing::Test,
   }
 
   GoogleMessageHandler handler_;
+  scoped_ptr<ThreadSystem> thread_system_;
   SimpleStats stats_;
   JavascriptLibraryIdentification libraries_;
   const pagespeed::js::JsTokenizerPatterns js_tokenizer_patterns_;

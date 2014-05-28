@@ -58,15 +58,6 @@ class SimpleStats : public ScalarStatisticsTemplate<SimpleStatsVariable> {
   // SimpleStats will not take ownership of thread_system.  The thread system is
   // used to instantiate mutexes to allow SimpleStatsVariable to be thread-safe.
   explicit SimpleStats(ThreadSystem* thread_system);
-
-  // In this constructor, SimpleStats will take ownership of the thread system,
-  // making it a little easier to initialize as
-  // stats_(Platform::CreateThreadSystem()).
-  //
-  // TODO(jmarantz): this is probably not worth it; remove this constructor form
-  // and fix the call-sites in a follow-up.
-  SimpleStats(ThreadSystem* thread_system, bool owned);
-
   virtual ~SimpleStats();
 
   void SetThreadSystem(ThreadSystem* x);
@@ -77,8 +68,7 @@ class SimpleStats : public ScalarStatisticsTemplate<SimpleStatsVariable> {
   virtual UpDown* NewUpDownCounter(StringPiece name);
 
  private:
-  bool own_thread_system_;
-  ThreadSystem* thread_system_;
+  ThreadSystem* thread_system_;  // Not owned by this class.
 
   DISALLOW_COPY_AND_ASSIGN(SimpleStats);
 };

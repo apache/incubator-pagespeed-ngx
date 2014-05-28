@@ -25,6 +25,7 @@
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/statistics_template.h"
+#include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/util/platform.h"
 #include "pagespeed/kernel/util/simple_stats.h"
 
@@ -36,11 +37,13 @@ namespace {
 class StatisticsWorkBoundTest : public testing::Test {
  public:
   StatisticsWorkBoundTest()
-      : stats_(Platform::CreateThreadSystem(), true),
+      : thread_system_(Platform::CreateThreadSystem()),
+        stats_(thread_system_.get()),
         var1_(stats_.AddUpDownCounter("var1")),
         var2_(stats_.AddUpDownCounter("var2")) { }
 
  protected:
+  scoped_ptr<ThreadSystem> thread_system_;
   SimpleStats stats_;
   UpDownCounter* var1_;
   UpDownCounter* var2_;
