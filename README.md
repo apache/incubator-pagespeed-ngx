@@ -82,12 +82,8 @@ In every server block where pagespeed is enabled add:
 #  Ensure requests for pagespeed optimized resources go to the pagespeed
 #  handler and no extraneous headers get set.
 location ~ "\.pagespeed\.([a-z]\.)?[a-z]{2}\.[^.]{10}\.[^.]+" { add_header "" ""; }
-location ~ "^/ngx_pagespeed_static/" { }
+location ~ "^/pagespeed_static/" { }
 location ~ "^/ngx_pagespeed_beacon$" { }
-location /ngx_pagespeed_statistics { allow 127.0.0.1; deny all; }
-location /ngx_pagespeed_global_statistics { allow 127.0.0.1; deny all; }
-location /ngx_pagespeed_message { allow 127.0.0.1; deny all; }
-location /pagespeed_console { allow 127.0.0.1; deny all; }
 ```
 
 To confirm that the module is loaded, fetch a page and check that you see the
