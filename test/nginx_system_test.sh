@@ -2592,7 +2592,9 @@ OUTFILE=$OUTDIR/etags
 $WGET -o $OUTFILE -O /dev/null --header "If-None-Match: $ETAG" $URL
 check fgrep -q "awaiting response... 304" $OUTFILE
 
-start_test PageSpeed resources should have a content length.
+start_test PageSpeed CSS loaded in fallback mode is always chunked
+# This is because the domains in urls may be rewritten, changing content
+# length from what's in the cache.
 URL="$EXAMPLE_ROOT/styles/W.rewrite_css_images.css.pagespeed.cf.Hash.css"
 fetch_until -save $URL "egrep -c Transfer-Encoding:" 1 "--save-headers"
 OUT=$(cat $FETCH_UNTIL_OUTFILE)
