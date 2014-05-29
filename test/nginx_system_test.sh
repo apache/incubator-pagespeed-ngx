@@ -2646,11 +2646,18 @@ OUT=$($WGET -q -O - $HOSTNAME/pagespeed_admin/message_history | \
 check_from "$OUT" fgrep -q "color:blue;"
 
 start_test PageSpeed resources should have a content length.
-URL="$EXAMPLE_ROOT/styles/W.rewrite_css_images.css.pagespeed.cf.Hash.css"
-OUT=$($WGET_DUMP --save-headers $URL)
-check_from "$OUT" egrep -q $'^Content-Length: ([0-9])*\r$'
-check_not_from "$OUT" egrep -iq $'^Transfer-Encoding: chunked\r$'
-check_not_from "$OUT" egrep -iq $'^Connection: close\r$'
+CONTAINING_URL="$EXAMPLE_ROOT/rewrite_css_images.html"
+CONTAINING_URL+="?PageSpeedFilters=rewrite_css"
+fetch_until -save "$CONTAINING_URL" \
+  "fgrep -c rewrite_css_images.css.pagespeed.cf" 1
+# Pull the rewritten resource name out so we get the hash.
+CSS_FILE="$(grep rewrite_css_images.css.pagespeed $FETCH_UNTIL_OUTFILE |\
+            awk -F\" '{print $(NF-1)}')"
+echo $CSS_FILE
+OUT=$($WGET_DUMP "$EXAMPLE_ROOT/$CSS_FILE")
+check_from "$OUT" grep "^Content-Length:"
+check_not_from "$OUT" grep "^Transfer-Encoding: chunked"
+check_not_from "$OUT" grep "^Connection: close"
 
 start_test Downstream cache integration caching headers.
 URL="http://downstreamcacheresource.example.com/mod_pagespeed_example/images/"
