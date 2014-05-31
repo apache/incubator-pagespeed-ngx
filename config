@@ -39,6 +39,17 @@ else
   build_from_source=true
 fi
 
+psol_binary="${PSOL_BINARY:-unset}"
+if [ "$psol_binary" = "unset" ] ; then
+  if $build_from_source ; then
+    psol_binary="\
+    $mod_pagespeed_dir/net/instaweb/automatic/pagespeed_automatic.a"
+  else
+    psol_library_dir="$ngx_addon_dir/psol/lib/$buildtype/$os_name/$arch_name"
+    psol_binary="$psol_library_dir/pagespeed_automatic.a"
+  fi
+fi
+
 echo "mod_pagespeed_dir=$mod_pagespeed_dir"
 echo "build_from_source=$build_from_source"
 
@@ -128,15 +139,7 @@ pagespeed_include="\
   $mod_pagespeed_dir/third_party/aprutil/gen/arch/$os_name/$arch_name/include"
 ngx_feature_path="$pagespeed_include"
 
-if $build_from_source ; then
-  psol_library_binaries="\
-    $mod_pagespeed_dir/net/instaweb/automatic/pagespeed_automatic.a"
-else
-  psol_library_dir="$ngx_addon_dir/psol/lib/$buildtype/$os_name/$arch_name"
-  psol_library_binaries="$psol_library_dir/pagespeed_automatic.a"
-fi
-
-pagespeed_libs="-lstdc++ $psol_library_binaries -lrt -pthread -lm"
+pagespeed_libs="-lstdc++ $psol_binary -lrt -pthread -lm"
 ngx_feature_libs="$pagespeed_libs"
 ngx_feature_test="
   GoogleString output_buffer;
@@ -174,7 +177,7 @@ if [ $ngx_found = yes ]; then
     $ps_src/ngx_rewrite_options.h \
     $ps_src/ngx_server_context.h \
     $ps_src/ngx_url_async_fetcher.h \
-    $psol_library_binaries"
+    $psol_binary"
   NGX_ADDON_SRCS="$NGX_ADDON_SRCS \
     $ps_src/log_message_handler.cc \
     $ps_src/ngx_base_fetch.cc \
