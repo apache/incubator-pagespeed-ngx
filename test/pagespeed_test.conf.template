@@ -914,6 +914,17 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    server_name redirect.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@_redirected";
+    pagespeed RewriteLevel PassThrough;
+    pagespeed EnableFilters add_instrumentation,collapse_whitespace;
+    location /redirect {
+      rewrite ^/redirect/(.*) http://$server_name/$1 permanent;
+    }
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
     server_name request-option-override.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
     pagespeed RequestOptionOverride abc;
