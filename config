@@ -43,7 +43,7 @@ psol_binary="${PSOL_BINARY:-unset}"
 if [ "$psol_binary" = "unset" ] ; then
   if $build_from_source ; then
     psol_binary="\
-    $mod_pagespeed_dir/net/instaweb/automatic/pagespeed_automatic.a"
+        $mod_pagespeed_dir/net/instaweb/automatic/pagespeed_automatic.a"
   else
     psol_library_dir="$ngx_addon_dir/psol/lib/$buildtype/$os_name/$arch_name"
     psol_binary="$psol_library_dir/pagespeed_automatic.a"
