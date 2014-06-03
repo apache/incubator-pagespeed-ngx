@@ -1713,6 +1713,8 @@ class CacheCallback : public OptionsAwareHTTPCacheCallback {
       if (success) {
         output_resource_->Link(value, handler_);
         output_resource_->SetWritten(true);
+        async_fetch_->set_content_length(content.size());
+        async_fetch_->HeadersComplete();
         success = async_fetch_->Write(content, handler_);
       }
       async_fetch_->Done(success);
