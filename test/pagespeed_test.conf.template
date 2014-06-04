@@ -154,9 +154,9 @@ http {
       set $bypass_cache "1";
     }
 
-    # For testing purposes, we never generate values that will result in a beacon 
+    # For testing purposes, we never generate values that will result in a beacon
     # unless a test request it via "X-Allow-Beacon: yes" in its request header.
-    # This is for testing purposes, note that in a production environment, 
+    # This is for testing purposes, note that in a production environment,
     # you want 'set_random $rand 0 100;' unconditionally!
     set $rand 5;
 
@@ -700,6 +700,16 @@ http {
     pagespeed MapRewriteDomain cdn.example.com origin.example.com;
     pagespeed RewriteLevel PassThrough;
     pagespeed EnableFilters rewrite_css,rewrite_images;
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name lff-ipro.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    pagespeed LoadFromFile
+      "http://lff-ipro.example.com/mod_pagespeed_example/lff_ipro"
+      "@@SERVER_ROOT@@/mod_pagespeed_example/lff_ipro";
   }
 
   server {
