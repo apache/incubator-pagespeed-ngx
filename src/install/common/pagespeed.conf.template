@@ -121,7 +121,7 @@
     # ModPagespeedFileCacheCleanIntervalMs 3600000
     # ModPagespeedLRUCacheKbPerProcess     1024
     # ModPagespeedLRUCacheByteLimit        16384
-    # ModPagespeedCssFlattenMaxBytes       2048
+    # ModPagespeedCssFlattenMaxBytes       102400
     # ModPagespeedCssInlineMaxBytes        2048
     # ModPagespeedCssImageInlineMaxBytes   0
     # ModPagespeedImageInlineMaxBytes      3072

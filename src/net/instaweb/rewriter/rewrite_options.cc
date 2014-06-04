@@ -399,7 +399,7 @@ const int64 RewriteOptions::kDefaultBlinkMaxHtmlSizeRewritable =
 //
 // jmaessen: For the moment, there's a separate threshold for image inline.
 const int64 RewriteOptions::kDefaultCssInlineMaxBytes = 2048;
-const int64 RewriteOptions::kDefaultCssFlattenMaxBytes = 2048;
+const int64 RewriteOptions::kDefaultCssFlattenMaxBytes = 1024000;
 const int64 RewriteOptions::kDefaultCssImageInlineMaxBytes = 0;
 const int64 RewriteOptions::kDefaultCssOutlineMinBytes = 3000;
 const int64 RewriteOptions::kDefaultImageInlineMaxBytes = 3072;

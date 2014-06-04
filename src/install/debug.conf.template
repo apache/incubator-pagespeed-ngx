@@ -1131,7 +1131,7 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_noned_shmm"
 #COVERAGE   ModPagespeedFileCacheCleanIntervalMs     120000
 #COVERAGE   ModPagespeedLRUCacheKbPerProcess           1024
 #COVERAGE   ModPagespeedLRUCacheByteLimit             16384
-#COVERAGE   ModPagespeedCssFlattenMaxBytes             2048
+#COVERAGE   ModPagespeedCssFlattenMaxBytes           102400
 #COVERAGE   ModPagespeedCssInlineMaxBytes              2048
 #COVERAGE   ModPagespeedCssImageInlineMaxBytes            0
 #COVERAGE   ModPagespeedImageInlineMaxBytes            3072
