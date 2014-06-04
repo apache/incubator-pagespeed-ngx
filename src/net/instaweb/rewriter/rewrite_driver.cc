@@ -1225,12 +1225,12 @@ void RewriteDriver::AddPostRenderFilters() {
     AddOwnedPostRenderFilter(new DeferIframeFilter(this));
     AddOwnedPostRenderFilter(new JsDisableFilter(this));
   }
-  if (rewrite_options->Enabled(RewriteOptions::kDedupInlinedImages)) {
-    AddOwnedPostRenderFilter(new DedupInlinedImagesFilter(this));
-  }
   if (rewrite_options->Enabled(RewriteOptions::kDelayImages)) {
     // kInsertImageDimensions should be enabled to avoid drastic reflows.
     AddOwnedPostRenderFilter(new DelayImagesFilter(this));
+  }
+  if (rewrite_options->Enabled(RewriteOptions::kDedupInlinedImages)) {
+    AddOwnedPostRenderFilter(new DedupInlinedImagesFilter(this));
   }
   // TODO(nikhilmadan): Should we disable this for bots?
   // LazyLoadImagesFilter should be applied after DelayImagesFilter.
