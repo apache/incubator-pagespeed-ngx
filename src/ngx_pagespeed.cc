@@ -1028,7 +1028,6 @@ ngx_int_t ps_decline_request(ngx_http_request_t* r) {
   ctx->fetch_done = false;
   ctx->write_pending = false;
 
-  ps_release_base_fetch(ctx);
   ps_set_buffered(r, false);
 
   r->count++;
