@@ -120,6 +120,9 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
   void set_rate_limit_background_fetches(bool x) {
     rate_limit_background_fetches_ = x;
   }
+  bool process_script_variables() {
+    return process_script_variables_;
+  }
 
   // We use a beacon handler to collect data for critical images,
   // css, etc., so filters should be configured accordingly.
@@ -134,6 +137,15 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
   virtual void ShutDownMessageHandlers();
 
   virtual void SetCircularBuffer(SharedCircularBuffer* buffer);
+
+  bool SetProcessScriptVariables(bool process_script_variables) {
+    if (!process_script_variables_set_) {
+      process_script_variables_ = process_script_variables;
+      process_script_variables_set_ = true;
+      return true;
+    }
+    return false;
+  }
 
  private:
   Timer* timer_;
@@ -166,6 +178,8 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
 
   GoogleString hostname_;
   int port_;
+  bool process_script_variables_;
+  bool process_script_variables_set_;
 
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteDriverFactory);
 };

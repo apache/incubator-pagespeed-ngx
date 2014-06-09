@@ -582,7 +582,16 @@ char* ps_init_dir(const StringPiece& directive,
   return NULL;
 }
 
-#define NGX_PAGESPEED_MAX_ARGS 10
+ngx_int_t ps_dollar(
+    ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
+  v->valid = 1;
+  v->no_cacheable = 0;
+  v->not_found = 0;
+  v->data = reinterpret_cast<u_char*>(const_cast<char*>("$"));
+  v->len = 1;
+  return NGX_OK;
+}
+
 char* ps_configure(ngx_conf_t* cf,
                    NgxRewriteOptions** options,
                    MessageHandler* handler,
@@ -622,8 +631,26 @@ char* ps_configure(ngx_conf_t* cf,
     *options = new NgxRewriteOptions(
         cfg_m->driver_factory->thread_system());
   }
+
+  bool process_script_variables = dynamic_cast<NgxRewriteDriverFactory*>(
+      cfg_m->driver_factory)->process_script_variables();
+
+  if (process_script_variables) {
+    // To be able to use '$', we map '$ps_dollar' to '$' via a script variable.
+    ngx_str_t name = ngx_string("ps_dollar");
+    ngx_http_variable_t* var = ngx_http_add_variable(
+        cf, &name, NGX_HTTP_VAR_CHANGEABLE);
+
+    if (var == NULL) {
+      return const_cast<char*>(
+          "Failed to add global configuration variable for '$ps_dollar'");
+    }
+    var->get_handler = ps_dollar;
+  }
+
   const char* status = (*options)->ParseAndSetOptions(
-      args, n_args, cf->pool, handler, cfg_m->driver_factory, option_scope);
+      args, n_args, cf->pool, handler, cfg_m->driver_factory, option_scope, cf,
+      process_script_variables);
 
   // nginx expects us to return a string literal but doesn't mark it const.
   return const_cast<char*>(status);
@@ -789,6 +816,16 @@ void ps_merge_options(NgxRewriteOptions* parent_options,
     NgxRewriteOptions* child_specific_options = *child_options;
     *child_options = parent_options->Clone();
     (*child_options)->Merge(*child_specific_options);
+
+    if (child_specific_options->clear_inherited_scripts()) {
+      // We don't want to inherit any inherited script lines from the parent
+      // options here, so we just stick to the child specific ones.
+      child_specific_options->CopyScriptLinesTo(*child_options);
+    } else {
+      // We append the child specific script lines to the parent's script lines
+      // so we preserve the order in which they will be executed at request time
+      child_specific_options->AppendScriptLinesTo(*child_options);
+    }
     delete child_specific_options;
   }
 }
@@ -830,6 +867,9 @@ char* ps_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
   // let it do that, then merge in options we got from the config file.
   // Once we do that we're done with cfg_s->options.
   cfg_s->server_context->global_options()->Merge(*cfg_s->options);
+  NgxRewriteOptions* ngx_options = dynamic_cast<NgxRewriteOptions*>(
+      cfg_s->server_context->global_options());
+  cfg_s->options->CopyScriptLinesTo(ngx_options);
   delete cfg_s->options;
   cfg_s->options = NULL;
 
@@ -1380,9 +1420,13 @@ bool ps_determine_options(ngx_http_request_t* r,
 
   // Because the caller takes ownership of any options we return, the only
   // situation in which we can avoid allocating a new RewriteOptions is if the
-  // global options are ok as are.
+  // global options are ok as they are and we don't have script variables we
+  // need to evaluate at this point.
+  NgxRewriteOptions* ngx_global_options =
+      dynamic_cast<NgxRewriteOptions*>(global_options);
   if (!have_request_options && directory_options == NULL &&
-      !global_options->running_experiment()) {
+      !global_options->running_experiment() &&
+      ngx_global_options->script_lines().size() == 0) {
     return true;
   }
 
@@ -1391,6 +1435,18 @@ bool ps_determine_options(ngx_http_request_t* r,
     *options = directory_options->Clone();
   } else {
     *options = global_options->Clone();
+  }
+
+  NgxRewriteDriverFactory* ngx_factory = dynamic_cast<NgxRewriteDriverFactory*>(
+    cfg_s->server_context->factory());
+  NgxRewriteOptions* ngx_options = dynamic_cast<NgxRewriteOptions*>(*options);
+
+  // ExecuteScriptVariables() sets 'pagespeed off' on ngx_options when execution
+  // fails and then returns false. When that happens we return, as we don't want
+  // to allow enabling pagespeed by request and execute without the intended
+  // configuration.
+  if (!ngx_options->ExecuteScriptVariables(r, cfg_s->handler, ngx_factory)) {
+    return false;
   }
 
   // Modify our options in response to request options if specified.

@@ -31,6 +31,7 @@ extern "C" {
 #include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/system/public/system_caches.h"
+#include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
@@ -97,6 +98,7 @@ NgxRewriteOptions::NgxRewriteOptions(ThreadSystem* thread_system)
 void NgxRewriteOptions::Init() {
   DCHECK(ngx_properties_ != NULL)
       << "Call NgxRewriteOptions::Initialize() before construction";
+  clear_inherited_scripts_ = false;
   InitializeOptions(ngx_properties_);
 }
 
@@ -250,7 +252,7 @@ const char* ps_error_string_for_option(
 const char* NgxRewriteOptions::ParseAndSetOptions(
     StringPiece* args, int n_args, ngx_pool_t* pool, MessageHandler* handler,
     NgxRewriteDriverFactory* driver_factory,
-    RewriteOptions::OptionScope scope) {
+    RewriteOptions::OptionScope scope, ngx_conf_t* cf, bool compile_scripts) {
   CHECK_GE(n_args, 1);
 
   StringPiece directive = args[0];
@@ -264,6 +266,67 @@ const char* NgxRewriteOptions::ParseAndSetOptions(
   if (GetOptionScope(directive) > scope) {
     return ps_error_string_for_option(
         pool, directive, "cannot be set at this scope.");
+  }
+
+  ScriptLine* script_line;
+  script_line = NULL;
+  // Only allow script variable support for LoadFromFile for now.
+  // Note that LoadFromFile should not be scriptable on wildcard hosts,
+  // as browsers might be able to manipulate its natural use-case: $http_host.
+  if (!StringCaseStartsWith(directive, "LoadFromFile")) {
+    compile_scripts = false;
+  }
+
+  if (n_args == 1 && StringCaseEqual(directive, "ClearInheritedScripts")) {
+    clear_inherited_scripts_ = true;
+    return NGX_CONF_OK;
+  }
+
+  if (compile_scripts) {
+    CHECK(cf != NULL);
+    int i;
+    // Skip the first arg which is always 'pagespeed'
+    for (i = 1; i < n_args; i++) {
+      ngx_str_t script_source;
+
+      script_source.len = args[i].as_string().length();
+      std::string tmp = args[i].as_string();
+      script_source.data = reinterpret_cast<u_char*>(
+          const_cast<char*>(tmp.c_str()));
+
+      if (ngx_http_script_variables_count(&script_source) > 0) {
+        ngx_http_script_compile_t* sc =
+            reinterpret_cast<ngx_http_script_compile_t*>(
+                ngx_pcalloc(cf->pool, sizeof(ngx_http_script_compile_t)));
+        sc->cf = cf;
+        sc->source = &script_source;
+        sc->lengths = reinterpret_cast<ngx_array_t**>(
+            ngx_pcalloc(cf->pool, sizeof(ngx_array_t*)));
+        sc->values = reinterpret_cast<ngx_array_t**>(
+            ngx_pcalloc(cf->pool, sizeof(ngx_array_t*)));
+        sc->variables = 1;
+        sc->complete_lengths = 1;
+        sc->complete_values = 1;
+        if (ngx_http_script_compile(sc) != NGX_OK) {
+          return ps_error_string_for_option(
+              pool, directive, "Failed to compile script variables");
+        } else {
+          if (script_line == NULL) {
+            script_line = new ScriptLine(args, n_args, scope);
+          }
+          script_line->AddScriptAndArgIndex(sc, i);
+        }
+      }
+    }
+
+    if (script_line != NULL) {
+      script_lines_.push_back(RefCountedPtr<ScriptLine>(script_line));
+      // We have found script variables in the current configuration line, and
+      // prepared the associated rewriteoptions for that.
+      // We will defer parsing, validation and processing of this line to
+      // request time. That means we are done handling this configuration line.
+      return NGX_CONF_OK;
+    }
   }
 
   GoogleString msg;
@@ -314,6 +377,30 @@ const char* NgxRewriteOptions::ParseAndSetOptions(
     } else if (IsDirective(directive, "StaticAssetPrefix")) {
       driver_factory->set_static_asset_prefix(arg);
       result = RewriteOptions::kOptionOk;
+    } else if (StringCaseEqual("ProcessScriptVariables", args[0])) {
+      if (scope == RewriteOptions::kProcessScopeStrict) {
+        if (StringCaseEqual(arg, "on")) {
+          if (driver_factory->SetProcessScriptVariables(true)) {
+            result = RewriteOptions::kOptionOk;
+          } else {
+            return const_cast<char*>(
+                "pagespeed ProcessScriptVariables: can only be set once");
+          }
+        } else if (StringCaseEqual(arg, "off")) {
+          if (driver_factory->SetProcessScriptVariables(false)) {
+            result = RewriteOptions::kOptionOk;
+          } else {
+            return const_cast<char*>(
+                "pagespeed ProcessScriptVariables: can only be set once");
+          }
+        } else {
+          return const_cast<char*>(
+              "pagespeed ProcessScriptVariables: invalid value");
+        }
+      } else {
+        return const_cast<char*>(
+            "ProcessScriptVariables is only allowed at the top level");
+      }
     } else {
       result = ParseAndSetOptionFromName1(directive, arg, &msg, handler);
     }
@@ -361,11 +448,90 @@ const char* NgxRewriteOptions::ParseAndSetOptions(
   return NULL;
 }
 
+// Execute all entries in the script_lines vector, and hand the result off to
+// ParseAndSetOptions to obtain the final option values.
+bool NgxRewriteOptions::ExecuteScriptVariables(
+    ngx_http_request_t* r, MessageHandler* handler,
+    NgxRewriteDriverFactory* driver_factory) {
+  bool script_error = false;
+
+  if (script_lines_.size() > 0) {
+    std::vector<RefCountedPtr<ScriptLine> >::iterator it;
+    for (it = script_lines_.begin() ; it != script_lines_.end(); ++it) {
+      ScriptLine* script_line = it->get();
+      StringPiece args[NGX_PAGESPEED_MAX_ARGS];
+      std::vector<ScriptArgIndex*>::iterator cs_it;
+      int i;
+
+      for (i = 0; i < script_line->n_args(); i++) {
+        args[i] = script_line->args()[i];
+      }
+
+      for (cs_it = script_line->data().begin();
+           cs_it != script_line->data().end(); cs_it++) {
+        ngx_http_script_compile_t* script;
+        ngx_array_t* values;
+        ngx_array_t* lengths;
+        ngx_str_t value;
+
+        script = (*cs_it)->script();
+        lengths = *script->lengths;
+        values = *script->values;
+
+        if (ngx_http_script_run(r, &value, lengths->elts, 0, values->elts)
+            == NULL) {
+          handler->Message(kError, "ngx_http_script_run error");
+          script_error = true;
+          break;
+        } else  {
+          args[(*cs_it)->index()] = str_to_string_piece(value);
+        }
+      }
+
+      const char* status = ParseAndSetOptions(args, script_line->n_args(),
+          r->pool, handler, driver_factory, script_line->scope(), NULL /*cf*/,
+          false /*compile scripts*/);
+
+      if (status != NULL) {
+        script_error = true;
+        handler->Message(kWarning,
+            "Error setting option value from script: '%s'", status);
+        break;
+      }
+    }
+  }
+
+  if (script_error) {
+    handler->Message(kWarning,
+        "Script error(s) in configuration, disabling optimization");
+    set_enabled(RewriteOptions::kEnabledOff);
+    return false;
+  }
+
+  return true;
+}
+
+void NgxRewriteOptions::CopyScriptLinesTo(
+    NgxRewriteOptions* destination) const {
+  destination->script_lines_ = script_lines_;
+}
+
+void NgxRewriteOptions::AppendScriptLinesTo(
+    NgxRewriteOptions* destination) const {
+  destination->script_lines_.insert(destination->script_lines_.end(),
+                                    script_lines_.begin(), script_lines_.end());
+}
+
 NgxRewriteOptions* NgxRewriteOptions::Clone() const {
   NgxRewriteOptions* options = new NgxRewriteOptions(
       StrCat("cloned from ", description()), thread_system());
+  this->CopyScriptLinesTo(options);
   options->Merge(*this);
   return options;
+}
+
+void NgxRewriteOptions::Merge(const RewriteOptions& src) {
+  SystemRewriteOptions::Merge(src);
 }
 
 const NgxRewriteOptions* NgxRewriteOptions::DynamicCast(

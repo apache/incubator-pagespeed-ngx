@@ -27,6 +27,7 @@ http {
   proxy_cache_path "@@PROXY_CACHE@@"  levels=1:2   keys_zone=htmlcache:60m inactive=90m  max_size=50m;
   proxy_temp_path "@@TMP_PROXY_CACHE@@";
 
+  pagespeed ProcessScriptVariables on;
   pagespeed StatisticsPath /ngx_pagespeed_statistics;
   pagespeed GlobalStatisticsPath /ngx_pagespeed_global_statistics;
   pagespeed ConsolePath /pagespeed_console;
@@ -1148,9 +1149,12 @@ http {
           http://localhost:@@PRIMARY_PORT@@/https_gstatic_dot_com
           https://www.gstatic.com/psa/static;
     }
-
+    
+    # $host implicitly tests script variable support. I'd love to test it more
+    # directly, but so far this is the best I've come up with and duplicating
+    # the test doesn't seem to make sense.
     pagespeed LoadFromFile
-        "http://localhost:@@PRIMARY_PORT@@/mod_pagespeed_test/ipro/instant/"
+        "http://$host:@@PRIMARY_PORT@@/mod_pagespeed_test/ipro/instant/"
         "@@SERVER_ROOT@@/mod_pagespeed_test/ipro/instant/";
 
     pagespeed EnableFilters remove_comments;
@@ -1164,8 +1168,8 @@ http {
       "@@SERVER_ROOT@@/mod_pagespeed_test/load_from_file/file_\1/";
     pagespeed LoadFromFileRule Disallow
       "@@SERVER_ROOT@@/mod_pagespeed_test/load_from_file/file_dir/httponly/";
-    pagespeed LoadFromFileRuleMatch Disallow \.ssp.css$;
-    pagespeed LoadFromFileRuleMatch Allow exception\.ssp\.css$;
+    pagespeed LoadFromFileRuleMatch Disallow \.ssp.css$ps_dollar;
+    pagespeed LoadFromFileRuleMatch Allow exception\.ssp\.css$ps_dollar;
 
     #charset koi8-r;
 
