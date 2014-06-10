@@ -2436,6 +2436,36 @@ echo wget $OPTS $URL
 OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $OPTS $URL)"
 check_from "$OUT" grep -q '<!--'
 
+start_test Signed Urls : Correct URL signature is passed
+HOST_NAME="http://signed-urls.example.com"
+URL_PATH="/mod_pagespeed_test/unauthorized/inline_css.html"
+OPTS="?PageSpeedFilters=rewrite_images,rewrite_css"
+URL="$HOST_NAME$URL_PATH$OPTS"
+OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET $URL -O - 2>&1)"
+REGEX="http:\/\/[^[:space:]]+css\.pagespeed[^[:space:]]+\.css"
+URL="$(echo $OUT | grep -Eo "$REGEX")"
+check test -n "$URL"
+echo wget $URL
+OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET $URL -O - 2>&1)"
+check_from "$OUT" grep -q ".yellow{background-color:#ff0}.blue{color:#00f}"
+read
+
+start_test Signed Urls : Incorrect URL signature is passed
+# Substring, all but last 14 characters to remove the signature and extension.
+URL="${URL:0:-14}"
+FINAL_URL="${URL}AAAAAAAAAA.css"
+echo wget $FINAL_URL
+OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET $FINAL_URL -O - 2>&1)"
+check_from "$OUT" egrep -q "403 Forbidden|404 Not Found"
+
+# TODO(jcrowell): Handle transition period between signatures turned on and
+# signatures enforced.
+start_test Signed Urls : No signature is passed
+FINAL_URL="$URL.css"
+echo wget $FINAL_URL
+OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET $FINAL_URL -O - 2>&1)"
+check_from "$OUT" egrep -q "403 Forbidden|404 Not Found"
+
 start_test JS gzip headers
 
 JS_URL="$HOSTNAME/pagespeed_custom_static/js_defer.$HASH.js"
