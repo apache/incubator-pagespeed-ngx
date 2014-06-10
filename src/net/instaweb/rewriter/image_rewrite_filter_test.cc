@@ -3094,7 +3094,7 @@ TEST_F(ImageRewriteTest, RewriteImagesAddingOptionsToUrl) {
   GoogleUrl img_gurl(html_gurl(), img_src);
   EXPECT_STREQ("", img_gurl.Query());
   ResourceNamer namer;
-  EXPECT_TRUE(namer.Decode(img_gurl.LeafSansQuery()));
+  EXPECT_TRUE(rewrite_driver()->Decode(img_gurl.LeafSansQuery(), &namer));
   EXPECT_STREQ("gp+jw+pj+rj+rp+rw+iq=73", namer.options());
 
   // Serve this from rewrite_driver(), which has the same cache & the

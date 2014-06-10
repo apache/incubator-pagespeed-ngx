@@ -128,6 +128,10 @@ bool ContentType::IsCss() const {
   return type_ == kCss;
 }
 
+bool ContentType::IsJs() const {
+  return type_ == kJavascript;
+}
+
 bool ContentType::IsHtmlLike() const {
   switch (type_) {
     case kHtml:

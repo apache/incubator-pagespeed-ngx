@@ -41,7 +41,7 @@ class SHA1Signature : public Signature {
   static int ComputeSizeFromNumberOfBytes(int num_bytes);
 
  protected:
-  virtual GoogleString RawSign(StringPiece key, StringPiece data);
+  virtual GoogleString RawSign(StringPiece key, StringPiece data) const;
   virtual int RawSignatureSizeInBytes() const;
 
  private:

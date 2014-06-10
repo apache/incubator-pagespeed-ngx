@@ -350,6 +350,7 @@ const char RewriteOptions::kUseSelectorsForCriticalCss[] =
 const char RewriteOptions::kUseSharedMemLocking[] = "SharedMemoryLocks";
 const char RewriteOptions::kNullOption[] = "";
 const char RewriteOptions::kRequestOptionOverride[] = "RequestOptionOverride";
+const char RewriteOptions::kUrlSigningKey[] = "UrlSigningKey";
 
 // RewriteFilter prefixes
 const char RewriteOptions::kCacheExtenderId[] = "ce";
@@ -1081,6 +1082,7 @@ RewriteOptions::RewriteOptions(ThreadSystem* thread_system)
       need_to_store_experiment_data_(false),
       experiment_id_(experiment::kExperimentNotSet),
       experiment_percent_(0),
+      signature_(),
       hasher_(kHashBytes),
       thread_system_(thread_system) {
   url_cache_invalidation_map_.set_empty_key("");
@@ -1620,6 +1622,11 @@ void RewriteOptions::AddProperties() {
       kRequestOptionOverride,
       kDirectoryScope,
       "Token passed in URL to enable pagespeed options in params.");
+  AddBaseProperty(
+      "", &RewriteOptions::url_signing_key_, "usk",
+      kUrlSigningKey,
+      kServerScope,
+      "Key used for signing .pagespeed resource URLs.");
   AddBaseProperty(
       "", &RewriteOptions::lazyload_images_blank_url_, "llbu",
       kLazyloadImagesBlankUrl,

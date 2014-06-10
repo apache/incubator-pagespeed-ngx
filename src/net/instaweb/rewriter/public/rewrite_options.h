@@ -42,6 +42,7 @@
 #include "pagespeed/kernel/base/dense_hash_map.h"
 #include "pagespeed/kernel/base/fast_wildcard_group.h"
 #include "pagespeed/kernel/base/rde_hash_map.h"
+#include "pagespeed/kernel/base/sha1_signature.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_hash.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -342,6 +343,7 @@ class RewriteOptions {
   static const char kStickyQueryParameters[];
   static const char kSupportNoScriptEnabled[];
   static const char kTestOnlyPrioritizeCriticalCssDontApplyOriginalCss[];
+  static const char kUrlSigningKey[];
   static const char kUseBlankImageForInlinePreview[];
   static const char kUseExperimentalJsMinifier[];
   static const char kUseFallbackPropertyCacheValues[];
@@ -1716,6 +1718,13 @@ class RewriteOptions {
     return request_option_override_.value();
   }
 
+  void set_url_signing_key(StringPiece p) {
+    set_option(GoogleString(p.data(), p.size()), &url_signing_key_);
+  }
+  const GoogleString& url_signing_key() const {
+    return url_signing_key_.value();
+  }
+
   void set_lazyload_images_after_onload(bool x) {
     set_option(x, &lazyload_images_after_onload_);
   }
@@ -2645,6 +2654,8 @@ class RewriteOptions {
 
   // Returns the hasher used for signatures and URLs to purge.
   const Hasher* hasher() const { return &hasher_; }
+
+  const SHA1Signature* sha1signature() const { return &sha1signature_; }
 
   ThreadSystem* thread_system() const { return thread_system_; }
 
@@ -3795,6 +3806,9 @@ class RewriteOptions {
   // Pass this string in url to allow for pagespeed options.
   Option<GoogleString> request_option_override_;
 
+  // The key used to sign .pagespeed resources if URL signing is enabled.
+  Option<GoogleString> url_signing_key_;
+
   // sticky_query_parameters_ is the token specified in the configuration that
   // must be specified in a request's query parameters/headers for the other
   // options in the request to be converted to cookies.
@@ -3866,6 +3880,7 @@ class RewriteOptions {
 
   GoogleString signature_;
   MD5Hasher hasher_;  // Used to compute named signatures.
+  SHA1Signature sha1signature_;
 
   ThreadSystem* thread_system_;
 

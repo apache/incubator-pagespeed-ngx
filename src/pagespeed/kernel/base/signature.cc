@@ -28,7 +28,7 @@ Signature::Signature() {}
 
 Signature::~Signature() {}
 
-GoogleString Signature::Sign(StringPiece key, StringPiece data) {
+GoogleString Signature::Sign(StringPiece key, StringPiece data) const {
   GoogleString raw_signature = RawSign(key, data);
   GoogleString out;
   Web64Encode(raw_signature, &out);

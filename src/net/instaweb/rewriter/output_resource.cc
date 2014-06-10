@@ -42,6 +42,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
+#include "pagespeed/kernel/base/sha1_signature.h"
 #include "pagespeed/kernel/util/url_to_filename_encoder.h"
 
 namespace net_instaweb {
@@ -136,6 +137,7 @@ void OutputResource::EndWrite(MessageHandler* handler) {
   value_.SetHeaders(&response_headers_);
   Hasher* hasher = server_context_->hasher();
   full_name_.set_hash(hasher->Hash(contents()));
+  full_name_.set_signature(ComputeSignature());
   computed_url_.clear();  // Since dependent on full_name_.
   writing_complete_ = true;
 }
@@ -270,6 +272,31 @@ void OutputResource::clear_cached_result() {
     cached_result_owned_ = false;
   }
   cached_result_ = NULL;
+}
+
+GoogleString OutputResource::ComputeSignature() {
+  GoogleString signing_key = rewrite_options_->url_signing_key();
+  GoogleString computed_signature;
+  if (!signing_key.empty()) {
+    GoogleString data = HttpCacheKey();
+    int data_length =
+        data.size() -
+        (full_name_.ext().size() + full_name_.hash().size() +
+         full_name_.signature().size() + 2);  // For the two separating dots.
+    const SHA1Signature* signature = rewrite_options_->sha1signature();
+    computed_signature =
+        signature->Sign(signing_key, data.substr(0, data_length));
+  }
+  return computed_signature;
+}
+
+bool OutputResource::CheckSignature() {
+  // If signing isn't enforced, then consider all URLs to be valid and just
+  // ignore the passed signature if there is one.
+  if (rewrite_options_->url_signing_key().empty()) {
+    return true;
+  }
+  return full_name_.signature() == ComputeSignature();
 }
 
 }  // namespace net_instaweb

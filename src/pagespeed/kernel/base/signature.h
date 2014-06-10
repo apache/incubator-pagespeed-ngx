@@ -50,14 +50,14 @@ class Signature {
   // StringPiece for signing key, which is used for a pointer to the key and the
   // length of the signing key, and a StringPiece for the data, which is used
   // for a pointer to the data to sign, and the length of the data.
-  GoogleString Sign(StringPiece key, StringPiece data);
+  GoogleString Sign(StringPiece key, StringPiece data) const;
 
   // Returns the string length of the signatures produced by the Sign() method.
   virtual int SignatureSizeInChars() const = 0;
 
  protected:
   // Computes a binary signature of a given data under key.
-  virtual GoogleString RawSign(StringPiece key, StringPiece data) = 0;
+  virtual GoogleString RawSign(StringPiece key, StringPiece data) const = 0;
   // The number of bytes RawSign will produce.
   virtual int RawSignatureSizeInBytes() const = 0;
 

@@ -43,6 +43,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/printf_format.h"
+#include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
@@ -1050,6 +1051,15 @@ class RewriteDriver : public HtmlParse {
   // site owner or user has enabled filter kDebug.
   bool DebugMode() const { return options()->Enabled(RewriteOptions::kDebug); }
 
+  // Log the given debug message(s) as HTML comments after the given element,
+  // if not NULL, it has not been flushed, and if debug is enabled. The form
+  // that takes a repeated field is intended for use by CachedResult, e.g:
+  //   InsertDebugComment(cached_result.debug_message(), element);
+  void InsertDebugComment(StringPiece message, HtmlElement* element);
+  void InsertDebugComment(
+      const protobuf::RepeatedPtrField<GoogleString>& messages,
+      HtmlElement* element);
+
   // Saves the origin headers for a request in flush_early_info so that it can
   // be used in subsequent request.
   void SaveOriginalHeaders(const ResponseHeaders& response_headers);
@@ -1149,6 +1159,10 @@ class RewriteDriver : public HtmlParse {
   bool SetOrClearPageSpeedOptionCookies(const GoogleUrl& gurl,
                                         ResponseHeaders* response_headers);
 
+  // Calls the provided ResourceNamer's Decode() function, passing the hash and
+  // signature lengths from this RewriteDriver.
+  bool Decode(StringPiece leaf, ResourceNamer* resource_namer) const;
+
  protected:
   virtual void DetermineEnabledFiltersImpl();
 
@@ -1247,6 +1261,9 @@ class RewriteDriver : public HtmlParse {
 
   // Indicates whether we should skip parsing for the given request.
   bool ShouldSkipParsing();
+
+  // Returns the length of the signature on a signed resource URL.
+  int SignatureLength() const;
 
   friend class ScanFilter;
 

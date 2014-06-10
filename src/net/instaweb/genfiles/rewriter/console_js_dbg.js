@@ -812,6 +812,10 @@ goog.asserts.AssertionError = function(messagePattern, messageArgs) {
   messageArgs.shift();
 };
 goog.inherits(goog.asserts.AssertionError, goog.debug.Error);
+goog.asserts.DEFAULT_ERROR_HANDLER = function(e) {
+  throw e;
+};
+goog.asserts.errorHandler_ = goog.asserts.DEFAULT_ERROR_HANDLER;
 goog.asserts.doAssertFailure_ = function(defaultMessage, defaultArgs, givenMessage, givenArgs) {
   var message = "Assertion failed";
   if (givenMessage) {
@@ -819,16 +823,18 @@ goog.asserts.doAssertFailure_ = function(defaultMessage, defaultArgs, givenMessa
   } else {
     defaultMessage && (message += ": " + defaultMessage, args = defaultArgs);
   }
-  throw new goog.asserts.AssertionError("" + message, args || []);
+  var e = new goog.asserts.AssertionError("" + message, args || []);
+  goog.asserts.errorHandler_(e);
+};
+goog.asserts.setErrorHandler = function(errorHandler) {
+  goog.asserts.ENABLE_ASSERTS && (goog.asserts.errorHandler_ = errorHandler);
 };
 goog.asserts.assert = function(condition, opt_message, var_args) {
   goog.asserts.ENABLE_ASSERTS && !condition && goog.asserts.doAssertFailure_("", null, opt_message, Array.prototype.slice.call(arguments, 2));
   return condition;
 };
 goog.asserts.fail = function(opt_message, var_args) {
-  if (goog.asserts.ENABLE_ASSERTS) {
-    throw new goog.asserts.AssertionError("Failure" + (opt_message ? ": " + opt_message : ""), Array.prototype.slice.call(arguments, 1));
-  }
+  goog.asserts.ENABLE_ASSERTS && goog.asserts.errorHandler_(new goog.asserts.AssertionError("Failure" + (opt_message ? ": " + opt_message : ""), Array.prototype.slice.call(arguments, 1)));
 };
 goog.asserts.assertNumber = function(value, opt_message, var_args) {
   goog.asserts.ENABLE_ASSERTS && !goog.isNumber(value) && goog.asserts.doAssertFailure_("Expected number but got %s: %s.", [goog.typeOf(value), value], opt_message, Array.prototype.slice.call(arguments, 2));

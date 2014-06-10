@@ -67,6 +67,9 @@ struct ContentType {
   // Return true iff this content type is CSS.
   bool IsCss() const;
 
+  // Return true iff this content type is JS.
+  bool IsJs() const;
+
   // Return true iff this content type is HTML, or XHTML, or some other such
   // thing (e.g. CE-HTML) that we can rewrite.
   bool IsHtmlLike() const;

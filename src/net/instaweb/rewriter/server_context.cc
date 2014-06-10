@@ -265,6 +265,7 @@ ServerContext::ServerContext(RewriteDriverFactory* factory)
       default_system_fetcher_(NULL),
       default_distributed_fetcher_(NULL),
       hasher_(NULL),
+      signature_(NULL),
       lock_hasher_(RewriteOptions::kHashBytes),
       contents_hasher_(21),
       statistics_(NULL),

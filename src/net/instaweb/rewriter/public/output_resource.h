@@ -121,6 +121,7 @@ class OutputResource : public Resource {
   StringPiece suffix() const;
   StringPiece filter_prefix() const { return full_name_.id(); }
   StringPiece hash() const { return full_name_.hash(); }
+  StringPiece signature() const { return full_name_.signature(); }
   bool has_hash() const { return !hash().empty(); }
   void clear_hash() {
     full_name_.ClearHash();
@@ -221,6 +222,8 @@ class OutputResource : public Resource {
 
   void SetHash(const StringPiece& hash);
   StringPiece extension() const { return full_name_.ext(); }
+  GoogleString ComputeSignature();
+  bool CheckSignature();
 
   // Name of the file used by DumpToDisk.
   GoogleString DumpFileName() const;

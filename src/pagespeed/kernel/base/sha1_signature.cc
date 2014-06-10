@@ -45,7 +45,7 @@ SHA1Signature::SHA1Signature(int signature_size)
 
 SHA1Signature::~SHA1Signature() {}
 
-GoogleString SHA1Signature::RawSign(StringPiece key, StringPiece data) {
+GoogleString SHA1Signature::RawSign(StringPiece key, StringPiece data) const {
   unsigned int signature_length;
 #if ENABLE_URL_SIGNATURES
   unsigned char* md = HMAC(EVP_sha1(), key.data(), key.size(),

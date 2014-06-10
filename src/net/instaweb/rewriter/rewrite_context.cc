@@ -2563,7 +2563,8 @@ bool RewriteContext::CreateOutputResourceForCachedOutput(
       NameExtensionToContentType(StrCat(".", cached_result->extension()));
 
   ResourceNamer namer;
-  if (gurl.IsWebValid() && namer.Decode(gurl.LeafWithQuery())) {
+  if (gurl.IsWebValid() &&
+      driver_->Decode(gurl.LeafWithQuery(), &namer)) {
     output_resource->reset(
         new OutputResource(FindServerContext(),
                            gurl.AllExceptLeaf() /* resolved_base */,

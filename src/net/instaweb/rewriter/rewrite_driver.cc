@@ -154,6 +154,8 @@
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/writer.h"
 #include "pagespeed/kernel/base/callback.h"
+#include "pagespeed/kernel/html/html_node.h"
+#include "pagespeed/kernel/base/sha1_signature.h"
 #include "pagespeed/kernel/http/content_type.h"
 
 namespace net_instaweb {
@@ -164,7 +166,6 @@ class RewriteDriverPool;
 namespace {
 
 const int kTestTimeoutMs = 10000;
-
 
 // Implementation of RemoveCommentsFilter::OptionsInterface that wraps
 // a RewriteOptions instance.
@@ -304,7 +305,7 @@ void RewriteDriver::SetRequestHeaders(const RequestHeaders& headers) {
   new_request_headers->CopyFrom(headers);
   new_request_headers->PopulateLazyCaches();
   request_headers_.reset(new_request_headers);
-  request_properties_->ParseRequestHeaders(*request_headers_.get());
+  request_properties_->ParseRequestHeaders(*request_headers_);
   PopulateRequestContext();
 }
 
@@ -1418,6 +1419,18 @@ CacheUrlAsyncFetcher* RewriteDriver::CreateCacheOnlyFetcher() {
   return CreateCustomCacheFetcher(NULL);
 }
 
+bool RewriteDriver::Decode(StringPiece leaf,
+                           ResourceNamer* resource_namer) const {
+  return resource_namer->Decode(
+      leaf, server_context()->hasher()->HashSizeInChars(), SignatureLength());
+}
+
+int RewriteDriver::SignatureLength() const {
+  return options()->url_signing_key().empty()
+             ? 0
+             : options()->sha1signature()->SignatureSizeInChars();
+}
+
 bool RewriteDriver::DecodeOutputResourceNameHelper(
     const GoogleUrl& gurl,
     const RewriteOptions* options_to_use,
@@ -1441,7 +1454,7 @@ bool RewriteDriver::DecodeOutputResourceNameHelper(
   }
 
   StringPiece name = gurl.LeafSansQuery();
-  if (!namer_out->Decode(name)) {
+  if (!Decode(name, namer_out)) {
     return false;
   }
 
@@ -1600,7 +1613,9 @@ OutputResourcePtr RewriteDriver::DecodeOutputResource(
   OutputResourcePtr output_resource(new OutputResource(
       server_context_, base, base, base, namer,
       options(), kind));
-
+  if (!output_resource.get()->CheckSignature()) {
+    output_resource.clear();
+  }
   return output_resource;
 }
 
@@ -1943,6 +1958,8 @@ bool RewriteDriver::FetchResource(const StringPiece& url,
     }
     FetchOutputResource(output_resource, filter, async_fetch);
   } else if (options()->in_place_rewriting_enabled()) {
+    // TODO(jcrowell): Make URLs with signatures take this path so they will 403
+    // instead of 404.
     // This is an ajax resource.
     handled = true;
     // TODO(sligocki): Get rid of this fallback and make all callers call
@@ -2749,8 +2766,9 @@ OutputResourcePtr RewriteDriver::CreateOutputResourceWithPath(
   ResourceNamer full_name;
   PopulateResourceNamer(filter_id, name, &full_name);
   OutputResourcePtr resource;
-  int max_leaf_size = full_name.EventualSize(*server_context_->hasher())
-                      + ContentType::MaxProducedExtensionLength();
+  int max_leaf_size =
+      full_name.EventualSize(*server_context_->hasher(), SignatureLength()) +
+      ContentType::MaxProducedExtensionLength();
   if (max_leaf_size > options()->max_url_segment_size()) {
     return resource;
   }
@@ -3219,6 +3237,28 @@ FlushEarlyInfo* RewriteDriver::flush_early_info() {
     }
   }
   return flush_early_info_.get();
+}
+
+void RewriteDriver::InsertDebugComment(StringPiece message,
+                                       HtmlElement* element) {
+  if (DebugMode() && element != NULL && IsRewritable(element)) {
+    HtmlNode* comment_node = NewCommentNode(element->parent(), message);
+    InsertNodeAfterNode(element, comment_node);
+  }
+}
+
+void RewriteDriver::InsertDebugComment(
+    const protobuf::RepeatedPtrField<GoogleString>& messages,
+    HtmlElement* element) {
+  if (DebugMode() && element != NULL && IsRewritable(element)) {
+    HtmlNode* preceding_node = element;
+    for (protobuf::RepeatedPtrField<GoogleString>::const_iterator it =
+             messages.begin(); it != messages.end(); ++it) {
+      HtmlNode* comment_node = NewCommentNode(preceding_node->parent(), *it);
+      InsertNodeAfterNode(preceding_node, comment_node);
+      preceding_node = comment_node;
+    }
+  }
 }
 
 void RewriteDriver::SaveOriginalHeaders(const ResponseHeaders& headers) {

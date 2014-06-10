@@ -54,6 +54,7 @@ class RewriteDriver;
 class RewriteOptions;
 class RewriteOptionsManager;
 class RewriteStats;
+class SHA1Signature;
 class Scheduler;
 class StaticAssetManager;
 class Statistics;
@@ -104,6 +105,7 @@ class RewriteDriverFactory {
   void set_hasher(Hasher* hasher);
   void set_nonce_generator(NonceGenerator* nonce_generator);
   void set_url_namer(UrlNamer* url_namer);
+  void set_signature(SHA1Signature* signature);
   void set_timer(Timer* timer);
   void set_usage_data_reporter(UsageDataReporter* reporter);
 
@@ -150,6 +152,7 @@ class RewriteDriverFactory {
   UrlNamer* url_namer();
   UserAgentMatcher* user_agent_matcher();
   StaticAssetManager* static_asset_manager();
+  SHA1Signature* signature();
   RewriteOptions* default_options() { return default_options_.get(); }
   virtual RewriteOptionsManager* NewRewriteOptionsManager();
 
@@ -330,6 +333,7 @@ class RewriteDriverFactory {
   virtual FileSystem* DefaultFileSystem() = 0;
   virtual NonceGenerator* DefaultNonceGenerator();
   virtual Timer* DefaultTimer();
+  virtual SHA1Signature* DefaultSignature();
 
   virtual Hasher* NewHasher() = 0;
 
@@ -444,6 +448,7 @@ class RewriteDriverFactory {
   scoped_ptr<UrlAsyncFetcher> base_distributed_async_fetcher_;
   scoped_ptr<Hasher> hasher_;
   scoped_ptr<NonceGenerator> nonce_generator_;
+  scoped_ptr<SHA1Signature> signature_;
   scoped_ptr<UrlNamer> url_namer_;
   scoped_ptr<UserAgentMatcher> user_agent_matcher_;
 

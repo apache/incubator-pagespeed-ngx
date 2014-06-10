@@ -325,20 +325,8 @@ void CssFilter::Context::Render() {
     }
 
     // If +debug is enabled and we have any debug messages, insert a comment
-    // for each one (iff the original element hasn't been flushed yet).
-    if (result.debug_message_size() > 0 &&
-        Driver()->DebugMode() &&
-        rewrite_element_ != NULL /* not in IPRO */ &&
-        Driver()->IsRewritable(rewrite_element_)) {
-      HtmlNode* preceding_node = rewrite_element_;
-      for (int i = 0; i < result.debug_message_size(); ++i) {
-        HtmlNode* comment_node =
-            Driver()->NewCommentNode(preceding_node->parent(),
-                                     result.debug_message(i));
-        Driver()->InsertNodeAfterNode(preceding_node, comment_node);
-        preceding_node = comment_node;
-      }
-    }
+    // for each one, iff the original element hasn't been flushed yet.
+    Driver()->InsertDebugComment(result.debug_message(), rewrite_element_);
 
     filter_->num_uses_->Add(1);
   }

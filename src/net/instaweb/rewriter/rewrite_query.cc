@@ -176,8 +176,10 @@ RewriteQuery::Status RewriteQuery::Scan(
   // setting (a) only for .pagespeed. resources, not HTML, and (b)
   // only when allow_related_options is true.
   ResourceNamer namer;
+
   bool return_after_parsing = false;
-  if (allow_related_options && namer.Decode(request_url->LeafSansQuery()) &&
+  if (allow_related_options &&
+      namer.DecodeIgnoreHashAndSignature(request_url->LeafSansQuery()) &&
       namer.has_options()) {
     const RewriteFilter* rewrite_filter =
         server_context->FindFilterForDecoding(namer.id());

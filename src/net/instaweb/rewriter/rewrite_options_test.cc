@@ -971,6 +971,7 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
     RewriteOptions::kStickyQueryParameters,
     RewriteOptions::kSupportNoScriptEnabled,
     RewriteOptions::kTestOnlyPrioritizeCriticalCssDontApplyOriginalCss,
+    RewriteOptions::kUrlSigningKey,
     RewriteOptions::kUseBlankImageForInlinePreview,
     RewriteOptions::kUseExperimentalJsMinifier,
     RewriteOptions::kUseFallbackPropertyCacheValues,

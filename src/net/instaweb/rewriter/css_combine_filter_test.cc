@@ -1347,7 +1347,7 @@ TEST_F(CssCombineFilterTest, CrossAcrossPathsExceedingUrlSize) {
                                  "x", "x"));
   EXPECT_EQ(dummy_encoded.PathSansLeaf(), gurl.PathSansLeaf());
   ResourceNamer namer;
-  ASSERT_TRUE(namer.Decode(gurl.LeafWithQuery()));
+  ASSERT_TRUE(rewrite_driver()->Decode(gurl.LeafWithQuery(), &namer));
   EXPECT_EQ("a.css+b.css", namer.name());
   EXPECT_EQ(StrCat(kYellow, kBlue), actual_combination);
 }

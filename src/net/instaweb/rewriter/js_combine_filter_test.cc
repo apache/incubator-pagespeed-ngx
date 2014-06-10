@@ -199,7 +199,8 @@ class JsCombineFilterTest : public RewriteTestBase {
     ASSERT_TRUE(combination_url.IsAnyValid()) << info.url;
     EXPECT_STREQ(encoded.AllExceptLeaf(), combination_url.AllExceptLeaf());
     ResourceNamer namer;
-    EXPECT_TRUE(namer.Decode(combination_url.LeafWithQuery()));
+    EXPECT_TRUE(
+        rewrite_driver()->Decode(combination_url.LeafWithQuery(), &namer));
     EXPECT_STREQ(RewriteOptions::kJavascriptCombinerId, namer.id());
     GoogleString encoding;
     for (int i = 0, n = name_vector.size(); i < n; ++i) {

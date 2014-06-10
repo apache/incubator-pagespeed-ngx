@@ -74,6 +74,7 @@ class RewriteOptions;
 class RewriteOptionsManager;
 class RewriteQuery;
 class RewriteStats;
+class SHA1Signature;
 class Scheduler;
 class StaticAssetManager;
 class Statistics;
@@ -181,6 +182,7 @@ class ServerContext {
   RewriteOptionsManager* rewrite_options_manager() const {
     return rewrite_options_manager_.get();
   }
+  SHA1Signature* signature() const { return signature_; }
   // Takes ownership of RewriteOptionsManager.
   void SetRewriteOptionsManager(RewriteOptionsManager* rom);
   StaticAssetManager* static_asset_manager() const {
@@ -326,6 +328,7 @@ class ServerContext {
 
   // Setters should probably only be used in testing.
   void set_hasher(Hasher* hasher) { hasher_ = hasher; }
+  void set_signature(SHA1Signature* signature) { signature_ = signature; }
   void set_default_system_fetcher(UrlAsyncFetcher* fetcher) {
     default_system_fetcher_ = fetcher;
   }
@@ -676,6 +679,7 @@ class ServerContext {
   UrlAsyncFetcher* default_system_fetcher_;
   UrlAsyncFetcher* default_distributed_fetcher_;
   Hasher* hasher_;
+  SHA1Signature* signature_;
   scoped_ptr<CriticalImagesFinder> critical_images_finder_;
   scoped_ptr<CriticalCssFinder> critical_css_finder_;
   scoped_ptr<CriticalSelectorFinder> critical_selector_finder_;

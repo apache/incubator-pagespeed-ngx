@@ -728,6 +728,15 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   ModPagespeedDisableFilters remove_comments,add_instrumentation
 </VirtualHost>
 
+# For testing signed urls.
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName signed-urls.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
+  ModPagespeedUrlSigningKey helloworld
+  ModPagespeedRewriteLevel PassThrough
+</VirtualHost>
+
 # For testing handling of redirected requests.
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
   ServerName redirect.example.com

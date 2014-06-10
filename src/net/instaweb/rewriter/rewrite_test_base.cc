@@ -634,7 +634,7 @@ bool RewriteTestBase::CssLink::DecomposeCombinedUrl(
   if (gurl.IsWebValid()) {
     gurl.AllExceptLeaf().CopyToString(base);
     ResourceNamer namer;
-    if (namer.Decode(gurl.LeafWithQuery()) &&
+    if (namer.DecodeIgnoreHashAndSignature(gurl.LeafWithQuery()) &&
         (namer.id() == RewriteOptions::kCssCombinerId)) {
       UrlMultipartEncoder multipart_encoder;
       GoogleString segment;
@@ -789,7 +789,7 @@ GoogleString RewriteTestBase::EncodeWithBase(
 GoogleString RewriteTestBase::AddOptionsToEncodedUrl(
     const StringPiece& url, const StringPiece& options) {
   ResourceNamer namer;
-  CHECK(namer.Decode(url));
+  CHECK(rewrite_driver()->Decode(url, &namer));
   namer.set_options(options);
   return namer.Encode();
 }
