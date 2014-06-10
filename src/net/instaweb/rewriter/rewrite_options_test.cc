@@ -1828,6 +1828,18 @@ TEST_F(RewriteOptionsTest, ComputeSignatureOptionEffect) {
   EXPECT_NE(signature2, signature3);
 }
 
+TEST_F(RewriteOptionsTest, SignatureIgnoresDebug) {
+  options_.ClearSignatureForTesting();
+  options_.EnableFilter(RewriteOptions::kCombineCss);
+  options_.ComputeSignature();
+  scoped_ptr<RewriteOptions> options2(options_.Clone());
+  options2->ClearSignatureForTesting();
+  options2->EnableFilter(RewriteOptions::kDebug);
+  options2->ComputeSignature();
+  EXPECT_STREQ(options_.signature(), options2->signature());
+  EXPECT_FALSE(options_.IsEqual(*options2));
+}
+
 TEST_F(RewriteOptionsTest, IsEqual) {
   RewriteOptions a(&thread_system_), b(&thread_system_);
   a.ComputeSignature();

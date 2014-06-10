@@ -3698,7 +3698,9 @@ void RewriteOptions::ComputeSignature() {
   signature_ = IntegerToString(kOptionsVersion);
   for (int i = kFirstFilter; i != kEndOfFilters; ++i) {
     Filter filter = static_cast<Filter>(i);
-    if (Enabled(filter)) {
+    // Ignore the debug filter when computing signatures.  Note that we still
+    // must have kDebug be considered in IsEqual though.
+    if ((filter != kDebug) && Enabled(filter)) {
       StrAppend(&signature_, "_", FilterId(filter));
     }
   }
@@ -3760,6 +3762,12 @@ bool RewriteOptions::IsEqual(const RewriteOptions& that) const {
   DCHECK(frozen_);
   DCHECK(that.frozen_);
   if (signature() != that.signature()) {
+    return false;
+  }
+
+  // kDebug is excluded from the signature but we better not exclude it
+  // from IsEqual.
+  if (Enabled(kDebug) != that.Enabled(kDebug)) {
     return false;
   }
 
