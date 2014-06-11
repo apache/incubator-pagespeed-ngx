@@ -1269,10 +1269,6 @@ http {
 
   keepalive_timeout  65;
 
-  # With the NgxGZipSetter we do not need to setup gzip.
-  # TODO(kspoelstra): We should run tests to ensure that NgxGZipSetter works
-  # correctly if there is a explicit gzip configuration.
-
   types {
     text/html                             html htm shtml;
     text/css                              css;
