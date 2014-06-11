@@ -386,7 +386,7 @@ void CssCombineFilter::EndDocument() {
 void CssCombineFilter::StartElementImpl(HtmlElement* element) {
   HtmlElement::Attribute* href;
   const char* media;
-  int num_nonstandard_attributes;
+  StringPieceVector nonstandard_attributes;
   if (element->keyword() == HtmlName::kStyle) {
     // We can't reorder styles on a page, so if we are only combining <link>
     // tags, we can't combine them across a <style> tag.
@@ -395,7 +395,7 @@ void CssCombineFilter::StartElementImpl(HtmlElement* element) {
     NextCombination("inline style");
     return;
   } else if (css_tag_scanner_.ParseCssElement(element, &href, &media,
-                                              &num_nonstandard_attributes)) {
+                                              &nonstandard_attributes)) {
     ++css_links_;
     // Element is a <link rel="stylesheet" ...>.
     if (driver()->HasChildrenInFlushWindow(element)) {
@@ -403,11 +403,37 @@ void CssCombineFilter::StartElementImpl(HtmlElement* element) {
       NextCombination("children in flush window");
       return;
     }
-    if (num_nonstandard_attributes > 0) {
+    if (!nonstandard_attributes.empty()) {
       // TODO(jmaessen): allow more attributes.  This is the place it's
       // riskiest:  we can't combine multiple elements with an id, for
       // example, so we'd need to explicitly catch and handle that case.
-      NextCombination("non-standard attributes");
+      // TODO(jefftk): figure out how likely things are to break if you do go
+      // ahead and combine multiple elements with an id; various templates seem
+      // to put in ids when they're not actually referenced and we've gotten
+      // several mailing list questions about why we don't combine in this
+      // case.  Is there actually javascript referencing css link tags by id?
+      GoogleString message("potentially non-combinable attribute");
+      if (DebugMode()) {
+        if (nonstandard_attributes.size() > 1) {
+          message.append("s");
+        }
+        for (int i = 0, n = nonstandard_attributes.size(); i < n; ++i) {
+          if (i == 0) {
+            message.append(": ");
+          } else if (i == n - 1) {
+            message.append(" and ");
+          } else {
+            message.append(", ");
+          }
+          message.append("'");
+          message.append(nonstandard_attributes[i].as_string());
+          message.append("'");
+        }
+      } else {
+        // If we didn't count the number, indicate that it might be plural.
+        message.append("(s)");
+      }
+      NextCombination(message);
       return;
     }
     // We cannot combine with a link in <noscript> tag and we cannot combine
@@ -426,7 +452,9 @@ void CssCombineFilter::StartElementImpl(HtmlElement* element) {
       // thing?  sligocki thinks mdsteele looked into this and it
       // depended on HTML version.  In one display was default, in the
       // other screen was IIRC.
-      NextCombination("media mismatch");
+      NextCombination(StrCat(
+          "media mismatch: looking for media '", combiner()->media(),
+          "' but found media='", media, "'."));
       context_->SetMedia(media);
     }
     if (!context_->AddElement(element, href)) {

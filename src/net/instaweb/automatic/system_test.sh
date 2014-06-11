@@ -1070,6 +1070,21 @@ URL=$REWRITTEN_ROOT/styles/A.data.css.pagespeed.cf.Hash.css
 OUT=$($WGET_DUMP $URL)
 check_from "$OUT" fgrep -q 'data:image/png'
 
+start_test "combine_css debug filter"
+URL=$EXAMPLE_ROOT/combine_css_debug.html?PageSpeedFilters=combine_css,debug
+fetch_until -save "$URL" \
+  "fgrep -c styles/yellow.css+blue.css+big.css+bold.css.pagespeed.cc" 1
+check fgrep "potentially non-combinable attribute: 'id'" $FETCH_FILE
+check fgrep "potentially non-combinable attributes: 'data-foo' and 'data-bar'" \
+  $FETCH_FILE
+check fgrep "attributes: 'data-foo', 'data-bar' and 'data-baz'" $FETCH_FILE
+check fgrep "looking for media '' but found media='print'." $FETCH_FILE
+check fgrep "looking for media 'print' but found media=''." $FETCH_FILE
+check fgrep "Could not combine over barrier: noscript" $FETCH_FILE
+check fgrep "Could not combine over barrier: inline style" $FETCH_FILE
+check fgrep "Could not combine over barrier: IE directive" $FETCH_FILE
+
+
 # Cleanup
 rm -rf $OUTDIR
 

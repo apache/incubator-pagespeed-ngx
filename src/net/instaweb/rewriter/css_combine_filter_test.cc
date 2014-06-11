@@ -822,7 +822,7 @@ TEST_F(CssCombineFilterWithDebugTest, NonStandardAttributesBarrier) {
   UseMd5Hasher();
   CombineCss("non_standard_attributes_barrier", barrier,
              "<!--combine_css: Could not combine over barrier: "
-             "non-standard attributes-->", true);
+             "potentially non-combinable attribute: 'foo'-->", true);
 }
 
 TEST_F(CssCombineFilterTest, CombineCssWithImportInFirst) {

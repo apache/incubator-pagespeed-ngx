@@ -50,13 +50,13 @@ const char CssTagScanner::kUriValue[] = "url(";
 CssTagScanner::CssTagScanner(HtmlParse* html_parse) {
 }
 
-bool CssTagScanner::ParseCssElement(HtmlElement* element,
-                                    HtmlElement::Attribute** href,
-                                    const char** media,
-                                    int* num_nonstandard_attributes) {
+bool CssTagScanner::ParseCssElement(
+    HtmlElement* element,
+    HtmlElement::Attribute** href,
+    const char** media,
+    StringPieceVector* nonstandard_attributes) {
   *media = "";
   *href = NULL;
-  *num_nonstandard_attributes = 0;
   if (element->keyword() != HtmlName::kLink) {
     return false;
   }
@@ -115,7 +115,9 @@ bool CssTagScanner::ParseCssElement(HtmlElement* element,
         // for a particular filter, it should be detected within that filter
         // (examples: extra tags are rejected in css_combine_filter, but they're
         // preserved by css_inline_filter).
-        ++(*num_nonstandard_attributes);
+        if (nonstandard_attributes != NULL) {
+          nonstandard_attributes->push_back(attr.name_str());
+        }
         break;
     }
   }
