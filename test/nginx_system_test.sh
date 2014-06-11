@@ -527,53 +527,53 @@ start_test "Custom statistics paths in server block"
 # Served on normal paths by default.
 URL="inherit-paths.example.com/ngx_pagespeed_statistics"
 OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)
-check_from "$OUT" grep cache_time_us
+check_from "$OUT" fgrep -q cache_time_us
 
 URL="inherit-paths.example.com/ngx_pagespeed_message"
 OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)
-check_from "$OUT" grep Info
+check_from "$OUT" fgrep -q Info
 
 URL="inherit-paths.example.com/pagespeed_console"
 OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)
-check_from "$OUT" grep console_div
+check_from "$OUT" fgrep -q console_div
 
 URL="inherit-paths.example.com/pagespeed_admin/"
 OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)
-check_from "$OUT" grep Admin
+check_from "$OUT" fgrep -q Admin
 
 # Not served on normal paths when overriden.
 URL="custom-paths.example.com/ngx_pagespeed_statistics"
 OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)
-check_not_from "$OUT" grep cache_time_us
+check_not_from "$OUT" fgrep -q cache_time_us
 
 URL="custom-paths.example.com/ngx_pagespeed_message"
 OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)
-check_not_from "$OUT" grep Info
+check_not_from "$OUT" fgrep -q Info
 
 URL="custom-paths.example.com/pagespeed_console"
 OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)
-check_not_from "$OUT" grep console_div
+check_not_from "$OUT" fgrep -q console_div
 
 URL="custom-paths.example.com/pagespeed_admin/"
 OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)
-check_not_from "$OUT" grep Admin
+check_not_from "$OUT" fgrep -q Admin
 
 # Served on custom paths when overriden
 URL="custom-paths.example.com/custom_pagespeed_statistics"
 OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)
-check_from "$OUT" grep cache_time_us
+check_from "$OUT" fgrep -q cache_time_us
 
 URL="custom-paths.example.com/custom_pagespeed_message"
 OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)
-check_from "$OUT" grep Info
+check_from "$OUT" fgrep -q Info
 
 URL="custom-paths.example.com/custom_pagespeed_console"
 OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)
-check_from "$OUT" grep console_div
+check_from "$OUT" fgrep -q console_div
 
 URL="custom-paths.example.com/custom_pagespeed_admin/"
 OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)
-check_from "$OUT" grep Admin
+check_from "$OUT" fgrep -q Admin
 
 
 WGET_ARGS=""
@@ -603,15 +603,15 @@ start_test Accept bad query params and headers
 # The examples page should have this EXPECTED_EXAMPLES_TEXT on it.
 EXPECTED_EXAMPLES_TEXT="PageSpeed Examples Directory"
 OUT=$(wget -O - $EXAMPLE_ROOT)
-check_from "$OUT" grep "$EXPECTED_EXAMPLES_TEXT"
+check_from "$OUT" fgrep -q "$EXPECTED_EXAMPLES_TEXT"
 
 # It should still be there with bad query params.
 OUT=$(wget -O - $EXAMPLE_ROOT?PageSpeedFilters=bogus)
-check_from "$OUT" grep "$EXPECTED_EXAMPLES_TEXT"
+check_from "$OUT" fgrep -q "$EXPECTED_EXAMPLES_TEXT"
 
 # And also with bad request headers.
 OUT=$(wget -O - --header=PageSpeedFilters:bogus $EXAMPLE_ROOT)
-check_from "$OUT" grep "$EXPECTED_EXAMPLES_TEXT"
+check_from "$OUT" fgrep -q "$EXPECTED_EXAMPLES_TEXT"
 
 # Tests that an origin header with a Vary header other than Vary:Accept-Encoding
 # loses that header when we are not respecting vary.
@@ -698,7 +698,7 @@ check fgrep -q '<base href="https://' $FETCHED
 test_filter remove_comments retains appropriate comments.
 URL="$SECONDARY_HOSTNAME/mod_pagespeed_example/$FILE"
 check run_wget_with_args $URL --header=Host:retaincomment.example.com
-check grep -q retained $FETCHED        # RetainComment directive
+check fgrep -q retained $FETCHED        # RetainComment directive
 
 # Make sure that when in PreserveURLs mode that we don't rewrite URLs. This is
 # non-exhaustive, the unit tests should cover the rest.
@@ -2445,16 +2445,15 @@ OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET $URL -O - 2>&1)"
 REGEX="http:\/\/[^[:space:]]+css\.pagespeed[^[:space:]]+\.css"
 URL="$(echo $OUT | grep -Eo "$REGEX")"
 check test -n "$URL"
-echo wget $URL
+echo http_proxy=$SECONDARY_HOSTNAME wget $URL
 OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET $URL -O - 2>&1)"
-check_from "$OUT" grep -q ".yellow{background-color:#ff0}.blue{color:#00f}"
-read
+check_from "$OUT" fgrep -q ".yellow{background-color:#ff0}.blue{color:#00f}"
 
 start_test Signed Urls : Incorrect URL signature is passed
 # Substring, all but last 14 characters to remove the signature and extension.
 URL="${URL:0:-14}"
 FINAL_URL="${URL}AAAAAAAAAA.css"
-echo wget $FINAL_URL
+echo http_proxy=$SECONDARY_HOSTNAME wget $FINAL_URL
 OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET $FINAL_URL -O - 2>&1)"
 check_from "$OUT" egrep -q "403 Forbidden|404 Not Found"
 
