@@ -952,8 +952,37 @@ http {
   server {
     listen @@SECONDARY_PORT@@;
     server_name compressed-css.example.com;
+    pagespeed on;
     pagespeed FileCachePath "@@FILE_CACHE@@";
     pagespeed InPlaceResourceOptimization on;
+  }
+
+  # nested gzip config: pagespeed gzip on/off
+  server {
+    pagespeed on;
+    listen @@SECONDARY_PORT@@;
+    server_name gzip-test1.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+    location /mod_pagespeed_example/ {
+      pagespeed gzip off;
+    }
+    location /mod_pagespeed_example/styles/ {
+      pagespeed gzip on;
+    }
+  }
+
+  # nested gzip config: pagespeed on/off
+  server {
+    pagespeed on;
+    listen @@SECONDARY_PORT@@;
+    server_name gzip-test2.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+    location /mod_pagespeed_example/ {
+      pagespeed off;
+    }
+    location /mod_pagespeed_example/styles/ {
+      pagespeed on;
+    }
   }
 
   server {

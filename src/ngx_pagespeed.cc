@@ -602,24 +602,23 @@ char* ps_configure(ngx_conf_t* cf,
     args[i] = str_to_string_piece(value[i+1]);
   }
 
-  // TODO(kspoelstra): could be moved into the config handler for ngx
-  if ((n_args == 1 && StringCaseEqual(args[0], "on"))
-      || (n_args == 2 && StringCaseEqual(args[0], "InPlaceResourceOptimization")
-          && StringCaseEqual(args[1], "on"))) {
-    // safe to call if the setter is disabled
-    g_gzip_setter.EnableGZipForLocation(cf);
+  if (n_args == 1) {
+    if (StringCaseEqual(args[0], "on")) {
+      // safe to call if the setter is disabled
+      g_gzip_setter.EnableGZipForLocation(cf);
+    } else if (StringCaseEqual(args[0], "off")) {
+      g_gzip_setter.SetGZipForLocation(cf, false);
+    }
   }
   if (n_args == 2 && args[0].compare("gzip") == 0) {
     if (args[1].compare("on") == 0) {
-      g_gzip_setter.SetGZipForLocation(cf, 1);
+      g_gzip_setter.SetGZipForLocation(cf, true);
     } else if (args[1].compare("off") == 0) {
-      g_gzip_setter.SetGZipForLocation(cf, 0);
+      g_gzip_setter.SetGZipForLocation(cf, false);
     } else {
-      // we are more forgiving than we should be here
-      // we should return an error
-      ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0,
-                    "pagespeed gzip %s is not a valid setting",
-                    args[1].data());
+      char *error_message = string_piece_to_pool_string(
+          cf->pool, StringPiece("Invalid pagespeed gzip setting"));
+      return error_message;
     }
     return NGX_CONF_OK;
   }

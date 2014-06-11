@@ -42,7 +42,7 @@
  * It manipulates the configuration by manipulating ngx_flag_t
  * and ngx_uint_t settings directly and using the nginx setter for
  * gzip_http_types.
- * this is probably a safe way to do it. If this mechanism
+ * This is probably a safe way to do it. If this mechanism
  * changes all non nginx module setup & configuration will
  * fail.
  */
@@ -76,14 +76,6 @@ class ngx_command_ctx {
   ngx_module_t* module_;
 };
 
-enum gzs_init_result {
-    kInitGZipOk,
-    kInitGZipNotFound,
-    kInitGZipSignatureMismatchFatal,
-    kInitGZipSecondarySignatureMismatch,
-    kInitGZipSecondaryMissing
-};
-
 enum gzs_enable_result {
     kEnableGZipOk,
     kEnableGZipPartial,
@@ -114,12 +106,12 @@ class NgxGZipSetter {
       ngx_command_ctx* command_ctx,
       ngx_uint_t value);
   void SetNgxConfBitmask(
-        ngx_conf_t* cf,
-        ngx_command_ctx* command_ctx,
-        ngx_uint_t value);
-  gzs_init_result Init();
-  gzs_enable_result EnableGZipForLocation(ngx_conf_t* cf);
-  gzs_enable_result SetGZipForLocation(ngx_conf_t* cf, ngx_flag_t);
+      ngx_conf_t* cf,
+      ngx_command_ctx* command_ctx,
+      ngx_uint_t value);
+  void Init();
+  void EnableGZipForLocation(ngx_conf_t* cf);
+  gzs_enable_result SetGZipForLocation(ngx_conf_t* cf, bool value);
   void AddGZipHTTPTypes(ngx_conf_t* cf);
   void RollBackAndDisable();
 

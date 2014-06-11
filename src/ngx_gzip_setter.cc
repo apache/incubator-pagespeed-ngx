@@ -32,8 +32,8 @@ extern "C" {
   // gzip_http_version
   // gzip_vary
   // If these functions are called it means there is an explicit gzip
-  // configuration. The gzip configuration set by pagespeed is then rollbacked
-  // and pagespeed will stop enabling gzip automatically.
+  // configuration. The gzip configuration set by pagespeed is then rolled
+  // back and pagespeed will stop enabling gzip automatically.
   char* ngx_gzip_redirect_conf_set_flag_slot(
       ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
     if (g_gzip_setter.enabled()) {
@@ -54,11 +54,11 @@ extern "C" {
 
   char* ngx_gzip_redirect_conf_set_enum_slot(
         ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
-      if (g_gzip_setter.enabled()) {
-        g_gzip_setter.RollBackAndDisable();
-      }
-      char* ret = ngx_conf_set_enum_slot(cf, cmd, conf);
-      return ret;
+    if (g_gzip_setter.enabled()) {
+      g_gzip_setter.RollBackAndDisable();
+    }
+    char* ret = ngx_conf_set_enum_slot(cf, cmd, conf);
+    return ret;
   }
   char* ngx_gzip_redirect_conf_set_bitmask_slot(
           ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
@@ -77,16 +77,16 @@ NgxGZipSetter::NgxGZipSetter()
 NgxGZipSetter::~NgxGZipSetter() {
 }
 
-// Helper functions to determine signature
+// Helper functions to determine signature.
 bool HasLocalConfig(ngx_command_t* command) {
   return !(command->type&(NGX_DIRECT_CONF|NGX_MAIN_CONF)) &&
                 command->conf == NGX_HTTP_LOC_CONF_OFFSET;
 }
 
 bool IsNgxFlagCommand(ngx_command_t* command) {
-  return (
+  return
       command->set == ngx_conf_set_flag_slot &&
-      HasLocalConfig(command));
+      HasLocalConfig(command);
 }
 
 bool IsNgxHttpTypesCommand(ngx_command_t* command) {
@@ -108,32 +108,9 @@ bool IsNgxBitmaskCommand(ngx_command_t* command) {
 // gzip module. Enable if the signature of the zip command matches with what we
 // trust. Also sets up redirects for the configurations. These redirect handle
 // a rollback if expicit configuration is found.
-// Returns:
-//
-// kInitGZipOk
-// gzip, gzip_vary, gzip_http_version and
-// gzip_types are found and signatures are ok.
-// gzip will be enabled.
-//
-// kInitGZipSecondarySignatureMismatch
-// gzip is ok, one of the other gzip functions has
-// an unexpected signature.
-// gzip will be partially enabled.
-//
-// kInitGZipSignatureMismatchFatal
-// gzip has an unexpected signature.
-// gzip will not be enabled.
-//
-// kInitGZipNotFound
-// gzip command is not found.
-// gzip will not be enabled.
-//
-// kInitGZipSecondaryMissing
-// one or more of the secondary gzip functions is
-// missing.
-// gzip will be partially enabled
-//
-gzs_init_result NgxGZipSetter::Init() {
+// If commands are not found the method will inform the user by logging.
+void NgxGZipSetter::Init() {
+#if (NGX_HTTP_GZIP)
   int signature_mismatch_2nd = 0;
   int signature_mismatch_1st = 0;
   for (int m = 0; ngx_modules[m]; m++) {
@@ -141,13 +118,12 @@ gzs_init_result NgxGZipSetter::Init() {
       for (int c = 0; ngx_modules[m]->commands[c].name.len; c++) {
         ngx_command_t* current_command=&ngx_modules[m]->commands[c];
 
-        // We look for the gzip command , and the exact signature we trust
+        // We look for the gzip command, and the exact signature we trust
         // this means configured as an config location offset
         // and a ngx_flag_t setter.
         // Also see:
-        // ngx_conf_handler in ngx_conf_file.c
-        // ngx_http_gzip_filter_commands in ngx_http_gzip_filter.c
-        // Code below is very verbose
+        //   ngx_conf_handler in ngx_conf_file.c
+        //   ngx_http_gzip_filter_commands in ngx_http_gzip_filter.c
         if (!gzip_command_.command_ &&
             ngx_strcmp("gzip", current_command->name.data) == 0) {
           if (IsNgxFlagCommand(current_command)) {
@@ -207,9 +183,9 @@ gzs_init_result NgxGZipSetter::Init() {
         if (!gzip_vary_command_.command_ &&
             ngx_strcmp("gzip_vary", current_command->name.data) == 0) {
           if (IsNgxFlagCommand(current_command)) {
-          current_command->set = ngx_gzip_redirect_conf_set_flag_slot;
-          gzip_vary_command_.command_ = current_command;
-          gzip_vary_command_.module_ = ngx_modules[m];
+            current_command->set = ngx_gzip_redirect_conf_set_flag_slot;
+            gzip_vary_command_.command_ = current_command;
+            gzip_vary_command_.module_ = ngx_modules[m];
           } else {
             ngx_log_error(NGX_LOG_WARN, ngx_cycle->log, 0,
                           "Pagespeed: cannot set gzip_vary,"
@@ -221,32 +197,37 @@ gzs_init_result NgxGZipSetter::Init() {
     }
   }
   if (signature_mismatch_1st) {
-    return kInitGZipSignatureMismatchFatal;
+    return;
   } else if (!enabled_) {
     ngx_log_error(NGX_LOG_WARN, ngx_cycle->log, 0,
                   "Pagespeed: cannot set gzip, command not found");
-    return kInitGZipNotFound;
+    return;
   } else if (signature_mismatch_2nd) {
-    return kInitGZipSecondarySignatureMismatch;
+    return;
   } else if (!gzip_vary_command_.command_) {
     ngx_log_error(NGX_LOG_WARN, ngx_cycle->log, 0,
                   "Pagespeed: missing gzip_vary");
-    return kInitGZipSecondaryMissing;
+    return;
   } else if (!gzip_http_types_command_.command_) {
     ngx_log_error(NGX_LOG_WARN, ngx_cycle->log, 0,
                   "Pagespeed: missing gzip_types");
-    return kInitGZipSecondaryMissing;
+    return;
   } else if (!gzip_http_version_command_.command_) {
     ngx_log_error(NGX_LOG_WARN, ngx_cycle->log, 0,
                   "Pagespeed: missing gzip_http_version");
-    return kInitGZipSecondaryMissing;
+    return;
   } else if (!gzip_proxied_command_.command_) {
     ngx_log_error(NGX_LOG_WARN, ngx_cycle->log, 0,
                   "Pagespeed: missing gzip_proxied");
-    return kInitGZipSecondaryMissing;
+    return;
   } else {
-    return kInitGZipOk;
+    return;
   }
+#else
+  ngx_log_error(NGX_LOG_WARN, ngx_cycle->log, 0,
+                "Pagespeed: gzip is not included in this nginx version");
+  return;
+#endif
 }
 
 void* ngx_command_ctx::GetConfPtr(ngx_conf_t* cf) {
@@ -261,8 +242,7 @@ void* ngx_command_ctx::GetModuleConfPtr(ngx_conf_t* cf) {
 void NgxGZipSetter::SetNgxConfFlag(
     ngx_conf_t* cf,
     ngx_command_ctx* command_ctx,
-    ngx_flag_t value
-    ) {
+    ngx_flag_t value) {
   ngx_flag_t* flag =
       reinterpret_cast<ngx_flag_t*>(command_ctx->GetConfPtr(cf));
   *flag = value;
@@ -313,19 +293,18 @@ ngx_str_t gzip_http_types[] = {
 
 gzs_enable_result NgxGZipSetter::SetGZipForLocation(
     ngx_conf_t* cf,
-    ngx_flag_t value) {
+    bool value) {
   if (!enabled_)
       return kEnableGZipNotEnabled;
   if (gzip_command_.command_) {
-      SetNgxConfFlag(cf, &gzip_command_, value);
+      SetNgxConfFlag(cf, &gzip_command_, value ? 1 : 0);
   }
   return kEnableGZipOk;
 }
 
-//return value can be ignored in most cases
-gzs_enable_result NgxGZipSetter::EnableGZipForLocation(ngx_conf_t* cf) {
+void NgxGZipSetter::EnableGZipForLocation(ngx_conf_t* cf) {
   if (!enabled_) {
-    return kEnableGZipNotEnabled;
+    return;
   }
 
   // When we get called twice for the same location{}, we ignore the second call
@@ -333,7 +312,7 @@ gzs_enable_result NgxGZipSetter::EnableGZipForLocation(ngx_conf_t* cf) {
   ngx_flag_t* flag =
       reinterpret_cast<ngx_flag_t*>(gzip_command_.GetConfPtr(cf));
   if (*flag == 1) {
-    return kEnableGZipOk;
+    return;
   }
   SetGZipForLocation(cf, 1);
   if (gzip_vary_command_.command_) {
@@ -352,7 +331,7 @@ gzs_enable_result NgxGZipSetter::EnableGZipForLocation(ngx_conf_t* cf) {
   // is not a simple type like ngx_flag_t. The signature check should be enough
   // to prevent problems.
   AddGZipHTTPTypes(cf);
-  return kEnableGZipOk;
+  return;
 }
 
 void NgxGZipSetter::AddGZipHTTPTypes(ngx_conf_t* cf) {
@@ -375,23 +354,23 @@ void NgxGZipSetter::AddGZipHTTPTypes(ngx_conf_t* cf) {
 
     // Setup first arg.
     ngx_str_t gzip_types_string = ngx_string("gzip_types");
-    reinterpret_cast<ngx_str_t*>(cf->args->elts)[0]=gzip_types_string;
+    reinterpret_cast<ngx_str_t*>(cf->args->elts)[0] = gzip_types_string;
     cf->args->nelts = 2;
 
     ngx_str_t* http_types = gzip_http_types;
     while (http_types->data) {
       ngx_str_t d;
       // We allocate the http type on the configuration pool and actually
-      // leak this if we rollback. This does not seem to be a big problem, 
+      // leak this if we rollback. This does not seem to be a big problem,
       // because nginx also allocates tokens in ngx_conf_file.c and does not
       // free them. This way they can be used safely by configurations.
-      // We must use a copy of gzip_http_types array here because nginx will 
+      // We must use a copy of gzip_http_types array here because nginx will
       // manipulate the values.
-      // TODO(kspoelstra): better would be to allocate once on init and not 
+      // TODO(kspoelstra): better would be to allocate once on init and not
       // every time we enable gzip. This needs further investigation, sharing
-      // tokens might be problematic. 
+      // tokens might be problematic.
       // For now I think it is not a large problem. This might add up in case
-      // of a large multi server/location config with a lot of "pagespeed on" 
+      // of a large multi server/location config with a lot of "pagespeed on"
       // directives.
       // Estimates are 300-400KB for 1000 times "pagespeed on".
       d.data = reinterpret_cast<u_char* >(
@@ -411,7 +390,7 @@ void NgxGZipSetter::AddGZipHTTPTypes(ngx_conf_t* cf) {
     reinterpret_cast<ngx_str_t*>(cf->args->elts)[0] = old_elt0;
 
     // Backup configuration location for rollback.
-    ngx_httptypes_set_.push_back(gzip_conf+command->offset);
+    ngx_httptypes_set_.push_back(gzip_conf + command->offset);
   }
 }
 
@@ -419,8 +398,8 @@ void NgxGZipSetter::RollBackAndDisable() {
   ngx_log_error(NGX_LOG_INFO, ngx_cycle->log, 0,
                 "Pagespeed: rollback gzip, explicit configuration");
   for (vector<ngx_flag_t*>::iterator i = ngx_flags_set_.begin();
-      i != ngx_flags_set_.end();
-      i++) {
+       i != ngx_flags_set_.end();
+       i++) {
     *(*i)=NGX_CONF_UNSET;
   }
   for (vector<ngx_uint_t*>::iterator i = ngx_uint_set_.begin();

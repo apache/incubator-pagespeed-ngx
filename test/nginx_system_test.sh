@@ -82,7 +82,6 @@ function keepalive_test() {
   done
 
   # Filter the curl output from unimportant messages
-  # 'Found bundle for host...' is emitted by newer versions of curl.
   OUT=$(cat "$TEST_TMP/$CURL_LOG_FILE"\
     | grep -v "^[<>]"\
     | grep -v "^{ \\[data not shown"\
@@ -2697,6 +2696,35 @@ OUT=$($WGET_DUMP --header=Host:date.example.com \
     http://$SECONDARY_HOSTNAME/mod_pagespeed_example/combine_css.html)
 check_from "$OUT" egrep -q '^Date: Fri, 16 Oct 2009 23:05:07 GMT'
 WGET_ARGS=
+
+#very basic tests to test gzip nesting configuration
+start_test Nested gzip gzip off
+URL="http://$SECONDARY_HOSTNAME/mod_pagespeed_example/"
+HEADERS="--header=Accept-Encoding:gzip --header=Host:gzip-test1.example.com"
+OUT=$($WGET_DUMP -O /dev/null -S $HEADERS $URL 2>&1)
+check_not_from "$OUT" fgrep -qi 'Content-Encoding: gzip'
+check_not_from "$OUT" fgrep -qi 'Vary: Accept-Encoding'
+
+start_test Nested gzip gzip on
+URL="http://$SECONDARY_HOSTNAME/mod_pagespeed_example/styles/big.css"
+HEADERS="--header=Accept-Encoding:gzip --header=Host:gzip-test1.example.com"
+OUT=$($WGET_DUMP -O /dev/null -S $HEADERS $URL 2>&1)
+check_from "$OUT" fgrep -qi 'Content-Encoding: gzip'
+check_from "$OUT" fgrep -qi 'Vary: Accept-Encoding'
+
+start_test Nested gzip pagespeed off
+URL="http://$SECONDARY_HOSTNAME/mod_pagespeed_example/"
+HEADERS="--header=Accept-Encoding:gzip --header=Host:gzip-test2.example.com"
+OUT=$($WGET_DUMP -O /dev/null -S $HEADERS $URL 2>&1)
+check_not_from "$OUT" fgrep -qi 'Content-Encoding: gzip'
+check_not_from "$OUT" fgrep -qi 'Vary: Accept-Encoding'
+
+start_test Nested gzip pagespeed on
+URL="http://$SECONDARY_HOSTNAME/mod_pagespeed_example/styles/big.css"
+HEADERS="--header=Accept-Encoding:gzip --header=Host:gzip-test2.example.com"
+OUT=$($WGET_DUMP -O /dev/null -S $HEADERS $URL 2>&1)
+check_from "$OUT" fgrep -qi 'Content-Encoding: gzip'
+check_from "$OUT" fgrep -qi 'Vary: Accept-Encoding'
 
 if [ "$NATIVE_FETCHER" != "on" ]; then
   start_test Test that we can rewrite an HTTPS resource.
