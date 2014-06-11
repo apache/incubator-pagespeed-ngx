@@ -47,9 +47,9 @@
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
+#include "net/instaweb/system/public/admin_site.h"
 #include "net/instaweb/system/public/in_place_resource_recorder.h"
 #include "net/instaweb/system/public/system_rewrite_options.h"
-#include "net/instaweb/system/public/system_server_context.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/condvar.h"
 #include "net/instaweb/util/public/escaping.h"
@@ -962,13 +962,13 @@ apr_status_t InstawebHandler::instaweb_handler(request_rec* request) {
   } else if (request_handler_str == kConsoleHandler) {
     InstawebHandler instaweb_handler(request);
     server_context->ConsoleHandler(*instaweb_handler.options(),
-                                   SystemServerContext::kOther,
+                                   AdminSite::kOther,
                                    instaweb_handler.query_params(),
                                    instaweb_handler.MakeFetch());
     ret = OK;
   } else if (request_handler_str == kMessageHandler) {
     InstawebHandler instaweb_handler(request);
-    server_context->MessageHistoryHandler(SystemServerContext::kOther,
+    server_context->MessageHistoryHandler(AdminSite::kOther,
                                           instaweb_handler.MakeFetch());
     ret = OK;
   } else if (request_handler_str == kLogRequestHeadersHandler) {

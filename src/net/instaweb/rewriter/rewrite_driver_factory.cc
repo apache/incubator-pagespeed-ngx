@@ -541,7 +541,7 @@ void RewriteDriverFactory::InitServerContext(ServerContext* server_context) {
   server_context->set_critical_line_info_finder(
       DefaultCriticalLineInfoFinder(server_context));
   server_context->set_hostname(hostname_);
-  server_context->InitWorkers();
+  server_context->PostInitHook();
   InitDecodingDriver(server_context);
   server_contexts_.insert(server_context);
 
@@ -591,7 +591,7 @@ void RewriteDriverFactory::InitStubDecodingServerContext(ServerContext* sc) {
   sc->set_statistics(null_stats);
   sc->set_hasher(hasher());
   sc->set_signature(signature());
-  sc->InitWorkers();
+  sc->PostInitHook();
 }
 
 void RewriteDriverFactory::AddPlatformSpecificDecodingPasses(

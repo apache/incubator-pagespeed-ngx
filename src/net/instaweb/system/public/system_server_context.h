@@ -20,6 +20,7 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 
 #include "net/instaweb/http/public/request_context.h"
+#include "net/instaweb/system/public/admin_site.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -55,7 +56,6 @@ class SystemServerContext : public ServerContext {
   // future grant more privileges than the statistics site did, such as flushing
   // cache.  But it also affects the syntax of the links created to sub-pages
   // in the top navigation bar.
-  enum AdminSource { kPageSpeedAdmin, kStatistics, kOther };
 
   SystemServerContext(RewriteDriverFactory* factory,
                       StringPiece hostname, int port);
@@ -73,6 +73,9 @@ class SystemServerContext : public ServerContext {
 
   SystemRewriteOptions* global_system_rewrite_options();
   GoogleString hostname_identifier() { return hostname_identifier_; }
+
+  // Initialize this SystemServerContext to set up its admin site.
+  virtual void PostInitHook();
 
   static void InitStats(Statistics* statistics);
 
@@ -119,11 +122,13 @@ class SystemServerContext : public ServerContext {
 
   // Handler which serves PSOL console.
   // Note: ConsoleHandler always succeeds.
-  void ConsoleHandler(const SystemRewriteOptions& options, AdminSource source,
+  void ConsoleHandler(const SystemRewriteOptions& options,
+                      AdminSite::AdminSource source,
                       const QueryParams& query_params, AsyncFetch* fetch);
 
   // Displays recent Info/Warning/Error messages.
-  void MessageHistoryHandler(AdminSource source, AsyncFetch* fetch);
+  void MessageHistoryHandler(AdminSite::AdminSource source,
+                             AsyncFetch* fetch);
 
   // Deprecated handler for graphs in the PSOL console.
   void StatisticsGraphsHandler(Writer* writer);
@@ -177,29 +182,33 @@ class SystemServerContext : public ServerContext {
   //
   // In systems without a spdy-specific config, spdy_config should be
   // null.
-  void StatisticsHandler(bool is_global_request, AdminSource source,
+  void StatisticsHandler(bool is_global_request,
+                         AdminSite::AdminSource source,
                          AsyncFetch* fetch);
 
   // Print details fo the SPDY configuration.
-  void PrintSpdyConfig(AdminSource source, AsyncFetch* fetch);
+  void PrintSpdyConfig(AdminSite::AdminSource source, AsyncFetch* fetch);
 
   // Print details fo the non-SPDY configuration.
-  void PrintNormalConfig(AdminSource source, AsyncFetch* fetch);
+  void PrintNormalConfig(AdminSite::AdminSource source, AsyncFetch* fetch);
 
   // Print statistics about the caches.  In the future this will also
   // be a launching point for examining cache entries and purging them.
-  void PrintCaches(bool is_global, AdminSource source,
+  void PrintCaches(bool is_global, AdminSite::AdminSource source,
                    const QueryParams& query_params,
                    const RewriteOptions* options,
                    AsyncFetch* fetch);
 
   // Print histograms showing the dynamics of server activity.
-  void PrintHistograms(bool is_global_request, AdminSource source,
+  void PrintHistograms(bool is_global_request,
+                       AdminSite::AdminSource source,
                        AsyncFetch* fetch);
 
   Variable* statistics_404_count();
 
  private:
+  scoped_ptr<AdminSite> admin_site_;
+
   bool initialized_;
   bool use_per_vhost_statistics_;
 

@@ -545,6 +545,9 @@ class ServerContext {
   // with all its dependencies.  This populates the worker threads.
   void InitWorkers();
 
+  // To set up AdminSite for SystemServerContext.
+  virtual void PostInitHook();
+
   // Returns whether or not this attribute can be merged into headers
   // without additional considerations.
   static bool IsExcludedAttribute(const char* attribute);

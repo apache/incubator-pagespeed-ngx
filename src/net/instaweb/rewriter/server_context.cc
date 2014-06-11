@@ -352,6 +352,10 @@ void ServerContext::InitWorkers() {
       RewriteDriverFactory::kLowPriorityRewriteWorkers);
 }
 
+void ServerContext::PostInitHook() {
+  InitWorkers();
+}
+
 void ServerContext::SetDefaultLongCacheHeaders(
     const ContentType* content_type, StringPiece charset,
     StringPiece suffix, ResponseHeaders* header) const {
