@@ -1831,7 +1831,7 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
     } else if (response_category == RequestRouting::kConsole) {
       cfg_s->server_context->ConsoleHandler(
           *cfg_s->server_context->config(),
-          SystemServerContext::kStatistics,
+          AdminSite::kStatistics,
           query_params,
           ctx->base_fetch);
     } else if (response_category == RequestRouting::kAdmin ||
