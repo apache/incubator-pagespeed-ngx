@@ -1,0 +1,46 @@
+<html>
+  <head>
+    <title>combine_css example</title>
+    <link rel="stylesheet" type="text/css" href="styles/yellow.css">
+    <link rel="stylesheet" type="text/css" href="styles/blue.css">
+    <link rel="stylesheet" type="text/css" href="styles/big.css">
+    <link rel="stylesheet" type="text/css" href="styles/bold.css">
+
+    <!-- The ones below this comment not marked as "ok" shouldn't be combined
+         for various reasons, and +debug should indicate why. The ones marked
+         "ok" are there as separators to elicit the debug messages.  These won't
+         create errors on their own, but they also won't be combined because
+         there's nothing to combine them with. -->
+    <link rel="stylesheet" id="theres-an-id" type="text/css"
+          href="styles/big.css">
+    <!--ok--><link rel="stylesheet" type="text/css" href="styles/big.css">
+    <link rel="stylesheet"
+          data-foo="a data-foo attribute"
+          data-bar="a data-bar attribute"
+          type="text/css" href="styles/big.css">
+    <!--ok--><link rel="stylesheet" type="text/css" href="styles/big.css">
+    <link rel="stylesheet"
+          data-foo="a data-foo attribute"
+          data-bar="a data-bar attribute"
+          data-baz="a data-baz attribute"
+          type="text/css" href="styles/big.css">
+    <!--ok--><link rel="stylesheet" type="text/css" href="styles/big.css">
+    <link rel="stylesheet" media="print" type="text/css" href="styles/big.css">
+    <!--ok--><link rel="stylesheet" type="text/css" href="styles/big.css">
+    <noscript>
+    <link rel="stylesheet" type="text/css" href="styles/big.css">
+    </noscript>
+    <!--ok--><link rel="stylesheet" type="text/css" href="styles/big.css">
+    <style>h1 { color: green }</style>
+    <!--ok--><link rel="stylesheet" type="text/css" href="styles/big.css">
+    <!--[if IE 6]>
+    <link rel="stylesheet" type="text/css" href="styles/big.css">
+    <![endif]-->
+    <!--ok--><link rel="stylesheet" type="text/css" href="styles/big.css">
+  </head>
+  <body>
+    <div class="blue yellow big bold">
+      Hello, PageSpeed!
+    </div>
+  </body>
+</html>
