@@ -2491,6 +2491,21 @@ TEST_F(RewriteContextTest, CombinationRewriteWithDelay) {
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
 }
 
+// This is the same test as the first stanza of CombinationRewriteWithDelay, but
+// includes the Debug filter so we get DeadlineExceeded debug messages injected.
+TEST_F(RewriteContextTest, CombinationRewriteWithDelayAndDebug) {
+  options()->EnableFilter(RewriteOptions::kDebug);
+  InitCombiningFilter(kRewriteDelayMs);
+  InitResources();
+  Parse("xx", StrCat(CssLinkHref("a.css"), CssLinkHref("b.css")));
+  GoogleString kDeadlineExceededComment(StrCat(
+      "<!--", RewriteDriver::DeadlineExceededMessage("Combining"), "-->"));
+  EXPECT_TRUE(output_buffer_.find(
+      StrCat(CssLinkHref("a.css"), kDeadlineExceededComment,
+             CssLinkHref("b.css"), kDeadlineExceededComment))
+              != GoogleString::npos);
+}
+
 TEST_F(RewriteContextTest, CombinationFetch) {
   InitCombiningFilter(0);
   InitResources();

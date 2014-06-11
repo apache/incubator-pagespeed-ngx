@@ -186,6 +186,9 @@ class RewriteDriver : public HtmlParse {
   static void Initialize();
   static void Terminate();
 
+  // Formats a "deadline exceeded" message for a given filter.
+  static GoogleString DeadlineExceededMessage(StringPiece filter_name);
+
   // Sets a server context enabling the rewriting of
   // resources. This will replace any previous server context.
   void SetServerContext(ServerContext* server_context);

@@ -39,9 +39,7 @@ CssRewriteTestBase::~CssRewriteTestBase() {}
 
 // Check that inline CSS gets rewritten correctly.
 bool CssRewriteTestBase::ValidateRewriteInlineCss(
-    const StringPiece& id,
-    const StringPiece& css_input,
-    const StringPiece& expected_css_output,
+    StringPiece id, StringPiece css_input, StringPiece expected_css_output,
     int flags) {
   static const char prefix[] =
       "<head>\n"
@@ -81,9 +79,9 @@ void CssRewriteTestBase::ResetStats() {
 }
 
 bool CssRewriteTestBase::ValidateWithStats(
-    const StringPiece& id,
-    const GoogleString& html_input, const GoogleString& expected_html_output,
-    const StringPiece& css_input, const StringPiece& expected_css_output,
+    StringPiece id,
+    StringPiece html_input, StringPiece expected_html_output,
+    StringPiece css_input, StringPiece expected_css_output,
     int flags) {
   ResetStats();
 
@@ -164,8 +162,8 @@ bool CssRewriteTestBase::ValidateWithStats(
   return success;
 }
 
-void CssRewriteTestBase::GetNamerForCss(const StringPiece& leaf_name,
-                                        const GoogleString& expected_css_output,
+void CssRewriteTestBase::GetNamerForCss(StringPiece leaf_name,
+                                        StringPiece expected_css_output,
                                         ResourceNamer* namer) {
   namer->set_id(RewriteOptions::kCssFilterId);
   namer->set_hash(hasher()->Hash(expected_css_output));
@@ -179,15 +177,14 @@ GoogleString CssRewriteTestBase::ExpectedUrlForNamer(
 }
 
 GoogleString CssRewriteTestBase::ExpectedUrlForCss(
-    const StringPiece& id,
-    const GoogleString& expected_css_output) {
+    StringPiece id, StringPiece expected_css_output) {
   ResourceNamer namer;
   GetNamerForCss(StrCat(id, ".css"), expected_css_output, &namer);
   return ExpectedUrlForNamer(namer);
 }
 
 GoogleString CssRewriteTestBase::MakeHtmlWithExternalCssLink(
-    const StringPiece& css_url, int flags) {
+    StringPiece css_url, int flags) {
   GoogleString link_extras("");
   if (FlagSet(flags, kLinkCharsetIsUTF8)) {
     link_extras = " charset='utf-8'";
@@ -246,7 +243,7 @@ GoogleString CssRewriteTestBase::MakeMinifiedCssWithImage(
 }
 
 GoogleString CssRewriteTestBase::ExtractCssBackgroundImage(
-    const GoogleString &in_css) {
+    StringPiece in_css) {
   const char css_template[] = "*{background-image:url(*)}*";
   GoogleString image_url;
   if (!Wildcard(css_template).Match(in_css)) {
@@ -266,11 +263,8 @@ GoogleString CssRewriteTestBase::ExtractCssBackgroundImage(
 
 // Check that external CSS gets rewritten correctly.
 void CssRewriteTestBase::ValidateRewriteExternalCssUrl(
-    const StringPiece& id,
-    const StringPiece& css_url,
-    const GoogleString& css_input,
-    const GoogleString& expected_css_output,
-    int flags) {
+    StringPiece id, StringPiece css_url,
+    StringPiece css_input, StringPiece expected_css_output, int flags) {
   CheckFlags(flags);
 
   // Set input file.

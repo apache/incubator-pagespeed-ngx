@@ -166,6 +166,7 @@ class RewriteDriverPool;
 namespace {
 
 const int kTestTimeoutMs = 10000;
+const char kDeadlineExceeded[] = "deadline_exceeded";
 
 // Implementation of RemoveCommentsFilter::OptionsInterface that wraps
 // a RewriteOptions instance.
@@ -222,6 +223,15 @@ class RewriteDriverCacheUrlAsyncFetcherAsyncOpHooks
 }  // namespace
 
 class FileSystem;
+
+const char RewriteDriver::kDomCohort[] = "dom";
+const char RewriteDriver::kBeaconCohort[] = "beacon_cohort";
+const char RewriteDriver::kSubresourcesPropertyName[] = "subresources";
+const char RewriteDriver::kStatusCodePropertyName[] = "status_code";
+
+const char RewriteDriver::kLastRequestTimestamp[] = "last_request_timestamp";
+const char RewriteDriver::kParseSizeLimitExceeded[] =
+    "parse_size_limit_exceeded";
 
 int RewriteDriver::initialized_count_ = 0;
 
@@ -747,6 +757,23 @@ void RewriteDriver::FlushAsyncDone(int num_rewrites, Function* callback) {
     for (RewriteContextSet::iterator p = initiated_rewrites_.begin(),
               e = initiated_rewrites_.end(); p != e; ++p) {
       RewriteContext* rewrite_context = *p;
+
+      // If debugging is enabled, annotate that we have missed our rewrite
+      // deadline.
+      if (options()->Enabled(RewriteOptions::kDebug)) {
+        for (int i = 0, n = rewrite_context->num_slots(); i < n; ++i) {
+          ResourceSlotPtr slot = rewrite_context->slot(i);
+          GoogleString suffix;
+          const char* id = rewrite_context->id();
+          StringFilterMap::const_iterator p = resource_filter_map_.find(id);
+          if (p != resource_filter_map_.end()) {
+            RewriteFilter* filter = p->second;
+            slot->InsertDebugComment(DeadlineExceededMessage(filter->Name()));
+          } else {
+            slot->InsertDebugComment(kDeadlineExceeded);
+          }
+        }
+      }
       rewrite_context->WillNotRender();
       detached_rewrites_.insert(rewrite_context);
       ++num_detached_rewrites_;
@@ -785,14 +812,9 @@ void RewriteDriver::FlushAsyncDone(int num_rewrites, Function* callback) {
   callback->CallRun();
 }
 
-const char RewriteDriver::kDomCohort[] = "dom";
-const char RewriteDriver::kBeaconCohort[] = "beacon_cohort";
-const char RewriteDriver::kSubresourcesPropertyName[] = "subresources";
-const char RewriteDriver::kStatusCodePropertyName[] = "status_code";
-
-const char RewriteDriver::kLastRequestTimestamp[] = "last_request_timestamp";
-const char RewriteDriver::kParseSizeLimitExceeded[] =
-    "parse_size_limit_exceeded";
+GoogleString RewriteDriver::DeadlineExceededMessage(StringPiece filter_name) {
+  return StrCat(kDeadlineExceeded, " for filter ", filter_name);
+}
 
 void RewriteDriver::Initialize() {
   ++initialized_count_;
@@ -1277,7 +1299,7 @@ void RewriteDriver::AddPostRenderFilters() {
     AddOwnedPostRenderFilter(new CollapseWhitespaceFilter(this));
   }
 
-  if (rewrite_options->Enabled(RewriteOptions::kDebug)) {
+  if (DebugMode()) {
     debug_filter_ = new DebugFilter(this);
     AddOwnedPostRenderFilter(debug_filter_);
   }

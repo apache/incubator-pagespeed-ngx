@@ -518,7 +518,7 @@ function extract_cookies {
   sed -e 's/;.*//' -e 's/^.*Set-Cookie: */ --header=Cookie:/'
 }
 
-# Returns the "URL" suitable for either Apache, Nginx, or rewrite_proxy.
+# Returns the "URL" suitable for either Apache or Nginx
 function generate_url {
   DOMAIN="$1"  # Must not have leading 'http://'
   PATH="$2"    # Must have leading '/'.

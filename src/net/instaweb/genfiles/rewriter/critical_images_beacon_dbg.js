@@ -313,11 +313,9 @@ goog.setCssNameMapping = function(mapping, opt_style) {
   goog.cssNameMappingStyle_ = opt_style;
 };
 goog.getMsg = function(str, opt_values) {
-  var values = opt_values || {}, key;
-  for (key in values) {
-    var value = ("" + values[key]).replace(/\$/g, "$$$$");
-    str = str.replace(new RegExp("\\{\\$" + key + "\\}", "gi"), value);
-  }
+  opt_values && (str = str.replace(/\{\$([^}]+)}/g, function(match, key) {
+    return key in opt_values ? opt_values[key] : match;
+  }));
   return str;
 };
 goog.getMsgWithFallback = function(a) {

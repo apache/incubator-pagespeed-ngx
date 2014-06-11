@@ -137,37 +137,37 @@ class CssRewriteTestBase : public RewriteTestBase {
   }
 
   // Check that inline CSS gets rewritten correctly.
-  bool ValidateRewriteInlineCss(const StringPiece& id,
-                                const StringPiece& css_input,
-                                const StringPiece& expected_css_output,
+  bool ValidateRewriteInlineCss(StringPiece id,
+                                StringPiece css_input,
+                                StringPiece expected_css_output,
                                 int flags);
 
-  void GetNamerForCss(const StringPiece& id,
-                      const GoogleString& expected_css_output,
+  void GetNamerForCss(StringPiece id,
+                      StringPiece expected_css_output,
                       ResourceNamer* namer);
 
   GoogleString ExpectedUrlForNamer(const ResourceNamer& namer);
 
-  GoogleString ExpectedUrlForCss(const StringPiece& id,
-                                 const GoogleString& expected_css_output);
+  GoogleString ExpectedUrlForCss(StringPiece id,
+                                 StringPiece expected_css_output);
 
   // Check that external CSS gets rewritten correctly.
-  void ValidateRewriteExternalCss(const StringPiece& id,
-                                  const GoogleString& css_input,
-                                  const GoogleString& expected_css_output,
+  void ValidateRewriteExternalCss(StringPiece id,
+                                  StringPiece css_input,
+                                  StringPiece expected_css_output,
                                   int flags) {
     ValidateRewriteExternalCssUrl(id, StrCat(kTestDomain, id, ".css"),
                                   css_input, expected_css_output, flags);
   }
 
-  void ValidateRewriteExternalCssUrl(const StringPiece& id,
-                                     const StringPiece& css_url,
-                                     const GoogleString& css_input,
-                                     const GoogleString& expected_css_output,
+  void ValidateRewriteExternalCssUrl(StringPiece id,
+                                     StringPiece css_url,
+                                     StringPiece css_input,
+                                     StringPiece expected_css_output,
                                      int flags);
 
   // Makes an HTML document with an external CSS link.
-  GoogleString MakeHtmlWithExternalCssLink(const StringPiece& css_url,
+  GoogleString MakeHtmlWithExternalCssLink(StringPiece css_url,
                                            int flags);
 
   // Makes a CSS body with an external image link, with nice indentation.
@@ -177,16 +177,16 @@ class CssRewriteTestBase : public RewriteTestBase {
   GoogleString MakeMinifiedCssWithImage(StringPiece image_url);
 
   // Extract the background image from the css text
-  GoogleString ExtractCssBackgroundImage(const GoogleString &in_css);
+  GoogleString ExtractCssBackgroundImage(StringPiece in_css);
 
   // Return any debug message to be inserted into the expected output CSS.
   virtual GoogleString CssDebugMessage(int flags) const {
     return "";
   }
 
-  void ValidateRewrite(const StringPiece& id,
-                       const GoogleString& css_input,
-                       const GoogleString& gold_output,
+  void ValidateRewrite(StringPiece id,
+                       StringPiece css_input,
+                       StringPiece gold_output,
                        int flags) {
     if (ValidateRewriteInlineCss(StrCat(id, "-inline"),
                                  css_input, gold_output, flags)) {
@@ -196,7 +196,7 @@ class CssRewriteTestBase : public RewriteTestBase {
     }
   }
 
-  void ValidateFailParse(const StringPiece& id, const GoogleString& css_input) {
+  void ValidateFailParse(StringPiece id, StringPiece css_input) {
     ValidateRewrite(id, css_input, css_input, kExpectFailure);
   }
 
@@ -205,9 +205,9 @@ class CssRewriteTestBase : public RewriteTestBase {
 
   // Validate HTML rewrite as well as checking statistics.
   bool ValidateWithStats(
-      const StringPiece& id,
-      const GoogleString& html_input, const GoogleString& expected_html_output,
-      const StringPiece& css_input, const StringPiece& expected_css_output,
+      StringPiece id,
+      StringPiece html_input, StringPiece expected_html_output,
+      StringPiece css_input, StringPiece expected_css_output,
       int flags);
 
   // Helper to test for how we handle trailing junk

@@ -1523,6 +1523,18 @@ TEST_F(InPlaceTest, InPlaceCssDebug) {
   EXPECT_TRUE(TryFetchInPlaceResource(url, true /* proxy_mode */));
 }
 
+TEST_F(RewriteDriverTest, DebugModeTest) {
+  // Verify that DebugMode() corresponds to RewriteOptions::kDebug as expected
+
+  EXPECT_FALSE(rewrite_driver()->DebugMode());
+
+  options()->EnableFilter(RewriteOptions::kDebug);
+  EXPECT_TRUE(rewrite_driver()->DebugMode());
+
+  options()->DisableFilter(RewriteOptions::kDebug);
+  EXPECT_FALSE(rewrite_driver()->DebugMode());
+}
+
 TEST_F(RewriteDriverTest, CachePollutionWithWrongEncodingCharacter) {
   AddFilter(RewriteOptions::kRewriteCss);
 

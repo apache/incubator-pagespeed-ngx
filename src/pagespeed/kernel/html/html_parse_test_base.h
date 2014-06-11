@@ -73,11 +73,11 @@ class HtmlParseTestBaseNoAlloc : public testing::Test {
   // Set a doctype string (e.g. "<!doctype html>") to be inserted before the
   // rest of the document (for the current test only).  If none is set, it
   // defaults to the empty string.
-  void SetDoctype(const StringPiece& directive) {
+  void SetDoctype(StringPiece directive) {
     directive.CopyToString(&doctype_string_);
   }
 
-  virtual GoogleString AddHtmlBody(const StringPiece& html) {
+  virtual GoogleString AddHtmlBody(StringPiece html) {
     GoogleString ret;
     if (AddHtmlTags()) {
       ret = AddBody() ? "<html><body>\n" : "<html>\n";
@@ -90,14 +90,12 @@ class HtmlParseTestBaseNoAlloc : public testing::Test {
 
   // Check that the output HTML is serialized to string-compare
   // precisely with the input.
-  void ValidateNoChanges(const StringPiece& case_id,
-                         const GoogleString& html_input) {
+  void ValidateNoChanges(StringPiece case_id, StringPiece html_input) {
     ValidateExpected(case_id, html_input, html_input);
   }
 
   // Fail to ValidateNoChanges.
-  void ValidateNoChangesFail(const StringPiece& case_id,
-                             const GoogleString& html_input) {
+  void ValidateNoChangesFail(StringPiece case_id, StringPiece html_input) {
     ValidateExpectedFail(case_id, html_input, html_input);
   }
 
@@ -115,7 +113,7 @@ class HtmlParseTestBaseNoAlloc : public testing::Test {
   }
 
   // Parse html_input, the result is stored in output_buffer_.
-  void Parse(const StringPiece& case_id, const GoogleString& html_input) {
+  void Parse(StringPiece case_id, StringPiece html_input) {
     // HtmlParser needs a valid HTTP URL to evaluate relative paths,
     // so we create a dummy URL.
     GoogleString dummy_url = StrCat(kTestDomain, case_id, ".html");
@@ -123,24 +121,24 @@ class HtmlParseTestBaseNoAlloc : public testing::Test {
   }
 
   // Parse given an explicit URL rather than an id to build URL around.
-  virtual void ParseUrl(const StringPiece& url, const StringPiece& html_input);
+  virtual void ParseUrl(StringPiece url, StringPiece html_input);
 
   // Validate that the output HTML serializes as specified in
   // 'expected', which might not be identical to the input.
   // Also, returns true if result came out as expected.
-  bool ValidateExpected(const StringPiece& case_id,
-                        const GoogleString& html_input,
-                        const GoogleString& expected);
+  bool ValidateExpected(StringPiece case_id,
+                        StringPiece html_input,
+                        StringPiece expected);
 
   // Same as ValidateExpected, but with an explicit URL rather than an id.
-  bool ValidateExpectedUrl(const StringPiece& url,
-                           const GoogleString& html_input,
-                           const GoogleString& expected);
+  bool ValidateExpectedUrl(StringPiece url,
+                           StringPiece html_input,
+                           StringPiece expected);
 
   // Fail to ValidateExpected.
-  void ValidateExpectedFail(const StringPiece& case_id,
-                            const GoogleString& html_input,
-                            const GoogleString& expected);
+  void ValidateExpectedFail(StringPiece case_id,
+                            StringPiece html_input,
+                            StringPiece expected);
 
   virtual HtmlParse* html_parse() = 0;
 

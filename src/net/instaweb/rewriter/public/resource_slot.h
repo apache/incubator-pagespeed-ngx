@@ -160,6 +160,10 @@ class ResourceSlot : public RefCounted<ResourceSlot> {
   // that was added.
   void DetachContext(RewriteContext* context);
 
+  // Inserts a debug comment near the slot.  The base class implementation
+  // calls LOG(DFATAL) as we only expect this to be called for HtmlResourceSlot.
+  virtual void InsertDebugComment(StringPiece message);
+
   // Returns a human-readable description of where this slot occurs, for use
   // in log messages.
   virtual GoogleString LocationString() = 0;
@@ -227,6 +231,9 @@ class HtmlResourceSlot : public ResourceSlot {
   // How relative the original URL was. If PreserveUrlRelativity is enabled,
   // Render will try to make the final URL just as relative.
   UrlRelativity url_relativity() const { return url_relativity_; }
+
+  // Inserts a message into the HTML stream above element_.
+  virtual void InsertDebugComment(StringPiece message);
 
  protected:
   REFCOUNT_FRIEND_DECLARATION(HtmlResourceSlot);

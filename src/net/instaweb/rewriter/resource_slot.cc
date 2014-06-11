@@ -59,6 +59,10 @@ void ResourceSlot::DetachContext(RewriteContext* context) {
   }
 }
 
+void ResourceSlot::InsertDebugComment(StringPiece message) {
+  LOG(DFATAL) << "Can only insert debug comments for HTML slots";
+}
+
 GoogleString ResourceSlot::RelativizeOrPassthrough(
     const RewriteOptions* options, StringPiece url,
     UrlRelativity url_relativity, const GoogleUrl& base_url) {
@@ -123,6 +127,10 @@ void HtmlResourceSlot::Render() {
     // Note that to insert image dimensions, we explicitly save
     // a reference to the element in the enclosing Context object.
   }
+}
+
+void HtmlResourceSlot::InsertDebugComment(StringPiece message) {
+  driver_->InsertDebugComment(message, element_);
 }
 
 GoogleString HtmlResourceSlot::LocationString() {

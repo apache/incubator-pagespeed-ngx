@@ -988,9 +988,10 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   URL_PATH="/mod_pagespeed_test/unauthorized/inline_css.html"
   OPTS="?PageSpeedFilters=rewrite_images,rewrite_css"
   URL="$(generate_url $HOST_NAME $URL_PATH$OPTS)"
-  OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET $URL -O - 2>&1)"
+  http_proxy=$SECONDARY_HOSTNAME fetch_until -save "$URL" \
+      'fgrep -c all_styles.css.pagespeed.cf' 1
   REGEX="http:\/\/[^[:space:]]+css\.pagespeed[^[:space:]]+\.css"
-  URL="$(echo $OUT | grep -Eo "$REGEX")"
+  URL="$(grep -Eo "$REGEX" $FETCH_FILE)"
   check test -n "$URL"
   echo wget $URL
   OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET $URL -O - 2>&1)"
