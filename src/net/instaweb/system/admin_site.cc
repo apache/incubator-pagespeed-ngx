@@ -281,13 +281,8 @@ void AdminSite::StatisticsGraphsHandler(
   writer->Write("</script>", message_handler_);
 }
 
-void AdminSite::StatisticsHandler(bool is_global_request, AdminSource source,
-                                  AsyncFetch* fetch,
-                                  bool use_per_vhost_statistics,
+void AdminSite::StatisticsHandler(AdminSource source, AsyncFetch* fetch,
                                   Statistics* stats) {
-  if (!use_per_vhost_statistics) {
-    is_global_request = true;
-  }
   AdminHtml admin_html("statistics", "", source, fetch, message_handler_);
   MessageHandler* handler = message_handler_;
   // Write <pre></pre> for Dump to keep good format.
@@ -347,8 +342,8 @@ void AdminSite::ConsoleJsonHandler(const QueryParams& params,
   fetch->Done(true);
 }
 
-void AdminSite::PrintHistograms(bool is_global_request, AdminSource source,
-                                AsyncFetch* fetch, Statistics* stats) {
+void AdminSite::PrintHistograms(AdminSource source, AsyncFetch* fetch,
+                                Statistics* stats) {
   AdminHtml admin_html("histograms", "", source, fetch, message_handler_);
   stats->RenderHistograms(fetch, message_handler_);
 }
@@ -604,7 +599,6 @@ void AdminSite::AdminPage(
     CacheInterface* filesystem_metadata_cache, HTTPCache* http_cache,
     CacheInterface* metadata_cache, PropertyCache* page_property_cache,
     ServerContext* server_context, Statistics* statistics, Statistics* stats,
-    bool use_per_vhost_statistics,
     SystemRewriteOptions* global_system_rewrite_options,
     const SystemRewriteOptions* spdy_config) {
   // The handler is "pagespeed_admin", so we must dispatch off of
@@ -647,8 +641,7 @@ void AdminSite::AdminPage(
   } else {
     StringPiece leaf = stripped_gurl.LeafSansQuery();
     if ((leaf == "statistics") || (leaf.empty())) {
-      StatisticsHandler(is_global, kPageSpeedAdmin, fetch,
-                        use_per_vhost_statistics, stats);
+      StatisticsHandler(kPageSpeedAdmin, fetch, stats);
     } else if (leaf == "config") {
       PrintNormalConfig(kPageSpeedAdmin, fetch, global_system_rewrite_options);
     } else if (leaf == "spdy_config") {
@@ -664,7 +657,7 @@ void AdminSite::AdminPage(
                   system_caches, filesystem_metadata_cache, http_cache,
                   metadata_cache, page_property_cache, server_context);
     } else if (leaf == "histograms") {
-      PrintHistograms(is_global, kPageSpeedAdmin, fetch, stats);
+      PrintHistograms(kPageSpeedAdmin, fetch, stats);
     } else {
       fetch->response_headers()->SetStatusAndReason(HttpStatus::kNotFound);
       fetch->response_headers()->Add(HttpAttributes::kContentType, "text/html");
@@ -694,7 +687,7 @@ void AdminSite::StatisticsPage(
     SystemCaches* system_caches, CacheInterface* filesystem_metadata_cache,
     HTTPCache* http_cache, CacheInterface* metadata_cache,
     PropertyCache* page_property_cache, ServerContext* server_context,
-    Statistics* statistics, Statistics* stats, bool use_per_vhost_statistics,
+    Statistics* statistics, Statistics* stats,
     SystemRewriteOptions* global_system_rewrite_options,
     const SystemRewriteOptions* spdy_config) {
   if (query_params.Has("json")) {
@@ -704,14 +697,13 @@ void AdminSite::StatisticsPage(
   } else if (query_params.Has("spdy_config")) {
     PrintSpdyConfig(kStatistics, fetch, spdy_config);
   } else if (query_params.Has("histograms")) {
-    PrintHistograms(is_global, kStatistics, fetch, stats);
+    PrintHistograms(kStatistics, fetch, stats);
   } else if (query_params.Has("cache")) {
     PrintCaches(is_global, kStatistics, query_params, options, fetch,
                 system_caches, filesystem_metadata_cache, http_cache,
                 metadata_cache, page_property_cache, server_context);
   } else {
-    StatisticsHandler(is_global, kStatistics, fetch, use_per_vhost_statistics,
-                      stats);
+    StatisticsHandler(kStatistics, fetch, stats);
   }
 }
 

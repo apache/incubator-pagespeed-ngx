@@ -79,7 +79,7 @@ class AdminSite {
                  HTTPCache* http_cache, CacheInterface* metadata_cache,
                  PropertyCache* page_property_cache,
                  ServerContext* server_context, Statistics* statistics,
-                 Statistics* stats, bool use_per_vhost_statistics,
+                 Statistics* stats,
                  SystemRewriteOptions* global_system_rewrite_options,
                  const SystemRewriteOptions* spdy_config);
 
@@ -95,7 +95,7 @@ class AdminSite {
                       HTTPCache* http_cache, CacheInterface* metadata_cache,
                       PropertyCache* page_property_cache,
                       ServerContext* server_context, Statistics* statistics,
-                      Statistics* stats, bool use_per_vhost_statistics,
+                      Statistics* stats,
                       SystemRewriteOptions* global_system_rewrite_options,
                       const SystemRewriteOptions* spdy_config);
 
@@ -114,8 +114,7 @@ class AdminSite {
   //
   // In systems without a spdy-specific config, spdy_config should be
   // null.
-  void StatisticsHandler(bool is_global_request, AdminSource source,
-                         AsyncFetch* fetch, bool use_per_vhost_statistics,
+  void StatisticsHandler(AdminSource source, AsyncFetch* fetch,
                          Statistics* stats);
 
   // Print details fo the SPDY configuration.
@@ -138,8 +137,8 @@ class AdminSite {
                    ServerContext* server_context);
 
   // Print histograms showing the dynamics of server activity.
-  void PrintHistograms(bool is_global_request, AdminSource source,
-                       AsyncFetch* fetch, Statistics* stats);
+  void PrintHistograms(AdminSource source, AsyncFetch* fetch,
+                       Statistics* stats);
 
  private:
   MessageHandler* message_handler_;

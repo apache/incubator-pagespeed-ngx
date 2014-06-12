@@ -319,29 +319,31 @@ void SystemServerContext::ConsoleHandler(
     const SystemRewriteOptions& options,
     AdminSite::AdminSource source,
     const QueryParams& query_params, AsyncFetch* fetch) {
-  admin_site_.get()->ConsoleHandler(options, source, query_params, fetch,
-                                    statistics());
+  admin_site_->ConsoleHandler(options, source, query_params, fetch,
+                              statistics());
 }
 
 // TODO(sligocki): integrate this into the pagespeed_console.
 void SystemServerContext::StatisticsGraphsHandler(Writer* writer) {
-  admin_site_.get()->StatisticsGraphsHandler(writer,
-                                             global_system_rewrite_options());
+  admin_site_->StatisticsGraphsHandler(writer,
+                                       global_system_rewrite_options());
 }
 
 void SystemServerContext::StatisticsHandler(
     bool is_global_request,
     AdminSite::AdminSource source,
     AsyncFetch* fetch) {
+  if (!use_per_vhost_statistics_) {
+    is_global_request = true;
+  }
   Statistics* stats = is_global_request ? factory()->statistics()
       : statistics();
-  admin_site_.get()->StatisticsHandler(is_global_request, source, fetch,
-                                       use_per_vhost_statistics_, stats);
+  admin_site_->StatisticsHandler(source, fetch, stats);
 }
 
 void SystemServerContext::ConsoleJsonHandler(
     const QueryParams& params, AsyncFetch* fetch) {
-  admin_site_.get()->ConsoleJsonHandler(params, fetch, statistics());
+  admin_site_->ConsoleJsonHandler(params, fetch, statistics());
 }
 
 void SystemServerContext::PrintHistograms(
@@ -350,7 +352,7 @@ void SystemServerContext::PrintHistograms(
     AsyncFetch* fetch) {
   Statistics* stats = is_global_request ? factory()->statistics()
       : statistics();
-  admin_site_.get()->PrintHistograms(is_global_request, source, fetch, stats);
+  admin_site_->PrintHistograms(source, fetch, stats);
 }
 
 void SystemServerContext::PrintCaches(bool is_global,
@@ -358,28 +360,27 @@ void SystemServerContext::PrintCaches(bool is_global,
                                       const QueryParams& query_params,
                                       const RewriteOptions* options,
                                       AsyncFetch* fetch) {
-  admin_site_.get()->PrintCaches(is_global, source, query_params, options,
-                                 fetch, system_caches_,
-                                 filesystem_metadata_cache(), http_cache(),
-                                 metadata_cache(), page_property_cache(),
-                                 this);
+  admin_site_->PrintCaches(is_global, source, query_params, options, fetch,
+                           system_caches_, filesystem_metadata_cache(),
+                           http_cache(), metadata_cache(),
+                           page_property_cache(), this);
 }
 
 void SystemServerContext::PrintNormalConfig(
     AdminSite::AdminSource source, AsyncFetch* fetch) {
-  admin_site_.get()->PrintNormalConfig(source, fetch,
-                                       global_system_rewrite_options());
+  admin_site_->PrintNormalConfig(source, fetch,
+                                 global_system_rewrite_options());
 }
 
 void SystemServerContext::PrintSpdyConfig(
     AdminSite::AdminSource source, AsyncFetch* fetch) {
   const SystemRewriteOptions* spdy_config = SpdyGlobalConfig();
-  admin_site_.get()->PrintSpdyConfig(source, fetch, spdy_config);
+  admin_site_->PrintSpdyConfig(source, fetch, spdy_config);
 }
 
 void SystemServerContext::MessageHistoryHandler(
     AdminSite::AdminSource source, AsyncFetch* fetch) {
-  admin_site_.get()->MessageHistoryHandler(source, fetch);
+  admin_site_->MessageHistoryHandler(source, fetch);
 }
 
 void SystemServerContext::AdminPage(
@@ -390,12 +391,11 @@ void SystemServerContext::AdminPage(
   const SystemRewriteOptions* spdy_config = SpdyGlobalConfig();
   Statistics* stats = is_global ? factory()->statistics()
       : statistics();
-  admin_site_.get()->AdminPage(is_global, stripped_gurl, query_params, options,
-                               fetch, system_caches_,
-                               filesystem_metadata_cache(), http_cache(),
-                               metadata_cache(), page_property_cache(), this,
-                               statistics(), stats, use_per_vhost_statistics_,
-                               global_system_rewrite_options(), spdy_config);
+  admin_site_->AdminPage(is_global, stripped_gurl, query_params, options,
+                         fetch, system_caches_, filesystem_metadata_cache(),
+                         http_cache(), metadata_cache(), page_property_cache(),
+                         this, statistics(), stats,
+                         global_system_rewrite_options(), spdy_config);
 }
 
 void SystemServerContext::StatisticsPage(bool is_global,
@@ -405,11 +405,11 @@ void SystemServerContext::StatisticsPage(bool is_global,
   const SystemRewriteOptions* spdy_config = SpdyGlobalConfig();
   Statistics* stats = is_global ? factory()->statistics()
       : statistics();
-  admin_site_.get()->StatisticsPage(
+  admin_site_->StatisticsPage(
       is_global, query_params, options, fetch,
       system_caches_, filesystem_metadata_cache(), http_cache(),
       metadata_cache(), page_property_cache(), this, statistics(), stats,
-      use_per_vhost_statistics_, global_system_rewrite_options(), spdy_config);
+      global_system_rewrite_options(), spdy_config);
 }
 
 }  // namespace net_instaweb
