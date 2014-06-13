@@ -23,8 +23,10 @@
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/mock_property_page.h"
 #include "net/instaweb/util/public/property_cache.h"
+#include "net/instaweb/util/public/string.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/statistics.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 
@@ -66,12 +68,11 @@ void CriticalImagesFinderTestBase::CheckCriticalImageFinderStats(
       CriticalImagesFinder::kCriticalImagesNotFoundCount)->Get());
 }
 
-bool CriticalImagesFinderTestBase::IsHtmlCriticalImage(
-    const GoogleString& url) {
+bool CriticalImagesFinderTestBase::IsHtmlCriticalImage(StringPiece url) {
   return finder()->IsHtmlCriticalImage(url, rewrite_driver());
 }
-bool CriticalImagesFinderTestBase::IsCssCriticalImage(
-    const GoogleString& url) {
+
+bool CriticalImagesFinderTestBase::IsCssCriticalImage(StringPiece url) {
   return finder()->IsCssCriticalImage(url, rewrite_driver());
 }
 

@@ -73,7 +73,7 @@ class SplitHtmlHelperFilterTest : public RewriteTestBase {
     EXPECT_EQ(expected, critical_images_info->html_critical_images.size());
   }
 
-  void CheckCriticalImage(GoogleString url) {
+  void CheckCriticalImage(StringPiece url) {
     CriticalImagesFinder* finder =
         rewrite_driver()->server_context()->critical_images_finder();
     EXPECT_TRUE(finder->IsHtmlCriticalImage(url, rewrite_driver()));

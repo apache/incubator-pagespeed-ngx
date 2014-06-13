@@ -112,11 +112,14 @@ class CriticalImagesFinder {
   // implementation of this function returns meaningful results and provide a
   // default behavior if it does not.  If no critical set value has been
   // obtained, returns false (not critical).
-  bool IsHtmlCriticalImage(const GoogleString& image_url,
-                           RewriteDriver* driver);
+  // TODO(jud): It would be simpler to modify these interfaces to take
+  // HtmlElement* instead of GoogleStrings. This would move some complexity in
+  // getting the correct URL from the caller into this function. For instance,
+  // if an image has been modified by LazyloadImages then the actual src we want
+  // to check is in the pagespeed_lazyload_src attribute, not in src.
+  bool IsHtmlCriticalImage(StringPiece image_url, RewriteDriver* driver);
 
-  bool IsCssCriticalImage(const GoogleString& image_url,
-                          RewriteDriver* driver);
+  bool IsCssCriticalImage(StringPiece image_url, RewriteDriver* driver);
 
   // Returns true if rendered dimensions exist for the image_src_url and
   // populates dimensions in the std::pair.
@@ -234,9 +237,7 @@ class CriticalImagesFinder {
   // after this function has been called.
   virtual void UpdateCriticalImagesSetInDriver(RewriteDriver* driver);
 
-  virtual GoogleString GetKeyForUrl(const GoogleString& url) {
-    return url;
-  }
+  virtual GoogleString GetKeyForUrl(StringPiece url) { return url.as_string(); }
 
   // Extracts the critical images from the given property_value into
   // critical_images_info, after checking if the property value is still valid

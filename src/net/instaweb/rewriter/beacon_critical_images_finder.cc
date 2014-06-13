@@ -69,9 +69,9 @@ bool BeaconCriticalImagesFinder::UpdateCriticalImagesCacheEntry(
       kBeaconImageSupportInterval, cohort, page, &critical_images);
 }
 
-GoogleString BeaconCriticalImagesFinder::GetKeyForUrl(const GoogleString& url) {
-  unsigned int hash_val = HashString<CasePreserve, unsigned int>(
-      url.c_str(), url.size());
+GoogleString BeaconCriticalImagesFinder::GetKeyForUrl(StringPiece url) {
+  unsigned int hash_val =
+      HashString<CasePreserve, unsigned int>(url.data(), url.size());
   return UintToString(hash_val);
 }
 

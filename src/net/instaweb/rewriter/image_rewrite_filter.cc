@@ -1491,7 +1491,7 @@ bool ImageRewriteFilter::IsHtmlCriticalImage(StringPiece image_url) const {
     return true;
   }
   GoogleUrl image_gurl(driver()->base_url(), image_url);
-  return finder->IsHtmlCriticalImage(image_gurl.spec_c_str(), driver());
+  return finder->IsHtmlCriticalImage(image_gurl.Spec(), driver());
 }
 
 bool ImageRewriteFilter::StoreUrlInPropertyCache(const StringPiece& url) {

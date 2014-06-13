@@ -950,6 +950,12 @@ class RewriteDriver : public HtmlParse {
   // the rules stays with the driver.
   void set_critical_css_result(CriticalCssResult* critical_css_rules);
 
+  // The JS to detect above-the-fold images should only be enabled if one of the
+  // filters that uses critical image information is enabled, the property cache
+  // is enabled (since the critical image information is stored in the property
+  // cache), and it is not explicitly disabled through options.
+  bool is_critical_images_beacon_enabled();
+
   // Used by ImageRewriteFilter for identifying critical images.
   CriticalImagesInfo* critical_images_info() const {
     return critical_images_info_.get();

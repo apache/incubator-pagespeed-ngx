@@ -205,9 +205,9 @@ class CssCombineFilterTest : public RewriteTestBase {
         "  ", (is_barrier ? Link("c.css") : ""), "\n"
         "</body>\n")));
     if (!debug_text.empty()) {
-      StrAppend(&expected_output,
-                "<!--",
-                DebugFilter::FormatEndDocumentMessage(0, 0, 0, 0, 0),
+      StrAppend(&expected_output, "<!--",
+                DebugFilter::FormatEndDocumentMessage(0, 0, 0, 0, 0, false,
+                                                      StringSet()),
                 "-->");
     }
     if (expect_combine) {

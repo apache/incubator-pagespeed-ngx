@@ -253,7 +253,7 @@ void LazyloadImagesFilter::EndElementImpl(HtmlElement* element) {
   if (finder->Available(driver()) == CriticalImagesFinder::kAvailable) {
     // Decode the url since the critical images in the finder are not
     // rewritten.
-    if (finder->IsHtmlCriticalImage(full_url.data(), driver())) {
+    if (finder->IsHtmlCriticalImage(full_url, driver())) {
       log_record->LogLazyloadFilter(
           RewriteOptions::FilterId(RewriteOptions::kLazyloadImages),
           RewriterApplication::NOT_APPLIED, false, true);

@@ -77,7 +77,7 @@ class BeaconCriticalImagesFinder : public CriticalImagesFinder {
                                                  bool beaconing);
 
  private:
-  virtual GoogleString GetKeyForUrl(const GoogleString& url);
+  virtual GoogleString GetKeyForUrl(StringPiece url);
 
   // 80% is a guess at a reasonable value for this param.
   static const int kBeaconPercentSeenForCritical = 80;

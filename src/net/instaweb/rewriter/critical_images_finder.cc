@@ -132,14 +132,14 @@ bool IsCriticalImage(const GoogleString& image_url,
 
 }  // namespace
 
-bool CriticalImagesFinder::IsHtmlCriticalImage(
-    const GoogleString& image_url, RewriteDriver* driver) {
+bool CriticalImagesFinder::IsHtmlCriticalImage(StringPiece image_url,
+                                               RewriteDriver* driver) {
   return IsCriticalImage(GetKeyForUrl(image_url),
                          GetHtmlCriticalImages(driver));
 }
 
-bool CriticalImagesFinder::IsCssCriticalImage(
-    const GoogleString& image_url, RewriteDriver* driver) {
+bool CriticalImagesFinder::IsCssCriticalImage(StringPiece image_url,
+                                              RewriteDriver* driver) {
   return IsCriticalImage(GetKeyForUrl(image_url),
                          GetCssCriticalImages(driver));
 }

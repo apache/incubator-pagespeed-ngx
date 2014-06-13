@@ -1000,19 +1000,8 @@ void RewriteDriver::AddPreRenderFilters() {
     // Experimental filter that blindly strips all scripts from a page.
     AppendOwnedPreRenderFilter(new StripScriptsFilter(this));
   }
-  if ((rewrite_options->Enabled(RewriteOptions::kLazyloadImages) ||
-       rewrite_options->Enabled(RewriteOptions::kInlineImages) ||
-       rewrite_options->Enabled(RewriteOptions::kDelayImages) ||
-       rewrite_options->Enabled(
-           RewriteOptions::kResizeToRenderedImageDimensions)) &&
-      rewrite_options->critical_images_beacon_enabled() &&
-      server_context_->factory()->UseBeaconResultsInFilters() &&
-      server_context_->page_property_cache()->enabled()) {
-    // Inject javascript to detect above-the-fold images. This should be enabled
-    // if one of the filters that uses critical image information is enabled,
-    // the property cache is enabled (since the critical image information is
-    // stored in the property cache), and this option is not explicitly
-    // disabled. It should also come early, at least before image rewriting,
+  if (is_critical_images_beacon_enabled()) {
+    // This filter should be enabled early, at least before image rewriting,
     // because it depends on seeing the original image URLs.
     AppendOwnedPreRenderFilter(new CriticalImagesBeaconFilter(this));
   }
@@ -3322,6 +3311,17 @@ CriticalCssResult* RewriteDriver::critical_css_result() const {
 void RewriteDriver::set_critical_css_result(
     CriticalCssResult* critical_css_rules) {
   critical_css_result_.reset(critical_css_rules);
+}
+
+bool RewriteDriver::is_critical_images_beacon_enabled() {
+  return (options()->Enabled(RewriteOptions::kLazyloadImages) ||
+          options()->Enabled(RewriteOptions::kInlineImages) ||
+          options()->Enabled(RewriteOptions::kDelayImages) ||
+          options()->Enabled(
+              RewriteOptions::kResizeToRenderedImageDimensions)) &&
+         options()->critical_images_beacon_enabled() &&
+         server_context_->factory()->UseBeaconResultsInFilters() &&
+         server_context_->page_property_cache()->enabled();
 }
 
 FlushEarlyRenderInfo* RewriteDriver::flush_early_render_info() const {

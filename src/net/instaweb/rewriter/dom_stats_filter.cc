@@ -64,7 +64,7 @@ void DomStatsFilter::EndElementImpl(HtmlElement* element) {
             driver()->server_context()->critical_images_finder();
         if (finder->Available(driver()) == CriticalImagesFinder::kAvailable) {
           GoogleUrl image_gurl(driver()->base_url(), url);
-          if (finder->IsHtmlCriticalImage(image_gurl.spec_c_str(), driver())) {
+          if (finder->IsHtmlCriticalImage(image_gurl.Spec(), driver())) {
             ++num_critical_images_used_;
           }
         }

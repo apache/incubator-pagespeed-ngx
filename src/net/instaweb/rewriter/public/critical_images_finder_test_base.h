@@ -22,8 +22,7 @@
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/util/public/null_statistics.h"
 #include "net/instaweb/util/public/property_cache.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 
@@ -63,8 +62,8 @@ class CriticalImagesFinderTestBase : public RewriteTestBase {
 
   void CheckCriticalImageFinderStats(int hits, int expiries, int not_found);
 
-  bool IsHtmlCriticalImage(const GoogleString& url);
-  bool IsCssCriticalImage(const GoogleString& url);
+  bool IsHtmlCriticalImage(StringPiece url);
+  bool IsCssCriticalImage(StringPiece url);
 
  protected:
   NullStatistics stats_;
