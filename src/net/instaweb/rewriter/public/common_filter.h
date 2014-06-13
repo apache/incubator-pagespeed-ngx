@@ -90,11 +90,21 @@ class CommonFilter : public EmptyHtmlFilter {
   // for InsertNodeAtBodyEnd() to work correctly.
   virtual void Characters(HtmlCharactersNode* characters);
 
+  // TODO(matterbury): Remove this TEMPORARY wrapper when all call sites fixed.
+  ResourcePtr CreateInputResource(StringPiece input_url) {
+    bool unused;
+    return CreateInputResource(input_url, &unused);
+  }
+
   // Creates an input resource with the url evaluated based on input_url
-  // which may need to be absolutified relative to base_url().  Returns NULL if
-  // the input resource url isn't valid, or can't legally be rewritten in the
-  // context of this page.
-  ResourcePtr CreateInputResource(const StringPiece& input_url);
+  // which may need to be absolutified relative to base_url(). Returns NULL
+  // if input resource url isn't valid, or can't legally be rewritten in the
+  // context of this page. *is_authorized will be set to false if the domain
+  // of input_url is not authorized, which could true of false regardless of
+  // the return value: for example if we are allowing inlining of resources
+  // from unauthorized domains we will return non-NULL but *is_authorized will
+  // be false; converse cases are possible too (e.g. input_url is a data URI).
+  ResourcePtr CreateInputResource(StringPiece input_url, bool* is_authorized);
 
   // Resolves input_url based on the driver's location and any base tag into
   // out_url. If resolution fails, the resulting URL may be invalid.

@@ -901,7 +901,8 @@ TEST_F(RewriteDriverTest, ResourceCharset) {
   // We do this twice to make sure the cached version is OK, too.
   for (int round = 0; round < 2; ++round) {
     ResourcePtr resource(
-        rewrite_driver()->CreateInputResourceAbsoluteUnchecked(kUrl));
+        rewrite_driver()->CreateInputResourceAbsoluteUncheckedForTestsOnly(
+            kUrl));
     MockResourceCallback mock_callback(resource, factory()->thread_system());
     ASSERT_TRUE(resource.get() != NULL);
     resource->LoadAsync(Resource::kReportFailureIfNotCacheable,
@@ -940,7 +941,8 @@ TEST_F(RewriteDriverTest, LoadResourcesFromTheWeb) {
   // Make sure file can be loaded. Note this cannot be loaded through the
   // mock_url_fetcher, because it has not been set in that fetcher.
   ResourcePtr resource(
-      rewrite_driver()->CreateInputResourceAbsoluteUnchecked(resource_url));
+      rewrite_driver()->CreateInputResourceAbsoluteUncheckedForTestsOnly(
+          resource_url));
   MockResourceCallback mock_callback(resource, factory()->thread_system());
   ASSERT_TRUE(resource.get() != NULL);
   resource->LoadAsync(Resource::kReportFailureIfNotCacheable,
@@ -955,7 +957,8 @@ TEST_F(RewriteDriverTest, LoadResourcesFromTheWeb) {
   SetFetchResponse(resource_url, resource_headers, kResourceContents2);
   // Check that the resource loads cached.
   ResourcePtr resource2(
-      rewrite_driver()->CreateInputResourceAbsoluteUnchecked(resource_url));
+      rewrite_driver()->CreateInputResourceAbsoluteUncheckedForTestsOnly(
+          resource_url));
   MockResourceCallback mock_callback2(resource2, factory()->thread_system());
   ASSERT_TRUE(resource2.get() != NULL);
   resource2->LoadAsync(Resource::kReportFailureIfNotCacheable,
@@ -970,7 +973,8 @@ TEST_F(RewriteDriverTest, LoadResourcesFromTheWeb) {
 
   // Check that the resource loads updated.
   ResourcePtr resource3(
-      rewrite_driver()->CreateInputResourceAbsoluteUnchecked(resource_url));
+      rewrite_driver()->CreateInputResourceAbsoluteUncheckedForTestsOnly(
+          resource_url));
   MockResourceCallback mock_callback3(resource3, factory()->thread_system());
   ASSERT_TRUE(resource3.get() != NULL);
   resource3->LoadAsync(Resource::kReportFailureIfNotCacheable,
@@ -1003,7 +1007,8 @@ TEST_F(RewriteDriverTest, LoadResourcesFromFiles) {
   // Make sure file can be loaded. Note this cannot be loaded through the
   // mock_url_fetcher, because it has not been set in that fetcher.
   ResourcePtr resource(
-      rewrite_driver()->CreateInputResourceAbsoluteUnchecked(resource_url));
+      rewrite_driver()->CreateInputResourceAbsoluteUncheckedForTestsOnly(
+          resource_url));
   ASSERT_TRUE(resource.get() != NULL);
   EXPECT_EQ(&kContentTypeCss, resource->type());
   MockResourceCallback mock_callback(resource, factory()->thread_system());
@@ -1019,7 +1024,8 @@ TEST_F(RewriteDriverTest, LoadResourcesFromFiles) {
   WriteFile(resource_filename.c_str(), kResourceContents2);
   // Make sure the resource loads updated.
   ResourcePtr resource2(
-      rewrite_driver()->CreateInputResourceAbsoluteUnchecked(resource_url));
+      rewrite_driver()->CreateInputResourceAbsoluteUncheckedForTestsOnly(
+          resource_url));
   ASSERT_TRUE(resource2.get() != NULL);
   EXPECT_EQ(&kContentTypeCss, resource2->type());
   MockResourceCallback mock_callback2(resource2, factory()->thread_system());
@@ -1044,16 +1050,18 @@ TEST_F(RewriteDriverTest, LoadResourcesContentType) {
   WriteFile("/htmlcontent/foo.js", "");
   // Load the file with a query param (add .css at the end of the param just
   // for optimal trickyness).
-  ResourcePtr resource(rewrite_driver()->CreateInputResourceAbsoluteUnchecked(
-      "http://www.example.com/static/foo.js?version=2.css"));
+  ResourcePtr resource(
+      rewrite_driver()->CreateInputResourceAbsoluteUncheckedForTestsOnly(
+          "http://www.example.com/static/foo.js?version=2.css"));
   EXPECT_TRUE(resource.get() != NULL);
   EXPECT_EQ(&kContentTypeJavascript, resource->type());
 
   // Write file with bogus extension.
   WriteFile("/htmlcontent/bar.bogus", "");
   // Load it normally.
-  ResourcePtr resource2(rewrite_driver()->CreateInputResourceAbsoluteUnchecked(
-      "http://www.example.com/static/bar.bogus"));
+  ResourcePtr resource2(
+      rewrite_driver()->CreateInputResourceAbsoluteUncheckedForTestsOnly(
+          "http://www.example.com/static/bar.bogus"));
   EXPECT_TRUE(resource2.get() != NULL);
   EXPECT_TRUE(NULL == resource2->type());
 }
@@ -1086,8 +1094,9 @@ TEST_F(RewriteDriverTest, DiagnosticsWithPercent) {
   logging::SetMinLogLevel(logging::LOG_INFO);
   rewrite_driver()->AddFilters();
   MockRewriteContext context(rewrite_driver());
-  ResourcePtr resource(rewrite_driver()->CreateInputResourceAbsoluteUnchecked(
-      "http://www.example.com/%s%s%s%d%f"));
+  ResourcePtr resource(
+      rewrite_driver()->CreateInputResourceAbsoluteUncheckedForTestsOnly(
+          "http://www.example.com/%s%s%s%d%f"));
   ResourceSlotPtr slot(new FetchResourceSlot(resource));
   context.AddSlot(slot);
   rewrite_driver()->InfoAt(&context, "Just a test");
@@ -1121,8 +1130,11 @@ TEST_F(RewriteDriverTest, RejectHttpsQuickly) {
 TEST_F(RewriteDriverTest, RejectDataResourceGracefully) {
   MockRewriteContext context(rewrite_driver());
   GoogleUrl dataUrl("data:");
-  ResourcePtr resource(rewrite_driver()->CreateInputResource(dataUrl));
+  bool is_authorized;
+  ResourcePtr resource(rewrite_driver()->CreateInputResource(dataUrl,
+                                                             &is_authorized));
   EXPECT_TRUE(resource.get() == NULL);
+  EXPECT_TRUE(is_authorized);
 }
 
 // Test that when inline_unauthorized_resources is set to false (the default
@@ -1135,8 +1147,11 @@ TEST_F(RewriteDriverTest, NoCreateInputResourceUnauthorized) {
 
   // Test that an unauthorized resource is not allowed to be created.
   GoogleUrl unauthorized_url("http://unauthorized.domain.com/a.js");
-  ResourcePtr resource(rewrite_driver()->CreateInputResource(unauthorized_url));
+  bool is_authorized;
+  ResourcePtr resource(rewrite_driver()->CreateInputResource(unauthorized_url,
+                                                             &is_authorized));
   EXPECT_TRUE(resource.get() == NULL);
+  EXPECT_FALSE(is_authorized);
 
   // Test that an authorized resource is created with the right cache key even
   // if the filter allows unauthorized domains.
@@ -1144,8 +1159,10 @@ TEST_F(RewriteDriverTest, NoCreateInputResourceUnauthorized) {
   ResourcePtr resource2(rewrite_driver()->CreateInputResource(
       authorized_url,
       RewriteDriver::kInlineUnauthorizedResources,
-      RewriteDriver::kIntendedForGeneral));
+      RewriteDriver::kIntendedForGeneral,
+      &is_authorized));
   EXPECT_TRUE(resource2.get() != NULL);
+  EXPECT_TRUE(is_authorized);
   EXPECT_STREQ(authorized_url.spec_c_str(), resource2->url());
   EXPECT_STREQ(authorized_url.spec_c_str(), resource2->cache_key());
 }
@@ -1162,11 +1179,14 @@ TEST_F(RewriteDriverTest, CreateInputResourceUnauthorized) {
 
   // Test that an unauthorized resource is created with the right cache key.
   GoogleUrl unauthorized_url("http://unauthorized.domain.com/a.js");
+  bool is_authorized;
   ResourcePtr resource(rewrite_driver()->CreateInputResource(
       unauthorized_url,
       RewriteDriver::kInlineUnauthorizedResources,
-      RewriteDriver::kIntendedForGeneral));
+      RewriteDriver::kIntendedForGeneral,
+      &is_authorized));
   EXPECT_TRUE(resource.get() != NULL);
+  EXPECT_FALSE(is_authorized);
   EXPECT_STREQ(unauthorized_url.spec_c_str(), resource->url());
   EXPECT_STREQ("unauth://unauthorized.domain.com/a.js", resource->cache_key());
 
@@ -1176,8 +1196,10 @@ TEST_F(RewriteDriverTest, CreateInputResourceUnauthorized) {
   ResourcePtr resource2(rewrite_driver()->CreateInputResource(
       authorized_url,
       RewriteDriver::kInlineUnauthorizedResources,
-      RewriteDriver::kIntendedForGeneral));
+      RewriteDriver::kIntendedForGeneral,
+      &is_authorized));
   EXPECT_TRUE(resource2.get() != NULL);
+  EXPECT_TRUE(is_authorized);
   EXPECT_STREQ(authorized_url.spec_c_str(), resource2->url());
   EXPECT_STREQ(authorized_url.spec_c_str(), resource2->cache_key());
 
@@ -1186,14 +1208,17 @@ TEST_F(RewriteDriverTest, CreateInputResourceUnauthorized) {
   ResourcePtr resource3(rewrite_driver()->CreateInputResource(
       unauthorized_url,
       RewriteDriver::kInlineOnlyAuthorizedResources,
-      RewriteDriver::kIntendedForGeneral));
+      RewriteDriver::kIntendedForGeneral,
+      &is_authorized));
   EXPECT_TRUE(resource3.get() == NULL);
+  EXPECT_FALSE(is_authorized);
 
   // Test that an unauthorized resource is not created with the default
   // CreateInputResource call.
   ResourcePtr resource4(
-      rewrite_driver()->CreateInputResource(unauthorized_url));
+      rewrite_driver()->CreateInputResource(unauthorized_url, &is_authorized));
   EXPECT_TRUE(resource4.get() == NULL);
+  EXPECT_FALSE(is_authorized);
 }
 
 // Test that when inline_unauthorized_resources is set to true, unauthorized
@@ -1208,11 +1233,14 @@ TEST_F(RewriteDriverTest, CreateInputResourceUnauthorizedWithDisallow) {
 
   // Test that an unauthorized resource is not created when it is disallowed.
   GoogleUrl unauthorized_url("http://unauthorized.domain.com/a.js");
+  bool is_authorized;
   ResourcePtr resource(rewrite_driver()->CreateInputResource(
       unauthorized_url,
       RewriteDriver::kInlineUnauthorizedResources,
-      RewriteDriver::kIntendedForGeneral));
+      RewriteDriver::kIntendedForGeneral,
+      &is_authorized));
   EXPECT_TRUE(resource.get() == NULL);
+  EXPECT_FALSE(is_authorized);
 }
 
 // Test AllowWhenInlining overrides Disallow when inlining.
@@ -1226,11 +1254,14 @@ TEST_F(RewriteDriverTest, AllowWhenInliningOverridesDisallow) {
   // This resource would normally not be created because it is disallowed,
   // except that we explicitly allowed it with AllowWhenInlining.
   GoogleUrl js_url("http://example.com/a.js");
+  bool is_authorized;
   ResourcePtr resource(rewrite_driver()->CreateInputResource(
       js_url,
       RewriteDriver::kInlineUnauthorizedResources,
-      RewriteDriver::kIntendedForInlining));
+      RewriteDriver::kIntendedForInlining,
+      &is_authorized));
   EXPECT_FALSE(resource.get() == NULL);
+  EXPECT_TRUE(is_authorized);
 }
 
 // Test AllowWhenInlining fails to overrides Disallow when not inlining.
@@ -1244,11 +1275,14 @@ TEST_F(RewriteDriverTest, AllowWhenInliningDoesntOverrideDisallow) {
   // This resource would normally not be created because it is disallowed, and
   // AllowWhenInlining doesn't apply because we're not inlining.
   GoogleUrl js_url("http://example.com/a.js");
+  bool is_authorized;
   ResourcePtr resource(rewrite_driver()->CreateInputResource(
       js_url,
       RewriteDriver::kInlineUnauthorizedResources,
-      RewriteDriver::kIntendedForGeneral));
+      RewriteDriver::kIntendedForGeneral,
+      &is_authorized));
   EXPECT_TRUE(resource.get() == NULL);
+  EXPECT_FALSE(is_authorized);
 }
 
 class ResponseHeadersCheckingFilter : public EmptyHtmlFilter {

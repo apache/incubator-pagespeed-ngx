@@ -70,7 +70,8 @@ class CommonFilterTest : public RewriteTestBase {
   }
 
   bool CanRewriteResource(CommonFilter* filter, const StringPiece& url) {
-    ResourcePtr resource(filter->CreateInputResource(url));
+    bool unused;
+    ResourcePtr resource(filter->CreateInputResource(url, &unused));
     return (resource.get() != NULL);
   }
 

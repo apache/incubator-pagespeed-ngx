@@ -50,38 +50,38 @@ bool InlineRewriteContext::StartInlining() {
   ResourcePtr input_resource;
   const char* url = src_->DecodedValueOrNull();
   if (url != NULL) {
-    input_resource.reset(CreateResource(url));
-  }
-  if (input_resource.get() != NULL) {
-    ResourceSlotPtr slot(driver->GetSlot(input_resource, element_, src_));
-    AddSlot(slot);
-    driver->InitiateRewrite(this);
-    return true;
-  } else {
-    // Add a debug message indicating that this is an unauthorized resource
-    // that could not be created.
-    if (driver->DebugMode()) {
-      // Do not add it though if it's a special URL, since it's not helpful
-      // in that case.
-      bool claimed_elsewhere = false;
-      if (url != NULL) {
-        GoogleUrl gurl(url);
-        claimed_elsewhere = driver->IsResourceUrlClaimed(gurl);
-      }
-
-      if (!claimed_elsewhere) {
-        driver->InsertComment(
-            StrCat(filter_->Name(), ": ",
-                   CommonFilter::kCreateResourceFailedDebugMsg));
-      }
+    bool unused_for_now;
+    input_resource.reset(CreateResource(url, &unused_for_now));
+    if (input_resource.get() != NULL) {
+      ResourceSlotPtr slot(driver->GetSlot(input_resource, element_, src_));
+      AddSlot(slot);
+      driver->InitiateRewrite(this);
+      return true;
     }
-    delete this;
-    return false;
   }
+  // Add a debug message indicating that this is an unauthorized resource
+  // that could not be created.
+  if (driver->DebugMode()) {
+    // Do not add it though if it's a special URL, since it's not helpful
+    // in that case.
+    bool claimed_elsewhere = false;
+    if (url != NULL) {
+      GoogleUrl gurl(url);
+      claimed_elsewhere = driver->IsResourceUrlClaimed(gurl);
+    }
+
+    if (!claimed_elsewhere) {
+      driver->InsertComment(StrCat(
+          filter_->Name(), ": ", CommonFilter::kCreateResourceFailedDebugMsg));
+    }
+  }
+  delete this;
+  return false;
 }
 
-ResourcePtr InlineRewriteContext::CreateResource(const char* url) {
-  return filter_->CreateInputResource(url);
+ResourcePtr InlineRewriteContext::CreateResource(const char* url,
+                                                 bool* is_authorized) {
+  return filter_->CreateInputResource(url, is_authorized);
 }
 
 bool InlineRewriteContext::Partition(OutputPartitions* partitions,

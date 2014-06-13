@@ -73,7 +73,7 @@ class CssInlineFilter : public CommonFilter {
 
   // Delegated from InlineRewriteContext::CreateResource --- see there
   // for semantics.
-  virtual ResourcePtr CreateResource(const char* url);
+  virtual ResourcePtr CreateResource(const char* url, bool* is_authorized);
 
  private:
   class Context;

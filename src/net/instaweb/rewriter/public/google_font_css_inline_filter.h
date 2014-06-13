@@ -42,7 +42,7 @@ class GoogleFontCssInlineFilter : public CssInlineFilter {
   virtual const char* Name() const { return "InlineGoogleFontCss"; }
 
  protected:
-  virtual ResourcePtr CreateResource(const char* url);
+  virtual ResourcePtr CreateResource(const char* url, bool* is_authorized);
 
  private:
   void ResetAndExplainReason(const char* reason, ResourcePtr* resource);

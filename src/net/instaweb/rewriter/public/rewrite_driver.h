@@ -575,19 +575,29 @@ class RewriteDriver : public HtmlParse {
                                         kind);
   }
 
-  // Creates an input resource based on input_url.  Returns NULL if
-  // the input resource url isn't valid, or can't legally be rewritten in the
-  // context of this page.  Assumes resources from unauthorized domains may not
-  // be rewritten and the resource is not intended exclusively for inlining.
-  ResourcePtr CreateInputResource(const GoogleUrl& input_url);
+  // TODO(matterbury): Remove this TEMPORARY wrapper when all call sites fixed.
+  ResourcePtr CreateInputResource(const GoogleUrl& input_url) {
+    bool unused = false;
+    return CreateInputResource(input_url, &unused);
+  }
+
+  // Creates an input resource based on input_url.  Returns NULL if the input
+  // resource url isn't valid or is a data url, or can't legally be rewritten
+  // in the context of this page, in which case *is_authorized will be false.
+  // Assumes that resources from unauthorized domains may not be rewritten and
+  // that the resource is not intended exclusively for inlining.
+  ResourcePtr CreateInputResource(const GoogleUrl& input_url,
+                                  bool* is_authorized);
 
   // Creates an input resource.  Returns NULL if the input resource url isn't
-  // valid, or can't legally be rewritten in the context of this page (which
-  // could mean that it was a resource from an unauthorized domain being
-  // processed by a filter that does not allow unauthorized resources).
+  // valid or is a data url, or can't legally be rewritten in the context of
+  // this page (which could mean that it was a resource from an unauthorized
+  // domain being processed by a filter that does not allow unauthorized
+  // resources, in which case *is_authorized will be false).
   //
-  // There are two options, and if you don't care about them you should just
-  // call CreateInputResource(input_url) to use its defaults:
+  // There are two "special" options, and if you don't care about them you
+  // should just call CreateInputResource(input_url, is_authorized) to use
+  // their defaults:
   // * If resources from unauthorized domains may be inlined, set
   //   inline_authorization_policy to kInlineUnauthorizedResources, otherwise
   //   set it to kInlineOnlyAuthorizedResources.
@@ -597,12 +607,13 @@ class RewriteDriver : public HtmlParse {
   ResourcePtr CreateInputResource(
       const GoogleUrl& input_url,
       InlineAuthorizationPolicy inline_authorization_policy,
-      IntendedFor intended_for);
+      IntendedFor intended_for,
+      bool* is_authorized);
 
   // Creates an input resource from the given absolute url.  Requires that the
   // provided url has been checked, and can legally be rewritten in the current
-  // page context.
-  ResourcePtr CreateInputResourceAbsoluteUnchecked(
+  // page context. Only for use by unit tests.
+  ResourcePtr CreateInputResourceAbsoluteUncheckedForTestsOnly(
       const StringPiece& absolute_url);
 
   // Returns true if some ResourceUrlClaimant has staked a claim on given URL.
@@ -1068,6 +1079,8 @@ class RewriteDriver : public HtmlParse {
   void InsertDebugComment(
       const protobuf::RepeatedPtrField<GoogleString>& messages,
       HtmlElement* element);
+  void InsertUnauthorizedDomainDebugComment(StringPiece url,
+                                            HtmlElement* element);
 
   // Saves the origin headers for a request in flush_early_info so that it can
   // be used in subsequent request.

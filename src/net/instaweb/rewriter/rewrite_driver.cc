@@ -2158,18 +2158,21 @@ bool RewriteDriver::MatchesBaseUrl(const GoogleUrl& input_url) const {
           decoded_base_url_.Origin() == input_url.Origin());
 }
 
-ResourcePtr RewriteDriver::CreateInputResource(const GoogleUrl& input_url) {
+ResourcePtr RewriteDriver::CreateInputResource(const GoogleUrl& input_url,
+                                               bool* is_authorized) {
   return CreateInputResource(
-      input_url, kInlineOnlyAuthorizedResources, kIntendedForGeneral);
+      input_url, kInlineOnlyAuthorizedResources, kIntendedForGeneral,
+      is_authorized);
 }
 
 ResourcePtr RewriteDriver::CreateInputResource(
     const GoogleUrl& input_url,
     InlineAuthorizationPolicy inline_authorization_policy,
-    IntendedFor intended_for) {
+    IntendedFor intended_for,
+    bool* is_authorized) {
+  *is_authorized = true;  // Must be false iff we fail b/c of authorization.
   ResourcePtr resource;
   bool may_rewrite = false;
-  bool is_authorized_domain = false;
   if (input_url.SchemeIs("data")) {
     // Skip and silently ignore; don't log a failure.
     // For the moment we assume data: urls are small enough to not be worth
@@ -2180,7 +2183,7 @@ ResourcePtr RewriteDriver::CreateInputResource(
     may_rewrite = MayRewriteUrl(decoded_base_url_, input_url,
                                 inline_authorization_policy,
                                 intended_for,
-                                &is_authorized_domain);
+                                is_authorized);
     // In the case where we are proxying and we have resources that have been
     // rewritten multiple times, input_url will still have the encoded domain,
     // and we can rewrite that, so test again but against the encoded base url.
@@ -2192,7 +2195,7 @@ ResourcePtr RewriteDriver::CreateInputResource(
         may_rewrite = MayRewriteUrl(decoded_base_url_, decoded_url,
                                     inline_authorization_policy,
                                     intended_for,
-                                    &is_authorized_domain);
+                                    is_authorized);
       }
     }
   } else {
@@ -2203,9 +2206,11 @@ ResourcePtr RewriteDriver::CreateInputResource(
   }
   RewriteStats* stats = server_context_->rewrite_stats();
   if (may_rewrite) {
-    resource = CreateInputResourceUnchecked(input_url, is_authorized_domain);
+    // *is_authorized may be true or false (if inlining an unauth'd URL).
+    resource = CreateInputResourceUnchecked(input_url, *is_authorized);
     stats->resource_url_domain_acceptances()->Add(1);
   } else {
+    DCHECK(!*is_authorized);
     message_handler()->Message(kInfo, "No permission to rewrite '%s'",
                                input_url.spec_c_str());
     stats->resource_url_domain_rejections()->Add(1);
@@ -2213,7 +2218,7 @@ ResourcePtr RewriteDriver::CreateInputResource(
   return resource;
 }
 
-ResourcePtr RewriteDriver::CreateInputResourceAbsoluteUnchecked(
+ResourcePtr RewriteDriver::CreateInputResourceAbsoluteUncheckedForTestsOnly(
     const StringPiece& absolute_url) {
   GoogleUrl url(absolute_url);
   if (!url.IsWebOrDataValid()) {
@@ -3269,6 +3274,24 @@ void RewriteDriver::InsertDebugComment(
       InsertNodeAfterNode(preceding_node, comment_node);
       preceding_node = comment_node;
     }
+  }
+}
+
+void RewriteDriver::InsertUnauthorizedDomainDebugComment(StringPiece url,
+                                                         HtmlElement* element) {
+  if (DebugMode() && element != NULL && IsRewritable(element)) {
+    GoogleUrl gurl(url);
+    GoogleString comment("The preceding resource was not rewritten because ");
+    // Note: this is all being defensive - at the time of writing I believe
+    // url will always be a valid URL.
+    if (gurl.IsWebValid()) {
+      StrAppend(&comment, "its domain (", gurl.Host(), ") is not authorized");
+    } else if (gurl.IsWebOrDataValid()) {
+      StrAppend(&comment, "it is a data URI");
+    } else {
+      StrAppend(&comment, "it is not authorized");
+    }
+    InsertNodeAfterNode(element, NewCommentNode(element->parent(), comment));
   }
 }
 

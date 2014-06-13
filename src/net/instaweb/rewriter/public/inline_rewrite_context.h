@@ -65,8 +65,8 @@ class InlineRewriteContext : public RewriteContext {
   // Subclasses of InlineRewriteContext may override this to customize
   // resource creation. Default version just uses
   // CommonFilter::CreateInputResource().
-  // url is permitted to be NULL.
-  virtual ResourcePtr CreateResource(const char* url);
+  // url is permitted to be NULL. is_authorized is not.
+  virtual ResourcePtr CreateResource(const char* url, bool* is_authorized);
 
   // InlineRewriteContext takes care of these methods from RewriteContext;
   virtual bool Partition(OutputPartitions* partitions,

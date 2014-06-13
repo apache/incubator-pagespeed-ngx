@@ -374,7 +374,8 @@ class ImageRewriteTest : public RewriteTestBase {
         "kEenp/8oyIBf2ZEWaEfyv8BsICdAZ/XeTCAAAAAElFTkSuQmCC";
     GoogleString cuppa_string(kCuppaData);
     ResourcePtr cuppa_resource(
-        rewrite_driver()->CreateInputResourceAbsoluteUnchecked(cuppa_string));
+        rewrite_driver()->CreateInputResourceAbsoluteUncheckedForTestsOnly(
+            cuppa_string));
     ASSERT_TRUE(cuppa_resource.get() != NULL);
     EXPECT_TRUE(ReadIfCached(cuppa_resource));
     GoogleString cuppa_contents;
@@ -382,7 +383,8 @@ class ImageRewriteTest : public RewriteTestBase {
     // Now make sure axing the original cuppa_string doesn't affect the
     // internals of the cuppa_resource.
     ResourcePtr other_resource(
-        rewrite_driver()->CreateInputResourceAbsoluteUnchecked(cuppa_string));
+        rewrite_driver()->CreateInputResourceAbsoluteUncheckedForTestsOnly(
+            cuppa_string));
     ASSERT_TRUE(other_resource.get() != NULL);
     cuppa_string.clear();
     EXPECT_TRUE(ReadIfCached(other_resource));
@@ -2632,8 +2634,9 @@ TEST_F(ImageRewriteTest, JpegQualityForSmallScreens) {
   ImageRewriteFilter image_rewrite_filter(rewrite_driver());
   ResourceContext ctx;
   image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
-  const ResourcePtr res_ptr(rewrite_driver()->
-      CreateInputResourceAbsoluteUnchecked("data:image/png;base64,test"));
+  const ResourcePtr res_ptr(
+      rewrite_driver()->CreateInputResourceAbsoluteUncheckedForTestsOnly(
+          "data:image/png;base64,test"));
   scoped_ptr<Image::CompressionOptions> img_options(
       image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
 
@@ -2756,8 +2759,9 @@ TEST_F(ImageRewriteTest, WebPQualityForSmallScreens) {
   ImageRewriteFilter image_rewrite_filter(rewrite_driver());
   ResourceContext ctx;
   image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
-  const ResourcePtr res_ptr(rewrite_driver()->
-      CreateInputResourceAbsoluteUnchecked("data:image/png;base64,test"));
+  const ResourcePtr res_ptr(
+      rewrite_driver()->CreateInputResourceAbsoluteUncheckedForTestsOnly(
+          "data:image/png;base64,test"));
   scoped_ptr<Image::CompressionOptions> img_options(
       image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
 
@@ -2902,8 +2906,9 @@ TEST_F(ImageRewriteTest, JpegProgressiveScansForSmallScreens) {
   ImageRewriteFilter image_rewrite_filter(rewrite_driver());
   ResourceContext ctx;
   image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
-  const ResourcePtr res_ptr(rewrite_driver()->
-      CreateInputResourceAbsoluteUnchecked("data:image/png;base64,test"));
+  const ResourcePtr res_ptr(
+      rewrite_driver()->CreateInputResourceAbsoluteUncheckedForTestsOnly(
+          "data:image/png;base64,test"));
   scoped_ptr<Image::CompressionOptions> img_options(
       image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
 

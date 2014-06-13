@@ -76,8 +76,8 @@ class CssInlineFilter::Context : public InlineRewriteContext {
                           base_url_, text, element);
   }
 
-  virtual ResourcePtr CreateResource(const char* url) {
-    return filter_->CreateResource(url);
+  virtual ResourcePtr CreateResource(const char* url, bool* is_authorized) {
+    return filter_->CreateResource(url, is_authorized);
   }
 
   virtual const char* id() const { return filter_->id_; }
@@ -150,8 +150,9 @@ void CssInlineFilter::EndElementImpl(HtmlElement* element) {
   }
 }
 
-ResourcePtr CssInlineFilter::CreateResource(const char* url) {
-  return CreateInputResource(url);
+ResourcePtr CssInlineFilter::CreateResource(const char* url,
+                                            bool* is_authorized) {
+  return CreateInputResource(url, is_authorized);
 }
 
 bool CssInlineFilter::HasClosingStyleTag(StringPiece contents) {

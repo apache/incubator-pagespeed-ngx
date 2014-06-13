@@ -75,9 +75,8 @@ bool CssImageRewriter::RewritesEnabled(
           options->Enabled(RewriteOptions::kSpriteImages));
 }
 
-bool CssImageRewriter::RewriteImport(
-    RewriteContext* parent,
-    CssHierarchy* hierarchy) {
+bool CssImageRewriter::RewriteImport(RewriteContext* parent,
+                                     CssHierarchy* hierarchy) {
   GoogleUrl import_url(hierarchy->url());
   ResourcePtr resource = driver()->CreateInputResource(import_url);
   if (resource.get() == NULL) {
@@ -90,15 +89,16 @@ bool CssImageRewriter::RewriteImport(
   return true;
 }
 
-void CssImageRewriter::RewriteImage(int64 image_inline_max_bytes,
+bool CssImageRewriter::RewriteImage(int64 image_inline_max_bytes,
                                     const GoogleUrl& trim_url,
                                     const GoogleUrl& original_url,
                                     RewriteContext* parent,
-                                    Css::Values* values, size_t value_index) {
+                                    Css::Values* values,
+                                    size_t value_index) {
   const RewriteOptions* options = driver()->options();
   ResourcePtr resource = driver()->CreateInputResource(original_url);
   if (resource.get() == NULL) {
-    return;
+    return false;
   }
 
   CssResourceSlotPtr slot(
@@ -109,6 +109,7 @@ void CssImageRewriter::RewriteImage(int64 image_inline_max_bytes,
   }
 
   RewriteSlot(ResourceSlotPtr(slot), image_inline_max_bytes, parent);
+  return true;
 }
 
 void CssImageRewriter::RewriteSlot(const ResourceSlotPtr& slot,

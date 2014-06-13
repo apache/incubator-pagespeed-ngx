@@ -68,8 +68,11 @@ class ImageCombineFilter : public RewriteFilter {
   // new width and height values; url_value must point to the URL value to be
   // replaced. Will not actually change anything until you call Realize().
   // This will succeed even in cases when it turns out (later) the image
-  // can not be sprited.
-  void AddCssBackgroundContext(const GoogleUrl& original_url,
+  // can not be sprited. Fails and returns false if:
+  // * We cannot get the declaration dimensions from 'decls'.
+  // * original_url is not on an authorized domain.
+  // * There is already a slot for original_url.
+  bool AddCssBackgroundContext(const GoogleUrl& original_url,
                                const GoogleUrl& base_url,
                                Css::Values* values,
                                int value_index,

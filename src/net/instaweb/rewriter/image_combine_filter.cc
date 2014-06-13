@@ -1161,7 +1161,7 @@ bool ImageCombineFilter::GetDeclarationDimensions(
 
 // Must initialize context_ with appropriate parent before hand.
 // parent passed here because it's private.
-void ImageCombineFilter::AddCssBackgroundContext(
+bool ImageCombineFilter::AddCssBackgroundContext(
     const GoogleUrl& original_url, const GoogleUrl& base_url,
     Css::Values* values, int value_index,
     CssFilter::Context* parent, Css::Declarations* decls,
@@ -1169,7 +1169,7 @@ void ImageCombineFilter::AddCssBackgroundContext(
   CHECK(context_ != NULL);
   int width, height;
   if (!GetDeclarationDimensions(decls, &width, &height)) {
-    return;
+    return false;
   }
   StringPiece url_piece(original_url.Spec());
   SpriteFuture* future = new SpriteFuture(url_piece, width, height, decls);
@@ -1177,20 +1177,22 @@ void ImageCombineFilter::AddCssBackgroundContext(
   future->Initialize(values->at(value_index));
 
   ResourcePtr resource = CreateInputResource(url_piece);
-  if (resource.get() != NULL) {
-    // transfers ownership of future to slot_obj
-    SpriteFutureSlot* slot_obj = new SpriteFutureSlot(
-        resource, base_url, driver()->options(), values, value_index, future);
-    CssResourceSlotPtr slot(slot_obj);
-    parent->slot_factory()->UniquifySlot(slot);
-    // Spriting must run before all other filters so that the slot for the
-    // resource a SpriteFutureSlot
-    if (slot.get() != slot_obj) {
-      return;
-    }
-    context_->AddFuture(slot);
+  if (resource.get() == NULL) {
+    return false;
   }
-  return;
+
+  // transfers ownership of future to slot_obj
+  SpriteFutureSlot* slot_obj = new SpriteFutureSlot(
+      resource, base_url, driver()->options(), values, value_index, future);
+  CssResourceSlotPtr slot(slot_obj);
+  parent->slot_factory()->UniquifySlot(slot);
+  // Spriting must run before all other filters so that the slot for the
+  // resource a SpriteFutureSlot
+  if (slot.get() != slot_obj) {
+    return false;
+  }
+  context_->AddFuture(slot);
+  return true;
 }
 
 void ImageCombineFilter::Reset(RewriteContext* parent,

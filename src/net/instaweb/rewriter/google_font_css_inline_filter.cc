@@ -44,7 +44,9 @@ void GoogleFontCssInlineFilter::InitStats(Statistics* statistics) {
   GoogleFontServiceInputResource::InitStats(statistics);
 }
 
-ResourcePtr GoogleFontCssInlineFilter::CreateResource(const char* url) {
+ResourcePtr GoogleFontCssInlineFilter::CreateResource(const char* url,
+                                                      bool* is_authorized) {
+  *is_authorized = true;  // Google font resources don't have to be authorized.
   GoogleUrl abs_url;
   ResolveUrl(url, &abs_url);
   ResourcePtr resource(GoogleFontServiceInputResource::Make(abs_url, driver()));
