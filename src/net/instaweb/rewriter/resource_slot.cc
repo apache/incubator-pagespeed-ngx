@@ -60,7 +60,9 @@ void ResourceSlot::DetachContext(RewriteContext* context) {
 }
 
 void ResourceSlot::InsertDebugComment(StringPiece message) {
-  LOG(DFATAL) << "Can only insert debug comments for HTML slots";
+  // TODO(jmarantz): this get scalled for InlineCssSlot, at least.  Implement
+  // this to propgagte the error up to the HtmlResourceSlot.
+  // LOG(DFATAL) << "Can only insert debug comments for HTML slots";
 }
 
 GoogleString ResourceSlot::RelativizeOrPassthrough(
