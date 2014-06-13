@@ -20,6 +20,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
+#include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/css_util.h"
 #include "net/instaweb/rewriter/public/inline_rewrite_context.h"
@@ -31,11 +32,12 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/charset_util.h"
 #include "net/instaweb/util/public/google_url.h"
-#include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_writer.h"
 
 namespace net_instaweb {
+
+class MessageHandler;
 
 const char CssInlineFilter::kNumCssInlined[] = "num_css_inlined";
 
@@ -52,12 +54,14 @@ class CssInlineFilter::Context : public InlineRewriteContext {
     }
   }
 
-  virtual bool ShouldInline(const ResourcePtr& resource) const {
-    return filter_->ShouldInline(resource, attrs_charset_);
+  virtual bool ShouldInline(const ResourcePtr& resource,
+                            GoogleString* reason) const {
+    return filter_->ShouldInline(resource, attrs_charset_, reason);
   }
 
   virtual void Render() {
-    if (num_output_partitions() < 1) {
+    if (num_output_partitions() < 1 ||
+        !output_partition(0)->has_inlined_data()) {
       // Remove any LSC attributes as they're pointless if we don't inline.
       LocalStorageCacheFilter::RemoveLscAttributes(get_element(),
                                                    filter_->driver());
@@ -117,9 +121,8 @@ void CssInlineFilter::EndElementImpl(HtmlElement* element) {
     // types since they're very unlikely to change the initial page view, and
     // inlining them would actually slow down the 99% case of "screen".
     if (!css_util::CanMediaAffectScreen(media)) {
-      driver()->message_handler()->Message(
-          kInfo, "Stylesheet media=%s is not for screen href=%s",
-          media, href->DecodedValueOrNull());
+      driver()->InsertDebugComment(
+          "CSS not inlined because media does not match screen", element);
       return;
     }
     // Ask the LSC filter to work out how to handle this element. A return
@@ -156,14 +159,19 @@ bool CssInlineFilter::HasClosingStyleTag(StringPiece contents) {
 }
 
 bool CssInlineFilter::ShouldInline(const ResourcePtr& resource,
-                                   const StringPiece& attrs_charset) const {
+                                   const StringPiece& attrs_charset,
+                                   GoogleString* reason) const {
   // If the contents are bigger than our threshold or the contents contain
   // "</style>" anywhere, don't inline. If we inline an external stylesheet
   // containing a "</style>", the <style> tag will be ended early.
   if (resource->contents().size() > size_threshold_bytes_) {
+    *reason = StrCat("CSS not inlined since it's bigger than ",
+                     Integer64ToString(size_threshold_bytes_),
+                     " bytes");
     return false;
   }
   if (HasClosingStyleTag(resource->contents())) {
+    *reason = "CSS not inlined since it contains style closing tag";
     return false;
   }
 
@@ -172,6 +180,9 @@ bool CssInlineFilter::ShouldInline(const ResourcePtr& resource,
   GoogleString css_charset = RewriteFilter::GetCharsetForStylesheet(
       resource.get(), attrs_charset, htmls_charset);
   if (!StringCaseEqual(htmls_charset, css_charset)) {
+    *reason = StrCat("CSS not inlined due to apparent charset incompatibility;"
+                     " we think the HTML is ", htmls_charset,
+                     " while the CSS is ", css_charset);
     return false;
   }
 

@@ -26,6 +26,7 @@
 #include "net/instaweb/rewriter/public/rewrite_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
 
@@ -51,7 +52,12 @@ class InlineRewriteContext : public RewriteContext {
 
  protected:
   // Subclasses of InlineRewriteContext must override these:
-  virtual bool ShouldInline(const ResourcePtr& resource) const = 0;
+
+  // Return whether the resource should be inlined. If false
+  // is returned, this should set *explanation to the reason for the failure.
+  // explanation is guaranteed to be non-NULL.
+  virtual bool ShouldInline(const ResourcePtr& resource,
+                            GoogleString* explanation) const = 0;
   virtual void RenderInline(const ResourcePtr& resource,
                             const StringPiece& text,
                             HtmlElement* element) = 0;

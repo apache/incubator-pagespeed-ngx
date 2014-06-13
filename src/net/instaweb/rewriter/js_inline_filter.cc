@@ -43,8 +43,9 @@ class JsInlineFilter::Context : public InlineRewriteContext {
           HtmlElement::Attribute* src)
       : InlineRewriteContext(filter, element, src), filter_(filter) {}
 
-  virtual bool ShouldInline(const ResourcePtr& resource) const {
-    return filter_->ShouldInline(resource);
+  virtual bool ShouldInline(const ResourcePtr& resource,
+                            GoogleString* reason) const {
+    return filter_->ShouldInline(resource, reason);
   }
 
   virtual void RenderInline(
@@ -110,17 +111,22 @@ void JsInlineFilter::EndElementImpl(HtmlElement* element) {
   should_inline_ = false;
 }
 
-bool JsInlineFilter::ShouldInline(const ResourcePtr& resource) const {
+bool JsInlineFilter::ShouldInline(const ResourcePtr& resource,
+                                  GoogleString* reason) const {
   // Don't inline if it's too big or looks like it's trying to get at its own
   // url.
 
   StringPiece contents(resource->contents());
   if (contents.size() > size_threshold_bytes_) {
+    *reason = StrCat("JS not inlined since it's bigger than ",
+                     Integer64ToString(size_threshold_bytes_),
+                     " bytes");
     return false;
   }
 
   if (driver()->options()->avoid_renaming_introspective_javascript() &&
       JavascriptCodeBlock::UnsafeToRename(contents)) {
+    *reason = "JS not inlined since it may be looking for its source";
     return false;
   }
 

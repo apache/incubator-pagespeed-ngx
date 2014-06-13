@@ -88,15 +88,31 @@ bool InlineRewriteContext::Partition(OutputPartitions* partitions,
                                      OutputResourceVector* outputs) {
   CHECK_EQ(1, num_slots()) << "InlineRewriteContext only handles one slot";
   ResourcePtr resource(slot(0)->resource());
-  if (resource->IsSafeToRewrite(rewrite_uncacheable()) &&
-      ShouldInline(resource)) {
-    CachedResult* partition = partitions->add_partition();
+
+  // Always create someplace to store stuff, since we may need debug info.
+  CachedResult* partition = partitions->add_partition();
+  outputs->push_back(OutputResourcePtr(NULL));
+
+  bool ok = false;
+  GoogleString reason_for_failure;
+  if (!resource->IsSafeToRewrite(rewrite_uncacheable())) {
+    AddRecheckDependency();
+    // TODO(morlovich): Follow up by integrating with jmaessen's instrumentation
+    // of IsSafeToRewrite?
+    reason_for_failure =
+        "Can't inline since resource not fetchable or cacheable";
+  } else {
     resource->AddInputInfoToPartition(Resource::kOmitInputHash, 0, partition);
-    partition->set_inlined_data(resource->contents().as_string());
-    outputs->push_back(OutputResourcePtr(NULL));
+    if (ShouldInline(resource, &reason_for_failure)) {
+      partition->set_inlined_data(resource->contents().as_string());
+      ok = true;
+    }
   }
-  // If we don't inline, or resource is invalid, we write out an empty partition
-  // table, making us do nothing.
+
+  if (!ok) {
+    partition->add_debug_message(reason_for_failure);
+  }
+
   return true;
 }
 
@@ -108,20 +124,26 @@ void InlineRewriteContext::Rewrite(int partition_index,
 
   // Mark slot as needing no further processing. Note that needs to be done
   // before calling RewriteDone, as that may cause us to be deleted!
-  slot(0)->set_disable_further_processing(true);
+  if (output_partition(0)->has_inlined_data()) {
+    slot(0)->set_disable_further_processing(true);
+  }
 
   // We signal as rewrite failed, as we do not create an output resource.
   RewriteDone(kRewriteFailed, 0);
 }
 
 void InlineRewriteContext::Render() {
-  if (num_output_partitions() == 1 && !slot(0)->should_delete_element()) {
-    // We've decided to inline...
+  if (num_output_partitions() == 1 &&
+      output_partition(0)->has_inlined_data() &&
+      !slot(0)->should_delete_element()) {
+    // We've decided to inline, and no one destroyed our element before us.
     slot(0)->set_disable_rendering(true);
     ResourceSlotPtr our_slot = slot(0);
     RenderInline(
         our_slot->resource(), output_partition(0)->inlined_data(), element_);
   }
+
+  Driver()->InsertDebugComment(output_partition(0)->debug_message(), element_);
 }
 
 // We never create output resources, so methods related to them are stubbed.

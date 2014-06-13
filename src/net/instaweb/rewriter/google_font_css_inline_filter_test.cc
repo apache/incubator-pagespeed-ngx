@@ -137,7 +137,11 @@ class GoogleFontCssInlineFilterSizeLimitTest
 
 TEST_F(GoogleFontCssInlineFilterSizeLimitTest, SizeLimit) {
   rewrite_driver()->SetUserAgent("Chromezilla");
-  ValidateNoChanges("slightly_long", CssLinkHref(kRoboto));
+  ValidateExpected(
+      "slightly_long",
+      CssLinkHref(kRoboto),
+      StrCat(CssLinkHref(kRoboto),
+             "<!--CSS not inlined since it's bigger than 12 bytes-->"));
 
   rewrite_driver()->SetUserAgent("Safieri");
   ValidateExpected("short",
@@ -204,10 +208,15 @@ class NoGoogleFontCssInlineFilterAndWidePermissionsTest
 
 TEST_F(NoGoogleFontCssInlineFilterAndWidePermissionsTest,
        WithWideAuthorization) {
+  // Since font inlining isn't on, the regular inliner complains. This isn't
+  // ideal, but doing otherwise requires inline_css to know about
+  // inline_google_font_css, which aslso seems suboptimal.
   rewrite_driver()->SetUserAgent("Chromezilla");
-  ValidateNoChanges("with_domain_*_without_font_filter", CssLinkHref(kRoboto));
+  ValidateExpected("with_domain_*_without_font_filter", CssLinkHref(kRoboto),
+                   StrCat(CssLinkHref(kRoboto),
+                          "<!--Can't inline since resource not "
+                               "fetchable or cacheable-->"));
 }
-
 
 }  // namespace
 

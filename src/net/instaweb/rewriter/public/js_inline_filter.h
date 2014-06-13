@@ -29,6 +29,7 @@
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
 class HtmlElement;
@@ -67,7 +68,7 @@ class JsInlineFilter : public CommonFilter {
   class Context;
   friend class Context;
 
-  bool ShouldInline(const ResourcePtr& resource) const;
+  bool ShouldInline(const ResourcePtr& resource, GoogleString* reason) const;
   void RenderInline(const ResourcePtr& resource, const StringPiece& text,
                     HtmlElement* element);
 

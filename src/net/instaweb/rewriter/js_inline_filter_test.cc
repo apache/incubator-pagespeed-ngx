@@ -20,10 +20,12 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/semantic_type.h"
+#include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/js_inline_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string.h"
@@ -57,7 +59,25 @@ class JsInlineFilterTest : public RewriteTestBase {
         js_original_inline_body,
         js_outline_body,
         js_outline_body,  // expect ouline body to be inlined verbatim
-        expect_inline);
+        expect_inline,
+        "");
+  }
+
+  void TestNoInlineJavascript(const GoogleString& html_url,
+                              const GoogleString& js_url,
+                              const GoogleString& js_original_inline_body,
+                              const GoogleString& js_outline_body,
+                              const GoogleString& debug_message) {
+    TestInlineJavascriptGeneral(
+        html_url,
+        "",  // don't use a doctype for these tests
+        js_url,
+        js_url,
+        js_original_inline_body,
+        js_outline_body,
+        js_outline_body,  // expect ouline body to be inlined verbatim
+        false,  // Not inlined
+        debug_message);
   }
 
   void TestInlineJavascriptXhtml(const GoogleString& html_url,
@@ -73,7 +93,8 @@ class JsInlineFilterTest : public RewriteTestBase {
         js_outline_body,
         // Expect outline body to get surrounded by a CDATA block:
         "//<![CDATA[\n" + js_outline_body + "\n//]]>",
-        expect_inline);
+        expect_inline,
+        "");
   }
 
   void TestInlineJavascriptGeneral(const GoogleString& html_url,
@@ -83,7 +104,8 @@ class JsInlineFilterTest : public RewriteTestBase {
                                    const GoogleString& js_original_inline_body,
                                    const GoogleString& js_outline_body,
                                    const GoogleString& js_expected_inline_body,
-                                   bool expect_inline) {
+                                   bool expect_inline,
+                                   const GoogleString& debug_string) {
     if (!filters_added_) {
       options()->SoftEnableFilterForTesting(RewriteOptions::kInlineJavascript);
       rewrite_driver()->AddFilters();
@@ -97,17 +119,17 @@ class JsInlineFilterTest : public RewriteTestBase {
 
     const char kHtmlTemplate[] =
         "<head>\n"
-        "  <script src=\"%s\">%s</script>\n"
+        "  <script src=\"%s\">%s</script>%s\n"
         "</head>\n"
         "<body>Hello, world!</body>\n";
 
     const GoogleString html_input =
         StringPrintf(kHtmlTemplate, js_url.c_str(),
-                     js_original_inline_body.c_str());
+                     js_original_inline_body.c_str(), "");
 
     const GoogleString outline_html_output =
         StringPrintf(kHtmlTemplate, js_out_url.c_str(),
-                     js_original_inline_body.c_str());
+                     js_original_inline_body.c_str(), "");
 
     const GoogleString expected_output =
         (!expect_inline ? outline_html_output :
@@ -116,6 +138,12 @@ class JsInlineFilterTest : public RewriteTestBase {
          "</head>\n"
          "<body>Hello, world!</body>\n");
 
+    const GoogleString outline_debug_html_output = debug_string.empty()
+        ? outline_html_output
+        : StringPrintf(kHtmlTemplate, js_out_url.c_str(),
+                       js_original_inline_body.c_str(),
+                       StrCat("<!--", debug_string, "-->").c_str());
+
     // Put original Javascript file into our fetcher.
     ResponseHeaders default_js_header;
     SetDefaultLongCacheHeaders(&kContentTypeJavascript, &default_js_header);
@@ -123,6 +151,18 @@ class JsInlineFilterTest : public RewriteTestBase {
 
     // Rewrite the HTML page.
     ValidateExpectedUrl(html_url, html_input, expected_output);
+
+    if (!expect_inline) {
+      TurnOnDebug();
+      ValidateExpectedUrl(html_url, html_input,
+                          outline_debug_html_output);
+    }
+  }
+
+  void TurnOnDebug() {
+    options()->ClearSignatureForTesting();
+    options()->ForceEnableFilter(RewriteOptions::kDebug);
+    server_context()->ComputeSignature(options());
   }
 
  private:
@@ -201,11 +241,12 @@ TEST_F(JsInlineFilterTest, DoInlineJavascriptDifferentDomain) {
 
 TEST_F(JsInlineFilterTest, DoNotInlineJavascriptDifferentDomain) {
   // Different domains:
-  TestInlineJavascript("http://www.example.net/index.html",
-                       "http://scripts.example.org/script.js",
-                       "",
-                       "function id(x) { return x; }\n",
-                       false);
+  TestNoInlineJavascript("http://www.example.net/index.html",
+                         "http://scripts.example.org/script.js",
+                         "",
+                         "function id(x) { return x; }\n",
+                         StrCat("InlineJs: ",
+                                CommonFilter::kCreateResourceFailedDebugMsg));
   EXPECT_EQ(0, statistics()->GetVariable(JsInlineFilter::kNumJsInlined)->Get());
 }
 
@@ -221,23 +262,24 @@ TEST_F(JsInlineFilterTest, DoNotInlineJavascriptInlineContents) {
 TEST_F(JsInlineFilterTest, DoNotInlineJavascriptTooBig) {
   // Javascript too long:
   const int64 length = 2 * RewriteOptions::kDefaultJsInlineMaxBytes;
-  TestInlineJavascript("http://www.example.com/index.html",
-                       "http://www.example.com/script.js",
-                       "",
-                       ("function longstr() { return '" +
-                        GoogleString(length, 'z') + "'; }\n"),
-                       false);
+  TestNoInlineJavascript("http://www.example.com/index.html",
+                         "http://www.example.com/script.js",
+                         "",
+                         ("function longstr() { return '" +
+                          GoogleString(length, 'z') + "'; }\n"),
+                         "JS not inlined since it's bigger than 2048 bytes");
 }
 
 TEST_F(JsInlineFilterTest, DoNotInlineIntrospectiveJavascriptByDefault) {
   // If it's unsafe to rename, because it contains fragile introspection like
   // $("script"), we have to leave it at the original url and not inline it.
   // Dependent on a config option that's on by default.
-  TestInlineJavascript("http://www.example.com/index.html",
-                       "http://www.example.com/script.js",
-                       "",
-                       "function close() { return $('script'); }\n",
-                       false);  // expect no inlining
+  TestNoInlineJavascript("http://www.example.com/index.html",
+                         "http://www.example.com/script.js",
+                         "",
+                         "function close() { return $('script'); }\n",
+                         "JS not inlined since it may be looking for "
+                             "its source");
 }
 
 TEST_F(JsInlineFilterTest, DoInlineIntrospectiveJavascript) {
@@ -259,11 +301,12 @@ TEST_F(JsInlineFilterTest, DontInlineDisallowed) {
   options()->Disallow("*script.js*");
 
   // The script is disallowed; can't be inlined.
-  TestInlineJavascript("http://www.example.com/index.html",
-                       "http://www.example.com/script.js",
-                       "",
-                       "function close() { return 'inline!'; }\n",
-                       false);  // expect no inlining
+  TestNoInlineJavascript("http://www.example.com/index.html",
+                         "http://www.example.com/script.js",
+                         "",
+                         "function close() { return 'inline!'; }\n",
+                         StrCat("InlineJs: ",
+                                CommonFilter::kCreateResourceFailedDebugMsg));
 }
 
 TEST_F(JsInlineFilterTest, DoInlineDisallowedIfAllowedWhenInlining) {
@@ -377,7 +420,8 @@ TEST_F(JsInlineFilterTest, InlineMinimizeInteraction) {
       "",  // No inline body in,
       "var answer = 42; // const is non-standard",  // out-of-line body
       "",  // No inline body out,
-      false);  // Not inlining
+      false,  // Not inlining
+      "JS not inlined since it's bigger than 4 bytes");
 }
 
 TEST_F(JsInlineFilterTest, ScriptWithScriptTags) {
