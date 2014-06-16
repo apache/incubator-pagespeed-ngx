@@ -277,11 +277,11 @@ const char* NgxRewriteOptions::ParseAndSetOptions(
     if (IsDirective(directive, "UsePerVHostStatistics")) {
       result = ParseAndSetOptionHelper<NgxRewriteDriverFactory>(
           arg, driver_factory,
-          &NgxRewriteDriverFactory::set_use_per_vhost_statistics);
+          &SystemRewriteDriverFactory::set_use_per_vhost_statistics);
     } else if (IsDirective(directive, "InstallCrashHandler")) {
       result = ParseAndSetOptionHelper<NgxRewriteDriverFactory>(
           arg, driver_factory,
-          &NgxRewriteDriverFactory::set_install_crash_handler);
+          &SystemRewriteDriverFactory::set_install_crash_handler);
     } else if (IsDirective(directive, "MessageBufferSize")) {
       int message_buffer_size;
       bool ok = StringToInt(arg.as_string(), &message_buffer_size);
@@ -295,10 +295,6 @@ const char* NgxRewriteOptions::ParseAndSetOptions(
       result = ParseAndSetOptionHelper<NgxRewriteDriverFactory>(
           arg, driver_factory,
           &NgxRewriteDriverFactory::set_use_native_fetcher);
-    } else if (IsDirective(directive, "RateLimitBackgroundFetches")) {
-      result = ParseAndSetOptionHelper<NgxRewriteDriverFactory>(
-          arg, driver_factory,
-          &NgxRewriteDriverFactory::set_rate_limit_background_fetches);
     } else if (IsDirective(directive, "ForceCaching")) {
       result = ParseAndSetOptionHelper<SystemRewriteDriverFactory>(
           arg, driver_factory,
@@ -307,6 +303,20 @@ const char* NgxRewriteOptions::ParseAndSetOptions(
       result = ParseAndSetOptionHelper<SystemRewriteDriverFactory>(
           arg, driver_factory,
           &SystemRewriteDriverFactory::list_outstanding_urls_on_error);
+    } else if (IsDirective(directive, "NumRewriteThreads") ||
+               IsDirective(directive, "NumExpensiveRewriteThreads")) {
+      int64 threads = 0;
+      if (!StringToInt64(arg, &threads) || threads < 0) {
+        result = RewriteOptions::kOptionValueInvalid;
+        msg = "must set an positive integer number of threads";
+      } else {
+        if (IsDirective(directive, "NumRewriteThreads")) {
+          driver_factory->set_num_rewrite_threads(threads);
+        } else {
+          driver_factory->set_num_expensive_rewrite_threads(threads);
+        }
+        result = RewriteOptions::kOptionOk;
+      }
     } else if (IsDirective(directive, "TrackOriginalContentLength")) {
       result = ParseAndSetOptionHelper<SystemRewriteDriverFactory>(
           arg, driver_factory,

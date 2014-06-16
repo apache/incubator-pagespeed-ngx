@@ -92,18 +92,6 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
 
   void set_main_conf(NgxRewriteOptions* main_conf) {  main_conf_ = main_conf; }
 
-  bool use_per_vhost_statistics() const {
-    return use_per_vhost_statistics_;
-  }
-  void set_use_per_vhost_statistics(bool x) {
-    use_per_vhost_statistics_ = x;
-  }
-  bool install_crash_handler() const {
-    return install_crash_handler_;
-  }
-  void set_install_crash_handler(bool x) {
-    install_crash_handler_ = x;
-  }
   void set_resolver(ngx_resolver_t* resolver) {
     resolver_ = resolver;
   }
@@ -116,17 +104,6 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
   }
   void set_use_native_fetcher(bool x) {
     use_native_fetcher_ = x;
-  }
-  void set_rate_limit_background_fetches(bool x) {
-    rate_limit_background_fetches_ = x;
-  }
-
-  // We use a beacon handler to collect data for critical images,
-  // css, etc., so filters should be configured accordingly.
-  //
-  // TODO(jefftk): move to SystemRewriteDriverFactory
-  virtual bool UseBeaconResultsInFilters() const {
-    return true;
   }
 
   void LoggingInit(ngx_log_t* log);
@@ -143,20 +120,14 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
   NgxRewriteOptions* main_conf_;
 
   bool threads_started_;
-  // If true, we'll have a separate statistics object for each vhost
-  // (along with a global aggregate), rather than just a single object
-  // aggregating all of them.
-  bool use_per_vhost_statistics_;
   NgxMessageHandler* ngx_message_handler_;
   NgxMessageHandler* ngx_html_parse_message_handler_;
-  bool install_crash_handler_;
 
   std::vector<NgxUrlAsyncFetcher*> ngx_url_async_fetchers_;
   ngx_log_t* log_;
   ngx_msec_t resolver_timeout_;
   ngx_resolver_t* resolver_;
   bool use_native_fetcher_;
-  bool rate_limit_background_fetches_;
   typedef std::set<NgxMessageHandler*> NgxMessageHandlerSet;
   NgxMessageHandlerSet server_context_message_handlers_;
 

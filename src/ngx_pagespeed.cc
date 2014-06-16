@@ -740,6 +740,7 @@ void* ps_create_main_conf(ngx_conf_t* cf) {
       new SystemThreadSystem(),
       "" /* hostname, not used */,
       -1 /* port, not used */);
+  cfg_m->driver_factory->Init();
   ps_set_conf_cleanup_handler(cf, ps_cleanup_main_conf, cfg_m);
   return cfg_m;
 }
