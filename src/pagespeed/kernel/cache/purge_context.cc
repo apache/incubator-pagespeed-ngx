@@ -20,6 +20,7 @@
 
 #include "base/logging.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
+#include "pagespeed/kernel/base/atomic_bool.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/file_system.h"
 #include "pagespeed/kernel/base/function.h"
@@ -45,12 +46,68 @@ const int kMaxContentionRetries = 2;
 
 }  // namespace
 
-const char PurgeContext::kCancellations[]     = "purge_cancellations";
-const char PurgeContext::kContentions[]       = "purge_contentions";
-const char PurgeContext::kFileParseFailures[] = "purge_file_parse_failures";
-const char PurgeContext::kFileStats[]         = "purge_file_stats";
-const char PurgeContext::kFileWriteFailures[] = "purge_file_write_failures";
-const char PurgeContext::kFileWrites[]        = "purge_file_writes";
+const char PurgeContext::kCancellations[]        = "purge_cancellations";
+const char PurgeContext::kContentions[]          = "purge_contentions";
+const char PurgeContext::kFileParseFailures[]    = "purge_file_parse_failures";
+const char PurgeContext::kFileStats[]            = "purge_file_stats";
+const char PurgeContext::kFileWriteFailures[]    = "purge_file_write_failures";
+const char PurgeContext::kFileWrites[]           = "purge_file_writes";
+const char PurgeContext::kPurgeIndex[]           = "purge_index";
+
+// TODO(jmarantz): make it possible to avoid showing this implementation detail
+// in the statistics page.
+const char PurgeContext::kPurgePollTimestampMs[] = "_purge_poll_timestamp_ms";
+
+namespace {
+
+// Wrapper class around an UpDownCounter which makes it guaranteed to be
+// locally consistent, even if the backing UpDownCounter is non-functional
+// due to a shared-memory failure or statistics being turned off.
+class BackupUpDownCounter : public UpDownCounter {
+ public:
+  // Takes ownership of mutex.
+  BackupUpDownCounter(UpDownCounter* counter, AbstractMutex* mutex)
+      : counter_(counter),
+        mutex_(mutex),
+        local_counter_(0) {
+  }
+
+  virtual int64 Get() const {
+    // Don't take the lock for local_counter unless we have actually set some
+    // value in the past, yet we can't retrieve it from the real UpDownCounter.
+    bool was_set = was_set_.value();
+    int64 val = counter_->Get();
+    if (was_set && (val == 0)) {
+      ScopedMutex lock(mutex_.get());
+      val = local_counter_;
+    }
+    return val;
+  }
+
+  virtual StringPiece GetName() const { return counter_->GetName(); }
+
+  virtual void Set(int64 value) {
+    counter_->Set(value);
+    {
+      ScopedMutex lock(mutex_.get());
+      local_counter_ = value;
+      was_set_.set_value(true);
+    }
+  }
+
+  virtual int64 AddHelper(int delta) {
+    LOG(DFATAL) << "AddHelper is not used in PurgeContext";
+    return 0;
+  }
+
+ private:
+  UpDownCounter* counter_;
+  scoped_ptr<AbstractMutex> mutex_;
+  int64 local_counter_ GUARDED_BY(mutex_);
+  AtomicBool was_set_;
+};
+
+}  // namespace
 
 PurgeContext::PurgeContext(StringPiece filename,
                            FileSystem* file_system,
@@ -65,9 +122,10 @@ PurgeContext::PurgeContext(StringPiece filename,
       interprocess_lock_(lock_manager->CreateNamedLock(LockName())),
       file_system_(file_system),
       timer_(timer),
+      statistics_(statistics),
       mutex_(thread_system->NewMutex()),
       pending_purges_(max_bytes_in_cache),
-      last_file_check_ms_(0),
+      local_purge_index_(0),
       num_consecutive_failures_(0),
       waiting_for_interprocess_lock_(false),
       reading_(false),
@@ -80,6 +138,10 @@ PurgeContext::PurgeContext(StringPiece filename,
       file_stats_(statistics->GetVariable(kFileStats)),
       file_write_failures_(statistics->GetVariable(kFileWriteFailures)),
       file_writes_(statistics->GetVariable(kFileWrites)),
+      purge_index_(statistics->GetVariable(kPurgeIndex)),
+      purge_poll_timestamp_ms_(new BackupUpDownCounter(
+          statistics->GetUpDownCounter(kPurgePollTimestampMs),
+          thread_system->NewMutex())),
       scheduler_(scheduler),
       message_handler_(handler) {
   purge_set_.MakeWriteable()->set_max_size(max_bytes_in_cache_);
@@ -95,6 +157,8 @@ void PurgeContext::InitStats(Statistics* statistics) {
   statistics->AddVariable(kFileStats);
   statistics->AddVariable(kFileWrites);
   statistics->AddVariable(kFileWriteFailures);
+  statistics->AddVariable(kPurgeIndex);
+  statistics->AddUpDownCounter(kPurgePollTimestampMs);
 }
 
 bool PurgeContext::ParseAndValidateTimestamp(
@@ -200,7 +264,7 @@ void PurgeContext::UpdateCachePurgeFile() {
   DCHECK(waiting_for_interprocess_lock_);
   PurgeSet purges_from_file(max_bytes_in_cache_);
   PurgeSet return_purges(max_bytes_in_cache_);
-  BoolCallbackVector callbacks;
+  PurgeCallbackVector callbacks;
   bool lock_and_update = false;
   bool success = true;
   int failures = 0;
@@ -223,17 +287,17 @@ void PurgeContext::UpdateCachePurgeFile() {
   interprocess_lock_->Unlock();
 
   if (!callbacks.empty()) {
-    for (int i = 0, n = callbacks.size(); i < n; ++i) {
-      callbacks[i]->Run(success);
-    }
     if (success) {
-      // Induce a file-read the next time IsValid() is called.  Note that
-      // there is a small chance we might read the same version of the file
-      // twice if we get an IsValid() request with 5 seconds since the last
-      // check, after writing the file and before this line.  However that
-      // redundant read is not harmful.
-      ScopedMutex lock(mutex_.get());
-      last_file_check_ms_ = 0;
+      // Induce a file-read the next time PollFileSystem() is called.
+      // Note that there is a small chance we might read the same
+      // version of the file twice if we get a PollFileSystem()
+      // request with 5 seconds since the last check, after writing
+      // the file and before this line.  However that redundant read
+      // is not harmful.
+      purge_index_->Add(1);
+    }
+    for (int i = 0, n = callbacks.size(); i < n; ++i) {
+      callbacks[i]->Run(success, "");
     }
   } else if (lock_and_update) {
     GrabLockAndUpdate();
@@ -241,7 +305,7 @@ void PurgeContext::UpdateCachePurgeFile() {
 }
 
 void PurgeContext::HandleWriteFailure(int failures,
-                                      BoolCallbackVector* callbacks,
+                                      PurgeCallbackVector* callbacks,
                                       PurgeSet* return_purges,
                                       bool* lock_and_update) {
   ScopedMutex lock(mutex_.get());
@@ -287,7 +351,7 @@ void PurgeContext::HandleWriteFailure(int failures,
 
 void PurgeContext::ModifyPurgeSet(PurgeSet* purges_from_file,
                                   GoogleString* buffer,
-                                  BoolCallbackVector* return_callbacks,
+                                  PurgeCallbackVector* return_callbacks,
                                   PurgeSet* return_purges,
                                   int* failures) {
   // Note that while were are reading the file, another Purge might
@@ -349,7 +413,7 @@ bool PurgeContext::WritePurgeFile(const GoogleString& buffer) {
 // acquire the named-lock in the given time-limit.  We'll just bump up
 // the cancellation count.
 void PurgeContext::CancelCachePurgeFile() {
-  BoolCallbackVector callbacks;
+  PurgeCallbackVector callbacks;
   {
     ScopedMutex lock(mutex_.get());
     callbacks.swap(pending_callbacks_);
@@ -365,7 +429,7 @@ void PurgeContext::CancelCachePurgeFile() {
   // will retry.
   cancellations_->Add(callbacks.size());
   for (int i = 0, n = callbacks.size(); i < n; ++i) {
-    callbacks[i]->Run(false);
+    callbacks[i]->Run(false, "timeout");
   }
 }
 
@@ -391,7 +455,7 @@ void PurgeContext::GrabLockAndUpdate() {
 }
 
 void PurgeContext::SetCachePurgeGlobalTimestampMs(
-    int64 timestamp_ms, BoolCallback* callback) {
+    int64 timestamp_ms, PurgeCallback* callback) {
   bool grab_lock = false;
   {
     ScopedMutex lock(mutex_.get());
@@ -408,38 +472,48 @@ void PurgeContext::SetCachePurgeGlobalTimestampMs(
 }
 
 void PurgeContext::AddPurgeUrl(StringPiece url, int64 timestamp_ms,
-                               BoolCallback* callback) {
-  bool grab_lock = false;
-  {
-    ScopedMutex lock(mutex_.get());
-    pending_purges_.Put(url.as_string(), timestamp_ms);
-    if (!waiting_for_interprocess_lock_) {
-      waiting_for_interprocess_lock_ = true;
-      grab_lock = true;
+                               PurgeCallback* callback) {
+  if (!enable_purge_) {
+    callback->Run(false, "EnableCachePurge is off");
+  } else {
+    bool grab_lock = false;
+    {
+      ScopedMutex lock(mutex_.get());
+      pending_purges_.Put(url.as_string(), timestamp_ms);
+      if (!waiting_for_interprocess_lock_) {
+        waiting_for_interprocess_lock_ = true;
+        grab_lock = true;
+      }
+      pending_callbacks_.push_back(callback);
     }
-    pending_callbacks_.push_back(callback);
-  }
-  if (grab_lock) {
-    WaitForTimerAndGrabLock();
+    if (grab_lock) {
+      WaitForTimerAndGrabLock();
+    }
   }
 }
 
 void PurgeContext::PollFileSystem() {
-  mutex_->Lock();
   int64 now_ms = timer_->NowMs();
-  int64 delta_ms = now_ms - last_file_check_ms_;
-  if (!reading_ && delta_ms >= kCheckCacheIntervalMs) {
+  int64 delta_ms = now_ms - purge_poll_timestamp_ms_->Get();
+  int64 global_purge_index = purge_index_->Get();
+  mutex_->Lock();
+  bool needs_update = (local_purge_index_ < global_purge_index);
+  if (!reading_ &&
+      (needs_update || (delta_ms >= kCheckCacheIntervalMs))) {
+    if (needs_update) {
+      local_purge_index_ = global_purge_index;
+    }
     reading_ = true;
-    last_file_check_ms_ = now_ms;
     mutex_->Unlock();
-    ReadFileAndCallCallbackIfChanged();
+    purge_poll_timestamp_ms_->Set(now_ms);
+    ReadFileAndCallCallbackIfChanged(needs_update);
     mutex_->Lock();
     reading_ = false;
   }
   mutex_->Unlock();
 }
 
-void PurgeContext::ReadFileAndCallCallbackIfChanged() {
+void PurgeContext::ReadFileAndCallCallbackIfChanged(bool needs_update) {
   CopyOnWrite<PurgeSet> purges_from_file;
   PurgeSet* mutable_purges_from_file = purges_from_file.MakeWriteable();
   mutable_purges_from_file->set_max_size(max_bytes_in_cache_);
@@ -454,6 +528,14 @@ void PurgeContext::ReadFileAndCallCallbackIfChanged() {
   {
     ScopedMutex lock(mutex_.get());
     if (!purge_set_->Equals(*purges_from_file)) {
+      if (!needs_update) {
+        // This update was induced by a timeout in this process, rather
+        // than by a signal from another process or an UpdateCachePurgeFile
+        // in this process.  This signals to other child processes that their
+        // local_purge_index_ state is now stale and they must re-read.  We
+        // only do this if the purge-set from disk actually changed.
+        purge_index_->Add(1);
+      }
       purge_set_ = purges_from_file;
       if (update_callback_ != NULL) {
         // We don't want to call the update callback while holding the

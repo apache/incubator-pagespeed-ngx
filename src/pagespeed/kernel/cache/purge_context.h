@@ -40,6 +40,7 @@ class NamedLockManager;
 class Scheduler;
 class Statistics;
 class ThreadSystem;
+class UpDownCounter;
 class Variable;
 
 // Handles purging of URLs, atomically persisting them to disk, allowing
@@ -47,9 +48,12 @@ class Variable;
 // propogate them to the other processes.
 //
 // All public methods in this class are thread-safe.
+//
+// This class depends on Statistics being functional.  If statistics are off,
+// then cache purging may be slower, but it will still work.
 class PurgeContext {
  public:
-  typedef Callback1<bool> BoolCallback;
+  typedef Callback2<bool, StringPiece> PurgeCallback;
   typedef Callback1<const CopyOnWrite<PurgeSet>&> PurgeSetCallback;
 
   // The source-of-truth of the purge data is kept in files.  These files
@@ -65,6 +69,8 @@ class PurgeContext {
   static const char kFileStats[];
   static const char kFileWriteFailures[];
   static const char kFileWrites[];
+  static const char kPurgeIndex[];
+  static const char kPurgePollTimestampMs[];
   static const char kStatCalls[];
 
   PurgeContext(StringPiece filename,
@@ -95,20 +101,21 @@ class PurgeContext {
   // file, and transmitting the results to the system, attempting
   // to do so within a bounded amount of time.
   //
-  // Calls callback(true) if the invalidation succeeded (was able to grab the
-  // global lock in a finite amount of time), and callback(false) if it failed.
-  // If we fail to take the lock then the invalidation is dropped on the floor,
-  // and statistics "purge_cancellations" is bumped.
-  void AddPurgeUrl(StringPiece url, int64 timestamp_ms, BoolCallback* callback);
+  // Calls callback(true, "") if the invalidation succeeded (was able to grab
+  // the global lock in a finite amount of time), and callback(false, "reason")
+  // if it failed.  If we fail to take the lock then the invalidation is dropped
+  // on the floor, and statistics "purge_cancellations" is bumped.
+  void AddPurgeUrl(StringPiece url, int64 timestamp_ms,
+                   PurgeCallback* callback);
 
   // Sets the global invalidation timestamp.
   //
-  // Calls callback(true) if the invalidation succeeded (was able to grab the
-  // global lock in a finite amount of time), and callback(false) if it failed.
-  // If we fail to take the lock then the invalidation is dropped on the floor,
-  // and statistics "purge_cancellations" is bumped.
+  // Calls callback(true, "") if the invalidation succeeded (was able to grab
+  // the global lock in a finite amount of time), and callback(false, "reason")
+  // if it failed. If we fail to take the lock then the invalidation is dropped
+  // on the floor, and statistics "purge_cancellations" is bumped.
   void SetCachePurgeGlobalTimestampMs(int64 timestamp_ms,
-                                      BoolCallback* callback);
+                                      PurgeCallback* callback);
 
   // Periodically updates the purge-set from disk if enough time has
   // expired.  This can be called on every request.
@@ -131,7 +138,7 @@ class PurgeContext {
  private:
   friend class PurgeContextTest;
 
-  typedef std::vector<BoolCallback*> BoolCallbackVector;
+  typedef std::vector<PurgeCallback*> PurgeCallbackVector;
 
   // Having acquired the lock, merges all sources of purge information and
   // write the purge file.  This must be called with interprocess_lock_
@@ -146,14 +153,14 @@ class PurgeContext {
   // called with interprocess_lock_ held as the writes are made atomic
   // via write-to-temp + rename.
   void ReadPurgeFile(PurgeSet* purges_from_file);
-  void ReadFileAndCallCallbackIfChanged();
+  void ReadFileAndCallCallbackIfChanged(bool needs_update);
 
   // Combines the purges_from_file with pending_purges_ and purge_set_,
   // serializes the result into *buffer for writing back to the file.
   //
   // Note: this does *not* update purge_set_ (it treats it as read-only).
-  // However, it zeros last_file_check_ms_ to induce a file-read on
-  // the next call to IsValid().
+  // However, it bumps purge_index_ to induce a file-read on
+  // the next call to PollFileSystem().
   //
   // This helper method is used as part of a read/modify/write/verify
   // sequence, and it returns the callbacks that must be called when
@@ -172,7 +179,7 @@ class PurgeContext {
   //
   // This method is thread-safe; it grabs mutex_.
   void ModifyPurgeSet(PurgeSet* purges_from_file, GoogleString* buffer,
-                      BoolCallbackVector* return_callbacks,
+                      PurgeCallbackVector* return_callbacks,
                       PurgeSet* return_purges,
                       int* failures);
 
@@ -180,7 +187,7 @@ class PurgeContext {
   //  a) restore the pending purges & callbacks and try to re-take the lock.
   //  b) call the callbacks with 'false' and drop return_purges.
   void HandleWriteFailure(int failures,
-                          BoolCallbackVector* callbacks,
+                          PurgeCallbackVector* callbacks,
                           PurgeSet* return_purges,
                           bool* lock_and_update);
 
@@ -224,16 +231,17 @@ class PurgeContext {
   FileSystem* file_system_;
   Timer* timer_;
 
+  Statistics* statistics_;
   scoped_ptr<AbstractMutex> mutex_;
   CopyOnWrite<PurgeSet> purge_set_;        // protected by mutex_
   PurgeSet pending_purges_;                // protected by mutex_
-  BoolCallbackVector pending_callbacks_;   // protected by mutex_
-  int64 last_file_check_ms_;               // protected_by mutex_
+  PurgeCallbackVector pending_callbacks_;  // protected by mutex_
+  int64 local_purge_index_;                // protected by mutex_
   int num_consecutive_failures_;           // protected_by mutex_
   bool waiting_for_interprocess_lock_;     // protected_by mutex_
   bool reading_;                           // protected_by mutex_
 
-  bool enable_purge_;          // When false, can only flush entire cache.
+  bool enable_purge_;           // When false, can only flush entire cache.
   int max_bytes_in_cache_;
 
   int64 request_batching_delay_ms_;
@@ -244,6 +252,8 @@ class PurgeContext {
   Variable* file_stats_;
   Variable* file_write_failures_;
   Variable* file_writes_;
+  Variable* purge_index_;
+  scoped_ptr<UpDownCounter> purge_poll_timestamp_ms_;
 
   Scheduler* scheduler_;
   MessageHandler* message_handler_;
