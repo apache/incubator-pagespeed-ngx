@@ -54,6 +54,8 @@ class AddInstrumentationFilter : public CommonFilter {
   virtual const char* Name() const { return "AddInstrumentation"; }
 
  protected:
+  virtual void DetermineEnabled();
+
   // The total number of times instrumentation script is added.
   Variable* instrumentation_script_added_count_;
 

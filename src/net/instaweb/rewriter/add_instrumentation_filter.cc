@@ -25,6 +25,7 @@
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/experiment_util.h"
+#include "net/instaweb/rewriter/public/request_properties.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -218,6 +219,10 @@ GoogleString AddInstrumentationFilter::GetScriptJs(StringPiece event) {
   StrAppend(&js, "'", html_url, "');");
 
   return js;
+}
+
+void AddInstrumentationFilter::DetermineEnabled() {
+  set_is_enabled(!driver()->request_properties()->IsBot());
 }
 
 }  // namespace net_instaweb
