@@ -68,10 +68,10 @@ vars = {
   #
   # The revision we are picking here is to a specific commit found on
   # https://git.chromium.org/gitweb/?p=chromium/deps/openssl.git;a=summary :
-  # 2014-14-11 brettw@chromium.org Fix typo in comment in GN buildfile.
-  # This commit is post-heartbleed.
+  # 2014-06-09 agl@chromium.org Pull in more changes from OpenSSL 1.0.1h.
+  # This point includes all CVE fixes in 1.0.1h, including the CCS fix.
   "openssl_src": "https://git.chromium.org/chromium/deps/openssl.git",
-  "openssl_revision": "@a182ac9a61b910c3ab8ce5c5b7d0f04af57399ec",
+  "openssl_revision": "@063a4b93646788bd883fc0cb1b5eafc991ddacc4",
 
   "domain_registry_provider_src":
      "https://domain-registry-provider.googlecode.com/svn/trunk/",
