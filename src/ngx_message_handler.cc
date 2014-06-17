@@ -56,9 +56,8 @@ extern "C" {
 
 namespace net_instaweb {
 
-NgxMessageHandler::NgxMessageHandler(AbstractMutex* mutex)
-    : mutex_(mutex),
-      buffer_(NULL),
+NgxMessageHandler::NgxMessageHandler(Timer* timer, AbstractMutex* mutex)
+    : SystemMessageHandler(timer, mutex),
       log_(NULL) {
   SetPidString(static_cast<int64>(getpid()));
 }
@@ -71,14 +70,6 @@ void NgxMessageHandler::InstallCrashHandler(ngx_log_t* log) {
   signal(SIGABRT, signal_handler);
   signal(SIGFPE, signal_handler);
   signal(SIGSEGV, signal_handler);
-}
-
-bool NgxMessageHandler::Dump(Writer* writer) {
-  // Can't dump before SharedCircularBuffer is set up.
-  if (buffer_ == NULL) {
-    return false;
-  }
-  return buffer_->Dump(writer, &handler_);
 }
 
 ngx_uint_t NgxMessageHandler::GetNgxLogLevel(MessageType type) {
@@ -98,11 +89,6 @@ ngx_uint_t NgxMessageHandler::GetNgxLogLevel(MessageType type) {
   return NGX_LOG_ALERT;
 }
 
-void NgxMessageHandler::set_buffer(SharedCircularBuffer* buff) {
-  ScopedMutex lock(mutex_.get());
-  buffer_ = buff;
-}
-
 void NgxMessageHandler::MessageVImpl(MessageType type, const char* msg,
                                      va_list args) {
   ngx_uint_t log_level = GetNgxLogLevel(type);
@@ -115,23 +101,7 @@ void NgxMessageHandler::MessageVImpl(MessageType type, const char* msg,
   }
 
   // Prepare a log message for the SharedCircularBuffer only.
-  // Prepend time and severity to message.
-  // Format is [time] [severity] [pid] message.
-  GoogleString message;
-  GoogleString time;
-  PosixTimer timer;
-  if (!ConvertTimeToString(timer.NowMs(), &time)) {
-    time = "?";
-  }
-  StrAppend(&message, "[", time, "] ",
-            "[", MessageTypeToString(type), "] ");
-  StrAppend(&message, pid_string_, " ", formatted_message, "\n");
-  {
-    ScopedMutex lock(mutex_.get());
-    if (buffer_ != NULL) {
-      buffer_->Write(message);
-    }
-  }
+  AddMessageToBuffer(type, pid_string_, formatted_message);
 }
 
 void NgxMessageHandler::FileMessageVImpl(MessageType type, const char* file,

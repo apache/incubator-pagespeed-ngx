@@ -71,9 +71,10 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(
         NULL /* default shared memory runtime */, hostname, port),
       main_conf_(NULL),
       threads_started_(false),
-      ngx_message_handler_(new NgxMessageHandler(thread_system()->NewMutex())),
+      ngx_message_handler_(
+          new NgxMessageHandler(timer(), thread_system()->NewMutex())),
       ngx_html_parse_message_handler_(
-          new NgxMessageHandler(thread_system()->NewMutex())),
+          new NgxMessageHandler(timer(), thread_system()->NewMutex())),
       log_(NULL),
       resolver_timeout_(NGX_CONF_UNSET_MSEC),
       use_native_fetcher_(false),
@@ -223,7 +224,7 @@ void NgxRewriteDriverFactory::SetCircularBuffer(
 void NgxRewriteDriverFactory::SetServerContextMessageHandler(
     ServerContext* server_context, ngx_log_t* log) {
   NgxMessageHandler* handler = new NgxMessageHandler(
-      thread_system()->NewMutex());
+      timer(), thread_system()->NewMutex());
   handler->set_log(log);
   // The ngx_shared_circular_buffer_ will be NULL if MessageBufferSize hasn't
   // been raised from its default of 0.
