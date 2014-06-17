@@ -215,6 +215,11 @@ class JavascriptFilter::Context : public SingleRewriteContext {
     }
     CachedResult* result = output_partition(0);
     ResourceSlot* output_slot = slot(0).get();
+    if (!result->url_relocatable()) {
+      output_slot->InsertDebugComment(
+          JavascriptCodeBlock::kIntrospectionComment);
+      return;
+    }
     if (!result->optimizable()) {
       if (result->canonicalize_url() && output_slot->CanDirectSetUrl()) {
         // Use the canonical library url and disable the later render step.

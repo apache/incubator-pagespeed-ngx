@@ -47,6 +47,20 @@ namespace source_map { struct Mapping; }
 // to javascript rewriting.
 class JavascriptRewriteConfig {
  public:
+  // Statistics names.
+  static const char kBlocksMinified[];
+  static const char kLibrariesIdentified[];
+  static const char kMinificationFailures[];
+  static const char kTotalBytesSaved[];
+  static const char kTotalOriginalBytes[];
+  static const char kMinifyUses[];
+  static const char kNumReducingMinifications[];
+
+  // Those are JS rewrite failure type statistics.
+  static const char kJSMinificationDisabled[];
+  static const char kJSDidNotShrink[];
+  static const char kJSFailedToWrite[];
+
   JavascriptRewriteConfig(
       Statistics* statistics, bool minify, bool use_experimental_minifier,
       const JavascriptLibraryIdentification* identification,
@@ -78,20 +92,6 @@ class JavascriptRewriteConfig {
   Variable* minification_disabled() { return minification_disabled_; }
   Variable* did_not_shrink() { return did_not_shrink_; }
   Variable* failed_to_write() { return failed_to_write_; }
-
-  // Statistics names.
-  static const char kBlocksMinified[];
-  static const char kLibrariesIdentified[];
-  static const char kMinificationFailures[];
-  static const char kTotalBytesSaved[];
-  static const char kTotalOriginalBytes[];
-  static const char kMinifyUses[];
-  static const char kNumReducingMinifications[];
-
-  // Those are JS rewrite failure type statistics.
-  static const char kJSMinificationDisabled[];
-  static const char kJSDidNotShrink[];
-  static const char kJSFailedToWrite[];
 
  private:
   bool minify_;
@@ -141,6 +141,11 @@ class JavascriptRewriteConfig {
 // For now, we're content just being able to pull data in and parse it at all.
 class JavascriptCodeBlock {
  public:
+  // If debug_filter and AvoidRenamingIntrospectiveJavascript option are
+  // turned on, this comment will be injected right after the introspective
+  // Javascript context for debugging.
+  static const char kIntrospectionComment[];
+
   JavascriptCodeBlock(const StringPiece& original_code,
                       JavascriptRewriteConfig* config,
                       const StringPiece& message_id,

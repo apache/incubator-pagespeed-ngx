@@ -35,7 +35,7 @@ OUTPUT_DIR = $(PWD)
 #
 # Note that this is the same Makefile variable used by the generated Makefiles
 # on Linux.
-BUILDTYPE = Release
+BUILDTYPE = Debug
 
 # TODO(jmarantz): this library-list should be automatically generated
 # from the 'gyp' flow, rather than hand-entered here.

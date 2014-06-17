@@ -56,6 +56,9 @@ const char JavascriptRewriteConfig::kJSDidNotShrink[] =
 const char JavascriptRewriteConfig::kJSFailedToWrite[] =
     "javascript_failed_to_write";
 
+const char JavascriptCodeBlock::kIntrospectionComment[] =
+    "This script contains introspective JavaScript and is unsafe to replace.";
+
 JavascriptRewriteConfig::JavascriptRewriteConfig(
     Statistics* stats, bool minify, bool use_experimental_minifier,
     const JavascriptLibraryIdentification* identification,
