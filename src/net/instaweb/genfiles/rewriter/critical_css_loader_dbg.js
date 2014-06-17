@@ -382,9 +382,9 @@ goog.MODIFY_FUNCTION_PROTOTYPES && (Function.prototype.bind = Function.prototype
 });
 goog.defineClass = function(superClass, def) {
   var constructor = def.constructor, statics = def.statics;
-  if (!constructor || constructor == Object.prototype.constructor) {
-    throw Error("constructor property is required.");
-  }
+  constructor && constructor != Object.prototype.constructor || (constructor = function() {
+    throw Error("cannot instantiate an interface (no constructor defined).");
+  });
   var cls = goog.defineClass.createSealingConstructor_(constructor);
   superClass && goog.inherits(cls, superClass);
   delete def.constructor;

@@ -1092,6 +1092,16 @@ TEST_F(HtmlAnnotationTest, UnclosedScriptOnlyWithFlush) {
   EXPECT_STREQ("<script>", output_buffer_);
 }
 
+TEST_F(HtmlAnnotationTest, NulInAttrName) {
+  // Tests that we don't crash with an embedded NUL in an attribute name.
+  SetupWriter();
+  html_parse_.StartParse("http://test.com/nul_in_attr.html");
+  html_parse_.ParseText("<img src");
+  html_parse_.ParseText(StringPiece("\0", 1));
+  html_parse_.ParseText("file:-1675375991 />");
+  html_parse_.FinishParse();
+}
+
 TEST_F(HtmlParseTest, MakeName) {
   EXPECT_EQ(0, HtmlTestingPeer::symbol_table_size(&html_parse_));
 

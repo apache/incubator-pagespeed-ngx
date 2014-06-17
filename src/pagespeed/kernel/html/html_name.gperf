@@ -9,6 +9,7 @@
 namespace net_instaweb {
 %}
 %compare-strncmp
+%compare-lengths
 %define class-name KeywordMapper
 %define lookup-function-name Lookup
 %define word-array-name kHtmlNameTable
