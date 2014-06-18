@@ -44,7 +44,6 @@
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/slow_worker.h"
 #include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/write_through_cache.h"
@@ -219,11 +218,11 @@ SystemCaches::MemcachedInterfaces SystemCaches::GetMemcached(
 }
 
 bool SystemCaches::CreateShmMetadataCache(
-    const GoogleString& name, int64 size_kb, GoogleString* error_msg) {
+    StringPiece name, int64 size_kb, GoogleString* error_msg) {
   MetadataShmCacheInfo* cache_info = NULL;
   std::pair<MetadataShmCacheMap::iterator, bool> result =
       metadata_shm_caches_.insert(
-          MetadataShmCacheMap::value_type(name, cache_info));
+          MetadataShmCacheMap::value_type(name.as_string(), cache_info));
   if (result.second) {
     int entries, blocks;
     int64 size_cap;

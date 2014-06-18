@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
@@ -32,9 +33,11 @@ namespace net_instaweb {
 class AbstractSharedMem;
 class FileSystem;
 class Hasher;
+class MessageHandler;
 class NamedLockManager;
 class NonceGenerator;
 class ProcessContext;
+class QueuedWorkerPool;
 class ServerContext;
 class SharedCircularBuffer;
 class SharedMemStatistics;
@@ -58,11 +61,14 @@ class SystemRewriteDriverFactory : public RewriteDriverFactory {
   // runtime if one is passed in.  Implementors who don't want to support shared
   // memory at all should set PAGESPEED_SUPPORT_POSIX_SHARED_MEM to false and
   // pass in NULL, and the factory will use a NullSharedMem.
+  //
+  // After construction, you must call Init() to finish the initialization.
   SystemRewriteDriverFactory(const ProcessContext& process_context,
                              SystemThreadSystem* thread_system,
                              AbstractSharedMem* shared_mem_runtime,
                              StringPiece hostname, int port);
   virtual ~SystemRewriteDriverFactory();
+  void Init();
 
   // If the server using this isn't using APR natively, call this to initialize
   // the APR library.
@@ -131,6 +137,30 @@ class SystemRewriteDriverFactory : public RewriteDriverFactory {
   // root (ie. parent) process.
   void SharedCircularBufferInit(bool is_root);
 
+  // Most options are parsed by and applied to the RewriteOptions via
+  // ParseAndSetOptionFromNameN, but process-scope options need to be set on the
+  // rewrite driver factory.
+  //
+  // ParseAndSetOptionN will only apply changes to the rewrite driver factory if
+  // process_scope is true, but it should be called regardless in order to give
+  // more helpful error messages ("wrong scope" vs "no such option").  If an
+  // option is used out of scope an appropriate message is put in msg and either
+  // kOptionValueInvalid or kOptionOk is returned: invalid if the parser should
+  // abort with an error, ok if parsing should continue past the error.
+  virtual RewriteOptions::OptionSettingResult ParseAndSetOption1(
+      StringPiece option,
+      StringPiece arg,
+      bool process_scope,
+      GoogleString* msg,
+      MessageHandler* handler);
+  virtual RewriteOptions::OptionSettingResult ParseAndSetOption2(
+      StringPiece option,
+      StringPiece arg1,
+      StringPiece arg2,
+      bool process_scope,
+      GoogleString* msg,
+      MessageHandler* handler);
+
   virtual Hasher* NewHasher();
   virtual Timer* DefaultTimer();
   virtual ServerContext* NewServerContext();
@@ -179,18 +209,54 @@ class SystemRewriteDriverFactory : public RewriteDriverFactory {
   // When RateLimitBackgroundFetches is enabled the fetcher needs to apply some
   // limits.  An implementation may need to tune these based on conditions only
   // observable at startup, in which case they can override these.
-  virtual int requests_per_host() { return 4; }
   virtual int max_queue_size() { return 500 * requests_per_host(); }
   virtual int queued_per_host() { return 500 * requests_per_host(); }
-
-  // By default statistics are collected separately for each virtual host.
-  // Allow implementations to indicate that they don't support this.
-  virtual bool use_per_vhost_statistics() const { return true; }
+  virtual int requests_per_host();  // Normally 4, or #threads if that's more.
 
   void set_static_asset_prefix(StringPiece s) {
     s.CopyToString(&static_asset_prefix_);
   }
   const GoogleString& static_asset_prefix() { return static_asset_prefix_; }
+
+  int num_rewrite_threads() const { return num_rewrite_threads_; }
+  void set_num_rewrite_threads(int x) { num_rewrite_threads_ = x; }
+  int num_expensive_rewrite_threads() const {
+    return num_expensive_rewrite_threads_;
+  }
+  void set_num_expensive_rewrite_threads(int x) {
+    num_expensive_rewrite_threads_ = x;
+  }
+  bool use_per_vhost_statistics() const {
+    return use_per_vhost_statistics_;
+  }
+  void set_use_per_vhost_statistics(bool x) {
+    use_per_vhost_statistics_ = x;
+  }
+  bool install_crash_handler() const {
+    return install_crash_handler_;
+  }
+  void set_install_crash_handler(bool x) {
+    install_crash_handler_ = x;
+  }
+
+  // mod_pagespeed uses a beacon handler to collect data for critical images,
+  // css, etc., so filters should be configured accordingly.
+  virtual bool UseBeaconResultsInFilters() const {
+    return true;
+  }
+
+  // Check whether the server is threaded.  For example, Nginx uses an event
+  // loop and can keep with the default of false, while Apache with a threaded
+  // multiprocessing module (MPM) overrides this method to return true.
+  virtual bool IsServerThreaded() {
+    return false;  // Most new servers are non-threaded nowadays.
+  }
+
+  // Threaded implementing servers should return the maximum number of threads
+  // that might be used for handling user requests.
+  virtual int LookupThreadLimit() {
+    return 1;
+  }
 
  protected:
   // Initializes all the statistics objects created transitively by
@@ -201,6 +267,8 @@ class SystemRewriteDriverFactory : public RewriteDriverFactory {
   virtual void InitStaticAssetManager(StaticAssetManager* static_asset_manager);
 
   virtual void SetupCaches(ServerContext* server_context);
+  virtual QueuedWorkerPool* CreateWorkerPool(WorkerPoolCategory pool,
+                                             StringPiece name);
 
   // TODO(jefftk): create SystemMessageHandler and get rid of these hooks.
   virtual void SetupMessageHandlers() {}
@@ -228,6 +296,12 @@ class SystemRewriteDriverFactory : public RewriteDriverFactory {
 
   virtual FileSystem* DefaultFileSystem();
   virtual NamedLockManager* DefaultLockManager();
+
+  // Updates num_rewrite_threads_ and num_expensive_rewrite_threads_
+  // with sensible values if they are not explicitly set.
+  virtual void AutoDetectThreadCounts();
+
+  bool thread_counts_finalized() { return thread_counts_finalized_; }
 
  private:
   // Build global shared-memory statistics, taking ownership.  This is invoked
@@ -295,6 +369,21 @@ class SystemRewriteDriverFactory : public RewriteDriverFactory {
 
   // The same as our parent's thread_system_, but without casting.
   SystemThreadSystem* system_thread_system_;
+
+  // If true, we'll have a separate statistics object for each vhost
+  // (along with a global aggregate), rather than just a single object
+  // aggregating all of them.
+  bool use_per_vhost_statistics_;
+
+  // If true, we'll install a signal handler that prints backtraces.
+  bool install_crash_handler_;
+
+  // true iff we ran through AutoDetectThreadCounts().
+  bool thread_counts_finalized_;
+
+  // These are <= 0 if we should autodetect.
+  int num_rewrite_threads_;
+  int num_expensive_rewrite_threads_;
 
   DISALLOW_COPY_AND_ASSIGN(SystemRewriteDriverFactory);
 };

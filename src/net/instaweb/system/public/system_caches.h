@@ -26,6 +26,7 @@
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/shared_mem_cache.h"
 #include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 
@@ -107,8 +108,8 @@ class SystemCaches {
   //
   // Returns whether successful or not, and if not, *error_msg will contain
   // an error message.  Meant to be called from config parsing.
-  bool CreateShmMetadataCache(const GoogleString& name, int64 size_kb,
-                              GoogleString* error_msg);
+  bool CreateShmMetadataCache(
+      StringPiece name, int64 size_kb, GoogleString* error_msg);
 
   // Returns, perhaps creating it, an appropriate named manager for this config
   // (potentially sharing with others as appropriate).

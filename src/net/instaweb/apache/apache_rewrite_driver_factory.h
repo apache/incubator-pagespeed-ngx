@@ -21,7 +21,6 @@
 // Note: We must include apache_config.h to allow using ApacheConfig*
 // return-types for functions that return RewriteOptions* in base class.
 #include "net/instaweb/apache/apache_config.h"
-#include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/system/public/system_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
@@ -38,7 +37,6 @@ class ApacheServerContext;
 class MessageHandler;
 class ModSpdyFetchController;
 class ProcessContext;
-class QueuedWorkerPool;
 class ServerContext;
 class SharedCircularBuffer;
 class SlowWorker;
@@ -68,31 +66,6 @@ class ApacheRewriteDriverFactory : public SystemRewriteDriverFactory {
 
   ApacheServerContext* MakeApacheServerContext(server_rec* server);
 
-  void set_num_rewrite_threads(int x) { num_rewrite_threads_ = x; }
-  int num_rewrite_threads() const { return num_rewrite_threads_; }
-  void set_num_expensive_rewrite_threads(int x) {
-    num_expensive_rewrite_threads_ = x;
-  }
-  int num_expensive_rewrite_threads() const {
-    return num_expensive_rewrite_threads_;
-  }
-
-  virtual bool use_per_vhost_statistics() const {
-    return use_per_vhost_statistics_;
-  }
-
-  void set_use_per_vhost_statistics(bool x) {
-    use_per_vhost_statistics_ = x;
-  }
-
-  virtual bool enable_property_cache() const {
-    return enable_property_cache_;
-  }
-
-  void set_enable_property_cache(bool x) {
-    enable_property_cache_ = x;
-  }
-
   // If true, virtual hosts should inherit global configuration.
   bool inherit_vhost_config() const {
     return inherit_vhost_config_;
@@ -100,20 +73,6 @@ class ApacheRewriteDriverFactory : public SystemRewriteDriverFactory {
 
   void set_inherit_vhost_config(bool x) {
     inherit_vhost_config_ = x;
-  }
-
-  bool install_crash_handler() const {
-    return install_crash_handler_;
-  }
-
-  void set_install_crash_handler(bool x) {
-    install_crash_handler_ = x;
-  }
-
-  // mod_pagespeed uses a beacon handler to collect data for critical images,
-  // css, etc., so filters should be configured accordingly.
-  virtual bool UseBeaconResultsInFilters() const {
-    return true;
   }
 
   // Notification of apache tearing down a context (vhost or top-level)
@@ -143,8 +102,8 @@ class ApacheRewriteDriverFactory : public SystemRewriteDriverFactory {
     SystemRewriteDriverFactory::set_message_buffer_size(x);
   }
 
-  // Override requests_per_host to take num_rewrite_threads_ into account.
-  virtual int requests_per_host();
+  virtual bool IsServerThreaded();
+  virtual int LookupThreadLimit();
 
  protected:
   // Provide defaults.
@@ -152,8 +111,6 @@ class ApacheRewriteDriverFactory : public SystemRewriteDriverFactory {
   virtual MessageHandler* DefaultMessageHandler();
   virtual Timer* DefaultTimer();
   virtual void SetupCaches(ServerContext* server_context);
-  virtual QueuedWorkerPool* CreateWorkerPool(WorkerPoolCategory pool,
-                                             StringPiece name);
 
   // Disable the Resource Manager's filesystem since we have a
   // write-through http_cache.
@@ -169,10 +126,9 @@ class ApacheRewriteDriverFactory : public SystemRewriteDriverFactory {
 
   virtual ServerContext* NewDecodingServerContext();
 
+  virtual void AutoDetectThreadCounts();
+
  private:
-  // Updates num_rewrite_threads_ and num_expensive_rewrite_threads_
-  // with sensible values if they are not explicitly set.
-  void AutoDetectThreadCounts();
 
   apr_pool_t* pool_;
   server_rec* server_rec_;
@@ -196,27 +152,10 @@ class ApacheRewriteDriverFactory : public SystemRewriteDriverFactory {
   // writes to the same shared memory which is owned by the factory.
   ApacheMessageHandler* apache_html_parse_message_handler_;
 
-  // If true, we'll have a separate statistics object for each vhost
-  // (along with a global aggregate), rather than just a single object
-  // aggregating all of them.
-  bool use_per_vhost_statistics_;
-
-  // Enable the property cache.
-  bool enable_property_cache_;
-
   // Inherit configuration from global context into vhosts.
   bool inherit_vhost_config_;
 
-  // If true, we'll install a signal handler that prints backtraces.
-  bool install_crash_handler_;
-
-  // true iff we ran through AutoDetectThreadCounts()
-  bool thread_counts_finalized_;
-
-  // These are <= 0 if we should autodetect.
-  int num_rewrite_threads_;
-  int num_expensive_rewrite_threads_;
-
+  // This is <= 0 if we should auto-detect.  See num_rewrite_threads_.
   int max_mod_spdy_fetch_threads_;
 
   // Helps coordinate direct-to-mod_spdy fetches.
