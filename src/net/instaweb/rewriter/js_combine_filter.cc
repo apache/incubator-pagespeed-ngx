@@ -51,10 +51,13 @@
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/writer.h"
 #include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/stl_util.h"
+#include "pagespeed/kernel/js/js_keywords.h"
+#include "pagespeed/kernel/js/js_tokenizer.h"
+
+using pagespeed::JsKeywords;
 
 namespace net_instaweb {
 
@@ -98,10 +101,8 @@ class JsCombineFilter::JsCombiner : public ResourceCombiner {
 
     // In strict mode of ES262-5 eval runs in a private variable scope,
     // (see 10.4.2 step 3 and 10.4.2.1), so our transformation is not safe.
-    // Strict mode is identified by 'use strict' or "use strict" string literals
-    // (escape-free) in some contexts. As a conservative approximation, we just
-    // look for the text
-    if (resource->contents().find("use strict") != StringPiece::npos) {
+    if (IsLikelyStrictMode(filter_->server_context()->js_tokenizer_patterns(),
+                           resource->contents())) {
       *failure_reason = "Combining strict mode files unsupported";
       return false;
     }
@@ -512,6 +513,43 @@ JsCombineFilter::~JsCombineFilter() {
 
 void JsCombineFilter::InitStats(Statistics* statistics) {
   statistics->AddVariable(kJsFileCountReduction);
+}
+
+bool JsCombineFilter::IsLikelyStrictMode(
+    const pagespeed::js::JsTokenizerPatterns* jstp, StringPiece input) {
+  pagespeed::js::JsTokenizer tokenizer(jstp, input);
+
+  // The prolog is spec'd as a sequence of expression statements
+  // consisting only of string literals at beginning of a scope.
+  // If one of them is 'use strict' then it indicates strict mode.
+  // Rather than worry about finer points of the grammar we basically
+  // accept any mixture of strings, semicolons and whitespace.
+  while (true) {
+    StringPiece token_text;
+    JsKeywords::Type token_type = tokenizer.NextToken(&token_text);
+    switch (token_type) {
+      case JsKeywords::kComment:
+      case JsKeywords::kWhitespace:
+      case JsKeywords::kLineSeparator:
+      case JsKeywords::kSemiInsert:
+        // All of these can occur in prologue sections (but not quite that
+        // freely).
+        break;
+      case JsKeywords::kOperator:
+        // ; may also be OK, but other stuff isn't.
+        if (token_text != ";") {
+          return false;
+        }
+        break;
+      case JsKeywords::kStringLiteral:
+        if (token_text == "'use strict'" || token_text == "\"use strict\"") {
+          return true;
+        }
+        break;
+      default:
+        return false;
+    }
+  }
 }
 
 void JsCombineFilter::StartDocumentImpl() {

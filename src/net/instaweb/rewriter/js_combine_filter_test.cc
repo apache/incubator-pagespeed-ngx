@@ -46,7 +46,6 @@
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/worker_test_base.h"
 #include "pagespeed/kernel/thread/queued_worker_pool.h"
 
@@ -60,6 +59,8 @@ const char kJsUrl3[] = "c.js";
 const char kJsUrl4[] = "d.js";
 const char kStrictUrl1[] = "strict1.js";
 const char kStrictUrl2[] = "strict2.js";
+const char kPseudoStrictUrl1[] = "pseudo_strict1.js";
+const char kPseudoStrictUrl2[] = "pseudo_strict2.js";
 const char kIntrospectiveUrl1[] = "introspective1.js";
 const char kIntrospectiveUrl2[] = "introspective2.js";
 const char kJsText1[] = "// script1\nvar a=\"hello\\nsecond line\"";
@@ -70,6 +71,8 @@ const char kJsText3[] = "var x = 42;\nvar y = 31459;\n";
 const char kJsText4[] = "var m = 'abcd';\n";
 const char kStrictText1[] = "'use strict'; var x = 32;";
 const char kStrictText2[] = "\"use strict\"; var x = 42;";
+const char kPseudoStrictText1[] = "function(){'use strict'; var x = 32;}";
+const char kPseudoStrictText2[] = "function(){\"use strict\"; var x = 42;}";
 const char kIntrospectiveText1[] = "var x = 7; $('script') ; var y = 42;";
 const char kIntrospectiveText2[] = "document.getElementsByTagName('script');";
 const char kEscapedJs1[] =
@@ -149,6 +152,8 @@ class JsCombineFilterTest : public RewriteTestBase {
     SimulateJsResource(kJsUrl4, kJsText4);
     SimulateJsResource(kStrictUrl1, kStrictText1);
     SimulateJsResource(kStrictUrl2, kStrictText2);
+    SimulateJsResource(kPseudoStrictUrl1, kPseudoStrictText1);
+    SimulateJsResource(kPseudoStrictUrl2, kPseudoStrictText2);
     SimulateJsResource(kIntrospectiveUrl1, kIntrospectiveText1);
     SimulateJsResource(kIntrospectiveUrl2, kIntrospectiveText2);
 
@@ -552,6 +557,22 @@ TEST_F(JsFilterAndCombineProxyTest, MinifyCombineAcrossHostsProxy) {
   EXPECT_EQ(Encode(kAlternateDomain, "jm", "Y1kknPfzVs", kJsUrl2, "js"),
             scripts[1].url);
   ServeResourceFromManyContexts(scripts[1].url, kMinifiedJs2);
+}
+
+TEST_F(JsCombineFilterTest, NotReallyStrict) {
+  // https://code.google.com/p/modpagespeed/issues/detail?id=909
+  GoogleString simple_rel_url =
+      Encode("", "jc", "DuUKa0RTAg",
+             MultiUrl(kPseudoStrictUrl1, kPseudoStrictUrl2), "js");
+  const char kVar1[] = "mod_pagespeed_s8uoLecjQN";
+  const char kVar2[] = "mod_pagespeed_oHli2SAs3Q";
+
+  ValidateExpected("not_strict",
+                   StrCat("<script src=", kPseudoStrictUrl1, "></script>",
+                          "<script src=", kPseudoStrictUrl2, "></script>"),
+                   StrCat("<script src=\"", simple_rel_url, "\"></script>",
+                          "<script>eval(", kVar1, ");</script>",
+                          "<script>eval(", kVar2, ");</script>"));
 }
 
 // Various things that prevent combining
@@ -1186,6 +1207,40 @@ TEST_F(JsCombineFilterTest, LoadShedPartition) {
   StringPiece combine_url(scripts[0].url);
   EXPECT_TRUE(combine_url.starts_with("a.js+b.js.pagespeed.jc"))
       << combine_url;
+}
+
+TEST_F(JsCombineFilterTest, IsLikelyStrictMode) {
+  EXPECT_TRUE(
+      JsCombineFilter::IsLikelyStrictMode(
+          server_context()->js_tokenizer_patterns(),
+          "'some string';\n      \"use strict\""));
+
+  EXPECT_TRUE(
+      JsCombineFilter::IsLikelyStrictMode(
+          server_context()->js_tokenizer_patterns(),
+          "'use strict'; function x() {}"));
+
+  EXPECT_FALSE(
+      JsCombineFilter::IsLikelyStrictMode(
+          server_context()->js_tokenizer_patterns(),
+          "// 'use strict';"));
+
+  EXPECT_TRUE(
+      JsCombineFilter::IsLikelyStrictMode(
+          server_context()->js_tokenizer_patterns(),
+          "// Comment \n'use strict';"));
+
+  // Function is strict, but whole script is not.
+  EXPECT_FALSE(
+      JsCombineFilter::IsLikelyStrictMode(
+          server_context()->js_tokenizer_patterns(),
+          "function x() {'use strict'; }"));
+
+  // Shouldn't permit just random operators.
+  EXPECT_FALSE(
+      JsCombineFilter::IsLikelyStrictMode(
+          server_context()->js_tokenizer_patterns(),
+          "+ * ! 'use strict';"));
 }
 
 }  // namespace net_instaweb

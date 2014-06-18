@@ -31,6 +31,9 @@
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/url_multipart_encoder.h"
+#include "pagespeed/kernel/base/string_util.h"
+
+namespace pagespeed { namespace js { struct JsTokenizerPatterns; } }
 
 namespace net_instaweb {
 
@@ -75,6 +78,12 @@ class JsCombineFilter : public RewriteFilter {
   virtual const char* id() const {
     return RewriteOptions::kJavascriptCombinerId;
   }
+
+  // Returns true if given JavaScript is likely to be in strict mode.
+  // This is somewhat conservative towards saying yes, as it doesn't
+  // take finer points of ; grammar into account.
+  static bool IsLikelyStrictMode(const pagespeed::js::JsTokenizerPatterns* jstp,
+                                 StringPiece input);
 
  protected:
   // RewriteFilter overrides --- HTML parsing event handlers.
