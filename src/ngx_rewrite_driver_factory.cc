@@ -71,11 +71,9 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(
         NULL /* default shared memory runtime */, hostname, port),
       main_conf_(NULL),
       threads_started_(false),
-      use_per_vhost_statistics_(false),
       ngx_message_handler_(new NgxMessageHandler(thread_system()->NewMutex())),
       ngx_html_parse_message_handler_(
           new NgxMessageHandler(thread_system()->NewMutex())),
-      install_crash_handler_(false),
       log_(NULL),
       resolver_timeout_(NGX_CONF_UNSET_MSEC),
       use_native_fetcher_(false),
@@ -208,7 +206,7 @@ void NgxRewriteDriverFactory::StartThreads() {
 
 void NgxRewriteDriverFactory::LoggingInit(ngx_log_t* log) {
   net_instaweb::log_message_handler::Install(log);
-  if (install_crash_handler_) {
+  if (install_crash_handler()) {
     NgxMessageHandler::InstallCrashHandler(log);
   }
   ngx_message_handler_->set_log(log);

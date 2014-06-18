@@ -36,6 +36,8 @@ http {
 
   pagespeed StaticAssetPrefix /pagespeed_custom_static/;
 
+  pagespeed MessageBufferSize 200000;
+
   root "@@SERVER_ROOT@@";
 
   # Block 5a: Decide on Cache-Control header value to use for outgoing
@@ -1013,7 +1015,6 @@ http {
     #pagespeed MemcachedThreads 1;
 
     pagespeed on;
-    pagespeed MessageBufferSize 200000;
 
     #pagespeed CacheFlushPollIntervalSec 1;
 
