@@ -92,7 +92,6 @@ class CssFlattenImportsTest : public CssRewriteTestBase {
   virtual void SetUpFilters() {
     options()->EnableFilter(RewriteOptions::kFlattenCssImports);
     options()->EnableFilter(RewriteOptions::kExtendCacheImages);
-    options()->DisableFilter(RewriteOptions::kDebug);
     options()->set_always_rewrite_css(true);
     rewrite_driver()->AddFilters();
   }
@@ -118,19 +117,6 @@ class CssFlattenImportsTest : public CssRewriteTestBase {
     RewriteTestBase::SetUp();
     SetUpFilters();
     SetUpResponses();
-    debug_message_.clear();
-  }
-
-  void TurnOnDebug(const GoogleString& failure_reason) {
-    // Turn on debug to get the flattening failure reason in an HTML comment.
-    options()->ClearSignatureForTesting();
-    options()->ForceEnableFilter(RewriteOptions::kDebug);
-    server_context()->ComputeSignature(options());
-    debug_message_ = failure_reason;
-  }
-
-  virtual GoogleString CssDebugMessage(int flags) const {
-    return (FlagSet(flags, kOutputHtml) ? debug_message_ : "");
   }
 
   // General routine to test flattening of nested resources referenced with
@@ -336,7 +322,6 @@ class CssFlattenImportsTest : public CssRewriteTestBase {
                  const GoogleString& css_out) {
     options()->ClearSignatureForTesting();
     options()->set_css_flatten_max_bytes(flattening_limit);
-    options()->ForceEnableFilter(RewriteOptions::kDebug);
     server_context()->ComputeSignature(options());
 
     SetResponseWithDefaultHeaders(kSimpleCssFile, kContentTypeCss,
@@ -345,10 +330,13 @@ class CssFlattenImportsTest : public CssRewriteTestBase {
     ValidationFlags extra_flag = kNoFlags;
     if (limit_exceeded) {
       extra_flag = kFlattenImportsLimitExceeded;
-      debug_message_ = StringPrintf("<!--Flattening failed: "
-                                    "Flattening limit (%d) exceeded (%d)-->",
-                                    flattening_limit, actual_amount);
+      TurnOnDebug(StringPrintf("<!--Flattening failed: "
+                               "Flattening limit (%d) exceeded (%d)-->",
+                               flattening_limit, actual_amount));
+    } else {
+      TurnOnDebug("");
     }
+
     ValidateRewriteExternalCss(test_id, css_in, css_out,
                                kExpectSuccess | kNoClearFetcher | extra_flag);
     // We do not specify kNoClearFetcher, so the fetcher is cleared. Thus,
@@ -399,7 +387,6 @@ class CssFlattenImportsTest : public CssRewriteTestBase {
   GoogleString kTopCssContents;
   GoogleString kFlattenedTopCssContents;
   GoogleString kFlattenedOneLevelDownContents1;
-  GoogleString debug_message_;
 };
 
 TEST_F(CssFlattenImportsTest, FlattenInlineCss) {
@@ -488,15 +475,13 @@ TEST_F(CssFlattenImportsTest, DontFlattenWithUnauthorizedCSS) {
 
 TEST_F(CssFlattenImportsTest, FlattenInvalidCSS) {
   // Turn on debug to get the flattening failure reason in an HTML comment.
-  const char kFailureReason[] = "<!--Flattening failed: Cannot parse the CSS "
-                                "in http://test.com/error.css-->";
-  TurnOnDebug(kFailureReason);
-
+  TurnOnDebug("<!--CSS rewrite failed: Parse error in %url%-->");
   const char kInvalidMediaCss[] = "@media }}";
   ValidateRewriteExternalCss("flatten_invalid_css_media",
                              kInvalidMediaCss, kInvalidMediaCss,
                              kExpectFailure);
 
+  TurnOnDebug("<!--CSS rewrite failed: Parse error in %url%-->");
   const char kInvalidImportCss[] = "@import styles.css; a { color:red }";
   ValidateRewriteExternalCss("flatten_invalid_css_import",
                              kInvalidImportCss, kInvalidImportCss,
@@ -511,7 +496,7 @@ TEST_F(CssFlattenImportsTest, FlattenInvalidCSS) {
 
   GoogleString kFlattenedInvalidCss = StrCat(kSimpleCss, "a{#color: 333 }");
 
-  debug_message_.clear();
+  TurnOnDebug("");
   ValidateRewriteExternalCss("flatten_unparseable_css_rule",
                              kUnparseableCss, kFlattenedInvalidCss,
                              kExpectSuccess | kNoClearFetcher);
@@ -522,6 +507,7 @@ TEST_F(CssFlattenImportsTest, FlattenInvalidCSS) {
   // Note: This specific case is probably technically safe to flatten
   // because the broken CSS is at the end, but we choose not to dance
   // on that knife edge and just disallow flattening.
+  TurnOnDebug("<!--CSS rewrite failed: Parse error in %url%-->");
   const char kErrorCss[] = "@import url(styles.css) ;a{{ color:red }";
   ValidateRewriteExternalCss("no_flatten_error_css_rule",
                              kErrorCss, kErrorCss,
@@ -536,7 +522,10 @@ TEST_F(CssFlattenImportsTest, FlattenInvalidCSS) {
   const char kRewrittenImportErrorCss[] =
       "@import url(error.css) ;body{color:#000}";
   // Note: Rewrite succeeds, but flatten fails.
-  debug_message_ = kFailureReason;
+  // TODO(jmaessen): Should contain parse error for nested file as well,
+  // once nested rewrites propagate correctly.
+  TurnOnDebug("<!--Flattening failed: Cannot parse the CSS "
+              "in http://test.com/error.css-->");
   ValidateRewriteExternalCss("no_flatten_error_in_import",
                              kImportErrorCss, kRewrittenImportErrorCss,
                              kExpectSuccess | kFlattenImportsMinifyFailed |

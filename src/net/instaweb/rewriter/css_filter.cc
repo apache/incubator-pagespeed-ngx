@@ -324,12 +324,11 @@ void CssFilter::Context::Render() {
           id(), slot(0)->resource()->url(), RewriterApplication::APPLIED_OK);
     }
 
-    // If +debug is enabled and we have any debug messages, insert a comment
-    // for each one, iff the original element hasn't been flushed yet.
-    Driver()->InsertDebugComment(result.debug_message(), rewrite_element_);
-
     filter_->num_uses_->Add(1);
   }
+
+  // Insert any debug messages if +debug is enabled.
+  Driver()->InsertDebugComment(result.debug_message(), rewrite_element_);
 }
 
 void CssFilter::Context::SetupInlineRewrite(HtmlElement* style_element,
@@ -449,6 +448,13 @@ bool CssFilter::Context::RewriteCssText(const GoogleUrl& css_base_gurl,
       Driver()->server_context()->usage_data_reporter()->ReportWarning(
           css_base_gurl, error.error_num, error.message);
     }
+
+    // TODO(sligocki): Do we want to add the actual parse errors to this
+    // comment? There are often a lot and they can be quite long, so I'm not
+    // sure it's the best idea. Perhaps better to ask users to use the command
+    // line utility? Or is it better to give them all the info in one place?
+    output_partition(0)->add_debug_message(StrCat(
+        "CSS rewrite failed: Parse error in ", css_base_gurl.Spec()));
   } else {
     // Edit stylesheet.
     // Any problem with an @import results in the error mask bit kImportError
@@ -578,6 +584,11 @@ void CssFilter::Context::Harvest() {
       filter_->num_fallback_rewrites_->Add(1);
     } else {
       filter_->num_fallback_failures_->Add(1);
+      GoogleUrl css_base_gurl;
+      GetCssBaseUrlToUse(input_resource_, &css_base_gurl);
+      output_partition(0)->add_debug_message(StrCat(
+          "CSS rewrite failed: Fallback transformer error in ",
+          css_base_gurl.Spec()));
     }
 
   } else {
@@ -711,6 +722,8 @@ bool CssFilter::Context::SerializeCss(int64 in_text_size,
                       "bytes.", css_base_gurl.spec_c_str(),
                       Integer64ToString(-bytes_saved).c_str());
       filter_->num_rewrites_dropped_->Add(1);
+      output_partition(0)->add_debug_message(StrCat(
+          "CSS rewrite failed: Cannot improve ", css_base_gurl.Spec()));
     }
   }
 

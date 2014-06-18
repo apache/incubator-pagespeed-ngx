@@ -60,7 +60,7 @@ class CssEmbeddedConfigTest : public CssRewriteTestBase {
     SetResponseWithDefaultHeaders("foo.png", kContentTypePng, kDummyContent,
                                   100);
     css_url_ = StrCat(kTestDomain, kEmbedCss);
-    html_input_ = MakeHtmlWithExternalCssLink(css_url_, 0);
+    html_input_ = MakeHtmlWithExternalCssLink(css_url_, 0, false);
   }
 
   // Rewrites an image in a CSS file and returns the resulting CSS filename.

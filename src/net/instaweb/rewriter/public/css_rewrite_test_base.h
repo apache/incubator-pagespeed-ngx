@@ -167,8 +167,8 @@ class CssRewriteTestBase : public RewriteTestBase {
                                      int flags);
 
   // Makes an HTML document with an external CSS link.
-  GoogleString MakeHtmlWithExternalCssLink(StringPiece css_url,
-                                           int flags);
+  GoogleString MakeHtmlWithExternalCssLink(StringPiece css_url, int flags,
+                                           bool insert_debug_message);
 
   // Makes a CSS body with an external image link, with nice indentation.
   GoogleString MakeIndentedCssWithImage(StringPiece image_url);
@@ -179,10 +179,16 @@ class CssRewriteTestBase : public RewriteTestBase {
   // Extract the background image from the css text
   GoogleString ExtractCssBackgroundImage(StringPiece in_css);
 
-  // Return any debug message to be inserted into the expected output CSS.
-  virtual GoogleString CssDebugMessage(int flags) const {
-    return "";
+  void TurnOnDebug(StringPiece expected_debug_message) {
+    options()->ClearSignatureForTesting();
+    options()->EnableFilter(RewriteOptions::kDebug);
+    options()->ComputeSignature();
+
+    expected_debug_message.CopyToString(&debug_message_);
   }
+
+  // Return a debug message if available, inserting url if needed.
+  GoogleString CssDebugMessage(StringPiece url);
 
   void ValidateRewrite(StringPiece id,
                        StringPiece css_input,
@@ -226,6 +232,8 @@ class CssRewriteTestBase : public RewriteTestBase {
   Variable* num_flatten_imports_minify_failed_;
   Variable* num_flatten_imports_recursion_;
   Variable* num_flatten_imports_complex_queries_;
+
+  GoogleString debug_message_;
 };
 
 }  // namespace net_instaweb

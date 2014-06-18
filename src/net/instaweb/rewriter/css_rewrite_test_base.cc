@@ -37,6 +37,12 @@ namespace net_instaweb {
 
 CssRewriteTestBase::~CssRewriteTestBase() {}
 
+GoogleString CssRewriteTestBase::CssDebugMessage(StringPiece url) {
+  GoogleString result(debug_message_);
+  GlobalReplaceSubstring("%url%", url, &result);
+  return result;
+}
+
 // Check that inline CSS gets rewritten correctly.
 bool CssRewriteTestBase::ValidateRewriteInlineCss(
     StringPiece id, StringPiece css_input, StringPiece expected_css_output,
@@ -52,11 +58,12 @@ bool CssRewriteTestBase::ValidateRewriteInlineCss(
       "  <!-- Style ends here -->\n"
       "</head>";
 
+  GoogleString html_url = StrCat(kTestDomain, id, ".html");
+
   CheckFlags(flags);
   GoogleString html_input  = StrCat(prefix, css_input, suffix1, suffix2);
   GoogleString html_output = StrCat(prefix, expected_css_output, suffix1,
-                                    CssDebugMessage(flags | kOutputHtml),
-                                    suffix2);
+                                    CssDebugMessage(html_url), suffix2);
 
   return ValidateWithStats(id, html_input, html_output,
                            css_input, expected_css_output, flags);
@@ -184,7 +191,7 @@ GoogleString CssRewriteTestBase::ExpectedUrlForCss(
 }
 
 GoogleString CssRewriteTestBase::MakeHtmlWithExternalCssLink(
-    StringPiece css_url, int flags) {
+    StringPiece css_url, int flags, bool insert_debug_message) {
   GoogleString link_extras("");
   if (FlagSet(flags, kLinkCharsetIsUTF8)) {
     link_extras = " charset='utf-8'";
@@ -215,19 +222,25 @@ GoogleString CssRewriteTestBase::MakeHtmlWithExternalCssLink(
               "content=text/html; charset=ISO-8859-1>");
   }
 
-  static const char html_template[] =
-      "<head>\n"
-      "  <title>Example style outline</title>\n"
-      "%s"
-      "  <!-- Style starts here -->\n"
-      "  <link rel='stylesheet' type='text/css' href='%s'%s>"
-      "%s\n"
-      "  <!-- Style ends here -->\n"
-      "</head>";
+  // This helper method is used to produce both input and expected_output HTML.
+  // For input HTML we do not want to insert a debug message.
+  // For expected_output HTML we do.
+  GoogleString debug_message;
+  if (insert_debug_message) {
+    debug_message = CssDebugMessage(css_url);
+  }
 
-  return StringPrintf(html_template, meta_tag.c_str(),
-                      css_url.as_string().c_str(),
-                      link_extras.c_str(), CssDebugMessage(flags).c_str());
+  return StringPrintf("<head>\n"
+                      "  <title>Example style outline</title>\n"
+                      "%s"
+                      "  <!-- Style starts here -->\n"
+                      "  <link rel='stylesheet' type='text/css' href='%.*s'%s>"
+                      "%s\n"
+                      "  <!-- Style ends here -->\n"
+                      "</head>",
+                      meta_tag.c_str(),
+                      static_cast<int>(css_url.size()), css_url.data(),
+                      link_extras.c_str(), debug_message.c_str());
 }
 
 GoogleString CssRewriteTestBase::MakeIndentedCssWithImage(
@@ -272,25 +285,30 @@ void CssRewriteTestBase::ValidateRewriteExternalCssUrl(
     ClearFetcherResponses();
   }
   SetResponseWithDefaultHeaders(css_url, kContentTypeCss, css_input, 300);
-  GoogleString html_input = MakeHtmlWithExternalCssLink(css_url,
-                                                        flags | kInputHtml);
-  GoogleString html_output;
+  GoogleString html_input = MakeHtmlWithExternalCssLink(css_url, flags, false);
 
-  ResourceNamer namer;
-  GoogleUrl css_gurl(css_url);
-  GetNamerForCss(css_gurl.LeafWithQuery(), expected_css_output, &namer);
-  GoogleString expected_new_url =
-      Encode(css_gurl.AllExceptLeaf(), namer.id(), namer.hash(),
-             namer.name(), namer.ext());
+  // Do we expect the URL to be rewritten?
+  bool rewrite_url = (FlagSet(flags, kExpectSuccess) ||
+                      FlagSet(flags, kExpectCached) ||
+                      FlagSet(flags, kExpectFallback));
 
-  if (FlagSet(flags, kExpectSuccess) ||
-      FlagSet(flags, kExpectCached) ||
-      FlagSet(flags, kExpectFallback)) {
-    html_output = MakeHtmlWithExternalCssLink(expected_new_url,
-                                              flags | kOutputHtml);
-    ValidateWithStats(id, html_input, html_output,
-                      css_input, expected_css_output, flags);
+  GoogleString expected_new_url;
+  if (rewrite_url) {
+    ResourceNamer namer;
+    GoogleUrl css_gurl(css_url);
+    GetNamerForCss(css_gurl.LeafWithQuery(), expected_css_output, &namer);
+    expected_new_url = Encode(css_gurl.AllExceptLeaf(), namer.id(),
+                              namer.hash(), namer.name(), namer.ext());
+  } else {
+    css_url.CopyToString(&expected_new_url);
+  }
 
+  GoogleString expected_html_output =
+      MakeHtmlWithExternalCssLink(expected_new_url, flags, true);
+  ValidateWithStats(id, html_input, expected_html_output,
+                    css_input, expected_css_output, flags);
+
+  if (rewrite_url) {
     // Check the new output resource.
     GoogleString actual_output;
     // TODO(sligocki): This will only work with mock_hasher.
@@ -309,9 +327,6 @@ void CssRewriteTestBase::ValidateRewriteExternalCssUrl(
     if (!FlagSet(flags, kNoOtherContexts)) {
       ServeResourceFromManyContexts(expected_new_url, expected_css_output);
     }
-  } else {
-    ValidateWithStats(id, html_input, html_input,
-                      css_input, expected_css_output, flags);
   }
 }
 
