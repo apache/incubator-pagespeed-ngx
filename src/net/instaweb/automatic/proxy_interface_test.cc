@@ -1257,7 +1257,7 @@ TEST_F(ProxyInterfaceTest, InvalidationForCacheableHtml) {
   // Invalidate the cache.
   scoped_ptr<RewriteOptions> custom_options(
       server_context()->global_options()->Clone());
-  custom_options->set_cache_invalidation_timestamp(timer()->NowMs());
+  custom_options->UpdateCacheInvalidationTimestampMs(timer()->NowMs());
   SetRewriteOptions(custom_options.get());
 
   ClearStats();
@@ -2240,7 +2240,7 @@ TEST_F(ProxyInterfaceTest, ReconstructResourceCustomOptions) {
   custom_options->EnableFilter(RewriteOptions::kExtendCacheImages);
   custom_options->EnableFilter(RewriteOptions::kExtendCacheScripts);
   custom_options->EnableFilter(RewriteOptions::kExtendCachePdfs);
-  custom_options->set_cache_invalidation_timestamp(timer()->NowMs());
+  custom_options->UpdateCacheInvalidationTimestampMs(timer()->NowMs());
   AdvanceTimeUs(Timer::kMsUs);
 
   // Inject the custom options into the flow via a RewriteOptionsManager.

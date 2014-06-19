@@ -531,36 +531,35 @@ TEST_F(RewriteOptionsTest, MergeThresholdOverride) {
 TEST_F(RewriteOptionsTest, MergeCacheInvalidationTimeStampDefault) {
   RewriteOptions one(&thread_system_), two(&thread_system_);
   MergeOptions(one, two);
-  EXPECT_EQ(RewriteOptions::kDefaultCacheInvalidationTimestamp,
-            options_.cache_invalidation_timestamp());
+  EXPECT_FALSE(options_.has_cache_invalidation_timestamp_ms());
 }
 
 TEST_F(RewriteOptionsTest, MergeCacheInvalidationTimeStampOne) {
   RewriteOptions one(&thread_system_), two(&thread_system_);
-  one.set_cache_invalidation_timestamp(11111111);
+  one.UpdateCacheInvalidationTimestampMs(11111111);
   MergeOptions(one, two);
   EXPECT_EQ(11111111, options_.cache_invalidation_timestamp());
 }
 
 TEST_F(RewriteOptionsTest, MergeCacheInvalidationTimeStampTwo) {
   RewriteOptions one(&thread_system_), two(&thread_system_);
-  two.set_cache_invalidation_timestamp(22222222);
+  two.UpdateCacheInvalidationTimestampMs(22222222);
   MergeOptions(one, two);
   EXPECT_EQ(22222222, options_.cache_invalidation_timestamp());
 }
 
 TEST_F(RewriteOptionsTest, MergeCacheInvalidationTimeStampOneLarger) {
   RewriteOptions one(&thread_system_), two(&thread_system_);
-  one.set_cache_invalidation_timestamp(33333333);
-  two.set_cache_invalidation_timestamp(22222222);
+  one.UpdateCacheInvalidationTimestampMs(33333333);
+  two.UpdateCacheInvalidationTimestampMs(22222222);
   MergeOptions(one, two);
   EXPECT_EQ(33333333, options_.cache_invalidation_timestamp());
 }
 
 TEST_F(RewriteOptionsTest, MergeCacheInvalidationTimeStampTwoLarger) {
   RewriteOptions one(&thread_system_), two(&thread_system_);
-  one.set_cache_invalidation_timestamp(11111111);
-  two.set_cache_invalidation_timestamp(22222222);
+  one.UpdateCacheInvalidationTimestampMs(11111111);
+  two.UpdateCacheInvalidationTimestampMs(22222222);
   MergeOptions(one, two);
   EXPECT_EQ(22222222, options_.cache_invalidation_timestamp());
 }
@@ -840,7 +839,6 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
     RewriteOptions::kBeaconUrl,
     RewriteOptions::kBlinkMaxHtmlSizeRewritable,
     RewriteOptions::kCacheFragment,
-    RewriteOptions::kCacheInvalidationTimestamp,
     RewriteOptions::kCacheSmallImagesUnrewritten,
     RewriteOptions::kClientDomainRewrite,
     RewriteOptions::kCombineAcrossPaths,
@@ -1922,20 +1920,20 @@ TEST_F(RewriteOptionsTest, UrlCacheInvalidationTest) {
   options1.AddUrlCacheInvalidationEntry("seven", 70L, false);
   options_.Merge(options1);
   EXPECT_TRUE(options_.IsUrlCacheInvalidationEntriesSorted());
-  EXPECT_FALSE(options_.IsUrlCacheValid("one1", 9L));
-  EXPECT_FALSE(options_.IsUrlCacheValid("one1", 19L));
-  EXPECT_TRUE(options_.IsUrlCacheValid("one1", 21L));
-  EXPECT_FALSE(options_.IsUrlCacheValid("two2", 21L));
-  EXPECT_TRUE(options_.IsUrlCacheValid("two2", 26L));
-  EXPECT_TRUE(options_.IsUrlCacheValid("three3", 31L));
-  EXPECT_FALSE(options_.IsUrlCacheValid("four", 40L));
-  EXPECT_TRUE(options_.IsUrlCacheValid("four", 41L));
-  EXPECT_FALSE(options_.IsUrlCacheValid("five", 51L));
-  EXPECT_TRUE(options_.IsUrlCacheValid("five", 52L));
-  EXPECT_FALSE(options_.IsUrlCacheValid("six", 60L));
-  EXPECT_TRUE(options_.IsUrlCacheValid("six", 61L));
-  EXPECT_FALSE(options_.IsUrlCacheValid("seven", 70L));
-  EXPECT_TRUE(options_.IsUrlCacheValid("seven", 71L));
+  EXPECT_FALSE(options_.IsUrlCacheValid("one1", 9L, true));
+  EXPECT_FALSE(options_.IsUrlCacheValid("one1", 19L, true));
+  EXPECT_TRUE(options_.IsUrlCacheValid("one1", 21L, true));
+  EXPECT_FALSE(options_.IsUrlCacheValid("two2", 21L, true));
+  EXPECT_TRUE(options_.IsUrlCacheValid("two2", 26L, true));
+  EXPECT_TRUE(options_.IsUrlCacheValid("three3", 31L, true));
+  EXPECT_FALSE(options_.IsUrlCacheValid("four", 40L, true));
+  EXPECT_TRUE(options_.IsUrlCacheValid("four", 41L, true));
+  EXPECT_FALSE(options_.IsUrlCacheValid("five", 51L, true));
+  EXPECT_TRUE(options_.IsUrlCacheValid("five", 52L, true));
+  EXPECT_FALSE(options_.IsUrlCacheValid("six", 60L, true));
+  EXPECT_TRUE(options_.IsUrlCacheValid("six", 61L, true));
+  EXPECT_FALSE(options_.IsUrlCacheValid("seven", 70L, true));
+  EXPECT_TRUE(options_.IsUrlCacheValid("seven", 71L, true));
 }
 
 TEST_F(RewriteOptionsTest, UrlCacheInvalidationSignatureTest) {
@@ -2504,7 +2502,6 @@ TEST_F(RewriteOptionsTest, OptionsToString) {
       "is\tSprite Images\n"
       "\n"
       "Options\n"
-      "  CacheInvalidationTimestamp (it)                      1270493486000\n"
       "  InlineOnlyCriticalImages (ioci)                      True\n"
       "  InlineResourcesWithoutExplicitAuthorization (irwea)  Image,Script\n"
       "  InPlaceRewriteDeadlineMs (iprdm)                     200\n"
@@ -2516,7 +2513,8 @@ TEST_F(RewriteOptionsTest, OptionsToString) {
       "  http://from.com/ Auth OriginDomain:http://origin.com/\n"
       "  http://origin.com/ HostHeader:host.com\n"
      "\n"
-      "Invalidation Timestamp: Mon, 05 Apr 2010 18:51:26 GMT\n"),
+      "Invalidation Timestamp: Mon, 05 Apr 2010 18:51:26 GMT "
+      "(1270493486000)\n"),
                options_.OptionsToString());
 }
 

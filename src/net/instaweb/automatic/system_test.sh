@@ -887,7 +887,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   start_test Cookie options on: by default comments not removed, whitespace is
   URL="$(generate_url options-by-cookies-enabled.example.com \
                       /mod_pagespeed_test/forbidden.html)"
-  echo wget $URL
+  echo  http_proxy=$SECONDARY_HOSTNAME wget $URL
   echo http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL
   OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)"
   check_from     "$OUT" grep -q '<!--'
@@ -1084,7 +1084,6 @@ check fgrep "looking for media 'print' but found media=''." $FETCH_FILE
 check fgrep "Could not combine over barrier: noscript" $FETCH_FILE
 check fgrep "Could not combine over barrier: inline style" $FETCH_FILE
 check fgrep "Could not combine over barrier: IE directive" $FETCH_FILE
-
 
 # Cleanup
 rm -rf $OUTDIR

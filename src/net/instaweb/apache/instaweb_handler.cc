@@ -952,6 +952,15 @@ apr_status_t InstawebHandler::instaweb_handler(request_rec* request) {
                               instaweb_handler.options(),
                               instaweb_handler.MakeFetch());
     ret = OK;
+  } else if (global_config->enable_cache_purge() &&
+             !global_config->purge_method().empty() &&
+             (global_config->purge_method() == request->method)) {
+    InstawebHandler instaweb_handler(request);
+    AdminSite* admin_site = server_context->admin_site();
+    admin_site->PurgeHandler(instaweb_handler.original_url_,
+                             server_context->cache_path(),
+                             instaweb_handler.MakeFetch());
+    ret = OK;
   } else if (request_handler_str == kTempStatisticsGraphsHandler) {
     // TODO(sligocki): Merge this into kConsoleHandler.
     GoogleString output;

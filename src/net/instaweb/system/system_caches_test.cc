@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "base/logging.h"
+#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
@@ -34,6 +35,7 @@
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
+#include "net/instaweb/system/public/admin_site.h"
 #include "net/instaweb/system/public/apr_mem_cache.h"
 #include "net/instaweb/system/public/system_rewrite_options.h"
 #include "net/instaweb/system/public/system_cache_path.h"
@@ -60,12 +62,12 @@
 #include "net/instaweb/util/public/shared_mem_lock_manager.h"
 #include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/stl_util.h"
-#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/threadsafe_cache.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/write_through_cache.h"
 #include "net/instaweb/util/worker_test_base.h"
+#include "pagespeed/kernel/base/mem_file_system.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/cache/compressed_cache.h"
@@ -78,6 +80,8 @@ namespace {
 const char kCachePath[] = "/mem/path/";
 const char kAltCachePath[] = "/mem/path_alt/";
 const char kAltCachePath2[] = "/mem/path_alt2/";
+const char kUrl1[] = "http://example.com/a.css";
+const char kUrl2[] = "http://example.com/b.css";
 
 class SystemServerContextNoProxyHtml : public SystemServerContext {
  public:
@@ -92,6 +96,12 @@ class SystemServerContextNoProxyHtml : public SystemServerContext {
 };
 
 class SystemCachesTest : public CustomRewriteTestBase<SystemRewriteOptions> {
+ public:
+  void PurgeDone(bool success) {
+    purge_done_ = true;
+    purge_success_ = success;
+  }
+
  protected:
   static const int kThreadLimit = 3;
   static const int kUsableMetadataCacheSize = 8 * 1024;
@@ -166,11 +176,14 @@ class SystemCachesTest : public CustomRewriteTestBase<SystemRewriteOptions> {
 
   SystemCachesTest()
       : thread_system_(Platform::CreateThreadSystem()),
-        options_(new SystemRewriteOptions(thread_system_.get())) {
+        options_(new SystemRewriteOptions(thread_system_.get())),
+        purge_done_(false),
+        purge_success_(false) {
     shared_mem_.reset(new InProcessSharedMem(thread_system_.get()));
     factory_->set_hasher(new MD5Hasher());
     Statistics* stats = factory()->statistics();
     SystemCaches::InitStats(stats);
+    SystemServerContext::InitStats(stats);
     CacheStats::InitStats(
         PropertyCache::GetStatsPrefix(RewriteDriver::kBeaconCohort),
         stats);
@@ -199,11 +212,12 @@ class SystemCachesTest : public CustomRewriteTestBase<SystemRewriteOptions> {
   }
 
   // Takes ownership of config.
-  ServerContext* SetupServerContext(SystemRewriteOptions* config) {
-    scoped_ptr<ServerContext> server_context(
+  SystemServerContext* SetupServerContext(SystemRewriteOptions* config) {
+    scoped_ptr<SystemServerContext> server_context(
         new SystemServerContextNoProxyHtml(factory()));
     server_context->reset_global_options(config);
     server_context->set_statistics(factory()->statistics());
+    server_context->set_timer(factory()->timer());
     system_caches_->SetupCaches(server_context.get(),
                                 true /* enable_property_cache */);
 
@@ -388,10 +402,43 @@ class SystemCachesTest : public CustomRewriteTestBase<SystemRewriteOptions> {
     return CompressedCache::FormatName(cache);
   }
 
+  SystemServerContext* PopulateCacheForPurgeTest() {
+    options_->set_file_cache_path(kCachePath);
+    SystemRewriteOptions* options = options_.get();
+    PrepareWithConfig(options);
+    system_server_context_.reset(SetupServerContext(options_.release()));
+    HTTPCache* http_cache = system_server_context_->http_cache();
+    MessageHandler* handler = message_handler();
+    system_server_context_->set_message_handler(handler);
+    ResponseHeaders headers;
+    SetDefaultLongCacheHeaders(&kContentTypeText, &headers);
+    headers.ComputeCaching();
+    RequestHeaders::Properties req_properties;
+    http_cache->Put(kUrl1, rewrite_driver_->CacheFragment(), req_properties,
+                    ResponseHeaders::kRespectVaryOnResources,
+                    &headers, "a value", handler);
+    http_cache->Put(kUrl2, rewrite_driver_->CacheFragment(), req_properties,
+                    ResponseHeaders::kRespectVaryOnResources,
+                    &headers, "b value", handler);
+    AdvanceTimeMs(1000);
+    HTTPValue value;
+
+    // As expected, both kUrl1 and kUrl2 are valid after Put.
+    EXPECT_EQ(HTTPCache::kFound, HttpBlockingFindWithOptions(
+        options, kUrl1, http_cache, &value, &headers));
+    EXPECT_EQ(HTTPCache::kFound, HttpBlockingFindWithOptions(
+        options, kUrl2, http_cache, &value, &headers));
+    AdvanceTimeMs(1000);
+    return system_server_context_.get();
+  }
+
   scoped_ptr<ThreadSystem> thread_system_;
   scoped_ptr<AbstractSharedMem> shared_mem_;
   scoped_ptr<SystemCaches> system_caches_;
   scoped_ptr<SystemRewriteOptions> options_;
+  scoped_ptr<SystemServerContext> system_server_context_;
+  bool purge_done_;
+  bool purge_success_;
 
  private:
   GoogleString server_spec_;  // Set lazily by MemCachedServerSpec()
@@ -1007,6 +1054,64 @@ TEST_F(SystemCachesTest, FileCacheNoConflictOnDefaults) {
   EXPECT_EQ(20, policy->target_inode_count);
   EXPECT_EQ(1000, policy->clean_interval_ms);
   EXPECT_EQ(0, message_handler()->MessagesOfType(kWarning));
+}
+
+TEST_F(SystemCachesTest, PurgeUrl) {
+  options_->set_enable_cache_purge(true);
+  SystemServerContext* server_context = PopulateCacheForPurgeTest();
+  server_context->PostInitHook();
+  SystemRewriteOptions* options =
+      server_context->global_system_rewrite_options();
+  RequestContextPtr request_context(
+      RequestContext::NewTestRequestContext(thread_system_.get()));
+  StringAsyncFetch fetch(request_context);
+
+  // Invalidate kUrl1 but leave kUrl2 intact.
+  AdminSite* admin_site = server_context->admin_site();
+  admin_site->PurgeHandler(kUrl1, server_context->cache_path(), &fetch);
+  ASSERT_TRUE(fetch.done());
+  ASSERT_TRUE(fetch.success());
+  server_context->FlushCacheIfNecessary();
+
+  // Make sure we can no longer fetch kUrl1, but we can still fetch kUrl2.
+  ResponseHeaders headers;
+  HTTPValue value;
+  EXPECT_EQ(HTTPCache::kNotFound, HttpBlockingFindWithOptions(
+      options, kUrl1, server_context->http_cache(), &value, &headers));
+  EXPECT_EQ(HTTPCache::kFound, HttpBlockingFindWithOptions(
+      options, kUrl2, server_context->http_cache(), &value, &headers));
+
+  // Now set the global invalidation timestamp, and kUrl2 will now be invalid
+  // as well.
+  AdvanceTimeMs(1);
+  fetch.Reset();
+  admin_site->PurgeHandler("http://example.com/*", server_context->cache_path(),
+                           &fetch);
+  server_context->FlushCacheIfNecessary();
+  AdvanceTimeMs(1);
+  EXPECT_EQ(HTTPCache::kNotFound, HttpBlockingFindWithOptions(
+      options, kUrl2, server_context->http_cache(), &value, &headers));
+}
+
+TEST_F(SystemCachesTest, InvalidateWithPurgeDisabled) {
+  options_->set_enable_cache_purge(false);
+  SystemServerContext* server_context = PopulateCacheForPurgeTest();
+  SystemRewriteOptions* options =
+      server_context->global_system_rewrite_options();
+
+  // touch cache.flush
+  file_system()->WriteFile(StrCat(kCachePath, "/cache.flush").c_str(),
+                           "", message_handler());
+  AdvanceTimeMs(1000);
+  server_context->FlushCacheIfNecessary();
+
+  // Make sure both kUrl1 and kUrl2 are invalidated from touching the file.
+  ResponseHeaders headers;
+  HTTPValue value;
+  EXPECT_EQ(HTTPCache::kNotFound, HttpBlockingFindWithOptions(
+      options, kUrl1, server_context->http_cache(), &value, &headers));
+  EXPECT_EQ(HTTPCache::kNotFound, HttpBlockingFindWithOptions(
+      options, kUrl2, server_context->http_cache(), &value, &headers));
 }
 
 // Tests for how we fallback when SHM setup ops fail.

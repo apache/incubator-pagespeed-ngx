@@ -19,6 +19,7 @@
 #define NET_INSTAWEB_SYSTEM_PUBLIC_ADMIN_SITE_H_
 
 #include "net/instaweb/util/public/basictypes.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 
@@ -33,6 +34,7 @@ class RewriteOptions;
 class ServerContext;
 class StaticAssetManager;
 class Statistics;
+class SystemCachePath;
 class SystemCaches;
 class SystemRewriteOptions;
 class Timer;
@@ -73,8 +75,8 @@ class AdminSite {
   // message-histogram, console, etc.
   void AdminPage(bool is_global, const GoogleUrl& stripped_gurl,
                  const QueryParams& query_params,
-                 const RewriteOptions* options, AsyncFetch* fetch,
-                 SystemCaches* system_caches,
+                 const RewriteOptions* options, SystemCachePath* cache_path,
+                 AsyncFetch* fetch, SystemCaches* system_caches,
                  CacheInterface* filesystem_metadata_cache,
                  HTTPCache* http_cache, CacheInterface* metadata_cache,
                  PropertyCache* page_property_cache,
@@ -128,8 +130,10 @@ class AdminSite {
   // Print statistics about the caches.  In the future this will also
   // be a launching point for examining cache entries and purging them.
   void PrintCaches(bool is_global, AdminSource source,
+                   const GoogleUrl& stripped_gurl,
                    const QueryParams& query_params,
                    const RewriteOptions* options,
+                   SystemCachePath* cache_path,
                    AsyncFetch* fetch, SystemCaches* system_caches,
                    CacheInterface* filesystem_metadata_cache,
                    HTTPCache* http_cache, CacheInterface* metadata_cache,
@@ -139,6 +143,9 @@ class AdminSite {
   // Print histograms showing the dynamics of server activity.
   void PrintHistograms(AdminSource source, AsyncFetch* fetch,
                        Statistics* stats);
+
+  void PurgeHandler(StringPiece url, SystemCachePath* cache_path,
+                    AsyncFetch* fetch);
 
  private:
   MessageHandler* message_handler_;

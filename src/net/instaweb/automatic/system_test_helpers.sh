@@ -322,6 +322,9 @@ function get_stat() {
 }
 
 function check_stat() {
+  if [ $statistics_enabled -eq "0" ]; then
+    return
+  fi
   OLD_STATS_FILE=$1
   NEW_STATS_FILE=$2
   COUNTER_NAME=$3

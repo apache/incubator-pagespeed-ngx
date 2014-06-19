@@ -40,8 +40,7 @@
 #include "net/instaweb/util/public/timer.h"
 #include "pagespeed/kernel/base/rde_hash_map.h"
 #include "pagespeed/kernel/base/time_util.h"
-#include "pagespeed/kernel/base/string.h"
-#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/cache/purge_set.h"
 
 namespace net_instaweb {
 
@@ -67,8 +66,6 @@ const char RewriteOptions::kBeaconReinstrumentTimeSec[] =
 const char RewriteOptions::kBeaconUrl[] = "BeaconUrl";
 const char RewriteOptions::kBlinkMaxHtmlSizeRewritable[] =
     "BlinkMaxHtmlSizeRewritable";
-const char RewriteOptions::kCacheInvalidationTimestamp[] =
-    "CacheInvalidationTimestamp";
 const char RewriteOptions::kCacheFragment[] = "CacheFragment";
 const char RewriteOptions::kCacheSmallImagesUnrewritten[] =
     "CacheSmallImagesUnrewritten";
@@ -414,7 +411,6 @@ const int64 RewriteOptions::kDefaultMaxImageBytesForWebpInCss = kint64max;
 
 const int64 RewriteOptions::kDefaultMinResourceCacheTimeToRewriteMs = 0;
 
-const int64 RewriteOptions::kDefaultCacheInvalidationTimestamp = -1;
 const int64 RewriteOptions::kDefaultFlushBufferLimitBytes = 100 * 1024;
 const int64 RewriteOptions::kDefaultIdleFlushTimeMs = 10;
 const int64 RewriteOptions::kDefaultImplicitCacheTtlMs = 5 * Timer::kMinuteMs;
@@ -1077,6 +1073,7 @@ bool RewriteOptions::ImageOptimizationEnabled() const {
 RewriteOptions::RewriteOptions(ThreadSystem* thread_system)
     : modified_(false),
       frozen_(false),
+      purge_set_(PurgeSet(kCachePurgeBytes)),
       initialized_options_(0),
       options_uniqueness_checked_(false),
       need_to_store_experiment_data_(false),
@@ -1085,8 +1082,7 @@ RewriteOptions::RewriteOptions(ThreadSystem* thread_system)
       signature_(),
       hasher_(kHashBytes),
       thread_system_(thread_system) {
-  url_cache_invalidation_map_.set_empty_key("");
-  url_cache_invalidation_map_.set_deleted_key("-");
+  cache_purge_mutex_.reset(new NullRWLock);
 
   DCHECK(properties_ != NULL)
       << "Call RewriteOptions::Initialize() before construction";
@@ -1262,12 +1258,6 @@ void RewriteOptions::AddProperties() {
       kMinResourceCacheTimeToRewriteMs,
       kDirectoryScope,
       NULL);  // TODO(jmarantz): remove this or document it.
-  AddBaseProperty(
-      kDefaultCacheInvalidationTimestamp,
-      &RewriteOptions::cache_invalidation_timestamp_, "it",
-      kCacheInvalidationTimestamp,
-      kServerScope,
-      NULL);  // Not applicable for mod_pagespeed.
   AddBaseProperty(
       false,
       &RewriteOptions::oblivious_pagespeed_urls_, "opu",
@@ -3495,6 +3485,10 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
   domain_lawyer_.MergeOrShare(src.domain_lawyer_);
   javascript_library_identification_.MergeOrShare(
       src.javascript_library_identification_);
+  {
+    ScopedMutex lock(cache_purge_mutex_.get());
+    purge_set_.MergeOrShare(src.purge_set_);
+  }
 
   file_load_policy_.Merge(src.file_load_policy_);
   allow_resources_.MergeOrShare(src.allow_resources_);
@@ -3523,20 +3517,6 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
                      url_cache_invalidation_entries_.end(),
                      RewriteOptions::CompareUrlCacheInvalidationEntry);
 
-  // Merging url_cache_invalidation_map_ is simple: the latest invalidation
-  // wins, which is already the policy in PurgeUrl.
-  //
-  // TODO(jmarantz): this map can be large, and will generally not be changed
-  // in .htaccess files but stay the same across the vhost.  We should share the
-  // map and do copy-on-write.  This should be done in a general way so that
-  // we can also share other potentially large objects in RewriteOptions such as
-  // DomainLawyer and the load-from-file infrastructure.
-  for (UrlCacheInvalidationMap::const_iterator p =
-           src.url_cache_invalidation_map_.begin(),
-           e = src.url_cache_invalidation_map_.end(); p != e; ++p) {
-    PurgeUrl(p->first, p->second);
-  }
-
   // If either side has forbidden all disabled filters then the result must
   // too. This is required to prevent subdirectories from turning it off when
   // a parent directory has turned it on (by mod_instaweb.cc/merge_dir_config).
@@ -3552,38 +3532,6 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
 
   if (modify) {
     Modify();
-  }
-}
-
-RewriteOptions::MutexedOptionInt64MergeWithMax::MutexedOptionInt64MergeWithMax()
-    : mutex_(new NullRWLock) {
-}
-
-RewriteOptions::MutexedOptionInt64MergeWithMax::
-~MutexedOptionInt64MergeWithMax() {
-}
-
-void RewriteOptions::MutexedOptionInt64MergeWithMax::Merge(
-    const OptionBase* src_base) {
-  // This option must be a MutexedOptionInt64 everywhere, so this cast is safe.
-  const MutexedOptionInt64MergeWithMax* src =
-      static_cast<const MutexedOptionInt64MergeWithMax*>(src_base);
-  Merge(src);
-}
-
-void RewriteOptions::MutexedOptionInt64MergeWithMax::Merge(
-    const MutexedOptionInt64MergeWithMax* src) {
-  bool src_was_set;
-  int64 src_value;
-  {
-    ThreadSystem::ScopedReader read_lock(src->mutex());
-    src_was_set = src->was_set();
-    src_value = src->value();
-  }
-  // We don't grab a writer lock because at merge time this is
-  // only accessible to the current thread.
-  if (src_was_set && (!was_set() || src_value > value())) {
-    set(src_value);
   }
 }
 
@@ -3680,6 +3628,11 @@ void RewriteOptions::Freeze() {
 }
 
 void RewriteOptions::ComputeSignature() {
+  ThreadSystem::ScopedReader read_lock(cache_purge_mutex_.get());
+  ComputeSignatureLockHeld();
+}
+
+void RewriteOptions::ComputeSignatureLockHeld() {
   if (frozen_) {
     return;
   }
@@ -3736,9 +3689,16 @@ void RewriteOptions::ComputeSignature() {
     }
   }
 
-  // Note that we do not include the url_cache_invalidation_map_ in the
-  // signature because we don't want to flush the entire metadata cache
-  // when we flush one entry.  However we do consider it in IsEqual().
+  // We do not include the PurgeSet signature, but that is included in
+  // RewriteOptions::IsEqual.
+  //
+  // TODO(jmarantz): Remove the global invalidation timestamp from the
+  // signature and add explicit timestamp checking where needed, such
+  // as pcache lookups.  Note that it is already included in HTTPCache
+  // lookups.
+  StrAppend(&signature_, "GTS:",
+            Integer64ToString(purge_set_->global_invalidation_timestamp_ms()),
+            "_");
 
   // rejected_request_map_ is not added to rewrite options signature as this
   // should not affect rewriting and metadata or property cache lookups.
@@ -3750,12 +3710,14 @@ void RewriteOptions::ComputeSignature() {
   // using an ad-hoc signature in css_filter.cc.
 }
 
-void RewriteOptions::ClearSignatureWithCaution() {
+bool RewriteOptions::ClearSignatureWithCaution() {
+  bool recompute_signature = frozen_;
   frozen_ = false;
 #ifndef NDEBUG
   last_thread_id_.reset();
 #endif
   signature_.clear();
+  return recompute_signature;
 }
 
 bool RewriteOptions::IsEqual(const RewriteOptions& that) const {
@@ -3775,10 +3737,13 @@ bool RewriteOptions::IsEqual(const RewriteOptions& that) const {
   // IsEqual function.  We might also want to make a second signature so
   // that IsEqual is not too slow.
   //
-  // TODO(jmarantz): consider making a second signature for
-  // url_cache_invalidation_map_ and other stuff that we exclude for
+  // TODO(jmarantz): consider making a second signature for the
+  // PurgeSet and other stuff that we exclude for
   // the RewriteOptions::signature.
-  return (url_cache_invalidation_map_ == that.url_cache_invalidation_map_);
+  {
+    ThreadSystem::ScopedReader read_lock(cache_purge_mutex_.get());
+    return purge_set_->Equals(*that.purge_set_);
+  }
 }
 
 GoogleString RewriteOptions::ToString(const ResourceCategorySet &x) {
@@ -3871,6 +3836,7 @@ GoogleString RewriteOptions::OptionsToString() const {
   StrAppend(&output, domain_lawyer_->ToString("  "));
   // TODO(mmohabey): Incorporate ToString() from the file_load_policy,
   // allow_resources, and retain_comments.
+
   if (!url_cache_invalidation_entries_.empty()) {
     StrAppend(&output, "\nURL cache invalidation entries\n");
     for (int i = 0, n = url_cache_invalidation_entries_.size(); i < n; ++i) {
@@ -3878,6 +3844,7 @@ GoogleString RewriteOptions::OptionsToString() const {
                 "\n");
     }
   }
+
   if (rejected_request_map_.size() > 0) {
     StrAppend(&output, "\nRejected request map\n");
     FastWildcardGroupMap::const_iterator it = rejected_request_map_.begin();
@@ -3897,12 +3864,20 @@ GoogleString RewriteOptions::OptionsToString() const {
     StrAppend(&output, "Experiment ", spec->ToString(), "\n");
   }
 
-  int64 cache_invalidation_ms = cache_invalidation_timestamp();
-  GoogleString time_string;
-  if ((cache_invalidation_ms > 0) &&
-      ConvertTimeToString(cache_invalidation_ms, &time_string)) {
-    StrAppend(&output, "\nInvalidation Timestamp: ",
-              time_string, "\n");
+  {
+    ThreadSystem::ScopedReader read_lock(cache_purge_mutex_.get());
+    if (has_cache_invalidation_timestamp_ms()) {
+      int64 cache_invalidation_ms = cache_invalidation_timestamp();
+      GoogleString time_string;
+      if ((cache_invalidation_ms > 0) &&
+          ConvertTimeToString(cache_invalidation_ms, &time_string)) {
+        StrAppend(&output, "\nInvalidation Timestamp: ",
+                  time_string, " (", Integer64ToString(cache_invalidation_ms),
+                  ")\n");
+      }
+    } else {
+      StrAppend(&output, "\nInvalidation Timestamp: (none)");
+    }
   }
 
   return output;
@@ -4262,30 +4237,21 @@ void RewriteOptions::UrlValuedAttribute(
   *category = eac.category;
 }
 
-bool RewriteOptions::IsUrlPurged(StringPiece url, int64 time_ms) const {
-  if (time_ms <= cache_invalidation_timestamp()) {
-    return true;
-  }
-  if (!url_cache_invalidation_map_.empty()) {
-    UrlCacheInvalidationMap::const_iterator p =
-        url_cache_invalidation_map_.find(url.as_string());
-    if (p != url_cache_invalidation_map_.end()) {
-      int64 timestamp_ms = p->second;
-      if (time_ms <= timestamp_ms) {
-        return true;
-      }
+bool RewriteOptions::IsUrlCacheValid(StringPiece url, int64 time_ms,
+                                     bool search_wildcards) const {
+  {
+    ThreadSystem::ScopedReader read_lock(cache_purge_mutex_.get());
+    if (!purge_set_->IsValid(url.as_string(), time_ms)) {
+      return false;
     }
   }
-  return false;
-}
 
-bool RewriteOptions::IsUrlCacheValid(StringPiece url, int64 time_ms) const {
-  // First check the hashed url map.  If we don't find an invalidation in the
-  // map we can check the wildcards.
-  if (IsUrlPurged(url, time_ms)) {
-    return false;
+  if (!search_wildcards) {
+    return true;
   }
 
+  // Check legacy wildcards.  Hopefully there aren't any or this may be
+  // quite slow.
   int i = 0;
   int n = url_cache_invalidation_entries_.size();
   while (i < n && time_ms > url_cache_invalidation_entries_[i]->timestamp_ms) {
@@ -4309,14 +4275,12 @@ bool RewriteOptions::IsUrlCacheValid(StringPiece url, int64 time_ms) const {
 }
 
 void RewriteOptions::PurgeUrl(StringPiece url, int64 timestamp_ms) {
-  std::pair<UrlCacheInvalidationMap::iterator, bool> insertion =
-      url_cache_invalidation_map_.insert(UrlCacheInvalidationMap::value_type(
-          url.as_string(), timestamp_ms));
-
-  // If there was already a value and this one is newer, replace it.
-  if (!insertion.second && (timestamp_ms > insertion.first->second)) {
-    insertion.first->second = timestamp_ms;
-  }
+  ScopedMutex lock(cache_purge_mutex_.get());
+  // Note that in this API, we do not handle failure due to moving
+  // backwards in time.  This API is used for collecting purge-records
+  // from a database, and not for handling PURGE http requests.  That
+  // is handled in ../apache/instaweb_handler.cc, handle_purge_request().
+  purge_set_.MakeWriteable()->Put(url.as_string(), timestamp_ms);
 }
 
 void RewriteOptions::AddUrlCacheInvalidationEntry(
@@ -4347,24 +4311,53 @@ void RewriteOptions::AddUrlCacheInvalidationEntry(
 }
 
 bool RewriteOptions::UpdateCacheInvalidationTimestampMs(int64 timestamp_ms) {
+  ScopedMutex lock(cache_purge_mutex_.get());
   DCHECK_LT(0, timestamp_ms);
   bool ret = false;
-  ScopedMutex lock(cache_invalidation_timestamp_.mutex());
-  if (cache_invalidation_timestamp_.value() < timestamp_ms) {
-    bool recompute_signature = frozen_;
-    frozen_ = false;
-#ifndef NDEBUG
-    last_thread_id_.reset();
-#endif
-    cache_invalidation_timestamp_.checked_set(timestamp_ms);
+  if (purge_set_->global_invalidation_timestamp_ms() < timestamp_ms) {
+    bool recompute_signature = ClearSignatureWithCaution();
+    ret = purge_set_.MakeWriteable()->UpdateGlobalInvalidationTimestampMs(
+        timestamp_ms);
     Modify();
     if (recompute_signature) {
       signature_.clear();
-      ComputeSignature();
+      ComputeSignatureLockHeld();
+    }
+  }
+  return ret;
+}
+
+int64 RewriteOptions::cache_invalidation_timestamp() const {
+  ThreadSystem::ScopedReader lock(cache_purge_mutex_.get());
+  DCHECK(purge_set_->has_global_invalidation_timestamp_ms());
+  return purge_set_->global_invalidation_timestamp_ms();
+}
+
+bool RewriteOptions::has_cache_invalidation_timestamp_ms() const {
+  ThreadSystem::ScopedReader lock(cache_purge_mutex_.get());
+  return purge_set_->has_global_invalidation_timestamp_ms();
+}
+
+bool RewriteOptions::UpdateCachePurgeSet(
+    const CopyOnWrite<PurgeSet>& purge_set) {
+  bool ret = false;
+  ScopedMutex lock(cache_purge_mutex_.get());
+  if (purge_set_.get() != purge_set.get()) {
+    bool recompute_signature = ClearSignatureWithCaution();
+    purge_set_ = purge_set;
+    Modify();
+    if (recompute_signature) {
+      signature_.clear();
+      ComputeSignatureLockHeld();
     }
     ret = true;
   }
   return ret;
+}
+
+GoogleString RewriteOptions::PurgeSetString() const {
+  ScopedMutex lock(cache_purge_mutex_.get());
+  return purge_set_->ToString();
 }
 
 bool RewriteOptions::IsUrlCacheInvalidationEntriesSorted() const {

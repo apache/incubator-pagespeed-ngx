@@ -31,6 +31,7 @@
 #include "net/instaweb/system/public/apr_mem_cache.h"
 #include "net/instaweb/system/public/system_cache_path.h"
 #include "net/instaweb/system/public/system_rewrite_options.h"
+#include "net/instaweb/system/public/system_server_context.h"
 #include "net/instaweb/util/public/async_cache.h"
 #include "net/instaweb/util/public/cache_batcher.h"
 #include "net/instaweb/util/public/cache_interface.h"
@@ -48,6 +49,7 @@
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/write_through_cache.h"
 #include "pagespeed/kernel/base/abstract_shared_mem.h"
+#include "pagespeed/kernel/cache/purge_context.h"
 #include "pagespeed/kernel/html/html_keywords.h"
 
 namespace net_instaweb {
@@ -118,14 +120,16 @@ void SystemCaches::ShutDown(MessageHandler* message_handler) {
 }
 
 SystemCachePath* SystemCaches::GetCache(SystemRewriteOptions* config) {
-  const GoogleString& path = config->file_cache_path();
+  GoogleString key = config->unplugged()
+      ? "<unplugged>"
+      : config->file_cache_path();
   SystemCachePath* system_cache_path = NULL;
   std::pair<PathCacheMap::iterator, bool> result = path_cache_map_.insert(
-      PathCacheMap::value_type(path, system_cache_path));
+      PathCacheMap::value_type(key, system_cache_path));
   PathCacheMap::iterator iter = result.first;
   if (result.second) {
     iter->second = system_cache_path =
-        new SystemCachePath(path, config, factory_, shared_mem_runtime_);
+        new SystemCachePath(key, config, factory_, shared_mem_runtime_);
     factory_->TakeOwnership(system_cache_path);
   } else {
     system_cache_path = iter->second;
@@ -507,6 +511,9 @@ void SystemCaches::SetupCaches(ServerContext* server_context,
       server_context->CreatePropertyStore(property_store_cache));
   server_context->set_metadata_cache(metadata_cache);
   SetupPcacheCohorts(server_context, enable_property_cache);
+  SystemServerContext* system_server_context =
+    dynamic_cast<SystemServerContext*>(server_context);
+  system_server_context->SetCachePath(caches_for_path);
 }
 
 void SystemCaches::RegisterConfig(SystemRewriteOptions* config) {
@@ -611,6 +618,7 @@ void SystemCaches::InitStats(Statistics* statistics) {
   CacheStats::InitStats(kMemcachedAsync, statistics);
   CacheStats::InitStats(kMemcachedBlocking, statistics);
   CompressedCache::InitStats(statistics);
+  PurgeContext::InitStats(statistics);
 }
 
 void SystemCaches::PrintCacheStats(StatFlags flags, GoogleString* out) {

@@ -25,6 +25,7 @@
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/util/copy_on_write.h"
 
 namespace net_instaweb {
 
@@ -33,12 +34,14 @@ class AsyncFetch;
 class GoogleUrl;
 class Histogram;
 class QueryParams;
+class PurgeSet;
 class RewriteDriver;
 class RewriteDriverFactory;
 class RewriteOptions;
 class RewriteStats;
 class SharedMemStatistics;
 class Statistics;
+class SystemCachePath;
 class SystemCaches;
 class SystemRewriteDriverFactory;
 class SystemRewriteOptions;
@@ -61,6 +64,8 @@ class SystemServerContext : public ServerContext {
                       StringPiece hostname, int port);
   virtual ~SystemServerContext();
 
+  void SetCachePath(SystemCachePath* cache_path);
+
   // Implementations should call this method on every request, both for html and
   // resources, to avoid serving stale resources.
   //
@@ -73,6 +78,10 @@ class SystemServerContext : public ServerContext {
 
   SystemRewriteOptions* global_system_rewrite_options();
   GoogleString hostname_identifier() { return hostname_identifier_; }
+
+  // Updates the PurgeSet with a new version.  This is called when the system
+  // picks up (by polling or API) a new version of the cache.purge file.
+  void UpdateCachePurgeSet(const CopyOnWrite<PurgeSet>& purge_set);
 
   // Initialize this SystemServerContext to set up its admin site.
   virtual void PostInitHook();
@@ -109,6 +118,8 @@ class SystemServerContext : public ServerContext {
   // Accumulate in a histogram the amount of time spent rewriting HTML.
   // TODO(sligocki): Remove in favor of RewriteStats::rewrite_latency_histogram.
   void AddHtmlRewriteTimeUs(int64 rewrite_time_us);
+
+  SystemCachePath* cache_path() { return cache_path_; }
 
   // Hook called after all configuration parsing is done to support implementers
   // like ApacheServerContext that need to collapse configuration inside the
@@ -148,6 +159,8 @@ class SystemServerContext : public ServerContext {
   void StatisticsPage(bool is_global, const QueryParams& query_params,
                       const RewriteOptions* options,
                       AsyncFetch* fetch);
+
+  AdminSite* admin_site() { return admin_site_.get(); }
 
  protected:
   // Flush the cache by updating the cache flush timestamp in the global
@@ -195,6 +208,7 @@ class SystemServerContext : public ServerContext {
   // Print statistics about the caches.  In the future this will also
   // be a launching point for examining cache entries and purging them.
   void PrintCaches(bool is_global, AdminSite::AdminSource source,
+                   const GoogleUrl& stripped_gurl,
                    const QueryParams& query_params,
                    const RewriteOptions* options,
                    AsyncFetch* fetch);
@@ -207,6 +221,17 @@ class SystemServerContext : public ServerContext {
   Variable* statistics_404_count();
 
  private:
+  // Checks the timestamp of cache.flush, updating the purge context as
+  // needed.
+  //
+  // TODO(jmarantz): Consider removing this if we decide to turn
+  // enable_cache_purge always-on.  If we do that, "touch cache.flush"
+  // will no longer work, and that will force users to use the new purge API
+  // instead.  We could consider checking both cache.flush and cache.purge,
+  // but it would be confusing what our semantics should be if both are
+  // present.
+  void CheckLegacyGlobalCacheFlushFile();
+
   scoped_ptr<AdminSite> admin_site_;
 
   bool initialized_;
@@ -239,6 +264,8 @@ class SystemServerContext : public ServerContext {
   GoogleString hostname_identifier_;
 
   SystemCaches* system_caches_;
+
+  SystemCachePath* cache_path_;
 
   DISALLOW_COPY_AND_ASSIGN(SystemServerContext);
 };

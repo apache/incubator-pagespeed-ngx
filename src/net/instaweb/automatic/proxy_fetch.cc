@@ -274,7 +274,8 @@ bool ProxyFetchPropertyCallbackCollector::IsCacheValid(
     return false;
   }
   return (options_ == NULL ||
-          options_->IsUrlCacheValid(url_, write_timestamp_ms));
+          options_->IsUrlCacheValid(url_, write_timestamp_ms,
+                                    true /* search_wildcards */));
 }
 
 // Calls to Done(), ConnectProxyFetch(), and Detach() may occur on

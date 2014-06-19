@@ -220,12 +220,6 @@ ModPagespeedLoadFromFile "http://@@APACHE_DOMAIN@@/mod_pagespeed_test/ipro/insta
     ModPagespeedCriticalLineConfig div[@id="container"]/div[4]
 </Directory>
 
-# Test purging individual URLs without flushing the entire
-# metadata cache.  Note that we do not support any URL-based purging
-# in mod_pagespeed yet so there is no need to cover the 'off' case in
-# our tests.
-ModPagespeedEnableCachePurge on
-
 <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/disable_no_transform" >
   ModPagespeedDisableRewriteOnNoTransform off
   <IfModule headers_module>
@@ -1060,6 +1054,20 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_noned_shmm"
 <Location /mod_pagespeed_temp_statistics_graphs>
     SetHandler mod_pagespeed_temp_statistics_graphs
 </Location>
+
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName purge.example.com
+
+  # Test purging individual URLs without flushing the entire metadata cache.
+  ModPagespeedEnableCachePurge on
+
+  ModPagespeedPurgeMethod PURGE
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@_purge"
+  ModPagespeedDisableFilters add_instrumentation
+  ModPagespeedRewriteLevel PassThrough
+  ModPagespeedEnableFilters rewrite_css
+</VirtualHost>
 
 #STATS_LOGGING ModPagespeedStatistics on
 #STATS_LOGGING ModPagespeedStatisticsLogging on

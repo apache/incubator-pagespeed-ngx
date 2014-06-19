@@ -418,7 +418,7 @@ TEST_F(RewriteDriverTest, TestCacheUseWithInvalidation) {
   ClearStats();
   int64 now_ms = timer()->NowMs();
   options()->ClearSignatureForTesting();
-  options()->set_cache_invalidation_timestamp(now_ms);
+  options()->UpdateCacheInvalidationTimestampMs(now_ms);
   options()->ComputeSignature();
   EXPECT_TRUE(TryFetchResource(css_minified_url));
   // We expect: identical input a new rname entry (its version # changed),
@@ -728,7 +728,7 @@ TEST_F(RewriteDriverTest, TestCacheUseOnTheFlyWithInvalidation) {
   ClearStats();
   int64 now_ms = timer()->NowMs();
   options()->ClearSignatureForTesting();
-  options()->set_cache_invalidation_timestamp(now_ms);
+  options()->UpdateCacheInvalidationTimestampMs(now_ms);
   options()->ComputeSignature();
   EXPECT_TRUE(TryFetchResource(cache_extended_url));
   // We expect: input re-insert, new metadata key

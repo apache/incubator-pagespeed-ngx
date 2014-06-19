@@ -54,6 +54,7 @@ namespace net_instaweb {
 
 class Hasher;
 class MessageHandler;
+class PurgeSet;
 class RequestHeaders;
 
 // Defines a set of customizations that can be applied to any Rewrite.  There
@@ -215,7 +216,6 @@ class RewriteOptions {
   static const char kBeaconUrl[];
   static const char kBlinkMaxHtmlSizeRewritable[];
   static const char kCacheFragment[];
-  static const char kCacheInvalidationTimestamp[];
   static const char kCacheSmallImagesUnrewritten[];
   static const char kClientDomainRewrite[];
   static const char kCombineAcrossPaths[];
@@ -460,6 +460,9 @@ class RewriteOptions {
   // Number of bytes used for signature hashing.
   static const int kHashBytes = 20;
 
+  // Number of bytes capacity in the URL invalidation set.
+  static const int kCachePurgeBytes = 25000;
+
   // Determines the scope at which an option is evaluated.  In Apache,
   // for example, kDirectoryScope indicates it can be changed via .htaccess
   // files, which is the only way that sites using shared hosting can change
@@ -615,7 +618,6 @@ class RewriteOptions {
   static const int64 kDefaultMinResourceCacheTimeToRewriteMs;
   static const char kDefaultDownstreamCachePurgeMethod[];
   static const int64 kDefaultDownstreamCacheRewrittenPercentageThreshold;
-  static const int64 kDefaultCacheInvalidationTimestamp;
   static const int64 kDefaultIdleFlushTimeMs;
   static const int64 kDefaultFlushBufferLimitBytes;
   static const int64 kDefaultImplicitCacheTtlMs;
@@ -1344,19 +1346,24 @@ class RewriteOptions {
     set_option(x, &preserve_url_relativity_);
   }
 
-  // Returns false if there is an entry in url_cache_invalidation_entries_ with
-  // its timestamp_ms > time_ms and url matches the url_pattern.  Else, return
-  // true.
+  // Returns whether the given URL is valid for use in the cache, given the
+  // timestamp stored in the cache.
+  //
+  // It first checks time_ms against the global cache invalidation timestamp.
+  //
+  // It next checks if PurgeCacheUrl has been called on url with a timestamp
+  // earlier than time_ms.  Note: this is not a wildcard check but an
+  // exact lookup.
+  //
+  // Finally, if search_wildcards is true, it scans
+  // url_cache_invalidation_entries_ for entries with timestamp_ms > time_ms and
+  // url matching the url_pattern.
   //
   // In most contexts where you'd call this you should consider instead
   // calling OptionsAwareHTTPCacheCallback::IsCacheValid instead, which takes
   // into account request-headers.
-  bool IsUrlCacheValid(StringPiece url, int64 time_ms) const;
-
-  // Returns true if PurgeCacheUrl has been called on url with a timestamp
-  // earlier than time_ms.  Note: this is not a wildcard check but an
-  // exact lookup.
-  bool IsUrlPurged(StringPiece url, int64 time_ms) const;
+  bool IsUrlCacheValid(StringPiece url, int64 time_ms,
+                       bool search_wildcards) const;
 
   // If timestamp_ms greater than or equal to the last timestamp in
   // url_cache_invalidation_entries_, then appends an UrlCacheInvalidationEntry
@@ -1388,35 +1395,40 @@ class RewriteOptions {
   // Supply optional mutex for setting a global cache invalidation
   // timestamp.  Ownership of 'lock' is transfered to this.
   void set_cache_invalidation_timestamp_mutex(ThreadSystem::RWLock* lock) {
-    cache_invalidation_timestamp_.set_mutex(lock);
+    cache_purge_mutex_.reset(lock);
   }
 
-  // Cache invalidation timestamp is in milliseconds since 1970.
-  int64 cache_invalidation_timestamp() const {
-    ThreadSystem::ScopedReader lock(cache_invalidation_timestamp_.mutex());
-    return cache_invalidation_timestamp_.value();
-  }
+  // Cache invalidation timestamp is in milliseconds since 1970.  It is used
+  // for invalidating everything in the cache written prior to the timestamp.
+  //
+  // TODO(jmarantz): rename to cache_invalidation_timestamp_ms().
+  int64 cache_invalidation_timestamp() const;
+
+  // Determines whether there is a valid cache_invalidation_timestamp.  It
+  // is invalid to call cache_invalidation_timestamp() if
+  // has_cache_invalidation_timestamp_ms() is false.
+  bool has_cache_invalidation_timestamp_ms() const;
 
   // Sets the cache invalidation timestamp -- in milliseconds since
   // 1970.  This function is meant to be called on a RewriteOptions*
-  // immediately after instantiation.  It cannot be used to mutate the
-  // value of one already in use in a RewriteDriver.
+  // immediately after instantiation.
   //
-  // See also UpdateCacheInvalidationTimestampMs.
-  void set_cache_invalidation_timestamp(int64 timestamp_ms) {
-    cache_invalidation_timestamp_.mutex()->DCheckLocked();
-    DCHECK_LT(0, timestamp_ms);
-    set_option(timestamp_ms, &cache_invalidation_timestamp_);
-  }
-
-  // Updates the cache invalidation timestamp of a mutexed RewriteOptions
-  // instance.  Currently this only occurs in Apache global_options,
-  // and is used for purging cache by touching a file in the cache directory.
-  //
-  // This function ignores requests to move the invalidation timestamp
-  // backwards.  It returns true if the timestamp was actually changed.
+  // It can also be used to mutate the invalidation timestamp of a
+  // RewriteOptions instance that is used as a base for cloning/merging,
+  // in which case you should make sure to establish a real mutex with
+  // set_cache_invalidation_timestamp_mutex for such instances.
   bool UpdateCacheInvalidationTimestampMs(int64 timestamp_ms)
-      LOCKS_EXCLUDED(cache_invalidation_timestamp_.mutex());
+      LOCKS_EXCLUDED(cache_purge_mutex_.get());
+
+  // Mutates the options PurgeSet by copying the contents from purge_set.
+  // Returns true if the contents actually changed, false if the incoming
+  // purge_set was identical to purge_set already in this.
+  bool UpdateCachePurgeSet(const CopyOnWrite<PurgeSet>& purge_set)
+      LOCKS_EXCLUDED(cache_purge_mutex_.get());
+
+  // Generates a human-readable view of the PurgeSet, including timestamps
+  // in GMT.
+  GoogleString PurgeSetString() const;
 
   // How much inactivity of HTML input will result in PSA introducing a flush.
   // Values <= 0 disable the feature.
@@ -2568,7 +2580,8 @@ class RewriteOptions {
   //
   // Computing a signature "freezes" the class instance.  Attempting
   // to modify a RewriteOptions after freezing will DCHECK.
-  void ComputeSignature();
+  void ComputeSignature() LOCKS_EXCLUDED(cache_purge_mutex_.get());
+  void ComputeSignatureLockHeld() SHARED_LOCKS_REQUIRED(cache_purge_mutex_);
 
   // Freeze a RewriteOptions so we can't modify it anymore and thus
   // know that it's safe to read it from multiple threads, but don't
@@ -2582,7 +2595,10 @@ class RewriteOptions {
   // discuss this with your team-mates and ensure that you clearly understand
   // its implications. Also, please do repeat this warning at every place you
   // use this method.
-  void ClearSignatureWithCaution();
+  //
+  // Returns true if the signature was previously computed, and thus should
+  // be recomputed after modification.
+  bool ClearSignatureWithCaution();
 
   bool frozen() const { return frozen_; }
 
@@ -2604,7 +2620,7 @@ class RewriteOptions {
     // Apache global_options() object do we create a real mutex.  We
     // don't expect contention here because we take a reader-lock and the
     // only time we Write is if someone flushes the cache.
-    ThreadSystem::ScopedReader lock(cache_invalidation_timestamp_.mutex());
+    ThreadSystem::ScopedReader lock(cache_purge_mutex_.get());
     DCHECK(frozen_);
     DCHECK(!signature_.empty());
     return signature_;
@@ -2785,77 +2801,6 @@ class RewriteOptions {
 
    private:
     DISALLOW_COPY_AND_ASSIGN(Option);
-  };
-
-  // Like Option<int64>, but merge by taking the Max of the two values.  Note
-  // that this could be templatized on type in which case we'd need to inline
-  // the implementation of Merge.
-  //
-  // This class has an optional mutex for allowing Apache to flush cache by
-  // mutating its global_options().  Note that global_options() is never used
-  // directly in a rewrite_driver, but is cloned with this optional Mutex held.
-  //
-  // The "optional" mutex is always present, but it defaults to a
-  // NullRWLock, which has empty implementations of all
-  // locking/unlocking functions.  Only in Apache (currently) do we
-  // override that with a real RWLock from the thread system.
-  class MutexedOptionInt64MergeWithMax : public Option<int64> {
-   public:
-    MutexedOptionInt64MergeWithMax();
-    virtual ~MutexedOptionInt64MergeWithMax();
-
-    // Merges src_base into this by taking the maximum of the two values.
-    //
-    // We expect to have exclusive access to 'this' and don't need to lock it,
-    // but we use locked access to src_base->value().
-    virtual void Merge(const OptionBase* src_base);
-
-    // We provide a more specific Merge here so that we can use an unaliased
-    // name for src to provide lock annotation.
-    void Merge(const MutexedOptionInt64MergeWithMax* src)
-        LOCKS_EXCLUDED(src->mutex());
-
-    // The value() must only be taken when the mutex is held.  This is
-    // only called by RewriteOptions::UpdateCacheInvalidationTimestampMs
-    // and MutexedOptionInt64MergeWithMax::Merge, which are holding
-    // locks when calling value().
-    //
-    // Note that we don't require or take the lock for set(), so we
-    // don't override set.  When updating or merging, we already have
-    // a lock and can't take it again.  When writing the invalidation
-    // timestamp at initial configuration time, we don't need the
-    // lock.
-    void checked_set(const int64& value) EXCLUSIVE_LOCKS_REQUIRED(mutex()) {
-      mutex_->DCheckLocked();
-      Option<int64>::set(value);
-    }
-
-    // Returns the mutex for this object.  When this class is
-    // constructed it gets a NullRWLock which doesn't actually lock
-    // anything.  This is because we generally initialize
-    // RewriteOptions from only one thread, and thereafter do only
-    // reads.  However, one exception is the cache-invalidation
-    // timestamp in the global_options for Apache ServerContexts,
-    // which can be written from any thread handling a request,
-    // particularly with the Worker MPM.  So we install a real RWLock*
-    // for Apache's global_options.
-    //
-    // Also note that this mutex, when installed, is also used to
-    // lock access to RewriteOptions::signature(), which depends on
-    // the cache invalidation timestamp.
-    ThreadSystem::RWLock* mutex() const LOCK_RETURNED(mutex_) {
-      return mutex_.get();
-    }
-
-    // Takes ownership of mutex.  Note that by default, mutex()
-    // has a NullRWLock.  Only by calling set_mutex do we add locking
-    // semantics for the invalidation timestamp & signature.  If
-    // we allow other settings to be spontaneously changed we will
-    // have to add further locking.
-    void set_mutex(ThreadSystem::RWLock* lock) { mutex_.reset(lock); }
-
-   private:
-    scoped_ptr<ThreadSystem::RWLock> mutex_;
   };
 
  protected:
@@ -3361,10 +3306,15 @@ class RewriteOptions {
   // invalidated.  In increasing order of timestamp.
   UrlCacheInvalidationEntryVector url_cache_invalidation_entries_;
 
-  // Map of exact URLs to be invalidated; no wildcards.
-  UrlCacheInvalidationMap url_cache_invalidation_map_;
+  // Map of exact URLs to be invalidated; no wildcards.  Note that the
+  // cache_purge_mutex_ is, by default, a NullRWLock.  You must call
+  // set_cache_invalidation_timestamp_mutex to make it be a real mutex.
+  // This is generally done only for the global context for each server,
+  // so that we can atomically propagate cache flush updates into it while
+  // it's running.
+  CopyOnWrite<PurgeSet> purge_set_ GUARDED_BY(cache_purge_mutex_);
 
-  MutexedOptionInt64MergeWithMax cache_invalidation_timestamp_;
+  scoped_ptr<ThreadSystem::RWLock> cache_purge_mutex_;
   Option<int64> css_flatten_max_bytes_;
   Option<bool> cache_small_images_unrewritten_;
   Option<bool> no_transform_optimized_images_;

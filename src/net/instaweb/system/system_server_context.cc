@@ -25,11 +25,11 @@
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/system/public/add_headers_fetcher.h"
 #include "net/instaweb/system/public/loopback_route_fetcher.h"
+#include "net/instaweb/system/public/system_cache_path.h"
 #include "net/instaweb/system/public/system_caches.h"
 #include "net/instaweb/system/public/system_request_context.h"
 #include "net/instaweb/system/public/system_rewrite_driver_factory.h"
 #include "net/instaweb/system/public/system_rewrite_options.h"
-#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/null_message_handler.h"
@@ -37,10 +37,13 @@
 #include "net/instaweb/util/public/split_statistics.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/thread_system.h"
+#include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/timer.h"
 
 namespace net_instaweb {
+
+class PurgeSet;
 
 namespace {
 
@@ -64,11 +67,21 @@ SystemServerContext::SystemServerContext(
       html_rewrite_time_us_histogram_(NULL),
       local_statistics_(NULL),
       hostname_identifier_(StrCat(hostname, ":", IntegerToString(port))),
-      system_caches_(NULL) {
+      system_caches_(NULL),
+      cache_path_(NULL) {
   global_system_rewrite_options()->set_description(hostname_identifier_);
 }
 
 SystemServerContext::~SystemServerContext() {
+  if (cache_path_ != NULL) {
+    cache_path_->RemoveServerContext(this);
+  }
+}
+
+void SystemServerContext::SetCachePath(SystemCachePath* cache_path) {
+  DCHECK(cache_path_ == NULL);
+  cache_path_ = cache_path;
+  cache_path->AddServerContext(this);
 }
 
 // If we haven't checked the timestamp of $FILE_PREFIX/cache.flush in the past
@@ -76,6 +89,14 @@ SystemServerContext::~SystemServerContext() {
 // expired then update the cache_invalidation_timestamp in global_options,
 // thus flushing the cache.
 void SystemServerContext::FlushCacheIfNecessary() {
+  if (global_system_rewrite_options()->enable_cache_purge()) {
+    cache_path_->FlushCacheIfNecessary();
+  } else {
+    CheckLegacyGlobalCacheFlushFile();
+  }
+}
+
+void SystemServerContext::CheckLegacyGlobalCacheFlushFile() {
   int64 cache_flush_poll_interval_sec =
       global_system_rewrite_options()->cache_flush_poll_interval_sec();
   if (cache_flush_poll_interval_sec > 0) {
@@ -142,11 +163,21 @@ void SystemServerContext::FlushCacheIfNecessary() {
       // reader-lock, so we have zero contention risk when the cache is not
       // being flushed.
       if ((timestamp_ms > 0) &&
+          global_options()->has_cache_invalidation_timestamp_ms() &&
           (global_options()->cache_invalidation_timestamp() < timestamp_ms)) {
         UpdateCacheFlushTimestampMs(timestamp_ms);
       }
     }
   }
+}
+
+void SystemServerContext::UpdateCachePurgeSet(
+    const CopyOnWrite<PurgeSet>& purge_set) {
+  global_options()->UpdateCachePurgeSet(purge_set);
+  if (cache_flush_count_ == NULL) {
+    cache_flush_count_ = statistics()->GetVariable(kCacheFlushCount);
+  }
+  cache_flush_count_->Add(1);
 }
 
 bool SystemServerContext::UpdateCacheFlushTimestampMs(int64 timestamp_ms) {
@@ -357,13 +388,14 @@ void SystemServerContext::PrintHistograms(
 
 void SystemServerContext::PrintCaches(bool is_global,
                                       AdminSite::AdminSource source,
+                                      const GoogleUrl& stripped_gurl,
                                       const QueryParams& query_params,
                                       const RewriteOptions* options,
                                       AsyncFetch* fetch) {
-  admin_site_->PrintCaches(is_global, source, query_params, options, fetch,
-                           system_caches_, filesystem_metadata_cache(),
-                           http_cache(), metadata_cache(),
-                           page_property_cache(), this);
+  admin_site_->PrintCaches(is_global, source, stripped_gurl, query_params,
+                           options, cache_path(), fetch, system_caches_,
+                           filesystem_metadata_cache(), http_cache(),
+                           metadata_cache(), page_property_cache(), this);
 }
 
 void SystemServerContext::PrintNormalConfig(
@@ -392,10 +424,11 @@ void SystemServerContext::AdminPage(
   Statistics* stats = is_global ? factory()->statistics()
       : statistics();
   admin_site_->AdminPage(is_global, stripped_gurl, query_params, options,
-                         fetch, system_caches_, filesystem_metadata_cache(),
-                         http_cache(), metadata_cache(), page_property_cache(),
-                         this, statistics(), stats,
-                         global_system_rewrite_options(), spdy_config);
+                         cache_path(), fetch, system_caches_,
+                         filesystem_metadata_cache(), http_cache(),
+                         metadata_cache(), page_property_cache(), this,
+                         statistics(), stats,  global_system_rewrite_options(),
+                         spdy_config);
 }
 
 void SystemServerContext::StatisticsPage(bool is_global,

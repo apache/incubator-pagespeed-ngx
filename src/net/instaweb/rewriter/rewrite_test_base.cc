@@ -990,11 +990,17 @@ class HttpCallback : public HTTPCache::Callback {
   explicit HttpCallback(const RequestContextPtr& request_context)
       : HTTPCache::Callback(request_context, RequestHeaders::Properties()),
         done_(false),
-        result_(HTTPCache::kNotFound) {}
+        result_(HTTPCache::kNotFound),
+        options_(NULL) {
+  }
   virtual ~HttpCallback() {}
   virtual bool IsCacheValid(const GoogleString& key,
                             const ResponseHeaders& headers) {
-    return true;
+    if (options_ == NULL) {
+      return true;
+    }
+    return OptionsAwareHTTPCacheCallback::IsCacheValid(
+        key, *options_, request_context(), headers);
   }
   virtual void Done(HTTPCache::FindResult find_result) {
     done_ = true;
@@ -1006,10 +1012,12 @@ class HttpCallback : public HTTPCache::Callback {
 
   bool done() const { return done_; }
   HTTPCache::FindResult result() { return result_; }
+  void set_options(const RewriteOptions* options) { options_ = options; }
 
  private:
   bool done_;
   HTTPCache::FindResult result_;
+  const RewriteOptions* options_;
 };
 
 }  // namespace
@@ -1034,16 +1042,26 @@ void RewriteTestBase::InitiateResourceRead(
                       callback);
 }
 
-HTTPCache::FindResult RewriteTestBase::HttpBlockingFind(
+HTTPCache::FindResult RewriteTestBase::HttpBlockingFindWithOptions(
+    const RewriteOptions* options,
     const GoogleString& key, HTTPCache* http_cache, HTTPValue* value_out,
     ResponseHeaders* headers) {
   HttpCallback callback(CreateRequestContext());
+  if (options != NULL) {
+    callback.set_options(options);
+  }
   callback.set_response_headers(headers);
   http_cache->Find(
       key, rewrite_driver_->CacheFragment(), message_handler(), &callback);
   CHECK(callback.done());
   value_out->Link(callback.http_value());
   return callback.result();
+}
+
+HTTPCache::FindResult RewriteTestBase::HttpBlockingFind(
+    const GoogleString& key, HTTPCache* http_cache, HTTPValue* value_out,
+    ResponseHeaders* headers) {
+  return HttpBlockingFindWithOptions(NULL, key, http_cache, value_out, headers);
 }
 
 HTTPCache::FindResult RewriteTestBase::HttpBlockingFindStatus(
@@ -1238,7 +1256,7 @@ void RewriteTestBase::SetCacheInvalidationTimestamp() {
   // re-fetches resulting in re-inserts rather than inserts.
   AdvanceTimeMs(Timer::kSecondMs);
   int64 now_ms = timer()->NowMs();
-  options()->set_cache_invalidation_timestamp(now_ms);
+  options()->UpdateCacheInvalidationTimestampMs(now_ms);
   options()->ComputeSignature();
   AdvanceTimeMs(Timer::kSecondMs);
 }

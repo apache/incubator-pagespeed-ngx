@@ -52,6 +52,28 @@ else
   : ${SECONDARY_HOSTNAME:=}
 fi
 
+# Inform system/system_tests.sh and the rest of this script whether statistics
+# are enabled by grepping the conf file.
+statistics_enabled="0"
+statistics_logging_enabled="0"
+if egrep -q "^    # ModPagespeedStatistics off$" \
+    $APACHE_DEBUG_PAGESPEED_CONF; then
+  statistics_enabled="1"
+  echo STATS is ON
+  if egrep -q "^ ModPagespeedStatisticsLogging on$" \
+     $APACHE_DEBUG_PAGESPEED_CONF; then
+    statistics_logging_enabled="1"
+  fi
+fi
+
+# The 'PURGE' method is implemented, but not yet working in ngx_pagespeed, so
+# have to indicate here that we want to test both PURGE and GET.  In
+# nginx_system_test.sh we currently specify only GET.
+#
+# TODO(jmarantz) Once that's implemented in nginx, we can eliminate this
+# setting.
+CACHE_PURGE_METHODS="PURGE GET"
+
 # Run General system tests.
 #
 # We need to know the directory this file is located in.  Unfortunately,
@@ -89,18 +111,6 @@ function run_post_cache_flush() {
 
 rm -rf $OUTDIR
 mkdir -p $OUTDIR
-
-statistics_enabled="0"
-statistics_logging_enabled="0"
-if egrep -q "^    # ModPagespeedStatistics off$" \
-    $APACHE_DEBUG_PAGESPEED_CONF; then
-  statistics_enabled="1"
-  echo STATS is ON
-  if egrep -q "^ ModPagespeedStatisticsLogging on$" \
-     $APACHE_DEBUG_PAGESPEED_CONF; then
-    statistics_logging_enabled="1"
-  fi
-fi
 
 # Grab a timestamp now so that we can check that logging works.
 # Also determine where the log file is.
@@ -1232,11 +1242,14 @@ if [ "$CACHE_FLUSH_TEST" = "on" ]; then
   # TODO(jmarantz): we can change this test to be more exacting now, since
   # to address Issue 568, we should only get one cache-flush bump every time
   # we touch the file.
-  NUM_FLUSHES=$(scrape_stat cache_flush_count)
-  NUM_NEW_FLUSHES=$(expr $NUM_FLUSHES - $NUM_INITIAL_FLUSHES)
-  echo NUM_NEW_FLUSHES = $NUM_FLUSHES - $NUM_INITIAL_FLUSHES = $NUM_NEW_FLUSHES
-  check [ $NUM_NEW_FLUSHES -ge 1 ]
-  check [ $NUM_NEW_FLUSHES -lt 20 ]
+  if [ $statistics_enabled -ne 0 ]; then
+    NUM_FLUSHES=$(scrape_stat cache_flush_count)
+    NUM_NEW_FLUSHES=$(expr $NUM_FLUSHES - $NUM_INITIAL_FLUSHES)
+    echo NUM_NEW_FLUSHES = $NUM_FLUSHES - \
+      $NUM_INITIAL_FLUSHES = $NUM_NEW_FLUSHES
+    check [ $NUM_NEW_FLUSHES -ge 1 ]
+    check [ $NUM_NEW_FLUSHES -lt 20 ]
+  fi
 
   # However, the secondary cache might not have seen this cache-flush, but
   # due to the multiple child processes, each of which does polling separately,

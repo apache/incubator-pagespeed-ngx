@@ -219,6 +219,12 @@ void SystemRewriteOptions::AddProperties() {
                     "virtual hosts that don't use "
                     "CreateSharedMemoryMetadataCache. "
                     "Set to 0 to turn off the default shared memory cache.");
+  AddSystemProperty("",
+                    &SystemRewriteOptions::purge_method_,
+                    "pm", "PurgeMethod", kServerScope,
+                    "HTTP method used for Cache Purge requests. Typically "
+                    "this is set to PURGE, but you must ensure that only "
+                    "authorized clients have access to this method.");
 
   MergeSubclassProperties(system_properties_);
 

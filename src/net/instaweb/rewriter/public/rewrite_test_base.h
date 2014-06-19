@@ -585,6 +585,12 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   HTTPCache::FindResult HttpBlockingFindStatus(
       const GoogleString& key, HTTPCache* http_cache);
 
+  // Same as above, but with options (for invalidation checks)
+  HTTPCache::FindResult HttpBlockingFindWithOptions(
+      const RewriteOptions* options,
+      const GoogleString& key, HTTPCache* http_cache, HTTPValue* value_out,
+      ResponseHeaders* headers);
+
   // Sets the response-headers Content-Type to "application/xhtml+xml".
   void SetXhtmlMimetype() { SetMimetype("application/xhtml+xml"); }
 

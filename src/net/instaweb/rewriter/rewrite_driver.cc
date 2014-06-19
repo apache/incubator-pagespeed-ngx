@@ -3019,7 +3019,8 @@ bool OptionsAwareHTTPCacheCallback::IsCacheValid(
   }
 
   return (headers.has_date_ms() &&
-          rewrite_options.IsUrlCacheValid(url, headers.date_ms()));
+          rewrite_options.IsUrlCacheValid(url, headers.date_ms(),
+                                          true /* search_wildcards */));
 }
 
 int64 OptionsAwareHTTPCacheCallback::OverrideCacheTtlMs(

@@ -29,6 +29,7 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/system/public/system_caches.h"
+#include "net/instaweb/system/public/system_cache_path.h"
 #include "net/instaweb/system/public/system_rewrite_options.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/property_cache.h"
@@ -38,10 +39,12 @@
 #include "net/instaweb/util/public/statistics_logger.h"
 #include "net/instaweb/util/public/writer.h"
 #include "pagespeed/kernel/base/cache_interface.h"
+#include "pagespeed/kernel/base/callback.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/string_writer.h"
 #include "pagespeed/kernel/base/timer.h"
+#include "pagespeed/kernel/cache/purge_context.h"
 #include "pagespeed/kernel/html/html_keywords.h"
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/google_url.h"
@@ -468,8 +471,10 @@ GoogleString CacheInfoHtmlSnippet(StringPiece label, StringPiece descriptor) {
 }  // namespace
 
 void AdminSite::PrintCaches(bool is_global, AdminSource source,
+                            const GoogleUrl& stripped_gurl,
                             const QueryParams& query_params,
                             const RewriteOptions* options,
+                            SystemCachePath* cache_path,
                             AsyncFetch* fetch, SystemCaches* system_caches,
                             CacheInterface* filesystem_metadata_cache,
                             HTTPCache* http_cache,
@@ -477,8 +482,8 @@ void AdminSite::PrintCaches(bool is_global, AdminSource source,
                             PropertyCache* page_property_cache,
                             ServerContext* server_context) {
   GoogleString url;
-  if ((query_params.Lookup1Unescaped("url", &url)) &&
-      (source == kPageSpeedAdmin)) {
+  if ((source == kPageSpeedAdmin) &&
+      query_params.Lookup1Unescaped("url", &url)) {
     // Delegate to ShowCacheHandler to get the cached value for that
     // URL, which it may do asynchronously, so we cannot use the
     // AdminHtml abstraction which closes the connection in its
@@ -486,6 +491,36 @@ void AdminSite::PrintCaches(bool is_global, AdminSource source,
     // TODO(xqyin): Figure out where the ShowCacheHandler and ShowCacheForm
     // should live to eliminate the dependency here.
     server_context->ShowCacheHandler(url, fetch, options->Clone());
+  } else if ((source == kPageSpeedAdmin) &&
+             query_params.Lookup1Unescaped("purge", &url)) {
+    ResponseHeaders* response_headers = fetch->response_headers();
+    if (!options->enable_cache_purge()) {
+      response_headers->SetStatusAndReason(HttpStatus::kNotFound);
+      response_headers->Add(HttpAttributes::kContentType, "text/html");
+      // TODO(jmarantz): virtualize the formatting of this message so that
+      // it's correct in ngx_pagespeed and mod_pagespeed (and IISpeed etc).
+      fetch->Write("Purging not enabled: please add\n"
+                   "<pre>\n"
+                   "    PagespeedEnableCachePurge on\n"
+                   "<pre>\n"
+                   "to your config\n", message_handler_);
+      fetch->Done(true);
+    } else if (url == "*") {
+      PurgeHandler(url, cache_path, fetch);
+    } else {
+      GoogleUrl origin(stripped_gurl.Origin());
+      GoogleUrl resolved(origin, url);
+      if (!resolved.IsWebValid()) {
+        response_headers->SetStatusAndReason(HttpStatus::kNotFound);
+        response_headers->Add(HttpAttributes::kContentType, "text/html");
+        GoogleString escaped_url;
+        HtmlKeywords::Escape(url, &escaped_url);
+        fetch->Write(StrCat("Invalid URL: ", escaped_url), message_handler_);
+        fetch->Done(true);
+      } else {
+        PurgeHandler(resolved.Spec(), cache_path, fetch);
+      }
+    }
   } else {
     AdminHtml admin_html("cache", "", source, fetch, message_handler_);
 
@@ -526,6 +561,10 @@ void AdminSite::PrintCaches(bool is_global, AdminSource source,
       if (!backend_stats.empty()) {
         HtmlKeywords::WritePre(backend_stats, "", fetch, message_handler_);
       }
+
+      fetch->Write("<h2>Purge Set</h2>", message_handler_);
+      HtmlKeywords::WritePre(options->PurgeSetString(), "", fetch,
+                             message_handler_);
 
       // Practice what we preach: put the blocking JS in the tail.
       // TODO(jmarantz): use static asset manager to compile & deliver JS
@@ -595,7 +634,7 @@ void AdminSite::MessageHistoryHandler(AdminSource source, AsyncFetch* fetch) {
 void AdminSite::AdminPage(
     bool is_global, const GoogleUrl& stripped_gurl,
     const QueryParams& query_params, const RewriteOptions* options,
-    AsyncFetch* fetch, SystemCaches* system_caches,
+    SystemCachePath* cache_path, AsyncFetch* fetch, SystemCaches* system_caches,
     CacheInterface* filesystem_metadata_cache, HTTPCache* http_cache,
     CacheInterface* metadata_cache, PropertyCache* page_property_cache,
     ServerContext* server_context, Statistics* statistics, Statistics* stats,
@@ -653,9 +692,10 @@ void AdminSite::AdminPage(
     } else if (leaf == "message_history") {
       MessageHistoryHandler(kPageSpeedAdmin, fetch);
     } else if (leaf == "cache") {
-      PrintCaches(is_global, kPageSpeedAdmin, query_params, options, fetch,
-                  system_caches, filesystem_metadata_cache, http_cache,
-                  metadata_cache, page_property_cache, server_context);
+      PrintCaches(is_global, kPageSpeedAdmin, stripped_gurl, query_params,
+                  options, cache_path, fetch, system_caches,
+                  filesystem_metadata_cache, http_cache, metadata_cache,
+                  page_property_cache, server_context);
     } else if (leaf == "histograms") {
       PrintHistograms(kPageSpeedAdmin, fetch, stats);
     } else {
@@ -699,11 +739,71 @@ void AdminSite::StatisticsPage(
   } else if (query_params.Has("histograms")) {
     PrintHistograms(kStatistics, fetch, stats);
   } else if (query_params.Has("cache")) {
-    PrintCaches(is_global, kStatistics, query_params, options, fetch,
-                system_caches, filesystem_metadata_cache, http_cache,
-                metadata_cache, page_property_cache, server_context);
+    GoogleUrl empty_url;
+    PrintCaches(is_global, kStatistics, empty_url, query_params,
+                options, NULL,  // cache_path is reference from statistics page.
+                fetch, system_caches, filesystem_metadata_cache,
+                http_cache, metadata_cache, page_property_cache,
+                server_context);
   } else {
     StatisticsHandler(kStatistics, fetch, stats);
+  }
+}
+
+namespace {
+
+// Provides a Done(bool, StringPiece) entry point for use as a Purge
+// callback. Translates the success into an Http status code for the
+// AsyncFetch, sending any failure reason in the response body.
+class PurgeFetchCallbackGasket {
+ public:
+  PurgeFetchCallbackGasket(AsyncFetch* fetch, MessageHandler* handler)
+      : fetch_(fetch),
+        message_handler_(handler) {
+  }
+  void Done(bool success, StringPiece reason) {
+    ResponseHeaders* headers = fetch_->response_headers();
+    headers->set_status_code(success ? HttpStatus::kOK : HttpStatus::kNotFound);
+    headers->Add(HttpAttributes::kContentType, "text/html");
+    if (success) {
+      fetch_->Write("Purge successful\n", message_handler_);
+    } else {
+      GoogleString buf;
+      fetch_->Write(HtmlKeywords::Escape(reason, &buf), message_handler_);
+      fetch_->Write("\n", message_handler_);
+      fetch_->Write(HtmlKeywords::Escape(error_, &buf), message_handler_);
+    }
+    fetch_->Done(true);
+    delete this;
+  }
+
+  void set_error(StringPiece x) { x.CopyToString(&error_); }
+
+ private:
+  AsyncFetch* fetch_;
+  MessageHandler* message_handler_;
+  GoogleString error_;
+
+  DISALLOW_COPY_AND_ASSIGN(PurgeFetchCallbackGasket);
+};
+
+}  // namespace
+
+void AdminSite::PurgeHandler(StringPiece url, SystemCachePath* cache_path,
+                             AsyncFetch* fetch) {
+  PurgeContext* purge_context = cache_path->purge_context();
+  int64 now_ms = timer_->NowMs();
+  PurgeFetchCallbackGasket* gasket =
+      new PurgeFetchCallbackGasket(fetch, message_handler_);
+  PurgeContext::PurgeCallback* callback = NewCallback(
+      gasket, &PurgeFetchCallbackGasket::Done);
+  if (url.ends_with("*")) {
+    // If the url is "*" we'll just purge everything.  Note that we will
+    // ignore any sub-paths in the expression.  We can only purge the
+    // entire cache, or specific URLs, not general wildcards.
+    purge_context->SetCachePurgeGlobalTimestampMs(now_ms, callback);
+  } else {
+    purge_context->AddPurgeUrl(url, now_ms, callback);
   }
 }
 

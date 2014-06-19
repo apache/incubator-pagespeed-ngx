@@ -384,7 +384,11 @@ class RewriteContext::OutputCacheCallback : public CacheInterface::Callback {
         DCHECK(input_info.has_expiration_time_ms());
         const RewriteOptions* options = rewrite_context_->Options();
         if (input_info.has_url()) {
-          if (options->IsUrlPurged(input_info.url(), input_info.date_ms())) {
+          // We do not search wildcards when validating metadata because
+          // that would require N wildcard matches (not even a
+          // FastWildcardGroup) per input dependency.
+          if (!options->IsUrlCacheValid(input_info.url(), input_info.date_ms(),
+                                        false /* search_wildcards */)) {
             *purged = true;
             return false;
           }

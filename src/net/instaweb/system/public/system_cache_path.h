@@ -17,22 +17,30 @@
 #ifndef NET_INSTAWEB_SYSTEM_PUBLIC_SYSTEM_CACHE_PATH_H_
 #define NET_INSTAWEB_SYSTEM_PUBLIC_SYSTEM_CACHE_PATH_H_
 
+#include <set>
+
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/thread_annotations.h"
+#include "pagespeed/kernel/util/copy_on_write.h"
 
 namespace net_instaweb {
 
+class AbstractMutex;
 class AbstractSharedMem;
 class CacheInterface;
 class FileCache;
 class FileSystemLockManager;
 class MessageHandler;
 class NamedLockManager;
+class PurgeContext;
+class PurgeSet;
 class RewriteDriverFactory;
 class SharedMemLockManager;
 class SlowWorker;
+class SystemServerContext;
 class SystemRewriteOptions;
 
 // The SystemCachePath encapsulates a cache-sharing model where a user specifies
@@ -71,7 +79,24 @@ class SystemCachePath {
   // inode count.
   void MergeConfig(const SystemRewriteOptions* config);
 
+  // Associates a ServerContext with this CachePath, enabling cache purges
+  // to propagate into the ServerContext's global options.
+  void AddServerContext(SystemServerContext* server_context);
+
+  // Disassociates a server context with this CachePath -- used on shutdown.
+  void RemoveServerContext(SystemServerContext* server_context);
+
+  // Entry-point for flushing the cache, either via the legacy method
+  // of "touch .../cache.flush" or the newer method of purging via
+  // /pagespeed_admin/cache?purge=... or a PURGE method, depending on whether
+  // the EnableCachePurge method is set.
+  void FlushCacheIfNecessary();
+
+  PurgeContext* purge_context() { return purge_context_.get(); }
+
  private:
+  typedef std::set<SystemServerContext*> ServerContextSet;
+
   void FallBackToFileBasedLocking();
   GoogleString LockManagerSegmentName() const;
 
@@ -95,6 +120,10 @@ class SystemCachePath {
                     const char* name,
                     int64* policy_value, bool* has_explicit_policy);
 
+
+  // Transmits cache-purge-set updates to all live server contexts.
+  void UpdateCachePurgeSet(const CopyOnWrite<PurgeSet>& purge_set);
+
   GoogleString path_;
 
   RewriteDriverFactory* factory_;
@@ -108,6 +137,12 @@ class SystemCachePath {
   bool clean_interval_explicitly_set_;
   bool clean_size_explicitly_set_;
   bool clean_inode_limit_explicitly_set_;
+  const SystemRewriteOptions* options_;
+
+  scoped_ptr<PurgeContext> purge_context_;
+
+  scoped_ptr<AbstractMutex> mutex_;
+  ServerContextSet server_context_set_ GUARDED_BY(mutex_);
 };
 
 // CACHE_STATISTICS is #ifdef'd to facilitate experiments with whether
