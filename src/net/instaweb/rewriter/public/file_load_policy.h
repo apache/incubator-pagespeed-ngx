@@ -35,6 +35,9 @@ class FileLoadRule;
 //
 // Currently, you must explicitly set which directories to load directly
 // from filesystem.
+//
+// Files with unknown extensions are never loaded from file because we wouldn't
+// be able to set a content type.
 class FileLoadPolicy {
  public:
   FileLoadPolicy() {}
@@ -108,6 +111,10 @@ class FileLoadPolicy {
 
   // Merge in other policies (needed for rewrite_options).
   virtual void Merge(const FileLoadPolicy& other);
+
+ protected:
+  virtual bool ShouldLoadFromFileHelper(const GoogleUrl& url,
+                                        GoogleString* filename) const;
 
  private:
   typedef std::list<FileLoadMapping*> FileLoadMappings;

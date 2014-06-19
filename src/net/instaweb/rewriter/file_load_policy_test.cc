@@ -51,7 +51,7 @@ class FileLoadPolicyTest : public ::testing::Test {
     GoogleString filename;
     bool load = policy->ShouldLoadFromFile(url, &filename);
     if (!load) {
-      EXPECT_TRUE(filename.empty());
+      EXPECT_TRUE(filename.empty()) << url_string;
     }
     return filename;
   }
@@ -91,9 +91,7 @@ TEST_F(FileLoadPolicyTest, OnePrefix) {
   // Map URLs to files.
   EXPECT_EQ("/example/1/foo.png",
             LoadFromFile("http://www.example.com/static/foo.png"));
-  // Note: We might have to deal with this case. It will never load :/
-  EXPECT_EQ("/example/1/bar/",
-            LoadFromFile("http://www.example.com/static/bar/"));
+  EXPECT_FALSE(TryLoadFromFile("http://www.example.com/static/bar/"));
   EXPECT_EQ("/example/1/some/more/dirs/b.css",
             LoadFromFile("http://www.example.com/static/some/more/dirs/b.css"));
   // Drop query string.
@@ -129,8 +127,7 @@ TEST_F(FileLoadPolicyTest, ManyPrefixes) {
   // Map URLs to files.
   EXPECT_EQ("/example/1/foo.png",
             LoadFromFile("http://www.example.com/static/foo.png"));
-  EXPECT_EQ("/example/1/bar/",
-            LoadFromFile("http://www.example.com/static/bar/"));
+  EXPECT_FALSE(TryLoadFromFile("http://www.example.com/static/bar/"));
   EXPECT_EQ("/example/1/some/more/dirs/b.css",
             LoadFromFile("http://www.example.com/static/some/more/dirs/b.css"));
   // Drop query string.
@@ -166,8 +163,8 @@ TEST_F(FileLoadPolicyTest, RegexpBackreferences) {
             LoadFromFile("http://example.com/~pat/static/cat.jpg"));
   EXPECT_EQ("/var/static/sam/dog.jpg",
             LoadFromFile("http://example.com/~sam/static/dog.jpg"));
-  EXPECT_EQ("/var/static/al/css/ie",
-            LoadFromFile("https://example.com/~al/static/css/ie"));
+  EXPECT_EQ("/var/static/al/ie.css",
+            LoadFromFile("https://example.com/~al/static/ie.css"));
 }
 
 TEST_F(FileLoadPolicyTest, RegexpNotPrefix) {
@@ -213,27 +210,27 @@ TEST_F(FileLoadPolicyTest, OverlappingPrefixes) {
 TEST_F(FileLoadPolicyTest, Rules) {
   GoogleString error;
   policy_.Associate("http://example.com/", "/www/");
-  EXPECT_EQ("/www/1", LoadFromFile("http://example.com/1"));
-  EXPECT_EQ("/www/cgi-bin/guestbook.pl",
-            LoadFromFile("http://example.com/cgi-bin/guestbook.pl"));
+  EXPECT_FALSE(TryLoadFromFile("http://example.com/1"));
+  EXPECT_EQ("/www/cgi-bin/guestbook.pl.js",
+            LoadFromFile("http://example.com/cgi-bin/guestbook.pl.js"));
   policy_.AddRule("/www/cgi-bin/", false /* literal */, false /* disallow */,
                   &error);
   EXPECT_TRUE(error.empty());
-  EXPECT_FALSE(TryLoadFromFile("http://example.com/cgi-bin/guestbook.pl"));
-  policy_.AddRule("\\.html$", true /* regexp */, true /* allow */, &error);
+  EXPECT_FALSE(TryLoadFromFile("http://example.com/cgi-bin/guestbook.pl.js"));
+  policy_.AddRule("\\.js$", true /* regexp */, true /* allow */, &error);
   EXPECT_TRUE(error.empty());
-  EXPECT_EQ("/www/cgi-bin/guestbook.html",
-            LoadFromFile("http://example.com/cgi-bin/guestbook.html"));
-  policy_.AddRule("\\.ssi\\.html$", true /* regexp */, false /* disallow */,
-                  &error);
+  EXPECT_EQ("/www/cgi-bin/guestbook.js",
+            LoadFromFile("http://example.com/cgi-bin/guestbook.js"));
+  policy_.AddRule("\\.ssi.js$",
+                  true /* regexp */, false /* disallow */, &error);
   EXPECT_TRUE(error.empty());
   EXPECT_FALSE(
-      TryLoadFromFile("http://example.com/cgi-bin/guestbook.ssi.html"));
+      TryLoadFromFile("http://example.com/cgi-bin/guestbook.ssi.js"));
   policy_.AddRule("/www/cgi-bin/allow", false /* literal */, true /* allow */,
                   &error);
   EXPECT_TRUE(error.empty());
-  EXPECT_EQ("/www/cgi-bin/allow.ssi.html",
-            LoadFromFile("http://example.com/cgi-bin/allow.ssi.html"));
+  EXPECT_EQ("/www/cgi-bin/allow.ssi.js",
+            LoadFromFile("http://example.com/cgi-bin/allow.ssi.js"));
 }
 
 TEST_F(FileLoadPolicyTest, Merge) {
@@ -296,8 +293,8 @@ TEST_F(FileLoadPolicyTest, Merge) {
   // Check rules.
   EXPECT_FALSE(TryLoadFromFile("http://www.example.com/5/foo.png", &policy1));
   EXPECT_FALSE(TryLoadFromFile("http://www.example.com/4/foo.jpg", &policy1));
-  EXPECT_EQ("/4/foo.notjpg",
-            LoadFromFile("http://www.example.com/4/foo.notjpg", &policy1));
+  EXPECT_FALSE(
+      TryLoadFromFile("http://www.example.com/4/foo.notjpg", &policy1));
   EXPECT_EQ("/4/exception.jpg",
             LoadFromFile("http://www.example.com/4/exception.jpg", &policy1));
   EXPECT_EQ("/4/anexception.jpg",
@@ -310,6 +307,17 @@ TEST_F(FileLoadPolicyTest, Merge) {
             LoadFromFile("http://www.example.com/3/foo.png", &policy2));
   EXPECT_EQ("/4/foo.png",
             LoadFromFile("http://www.example.com/4/foo.png", &policy2));
+}
+
+TEST_F(FileLoadPolicyTest, OnlyStatic) {
+  policy_.Associate("http://www.example.com/", "/");
+
+  // Verify that only static resources are loaded from file.
+  EXPECT_EQ("/a.jpg", LoadFromFile("http://www.example.com/a.jpg"));
+  EXPECT_FALSE(TryLoadFromFile("http://www.example.com/a.unknown"));
+  EXPECT_FALSE(TryLoadFromFile("http://www.example.com/a"));
+  EXPECT_FALSE(TryLoadFromFile("http://www.example.com/a.png/"));
+  EXPECT_FALSE(TryLoadFromFile("http://www.example.com/a.png/b"));
 }
 
 }  // namespace net_instaweb

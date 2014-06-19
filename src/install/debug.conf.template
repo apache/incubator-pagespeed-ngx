@@ -728,6 +728,16 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   ModPagespeedDisableFilters remove_comments,add_instrumentation
 </VirtualHost>
 
+# For testing ipro + load from file + unknown extensions.
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName lff-ipro.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
+  ModPagespeedLoadFromFile \
+   "http://lff-ipro.example.com/mod_pagespeed_example/lff_ipro" \
+   "@@APACHE_DOC_ROOT@@/mod_pagespeed_example/lff_ipro"
+</VirtualHost>
+
 # For testing signed urls.
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
   ServerName signed-urls.example.com

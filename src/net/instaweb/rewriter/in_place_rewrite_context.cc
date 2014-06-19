@@ -127,9 +127,15 @@ void RecordingFetch::HandleHeadersComplete() {
       // to us.
       streaming_ = false;
       set_request_headers(NULL);
+      // If we cannot rewrite in-place, we should not serve a 200/OK.  Serve
+      // kNotInCacheStatus instead to fall back to the server's native method of
+      // serving the url and indicate we do want it recorded.
+      if (!response_headers()->IsErrorStatus()) {
+        response_headers()->set_status_code(
+            CacheUrlAsyncFetcher::kNotInCacheStatus);
+      }
       set_response_headers(NULL);
       set_extra_response_headers(NULL);
-      response_headers()->set_status_code(HttpStatus::kNotFound);
       SharedAsyncFetch::HandleDone(false);
     }
   }
