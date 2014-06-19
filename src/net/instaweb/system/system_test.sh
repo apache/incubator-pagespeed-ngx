@@ -18,7 +18,7 @@ source "$this_dir/../automatic/system_test.sh" || exit 1
 
 if [ "$SECONDARY_HOSTNAME" != "" ]; then
   start_test load from file with ipro
-  URL="http://lff-ipro.example.com/mod_pagespeed_example/lff_ipro/fake.woff"
+  URL="http://lff-ipro.example.com/mod_pagespeed_test/lff_ipro/fake.woff"
   OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET -O - $URL)
   check_from "$OUT" grep "^This isn't really a woff file\.$"
   check [ "$(echo "$OUT" | wc -l)" = 1 ]

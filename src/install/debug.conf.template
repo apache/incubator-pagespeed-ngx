@@ -728,8 +728,8 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   DocumentRoot "@@APACHE_DOC_ROOT@@"
   ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
   ModPagespeedLoadFromFile \
-   "http://lff-ipro.example.com/mod_pagespeed_example/lff_ipro" \
-   "@@APACHE_DOC_ROOT@@/mod_pagespeed_example/lff_ipro"
+   "http://lff-ipro.example.com/mod_pagespeed_test/lff_ipro" \
+   "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/lff_ipro"
 </VirtualHost>
 
 # For testing signed urls.
