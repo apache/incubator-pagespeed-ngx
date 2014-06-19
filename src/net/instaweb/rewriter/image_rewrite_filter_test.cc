@@ -3448,7 +3448,8 @@ TEST_F(ImageRewriteTest, NoTransformOptimized) {
   EXPECT_TRUE(found);
 }
 
-TEST_F(ImageRewriteTest, DebugMessage) {
+TEST_F(ImageRewriteTest, DebugMessageImageInfo) {
+
   options()->EnableFilter(RewriteOptions::kDebug);
   options()->EnableFilter(RewriteOptions::kConvertGifToPng);
   options()->EnableFilter(RewriteOptions::kRecompressPng);
@@ -3470,6 +3471,28 @@ TEST_F(ImageRewriteTest, DebugMessage) {
       "compression noise.-->");
 
   EXPECT_THAT(output_buffer_, HasSubstr(expected));
+}
+
+
+TEST_F(ImageRewriteTest, DebugMessageInline) {
+  options()->set_image_inline_max_bytes(100);
+  options()->EnableFilter(RewriteOptions::kConvertGifToPng);
+  options()->EnableFilter(RewriteOptions::kDebug);
+  options()->EnableFilter(RewriteOptions::kInlineImages);
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  rewrite_driver()->AddFilters();
+
+  GoogleString initial_url = StrCat(kTestDomain, kChefGifFile);
+  GoogleString page_url = StrCat(kTestDomain, "test.html");
+  AddFileToMockFetcher(initial_url, kChefGifFile, kContentTypeGif, 100);
+  const char html_boilerplate[] = "<img src='%s' width='10' height='12'>";
+  GoogleString html_input = StringPrintf(html_boilerplate, initial_url.c_str());
+
+  ParseUrl(page_url, html_input);
+
+  const char kInlineMessage[] =
+      "The image was not inlined because it has too many bytes.";
+  EXPECT_THAT(output_buffer_, HasSubstr(kInlineMessage));
 }
 
 }  // namespace net_instaweb

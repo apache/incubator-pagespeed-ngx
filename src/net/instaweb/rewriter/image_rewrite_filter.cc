@@ -309,6 +309,32 @@ void LogImageBackgroundRewriteActivity(
       is_resized_using_rendered_dimensions, resized_width, resized_height);
 }
 
+const char* MessageForInlineResult(InlineResult inline_result) {
+  const char* message = "";
+  switch (inline_result) {
+    case INLINE_SUCCESS:
+      // No message will be displayed.
+      break;
+    case INLINE_UNSUPPORTED_DEVICE:
+      message = "The image was not inlined because device does not support "
+        "inlinling.";
+      break;
+    case INLINE_NOT_CRITICAL:
+      message = "The image was not inlined because you have chosen to only "
+        "inline the critical images but this image is not critical.";
+      break;
+    case INLINE_NO_DATA:
+    case INLINE_TOO_LARGE:
+      message = "The image was not inlined because it has too many bytes.";
+      break;
+    case INLINE_CACHE_SMALL_IMAGES_UNREWRITTEN:
+      message = "The image was not inlined because CacheSmallImagesUnrewritten "
+        "has been set.";
+      break;
+  }
+  return message;
+}
+
 }  // namespace
 
 class ImageRewriteFilter::Context : public SingleRewriteContext {
@@ -410,21 +436,37 @@ void ImageRewriteFilter::Context::Render() {
 
   CHECK_EQ(1, num_slots());
 
-  const CachedResult* result = output_partition(0);
+  CachedResult* result = output_partition(0);
   bool rewrote_url = false;
   ResourceSlot* resource_slot = slot(0).get();
-  if (is_css_) {
-    rewrote_url = filter_->FinishRewriteCssImageUrl(css_image_inline_max_bytes_,
-                                                    result, resource_slot);
-  } else {
-    if (!has_parent()) {
+  if (is_css_ || !has_parent()) {
+    InlineResult inline_result;
+    if (is_css_) {
+      rewrote_url = filter_->FinishRewriteCssImageUrl(
+          css_image_inline_max_bytes_, result, resource_slot, &inline_result);
+    } else {  // html
       // We use manual rendering for HTML, as we have to consider whether to
       // inline, and may also pass in width and height attributes.
       HtmlResourceSlot* html_slot = static_cast<HtmlResourceSlot*>(
           resource_slot);
       rewrote_url = filter_->FinishRewriteImageUrl(
-          result, resource_context(),
-          html_slot->element(), html_slot->attribute(), html_index_, html_slot);
+          result, resource_context(), html_slot->element(),
+          html_slot->attribute(), html_index_, html_slot, &inline_result);
+    }
+
+    if (Driver()->options()->Enabled(RewriteOptions::kInlineImages)) {
+      // Show the debug message for inlining only when this option has been
+      // enabled.
+      filter_->SaveDebugMessageToCache(
+          MessageForInlineResult(inline_result), this, result);
+    }
+
+    if (!is_css_) {
+      HtmlResourceSlot* html_slot = static_cast<HtmlResourceSlot*>(
+          resource_slot);
+      // TODO(jmaessen): Replace Driver()->InsertDebugComment() with
+      // resource_slot->InsertDebugComment().
+
       Driver()->InsertDebugComment(result->debug_message(),
                                    html_slot->element());
     }
@@ -1257,11 +1299,14 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
 }
 
 bool ImageRewriteFilter::FinishRewriteCssImageUrl(
-    int64 css_image_inline_max_bytes,
-    const CachedResult* cached, ResourceSlot* slot) {
+    int64 css_image_inline_max_bytes, const CachedResult* cached,
+    ResourceSlot* slot, InlineResult* inline_result) {
   GoogleString data_url;
-  if (driver()->request_properties()->SupportsImageInlining() &&
-      TryInline(css_image_inline_max_bytes, cached, slot, &data_url)) {
+  *inline_result = TryInline(false /*not html*/, false /*not critical*/,
+                             css_image_inline_max_bytes, cached, slot,
+                             &data_url);
+
+  if (*inline_result == INLINE_SUCCESS) {
     // TODO(jmaessen): Can we make output URL reflect actual *usage*
     // of image inlining and/or webp images?
     const RewriteOptions* options = driver()->options();
@@ -1361,7 +1406,7 @@ void DeleteMatchingImageDimsAfterInline(
 bool ImageRewriteFilter::FinishRewriteImageUrl(
     const CachedResult* cached, const ResourceContext* resource_context,
     HtmlElement* element, HtmlElement::Attribute* src, int image_index,
-    HtmlResourceSlot* slot) {
+    HtmlResourceSlot* slot, InlineResult* inline_result) {
   GoogleString src_value(src->DecodedValueOrNull());
   if (src_value.empty()) {
     return false;
@@ -1376,11 +1421,11 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
   // TODO(jmaessen): get rid of a string copy here. Tricky because ->SetValue()
   // copies implicitly.
   GoogleString data_url;
-  if (driver()->request_properties()->SupportsImageInlining() &&
-      (!driver()->options()->inline_only_critical_images() ||
-       is_critical_image) &&
-      TryInline(driver()->options()->ImageInlineMaxBytes(),
-                cached, slot, &data_url)) {
+  *inline_result = TryInline(true /*in html*/, is_critical_image,
+                             driver()->options()->ImageInlineMaxBytes(),
+                             cached, slot, &data_url);
+
+  if (*inline_result == INLINE_SUCCESS) {
     const RewriteOptions* options = driver()->options();
     DCHECK(!options->cache_small_images_unrewritten())
         << "Modifying a URL slot despite "
@@ -1691,16 +1736,24 @@ void ImageRewriteFilter::GetDimensions(
   }
 }
 
-bool ImageRewriteFilter::TryInline(
+InlineResult ImageRewriteFilter::TryInline(bool is_html, bool is_critical,
     int64 image_inline_max_bytes, const CachedResult* cached_result,
     ResourceSlot* slot, GoogleString* data_url) {
+  if (!driver()->request_properties()->SupportsImageInlining()) {
+    return INLINE_UNSUPPORTED_DEVICE;
+  }
+  if (is_html && driver()->options()->inline_only_critical_images() &&
+      !is_critical) {
+    return INLINE_NOT_CRITICAL;
+  }
   if (!cached_result->has_inlined_data()) {
-    return false;
+    return INLINE_NO_DATA;
   }
   StringPiece data = cached_result->inlined_data();
   if (static_cast<int64>(data.size()) >= image_inline_max_bytes) {
-    return false;
+    return INLINE_TOO_LARGE;
   }
+
   // This is the decision point for whether or not an image is suitable for
   // inlining. After this point, we may skip inlining an image, but not
   // because of properties of the image.
@@ -1721,13 +1774,13 @@ bool ImageRewriteFilter::TryInline(
     // We disable rendering to prevent any rewriting of the URL that we'll
     // advertise in the property cache.
     slot->set_disable_rendering(true);
-    return false;
+    return INLINE_CACHE_SMALL_IMAGES_UNREWRITTEN;
   }
   DataUrl(
       *Image::TypeToContentType(
           static_cast<ImageType>(cached_result->inlined_image_type())),
       BASE64, data, data_url);
-  return true;
+  return INLINE_SUCCESS;
 }
 
 void ImageRewriteFilter::EndElementImpl(HtmlElement* element) {

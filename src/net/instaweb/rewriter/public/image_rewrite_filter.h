@@ -49,6 +49,15 @@ class Variable;
 class WorkBound;
 struct ContentType;
 
+enum InlineResult {
+  INLINE_SUCCESS,
+  INLINE_UNSUPPORTED_DEVICE,
+  INLINE_NOT_CRITICAL,
+  INLINE_NO_DATA,
+  INLINE_TOO_LARGE,
+  INLINE_CACHE_SMALL_IMAGES_UNREWRITTEN,
+};
+
 // Identify img tags in html and optimize them.
 // TODO(jmaessen): Big open question: how best to link pulled-in resources to
 //     rewritten urls, when in general those urls will be in a different domain.
@@ -110,7 +119,7 @@ class ImageRewriteFilter : public RewriteFilter {
 
   // Can we inline resource?  If so, encode its contents into the data_url,
   // otherwise leave data_url alone.
-  bool TryInline(
+  InlineResult TryInline(bool is_html, bool is_critical,
       int64 image_inline_max_bytes, const CachedResult* cached_result,
       ResourceSlot* slot, GoogleString* data_url);
 
@@ -203,13 +212,14 @@ class ImageRewriteFilter : public RewriteFilter {
   // Returns true if it rewrote (ie inlined) the URL.
   bool FinishRewriteCssImageUrl(
       int64 css_image_inline_max_bytes,
-      const CachedResult* cached, ResourceSlot* slot);
+      const CachedResult* cached, ResourceSlot* slot,
+      InlineResult* inline_result);
 
   // Returns true if it rewrote the URL.
   bool FinishRewriteImageUrl(
       const CachedResult* cached, const ResourceContext* resource_context,
       HtmlElement* element, HtmlElement::Attribute* src, int image_index,
-      HtmlResourceSlot* slot);
+      HtmlResourceSlot* slot, InlineResult* inline_result);
 
   // Save image contents in cached if the image is inlinable.
   void SaveIfInlinable(const StringPiece& contents,

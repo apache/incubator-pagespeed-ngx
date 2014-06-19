@@ -1182,7 +1182,9 @@ TEST_F(CssRecompressImagesInStyleAttributes, ServeCssToDifferentUA) {
 
 TEST_F(CssImageRewriterTest, DebugMessage) {
   options()->ClearSignatureForTesting();
+  options()->set_image_inline_max_bytes(20000);
   options()->SoftEnableFilterForTesting(RewriteOptions::kDebug);
+  options()->SoftEnableFilterForTesting(RewriteOptions::kInlineImages);
   options()->SoftEnableFilterForTesting(RewriteOptions::kRecompressPng);
   server_context()->ComputeSignature(options());
   AddFileToMockFetcher(StrCat(kTestDomain, "foo.png"), kBikePngFile,
@@ -1198,7 +1200,8 @@ TEST_F(CssImageRewriterTest, DebugMessage) {
       ")}");
 
   debug_message_ = "<!--Image has no transparent pixels and is not sensitive "
-                   "to compression noise.-->";
+    "to compression noise.-->"
+    "<!--The image was not inlined because it has too many bytes.-->";
   ValidateRewriteInlineCss("recompress_css_images", kCss, kCssAfter,
                            kNoStatCheck | kExpectCached);
 }
