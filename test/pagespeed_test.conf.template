@@ -969,6 +969,21 @@ http {
   }
 
   server {
+    listen @@SECONDARY_PORT@@;
+    server_name purge.example.com;
+
+    # Test purging individual URLs without flushing the entire metadata cache.
+    pagespeed EnableCachePurge on;
+
+    pagespeed PurgeMethod PURGE;
+    root "@@SERVER_ROOT@@";
+    pagespeed FileCachePath "@@FILE_CACHE@@_purge";
+    pagespeed DisableFilters add_instrumentation;
+    pagespeed RewriteLevel PassThrough;
+    pagespeed EnableFilters rewrite_css;
+  }
+
+  server {
     listen       @@PRIMARY_PORT@@;
     server_name  localhost;
     pagespeed FileCachePath "@@FILE_CACHE@@";
