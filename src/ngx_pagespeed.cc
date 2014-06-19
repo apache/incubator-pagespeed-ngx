@@ -484,6 +484,7 @@ enum Response {
   kConsole,
   kMessages,
   kAdmin,
+  kCachePurge,
   kGlobalAdmin,
   kPagespeedSubrequest,
   kNotHeadOrGet,
@@ -1643,6 +1644,11 @@ RequestRouting::Response ps_route_request(ngx_http_request_t* r,
   } else if (!global_options->global_admin_path().empty() &&
              StringCaseStartsWith(path, global_options->global_admin_path())) {
     return RequestRouting::kGlobalAdmin;
+  } else if (global_options->enable_cache_purge() &&
+             !global_options->purge_method().empty() &&
+             (global_options->purge_method() ==
+              str_to_string_piece(r->method_name))) {
+    return RequestRouting::kCachePurge;
   }
 
   const GoogleString* beacon_url;
@@ -1733,7 +1739,8 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
       response_category == RequestRouting::kGlobalStatistics ||
       response_category == RequestRouting::kConsole ||
       response_category == RequestRouting::kAdmin ||
-      response_category == RequestRouting::kGlobalAdmin;
+      response_category == RequestRouting::kGlobalAdmin ||
+      response_category == RequestRouting::kCachePurge;
 
   if (html_rewrite) {
     ps_release_base_fetch(ctx);
@@ -1844,6 +1851,11 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
           custom_options == NULL ? cfg_s->server_context->config()
                                  : custom_options.get(),
           ctx->base_fetch);
+    } else if (response_category == RequestRouting::kCachePurge) {
+      AdminSite* admin_site = cfg_s->server_context->admin_site();
+      admin_site->PurgeHandler(url_string,
+                               cfg_s->server_context->cache_path(),
+                               ctx->base_fetch);
     } else {
       CHECK(false);
     }
@@ -2681,6 +2693,7 @@ ngx_int_t ps_content_handler(ngx_http_request_t* r) {
     case RequestRouting::kConsole:
     case RequestRouting::kAdmin:
     case RequestRouting::kGlobalAdmin:
+    case RequestRouting::kCachePurge:
     case RequestRouting::kResource:
       return ps_resource_handler(
           r, false /* html rewrite */, response_category);

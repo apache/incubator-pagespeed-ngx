@@ -250,6 +250,12 @@ else
   exit 4
 fi
 
+# check_stat in system_test_helpers.sh needs to know whether statstistics are
+# enabled, which is always the case for ngx_pagespeed.
+statistics_enabled=1
+CACHE_FLUSH_TEST="on"
+CACHE_PURGE_METHODS="GET"   # PURGE is not working yet.
+
 # run generic system tests
 SYSTEM_TEST_FILE="$MOD_PAGESPEED_DIR/src/net/instaweb/system/system_test.sh"
 
