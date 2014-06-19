@@ -48,10 +48,6 @@ class NgxMessageHandler : public SystemMessageHandler {
   void set_log(ngx_log_t* log) { log_ = log; }
   ngx_log_t* log() { return log_; }
 
-  void SetPidString(const int64 pid) {
-    pid_string_ = StrCat("[", Integer64ToString(pid), "]");
-  }
-
  protected:
   virtual void MessageVImpl(MessageType type, const char* msg, va_list args);
 
@@ -60,11 +56,6 @@ class NgxMessageHandler : public SystemMessageHandler {
 
  private:
   ngx_uint_t GetNgxLogLevel(MessageType type);
-
-  GoogleString pid_string_;
-  // handler_ is used as a fallback when we can not use ngx_log_errort
-  // It's also used when calling Dump on the internal SharedCircularBuffer
-  GoogleMessageHandler handler_;
   ngx_log_t* log_;
 
   DISALLOW_COPY_AND_ASSIGN(NgxMessageHandler);

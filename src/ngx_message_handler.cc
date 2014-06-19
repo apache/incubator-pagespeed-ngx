@@ -59,7 +59,6 @@ namespace net_instaweb {
 NgxMessageHandler::NgxMessageHandler(Timer* timer, AbstractMutex* mutex)
     : SystemMessageHandler(timer, mutex),
       log_(NULL) {
-  SetPidString(static_cast<int64>(getpid()));
 }
 
 // Installs a signal handler for common crash signals, that tries to print
@@ -99,9 +98,8 @@ void NgxMessageHandler::MessageVImpl(MessageType type, const char* msg,
   } else {
     GoogleMessageHandler::MessageVImpl(type, msg, args);
   }
-
   // Prepare a log message for the SharedCircularBuffer only.
-  AddMessageToBuffer(type, pid_string_, formatted_message);
+  AddMessageToBuffer(type, formatted_message);
 }
 
 void NgxMessageHandler::FileMessageVImpl(MessageType type, const char* file,
