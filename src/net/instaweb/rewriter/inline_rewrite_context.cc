@@ -142,8 +142,6 @@ void InlineRewriteContext::Render() {
     RenderInline(
         our_slot->resource(), output_partition(0)->inlined_data(), element_);
   }
-
-  Driver()->InsertDebugComment(output_partition(0)->debug_message(), element_);
 }
 
 // We never create output resources, so methods related to them are stubbed.

@@ -768,9 +768,10 @@ void RewriteDriver::FlushAsyncDone(int num_rewrites, Function* callback) {
           StringFilterMap::const_iterator p = resource_filter_map_.find(id);
           if (p != resource_filter_map_.end()) {
             RewriteFilter* filter = p->second;
-            slot->InsertDebugComment(DeadlineExceededMessage(filter->Name()));
+            InsertDebugComment(DeadlineExceededMessage(filter->Name()),
+                               slot->element());
           } else {
-            slot->InsertDebugComment(kDeadlineExceeded);
+            InsertDebugComment(kDeadlineExceeded, slot->element());
           }
         }
       }
@@ -3264,7 +3265,7 @@ void RewriteDriver::InsertDebugComment(StringPiece message,
   }
 }
 
-void RewriteDriver::InsertDebugComment(
+void RewriteDriver::InsertDebugComments(
     const protobuf::RepeatedPtrField<GoogleString>& messages,
     HtmlElement* element) {
   if (DebugMode() && element != NULL && IsRewritable(element)) {

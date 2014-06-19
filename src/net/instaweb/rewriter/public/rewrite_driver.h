@@ -1076,7 +1076,7 @@ class RewriteDriver : public HtmlParse {
   // that takes a repeated field is intended for use by CachedResult, e.g:
   //   InsertDebugComment(cached_result.debug_message(), element);
   void InsertDebugComment(StringPiece message, HtmlElement* element);
-  void InsertDebugComment(
+  void InsertDebugComments(
       const protobuf::RepeatedPtrField<GoogleString>& messages,
       HtmlElement* element);
   void InsertUnauthorizedDomainDebugComment(StringPiece url,

@@ -58,17 +58,21 @@ namespace {
 // A slot we use when rewriting inline CSS --- there is no place or need
 // to write out an output URL, so it has a no-op Render().
 // TODO(morlovich): Dupe'd from CssFilter; refactor?
-class InlineCssSlot : public ResourceSlot {
+class InlineCssSummarizerSlot : public ResourceSlot {
  public:
-  InlineCssSlot(const ResourcePtr& resource, const GoogleString& location)
-      : ResourceSlot(resource), location_(location) {}
-  virtual ~InlineCssSlot() {}
+  InlineCssSummarizerSlot(HtmlElement* element,
+                          const ResourcePtr& resource,
+                          const GoogleString& location)
+      : ResourceSlot(resource), element_(element), location_(location) {}
+  virtual ~InlineCssSummarizerSlot() {}
+  virtual HtmlElement* element() const { return element_; }
   virtual void Render() {}
   virtual GoogleString LocationString() { return location_; }
 
  private:
+  HtmlElement* element_;
   GoogleString location_;
-  DISALLOW_COPY_AND_ASSIGN(InlineCssSlot);
+  DISALLOW_COPY_AND_ASSIGN(InlineCssSummarizerSlot);
 };
 
 }  // namespace
@@ -452,7 +456,7 @@ void CssSummarizerBase::ReportSummariesDone() {
 
 void CssSummarizerBase::StartInlineRewrite(
     HtmlElement* style, HtmlCharactersNode* text) {
-  ResourceSlotPtr slot(MakeSlotForInlineCss(text->contents()));
+  ResourceSlotPtr slot(MakeSlotForInlineCss(style, text->contents()));
   Context* context =
       CreateContextAndSummaryInfo(style, false /* not external */,
                                   slot, slot->LocationString(),
@@ -493,7 +497,7 @@ void CssSummarizerBase::StartExternalRewrite(
 }
 
 ResourceSlot* CssSummarizerBase::MakeSlotForInlineCss(
-    const StringPiece& content) {
+    HtmlElement* element, const StringPiece& content) {
   // Create the input resource for the slot.
   GoogleString data_url;
   // TODO(morlovich): This does a lot of useless conversions and
@@ -501,7 +505,8 @@ ResourceSlot* CssSummarizerBase::MakeSlotForInlineCss(
   DataUrl(kContentTypeCss, PLAIN, content, &data_url);
   ResourcePtr input_resource(DataUrlInputResource::Make(data_url,
                                                         server_context()));
-  return new InlineCssSlot(input_resource, driver()->UrlLine());
+  return new InlineCssSummarizerSlot(
+      element, input_resource, driver()->UrlLine());
 }
 
 CssSummarizerBase::Context* CssSummarizerBase::CreateContextAndSummaryInfo(

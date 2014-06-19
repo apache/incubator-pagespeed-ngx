@@ -90,13 +90,17 @@ namespace {
 // to write out an output URL, so it has a no-op Render().
 class InlineCssSlot : public ResourceSlot {
  public:
-  InlineCssSlot(const ResourcePtr& resource, const GoogleString& location)
-      : ResourceSlot(resource), location_(location) {}
+  InlineCssSlot(HtmlElement* element,  // NULL if nested
+                const ResourcePtr& resource,
+                const GoogleString& location)
+      : ResourceSlot(resource), element_(element), location_(location) {}
   virtual ~InlineCssSlot() {}
+  virtual HtmlElement* element() const { return element_; }
   virtual void Render() {}
   virtual GoogleString LocationString() { return location_; }
 
  private:
+  HtmlElement* element_;
   GoogleString location_;
   DISALLOW_COPY_AND_ASSIGN(InlineCssSlot);
 };
@@ -323,12 +327,8 @@ void CssFilter::Context::Render() {
       Driver()->log_record()->SetRewriterLoggingStatus(
           id(), slot(0)->resource()->url(), RewriterApplication::APPLIED_OK);
     }
-
     filter_->num_uses_->Add(1);
   }
-
-  // Insert any debug messages if +debug is enabled.
-  Driver()->InsertDebugComment(result.debug_message(), rewrite_element_);
 }
 
 void CssFilter::Context::SetupInlineRewrite(HtmlElement* style_element,
@@ -1023,7 +1023,7 @@ void CssFilter::EndElementImpl(HtmlElement* element) {
 
 void CssFilter::StartInlineRewrite(HtmlCharactersNode* text) {
   HtmlElement* element = text->parent();
-  ResourceSlotPtr slot(MakeSlotForInlineCss(text->contents()));
+  ResourceSlotPtr slot(MakeSlotForInlineCss(element, text->contents()));
   CssFilter::Context* rewriter = StartRewriting(slot);
   if (rewriter == NULL) {
     return;
@@ -1050,7 +1050,8 @@ void CssFilter::StartInlineRewrite(HtmlCharactersNode* text) {
 void CssFilter::StartAttributeRewrite(HtmlElement* element,
                                       HtmlElement::Attribute* style,
                                       InlineCssKind inline_css_kind) {
-  ResourceSlotPtr slot(MakeSlotForInlineCss(style->DecodedValueOrNull()));
+  ResourceSlotPtr slot(
+      MakeSlotForInlineCss(element, style->DecodedValueOrNull()));
   CssFilter::Context* rewriter = StartRewriting(slot);
   if (rewriter == NULL) {
     return;
@@ -1096,7 +1097,8 @@ void CssFilter::StartExternalRewrite(HtmlElement* link,
   }
 }
 
-ResourceSlot* CssFilter::MakeSlotForInlineCss(const StringPiece& content) {
+ResourceSlot* CssFilter::MakeSlotForInlineCss(HtmlElement* element,
+                                              const StringPiece& content) {
   // Create the input resource for the slot.
   GoogleString data_url;
   // TODO(morlovich): This does a lot of useless conversions and
@@ -1104,7 +1106,7 @@ ResourceSlot* CssFilter::MakeSlotForInlineCss(const StringPiece& content) {
   DataUrl(kContentTypeCss, PLAIN, content, &data_url);
   ResourcePtr input_resource(DataUrlInputResource::Make(data_url,
                                                         server_context()));
-  return new InlineCssSlot(input_resource, driver()->UrlLine());
+  return new InlineCssSlot(element, input_resource, driver()->UrlLine());
 }
 
 CssFilter::Context* CssFilter::StartRewriting(const ResourceSlotPtr& slot) {
@@ -1223,7 +1225,7 @@ RewriteContext* CssFilter::MakeNestedFlatteningContextInNewSlot(
     const ResourcePtr& resource, const GoogleString& location,
     CssFilter::Context* rewriter, RewriteContext* parent,
     CssHierarchy* hierarchy) {
-  ResourceSlotPtr slot(new InlineCssSlot(resource, location));
+  ResourceSlotPtr slot(new InlineCssSlot(NULL, resource, location));
   RewriteContext* context = new CssFlattenImportsContext(parent, this,
                                                          rewriter, hierarchy);
   context->AddSlot(slot);

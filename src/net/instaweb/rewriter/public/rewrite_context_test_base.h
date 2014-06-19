@@ -211,6 +211,7 @@ class NestedFilter : public RewriteFilter {
   class NestedSlot : public ResourceSlot {
    public:
     explicit NestedSlot(const ResourcePtr& resource) : ResourceSlot(resource) {}
+    virtual HtmlElement* element() const { return NULL; }
     virtual void Render() {}
     virtual GoogleString LocationString() { return "nested:"; }
   };

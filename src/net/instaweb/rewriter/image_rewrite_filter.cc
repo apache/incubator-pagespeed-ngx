@@ -460,16 +460,6 @@ void ImageRewriteFilter::Context::Render() {
       filter_->SaveDebugMessageToCache(
           MessageForInlineResult(inline_result), this, result);
     }
-
-    if (!is_css_) {
-      HtmlResourceSlot* html_slot = static_cast<HtmlResourceSlot*>(
-          resource_slot);
-      // TODO(jmaessen): Replace Driver()->InsertDebugComment() with
-      // resource_slot->InsertDebugComment().
-
-      Driver()->InsertDebugComment(result->debug_message(),
-                                   html_slot->element());
-    }
     // Use standard rendering in case the rewrite is nested and not inside CSS.
   }
   if (rewrote_url) {

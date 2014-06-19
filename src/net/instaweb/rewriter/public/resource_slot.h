@@ -61,6 +61,8 @@ class ResourceSlot : public RefCounted<ResourceSlot> {
   }
 
   ResourcePtr resource() const { return resource_; }
+  // Return HTML element associated with slot, or NULL if none (CSS, IPRO)
+  virtual HtmlElement* element() const = 0;
 
   // Note that while slots can be mutated by multiple threads; they are
   // implemented with thread-safety in mind -- only mainline render their
@@ -160,10 +162,6 @@ class ResourceSlot : public RefCounted<ResourceSlot> {
   // that was added.
   void DetachContext(RewriteContext* context);
 
-  // Inserts a debug comment near the slot.  The base class implementation
-  // calls LOG(DFATAL) as we only expect this to be called for HtmlResourceSlot.
-  virtual void InsertDebugComment(StringPiece message);
-
   // Returns a human-readable description of where this slot occurs, for use
   // in log messages.
   virtual GoogleString LocationString() = 0;
@@ -201,7 +199,7 @@ class FetchResourceSlot : public ResourceSlot {
   explicit FetchResourceSlot(const ResourcePtr& resource)
       : ResourceSlot(resource) {
   }
-
+  virtual HtmlElement* element() const { return NULL; }
   virtual void Render();
   virtual GoogleString LocationString();
 
@@ -220,8 +218,8 @@ class HtmlResourceSlot : public ResourceSlot {
                    HtmlElement::Attribute* attribute,
                    RewriteDriver* driver);
 
-  HtmlElement* element() { return element_; }
-  HtmlElement::Attribute* attribute() { return attribute_; }
+  virtual HtmlElement* element() const { return element_; }
+  HtmlElement::Attribute* attribute() const { return attribute_; }
 
   virtual void Render();
   virtual GoogleString LocationString();
@@ -231,9 +229,6 @@ class HtmlResourceSlot : public ResourceSlot {
   // How relative the original URL was. If PreserveUrlRelativity is enabled,
   // Render will try to make the final URL just as relative.
   UrlRelativity url_relativity() const { return url_relativity_; }
-
-  // Inserts a message into the HTML stream above element_.
-  virtual void InsertDebugComment(StringPiece message);
 
  protected:
   REFCOUNT_FRIEND_DECLARATION(HtmlResourceSlot);

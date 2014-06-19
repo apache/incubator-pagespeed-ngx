@@ -171,7 +171,8 @@ class CssFilter : public RewriteFilter {
   // attribute 'src' of 'link'.
   void StartExternalRewrite(HtmlElement* link, HtmlElement::Attribute* src);
 
-  ResourceSlot* MakeSlotForInlineCss(const StringPiece& content);
+  ResourceSlot* MakeSlotForInlineCss(HtmlElement* element,
+                                     const StringPiece& content);
   CssFilter::Context* StartRewriting(const ResourceSlotPtr& slot);
 
   // Get the charset of the HTML being parsed which can be specified in the

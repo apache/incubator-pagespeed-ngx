@@ -216,8 +216,8 @@ class JavascriptFilter::Context : public SingleRewriteContext {
     CachedResult* result = output_partition(0);
     ResourceSlot* output_slot = slot(0).get();
     if (!result->url_relocatable()) {
-      output_slot->InsertDebugComment(
-          JavascriptCodeBlock::kIntrospectionComment);
+      Driver()->InsertDebugComment(
+          JavascriptCodeBlock::kIntrospectionComment, output_slot->element());
       return;
     }
     if (!result->optimizable()) {

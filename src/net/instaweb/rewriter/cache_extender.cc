@@ -211,10 +211,11 @@ void CacheExtender::Context::Render() {
     // cache extensions, and that too, those occurring in synchronous
     // flows only.
     if (Driver() != NULL) {
-      if (slot(0)->resource().get() != NULL &&
-          slot(0)->resource()->type() != NULL) {
+      ResourceSlotPtr the_slot = slot(0);
+      if (the_slot->resource().get() != NULL &&
+          the_slot->resource()->type() != NULL) {
         const char* filter_id = id();
-        const ContentType* type = slot(0)->resource()->type();
+        const ContentType* type = the_slot->resource()->type();
         if (type->type() == ContentType::kCss) {
           filter_id = RewriteOptions::FilterId(
               RewriteOptions::kExtendCacheCss);
@@ -228,7 +229,7 @@ void CacheExtender::Context::Render() {
         // TODO(anupama): Log cache extension for pdfs etc.
         Driver()->log_record()->SetRewriterLoggingStatus(
             filter_id,
-            slot(0)->resource()->url(),
+            the_slot->resource()->url(),
             RewriterApplication::APPLIED_OK);
       }
     }

@@ -25,7 +25,6 @@
 #include "net/instaweb/rewriter/public/rewrite_context.h"
 
 #include <cstdarg>
-#include <cstddef>                     // for size_t
 #include <algorithm>
 #include <utility>                      // for pair
 #include <vector>
@@ -1865,8 +1864,7 @@ void RewriteContext::OutputCacheRevalidate(
 void RewriteContext::RepeatedSuccess(const RewriteContext* primary) {
   CHECK(outputs_.empty());
   CHECK_EQ(num_slots(), primary->num_slots());
-  CHECK_EQ(primary->outputs_.size(),
-           static_cast<size_t>(primary->num_output_partitions()));
+  CHECK_EQ(primary->num_output_partitions(), primary->num_outputs());
   // Copy over busy bit, partition tables, outputs, and render_slot_ (as well as
   // was_optimized) information --- everything we can set in normal
   // OutputCacheDone.
@@ -1874,7 +1872,7 @@ void RewriteContext::RepeatedSuccess(const RewriteContext* primary) {
     MarkTooBusy();
   }
   partitions_->CopyFrom(*primary->partitions_.get());
-  for (int i = 0, n = primary->outputs_.size(); i < n; ++i) {
+  for (int i = 0, n = primary->num_outputs(); i < n; ++i) {
     outputs_.push_back(primary->outputs_[i]);
     if ((outputs_[i].get() != NULL) && !outputs_[i]->loaded()) {
       // We cannot safely alias resources that are not loaded, as the loading
@@ -2084,7 +2082,8 @@ void RewriteContext::PartitionDone(RewriteResult result_or_busy) {
   if (outstanding_rewrites_ == 0) {
     DCHECK(!IsFetchRewrite());
     // The partitioning succeeded, but yielded zero rewrites.  Write out the
-    // empty partition table and let any successor Rewrites run.
+    // partition table (which might include a single partition with some errors
+    // in it) and let any successor Rewrites run.
     rewrite_done_ = true;
 
     // TODO(morlovich): The filters really should be doing this themselves,
@@ -2105,7 +2104,7 @@ void RewriteContext::PartitionDone(RewriteResult result_or_busy) {
     // inside a fetch (top-levels for fetches are handled inside
     // StartRewriteForFetch), so failing it due to load-shedding will not
     // prevent us from serving requests.
-    CHECK_EQ(outstanding_rewrites_, static_cast<int>(outputs_.size()));
+    CHECK_EQ(outstanding_rewrites_, num_outputs());
     for (int i = 0, n = outstanding_rewrites_; i < n; ++i) {
       InvokeRewriteFunction* invoke_rewrite =
           new InvokeRewriteFunction(this, i, outputs_[i]);
@@ -2354,21 +2353,47 @@ void RewriteContext::Propagate(bool render_slots) {
         Render();
       }
     }
-    CHECK_EQ(num_output_partitions(), static_cast<int>(outputs_.size()));
+    CHECK_EQ(num_output_partitions(), num_outputs());
     for (int p = 0, np = num_output_partitions(); p < np; ++p) {
       CachedResult* partition = output_partition(p);
-      for (int i = 0, n = partition->input_size(); i < n; ++i) {
+      int n = partition->input_size();
+      if (partition->debug_message_size() > 0) {
+        if (has_parent()) {
+          // Right now arbitrarily stick it in parent's partition 0.
+          parent()->output_partition(0)->mutable_debug_message()->MergeFrom(
+              partition->debug_message());
+        } else if (render_slots) {
+          // If no input slots defined, then we created a partition just to hold
+          // debug information.  Put that information in 0th slot of context.
+          int slot_index = 0;
+          if (n > 0) {
+            // Insert debug messages associated with *partition after the
+            // element associated with the first slot of this partition.  This
+            // is slightly arbitrary, but provides a consistent place to include
+            // debug feedback (since we don't want to repeat it n times).
+            slot_index = partition->input(0).index();
+          }
+          Driver()->InsertDebugComments(partition->debug_message(),
+                                        slots_[slot_index]->element());
+        } else {
+          // Can't render the debug feedback, it'll be cached until later and
+          // we can render it when it actually appears in a page.
+        }
+      }
+      // Now debug information is propagated, render the slots.
+      for (int i = 0; i < n; ++i) {
         int slot_index = partition->input(i).index();
         if (render_slots_[slot_index]) {
+          ResourceSlotPtr slot = slots_[slot_index];
           ResourcePtr resource(outputs_[p]);
-          slots_[slot_index]->SetResource(resource);
+          slot->SetResource(resource);
           if (render_slots && partition->url_relocatable() && !was_too_busy_) {
             // This check for relocatable is potentially unsafe in that later
             // filters might still try to relocate the resource.  We deal with
             // this for the current case of javscript by having checks in each
             // potential later filter (combine and inline) that duplicate the
             // logic that went into setting url_relocatable on the partition.
-            slots_[slot_index]->Render();
+            slot->Render();
           }
         }
       }

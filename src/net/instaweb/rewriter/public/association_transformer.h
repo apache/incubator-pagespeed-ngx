@@ -32,6 +32,7 @@
 namespace net_instaweb {
 
 class GoogleUrl;
+class HtmlElement;
 class MessageHandler;
 class RewriteOptions;
 
@@ -101,6 +102,8 @@ class AssociationSlot : public ResourceSlot {
     key.CopyToString(&key_);
   }
   virtual ~AssociationSlot();
+
+  virtual HtmlElement* element() const { return NULL; }
 
   // All Render() calls are from the same thread, so this doesn't need to be
   // thread-safe.

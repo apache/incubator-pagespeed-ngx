@@ -41,6 +41,7 @@ namespace net_instaweb {
 
 class CachedResult;
 class CacheUrlAsyncFetcher;
+class HtmlElement;
 class InputInfo;
 class MessageHandler;
 class ResourceContext;
@@ -56,6 +57,8 @@ class InPlaceRewriteResourceSlot : public ResourceSlot {
  public:
   static const char kIproSlotLocation[];
   explicit InPlaceRewriteResourceSlot(const ResourcePtr& resource);
+
+  virtual HtmlElement* element() const { return NULL; }
 
   // Implements ResourceSlot::Render().
   virtual void Render();

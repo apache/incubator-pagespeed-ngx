@@ -37,6 +37,7 @@ namespace Css { class Values; }
 
 namespace net_instaweb {
 
+class HtmlElement;
 class RewriteOptions;
 
 // A place storing a rewritable URL inside a CSS AST.
@@ -46,6 +47,7 @@ class CssResourceSlot : public ResourceSlot {
   virtual void Finished();
   virtual GoogleString LocationString();
 
+  virtual HtmlElement* element() const { return NULL; }
   Css::Values* values() const { return values_; }
   size_t value_index() const { return value_index_; }
   UrlRelativity url_relativity() const { return url_relativity_; }
