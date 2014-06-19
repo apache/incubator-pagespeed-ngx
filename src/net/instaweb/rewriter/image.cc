@@ -358,6 +358,9 @@ class ImageImpl : public Image {
   virtual void SetTransformToLowRes();
   virtual const GoogleString& url() { return url_; }
   virtual const GoogleString& debug_message() { return debug_message_; }
+  virtual const GoogleString& resize_debug_message() {
+    return resize_debug_message_;
+  }
 
   bool GenerateBlankImage();
 
@@ -464,6 +467,7 @@ class ImageImpl : public Image {
   bool low_quality_enabled_;
   Timer* timer_;
   GoogleString debug_message_;
+  GoogleString resize_debug_message_;
 
   DISALLOW_COPY_AND_ASSIGN(ImageImpl);
 };
@@ -890,17 +894,20 @@ bool ImageImpl::ResizeTo(const ImageDim& new_dim) {
                            original_contents_.length(),
                            handler_.get()));
   if (image_reader == NULL) {
+    resize_debug_message_ = "Cannot resize: Cannot open the image to resize";
     PS_LOG_INFO(handler_, "Cannot open the image to resize.");
     return false;
   }
 
   if (image_reader->GetPixelFormat() == RGBA_8888) {
+    resize_debug_message_ = "Cannot resize: RGBA_8888 pixel format";
     return false;
   }
 
   ScanlineResizer resizer(handler_.get());
   if (!resizer.Initialize(image_reader.get(), new_dim.width(),
                           new_dim.height())) {
+    resize_debug_message_ = "Cannot resize: Unable to initialize resizer";
     return false;
   }
 
@@ -937,6 +944,7 @@ bool ImageImpl::ResizeTo(const ImageDim& new_dim) {
       break;
 
     default:
+      resize_debug_message_ = "Cannot resize: Unsupported image format";
       PS_LOG_DFATAL(handler_, "Unsupported image format");
   }
 
@@ -948,13 +956,16 @@ bool ImageImpl::ResizeTo(const ImageDim& new_dim) {
   void* scanline = NULL;
   while (resizer.HasMoreScanLines()) {
     if (!resizer.ReadNextScanline(&scanline)) {
+      resize_debug_message_ = "Cannot resize: Reading image failed";
       return false;
     }
     if (!writer->WriteNextScanline(scanline)) {
+      resize_debug_message_ = "Cannot resize: Writing image failed";
       return false;
     }
   }
   if (!writer->FinalizeWrite()) {
+    resize_debug_message_ = "Cannot resize: Finalizing writing image failed";
     return false;
   }
 
@@ -963,6 +974,9 @@ bool ImageImpl::ResizeTo(const ImageDim& new_dim) {
   rewrite_attempted_ = false;
   output_contents_.clear();
   resized_dimensions_ = new_dim;
+  resize_debug_message_ = StringPrintf(
+      "Resized image from %dx%d to %dx%d", dims_.width(), dims_.height(),
+      resized_dimensions_.width(), resized_dimensions_.height());
   return true;
 }
 

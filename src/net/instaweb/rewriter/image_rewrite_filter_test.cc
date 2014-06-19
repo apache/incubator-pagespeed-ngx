@@ -1865,6 +1865,38 @@ TEST_F(ImageRewriteTest, NullResizeTest) {
                     " style", " style", false, false);
 }
 
+TEST_F(ImageRewriteTest, DebugResizeTest) {
+  options()->EnableFilter(RewriteOptions::kDebug);
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  rewrite_driver()->AddFilters();
+  const char kResizedDims[] = " width=\"256\" height=\"192\"";
+  GoogleString initial_url = StrCat(kTestDomain, kPuzzleJpgFile);
+  GoogleString page_url = StrCat(kTestDomain, "test.html");
+  AddFileToMockFetcher(initial_url, kPuzzleJpgFile, kContentTypeJpeg, 100);
+  const char html_boilerplate[] = "<img src='%s'%s>";
+  GoogleString html_input =
+      StringPrintf(html_boilerplate, initial_url.c_str(), kResizedDims);
+  ParseUrl(page_url, html_input);
+  EXPECT_THAT(
+      output_buffer_,
+      testing::HasSubstr("<!--Resized image from 1023x766 to 256x192-->"));
+}
+
+TEST_F(ImageRewriteTest, DebugNoResizeTest) {
+  options()->EnableFilter(RewriteOptions::kDebug);
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  rewrite_driver()->AddFilters();
+  GoogleString initial_url = StrCat(kTestDomain, kPuzzleJpgFile);
+  GoogleString page_url = StrCat(kTestDomain, "test.html");
+  AddFileToMockFetcher(initial_url, kPuzzleJpgFile, kContentTypeJpeg, 100);
+  const char html_boilerplate[] = "<img src='%s'>";
+  GoogleString html_input = StringPrintf(html_boilerplate, initial_url.c_str());
+  ParseUrl(page_url, html_input);
+  EXPECT_THAT(
+      output_buffer_,
+      testing::HasSubstr("<!--Image does not appear to need resizing.-->"));
+}
+
 TEST_F(ImageRewriteTest, TestLoggingWithoutOptimize) {
   // Make sure we don't resize, if we don't optimize.
   options()->EnableFilter(RewriteOptions::kResizeImages);
@@ -3464,11 +3496,14 @@ TEST_F(ImageRewriteTest, DebugMessageImageInfo) {
 
   const GoogleString expected = StrCat(
       "<img src=", Encode("", "ic", "0", "photo_opaque.gif", "png"), ">"
+      "<!--Image does not appear to need resizing.-->"
       "<!--Image has no transparent pixels and is not sensitive "
       "to compression noise.-->"
       "<img src=graphic_transparent.png>"
+      "<!--Image does not appear to need resizing.-->"
       "<!--Image has transparent pixels and is sensitive to "
-      "compression noise.-->");
+      "compression noise.-->"
+      );
 
   EXPECT_THAT(output_buffer_, HasSubstr(expected));
 }

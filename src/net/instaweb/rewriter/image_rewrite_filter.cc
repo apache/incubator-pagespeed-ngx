@@ -750,6 +750,8 @@ bool ImageRewriteFilter::ResizeImageIfNecessary(
 
   DCHECK(image_dim.width() > 0 && image_dim.height() > 0);
   if (image_dim.width() == 0 || image_dim.height() == 0) {
+    cached->add_debug_message(
+        "Cannot resize: Image must have nonzero dimensions");
     return false;
   }
 
@@ -772,6 +774,9 @@ bool ImageRewriteFilter::ResizeImageIfNecessary(
                      message, url.c_str(),
                      image_dim.width(), image_dim.height(),
                      desired_dim->width(), desired_dim->height());
+    cached->add_debug_message(image->resize_debug_message());
+  } else {
+    cached->add_debug_message("Image does not appear to need resizing.");
   }
 
   // Cache image dimensions, including any resizing we did.
