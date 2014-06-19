@@ -395,11 +395,12 @@
       'type': '<(library)',
       'dependencies': [
         '<(DEPTH)/base/base.gyp:base',
+        '<(DEPTH)/build/libwebp.gyp:libwebp_enc',
+        '<(DEPTH)/build/libwebp.gyp:libwebp_enc_mux',
+        '<(DEPTH)/build/libwebp.gyp:libwebp_dec',
         '<(DEPTH)/third_party/giflib/giflib.gyp:dgiflib',
         '<(DEPTH)/third_party/libjpeg_turbo/libjpeg_turbo.gyp:libjpeg_turbo',
         '<(DEPTH)/third_party/libpng/libpng.gyp:libpng',
-        '<(DEPTH)/third_party/libwebp/libwebp.gyp:libwebp_enc',
-        '<(DEPTH)/third_party/libwebp/libwebp.gyp:libwebp_dec',
         '<(DEPTH)/third_party/optipng/optipng.gyp:opngreduc',
         '<(DEPTH)/third_party/zlib/zlib.gyp:zlib',
       ],
@@ -422,6 +423,7 @@
       ],
       'include_dirs': [
         '<(DEPTH)',
+        '<(DEPTH)/third_party/libwebp/src',
       ],
       'msvs_disabled_warnings': [
         4996,  # std::string::copy() is deprecated on Windows, but we use it,

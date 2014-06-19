@@ -27,6 +27,10 @@ vars = {
   "libpagespeed_trunk": "https://page-speed.googlecode.com/svn/lib/trunk/",
   "libpagespeed_revision": "@2439",
 
+  # Import libwebp 0.4.0 from the official repo.
+  "libwebp_src": "https://chromium.googlesource.com/webm/libwebp.git",
+  "libwebp_revision": "@68e7901da53cbda6ec93ddf93e039346d3c6a531",
+
   "modspdy_src": "https://mod-spdy.googlecode.com/svn/trunk/src/",
   "modspdy_revision": "@387",
 
@@ -183,10 +187,7 @@ deps = {
 
   "src/third_party/mod_spdy/src": Var("modspdy_src") + Var("modspdy_revision"),
 
-  # We check libwebp out of Chromium repo to get the .gyp file.
-  "src/third_party/libwebp":
-     Var("chromium_trunk") + "src/third_party/libwebp/@" +
-         Var("chromium_revision_num"),
+  "src/third_party/libwebp": Var("libwebp_src") + Var("libwebp_revision"),
 
   "src/tools/clang":
     Var("chromium_trunk") + "src/tools/clang/@" + Var("chromium_revision_num"),

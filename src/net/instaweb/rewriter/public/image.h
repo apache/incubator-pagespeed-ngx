@@ -223,6 +223,9 @@ class Image {
   // Returns the image URL.
   virtual const GoogleString& url() = 0;
 
+  // Returns the debug message.
+  virtual const GoogleString& debug_message() = 0;
+
  protected:
   explicit Image(const StringPiece& original_contents);
   explicit Image(ImageType type);

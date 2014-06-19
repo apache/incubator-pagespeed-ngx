@@ -425,6 +425,8 @@ void ImageRewriteFilter::Context::Render() {
       rewrote_url = filter_->FinishRewriteImageUrl(
           result, resource_context(),
           html_slot->element(), html_slot->attribute(), html_index_, html_slot);
+      Driver()->InsertDebugComment(result->debug_message(),
+                                   html_slot->element());
     }
     // Use standard rendering in case the rewrite is nested and not inside CSS.
   }
@@ -977,6 +979,7 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
     cached->set_minimal_webp_support(image->MinimalWebpSupport());
     cached->set_size(rewrite_result == kRewriteOk ? image->output_size() :
                      image->input_size());
+    SaveDebugMessageToCache(image->debug_message(), rewrite_context, cached);
 
     // Try inlining input image if output hasn't been inlined already.
     if (!cached->has_inlined_data()) {
@@ -1482,6 +1485,21 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
   return rewrote_url;
 }
 
+void ImageRewriteFilter::SaveDebugMessageToCache(const GoogleString& message,
+                                                 Context* rewrite_context,
+                                                 CachedResult* html_cached) {
+  if (!message.empty()) {
+    if (!rewrite_context->is_css_) {
+      // Save message to HTML cache.
+      html_cached->add_debug_message(message);
+    } else if (rewrite_context->has_parent()) {
+      // Save message to CSS cache.
+      rewrite_context->parent()->output_partition(0)->add_debug_message(
+          message);
+    }
+  }
+}
+
 bool ImageRewriteFilter::IsHtmlCriticalImage(StringPiece image_url) const {
   CriticalImagesFinder* finder =
       driver()->server_context()->critical_images_finder();
@@ -1778,8 +1796,8 @@ RewriteContext* ImageRewriteFilter::MakeRewriteContext() {
 }
 
 RewriteContext* ImageRewriteFilter::MakeNestedRewriteContextForCss(
-    int64 css_image_inline_max_bytes,
-    RewriteContext* parent, const ResourceSlotPtr& slot) {
+    int64 css_image_inline_max_bytes, RewriteContext* parent,
+    const ResourceSlotPtr& slot) {
   // Copy over the ResourceContext from the parent RewriteContext so that we
   // preserve request specific options, such as whether WebP rewriting is
   // allowed.

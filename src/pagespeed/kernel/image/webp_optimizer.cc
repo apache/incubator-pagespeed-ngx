@@ -28,7 +28,7 @@ extern "C" {
 #ifdef USE_SYSTEM_LIBWEBP
 #include "webp/decode.h"
 #else
-#include "third_party/libwebp/webp/decode.h"
+#include "third_party/libwebp/src/webp/decode.h"
 #endif
 }
 

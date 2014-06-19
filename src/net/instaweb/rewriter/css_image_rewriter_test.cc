@@ -1180,6 +1180,29 @@ TEST_F(CssRecompressImagesInStyleAttributes, ServeCssToDifferentUA) {
   EXPECT_EQ(0, TestInlineWithUA("ie7", kHtmlInput, kJpegFile, kIE7));
 }
 
+TEST_F(CssImageRewriterTest, DebugMessage) {
+  options()->ClearSignatureForTesting();
+  options()->SoftEnableFilterForTesting(RewriteOptions::kDebug);
+  options()->SoftEnableFilterForTesting(RewriteOptions::kRecompressPng);
+  server_context()->ComputeSignature(options());
+  AddFileToMockFetcher(StrCat(kTestDomain, "foo.png"), kBikePngFile,
+                       kContentTypePng, 100);
+  static const char kCss[] =
+      "body {\n"
+      "  background-image: url(foo.png);\n"
+      "}\n";
+
+  const GoogleString kCssAfter = StrCat(
+      "body{background-image:url(",
+      Encode("", "ic", "0", "foo.png", "png"),
+      ")}");
+
+  debug_message_ = "<!--Image has no transparent pixels and is not sensitive "
+                   "to compression noise.-->";
+  ValidateRewriteInlineCss("recompress_css_images", kCss, kCssAfter,
+                           kNoStatCheck | kExpectCached);
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

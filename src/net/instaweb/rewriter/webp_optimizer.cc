@@ -32,8 +32,8 @@ extern "C" {
 #include "webp/encode.h"
 #include "webp/decode.h"
 #else
-#include "third_party/libwebp/webp/encode.h"
-#include "third_party/libwebp/webp/decode.h"
+#include "third_party/libwebp/src/webp/encode.h"
+#include "third_party/libwebp/src/webp/decode.h"
 #endif
 // TODO(jmaessen): open source imports & build of libwebp.
 }

@@ -20,7 +20,7 @@
 #define PAGESPEED_KERNEL_IMAGE_WEBP_OPTIMIZER_H_
 
 #include <cstddef>
-#include "third_party/libwebp/webp/encode.h"
+#include "third_party/libwebp/src/webp/encode.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"

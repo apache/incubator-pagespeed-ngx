@@ -247,6 +247,10 @@ class ImageRewriteFilter : public RewriteFilter {
 
   bool SquashImagesForMobileScreenEnabled() const;
 
+  void SaveDebugMessageToCache(const GoogleString& message,
+                               Context* rewrite_context,
+                               CachedResult* html_cached);
+
   scoped_ptr<WorkBound> work_bound_;
 
   // Statistics

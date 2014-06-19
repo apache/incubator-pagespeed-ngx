@@ -42,6 +42,10 @@ BUILDTYPE = Release
 BASE_LIBS = \
   base/libbase.a \
   base/libbase_static.a \
+  build/libwebp_dec.a \
+  build/libwebp_dsp.a \
+  build/libwebp_enc.a \
+  build/libwebp_utils.a \
   net/instaweb/libautomatic_util.a \
   net/instaweb/libinstaweb_add_instrumentation_data2c.a \
   net/instaweb/libinstaweb_add_instrumentation_opt_data2c.a \
@@ -145,10 +149,6 @@ BASE_LIBS = \
   third_party/libjpeg_turbo/libjpeg.a \
   third_party/libjpeg_turbo/src/libjpeg_turbo.a \
   third_party/libpng/libpng.a \
-  third_party/libwebp/libwebp_dec.a \
-  third_party/libwebp/libwebp_dsp.a \
-  third_party/libwebp/libwebp_enc.a \
-  third_party/libwebp/libwebp_utils.a \
   third_party/serf/libopenssl.a \
   third_party/optipng/libopngreduc.a \
   third_party/protobuf/libprotobuf_full_do_not_use.a \

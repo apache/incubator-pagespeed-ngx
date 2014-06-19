@@ -40,6 +40,7 @@
 #include "pagespeed/kernel/image/image_analysis.h"
 #include "pagespeed/kernel/image/image_converter.h"
 #include "pagespeed/kernel/image/image_resizer.h"
+#include "pagespeed/kernel/image/image_util.h"
 #include "pagespeed/kernel/image/jpeg_optimizer.h"
 #include "pagespeed/kernel/image/jpeg_utils.h"
 #include "pagespeed/kernel/image/png_optimizer.h"
@@ -52,7 +53,7 @@ extern "C" {
 #ifdef USE_SYSTEM_LIBWEBP
 #include "webp/decode.h"
 #else
-#include "third_party/libwebp/webp/decode.h"
+#include "third_party/libwebp/src/webp/decode.h"
 #endif
 #ifdef USE_SYSTEM_LIBPNG
 #include "png.h"  // NOLINT
@@ -356,6 +357,7 @@ class ImageImpl : public Image {
   virtual void SetResizedDimensions(const ImageDim& dims) { dims_ = dims; }
   virtual void SetTransformToLowRes();
   virtual const GoogleString& url() { return url_; }
+  virtual const GoogleString& debug_message() { return debug_message_; }
 
   bool GenerateBlankImage();
 
@@ -461,6 +463,7 @@ class ImageImpl : public Image {
   scoped_ptr<Image::CompressionOptions> options_;
   bool low_quality_enabled_;
   Timer* timer_;
+  GoogleString debug_message_;
 
   DISALLOW_COPY_AND_ASSIGN(ImageImpl);
 };
@@ -1149,6 +1152,12 @@ inline bool ImageImpl::ComputeOutputContentsFromPngReader(
   AnalyzeImage(ImageTypeToImageFormat(input_type),
                string_for_image.data(), string_for_image.length(),
                handler_.get(), &has_transparency, &is_photo);
+
+  debug_message_ = StringPrintf("Image has%s transparent pixels"
+                                " and is%s sensitive to compression noise.",
+                                (has_transparency ? "" : " no"),
+                                (is_photo ? " not" : ""));
+
   // By default, a lossless image conversion is eligible for lossless webp
   // conversion.
   minimal_webp_support_ = ResourceContext::LIBWEBP_LOSSY_LOSSLESS_ALPHA;

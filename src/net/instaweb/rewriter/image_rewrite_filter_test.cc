@@ -82,6 +82,7 @@ class AbstractMutex;
 using pagespeed::image_compression::kMessagePatternPixelFormat;
 using pagespeed::image_compression::kMessagePatternStats;
 using pagespeed::image_compression::kMessagePatternWritingToWebp;
+using ::testing::HasSubstr;
 
 namespace {
 
@@ -3445,6 +3446,30 @@ TEST_F(ImageRewriteTest, NoTransformOptimized) {
     found |= *(values[i]) == "no-transform";
   }
   EXPECT_TRUE(found);
+}
+
+TEST_F(ImageRewriteTest, DebugMessage) {
+  options()->EnableFilter(RewriteOptions::kDebug);
+  options()->EnableFilter(RewriteOptions::kConvertGifToPng);
+  options()->EnableFilter(RewriteOptions::kRecompressPng);
+  rewrite_driver()->AddFilters();
+  AddFileToMockFetcher("photo_opaque.gif", kChefGifFile, kContentTypeGif,
+                       100);
+  AddFileToMockFetcher("graphic_transparent.png", kCuppaTPngFile,
+                       kContentTypePng, 100);
+
+  Parse("single_attribute",
+        "<img src=photo_opaque.gif><img src=graphic_transparent.png>");
+
+  const GoogleString expected = StrCat(
+      "<img src=", Encode("", "ic", "0", "photo_opaque.gif", "png"), ">"
+      "<!--Image has no transparent pixels and is not sensitive "
+      "to compression noise.-->"
+      "<img src=graphic_transparent.png>"
+      "<!--Image has transparent pixels and is sensitive to "
+      "compression noise.-->");
+
+  EXPECT_THAT(output_buffer_, HasSubstr(expected));
 }
 
 }  // namespace net_instaweb
