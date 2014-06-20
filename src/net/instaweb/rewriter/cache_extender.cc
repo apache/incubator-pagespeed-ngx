@@ -97,7 +97,8 @@ void CacheExtender::InitStats(Statistics* statistics) {
 
 bool CacheExtender::ShouldRewriteResource(
     const ResponseHeaders* headers, int64 now_ms,
-    const ResourcePtr& input_resource, const StringPiece& url) const {
+    const ResourcePtr& input_resource, const StringPiece& url,
+    CachedResult* result) const {
   const ContentType* input_resource_type = input_resource->type();
   if (input_resource_type == NULL) {
     return false;
@@ -105,6 +106,8 @@ bool CacheExtender::ShouldRewriteResource(
   if (input_resource_type->type() == ContentType::kJavascript &&
       driver()->options()->avoid_renaming_introspective_javascript() &&
       JavascriptCodeBlock::UnsafeToRename(input_resource->contents())) {
+    CHECK(result != NULL);
+    result->add_debug_message(JavascriptCodeBlock::kIntrospectionComment);
     return false;
   }
   if ((headers->CacheExpirationTimeMs() - now_ms) < kMinThresholdMs) {
@@ -201,7 +204,8 @@ void CacheExtender::Context::RewriteSingle(
     const ResourcePtr& input_resource,
     const OutputResourcePtr& output_resource) {
   RewriteDone(
-      extender_->RewriteLoadedResource(input_resource, output_resource), 0);
+      extender_->RewriteLoadedResource(
+          input_resource, output_resource, output_partition(0)), 0);
 }
 
 void CacheExtender::Context::Render() {
@@ -238,7 +242,10 @@ void CacheExtender::Context::Render() {
 
 RewriteResult CacheExtender::RewriteLoadedResource(
     const ResourcePtr& input_resource,
-    const OutputResourcePtr& output_resource) {
+    const OutputResourcePtr& output_resource,
+    // TODO(jmaessen): does this belong in CacheExtender::Context? to this
+    // method and ShouldRewriteResource.
+    CachedResult* result) {
   CHECK(input_resource->loaded());
 
   MessageHandler* message_handler = driver()->message_handler();
@@ -257,7 +264,8 @@ RewriteResult CacheExtender::RewriteLoadedResource(
     // If you change this behavior that test MUST be updated as it covers
     // security.
     not_cacheable_count_->Add(1);
-  } else if (ShouldRewriteResource(headers, now_ms, input_resource, url)) {
+  } else if (ShouldRewriteResource(
+                 headers, now_ms, input_resource,url, result)) {
     // We must be careful what Content-Types we allow to be cache extended.
     // Specifically, we do not want to cache extend any Content-Types that
     // could execute scripts when loaded in a browser because that could

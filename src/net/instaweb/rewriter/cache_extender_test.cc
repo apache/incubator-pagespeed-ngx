@@ -29,6 +29,7 @@
 #include "net/instaweb/rewriter/public/css_outline_filter.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
+#include "net/instaweb/rewriter/public/javascript_code_block.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -37,6 +38,7 @@
 #include "net/instaweb/rewriter/public/test_url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/hasher.h"
+#include "net/instaweb/util/public/gmock.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
@@ -311,13 +313,30 @@ TEST_F(CacheExtenderTest, DoNotExtendUnauthorizedResourcesWithUnauthEnabled) {
   VerifyUnauthorizedResourcesNotExtended();
 }
 
-TEST_F(CacheExtenderTest, DoNotExtendIntrospectiveJavascriptByDefault) {
+TEST_F(CacheExtenderTest,
+       DontExtendIntrospectiveDefault) {
   InitTest(kShortTtlSec);
   const char kJsTemplate[] = "<script src=\"%s\"></script>";
   ValidateExpected(
       "dont_extend_introspective_js",
       StringPrintf(kJsTemplate, "introspective.js"),
       StringPrintf(kJsTemplate, "introspective.js"));
+  EXPECT_EQ(0, num_cache_extended_->Get())
+      << "Number of cache extended resources is wrong";
+  EXPECT_STREQ("", AppliedRewriterStringFromLog());
+}
+
+TEST_F(CacheExtenderTest,
+       DontExtendIntrospectiveDebug) {
+  options()->EnableFilter(RewriteOptions::kDebug);
+  InitTest(kShortTtlSec);
+  const char kJsTemplate[] = "<script src=\"%s\"></script>";
+  GoogleString kInsertComment(
+      StrCat(StringPrintf(kJsTemplate, "introspective.js"), "<!--",
+                          JavascriptCodeBlock::kIntrospectionComment, "-->"));
+  Parse("dont_extend_introspective_js",
+        StringPrintf(kJsTemplate, "introspective.js"));
+  EXPECT_THAT(output_buffer_, ::testing::HasSubstr(kInsertComment));
   EXPECT_EQ(0, num_cache_extended_->Get())
       << "Number of cache extended resources is wrong";
   EXPECT_STREQ("", AppliedRewriterStringFromLog());

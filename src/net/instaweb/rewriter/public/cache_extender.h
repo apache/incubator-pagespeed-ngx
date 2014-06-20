@@ -30,6 +30,7 @@
 
 namespace net_instaweb {
 
+class CachedResult;
 class HtmlElement;
 class ResponseHeaders;
 class RewriteContext;
@@ -76,11 +77,13 @@ class CacheExtender : public RewriteFilter {
   friend class Context;
 
   RewriteResult RewriteLoadedResource(const ResourcePtr& input_resource,
-                                      const OutputResourcePtr& output_resource);
+                                      const OutputResourcePtr& output_resource,
+                                      CachedResult* result);
 
   bool ShouldRewriteResource(
       const ResponseHeaders* headers, int64 now_ms,
-      const ResourcePtr& input_resource, const StringPiece& url) const;
+      const ResourcePtr& input_resource, const StringPiece& url,
+      CachedResult* result) const;
 
   Variable* extension_count_;
   Variable* not_cacheable_count_;
