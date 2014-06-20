@@ -19,6 +19,10 @@
 #ifndef PAGESPEED_KERNEL_IMAGE_IMAGE_UTIL_H_
 #define PAGESPEED_KERNEL_IMAGE_IMAGE_UTIL_H_
 
+#include <cstddef>
+
+#include "pagespeed/kernel/base/basictypes.h"
+
 namespace pagespeed {
 
 namespace image_compression {
@@ -38,6 +42,24 @@ enum PixelFormat {
   GRAY_8        // Grayscale, 8 bits per pixel.
 };
 
+enum RgbaChannels {
+  RGBA_RED = 0,
+  RGBA_GREEN,
+  RGBA_BLUE,
+  RGBA_ALPHA,
+
+  RGBA_NUM_CHANNELS
+};
+
+const uint8_t kAlphaOpaque = 255;
+const uint8_t kAlphaTransparent = 0;
+typedef uint8_t PixelRgbaChannels[RGBA_NUM_CHANNELS];
+
+// Sizes that can be measured in units of pixels: width, height,
+// number of frames (a third dimension of the image), and indices into
+// the same.
+typedef unsigned int size_px;
+
 // Returns the MIME-type string corresponding to the given ImageFormat.
 const char* ImageFormatToMimeTypeString(ImageFormat image_type);
 
@@ -49,7 +71,7 @@ const char* GetPixelFormatString(PixelFormat pixel_format);
 
 // Returns the number of bytes needed to encode each pixel in the
 // given format.
-int GetBytesPerPixel(PixelFormat pixel_format);
+size_t GetBytesPerPixel(PixelFormat pixel_format);
 
 }  // namespace image_compression
 

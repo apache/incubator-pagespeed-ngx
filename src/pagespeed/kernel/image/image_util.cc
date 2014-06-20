@@ -64,7 +64,7 @@ const char* GetPixelFormatString(PixelFormat pixel_format) {
   return kInvalidPixelFormat;
 }
 
-int GetBytesPerPixel(PixelFormat pixel_format) {
+size_t GetBytesPerPixel(PixelFormat pixel_format) {
   switch (pixel_format) {
     case UNSUPPORTED: return 0;
     case RGB_888:     return 3;

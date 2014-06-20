@@ -42,16 +42,64 @@ struct ImageSpec {
   ImageSpec();
   void Reset();
 
-  int width;
-  int height;
-  int num_frames;
+  size_px width;
+  size_px height;
+  size_px num_frames;
+
+  // This is the total number of times to loop through all the frames
+  // (NOT the *repeat* number).
+  size_t loop_count;
+
+  PixelRgbaChannels bg_color;
+  bool use_bg_color;
+
+  // Returns x truncated to a valid column index in [0, width]. Note
+  // that a value of 'width' denotes the first invalid index.
+  size_px TruncateXIndex(size_px x);
+
+  // Returns y truncated to a valid row index in [0, height]. Note
+  // that a value of 'height' denotes the first invalid index.
+  size_px TruncateYIndex(size_px y);
+
+  GoogleString ToString() const;
+  bool Equals(const ImageSpec& other);
 };
 
 struct FrameSpec {
+  enum DisposalMethod {
+    DISPOSAL_UNKNOWN = 0,
+    DISPOSAL_NONE,
+    DISPOSAL_BACKGROUND,
+    // TODO(vchudnov): May not be supported by WebP. If that's the
+    // case, treat as DISPOSAL_BACKGROUND instead.
+
+    DISPOSAL_RESTORE
+  };
+
   FrameSpec();
   void Reset();
 
+  size_px width;
+  size_px height;
+  size_px top;
+  size_px left;
   PixelFormat pixel_format;
+  size_t duration_ms;
+  DisposalMethod disposal;
+
+  GoogleString ToString() const;
+  bool Equals(const FrameSpec& other);
+};
+
+// Sometimes the readers or writers may need to tweak their behavior
+// away from what is in the spec to emulate or adapt to the
+// idiosyncratic behavior of real renderers in the wild. This enum and
+// the associated methods in the classes below allow us to parametrize
+// this.
+enum QuirksMode {
+  QUIRKS_NONE = 0,
+  QUIRKS_CHROME,
+  QUIRKS_FIREFOX
 };
 
 #if defined(IF_OK_RUN)
@@ -123,20 +171,27 @@ class MultipleFrameReader {
   // necessarily the width of the whole image.
   virtual ScanlineStatus ReadNextScanline(const void** out_scanline_bytes) = 0;
 
-  // Assigns to '*frame_spec' a pointer to the FrameSpec describing
-  // the current frame. The caller DOES NOT acquire ownership of
-  // '**frame_spec'.
-  virtual ScanlineStatus GetFrameSpec(const FrameSpec** frame_spec) const = 0;
+  // Assigns to '*frame_spec' the FrameSpec describing
+  // the current frame.
+  virtual ScanlineStatus GetFrameSpec(FrameSpec* frame_spec) const = 0;
 
-  // Copies into '*image_spec' a pointer to the ImageSpec describing
-  // the image. The caller DOES NOT acquire ownership of
-  // '**image_spec'.
-  virtual ScanlineStatus GetImageSpec(const ImageSpec** image_spec) const = 0;
+  // Copies into '*image_spec' the ImageSpec describing
+  // the image.
+  virtual ScanlineStatus GetImageSpec(ImageSpec* image_spec) const = 0;
 
   // The message handler used by this class. Neither the caller nor
   // this class have ownership.
-  MessageHandler* message_handler() {
+  MessageHandler* message_handler() const {
     return message_handler_;
+  }
+
+  virtual ScanlineStatus set_quirks_mode(QuirksMode quirks_mode) {
+    quirks_mode_ = quirks_mode;
+    return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
+  }
+
+  virtual QuirksMode quirks_mode() const {
+    return quirks_mode_;
   }
 
   // Convenience forms of the methods above. If 'status' indicates an
@@ -158,18 +213,26 @@ class MultipleFrameReader {
                         ScanlineStatus* status) {
     IF_OK_RUN(status, ReadNextScanline(out_scanline_bytes));
   }
-  bool GetFrameSpec(const FrameSpec** frame_spec,
-                    ScanlineStatus* status) const {
+  bool GetFrameSpec(FrameSpec* frame_spec,
+                    ScanlineStatus* status) {
     IF_OK_RUN(status, GetFrameSpec(frame_spec));
   }
-  bool GetImageSpec(const ImageSpec** image_spec,
-                    ScanlineStatus* status) const {
+  bool GetImageSpec(ImageSpec* image_spec,
+                    ScanlineStatus* status) {
     IF_OK_RUN(status, GetImageSpec(image_spec));
+  }
+
+  bool set_quirks_mode(QuirksMode quirks_mode,
+                       ScanlineStatus* status) {
+    IF_OK_RUN(status, set_quirks_mode(quirks_mode));
   }
 
  private:
   // Handles logging info, warning, and error messages.
   MessageHandler* message_handler_;
+
+  // The browser quirks mode to implement, if any.
+  QuirksMode quirks_mode_;
 
   DISALLOW_COPY_AND_ASSIGN(MultipleFrameReader);
 };
@@ -220,7 +283,7 @@ class MultipleFrameWriter {
 
   // The message handler used by this class. Neither the caller nor
   // this class have ownership.
-  MessageHandler* message_handler() {
+  MessageHandler* message_handler() const {
     return message_handler_;
   }
 

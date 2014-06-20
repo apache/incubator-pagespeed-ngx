@@ -64,6 +64,9 @@ class FrameToScanlineReaderAdapter : public ScanlineReaderInterface {
   virtual bool Reset();
   virtual size_t GetBytesPerScanline();
   virtual bool HasMoreScanLines();
+
+  // Will return an error status if the underlying MultipleFrameReader
+  // is processing an animated image.
   virtual ScanlineStatus InitializeWithStatus(const void* image_buffer,
                                               size_t buffer_length);
   virtual ScanlineStatus ReadNextScanlineWithStatus(
@@ -75,8 +78,46 @@ class FrameToScanlineReaderAdapter : public ScanlineReaderInterface {
  private:
   scoped_ptr<MultipleFrameReader> impl_;
 
-  const ImageSpec* image_spec_;
-  const FrameSpec* frame_spec_;
+  ImageSpec image_spec_;
+  FrameSpec frame_spec_;
+
+  // True iff the frame spans every column in the image.
+  bool image_and_frame_cols_coincide_;
+
+  // True iff the frame spans every row in the image.
+  bool image_and_frame_rows_coincide_;
+
+  size_px current_image_row_;
+
+  // For padding images where the frame does not occupy every pixel in
+  // the image. These are set iff either of
+  // image_and_frame_{cols,rows}_coincide_ are false.
+
+  // Index of the first byte in the image row where the displayed
+  // frame is located.
+  size_t displayed_frame_first_col_byte_;
+
+  // Width in bytes of the displayed frame.
+  size_t displayed_frame_col_byte_width_;
+
+  // Index of the first row of the displayed frame in the image.
+  size_px displayed_frame_row_num_begin_;
+
+  // Index of one past the last row of the displayed frame in the
+  // image (same semantics as the STL end iterator).
+  size_px displayed_frame_row_num_end_;
+
+  // Width in bytes of the image.
+  size_t image_width_bytes_;
+
+  // Buffer of row data. If we need to pad rows with background
+  // pixels, we do so here and return a pointer to this.
+  net_instaweb::scoped_array<PixelRgbaChannels> row_buffer_;
+
+  // Buffer of background pixel rows. If we need to pad rows with
+  // background pixels, we first copy the following into row_buffer_
+  // before we modify the read scanline there.
+  net_instaweb::scoped_array<PixelRgbaChannels> row_template_;
 
   DISALLOW_COPY_AND_ASSIGN(FrameToScanlineReaderAdapter);
 };
@@ -124,8 +165,8 @@ class ScanlineToFrameReaderAdapter : public MultipleFrameReader {
   virtual bool HasMoreScanlines() const;
   virtual ScanlineStatus PrepareNextFrame();
   virtual ScanlineStatus ReadNextScanline(const void** out_scanline_bytes);
-  virtual ScanlineStatus GetFrameSpec(const FrameSpec** frame_spec) const;
-  virtual ScanlineStatus GetImageSpec(const ImageSpec** image_spec) const;
+  virtual ScanlineStatus GetFrameSpec(FrameSpec* frame_spec) const;
+  virtual ScanlineStatus GetImageSpec(ImageSpec* image_spec) const;
 
  private:
   enum {

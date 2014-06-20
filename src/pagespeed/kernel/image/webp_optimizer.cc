@@ -148,10 +148,18 @@ int WebpFrameWriter::ProgressHook(int percent, const WebPPicture* picture) {
 }
 
 ScanlineStatus WebpFrameWriter::PrepareImage(const ImageSpec* image_spec) {
+  DVLOG(1) << image_spec->ToString();
   if (image_prepared_) {
     return PS_LOGGED_STATUS(PS_LOG_DFATAL, message_handler(),
                             SCANLINE_STATUS_INVOCATION_ERROR,
                             FRAME_WEBPWRITER, "image already prepared");
+  }
+  DVLOG(1) << "PrepareImage: num_frames: " << image_spec->num_frames;
+  if (image_spec->num_frames > 1) {
+    return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler(),
+                            SCANLINE_STATUS_UNSUPPORTED_FEATURE,
+                            FRAME_WEBPWRITER,
+                            "animated images not supported (yet)");
   }
 
   if ((image_spec->height > WEBP_MAX_DIMENSION) ||
@@ -219,8 +227,7 @@ ScanlineStatus WebpFrameWriter::PrepareNextFrame(const FrameSpec* frame_spec) {
                               "unhandled or unknown pixel format: %d",
                               new_pixel_format);
   }
-  PS_DLOG_INFO(message_handler(), "Pixel format: %s", \
-      GetPixelFormatString(frame_spec->pixel_format));
+  DVLOG(1) << "Pixel format:" << GetPixelFormatString(frame_spec->pixel_format);
 
   COMPILE_ASSERT(sizeof(*rgb_) == 1, Expected_size_of_one_byte);
   stride_bytes_ = picture_.width * sizeof(*rgb_) *

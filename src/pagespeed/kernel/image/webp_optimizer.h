@@ -104,7 +104,7 @@ class WebpFrameWriter : public MultipleFrameWriter {
   // This class does NOT own image_spec_.
   const ImageSpec* image_spec_;
 
-  int next_frame_;
+  size_px next_frame_;
 
   // Number of bytes per row. See
   // https://developers.google.com/speed/webp/docs/api#encodingapi

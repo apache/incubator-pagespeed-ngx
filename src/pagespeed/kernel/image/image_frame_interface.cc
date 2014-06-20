@@ -17,6 +17,7 @@
 // Author: Victor Chudnovsky
 
 #include "base/logging.h"
+#include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/image/image_frame_interface.h"
 
 namespace pagespeed {
@@ -33,6 +34,37 @@ void ImageSpec::Reset() {
     width = 0;
     height = 0;
     num_frames = 0;
+    loop_count = 0;
+    memset(bg_color, 0, sizeof(bg_color));
+    use_bg_color = true;
+}
+
+size_px ImageSpec::TruncateXIndex(const size_px x) {
+  if (x > width) {
+    return width;
+  }
+  return x;
+}
+
+size_px ImageSpec::TruncateYIndex(const size_px y) {
+  if (y > height) {
+    return height;
+  }
+  return y;
+}
+
+GoogleString ImageSpec::ToString() const {
+  return StringPrintf("Image: %d x %d : %u frames, repeated %lu times",
+                      width, height, num_frames, loop_count);
+}
+
+bool ImageSpec::Equals(const ImageSpec& other) {
+  return ((width == other.width) &&
+          (height == other.height) &&
+          (num_frames == other.num_frames) &&
+          (loop_count == other.loop_count) &&
+          (memcmp(bg_color, other.bg_color, sizeof(bg_color)) == 0) &&
+          (use_bg_color == other.use_bg_color));
 }
 
 ////////// FrameSpec
@@ -42,13 +74,37 @@ FrameSpec::FrameSpec() {
 }
 
 void  FrameSpec::Reset() {
+  width = 0;
+  height = 0;
+  top = 0;
+  left = 0;
+
   pixel_format = UNSUPPORTED;
+  duration_ms = 0;
+  disposal = DISPOSAL_NONE;
+}
+
+GoogleString FrameSpec::ToString() const {
+  return StringPrintf(
+      "Frame: size %u x %u at (%u, %u) "
+      "pixel_format: %d, duration_ms: %lu, disposal: %d",
+      width, height, top, left, pixel_format, duration_ms, disposal);
+}
+
+bool FrameSpec::Equals(const FrameSpec& other) {
+  return ((width == other.width) &&
+          (height == other.height) &&
+          (top == other.top) &&
+          (left == other.left) &&
+          (pixel_format == other.pixel_format) &&
+          (duration_ms == other.duration_ms) &&
+          (disposal == other.disposal));
 }
 
 ////////// MultipleFrameReader
 
 MultipleFrameReader::MultipleFrameReader(MessageHandler* const handler)
-    : message_handler_(handler) {
+    : message_handler_(handler), quirks_mode_(QUIRKS_NONE) {
   CHECK(handler != NULL);
 }
 

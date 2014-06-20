@@ -151,7 +151,11 @@ void DecodeAndCompareImagesByPSNR(
       for (size_t x = 0; x < width1; ++x) {
         for (int ch = 0; ch < num_channels; ++ch) {
           int index = y * stride1 + (x * num_channels + ch);
-          EXPECT_EQ(pixels1[index], pixels2[index]);
+          EXPECT_EQ(pixels1[index], pixels2[index])
+              << "  y: " << y
+              << "  x: " << x
+              << "  ch: " << ch
+              << "  index: " << index;
         }
       }
     }

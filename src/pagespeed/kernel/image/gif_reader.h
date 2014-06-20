@@ -22,10 +22,12 @@
 #include <stdbool.h>
 #include <cstddef>
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
-#include "pagespeed/kernel/image/png_optimizer.h"
 #include "pagespeed/kernel/image/image_frame_interface.h"
+#include "pagespeed/kernel/image/image_util.h"
+#include "pagespeed/kernel/image/png_optimizer.h"
 #include "pagespeed/kernel/image/scanline_status.h"
 #include "pagespeed/kernel/image/scanline_utils.h"
 
@@ -39,10 +41,6 @@ extern "C" {
 #endif
 }
 
-namespace net_instaweb {
-class MessageHandler;
-}
-
 namespace pagespeed {
 
 namespace image_compression {
@@ -50,6 +48,10 @@ namespace image_compression {
 using net_instaweb::MessageHandler;
 
 class ScopedGifStruct;
+
+// Utility to translate the frame (GIF "image") disposal method from
+// the value encoded in the GIF file to the DisposalMethod enum.
+FrameSpec::DisposalMethod GifDisposalToFrameSpecDisposal(int gif_disposal);
 
 // Reader for GIF-encoded data.
 class GifReader : public PngReaderInterface {
@@ -86,9 +88,6 @@ class GifReader : public PngReaderInterface {
 //   ReadNextScanline(). That said, if you are sure that
 //   your image is a progressive GIF, you can modify image_buffer
 //   after the first call to ReadNextScanline().
-//
-// At the moment, this class only supports non-animate GIFs.
-// TODO(vchudnov): Support animated GIFs.
 class GifFrameReader : public MultipleFrameReader {
  public:
   explicit GifFrameReader(MessageHandler* handler);
@@ -103,11 +102,11 @@ class GifFrameReader : public MultipleFrameReader {
                                     size_t buffer_length);
 
   virtual bool HasMoreFrames() const {
-    return (next_frame_ < image_spec_.num_frames);
+    return (image_initialized_ && (next_frame_ < image_spec_.num_frames));
   }
 
   virtual bool HasMoreScanlines() const {
-    return (row_ < image_spec_.height);
+    return (frame_initialized_ && (next_row_ < frame_spec_.height));
   }
 
   virtual ScanlineStatus PrepareNextFrame();
@@ -118,47 +117,106 @@ class GifFrameReader : public MultipleFrameReader {
   // the entire image at the first time when it is called.
   virtual ScanlineStatus ReadNextScanline(const void** out_scanline_bytes);
 
-  virtual ScanlineStatus GetFrameSpec(const FrameSpec** frame_spec) const {
-    *frame_spec = &frame_spec_;
+  virtual ScanlineStatus GetFrameSpec(FrameSpec* frame_spec) const {
+    if (frame_spec == NULL) {
+      return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler(),
+                              SCANLINE_STATUS_INVOCATION_ERROR,
+                              FRAME_GIFREADER,
+                              "Unexpected NULL pointer.");
+    }
+    *frame_spec = frame_spec_;
     return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
   }
 
-  virtual ScanlineStatus GetImageSpec(const ImageSpec** image_spec) const {
-    *image_spec = &image_spec_;
+  virtual ScanlineStatus GetImageSpec(ImageSpec* image_spec) const {
+    if (image_spec == NULL) {
+      return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler(),
+                              SCANLINE_STATUS_INVOCATION_ERROR,
+                              FRAME_GIFREADER,
+                              "Unexpected NULL pointer.");
+    }
+    *image_spec = image_spec_;
     return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
   }
+
+  virtual ScanlineStatus set_quirks_mode(QuirksMode quirks_mode);
+
+  // Apply the specified browser-specific tweaking of image_spec
+  // based on the first frame's frame_spec.
+  static void ApplyQuirksModeToImage(QuirksMode quirks_mode,
+                                     const FrameSpec& frame_spec,
+                                     ImageSpec* image_spec);
+
+  // Apply the specified browser-specific tweaking of the first
+  // frame's frame_spec based on image_spec.
+  static void ApplyQuirksModeToFirstFrame(QuirksMode quirks_mode,
+                                          const ImageSpec& image_spec,
+                                          FrameSpec* frame_spec);
 
  private:
-  void ComputeOrExtendImageSize();
+  // The GIF format can specify one palette index which is treated as
+  // transparent; we store this index in frame_transparent_index_. In
+  // case the GIF file does not employ transparency, we store the
+  // special "index" value kNoTransparentIndex instead.
+  static const int kNoTransparentIndex;
 
-  // 'transparent_index' will be set to '-1' if no transparent color has been
-  // defined.
-  ScanlineStatus ProcessSingleImageGif(size_t* first_frame_offset,
-                                       int* transparent_index);
   ScanlineStatus DecodeProgressiveGif();
-  ScanlineStatus CreateColorMap(int transparent_index);
-  bool HasVisibleBackground() const;
+  ScanlineStatus CreateColorMap();
 
-  bool was_initialized_;
+  // Gets the image-scope meta-data (GIF screen size, global palette,
+  // number of frames, etc.), resetting the GIF file offset before
+  // returning.
+  ScanlineStatus GetImageData();
+
+  // Helper function for GetImageData() that reads the GIF application
+  // extension.
+  ScanlineStatus ProcessExtensionAffectingImage(bool past_first_frame);
+
+  // Helper function for PrepareNextFrame that gets the frame-scope
+  // metadata (duration, disposal, etc.) from the GIF Graphics
+  // Extension Block.
+  ScanlineStatus ProcessExtensionAffectingFrame();
+
+  // Whether the image_has been initialized.
+  bool image_initialized_;
+
+  // Whether the current frame has been initialized.
+  bool frame_initialized_;
+
+  // Image metadata.
   ImageSpec image_spec_;
+
+  // Frame metadata.
   FrameSpec frame_spec_;
-  int next_frame_;
+
+  // Whether we've already encountered the animation loop count.
+  bool got_loop_count_;
+
+  // The next frame to be read AFTER the current frame.
+  size_px next_frame_;
 
   // The following are for the current frame.
 
+  // Whether this frame is progressively encoded.
   bool is_progressive_;
-  // The current output row.
-  int row_;
-  size_t bytes_per_row_;
 
-  // Palette of the image. It has 257 entries. The last one stores the
-  // background color.
+  // The next row to output via ReadScanline.
+  size_px next_row_;
+
+  // The palette index of the transparent entry in the current frame,
+  // or kNoTransparentIndex otherwise. Set by PrepareNextFrame().
+  int frame_transparent_index_;
+
+  // Palette of the image, with 256 entries.
   net_instaweb::scoped_array<PaletteRGBA> gif_palette_;
+
   // Buffer for holding the color (RGB or RGBA) for a row of pixels.
-  net_instaweb::scoped_array<GifByteType> image_buffer_;
+  net_instaweb::scoped_array<GifByteType> frame_buffer_;
+
   // Buffer for holding the palette index for a row of pixels (for
   // non-progressive GIF) or for the entire image (for progressive GIF).
-  net_instaweb::scoped_array<GifByteType> image_index_;
+  net_instaweb::scoped_array<GifByteType> frame_index_;
+
   // gif_struct_ stores a pointer to the input image stream. It also
   // keeps track of the length of data that giflib has read. It is
   // initialized in Initialize() and is updated in

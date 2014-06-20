@@ -73,11 +73,16 @@ ScanlineReaderInterface* InstantiateScanlineReader(
       which = "WebpScanlineReader";
       break;
 
-    case IMAGE_GIF:
+    case IMAGE_GIF: {
       which = "FrameToScanlineReaderAdapter(GifFrameReader)";
-      reader = new FrameToScanlineReaderAdapter(
+      scoped_ptr<MultipleFrameReader> mf_reader(
           InstantiateImageFrameReader(image_type, handler, status));
+      if (!mf_reader->set_quirks_mode(QUIRKS_CHROME, status)) {
+        return NULL;
+      }
+      reader = new FrameToScanlineReaderAdapter(mf_reader.release());
       break;
+    }
 
     case IMAGE_UNKNOWN:
       break;
@@ -266,10 +271,10 @@ MultipleFrameReader* CreateImageFrameReader(
     ScanlineStatus* status) {
   scoped_ptr<MultipleFrameReader> reader(
       InstantiateImageFrameReader(image_type, handler, status));
-  if (status->Success()) {
-    *status = reader->Initialize(image_buffer, buffer_length);
-  }
-  return status->Success() ? reader.release() : NULL;
+  return (status->Success() &&
+          reader->set_quirks_mode(QUIRKS_CHROME, status) &&
+          reader->Initialize(image_buffer, buffer_length, status)) ?
+          reader.release() : NULL;
 }
 
 // Instantiates an uninitialized image frame writer.
@@ -320,14 +325,9 @@ MultipleFrameWriter* CreateImageFrameWriter(
     ScanlineStatus* status) {
   scoped_ptr<MultipleFrameWriter> writer(
       InstantiateImageFrameWriter(image_type, handler, status));
-  if (status->Success()) {
-    *status = writer->Initialize(config, image_data);
-  }
-  if (status->Success()) {
-    return writer.release();
-  } else {
-    return NULL;
-  }
+  return (status->Success() &&
+          writer->Initialize(config, image_data, status)) ?
+      writer.release() : NULL;
 }
 
 ////////// Utilities
