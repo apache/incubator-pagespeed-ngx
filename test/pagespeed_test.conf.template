@@ -955,6 +955,28 @@ http {
     pagespeed DisableFilters remove_comments,add_instrumentation;
   }
 
+  # For testing signed URLs, ignoring signature validity.
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name signed-urls-transition.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@";
+    pagespeed UrlSigningKey helloworld;
+    pagespeed AcceptInvalidSignatures true;
+    pagespeed RewriteLevel Passthrough;
+    pagespeed EnableFilters collapse_whitespace,rewrite_images;
+    pagespeed DisableFilters remove_comments,add_instrumentation;
+  }
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name unsigned-urls-transition.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@";
+    # This server will not sign URLs, but AcceptInvalidSignature is on.
+    pagespeed AcceptInvalidSignatures true;
+    pagespeed RewriteLevel Passthrough;
+    pagespeed EnableFilters collapse_whitespace,rewrite_images;
+    pagespeed DisableFilters remove_comments,add_instrumentation;
+  }
+
   # Proxy + IPRO a gzip'd file for testing Issue 896.
   server {
     listen @@SECONDARY_PORT@@;
