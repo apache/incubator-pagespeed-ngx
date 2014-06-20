@@ -601,27 +601,35 @@ void AdminSite::MessageHistoryHandler(AdminSource source, AsyncFetch* fetch) {
   AdminHtml admin_html("message_history", "", source, fetch, message_handler_);
   if (message_handler_->Dump(&log_writer)) {
     // Write pre-tag and color messages.
-    // We are not looking at the actual error.log.
-    // The syntax has been formatted here: ApacheMessageHandler::MessageVImpl
-    // in net/instaweb/apache/apache_message_handler.cc:131
-    // TODO(xqyin): Change the formatter for both Apache and Nginx to omit the
-    // severity syntax. Add a letter code at the beginning of each message to
-    // classify the type of it. Then don't need to use StringPiece::Find.
-    StringPieceVector components;
-    SplitStringPieceToVector(log, "\n", &components, false);
-    for (int i = 0, size = components.size(); i < size; ++i) {
-      if (components[i].find("[Error]") != StringPiece::npos) {
-        HtmlKeywords::WritePre(components[i], "color:red; margin:0;",
-                               fetch, message_handler_);
-      } else if (components[i].find("[Warning]") != StringPiece::npos) {
-        HtmlKeywords::WritePre(components[i], "color:blue; margin:0;",
-                               fetch, message_handler_);
-      } else if (components[i].find("[Fatal]") != StringPiece::npos) {
-        HtmlKeywords::WritePre(components[i], "color:orange; margin:0;",
-                               fetch, message_handler_);
-      } else {
-        HtmlKeywords::WritePre(components[i], "margin:0;",
-                               fetch, message_handler_);
+    StringPieceVector messages;
+    message_handler_->ParseMessageDumpIntoMessages(log, &messages);
+    for (int i = 0, size = messages.size(); i < size; ++i) {
+      if (messages[i].length() > 0) {
+        switch (message_handler_->GetMessageType(messages[i])) {
+          case kError: {
+            HtmlKeywords::WritePre(
+                message_handler_->ReformatMessage(messages[i]),
+                "color:red; margin:0;", fetch, message_handler_);
+            break;
+          }
+          case kWarning: {
+            HtmlKeywords::WritePre(
+                message_handler_->ReformatMessage(messages[i]),
+                "color:blue; margin:0;", fetch, message_handler_);
+            break;
+          }
+          case kFatal: {
+            HtmlKeywords::WritePre(
+                message_handler_->ReformatMessage(messages[i]),
+                "color:orange; margin:0;", fetch, message_handler_);
+            break;
+          }
+          default: {
+            HtmlKeywords::WritePre(
+                message_handler_->ReformatMessage(messages[i]),
+                "margin:0;", fetch, message_handler_);
+          }
+        }
       }
     }
   } else {

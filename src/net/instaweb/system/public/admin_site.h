@@ -147,6 +147,9 @@ class AdminSite {
   void PurgeHandler(StringPiece url, SystemCachePath* cache_path,
                     AsyncFetch* fetch);
 
+  // Return the message handler for debugging use.
+  MessageHandler* MessageHandlerForTesting() { return message_handler_; }
+
  private:
   MessageHandler* message_handler_;
   StaticAssetManager* static_asset_manager_;

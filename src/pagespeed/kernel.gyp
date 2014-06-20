@@ -440,6 +440,7 @@
       'target_name': 'pagespeed_image_test_util',
       'type': '<(library)',
       'sources': [
+        'kernel/image/gif_square.cc',
         'kernel/image/jpeg_optimizer_test_helper.cc',
         'kernel/image/test_utils.cc',
       ],
@@ -455,6 +456,7 @@
       'dependencies': [
         ':kernel_test_util',
         ':pagespeed_image_processing',
+        '<(DEPTH)/third_party/giflib/giflib.gyp:egiflib',
       ],
     },
     {

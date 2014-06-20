@@ -22,15 +22,17 @@
 #include <cstdarg>
 #include <map>
 
+#include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/fast_wildcard_group.h"
 #include "pagespeed/kernel/base/google_message_handler.h"
-#include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
 
 class AbstractMutex;
+class Writer;
 
 // A version of GoogleMessageHandler to use in testcases that keeps
 // track of number of messages output, to validate diagnostics
@@ -63,6 +65,9 @@ class MockMessageHandler : public GoogleMessageHandler {
   // it will not be printed, but will still be counted.
   void AddPatternToSkipPrinting(const char* pattern);
 
+  // Dumps contents of String Buffer.
+  virtual bool Dump(Writer* writer);
+
  protected:
   virtual void MessageVImpl(MessageType type, const char* msg, va_list args);
 
@@ -85,6 +90,9 @@ class MockMessageHandler : public GoogleMessageHandler {
   MessageCountMap message_counts_;
   MessageCountMap skipped_message_counts_;
   FastWildcardGroup patterns_to_skip_;
+  GoogleString buffer_;
+  // This handler is only for internal use in Dump method.
+  GoogleMessageHandler internal_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(MockMessageHandler);
 };

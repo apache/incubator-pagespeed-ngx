@@ -1336,6 +1336,7 @@
         'system/in_place_resource_recorder.cc',
         'system/system_cache_path.cc',
         'system/system_caches.cc',
+        'system/system_message_handler.cc',
         'system/system_rewrite_driver_factory.cc',
         'system/system_rewrite_options.cc',
         'system/system_request_context.cc',

@@ -105,6 +105,16 @@ class MessageHandler {
   // add a circular buffer to implement this, e.g. SharedCircularBuffer.
   virtual bool Dump(Writer* writer);
 
+  // Parse the dumped log into messages.
+  virtual void ParseMessageDumpIntoMessages(
+      StringPiece message_dump, StringPieceVector* messages);
+
+  // Return the message type.
+  virtual MessageType GetMessageType(StringPiece message);
+
+  // Make the message look more readable when rendering to history page.
+  virtual StringPiece ReformatMessage(StringPiece message);
+
  protected:
   GoogleString Format(const char* msg, va_list args);
 

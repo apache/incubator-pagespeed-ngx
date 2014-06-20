@@ -151,4 +151,36 @@ bool MessageHandler::Dump(Writer* writer) {
   return false;
 }
 
+void MessageHandler::ParseMessageDumpIntoMessages(
+    StringPiece message_dump, StringPieceVector* messages) {
+  // Ignore the first line to make sure all the messages dumped are complete.
+  stringpiece_ssize_type pos = message_dump.find("\n");
+  if (pos != StringPiece::npos) {
+    message_dump.remove_prefix(pos);
+  }
+  SplitStringPieceToVector(message_dump, "\n", messages, false);
+}
+
+MessageType MessageHandler::GetMessageType(StringPiece message) {
+  switch (message[0]) {
+    case 'E': {
+      return kError;
+    }
+    case 'W': {
+      return kWarning;
+    }
+    case 'F': {
+      return kFatal;
+    }
+    default: {
+      return kInfo;
+    }
+  }
+}
+
+StringPiece MessageHandler::ReformatMessage(StringPiece message) {
+  // Remove the first character which is the type indicator.
+  return message.substr(1);
+}
+
 }  // namespace net_instaweb

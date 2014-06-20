@@ -25,8 +25,9 @@
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/google_message_handler.h"
 #include "pagespeed/kernel/base/message_handler.h"
-#include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/writer.h"
 
 namespace net_instaweb {
 
@@ -43,6 +44,13 @@ void MockMessageHandler::MessageVImpl(MessageType type,
   ScopedMutex hold_mutex(mutex_.get());
   if (ShouldPrintMessage(Format(msg, args).c_str())) {
     GoogleMessageHandler::MessageVImpl(type, msg, args);
+    GoogleString formatted_message = Format(msg, args);
+    GoogleString type_str = MessageTypeToString(type);
+    GoogleString message;
+    StrAppend(&message, type_str.substr(0, 1), "[Wed Jan 01 00:00:00 2014] [",
+              type_str, "] ");
+    StrAppend(&message, "[00000]", " ", formatted_message, "\n");
+    StrAppend(&buffer_, message);
   } else {
     ++skipped_message_counts_[type];
   }
@@ -119,6 +127,13 @@ void MockMessageHandler::AddPatternToSkipPrinting(
 
 bool MockMessageHandler::ShouldPrintMessage(const char* msg) {
   return !patterns_to_skip_.Match(GoogleString(msg), false);
+}
+
+bool MockMessageHandler::Dump(Writer* writer) {
+  if (buffer_ == "") {
+    return false;
+  }
+  return (writer->Write(buffer_, &internal_handler_));
 }
 
 }  // namespace net_instaweb
