@@ -2452,8 +2452,7 @@ COMBINED_CSS=".yellow{background-color:#ff0}"
 URL="$(generate_url "signed-urls.example.com" $URL_PATH$OPTS)"
 http_proxy=$SECONDARY_HOSTNAME fetch_until -save "$URL" \
     'fgrep -c all_styles.css.pagespeed.cf' 1
-REGEX="http:\/\/[^[:space:]]+css\.pagespeed[^[:space:]]+\.css"
-URL="$(grep -Eo "$REGEX" $FETCH_FILE)"
+URL="$(grep -Eo "$URL_REGEX" $FETCH_FILE)"
 check test -n "$URL"
 echo wget $URL
 OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET $URL -O - 2>&1)"
@@ -2477,8 +2476,7 @@ start_test Signed Urls, ignored signature : Correct URL signature is passed
 URL="$(generate_url "signed-urls-transition.example.com" $URL_PATH$OPTS)"
 http_proxy=$SECONDARY_HOSTNAME fetch_until -save "$URL" \
     'fgrep -c all_styles.css.pagespeed.cf' 1
-REGEX="http:\/\/[^[:space:]]+css\.pagespeed[^[:space:]]+\.css"
-URL="$(grep -Eo "$REGEX" $FETCH_FILE)"
+URL="$(grep -Eo "$URL_REGEX" $FETCH_FILE)"
 check test -n "$URL"
 echo http_proxy=$SECONDARY_HOSTNAME wget $URL
 OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET $URL -O - 2>&1)"
