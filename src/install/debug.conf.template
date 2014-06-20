@@ -741,6 +741,24 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   ModPagespeedRewriteLevel PassThrough
 </VirtualHost>
 
+# For testing signed urls, ignoring signature validity.
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName signed-urls-transition.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
+  ModPagespeedUrlSigningKey helloworld
+  ModPagespeedRewriteLevel PassThrough
+  ModPagespeedAcceptInvalidSignatures true
+</VirtualHost>
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName unsigned-urls-transition.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
+  # This server will not sign URLs, but AcceptInvalidSignatures is on.
+  ModPagespeedRewriteLevel PassThrough
+  ModPagespeedAcceptInvalidSignatures true
+</VirtualHost>
+
 # For testing handling of redirected requests.
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
   ServerName redirect.example.com

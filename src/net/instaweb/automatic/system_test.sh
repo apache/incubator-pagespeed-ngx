@@ -984,34 +984,74 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   check_not_from "$OUT" grep -q 'Cookie'
 
   start_test Signed Urls : Correct URL signature is passed
-  HOST_NAME="signed-urls.example.com"
   URL_PATH="/mod_pagespeed_test/unauthorized/inline_css.html"
   OPTS="?PageSpeedFilters=rewrite_images,rewrite_css"
-  URL="$(generate_url $HOST_NAME $URL_PATH$OPTS)"
+  FETCH_GREP='fgrep -c all_styles.css.pagespeed.cf'
+  URL_REGEX="http:\/\/[^[:space:]]+css\.pagespeed[^[:space:]]+\.css"
+  COMBINED_CSS=".yellow{background-color:#ff0}"
+  # Constants used in the next few tests.
+  URL="$(generate_url "signed-urls.example.com" $URL_PATH$OPTS)"
   http_proxy=$SECONDARY_HOSTNAME fetch_until -save "$URL" \
       'fgrep -c all_styles.css.pagespeed.cf' 1
-  REGEX="http:\/\/[^[:space:]]+css\.pagespeed[^[:space:]]+\.css"
-  URL="$(grep -Eo "$REGEX" $FETCH_FILE)"
+  URL="$(grep -Eo "$URL_REGEX" $FETCH_FILE)"
   check test -n "$URL"
   echo wget $URL
   OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET $URL -O - 2>&1)"
-  check_from "$OUT" grep -q ".yellow{background-color:#ff0}.blue{color:#00f}"
+  check_from "$OUT" grep -q $COMBINED_CSS
 
   start_test Signed Urls : Incorrect URL signature is passed
   # Substring, all but last 14 characters to remove the signature and extension.
   URL="${URL:0:-14}"
   FINAL_URL="${URL}AAAAAAAAAA.css"
-  echo wget $FINAL_URL
+  echo http_proxy=$SECONDARY_HOSTNAME wget $FINAL_URL
   OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET $FINAL_URL -O - 2>&1)"
   check_from "$OUT" egrep -q "403 Forbidden|404 Not Found"
 
-  # TODO(jcrowell): Handle transition period between signatures turned on and
-  # signatures enforced.
   start_test Signed Urls : No signature is passed
   FINAL_URL="$URL.css"
-  echo wget $FINAL_URL
+  echo http_proxy=$SECONDARY_HOSTNAME wget $FINAL_URL
   OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET $FINAL_URL -O - 2>&1)"
   check_from "$OUT" egrep -q "403 Forbidden|404 Not Found"
+
+  start_test Signed Urls, ignored signature : Correct URL signature is passed
+  URL="$(generate_url "signed-urls-transition.example.com" $URL_PATH$OPTS)"
+  http_proxy=$SECONDARY_HOSTNAME fetch_until -save "$URL" \
+      'fgrep -c all_styles.css.pagespeed.cf' 1
+  URL="$(grep -Eo "$URL_REGEX" $FETCH_FILE)"
+  check test -n "$URL"
+  echo http_proxy=$SECONDARY_HOSTNAME wget $URL
+  OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET $URL -O - 2>&1)"
+  check_from "$OUT" grep -q $COMBINED_CSS
+
+  start_test Signed Urls, ignored signatures : Incorrect URL signature is passed
+  # Substring, all but last 14 characters to remove the signature and extension.
+  URL="${URL:0:-14}"
+  FINAL_URL="${URL}AAAAAAAAAA.css"
+  echo http_proxy=$SECONDARY_HOSTNAME wget $FINAL_URL
+  OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET $FINAL_URL -O - 2>&1)"
+  check_from "$OUT" grep -q $COMBINED_CSS
+
+  start_test Signed Urls, ignored signatures : No signature is passed
+  FINAL_URL="$URL.css"
+  echo http_proxy=$SECONDARY_HOSTNAME wget $FINAL_URL
+  OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET $FINAL_URL -O - 2>&1)"
+  check_from "$OUT" grep -q $COMBINED_CSS
+
+  start_test Unsigned Urls, ignored signature : URL with bad signature is passed
+  HOST_NAME="unsigned-urls-transition.example.com"
+  CSS_PATH="/mod_pagespeed_example/styles/"
+  URL_PATH="${CSS_PATH}A.all_styles.css.pagespeed.cf.UH8L-zY4b4AAAAAAAAAA.css"
+  URL="$(generate_url $HOST_NAME $URL_PATH)"
+  echo http_proxy=$SECONDARY_HOSTNAME wget $URL
+  OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET $URL -O - 2>&1)"
+  check_from "$OUT" grep -q $COMBINED_CSS
+
+  start_test Unsigned Urls, ignored signatures : no signature is passed
+  URL_PATH="${CSS_PATH}A.all_styles.css.pagespeed.cf.UH8L-zY4b4.css"
+  URL="$(generate_url $HOST_NAME $URL_PATH)"
+  echo http_proxy=$SECONDARY_HOSTNAME wget $URL
+  OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET $URL -O - 2>&1)"
+  check_from "$OUT" grep -q $COMBINED_CSS
 
   # Test that redirecting to the same domain retains MPS query parameters.
   # The test domain is configured for collapse_whitepsace,add_instrumentation

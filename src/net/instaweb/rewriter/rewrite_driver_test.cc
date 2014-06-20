@@ -57,6 +57,7 @@
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/mock_timer.h"
 #include "pagespeed/kernel/base/null_mutex.h"
+#include "pagespeed/kernel/base/sha1_signature.h"
 
 namespace net_instaweb {
 
@@ -215,6 +216,44 @@ TEST_F(RewriteDriverTest, TestLegacyUrl) {
       << "invalid hash code -- not 1 or 32 chars";
   ASSERT_FALSE(CanDecodeUrl("http://example.com/dir/123/jm.0.orig.x"))
       << "invalid extension";
+}
+
+TEST_F(RewriteDriverTest, TestValidUrlSignatures) {
+  StringPiece key("helloworld");
+  options()->set_url_signing_key(key);
+  EXPECT_EQ(10, options()->sha1signature()->SignatureSizeInChars());
+  rewrite_driver()->AddFilters();
+  EXPECT_TRUE(CanDecodeUrl(
+      "http://signed-urls.example.com/mod_pagespeed_example/styles/"
+      "A.all_styles.css.pagespeed.cf.UQ_aP9rObnq.css"))
+      << "valid signature";
+  EXPECT_FALSE(CanDecodeUrl(
+      "http://signed-urls.example.com/mod_pagespeed_example/styles/"
+      "A.all_styles.css.pagespeed.cf.UAAAAAAAAAA.css"))
+      << "invalid signature";
+  EXPECT_FALSE(CanDecodeUrl(
+      "http://signed-urls.example.com/mod_pagespeed_example/styles/"
+      "A.all_styles.css.pagespeed.cf.U.css"))
+      << "no signature";
+}
+
+TEST_F(RewriteDriverTest, TestIgnoringUrlSignatures) {
+  options()->set_url_signing_key("helloworld");
+  options()->set_accept_invalid_signatures(true);
+  EXPECT_EQ(10, options()->sha1signature()->SignatureSizeInChars());
+  rewrite_driver()->AddFilters();
+  EXPECT_TRUE(CanDecodeUrl(
+      "http://signed-urls.example.com/mod_pagespeed_example/styles/"
+      "A.all_styles.css.pagespeed.cf.UQ_aP9rObnq.css"))
+      << "valid signature, ignored";
+  EXPECT_TRUE(CanDecodeUrl(
+      "http://signed-urls.example.com/mod_pagespeed_example/styles/"
+      "A.all_styles.css.pagespeed.cf.UAAAAAAAAAA.css"))
+      << "invalid signature, ignored";
+  EXPECT_TRUE(CanDecodeUrl(
+      "http://signed-urls.example.com/mod_pagespeed_example/styles/"
+      "A.all_styles.css.pagespeed.cf.U.css"))
+      << "no signature, ignored";
 }
 
 TEST_F(RewriteDriverTest, PagespeedObliviousPositiveTest) {

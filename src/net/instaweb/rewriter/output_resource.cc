@@ -293,7 +293,8 @@ GoogleString OutputResource::ComputeSignature() {
 bool OutputResource::CheckSignature() {
   // If signing isn't enforced, then consider all URLs to be valid and just
   // ignore the passed signature if there is one.
-  if (rewrite_options_->url_signing_key().empty()) {
+  if (rewrite_options_->url_signing_key().empty() ||
+      rewrite_options_->accept_invalid_signatures()) {
     return true;
   }
   return full_name_.signature() == ComputeSignature();

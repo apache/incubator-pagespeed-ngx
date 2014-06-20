@@ -50,6 +50,8 @@ namespace net_instaweb {
 // TODO(jmarantz): Use consistent naming from semantic_type.h for all option
 // names that reference css/styles/js/scripts etc. such as CssPreserveUrls.
 const char RewriteOptions::kAddOptionsToUrls[] = "AddOptionsToUrls";
+const char RewriteOptions::kAcceptInvalidSignatures[] =
+    "AcceptInvalidSignatures";
 const char RewriteOptions::kAccessControlAllowOrigins[] =
     "AccessControlAllowOrigins";
 const char RewriteOptions::kAllowLoggingUrlsInLogRecord[] =
@@ -322,6 +324,7 @@ const char RewriteOptions::kMemcachedThreads[] = "MemcachedThreads";
 const char RewriteOptions::kMemcachedTimeoutUs[] = "MemcachedTimeoutUs";
 const char RewriteOptions::kRateLimitBackgroundFetches[] =
     "RateLimitBackgroundFetches";
+const char RewriteOptions::kRequestOptionOverride[] = "RequestOptionOverride";
 const char RewriteOptions::kServeWebpToAnyAgent[] =
     "ServeRewrittenWebpUrlsToAnyAgent";
 const char RewriteOptions::kSlurpDirectory[] = "SlurpDirectory";
@@ -342,12 +345,11 @@ const char RewriteOptions::kStatisticsLoggingMaxFileSizeKb[] =
     "StatisticsLoggingMaxFileSizeKb";
 const char RewriteOptions::kTestProxy[] = "TestProxy";
 const char RewriteOptions::kTestProxySlurp[] = "TestProxySlurp";
+const char RewriteOptions::kUrlSigningKey[] = "UrlSigningKey";
 const char RewriteOptions::kUseSelectorsForCriticalCss[] =
     "UseSelectorsForCriticalCss";
 const char RewriteOptions::kUseSharedMemLocking[] = "SharedMemoryLocks";
 const char RewriteOptions::kNullOption[] = "";
-const char RewriteOptions::kRequestOptionOverride[] = "RequestOptionOverride";
-const char RewriteOptions::kUrlSigningKey[] = "UrlSigningKey";
 
 // RewriteFilter prefixes
 const char RewriteOptions::kCacheExtenderId[] = "ce";
@@ -1617,6 +1619,10 @@ void RewriteOptions::AddProperties() {
       kUrlSigningKey,
       kServerScope,
       "Key used for signing .pagespeed resource URLs.");
+  AddBaseProperty(
+      false, &RewriteOptions::accept_invalid_signatures_, "ais",
+      kAcceptInvalidSignatures, kServerScope,
+      "Accept resources with invalid signatures.");
   AddBaseProperty(
       "", &RewriteOptions::lazyload_images_blank_url_, "llbu",
       kLazyloadImagesBlankUrl,

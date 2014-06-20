@@ -827,6 +827,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
   const char* const option_names[] = {
+    RewriteOptions::kAcceptInvalidSignatures,
     RewriteOptions::kAccessControlAllowOrigins,
     RewriteOptions::kAddOptionsToUrls,
     RewriteOptions::kAllowLoggingUrlsInLogRecord,

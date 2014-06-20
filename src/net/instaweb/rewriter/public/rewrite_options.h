@@ -204,6 +204,7 @@ class RewriteOptions {
   // you add an image-related option or css-related option you must also add
   // it to the kRelatedOptions array in image_rewrite_filter.cc and/or
   // css_filter.cc.
+  static const char kAcceptInvalidSignatures[];
   static const char kAccessControlAllowOrigins[];
   static const char kAddOptionsToUrls[];
   static const char kAllowLoggingUrlsInLogRecord[];
@@ -328,6 +329,7 @@ class RewriteOptions {
   static const char kRejectBlacklisted[];
   static const char kRejectBlacklistedStatusCode[];
   static const char kReportUnloadTime[];
+  static const char kRequestOptionOverride[];
   static const char kRespectVary[];
   static const char kRespectXForwardedProto[];
   static const char kRewriteDeadlineMs[];
@@ -352,7 +354,6 @@ class RewriteOptions {
   static const char kUseSmartDiffInBlink[];
   static const char kXModPagespeedHeaderValue[];
   static const char kXPsaBlockingRewrite[];
-  static const char kRequestOptionOverride[];
   // Options that require special handling, e.g. non-scalar values
   static const char kAllow[];
   static const char kBlockingRewriteRefererUrls[];
@@ -1721,6 +1722,13 @@ class RewriteOptions {
   }
   int beacon_reinstrument_time_sec() const {
     return beacon_reinstrument_time_sec_.value();
+  }
+
+  void set_accept_invalid_signatures(bool x) {
+    set_option(x, &accept_invalid_signatures_);
+  }
+  bool accept_invalid_signatures() const {
+    return accept_invalid_signatures_.value();
   }
 
   void set_request_option_override(StringPiece p) {
@@ -3758,6 +3766,9 @@ class RewriteOptions {
 
   // The key used to sign .pagespeed resources if URL signing is enabled.
   Option<GoogleString> url_signing_key_;
+
+  // If set to true, accepts urls with invalid signatures.
+  Option<bool> accept_invalid_signatures_;
 
   // sticky_query_parameters_ is the token specified in the configuration that
   // must be specified in a request's query parameters/headers for the other
