@@ -128,6 +128,7 @@ bool GifSquare::PrepareScreen(bool gif89, int width, int height,
   colormaps_.push_back(GifMakeMapObject(num_colors, color_map));
 
 #if GIFLIB_MAJOR >= 5
+  colormaps_[0]->SortFlag = 0;  // not initialized above
   EGifSetGifVersion(gif_file_, gif89);
 #else
   EGifSetGifVersion("89a");
