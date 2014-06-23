@@ -259,7 +259,7 @@ class ImageRewriteFilter : public RewriteFilter {
 
   void SaveDebugMessageToCache(const GoogleString& message,
                                Context* rewrite_context,
-                               CachedResult* html_cached);
+                               CachedResult* cached_result);
 
   scoped_ptr<WorkBound> work_bound_;
 

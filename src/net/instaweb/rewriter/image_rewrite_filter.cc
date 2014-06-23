@@ -1527,16 +1527,11 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
 
 void ImageRewriteFilter::SaveDebugMessageToCache(const GoogleString& message,
                                                  Context* rewrite_context,
-                                                 CachedResult* html_cached) {
+                                                 CachedResult* cached_result) {
   if (!message.empty()) {
-    if (!rewrite_context->is_css_) {
-      // Save message to HTML cache.
-      html_cached->add_debug_message(message);
-    } else if (rewrite_context->has_parent()) {
-      // Save message to CSS cache.
-      rewrite_context->parent()->output_partition(0)->add_debug_message(
-          message);
-    }
+    // We always save our result to our cache entry, since it will be propagated
+    // to the parent automatically, and we need to be replayable independently.
+    cached_result->add_debug_message(message);
   }
 }
 
