@@ -1104,9 +1104,8 @@ TEST_P(JavascriptFilterTest, SourceMapsSimple) {
   const char expected_output_js[] = "foo bar";
   const char vlq[] =
       // Comment format: (gen_line, gen_col, src_file, src_line, src_col) token
-      "AAAE,"  // (0,  0,  0,  0,  2)  foo
-      "GAAG,"  // (0, +3, +0, +0, +3)  [space]
-      "CAAE";  // (0, +1, +0, +0, +2)  bar
+      "AAAE,"  // (0,  0,  0,  0,  2)  foo [space]
+      "IAAK";  // (0, +4, +0, +0, +5)  bar
   SourceMapTest(input_js, expected_output_js, vlq);
 }
 
@@ -1121,18 +1120,13 @@ TEST_P(JavascriptFilterTest, SourceMapsMedium) {
       "document.write(\"<!-- comment -->\");";
   const char vlq[] =
       // Comment format: (gen_line, gen_col, src_file, src_line, src_col) token
-      "AAAA,"   // (0,   0,  0,  0,   0)  alert
-      "KAAU,"   // (0,  +5, +0, +0, +10)  (
-      "CAAK,"   // (0,  +1, +0, +0,  +5)  'hello, world!'
-      "eAAmB,"  // (0, +15, +0, +0, +19)  )
-      "CAAC;"   // (0,  +1, +0, +0,  +1)  [newline]
-      "AAGnC,"  // (1,   0, +0, +3, -35)  document
-      "QAAQ,"   // (1,  +8, +0, +0,  +8)  .
-      "CAAC,"   // (1,  +1, +0, +0,  +1)  write
-      "KAAK,"   // (1,  +5, +0, +0,  +5)  (
-      "CAAE,"   // (1,  +1, +0, +0,  +2)  "<!-- comment -->"
-      "kBAAmB," // (1, +18, +0, +0, +19)  )
-      "CAAC";   // (1,  +1, +0, +0,  +1)  ;
+      "AAAA,"    // (0,   0,  0,  0,   0)  alert
+      "KAAU,"    // (0,  +5, +0, +0, +10)  (
+      "CAAK,"    // (0,  +1, +0, +0,  +5)  'hello, world!'
+      "eAAmB;"   // (0, +15, +0, +0, +19)  )
+      "AAGlC,"   // (1,   0, +0, +3, -34)  document.write(
+      "eAAgB,"   // (1, +15, +0, +0, +16)  "<!-- comment -->"
+      "kBAAmB";  // (1, +18, +0, +0, +19)  );
   SourceMapTest(input_js, expected_output_js, vlq);
 }
 

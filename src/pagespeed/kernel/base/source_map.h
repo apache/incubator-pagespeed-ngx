@@ -53,13 +53,15 @@ struct Mapping {
   }
 };
 
+typedef std::vector<Mapping> MappingVector;
+
 // Encodes generated_url, source_url and mappings into encoded_source_map
 // which will be the contents of a JSON Source Map v3 file.
 // Bool returned answers question "Did this succeed?"
 bool Encode(StringPiece generated_url,  // optional: "" to ignore.
             StringPiece source_url,
             // mappings MUST already be sorted by gen_line and then gen_col.
-            const std::vector<Mapping>& mappings,
+            const MappingVector& mappings,
             GoogleString* encoded_source_map);
 
 // TODO(sligocki)-maybe: Do we want a decoder as well? Might be nice for
@@ -76,7 +78,7 @@ char EncodeBase64(int val);
 // arbitrary length values.)
 GoogleString EncodeVlq(int32 val);
 // Encodes mappings into a sequence of ; and , separated VLQ base64 values.
-bool EncodeMappings(const std::vector<Mapping>& mappings,
+bool EncodeMappings(const MappingVector& mappings,
                     GoogleString* result);
 GoogleString PercentEncode(StringPiece url);
 

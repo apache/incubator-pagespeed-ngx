@@ -21,8 +21,6 @@
 
 #include <cstddef>
 
-#include <vector>
-
 #include "base/logging.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/escaping.h"
@@ -30,6 +28,7 @@
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/source_map.h"
 
 namespace pagespeed { namespace js { struct JsTokenizerPatterns; } }
 
@@ -39,8 +38,6 @@ class JavascriptLibraryIdentification;
 class MessageHandler;
 class Statistics;
 class Variable;
-
-namespace source_map { struct Mapping; }
 
 // Class wrapping up configuration information for javascript
 // rewriting, in order to minimize footprint of later changes
@@ -175,7 +172,7 @@ class JavascriptCodeBlock {
   // Returns the contents of a source map from original to rewritten.
   // PRECONDITION: Rewrite() must have been called first and
   // successfully_rewritten() must be true.
-  const std::vector<source_map::Mapping>& SourceMappings() const {
+  const source_map::MappingVector& SourceMappings() const {
     DCHECK(rewritten_);
     DCHECK(successfully_rewritten_);
     return source_mappings_;
@@ -238,13 +235,13 @@ class JavascriptCodeBlock {
 
   // Temporary wrapper around calling new or old version of JS minifier.
   bool MinifyJs(StringPiece input, GoogleString* output,
-                std::vector<source_map::Mapping>* source_mappings);
+                source_map::MappingVector* source_mappings);
 
   JavascriptRewriteConfig* config_;
   const GoogleString message_id_;  // ID to stick at begining of message.
   const GoogleString original_code_;
   GoogleString rewritten_code_;
-  std::vector<source_map::Mapping> source_mappings_;
+  source_map::MappingVector source_mappings_;
 
   // Used to make sure we don't rewrite twice and that results aren't looked at
   // before produced.

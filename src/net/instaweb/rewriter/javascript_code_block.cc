@@ -229,7 +229,7 @@ void JavascriptCodeBlock::SwapRewrittenString(GoogleString* other) {
 
 bool JavascriptCodeBlock::MinifyJs(
     StringPiece input, GoogleString* output,
-    std::vector<source_map::Mapping>* source_mappings) {
+    source_map::MappingVector* source_mappings) {
   if (config_->use_experimental_minifier()) {
     return pagespeed::js::MinifyUtf8JsWithSourceMap(
         config_->js_tokenizer_patterns(), input, output, source_mappings);

@@ -89,7 +89,7 @@ GoogleString EncodeVlq(const int32 input_val) {
 
 // Encode to the compact mappings format, which is a ;-separated list of
 // ,-separated lists of base64 VLQ values.
-bool EncodeMappings(const std::vector<Mapping>& mappings,
+bool EncodeMappings(const MappingVector& mappings,
                     GoogleString* result) {
   int current_gen_line = 0;
   bool first_segment_in_line = true;
@@ -176,7 +176,7 @@ GoogleString PercentEncode(StringPiece url) {
 
 bool Encode(StringPiece generated_url,
             StringPiece source_url,
-            const std::vector<Mapping>& mappings,
+            const MappingVector& mappings,
             GoogleString* encoded_source_map) {
   GoogleString encoded_mappings;
   bool success = EncodeMappings(mappings, &encoded_mappings);

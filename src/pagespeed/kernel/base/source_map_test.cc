@@ -81,7 +81,7 @@ TEST_F(SourceMapTest, VlqExtremeVals) {
 }
 
 TEST_F(SourceMapTest, EncodeMappings) {
-  std::vector<source_map::Mapping> mappings;
+  source_map::MappingVector mappings;
   mappings.push_back(source_map::Mapping(1,   1,  0,  10,   0));
   mappings.push_back(source_map::Mapping(1,  21,  1,  11,   0));
   mappings.push_back(source_map::Mapping(1,  25,  1,  11,  81));
@@ -96,7 +96,7 @@ TEST_F(SourceMapTest, EncodeMappings) {
 
 // Trivial example, to make sure code works at all.
 TEST_F(SourceMapTest, Encode_Simple) {
-  std::vector<source_map::Mapping> mappings;
+  source_map::MappingVector mappings;
   GoogleString result;
   EXPECT_TRUE(source_map::Encode("http://example.com/generated.js",
                                  "http://example.com/original.js",
@@ -111,7 +111,7 @@ TEST_F(SourceMapTest, Encode_Simple) {
 }
 
 TEST_F(SourceMapTest, Encode) {
-  std::vector<source_map::Mapping> mappings;
+  source_map::MappingVector mappings;
   mappings.push_back(source_map::Mapping(0,  0, 0, 4,  0));
   mappings.push_back(source_map::Mapping(0, 21, 0, 4, 22));
   mappings.push_back(source_map::Mapping(0, 22, 0, 5,  2));
@@ -133,7 +133,7 @@ TEST_F(SourceMapTest, Encode) {
 
 // Make sure chars are escaped correctly in JSON string.
 TEST_F(SourceMapTest, Encode_JsonEscaping) {
-  std::vector<source_map::Mapping> mappings;
+  source_map::MappingVector mappings;
   GoogleString result;
   EXPECT_TRUE(source_map::Encode("`~!@#$%^&*()-_=+[{]}\\|;:'\",<.>/?",
                                  "\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b"
@@ -155,7 +155,7 @@ TEST_F(SourceMapTest, Encode_JsonEscaping) {
 }
 
 TEST_F(SourceMapTest, Encode_Fail) {
-  std::vector<source_map::Mapping> mappings;
+  source_map::MappingVector mappings;
   mappings.push_back(source_map::Mapping(1, 0, 0, 0, 0));
   // Invalid: mappings must be sorted.
   mappings.push_back(source_map::Mapping(0, 0, 0, 0, 0));

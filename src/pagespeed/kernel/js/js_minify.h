@@ -15,8 +15,6 @@
 #ifndef PAGESPEED_KERNEL_JS_JS_MINIFY_H_
 #define PAGESPEED_KERNEL_JS_JS_MINIFY_H_
 
-#include <vector>
-
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/source_map.h"
 #include "pagespeed/kernel/base/string.h"
@@ -52,7 +50,7 @@ class JsMinifyingTokenizer {
   // TODO(sligocki): Fix this.
   JsMinifyingTokenizer(
       const JsTokenizerPatterns* patterns, StringPiece input,
-      std::vector<net_instaweb::source_map::Mapping>* mappings);
+      net_instaweb::source_map::MappingVector* mappings);
 
   ~JsMinifyingTokenizer();
 
@@ -78,7 +76,7 @@ class JsMinifyingTokenizer {
   StringPiece prev_token_;
   JsKeywords::Type next_type_;
   StringPiece next_token_;
-  std::vector<net_instaweb::source_map::Mapping>* mappings_;
+  net_instaweb::source_map::MappingVector* mappings_;
   net_instaweb::source_map::Mapping current_position_;
   net_instaweb::source_map::Mapping next_position_;
 
@@ -98,7 +96,7 @@ bool MinifyUtf8Js(const JsTokenizerPatterns* patterns,
 bool MinifyUtf8JsWithSourceMap(
     const JsTokenizerPatterns* patterns,
     StringPiece input, GoogleString* output,
-    std::vector<net_instaweb::source_map::Mapping>* mappings);
+    net_instaweb::source_map::MappingVector* mappings);
 
 ///////////////////////////////////////////////////////////////////////////////
 // Below is the old JsMinify implementation.  It has several known issues that
