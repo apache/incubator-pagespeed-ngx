@@ -51,16 +51,16 @@
 #define NGX_GZIP_SETTER_H_
 
 extern "C" {
-  #include <ngx_config.h>
-  #include <ngx_core.h>
-  #include <ngx_http.h>
+#include <ngx_config.h>
+#include <ngx_core.h>
+#include <ngx_http.h>
 }
 
 #include <vector>
 
-#include "net/instaweb/util/public/basictypes.h"
+#include "ngx_pagespeed.h"
 
-using std::vector;
+#include "net/instaweb/util/public/basictypes.h"
 
 namespace net_instaweb {
 
@@ -68,24 +68,23 @@ namespace net_instaweb {
 // just saving the command will not work.
 class ngx_command_ctx {
  public:
-  ngx_command_ctx():command_(NULL), module_(NULL) {
-  }
+  ngx_command_ctx() : command_(NULL), module_(NULL) { }
   void* GetConfPtr(ngx_conf_t* cf);
-  void* GetModuleConfPtr(ngx_conf_t* cf);
+  char* GetModuleConfPtr(ngx_conf_t* cf);
   ngx_command_t* command_;
   ngx_module_t* module_;
 };
 
 enum gzs_enable_result {
-    kEnableGZipOk,
-    kEnableGZipPartial,
-    kEnableGZipNotEnabled
+  kEnableGZipOk,
+  kEnableGZipPartial,
+  kEnableGZipNotEnabled
 };
 
 class NgxGZipSetter {
-  vector<ngx_flag_t*> ngx_flags_set_;
-  vector<ngx_uint_t*> ngx_uint_set_;
-  vector<void*> ngx_httptypes_set_;
+  std::vector<ngx_flag_t*> ngx_flags_set_;
+  std::vector<ngx_uint_t*> ngx_uint_set_;
+  std::vector<void*> ngx_httptypes_set_;
   ngx_command_ctx gzip_command_;
   ngx_command_ctx gzip_http_types_command_;
   ngx_command_ctx gzip_proxied_command_;
@@ -96,30 +95,28 @@ class NgxGZipSetter {
  public:
   NgxGZipSetter();
   ~NgxGZipSetter();
-  bool enabled() {return enabled_;}
-  void SetNgxConfFlag(
-      ngx_conf_t* cf,
-      ngx_command_ctx* command_ctx,
-      ngx_flag_t value);
-  void SetNgxConfEnum(
-      ngx_conf_t* cf,
-      ngx_command_ctx* command_ctx,
-      ngx_uint_t value);
-  void SetNgxConfBitmask(
-      ngx_conf_t* cf,
-      ngx_command_ctx* command_ctx,
-      ngx_uint_t value);
-  void Init();
+  void Init(ngx_conf_t* cf);
+
+  void SetNgxConfFlag(ngx_conf_t* cf,
+                      ngx_command_ctx* command_ctx,
+                      ngx_flag_t value);
+  void SetNgxConfEnum(ngx_conf_t* cf,
+                      ngx_command_ctx* command_ctx,
+                      ngx_uint_t value);
+  void SetNgxConfBitmask(ngx_conf_t* cf,
+                         ngx_command_ctx* command_ctx,
+                         ngx_uint_t value);
   void EnableGZipForLocation(ngx_conf_t* cf);
   gzs_enable_result SetGZipForLocation(ngx_conf_t* cf, bool value);
   void AddGZipHTTPTypes(ngx_conf_t* cf);
-  void RollBackAndDisable();
+  void RollBackAndDisable(ngx_conf_t* cf);
+
+  bool enabled() { return enabled_; }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(NgxGZipSetter);
 };
 
-// TODO(kspoelstra): Could be moved to a pagespeed module context.
 extern NgxGZipSetter g_gzip_setter;
 
 }  // namespace net_instaweb

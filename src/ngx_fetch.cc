@@ -299,8 +299,8 @@ namespace net_instaweb {
     fetch->sin_.sin_addr.s_addr = resolver_ctx->addrs[0];
 #else
 
-    struct sockaddr_in *sin;
-    sin = reinterpret_cast<struct sockaddr_in *>(
+    struct sockaddr_in* sin;
+    sin = reinterpret_cast<struct sockaddr_in*>(
         resolver_ctx->addrs[0].sockaddr);
     fetch->sin_.sin_family = sin->sin_family;
     fetch->sin_.sin_addr.s_addr = sin->sin_addr.s_addr;
@@ -418,7 +418,7 @@ namespace net_instaweb {
   int NgxFetch::Connect() {
     ngx_peer_connection_t pc;
     ngx_memzero(&pc, sizeof(pc));
-    pc.sockaddr = (struct sockaddr *) &sin_;
+    pc.sockaddr = (struct sockaddr*)&sin_;
     pc.socklen = sizeof(struct sockaddr_in);
     pc.name = &url_.host;
 

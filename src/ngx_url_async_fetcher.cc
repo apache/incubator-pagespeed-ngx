@@ -249,7 +249,7 @@ namespace net_instaweb {
 
   // This is the read event which is called in the main thread.
   // It will do the real work. Add the work event and start the fetch.
-  void NgxUrlAsyncFetcher::CommandHandler(ngx_event_t *cmdev) {
+  void NgxUrlAsyncFetcher::CommandHandler(ngx_event_t* cmdev) {
     char command;
     int rc;
     ngx_connection_t* c = static_cast<ngx_connection_t*>(cmdev->data);
