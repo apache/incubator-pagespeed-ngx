@@ -89,17 +89,11 @@ inline GoogleString PointerToString(void* pointer) {
 // NOTE: For a string of the form "45x", this sets *out = 45 but returns false.
 // It sets *out = 0 given "Junk45" or "".
 inline bool StringToInt(const char* in, int* out) {
-  // TODO(bmcquade): Use char*-based StringToInt once we sync the
-  // Chromium repository.
-  std::string str(in);
-  return base::StringToInt(str, out);
+  return base::StringToInt(in, out);
 }
 
 inline bool StringToInt64(const char* in, int64* out) {
-  // TODO(bmcquade): Use char*-based StringToInt64 once we sync the
-  // Chromium repository.
-  std::string str(in);
-  return base::StringToInt64(str, out);
+  return base::StringToInt64(in, out);
 }
 
 inline bool StringToInt(const GoogleString& in, int* out) {

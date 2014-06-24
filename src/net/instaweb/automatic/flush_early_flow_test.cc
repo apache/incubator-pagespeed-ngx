@@ -389,21 +389,19 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
 
     return StringPrintf(
         kRewrittenHtmlWithDeferJs, (is_ie ? kCompatibleMetaTag : ""),
-        rewritten_css_url_1_.data(), rewritten_css_url_2_.data(),
-        rewritten_js_url_1_.data(), rewritten_js_url_2_.data(),
-        image_tag.data(),
-        NoScriptRedirectHtml().c_str(), rewritten_css_url_3_.data(),
-        defer_js_injected_html2.c_str(),
+        rewritten_css_url_1_.c_str(), rewritten_css_url_2_.c_str(),
+        rewritten_js_url_1_.c_str(), rewritten_js_url_2_.c_str(),
+        image_tag.c_str(), NoScriptRedirectHtml().c_str(),
+        rewritten_css_url_3_.c_str(), defer_js_injected_html2.c_str(),
         defer_js_injected_html3.c_str());
   }
 
   GoogleString RewrittenHtml(const GoogleString& noscript_redirect) {
     return StringPrintf(
-        kRewrittenHtml, rewritten_css_url_1_.data(),
-        rewritten_css_url_2_.data(), rewritten_js_url_1_.data(),
-        rewritten_js_url_2_.data(), rewritten_img_url_1_.data(),
-        noscript_redirect.c_str(),
-        rewritten_css_url_3_.data());
+        kRewrittenHtml, rewritten_css_url_1_.c_str(),
+        rewritten_css_url_2_.c_str(), rewritten_js_url_1_.c_str(),
+        rewritten_js_url_2_.c_str(), rewritten_img_url_1_.c_str(),
+        noscript_redirect.c_str(), rewritten_css_url_3_.c_str());
   }
 
   GoogleString RewrittenHtmlForRedirect() {
@@ -437,18 +435,18 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
     if (defer_js_enabled && !ua_only_for_flush_early_html) {
       if (lazyload_enabled) {
         rewritten_html = RewrittenHtmlWithDeferJs(
-            split_html_enabled, StrCat(
-                "<img pagespeed_lazy_src=\"", rewritten_img_url_1_.data(),
-                "\" src=\"/psajs/1.0.gif\"",
-                " onload=\"", LazyloadImagesFilter::kImageOnloadCode, "\"/>",
-                "<script type=\"text/javascript\" pagespeed_no_defer=\"\">",
-                "pagespeed.lazyLoadImages.overrideAttributeFunctions();",
-                "</script>"), is_ie);
+            split_html_enabled,
+            StrCat("<img pagespeed_lazy_src=\"", rewritten_img_url_1_,
+                   "\" src=\"/psajs/1.0.gif\"", " onload=\"",
+                   LazyloadImagesFilter::kImageOnloadCode, "\"/>",
+                   "<script type=\"text/javascript\" pagespeed_no_defer=\"\">",
+                   "pagespeed.lazyLoadImages.overrideAttributeFunctions();",
+                   "</script>"),
+            is_ie);
       } else {
         rewritten_html = RewrittenHtmlWithDeferJs(
             split_html_enabled,
-            StrCat("<img src=\"", rewritten_img_url_1_.data(), "\"/>"),
-            is_ie);
+            StrCat("<img src=\"", rewritten_img_url_1_, "\"/>"), is_ie);
       }
     } else {
       if (redirect_psa_off) {
@@ -467,8 +465,8 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
         if (defer_js_enabled) {
           flush_early_html = StringPrintf(
               kFlushEarlyRewrittenHtmlWithLazyloadDeferJsScript,
-              rewritten_css_url_1_.data(), rewritten_css_url_2_.data(),
-              rewritten_css_url_3_.data(),
+              rewritten_css_url_1_.c_str(), rewritten_css_url_2_.c_str(),
+              rewritten_css_url_3_.c_str(),
               StrCat("<script type=\"psa_prefetch\" src=\"",
                      expected_deferjs_url, "\"></script>\n",
                      FlushEarlyContentWriterFilter::kDisableLinkTag).c_str(),
@@ -483,10 +481,9 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
           }
         } else {
           flush_early_html = StringPrintf(
-              kFlushEarlyRewrittenHtmlLinkScript,
-              rewritten_css_url_1_.data(), rewritten_css_url_2_.data(),
-              rewritten_js_url_1_.data(), rewritten_js_url_2_.data(),
-              rewritten_css_url_3_.data(),
+              kFlushEarlyRewrittenHtmlLinkScript, rewritten_css_url_1_.c_str(),
+              rewritten_css_url_2_.c_str(), rewritten_js_url_1_.c_str(),
+              rewritten_js_url_2_.c_str(), rewritten_css_url_3_.c_str(),
               FlushEarlyContentWriterFilter::kDisableLinkTag);
         }
         break;
@@ -494,8 +491,8 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
         if (defer_js_enabled) {
           flush_early_html = StringPrintf(
               kFlushEarlyRewrittenHtmlWithLazyloadDeferJsScript,
-              rewritten_css_url_1_.data(),
-              rewritten_css_url_2_.data(), rewritten_css_url_3_.data(),
+              rewritten_css_url_1_.c_str(), rewritten_css_url_2_.c_str(),
+              rewritten_css_url_3_.c_str(),
               FlushEarlyContentWriterFilter::kDisableLinkTag, 3);
         } else {
           GoogleString output_format;
@@ -505,10 +502,9 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
             output_format = kFlushEarlyRewrittenHtmlImageTag;
           }
           flush_early_html = StringPrintf(
-              output_format.c_str(),
-              rewritten_js_url_1_.data(), rewritten_js_url_2_.data(),
-              rewritten_css_url_1_.data(), rewritten_css_url_2_.data(),
-              rewritten_css_url_3_.data(),
+              output_format.c_str(), rewritten_js_url_1_.c_str(),
+              rewritten_js_url_2_.c_str(), rewritten_css_url_1_.c_str(),
+              rewritten_css_url_2_.c_str(), rewritten_css_url_3_.c_str(),
               FlushEarlyContentWriterFilter::kDisableLinkTag);
         }
         break;
@@ -974,15 +970,14 @@ TEST_F(FlushEarlyFlowTest, FallBackWithNonHtmlResourceIsRedirected) {
   mock_url_fetcher_.SetResponse(url, response_headers, kFlushEarlyPdf);
 
   noscript_redirect_url_ = StrCat(fallback_url, "&amp;PageSpeed=noscript");
-  GoogleString kOutputHtml =
-      StrCat(kPreHeadHtml,
-             StringPrintf(
-                 kFlushEarlyRewrittenHtmlLinkScript,
-                 rewritten_css_url_1_.data(), rewritten_css_url_2_.data(),
-                 rewritten_js_url_1_.data(), rewritten_js_url_2_.data(),
-                 rewritten_css_url_3_.data(),
-                 FlushEarlyContentWriterFilter::kDisableLinkTag),
-             RewrittenHtml(NoScriptRedirectHtml()));
+  GoogleString kOutputHtml = StrCat(
+      kPreHeadHtml,
+      StringPrintf(kFlushEarlyRewrittenHtmlLinkScript,
+                   rewritten_css_url_1_.c_str(), rewritten_css_url_2_.c_str(),
+                   rewritten_js_url_1_.c_str(), rewritten_js_url_2_.c_str(),
+                   rewritten_css_url_3_.c_str(),
+                   FlushEarlyContentWriterFilter::kDisableLinkTag),
+      RewrittenHtml(NoScriptRedirectHtml()));
 
   GoogleString text;
   RequestHeaders request_headers;

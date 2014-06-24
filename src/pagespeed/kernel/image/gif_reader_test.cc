@@ -891,34 +891,46 @@ const GifColorType GifAnimationTest::kAlternateColorMap[kNumColors] = {
 // Non-animated, non-interlaced, only global colormap, varying disposals.
 
 TEST_F(GifAnimationTest, ReadSingleFrameOpaque) {
-  synth_frames_.push_back({10, 10, false, 0, 0, NULL, 0, -1, 2, 10, 10});
+  Frame frame = {10, 10, false, 0, 0, NULL, 0, -1, 2, 10, 10};
+  synth_frames_.push_back(frame);
+
   SynthesizeAndRead("single_frame_opaque", DefineImage());
 }
 
 TEST_F(GifAnimationTest, ReadSingleFrameTransparency) {
-  synth_frames_.push_back({10, 10, false, 0, 1, NULL, 0, 4, 2, 10, 10});
+  Frame frame = {10, 10, false, 0, 1, NULL, 0, 4, 2, 10, 10};
+  synth_frames_.push_back(frame);
+
   SynthesizeAndRead("single_frame_transparency", DefineImage());
 }
 
 TEST_F(GifAnimationTest, ReadSingleFrameOpaqueFallingOffImage) {
-  synth_frames_.push_back({10, 10, false, 0, 2, NULL, 0, -1, 2, 95, 95});
+  Frame frame = {10, 10, false, 0, 2, NULL, 0, -1, 2, 95, 95};
+  synth_frames_.push_back(frame);
+
   SynthesizeAndRead("single_frame_opaque_falling_off_image", DefineImage());
 }
 
 TEST_F(GifAnimationTest, ReadSingleFrameOpaqueLargeFallingOffImage) {
-  synth_frames_.push_back({250, 250, false, 0, 2, NULL, 0, -1, 2, 95, 95});
+  Frame frame = {250, 250, false, 0, 2, NULL, 0, -1, 2, 95, 95};
+  synth_frames_.push_back(frame);
+
   SynthesizeAndRead("single_frame_opaque_large_falling_off_image",
                     DefineImage());
 }
 
 TEST_F(GifAnimationTest, ReadSingleFrameTransparencyFallingOffImage) {
-  synth_frames_.push_back({10, 10, false, 0, 3, NULL, 0, 4, 2, 95, 95});
+  Frame frame = {10, 10, false, 0, 3, NULL, 0, 4, 2, 95, 95};
+  synth_frames_.push_back(frame);
+
   SynthesizeAndRead("single_frame_transparent_falling_off_image",
                     DefineImage());
 }
 
 TEST_F(GifAnimationTest, ReadSingleFrameTransparencyFallingOffImageAtOrigin) {
-  synth_frames_.push_back({250, 250, false, 0, 3, NULL, 0, 4, 2, 0, 0});
+  Frame frame = {250, 250, false, 0, 3, NULL, 0, 4, 2, 0, 0};
+  synth_frames_.push_back(frame);
+
   SynthesizeAndRead("single_frame_transparent_falling_off_image_at_origin",
                     DefineImage());
 }
@@ -927,7 +939,10 @@ TEST_F(GifAnimationTest, ReadSingleFrameOpaqueInZeroSizeImage) {
   Image image = DefineImage();
   image.width = 0;
   image.height = 0;
-  synth_frames_.push_back({10, 10, false, 0, 1, NULL, 0, 4, 2, 10, 10});
+
+  Frame frame = {10, 10, false, 0, 1, NULL, 0, 4, 2, 10, 10};
+  synth_frames_.push_back(frame);
+
   SynthesizeAndRead("single_frame_opaque_in_zero_size_image", image);
 }
 
@@ -935,32 +950,43 @@ TEST_F(GifAnimationTest, ReadSingleFrameOpaqueInZeroSizeImageAtOrigin) {
   Image image = DefineImage();
   image.width = 0;
   image.height = 0;
-  synth_frames_.push_back({10, 10, false, 0, 1, NULL, 0, 4, 2, 0, 0});
+
+  Frame frame = {10, 10, false, 0, 1, NULL, 0, 4, 2, 0, 0};
+  synth_frames_.push_back(frame);
+
   SynthesizeAndRead("single_frame_opaque_in_zero_size_image_at_origin", image);
 }
 
 // Non-animated, interlaced, only global colormap, varying disposals.
 
 TEST_F(GifAnimationTest, ReadSingleFrameInterlacedOpaque) {
-  synth_frames_.push_back({10, 10, true, 0, 4, NULL, 0, -1, 2, 10, 10});
+  Frame frame = {10, 10, true, 0, 4, NULL, 0, -1, 2, 10, 10};
+  synth_frames_.push_back(frame);
+
   SynthesizeAndRead("single_frame_interlaced_opaque", DefineImage());
 }
 
 TEST_F(GifAnimationTest, ReadSingleFrameInterlacedTransparency) {
-  synth_frames_.push_back({10, 10, true, 0, 0, NULL, 0, 4, 2, 10, 10});
+  Frame frame = {10, 10, true, 0, 0, NULL, 0, 4, 2, 10, 10};
+  synth_frames_.push_back(frame);
+
   SynthesizeAndRead("single_frame_interlaced_transparency", DefineImage());
 }
 
 TEST_F(GifAnimationTest,
        ReadSingleFrameInterlacedOpaqueFallingOffImage) {
-  synth_frames_.push_back({10, 10, true, 0, 1, NULL, 0, -1, 2, 95, 95});
+  Frame frame = {10, 10, true, 0, 1, NULL, 0, -1, 2, 95, 95};
+  synth_frames_.push_back(frame);
+
   SynthesizeAndRead("single_frame_interlaced_opaque_falling_off_image",
                     DefineImage());
 }
 
 TEST_F(GifAnimationTest,
        ReadSingleFrameInterlacedTransparencyFallingOffImage) {
-  synth_frames_.push_back({10, 10, true, 0, 2, NULL, 0, 4, 2, 95, 95});
+  Frame frame = {10, 10, true, 0, 2, NULL, 0, 4, 2, 95, 95};
+  synth_frames_.push_back(frame);
+
   SynthesizeAndRead("single_frame_interlaced_transparent_falling_off_image",
                     DefineImage());
 }
@@ -969,29 +995,37 @@ TEST_F(GifAnimationTest,
 // varying disposals.
 
 TEST_F(GifAnimationTest, ReadSingleFrameDualColormapsOpaque) {
-  synth_frames_.push_back(
-      {10, 10, false, 0, 3, kAlternateColorMap, kNumColors, -1, 2, 10, 10});
+  Frame frame =
+      {10, 10, false, 0, 3, kAlternateColorMap, kNumColors, -1, 2, 10, 10};
+  synth_frames_.push_back(frame);
+
   SynthesizeAndRead("single_frame_colormaps_opaque", DefineImage());
 }
 
 TEST_F(GifAnimationTest, ReadSingleFrameDualColormapsTransparency) {
-  synth_frames_.push_back({
-      10, 10, false, 0, 4, kAlternateColorMap, kNumColors, 4, 2, 10, 10});
+  Frame frame =
+      {10, 10, false, 0, 4, kAlternateColorMap, kNumColors, 4, 2, 10, 10};
+  synth_frames_.push_back(frame);
+
   SynthesizeAndRead("single_frame_colormaps_transparency", DefineImage());
 }
 
 TEST_F(GifAnimationTest,
        ReadSingleFrameDualColormapsOpaqueFallingOffImage) {
-  synth_frames_.push_back({
-      10, 10, false, 0, 0, kAlternateColorMap, kNumColors, -1, 2, 95, 95});
+  Frame frame =
+      {10, 10, false, 0, 0, kAlternateColorMap, kNumColors, -1, 2, 95, 95};
+  synth_frames_.push_back(frame);
+
   SynthesizeAndRead("single_frame_colormaps_opaque_falling_off_image",
                     DefineImage());
 }
 
 TEST_F(GifAnimationTest,
        ReadSingleFrameDualColormapsTransparencyFallingOffImage) {
-  synth_frames_.push_back({
-      10, 10, false, 0, 1, kAlternateColorMap, kNumColors, 4, 2, 95, 95});
+  Frame frame =
+      {10, 10, false, 0, 1, kAlternateColorMap, kNumColors, 4, 2, 95, 95};
+  synth_frames_.push_back(frame);
+
   SynthesizeAndRead("single_frame_colormaps_transparent_falling_off_image",
                     DefineImage());
 }
@@ -999,70 +1033,110 @@ TEST_F(GifAnimationTest,
 // Non-animated, non-interlaced, only global colormap, varying
 // disposals, varying delays.
 TEST_F(GifAnimationTest, ReadSingleFrameDelayOpaque) {
-  synth_frames_.push_back({10, 10, false, 10, 0, NULL, 0, -1, 2, 10, 10});
+  Frame frame = {10, 10, false, 10, 0, NULL, 0, -1, 2, 10, 10};
+  synth_frames_.push_back(frame);
+
   SynthesizeAndRead("single_frame_opaque", DefineImage());
 }
 
 // Animated images.
 
 TEST_F(GifAnimationTest, ReadMultipleFrameOpaque) {
-  synth_frames_.push_back({20, 20, false, 100, 0, NULL, 0, -1, 2, 10, 10});
-  synth_frames_.push_back({20, 20, false, 100, 0, NULL, 0, -1, 3, 20, 20});
+  Frame frame1 = {20, 20, false, 100, 0, NULL, 0, -1, 2, 10, 10};
+  synth_frames_.push_back(frame1);
+
+  Frame frame2 = {20, 20, false, 100, 0, NULL, 0, -1, 3, 20, 20};
+  synth_frames_.push_back(frame2);
+
   SynthesizeAndRead("multiple_frame_opaque", DefineImage());
 }
 
 TEST_F(GifAnimationTest, ReadMultipleFrameOpaqueFirstFallingOffImage) {
-  synth_frames_.push_back({250, 250, false, 100, 0, NULL, 0, -1, 3, 90, 90});
-  synth_frames_.push_back({20, 20, false, 100, 0, NULL, 0, -1, 2, 79, 79});
+  Frame frame1 = {250, 250, false, 100, 0, NULL, 0, -1, 3, 90, 90};
+  synth_frames_.push_back(frame1);
+
+  Frame frame2 = {20, 20, false, 100, 0, NULL, 0, -1, 2, 79, 79};
+  synth_frames_.push_back(frame2);
+
   SynthesizeAndRead("multiple_frame_opaque_1st_falling_off_image",
                     DefineImage());
 }
 
 TEST_F(GifAnimationTest, ReadMultipleFrameOpaqueSecondFallingOffImage) {
-  synth_frames_.push_back({20, 20, false, 100, 0, NULL, 0, -1, 2, 79, 79});
-  synth_frames_.push_back({250, 250, false, 100, 0, NULL, 0, -1, 3, 90, 90});
+  Frame frame1 = {20, 20, false, 100, 0, NULL, 0, -1, 2, 79, 79};
+  synth_frames_.push_back(frame1);
+
+  Frame frame2 = {250, 250, false, 100, 0, NULL, 0, -1, 3, 90, 90};
+  synth_frames_.push_back(frame2);
+
   SynthesizeAndRead("multiple_frame_opaque_2nd_falling_off_image",
                     DefineImage());
 }
 
 TEST_F(GifAnimationTest, ReadMultipleFrameOpaqueFirstFallingOffImageAtOrigin) {
-  synth_frames_.push_back({250, 250, false, 100, 0, NULL, 0, -1, 3, 0, 0});
-  synth_frames_.push_back({20, 20, false, 100, 0, NULL, 0, -1, 2, 79, 79});
+  Frame frame1 = {250, 250, false, 100, 0, NULL, 0, -1, 3, 0, 0};
+  synth_frames_.push_back(frame1);
+
+  Frame frame2 = {20, 20, false, 100, 0, NULL, 0, -1, 2, 79, 79};
+  synth_frames_.push_back(frame2);
+
   SynthesizeAndRead("multiple_frame_opaque_1st_falling_off_image_at_origin",
                     DefineImage());
 }
 
 TEST_F(GifAnimationTest, ReadMultipleFrameOpaqueFirstFallingOffXImage) {
-  synth_frames_.push_back({250, 20, false, 100, 0, NULL, 0, -1, 3, 10, 10});
-  synth_frames_.push_back({20, 20, false, 100, 0, NULL, 0, -1, 2, 79, 79});
+  Frame frame1 = {250, 20, false, 100, 0, NULL, 0, -1, 3, 10, 10};
+  synth_frames_.push_back(frame1);
+
+  Frame frame2 = {20, 20, false, 100, 0, NULL, 0, -1, 2, 79, 79};
+  synth_frames_.push_back(frame2);
+
   SynthesizeAndRead("multiple_frame_opaque_1st_falling_off_x_image",
                     DefineImage());
 }
 
 TEST_F(GifAnimationTest, ReadMultipleFrameOpaqueFirstFallingOffYImage) {
-  synth_frames_.push_back({20, 250, false, 100, 0, NULL, 0, -1, 3, 10, 10});
-  synth_frames_.push_back({20, 20, false, 100, 0, NULL, 0, -1, 2, 79, 79});
+  Frame frame1 = {20, 250, false, 100, 0, NULL, 0, -1, 3, 10, 10};
+  synth_frames_.push_back(frame1);
+
+  Frame frame2 = {20, 20, false, 100, 0, NULL, 0, -1, 2, 79, 79};
+  synth_frames_.push_back(frame2);
+
   SynthesizeAndRead("multiple_frame_opaque_1st_falling_off_y_image",
                     DefineImage());
 }
 
 TEST_F(GifAnimationTest, ReadMultipleFrameOpaqueSecondFallingOffImageAtOrigin) {
-  synth_frames_.push_back({20, 20, false, 100, 0, NULL, 0, -1, 2, 79, 79});
-  synth_frames_.push_back({250, 250, false, 100, 0, NULL, 0, -1, 3, 0, 0});
+  Frame frame1 = {20, 20, false, 100, 0, NULL, 0, -1, 2, 79, 79};
+  synth_frames_.push_back(frame1);
+
+  Frame frame2 = {250, 250, false, 100, 0, NULL, 0, -1, 3, 0, 0};
+  synth_frames_.push_back(frame2);
+
   SynthesizeAndRead("multiple_frame_opaque_2nd_falling_off_image_at_origin",
                     DefineImage());
 }
 
 TEST_F(GifAnimationTest, ReadMultipleFrameOpaqueNoDelay) {
-  synth_frames_.push_back({20, 20, false, 0, 1, NULL, 0, -1, 2, 10, 10});
-  synth_frames_.push_back({20, 20, false, 0, 2, NULL, 0, -1, 3, 20, 20});
+  Frame frame1 = {20, 20, false, 0, 1, NULL, 0, -1, 2, 10, 10};
+  synth_frames_.push_back(frame1);
+
+  Frame frame2 = {20, 20, false, 0, 2, NULL, 0, -1, 3, 20, 20};
+  synth_frames_.push_back(frame2);
+
   SynthesizeAndRead("multiple_frame_opaque_nodelay", DefineImage());
 }
 
 TEST_F(GifAnimationTest, ReadMultipleFrameTransparency) {
-  synth_frames_.push_back({20, 20, false, 100, 0, NULL, 0, -1, 2, 10, 10});
-  synth_frames_.push_back({20, 20, false, 100, 0, NULL, 0, 3, 3, 20, 20});
-  synth_frames_.push_back({20, 20, false, 100, 0, NULL, 0, 2, 3, 25, 25});
+  Frame frame1 = {20, 20, false, 100, 0, NULL, 0, -1, 2, 10, 10};
+  synth_frames_.push_back(frame1);
+
+  Frame frame2 = {20, 20, false, 100, 0, NULL, 0, 3, 3, 20, 20};
+  synth_frames_.push_back(frame2);
+
+  Frame frame3 = {20, 20, false, 100, 0, NULL, 0, 2, 3, 25, 25};
+  synth_frames_.push_back(frame3);
+
   SynthesizeAndRead("multiple_frame_transparency", DefineImage());
 }
 
@@ -1074,85 +1148,148 @@ TEST_F(GifAnimationTest, ReadMultipleFrameNoDelay2FrameOpaque) {
   // transparent index was not carried over.
   const int frame1_transparent_idx = 3;
   const int frame2_color_idx = frame1_transparent_idx;
-  synth_frames_.push_back({20, 20, false, 0, 0, NULL, 0,
-          frame1_transparent_idx, 2, 10, 10});
-  synth_frames_.push_back({20, 20, false, -1, -1, NULL, 0,
-          -1, frame2_color_idx, 20, 20});
+
+  Frame frame1 =
+      {20, 20, false, 0, 0, NULL, 0, frame1_transparent_idx, 2, 10, 10};
+  synth_frames_.push_back(frame1);
+
+  Frame frame2 =
+      {20, 20, false, -1, -1, NULL, 0, -1, frame2_color_idx, 20, 20};
+  synth_frames_.push_back(frame2);
+
   SynthesizeAndRead("multiple_frame_transparency_no_delay_2frame_opaque",
                     DefineImage());
 }
 
 TEST_F(GifAnimationTest, ReadMultipleFrameTransparencySkipScanlines) {
   read_all_scanlines_ = false;
-  synth_frames_.push_back({20, 20, false, 100, 0, NULL, 0, -1, 2, 10, 10});
-  synth_frames_.push_back({20, 20, false, 100, 0, NULL, 0, 3, 3, 20, 20});
-  synth_frames_.push_back({20, 20, false, 100, 0, NULL, 0, 2, 3, 25, 25});
+
+  Frame frame1 = {20, 20, false, 100, 0, NULL, 0, -1, 2, 10, 10};
+  synth_frames_.push_back(frame1);
+
+  Frame frame2 = {20, 20, false, 100, 0, NULL, 0, 3, 3, 20, 20};
+  synth_frames_.push_back(frame2);
+
+  Frame frame3 = {20, 20, false, 100, 0, NULL, 0, 2, 3, 25, 25};
+  synth_frames_.push_back(frame3);
+
   SynthesizeAndRead("multiple_frame_transparency_skip_scanlines",
                     DefineImage());
 }
 
 TEST_F(GifAnimationTest, ReadMultipleFrameTransparencyMixInterlaced) {
-  synth_frames_.push_back({20, 20, false, 100, 0, NULL, 0, -1, 2, 10, 10});
-  synth_frames_.push_back({20, 20, true, 100, 0, NULL, 0, 3, 3, 20, 20});
-  synth_frames_.push_back({20, 20, false, 100, 0, NULL, 0, 2, 3, 25, 25});
+  Frame frame1 = {20, 20, false, 100, 0, NULL, 0, -1, 2, 10, 10};
+  synth_frames_.push_back(frame1);
+
+  Frame frame2 = {20, 20, true, 100, 0, NULL, 0, 3, 3, 20, 20};
+  synth_frames_.push_back(frame2);
+
+  Frame frame3 = {20, 20, false, 100, 0, NULL, 0, 2, 3, 25, 25};
+  synth_frames_.push_back(frame3);
+
   SynthesizeAndRead("multiple_frame_transparency_mix_interlaced",
                     DefineImage());
 }
 
 TEST_F(GifAnimationTest, ReadMultipleFrameTransparencyMixColormaps) {
-  synth_frames_.push_back({20, 20, false, 100, 0, NULL, 0, -1, 2, 10, 10});
-  synth_frames_.push_back({
-      20, 20, false, 100, 0, kAlternateColorMap, kNumColors, 3, 3, 20, 20});
-  synth_frames_.push_back({20, 20, false, 100, 0, NULL, 0, 2, 3, 25, 25});
+  Frame frame1 = {20, 20, false, 100, 0, NULL, 0, -1, 2, 10, 10};
+  synth_frames_.push_back(frame1);
+
+  Frame frame2 =
+      {20, 20, false, 100, 0, kAlternateColorMap, kNumColors, 3, 3, 20, 20};
+  synth_frames_.push_back(frame2);
+
+  Frame frame3 = {20, 20, false, 100, 0, NULL, 0, 2, 3, 25, 25};
+  synth_frames_.push_back(frame3);
+
   SynthesizeAndRead("multiple_frame_transparency_mix_colormaps", DefineImage());
 }
 
 TEST_F(GifAnimationTest, ReadMultipleFrameOpaqueFallingOffImage) {
-  synth_frames_.push_back({10, 10, false, 0, 2, NULL, 0, -1, 2, 93, 93});
-  synth_frames_.push_back({10, 10, false, 0, 2, NULL, 0, -1, 4, 95, 95});
+  Frame frame1 = {10, 10, false, 0, 2, NULL, 0, -1, 2, 93, 93};
+  synth_frames_.push_back(frame1);
+
+  Frame frame2 = {10, 10, false, 0, 2, NULL, 0, -1, 4, 95, 95};
+  synth_frames_.push_back(frame2);
+
   SynthesizeAndRead("multiple_frame_opaque_falling_off_image", DefineImage());
 }
 
 TEST_F(GifAnimationTest, ReadMultipleFrameTransparencyFallingOffImage) {
-  synth_frames_.push_back({10, 10, false, 0, 3, NULL, 0, 4, 2, 93, 93});
-  synth_frames_.push_back({10, 10, false, 0, 3, NULL, 0, 4, 4, 95, 95});
+  Frame frame1 = {10, 10, false, 0, 3, NULL, 0, 4, 2, 93, 93};
+  synth_frames_.push_back(frame1);
+
+  Frame frame2 = {10, 10, false, 0, 3, NULL, 0, 4, 4, 95, 95};
+  synth_frames_.push_back(frame2);
+
   SynthesizeAndRead("multiple_frame_transparent_falling_off_image",
                     DefineImage());
 }
 
 TEST_F(GifAnimationTest, ReadMultipleFrameOpaqueDisposal) {
-  synth_frames_.push_back({20, 20, false, 100, 0, NULL, 0, -1, 2, 10, 10});
-  synth_frames_.push_back({20, 20, false, 100, 0, NULL, 0, -1, 3, 20, 20});
-  synth_frames_.push_back({20, 20, false, 100, 2, NULL, 0, -1, 4, 15, 15});
-  synth_frames_.push_back({20, 20, false, 100, 3, NULL, 0, -1, 1, 0, 0});
-  synth_frames_.push_back({20, 20, false, 100, 1, NULL, 0, -1, 5, 30, 30});
+  Frame frame1 = {20, 20, false, 100, 0, NULL, 0, -1, 2, 10, 10};
+  synth_frames_.push_back(frame1);
+
+  Frame frame2 = {20, 20, false, 100, 0, NULL, 0, -1, 3, 20, 20};
+  synth_frames_.push_back(frame2);
+
+  Frame frame3 = {20, 20, false, 100, 2, NULL, 0, -1, 4, 15, 15};
+  synth_frames_.push_back(frame3);
+
+  Frame frame4 = {20, 20, false, 100, 3, NULL, 0, -1, 1, 0, 0};
+  synth_frames_.push_back(frame4);
+
+  Frame frame5 = {20, 20, false, 100, 1, NULL, 0, -1, 5, 30, 30};
+  synth_frames_.push_back(frame5);
+
   SynthesizeAndRead("multiple_frame_opaque_disposal", DefineImage());
 }
 
 TEST_F(GifAnimationTest, ReadMultipleFrameTransparencyLoopInfinite) {
   Image image = DefineImage();
   image.loop_count = 0;
-  synth_frames_.push_back({20, 20, false, 50, 0, NULL, 0, -1, 2, 10, 10});
-  synth_frames_.push_back({20, 20, false, 50, 0, NULL, 0, 3, 3, 20, 20});
-  synth_frames_.push_back({20, 20, false, 50, 0, NULL, 0, 2, 3, 25, 25});
+
+  Frame frame1 = {20, 20, false, 50, 0, NULL, 0, -1, 2, 10, 10};
+  synth_frames_.push_back(frame1);
+
+  Frame frame2 = {20, 20, false, 50, 0, NULL, 0, 3, 3, 20, 20};
+  synth_frames_.push_back(frame2);
+
+  Frame frame3 = {20, 20, false, 50, 0, NULL, 0, 2, 3, 25, 25};
+  synth_frames_.push_back(frame3);
+
   SynthesizeAndRead("multiple_frame_transparency_loop_infinite", image);
 }
 
 TEST_F(GifAnimationTest, ReadMultipleFrameTransparencyNoDelayLoopInfinite) {
   Image image = DefineImage();
   image.loop_count = 0;
-  synth_frames_.push_back({20, 20, false, 0, 1, NULL, 0, -1, 2, 10, 10});
-  synth_frames_.push_back({20, 20, false, 0, 1, NULL, 0, 3, 3, 20, 20});
-  synth_frames_.push_back({20, 20, false, 0, 1, NULL, 0, 2, 3, 25, 25});
+
+  Frame frame1 = {20, 20, false, 0, 1, NULL, 0, -1, 2, 10, 10};
+  synth_frames_.push_back(frame1);
+
+  Frame frame2 = {20, 20, false, 0, 1, NULL, 0, 3, 3, 20, 20};
+  synth_frames_.push_back(frame2);
+
+  Frame frame3 = {20, 20, false, 0, 1, NULL, 0, 2, 3, 25, 25};
+  synth_frames_.push_back(frame3);
+
   SynthesizeAndRead("multiple_frame_transparency_nodelay_loop_infinite", image);
 }
 
 TEST_F(GifAnimationTest, ReadMultipleFrameTransparencyLoopThrice) {
   Image image = DefineImage();
   image.loop_count = 2;
-  synth_frames_.push_back({20, 20, false, 50, 0, NULL, 0, -1, 2, 10, 10});
-  synth_frames_.push_back({20, 20, false, 50, 0, NULL, 0, 3, 3, 20, 20});
-  synth_frames_.push_back({20, 20, false, 50, 0, NULL, 0, 2, 3, 25, 25});
+
+  Frame frame1 = {20, 20, false, 50, 0, NULL, 0, -1, 2, 10, 10};
+  synth_frames_.push_back(frame1);
+
+  Frame frame2 = {20, 20, false, 50, 0, NULL, 0, 3, 3, 20, 20};
+  synth_frames_.push_back(frame2);
+
+  Frame frame3 = {20, 20, false, 50, 0, NULL, 0, 2, 3, 25, 25};
+  synth_frames_.push_back(frame3);
+
   SynthesizeAndRead("multiple_frame_transparency_loop_thrice", image);
 }
 

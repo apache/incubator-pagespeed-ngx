@@ -428,7 +428,7 @@ void FlushEarlyFlow::FlushEarly() {
         RewrittenContentScanningFilter::kNumProxiedRewrittenResourcesProperty);
 
     if (num_rewritten_resources_property_value->has_value()) {
-      StringToInt(num_rewritten_resources_property_value->value().data(),
+      StringToInt(num_rewritten_resources_property_value->value(),
                   &num_rewritten_resources_);
     }
     PropertyValue* status_code_property_value = fallback_page->GetProperty(

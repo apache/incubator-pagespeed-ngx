@@ -37,7 +37,7 @@ void PrintMessageHandler::MessageVImpl(MessageType type,
                                        va_list args) {
   GoogleString buffer;
   StringAppendV(&buffer, msg, args);
-  fputs(buffer.data(), stdout);
+  fputs(buffer.c_str(), stdout);
   fflush(stdout);
 }
 

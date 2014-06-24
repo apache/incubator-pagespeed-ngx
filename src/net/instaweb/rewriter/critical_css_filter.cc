@@ -441,7 +441,7 @@ GoogleString CriticalCssFilter::DecodeUrl(const GoogleString& url) {
       return decoded_urls.at(0);
     } else {
       driver()->InfoHere("Critical CSS: Unable to process combined URL: %s",
-                         url.data());
+                         url.c_str());
       return "";
     }
   }
@@ -453,7 +453,7 @@ const CriticalCssResult_LinkRules* CriticalCssFilter::GetLinkRules(
   UrlIndexes::const_iterator it = url_indexes_.find(decoded_url);
   if (it == url_indexes_.end()) {
     driver()->InfoHere("Critical CSS rules not found for URL: %s",
-                       decoded_url.data());
+                       decoded_url.c_str());
     return NULL;
   }
 

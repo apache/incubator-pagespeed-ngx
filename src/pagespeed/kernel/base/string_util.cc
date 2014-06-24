@@ -353,8 +353,7 @@ GoogleString CEscape(const StringPiece& src) {
 // but we don't need any other aspect of protobufs so we don't want to
 // incur the link cost.
 bool HasPrefixString(const StringPiece& str, const StringPiece& prefix) {
-  return ((str.size() >= prefix.size()) &&
-          (str.substr(0, prefix.size()) == prefix));
+  return str.starts_with(prefix);
 }
 
 // From src/third_party/protobuf/src/google/protobuf/stubs/strutil.h

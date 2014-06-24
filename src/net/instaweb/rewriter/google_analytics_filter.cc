@@ -354,7 +354,8 @@ bool GoogleAnalyticsFilter::MatchSyncInit(StringPiece contents,
     tracker_method_pos = contents.find(tracker_method, start_pos);
   }
   if (tracker_method_pos != GoogleString::npos) {
-    html_parse_->InfoHere("Found ga.js init: %s", tracker_method.data());
+    html_parse_->InfoHere("Found ga.js init: %s",
+                          tracker_method.as_string().c_str());
     *pos = tracker_method_pos;
     *len = tracker_method.size();
     return true;
@@ -377,7 +378,8 @@ bool GoogleAnalyticsFilter::MatchUnhandledCalls(
         for (int j = method.size(), nj = contents.size(); j < nj; ++j) {
           char c = contents[j];
           if (c == '(') {
-            html_parse_->InfoHere("Matched unhandled call: %s", method.data());
+            html_parse_->InfoHere("Matched unhandled call: %s",
+                                  method.as_string().c_str());
             return true;
           } else if (!IsHtmlSpace(c)) {
             break;
