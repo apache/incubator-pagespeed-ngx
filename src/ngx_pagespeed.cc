@@ -30,6 +30,7 @@
 
 #include "ngx_base_fetch.h"
 #include "ngx_caching_headers.h"
+#include "ngx_gzip_setter.h"
 #include "ngx_list_iterator.h"
 #include "ngx_message_handler.h"
 #include "ngx_rewrite_driver_factory.h"
@@ -600,6 +601,27 @@ char* ps_configure(ngx_conf_t* cf,
   ngx_uint_t i;
   for (i = 0 ; i < n_args ; i++) {
     args[i] = str_to_string_piece(value[i+1]);
+  }
+
+  if (n_args == 1) {
+    if (StringCaseEqual(args[0], "on")) {
+      // safe to call if the setter is disabled
+      g_gzip_setter.EnableGZipForLocation(cf);
+    } else if (StringCaseEqual(args[0], "off")) {
+      g_gzip_setter.SetGZipForLocation(cf, false);
+    }
+  }
+  if (n_args == 2 && args[0].compare("gzip") == 0) {
+    if (args[1].compare("on") == 0) {
+      g_gzip_setter.SetGZipForLocation(cf, true);
+    } else if (args[1].compare("off") == 0) {
+      g_gzip_setter.SetGZipForLocation(cf, false);
+    } else {
+      char *error_message = string_piece_to_pool_string(
+          cf->pool, StringPiece("Invalid pagespeed gzip setting"));
+      return error_message;
+    }
+    return NGX_CONF_OK;
   }
 
   // Some options require the worker process to be able to read and write to
@@ -2808,6 +2830,14 @@ ngx_int_t ps_etag_filter_init(ngx_conf_t* cf) {
   return NGX_OK;
 }
 
+// Called before configuration.
+ngx_int_t ps_pre_init(ngx_conf_t *cf) {
+  // Setup an intervention setter for gzip configuration and check
+  // gzip configuration command signatures.
+  g_gzip_setter.Init();
+  return NGX_OK;
+}
+
 ngx_int_t ps_init(ngx_conf_t* cf) {
   // Only put register pagespeed code to run if there was a "pagespeed"
   // configuration option set in the config file.  With "pagespeed off" we
@@ -2857,7 +2887,7 @@ ngx_http_module_t ps_etag_filter_module = {
 };
 
 ngx_http_module_t ps_module = {
-  NULL,  // preconfiguration
+  ps_pre_init,  // preconfiguration
   ps_init,  // postconfiguration
 
   ps_create_main_conf,

@@ -996,8 +996,37 @@ http {
   server {
     listen @@SECONDARY_PORT@@;
     server_name compressed-css.example.com;
+    pagespeed on;
     pagespeed FileCachePath "@@FILE_CACHE@@";
     pagespeed InPlaceResourceOptimization on;
+  }
+
+  # nested gzip config: pagespeed gzip on/off
+  server {
+    pagespeed on;
+    listen @@SECONDARY_PORT@@;
+    server_name gzip-test1.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+    location /mod_pagespeed_example/ {
+      pagespeed gzip off;
+    }
+    location /mod_pagespeed_example/styles/ {
+      pagespeed gzip on;
+    }
+  }
+
+  # nested gzip config: pagespeed on/off
+  server {
+    pagespeed on;
+    listen @@SECONDARY_PORT@@;
+    server_name gzip-test2.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+    location /mod_pagespeed_example/ {
+      pagespeed off;
+    }
+    location /mod_pagespeed_example/styles/ {
+      pagespeed on;
+    }
   }
 
   server {
@@ -1297,27 +1326,6 @@ http {
   sendfile        on;
 
   keepalive_timeout  65;
-
-  # set up gzip
-  gzip  on;
-  gzip_vary on;
-  gzip_proxied any;
-  # Turn on gzip for all content types that should benefit from it.
-  gzip_types application/ecmascript;
-  gzip_types application/javascript;
-  gzip_types application/json;
-  gzip_types application/pdf;
-  gzip_types application/postscript;
-  gzip_types application/x-javascript;
-  gzip_types image/svg+xml;
-  gzip_types text/css;
-  gzip_types text/csv;
-  # "gzip_types text/html" is assumed.
-  gzip_types text/javascript;
-  gzip_types text/plain;
-  gzip_types text/xml;
-
-  gzip_http_version 1.0;
 
   types {
     text/html                             html htm shtml;
