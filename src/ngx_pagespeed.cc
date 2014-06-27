@@ -78,14 +78,6 @@
 
 extern ngx_module_t ngx_pagespeed;
 
-// Hacks for debugging.
-#define DBG(r, args...)                                       \
-  ngx_log_error(NGX_LOG_DEBUG, (r)->connection->log, 0, args)
-#define PDBG(ctx, args...)                                       \
-  ngx_log_error(NGX_LOG_DEBUG, (ctx)->r->connection->log, 0, args)
-#define CDBG(cf, args...)                                     \
-  ngx_conf_log_error(NGX_LOG_DEBUG, cf, 0, args)
-
 // Unused flag, see
 // http://lxr.evanmiller.org/http/source/http/ngx_http_request.h#L130
 #define  NGX_HTTP_PAGESPEED_BUFFERED 0x08
@@ -221,7 +213,7 @@ ngx_int_t ps_set_cache_control(ngx_http_request_t* r, char* cache_control) {
   // Now add our new cache control header.
   if (r->headers_out.cache_control.elts == NULL) {
     ngx_int_t rc = ngx_array_init(&r->headers_out.cache_control, r->pool,
-                                  1, sizeof(ngx_table_elt_t *));
+                                  1, sizeof(ngx_table_elt_t*));
     if (rc != NGX_OK) {
       return NGX_ERROR;
     }
@@ -337,7 +329,7 @@ ngx_int_t copy_response_headers_to_ngx(
       if (StringCaseEqual(name_gs, "Cache-Control")) {
         continue;
       }
-    } // else we don't preserve any headers
+    }  // else we don't preserve any headers.
 
     ngx_str_t name, value;
 
@@ -392,8 +384,8 @@ ngx_int_t copy_response_headers_to_ngx(
       // content_type_lowcase if we leave it as null.
       headers_out->content_type_lowcase = NULL;
       continue;
-    // TODO(oschaaf): are there any other headers we should not try to
-    // copy here?
+      // TODO(oschaaf): are there any other headers we should not try to
+      // copy here?
     } else if (STR_EQ_LITERAL(name, "Connection")) {
       continue;
     } else if (STR_EQ_LITERAL(name, "Keep-Alive")) {
@@ -617,7 +609,7 @@ char* ps_configure(ngx_conf_t* cf,
     } else if (args[1].compare("off") == 0) {
       g_gzip_setter.SetGZipForLocation(cf, false);
     } else {
-      char *error_message = string_piece_to_pool_string(
+      char* error_message = string_piece_to_pool_string(
           cf->pool, StringPiece("Invalid pagespeed gzip setting"));
       return error_message;
     }
@@ -1162,7 +1154,8 @@ ngx_int_t ps_base_fetch_handler(ngx_http_request_t* r) {
   // too much memory in busy servers.
 
   rc = ctx->base_fetch->CollectAccumulatedWrites(&cl);
-  PDBG(ctx, "CollectAccumulatedWrites, %d", rc);
+  ngx_log_error(NGX_LOG_DEBUG, ctx->r->connection->log, 0,
+                "CollectAccumulatedWrites, %d", rc);
 
   if (rc == NGX_ERROR) {
     ps_set_buffered(r, false);
@@ -1657,11 +1650,12 @@ RequestRouting::Response ps_route_request(ngx_http_request_t* r,
     return RequestRouting::kConsole;
   } else if (StringCaseEqual(path, global_options->messages_path())) {
     return RequestRouting::kMessages;
-  } else if (// The admin handlers get everything under a path (/path/*) while
-             // all the other handlers only get exact matches (/path).  So match
-             // all paths starting with the handler path.
-             !global_options->admin_path().empty() &&
-             StringCaseStartsWith(path, global_options->admin_path())) {
+  } else if (
+      // The admin handlers get everything under a path (/path/*) while all the
+      // other handlers only get exact matches (/path).  So match all paths
+      // starting with the handler path.
+      !global_options->admin_path().empty() &&
+      StringCaseStartsWith(path, global_options->admin_path())) {
     return RequestRouting::kAdmin;
   } else if (!global_options->global_admin_path().empty() &&
              StringCaseStartsWith(path, global_options->global_admin_path())) {
@@ -1895,11 +1889,11 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
 
     if (custom_options.get() == NULL) {
       driver = cfg_s->server_context->NewRewriteDriver(
-         ctx->base_fetch->request_context());
+          ctx->base_fetch->request_context());
     } else {
       // NewCustomRewriteDriver takes ownership of custom_options.
       driver = cfg_s->server_context->NewCustomRewriteDriver(
-      custom_options.release(), ctx->base_fetch->request_context());
+          custom_options.release(), ctx->base_fetch->request_context());
     }
 
     StringPiece user_agent = ctx->base_fetch->request_headers()->Lookup1(
@@ -1960,8 +1954,9 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
   // NOTE: We are using the below debug message as is for some of our system
   // tests. So, be careful about test breakages caused by changing or
   // removing this line.
-  DBG(r, "Passing on content handling for non-pagespeed resource '%s'",
-      url_string.c_str());
+  ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0,
+                "Passing on content handling for non-pagespeed resource '%s'",
+                url_string.c_str());
 
   ctx->base_fetch->Done(false);
   ps_release_base_fetch(ctx);
@@ -1998,8 +1993,7 @@ void ps_send_to_pagespeed(ngx_http_request_t* r,
         int num_inflated_bytes = ctx->inflater_->InflateBytes(
             buf, kStackBufferSize);
         if (num_inflated_bytes < 0) {
-          cfg_s->handler->Message(kWarning,
-                                  "Corrupted inflation");
+          cfg_s->handler->Message(kWarning, "Corrupted inflation");
         } else if (num_inflated_bytes > 0) {
           ctx->proxy_fetch->Write(StringPiece(buf, num_inflated_bytes),
                                   cfg_s->handler);
@@ -2023,10 +2017,10 @@ void ps_send_to_pagespeed(ngx_http_request_t* r,
 #ifndef ngx_http_clear_etag
 // The ngx_http_clear_etag(r) macro was added in 1.3.3.  Backport it if it's not
 // present.
-#define ngx_http_clear_etag(r)       \
-  if (r->headers_out.etag) {         \
-    r->headers_out.etag->hash = 0;   \
-    r->headers_out.etag = NULL;      \
+#define ngx_http_clear_etag(r)                  \
+  if (r->headers_out.etag) {                    \
+    r->headers_out.etag->hash = 0;              \
+    r->headers_out.etag = NULL;                 \
   }
 #endif
 
@@ -2347,8 +2341,8 @@ ngx_int_t ps_in_place_check_header_filter(ngx_http_request_t* r) {
     // to the backend.
   } else {
     server_context->rewrite_stats()->ipro_not_rewritable()->Add(1);
-    message_handler->Message(kInfo,
-           "Could not rewrite resource in-place: %s", url.c_str());
+    message_handler->Message(
+        kInfo, "Could not rewrite resource in-place: %s", url.c_str());
   }
 
   ctx->driver->Cleanup();
@@ -2372,10 +2366,10 @@ ngx_int_t ps_in_place_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
   InPlaceResourceRecorder* recorder = ctx->recorder;
   for (ngx_chain_t* cl = in; cl; cl = cl->next) {
     if (ngx_buf_size(cl->buf)) {
-       CHECK(ngx_buf_in_memory(cl->buf));
-       StringPiece contents(reinterpret_cast<char*>(cl->buf->pos),
-                            ngx_buf_size(cl->buf));
-       recorder->Write(contents, recorder->handler());
+      CHECK(ngx_buf_in_memory(cl->buf));
+      StringPiece contents(reinterpret_cast<char*>(cl->buf->pos),
+                           ngx_buf_size(cl->buf));
+      recorder->Write(contents, recorder->handler());
     }
 
     if (cl->buf->flush) {
@@ -2726,9 +2720,9 @@ ngx_int_t ps_content_handler(ngx_http_request_t* r) {
 }
 
 ngx_int_t ps_phase_handler(ngx_http_request_t* r,
-      ngx_http_phase_handler_t* ph) {
+                           ngx_http_phase_handler_t* ph) {
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "pagespeed phase: %ui", r->phase_handler);
+                 "pagespeed phase: %ui", r->phase_handler);
 
   r->write_event_handler = ngx_http_request_empty_handler;
 
@@ -2803,8 +2797,8 @@ ngx_int_t ps_preaccess_handler(ngx_http_request_t* r) {
 
   i = r->phase_handler;
   // move handlers before try_files && content phase
-  while (ph[i + 1].checker != ngx_http_core_try_files_phase
-      && ph[i + 1].checker != ngx_http_core_content_phase) {
+  while (ph[i + 1].checker != ngx_http_core_try_files_phase &&
+         ph[i + 1].checker != ngx_http_core_content_phase) {
     ph[i] = ph[i + 1];
     ph[i].next--;
     i++;
@@ -2831,10 +2825,10 @@ ngx_int_t ps_etag_filter_init(ngx_conf_t* cf) {
 }
 
 // Called before configuration.
-ngx_int_t ps_pre_init(ngx_conf_t *cf) {
+ngx_int_t ps_pre_init(ngx_conf_t* cf) {
   // Setup an intervention setter for gzip configuration and check
   // gzip configuration command signatures.
-  g_gzip_setter.Init();
+  g_gzip_setter.Init(cf);
   return NGX_OK;
 }
 
