@@ -1860,12 +1860,14 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
           ctx->base_fetch);
     } else if (response_category == RequestRouting::kAdmin ||
                response_category == RequestRouting::kGlobalAdmin) {
+      RewriteOptions* system_options =
+          (custom_options == NULL) ? cfg_s->server_context->config() :
+          custom_options.get();
       cfg_s->server_context->AdminPage(
           response_category == RequestRouting::kGlobalAdmin,
           url,
           query_params,
-          custom_options == NULL ? cfg_s->server_context->config()
-                                 : custom_options.get(),
+          dynamic_cast<SystemRewriteOptions*>(system_options),
           ctx->base_fetch);
     } else if (response_category == RequestRouting::kCachePurge) {
       AdminSite* admin_site = cfg_s->server_context->admin_site();
