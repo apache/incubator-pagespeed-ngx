@@ -98,6 +98,7 @@ function keepalive_test() {
     | grep -v "^\\* Curl_addHandleToPipeline"\
     | grep -v "^\\* - Conn "\
     | grep -v "^\\* Server "\
+    | grep -v "^\\* Hostname was NOT found in DNS cache"\
     | grep -v "^\\*   Trying.*\\.\\.\\.")
 
   # Nothing should remain after that.

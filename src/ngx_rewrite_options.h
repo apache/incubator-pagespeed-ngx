@@ -27,12 +27,80 @@ extern "C" {
   #include <ngx_http.h>
 }
 
+#include <vector>
+
+#include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"
+#include "net/instaweb/util/public/stl_util.h"          // for STLDeleteElements
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/system/public/system_rewrite_options.h"
+
+#define NGX_PAGESPEED_MAX_ARGS 10
 
 namespace net_instaweb {
 
 class NgxRewriteDriverFactory;
+
+class ScriptArgIndex {
+ public:
+  explicit ScriptArgIndex(ngx_http_script_compile_t* script, int index)
+    : script_(script), index_(index) {
+      CHECK(script != NULL);
+      CHECK(index > 0 && index < NGX_PAGESPEED_MAX_ARGS);
+  }
+
+  virtual ~ScriptArgIndex() {}
+
+  ngx_http_script_compile_t* script() { return script_; }
+  int index() { return index_; }
+
+ private:
+  // Not owned.
+  ngx_http_script_compile_t* script_;
+  int index_;
+};
+
+// Refcounted, because the ScriptArgIndexes inside data_ can be shared between
+// different rewriteoptions.
+class ScriptLine : public RefCounted<ScriptLine> {
+ public:
+  explicit ScriptLine(StringPiece* args, int n_args,
+                      RewriteOptions::OptionScope scope)
+    : n_args_(n_args),
+      scope_(scope) {
+
+      for (int i = 0; i < n_args; i++) {
+        args_[i] = args[i];
+      }
+  }
+
+  virtual ~ScriptLine() {
+    STLDeleteElements(&data_);
+    data_.clear();
+  }
+
+  void AddScriptAndArgIndex(ngx_http_script_compile_t* script,
+                            int script_index) {
+    CHECK(script != NULL);
+    CHECK(script_index <  NGX_PAGESPEED_MAX_ARGS);
+    data_.push_back(new ScriptArgIndex(script, script_index));
+  }
+
+  int n_args() { return n_args_;}
+  StringPiece* args() { return args_;}
+  RewriteOptions::OptionScope scope() { return scope_; }
+  std::vector<ScriptArgIndex*>& data() {
+    return data_;
+  }
+
+ private:
+  StringPiece args_[NGX_PAGESPEED_MAX_ARGS];
+  int n_args_;
+  RewriteOptions::OptionScope scope_;
+  std::vector<ScriptArgIndex*> data_;
+
+  DISALLOW_COPY_AND_ASSIGN(ScriptLine);
+};
 
 class NgxRewriteOptions : public SystemRewriteOptions {
  public:
@@ -56,12 +124,23 @@ class NgxRewriteOptions : public SystemRewriteOptions {
   // on failure.
   //
   // pool is a memory pool for allocating error strings.
+  // cf is only required when compile_scripts is true
+  // when compile_scripts is true, the rewrite_options will be prepared
+  // for replacing any script $variables encountered in args. when false,
+  // script variables will be substituted using the prepared rewrite options.
   const char* ParseAndSetOptions(
       StringPiece* args, int n_args, ngx_pool_t* pool, MessageHandler* handler,
-      NgxRewriteDriverFactory* driver_factory, OptionScope scope);
+      NgxRewriteDriverFactory* driver_factory, OptionScope scope,
+      ngx_conf_t* cf, bool compile_scripts);
+  bool ExecuteScriptVariables(
+      ngx_http_request_t* r, MessageHandler* handler,
+      NgxRewriteDriverFactory* driver_factory);
+  void CopyScriptLinesTo(NgxRewriteOptions* destination) const;
+  void AppendScriptLinesTo(NgxRewriteOptions* destination) const;
 
   // Make an identical copy of these options and return it.
   virtual NgxRewriteOptions* Clone() const;
+  virtual void Merge(const RewriteOptions& src);
 
   // Returns a suitably down cast version of 'instance' if it is an instance
   // of this class, NULL if not.
@@ -85,6 +164,12 @@ class NgxRewriteOptions : public SystemRewriteOptions {
   }
   const GoogleString& global_admin_path() const {
     return global_admin_path_.value();
+  }
+  const std::vector<RefCountedPtr<ScriptLine> >& script_lines() const {
+    return script_lines_;
+  }
+  const bool& clear_inherited_scripts() const {
+    return clear_inherited_scripts_;
   }
 
  private:
@@ -140,6 +225,9 @@ class NgxRewriteOptions : public SystemRewriteOptions {
   Option<GoogleString> messages_path_;
   Option<GoogleString> admin_path_;
   Option<GoogleString> global_admin_path_;
+
+  bool clear_inherited_scripts_;
+  std::vector<RefCountedPtr<ScriptLine> > script_lines_;
 
   // Helper for ParseAndSetOptions.  Returns whether the two directives equal,
   // ignoring case.
