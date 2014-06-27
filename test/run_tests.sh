@@ -73,6 +73,9 @@ function run_test_checking_failure() {
     3)
       return  # Only expected failures.
       ;;
+    4)
+      return  # Return passing error code when running manually.
+      ;;
     *)
       exit 1  # Real failure.
   esac
