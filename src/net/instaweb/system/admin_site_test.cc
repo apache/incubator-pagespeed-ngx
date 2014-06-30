@@ -102,10 +102,11 @@ TEST_F(AdminSiteTest, ColorMessagesInHistoryPage) {
   message_handler()->Message(kInfo, "Test for %s", "Infos");
   GoogleString buffer;
   StringAsyncFetch fetch(rewrite_driver()->request_context(), &buffer);
-  const char kColorTemplate[] = "color:%s; margin:0;";
+  static const char kColorTemplate[] = "color:%s; margin:0;";
   // The value of the first argument AdminSite::AdminSource
   // does not matter in this test. So we just test for kPageSpeedAdmin here.
-  admin_site_->MessageHistoryHandler(AdminSite::kPageSpeedAdmin, &fetch);
+  admin_site_->MessageHistoryHandler(*(rewrite_driver()->options()),
+                                     AdminSite::kPageSpeedAdmin, &fetch);
   EXPECT_THAT(
       buffer, ::testing::HasSubstr(StringPrintf(kColorTemplate, "red")));
   EXPECT_THAT(

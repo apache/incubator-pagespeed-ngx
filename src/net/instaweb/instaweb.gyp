@@ -438,6 +438,34 @@
       ]
     },
     {
+      'target_name': 'instaweb_messages_js_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'net/instaweb/rewriter',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/rewriter',
+        'var_name': 'messages_js',
+      },
+      'sources': [
+        'genfiles/rewriter/messages_js_dbg.js',
+      ],
+      'includes': [
+        'data2c.gypi',
+      ]
+    },
+    {
+      'target_name': 'instaweb_messages_js_opt_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'net/instaweb/rewriter',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/rewriter',
+        'var_name': 'messages_js_opt',
+      },
+      'sources': [
+        'genfiles/rewriter/messages_js_opt.js',
+      ],
+      'includes': [
+        'data2c.gypi',
+      ]
+    },
+    {
       'target_name': 'instaweb_lazyload_images_data2c',
       'variables': {
         'instaweb_data2c_subdir': 'net/instaweb/rewriter',
@@ -1139,6 +1167,8 @@
         'instaweb_lazyload_images_opt_data2c',
         'instaweb_local_storage_cache_data2c',
         'instaweb_local_storage_cache_opt_data2c',
+        'instaweb_messages_js_data2c',
+        'instaweb_messages_js_opt_data2c',
         'instaweb_panel_loader_opt_data2c',
         'instaweb_rewriter_base',
         'instaweb_rewriter_css',

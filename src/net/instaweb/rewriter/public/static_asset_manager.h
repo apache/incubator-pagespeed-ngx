@@ -63,6 +63,7 @@ class StaticAssetManager {
     kGhostClickBusterJs,
     kLazyloadImagesJs,
     kLocalStorageCacheJs,
+    kMessagesJs,
     kSplitHtmlBeaconJs,
     kEndOfModules,  // Keep this as the last enum value.
   };

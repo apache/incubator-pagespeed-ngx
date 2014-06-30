@@ -72,6 +72,8 @@ extern const char* JS_lazyload_images;
 extern const char* JS_lazyload_images_opt;
 extern const char* JS_local_storage_cache;
 extern const char* JS_local_storage_cache_opt;
+extern const char* JS_messages_js;
+extern const char* JS_messages_js_opt;
 extern const char* JS_panel_loader_opt;
 extern const char* JS_split_html_beacon;
 extern const char* JS_split_html_beacon_opt;
@@ -179,6 +181,7 @@ void StaticAssetManager::InitializeAssetStrings() {
   assets_[kDeterministicJs]->file_name = "deterministic";
   assets_[kGhostClickBusterJs]->file_name = "ghost_click_buster";
   assets_[kLocalStorageCacheJs]->file_name = "local_storage_cache";
+  assets_[kMessagesJs]->file_name = "messages_js";
   assets_[kSplitHtmlBeaconJs]->file_name = "split_html_beacon";
 
   // Initialize compiled javascript strings->
@@ -202,6 +205,7 @@ void StaticAssetManager::InitializeAssetStrings() {
   assets_[kDeterministicJs]->js_optimized = JS_deterministic_opt;
   assets_[kGhostClickBusterJs]->js_optimized = JS_ghost_click_buster_opt;
   assets_[kLocalStorageCacheJs]->js_optimized = JS_local_storage_cache_opt;
+  assets_[kMessagesJs]->js_optimized = JS_messages_js_opt;
   assets_[kSplitHtmlBeaconJs]->js_optimized = JS_split_html_beacon_opt;
 
   // Initialize cleartext javascript strings->
@@ -225,6 +229,7 @@ void StaticAssetManager::InitializeAssetStrings() {
   // GhostClickBuster uses goog.require, which needs to be minifed always.
   assets_[kGhostClickBusterJs]->js_debug = JS_ghost_click_buster_opt;
   assets_[kLocalStorageCacheJs]->js_debug = JS_local_storage_cache;
+  assets_[kMessagesJs]->js_debug = JS_messages_js;
   assets_[kSplitHtmlBeaconJs]->js_debug = JS_split_html_beacon;
 
   // Initialize non-JS assets

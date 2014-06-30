@@ -316,7 +316,7 @@ TEST_F(CssInlineFilterTest, DoNotInlineCssTooBig) {
                   "http://www.example.com/styles.css", "",
                   ("BODY { background-image: url('" +
                    GoogleString(length, 'z') + ".png'); }\n"),
-                  "", "CSS not inlined since it's bigger than 2048 bytes");
+                  "", "CSS not inlined since it&#39;s bigger than 2048 bytes");
 }
 
 TEST_F(CssInlineFilterTest, DoInlineCssDifferentDomain) {
@@ -445,7 +445,7 @@ TEST_F(CssInlineFilterTest, InlineMinimizeInteraction) {
       "div{display: none;}",
       false,
       "div{display: none}",
-      "CSS not inlined since it's bigger than 4 bytes");
+      "CSS not inlined since it&#39;s bigger than 4 bytes");
 }
 
 TEST_F(CssInlineFilterTest, InlineCacheExtendInteraction) {

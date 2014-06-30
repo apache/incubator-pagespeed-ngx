@@ -182,7 +182,7 @@ class UnicodeText {
   class const_iterator {
     typedef const_iterator CI;
    public:
-    typedef bidirectional_iterator_tag iterator_category;
+    typedef std::bidirectional_iterator_tag iterator_category;
     typedef char32 value_type;
     typedef ptrdiff_t difference_type;
     typedef void pointer;  // (Not needed.)

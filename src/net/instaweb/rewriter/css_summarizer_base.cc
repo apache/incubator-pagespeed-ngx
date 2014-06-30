@@ -47,6 +47,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
+#include "pagespeed/kernel/html/html_keywords.h"
 #include "webutil/css/parser.h"
 
 namespace net_instaweb {
@@ -442,7 +443,9 @@ void CssSummarizerBase::ReportSummariesDone() {
           break;
       }
     }
-    InsertNodeAtBodyEnd(driver()->NewCommentNode(NULL, comment));
+    GoogleString escaped;
+    HtmlKeywords::Escape(comment, &escaped);
+    InsertNodeAtBodyEnd(driver()->NewCommentNode(NULL, escaped));
   }
   for (int i = 0, n = summaries_.size(); i < n; ++i) {
     if (summaries_[i].state == kSummaryOk) {

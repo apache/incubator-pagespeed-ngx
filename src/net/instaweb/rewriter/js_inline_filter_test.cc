@@ -267,7 +267,7 @@ TEST_F(JsInlineFilterTest, DoNotInlineJavascriptTooBig) {
                          "",
                          ("function longstr() { return '" +
                           GoogleString(length, 'z') + "'; }\n"),
-                         "JS not inlined since it's bigger than 2048 bytes");
+                         "JS not inlined since it&#39;s bigger than 2048 bytes");
 }
 
 TEST_F(JsInlineFilterTest, DoNotInlineIntrospectiveJavascriptByDefault) {
@@ -421,7 +421,7 @@ TEST_F(JsInlineFilterTest, InlineMinimizeInteraction) {
       "var answer = 42; // const is non-standard",  // out-of-line body
       "",  // No inline body out,
       false,  // Not inlining
-      "JS not inlined since it's bigger than 4 bytes");
+      "JS not inlined since it&#39;s bigger than 4 bytes");
 }
 
 TEST_F(JsInlineFilterTest, ScriptWithScriptTags) {

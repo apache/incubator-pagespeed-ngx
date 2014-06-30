@@ -141,7 +141,7 @@ TEST_F(GoogleFontCssInlineFilterSizeLimitTest, SizeLimit) {
       "slightly_long",
       CssLinkHref(kRoboto),
       StrCat(CssLinkHref(kRoboto),
-             "<!--CSS not inlined since it's bigger than 12 bytes-->"));
+             "<!--CSS not inlined since it&#39;s bigger than 12 bytes-->"));
 
   rewrite_driver()->SetUserAgent("Safieri");
   ValidateExpected("short",
@@ -214,7 +214,7 @@ TEST_F(NoGoogleFontCssInlineFilterAndWidePermissionsTest,
   rewrite_driver()->SetUserAgent("Chromezilla");
   ValidateExpected("with_domain_*_without_font_filter", CssLinkHref(kRoboto),
                    StrCat(CssLinkHref(kRoboto),
-                          "<!--Can't inline since resource not "
+                          "<!--Can&#39;t inline since resource not "
                                "fetchable or cacheable-->"));
 }
 

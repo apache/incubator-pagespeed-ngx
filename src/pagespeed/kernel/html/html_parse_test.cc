@@ -1693,6 +1693,11 @@ TEST_F(EventListManipulationTest, AppendComment) {
   CheckExpected("1<!--hello-->");
 }
 
+TEST_F(EventListManipulationTest, AppendCommentWithEscaping) {
+  html_parse_.InsertComment("<i>hello</i> <!--world-->");
+  CheckExpected("1<!--&lt;i&gt;hello&lt;/i&gt; &lt;!--world--&gt;-->");
+}
+
 TEST_F(EventListManipulationTest, CommentBeforeDiv1) {
   HtmlElement* div = html_parse_.NewElement(NULL, HtmlName::kDiv);
   html_parse_.AddElement(div, -1);

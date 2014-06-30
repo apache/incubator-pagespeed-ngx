@@ -1064,8 +1064,11 @@ bool HtmlParse::size_limit_exceeded() const {
   return lexer_->size_limit_exceeded();
 }
 
-bool HtmlParse::InsertComment(StringPiece sp) {
+bool HtmlParse::InsertComment(StringPiece unescaped) {
   HtmlElement* parent = NULL;
+
+  GoogleString escaped;
+  HtmlKeywords::Escape(unescaped, &escaped);
 
   if (queue_.begin() != queue_.end()) {
     HtmlEventListIterator pos = current_;
@@ -1085,10 +1088,10 @@ bool HtmlParse::InsertComment(StringPiece sp) {
     HtmlElement* end_element = event->GetElementIfEndEvent();
     if (start_element != NULL) {
       parent = start_element->parent();
-      InsertNodeBeforeEvent(pos, NewCommentNode(parent, sp));
+      InsertNodeBeforeEvent(pos, NewCommentNode(parent, escaped));
     } else if (end_element != NULL) {
       parent = end_element->parent();
-      InsertNodeAfterEvent(pos, NewCommentNode(parent, sp));
+      InsertNodeAfterEvent(pos, NewCommentNode(parent, escaped));
     } else {
       // The current node must not be an element, but instead a leaf
       // node such as another Comment, IEDirective, or Characters.
@@ -1099,9 +1102,9 @@ bool HtmlParse::InsertComment(StringPiece sp) {
         parent = node->parent();
       }
       if (current_ == queue_.end()) {
-        InsertNodeAfterEvent(pos, NewCommentNode(parent, sp));
+        InsertNodeAfterEvent(pos, NewCommentNode(parent, escaped));
       } else {
-        InsertNodeBeforeEvent(pos, NewCommentNode(parent, sp));
+        InsertNodeBeforeEvent(pos, NewCommentNode(parent, escaped));
       }
     }
   } else {
@@ -1112,7 +1115,8 @@ bool HtmlParse::InsertComment(StringPiece sp) {
     if (parent != NULL && IsLiteralTag(parent->keyword())) {
       return false;
     }
-    AddEvent(new HtmlCommentEvent(NewCommentNode(lexer_->Parent(), sp), 0));
+    AddEvent(
+        new HtmlCommentEvent(NewCommentNode(lexer_->Parent(), escaped), 0));
   }
   return true;
 }

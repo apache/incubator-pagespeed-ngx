@@ -188,7 +188,8 @@ AdminSite::AdminSite(StaticAssetManager* static_asset_manager, Timer* timer,
 }
 
 // Handler which serves PSOL console.
-void AdminSite::ConsoleHandler(const SystemRewriteOptions& options,
+void AdminSite::ConsoleHandler(const SystemRewriteOptions& global_options,
+                               const RewriteOptions& options,
                                AdminSource source,
                                const QueryParams& query_params,
                                AsyncFetch* fetch, Statistics* statistics) {
@@ -198,9 +199,9 @@ void AdminSite::ConsoleHandler(const SystemRewriteOptions& options,
   }
 
   MessageHandler* handler = message_handler_;
-  bool statistics_enabled = options.statistics_enabled();
-  bool logging_enabled = options.statistics_logging_enabled();
-  bool log_dir_set = !options.log_dir().empty();
+  bool statistics_enabled = global_options.statistics_enabled();
+  bool logging_enabled = global_options.statistics_logging_enabled();
+  bool log_dir_set = !global_options.log_dir().empty();
 
   // TODO(jmarantz): change StaticAssetManager to take options by const ref.
   // TODO(sligocki): Move static content to a data2cc library.
@@ -594,12 +595,14 @@ void AdminSite::PrintSpdyConfig(AdminSource source, AsyncFetch* fetch,
   }
 }
 
-void AdminSite::MessageHistoryHandler(AdminSource source, AsyncFetch* fetch) {
+void AdminSite::MessageHistoryHandler(const RewriteOptions& options,
+                                      AdminSource source, AsyncFetch* fetch) {
   // Request for page /mod_pagespeed_message.
   GoogleString log;
   StringWriter log_writer(&log);
   AdminHtml admin_html("message_history", "", source, fetch, message_handler_);
   if (message_handler_->Dump(&log_writer)) {
+    fetch->Write("<div id=\"log\">", message_handler_);
     // Write pre-tag and color messages.
     StringPieceVector messages;
     message_handler_->ParseMessageDumpIntoMessages(log, &messages);
@@ -632,6 +635,13 @@ void AdminSite::MessageHistoryHandler(AdminSource source, AsyncFetch* fetch) {
         }
       }
     }
+    fetch->Write("</div>\n", message_handler_);
+    StringPiece messages_js = static_asset_manager_->GetAsset(
+        StaticAssetManager::kMessagesJs, &options);
+    fetch->Write("<script type='text/javascript'>", message_handler_);
+    fetch->Write(StrCat(messages_js, "\npagespeed.Messages.Start();"),
+                 message_handler_);
+    fetch->Write("</script>\n", message_handler_);
   } else {
     fetch->Write("<p>Writing to mod_pagespeed_message failed. \n"
                  "Please check if it's enabled in pagespeed.conf.</p>\n",
@@ -695,10 +705,10 @@ void AdminSite::AdminPage(
       PrintSpdyConfig(kPageSpeedAdmin, fetch, spdy_config);
     } else if (leaf == "console") {
       // TODO(jmarantz): add vhost-local and aggregate message buffers.
-      ConsoleHandler(*global_system_rewrite_options, kPageSpeedAdmin,
+      ConsoleHandler(*global_system_rewrite_options, *options, kPageSpeedAdmin,
                      query_params, fetch, statistics);
     } else if (leaf == "message_history") {
-      MessageHistoryHandler(kPageSpeedAdmin, fetch);
+      MessageHistoryHandler(*options, kPageSpeedAdmin, fetch);
     } else if (leaf == "cache") {
       PrintCaches(is_global, kPageSpeedAdmin, stripped_gurl, query_params,
                   options, cache_path, fetch, system_caches,

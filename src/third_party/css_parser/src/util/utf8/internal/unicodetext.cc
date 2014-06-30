@@ -356,12 +356,12 @@ void UnicodeText::push_back(char32 c) {
     if (UniLib::IsInterchangeValid(buf, len)) {
       repr_.append(buf, len);
     } else {
-      LOG(WARNING) << "Unicode value 0x" << hex << c
+      LOG(WARNING) << "Unicode value 0x" << std::hex << c
                   << " is not valid for interchange";
       repr_.append(" ", 1);
     }
   } else {
-    LOG(WARNING) << "Illegal Unicode value: 0x" << hex << c;
+    LOG(WARNING) << "Illegal Unicode value: 0x" << std::hex << c;
     repr_.append(" ", 1);
   }
 }

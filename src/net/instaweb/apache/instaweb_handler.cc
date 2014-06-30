@@ -977,7 +977,8 @@ apr_status_t InstawebHandler::instaweb_handler(request_rec* request) {
     ret = OK;
   } else if (request_handler_str == kMessageHandler) {
     InstawebHandler instaweb_handler(request);
-    server_context->MessageHistoryHandler(AdminSite::kOther,
+    server_context->MessageHistoryHandler(*instaweb_handler.options(),
+                                          AdminSite::kOther,
                                           instaweb_handler.MakeFetch());
     ret = OK;
   } else if (request_handler_str == kLogRequestHeadersHandler) {

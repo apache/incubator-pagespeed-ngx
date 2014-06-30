@@ -1115,12 +1115,17 @@ start_test "combine_css debug filter"
 URL=$EXAMPLE_ROOT/combine_css_debug.html?PageSpeedFilters=combine_css,debug
 fetch_until -save "$URL" \
   "fgrep -c styles/yellow.css+blue.css+big.css+bold.css.pagespeed.cc" 1
-check fgrep "potentially non-combinable attribute: 'id'" $FETCH_FILE
-check fgrep "potentially non-combinable attributes: 'data-foo' and 'data-bar'" \
+check fgrep "potentially non-combinable attribute: &#39;id&#39;" $FETCH_FILE
+check fgrep \
+  "potentially non-combinable attributes: &#39;data-foo&#39; and &#39;data-bar&#39;" \
   $FETCH_FILE
-check fgrep "attributes: 'data-foo', 'data-bar' and 'data-baz'" $FETCH_FILE
-check fgrep "looking for media '' but found media='print'." $FETCH_FILE
-check fgrep "looking for media 'print' but found media=''." $FETCH_FILE
+check fgrep \
+  "attributes: &#39;data-foo&#39;, &#39;data-bar&#39; and &#39;data-baz&#39;" \
+  $FETCH_FILE
+check fgrep "looking for media &#39;&#39; but found media=&#39;print&#39;." \
+  $FETCH_FILE
+check fgrep "looking for media &#39;print&#39; but found media=&#39;&#39;." \
+  $FETCH_FILE
 check fgrep "Could not combine over barrier: noscript" $FETCH_FILE
 check fgrep "Could not combine over barrier: inline style" $FETCH_FILE
 check fgrep "Could not combine over barrier: IE directive" $FETCH_FILE

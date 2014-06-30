@@ -350,8 +350,8 @@ void SystemServerContext::ConsoleHandler(
     const SystemRewriteOptions& options,
     AdminSite::AdminSource source,
     const QueryParams& query_params, AsyncFetch* fetch) {
-  admin_site_->ConsoleHandler(options, source, query_params, fetch,
-                              statistics());
+  admin_site_->ConsoleHandler(*global_system_rewrite_options(), options,
+                              source, query_params, fetch, statistics());
 }
 
 // TODO(sligocki): integrate this into the pagespeed_console.
@@ -411,8 +411,9 @@ void SystemServerContext::PrintSpdyConfig(
 }
 
 void SystemServerContext::MessageHistoryHandler(
-    AdminSite::AdminSource source, AsyncFetch* fetch) {
-  admin_site_->MessageHistoryHandler(source, fetch);
+    const RewriteOptions& options, AdminSite::AdminSource source,
+    AsyncFetch* fetch) {
+  admin_site_->MessageHistoryHandler(options, source, fetch);
 }
 
 void SystemServerContext::AdminPage(

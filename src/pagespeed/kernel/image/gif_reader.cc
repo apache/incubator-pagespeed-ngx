@@ -706,7 +706,7 @@ ScanlineStatus GifFrameReader::Reset() {
   image_spec_.Reset();
   frame_spec_.Reset();
 
-  got_loop_count_ = false;
+  has_loop_count_ = false;
   next_frame_ = 0;
 
   is_progressive_ = false;
@@ -887,14 +887,14 @@ ScanlineStatus GifFrameReader::ProcessExtensionAffectingImage(
         PS_LOG_INFO(message_handler(),
                     "Animation loop count in unexpected location.");
       }
-      if (got_loop_count_) {
+      if (has_loop_count_) {
         PS_LOG_INFO(
             message_handler(),
             "Multiple loop counts encountered. Using the last one.");
       }
-      got_loop_count_ = true;
+      has_loop_count_ = true;
       image_spec_.loop_count = (extension[kGifAeLoopCountLoIndex] |
-                                (extension[kGifAeLoopCountHiIndex] << 8)) + 1;
+                                (extension[kGifAeLoopCountHiIndex] << 8));
     } else {
       // An extension containing metadata.
       // Do nothing for now.
@@ -1051,7 +1051,8 @@ ScanlineStatus GifFrameReader::GetImageData() {
     }
   }
 
-  ApplyQuirksModeToImage(quirks_mode(), frame_spec_, &image_spec_);
+  ApplyQuirksModeToImage(quirks_mode(), has_loop_count_, frame_spec_,
+                         &image_spec_);
 
   // Get the global color map, and extract and store the background
   // color from it.
@@ -1085,6 +1086,7 @@ ScanlineStatus GifFrameReader::set_quirks_mode(QuirksMode quirks_mode) {
 }
 
 void GifFrameReader::ApplyQuirksModeToImage(QuirksMode quirks_mode,
+                                            const bool got_loop_count,
                                             const FrameSpec& frame_spec,
                                             ImageSpec* image_spec) {
   switch (quirks_mode) {
@@ -1094,6 +1096,9 @@ void GifFrameReader::ApplyQuirksModeToImage(QuirksMode quirks_mode,
           (frame_spec.height > image_spec->height)) {
         image_spec->width = frame_spec.width;
         image_spec->height = frame_spec.height;
+      }
+      if (got_loop_count) {
+        image_spec->loop_count++;
       }
       break;
     case QUIRKS_FIREFOX:

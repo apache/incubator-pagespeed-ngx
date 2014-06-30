@@ -22,10 +22,9 @@
 
 #include <algorithm>
 #include <cstddef>
-#include <cstdio>
 #include <vector>
 
-#include "base/logging.h"
+#include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/string.h"
 
@@ -34,6 +33,7 @@ using net_instaweb::MessageHandler;
 namespace pagespeed {
 namespace image_compression {
 
+const size_t GifSquare::kNoLoopCountSpecified = ~0;
 const GifColorType GifSquare::kGifWhite = {0xFF, 0xFF, 0xFF};
 const GifColorType GifSquare::kGifBlack = {0x00, 0x00, 0x00};
 const GifColorType GifSquare::kGifGray = {0xF0, 0xF0, 0xF0};
@@ -112,9 +112,9 @@ bool GifSquare::Open(const GoogleString& filename) {
 #endif
 }
 
-bool GifSquare::PrepareScreen(bool gif89, int width, int height,
+bool GifSquare::PrepareScreen(bool gif89, size_px width, size_px height,
                               const GifColorType* color_map, int num_colors,
-                              int bg_color_idx, int loop) {
+                              int bg_color_idx, size_t loop_count) {
   if (!CanProceed()) {
     return false;
   }
@@ -140,16 +140,15 @@ bool GifSquare::PrepareScreen(bool gif89, int width, int height,
     return false;
   }
 
-  if (loop >= 0) {
+  if (loop_count < kNoLoopCountSpecified) {
     // The loop count is encoded as a series of three bytes: a literal
-    // '\x01' and then the count in lo-hi order. Cf.
-    // http://shortn/_19L2jvGJc9
-    static const char* const kAppBlockContentTemplate = "\x01%c%c";
-    static const int kLen = 4;
-    CHECK(kLen - 1 + 2 == strlen(kAppBlockContentTemplate));
-    char app_block_content[kLen];
-    snprintf(app_block_content, kLen, kAppBlockContentTemplate,
-             LOBYTE(loop - 1), HIBYTE(loop - 1));
+    // '\x01' and then the count in lo-hi order. Cf. http://shortn/_19L2jvGJc9
+    static const int kLen = 3;
+    const uint8_t app_block_content[kLen] = {
+      0x01,
+      static_cast<uint8_t>(LOBYTE(loop_count)),
+      static_cast<uint8_t>(HIBYTE(loop_count))
+    };
 #if GIFLIB_MAJOR >= 5
     return (
         Log(EGifPutExtensionLeader(gif_file_,
@@ -172,7 +171,8 @@ bool GifSquare::PrepareScreen(bool gif89, int width, int height,
   return true;
 }
 
-bool GifSquare::PutImage(int left, int top, int width, int height,
+bool GifSquare::PutImage(size_px left, size_px top,
+                         size_px width, size_px height,
                          const GifColorType* colormap, int num_colors,
                          int color_index, int transparent_idx,
                          bool interlace, int delay_cs, int disposal_method) {

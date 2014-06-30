@@ -514,6 +514,7 @@ TEST(GifReaderUtil, DisposalMethod) {
 
 void CheckQuirksModeChangesToImageSpec(const FrameSpec& frame_spec,
                                        const ImageSpec& original_spec,
+                                       const bool has_loop_count,
                                        const ImageSpec& expected_noquirks_spec,
                                        const ImageSpec& expected_firefox_spec,
                                        const ImageSpec& expected_chrome_spec) {
@@ -521,15 +522,15 @@ void CheckQuirksModeChangesToImageSpec(const FrameSpec& frame_spec,
   ImageSpec firefox_spec = original_spec;
   ImageSpec chrome_spec = original_spec;
 
-  GifFrameReader::ApplyQuirksModeToImage(QUIRKS_NONE,
+  GifFrameReader::ApplyQuirksModeToImage(QUIRKS_NONE, has_loop_count,
                                          frame_spec, &noquirks_spec);
   EXPECT_TRUE(noquirks_spec.Equals(expected_noquirks_spec));
 
-  GifFrameReader::ApplyQuirksModeToImage(QUIRKS_FIREFOX,
+  GifFrameReader::ApplyQuirksModeToImage(QUIRKS_FIREFOX, has_loop_count,
                                          frame_spec, &firefox_spec);
   EXPECT_TRUE(firefox_spec.Equals(expected_firefox_spec));
 
-  GifFrameReader::ApplyQuirksModeToImage(QUIRKS_CHROME,
+  GifFrameReader::ApplyQuirksModeToImage(QUIRKS_CHROME, has_loop_count,
                                          frame_spec, &chrome_spec);
   EXPECT_TRUE(chrome_spec.Equals(expected_chrome_spec));
 }
@@ -551,7 +552,7 @@ TEST(ApplyQuirksModeToImage, TestWidth) {
   expected_chrome_spec.width = frame_spec.width;
   expected_chrome_spec.height = frame_spec.height;
 
-  CheckQuirksModeChangesToImageSpec(frame_spec, image_spec,
+  CheckQuirksModeChangesToImageSpec(frame_spec, image_spec, false,
                                     expected_noquirks_spec,
                                     expected_firefox_spec,
                                     expected_chrome_spec);
@@ -574,7 +575,35 @@ TEST(ApplyQuirksModeToImage, TestHeight) {
   expected_chrome_spec.width = frame_spec.width;
   expected_chrome_spec.height = frame_spec.height;
 
-  CheckQuirksModeChangesToImageSpec(frame_spec, image_spec,
+  CheckQuirksModeChangesToImageSpec(frame_spec, image_spec, false,
+                                    expected_noquirks_spec,
+                                    expected_firefox_spec,
+                                    expected_chrome_spec);
+}
+
+TEST(ApplyQuirksModeToImage, TestLoopCount) {
+  ImageSpec image_spec;
+  FrameSpec frame_spec;
+  image_spec.width = 100;
+  image_spec.height = 100;
+  image_spec.loop_count = 3;
+  frame_spec.width = 100;
+  frame_spec.height = 100;
+  frame_spec.top= 0;
+  frame_spec.left = 0;
+
+  ImageSpec expected_noquirks_spec = image_spec;
+  ImageSpec expected_firefox_spec = image_spec;
+  ImageSpec expected_chrome_spec = image_spec;
+
+  CheckQuirksModeChangesToImageSpec(frame_spec, image_spec, false,
+                                    expected_noquirks_spec,
+                                    expected_firefox_spec,
+                                    expected_chrome_spec);
+
+  expected_chrome_spec.loop_count = image_spec.loop_count + 1;
+
+  CheckQuirksModeChangesToImageSpec(frame_spec, image_spec, true,
                                     expected_noquirks_spec,
                                     expected_firefox_spec,
                                     expected_chrome_spec);
@@ -594,7 +623,7 @@ TEST(ApplyQuirksModeToImage, TestNoop) {
   ImageSpec expected_firefox_spec = image_spec;
   ImageSpec expected_chrome_spec = image_spec;
 
-  CheckQuirksModeChangesToImageSpec(frame_spec, image_spec,
+  CheckQuirksModeChangesToImageSpec(frame_spec, image_spec, false,
                                     expected_noquirks_spec,
                                     expected_firefox_spec,
                                     expected_chrome_spec);
@@ -695,7 +724,7 @@ class GifAnimationTest : public testing::Test {
     size_px width;
     size_px height;
     int bg_color_idx;
-    int loop_count;
+    size_t loop_count;
   };
 
   struct Frame {
@@ -708,8 +737,8 @@ class GifAnimationTest : public testing::Test {
     int num_colors;
     int transparent_idx;
     int square_color_idx;
-    int top;
-    int left;
+    size_px top;
+    size_px left;
   };
 
   GifAnimationTest()
@@ -754,6 +783,9 @@ class GifAnimationTest : public testing::Test {
     EXPECT_TRUE(reader_->GetImageSpec(&image_spec, &status));
     EXPECT_EQ(image.width, image_spec.width);
     EXPECT_EQ(image.height, image_spec.height);
+    EXPECT_EQ((image.loop_count == GifSquare::kNoLoopCountSpecified ?
+               1 : image.loop_count),
+              image_spec.loop_count);
     EXPECT_EQ(synth_frames_.size(), image_spec.num_frames);
     EXPECT_FALSE(image_spec.use_bg_color);
     EXPECT_EQ(kColorMap[image.bg_color_idx].Red,
@@ -824,7 +856,7 @@ class GifAnimationTest : public testing::Test {
     image.width = 100;
     image.height = 100;
     image.bg_color_idx = 3;
-    image.loop_count = -1;
+    image.loop_count = GifSquare::kNoLoopCountSpecified;
     return image;
   }
 
@@ -891,28 +923,28 @@ const GifColorType GifAnimationTest::kAlternateColorMap[kNumColors] = {
 // Non-animated, non-interlaced, only global colormap, varying disposals.
 
 TEST_F(GifAnimationTest, ReadSingleFrameOpaque) {
-  Frame frame = {10, 10, false, 0, 0, NULL, 0, -1, 2, 10, 10};
+  const Frame frame = {10, 10, false, 0, 0, NULL, 0, -1, 2, 10, 10};
   synth_frames_.push_back(frame);
 
   SynthesizeAndRead("single_frame_opaque", DefineImage());
 }
 
 TEST_F(GifAnimationTest, ReadSingleFrameTransparency) {
-  Frame frame = {10, 10, false, 0, 1, NULL, 0, 4, 2, 10, 10};
+  const Frame frame = {10, 10, false, 0, 1, NULL, 0, 4, 2, 10, 10};
   synth_frames_.push_back(frame);
 
   SynthesizeAndRead("single_frame_transparency", DefineImage());
 }
 
 TEST_F(GifAnimationTest, ReadSingleFrameOpaqueFallingOffImage) {
-  Frame frame = {10, 10, false, 0, 2, NULL, 0, -1, 2, 95, 95};
+  const Frame frame = {10, 10, false, 0, 2, NULL, 0, -1, 2, 95, 95};
   synth_frames_.push_back(frame);
 
   SynthesizeAndRead("single_frame_opaque_falling_off_image", DefineImage());
 }
 
 TEST_F(GifAnimationTest, ReadSingleFrameOpaqueLargeFallingOffImage) {
-  Frame frame = {250, 250, false, 0, 2, NULL, 0, -1, 2, 95, 95};
+  const Frame frame = {250, 250, false, 0, 2, NULL, 0, -1, 2, 95, 95};
   synth_frames_.push_back(frame);
 
   SynthesizeAndRead("single_frame_opaque_large_falling_off_image",
@@ -920,7 +952,7 @@ TEST_F(GifAnimationTest, ReadSingleFrameOpaqueLargeFallingOffImage) {
 }
 
 TEST_F(GifAnimationTest, ReadSingleFrameTransparencyFallingOffImage) {
-  Frame frame = {10, 10, false, 0, 3, NULL, 0, 4, 2, 95, 95};
+  const Frame frame = {10, 10, false, 0, 3, NULL, 0, 4, 2, 95, 95};
   synth_frames_.push_back(frame);
 
   SynthesizeAndRead("single_frame_transparent_falling_off_image",
@@ -928,7 +960,7 @@ TEST_F(GifAnimationTest, ReadSingleFrameTransparencyFallingOffImage) {
 }
 
 TEST_F(GifAnimationTest, ReadSingleFrameTransparencyFallingOffImageAtOrigin) {
-  Frame frame = {250, 250, false, 0, 3, NULL, 0, 4, 2, 0, 0};
+  const Frame frame = {250, 250, false, 0, 3, NULL, 0, 4, 2, 0, 0};
   synth_frames_.push_back(frame);
 
   SynthesizeAndRead("single_frame_transparent_falling_off_image_at_origin",
@@ -940,7 +972,7 @@ TEST_F(GifAnimationTest, ReadSingleFrameOpaqueInZeroSizeImage) {
   image.width = 0;
   image.height = 0;
 
-  Frame frame = {10, 10, false, 0, 1, NULL, 0, 4, 2, 10, 10};
+  const Frame frame = {10, 10, false, 0, 1, NULL, 0, 4, 2, 10, 10};
   synth_frames_.push_back(frame);
 
   SynthesizeAndRead("single_frame_opaque_in_zero_size_image", image);
@@ -951,7 +983,7 @@ TEST_F(GifAnimationTest, ReadSingleFrameOpaqueInZeroSizeImageAtOrigin) {
   image.width = 0;
   image.height = 0;
 
-  Frame frame = {10, 10, false, 0, 1, NULL, 0, 4, 2, 0, 0};
+  const Frame frame = {10, 10, false, 0, 1, NULL, 0, 4, 2, 0, 0};
   synth_frames_.push_back(frame);
 
   SynthesizeAndRead("single_frame_opaque_in_zero_size_image_at_origin", image);
@@ -960,14 +992,14 @@ TEST_F(GifAnimationTest, ReadSingleFrameOpaqueInZeroSizeImageAtOrigin) {
 // Non-animated, interlaced, only global colormap, varying disposals.
 
 TEST_F(GifAnimationTest, ReadSingleFrameInterlacedOpaque) {
-  Frame frame = {10, 10, true, 0, 4, NULL, 0, -1, 2, 10, 10};
+  const Frame frame = {10, 10, true, 0, 4, NULL, 0, -1, 2, 10, 10};
   synth_frames_.push_back(frame);
 
   SynthesizeAndRead("single_frame_interlaced_opaque", DefineImage());
 }
 
 TEST_F(GifAnimationTest, ReadSingleFrameInterlacedTransparency) {
-  Frame frame = {10, 10, true, 0, 0, NULL, 0, 4, 2, 10, 10};
+  const Frame frame = {10, 10, true, 0, 0, NULL, 0, 4, 2, 10, 10};
   synth_frames_.push_back(frame);
 
   SynthesizeAndRead("single_frame_interlaced_transparency", DefineImage());
@@ -975,7 +1007,7 @@ TEST_F(GifAnimationTest, ReadSingleFrameInterlacedTransparency) {
 
 TEST_F(GifAnimationTest,
        ReadSingleFrameInterlacedOpaqueFallingOffImage) {
-  Frame frame = {10, 10, true, 0, 1, NULL, 0, -1, 2, 95, 95};
+  const Frame frame = {10, 10, true, 0, 1, NULL, 0, -1, 2, 95, 95};
   synth_frames_.push_back(frame);
 
   SynthesizeAndRead("single_frame_interlaced_opaque_falling_off_image",
@@ -984,7 +1016,7 @@ TEST_F(GifAnimationTest,
 
 TEST_F(GifAnimationTest,
        ReadSingleFrameInterlacedTransparencyFallingOffImage) {
-  Frame frame = {10, 10, true, 0, 2, NULL, 0, 4, 2, 95, 95};
+  const Frame frame = {10, 10, true, 0, 2, NULL, 0, 4, 2, 95, 95};
   synth_frames_.push_back(frame);
 
   SynthesizeAndRead("single_frame_interlaced_transparent_falling_off_image",
@@ -995,7 +1027,7 @@ TEST_F(GifAnimationTest,
 // varying disposals.
 
 TEST_F(GifAnimationTest, ReadSingleFrameDualColormapsOpaque) {
-  Frame frame =
+  const Frame frame =
       {10, 10, false, 0, 3, kAlternateColorMap, kNumColors, -1, 2, 10, 10};
   synth_frames_.push_back(frame);
 
@@ -1003,7 +1035,7 @@ TEST_F(GifAnimationTest, ReadSingleFrameDualColormapsOpaque) {
 }
 
 TEST_F(GifAnimationTest, ReadSingleFrameDualColormapsTransparency) {
-  Frame frame =
+  const Frame frame =
       {10, 10, false, 0, 4, kAlternateColorMap, kNumColors, 4, 2, 10, 10};
   synth_frames_.push_back(frame);
 
@@ -1012,7 +1044,7 @@ TEST_F(GifAnimationTest, ReadSingleFrameDualColormapsTransparency) {
 
 TEST_F(GifAnimationTest,
        ReadSingleFrameDualColormapsOpaqueFallingOffImage) {
-  Frame frame =
+  const Frame frame =
       {10, 10, false, 0, 0, kAlternateColorMap, kNumColors, -1, 2, 95, 95};
   synth_frames_.push_back(frame);
 
@@ -1022,7 +1054,7 @@ TEST_F(GifAnimationTest,
 
 TEST_F(GifAnimationTest,
        ReadSingleFrameDualColormapsTransparencyFallingOffImage) {
-  Frame frame =
+  const Frame frame =
       {10, 10, false, 0, 1, kAlternateColorMap, kNumColors, 4, 2, 95, 95};
   synth_frames_.push_back(frame);
 
@@ -1033,7 +1065,7 @@ TEST_F(GifAnimationTest,
 // Non-animated, non-interlaced, only global colormap, varying
 // disposals, varying delays.
 TEST_F(GifAnimationTest, ReadSingleFrameDelayOpaque) {
-  Frame frame = {10, 10, false, 10, 0, NULL, 0, -1, 2, 10, 10};
+  const Frame frame = {10, 10, false, 10, 0, NULL, 0, -1, 2, 10, 10};
   synth_frames_.push_back(frame);
 
   SynthesizeAndRead("single_frame_opaque", DefineImage());
@@ -1279,7 +1311,7 @@ TEST_F(GifAnimationTest, ReadMultipleFrameTransparencyNoDelayLoopInfinite) {
 
 TEST_F(GifAnimationTest, ReadMultipleFrameTransparencyLoopThrice) {
   Image image = DefineImage();
-  image.loop_count = 2;
+  image.loop_count = 3;
 
   Frame frame1 = {20, 20, false, 50, 0, NULL, 0, -1, 2, 10, 10};
   synth_frames_.push_back(frame1);

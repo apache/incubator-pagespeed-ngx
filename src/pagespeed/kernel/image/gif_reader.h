@@ -141,9 +141,11 @@ class GifFrameReader : public MultipleFrameReader {
 
   virtual ScanlineStatus set_quirks_mode(QuirksMode quirks_mode);
 
-  // Apply the specified browser-specific tweaking of image_spec
-  // based on the first frame's frame_spec.
+  // Apply the specified browser-specific tweaking of image_spec based
+  // on the first frame's frame_spec and whether an explicit
+  // loop_count was read from the GIF file.
   static void ApplyQuirksModeToImage(QuirksMode quirks_mode,
+                                     bool has_loop_count,
                                      const FrameSpec& frame_spec,
                                      ImageSpec* image_spec);
 
@@ -190,7 +192,7 @@ class GifFrameReader : public MultipleFrameReader {
   FrameSpec frame_spec_;
 
   // Whether we've already encountered the animation loop count.
-  bool got_loop_count_;
+  bool has_loop_count_;
 
   // The next frame to be read AFTER the current frame.
   size_px next_frame_;

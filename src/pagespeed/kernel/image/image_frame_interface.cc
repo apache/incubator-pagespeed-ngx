@@ -34,7 +34,7 @@ void ImageSpec::Reset() {
     width = 0;
     height = 0;
     num_frames = 0;
-    loop_count = 0;
+    loop_count = 1;
     memset(bg_color, 0, sizeof(bg_color));
     use_bg_color = true;
 }

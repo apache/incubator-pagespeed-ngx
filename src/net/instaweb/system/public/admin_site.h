@@ -59,12 +59,14 @@ class AdminSite {
 
   // Handler which serves PSOL console.
   // Note: ConsoleHandler always succeeds.
-  void ConsoleHandler(const SystemRewriteOptions& options, AdminSource source,
+  void ConsoleHandler(const SystemRewriteOptions& global_options,
+                      const RewriteOptions& options, AdminSource source,
                       const QueryParams& query_params, AsyncFetch* fetch,
                       Statistics* statistics);
 
   // Displays recent Info/Warning/Error messages.: public ServerContext
-  void MessageHistoryHandler(AdminSource source, AsyncFetch* fetch);
+  void MessageHistoryHandler(const RewriteOptions& options,
+                             AdminSource source, AsyncFetch* fetch);
 
   // Deprecated handler for graphs in the PSOL console.
   void StatisticsGraphsHandler(
@@ -75,7 +77,8 @@ class AdminSite {
   // message-histogram, console, etc.
   void AdminPage(bool is_global, const GoogleUrl& stripped_gurl,
                  const QueryParams& query_params,
-                 const RewriteOptions* options, SystemCachePath* cache_path,
+                 const RewriteOptions* options,
+                 SystemCachePath* cache_path,
                  AsyncFetch* fetch, SystemCaches* system_caches,
                  CacheInterface* filesystem_metadata_cache,
                  HTTPCache* http_cache, CacheInterface* metadata_cache,

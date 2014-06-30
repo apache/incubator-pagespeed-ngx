@@ -138,7 +138,8 @@ class SystemServerContext : public ServerContext {
                       const QueryParams& query_params, AsyncFetch* fetch);
 
   // Displays recent Info/Warning/Error messages.
-  void MessageHistoryHandler(AdminSite::AdminSource source,
+  void MessageHistoryHandler(const RewriteOptions& options,
+                             AdminSite::AdminSource source,
                              AsyncFetch* fetch);
 
   // Deprecated handler for graphs in the PSOL console.

@@ -20,10 +20,11 @@
 #define PAGESPEED_KERNEL_IMAGE_GIF_SQUARE_H_
 
 #include <stdbool.h>
-
+#include <cstddef>
 #include <vector>
 
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/image/image_util.h"
 
 extern "C" {
 #include "third_party/giflib/lib/gif_lib.h"
@@ -48,13 +49,17 @@ class GifSquare {
   // Prepares the GIF screen to have dimensions 'width' by 'height', a
   // background color 'bg_color_idx' into the 'colormap' of size
   // 'num_colors' (a power of 2) that is used for the image. It marks
-  // this as a GIF89 image if 'gif89' is set. If loop count is
-  // non-negative, it inserts an application extension block
-  // indicating to loop the animation forever (if zero) or the
+  // this as a GIF89 image if 'gif89' is set. If loop_count is less
+  // than kNoLoopCountSpecified, it inserts an application extension
+  // block indicating to loop the animation forever (if zero) or the
   // specified number of times. Returns true on success.
-  bool PrepareScreen(bool gif89, int width, int height,
+  //
+  // NOTE: Chrome (at least v35) interprets the loop_count as the
+  // number of times to *repeat* the animation, so the user will see
+  // the animation loop_count+1 times.
+  bool PrepareScreen(bool gif89, size_px width, size_px height,
                      const GifColorType* color_map, int num_colors,
-                     int bg_color_idx, int loop_count);
+                     int bg_color_idx, size_t loop_count);
 
   // Puts a single GIF image. The image is a 'width' by 'height'
   // rectangle whose color is given by the 'color_index'-th entry of
@@ -66,7 +71,7 @@ class GifSquare {
   // 'delay_cs' centiseconds.
   //
   // Returns true on success.
-  bool PutImage(int left, int top, int width, int height,
+  bool PutImage(size_px left, size_px top, size_px width, size_px height,
                 const GifColorType* colormap, int num_colors,
                 int color_index, int transparent_idx,
                 bool interlace, int delay_cs, int disposal_method);
@@ -81,6 +86,7 @@ class GifSquare {
   // Flushes and closes the GIF file.
   bool Close();
 
+  static const size_t kNoLoopCountSpecified;
   static const GifColorType kGifWhite;
   static const GifColorType kGifBlack;
   static const GifColorType kGifGray;

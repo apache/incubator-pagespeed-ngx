@@ -1075,9 +1075,10 @@ class RewriteDriver : public HtmlParse {
   // if not NULL, it has not been flushed, and if debug is enabled. The form
   // that takes a repeated field is intended for use by CachedResult, e.g:
   //   InsertDebugComment(cached_result.debug_message(), element);
-  void InsertDebugComment(StringPiece message, HtmlElement* element);
+  // Messages are HTML-escaped before being written out to the DOM.
+  void InsertDebugComment(StringPiece unescaped_message, HtmlElement* element);
   void InsertDebugComments(
-      const protobuf::RepeatedPtrField<GoogleString>& messages,
+      const protobuf::RepeatedPtrField<GoogleString>& unescaped_messages,
       HtmlElement* element);
   void InsertUnauthorizedDomainDebugComment(StringPiece url,
                                             HtmlElement* element);

@@ -154,6 +154,7 @@
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/writer.h"
 #include "pagespeed/kernel/base/callback.h"
+#include "pagespeed/kernel/html/html_keywords.h"
 #include "pagespeed/kernel/html/html_node.h"
 #include "pagespeed/kernel/base/sha1_signature.h"
 #include "pagespeed/kernel/http/content_type.h"
@@ -3257,22 +3258,30 @@ FlushEarlyInfo* RewriteDriver::flush_early_info() {
   return flush_early_info_.get();
 }
 
-void RewriteDriver::InsertDebugComment(StringPiece message,
+void RewriteDriver::InsertDebugComment(StringPiece unescaped,
                                        HtmlElement* element) {
   if (DebugMode() && element != NULL && IsRewritable(element)) {
-    HtmlNode* comment_node = NewCommentNode(element->parent(), message);
+    GoogleString escaped;
+    HtmlKeywords::Escape(unescaped, &escaped);
+
+    HtmlNode* comment_node = NewCommentNode(element->parent(), escaped);
     InsertNodeAfterNode(element, comment_node);
   }
 }
 
 void RewriteDriver::InsertDebugComments(
-    const protobuf::RepeatedPtrField<GoogleString>& messages,
+    const protobuf::RepeatedPtrField<GoogleString>& unescaped_messages,
     HtmlElement* element) {
   if (DebugMode() && element != NULL && IsRewritable(element)) {
     HtmlNode* preceding_node = element;
-    for (protobuf::RepeatedPtrField<GoogleString>::const_iterator it =
-             messages.begin(); it != messages.end(); ++it) {
-      HtmlNode* comment_node = NewCommentNode(preceding_node->parent(), *it);
+    for (protobuf::RepeatedPtrField<GoogleString>::const_iterator unescaped =
+             unescaped_messages.begin();
+         unescaped != unescaped_messages.end(); ++unescaped) {
+      GoogleString escaped;
+      HtmlKeywords::Escape(*unescaped, &escaped);
+
+      HtmlNode* comment_node =
+          NewCommentNode(preceding_node->parent(), escaped);
       InsertNodeAfterNode(preceding_node, comment_node);
       preceding_node = comment_node;
     }
@@ -3293,7 +3302,9 @@ void RewriteDriver::InsertUnauthorizedDomainDebugComment(StringPiece url,
     } else {
       StrAppend(&comment, "it is not authorized");
     }
-    InsertNodeAfterNode(element, NewCommentNode(element->parent(), comment));
+    GoogleString escaped;
+    HtmlKeywords::Escape(comment, &escaped);
+    InsertNodeAfterNode(element, NewCommentNode(element->parent(), escaped));
   }
 }
 

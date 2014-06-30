@@ -72,8 +72,8 @@ class HtmlColor {
   // These methods also accept a CSS shorthand string "#xyz" for convenience.
   // "#xyz" is expanded to "#xxyyzz" before processing.
   explicit HtmlColor(StringPiece colorstr);
-  explicit HtmlColor(const char* colorstr, int colorstrlen);
-  explicit HtmlColor(unsigned char r, unsigned char g, unsigned char b);
+  HtmlColor(const char* colorstr, int colorstrlen);
+  HtmlColor(unsigned char r, unsigned char g, unsigned char b);
 
   bool IsDefined() const {
     return is_bad_value_ == 0;
