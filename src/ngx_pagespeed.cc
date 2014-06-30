@@ -1277,10 +1277,6 @@ ngx_int_t ps_create_connection(
 
 // Populate cfg_* with configuration information for this request.
 // Thin wrappers around ngx_http_get_module_*_conf and cast.
-ps_main_conf_t* ps_get_main_config(ngx_http_request_t* r) {
-  return static_cast<ps_main_conf_t*>(
-      ngx_http_get_module_main_conf(r, ngx_pagespeed));
-}
 ps_srv_conf_t* ps_get_srv_config(ngx_http_request_t* r) {
   return static_cast<ps_srv_conf_t*>(
       ngx_http_get_module_srv_conf(r, ngx_pagespeed));
