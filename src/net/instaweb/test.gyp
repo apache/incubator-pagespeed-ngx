@@ -61,6 +61,7 @@
         '<(SHARED_INTERMEDIATE_DIR)/protoc_out/instaweb',
         '<(DEPTH)',
         '<(DEPTH)/third_party/css_parser/src',
+        '<(DEPTH)/third_party/libwebp/src',
       ],
       'sources': [
         'automatic/cache_html_flow_test.cc',

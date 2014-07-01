@@ -440,12 +440,12 @@
     {
       'target_name': 'instaweb_messages_js_data2c',
       'variables': {
-        'instaweb_data2c_subdir': 'net/instaweb/rewriter',
-        'instaweb_js_subdir': 'net/instaweb/genfiles/rewriter',
+        'instaweb_data2c_subdir': 'net/instaweb/system',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/system',
         'var_name': 'messages_js',
       },
       'sources': [
-        'genfiles/rewriter/messages_js_dbg.js',
+        'genfiles/system/messages_js_dbg.js',
       ],
       'includes': [
         'data2c.gypi',
@@ -454,12 +454,12 @@
     {
       'target_name': 'instaweb_messages_js_opt_data2c',
       'variables': {
-        'instaweb_data2c_subdir': 'net/instaweb/rewriter',
-        'instaweb_js_subdir': 'net/instaweb/genfiles/rewriter',
+        'instaweb_data2c_subdir': 'net/instaweb/system',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/system',
         'var_name': 'messages_js_opt',
       },
       'sources': [
-        'genfiles/rewriter/messages_js_opt.js',
+        'genfiles/system/messages_js_opt.js',
       ],
       'includes': [
         'data2c.gypi',
@@ -524,12 +524,12 @@
     {
       'target_name': 'instaweb_console_js_data2c',
       'variables': {
-        'instaweb_data2c_subdir': 'net/instaweb/rewriter',
-        'instaweb_js_subdir': 'net/instaweb/genfiles/rewriter',
+        'instaweb_data2c_subdir': 'net/instaweb/system',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/system',
         'var_name': 'console_js',
       },
       'sources': [
-        'genfiles/rewriter/console_js_dbg.js',
+        'genfiles/system/console_js_dbg.js',
       ],
       'includes': [
         'data2c.gypi',
@@ -538,12 +538,12 @@
     {
       'target_name': 'instaweb_console_js_opt_data2c',
       'variables': {
-        'instaweb_data2c_subdir': 'net/instaweb/rewriter',
-        'instaweb_js_subdir': 'net/instaweb/genfiles/rewriter',
+        'instaweb_data2c_subdir': 'net/instaweb/system',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/system',
         'var_name': 'console_js_opt',
       },
       'sources': [
-        'genfiles/rewriter/console_js_opt.js',
+        'genfiles/system/console_js_opt.js',
       ],
       'includes': [
         'data2c.gypi',
@@ -567,12 +567,12 @@
     {
       'target_name': 'instaweb_console_css_data2c',
       'variables': {
-        'instaweb_data2c_subdir': 'net/instaweb/rewriter',
-        'instaweb_js_subdir': 'net/instaweb/genfiles/rewriter',
+        'instaweb_data2c_subdir': 'net/instaweb/system',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/system',
         'var_name': 'console_css',
       },
       'sources': [
-        'genfiles/rewriter/console_css.css',
+        'genfiles/system/console_css.css',
       ],
       'includes': [
         'data2c.gypi',
@@ -1014,6 +1014,7 @@
       'include_dirs': [
         '<(instaweb_root)',
         '<(DEPTH)',
+        '<(DEPTH)/third_party/libwebp/src',
       ],
       'direct_dependent_settings': {
         'include_dirs': [

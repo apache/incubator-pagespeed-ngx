@@ -55,10 +55,53 @@ const uint8_t kAlphaOpaque = 255;
 const uint8_t kAlphaTransparent = 0;
 typedef uint8_t PixelRgbaChannels[RGBA_NUM_CHANNELS];
 
+// Packs the given A, R, G, B values into a single uint32.
+//
+// TODO(vchudnov): Double-check that this works on big-endian systems,
+// too. I think the WebP encoding routines might take care of
+// endianness automatically.
+inline uint32_t PackAsArgb(uint8_t alpha,
+                           uint8_t red,
+                           uint8_t green,
+                           uint8_t blue) {
+  return
+      (static_cast<uint32_t>(alpha) << 24) |
+      (red << 16) |
+      (green << 8) |
+      (blue);
+}
+
+// Packs a pixel's color channel data in RGBA format to a single
+// uint32_t in ARGB format.
+inline uint32_t RgbaToPackedArgb(const PixelRgbaChannels rgba) {
+  return PackAsArgb(rgba[RGBA_ALPHA],
+                    rgba[RGBA_RED],
+                    rgba[RGBA_GREEN],
+                    rgba[RGBA_BLUE]);
+}
+
+// Packs a pixel's color channel data in RGB format to a single
+// uint32_t in ARGB format.
+inline uint32_t RgbToPackedArgb(const PixelRgbaChannels rgba) {
+  return PackAsArgb(kAlphaOpaque,
+                    rgba[RGBA_RED],
+                    rgba[RGBA_GREEN],
+                    rgba[RGBA_BLUE]);
+}
+
+// Converts a pixel's grayscale data into a single uint32_t in ARGB
+// format.
+inline uint32_t GrayscaleToPackedArgb(const uint8_t luminance) {
+  return PackAsArgb(kAlphaOpaque,
+                    luminance,
+                    luminance,
+                    luminance);
+}
+
 // Sizes that can be measured in units of pixels: width, height,
 // number of frames (a third dimension of the image), and indices into
 // the same.
-typedef unsigned int size_px;
+typedef uint32 size_px;
 
 // Returns the MIME-type string corresponding to the given ImageFormat.
 const char* ImageFormatToMimeTypeString(ImageFormat image_type);

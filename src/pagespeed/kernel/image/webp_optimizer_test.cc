@@ -16,11 +16,17 @@
 
 // Author: Huibao Lin
 
+#include <vector>
+
+#include "base/logging.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/base/null_mutex.h"
+#include "pagespeed/kernel/base/stdio_file_system.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/image/image_converter.h"
 #include "pagespeed/kernel/image/png_optimizer.h"
 #include "pagespeed/kernel/image/read_image.h"
 #include "pagespeed/kernel/image/test_utils.h"
@@ -30,16 +36,25 @@ namespace {
 
 using net_instaweb::MockMessageHandler;
 using net_instaweb::NullMutex;
+using pagespeed::image_compression::FrameSpec;
+using pagespeed::image_compression::ImageConverter;
+using pagespeed::image_compression::ImageSpec;
+using pagespeed::image_compression::IMAGE_GIF;
 using pagespeed::image_compression::IMAGE_PNG;
 using pagespeed::image_compression::IMAGE_WEBP;
 using pagespeed::image_compression::kPngSuiteTestDir;
+using pagespeed::image_compression::kTestRootDir;
 using pagespeed::image_compression::kWebpTestDir;
 using pagespeed::image_compression::PixelFormat;
 using pagespeed::image_compression::PngScanlineReaderRaw;
+using pagespeed::image_compression::ReadFile;
 using pagespeed::image_compression::ReadTestFile;
 using pagespeed::image_compression::RGB_888;
 using pagespeed::image_compression::RGBA_8888;
+using pagespeed::image_compression::SCANLINE_STATUS_INVOCATION_ERROR;
+using pagespeed::image_compression::SCANLINE_STATUS_SUCCESS;
 using pagespeed::image_compression::ScanlineReaderInterface;
+using pagespeed::image_compression::ScanlineStatus;
 using pagespeed::image_compression::ScanlineWriterInterface;
 using pagespeed::image_compression::WebpConfiguration;
 using pagespeed::image_compression::WebpScanlineReader;
@@ -241,6 +256,275 @@ TEST_F(WebpScanlineOptimizerTest, InvalidWebpHeader) {
 TEST_F(WebpScanlineOptimizerTest, InvalidWebpBody) {
   ASSERT_TRUE(Initialize(kFileCorruptedBody));
   ASSERT_FALSE(reader_.ReadNextScanline(&scanline_));
+}
+
+
+class AnimatedWebpTest : public testing::Test {
+ public:
+  AnimatedWebpTest() : message_handler_(new NullMutex) {}
+
+  void ConvertGifToWebp(const GoogleString& input_image,
+                        WebpConfiguration* webp_config,
+                        GoogleString* webp_image) {
+    ScanlineStatus status;
+    reader_.reset(
+        CreateImageFrameReader(IMAGE_GIF,
+                               input_image.c_str(), input_image.length(),
+                               &message_handler_, &status));
+    ASSERT_TRUE(status.Success());
+    writer_.reset(CreateImageFrameWriter(IMAGE_WEBP, webp_config, webp_image,
+                                         &message_handler_, &status));
+    ASSERT_TRUE(status.Success());
+
+    EXPECT_TRUE(
+        ImageConverter::ConvertMultipleFrameImage(reader_.get(),
+                                                  writer_.get()).Success());
+  }
+
+  bool PicturesEqual(const GoogleString& compare,
+                     const GoogleString& input_file_name,
+                     const GoogleString& output_file_name) {
+    // TODO(vchudnov): Fill this in.
+    return true;
+  }
+
+  void CheckGifVsWebP(const char* filename, WebpConfiguration* webp_config,
+                      bool check_pixels) {
+    GoogleString input_path = net_instaweb::StrCat(net_instaweb::GTestSrcDir(),
+                                                   kTestRootDir, filename);
+
+    GoogleString input_image;
+    ASSERT_TRUE(ReadFile(input_path, &input_image));
+    DVLOG(1) << "Read image: " << input_path;
+
+    GoogleString output_image;
+    ConvertGifToWebp(input_image, webp_config, &output_image);
+
+    GoogleString output_path =
+        net_instaweb::StrCat(net_instaweb::GTestTempDir(),
+                             kTestRootDir,
+                             filename, ".webp");
+
+    net_instaweb::StdioFileSystem file_system;
+    file_system.WriteFile(output_path.c_str(), output_image, &message_handler_);
+    DVLOG(1) << "Wrote image: " << output_path;
+
+    if (check_pixels) {
+      // TODO(vchudnov): Employ a pixel-by-pixel comparison program.
+      GoogleString compare;
+      EXPECT_TRUE(PicturesEqual(compare, input_path, output_path));
+    }
+  }
+
+  void PrepareWriterFor5x5Image() {
+    webp_config_.lossless = false;
+    ScanlineStatus status;
+    writer_.reset(
+        CreateImageFrameWriter(IMAGE_WEBP, &webp_config_, &output_image_,
+                               &message_handler_, &status));
+    ASSERT_TRUE(status.Success());
+
+    image_spec_.width = 5;
+    image_spec_.height = 5;
+    image_spec_.num_frames = 1;
+    image_spec_.loop_count = 1;
+    EXPECT_TRUE(writer_->PrepareImage(&image_spec_, &status));
+  }
+
+ protected:
+  MockMessageHandler message_handler_;
+  scoped_ptr<pagespeed::image_compression::MultipleFrameWriter> writer_;
+
+ private:
+  scoped_ptr<pagespeed::image_compression::MultipleFrameReader> reader_;
+
+  WebpConfiguration webp_config_;
+  GoogleString output_image_;
+  ImageSpec image_spec_;
+};
+
+struct ProgressData {
+  net_instaweb::MessageHandler* handler;
+  int times_called;
+};
+
+bool UpdateProgress(int percent, void* user_data) {
+  ProgressData* progress_data = static_cast<ProgressData*>(user_data);
+  progress_data->times_called++;
+  return true;
+}
+
+TEST_F(AnimatedWebpTest, ConvertGifs) {
+  ProgressData progress_data;
+  progress_data.handler = &message_handler_;
+
+  WebpConfiguration webp_config;
+  webp_config.lossless = true;
+  webp_config.quality = 50;
+  webp_config.progress_hook = UpdateProgress;
+  webp_config.user_data = &progress_data;
+
+  progress_data.times_called = 0;
+  CheckGifVsWebP("gif/animated.gif", &webp_config, true);
+  EXPECT_LT(3, progress_data.times_called);
+
+  progress_data.times_called = 0;
+  // Fails because of b/15484578                                 [google]
+  CheckGifVsWebP("gif/completely_transparent.gif", &webp_config, false);
+  EXPECT_LT(3, progress_data.times_called);
+
+  progress_data.times_called = 0;
+  // anim_diff bug: canvas reporting issue: b/15755291           [google]
+  CheckGifVsWebP("gif/square2loop.gif", &webp_config, false);
+  EXPECT_LT(3, progress_data.times_called);
+
+  progress_data.times_called = 0;
+  // anim_diff bug: loop count mismatch: b/15758805              [google]
+  CheckGifVsWebP("gif/full2loop.gif", &webp_config, false);
+  EXPECT_LT(3, progress_data.times_called);
+
+  progress_data.times_called = 0;
+  // anim_diff bug: loop count mismatch: b/15758805              [google]
+  CheckGifVsWebP("gif/interlaced.gif", &webp_config, false);
+  EXPECT_LT(3, progress_data.times_called);
+
+  progress_data.times_called = 0;
+  // anim_diff bug: SEGV: b/15758908                             [google]
+  CheckGifVsWebP("gif/red_empty_screen.gif", &webp_config, false);
+  EXPECT_LT(3, progress_data.times_called);
+
+  progress_data.times_called = 0;
+  // anim_diff bug: loop count mismatch: b/15758805              [google]
+  CheckGifVsWebP("gif/red_unused_invalid_background.gif", &webp_config, false);
+  EXPECT_LT(3, progress_data.times_called);
+
+  progress_data.times_called = 0;
+  // anim_diff bug: loop count mismatch: b/15758805              [google]
+  CheckGifVsWebP("gif/transparent.gif", &webp_config, false);
+  EXPECT_LT(3, progress_data.times_called);
+
+  progress_data.times_called = 0;
+  // anim_diff bug: SEGV: b/15758908                             [google]
+  CheckGifVsWebP("gif/zero_size_animation.gif", &webp_config, false);
+  EXPECT_LT(3, progress_data.times_called);
+
+  progress_data.times_called = 0;
+  // anim_diff bug: canvas reporting issue: b/15755291           [google]
+  CheckGifVsWebP("webp/multiple_frame_opaque.gif", &webp_config, false);
+  EXPECT_LT(3, progress_data.times_called);
+
+  progress_data.times_called = 0;
+  // anim_diff bug: canvas reporting issue: b/15755291           [google]
+  CheckGifVsWebP("webp/multiple_frame_opaque_gray.gif", &webp_config, false);
+  EXPECT_LT(3, progress_data.times_called);
+}
+
+TEST_F(AnimatedWebpTest, RequireFirstScanline) {
+  PrepareWriterFor5x5Image();
+  ScanlineStatus status;
+
+  FrameSpec frame_spec;
+  frame_spec.width = 5;
+  frame_spec.height = 5;
+  frame_spec.top = 0;
+  frame_spec.left = 0;
+  frame_spec.pixel_format = RGB_888;
+  EXPECT_TRUE(writer_->PrepareNextFrame(&frame_spec, &status));
+
+  EXPECT_FALSE(writer_->PrepareNextFrame(&frame_spec, &status));
+  EXPECT_EQ(SCANLINE_STATUS_INVOCATION_ERROR, status.type());
+}
+
+TEST_F(AnimatedWebpTest, RequireAllScanlines) {
+  PrepareWriterFor5x5Image();
+  ScanlineStatus status;
+
+  FrameSpec frame_spec;
+  frame_spec.width = 5;
+  frame_spec.height = 5;
+  frame_spec.top = 0;
+  frame_spec.left = 0;
+  frame_spec.pixel_format = RGB_888;
+  EXPECT_TRUE(writer_->PrepareNextFrame(&frame_spec, &status));
+
+  uint8_t scanline[300];
+  memset(scanline, 0x80, GetBytesPerPixel(RGB_888)*frame_spec.width);
+  EXPECT_TRUE(writer_->WriteNextScanline(scanline, &status));
+
+  EXPECT_FALSE(writer_->PrepareNextFrame(&frame_spec, &status));
+  EXPECT_EQ(SCANLINE_STATUS_INVOCATION_ERROR, status.type());
+}
+
+TEST_F(AnimatedWebpTest, RejectExtraScanlines) {
+  PrepareWriterFor5x5Image();
+  ScanlineStatus status;
+
+  FrameSpec frame_spec;
+  frame_spec.width = 3;
+  frame_spec.height = 3;
+  frame_spec.top = 0;
+  frame_spec.left = 0;
+  frame_spec.pixel_format = RGB_888;
+  EXPECT_TRUE(writer_->PrepareNextFrame(&frame_spec, &status));
+
+  uint8_t scanline[300];
+  memset(scanline, 0x80, GetBytesPerPixel(RGB_888)*frame_spec.width);
+  for (int j = 0; j < frame_spec.height; ++j) {
+    EXPECT_TRUE(writer_->WriteNextScanline(scanline, &status));
+  }
+  EXPECT_FALSE(writer_->WriteNextScanline(scanline, &status));
+}
+
+TEST_F(AnimatedWebpTest, FrameAtOriginFallingOffImageFails) {
+  PrepareWriterFor5x5Image();
+  ScanlineStatus status;
+
+  FrameSpec frame_spec;
+  frame_spec.top = 0;
+  frame_spec.left = 0;
+  frame_spec.pixel_format = RGB_888;
+
+  frame_spec.width = 6;
+  frame_spec.height = 5;
+  EXPECT_FALSE(writer_->PrepareNextFrame(&frame_spec, &status));
+  EXPECT_EQ(SCANLINE_STATUS_INVOCATION_ERROR, status.type());
+
+  status = ScanlineStatus(SCANLINE_STATUS_SUCCESS);
+  frame_spec.width = 5;
+  frame_spec.height = 6;
+  EXPECT_FALSE(writer_->PrepareNextFrame(&frame_spec, &status));
+  EXPECT_EQ(SCANLINE_STATUS_INVOCATION_ERROR, status.type());
+
+  status = ScanlineStatus(SCANLINE_STATUS_SUCCESS);
+  frame_spec.width = 5;
+  frame_spec.height = 5;
+  EXPECT_TRUE(writer_->PrepareNextFrame(&frame_spec, &status));
+}
+
+TEST_F(AnimatedWebpTest, FrameInMiddleFallingOffImageFails) {
+  PrepareWriterFor5x5Image();
+  ScanlineStatus status;
+
+  FrameSpec frame_spec;
+  frame_spec.width = 5;
+  frame_spec.height = 5;
+  frame_spec.pixel_format = RGB_888;
+
+  frame_spec.top = 1;
+  frame_spec.left = 0;
+  EXPECT_FALSE(writer_->PrepareNextFrame(&frame_spec, &status));
+  EXPECT_EQ(SCANLINE_STATUS_INVOCATION_ERROR, status.type());
+
+  status = ScanlineStatus(SCANLINE_STATUS_SUCCESS);
+  frame_spec.top = 0;
+  frame_spec.left = 1;
+  EXPECT_FALSE(writer_->PrepareNextFrame(&frame_spec, &status));
+  EXPECT_EQ(SCANLINE_STATUS_INVOCATION_ERROR, status.type());
+
+  status = ScanlineStatus(SCANLINE_STATUS_SUCCESS);
+  frame_spec.top = 0;
+  frame_spec.left = 0;
+  EXPECT_TRUE(writer_->PrepareNextFrame(&frame_spec, &status));
 }
 
 }  // namespace

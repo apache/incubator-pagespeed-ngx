@@ -53,12 +53,17 @@ size_px ImageSpec::TruncateYIndex(const size_px y) {
   return y;
 }
 
+bool ImageSpec::CanContainFrame(const FrameSpec& frame_spec) const {
+  return ((frame_spec.left + frame_spec.width <= width) &&
+          (frame_spec.top + frame_spec.height <= height));
+}
+
 GoogleString ImageSpec::ToString() const {
-  return StringPrintf("Image: %d x %d : %u frames, repeated %lu times",
+  return StringPrintf("Image: %d x %d : %u frames, repeated %u times",
                       width, height, num_frames, loop_count);
 }
 
-bool ImageSpec::Equals(const ImageSpec& other) {
+bool ImageSpec::Equals(const ImageSpec& other) const {
   return ((width == other.width) &&
           (height == other.height) &&
           (num_frames == other.num_frames) &&
@@ -91,7 +96,7 @@ GoogleString FrameSpec::ToString() const {
       width, height, top, left, pixel_format, duration_ms, disposal);
 }
 
-bool FrameSpec::Equals(const FrameSpec& other) {
+bool FrameSpec::Equals(const FrameSpec& other) const {
   return ((width == other.width) &&
           (height == other.height) &&
           (top == other.top) &&

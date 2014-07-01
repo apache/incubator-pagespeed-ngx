@@ -45,6 +45,8 @@ BASE_LIBS = \
   build/libwebp_dec.a \
   build/libwebp_dsp.a \
   build/libwebp_enc.a \
+  build/libwebp_enc_mux.a \
+  build/libwebp_mux.a \
   build/libwebp_utils.a \
   net/instaweb/libautomatic_util.a \
   net/instaweb/libinstaweb_add_instrumentation_data2c.a \

@@ -165,6 +165,7 @@
         'libwebp_dsp',
         'libwebp_dsp_neon',
         'libwebp_enc',
+        'libwebp_enc_mux',
         'libwebp_utils',
       ],
       'direct_dependent_settings': {

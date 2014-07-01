@@ -195,7 +195,14 @@ ScanlineStatus FrameToScanlineWriterAdapter::InitWithStatus(
   // Non-animated images have only one frame.
   image_spec_.num_frames = 1;
 
+  frame_spec_.width = image_spec_.width;
+  frame_spec_.height = image_spec_.height;
+  frame_spec_.top = 0;
+  frame_spec_.left = 0;
   frame_spec_.pixel_format = pixel_format;
+  frame_spec_.duration_ms = 0;
+  frame_spec_.disposal = FrameSpec::DISPOSAL_NONE;
+
   init_done_ = true;
   return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
 }

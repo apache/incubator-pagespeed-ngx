@@ -38,6 +38,8 @@ namespace image_compression {
 
 using net_instaweb::MessageHandler;
 
+struct FrameSpec;
+
 struct ImageSpec {
   ImageSpec();
   void Reset();
@@ -48,7 +50,7 @@ struct ImageSpec {
 
   // This is the total number of times to loop through all the frames
   // (NOT the *repeat* number).
-  size_t loop_count;
+  unsigned int loop_count;
 
   PixelRgbaChannels bg_color;
   bool use_bg_color;
@@ -61,18 +63,23 @@ struct ImageSpec {
   // that a value of 'height' denotes the first invalid index.
   size_px TruncateYIndex(size_px y);
 
+  // Returns true iff frame_spec fits entirely within this ImageSpec.
+  bool CanContainFrame(const FrameSpec& frame_spec) const;
+
   GoogleString ToString() const;
-  bool Equals(const ImageSpec& other);
+  bool Equals(const ImageSpec& other) const;
 };
 
+// FrameSpec must fit entirely within its image; in other words
+// ImageSpec::CanContainFrame(frame_spec) should return true.
 struct FrameSpec {
   enum DisposalMethod {
     DISPOSAL_UNKNOWN = 0,
     DISPOSAL_NONE,
     DISPOSAL_BACKGROUND,
+
     // TODO(vchudnov): May not be supported by WebP. If that's the
     // case, treat as DISPOSAL_BACKGROUND instead.
-
     DISPOSAL_RESTORE
   };
 
@@ -88,7 +95,7 @@ struct FrameSpec {
   DisposalMethod disposal;
 
   GoogleString ToString() const;
-  bool Equals(const FrameSpec& other);
+  bool Equals(const FrameSpec& other) const;
 };
 
 // Sometimes the readers or writers may need to tweak their behavior

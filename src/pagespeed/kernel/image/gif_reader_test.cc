@@ -1324,5 +1324,4 @@ TEST_F(GifAnimationTest, ReadMultipleFrameTransparencyLoopThrice) {
 
   SynthesizeAndRead("multiple_frame_transparency_loop_thrice", image);
 }
-
 }  // namespace

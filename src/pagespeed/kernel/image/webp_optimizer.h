@@ -21,6 +21,7 @@
 
 #include <cstddef>
 #include "third_party/libwebp/src/webp/encode.h"
+#include "third_party/libwebp/examples/gif2webp_util.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
@@ -101,46 +102,63 @@ class WebpFrameWriter : public MultipleFrameWriter {
   virtual ScanlineStatus FinalizeWrite();
 
  private:
+  // The function to be called by libwebp's progress hook (with 'this'
+  // as the user data), which in turn will call the user-supplied function
+  // in progress_hook_, passing it progress_hook_data_.
+  static int ProgressHook(int percent, const WebPPicture* picture);
+
+  // Commits the just-read frame to the animation cache.
+  ScanlineStatus CacheCurrentFrame();
+
+  // Utility function to deallocate libwebp-defined data structures.
+  void FreeWebpStructs();
+
   // This class does NOT own image_spec_.
   const ImageSpec* image_spec_;
+  FrameSpec frame_spec_;
 
+  // Zero-based index of the next frame (after the current one) to be
+  // written.
   size_px next_frame_;
 
-  // Number of bytes per row. See
-  // https://developers.google.com/speed/webp/docs/api#encodingapi
-  int stride_bytes_;
+  // Zero-based index of the next scanline to be written.
+  size_px next_scanline_;
 
-  // Allocated pointer to the start of memory for the RGB(A) data.
-  uint8_t* rgb_;
+  // Flag to indicate whether the current frame is empty, due to at
+  // least one of its dimensions being zero. Note that all frames must
+  // fit completely within their image (see the comment in
+  // image_frame_interface.h), so out-of-bounds frames are not
+  // considered here.
+  bool empty_frame_;
 
-  // Pointer to the end of the RGB(A) data (i.e. to the first byte
-  // after the allocated memory).
-  uint8_t* rgb_end_;
+  // Number of pixels to advance by exactly one row.
+  size_px frame_stride_px_;
 
-  // Pointer to the next byte of RGB(A) data to be filled in.
-  uint8_t* position_bytes_;
+  // Pointer to the next pixel to be written via WriteNextScanline().
+  uint32_t* frame_position_px_;
+
+  // The number of bytes per pixel in the current frame.
+  uint32_t frame_bytes_per_pixel_;
 
   // libwebp objects for the WebP generation.
-  WebPPicture picture_;
-  WebPConfig* config_;
+  WebPPicture* webp_image_;
+  WebPPicture webp_frame_;
+  WebPFrameCache* webp_frame_cache_;
+  WebPMux* webp_mux_;
+  WebPConfig webp_config_;
+
 #ifndef NDEBUG
   WebPAuxStats stats_;
 #endif
 
   // Pointer to the webp output.
-  GoogleString* webp_image_;
+  GoogleString* output_image_;
 
   // Whether the image has an alpha channel.
   bool has_alpha_;
 
   // Whether PrepareImage() has been called successfully.
   bool image_prepared_;
-
-  // Whether WebPPictureImport* has been called.
-  bool imported_;
-
-  // Whether all the scanlines have been written.
-  bool got_all_scanlines_;
 
   // The user-supplied progress hook.
   WebpConfiguration::WebpProgressHook progress_hook_;
@@ -149,11 +167,6 @@ class WebpFrameWriter : public MultipleFrameWriter {
   // remain valid until FinalizeWrite() completes. This class does NOT
   // take ownership of this pointer.
   void* progress_hook_data_;
-
-  // The function to be called by libwebp's progress hook (with 'this'
-  // as the user data), which in turn will call the user-supplied function
-  // in progress_hook_, passing it progress_hook_data_.
-  static int ProgressHook(int percent, const WebPPicture* picture);
 
   // WebP does not have native support for gray scale images. The workaround
   // is to replicate the luminance to RGB; then WebP can compress the expanded

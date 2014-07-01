@@ -40,13 +40,10 @@
 
 namespace net_instaweb {
 
-extern const char* CSS_console_css;
 extern const char* JS_add_instrumentation;
 extern const char* JS_add_instrumentation_opt;
 extern const char* JS_client_domain_rewriter;
 extern const char* JS_client_domain_rewriter_opt;
-extern const char* JS_console_js;
-extern const char* JS_console_js_opt;
 extern const char* JS_critical_css_beacon;
 extern const char* JS_critical_css_beacon_opt;
 extern const char* JS_critical_css_loader;
@@ -72,8 +69,6 @@ extern const char* JS_lazyload_images;
 extern const char* JS_lazyload_images_opt;
 extern const char* JS_local_storage_cache;
 extern const char* JS_local_storage_cache_opt;
-extern const char* JS_messages_js;
-extern const char* JS_messages_js_opt;
 extern const char* JS_panel_loader_opt;
 extern const char* JS_split_html_beacon;
 extern const char* JS_split_html_beacon_opt;
@@ -168,7 +163,6 @@ void StaticAssetManager::InitializeAssetStrings() {
       StrCat(JS_js_defer_opt, "\n", JS_panel_loader_opt);
   assets_[kBlinkJs]->file_name = "blink";
   assets_[kClientDomainRewriter]->file_name = "client_domain_rewriter";
-  assets_[kConsoleJs]->file_name = "console_js";
   assets_[kCriticalCssBeaconJs]->file_name = "critical_css_beacon";
   assets_[kCriticalCssLoaderJs]->file_name = "critical_css_loader";
   assets_[kCriticalImagesBeaconJs]->file_name = "critical_images_beacon";
@@ -181,7 +175,6 @@ void StaticAssetManager::InitializeAssetStrings() {
   assets_[kDeterministicJs]->file_name = "deterministic";
   assets_[kGhostClickBusterJs]->file_name = "ghost_click_buster";
   assets_[kLocalStorageCacheJs]->file_name = "local_storage_cache";
-  assets_[kMessagesJs]->file_name = "messages_js";
   assets_[kSplitHtmlBeaconJs]->file_name = "split_html_beacon";
 
   // Initialize compiled javascript strings->
@@ -191,7 +184,6 @@ void StaticAssetManager::InitializeAssetStrings() {
   assets_[kBlinkJs]->js_optimized = blink_js_string.c_str();
   assets_[kClientDomainRewriter]->js_optimized =
       JS_client_domain_rewriter_opt;
-  assets_[kConsoleJs]->js_optimized = JS_console_js_opt;
   assets_[kCriticalCssBeaconJs]->js_optimized = JS_critical_css_beacon_opt;
   assets_[kCriticalCssLoaderJs]->js_optimized = JS_critical_css_loader_opt;
   assets_[kCriticalImagesBeaconJs]->js_optimized =
@@ -205,7 +197,6 @@ void StaticAssetManager::InitializeAssetStrings() {
   assets_[kDeterministicJs]->js_optimized = JS_deterministic_opt;
   assets_[kGhostClickBusterJs]->js_optimized = JS_ghost_click_buster_opt;
   assets_[kLocalStorageCacheJs]->js_optimized = JS_local_storage_cache_opt;
-  assets_[kMessagesJs]->js_optimized = JS_messages_js_opt;
   assets_[kSplitHtmlBeaconJs]->js_optimized = JS_split_html_beacon_opt;
 
   // Initialize cleartext javascript strings->
@@ -215,7 +206,6 @@ void StaticAssetManager::InitializeAssetStrings() {
   // unit test expects debug code to include comments->
   assets_[kBlinkJs]->js_debug = blink_js_string.c_str();
   assets_[kClientDomainRewriter]->js_debug = JS_client_domain_rewriter;
-  assets_[kConsoleJs]->js_debug = JS_console_js;
   assets_[kCriticalCssBeaconJs]->js_debug = JS_critical_css_beacon;
   assets_[kCriticalCssLoaderJs]->js_debug = JS_critical_css_loader;
   assets_[kCriticalImagesBeaconJs]->js_debug = JS_critical_images_beacon;
@@ -229,7 +219,6 @@ void StaticAssetManager::InitializeAssetStrings() {
   // GhostClickBuster uses goog.require, which needs to be minifed always.
   assets_[kGhostClickBusterJs]->js_debug = JS_ghost_click_buster_opt;
   assets_[kLocalStorageCacheJs]->js_debug = JS_local_storage_cache;
-  assets_[kMessagesJs]->js_debug = JS_messages_js;
   assets_[kSplitHtmlBeaconJs]->js_debug = JS_split_html_beacon;
 
   // Initialize non-JS assets
@@ -238,12 +227,6 @@ void StaticAssetManager::InitializeAssetStrings() {
   assets_[kBlankGif]->js_optimized.append(GIF_blank, GIF_blank_len);
   assets_[kBlankGif]->js_debug.append(GIF_blank, GIF_blank_len);
   assets_[kBlankGif]->content_type = kContentTypeGif;
-
-  assets_[kConsoleCss]->file_name = "console_css";
-  // TODO(sligocki): Do we want to have a minified version of console CSS?
-  assets_[kConsoleCss]->js_optimized = CSS_console_css;
-  assets_[kConsoleCss]->js_debug = CSS_console_css;
-  assets_[kConsoleCss]->content_type = kContentTypeCss;
 
   for (std::vector<Asset*>::iterator it = assets_.begin();
        it != assets_.end(); ++it) {

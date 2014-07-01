@@ -27,7 +27,6 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/system/public/system_caches.h"
 #include "net/instaweb/system/public/system_cache_path.h"
 #include "net/instaweb/system/public/system_rewrite_options.h"
@@ -55,9 +54,14 @@
 namespace net_instaweb {
 
 // Generated from JS, CSS, and HTML source via net/instaweb/js/data_to_c.cc.
-extern const char* JS_mod_pagespeed_console_js;
+extern const char* CSS_console_css;
 extern const char* CSS_mod_pagespeed_console_css;
 extern const char* HTML_mod_pagespeed_console_body;
+extern const char* JS_console_js;
+extern const char* JS_console_js_opt;
+extern const char* JS_messages_js;
+extern const char* JS_messages_js_opt;
+extern const char* JS_mod_pagespeed_console_js;
 
 namespace {
 
@@ -205,12 +209,12 @@ void AdminSite::ConsoleHandler(const SystemRewriteOptions& global_options,
 
   // TODO(jmarantz): change StaticAssetManager to take options by const ref.
   // TODO(sligocki): Move static content to a data2cc library.
-  StringPiece console_js = static_asset_manager_->GetAsset(
-      StaticAssetManager::kConsoleJs, &options);
-  StringPiece console_css = static_asset_manager_->GetAsset(
-      StaticAssetManager::kConsoleCss, &options);
+  StringPiece console_js = options.Enabled(RewriteOptions::kDebug) ?
+      JS_console_js :
+      JS_console_js_opt;
+  // TODO(sligocki): Do we want to have a minified version of console CSS?
   GoogleString head_markup = StrCat(
-      "<style>", console_css, "</style>\n");
+      "<style>", CSS_console_css, "</style>\n");
   AdminHtml admin_html("console", head_markup, source, fetch,
                        message_handler_);
   if (statistics_enabled && logging_enabled && log_dir_set) {
@@ -636,8 +640,9 @@ void AdminSite::MessageHistoryHandler(const RewriteOptions& options,
       }
     }
     fetch->Write("</div>\n", message_handler_);
-    StringPiece messages_js = static_asset_manager_->GetAsset(
-        StaticAssetManager::kMessagesJs, &options);
+    StringPiece messages_js = options.Enabled(RewriteOptions::kDebug) ?
+        JS_messages_js :
+        JS_messages_js_opt;
     fetch->Write("<script type='text/javascript'>", message_handler_);
     fetch->Write(StrCat(messages_js, "\npagespeed.Messages.Start();"),
                  message_handler_);

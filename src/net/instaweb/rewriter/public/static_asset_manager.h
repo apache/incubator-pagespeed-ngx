@@ -38,6 +38,9 @@ struct ContentType;
 // Composes URLs for the javascript files injected by the various PSA filters.
 // TODO(ksimbili): Refactor out the common base class to serve the static files
 // of type css, images or html etc.
+// TODO(xqyin): Refactor out StaticAssetManager to have shared infrastructure
+// used by both RewriteStaticAssetManager and SystemStaticAssetManager. Now the
+// JS files in system/ are done directly in AdminSite.
 class StaticAssetManager {
  public:
   static const char kGStaticBase[];
@@ -48,8 +51,6 @@ class StaticAssetManager {
     kBlankGif,
     kBlinkJs,
     kClientDomainRewriter,
-    kConsoleCss,
-    kConsoleJs,
     kCriticalCssBeaconJs,
     kCriticalCssLoaderJs,
     kCriticalImagesBeaconJs,
@@ -63,7 +64,6 @@ class StaticAssetManager {
     kGhostClickBusterJs,
     kLazyloadImagesJs,
     kLocalStorageCacheJs,
-    kMessagesJs,
     kSplitHtmlBeaconJs,
     kEndOfModules,  // Keep this as the last enum value.
   };
