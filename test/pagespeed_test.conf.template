@@ -77,6 +77,7 @@ http {
     # test ModPagespeedMaxCacheableContentLength, i.e.,
     # max_cacheable_response_content_length.
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name max-cacheable-content-length.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
@@ -96,6 +97,7 @@ http {
     # running on the PRIMARY_PORT when the response is not available in
     # the cache. It also services purge requests from the upstream server.
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name proxy_cache.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
@@ -178,6 +180,7 @@ http {
     # Block 4: Location block for purge requests.
     location ~ /purge(/.*) {
       allow 127.0.0.1;
+      allow ::1;
       deny all;
       proxy_cache_purge htmlcache $ps_capability_list$1$is_args$args;
     }
@@ -216,6 +219,7 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name if-in-server.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
 
@@ -236,6 +240,7 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name if-in-location.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
 
@@ -255,6 +260,7 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name mpd.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
 
@@ -265,6 +271,7 @@ http {
   # These two vhosts are for testing the experiment framework (Furious).
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name experiment.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
     pagespeed InPlaceResourceOptimization off;
@@ -279,6 +286,7 @@ http {
   }
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name experiment.noga.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
@@ -292,6 +300,7 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name preserveurls.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
@@ -321,6 +330,7 @@ http {
     # Setup a vhost with the critical image beacon and lazyload filter enabled
     # to make sure that critical images are not lazyloaded.
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name imagebeacon.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
@@ -333,6 +343,7 @@ http {
     # Setup a vhost with the critical image beacon enabled to make sure that
     # downstream caches and rebeaconing interact correctly.
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name downstreamcacherebeacon.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
@@ -348,6 +359,7 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name downstreamcacheresource.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
     pagespeed RewriteLevel PassThrough;
@@ -357,6 +369,7 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name renderedimagebeacon.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
@@ -374,6 +387,7 @@ http {
   # inheretence in Nginx we need to have location blocks inside a server block.
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name optimizeforbandwidth.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
@@ -405,6 +419,7 @@ http {
     # to go back to this VirtualHost so we rely on the new third optional
     # argument to MapOriginDomain.
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name customhostheader.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@_test";
     root "@@SERVER_ROOT@@/mod_pagespeed_test";
@@ -423,6 +438,7 @@ http {
     # Sets up a virtual host where we can specify forbidden filters without
     # affecting any other hosts.
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name forbidden.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
@@ -438,6 +454,7 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name unauthorizedresources.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
@@ -448,6 +465,7 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name client-domain-rewrite.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
@@ -463,6 +481,7 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name url-attribute.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
@@ -496,6 +515,7 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name domain-hyperlinks-on.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
@@ -510,6 +530,7 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name domain-hyperlinks-off.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
@@ -524,6 +545,7 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name retaincomment.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
@@ -533,6 +555,7 @@ http {
   server {
     # Test host for shared memory cache.
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name shmcache.example.com;
     pagespeed FileCachePath "@@SHM_CACHE@@";
 
@@ -542,6 +565,7 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name xfp.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
@@ -550,6 +574,7 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name xheader.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
@@ -563,6 +588,7 @@ http {
   # Note that we test with two distinct caches.
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name embed-config-html.example.org;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
@@ -582,6 +608,7 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name embed-config-resources.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
@@ -602,6 +629,7 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name ipro-for-browser.example.com;
     root "@@SERVER_ROOT@@/mod_pagespeed_example";
     pagespeed EnableFilters rewrite_images,rewrite_css;
@@ -613,6 +641,7 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name respectvary.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
@@ -622,6 +651,7 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name cache_a.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
@@ -644,6 +674,7 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name cache_b.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
 
@@ -654,6 +685,7 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name cache_c.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
@@ -667,6 +699,7 @@ http {
   server {
     # Sets up a logical home-page server on www.example.com
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name www.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
@@ -680,6 +713,7 @@ http {
     # Sets up a logical origin for CDNs to fetch content from, on
     # origin.example.com.
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name origin.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
@@ -693,6 +727,7 @@ http {
     # Sets up a logical cdn, which is where we tell browsers to fetch resources
     # from.
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name cdn.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
@@ -704,6 +739,7 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name lff-ipro.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
@@ -714,6 +750,7 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name tryfiles.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
@@ -727,6 +764,7 @@ http {
   server {
     # Proxy modpagespeed.com for testing Issue 582.
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name modpagespeed.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
@@ -739,6 +777,7 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name custom-paths.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
@@ -750,12 +789,14 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name inherit-paths.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
   }
 
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name notransform.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
@@ -767,6 +808,7 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name blocking.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
 
@@ -776,6 +818,7 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name keepalive-html.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
     pagespeed RewriteLevel CoreFilters;
@@ -784,6 +827,7 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name keepalive-resource.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
     error_log "@@TEST_TMP@@/keepalive-resource.example.com.error.log" warn;
@@ -791,6 +835,7 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name keepalive-beacon-get.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
     error_log "@@TEST_TMP@@/keepalive-beacon-get.example.com.error.log" warn;
@@ -798,6 +843,7 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name keepalive-beacon-post.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
     error_log "@@TEST_TMP@@/keepalive-beacon-post.example.com.error.log" warn;
@@ -805,6 +851,7 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name keepalive-static.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
     error_log "@@TEST_TMP@@/keepalive-static.example.com.error.log" warn;
@@ -812,6 +859,7 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name response-header-filters.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
     pagespeed RewriteLevel PassThrough;
@@ -821,6 +869,7 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name response-header-disable.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
     pagespeed EnableFilters add_instrumentation;
@@ -830,6 +879,7 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name ipro.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
 
@@ -853,6 +903,7 @@ http {
   # 1. L2_d=LRU, L2_m=LRU
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name lrud-lrum.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@_lrud_lrum";
 
@@ -867,6 +918,7 @@ http {
             "@@SECONDARY_CACHE@@_lrud_shmm" 8192;
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name lrud-shmm.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@_lrud_shmm";
 
@@ -881,6 +933,7 @@ http {
             "@@SECONDARY_CACHE@@_noned_shmm" 8192;
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name noned-shmm.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@_noned_shmm";
 
@@ -891,6 +944,7 @@ http {
   # 4. L2_d=none, L2_m=none
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name noned-nonem.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@_noned_nonem";
 
@@ -900,6 +954,7 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name date.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
     add_header "Date" "Date: Fri, 16 Oct 2009 23:05:07 GMT";
@@ -907,6 +962,7 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name options-by-cookies-enabled.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@_optionsbycookieson";
     pagespeed AllowOptionsToBeSetByCookies true;
@@ -918,6 +974,7 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name options-by-cookies-disabled.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@_optionsbycookiesoff";
     pagespeed AllowOptionsToBeSetByCookies false;
@@ -926,6 +983,7 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name redirect.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@_redirected";
     pagespeed RewriteLevel PassThrough;
@@ -937,6 +995,7 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name request-option-override.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
     pagespeed RequestOptionOverride abc;
@@ -947,6 +1006,7 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name signed-urls.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
     pagespeed UrlSigningKey helloworld;
@@ -958,6 +1018,7 @@ http {
   # For testing signed URLs, ignoring signature validity.
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name signed-urls-transition.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
     pagespeed UrlSigningKey helloworld;
@@ -968,6 +1029,7 @@ http {
   }
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name unsigned-urls-transition.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
     # This server will not sign URLs, but AcceptInvalidSignature is on.
@@ -980,6 +1042,7 @@ http {
   # Proxy + IPRO a gzip'd file for testing Issue 896.
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name ipro-proxy.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@_ipro_proxy";
 
@@ -995,6 +1058,7 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name compressed-css.example.com;
     pagespeed on;
     pagespeed FileCachePath "@@FILE_CACHE@@";
@@ -1005,6 +1069,7 @@ http {
   server {
     pagespeed on;
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name gzip-test1.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
     location /mod_pagespeed_example/ {
@@ -1019,6 +1084,7 @@ http {
   server {
     pagespeed on;
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name gzip-test2.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
     location /mod_pagespeed_example/ {
@@ -1031,6 +1097,7 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name purge.example.com;
 
     # Test purging individual URLs without flushing the entire metadata cache.
@@ -1045,12 +1112,14 @@ http {
   }
 
   server {
-    listen       @@PRIMARY_PORT@@;
+    listen @@PRIMARY_PORT@@;
+    listen [::]:@@PRIMARY_PORT@@;
     server_name  localhost;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
     location ~ ^/pagespeed_admin {
       allow 127.0.0.1;
+      allow ::1;
       deny all;
     }
 
@@ -1111,11 +1180,13 @@ http {
 
     location /ngx_pagespeed_statistics {
       allow 127.0.0.1;
+      allow ::1;
       deny all;
     }
 
     location /ngx_pagespeed_message {
       allow 127.0.0.1;
+      allow ::1;
       deny all;
     }
 
