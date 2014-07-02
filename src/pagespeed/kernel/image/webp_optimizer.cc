@@ -201,6 +201,7 @@ ScanlineStatus WebpFrameWriter::PrepareImage(const ImageSpec* image_spec) {
                             SCANLINE_STATUS_INTERNAL_ERROR,
                             FRAME_WEBPWRITER, "WebPPictureAlloc()");
   }
+  WebPUtilClearPic(webp_image_, NULL);
 
   webp_image_->user_data = this;
   if (progress_hook_) {
