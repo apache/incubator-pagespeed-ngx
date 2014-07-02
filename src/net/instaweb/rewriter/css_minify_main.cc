@@ -84,6 +84,8 @@ bool MinifyCss_main(int argc, char** argv) {
   FileSystem::OutputFile* outfile = file_system.Stdout();
   FileWriter writer(outfile);
   bool written = CssMinify::Stylesheet(*stylesheet, &writer, &handler);
+  file_system.Close(outfile, &handler);
+  file_system.Close(error_file, &handler);
 
   return written && (parser.errors_seen_mask() == Css::Parser::kNoError);
 }
