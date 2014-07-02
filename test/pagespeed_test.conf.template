@@ -62,6 +62,10 @@ http {
   # critical images to be inlined, so we just disable the option here.
   pagespeed CriticalImagesBeaconEnabled false;
 
+  # By default PageSpeed interprets IE comments, but we test with this off and
+  # then enable interpretation explicitly in a testing vhost.
+  pagespeed DisableFilters interpret_ie_comments;
+
   # By default, resources will not be used for inlining without explicit
   # authorization. Supported values are off or a comma-separated list of strings
   # from {Script,Stylesheet}.
@@ -710,6 +714,15 @@ http {
     pagespeed LoadFromFile
       "http://lff-ipro.example.com/mod_pagespeed_example/lff_ipro"
       "@@SERVER_ROOT@@/mod_pagespeed_example/lff_ipro";
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name iecomments.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    pagespeed RewriteLevel PassThrough;
+    pagespeed EnableFilters interpret_ie_comments,combine_css;
   }
 
   server {
