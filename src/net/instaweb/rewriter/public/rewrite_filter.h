@@ -47,7 +47,7 @@ class RewriteFilter : public CommonFilter {
   // property cache can enable writing of it in the RewriterDriver. Filters
   // inheriting from RewriteDriver that use the DOM cohort should override
   // UsePropertyCacheDomCohort to return true.
-  virtual void DetermineEnabled();
+  virtual void DetermineEnabled(GoogleString* disabled_reason);
 
   // All RewriteFilters define how they encode URLs and other
   // associated information needed for a rewrite into a URL.

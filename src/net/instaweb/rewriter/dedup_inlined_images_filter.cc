@@ -65,7 +65,7 @@ void DedupInlinedImagesFilter::InitStats(Statistics* statistics) {
   statistics->AddVariable(DedupInlinedImagesFilter::kCandidatesReplaced);
 }
 
-void DedupInlinedImagesFilter::DetermineEnabled() {
+void DedupInlinedImagesFilter::DetermineEnabled(GoogleString* disabled_reason) {
   // We are treating this filter like a version of lazyload images because
   // they both replace an image with JavaScript, and in both cases we need
   // to disable the filter for certain classes of UA.

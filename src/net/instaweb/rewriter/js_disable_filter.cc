@@ -53,7 +53,7 @@ JsDisableFilter::JsDisableFilter(RewriteDriver* driver)
 JsDisableFilter::~JsDisableFilter() {
 }
 
-void JsDisableFilter::DetermineEnabled() {
+void JsDisableFilter::DetermineEnabled(GoogleString* disabled_reason) {
   bool should_apply = JsDeferDisabledFilter::ShouldApply(driver());
   set_is_enabled(should_apply);
   AbstractLogRecord* log_record = driver()->log_record();

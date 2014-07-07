@@ -90,7 +90,7 @@ void CssMoveToHeadFilter::EndElementImpl(HtmlElement* element) {
   }
 }
 
-void CssMoveToHeadFilter::DetermineEnabled() {
+void CssMoveToHeadFilter::DetermineEnabled(GoogleString* disabled_reason) {
   set_is_enabled(!driver()->flushed_cached_html());
 }
 

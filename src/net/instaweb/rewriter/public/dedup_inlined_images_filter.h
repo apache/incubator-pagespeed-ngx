@@ -56,7 +56,7 @@ class DedupInlinedImagesFilter : public CommonFilter {
   virtual void EndDocument();
   virtual void StartElementImpl(HtmlElement* element);
   virtual void EndElementImpl(HtmlElement* element);
-  virtual void DetermineEnabled();
+  virtual void DetermineEnabled(GoogleString* disabled_reason);
 
   virtual const char* Name() const { return "DedupInlinedImages"; }
 

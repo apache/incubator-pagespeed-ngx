@@ -45,7 +45,7 @@ class SplitHtmlHelperFilter : public CommonFilter {
   explicit SplitHtmlHelperFilter(RewriteDriver* rewrite_driver);
   virtual ~SplitHtmlHelperFilter();
 
-  virtual void DetermineEnabled();
+  virtual void DetermineEnabled(GoogleString* disabled_reason);
 
   virtual void StartDocumentImpl();
   virtual void EndDocument();

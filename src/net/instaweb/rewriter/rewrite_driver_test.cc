@@ -1372,7 +1372,7 @@ class DetermineEnabledCheckingFilter : public EmptyHtmlFilter {
     start_document_called_ = true;
   }
 
-  virtual void DetermineEnabled() {
+  virtual void DetermineEnabled(GoogleString* disabled_reason) {
     set_is_enabled(enabled_value_);
   }
 

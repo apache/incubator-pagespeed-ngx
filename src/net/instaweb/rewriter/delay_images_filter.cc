@@ -268,7 +268,7 @@ bool DelayImagesFilter::ShouldRewriteInplace() const {
             driver_->request_properties()->IsMobile()));
 }
 
-void DelayImagesFilter::DetermineEnabled() {
+void DelayImagesFilter::DetermineEnabled(GoogleString* disabled_reason) {
   AbstractLogRecord* log_record = driver_->log_record();
   if (!driver_->request_properties()->SupportsImageInlining()) {
     log_record->LogRewriterHtmlStatus(

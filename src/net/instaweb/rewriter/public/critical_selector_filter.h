@@ -104,7 +104,7 @@ class CriticalSelectorFilter : public CssSummarizerBase {
   virtual void RenderDone();
 
   // Filter control API.
-  virtual void DetermineEnabled();
+  virtual void DetermineEnabled(GoogleString* disabled_reason);
 
  private:
   class CssElement;

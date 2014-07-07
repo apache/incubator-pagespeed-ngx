@@ -55,7 +55,7 @@ FixReflowFilter::FixReflowFilter(RewriteDriver* driver)
 FixReflowFilter::~FixReflowFilter() {
 }
 
-void FixReflowFilter::DetermineEnabled() {
+void FixReflowFilter::DetermineEnabled(GoogleString* disabled_reason) {
   set_is_enabled(JsDeferDisabledFilter::ShouldApply(rewrite_driver_) &&
                  // Can we also share the following conditions with
                  // JsDeferDisabledFilter.

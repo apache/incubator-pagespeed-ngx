@@ -44,7 +44,7 @@ class CriticalImagesBeaconFilter : public CommonFilter {
   explicit CriticalImagesBeaconFilter(RewriteDriver* driver);
   virtual ~CriticalImagesBeaconFilter();
 
-  virtual void DetermineEnabled();
+  virtual void DetermineEnabled(GoogleString* disabled_reason);
 
   static void InitStats(Statistics* statistics);
 

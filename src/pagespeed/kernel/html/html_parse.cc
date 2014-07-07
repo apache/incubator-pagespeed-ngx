@@ -60,7 +60,8 @@ HtmlParse::HtmlParse(MessageHandler* message_handler)
       log_rewrite_timing_(false),
       running_filters_(false),
       parse_start_time_us_(0),
-      timer_(NULL) {
+      timer_(NULL),
+      dynamically_disabled_filter_list_(NULL) {
   lexer_ = new HtmlLexer(this);
   HtmlKeywords::Init();
 }
@@ -198,6 +199,9 @@ bool HtmlParse::StartParseId(const StringPiece& url, const StringPiece& id,
                              const ContentType& content_type) {
   delayed_start_literal_.reset();
   determine_enabled_filters_called_ = false;
+  if (dynamically_disabled_filter_list_ != NULL) {
+    dynamically_disabled_filter_list_->clear();
+  }
   url.CopyToString(&url_);
   GoogleUrl gurl(url);
   // TODO(sligocki): Use IsWebValid() here. For now we need to allow file://
@@ -270,8 +274,20 @@ void HtmlParse::ParseTextInternal(const char* text, int size) {
 }
 
 void HtmlParse::DetermineEnabledFiltersImpl() {
-  for (int i = 0, n = filters_.size(); i < n; ++i) {
-    filters_[i]->DetermineEnabled();
+  DetermineEnabledFiltersInList(filters_);
+}
+
+void HtmlParse::CheckFilterEnabled(HtmlFilter* filter) {
+  GoogleString disabled_reason;
+  filter->DetermineEnabled(&disabled_reason);
+
+  if (!filter->is_enabled() && dynamically_disabled_filter_list_ != NULL) {
+    GoogleString final_reason(filter->Name());
+    if (!disabled_reason.empty()) {
+      StrAppend(&final_reason, ": ", disabled_reason);
+    }
+
+    dynamically_disabled_filter_list_->push_back(final_reason);
   }
 }
 
@@ -440,8 +456,8 @@ void HtmlParse::Flush() {
   if (url_valid_) {
     ShowProgress("Flush");
 
-    for (int i = 0, n = filters_.size(); i < n; ++i) {
-      HtmlFilter* filter = filters_[i];
+    for (FilterList::iterator i = filters_.begin(); i != filters_.end(); ++i) {
+      HtmlFilter* filter = *i;
       if (filter->is_enabled()) {
         ApplyFilter(filter);
       }

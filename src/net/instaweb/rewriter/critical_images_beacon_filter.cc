@@ -67,7 +67,8 @@ bool CriticalImagesBeaconFilter::ShouldApply(RewriteDriver* driver) {
   return finder->ShouldBeacon(driver);
 }
 
-void CriticalImagesBeaconFilter::DetermineEnabled() {
+void CriticalImagesBeaconFilter::DetermineEnabled(
+    GoogleString* disabled_reason) {
   // We need the filter to be enabled to track the candidate images on the page,
   // even if we aren't actually inserting the beacon JS.
   set_is_enabled(true);

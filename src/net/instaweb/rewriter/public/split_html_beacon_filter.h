@@ -41,7 +41,7 @@ class SplitHtmlBeaconFilter : public CommonFilter {
   explicit SplitHtmlBeaconFilter(RewriteDriver* driver);
   virtual ~SplitHtmlBeaconFilter() {}
 
-  virtual void DetermineEnabled();
+  virtual void DetermineEnabled(GoogleString* disabled_reason);
 
   static void InitStats(Statistics* statistics);
 

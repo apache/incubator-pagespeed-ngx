@@ -438,6 +438,14 @@ class HtmlParse {
   // Returns whether we have exceeded the size limit.
   bool size_limit_exceeded() const;
 
+  // For debugging purposes. If this vector is supplied, DetermineEnabledFilters
+  // will populate it with the list of Filters that were disabled, plus the
+  // associated reason, if supplied by the Filter. Caller retains ownership
+  // of the pointer.
+  void SetDynamicallyDisabledFilterList(StringVector* list) {
+    dynamically_disabled_filter_list_ = list;
+  }
+
  protected:
   typedef std::vector<HtmlFilter*> FilterVector;
   typedef std::list<HtmlFilter*> FilterList;
@@ -464,6 +472,14 @@ class HtmlParse {
       DetermineEnabledFiltersImpl();
     }
   }
+
+  void DetermineEnabledFiltersInList(const FilterList& list) {
+    for (FilterList::const_iterator i = list.begin(); i != list.end(); ++i) {
+      CheckFilterEnabled(*i);
+    }
+  }
+
+  void CheckFilterEnabled(HtmlFilter* filter);
 
   // Call DetermineEnabled() on each filter. Should be called after
   // the property cache lookup has finished since some filters depend on
@@ -513,7 +529,7 @@ class HtmlParse {
 
   FilterVector event_listeners_;
   SymbolTableSensitive string_table_;
-  FilterVector filters_;
+  FilterList filters_;
   HtmlLexer* lexer_;
   Arena<HtmlNode> nodes_;
   HtmlEventList queue_;
@@ -536,6 +552,8 @@ class HtmlParse {
   int64 parse_start_time_us_;
   scoped_ptr<HtmlEvent> delayed_start_literal_;
   Timer* timer_;
+
+  StringVector* dynamically_disabled_filter_list_;
 
   DISALLOW_COPY_AND_ASSIGN(HtmlParse);
 };

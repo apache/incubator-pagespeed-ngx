@@ -70,7 +70,8 @@ class DebugFilter : public EmptyHtmlFilter {
       int64 time_since_init_parse_us, int64 total_parse_duration_us,
       int64 total_flush_duration_us, int64 total_idle_duration_us,
       int num_flushes, bool is_critical_images_beacon_enabled,
-      const StringSet& critical_image_urls);
+      const StringSet& critical_image_urls,
+      const StringVector& dynamically_disabled_filter_list);
 
  private:
   // Tracks duration of events of interest that may occur multiple times
@@ -108,6 +109,8 @@ class DebugFilter : public EmptyHtmlFilter {
   // The buffered flush messages this filter generates for a flush in a literal
   // tag.
   GoogleString flush_messages_;
+
+  StringVector dynamically_disabled_filter_list_;
 
   DISALLOW_COPY_AND_ASSIGN(DebugFilter);
 };

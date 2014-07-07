@@ -66,7 +66,7 @@ InsertDnsPrefetchFilter::InsertDnsPrefetchFilter(RewriteDriver* driver)
 InsertDnsPrefetchFilter::~InsertDnsPrefetchFilter() {
 }
 
-void InsertDnsPrefetchFilter::DetermineEnabled() {
+void InsertDnsPrefetchFilter::DetermineEnabled(GoogleString* disabled_reason) {
   set_is_enabled(true);
   driver()->set_write_property_cache_dom_cohort(true);
 }

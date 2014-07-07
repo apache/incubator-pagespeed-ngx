@@ -73,6 +73,7 @@ class CssCombineFilterTest : public RewriteTestBase {
 
   virtual void SetUp() {
     RewriteTestBase::SetUp();
+    options()->set_support_noscript_enabled(false);
     AddFilter(RewriteOptions::kCombineCss);
     AddOtherFilter(RewriteOptions::kCombineCss);
   }
@@ -206,8 +207,8 @@ class CssCombineFilterTest : public RewriteTestBase {
         "</body>\n")));
     if (!debug_text.empty()) {
       StrAppend(&expected_output, "<!--",
-                DebugFilter::FormatEndDocumentMessage(0, 0, 0, 0, 0, false,
-                                                      StringSet()),
+                DebugFilter::FormatEndDocumentMessage(
+                    0, 0, 0, 0, 0, false, StringSet(), StringVector()),
                 "-->");
     }
     if (expect_combine) {

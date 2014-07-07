@@ -99,7 +99,7 @@ class LazyloadImagesFilter : public CommonFilter {
   virtual void EndDocument();
   virtual void StartElementImpl(HtmlElement* element);
   virtual void EndElementImpl(HtmlElement* element);
-  virtual void DetermineEnabled();
+  virtual void DetermineEnabled(GoogleString* disabled_reason);
 
   // Clears all state associated with the filter.
   void Clear();

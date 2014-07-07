@@ -45,7 +45,7 @@ class JsDisableFilter : public CommonFilter {
   static const char kEnableJsExperimental[];
   static const char kElementOnloadCode[];
 
-  virtual void DetermineEnabled();
+  virtual void DetermineEnabled(GoogleString* disabled_reason);
 
   virtual const char* Name() const {
     return "JsDisableFilter";

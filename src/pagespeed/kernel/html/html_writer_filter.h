@@ -54,7 +54,7 @@ class HtmlWriterFilter : public HtmlFilter {
   virtual void Characters(HtmlCharactersNode* characters);
   virtual void Directive(HtmlDirectiveNode* directive);
   virtual void Flush();
-  virtual void DetermineEnabled();
+  virtual void DetermineEnabled(GoogleString* disabled_reason);
 
   void set_max_column(int max_column) { max_column_ = max_column; }
   void set_case_fold(bool case_fold) { case_fold_ = case_fold; }

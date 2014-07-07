@@ -58,7 +58,7 @@ class CriticalCssFilter : public CommonFilter {
   static const char kStatsScriptTemplate[];
 
   // Overridden from CommonFilter:
-  virtual void DetermineEnabled();
+  virtual void DetermineEnabled(GoogleString* disabled_reason);
   virtual void StartDocumentImpl();
   virtual void EndDocument();
   virtual void StartElementImpl(HtmlElement* element);

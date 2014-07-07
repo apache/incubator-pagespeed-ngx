@@ -32,7 +32,7 @@ class RewriteContext;
 RewriteFilter::~RewriteFilter() {
 }
 
-void RewriteFilter::DetermineEnabled() {
+void RewriteFilter::DetermineEnabled(GoogleString* disabled_reason) {
   set_is_enabled(true);
   if (UsesPropertyCacheDomCohort()) {
     driver()->set_write_property_cache_dom_cohort(true);

@@ -422,7 +422,7 @@ void CriticalSelectorFilter::RenderDone() {
   STLDeleteElements(&css_elements_);
 }
 
-void CriticalSelectorFilter::DetermineEnabled() {
+void CriticalSelectorFilter::DetermineEnabled(GoogleString* disabled_reason) {
   // We shouldn't do anything if there is no information on critical selectors
   // in the property cache. Unfortunately, we also cannot run safely in case of
   // IE, since we do not understand IE conditional comments well enough to
@@ -438,6 +438,15 @@ void CriticalSelectorFilter::DetermineEnabled() {
                : (ua_supports_critical_css
                       ? RewriterHtmlApplication::PROPERTY_CACHE_MISS
                       : RewriterHtmlApplication::USER_AGENT_NOT_SUPPORTED)));
+
+  if (!can_run) {
+    if (!ua_supports_critical_css) {
+      *disabled_reason = "User agent not supported";
+    } else {
+      *disabled_reason = "No critical selector info in cache";
+    }
+  }
+
   set_is_enabled(can_run);
 }
 

@@ -526,7 +526,7 @@ RewriteContext* CssCombineFilter::MakeRewriteContext() {
   return MakeContext();
 }
 
-void CssCombineFilter::DetermineEnabled() {
+void CssCombineFilter::DetermineEnabled(GoogleString* disabled_reason) {
   set_is_enabled(!driver()->flushed_cached_html());
 }
 

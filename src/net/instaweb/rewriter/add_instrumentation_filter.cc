@@ -221,7 +221,7 @@ GoogleString AddInstrumentationFilter::GetScriptJs(StringPiece event) {
   return js;
 }
 
-void AddInstrumentationFilter::DetermineEnabled() {
+void AddInstrumentationFilter::DetermineEnabled(GoogleString* disabled_reason) {
   set_is_enabled(!driver()->request_properties()->IsBot());
 }
 

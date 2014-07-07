@@ -67,6 +67,7 @@ DebugFilter::DebugFilter(RewriteDriver* driver)
     : driver_(driver),
       timer_(driver->server_context()->timer()) {
   Clear();
+  driver_->SetDynamicallyDisabledFilterList(&dynamically_disabled_filter_list_);
 }
 
 DebugFilter::~DebugFilter() {}
@@ -80,6 +81,7 @@ void DebugFilter::Clear() {
   start_doc_time_us_ = kTimeNotSet;
   flush_messages_.clear();
   critical_image_urls_.clear();
+  dynamically_disabled_filter_list_.clear();
 }
 
 void DebugFilter::InitParse() {
@@ -124,7 +126,8 @@ GoogleString DebugFilter::FormatEndDocumentMessage(
     int64 time_since_init_parse_us, int64 total_parse_duration_us,
     int64 total_render_duration_us, int64 total_idle_duration_us,
     int num_flushes, bool is_critical_images_beacon_enabled,
-    const StringSet& critical_image_urls) {
+    const StringSet& critical_image_urls,
+    const StringVector& dynamically_disabled_filter_list) {
   // This format is designed for easy searching in View->Page Source.
   GoogleString str = StrCat(
       "\n"
@@ -149,6 +152,13 @@ GoogleString DebugFilter::FormatEndDocumentMessage(
       StrAppend(&str, "Critical Images:\n\t",
                 JoinCollection(critical_image_urls, "\n\t"), "\n");
     }
+  }
+
+  if (dynamically_disabled_filter_list.empty()) {
+    StrAppend(&str, "No filters were disabled for this request.\n");
+  } else {
+    StrAppend(&str, "The following filters were disabled for this request:\n\t",
+              JoinCollection(dynamically_disabled_filter_list, "\n\t"), "\n");
   }
   return str;
 }
@@ -214,7 +224,8 @@ void DebugFilter::Flush() {
     driver_->InsertComment(FormatEndDocumentMessage(
         time_since_init_parse_us, parse_.total_us(), render_.total_us(),
         idle_.total_us(), num_flushes_,
-        driver_->is_critical_images_beacon_enabled(), critical_image_urls_));
+        driver_->is_critical_images_beacon_enabled(), critical_image_urls_,
+        dynamically_disabled_filter_list_));
   } else {
     // We don't count the flush at end-of-document because that is automatically
     // called by RewriteDriver/HtmlParse, and is not initiated from upstream,

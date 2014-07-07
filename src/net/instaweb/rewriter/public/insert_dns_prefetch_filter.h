@@ -43,7 +43,7 @@ class InsertDnsPrefetchFilter : public CommonFilter {
   virtual const char* Name() const { return "InsertDnsPrefetchFilter"; }
   // Override DetermineEnabled to enable writing of the property cache DOM
   // cohort in the RewriteDriver.
-  virtual void DetermineEnabled();
+  virtual void DetermineEnabled(GoogleString* disabled_reason);
   virtual const char* id() const { return "idp"; }
 
  private:

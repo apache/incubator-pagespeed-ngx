@@ -3429,16 +3429,9 @@ bool RewriteDriver::Write(const ResourceVector& inputs,
 }
 
 void RewriteDriver::DetermineEnabledFiltersImpl() {
-  for (FilterList::iterator it = early_pre_render_filters_.begin();
-       it != early_pre_render_filters_.end(); ++it) {
-    HtmlFilter* filter = *it;
-    filter->DetermineEnabled();
-  }
-  for (FilterList::iterator it = pre_render_filters_.begin();
-       it != pre_render_filters_.end(); ++it) {
-    HtmlFilter* filter = *it;
-    filter->DetermineEnabled();
-  }
+  DetermineEnabledFiltersInList(early_pre_render_filters_);
+  DetermineEnabledFiltersInList(pre_render_filters_);
+
   // Call parent DetermineEnabled to setup post render filters.
   HtmlParse::DetermineEnabledFiltersImpl();
 }

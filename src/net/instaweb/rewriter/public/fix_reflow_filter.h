@@ -39,7 +39,7 @@ class FixReflowFilter : public EmptyHtmlFilter {
   explicit FixReflowFilter(RewriteDriver* driver);
   virtual ~FixReflowFilter();
 
-  virtual void DetermineEnabled();
+  virtual void DetermineEnabled(GoogleString* disabled_reason);
   virtual void StartDocument();
   virtual void StartElement(HtmlElement* element);
 

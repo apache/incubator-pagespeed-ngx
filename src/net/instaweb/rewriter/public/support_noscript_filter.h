@@ -36,7 +36,7 @@ class SupportNoscriptFilter : public EmptyHtmlFilter {
   explicit SupportNoscriptFilter(RewriteDriver* rewrite_driver);
   virtual ~SupportNoscriptFilter();
 
-  virtual void DetermineEnabled();
+  virtual void DetermineEnabled(GoogleString* disabled_reason);
 
   virtual void StartElement(HtmlElement* element);
   virtual const char* Name() const { return "SupportNoscript"; }

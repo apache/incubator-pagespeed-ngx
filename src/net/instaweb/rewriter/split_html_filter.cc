@@ -169,7 +169,7 @@ bool SplitHtmlFilter::IsAllowedCrossDomainRequest(StringPiece cross_origin) {
   return wildcards.Match(cross_origin, false);
 }
 
-void SplitHtmlFilter::DetermineEnabled() {
+void SplitHtmlFilter::DetermineEnabled(GoogleString* disabled_reason) {
   disable_filter_ = !driver()->request_properties()->SupportsSplitHtml(
       driver()->options()->enable_aggressive_rewriters_for_mobile()) ||
       SplitHtmlBeaconFilter::ShouldApply(driver()) ||

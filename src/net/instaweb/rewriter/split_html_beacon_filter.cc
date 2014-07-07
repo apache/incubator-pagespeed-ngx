@@ -57,7 +57,7 @@ SplitHtmlBeaconFilter::SplitHtmlBeaconFilter(RewriteDriver* driver)
       stats->GetVariable(kSplitHtmlBeaconAddedCount);
 }
 
-void SplitHtmlBeaconFilter::DetermineEnabled() {
+void SplitHtmlBeaconFilter::DetermineEnabled(GoogleString* disabled_reason) {
   set_is_enabled(ShouldApply(driver()));
 }
 

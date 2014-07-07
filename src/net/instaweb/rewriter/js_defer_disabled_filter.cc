@@ -38,7 +38,7 @@ JsDeferDisabledFilter::JsDeferDisabledFilter(RewriteDriver* driver)
 
 JsDeferDisabledFilter::~JsDeferDisabledFilter() { }
 
-void JsDeferDisabledFilter::DetermineEnabled() {
+void JsDeferDisabledFilter::DetermineEnabled(GoogleString* disabled_reason) {
   set_is_enabled(ShouldApply(driver()) &&
                  !driver()->flushing_cached_html() &&
                  !driver()->flushed_cached_html());

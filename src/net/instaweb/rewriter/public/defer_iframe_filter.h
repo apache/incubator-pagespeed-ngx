@@ -72,7 +72,7 @@ class DeferIframeFilter : public CommonFilter {
   virtual void StartDocumentImpl();
   virtual void StartElementImpl(HtmlElement* element);
   virtual void EndElementImpl(HtmlElement* element);
-  virtual void DetermineEnabled();
+  virtual void DetermineEnabled(GoogleString* disabled_reason);
 
   virtual const char* Name() const { return "DeferIframe"; }
 

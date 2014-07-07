@@ -21,10 +21,12 @@
 
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/gmock.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/html/disable_test_filter.h"
 #include "pagespeed/kernel/html/empty_html_filter.h"
 #include "pagespeed/kernel/html/explicit_close_tag.h"
 #include "pagespeed/kernel/html/html_element.h"
@@ -1219,7 +1221,7 @@ class HandlerCalledFilter : public HtmlFilter {
   }
   virtual void Flush() { called_flush_ = true; }
 
-  virtual void DetermineEnabled() {
+  virtual void DetermineEnabled(GoogleString* disabled_reason) {
     set_is_enabled(enabled_value_);
   }
 
@@ -1998,6 +2000,67 @@ TEST_F(AttributeManipulationTest, CloneElement) {
                 " selected />"
                 "<a href=\"http://www.google.com/\" id=37 class='search!'"
                 " selected />");
+}
+
+TEST_F(HtmlParseTest, NoDisabledFilter) {
+  std::vector<GoogleString> disabled_filters;
+  ASSERT_TRUE(disabled_filters.empty());
+
+  html_parse_.SetDynamicallyDisabledFilterList(&disabled_filters);
+
+  DisableTestFilter filter("not_disabled_filter", true, "Ignored reason");
+  html_parse_.AddFilter(&filter);
+
+  Parse("not_disabled_filter", "<!-- Empty body -->");
+
+  EXPECT_TRUE(disabled_filters.empty());
+}
+
+TEST_F(HtmlParseTest, DisabledFilters) {
+  using testing::ElementsAre;
+
+  std::vector<GoogleString> disabled_filters;
+  ASSERT_TRUE(disabled_filters.empty());
+
+  html_parse_.SetDynamicallyDisabledFilterList(&disabled_filters);
+
+  DisableTestFilter filter1("not_disabled_filter1", true, "Ignored reason");
+  html_parse_.AddFilter(&filter1);
+
+  DisableTestFilter disabled_filter1("disabled_filter1", false, "");
+  html_parse_.AddFilter(&disabled_filter1);
+
+  DisableTestFilter filter2("not_disabled_filter2", true, "Ignored reason");
+  html_parse_.AddFilter(&filter2);
+
+  DisableTestFilter disabled_filter2("disabled_filter2", false, "");
+  html_parse_.AddFilter(&disabled_filter2);
+
+  DisableTestFilter filter3("not_disabled_filter3", true, "Ignored reason");
+  html_parse_.AddFilter(&filter3);
+
+  Parse("disabled_filter", "<!-- Empty body -->");
+
+  EXPECT_THAT(disabled_filters,
+              ElementsAre(disabled_filter1.ExpectedDisabledMessage(),
+                          disabled_filter2.ExpectedDisabledMessage()));
+}
+
+TEST_F(HtmlParseTest, DisabledFilterWithReason) {
+  using testing::ElementsAre;
+
+  std::vector<GoogleString> disabled_filters;
+  ASSERT_TRUE(disabled_filters.empty());
+  html_parse_.SetDynamicallyDisabledFilterList(&disabled_filters);
+
+  const GoogleString disabled_reason("Some reason");
+  DisableTestFilter filter("disabled_filter_with_reason", false,
+                           disabled_reason);
+  html_parse_.AddFilter(&filter);
+
+  Parse("disabled_filter_with_reason", "<!-- Empty body -->");
+
+  EXPECT_THAT(disabled_filters, ElementsAre(filter.ExpectedDisabledMessage()));
 }
 
 }  // namespace net_instaweb

@@ -162,7 +162,7 @@ CriticalCssFilter::CriticalCssFilter(RewriteDriver* driver,
 CriticalCssFilter::~CriticalCssFilter() {
 }
 
-void CriticalCssFilter::DetermineEnabled() {
+void CriticalCssFilter::DetermineEnabled(GoogleString* disabled_reason) {
   bool is_ie = driver()->user_agent_matcher()->IsIe(driver()->user_agent());
   if (is_ie) {
     // Disable critical CSS for IE because conditional-comments are not handled
@@ -178,6 +178,9 @@ void CriticalCssFilter::DetermineEnabled() {
     driver()->log_record()->LogRewriterHtmlStatus(
         RewriteOptions::FilterId(RewriteOptions::kPrioritizeCriticalCss),
         RewriterHtmlApplication::USER_AGENT_NOT_SUPPORTED);
+
+    *disabled_reason = StrCat("User agent '", driver()->user_agent(),
+                              "' appears to be Internet Explorer");
   }
   set_is_enabled(!is_ie);
 }

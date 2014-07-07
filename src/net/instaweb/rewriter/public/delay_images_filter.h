@@ -100,7 +100,7 @@ class DelayImagesFilter : public CommonFilter {
 
   virtual const char* Name() const { return "DelayImages"; }
 
-  virtual void DetermineEnabled();
+  virtual void DetermineEnabled(GoogleString* disabled_reason);
 
   static void InitStats(Statistics* statistics);
   static void Terminate();

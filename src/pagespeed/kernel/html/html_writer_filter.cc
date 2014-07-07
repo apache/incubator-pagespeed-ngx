@@ -247,7 +247,7 @@ void HtmlWriterFilter::Flush() {
   }
 }
 
-void HtmlWriterFilter::DetermineEnabled() {
+void HtmlWriterFilter::DetermineEnabled(GoogleString* disabled_reason) {
   set_is_enabled(true);
 }
 

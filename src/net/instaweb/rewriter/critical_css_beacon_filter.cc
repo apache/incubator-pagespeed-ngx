@@ -216,7 +216,7 @@ void CriticalCssBeaconFilter::SummariesDone() {
   }
 }
 
-void CriticalCssBeaconFilter::DetermineEnabled() {
+void CriticalCssBeaconFilter::DetermineEnabled(GoogleString* disabled_reason) {
   set_is_enabled(driver()->request_properties()->SupportsCriticalCssBeacon());
 }
 

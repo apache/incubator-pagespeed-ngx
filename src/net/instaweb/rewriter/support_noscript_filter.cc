@@ -42,7 +42,7 @@ SupportNoscriptFilter::SupportNoscriptFilter(RewriteDriver* rewrite_driver)
 SupportNoscriptFilter::~SupportNoscriptFilter() {
 }
 
-void SupportNoscriptFilter::DetermineEnabled() {
+void SupportNoscriptFilter::DetermineEnabled(GoogleString* disabled_reason) {
   // Insert a NOSCRIPT tag only if at least one of the filters requiring
   // JavaScript for execution is enabled.
   should_insert_noscript_ = IsAnyFilterRequiringScriptExecutionEnabled();

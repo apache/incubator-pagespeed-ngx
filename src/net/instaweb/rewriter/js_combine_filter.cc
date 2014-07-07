@@ -707,7 +707,7 @@ void JsCombineFilter::NextCombination() {
   context_->Reset();
 }
 
-void JsCombineFilter::DetermineEnabled() {
+void JsCombineFilter::DetermineEnabled(GoogleString* disabled_reason) {
   set_is_enabled(!driver()->flushed_cached_html());
 }
 

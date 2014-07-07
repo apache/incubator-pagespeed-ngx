@@ -67,7 +67,7 @@ LazyloadImagesFilter::LazyloadImagesFilter(RewriteDriver* driver)
 }
 LazyloadImagesFilter::~LazyloadImagesFilter() {}
 
-void LazyloadImagesFilter::DetermineEnabled() {
+void LazyloadImagesFilter::DetermineEnabled(GoogleString* disabled_reason) {
   RewriterHtmlApplication::Status should_apply = ShouldApply(driver());
   set_is_enabled(should_apply == RewriterHtmlApplication::ACTIVE);
   if (!driver()->flushing_early()) {

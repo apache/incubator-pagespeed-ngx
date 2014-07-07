@@ -58,7 +58,7 @@ SplitHtmlHelperFilter::SplitHtmlHelperFilter(RewriteDriver* rewrite_driver)
 SplitHtmlHelperFilter::~SplitHtmlHelperFilter() {
 }
 
-void SplitHtmlHelperFilter::DetermineEnabled() {
+void SplitHtmlHelperFilter::DetermineEnabled(GoogleString* disabled_reason) {
   bool disable_filter = !driver()->request_properties()->SupportsSplitHtml(
       driver()->options()->enable_aggressive_rewriters_for_mobile());
   if (disable_filter) {

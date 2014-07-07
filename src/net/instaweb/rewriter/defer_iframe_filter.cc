@@ -45,7 +45,7 @@ DeferIframeFilter::DeferIframeFilter(RewriteDriver* driver)
 DeferIframeFilter::~DeferIframeFilter() {
 }
 
-void DeferIframeFilter::DetermineEnabled() {
+void DeferIframeFilter::DetermineEnabled(GoogleString* disabled_reason) {
   set_is_enabled(driver()->request_properties()->SupportsJsDefer(
       driver()->options()->enable_aggressive_rewriters_for_mobile()));
 }

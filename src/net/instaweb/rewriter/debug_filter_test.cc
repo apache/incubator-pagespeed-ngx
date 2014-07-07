@@ -25,10 +25,12 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/rewriter/public/support_noscript_filter.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/html/disable_test_filter.h"
 #include "pagespeed/kernel/base/gmock.h"
 
 using ::testing::HasSubstr;
@@ -49,6 +51,9 @@ class DebugFilterTest : public RewriteTestBase {
     options()->EnableFilter(RewriteOptions::kExtendCacheScripts);
     rewrite_driver()->AddFilters();
     SetupWriter();
+
+    SupportNoscriptFilter tmp(rewrite_driver());
+    expected_dynamically_disabled_filters_.push_back(tmp.Name());
   }
 
   void ExtractFlushMessagesFromOutput(StringPiece code_to_erase,
@@ -110,9 +115,10 @@ class DebugFilterTest : public RewriteTestBase {
     StringPieceVector flush_messages;
     ExtractFlushMessagesFromOutput(OptScriptHtml(), &flush_messages);
     ASSERT_EQ(1, flush_messages.size());
-    EXPECT_STREQ(DebugFilter::FormatEndDocumentMessage(0, 0, 0, 0, 0, false,
-                                                       StringSet()),
-                 flush_messages[0]);
+    EXPECT_STREQ(
+        DebugFilter::FormatEndDocumentMessage(0, 0, 0, 0, 0, false, StringSet(),
+                                              ExpectedDisabledFilters()),
+        flush_messages[0]);
 
     // Clear the output buffer as the bytes would otherwise accumulate.
     output_buffer_.clear();
@@ -127,6 +133,13 @@ class DebugFilterTest : public RewriteTestBase {
     SetCacheDelayUs(delay_us);
     return delay_us;
   }
+
+  const StringVector& ExpectedDisabledFilters() {
+    return expected_dynamically_disabled_filters_;
+  }
+
+ private:
+  StringVector expected_dynamically_disabled_filters_;
 };
 
 // Tests a simple flow for a parse with two intervening flushes and delays.
@@ -153,7 +166,8 @@ TEST_F(DebugFilterTest, TwoFlushes) {
   EXPECT_EQ(DebugFilter::FormatFlushMessage(111111, 0, 0, 110000),
             flush_messages[2]);
   EXPECT_STREQ(DebugFilter::FormatEndDocumentMessage(111111, 0, 0, 111111, 2,
-                                                     false, StringSet()),
+                                                     false, StringSet(),
+                                                     ExpectedDisabledFilters()),
                flush_messages[3]);
 }
 
@@ -170,7 +184,8 @@ TEST_F(DebugFilterTest, ZeroFlushes) {
   // than 2.
   ASSERT_EQ(1, flush_messages.size());
   EXPECT_STREQ(DebugFilter::FormatEndDocumentMessage(111111, 0, 0, 111111, 0,
-                                                     false, StringSet()),
+                                                     false, StringSet(),
+                                                     ExpectedDisabledFilters()),
                flush_messages[0]);
 }
 
@@ -192,7 +207,8 @@ TEST_F(DebugFilterTest, FlushWithDelayedCache) {
   EXPECT_STREQ(DebugFilter::FormatFlushMessage(delay_us, 0, 0, 0),
                flush_messages[1]);
   EXPECT_STREQ(DebugFilter::FormatEndDocumentMessage(delay_us, 0, delay_us, 0,
-                                                     1, false, StringSet()),
+                                                     1, false, StringSet(),
+                                                     ExpectedDisabledFilters()),
                flush_messages[2]);
 }
 
@@ -208,9 +224,10 @@ TEST_F(DebugFilterTest, EndWithDelayedCache) {
   StringPieceVector flush_messages;
   ExtractFlushMessagesFromOutput(OptScriptHtml(), &flush_messages);
   ASSERT_EQ(1, flush_messages.size());
-  EXPECT_STREQ(DebugFilter::FormatEndDocumentMessage(0, 0, delay_us, 0, 0,
-                                                     false, StringSet()),
-               flush_messages[0]);
+  EXPECT_STREQ(
+      DebugFilter::FormatEndDocumentMessage(
+          0, 0, delay_us, 0, 0, false, StringSet(), ExpectedDisabledFilters()),
+      flush_messages[0]);
 }
 
 TEST_F(DebugFilterTest, FlushInStyleTag) {
@@ -241,7 +258,8 @@ TEST_F(DebugFilterTest, FlushInStyleTag) {
           StrCat("<!--", DebugFilter::FormatFlushMessage(31, 0, 0, 20), "-->"),
           StrCat("<!--", DebugFilter::FormatFlushMessage(51, 0, 0, 20), "-->"),
           StrCat("<!--", DebugFilter::FormatEndDocumentMessage(
-                             51, 0, 0, 51, 2, false, StringSet()),
+                             51, 0, 0, 51, 2, false, StringSet(),
+                             ExpectedDisabledFilters()),
                  "-->")),
       output_buffer_);
 }
@@ -275,6 +293,67 @@ TEST_F(DebugFilterWithCriticalImagesTest, CriticalImageMessage) {
   EXPECT_THAT(output_buffer_,
               ::testing::HasSubstr(StrCat("Critical Images:\n\t", img_url)));
   EXPECT_THAT(output_buffer_, Not(HasSubstr(StrCat(kTestDomain, "b.jpg"))));
+}
+
+class DebugFilterNoOtherFiltersTest : public DebugFilterTest {
+ protected:
+  virtual void SetUp() {
+    RewriteTestBase::SetUp();
+    options()->set_support_noscript_enabled(false);
+    options()->EnableFilter(RewriteOptions::kDebug);
+  }
+
+  virtual void FinishSetup() {
+    rewrite_driver()->AddFilters();
+    SetupWriter();
+  }
+};
+
+class DisabledFilter : public EmptyHtmlFilter {
+ public:
+  explicit DisabledFilter(const GoogleString& name) : name_(name) {}
+
+  virtual void DetermineEnabled(GoogleString* disabled_reason) {
+    set_is_enabled(false);
+  }
+
+  virtual const char* Name() const { return name_.c_str(); }
+
+ private:
+  GoogleString name_;
+
+  DISALLOW_COPY_AND_ASSIGN(DisabledFilter);
+};
+
+TEST_F(DebugFilterNoOtherFiltersTest, NoDisabledFiltersTest) {
+  FinishSetup();
+
+  Parse("no_disabled_filters", "<!-- Empty body -->");
+  EXPECT_THAT(output_buffer_, HasSubstr("No filters were disabled"));
+  EXPECT_THAT(output_buffer_,
+              Not(HasSubstr("The following filters were disabled:")));
+}
+
+TEST_F(DebugFilterNoOtherFiltersTest, DisabledFilterTest) {
+  DisableTestFilter filter1("disabled_filter_1", false, "");
+  rewrite_driver()->AddFilter(&filter1);
+
+  DisableTestFilter filter2("disabled_filter_2", false, "Reasons");
+  rewrite_driver()->AddFilter(&filter2);
+
+  DisableTestFilter filter3("disabled_filter_3", false, "");
+  rewrite_driver()->AddFilter(&filter3);
+
+  FinishSetup();
+
+  Parse("disabled_filters", "<!-- Empty body -->");
+  EXPECT_THAT(output_buffer_, Not(HasSubstr("No filters were disabled")));
+  EXPECT_THAT(output_buffer_,
+              HasSubstr(
+                  "The following filters were disabled for this request:\n"
+                  "\tdisabled_filter_1\n"
+                  "\tdisabled_filter_2: Reasons\n"
+                  "\tdisabled_filter_3\n"));
 }
 
 }  // namespace
