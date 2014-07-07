@@ -39,6 +39,8 @@
 #include "pagespeed/kernel/html/html_testing_peer.h"
 #include "pagespeed/kernel/html/html_writer_filter.h"
 
+using testing::UnorderedElementsAre;
+
 namespace net_instaweb {
 
 class HtmlParseTest : public HtmlParseTestBase {
@@ -2017,8 +2019,6 @@ TEST_F(HtmlParseTest, NoDisabledFilter) {
 }
 
 TEST_F(HtmlParseTest, DisabledFilters) {
-  using testing::ElementsAre;
-
   std::vector<GoogleString> disabled_filters;
   ASSERT_TRUE(disabled_filters.empty());
 
@@ -2042,13 +2042,11 @@ TEST_F(HtmlParseTest, DisabledFilters) {
   Parse("disabled_filter", "<!-- Empty body -->");
 
   EXPECT_THAT(disabled_filters,
-              ElementsAre(disabled_filter1.ExpectedDisabledMessage(),
-                          disabled_filter2.ExpectedDisabledMessage()));
+              UnorderedElementsAre(disabled_filter1.ExpectedDisabledMessage(),
+                                   disabled_filter2.ExpectedDisabledMessage()));
 }
 
 TEST_F(HtmlParseTest, DisabledFilterWithReason) {
-  using testing::ElementsAre;
-
   std::vector<GoogleString> disabled_filters;
   ASSERT_TRUE(disabled_filters.empty());
   html_parse_.SetDynamicallyDisabledFilterList(&disabled_filters);
@@ -2060,7 +2058,8 @@ TEST_F(HtmlParseTest, DisabledFilterWithReason) {
 
   Parse("disabled_filter_with_reason", "<!-- Empty body -->");
 
-  EXPECT_THAT(disabled_filters, ElementsAre(filter.ExpectedDisabledMessage()));
+  EXPECT_THAT(disabled_filters,
+              UnorderedElementsAre(filter.ExpectedDisabledMessage()));
 }
 
 }  // namespace net_instaweb

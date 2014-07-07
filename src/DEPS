@@ -64,6 +64,12 @@ vars = {
     "https://sparsehash.googlecode.com/svn/tags/sparsehash-1.8.1/src/",
   "google_sparsehash_revision": "@head",
 
+  "gtest_src": "https://googletest.googlecode.com/svn/tags/release-1.7.0/",
+  "gtest_revision": "@head",
+
+  "gmock_src": "https://googlemock.googlecode.com/svn/tags/release-1.7.0/",
+  "gmock_revision": "@head",
+
   # Comment this out to disable HTTPS fetching via serf.  See also the
   # references in src/third_party/serf/serf.gyp.
   #
@@ -134,8 +140,9 @@ deps = {
 
   "src/testing":
     Var("chromium_trunk") + "src/testing/@" + Var("chromium_revision_num"),
-  "src/testing/gtest": From(Var("chromium_deps_root")),
-  "src/testing/gmock": From(Var("chromium_deps_root")),
+  "src/testing/gtest": Var("gtest_src") + Var("gtest_revision"),
+  "src/testing/gmock": Var("gmock_src") + Var("gmock_revision"),
+
 
   "src/third_party/apr/src":
     Var("apr_src") + Var("apr_revision"),
