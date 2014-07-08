@@ -933,10 +933,9 @@ PageSpeedFilters=inline_javascript,debug"
 OUTFILE=$OUTDIR/blocking_rewrite.out.html
 $WGET_DUMP --header 'X-PSA-Blocking-Rewrite: psatest' $URL > $OUTFILE
 check egrep -q 'script[[:space:]]src=' $OUTFILE
-EXPECTED_COMMENT_LINE="<!--InlineJs: Cannot create resource: either its \
-domain is unauthorized and InlineUnauthorizedResources is not enabled, \
-or it cannot be fetched (check the server logs)-->"
-check grep -q "$EXPECTED_COMMENT_LINE" $OUTFILE
+EXPECTED_COMMENT_LINE="<!--The preceding resource was not rewritten \
+because its domain (www.gstatic.com) is not authorized-->"
+check [ $(grep -o "$EXPECTED_COMMENT_LINE" $OUTFILE | wc -l) -eq 1 ]
 
 start_test inline_unauthorized_resources allows inlining
 HOST_NAME="http://unauthorizedresources.example.com"
@@ -960,10 +959,9 @@ PageSpeedFilters=inline_css,debug"
 OUTFILE=$OUTDIR/blocking_rewrite.out.html
 $WGET_DUMP --header 'X-PSA-Blocking-Rewrite: psatest' $URL > $OUTFILE
 check egrep -q 'link[[:space:]]rel=' $OUTFILE
-EXPECTED_COMMENT_LINE="<!--InlineCss: Cannot create resource: either its \
-domain is unauthorized and InlineUnauthorizedResources is not enabled, \
-or it cannot be fetched (check the server logs)-->"
-check grep -q "$EXPECTED_COMMENT_LINE" $OUTFILE
+EXPECTED_COMMENT_LINE="<!--The preceding resource was not rewritten \
+because its domain (www.google.com) is not authorized-->"
+check [ $(grep -o "$EXPECTED_COMMENT_LINE" $OUTFILE | wc -l) -eq 1 ]
 
 start_test inline_unauthorized_resources allows inlining
 HOST_NAME="http://unauthorizedresources.example.com"
@@ -2155,15 +2153,12 @@ check_not fgrep -q "interesting_color" $FETCH_FILE
 # c) selectors that don't depend on flattening should appear in the selector
 #    list.
 check [ $(fgrep -c "non_flattened_selector" $FETCH_FILE) -eq 1 ]
-EXPECTED_IMPORT_FAILURE_LINE="<!--Flattening failed: Cannot import "
-EXPECTED_IMPORT_FAILURE_LINE+="http://www.google.com/css/maia.css: is it on "
-EXPECTED_IMPORT_FAILURE_LINE+="an unauthorized domain?-->"
-check grep -q "$EXPECTED_IMPORT_FAILURE_LINE" $FETCH_FILE
-EXPECTED_COMMENT_LINE="<!--CriticalCssBeacon: Cannot create resource: either "
-EXPECTED_COMMENT_LINE+="its domain is unauthorized and "
-EXPECTED_COMMENT_LINE+="InlineUnauthorizedResources is not enabled, or it "
-EXPECTED_COMMENT_LINE+="cannot be fetched (check the server logs)-->"
-check grep -q "$EXPECTED_COMMENT_LINE" $FETCH_FILE
+EXPECTED_IMPORT_FAILURE_LINE="<!--Flattening failed: Cannot import \
+http://www.google.com/css/maia.css as it is on an unauthorized domain-->"
+check [ $(grep -o "$EXPECTED_IMPORT_FAILURE_LINE" $FETCH_FILE | wc -l) -eq 1 ]
+EXPECTED_COMMENT_LINE="<!--The preceding resource was not rewritten \
+because its domain (www.google.com) is not authorized-->"
+check [ $(grep -o "$EXPECTED_COMMENT_LINE" $FETCH_FILE | wc -l) -eq 1 ]
 
 start_test inline_unauthorized_resources allows unauthorized css selectors
 HOST_NAME="http://unauthorizedresources.example.com"
