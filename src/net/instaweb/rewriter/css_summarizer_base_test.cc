@@ -244,22 +244,23 @@ class CssSummarizerBaseTest : public RewriteTestBase {
     return FinishTest(full_pre_comment, post_comment);
   }
 
-  void VerifyUnauthNotRendered() {
+  void VerifyUnauthNotRendered(StringPiece summary_comment) {
     FullTest("will_not_render", "", "");
     EXPECT_STREQ(
-        StrCat("<html>\n",
+        StrCat("<html>\n"
                "<style>* {display: none; }</style>",
                CssLinkHref("a.css"),
                StrCat("<!--WillNotRender:2 --- ParseOrCloseStyleTagError-->",
-                       CssLinkHref("b.css")),
-               StrCat("<!--WillNotRender:3 --- ParseOrCloseStyleTagError-->",
+                       CssLinkHref("b.css"),
+                      "<!--WillNotRender:3 --- ParseOrCloseStyleTagError-->",
                        CssLinkHref("c.css")),
                StrCat("<!--WillNotRender:4 --- ParseOrCloseStyleTagError-->",
-                       CssLinkHref("close_style_tag.css")),
-               StrCat("<!--WillNotRender:5 --- FetchError-->",
+                       CssLinkHref("close_style_tag.css"),
+                      "<!--WillNotRender:5 --- FetchError-->",
                        CssLinkHref("404.css")),
                StrCat("<!--WillNotRender:6 --- ResourceError-->",
                        CssLinkHref("http://evil.com/d.css")),
+               summary_comment,
                StrCat("<!--", kExpectedResult, "-->")),
         output_buffer_);
   }
@@ -294,7 +295,7 @@ TEST_F(CssSummarizerBaseTest, RenderSummary) {
 
 TEST_F(CssSummarizerBaseTest, WillNotRenderSummary) {
   filter_->set_will_not_render_summaries_in_place(true);
-  VerifyUnauthNotRendered();
+  VerifyUnauthNotRendered(/* summary_comment= */ "");
 }
 
 TEST_F(CssSummarizerBaseTest, WillNotRenderSummaryWithUnauthEnabled) {
@@ -302,7 +303,31 @@ TEST_F(CssSummarizerBaseTest, WillNotRenderSummaryWithUnauthEnabled) {
   options()->ClearSignatureForTesting();
   options()->AddInlineUnauthorizedResourceType(semantic_type::kStylesheet);
   server_context()->ComputeSignature(options());
-  VerifyUnauthNotRendered();
+  VerifyUnauthNotRendered(/* summary_comment= */ "");
+}
+
+TEST_F(CssSummarizerBaseTest, WillNotRenderSummaryWithDebug) {
+  filter_->set_will_not_render_summaries_in_place(true);
+  options()->ClearSignatureForTesting();
+  options()->EnableFilter(RewriteOptions::kDebug);
+  server_context()->ComputeSignature(options());
+  const char kDebugSummary[] =
+      "<!--Summary computation status for Minify10\n"
+      "Resource 0 http://test.com/will_not_render:2: Computed OK\n"
+      "Resource 1 http://test.com/a.css: Computed OK\n"
+      "Resource 2 http://test.com/b.css: "
+      "Unrecoverable CSS parse error or resource contains closing style tag\n"
+      "Resource 3 http://test.com/c.css: "
+      "Unrecoverable CSS parse error or resource contains closing style tag\n"
+      "Resource 4 http://test.com/close_style_tag.css: "
+      "Unrecoverable CSS parse error or resource contains closing style tag\n"
+      "Resource 5 http://test.com/404.css: "
+      "Fetch failed or resource not publicly cacheable\n"
+      "Resource 6 http://evil.com/d.css: Cannot create resource: either its "
+      "domain is unauthorized and InlineUnauthorizedResources is not enabled, "
+      "or it cannot be fetched (check the server logs)\n"
+      "-->";
+  VerifyUnauthNotRendered(kDebugSummary);
 }
 
 TEST_F(CssSummarizerBaseTest, WillNotRenderSummaryWait) {

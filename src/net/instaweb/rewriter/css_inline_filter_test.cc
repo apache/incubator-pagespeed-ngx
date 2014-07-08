@@ -22,7 +22,6 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
-#include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/css_inline_filter.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -38,6 +37,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "pagespeed/kernel/base/statistics.h"
+#include "pagespeed/kernel/http/google_url.h"
 
 namespace net_instaweb {
 
@@ -331,11 +331,10 @@ TEST_F(CssInlineFilterTest, DoInlineCssDifferentDomain) {
 
 TEST_F(CssInlineFilterTest, DoNotInlineCssDifferentDomain) {
   // Note: This only fails because we haven't authorized unauth.com
-  TestNoInlineCss("http://www.example.com/index.html",
-                  "http://unauth.com/styles.css",
+  GoogleUrl gurl("http://unauth.com/styles.css");
+  TestNoInlineCss("http://www.example.com/index.html", gurl.Spec().as_string(),
                   "", "BODY { color: red; }\n", "",
-                  StrCat("InlineCss: ",
-                         CommonFilter::kCreateResourceFailedDebugMsg));
+                  RewriteDriver::GenerateUnauthorizedDomainDebugComment(gurl));
   EXPECT_EQ(0,
             statistics()->GetVariable(CssInlineFilter::kNumCssInlined)->Get());
 }

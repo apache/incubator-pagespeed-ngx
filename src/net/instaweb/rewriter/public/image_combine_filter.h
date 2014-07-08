@@ -78,6 +78,7 @@ class ImageCombineFilter : public RewriteFilter {
                                int value_index,
                                CssFilter::Context* parent,
                                Css::Declarations* decls,
+                               bool* is_authorized,
                                MessageHandler* handler);
 
   // Create the combination with the current combiner.

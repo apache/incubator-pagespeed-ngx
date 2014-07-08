@@ -2902,8 +2902,9 @@ class TestNotifyFilter : public CommonFilter {
   virtual void StartElementImpl(net_instaweb::HtmlElement* element) {
     HtmlElement::Attribute* href = element->FindAttribute(HtmlName::kHref);
     if (href != NULL) {
+      bool unused;
       ResourcePtr input_resource(CreateInputResource(
-          href->DecodedValueOrNull()));
+          href->DecodedValueOrNull(), &unused));
       ResourceSlotPtr slot(driver()->GetSlot(input_resource, element, href));
       Context* context = new Context(driver(), sync_);
       context->AddSlot(slot);

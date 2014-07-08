@@ -442,8 +442,8 @@ TEST_F(CssFlattenImportsTest, Flatten404) {
 TEST_F(CssFlattenImportsTest, DontFlattenWithUnauthorizedCSS) {
   // Turn on debug to get the flattening failure reason in an HTML comment.
   const char kFailureReason[] = "<!--Flattening failed: Cannot import "
-                                "http://unauth.com/assets/styles.css: "
-                                "is it on an unauthorized domain?-->";
+                                "http://unauth.com/assets/styles.css "
+                                "as it is on an unauthorized domain-->";
   TurnOnDebug(kFailureReason);
   SetResponseWithDefaultHeaders(kSimpleCssFile, kContentTypeCss,
                                 kSimpleCss, 100);
@@ -1237,6 +1237,44 @@ TEST_F(CssFlattenImportsOnlyTest, FlattenAndTrimInlineCssWithRelativeImage) {
   server_context()->ComputeSignature(options());
   TestRelativeImageUrlInRelativeCssUrl(true, false);
   TestFlattenNested(true, false);
+}
+
+class CssFlattenImportsAndRewriteImagesTest : public CssFlattenImportsTest {
+ protected:
+  virtual void SetUpFilters() {
+    options()->SetRewriteLevel(RewriteOptions::kPassThrough);
+    options()->EnableFilter(RewriteOptions::kFlattenCssImports);
+    options()->EnableFilter(RewriteOptions::kRecompressPng);
+    options()->set_always_rewrite_css(true);
+    rewrite_driver()->AddFilters();
+  }
+};
+
+TEST_F(CssFlattenImportsAndRewriteImagesTest, UnauthorizedImageDomain) {
+  // Setup the image we refer to.
+  const char kFooPng[] = "http://unauth.com/images/foo.png";
+  const char kImageData[] = "Invalid PNG but does not matter for this test";
+  SetResponseWithDefaultHeaders(kFooPng, kContentTypePng, kImageData, 100);
+  // Setup the CSS that refers to it.
+  const char kSimpleCssTemplate[] =
+      ".background_red{background-color:red}"
+      ".foreground_yellow{color:#ff0}"
+      ".body{background-image:url(%s)}";
+  // The input CSS refers to ../images/test.jpg from the file /a/b/simple.css,
+  // so the image's path is /a/images/test.jpg, which is what should be used
+  // when the CSS is flattened into the base document (with base of '/').
+  const GoogleString simple_css_path =
+      StrCat(kTestDomain, "a/b/", kSimpleCssFile);
+  const GoogleString simple_css_in = StringPrintf(kSimpleCssTemplate, kFooPng);
+  SetResponseWithDefaultHeaders(
+      simple_css_path, kContentTypeCss, simple_css_in, 100);
+  const GoogleString import_simple_css =
+      StrCat("@import url(", simple_css_path, ") ;");
+  TurnOnDebug(StrCat("<!--Cannot rewrite ", kFooPng,
+                     " as it is on an unauthorized domain-->"));
+  ValidateRewriteExternalCss("unauthorized_image_domain",
+                             import_simple_css, simple_css_in,
+                             kExpectSuccess | kNoClearFetcher);
 }
 
 }  // namespace

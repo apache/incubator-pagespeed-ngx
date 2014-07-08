@@ -90,12 +90,6 @@ class CommonFilter : public EmptyHtmlFilter {
   // for InsertNodeAtBodyEnd() to work correctly.
   virtual void Characters(HtmlCharactersNode* characters);
 
-  // TODO(matterbury): Remove this TEMPORARY wrapper when all call sites fixed.
-  ResourcePtr CreateInputResource(StringPiece input_url) {
-    bool unused;
-    return CreateInputResource(input_url, &unused);
-  }
-
   // Creates an input resource with the url evaluated based on input_url
   // which may need to be absolutified relative to base_url(). Returns NULL
   // if input resource url isn't valid, or can't legally be rewritten in the
@@ -105,6 +99,13 @@ class CommonFilter : public EmptyHtmlFilter {
   // from unauthorized domains we will return non-NULL but *is_authorized will
   // be false; converse cases are possible too (e.g. input_url is a data URI).
   ResourcePtr CreateInputResource(StringPiece input_url, bool* is_authorized);
+
+  // Similar to CreateInputResource except that if the input_url is not
+  // authorized we insert a debug comment after the given element if possible
+  // (debug is enabled and the element is writable). The returned ResourcePtr
+  // is guaranteed to be non-NULL iff the input_url is authorized.
+  ResourcePtr CreateInputResourceOrInsertDebugComment(StringPiece input_url,
+                                                      HtmlElement* element);
 
   // Resolves input_url based on the driver's location and any base tag into
   // out_url. If resolution fails, the resulting URL may be invalid.

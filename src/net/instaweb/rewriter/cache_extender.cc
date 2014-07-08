@@ -176,8 +176,8 @@ void CacheExtender::StartElementImpl(HtmlElement* element) {
     // TODO(jmarantz): We ought to be able to domain-shard even if the
     // resources are non-cacheable or privately cacheable.
     if (driver()->IsRewritable(element)) {
-      ResourcePtr input_resource(CreateInputResource(
-          attributes[i].url->DecodedValueOrNull()));
+      ResourcePtr input_resource(CreateInputResourceOrInsertDebugComment(
+          attributes[i].url->DecodedValueOrNull(), element));
       if (input_resource.get() == NULL) {
         continue;
       }

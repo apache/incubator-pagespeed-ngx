@@ -4393,6 +4393,7 @@ goog.net.XhrIo.send = function(url, opt_callback, opt_method, opt_content, opt_h
   opt_timeoutInterval && x.setTimeoutInterval(opt_timeoutInterval);
   opt_withCredentials && x.setWithCredentials(opt_withCredentials);
   x.send(url, opt_method, opt_content, opt_headers);
+  return x;
 };
 goog.net.XhrIo.cleanup = function() {
   for (var instances = goog.net.XhrIo.sendInstances_;instances.length;) {

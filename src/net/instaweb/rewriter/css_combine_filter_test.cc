@@ -505,7 +505,6 @@ class CssCombineFilterTest : public RewriteTestBase {
     SetFetchResponse(kUrl2, default_css_header, kBlue);
     BarrierTestHelper("combine_css_with_style", css_in, &css_out);
     EXPECT_EQ(2, css_out.size());
-    GoogleString actual_combination;
     EXPECT_STREQ(kUrl1, css_out[0]->url_);
     EXPECT_STREQ(kUrl2, css_out[1]->url_);
   }
@@ -1391,6 +1390,31 @@ TEST_F(CssCombineFilterTest, CrossMappedDomain) {
 // the domain mapping.
 TEST_F(CssCombineFilterTest, CrossUnmappedDomain) {
   VerifyCrossUnmappedDomainNotRewritten();
+}
+
+// Verifies the same but we check the debug message.
+TEST_F(CssCombineFilterWithDebugTest, DebugUnauthorizedDomain) {
+  VerifyCrossUnmappedDomainNotRewritten();
+  EXPECT_STREQ(StrCat("<html>\n"
+                      "<head>\n"
+                      "  <link rel=\"stylesheet\" type=\"text/css\""
+                      " href=\"http://a.com/1.css\">\n"
+                      "  <link "
+                      "rel=\"stylesheet\" type=\"text/css\""
+                      " href=\"http://b.com/2.css\">\n"
+                      "</head>\n"
+                      "<body>\n"
+                      "  <div class='yellow'>\n"
+                      "    Hello, mod_pagespeed!\n"
+                      "  </div>\n"
+                      "</body>\n"
+                      "\n"
+                      "</html>"
+                      "<!--",
+                      DebugFilter::FormatEndDocumentMessage(
+                          0, 0, 0, 0, 0, false, StringSet(), StringVector()),
+                      "-->"),
+               output_buffer_);
 }
 
 // Verifies that we cannot do the same cross-domain combo when we lack

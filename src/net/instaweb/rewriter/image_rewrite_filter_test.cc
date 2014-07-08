@@ -3481,7 +3481,6 @@ TEST_F(ImageRewriteTest, NoTransformOptimized) {
 }
 
 TEST_F(ImageRewriteTest, DebugMessageImageInfo) {
-
   options()->EnableFilter(RewriteOptions::kDebug);
   options()->EnableFilter(RewriteOptions::kConvertGifToPng);
   options()->EnableFilter(RewriteOptions::kRecompressPng);
@@ -3508,7 +3507,6 @@ TEST_F(ImageRewriteTest, DebugMessageImageInfo) {
   EXPECT_THAT(output_buffer_, HasSubstr(expected));
 }
 
-
 TEST_F(ImageRewriteTest, DebugMessageInline) {
   options()->set_image_inline_max_bytes(100);
   options()->EnableFilter(RewriteOptions::kConvertGifToPng);
@@ -3528,6 +3526,34 @@ TEST_F(ImageRewriteTest, DebugMessageInline) {
   const char kInlineMessage[] =
       "The image was not inlined because it has too many bytes.";
   EXPECT_THAT(output_buffer_, HasSubstr(kInlineMessage));
+}
+
+TEST_F(ImageRewriteTest, DebugMessageUnauthorized) {
+  options()->EnableFilter(RewriteOptions::kConvertGifToPng);
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  options()->EnableFilter(RewriteOptions::kDebug);
+  rewrite_driver()->AddFilters();
+  const char kAuthorizedPath[] = "http://test.com/photo_opaque.gif";
+  const char kUnauthorizedPath[] = "http://unauth.com/photo_opaque.gif";
+  AddFileToMockFetcher(kAuthorizedPath, kChefGifFile, kContentTypeGif, 100);
+  AddFileToMockFetcher(kUnauthorizedPath, kChefGifFile, kContentTypeGif, 100);
+
+  Parse("unauthorized_domain", StrCat("<img src=", kAuthorizedPath, ">"
+                                      "<img src=", kUnauthorizedPath, ">"));
+
+  GoogleUrl unauth_gurl(kUnauthorizedPath);
+  const GoogleString expected = StrCat(
+      "<img src=", Encode(kTestDomain, "ic", "0", "photo_opaque.gif", "png"),
+      ">"
+      "<!--Image does not appear to need resizing.-->"
+      "<!--Image has no transparent pixels and is not sensitive "
+      "to compression noise.-->"
+      "<img src=", kUnauthorizedPath, ">",
+      "<!--",
+      RewriteDriver::GenerateUnauthorizedDomainDebugComment(unauth_gurl),
+      "-->");
+
+  EXPECT_THAT(output_buffer_, HasSubstr(expected));
 }
 
 }  // namespace net_instaweb

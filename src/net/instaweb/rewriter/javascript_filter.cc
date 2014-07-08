@@ -20,8 +20,6 @@
 
 #include <cstddef>
 
-#include <vector>
-
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
@@ -432,18 +430,21 @@ void JavascriptFilter::RewriteInlineScript(HtmlCharactersNode* body_node) {
 void JavascriptFilter::RewriteExternalScript(
     HtmlElement* script_in_progress, HtmlElement::Attribute* script_src) {
   const StringPiece script_url(script_src->DecodedValueOrNull());
-  ResourcePtr resource = CreateInputResource(script_url);
-  if (resource.get() != NULL) {
-    ResourceSlotPtr slot(
-        driver()->GetSlot(resource, script_in_progress, script_src));
-    if (driver()->options()->js_preserve_urls()) {
-      slot->set_disable_rendering(true);
-    }
-    Context* jrc = new Context(driver(), NULL, config_.get(),
-                               false /* output_source_map */);
-    jrc->AddSlot(slot);
-    driver()->InitiateRewrite(jrc);
+  ResourcePtr resource(CreateInputResourceOrInsertDebugComment(
+      script_url, script_in_progress));
+  if (resource.get() == NULL) {
+    return;
   }
+
+  ResourceSlotPtr slot(
+      driver()->GetSlot(resource, script_in_progress, script_src));
+  if (driver()->options()->js_preserve_urls()) {
+    slot->set_disable_rendering(true);
+  }
+  Context* jrc = new Context(driver(), NULL, config_.get(),
+                             false /* output_source_map */);
+  jrc->AddSlot(slot);
+  driver()->InitiateRewrite(jrc);
 }
 
 void JavascriptFilter::EndElementImpl(HtmlElement* element) {

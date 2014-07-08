@@ -98,8 +98,8 @@ void FakeFilter::StartElementImpl(HtmlElement* element) {
   resource_tag_scanner::ScanElement(element, rewrite_options(), &attributes);
   for (int i = 0, n = attributes.size(); i < n; ++i) {
     if (attributes[i].category == category_) {
-      ResourcePtr input_resource(
-          CreateInputResource(attributes[i].url->DecodedValueOrNull()));
+      ResourcePtr input_resource(CreateInputResourceOrInsertDebugComment(
+          attributes[i].url->DecodedValueOrNull(), element));
       if (input_resource.get() == NULL) {
         return;
       }

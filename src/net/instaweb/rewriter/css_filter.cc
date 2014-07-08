@@ -557,11 +557,16 @@ bool CssFilter::Context::FallbackRewriteUrls(
       // This is guaranteed by CssUrlCounter.
       CHECK(url.IsAnyValid()) << it->first;
       // Add slot.
-      ResourcePtr resource = Driver()->CreateInputResource(url);
+      bool is_authorized;
+      ResourcePtr resource = Driver()->CreateInputResource(url, &is_authorized);
       if (resource.get()) {
         ResourceSlotPtr slot(new AssociationSlot(
             resource, fallback_transformer_->map(), url.Spec()));
         css_image_rewriter_->RewriteSlot(slot, ImageInlineMaxBytes(), this);
+      } else if (!is_authorized) {
+        output_partition(0)->add_debug_message(
+            StrCat("A resource was not rewritten because ", url.Host(),
+                   " is not an authorized domain"));
       }
     }
   }
@@ -673,8 +678,7 @@ void CssFilter::Context::Harvest() {
     }
   }
 
-  if (!hierarchy_.flattening_succeeded() &&
-      !hierarchy_.flattening_failure_reason().empty()) {
+  if (!hierarchy_.flattening_failure_reason().empty()) {
     output_partition(0)->add_debug_message(
         hierarchy_.flattening_failure_reason());
   }
@@ -1067,9 +1071,13 @@ void CssFilter::StartAttributeRewrite(HtmlElement* element,
 
 void CssFilter::StartExternalRewrite(HtmlElement* link,
                                      HtmlElement::Attribute* src) {
+  if (!driver()->can_rewrite_resources()) {
+    return;
+  }
   // Create the input resource for the slot.
-  ResourcePtr input_resource(CreateInputResource(src->DecodedValueOrNull()));
-  if ((input_resource.get() == NULL) || !driver()->can_rewrite_resources()) {
+  ResourcePtr input_resource(CreateInputResourceOrInsertDebugComment(
+      src->DecodedValueOrNull(), link));
+  if (input_resource.get() == NULL) {
     return;
   }
   ResourceSlotPtr slot(driver()->GetSlot(input_resource, link, src));

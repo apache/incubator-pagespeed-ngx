@@ -1259,38 +1259,41 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
 
   EncodeUserAgentIntoResourceContext(resource_context.get());
 
-  ResourcePtr input_resource = CreateInputResource(src->DecodedValueOrNull());
-  if (input_resource.get() != NULL) {
-    // If the image will be inlined and the local storage cache is enabled, add
-    // the LSC marker attribute to this element so that the LSC filter knows to
-    // insert the relevant javascript functions.
-    if (driver()->request_properties()->SupportsImageInlining()) {
-      LocalStorageCacheFilter::InlineState state;
-      LocalStorageCacheFilter::AddStorableResource(src->DecodedValueOrNull(),
-                                                   driver(),
-                                                   true /* ignore cookie */,
-                                                   element, &state);
-    }
-    Context* context = new Context(0 /* No CSS inlining, it's html */,
-                                   this, driver(), NULL /*not nested */,
-                                   resource_context.release(),
-                                   false /*not css */, image_counter_++,
-                                   noscript_element() != NULL,
-                                   is_resized_using_rendered_dimensions);
-    ResourceSlotPtr slot(driver()->GetSlot(input_resource, element, src));
-    context->AddSlot(slot);
-
-    // Note that in RewriteOptions::Merge we turn off image_preserve_urls
-    // when merging into a configuration that has explicitly
-    // enabled cache_extend_images.
-    if (options->image_preserve_urls() &&
-        !options->Enabled(RewriteOptions::kResizeImages) &&
-        !options->Enabled(RewriteOptions::kResizeToRenderedImageDimensions) &&
-        !options->Enabled(RewriteOptions::kInlineImages)) {
-      slot->set_disable_rendering(true);
-    }
-    driver()->InitiateRewrite(context);
+  ResourcePtr input_resource(CreateInputResourceOrInsertDebugComment(
+      src->DecodedValueOrNull(), element));
+  if (input_resource.get() == NULL) {
+    return;
   }
+
+  // If the image will be inlined and the local storage cache is enabled, add
+  // the LSC marker attribute to this element so that the LSC filter knows to
+  // insert the relevant javascript functions.
+  if (driver()->request_properties()->SupportsImageInlining()) {
+    LocalStorageCacheFilter::InlineState state;
+    LocalStorageCacheFilter::AddStorableResource(src->DecodedValueOrNull(),
+                                                 driver(),
+                                                 true /* ignore cookie */,
+                                                 element, &state);
+  }
+  Context* context = new Context(0 /* No CSS inlining, it's html */,
+                                 this, driver(), NULL /*not nested */,
+                                 resource_context.release(),
+                                 false /*not css */, image_counter_++,
+                                 noscript_element() != NULL,
+                                 is_resized_using_rendered_dimensions);
+  ResourceSlotPtr slot(driver()->GetSlot(input_resource, element, src));
+  context->AddSlot(slot);
+
+  // Note that in RewriteOptions::Merge we turn off image_preserve_urls
+  // when merging into a configuration that has explicitly
+  // enabled cache_extend_images.
+  if (options->image_preserve_urls() &&
+      !options->Enabled(RewriteOptions::kResizeImages) &&
+      !options->Enabled(RewriteOptions::kResizeToRenderedImageDimensions) &&
+      !options->Enabled(RewriteOptions::kInlineImages)) {
+    slot->set_disable_rendering(true);
+  }
+  driver()->InitiateRewrite(context);
 }
 
 bool ImageRewriteFilter::FinishRewriteCssImageUrl(

@@ -472,7 +472,9 @@ void CssSummarizerBase::StartInlineRewrite(
 void CssSummarizerBase::StartExternalRewrite(
     HtmlElement* link, HtmlElement::Attribute* src, StringPiece rel) {
   // Create the input resource for the slot.
-  ResourcePtr input_resource(CreateInputResource(src->DecodedValueOrNull()));
+  bool is_authorized;
+  ResourcePtr input_resource(CreateInputResource(src->DecodedValueOrNull(),
+                                                 &is_authorized));
   if (input_resource.get() == NULL) {
     // Record a failure, so the subclass knows of it.
     summaries_.push_back(SummaryInfo());
@@ -486,8 +488,13 @@ void CssSummarizerBase::StartExternalRewrite(
 
     // TODO(morlovich): Stat?
     if (DebugMode()) {
-      driver()->InsertComment(StrCat(
-          Name(), ": ", kCreateResourceFailedDebugMsg));
+      if (is_authorized || url == NULL) {
+        driver()->InsertComment(StrCat(
+            Name(), ": ", kCreateResourceFailedDebugMsg));
+      } else {
+        // Do not write a debug message in this case because that has already
+        // been done by the CSS rewriting filter.
+      }
     }
     return;
   }

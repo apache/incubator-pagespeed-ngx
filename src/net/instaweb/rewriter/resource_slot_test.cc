@@ -169,7 +169,8 @@ TEST_F(ResourceSlotTest, RenderUpdate) {
             GetHtmlDomAsString());
 
   GoogleUrl gurl("http://html.parse.test/new_css.css");
-  ResourcePtr updated(rewrite_driver()->CreateInputResource(gurl));
+  bool unused;
+  ResourcePtr updated(rewrite_driver()->CreateInputResource(gurl, &unused));
   slot(0)->SetResource(updated);
   slot(0)->Render();
 

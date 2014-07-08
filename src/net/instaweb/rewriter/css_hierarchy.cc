@@ -166,12 +166,27 @@ void CssHierarchy::AddFlatteningFailureReason(const GoogleString& reason) {
     if (trimmed_reason.starts_with(kFailureReasonPrefix)) {
       trimmed_reason.remove_prefix(STATIC_STRLEN(kFailureReasonPrefix));
     }
-    if (flattening_failure_reason_.empty()) {
-      flattening_failure_reason_ = kFailureReasonPrefix;
-    } else {
-      StrAppend(&flattening_failure_reason_, " AND ");
+    // Don't add the reason if we already have it.
+    StringPiece current_reasons(flattening_failure_reason_);
+    if (FindIgnoreCase(current_reasons, trimmed_reason) == StringPiece::npos) {
+      if (flattening_succeeded_) {
+        // This is an informational message only - no prefix required.
+        if (!flattening_failure_reason_.empty()) {
+          StrAppend(&flattening_failure_reason_, " AND ");
+        }
+      } else if (flattening_failure_reason_.empty()) {
+        flattening_failure_reason_ = kFailureReasonPrefix;
+      } else {
+        if (FindIgnoreCase(current_reasons,
+                           kFailureReasonPrefix) == StringPiece::npos) {
+          flattening_failure_reason_ = StrCat(kFailureReasonPrefix,
+                                              flattening_failure_reason_);
+        }
+        StrAppend(&flattening_failure_reason_, " AND ");
+      }
+      // Finally, add the new reason to whatever we have now.
+      StrAppend(&flattening_failure_reason_, trimmed_reason);
     }
-    StrAppend(&flattening_failure_reason_, trimmed_reason);
   }
 }
 
@@ -344,10 +359,9 @@ void CssHierarchy::RollUpContents() {
 
   // Check if flattening has worked so far for us and all our children.
   for (int i = 0; i < n && flattening_succeeded_; ++i) {
-    if (!children_[i]->flattening_succeeded_) {
-      flattening_succeeded_ = false;
-      AddFlatteningFailureReason(children_[i]->flattening_failure_reason());
-    }
+    flattening_succeeded_ &= children_[i]->flattening_succeeded_;
+    AddFlatteningFailureReason(children_[i]->flattening_failure_reason_);
+    children_[i]->flattening_failure_reason_.clear();
   }
 
   // Check if any of our children have anything unparseable in them.
@@ -360,10 +374,9 @@ void CssHierarchy::RollUpContents() {
   for (int i = 0; i < n && flattening_succeeded_; ++i) {
     // RollUpContents can change flattening_succeeded_ so check it again.
     children_[i]->RollUpContents();
-    if (!children_[i]->flattening_succeeded_) {
-      flattening_succeeded_ = false;
-      AddFlatteningFailureReason(children_[i]->flattening_failure_reason());
-    }
+    flattening_succeeded_ &= children_[i]->flattening_succeeded_;
+    AddFlatteningFailureReason(children_[i]->flattening_failure_reason_);
+    children_[i]->flattening_failure_reason_.clear();
   }
 
   if (!flattening_succeeded_) {
@@ -462,10 +475,9 @@ bool CssHierarchy::RollUpStylesheets() {
 
   // Check if flattening worked for us and all our children.
   for (int i = 0; i < n && flattening_succeeded_; ++i) {
-    if (!children_[i]->flattening_succeeded_) {
-      flattening_succeeded_ = false;
-      AddFlatteningFailureReason(children_[i]->flattening_failure_reason());
-    }
+    flattening_succeeded_ &= children_[i]->flattening_succeeded_;
+    AddFlatteningFailureReason(children_[i]->flattening_failure_reason_);
+    children_[i]->flattening_failure_reason_.clear();
   }
 
   // Check if any of our children have anything unparseable in them.
@@ -480,8 +492,9 @@ bool CssHierarchy::RollUpStylesheets() {
     if (!children_[i]->RollUpStylesheets() ||
         !children_[i]->flattening_succeeded_) {
       flattening_succeeded_ = false;
-      AddFlatteningFailureReason(children_[i]->flattening_failure_reason());
     }
+    AddFlatteningFailureReason(children_[i]->flattening_failure_reason_);
+    children_[i]->flattening_failure_reason_.clear();
   }
 
   if (flattening_succeeded_) {

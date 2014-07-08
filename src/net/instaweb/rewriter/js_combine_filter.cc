@@ -215,21 +215,19 @@ class JsCombineFilter::Context : public RewriteContext {
 
   // Create and add the slot that corresponds to this element.
   bool AddElement(HtmlElement* element, HtmlElement::Attribute* href) {
-    bool ret = true;
-    ResourcePtr resource(filter_->CreateInputResource(
-        href->DecodedValueOrNull()));
-    if (resource.get() != NULL) {
-      ResourceSlotPtr slot(Driver()->GetSlot(resource, element, href));
-      AddSlot(slot);
-      fresh_combination_ = false;
-      elements_.push_back(element);
-      // Extract the charset, if any, from the element while it's valid.
-      StringPiece elements_charset(element->AttributeValue(HtmlName::kCharset));
-      elements_charset.CopyToString(StringVectorAdd(&elements_charsets_));
-    } else {
-      ret = false;
+    ResourcePtr resource(filter_->CreateInputResourceOrInsertDebugComment(
+        href->DecodedValueOrNull(), element));
+    if (resource.get() == NULL) {
+      return false;
     }
-    return ret;
+    ResourceSlotPtr slot(Driver()->GetSlot(resource, element, href));
+    AddSlot(slot);
+    fresh_combination_ = false;
+    elements_.push_back(element);
+    // Extract the charset, if any, from the element while it's valid.
+    StringPiece elements_charset(element->AttributeValue(HtmlName::kCharset));
+    elements_charset.CopyToString(StringVectorAdd(&elements_charsets_));
+    return true;
   }
 
   // If we get a flush in the middle of things, we may have put a

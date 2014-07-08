@@ -256,7 +256,8 @@ class ResourceCombinerTest : public RewriteTestBase {
 
   bool AddResource(const StringPiece& url, MessageHandler* handler) {
     // See if we have the source loaded, or start loading it.
-    ResourcePtr resource(filter_->CreateInputResource(url));
+    bool unused;
+    ResourcePtr resource(filter_->CreateInputResource(url, &unused));
     bool ret = false;
 
     if (resource.get() == NULL) {

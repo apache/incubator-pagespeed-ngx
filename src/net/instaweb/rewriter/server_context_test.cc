@@ -183,7 +183,9 @@ class ServerContextTest : public RewriteTestBase {
   ResourcePtr CreateInputResourceAndReadIfCached(const StringPiece& url) {
     rewrite_driver()->SetBaseUrlForFetch(url);
     GoogleUrl resource_url(url);
-    ResourcePtr resource(rewrite_driver()->CreateInputResource(resource_url));
+    bool unused;
+    ResourcePtr resource(rewrite_driver()->CreateInputResource(resource_url,
+                                                               &unused));
     if ((resource.get() != NULL) && !ReadIfCached(resource)) {
       resource.clear();
     }
@@ -299,7 +301,8 @@ class ServerContextTest : public RewriteTestBase {
     SetCustomCachingResponse(url, ttl_ms, extra_cache_control);
     GoogleUrl gurl(AbsolutifyUrl(url));
     rewrite_driver()->SetBaseUrlForFetch(kTestDomain);
-    ResourcePtr resource(rewrite_driver()->CreateInputResource(gurl));
+    bool unused;
+    ResourcePtr resource(rewrite_driver()->CreateInputResource(gurl, &unused));
     VerifyContentsCallback callback(resource, "payload");
     resource->LoadAsync(Resource::kLoadEvenIfNotCacheable,
                         rewrite_driver()->request_context(),
@@ -314,7 +317,8 @@ class ServerContextTest : public RewriteTestBase {
     rewrite_driver()->SetBaseUrlForFetch(kTestDomain);
     SetCustomCachingResponse(url, 100, "");
     GoogleUrl gurl(AbsolutifyUrl(url));
-    ResourcePtr resource(rewrite_driver()->CreateInputResource(gurl));
+    bool unused;
+    ResourcePtr resource(rewrite_driver()->CreateInputResource(gurl, &unused));
     if (!is_background_fetch) {
       rewrite_driver()->SetRequestHeaders(*headers);
     }
@@ -1640,8 +1644,11 @@ TEST_F(ServerContextTest, PartlyFailedFetch) {
 
   GoogleUrl gurl(abs_url);
   SetBaseUrlForFetch(abs_url);
-  ResourcePtr resource = rewrite_driver()->CreateInputResource(gurl);
+  bool is_authorized;
+  ResourcePtr resource = rewrite_driver()->CreateInputResource(gurl,
+                                                               &is_authorized);
   ASSERT_TRUE(resource.get() != NULL);
+  EXPECT_TRUE(is_authorized);
   MockResourceCallback callback(resource, factory()->thread_system());
   resource->LoadAsync(Resource::kReportFailureIfNotCacheable,
                       rewrite_driver()->request_context(),
@@ -1667,15 +1674,16 @@ TEST_F(ServerContextTest, LoadFromFileReadAsync) {
   WriteFile("/test/a.css", kContents);
 
   SetBaseUrlForFetch("http://test.com");
-  ResourcePtr resource(
-      rewrite_driver()->CreateInputResource(test_url));
+  bool unused;
+  ResourcePtr resource(rewrite_driver()->CreateInputResource(test_url,
+                                                             &unused));
   VerifyContentsCallback callback(resource, kContents);
   resource->LoadAsync(Resource::kReportFailureIfNotCacheable,
                       rewrite_driver()->request_context(),
                       &callback);
   callback.AssertCalled();
 
-  resource = rewrite_driver()->CreateInputResource(test_url);
+  resource = rewrite_driver()->CreateInputResource(test_url, &unused);
   VerifyContentsCallback callback2(resource, kContents);
   resource->LoadAsync(Resource::kReportFailureIfNotCacheable,
                       rewrite_driver()->request_context(),
@@ -1713,7 +1721,8 @@ TEST_F(ServerContextTest, FillInPartitionInputInfo) {
   headers.ComputeCaching();
   SetFetchResponse(kUrl, headers, kContents);
   GoogleUrl gurl(kUrl);
-  ResourcePtr resource(rewrite_driver()->CreateInputResource(gurl));
+  bool unused;
+  ResourcePtr resource(rewrite_driver()->CreateInputResource(gurl, &unused));
   VerifyContentsCallback callback(resource, kContents);
   resource->LoadAsync(Resource::kReportFailureIfNotCacheable,
                       rewrite_driver()->request_context(),

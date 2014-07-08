@@ -729,4 +729,41 @@ TEST_F(CssHierarchyTest, RollUpStylesheetsNestedAfterRollUpContents) {
   EXPECT_EQ(flattened_css(), out_text);
 }
 
+TEST_F(CssHierarchyTest, RollUpContentsKeepsDebugMessages) {
+  CssHierarchy top(NULL);
+  InitializeNestedRoot(&top);
+  ExpandHierarchy(&top);
+
+  // Inject a log message into one of the to-be-rolled-up descendents.
+  CssHierarchy* grandchild = top.children()[0]->children()[0];
+  grandchild->AddFlatteningFailureReason("Nothing to see here!");
+
+  // Take this opportunity to also test that we don't add a new reason if
+  // its text is already in the failure reason.
+  grandchild->AddFlatteningFailureReason("But there is here!");    // Added.
+  grandchild->AddFlatteningFailureReason("Nothing to see here!");  // Ignored.
+  grandchild->AddFlatteningFailureReason("But there is here!");    // Ignored.
+  grandchild->AddFlatteningFailureReason("Nothing");               // Ignored.
+  grandchild->AddFlatteningFailureReason("here!");                 // Ignored.
+
+  top.RollUpContents();
+  EXPECT_TRUE(top.flattening_succeeded());
+  EXPECT_STREQ("Nothing to see here! AND But there is here!",
+               top.flattening_failure_reason());
+}
+
+TEST_F(CssHierarchyTest, RollUpStylesheetsKeepsDebugMessages) {
+  CssHierarchy top(NULL);
+  InitializeNestedRoot(&top);
+  ExpandHierarchy(&top);
+
+  // Inject a log message into one of the to-be-rolled-up descendents.
+  CssHierarchy* grandchild = top.children()[0]->children()[0];
+  grandchild->AddFlatteningFailureReason("Nothing to see here!");
+
+  top.RollUpStylesheets();
+  EXPECT_TRUE(top.flattening_succeeded());
+  EXPECT_STREQ("Nothing to see here!", top.flattening_failure_reason());
+}
+
 }  // namespace net_instaweb

@@ -79,10 +79,12 @@ class CssImageRewriter {
   RewriteDriver* driver() const {
     return filter_->driver();
   }
-  bool RewriteImport(RewriteContext* parent, CssHierarchy* hierarchy);
+  bool RewriteImport(RewriteContext* parent, CssHierarchy* hierarchy,
+                     bool* is_authorized);
   bool RewriteImage(int64 image_inline_max_bytes, const GoogleUrl& trim_url,
                     const GoogleUrl& original_url, RewriteContext* parent,
-                    Css::Values* values, size_t value_index);
+                    Css::Values* values, size_t value_index,
+                    bool* is_authorized);
 
   // Needed for import flattening.
   CssFilter* filter_;

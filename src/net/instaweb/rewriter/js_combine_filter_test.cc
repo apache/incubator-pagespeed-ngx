@@ -460,12 +460,21 @@ TEST_F(JsFilterAndCombineFilterTest, MinifyCombineJs) {
 // of component minified unauthorized resources even if they were created.
 TEST_F(JsFilterAndCombineFilterTest, TestCrossDomainRejectUnauthEnabled) {
   options()->ClearSignatureForTesting();
+  options()->SoftEnableFilterForTesting(RewriteOptions::kDebug);
   options()->AddInlineUnauthorizedResourceType(semantic_type::kScript);
   server_context()->ComputeSignature(options());
+  GoogleUrl gurl(StrCat(other_domain_, kJsUrl1));
+  GoogleString debug_message = StrCat(
+      "<!--", RewriteDriver::GenerateUnauthorizedDomainDebugComment(gurl),
+      "-->");
+  // Note that we get the debug message twice, once for the combining attempt
+  // and once for the rewriting attempt, both of which fail due to the domain
+  // being unauthorized. This is unfortunate but not worth fixing right now.
   ValidateExpected("xd",
-                   StrCat("<script src=", other_domain_, kJsUrl1, "></script>",
+                   StrCat("<script src=", gurl.Spec(), "></script>",
                           "<script src=", kJsUrl2, "></script>"),
-                   StrCat("<script src=", other_domain_, kJsUrl1, "></script>",
+                   StrCat("<script src=", gurl.Spec(), "></script>",
+                          debug_message, debug_message,
                           "<script src=",
                           Encode("", "jm", "Y1kknPfzVs", kJsUrl2, "js"),
                           ">",

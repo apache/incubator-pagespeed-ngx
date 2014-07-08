@@ -75,6 +75,7 @@ class CssFilterTest : public CssRewriteTestBase {
                                bool enable_proxy_mode,
                                bool enable_mapping_and_sharding) {
     options()->ClearSignatureForTesting();
+    options()->EnableFilter(RewriteOptions::kDebug);
     options()->EnableFilter(RewriteOptions::kRewriteCss);
     if (!enable_image_rewriting) {
       options()->DisableFilter(RewriteOptions::kRecompressJpeg);
@@ -184,7 +185,6 @@ class CssFilterTest : public CssRewriteTestBase {
                                              kInputCssName);
     AddFileToMockFetcher(StrCat(kTestDomain, input_image_name),
                          input_image_name, image_content_type, 100);
-    server_context()->ComputeSignature(options());
 
     SetResponseWithDefaultHeaders(kInputCssName, kContentTypeCss,
                                   css_input, 100);
@@ -1608,6 +1608,7 @@ TEST_F(CssFilterTest, RewriteStyleAttribute) {
                     "<div style='background-color: #f00; color: yellow;'/>");
 
   options()->ClearSignatureForTesting();
+  options()->EnableFilter(RewriteOptions::kDebug);
   options()->EnableFilter(RewriteOptions::kRewriteStyleAttributes);
   server_context()->ComputeSignature(options());
 
@@ -1653,6 +1654,7 @@ TEST_F(CssFilterTest, RewriteStyleAttributeDifferentDirsNoUrl) {
   // Make sure we don't pointlessly produce different cache keys for
   // attribute CSS w/o URLs in different directories.
   options()->ClearSignatureForTesting();
+  options()->EnableFilter(RewriteOptions::kDebug);
   options()->EnableFilter(RewriteOptions::kRewriteStyleAttributes);
   server_context()->ComputeSignature(options());
 
@@ -1674,6 +1676,7 @@ TEST_F(CssFilterTest, RewriteStyleAttributeDifferentDirsAbsUrl) {
   // Make sure we don't pointlessly produce different cache keys for
   // attribute CSS with same absolute URLs in different directories.
   options()->ClearSignatureForTesting();
+  options()->EnableFilter(RewriteOptions::kDebug);
   options()->EnableFilter(RewriteOptions::kRewriteStyleAttributes);
   server_context()->ComputeSignature(options());
 
@@ -1695,6 +1698,7 @@ TEST_F(CssFilterTest, RewriteStyleAttributeDifferentDirsRelUrl) {
   // When URLs inside the inline CSS are relative (and resolve to different
   // bases) we should get 2 separate rewrites.
   options()->ClearSignatureForTesting();
+  options()->EnableFilter(RewriteOptions::kDebug);
   options()->EnableFilter(RewriteOptions::kRewriteStyleAttributes);
   server_context()->ComputeSignature(options());
 
@@ -1763,6 +1767,7 @@ TEST_F(CssFilterTest, WebpRewriting) {
   options()->EnableFilter(RewriteOptions::kRewriteCss);
   options()->set_image_jpeg_recompress_quality(85);
   rewrite_driver()->SetUserAgent(kUaWebp);
+  server_context()->ComputeSignature(options());
 
   TestWebpRewriting(kPuzzleJpgFile, kContentTypeJpeg,
                     "x%s.pagespeed.ic.0.webp",
@@ -1779,6 +1784,7 @@ TEST_F(CssFilterTest, WebpLaRewriting) {
   options()->EnableFilter(RewriteOptions::kRewriteCss);
   options()->set_image_jpeg_recompress_quality(85);
   rewrite_driver()->SetUserAgent(kUaWebpLossless);
+  server_context()->ComputeSignature(options());
 
   TestWebpRewriting(kPuzzleJpgFile, kContentTypeJpeg,
                     "x%s.pagespeed.ic.0.webp",
@@ -1796,6 +1802,7 @@ TEST_F(CssFilterTest, WebpLaWithFlagRewriting) {
   options()->EnableFilter(RewriteOptions::kRewriteCss);
   options()->set_image_jpeg_recompress_quality(85);
   rewrite_driver()->SetUserAgent(kUaWebpLossless);
+  server_context()->ComputeSignature(options());
 
   TestWebpRewriting(kPuzzleJpgFile, kContentTypeJpeg,
                     "x%s.pagespeed.ic.0.webp",
@@ -1809,6 +1816,7 @@ TEST_F(CssFilterTest, NoWebpRewritingFromJpgIfDisabled) {
   options()->EnableFilter(RewriteOptions::kRewriteCss);
   options()->set_image_jpeg_recompress_quality(85);
   rewrite_driver()->SetUserAgent(kUaWebp);
+  server_context()->ComputeSignature(options());
 
   TestWebpRewriting(kPuzzleJpgFile, kContentTypeJpeg,
                     "x%s.pagespeed.ic.0.jpg",
@@ -1827,6 +1835,7 @@ TEST_F(CssFilterTest, WebpRewritingFromJpgWithWebpFlagWebpLaUa) {
   options()->EnableFilter(RewriteOptions::kConvertToWebpLossless);
   options()->set_image_jpeg_recompress_quality(85);
   rewrite_driver()->SetUserAgent(kUaWebpLossless);
+  server_context()->ComputeSignature(options());
 
   TestWebpRewriting(kPuzzleJpgFile, kContentTypeJpeg,
                     "x%s.pagespeed.ic.0.webp",
@@ -1845,6 +1854,7 @@ TEST_F(CssFilterTest, WebpRewritingFromJpgWithWebpFlagWebpUa) {
   options()->EnableFilter(RewriteOptions::kConvertToWebpLossless);
   options()->set_image_jpeg_recompress_quality(85);
   rewrite_driver()->SetUserAgent(kUaWebp);
+  server_context()->ComputeSignature(options());
 
   TestWebpRewriting(kPuzzleJpgFile, kContentTypeJpeg,
                     "x%s.pagespeed.ic.0.webp",
@@ -1858,6 +1868,7 @@ TEST_F(CssFilterTest, NoWebpLaRewritingFromJpgIfDisabled) {
   options()->EnableFilter(RewriteOptions::kRewriteCss);
   options()->set_image_jpeg_recompress_quality(85);
   rewrite_driver()->SetUserAgent(kUaWebpLossless);
+  server_context()->ComputeSignature(options());
 
   TestWebpRewriting(kPuzzleJpgFile, kContentTypeJpeg,
                     "x%s.pagespeed.ic.0.jpg",
@@ -1872,6 +1883,7 @@ TEST_F(CssFilterTest, NoWebpRewritingFromPngIfDisabled) {
   options()->EnableFilter(RewriteOptions::kRewriteCss);
   options()->set_image_jpeg_recompress_quality(85);
   rewrite_driver()->SetUserAgent(kUaWebp);
+  server_context()->ComputeSignature(options());
 
   TestWebpRewriting(kBikePngFile, kContentTypePng,
                     "x%s.pagespeed.ic.0.png",
@@ -1887,6 +1899,7 @@ TEST_F(CssFilterTest, WebpRewritingFromPngWithWebpFlagWebpLaUa) {
   options()->EnableFilter(RewriteOptions::kConvertToWebpLossless);
   options()->set_image_recompress_quality(85);
   rewrite_driver()->SetUserAgent(kUaWebpLossless);
+  server_context()->ComputeSignature(options());
 
   TestWebpRewriting(kBikePngFile, kContentTypePng,
                     "x%s.pagespeed.ic.0.webp",
@@ -1902,6 +1915,7 @@ TEST_F(CssFilterTest, WebpRewritingFromPngWithWebpFlagWebpUa) {
   options()->EnableFilter(RewriteOptions::kConvertToWebpLossless);
   options()->set_image_recompress_quality(85);
   rewrite_driver()->SetUserAgent(kUaWebp);
+  server_context()->ComputeSignature(options());
 
   TestWebpRewriting(kBikePngFile, kContentTypePng,
                     "x%s.pagespeed.ic.0.webp",
@@ -1916,6 +1930,7 @@ TEST_F(CssFilterTest, NoWebpLaRewritingFromPngIfDisabled) {
   options()->EnableFilter(RewriteOptions::kRewriteCss);
   options()->set_image_jpeg_recompress_quality(85);
   rewrite_driver()->SetUserAgent(kUaWebpLossless);
+  server_context()->ComputeSignature(options());
 
   TestWebpRewriting(kBikePngFile, kContentTypePng,
                     "x%s.pagespeed.ic.0.png",
@@ -2057,10 +2072,12 @@ TEST_F(CssFilterTest, EmptyLeafFull) {
 }
 
 TEST_F(CssFilterTest, UnauthorizedCssResource) {
-  TurnOnDebug("");  // Note: This test will fail when we add debug messages.
-  // TODO(sligocki): Print debug message in this case.
-  // TurnOnDebug("<!--CSS rewrite failed: Unauthorized resource.-->");
-  ValidateRewriteExternalCssUrl("unauth", "http://unauth.example.com/style.css",
+  GoogleUrl gurl("http://unauth.example.com/style.css");
+  TurnOnDebug(StrCat(
+      "<!--",
+      RewriteDriver::GenerateUnauthorizedDomainDebugComment(gurl),
+      "-->"));
+  ValidateRewriteExternalCssUrl("unauth", gurl.Spec(),
                                 kInputStyle, kInputStyle, kExpectNoChange);
 }
 
@@ -2090,6 +2107,7 @@ TEST_F(CssFilterTest, InlineCssWithExternalUrlAndDelayCache) {
   GoogleString img_url = StrCat(kTestDomain, "a.jpg");
   AddFileToMockFetcher(img_url, kPuzzleJpgFile, kContentTypeJpeg, 100);
   options()->ClearSignatureForTesting();
+  options()->EnableFilter(RewriteOptions::kDebug);
   options()->EnableFilter(RewriteOptions::kRecompressJpeg);
   options()->EnableFilter(RewriteOptions::kRewriteCss);
   server_context()->ComputeSignature(options());
@@ -2108,7 +2126,9 @@ TEST_F(CssFilterTest, InlineCssWithExternalUrlAndDelayCache) {
   rewrite_driver()->FinishParse();
 
   EXPECT_EQ("<html><body><style>body{background:url(a.jpg)}</style>"
-            "</body></html>", output_buffer_);
+            "<!--deadline_exceeded for filter CssFilter--></body></html>",
+            output_buffer_);
+
   // There was previously a bug where we were logging this as a successful
   // application of the css filter. Make sure that this case isn't logged.
   EXPECT_STREQ("", AppliedRewriterStringFromLog());
@@ -2178,6 +2198,7 @@ TEST_F(CssFilterTest, AbsolutifyServingFallback) {
   UseMd5Hasher();
   options()->ClearSignatureForTesting();
   options()->SetRewriteLevel(RewriteOptions::kPassThrough);
+  options()->EnableFilter(RewriteOptions::kDebug);
   options()->EnableFilter(RewriteOptions::kRewriteCss);
   options()->EnableFilter(RewriteOptions::kRewriteDomains);
   DomainLawyer* domain_lawyer = options()->WriteableDomainLawyer();

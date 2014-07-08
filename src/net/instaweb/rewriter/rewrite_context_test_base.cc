@@ -105,7 +105,8 @@ void NestedFilter::Context::RewriteSingle(
     for (int i = 0, n = pieces.size(); i < n; ++i) {
       GoogleUrl url(base, pieces[i]);
       if (url.IsWebValid()) {
-        ResourcePtr resource(Driver()->CreateInputResource(url));
+        bool unused;
+        ResourcePtr resource(Driver()->CreateInputResource(url, &unused));
         if (resource.get() != NULL) {
           ResourceSlotPtr slot(new NestedSlot(resource));
           RewriteContext* nested_context =
@@ -164,7 +165,9 @@ void NestedFilter::Context::Harvest() {
 void NestedFilter::StartElementImpl(HtmlElement* element) {
   HtmlElement::Attribute* attr = element->FindAttribute(HtmlName::kHref);
   if (attr != NULL) {
-    ResourcePtr resource = CreateInputResource(attr->DecodedValueOrNull());
+    bool unused;
+    ResourcePtr resource = CreateInputResource(attr->DecodedValueOrNull(),
+                                               &unused);
     if (resource.get() != NULL) {
       ResourceSlotPtr slot(driver()->GetSlot(resource, element, attr));
 
@@ -311,7 +314,9 @@ void CombiningFilter::StartElementImpl(HtmlElement* element) {
   if (element->keyword() == HtmlName::kLink) {
     HtmlElement::Attribute* href = element->FindAttribute(HtmlName::kHref);
     if (href != NULL) {
-      ResourcePtr resource(CreateInputResource(href->DecodedValueOrNull()));
+      bool unused;
+      ResourcePtr resource(CreateInputResource(href->DecodedValueOrNull(),
+                                               &unused));
       if (resource.get() != NULL) {
         if (context_.get() == NULL) {
           context_.reset(new Context(driver(), this, scheduler_));

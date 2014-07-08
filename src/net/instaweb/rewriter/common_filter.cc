@@ -18,6 +18,7 @@
 
 #include "net/instaweb/rewriter/public/common_filter.h"
 
+#include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
@@ -173,6 +174,19 @@ ResourcePtr CommonFilter::CreateInputResource(StringPiece input_url,
         is_authorized);
   }
   return resource;
+}
+
+ResourcePtr CommonFilter::CreateInputResourceOrInsertDebugComment(
+    StringPiece input_url, HtmlElement* element) {
+  DCHECK(element != NULL);
+  bool is_authorized;
+  ResourcePtr input_resource(CreateInputResource(input_url, &is_authorized));
+  if (input_resource.get() == NULL) {
+    if (!is_authorized) {
+      driver()->InsertUnauthorizedDomainDebugComment(input_url, element);
+    }
+  }
+  return input_resource;
 }
 
 const GoogleUrl& CommonFilter::base_url() const {

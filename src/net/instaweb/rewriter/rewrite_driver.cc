@@ -3292,20 +3292,27 @@ void RewriteDriver::InsertUnauthorizedDomainDebugComment(StringPiece url,
                                                          HtmlElement* element) {
   if (DebugMode() && element != NULL && IsRewritable(element)) {
     GoogleUrl gurl(url);
-    GoogleString comment("The preceding resource was not rewritten because ");
-    // Note: this is all being defensive - at the time of writing I believe
-    // url will always be a valid URL.
-    if (gurl.IsWebValid()) {
-      StrAppend(&comment, "its domain (", gurl.Host(), ") is not authorized");
-    } else if (gurl.IsWebOrDataValid()) {
-      StrAppend(&comment, "it is a data URI");
-    } else {
-      StrAppend(&comment, "it is not authorized");
-    }
-    GoogleString escaped;
-    HtmlKeywords::Escape(comment, &escaped);
-    InsertNodeAfterNode(element, NewCommentNode(element->parent(), escaped));
+    InsertNodeAfterNode(
+        element, NewCommentNode(element->parent(),
+                                GenerateUnauthorizedDomainDebugComment(gurl)));
   }
+}
+
+GoogleString RewriteDriver::GenerateUnauthorizedDomainDebugComment(
+    const GoogleUrl& gurl) {
+  GoogleString comment("The preceding resource was not rewritten because ");
+  // Note: this is all being defensive - at the time of writing I believe
+  // url will always be a valid URL.
+  if (gurl.IsWebValid()) {
+    StrAppend(&comment, "its domain (", gurl.Host(), ") is not authorized");
+  } else if (gurl.IsWebOrDataValid()) {
+    StrAppend(&comment, "it is a data URI");
+  } else {
+    StrAppend(&comment, "it is not authorized");
+  }
+  GoogleString escaped;
+  HtmlKeywords::Escape(comment, &escaped);
+  return escaped;
 }
 
 void RewriteDriver::SaveOriginalHeaders(const ResponseHeaders& headers) {

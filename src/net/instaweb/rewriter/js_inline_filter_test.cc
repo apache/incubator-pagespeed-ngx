@@ -20,7 +20,6 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/semantic_type.h"
-#include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/js_inline_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -31,6 +30,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "pagespeed/kernel/base/statistics.h"
+#include "pagespeed/kernel/http/google_url.h"
 
 namespace net_instaweb {
 
@@ -241,12 +241,13 @@ TEST_F(JsInlineFilterTest, DoInlineJavascriptDifferentDomain) {
 
 TEST_F(JsInlineFilterTest, DoNotInlineJavascriptDifferentDomain) {
   // Different domains:
+  GoogleUrl gurl("http://scripts.example.org/script.js");
   TestNoInlineJavascript("http://www.example.net/index.html",
-                         "http://scripts.example.org/script.js",
+                         gurl.Spec().as_string(),
                          "",
                          "function id(x) { return x; }\n",
-                         StrCat("InlineJs: ",
-                                CommonFilter::kCreateResourceFailedDebugMsg));
+                         RewriteDriver::GenerateUnauthorizedDomainDebugComment(
+                             gurl));
   EXPECT_EQ(0, statistics()->GetVariable(JsInlineFilter::kNumJsInlined)->Get());
 }
 
@@ -301,12 +302,13 @@ TEST_F(JsInlineFilterTest, DontInlineDisallowed) {
   options()->Disallow("*script.js*");
 
   // The script is disallowed; can't be inlined.
+  GoogleUrl gurl("http://www.example.com/script.js");
   TestNoInlineJavascript("http://www.example.com/index.html",
-                         "http://www.example.com/script.js",
+                         gurl.Spec().as_string(),
                          "",
                          "function close() { return 'inline!'; }\n",
-                         StrCat("InlineJs: ",
-                                CommonFilter::kCreateResourceFailedDebugMsg));
+                         RewriteDriver::GenerateUnauthorizedDomainDebugComment(
+                             gurl));
 }
 
 TEST_F(JsInlineFilterTest, DoInlineDisallowedIfAllowedWhenInlining) {

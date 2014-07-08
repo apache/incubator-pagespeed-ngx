@@ -1165,25 +1165,27 @@ bool ImageCombineFilter::AddCssBackgroundContext(
     const GoogleUrl& original_url, const GoogleUrl& base_url,
     Css::Values* values, int value_index,
     CssFilter::Context* parent, Css::Declarations* decls,
-    MessageHandler* handler) {
+    bool* is_authorized, MessageHandler* handler) {
   CHECK(context_ != NULL);
+  *is_authorized = true;  // Only false if original_url isn't authorized.
   int width, height;
   if (!GetDeclarationDimensions(decls, &width, &height)) {
     return false;
   }
   StringPiece url_piece(original_url.Spec());
-  SpriteFuture* future = new SpriteFuture(url_piece, width, height, decls);
-
+  scoped_ptr<SpriteFuture> future(new SpriteFuture(url_piece, width, height,
+                                                   decls));
   future->Initialize(values->at(value_index));
 
-  ResourcePtr resource = CreateInputResource(url_piece);
+  ResourcePtr resource = CreateInputResource(url_piece, is_authorized);
   if (resource.get() == NULL) {
     return false;
   }
 
   // transfers ownership of future to slot_obj
   SpriteFutureSlot* slot_obj = new SpriteFutureSlot(
-      resource, base_url, driver()->options(), values, value_index, future);
+      resource, base_url, driver()->options(), values, value_index,
+      future.release());
   CssResourceSlotPtr slot(slot_obj);
   parent->slot_factory()->UniquifySlot(slot);
   // Spriting must run before all other filters so that the slot for the

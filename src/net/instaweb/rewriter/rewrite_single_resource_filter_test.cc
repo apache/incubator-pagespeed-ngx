@@ -98,7 +98,9 @@ class TestRewriter : public RewriteFilter {
     if (element->keyword() == HtmlName::kTag) {
       HtmlElement::Attribute* src = element->FindAttribute(HtmlName::kSrc);
       if (src != NULL) {
-        ResourcePtr resource = CreateInputResource(src->DecodedValueOrNull());
+        bool unused;
+        ResourcePtr resource = CreateInputResource(src->DecodedValueOrNull(),
+                                                   &unused);
         if (resource.get() != NULL) {
           ResourceSlotPtr slot(driver()->GetSlot(resource, element, src));
           Context* context = new Context(driver(), this);

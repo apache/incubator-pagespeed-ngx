@@ -575,12 +575,6 @@ class RewriteDriver : public HtmlParse {
                                         kind);
   }
 
-  // TODO(matterbury): Remove this TEMPORARY wrapper when all call sites fixed.
-  ResourcePtr CreateInputResource(const GoogleUrl& input_url) {
-    bool unused = false;
-    return CreateInputResource(input_url, &unused);
-  }
-
   // Creates an input resource based on input_url.  Returns NULL if the input
   // resource url isn't valid or is a data url, or can't legally be rewritten
   // in the context of this page, in which case *is_authorized will be false.
@@ -1082,6 +1076,10 @@ class RewriteDriver : public HtmlParse {
       HtmlElement* element);
   void InsertUnauthorizedDomainDebugComment(StringPiece url,
                                             HtmlElement* element);
+
+  // Generates an unauthorized domain debug comment. Public for unit tests.
+  static GoogleString GenerateUnauthorizedDomainDebugComment(
+      const GoogleUrl& gurl);
 
   // Saves the origin headers for a request in flush_early_info so that it can
   // be used in subsequent request.

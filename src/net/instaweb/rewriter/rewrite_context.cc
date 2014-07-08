@@ -2627,10 +2627,14 @@ void RewriteContext::CrossThreadPartitionDone(RewriteResult result) {
 
 // Helper function to create a resource pointer to freshen the resource.
 ResourcePtr RewriteContext::CreateUrlResource(const StringPiece& input_url) {
+  // As this is only used when fetching resources to be freshened we don't care
+  // if the URL isn't authorized (although it must have been originally), since
+  // we don't have any HTML to write any +debug message to.
+  bool unused;
   const GoogleUrl resource_url(input_url);
   ResourcePtr resource;
   if (resource_url.IsWebValid()) {
-    resource = Driver()->CreateInputResource(resource_url);
+    resource = Driver()->CreateInputResource(resource_url, &unused);
   }
   return resource;
 }
@@ -2817,11 +2821,18 @@ bool RewriteContext::PrepareFetch(
         break;
       }
 
-      ResourcePtr resource(driver->CreateInputResource(*url));
+      bool is_authorized;
+      ResourcePtr resource(driver->CreateInputResource(*url, &is_authorized));
       if (resource.get() == NULL) {
         // TODO(jmarantz): bump invalid-input-resource count
-         is_valid = false;
-         break;
+        // TODO(matterbury): Add DCHECK(is_authorized) ...
+        // Note that for the current unit tests, is_authorized is always true
+        // at this point, implying we never try to fetch something that isn't
+        // authorized, which is good. Perhaps we should DCHECK it? But looking
+        // at the code doesn't convince me this /must/ be true so I'm way of
+        // crash-and-burning if it's wrong.
+        is_valid = false;
+        break;
       }
       if (!IsDistributedRewriteForHtml()) {
         resource->set_is_background_fetch(false);

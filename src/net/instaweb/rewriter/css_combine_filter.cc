@@ -22,6 +22,7 @@
 
 #include "net/instaweb/rewriter/public/css_combine_filter.h"
 
+#include <memory>
 #include <vector>
 
 #include "base/logging.h"
@@ -176,16 +177,15 @@ class CssCombineFilter::Context : public RewriteContext {
   CssCombiner* combiner() { return &combiner_; }
 
   bool AddElement(HtmlElement* element, HtmlElement::Attribute* href) {
-    bool ret = false;
-    ResourcePtr resource(filter_->CreateInputResource(
-        href->DecodedValueOrNull()));
-    if (resource.get() != NULL) {
-      ResourceSlotPtr slot(Driver()->GetSlot(resource, element, href));
-      AddSlot(slot);
-      elements_.push_back(element);
-      ret = true;
+    ResourcePtr resource(filter_->CreateInputResourceOrInsertDebugComment(
+        href->DecodedValueOrNull(), element));
+    if (resource.get() == NULL) {
+      return false;
     }
-    return ret;
+    ResourceSlotPtr slot(Driver()->GetSlot(resource, element, href));
+    AddSlot(slot);
+    elements_.push_back(element);
+    return true;
   }
 
   bool empty() const { return elements_.empty(); }

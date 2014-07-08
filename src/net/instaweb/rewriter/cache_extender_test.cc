@@ -46,6 +46,7 @@
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/http/google_url.h"
 
 namespace net_instaweb {
 
@@ -195,6 +196,9 @@ class CacheExtenderTest : public RewriteTestBase {
   }
 
   void VerifyUnauthorizedResourcesNotExtended() {
+    options()->ClearSignatureForTesting();
+    options()->EnableFilter(RewriteOptions::kDebug);
+    server_context()->ComputeSignature(options());
     SetResponseWithDefaultHeaders("http://unauth.example.com/unauth.js",
                                   kContentTypeJavascript, kJsData,
                                   kShortTtlSec);
@@ -202,10 +206,16 @@ class CacheExtenderTest : public RewriteTestBase {
                                   kContentTypeCss, kCssData, kShortTtlSec);
     const char kJsReference[] =
         "<script src='http://unauth.example.com/unauth.js'></script>";
+    GoogleUrl gurl("http://unauth.example.com/unauth.xxx");
+    const GoogleString kDebugMessage = StrCat(
+        "<!--", RewriteDriver::GenerateUnauthorizedDomainDebugComment(gurl),
+        "-->");
     const char kCssReference[] =
         "<link rel=stylesheet href='http://unauth.example.com/unauth.css'>";
-    ValidateNoChanges("dont_extend_unauth_js",
-                      StrCat(kJsReference, kCssReference));
+    ValidateExpected("dont_extend_unauth_js",
+                     StrCat(kJsReference, kCssReference),
+                     StrCat(kJsReference, kDebugMessage,
+                            kCssReference, kDebugMessage));
     EXPECT_EQ(0, num_cache_extended_->Get())
         << "Number of cache extended resources is wrong";
     EXPECT_STREQ("", AppliedRewriterStringFromLog());

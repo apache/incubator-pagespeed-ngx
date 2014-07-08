@@ -62,6 +62,7 @@ class CssImageCombineTest : public CssRewriteTestBase {
     AddFileToMockFetcher(StrCat(kTestDomain, kChefGifFile), kChefGifFile,
                          kContentTypeGif, 100);
   }
+
   void TestSpriting(const char* bike_position, const char* expected_position,
                     bool should_sprite) {
     const GoogleString sprite_string =
@@ -134,6 +135,44 @@ TEST_F(CssImageCombineTest, SpritesImages) {
   TestSpriting("right", "-90px -115px", true);
   // This is equivalent to "top center".
   TestSpriting("top", "-45px -70px", true);
+}
+
+// Image spriting tests with debug enabled.
+class CssImageCombineUnauthorizedTest : public CssRewriteTestBase {
+ protected:
+  virtual void SetUp() {
+    options()->EnableFilter(RewriteOptions::kDebug);
+    options()->EnableFilter(RewriteOptions::kSpriteImages);
+    CssRewriteTestBase::SetUp();
+    AddFileToMockFetcher(StrCat("http://unauth.com/", kBikePngFile),
+                         kBikePngFile, kContentTypePng, 100);
+    AddFileToMockFetcher(StrCat(kTestDomain, kCuppaPngFile), kCuppaPngFile,
+                         kContentTypePng, 100);
+    AddFileToMockFetcher(StrCat(kTestDomain, kPuzzleJpgFile), kPuzzleJpgFile,
+                         kContentTypeJpeg, 100);
+  }
+};
+
+TEST_F(CssImageCombineTest, UnauthorizedDomain) {
+  const GoogleString bike_path = StrCat("http://unauth.com/", kBikePngFile);
+  AddFileToMockFetcher(bike_path, kBikePngFile, kContentTypePng, 100);
+  options()->ClearSignatureForTesting();
+  options()->EnableFilter(RewriteOptions::kDebug);
+  options()->ComputeSignature();
+
+  const GoogleString kDebugMessage = StrCat(
+      "<!--Flattening failed: Cannot rewrite ", bike_path,
+      " as it is on an unauthorized domain-->");
+  const char kDebugStatistics[] = "";
+  const char* html = "<head><style>"
+      "#div2{background:transparent url(%s);"
+      "background-position:0px 0px;width:10px;height:10px}"
+      "</style>%s</head>%s";
+  GoogleString before = StringPrintf(html, bike_path.c_str(), "", "");
+  GoogleString after = StringPrintf(html, bike_path.c_str(),
+                                    kDebugMessage.c_str(), kDebugStatistics);
+
+  ValidateExpected("unauthorized_domain", before, after);
 }
 
 class CssImageCombineTestCustomOptions : public CssImageCombineTest {

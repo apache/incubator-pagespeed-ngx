@@ -297,11 +297,12 @@ void RewriteTestBase::SetShouldBeaconHeader(StringPiece rebeaconing_key) {
 }
 
 ResourcePtr RewriteTestBase::CreateResource(const StringPiece& base,
-                                                    const StringPiece& url) {
+                                            const StringPiece& url) {
   rewrite_driver_->SetBaseUrlForFetch(base);
   GoogleUrl base_url(base);
   GoogleUrl resource_url(base_url, url);
-  return rewrite_driver_->CreateInputResource(resource_url);
+  bool unused;
+  return rewrite_driver_->CreateInputResource(resource_url, &unused);
 }
 
 void RewriteTestBase::PopulateDefaultHeaders(

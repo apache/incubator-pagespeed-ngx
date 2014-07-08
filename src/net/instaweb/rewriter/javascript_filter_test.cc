@@ -29,12 +29,14 @@
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/semantic_type.h"
+#include "net/instaweb/rewriter/public/debug_filter.h"
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
 #include "net/instaweb/rewriter/public/javascript_library_identification.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/rewriter/public/support_noscript_filter.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gmock.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -44,6 +46,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "pagespeed/kernel/base/hasher.h"
+#include "pagespeed/kernel/http/google_url.h"
 
 namespace {
 
@@ -202,6 +205,32 @@ TEST_P(JavascriptFilterTest, DoRewrite) {
 TEST_P(JavascriptFilterTest, DontRewriteUnauthorizedDomain) {
   InitFiltersAndTest(100);
   ValidateNoChanges("dont_rewrite", GenerateHtml(kUnauthorizedJs));
+}
+
+TEST_P(JavascriptFilterTest, DebugForUnauthorizedDomain) {
+  StringVector expected_disabled_filters;
+  SupportNoscriptFilter tmp(rewrite_driver());
+  expected_disabled_filters.push_back(tmp.Name());
+  const char kCaseId[] = "debug_unauthorized_domain";
+  const GoogleString html_input = GenerateHtml(kUnauthorizedJs);
+  // Remove the trailing newline as it's in the way :-(
+  GoogleString html_output = html_input.substr(0, html_input.length() - 1);
+  GoogleUrl gurl(kUnauthorizedJs);
+  StrAppend(&html_output,
+            "<!--",
+            RewriteDriver::GenerateUnauthorizedDomainDebugComment(gurl),
+            "-->"
+            "\n");
+  html_output = AddHtmlBody(html_output);
+  StrAppend(&html_output,
+            "<!--",
+            DebugFilter::FormatEndDocumentMessage(
+                0, 0, 0, 0, 0, false, StringSet(), expected_disabled_filters),
+            "-->");
+  options()->EnableFilter(RewriteOptions::kDebug);
+  InitFiltersAndTest(100);
+  Parse(kCaseId, html_input);
+  EXPECT_EQ(html_output, output_buffer_) << "Test id:" << kCaseId;
 }
 
 TEST_P(JavascriptFilterTest, DontRewriteUnauthorizedDomainWithUnauthOptionSet) {

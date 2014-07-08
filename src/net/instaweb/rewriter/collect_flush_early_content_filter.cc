@@ -183,7 +183,8 @@ void CollectFlushEarlyContentFilter::StartElementImpl(HtmlElement* element) {
       if (url.empty() || IsDataUrl(url)) {
         return;
       }
-      ResourcePtr resource = CreateInputResource(url);
+      ResourcePtr resource(CreateInputResourceOrInsertDebugComment(url,
+                                                                   element));
       if (resource.get() == NULL) {
         return;
       }
@@ -223,7 +224,7 @@ void CollectFlushEarlyContentFilter::StartElementImpl(HtmlElement* element) {
     if (url.empty() || IsDataUrl(url)) {
       return;
     }
-    ResourcePtr resource = CreateInputResource(url);
+    ResourcePtr resource(CreateInputResourceOrInsertDebugComment(url, element));
     if (resource.get() == NULL) {
       return;
     }
