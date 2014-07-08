@@ -36,8 +36,8 @@
 
     # Which versions development is usually done with. These version will
     # get -Werror
-    'gcc_devel_version%': '44',
-    'gcc_devel_version2%': '46',
+    'gcc_devel_version%': '46',
+    'gcc_devel_version2%': '48',
 
     # We need inter-process mutexes to support POSIX shared memory, and they're
     # unfortunately not supported on some common systems.
