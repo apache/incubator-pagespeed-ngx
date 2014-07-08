@@ -1094,9 +1094,13 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
     # Note that we cannot use the usual proxy trick, since it won't work with
     # SSL, but luckily we can still mess around with the Host: header and
     # X-Forwarded-Proto: headers directly and get what we want.
+    # Even that, however, is not unconditional: wget >= 1.14 uses SNI, which
+    # results in 400s if that doesn't match the Host:. Luckily, passing in
+    # --secure-protocol=SSLv3 disables SNI.
     DATA=$(wget -q -O - --no-check-certificate \
         --header="X-Forwarded-Proto: https" \
         --header="Host: spdyfetch.example.com"\
+        --secure-protocol=SSLv3 \
         $HTTPS_EXAMPLE_ROOT/styles/A.blue.css.pagespeed.cf.0.css)
     check [ $? = 0 ]
     check_from "$DATA" grep -q blue
