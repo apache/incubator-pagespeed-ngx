@@ -249,7 +249,7 @@ bool RecordingFetch::CanInPlaceRewrite() {
     return false;
   }
   if (type->type() == ContentType::kCss ||
-      type->type() == ContentType::kJavascript ||
+      type->IsJs() ||
       type->IsImage()) {
     RewriteDriver* driver = context_->Driver();
     HTTPCache* const cache = driver->server_context()->http_cache();
@@ -465,7 +465,7 @@ RewriteFilter* InPlaceRewriteContext::GetRewriteFilter(
       options->Enabled(RewriteOptions::kRewriteCss)) {
     return Driver()->FindFilter(RewriteOptions::kCssFilterId);
   }
-  if (type.type() == ContentType::kJavascript &&
+  if (type.IsJs() &&
       options->Enabled(RewriteOptions::kRewriteJavascript)) {
     return Driver()->FindFilter(RewriteOptions::kJavascriptMinId);
   }

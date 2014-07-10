@@ -78,6 +78,11 @@ const char kLibraryUrl[] = "https://www.example.com/hello/1.0/hello.js";
 const char kIntrospectiveJS[] =
     "<script type='text/javascript' src='introspective.js'></script>";
 
+const char kJsonData[] = "  {  'foo' :  [ 'bar' , 'baz' ]  }  ";
+const char kJsonMinData[] = "{'foo':['bar','baz']}";
+const char kOrigJsonName[] = "hello.json";
+const char kRewrittenJsonName[] = "hello.json";
+
 }  // namespace
 
 namespace net_instaweb {
@@ -222,15 +227,14 @@ TEST_P(JavascriptFilterTest, DebugForUnauthorizedDomain) {
             "-->"
             "\n");
   html_output = AddHtmlBody(html_output);
-  StrAppend(&html_output,
-            "<!--",
-            DebugFilter::FormatEndDocumentMessage(
-                0, 0, 0, 0, 0, false, StringSet(), expected_disabled_filters),
-            "-->");
+  GoogleString end_document_message = DebugFilter::FormatEndDocumentMessage(
+      0, 0, 0, 0, 0, false, StringSet(), expected_disabled_filters);
   options()->EnableFilter(RewriteOptions::kDebug);
   InitFiltersAndTest(100);
   Parse(kCaseId, html_input);
-  EXPECT_EQ(html_output, output_buffer_) << "Test id:" << kCaseId;
+  EXPECT_HAS_SUBSTR(html_output, output_buffer_) << "Test id:" << kCaseId;
+  EXPECT_HAS_SUBSTR(end_document_message, output_buffer_)
+      << "Test id:" << kCaseId;
 }
 
 TEST_P(JavascriptFilterTest, DontRewriteUnauthorizedDomainWithUnauthOptionSet) {
@@ -625,6 +629,25 @@ TEST_P(JavascriptFilterTest, ServeRewrittenLibrary) {
   ValidateExpected("identify_library",
                    GenerateHtml(kOrigJsName),
                    GenerateHtml(kLibraryUrl));
+}
+
+TEST_P(JavascriptFilterTest, ServeJsonFile) {
+  InitFilters();
+  // Set content type extension to "js" because filter is caching it with js
+  // extension, but the in-place lookup will still cache and serve with original
+  // content type. Tests for this in in_place_rewrite_context_test.
+  TestServeFiles(&kContentTypeJson, kFilterId, "js",
+                 kOrigJsonName, kJsonData,
+                 kRewrittenJsonName, kJsonMinData);
+
+  EXPECT_EQ(1, blocks_minified_->Get());
+  EXPECT_EQ(0, minification_failures_->Get());
+  EXPECT_EQ(STATIC_STRLEN(kJsonData) - STATIC_STRLEN(kJsonMinData),
+            total_bytes_saved_->Get());
+  EXPECT_EQ(STATIC_STRLEN(kJsonData), total_original_bytes_->Get());
+  // Note: We do not count any uses, because we did not write the URL into
+  // an HTML file, just served it on request.
+  EXPECT_EQ(0, num_uses_->Get());
 }
 
 TEST_P(JavascriptFilterTest, IdentifyAjaxLibrary) {

@@ -56,6 +56,54 @@ inline GTEST_API_ AssertionResult CmpHelperSTRNE(
                         actual.as_string().c_str());
 }
 
+// EXPECT_SUBSTR and EXPECT_SUBSTR_NE allows a simple way to search for a
+// substring. Works on StringPiece, char* and GoogleString.
+#define EXPECT_HAS_SUBSTR(needle, haystack) \
+  EXPECT_PRED_FORMAT2(::testing::internal::CmpHelperSUBSTR, needle, haystack)
+
+#define EXPECT_HAS_SUBSTR_NE(needle, haystack) \
+  EXPECT_PRED_FORMAT2(::testing::internal::CmpHelperSUBSTRNE, needle, haystack)
+
+template <typename StringType>
+inline GTEST_API_ AssertionResult CmpHelperSUBSTR(
+    const char* haystack_expression,
+    const char* needle_expression,
+    const StringType haystack,
+    const StringPiece& needle) {
+  return ::testing::IsSubstring(haystack_expression, needle_expression,
+                                haystack, needle.as_string());
+}
+
+template <typename StringType1, typename StringType2>
+inline GTEST_API_ AssertionResult CmpHelperSUBSTR(
+    const char* haystack_expression,
+    const char* needle_expression,
+    const StringType1 haystack,
+    const StringType2 needle) {
+  return ::testing::IsSubstring(haystack_expression, needle_expression,
+                                haystack, needle);
+}
+
+template <typename StringType>
+inline GTEST_API_ AssertionResult CmpHelperSUBSTRNE(
+    const char* haystack_expression,
+    const char* needle_expression,
+    const StringType haystack,
+    const StringPiece& needle) {
+  return ::testing::IsNotSubstring(haystack_expression, needle_expression,
+                                   haystack, needle.as_string());
+}
+
+template <typename StringType1, typename StringType2>
+inline GTEST_API_ AssertionResult CmpHelperSUBSTRNE(
+    const char* haystack_expression,
+    const char* needle_expression,
+    const StringType1 haystack,
+    const StringType2 needle) {
+  return ::testing::IsNotSubstring(haystack_expression, needle_expression,
+                                   haystack, needle);
+}
+
 }  // namespace internal
 }  // namespace testing
 

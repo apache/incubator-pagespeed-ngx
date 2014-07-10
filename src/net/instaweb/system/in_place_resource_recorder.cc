@@ -157,7 +157,7 @@ void InPlaceResourceRecorder::ConsiderResponseHeaders(
   if (content_type == NULL ||
       !(content_type->IsImage() ||
         content_type->IsCss() ||
-        content_type->type() == ContentType::kJavascript)) {
+        content_type->IsJs())) {
     cache_->RememberNotCacheable(
         url_, fragment_, status_code_ == 200, handler_);
     failure_ = true;

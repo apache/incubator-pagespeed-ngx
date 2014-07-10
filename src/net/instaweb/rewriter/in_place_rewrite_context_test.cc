@@ -184,6 +184,10 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
         redirect_url_("http://www.example.com/redir.url"),
         rewritten_jpg_url_(
             "http://www.example.com/cacheable.jpg.pagespeed.ic.0.jpg"),
+        json_js_type_url_("http://www.example.com/cacheable_js_type.json"),
+        json_json_type_url_("http://www.example.com/cacheable_json_type.json"),
+        json_json_type_synonym_url_(
+            "http://www.example.com/cacheable_json_synonym_type.json"),
         cache_body_("good"), nocache_body_("bad"),
         bad_body_("ugly"),
         redirect_body_("Location: http://www.example.com/final.url"),
@@ -241,9 +245,21 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
                 kNoWriteToCache, kTransform);
     AddResponse(cache_js_no_max_age_url_, kContentTypeJavascript, cache_body_,
                 start_time_ms(), 0, "", kNoVary, kNoWriteToCache, kTransform);
+    AddResponseStrContentType(
+        json_js_type_url_, "application/javascript", cache_body_,
+        start_time_ms(), ttl_ms_, "", kNoVary,
+        kNoWriteToCache, kTransform);
+    AddResponseStrContentType(
+        json_json_type_url_, "application/json", cache_body_,
+        start_time_ms(), ttl_ms_, "", kNoVary,
+        kNoWriteToCache, kTransform);
+    AddResponseStrContentType(
+        json_json_type_synonym_url_, "application/x-json", cache_body_,
+        start_time_ms(), ttl_ms_, "", kNoVary,
+        kNoWriteToCache, kTransform);
 
     ResponseHeaders private_headers;
-    SetDefaultHeaders(kContentTypeJavascript, &private_headers);
+    SetDefaultHeaders(kContentTypeJavascript.mime_type(), &private_headers);
     private_headers.SetDateAndCaching(start_time_ms(), 1200 /*ttl*/,
                                       ",private");
     mock_url_fetcher()->SetResponse(
@@ -296,10 +312,11 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
         RewriteContext::kNumDistributedRewriteSuccesses);
   }
 
-  void AddResponse(const GoogleString& url, const ContentType& content_type,
-                   const GoogleString& body, int64 now_ms, int64 ttl_ms,
-                   const GoogleString& etag, const StringPiece& vary,
-                   bool write_to_cache, bool no_transform) {
+  void AddResponseStrContentType(
+      const GoogleString& url, const GoogleString& content_type,
+      const GoogleString& body, int64 now_ms, int64 ttl_ms,
+      const GoogleString& etag, const StringPiece& vary,
+      bool write_to_cache, bool no_transform) {
     ResponseHeaders response_headers;
     SetDefaultHeaders(content_type, &response_headers);
     if (ttl_ms > 0) {
@@ -332,12 +349,20 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
     }
   }
 
-  void SetDefaultHeaders(const ContentType& content_type,
+  void AddResponse(const GoogleString& url, const ContentType& content_type,
+                   const GoogleString& body, int64 now_ms, int64 ttl_ms,
+                   const GoogleString& etag, const StringPiece& vary,
+                   bool write_to_cache, bool no_transform) {
+    AddResponseStrContentType(url, content_type.mime_type(), body, now_ms,
+                              ttl_ms, etag, vary, write_to_cache, no_transform);
+  }
+
+  void SetDefaultHeaders(const GoogleString& content_type,
                          ResponseHeaders* header) const {
     header->set_major_version(1);
     header->set_minor_version(1);
     header->SetStatusAndReason(HttpStatus::kOK);
-    header->Replace(HttpAttributes::kContentType, content_type.mime_type());
+    header->Replace(HttpAttributes::kContentType, content_type);
   }
 
   void SetAcceptWebp() {
@@ -494,6 +519,45 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
     EXPECT_EQ(0, css_filter_->num_rewrites());
   }
 
+  void CheckCachingAndContentType(const GoogleString& url,
+                                  const GoogleString& expected_mime_type,
+                                  const GoogleString& cache_body,
+                                  const GoogleString& filter_prefix) {
+    FetchAndCheckResponse(url, cache_body, true, ttl_ms_,
+                          NULL, start_time_ms());
+    EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+    EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+    EXPECT_EQ(1, http_cache()->cache_misses()->Get());
+    EXPECT_EQ(2, http_cache()->cache_inserts()->Get());
+    EXPECT_EQ(0, lru_cache()->num_hits());
+    EXPECT_EQ(3, lru_cache()->num_misses());
+    EXPECT_EQ(4, lru_cache()->num_inserts());
+    EXPECT_EQ(0, img_filter_->num_rewrites());
+    EXPECT_EQ(1, js_filter_->num_rewrites());
+    EXPECT_EQ(0, css_filter_->num_rewrites());
+
+    // Make sure the content type is unmodified.
+    EXPECT_STREQ(expected_mime_type,
+                 response_headers_.Lookup1(HttpAttributes::kContentType));
+
+    // Try a second fetch and ensure we get a cache hit.
+    ResetHeadersAndStats();
+    FetchAndCheckResponse(url, StrCat(cache_body, ":", filter_prefix), true,
+                          ttl_ms_, etag_, start_time_ms());
+    EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+    EXPECT_EQ(1, http_cache()->cache_hits()->Get());
+    EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+    EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+    EXPECT_EQ(2, lru_cache()->num_hits());
+    EXPECT_EQ(0, lru_cache()->num_misses());
+    EXPECT_EQ(0, lru_cache()->num_inserts());
+    EXPECT_EQ(0, img_filter_->num_rewrites());
+    EXPECT_EQ(0, js_filter_->num_rewrites());
+    EXPECT_EQ(0, css_filter_->num_rewrites());
+    EXPECT_STREQ(expected_mime_type,
+                 response_headers_.Lookup1(HttpAttributes::kContentType));
+  }
+
   bool exceed_deadline() { return exceed_deadline_; }
   void set_exceed_deadline(bool x) { exceed_deadline_ = x; }
 
@@ -528,6 +592,9 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
   const GoogleString bad_url_;
   const GoogleString redirect_url_;
   const GoogleString rewritten_jpg_url_;
+  const GoogleString json_js_type_url_;
+  const GoogleString json_json_type_url_;
+  const GoogleString json_json_type_synonym_url_;
 
   const GoogleString cache_body_;
   const GoogleString nocache_body_;
@@ -2101,6 +2168,30 @@ TEST_F(InPlaceRewriteContextTest, LoadFromFile) {
   FetchAndCheckResponse(cache_js_url_, "new_content:jm", true,
                         kIproFileTtl, etag_, timer()->NowMs());
   CheckWarmCache("second_fetch_after_mutation");
+}
+
+TEST_F(InPlaceRewriteContextTest, JsonWithJsContentTypeSucceeds) {
+  Init();
+  CheckCachingAndContentType(json_js_type_url_,
+                             "application/javascript",
+                             cache_body_,
+                             RewriteOptions::kJavascriptMinId);
+}
+
+TEST_F(InPlaceRewriteContextTest, JsonWithJsonContentTypeSucceeds) {
+  Init();
+  CheckCachingAndContentType(json_json_type_url_,
+                             "application/json",
+                             cache_body_,
+                             RewriteOptions::kJavascriptMinId);
+}
+
+TEST_F(InPlaceRewriteContextTest, JsonWithJsonContentTypeSynonymSucceeds) {
+  Init();
+  CheckCachingAndContentType(json_json_type_synonym_url_,
+                             "application/x-json",
+                             cache_body_,
+                             RewriteOptions::kJavascriptMinId);
 }
 
 }  // namespace

@@ -386,7 +386,7 @@ goog.defineClass = function(superClass, def) {
   constructor && constructor != Object.prototype.constructor || (constructor = function() {
     throw Error("cannot instantiate an interface (no constructor defined).");
   });
-  var cls = goog.defineClass.createSealingConstructor_(constructor);
+  var cls = goog.defineClass.createSealingConstructor_(constructor, superClass);
   superClass && goog.inherits(cls, superClass);
   delete def.constructor;
   delete def.statics;
@@ -395,8 +395,11 @@ goog.defineClass = function(superClass, def) {
   return cls;
 };
 goog.defineClass.SEAL_CLASS_INSTANCES = goog.DEBUG;
-goog.defineClass.createSealingConstructor_ = function(ctr) {
+goog.defineClass.createSealingConstructor_ = function(ctr, superClass) {
   if (goog.defineClass.SEAL_CLASS_INSTANCES && Object.seal instanceof Function) {
+    if (superClass && superClass.prototype && superClass.prototype[goog.UNSEALABLE_CONSTRUCTOR_PROPERTY_]) {
+      return ctr;
+    }
     var wrappedCtr = function() {
       var instance = ctr.apply(this, arguments) || this;
       this.constructor === wrappedCtr && Object.seal(instance);
@@ -415,6 +418,9 @@ goog.defineClass.applyProperties_ = function(target, source) {
     key = goog.defineClass.OBJECT_PROTOTYPE_FIELDS_[i], Object.prototype.hasOwnProperty.call(source, key) && (target[key] = source[key]);
   }
 };
+goog.tagUnsealableClass = function() {
+};
+goog.UNSEALABLE_CONSTRUCTOR_PROPERTY_ = "goog_defineClass_legacy_unsealable";
 goog.structs = {};
 goog.structs.Collection = function() {
 };

@@ -79,6 +79,7 @@ TEST_F(ContentTypeTest, TestMimeType) {
   EXPECT_EQ(ContentType::kJavascript, MimeToType("text/ecmascript"));
   EXPECT_EQ(ContentType::kJavascript, MimeToType("application/ecmascript"));
   EXPECT_EQ(ContentType::kJson,       MimeToType("application/json"));
+  EXPECT_EQ(ContentType::kJson,       MimeToType("application/x-json"));
   EXPECT_EQ(ContentType::kCss,        MimeToType("text/css"));
   EXPECT_EQ(ContentType::kText,       MimeToType("text/plain"));
   EXPECT_EQ(ContentType::kXml,        MimeToType("application/xml"));

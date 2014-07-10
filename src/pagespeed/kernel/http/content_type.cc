@@ -65,6 +65,7 @@ const ContentType kTypes[] = {
   {"text/x-js",                ".js",   ContentType::kJavascript},
   {"application/ecmascript",   ".js",   ContentType::kJavascript},
   {"application/json",         ".json", ContentType::kJson},
+  {"application/x-json",       ".json", ContentType::kJson},
   {"image/jpeg",               ".jpeg", ContentType::kJpeg},
   {"image/jpg",                ".jpg",  ContentType::kJpeg},
   {"image/vnd.microsoft.icon", ".ico",  ContentType::kIco},
@@ -129,7 +130,13 @@ bool ContentType::IsCss() const {
 }
 
 bool ContentType::IsJs() const {
-  return type_ == kJavascript;
+  switch (type_) {
+    case kJavascript:
+    case kJson:
+      return true;
+    default:
+      return false;
+  }
 }
 
 bool ContentType::IsHtmlLike() const {

@@ -68,7 +68,7 @@ void ApacheConfig::AddProperties() {
   AddApacheProperty(
       false, &ApacheConfig::fetch_from_mod_spdy_, "ffms",
       RewriteOptions::kFetchFromModSpdy,
-      "Fetch SSL resources with help of recent mod_spdy");
+      "Fetch SSL resources with help of recent mod_spdy", true);
 
   MergeSubclassProperties(apache_properties_);
 

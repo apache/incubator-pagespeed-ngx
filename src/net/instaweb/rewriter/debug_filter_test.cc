@@ -115,10 +115,11 @@ class DebugFilterTest : public RewriteTestBase {
     StringPieceVector flush_messages;
     ExtractFlushMessagesFromOutput(OptScriptHtml(), &flush_messages);
     ASSERT_EQ(1, flush_messages.size());
-    EXPECT_STREQ(
+    EXPECT_HAS_SUBSTR(
         DebugFilter::FormatEndDocumentMessage(0, 0, 0, 0, 0, false, StringSet(),
                                               ExpectedDisabledFilters()),
         flush_messages[0]);
+    EXPECT_HAS_SUBSTR("db\tDebug", flush_messages[0]);
 
     // Clear the output buffer as the bytes would otherwise accumulate.
     output_buffer_.clear();
@@ -165,10 +166,10 @@ TEST_F(DebugFilterTest, TwoFlushes) {
             flush_messages[1]);
   EXPECT_EQ(DebugFilter::FormatFlushMessage(111111, 0, 0, 110000),
             flush_messages[2]);
-  EXPECT_STREQ(DebugFilter::FormatEndDocumentMessage(111111, 0, 0, 111111, 2,
-                                                     false, StringSet(),
-                                                     ExpectedDisabledFilters()),
-               flush_messages[3]);
+  EXPECT_HAS_SUBSTR(DebugFilter::FormatEndDocumentMessage(
+                    111111, 0, 0, 111111, 2, false, StringSet(),
+                    ExpectedDisabledFilters()),
+                flush_messages[3]);
 }
 
 // This is the same exact test, except that Flush is not called; despite
@@ -183,10 +184,19 @@ TEST_F(DebugFilterTest, ZeroFlushes) {
   // no Flush messages (not even 1 at the end), and the flush-count is 0 rather
   // than 2.
   ASSERT_EQ(1, flush_messages.size());
-  EXPECT_STREQ(DebugFilter::FormatEndDocumentMessage(111111, 0, 0, 111111, 0,
-                                                     false, StringSet(),
-                                                     ExpectedDisabledFilters()),
-               flush_messages[0]);
+  EXPECT_HAS_SUBSTR(DebugFilter::FormatEndDocumentMessage(
+                    111111, 0, 0, 111111, 0, false, StringSet(),
+                    ExpectedDisabledFilters()),
+                flush_messages[0]);
+}
+
+TEST_F(DebugFilterTest, CheckFiltersAndOptions) {
+  StringPieceVector flush_messages;
+  ParseAndMaybeFlushTwice(false, &flush_messages);
+  ASSERT_EQ(1, flush_messages.size());
+  EXPECT_HAS_SUBSTR("mod_pagespeed on", flush_messages[0]);
+  EXPECT_HAS_SUBSTR("Filters:", flush_messages[0]);
+  EXPECT_HAS_SUBSTR("Options:", flush_messages[0]);
 }
 
 TEST_F(DebugFilterTest, FlushWithDelayedCache) {
@@ -206,10 +216,10 @@ TEST_F(DebugFilterTest, FlushWithDelayedCache) {
                flush_messages[0]);
   EXPECT_STREQ(DebugFilter::FormatFlushMessage(delay_us, 0, 0, 0),
                flush_messages[1]);
-  EXPECT_STREQ(DebugFilter::FormatEndDocumentMessage(delay_us, 0, delay_us, 0,
-                                                     1, false, StringSet(),
-                                                     ExpectedDisabledFilters()),
-               flush_messages[2]);
+  EXPECT_HAS_SUBSTR(DebugFilter::FormatEndDocumentMessage(
+                    delay_us, 0, delay_us, 0, 1, false, StringSet(),
+                    ExpectedDisabledFilters()),
+                flush_messages[2]);
 }
 
 TEST_F(DebugFilterTest, EndWithDelayedCache) {
@@ -224,7 +234,7 @@ TEST_F(DebugFilterTest, EndWithDelayedCache) {
   StringPieceVector flush_messages;
   ExtractFlushMessagesFromOutput(OptScriptHtml(), &flush_messages);
   ASSERT_EQ(1, flush_messages.size());
-  EXPECT_STREQ(
+  EXPECT_HAS_SUBSTR(
       DebugFilter::FormatEndDocumentMessage(
           0, 0, delay_us, 0, 0, false, StringSet(), ExpectedDisabledFilters()),
       flush_messages[0]);
@@ -251,17 +261,18 @@ TEST_F(DebugFilterTest, FlushInStyleTag) {
   rewrite_driver()->ParseText(kStyleEndTag);
   AdvanceTimeUs(10);                  // 51us elapsed so far.
   rewrite_driver()->FinishParse();
-  EXPECT_STREQ(
+  EXPECT_HAS_SUBSTR(
       StrCat(
           StrCat("<!--", DebugFilter::FormatFlushMessage(11, 0, 0, 11), "-->"),
           kStyleStartTag, kCss1, kCss2, kStyleEndTag,
           StrCat("<!--", DebugFilter::FormatFlushMessage(31, 0, 0, 20), "-->"),
-          StrCat("<!--", DebugFilter::FormatFlushMessage(51, 0, 0, 20), "-->"),
-          StrCat("<!--", DebugFilter::FormatEndDocumentMessage(
-                             51, 0, 0, 51, 2, false, StringSet(),
-                             ExpectedDisabledFilters()),
-                 "-->")),
+          StrCat("<!--", DebugFilter::FormatFlushMessage(51, 0, 0, 20), "-->")),
       output_buffer_);
+  EXPECT_HAS_SUBSTR(StrCat(DebugFilter::FormatEndDocumentMessage(
+                           51, 0, 0, 51, 2, false, StringSet(),
+                           ExpectedDisabledFilters()),
+                       "-->"),
+                output_buffer_);
 }
 
 class DebugFilterWithCriticalImagesTest : public RewriteTestBase {
@@ -290,9 +301,8 @@ TEST_F(DebugFilterWithCriticalImagesTest, CriticalImageMessage) {
       "<img src=\"b.jpg\">";
 
   ParseUrl(kTestDomain, input_html);
-  EXPECT_THAT(output_buffer_,
-              ::testing::HasSubstr(StrCat("Critical Images:\n\t", img_url)));
-  EXPECT_THAT(output_buffer_, Not(HasSubstr(StrCat(kTestDomain, "b.jpg"))));
+  EXPECT_HAS_SUBSTR(StrCat("Critical Images:\n\t", img_url), output_buffer_);
+  EXPECT_HAS_SUBSTR_NE(StrCat(kTestDomain, "b.jpg"), output_buffer_);
 }
 
 class DebugFilterNoOtherFiltersTest : public DebugFilterTest {
@@ -329,9 +339,8 @@ TEST_F(DebugFilterNoOtherFiltersTest, NoDisabledFiltersTest) {
   FinishSetup();
 
   Parse("no_disabled_filters", "<!-- Empty body -->");
-  EXPECT_THAT(output_buffer_, HasSubstr("No filters were disabled"));
-  EXPECT_THAT(output_buffer_,
-              Not(HasSubstr("The following filters were disabled:")));
+  EXPECT_HAS_SUBSTR("No filters were disabled", output_buffer_);
+  EXPECT_HAS_SUBSTR_NE("The following filters were disabled:", output_buffer_);
 }
 
 TEST_F(DebugFilterNoOtherFiltersTest, DisabledFilterTest) {
@@ -347,13 +356,13 @@ TEST_F(DebugFilterNoOtherFiltersTest, DisabledFilterTest) {
   FinishSetup();
 
   Parse("disabled_filters", "<!-- Empty body -->");
-  EXPECT_THAT(output_buffer_, Not(HasSubstr("No filters were disabled")));
-  EXPECT_THAT(output_buffer_,
-              HasSubstr(
-                  "The following filters were disabled for this request:\n"
-                  "\tdisabled_filter_1\n"
-                  "\tdisabled_filter_2: Reasons\n"
-                  "\tdisabled_filter_3\n"));
+  EXPECT_HAS_SUBSTR_NE("No filters were disabled", output_buffer_);
+  EXPECT_HAS_SUBSTR(
+      "The following filters were disabled for this request:\n"
+      "\tdisabled_filter_1\n"
+      "\tdisabled_filter_2: Reasons\n"
+      "\tdisabled_filter_3\n",
+      output_buffer_);
 }
 
 }  // namespace

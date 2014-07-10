@@ -121,6 +121,34 @@ class InPlaceResourceRecorderTest : public RewriteTestBase {
     EXPECT_FALSE(headers_out.Has(HttpAttributes::kContentEncoding));
     EXPECT_FALSE(headers_out.Has(HttpAttributes::kContentLength));
   }
+
+  void CheckCacheableContentType(const ContentType* content_type) {
+    ResponseHeaders headers;
+    SetDefaultLongCacheHeaders(content_type, &headers);
+    scoped_ptr<InPlaceResourceRecorder> recorder(MakeRecorder(kTestUrl));
+    recorder->ConsiderResponseHeaders(
+        InPlaceResourceRecorder::kFullHeaders, &headers);
+    EXPECT_FALSE(recorder->failed());
+    HTTPValue value_out;
+    ResponseHeaders headers_out;
+    EXPECT_EQ(
+        HTTPCache::kNotFound,  // Check it wasn't cached as 'not cacheable'.
+        HttpBlockingFind(kTestUrl, http_cache(), &value_out, &headers_out));
+  }
+
+  void CheckNotCacheableContentType(const ContentType* content_type) {
+    ResponseHeaders headers;
+    SetDefaultLongCacheHeaders(content_type, &headers);
+    scoped_ptr<InPlaceResourceRecorder> recorder(MakeRecorder(kTestUrl));
+    recorder->ConsiderResponseHeaders(
+        InPlaceResourceRecorder::kFullHeaders, &headers);
+    EXPECT_TRUE(recorder->failed());
+    HTTPValue value_out;
+    ResponseHeaders headers_out;
+    EXPECT_EQ(
+        HTTPCache::kRecentFetchNotCacheable,
+        HttpBlockingFind(kTestUrl, http_cache(), &value_out, &headers_out));
+  }
 };
 
 TEST_F(InPlaceResourceRecorderTest, BasicOperation) {
@@ -144,6 +172,17 @@ TEST_F(InPlaceResourceRecorderTest, BasicOperation) {
   StringPiece contents;
   EXPECT_TRUE(value_out.ExtractContents(&contents));
   EXPECT_EQ(StrCat(kHello, kBye), contents);
+}
+
+TEST_F(InPlaceResourceRecorderTest, CheckCacheableContentTypes) {
+  CheckCacheableContentType(&kContentTypeJpeg);
+  CheckCacheableContentType(&kContentTypeCss);
+  CheckCacheableContentType(&kContentTypeJavascript);
+  CheckCacheableContentType(&kContentTypeJson);
+}
+
+TEST_F(InPlaceResourceRecorderTest, CheckNotCacheableContentTypes) {
+  CheckNotCacheableContentType(&kContentTypePdf);
 }
 
 TEST_F(InPlaceResourceRecorderTest, BasicOperationFullHeaders) {
