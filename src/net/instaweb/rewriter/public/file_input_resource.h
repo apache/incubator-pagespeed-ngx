@@ -33,14 +33,14 @@ struct ContentType;
 class InputInfo;
 class MessageHandler;
 class ResponseHeaders;
-class ServerContext;
+class RewriteDriver;
 
 class FileInputResource : public Resource {
  public:
-  FileInputResource(ServerContext* server_context,
+  FileInputResource(const RewriteDriver* driver,
                     const ContentType* type,
-                    const StringPiece& url,
-                    const StringPiece& filename);
+                    StringPiece url,
+                    StringPiece filename);
   virtual ~FileInputResource();
 
   // Uses default no-op Freshen implementation because file-based resources

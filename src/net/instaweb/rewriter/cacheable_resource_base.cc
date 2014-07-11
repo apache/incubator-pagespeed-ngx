@@ -42,6 +42,7 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/http/http_names.h"
+#include "pagespeed/kernel/http/http_options.h"
 
 namespace net_instaweb {
 
@@ -609,7 +610,8 @@ class CacheableResourceBase::FreshenHttpCacheCallback
     int64 date_ms = headers.date_ms();
     int64 expiry_ms = headers.CacheExpirationTimeMs();
     return !ResponseHeaders::IsImminentlyExpiring(
-        date_ms, expiry_ms, server_context_->timer()->NowMs());
+        date_ms, expiry_ms, server_context_->timer()->NowMs(),
+        options_->ComputeHttpOptions());
   }
 
  private:
@@ -631,7 +633,7 @@ CacheableResourceBase::CacheableResourceBase(
     StringPiece cache_key,
     const ContentType* type,
     RewriteDriver* rewrite_driver)
-    : Resource(rewrite_driver->server_context(), type),
+    : Resource(rewrite_driver, type),
       url_(url.data(), url.size()),
       cache_key_(cache_key.data(), cache_key.size()),
       rewrite_driver_(rewrite_driver) {
@@ -705,7 +707,8 @@ void CacheableResourceBase::RefreshIfImminentlyExpiring() {
     int64 start_date_ms = headers->date_ms();
     int64 expire_ms = headers->CacheExpirationTimeMs();
     if (ResponseHeaders::IsImminentlyExpiring(
-        start_date_ms, expire_ms, timer()->NowMs())) {
+            start_date_ms, expire_ms, timer()->NowMs(),
+            rewrite_options()->ComputeHttpOptions())) {
       Freshen(NULL, server_context()->message_handler());
     }
   }

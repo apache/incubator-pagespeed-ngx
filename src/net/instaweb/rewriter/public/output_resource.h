@@ -36,8 +36,8 @@ namespace net_instaweb {
 
 class CachedResult;
 class MessageHandler;
+class RewriteDriver;
 class RewriteOptions;
-class ServerContext;
 class Writer;
 struct ContentType;
 
@@ -51,12 +51,11 @@ class OutputResource : public Resource {
   // The 'options' argument can be NULL.  This is done in the Fetch path because
   // that field is only used for domain sharding, and during the fetch, further
   // domain makes no sense.
-  OutputResource(ServerContext* server_context,
-                 const StringPiece& resolved_base,
-                 const StringPiece& unmapped_base, /* aka source domain */
-                 const StringPiece& original_base, /* aka cnamed domain */
+  OutputResource(const RewriteDriver* driver,
+                 StringPiece resolved_base,
+                 StringPiece unmapped_base, /* aka source domain */
+                 StringPiece original_base, /* aka cnamed domain */
                  const ResourceNamer& resource_id,
-                 const RewriteOptions* options,
                  OutputResourceKind kind);
 
   virtual void LoadAndCallback(NotCacheablePolicy not_cacheable_policy,
@@ -220,7 +219,7 @@ class OutputResource : public Resource {
   friend class ServerContext;
   friend class ServerContextTest;
 
-  void SetHash(const StringPiece& hash);
+  void SetHash(StringPiece hash);
   StringPiece extension() const { return full_name_.ext(); }
   GoogleString ComputeSignature();
   bool CheckSignature();

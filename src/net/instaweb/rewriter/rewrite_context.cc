@@ -79,6 +79,7 @@
 #include "net/instaweb/util/public/url_segment_encoder.h"
 #include "net/instaweb/util/public/writer.h"
 #include "pagespeed/kernel/base/callback.h"
+#include "pagespeed/kernel/http/http_options.h"
 
 namespace net_instaweb {
 
@@ -2593,13 +2594,13 @@ bool RewriteContext::CreateOutputResourceForCachedOutput(
 
   ResourceNamer namer;
   if (gurl.IsWebValid() &&
-      driver_->Decode(gurl.LeafWithQuery(), &namer)) {
+      Driver()->Decode(gurl.LeafWithQuery(), &namer)) {
     output_resource->reset(
-        new OutputResource(FindServerContext(),
+        new OutputResource(Driver(),
                            gurl.AllExceptLeaf() /* resolved_base */,
                            gurl.AllExceptLeaf() /* unmapped_base */,
                            Driver()->base_url().Origin() /* original_base */,
-                           namer, Options(), kind()));
+                           namer, kind()));
     // We trust the type here since we should have gotten it right when
     // writing it into the cache.
     (*output_resource)->SetType(content_type);
@@ -2651,7 +2652,8 @@ void RewriteContext::CheckAndFreshenResource(
        ResponseHeaders::IsImminentlyExpiring(
            input_info.date_ms(),
            input_info.expiration_time_ms(),
-           FindServerContext()->timer()->NowMs()))) {
+           FindServerContext()->timer()->NowMs(),
+           Options()->ComputeHttpOptions()))) {
     if (input_info.has_input_content_hash()) {
       RewriteFreshenCallback* callback =
           new RewriteFreshenCallback(resource, partition_index, input_index,

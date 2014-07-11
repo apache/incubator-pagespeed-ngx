@@ -58,6 +58,7 @@
 #include "pagespeed/kernel/base/mock_timer.h"
 #include "pagespeed/kernel/base/null_mutex.h"
 #include "pagespeed/kernel/base/sha1_signature.h"
+ #include "pagespeed/kernel/http/http_options.h"
 
 namespace net_instaweb {
 
@@ -1912,7 +1913,8 @@ TEST_F(RewriteDriverTest, PendingAsyncEventsTest) {
 
 TEST_F(RewriteDriverTest, ValidateCacheResponseRewrittenWebp) {
   const StringPiece kWebpMimeType = kContentTypeWebp.mime_type();
-  RequestContextPtr request_context(new RequestContext(new NullMutex, timer()));
+  RequestContextPtr request_context(new RequestContext(
+      kDefaultHttpOptionsForTests, new NullMutex, timer()));
   options()->ClearSignatureForTesting();
   ResponseHeaders response_headers;
   response_headers.Add(HttpAttributes::kContentType, kWebpMimeType);

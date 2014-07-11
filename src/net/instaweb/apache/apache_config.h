@@ -63,9 +63,10 @@ class ApacheConfig : public SystemRewriteOptions {
                                 OptionClass ApacheConfig::*offset,
                                 const char* id,
                                 StringPiece option_name,
-                                const char* help) {
+                                const char* help,
+                                bool safe_to_print) {
     AddProperty(default_value, offset, id, option_name,
-                RewriteOptions::kServerScope, help,
+                RewriteOptions::kServerScope, help, safe_to_print,
                 apache_properties_);
   }
 

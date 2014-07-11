@@ -1623,9 +1623,8 @@ OutputResourcePtr RewriteDriver::DecodeOutputResource(
   }
 
   StringPiece base = gurl.AllExceptLeaf();
-  OutputResourcePtr output_resource(new OutputResource(
-      server_context_, base, base, base, namer,
-      options(), kind));
+  OutputResourcePtr output_resource(
+      new OutputResource(this, base, base, base, namer, kind));
   if (!output_resource.get()->CheckSignature()) {
     output_resource.clear();
   }
@@ -2010,8 +2009,8 @@ void RewriteDriver::FetchInPlaceResource(const GoogleUrl& gurl,
   gurl.Spec().CopyToString(&fetch_url_);
   StringPiece base = gurl.AllExceptLeaf();
   ResourceNamer namer;
-  OutputResourcePtr output_resource(new OutputResource(
-      server_context_, base, base, base, namer, options(), kRewrittenResource));
+  OutputResourcePtr output_resource(
+      new OutputResource(this, base, base, base, namer, kRewrittenResource));
   SetBaseUrlForFetch(gurl.Spec());
   // Set the request headers if they haven't been yet.
   if (request_headers_ == NULL && async_fetch->request_headers() != NULL) {
@@ -2245,7 +2244,7 @@ ResourcePtr RewriteDriver::CreateInputResourceUnchecked(
   }
 
   if (url.SchemeIs("data")) {
-    resource = DataUrlInputResource::Make(url_string, server_context_);
+    resource = DataUrlInputResource::Make(url_string, this);
     if (resource.get() == NULL) {
       // Note: Bad user-content can leave us here.
       message_handler()->Message(kWarning, "Badly formatted data url '%s'",
@@ -2257,7 +2256,7 @@ ResourcePtr RewriteDriver::CreateInputResourceUnchecked(
     GoogleString filename;
     if (options()->file_load_policy()->ShouldLoadFromFile(url, &filename)) {
       resource.reset(
-          new FileInputResource(server_context_, type, url_string, filename));
+          new FileInputResource(this, type, url_string, filename));
     } else {
       // If the scheme is https and the fetcher doesn't support https, map
       // the URL to what will ultimately be fetched to see if that will be
@@ -2802,8 +2801,7 @@ OutputResourcePtr RewriteDriver::CreateOutputResourceWithPath(
     extra_len = ContentType::MaxProducedExtensionLength();
   }
   resource.reset(new OutputResource(
-      server_context_, mapped_path, unmapped_path, base_url,
-      full_name, options(), kind));
+      this, mapped_path, unmapped_path, base_url, full_name, kind));
 
   if (options()->max_url_size() <
       (static_cast<int>(resource->url().size()) + extra_len)) {
@@ -3559,9 +3557,7 @@ bool RewriteDriver::LookupMetadataForOutputResource(
     StringPiece base = gurl.AllExceptLeaf();
     ResourceNamer namer;
     output_resource.reset(
-        new OutputResource(
-            server_context(), base, base, base, namer, options(),
-            kRewrittenResource));
+        new OutputResource(this, base, base, base, namer, kRewrittenResource));
   }
 
   if (output_resource.get() == NULL ||

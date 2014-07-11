@@ -20,9 +20,9 @@
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
-#include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/headers.h"
+#include "pagespeed/kernel/http/http_options.h"
 #include "pagespeed/kernel/http/http_names.h"
 #include "pagespeed/kernel/http/request_headers.h"
 
@@ -36,28 +36,24 @@ class Writer;
 // Read/write API for HTTP response headers.
 class ResponseHeaders : public Headers<HttpResponseHeaders> {
  public:
-  // The number of milliseconds of cache TTL we assign to resources that
-  // are "likely cacheable" (e.g. images, js, css, not html) and have no
-  // explicit cache ttl or expiration date.
-  static const int64 kDefaultImplicitCacheTtlMs = 5 * Timer::kMinuteMs;
-
-  // The minimum number of milliseconds of cache TTL that we assign to resources
-  // irrespective of the max-age specified in the headers. Controlled by an
-  // option. This will be set to the correct default value after conclusive
-  // experiments.
-  static const int64 kDefaultMinCacheTtlMs = -1;
-
   enum VaryOption { kRespectVaryOnResources, kIgnoreVaryOnResources };
   enum ValidatorOption { kHasValidator, kNoValidator };
 
-  ResponseHeaders();
+  // This constructor with options explicitly set should be used by all callers.
+  explicit ResponseHeaders(const HttpOptions& options) { Init(options); }
+
+  // This default constructor should only be used in tests.
+  // TODO(sligocki): Phase this out so that nobody uses this one by accident.
+  ResponseHeaders() { Init(kDeprecatedDefaultHttpOptions); }
+
   virtual ~ResponseHeaders();
 
   // Returns true if the resource with given date and TTL is going to expire
   // shortly and should hence be proactively re-fetched. All the parameters are
   // absolute times.
   static bool IsImminentlyExpiring(
-      int64 start_date_ms, int64 expire_ms, int64 now_ms);
+      int64 start_date_ms, int64 expire_ms, int64 now_ms,
+      const HttpOptions& options);
 
   // This will set Date and (if supplied in the first place, Expires)
   // header to now if the delta of date header wrt now_ms is more than
@@ -195,6 +191,9 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   void set_status_code(const int code);
   const char* reason_phrase() const;
   void set_reason_phrase(const StringPiece& reason_phrase);
+
+  // TODO(sligocki): Remove these setters (and getters) once we make sure
+  // that all values are set at construction time.
   int64 implicit_cache_ttl_ms() const { return implicit_cache_ttl_ms_; }
   void set_implicit_cache_ttl_ms(const int64 ttl) {
     implicit_cache_ttl_ms_ = ttl;
@@ -344,6 +343,8 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   virtual void UpdateHook();
 
  private:
+  void Init(const HttpOptions& options);
+
   // Parse the original and fresh content types, and add a new header based
   // on the two of them, giving preference to the original.
   // e.g. if the original specified charset=UTF-8 and the new one specified

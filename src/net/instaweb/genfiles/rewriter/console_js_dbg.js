@@ -22,7 +22,7 @@ goog.provide = function(name) {
 };
 goog.setTestOnly = function(opt_message) {
   if (!goog.DEBUG) {
-    throw opt_message = opt_message || "", Error("Importing test-only code into non-debug environment" + (opt_message ? ": " + opt_message : "."));
+    throw opt_message = opt_message || "", Error("Importing test-only code into non-debug environment" + opt_message ? ": " + opt_message : ".");
   }
 };
 goog.forwardDeclare = function() {

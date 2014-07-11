@@ -21,11 +21,13 @@
 
 #include <set>
 
+#include "base/logging.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/ref_counted_ptr.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/http/http_options.h"
 
 namespace net_instaweb {
 
@@ -59,10 +61,14 @@ class RequestContext : public RefCounted<RequestContext> {
   // (threaded) environment, pass in a real mutex. If not, a NullMutex is fine.
   // |timer| will be passed to the TimingInfo, which will *not* take ownership.
   // Passing NULL for |timer| is allowed.
+  RequestContext(const HttpOptions& options, AbstractMutex* logging_mutex,
+                 Timer* timer);
+  // If you use this constructor, you MUST set_options() later.
   RequestContext(AbstractMutex* logging_mutex, Timer* timer);
 
   // TODO(marq): Move this test context factory to a test-specific file.
   //             Makes a request context for running tests.
+  // Note: Test RequestContexts do not pay attention to options.
   static RequestContextPtr NewTestRequestContext(ThreadSystem* thread_system) {
     return NewTestRequestContextWithTimer(thread_system, NULL);
   }
@@ -353,12 +359,22 @@ class RequestContext : public RefCounted<RequestContext> {
   const TimingInfo& timing_info() const { return timing_info_; }
   TimingInfo* mutable_timing_info() { return &timing_info_; }
 
+  void set_options(const HttpOptions& options) {
+    DCHECK(!options_set_);
+    options_set_ = true;
+    options_ = options;
+  }
+  const HttpOptions& options() const {
+    DCHECK(options_set_);
+    return options_;
+  }
+
  protected:
   // TODO(gee): Fix this, it sucks.
   // The default constructor will not create a LogRecord. Subclass constructors
   // must do this explicitly.
-  RequestContext(AbstractMutex* mutex, Timer* timer,
-                 AbstractLogRecord* log_record);
+  RequestContext(const HttpOptions& options, AbstractMutex* mutex,
+                 Timer* timer, AbstractLogRecord* log_record);
   // Destructors in refcounted classes should be protected.
   virtual ~RequestContext();
   REFCOUNT_FRIEND_DECLARATION(RequestContext);
@@ -387,6 +403,9 @@ class RequestContext : public RefCounted<RequestContext> {
   // The token specified by query parameter or header that must match the
   // configured value for options to be converted to cookies.
   GoogleString sticky_query_parameters_token_;
+
+  bool options_set_;
+  HttpOptions options_;
 
   DISALLOW_COPY_AND_ASSIGN(RequestContext);
 };

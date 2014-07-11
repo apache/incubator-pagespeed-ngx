@@ -24,6 +24,7 @@
 #include "net/instaweb/util/public/request_trace.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/http/http_options.h"
 
 namespace net_instaweb {
 
@@ -41,6 +42,19 @@ bool SetValueIfGEZero(int64 in, int64* out) {
 }  // namespace
 
 // TODO(gee): Deprecate this.
+RequestContext::RequestContext(const HttpOptions& options,
+                               AbstractMutex* logging_mutex, Timer* timer)
+    : log_record_(new LogRecord(logging_mutex)),
+      // TODO(gee): Move ownership of mutex to TimingInfo.
+      timing_info_(timer, logging_mutex),
+      using_spdy_(false),
+      accepts_webp_(false),
+      split_request_type_(SPLIT_FULL),
+      request_id_(0),
+      options_set_(true),
+      options_(options) {
+}
+
 RequestContext::RequestContext(AbstractMutex* logging_mutex, Timer* timer)
     : log_record_(new LogRecord(logging_mutex)),
       // TODO(gee): Move ownership of mutex to TimingInfo.
@@ -48,10 +62,15 @@ RequestContext::RequestContext(AbstractMutex* logging_mutex, Timer* timer)
       using_spdy_(false),
       accepts_webp_(false),
       split_request_type_(SPLIT_FULL),
-      request_id_(0) {
+      request_id_(0),
+      options_set_(false),
+      // Note: We use default here, just in case, even though we expect
+      // set_options to be called
+      options_(kDeprecatedDefaultHttpOptions) {
 }
 
-RequestContext::RequestContext(AbstractMutex* mutex,
+RequestContext::RequestContext(const HttpOptions& options,
+                               AbstractMutex* mutex,
                                Timer* timer,
                                AbstractLogRecord* log_record)
     : log_record_(log_record),
@@ -59,7 +78,9 @@ RequestContext::RequestContext(AbstractMutex* mutex,
       timing_info_(timer, mutex),
       using_spdy_(false),
       accepts_webp_(false),
-      split_request_type_(SPLIT_FULL) {
+      split_request_type_(SPLIT_FULL),
+      options_set_(true),
+      options_(options) {
 }
 
 RequestContext::~RequestContext() {
@@ -72,14 +93,16 @@ RequestContext::~RequestContext() {
 
 RequestContextPtr RequestContext::NewTestRequestContextWithTimer(
     ThreadSystem* thread_system, Timer* timer) {
-  return RequestContextPtr(new RequestContext(thread_system->NewMutex(),
-                                              timer));
+  return RequestContextPtr(
+      new RequestContext(kDefaultHttpOptionsForTests,
+                         thread_system->NewMutex(), timer));
 }
 
 RequestContextPtr RequestContext::NewTestRequestContext(
     AbstractLogRecord* log_record) {
   return RequestContextPtr(
-      new RequestContext(log_record->mutex(), NULL, log_record));
+      new RequestContext(kDefaultHttpOptionsForTests,
+                         log_record->mutex(), NULL, log_record));
 }
 
 AbstractLogRecord* RequestContext::NewSubordinateLogRecord(

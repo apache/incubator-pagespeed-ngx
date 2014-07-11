@@ -227,15 +227,14 @@ TEST_P(JavascriptFilterTest, DebugForUnauthorizedDomain) {
             "-->"
             "\n");
   html_output = AddHtmlBody(html_output);
-  StrAppend(&html_output,
-            "<!--",
-            DebugFilter::FormatEndDocumentMessage(
-                0, 0, 0, 0, 0, false, StringSet(), expected_disabled_filters),
-            "-->");
+  GoogleString end_document_message = DebugFilter::FormatEndDocumentMessage(
+      0, 0, 0, 0, 0, false, StringSet(), expected_disabled_filters);
   options()->EnableFilter(RewriteOptions::kDebug);
   InitFiltersAndTest(100);
   Parse(kCaseId, html_input);
-  EXPECT_EQ(html_output, output_buffer_) << "Test id:" << kCaseId;
+  EXPECT_HAS_SUBSTR(html_output, output_buffer_) << "Test id:" << kCaseId;
+  EXPECT_HAS_SUBSTR(end_document_message, output_buffer_)
+      << "Test id:" << kCaseId;
 }
 
 TEST_P(JavascriptFilterTest, DontRewriteUnauthorizedDomainWithUnauthOptionSet) {

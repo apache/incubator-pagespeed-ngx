@@ -103,6 +103,8 @@ class ServerContext {
 
   // The lifetime for cache-extended generated resources, in milliseconds.
   static const int64 kGeneratedMaxAgeMs;
+  // Short lifetime for generated resources fetched with mismatching hash.
+  static const int64 kCacheTtlForMismatchedContentMs;
 
   // This value is a shared constant so that it can also be used in
   // the Apache-specific code that repairs our caching headers downstream

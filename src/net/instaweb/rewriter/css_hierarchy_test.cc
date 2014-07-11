@@ -546,7 +546,7 @@ TEST_F(CssHierarchyTest, CompatibleCharset) {
 
   // Construct a resource without a charset.
   ResourcePtr resource(
-      DataUrlInputResource::Make("data:text/css,test", server_context()));
+      DataUrlInputResource::Make("data:text/css,test", rewrite_driver()));
   ResponseHeaders* response_headers = resource->response_headers();
 
   // First check that with no charsets anywhere we match.
@@ -573,7 +573,7 @@ TEST_F(CssHierarchyTest, IncompatibleCharset) {
 
   // Construct a resource with an incompatible charset.
   ResourcePtr resource(
-      DataUrlInputResource::Make("data:text/css,test", server_context()));
+      DataUrlInputResource::Make("data:text/css,test", rewrite_driver()));
   ResponseHeaders* response_headers = resource->response_headers();
   response_headers->MergeContentType(StrCat(kContentTypeCss.mime_type(),
                                             "; charset=utf-8"));

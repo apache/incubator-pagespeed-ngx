@@ -25,6 +25,8 @@
 #include "net/instaweb/http/public/meta_data.h"  // for HttpAttributes, etc
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -32,6 +34,7 @@
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/http/http_options.h"
 #include "pagespeed/kernel/http/request_headers.h"
 
 namespace net_instaweb {
@@ -45,9 +48,10 @@ const int64 kNotCacheable = 0;
 
 }  // namespace
 
-Resource::Resource(ServerContext* server_context, const ContentType* type)
-    : server_context_(server_context),
+Resource::Resource(const RewriteDriver* driver, const ContentType* type)
+    : server_context_(driver->server_context()),
       type_(type),
+      response_headers_(driver->options()->ComputeHttpOptions()),
       fetch_response_status_(kFetchStatusNotSet),
       is_background_fetch_(true),
       enable_cache_purge_(false),
@@ -55,6 +59,17 @@ Resource::Resource(ServerContext* server_context, const ContentType* type)
       disable_rewrite_on_no_transform_(true),
       is_authorized_domain_(true),
       respect_vary_(ResponseHeaders::kRespectVaryOnResources) {
+}
+
+Resource::Resource() : server_context_(NULL), type_(NULL),
+                       response_headers_(kDefaultHttpOptionsForTests),
+                       fetch_response_status_(kFetchStatusNotSet),
+                       is_background_fetch_(true),
+                       enable_cache_purge_(false),
+                       proactive_resource_freshening_(false),
+                       disable_rewrite_on_no_transform_(true),
+                       is_authorized_domain_(true),
+                       respect_vary_(ResponseHeaders::kRespectVaryOnResources) {
 }
 
 Resource::~Resource() {

@@ -41,6 +41,7 @@
 #include "pagespeed/kernel/base/rde_hash_map.h"
 #include "pagespeed/kernel/base/time_util.h"
 #include "pagespeed/kernel/cache/purge_set.h"
+#include "pagespeed/kernel/http/http_options.h"
 
 namespace net_instaweb {
 
@@ -1171,165 +1172,163 @@ void RewriteOptions::AddProperties() {
   AddBaseProperty(
       kPassThrough, &RewriteOptions::level_, "l", kRewriteLevel,
       kDirectoryScope,
-      "Base level of rewriting (PassThrough, CoreFilters)");
+      "Base level of rewriting (PassThrough, CoreFilters)", true);
   AddBaseProperty(
       kDefaultBlinkMaxHtmlSizeRewritable,
       &RewriteOptions::blink_max_html_size_rewritable_,
       "bmhsr", kBlinkMaxHtmlSizeRewritable,
       kDirectoryScope,
-      NULL);  // Not applicable for mod_pagespeed.
+      NULL, true);  // Not applicable for mod_pagespeed.
   AddBaseProperty(
       kDefaultCssFlattenMaxBytes,
       &RewriteOptions::css_flatten_max_bytes_, "cf",
       kCssFlattenMaxBytes,
       kQueryScope,
-      "Number of bytes below which stylesheets will be flattened.");
+      "Number of bytes below which stylesheets will be flattened.", true);
   AddBaseProperty(
       kDefaultCssImageInlineMaxBytes,
       &RewriteOptions::css_image_inline_max_bytes_,
       "cii", kCssImageInlineMaxBytes,
       kQueryScope,
-      "Number of bytes below which CSS images will be inlined.");
+      "Number of bytes below which CSS images will be inlined.", true);
   AddBaseProperty(
       kDefaultCssInlineMaxBytes,
       &RewriteOptions::css_inline_max_bytes_, "ci",
       kCssInlineMaxBytes,
       kQueryScope,
-      "Number of bytes below which stylesheets will be inlined.");
+      "Number of bytes below which stylesheets will be inlined.", true);
   AddBaseProperty(
       kDefaultCssOutlineMinBytes,
       &RewriteOptions::css_outline_min_bytes_, "co",
       kCssOutlineMinBytes,
       kDirectoryScope,
       "Number of bytes above which inline CSS resources will be "
-      "outlined.");
+      "outlined.", true);
   AddBaseProperty(
       kDefaultImageInlineMaxBytes,
       &RewriteOptions::image_inline_max_bytes_, "ii",
       kImageInlineMaxBytes,
       kQueryScope,
-      "Number of bytes below which images will be inlined.");
+      "Number of bytes below which images will be inlined.", true);
   AddBaseProperty(
       kDefaultJsInlineMaxBytes,
       &RewriteOptions::js_inline_max_bytes_, "ji",
       kJsInlineMaxBytes,
       kQueryScope,
-      "Number of bytes below which javascript will be inlined.");
+      "Number of bytes below which javascript will be inlined.", true);
   AddBaseProperty(
       kDefaultJsOutlineMinBytes,
       &RewriteOptions::js_outline_min_bytes_, "jo",
       kJsOutlineMinBytes,
       kDirectoryScope,
       "Number of bytes above which inline Javascript resources will"
-      "be outlined.");
+      "be outlined.", true);
   AddBaseProperty(
       kDefaultProgressiveJpegMinBytes,
       &RewriteOptions::progressive_jpeg_min_bytes_,
       "jp", kProgressiveJpegMinBytes,
       kDirectoryScope,
-      "Minimum size in bytes for converting a jpeg to progressive");
+      "Minimum size in bytes for converting a jpeg to progressive", true);
   AddBaseProperty(
       kDefaultMaxCacheableResponseContentLength,
       &RewriteOptions::max_cacheable_response_content_length_, "rcl",
       kMaxCacheableResponseContentLength,
       kServerScope,
-      "Maximum length of a cacheable response content.");
+      "Maximum length of a cacheable response content.", true);
   AddBaseProperty(
-      kDefaultMaxHtmlCacheTimeMs,
-      &RewriteOptions::max_html_cache_time_ms_, "hc",
-      kMaxHtmlCacheTimeMs,
-      kDirectoryScope,
-      NULL);  // TODO(jud): Add doc when split_html is made availabile in MPS.
+      kDefaultMaxHtmlCacheTimeMs, &RewriteOptions::max_html_cache_time_ms_,
+      "hc", kMaxHtmlCacheTimeMs, kDirectoryScope, NULL,
+      true);  // TODO(jud): Add doc when split_html is made availabile in MPS.
   AddBaseProperty(
       kDefaultMaxHtmlParseBytes,
       &RewriteOptions::max_html_parse_bytes_, "hpb",
       kMaxHtmlParseBytes,
       kDirectoryScope,  // TODO(jmarantz): switch to kProcessScope?
       "Maximum number of bytes of HTML that we parse, before "
-      "redirecting to ?ModPagespeed=off");
+      "redirecting to ?ModPagespeed=off", true);
   AddBaseProperty(
       kDefaultMaxImageBytesForWebpInCss,
       &RewriteOptions::max_image_bytes_for_webp_in_css_, "miwc",
       kMaxImageBytesForWebpInCss,
       kDirectoryScope,
-      NULL);  // TODO(jmarantz): clean this up & doc it, or delete it.
+      NULL, true);  // TODO(jmarantz): clean this up & doc it, or delete it.
   // "Maximum byte size of webp images rewritten from CSS"
   AddBaseProperty(
       kDefaultMinResourceCacheTimeToRewriteMs,
       &RewriteOptions::min_resource_cache_time_to_rewrite_ms_, "rc",
       kMinResourceCacheTimeToRewriteMs,
       kDirectoryScope,
-      NULL);  // TODO(jmarantz): remove this or document it.
+      NULL, true);  // TODO(jmarantz): remove this or document it.
   AddBaseProperty(
       false,
       &RewriteOptions::oblivious_pagespeed_urls_, "opu",
       kObliviousPagespeedUrls,
       kDirectoryScope,
-      NULL);  // Not applicable for mod_pagespeed.
+      NULL, true);  // Not applicable for mod_pagespeed.
   AddBaseProperty(
       false,
       &RewriteOptions::rewrite_uncacheable_resources_, "rur",
       kRewriteUncacheableResources,
       kServerScope,
       "Allow optimization of uncacheable resources in the in-place rewriting"
-      " mode.");
+      " mode.", true);
   AddBaseProperty(
       kDefaultIdleFlushTimeMs,
       &RewriteOptions::idle_flush_time_ms_, "if",
       kIdleFlushTimeMs,
       kDirectoryScope,
-      NULL);  // TODO(jmarantz): implement for mod_pagespeed.
+      NULL, true);  // TODO(jmarantz): implement for mod_pagespeed.
   AddBaseProperty(
       kDefaultFlushBufferLimitBytes,
       &RewriteOptions::flush_buffer_limit_bytes_, "fbl",
       kFlushBufferLimitBytes,
       kDirectoryScope,
-      NULL);  // TODO(jmarantz): implement for mod_pagespeed.
+      NULL, true);  // TODO(jmarantz): implement for mod_pagespeed.
   AddBaseProperty(
       kDefaultImplicitCacheTtlMs,
       &RewriteOptions::implicit_cache_ttl_ms_, "ict",
       kImplicitCacheTtlMs,
       kDirectoryScope,
       "Time in milliseconds to cache resources that lack an Expires or "
-      "Cache-Control header");
+      "Cache-Control header", true);
   AddBaseProperty(
       kDefaultImageMaxRewritesAtOnce,
       &RewriteOptions::image_max_rewrites_at_once_,
       "im", kImageMaxRewritesAtOnce,
       kProcessScope,
       "Set bound on number of images being rewritten at one time "
-      "(0 = unbounded).");
+      "(0 = unbounded).", true);
   AddBaseProperty(
       kDefaultMaxUrlSegmentSize, &RewriteOptions::max_url_segment_size_,
       "uss", kMaxUrlSegmentSize,
       kDirectoryScope,
-      "Maximum size of a URL segment.");
+      "Maximum size of a URL segment.", true);
   AddBaseProperty(
       kDefaultMaxUrlSize, &RewriteOptions::max_url_size_, "us",
       kMaxUrlSize,
       kDirectoryScope,
-      NULL);  // TODO(jmarantz): write help & doc for mod_pagespeed.
+      NULL, true);  // TODO(jmarantz): write help & doc for mod_pagespeed.
   AddBaseProperty(
       false, &RewriteOptions::forbid_all_disabled_filters_, "fadf",
       kForbidAllDisabledFilters,
       kDirectoryScope,
-      "Prevents the use of disabled filters");
+      "Prevents the use of disabled filters", true);
   AddBaseProperty(
       kDefaultRewriteDeadlineMs, &RewriteOptions::rewrite_deadline_ms_,
       "rdm", kRewriteDeadlineMs,
       kDirectoryScope,
       "Time to wait for resource optimization (per flush window) before"
-      "falling back to the original resource for the request.");
+      "falling back to the original resource for the request.", true);
   AddBaseProperty(
       kEnabledOn, &RewriteOptions::enabled_, "e", kEnabled,
       kDirectoryScope,
-      NULL);  // initialized explicitly in mod_instaweb.cc.
+      NULL, true);  // initialized explicitly in mod_instaweb.cc.
   AddBaseProperty(
       false, &RewriteOptions::add_options_to_urls_, "aou",
       kAddOptionsToUrls,
       kDirectoryScope,
       "Add query-params with configuration adjustments to rewritten "
-      "URLs.");
+      "URLs.", true);
 
   // TODO(jmarantz): consider whether to document this option -- it
   // potentially can hide problems in configuration or bugs.
@@ -1339,50 +1338,50 @@ void RewriteOptions::AddProperties() {
       kPubliclyCacheMismatchedHashesExperimental,
       kDirectoryScope,
       "When serving a request for a .pagespeed. URL with the wrong hash, allow "
-      "public caching based on the origin TTL.");
+      "public caching based on the origin TTL.", false);
 
   AddBaseProperty(
       false, &RewriteOptions::in_place_rewriting_enabled_, "ipro",
       kInPlaceResourceOptimization,
       kDirectoryScope,
       "Allow rewriting resources even when they are "
-      "fetched over non-pagespeed URLs.");
+      "fetched over non-pagespeed URLs.", true);
   AddBaseProperty(
       false, &RewriteOptions::in_place_wait_for_optimized_, "ipwo",
       kInPlaceWaitForOptimized,
       kDirectoryScope,
-      "Wait for optimizations to complete");  // TODO(jmarantz): Add doc.
+      "Wait for optimizations to complete", true);  // TODO(jmarantz): Add doc.
   AddBaseProperty(
       kDefaultRewriteDeadlineMs,
       &RewriteOptions::in_place_rewrite_deadline_ms_, "iprdm",
       kInPlaceRewriteDeadlineMs,
       kDirectoryScope,
       "Time to wait for an in-place resource optimization before"
-      "falling back to the original resource for the request.");
+      "falling back to the original resource for the request.", true);
   AddBaseProperty(
       true, &RewriteOptions::in_place_preemptive_rewrite_css_,
       "ipprc", kInPlacePreemptiveRewriteCss,
       kDirectoryScope,
       "If set, issue preemptive rewrites of CSS on the HTML path when "
-      "configured to use IPRO.");
+      "configured to use IPRO.", true);
   AddBaseProperty(
       true, &RewriteOptions::in_place_preemptive_rewrite_css_images_,
       "ipprci", kInPlacePreemptiveRewriteCssImages,
       kDirectoryScope,
       "If set, issue preemptive rewrites of CSS images on the IPRO "
-      "serving path.");
+      "serving path.", true);
   AddBaseProperty(
       true, &RewriteOptions::in_place_preemptive_rewrite_images_,
       "ippri", kInPlacePreemptiveRewriteImages,
       kDirectoryScope,
       "If set, issue preemptive rewrites of images on the HTML path "
-      "when configured to use IPRO.");
+      "when configured to use IPRO.", true);
   AddBaseProperty(
       true, &RewriteOptions::in_place_preemptive_rewrite_javascript_,
       "ipprj", kInPlacePreemptiveRewriteJavascript,
       kDirectoryScope,
       "If set, issue preemptive rewrites of JS on the HTML path when "
-      "configured to use IPRO.");
+      "configured to use IPRO.", true);
   AddBaseProperty(
       true, &RewriteOptions::private_not_vary_for_ie_,
       "pnvie", kPrivateNotVaryForIE,
@@ -1390,60 +1389,60 @@ void RewriteOptions::AddProperties() {
       "If set, serve in-place optimized resources as Cache-Control: private "
       "rather than Vary: Accept.  Avoids an extra fetch on cache hit, but "
       "prevents proxy caching of these resources.  Only relevant if your "
-      "proxy caches Vary: Accept");
+      "proxy caches Vary: Accept", true);
   AddBaseProperty(
       true, &RewriteOptions::combine_across_paths_, "cp",
       kCombineAcrossPaths,
       kDirectoryScope,
-      "Allow combining resources from different paths");
+      "Allow combining resources from different paths", true);
   AddBaseProperty(
       true, &RewriteOptions::critical_images_beacon_enabled_, "cibe",
       kCriticalImagesBeaconEnabled,
       kDirectoryScope, "Enable insertion of client-side critical "
-      "image detection js for image optimization filters.");
+      "image detection js for image optimization filters.", true);
   AddBaseProperty(
-      false,
-  &RewriteOptions::test_only_prioritize_critical_css_dont_apply_original_css_,
-      "dlacae",
-      kTestOnlyPrioritizeCriticalCssDontApplyOriginalCss,
+      false, &RewriteOptions::
+                 test_only_prioritize_critical_css_dont_apply_original_css_,
+      "dlacae", kTestOnlyPrioritizeCriticalCssDontApplyOriginalCss,
       kDirectoryScope,
       "Stops the prioritize_critical_css filter from invoking its JavaScript "
-      "that applies all the 'hidden' CSS at onload. Intended for testing.");
+      "that applies all the 'hidden' CSS at onload. Intended for testing.",
+      false);
   AddBaseProperty(kDefaultBeaconReinstrumentTimeSec,
                   &RewriteOptions::beacon_reinstrument_time_sec_, "brts",
                   kBeaconReinstrumentTimeSec, kDirectoryScope,
                   "How often (in seconds) to reinstrument pages with beacons. "
                   "This is used for both critical image beaconing, and for the "
-                  "prioritize_critical_css filter.");
+                  "prioritize_critical_css filter.", true);
   AddBaseProperty(
       false, &RewriteOptions::log_background_rewrites_, "lbr",
       kLogBackgroundRewrite,
       kServerScope,
-      NULL);  // TODO(huibao): write help & doc for mod_pagespeed.
+      NULL, false);  // TODO(huibao): write help & doc for mod_pagespeed.
   AddBaseProperty(
       false, &RewriteOptions::log_rewrite_timing_, "lr",
       kLogRewriteTiming,
       kDirectoryScope,
-      "Whether or not to report timing information about HtmlParse.");
+      "Whether or not to report timing information about HtmlParse.", false);
   AddBaseProperty(
       false, &RewriteOptions::log_url_indices_, "lui",
       kLogUrlIndices,
       kDirectoryScope,
-      "Whether or not to log URL indices for rewriter applications.");
+      "Whether or not to log URL indices for rewriter applications.", false);
   AddBaseProperty(
       false, &RewriteOptions::lowercase_html_names_, "lh",
       kLowercaseHtmlNames,
       kDirectoryScope,
-      "Lowercase tag and attribute names for HTML.");
+      "Lowercase tag and attribute names for HTML.", true);
   AddBaseProperty(
       false, &RewriteOptions::always_rewrite_css_, "arc",
       kAlwaysRewriteCss,
       kDirectoryScope,
-      NULL);  // TODO(jmarantz): write help & doc for mod_pagespeed.
+      NULL, true);  // TODO(jmarantz): write help & doc for mod_pagespeed.
   AddBaseProperty(
       false, &RewriteOptions::respect_vary_, "rv", kRespectVary,
       kDirectoryScope,
-      "Whether to respect the Vary header.");
+      "Whether to respect the Vary header.", true);
   AddBaseProperty(
       false, &RewriteOptions::respect_x_forwarded_proto_, "rxfp",
       kRespectXForwardedProto,
@@ -1454,41 +1453,41 @@ void RewriteOptions::AddProperties() {
       // URL is needed to get directory-specific options, so allowing this in
       // directory-scope would be a circular dependency.
       kDirectoryScope,
-      "Whether to respect the X-Forwarded-Proto header.");
+      "Whether to respect the X-Forwarded-Proto header.", true);
   AddBaseProperty(
       false, &RewriteOptions::flush_html_, "fh", kFlushHtml,
       kDirectoryScope,
-      NULL);  // TODO(jmarantz): implement for mod_pagespeed.
+      NULL, true);  // TODO(jmarantz): implement for mod_pagespeed.
   AddBaseProperty(
       false, &RewriteOptions::css_preserve_urls_, "cpu",
       kCssPreserveURLs,
       kDirectoryScope,
-      "Disable the rewriting of CSS URLs.");
+      "Disable the rewriting of CSS URLs.", true);
   AddBaseProperty(
       false, &RewriteOptions::image_preserve_urls_, "ipu",
       kImagePreserveURLs,
       kDirectoryScope,
-      "Disable the rewriting of Image URLs.");
+      "Disable the rewriting of Image URLs.", true);
   AddBaseProperty(
       false, &RewriteOptions::js_preserve_urls_, "jpu",
       kJsPreserveURLs,
       kDirectoryScope,
-      "Disable the rewriting of Javascript URLs.");
+      "Disable the rewriting of Javascript URLs.", true);
   AddBaseProperty(
       false, &RewriteOptions::serve_split_html_in_two_chunks_, "sstc",
       kServeSplitHtmlInTwoChunks,
       kDirectoryScope,
-      "Serve the split html response in two chunks");
+      "Serve the split html response in two chunks", true);
   AddBaseProperty(
       true, &RewriteOptions::serve_stale_if_fetch_error_, "ss",
       kServeStaleIfFetchError,
       kDirectoryScope,
-      NULL);  // TODO(jmarantz): write help & doc for mod_pagespeed.
+      NULL, true);  // TODO(jmarantz): write help & doc for mod_pagespeed.
   AddBaseProperty(
       false, &RewriteOptions::proactively_freshen_user_facing_request_, "pfur",
       kProactivelyFreshenUserFacingRequest,
       kDirectoryScope,
-      NULL);
+      NULL, true);
   AddBaseProperty(
       0,
       &RewriteOptions::serve_stale_while_revalidate_threshold_sec_,
@@ -1497,86 +1496,86 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       "Threshold for serving serving stale responses while revalidating in "
       "background. 0 means don't serve stale content."
-      "Note: Stale response will be served only for non-html requests.");
+      "Note: Stale response will be served only for non-html requests.", true);
   AddBaseProperty(
       false,
       &RewriteOptions::flush_more_resources_early_if_time_permits_,
       "fretp", kFlushMoreResourcesEarlyIfTimePermits,
       kDirectoryScope,
-      NULL);  // TODO(jmarantz): implement for mod_pagespeed.
+      NULL, true);  // TODO(jmarantz): implement for mod_pagespeed.
   AddRequestProperty(
       false,
       &RewriteOptions::flush_more_resources_in_ie_and_firefox_,
-      "fmrief");
+      "fmrief", true);
   AddBaseProperty(
       kDefaultMaxPrefetchJsElements,
       &RewriteOptions::max_prefetch_js_elements_, "mpje",
       kMaxPrefetchJsElements,
       kDirectoryScope,
       "Set number of JS elements to download without executing. This is useful"
-      "for prefetching script elements when defer JS filter is enabled.");
+      "for prefetching script elements when defer JS filter is enabled.", true);
   AddBaseProperty(
       false, &RewriteOptions::enable_defer_js_experimental_, "edje",
       kEnableDeferJsExperimental,
       kDirectoryScope,
-      "Enable experimental options in defer javascript.");
+      "Enable experimental options in defer javascript.", true);
   AddBaseProperty(
       false,
       &RewriteOptions::disable_background_fetches_for_bots_, "dbfb",
       kDisableBackgroundFetchesForBots,
       kDirectoryScope,
-      "Disable pre-emptive background fetches on bot requests.");
+      "Disable pre-emptive background fetches on bot requests.", true);
   AddBaseProperty(
-      true,   // By default, don't optimize resource if no-transform is set.
+      true,  // By default, don't optimize resource if no-transform is set.
       &RewriteOptions::disable_rewrite_on_no_transform_, "drnt",
-      kDisableRewriteOnNoTransform,
-      kDirectoryScope,
-      "If false, resource is rewritten even if no-transform header is set");
+      kDisableRewriteOnNoTransform, kDirectoryScope,
+      "If false, resource is rewritten even if no-transform header is set",
+      true);
   AddBaseProperty(
       false, &RewriteOptions::enable_cache_purge_, "euci",
       kEnableCachePurge,
       kServerScope,
       "Allows individual resources to be flushed; adding some overhead to "
-      "the metadata cache");
+      "the metadata cache", true);
   AddBaseProperty(
       false, &RewriteOptions::proactive_resource_freshening_, "prf",
-      kProactiveResourceFreshening,
-      kServerScope,
+      kProactiveResourceFreshening, kServerScope,
       "If true, allows proactive freshening of inputs to the resource when "
-      "they are close to expiry.");  // TODO(mpalem): write end user doc in
-      // net/instaweb/doc/en/speed/pagespeed/module/system.html
+      "they are close to expiry.",
+      true);  // TODO(mpalem): write end user doc in
+              // net/instaweb/doc/en/speed/pagespeed/module/system.html
   AddBaseProperty(
       false, &RewriteOptions::lazyload_highres_images_,
       "elhr", kEnableLazyLoadHighResImages,
       kDirectoryScope,
-      NULL);
+      NULL, true);
   AddBaseProperty(
       false, &RewriteOptions::enable_flush_early_critical_css_, "efcc",
       kEnableFlushEarlyCriticalCss,
       kDirectoryScope,
-      NULL);  // Not applicable for mod_pagespeed.
+      NULL, true);  // Not applicable for mod_pagespeed.
   AddBaseProperty(
       false, &RewriteOptions::use_selectors_for_critical_css_, "scss",
       kUseSelectorsForCriticalCss,
       kDirectoryScope,
-      NULL);  // Not applicable for mod_pagespeed.
+      NULL, true);  // Not applicable for mod_pagespeed.
   AddBaseProperty(
       false, &RewriteOptions::default_cache_html_, "dch",
       kDefaultCacheHtml,
       kDirectoryScope,
-      NULL);  // TODO(jmarantz): implement for mod_pagespeed.
+      NULL, true);  // TODO(jmarantz): implement for mod_pagespeed.
   AddBaseProperty(
       kDefaultDomainShardCount, &RewriteOptions::domain_shard_count_,
       "dsc", kDomainShardCount,
       kQueryScope,
-      NULL);  // Not applicable for mod_pagespeed.
+      NULL, true);  // Not applicable for mod_pagespeed.
   AddBaseProperty(
       true, &RewriteOptions::modify_caching_headers_, "mch",
       kModifyCachingHeaders,
       kDirectoryScope,
       "Set to false to disallow mod_pagespeed from editing HTML "
       "Cache-Control headers. This is not safe in general and can cause "
-      "the incorrect versions of HTML to be served to users.");
+      "the incorrect versions of HTML to be served to users.", true);
 
   // This is not Plain Old Data, so we initialize it here.
   const RewriteOptions::BeaconUrl kDefaultBeaconUrls =
@@ -1586,7 +1585,7 @@ void RewriteOptions::AddProperties() {
       kDefaultBeaconUrls, &RewriteOptions::beacon_url_, "bu",
       kBeaconUrl,
       kDirectoryScope,
-      "URL for beacon callback injected by add_instrumentation.");
+      "URL for beacon callback injected by add_instrumentation.", false);
 
   // lazyload_images_after_onload_ is especially important for mobile,
   // where the recommendation is that you prefetch all the
@@ -1607,63 +1606,63 @@ void RewriteOptions::AddProperties() {
       true, &RewriteOptions::lazyload_images_after_onload_, "llio",
       kLazyloadImagesAfterOnload,
       kDirectoryScope,
-      "Wait until page onload before loading lazy images");
+      "Wait until page onload before loading lazy images", true);
 
   AddBaseProperty(
       "", &RewriteOptions::request_option_override_, "roo",
       kRequestOptionOverride,
       kDirectoryScope,
-      "Token passed in URL to enable pagespeed options in params.");
+      "Token passed in URL to enable pagespeed options in params.", false);
   AddBaseProperty(
       "", &RewriteOptions::url_signing_key_, "usk",
       kUrlSigningKey,
       kServerScope,
-      "Key used for signing .pagespeed resource URLs.");
+      "Key used for signing .pagespeed resource URLs.", false);
   AddBaseProperty(
       false, &RewriteOptions::accept_invalid_signatures_, "ais",
       kAcceptInvalidSignatures, kServerScope,
-      "Accept resources with invalid signatures.");
+      "Accept resources with invalid signatures.", false);
   AddBaseProperty(
       "", &RewriteOptions::lazyload_images_blank_url_, "llbu",
       kLazyloadImagesBlankUrl,
       kDirectoryScope,
       "URL of image used to display prior to loading the lazy image. "
-      "Empty means use a site-local copy.");
+      "Empty means use a site-local copy.", true);
   AddBaseProperty(
       false, &RewriteOptions::use_blank_image_for_inline_preview_, "biip",
       kUseBlankImageForInlinePreview,
       kDirectoryScope,
-      "Use a blank image for inline preview");
+      "Use a blank image for inline preview", true);
   AddBaseProperty(
       true, &RewriteOptions::inline_only_critical_images_, "ioci",
       kInlineOnlyCriticalImages,
       kDirectoryScope,
-      NULL);  // TODO(jmarantz): implement for mod_pagespeed.
+      "Inline only critical images", true);
   AddBaseProperty(
       ResourceCategorySet(),
       &RewriteOptions::inline_unauthorized_resource_types_, "irwea",
       kInlineResourcesWithoutExplicitAuthorization,
       kDirectoryScope,
       "Specifies the resource types that can be inlined into HTML even if "
-      "they do not belong to explicitly authorized domains.");
+      "they do not belong to explicitly authorized domains.", true);
   AddBaseProperty(
       false, &RewriteOptions::domain_rewrite_hyperlinks_, "drh",
       kDomainRewriteHyperlinks,
       kDirectoryScope,
       "Allow rewrite_domains to rewrite <form> and <a> tags in addition "
-      "to resource tags.");
+      "to resource tags.", true);
   AddBaseProperty(
       false, &RewriteOptions::client_domain_rewrite_, "cdr",
       kClientDomainRewrite,
       kDirectoryScope,
-      "Allow rewrite_domains to rewrite urls on the client side.");
+      "Allow rewrite_domains to rewrite urls on the client side.", true);
   AddBaseProperty(
       kDefaultImageJpegRecompressQuality,
       &RewriteOptions::image_jpeg_recompress_quality_, "iq",
       kImageJpegRecompressionQuality,
       kQueryScope,
       "Set quality parameter for recompressing jpeg images [-1,100], "
-      "100 is lossless, -1 uses ImageRecompressionQuality");
+      "100 is lossless, -1 uses ImageRecompressionQuality", true);
   // Use kDefaultImageJpegRecompressQuality as default.
   AddBaseProperty(
       kDefaultImageJpegRecompressQualityForSmallScreens,
@@ -1672,7 +1671,7 @@ void RewriteOptions::AddProperties() {
       kQueryScope,
       "Set quality parameter for recompressing jpeg images for small "
       "screens. [-1,100], 100 refers to best quality, -1 falls back to "
-      "ImageJpegRecompressionQuality.");
+      "ImageJpegRecompressionQuality.", true);
   AddBaseProperty(
       kDefaultImageRecompressQuality,
       &RewriteOptions::image_recompress_quality_, "irq",
@@ -1681,7 +1680,7 @@ void RewriteOptions::AddProperties() {
       "Set quality parameter for recompressing images [-1,100], "
       "100 refers to best quality, -1 disables lossy compression. "
       "JpegRecompressionQuality and WebpRecompressionQuality override "
-      "this.");
+      "this.", true);
   AddBaseProperty(
       kDefaultImageLimitOptimizedPercent,
       &RewriteOptions::image_limit_optimized_percent_, "ip",
@@ -1689,7 +1688,7 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       "Replace images whose size after recompression is less than the "
       "given percent of original image size; 100 means replace if "
-      "smaller.");
+      "smaller.", true);
   AddBaseProperty(
       kDefaultImageLimitRenderedAreaPercent,
       &RewriteOptions::image_limit_rendered_area_percent_, "ira",
@@ -1698,7 +1697,7 @@ void RewriteOptions::AddProperties() {
       "Limit on percentage of rendered image wxh to the original "
       "image wxh that should be stored in the property cache. This is to "
       "avoid corner cases where rounding off decreases the rendered "
-      "image size by a few pixels.");
+      "image size by a few pixels.", true);
   AddBaseProperty(
       kDefaultImageLimitResizeAreaPercent,
       &RewriteOptions::image_limit_resize_area_percent_, "ia",
@@ -1706,14 +1705,14 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       "Consider resizing images whose area in pixels is less than the "
       "given percent of original image area; 100 means replace if "
-      "smaller.");
+      "smaller.", true);
   AddBaseProperty(
       kDefaultImageWebpRecompressQuality,
       &RewriteOptions::image_webp_recompress_quality_, "iw",
       kImageWebpRecompressionQuality,
       kQueryScope,
       "Set quality parameter for recompressing webp images [-1,100], "
-      "100 refers to best quality, -1 uses ImageRecompressionQuality.");
+      "100 refers to best quality, -1 uses ImageRecompressionQuality.", true);
   // Use kDefaultImageWebpRecompressQuality as default.
   AddBaseProperty(
       kDefaultImageWebpRecompressQualityForSmallScreens,
@@ -1722,52 +1721,52 @@ void RewriteOptions::AddProperties() {
       kQueryScope,
       "Set quality parameter for recompressing webp images for small "
       "screens. [-1,100], 100 refers to best quality, -1 falls back to "
-      "WebpRecompressionQuality.");
+      "WebpRecompressionQuality.", true);
   AddBaseProperty(
       kDefaultImageWebpTimeoutMs,
       &RewriteOptions::image_webp_timeout_ms_, "wt",
       kImageWebpTimeoutMs,
       kProcessScope,
-      NULL);  // TODO(jmarantz): write help & doc for mod_pagespeed.
+      NULL, true);  // TODO(jmarantz): write help & doc for mod_pagespeed.
   AddBaseProperty(
       kDefaultMaxInlinedPreviewImagesIndex,
       &RewriteOptions::max_inlined_preview_images_index_, "mdii",
       kMaxInlinedPreviewImagesIndex,
       kDirectoryScope,
       "Number of first N images for which low resolution image is "
-      "generated. Negative values result in generation for all images.");
+      "generated. Negative values result in generation for all images.", true);
   AddBaseProperty(
       kDefaultMinImageSizeLowResolutionBytes,
       &RewriteOptions::min_image_size_low_resolution_bytes_, "nislr",
       kMinImageSizeLowResolutionBytes,
       kDirectoryScope,
       "Minimum image size above which low resolution image is "
-      "generated.");
+      "generated.", true);
   AddBaseProperty(
       kDefaultMaxImageSizeLowResolutionBytes,
       &RewriteOptions::max_image_size_low_resolution_bytes_, "xislr",
       kMaxImageSizeLowResolutionBytes,
       kDirectoryScope,
       "Maximum image size below which low resolution image is "
-      "generated.");
+      "generated.", true);
   AddBaseProperty(
       kDefaultFinderPropertiesCacheExpirationTimeMs,
       &RewriteOptions::finder_properties_cache_expiration_time_ms_,
       "fpce", kFinderPropertiesCacheExpirationTimeMs,
       kDirectoryScope,
-      NULL);  // Not applicable for mod_pagespeed.
+      NULL, true);  // Not applicable for mod_pagespeed.
   AddBaseProperty(
       kDefaultFinderPropertiesCacheRefreshTimeMs,
       &RewriteOptions::finder_properties_cache_refresh_time_ms_,
       "fpcr", kFinderPropertiesCacheRefreshTimeMs,
       kDirectoryScope,
-      NULL);  // Not applicable for mod_pagespeed.
+      NULL, true);  // Not applicable for mod_pagespeed.
   AddBaseProperty(
       kDefaultExperimentCookieDurationMs,
       &RewriteOptions::experiment_cookie_duration_ms_, "fcd",
       kExperimentCookieDurationMs,
       kDirectoryScope,
-      NULL);  // TODO(jmarantz): write help & doc for mod_pagespeed.
+      NULL, true);  // TODO(jmarantz): write help & doc for mod_pagespeed.
   AddBaseProperty(
       kDefaultImageJpegNumProgressiveScans,
       &RewriteOptions::image_jpeg_num_progressive_scans_, "ijps",
@@ -1775,7 +1774,7 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       "Number of progressive scans [1,10] to emit when rewriting images as "
       "ten-scan progressive jpegs. "
-      "A value of -1 outputs all progressive scans.");
+      "A value of -1 outputs all progressive scans.", true);
   // Use kDefaultImageJpegNumProgressiveScans as default.
   AddBaseProperty(
       kDefaultImageJpegNumProgressiveScans,
@@ -1785,79 +1784,79 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       "Number of progressive scans [1,10] to emit when rewriting images as"
       "ten-scan progressive jpegs for small screens. A value of -1 falls "
-      "back to kImageJpegNumProgressiveScans.");
+      "back to kImageJpegNumProgressiveScans.", true);
   AddBaseProperty(
       false, &RewriteOptions::cache_small_images_unrewritten_, "csiu",
       kCacheSmallImagesUnrewritten,
       kDirectoryScope,
-      NULL);  // TODO(jmarantz): write help & doc for mod_pagespeed.
+      NULL, true);  // TODO(jmarantz): write help & doc for mod_pagespeed.
   AddBaseProperty(
       kDefaultImageResolutionLimitBytes,
       &RewriteOptions::image_resolution_limit_bytes_,
       "irlb", kImageResolutionLimitBytes,
       kDirectoryScope,
-      "Maximum byte size of an image for optimization");
+      "Maximum byte size of an image for optimization", true);
   AddBaseProperty(
       0, &RewriteOptions::rewrite_random_drop_percentage_, "rrdp",
       kRewriteRandomDropPercentage, kDirectoryScope,
       "The percentage of time that pagespeed should randomly drop an "
       "opportunity to optimize an image.  The value should be an integer "
-      "between 0 and 100 inclusive.");
+      "between 0 and 100 inclusive.", true);
   AddBaseProperty(
       "", &RewriteOptions::ga_id_, "ig", kAnalyticsID,
       kDirectoryScope,
-      "Google Analytics ID to use on site.");
+      "Google Analytics ID to use on site.", true);
   AddBaseProperty(
       true, &RewriteOptions::increase_speed_tracking_, "st",
       kIncreaseSpeedTracking,
       kDirectoryScope,
-      NULL);  // TODO(jmarantz): write help & doc for mod_pagespeed.
+      NULL, true);  // TODO(jmarantz): write help & doc for mod_pagespeed.
   AddBaseProperty(
       false, &RewriteOptions::running_experiment_, "fur", kRunningExperiment,
       kDirectoryScope,
-      NULL);  // Not applicable for mod_pagespeed.
+      NULL, true);  // Not applicable for mod_pagespeed.
   AddBaseProperty(
       kDefaultExperimentSlot, &RewriteOptions::experiment_ga_slot_, "fga",
       kExperimentSlot,
       kDirectoryScope,
-      NULL);  // Not applicable for mod_pagespeed.
+      NULL, true);  // Not applicable for mod_pagespeed.
   AddBaseProperty(
       experiment::kForceNoExperiment, &RewriteOptions::enroll_experiment_id_,
       "eeid",
       kEnrollExperiment,
       kQueryScope,
-      "Assign users to a specific experiment setting.");
+      "Assign users to a specific experiment setting.", true);
   AddBaseProperty(
       false, &RewriteOptions::report_unload_time_, "rut",
       kReportUnloadTime,
       kDirectoryScope,
-      "If set reports optional page unload time.");
+      "If set reports optional page unload time.", true);
   AddBaseProperty(
       "", &RewriteOptions::x_header_value_, "xhv",
       kXModPagespeedHeaderValue,
       kDirectoryScope,
-      "Set the value for the X-Mod-Pagespeed HTTP header");
+      "Set the value for the X-Mod-Pagespeed HTTP header", true);
   AddBaseProperty(true, &RewriteOptions::distribute_fetches_, "dfe",
                   kDistributeFetches, kProcessScope,
                   "Whether or not to distribute IPRO and .pagespeed. resource "
                   "fetch requests from the RewriteDriver before checking the "
-                  "cache.");
+                  "cache.", true);
   AddBaseProperty(
       "", &RewriteOptions::distributed_rewrite_key_, "drwk",
       kDistributedRewriteKey, kProcessScope,
       "The key used to authenticate requests from one rewrite task "
       "to another.  This should be random, greater than 8 characters (longer "
       "is better), and the same value on each mod_pagespeed server config in "
-      "the rewrite cluster.");
+      "the rewrite cluster.", false);
   AddBaseProperty(
       "", &RewriteOptions::distributed_rewrite_servers_, "drws",
       kDistributedRewriteServers, kProcessScope,
-     "A comma-separated list of hosts to use for distributed rewrites.");
+     "A comma-separated list of hosts to use for distributed rewrites.", false);
   AddBaseProperty(
       kDefaultDistributedTimeoutMs,
       &RewriteOptions::distributed_rewrite_timeout_ms_, "drwt",
       kDistributedRewriteTimeoutMs, kProcessScope,
-      "Time to wait before giving up on a distributed rewrite request.");
+      "Time to wait before giving up on a distributed rewrite request.", false);
   AddBaseProperty(
       true, &RewriteOptions::avoid_renaming_introspective_javascript_,
       "aris", kAvoidRenamingIntrospectiveJavascript,
@@ -1865,18 +1864,18 @@ void RewriteOptions::AddProperties() {
       "Don't combine, inline, cache extend, or otherwise modify "
       "javascript in ways that require changing the URL if we see "
       "introspection in the form of "
-      "document.getElementsByTagName('script').");
+      "document.getElementsByTagName('script').", true);
   AddBaseProperty(
       false, &RewriteOptions::reject_blacklisted_, "rbl",
       kRejectBlacklisted,
       kDirectoryScope,
-      NULL);   // Not applicable for mod_pagespeed.
+      NULL, false);   // Not applicable for mod_pagespeed.
   AddBaseProperty(
       HttpStatus::kForbidden,
       &RewriteOptions::reject_blacklisted_status_code_, "rbls",
       kRejectBlacklistedStatusCode,
       kDirectoryScope,
-      NULL);   // Not applicable for mod_pagespeed.
+      NULL, false);   // Not applicable for mod_pagespeed.
   AddBaseProperty(
       kDefaultBlockingRewriteKey, &RewriteOptions::blocking_rewrite_key_,
       "blrw", kXPsaBlockingRewrite,
@@ -1884,7 +1883,7 @@ void RewriteOptions::AddProperties() {
       "If the X-PSA-Pagespeed-Blocking-Rewrite header is present, and "
       "its value matches the configured value, ensure that all "
       "rewrites are completed before sending the response to the "
-      "client.");
+      "client.", false);
   AddBaseProperty(
         false,
         &RewriteOptions::use_fallback_property_cache_values_,
@@ -1895,112 +1894,111 @@ void RewriteOptions::AddProperties() {
         "properties which are shared across all requests which have same url "
         "if query paramaters are removed. Example: http://www.test.com?a=1 and "
         "http://www.test.com?a=2 share same fallback properties though they "
-        "are two different urls.");
+        "are two different urls.", true);
   AddBaseProperty(
         false,
         &RewriteOptions::await_pcache_lookup_,
         "wpcl", kAwaitPcacheLookup,
         kServerScope,
-        NULL);
+        NULL, true);
   AddBaseProperty(
       true, &RewriteOptions::support_noscript_enabled_, "snse",
       kSupportNoScriptEnabled,
       kDirectoryScope,
       "Support for clients with no script support, in filters that "
-      "insert new javascript.");
+      "insert new javascript.", true);
   AddBaseProperty(
       false, &RewriteOptions::enable_extended_instrumentation_, "eei",
       kEnableExtendedInstrumentation,
       kDirectoryScope,
       "If set to true, addition instrumentation js is added to that page that "
-      "the beacon can collect more information.");
+      "the beacon can collect more information.", true);
   AddBaseProperty(
       false, &RewriteOptions::use_experimental_js_minifier_, "uejsm",
       kUseExperimentalJsMinifier,
       kDirectoryScope,
       "If set to true, uses the new JsTokenizer-based minifier. This option "
-      "will be removed when that minifier has matured.");
+      "will be removed when that minifier has matured.", true);
   AddBaseProperty(
       kDefaultMaxCombinedCssBytes,
       &RewriteOptions::max_combined_css_bytes_, "xcc",
       kMaxCombinedCssBytes,
       kQueryScope,
-      "Maximum size allowed for the combined CSS resource.");
+      "Maximum size allowed for the combined CSS resource.", true);
   AddBaseProperty(
       kDefaultMaxCombinedJsBytes,
       &RewriteOptions::max_combined_js_bytes_, "xcj",
       kMaxCombinedJsBytes,
       kDirectoryScope,
-      "Maximum size allowed for the combined JavaScript resource.");
+      "Maximum size allowed for the combined JavaScript resource.", true);
   AddBaseProperty(
       false, &RewriteOptions::enable_blink_html_change_detection_,
       "ebhcd", kEnableBlinkHtmlChangeDetection,
       kDirectoryScope,
-      NULL);   // Not applicable for mod_pagespeed.
+      NULL, false);   // Not applicable for mod_pagespeed.
   // Currently not applicable for mod_pagespeed.
   AddBaseProperty(
       false,
       &RewriteOptions::enable_blink_html_change_detection_logging_,
       "ebhcdl", kEnableBlinkHtmlChangeDetectionLogging,
       kDirectoryScope,
-      NULL);   // Not applicable for mod_pagespeed.
+      NULL, false);   // Not applicable for mod_pagespeed.
   AddBaseProperty(
       "", &RewriteOptions::critical_line_config_, "clc",
       kCriticalLineConfig,
       kDirectoryScope,
-      "Critical line xpath config for use by the split html filter.");
+      "Critical line xpath config for use by the split html filter.", true);
   AddBaseProperty(
       -1, &RewriteOptions::override_caching_ttl_ms_, "octm",
       kOverrideCachingTtlMs,
       kDirectoryScope,
-      NULL);  // TODO(jmarantz): write help & doc for mod_pagespeed.
+      NULL, true);  // TODO(jmarantz): write help & doc for mod_pagespeed.
   AddBaseProperty(
       kDefaultMinCacheTtlMs,
       &RewriteOptions::min_cache_ttl_ms_, "mctm",
       kMinCacheTtlMs,
       kDirectoryScope,
-      NULL);
+      NULL, true);
   AddBaseProperty(
       5 * Timer::kSecondMs, &RewriteOptions::blocking_fetch_timeout_ms_,
       "bfto", RewriteOptions::kFetcherTimeOutMs,
       kDirectoryScope,
-      NULL);  // TODO(jmarantz): write help & doc for mod_pagespeed.
+      NULL, true);  // TODO(jmarantz): write help & doc for mod_pagespeed.
   AddBaseProperty(
       false, &RewriteOptions::enable_prioritizing_scripts_, "eps",
       kEnablePrioritizingScripts,
       kDirectoryScope,
-      NULL);   // Not applicable for mod_pagespeed.
+      NULL, true);   // Not applicable for mod_pagespeed.
   AddRequestProperty(
-      "", &RewriteOptions::pre_connect_url_, "pcu");
+      "", &RewriteOptions::pre_connect_url_, "pcu", true);
   AddRequestProperty(
       kDefaultPropertyCacheHttpStatusStabilityThreshold,
       &RewriteOptions::property_cache_http_status_stability_threshold_,
-      "pchsst");
+      "pchsst", false);
   AddBaseProperty(
       kDefaultMaxRewriteInfoLogSize,
       &RewriteOptions::max_rewrite_info_log_size_, "mrils",
       kMaxRewriteInfoLogSize,
       kDirectoryScope,
-      NULL);   // Not applicable for mod_pagespeed.
+      NULL, false);   // Not applicable for mod_pagespeed.
   AddBaseProperty(
       kDefaultMetadataCacheStalenessThresholdMs,
       &RewriteOptions::metadata_cache_staleness_threshold_ms_, "mcst",
       kMetadataCacheStalenessThresholdMs,
       kDirectoryScope,
-      NULL);  // TODO(jmarantz): write help & doc for mod_pagespeed.
+      NULL, true);  // TODO(jmarantz): write help & doc for mod_pagespeed.
   AddBaseProperty(
       kDefaultDownstreamCachePurgeMethod,
-      &RewriteOptions::downstream_cache_purge_method_,
-      "dcpm",
-      kDownstreamCachePurgeMethod,
-      kDirectoryScope,
-      "Method to be used for purging responses from the downstream cache");
+      &RewriteOptions::downstream_cache_purge_method_, "dcpm",
+      kDownstreamCachePurgeMethod, kDirectoryScope,
+      "Method to be used for purging responses from the downstream cache",
+      false);
   AddBaseProperty(
       "", &RewriteOptions::downstream_cache_rebeaconing_key_, "dcrk",
       kDownstreamCacheRebeaconingKey, kDirectoryScope,
       "The key used to authenticate rebeaconing requests from downstream "
       "caches. The value specified for this key in the pagespeed server "
-      "config should be used in the caching layer configuration also.");
+      "config should be used in the caching layer configuration also.", false);
   AddBaseProperty(
       kDefaultDownstreamCacheRewrittenPercentageThreshold,
       &RewriteOptions::downstream_cache_rewritten_percentage_threshold_,
@@ -2010,25 +2008,25 @@ void RewriteOptions::AddProperties() {
       "Threshold for percentage of rewriting to be finished before the "
       "response is served out and simultaneously stored in the downstream "
       "cache, beyond which the response will not be purged from the cache even"
-      "if more rewriting is possible now");
+      "if more rewriting is possible now", true);
   AddRequestProperty(
       kDefaultMetadataInputErrorsCacheTtlMs,
       &RewriteOptions::metadata_input_errors_cache_ttl_ms_,
-      "mect");
+      "mect", true);
   AddRequestProperty(
-      true, &RewriteOptions::enable_blink_debug_dashboard_, "ebdd");
+      true, &RewriteOptions::enable_blink_debug_dashboard_, "ebdd", false);
   AddRequestProperty(
       kDefaultBlinkHtmlChangeDetectionTimeMs,
       &RewriteOptions::blink_html_change_detection_time_ms_,
-      "bhcdt");
+      "bhcdt", false);
   AddRequestProperty(
       false, &RewriteOptions::override_ie_document_mode_,
-      "oidm");
+      "oidm", true);
   AddBaseProperty(
       false, &RewriteOptions::use_smart_diff_in_blink_, "usdb",
       kUseSmartDiffInBlink,
       kDirectoryScope,
-      NULL);   // Not applicable for mod_pagespeed.
+      NULL, false);   // Not applicable for mod_pagespeed.
 
   // Note: defer_javascript and defer_iframe were previously not
   // trusted on mobile user-agents, but have now matured to the point
@@ -2040,67 +2038,67 @@ void RewriteOptions::AddProperties() {
       true, &RewriteOptions::enable_aggressive_rewriters_for_mobile_,
       "earm", kEnableAggressiveRewritersForMobile,
       kDirectoryScope,
-      "Allows defer_javascript and defer_iframe for mobile browsers");
+      "Allows defer_javascript and defer_iframe for mobile browsers", true);
 
   AddBaseProperty(
       false, &RewriteOptions::serve_ghost_click_buster_with_split_html_,
-      "sgcbsh", kServeGhostClickBusterWithSplitHtml,
-      kDirectoryScope, "Serve ghost click buster code along with split html");
+      "sgcbsh", kServeGhostClickBusterWithSplitHtml, kDirectoryScope,
+      "Serve ghost click buster code along with split html", false);
 
-  AddBaseProperty(
-      false, &RewriteOptions::serve_xhr_access_control_headers_,
-      "shach", kServeXhrAccessControlHeaders,
-      kDirectoryScope, "Serve access control headers with response headers");
+  AddBaseProperty(false, &RewriteOptions::serve_xhr_access_control_headers_,
+                  "shach", kServeXhrAccessControlHeaders, kDirectoryScope,
+                  "Serve access control headers with response headers", false);
 
   AddBaseProperty(
       "", &RewriteOptions::access_control_allow_origins_,
       "acao", kAccessControlAllowOrigins,
       kDirectoryScope,
       "Comma seperated list of origins that are allowed to make cross-origin "
-      "requests");
+      "requests", false);
 
   AddBaseProperty(
       false, &RewriteOptions::hide_referer_using_meta_,
       "hrum", kHideRefererUsingMeta,
       kDirectoryScope,
-      "Hides the referer by adding meta tag to the HTML");
+      "Hides the referer by adding meta tag to the HTML", true);
 
   AddRequestProperty(
-      -1, &RewriteOptions::blink_blacklist_end_timestamp_ms_, "bbet");
+      -1, &RewriteOptions::blink_blacklist_end_timestamp_ms_, "bbet", false);
   AddBaseProperty(
       false,
       &RewriteOptions::persist_blink_blacklist_,
       "pbb", kPersistBlinkBlacklist,
       kDirectoryScope,
-      NULL);  // Not applicable for mod_pagespeed.
+      NULL, false);  // Not applicable for mod_pagespeed.
 
   AddBaseProperty(
-      true, &RewriteOptions::preserve_url_relativity_,
-      "pur", kPreserveUrlRelativity, kDirectoryScope,
-      "Keep rewritten URLs as relative as the original resource URL was.");
+      true, &RewriteOptions::preserve_url_relativity_, "pur",
+      kPreserveUrlRelativity, kDirectoryScope,
+      "Keep rewritten URLs as relative as the original resource URL was.",
+      true);
 
   AddBaseProperty(
       false, &RewriteOptions::allow_logging_urls_in_log_record_,
       "alulr", kAllowLoggingUrlsInLogRecord, kDirectoryScope,
-      NULL);   // Not applicable for mod_pagespeed.
+      NULL, false);   // Not applicable for mod_pagespeed.
 
   AddBaseProperty(
       true, &RewriteOptions::allow_options_to_be_set_by_cookies_,
       "aotbsbc", kAllowOptionsToBeSetByCookies, kDirectoryScope,
       "Allow options to be set by cookies in addition to query parameters "
-      "and request headers.");
+      "and request headers.", true);
 
   AddBaseProperty(
       "", &RewriteOptions::non_cacheables_for_cache_partial_html_, "nccp",
       kNonCacheablesForCachePartialHtml,
       kDirectoryScope,
-      NULL);  // Not applicable for mod_pagespeed.
+      NULL, false);  // Not applicable for mod_pagespeed.
 
   AddBaseProperty(
       false, &RewriteOptions::no_transform_optimized_images_, "ntoi",
       kNoTransformOptimizedImages,
       kDirectoryScope,
-      "Add no-transform header to cache-control for optimized images");
+      "Add no-transform header to cache-control for optimized images", true);
 
   AddBaseProperty(
       kDefaultMaxLowResImageSizeBytes,
@@ -2108,7 +2106,7 @@ void RewriteOptions::AddProperties() {
       "lris",
       kMaxLowResImageSizeBytes,
       kDirectoryScope,
-      NULL);  // TODO(bharathbhushan): write help & doc for mod_pagespeed.
+      NULL, true);  // TODO(bharathbhushan): write help & doc for mod_pagespeed.
 
   AddBaseProperty(
       kDefaultMaxLowResToFullResImageSizePercentage,
@@ -2116,7 +2114,7 @@ void RewriteOptions::AddProperties() {
       "lrhrs",
       kMaxLowResToHighResImageSizePercentage,
       kDirectoryScope,
-      NULL);  // TODO(bharathbhushan): write help & doc for mod_pagespeed.
+      NULL, true);  // TODO(bharathbhushan): write help & doc for mod_pagespeed.
 
   AddBaseProperty(
       true,
@@ -2124,16 +2122,14 @@ void RewriteOptions::AddProperties() {
       "swaa",
       kServeWebpToAnyAgent,
       kDirectoryScope,
-      "Serve rewritten .webp images to any user-agent");
+      "Serve rewritten .webp images to any user-agent", true);
 
   AddBaseProperty(
-      "",
-      &RewriteOptions::cache_fragment_,
-      "ckp",
-      kCacheFragment,
+      "", &RewriteOptions::cache_fragment_, "ckp", kCacheFragment,
       kDirectoryScope,
       "Set a cache fragment to allow servers with different hostnames to "
-      "share a cache.  Allowed: letters, numbers, underscores, and hyphens.");
+      "share a cache.  Allowed: letters, numbers, underscores, and hyphens.",
+      false);
 
   AddBaseProperty(
       "",
@@ -2144,18 +2140,19 @@ void RewriteOptions::AddProperties() {
       "The token that must be set by the PageSpeedStickyQueryParameters query "
       "parameter/header in a request to enable the setting of cookies for all "
       "other PageSpeed query parameters/headers in the request. Blank means "
-      "it is disabled.");
+      "it is disabled.", false);
   AddBaseProperty(
       kDefaultOptionCookiesDurationMs,
       &RewriteOptions::option_cookies_duration_ms_,
       "ocd",
       kOptionCookiesDurationMs,
       kDirectoryScope,
-      "The max-age in ms of cookies that set PageSpeed options.");
+      "The max-age in ms of cookies that set PageSpeed options.", true);
 
   // Test-only, so no enum.
-  AddRequestProperty(
-      false, &RewriteOptions::test_instant_fetch_rewrite_deadline_, "tifrwd");
+  AddRequestProperty(false,
+                     &RewriteOptions::test_instant_fetch_rewrite_deadline_,
+                     "tifrwd", false);
   // We need to exclude this test-only option from signature, since we may need
   // to change it in the middle of tests.
   properties_->property(properties_->size() - 1)
@@ -3800,6 +3797,30 @@ GoogleString RewriteOptions::FilterSetToString(
   return output;
 }
 
+GoogleString RewriteOptions::EnabledFiltersToString() const {
+  GoogleString output;
+  for (int i = kFirstFilter; i != kEndOfFilters; ++i) {
+    Filter filter = static_cast<Filter>(i);
+    if (Enabled(filter)) {
+      StrAppend(&output, FilterId(filter), "\t", FilterName(filter), "\n");
+    }
+  }
+  return output;
+}
+
+GoogleString RewriteOptions::SafeEnabledOptionsToString() const {
+  GoogleString output;
+  for (int i = 0, n = all_options_.size(); i < n; ++i) {
+    OptionBase* option = all_options_[i];
+    if (option->was_set() && option->property()->safe_to_print()) {
+      GoogleString name_and_id =
+          StrCat(option->option_name(), " (", option->id(), ") ");
+      StrAppend(&output, name_and_id, option->ToString(), "\n");
+    }
+  }
+  return output;
+}
+
 GoogleString RewriteOptions::OptionsToString() const {
   GoogleString output;
   StrAppend(&output, "Version: ", IntegerToString(kOptionsVersion), ": ");
@@ -4374,6 +4395,13 @@ bool RewriteOptions::IsUrlCacheInvalidationEntriesSorted() const {
     }
   }
   return true;
+}
+
+HttpOptions RewriteOptions::ComputeHttpOptions() const {
+  HttpOptions options;
+  options.implicit_cache_ttl_ms = implicit_cache_ttl_ms();
+  options.min_cache_ttl_ms = min_cache_ttl_ms();
+  return options;
 }
 
 bool RewriteOptions::CacheFragmentOption::SetFromString(

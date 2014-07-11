@@ -75,6 +75,7 @@
 #include "net/instaweb/util/worker_test_base.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/base/wildcard.h"
+#include "pagespeed/kernel/http/http_options.h"
 
 namespace net_instaweb {
 
@@ -378,7 +379,7 @@ class ProxyInterfaceWithDelayCache : public ProxyInterface {
 class TestRequestContext : public RequestContext {
  public:
   TestRequestContext(ThreadSystem* threads, LoggingInfo* logging_info)
-      : RequestContext(threads->NewMutex(), NULL),
+      : RequestContext(kDefaultHttpOptionsForTests, threads->NewMutex(), NULL),
         logging_info_copy_(logging_info) {}
 
   virtual AbstractLogRecord* NewSubordinateLogRecord(

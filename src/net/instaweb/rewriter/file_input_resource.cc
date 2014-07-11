@@ -38,11 +38,13 @@ const int64 kTimestampUnset = 0;
 
 namespace net_instaweb {
 
-FileInputResource::FileInputResource(ServerContext* server_context,
+class RewriteDriver;
+
+FileInputResource::FileInputResource(const RewriteDriver* driver,
                                      const ContentType* type,
-                                     const StringPiece& url,
-                                     const StringPiece& filename)
-    : Resource(server_context, type),
+                                     StringPiece url,
+                                     StringPiece filename)
+    : Resource(driver, type),
       url_(url.data(), url.size()),
       filename_(filename.data(), filename.size()),
       last_modified_time_sec_(kTimestampUnset) {

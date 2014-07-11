@@ -73,6 +73,7 @@
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"  // for Timer, etc
 #include "pagespeed/kernel/http/http_names.h"
+#include "pagespeed/kernel/http/http_options.h"
 #include "pagespeed/kernel/image/test_utils.h"
 
 namespace net_instaweb {
@@ -162,7 +163,7 @@ class TestRequestContext : public RequestContext {
  public:
   TestRequestContext(LoggingInfo* logging_info,
                      AbstractMutex* mutex)
-      : RequestContext(mutex, NULL),
+      : RequestContext(kDefaultHttpOptionsForTests, mutex, NULL),
         logging_info_copy_(logging_info) {
   }
 

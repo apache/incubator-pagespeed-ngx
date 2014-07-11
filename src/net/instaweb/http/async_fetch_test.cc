@@ -24,6 +24,7 @@
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/null_mutex.h"
+#include "pagespeed/kernel/http/http_options.h"
 
 namespace net_instaweb {
 namespace {
@@ -47,7 +48,8 @@ class TestSharedAsyncFetch : public SharedAsyncFetch {
 class AsyncFetchTest : public testing::Test {
  protected:
   AsyncFetchTest()
-      : request_context_(new RequestContext(new NullMutex, NULL)),
+      : request_context_(new RequestContext(
+            kDefaultHttpOptionsForTests, new NullMutex, NULL)),
         string_fetch_(request_context_),
         handler_(new NullMutex) {
   }

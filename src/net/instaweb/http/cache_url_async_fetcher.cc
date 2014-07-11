@@ -36,6 +36,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/http/http_options.h"
 
 
 namespace net_instaweb {
@@ -489,7 +490,9 @@ class CacheFindCallback : public HTTPCache::Callback {
     return ResponseHeaders::IsImminentlyExpiring(
         headers.date_ms(),
         headers.CacheExpirationTimeMs(),
-        cache_->timer()->NowMs());
+        cache_->timer()->NowMs(),
+        // TODO(sligocki): Pipe in actual options.
+        kDeprecatedDefaultHttpOptions);
   }
 
   AsyncFetch* WrapCachePutFetchAndConditionalFetch(AsyncFetch* base_fetch) {

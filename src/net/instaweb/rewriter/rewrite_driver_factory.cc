@@ -559,9 +559,12 @@ void RewriteDriverFactory::RebuildDecodingDriverForTests(
 void RewriteDriverFactory::InitDecodingDriver(ServerContext* server_context) {
   if (decoding_driver_.get() == NULL) {
     decoding_server_context_.reset(NewDecodingServerContext());
+    // decoding_driver_ takes ownership.
+    RewriteOptions* options = default_options_->Clone();
+    options->ComputeSignature();
     decoding_driver_.reset(
         decoding_server_context_->NewUnmanagedRewriteDriver(
-            NULL, default_options_->Clone(), RequestContextPtr(NULL)));
+            NULL, options, RequestContextPtr(NULL)));
     decoding_driver_->set_externally_managed(true);
 
     // Apply platform configuration mutation for consistency's sake.

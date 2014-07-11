@@ -57,11 +57,15 @@
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/base/ref_counted_ptr.h"
+#include "pagespeed/kernel/http/http_options.h"
+#include "pagespeed/kernel/http/response_headers.h"
 
 #include "http_config.h"
 #include "http_core.h"
 #include "http_protocol.h"
 #include "http_request.h"
+#include "util_filter.h"
 #include "net/instaweb/apache/apache_logging_includes.h"
 
 namespace net_instaweb {
@@ -222,16 +226,23 @@ InstawebHandler::InstawebHandler(request_rec* request)
       num_response_attributes_(0) {
   apache_request_context_ = server_context_->NewApacheRequestContext(request);
   request_context_.reset(apache_request_context_);
+
+  // Global options
   options_ = server_context_->global_config();
-  if (apache_request_context_->using_spdy() &&
+  if (request_context_->using_spdy() &&
       (server_context_->SpdyGlobalConfig() != NULL)) {
     options_ = server_context_->SpdyGlobalConfig();
   }
+
   request_headers_.reset(new RequestHeaders);
   ApacheRequestToRequestHeaders(*request, request_headers_.get());
+
   original_url_ = InstawebContext::MakeRequestUrl(*options_, request);
   apache_request_context_->set_url(original_url_);
+
+  // Note: request_context_ must be initialized before ComputeCustomOptions().
   ComputeCustomOptions();
+  request_context_->set_options(options_->ComputeHttpOptions());
 }
 
 InstawebHandler::~InstawebHandler() {
@@ -364,20 +375,29 @@ void InstawebHandler::ComputeCustomOptions() {
   // so NULL is passed in instead.
   stripped_gurl_.Reset(original_url_);
 
+  // Note: options is not actually the final options for this request, but the
+  // final options depend upon the ResponseHeaders, so these are the best we
+  // have. As long as we don't allow changing implicit cache TTL in
+  // ResponseHeaders, this should be fine.
+  const RewriteOptions* directory_aware_options =
+      (custom_options_.get() != NULL) ? custom_options_.get() : options_;
+  response_headers_.reset(
+      new ResponseHeaders(directory_aware_options->ComputeHttpOptions()));
+
   // Copy headers_out and err_headers_out into response_headers.
   // Note that err_headers_out will come after the headers_out in the list of
   // headers. Because of this, err_headers_out will effectively override
   // headers_out when we call GetQueryOptions as it applies the header options
   // in order.
-  ApacheRequestToResponseHeaders(*request_, &response_headers_,
-                                 &response_headers_);
-  num_response_attributes_ = response_headers_.NumAttributes();
+  ApacheRequestToResponseHeaders(*request_, response_headers_.get(),
+                                 response_headers_.get());
+  num_response_attributes_ = response_headers_->NumAttributes();
 
   if (!server_context_->GetQueryOptions(request_context(),
-                                        (custom_options_.get() != NULL)
-                                        ? custom_options_.get() : options_,
+                                        directory_aware_options,
                                         &stripped_gurl_, request_headers_.get(),
-                                        &response_headers_, &rewrite_query_)) {
+                                        response_headers_.get(),
+                                        &rewrite_query_)) {
     server_context_->message_handler()->Message(
         kWarning, "Invalid PageSpeed query params or headers for "
         "request %s. Serving with default options.",
@@ -407,23 +427,24 @@ void InstawebHandler::RemoveStrippedResponseHeadersFromApacheRequest() {
   // GetQueryOptions (which indicates that options were found).
   // Note: GetQueryOptions should not add or mutate headers, only remove
   // them.
-  DCHECK(response_headers_.NumAttributes() <= num_response_attributes_);
-  if (response_headers_.NumAttributes() < num_response_attributes_) {
+  DCHECK(response_headers_->NumAttributes() <= num_response_attributes_);
+  if (response_headers_->NumAttributes() < num_response_attributes_) {
     // Something was stripped, but we don't know if it came from
     // headers_out or err_headers_out.  We need to treat them separately.
     if (apr_is_empty_table(request_->err_headers_out)) {
       // We know that response_headers were all from request->headers_out
       apr_table_clear(request_->headers_out);
-      ResponseHeadersToApacheRequest(response_headers_, request_);
+      ResponseHeadersToApacheRequest(*response_headers_, request_);
     } else if (apr_is_empty_table(request_->headers_out)) {
       // We know that response_headers were all from err_headers_out
       apr_table_clear(request_->err_headers_out);
-      ErrorHeadersToApacheRequest(response_headers_, request_);
+      ErrorHeadersToApacheRequest(*response_headers_, request_);
     } else {
       // We don't know which table changed, so scan them individually and
       // write them both back. This should be a rare case and could be
       // optimized a bit if we find that we're spending time here.
-      ResponseHeaders tmp_err_resp_headers, tmp_resp_headers;
+      ResponseHeaders tmp_err_resp_headers(options_->ComputeHttpOptions());
+      ResponseHeaders tmp_resp_headers(options_->ComputeHttpOptions());
       ThreadSystem* thread_system = server_context_->thread_system();
       ApacheConfig unused_opts1("unused_options1", thread_system),
           unused_opts2("unused_options2", thread_system);
@@ -632,7 +653,9 @@ void InstawebHandler::write_handler_response(const StringPiece& output,
                                              request_rec* request,
                                              ContentType content_type,
                                              const StringPiece& cache_control) {
-  ResponseHeaders response_headers;
+  // We don't need custom options for our produced resources. In fact, options
+  // shouldn't matter.
+  ResponseHeaders response_headers(kDeprecatedDefaultHttpOptions);
   response_headers.SetStatusAndReason(HttpStatus::kOK);
   response_headers.set_major_version(1);
   response_headers.set_minor_version(1);

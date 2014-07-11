@@ -66,7 +66,7 @@ const char kTestEncoderUrlExtra[] = "UrlExtraStuff";
 // This should be the same as used for freshening. It may not be 100%
 // robust against rounding errors, however.
 int TtlSec() {
-  return ResponseHeaders::kDefaultImplicitCacheTtlMs / Timer::kSecondMs;
+  return RewriteOptions::kDefaultImplicitCacheTtlMs / Timer::kSecondMs;
 }
 
 int TtlMs() {

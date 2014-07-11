@@ -152,7 +152,7 @@ const RequestHeaders* AsyncFetch::request_headers() const {
 
 ResponseHeaders* AsyncFetch::response_headers() {
   if (response_headers_ == NULL) {
-    response_headers_ = new ResponseHeaders;
+    response_headers_ = new ResponseHeaders(request_ctx_->options());
     owns_response_headers_ = true;
   }
   return response_headers_;
@@ -169,7 +169,7 @@ void AsyncFetch::set_response_headers(ResponseHeaders* headers) {
 
 ResponseHeaders* AsyncFetch::extra_response_headers() {
   if (extra_response_headers_ == NULL) {
-    extra_response_headers_ = new ResponseHeaders;
+    extra_response_headers_ = new ResponseHeaders(request_ctx_->options());
     owns_extra_response_headers_ = true;
   }
   return extra_response_headers_;
@@ -322,7 +322,7 @@ ConditionalSharedAsyncFetch::ConditionalSharedAsyncFetch(
     // conditional.
     if (!request_headers()->Has(HttpAttributes::kIfModifiedSince) &&
         !request_headers()->Has(HttpAttributes::kIfNoneMatch)) {
-      ResponseHeaders cached_response_headers;
+      ResponseHeaders cached_response_headers(request_context()->options());
       cached_value->ExtractHeaders(&cached_response_headers, handler_);
       // Check that the cached response is a 200.
       if (cached_response_headers.status_code() == HttpStatus::kOK) {

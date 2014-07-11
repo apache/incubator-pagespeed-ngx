@@ -32,7 +32,6 @@
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/google_url.h"
-#include "pagespeed/kernel/http/response_headers.h"
 
 #include "apr_pools.h"  // for apr_status_t
 // The httpd header must be after the instaweb_context.h. Otherwise,
@@ -48,6 +47,7 @@ class ApacheServerContext;
 class InPlaceResourceRecorder;
 class QueryParams;
 class RequestHeaders;
+class ResponseHeaders;
 class RewriteDriver;
 class ServerContext;
 class SystemRewriteOptions;
@@ -283,7 +283,7 @@ class InstawebHandler {
   ApacheRequestContext* apache_request_context_;  // owned by request_context_.
   ApacheServerContext* server_context_;
   scoped_ptr<RequestHeaders> request_headers_;
-  ResponseHeaders response_headers_;
+  scoped_ptr<ResponseHeaders> response_headers_;
   GoogleString original_url_;
   GoogleUrl stripped_gurl_;  // Any PageSpeed query params are removed.
   scoped_ptr<SystemRewriteOptions> custom_options_;

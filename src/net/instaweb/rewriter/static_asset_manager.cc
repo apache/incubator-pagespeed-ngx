@@ -37,6 +37,7 @@
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/http/http_options.h"
 
 namespace net_instaweb {
 
@@ -114,10 +115,10 @@ StaticAssetManager::StaticAssetManager(
       library_url_prefix_(kDefaultLibraryUrlPrefix) {
   InitializeAssetStrings();
 
-  ResponseHeaders header;
-  // TODO(ksimbili): Define a new constant kShortCacheTtlForMismatchedContentMs
-  // in ServerContext for 5min.
-  header.SetDateAndCaching(0, ResponseHeaders::kDefaultImplicitCacheTtlMs);
+  // Note: We use these default options because the actual options will
+  // not affect what we are computing here.
+  ResponseHeaders header(kDeprecatedDefaultHttpOptions);
+  header.SetDateAndCaching(0, ServerContext::kCacheTtlForMismatchedContentMs);
   cache_header_with_private_ttl_ = StrCat(
       header.Lookup1(HttpAttributes::kCacheControl),
       ",private");

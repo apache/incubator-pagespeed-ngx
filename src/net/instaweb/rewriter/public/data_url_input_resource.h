@@ -34,7 +34,7 @@
 namespace net_instaweb {
 
 class InputInfo;
-class ServerContext;
+class RewriteDriver;
 struct ContentType;
 
 enum Encoding;
@@ -42,8 +42,7 @@ enum Encoding;
 class DataUrlInputResource : public Resource {
  public:
   // We expose a factory; parse failure returns NULL.
-  static ResourcePtr Make(const StringPiece& url,
-                          ServerContext* server_context) {
+  static ResourcePtr Make(const StringPiece& url, const RewriteDriver* driver) {
     ResourcePtr resource;
     const ContentType* type;
     Encoding encoding;
@@ -55,8 +54,7 @@ class DataUrlInputResource : public Resource {
     url.CopyToString(url_copy);
     if (ParseDataUrl(*url_copy, &type, &encoding, &encoded_contents)) {
       resource.reset(new DataUrlInputResource(url_copy, encoding, type,
-                                              encoded_contents,
-                                              server_context));
+                                              encoded_contents, driver));
     }
     return resource;
   }
@@ -83,7 +81,7 @@ class DataUrlInputResource : public Resource {
                        Encoding encoding,
                        const ContentType* type,
                        const StringPiece& encoded_contents,
-                       ServerContext* server_context);
+                       const RewriteDriver* driver);
 
   scoped_ptr<const GoogleString> url_;
   const Encoding encoding_;

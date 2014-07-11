@@ -1407,7 +1407,7 @@ TEST_F(RewriteContextTest, TestRewritesOnEmptyPublicResources) {
   options()->EnableFilter(RewriteOptions::kExtendCacheCss);
   rewrite_driver()->AddFilters();
 
-  const int kTtlMs = ResponseHeaders::kDefaultImplicitCacheTtlMs;
+  const int kTtlMs = RewriteOptions::kDefaultImplicitCacheTtlMs;
   const char kPath[] = "test.css";
   const char kDataIn[] = "";
 
@@ -1717,7 +1717,8 @@ TEST_F(RewriteContextTest, CacheExtendCacheableResource) {
                               &headers));
     EXPECT_EQ("a", content);
     EXPECT_STREQ(StringPrintf("max-age=%lld",
-                              ServerContext::kGeneratedMaxAgeMs/1000),
+                              static_cast<long long int>(
+                                  ServerContext::kGeneratedMaxAgeMs / 1000)),
                  headers.Lookup1(HttpAttributes::kCacheControl));
   }
 }
@@ -1827,7 +1828,7 @@ TEST_F(RewriteContextTest, TrimFetchWrongHash) {
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
 
   // Make sure the TTL is correct, and the result is private.
-  EXPECT_EQ(ResponseHeaders::kDefaultImplicitCacheTtlMs,
+  EXPECT_EQ(RewriteOptions::kDefaultImplicitCacheTtlMs,
             headers.cache_ttl_ms());
   EXPECT_FALSE(headers.IsProxyCacheable());
   EXPECT_TRUE(headers.IsBrowserCacheable());
@@ -1846,7 +1847,7 @@ TEST_F(RewriteContextTest, TrimFetchWrongHashColdCache) {
   EXPECT_STREQ("a", contents);
 
   // Make sure the TTL is correct (short), and the result is private.
-  EXPECT_EQ(ResponseHeaders::kDefaultImplicitCacheTtlMs,
+  EXPECT_EQ(RewriteOptions::kDefaultImplicitCacheTtlMs,
             headers.cache_ttl_ms());
   EXPECT_FALSE(headers.IsProxyCacheable());
   EXPECT_TRUE(headers.IsBrowserCacheable());
@@ -1875,7 +1876,7 @@ TEST_F(RewriteContextTest, TrimFetchHashFailed) {
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
 
   // Make sure the TTL is correct, and the result is private.
-  EXPECT_EQ(ResponseHeaders::kDefaultImplicitCacheTtlMs,
+  EXPECT_EQ(RewriteOptions::kDefaultImplicitCacheTtlMs,
             headers.cache_ttl_ms());
   EXPECT_FALSE(headers.IsProxyCacheable());
   EXPECT_TRUE(headers.IsBrowserCacheable());
@@ -3071,7 +3072,7 @@ TEST_F(RewriteContextTest, TestFreshen) {
   FetcherUpdateDateHeaders();
 
   // Note that this must be >= kDefaultImplicitCacheTtlMs for freshening.
-  const int kTtlMs = ResponseHeaders::kDefaultImplicitCacheTtlMs * 10;
+  const int kTtlMs = RewriteOptions::kDefaultImplicitCacheTtlMs * 10;
   const char kPath[] = "test.css";
   const char kDataIn[] = "   data  ";
 
@@ -3191,12 +3192,12 @@ TEST_F(RewriteContextTest, TestFreshenForMultipleResourceRewrites) {
   UseMd5Hasher();
 
   // Note that this must be >= kDefaultImplicitCacheTtlMs for freshening.
-  const int kTtlMs1 = ResponseHeaders::kDefaultImplicitCacheTtlMs * 10;
+  const int kTtlMs1 = RewriteOptions::kDefaultImplicitCacheTtlMs * 10;
   const char kPath1[] = "first.css";
   const char kDataIn1[] = " first ";
   const char kDataNew1[] = " new first ";
 
-  const int kTtlMs2 = ResponseHeaders::kDefaultImplicitCacheTtlMs * 5;
+  const int kTtlMs2 = RewriteOptions::kDefaultImplicitCacheTtlMs * 5;
   const char kPath2[] = "second.css";
   const char kDataIn2[] = " second ";
 
@@ -3428,7 +3429,7 @@ TEST_F(RewriteContextTest, TestFreshenForLowTtl) {
 
 TEST_F(RewriteContextTest, TestFreshenWithTwoLevelCache) {
   // Note that this must be >= kDefaultImplicitCacheTtlMs for freshening.
-  const int kTtlMs = ResponseHeaders::kDefaultImplicitCacheTtlMs * 10;
+  const int kTtlMs = RewriteOptions::kDefaultImplicitCacheTtlMs * 10;
   const char kPath[] = "test.css";
   const char kDataIn[] = "   data  ";
 
@@ -3597,7 +3598,7 @@ TEST_F(RewriteContextTest, TestFreshenForExtendCache) {
   UseMd5Hasher();
 
   // Note that this must be >= kDefaultImplicitCacheTtlMs for freshening.
-  const int kTtlMs = ResponseHeaders::kDefaultImplicitCacheTtlMs * 10;
+  const int kTtlMs = RewriteOptions::kDefaultImplicitCacheTtlMs * 10;
   const char kPath[] = "test.css";
   const char kDataIn[] = "   data  ";
   const char kHash[] = "mmVFI7stDo";
@@ -3697,8 +3698,8 @@ TEST_F(RewriteContextTest, TestFreshenForEmbeddedDependency) {
 
   // Set up the resources and ttl. Ttl should be bigger than default implicit
   // cache ttl.
-  const int kImageTtl = ResponseHeaders::kDefaultImplicitCacheTtlMs * 5;
-  const int kCssTtl = ResponseHeaders::kDefaultImplicitCacheTtlMs * 10;
+  const int kImageTtl = RewriteOptions::kDefaultImplicitCacheTtlMs * 5;
+  const int kCssTtl = RewriteOptions::kDefaultImplicitCacheTtlMs * 10;
   const char kImageContent[] = "image1";
   const char kImagePath[] = "1.jpg";
   const char kCssPath[] = "text.css";
@@ -3799,8 +3800,8 @@ TEST_F(RewriteContextTest, TestNoFreshenForEmbeddedDependency) {
 
   // Set up the resources and ttl. Ttl should be bigger than default implicit
   // cache ttl.
-  const int kImageTtl = ResponseHeaders::kDefaultImplicitCacheTtlMs * 5;
-  const int kCssTtl = ResponseHeaders::kDefaultImplicitCacheTtlMs * 10;
+  const int kImageTtl = RewriteOptions::kDefaultImplicitCacheTtlMs * 5;
+  const int kCssTtl = RewriteOptions::kDefaultImplicitCacheTtlMs * 10;
   const char kImageContent[] = "image1";
   const char kImagePath[] = "1.jpg";
   const char kCssPath[] = "text.css";
@@ -3897,7 +3898,7 @@ TEST_F(RewriteContextTest, TestReuse) {
   // Test to make sure we are able to avoid rewrites when inputs don't
   // change even when they expire.
 
-  const int kTtlMs = ResponseHeaders::kDefaultImplicitCacheTtlMs;
+  const int kTtlMs = RewriteOptions::kDefaultImplicitCacheTtlMs;
   const char kPath[] = "test.css";
   const char kDataIn[] = "   data  ";
 
@@ -3941,7 +3942,7 @@ TEST_F(RewriteContextTest, TestFallbackOnFetchFails) {
 
   // Test to make sure we are able to serve stale resources if available when
   // the fetch fails.
-  const int kTtlMs = ResponseHeaders::kDefaultImplicitCacheTtlMs;
+  const int kTtlMs = RewriteOptions::kDefaultImplicitCacheTtlMs;
   const char kPath[] = "test.css";
   const char kDataIn[] = "   data  ";
   const char kDataOut[] = "data";
@@ -4245,7 +4246,7 @@ TEST_F(RewriteContextTest, TestReuseNotFastEnough) {
   // Make sure we handle deadline passing when trying to reuse properly.
   FetcherUpdateDateHeaders();
 
-  const int kTtlMs = ResponseHeaders::kDefaultImplicitCacheTtlMs;
+  const int kTtlMs = RewriteOptions::kDefaultImplicitCacheTtlMs;
   const char kPath[] = "test.css";
   const char kDataIn[] = "   data  ";
 
@@ -4291,7 +4292,7 @@ TEST_F(RewriteContextTest, TestStaleRewriting) {
   // when its content gets updated.
   UseMd5Hasher();
 
-  const int kTtlMs = ResponseHeaders::kDefaultImplicitCacheTtlMs;
+  const int kTtlMs = RewriteOptions::kDefaultImplicitCacheTtlMs;
   const char kPath[] = "test.css";
   const char kDataIn[] = "   data  ";
   const char kNewDataIn[] = "   newdata  ";

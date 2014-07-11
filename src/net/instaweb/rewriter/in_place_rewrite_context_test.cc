@@ -1466,7 +1466,7 @@ TEST_F(InPlaceRewriteContextTest, CacheableJsUrlRewritingWithStaleServing) {
   SetTimeMs(start_time_ms() + (3 * ttl_ms_) / 2);
   ResetHeadersAndStats();
   FetchAndCheckResponse(cache_js_url_, "good:jm", true,
-                        ResponseHeaders::kDefaultImplicitCacheTtlMs, etag_,
+                        RewriteOptions::kDefaultImplicitCacheTtlMs, etag_,
                         start_time_ms() + (3 * ttl_ms_) / 2);
   // The metadata and cache entry is stale now. We serve the rewritten resource
   // here, but trigger a fetch and rewrite to update the metadata.
@@ -2070,7 +2070,7 @@ TEST_F(InPlaceRewriteContextTest, LoadFromFile) {
   // file-input-resources so we default to the implicit cache TTL.
   // We should probably have a new config options for file-input
   // TTL for use with in-place.
-  const int64 kIproFileTtl = ResponseHeaders::kDefaultImplicitCacheTtlMs;
+  const int64 kIproFileTtl = RewriteOptions::kDefaultImplicitCacheTtlMs;
   FetchAndCheckResponse(cache_js_url_, cache_body_, true,
                         kIproFileTtl, NULL, start_time_ms());
 

@@ -1112,8 +1112,7 @@ ResourceSlot* CssFilter::MakeSlotForInlineCss(HtmlElement* element,
   // TODO(morlovich): This does a lot of useless conversions and
   // copying. Get rid of them.
   DataUrl(kContentTypeCss, PLAIN, content, &data_url);
-  ResourcePtr input_resource(DataUrlInputResource::Make(data_url,
-                                                        server_context()));
+  ResourcePtr input_resource(DataUrlInputResource::Make(data_url, driver()));
   return new InlineCssSlot(element, input_resource, driver()->UrlLine());
 }
 

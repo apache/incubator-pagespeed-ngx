@@ -284,9 +284,10 @@ class SystemRewriteOptions : public RewriteOptions {
                                 OptionClass SystemRewriteOptions::*offset,
                                 const char* id,
                                 StringPiece option_name,
-                                const char* help) {
+                                const char* help,
+                                bool safe_to_print) {
     AddProperty(default_value, offset, id, option_name, kServerScope, help,
-                system_properties_);
+                safe_to_print, system_properties_);
   }
 
   template<class OptionClass>
@@ -295,9 +296,10 @@ class SystemRewriteOptions : public RewriteOptions {
                                 const char* id,
                                 StringPiece option_name,
                                 OptionScope scope,
-                                const char* help) {
+                                const char* help,
+                                bool safe_to_print) {
     AddProperty(default_value, offset, id, option_name, scope, help,
-                system_properties_);
+                safe_to_print, system_properties_);
   }
 
   static void AddProperties();

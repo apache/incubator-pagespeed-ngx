@@ -213,6 +213,8 @@ class BeaconPropertyCallback : public PropertyPage {
 }  // namespace
 
 const int64 ServerContext::kGeneratedMaxAgeMs = Timer::kYearMs;
+const int64 ServerContext::kCacheTtlForMismatchedContentMs =
+    5 * Timer::kMinuteMs;
 
 // Statistics group names.
 const char ServerContext::kStatisticsGroup[] = "Statistics";

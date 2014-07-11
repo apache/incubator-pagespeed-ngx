@@ -47,6 +47,7 @@ class GoogleUrl;
 class InputInfo;
 class MessageHandler;
 class Resource;
+class RewriteDriver;
 class ServerContext;
 
 typedef RefCountedPtr<Resource> ResourcePtr;
@@ -78,7 +79,7 @@ class Resource : public RefCounted<Resource> {
     kFetchStatusOther,
   };
 
-  Resource(ServerContext* server_context, const ContentType* type);
+  Resource(const RewriteDriver* driver, const ContentType* type);
 
   // Common methods across all deriviations
   ServerContext* server_context() const { return server_context_; }
@@ -303,6 +304,11 @@ class Resource : public RefCounted<Resource> {
   HTTPValue fallback_value_;
 
  private:
+  // Minimalist constructor for DummyResource with server_context_ == NULL
+  // used in association_transformer_test.cc
+  Resource();
+  friend class DummyResource;
+
   // The status of the fetched response.
   FetchResponseStatus fetch_response_status_;
 

@@ -23,6 +23,7 @@
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/data_url.h"
 
@@ -32,15 +33,15 @@ DataUrlInputResource::DataUrlInputResource(const GoogleString* url,
                                            Encoding encoding,
                                            const ContentType* type,
                                            const StringPiece& encoded_contents,
-                                           ServerContext* server_context)
-    : Resource(server_context, type),
+                                           const RewriteDriver* driver)
+    : Resource(driver, type),
       url_(url),
       encoding_(encoding),
       encoded_contents_(encoded_contents) {
   // Make sure we auto-load.
-  if (DecodeDataUrlContent(encoding_, encoded_contents_,
-                           &decoded_contents_) &&
-      value_.Write(decoded_contents_, server_context->message_handler())) {
+  if (DecodeDataUrlContent(encoding_, encoded_contents_, &decoded_contents_) &&
+      value_.Write(decoded_contents_,
+                   driver->server_context()->message_handler())) {
     // Note that we do not set caching headers here.
     // This is because they are expensive to compute; and should not be used
     // for this resource anyway, as it has UseHttpCache() false, and provides

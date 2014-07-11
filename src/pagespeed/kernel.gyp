@@ -272,6 +272,7 @@
       'sources': [
         'kernel/http/data_url.cc',
         'kernel/http/headers.cc',
+        'kernel/http/http_options.cc',
         'kernel/http/response_headers_parser.cc',
         'kernel/http/response_headers.cc',
         'kernel/http/request_headers.cc',

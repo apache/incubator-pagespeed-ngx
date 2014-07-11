@@ -64,6 +64,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/http/http_options.h"
 
 // The Apache headers must be after instaweb headers.  Otherwise, the
 // compiler will complain
@@ -256,7 +257,9 @@ void SlurpUrl(ApacheServerContext* server_context, request_rec* r) {
 
   MessageHandler* handler = server_context->message_handler();
   RequestContextPtr request_context(
-      new RequestContext(server_context->thread_system()->NewMutex(),
+      // TODO(sligocki): Do we want custom options here?
+      new RequestContext(global_config->ComputeHttpOptions(),
+                         server_context->thread_system()->NewMutex(),
                          server_context->timer()));
   StrippingFetch fetch(stripped_url, global_config->domain_lawyer(),
                        fetcher, server_context->thread_system(),

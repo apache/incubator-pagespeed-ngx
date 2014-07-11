@@ -35,11 +35,10 @@
 
 namespace net_instaweb {
 
-namespace {
-
+// Outside of anonymous namespace to support friend declaration.
 class DummyResource : public Resource {
  public:
-  DummyResource() : Resource(NULL, NULL) {}
+  DummyResource() : Resource() {}
   virtual ~DummyResource() {}
 
   void set_url(const StringPiece& url) {
@@ -47,7 +46,6 @@ class DummyResource : public Resource {
   }
   virtual GoogleString url() const { return url_; }
 
-  virtual const RewriteOptions* rewrite_options() const { return NULL; }
   virtual void LoadAndCallback(NotCacheablePolicy not_cacheable_policy,
                                const RequestContextPtr& request_context,
                                AsyncCallback* callback) {
@@ -61,6 +59,8 @@ class DummyResource : public Resource {
 
   DISALLOW_COPY_AND_ASSIGN(DummyResource);
 };
+
+namespace {
 
 class DummyTransformer : public CssTagScanner::Transformer {
  public:
@@ -84,6 +84,7 @@ class AssociationTransformerTest : public ::testing::Test {
       : thread_system_(Platform::CreateThreadSystem()) {
     RewriteOptions::Initialize();
     options_.reset(new RewriteOptions(thread_system_.get()));
+    options_->ComputeSignature();
   }
 
   ~AssociationTransformerTest() {

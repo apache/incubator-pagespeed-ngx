@@ -140,7 +140,7 @@ TEST_F(ResourceSlotTest, Accessors) {
 
   const char kDataUrl[] = "data:text/plain,Huh";
   ResourcePtr resource =
-      DataUrlInputResource::Make(kDataUrl, server_context());
+      DataUrlInputResource::Make(kDataUrl, rewrite_driver());
   ResourceSlotPtr fetch_slot(new FetchResourceSlot(resource));
   EXPECT_EQ(StrCat("Fetch of ", kDataUrl), fetch_slot->LocationString());
 }

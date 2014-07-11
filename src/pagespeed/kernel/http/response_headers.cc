@@ -38,10 +38,13 @@
 #include "pagespeed/kernel/http/headers.h"
 #include "pagespeed/kernel/http/http.pb.h"
 #include "pagespeed/kernel/http/http_names.h"
+#include "pagespeed/kernel/http/http_options.h"
 #include "pagespeed/kernel/http/query_params.h"
 #include "pagespeed/kernel/http/request_headers.h"
 
 namespace net_instaweb {
+
+class MessageHandler;
 
 // Specifies the maximum amount of forward drift we'll allow for a Date
 // timestamp.  E.g. if it's 3:00:00 and the Date header says its 3:01:00,
@@ -49,19 +52,15 @@ namespace net_instaweb {
 // we'll set it back to 3:00:00 exactly in FixDateHeaders.
 const int64 kMaxAllowedDateDriftMs = 3L * net_instaweb::Timer::kMinuteMs;
 
-class MessageHandler;
-
-const int64 ResponseHeaders::kDefaultImplicitCacheTtlMs;
-const int64 ResponseHeaders::kDefaultMinCacheTtlMs;
-
-ResponseHeaders::ResponseHeaders()
-    : implicit_cache_ttl_ms_(kDefaultImplicitCacheTtlMs),
-      min_cache_ttl_ms_(kDefaultMinCacheTtlMs) {
-  Headers<HttpResponseHeaders>::SetProto(new HttpResponseHeaders);
+ResponseHeaders::~ResponseHeaders() {
   Clear();
 }
 
-ResponseHeaders::~ResponseHeaders() {
+void ResponseHeaders::Init(const HttpOptions& options) {
+  implicit_cache_ttl_ms_ = options.implicit_cache_ttl_ms;
+  min_cache_ttl_ms_ = options.min_cache_ttl_ms;
+
+  Headers<HttpResponseHeaders>::SetProto(new HttpResponseHeaders);
   Clear();
 }
 
@@ -84,7 +83,8 @@ void ApplyTimeDelta(const char* attr, int64 delta_ms,
 }  // namespace
 
 bool ResponseHeaders::IsImminentlyExpiring(
-    int64 start_date_ms, int64 expire_ms, int64 now_ms) {
+    int64 start_date_ms, int64 expire_ms, int64 now_ms,
+    const HttpOptions& options) {
   // Consider a resource with 5 minute expiration time (the default
   // assumed by mod_pagespeed when a potentialy cacheable resource
   // lacks a cache control header, which happens a lot).  If the
@@ -104,11 +104,11 @@ bool ResponseHeaders::IsImminentlyExpiring(
   // implicit ttl. If the implicit ttl has been overridden by a site, we will
   // not honor it here. Fix that.
 
-  if (ttl_ms < ResponseHeaders::kDefaultImplicitCacheTtlMs) {
+  if (ttl_ms < options.implicit_cache_ttl_ms) {
     return false;
   }
   int64 freshen_threshold = std::min(
-      ResponseHeaders::kDefaultImplicitCacheTtlMs,
+      options.implicit_cache_ttl_ms,
       ((100 - kRefreshExpirePercent) * ttl_ms) / 100);
   return (expire_ms - now_ms < freshen_threshold);
 }
@@ -187,6 +187,7 @@ void ResponseHeaders::CopyFrom(const ResponseHeaders& other) {
   cache_fields_dirty_ = other.cache_fields_dirty_;
   force_cache_ttl_ms_ = other.force_cache_ttl_ms_;
   force_cached_ = other.force_cached_;
+  min_cache_ttl_applied_ = other.min_cache_ttl_applied_;
   implicit_cache_ttl_ms_ = other.implicit_cache_ttl_ms_;
   min_cache_ttl_ms_ = other.min_cache_ttl_ms_;
 }
@@ -209,6 +210,9 @@ void ResponseHeaders::Clear() {
   force_cache_ttl_ms_ = -1;
   force_cached_ = false;
   min_cache_ttl_applied_ = false;
+
+  // Note: implicit_cache_ttl_ms_ and min_cache_ttl_ms_ are not cleared here!
+  // Those should only be set at construction time and never mutated.
 }
 
 int ResponseHeaders::status_code() const {
@@ -626,7 +630,7 @@ void ResponseHeaders::ComputeCaching() {
     // Implicitly cached items stay alive in our system for the specified
     // implicit ttl ms.
     bool is_proxy_cacheable = computer.IsProxyCacheable();
-    int64 cache_ttl_ms = implicit_cache_ttl_ms();
+    int64 cache_ttl_ms = implicit_cache_ttl_ms_;
     if (computer.IsExplicitlyCacheable()) {
       // TODO(sligocki): Do we care about the return value.
       computer.GetFreshnessLifetimeMillis(&cache_ttl_ms);
@@ -667,12 +671,12 @@ void ResponseHeaders::ComputeCaching() {
         // caching headers and is not force cached, explicitly set the caching
         // headers.
         DCHECK(has_date);
-        DCHECK(cache_ttl_ms == implicit_cache_ttl_ms());
+        DCHECK(cache_ttl_ms == implicit_cache_ttl_ms_);
         proto->set_is_implicitly_cacheable(true);
         SetDateAndCaching(date, cache_ttl_ms, CacheControlValuesToPreserve());
       } else if (min_cache_ttl_applied_) {
         DCHECK(has_date);
-        DCHECK(cache_ttl_ms == min_cache_ttl_ms());
+        DCHECK(cache_ttl_ms == min_cache_ttl_ms_);
         SetDateAndCaching(date, cache_ttl_ms, CacheControlValuesToPreserve());
       }
     }
@@ -857,9 +861,9 @@ void ResponseHeaders::DebugPrint() const {
   fprintf(stderr, "is_implicitly_cacheable = %s\n",
           BoolToString(proto()->is_implicitly_cacheable()));
   fprintf(stderr, "implicit_cache_ttl_ms_ = %s\n",
-          Integer64ToString(implicit_cache_ttl_ms()).c_str());
+          Integer64ToString(implicit_cache_ttl_ms_).c_str());
   fprintf(stderr, "min_cache_ttl_ms_ = %s\n",
-          Integer64ToString(min_cache_ttl_ms()).c_str());
+          Integer64ToString(min_cache_ttl_ms_).c_str());
   fprintf(stderr, "min_cache_ttl_applied_ = %s\n",
           BoolToString(min_cache_ttl_applied_));
   if (!cache_fields_dirty_) {

@@ -31,6 +31,7 @@
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/cache_interface.h"
@@ -67,29 +68,30 @@ class SyncCallback : public CacheInterface::Callback {
 
 }  // namespace
 
-OutputResource::OutputResource(ServerContext* server_context,
-                               const StringPiece& resolved_base,
-                               const StringPiece& unmapped_base,
-                               const StringPiece& original_base,
+OutputResource::OutputResource(const RewriteDriver* driver,
+                               StringPiece resolved_base,
+                               StringPiece unmapped_base,
+                               StringPiece original_base,
                                const ResourceNamer& full_name,
-                               const RewriteOptions* options,
                                OutputResourceKind kind)
-    : Resource(server_context, NULL /* no type yet*/),
+    : Resource(driver, NULL /* no type yet*/),
       writing_complete_(false),
       cached_result_owned_(false),
       cached_result_(NULL),
       resolved_base_(resolved_base.data(), resolved_base.size()),
       unmapped_base_(unmapped_base.data(), unmapped_base.size()),
       original_base_(original_base.data(), original_base.size()),
-      rewrite_options_(options),
+      rewrite_options_(driver->options()),
       kind_(kind) {
-  DCHECK(options != NULL);
+  DCHECK(rewrite_options_ != NULL);
   full_name_.CopyFrom(full_name);
   CHECK(EndsInSlash(resolved_base)) <<
       "resolved_base must end in a slash, was: " << resolved_base;
-  set_enable_cache_purge(options->enable_cache_purge());
-  set_respect_vary(ResponseHeaders::GetVaryOption(options->respect_vary()));
-  set_proactive_resource_freshening(options->proactive_resource_freshening());
+  set_enable_cache_purge(rewrite_options_->enable_cache_purge());
+  set_respect_vary(
+      ResponseHeaders::GetVaryOption(rewrite_options_->respect_vary()));
+  set_proactive_resource_freshening(
+      rewrite_options_->proactive_resource_freshening());
 }
 
 OutputResource::~OutputResource() {
@@ -208,7 +210,7 @@ GoogleString OutputResource::UrlEvenIfHashNotSet() {
   return result;
 }
 
-void OutputResource::SetHash(const StringPiece& hash) {
+void OutputResource::SetHash(StringPiece hash) {
   CHECK(!writing_complete_);
   CHECK(!has_hash());
   full_name_.set_hash(hash);
