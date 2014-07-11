@@ -35,27 +35,28 @@ pagespeed.DedupInlinedImages = function() {
 /**
  * Set the immediately preceding img element's src attribute to the value of
  * the identified img element's src attribute, which will be a data URI.
- * @param {string} img_id is the id of the img element to copy src= from.
+ * @param {string} from_img_id is the id of the img element to copy src= from.
+ * @param {string} to_img_id is the id of the img element to copy src= to.
  * @param {string} script_id is the id of the script element invoking us.
  */
 pagespeed.DedupInlinedImages.prototype.inlineImg = function(
-    img_id, script_id) {
-  // Find the img to copy from, identified by the given img_id.
-  var srcNode = document.getElementById(img_id);
+    from_img_id, to_img_id, script_id) {
+  // Find the img to copy from, identified by the given from_img_id.
+  var srcNode = document.getElementById(from_img_id);
   if (!srcNode) {
-    // console.log('PSA ERROR: img_id="' + img_id + '": no img');
+    // console.log('PSA ERROR: from_img_id="' + from_img_id + '": no img');
+    return;
+  }
+  // Find the img to copy to, being the element before the invoking script.
+  var dstNode = document.getElementById(to_img_id);
+  if (!dstNode) {
+    // console.log('PSA ERROR: to_img_id="' + to_img_id + '": no img');
     return;
   }
   // Find the invoking script.
   var scriptNode = document.getElementById(script_id);
   if (!scriptNode) {
     // console.log('PSA ERROR: script_id="' + script_id + '": no script');
-    return;
-  }
-  // Find the img to copy to, being the element before the invoking script.
-  var dstNode = scriptNode.previousSibling;
-  if (!dstNode) {
-    // console.log('PSA ERROR: img_id="' + img_id + '": no sibling');
     return;
   }
   // Copy the src attribute then delete this script.

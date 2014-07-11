@@ -35,7 +35,7 @@
 
 namespace net_instaweb {
 
-const unsigned int DedupInlinedImagesFilter::kMinimumImageCutoff = 160;
+const unsigned int DedupInlinedImagesFilter::kMinimumImageCutoff = 185;
 
 const char DedupInlinedImagesFilter::kDiiInitializer[] =
     "pagespeed.dedupInlinedImagesInit();";
@@ -106,38 +106,42 @@ void DedupInlinedImagesFilter::EndElementImpl(HtmlElement* element) {
   StringPiece src;
   if (IsDedupCandidate(element, &src)) {
     num_dedup_inlined_images_candidates_found_->Add(1);
+    // Whether this is the source or destination, we need it to have an id.
+    // TODO(matterbury): We could check if an id is used more than once and
+    // refuse to deduplicate it if so. We'd need to check all images at least,
+    // though to be correct we should check all tags; this seems like a lot
+    // of work to cater for something people tend not to do (because it's
+    // such a bad idea basically).
     GoogleString hash = server_context()->hasher()->Hash(src);
+    GoogleString element_id;
+    const char* id = element->AttributeValue(HtmlName::kId);
+    if (id == NULL || id[0] == '\0') {
+      element_id = StrCat("pagespeed_img_", hash);
+      driver()->AddAttribute(element, HtmlName::kId, element_id);
+    } else {
+      element_id = id;
+    }
     if (hash_to_id_map_.find(hash) == hash_to_id_map_.end()) {
-      // The first time we've seen it: we need to ensure it has an id.
-      // TODO(matterbury): We could check if an id is used more than once and
-      // refuse to deduplicate it if so. We'd need to check ALL images at least
-      // though to be correct we should check all tags; this seems like a lot
-      // of work to cater for something people tend not to do (because it's
-      // such a bad idea basically).
-      const char* id = element->AttributeValue(HtmlName::kId);
-      if (id == NULL || id[0] == '\0') {
-        GoogleString img_id("pagespeed_img_" + hash);
-        hash_to_id_map_[hash] = img_id;
-        driver()->AddAttribute(element, HtmlName::kId, img_id);
-      } else {
-        hash_to_id_map_[hash] = id;
-      }
+      // This is the first time we've seen this particular image.
+      hash_to_id_map_[hash] = element_id;
     } else {
       // A subsequent use of an already inlined image: dedup it!
       DCHECK(script_inserted_);
       num_dedup_inlined_images_candidates_replaced_->Add(1);
-      GoogleString img_id = hash_to_id_map_[hash];
+      GoogleString from_img_id = hash_to_id_map_[hash];
       GoogleString script_id = StrCat("pagespeed_script_",
                                       IntegerToString(++snippet_id_));
       // NOTE: If you change this you need to update kMinimumImageCutoff,
-      // which is currently set to 160, slightly less than this snippet:
+      // which is currently set to 185, slightly less than this snippet:
       //   <script type="text/javascript" id="pagespeed_script_1"
       //    pagespeed_no_defer>
       //   pagespeed.dedupInlinedImages.inlineImg("pagespeed_img_12345678",
+      //                                          "pagespeed_img_87654321",
       //                                          "pagespeed_script_1");
       //   </script>
       GoogleString snippet("pagespeed.dedupInlinedImages.");
-      StrAppend(&snippet, "inlineImg(\"", img_id, "\",\"", script_id, "\");");
+      StrAppend(&snippet, "inlineImg('", from_img_id, "','",
+                element_id, "','", script_id, "');");
       HtmlElement* script = driver()->NewElement(element, HtmlName::kScript);
       driver()->InsertElementAfterElement(element, script);
       driver()->server_context()->static_asset_manager()->AddJsToElement(

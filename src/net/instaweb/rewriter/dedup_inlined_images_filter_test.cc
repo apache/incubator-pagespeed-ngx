@@ -81,7 +81,7 @@ const char kInlinedScriptFormat[] =
     "<script type=\"text/javascript\""
     " id=\"pagespeed_script_%d\" pagespeed_no_defer>"
     "pagespeed.dedupInlinedImages.inlineImg("
-    "\"pagespeed_img_0\",\"pagespeed_script_%d\""
+    "'pagespeed_img_0','pagespeed_img_0','pagespeed_script_%d'"
     ");</script>";
 
 const char kHtmlWrapperFormat[] =
@@ -185,7 +185,8 @@ TEST_F(DedupInlinedImagesTest, DedupSecondSmallImage) {
       StrCat("<img src='", kCuppaPngInlineData,
              "' id=\"pagespeed_img_0\">\n",
              InsertScriptBefore(
-                 StrCat("<img>", StringPrintf(kInlinedScriptFormat, 1, 1)))));
+                 StrCat("<img id=\"pagespeed_img_0\">",
+                        StringPrintf(kInlinedScriptFormat, 1, 1)))));
 }
 
 TEST_F(DedupInlinedImagesTest, DedupManySmallImages) {
@@ -196,8 +197,10 @@ TEST_F(DedupInlinedImagesTest, DedupManySmallImages) {
       StrCat(image, "\n", image, "\n", image),
       StrCat("<img src='", kCuppaPngInlineData, "' id=\"pagespeed_img_0\">\n",
              InsertScriptBefore(
-                 StrCat("<img>", StringPrintf(kInlinedScriptFormat, 1, 1), "\n",
-                        "<img>", StringPrintf(kInlinedScriptFormat, 2, 2)))));
+                 StrCat("<img id=\"pagespeed_img_0\">",
+                        StringPrintf(kInlinedScriptFormat, 1, 1), "\n",
+                        "<img id=\"pagespeed_img_0\">",
+                        StringPrintf(kInlinedScriptFormat, 2, 2)))));
 }
 
 TEST_F(DedupInlinedImagesTest, DedupSecondSmallImageWithId) {
@@ -207,30 +210,35 @@ TEST_F(DedupInlinedImagesTest, DedupSecondSmallImageWithId) {
                          "<img src='", kCuppaPngFilename, "'>"),
                   StrCat("<img src='", kCuppaPngInlineData, "' id='xyzzy'>\n",
                          InsertScriptBefore(
-                             "<img>"
+                             "<img id=\"pagespeed_img_0\">"
                              "<script type=\"text/javascript\""
                              " id=\"pagespeed_script_1\""
                              " pagespeed_no_defer>"
                              "pagespeed.dedupInlinedImages.inlineImg("
-                             "\"xyzzy\",\"pagespeed_script_1\""
-                             ");</script>")));
+                             "'xyzzy',"
+                             "'pagespeed_img_0',"
+                             "'pagespeed_script_1');"
+                             "</script>")));
 }
 
 TEST_F(DedupInlinedImagesTest, DedupSecondSmallImageWithAttributes) {
   // Keep all the attributes.
   TestDedupImages("dedup_second_small_image_with_attributes", "", "",
                   StrCat("<img src='", kCuppaPngFilename, "'>\n",
-                         "<img src='", kCuppaPngFilename, "' alt='xyzzy'>"),
+                         "<img src='", kCuppaPngFilename,
+                         "' alt='xyzzy' id='plugh'>"),
                   StrCat("<img src='", kCuppaPngInlineData,
                          "' id=\"pagespeed_img_0\">\n",
                          InsertScriptBefore(
-                             "<img alt='xyzzy'>"
+                             "<img alt='xyzzy' id='plugh'>"
                              "<script type=\"text/javascript\""
                              " id=\"pagespeed_script_1\""
                              " pagespeed_no_defer>"
                              "pagespeed.dedupInlinedImages.inlineImg("
-                             "\"pagespeed_img_0\",\"pagespeed_script_1\""
-                             ");</script>")));
+                             "'pagespeed_img_0',"
+                             "'plugh',"
+                             "'pagespeed_script_1');"
+                             "</script>")));
 }
 
 TEST_F(DedupInlinedImagesTest, DisabledForOldBlackberry) {
@@ -292,7 +300,8 @@ TEST_F(DedupInlinePreviewImagesTest, DedupInlinePreviewImages) {
                                     "\" id=\"pagespeed_img_0\"/>");
   GoogleString scripted_img =
       StrCat("<img pagespeed_high_res_src='", image_filename,
-             "' onload=\"pagespeed.switchToHighResAndMaybeBeacon(this);\"/>");
+             "' onload=\"pagespeed.switchToHighResAndMaybeBeacon(this);\""
+             " id=\"pagespeed_img_0\"/>");
   GoogleString script_1 = StringPrintf(kInlinedScriptFormat, 1, 1);
   GoogleString script_2 = StringPrintf(kInlinedScriptFormat, 2, 2);
   GoogleString input_html = StrCat("<head></head>"
