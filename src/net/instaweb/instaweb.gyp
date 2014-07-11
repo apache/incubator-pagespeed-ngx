@@ -466,6 +466,34 @@
       ]
     },
     {
+      'target_name': 'instaweb_caches_js_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'net/instaweb/system',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/system',
+        'var_name': 'caches_js',
+      },
+      'sources': [
+        'genfiles/system/caches_js_dbg.js',
+      ],
+      'includes': [
+        'data2c.gypi',
+      ]
+    },
+    {
+      'target_name': 'instaweb_caches_js_opt_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'net/instaweb/system',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/system',
+        'var_name': 'caches_js_opt',
+      },
+      'sources': [
+        'genfiles/system/caches_js_opt.js',
+      ],
+      'includes': [
+        'data2c.gypi',
+      ]
+    },
+    {
       'target_name': 'instaweb_lazyload_images_data2c',
       'variables': {
         'instaweb_data2c_subdir': 'net/instaweb/rewriter',
@@ -1132,6 +1160,8 @@
         'instaweb_add_instrumentation_data2c',
         'instaweb_add_instrumentation_opt_data2c',
         'instaweb_cache_html_info_pb',
+        'instaweb_caches_js_data2c',
+        'instaweb_caches_js_opt_data2c',
         'instaweb_client_domain_rewriter_data2c',
         'instaweb_client_domain_rewriter_opt_data2c',
         'instaweb_console_css_data2c',

@@ -2636,10 +2636,6 @@ class RewriteOptions {
 
   virtual GoogleString OptionsToString() const;
   GoogleString FilterSetToString(const FilterSet& filter_set) const;
-  GoogleString EnabledFiltersToString() const;
-  // Returns a string containing the enabled options which do not leak sensitive
-  // information about the server state.
-  GoogleString SafeEnabledOptionsToString() const;
 
   // Returns a string identifying the currently running experiment to be used in
   // tagging Google Analytics data.
@@ -2825,14 +2821,12 @@ class RewriteOptions {
       StringPiece option_name,
       OptionScope scope,
       const char* help_text,
-      bool safe_to_print,
       Properties* properties) {
     PropertyBase* property =
         new PropertyLeaf<RewriteOptionsSubclass, OptionClass>(
             default_value, offset, id, option_name);
     property->set_scope(scope);
     property->set_help_text(help_text);
-    property->set_safe_to_print(safe_to_print);
     properties->push_back(property);
   }
 
@@ -2954,18 +2948,12 @@ class RewriteOptions {
     StringPiece option_name() const { return option_name_; }
     int index() const { return index_; }
 
-    bool safe_to_print() const { return safe_to_print_; }
-    void set_safe_to_print(bool safe_to_print) {
-      safe_to_print_ = safe_to_print;
-    }
-
    private:
     const char* id_;
     const char* help_text_;
     StringPiece option_name_;  // Key into all_options_.
     OptionScope scope_;
     bool do_not_use_for_signature_computation_;  // Default is false.
-    bool safe_to_print_;  // Safe to print in debug filter output.
     int index_;
 
     DISALLOW_COPY_AND_ASSIGN(PropertyBase);
@@ -3167,9 +3155,9 @@ class RewriteOptions {
   template<class OptionClass>
   static void AddRequestProperty(typename OptionClass::ValueType default_value,
                                  OptionClass RewriteOptions::*offset,
-                                 const char* id, bool safe_to_print) {
+                                 const char* id) {
     AddProperty(default_value, offset, id, kNullOption, kProcessScope,
-                NULL, safe_to_print, properties_);
+                NULL, properties_);
   }
 
   // Adds a property with a unique option_name_ field, allowing use of
@@ -3180,10 +3168,9 @@ class RewriteOptions {
                               const char* id,
                               StringPiece option_name,
                               OptionScope scope,
-                              const char* help,
-                              bool safe_to_print) {
+                              const char* help) {
     AddProperty(default_value, offset, id, option_name, scope, help,
-                safe_to_print, properties_);
+                properties_);
   }
 
   static void AddProperties();

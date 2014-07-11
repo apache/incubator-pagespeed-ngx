@@ -83,6 +83,10 @@ class RewriteFilter;
 
 namespace {
 
+static const char kBackButton[] =
+    "<br><input type=\"button\" value=\"Back\" "
+    "onclick=\"javascript:history.go(-1)\"/>";
+
 // Define the various query parameter keys sent by instrumentation beacons.
 const char kBeaconUrlQueryParam[] = "url";
 const char kBeaconEtsQueryParam[] = "ets";
@@ -1248,6 +1252,8 @@ class MetadataCacheResultCallback
 
 }  // namespace
 
+// TODO(xqyin): Move this to caches.js file so we could eliminate the
+// dependency of admin site on server context in a way.
 GoogleString ServerContext::ShowCacheForm(const char* user_agent) const {
   GoogleString ua_default;
   if (user_agent != NULL) {
@@ -1270,6 +1276,8 @@ GoogleString ServerContext::ShowCacheForm(const char* user_agent) const {
   return out;
 }
 
+// TODO(xqyin): We should modify this handler to diplay caches info on the same
+// page instead of opening a new page to avoid inserting back buttons.
 void ServerContext::ShowCacheHandler(
     StringPiece url, AsyncFetch* fetch, RewriteOptions* options_arg) {
   scoped_ptr<RewriteOptions> options(options_arg);
@@ -1291,7 +1299,8 @@ void ServerContext::ShowCacheHandler(
     ResponseHeaders* response_headers = fetch->response_headers();
     response_headers->SetStatusAndReason(HttpStatus::kNotFound);
     response_headers->Add(HttpAttributes::kContentType, "text/html");
-    fetch->Write("<html><body>Invalid URL</body></html>", message_handler_);
+    fetch->Write(StrCat("<html><body>Invalid URL</body></html>", kBackButton),
+                 message_handler_);
     fetch->Done(false);
   } else {
     RewriteDriver* driver = NewCustomRewriteDriver(
@@ -1306,8 +1315,10 @@ void ServerContext::ShowCacheHandler(
       driver->Cleanup();
       delete callback;
       fetch->response_headers()->SetStatusAndReason(HttpStatus::kNotFound);
-      fetch->Write(error_out, message_handler_);
+      fetch->Write(StrCat(error_out, kBackButton), message_handler_);
       fetch->Done(false);
+    } else {
+      fetch->Write(kBackButton, message_handler_);
     }
   }
 }

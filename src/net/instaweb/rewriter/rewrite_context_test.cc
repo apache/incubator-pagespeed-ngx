@@ -1717,8 +1717,7 @@ TEST_F(RewriteContextTest, CacheExtendCacheableResource) {
                               &headers));
     EXPECT_EQ("a", content);
     EXPECT_STREQ(StringPrintf("max-age=%lld",
-                              static_cast<long long int>(
-                                  ServerContext::kGeneratedMaxAgeMs / 1000)),
+                              ServerContext::kGeneratedMaxAgeMs/1000),
                  headers.Lookup1(HttpAttributes::kCacheControl));
   }
 }

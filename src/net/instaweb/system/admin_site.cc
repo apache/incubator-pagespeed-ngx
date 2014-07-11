@@ -57,6 +57,8 @@ namespace net_instaweb {
 extern const char* CSS_console_css;
 extern const char* CSS_mod_pagespeed_console_css;
 extern const char* HTML_mod_pagespeed_console_body;
+extern const char* JS_caches_js;
+extern const char* JS_caches_js_opt;
 extern const char* JS_console_js;
 extern const char* JS_console_js_opt;
 extern const char* JS_messages_js;
@@ -358,6 +360,10 @@ void AdminSite::PrintHistograms(AdminSource source, AsyncFetch* fetch,
 
 namespace {
 
+static const char kBackButton[] =
+    "<br><input type=\"button\" value=\"Back\" "
+    "onclick=\"javascript:history.go(-1)\"/>";
+
 static const char kToggleScript[] =
     "<script type='text/javascript'>\n"
     "function toggleDetail(id) {\n"
@@ -504,11 +510,11 @@ void AdminSite::PrintCaches(bool is_global, AdminSource source,
       response_headers->Add(HttpAttributes::kContentType, "text/html");
       // TODO(jmarantz): virtualize the formatting of this message so that
       // it's correct in ngx_pagespeed and mod_pagespeed (and IISpeed etc).
-      fetch->Write("Purging not enabled: please add\n"
-                   "<pre>\n"
-                   "    PagespeedEnableCachePurge on\n"
-                   "<pre>\n"
-                   "to your config\n", message_handler_);
+      fetch->Write(StrCat("Purging not enabled: please add\n"
+                          "<pre>\n"
+                          "    PagespeedEnableCachePurge on\n"
+                          "<pre>\n"
+                          "to your config\n", kBackButton), message_handler_);
       fetch->Done(true);
     } else if (url == "*") {
       PurgeHandler(url, cache_path, fetch);
@@ -520,7 +526,12 @@ void AdminSite::PrintCaches(bool is_global, AdminSource source,
         response_headers->Add(HttpAttributes::kContentType, "text/html");
         GoogleString escaped_url;
         HtmlKeywords::Escape(url, &escaped_url);
-        fetch->Write(StrCat("Invalid URL: ", escaped_url), message_handler_);
+        // This back button would bring users to metadata cache tab instead of
+        // purge cache tab.
+        // TODO(xqyin): Assign specific URL suffix to different tabs so we
+        // could avoid using .go(-1) here which is wonky.
+        fetch->Write(StrCat("Invalid URL: ", escaped_url, kBackButton),
+                     message_handler_);
         fetch->Done(true);
       } else {
         PurgeHandler(resolved.Spec(), cache_path, fetch);
@@ -529,13 +540,14 @@ void AdminSite::PrintCaches(bool is_global, AdminSource source,
   } else {
     AdminHtml admin_html("cache", "", source, fetch, message_handler_);
 
+    fetch->Write("<div id='show_cache_entry'>", message_handler_);
     // Present a small form to enter a URL.
     if (source == kPageSpeedAdmin) {
       const char* user_agent = fetch->request_headers()->Lookup1(
           HttpAttributes::kUserAgent);
       fetch->Write(server_context->ShowCacheForm(user_agent), message_handler_);
     }
-
+    fetch->Write("</div>\n", message_handler_);
     // Display configured cache information.
     if (system_caches != NULL) {
       int flags = SystemCaches::kDefaultStatFlags;
@@ -547,7 +559,8 @@ void AdminSite::PrintCaches(bool is_global, AdminSource source,
       // either of these flags to limit the content when someone asks
       // for info about the cache.
       flags |= SystemCaches::kIncludeMemcached;
-
+      fetch->Write("<div id='cache_struct' style='display:none'>",
+                   message_handler_);
       fetch->Write(kTableStart, message_handler_);
       CacheInterface* fsmdc = filesystem_metadata_cache;
       fetch->Write(StrCat(
@@ -566,16 +579,28 @@ void AdminSite::PrintCaches(bool is_global, AdminSource source,
       if (!backend_stats.empty()) {
         HtmlKeywords::WritePre(backend_stats, "", fetch, message_handler_);
       }
+      fetch->Write("</div>", message_handler_);
 
-      fetch->Write("<h2>Purge Set</h2>", message_handler_);
+      fetch->Write("<div id='purge_cache' style='display:none'>",
+                   message_handler_);
+      fetch->Write("<h3>Purge Set</h3>", message_handler_);
       HtmlKeywords::WritePre(options->PurgeSetString(), "", fetch,
                              message_handler_);
+      fetch->Write("</div>", message_handler_);
 
       // Practice what we preach: put the blocking JS in the tail.
       // TODO(jmarantz): use static asset manager to compile & deliver JS
       // externally.
+      // TODO(xqyin): Move the script to caches.js file.
       fetch->Write(kToggleScript, message_handler_);
     }
+    StringPiece caches_js = options->Enabled(RewriteOptions::kDebug) ?
+        JS_caches_js :
+        JS_caches_js_opt;
+    fetch->Write("<script type='text/javascript'>", message_handler_);
+    fetch->Write(StrCat(caches_js, "\npagespeed.Caches.Start();"),
+                 message_handler_);
+    fetch->Write("</script>\n", message_handler_);
   }
 }
 
@@ -788,6 +813,9 @@ class PurgeFetchCallbackGasket {
     ResponseHeaders* headers = fetch_->response_headers();
     headers->set_status_code(success ? HttpStatus::kOK : HttpStatus::kNotFound);
     headers->Add(HttpAttributes::kContentType, "text/html");
+    // TODO(xqyin): Currently we may still return 'purge successful' even if
+    // the URL does not exist in our cache. Figure out how to solve this case
+    // while we don't want to search the whole cache which could be very large.
     if (success) {
       fetch_->Write("Purge successful\n", message_handler_);
     } else {
@@ -796,6 +824,7 @@ class PurgeFetchCallbackGasket {
       fetch_->Write("\n", message_handler_);
       fetch_->Write(HtmlKeywords::Escape(error_, &buf), message_handler_);
     }
+    fetch_->Write(kBackButton, message_handler_);
     fetch_->Done(true);
     delete this;
   }

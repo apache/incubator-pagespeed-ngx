@@ -206,12 +206,13 @@ class CssCombineFilterTest : public RewriteTestBase {
         "  ", (is_barrier ? Link("c.css") : ""), "\n"
         "</body>\n")));
     if (!debug_text.empty()) {
-      EXPECT_HAS_SUBSTR(DebugFilter::FormatEndDocumentMessage(
-                        0, 0, 0, 0, 0, false, StringSet(), StringVector()),
-                    output_buffer_);
+      StrAppend(&expected_output, "<!--",
+                DebugFilter::FormatEndDocumentMessage(
+                    0, 0, 0, 0, 0, false, StringSet(), StringVector()),
+                "-->");
     }
     if (expect_combine) {
-      EXPECT_HAS_SUBSTR(expected_output, output_buffer_);
+      EXPECT_EQ(expected_output, output_buffer_);
 
       // Fetch the combination to make sure we can serve the result from above.
       ExpectStringAsyncFetch expect_callback(true, CreateRequestContext());
@@ -1394,7 +1395,7 @@ TEST_F(CssCombineFilterTest, CrossUnmappedDomain) {
 // Verifies the same but we check the debug message.
 TEST_F(CssCombineFilterWithDebugTest, DebugUnauthorizedDomain) {
   VerifyCrossUnmappedDomainNotRewritten();
-  EXPECT_HAS_SUBSTR("<html>\n"
+  EXPECT_STREQ(StrCat("<html>\n"
                       "<head>\n"
                       "  <link rel=\"stylesheet\" type=\"text/css\""
                       " href=\"http://a.com/1.css\">\n"
@@ -1409,12 +1410,11 @@ TEST_F(CssCombineFilterWithDebugTest, DebugUnauthorizedDomain) {
                       "</body>\n"
                       "\n"
                       "</html>"
-                      "<!--", output_buffer_);
-  EXPECT_HAS_SUBSTR(
-      StrCat(DebugFilter::FormatEndDocumentMessage(0, 0, 0, 0, 0, false,
-                                                   StringSet(), StringVector()),
-             "-->"),
-      output_buffer_);
+                      "<!--",
+                      DebugFilter::FormatEndDocumentMessage(
+                          0, 0, 0, 0, 0, false, StringSet(), StringVector()),
+                      "-->"),
+               output_buffer_);
 }
 
 // Verifies that we cannot do the same cross-domain combo when we lack

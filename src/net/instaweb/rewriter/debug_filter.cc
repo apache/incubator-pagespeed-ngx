@@ -21,7 +21,6 @@
 #include "base/logging.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/timer.h"
@@ -164,15 +163,6 @@ GoogleString DebugFilter::FormatEndDocumentMessage(
   return str;
 }
 
-GoogleString DebugFilter::ListActiveFiltersAndOptions() const {
-  const RewriteOptions* options = driver_->options();
-  GoogleString settings_list("\nmod_pagespeed on\nFilters:\n");
-  StrAppend(&settings_list, options->EnabledFiltersToString());
-  StrAppend(&settings_list, "\nOptions:\n",
-            options->SafeEnabledOptionsToString());
-  return settings_list;
-}
-
 void DebugFilter::EndElement(HtmlElement* element) {
   if (!flush_messages_.empty()) {
     driver_->InsertComment(flush_messages_);
@@ -231,13 +221,11 @@ void DebugFilter::Flush() {
   idle_.AddToTotal();
 
   if (end_document_seen_) {
-    driver_->InsertComment(
-        StrCat(ListActiveFiltersAndOptions(),
-               FormatEndDocumentMessage(
-                   time_since_init_parse_us, parse_.total_us(),
-                   render_.total_us(), idle_.total_us(), num_flushes_,
-                   driver_->is_critical_images_beacon_enabled(),
-                   critical_image_urls_, dynamically_disabled_filter_list_)));
+    driver_->InsertComment(FormatEndDocumentMessage(
+        time_since_init_parse_us, parse_.total_us(), render_.total_us(),
+        idle_.total_us(), num_flushes_,
+        driver_->is_critical_images_beacon_enabled(), critical_image_urls_,
+        dynamically_disabled_filter_list_));
   } else {
     // We don't count the flush at end-of-document because that is automatically
     // called by RewriteDriver/HtmlParse, and is not initiated from upstream,

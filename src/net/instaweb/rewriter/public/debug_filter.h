@@ -72,9 +72,6 @@ class DebugFilter : public EmptyHtmlFilter {
       int num_flushes, bool is_critical_images_beacon_enabled,
       const StringSet& critical_image_urls,
       const StringVector& dynamically_disabled_filter_list);
-  // Gets the list of active filters from the RewriteDriver for logging to debug
-  // message.
-  GoogleString ListActiveFiltersAndOptions() const;
 
  private:
   // Tracks duration of events of interest that may occur multiple times
