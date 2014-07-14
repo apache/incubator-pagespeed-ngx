@@ -1319,8 +1319,6 @@ void ServerContext::ShowCacheHandler(
       fetch->response_headers()->SetStatusAndReason(HttpStatus::kNotFound);
       fetch->Write(StrCat(error_out, kBackButton), message_handler_);
       fetch->Done(false);
-    } else {
-      fetch->Write(kBackButton, message_handler_);
     }
   }
 }

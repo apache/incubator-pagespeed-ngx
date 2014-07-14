@@ -56,10 +56,6 @@ const uint8_t kAlphaTransparent = 0;
 typedef uint8_t PixelRgbaChannels[RGBA_NUM_CHANNELS];
 
 // Packs the given A, R, G, B values into a single uint32.
-//
-// TODO(vchudnov): Double-check that this works on big-endian systems,
-// too. I think the WebP encoding routines might take care of
-// endianness automatically.
 inline uint32_t PackAsArgb(uint8_t alpha,
                            uint8_t red,
                            uint8_t green,
