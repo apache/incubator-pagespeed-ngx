@@ -494,6 +494,34 @@
       ]
     },
     {
+      'target_name': 'instaweb_graphs_js_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'net/instaweb/system',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/system',
+        'var_name': 'graphs_js',
+      },
+      'sources': [
+        'genfiles/system/graphs_js_dbg.js',
+      ],
+      'includes': [
+        'data2c.gypi',
+      ]
+    },
+    {
+      'target_name': 'instaweb_graphs_js_opt_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'net/instaweb/system',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/system',
+        'var_name': 'graphs_js_opt',
+      },
+      'sources': [
+        'genfiles/system/graphs_js_opt.js',
+      ],
+      'includes': [
+        'data2c.gypi',
+      ]
+    },
+    {
       'target_name': 'instaweb_lazyload_images_data2c',
       'variables': {
         'instaweb_data2c_subdir': 'net/instaweb/rewriter',
@@ -1192,6 +1220,8 @@
         'instaweb_extended_instrumentation_opt_data2c',
         'instaweb_flush_early_pb',
         'instaweb_ghost_click_buster_opt_data2c',
+        'instaweb_graphs_js_data2c',
+        'instaweb_graphs_js_opt_data2c',
         'instaweb_js_defer_data2c',
         'instaweb_js_defer_opt_data2c',
         'instaweb_lazyload_images_data2c',

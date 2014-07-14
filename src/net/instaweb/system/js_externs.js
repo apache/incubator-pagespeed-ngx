@@ -16,10 +16,10 @@
 
 /**
  * @fileoverview  List of all external objects/functions referenced in
- * console.js, but which are actually defined in some external file (in this
- * case in https://www.google.com/jsapi. Since we are not compiling that file
- * we need all those objects/functions to keep the same name. Listing them
- * here accomplishes that.
+ * console.js and graphs_js.js, but which are actually defined in
+ * some external file (in this case in https://www.google.com/jsapi).
+ * Since we are not compiling that file we need all those objects/functions
+ * to keep the same name. Listing them here accomplishes that.
  *
  *
  * @author sligocki@google.com (Shawn Ligocki)
@@ -66,6 +66,13 @@ google.visualization.DataTable.prototype.addColumn =
 google.visualization.DataTable.prototype.addRow = function(opt_cellArray) {};
 
 
+/**
+ * @param {number|Array} numOrArray
+ * @return {number}
+ */
+google.visualization.DataTable.prototype.addRows = function(numOrArray) {};
+
+
 /** @return {number} */
 google.visualization.DataTable.prototype.getNumberOfRows = function() {};
 
@@ -94,3 +101,16 @@ google.visualization.LineChart = function(container) {};
 
 /** @override */
 google.visualization.LineChart.prototype.draw = function(data, opt_options) {};
+
+
+
+/**
+ * @param {Node} container
+ * @constructor
+ * @implements {google.visualization.IChart}
+ */
+google.visualization.PieChart = function(container) {};
+
+
+/** @override */
+google.visualization.PieChart.prototype.draw = function(data, opt_options) {};

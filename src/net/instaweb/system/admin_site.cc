@@ -61,6 +61,8 @@ extern const char* JS_caches_js;
 extern const char* JS_caches_js_opt;
 extern const char* JS_console_js;
 extern const char* JS_console_js_opt;
+extern const char* JS_graphs_js;
+extern const char* JS_graphs_js_opt;
 extern const char* JS_messages_js;
 extern const char* JS_messages_js_opt;
 extern const char* JS_mod_pagespeed_console_js;
@@ -100,6 +102,7 @@ const Tab kTabs[] = {
   {"Caches", "Caches", "cache", "?cache", kLongBreak},
   {"Console", "Console", "console", NULL, kLongBreak},
   {"Message History", "Message History", "message_history", NULL, kLongBreak},
+  {"Graphs", "Graphs", "graphs", NULL, kLongBreak},
 };
 
 // Controls the generation of an HTML Admin page.  Constructing it
@@ -299,6 +302,29 @@ void AdminSite::StatisticsHandler(AdminSource source, AsyncFetch* fetch,
   fetch->Write("<pre>", handler);
   stats->Dump(fetch, handler);
   fetch->Write("</pre>", handler);
+}
+
+void AdminSite::GraphsHandler(const RewriteOptions& options,
+                              AdminSource source, AsyncFetch* fetch,
+                              Statistics* stats) {
+  AdminHtml admin_html("graphs", "", source, fetch, message_handler_);
+  fetch->Write("<pre id=\"raw\"></pre>"
+               "<div id=\"cache_applied\" style=\"display:none\"></div>"
+               "<div id=\"cache_type\" style=\"display:none\"></div>"
+               "<div id=\"ipro\" style=\"display:none\"></div>"
+               "<div id=\"image_rewriting\" style=\"display:none\"></div>"
+               "<div id=\"realtime\" style=\"display:none\"></div>",
+               message_handler_);
+  fetch->Write("<script type=\"text/javascript\" "
+               "src=\"https://www.google.com/jsapi\"></script>",
+               message_handler_);
+  StringPiece statistics_js = options.Enabled(RewriteOptions::kDebug) ?
+        JS_graphs_js :
+        JS_graphs_js_opt;
+  fetch->Write("<script type='text/javascript'>", message_handler_);
+  fetch->Write(StrCat(statistics_js, "\npagespeed.Graphs.Start();"),
+               message_handler_);
+  fetch->Write("</script>\n", message_handler_);
 }
 
 void AdminSite::ConsoleJsonHandler(const QueryParams& params,
@@ -729,6 +755,8 @@ void AdminSite::AdminPage(
     StringPiece leaf = stripped_gurl.LeafSansQuery();
     if ((leaf == "statistics") || (leaf.empty())) {
       StatisticsHandler(kPageSpeedAdmin, fetch, stats);
+    } else if (leaf == "graphs") {
+      GraphsHandler(*options, kPageSpeedAdmin, fetch, stats);
     } else if (leaf == "config") {
       PrintNormalConfig(kPageSpeedAdmin, fetch, global_system_rewrite_options);
     } else if (leaf == "spdy_config") {
@@ -786,6 +814,8 @@ void AdminSite::StatisticsPage(
     PrintSpdyConfig(kStatistics, fetch, spdy_config);
   } else if (query_params.Has("histograms")) {
     PrintHistograms(kStatistics, fetch, stats);
+  } else if (query_params.Has("graphs")) {
+    GraphsHandler(*options, kStatistics, fetch, stats);
   } else if (query_params.Has("cache")) {
     GoogleUrl empty_url;
     PrintCaches(is_global, kStatistics, empty_url, query_params,

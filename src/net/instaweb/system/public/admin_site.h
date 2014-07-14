@@ -122,6 +122,11 @@ class AdminSite {
   void StatisticsHandler(AdminSource source, AsyncFetch* fetch,
                          Statistics* stats);
 
+  // Display various charts on graphs page.
+  // TODO(xqyin): Integrate this into console page.
+  void GraphsHandler(const RewriteOptions& options, AdminSource source,
+                     AsyncFetch* fetch, Statistics* stats);
+
   // Print details fo the SPDY configuration.
   void PrintSpdyConfig(AdminSource source, AsyncFetch* fetch,
                        const SystemRewriteOptions* spdy_config);

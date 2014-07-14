@@ -17,18 +17,18 @@
 /**
  * @fileoverview Code for adding reversing lists, auto-refresh and filtering
  * functionalities to message history page in admin site.
-
- * @author oschaaf@google.com (Otto van der Schaaf)
+ *
+ * @author oschaaf@we-amp.com (Otto van der Schaaf)
  * @author xqyin@google.com (XiaoQian Yin)
  */
 
 goog.provide('pagespeed.Messages');
 
+goog.require('goog.array');
 goog.require('goog.events');
 goog.require('goog.net.EventType');
 goog.require('goog.net.XhrIo');
 goog.require('goog.string');
-goog.require('pagespeedutils');
 
 
 
@@ -50,12 +50,6 @@ pagespeed.Messages = function(opt_xhr) {
    * @private {!Array.<string>}
    */
   this.psolMessages_ = document.getElementById('log').innerHTML.split('\n');
-
-  /**
-   * The flag to indicate the refreshing status.
-   * @private {boolean}
-   */
-  this.isRefreshing_ = false;
 
   /**
    * The option of reversing list.
@@ -103,7 +97,7 @@ pagespeed.Messages.prototype.toggleAutorefresh = function() {
  * Updates the option of messages filter.
  * @param {HTMLElement} element The HTML element of Filter.
  */
-pagespeed.Messages.prototype.toggleFilter = function(element) {
+pagespeed.Messages.prototype.setFilter = function(element) {
   this.filter_ = element.value;
   this.update();
 };
@@ -114,7 +108,7 @@ pagespeed.Messages.prototype.toggleFilter = function(element) {
  */
 pagespeed.Messages.prototype.update = function() {
   var logElement = document.getElementById('log');
-  var messages = this.psolMessages_.slice(0);
+  var messages = goog.array.clone(this.psolMessages_);
   if (this.filter_) {
     for (var i = messages.length - 1; i >= 0; --i) {
       if (!messages[i] ||
@@ -192,8 +186,7 @@ pagespeed.Messages.REFRESH_ERROR_ =
  * Refreshs the page by making requsts to server.
  */
 pagespeed.Messages.prototype.autoRefresh = function() {
-  if (this.autoRefresh_ && !this.isRefreshing_) {
-    this.isRefreshing_ = true;
+  if (this.autoRefresh_ && !this.xhr_.isActive()) {
     var fetchContent = function(messagesObj) {
       if (this.isSuccess()) {
         var newText = this.getResponseText();
@@ -205,7 +198,6 @@ pagespeed.Messages.prototype.autoRefresh = function() {
         document.getElementById('log').innerHTML =
             pagespeed.Messages.REFRESH_ERROR_;
       }
-      messagesObj.isRefreshing_ = false;
     };
     goog.events.listen(
         this.xhr_, goog.net.EventType.COMPLETE,
@@ -221,16 +213,16 @@ pagespeed.Messages.prototype.autoRefresh = function() {
  */
 pagespeed.Messages.prototype.htmlString = function() {
   // TODO(xqyin): Use DOM functions to inject the UI table.
-  var html = '';
-  html += '<table border=1 style=\'border-collapse: ';
-  html += 'collapse;border-color:silver;\'><tr valign=\'center\'>';
-  html += '<td>Reverse: <input type=\'checkbox\' id=\'reverse\' ';
-  html += (this.reverse_ ? 'checked' : '') + '></td>';
-  html += '<td>Auto refresh: <input type=\'checkbox\' id=\'autoRefresh\' ';
-  html += (this.autoRefresh_ ? 'checked' : '') + '></td>';
-  html += '<td>&nbsp;&nbsp;&nbsp;&nbsp;Search: ';
-  html += '<input id=\'txtFilter\' type=\'text\'></td>';
-  html += '</tr></table>';
+  var html =
+      '<table border=1 style="border-collapse: ' +
+      'collapse;border-color:silver;"><tr valign="center">' +
+      '<td>Reverse: <input type="checkbox" id="reverse" ' +
+      (this.reverse_ ? 'checked' : '') + '></td>' +
+      '<td>Auto refresh: <input type="checkbox" id="autoRefresh" ' +
+      (this.autoRefresh_ ? 'checked' : '') + '></td>' +
+      '<td>&nbsp;&nbsp;&nbsp;&nbsp;Search: ' +
+      '<input id="txtFilter" type="text"></td>' +
+      '</tr></table>';
   return html;
 };
 
@@ -244,7 +236,7 @@ pagespeed.Messages.Start = function() {
     var messagesObj = new pagespeed.Messages();
     var filterElement = document.getElementById('txtFilter');
     goog.events.listen(
-        filterElement, 'keyup', goog.bind(messagesObj.toggleFilter,
+        filterElement, 'keyup', goog.bind(messagesObj.setFilter,
                                           messagesObj, filterElement));
     goog.events.listen(document.getElementById('reverse'), 'change',
                        goog.bind(messagesObj.toggleReverse, messagesObj));
@@ -253,5 +245,5 @@ pagespeed.Messages.Start = function() {
     messagesObj.update();
     setInterval(messagesObj.autoRefresh.bind(messagesObj), 5000);
   };
-  pagespeedutils.addHandler(window, 'load', messagesOnload);
+  goog.events.listen(window, 'load', messagesOnload);
 };

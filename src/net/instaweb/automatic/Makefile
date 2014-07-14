@@ -88,6 +88,8 @@ BASE_LIBS = \
   net/instaweb/libinstaweb_extended_instrumentation_opt_data2c.a \
   net/instaweb/libinstaweb_flush_early_pb.a \
   net/instaweb/libinstaweb_ghost_click_buster_opt_data2c.a \
+  net/instaweb/libinstaweb_graphs_js_data2c.a \
+  net/instaweb/libinstaweb_graphs_js_opt_data2c.a \
   net/instaweb/libinstaweb_image_types_pb.a \
   net/instaweb/libinstaweb_js_defer_data2c.a \
   net/instaweb/libinstaweb_js_defer_opt_data2c.a \
