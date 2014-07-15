@@ -518,7 +518,8 @@ class RewriteDriver : public HtmlParse {
       const UrlSegmentEncoder* encoder,
       const ResourceContext* data,
       const ResourcePtr& input_resource,
-      OutputResourceKind kind);
+      OutputResourceKind kind,
+      GoogleString* failure_reason);
 
   // Creates an output resource where the name is provided.  The intent is to
   // be able to derive the content from the name, for example, by encoding
@@ -539,7 +540,8 @@ class RewriteDriver : public HtmlParse {
   OutputResourcePtr CreateOutputResourceWithPath(
       const StringPiece& mapped_path, const StringPiece& unmapped_path,
       const StringPiece& base_url, const StringPiece& filter_id,
-      const StringPiece& name, OutputResourceKind kind);
+      const StringPiece& name, OutputResourceKind kind,
+      GoogleString* failure_reason);
 
   // Fills in the resource namer based on the give filter_id, name and options
   // stored in the driver.
@@ -553,26 +555,28 @@ class RewriteDriver : public HtmlParse {
   // and the base_url is this driver's base_url.
   OutputResourcePtr CreateOutputResourceWithUnmappedUrl(
       const GoogleUrl& unmapped_gurl, const StringPiece& filter_id,
-      const StringPiece& name, OutputResourceKind kind);
+      const StringPiece& name, OutputResourceKind kind,
+      GoogleString* failure_reason);
 
   // Version of CreateOutputResourceWithPath where the unmapped and mapped
   // paths are different and the base_url is this driver's base_url.
   OutputResourcePtr CreateOutputResourceWithMappedPath(
       const StringPiece& mapped_path, const StringPiece& unmapped_path,
       const StringPiece& filter_id, const StringPiece& name,
-      OutputResourceKind kind) {
+      OutputResourceKind kind, GoogleString* failure_reason) {
     return CreateOutputResourceWithPath(mapped_path, unmapped_path,
                                         decoded_base_url_.AllExceptLeaf(),
-                                        filter_id, name, kind);
+                                        filter_id, name, kind, failure_reason);
   }
 
   // Version of CreateOutputResourceWithPath where the unmapped and mapped
   // paths and the base url are all the same. FOR TESTS ONLY.
   OutputResourcePtr CreateOutputResourceWithPath(
       const StringPiece& path, const StringPiece& filter_id,
-      const StringPiece& name, OutputResourceKind kind) {
+      const StringPiece& name, OutputResourceKind kind,
+      GoogleString* failure_reason) {
     return CreateOutputResourceWithPath(path, path, path, filter_id, name,
-                                        kind);
+                                        kind, failure_reason);
   }
 
   // Creates an input resource based on input_url.  Returns NULL if the input

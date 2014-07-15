@@ -1719,9 +1719,11 @@ GoogleString RewriteContext::DistributedFetchUrl(StringPiece url) {
 
   // TODO(jkarlin): Maybe we can store this output in outputs_ and write the
   // response data to it instead of replicating this work later.
+  GoogleString failure_reason;
   OutputResourcePtr output(Driver()->CreateOutputResourceWithPath(
       gurl.AllExceptLeaf(), gurl.AllExceptLeaf(), Driver()->base_url().Origin(),
-      id(), encoded_leaf, kind()));
+      id(), encoded_leaf, kind(), &failure_reason));
+  // TODO(sligocki): Propagate failure_reason up in some way.
 
   if (output.get() == NULL) {
     return "";
@@ -2355,13 +2357,19 @@ void RewriteContext::Propagate(bool render_slots) {
       }
     }
     CHECK_EQ(num_output_partitions(), num_outputs());
+    if (has_parent()) {
+      parent()->partitions()->mutable_debug_message()->MergeFrom(
+          partitions_->debug_message());
+    } else if (render_slots && num_slots() >= 1) {
+      Driver()->InsertDebugComments(partitions_->debug_message(),
+                                    slot(0)->element());
+    }
     for (int p = 0, np = num_output_partitions(); p < np; ++p) {
       CachedResult* partition = output_partition(p);
       int n = partition->input_size();
       if (partition->debug_message_size() > 0) {
         if (has_parent()) {
-          // Right now arbitrarily stick it in parent's partition 0.
-          parent()->output_partition(0)->mutable_debug_message()->MergeFrom(
+          parent()->partitions()->mutable_debug_message()->MergeFrom(
               partition->debug_message());
         } else if (render_slots) {
           // If no input slots defined, then we created a partition just to hold

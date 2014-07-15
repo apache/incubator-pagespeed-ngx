@@ -123,11 +123,14 @@ void JsOutlineFilter::OutlineScript(HtmlElement* inline_element,
     // Create script file from content.
     MessageHandler* handler = driver()->message_handler();
     // Create outline resource at the document location, not base URL location
+    GoogleString failure_reason;
     OutputResourcePtr resource(
         driver()->CreateOutputResourceWithUnmappedUrl(
-            driver()->google_url(), kFilterId, "_", kOutlinedResource));
-    if (resource.get() != NULL &&
-        WriteResource(content, resource.get(), handler)) {
+            driver()->google_url(), kFilterId, "_", kOutlinedResource,
+            &failure_reason));
+    if (resource.get() == NULL) {
+      driver()->InsertDebugComment(failure_reason, inline_element);
+    } else if (WriteResource(content, resource.get(), handler)) {
       HtmlElement* outline_element = driver()->CloneElement(inline_element);
       driver()->AddAttribute(outline_element, HtmlName::kSrc,
                              resource->url());
@@ -138,6 +141,8 @@ void JsOutlineFilter::OutlineScript(HtmlElement* inline_element,
         driver()->FatalErrorHere("Failed to delete inline script element");
       }
     } else {
+      driver()->InsertDebugComment("Failed to write outlined script resource.",
+                                   inline_element);
       driver()->ErrorHere("Failed to write outlined script resource.");
     }
   }

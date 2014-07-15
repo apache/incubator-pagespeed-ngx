@@ -106,16 +106,36 @@ class JavascriptFilter::Context : public SingleRewriteContext {
   RewriteResult RewriteJavascript(
       const ResourcePtr& input, const OutputResourcePtr& output) {
     OutputResourcePtr rewritten, source_map;
+    GoogleString failure_reason;
     if (output_source_map_) {
+      // Source map pagespeed resource flow.
       rewritten = Driver()->CreateOutputResourceFromResource(
-          id(), encoder(), resource_context(), input, kind());
+          id(), encoder(), resource_context(), input, kind(), &failure_reason);
       source_map = output;
+
+      if (rewritten.get() == NULL) {
+        // We do not expect this to happen. This situation would only come up
+        // if we successfully created the source map OutputResource, but
+        // failed to create the rewritten JS OutputResource.
+        // This is in the resource flow, so failure_reason cannot be reported.
+        return kRewriteFailed;
+      }
     } else {
+      // HTML or rewritten JS resource flow.
       rewritten = output;
       source_map = Driver()->CreateOutputResourceFromResource(
           RewriteOptions::kJavascriptMinSourceMapId, encoder(),
-          resource_context(), input, kRewrittenResource);
+          resource_context(), input, kRewrittenResource, &failure_reason);
+
+      if (source_map.get() == NULL) {
+        // We do not expect this to happen. This situation would only come up
+        // if we successfully created the rewritten JS OutputResource, but
+        // failed to create the source map OutputResource.
+        // Since this is unlikely, we don't report failure_reason.
+        return kRewriteFailed;
+      }
     }
+    DCHECK(failure_reason.empty());
 
     ServerContext* server_context = FindServerContext();
     MessageHandler* message_handler = server_context->message_handler();

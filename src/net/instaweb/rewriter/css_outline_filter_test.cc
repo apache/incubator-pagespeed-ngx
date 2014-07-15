@@ -21,10 +21,12 @@
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/rewriter/public/debug_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/rewriter/public/support_noscript_filter.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/hasher.h"
@@ -37,22 +39,35 @@ namespace {
 
 class CssOutlineFilterTest : public RewriteTestBase {
  protected:
-  virtual void SetUp() {
-    RewriteTestBase::SetUp();
+  void SetupOutliner() {
     options()->set_css_outline_min_bytes(0);
     options()->SoftEnableFilterForTesting(RewriteOptions::kOutlineCss);
     rewrite_driver()->AddFilters();
   }
 
-  // Test general situations.
-  void TestOutlineCss(const GoogleString& html_url,
-                      const GoogleString& base_ref,
-                      const GoogleString& css_original_body,
+  void SetupDebug(StringPiece debug_message) {
+    options()->EnableFilter(RewriteOptions::kDebug);
+    SetupOutliner();
+
+    // For some reason SupportNoScript filter is disabled here.
+    StringVector expected_disabled_filters;
+    SupportNoscriptFilter support_noscript_filter(rewrite_driver());
+    expected_disabled_filters.push_back(support_noscript_filter.Name());
+
+    debug_message.CopyToString(&debug_message_);
+    debug_suffix_ = DebugFilter::FormatEndDocumentMessage(
+        0, 0, 0, 0, 0, false, StringSet(),
+        expected_disabled_filters);
+  }
+
+  void TestOutlineCss(StringPiece html_url,
+                      StringPiece base_ref,
+                      StringPiece css_original_body,
                       bool expect_outline,
-                      const GoogleString& css_rewritten_body,
-                      // css_url_base only needed if different than html_url,
+                      StringPiece css_rewritten_body,
+                      // css_url_base only needed if different from html_url,
                       // e.g. domain rewriting.
-                      const GoogleString& css_url_base) {
+                      StringPiece css_url_base) {
     // TODO(sligocki): Test with outline threshold > 0.
 
     // Figure out outline_url.
@@ -81,25 +96,36 @@ class CssOutlineFilterTest : public RewriteTestBase {
       other_content = StrCat("  <base href=\"", base_ref, "\">\n");
     }
 
-    const GoogleString html_input =
-        "<head>\n" +
-        other_content +
-        "  <style>" + css_original_body + "</style>\n"
+    const GoogleString html_input = StrCat(
+        "<head>\n",
+        other_content,
+        "  <style>", css_original_body, "</style>\n"
         "</head>\n"
-        "<body>Hello, world!</body>\n";
-
-    // Rewrite the HTML page.
-    ParseUrl(html_url, html_input);
+        "<body>Hello, world!</body>");
 
     // Check output HTML.
-    const GoogleString expected_output =
-        (!expect_outline ? html_input :
-         "<head>\n" +
-         other_content +
-         "  <link rel=\"stylesheet\" href=\"" + outline_url + "\">\n"
-         "</head>\n"
-         "<body>Hello, world!</body>\n");
-    EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
+    GoogleString expected_output;
+    if (expect_outline) {
+      expected_output = StrCat(
+          "<head>\n",
+          other_content,
+          "  <link rel=\"stylesheet\" href=\"",  outline_url,  "\">\n"
+          "</head>\n"
+          "<body>Hello, world!</body>");
+    } else {
+      expected_output = StrCat(
+          "<head>\n",
+          other_content,
+          "  <style>", css_original_body, "</style>", debug_message_, "\n"
+          "</head>\n"
+          "<body>Hello, world!</body>");
+    }
+
+    ParseUrl(html_url, html_input);
+    EXPECT_HAS_SUBSTR(expected_output, output_buffer_);
+    if (!debug_suffix_.empty()) {
+      EXPECT_HAS_SUBSTR(debug_suffix_, output_buffer_);
+    }
 
     if (expect_outline) {
       // Expected headers.
@@ -122,29 +148,27 @@ class CssOutlineFilterTest : public RewriteTestBase {
                               "foreground_yellow { color: yellow; }\n";
     TestOutlineCss(html_url, "", style_text, true, style_text, "");
   }
+
+  GoogleString debug_message_;
+  GoogleString debug_suffix_;
 };
 
 // Tests for Outlining styles.
 TEST_F(CssOutlineFilterTest, OutlineStyle) {
+  SetupOutliner();
   OutlineStyle("outline_styles_no_hash");
 }
 
 TEST_F(CssOutlineFilterTest, OutlineStyleMD5) {
+  SetupOutliner();
   UseMd5Hasher();
   OutlineStyle("outline_styles_md5");
 }
 
-class CssOutlineFilterTestCustomOptions : public CssOutlineFilterTest {
- protected:
-  // Derived classes should set their options and then call
-  // CssOutlineFilterTest::SetUp().
-  virtual void SetUp() {}
-};
-
-TEST_F(CssOutlineFilterTestCustomOptions, CssOutlinePreserveURLsOn) {
+TEST_F(CssOutlineFilterTest, CssOutlinePreserveURLsOn) {
   options()->set_css_preserve_urls(true);
   options()->set_css_outline_min_bytes(0);
-  CssOutlineFilterTest::SetUp();
+  SetupOutliner();
   const char kStyleText[] = "background_blue { background-color: blue; }\n"
                             "foreground_yellow { color: yellow; }\n";
   TestOutlineCss("http://outline_style.test/outline_styles_md5.html", "",
@@ -153,12 +177,14 @@ TEST_F(CssOutlineFilterTestCustomOptions, CssOutlinePreserveURLsOn) {
 
 
 TEST_F(CssOutlineFilterTest, NoAbsolutifySameDir) {
+  SetupOutliner();
   const GoogleString css = "body { background-image: url('bg.png'); }";
   TestOutlineCss("http://outline_style.test/index.html", "",
                  css, true, css, "");
 }
 
 TEST_F(CssOutlineFilterTest, AbsolutifyDifferentDir) {
+  SetupOutliner();
   const GoogleString css1 = "body { background-image: url('bg.png'); }";
   const GoogleString css2 =
       "body { background-image: url('http://other_site.test/foo/bg.png'); }";
@@ -167,6 +193,7 @@ TEST_F(CssOutlineFilterTest, AbsolutifyDifferentDir) {
 }
 
 TEST_F(CssOutlineFilterTest, ShardSubresources) {
+  SetupOutliner();
   UseMd5Hasher();
   AddShard("outline_style.test", "shard1.com,shard2.com");
 
@@ -186,17 +213,22 @@ TEST_F(CssOutlineFilterTest, UrlTooLong) {
                             "foreground_yellow { color: yellow; }\n";
 
   // By default we succeed at outlining.
+  SetupDebug("");  // No debug message.
   TestOutlineCss(html_url, "", style_text, true, style_text, "");
 
   // But if we set max_url_size too small, it will fail cleanly.
   options()->ClearSignatureForTesting();
   options()->set_max_url_size(0);
   server_context()->ComputeSignature(options());
+  // Now we have a debug message.
+  debug_message_ = "<!--Rewritten URL too long: "
+      "http://outline_style.test/_.pagespeed.co.#.-->";
   TestOutlineCss(html_url, "", style_text, false, style_text, "");
 }
 
 // Test our behavior with CDATA blocks.
 TEST_F(CssOutlineFilterTest, CdataInContents) {
+  SetupOutliner();
   SetXhtmlMimetype();
   // TODO(sligocki): Fix. The outlined file should be "foo  bar ".
   GoogleString css = "foo <![CDATA[ bar ]]>";
@@ -206,10 +238,12 @@ TEST_F(CssOutlineFilterTest, CdataInContents) {
 // Make sure we deal well with no Charactors() node between StartElement()
 // and EndElement().
 TEST_F(CssOutlineFilterTest, EmptyStyle) {
+  SetupOutliner();
   ValidateNoChanges("empty_style", "<style></style>");
 }
 
 TEST_F(CssOutlineFilterTest, DoNotOutlineScoped) {
+  SetupOutliner();
   // <style scoped> exists (with very limited support) but <link scoped>
   // doesn't, so we shouldn't be outlining scoped styles.
   ValidateNoChanges("scoped", "<style scoped>* {display: none;}</style>");
@@ -217,6 +251,7 @@ TEST_F(CssOutlineFilterTest, DoNotOutlineScoped) {
 
 // http://code.google.com/p/modpagespeed/issues/detail?id=416
 TEST_F(CssOutlineFilterTest, RewriteDomain) {
+  SetupOutliner();
   AddRewriteDomainMapping("cdn.com", kTestDomain);
 
   // Check that CSS gets outlined to the rewritten domain.

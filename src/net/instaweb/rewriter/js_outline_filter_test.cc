@@ -21,9 +21,11 @@
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/rewriter/public/debug_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
+#include "net/instaweb/rewriter/public/support_noscript_filter.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/string.h"
@@ -43,6 +45,21 @@ class JsOutlineFilterTest : public RewriteTestBase {
     rewrite_driver()->AddFilters();
   }
 
+  void SetupDebug(StringPiece debug_message) {
+    options()->EnableFilter(RewriteOptions::kDebug);
+    SetupOutliner();
+
+    // For some reason SupportNoScript filter is disabled here.
+    StringVector expected_disabled_filters;
+    SupportNoscriptFilter support_noscript_filter(rewrite_driver());
+    expected_disabled_filters.push_back(support_noscript_filter.Name());
+
+    debug_message.CopyToString(&debug_message_);
+    debug_suffix_ = DebugFilter::FormatEndDocumentMessage(
+        0, 0, 0, 0, 0, false, StringSet(),
+        expected_disabled_filters);
+  }
+
   // Test outlining scripts with options to write headers.
   void OutlineScript(const StringPiece& id, bool expect_outline) {
     GoogleString script_text = "FOOBAR";
@@ -55,24 +72,42 @@ class JsOutlineFilterTest : public RewriteTestBase {
         kTestDomain, JsOutlineFilter::kFilterId, hash, "_", "js");
 
     GoogleString wrong_hash_outline_url = Encode(
-      kTestDomain, JsOutlineFilter::kFilterId, "not" + hash, "_", "js");
+        kTestDomain, JsOutlineFilter::kFilterId, StrCat("not", hash),
+        "_", "js");
 
-    GoogleString html_input =
+    GoogleString html_input = StrCat(
         "<head>\n"
         "  <title>Example style outline</title>\n"
         "  <!-- Script starts here -->\n"
-        "  <script type='text/javascript'>" + script_text + "</script>\n"
+        "  <script type='text/javascript'>", script_text, "</script>\n"
         "  <!-- Script ends here -->\n"
-        "</head>";
-    GoogleString expected_output = !expect_outline ? html_input :
-        "<head>\n"
-        "  <title>Example style outline</title>\n"
-        "  <!-- Script starts here -->\n"
-        "  <script type='text/javascript'"
-        " src=\"" + outline_url + "\"></script>\n"
-        "  <!-- Script ends here -->\n"
-        "</head>";
-    ValidateExpected(id, html_input, expected_output);
+        "</head>");
+    GoogleString expected_output;
+    if (expect_outline) {
+      expected_output = StrCat(
+          "<head>\n"
+          "  <title>Example style outline</title>\n"
+          "  <!-- Script starts here -->\n"
+          "  <script type='text/javascript'"
+          " src=\"", outline_url, "\"></script>\n"
+          "  <!-- Script ends here -->\n"
+          "</head>");
+    } else {
+      expected_output = StrCat(
+          "<head>\n"
+          "  <title>Example style outline</title>\n"
+          "  <!-- Script starts here -->\n"
+          "  <script type='text/javascript'>", script_text, "</script>",
+          debug_message_,
+          "\n"
+          "  <!-- Script ends here -->\n"
+          "</head>");
+    }
+    Parse(id, html_input);
+    EXPECT_HAS_SUBSTR(expected_output, output_buffer_);
+    if (!debug_suffix_.empty()) {
+      EXPECT_HAS_SUBSTR(debug_suffix_, output_buffer_);
+    }
 
     if (expect_outline) {
       GoogleString actual_outline;
@@ -87,6 +122,9 @@ class JsOutlineFilterTest : public RewriteTestBase {
           FetchResourceUrl(wrong_hash_outline_url, &actual_outline, &headers));
     }
   }
+
+  GoogleString debug_message_;
+  GoogleString debug_suffix_;
 };
 
 // Tests for outlining scripts.
@@ -149,7 +187,7 @@ TEST_F(JsOutlineFilterTest, JsPreserveURL) {
   options()->SoftEnableFilterForTesting(RewriteOptions::kOutlineJavascript);
   options()->set_js_preserve_urls(true);
   rewrite_driver()->AddFilters();
-  OutlineScript("url_not_too_long", false);
+  OutlineScript("js_preserve_url", false);
 }
 
 TEST_F(JsOutlineFilterTest, JsPreserveURLOff) {
@@ -157,13 +195,14 @@ TEST_F(JsOutlineFilterTest, JsPreserveURLOff) {
   options()->SoftEnableFilterForTesting(RewriteOptions::kOutlineJavascript);
   options()->set_js_preserve_urls(false);
   rewrite_driver()->AddFilters();
-  OutlineScript("url_not_too_long", true);
+  OutlineScript("js_preserve_url_off", true);
 }
 
 // But if we set max_url_size too small, it will fail cleanly.
 TEST_F(JsOutlineFilterTest, UrlTooLong) {
   options()->set_max_url_size(0);
-  SetupOutliner();
+  SetupDebug(StrCat("<!--Rewritten URL too long: ", kTestDomain,
+                    "_.pagespeed.jo.#.-->"));
   OutlineScript("url_too_long", false);
 }
 

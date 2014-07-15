@@ -257,9 +257,7 @@ TEST_F(CssFilterTest, CssRewriteRandomDropNone) {
 
 TEST_F(CssFilterTest, RewriteCss404) {
   // Test to make sure that a missing input is handled well.
-  TurnOnDebug("");  // Note: This test will fail when we add debug messages.
-  // TODO(sligocki): Print debug message in this case.
-  // TurnOnDebug("<!--CSS rewrite failed: Couldn't load resource.-->");
+  TurnOnDebug("<!--Input resource is not valid or not cacheable.-->");
 
   SetFetchResponse404("404.css");
 
@@ -423,9 +421,7 @@ TEST_F(CssFilterTest, LinkHrefCaseInsensitive) {
 }
 
 TEST_F(CssFilterTest, UrlTooLong) {
-  TurnOnDebug("");  // Note: This test will fail when we add debug messages.
-  // TODO(sligocki): Print debug message in this case.
-  // TurnOnDebug("<!--CSS rewrite failed: URL too long.-->");
+  TurnOnDebug("<!--Rewritten URL segment too long.-->");
 
   // Make the filename maximum size, so we cannot rewrite it.
   // -4 because .css will be appended.
@@ -1639,7 +1635,8 @@ TEST_F(CssFilterTest, RewriteStyleAttribute) {
       "background-image:url(images/watch-icons.png?1);"
       "background-position:-19px 60%\""
       ">\n"
-      "<link rel=stylesheet href='404.css'>\n"
+      "<link rel=stylesheet href='404.css'>"
+      "<!--Input resource is not valid or not cacheable.-->\n"
       "<span style=\"font-family:Verdana\">Verdana</span>\n"
       "</div>";
   ValidateExpected("rewrite-mixed", kMixedInput, kMixedOutput);

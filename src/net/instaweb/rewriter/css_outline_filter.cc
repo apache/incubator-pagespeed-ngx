@@ -129,11 +129,15 @@ void CssOutlineFilter::OutlineStyle(HtmlElement* style_element,
       MessageHandler* handler = driver()->message_handler();
       // Create outline resource at the document location,
       // not base URL location.
+      GoogleString failure_reason;
       OutputResourcePtr output_resource(
           driver()->CreateOutputResourceWithUnmappedUrl(
-              driver()->google_url(), kFilterId, "_", kOutlinedResource));
+              driver()->google_url(), kFilterId, "_", kOutlinedResource,
+              &failure_reason));
 
-      if (output_resource.get() != NULL) {
+      if (output_resource.get() == NULL) {
+        driver()->InsertDebugComment(failure_reason, style_element);
+      } else {
         // Rewrite URLs in content.
         GoogleString transformed_content;
         StringWriter writer(&transformed_content);
@@ -174,6 +178,8 @@ void CssOutlineFilter::OutlineStyle(HtmlElement* style_element,
         }
       }
     } else {
+      driver()->InsertDebugComment(StrCat(
+          "Cannot outline stylesheet with non-CSS type=", type), style_element);
       GoogleString element_string;
       style_element->ToString(&element_string);
       driver()->InfoHere("Cannot outline non-css stylesheet %s",

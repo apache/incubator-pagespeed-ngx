@@ -2727,28 +2727,41 @@ OutputResourcePtr RewriteDriver::CreateOutputResourceFromResource(
     const UrlSegmentEncoder* encoder,
     const ResourceContext* data,
     const ResourcePtr& input_resource,
-    OutputResourceKind kind) {
+    OutputResourceKind kind,
+    GoogleString* failure_reason) {
   OutputResourcePtr result;
-  if (input_resource.get() != NULL) {
-    // TODO(jmarantz): It would be more efficient to pass in the base
-    // document GURL or save that in the input resource.
-    GoogleUrl unmapped_gurl(input_resource->url());
-    GoogleString mapped_domain;  // Unused. TODO(sligocki): Stop setting this?
-    GoogleUrl mapped_gurl;
-    // Get the domain and URL after any domain lawyer rewriting.
-    if (options()->IsAllowed(unmapped_gurl.Spec()) &&
-        options()->domain_lawyer()->MapRequestToDomain(
-            unmapped_gurl, unmapped_gurl.Spec(), &mapped_domain, &mapped_gurl,
-            server_context_->message_handler())) {
-      GoogleString name;
-      StringVector v;
-      v.push_back(mapped_gurl.LeafWithQuery().as_string());
-      encoder->Encode(v, data, &name);
-      result.reset(CreateOutputResourceWithMappedPath(
-          mapped_gurl.AllExceptLeaf(), unmapped_gurl.AllExceptLeaf(),
-          filter_id, name, kind));
-    }
+  if (input_resource.get() == NULL) {
+    *failure_reason = "No input resource.";
+    return result;
   }
+
+  // TODO(jmarantz): It would be more efficient to pass in the base
+  // document GURL or save that in the input resource.
+  GoogleUrl unmapped_gurl(input_resource->url());
+  GoogleString mapped_domain;  // Unused. TODO(sligocki): Stop setting this?
+  GoogleUrl mapped_gurl;
+  // Get the domain and URL after any domain lawyer rewriting.
+  if (!options()->IsAllowed(unmapped_gurl.Spec())) {
+    *failure_reason = StrCat("Rewriting disallowed for ", unmapped_gurl.Spec());
+    return result;
+  }
+
+  if (!options()->domain_lawyer()->MapRequestToDomain(
+          unmapped_gurl, unmapped_gurl.Spec(), &mapped_domain, &mapped_gurl,
+          server_context_->message_handler())) {
+    *failure_reason = StrCat("Domain not authorized for ",
+                             unmapped_gurl.Spec());
+    return result;
+  }
+
+  GoogleString name;
+  StringVector v;
+  v.push_back(mapped_gurl.LeafWithQuery().as_string());
+  encoder->Encode(v, data, &name);
+  result.reset(CreateOutputResourceWithMappedPath(
+      mapped_gurl.AllExceptLeaf(), unmapped_gurl.AllExceptLeaf(),
+      filter_id, name, kind, failure_reason));
+
   CHECK(input_resource->is_authorized_domain());
   return result;
 }
@@ -2779,7 +2792,8 @@ OutputResourcePtr RewriteDriver::CreateOutputResourceWithPath(
     const StringPiece& base_url,
     const StringPiece& filter_id,
     const StringPiece& name,
-    OutputResourceKind kind) {
+    OutputResourceKind kind,
+    GoogleString* failure_reason) {
   ResourceNamer full_name;
   PopulateResourceNamer(filter_id, name, &full_name);
   OutputResourcePtr resource;
@@ -2787,6 +2801,7 @@ OutputResourcePtr RewriteDriver::CreateOutputResourceWithPath(
       full_name.EventualSize(*server_context_->hasher(), SignatureLength()) +
       ContentType::MaxProducedExtensionLength();
   if (max_leaf_size > options()->max_url_segment_size()) {
+    *failure_reason = "Rewritten URL segment too long.";
     return resource;
   }
 
@@ -2805,6 +2820,7 @@ OutputResourcePtr RewriteDriver::CreateOutputResourceWithPath(
 
   if (options()->max_url_size() <
       (static_cast<int>(resource->url().size()) + extra_len)) {
+    *failure_reason = StrCat("Rewritten URL too long: ",  resource->url());
     resource.clear();
     return resource;
   }
@@ -2816,19 +2832,27 @@ OutputResourcePtr RewriteDriver::CreateOutputResourceWithPath(
 
 OutputResourcePtr RewriteDriver::CreateOutputResourceWithUnmappedUrl(
     const GoogleUrl& unmapped_gurl, const StringPiece& filter_id,
-    const StringPiece& name, OutputResourceKind kind) {
+    const StringPiece& name, OutputResourceKind kind,
+    GoogleString* failure_reason) {
   OutputResourcePtr resource;
   GoogleString mapped_domain;  // Unused. TODO(sligocki): Stop setting this?
   GoogleUrl mapped_gurl;
   // Get the domain and URL after any domain lawyer rewriting.
-  if (options()->IsAllowed(unmapped_gurl.Spec()) &&
-      options()->domain_lawyer()->MapRequestToDomain(
+  if (!options()->IsAllowed(unmapped_gurl.Spec())) {
+    *failure_reason = StrCat("Rewriting disallowed for ", unmapped_gurl.Spec());
+    return resource;
+  }
+  if (!options()->domain_lawyer()->MapRequestToDomain(
           unmapped_gurl, unmapped_gurl.Spec(), &mapped_domain, &mapped_gurl,
           server_context_->message_handler())) {
-    resource.reset(CreateOutputResourceWithMappedPath(
-        mapped_gurl.AllExceptLeaf(), unmapped_gurl.AllExceptLeaf(),
-        filter_id, name, kind));
+    *failure_reason = StrCat("Domain not authorized for ",
+                             unmapped_gurl.Spec());
+    return resource;
   }
+
+  resource.reset(CreateOutputResourceWithMappedPath(
+      mapped_gurl.AllExceptLeaf(), unmapped_gurl.AllExceptLeaf(),
+      filter_id, name, kind, failure_reason));
   return resource;
 }
 

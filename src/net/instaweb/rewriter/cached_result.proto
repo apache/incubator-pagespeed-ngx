@@ -214,6 +214,8 @@ message CachedResult {
 message OutputPartitions {
   repeated CachedResult partition = 1;
   repeated InputInfo other_dependency = 2;
+  // Debug messages which can be used even if there are no partitions.
+  repeated string debug_message = 3;
 }
 
 // Encapsulates all the data needed to rewrite a resource.  Any filter needing

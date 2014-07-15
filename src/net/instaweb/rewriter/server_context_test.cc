@@ -197,10 +197,13 @@ class ServerContextTest : public RewriteTestBase {
     const char* filter_prefix = RewriteOptions::kCssFilterId;
     const char* name = "I.name";  // valid name for CSS filter.
     const char* contents = "contents";
+    GoogleString failure_reason;
     OutputResourcePtr output(
         rewrite_driver()->CreateOutputResourceWithPath(
-            kUrlPrefix, filter_prefix, name, kRewrittenResource));
+            kUrlPrefix, filter_prefix, name, kRewrittenResource,
+            &failure_reason));
     ASSERT_TRUE(output.get() != NULL);
+    EXPECT_EQ("", failure_reason);
     // Check name_key against url_prefix/fp.name
     GoogleString name_key = output->name_key();
     RemoveUrlPrefix(kUrlPrefix, &name_key);
@@ -217,8 +220,10 @@ class ServerContextTest : public RewriteTestBase {
       // case since we're just trying to create the resource, not fetch it.
       OutputResourcePtr output1(
           rewrite_driver()->CreateOutputResourceWithPath(
-              kUrlPrefix, filter_prefix, name, kRewrittenResource));
+              kUrlPrefix, filter_prefix, name, kRewrittenResource,
+              &failure_reason));
       ASSERT_TRUE(output1.get() != NULL);
+      EXPECT_EQ("", failure_reason);
       EXPECT_FALSE(output1->IsWritten());
     }
 
@@ -613,11 +618,14 @@ TEST_F(ServerContextTest, TestMapRewriteAndOrigin) {
 
   // When we rewrite the resource as an ouptut, it will show up in the
   // CDN per the rewrite mapping.
+  GoogleString failure_reason;
   OutputResourcePtr output(
       rewrite_driver()->CreateOutputResourceFromResource(
           RewriteOptions::kCacheExtenderId, rewrite_driver()->default_encoder(),
-          NULL, input, kRewrittenResource));
+          NULL, input, kRewrittenResource,
+          &failure_reason));
   ASSERT_TRUE(output.get() != NULL);
+  EXPECT_EQ("", failure_reason);
 
   // We need to 'Write' an output resource before we can determine its
   // URL.
@@ -818,10 +826,12 @@ TEST_F(ServerContextTest, TestInputResourceQuery) {
   ResourcePtr resource(CreateResource(kResourceUrlBase, kUrl));
   ASSERT_TRUE(resource.get() != NULL);
   EXPECT_EQ(StrCat(GoogleString(kResourceUrlBase), "/", kUrl), resource->url());
+  GoogleString failure_reason;
   OutputResourcePtr output(rewrite_driver()->CreateOutputResourceFromResource(
       "sf", rewrite_driver()->default_encoder(), NULL, resource,
-      kRewrittenResource));
+      kRewrittenResource, &failure_reason));
   ASSERT_TRUE(output.get() != NULL);
+  EXPECT_EQ("", failure_reason);
 
   GoogleString included_name;
   EXPECT_TRUE(UrlEscaper::DecodeFromUrlSegment(output->name(), &included_name));
@@ -965,10 +975,13 @@ TEST_F(ServerContextTest, TestOutlined) {
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
+  GoogleString failure_reason;
   OutputResourcePtr output_resource(
       rewrite_driver()->CreateOutputResourceWithPath(
-          kUrlPrefix, CssOutlineFilter::kFilterId, "_", kOutlinedResource));
+          kUrlPrefix, CssOutlineFilter::kFilterId, "_", kOutlinedResource,
+          &failure_reason));
   ASSERT_TRUE(output_resource.get() != NULL);
+  EXPECT_EQ("", failure_reason);
   EXPECT_EQ(NULL, output_resource->cached_result());
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
@@ -987,8 +1000,10 @@ TEST_F(ServerContextTest, TestOutlined) {
   // Now try fetching again. It should not get a cached_result either.
   output_resource.reset(
       rewrite_driver()->CreateOutputResourceWithPath(
-          kUrlPrefix, CssOutlineFilter::kFilterId, "_", kOutlinedResource));
+          kUrlPrefix, CssOutlineFilter::kFilterId, "_", kOutlinedResource,
+          &failure_reason));
   ASSERT_TRUE(output_resource.get() != NULL);
+  EXPECT_EQ("", failure_reason);
   EXPECT_EQ(NULL, output_resource->cached_result());
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
@@ -1006,10 +1021,13 @@ TEST_F(ServerContextTest, TestOnTheFly) {
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
+  GoogleString failure_reason;
   OutputResourcePtr output_resource(
       rewrite_driver()->CreateOutputResourceWithPath(
-          kUrlPrefix, RewriteOptions::kCssFilterId, "_", kOnTheFlyResource));
+          kUrlPrefix, RewriteOptions::kCssFilterId, "_", kOnTheFlyResource,
+          &failure_reason));
   ASSERT_TRUE(output_resource.get() != NULL);
+  EXPECT_EQ("", failure_reason);
   EXPECT_EQ(NULL, output_resource->cached_result());
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
@@ -1033,10 +1051,13 @@ TEST_F(ServerContextTest, TestNotGenerated) {
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
+  GoogleString failure_reason;
   OutputResourcePtr output_resource(
       rewrite_driver()->CreateOutputResourceWithPath(
-          kUrlPrefix, RewriteOptions::kCssFilterId, "_", kRewrittenResource));
+          kUrlPrefix, RewriteOptions::kCssFilterId, "_", kRewrittenResource,
+          &failure_reason));
   ASSERT_TRUE(output_resource.get() != NULL);
+  EXPECT_EQ("", failure_reason);
   EXPECT_EQ(NULL, output_resource->cached_result());
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
@@ -1467,13 +1488,16 @@ class ServerContextShardedTest : public ServerContextTest {
 TEST_F(ServerContextShardedTest, TestNamed) {
   GoogleString url = Encode("http://example.com/dir/123/",
                             "jm", "0", "orig", "js");
+  GoogleString failure_reason;
   OutputResourcePtr output_resource(
       rewrite_driver()->CreateOutputResourceWithPath(
           "http://example.com/dir/",
           "jm",
           "orig.js",
-          kRewrittenResource));
+          kRewrittenResource,
+          &failure_reason));
   ASSERT_TRUE(output_resource.get());
+  EXPECT_EQ("", failure_reason);
   ASSERT_TRUE(rewrite_driver()->Write(ResourceVector(),
                                       "alert('hello');",
                                       &kContentTypeJavascript,
@@ -1588,11 +1612,13 @@ TEST_F(ServerContextTest, WriteChecksInputVector) {
       CreateCustomCachingResource("pri_400", 400, ",private"));
   // Should have the 'it's not cacheable!' entry here; see also below.
   EXPECT_EQ(1, http_cache()->cache_inserts()->Get());
+  GoogleString failure_reason;
   OutputResourcePtr output_resource(
       rewrite_driver()->CreateOutputResourceFromResource(
           "cf", rewrite_driver()->default_encoder(), NULL /* no context*/,
-          private_400, kRewrittenResource));
-
+          private_400, kRewrittenResource, &failure_reason));
+  ASSERT_TRUE(output_resource.get() != NULL);
+  EXPECT_EQ("", failure_reason);
 
   rewrite_driver()->Write(ResourceVector(1, private_400),
                           "boo!",

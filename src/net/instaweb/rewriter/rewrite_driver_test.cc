@@ -58,7 +58,7 @@
 #include "pagespeed/kernel/base/mock_timer.h"
 #include "pagespeed/kernel/base/null_mutex.h"
 #include "pagespeed/kernel/base/sha1_signature.h"
- #include "pagespeed/kernel/http/http_options.h"
+#include "pagespeed/kernel/http/http_options.h"
 
 namespace net_instaweb {
 
@@ -838,6 +838,7 @@ TEST_F(RewriteDriverTest, InvalidBaseTag) {
 TEST_F(RewriteDriverTest, CreateOutputResourceTooLongSeparateBase) {
   SetUseTestUrlNamer(true);
   OutputResourcePtr resource;
+  GoogleString failure_reason;
 
   options()->set_max_url_size(94);
   resource.reset(rewrite_driver()->CreateOutputResourceWithPath(
@@ -846,9 +847,14 @@ TEST_F(RewriteDriverTest, CreateOutputResourceTooLongSeparateBase) {
       "http://base.example.com/dir/",
       "xy",
       "test.jpg",
-      kRewrittenResource));
+      kRewrittenResource,
+      &failure_reason));
   EXPECT_TRUE(NULL == resource.get());
+  EXPECT_EQ("Rewritten URL too long: http://cdn.com/http/base.example.com/"
+            "http/unmapped.example.com/dir/test.jpg.pagespeed.xy.#.",
+            failure_reason);
 
+  failure_reason = "";
   options()->set_max_url_size(95);
   resource.reset(rewrite_driver()->CreateOutputResourceWithPath(
       "http://mapped.example.com/dir/",
@@ -856,8 +862,10 @@ TEST_F(RewriteDriverTest, CreateOutputResourceTooLongSeparateBase) {
       "http://base.example.com/dir/",
       "xy",
       "test.jpg",
-      kRewrittenResource));
+      kRewrittenResource,
+      &failure_reason));
   EXPECT_TRUE(NULL != resource.get());
+  EXPECT_EQ("", failure_reason);
 }
 
 TEST_F(RewriteDriverTest, CreateOutputResourceTooLong) {
@@ -875,29 +883,41 @@ TEST_F(RewriteDriverTest, CreateOutputResourceTooLong) {
   }
 
   // short_name.size() < options()->max_url_segment_size() < long_name.size()
-  GoogleString short_name = "foo.html";
+  GoogleString short_name = "foo.css";
   GoogleString long_name =
-      StrCat("foo.html?",
+      StrCat("foo.css?",
              GoogleString(options()->max_url_segment_size() + 1, 'z'));
 
   GoogleString dummy_filter_id = "xy";
 
   OutputResourcePtr resource;
+  GoogleString failure_reason;
   for (int k = 0; k < arraysize(resource_kinds); ++k) {
+    failure_reason = "";
     // Short name should always succeed at creating new resource.
     resource.reset(rewrite_driver()->CreateOutputResourceWithPath(
-        short_path, dummy_filter_id, short_name, resource_kinds[k]));
+        short_path, dummy_filter_id, short_name, resource_kinds[k],
+        &failure_reason));
     EXPECT_TRUE(NULL != resource.get());
+    EXPECT_EQ("", failure_reason);
 
+    failure_reason = "";
     // Long leaf-name should always fail at creating new resource.
     resource.reset(rewrite_driver()->CreateOutputResourceWithPath(
-        short_path, dummy_filter_id, long_name, resource_kinds[k]));
+        short_path, dummy_filter_id, long_name, resource_kinds[k],
+        &failure_reason));
     EXPECT_TRUE(NULL == resource.get());
+    EXPECT_EQ("Rewritten URL segment too long.", failure_reason);
 
+    failure_reason = "";
     // Long total URL length should always fail at creating new resource.
     resource.reset(rewrite_driver()->CreateOutputResourceWithPath(
-        long_path, dummy_filter_id, short_name, resource_kinds[k]));
+        long_path, dummy_filter_id, short_name, resource_kinds[k],
+        &failure_reason));
     EXPECT_TRUE(NULL == resource.get());
+    EXPECT_EQ(StrCat("Rewritten URL too long: ", long_path, short_name,
+                     ".pagespeed.xy.#."),
+              failure_reason);
   }
 }
 
