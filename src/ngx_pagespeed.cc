@@ -281,11 +281,6 @@ void copy_response_headers_from_ngx(const ngx_http_request_t* r,
 
   headers->set_status_code(r->headers_out.status);
 
-  if (r->headers_out.location != NULL) {
-    headers->Add(HttpAttributes::kLocation,
-                 str_to_string_piece(r->headers_out.location->value));
-  }
-
   // Manually copy over the content type because it's not included in
   // request_->headers_out.headers.
   headers->Add(HttpAttributes::kContentType,
@@ -1142,6 +1137,12 @@ ngx_int_t ps_base_fetch_handler(ngx_http_request_t* r) {
                 STR_CASE_EQ_LITERAL(header->key, "Last-Modified") ||
                 STR_CASE_EQ_LITERAL(header->key, "Expires"))))) {
           header->hash = 0;
+          if (STR_CASE_EQ_LITERAL(header->key, "Location")) {
+            // There's a possible issue with the location header, where setting
+            // the hash to 0 is not enough. See:
+            // https://github.com/nginx/nginx/blob/master/src/http/ngx_http_header_filter_module.c#L314
+            r->headers_out.location = NULL;
+          }
         }
       }
     } else {
