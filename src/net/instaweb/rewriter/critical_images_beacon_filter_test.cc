@@ -35,7 +35,6 @@
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/escaping.h"
-#include "net/instaweb/util/public/gmock.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/hasher.h"
@@ -44,6 +43,7 @@
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_hash.h"
+#include "pagespeed/kernel/base/gmock.h"
 #include "pagespeed/kernel/base/mock_timer.h"
 
 using testing::HasSubstr;

@@ -30,8 +30,8 @@
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/timer.h"
-#include "pagespeed/kernel/html/disable_test_filter.h"
 #include "pagespeed/kernel/base/gmock.h"
+#include "pagespeed/kernel/html/disable_test_filter.h"
 
 using ::testing::HasSubstr;
 using ::testing::Not;
