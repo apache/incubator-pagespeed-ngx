@@ -66,6 +66,8 @@ extern const char* JS_graphs_js_opt;
 extern const char* JS_messages_js;
 extern const char* JS_messages_js_opt;
 extern const char* JS_mod_pagespeed_console_js;
+extern const char* JS_statistics_js;
+extern const char* JS_statistics_js_opt;
 
 namespace {
 
@@ -294,22 +296,27 @@ void AdminSite::StatisticsGraphsHandler(
   writer->Write("</script>", message_handler_);
 }
 
-void AdminSite::StatisticsHandler(AdminSource source, AsyncFetch* fetch,
+void AdminSite::StatisticsHandler(const RewriteOptions& options,
+                                  AdminSource source, AsyncFetch* fetch,
                                   Statistics* stats) {
   AdminHtml admin_html("statistics", "", source, fetch, message_handler_);
-  MessageHandler* handler = message_handler_;
   // Write <pre></pre> for Dump to keep good format.
-  fetch->Write("<pre>", handler);
-  stats->Dump(fetch, handler);
-  fetch->Write("</pre>", handler);
+  fetch->Write("<pre id=\"stat\">", message_handler_);
+  stats->Dump(fetch, message_handler_);
+  fetch->Write("</pre>\n", message_handler_);
+  StringPiece statistics_js = options.Enabled(RewriteOptions::kDebug) ?
+        JS_statistics_js :
+        JS_statistics_js_opt;
+  fetch->Write(StrCat("<script type=\"text/javascript\">", statistics_js,
+                      "\npagespeed.Statistics.Start();</script>\n"),
+               message_handler_);
 }
 
 void AdminSite::GraphsHandler(const RewriteOptions& options,
                               AdminSource source, AsyncFetch* fetch,
                               Statistics* stats) {
   AdminHtml admin_html("graphs", "", source, fetch, message_handler_);
-  fetch->Write("<pre id=\"raw\"></pre>"
-               "<div id=\"cache_applied\" style=\"display:none\"></div>"
+  fetch->Write("<div id=\"cache_applied\"></div>"
                "<div id=\"cache_type\" style=\"display:none\"></div>"
                "<div id=\"ipro\" style=\"display:none\"></div>"
                "<div id=\"image_rewriting\" style=\"display:none\"></div>"
@@ -318,13 +325,12 @@ void AdminSite::GraphsHandler(const RewriteOptions& options,
   fetch->Write("<script type=\"text/javascript\" "
                "src=\"https://www.google.com/jsapi\"></script>",
                message_handler_);
-  StringPiece statistics_js = options.Enabled(RewriteOptions::kDebug) ?
+  StringPiece graphs_js = options.Enabled(RewriteOptions::kDebug) ?
         JS_graphs_js :
         JS_graphs_js_opt;
-  fetch->Write("<script type='text/javascript'>", message_handler_);
-  fetch->Write(StrCat(statistics_js, "\npagespeed.Graphs.Start();"),
+  fetch->Write(StrCat("<script type=\"text/javascript\">", graphs_js,
+                      "\npagespeed.Graphs.Start();</script>\n"),
                message_handler_);
-  fetch->Write("</script>\n", message_handler_);
 }
 
 void AdminSite::ConsoleJsonHandler(const QueryParams& params,
@@ -694,7 +700,7 @@ void AdminSite::MessageHistoryHandler(const RewriteOptions& options,
     StringPiece messages_js = options.Enabled(RewriteOptions::kDebug) ?
         JS_messages_js :
         JS_messages_js_opt;
-    fetch->Write("<script type='text/javascript'>", message_handler_);
+    fetch->Write("<script type=\"text/javascript\">", message_handler_);
     fetch->Write(StrCat(messages_js, "\npagespeed.Messages.Start();"),
                  message_handler_);
     fetch->Write("</script>\n", message_handler_);
@@ -754,7 +760,7 @@ void AdminSite::AdminPage(
   } else {
     StringPiece leaf = stripped_gurl.LeafSansQuery();
     if ((leaf == "statistics") || (leaf.empty())) {
-      StatisticsHandler(kPageSpeedAdmin, fetch, stats);
+      StatisticsHandler(*options, kPageSpeedAdmin, fetch, stats);
     } else if (leaf == "graphs") {
       GraphsHandler(*options, kPageSpeedAdmin, fetch, stats);
     } else if (leaf == "config") {
@@ -824,7 +830,7 @@ void AdminSite::StatisticsPage(
                 http_cache, metadata_cache, page_property_cache,
                 server_context);
   } else {
-    StatisticsHandler(kStatistics, fetch, stats);
+    StatisticsHandler(*options, kStatistics, fetch, stats);
   }
 }
 

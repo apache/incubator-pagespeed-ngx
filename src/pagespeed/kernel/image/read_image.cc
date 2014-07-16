@@ -183,10 +183,10 @@ ScanlineWriterInterface* InstantiateScanlineWriter(
 
   if (which == NULL) {
         *status = PS_LOGGED_STATUS(PS_LOG_DFATAL, handler,
-                                 SCANLINE_STATUS_UNSUPPORTED_FORMAT,
-                                 SCANLINE_UTIL,
-                                 "invalid image type for writer: %d",
-                                 image_type);
+                                   SCANLINE_STATUS_UNSUPPORTED_FORMAT,
+                                   SCANLINE_UTIL,
+                                   "invalid image type for writer: %d",
+                                   image_type);
   } else if (writer == NULL) {
     *status = PS_LOGGED_STATUS(PS_LOG_ERROR, handler,
                                SCANLINE_STATUS_MEMORY_ERROR,

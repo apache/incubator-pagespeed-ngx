@@ -361,6 +361,7 @@ void SystemServerContext::StatisticsGraphsHandler(Writer* writer) {
 }
 
 void SystemServerContext::StatisticsHandler(
+    const RewriteOptions& options,
     bool is_global_request,
     AdminSite::AdminSource source,
     AsyncFetch* fetch) {
@@ -369,7 +370,7 @@ void SystemServerContext::StatisticsHandler(
   }
   Statistics* stats = is_global_request ? factory()->statistics()
       : statistics();
-  admin_site_->StatisticsHandler(source, fetch, stats);
+  admin_site_->StatisticsHandler(options, source, fetch, stats);
 }
 
 void SystemServerContext::ConsoleJsonHandler(

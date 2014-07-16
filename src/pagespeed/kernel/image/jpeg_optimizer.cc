@@ -485,13 +485,13 @@ ScanlineStatus JpegScanlineWriter::InitWithStatus(const size_t width,
       data_->jpeg_compress_.in_color_space = JCS_GRAYSCALE;
       break;
     case RGBA_8888:
-      return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler_,
+      return PS_LOGGED_STATUS(PS_DLOG_INFO, message_handler_,
                               SCANLINE_STATUS_UNSUPPORTED_FEATURE,
                               SCANLINE_JPEGWRITER, "transparency");
       break;
     default:
-      return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler_,
-                              SCANLINE_STATUS_UNSUPPORTED_FEATURE,
+      return PS_LOGGED_STATUS(PS_LOG_DFATAL, message_handler_,
+                              SCANLINE_STATUS_INTERNAL_ERROR,
                               SCANLINE_JPEGWRITER,
                               "unknown pixel format: %s",
                               GetPixelFormatString(pixel_format));

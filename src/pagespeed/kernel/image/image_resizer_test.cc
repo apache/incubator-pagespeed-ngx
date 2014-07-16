@@ -273,7 +273,13 @@ TEST_F(ScanlineResizerTest, InitializeWidth) {
 
 // The resizer is not initialized, so ReadNextScanline returns false.
 TEST_F(ScanlineResizerTest, ReadNullScanline) {
+#ifndef NDEBUG
+  ASSERT_DEATH(resizer_.ReadNextScanline(&scanline_),
+               "SCANLINE_RESIZER/SCANLINE_STATUS_INVOCATION_ERROR "
+               "null reader or no more scanlines");
+#else
   ASSERT_FALSE(resizer_.ReadNextScanline(&scanline_));
+#endif
 }
 
 // The resizer has only one scanline, so ReadNextScanline returns false
@@ -282,7 +288,13 @@ TEST_F(ScanlineResizerTest, ReadNextScanline) {
   InitializeReader(kValidImages[1]);
   ASSERT_TRUE(resizer_.Initialize(&reader_, 10, 1));
   ASSERT_TRUE(resizer_.ReadNextScanline(&scanline_));
+#ifndef NDEBUG
+  ASSERT_DEATH(resizer_.ReadNextScanline(&scanline_),
+               "SCANLINE_RESIZER/SCANLINE_STATUS_INVOCATION_ERROR "
+               "null reader or no more scanlines");
+#else
   ASSERT_FALSE(resizer_.ReadNextScanline(&scanline_));
+#endif
 }
 
 // The original image is truncated. Only 100 bytes are passed to the reader.

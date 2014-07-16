@@ -119,8 +119,8 @@ class AdminSite {
   //
   // In systems without a spdy-specific config, spdy_config should be
   // null.
-  void StatisticsHandler(AdminSource source, AsyncFetch* fetch,
-                         Statistics* stats);
+  void StatisticsHandler(const RewriteOptions& options, AdminSource source,
+                         AsyncFetch* fetch, Statistics* stats);
 
   // Display various charts on graphs page.
   // TODO(xqyin): Integrate this into console page.

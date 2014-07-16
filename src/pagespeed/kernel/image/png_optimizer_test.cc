@@ -1277,7 +1277,13 @@ TEST_F(PngScanlineWriterTest, RewritePng) {
 TEST_F(PngScanlineWriterTest, EarlyFinalize) {
   ASSERT_TRUE(Initialize());
   ASSERT_TRUE(writer_->WriteNextScanline(reinterpret_cast<void*>(scanline_)));
+#ifndef NDEBUG
+  ASSERT_DEATH(writer_->FinalizeWrite(),
+               "SCANLINE_PNGWRITER/SCANLINE_STATUS_INVOCATION_ERROR "
+               "not initialized or not all rows written");
+#else
   ASSERT_FALSE(writer_->FinalizeWrite());
+#endif
 }
 
 // Write insufficient number of scanlines and do not finalize at the end.
@@ -1291,7 +1297,13 @@ TEST_F(PngScanlineWriterTest, TooManyScanlines) {
   ASSERT_TRUE(Initialize());
   ASSERT_TRUE(writer_->WriteNextScanline(reinterpret_cast<void*>(scanline_)));
   ASSERT_TRUE(writer_->WriteNextScanline(reinterpret_cast<void*>(scanline_)));
+#ifndef NDEBUG
+  ASSERT_DEATH(writer_->WriteNextScanline(reinterpret_cast<void*>(scanline_)),
+               "SCANLINE_PNGWRITER/SCANLINE_STATUS_INVOCATION_ERROR "
+               "failed preconditions to write scanline");
+#else
   ASSERT_FALSE(writer_->WriteNextScanline(reinterpret_cast<void*>(scanline_)));
+#endif
 }
 
 // Write a scanline, and then re-initialize and write too many scanlines.
@@ -1302,7 +1314,13 @@ TEST_F(PngScanlineWriterTest, ReinitializeAndTooManyScanlines) {
   ASSERT_TRUE(Initialize());
   ASSERT_TRUE(writer_->WriteNextScanline(reinterpret_cast<void*>(scanline_)));
   ASSERT_TRUE(writer_->WriteNextScanline(reinterpret_cast<void*>(scanline_)));
+#ifndef NDEBUG
+  ASSERT_DEATH(writer_->WriteNextScanline(reinterpret_cast<void*>(scanline_)),
+               "SCANLINE_PNGWRITER/SCANLINE_STATUS_INVOCATION_ERROR "
+               "failed preconditions to write scanline");
+#else
   ASSERT_FALSE(writer_->WriteNextScanline(reinterpret_cast<void*>(scanline_)));
+#endif
 }
 
 TEST_F(PngScanlineWriterTest, DecodeGrayAlpha) {

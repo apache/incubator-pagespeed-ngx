@@ -753,7 +753,7 @@ ScanlineStatus GifFrameReader::ProcessExtensionAffectingFrame() {
   GifByteType* extension = NULL;
   int ext_code = 0;
   if (DGifGetExtension(gif_file, &ext_code, &extension) == GIF_ERROR) {
-    return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler(),
+    return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler(),
                             SCANLINE_STATUS_PARSE_ERROR,
                             FRAME_GIFREADER,
                             "Failed to read extension.");
@@ -843,7 +843,7 @@ ScanlineStatus GifFrameReader::ProcessExtensionAffectingImage(
   int ext_code = 0;
 
   if (DGifGetExtension(gif_file, &ext_code, &extension) == GIF_ERROR) {
-    return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler(),
+    return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler(),
                             SCANLINE_STATUS_PARSE_ERROR,
                             FRAME_GIFREADER,
                             "Failed to read extension.");
@@ -1077,8 +1077,8 @@ ScanlineStatus GifFrameReader::GetImageData() {
 
 ScanlineStatus GifFrameReader::set_quirks_mode(QuirksMode quirks_mode) {
   if (image_initialized_) {
-    return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler(),
-                            SCANLINE_STATUS_MEMORY_ERROR,
+    return PS_LOGGED_STATUS(PS_LOG_DFATAL, message_handler(),
+                            SCANLINE_STATUS_INVOCATION_ERROR,
                             FRAME_GIFREADER,
                             "Can't change quirks mode for initialized image.");
   }
@@ -1269,7 +1269,7 @@ ScanlineStatus GifFrameReader::PrepareNextFrame() {
       case TERMINATE_RECORD_TYPE: {
         DVLOG(1) << "PrepareNextFrame: TERMINATE";
         return PS_LOGGED_STATUS(
-            PS_LOG_DFATAL, message_handler(),
+            PS_LOG_INFO, message_handler(),
             SCANLINE_STATUS_INTERNAL_ERROR,
             FRAME_GIFREADER,
             "PrepareNextFrame: expected to find the next frame, failed.");

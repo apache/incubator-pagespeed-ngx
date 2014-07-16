@@ -101,12 +101,10 @@ ScanlineStatus PixelFormatOptimizer::Initialize(
   input_row_ = 0;
   while (input_row_ < image_height) {
     void* in_scanline = NULL;
-    if (!reader_->ReadNextScanline(&in_scanline)) {
+    ScanlineStatus status = reader_->ReadNextScanlineWithStatus(&in_scanline);
+    if (!status.Success()) {
       Reset();
-      return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler_,
-                              SCANLINE_STATUS_INTERNAL_ERROR,
-                              SCANLINE_PIXEL_FORMAT_OPTIMIZER,
-                              "Failed to read a scanline.");
+      return status;
     }
 
     // Buffer the scanline.
@@ -141,11 +139,18 @@ ScanlineStatus PixelFormatOptimizer::Initialize(
 // Reads the next available scanline.
 ScanlineStatus PixelFormatOptimizer::ReadNextScanlineWithStatus(
     void** out_scanline_bytes) {
-  if (!was_initialized_ || !HasMoreScanLines()) {
+  if (!was_initialized_) {
+    return PS_LOGGED_STATUS(PS_LOG_DFATAL, message_handler_,
+                            SCANLINE_STATUS_INVOCATION_ERROR,
+                            SCANLINE_PIXEL_FORMAT_OPTIMIZER,
+                            "Uninitialized");
+  }
+
+  if (!HasMoreScanLines()) {
     return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler_,
                             SCANLINE_STATUS_INVOCATION_ERROR,
                             SCANLINE_PIXEL_FORMAT_OPTIMIZER,
-                            "Uninitialized or no more scanlines");
+                            "No more scanlines");
   }
 
   const int bytes_per_in_pixel = GetNumChannelsFromPixelFormat(RGBA_8888,

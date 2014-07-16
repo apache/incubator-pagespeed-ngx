@@ -1002,7 +1002,7 @@ ScanlineStatus PngScanlineReaderRaw::InitializeWithStatus(
       break;
     default:  // Unrecognized format.
       png_struct_.reset();
-      return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler_,
+      return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler_,
                               SCANLINE_STATUS_INTERNAL_ERROR,
                               SCANLINE_PNGREADERRAW,
                               "unrecognized color type");
@@ -1192,7 +1192,7 @@ ScanlineStatus PngScanlineWriter::InitWithStatus(const size_t width,
       break;
     default:
       return PS_LOGGED_STATUS(PS_LOG_DFATAL, message_handler_,
-                              SCANLINE_STATUS_UNSUPPORTED_FEATURE,
+                              SCANLINE_STATUS_INTERNAL_ERROR,
                               SCANLINE_PNGWRITER,
                               "unknown pixel format: %d",
                               pixel_format);
@@ -1241,7 +1241,7 @@ ScanlineStatus PngScanlineWriter::InitializeWriteWithStatus(
   if (setjmp(png_jmpbuf(png_ptr)) != 0) {
     // Jump to here if any error happens.
     Reset();
-    return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler_,
+    return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler_,
                             SCANLINE_STATUS_INTERNAL_ERROR,
                             SCANLINE_PNGWRITER,
                             "libpng failed to compress the image.");
@@ -1272,7 +1272,7 @@ ScanlineStatus PngScanlineWriter::WriteNextScanlineWithStatus(
     ++row_;
     return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
   }
-  return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler_,
+  return PS_LOGGED_STATUS(PS_LOG_DFATAL, message_handler_,
                           SCANLINE_STATUS_INVOCATION_ERROR,
                           SCANLINE_PNGWRITER,
                           "failed preconditions to write scanline");
@@ -1285,7 +1285,7 @@ ScanlineStatus PngScanlineWriter::FinalizeWriteWithStatus() {
     return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
   } else {
     Reset();
-    return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler_,
+    return PS_LOGGED_STATUS(PS_LOG_DFATAL, message_handler_,
                             SCANLINE_STATUS_INVOCATION_ERROR,
                             SCANLINE_PNGWRITER,
                             "not initialized or not all rows written");

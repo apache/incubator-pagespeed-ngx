@@ -196,9 +196,8 @@ class SystemServerContext : public ServerContext {
   //
   // In systems without a spdy-specific config, spdy_config should be
   // null.
-  void StatisticsHandler(bool is_global_request,
-                         AdminSite::AdminSource source,
-                         AsyncFetch* fetch);
+  void StatisticsHandler(const RewriteOptions& options, bool is_global_request,
+                         AdminSite::AdminSource source, AsyncFetch* fetch);
 
   // Print details fo the SPDY configuration.
   void PrintSpdyConfig(AdminSite::AdminSource source, AsyncFetch* fetch);

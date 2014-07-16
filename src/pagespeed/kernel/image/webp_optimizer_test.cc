@@ -27,6 +27,7 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/image/image_converter.h"
+#include "pagespeed/kernel/image/image_util.h"
 #include "pagespeed/kernel/image/png_optimizer.h"
 #include "pagespeed/kernel/image/read_image.h"
 #include "pagespeed/kernel/image/test_utils.h"
@@ -43,8 +44,12 @@ using pagespeed::image_compression::IMAGE_GIF;
 using pagespeed::image_compression::IMAGE_PNG;
 using pagespeed::image_compression::IMAGE_WEBP;
 using pagespeed::image_compression::kPngSuiteTestDir;
+using pagespeed::image_compression::kMessagePatternPixelFormat;
+using pagespeed::image_compression::kMessagePatternStats;
+using pagespeed::image_compression::kMessagePatternWritingToWebp;
 using pagespeed::image_compression::kTestRootDir;
 using pagespeed::image_compression::kWebpTestDir;
+using pagespeed::image_compression::size_px;
 using pagespeed::image_compression::PixelFormat;
 using pagespeed::image_compression::PngScanlineReaderRaw;
 using pagespeed::image_compression::ReadFile;
@@ -58,9 +63,6 @@ using pagespeed::image_compression::ScanlineStatus;
 using pagespeed::image_compression::ScanlineWriterInterface;
 using pagespeed::image_compression::WebpConfiguration;
 using pagespeed::image_compression::WebpScanlineReader;
-using pagespeed::image_compression::kMessagePatternPixelFormat;
-using pagespeed::image_compression::kMessagePatternStats;
-using pagespeed::image_compression::kMessagePatternWritingToWebp;
 
 struct ImageInfo {
   const char* original_file;
@@ -316,7 +318,7 @@ class AnimatedWebpTest : public testing::Test {
     }
   }
 
-  void PrepareWriterFor5x5Image() {
+  void PrepareWriterFor5x5Image(size_px num_frames) {
     webp_config_.lossless = false;
     ScanlineStatus status;
     writer_.reset(
@@ -326,7 +328,7 @@ class AnimatedWebpTest : public testing::Test {
 
     image_spec_.width = 5;
     image_spec_.height = 5;
-    image_spec_.num_frames = 1;
+    image_spec_.num_frames = num_frames;
     image_spec_.loop_count = 1;
     EXPECT_TRUE(writer_->PrepareImage(&image_spec_, &status));
   }
@@ -420,7 +422,7 @@ TEST_F(AnimatedWebpTest, ConvertGifs) {
 }
 
 TEST_F(AnimatedWebpTest, RequireFirstScanline) {
-  PrepareWriterFor5x5Image();
+  PrepareWriterFor5x5Image(2);
   ScanlineStatus status;
 
   FrameSpec frame_spec;
@@ -431,12 +433,18 @@ TEST_F(AnimatedWebpTest, RequireFirstScanline) {
   frame_spec.pixel_format = RGB_888;
   EXPECT_TRUE(writer_->PrepareNextFrame(&frame_spec, &status));
 
+#ifndef NDEBUG
+  ASSERT_DEATH(writer_->PrepareNextFrame(&frame_spec, &status),
+               "FRAME_WEBPWRITER/SCANLINE_STATUS_INVOCATION_ERROR "
+               "CacheCurrentFrame: not all scanlines written");
+#else
   EXPECT_FALSE(writer_->PrepareNextFrame(&frame_spec, &status));
   EXPECT_EQ(SCANLINE_STATUS_INVOCATION_ERROR, status.type());
+#endif
 }
 
 TEST_F(AnimatedWebpTest, RequireAllScanlines) {
-  PrepareWriterFor5x5Image();
+  PrepareWriterFor5x5Image(2);
   ScanlineStatus status;
 
   FrameSpec frame_spec;
@@ -451,12 +459,18 @@ TEST_F(AnimatedWebpTest, RequireAllScanlines) {
   memset(scanline, 0x80, GetBytesPerPixel(RGB_888)*frame_spec.width);
   EXPECT_TRUE(writer_->WriteNextScanline(scanline, &status));
 
+#ifndef NDEBUG
+  ASSERT_DEATH(writer_->PrepareNextFrame(&frame_spec, &status),
+               "FRAME_WEBPWRITER/SCANLINE_STATUS_INVOCATION_ERROR "
+               "CacheCurrentFrame: not all scanlines written");
+#else
   EXPECT_FALSE(writer_->PrepareNextFrame(&frame_spec, &status));
   EXPECT_EQ(SCANLINE_STATUS_INVOCATION_ERROR, status.type());
+#endif
 }
 
 TEST_F(AnimatedWebpTest, RejectExtraScanlines) {
-  PrepareWriterFor5x5Image();
+  PrepareWriterFor5x5Image(1);
   ScanlineStatus status;
 
   FrameSpec frame_spec;
@@ -472,11 +486,18 @@ TEST_F(AnimatedWebpTest, RejectExtraScanlines) {
   for (int j = 0; j < frame_spec.height; ++j) {
     EXPECT_TRUE(writer_->WriteNextScanline(scanline, &status));
   }
+#ifndef NDEBUG
+  ASSERT_DEATH(writer_->WriteNextScanline(scanline, &status),
+               "FRAME_WEBPWRITER/SCANLINE_STATUS_INVOCATION_ERROR "
+               "WriteNextScanline: too many scanlines");
+#else
   EXPECT_FALSE(writer_->WriteNextScanline(scanline, &status));
+#endif
 }
 
 TEST_F(AnimatedWebpTest, FrameAtOriginFallingOffImageFails) {
-  PrepareWriterFor5x5Image();
+  PrepareWriterFor5x5Image(1);
+
   ScanlineStatus status;
 
   FrameSpec frame_spec;
@@ -502,7 +523,7 @@ TEST_F(AnimatedWebpTest, FrameAtOriginFallingOffImageFails) {
 }
 
 TEST_F(AnimatedWebpTest, FrameInMiddleFallingOffImageFails) {
-  PrepareWriterFor5x5Image();
+  PrepareWriterFor5x5Image(1);
   ScanlineStatus status;
 
   FrameSpec frame_spec;

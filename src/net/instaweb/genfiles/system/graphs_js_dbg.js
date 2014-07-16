@@ -4589,66 +4589,36 @@ google.load("visualization", "1", {packages:["table", "corechart"]});
 pagespeed.Graphs = function(opt_xhr) {
   this.xhr_ = opt_xhr || new goog.net.XhrIo;
   this.psolMessages_ = [];
-  this.filter_ = "";
   this.autoRefresh_ = !0;
   this.firstRefreshDone_ = !1;
   var navElement = document.createElement("table");
   navElement.id = "navBar";
-  navElement.innerHTML = '<tr><td><a id="' + pagespeed.Graphs.DisplayMode.RAW + '" href="javascript:void(0);">Raw</a> - </td><td><a id="' + pagespeed.Graphs.DisplayMode.CACHE_APPLIED + '" href="javascript:void(0);">Per application cache stats</a> - </td><td><a id="' + pagespeed.Graphs.DisplayMode.CACHE_TYPE + '" href="javascript:void(0);">Per type cache stats</a> - </td><td><a id="' + pagespeed.Graphs.DisplayMode.IPRO + '" href="javascript:void(0);">IPRO status</a> - </td><td><a id="' + pagespeed.Graphs.DisplayMode.REWRITE_IMAGE + 
-  '" href="javascript:void(0);">Image rewriting</a> - </td><td><a id="' + pagespeed.Graphs.DisplayMode.REALTIME + '" href="javascript:void(0);">Realtime</a></td></tr>';
+  navElement.innerHTML = '<tr><td><a id="' + pagespeed.Graphs.DisplayMode.CACHE_APPLIED + '" href="javascript:void(0);">Per application cache stats</a> - </td><td><a id="' + pagespeed.Graphs.DisplayMode.CACHE_TYPE + '" href="javascript:void(0);">Per type cache stats</a> - </td><td><a id="' + pagespeed.Graphs.DisplayMode.IPRO + '" href="javascript:void(0);">IPRO status</a> - </td><td><a id="' + pagespeed.Graphs.DisplayMode.REWRITE_IMAGE + '" href="javascript:void(0);">Image rewriting</a> - </td><td><a id="' + 
+  pagespeed.Graphs.DisplayMode.REALTIME + '" href="javascript:void(0);">Realtime</a></td></tr>';
   var uiTable = document.createElement("div");
   uiTable.id = "uiDiv";
-  uiTable.innerHTML = '<table id="uiTable" border=1 style="border-collapse: collapse;border-color:silver;"><tr valign="center"><td>Auto refresh: <input type="checkbox" id="autoRefresh" ' + (this.autoRefresh_ ? "checked" : "") + '></td><td>&nbsp;&nbsp;&nbsp;&nbsp;Search: <input id="txtFilter" type="text"></td></tr></table>';
-  document.body.insertBefore(uiTable, document.getElementById(pagespeed.Graphs.DisplayDiv.RAW));
+  uiTable.innerHTML = '<table id="uiTable" border=1 style="border-collapse: collapse;border-color:silver;"><tr valign="center"><td>Auto refresh: <input type="checkbox" id="autoRefresh" ' + (this.autoRefresh_ ? "checked" : "") + "></td></tr></table>";
+  document.body.insertBefore(uiTable, document.getElementById(pagespeed.Graphs.DisplayDiv.CACHE_APPLIED));
   document.body.insertBefore(navElement, document.getElementById("uiDiv"));
 };
 pagespeed.Graphs.prototype.show = function(div) {
-  document.getElementById(pagespeed.Graphs.DisplayDiv.RAW).style.display = "none";
   document.getElementById(pagespeed.Graphs.DisplayDiv.CACHE_APPLIED).style.display = "none";
   document.getElementById(pagespeed.Graphs.DisplayDiv.CACHE_TYPE).style.display = "none";
   document.getElementById(pagespeed.Graphs.DisplayDiv.IPRO).style.display = "none";
   document.getElementById(pagespeed.Graphs.DisplayDiv.REWRITE_IMAGE).style.display = "none";
   document.getElementById(pagespeed.Graphs.DisplayDiv.REALTIME).style.display = "none";
   document.getElementById(div).style.display = "";
-  document.getElementById("uiTable").style.display = div == pagespeed.Graphs.DisplayDiv.RAW ? "" : "none";
 };
-pagespeed.Graphs.DisplayMode = {RAW:"raw_mode", CACHE_APPLIED:"cache_applied_mode", CACHE_TYPE:"cache_type_mode", IPRO:"ipro_mode", REWRITE_IMAGE:"image_rewriting_mode", REALTIME:"realtime_mode"};
-pagespeed.Graphs.DisplayDiv = {RAW:"raw", CACHE_APPLIED:"cache_applied", CACHE_TYPE:"cache_type", IPRO:"ipro", REWRITE_IMAGE:"image_rewriting", REALTIME:"realtime"};
+pagespeed.Graphs.DisplayMode = {CACHE_APPLIED:"cache_applied_mode", CACHE_TYPE:"cache_type_mode", IPRO:"ipro_mode", REWRITE_IMAGE:"image_rewriting_mode", REALTIME:"realtime_mode"};
+pagespeed.Graphs.DisplayDiv = {CACHE_APPLIED:"cache_applied", CACHE_TYPE:"cache_type", IPRO:"ipro", REWRITE_IMAGE:"image_rewriting", REALTIME:"realtime"};
 pagespeed.Graphs.prototype.toggleAutorefresh = function() {
   this.autoRefresh_ = !this.autoRefresh_;
 };
-pagespeed.Graphs.prototype.setFilter = function(element) {
-  this.filter_ = element.value;
-  this.update();
-};
-pagespeed.Graphs.prototype.update = function() {
-  var messages = goog.array.clone(this.psolMessages_[this.psolMessages_.length - 1].messages);
-  if (this.filter_) {
-    for (var i = messages.length - 1;0 <= i;--i) {
-      messages[i].name && goog.string.caseInsensitiveContains(messages[i].name, this.filter_) || messages.splice(i, 1);
-    }
-  }
-  var rawElement = document.getElementById(pagespeed.Graphs.DisplayDiv.RAW);
-  rawElement.innerHTML = "";
-  var table = document.createElement("table");
-  table.style.display = "text-align: left;";
-  rawElement.appendChild(table);
-  for (i = 0;i < messages.length;++i) {
-    var tr = document.createElement("tr");
-    table.appendChild(tr);
-    var tdName = document.createElement("td"), tdValue = document.createElement("td");
-    tr.appendChild(tdName);
-    tr.appendChild(tdValue);
-    tdName.innerText = messages[i].name + ":";
-    tdValue.innerText = messages[i].value;
-  }
-  this.drawVisualization();
-};
 pagespeed.Graphs.DUMP_ERROR_ = {name:"Error", value:"Failed to write statistics to this page."};
 pagespeed.Graphs.prototype.parseMessagesFromResponse = function(text) {
-  var messages = [], timeReceived = null, rawString = [], start = text.indexOf("<pre>"), end = text.indexOf("</pre>", start);
+  var messages = [], timeReceived = null, rawString = [], start = text.indexOf('<pre id="stat">'), end = text.indexOf("</pre>", start);
   if (0 <= start && 0 <= end) {
-    for (var rawString = text.substring(start + 5, end - 1).split("\n"), i = 0;i < rawString.length;++i) {
+    for (var rawString = text.substring(start + 15, end - 1).split("\n"), i = 0;i < rawString.length;++i) {
       var tmp = rawString[i].split(":");
       if (tmp[0] && tmp[1]) {
         var node = {name:tmp[0].trim(), value:tmp[1].trim()};
@@ -4657,20 +4627,19 @@ pagespeed.Graphs.prototype.parseMessagesFromResponse = function(text) {
     }
     timeReceived = new Date;
   } else {
-    messages.push(pagespeed.Graphs.DUMP_ERROR_);
+    console.log("Dump Error"), messages.push(pagespeed.Graphs.DUMP_ERROR_);
   }
   return{messages:messages, timeReceived:timeReceived};
 };
-pagespeed.Graphs.REFRESH_ERROR_ = "Sorry, failed to update the statistics. Please wait and try again later.";
 pagespeed.Graphs.prototype.performRefresh = function() {
   this.xhr_.isActive() || this.firstRefreshDone_ && !this.autoRefresh_ || (goog.events.listen(this.xhr_, goog.net.EventType.COMPLETE, goog.bind(function(graphsObj) {
     if (this.isSuccess()) {
       var newText = this.getResponseText();
       graphsObj.psolMessages_.push(graphsObj.parseMessagesFromResponse(newText));
       graphsObj.psolMessages_.length > pagespeed.Graphs.TIMERANGE_ && graphsObj.psolMessages_.shift();
-      graphsObj.update();
+      graphsObj.drawVisualization();
     } else {
-      console.log(this.getLastError()), document.getElementById(pagespeed.Graphs.DisplayDiv.RAW).innerText = pagespeed.Graphs.REFRESH_ERROR_;
+      console.log(this.getLastError());
     }
     graphsObj.firstRefreshDone_ = !0;
   }, this.xhr_, this)), this.xhr_.send("/pagespeed_admin/statistics"));
@@ -4730,10 +4699,8 @@ pagespeed.Graphs.FREQUENCY_ = 5;
 pagespeed.Graphs.TIMERANGE_ = 86400 / pagespeed.Graphs.FREQUENCY_;
 pagespeed.Graphs.Start = function() {
   goog.events.listen(window, "load", function() {
-    var graphsObj = new pagespeed.Graphs, filterElement = document.getElementById("txtFilter");
-    goog.events.listen(filterElement, "keyup", goog.bind(graphsObj.setFilter, graphsObj, filterElement));
+    var graphsObj = new pagespeed.Graphs;
     goog.events.listen(document.getElementById("autoRefresh"), "change", goog.bind(graphsObj.toggleAutorefresh, graphsObj));
-    goog.events.listen(document.getElementById(pagespeed.Graphs.DisplayMode.RAW), "click", goog.bind(graphsObj.show, graphsObj, pagespeed.Graphs.DisplayDiv.RAW));
     goog.events.listen(document.getElementById(pagespeed.Graphs.DisplayMode.CACHE_APPLIED), "click", goog.bind(graphsObj.show, graphsObj, pagespeed.Graphs.DisplayDiv.CACHE_APPLIED));
     goog.events.listen(document.getElementById(pagespeed.Graphs.DisplayMode.CACHE_TYPE), "click", goog.bind(graphsObj.show, graphsObj, pagespeed.Graphs.DisplayDiv.CACHE_TYPE));
     goog.events.listen(document.getElementById(pagespeed.Graphs.DisplayMode.IPRO), "click", goog.bind(graphsObj.show, graphsObj, pagespeed.Graphs.DisplayDiv.IPRO));

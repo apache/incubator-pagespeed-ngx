@@ -116,7 +116,7 @@ ScanlineStatus WebpFrameWriter::Initialize(const void* config,
   }
 
   if (config == NULL) {
-    return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler(),
+    return PS_LOGGED_STATUS(PS_LOG_DFATAL, message_handler(),
                             SCANLINE_STATUS_INVOCATION_ERROR,
                             FRAME_WEBPWRITER,
                             "missing WebpConfiguration*");
@@ -158,7 +158,7 @@ int WebpFrameWriter::ProgressHook(int percent, const WebPPicture* picture) {
 ScanlineStatus WebpFrameWriter::PrepareImage(const ImageSpec* image_spec) {
   DVLOG(1) << image_spec->ToString();
   if (image_prepared_) {
-    return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler(),
+    return PS_LOGGED_STATUS(PS_LOG_DFATAL, message_handler(),
                             SCANLINE_STATUS_INVOCATION_ERROR,
                             FRAME_WEBPWRITER, "image already prepared");
   }
@@ -252,7 +252,7 @@ ScanlineStatus WebpFrameWriter::CacheCurrentFrame() {
 
   // All scanlines must be written before caching a frame.
   if (next_scanline_ < frame_spec_.height) {
-    return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler(),
+    return PS_LOGGED_STATUS(PS_LOG_DFATAL, message_handler(),
                             SCANLINE_STATUS_INVOCATION_ERROR,
                             FRAME_WEBPWRITER,
                             "CacheCurrentFrame: not all scanlines written");
@@ -311,17 +311,17 @@ ScanlineStatus WebpFrameWriter::CacheCurrentFrame() {
 
 ScanlineStatus WebpFrameWriter::PrepareNextFrame(const FrameSpec* frame_spec) {
   if (!image_prepared_) {
-    return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler(),
+    return PS_LOGGED_STATUS(PS_LOG_DFATAL, message_handler(),
                             SCANLINE_STATUS_INVOCATION_ERROR,
                             FRAME_WEBPWRITER,
                             "PrepareNextFrame: image not prepared");
   }
 
   if (next_frame_ >= image_spec_->num_frames) {
-    return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler(),
+    return PS_LOGGED_STATUS(PS_LOG_DFATAL, message_handler(),
                             SCANLINE_STATUS_INVOCATION_ERROR,
                             FRAME_WEBPWRITER,
-                            "PrepareNextFrame: too many frames");
+                            "PrepareNextFrame: no next frame");
   }
 
   ScanlineStatus status = CacheCurrentFrame();
@@ -360,9 +360,9 @@ ScanlineStatus WebpFrameWriter::PrepareNextFrame(const FrameSpec* frame_spec) {
       break;
     default:
       return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler(),
-                              SCANLINE_STATUS_UNSUPPORTED_FEATURE,
+                              SCANLINE_STATUS_INTERNAL_ERROR,
                               FRAME_WEBPWRITER,
-                              "unhandled or unknown pixel format: %d",
+                              "unknown pixel format: %d",
                               new_pixel_format);
   }
   DVLOG(1) << "Pixel format:" << GetPixelFormatString(frame_spec_.pixel_format);
@@ -377,7 +377,7 @@ ScanlineStatus WebpFrameWriter::PrepareNextFrame(const FrameSpec* frame_spec) {
                          frame_spec_.width, frame_spec_.height,
                          &webp_frame_)) {
       return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler(),
-                              SCANLINE_STATUS_UNSUPPORTED_FEATURE,
+                              SCANLINE_STATUS_INTERNAL_ERROR,
                               FRAME_WEBPWRITER,
                               "WebPPictureView() failure: %s",
                               frame_spec_.ToString().c_str());
@@ -394,7 +394,7 @@ ScanlineStatus WebpFrameWriter::PrepareNextFrame(const FrameSpec* frame_spec) {
 
 ScanlineStatus WebpFrameWriter::WriteNextScanline(const void *scanline_bytes) {
   if (next_scanline_ >= frame_spec_.height) {
-      return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler(),
+      return PS_LOGGED_STATUS(PS_LOG_DFATAL, message_handler(),
                               SCANLINE_STATUS_INVOCATION_ERROR,
                               FRAME_WEBPWRITER,
                               "WriteNextScanline: too many scanlines");
@@ -578,7 +578,7 @@ ScanlineStatus WebpScanlineReader::ReadNextScanlineWithStatus(
     pixels_.reset(new uint8_t[bytes_per_row_ * height_]);
     if (pixels_ == NULL) {
       Reset();
-      return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler_,
+      return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler_,
                               SCANLINE_STATUS_MEMORY_ERROR,
                               SCANLINE_WEBPREADER,
                               "Failed to allocate memory.");
@@ -603,8 +603,8 @@ ScanlineStatus WebpScanlineReader::ReadNextScanlineWithStatus(
      bool decode_ok = (WebPDecode(image_buffer_, buffer_length_, &config)
                        == VP8_STATUS_OK);
 
-     // Clean up WebP decoder because it is not needed any more no matter
-     // whether decoding was successful or not.
+     // Clean up WebP decoder because it is not needed any more,
+     // regardless of whether whether decoding was successful or not.
      WebPFreeDecBuffer(&config.output);
 
      if (!decode_ok) {

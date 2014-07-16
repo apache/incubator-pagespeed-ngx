@@ -18,8 +18,7 @@
  * @fileoverview Code for adding auto-refreshing graphs and realtime linecharts
  * on the basis of the data in statistics page.
  *
- * TODO(xqyin): Integrate the raw mode to statistics page and other modes to
- * console page.
+ * TODO(xqyin): Integrate this into console page.
  *
  * @author oschaaf@we-amp.com (Otto van der Schaaf)
  * @author xqyin@google.com (XiaoQian Yin)
@@ -75,14 +74,6 @@ pagespeed.Graphs = function(opt_xhr) {
   // data after refreshing the page manually.
 
   /**
-   * We provide filtering functionality for users to search for certain
-   * statistics like all the statistics related to caches. This option is the
-   * matching pattern. Filtering is case-insensitive.
-   * @private {string}
-   */
-  this.filter_ = '';
-
-  /**
    * The option of auto-refresh. If true, the page will automatically refresh
    * itself. The default frequency is to refresh every 5 seconds.
    * @private {boolean}
@@ -102,9 +93,7 @@ pagespeed.Graphs = function(opt_xhr) {
   var navElement = document.createElement('table');
   navElement.id = 'navBar';
   navElement.innerHTML =
-      '<tr><td><a id="' + pagespeed.Graphs.DisplayMode.RAW +
-      '" href="javascript:void(0);">Raw</a> - </td>' +
-      '<td><a id="' + pagespeed.Graphs.DisplayMode.CACHE_APPLIED +
+      '<tr><td><a id="' + pagespeed.Graphs.DisplayMode.CACHE_APPLIED +
       '" href="javascript:void(0);">' +
       'Per application cache stats</a> - </td>' +
       '<td><a id="' + pagespeed.Graphs.DisplayMode.CACHE_TYPE +
@@ -119,19 +108,17 @@ pagespeed.Graphs = function(opt_xhr) {
       '<td><a id="' + pagespeed.Graphs.DisplayMode.REALTIME +
       '" href="javascript:void(0);">' +
       'Realtime</a></td></tr>';
-  // The UI table of auto-refresh and filtering.
+  // The UI table of auto-refresh.
   var uiTable = document.createElement('div');
   uiTable.id = 'uiDiv';
   uiTable.innerHTML =
       '<table id="uiTable" border=1 style="border-collapse: ' +
       'collapse;border-color:silver;"><tr valign="center">' +
       '<td>Auto refresh: <input type="checkbox" id="autoRefresh" ' +
-      (this.autoRefresh_ ? 'checked' : '') + '></td>' +
-      '<td>&nbsp;&nbsp;&nbsp;&nbsp;Search: ' +
-      '<input id="txtFilter" type="text"></td>' +
-      '</tr></table>';
+      (this.autoRefresh_ ? 'checked' : '') + '></td></tr></table>';
   document.body.insertBefore(
-      uiTable, document.getElementById(pagespeed.Graphs.DisplayDiv.RAW));
+      uiTable,
+      document.getElementById(pagespeed.Graphs.DisplayDiv.CACHE_APPLIED));
   document.body.insertBefore(navElement, document.getElementById('uiDiv'));
 };
 
@@ -142,8 +129,6 @@ pagespeed.Graphs = function(opt_xhr) {
  */
 pagespeed.Graphs.prototype.show = function(div) {
   // Hides all the elements first.
-  document.getElementById(
-      pagespeed.Graphs.DisplayDiv.RAW).style.display = 'none';
   document.getElementById(
       pagespeed.Graphs.DisplayDiv.CACHE_APPLIED).style.display = 'none';
   document.getElementById(
@@ -156,23 +141,16 @@ pagespeed.Graphs.prototype.show = function(div) {
       pagespeed.Graphs.DisplayDiv.REALTIME).style.display = 'none';
   // Only shows the element chosen by users.
   document.getElementById(div).style.display = '';
-  // If the chosen display mode is 'raw', then display the UI table for
-  // auto-refresh and statistics filtering.
-  document.getElementById('uiTable').style.display =
-      (div == pagespeed.Graphs.DisplayDiv.RAW) ? '' : 'none';
 };
 
 
 /**
  * The option of the display mode of the graphs page. Users can switch modes
- * by the second level navigation bar shown on the page. In the default raw
- * mode it would show the raw div element which is the statistics in text.
- * When it is set to other values, it would show the corresponding div elements
- * containing charts.
+ * by the second level navigation bar shown on the page. The page would show
+ * the corresponding div elements containing charts.
  * @enum {string}
  */
 pagespeed.Graphs.DisplayMode = {
-  RAW: 'raw_mode',
   CACHE_APPLIED: 'cache_applied_mode',
   CACHE_TYPE: 'cache_type_mode',
   IPRO: 'ipro_mode',
@@ -187,7 +165,6 @@ pagespeed.Graphs.DisplayMode = {
  * @enum {string}
  */
 pagespeed.Graphs.DisplayDiv = {
-  RAW: 'raw',
   CACHE_APPLIED: 'cache_applied',
   CACHE_TYPE: 'cache_type',
   IPRO: 'ipro',
@@ -201,53 +178,6 @@ pagespeed.Graphs.DisplayDiv = {
  */
 pagespeed.Graphs.prototype.toggleAutorefresh = function() {
   this.autoRefresh_ = !this.autoRefresh_;
-};
-
-
-/**
- * Updates the option of statistics filter.
- * @param {!HTMLElement} element The HTML element of Filter.
- */
-pagespeed.Graphs.prototype.setFilter = function(element) {
-  this.filter_ = element.value;
-  this.update();
-};
-
-
-/**
- * Filters and displays raw statistics according to the options.
- */
-pagespeed.Graphs.prototype.update = function() {
-  // The most recent data.
-  var messages = goog.array.clone(
-      this.psolMessages_[this.psolMessages_.length - 1].messages);
-
-  if (this.filter_) {
-    for (var i = messages.length - 1; i >= 0; --i) {
-      if (!messages[i].name ||
-          !goog.string.caseInsensitiveContains(
-              messages[i].name, this.filter_)) {
-        messages.splice(i, 1);
-      }
-    }
-  }
-
-  var rawElement = document.getElementById(pagespeed.Graphs.DisplayDiv.RAW);
-  rawElement.innerHTML = '';
-  var table = document.createElement('table');
-  table.style.display = 'text-align: left;';
-  rawElement.appendChild(table);
-  for (var i = 0; i < messages.length; ++i) {
-    var tr = document.createElement('tr');
-    table.appendChild(tr);
-    var tdName = document.createElement('td');
-    var tdValue = document.createElement('td');
-    tr.appendChild(tdName);
-    tr.appendChild(tdValue);
-    tdName.innerText = messages[i].name + ':';
-    tdValue.innerText = messages[i].value;
-  }
-  this.drawVisualization();
 };
 
 
@@ -281,10 +211,10 @@ pagespeed.Graphs.prototype.parseMessagesFromResponse = function(text) {
   var messages = [];
   var timeReceived = null;
   var rawString = [];
-  var start = text.indexOf('<pre>');
+  var start = text.indexOf('<pre id="stat">');
   var end = text.indexOf('</pre>', start);
   if (start >= 0 && end >= 0) {
-    start = start + '<pre>'.length;
+    start = start + '<pre id="stat">'.length;
     end = end - 1;
     rawString = text.substring(start, end).split('\n');
     for (var i = 0; i < rawString.length; ++i) {
@@ -298,6 +228,7 @@ pagespeed.Graphs.prototype.parseMessagesFromResponse = function(text) {
     }
     timeReceived = new Date();
   } else {
+    console.log('Dump Error');
     messages.push(pagespeed.Graphs.DUMP_ERROR_);
   }
   var newArray = {
@@ -309,17 +240,7 @@ pagespeed.Graphs.prototype.parseMessagesFromResponse = function(text) {
 
 
 /**
-  * The error message of auto-refresh.
-  * @private {string}
-  * @const
-  */
-pagespeed.Graphs.REFRESH_ERROR_ =
-    'Sorry, failed to update the statistics. ' +
-    'Please wait and try again later.';
-
-
-/**
- * Refreshs the page by making requsts to server.
+ * Refreshes the page by making requsts to server.
  */
 pagespeed.Graphs.prototype.performRefresh = function() {
   // If the first refresh has not done yet, then do the refresh no matter what
@@ -338,11 +259,9 @@ pagespeed.Graphs.prototype.performRefresh = function() {
             pagespeed.Graphs.TIMERANGE_) {
           graphsObj.psolMessages_.shift();
         }
-        graphsObj.update();
+        graphsObj.drawVisualization();
       } else {
         console.log(this.getLastError());
-        document.getElementById(pagespeed.Graphs.DisplayDiv.RAW).innerText =
-            pagespeed.Graphs.REFRESH_ERROR_;
       }
       graphsObj.firstRefreshDone_ = true;
     };
@@ -539,16 +458,9 @@ pagespeed.Graphs.TIMERANGE_ = 24 * 60 * 60 /
 pagespeed.Graphs.Start = function() {
   var graphsOnload = function() {
     var graphsObj = new pagespeed.Graphs();
-    var filterElement = document.getElementById('txtFilter');
-    goog.events.listen(
-        filterElement, 'keyup', goog.bind(graphsObj.setFilter,
-                                          graphsObj, filterElement));
     goog.events.listen(document.getElementById('autoRefresh'), 'change',
                        goog.bind(graphsObj.toggleAutorefresh,
                                  graphsObj));
-    goog.events.listen(
-        document.getElementById(pagespeed.Graphs.DisplayMode.RAW), 'click',
-        goog.bind(graphsObj.show, graphsObj, pagespeed.Graphs.DisplayDiv.RAW));
     goog.events.listen(
         document.getElementById(pagespeed.Graphs.DisplayMode.CACHE_APPLIED),
         'click',

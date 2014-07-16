@@ -119,7 +119,7 @@ class GifFrameReader : public MultipleFrameReader {
 
   virtual ScanlineStatus GetFrameSpec(FrameSpec* frame_spec) const {
     if (frame_spec == NULL) {
-      return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler(),
+      return PS_LOGGED_STATUS(PS_LOG_DFATAL, message_handler(),
                               SCANLINE_STATUS_INVOCATION_ERROR,
                               FRAME_GIFREADER,
                               "Unexpected NULL pointer.");
@@ -130,7 +130,7 @@ class GifFrameReader : public MultipleFrameReader {
 
   virtual ScanlineStatus GetImageSpec(ImageSpec* image_spec) const {
     if (image_spec == NULL) {
-      return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler(),
+      return PS_LOGGED_STATUS(PS_LOG_DFATAL, message_handler(),
                               SCANLINE_STATUS_INVOCATION_ERROR,
                               FRAME_GIFREADER,
                               "Unexpected NULL pointer.");

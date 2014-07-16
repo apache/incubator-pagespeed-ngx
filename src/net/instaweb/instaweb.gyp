@@ -522,6 +522,34 @@
       ]
     },
     {
+      'target_name': 'instaweb_statistics_js_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'net/instaweb/system',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/system',
+        'var_name': 'statistics_js',
+      },
+      'sources': [
+        'genfiles/system/statistics_js_dbg.js',
+      ],
+      'includes': [
+        'data2c.gypi',
+      ]
+    },
+    {
+      'target_name': 'instaweb_statistics_js_opt_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'net/instaweb/system',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/system',
+        'var_name': 'statistics_js_opt',
+      },
+      'sources': [
+        'genfiles/system/statistics_js_opt.js',
+      ],
+      'includes': [
+        'data2c.gypi',
+      ]
+    },
+    {
       'target_name': 'instaweb_lazyload_images_data2c',
       'variables': {
         'instaweb_data2c_subdir': 'net/instaweb/rewriter',
@@ -1238,6 +1266,8 @@
         'instaweb_split_html_beacon_data2c',
         'instaweb_split_html_beacon_opt_data2c',
         'instaweb_spriter',
+        'instaweb_statistics_js_data2c',
+        'instaweb_statistics_js_opt_data2c',
         'instaweb_util',
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_http',

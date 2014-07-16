@@ -67,7 +67,7 @@ ScanlineStatus FrameToScanlineReaderAdapter::InitializeWithStatus(
   }
   if (image_spec_.num_frames > 1) {
     return PS_LOGGED_STATUS(
-        PS_LOG_ERROR, impl_->message_handler(),
+        PS_DLOG_INFO, impl_->message_handler(),
         SCANLINE_STATUS_UNSUPPORTED_FEATURE,
         FRAME_TO_SCANLINE_READER_ADAPTER,
         "animated images not supported in Scanline interface. %s",
@@ -102,7 +102,7 @@ ScanlineStatus FrameToScanlineReaderAdapter::InitializeWithStatus(
   if (!image_and_frame_cols_coincide_ || !image_and_frame_rows_coincide_) {
     if (!image_spec_.use_bg_color) {
       return PS_LOGGED_STATUS(
-          PS_LOG_ERROR, impl_->message_handler(),
+          PS_LOG_DFATAL, impl_->message_handler(),
           SCANLINE_STATUS_PARSE_ERROR,
           FRAME_TO_SCANLINE_READER_ADAPTER,
           "frame must have same dimensions as image");
@@ -211,7 +211,7 @@ ScanlineStatus FrameToScanlineWriterAdapter::InitializeWriteWithStatus(
     const void* const config,
     GoogleString* const out) {
   if (!init_done_) {
-    return PS_LOGGED_STATUS(PS_LOG_ERROR, impl_->message_handler(),
+    return PS_LOGGED_STATUS(PS_LOG_DFATAL, impl_->message_handler(),
                             SCANLINE_STATUS_INVOCATION_ERROR,
                             FRAME_TO_SCANLINE_WRITER_ADAPTER,
                             "Initialize() called before Init()");
@@ -282,7 +282,7 @@ ScanlineStatus ScanlineToFrameReaderAdapter::Initialize(
 ScanlineStatus ScanlineToFrameReaderAdapter::PrepareNextFrame() {
   if (!HasMoreFrames()) {
     state_ = ERROR;
-    return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler(),
+    return PS_LOGGED_STATUS(PS_LOG_DFATAL, message_handler(),
                             SCANLINE_STATUS_INVOCATION_ERROR,
                             SCANLINE_TO_FRAME_READER_ADAPTER,
                             "PrepareNextFrame()");
@@ -352,7 +352,7 @@ ScanlineStatus ScanlineToFrameWriterAdapter::PrepareNextFrame(
     const FrameSpec* const spec) {
   if (state_ != IMAGE_PREPARED) {
     state_ = ERROR;
-    return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler(),
+    return PS_LOGGED_STATUS(PS_LOG_DFATAL, message_handler(),
                             SCANLINE_STATUS_INVOCATION_ERROR,
                             SCANLINE_TO_FRAME_WRITER_ADAPTER,
                             "PrepareNextFrame should be called after "
