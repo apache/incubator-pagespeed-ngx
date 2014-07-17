@@ -109,7 +109,8 @@ RewriteQuery::Status RewriteQuery::ScanHeader(
   }
 
   // Tracks the headers that need to be removed.
-  HeaderT headers_to_remove;
+  // It doesn't matter what type of headers we use, so we use RequestHeaders.
+  RequestHeaders headers_to_remove;
 
   for (int i = 0, n = headers->NumAttributes(); i < n; ++i) {
     const StringPiece name(headers->Name(i));

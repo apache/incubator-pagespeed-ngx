@@ -2018,7 +2018,6 @@ goog.events.ListenerMap.findListenerIndex_ = function(listenerArray, listener, o
   }
   return-1;
 };
-goog.events.listeners_ = {};
 goog.events.LISTENER_MAP_PROP_ = "closure_lm_" + (1E6 * Math.random() | 0);
 goog.events.onString_ = "on";
 goog.events.onStringMap_ = {};

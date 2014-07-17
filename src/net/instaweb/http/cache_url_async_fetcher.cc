@@ -64,6 +64,7 @@ class CachePutFetch : public SharedAsyncFetch {
         handler_(handler),
         cacheable_(false),
         cache_value_writer_(&cache_value_, cache_),
+        saved_headers_(request_context()->options()),
         req_properties_(base_fetch->request_headers()->GetProperties()) {
     if (backend_first_byte_latency_ != NULL) {
       start_time_ms_ = cache_->timer()->NowMs();

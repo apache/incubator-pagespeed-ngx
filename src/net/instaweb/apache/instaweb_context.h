@@ -21,7 +21,6 @@
 #include "net/instaweb/automatic/public/html_detector.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/request_context.h"
-#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
@@ -43,6 +42,7 @@ class ApacheServerContext;
 class GzipInflater;
 class QueryParams;
 class RequestHeaders;
+class ResponseHeaders;
 class RewriteDriver;
 class RewriteOptions;
 
@@ -96,7 +96,7 @@ class InstawebContext {
   void clear() { output_.clear(); }  // TODO(jmarantz): needed?
 
   ResponseHeaders* response_headers() {
-    return &response_headers_;
+    return response_headers_.get();
   }
 
   bool sent_headers() { return sent_headers_; }
@@ -138,7 +138,7 @@ class InstawebContext {
   HtmlDetector html_detector_;
   GoogleString absolute_url_;
   scoped_ptr<RequestHeaders> request_headers_;
-  ResponseHeaders response_headers_;
+  scoped_ptr<ResponseHeaders> response_headers_;
   bool started_parse_;
   bool sent_headers_;
   bool populated_headers_;

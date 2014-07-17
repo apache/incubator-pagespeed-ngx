@@ -26,6 +26,7 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
@@ -87,7 +88,8 @@ RecordingFetch::RecordingFetch(bool proxy_mode,
       can_in_place_rewrite_(false),
       streaming_(true),
       cache_value_writer_(
-          &cache_value_, context_->FindServerContext()->http_cache()) {
+          &cache_value_, context_->FindServerContext()->http_cache()),
+      saved_headers_(request_context()->options()) {
   Statistics* stats = context->FindServerContext()->statistics();
   in_place_oversized_opt_stream_ =
       stats->GetVariable(InPlaceRewriteContext::kInPlaceOversizedOptStream);

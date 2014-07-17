@@ -29,6 +29,7 @@
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/ref_counted_ptr.h"
 #include "pagespeed/kernel/http/request_headers.h"
 
 namespace net_instaweb {
@@ -162,7 +163,7 @@ class HTTPCache {
     HTTPValue* http_value() { return &http_value_; }
     ResponseHeaders* response_headers() {
       if (response_headers_ == NULL) {
-        response_headers_ = new ResponseHeaders;
+        response_headers_ = new ResponseHeaders(request_ctx_->options());
         owns_response_headers_ = true;
       }
       return response_headers_;
