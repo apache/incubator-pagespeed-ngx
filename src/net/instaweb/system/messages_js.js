@@ -159,10 +159,10 @@ pagespeed.Messages.prototype.parseMessagesFromResponse = function(text) {
   var messages = [];
   // TODO(xqyin): Add a handler method in AdminSite to provide proper XHR
   // response instead of depending on the format like this.
-  var start = text.indexOf('<div id=\"log\">');
-  var end = text.indexOf('<script type=\'text/javascript\'>', start);
+  var start = text.indexOf('<div id="log">');
+  var end = text.indexOf('<script type="text/javascript">', start);
   if (start >= 0 && end >= 0) {
-    start = start + '<div id=\"log\">'.length;
+    start = start + '<div id="log">'.length;
     end = end - '</div>\n'.length;
     messages = text.substring(start, end).split('\n');
   } else {

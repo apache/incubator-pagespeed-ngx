@@ -83,9 +83,9 @@ class RewriteFilter;
 
 namespace {
 
-static const char kBackButton[] =
+static const char kBackToMetadataButton[] =
     "<br><input type=\"button\" value=\"Back\" "
-    "onclick=\"javascript:history.go(-1)\"/>";
+    "onclick=\"location.href='./cache#show_metadata'\"/>";
 
 // Define the various query parameter keys sent by instrumentation beacons.
 const char kBeaconUrlQueryParam[] = "url";
@@ -1254,46 +1254,19 @@ class MetadataCacheResultCallback
 
 }  // namespace
 
-// TODO(xqyin): Move this to caches.js file so we could eliminate the
-// dependency of admin site on server context in a way.
-GoogleString ServerContext::ShowCacheForm(const char* user_agent) const {
-  GoogleString ua_default;
-  if (user_agent != NULL) {
-    GoogleString buf;
-    ua_default = StrCat("value=\"", HtmlKeywords::Escape(user_agent, &buf),
-                        "\" ");
-  }
-
-  // The styling on this form could use some love, but the 110/103 sizing
-  // is to make those input fields decently wide to fit large URLs and UAs
-  // and to roughly line up.
-  GoogleString out = StrCat(
-      "<form method=get>\n",
-      "  URL: <input type=text name=url size=110 /><br>\n"
-      "  User-Agent: <input type=text size=103 name=user_agent ",
-      ua_default,
-      "/></br> \n",
-      "   <input type=submit value='Show Metadata Cache Entry'/>"
-      "</form>\n");
-  return out;
-}
-
-// TODO(xqyin): We should modify this handler to diplay caches info on the same
-// page instead of opening a new page to avoid inserting back buttons.
+// TODO(xqyin): Maybe modify this to not open a new page.
 void ServerContext::ShowCacheHandler(
     StringPiece url, AsyncFetch* fetch, RewriteOptions* options_arg) {
   scoped_ptr<RewriteOptions> options(options_arg);
   const char* user_agent = fetch->request_headers()->Lookup1(
       HttpAttributes::kUserAgent);
   if (url.empty()) {
-    // If the url was not supplied, provide the user with a form to set it.
     ResponseHeaders* response_headers = fetch->response_headers();
     response_headers->SetStatusAndReason(HttpStatus::kOK);
     response_headers->Add(HttpAttributes::kCacheControl,
                           HttpAttributes::kNoStore);
     response_headers->Add(HttpAttributes::kContentType, "text/html");
-    fetch->Write(StrCat("<html><body>",
-                        ShowCacheForm(user_agent),
+    fetch->Write(StrCat("<html><body>Empty URL<br>", kBackToMetadataButton,
                         "</body></html>"),
                  message_handler_);
     fetch->Done(true);
@@ -1301,7 +1274,8 @@ void ServerContext::ShowCacheHandler(
     ResponseHeaders* response_headers = fetch->response_headers();
     response_headers->SetStatusAndReason(HttpStatus::kNotFound);
     response_headers->Add(HttpAttributes::kContentType, "text/html");
-    fetch->Write(StrCat("<html><body>Invalid URL</body></html>", kBackButton),
+    fetch->Write(StrCat("<html><body>Invalid URL<br>", kBackToMetadataButton,
+                        "</body></html>"),
                  message_handler_);
     fetch->Done(false);
   } else {
@@ -1317,7 +1291,7 @@ void ServerContext::ShowCacheHandler(
       driver->Cleanup();
       delete callback;
       fetch->response_headers()->SetStatusAndReason(HttpStatus::kNotFound);
-      fetch->Write(StrCat(error_out, kBackButton), message_handler_);
+      fetch->Write(StrCat(error_out, kBackToMetadataButton), message_handler_);
       fetch->Done(false);
     }
   }

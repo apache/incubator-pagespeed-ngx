@@ -2292,13 +2292,23 @@ var pagespeed = {Caches:function() {
   modeElement.innerHTML = '<tr><td><a id="' + pagespeed.Caches.DisplayMode.METADATA_CACHE + '" href="javascript:void(0);">Show Metadata Cache</a> - </td><td><a id="' + pagespeed.Caches.DisplayMode.CACHE_STRUCTURE + '" href="javascript:void(0);">Caches Structure</a> - </td><td><a id="' + pagespeed.Caches.DisplayMode.PURGE_CACHE + '" href="javascript:void(0);">Purge Cache</a></td></tr>';
   document.body.insertBefore(modeElement, document.getElementById(pagespeed.Caches.DisplayDiv.METADATA_CACHE));
 }};
-pagespeed.Caches.DisplayMode = {METADATA_CACHE:"show_mode", CACHE_STRUCTURE:"cache_mode", PURGE_CACHE:"purge_mode"};
-pagespeed.Caches.DisplayDiv = {METADATA_CACHE:"show_cache_entry", CACHE_STRUCTURE:"cache_struct", PURGE_CACHE:"purge_cache"};
+pagespeed.Caches.toggleDetail = function(id) {
+  var summary_div = document.getElementById(id + "_summary"), detail_div = document.getElementById(id + "_detail");
+  document.getElementById(id + "_toggle").checked ? (summary_div.style.display = "none", detail_div.style.display = "block") : (summary_div.style.display = "block", detail_div.style.display = "none");
+};
+goog.exportSymbol("pagespeed.Caches.toggleDetail", pagespeed.Caches.toggleDetail);
+pagespeed.Caches.DisplayMode = {METADATA_CACHE:"metadata_mode", CACHE_STRUCTURE:"struct_mode", PURGE_CACHE:"purge_mode"};
+pagespeed.Caches.DisplayDiv = {METADATA_CACHE:"show_metadata", CACHE_STRUCTURE:"cache_struct", PURGE_CACHE:"purge_cache"};
+pagespeed.Caches.prototype.parseLocation = function() {
+  var div = location.hash.substr(1);
+  "" == div ? this.show(pagespeed.Caches.DisplayDiv.METADATA_CACHE) : goog.object.contains(pagespeed.Caches.DisplayDiv, div) && this.show(div);
+};
 pagespeed.Caches.prototype.show = function(div) {
   document.getElementById(pagespeed.Caches.DisplayDiv.METADATA_CACHE).style.display = "none";
   document.getElementById(pagespeed.Caches.DisplayDiv.CACHE_STRUCTURE).style.display = "none";
   document.getElementById(pagespeed.Caches.DisplayDiv.PURGE_CACHE).style.display = "none";
   document.getElementById(div).style.display = "";
+  location.href = location.href.split("#")[0] + "#" + div;
 };
 pagespeed.Caches.prototype.purgeInit = function() {
   var purgeUI = document.createElement("form");
@@ -2311,9 +2321,11 @@ pagespeed.Caches.Start = function() {
   goog.events.listen(window, "load", function() {
     var cachesObj = new pagespeed.Caches;
     cachesObj.purgeInit();
+    cachesObj.parseLocation();
     goog.events.listen(document.getElementById(pagespeed.Caches.DisplayMode.METADATA_CACHE), "click", goog.bind(cachesObj.show, cachesObj, pagespeed.Caches.DisplayDiv.METADATA_CACHE));
     goog.events.listen(document.getElementById(pagespeed.Caches.DisplayMode.CACHE_STRUCTURE), "click", goog.bind(cachesObj.show, cachesObj, pagespeed.Caches.DisplayDiv.CACHE_STRUCTURE));
     goog.events.listen(document.getElementById(pagespeed.Caches.DisplayMode.PURGE_CACHE), "click", goog.bind(cachesObj.show, cachesObj, pagespeed.Caches.DisplayDiv.PURGE_CACHE));
+    goog.events.listen(window, "hashchange", goog.bind(cachesObj.parseLocation, cachesObj));
   });
 };
 goog.exportSymbol("pagespeed.Caches.Start", pagespeed.Caches.Start);

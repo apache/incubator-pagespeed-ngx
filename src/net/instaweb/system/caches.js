@@ -23,6 +23,7 @@
 goog.provide('pagespeed.Caches');
 
 goog.require('goog.events');
+goog.require('goog.object');
 goog.require('goog.string');
 
 
@@ -50,9 +51,26 @@ pagespeed.Caches = function() {
   document.body.insertBefore(
       modeElement,
       document.getElementById(pagespeed.Caches.DisplayDiv.METADATA_CACHE));
-  // The navigation above would bring users back to the metadata cache tab
-  // even if they refresh other tabs.
-  // TODO(xqyin): Use closure tab pane UI element instead of the navigation.
+  // TODO(xqyin): Maybe use closure tab pane UI element instead.
+};
+
+
+/**
+ * Display the detailed structure of selected cache.
+ * @param {string} id The id of the div element to display.
+ * @export
+ */
+pagespeed.Caches.toggleDetail = function(id) {
+  var toggle_button = document.getElementById(id + '_toggle');
+  var summary_div = document.getElementById(id + '_summary');
+  var detail_div = document.getElementById(id + '_detail');
+  if (toggle_button.checked) {
+    summary_div.style.display = 'none';
+    detail_div.style.display = 'block';
+  } else {
+    summary_div.style.display = 'block';
+    detail_div.style.display = 'none';
+  }
 };
 
 
@@ -63,8 +81,8 @@ pagespeed.Caches = function() {
  * @enum {string}
  */
 pagespeed.Caches.DisplayMode = {
-  METADATA_CACHE: 'show_mode',
-  CACHE_STRUCTURE: 'cache_mode',
+  METADATA_CACHE: 'metadata_mode',
+  CACHE_STRUCTURE: 'struct_mode',
   PURGE_CACHE: 'purge_mode'
 };
 
@@ -76,9 +94,22 @@ pagespeed.Caches.DisplayMode = {
  * @enum {string}
  */
 pagespeed.Caches.DisplayDiv = {
-  METADATA_CACHE: 'show_cache_entry',
+  METADATA_CACHE: 'show_metadata',
   CACHE_STRUCTURE: 'cache_struct',
   PURGE_CACHE: 'purge_cache'
+};
+
+
+/**
+ * Parse the location URL to get its anchor part and show the div element.
+ */
+pagespeed.Caches.prototype.parseLocation = function() {
+  var div = location.hash.substr(1);
+  if (div == '') {
+    this.show(pagespeed.Caches.DisplayDiv.METADATA_CACHE);
+  } else if (goog.object.contains(pagespeed.Caches.DisplayDiv, div)) {
+    this.show(div);
+  }
 };
 
 
@@ -97,6 +128,7 @@ pagespeed.Caches.prototype.show = function(div) {
       pagespeed.Caches.DisplayDiv.PURGE_CACHE).style.display = 'none';
   // Only shows the element chosen by users.
   document.getElementById(div).style.display = '';
+  location.href = location.href.split('#')[0] + '#' + div;
 };
 
 
@@ -123,7 +155,7 @@ pagespeed.Caches.Start = function() {
   var cachesOnload = function() {
     var cachesObj = new pagespeed.Caches();
     cachesObj.purgeInit();
-
+    cachesObj.parseLocation();
     goog.events.listen(
         document.getElementById(pagespeed.Caches.DisplayMode.METADATA_CACHE),
         'click',
@@ -141,6 +173,10 @@ pagespeed.Caches.Start = function() {
         'click',
         goog.bind(cachesObj.show, cachesObj,
                   pagespeed.Caches.DisplayDiv.PURGE_CACHE));
+    // IE6/7 don't support this event. Then the back button would not work
+    // because no requests captured.
+    goog.events.listen(window, 'hashchange',
+                       goog.bind(cachesObj.parseLocation, cachesObj));
   };
   goog.events.listen(window, 'load', cachesOnload);
 };

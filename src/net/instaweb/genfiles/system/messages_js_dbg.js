@@ -4615,7 +4615,7 @@ pagespeed.Messages.prototype.update = function() {
 };
 pagespeed.Messages.DUMP_ERROR_ = "<pre>Failed to write messages to this page. Please check pagespeed.conf to see if it's enabled.</pre>\n";
 pagespeed.Messages.prototype.parseMessagesFromResponse = function(text) {
-  var messages = [], start = text.indexOf('<div id="log">'), end = text.indexOf("<script type='text/javascript'>", start);
+  var messages = [], start = text.indexOf('<div id="log">'), end = text.indexOf('<script type="text/javascript">', start);
   0 <= start && 0 <= end ? messages = text.substring(start + 14, end - 7).split("\n") : messages.push(pagespeed.Messages.DUMP_ERROR_);
   return messages;
 };

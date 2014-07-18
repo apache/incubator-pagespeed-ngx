@@ -392,25 +392,9 @@ void AdminSite::PrintHistograms(AdminSource source, AsyncFetch* fetch,
 
 namespace {
 
-static const char kBackButton[] =
+static const char kBackToPurgeCacheButton[] =
     "<br><input type=\"button\" value=\"Back\" "
-    "onclick=\"javascript:history.go(-1)\"/>";
-
-static const char kToggleScript[] =
-    "<script type='text/javascript'>\n"
-    "function toggleDetail(id) {\n"
-    "  var toggle_button = document.getElementById(id + '_toggle');\n"
-    "  var summary_div = document.getElementById(id + '_summary');\n"
-    "  var detail_div = document.getElementById(id + '_detail');\n"
-    "  if (toggle_button.checked) {\n"
-    "    summary_div.style.display = 'none';\n"
-    "    detail_div.style.display = 'block';\n"
-    "  } else {\n"
-    "    summary_div.style.display = 'block';\n"
-    "    detail_div.style.display = 'none';\n"
-    "  }\n"
-    "}\n"
-    "</script>\n";
+    "onclick=\"location.href='./cache#purge_cache'\"/>";
 
 static const char kTableStart[] =
     "<table style='font-family:sans-serif;font-size:0.9em'>\n"
@@ -498,16 +482,41 @@ GoogleString IndentCacheDescriptor(StringPiece name) {
 
 GoogleString CacheInfoHtmlSnippet(StringPiece label, StringPiece descriptor) {
   GoogleString out, escaped;
-  StrAppend(&out, "<tr style='vertical-align:top;'><td>", label,
-            "</td><td><input id='", label,
-            "_toggle' type='checkbox' onclick='toggleDetail(\"", label,
-            "\")'/></td><td><code id='", label, "_summary'>");
+  StrAppend(&out, "<tr style=\"vertical-align:top;\"><td>", label,
+            "</td><td><input id=\"", label);
+  StrAppend(&out, "_toggle\" type=\"checkbox\" ",
+            "onclick=\"pagespeed.Caches.toggleDetail('", label,
+            "')\"/></td><td><code id=\"", label, "_summary\">");
   StrAppend(&out, HtmlKeywords::Escape(HackCacheDescriptor(descriptor),
                                        &escaped));
-  StrAppend(&out, "</code><code id='", label,
-            "_detail' style='display:none;'>");
+  StrAppend(&out, "</code><code id=\"", label,
+            "_detail\" style=\"display:none;\">");
   StrAppend(&out, IndentCacheDescriptor(descriptor));
   StrAppend(&out, "</code></td></tr>\n");
+  return out;
+}
+
+// Returns an HTML form for entering a URL for ShowCacheHandler.  If
+// the user_agent is non-null, then it's used to prepopulate the
+// "User Agent" field in the form.
+GoogleString ShowCacheForm(const char* user_agent) {
+  GoogleString ua_default;
+  if (user_agent != NULL) {
+    GoogleString buf;
+    ua_default = StrCat("value=\"", HtmlKeywords::Escape(user_agent, &buf),
+                        "\" ");
+  }
+  // The styling on this form could use some love, but the 110/103 sizing
+  // is to make those input fields decently wide to fit large URLs and UAs
+  // and to roughly line up.
+  GoogleString out = StrCat(
+      "<form method=get>\n",
+      "  URL: <input type=text name=url size=110 /><br>\n"
+      "  User-Agent: <input type=text size=103 name=user_agent ",
+      ua_default,
+      "/></br> \n",
+      "   <input type=submit value='Show Metadata Cache Entry'/>"
+      "</form>\n");
   return out;
 }
 
@@ -531,8 +540,8 @@ void AdminSite::PrintCaches(bool is_global, AdminSource source,
     // URL, which it may do asynchronously, so we cannot use the
     // AdminHtml abstraction which closes the connection in its
     // destructor.
-    // TODO(xqyin): Figure out where the ShowCacheHandler and ShowCacheForm
-    // should live to eliminate the dependency here.
+    // TODO(xqyin): Figure out where the ShowCacheHandler should live to
+    // eliminate the dependency here.
     server_context->ShowCacheHandler(url, fetch, options->Clone());
   } else if ((source == kPageSpeedAdmin) &&
              query_params.Lookup1Unescaped("purge", &url)) {
@@ -546,10 +555,17 @@ void AdminSite::PrintCaches(bool is_global, AdminSource source,
                           "<pre>\n"
                           "    PagespeedEnableCachePurge on\n"
                           "<pre>\n"
-                          "to your config\n", kBackButton), message_handler_);
+                          "to your config\n", kBackToPurgeCacheButton),
+                   message_handler_);
       fetch->Done(true);
     } else if (url == "*") {
       PurgeHandler(url, cache_path, fetch);
+    } else if (url.empty()) {
+      response_headers->SetStatusAndReason(HttpStatus::kNotFound);
+      response_headers->Add(HttpAttributes::kContentType, "text/html");
+      fetch->Write(StrCat("Empty URL", kBackToPurgeCacheButton),
+                   message_handler_);
+      fetch->Done(true);
     } else {
       GoogleUrl origin(stripped_gurl.Origin());
       GoogleUrl resolved(origin, url);
@@ -558,11 +574,8 @@ void AdminSite::PrintCaches(bool is_global, AdminSource source,
         response_headers->Add(HttpAttributes::kContentType, "text/html");
         GoogleString escaped_url;
         HtmlKeywords::Escape(url, &escaped_url);
-        // This back button would bring users to metadata cache tab instead of
-        // purge cache tab.
-        // TODO(xqyin): Assign specific URL suffix to different tabs so we
-        // could avoid using .go(-1) here which is wonky.
-        fetch->Write(StrCat("Invalid URL: ", escaped_url, kBackButton),
+        fetch->Write(StrCat("Invalid URL: ", escaped_url,
+                            kBackToPurgeCacheButton),
                      message_handler_);
         fetch->Done(true);
       } else {
@@ -572,12 +585,12 @@ void AdminSite::PrintCaches(bool is_global, AdminSource source,
   } else {
     AdminHtml admin_html("cache", "", source, fetch, message_handler_);
 
-    fetch->Write("<div id='show_cache_entry'>", message_handler_);
+    fetch->Write("<div id=\"show_metadata\">", message_handler_);
     // Present a small form to enter a URL.
     if (source == kPageSpeedAdmin) {
       const char* user_agent = fetch->request_headers()->Lookup1(
           HttpAttributes::kUserAgent);
-      fetch->Write(server_context->ShowCacheForm(user_agent), message_handler_);
+      fetch->Write(ShowCacheForm(user_agent), message_handler_);
     }
     fetch->Write("</div>\n", message_handler_);
     // Display configured cache information.
@@ -591,7 +604,7 @@ void AdminSite::PrintCaches(bool is_global, AdminSource source,
       // either of these flags to limit the content when someone asks
       // for info about the cache.
       flags |= SystemCaches::kIncludeMemcached;
-      fetch->Write("<div id='cache_struct' style='display:none'>",
+      fetch->Write("<div id=\"cache_struct\" style=\"display:none\">",
                    message_handler_);
       fetch->Write(kTableStart, message_handler_);
       CacheInterface* fsmdc = filesystem_metadata_cache;
@@ -613,26 +626,22 @@ void AdminSite::PrintCaches(bool is_global, AdminSource source,
       }
       fetch->Write("</div>", message_handler_);
 
-      fetch->Write("<div id='purge_cache' style='display:none'>",
+      fetch->Write("<div id=\"purge_cache\" style=\"display:none\">",
                    message_handler_);
       fetch->Write("<h3>Purge Set</h3>", message_handler_);
       HtmlKeywords::WritePre(options->PurgeSetString(), "", fetch,
                              message_handler_);
       fetch->Write("</div>", message_handler_);
-
-      // Practice what we preach: put the blocking JS in the tail.
-      // TODO(jmarantz): use static asset manager to compile & deliver JS
-      // externally.
-      // TODO(xqyin): Move the script to caches.js file.
-      fetch->Write(kToggleScript, message_handler_);
     }
     StringPiece caches_js = options->Enabled(RewriteOptions::kDebug) ?
         JS_caches_js :
         JS_caches_js_opt;
-    fetch->Write("<script type='text/javascript'>", message_handler_);
-    fetch->Write(StrCat(caches_js, "\npagespeed.Caches.Start();"),
+    // Practice what we preach: put the blocking JS in the tail.
+    // TODO(jmarantz): use static asset manager to compile & deliver JS
+    // externally.
+    fetch->Write(StrCat("<script type=\"text/javascript\">", caches_js,
+                        "\npagespeed.Caches.Start();</script>\n"),
                  message_handler_);
-    fetch->Write("</script>\n", message_handler_);
   }
 }
 
@@ -703,7 +712,6 @@ void AdminSite::MessageHistoryHandler(const RewriteOptions& options,
     fetch->Write("<script type=\"text/javascript\">", message_handler_);
     fetch->Write(StrCat(messages_js, "\npagespeed.Messages.Start();"),
                  message_handler_);
-    fetch->Write("</script>\n", message_handler_);
   } else {
     fetch->Write("<p>Writing to mod_pagespeed_message failed. \n"
                  "Please check if it's enabled in pagespeed.conf.</p>\n",
@@ -860,7 +868,7 @@ class PurgeFetchCallbackGasket {
       fetch_->Write("\n", message_handler_);
       fetch_->Write(HtmlKeywords::Escape(error_, &buf), message_handler_);
     }
-    fetch_->Write(kBackButton, message_handler_);
+    fetch_->Write(kBackToPurgeCacheButton, message_handler_);
     fetch_->Done(true);
     delete this;
   }
@@ -896,3 +904,4 @@ void AdminSite::PurgeHandler(StringPiece url, SystemCachePath* cache_path,
 }
 
 }  // namespace net_instaweb
+
