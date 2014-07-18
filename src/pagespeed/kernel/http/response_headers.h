@@ -192,15 +192,21 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   const char* reason_phrase() const;
   void set_reason_phrase(const StringPiece& reason_phrase);
 
+  const HttpOptions& http_options() const { return http_options_; }
+
   // TODO(sligocki): Remove these setters (and getters) once we make sure
   // that all values are set at construction time.
-  int64 implicit_cache_ttl_ms() const { return implicit_cache_ttl_ms_; }
-  void set_implicit_cache_ttl_ms(const int64 ttl) {
-    implicit_cache_ttl_ms_ = ttl;
+  int64 implicit_cache_ttl_ms() const {
+    return http_options_.implicit_cache_ttl_ms;
   }
-  int64 min_cache_ttl_ms() const { return min_cache_ttl_ms_; }
+  void set_implicit_cache_ttl_ms(const int64 ttl) {
+    http_options_.implicit_cache_ttl_ms = ttl;
+  }
+  int64 min_cache_ttl_ms() const {
+    return http_options_.min_cache_ttl_ms;
+  }
   void set_min_cache_ttl_ms(const int64 ttl) {
-    min_cache_ttl_ms_ = ttl;
+    http_options_.min_cache_ttl_ms = ttl;
   }
 
   int64 last_modified_time_ms() const;
@@ -355,14 +361,8 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   friend class ResponseHeadersTest;
   bool cache_fields_dirty_;
 
-  // The number of milliseconds of cache TTL we assign to resources that are
-  // likely cacheable and have no explicit cache ttl or expiration date.
-  int64 implicit_cache_ttl_ms_;
-
-  // The min number of milliseconds of cache TTL that we assign to all
-  // cacheable resources irrespective of whether it has an explicit age
-  // specified in the headers.
-  int64 min_cache_ttl_ms_;
+  // TODO(sligocki): Make this const.
+  HttpOptions http_options_;
 
   // The number of milliseconds of cache TTL for which we should cache the
   // response even if it was originally uncacheable.

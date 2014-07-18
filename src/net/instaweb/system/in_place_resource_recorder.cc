@@ -23,6 +23,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/http_names.h"
+#include "pagespeed/kernel/http/response_headers.h"
 
 namespace net_instaweb {
 
@@ -42,17 +43,15 @@ AtomicInt32 InPlaceResourceRecorder::active_recordings_(0);
 InPlaceResourceRecorder::InPlaceResourceRecorder(
     const RequestContextPtr& request_context,
     StringPiece url, StringPiece fragment,
-    const RequestHeaders::Properties request_properties, bool respect_vary,
+    const RequestHeaders::Properties& request_properties,
     int max_response_bytes, int max_concurrent_recordings,
-    int64 implicit_cache_ttl_ms, HTTPCache* cache, Statistics* stats,
-    MessageHandler* handler)
+    HTTPCache* cache, Statistics* stats, MessageHandler* handler)
     : url_(url.data(), url.size()),
       fragment_(fragment.data(), fragment.size()),
       request_properties_(request_properties),
-      respect_vary_(ResponseHeaders::GetVaryOption(respect_vary)),
+      http_options_(request_context->options()),
       max_response_bytes_(max_response_bytes),
       max_concurrent_recordings_(max_concurrent_recordings),
-      implicit_cache_ttl_ms_(implicit_cache_ttl_ms),
       write_to_resource_value_(request_context, &resource_value_),
       inflating_fetch_(&write_to_resource_value_),
       cache_(cache), handler_(handler),
@@ -164,7 +163,8 @@ void InPlaceResourceRecorder::ConsiderResponseHeaders(
     return;
   }
   bool is_cacheable = response_headers->IsProxyCacheable(
-      request_properties_, respect_vary_,
+      request_properties_,
+      ResponseHeaders::GetVaryOption(http_options_.respect_vary),
       ResponseHeaders::kNoValidator);
   if (!is_cacheable) {
     cache_->RememberNotCacheable(
@@ -209,7 +209,8 @@ void InPlaceResourceRecorder::DoneAndSetHeaders(
     response_headers->RemoveAll(HttpAttributes::kContentEncoding);
     response_headers->RemoveAll(HttpAttributes::kContentLength);
     resource_value_.SetHeaders(response_headers);
-    cache_->Put(url_, fragment_, request_properties_, respect_vary_,
+    cache_->Put(url_, fragment_, request_properties_,
+                ResponseHeaders::GetVaryOption(http_options_.respect_vary),
                 &resource_value_, handler_);
     // TODO(sligocki): Start IPRO rewrite.
     num_inserted_into_cache_->Add(1);

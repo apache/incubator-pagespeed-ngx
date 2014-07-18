@@ -562,10 +562,8 @@ bool InstawebHandler::HandleAsInPlace() {
         stripped_gurl_.Spec(),
         driver->CacheFragment(),
         request_properties,
-        options_->respect_vary(),
         options_->ipro_max_response_bytes(),
         options_->ipro_max_concurrent_recordings(),
-        options_->implicit_cache_ttl_ms(),
         server_context_->http_cache(),
         server_context_->statistics(),
         server_context_->message_handler());

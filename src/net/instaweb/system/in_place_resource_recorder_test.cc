@@ -28,11 +28,10 @@
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/timer.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/http/http_names.h"
 #include "pagespeed/kernel/http/request_headers.h"
-
+#include "pagespeed/kernel/http/response_headers.h"
 
 namespace net_instaweb {
 
@@ -70,9 +69,7 @@ class InPlaceResourceRecorderTest : public RewriteTestBase {
         RequestContext::NewTestRequestContext(
             server_context()->thread_system()),
         url, rewrite_driver_->CacheFragment(), headers.GetProperties(),
-        true /* respect_vary*/,
         kMaxResponseBytes, 4, /* max_concurrent_recordings*/
-        300 * Timer::kSecondMs /* implicit_cache_ttl_ms*/,
         http_cache(), statistics(), message_handler());
   }
 

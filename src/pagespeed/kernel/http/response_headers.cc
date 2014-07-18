@@ -56,9 +56,8 @@ ResponseHeaders::~ResponseHeaders() {
   Clear();
 }
 
-void ResponseHeaders::Init(const HttpOptions& options) {
-  implicit_cache_ttl_ms_ = options.implicit_cache_ttl_ms;
-  min_cache_ttl_ms_ = options.min_cache_ttl_ms;
+void ResponseHeaders::Init(const HttpOptions& http_options) {
+  http_options_ = http_options;
 
   Headers<HttpResponseHeaders>::SetProto(new HttpResponseHeaders);
   Clear();
@@ -84,7 +83,7 @@ void ApplyTimeDelta(const char* attr, int64 delta_ms,
 
 bool ResponseHeaders::IsImminentlyExpiring(
     int64 start_date_ms, int64 expire_ms, int64 now_ms,
-    const HttpOptions& options) {
+    const HttpOptions& http_options) {
   // Consider a resource with 5 minute expiration time (the default
   // assumed by mod_pagespeed when a potentialy cacheable resource
   // lacks a cache control header, which happens a lot).  If the
@@ -104,11 +103,11 @@ bool ResponseHeaders::IsImminentlyExpiring(
   // implicit ttl. If the implicit ttl has been overridden by a site, we will
   // not honor it here. Fix that.
 
-  if (ttl_ms < options.implicit_cache_ttl_ms) {
+  if (ttl_ms < http_options.implicit_cache_ttl_ms) {
     return false;
   }
   int64 freshen_threshold = std::min(
-      options.implicit_cache_ttl_ms,
+      http_options.implicit_cache_ttl_ms,
       ((100 - kRefreshExpirePercent) * ttl_ms) / 100);
   return (expire_ms - now_ms < freshen_threshold);
 }
@@ -188,8 +187,7 @@ void ResponseHeaders::CopyFrom(const ResponseHeaders& other) {
   force_cache_ttl_ms_ = other.force_cache_ttl_ms_;
   force_cached_ = other.force_cached_;
   min_cache_ttl_applied_ = other.min_cache_ttl_applied_;
-  implicit_cache_ttl_ms_ = other.implicit_cache_ttl_ms_;
-  min_cache_ttl_ms_ = other.min_cache_ttl_ms_;
+  http_options_ = other.http_options_;
 }
 
 void ResponseHeaders::Clear() {
@@ -211,7 +209,7 @@ void ResponseHeaders::Clear() {
   force_cached_ = false;
   min_cache_ttl_applied_ = false;
 
-  // Note: implicit_cache_ttl_ms_ and min_cache_ttl_ms_ are not cleared here!
+  // Note: http_options_ are not cleared here!
   // Those should only be set at construction time and never mutated.
 }
 
@@ -630,7 +628,7 @@ void ResponseHeaders::ComputeCaching() {
     // Implicitly cached items stay alive in our system for the specified
     // implicit ttl ms.
     bool is_proxy_cacheable = computer.IsProxyCacheable();
-    int64 cache_ttl_ms = implicit_cache_ttl_ms_;
+    int64 cache_ttl_ms = http_options_.implicit_cache_ttl_ms;
     if (computer.IsExplicitlyCacheable()) {
       // TODO(sligocki): Do we care about the return value.
       computer.GetFreshnessLifetimeMillis(&cache_ttl_ms);
@@ -638,8 +636,8 @@ void ResponseHeaders::ComputeCaching() {
       // explicitly set in the header. Use the max of min_cache_ttl_ms and
       // the cache_ttl computed so far. Do this only for non HTML.
       if (type != NULL && !type->IsHtmlLike() &&
-          min_cache_ttl_ms_ > cache_ttl_ms) {
-        cache_ttl_ms = min_cache_ttl_ms_;
+          http_options_.min_cache_ttl_ms > cache_ttl_ms) {
+        cache_ttl_ms = http_options_.min_cache_ttl_ms;
         min_cache_ttl_applied_ = true;
       }
     }
@@ -671,12 +669,12 @@ void ResponseHeaders::ComputeCaching() {
         // caching headers and is not force cached, explicitly set the caching
         // headers.
         DCHECK(has_date);
-        DCHECK(cache_ttl_ms == implicit_cache_ttl_ms_);
+        DCHECK(cache_ttl_ms == http_options_.implicit_cache_ttl_ms);
         proto->set_is_implicitly_cacheable(true);
         SetDateAndCaching(date, cache_ttl_ms, CacheControlValuesToPreserve());
       } else if (min_cache_ttl_applied_) {
         DCHECK(has_date);
-        DCHECK(cache_ttl_ms == min_cache_ttl_ms_);
+        DCHECK(cache_ttl_ms == http_options_.min_cache_ttl_ms);
         SetDateAndCaching(date, cache_ttl_ms, CacheControlValuesToPreserve());
       }
     }
@@ -860,10 +858,10 @@ void ResponseHeaders::DebugPrint() const {
           BoolToString(cache_fields_dirty_));
   fprintf(stderr, "is_implicitly_cacheable = %s\n",
           BoolToString(proto()->is_implicitly_cacheable()));
-  fprintf(stderr, "implicit_cache_ttl_ms_ = %s\n",
-          Integer64ToString(implicit_cache_ttl_ms_).c_str());
-  fprintf(stderr, "min_cache_ttl_ms_ = %s\n",
-          Integer64ToString(min_cache_ttl_ms_).c_str());
+  fprintf(stderr, "http_options_.implicit_cache_ttl_ms = %s\n",
+          Integer64ToString(http_options_.implicit_cache_ttl_ms).c_str());
+  fprintf(stderr, "http_options_.min_cache_ttl_ms = %s\n",
+          Integer64ToString(http_options_.min_cache_ttl_ms).c_str());
   fprintf(stderr, "min_cache_ttl_applied_ = %s\n",
           BoolToString(min_cache_ttl_applied_));
   if (!cache_fields_dirty_) {

@@ -1442,7 +1442,8 @@ void RewriteOptions::AddProperties() {
   AddBaseProperty(
       false, &RewriteOptions::respect_vary_, "rv", kRespectVary,
       kDirectoryScope,
-      "Whether to respect the Vary header.", true);
+      "Whether to respect Vary headers for resources. "
+      "Vary is always respected for HTML.", true);
   AddBaseProperty(
       false, &RewriteOptions::respect_x_forwarded_proto_, "rxfp",
       kRespectXForwardedProto,
@@ -4399,6 +4400,7 @@ bool RewriteOptions::IsUrlCacheInvalidationEntriesSorted() const {
 
 HttpOptions RewriteOptions::ComputeHttpOptions() const {
   HttpOptions options;
+  options.respect_vary = respect_vary();
   options.implicit_cache_ttl_ms = implicit_cache_ttl_ms();
   options.min_cache_ttl_ms = min_cache_ttl_ms();
   return options;

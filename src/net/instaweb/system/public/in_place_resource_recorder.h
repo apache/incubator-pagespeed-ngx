@@ -26,13 +26,14 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/writer.h"
 #include "pagespeed/kernel/base/atomic_int32.h"
+#include "pagespeed/kernel/http/http_options.h"
 #include "pagespeed/kernel/http/request_headers.h"
-#include "pagespeed/kernel/http/response_headers.h"
 
 namespace net_instaweb {
 
 class HTTPCache;
 class MessageHandler;
+class ResponseHeaders;
 class Statistics;
 class Variable;
 
@@ -56,10 +57,9 @@ class InPlaceResourceRecorder : public Writer {
   InPlaceResourceRecorder(
       const RequestContextPtr& request_context,
       StringPiece url, StringPiece fragment,
-      RequestHeaders::Properties request_properties,
-      bool respect_vary, int max_response_bytes, int max_concurrent_recordings,
-      int64 implicit_cache_ttl_ms, HTTPCache* cache, Statistics* statistics,
-      MessageHandler* handler);
+      const RequestHeaders::Properties& request_properties,
+      int max_response_bytes, int max_concurrent_recordings,
+      HTTPCache* cache, Statistics* statistics, MessageHandler* handler);
 
   // Normally you should use DoneAndSetHeaders rather than deleting this
   // directly.
@@ -120,7 +120,7 @@ class InPlaceResourceRecorder : public Writer {
   bool failed() { return failure_; }
   bool limit_active_recordings() { return max_concurrent_recordings_ != 0; }
 
-  int64 implicit_cache_ttl_ms() { return implicit_cache_ttl_ms_; }
+  const HttpOptions& http_options() const { return http_options_; }
 
  private:
   class HTTPValueFetch : public AsyncFetchUsingWriter {
@@ -138,10 +138,10 @@ class InPlaceResourceRecorder : public Writer {
   const GoogleString url_;
   const GoogleString fragment_;
   const RequestHeaders::Properties request_properties_;
-  const ResponseHeaders::VaryOption respect_vary_;
+  const HttpOptions http_options_;
+
   const unsigned int max_response_bytes_;
   const int max_concurrent_recordings_;
-  const int64 implicit_cache_ttl_ms_;
 
   HTTPValue resource_value_;
   HTTPValueFetch write_to_resource_value_;

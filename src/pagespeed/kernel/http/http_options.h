@@ -23,7 +23,13 @@ namespace net_instaweb {
 
 // Any options which need to be accessed in http/ should be in here.
 struct HttpOptions {
+  // Weather to respect Vary headers for resources.
+  // Vary is always respected for HTML.
+  bool respect_vary;
+  // TTL assigned to resources with no explicit caching headers.
   int64 implicit_cache_ttl_ms;
+  // Minimum TTL for cacheable resources. If resources have an explicit TTL
+  // less than this, we increase it to this min value. -1 for no minimum.
   int64 min_cache_ttl_ms;
 
   // Allow copy and assign.

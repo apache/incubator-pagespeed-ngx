@@ -19,7 +19,11 @@
 
 namespace net_instaweb {
 
-const HttpOptions kDefaultHttpOptionsForTests = {5 * Timer::kMinuteMs, -1};
-const HttpOptions kDeprecatedDefaultHttpOptions = {5 * Timer::kMinuteMs, -1};
+const HttpOptions kDefaultHttpOptionsForTests = {
+  false,  // respect_vary
+  5 * Timer::kMinuteMs,  // implicit_cache_ttl_ms
+  -1  // min_cache_ttl_ms
+};
+const HttpOptions kDeprecatedDefaultHttpOptions = kDefaultHttpOptionsForTests;
 
 }  // namespace net_instaweb
