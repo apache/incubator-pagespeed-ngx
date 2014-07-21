@@ -61,6 +61,8 @@ const char ProxyFetch::kCollectorDetachFinish[] = "CollectorDetachFinish";
 const char ProxyFetch::kCollectorDoneFinish[] = "CollectorDoneFinish";
 const char ProxyFetch::kCollectorFinish[] = "CollectorFinish";
 const char ProxyFetch::kCollectorDetachStart[] = "CollectorDetachStart";
+const char ProxyFetch::kCollectorRequestHeadersCompleteFinish[] =
+    "kCollectorRequestHeadersCompleteFinish";
 
 const char ProxyFetch::kHeadersSetupRaceAlarmQueued[] =
     "HeadersSetupRace:AlarmQueued";
@@ -223,6 +225,7 @@ ProxyFetchPropertyCallbackCollector::ProxyFetchPropertyCallbackCollector(
       is_options_valid_(true),
       detached_(false),
       done_(false),
+      request_headers_ok_(false),
       proxy_fetch_(NULL),
       options_(options),
       status_code_(HttpStatus::kUnknownStatusCode) {
@@ -267,8 +270,8 @@ bool ProxyFetchPropertyCallbackCollector::IsCacheValid(
   ScopedMutex lock(mutex_.get());
   // Since PropertyPage::CallDone is not yet called, we know that
   // ProxyFetchPropertyCallbackCollector::Done is not called and hence done_ is
-  // false and hence this has not yet been deleted.
-  DCHECK(!done_);
+  // false and hence this has not yet been deleted. We can't DCHECK this though
+  // since we're not on sequence_.
   // But Detach might have been called already and then options_ is not valid.
   if (!is_options_valid_) {
     return false;
@@ -278,9 +281,9 @@ bool ProxyFetchPropertyCallbackCollector::IsCacheValid(
                                     true /* search_wildcards */));
 }
 
-// Calls to Done(), ConnectProxyFetch(), and Detach() may occur on
-// different threads.  But they are scheduled on a sequence to avoid races
-// across these functions.
+// Calls to Done(), RequestHeadersComplete(), ConnectProxyFetch(), and Detach()
+// may occur on different threads.  But they are scheduled on a sequence to
+// avoid races across these functions.
 void ProxyFetchPropertyCallbackCollector::Done(
     ProxyFetchPropertyCallback* callback) {
   ThreadSynchronizer* sync = server_context_->thread_synchronizer();
@@ -314,26 +317,55 @@ void ProxyFetchPropertyCallbackCollector::ExecuteDone(
           new FallbackPropertyPage(actual_page, fallback_page));
     }
 
+    done_ = true;
+
     // This should be called only after fallback property page is set because
     // there can be post lookup task which requires fallback_property_page.
-    for (int i = 0, n = post_lookup_task_vector_.size(); i < n; ++i) {
-      post_lookup_task_vector_[i]->CallRun();
-    }
-    post_lookup_task_vector_.clear();
-
-    done_ = true;
-    if (proxy_fetch_ != NULL) {
-      // ConnectProxyFetch() is already called.
-      proxy_fetch_->PropertyCacheComplete(this);  // deletes this.
-    } else if (detached_) {
-      // Detach() is already called.
-      UpdateStatusCodeInPropertyCache();
-      delete this;
-    }
+    RunPostLookupsAndCleanupIfSafe();
   }
 
   // No class variable is safe to use beyond this point.
   sync->Signal(ProxyFetch::kCollectorDoneFinish);
+}
+
+void ProxyFetchPropertyCallbackCollector::RunPostLookupsAndCleanupIfSafe() {
+  if (!done_ || !request_headers_ok_) {
+    return;
+  }
+
+  for (int i = 0, n = post_lookup_task_vector_.size(); i < n; ++i) {
+    post_lookup_task_vector_[i]->CallRun();
+  }
+  post_lookup_task_vector_.clear();
+
+  if (proxy_fetch_ != NULL) {
+    // ConnectProxyFetch() is already called.
+    proxy_fetch_->PropertyCacheComplete(this);  // deletes this.
+  } else if (detached_) {
+    // Detach() is already called.
+    UpdateStatusCodeInPropertyCache();
+    delete this;
+  }
+}
+
+void ProxyFetchPropertyCallbackCollector::RequestHeadersComplete() {
+  ThreadSynchronizer* sync = server_context_->thread_synchronizer();
+  sequence_->Add(MakeFunction(
+      this,
+      &ProxyFetchPropertyCallbackCollector::ExecuteRequestHeadersComplete));
+
+  // No class variable is safe to use beyond this point.
+  // Simulate this method being synchronous in unit tests
+  sync->Wait(ProxyFetch::kCollectorRequestHeadersCompleteFinish);
+}
+
+void ProxyFetchPropertyCallbackCollector::ExecuteRequestHeadersComplete() {
+  ThreadSynchronizer* sync = server_context_->thread_synchronizer();
+  request_headers_ok_ = true;
+  RunPostLookupsAndCleanupIfSafe();
+
+  // No class variable is safe to use beyond this point.
+  sync->Signal(ProxyFetch::kCollectorRequestHeadersCompleteFinish);
 }
 
 void ProxyFetchPropertyCallbackCollector::ConnectProxyFetch(
@@ -436,7 +468,7 @@ void ProxyFetchPropertyCallbackCollector::AddPostLookupTask(Function* func) {
 void ProxyFetchPropertyCallbackCollector::ExecuteAddPostLookupTask(
     Function* func) {
   DCHECK(!detached_);
-  if (done_) {
+  if (done_ && request_headers_ok_) {
     // Already done is called, run the task immediately.
     func->CallRun();
     return;
@@ -718,6 +750,10 @@ void ProxyFetch::StartFetch() {
 }
 
 void ProxyFetch::DoFetch(bool prepare_success) {
+  if (property_cache_callback_ != NULL) {
+    property_cache_callback_->RequestHeadersComplete();
+  }
+
   if (!prepare_success) {
     Done(false);
     return;

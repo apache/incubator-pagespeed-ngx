@@ -193,6 +193,7 @@ class ProxyFetchPropertyCallbackCollectorTest : public RewriteTestBase {
     sync->EnableForPrefix(ProxyFetch::kCollectorDoneFinish);
     sync->EnableForPrefix(ProxyFetch::kCollectorDetachFinish);
     sync->EnableForPrefix(ProxyFetch::kCollectorConnectProxyFetchFinish);
+    sync->EnableForPrefix(ProxyFetch::kCollectorRequestHeadersCompleteFinish);
   }
 
   // Add a callback to the collector.
@@ -264,6 +265,7 @@ class ProxyFetchPropertyCallbackCollectorTest : public RewriteTestBase {
     } else {
       // Not handled. Make this fail.
     }
+    collector->RequestHeadersComplete();
     EXPECT_TRUE(post_lookup_called_);
     mock_proxy_fetch->Done(true);
   }
@@ -369,6 +371,7 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, DetachBeforeDone) {
   EnableCollectorPrefix();
   // Test that calling Detach() before Done() works.
   ProxyFetchPropertyCallbackCollector* collector = MakeCollector();
+  collector->RequestHeadersComplete();
   ProxyFetchPropertyCallback* callback = AddCallback(
       collector, ProxyFetchPropertyCallback::kPropertyCachePage);
 
@@ -459,7 +462,12 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, SetProxyFetchBeforeDone) {
   page.reset(collector->ReleaseFallbackPropertyPage());
   EXPECT_TRUE(NULL != page.get());
 
-  // Should be complete since Done() called.
+  // Not yet complete since RequestHeadersComplete() not called yet.
+  EXPECT_FALSE(mock_proxy_fetch->complete());
+
+  collector->RequestHeadersComplete();
+
+  // Should be complete since both Done() and RequestHeadersComplete() called.
   EXPECT_TRUE(mock_proxy_fetch->complete());
 
   // Needed for cleanup.
@@ -484,6 +492,7 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, FallbackPagePostLookupRace) {
   // fallback_property_page.
   scoped_ptr<ProxyFetchPropertyCallbackCollector> collector;
   collector.reset(MakeCollector());
+  collector->RequestHeadersComplete();
   ProxyFetchPropertyCallback* page_callback = AddCallback(
       collector.get(), ProxyFetchPropertyCallback::kPropertyCachePage);
   ExpectStringAsyncFetch async_fetch(
@@ -518,12 +527,14 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, TestOptionsValid) {
           RequestContext::NewTestRequestContext(thread_system_.get()),
           options,
           UserAgentMatcher::kDesktop);
-  ProxyFetchPropertyCallback* page_callback = AddCallback(
-      collector, ProxyFetchPropertyCallback::kPropertyCachePage);
-
   ThreadSynchronizer* sync = server_context()->thread_synchronizer();
   sync->EnableForPrefix(ProxyFetch::kCollectorFinish);
   sync->EnableForPrefix(ProxyFetch::kCollectorDetachStart);
+  sync->EnableForPrefix(ProxyFetch::kCollectorRequestHeadersCompleteFinish);
+  collector->RequestHeadersComplete();
+  ProxyFetchPropertyCallback* page_callback = AddCallback(
+      collector, ProxyFetchPropertyCallback::kPropertyCachePage);
+
   collector->Detach(HttpStatus::kUnknownStatusCode);
   delete options;
   collector->IsCacheValid(1L);

@@ -614,6 +614,9 @@ void CacheHtmlFlow::Start(
   Function* func = MakeFunction(flow, &CacheHtmlFlow::CacheHtmlLookupDone,
                                 &CacheHtmlFlow::Cancel);
   property_cache_callback->AddPostLookupTask(func);
+
+  // Not doing any config lookup until pcache completes.
+  property_cache_callback->RequestHeadersComplete();
 }
 
 void CacheHtmlFlow::InitStats(Statistics* stats) {
