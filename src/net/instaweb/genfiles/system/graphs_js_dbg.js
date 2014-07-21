@@ -4589,7 +4589,6 @@ pagespeed.Graphs = function(opt_xhr) {
   this.xhr_ = opt_xhr || new goog.net.XhrIo;
   this.psolMessages_ = [];
   this.autoRefresh_ = !0;
-  this.firstRefreshDone_ = !1;
   var navElement = document.createElement("table");
   navElement.id = "navBar";
   navElement.innerHTML = '<tr><td><a id="' + pagespeed.Graphs.DisplayMode.CACHE_APPLIED + '" href="javascript:void(0);">Per application cache stats</a> - </td><td><a id="' + pagespeed.Graphs.DisplayMode.CACHE_TYPE + '" href="javascript:void(0);">Per type cache stats</a> - </td><td><a id="' + pagespeed.Graphs.DisplayMode.IPRO + '" href="javascript:void(0);">IPRO status</a> - </td><td><a id="' + pagespeed.Graphs.DisplayMode.REWRITE_IMAGE + '" href="javascript:void(0);">Image rewriting</a> - </td><td><a id="' + 
@@ -4631,17 +4630,17 @@ pagespeed.Graphs.prototype.parseMessagesFromResponse = function(text) {
   return{messages:messages, timeReceived:timeReceived};
 };
 pagespeed.Graphs.prototype.performRefresh = function() {
-  this.xhr_.isActive() || this.firstRefreshDone_ && !this.autoRefresh_ || (goog.events.listen(this.xhr_, goog.net.EventType.COMPLETE, goog.bind(function(graphsObj) {
-    if (this.isSuccess()) {
-      var newText = this.getResponseText();
-      graphsObj.psolMessages_.push(graphsObj.parseMessagesFromResponse(newText));
-      graphsObj.psolMessages_.length > pagespeed.Graphs.TIMERANGE_ && graphsObj.psolMessages_.shift();
-      graphsObj.drawVisualization();
-    } else {
-      console.log(this.getLastError());
-    }
-    graphsObj.firstRefreshDone_ = !0;
-  }, this.xhr_, this)), this.xhr_.send("/pagespeed_admin/statistics"));
+  this.xhr_.isActive() || this.firstRefreshStarted_ && !this.autoRefresh_ || (this.firstRefreshStarted_ = !0, this.xhr_.send("/pagespeed_admin/statistics"));
+};
+pagespeed.Graphs.prototype.parseAjaxResponse = function() {
+  if (this.xhr_.isSuccess()) {
+    var newText = this.parseMessagesFromResponse(this.xhr_.getResponseText());
+    this.psolMessages_.push(newText);
+    this.psolMessages_.length > pagespeed.Graphs.TIMERANGE_ && this.psolMessages_.shift();
+    this.drawVisualization();
+  } else {
+    console.log(this.xhr_.getLastError());
+  }
 };
 pagespeed.Graphs.prototype.drawVisualization = function() {
   for (var prefixes = [["pcache-cohorts-dom_", "Property cache dom cohorts", "PieChart", pagespeed.Graphs.DisplayDiv.CACHE_APPLIED], ["pcache-cohorts-beacon_", "Property cache beacon cohorts", "PieChart", pagespeed.Graphs.DisplayDiv.CACHE_APPLIED], ["rewrite_cached_output_", "Rewrite cached output", "PieChart", pagespeed.Graphs.DisplayDiv.CACHE_APPLIED], ["rewrite_", "Rewrite", "PieChart", pagespeed.Graphs.DisplayDiv.CACHE_APPLIED], ["url_input_", "URL Input", "PieChart", pagespeed.Graphs.DisplayDiv.CACHE_APPLIED], 
@@ -4705,6 +4704,7 @@ pagespeed.Graphs.Start = function() {
     goog.events.listen(document.getElementById(pagespeed.Graphs.DisplayMode.IPRO), "click", goog.bind(graphsObj.show, graphsObj, pagespeed.Graphs.DisplayDiv.IPRO));
     goog.events.listen(document.getElementById(pagespeed.Graphs.DisplayMode.REWRITE_IMAGE), "click", goog.bind(graphsObj.show, graphsObj, pagespeed.Graphs.DisplayDiv.REWRITE_IMAGE));
     goog.events.listen(document.getElementById(pagespeed.Graphs.DisplayMode.REALTIME), "click", goog.bind(graphsObj.show, graphsObj, pagespeed.Graphs.DisplayDiv.REALTIME));
+    goog.events.listen(graphsObj.xhr_, goog.net.EventType.COMPLETE, goog.bind(graphsObj.parseAjaxResponse, graphsObj));
     setInterval(graphsObj.performRefresh.bind(graphsObj), 1E3 * pagespeed.Graphs.FREQUENCY_);
     graphsObj.performRefresh();
   });

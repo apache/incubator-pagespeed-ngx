@@ -709,8 +709,8 @@ void AdminSite::MessageHistoryHandler(const RewriteOptions& options,
     StringPiece messages_js = options.Enabled(RewriteOptions::kDebug) ?
         JS_messages_js :
         JS_messages_js_opt;
-    fetch->Write("<script type=\"text/javascript\">", message_handler_);
-    fetch->Write(StrCat(messages_js, "\npagespeed.Messages.Start();"),
+    fetch->Write(StrCat("<script type=\"text/javascript\">", messages_js,
+                        "\npagespeed.Messages.Start();</script>\n"),
                  message_handler_);
   } else {
     fetch->Write("<p>Writing to mod_pagespeed_message failed. \n"
@@ -904,4 +904,3 @@ void AdminSite::PurgeHandler(StringPiece url, SystemCachePath* cache_path,
 }
 
 }  // namespace net_instaweb
-

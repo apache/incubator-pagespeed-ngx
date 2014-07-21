@@ -248,27 +248,27 @@ pagespeed.Graphs.prototype.performRefresh = function() {
   // finish initializatoin. Otherwise, check the autoRefresh option and the
   // current refreshing status.
   if (!this.xhr_.isActive() &&
-      (!this.firstRefreshDone_ || this.autoRefresh_)) {
-    var fetchContent = function(graphsObj) {
-      if (this.isSuccess()) {
-        var newText = this.getResponseText();
-        graphsObj.psolMessages_.push(
-            graphsObj.parseMessagesFromResponse(newText));
-        // Only keep one-day statistics.
-        if (graphsObj.psolMessages_.length >
-            pagespeed.Graphs.TIMERANGE_) {
-          graphsObj.psolMessages_.shift();
-        }
-        graphsObj.drawVisualization();
-      } else {
-        console.log(this.getLastError());
-      }
-      graphsObj.firstRefreshDone_ = true;
-    };
-    goog.events.listen(
-        this.xhr_, goog.net.EventType.COMPLETE,
-        goog.bind(fetchContent, this.xhr_, this));
+      (!this.firstRefreshStarted_ || this.autoRefresh_)) {
+    this.firstRefreshStarted_ = true;
     this.xhr_.send('/pagespeed_admin/statistics');
+  }
+};
+
+
+/**
+ * Parses the response sent by server and draws charts.
+ */
+pagespeed.Graphs.prototype.parseAjaxResponse = function() {
+  if (this.xhr_.isSuccess()) {
+    var newText = this.parseMessagesFromResponse(this.xhr_.getResponseText());
+    this.psolMessages_.push(newText);
+    // Only keep one-day statistics.
+    if (this.psolMessages_.length > pagespeed.Graphs.TIMERANGE_) {
+      this.psolMessages_.shift();
+    }
+    this.drawVisualization();
+  } else {
+    console.log(this.xhr_.getLastError());
   }
 };
 
@@ -485,6 +485,14 @@ pagespeed.Graphs.Start = function() {
         'click',
         goog.bind(graphsObj.show, graphsObj,
                   pagespeed.Graphs.DisplayDiv.REALTIME));
+    // We call listen() here so this listener is added to the xhr only once.
+    // If we call listen() inside performRefresh() method, we are adding a new
+    // listener to the xhr every time it auto-refreshes, which would cause
+    // fetchContent() being called multiple times. Users will see an obvious
+    // delay because we draw the same charts multiple times in one refresh.
+    goog.events.listen(
+        graphsObj.xhr_, goog.net.EventType.COMPLETE,
+        goog.bind(graphsObj.parseAjaxResponse, graphsObj));
     setInterval(graphsObj.performRefresh.bind(graphsObj),
                 pagespeed.Graphs.FREQUENCY_ * 1000);
     graphsObj.performRefresh();
