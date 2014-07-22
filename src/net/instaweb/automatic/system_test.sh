@@ -1038,19 +1038,20 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   check_from "$OUT" grep -q $COMBINED_CSS
 
   start_test Unsigned Urls, ignored signature : URL with bad signature is passed
-  HOST_NAME="unsigned-urls-transition.example.com"
-  CSS_PATH="/mod_pagespeed_example/styles/"
-  URL_PATH="${CSS_PATH}A.all_styles.css.pagespeed.cf.UH8L-zY4b4AAAAAAAAAA.css"
-  URL="$(generate_url $HOST_NAME $URL_PATH)"
-  echo http_proxy=$SECONDARY_HOSTNAME wget $URL
-  OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET $URL -O - 2>&1)"
+  # Change the domain from signed-urls.example.com to unsigned-urls.example.com.
+  URL="$(echo $URL | sed -e 's/signed-urls/unsigned-urls/')"
+  # And change the hash without a signature to a hash with an invalid signature.
+  URL="$(echo $URL | sed -e 's/Cxc4pzojlP/UH8L-zY4b4AAAAAAAAAA/')"
+  FINAL_URL="$URL.css"
+  echo http_proxy=$SECONDARY_HOSTNAME wget $FINAL_URL
+  OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET $FINAL_URL -O - 2>&1)"
   check_from "$OUT" grep -q $COMBINED_CSS
 
   start_test Unsigned Urls, ignored signatures : no signature is passed
-  URL_PATH="${CSS_PATH}A.all_styles.css.pagespeed.cf.UH8L-zY4b4.css"
-  URL="$(generate_url $HOST_NAME $URL_PATH)"
-  echo http_proxy=$SECONDARY_HOSTNAME wget $URL
-  OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET $URL -O - 2>&1)"
+  URL="$(echo $URL | sed -e 's/AAAAAAAAAA/')"  # Remove signature.
+  FINAL_URL="$URL.css"
+  echo http_proxy=$SECONDARY_HOSTNAME wget $FINAL_URL
+  OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET $FINAL_URL -O - 2>&1)"
   check_from "$OUT" grep -q $COMBINED_CSS
 
   # Test that redirecting to the same domain retains MPS query parameters.
