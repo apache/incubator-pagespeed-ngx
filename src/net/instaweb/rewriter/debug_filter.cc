@@ -188,7 +188,8 @@ void DebugFilter::EndElement(HtmlElement* element) {
     HtmlElement::Attribute* src;
     if ((src = element->FindAttribute(HtmlName::kPagespeedLazySrc)) != NULL ||
         (src = element->FindAttribute(HtmlName::kSrc)) != NULL) {
-      GoogleUrl gurl(driver_->base_url(), src->DecodedValueOrNull());
+      GoogleUrl gurl(driver_->base_url(),
+                     StringPiece(src->DecodedValueOrNull()));
       GoogleString url_str = gurl.UncheckedSpec().as_string();
       CriticalImagesFinder* finder =
           driver_->server_context()->critical_images_finder();

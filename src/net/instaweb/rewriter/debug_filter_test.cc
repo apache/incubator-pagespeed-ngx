@@ -305,6 +305,17 @@ TEST_F(DebugFilterWithCriticalImagesTest, CriticalImageMessage) {
   EXPECT_HAS_SUBSTR_NE(StrCat(kTestDomain, "b.jpg"), output_buffer_);
 }
 
+TEST_F(DebugFilterWithCriticalImagesTest, CriticalImageMessageBlankSrc) {
+  // Make sure we don't crash with null or unparseable img src.
+  MockCriticalImagesFinder* finder = new MockCriticalImagesFinder(statistics());
+  server_context()->set_critical_images_finder(finder);
+  StringSet* critical_images = new StringSet;
+  finder->set_critical_images(critical_images);
+
+  GoogleString input_html = "<img src>";
+  ParseUrl(kTestDomain, input_html);
+}
+
 class DebugFilterNoOtherFiltersTest : public DebugFilterTest {
  protected:
   virtual void SetUp() {
