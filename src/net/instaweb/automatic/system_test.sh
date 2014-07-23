@@ -1048,7 +1048,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   check_from "$OUT" grep -q $COMBINED_CSS
 
   start_test Unsigned Urls, ignored signatures : no signature is passed
-  URL="$(echo $URL | sed -e 's/AAAAAAAAAA/')"  # Remove signature.
+  URL="$(echo $URL | sed -e 's/AAAAAAAAAA//')"  # Remove signature.
   FINAL_URL="$URL.css"
   echo http_proxy=$SECONDARY_HOSTNAME wget $FINAL_URL
   OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET $FINAL_URL -O - 2>&1)"
