@@ -146,16 +146,19 @@ class CachePutFetch : public SharedAsyncFetch {
 
     // Finish fetch.
     SharedAsyncFetch::HandleDone(success);
+    // Note: SharedAsyncFetch::base_fetch_ and other things that refer to that,
+    // like request_context() cannot be accessed or used any more.
+
     // Add result to cache.
     if (insert_into_cache) {
-      cache_->Put(url_, fragment_, req_properties_, respect_vary_,
+      cache_->Put(url_, fragment_, req_properties_,
+                  saved_headers_.http_options(), respect_vary_,
                   &cache_value_, handler_);
     }
     delete this;
   }
 
  private:
-  AsyncFetch* base_fetch_;
   const GoogleString url_;
   const GoogleString fragment_;
   ResponseHeaders::VaryOption respect_vary_;

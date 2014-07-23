@@ -110,6 +110,8 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // be validated.  Callers can indicate their ability to validate requests
   // by passing kHasRequestValidator for has_request_validator.
   bool IsProxyCacheable(RequestHeaders::Properties properties,
+                        // TODO(sligocki): Use http_options_.respect_vary.
+                        // Some inconsistencies need to be worked out first.
                         VaryOption respect_vary_on_resources,
                         ValidatorOption has_request_validator) const;
 

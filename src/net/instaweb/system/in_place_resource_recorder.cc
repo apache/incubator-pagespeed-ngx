@@ -209,7 +209,7 @@ void InPlaceResourceRecorder::DoneAndSetHeaders(
     response_headers->RemoveAll(HttpAttributes::kContentEncoding);
     response_headers->RemoveAll(HttpAttributes::kContentLength);
     resource_value_.SetHeaders(response_headers);
-    cache_->Put(url_, fragment_, request_properties_,
+    cache_->Put(url_, fragment_, request_properties_, http_options_,
                 ResponseHeaders::GetVaryOption(http_options_.respect_vary),
                 &resource_value_, handler_);
     // TODO(sligocki): Start IPRO rewrite.

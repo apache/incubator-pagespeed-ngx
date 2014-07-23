@@ -27,9 +27,10 @@
 #include "net/instaweb/util/public/atomic_bool.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
-#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "pagespeed/kernel/base/ref_counted_ptr.h"
+#include "pagespeed/kernel/http/http_options.h"
 #include "pagespeed/kernel/http/request_headers.h"
 
 namespace net_instaweb {
@@ -224,6 +225,8 @@ class HTTPCache {
   void Put(const GoogleString& key,
            const GoogleString& fragment,
            RequestHeaders::Properties req_properties,
+           const HttpOptions& http_options,
+           // TODO(sligocki): Remove this arg and just use http_options.
            ResponseHeaders::VaryOption respect_vary_on_resources,
            HTTPValue* value,
            MessageHandler* handler);
@@ -235,6 +238,7 @@ class HTTPCache {
   void Put(const GoogleString& key,
            const GoogleString& fragment,
            RequestHeaders::Properties req_properties,
+           // TODO(sligocki): Remove this arg and use headers->http_options().
            ResponseHeaders::VaryOption respect_vary_on_resources,
            ResponseHeaders* headers,
            const StringPiece& content, MessageHandler* handler);

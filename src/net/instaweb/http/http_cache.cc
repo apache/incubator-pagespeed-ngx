@@ -414,11 +414,12 @@ void HTTPCache::PutInternal(
 // config.
 void HTTPCache::Put(const GoogleString& key, const GoogleString& fragment,
                     RequestHeaders::Properties req_properties,
+                    const HttpOptions& http_options,
                     ResponseHeaders::VaryOption respect_vary_on_resources,
                     HTTPValue* value, MessageHandler* handler) {
   int64 start_us = timer_->NowUs();
   // Extract headers and contents.
-  ResponseHeaders headers;
+  ResponseHeaders headers(http_options);
   bool success = value->ExtractHeaders(&headers, handler);
   DCHECK(success);
   if (!MayCacheUrl(key, headers)) {

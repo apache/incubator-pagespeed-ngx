@@ -154,10 +154,11 @@
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/writer.h"
 #include "pagespeed/kernel/base/callback.h"
+#include "pagespeed/kernel/base/sha1_signature.h"
 #include "pagespeed/kernel/html/html_keywords.h"
 #include "pagespeed/kernel/html/html_node.h"
-#include "pagespeed/kernel/base/sha1_signature.h"
 #include "pagespeed/kernel/http/content_type.h"
+#include "pagespeed/kernel/http/http_options.h"
 
 namespace net_instaweb {
 
@@ -3430,6 +3431,7 @@ bool RewriteDriver::Write(const ResourceVector& inputs,
       // But we should store its unsharded form in the cache.
       http_cache->Put(output->HttpCacheKey(), CacheFragment(),
                       RequestHeaders::Properties(),
+                      options()->ComputeHttpOptions(),
                       ResponseHeaders::GetVaryOption(options()->respect_vary()),
                       &output->value_, handler);
     }
