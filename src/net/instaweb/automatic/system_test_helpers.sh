@@ -322,7 +322,7 @@ function get_stat() {
 }
 
 function check_stat() {
-  if [ $statistics_enabled -eq "0" ]; then
+  if [ "${statistics_enabled:-1}" -eq "0" ]; then
     return
   fi
   OLD_STATS_FILE=$1
@@ -364,19 +364,19 @@ FETCH_UNTIL_OUTFILE="$WGET_DIR/fetch_until_output.$$"
 # file are loaded into $WGET_DIR as a result of this command.
 function fetch_until() {
   save=0
-  if [ $1 = "-save" ]; then
+  if [ "$1" = "-save" ]; then
     save=1
     shift
   fi
 
   gzip=""
-  if [ $1 = "-gzip" ]; then
+  if [ "$1" = "-gzip" ]; then
     gzip="--header=Accept-Encoding:gzip"
     shift
   fi
 
   recursive=0
-  if [ $1 = "-recursive" ]; then
+  if [ "$1" = "-recursive" ]; then
     recursive=1
     shift
   fi
