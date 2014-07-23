@@ -1297,4 +1297,25 @@ void ServerContext::ShowCacheHandler(
   }
 }
 
+GoogleString ServerContext::ShowCacheForm(StringPiece user_agent) {
+  GoogleString ua_default;
+  if (!user_agent.empty()) {
+    GoogleString buf;
+    ua_default = StrCat("value=\"", HtmlKeywords::Escape(user_agent, &buf),
+                        "\" ");
+  }
+  // The styling on this form could use some love, but the 110/103 sizing
+  // is to make those input fields decently wide to fit large URLs and UAs
+  // and to roughly line up.
+  GoogleString out = StrCat(
+      "<form method=get>\n",
+      "  URL: <input type=text name=url size=110 /><br>\n"
+      "  User-Agent: <input type=text size=103 name=user_agent ",
+      ua_default,
+      "/></br> \n",
+      "   <input type=submit value='Show Metadata Cache Entry'/>"
+      "</form>\n");
+  return out;
+}
+
 }  // namespace net_instaweb

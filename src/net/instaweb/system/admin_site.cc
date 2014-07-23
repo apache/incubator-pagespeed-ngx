@@ -496,30 +496,6 @@ GoogleString CacheInfoHtmlSnippet(StringPiece label, StringPiece descriptor) {
   return out;
 }
 
-// Returns an HTML form for entering a URL for ShowCacheHandler.  If
-// the user_agent is non-null, then it's used to prepopulate the
-// "User Agent" field in the form.
-GoogleString ShowCacheForm(const char* user_agent) {
-  GoogleString ua_default;
-  if (user_agent != NULL) {
-    GoogleString buf;
-    ua_default = StrCat("value=\"", HtmlKeywords::Escape(user_agent, &buf),
-                        "\" ");
-  }
-  // The styling on this form could use some love, but the 110/103 sizing
-  // is to make those input fields decently wide to fit large URLs and UAs
-  // and to roughly line up.
-  GoogleString out = StrCat(
-      "<form method=get>\n",
-      "  URL: <input type=text name=url size=110 /><br>\n"
-      "  User-Agent: <input type=text size=103 name=user_agent ",
-      ua_default,
-      "/></br> \n",
-      "   <input type=submit value='Show Metadata Cache Entry'/>"
-      "</form>\n");
-  return out;
-}
-
 }  // namespace
 
 void AdminSite::PrintCaches(bool is_global, AdminSource source,
@@ -540,8 +516,6 @@ void AdminSite::PrintCaches(bool is_global, AdminSource source,
     // URL, which it may do asynchronously, so we cannot use the
     // AdminHtml abstraction which closes the connection in its
     // destructor.
-    // TODO(xqyin): Figure out where the ShowCacheHandler should live to
-    // eliminate the dependency here.
     server_context->ShowCacheHandler(url, fetch, options->Clone());
   } else if ((source == kPageSpeedAdmin) &&
              query_params.Lookup1Unescaped("purge", &url)) {
@@ -590,7 +564,7 @@ void AdminSite::PrintCaches(bool is_global, AdminSource source,
     if (source == kPageSpeedAdmin) {
       const char* user_agent = fetch->request_headers()->Lookup1(
           HttpAttributes::kUserAgent);
-      fetch->Write(ShowCacheForm(user_agent), message_handler_);
+      fetch->Write(ServerContext::ShowCacheForm(user_agent), message_handler_);
     }
     fetch->Write("</div>\n", message_handler_);
     // Display configured cache information.

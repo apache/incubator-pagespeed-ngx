@@ -653,6 +653,11 @@ class ServerContext {
   void ShowCacheHandler(StringPiece url, AsyncFetch* fetch,
                         RewriteOptions* options);
 
+  // Returns an HTML form for entering a URL for ShowCacheHandler.  If
+  // the user_agent is non-null, then it's used to prepopulate the
+  // "User Agent" field in the form.
+  static GoogleString ShowCacheForm(StringPiece user_agent);
+
  protected:
   // Takes ownership of the given pool, making sure to clean it up at the
   // appropriate spot during shutdown.
