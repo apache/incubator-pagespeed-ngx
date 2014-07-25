@@ -3432,7 +3432,6 @@ bool RewriteDriver::Write(const ResourceVector& inputs,
       http_cache->Put(output->HttpCacheKey(), CacheFragment(),
                       RequestHeaders::Properties(),
                       options()->ComputeHttpOptions(),
-                      ResponseHeaders::GetVaryOption(options()->respect_vary()),
                       &output->value_, handler);
     }
 

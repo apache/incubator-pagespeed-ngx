@@ -19,6 +19,8 @@
 // Unit-test the html reader/writer to ensure that a few tricky
 // constructs come through without corruption.
 
+#include <vector>
+
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/gmock.h"
@@ -1608,6 +1610,15 @@ TEST_F(EventListManipulationTest, TestMoveElementIntoParent2) {
   CheckExpected("132");
 }
 
+TEST_F(EventListManipulationTest, TestDeleteSavingChildrenEnd) {
+  HtmlTestingPeer::set_coalesce_characters(&html_parse_, false);
+  HtmlElement* div = html_parse_.NewElement(NULL, HtmlName::kDiv);
+  EXPECT_TRUE(html_parse_.AddParentToSequence(node1_, node1_, div));
+  CheckExpected("<div>1</div>");
+  EXPECT_TRUE(html_parse_.DeleteSavingChildren(div));
+  CheckExpected("1");
+}
+
 TEST_F(EventListManipulationTest, TestMoveCurrentBefore) {
   // Setup events.
   HtmlTestingPeer::set_coalesce_characters(&html_parse_, false);
@@ -2060,6 +2071,210 @@ TEST_F(HtmlParseTest, DisabledFilterWithReason) {
 
   EXPECT_THAT(disabled_filters,
               UnorderedElementsAre(filter.ExpectedDisabledMessage()));
+}
+
+// Checks that deleting nodes while preserving children does not change the
+// expected order of HTML parse events. We delete any node of del_node_type_,
+// but we only delete it when we see a tag of type del_from_type_ (and
+// del_from_start_tag indicates whether we do it when we see the start tag or
+// the end tag of del_from_type).
+class DeleteNodesFilter : public EmptyHtmlFilter {
+ public:
+  explicit DeleteNodesFilter(HtmlParse* html_parse)
+      : html_parse_(html_parse)
+      , delete_node_type_(HtmlName::kNotAKeyword)
+      , delete_from_type_(HtmlName::kNotAKeyword)
+      , delete_on_open_tag_(false) {}
+
+  void set_delete_node_type(HtmlName::Keyword keyword) {
+    delete_node_type_ = keyword;
+  }
+
+  void set_delete_from_type(HtmlName::Keyword keyword) {
+    delete_from_type_ = keyword;
+  }
+
+  void set_delete_on_open_tag(bool del_from_start) {
+    delete_on_open_tag_ = del_from_start;
+  }
+
+  int num_start_elements() const { return num_start_elements_; }
+  int num_end_elements() const { return num_end_elements_; }
+  int num_char_elements() const { return num_char_elements_; }
+  int num_deleted_elements() const { return num_deleted_elements_; }
+
+ protected:
+  virtual void StartDocument() {
+    pending_deletes_.clear();
+    num_start_elements_ = 0;
+    num_end_elements_ = 0;
+    num_char_elements_ = 0;
+    num_deleted_elements_ = 0;
+  }
+
+  virtual void StartElement(HtmlElement* element) {
+    num_start_elements_++;
+    if (element->keyword() == delete_node_type_) {
+      pending_deletes_.push_back(element);
+    }
+    if (delete_on_open_tag_ && element->keyword() == delete_from_type_) {
+      DeleteElements();
+    }
+  }
+
+  virtual void EndElement(HtmlElement* element) {
+    num_end_elements_++;
+    if (!delete_on_open_tag_ && element->keyword() == delete_from_type_) {
+      DeleteElements();
+    }
+  }
+
+  virtual void Characters(HtmlCharactersNode* characters) {
+    num_char_elements_++;
+  }
+
+  virtual const char* Name() const { return "DeleteNodesFilter"; }
+
+ private:
+  void DeleteElements() {
+    for (size_t i = 0; i < pending_deletes_.size(); i++) {
+      html_parse_->DeleteSavingChildren(pending_deletes_[i]);
+      num_deleted_elements_++;
+    }
+    pending_deletes_.clear();
+  }
+
+  HtmlParse* html_parse_;
+  std::vector<HtmlElement*> pending_deletes_;
+  HtmlName::Keyword delete_node_type_;
+  HtmlName::Keyword delete_from_type_;
+  bool delete_on_open_tag_;
+  int num_start_elements_;
+  int num_end_elements_;
+  int num_char_elements_;
+  int num_deleted_elements_;
+
+  DISALLOW_COPY_AND_ASSIGN(DeleteNodesFilter);
+};
+
+class EventListOrderTest : public HtmlParseTest {
+ protected:
+  EventListOrderTest()
+      : delete_nodes_filter_(&html_parse_) {
+    html_parse_.AddFilter(&delete_nodes_filter_);
+  }
+
+  virtual bool AddBody() const { return false; }
+  virtual bool AddHtmlTags() const { return false; }
+
+  DeleteNodesFilter delete_nodes_filter_;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(EventListOrderTest);
+};
+
+TEST_F(EventListOrderTest, DeleteSavingChildrenCalledOnOpen) {
+  delete_nodes_filter_.set_delete_on_open_tag(true);
+  delete_nodes_filter_.set_delete_node_type(HtmlName::kDiv);
+  delete_nodes_filter_.set_delete_from_type(HtmlName::kDiv);
+  ValidateExpected("delete_saving_children_open",
+                   "<div><p>1</p></div><span>2</span>",
+                   "<p>1</p><span>2</span>");
+  EXPECT_EQ(delete_nodes_filter_.num_start_elements(), 3);
+  EXPECT_EQ(delete_nodes_filter_.num_end_elements(), 2);
+  EXPECT_EQ(delete_nodes_filter_.num_char_elements(), 2);
+  EXPECT_EQ(delete_nodes_filter_.num_deleted_elements(), 1);
+}
+
+TEST_F(EventListOrderTest, DeleteSavingChildrenCalledOnClose) {
+  delete_nodes_filter_.set_delete_on_open_tag(false);
+  delete_nodes_filter_.set_delete_node_type(HtmlName::kDiv);
+  delete_nodes_filter_.set_delete_from_type(HtmlName::kDiv);
+  ValidateExpected("delete_saving_children_close",
+                   "<div><p>1</p></div><span>2</span>",
+                   "<p>1</p><span>2</span>");
+  EXPECT_EQ(delete_nodes_filter_.num_start_elements(), 3);
+  EXPECT_EQ(delete_nodes_filter_.num_end_elements(), 3);
+  EXPECT_EQ(delete_nodes_filter_.num_char_elements(), 2);
+  EXPECT_EQ(delete_nodes_filter_.num_deleted_elements(), 1);
+}
+
+TEST_F(EventListOrderTest, DeleteSavingChildrenCalledInner) {
+  delete_nodes_filter_.set_delete_on_open_tag(true);
+  delete_nodes_filter_.set_delete_node_type(HtmlName::kDiv);
+  delete_nodes_filter_.set_delete_from_type(HtmlName::kP);
+  ValidateExpected("delete_saving_children_inner",
+                   "<div><p>1</p></div><span>2</span>",
+                   "<p>1</p><span>2</span>");
+  EXPECT_EQ(delete_nodes_filter_.num_start_elements(), 3);
+  EXPECT_EQ(delete_nodes_filter_.num_end_elements(), 2);
+  EXPECT_EQ(delete_nodes_filter_.num_char_elements(), 2);
+  EXPECT_EQ(delete_nodes_filter_.num_deleted_elements(), 1);
+}
+
+TEST_F(EventListOrderTest, DeleteSavingChildrenCalledOuter) {
+  delete_nodes_filter_.set_delete_on_open_tag(true);
+  delete_nodes_filter_.set_delete_node_type(HtmlName::kDiv);
+  delete_nodes_filter_.set_delete_from_type(HtmlName::kSpan);
+  ValidateExpected("delete_saving_children_outer",
+                   "<div><p>1</p></div><span>2</span>",
+                   "<p>1</p><span>2</span>");
+  EXPECT_EQ(delete_nodes_filter_.num_start_elements(), 3);
+  EXPECT_EQ(delete_nodes_filter_.num_end_elements(), 3);
+  EXPECT_EQ(delete_nodes_filter_.num_char_elements(), 2);
+  EXPECT_EQ(delete_nodes_filter_.num_deleted_elements(), 1);
+}
+
+TEST_F(EventListOrderTest, DeleteSavingChildrenCalledInnerMiddle) {
+  delete_nodes_filter_.set_delete_on_open_tag(false);
+  delete_nodes_filter_.set_delete_node_type(HtmlName::kDiv);
+  delete_nodes_filter_.set_delete_from_type(HtmlName::kP);
+  ValidateExpected("delete_saving_children_inner_middle",
+                   "<div><p>1</p>2<span>3</span></div><span>4</span>",
+                   "<p>1</p>2<span>3</span><span>4</span>");
+  EXPECT_EQ(delete_nodes_filter_.num_start_elements(), 4);
+  EXPECT_EQ(delete_nodes_filter_.num_end_elements(), 3);
+  EXPECT_EQ(delete_nodes_filter_.num_char_elements(), 4);
+  EXPECT_EQ(delete_nodes_filter_.num_deleted_elements(), 1);
+}
+
+TEST_F(EventListOrderTest, DeleteSavingChildrenCalledInnerEnd) {
+  delete_nodes_filter_.set_delete_on_open_tag(false);
+  delete_nodes_filter_.set_delete_node_type(HtmlName::kDiv);
+  delete_nodes_filter_.set_delete_from_type(HtmlName::kP);
+  ValidateExpected("delete_saving_children_inner_end",
+                   "<div><p>1</p></div><span>2</span>",
+                   "<p>1</p><span>2</span>");
+  EXPECT_EQ(delete_nodes_filter_.num_start_elements(), 3);
+  EXPECT_EQ(delete_nodes_filter_.num_end_elements(), 2);
+  EXPECT_EQ(delete_nodes_filter_.num_char_elements(), 2);
+  EXPECT_EQ(delete_nodes_filter_.num_deleted_elements(), 1);
+}
+
+TEST_F(EventListOrderTest, DeleteSavingChildrenCalledInnerDeep) {
+  delete_nodes_filter_.set_delete_on_open_tag(false);
+  delete_nodes_filter_.set_delete_node_type(HtmlName::kDiv);
+  delete_nodes_filter_.set_delete_from_type(HtmlName::kP);
+  ValidateExpected("delete_saving_children_inner_deep",
+                   "<div><a><p>1</p>2<span>3</span></a></div><span>4</span>",
+                   "<a><p>1</p>2<span>3</span></a><span>4</span>");
+  EXPECT_EQ(delete_nodes_filter_.num_start_elements(), 5);
+  EXPECT_EQ(delete_nodes_filter_.num_end_elements(), 4);
+  EXPECT_EQ(delete_nodes_filter_.num_char_elements(), 4);
+  EXPECT_EQ(delete_nodes_filter_.num_deleted_elements(), 1);
+}
+
+TEST_F(EventListOrderTest, DeleteSavingChildrenCalledOuterDistant) {
+  delete_nodes_filter_.set_delete_on_open_tag(false);
+  delete_nodes_filter_.set_delete_node_type(HtmlName::kDiv);
+  delete_nodes_filter_.set_delete_from_type(HtmlName::kA);
+  ValidateExpected("delete_saving_children_outer_distant",
+                   "<div><p>1</p></div><span>2</span><a>3</a>",
+                   "<p>1</p><span>2</span><a>3</a>");
+  EXPECT_EQ(delete_nodes_filter_.num_start_elements(), 4);
+  EXPECT_EQ(delete_nodes_filter_.num_end_elements(), 4);
+  EXPECT_EQ(delete_nodes_filter_.num_char_elements(), 3);
+  EXPECT_EQ(delete_nodes_filter_.num_deleted_elements(), 1);
 }
 
 }  // namespace net_instaweb

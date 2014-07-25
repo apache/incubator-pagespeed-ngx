@@ -59,14 +59,15 @@
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
-#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_synchronizer.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/worker_test_base.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
+#include "pagespeed/kernel/http/http_options.h"
 
 namespace net_instaweb {
 
@@ -2535,17 +2536,17 @@ TEST_F(ProxyInterfaceTest, NoCacheHttpsHtml) {
   server_context()->ComputeSignature(options);
   http_cache()->set_disable_html_caching_on_https(true);
 
-  ResponseHeaders html_headers;
+  ResponseHeaders html_headers(options->ComputeHttpOptions());
   DefaultResponseHeaders(kContentTypeHtml, kHtmlCacheTimeSec, &html_headers);
   html_headers.ComputeCaching();
   SetFetchResponse(kHttpsPageUrl, html_headers, "1");
-  ResponseHeaders resource_headers;
+  ResponseHeaders resource_headers(options->ComputeHttpOptions());
   DefaultResponseHeaders(kContentTypeCss, kHtmlCacheTimeSec, &resource_headers);
   resource_headers.ComputeCaching();
   SetFetchResponse(kHttpsCssUrl, resource_headers, "a");
 
   GoogleString text;
-  ResponseHeaders actual_headers;
+  ResponseHeaders actual_headers(options->ComputeHttpOptions());
   FetchFromProxy(kHttpsPageUrl, true, &text, &actual_headers);
   EXPECT_EQ("1", text);
   text.clear();
@@ -2575,19 +2576,19 @@ TEST_F(ProxyInterfaceTest, NoCacheVaryAll) {
   options->set_respect_vary(true);
   server_context()->ComputeSignature(options);
 
-  ResponseHeaders html_headers;
+  ResponseHeaders html_headers(options->ComputeHttpOptions());
   DefaultResponseHeaders(kContentTypeHtml, kHtmlCacheTimeSec, &html_headers);
   html_headers.Add(HttpAttributes::kVary, HttpAttributes::kUserAgent);
   html_headers.ComputeCaching();
   SetFetchResponse(AbsolutifyUrl(kPageUrl), html_headers, "1");
-  ResponseHeaders resource_headers;
+  ResponseHeaders resource_headers(options->ComputeHttpOptions());
   DefaultResponseHeaders(kContentTypeCss, kHtmlCacheTimeSec, &resource_headers);
   resource_headers.Add(HttpAttributes::kVary, HttpAttributes::kUserAgent);
   resource_headers.ComputeCaching();
   SetFetchResponse(AbsolutifyUrl("style.css"), resource_headers, "a");
 
   GoogleString text;
-  ResponseHeaders actual_headers;
+  ResponseHeaders actual_headers(options->ComputeHttpOptions());
   FetchFromProxy(kPageUrl, true, &text, &actual_headers);
   EXPECT_EQ("1", text);
   text.clear();

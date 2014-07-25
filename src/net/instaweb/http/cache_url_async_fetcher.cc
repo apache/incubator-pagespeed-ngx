@@ -57,6 +57,7 @@ class CachePutFetch : public SharedAsyncFetch {
       : SharedAsyncFetch(base_fetch),
         url_(url),
         fragment_(fragment),
+        http_options_(request_context()->options()),
         respect_vary_(respect_vary),
         default_cache_html_(default_cache_html),
         cache_(cache),
@@ -64,7 +65,7 @@ class CachePutFetch : public SharedAsyncFetch {
         handler_(handler),
         cacheable_(false),
         cache_value_writer_(&cache_value_, cache_),
-        saved_headers_(request_context()->options()),
+        saved_headers_(http_options_),
         req_properties_(base_fetch->request_headers()->GetProperties()) {
     if (backend_first_byte_latency_ != NULL) {
       start_time_ms_ = cache_->timer()->NowMs();
@@ -151,8 +152,7 @@ class CachePutFetch : public SharedAsyncFetch {
 
     // Add result to cache.
     if (insert_into_cache) {
-      cache_->Put(url_, fragment_, req_properties_,
-                  saved_headers_.http_options(), respect_vary_,
+      cache_->Put(url_, fragment_, req_properties_, http_options_,
                   &cache_value_, handler_);
     }
     delete this;
@@ -161,6 +161,8 @@ class CachePutFetch : public SharedAsyncFetch {
  private:
   const GoogleString url_;
   const GoogleString fragment_;
+  const HttpOptions http_options_;
+  // TODO(sligocki): Remove and use http_options_.respect_vary instead.
   ResponseHeaders::VaryOption respect_vary_;
   bool default_cache_html_;
   HTTPCache* cache_;
@@ -248,6 +250,7 @@ class CacheFindCallback : public HTTPCache::Callback {
         num_proactively_freshen_user_facing_request_(
             owner->num_proactively_freshen_user_facing_request()),
         handler_(handler),
+        http_options_(base_fetch->request_context()->options()),
         respect_vary_(ResponseHeaders::GetVaryOption(owner->respect_vary())),
         ignore_recent_fetch_failed_(owner->ignore_recent_fetch_failed()),
         serve_stale_if_fetch_error_(owner->serve_stale_if_fetch_error()),
@@ -540,6 +543,8 @@ class CacheFindCallback : public HTTPCache::Callback {
   Variable* num_proactively_freshen_user_facing_request_;
   MessageHandler* handler_;
 
+  const HttpOptions http_options_;
+  // TODO(sligocki): Remove and use http_options_.respect_vary instead.
   ResponseHeaders::VaryOption respect_vary_;
   bool ignore_recent_fetch_failed_;
   bool serve_stale_if_fetch_error_;

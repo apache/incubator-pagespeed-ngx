@@ -415,7 +415,6 @@ void HTTPCache::PutInternal(
 void HTTPCache::Put(const GoogleString& key, const GoogleString& fragment,
                     RequestHeaders::Properties req_properties,
                     const HttpOptions& http_options,
-                    ResponseHeaders::VaryOption respect_vary_on_resources,
                     HTTPValue* value, MessageHandler* handler) {
   int64 start_us = timer_->NowUs();
   // Extract headers and contents.
@@ -426,8 +425,10 @@ void HTTPCache::Put(const GoogleString& key, const GoogleString& fragment,
     return;
   }
   if (!force_caching_ &&
-      !(headers.IsProxyCacheable(req_properties, respect_vary_on_resources,
-                                 ResponseHeaders::kHasValidator) &&
+      !(headers.IsProxyCacheable(
+          req_properties,
+          ResponseHeaders::GetVaryOption(http_options.respect_vary),
+          ResponseHeaders::kHasValidator) &&
         IsCacheableBodySize(value->contents_size()))) {
     LOG(DFATAL) << "trying to Put uncacheable data for key=" << key
                 << " fragment=" << fragment;

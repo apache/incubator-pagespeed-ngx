@@ -51,6 +51,7 @@
 #include "net/instaweb/util/public/timer.h"
 #include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/statistics_template.h"
+#include "pagespeed/kernel/http/http_options.h"
 #include "pagespeed/kernel/thread/queued_worker_pool.h"
 
 namespace net_instaweb {
@@ -225,6 +226,7 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
         thread_system_(Platform::CreateThreadSystem()),
         statistics_(thread_system_.get()),
         timer_(thread_system_->NewMutex(), MockTimer::kApr_5_2010_ms),
+        http_options_(kDefaultHttpOptionsForTests),
         cache_url_("http://www.example.com/cacheable.html"),
         cache_css_url_("http://www.example.com/cacheable.css"),
         cache_https_html_url_("https://www.example.com/cacheable.html"),
@@ -406,7 +408,8 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
     fetch_response_headers.set_implicit_cache_ttl_ms(implicit_cache_ttl_ms_);
     fetch_response_headers.set_min_cache_ttl_ms(min_cache_ttl_ms_);
     MockFetch* fetch = new MockFetch(
-        RequestContext::NewTestRequestContext(thread_system_.get()),
+        RequestContextPtr(new RequestContext(
+            http_options_, thread_system_->NewMutex(), NULL)),
         &fetch_content, &fetch_done, &fetch_success, &is_cacheable);
     fetch->set_cache_result_valid(cache_result_valid_);
     fetch->request_headers()->CopyFrom(request_headers);
@@ -594,6 +597,7 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
   MockTimer timer_;
   MockHasher mock_hasher_;
   scoped_ptr<HTTPCache> http_cache_;
+  HttpOptions http_options_;
 
   scoped_ptr<CacheUrlAsyncFetcher> cache_fetcher_;
 
@@ -1503,6 +1507,7 @@ TEST_F(CacheUrlAsyncFetcherTest, CacheVaryForNonHtml) {
 
   // Respect Vary is enabled. Vary: Accept-Encoding is cached.
   cache_fetcher_->set_respect_vary(true);
+  http_options_.respect_vary = true;
   ExpectCache(vary_url_, vary_body_);
   lru_cache_.Clear();
 
@@ -1514,6 +1519,7 @@ TEST_F(CacheUrlAsyncFetcherTest, CacheVaryForNonHtml) {
 
   // Respect Vary is disabled. Vary: Accept-Encoding,User-Agent is cached.
   cache_fetcher_->set_respect_vary(false);
+  http_options_.respect_vary = false;
   ExpectCache(vary_url_, vary_body_);
   lru_cache_.Clear();
 
@@ -1526,6 +1532,7 @@ TEST_F(CacheUrlAsyncFetcherTest, CacheVaryForNonHtml) {
 
   // Respect Vary is enabled. Vary: Cookie is not cached.
   cache_fetcher_->set_respect_vary(true);
+  http_options_.respect_vary = true;
   ExpectNoCache(vary_url_, vary_body_);
 
   // Without clearing the cache send a request with cookies in the request. This
@@ -1540,12 +1547,14 @@ TEST_F(CacheUrlAsyncFetcherTest, CacheVaryForNonHtml) {
 
   // Respect Vary is disabled, but Vary: Cookie is still not cached.
   cache_fetcher_->set_respect_vary(false);
+  http_options_.respect_vary = false;
   ExpectNoCacheWithRequestHeaders(vary_url_, vary_body_,
                                   request_headers_with_cookies);
 
   // Without clearing the cache, change respect vary to true. We should not
   // fetch the response that was inserted into the cache above.
   cache_fetcher_->set_respect_vary(true);
+  http_options_.respect_vary = true;
   ExpectNoCacheWithRequestHeaders(vary_url_, vary_body_,
                                   request_headers_with_cookies);
 
@@ -1570,6 +1579,7 @@ TEST_F(CacheUrlAsyncFetcherTest, CacheVaryForHtml) {
 
   // Respect Vary is enabled. Vary: Accept-Encoding is cached.
   cache_fetcher_->set_respect_vary(true);
+  http_options_.respect_vary = true;
   ExpectCache(vary_url_, vary_body_);
   lru_cache_.Clear();
 
@@ -1581,6 +1591,7 @@ TEST_F(CacheUrlAsyncFetcherTest, CacheVaryForHtml) {
 
   // Respect Vary is disabled. Vary: Accept-Encoding,User-Agent is not cached.
   cache_fetcher_->set_respect_vary(false);
+  http_options_.respect_vary = false;
   ExpectNoCache(vary_url_, vary_body_);
   lru_cache_.Clear();
 
@@ -1594,6 +1605,7 @@ TEST_F(CacheUrlAsyncFetcherTest, CacheVaryForHtml) {
   // Respect Vary is enabled. Vary: Cookie is cached. Note that the request has
   // no cookies.
   cache_fetcher_->set_respect_vary(true);
+  http_options_.respect_vary = true;
   ExpectCache(vary_url_, vary_body_);
 
   // Without clearing the cache send a request with cookies in the request. This
@@ -1611,6 +1623,7 @@ TEST_F(CacheUrlAsyncFetcherTest, CacheVaryForHtml) {
   // Respect Vary is disabled. Vary: Cookie is not cached since the request has
   // cookies set.
   cache_fetcher_->set_respect_vary(false);
+  http_options_.respect_vary = false;
   ExpectNoCacheWithRequestHeaders(vary_url_, vary_body_,
                                   request_headers_with_cookies);
   lru_cache_.Clear();

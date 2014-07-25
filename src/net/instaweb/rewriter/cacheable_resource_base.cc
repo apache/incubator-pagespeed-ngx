@@ -231,7 +231,7 @@ class CacheableResourceBase::FetchCallbackBase : public AsyncFetchWithLock {
         http_cache()->Put(resource_->cache_key(), driver_->CacheFragment(),
                           RequestHeaders::Properties(),
                           request_context()->options(),
-                          resource_->respect_vary(), value, message_handler_);
+                          value, message_handler_);
         return true;
       } else {
         http_cache()->RememberNotCacheable(

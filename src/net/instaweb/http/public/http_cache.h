@@ -226,8 +226,6 @@ class HTTPCache {
            const GoogleString& fragment,
            RequestHeaders::Properties req_properties,
            const HttpOptions& http_options,
-           // TODO(sligocki): Remove this arg and just use http_options.
-           ResponseHeaders::VaryOption respect_vary_on_resources,
            HTTPValue* value,
            MessageHandler* handler);
 

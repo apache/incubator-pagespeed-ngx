@@ -806,7 +806,19 @@ bool HtmlParse::DeleteSavingChildren(HtmlElement* element) {
     if (first != last) {
       --last;
       FixParents(first, last, new_parent);
-      queue_.splice(element->begin(), queue_, first, element->end());
+      // Ensure the event queue is modified in a sensible way. If we are
+      // deleting from the start tag, the child events should go after this
+      // node (so we can parse them) and if we are deleting from the end,
+      // they should go before (to avoid double parsing). If we are deleting
+      // from anywhere else, it doesn't matter if we put them before or after
+      // as we won't be moving events relative to the current_ pointer.
+      bool at_end = (current_ == queue_.end());
+      HtmlEvent* cur_event = *current_;
+      if (!at_end && cur_event->GetElementIfStartEvent() == element) {
+        queue_.splice(++element->end(), queue_, first, element->end());
+      } else {
+        queue_.splice(element->begin(), queue_, first, element->end());
+      }
       need_sanity_check_ = true;
       need_coalesce_characters_ = true;
     }
