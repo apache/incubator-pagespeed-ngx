@@ -50,7 +50,7 @@ class StatisticsLogger {
   // Variable data is a time series collected from with data points from
   // start_time to end_time. Granularity is the minimum time difference
   // between each successive data point.
-  void DumpJSON(const StringSet& var_titles,
+  void DumpJSON(bool dump_for_graphs, const StringSet& var_titles,
                 int64 start_time, int64 end_time, int64 granularity_ms,
                 Writer* writer, MessageHandler* message_handler) const;
 
@@ -70,10 +70,15 @@ class StatisticsLogger {
   // Export statistics to a writer. Only export stats needed for console.
   // current_time_ms: The time at which the dump was triggered.
   void DumpConsoleVarsToWriter(int64 current_time_ms, Writer* writer);
+  // Save the variables listed in var_titles to the map.
   void ParseDataFromReader(const StringSet& var_titles,
                            StatisticsLogfileReader* reader,
                            std::vector<int64>* list_of_timestamps,
                            VarMap* parsed_var_data) const;
+  // Save the variables needed by graphs page to the map.
+  void ParseDataForGraphs(StatisticsLogfileReader* reader,
+                          std::vector<int64>* list_of_timestamps,
+                          VarMap* parsed_var_data) const;
   // Parse a string into a map of variable name -> value.
   // Note: parsed_var_data StringPieces point into logfile_var_data and thus
   // have same lifetime as it.

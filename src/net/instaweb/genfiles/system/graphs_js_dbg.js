@@ -1856,6 +1856,17 @@ goog.object.set = function(obj, key, value) {
 goog.object.setIfUndefined = function(obj, key, value) {
   return key in obj ? obj[key] : obj[key] = value;
 };
+goog.object.equals = function(a, b) {
+  if (!goog.array.equals(goog.object.getKeys(a), goog.object.getKeys(b))) {
+    return!1;
+  }
+  for (var k in a) {
+    if (a[k] !== b[k]) {
+      return!1;
+    }
+  }
+  return!0;
+};
 goog.object.clone = function(obj) {
   var res = {}, key;
   for (key in obj) {
@@ -4589,13 +4600,14 @@ pagespeed.Graphs = function(opt_xhr) {
   this.xhr_ = opt_xhr || new goog.net.XhrIo;
   this.psolMessages_ = [];
   this.autoRefresh_ = !0;
+  this.secondRefreshStarted_ = this.firstRefreshStarted_ = !1;
   var navElement = document.createElement("table");
   navElement.id = "navBar";
   navElement.innerHTML = '<tr><td><a id="' + pagespeed.Graphs.DisplayMode.CACHE_APPLIED + '" href="javascript:void(0);">Per application cache stats</a> - </td><td><a id="' + pagespeed.Graphs.DisplayMode.CACHE_TYPE + '" href="javascript:void(0);">Per type cache stats</a> - </td><td><a id="' + pagespeed.Graphs.DisplayMode.IPRO + '" href="javascript:void(0);">IPRO status</a> - </td><td><a id="' + pagespeed.Graphs.DisplayMode.REWRITE_IMAGE + '" href="javascript:void(0);">Image rewriting</a> - </td><td><a id="' + 
   pagespeed.Graphs.DisplayMode.REALTIME + '" href="javascript:void(0);">Realtime</a></td></tr>';
   var uiTable = document.createElement("div");
   uiTable.id = "uiDiv";
-  uiTable.innerHTML = '<table id="uiTable" border=1 style="border-collapse: collapse;border-color:silver;"><tr valign="center"><td>Auto refresh: <input type="checkbox" id="autoRefresh" ' + (this.autoRefresh_ ? "checked" : "") + "></td></tr></table>";
+  uiTable.innerHTML = '<table id="uiTable" border=1 style="border-collapse: collapse;border-color:silver;"><tr valign="center"><td>Auto refresh (every 5 seconds): <input type="checkbox" id="autoRefresh" ' + (this.autoRefresh_ ? "checked" : "") + "></td></tr></table>";
   document.body.insertBefore(uiTable, document.getElementById(pagespeed.Graphs.DisplayDiv.CACHE_APPLIED));
   document.body.insertBefore(navElement, document.getElementById("uiDiv"));
 };
@@ -4612,41 +4624,57 @@ pagespeed.Graphs.DisplayDiv = {CACHE_APPLIED:"cache_applied", CACHE_TYPE:"cache_
 pagespeed.Graphs.prototype.toggleAutorefresh = function() {
   this.autoRefresh_ = !this.autoRefresh_;
 };
-pagespeed.Graphs.DUMP_ERROR_ = {name:"Error", value:"Failed to write statistics to this page."};
-pagespeed.Graphs.prototype.parseMessagesFromResponse = function(text) {
-  var messages = [], timeReceived = null, rawString = [], start = text.indexOf('<pre id="stat">'), end = text.indexOf("</pre>", start);
-  if (0 <= start && 0 <= end) {
-    for (var rawString = text.substring(start + 15, end - 1).split("\n"), i = 0;i < rawString.length;++i) {
-      var tmp = rawString[i].split(":");
-      if (tmp[0] && tmp[1]) {
-        var node = {name:tmp[0].trim(), value:tmp[1].trim()};
-        messages[messages.length] = node;
-      }
+pagespeed.Graphs.prototype.createQueryUrl = function() {
+  var granularityMs = 1E3 * pagespeed.Graphs.FREQUENCY_, endTime = new Date, queryString;
+  queryString = "?json&start_time=" + (new Date(endTime - pagespeed.Graphs.TIMERANGE_ * granularityMs)).getTime();
+  queryString += "&end_time=" + endTime.getTime();
+  return queryString + ("&granularity=" + granularityMs);
+};
+pagespeed.Graphs.prototype.parseHistoricalMessages = function(text) {
+  for (var jsonData = JSON.parse(text), timestamps = jsonData.timestamps, variables = jsonData.variables, i = 0;i < timestamps.length;++i) {
+    var messages = [], name;
+    for (name in variables) {
+      messages.push({name:name, value:variables[name][i]});
     }
-    timeReceived = new Date;
-  } else {
-    console.log("Dump Error"), messages.push(pagespeed.Graphs.DUMP_ERROR_);
+    this.psolMessages_.push({messages:messages, timeReceived:new Date(timestamps[i])});
   }
-  return{messages:messages, timeReceived:timeReceived};
+};
+pagespeed.Graphs.prototype.parseSnapshotMessages = function(text) {
+  var variables = JSON.parse(text).variables, messages = [], name;
+  for (name in variables) {
+    messages.push({name:name, value:variables[name]});
+  }
+  this.psolMessages_.push({messages:messages, timeReceived:new Date});
+};
+pagespeed.Graphs.prototype.requestUrl = function() {
+  var pathName = location.pathname, n = pathName.lastIndexOf("/");
+  n == pathName.length - 1 && (n = pathName.substring(0, n).lastIndexOf("/"));
+  return 0 < n ? pathName.substring(0, n) + "/stats_json" : "/stats_json";
 };
 pagespeed.Graphs.prototype.performRefresh = function() {
-  this.xhr_.isActive() || this.firstRefreshStarted_ && !this.autoRefresh_ || (this.firstRefreshStarted_ = !0, this.xhr_.send("/pagespeed_admin/statistics"));
+  if (!this.xhr_.isActive()) {
+    if (!this.firstRefreshStarted_) {
+      this.firstRefreshStarted_ = !0, this.xhr_.send(this.createQueryUrl());
+    } else {
+      if (!this.secondRefreshStarted_ || this.autoRefresh_) {
+        this.secondRefreshStarted_ = !0, this.xhr_.send(this.requestUrl());
+      }
+    }
+  }
 };
 pagespeed.Graphs.prototype.parseAjaxResponse = function() {
   if (this.xhr_.isSuccess()) {
-    var newText = this.parseMessagesFromResponse(this.xhr_.getResponseText());
-    this.psolMessages_.push(newText);
-    this.psolMessages_.length > pagespeed.Graphs.TIMERANGE_ && this.psolMessages_.shift();
-    this.drawVisualization();
+    var text = this.xhr_.getResponseText();
+    this.secondRefreshStarted_ ? (this.parseSnapshotMessages(text), this.psolMessages_.length > pagespeed.Graphs.TIMERANGE_ && this.psolMessages_.shift(), this.drawVisualization()) : (this.parseHistoricalMessages(text), window.setTimeout(goog.bind(this.performRefresh, this), 0));
   } else {
     console.log(this.xhr_.getLastError());
   }
 };
 pagespeed.Graphs.prototype.drawVisualization = function() {
-  for (var prefixes = [["pcache-cohorts-dom_", "Property cache dom cohorts", "PieChart", pagespeed.Graphs.DisplayDiv.CACHE_APPLIED], ["pcache-cohorts-beacon_", "Property cache beacon cohorts", "PieChart", pagespeed.Graphs.DisplayDiv.CACHE_APPLIED], ["rewrite_cached_output_", "Rewrite cached output", "PieChart", pagespeed.Graphs.DisplayDiv.CACHE_APPLIED], ["rewrite_", "Rewrite", "PieChart", pagespeed.Graphs.DisplayDiv.CACHE_APPLIED], ["url_input_", "URL Input", "PieChart", pagespeed.Graphs.DisplayDiv.CACHE_APPLIED], 
-  ["cache_", "Cache", "PieChart", pagespeed.Graphs.DisplayDiv.CACHE_TYPE], ["file_cache_", "File Cache", "PieChart", pagespeed.Graphs.DisplayDiv.CACHE_TYPE], ["memcached_", "Memcached", "PieChart", pagespeed.Graphs.DisplayDiv.CACHE_TYPE], ["lru_cache_", "LRU", "PieChart", pagespeed.Graphs.DisplayDiv.CACHE_TYPE], ["shm_cache_", "Shared Memory", "PieChart", pagespeed.Graphs.DisplayDiv.CACHE_TYPE], ["ipro_", "In place resource optimization", "PieChart", pagespeed.Graphs.DisplayDiv.IPRO], ["image_rewrite_", 
-  "Image rewrite", "PieChart", pagespeed.Graphs.DisplayDiv.REWRITE_IMAGE], ["image_rewrites_dropped_", "Image rewrites dropped", "PieChart", pagespeed.Graphs.DisplayDiv.REWRITE_IMAGE], ["http_", "Http", "LineChart", pagespeed.Graphs.DisplayDiv.REALTIME, !0], ["file_cache_", "File Cache RT", "LineChart", pagespeed.Graphs.DisplayDiv.REALTIME, !0], ["lru_cache_", "LRU Cache RT", "LineChart", pagespeed.Graphs.DisplayDiv.REALTIME, !0], ["serf_fetch_", "Serf stats RT", "LineChart", pagespeed.Graphs.DisplayDiv.REALTIME, 
-  !0], ["rewrite_", "Rewrite stats RT", "LineChart", pagespeed.Graphs.DisplayDiv.REALTIME, !0]], i = 0;i < prefixes.length;++i) {
+  for (var prefixes = [["pcache-cohorts-dom_", "Property cache dom cohorts", "PieChart", pagespeed.Graphs.DisplayDiv.CACHE_APPLIED], ["pcache-cohorts-beacon_", "Property cache beacon cohorts", "PieChart", pagespeed.Graphs.DisplayDiv.CACHE_APPLIED], ["rewrite_cached_output_", "Rewrite cached output", "PieChart", pagespeed.Graphs.DisplayDiv.CACHE_APPLIED], ["url_input_", "URL Input", "PieChart", pagespeed.Graphs.DisplayDiv.CACHE_APPLIED], ["cache_", "Cache", "PieChart", pagespeed.Graphs.DisplayDiv.CACHE_TYPE], 
+  ["file_cache_", "File Cache", "PieChart", pagespeed.Graphs.DisplayDiv.CACHE_TYPE], ["memcached_", "Memcached", "PieChart", pagespeed.Graphs.DisplayDiv.CACHE_TYPE], ["lru_cache_", "LRU", "PieChart", pagespeed.Graphs.DisplayDiv.CACHE_TYPE], ["shm_cache_", "Shared Memory", "PieChart", pagespeed.Graphs.DisplayDiv.CACHE_TYPE], ["ipro_", "In place resource optimization", "PieChart", pagespeed.Graphs.DisplayDiv.IPRO], ["image_rewrite_", "Image rewrite", "PieChart", pagespeed.Graphs.DisplayDiv.REWRITE_IMAGE], 
+  ["image_rewrites_dropped_", "Image rewrites dropped", "PieChart", pagespeed.Graphs.DisplayDiv.REWRITE_IMAGE], ["http_", "Http", "LineChart", pagespeed.Graphs.DisplayDiv.REALTIME, !0], ["file_cache_", "File Cache RT", "LineChart", pagespeed.Graphs.DisplayDiv.REALTIME, !0], ["lru_cache_", "LRU Cache RT", "LineChart", pagespeed.Graphs.DisplayDiv.REALTIME, !0], ["serf_fetch_", "Serf stats RT", "LineChart", pagespeed.Graphs.DisplayDiv.REALTIME, !0], ["rewrite_", "Rewrite stats RT", "LineChart", pagespeed.Graphs.DisplayDiv.REALTIME, 
+  !0]], i = 0;i < prefixes.length;++i) {
     this.drawChart(prefixes[i][0], prefixes[i][1], prefixes[i][2], prefixes[i][3], prefixes[i][4]);
   }
 };
@@ -4661,7 +4689,9 @@ pagespeed.Graphs.prototype.drawChart = function(settingPrefix, title, chartType,
   if (this.drawChart.chartCache[title]) {
     theChart = this.drawChart.chartCache[title];
   } else {
-    var targetElement = document.getElementById(targetId), dest = document.createElement("div");
+    var targetElement = document.getElementById(targetId);
+    "Loading Charts..." == targetElement.innerText && (targetElement.innerText = "");
+    var dest = document.createElement("div");
     dest.className = "chart";
     targetElement.appendChild(dest);
     theChart = new google.visualization[chartType](dest);

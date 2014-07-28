@@ -192,6 +192,37 @@ template<class Var, class UpDown, class Hist,
     }
   }
 
+  // The string written to the writer will be like this:
+  // {"variables": {"cache_hits": 10,"cache_misses": 5,...}, "maxlength": 50}
+  virtual void DumpJson(Writer* writer, MessageHandler* message_handler) {
+    int longest_string = 0;
+    writer->Write("{\"variables\": {", message_handler);
+    for (int i = 0, n = variables_.size(); i < n; ++i) {
+      const GoogleString& var_name = variable_names_[i];
+      GoogleString var_as_str = Integer64ToString(variables_[i]->Get());
+      int length_name = var_name.size();
+      int length_number = var_as_str.size();
+      longest_string = std::max(longest_string, length_name + length_number);
+      writer->Write(StrCat("\"", var_name, "\": ", var_as_str),
+                    message_handler);
+      if (i != n - 1) {
+        writer->Write(",", message_handler);
+      }
+    }
+    for (int i = 0, n = up_downs_.size(); i < n; ++i) {
+      const GoogleString& up_down_name = up_down_names_[i];
+      GoogleString up_down_as_str = Integer64ToString(up_downs_[i]->Get());
+      int length_name = up_down_name.size();
+      int length_number = up_down_as_str.size();
+      longest_string = std::max(longest_string, length_name + length_number);
+      writer->Write(StrCat(",\"", up_down_name, "\": ", up_down_as_str),
+                    message_handler);
+    }
+    writer->Write("}, \"maxlength\": ", message_handler);
+    writer->Write(Integer64ToString(longest_string), message_handler);
+    writer->Write("}", message_handler);
+  }
+
   virtual void Clear() {
     for (int i = 0, n = variables_.size(); i < n; ++i) {
       Variable* var = variables_[i];

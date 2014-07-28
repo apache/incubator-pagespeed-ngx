@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "pagespeed/kernel/base/file_system.h"
+#include "pagespeed/kernel/base/gmock.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/json.h"
 #include "pagespeed/kernel/base/mem_file_system.h"
@@ -131,6 +132,11 @@ class StatisticsLoggerTest : public ::testing::Test {
     logger_.ParseDataFromReader(var_titles, reader, list_of_timestamps,
                                 parsed_var_data);
   }
+  void ParseDataForGraphs(StatisticsLogfileReader* reader,
+                          std::vector<int64>* list_of_timestamps,
+                          VarMap* parsed_var_data) {
+    logger_.ParseDataForGraphs(reader, list_of_timestamps, parsed_var_data);
+  }
   void ParseVarDataIntoMap(
       StringPiece logfile_var_data,
       std::map<StringPiece, StringPiece>* parsed_var_data) {
@@ -163,12 +169,31 @@ TEST_F(StatisticsLoggerTest, TestParseDataFromReader) {
                                  granularity_ms, &handler_);
   std::vector<int64> list_of_timestamps;
   VarMap parsed_var_data;
-  ParseDataFromReader(var_titles, &reader,
-                      &list_of_timestamps, &parsed_var_data);
+  ParseDataFromReader(var_titles, &reader, &list_of_timestamps,
+                      &parsed_var_data);
   // Test that the entire logfile was parsed correctly.
   EXPECT_EQ(4, parsed_var_data.size());
   EXPECT_EQ(4, list_of_timestamps.size());
 
+  file_system_.Close(log_file, &handler_);
+}
+
+TEST_F(StatisticsLoggerTest, TestParseDataForGraphs) {
+  std::set<GoogleString> var_titles;
+  int64 start_time, end_time, granularity_ms;
+  CreateFakeLogfile(&var_titles, &start_time, &end_time, &granularity_ms);
+  FileSystem::InputFile* log_file =
+      file_system_.OpenInputFile(kStatsLogFile, &handler_);
+  StatisticsLogfileReader reader(log_file, start_time, end_time,
+                                 granularity_ms, &handler_);
+  std::vector<int64> list_of_timestamps;
+  VarMap parsed_var_data;
+  ParseDataForGraphs(&reader, &list_of_timestamps, &parsed_var_data);
+  // Though the fake log file only contains 4 variables, the method should
+  // still return all the 84 variables needed by the graphs page with 0 as
+  // place holders.
+  EXPECT_EQ(84, parsed_var_data.size());
+  EXPECT_EQ(4, list_of_timestamps.size());
   file_system_.Close(log_file, &handler_);
 }
 
@@ -297,12 +322,19 @@ TEST_F(StatisticsLoggerTest, NoMalformedJson) {
 
   GoogleString json_dump;
   StringWriter writer(&json_dump);
-  logger_.DumpJSON(var_titles, start_time, end_time, granularity_ms,
+  logger_.DumpJSON(false, var_titles, start_time, end_time, granularity_ms,
                    &writer, &handler_);
+
+  GoogleString json_dump_graphs;
+  StringWriter writer_graphs(&json_dump_graphs);
+  logger_.DumpJSON(true, var_titles, start_time, end_time, granularity_ms,
+                   &writer_graphs, &handler_);
 
   Json::Value complete_json;
   Json::Reader json_reader;
   EXPECT_TRUE(json_reader.parse(json_dump.c_str(), complete_json)) << json_dump;
+  EXPECT_TRUE(json_reader.parse(json_dump_graphs.c_str(), complete_json)) <<
+      json_dump_graphs;
 }
 
 
@@ -313,11 +345,13 @@ TEST_F(StatisticsLoggerTest, ConsistentNumberArgs) {
   // foo and bar only recorded at certain timestamps.
   file_system_.WriteFile(kStatsLogFile,
                          "timestamp: 1000\n"
+                         "cache_hits: 5\n"
                          "timestamp: 2000\n"
                          "foo: 2\n"
                          "bar: 20\n"
                          "timestamp: 3000\n"
                          "bar: 30\n"
+                         "cache_hits: 1\n"
                          "timestamp: 4000\n"
                          "foo: 4\n",
                          &handler_);
@@ -328,12 +362,21 @@ TEST_F(StatisticsLoggerTest, ConsistentNumberArgs) {
   std::set<GoogleString> var_titles;
   var_titles.insert("foo");
   var_titles.insert("bar");
-  logger_.DumpJSON(var_titles, 1000, 4000, 1000, &writer, &handler_);
+  logger_.DumpJSON(false, var_titles, 1000, 4000, 1000, &writer, &handler_);
 
   // The notable check here is that all the arrays are the same length.
   EXPECT_EQ("{\"timestamps\": [1000, 2000, 3000, 4000],\"variables\": {"
             "\"bar\": [0, 20, 30, 0],"
             "\"foo\": [0, 2, 0, 4]}}", json_dump);
+
+  GoogleString json_dump_graphs;
+  StringWriter writer_graphs(&json_dump_graphs);
+  logger_.DumpJSON(true, var_titles, 1000, 4000, 1000, &writer_graphs,
+                   &handler_);
+  EXPECT_THAT(json_dump_graphs, ::testing::HasSubstr(
+      "\"timestamps\": [1000, 2000, 3000, 4000]"));
+  EXPECT_THAT(json_dump_graphs, ::testing::HasSubstr(
+      "\"cache_hits\": [5, 0, 1, 0]"));
 }
 
 TEST_F(StatisticsLoggerTest, FromStats) {

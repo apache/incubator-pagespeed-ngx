@@ -2059,6 +2059,17 @@ goog.object.set = function(obj, key, value) {
 goog.object.setIfUndefined = function(obj, key, value) {
   return key in obj ? obj[key] : obj[key] = value;
 };
+goog.object.equals = function(a, b) {
+  if (!goog.array.equals(goog.object.getKeys(a), goog.object.getKeys(b))) {
+    return!1;
+  }
+  for (var k in a) {
+    if (a[k] !== b[k]) {
+      return!1;
+    }
+  }
+  return!0;
+};
 goog.object.clone = function(obj) {
   var res = {}, key;
   for (key in obj) {

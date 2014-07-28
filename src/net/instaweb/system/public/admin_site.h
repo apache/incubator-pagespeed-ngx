@@ -122,10 +122,15 @@ class AdminSite {
   void StatisticsHandler(const RewriteOptions& options, AdminSource source,
                          AsyncFetch* fetch, Statistics* stats);
 
+  // Responds to 'fetch' with data used on statistics page and graphs page
+  // in JSON format.
+  void StatisticsJsonHandler(AsyncFetch* fetch, Statistics* stats);
+
   // Display various charts on graphs page.
   // TODO(xqyin): Integrate this into console page.
   void GraphsHandler(const RewriteOptions& options, AdminSource source,
-                     AsyncFetch* fetch, Statistics* stats);
+                     const QueryParams& query_params, AsyncFetch* fetch,
+                     Statistics* stats);;
 
   // Print details fo the SPDY configuration.
   void PrintSpdyConfig(AdminSource source, AsyncFetch* fetch,

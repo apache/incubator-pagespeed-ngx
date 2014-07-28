@@ -81,6 +81,46 @@ const char* const kOtherLoggedVars[] = {
   "converted_meta_tags", "javascript_minification_failures",
 };
 
+const char* const kGraphsVars[] = {
+  // Variables used in /pagespeed_admin/graphs.
+  // Note: It's fine that some variables here are already listed above.
+  "pcache-cohorts-dom_deletes", "pcache-cohorts-beacon_cohort_misses",
+  "pcache-cohorts-dom_inserts", "pcache-cohorts-dom_misses",
+  "pcache-cohorts-beacon_cohort_deletes", "pcache-cohorts-beacon_cohort_hits",
+  "pcache-cohorts-beacon_cohort_inserts", "pcache-cohorts-dom_hits",
+  "rewrite_cached_output_missed_deadline", "rewrite_cached_output_hits",
+  "rewrite_cached_output_misses", "url_input_resource_hit",
+  "url_input_resource_recent_fetch_failure", "serf_fetch_bytes_count",
+  "url_input_resource_recent_uncacheable_treated_as_miss",
+  "url_input_resource_recent_uncacheable_treated_as_failure",
+  "url_input_resource_miss", "serf_fetch_request_count", "lru_cache_hits",
+  "serf_fetch_time_duration_ms", "serf_fetch_cancel_count",
+  "serf_fetch_timeout_count", "serf_fetch_failure_count", "http_bytes_fetched",
+  "serf_fetch_active_count", "lru_cache_deletes", "serf_fetch_cert_errors",
+  "lru_cache_inserts", "lru_cache_misses", "file_cache_bytes_freed_in_cleanup",
+  "file_cache_cleanups", "file_cache_disk_checks", "file_cache_evictions",
+  "file_cache_write_errors", "file_cache_deletes", "file_cache_hits",
+  "file_cache_inserts", "file_cache_misses", "http_fetches",
+  "http_approx_header_bytes_fetched", "image_rewrite_total_bytes_saved",
+  "image_rewrite_total_original_bytes", "image_rewrite_uses",
+  "image_rewrite_latency_total_ms", "image_rewrites_dropped_intentionally",
+  "image_rewrites_dropped_decode_failure", "cache_misses", "ipro_not_in_cache",
+  "image_rewrites_dropped_mime_type_unknown", "cache_fallbacks",
+  "image_rewrites_dropped_server_write_fail", "cache_inserts",
+  "image_rewrites_dropped_nosaving_resize", "cache_flush_timestamp_ms",
+  "image_rewrites_dropped_nosaving_noresize", "ipro_served",
+  "ipro_not_rewritable", "ipro_recorder_resources", "cache_deletes",
+  "ipro_recorder_inserted_into_cache", "ipro_recorder_not_cacheable",
+  "ipro_recorder_failed", "ipro_recorder_dropped_due_to_load",
+  "ipro_recorder_dropped_due_to_size", "shm_cache_deletes", "shm_cache_hits",
+  "shm_cache_inserts", "shm_cache_misses", "memcached_async_deletes",
+  "memcached_async_hits", "memcached_async_inserts", "memcached_async_misses",
+  "memcached_blocking_deletes", "memcached_blocking_hits", "cache_expirations",
+  "memcached_blocking_inserts", "memcached_blocking_misses", "cache_time_us",
+  "cache_hits", "cache_backend_hits", "cache_backend_misses",
+  "cache_extensions", "cache_batcher_dropped_gets", "cache_flush_count",
+};
+
 }  // namespace
 
 StatisticsLogger::StatisticsLogger(
@@ -104,6 +144,9 @@ StatisticsLogger::StatisticsLogger(
   for (int i = 0, n = arraysize(kOtherLoggedVars); i < n; ++i) {
     variables_to_log_.insert(kOtherLoggedVars[i]);
   }
+  for (int i = 0, n = arraysize(kGraphsVars); i < n; ++i) {
+    variables_to_log_.insert(kGraphsVars[i]);
+  }
 }
 
 StatisticsLogger::~StatisticsLogger() {
@@ -116,6 +159,9 @@ void StatisticsLogger::InitStatsForTest() {
   }
   for (int i = 0, n = arraysize(kOtherLoggedVars); i < n; ++i) {
     statistics_->AddVariable(kOtherLoggedVars[i]);
+  }
+  for (int i = 0, n = arraysize(kGraphsVars); i < n; ++i) {
+    statistics_->AddVariable(kGraphsVars[i]);
   }
 }
 
@@ -189,7 +235,7 @@ void StatisticsLogger::TrimLogfileIfNeeded() {
 }
 
 void StatisticsLogger::DumpJSON(
-    const StringSet& var_titles,
+    bool dump_for_graphs, const StringSet& var_titles,
     int64 start_time, int64 end_time, int64 granularity_ms,
     Writer* writer, MessageHandler* message_handler) const {
   FileSystem::InputFile* log_file =
@@ -204,8 +250,12 @@ void StatisticsLogger::DumpJSON(
   std::vector<int64> list_of_timestamps;
   StatisticsLogfileReader reader(log_file, start_time, end_time,
                                  granularity_ms, message_handler);
-  ParseDataFromReader(var_titles, &reader, &list_of_timestamps,
-                      &parsed_var_data);
+  if (dump_for_graphs) {
+    ParseDataForGraphs(&reader, &list_of_timestamps, &parsed_var_data);
+  } else {
+    ParseDataFromReader(var_titles, &reader, &list_of_timestamps,
+                        &parsed_var_data);
+  }
   PrintJSON(list_of_timestamps, parsed_var_data, writer, message_handler);
   file_system_->Close(log_file, message_handler);
 }
@@ -241,6 +291,29 @@ void StatisticsLogger::ParseDataFromReader(
         // If data is not available in this segment, we just push 0 as a place
         // holder. We must push something or else it will be ambiguous which
         // timestamp corresponds to which variable values.
+        (*var_values)[var_title].push_back("0");
+      }
+    }
+  }
+}
+
+void StatisticsLogger::ParseDataForGraphs(StatisticsLogfileReader* reader,
+                                          std::vector<int64>* timestamps,
+                                          VarMap* var_values) const {
+  int64 curr_timestamp = 0;
+  GoogleString data;
+  while (reader->ReadNextDataBlock(&curr_timestamp, &data)) {
+    std::map<StringPiece, StringPiece> parsed_var_data;
+    ParseVarDataIntoMap(data, &parsed_var_data);
+    timestamps->push_back(curr_timestamp);
+    for (int i = 0, n = arraysize(kGraphsVars); i < n; ++i) {
+      const GoogleString& var_title = kGraphsVars[i];
+      std::map<StringPiece, StringPiece>::const_iterator value_iter =
+          parsed_var_data.find(var_title);
+      if (value_iter != parsed_var_data.end()) {
+        value_iter->second.CopyToString(
+            StringVectorAdd(&((*var_values)[var_title])));
+      } else {
         (*var_values)[var_title].push_back("0");
       }
     }

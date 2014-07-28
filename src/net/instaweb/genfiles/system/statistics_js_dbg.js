@@ -1856,6 +1856,17 @@ goog.object.set = function(obj, key, value) {
 goog.object.setIfUndefined = function(obj, key, value) {
   return key in obj ? obj[key] : obj[key] = value;
 };
+goog.object.equals = function(a, b) {
+  if (!goog.array.equals(goog.object.getKeys(a), goog.object.getKeys(b))) {
+    return!1;
+  }
+  for (var k in a) {
+    if (a[k] !== b[k]) {
+      return!1;
+    }
+  }
+  return!0;
+};
 goog.object.clone = function(obj) {
   var res = {}, key;
   for (key in obj) {
@@ -4590,7 +4601,7 @@ var pagespeed = {Statistics:function(opt_xhr) {
   this.autoRefresh_ = !1;
   var uiTable = document.createElement("div");
   uiTable.id = "uiDiv";
-  uiTable.innerHTML = '<table id="uiTable" border=1 style="border-collapse: collapse;border-color:silver;"><tr valign="center"><td>Auto refresh: <input type="checkbox" id="autoRefresh" ' + (this.autoRefresh_ ? "checked" : "") + '></td><td>&nbsp;&nbsp;&nbsp;&nbsp;Search: <input id="txtFilter" type="text"></td></tr></table>';
+  uiTable.innerHTML = '<table id="uiTable" border=1 style="border-collapse: collapse;border-color:silver;"><tr valign="center"><td>Auto refresh (every 5 seconds): <input type="checkbox" id="autoRefresh" ' + (this.autoRefresh_ ? "checked" : "") + '></td><td>&nbsp;&nbsp;&nbsp;&nbsp;Filter: <input id="txtFilter" type="text" size="70"></td></tr></table>';
   document.body.insertBefore(uiTable, document.getElementById("stat"));
 }};
 pagespeed.Statistics.prototype.toggleAutorefresh = function() {
@@ -4601,31 +4612,39 @@ pagespeed.Statistics.prototype.setFilter = function(element) {
   this.update();
 };
 pagespeed.Statistics.prototype.update = function() {
-  var statElement = document.getElementById("stat"), messages = goog.array.clone(this.psolMessages_);
+  var messages = goog.array.clone(this.psolMessages_);
   if (this.filter_) {
     for (var i = messages.length - 1;0 <= i;--i) {
       messages[i] && goog.string.caseInsensitiveContains(messages[i], this.filter_) || messages.splice(i, 1);
     }
   }
-  statElement.innerText = messages.join("\n");
+  document.getElementById("stat").innerText = messages.join("\n");
 };
-pagespeed.Statistics.DUMP_ERROR_ = "Sorry, failed to write statistics to this page.";
 pagespeed.Statistics.prototype.parseMessagesFromResponse = function(text) {
-  var messages = [], start = text.indexOf('<pre id="stat">'), end = text.indexOf("</pre>", start);
-  0 <= start && 0 <= end ? messages = text.substring(start + 15, end - 1).split("\n") : messages.push(pagespeed.Statistics.DUMP_ERROR_);
-  return messages;
+  var jsonData = JSON.parse(text), variables = jsonData.variables, maxLength = jsonData.maxlength, messages = [], name;
+  for (name in variables) {
+    var line = name + ":" + Array(maxLength - name.length - variables[name].toString().length + 2).join(" ") + variables[name].toString();
+    messages.push(line);
+  }
+  this.psolMessages_ = messages;
 };
 pagespeed.Statistics.REFRESH_ERROR_ = "Sorry, failed to update the statistics. Please wait and try again later.";
+pagespeed.Statistics.prototype.requestUrl = function() {
+  var pathName = location.pathname, n = pathName.lastIndexOf("/");
+  n == pathName.length - 1 && (n = pathName.substring(0, n).lastIndexOf("/"));
+  return 0 < n ? pathName.substring(0, n) + "/stats_json" : "/stats_json";
+};
 pagespeed.Statistics.prototype.performRefresh = function() {
-  !this.xhr_.isActive() && this.autoRefresh_ && (goog.events.listen(this.xhr_, goog.net.EventType.COMPLETE, goog.bind(function(statisticsObj) {
-    if (this.isSuccess()) {
-      var newText = this.getResponseText();
-      statisticsObj.psolMessages_ = statisticsObj.parseMessagesFromResponse(newText);
-      statisticsObj.update();
-    } else {
-      console.log(this.getLastError()), document.getElementById("stat").innerText = pagespeed.Statistics.REFRESH_ERROR_;
-    }
-  }, this.xhr_, this)), this.xhr_.send(document.location.href));
+  !this.xhr_.isActive() && this.autoRefresh_ && this.xhr_.send(this.requestUrl());
+};
+pagespeed.Statistics.prototype.parseAjaxResponse = function() {
+  if (this.xhr_.isSuccess()) {
+    var newText = this.xhr_.getResponseText();
+    this.parseMessagesFromResponse(newText);
+    this.update();
+  } else {
+    console.log(this.xhr_.getLastError()), document.getElementById("stat").innerText = pagespeed.Statistics.REFRESH_ERROR_;
+  }
 };
 pagespeed.Statistics.FREQUENCY_ = 5E3;
 pagespeed.Statistics.Start = function() {
@@ -4634,6 +4653,8 @@ pagespeed.Statistics.Start = function() {
     goog.events.listen(filterElement, "keyup", goog.bind(statisticsObj.setFilter, statisticsObj, filterElement));
     goog.events.listen(document.getElementById("autoRefresh"), "change", goog.bind(statisticsObj.toggleAutorefresh, statisticsObj));
     setInterval(statisticsObj.performRefresh.bind(statisticsObj), pagespeed.Statistics.FREQUENCY_);
+    goog.events.listen(statisticsObj.xhr_, goog.net.EventType.COMPLETE, goog.bind(statisticsObj.parseAjaxResponse, statisticsObj));
+    statisticsObj.performRefresh();
   });
 };
 goog.exportSymbol("pagespeed.Statistics.Start", pagespeed.Statistics.Start);

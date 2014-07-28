@@ -60,18 +60,17 @@ pagespeed.Graphs = function(opt_xhr) {
   this.xhr_ = opt_xhr || new goog.net.XhrIo();
 
   /**
-   * This array of arrays collects data from statistics page since last
-   * refresh. The i-th entry of the array is the statistics fetched in
-   * the i-th refresh, which is an array of special nodes. Each node contains
-   * certain statistics name and the value. We use the last entry to
+   * This array of arrays collects historical data from statistics log file
+   * for the first refresh and updates from back end to get snapshot of the
+   * current data. The i-th entry of the array is the statistics corresponds
+   * to the i-th time stamp, which is an array of special nodes. Each node
+   * contains certain statistics name and the value. We use the last entry to
    * generate pie charts showing the most recent data. The whole array of
-   * arrays is used to generate line charts showing statistics history.
-   * We only keep one-day data to avoid infinite growth of this array.
+   * arrays is used to generate line charts showing statistics history. We only
+   * keep one-day data to avoid infinite growth of this array.
    * @private {!Array.<pagespeed.StatsArray>}
    */
   this.psolMessages_ = [];
-  // TODO(xqyin): Using ConsoleJsonHandler to provide data so we won't lose
-  // data after refreshing the page manually.
 
   /**
    * The option of auto-refresh. If true, the page will automatically refresh
@@ -81,12 +80,21 @@ pagespeed.Graphs = function(opt_xhr) {
   this.autoRefresh_ = true;
 
   /**
-   * The flag of whether the first refresh is done. We need to call a refresh
-   * when loading the page to finish the initialization. Default is false,
-   * which means the page hasn't done the first refresh yet.
+   * The flag of whether the first refresh is started. We need to call a
+   * refresh when loading the page for the initialization. Default is false,
+   * which means the page hasn't started the first refresh yet.
    * @private {boolean}
    */
-  this.firstRefreshDone_ = false;
+  this.firstRefreshStarted_ = false;
+
+  /**
+   * The flag of whether the second refresh is started. Since we fetch data
+   * from statistics log file for the first refresh, the data may be stale.
+   * We need to do the second refresh immediately to make sure the data we are
+   * showing is up-to-date.
+   * @private {boolean}
+   */
+  this.secondRefreshStarted_ = false;
 
   // The navigation bar to switch among different display modes
   // TODO(xqyin): Consider making these different tabs query params.
@@ -114,8 +122,9 @@ pagespeed.Graphs = function(opt_xhr) {
   uiTable.innerHTML =
       '<table id="uiTable" border=1 style="border-collapse: ' +
       'collapse;border-color:silver;"><tr valign="center">' +
-      '<td>Auto refresh: <input type="checkbox" id="autoRefresh" ' +
-      (this.autoRefresh_ ? 'checked' : '') + '></td></tr></table>';
+      '<td>Auto refresh (every 5 seconds): <input type="checkbox" ' +
+      'id="autoRefresh" ' + (this.autoRefresh_ ? 'checked' : '') +
+      '></td></tr></table>';
   document.body.insertBefore(
       uiTable,
       document.getElementById(pagespeed.Graphs.DisplayDiv.CACHE_APPLIED));
@@ -182,60 +191,87 @@ pagespeed.Graphs.prototype.toggleAutorefresh = function() {
 
 
 /**
-  * The error message of dump failure.
-  * @private {pagespeed.StatsNode}
-  * @const
-  */
-pagespeed.Graphs.DUMP_ERROR_ = {
-  name: 'Error',
-  value: 'Failed to write statistics to this page.'
+ * Generate a URL to request statistics data over default time period.
+ * @return {string} The query URL incorporating all time parameters.
+ */
+pagespeed.Graphs.prototype.createQueryUrl = function() {
+  var granularityMs = pagespeed.Graphs.FREQUENCY_ * 1000;
+  var durationMs = pagespeed.Graphs.TIMERANGE_ * granularityMs; // 1 Day.
+  var endTime = new Date();
+  var startTime = new Date(endTime - durationMs);
+  var queryString = '?json';
+  queryString += '&start_time=' + startTime.getTime();
+  queryString += '&end_time=' + endTime.getTime();
+  queryString += '&granularity=' + granularityMs;
+  return queryString;
 };
 
 
 /**
- * Parses new statistics from the server response.
- * @param {string} text The raw text content sent by server.
- * The expected format of text should be like this:
- * <html>
- *   <head>...</head>
- *   <body>
- *     <div style=...>...</div><hr>
- *     <pre>...</pre>
- *   </body>
- * </html>
- * @return {!pagespeed.StatsArray} messages The updated statistics list.
+ * Parses historical data sent by sever.
+ * @param {string} text The statistics dumped in JSON format.
  */
-pagespeed.Graphs.prototype.parseMessagesFromResponse = function(text) {
-  // TODO(xqyin): Use ConsoleJsonHandler to provide pure statistics instead
-  // of parsing the HTML here.
-  var messages = [];
-  var timeReceived = null;
-  var rawString = [];
-  var start = text.indexOf('<pre id="stat">');
-  var end = text.indexOf('</pre>', start);
-  if (start >= 0 && end >= 0) {
-    start = start + '<pre id="stat">'.length;
-    end = end - 1;
-    rawString = text.substring(start, end).split('\n');
-    for (var i = 0; i < rawString.length; ++i) {
-      var tmp = rawString[i].split(':');
-      if (!tmp[0] || !tmp[1]) continue;
+pagespeed.Graphs.prototype.parseHistoricalMessages = function(text) {
+  var jsonData = JSON.parse(text);
+  var timestamps = jsonData['timestamps'];
+  var variables = jsonData['variables'];
+  for (var i = 0; i < timestamps.length; ++i) {
+    var messages = [];
+    for (var name in variables) {
       var node = {
-        name: tmp[0].trim(),
-        value: tmp[1].trim()
+        name: name,
+        value: variables[name][i]
       };
-      messages[messages.length] = node;
+      messages.push(node);
     }
-    timeReceived = new Date();
-  } else {
-    console.log('Dump Error');
-    messages.push(pagespeed.Graphs.DUMP_ERROR_);
+    var newArray = {
+      messages: messages,
+      timeReceived: new Date(timestamps[i])
+    };
+    this.psolMessages_.push(newArray);
+  }
+};
+
+
+/**
+ * Parses the most recent data sent by sever.
+ * @param {string} text The statistics dumped in JSON format.
+ */
+pagespeed.Graphs.prototype.parseSnapshotMessages = function(text) {
+  var jsonData = JSON.parse(text);
+  var variables = jsonData['variables'];
+  var messages = [];
+  for (var name in variables) {
+    var node = {
+      name: name,
+      value: variables[name]
+    };
+    messages.push(node);
   }
   var newArray = {
     messages: messages,
-    timeReceived: timeReceived
+    timeReceived: new Date()
   };
-  return newArray;
+  this.psolMessages_.push(newArray);
+};
+
+
+/**
+ * Capture the pathname and return the URL for request.
+ * @return {string} The URL to request the updated data in JSON format.
+ */
+pagespeed.Graphs.prototype.requestUrl = function() {
+  var pathName = location.pathname;
+  var n = pathName.lastIndexOf('/');
+  // Ignore the ending '/'.
+  if (n == pathName.length - 1) {
+    n = pathName.substring(0, n).lastIndexOf('/');
+  }
+  if (n > 0) {
+    return pathName.substring(0, n) + '/stats_json';
+  } else {
+    return '/stats_json';
+  }
 };
 
 
@@ -243,14 +279,21 @@ pagespeed.Graphs.prototype.parseMessagesFromResponse = function(text) {
  * Refreshes the page by making requsts to server.
  */
 pagespeed.Graphs.prototype.performRefresh = function() {
-  // If the first refresh has not done yet, then do the refresh no matter what
-  // the autoRefresh option is. Because the page needs at least one refresh to
-  // finish initializatoin. Otherwise, check the autoRefresh option and the
-  // current refreshing status.
-  if (!this.xhr_.isActive() &&
-      (!this.firstRefreshStarted_ || this.autoRefresh_)) {
-    this.firstRefreshStarted_ = true;
-    this.xhr_.send('/pagespeed_admin/statistics');
+  // TODO(xqyin): Figure out if there is a potential timing issue that the
+  // xhr.isActive() would be false before the callback starts.
+  if (!this.xhr_.isActive()) {
+    // If the first refresh has not started yet, then do the refresh no matter
+    // what the autoRefresh option is. Because the page needs to send a query
+    // URL to request historical data to get initialized.
+    if (!this.firstRefreshStarted_) {
+      this.firstRefreshStarted_ = true;
+      this.xhr_.send(this.createQueryUrl());
+    // The page needs to do the second refresh to finish initialization.
+    // Otherwise, only refresh when the autoRefresh option is true.
+    } else if (!this.secondRefreshStarted_ || this.autoRefresh_) {
+      this.secondRefreshStarted_ = true;
+      this.xhr_.send(this.requestUrl());
+    }
   }
 };
 
@@ -260,13 +303,23 @@ pagespeed.Graphs.prototype.performRefresh = function() {
  */
 pagespeed.Graphs.prototype.parseAjaxResponse = function() {
   if (this.xhr_.isSuccess()) {
-    var newText = this.parseMessagesFromResponse(this.xhr_.getResponseText());
-    this.psolMessages_.push(newText);
-    // Only keep one-day statistics.
-    if (this.psolMessages_.length > pagespeed.Graphs.TIMERANGE_) {
-      this.psolMessages_.shift();
+    var text = this.xhr_.getResponseText();
+    if (!this.secondRefreshStarted_) {
+      // We collect historical data in the first refresh and wait for the
+      // second refresh to update data. We won't call functions to draw charts
+      // until we make data up-to-date.
+      this.parseHistoricalMessages(text);
+      // Add the second refresh to the queue with no delay time. So it would be
+      // implemented immediately after the first refresh completion.
+      window.setTimeout(goog.bind(this.performRefresh, this), 0);
+    } else {
+      this.parseSnapshotMessages(text);
+      // Only keep one-day statistics.
+      if (this.psolMessages_.length > pagespeed.Graphs.TIMERANGE_) {
+        this.psolMessages_.shift();
+      }
+      this.drawVisualization();
     }
-    this.drawVisualization();
   } else {
     console.log(this.xhr_.getLastError());
   }
@@ -283,8 +336,6 @@ pagespeed.Graphs.prototype.drawVisualization = function() {
     ['pcache-cohorts-beacon_', 'Property cache beacon cohorts', 'PieChart',
      pagespeed.Graphs.DisplayDiv.CACHE_APPLIED],
     ['rewrite_cached_output_', 'Rewrite cached output', 'PieChart',
-     pagespeed.Graphs.DisplayDiv.CACHE_APPLIED],
-    ['rewrite_', 'Rewrite', 'PieChart',
      pagespeed.Graphs.DisplayDiv.CACHE_APPLIED],
     ['url_input_', 'URL Input', 'PieChart',
      pagespeed.Graphs.DisplayDiv.CACHE_APPLIED],
@@ -366,6 +417,10 @@ pagespeed.Graphs.prototype.drawChart = function(settingPrefix, title,
   } else {
     // The element identified by the id must exist.
     var targetElement = document.getElementById(targetId);
+    // Remove the status info when it starts to draw charts.
+    if (targetElement.innerText == 'Loading Charts...') {
+      targetElement.innerText = '';
+    }
     var dest = document.createElement('div');
     dest.className = 'chart';
     targetElement.appendChild(dest);

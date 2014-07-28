@@ -70,10 +70,10 @@ pagespeed.Statistics = function(opt_xhr) {
   uiTable.innerHTML =
       '<table id="uiTable" border=1 style="border-collapse: ' +
       'collapse;border-color:silver;"><tr valign="center">' +
-      '<td>Auto refresh: <input type="checkbox" id="autoRefresh" ' +
-      (this.autoRefresh_ ? 'checked' : '') + '></td>' +
-      '<td>&nbsp;&nbsp;&nbsp;&nbsp;Search: ' +
-      '<input id="txtFilter" type="text"></td>' +
+      '<td>Auto refresh (every 5 seconds): <input type="checkbox" ' +
+      'id="autoRefresh" ' + (this.autoRefresh_ ? 'checked' : '') +
+      '></td><td>&nbsp;&nbsp;&nbsp;&nbsp;Filter: ' +
+      '<input id="txtFilter" type="text" size="70"></td>' +
       '</tr></table>';
   document.body.insertBefore(uiTable, document.getElementById('stat'));
 };
@@ -101,7 +101,6 @@ pagespeed.Statistics.prototype.setFilter = function(element) {
  * Filters and displays updated statistics.
  */
 pagespeed.Statistics.prototype.update = function() {
-  var statElement = document.getElementById('stat');
   var messages = goog.array.clone(this.psolMessages_);
   if (this.filter_) {
     for (var i = messages.length - 1; i >= 0; --i) {
@@ -111,48 +110,27 @@ pagespeed.Statistics.prototype.update = function() {
       }
     }
   }
+  var statElement = document.getElementById('stat');
   statElement.innerText = messages.join('\n');
 };
 
 
 /**
-  * The error message of dump failure.
-  * @private {string}
-  * @const
-  */
-pagespeed.Statistics.DUMP_ERROR_ =
-    'Sorry, failed to write statistics to this page.';
-
-
-/**
  * Parses new statistics from the server response.
- * @param {string} text The raw text content sent by server.
- * The expected format of text should be like this:
- * <html>
- *   <head>...</head>
- *   <body>
- *     <div style=...>...</div><hr>
- *     <div id="uiDiv">...</div>
- *     <pre id="stat">...</pre>
- *     <script type="text/javascript">...</script>
- *   </body>
- * </html>
- * @return {!Array.<string>} messages The updated statistics list.
+ * @param {string} text The data dumped in JSON format.
  */
 pagespeed.Statistics.prototype.parseMessagesFromResponse = function(text) {
+  var jsonData = JSON.parse(text);
+  var variables = jsonData['variables'];
+  var maxLength = jsonData['maxlength'];
   var messages = [];
-  // TODO(xqyin): Add a handler method in AdminSite to provide proper XHR
-  // response instead of depending on the format like this.
-  var start = text.indexOf('<pre id="stat">');
-  var end = text.indexOf('</pre>', start);
-  if (start >= 0 && end >= 0) {
-    start = start + '<pre id="stat">'.length;
-    end = end - 1;
-    messages = text.substring(start, end).split('\n');
-  } else {
-    messages.push(pagespeed.Statistics.DUMP_ERROR_);
+  for (var name in variables) {
+    var numSpaces = maxLength - name.length - variables[name].toString().length;
+    var line = name + ':' + new Array(numSpaces + 2).join(' ') +
+               variables[name].toString();
+    messages.push(line);
   }
-  return messages;
+  this.psolMessages_ = messages;
 };
 
 
@@ -167,26 +145,46 @@ pagespeed.Statistics.REFRESH_ERROR_ =
 
 
 /**
+ * Capture the pathname and return the URL for request.
+ * @return {string} The URL to request the updated data in JSON format.
+ */
+pagespeed.Statistics.prototype.requestUrl = function() {
+  var pathName = location.pathname;
+  var n = pathName.lastIndexOf('/');
+  // Ignore the ending '/'.
+  if (n == pathName.length - 1) {
+    n = pathName.substring(0, n).lastIndexOf('/');
+  }
+  if (n > 0) {
+    return pathName.substring(0, n) + '/stats_json';
+  } else {
+    return '/stats_json';
+  }
+};
+
+
+/**
  * Refreshes the page by making requsts to server.
  */
 pagespeed.Statistics.prototype.performRefresh = function() {
   if (!this.xhr_.isActive() && this.autoRefresh_) {
-    var fetchContent = function(statisticsObj) {
-      if (this.isSuccess()) {
-        var newText = this.getResponseText();
-        statisticsObj.psolMessages_ =
-            statisticsObj.parseMessagesFromResponse(newText);
-        statisticsObj.update();
-      } else {
-        console.log(this.getLastError());
-        document.getElementById('stat').innerText =
-            pagespeed.Statistics.REFRESH_ERROR_;
-      }
-    };
-    goog.events.listen(
-        this.xhr_, goog.net.EventType.COMPLETE,
-        goog.bind(fetchContent, this.xhr_, this));
-    this.xhr_.send(document.location.href);
+    this.xhr_.send(this.requestUrl());
+  }
+};
+
+
+/**
+ * Parses the response sent by server and updates the page.
+ */
+pagespeed.Statistics.prototype.parseAjaxResponse = function() {
+  if (this.xhr_.isSuccess()) {
+    var newText = this.xhr_.getResponseText();
+    this.parseMessagesFromResponse(newText);
+    this.update();
+  } else {
+    console.log(this.xhr_.getLastError());
+    document.getElementById('stat').innerText =
+        pagespeed.Statistics.REFRESH_ERROR_;
   }
 };
 
@@ -215,6 +213,10 @@ pagespeed.Statistics.Start = function() {
                                  statisticsObj));
     setInterval(statisticsObj.performRefresh.bind(statisticsObj),
                 pagespeed.Statistics.FREQUENCY_);
+    goog.events.listen(
+        statisticsObj.xhr_, goog.net.EventType.COMPLETE,
+        goog.bind(statisticsObj.parseAjaxResponse, statisticsObj));
+    statisticsObj.performRefresh();
   };
   goog.events.listen(window, 'load', statisticsOnload);
 };

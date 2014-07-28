@@ -296,11 +296,20 @@ void AdminSite::StatisticsGraphsHandler(
   writer->Write("</script>", message_handler_);
 }
 
+void AdminSite::StatisticsJsonHandler(AsyncFetch* fetch, Statistics* stats) {
+  fetch->response_headers()->SetStatusAndReason(HttpStatus::kOK);
+  fetch->response_headers()->Add(HttpAttributes::kContentType,
+                                 kContentTypeJson.mime_type());
+  stats->DumpJson(fetch, message_handler_);
+  fetch->Done(true);
+}
+
 void AdminSite::StatisticsHandler(const RewriteOptions& options,
                                   AdminSource source, AsyncFetch* fetch,
                                   Statistics* stats) {
   AdminHtml admin_html("statistics", "", source, fetch, message_handler_);
-  // Write <pre></pre> for Dump to keep good format.
+  // We have to call Dump() here to write data to sources for
+  // system/system_test.sh: Line 79. We use JS to update the data in refreshes.
   fetch->Write("<pre id=\"stat\">", message_handler_);
   stats->Dump(fetch, message_handler_);
   fetch->Write("</pre>\n", message_handler_);
@@ -313,14 +322,25 @@ void AdminSite::StatisticsHandler(const RewriteOptions& options,
 }
 
 void AdminSite::GraphsHandler(const RewriteOptions& options,
-                              AdminSource source, AsyncFetch* fetch,
-                              Statistics* stats) {
+                              AdminSource source,
+                              const QueryParams& query_params,
+                              AsyncFetch* fetch,
+                              Statistics* statistics) {
+  if (query_params.Has("json")) {
+    ConsoleJsonHandler(query_params, fetch, statistics);
+    return;
+  }
+
   AdminHtml admin_html("graphs", "", source, fetch, message_handler_);
-  fetch->Write("<div id=\"cache_applied\"></div>"
-               "<div id=\"cache_type\" style=\"display:none\"></div>"
-               "<div id=\"ipro\" style=\"display:none\"></div>"
-               "<div id=\"image_rewriting\" style=\"display:none\"></div>"
-               "<div id=\"realtime\" style=\"display:none\"></div>",
+  fetch->Write("<div id=\"cache_applied\">Loading Charts...</div>"
+               "<div id=\"cache_type\" style=\"display:none\">"
+               "Loading Charts...</div>"
+               "<div id=\"ipro\" style=\"display:none\">"
+               "Loading Charts...</div>"
+               "<div id=\"image_rewriting\" style=\"display:none\">"
+               "Loading Charts...</div>"
+               "<div id=\"realtime\" style=\"display:none\">"
+               "Loading Charts...</div>",
                message_handler_);
   fetch->Write("<script type=\"text/javascript\" "
                "src=\"https://www.google.com/jsapi\"></script>",
@@ -348,17 +368,18 @@ void AdminSite::ConsoleJsonHandler(const QueryParams& params,
     fetch->response_headers()->Add(HttpAttributes::kContentType,
                                    kContentTypeJson.mime_type());
 
-    int64 start_time, end_time, granularity_ms;
     std::set<GoogleString> var_titles;
+    // Default is to fetch data used on graphs page.
+    bool dump_for_graphs = true;
 
     // Default values for start_time, end_time, and granularity_ms in case the
     // query does not include these parameters.
-    start_time = 0;
-    end_time = timer_->NowMs();
+    int64 start_time = 0;
+    int64 end_time = timer_->NowMs();
     // Granularity is the difference in ms between data points. If it is not
     // specified by the query, the default value is 3000 ms, the same as the
     // default logging granularity.
-    granularity_ms = 3000;
+    int64 granularity_ms = 3000;
     for (int i = 0; i < params.size(); ++i) {
       GoogleString value;
       if (params.UnescapedValue(i, &value)) {
@@ -368,6 +389,8 @@ void AdminSite::ConsoleJsonHandler(const QueryParams& params,
         } else if (name == "end_time") {
           StringToInt64(value, &end_time);
         } else if (name == "var_titles") {
+          // Fetch specified data if users populate var_titles.
+          dump_for_graphs = false;
           std::vector<StringPiece> variable_names;
           SplitStringPieceToVector(value, ",", &variable_names, true);
           for (size_t i = 0; i < variable_names.size(); ++i) {
@@ -378,8 +401,8 @@ void AdminSite::ConsoleJsonHandler(const QueryParams& params,
         }
       }
     }
-    console_logger->DumpJSON(var_titles, start_time, end_time, granularity_ms,
-                             fetch, message_handler_);
+    console_logger->DumpJSON(dump_for_graphs, var_titles, start_time, end_time,
+                             granularity_ms, fetch, message_handler_);
   }
   fetch->Done(true);
 }
@@ -743,8 +766,10 @@ void AdminSite::AdminPage(
     StringPiece leaf = stripped_gurl.LeafSansQuery();
     if ((leaf == "statistics") || (leaf.empty())) {
       StatisticsHandler(*options, kPageSpeedAdmin, fetch, stats);
+    } else if (leaf == "stats_json") {
+      StatisticsJsonHandler(fetch, stats);
     } else if (leaf == "graphs") {
-      GraphsHandler(*options, kPageSpeedAdmin, fetch, stats);
+      GraphsHandler(*options, kPageSpeedAdmin, query_params, fetch, statistics);
     } else if (leaf == "config") {
       PrintNormalConfig(kPageSpeedAdmin, fetch, global_system_rewrite_options);
     } else if (leaf == "spdy_config") {
@@ -803,7 +828,7 @@ void AdminSite::StatisticsPage(
   } else if (query_params.Has("histograms")) {
     PrintHistograms(kStatistics, fetch, stats);
   } else if (query_params.Has("graphs")) {
-    GraphsHandler(*options, kStatistics, fetch, stats);
+    GraphsHandler(*options, kStatistics, query_params, fetch, statistics);
   } else if (query_params.Has("cache")) {
     GoogleUrl empty_url;
     PrintCaches(is_global, kStatistics, empty_url, query_params,

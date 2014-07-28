@@ -416,6 +416,8 @@ class Statistics {
   virtual const std::map<GoogleString, StringVector>& TimedVariableMap() = 0;
   // Dump the variable-values to a writer.
   virtual void Dump(Writer* writer, MessageHandler* handler) = 0;
+  // Dump the variable-values in JSON format to a writer.
+  virtual void DumpJson(Writer* writer, MessageHandler* message_handler) = 0;
   virtual void RenderTimedVariables(Writer* writer,
                                     MessageHandler* handler);
   // Write all the histograms in this Statistic object to a writer.
