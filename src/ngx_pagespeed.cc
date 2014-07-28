@@ -2324,10 +2324,8 @@ ngx_int_t ps_in_place_check_header_filter(ngx_http_request_t* r) {
         cache_url,
         ctx->driver->CacheFragment(),
         request_headers.GetProperties(),
-        options->respect_vary(),
         options->ipro_max_response_bytes(),
         options->ipro_max_concurrent_recordings(),
-        options->implicit_cache_ttl_ms(),
         server_context->http_cache(),
         server_context->statistics(),
         message_handler);
