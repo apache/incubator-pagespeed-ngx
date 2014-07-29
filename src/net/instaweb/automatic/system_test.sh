@@ -1027,9 +1027,8 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   # Substring, all but last 14 characters to remove the signature and extension.
   URL="${URL:0:-14}"
   FINAL_URL="${URL}AAAAAAAAAA.css"
-  echo http_proxy=$SECONDARY_HOSTNAME wget $FINAL_URL
-  OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET $FINAL_URL -O - 2>&1)"
-  check_from "$OUT" grep -q $COMBINED_CSS
+  http_proxy=$SECONDARY_HOSTNAME fetch_until $FINAL_URL \
+    "fgrep -c $COMBINED_CSS" 1
 
   start_test Signed Urls, ignored signatures : No signature is passed
   FINAL_URL="$URL.css"
