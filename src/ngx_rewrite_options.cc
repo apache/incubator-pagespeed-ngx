@@ -104,23 +104,27 @@ void NgxRewriteOptions::AddProperties() {
   // Nginx-specific options.
   add_ngx_option(
       "", &NgxRewriteOptions::statistics_path_, "nsp", kStatisticsPath,
-      kServerScope, "Set the statistics path. Ex: /ngx_pagespeed_statistics");
+      kServerScope, "Set the statistics path. Ex: /ngx_pagespeed_statistics",
+      false);
   add_ngx_option(
       "", &NgxRewriteOptions::global_statistics_path_, "ngsp",
       kGlobalStatisticsPath, kProcessScope,
-      "Set the global statistics path. Ex: /ngx_pagespeed_global_statistics");
+      "Set the global statistics path. Ex: /ngx_pagespeed_global_statistics",
+      false);
   add_ngx_option(
       "", &NgxRewriteOptions::console_path_, "ncp", kConsolePath, kServerScope,
-      "Set the console path. Ex: /pagespeed_console");
+      "Set the console path. Ex: /pagespeed_console", false);
   add_ngx_option(
       "", &NgxRewriteOptions::messages_path_, "nmp", kMessagesPath,
-      kServerScope, "Set the messages path.  Ex: /ngx_pagespeed_message");
+      kServerScope, "Set the messages path.  Ex: /ngx_pagespeed_message",
+      false);
   add_ngx_option(
       "", &NgxRewriteOptions::admin_path_, "nap", kAdminPath,
-      kServerScope, "Set the admin path.  Ex: /pagespeed_admin");
+      kServerScope, "Set the admin path.  Ex: /pagespeed_admin", false);
   add_ngx_option(
       "", &NgxRewriteOptions::global_admin_path_, "ngap", kGlobalAdminPath,
-      kProcessScope, "Set the global admin path.  Ex: /pagespeed_global_admin");
+      kProcessScope, "Set the global admin path.  Ex: /pagespeed_global_admin",
+      false);
 
   MergeSubclassProperties(ngx_properties_);
 
