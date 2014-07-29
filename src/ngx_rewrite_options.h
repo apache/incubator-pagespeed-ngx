@@ -129,9 +129,10 @@ class NgxRewriteOptions : public SystemRewriteOptions {
                              const char* id,
                              StringPiece option_name,
                              OptionScope scope,
-                             const char* help) {
+                             const char* help,
+                             bool safe_to_print) {
     AddProperty(default_value, offset, id, option_name, scope, help,
-                ngx_properties_);
+                safe_to_print, ngx_properties_);
   }
 
   Option<GoogleString> statistics_path_;
