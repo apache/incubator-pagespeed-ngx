@@ -1731,6 +1731,8 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
     return NGX_DECLINED;
   }
 
+  request_context->set_options(options->ComputeHttpOptions());
+
   // ps_determine_options modified url, removing any ModPagespeedFoo=Bar query
   // parameters.  Keep url_string in sync with url.
   url.Spec().CopyToString(&url_string);
@@ -2313,6 +2315,9 @@ ngx_int_t ps_in_place_check_header_filter(ngx_http_request_t* r) {
         cache_url.c_str());
     const SystemRewriteOptions* options = SystemRewriteOptions::DynamicCast(
         ctx->driver->options());
+    RequestContextPtr request_context(
+        cfg_s->server_context->NewRequestContext(r));
+    request_context->set_options(options->ComputeHttpOptions());
     RequestHeaders request_headers;
     copy_request_headers_from_ngx(r, &request_headers);
     // This URL was not found in cache (neither the input resource nor
@@ -2320,7 +2325,7 @@ ngx_int_t ps_in_place_check_header_filter(ngx_http_request_t* r) {
     // (or at least a note that it cannot be cached stored there).
     // We do that using an Apache output filter.
     ctx->recorder = new InPlaceResourceRecorder(
-        RequestContextPtr(cfg_s->server_context->NewRequestContext(r)),
+        request_context,
         cache_url,
         ctx->driver->CacheFragment(),
         request_headers.GetProperties(),
@@ -2526,10 +2531,16 @@ void ps_beacon_handler_helper(ngx_http_request_t* r,
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
   CHECK(cfg_s != NULL);
 
-  cfg_s->server_context->HandleBeacon(
-      beacon_data,
-      user_agent,
-      RequestContextPtr(cfg_s->server_context->NewRequestContext(r)));
+  RequestContextPtr request_context(
+      cfg_s->server_context->NewRequestContext(r));
+  // TODO(sligocki): Do we want custom options here? It probably doesn't matter
+  // for beacons.
+  request_context->set_options(
+      cfg_s->server_context->global_options()->ComputeHttpOptions());
+
+  cfg_s->server_context->HandleBeacon(beacon_data,
+                                      user_agent,
+                                      request_context);
 
   ps_set_cache_control(r, const_cast<char*>("max-age=0, no-cache"));
 
