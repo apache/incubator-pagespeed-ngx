@@ -39,7 +39,6 @@ class Hasher;
 class MessageHandler;
 class Statistics;
 class Timer;
-class UpDownCounter;
 class Variable;
 
 // Implements HTTP caching semantics, including cache expiration and
@@ -98,7 +97,8 @@ class HTTPCache {
         : response_headers_(NULL),
           owns_response_headers_(false),
           request_ctx_(request_ctx),
-          is_background_(false) {
+          is_background_(false),
+          update_stats_on_failure_(true) {
     }
 
     // The 2-arg constructor can be used in situations where we are confident
@@ -109,7 +109,8 @@ class HTTPCache {
           req_properties_(req_properties),
           owns_response_headers_(false),
           request_ctx_(request_ctx),
-          is_background_(false) {
+          is_background_(false),
+          update_stats_on_failure_(true) {
     }
 
     virtual ~Callback();
@@ -191,6 +192,11 @@ class HTTPCache {
       return req_properties_;
     }
 
+    // Indicates whether the HTTP Cache stats be updated when the lookup fails.
+    // Normally we would, except In the case of an L1 of a write-through cache.
+    bool update_stats_on_failure() const { return update_stats_on_failure_; }
+    void set_update_stats_on_failure(bool x) { update_stats_on_failure_ = x; }
+
    protected:
     // Virtual implementation for subclasses to override.  Default
     // implementation calls RequestContext::TimingInfo::SetHTTPCacheLatencyMs.
@@ -206,6 +212,7 @@ class HTTPCache {
     bool owns_response_headers_;
     RequestContextPtr request_ctx_;
     bool is_background_;
+    bool update_stats_on_failure_;
 
     DISALLOW_COPY_AND_ASSIGN(Callback);
   };
@@ -304,20 +311,14 @@ class HTTPCache {
   bool IsExpired(const ResponseHeaders& headers);
   bool IsExpired(const ResponseHeaders& headers, int64 now_ms);
 
-  // Stats for the HTTP cache.  The UpDownCounters here are declared as such
-  // becuase WriteThroughHTTPCache decrements some of the counts in order to
-  // correct for a cache MISS on the L1 that turns out to be a HIT in L2.
-  //
-  // TODO(jmarantz): Eliminate the need for correction, e.g. by doing
-  // the stat-recording only in the WriteThroughHTTPCache and not
-  // in the sub-caches, which can be supplied (say) NullStatistics interfaces.
+  // Stats for the HTTP cache.
   Variable* cache_time_us()     { return cache_time_us_; }
   Variable* cache_hits()        { return cache_hits_; }
-  UpDownCounter* cache_misses()    { return cache_misses_; }
-  UpDownCounter* cache_fallbacks() { return cache_fallbacks_; }
+  Variable* cache_misses()      { return cache_misses_; }
+  Variable* cache_fallbacks()   { return cache_fallbacks_; }
   Variable* cache_expirations() { return cache_expirations_; }
-  UpDownCounter* cache_inserts()   { return cache_inserts_; }
-  UpDownCounter* cache_deletes()   { return cache_deletes_; }
+  Variable* cache_inserts()     { return cache_inserts_; }
+  Variable* cache_deletes()     { return cache_deletes_; }
 
   int64 remember_not_cacheable_ttl_seconds() {
     return remember_not_cacheable_ttl_seconds_;
@@ -373,6 +374,7 @@ class HTTPCache {
                            const GoogleString& fragment,
                            int64 start_us,
                            HTTPValue* value);
+  virtual void DeleteInternal(const GoogleString& key_fragment);
 
  private:
   friend class HTTPCacheCallback;
@@ -388,8 +390,7 @@ class HTTPCache {
       HTTPValue* value, MessageHandler* handler);
   void UpdateStats(const GoogleString& key, const GoogleString& fragment,
                    CacheInterface::KeyState backend_state, FindResult result,
-                   bool has_fallback, bool is_expired, int64 delta_us,
-                   MessageHandler* handler);
+                   bool has_fallback, bool is_expired, MessageHandler* handler);
   void RememberFetchFailedorNotCacheableHelper(
       const GoogleString& key, const GoogleString& fragment,
       MessageHandler* handler, HttpStatus::Code code, int64 ttl_sec);
@@ -406,16 +407,16 @@ class HTTPCache {
   // # of Find() requests which are found in cache and are still valid.
   Variable* cache_hits_;
   // # of other Find() requests that fail or are expired.
-  UpDownCounter* cache_misses_;
+  Variable* cache_misses_;
   // # of Find() requests which are found in backend cache (whether or not
   // they are valid).
   Variable* cache_backend_hits_;
   // # of Find() requests not found in backend cache.
   Variable* cache_backend_misses_;
-  UpDownCounter* cache_fallbacks_;
+  Variable* cache_fallbacks_;
   Variable* cache_expirations_;
-  UpDownCounter* cache_inserts_;
-  UpDownCounter* cache_deletes_;
+  Variable* cache_inserts_;
+  Variable* cache_deletes_;
 
   GoogleString name_;
   int64 remember_not_cacheable_ttl_seconds_;

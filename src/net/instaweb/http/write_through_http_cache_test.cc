@@ -281,7 +281,7 @@ TEST_F(WriteThroughHTTPCacheTest, PutGet) {
   CheckCachedValueExpired();
   EXPECT_EQ(2, GetStat(HTTPCache::kCacheHits));
   EXPECT_EQ(1, GetStat(HTTPCache::kCacheMisses));
-  EXPECT_EQ(2, GetStat(HTTPCache::kCacheExpirations));
+  EXPECT_EQ(1, GetStat(HTTPCache::kCacheExpirations));
   EXPECT_EQ(1, GetStat(HTTPCache::kCacheInserts));
   EXPECT_EQ(1, GetStat(HTTPCache::kCacheFallbacks));
   EXPECT_EQ(2, cache1_.num_hits());
@@ -310,7 +310,7 @@ TEST_F(WriteThroughHTTPCacheTest, PutGet) {
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheHits));
   EXPECT_EQ(1, GetStat(HTTPCache::kCacheMisses));
   EXPECT_EQ(1, GetStat(HTTPCache::kCacheFallbacks));
-  EXPECT_EQ(2, GetStat(HTTPCache::kCacheExpirations));
+  EXPECT_EQ(1, GetStat(HTTPCache::kCacheExpirations));
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheInserts));
   EXPECT_EQ(1, cache1_.num_hits());
   EXPECT_EQ(0, cache1_.num_misses());
@@ -344,7 +344,7 @@ TEST_F(WriteThroughHTTPCacheTest, PutGet) {
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheHits));
   EXPECT_EQ(1, GetStat(HTTPCache::kCacheMisses));
   EXPECT_EQ(1, GetStat(HTTPCache::kCacheFallbacks));
-  EXPECT_EQ(2, GetStat(HTTPCache::kCacheExpirations));
+  EXPECT_EQ(1, GetStat(HTTPCache::kCacheExpirations));
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheInserts));
   EXPECT_EQ(1, cache1_.num_hits());
   EXPECT_EQ(0, cache1_.num_misses());
@@ -371,7 +371,7 @@ TEST_F(WriteThroughHTTPCacheTest, PutGet) {
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheHits));
   EXPECT_EQ(1, GetStat(HTTPCache::kCacheMisses));
   EXPECT_EQ(1, GetStat(HTTPCache::kCacheFallbacks));
-  EXPECT_EQ(1, GetStat(HTTPCache::kCacheExpirations));
+  EXPECT_EQ(0, GetStat(HTTPCache::kCacheExpirations));
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheInserts));
   EXPECT_EQ(1, cache1_.num_hits());
   EXPECT_EQ(0, cache1_.num_misses());

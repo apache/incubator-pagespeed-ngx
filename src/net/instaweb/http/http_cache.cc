@@ -86,13 +86,13 @@ HTTPCache::HTTPCache(CacheInterface* cache, Timer* timer, Hasher* hasher,
       disable_html_caching_on_https_(false),
       cache_time_us_(stats->GetVariable(kCacheTimeUs)),
       cache_hits_(stats->GetVariable(kCacheHits)),
-      cache_misses_(stats->GetUpDownCounter(kCacheMisses)),
+      cache_misses_(stats->GetVariable(kCacheMisses)),
       cache_backend_hits_(stats->GetVariable(kCacheBackendHits)),
       cache_backend_misses_(stats->GetVariable(kCacheBackendMisses)),
-      cache_fallbacks_(stats->GetUpDownCounter(kCacheFallbacks)),
+      cache_fallbacks_(stats->GetVariable(kCacheFallbacks)),
       cache_expirations_(stats->GetVariable(kCacheExpirations)),
-      cache_inserts_(stats->GetUpDownCounter(kCacheInserts)),
-      cache_deletes_(stats->GetUpDownCounter(kCacheDeletes)),
+      cache_inserts_(stats->GetVariable(kCacheInserts)),
+      cache_deletes_(stats->GetVariable(kCacheDeletes)),
       name_(FormatName(cache->Name())) {
   remember_not_cacheable_ttl_seconds_ = kRememberNotCacheableTtlSec;
   remember_fetch_failed_ttl_seconds_ = kRememberFetchFailedTtlSec;
@@ -248,10 +248,14 @@ class HTTPCacheCallback : public CacheInterface::Callback {
 
     // TODO(gee): Perhaps all of this belongs in TimingInfo.
     int64 elapsed_us = std::max(static_cast<int64>(0), now_us - start_us_);
-    http_cache_->UpdateStats(key_, fragment_, backend_state, result,
-                             !callback_->fallback_http_value()->Empty(),
-                             is_expired, elapsed_us, handler_);
+    http_cache_->cache_time_us()->Add(elapsed_us);
     callback_->ReportLatencyMs(elapsed_us/1000);
+    if (callback_->update_stats_on_failure() ||
+        (result == HTTPCache::kFound)) {
+      http_cache_->UpdateStats(key_, fragment_, backend_state, result,
+                               !callback_->fallback_http_value()->Empty(),
+                               is_expired, handler_);
+    }
     if (result != HTTPCache::kFound) {
       headers->Clear();
       callback_->http_value()->Clear();
@@ -283,9 +287,7 @@ void HTTPCache::Find(const GoogleString& key, const GoogleString& fragment,
 void HTTPCache::UpdateStats(
     const GoogleString& key, const GoogleString& fragment,
     CacheInterface::KeyState backend_state, FindResult result,
-    bool has_fallback, bool is_expired, int64 delta_us,
-    MessageHandler* handler) {
-  cache_time_us_->Add(delta_us);
+    bool has_fallback, bool is_expired, MessageHandler* handler) {
   if (backend_state == CacheInterface::kAvailable) {
     cache_backend_hits_->Add(1);
   } else {
@@ -405,7 +407,6 @@ void HTTPCache::PutInternal(
   if (cache_time_us_ != NULL) {
     int64 delta_us = timer_->NowUs() - start_us;
     cache_time_us_->Add(delta_us);
-    cache_inserts_->Add(1);
   }
 }
 
@@ -440,6 +441,10 @@ void HTTPCache::Put(const GoogleString& key, const GoogleString& fragment,
   // Put into underlying cache.
   if (new_value != NULL) {
     PutInternal(key, fragment, start_us, new_value);
+    if (cache_inserts_ != NULL) {
+      cache_inserts_->Add(1);
+    }
+
     // Delete new_value if it is newly allocated.
     if (new_value != value) {
       delete new_value;
@@ -472,6 +477,9 @@ void HTTPCache::Put(const GoogleString& key, const GoogleString& fragment,
   // Put into underlying cache.
   if (value.get() != NULL) {
     PutInternal(key, fragment, start_us, value.get());
+    if (cache_inserts_ != NULL) {
+      cache_inserts_->Add(1);
+    }
   }
 }
 
@@ -502,19 +510,23 @@ bool HTTPCache::MayCacheUrl(const GoogleString& url,
 
 void HTTPCache::Delete(const GoogleString& key, const GoogleString& fragment) {
   cache_deletes_->Add(1);
-  return cache_->Delete(CompositeKey(key, fragment));
+  DeleteInternal(CompositeKey(key, fragment));
+}
+
+void HTTPCache::DeleteInternal(const GoogleString& key_fragment) {
+  cache_->Delete(key_fragment);
 }
 
 void HTTPCache::InitStats(Statistics* statistics) {
   statistics->AddVariable(kCacheTimeUs);
   statistics->AddVariable(kCacheHits);
-  statistics->AddUpDownCounter(kCacheMisses);
+  statistics->AddVariable(kCacheMisses);
   statistics->AddVariable(kCacheBackendHits);
   statistics->AddVariable(kCacheBackendMisses);
-  statistics->AddUpDownCounter(kCacheFallbacks);
+  statistics->AddVariable(kCacheFallbacks);
   statistics->AddVariable(kCacheExpirations);
-  statistics->AddUpDownCounter(kCacheInserts);
-  statistics->AddUpDownCounter(kCacheDeletes);
+  statistics->AddVariable(kCacheInserts);
+  statistics->AddVariable(kCacheDeletes);
 }
 
 GoogleString HTTPCache::FormatEtag(StringPiece hash) {

@@ -56,8 +56,8 @@ class WriteThroughHTTPCache : public HTTPCache {
                     MessageHandler* handler,
                     Callback* callback);
 
-  // Implements HTTPCache::Delete().
-  virtual void Delete(const GoogleString& key, const GoogleString& fragment);
+  // Implements HTTPCache::DeleteInternal().
+  virtual void DeleteInternal(const GoogleString& key_fragment);
 
   // Implements HTTPCache::set_force_caching().
   virtual void set_force_caching(bool force);

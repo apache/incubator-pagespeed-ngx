@@ -74,18 +74,15 @@ class FallbackCacheCallback: public HTTPCache::Callback {
       client_fallback->Clear();
       // Insert the response into cache1.
       (write_through_http_cache_->*function_)(key_, fragment_, http_value());
-      if (has_cache1_fallback) {
-        cache1_->cache_fallbacks()->Add(-1);
-      }
     } else if (!fallback_http_value()->Empty()) {
       // We assume that the fallback value in the L2 cache is always fresher
       // than or as fresh as the fallback value in the L1 cache.
-      if (has_cache1_fallback) {
-        // Both caches had a fallback value, make sure we don't double count.
-        cache1_->cache_fallbacks()->Add(-1);
-      }
       client_fallback->Clear();
       client_fallback->Link(fallback_http_value());
+    } else if (has_cache1_fallback) {
+      // If we had to use the fallback value from the L1 cache then account
+      // for that in the statistics.
+      cache1_->cache_fallbacks()->Add(1);
     }
     client_callback_->Done(find_result);
     delete this;
@@ -132,7 +129,9 @@ class Cache1Callback: public HTTPCache::Callback {
         fallback_cache_(fallback_cache),
         handler_(handler),
         client_callback_(client_callback),
-        fallback_cache_callback_(fallback_cache_callback) {}
+        fallback_cache_callback_(fallback_cache_callback) {
+    set_update_stats_on_failure(false);
+  }
 
   virtual ~Cache1Callback() {}
 
@@ -143,7 +142,6 @@ class Cache1Callback: public HTTPCache::Callback {
         // fresher value in the L2 cache.
         client_callback_->fallback_http_value()->Link(fallback_http_value());
       }
-      fallback_cache_->cache_misses()->Add(-1);
       fallback_cache_->Find(
           key_, fragment_, handler_, fallback_cache_callback_.release());
     } else {
@@ -207,8 +205,6 @@ void WriteThroughHTTPCache::PutInCache1(const GoogleString& key,
   if ((cache1_size_limit_ == kUnlimited) ||
       (key.size() + fragment.size() + value->size() < cache1_size_limit_)) {
     cache1_->PutInternal(key, fragment, timer()->NowUs(), value);
-    // Avoid double counting the put.
-    cache_inserts()->Add(-1);
   }
 }
 
@@ -239,11 +235,9 @@ void WriteThroughHTTPCache::PutInternal(const GoogleString& key,
   PutInCache1(key, fragment, value);
 }
 
-void WriteThroughHTTPCache::Delete(const GoogleString& key,
-                                   const GoogleString& fragment) {
-  cache1_->Delete(key, fragment);
-  cache2_->Delete(key, fragment);
-  cache_deletes()->Add(-1);  // To avoid double counting.
+void WriteThroughHTTPCache::DeleteInternal(const GoogleString& key_fragment) {
+  cache1_->DeleteInternal(key_fragment);
+  cache2_->DeleteInternal(key_fragment);
 }
 
 void WriteThroughHTTPCache::set_force_caching(bool force) {
