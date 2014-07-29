@@ -75,8 +75,6 @@ namespace {
 const char kAdminHandler[] = "pagespeed_admin";
 const char kGlobalAdminHandler[] = "pagespeed_global_admin";
 const char kStatisticsHandler[] = "mod_pagespeed_statistics";
-const char kTempStatisticsGraphsHandler[] =
-    "mod_pagespeed_temp_statistics_graphs";
 const char kConsoleHandler[] = "pagespeed_console";
 const char kGlobalStatisticsHandler[] = "mod_pagespeed_global_statistics";
 const char kMessageHandler[] = "mod_pagespeed_message";
@@ -981,13 +979,6 @@ apr_status_t InstawebHandler::instaweb_handler(request_rec* request) {
     admin_site->PurgeHandler(instaweb_handler.original_url_,
                              server_context->cache_path(),
                              instaweb_handler.MakeFetch());
-    ret = OK;
-  } else if (request_handler_str == kTempStatisticsGraphsHandler) {
-    // TODO(sligocki): Merge this into kConsoleHandler.
-    GoogleString output;
-    StringWriter writer(&output);
-    server_context->StatisticsGraphsHandler(&writer);
-    write_handler_response(output, request);
     ret = OK;
   } else if (request_handler_str == kConsoleHandler) {
     InstawebHandler instaweb_handler(request);

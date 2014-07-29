@@ -36,7 +36,6 @@
 #include "net/instaweb/util/public/query_params.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/statistics_logger.h"
-#include "net/instaweb/util/public/writer.h"
 #include "pagespeed/kernel/base/cache_interface.h"
 #include "pagespeed/kernel/base/callback.h"
 #include "pagespeed/kernel/base/string.h"
@@ -55,8 +54,6 @@ namespace net_instaweb {
 
 // Generated from JS, CSS, and HTML source via net/instaweb/js/data_to_c.cc.
 extern const char* CSS_console_css;
-extern const char* CSS_mod_pagespeed_console_css;
-extern const char* HTML_mod_pagespeed_console_body;
 extern const char* JS_caches_js;
 extern const char* JS_caches_js_opt;
 extern const char* JS_console_js;
@@ -65,7 +62,6 @@ extern const char* JS_graphs_js;
 extern const char* JS_graphs_js_opt;
 extern const char* JS_messages_js;
 extern const char* JS_messages_js_opt;
-extern const char* JS_mod_pagespeed_console_js;
 extern const char* JS_statistics_js;
 extern const char* JS_statistics_js_opt;
 
@@ -263,37 +259,6 @@ void AdminSite::ConsoleHandler(const SystemRewriteOptions& global_options,
                   "  for more details.\n"
                   "</p>\n", handler);
   }
-}
-
-// TODO(sligocki): integrate this into the pagespeed_console.
-void AdminSite::StatisticsGraphsHandler(
-    Writer* writer, SystemRewriteOptions* global_system_rewrite_options) {
-  SystemRewriteOptions* options = global_system_rewrite_options;
-  writer->Write("<!DOCTYPE html>"
-                "<title>mod_pagespeed console</title>",
-                message_handler_);
-  writer->Write("<style>", message_handler_);
-  writer->Write(CSS_mod_pagespeed_console_css, message_handler_);
-  writer->Write("</style>", message_handler_);
-  writer->Write(HTML_mod_pagespeed_console_body, message_handler_);
-  writer->Write("<script>", message_handler_);
-  if (options->statistics_logging_charts_js().size() > 0 &&
-      options->statistics_logging_charts_css().size() > 0) {
-    writer->Write("var chartsOfflineJS = '", message_handler_);
-    writer->Write(options->statistics_logging_charts_js(), message_handler_);
-    writer->Write("';", message_handler_);
-    writer->Write("var chartsOfflineCSS = '", message_handler_);
-    writer->Write(options->statistics_logging_charts_css(), message_handler_);
-    writer->Write("';", message_handler_);
-  } else {
-    if (options->statistics_logging_charts_js().size() > 0 ||
-        options->statistics_logging_charts_css().size() > 0) {
-      message_handler_->Message(kWarning, "Using online Charts API.");
-    }
-    writer->Write("var chartsOfflineJS, chartsOfflineCSS;", message_handler_);
-  }
-  writer->Write(JS_mod_pagespeed_console_js, message_handler_);
-  writer->Write("</script>", message_handler_);
 }
 
 void AdminSite::StatisticsJsonHandler(AsyncFetch* fetch, Statistics* stats) {

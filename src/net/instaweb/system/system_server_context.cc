@@ -354,12 +354,6 @@ void SystemServerContext::ConsoleHandler(
                               source, query_params, fetch, statistics());
 }
 
-// TODO(sligocki): integrate this into the pagespeed_console.
-void SystemServerContext::StatisticsGraphsHandler(Writer* writer) {
-  admin_site_->StatisticsGraphsHandler(writer,
-                                       global_system_rewrite_options());
-}
-
 void SystemServerContext::StatisticsHandler(
     const RewriteOptions& options,
     bool is_global_request,
