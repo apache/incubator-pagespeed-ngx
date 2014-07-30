@@ -676,7 +676,8 @@ void AdminSite::MessageHistoryHandler(const RewriteOptions& options,
                  message_handler_);
   } else {
     fetch->Write("<p>Writing to mod_pagespeed_message failed. \n"
-                 "Please check if it's enabled in pagespeed.conf.</p>\n",
+                 "Verify that MessageBufferSize is not set to 0 "
+                 "in pagespeed.conf.</p>\n",
                  message_handler_);
   }
 }

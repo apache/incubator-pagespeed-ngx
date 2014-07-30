@@ -50,6 +50,13 @@ pagespeed.Messages = function(opt_xhr) {
    * @private {!Array.<string>}
    */
   this.psolMessages_ = document.getElementById('log').innerHTML.split('\n');
+  // Note that the element with id 'log' must exist. Otherwise the JS won't
+  // be written to the sources.
+  // The last entry of the messages array is empty because there is a '\n'
+  // at the end.
+  if (this.psolMessages_.length > 0) {
+    this.psolMessages_.pop();
+  }
 
   /**
    * The option of reversing list.
@@ -69,10 +76,35 @@ pagespeed.Messages = function(opt_xhr) {
    */
   this.autoRefresh_ = false;
 
-  var logElement = document.getElementById('log');
+  var wrapper = document.createElement('div');
+  wrapper.style.overflow = 'hidden';
+  wrapper.style.clear = 'both';
+
   var uiTable = document.createElement('div');
-  uiTable.innerHTML = this.htmlString();
-  document.body.insertBefore(uiTable, logElement);
+  uiTable.id = 'uiTable';
+  uiTable.innerHTML =
+      '<table id=ui border="1" style="float:left; border-collapse: ' +
+      'collapse;border-color:silver;"><tr valign="center">' +
+      '<td>Reverse: <input type="checkbox" id="reverse" ' +
+      (this.reverse_ ? 'checked' : '') + '></td>' +
+      '<td>Auto refresh (every 5 seconds): <input type="checkbox" ' +
+      'id="autoRefresh" ' + (this.autoRefresh_ ? 'checked' : '') +
+      '></td><td>&nbsp;&nbsp;&nbsp;&nbsp;Filter: ' +
+      '<input id="txtFilter" type="text" size="70"></td>' +
+      '</tr></table>';
+  wrapper.appendChild(uiTable);
+
+  var numElement = document.createElement('div');
+  numElement.id = 'num';
+  numElement.style.color = 'green';
+  numElement.style.overflow = 'hidden';
+  numElement.style.padding = '5px 0px 0px 10px';
+  wrapper.appendChild(numElement);
+
+  var logElement = document.getElementById('log');
+  document.body.insertBefore(wrapper, logElement);
+
+  this.updateMessageCount();
 };
 
 
@@ -104,6 +136,20 @@ pagespeed.Messages.prototype.setFilter = function(element) {
 
 
 /**
+ * Update the text showing the number of messages.
+ * @param {number=} opt_num An optional specified number to show when
+ *     filtering the messages.
+ */
+pagespeed.Messages.prototype.updateMessageCount = function(opt_num) {
+  // The default number of messages is the length of the array when opt_num
+  // is not specified.
+  var total = (opt_num != undefined) ? opt_num : this.psolMessages_.length;
+  document.getElementById('num').innerText =
+      'The number of messages: ' + total.toString();
+};
+
+
+/**
  * Reverses or filters messages according to the options.
  */
 pagespeed.Messages.prototype.update = function() {
@@ -117,15 +163,12 @@ pagespeed.Messages.prototype.update = function() {
       }
     }
   }
-  if (messages.length < 2) {
-    logElement.innerHTML = messages;
+  this.updateMessageCount(messages.length);
+  // The messages here are already escaped in C++.
+  if (this.reverse_) {
+    logElement.innerHTML = messages.reverse().join('\n');
   } else {
-    // The messages here are already escaped in C++.
-    if (this.reverse_) {
-      logElement.innerHTML = messages.reverse().join('\n');
-    } else {
-      logElement.innerHTML = messages.join('\n');
-    }
+    logElement.innerHTML = messages.join('\n');
   }
 };
 
@@ -136,8 +179,8 @@ pagespeed.Messages.prototype.update = function() {
   * @const
   */
 pagespeed.Messages.DUMP_ERROR_ =
-    '<pre>Failed to write messages to this page. ' +
-    'Please check pagespeed.conf to see if it\'s enabled.</pre>\n';
+    'Failed to write messages to this page. ' +
+    'Verify that MessageBufferSize is not set to 0 in pagespeed.conf.';
 
 
 /**
@@ -153,7 +196,6 @@ pagespeed.Messages.DUMP_ERROR_ =
  *     <script type="text/javascript">...</script>
  *   </body>
  * </html>
- * @return {!Array.<string>} messages The updated messages list.
  */
 pagespeed.Messages.prototype.parseMessagesFromResponse = function(text) {
   var messages = [];
@@ -165,10 +207,14 @@ pagespeed.Messages.prototype.parseMessagesFromResponse = function(text) {
     start = start + '<div id="log">'.length;
     end = end - '</div>\n'.length;
     messages = text.substring(start, end).split('\n');
+    messages.pop();
+    this.psolMessages_ = messages;
+    this.update();
   } else {
-    messages.push(pagespeed.Messages.DUMP_ERROR_);
+    goog.array.clear(this.psolMessages_);
+    this.updateMessageCount();
+    document.getElementById('log').innerText = pagespeed.Messages.DUMP_ERROR_;
   }
-  return messages;
 };
 
 
@@ -178,8 +224,8 @@ pagespeed.Messages.prototype.parseMessagesFromResponse = function(text) {
   * @const
   */
 pagespeed.Messages.REFRESH_ERROR_ =
-    '<pre>Sorry, the message history cannot be loaded. ' +
-    'Please wait and try again later.</pre>\n';
+    'Sorry, the message history cannot be loaded. ' +
+    'Please wait and try again later.';
 
 
 /**
@@ -187,43 +233,25 @@ pagespeed.Messages.REFRESH_ERROR_ =
  */
 pagespeed.Messages.prototype.autoRefresh = function() {
   if (this.autoRefresh_ && !this.xhr_.isActive()) {
-    var fetchContent = function(messagesObj) {
-      if (this.isSuccess()) {
-        var newText = this.getResponseText();
-        messagesObj.psolMessages_ =
-            messagesObj.parseMessagesFromResponse(newText);
-        messagesObj.update();
-      } else {
-        console.log(this.getLastError());
-        document.getElementById('log').innerHTML =
-            pagespeed.Messages.REFRESH_ERROR_;
-      }
-    };
-    goog.events.listen(
-        this.xhr_, goog.net.EventType.COMPLETE,
-        goog.bind(fetchContent, this.xhr_, this));
     this.xhr_.send(document.location.href);
   }
 };
 
 
 /**
- * Generates the HTML code to inject UI to the page.
- * @return {string}
+ * Parse the response sent by server.
  */
-pagespeed.Messages.prototype.htmlString = function() {
-  // TODO(xqyin): Use DOM functions to inject the UI table.
-  var html =
-      '<table border=1 style="border-collapse: ' +
-      'collapse;border-color:silver;"><tr valign="center">' +
-      '<td>Reverse: <input type="checkbox" id="reverse" ' +
-      (this.reverse_ ? 'checked' : '') + '></td>' +
-      '<td>Auto refresh: <input type="checkbox" id="autoRefresh" ' +
-      (this.autoRefresh_ ? 'checked' : '') + '></td>' +
-      '<td>&nbsp;&nbsp;&nbsp;&nbsp;Search: ' +
-      '<input id="txtFilter" type="text"></td>' +
-      '</tr></table>';
-  return html;
+pagespeed.Messages.prototype.parseAjaxResponse = function() {
+  if (this.xhr_.isSuccess()) {
+    var newText = this.xhr_.getResponseText();
+    this.parseMessagesFromResponse(newText);
+  } else {
+    console.log(this.xhr_.getLastError());
+    goog.array.clear(this.psolMessages_);
+    this.updateMessageCount();
+    document.getElementById('log').innerText =
+        pagespeed.Messages.REFRESH_ERROR_;
+  }
 };
 
 
@@ -242,7 +270,8 @@ pagespeed.Messages.Start = function() {
                        goog.bind(messagesObj.toggleReverse, messagesObj));
     goog.events.listen(document.getElementById('autoRefresh'), 'change',
                        goog.bind(messagesObj.toggleAutorefresh, messagesObj));
-    messagesObj.update();
+    goog.events.listen(messagesObj.xhr_, goog.net.EventType.COMPLETE,
+                       goog.bind(messagesObj.parseAjaxResponse, messagesObj));
     setInterval(messagesObj.autoRefresh.bind(messagesObj), 5000);
   };
   goog.events.listen(window, 'load', messagesOnload);

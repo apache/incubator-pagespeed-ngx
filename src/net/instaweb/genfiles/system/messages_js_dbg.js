@@ -2366,7 +2366,7 @@ goog.events.EventTarget.prototype.fireListeners = function(type, capture, eventO
       rv = !1 !== listenerFn.call(listenerHandler, eventObject) && rv;
     }
   }
-  return rv && !1 != eventObject.returnValue_;
+  return rv && 0 != eventObject.returnValue_;
 };
 goog.events.EventTarget.prototype.getListeners = function(type, capture) {
   return this.eventTargetListeners_.getListeners(String(type), capture);
@@ -4597,12 +4597,25 @@ goog.debug.entryPointRegistry.register(function(transformer) {
 var pagespeed = {Messages:function(opt_xhr) {
   this.xhr_ = opt_xhr || new goog.net.XhrIo;
   this.psolMessages_ = document.getElementById("log").innerHTML.split("\n");
+  0 < this.psolMessages_.length && this.psolMessages_.pop();
   this.reverse_ = !1;
   this.filter_ = "";
   this.autoRefresh_ = !1;
-  var logElement = document.getElementById("log"), uiTable = document.createElement("div");
-  uiTable.innerHTML = this.htmlString();
-  document.body.insertBefore(uiTable, logElement);
+  var wrapper = document.createElement("div");
+  wrapper.style.overflow = "hidden";
+  wrapper.style.clear = "both";
+  var uiTable = document.createElement("div");
+  uiTable.id = "uiTable";
+  uiTable.innerHTML = '<table id=ui border="1" style="float:left; border-collapse: collapse;border-color:silver;"><tr valign="center"><td>Reverse: <input type="checkbox" id="reverse" ' + (this.reverse_ ? "checked" : "") + '></td><td>Auto refresh (every 5 seconds): <input type="checkbox" id="autoRefresh" ' + (this.autoRefresh_ ? "checked" : "") + '></td><td>&nbsp;&nbsp;&nbsp;&nbsp;Filter: <input id="txtFilter" type="text" size="70"></td></tr></table>';
+  wrapper.appendChild(uiTable);
+  var numElement = document.createElement("div");
+  numElement.id = "num";
+  numElement.style.color = "green";
+  numElement.style.overflow = "hidden";
+  numElement.style.padding = "5px 0px 0px 10px";
+  wrapper.appendChild(numElement);
+  document.body.insertBefore(wrapper, document.getElementById("log"));
+  this.updateMessageCount();
 }};
 pagespeed.Messages.prototype.toggleReverse = function() {
   this.reverse_ = !this.reverse_;
@@ -4615,6 +4628,9 @@ pagespeed.Messages.prototype.setFilter = function(element) {
   this.filter_ = element.value;
   this.update();
 };
+pagespeed.Messages.prototype.updateMessageCount = function(opt_num) {
+  document.getElementById("num").innerText = "The number of messages: " + (void 0 != opt_num ? opt_num : this.psolMessages_.length).toString();
+};
 pagespeed.Messages.prototype.update = function() {
   var logElement = document.getElementById("log"), messages = goog.array.clone(this.psolMessages_);
   if (this.filter_) {
@@ -4622,28 +4638,25 @@ pagespeed.Messages.prototype.update = function() {
       messages[i] && goog.string.caseInsensitiveContains(messages[i], this.filter_) || messages.splice(i, 1);
     }
   }
-  logElement.innerHTML = 2 > messages.length ? messages : this.reverse_ ? messages.reverse().join("\n") : messages.join("\n");
+  this.updateMessageCount(messages.length);
+  logElement.innerHTML = this.reverse_ ? messages.reverse().join("\n") : messages.join("\n");
 };
-pagespeed.Messages.DUMP_ERROR_ = "<pre>Failed to write messages to this page. Please check pagespeed.conf to see if it's enabled.</pre>\n";
+pagespeed.Messages.DUMP_ERROR_ = "Failed to write messages to this page. Verify that MessageBufferSize is not set to 0 in pagespeed.conf.";
 pagespeed.Messages.prototype.parseMessagesFromResponse = function(text) {
   var messages = [], start = text.indexOf('<div id="log">'), end = text.indexOf('<script type="text/javascript">', start);
-  0 <= start && 0 <= end ? messages = text.substring(start + 14, end - 7).split("\n") : messages.push(pagespeed.Messages.DUMP_ERROR_);
-  return messages;
+  0 <= start && 0 <= end ? (messages = text.substring(start + 14, end - 7).split("\n"), messages.pop(), this.psolMessages_ = messages, this.update()) : (goog.array.clear(this.psolMessages_), this.updateMessageCount(), document.getElementById("log").innerText = pagespeed.Messages.DUMP_ERROR_);
 };
-pagespeed.Messages.REFRESH_ERROR_ = "<pre>Sorry, the message history cannot be loaded. Please wait and try again later.</pre>\n";
+pagespeed.Messages.REFRESH_ERROR_ = "Sorry, the message history cannot be loaded. Please wait and try again later.";
 pagespeed.Messages.prototype.autoRefresh = function() {
-  this.autoRefresh_ && !this.xhr_.isActive() && (goog.events.listen(this.xhr_, goog.net.EventType.COMPLETE, goog.bind(function(messagesObj) {
-    if (this.isSuccess()) {
-      var newText = this.getResponseText();
-      messagesObj.psolMessages_ = messagesObj.parseMessagesFromResponse(newText);
-      messagesObj.update();
-    } else {
-      console.log(this.getLastError()), document.getElementById("log").innerHTML = pagespeed.Messages.REFRESH_ERROR_;
-    }
-  }, this.xhr_, this)), this.xhr_.send(document.location.href));
+  this.autoRefresh_ && !this.xhr_.isActive() && this.xhr_.send(document.location.href);
 };
-pagespeed.Messages.prototype.htmlString = function() {
-  return'<table border=1 style="border-collapse: collapse;border-color:silver;"><tr valign="center"><td>Reverse: <input type="checkbox" id="reverse" ' + (this.reverse_ ? "checked" : "") + '></td><td>Auto refresh: <input type="checkbox" id="autoRefresh" ' + (this.autoRefresh_ ? "checked" : "") + '></td><td>&nbsp;&nbsp;&nbsp;&nbsp;Search: <input id="txtFilter" type="text"></td></tr></table>';
+pagespeed.Messages.prototype.parseAjaxResponse = function() {
+  if (this.xhr_.isSuccess()) {
+    var newText = this.xhr_.getResponseText();
+    this.parseMessagesFromResponse(newText);
+  } else {
+    console.log(this.xhr_.getLastError()), goog.array.clear(this.psolMessages_), this.updateMessageCount(), document.getElementById("log").innerText = pagespeed.Messages.REFRESH_ERROR_;
+  }
 };
 pagespeed.Messages.Start = function() {
   goog.events.listen(window, "load", function() {
@@ -4651,7 +4664,7 @@ pagespeed.Messages.Start = function() {
     goog.events.listen(filterElement, "keyup", goog.bind(messagesObj.setFilter, messagesObj, filterElement));
     goog.events.listen(document.getElementById("reverse"), "change", goog.bind(messagesObj.toggleReverse, messagesObj));
     goog.events.listen(document.getElementById("autoRefresh"), "change", goog.bind(messagesObj.toggleAutorefresh, messagesObj));
-    messagesObj.update();
+    goog.events.listen(messagesObj.xhr_, goog.net.EventType.COMPLETE, goog.bind(messagesObj.parseAjaxResponse, messagesObj));
     setInterval(messagesObj.autoRefresh.bind(messagesObj), 5E3);
   });
 };

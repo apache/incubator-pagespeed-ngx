@@ -48,6 +48,11 @@ pagespeed.Statistics = function(opt_xhr) {
    * @private {!Array.<string>}
    */
   this.psolMessages_ = document.getElementById('stat').innerText.split('\n');
+  // The element with id 'stat' must exist.
+  if (this.psolMessages_.length > 0) {
+    // Remove the empty entry.
+    this.psolMessages_.pop();
+  }
 
   /**
    * We provide filtering functionality for users to search for certain
@@ -64,18 +69,33 @@ pagespeed.Statistics = function(opt_xhr) {
    */
   this.autoRefresh_ = false;
 
+  var wrapper = document.createElement('div');
+  wrapper.style.overflow = 'hidden';
+  wrapper.style.clear = 'both';
+
   // The UI table of auto-refresh and filtering.
   var uiTable = document.createElement('div');
   uiTable.id = 'uiDiv';
   uiTable.innerHTML =
-      '<table id="uiTable" border=1 style="border-collapse: ' +
+      '<table id="uiTable" border=1 style="float:left; border-collapse: ' +
       'collapse;border-color:silver;"><tr valign="center">' +
       '<td>Auto refresh (every 5 seconds): <input type="checkbox" ' +
       'id="autoRefresh" ' + (this.autoRefresh_ ? 'checked' : '') +
       '></td><td>&nbsp;&nbsp;&nbsp;&nbsp;Filter: ' +
       '<input id="txtFilter" type="text" size="70"></td>' +
       '</tr></table>';
-  document.body.insertBefore(uiTable, document.getElementById('stat'));
+  wrapper.appendChild(uiTable);
+
+  var numElement = document.createElement('div');
+  numElement.id = 'num';
+  numElement.style.color = 'green';
+  numElement.style.overflow = 'hidden';
+  numElement.style.padding = '5px 0px 0px 10px';
+  wrapper.appendChild(numElement);
+
+  document.body.insertBefore(wrapper, document.getElementById('stat'));
+
+  this.updateMessageCount();
 };
 
 
@@ -98,6 +118,31 @@ pagespeed.Statistics.prototype.setFilter = function(element) {
 
 
 /**
+ * Update the text showing the number of statistics.
+ * @param {number=} opt_num An optional specified number to show when
+ *     filtering the messages.
+ */
+pagespeed.Statistics.prototype.updateMessageCount = function(opt_num) {
+  // The default number of messages is the length of the array when opt_num
+  // is not specified.
+  var total = (opt_num != undefined) ? opt_num : this.psolMessages_.length;
+  document.getElementById('num').innerText =
+      'The number of statistics: ' + total.toString();
+};
+
+
+/**
+ * Show the error message.
+ */
+pagespeed.Statistics.prototype.error = function() {
+  goog.array.clear(this.psolMessages_);
+  this.updateMessageCount();
+  document.getElementById('stat').innerText =
+      pagespeed.Statistics.REFRESH_ERROR_;
+};
+
+
+/**
  * Filters and displays updated statistics.
  */
 pagespeed.Statistics.prototype.update = function() {
@@ -110,6 +155,7 @@ pagespeed.Statistics.prototype.update = function() {
       }
     }
   }
+  this.updateMessageCount(messages.length);
   var statElement = document.getElementById('stat');
   statElement.innerText = messages.join('\n');
 };
@@ -117,20 +163,29 @@ pagespeed.Statistics.prototype.update = function() {
 
 /**
  * Parses new statistics from the server response.
- * @param {string} text The data dumped in JSON format.
+ * @param {!Object} jsonData The data dumped in JSON format.
  */
-pagespeed.Statistics.prototype.parseMessagesFromResponse = function(text) {
-  var jsonData = JSON.parse(text);
+pagespeed.Statistics.prototype.parseMessagesFromResponse = function(jsonData) {
   var variables = jsonData['variables'];
   var maxLength = jsonData['maxlength'];
+
+  // Check if the response is valid JSON.
+  if (goog.typeOf(variables) != 'object' ||
+      goog.typeOf(maxLength) != 'number') {
+    this.error();
+    return;
+  }
+
   var messages = [];
   for (var name in variables) {
-    var numSpaces = maxLength - name.length - variables[name].toString().length;
+    var numSpaces = maxLength - name.length -
+                    variables[name].toString().length;
     var line = name + ':' + new Array(numSpaces + 2).join(' ') +
                variables[name].toString();
     messages.push(line);
   }
   this.psolMessages_ = messages;
+  this.update();
 };
 
 
@@ -178,13 +233,11 @@ pagespeed.Statistics.prototype.performRefresh = function() {
  */
 pagespeed.Statistics.prototype.parseAjaxResponse = function() {
   if (this.xhr_.isSuccess()) {
-    var newText = this.xhr_.getResponseText();
-    this.parseMessagesFromResponse(newText);
-    this.update();
+    var jsonData = this.xhr_.getResponseJson();
+    this.parseMessagesFromResponse(jsonData);
   } else {
     console.log(this.xhr_.getLastError());
-    document.getElementById('stat').innerText =
-        pagespeed.Statistics.REFRESH_ERROR_;
+    this.error();
   }
 };
 

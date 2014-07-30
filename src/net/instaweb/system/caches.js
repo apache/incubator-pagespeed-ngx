@@ -43,7 +43,7 @@ pagespeed.Caches = function() {
       '<td><a id="' +
       pagespeed.Caches.DisplayMode.CACHE_STRUCTURE +
       '" href="javascript:void(0);">' +
-      'Caches Structure</a> - </td>' +
+      'Show Cache Structure</a> - </td>' +
       '<td><a id="' +
       pagespeed.Caches.DisplayMode.PURGE_CACHE +
       '" href="javascript:void(0);">' +
