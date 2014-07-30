@@ -81,9 +81,9 @@ pagespeed.Caches.toggleDetail = function(id) {
  * @enum {string}
  */
 pagespeed.Caches.DisplayMode = {
-  METADATA_CACHE: 'metadata_mode',
-  CACHE_STRUCTURE: 'struct_mode',
-  PURGE_CACHE: 'purge_mode'
+  METADATA_CACHE: 'show_metadata_mode',
+  CACHE_STRUCTURE: 'cache_struct_mode',
+  PURGE_CACHE: 'purge_cache_mode'
 };
 
 
@@ -119,15 +119,29 @@ pagespeed.Caches.prototype.parseLocation = function() {
  *     display mode.
  */
 pagespeed.Caches.prototype.show = function(div) {
-  // Hides all the elements first.
-  document.getElementById(
-      pagespeed.Caches.DisplayDiv.METADATA_CACHE).style.display = 'none';
-  document.getElementById(
-      pagespeed.Caches.DisplayDiv.CACHE_STRUCTURE).style.display = 'none';
-  document.getElementById(
-      pagespeed.Caches.DisplayDiv.PURGE_CACHE).style.display = 'none';
-  // Only shows the element chosen by users.
-  document.getElementById(div).style.display = '';
+  // Only shows the div chosen by users.
+  for (var i in pagespeed.Caches.DisplayDiv) {
+    var chartDiv = pagespeed.Caches.DisplayDiv[i];
+    if (chartDiv == div) {
+      document.getElementById(chartDiv).style.display = '';
+    } else {
+      document.getElementById(chartDiv).style.display = 'none';
+    }
+  }
+
+  // Underline the current tab.
+  var currentTab = document.getElementById(div + '_mode');
+  for (var i in pagespeed.Caches.DisplayMode) {
+    var link = document.getElementById(pagespeed.Caches.DisplayMode[i]);
+    if (link == currentTab) {
+      link.style.textDecoration = 'underline';
+      link.style.color = 'darkblue';
+    } else {
+      link.style.textDecoration = '';
+      link.style.color = '';
+    }
+  }
+
   location.href = location.href.split('#')[0] + '#' + div;
 };
 
@@ -156,23 +170,11 @@ pagespeed.Caches.Start = function() {
     var cachesObj = new pagespeed.Caches();
     cachesObj.purgeInit();
     cachesObj.parseLocation();
-    goog.events.listen(
-        document.getElementById(pagespeed.Caches.DisplayMode.METADATA_CACHE),
-        'click',
-        goog.bind(cachesObj.show, cachesObj,
-                  pagespeed.Caches.DisplayDiv.METADATA_CACHE));
-
-    goog.events.listen(
-        document.getElementById(pagespeed.Caches.DisplayMode.CACHE_STRUCTURE),
-        'click',
-        goog.bind(cachesObj.show, cachesObj,
-                  pagespeed.Caches.DisplayDiv.CACHE_STRUCTURE));
-
-    goog.events.listen(
-        document.getElementById(pagespeed.Caches.DisplayMode.PURGE_CACHE),
-        'click',
-        goog.bind(cachesObj.show, cachesObj,
-                  pagespeed.Caches.DisplayDiv.PURGE_CACHE));
+    for (var i in pagespeed.Caches.DisplayDiv) {
+      goog.events.listen(
+          document.getElementById(pagespeed.Caches.DisplayMode[i]), 'click',
+          goog.bind(cachesObj.show, cachesObj, pagespeed.Caches.DisplayDiv[i]));
+    }
     // IE6/7 don't support this event. Then the back button would not work
     // because no requests captured.
     goog.events.listen(window, 'hashchange',

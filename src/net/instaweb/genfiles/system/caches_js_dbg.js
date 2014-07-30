@@ -2308,17 +2308,22 @@ pagespeed.Caches.toggleDetail = function(id) {
   document.getElementById(id + "_toggle").checked ? (summary_div.style.display = "none", detail_div.style.display = "block") : (summary_div.style.display = "block", detail_div.style.display = "none");
 };
 goog.exportSymbol("pagespeed.Caches.toggleDetail", pagespeed.Caches.toggleDetail);
-pagespeed.Caches.DisplayMode = {METADATA_CACHE:"metadata_mode", CACHE_STRUCTURE:"struct_mode", PURGE_CACHE:"purge_mode"};
+pagespeed.Caches.DisplayMode = {METADATA_CACHE:"show_metadata_mode", CACHE_STRUCTURE:"cache_struct_mode", PURGE_CACHE:"purge_cache_mode"};
 pagespeed.Caches.DisplayDiv = {METADATA_CACHE:"show_metadata", CACHE_STRUCTURE:"cache_struct", PURGE_CACHE:"purge_cache"};
 pagespeed.Caches.prototype.parseLocation = function() {
   var div = location.hash.substr(1);
   "" == div ? this.show(pagespeed.Caches.DisplayDiv.METADATA_CACHE) : goog.object.contains(pagespeed.Caches.DisplayDiv, div) && this.show(div);
 };
 pagespeed.Caches.prototype.show = function(div) {
-  document.getElementById(pagespeed.Caches.DisplayDiv.METADATA_CACHE).style.display = "none";
-  document.getElementById(pagespeed.Caches.DisplayDiv.CACHE_STRUCTURE).style.display = "none";
-  document.getElementById(pagespeed.Caches.DisplayDiv.PURGE_CACHE).style.display = "none";
-  document.getElementById(div).style.display = "";
+  for (var i in pagespeed.Caches.DisplayDiv) {
+    var chartDiv = pagespeed.Caches.DisplayDiv[i];
+    document.getElementById(chartDiv).style.display = chartDiv == div ? "" : "none";
+  }
+  var currentTab = document.getElementById(div + "_mode");
+  for (i in pagespeed.Caches.DisplayMode) {
+    var link = document.getElementById(pagespeed.Caches.DisplayMode[i]);
+    link == currentTab ? (link.style.textDecoration = "underline", link.style.color = "darkblue") : (link.style.textDecoration = "", link.style.color = "");
+  }
   location.href = location.href.split("#")[0] + "#" + div;
 };
 pagespeed.Caches.prototype.purgeInit = function() {
@@ -2333,9 +2338,9 @@ pagespeed.Caches.Start = function() {
     var cachesObj = new pagespeed.Caches;
     cachesObj.purgeInit();
     cachesObj.parseLocation();
-    goog.events.listen(document.getElementById(pagespeed.Caches.DisplayMode.METADATA_CACHE), "click", goog.bind(cachesObj.show, cachesObj, pagespeed.Caches.DisplayDiv.METADATA_CACHE));
-    goog.events.listen(document.getElementById(pagespeed.Caches.DisplayMode.CACHE_STRUCTURE), "click", goog.bind(cachesObj.show, cachesObj, pagespeed.Caches.DisplayDiv.CACHE_STRUCTURE));
-    goog.events.listen(document.getElementById(pagespeed.Caches.DisplayMode.PURGE_CACHE), "click", goog.bind(cachesObj.show, cachesObj, pagespeed.Caches.DisplayDiv.PURGE_CACHE));
+    for (var i in pagespeed.Caches.DisplayDiv) {
+      goog.events.listen(document.getElementById(pagespeed.Caches.DisplayMode[i]), "click", goog.bind(cachesObj.show, cachesObj, pagespeed.Caches.DisplayDiv[i]));
+    }
     goog.events.listen(window, "hashchange", goog.bind(cachesObj.parseLocation, cachesObj));
   });
 };

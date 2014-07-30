@@ -4612,12 +4612,20 @@ pagespeed.Graphs = function(opt_xhr) {
   document.body.insertBefore(navElement, document.getElementById("uiDiv"));
 };
 pagespeed.Graphs.prototype.show = function(div) {
-  document.getElementById(pagespeed.Graphs.DisplayDiv.CACHE_APPLIED).style.display = "none";
-  document.getElementById(pagespeed.Graphs.DisplayDiv.CACHE_TYPE).style.display = "none";
-  document.getElementById(pagespeed.Graphs.DisplayDiv.IPRO).style.display = "none";
-  document.getElementById(pagespeed.Graphs.DisplayDiv.REWRITE_IMAGE).style.display = "none";
-  document.getElementById(pagespeed.Graphs.DisplayDiv.REALTIME).style.display = "none";
-  document.getElementById(div).style.display = "";
+  for (var i in pagespeed.Graphs.DisplayDiv) {
+    var chartDiv = pagespeed.Graphs.DisplayDiv[i];
+    document.getElementById(chartDiv).style.display = chartDiv == div ? "" : "none";
+  }
+  var currentTab = document.getElementById(div + "_mode");
+  for (i in pagespeed.Graphs.DisplayMode) {
+    var link = document.getElementById(pagespeed.Graphs.DisplayMode[i]);
+    link == currentTab ? (link.style.textDecoration = "underline", link.style.color = "darkblue") : (link.style.textDecoration = "", link.style.color = "");
+  }
+  location.href = location.href.split("#")[0] + "#" + div;
+};
+pagespeed.Graphs.prototype.parseLocation = function() {
+  var div = location.hash.substr(1);
+  "" == div ? this.show(pagespeed.Graphs.DisplayDiv.CACHE_APPLIED) : goog.object.contains(pagespeed.Graphs.DisplayDiv, div) && this.show(div);
 };
 pagespeed.Graphs.DisplayMode = {CACHE_APPLIED:"cache_applied_mode", CACHE_TYPE:"cache_type_mode", IPRO:"ipro_mode", REWRITE_IMAGE:"image_rewriting_mode", REALTIME:"realtime_mode"};
 pagespeed.Graphs.DisplayDiv = {CACHE_APPLIED:"cache_applied", CACHE_TYPE:"cache_type", IPRO:"ipro", REWRITE_IMAGE:"image_rewriting", REALTIME:"realtime"};
@@ -4728,12 +4736,12 @@ pagespeed.Graphs.TIMERANGE_ = 86400 / pagespeed.Graphs.FREQUENCY_;
 pagespeed.Graphs.Start = function() {
   goog.events.listen(window, "load", function() {
     var graphsObj = new pagespeed.Graphs;
+    graphsObj.parseLocation();
+    for (var i in pagespeed.Graphs.DisplayDiv) {
+      goog.events.listen(document.getElementById(pagespeed.Graphs.DisplayMode[i]), "click", goog.bind(graphsObj.show, graphsObj, pagespeed.Graphs.DisplayDiv[i]));
+    }
+    goog.events.listen(window, "hashchange", goog.bind(graphsObj.parseLocation, graphsObj));
     goog.events.listen(document.getElementById("autoRefresh"), "change", goog.bind(graphsObj.toggleAutorefresh, graphsObj));
-    goog.events.listen(document.getElementById(pagespeed.Graphs.DisplayMode.CACHE_APPLIED), "click", goog.bind(graphsObj.show, graphsObj, pagespeed.Graphs.DisplayDiv.CACHE_APPLIED));
-    goog.events.listen(document.getElementById(pagespeed.Graphs.DisplayMode.CACHE_TYPE), "click", goog.bind(graphsObj.show, graphsObj, pagespeed.Graphs.DisplayDiv.CACHE_TYPE));
-    goog.events.listen(document.getElementById(pagespeed.Graphs.DisplayMode.IPRO), "click", goog.bind(graphsObj.show, graphsObj, pagespeed.Graphs.DisplayDiv.IPRO));
-    goog.events.listen(document.getElementById(pagespeed.Graphs.DisplayMode.REWRITE_IMAGE), "click", goog.bind(graphsObj.show, graphsObj, pagespeed.Graphs.DisplayDiv.REWRITE_IMAGE));
-    goog.events.listen(document.getElementById(pagespeed.Graphs.DisplayMode.REALTIME), "click", goog.bind(graphsObj.show, graphsObj, pagespeed.Graphs.DisplayDiv.REALTIME));
     goog.events.listen(graphsObj.xhr_, goog.net.EventType.COMPLETE, goog.bind(graphsObj.parseAjaxResponse, graphsObj));
     setInterval(graphsObj.performRefresh.bind(graphsObj), 1E3 * pagespeed.Graphs.FREQUENCY_);
     graphsObj.performRefresh();

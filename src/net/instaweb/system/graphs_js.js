@@ -137,19 +137,46 @@ pagespeed.Graphs = function(opt_xhr) {
  * @param {string} div The chosen div element to display.
  */
 pagespeed.Graphs.prototype.show = function(div) {
-  // Hides all the elements first.
-  document.getElementById(
-      pagespeed.Graphs.DisplayDiv.CACHE_APPLIED).style.display = 'none';
-  document.getElementById(
-      pagespeed.Graphs.DisplayDiv.CACHE_TYPE).style.display = 'none';
-  document.getElementById(
-      pagespeed.Graphs.DisplayDiv.IPRO).style.display = 'none';
-  document.getElementById(
-      pagespeed.Graphs.DisplayDiv.REWRITE_IMAGE).style.display = 'none';
-  document.getElementById(
-      pagespeed.Graphs.DisplayDiv.REALTIME).style.display = 'none';
-  // Only shows the element chosen by users.
-  document.getElementById(div).style.display = '';
+  // Only shows the div chosen by users.
+  for (var i in pagespeed.Graphs.DisplayDiv) {
+    var chartDiv = pagespeed.Graphs.DisplayDiv[i];
+    if (chartDiv == div) {
+      document.getElementById(chartDiv).style.display = '';
+    } else {
+      document.getElementById(chartDiv).style.display = 'none';
+    }
+  }
+
+  // Underline the current tab.
+  var currentTab = document.getElementById(div + '_mode');
+  for (var i in pagespeed.Graphs.DisplayMode) {
+    var link = document.getElementById(pagespeed.Graphs.DisplayMode[i]);
+    if (link == currentTab) {
+      link.style.textDecoration = 'underline';
+      link.style.color = 'darkblue';
+    } else {
+      link.style.textDecoration = '';
+      link.style.color = '';
+    }
+  }
+
+  location.href = location.href.split('#')[0] + '#' + div;
+  // TODO(xqyin): Note that there are similar changes under caches page as
+  // well. We should factor out the logic and let similar codes like this
+  // being shared by different pages.
+};
+
+
+/**
+ * Parse the location URL to get its anchor part and show the div element.
+ */
+pagespeed.Graphs.prototype.parseLocation = function() {
+  var div = location.hash.substr(1);
+  if (div == '') {
+    this.show(pagespeed.Graphs.DisplayDiv.CACHE_APPLIED);
+  } else if (goog.object.contains(pagespeed.Graphs.DisplayDiv, div)) {
+    this.show(div);
+  }
 };
 
 
@@ -513,33 +540,20 @@ pagespeed.Graphs.TIMERANGE_ = 24 * 60 * 60 /
 pagespeed.Graphs.Start = function() {
   var graphsOnload = function() {
     var graphsObj = new pagespeed.Graphs();
+    graphsObj.parseLocation();
+    for (var i in pagespeed.Graphs.DisplayDiv) {
+      goog.events.listen(
+          document.getElementById(pagespeed.Graphs.DisplayMode[i]), 'click',
+          goog.bind(graphsObj.show, graphsObj, pagespeed.Graphs.DisplayDiv[i]));
+    }
+    // IE6/7 don't support this event. Then the back button would not work
+    // because no requests captured.
+    goog.events.listen(window, 'hashchange',
+                       goog.bind(graphsObj.parseLocation, graphsObj));
+
     goog.events.listen(document.getElementById('autoRefresh'), 'change',
                        goog.bind(graphsObj.toggleAutorefresh,
                                  graphsObj));
-    goog.events.listen(
-        document.getElementById(pagespeed.Graphs.DisplayMode.CACHE_APPLIED),
-        'click',
-        goog.bind(graphsObj.show, graphsObj,
-                  pagespeed.Graphs.DisplayDiv.CACHE_APPLIED));
-    goog.events.listen(
-        document.getElementById(pagespeed.Graphs.DisplayMode.CACHE_TYPE),
-        'click',
-        goog.bind(graphsObj.show, graphsObj,
-                  pagespeed.Graphs.DisplayDiv.CACHE_TYPE));
-    goog.events.listen(
-        document.getElementById(pagespeed.Graphs.DisplayMode.IPRO), 'click',
-        goog.bind(graphsObj.show, graphsObj,
-                  pagespeed.Graphs.DisplayDiv.IPRO));
-    goog.events.listen(
-        document.getElementById(pagespeed.Graphs.DisplayMode.REWRITE_IMAGE),
-        'click',
-        goog.bind(graphsObj.show, graphsObj,
-                  pagespeed.Graphs.DisplayDiv.REWRITE_IMAGE));
-    goog.events.listen(
-        document.getElementById(pagespeed.Graphs.DisplayMode.REALTIME),
-        'click',
-        goog.bind(graphsObj.show, graphsObj,
-                  pagespeed.Graphs.DisplayDiv.REALTIME));
     // We call listen() here so this listener is added to the xhr only once.
     // If we call listen() inside performRefresh() method, we are adding a new
     // listener to the xhr every time it auto-refreshes, which would cause
