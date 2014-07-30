@@ -58,6 +58,9 @@ BASE_LIBS = \
   net/instaweb/libinstaweb_caches_js_opt_data2c.a \
   net/instaweb/libinstaweb_client_domain_rewriter_data2c.a \
   net/instaweb/libinstaweb_client_domain_rewriter_opt_data2c.a \
+  net/instaweb/libinstaweb_console_css_data2c.a \
+  net/instaweb/libinstaweb_console_js_data2c.a \
+  net/instaweb/libinstaweb_console_js_opt_data2c.a \
   net/instaweb/libinstaweb_critical_css_beacon_data2c.a \
   net/instaweb/libinstaweb_critical_css_beacon_opt_data2c.a \
   net/instaweb/libinstaweb_critical_css_loader_data2c.a \
@@ -153,10 +156,10 @@ BASE_LIBS = \
   third_party/libjpeg_turbo/libjpeg.a \
   third_party/libjpeg_turbo/src/libjpeg_turbo.a \
   third_party/libpng/libpng.a \
-  third_party/serf/libopenssl.a \
   third_party/optipng/libopngreduc.a \
   third_party/protobuf/libprotobuf_full_do_not_use.a \
   third_party/re2/libre2.a \
+  third_party/serf/libopenssl.a \
   third_party/serf/libserf.a \
   third_party/zlib/libzlib.a \
   url/liburl_lib.a
