@@ -996,8 +996,8 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   URL="$(grep -Eo "$URL_REGEX" $FETCH_FILE)"
   check test -n "$URL"
   echo wget $URL
-  OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET $URL -O - 2>&1)"
-  check_from "$OUT" grep -q $COMBINED_CSS
+  http_proxy=$SECONDARY_HOSTNAME fetch_until $URL \
+    "fgrep -c $COMBINED_CSS" 1
 
   start_test Signed Urls : Incorrect URL signature is passed
   # Substring, all but last 14 characters to remove the signature and extension.
@@ -1020,8 +1020,8 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   URL="$(grep -Eo "$URL_REGEX" $FETCH_FILE)"
   check test -n "$URL"
   echo http_proxy=$SECONDARY_HOSTNAME wget $URL
-  OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET $URL -O - 2>&1)"
-  check_from "$OUT" grep -q $COMBINED_CSS
+  http_proxy=$SECONDARY_HOSTNAME fetch_until $URL \
+    "fgrep -c $COMBINED_CSS" 1
 
   start_test Signed Urls, ignored signatures : Incorrect URL signature is passed
   # Substring, all but last 14 characters to remove the signature and extension.
@@ -1033,8 +1033,8 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   start_test Signed Urls, ignored signatures : No signature is passed
   FINAL_URL="$URL.css"
   echo http_proxy=$SECONDARY_HOSTNAME wget $FINAL_URL
-  OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET $FINAL_URL -O - 2>&1)"
-  check_from "$OUT" grep -q $COMBINED_CSS
+  http_proxy=$SECONDARY_HOSTNAME fetch_until $FINAL_URL \
+    "fgrep -c $COMBINED_CSS" 1
 
   start_test Unsigned Urls, ignored signature : URL with bad signature is passed
   # Change the domain from signed-urls.example.com to unsigned-urls.example.com.
@@ -1043,15 +1043,15 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   URL="$(echo $URL | sed -e 's/Cxc4pzojlP/UH8L-zY4b4AAAAAAAAAA/')"
   FINAL_URL="$URL.css"
   echo http_proxy=$SECONDARY_HOSTNAME wget $FINAL_URL
-  OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET $FINAL_URL -O - 2>&1)"
-  check_from "$OUT" grep -q $COMBINED_CSS
+  http_proxy=$SECONDARY_HOSTNAME fetch_until $FINAL_URL \
+    "fgrep -c $COMBINED_CSS" 1
 
   start_test Unsigned Urls, ignored signatures : no signature is passed
   URL="$(echo $URL | sed -e 's/AAAAAAAAAA//')"  # Remove signature.
   FINAL_URL="$URL.css"
   echo http_proxy=$SECONDARY_HOSTNAME wget $FINAL_URL
-  OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET $FINAL_URL -O - 2>&1)"
-  check_from "$OUT" grep -q $COMBINED_CSS
+  http_proxy=$SECONDARY_HOSTNAME fetch_until $FINAL_URL \
+    "fgrep -c $COMBINED_CSS" 1
 
   # Test that redirecting to the same domain retains MPS query parameters.
   # The test domain is configured for collapse_whitepsace,add_instrumentation
