@@ -16,6 +16,15 @@
 
 // Author: x.dinic@gmail.com (Junmin Xiong)
 //
+// PageSpeed needs some way to talk to the internet and request resources.  For
+// example, if it's optimizing www.example.com/index.html and it sees html with
+// <img src="//images.example.com/cat.jpg"> and images.example.com is authorized
+// for rewriting in the config, then it needs to fetch cat.jpg from
+// images.example.com and optimize it.  In apache (always) and nginx (by
+// default) we use a fetcher called "serf".  This works fine, but it does run
+// its own event loop.  To be more efficient, this is a "native" fetcher that
+// uses nginx's event loop.
+//
 // The fetch is started by the main thread. It will fetch the remote resource
 // from the specific url asynchronously.
 
