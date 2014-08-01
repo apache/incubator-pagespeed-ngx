@@ -294,6 +294,14 @@ function check_not_from() {
   echo "$text" | ("$@" && handle_failure "$text" || true)
 }
 
+function check_200_http_response() {
+  check_from "$(head -1 <<< $1)" egrep -q '[ ]*HTTP/1[.]. 200 OK'
+}
+
+function check_200_http_response_file() {
+  check_200_http_response "$(< $1)"
+}
+
 # Check for the existence of a single file matching the pattern
 # in $1.  If it does not exist, print an error.  If it does exist,
 # check that its size meets constraint identified with $2 $3, e.g.

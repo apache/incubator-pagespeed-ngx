@@ -83,7 +83,7 @@ check_not_from "$OUT" egrep 'X-Mod-Pagespeed|X-Page-Speed'
 
 start_test We behave sanely on whitespace served as HTML
 OUT=$($WGET_DUMP $TEST_ROOT/whitespace.html)
-check_from "$OUT" egrep -q 'HTTP/1[.]. 200 OK'
+check_200_http_response "$OUT"
 
 start_test Query params and headers are recognized in resource flow.
 URL=$REWRITTEN_ROOT/styles/W.rewrite_css_images.css.pagespeed.cf.Hash.css
@@ -193,9 +193,9 @@ big.css+bold.css+yellow.css+blue.css+big.css+bold.css+yellow.css+blue.css+\
 big.css+bold.css+yellow.css+blue.css+big.css+bold.css+yellow.css+blue.css+\
 big.css+bold.css+yellow.css+blue.css+big.css+\
 bold.css.pagespeed.cc.46IlzLf_NK.css"
-echo "$WGET --save-headers -q -O - $LARGE_URL | head -1 | egrep \"HTTP/1[.]. 200 OK\""
-OUT=$($WGET --save-headers -q -O - $LARGE_URL | head -1)
-check_from "$OUT" egrep -q "HTTP/1[.]. 200 OK"
+echo "$WGET --save-headers -q -O - $LARGE_URL | check_200_http_response"
+OUT=$($WGET --save-headers -q -O - $LARGE_URL)
+check_200_http_response "$OUT"
 LARGE_URL_LINE_COUNT=$($WGET -q -O - $LARGE_URL | wc -l)
 echo Checking that response body is at least 900 lines -- it should be 954
 check [ $LARGE_URL_LINE_COUNT -gt 900 ]
@@ -238,7 +238,7 @@ URL=$REWRITTEN_ROOT/images/ce.0123456789abcdef0123456789abcdef.Puzzle,j.jpg
 # Note: Wget request is HTTP/1.0, so some servers respond back with
 # HTTP/1.0 and some respond back 1.1.
 $WGET_DUMP $URL > $FETCHED
-check egrep -q 'HTTP/1[.]. 200 OK' $FETCHED
+check_200_http_response_file "$FETCHED"
 
 start_test Filters do not rewrite blacklisted JavaScript files.
 URL=$TEST_ROOT/blacklist/blacklist.html?PageSpeedFilters=extend_cache,rewrite_javascript,trim_urls
@@ -331,7 +331,7 @@ JS_URL=$(egrep -o http://.*.pagespeed.*.js $FETCHED)
 echo "JS_URL=\$\(egrep -o http://.*[.]pagespeed.*[.]js $FETCHED\)=\"$JS_URL\""
 JS_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
   $JS_URL 2>&1)
-check_from "$JS_HEADERS" egrep -qi 'HTTP/1[.]. 200 OK'
+check_200_http_response "$JS_HEADERS"
 check_from "$JS_HEADERS" fgrep -qi 'Content-Encoding: gzip'
 #check_from "$JS_HEADERS" fgrep -qi 'Vary: Accept-Encoding'
 check_from "$JS_HEADERS" egrep -qi '(Etag: W/"0")|(Etag: W/"0-gzip")'
@@ -395,7 +395,7 @@ start_test headers for rewritten image
 echo "$IMG_URL"
 IMG_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
   $IMG_URL 2>&1)
-check_from "$IMG_HEADERS" egrep -qi 'HTTP/1[.]. 200 OK'
+check_200_http_response "$IMG_HEADERS"
 # Make sure we have some valid headers.
 check_from "$IMG_HEADERS" fgrep -qi 'Content-Type: image/jpeg'
 # Make sure the response was not gzipped.
@@ -471,8 +471,8 @@ check grep "404 Not Found" $WGET_OUTPUT
 
 start_test "rewrite_images doesn't 500 on unoptomizable image."
 IMG_URL=$REWRITTEN_ROOT/images/xOptPuzzle.jpg.pagespeed.ic.Zi7KMNYwzD.jpg
-run_wget_with_args $IMG_URL
-check egrep "HTTP/1[.]. 200 OK" $WGET_OUTPUT
+run_wget_with_args -q $IMG_URL
+check_200_http_response_file "$WGET_OUTPUT"
 
 # These have to run after image_rewrite tests. Otherwise it causes some images
 # to be loaded into memory before they should be.
@@ -672,28 +672,32 @@ check grep -q "PageSpeed=noscript" $FETCHED
 # Extract out the DeferJs url from the HTML above and fetch it.
 start_test Fetch the deferJs url with hash.
 echo run_wget_with_args $DEFERJSURL
-run_wget_with_args http://$PROXY_DOMAIN/$PSA_JS_LIBRARY_URL_PREFIX/$DEFERJSURL
-check fgrep "200 OK" $WGET_OUTPUT
+run_wget_with_args -q \
+  http://$PROXY_DOMAIN/$PSA_JS_LIBRARY_URL_PREFIX/$DEFERJSURL
+check_200_http_response_file "$WGET_OUTPUT"
 check fgrep "Cache-Control: max-age=31536000" $WGET_OUTPUT
 
 # Checks that we return 404 for static file request without hash.
 start_test Access to js_defer.js without hash returns 404.
-echo run_wget_with_args http://$PROXY_DOMAIN/$PSA_JS_LIBRARY_URL_PREFIX/js_defer.js
-run_wget_with_args http://$PROXY_DOMAIN/$PSA_JS_LIBRARY_URL_PREFIX/js_defer.js
+URL="http://$PROXY_DOMAIN/$PSA_JS_LIBRARY_URL_PREFIX/js_defer.js"
+echo run_wget_with_args "$URL"
+run_wget_with_args "$URL"
 check fgrep "404 Not Found" $WGET_OUTPUT
 
 # Checks that outlined js_defer.js is served correctly.
 start_test serve js_defer.0.js
-echo run_wget_with_args http://$PROXY_DOMAIN/$PSA_JS_LIBRARY_URL_PREFIX/js_defer.0.js
-run_wget_with_args http://$PROXY_DOMAIN/$PSA_JS_LIBRARY_URL_PREFIX/js_defer.0.js
-check fgrep "200 OK" $WGET_OUTPUT
+URL="http://$PROXY_DOMAIN/$PSA_JS_LIBRARY_URL_PREFIX/js_defer.0.js"
+echo run_wget_with_args "$URL"
+run_wget_with_args -q "$URL"
+check_200_http_response_file "$WGET_OUTPUT"
 check fgrep "Cache-Control: max-age=300,private" $WGET_OUTPUT
 
 # Checks that outlined js_defer_debug.js is  served correctly.
 start_test serve js_defer_debug.0.js
-echo run_wget_with_args http://$PROXY_DOMAIN/$PSA_JS_LIBRARY_URL_PREFIX/js_defer_debug.0.js
-run_wget_with_args http://$PROXY_DOMAIN/$PSA_JS_LIBRARY_URL_PREFIX/js_defer_debug.0.js
-check fgrep "200 OK" $WGET_OUTPUT
+URL="http://$PROXY_DOMAIN/$PSA_JS_LIBRARY_URL_PREFIX/js_defer_debug.0.js"
+echo run_wget_with_args "$URL"
+run_wget_with_args -q "$URL"
+check_200_http_response_file "$WGET_OUTPUT"
 check fgrep "Cache-Control: max-age=300,private" $WGET_OUTPUT
 
 # Checks that lazyload_images injects compiled javascript from
@@ -711,9 +715,10 @@ BLANKGIFSRC=`grep -m1 -o " src=.*1.*.gif" $FETCHED | sed 's/^.*1\./1./;s/\.gif.*
 
 # Fetch the blank image and make sure it's served correctly.
 start_test serve_blank_gif
-echo run_wget_with_args http://$PROXY_DOMAIN/$PSA_JS_LIBRARY_URL_PREFIX/$BLANKGIFSRC
-run_wget_with_args http://$PROXY_DOMAIN/$PSA_JS_LIBRARY_URL_PREFIX/$BLANKGIFSRC
-check fgrep "200 OK" $WGET_OUTPUT
+URL="http://$PROXY_DOMAIN/$PSA_JS_LIBRARY_URL_PREFIX/$BLANKGIFSRC"
+echo run_wget_with_args $URL
+run_wget_with_args -q $URL
+check_200_http_response_file "$WGET_OUTPUT"
 check fgrep "Cache-Control: max-age=31536000" $WGET_OUTPUT
 
 # Checks that lazyload_images,debug injects non-optimized javascript from

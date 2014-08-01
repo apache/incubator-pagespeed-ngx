@@ -293,7 +293,7 @@ fi
 # Test /mod_pagespeed_message exists.
 start_test Check if /mod_pagespeed_message page exists.
 OUT=$($WGET --save-headers -q -O - $MESSAGE_URL | head -1)
-check_from "$OUT" egrep -q 'HTTP/1[.]. 200 OK'
+check_200_http_response "$OUT"
 
 # Test if the warning messages are colored in message_history page.
 # We color the messages in message_history page to make it clearer to read.
@@ -426,7 +426,7 @@ echo "JS_URL=\$\(egrep -o http://.*[.]pagespeed.*[.]js $FETCHED\)=\"$JS_URL\""
 JS_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
   $JS_URL 2>&1)
 echo JS_HEADERS=$JS_HEADERS
-check_from "$JS_HEADERS" egrep -qi 'HTTP/1[.]. 200 OK'
+check_200_http_response "$JS_HEADERS"
 check_from "$JS_HEADERS" fgrep -qi 'Content-Encoding: gzip'
 check_from "$JS_HEADERS" fgrep -qi 'Vary: Accept-Encoding'
 check_from "$JS_HEADERS" egrep -qi '(Etag: W/"0")|(Etag: W/"0-gzip")'
@@ -912,11 +912,11 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   # We should be able to fetch the original ...
   echo  http_proxy=$SECONDARY_HOSTNAME $WGET --save-headers -O - $ORIGINAL
   OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET --save-headers -O - $ORIGINAL 2>&1)
-  check_from "$OUT" fgrep " 200 OK"
+  check_200_http_response "$OUT"
   # ... AND the rewritten version.
   echo  http_proxy=$SECONDARY_HOSTNAME $WGET --save-headers -O - $FILTERED
   OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET --save-headers -O - $FILTERED 2>&1)
-  check_from "$OUT" fgrep " 200 OK"
+  check_200_http_response "$OUT"
 
   if [ "$NO_VHOST_MERGE" = "on" ]; then
     start_test PageSpeed Unplugged and Off
@@ -1039,13 +1039,14 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   # has no caching so simply proxies all requests to proxy.  Origin serves out
   # images only.
   echo "Rewrite HTML with reference to proxyable image on CDN."
-  URL="http://proxy.pm.example.com/transitive_proxy.html"
+  PROXY_PM="http://proxy.pm.example.com"
+  URL="$PROXY_PM/transitive_proxy.html"
   PDT_STATSDIR=$TEMPDIR/stats
   rm -rf $PDT_STATSDIR
   mkdir -p $PDT_STATSDIR
   PDT_OLDSTATS=$PDT_STATSDIR/blocking_rewrite_stats.old
   PDT_NEWSTATS=$PDT_STATSDIR/blocking_rewrite_stats.new
-  PDT_PROXY_STATS_URL=http://proxy.pm.example.com/mod_pagespeed_statistics?PageSpeed=off
+  PDT_PROXY_STATS_URL=$PROXY_PM/mod_pagespeed_statistics?PageSpeed=off
   http_proxy=$SECONDARY_HOSTNAME \
     $WGET_DUMP $PDT_PROXY_STATS_URL > $PDT_OLDSTATS
 
@@ -1423,8 +1424,8 @@ blocking_rewrite_another.html?PageSpeedFilters=rewrite_images"
   FORBIDDEN_IMAGES_ROOT=$FORBIDDEN_EXAMPLE_ROOT/images
   # .ce. is allowed
   ALLOWED="$FORBIDDEN_STYLES_ROOT/all_styles.css.pagespeed.ce.n7OstQtwiS.css"
-  OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET -O /dev/null $ALLOWED 2>&1)
-  check_from "$OUT" fgrep -q "200 OK"
+  OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $ALLOWED 2>&1)
+  check_200_http_response "$OUT"
   # .cf. is forbidden
   FORBIDDEN=$FORBIDDEN_STYLES_ROOT/A.all_styles.css.pagespeed.cf.UH8L-zY4b4.css
   OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET -O /dev/null $FORBIDDEN 2>&1)
