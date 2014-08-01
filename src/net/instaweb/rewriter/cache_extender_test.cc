@@ -47,6 +47,8 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "pagespeed/kernel/base/gmock.h"
 #include "pagespeed/kernel/http/google_url.h"
+#include "pagespeed/kernel/http/http_names.h"
+#include "pagespeed/kernel/http/response_headers.h"
 
 namespace net_instaweb {
 
@@ -54,9 +56,9 @@ namespace {
 
 const char kCssFormat[] = "<link rel='stylesheet' href='%s' type='text/css'>\n";
 const char kHtmlFormat[] =
-    "<link rel='stylesheet' href='%s' type='text/css'>\n"
-    "<img src='%s'/>\n"
-    "<script type='text/javascript' src='%s'></script>\n";
+    "<link rel='stylesheet' href='%s' type='text/css'>%s\n"
+    "<img src='%s'/>%s\n"
+    "<script type='text/javascript' src='%s'></script>%s\n";
 
 // See Issue 295: cache_extender, which only rewrites content on
 // fetch, failed to recognize a cache-extended CSS file specified with
@@ -82,6 +84,8 @@ const int kLongTtlSec       = 100000000;
 
 class CacheExtenderTest : public RewriteTestBase {
  protected:
+  enum InputOrOutput { kInput, kOutput, kBoth };
+
   CacheExtenderTest()
       : kCssData(CssData("")),
         kCssPath(StrCat(kTestDomain, kCssSubdir)) {
@@ -113,8 +117,19 @@ class CacheExtenderTest : public RewriteTestBase {
   // Generate HTML loading 3 resources with the specified URLs
   GoogleString GenerateHtml(const GoogleString& a,
                             const GoogleString& b,
-                            const GoogleString& c) {
-    return StringPrintf(kHtmlFormat, a.c_str(), b.c_str(), c.c_str());
+                            const GoogleString& c,
+                            InputOrOutput input_or_output) {
+    GoogleString a_debug, b_debug, c_debug;
+    if (input_or_output == kOutput) {
+      // We never generate debug messages on input html!
+      a_debug = DebugMessage(a);
+      b_debug = DebugMessage(b);
+      c_debug = DebugMessage(c);
+    }
+    return StringPrintf(kHtmlFormat,
+                        a.c_str(), a_debug.c_str(),
+                        b.c_str(), b_debug.c_str(),
+                        c.c_str(), c_debug.c_str());
   }
 
   // Helper to test for how we handle trailing junk in URLs
@@ -125,8 +140,8 @@ class CacheExtenderTest : public RewriteTestBase {
     GoogleString c_ext = Encode("", "ce", "0", "c.js", "js");
 
     ValidateExpected("no_ext_corrupt_fetched",
-                     GenerateHtml(kCssFile, "b.jpg", "c.js"),
-                     GenerateHtml(a_ext, b_ext, c_ext));
+                     GenerateHtml(kCssFile, "b.jpg", "c.js", kInput),
+                     GenerateHtml(a_ext, b_ext, c_ext, kOutput));
     GoogleString output;
     EXPECT_TRUE(FetchResourceUrl(
         ChangeSuffix(StrCat(kTestDomain, a_ext), append_junk, ".css", junk),
@@ -138,8 +153,8 @@ class CacheExtenderTest : public RewriteTestBase {
         ChangeSuffix(StrCat(kTestDomain, c_ext), append_junk, ".js", junk),
         &output));
     ValidateExpected("no_ext_corrupt_cached",
-                     GenerateHtml(kCssFile, "b.jpg", "c.js"),
-                     GenerateHtml(a_ext, b_ext, c_ext));
+                     GenerateHtml(kCssFile, "b.jpg", "c.js", kInput),
+                     GenerateHtml(a_ext, b_ext, c_ext, kOutput));
   }
 
   static GoogleString CssData(const StringPiece& url) {
@@ -149,7 +164,8 @@ class CacheExtenderTest : public RewriteTestBase {
   void TestExtendFromHtml() {
     InitTest(kShortTtlSec);
     for (int i = 0; i < 3; i++) {
-      const GoogleString input_html = GenerateHtml(kCssFile, "b.jpg", "c.js");
+      const GoogleString input_html =
+          GenerateHtml(kCssFile, "b.jpg", "c.js", kInput);
       if (lru_cache()->IsHealthy()) {
         AbstractLogRecord* log_record =
             rewrite_driver()->request_context()->log_record();
@@ -159,7 +175,7 @@ class CacheExtenderTest : public RewriteTestBase {
             input_html,
             GenerateHtml(Encode(kCssSubdir, "ce", "0", kCssTail, "css"),
                          Encode("", "ce", "0", "b.jpg", "jpg"),
-                         Encode("", "ce", "0", "c.js", "js")));
+                         Encode("", "ce", "0", "c.js", "js"), kOutput));
         EXPECT_EQ((i + 1) * 3, num_cache_extended_->Get())
             << "Number of cache extended resources is wrong";
         EXPECT_STREQ("ec,ei,es", AppliedRewriterStringFromLog());
@@ -196,9 +212,7 @@ class CacheExtenderTest : public RewriteTestBase {
   }
 
   void VerifyUnauthorizedResourcesNotExtended() {
-    options()->ClearSignatureForTesting();
-    options()->EnableFilter(RewriteOptions::kDebug);
-    server_context()->ComputeSignature(options());
+    EnableDebug();
     SetResponseWithDefaultHeaders("http://unauth.example.com/unauth.js",
                                   kContentTypeJavascript, kJsData,
                                   kShortTtlSec);
@@ -280,8 +294,9 @@ class CacheExtenderTestPreserveURLs : public CacheExtenderTest {
     }
     ValidateExpected(
         "do_extend",
-        GenerateHtml(kCssFile, "b.jpg", "c.js"),
-        GenerateHtml(expected_css_html, expected_img_html, expected_js_html));
+        GenerateHtml(kCssFile, "b.jpg", "c.js", kInput),
+        GenerateHtml(
+            expected_css_html, expected_img_html, expected_js_html, kOutput));
   }
 };
 
@@ -386,8 +401,9 @@ TEST_F(CacheExtenderTest, DoExtendForImagesOnly) {
   for (int i = 0; i < 3; i++) {
     ValidateExpected(
         "do_extend",
-        GenerateHtml(kCssFile, "b.jpg", "c.js"),
-        GenerateHtml(kCssFile, Encode("", "ce", "0", "b.jpg", "jpg"), "c.js"));
+        GenerateHtml(kCssFile, "b.jpg", "c.js", kInput),
+        GenerateHtml(
+            kCssFile, Encode("", "ce", "0", "b.jpg", "jpg"), "c.js", kOutput));
     EXPECT_EQ((i + 1), num_cache_extended_->Get())
         << "Number of cache extended resources is wrong";
     EXPECT_STREQ("ei", AppliedRewriterStringFromLog());
@@ -396,11 +412,31 @@ TEST_F(CacheExtenderTest, DoExtendForImagesOnly) {
 
 TEST_F(CacheExtenderTest, Handle404) {
   // Test to make sure that a missing input is handled well.
+  options()->EnableExtendCacheFilters();
+  rewrite_driver()->AddFilters();
+  DebugWithMessage("<!--4xx status code, preventing rewriting of %url%-->");
   SetFetchResponse404("404.css");
-  ValidateNoChanges("404", "<link rel=stylesheet href='404.css'>");
+  for (int i = 0; i < 2; ++i) {
+    // Validate twice to make sure caching doesn't break it.
+    const char kLink[] = "<link rel=stylesheet href='404.css'>";
+    ValidateExpected("404", kLink, StrCat(kLink, DebugMessage("404.css")));
+  }
+}
 
-  // Second time, to make sure caching doesn't break it.
-  ValidateNoChanges("404", "<link rel=stylesheet href='404.css'>");
+TEST_F(CacheExtenderTest, Handle503) {
+  // Test to make sure that a missing input is handled well.
+  options()->EnableExtendCacheFilters();
+  rewrite_driver()->AddFilters();
+  DebugWithMessage("<!--Fetch failure, preventing rewriting of %url%-->");
+  GoogleString url = AbsolutifyUrl("503.css");
+  ResponseHeaders response_headers;
+  response_headers.SetStatusAndReason(HttpStatus::kUnavailable);
+  SetFetchResponse(url, response_headers, StringPiece());
+  for (int i = 0; i < 2; ++i) {
+    // Validate twice to make sure caching doesn't break it.
+    const char kLink[] = "<link rel=stylesheet href='503.css'>";
+    ValidateExpected("503", kLink, StrCat(kLink, DebugMessage(url)));
+  }
 }
 
 TEST_F(CacheExtenderTest, UrlTooLong) {
@@ -421,7 +457,8 @@ TEST_F(CacheExtenderTest, UrlTooLong) {
                                 kJsData, kShortTtlSec);
 
   // If filename wasn't too long, this would be rewritten (like in DoExtend).
-  ValidateNoChanges("url_too_long", GenerateHtml(css_name, jpg_name, js_name));
+  ValidateNoChanges(
+      "url_too_long", GenerateHtml(css_name, jpg_name, js_name, kBoth));
   EXPECT_EQ(0, num_cache_extended_->Get())
       << "Number of cache extended resources is wrong";
 }
@@ -432,13 +469,13 @@ TEST_F(CacheExtenderTest, NoInputResource) {
   ValidateNoChanges("bad url",
                     GenerateHtml("swly://example.com/sub/a.css",
                                  "http://evil.com/b.jpg",
-                                 "http://moreevil.com/c.js"));
+                                 "http://moreevil.com/c.js", kBoth));
 }
 
 TEST_F(CacheExtenderTest, NoExtendAlreadyCachedProperly) {
   InitTest(kLongTtlSec);  // cached for a long time to begin with
   ValidateNoChanges("no_extend_cached_properly",
-                    GenerateHtml(kCssFile, "b.jpg", "c.js"));
+                    GenerateHtml(kCssFile, "b.jpg", "c.js", kBoth));
   EXPECT_EQ(0, num_cache_extended_->Get())
       << "Number of cache extended resources is wrong";
 }
@@ -448,40 +485,41 @@ TEST_F(CacheExtenderTest, ExtendIfSharded) {
   EXPECT_TRUE(AddShard(kTestDomain, "shard0.com,shard1.com"));
   // shard0 is always selected in the test because of our mock hasher
   // that always returns 0.
-  ValidateExpected("extend_if_sharded",
-                   GenerateHtml(kCssFile, "b.jpg", "c.js"),
-                   GenerateHtml(
-                       Encode(StrCat("http://shard0.com/", kCssSubdir),
-                              "ce", "0", kCssTail, "css"),
-                       Encode("http://shard0.com/", "ce", "0", "b.jpg", "jpg"),
-                       Encode("http://shard0.com/", "ce", "0", "c.js", "js")));
+  ValidateExpected(
+      "extend_if_sharded",
+      GenerateHtml(kCssFile, "b.jpg", "c.js", kOutput),
+      GenerateHtml(
+          Encode(StrCat("http://shard0.com/", kCssSubdir),
+                 "ce", "0", kCssTail, "css"),
+          Encode("http://shard0.com/", "ce", "0", "b.jpg", "jpg"),
+          Encode("http://shard0.com/", "ce", "0", "c.js", "js"), kOutput));
 }
 
 TEST_F(CacheExtenderTest, ExtendIfOriginMappedHttps) {
   InitTest(kShortTtlSec);
   EXPECT_TRUE(AddOriginDomainMapping(kTestDomain, "https://cdn.com"));
-  ValidateExpected("extend_if_origin_mapped_https",
-                   GenerateHtml("https://cdn.com/sub/a.css?v=1",
-                                "https://cdn.com/b.jpg",
-                                "https://cdn.com/c.js"),
-                   GenerateHtml(
-                       Encode("https://cdn.com/sub/", "ce", "0", kCssTail,
-                              "css"),
-                       Encode("https://cdn.com/", "ce", "0", "b.jpg", "jpg"),
-                       Encode("https://cdn.com/", "ce", "0", "c.js", "js")));
+  ValidateExpected(
+      "extend_if_origin_mapped_https",
+      GenerateHtml("https://cdn.com/sub/a.css?v=1",
+                   "https://cdn.com/b.jpg",
+                   "https://cdn.com/c.js", kInput),
+      GenerateHtml(
+          Encode("https://cdn.com/sub/", "ce", "0", kCssTail, "css"),
+          Encode("https://cdn.com/", "ce", "0", "b.jpg", "jpg"),
+          Encode("https://cdn.com/", "ce", "0", "c.js", "js"), kOutput));
 }
 
 TEST_F(CacheExtenderTest, ExtendIfRewritten) {
   InitTest(kLongTtlSec);  // cached for a long time to begin with
 
   EXPECT_TRUE(AddRewriteDomainMapping("cdn.com", kTestDomain));
-  ValidateExpected("extend_if_rewritten",
-                   GenerateHtml(kCssFile, "b.jpg", "c.js"),
-                   GenerateHtml(
-                       Encode("http://cdn.com/sub/", "ce", "0", kCssTail,
-                              "css"),
-                       Encode("http://cdn.com/", "ce", "0", "b.jpg", "jpg"),
-                       Encode("http://cdn.com/", "ce", "0", "c.js", "js")));
+  ValidateExpected(
+      "extend_if_rewritten",
+      GenerateHtml(kCssFile, "b.jpg", "c.js", kInput),
+      GenerateHtml(
+          Encode("http://cdn.com/sub/", "ce", "0", kCssTail, "css"),
+          Encode("http://cdn.com/", "ce", "0", "b.jpg", "jpg"),
+          Encode("http://cdn.com/", "ce", "0", "c.js", "js"), kOutput));
   EXPECT_EQ(3, num_cache_extended_->Get())
       << "Number of cache extended resources is wrong";
   EXPECT_STREQ("ec,ei,es", AppliedRewriterStringFromLog());
@@ -496,13 +534,13 @@ TEST_F(CacheExtenderTest, ExtendIfShardedAndRewritten) {
   EXPECT_TRUE(AddShard("cdn.com", "shard0.com,shard1.com"));
   // shard0 is always selected in the test because of our mock hasher
   // that always returns 0.
-  ValidateExpected("extend_if_sharded_and_rewritten",
-                   GenerateHtml(kCssFile, "b.jpg", "c.js"),
-                   GenerateHtml(
-                       Encode("http://shard0.com/sub/", "ce", "0", kCssTail,
-                              "css"),
-                       Encode("http://shard0.com/", "ce", "0", "b.jpg", "jpg"),
-                       Encode("http://shard0.com/", "ce", "0", "c.js", "js")));
+  ValidateExpected(
+      "extend_if_sharded_and_rewritten",
+      GenerateHtml(kCssFile, "b.jpg", "c.js", kInput),
+      GenerateHtml(
+          Encode("http://shard0.com/sub/", "ce", "0", kCssTail, "css"),
+          Encode("http://shard0.com/", "ce", "0", "b.jpg", "jpg"),
+          Encode("http://shard0.com/", "ce", "0", "c.js", "js"), kOutput));
 }
 
 TEST_F(CacheExtenderTest, ExtendIfShardedToHttps) {
@@ -515,15 +553,15 @@ TEST_F(CacheExtenderTest, ExtendIfShardedToHttps) {
                        "https://shard0.com,https://shard1.com"));
   // shard0 is always selected in the test because of our mock hasher
   // that always returns 0.
-  ValidateExpected("extend_if_sharded_to_https",
-                   GenerateHtml("https://test.com/sub/a.css?v=1",
-                                "https://test.com/b.jpg",
-                                "https://test.com/c.js"),
-                   GenerateHtml(
-                       Encode("https://shard0.com/sub/", "ce", "0", kCssTail,
-                              "css"),
-                       Encode("https://shard0.com/", "ce", "0", "b.jpg", "jpg"),
-                       Encode("https://shard0.com/", "ce", "0", "c.js", "js")));
+  ValidateExpected(
+      "extend_if_sharded_to_https",
+      GenerateHtml("https://test.com/sub/a.css?v=1",
+                   "https://test.com/b.jpg",
+                   "https://test.com/c.js", kInput),
+      GenerateHtml(
+          Encode("https://shard0.com/sub/", "ce", "0", kCssTail, "css"),
+          Encode("https://shard0.com/", "ce", "0", "b.jpg", "jpg"),
+          Encode("https://shard0.com/", "ce", "0", "c.js", "js"), kOutput));
 }
 
 TEST_F(CacheExtenderTest, ExtendIfShardedAndRewritingAndMappingHttps) {
@@ -555,42 +593,42 @@ TEST_F(CacheExtenderTest, ExtendIfShardedAndRewritingAndMappingHttps) {
 
   // shard0 is always selected in the test because of our mock hasher
   // that always returns 0.
-  ValidateExpected("extend_if_sharded_rewriting_mapping_bare_domain_http",
-                   GenerateHtml("http://test.com/sub/a.css?v=1",
-                                "http://test.com/b.jpg",
-                                "http://test.com/c.js"),
-                   GenerateHtml(
-                       Encode("http://s1.cdn.com/sub/", "ce", "0", kCssTail,
-                              "css"),
-                       Encode("http://s1.cdn.com/", "ce", "0", "b.jpg", "jpg"),
-                       Encode("http://s1.cdn.com/", "ce", "0", "c.js", "js")));
-  ValidateExpected("extend_if_sharded_rewriting_mapping_bare_domain_https",
-                   GenerateHtml("https://test.com/sub/a.css?v=1",
-                                "https://test.com/b.jpg",
-                                "https://test.com/c.js"),
-                   GenerateHtml(
-                       Encode("https://s1.cdn.com/sub/", "ce", "0", kCssTail,
-                              "css"),
-                       Encode("https://s1.cdn.com/", "ce", "0", "b.jpg", "jpg"),
-                       Encode("https://s1.cdn.com/", "ce", "0", "c.js", "js")));
-  ValidateExpected("extend_if_sharded_rewriting_mapping_www_domain_http",
-                   GenerateHtml("http://www.test.com/sub/a.css?v=1",
-                                "http://www.test.com/b.jpg",
-                                "http://www.test.com/c.js"),
-                   GenerateHtml(
-                       Encode("http://s1.cdn.com/sub/", "ce", "0", kCssTail,
-                              "css"),
-                       Encode("http://s1.cdn.com/", "ce", "0", "b.jpg", "jpg"),
-                       Encode("http://s1.cdn.com/", "ce", "0", "c.js", "js")));
-  ValidateExpected("extend_if_sharded_rewriting_mapping_www_domain_https",
-                   GenerateHtml("https://www.test.com/sub/a.css?v=1",
-                                "https://www.test.com/b.jpg",
-                                "https://www.test.com/c.js"),
-                   GenerateHtml(
-                       Encode("https://s1.cdn.com/sub/", "ce", "0", kCssTail,
-                              "css"),
-                       Encode("https://s1.cdn.com/", "ce", "0", "b.jpg", "jpg"),
-                       Encode("https://s1.cdn.com/", "ce", "0", "c.js", "js")));
+  ValidateExpected(
+      "extend_if_sharded_rewriting_mapping_bare_domain_http",
+      GenerateHtml("http://test.com/sub/a.css?v=1",
+                   "http://test.com/b.jpg",
+                   "http://test.com/c.js", kInput),
+      GenerateHtml(
+          Encode("http://s1.cdn.com/sub/", "ce", "0", kCssTail, "css"),
+          Encode("http://s1.cdn.com/", "ce", "0", "b.jpg", "jpg"),
+          Encode("http://s1.cdn.com/", "ce", "0", "c.js", "js"), kOutput));
+  ValidateExpected(
+      "extend_if_sharded_rewriting_mapping_bare_domain_https",
+      GenerateHtml("https://test.com/sub/a.css?v=1",
+                   "https://test.com/b.jpg",
+                   "https://test.com/c.js", kInput),
+      GenerateHtml(
+          Encode("https://s1.cdn.com/sub/", "ce", "0", kCssTail, "css"),
+          Encode("https://s1.cdn.com/", "ce", "0", "b.jpg", "jpg"),
+          Encode("https://s1.cdn.com/", "ce", "0", "c.js", "js"), kOutput));
+  ValidateExpected(
+      "extend_if_sharded_rewriting_mapping_www_domain_http",
+      GenerateHtml("http://www.test.com/sub/a.css?v=1",
+                   "http://www.test.com/b.jpg",
+                   "http://www.test.com/c.js", kInput),
+      GenerateHtml(
+          Encode("http://s1.cdn.com/sub/", "ce", "0", kCssTail, "css"),
+          Encode("http://s1.cdn.com/", "ce", "0", "b.jpg", "jpg"),
+          Encode("http://s1.cdn.com/", "ce", "0", "c.js", "js"), kOutput));
+  ValidateExpected(
+      "extend_if_sharded_rewriting_mapping_www_domain_https",
+      GenerateHtml("https://www.test.com/sub/a.css?v=1",
+                   "https://www.test.com/b.jpg",
+                   "https://www.test.com/c.js", kInput),
+      GenerateHtml(
+          Encode("https://s1.cdn.com/sub/", "ce", "0", kCssTail, "css"),
+          Encode("https://s1.cdn.com/", "ce", "0", "b.jpg", "jpg"),
+          Encode("https://s1.cdn.com/", "ce", "0", "c.js", "js"), kOutput));
 }
 
 // TODO(jmarantz): consider implementing and testing the sharding and
@@ -598,8 +636,11 @@ TEST_F(CacheExtenderTest, ExtendIfShardedAndRewritingAndMappingHttps) {
 
 TEST_F(CacheExtenderTest, NoExtendOriginUncacheable) {
   InitTest(0);  // origin not cacheable
-  ValidateNoChanges("no_extend_origin_not_cacheable",
-                    GenerateHtml(kCssFile, "b.jpg", "c.js"));
+  DebugWithMessage("<!--Uncacheable content, preventing rewriting of %url%-->");
+  ValidateExpected(
+      "no_extend_origin_not_cacheable",
+      GenerateHtml(kCssFile, "b.jpg", "c.js", kInput),
+      GenerateHtml(kCssFile, "b.jpg", "c.js", kOutput));
   EXPECT_EQ(0, num_cache_extended_->Get())
       << "Number of cache extended resources is wrong";
 }
@@ -626,8 +667,8 @@ TEST_F(CacheExtenderTest, ConsistentHashWithRewrite) {
 
   // First do the HTML rewrite.
   GoogleString hash = hasher()->Hash(kCssData);
-  GoogleString extended_css = Encode(StrCat(kNewDomain, kCssSubdir), "ce", hash,
-                                     kCssTail, "css");
+  GoogleString extended_css =
+      Encode(StrCat(kNewDomain, kCssSubdir), "ce", hash, kCssTail, "css");
   ValidateExpected("consistent_hash",
                    StringPrintf(kCssFormat, kCssFile),
                    StringPrintf(kCssFormat, extended_css.c_str()));

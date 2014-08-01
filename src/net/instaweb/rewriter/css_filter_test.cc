@@ -224,6 +224,7 @@ TEST_F(CssFilterTest, SimpleRewriteCssTest) {
 }
 
 TEST_F(CssFilterTest, SimpleRewriteCssTestExternalUnhealthy) {
+  DebugWithMessage("");  // TODO(jmaessen): Needs debug feedback.
   lru_cache()->set_is_healthy(false);
   ValidateRewriteExternalCss("rewrite_css", kInputStyle, kOutputStyle,
                              kExpectNoChange);
@@ -234,6 +235,7 @@ TEST_F(CssFilterTest, CssRewriteRandomDropAll) {
   options()->ClearSignatureForTesting();
   options()->set_rewrite_random_drop_percentage(100);
   server_context()->ComputeSignature(options());
+  DebugWithMessage("");  // TODO(jmaessen): Needs debug feedback.
   for (int i = 0; i < 100; ++i) {
     ValidateRewriteExternalCss("rewrite_css", kInputStyle, kOutputStyle,
                                kExpectNoChange);
@@ -247,6 +249,7 @@ TEST_F(CssFilterTest, CssRewriteRandomDropNone) {
   options()->ClearSignatureForTesting();
   options()->set_rewrite_random_drop_percentage(0);
   server_context()->ComputeSignature(options());
+  DebugWithMessage("");  // Shouldn't see debug feedback.
   for (int i = 0; i < 100; ++i) {
     ValidateRewriteExternalCss("rewrite_css", kInputStyle, kOutputStyle,
                                kExpectSuccess);
@@ -257,7 +260,8 @@ TEST_F(CssFilterTest, CssRewriteRandomDropNone) {
 
 TEST_F(CssFilterTest, RewriteCss404) {
   // Test to make sure that a missing input is handled well.
-  TurnOnDebug("<!--Input resource is not valid or not cacheable.-->");
+  DebugWithMessage("<!--4xx status code, preventing rewriting of"
+                   " http://test.com/404.css-->");
 
   SetFetchResponse404("404.css");
 
@@ -421,7 +425,7 @@ TEST_F(CssFilterTest, LinkHrefCaseInsensitive) {
 }
 
 TEST_F(CssFilterTest, UrlTooLong) {
-  TurnOnDebug("<!--Rewritten URL segment too long.-->");
+  DebugWithMessage("<!--Rewritten URL segment too long.-->");
 
   // Make the filename maximum size, so we cannot rewrite it.
   // -4 because .css will be appended.
@@ -492,7 +496,7 @@ TEST_F(CssFilterTest, RewriteRepeated) {
 // Make sure we do not reparse external CSS when we know it already has
 // a parse error.
 TEST_F(CssFilterTest, RewriteRepeatedParseError) {
-  TurnOnDebug("<!--CSS rewrite failed: Parse error in %url%-->");
+  DebugWithMessage("<!--CSS rewrite failed: Parse error in %url%-->");
   const char kInvalidCss[] = "@media }}";
   // Note: It is important that these both have the same id so that the
   // generated CSS file names are identical.
@@ -546,7 +550,7 @@ TEST_F(CssFilterTest, Non8BitEncoding) {
 
   // 0x83 0x7D == KATAKANA LETTER MA
   // 0x7D == RIGHT CURLY BRACKET }
-  TurnOnDebug("");
+  DebugWithMessage("");
   ValidateRewrite("string-ma", ".foo { font-family: \"\x83\x7D\"; color: red }",
                                ".foo{font-family: \"\x83\x7D\";color:red}",
                   kExpectSuccess);
@@ -558,7 +562,7 @@ TEST_F(CssFilterTest, Non8BitEncoding) {
 
   // Note: This text currently fails to be parsed. But if that changes,
   // update this test to the correct golden rewrite.
-  TurnOnDebug("<!--CSS rewrite failed: Parse error in %url%-->");
+  DebugWithMessage("<!--CSS rewrite failed: Parse error in %url%-->");
   ValidateFailParse("ident-ma", ".foo { -win-magic: bar\x83\x7D; color: red }");
   // Note: This text currently fails to be parsed. But if that changes,
   // update this test to the correct golden rewrite.
@@ -785,7 +789,7 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     "a { color: red } .foo",
   };
 
-  TurnOnDebug("<!--CSS rewrite failed: Parse error in %url%-->");
+  DebugWithMessage("<!--CSS rewrite failed: Parse error in %url%-->");
   for (int i = 0; i < arraysize(fail_examples); ++i) {
     GoogleString id = StringPrintf("distilled_css_fail%d", i);
     ValidateFailParse(id, fail_examples[i]);
@@ -888,7 +892,7 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       "  height: 200px; /*must have*/\n"
       "}\n",
 
-      // TODO(sligocki): Should we preserve the dispaly/**/:?
+      // TODO(sligocki): Should we preserve the display/**/:?
       //".ui-datepicker-cover{display:none;display/**/:block;position:absolute;"
       //"z-index:-1;filter:mask();top:-4px;left:-4px;width:200px;height:200px}"
 
@@ -1523,7 +1527,7 @@ TEST_F(CssFilterTest, ComplexCssTest) {
     "-moz-foo { -webkit-bar: -ie-quuz }",
   };
 
-  TurnOnDebug("<!--CSS rewrite failed: Parse error in %url%-->");
+  DebugWithMessage("<!--CSS rewrite failed: Parse error in %url%-->");
   for (int i = 0; i < arraysize(parse_fail_examples); ++i) {
     GoogleString id = StringPrintf("complex_css_parse_fail%d", i);
     ValidateFailParse(id, parse_fail_examples[i]);
@@ -1538,7 +1542,7 @@ TEST_F(CssFilterTest, NoAlwaysRewriteCss) {
   // Note: when this example is fixed in the minifier, this test will break :/
   options()->ClearSignatureForTesting();
   options()->set_always_rewrite_css(true);
-  TurnOnDebug("");
+  DebugWithMessage("");
   server_context()->ComputeSignature(options());
   ValidateRewrite("expanding_example",
                   "@import url(http://www.example.com)",
@@ -1549,7 +1553,7 @@ TEST_F(CssFilterTest, NoAlwaysRewriteCss) {
   // else, like rewrite sub-resources.
   options()->ClearSignatureForTesting();
   options()->set_always_rewrite_css(false);
-  TurnOnDebug("<!--CSS rewrite failed: Cannot improve %url%-->");
+  DebugWithMessage("<!--CSS rewrite failed: Cannot improve %url%-->");
   server_context()->ComputeSignature(options());
   ValidateRewrite("non_expanding_example",
                   "@import url(http://www.example.com)",
@@ -1559,7 +1563,7 @@ TEST_F(CssFilterTest, NoAlwaysRewriteCss) {
   // When we force always_rewrite_css, we allow rewriting something to nothing.
   options()->ClearSignatureForTesting();
   options()->set_always_rewrite_css(true);
-  TurnOnDebug("");
+  DebugWithMessage("");
   server_context()->ComputeSignature(options());
   ValidateRewrite("contracting_example", "  ", "", kExpectSuccess);
 
@@ -1636,7 +1640,8 @@ TEST_F(CssFilterTest, RewriteStyleAttribute) {
       "background-position:-19px 60%\""
       ">\n"
       "<link rel=stylesheet href='404.css'>"
-      "<!--Input resource is not valid or not cacheable.-->\n"
+      "<!--4xx status code, preventing rewriting of"
+      " http://test.com/404.css-->\n"
       "<span style=\"font-family:Verdana\">Verdana</span>\n"
       "</div>";
   ValidateExpected("rewrite-mixed", kMixedInput, kMixedOutput);
@@ -2070,7 +2075,7 @@ TEST_F(CssFilterTest, EmptyLeafFull) {
 
 TEST_F(CssFilterTest, UnauthorizedCssResource) {
   GoogleUrl gurl("http://unauth.example.com/style.css");
-  TurnOnDebug(StrCat(
+  DebugWithMessage(StrCat(
       "<!--",
       RewriteDriver::GenerateUnauthorizedDomainDebugComment(gurl),
       "-->"));

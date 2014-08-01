@@ -179,17 +179,6 @@ class CssRewriteTestBase : public RewriteTestBase {
   // Extract the background image from the css text
   GoogleString ExtractCssBackgroundImage(StringPiece in_css);
 
-  void TurnOnDebug(StringPiece expected_debug_message) {
-    options()->ClearSignatureForTesting();
-    options()->EnableFilter(RewriteOptions::kDebug);
-    options()->ComputeSignature();
-
-    expected_debug_message.CopyToString(&debug_message_);
-  }
-
-  // Return a debug message if available, inserting url if needed.
-  GoogleString CssDebugMessage(StringPiece url);
-
   void ValidateRewrite(StringPiece id,
                        StringPiece css_input,
                        StringPiece gold_output,
@@ -232,8 +221,6 @@ class CssRewriteTestBase : public RewriteTestBase {
   Variable* num_flatten_imports_minify_failed_;
   Variable* num_flatten_imports_recursion_;
   Variable* num_flatten_imports_complex_queries_;
-
-  GoogleString debug_message_;
 };
 
 }  // namespace net_instaweb

@@ -96,6 +96,8 @@ class RewriteContextTest : public RewriteContextTestBase {
     other_rewrite_driver()->AppendRewriteFilter(
         new TrimWhitespaceSyncFilter(kind, rewrite_driver()));
     other_rewrite_driver()->AddFilters();
+
+    EnableDebug();
   }
 
   void InitTwoFilters(OutputResourceKind kind) {
@@ -111,7 +113,9 @@ class RewriteContextTest : public RewriteContextTestBase {
     // The first rewrite was successful because we got an 'instant' url
     // fetch, not because we did any cache lookups.
     *input_html = CssLinkHref("a.css");
-    *output_html = CssLinkHref(Encode("", "tw", "0", "a.css", "css"));
+    *output_html =
+        StrCat(CssLinkHref(Encode("", "tw", "0", "a.css", "css")),
+               DebugMessage("a.css"));
     ValidateExpected("trimmable", *input_html, *output_html);
     EXPECT_EQ(0, lru_cache()->num_hits());
     EXPECT_EQ(2, lru_cache()->num_misses());   // Metadata + input-resource.
@@ -1406,6 +1410,7 @@ TEST_F(RewriteContextTest, PreserveNoCacheWithFailedRewrites) {
 TEST_F(RewriteContextTest, TestRewritesOnEmptyPublicResources) {
   options()->EnableFilter(RewriteOptions::kExtendCacheCss);
   rewrite_driver()->AddFilters();
+  EnableDebug();
 
   const int kTtlMs = RewriteOptions::kDefaultImplicitCacheTtlMs;
   const char kPath[] = "test.css";
@@ -1428,6 +1433,7 @@ TEST_F(RewriteContextTest, TestRewritesOnEmptyPublicResources) {
 TEST_F(RewriteContextTest, TestRewritesOnEmptyPrivateResources) {
   options()->EnableFilter(RewriteOptions::kExtendCacheCss);
   rewrite_driver()->AddFilters();
+  EnableDebug();
 
   const char kPath[] = "test.css";
   ResponseHeaders no_store_css_header;
@@ -1575,6 +1581,7 @@ TEST_F(RewriteContextTest, PreservePrivateWithRewrites) {
 // resources.
 TEST_F(RewriteContextTest, CacheControlWithMultipleInputResources) {
   InitCombiningFilter(0);
+  EnableDebug();
   combining_filter_->set_on_the_fly(true);
   InitResources();
 
@@ -1606,6 +1613,7 @@ TEST_F(RewriteContextTest, CacheControlWithMultipleInputResources) {
 // Fetching & reconstructing a combined resource with a healthy cache.
 TEST_F(RewriteContextTest, CombineFetchHealthyCache) {
   InitCombiningFilter(0);
+  EnableDebug();
   InitResources();
 
   GoogleString content;
@@ -1639,6 +1647,7 @@ TEST_F(RewriteContextTest, CombineFetchHealthyCache) {
 TEST_F(RewriteContextTest, CombineFetchUnhealthyCache) {
   lru_cache()->set_is_healthy(false);
   InitCombiningFilter(0);
+  EnableDebug();
   InitResources();
 
   GoogleString content;
@@ -1673,6 +1682,7 @@ TEST_F(RewriteContextTest, CombineFetchUnhealthyCache) {
 // resources.
 TEST_F(RewriteContextTest, CacheControlWithMultipleInputResourcesAndNoStore) {
   InitCombiningFilter(0);
+  EnableDebug();
   combining_filter_->set_on_the_fly(true);
   InitResources();
 
@@ -2428,6 +2438,7 @@ TEST_F(RewriteContextTest, DisableFurtherProcessing) {
 
 TEST_F(RewriteContextTest, CombinationRewrite) {
   InitCombiningFilter(0);
+  EnableDebug();
   InitResources();
   GoogleString combined_url = Encode("", CombiningFilter::kFilterId,
                                      "0", MultiUrl("a.css", "b.css"), "css");
@@ -2454,10 +2465,15 @@ TEST_F(RewriteContextTest, CombinationRewrite) {
 // the Rewrite flow.
 TEST_F(RewriteContextTest, CombinationRewriteWithDelay) {
   InitCombiningFilter(kRewriteDelayMs);
+  DebugWithMessage("<!--deadline_exceeded for filter Combining-->");
   InitResources();
   GoogleString combined_url = Encode("", CombiningFilter::kFilterId,
                                      "0", MultiUrl("a.css", "b.css"), "css");
-  ValidateNoChanges("xx", StrCat(CssLinkHref("a.css"), CssLinkHref("b.css")));
+  ValidateExpected(
+      "xx",
+      StrCat(CssLinkHref("a.css"), CssLinkHref("b.css")),
+      StrCat(CssLinkHref("a.css"), DebugMessage(""),
+             CssLinkHref("b.css"), DebugMessage("")));
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(3, lru_cache()->num_misses());   // partition, and 2 inputs.
   EXPECT_EQ(3, lru_cache()->num_inserts());  // partition+2 in, output not ready
@@ -2495,8 +2511,8 @@ TEST_F(RewriteContextTest, CombinationRewriteWithDelay) {
 // This is the same test as the first stanza of CombinationRewriteWithDelay, but
 // includes the Debug filter so we get DeadlineExceeded debug messages injected.
 TEST_F(RewriteContextTest, CombinationRewriteWithDelayAndDebug) {
-  options()->EnableFilter(RewriteOptions::kDebug);
   InitCombiningFilter(kRewriteDelayMs);
+  EnableDebug();
   InitResources();
   Parse("xx", StrCat(CssLinkHref("a.css"), CssLinkHref("b.css")));
   GoogleString kDeadlineExceededComment(StrCat(
@@ -2509,6 +2525,7 @@ TEST_F(RewriteContextTest, CombinationRewriteWithDelayAndDebug) {
 
 TEST_F(RewriteContextTest, CombinationFetch) {
   InitCombiningFilter(0);
+  EnableDebug();
   InitResources();
 
   GoogleString combined_url = Encode(kTestDomain, CombiningFilter::kFilterId,
@@ -2547,6 +2564,7 @@ TEST_F(RewriteContextTest, FetchDeadlineTest) {
   // This uses a combining filter with one input, as it has the needed delay
   // functionality.
   InitCombiningFilter(Timer::kMonthMs);
+  EnableDebug();
   InitResources();
   combining_filter_->set_prefix("|");
 
@@ -2580,6 +2598,7 @@ TEST_F(RewriteContextTest, FetchDeadlineMandatoryTest) {
   // Version of FetchDeadlineTest where the filter is marked as not being
   // an optimization only. This effectively disables the deadline.
   InitCombiningFilter(Timer::kMonthMs);
+  EnableDebug();
   InitResources();
   combining_filter_->set_optimization_only(false);
   combining_filter_->set_prefix("|");
@@ -2599,6 +2618,7 @@ TEST_F(RewriteContextTest, FetchDeadlineTestBeforeDeadline) {
   // As above, but rewrite finishes quickly. This time we should see the |
   // immediately
   InitCombiningFilter(1 /*ms*/);
+  EnableDebug();
   InitResources();
   combining_filter_->set_prefix("|");
 
@@ -2640,6 +2660,7 @@ TEST_F(RewriteContextTest, LoadSheddingTest) {
   // We use a sync point here to wedge the combining filter, and then have
   // other filters behind it accumulate lots of work and get load-shed.
   InitCombiningFilter(0);
+  EnableDebug();
   combining_filter_->set_prefix("|");
   WorkerTestBase::SyncPoint rewrite_reached(
       server_context()->thread_system());
@@ -2714,6 +2735,7 @@ TEST_F(RewriteContextTest, LoadSheddingTest) {
 
 TEST_F(RewriteContextTest, CombinationFetchMissing) {
   InitCombiningFilter(0);
+  EnableDebug();
   SetFetchFailOnUnexpected(false);
   GoogleString combined_url = Encode(kTestDomain, CombiningFilter::kFilterId,
                                      "0", MultiUrl("a.css", "b.css"), "css");
@@ -2724,6 +2746,7 @@ TEST_F(RewriteContextTest, CombinationFetchNestedMalformed) {
   // Fetch of a combination where nested URLs look like they were pagespeed-
   // produced, but actually have invalid filter ids.
   InitCombiningFilter(0);
+  EnableDebug();
   SetFetchFailOnUnexpected(false);
   GoogleString combined_url = Encode(
       kTestDomain, CombiningFilter::kFilterId, "0",
@@ -2736,6 +2759,7 @@ TEST_F(RewriteContextTest, CombinationFetchSeedsCache) {
   // Make sure that fetching a combination seeds cache for future rewrites
   // properly.
   InitCombiningFilter(0 /* no rewrite delay*/);
+  EnableDebug();
   InitResources();
 
   // First fetch it..
@@ -3187,6 +3211,7 @@ TEST_F(RewriteContextTest, TestFreshen) {
 TEST_F(RewriteContextTest, TestFreshenForMultipleResourceRewrites) {
   FetcherUpdateDateHeaders();
   InitCombiningFilter(0 /* no rewrite delay */);
+  EnableDebug();
   // We use MD5 hasher instead of mock hasher so that the rewritten url changes
   // when its content gets updated.
   UseMd5Hasher();
@@ -3939,6 +3964,7 @@ TEST_F(RewriteContextTest, TestReuse) {
 TEST_F(RewriteContextTest, TestFallbackOnFetchFails) {
   FetcherUpdateDateHeaders();
   InitTrimFilters(kRewrittenResource);
+  EnableDebug();
 
   // Test to make sure we are able to serve stale resources if available when
   // the fetch fails.
@@ -3958,7 +3984,11 @@ TEST_F(RewriteContextTest, TestFallbackOnFetchFails) {
 
   // First fetch. No rewriting happens since the fetch fails. We cache that the
   // fetch failed for kDefaultImplicitCacheTtlMs.
-  ValidateNoChanges("initial_500", CssLinkHref(kPath));
+  GoogleString input_html = CssLinkHref(kPath);
+  GoogleString fetch_failure_html =
+      StrCat(input_html, "<!--Fetch failure, preventing rewriting of ",
+             kTestDomain, kPath, "-->");
+  ValidateExpected("initial_500", input_html, fetch_failure_html);
   EXPECT_EQ(0, trim_filter_->num_rewrites());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(1, http_cache()->cache_inserts()->Get());
@@ -3971,7 +4001,7 @@ TEST_F(RewriteContextTest, TestFallbackOnFetchFails) {
   // remembered that the fetch failed, we don't trigger a fetch for the CSS and
   // don't rewrite it either.
   AdvanceTimeMs(kTtlMs / 2);
-  ValidateNoChanges("forward_500", CssLinkHref(kPath));
+  ValidateExpected("forward_500", input_html, fetch_failure_html);
   EXPECT_EQ(0, trim_filter_->num_rewrites());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
@@ -3989,7 +4019,7 @@ TEST_F(RewriteContextTest, TestFallbackOnFetchFails) {
 
   // The resource is rewritten successfully.
   ValidateExpected("forward_200",
-                   CssLinkHref(kPath),
+                   input_html,
                    CssLinkHref(rewritten_url));
   EXPECT_EQ(1, trim_filter_->num_rewrites());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
@@ -4012,8 +4042,11 @@ TEST_F(RewriteContextTest, TestFallbackOnFetchFails) {
   AdvanceTimeMs(kTtlMs * 10);
   lru_cache()->Delete(HttpCacheKey(abs_rewritten_url));
   mock_url_fetcher()->SetResponse(AbsolutifyUrl(kPath), bad_headers, "");
+  GoogleString expired_html =
+      StrCat(input_html, "<!--Cached content expired, preventing rewriting of ",
+             kTestDomain, kPath, "-->");
 
-  ValidateNoChanges("forward_500_fallback_served", CssLinkHref(kPath));
+  ValidateExpected("forward_500_fallback_served", input_html, expired_html);
   EXPECT_EQ(0, trim_filter_->num_rewrites());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
@@ -4037,7 +4070,7 @@ TEST_F(RewriteContextTest, TestFallbackOnFetchFails) {
 
   ClearStats();
   lru_cache()->Delete(HttpCacheKey(abs_rewritten_url));
-  ValidateNoChanges("forward_500_no_fallback", CssLinkHref(kPath));
+  ValidateExpected("forward_500_no_fallback", input_html, fetch_failure_html);
   EXPECT_EQ(0, trim_filter_->num_rewrites());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(1, http_cache()->cache_inserts()->Get());
@@ -4376,6 +4409,7 @@ TEST_F(RewriteContextTest, TestStaleRewriting) {
 // finished by the time the response is completely flushed.
 TEST_F(RewriteContextTest, BlockingRewrite) {
   InitCombiningFilter(kRewriteDelayMs);
+  EnableDebug();
   InitResources();
   GoogleString combined_url = Encode("", CombiningFilter::kFilterId,
                                      "0", MultiUrl("a.css", "b.css"), "css");

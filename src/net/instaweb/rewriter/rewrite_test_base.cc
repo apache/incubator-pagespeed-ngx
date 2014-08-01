@@ -1280,6 +1280,26 @@ void RewriteTestBase::EnableCachePurge() {
   options()->ComputeSignature();
 }
 
+void RewriteTestBase::EnableDebug() {
+  options()->ClearSignatureForTesting();
+  options()->EnableFilter(RewriteOptions::kDebug);
+  options()->ComputeSignature();
+}
+
+GoogleString RewriteTestBase::DebugMessage(StringPiece url) {
+  GoogleString result(debug_message_);
+  GoogleUrl test_domain(kTestDomain);
+  GoogleUrl gurl(test_domain, url);
+  if (gurl.IsAnyValid()) {
+    // Resolves vs test_domain to a valid absolute url.  Use that.
+    GlobalReplaceSubstring("%url%", gurl.Spec(), &result);
+  } else {
+    // Couldn't resolve to a valid url, just use string as passed in.
+    GlobalReplaceSubstring("%url%", url, &result);
+  }
+  return result;
+}
+
 GoogleString RewriteTestBase::ExpectedNonce() {
   GoogleString result;
   StringPiece nonce_piece(reinterpret_cast<char*>(&expected_nonce_),

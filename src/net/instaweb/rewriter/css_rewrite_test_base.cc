@@ -37,12 +37,6 @@ namespace net_instaweb {
 
 CssRewriteTestBase::~CssRewriteTestBase() {}
 
-GoogleString CssRewriteTestBase::CssDebugMessage(StringPiece url) {
-  GoogleString result(debug_message_);
-  GlobalReplaceSubstring("%url%", url, &result);
-  return result;
-}
-
 // Check that inline CSS gets rewritten correctly.
 bool CssRewriteTestBase::ValidateRewriteInlineCss(
     StringPiece id, StringPiece css_input, StringPiece expected_css_output,
@@ -63,7 +57,7 @@ bool CssRewriteTestBase::ValidateRewriteInlineCss(
   CheckFlags(flags);
   GoogleString html_input  = StrCat(prefix, css_input, suffix1, suffix2);
   GoogleString html_output = StrCat(prefix, expected_css_output, suffix1,
-                                    CssDebugMessage(html_url), suffix2);
+                                    DebugMessage(html_url), suffix2);
 
   return ValidateWithStats(id, html_input, html_output,
                            css_input, expected_css_output, flags);
@@ -227,7 +221,7 @@ GoogleString CssRewriteTestBase::MakeHtmlWithExternalCssLink(
   // For expected_output HTML we do.
   GoogleString debug_message;
   if (insert_debug_message) {
-    debug_message = CssDebugMessage(css_url);
+    debug_message = DebugMessage(css_url);
   }
 
   return StringPrintf("<head>\n"
@@ -332,6 +326,7 @@ void CssRewriteTestBase::ValidateRewriteExternalCssUrl(
 
 // Helper to test for how we handle trailing junk
 void CssRewriteTestBase::TestCorruptUrl(const char* new_suffix) {
+  DebugWithMessage("");
   const char kInput[] = " div { } ";
   const char kOutput[] = "div{}";
   // Compute normal version

@@ -99,8 +99,14 @@ class Resource : public RefCounted<Resource> {
   // Answers question: Are we allowed to rewrite the contents now?
   // Checks if valid and cacheable and if it has a no-transform header.
   // rewrite_uncacheable is used to answer question whether the resource can be
-  // optimizaed even if it is not cacheable.
-  bool IsSafeToRewrite(bool rewrite_uncacheable) const;
+  // optimized even if it is not cacheable.
+  // If a resource cannot be rewritten, the reason is appended to *reason.
+  bool IsSafeToRewrite(bool rewrite_uncacheable, GoogleString* reason) const;
+  bool IsSafeToRewrite(bool rewrite_uncacheable) const {
+    // TODO(jmaessen): Convert all remaining call sites to use a reason.
+    GoogleString reason_ignored;
+    return IsSafeToRewrite(rewrite_uncacheable, &reason_ignored);
+  }
 
   // TODO(sligocki): Do we need these or can we just use IsValidAndCacheable
   // everywhere?

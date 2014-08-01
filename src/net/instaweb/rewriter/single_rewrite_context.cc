@@ -43,8 +43,8 @@ bool SingleRewriteContext::Partition(OutputPartitions* partitions,
   if (num_slots() == 1) {
     ret = true;
     ResourcePtr resource(slot(0)->resource());
-    // TODO(sligocki): Get a failure_reason string back from IsSafeToRewrite().
-    if (resource->IsSafeToRewrite(rewrite_uncacheable())) {
+    GoogleString unsafe_reason;
+    if (resource->IsSafeToRewrite(rewrite_uncacheable(), &unsafe_reason)) {
       GoogleString failure_reason;
       OutputResourcePtr output_resource(
           Driver()->CreateOutputResourceFromResource(
@@ -60,9 +60,7 @@ bool SingleRewriteContext::Partition(OutputPartitions* partitions,
         outputs->push_back(output_resource);
       }
     } else {
-      // TODO(sligocki): Use a failure_reason from IsSafeToRewrite().
-      partitions->add_debug_message(
-          "Input resource is not valid or not cacheable.");
+      partitions->add_debug_message(unsafe_reason);
     }
   }
   return ret;

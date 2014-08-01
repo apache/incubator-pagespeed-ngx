@@ -72,6 +72,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"  // for Timer, etc
+#include "pagespeed/kernel/base/gmock.h"
 #include "pagespeed/kernel/http/http_names.h"
 #include "pagespeed/kernel/http/http_options.h"
 #include "pagespeed/kernel/image/test_utils.h"
@@ -2267,25 +2268,35 @@ TEST_F(ImageRewriteTest, Rewrite404) {
   // Make sure we don't fail when rewriting with invalid input.
   SetFetchResponse404("404.jpg");
   AddFilter(RewriteOptions::kRecompressJpeg);
-  ValidateNoChanges("404", "<img src='404.jpg'>");
-
-  // Try again to exercise cached case.
-  ValidateNoChanges("404", "<img src='404.jpg'>");
+  DebugWithMessage("<!--4xx status code, preventing rewriting of %url%-->");
+  for (int i = 0; i < 2; ++i) {
+    // Try twice to exercise the cached case.
+    ValidateExpected(
+        "404",
+        "<img src='404.jpg'>",
+        StrCat("<img src='404.jpg'>", DebugMessage("404.jpg")));
+  }
 }
 
 TEST_F(ImageRewriteTest, HonorNoTransform) {
   // If cache-control: no-transform then we should serve the original URL
   options()->EnableFilter(RewriteOptions::kRecompressPng);
   rewrite_driver()->AddFilters();
+  DebugWithMessage(
+      "<!--Cache-control: no-transform, preventing rewriting of %url%-->");
 
   GoogleString url = StrCat(kTestDomain, "notransform.png");
   AddFileToMockFetcher(url, kBikePngFile, kContentTypePng, 100);
   AddToResponse(url, HttpAttributes::kCacheControl, "no-transform");
 
-  ValidateNoChanges("NoTransform1", StrCat("<img src=", url, ">"));
-  // Validate twice in case changes in cache from the first request alter the
-  // second.
-  ValidateNoChanges("NoTransform2", StrCat("<img src=", url, ">"));
+  for (int i = 0; i < 2; ++i) {
+    // Validate twice in case changes in cache from the first request alter the
+    // second.
+    ValidateExpected(
+        "NoTransform",
+        StrCat("<img src=", url, ">"),
+        StrCat("<img src=", url, ">", DebugMessage(url)));
+  }
 }
 
 TEST_F(ImageRewriteTest, YesTransform) {

@@ -660,6 +660,24 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   // metadata Input against the invalidation-set.
   void EnableCachePurge();
 
+  // Enables the debug flag, which is often done on a test-by-test basis.
+  void EnableDebug();
+
+  // Enable debugging and set expected_debug_message used by DebugMessage.
+  // Occurrences of %url% in the message will be replaced by the argument
+  // to DebugMessage.
+  void DebugWithMessage(StringPiece expected_debug_message) {
+    EnableDebug();
+
+    expected_debug_message.CopyToString(&debug_message_);
+  }
+
+  // Return the debug message if it was set by DebugWithMessage, empty string
+  // otherwise.  Inserts url for %url% if needed, attempting to resolve it
+  // against kTestDomain first, and using url exactly as passed if resolving it
+  // doesn't return a valid url.
+  GoogleString DebugMessage(StringPiece url);
+
   // Returns a process context needed for any tests to instantiate factories
   // explicitly.
   static const ProcessContext& process_context();
@@ -770,6 +788,8 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   ResponseHeaders response_headers_;
   const GoogleString kEtag0;  // Etag with a 0 hash.
   uint64 expected_nonce_;
+
+  GoogleString debug_message_;  // Message used by DebugMessage
 };
 
 }  // namespace net_instaweb

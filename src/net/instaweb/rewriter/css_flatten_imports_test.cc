@@ -330,11 +330,11 @@ class CssFlattenImportsTest : public CssRewriteTestBase {
     ValidationFlags extra_flag = kNoFlags;
     if (limit_exceeded) {
       extra_flag = kFlattenImportsLimitExceeded;
-      TurnOnDebug(StringPrintf("<!--Flattening failed: "
-                               "Flattening limit (%d) exceeded (%d)-->",
-                               flattening_limit, actual_amount));
+      DebugWithMessage(StringPrintf("<!--Flattening failed: "
+                                    "Flattening limit (%d) exceeded (%d)-->",
+                                    flattening_limit, actual_amount));
     } else {
-      TurnOnDebug("");
+      DebugWithMessage("");
     }
 
     ValidateRewriteExternalCss(test_id, css_in, css_out,
@@ -432,6 +432,8 @@ TEST_F(CssFlattenImportsTest, FlattenNoop) {
 }
 
 TEST_F(CssFlattenImportsTest, Flatten404) {
+  DebugWithMessage("<!--4xx status code, preventing rewriting of"
+                   " http://test.com/404.css-->");
   const char css_in[] =
       "@import url(http://test.com/404.css) ;";
 
@@ -444,7 +446,7 @@ TEST_F(CssFlattenImportsTest, DontFlattenWithUnauthorizedCSS) {
   const char kFailureReason[] = "<!--Flattening failed: Cannot import "
                                 "http://unauth.com/assets/styles.css "
                                 "as it is on an unauthorized domain-->";
-  TurnOnDebug(kFailureReason);
+  DebugWithMessage(kFailureReason);
   SetResponseWithDefaultHeaders(kSimpleCssFile, kContentTypeCss,
                                 kSimpleCss, 100);
   const char kUnauthorizedImportCss[] =
@@ -475,13 +477,13 @@ TEST_F(CssFlattenImportsTest, DontFlattenWithUnauthorizedCSS) {
 
 TEST_F(CssFlattenImportsTest, FlattenInvalidCSS) {
   // Turn on debug to get the flattening failure reason in an HTML comment.
-  TurnOnDebug("<!--CSS rewrite failed: Parse error in %url%-->");
+  DebugWithMessage("<!--CSS rewrite failed: Parse error in %url%-->");
   const char kInvalidMediaCss[] = "@media }}";
   ValidateRewriteExternalCss("flatten_invalid_css_media",
                              kInvalidMediaCss, kInvalidMediaCss,
                              kExpectFailure);
 
-  TurnOnDebug("<!--CSS rewrite failed: Parse error in %url%-->");
+  DebugWithMessage("<!--CSS rewrite failed: Parse error in %url%-->");
   const char kInvalidImportCss[] = "@import styles.css; a { color:red }";
   ValidateRewriteExternalCss("flatten_invalid_css_import",
                              kInvalidImportCss, kInvalidImportCss,
@@ -496,7 +498,7 @@ TEST_F(CssFlattenImportsTest, FlattenInvalidCSS) {
 
   GoogleString kFlattenedInvalidCss = StrCat(kSimpleCss, "a{#color: 333 }");
 
-  TurnOnDebug("");
+  DebugWithMessage("");
   ValidateRewriteExternalCss("flatten_unparseable_css_rule",
                              kUnparseableCss, kFlattenedInvalidCss,
                              kExpectSuccess | kNoClearFetcher);
@@ -507,7 +509,7 @@ TEST_F(CssFlattenImportsTest, FlattenInvalidCSS) {
   // Note: This specific case is probably technically safe to flatten
   // because the broken CSS is at the end, but we choose not to dance
   // on that knife edge and just disallow flattening.
-  TurnOnDebug("<!--CSS rewrite failed: Parse error in %url%-->");
+  DebugWithMessage("<!--CSS rewrite failed: Parse error in %url%-->");
   const char kErrorCss[] = "@import url(styles.css) ;a{{ color:red }";
   ValidateRewriteExternalCss("no_flatten_error_css_rule",
                              kErrorCss, kErrorCss,
@@ -524,8 +526,8 @@ TEST_F(CssFlattenImportsTest, FlattenInvalidCSS) {
   // Note: Rewrite succeeds, but flatten fails.
   // TODO(jmaessen): Should contain parse error for nested file as well,
   // once nested rewrites propagate correctly.
-  TurnOnDebug("<!--Flattening failed: Cannot parse the CSS "
-              "in http://test.com/error.css-->");
+  DebugWithMessage("<!--Flattening failed: Cannot parse the CSS "
+                   "in http://test.com/error.css-->");
   ValidateRewriteExternalCss("no_flatten_error_in_import",
                              kImportErrorCss, kRewrittenImportErrorCss,
                              kExpectSuccess | kFlattenImportsMinifyFailed |
@@ -822,8 +824,8 @@ TEST_F(CssFlattenImportsTest, CacheExtendsAfterFlatteningNestedRelativeUrls) {
 
 TEST_F(CssFlattenImportsTest, FlattenRecursion) {
   // Turn on debug to get the flattening failure reason in an HTML comment.
-  TurnOnDebug("<!--Flattening failed: "
-              "Recursive @import of http://test.com/recursive.css-->");
+  DebugWithMessage("<!--Flattening failed: "
+                   "Recursive @import of http://test.com/recursive.css-->");
 
   const char kFilename[] = "recursive.css";
   const GoogleString css_in =
@@ -858,8 +860,8 @@ TEST_F(CssFlattenImportsTest, FlattenSimpleMedia) {
 TEST_F(CssFlattenImportsTest, FlattenNestedMedia) {
   const char kStylesFilename[] = "styles.css";
   const GoogleString kStylesContents = StrCat(
-      "@import url(print.css) print;",
-      "@import url(screen.css) screen;",
+      "@import url(print.css) print;"
+      "@import url(screen.css) screen;"
       "@media all{",
       kSimpleCss,
       "}");
@@ -1038,10 +1040,10 @@ TEST_F(CssFlattenImportsTest, FlattenNestedCharsetsOk) {
 
 TEST_F(CssFlattenImportsTest, FlattenNestedCharsetsMismatch) {
   // Turn on debug to get the flattening failure reason in an HTML comment.
-  TurnOnDebug("<!--Flattening failed: "
-              "The charset of http://test.com/styles.css "
-              "(utf-8 from headers) is different from that of its parent "
-              "(inline): iso-8859-1 from unknown-->");
+  DebugWithMessage("<!--Flattening failed: "
+                   "The charset of http://test.com/styles.css "
+                   "(utf-8 from headers) is different from that of its parent "
+                   "(inline): iso-8859-1 from unknown-->");
 
   // HTML = iso-8859-1 (default), CSS = utf-8 (always).
   TestFlattenWithHtmlCharset("", "", "", false);
@@ -1049,10 +1051,10 @@ TEST_F(CssFlattenImportsTest, FlattenNestedCharsetsMismatch) {
 
 TEST_F(CssFlattenImportsTest, FlattenFailsIfLinkHasWrongCharset) {
   // Turn on debug to get the flattening failure reason in an HTML comment.
-  TurnOnDebug("<!--Flattening failed: "
-              "The charset of the HTML (iso-8859-1, the default) "
-              "is different from the charset attribute "
-              "on the preceding element (utf-8)-->");
+  DebugWithMessage("<!--Flattening failed: "
+                   "The charset of the HTML (iso-8859-1, the default) "
+                   "is different from the charset attribute "
+                   "on the preceding element (utf-8)-->");
 
   const char kStylesFilename[] = "styles.css";
   SetResponseWithDefaultHeaders(kStylesFilename, kContentTypeCss,
@@ -1080,10 +1082,10 @@ TEST_F(CssFlattenImportsTest, FlattenRespectsHttpEquivCharset) {
 
 TEST_F(CssFlattenImportsTest, FlattenRespectsHttpEquivCharsetUnquoted) {
   // Turn on debug to get the flattening failure reason in an HTML comment.
-  TurnOnDebug("<!--Flattening failed: "
-              "The charset of http://test.com/styles.css "
-              "(utf-8 from headers) is different from that of its parent "
-              "(inline): ISO-8859-1 from unknown-->");
+  DebugWithMessage("<!--Flattening failed: "
+                   "The charset of http://test.com/styles.css "
+                   "(utf-8 from headers) is different from that of its parent "
+                   "(inline): ISO-8859-1 from unknown-->");
 
   // HTML = iso-8859-1 (3rd argument), CSS = utf-8 (always).
   TestFlattenWithHtmlCharset("", "", "iso-8859-1", false);
@@ -1096,10 +1098,10 @@ TEST_F(CssFlattenImportsTest, HeaderTakesPrecendenceOverMetaTag1) {
 
 TEST_F(CssFlattenImportsTest, HeaderTakesPrecendenceOverMetaTag2) {
   // Turn on debug to get the flattening failure reason in an HTML comment.
-  TurnOnDebug("<!--Flattening failed: "
-              "The charset of http://test.com/styles.css "
-              "(utf-8 from headers) is different from that of its parent "
-              "(inline): iso-8859-1 from unknown-->");
+  DebugWithMessage("<!--Flattening failed: "
+                   "The charset of http://test.com/styles.css "
+                   "(utf-8 from headers) is different from that of its parent "
+                   "(inline): iso-8859-1 from unknown-->");
 
   // HTML = iso-8859-1 (1st argument), CSS = utf-8 (always).
   TestFlattenWithHtmlCharset("iso-8859-1", "utf-8", "", false);
@@ -1108,8 +1110,8 @@ TEST_F(CssFlattenImportsTest, HeaderTakesPrecendenceOverMetaTag2) {
 // Make sure we deal correctly with invalid URL in child.
 TEST_F(CssFlattenImportsTest, InvalidGrandchildUrl) {
   // Turn on debug to get the flattening failure reason in an HTML comment.
-  TurnOnDebug("<!--Flattening failed: "
-              "Invalid import URL //// in http://test.com/child.css-->");
+  DebugWithMessage("<!--Flattening failed: "
+                   "Invalid import URL //// in http://test.com/child.css-->");
 
   // Invalid URL.
   SetResponseWithDefaultHeaders("child.css", kContentTypeCss,
@@ -1126,8 +1128,8 @@ TEST_F(CssFlattenImportsTest, InvalidGrandchildUrl) {
 // Test that we do not flatten @imports that have complex media queries.
 TEST_F(CssFlattenImportsTest, NoFlattenMediaQueries) {
   // Turn on debug to get the flattening failure reason in an HTML comment.
-  TurnOnDebug("<!--Flattening failed: "
-              "Complex media queries in the @import of inline-->");
+  DebugWithMessage("<!--Flattening failed: "
+                   "Complex media queries in the @import of inline-->");
 
   ValidateRewrite("media_queries",
                   // We do not flatten @imports with complex media queries.
@@ -1139,8 +1141,8 @@ TEST_F(CssFlattenImportsTest, NoFlattenMediaQueries) {
 // Still don't flatten because child @import has complex media query.
 TEST_F(CssFlattenImportsTest, NoFlattenMediaQueriesChild) {
   // Turn on debug to get the flattening failure reason in an HTML comment.
-  TurnOnDebug("<!--Flattening failed: "
-              "Complex media queries in the @import of inline-->");
+  DebugWithMessage("<!--Flattening failed: "
+                   "Complex media queries in the @import of inline-->");
 
   SetResponseWithDefaultHeaders("child.css", kContentTypeCss,
                                 "@import url(g.css) screen and (color);", 100);
@@ -1164,8 +1166,8 @@ TEST_F(CssFlattenImportsTest, NoFlattenMediaQueriesChild) {
 // do this if there we think it is impacting our performance.
 TEST_F(CssFlattenImportsTest, MergeMediaQueries) {
   // Turn on debug to get the flattening failure reason in an HTML comment.
-  TurnOnDebug("<!--Flattening failed: A media query "
-              "is too complex in http://test.com/child.css-->");
+  DebugWithMessage("<!--Flattening failed: A media query "
+                   "is too complex in http://test.com/child.css-->");
 
   const char child_contents[] =
       "@media screen and (color) { .a { color: red; } }\n"
@@ -1191,8 +1193,8 @@ TEST_F(CssFlattenImportsTest, MergeMediaQueries) {
 // "screen and (not-max-width: 400px)"?? We just give up with "not".
 TEST_F(CssFlattenImportsTest, NoFlattenMediaQueriesAtMedia) {
   // Turn on debug to get the flattening failure reason in an HTML comment.
-  TurnOnDebug("<!--Flattening failed: A media query "
-              "is too complex in http://test.com/child.css-->");
+  DebugWithMessage("<!--Flattening failed: A media query "
+                   "is too complex in http://test.com/child.css-->");
 
   const char child_contents[] =
       "@media screen and (color) { .a { color: red; } }\n"
@@ -1270,8 +1272,8 @@ TEST_F(CssFlattenImportsAndRewriteImagesTest, UnauthorizedImageDomain) {
       simple_css_path, kContentTypeCss, simple_css_in, 100);
   const GoogleString import_simple_css =
       StrCat("@import url(", simple_css_path, ") ;");
-  TurnOnDebug(StrCat("<!--Cannot rewrite ", kFooPng,
-                     " as it is on an unauthorized domain-->"));
+  DebugWithMessage(StrCat("<!--Cannot rewrite ", kFooPng,
+                          " as it is on an unauthorized domain-->"));
   ValidateRewriteExternalCss("unauthorized_image_domain",
                              import_simple_css, simple_css_in,
                              kExpectSuccess | kNoClearFetcher);

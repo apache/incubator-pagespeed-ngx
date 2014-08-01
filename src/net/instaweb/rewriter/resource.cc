@@ -79,29 +79,62 @@ bool Resource::IsValidAndCacheable() const {
   // We don't have to worry about request_headers here since
   // if we have some we should be using UrlInputResource's implementation
   // of this method.
-  return ((response_headers_.status_code() == HttpStatus::kOK) &&
+  return (HttpStatusOk() &&
           !server_context_->http_cache()->IsExpired(response_headers_) &&
           response_headers_.IsProxyCacheable(RequestHeaders::Properties(),
                                              respect_vary_,
                                              ResponseHeaders::kNoValidator));
 }
 
-bool Resource::IsSafeToRewrite(bool rewrite_uncacheable) const {
-  rewrite_uncacheable &= HttpStatusOk();
+bool Resource::IsSafeToRewrite(bool rewrite_uncacheable,
+                               GoogleString* reason) const {
   RewriteStats* stats = server_context_->rewrite_stats();
-  if ((IsValidAndCacheable() || rewrite_uncacheable) &&
-      !(disable_rewrite_on_no_transform_ &&
-        response_headers_.HasValue(HttpAttributes::kCacheControl,
-                                   "no-transform"))) {
+  if (!HttpStatusOk()) {
+    // Frustratingly, we have thrown away the headers of a CacheableResource at
+    // this point, so we need to give feedback based upon the
+    // fetch_response_status_.
+    switch (fetch_response_status_) {
+      case kFetchStatusDropped:
+        StrAppend(reason, "Fetch was dropped due to load, ");
+        break;
+      case kFetchStatus4xxError:
+        StrAppend(reason, "4xx status code, ");
+        break;
+      case kFetchStatusUncacheable:
+        StrAppend(reason, "Uncacheable content, ");
+        break;
+      case kFetchStatusOther:
+        StrAppend(reason, "Fetch failure, ");
+        break;
+      case kFetchStatusNotSet:
+        StrAppend(reason,
+                  "Fetch status not set when IsSafeToRewrite was called, ");
+        break;
+      case kFetchStatusOK:
+        CHECK(false) << "Fetch status OK but !HttpStatusOk in IsSafeToRewrite!";
+        break;
+    }
+  } else if (!rewrite_uncacheable && !IsValidAndCacheable()) {
+    StrAppend(reason,
+              (server_context_->http_cache()->IsExpired(response_headers_) ?
+               "Cached content expired, " :
+               "Invalid or uncacheable content, "));
+  } else if (disable_rewrite_on_no_transform_ &&
+             response_headers_.HasValue(HttpAttributes::kCacheControl,
+                                        "no-transform")) {
+    StrAppend(reason, "Cache-control: no-transform, ");
+  } else {
+    // Safe.
     stats->num_cache_control_rewritable_resources()->Add(1);
     return true;
-  } else {
-    // TODO(sligocki): Are we over-counting this because uncacheable
-    // resources will hit this stat for every filter, but cacheable ones
-    // will only hit the above stat once?
-    stats->num_cache_control_not_rewritable_resources()->Add(1);
-    return false;
   }
+  // If we get here, we're unsafe for the reason given.
+  StrAppend(reason, "preventing rewriting of ", url());
+  // TODO(sligocki): Are we over-counting this because uncacheable
+  // resources will hit this stat for every filter, but cacheable ones
+  // will only hit the above stat once?
+  stats->num_cache_control_not_rewritable_resources()->Add(1);
+  return false;
 }
 
 void Resource::LoadAsync(
