@@ -43,6 +43,7 @@
         'instaweb.gyp:instaweb_javascript',
         'instaweb.gyp:instaweb_spriter_test',
         'instaweb.gyp:instaweb_system',
+        '<(DEPTH)/pagespeed/opt.gyp:pagespeed_ads_util',
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_base_core',
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_cache',
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_http',
@@ -339,6 +340,8 @@
         '<(DEPTH)/pagespeed/kernel/util/url_escaper_test.cc',
         '<(DEPTH)/pagespeed/kernel/util/url_multipart_encoder_test.cc',
         '<(DEPTH)/pagespeed/kernel/util/url_to_filename_encoder_test.cc',
+        '<(DEPTH)/pagespeed/opt/ads/ads_util_test.cc',
+        '<(DEPTH)/pagespeed/opt/ads/show_ads_snippet_parser_test.cc',
 # Rolling hash test fails to build in 32-bit g++ 4.1
 #        '<(DEPTH)/pagespeed/kernel/base/rolling_hash_test.cc',
 #        'util/split_writer_test.cc',               # not currently needed
