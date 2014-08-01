@@ -71,12 +71,12 @@ function keepalive_test() {
       if [ -z "$POST_DATA" ]; then
         curl -m 2 -S -s -v -H "Accept-Encoding: $accept_encoding" \
           -H "Host: $HOST_NAME" $URL $URL $URL $URL $URL > /dev/null \
-          2>>"$TEST_TMP/$CURL_LOG_FILE"
+          2>>"$TEST_TMP/$CURL_LOG_FILE" || true
       else
         curl -X POST --data "$POST_DATA" -m 2 -S -s -v \
           -H "Accept-Encoding: $accept_encoding" -H "Host: $HOST_NAME"\
           $URL $URL $URL $URL $URL > /dev/null \
-          2>>"$TEST_TMP/$CURL_LOG_FILE"
+          2>>"$TEST_TMP/$CURL_LOG_FILE" || true
       fi
     done
   done
@@ -100,7 +100,8 @@ function keepalive_test() {
     | grep -v "^\\* - Conn "\
     | grep -v "^\\* Server "\
     | grep -v "^\\*   Trying.*\\.\\.\\."\
-    | grep -v "^\\* Hostname was NOT found in DNS cache")
+    | grep -v "^\\* Hostname was NOT found in DNS cache" \
+    || true)
 
   # Nothing should remain after that.
   check [ -z "$OUT" ]
@@ -108,7 +109,8 @@ function keepalive_test() {
   # Filter the nginx log from our vhost from unimportant messages.
   OUT=$(cat "$TEST_TMP/$NGX_LOG_FILE"\
     | grep -v "closed keepalive connection$" \
-    | grep -v ".*Cache Flush.*")
+    | grep -v ".*Cache Flush.*" \
+    || true)
 
   # Nothing should remain after that.
   check [ -z "$OUT" ]
@@ -417,7 +419,7 @@ fetch_until $TEST_ROOT/bot_test.html 'grep -c \.pagespeed\.' 2
 start_test 404s are served and properly recorded.
 NUM_404=$(scrape_stat resource_404_count)
 echo "Initial 404s: $NUM_404"
-WGET_ERROR=$($WGET -O /dev/null $BAD_RESOURCE_URL 2>&1)
+WGET_ERROR=$(check_not $WGET -O /dev/null $BAD_RESOURCE_URL 2>&1)
 check_from "$WGET_ERROR" fgrep -q "404 Not Found"
 
 # Check that the stat got bumped.
@@ -450,16 +452,13 @@ if [ "$HOSTNAME" = "localhost:$PRIMARY_PORT" ] ; then
   ALT_STAT_URL=$(echo $STATISTICS_URL | sed s#localhost#$NON_LOCAL_IP#)
 
   echo "wget $ALT_STAT_URL >& $TEMPDIR/alt_stat_url.$$"
-  wget $ALT_STAT_URL >& "$TEMPDIR/alt_stat_url.$$"
-  check [ $? = 8 ]
+  check_error_code 8 wget $ALT_STAT_URL >& "$TEMPDIR/alt_stat_url.$$"
   rm -f "$TEMPDIR/alt_stat_url.$$"
 
   ALT_CE_URL="$ALT_STAT_URL.pagespeed.ce.8CfGBvwDhH.css"
-  wget -O - $ALT_CE_URL  >& "$TEMPDIR/alt_ce_url.$$"
-  check [ $? = 8 ]
-
-  wget -O - --header="Host: $HOSTNAME" $ALT_CE_URL >& "$TEMPDIR/alt_ce_url.$$"
-  check [ $? = 8 ]
+  check_error_code 8 wget -O - $ALT_CE_URL  >& "$TEMPDIR/alt_ce_url.$$"
+  check_error_code 8 wget -O - --header="Host: $HOSTNAME" $ALT_CE_URL \
+    >& "$TEMPDIR/alt_ce_url.$$"
   rm -f "$TEMPDIR/alt_ce_url.$$"
 
   # Even though we don't have a cookie, we will conservatively avoid
@@ -534,53 +533,53 @@ start_test "Custom statistics paths in server block"
 
 # Served on normal paths by default.
 URL="inherit-paths.example.com/ngx_pagespeed_statistics"
-OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)
+OUT=$(http_proxy=$SECONDARY_HOSTNAME check $WGET_DUMP $URL)
 check_from "$OUT" fgrep -q cache_time_us
 
 URL="inherit-paths.example.com/ngx_pagespeed_message"
-OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)
+OUT=$(http_proxy=$SECONDARY_HOSTNAME check $WGET_DUMP $URL)
 check_from "$OUT" fgrep -q Info
 
 URL="inherit-paths.example.com/pagespeed_console"
-OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)
+OUT=$(http_proxy=$SECONDARY_HOSTNAME check $WGET_DUMP $URL)
 check_from "$OUT" fgrep -q console_div
 
 URL="inherit-paths.example.com/pagespeed_admin/"
-OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)
+OUT=$(http_proxy=$SECONDARY_HOSTNAME check $WGET_DUMP $URL)
 check_from "$OUT" fgrep -q Admin
 
 # Not served on normal paths when overriden.
 URL="custom-paths.example.com/ngx_pagespeed_statistics"
-OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)
+OUT=$(http_proxy=$SECONDARY_HOSTNAME check_not $WGET_DUMP $URL)
 check_not_from "$OUT" fgrep -q cache_time_us
 
 URL="custom-paths.example.com/ngx_pagespeed_message"
-OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)
+OUT=$(http_proxy=$SECONDARY_HOSTNAME check_not $WGET_DUMP $URL)
 check_not_from "$OUT" fgrep -q Info
 
 URL="custom-paths.example.com/pagespeed_console"
-OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)
+OUT=$(http_proxy=$SECONDARY_HOSTNAME check_not $WGET_DUMP $URL)
 check_not_from "$OUT" fgrep -q console_div
 
 URL="custom-paths.example.com/pagespeed_admin/"
-OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)
+OUT=$(http_proxy=$SECONDARY_HOSTNAME check_not $WGET_DUMP $URL)
 check_not_from "$OUT" fgrep -q Admin
 
 # Served on custom paths when overriden
 URL="custom-paths.example.com/custom_pagespeed_statistics"
-OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)
+OUT=$(http_proxy=$SECONDARY_HOSTNAME check $WGET_DUMP $URL)
 check_from "$OUT" fgrep -q cache_time_us
 
 URL="custom-paths.example.com/custom_pagespeed_message"
-OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)
+OUT=$(http_proxy=$SECONDARY_HOSTNAME check $WGET_DUMP $URL)
 check_from "$OUT" fgrep -q Info
 
 URL="custom-paths.example.com/custom_pagespeed_console"
-OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)
+OUT=$(http_proxy=$SECONDARY_HOSTNAME check $WGET_DUMP $URL)
 check_from "$OUT" fgrep -q console_div
 
 URL="custom-paths.example.com/custom_pagespeed_admin/"
-OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)
+OUT=$(http_proxy=$SECONDARY_HOSTNAME check $WGET_DUMP $URL)
 check_from "$OUT" fgrep -q Admin
 
 
@@ -1191,8 +1190,8 @@ check_from "$OUT" fgrep -q "Cache-Control: max-age=0, no-cache"
 check_from "$OUT" fgrep -q 'name=user_agent value="Mozilla'
 
 start_test ShowCache with bogus URL gives a 404
-wget $PRIMARY_SERVER/pagespeed_cache?url=bogus_format >& /dev/null
-check [ $? = 8 ]
+check_error_code 8 \
+  wget $PRIMARY_SERVER/pagespeed_cache?url=bogus_format >& /dev/null
 
 start_test ShowCache with valid, present URL, with unique options.
 options="PageSpeedImageInlineMaxBytes=6765"
@@ -1525,7 +1524,7 @@ else
   EXPECTED="Serf status 111"
 fi
 for i in {1..100}; do
-  ERRS=$(grep -c "$EXPECTED" $FETCHER_REFUSED_PATH)
+  ERRS=$(grep -c "$EXPECTED" $FETCHER_REFUSED_PATH || true)
   if [ $ERRS -ge 1 ]; then
     break;
   fi;
@@ -1535,7 +1534,7 @@ done;
 echo "."
 # Kill the log monitor silently.
 kill $TAIL_PID
-wait $TAIL_PID 2> /dev/null
+wait $TAIL_PID 2> /dev/null || true
 check [ $ERRS -ge 1 ]
 
 # TODO(jefftk): when we support ListOutstandingUrlsOnError uncomment the below
@@ -1611,7 +1610,8 @@ OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET -O /dev/null $ALLOWED 2>&1)
 check_from "$OUT" fgrep -q "200 OK"
 # .cf. is forbidden
 FORBIDDEN=$FORBIDDEN_STYLES_ROOT/A.all_styles.css.pagespeed.cf.UH8L-zY4b4.css
-OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET -O /dev/null $FORBIDDEN 2>&1)
+OUT=$(http_proxy=$SECONDARY_HOSTNAME check_not $WGET -O /dev/null $FORBIDDEN \
+  2>&1)
 check_from "$OUT" fgrep -q "404 Not Found"
 # The image will be optimized but NOT resized to the much smaller size,
 # so it will be >200k (optimized) rather than <20k (resized).
@@ -2062,15 +2062,20 @@ check_from "$OUT1" grep -q "Cache-Control: private, max-age=3000"
 http_proxy=$SECONDARY_HOSTNAME \
   fetch_until -save $URL 'grep -c criticalCssBeaconInit' 2 \
   "--header=PS-ShouldBeacon:random_rebeaconing_key --save-headers"
+echo 1
 check grep -q "Cache-Control: max-age=0, no-cache" $FETCH_UNTIL_OUTFILE
+echo 2
 
 # 3. We do not get an instrumented page if the wrong key is present.
 WGET_ARGS="--header=\"PS-ShouldBeacon: wrong_rebeaconing_key\""
-OUT3=$(http_proxy=$SECONDARY_HOSTNAME \
+echo 3
+OUT3=$(http_proxy=$SECONDARY_HOSTNAME check_not \
           $WGET_DUMP $WGET_ARGS $URL)
+echo 4
 check_not_from "$OUT3" egrep -q "pagespeed\.criticalCssBeaconInit"
+echo 5
 check_from "$OUT3" grep -q "Cache-Control: private, max-age=3000"
-
+echo 6
 
 # Verify that we can send a critical image beacon and that lazyload_images
 # does not try to lazyload the critical images.
@@ -2287,8 +2292,8 @@ function test_ipro_for_browser_webp() {
   IN_ACCEPT="$1"; shift
   IMAGE_TYPE="$1"; shift
   OUT_CONTENT_TYPE="$1"; shift
-  OUT_VARY="${1-}"; shift
-  OUT_CC="${1-}"; shift
+  OUT_VARY="${1-}"; shift || true
+  OUT_CC="${1-}"; shift || true
   WGET_ARGS="--save-headers \
              ${IN_UA:+--user-agent $IN_UA} \
              ${IN_ACCEPT:+--header=Accept:image/$IN_ACCEPT}"
@@ -2633,7 +2638,7 @@ ETAG=$(extract_headers $FETCH_UNTIL_OUTFILE | awk '/ETag:/ {print $2}')
 echo $WGET_DUMP --header "If-None-Match: $ETAG" $URL
 OUTFILE=$OUTDIR/etags
 # Note: -o gets debug info which is the only place that 304 message is sent.
-$WGET -o $OUTFILE -O /dev/null --header "If-None-Match: $ETAG" $URL
+check_not $WGET -o $OUTFILE -O /dev/null --header "If-None-Match: $ETAG" $URL
 check fgrep -q "awaiting response... 304" $OUTFILE
 
 # Test if the warning messages are colored in message_history page.
@@ -2686,9 +2691,8 @@ check_from "$OUT" grep -q "/mod_pagespeed_example"
 
 start_test Check keepalive after a 304 responses.
 # '-m 2' specifies that the whole operation is allowed to take 2 seconds max.
-curl -vv -m 2 http://$PRIMARY_HOSTNAME/foo.css.pagespeed.ce.0.css \
+check curl -vv -m 2 http://$PRIMARY_HOSTNAME/foo.css.pagespeed.ce.0.css \
     -H 'If-Modified-Since: Z' http://$PRIMARY_HOSTNAME/foo
-check [ $? = "0" ]
 
 start_test Date response header set
 OUT=$($WGET_DUMP $EXAMPLE_ROOT/combine_css.html)
