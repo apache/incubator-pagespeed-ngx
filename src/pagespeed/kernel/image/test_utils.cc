@@ -76,6 +76,7 @@ using net_instaweb::MessageHandler;
 
 bool ReadFile(const GoogleString& file_name,
               GoogleString* content) {
+  content->clear();
   net_instaweb::StdioFileSystem file_system;
   net_instaweb::MockMessageHandler message_handler(new net_instaweb::NullMutex);
   net_instaweb::StringWriter writer(content);

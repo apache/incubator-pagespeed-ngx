@@ -278,7 +278,9 @@ function check_from() {
 # Same as check(), but expects command to fail.
 function check_not() {
   echo "     check_not" "$@"
-  "$@" && handle_failure
+  # We use "|| true" here to avoid having the script exit if it was being run
+  # under 'set -e'
+  ("$@" && handle_failure || true)
 }
 
 # Like check_not, but the first argument is text to pipe into the
@@ -287,7 +289,9 @@ function check_not_from() {
   text="$1"
   shift
   echo "     check_not_from" "$@"
-  echo "$text" | "$@" && handle_failure "$text"
+  # We use "|| true" here to avoid having the script exit if it was being run
+  # under 'set -e'
+  echo "$text" | ("$@" && handle_failure "$text" || true)
 }
 
 # Check for the existence of a single file matching the pattern

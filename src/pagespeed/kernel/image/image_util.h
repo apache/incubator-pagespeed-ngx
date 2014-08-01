@@ -22,6 +22,7 @@
 #include <cstddef>
 
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace pagespeed {
 
@@ -111,6 +112,14 @@ const char* GetPixelFormatString(PixelFormat pixel_format);
 // Returns the number of bytes needed to encode each pixel in the
 // given format.
 size_t GetBytesPerPixel(PixelFormat pixel_format);
+
+// Returns format of the image by inspecting magic numbers (cetain values at
+// cetain bytes) in the file content. This method is super fast, but if a
+// random binary file happens to have the magic numbers, it will incorrectly
+// reports a format for the file. The problem will be corrected when the binary
+// file is decoded.
+ImageFormat ComputeImageFormat(const StringPiece& buf,
+                               bool* is_webp_lossless_alpha);
 
 }  // namespace image_compression
 

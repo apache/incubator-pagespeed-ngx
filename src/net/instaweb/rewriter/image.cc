@@ -63,6 +63,7 @@ extern "C" {
 }
 
 using pagespeed::image_compression::AnalyzeImage;
+using pagespeed::image_compression::ComputeImageFormat;
 using pagespeed::image_compression::CreateScanlineReader;
 using pagespeed::image_compression::CreateScanlineWriter;
 using pagespeed::image_compression::GifReader;
@@ -694,61 +695,33 @@ void ImageImpl::FindWebpSize() {
 // Looks at image data in order to determine image type, and also fills in any
 // dimension information it can (setting image_type_ and dims_).
 void ImageImpl::ComputeImageType() {
-  // Image classification based on buffer contents gakked from leptonica,
-  // but based on well-documented headers (see Wikipedia etc.).
-  // Note that we can be fooled if we're passed random binary data;
-  // we make the call based on as few as two bytes (JPEG).
-  const StringPiece& buf = original_contents_;
-  if (buf.size() >= 8) {
-    // Note that gcc rightly complains about constant ranges with the
-    // negative char constants unless we cast.
-    switch (CharToInt(buf[0])) {
-      case 0xff:
-        // Either jpeg or jpeg2
-        // (the latter we don't handle yet, and don't bother looking for).
-        if (CharToInt(buf[1]) == 0xd8) {
-          image_type_ = IMAGE_JPEG;
-          FindJpegSize();
-        }
-        break;
-      case 0x89:
-        // Possible png.
-        if (StringPiece(buf.data(), ImageHeaders::kPngHeaderLength) ==
-            StringPiece(ImageHeaders::kPngHeader,
-                        ImageHeaders::kPngHeaderLength)) {
-          image_type_ = IMAGE_PNG;
-          FindPngSize();
-        }
-        break;
-      case 'G':
-        // Possible gif.
-        if ((StringPiece(buf.data(), ImageHeaders::kGifHeaderLength) ==
-             StringPiece(ImageHeaders::kGifHeader,
-                         ImageHeaders::kGifHeaderLength)) &&
-            (buf[ImageHeaders::kGifHeaderLength] == '7' ||
-             buf[ImageHeaders::kGifHeaderLength] == '9') &&
-            buf[ImageHeaders::kGifHeaderLength + 1] == 'a') {
-          image_type_ = IMAGE_GIF;
-          FindGifSize();
-        }
-        break;
-      case 'R':
-        // Possible Webp
-        // Detailed explanation on parsing webp format is available at
-        // http://code.google.com/speed/webp/docs/riff_container.html
-        if (buf.size() >= 20 && buf.substr(1, 3) == "IFF" &&
-            buf.substr(8, 4) == "WEBP") {
-          if (buf.substr(12, 4) == "VP8L") {
-            image_type_ = IMAGE_WEBP_LOSSLESS_OR_ALPHA;
-          } else {
-            image_type_ = IMAGE_WEBP;
-          }
-          FindWebpSize();
-        }
-        break;
-      default:
-        break;
-    }
+  bool is_webp_lossless_alpha = false;
+  ImageFormat image_format = ComputeImageFormat(original_contents_,
+                                                &is_webp_lossless_alpha);
+  switch (image_format) {
+    case pagespeed::image_compression::IMAGE_UNKNOWN:
+      image_type_ = IMAGE_UNKNOWN;
+      break;
+    case pagespeed::image_compression::IMAGE_JPEG:
+      image_type_ = IMAGE_JPEG;
+      FindJpegSize();
+      break;
+    case pagespeed::image_compression::IMAGE_PNG:
+      image_type_ = IMAGE_PNG;
+      FindPngSize();
+      break;
+    case pagespeed::image_compression::IMAGE_GIF:
+      image_type_ = IMAGE_GIF;
+      FindGifSize();
+      break;
+    case pagespeed::image_compression::IMAGE_WEBP:
+      if (is_webp_lossless_alpha) {
+        image_type_ = IMAGE_WEBP_LOSSLESS_OR_ALPHA;
+      } else {
+        image_type_ = IMAGE_WEBP;
+      }
+      FindWebpSize();
+      break;
   }
 }
 

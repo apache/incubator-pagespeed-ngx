@@ -25,6 +25,21 @@ namespace {
 static const char kInvalidImageFormat[] = "Invalid image format";
 static const char kInvalidPixelFormat[] = "Invalid pixel format";
 
+// Magic number of the images.
+const char kPngHeader[] = "\x89PNG\r\n\x1a\n";
+const size_t kPngHeaderLength = arraysize(kPngHeader) - 1;
+const char kGifHeader[] = "GIF8";
+const size_t kGifHeaderLength = arraysize(kGifHeader) - 1;
+const char kWebpIffHeader[] = "IFF";
+const char kWebpWebpHeader[] = "WEBP";
+const char kWebpLosslessHeader[] = "VP8L";
+
+// char to int *without sign extension*.
+inline int CharToInt(char c) {
+  uint8 uc = static_cast<uint8>(c);
+  return static_cast<int>(uc);
+}
+
 }  // namespace
 
 namespace image_compression {
@@ -73,6 +88,61 @@ size_t GetBytesPerPixel(PixelFormat pixel_format) {
     // No default so compiler will complain if any enum is not processed.
   }
   return 0;
+}
+
+ImageFormat ComputeImageFormat(const StringPiece& buf,
+                               bool* is_webp_lossless_alpha) {
+  // Image classification based on buffer contents gakked from leptonica,
+  // but based on well-documented headers (see Wikipedia etc.).
+  // Note that we can be fooled if we're passed random binary data;
+  // we make the call based on as few as two bytes (JPEG).
+  ImageFormat image_format = IMAGE_UNKNOWN;
+  if (buf.size() >= 8) {
+    // Note that gcc rightly complains about constant ranges with the
+    // negative char constants unless we cast.
+    switch (CharToInt(buf[0])) {
+      case 0xff:
+        // Either jpeg or jpeg2
+        // (the latter we don't handle yet, and don't bother looking for).
+        if (CharToInt(buf[1]) == 0xd8) {
+          image_format = IMAGE_JPEG;
+        }
+        break;
+      case 0x89:
+        // Possible png.
+        if (StringPiece(buf.data(), kPngHeaderLength) ==
+            StringPiece(kPngHeader, kPngHeaderLength)) {
+          image_format = IMAGE_PNG;
+        }
+        break;
+      case 'G':
+        // Possible gif.
+        if ((StringPiece(buf.data(), kGifHeaderLength) ==
+             StringPiece(kGifHeader, kGifHeaderLength)) &&
+            (buf[kGifHeaderLength] == '7' || buf[kGifHeaderLength] == '9') &&
+            buf[kGifHeaderLength + 1] == 'a') {
+          image_format = IMAGE_GIF;
+        }
+        break;
+      case 'R':
+        // Possible Webp
+        // Detailed explanation on parsing webp format is available at
+        // http://code.google.com/speed/webp/docs/riff_container.html
+        if (buf.size() >= 20 && buf.substr(1, 3) == kWebpIffHeader &&
+            buf.substr(8, 4) == kWebpWebpHeader) {
+          image_format = IMAGE_WEBP;
+          if (buf.substr(12, 4) == kWebpLosslessHeader) {
+            *is_webp_lossless_alpha = true;
+          } else {
+            *is_webp_lossless_alpha = false;
+          }
+        }
+        break;
+      default:
+        break;
+    }
+  }
+  return image_format;
 }
 
 }  // namespace image_compression

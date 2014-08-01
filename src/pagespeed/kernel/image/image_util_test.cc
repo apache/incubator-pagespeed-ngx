@@ -17,12 +17,20 @@
 // Author: Huibao Lin
 
 #include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/image/image_util.h"
+#include "pagespeed/kernel/image/test_utils.h"
 
 namespace {
 
 static const char kInvalidImageFormat[] = "Invalid image format";
 static const char kInvalidPixelFormat[] = "Invalid pixel format";
+
+const char kGifImage[] = "transparent.gif";
+const char kPngImage[] = "this_is_a_test.png";
+const char kJpegImage[] = "sjpeg1.jpg";
+const char kWebpOpaqueImage[] = "opaque_32x20.webp";
+const char kWebpLosslessImage[] = "img3.webpla";
 
 // Enums
 using pagespeed::image_compression::ImageFormat;
@@ -40,6 +48,15 @@ using pagespeed::image_compression::UNSUPPORTED;
 using pagespeed::image_compression::RGB_888;
 using pagespeed::image_compression::RGBA_8888;
 using pagespeed::image_compression::GRAY_8;
+
+// Folders for testing images.
+using pagespeed::image_compression::kGifTestDir;
+using pagespeed::image_compression::kJpegTestDir;
+using pagespeed::image_compression::kPngTestDir;
+using pagespeed::image_compression::kWebpTestDir;
+
+using pagespeed::image_compression::ComputeImageFormat;
+using pagespeed::image_compression::ReadTestFileWithExt;
 
 TEST(ImageUtilTest, ImageFormatToMimeTypeString) {
   EXPECT_STREQ("image/unknown", ImageFormatToMimeTypeString(IMAGE_UNKNOWN));
@@ -74,6 +91,29 @@ TEST(ImageUtilTest, GetBytesPerPixel) {
   EXPECT_EQ(3, GetBytesPerPixel(RGB_888));
   EXPECT_EQ(4, GetBytesPerPixel(RGBA_8888));
   EXPECT_EQ(1, GetBytesPerPixel(GRAY_8));
+}
+
+TEST(ImageUtilTest, ImageFormat) {
+  GoogleString buffer;
+  bool not_used;
+  bool is_webp_lossless_alpha = false;
+
+  ASSERT_TRUE(ReadTestFileWithExt(kGifTestDir, kGifImage, &buffer));
+  EXPECT_EQ(IMAGE_GIF, ComputeImageFormat(buffer, &not_used));
+
+  ASSERT_TRUE(ReadTestFileWithExt(kPngTestDir, kPngImage, &buffer));
+  EXPECT_EQ(IMAGE_PNG, ComputeImageFormat(buffer, &not_used));
+
+  ASSERT_TRUE(ReadTestFileWithExt(kJpegTestDir, kJpegImage, &buffer));
+  EXPECT_EQ(IMAGE_JPEG, ComputeImageFormat(buffer, &not_used));
+
+  ASSERT_TRUE(ReadTestFileWithExt(kWebpTestDir, kWebpOpaqueImage, &buffer));
+  EXPECT_EQ(IMAGE_WEBP, ComputeImageFormat(buffer, &is_webp_lossless_alpha));
+  EXPECT_EQ(false, is_webp_lossless_alpha);
+
+  ASSERT_TRUE(ReadTestFileWithExt(kWebpTestDir, kWebpLosslessImage, &buffer));
+  EXPECT_EQ(IMAGE_WEBP, ComputeImageFormat(buffer, &is_webp_lossless_alpha));
+  EXPECT_EQ(true, is_webp_lossless_alpha);
 }
 
 }  // namespace
