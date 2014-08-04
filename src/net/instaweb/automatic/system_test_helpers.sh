@@ -283,6 +283,17 @@ function check_not() {
   ("$@" && handle_failure || true)
 }
 
+# Runs a command and verifies that it exits with an expected error code.
+function check_error_code() {
+  expected_error_code=$1
+  shift
+  echo "     check_error_code $expected_error_code $@"
+  # We use "|| true" here to avoid having the script exit if it was being run
+  # under 'set -e'
+  error_code=$("$@" || echo $? || true)
+  check [ $error_code = $expected_error_code ]
+}
+
 # Like check_not, but the first argument is text to pipe into the
 # command given in the remaining arguments.
 function check_not_from() {
@@ -395,7 +406,7 @@ function fetch_until() {
 
   REQUESTURL=$1
   COMMAND=$2
-  RESULT=$3
+  EXPECTED_RESULT=$3
   FETCH_UNTIL_WGET_ARGS="$gzip $WGET_ARGS ${4:-}"
   OP=${5:-=}  # Default to =
 
@@ -424,15 +435,16 @@ function fetch_until() {
   STOP=$((START+$TIMEOUT))
   WGET_HERE="$WGET -q $FETCH_UNTIL_WGET_ARGS"
   echo -n "      Fetching $REQUESTURL $FETCH_UNTIL_WGET_ARGS"
-  echo " until \$($COMMAND) $OP $RESULT"
+  echo " until \$($COMMAND) $OP $EXPECTED_RESULT"
   echo "$WGET_HERE $REQUESTURL and checking with $COMMAND"
   while test -t; do
     # Clean out WGET_DIR so that wget doesn't create .1 files.
     rm -rf $WGET_DIR
     mkdir -p $WGET_DIR
 
-    $WGET_HERE $REQUESTURL
-    if [ "$($COMMAND < "$FETCH_FILE")" "$OP" "$RESULT" ]; then
+    $WGET_HERE $REQUESTURL || true
+    ACTUAL_RESULT=$($COMMAND < "$FETCH_FILE" || true)
+    if [ "$ACTUAL_RESULT" "$OP" "$EXPECTED_RESULT" ]; then
       echo "."
       if [ $save -eq 0 ]; then
         if [ $recursive -eq 1 ]; then

@@ -149,7 +149,7 @@ fetch_until $TEST_ROOT/bot_test.html 'grep -c \.pagespeed\.' 2
 if [ $statistics_enabled = "1" ]; then
   start_test 404s are served and properly recorded.
   NUM_404=$(scrape_stat resource_404_count)
-  WGET_ERROR=$($WGET -O /dev/null $BAD_RESOURCE_URL 2>&1)
+  WGET_ERROR=$(check_not $WGET -O /dev/null $BAD_RESOURCE_URL 2>&1)
   check_from "$WGET_ERROR" fgrep -q "404 Not Found"
 
   # Check that the stat got bumped.
@@ -159,9 +159,7 @@ if [ $statistics_enabled = "1" ]; then
   MACHINE_NAME=$(hostname)
   ALT_STAT_URL=$(echo $STATISTICS_URL | sed s#localhost#$MACHINE_NAME#)
 
-  echo "wget $ALT_STAT_URL >& $TEMPDIR/alt_stat_url.$$"
-  wget $ALT_STAT_URL >& "$TEMPDIR/alt_stat_url.$$"
-  check [ $? = 8 ]
+  check_error_code 8 wget -q $ALT_STAT_URL >& $TEMPDIR/alt_stat_url.$$
   rm -f "$TEMPDIR/alt_stat_url.$$"
 
 
@@ -255,11 +253,11 @@ if [ $statistics_enabled = "1" ]; then
   fi
 else
   start_test 404s are served.  Statistics are disabled so not checking them.
-  OUT=$($WGET -O /dev/null $BAD_RESOURCE_URL 2>&1)
+  OUT=$(check_not $WGET -O /dev/null $BAD_RESOURCE_URL 2>&1)
   check_from "$OUT" fgrep -q "404 Not Found"
 
   start_test 404s properly on uncached invalid resource.
-  OUT=$($WGET -O /dev/null $BAD_RND_RESOURCE_URL 2>&1)
+  OUT=$(check_not $WGET -O /dev/null $BAD_RND_RESOURCE_URL 2>&1)
   check_from "$OUT" fgrep -q "404 Not Found"
 fi
 
@@ -1127,8 +1125,9 @@ check_from "$OUT" fgrep -q "Cache-Control: max-age=0, no-cache"
 check_from "$OUT" fgrep -q 'name=user_agent value="Mozilla'
 
 start_test ShowCache with bogus URL gives a 404
-wget $PRIMARY_SERVER/pagespeed_cache?url=bogus_format >& /dev/null
-check [ $? = 8 ]
+OUT=$(check_error_code 8 $WGET -O - --save-headers \
+  $PRIMARY_SERVER/pagespeed_cache?url=bogus_format 2>&1)
+check_from "$OUT" fgrep -q "ERROR 404: Not Found"
 
 start_test ShowCache with valid, present URL, with unique options.
 options="PageSpeedImageInlineMaxBytes=6765"
@@ -1138,6 +1137,21 @@ URL_TAIL=$(grep Puzzle $FETCH_UNTIL_OUTFILE | cut -d \" -f 2)
 SHOW_CACHE_URL=$EXAMPLE_ROOT/$URL_TAIL
 SHOW_CACHE_QUERY=$ADMIN_CACHE?url=$SHOW_CACHE_URL\&$options
 OUT=$($WGET_DUMP $SHOW_CACHE_QUERY)
+
+# TODO(jmarantz): I have seen this test fail in the 'apache_debug_leak_test'
+# phase of checkin tests.  The failure is that we are able to rewrite the
+# HTML image link for Puzzle.jpg, but when fetching the metadata cache entry
+# it comes back as cache_ok:false.
+#
+# This should be investigated, especially if it happens again.  Wild
+# guess: the shared-memory metadata cache might face an unexpected
+# eviction as it is not a pure LRU.
+#
+# Another guess: I think we might be calling callbacks with updated
+# metadata cache before writing the metadata cache entries to the cache
+# in some flows, e.g. in ResourceReconstructCallback::HandleDone.  It's not
+# obvious why that flow would affect this test, but the ordering
+# of writing cache and calling callbacks deserves an audit.
 check_from "$OUT" fgrep -q cache_ok:true
 check_from "$OUT" fgrep -q mod_pagespeed_example/images/Puzzle.jpg
 
@@ -1172,9 +1186,10 @@ if [ "$CACHE_FLUSH_TEST" = "on" ]; then
   if [ "$NO_VHOST_MERGE" = "on" ]; then
     start_test When ModPagespeedMaxHtmlParseBytes is not set, we do not insert \
         a redirect.
-    $WGET -O $WGET_OUTPUT \
-        $SECONDARY_TEST_ROOT/large_file.html?PageSpeedFilters=
-    check [ $(grep -c "window.location=" $WGET_OUTPUT) = 0 ]
+    OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \
+      $SECONDARY_TEST_ROOT/large_file.html?PageSpeedFilters=)
+    check_not_from "$OUT" fgrep -q "window.location="
+    check_from "$OUT" fgrep -q "Lorem ipsum dolor sit amet"
   fi
 
   start_test Cache flushing works by touching cache.flush in cache directory.
@@ -1308,7 +1323,7 @@ if [ "$CACHE_FLUSH_TEST" = "on" ]; then
     sleep 1
     # Wait up to 10 seconds for the background fetch of someimage.png to fail.
     for i in {1..100}; do
-      ERRS=$(grep -c "Serf status 111" $SERF_REFUSED_PATH)
+      ERRS=$(grep -c "Serf status 111" $SERF_REFUSED_PATH || true)
       if [ $ERRS -ge 1 ]; then
         break;
       fi;
@@ -1318,7 +1333,7 @@ if [ "$CACHE_FLUSH_TEST" = "on" ]; then
     echo "."
     # Kill the log monitor silently.
     kill $TAIL_PID
-    wait $TAIL_PID 2> /dev/null
+    wait $TAIL_PID 2> /dev/null || true
     check [ $ERRS -ge 1 ]
     # Make sure we have the URL detail we expect because
     # ModPagespeedListOutstandingUrlsOnError is on in debug.conf.template.
@@ -1428,7 +1443,8 @@ blocking_rewrite_another.html?PageSpeedFilters=rewrite_images"
   check_200_http_response "$OUT"
   # .cf. is forbidden
   FORBIDDEN=$FORBIDDEN_STYLES_ROOT/A.all_styles.css.pagespeed.cf.UH8L-zY4b4.css
-  OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET -O /dev/null $FORBIDDEN 2>&1)
+  OUT=$(http_proxy=$SECONDARY_HOSTNAME check_not $WGET -O /dev/null $FORBIDDEN \
+    2>&1)
   check_from "$OUT" fgrep -q "404 Not Found"
   # The image will be optimized but NOT resized to the much smaller size,
   # so it will be >200k (optimized) rather than <20k (resized).
@@ -2146,7 +2162,7 @@ because its domain (www.google.com) is not authorized-->"
 
     # Wait up to 10 seconds for failure.
     for i in {1..100}; do
-      REJECTIONS=$(fgrep -c "$REJECTED" $ABSOLUTE_URLS_LOG_PATH)
+      REJECTIONS=$(fgrep -c "$REJECTED" $ABSOLUTE_URLS_LOG_PATH || true)
       if [ $REJECTIONS -ge 1 ]; then
         break;
       fi;
@@ -2157,7 +2173,7 @@ because its domain (www.google.com) is not authorized-->"
 
     # Kill the log monitor silently.
     kill $TAIL_PID
-    wait $TAIL_PID 2> /dev/null
+    wait $TAIL_PID 2> /dev/null || true
 
     check [ $REJECTIONS -eq 1 ]
   fi
@@ -2261,11 +2277,12 @@ because its domain (www.google.com) is not authorized-->"
     IN_ACCEPT="$1"; shift
     IMAGE_TYPE="$1"; shift
     OUT_CONTENT_TYPE="$1"; shift
-    OUT_VARY="${1-}"; shift
-    OUT_CC="${1-}"; shift
+    OUT_VARY="${1-}"; shift || true
+    OUT_CC="${1-}"; shift || true
     WGET_ARGS="--save-headers \
                ${IN_UA:+--user-agent $IN_UA} \
                ${IN_ACCEPT:+--header=Accept:image/$IN_ACCEPT}"
+
     # Remaining args are the expected headers (Name:Value), photo, or synthetic.
     if [ "$IMAGE_TYPE" = "photo" ]; then
       URL="http://ipro-for-browser.example.com/images/Puzzle.jpg"
@@ -2477,8 +2494,7 @@ check_from "$ORIGINAL_HEADERS" fgrep -q -i 'Set-Cookie'
 
 start_test proxying HTML from external domain should not work
 URL="$PRIMARY_SERVER/modpagespeed_http/evil.html"
-OUT=$($WGET_DUMP $URL)
-check [ $? = 8 ]
+OUT=$(check_error_code 8 $WGET_DUMP $URL)
 check_not_from "$OUT" fgrep -q 'Set-Cookie:'
 
 start_test Fetching the HTML directly from the origin is fine including cookie.
@@ -2504,7 +2520,7 @@ ETAG=$(extract_headers $FETCH_UNTIL_OUTFILE | awk '/Etag:/ {print $2}')
 echo $WGET_DUMP --header "If-None-Match: $ETAG" $URL
 OUTFILE=$OUTDIR/etags
 # Note: -o gets debug info which is the only place that 304 message is sent.
-$WGET -o $OUTFILE -O /dev/null --header "If-None-Match: $ETAG" $URL
+check_not $WGET -o $OUTFILE -O /dev/null --header "If-None-Match: $ETAG" $URL
 check fgrep -q "awaiting response... 304" $OUTFILE
 
 if [ "$SECONDARY_HOSTNAME" != "" ]; then

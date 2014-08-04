@@ -19,6 +19,12 @@
 this_dir=$(dirname "${BASH_SOURCE[0]}")
 source "$this_dir/system_test_helpers.sh" || exit 1
 
+# Exit the script on an undefined variable or a failed command.  Note that this
+# means we must run all commands that are intended to fail inside "check_not" or
+# "check_not_from", which will prevent the script from exiting.
+set -e
+set -u
+
 # General system tests
 
 start_test Page Speed Automatic is running and writes the expected header.
@@ -174,8 +180,9 @@ check run_wget_with_args $URL
 #test_resource_ext_corruption $URL $combine_css_filename
 
 start_test combine_css without hash field should 404
-echo run_wget_with_args $REWRITTEN_ROOT/styles/yellow.css+blue.css.pagespeed.cc..css
-run_wget_with_args $REWRITTEN_ROOT/styles/yellow.css+blue.css.pagespeed.cc..css
+URL=$REWRITTEN_ROOT/styles/yellow.css+blue.css.pagespeed.cc..css
+echo run_wget_with_args $URL
+check_not run_wget_with_args $URL
 check fgrep "404 Not Found" $WGET_OUTPUT
 
 # Note: this large URL can only be processed by Apache if
@@ -224,13 +231,13 @@ echo about to test resource ext corruption...
 #test_resource_ext_corruption $URL images/Puzzle.jpg.pagespeed.ce.91_WewrLtP.jpg
 
 start_test Attempt to fetch cache-extended image without hash should 404
-run_wget_with_args $REWRITTEN_ROOT/images/Puzzle.jpg.pagespeed.ce..jpg
+check_not run_wget_with_args $REWRITTEN_ROOT/images/Puzzle.jpg.pagespeed.ce..jpg
 check fgrep "404 Not Found" $WGET_OUTPUT
 
 start_test Cache-extended image should respond 304 to an If-Modified-Since.
 URL=$REWRITTEN_ROOT/images/Puzzle.jpg.pagespeed.ce.91_WewrLtP.jpg
 DATE=$(date -R)
-run_wget_with_args --header "If-Modified-Since: $DATE" $URL
+check_not run_wget_with_args --header "If-Modified-Since: $DATE" $URL
 check fgrep "304 Not Modified" $WGET_OUTPUT
 
 start_test Legacy format URLs should still work.
@@ -351,9 +358,8 @@ check grep -q preserved $FETCHED  # preserves IE directives
 test_filter remove_quotes does what it says on the tin.
 check run_wget_with_args $URL
 num_quoted=$(sed 's/ /\n/g' $FETCHED | grep -c '"')
-check [ $num_quoted -eq 2 ]  # 2 quoted attrs
-num_apos=$(grep -c "'" $FETCHED)
-check [ $num_apos -eq 0 ]    # no apostrophes
+check [ $num_quoted -eq 2 ]       # 2 quoted attrs
+check_not grep -q "'" $FETCHED    # no apostrophes
 
 test_filter trim_urls makes urls relative
 check run_wget_with_args $URL
@@ -466,7 +472,7 @@ check_file_size "$WGET_DIR/*256x192*Puzzle*webp" -le 5140   # resized, webp'd
 BAD_IMG_URL=$REWRITTEN_ROOT/images/xBadName.jpg.pagespeed.ic.Zi7KMNYwzD.jpg
 start_test rewrite_images fails broken image
 echo run_wget_with_args $BAD_IMG_URL
-run_wget_with_args $BAD_IMG_URL  # fails
+check_not run_wget_with_args $BAD_IMG_URL  # fails
 check grep "404 Not Found" $WGET_OUTPUT
 
 start_test "rewrite_images doesn't 500 on unoptomizable image."
@@ -559,18 +565,18 @@ check grep -qi "Expires:" $WGET_OUTPUT
 # Error path for fetch of outlined resources that are not in cache leaked
 # at one point of development.
 start_test regression test for RewriteDriver leak
-$WGET -O /dev/null -o /dev/null $TEST_ROOT/_.pagespeed.jo.3tPymVdi9b.js
+check_not $WGET -O /dev/null -o /dev/null \
+  $TEST_ROOT/_.pagespeed.jo.3tPymVdi9b.js
 
 # Combination rewrite in which the same URL occurred twice used to
 # lead to a large delay due to overly late lock release.
 start_test regression test with same filtered input twice in combination
 PAGE=_,Mco.0.css+_,Mco.0.css.pagespeed.cc.0.css
 URL=$TEST_ROOT/$PAGE?PageSpeedFilters=combine_css,outline_css
-echo $WGET -O /dev/null -o /dev/null --tries=1 --read-timeout=3 $URL
-$WGET -O /dev/null -o /dev/null --tries=1 --read-timeout=3 $URL
+check_error_code 8 \
+  $WGET -q -O /dev/null -o /dev/null --tries=1 --read-timeout=3 $URL
 # We want status code 8 (server-issued error) and not 4
 # (network failure/timeout)
-check [ $? = 8 ]
 
 WGET_ARGS=""
 
@@ -681,7 +687,7 @@ check fgrep "Cache-Control: max-age=31536000" $WGET_OUTPUT
 start_test Access to js_defer.js without hash returns 404.
 URL="http://$PROXY_DOMAIN/$PSA_JS_LIBRARY_URL_PREFIX/js_defer.js"
 echo run_wget_with_args "$URL"
-run_wget_with_args "$URL"
+check_not run_wget_with_args "$URL"
 check fgrep "404 Not Found" $WGET_OUTPUT
 
 # Checks that outlined js_defer.js is served correctly.
@@ -1009,13 +1015,13 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   URL="${URL:0:-14}"
   FINAL_URL="${URL}AAAAAAAAAA.css"
   echo http_proxy=$SECONDARY_HOSTNAME wget $FINAL_URL
-  OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET $FINAL_URL -O - 2>&1)"
+  OUT="$(http_proxy=$SECONDARY_HOSTNAME check_not $WGET $FINAL_URL -O - 2>&1)"
   check_from "$OUT" egrep -q "403 Forbidden|404 Not Found"
 
   start_test Signed Urls : No signature is passed
   FINAL_URL="$URL.css"
   echo http_proxy=$SECONDARY_HOSTNAME wget $FINAL_URL
-  OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET $FINAL_URL -O - 2>&1)"
+  OUT="$(http_proxy=$SECONDARY_HOSTNAME check_not $WGET $FINAL_URL -O - 2>&1)"
   check_from "$OUT" egrep -q "403 Forbidden|404 Not Found"
 
   start_test Signed Urls, ignored signature : Correct URL signature is passed
@@ -1037,7 +1043,6 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
 
   start_test Signed Urls, ignored signatures : No signature is passed
   FINAL_URL="$URL.css"
-  echo http_proxy=$SECONDARY_HOSTNAME wget $FINAL_URL
   http_proxy=$SECONDARY_HOSTNAME fetch_until $FINAL_URL \
     "fgrep -c $COMBINED_CSS" 1
 
