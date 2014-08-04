@@ -2062,20 +2062,14 @@ check_from "$OUT1" grep -q "Cache-Control: private, max-age=3000"
 http_proxy=$SECONDARY_HOSTNAME \
   fetch_until -save $URL 'grep -c criticalCssBeaconInit' 2 \
   "--header=PS-ShouldBeacon:random_rebeaconing_key --save-headers"
-echo 1
 check grep -q "Cache-Control: max-age=0, no-cache" $FETCH_UNTIL_OUTFILE
-echo 2
 
 # 3. We do not get an instrumented page if the wrong key is present.
 WGET_ARGS="--header=\"PS-ShouldBeacon: wrong_rebeaconing_key\""
-echo 3
 OUT3=$(http_proxy=$SECONDARY_HOSTNAME check_not \
           $WGET_DUMP $WGET_ARGS $URL)
-echo 4
 check_not_from "$OUT3" egrep -q "pagespeed\.criticalCssBeaconInit"
-echo 5
 check_from "$OUT3" grep -q "Cache-Control: private, max-age=3000"
-echo 6
 
 # Verify that we can send a critical image beacon and that lazyload_images
 # does not try to lazyload the critical images.
