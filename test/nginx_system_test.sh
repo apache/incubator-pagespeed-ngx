@@ -685,7 +685,7 @@ echo "JS_URL=\$\(egrep -o http://.*[.]pagespeed.*[.]js $FETCHED\)=\"$JS_URL\""
 JS_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
   $JS_URL 2>&1)
 echo JS_HEADERS=$JS_HEADERS
-check_from "$JS_HEADERS" egrep -qi 'HTTP/1[.]. 200 OK'
+check_200_http_response "$JS_HEADERS"
 check_from "$JS_HEADERS" fgrep -qi 'Content-Encoding: gzip'
 check_from "$JS_HEADERS" fgrep -qi 'Vary: Accept-Encoding'
 check_from "$JS_HEADERS" egrep -qi '(Etag: W/"0")|(Etag: W/"0-gzip")'
@@ -1111,11 +1111,11 @@ WGET_ARGS="--save-headers"
 # We should be able to fetch the original ...
 echo  http_proxy=$SECONDARY_HOSTNAME $WGET --save-headers -O - $ORIGINAL
 OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET --save-headers -O - $ORIGINAL 2>&1)
-check_from "$OUT" fgrep " 200 OK"
+check_200_http_response "$OUT"
 # ... AND the rewritten version.
 echo  http_proxy=$SECONDARY_HOSTNAME $WGET --save-headers -O - $FILTERED
 OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET --save-headers -O - $FILTERED 2>&1)
-check_from "$OUT" fgrep " 200 OK"
+check_200_http_response "$OUT"
 
 start_test MapProxyDomain
 # depends on MapProxyDomain in pagespeed_test.conf.template
@@ -2443,7 +2443,7 @@ start_test JS gzip headers
 JS_URL="$HOSTNAME/pagespeed_custom_static/js_defer.$HASH.js"
 JS_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
   $JS_URL 2>&1)
-check_from "$JS_HEADERS" egrep -qi 'HTTP/1[.]. 200 OK'
+check_200_http_response "$JS_HEADERS"
 check_from "$JS_HEADERS" fgrep -qi 'Content-Encoding: gzip'
 check_from "$JS_HEADERS" fgrep -qi 'Vary: Accept-Encoding'
 # Nginx's gzip module clears etags, which we don't want. Make sure we have it.
