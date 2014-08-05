@@ -1096,21 +1096,19 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
     # Even that, however, is not unconditional: wget >= 1.14 uses SNI, which
     # results in 400s if that doesn't match the Host:. Luckily, passing in
     # --secure-protocol=SSLv3 disables SNI.
-    DATA=$(wget -q -O - --no-check-certificate \
+    DATA=$(check wget -q -O - --no-check-certificate \
         --header="X-Forwarded-Proto: https" \
         --header="Host: spdyfetch.example.com"\
         --secure-protocol=SSLv3 \
         $HTTPS_EXAMPLE_ROOT/styles/A.blue.css.pagespeed.cf.0.css)
-    check [ $? = 0 ]
     check_from "$DATA" grep -q blue
 
     # Sanity-check that it fails for non-spdyfetch enabled code.
     echo "Sanity-check with mod_spdy fetch off"
-    DATA=$(wget -q -O - --no-check-certificate \
+    DATA=$(check_error_code 8 wget -q -O - --no-check-certificate \
         --header="X-Forwarded-Proto: https" \
         --header="Host: nospdyfetch.example.com"\
         $HTTPS_EXAMPLE_ROOT/styles/A.blue.css.pagespeed.cf.0.css)
-    check [ $? = 8 ]
   fi
 fi
 
