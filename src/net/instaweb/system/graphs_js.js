@@ -15,8 +15,8 @@
  */
 
 /**
- * @fileoverview Code for adding auto-refreshing graphs and realtime linecharts
- * on the basis of the data in statistics page.
+ * @fileoverview Code for adding auto-refreshing bar charts and realtime
+ * annotated time line on the basis of the data in statistics page.
  *
  * TODO(xqyin): Integrate this into console page.
  *
@@ -34,7 +34,8 @@ goog.require('goog.string');
 
 // Google Charts API.
 // Requires <script src='https://www.google.com/jsapi'></script> loaded in HTML.
-google.load('visualization', '1', {'packages': ['table', 'corechart']});
+google.load('visualization', '1',
+            {'packages': ['table', 'corechart', 'annotatedtimeline']});
 
 
 /** @typedef {{name: string, value:string}} */
@@ -74,10 +75,12 @@ pagespeed.Graphs = function(opt_xhr) {
 
   /**
    * The option of auto-refresh. If true, the page will automatically refresh
-   * itself. The default frequency is to refresh every 5 seconds.
+   * itself every 5 seconds.
    * @private {boolean}
    */
-  this.autoRefresh_ = true;
+  this.autoRefresh_ = false;
+  // We set the default to false because auto-refresh would impact the user
+  // experience of annotated time line.
 
   /**
    * The flag of whether the first refresh is started. We need to call a
@@ -96,8 +99,17 @@ pagespeed.Graphs = function(opt_xhr) {
    */
   this.secondRefreshStarted_ = false;
 
-  // The navigation bar to switch among different display modes
-  // TODO(xqyin): Consider making these different tabs query params.
+  // Hide all div elements.
+  // To use AnnotatedTimeLine charts, we must specify the size of the container
+  // elements explicitly instead of setting the size in the options of charts.
+  // Since we cannot get the size of an element with 'display:none;', we hide
+  // all the elements by positioning them off the left hand side.
+  for (var i in pagespeed.Graphs.DisplayDiv) {
+    var chartDiv = document.getElementById(pagespeed.Graphs.DisplayDiv[i]);
+    chartDiv.className = 'pagespeed-hidden-offscreen';
+  }
+
+  // The navigation bar to switch among different display modes.
   var navElement = document.createElement('table');
   navElement.id = 'navBar';
   navElement.innerHTML =
@@ -141,9 +153,10 @@ pagespeed.Graphs.prototype.show = function(div) {
   for (var i in pagespeed.Graphs.DisplayDiv) {
     var chartDiv = pagespeed.Graphs.DisplayDiv[i];
     if (chartDiv == div) {
-      document.getElementById(chartDiv).style.display = '';
+      document.getElementById(chartDiv).className = '';
     } else {
-      document.getElementById(chartDiv).style.display = 'none';
+      document.getElementById(chartDiv).className =
+          'pagespeed-hidden-offscreen';
     }
   }
 
@@ -357,41 +370,44 @@ pagespeed.Graphs.prototype.parseAjaxResponse = function() {
  * Initialization for drawing all the charts.
  */
 pagespeed.Graphs.prototype.drawVisualization = function() {
+  var barChart = 'BarChart';
+  var timeLine = 'AnnotatedTimeLine';
   var prefixes = [
-    ['pcache-cohorts-dom_', 'Property cache dom cohorts', 'PieChart',
+    ['pcache-cohorts-dom_', 'Property cache dom cohorts', barChart,
      pagespeed.Graphs.DisplayDiv.CACHE_APPLIED],
-    ['pcache-cohorts-beacon_', 'Property cache beacon cohorts', 'PieChart',
+    ['pcache-cohorts-beacon_', 'Property cache beacon cohorts', barChart,
      pagespeed.Graphs.DisplayDiv.CACHE_APPLIED],
-    ['rewrite_cached_output_', 'Rewrite cached output', 'PieChart',
+    ['rewrite_cached_output_', 'Rewrite cached output', barChart,
      pagespeed.Graphs.DisplayDiv.CACHE_APPLIED],
-    ['url_input_', 'URL Input', 'PieChart',
+    ['url_input_', 'URL Input', barChart,
      pagespeed.Graphs.DisplayDiv.CACHE_APPLIED],
 
-    ['cache_', 'Cache', 'PieChart', pagespeed.Graphs.DisplayDiv.CACHE_TYPE],
-    ['file_cache_', 'File Cache', 'PieChart',
+    ['cache_', 'Cache', barChart, pagespeed.Graphs.DisplayDiv.CACHE_TYPE],
+    ['file_cache_', 'File Cache', barChart,
      pagespeed.Graphs.DisplayDiv.CACHE_TYPE],
-    ['memcached_', 'Memcached', 'PieChart',
+    ['memcached_', 'Memcached', barChart,
      pagespeed.Graphs.DisplayDiv.CACHE_TYPE],
-    ['lru_cache_', 'LRU', 'PieChart', pagespeed.Graphs.DisplayDiv.CACHE_TYPE],
-    ['shm_cache_', 'Shared Memory', 'PieChart',
+    ['lru_cache_', 'LRU', barChart, pagespeed.Graphs.DisplayDiv.CACHE_TYPE],
+    ['shm_cache_', 'Shared Memory', barChart,
      pagespeed.Graphs.DisplayDiv.CACHE_TYPE],
 
-    ['ipro_', 'In place resource optimization', 'PieChart',
+    ['ipro_', 'In place resource optimization', barChart,
      pagespeed.Graphs.DisplayDiv.IPRO],
 
-    ['image_rewrite_', 'Image rewrite', 'PieChart',
+    ['image_rewrite_', 'Image rewrite', barChart,
      pagespeed.Graphs.DisplayDiv.REWRITE_IMAGE],
-    ['image_rewrites_dropped_', 'Image rewrites dropped', 'PieChart',
+    ['image_rewrites_dropped_', 'Image rewrites dropped', barChart,
      pagespeed.Graphs.DisplayDiv.REWRITE_IMAGE],
 
-    ['http_', 'Http', 'LineChart', pagespeed.Graphs.DisplayDiv.REALTIME, true],
-    ['file_cache_', 'File Cache RT', 'LineChart',
+    ['http_', 'Http', timeLine,
      pagespeed.Graphs.DisplayDiv.REALTIME, true],
-    ['lru_cache_', 'LRU Cache RT', 'LineChart',
+    ['file_cache_', 'File Cache RT', timeLine,
      pagespeed.Graphs.DisplayDiv.REALTIME, true],
-    ['serf_fetch_', 'Serf stats RT', 'LineChart',
+    ['lru_cache_', 'LRU Cache RT', timeLine,
      pagespeed.Graphs.DisplayDiv.REALTIME, true],
-    ['rewrite_', 'Rewrite stats RT', 'LineChart',
+    ['serf_fetch_', 'Serf stats RT', timeLine,
+     pagespeed.Graphs.DisplayDiv.REALTIME, true],
+    ['rewrite_', 'Rewrite stats RT', timeLine,
      pagespeed.Graphs.DisplayDiv.REALTIME, true]
   ];
 
@@ -428,7 +444,7 @@ pagespeed.Graphs.screenData = function(prefix, name) {
  * Draw the chart using Google Charts API.
  * @param {string} settingPrefix The matching prefix of data for the chart.
  * @param {string} title The title of the chart.
- * @param {string} chartType The type of the chart. LineChart or PieChart.
+ * @param {string} chartType The type of chart. AnnotatedTimeLine or BarChart.
  * @param {string} targetId The id of the target HTML element.
  * @param {boolean} showHistory The flag of history line charts.
  */
@@ -449,7 +465,16 @@ pagespeed.Graphs.prototype.drawChart = function(settingPrefix, title,
       targetElement.innerText = '';
     }
     var dest = document.createElement('div');
+    // TODO(xqyin): Move all the CSS related to graphs page to a separate file
+    // then we can reference by classname here.
     dest.className = 'chart';
+    dest.style.width = '1100px';
+    dest.style.height = '320px';
+    var chartTitle = document.createElement('p');
+    chartTitle.innerText = title;
+    chartTitle.style.fontWeight = 'bold';
+    chartTitle.style.fontSize = 'large';
+    targetElement.appendChild(chartTitle);
     targetElement.appendChild(dest);
     theChart = new google.visualization[chartType](dest);
     this.drawChart.chartCache[title] = theChart;
@@ -471,13 +496,30 @@ pagespeed.Graphs.prototype.drawChart = function(settingPrefix, title,
       var caption = messages[i].name.substring(settingPrefix.length);
       // We use regexp here to replace underscores all at once.
       // Using '_' would only replace one underscore at a time.
-      caption = caption.replace(/_/ig, ' ');
+      caption = caption.replace(/_/g, ' ');
       rows.push([caption, Number(messages[i].value)]);
     }
     data.addColumn('string', 'Name');
     data.addColumn('number', 'Value');
+    data.addRows(rows);
+
+    var view = new google.visualization.DataView(data);
+    var getStats = function(dataTable, rowNum) {
+      var sum = 0;
+      for (var i = 0; i < dataTable.getNumberOfRows(); ++i) {
+        sum += dataTable.getValue(i, 1);
+      }
+      var value = dataTable.getValue(rowNum, 1);
+      var percent = value * 100 / sum;
+      return value.toString() + ' (' + percent.toFixed(2).toString() + '%)';
+    };
+    view.setColumns(
+        [0, 1, {'calc': getStats, 'type': 'string', 'role': 'annotation'}]);
+
+    theChart.draw(view, pagespeed.Graphs.BAR_CHART_OPTIONS_);
+
   } else {
-    // The line charts for data history.
+    // The annotated time line for data history.
     data.addColumn('datetime', 'Time');
     var first = true;
     for (var i = 0; i < this.psolMessages_.length; ++i) {
@@ -491,28 +533,62 @@ pagespeed.Graphs.prototype.drawChart = function(settingPrefix, title,
         row.push(Number(messages[j].value));
         if (first) {
           var caption = messages[j].name.substring(settingPrefix.length);
-          caption = caption.replace(/_/ig, ' ');
+          caption = caption.replace(/_/g, ' ');
           data.addColumn('number', caption);
         }
       }
       first = false;
       rows.push(row);
     }
+    data.addRows(rows);
+    theChart.draw(data, pagespeed.Graphs.ANNOTATED_TIMELINE_OPTIONS_);
   }
+};
 
-  // TODO(oschaaf): Merge this with options from an argument or some such.
-  var options = {
-    'width': 1000,
-    'height': 300,
-    'chartArea': {
-      'left': 100,
-      'top': 50,
-      'width': 700
-    },
-    title: title
-  };
-  data.addRows(rows);
-  theChart.draw(data, options);
+
+/**
+ * The options used for drawing google.visualization.barChart graphs.
+ * @private {Object}
+ * @const
+ */
+pagespeed.Graphs.BAR_CHART_OPTIONS_ = {
+  'annotations': {
+    'highContrast': false,
+    'textStyle': {
+      'fontSize': 13,
+      'color': 'black',
+      'auraColor': 'white'
+    }
+  },
+  'hAxis': {
+    'direction': -1
+  },
+  'vAxis': {
+    'textPosition': 'in'
+  },
+  'legend': {
+    'position': 'none'
+  },
+  'width': 1000,
+  'height': 320,
+  'chartArea': {
+    'left': 50,
+    'top': 30,
+    'width': 700
+  }
+};
+// All the option names should be put in single quotation marks. Otherwise
+// they would not work when debug filter is turned off.
+
+
+/**
+ * The options used for drawing google.visualization.AnnotatedTimeLine graphs.
+ * @private {Object}
+ * @const
+ */
+pagespeed.Graphs.ANNOTATED_TIMELINE_OPTIONS_ = {
+  'thickness': 1,
+  'displayExactValues': true
 };
 
 

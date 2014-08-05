@@ -4067,8 +4067,8 @@ goog.uri.utils.phishingProtection_ = function() {
     }
   }
 };
-goog.uri.utils.decodeIfPossible_ = function(uri) {
-  return uri && decodeURIComponent(uri);
+goog.uri.utils.decodeIfPossible_ = function(uri, opt_preserveReserved) {
+  return uri ? opt_preserveReserved ? decodeURI(uri) : decodeURIComponent(uri) : uri;
 };
 goog.uri.utils.getComponentByIndex_ = function(componentIndex, uri) {
   return goog.uri.utils.split(uri)[componentIndex] || null;
@@ -4093,7 +4093,7 @@ goog.uri.utils.getDomainEncoded = function(uri) {
   return goog.uri.utils.getComponentByIndex_(goog.uri.utils.ComponentIndex.DOMAIN, uri);
 };
 goog.uri.utils.getDomain = function(uri) {
-  return goog.uri.utils.decodeIfPossible_(goog.uri.utils.getDomainEncoded(uri));
+  return goog.uri.utils.decodeIfPossible_(goog.uri.utils.getDomainEncoded(uri), !0);
 };
 goog.uri.utils.getPort = function(uri) {
   return Number(goog.uri.utils.getComponentByIndex_(goog.uri.utils.ComponentIndex.PORT, uri)) || null;
@@ -4102,7 +4102,7 @@ goog.uri.utils.getPathEncoded = function(uri) {
   return goog.uri.utils.getComponentByIndex_(goog.uri.utils.ComponentIndex.PATH, uri);
 };
 goog.uri.utils.getPath = function(uri) {
-  return goog.uri.utils.decodeIfPossible_(goog.uri.utils.getPathEncoded(uri));
+  return goog.uri.utils.decodeIfPossible_(goog.uri.utils.getPathEncoded(uri), !0);
 };
 goog.uri.utils.getQueryData = function(uri) {
   return goog.uri.utils.getComponentByIndex_(goog.uri.utils.ComponentIndex.QUERY_DATA, uri);
@@ -4595,12 +4595,14 @@ goog.debug.entryPointRegistry.register(function(transformer) {
   goog.net.XhrIo.prototype.onReadyStateChangeEntryPoint_ = transformer(goog.net.XhrIo.prototype.onReadyStateChangeEntryPoint_);
 });
 var pagespeed = {};
-google.load("visualization", "1", {packages:["table", "corechart"]});
+google.load("visualization", "1", {packages:["table", "corechart", "annotatedtimeline"]});
 pagespeed.Graphs = function(opt_xhr) {
   this.xhr_ = opt_xhr || new goog.net.XhrIo;
   this.psolMessages_ = [];
-  this.autoRefresh_ = !0;
-  this.secondRefreshStarted_ = this.firstRefreshStarted_ = !1;
+  this.secondRefreshStarted_ = this.firstRefreshStarted_ = this.autoRefresh_ = !1;
+  for (var i in pagespeed.Graphs.DisplayDiv) {
+    document.getElementById(pagespeed.Graphs.DisplayDiv[i]).className = "pagespeed-hidden-offscreen";
+  }
   var navElement = document.createElement("table");
   navElement.id = "navBar";
   navElement.innerHTML = '<tr><td><a id="' + pagespeed.Graphs.DisplayMode.CACHE_APPLIED + '" href="javascript:void(0);">Per application cache stats</a> - </td><td><a id="' + pagespeed.Graphs.DisplayMode.CACHE_TYPE + '" href="javascript:void(0);">Per type cache stats</a> - </td><td><a id="' + pagespeed.Graphs.DisplayMode.IPRO + '" href="javascript:void(0);">IPRO status</a> - </td><td><a id="' + pagespeed.Graphs.DisplayMode.REWRITE_IMAGE + '" href="javascript:void(0);">Image rewriting</a> - </td><td><a id="' + 
@@ -4614,7 +4616,7 @@ pagespeed.Graphs = function(opt_xhr) {
 pagespeed.Graphs.prototype.show = function(div) {
   for (var i in pagespeed.Graphs.DisplayDiv) {
     var chartDiv = pagespeed.Graphs.DisplayDiv[i];
-    document.getElementById(chartDiv).style.display = chartDiv == div ? "" : "none";
+    document.getElementById(chartDiv).className = chartDiv == div ? "" : "pagespeed-hidden-offscreen";
   }
   var currentTab = document.getElementById(div + "_mode");
   for (i in pagespeed.Graphs.DisplayMode) {
@@ -4679,10 +4681,10 @@ pagespeed.Graphs.prototype.parseAjaxResponse = function() {
   }
 };
 pagespeed.Graphs.prototype.drawVisualization = function() {
-  for (var prefixes = [["pcache-cohorts-dom_", "Property cache dom cohorts", "PieChart", pagespeed.Graphs.DisplayDiv.CACHE_APPLIED], ["pcache-cohorts-beacon_", "Property cache beacon cohorts", "PieChart", pagespeed.Graphs.DisplayDiv.CACHE_APPLIED], ["rewrite_cached_output_", "Rewrite cached output", "PieChart", pagespeed.Graphs.DisplayDiv.CACHE_APPLIED], ["url_input_", "URL Input", "PieChart", pagespeed.Graphs.DisplayDiv.CACHE_APPLIED], ["cache_", "Cache", "PieChart", pagespeed.Graphs.DisplayDiv.CACHE_TYPE], 
-  ["file_cache_", "File Cache", "PieChart", pagespeed.Graphs.DisplayDiv.CACHE_TYPE], ["memcached_", "Memcached", "PieChart", pagespeed.Graphs.DisplayDiv.CACHE_TYPE], ["lru_cache_", "LRU", "PieChart", pagespeed.Graphs.DisplayDiv.CACHE_TYPE], ["shm_cache_", "Shared Memory", "PieChart", pagespeed.Graphs.DisplayDiv.CACHE_TYPE], ["ipro_", "In place resource optimization", "PieChart", pagespeed.Graphs.DisplayDiv.IPRO], ["image_rewrite_", "Image rewrite", "PieChart", pagespeed.Graphs.DisplayDiv.REWRITE_IMAGE], 
-  ["image_rewrites_dropped_", "Image rewrites dropped", "PieChart", pagespeed.Graphs.DisplayDiv.REWRITE_IMAGE], ["http_", "Http", "LineChart", pagespeed.Graphs.DisplayDiv.REALTIME, !0], ["file_cache_", "File Cache RT", "LineChart", pagespeed.Graphs.DisplayDiv.REALTIME, !0], ["lru_cache_", "LRU Cache RT", "LineChart", pagespeed.Graphs.DisplayDiv.REALTIME, !0], ["serf_fetch_", "Serf stats RT", "LineChart", pagespeed.Graphs.DisplayDiv.REALTIME, !0], ["rewrite_", "Rewrite stats RT", "LineChart", pagespeed.Graphs.DisplayDiv.REALTIME, 
-  !0]], i = 0;i < prefixes.length;++i) {
+  for (var prefixes = [["pcache-cohorts-dom_", "Property cache dom cohorts", "BarChart", pagespeed.Graphs.DisplayDiv.CACHE_APPLIED], ["pcache-cohorts-beacon_", "Property cache beacon cohorts", "BarChart", pagespeed.Graphs.DisplayDiv.CACHE_APPLIED], ["rewrite_cached_output_", "Rewrite cached output", "BarChart", pagespeed.Graphs.DisplayDiv.CACHE_APPLIED], ["url_input_", "URL Input", "BarChart", pagespeed.Graphs.DisplayDiv.CACHE_APPLIED], ["cache_", "Cache", "BarChart", pagespeed.Graphs.DisplayDiv.CACHE_TYPE], 
+  ["file_cache_", "File Cache", "BarChart", pagespeed.Graphs.DisplayDiv.CACHE_TYPE], ["memcached_", "Memcached", "BarChart", pagespeed.Graphs.DisplayDiv.CACHE_TYPE], ["lru_cache_", "LRU", "BarChart", pagespeed.Graphs.DisplayDiv.CACHE_TYPE], ["shm_cache_", "Shared Memory", "BarChart", pagespeed.Graphs.DisplayDiv.CACHE_TYPE], ["ipro_", "In place resource optimization", "BarChart", pagespeed.Graphs.DisplayDiv.IPRO], ["image_rewrite_", "Image rewrite", "BarChart", pagespeed.Graphs.DisplayDiv.REWRITE_IMAGE], 
+  ["image_rewrites_dropped_", "Image rewrites dropped", "BarChart", pagespeed.Graphs.DisplayDiv.REWRITE_IMAGE], ["http_", "Http", "AnnotatedTimeLine", pagespeed.Graphs.DisplayDiv.REALTIME, !0], ["file_cache_", "File Cache RT", "AnnotatedTimeLine", pagespeed.Graphs.DisplayDiv.REALTIME, !0], ["lru_cache_", "LRU Cache RT", "AnnotatedTimeLine", pagespeed.Graphs.DisplayDiv.REALTIME, !0], ["serf_fetch_", "Serf stats RT", "AnnotatedTimeLine", pagespeed.Graphs.DisplayDiv.REALTIME, !0], ["rewrite_", "Rewrite stats RT", 
+  "AnnotatedTimeLine", pagespeed.Graphs.DisplayDiv.REALTIME, !0]], i = 0;i < prefixes.length;++i) {
     this.drawChart(prefixes[i][0], prefixes[i][1], prefixes[i][2], prefixes[i][3], prefixes[i][4]);
   }
 };
@@ -4701,6 +4703,13 @@ pagespeed.Graphs.prototype.drawChart = function(settingPrefix, title, chartType,
     "Loading Charts..." == targetElement.innerText && (targetElement.innerText = "");
     var dest = document.createElement("div");
     dest.className = "chart";
+    dest.style.width = "1100px";
+    dest.style.height = "320px";
+    var chartTitle = document.createElement("p");
+    chartTitle.innerText = title;
+    chartTitle.style.fontWeight = "bold";
+    chartTitle.style.fontSize = "large";
+    targetElement.appendChild(chartTitle);
     targetElement.appendChild(dest);
     theChart = new google.visualization[chartType](dest);
     this.drawChart.chartCache[title] = theChart;
@@ -4708,29 +4717,40 @@ pagespeed.Graphs.prototype.drawChart = function(settingPrefix, title, chartType,
   var rows = [], data = new google.visualization.DataTable;
   if (showHistory) {
     data.addColumn("datetime", "Time");
-    for (var first = !0, i = 0;i < this.psolMessages_.length;++i) {
-      var messages = goog.array.clone(this.psolMessages_[i].messages), row = [];
-      row.push(this.psolMessages_[i].timeReceived);
+    for (var first = !0, i$$0 = 0;i$$0 < this.psolMessages_.length;++i$$0) {
+      var messages = goog.array.clone(this.psolMessages_[i$$0].messages), row = [];
+      row.push(this.psolMessages_[i$$0].timeReceived);
       for (var j = 0;j < messages.length;++j) {
-        pagespeed.Graphs.screenData(settingPrefix, messages[j].name) && (row.push(Number(messages[j].value)), first && (caption = messages[j].name.substring(settingPrefix.length), caption = caption.replace(/_/ig, " "), data.addColumn("number", caption)));
+        pagespeed.Graphs.screenData(settingPrefix, messages[j].name) && (row.push(Number(messages[j].value)), first && (caption = messages[j].name.substring(settingPrefix.length), caption = caption.replace(/_/g, " "), data.addColumn("number", caption)));
       }
       first = !1;
       rows.push(row);
     }
+    data.addRows(rows);
+    theChart.draw(data, pagespeed.Graphs.ANNOTATED_TIMELINE_OPTIONS_);
   } else {
-    for (var messages = goog.array.clone(this.psolMessages_[this.psolMessages_.length - 1].messages), i = 0;i < messages.length;++i) {
-      if ("0" != messages[i].value && pagespeed.Graphs.screenData(settingPrefix, messages[i].name)) {
-        var caption = messages[i].name.substring(settingPrefix.length), caption = caption.replace(/_/ig, " ");
-        rows.push([caption, Number(messages[i].value)]);
+    for (var messages = goog.array.clone(this.psolMessages_[this.psolMessages_.length - 1].messages), i$$0 = 0;i$$0 < messages.length;++i$$0) {
+      if ("0" != messages[i$$0].value && pagespeed.Graphs.screenData(settingPrefix, messages[i$$0].name)) {
+        var caption = messages[i$$0].name.substring(settingPrefix.length), caption = caption.replace(/_/g, " ");
+        rows.push([caption, Number(messages[i$$0].value)]);
       }
     }
     data.addColumn("string", "Name");
     data.addColumn("number", "Value");
+    data.addRows(rows);
+    var view = new google.visualization.DataView(data);
+    view.setColumns([0, 1, {calc:function(dataTable, rowNum) {
+      for (var sum = 0, i = 0;i < dataTable.getNumberOfRows();++i) {
+        sum += dataTable.getValue(i, 1);
+      }
+      var value = dataTable.getValue(rowNum, 1);
+      return value.toString() + " (" + (100 * value / sum).toFixed(2).toString() + "%)";
+    }, type:"string", role:"annotation"}]);
+    theChart.draw(view, pagespeed.Graphs.BAR_CHART_OPTIONS_);
   }
-  var options = {width:1E3, height:300, chartArea:{left:100, top:50, width:700}, title:title};
-  data.addRows(rows);
-  theChart.draw(data, options);
 };
+pagespeed.Graphs.BAR_CHART_OPTIONS_ = {annotations:{highContrast:!1, textStyle:{fontSize:13, color:"black", auraColor:"white"}}, hAxis:{direction:-1}, vAxis:{textPosition:"in"}, legend:{position:"none"}, width:1E3, height:320, chartArea:{left:50, top:30, width:700}};
+pagespeed.Graphs.ANNOTATED_TIMELINE_OPTIONS_ = {thickness:1, displayExactValues:!0};
 pagespeed.Graphs.FREQUENCY_ = 5;
 pagespeed.Graphs.TIMERANGE_ = 86400 / pagespeed.Graphs.FREQUENCY_;
 pagespeed.Graphs.Start = function() {

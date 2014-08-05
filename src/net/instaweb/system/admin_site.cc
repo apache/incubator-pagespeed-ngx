@@ -65,6 +65,14 @@ extern const char* JS_messages_js_opt;
 extern const char* JS_statistics_js;
 extern const char* JS_statistics_js_opt;
 
+// We have to specify the size of the container elements explicitly when using
+// AnnotatedTimeLine on graphs page. Since we cannot read the size of elements
+// with 'display:none', we place the elements at -9999px to hide them off the
+// screen as an alternative.
+static const char kGraphsDivStyle[] =
+    "<style>.pagespeed-hidden-offscreen"
+    "{position:absolute; left:-9999px;}</style>\n";
+
 namespace {
 
 // This style fragment is copied from ../rewriter/console.css because it's
@@ -295,17 +303,13 @@ void AdminSite::GraphsHandler(const RewriteOptions& options,
     ConsoleJsonHandler(query_params, fetch, statistics);
     return;
   }
-
-  AdminHtml admin_html("graphs", "", source, fetch, message_handler_);
+  AdminHtml admin_html("graphs", kGraphsDivStyle, source, fetch,
+                       message_handler_);
   fetch->Write("<div id=\"cache_applied\">Loading Charts...</div>"
-               "<div id=\"cache_type\" style=\"display:none\">"
-               "Loading Charts...</div>"
-               "<div id=\"ipro\" style=\"display:none\">"
-               "Loading Charts...</div>"
-               "<div id=\"image_rewriting\" style=\"display:none\">"
-               "Loading Charts...</div>"
-               "<div id=\"realtime\" style=\"display:none\">"
-               "Loading Charts...</div>",
+               "<div id=\"cache_type\">Loading Charts...</div>"
+               "<div id=\"ipro\">Loading Charts...</div>"
+               "<div id=\"image_rewriting\">Loading Charts...</div>"
+               "<div id=\"realtime\">Loading Charts...</div>",
                message_handler_);
   fetch->Write("<script type=\"text/javascript\" "
                "src=\"https://www.google.com/jsapi\"></script>",
