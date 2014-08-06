@@ -83,10 +83,6 @@ class RewriteFilter;
 
 namespace {
 
-static const char kBackToMetadataButton[] =
-    "<br><input type=\"button\" value=\"Back\" "
-    "onclick=\"location.href='./cache#show_metadata'\"/>";
-
 // Define the various query parameter keys sent by instrumentation beacons.
 const char kBeaconUrlQueryParam[] = "url";
 const char kBeaconEtsQueryParam[] = "ets";
@@ -1240,7 +1236,7 @@ class MetadataCacheResultCallback
                            result->revalidate[i]->DebugString(), "\n"),
                     handler_);
     }
-    HtmlKeywords::WritePre(cache_dump, "", fetch_, handler_);
+    fetch_->Write(cache_dump, handler_);
     fetch_->Done(true);
     delete this;
   }
@@ -1254,7 +1250,6 @@ class MetadataCacheResultCallback
 
 }  // namespace
 
-// TODO(xqyin): Maybe modify this to not open a new page.
 void ServerContext::ShowCacheHandler(
     StringPiece url, AsyncFetch* fetch, RewriteOptions* options_arg) {
   scoped_ptr<RewriteOptions> options(options_arg);
@@ -1266,17 +1261,13 @@ void ServerContext::ShowCacheHandler(
     response_headers->Add(HttpAttributes::kCacheControl,
                           HttpAttributes::kNoStore);
     response_headers->Add(HttpAttributes::kContentType, "text/html");
-    fetch->Write(StrCat("<html><body>Empty URL<br>", kBackToMetadataButton,
-                        "</body></html>"),
-                 message_handler_);
+    fetch->Write("Empty URL", message_handler_);
     fetch->Done(true);
   } else if (!GoogleUrl(url).IsWebValid()) {
     ResponseHeaders* response_headers = fetch->response_headers();
-    response_headers->SetStatusAndReason(HttpStatus::kNotFound);
+    response_headers->SetStatusAndReason(HttpStatus::kOK);
     response_headers->Add(HttpAttributes::kContentType, "text/html");
-    fetch->Write(StrCat("<html><body>Invalid URL<br>", kBackToMetadataButton,
-                        "</body></html>"),
-                 message_handler_);
+    fetch->Write("Invalid URL", message_handler_);
     fetch->Done(false);
   } else {
     RewriteDriver* driver = NewCustomRewriteDriver(
@@ -1290,8 +1281,8 @@ void ServerContext::ShowCacheHandler(
     if (!driver->LookupMetadataForOutputResource(url, &error_out, callback)) {
       driver->Cleanup();
       delete callback;
-      fetch->response_headers()->SetStatusAndReason(HttpStatus::kNotFound);
-      fetch->Write(StrCat(error_out, kBackToMetadataButton), message_handler_);
+      fetch->response_headers()->SetStatusAndReason(HttpStatus::kOK);
+      fetch->Write(error_out, message_handler_);
       fetch->Done(false);
     }
   }
@@ -1308,12 +1299,14 @@ GoogleString ServerContext::ShowCacheForm(StringPiece user_agent) {
   // is to make those input fields decently wide to fit large URLs and UAs
   // and to roughly line up.
   GoogleString out = StrCat(
-      "<form method=get>\n",
-      "  URL: <input type=text name=url size=110 /><br>\n"
-      "  User-Agent: <input type=text size=103 name=user_agent ",
+      "<form>\n",
+      "  URL: <input id=metadata_text type=text name=url size=110 /><br>\n"
+      "  User-Agent: <input id=user_agent type=text size=103 name=user_agent ",
       ua_default,
       "/></br> \n",
-      "   <input type=submit value='Show Metadata Cache Entry'/>"
+      "  <input id=metadata_submit type=button "
+      "   value='Show Metadata Cache Entry' />"
+      "  <input id=metadata_clear type=button value='Clear' />",
       "</form>\n");
   return out;
 }

@@ -384,10 +384,6 @@ void AdminSite::PrintHistograms(AdminSource source, AsyncFetch* fetch,
 
 namespace {
 
-static const char kBackToPurgeCacheButton[] =
-    "<br><input type=\"button\" value=\"Back\" "
-    "onclick=\"location.href='./cache#purge_cache'\"/>";
-
 static const char kTableStart[] =
     "<table style='font-family:sans-serif;font-size:0.9em'>\n"
     "  <thead>\n"
@@ -510,39 +506,40 @@ void AdminSite::PrintCaches(bool is_global, AdminSource source,
     // destructor.
     server_context->ShowCacheHandler(url, fetch, options->Clone());
   } else if ((source == kPageSpeedAdmin) &&
+             query_params.Lookup1Unescaped("new_set", &url)) {
+    ResponseHeaders* response_headers = fetch->response_headers();
+    response_headers->SetStatusAndReason(HttpStatus::kOK);
+    response_headers->Add(HttpAttributes::kContentType, "text/html");
+    fetch->Write(options->PurgeSetString(), message_handler_);
+    fetch->Done(true);
+  } else if ((source == kPageSpeedAdmin) &&
              query_params.Lookup1Unescaped("purge", &url)) {
     ResponseHeaders* response_headers = fetch->response_headers();
     if (!options->enable_cache_purge()) {
-      response_headers->SetStatusAndReason(HttpStatus::kNotFound);
+      response_headers->SetStatusAndReason(HttpStatus::kOK);
       response_headers->Add(HttpAttributes::kContentType, "text/html");
       // TODO(jmarantz): virtualize the formatting of this message so that
       // it's correct in ngx_pagespeed and mod_pagespeed (and IISpeed etc).
-      fetch->Write(StrCat("Purging not enabled: please add\n"
-                          "<pre>\n"
-                          "    PagespeedEnableCachePurge on\n"
-                          "<pre>\n"
-                          "to your config\n", kBackToPurgeCacheButton),
-                   message_handler_);
+      fetch->Write("Purging not enabled: please add\n"
+                   "PagespeedEnableCachePurge on\n"
+                   "to your config", message_handler_);
       fetch->Done(true);
     } else if (url == "*") {
       PurgeHandler(url, cache_path, fetch);
     } else if (url.empty()) {
-      response_headers->SetStatusAndReason(HttpStatus::kNotFound);
+      response_headers->SetStatusAndReason(HttpStatus::kOK);
       response_headers->Add(HttpAttributes::kContentType, "text/html");
-      fetch->Write(StrCat("Empty URL", kBackToPurgeCacheButton),
-                   message_handler_);
+      fetch->Write("Empty URL", message_handler_);
       fetch->Done(true);
     } else {
       GoogleUrl origin(stripped_gurl.Origin());
       GoogleUrl resolved(origin, url);
       if (!resolved.IsWebValid()) {
-        response_headers->SetStatusAndReason(HttpStatus::kNotFound);
+        response_headers->SetStatusAndReason(HttpStatus::kOK);
         response_headers->Add(HttpAttributes::kContentType, "text/html");
         GoogleString escaped_url;
         HtmlKeywords::Escape(url, &escaped_url);
-        fetch->Write(StrCat("Invalid URL: ", escaped_url,
-                            kBackToPurgeCacheButton),
-                     message_handler_);
+        fetch->Write(StrCat("Invalid URL: ", escaped_url), message_handler_);
         fetch->Done(true);
       } else {
         PurgeHandler(resolved.Spec(), cache_path, fetch);
@@ -594,10 +591,10 @@ void AdminSite::PrintCaches(bool is_global, AdminSource source,
 
       fetch->Write("<div id=\"purge_cache\" style=\"display:none\">",
                    message_handler_);
-      fetch->Write("<h3>Purge Set</h3>", message_handler_);
-      HtmlKeywords::WritePre(options->PurgeSetString(), "", fetch,
-                             message_handler_);
-      fetch->Write("</div>", message_handler_);
+      fetch->Write("<h3>Purge Set</h3><pre id=\"purge_set\">",
+                   message_handler_);
+      fetch->Write(options->PurgeSetString(), message_handler_);
+      fetch->Write("</pre></div>", message_handler_);
     }
     StringPiece caches_js = options->Enabled(RewriteOptions::kDebug) ?
         JS_caches_js :
@@ -824,20 +821,19 @@ class PurgeFetchCallbackGasket {
   }
   void Done(bool success, StringPiece reason) {
     ResponseHeaders* headers = fetch_->response_headers();
-    headers->set_status_code(success ? HttpStatus::kOK : HttpStatus::kNotFound);
+    headers->set_status_code(HttpStatus::kOK);
     headers->Add(HttpAttributes::kContentType, "text/html");
     // TODO(xqyin): Currently we may still return 'purge successful' even if
     // the URL does not exist in our cache. Figure out how to solve this case
     // while we don't want to search the whole cache which could be very large.
     if (success) {
-      fetch_->Write("Purge successful\n", message_handler_);
+      fetch_->Write("Purge successful", message_handler_);
     } else {
       GoogleString buf;
       fetch_->Write(HtmlKeywords::Escape(reason, &buf), message_handler_);
       fetch_->Write("\n", message_handler_);
       fetch_->Write(HtmlKeywords::Escape(error_, &buf), message_handler_);
     }
-    fetch_->Write(kBackToPurgeCacheButton, message_handler_);
     fetch_->Done(true);
     delete this;
   }

@@ -23,6 +23,8 @@
 goog.provide('pagespeed.Caches');
 
 goog.require('goog.events');
+goog.require('goog.net.EventType');
+goog.require('goog.net.XhrIo');
 goog.require('goog.object');
 goog.require('goog.string');
 
@@ -30,8 +32,24 @@ goog.require('goog.string');
 
 /**
  * @constructor
+ * @param {goog.testing.net.XhrIo=} opt_xhr Optional mock XmlHttpRequests
+ *     handler for testing.
  */
-pagespeed.Caches = function() {
+pagespeed.Caches = function(opt_xhr) {
+  /**
+   * The XmlHttpRequests handler used for cache purging and showing metadata
+   * cache entry. We pass a mock XhrIo when testing. Default is a normal XhrIo.
+   * @private {goog.net.XhrIo|goog.testing.net.XhrIo}
+   */
+  this.xhr_ = opt_xhr || new goog.net.XhrIo();
+
+  /**
+   * A string to indicate whether the current input is from metadata tab or
+   * purge cache tab.
+   * @private {string}
+   */
+  this.inputIsFrom_ = '';
+
   // The navigation bar to switch among different display modes.
   var modeElement = document.createElement('table');
   modeElement.id = 'mode_bar';
@@ -52,6 +70,25 @@ pagespeed.Caches = function() {
       modeElement,
       document.getElementById(pagespeed.Caches.DisplayDiv.METADATA_CACHE));
   // TODO(xqyin): Maybe use closure tab pane UI element instead.
+
+  // Create a div to display the result of showing metadata cache entry.
+  var metadataResult = document.createElement('div');
+  metadataResult.id = pagespeed.Caches.ElementId.METADATA_RESULT;
+  // TODO(xqyin): Move stylistic elements to a CSS file.
+  metadataResult.style.padding = '10px 0px 0px 5px';
+  metadataResult.style.fontFamily = 'verdana';
+  var metadataElement = document.getElementById(
+      pagespeed.Caches.DisplayDiv.METADATA_CACHE);
+  metadataElement.appendChild(metadataResult);
+
+  // Create a div to display the result of cache purging.
+  var purgeResult = document.createElement('div');
+  purgeResult.id = pagespeed.Caches.ElementId.PURGE_RESULT;
+  purgeResult.style.padding = '10px 0px 0px 5px';
+  purgeResult.style.fontFamily = 'verdana';
+  var purgeElement = document.getElementById(
+      pagespeed.Caches.DisplayDiv.PURGE_CACHE);
+  purgeElement.insertBefore(purgeResult, purgeElement.firstChild);
 };
 
 
@@ -97,6 +134,24 @@ pagespeed.Caches.DisplayDiv = {
   METADATA_CACHE: 'show_metadata',
   CACHE_STRUCTURE: 'cache_struct',
   PURGE_CACHE: 'purge_cache'
+};
+
+
+/**
+ * Enum for ids of elements that will be used in cache purging and showing
+ * metadata cache.
+ */
+pagespeed.Caches.ElementId = {
+  METADATA_TEXT: 'metadata_text',
+  METADATA_SUBMIT: 'metadata_submit',
+  METADATA_RESULT: 'metadata_result',
+  METADATA_CLEAR: 'metadata_clear',
+  PURGE_TEXT: 'purge_text',
+  PURGE_SUBMIT: 'purge_submit',
+  PURGE_RESULT: 'purge_result',
+  PURGE_ALL: 'purge_all',
+  PURGE_SET: 'purge_set',
+  USER_AGENT: 'user_agent'
 };
 
 
@@ -147,14 +202,95 @@ pagespeed.Caches.prototype.show = function(div) {
 
 
 /**
+ * Send the cache purging URL to the sever.
+ */
+pagespeed.Caches.prototype.sendPurgeRequest = function() {
+  if (!this.xhr_.isActive()) {
+    var urlId = pagespeed.Caches.ElementId.PURGE_TEXT;
+    var url =
+        '?purge=' +
+        encodeURIComponent(document.getElementById(urlId).value);
+    this.inputIsFrom_ = pagespeed.Caches.ElementId.PURGE_RESULT;
+    this.xhr_.send(url);
+  }
+};
+
+
+/**
+ * Send '*' to server to purge the entire cache.
+ */
+pagespeed.Caches.prototype.sendPurgeAllRequest = function() {
+  if (!this.xhr_.isActive()) {
+    var url = '?purge=*';
+    this.inputIsFrom_ = pagespeed.Caches.ElementId.PURGE_RESULT;
+    this.xhr_.send(url);
+  }
+};
+
+
+/**
+ * Send request to get the updated purge set.
+ */
+pagespeed.Caches.prototype.sendPurgeSetRequest = function() {
+  if (!this.xhr_.isActive()) {
+    var url = '?new_set=';
+    this.inputIsFrom_ = pagespeed.Caches.ElementId.PURGE_SET;
+    this.xhr_.send(url);
+  }
+};
+
+
+/**
+ * Send the cache purging URL to the sever.
+ */
+pagespeed.Caches.prototype.sendMetadataRequest = function() {
+  if (!this.xhr_.isActive()) {
+    var urlId = pagespeed.Caches.ElementId.METADATA_TEXT;
+    var userAgentId = pagespeed.Caches.ElementId.USER_AGENT;
+    var url =
+        '?url=' +
+        encodeURIComponent(document.getElementById(urlId).value) +
+        '&user_agent=' +
+        encodeURIComponent(document.getElementById(userAgentId).value);
+    this.inputIsFrom_ = pagespeed.Caches.ElementId.METADATA_RESULT;
+    this.xhr_.send(url);
+  }
+};
+
+
+/**
+ * Display the result of cache purging and showing metadata cache entry.
+ */
+pagespeed.Caches.prototype.showResult = function() {
+  if (this.xhr_.isSuccess()) {
+    var text = this.xhr_.getResponseText();
+    if (this.inputIsFrom_ == pagespeed.Caches.ElementId.PURGE_RESULT) {
+      // Add updating purge set to the queue if the current request is
+      // to purge cache.
+      window.setTimeout(goog.bind(this.sendPurgeSetRequest, this), 0);
+    }
+    document.getElementById(this.inputIsFrom_).innerText = text;
+  } else {
+    console.log(this.xhr_.getLastError());
+  }
+};
+
+
+/**
  * Present a form to enter a URL for cache purging.
  */
 pagespeed.Caches.prototype.purgeInit = function() {
-  var purgeUI = document.createElement('form');
-  purgeUI.method = 'get';
+  // It's actually not a 'form' element because we add listeners to the
+  // buttons to submit query params. We don't want users to submit the
+  // form by pressing enter without clicking the buttons.
+  var purgeUI = document.createElement('table');
   purgeUI.innerHTML =
-      'URL: <input type="text" name="purge" size="110" /><br>' +
-      '<input type="submit" value="Purge Individual URL">';
+      'URL: <input id="' + pagespeed.Caches.ElementId.PURGE_TEXT +
+      '" type="text" name="purge" size="110"/><br>' +
+      '<input id="' + pagespeed.Caches.ElementId.PURGE_SUBMIT +
+      '" type="button" value="Purge Individual URL"/>' +
+      '<input id="' + pagespeed.Caches.ElementId.PURGE_ALL +
+      '" type="button" value="Purge Entire Cache"/>';
   var purgeElement = document.getElementById(
       pagespeed.Caches.DisplayDiv.PURGE_CACHE);
   purgeElement.insertBefore(purgeUI, purgeElement.firstChild);
@@ -179,6 +315,21 @@ pagespeed.Caches.Start = function() {
     // because no requests captured.
     goog.events.listen(window, 'hashchange',
                        goog.bind(cachesObj.parseLocation, cachesObj));
+    goog.events.listen(
+        document.getElementById(pagespeed.Caches.ElementId.PURGE_SUBMIT),
+        'click', goog.bind(cachesObj.sendPurgeRequest, cachesObj));
+    goog.events.listen(
+        document.getElementById(pagespeed.Caches.ElementId.PURGE_ALL),
+        'click', goog.bind(cachesObj.sendPurgeAllRequest, cachesObj));
+    goog.events.listen(
+        document.getElementById(pagespeed.Caches.ElementId.METADATA_SUBMIT),
+        'click', goog.bind(cachesObj.sendMetadataRequest, cachesObj));
+    goog.events.listen(
+        cachesObj.xhr_, goog.net.EventType.COMPLETE,
+        goog.bind(cachesObj.showResult, cachesObj));
+    goog.events.listen(
+        document.getElementById(pagespeed.Caches.ElementId.METADATA_CLEAR),
+        'click', location.reload.bind(location));
   };
   goog.events.listen(window, 'load', cachesOnload);
 };

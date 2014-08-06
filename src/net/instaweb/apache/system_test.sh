@@ -1115,7 +1115,7 @@ fi
 start_test ShowCache without URL gets a form, inputs, preloaded UA.
 ADMIN_CACHE=$PRIMARY_SERVER/pagespeed_admin/cache
 OUT=$($WGET_DUMP $ADMIN_CACHE)
-check_from "$OUT" fgrep -q "<form "
+check_from "$OUT" fgrep -q "<form>"
 check_from "$OUT" fgrep -q "<input "
 check_from "$OUT" fgrep -q "Cache-Control: max-age=0, no-cache"
 # Preloaded user_agent value field leading with "Mozilla" set in
