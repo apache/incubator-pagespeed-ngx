@@ -30,7 +30,7 @@ recompiling Tengine](https://github.com/pagespeed/ngx_pagespeed/wiki/Using-ngx_p
    $ sudo yum install gcc-c++ pcre-dev pcre-devel zlib-devel make
 
    # These are for Debian. Ubuntu will be similar.
-   $ sudo apt-get install build-essential zlib1g-dev libpcre3 libpcre3-dev
+   $ sudo apt-get install build-essential zlib1g-dev libpcre3 libpcre3-dev g++
    ```
 
 2. Download ngx_pagespeed:
