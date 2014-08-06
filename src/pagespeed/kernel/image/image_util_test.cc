@@ -109,11 +109,11 @@ TEST(ImageUtilTest, ImageFormat) {
 
   ASSERT_TRUE(ReadTestFileWithExt(kWebpTestDir, kWebpOpaqueImage, &buffer));
   EXPECT_EQ(IMAGE_WEBP, ComputeImageFormat(buffer, &is_webp_lossless_alpha));
-  EXPECT_EQ(false, is_webp_lossless_alpha);
+  EXPECT_FALSE(is_webp_lossless_alpha);
 
   ASSERT_TRUE(ReadTestFileWithExt(kWebpTestDir, kWebpLosslessImage, &buffer));
   EXPECT_EQ(IMAGE_WEBP, ComputeImageFormat(buffer, &is_webp_lossless_alpha));
-  EXPECT_EQ(true, is_webp_lossless_alpha);
+  EXPECT_TRUE(is_webp_lossless_alpha);
 }
 
 }  // namespace
