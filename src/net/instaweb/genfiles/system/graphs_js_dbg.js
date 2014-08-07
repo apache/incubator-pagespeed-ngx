@@ -4700,13 +4700,13 @@ pagespeed.Graphs.prototype.drawChart = function(settingPrefix, title, chartType,
     theChart = this.drawChart.chartCache[title];
   } else {
     var targetElement = document.getElementById(targetId);
-    "Loading Charts..." == targetElement.innerText && (targetElement.innerText = "");
+    "Loading Charts..." == targetElement.textContent && (targetElement.textContent = "");
     var dest = document.createElement("div");
     dest.className = "chart";
     dest.style.width = "1100px";
     dest.style.height = "320px";
     var chartTitle = document.createElement("p");
-    chartTitle.innerText = title;
+    chartTitle.textContent = title;
     chartTitle.style.fontWeight = "bold";
     chartTitle.style.fontSize = "large";
     targetElement.appendChild(chartTitle);

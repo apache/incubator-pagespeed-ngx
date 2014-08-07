@@ -144,7 +144,7 @@ pagespeed.Messages.prototype.updateMessageCount = function(opt_num) {
   // The default number of messages is the length of the array when opt_num
   // is not specified.
   var total = (opt_num != undefined) ? opt_num : this.psolMessages_.length;
-  document.getElementById('num').innerText =
+  document.getElementById('num').textContent =
       'The number of messages: ' + total.toString();
 };
 
@@ -213,7 +213,7 @@ pagespeed.Messages.prototype.parseMessagesFromResponse = function(text) {
   } else {
     goog.array.clear(this.psolMessages_);
     this.updateMessageCount();
-    document.getElementById('log').innerText = pagespeed.Messages.DUMP_ERROR_;
+    document.getElementById('log').textContent = pagespeed.Messages.DUMP_ERROR_;
   }
 };
 
@@ -249,7 +249,7 @@ pagespeed.Messages.prototype.parseAjaxResponse = function() {
     console.log(this.xhr_.getLastError());
     goog.array.clear(this.psolMessages_);
     this.updateMessageCount();
-    document.getElementById('log').innerText =
+    document.getElementById('log').textContent =
         pagespeed.Messages.REFRESH_ERROR_;
   }
 };

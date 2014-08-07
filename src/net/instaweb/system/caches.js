@@ -72,7 +72,7 @@ pagespeed.Caches = function(opt_xhr) {
   // TODO(xqyin): Maybe use closure tab pane UI element instead.
 
   // Create a div to display the result of showing metadata cache entry.
-  var metadataResult = document.createElement('div');
+  var metadataResult = document.createElement('pre');
   metadataResult.id = pagespeed.Caches.ElementId.METADATA_RESULT;
   // TODO(xqyin): Move stylistic elements to a CSS file.
   metadataResult.style.padding = '10px 0px 0px 5px';
@@ -82,7 +82,7 @@ pagespeed.Caches = function(opt_xhr) {
   metadataElement.appendChild(metadataResult);
 
   // Create a div to display the result of cache purging.
-  var purgeResult = document.createElement('div');
+  var purgeResult = document.createElement('pre');
   purgeResult.id = pagespeed.Caches.ElementId.PURGE_RESULT;
   purgeResult.style.padding = '10px 0px 0px 5px';
   purgeResult.style.fontFamily = 'verdana';
@@ -269,7 +269,7 @@ pagespeed.Caches.prototype.showResult = function() {
       // to purge cache.
       window.setTimeout(goog.bind(this.sendPurgeSetRequest, this), 0);
     }
-    document.getElementById(this.inputIsFrom_).innerText = text;
+    document.getElementById(this.inputIsFrom_).textContent = text;
   } else {
     console.log(this.xhr_.getLastError());
   }

@@ -21,7 +21,7 @@
 
 #include <cstddef>
 #include "pagespeed/kernel/base/basictypes.h"
-#include "pagespeed/kernel/image/scanline_interface.h"
+#include "pagespeed/kernel/image/image_util.h"
 
 namespace net_instaweb {
 class MessageHandler;
@@ -31,6 +31,7 @@ namespace pagespeed {
 
 namespace image_compression {
 
+class ScanlineReaderInterface;
 using net_instaweb::MessageHandler;
 
 const int kNumColorHistogramBins = 256;
@@ -79,14 +80,19 @@ float WidestPeakWidth(const float* hist, float threshold);
 // to be processed.
 bool IsPhoto(ScanlineReaderInterface* reader, MessageHandler* handler);
 
-// Indicates whether the image looks like a photo and whether it has a
-// non-opaque alpha channel.
+// Return key information of the image. For the information which you do not
+// need, set the arguments to NULL so they will not be computed.
 bool AnalyzeImage(ImageFormat image_type,
                   const void* image_buffer,
                   size_t buffer_length,
-                  MessageHandler* handler,
+                  int* width,
+                  int* height,
+                  bool* is_animated,
                   bool* has_transparency,
-                  bool* is_photo);
+                  bool* is_photo,
+                  int* quality,
+                  ScanlineReaderInterface** reader,
+                  MessageHandler* handler);
 
 }  // namespace image_compression
 

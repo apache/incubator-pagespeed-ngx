@@ -4601,12 +4601,12 @@ var pagespeed = {Caches:function(opt_xhr) {
   modeElement.id = "mode_bar";
   modeElement.innerHTML = '<tr><td><a id="' + pagespeed.Caches.DisplayMode.METADATA_CACHE + '" href="javascript:void(0);">Show Metadata Cache</a> - </td><td><a id="' + pagespeed.Caches.DisplayMode.CACHE_STRUCTURE + '" href="javascript:void(0);">Show Cache Structure</a> - </td><td><a id="' + pagespeed.Caches.DisplayMode.PURGE_CACHE + '" href="javascript:void(0);">Purge Cache</a></td></tr>';
   document.body.insertBefore(modeElement, document.getElementById(pagespeed.Caches.DisplayDiv.METADATA_CACHE));
-  var metadataResult = document.createElement("div");
+  var metadataResult = document.createElement("pre");
   metadataResult.id = pagespeed.Caches.ElementId.METADATA_RESULT;
   metadataResult.style.padding = "10px 0px 0px 5px";
   metadataResult.style.fontFamily = "verdana";
   document.getElementById(pagespeed.Caches.DisplayDiv.METADATA_CACHE).appendChild(metadataResult);
-  var purgeResult = document.createElement("div");
+  var purgeResult = document.createElement("pre");
   purgeResult.id = pagespeed.Caches.ElementId.PURGE_RESULT;
   purgeResult.style.padding = "10px 0px 0px 5px";
   purgeResult.style.fontFamily = "verdana";
@@ -4661,7 +4661,7 @@ pagespeed.Caches.prototype.showResult = function() {
   if (this.xhr_.isSuccess()) {
     var text = this.xhr_.getResponseText();
     this.inputIsFrom_ == pagespeed.Caches.ElementId.PURGE_RESULT && window.setTimeout(goog.bind(this.sendPurgeSetRequest, this), 0);
-    document.getElementById(this.inputIsFrom_).innerText = text;
+    document.getElementById(this.inputIsFrom_).textContent = text;
   } else {
     console.log(this.xhr_.getLastError());
   }

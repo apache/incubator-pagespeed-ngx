@@ -47,7 +47,7 @@ pagespeed.Statistics = function(opt_xhr) {
    * The most recent statistics list.
    * @private {!Array.<string>}
    */
-  this.psolMessages_ = document.getElementById('stat').innerText.split('\n');
+  this.psolMessages_ = document.getElementById('stat').textContent.split('\n');
   // The element with id 'stat' must exist.
   if (this.psolMessages_.length > 0) {
     // Remove the empty entry.
@@ -126,7 +126,7 @@ pagespeed.Statistics.prototype.updateMessageCount = function(opt_num) {
   // The default number of messages is the length of the array when opt_num
   // is not specified.
   var total = (opt_num != undefined) ? opt_num : this.psolMessages_.length;
-  document.getElementById('num').innerText =
+  document.getElementById('num').textContent =
       'The number of statistics: ' + total.toString();
 };
 
@@ -137,7 +137,7 @@ pagespeed.Statistics.prototype.updateMessageCount = function(opt_num) {
 pagespeed.Statistics.prototype.error = function() {
   goog.array.clear(this.psolMessages_);
   this.updateMessageCount();
-  document.getElementById('stat').innerText =
+  document.getElementById('stat').textContent =
       pagespeed.Statistics.REFRESH_ERROR_;
 };
 
@@ -157,7 +157,7 @@ pagespeed.Statistics.prototype.update = function() {
   }
   this.updateMessageCount(messages.length);
   var statElement = document.getElementById('stat');
-  statElement.innerText = messages.join('\n');
+  statElement.textContent = messages.join('\n');
 };
 
 

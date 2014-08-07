@@ -22,6 +22,7 @@
 #include <cstddef>
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/image/image_util.h"
 #include "pagespeed/kernel/image/scanline_interface.h"
 #include "pagespeed/kernel/image/scanline_status.h"
 
@@ -53,7 +54,9 @@ class PixelFormatOptimizer : public ScanlineReaderInterface {
   explicit PixelFormatOptimizer(MessageHandler* handler);
   virtual ~PixelFormatOptimizer();
 
+  // PixelFormatOptimizer acquires ownership of reader, even in case of failure.
   ScanlineStatus Initialize(ScanlineReaderInterface* reader);
+
   virtual ScanlineStatus ReadNextScanlineWithStatus(void** out_scanline_bytes);
 
   // Reset the resizer to its initial state. Always returns true.
@@ -95,7 +98,7 @@ class PixelFormatOptimizer : public ScanlineReaderInterface {
   }
 
  private:
-  ScanlineReaderInterface* reader_;
+  scoped_ptr<ScanlineReaderInterface> reader_;
   size_t bytes_per_row_;
   PixelFormat pixel_format_;
   size_t output_row_;

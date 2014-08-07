@@ -859,14 +859,10 @@ PngScanlineReaderRaw::PngScanlineReaderRaw(
     bytes_per_row_(0),
     row_(0),
     was_initialized_(false),
-    png_struct_(ScopedPngStruct::READ, handler),
     message_handler_(handler) {
 }
 
 PngScanlineReaderRaw::~PngScanlineReaderRaw() {
-  if (was_initialized_) {
-    Reset();
-  }
 }
 
 bool PngScanlineReaderRaw::Reset() {
@@ -878,9 +874,7 @@ bool PngScanlineReaderRaw::Reset() {
   row_ = 0;
   was_initialized_ = false;
   row_pointers_.reset();
-  if (!png_struct_.reset()) {
-    return false;
-  }
+  png_struct_.reset();
   png_input_->Reset();
   return true;
 }
@@ -890,6 +884,23 @@ bool PngScanlineReaderRaw::Reset() {
 ScanlineStatus PngScanlineReaderRaw::InitializeWithStatus(
     const void* image_buffer,
     size_t buffer_length) {
+  // Reset the reader if it has been initialized before.
+  if (was_initialized_ && !Reset()) {
+    return PS_LOGGED_STATUS(PS_LOG_DFATAL, message_handler_,
+                            SCANLINE_STATUS_INTERNAL_ERROR,
+                            SCANLINE_PNGREADERRAW,
+                            "Reset()");
+  }
+
+  png_struct_.reset(new ScopedPngStruct(ScopedPngStruct::READ,
+                                        message_handler_));
+  if (png_struct_ == NULL) {
+    return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler_,
+                            SCANLINE_STATUS_MEMORY_ERROR,
+                            SCANLINE_PNGREADERRAW,
+                            "Failed to create ScopedPngStruct");
+  }
+
   // Allocate and initialize png_input_, if that has not been done.
   if (png_input_ == NULL) {
     png_input_.reset(new ScanlineStreamInput(message_handler_));
@@ -901,23 +912,15 @@ ScanlineStatus PngScanlineReaderRaw::InitializeWithStatus(
     }
   }
 
-  // Reset the reader if it has been initialized before.
-  if (was_initialized_ && !Reset()) {
+  if (!png_struct_->valid()) {
     return PS_LOGGED_STATUS(PS_LOG_DFATAL, message_handler_,
                             SCANLINE_STATUS_INTERNAL_ERROR,
                             SCANLINE_PNGREADERRAW,
-                            "Reset()");
+                            "png_struct_->valid()");
   }
 
-  if (!png_struct_.valid()) {
-    return PS_LOGGED_STATUS(PS_LOG_DFATAL, message_handler_,
-                            SCANLINE_STATUS_INTERNAL_ERROR,
-                            SCANLINE_PNGREADERRAW,
-                            "png_struct_.valid()");
-  }
-
-  png_structp png_ptr = png_struct_.png_ptr();
-  png_infop info_ptr = png_struct_.info_ptr();
+  png_structp png_ptr = png_struct_->png_ptr();
+  png_infop info_ptr = png_struct_->info_ptr();
 
   if (setjmp(png_jmpbuf(png_ptr)) != 0) {
     // Jump to here if any error happens.
@@ -1029,7 +1032,7 @@ ScanlineStatus PngScanlineReaderRaw::ReadNextScanlineWithStatus(
                             "does not have any more scanlines.");
   }
 
-  png_structp png_ptr = png_struct_.png_ptr();
+  png_structp png_ptr = png_struct_->png_ptr();
 
   // In case libpng has an error, program will jump to the following 'setjmp',
   // which will have value of non-zero. To clean up memory properly, we have
@@ -1103,15 +1106,11 @@ PngScanlineWriter::PngScanlineWriter(MessageHandler* handler) :
   height_(0),
   row_(0),
   pixel_format_(UNSUPPORTED),
-  png_struct_(ScopedPngStruct::WRITE, handler),
   was_initialized_(false),
   message_handler_(handler) {
 }
 
 PngScanlineWriter::~PngScanlineWriter() {
-  if (was_initialized_) {
-    Reset();
-  }
 }
 
 bool PngScanlineWriter::Reset() {
@@ -1119,9 +1118,7 @@ bool PngScanlineWriter::Reset() {
   height_ = 0;
   row_ = 0;
   pixel_format_ = UNSUPPORTED;
-  if (!png_struct_.reset()) {
-    return false;
-  }
+  png_struct_.reset();
   was_initialized_ = false;
   return true;
 }
@@ -1164,18 +1161,29 @@ bool PngScanlineWriter::Validate(const PngCompressParams* params,
 ScanlineStatus PngScanlineWriter::InitWithStatus(const size_t width,
                                                  const size_t height,
                                                  PixelFormat pixel_format) {
-  // Reset the reader if it has been initialized before.
+  // Reset the writer if it has been initialized before.
   if (was_initialized_ && !Reset()) {
     return PS_LOGGED_STATUS(PS_LOG_DFATAL, message_handler_,
                             SCANLINE_STATUS_INTERNAL_ERROR,
                             SCANLINE_PNGWRITER, "Reset()");
   }
 
-  if (!png_struct_.valid()) {
+  if (png_struct_ == NULL) {
+    png_struct_.reset(new ScopedPngStruct(ScopedPngStruct::WRITE,
+                                          message_handler_));
+    if (png_struct_ == NULL) {
+      return PS_LOGGED_STATUS(PS_LOG_DFATAL, message_handler_,
+                              SCANLINE_STATUS_MEMORY_ERROR,
+                              SCANLINE_PNGWRITER,
+                              "Failed to create ScopedPngStruct");
+    }
+  }
+
+  if (!png_struct_->valid()) {
     return PS_LOGGED_STATUS(PS_LOG_DFATAL, message_handler_,
                             SCANLINE_STATUS_INTERNAL_ERROR,
                             SCANLINE_PNGWRITER,
-                            "png_struct_.valid()");
+                            "png_struct_->valid()");
   }
 
   if (width < 1 || height < 1) {
@@ -1235,8 +1243,8 @@ ScanlineStatus PngScanlineWriter::InitializeWriteWithStatus(
       color_type = PNG_COLOR_TYPE_RGB_ALPHA;
   }
 
-  png_structp png_ptr = png_struct_.png_ptr();
-  png_infop info_ptr = png_struct_.info_ptr();
+  png_structp png_ptr = png_struct_->png_ptr();
+  png_infop info_ptr = png_struct_->info_ptr();
 
   if (setjmp(png_jmpbuf(png_ptr)) != 0) {
     // Jump to here if any error happens.
@@ -1266,7 +1274,7 @@ ScanlineStatus PngScanlineWriter::InitializeWriteWithStatus(
 ScanlineStatus PngScanlineWriter::WriteNextScanlineWithStatus(
     const void* const scanline_bytes) {
   if (was_initialized_ && row_ < height_) {
-    png_write_row(png_struct_.png_ptr(),
+    png_write_row(png_struct_->png_ptr(),
                   reinterpret_cast<png_bytep>(
                       const_cast<void*>(scanline_bytes)));
     ++row_;
@@ -1281,7 +1289,7 @@ ScanlineStatus PngScanlineWriter::WriteNextScanlineWithStatus(
 // Finalize write structure once all scanlines are written.
 ScanlineStatus PngScanlineWriter::FinalizeWriteWithStatus() {
   if (was_initialized_ && row_ == height_) {
-    png_write_end(png_struct_.png_ptr(), png_struct_.info_ptr());
+    png_write_end(png_struct_->png_ptr(), png_struct_->info_ptr());
     return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
   } else {
     Reset();

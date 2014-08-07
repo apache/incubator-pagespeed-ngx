@@ -4596,7 +4596,7 @@ goog.debug.entryPointRegistry.register(function(transformer) {
 });
 var pagespeed = {Statistics:function(opt_xhr) {
   this.xhr_ = opt_xhr || new goog.net.XhrIo;
-  this.psolMessages_ = document.getElementById("stat").innerText.split("\n");
+  this.psolMessages_ = document.getElementById("stat").textContent.split("\n");
   0 < this.psolMessages_.length && this.psolMessages_.pop();
   this.filter_ = "";
   this.autoRefresh_ = !1;
@@ -4624,12 +4624,12 @@ pagespeed.Statistics.prototype.setFilter = function(element) {
   this.update();
 };
 pagespeed.Statistics.prototype.updateMessageCount = function(opt_num) {
-  document.getElementById("num").innerText = "The number of statistics: " + (void 0 != opt_num ? opt_num : this.psolMessages_.length).toString();
+  document.getElementById("num").textContent = "The number of statistics: " + (void 0 != opt_num ? opt_num : this.psolMessages_.length).toString();
 };
 pagespeed.Statistics.prototype.error = function() {
   goog.array.clear(this.psolMessages_);
   this.updateMessageCount();
-  document.getElementById("stat").innerText = pagespeed.Statistics.REFRESH_ERROR_;
+  document.getElementById("stat").textContent = pagespeed.Statistics.REFRESH_ERROR_;
 };
 pagespeed.Statistics.prototype.update = function() {
   var messages = goog.array.clone(this.psolMessages_);
@@ -4639,7 +4639,7 @@ pagespeed.Statistics.prototype.update = function() {
     }
   }
   this.updateMessageCount(messages.length);
-  document.getElementById("stat").innerText = messages.join("\n");
+  document.getElementById("stat").textContent = messages.join("\n");
 };
 pagespeed.Statistics.prototype.parseMessagesFromResponse = function(jsonData) {
   var variables = jsonData.variables, maxLength = jsonData.maxlength;

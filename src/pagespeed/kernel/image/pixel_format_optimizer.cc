@@ -43,7 +43,6 @@ PixelFormatOptimizer::~PixelFormatOptimizer() {
 
 // Reset the scanline reader to its initial state.
 bool PixelFormatOptimizer::Reset() {
-  reader_ = NULL;
   bytes_per_row_ = 0;
   pixel_format_ = UNSUPPORTED;
   output_row_ = 0;
@@ -66,6 +65,9 @@ ScanlineStatus PixelFormatOptimizer::InitializeWithStatus(
 
 ScanlineStatus PixelFormatOptimizer::Initialize(
     ScanlineReaderInterface* reader) {
+  Reset();
+  reader_.reset(reader);
+
   if (reader == NULL ||
       reader->GetPixelFormat() == UNSUPPORTED ||
       reader->GetImageWidth() == 0 ||
@@ -76,8 +78,6 @@ ScanlineStatus PixelFormatOptimizer::Initialize(
                             "Invalid input image.");
   }
 
-  Reset();
-  reader_ = reader;
   pixel_format_ = reader->GetPixelFormat();
   bytes_per_row_ = reader_->GetBytesPerScanline();
 

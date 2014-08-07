@@ -461,8 +461,8 @@ pagespeed.Graphs.prototype.drawChart = function(settingPrefix, title,
     // The element identified by the id must exist.
     var targetElement = document.getElementById(targetId);
     // Remove the status info when it starts to draw charts.
-    if (targetElement.innerText == 'Loading Charts...') {
-      targetElement.innerText = '';
+    if (targetElement.textContent == 'Loading Charts...') {
+      targetElement.textContent = '';
     }
     var dest = document.createElement('div');
     // TODO(xqyin): Move all the CSS related to graphs page to a separate file
@@ -471,7 +471,7 @@ pagespeed.Graphs.prototype.drawChart = function(settingPrefix, title,
     dest.style.width = '1100px';
     dest.style.height = '320px';
     var chartTitle = document.createElement('p');
-    chartTitle.innerText = title;
+    chartTitle.textContent = title;
     chartTitle.style.fontWeight = 'bold';
     chartTitle.style.fontSize = 'large';
     targetElement.appendChild(chartTitle);

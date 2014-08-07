@@ -18,16 +18,21 @@
 
 #include "pagespeed/kernel/image/image_analysis.h"
 
+#include <stdbool.h>
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include "base/logging.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
-#include "pagespeed/kernel/image/scanline_status.h"
-#include "pagespeed/kernel/image/scanline_utils.h"
+#include "pagespeed/kernel/image/image_frame_interface.h"
+#include "pagespeed/kernel/image/jpeg_utils.h"
 #include "pagespeed/kernel/image/pixel_format_optimizer.h"
 #include "pagespeed/kernel/image/read_image.h"
+#include "pagespeed/kernel/image/scanline_interface.h"
+#include "pagespeed/kernel/image/scanline_interface_frame_adapter.h"
+#include "pagespeed/kernel/image/scanline_status.h"
+#include "pagespeed/kernel/image/scanline_utils.h"
 
 namespace pagespeed {
 
@@ -253,30 +258,127 @@ bool IsPhoto(ScanlineReaderInterface* reader, MessageHandler* handler) {
 bool AnalyzeImage(ImageFormat image_type,
                   const void* image_buffer,
                   size_t buffer_length,
-                  MessageHandler* handler,
+                  int* width,
+                  int* height,
+                  bool* is_animated,
                   bool* has_transparency,
-                  bool* is_photo) {
-  // Initialize the reader.
-  scoped_ptr<ScanlineReaderInterface> reader(
-      CreateScanlineReader(image_type, image_buffer, buffer_length, handler));
-  if (reader.get() == NULL) {
-    return false;
+                  bool* is_photo,
+                  int* quality,
+                  ScanlineReaderInterface** reader,
+                  MessageHandler* handler) {
+  scoped_ptr<ScanlineReaderInterface> sf_reader;
+  scoped_ptr<PixelFormatOptimizer> optimizer;
+  bool image_is_animated = false;
+  int image_width = 0;
+  int image_height = 0;
+  ScanlineStatus status;
+  if (image_type != IMAGE_GIF) {
+    // PNG and JPEG images only have a single frame. WebP may have multiple
+    // frames but that is rare, so they will not be analyzed.
+
+    // TODO(huibao): Upgrade WebpScanlineReader to support multiple frame
+    // WebP images.
+    sf_reader.reset(CreateScanlineReader(image_type, image_buffer,
+                                         buffer_length, handler));
+    if (sf_reader == NULL) {
+      return false;
+    }
+  } else {
+    // GIF images may have multiple frames (animation). If it has multiple
+    // frames, we can only get its width and height; if not, we can convert
+    // it to a scanline reader and find out whether it is a photo and/or
+    // transparent.
+    scoped_ptr<MultipleFrameReader> mf_reader(
+        CreateImageFrameReader(image_type, image_buffer, buffer_length,
+                               handler, &status));
+    if (mf_reader == NULL) {
+      return false;
+    }
+
+    ImageSpec image_spec;
+    if (!mf_reader->GetImageSpec(&image_spec, &status)) {
+      return false;
+    }
+    image_is_animated = (image_spec.num_frames > 1);
+
+    if (image_is_animated) {
+      image_width = image_spec.width;
+      image_height = image_spec.height;
+    } else {
+      sf_reader.reset(new FrameToScanlineReaderAdapter(mf_reader.release()));
+      if (sf_reader == NULL) {
+        return false;
+      }
+      status = sf_reader->InitializeWithStatus(image_buffer, buffer_length);
+      if (!status.Success()) {
+        return false;
+      }
+    }
   }
 
-  // Initialize the optimizer which will remove alpha channel if it is
-  // completely opaque.
-  PixelFormatOptimizer optimizer(handler);
-  if (!optimizer.Initialize(reader.get()).Success()) {
-    return false;
+  if (!image_is_animated) {
+    image_width = sf_reader->GetImageWidth();
+    image_height = sf_reader->GetImageHeight();
   }
 
-  // Report the interesting information of the optimized image.
-  if (has_transparency != NULL) {
-    *has_transparency = (optimizer.GetPixelFormat() == RGBA_8888);
+  // No matter how many frames the image has, we can always find out whether it
+  // is animated, its width, and its height.
+  if (is_animated != NULL) {
+    *is_animated = image_is_animated;
   }
-  if (is_photo != NULL) {
-    *is_photo = IsPhoto(&optimizer, handler);
+  if (width != NULL) {
+    *width = image_width;
   }
+  if (height != NULL) {
+    *height = image_height;
+  }
+
+  // Finding whether the image is transparent or photo requires processing
+  // the entire image. We do this only when it's requested. We also do this
+  // only for single frame images now, because for mutliple frames images each
+  // frame may have different attributes.
+  //
+  // TODO(huibao): Enhance PixelFormatOptimizer and IsPhoto() so they support
+  // MultipleFrameReader. PixelFormatOptimizer may return unique attributes
+  // for each frame since the frames may have different values. IsPhoto() may
+  // return a single value for all of the frames because it is unlikely that
+  // the image consists of both photos and graphics.
+  if (sf_reader != NULL && (has_transparency != NULL || is_photo != NULL)) {
+    // Initialize the optimizer which will remove alpha channel if it is
+    // completely opaque.
+    optimizer.reset(new PixelFormatOptimizer(handler));
+    if (!optimizer->Initialize(sf_reader.release()).Success()) {
+      return false;
+    }
+
+    // Report the interesting information of the optimized image.
+    if (has_transparency != NULL) {
+      *has_transparency = (optimizer->GetPixelFormat() == RGBA_8888);
+    }
+    if (is_photo != NULL) {
+      *is_photo = IsPhoto(optimizer.get(), handler);
+    }
+  }
+
+  if (quality != NULL && image_type == IMAGE_JPEG) {
+    *quality = JpegUtils::GetImageQualityFromImage(image_buffer, buffer_length,
+                                                   handler);
+    // TODO(huibao): Add utility for finding quality number from WebP images
+    // and apply it here.
+  }
+
+  // If "reader" has been requested, the caller is responsible for destroying
+  // it.
+  if (reader != NULL) {
+    if (optimizer != NULL) {
+      *reader = optimizer.release();
+    } else if (sf_reader != NULL) {
+      *reader = sf_reader.release();
+    } else {
+      *reader = NULL;
+    }
+  }
+
   return true;
 }
 
