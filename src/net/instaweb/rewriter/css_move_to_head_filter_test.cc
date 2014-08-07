@@ -11,7 +11,6 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
@@ -59,19 +58,90 @@ TEST_F(CssMoveToHeadFilterTest, MovesCssToHead) {
 TEST_F(CssMoveToHeadFilterTest, DoesntMoveOutOfNoScript) {
   AddFilter(RewriteOptions::kMoveCssToHead);
 
-  static const char html[] =
+  static const char input_html[] =
       "<head>\n"
       "  <title>Example</title>\n"
       "</head>\n"
       "<body>\n"
+      "  <style>a {color: red}</style>\n"
       "  <noscript>\n"
-      "    <link rel='stylesheet' href='a.css' type='text/css'>\n"
+      "    <link rel='stylesheet' href='a.css'>\n"
       "  </noscript>\n"
+      "  <style>p {color: blue}</style>\n"
+      "</body>\n";
+  static const char expected_html[] =
+      "<head>\n"
+      "  <title>Example</title>\n"
+      "<style>a {color: red}</style>"
+      "</head>\n"
+      "<body>\n"
+      "  \n"
+      "  <noscript>\n"
+      "    <link rel='stylesheet' href='a.css'>\n"
+      "  </noscript>\n"
+      "  <style>p {color: blue}</style>\n"
       "</body>\n";
 
-  ValidateNoChanges("noscript", html);
+  ValidateExpected("noscript", input_html, expected_html);
 }
 
+TEST_F(CssMoveToHeadFilterTest, DoesntMoveScopedStyle) {
+  AddFilter(RewriteOptions::kMoveCssToHead);
+
+  static const char input_html[] =
+      "<head>\n"
+      "  <title>Example</title>\n"
+      "</head>\n"
+      "<body>\n"
+      "  <style>div {color: green}</style>\n"
+      "  <style scoped>a {color: red}</style>\n"
+      "  <style scoped='scoped'>p {color: blue}</style>\n"
+      "  <link rel='stylesheet' href='a.css'>\n"
+      "  <p>Blue with a <a href='scoped_style.html'>red link</a>"
+      "</body>\n";
+  static const char expected_html[] =
+      "<head>\n"
+      "  <title>Example</title>\n"
+      "<style>div {color: green}</style>"
+      "</head>\n"
+      "<body>\n"
+      "  \n"
+      "  <style scoped>a {color: red}</style>\n"
+      "  <style scoped='scoped'>p {color: blue}</style>\n"
+      "  <link rel='stylesheet' href='a.css'>\n"
+      "  <p>Blue with a <a href='scoped_style.html'>red link</a>"
+      "</body>\n";
+  ValidateExpected("scoped_style", input_html, expected_html);
+}
+
+TEST_F(CssMoveToHeadFilterTest, MovePastScopedDiv) {
+  AddFilter(RewriteOptions::kMoveCssToHead);
+
+  static const char input_html[] =
+      "<head>\n"
+      "  <title>Example</title>\n"
+      "</head>\n"
+      "<body>\n"
+      "  <style>div {color: green}</style>\n"
+      "  <div scoped>Just a div, move along!</div>\n"
+      "  <style>p {color: blue}</style>\n"
+      "  <link rel='stylesheet' href='a.css'>\n"
+      "</body>\n";
+  static const char expected_html[] =
+      "<head>\n"
+      "  <title>Example</title>\n"
+      "<style>div {color: green}</style>"
+      "<style>p {color: blue}</style>"
+      "<link rel='stylesheet' href='a.css'>"
+      "</head>\n"
+      "<body>\n"
+      "  \n"
+      "  <div scoped>Just a div, move along!</div>\n"
+      "  \n"
+      "  \n"
+      "</body>\n";
+  ValidateExpected("scoped_div", input_html, expected_html);
+}
 
 TEST_F(CssMoveToHeadFilterTest, DoesntReorderCss) {
   AddFilter(RewriteOptions::kMoveCssToHead);

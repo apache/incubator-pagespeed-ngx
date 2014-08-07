@@ -65,7 +65,13 @@ void CssOutlineFilter::StartElementImpl(HtmlElement* element) {
     inline_element_ = NULL;  // Don't outline what we don't understand.
     inline_chars_ = NULL;
   }
-  if (element->keyword() == HtmlName::kStyle) {
+  if (element->keyword() == HtmlName::kStyle &&
+      element->FindAttribute(HtmlName::kScoped) == NULL) {
+    // <style scoped> can't be directly converted to a <link>. We could
+    // theoretically convert it to a <style scoped>@import ... </style>, but
+    // given the feature has very little browser support, it's probably not
+    // worth the effort, so we just leave it alone.
+    // All other <style> blocks are candidates for conversion.
     inline_element_ = element;
     inline_chars_ = NULL;
   }
@@ -113,14 +119,6 @@ void CssOutlineFilter::OutlineStyle(HtmlElement* style_element,
                                     const GoogleString& content_str) {
   StringPiece content(content_str);
   if (driver()->IsRewritable(style_element)) {
-    if (style_element->FindAttribute(HtmlName::kScoped) != NULL) {
-      // <style scoped> can't be directly converted to a <link>. We could
-      // theoretically convert it to a <style scoped>@import ... </style>,
-      // but given the feature has very little browser support, it's probably
-      // not worth the effort, so we just leave it alone.
-      return;
-    }
-
     // Create style file from content.
     const char* type = style_element->AttributeValue(HtmlName::kType);
     // We only deal with CSS styles.  If no type specified, CSS is assumed.
