@@ -1984,6 +1984,51 @@ check [ `grep -c '<style>[.]big{[^}]*}</style>' $FETCH_UNTIL_OUTFILE` = 1 ]
 check [ `grep -c '<style>[.]blue{[^}]*}[.]bold{[^}]*}</style>' \
   $FETCH_UNTIL_OUTFILE` = 1 ]
 
+# Now repeat the critical_css_filter test on a host that processes post data via
+# temp files to test that ngx_pagespeed specific code path.
+start_test Able to read POST data from temp file.
+URL="http://beacon-post-temp-file.example.com/mod_pagespeed_example/prioritize_critical_css.html"
+http_proxy=$SECONDARY_HOSTNAME\
+  fetch_until -save $URL 'fgrep -c pagespeed.criticalCssBeaconInit' 1
+check [ $(fgrep -o ".very_large_class_name_" $FETCH_FILE | wc -l) -eq 36 ]
+CALL_PAT=".*criticalCssBeaconInit("
+SKIP_ARG="[^,]*,"
+CAPTURE_ARG="'\([^']*\)'.*"
+BEACON_PATH=$(sed -n "s/${CALL_PAT}${CAPTURE_ARG}/\1/p" $FETCH_FILE)
+ESCAPED_URL=$( \
+  sed -n "s/${CALL_PAT}${SKIP_ARG}${CAPTURE_ARG}/\1/p" $FETCH_FILE)
+OPTIONS_HASH=$( \
+  sed -n "s/${CALL_PAT}${SKIP_ARG}${SKIP_ARG}${CAPTURE_ARG}/\1/p" $FETCH_FILE)
+NONCE=$( \
+  sed -n "s/${CALL_PAT}${SKIP_ARG}${SKIP_ARG}${SKIP_ARG}${CAPTURE_ARG}/\1/p" \
+  $FETCH_FILE)
+BEACON_URL="http://${SECONDARY_HOSTNAME}${BEACON_PATH}?url=${ESCAPED_URL}"
+BEACON_DATA="oh=${OPTIONS_HASH}&n=${NONCE}&cs=.big,.blue,.bold,.foo"
+
+OUT=$(wget -q  --save-headers -O - --no-http-keep-alive \
+      --post-data "$BEACON_DATA" "$BEACON_URL" \
+      --header "Host:beacon-post-temp-file.example.com")
+check_from "$OUT" grep '^HTTP/1.1 204'
+
+# Now make sure we see the correct critical css rules.
+http_proxy=$SECONDARY_HOSTNAME\
+  fetch_until $URL \
+    'grep -c <style>[.]blue{[^}]*}</style>' 1
+http_proxy=$SECONDARY_HOSTNAME\
+  fetch_until $URL \
+    'grep -c <style>[.]big{[^}]*}</style>' 1
+http_proxy=$SECONDARY_HOSTNAME\
+  fetch_until $URL \
+    'grep -c <style>[.]blue{[^}]*}[.]bold{[^}]*}</style>' 1
+http_proxy=$SECONDARY_HOSTNAME\
+  fetch_until -save $URL \
+    'grep -c <style>[.]foo{[^}]*}</style>' 1
+# The last one should also have the other 3, too.
+check [ `grep -c '<style>[.]blue{[^}]*}</style>' $FETCH_UNTIL_OUTFILE` = 1 ]
+check [ `grep -c '<style>[.]big{[^}]*}</style>' $FETCH_UNTIL_OUTFILE` = 1 ]
+check [ `grep -c '<style>[.]blue{[^}]*}[.]bold{[^}]*}</style>' \
+  $FETCH_UNTIL_OUTFILE` = 1 ]
+
 # This test checks that the ClientDomainRewrite directive can turn on.
 start_test ClientDomainRewrite on directive
 HOST_NAME="http://client-domain-rewrite.example.com"
