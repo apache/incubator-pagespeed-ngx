@@ -1752,6 +1752,7 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
   if (!html_rewrite &&
       r->method != NGX_HTTP_GET &&
       r->method != NGX_HTTP_HEAD &&
+      r->method != NGX_HTTP_POST &&
       response_category != RequestRouting::kCachePurge) {
     return NGX_DECLINED;
   }

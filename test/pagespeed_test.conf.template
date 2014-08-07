@@ -1097,6 +1097,32 @@ http {
   }
 
   server {
+    pagespeed on;
+    pagespeed EnableFilters add_instrumentation;
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name proxy-post.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    location / {
+      # Transform the POST to a GET request for the origin,
+      # as nginx's static handler doesn't allow POST requests.
+      proxy_method GET;
+      proxy_pass http://127.0.0.1:@@SECONDARY_PORT@@/;
+      proxy_set_header "Host" "proxy-post-origin.example.com";
+    }
+  }
+
+  server {
+    pagespeed off;
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name proxy-post-origin.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+    root "@@SERVER_ROOT@@";
+  }
+
+  server {
     listen @@SECONDARY_PORT@@;
     listen [::]:@@SECONDARY_PORT@@;
     server_name purge.example.com;
