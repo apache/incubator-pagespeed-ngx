@@ -2726,6 +2726,12 @@ OUT=$($WGET_DUMP -O /dev/null -S $HEADERS $URL 2>&1)
 check_from "$OUT" fgrep -qi 'Content-Encoding: gzip'
 check_from "$OUT" fgrep -qi 'Vary: Accept-Encoding'
 
+start_test Test that POST requests are rewritten.
+URL="http://$SECONDARY_HOSTNAME/mod_pagespeed_example/rewrite_images.html"
+HEADERS="--header=Host:proxy-post.example.com --post-data=abcdefgh"
+OUT=$($WGET_DUMP -S $HEADERS $URL 2>&1)
+check_from "$OUT" fgrep -qi 'addInstrumentationInit'
+
 if [ "$NATIVE_FETCHER" != "on" ]; then
   start_test Test that we can rewrite an HTTPS resource.
   fetch_until $TEST_ROOT/https_fetch/https_fetch.html \
