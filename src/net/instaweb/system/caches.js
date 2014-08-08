@@ -63,6 +63,10 @@ pagespeed.Caches = function(opt_xhr) {
       '" href="javascript:void(0);">' +
       'Show Cache Structure</a> - </td>' +
       '<td><a id="' +
+      pagespeed.Caches.DisplayMode.PHYSICAL_CACHE +
+      '" href="javascript:void(0);">' +
+      'Physical Caches</a> - </td>' +
+      '<td><a id="' +
       pagespeed.Caches.DisplayMode.PURGE_CACHE +
       '" href="javascript:void(0);">' +
       'Purge Cache</a></td></tr>';
@@ -120,6 +124,7 @@ pagespeed.Caches.toggleDetail = function(id) {
 pagespeed.Caches.DisplayMode = {
   METADATA_CACHE: 'show_metadata_mode',
   CACHE_STRUCTURE: 'cache_struct_mode',
+  PHYSICAL_CACHE: 'physical_cache_mode',
   PURGE_CACHE: 'purge_cache_mode'
 };
 
@@ -133,6 +138,7 @@ pagespeed.Caches.DisplayMode = {
 pagespeed.Caches.DisplayDiv = {
   METADATA_CACHE: 'show_metadata',
   CACHE_STRUCTURE: 'cache_struct',
+  PHYSICAL_CACHE: 'physical_cache',
   PURGE_CACHE: 'purge_cache'
 };
 

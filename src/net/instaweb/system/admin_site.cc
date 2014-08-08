@@ -580,7 +580,10 @@ void AdminSite::PrintCaches(bool is_global, AdminSource source,
                                (fsmdc == NULL) ? "none" : fsmdc->Name())),
                    message_handler_);
       fetch->Write(kTableEnd, message_handler_);
+      fetch->Write("</div>", message_handler_);
 
+      fetch->Write("<div id=\"physical_cache\" style=\"display:none\">",
+                   message_handler_);
       GoogleString backend_stats;
       system_caches->PrintCacheStats(
           static_cast<SystemCaches::StatFlags>(flags), &backend_stats);

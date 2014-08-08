@@ -629,11 +629,11 @@ void SystemCaches::PrintCacheStats(StatFlags flags, GoogleString* out) {
              e = metadata_shm_caches_.end(); p != e; ++p) {
       MetadataShmCacheInfo* cache_info = p->second;
       if (cache_info->cache_backend != NULL) {
-        StrAppend(out, "Shared memory metadata cache '", p->first,
-                  "' statistics:<br>");
+        StrAppend(out, "\nShared memory metadata cache '", p->first,
+                  "' statistics:\n");
         StringWriter writer(out);
-        HtmlKeywords::WritePre(cache_info->cache_backend->DumpStats(), "",
-                               &writer, factory_->message_handler());
+        writer.Write(cache_info->cache_backend->DumpStats(),
+                     factory_->message_handler());
       }
     }
   }

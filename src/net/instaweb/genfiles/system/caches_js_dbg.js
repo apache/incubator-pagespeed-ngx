@@ -4599,7 +4599,7 @@ var pagespeed = {Caches:function(opt_xhr) {
   this.inputIsFrom_ = "";
   var modeElement = document.createElement("table");
   modeElement.id = "mode_bar";
-  modeElement.innerHTML = '<tr><td><a id="' + pagespeed.Caches.DisplayMode.METADATA_CACHE + '" href="javascript:void(0);">Show Metadata Cache</a> - </td><td><a id="' + pagespeed.Caches.DisplayMode.CACHE_STRUCTURE + '" href="javascript:void(0);">Show Cache Structure</a> - </td><td><a id="' + pagespeed.Caches.DisplayMode.PURGE_CACHE + '" href="javascript:void(0);">Purge Cache</a></td></tr>';
+  modeElement.innerHTML = '<tr><td><a id="' + pagespeed.Caches.DisplayMode.METADATA_CACHE + '" href="javascript:void(0);">Show Metadata Cache</a> - </td><td><a id="' + pagespeed.Caches.DisplayMode.CACHE_STRUCTURE + '" href="javascript:void(0);">Show Cache Structure</a> - </td><td><a id="' + pagespeed.Caches.DisplayMode.PHYSICAL_CACHE + '" href="javascript:void(0);">Physical Caches</a> - </td><td><a id="' + pagespeed.Caches.DisplayMode.PURGE_CACHE + '" href="javascript:void(0);">Purge Cache</a></td></tr>';
   document.body.insertBefore(modeElement, document.getElementById(pagespeed.Caches.DisplayDiv.METADATA_CACHE));
   var metadataResult = document.createElement("pre");
   metadataResult.id = pagespeed.Caches.ElementId.METADATA_RESULT;
@@ -4618,8 +4618,8 @@ pagespeed.Caches.toggleDetail = function(id) {
   document.getElementById(id + "_toggle").checked ? (summary_div.style.display = "none", detail_div.style.display = "block") : (summary_div.style.display = "block", detail_div.style.display = "none");
 };
 goog.exportSymbol("pagespeed.Caches.toggleDetail", pagespeed.Caches.toggleDetail);
-pagespeed.Caches.DisplayMode = {METADATA_CACHE:"show_metadata_mode", CACHE_STRUCTURE:"cache_struct_mode", PURGE_CACHE:"purge_cache_mode"};
-pagespeed.Caches.DisplayDiv = {METADATA_CACHE:"show_metadata", CACHE_STRUCTURE:"cache_struct", PURGE_CACHE:"purge_cache"};
+pagespeed.Caches.DisplayMode = {METADATA_CACHE:"show_metadata_mode", CACHE_STRUCTURE:"cache_struct_mode", PHYSICAL_CACHE:"physical_cache_mode", PURGE_CACHE:"purge_cache_mode"};
+pagespeed.Caches.DisplayDiv = {METADATA_CACHE:"show_metadata", CACHE_STRUCTURE:"cache_struct", PHYSICAL_CACHE:"physical_cache", PURGE_CACHE:"purge_cache"};
 pagespeed.Caches.ElementId = {METADATA_TEXT:"metadata_text", METADATA_SUBMIT:"metadata_submit", METADATA_RESULT:"metadata_result", METADATA_CLEAR:"metadata_clear", PURGE_TEXT:"purge_text", PURGE_SUBMIT:"purge_submit", PURGE_RESULT:"purge_result", PURGE_ALL:"purge_all", PURGE_SET:"purge_set", USER_AGENT:"user_agent"};
 pagespeed.Caches.prototype.parseLocation = function() {
   var div = location.hash.substr(1);
