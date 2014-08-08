@@ -80,7 +80,7 @@ class SuppressPreheadFilter : public HtmlWriterFilter {
   StringWriter pre_head_writer_;  // Writer to write the pre_head_.
   // Writer to write both the pre_head string and to the response buffer.
   scoped_ptr<SplitWriter> pre_head_and_response_writer_;
-  ResponseHeaders response_headers_;
+  scoped_ptr<ResponseHeaders> response_headers_;
 
   DISALLOW_COPY_AND_ASSIGN(SuppressPreheadFilter);
 };

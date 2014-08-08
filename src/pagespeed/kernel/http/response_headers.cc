@@ -52,6 +52,16 @@ class MessageHandler;
 // we'll set it back to 3:00:00 exactly in FixDateHeaders.
 const int64 kMaxAllowedDateDriftMs = 3L * net_instaweb::Timer::kMinuteMs;
 
+ResponseHeaders::ResponseHeaders(const ResponseHeaders& other) {
+  CopyFrom(other);
+}
+ResponseHeaders& ResponseHeaders::operator=(const ResponseHeaders& other) {
+  if (&other != this) {
+    CopyFrom(other);
+  }
+  return *this;
+}
+
 ResponseHeaders::~ResponseHeaders() {
   Clear();
 }

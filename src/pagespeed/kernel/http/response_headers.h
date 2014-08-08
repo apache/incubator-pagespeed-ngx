@@ -42,6 +42,9 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // This constructor with options explicitly set should be used by all callers.
   explicit ResponseHeaders(const HttpOptions& options) { Init(options); }
 
+  explicit ResponseHeaders(const ResponseHeaders& other);
+  ResponseHeaders& operator=(const ResponseHeaders& other);
+
   // This default constructor should only be used in tests.
   // TODO(sligocki): Phase this out so that nobody uses this one by accident.
   ResponseHeaders() { Init(kDeprecatedDefaultHttpOptions); }
@@ -373,7 +376,7 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   bool force_cached_;
   bool min_cache_ttl_applied_;
 
-  DISALLOW_COPY_AND_ASSIGN(ResponseHeaders);
+  // Allow copy and assign.
 };
 
 }  // namespace net_instaweb

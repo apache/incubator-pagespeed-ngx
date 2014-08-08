@@ -23,7 +23,6 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/http_value_writer.h"
-#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -45,6 +44,7 @@ class HtmlElement;
 class InputInfo;
 class MessageHandler;
 class ResourceContext;
+class ResponseHeaders;
 class RewriteDriver;
 class RewriteFilter;
 class Statistics;
@@ -212,7 +212,7 @@ class RecordingFetch : public SharedAsyncFetch {
   bool streaming_;
   HTTPValue cache_value_;
   HTTPValueWriter cache_value_writer_;
-  ResponseHeaders saved_headers_;
+  scoped_ptr<ResponseHeaders> saved_headers_;
   Variable* in_place_oversized_opt_stream_;
   Variable* in_place_uncacheable_rewrites_;
   DISALLOW_COPY_AND_ASSIGN(RecordingFetch);

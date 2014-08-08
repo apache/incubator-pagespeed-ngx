@@ -31,12 +31,10 @@
 #include "net/instaweb/rewriter/public/flush_early_info_finder.h"
 #include "net/instaweb/rewriter/public/meta_tag_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "pagespeed/kernel/base/ref_counted_ptr.h"
-#include "pagespeed/kernel/http/http_options.h"
 
 namespace {
 
@@ -58,8 +56,7 @@ namespace net_instaweb {
 SuppressPreheadFilter::SuppressPreheadFilter(RewriteDriver* driver)
     : HtmlWriterFilter(driver),
       driver_(driver),
-      pre_head_writer_(&pre_head_),
-      response_headers_(driver->options()->ComputeHttpOptions()) {
+      pre_head_writer_(&pre_head_) {
   Clear();
 }
 
@@ -80,8 +77,8 @@ void SuppressPreheadFilter::StartDocument() {
     set_writer(pre_head_and_response_writer_.get());
   }
   // Setting the charset in response headers related initialization.
-  response_headers_.CopyFrom(*(driver_->response_headers()));
-  charset_ = response_headers_.DetermineCharset();
+  response_headers_.reset(new ResponseHeaders(*driver_->response_headers()));
+  charset_ = response_headers_->DetermineCharset();
   has_charset_ = !charset_.empty();
 }
 
@@ -126,8 +123,8 @@ void SuppressPreheadFilter::EndElement(HtmlElement* element) {
   if (noscript_element_ == NULL &&
       element->keyword() == HtmlName::kMeta) {
     if (!has_charset_) {
-      has_charset_ = MetaTagFilter::ExtractAndUpdateMetaTagDetails(element,
-          &response_headers_);
+      has_charset_ = MetaTagFilter::ExtractAndUpdateMetaTagDetails(
+          element, response_headers_.get());
     }
     if (!has_x_ua_compatible_) {
       has_x_ua_compatible_ = ExtractAndUpdateXUACompatible(element);
@@ -147,7 +144,7 @@ void SuppressPreheadFilter::Clear() {
   pre_head_.clear();
   charset_.clear();
   pre_head_and_response_writer_.reset(NULL);
-  response_headers_.Clear();
+  response_headers_.reset();
   HtmlWriterFilter::Clear();
 }
 
@@ -190,7 +187,7 @@ void SuppressPreheadFilter::EndDocument() {
   // http://tools.ietf.org/html/rfc6265#section-4.1.2.6
   flush_early_info->set_http_only_cookie_present(
       flush_early_info->http_only_cookie_present() ||
-      response_headers_.HasAnyCookiesWithAttribute("HttpOnly", NULL));
+      response_headers_->HasAnyCookiesWithAttribute("HttpOnly", NULL));
   if (!has_charset_) {
     FlushEarlyInfoFinder* finder =
         driver_->server_context()->flush_early_info_finder();
@@ -199,11 +196,11 @@ void SuppressPreheadFilter::EndDocument() {
       charset_ = finder->GetCharset(driver_);
       if (!charset_.empty()) {
         GoogleString type = StrCat(";charset=", charset_);
-        response_headers_.MergeContentType(type);
+        response_headers_->MergeContentType(type);
       }
     }
   }
-  driver_->SaveOriginalHeaders(response_headers_);
+  driver_->SaveOriginalHeaders(*response_headers_);
 }
 
 // TODO(marq): Make this a regular method instead of a static method, and have
@@ -275,8 +272,8 @@ bool SuppressPreheadFilter::ExtractAndUpdateXUACompatible(
 
       // http-equiv must equal "Content-Type" and content must not be blank.
       if (StringCaseEqual(attribute, HttpAttributes::kXUACompatible)) {
-        if (!response_headers_.HasValue(attribute, value_str)) {
-          response_headers_.Add(attribute, value_str);
+        if (!response_headers_->HasValue(attribute, value_str)) {
+          response_headers_->Add(attribute, value_str);
           return true;
         }
       }

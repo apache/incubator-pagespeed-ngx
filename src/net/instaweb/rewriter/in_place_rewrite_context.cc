@@ -26,7 +26,6 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/meta_data.h"
-#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
@@ -88,8 +87,7 @@ RecordingFetch::RecordingFetch(bool proxy_mode,
       can_in_place_rewrite_(false),
       streaming_(true),
       cache_value_writer_(
-          &cache_value_, context_->FindServerContext()->http_cache()),
-      saved_headers_(request_context()->options()) {
+          &cache_value_, context_->FindServerContext()->http_cache()) {
   Statistics* stats = context->FindServerContext()->statistics();
   in_place_oversized_opt_stream_ =
       stats->GetVariable(InPlaceRewriteContext::kInPlaceOversizedOptStream);
@@ -104,7 +102,7 @@ void RecordingFetch::HandleHeadersComplete() {
   streaming_ = ShouldStream();
   if (can_in_place_rewrite_) {
     // Save the headers, and wait to finalize them in HandleDone().
-    saved_headers_.CopyFrom(*response_headers());
+    saved_headers_.reset(new ResponseHeaders(*response_headers()));
     if (streaming_) {
       SharedAsyncFetch::HandleHeadersComplete();
     }
@@ -203,10 +201,10 @@ void RecordingFetch::HandleDone(bool success) {
     int64 ocl;
     if (original_content_length_hdr != NULL &&
         StringToInt64(original_content_length_hdr, &ocl)) {
-      saved_headers_.SetOriginalContentLength(ocl);
+      saved_headers_->SetOriginalContentLength(ocl);
     }
     // Now finalize the headers.
-    cache_value_writer_.SetHeaders(&saved_headers_);
+    cache_value_writer_.SetHeaders(saved_headers_.get());
   }
 
   if (streaming_) {
