@@ -1,0 +1,98 @@
+/* net/instaweb/rewriter/mobilize.css */
+/*
+ * Copyright 2014 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * @fileoverview Stylesheet injected into mobilized pages.
+ *
+ * @author stevensr@google.com (Ryan Stevens)
+ */
+
+/* Force all elements into the mobile viewport. */
+* {
+  max-width: 100% !important;
+  min-width: 0 !important;
+  width: auto !important;
+  position: relative !important;
+}
+
+/* The blocks marked with an importance attribute should be in a single-column
+   layout */
+[importance] {
+  float: none !important;
+  display: block !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* Some heuristics to make headers display a bit nicer, usually. */
+[importance="header"] div {
+  float: none !important;
+  display: block !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Navigational sections often have a fixed height. */
+[importance="navigational"] {
+  height: auto !important;
+}
+
+/* Make links display as mobile-friendly buttons instead of just text. For now
+   the colors are set to some generic values, but it might be better to set the
+   links such that the blend with the page. One fancy way to do this is by
+   automatically setting the links to be the opposite of the background color
+   using the -webkit-filter: invert(100%); property, but this is not supported
+   by all browsers. */
+[importance="navigational"] a {
+  float: none !important;
+  display: block !important;
+  margin: 1px 1% !important;
+  font-size: x-large !important;
+  text-decoration: none !important;
+  background-color: #EEEEEE !important;
+  color: #333333 !important;
+  padding: 2px 6px 2px 6px !important;
+  border-top: 1px solid #CCCCCC !important;
+  border-right: 1px solid #333333 !important;
+  border-bottom: 1px solid #333333 !important;
+  border-left: 1px solid #CCCCCC !important;
+}
+
+/* Give the main content a bit of space, mainly so text is not right against the
+   edge of the screen. */
+[importance="content"] {
+ padding-left: 1% !important;
+ padding-right: 1% !important;
+}
+
+/* Force the main content into a single-column layout. */
+[importance="content"] div {
+  float: none !important;
+  display: block !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* Increase the font size for content elements. */
+[importance="content"] a, [importance="content"] p,
+[importance="content"] div, [importance="content"] span {
+  font-size: medium !important;
+}

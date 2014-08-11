@@ -4605,14 +4605,12 @@ var pagespeed = {Messages:function(opt_xhr) {
   wrapper.style.overflow = "hidden";
   wrapper.style.clear = "both";
   var uiTable = document.createElement("div");
-  uiTable.id = "uiTable";
-  uiTable.innerHTML = '<table id=ui border="1" style="float:left; border-collapse: collapse;border-color:silver;"><tr valign="center"><td>Reverse: <input type="checkbox" id="reverse" ' + (this.reverse_ ? "checked" : "") + '></td><td>Auto refresh (every 5 seconds): <input type="checkbox" id="autoRefresh" ' + (this.autoRefresh_ ? "checked" : "") + '></td><td>&nbsp;&nbsp;&nbsp;&nbsp;Filter: <input id="txtFilter" type="text" size="70"></td></tr></table>';
+  uiTable.id = "ui-div";
+  uiTable.innerHTML = '<table id="ui-table" border="1" style="float:left; border-collapse: collapse;border-color:silver;"><tr valign="center"><td>Reverse: <input type="checkbox" id="reverse" ' + (this.reverse_ ? "checked" : "") + '></td><td>Auto refresh (every 5 seconds): <input type="checkbox" id="auto-refresh" ' + (this.autoRefresh_ ? "checked" : "") + '></td><td>&nbsp;&nbsp;&nbsp;&nbsp;Filter: <input id="text-filter" type="text" size="70"></td></tr></table>';
   wrapper.appendChild(uiTable);
   var numElement = document.createElement("div");
   numElement.id = "num";
-  numElement.style.color = "green";
-  numElement.style.overflow = "hidden";
-  numElement.style.padding = "5px 0px 0px 10px";
+  numElement.className = "pagespeed-show-number";
   wrapper.appendChild(numElement);
   document.body.insertBefore(wrapper, document.getElementById("log"));
   this.updateMessageCount();
@@ -4660,10 +4658,10 @@ pagespeed.Messages.prototype.parseAjaxResponse = function() {
 };
 pagespeed.Messages.Start = function() {
   goog.events.listen(window, "load", function() {
-    var messagesObj = new pagespeed.Messages, filterElement = document.getElementById("txtFilter");
+    var messagesObj = new pagespeed.Messages, filterElement = document.getElementById("text-filter");
     goog.events.listen(filterElement, "keyup", goog.bind(messagesObj.setFilter, messagesObj, filterElement));
     goog.events.listen(document.getElementById("reverse"), "change", goog.bind(messagesObj.toggleReverse, messagesObj));
-    goog.events.listen(document.getElementById("autoRefresh"), "change", goog.bind(messagesObj.toggleAutorefresh, messagesObj));
+    goog.events.listen(document.getElementById("auto-refresh"), "change", goog.bind(messagesObj.toggleAutorefresh, messagesObj));
     goog.events.listen(messagesObj.xhr_, goog.net.EventType.COMPLETE, goog.bind(messagesObj.parseAjaxResponse, messagesObj));
     setInterval(messagesObj.autoRefresh.bind(messagesObj), 5E3);
   });

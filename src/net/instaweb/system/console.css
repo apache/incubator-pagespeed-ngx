@@ -22,40 +22,6 @@
  * @author joseantonio@google.com (Jose Antonio Martinez)
  */
 
-@charset "UTF-8";
-
-/*------------------------------------------------------------------
-  eric meyer's reset.  Note, this originally had a few items that were
-  eliminated because they affected the admin navigation bar
-  (html,body,div) or were unused, based on a chrome dev tools audit
-  (blockquote,ol,ul,table,caption,tb,td).
-  ------------------------------------------------------------------*/
-span,applet,object,iframe,
-h1,h2,h3,h4,h5,h6,p,pre,
-a,abbr,acronym,address,big,cite,code,
-del,dfn,em,font,img,ins,kbd,q,s,samp,
-small,strike,strong,sub,sup,tt,var,
-dl,dt,dd,li,
-fieldset,form,label,legend,
-tbody,tfoot,thead,tr {
-  margin: 0;
-  padding: 0;
-  border: 0;
-  outline: 0;
-  font-weight: inherit;
-  font-style: inherit;
-  font-size: 100%;
-  font-family: inherit;
-  vertical-align: baseline;
-}
-body {
-  line-height: 1;
-  color: black;
-  background: white;
-}
-input::-moz-focus-inner {
-  border: 0;
-}
 /*------------------------------------------------------------------
 @global Type
 ------------------------------------------------------------------*/

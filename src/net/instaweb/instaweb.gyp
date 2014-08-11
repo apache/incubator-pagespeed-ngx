@@ -648,6 +648,48 @@
       ]
     },
     {
+      'target_name': 'instaweb_graphs_css_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'net/instaweb/system',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/system',
+        'var_name': 'graphs_css',
+      },
+      'sources': [
+        'genfiles/system/graphs_css.css',
+      ],
+      'includes': [
+        'data2c.gypi',
+      ]
+    },
+    {
+      'target_name': 'instaweb_caches_css_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'net/instaweb/system',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/system',
+        'var_name': 'caches_css',
+      },
+      'sources': [
+        'genfiles/system/caches_css.css',
+      ],
+      'includes': [
+        'data2c.gypi',
+      ]
+    },
+    {
+      'target_name': 'instaweb_admin_site_css_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'net/instaweb/system',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/system',
+        'var_name': 'admin_site_css',
+      },
+      'sources': [
+        'genfiles/system/admin_site_css.css',
+      ],
+      'includes': [
+        'data2c.gypi',
+      ]
+    },
+    {
       'target_name': 'instaweb_spriter_pb',
       'variables': {
         'instaweb_protoc_subdir': 'net/instaweb/spriter/public',
@@ -862,6 +904,20 @@
       'includes': [
         'gperf.gypi',
       ],
+    },
+    {
+      'target_name': 'instaweb_mobilize_css_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'net/instaweb/rewriter',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/rewriter',
+        'var_name': 'mobilize_css',
+      },
+      'sources': [
+        'genfiles/rewriter/mobilize_css.css',
+      ],
+      'includes': [
+        'data2c.gypi',
+      ]
     },
     {
       # TODO: break this up into sub-libs (mocks, real, etc)
@@ -1160,7 +1216,9 @@
       'dependencies': [
         'instaweb_add_instrumentation_data2c',
         'instaweb_add_instrumentation_opt_data2c',
+        'instaweb_admin_site_css_data2c',
         'instaweb_cache_html_info_pb',
+        'instaweb_caches_css_data2c',
         'instaweb_caches_js_data2c',
         'instaweb_caches_js_opt_data2c',
         'instaweb_client_domain_rewriter_data2c',
@@ -1193,6 +1251,7 @@
         'instaweb_extended_instrumentation_opt_data2c',
         'instaweb_flush_early_pb',
         'instaweb_ghost_click_buster_opt_data2c',
+        'instaweb_graphs_css_data2c',
         'instaweb_graphs_js_data2c',
         'instaweb_graphs_js_opt_data2c',
         'instaweb_js_defer_data2c',
@@ -1203,6 +1262,7 @@
         'instaweb_local_storage_cache_opt_data2c',
         'instaweb_messages_js_data2c',
         'instaweb_messages_js_opt_data2c',
+        'instaweb_mobilize_css_data2c',
         'instaweb_panel_loader_opt_data2c',
         'instaweb_rewriter_base',
         'instaweb_rewriter_css',
@@ -1275,6 +1335,7 @@
         'rewriter/lazyload_images_filter.cc',
         'rewriter/local_storage_cache_filter.cc',
         'rewriter/meta_tag_filter.cc',
+        'rewriter/mobilize_rewrite_filter.cc',
         'rewriter/pedantic_filter.cc',
         'rewriter/property_cache_util.cc',
         'rewriter/redirect_on_size_limit_filter.cc',

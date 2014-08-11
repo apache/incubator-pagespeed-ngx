@@ -4598,18 +4598,16 @@ var pagespeed = {Caches:function(opt_xhr) {
   this.xhr_ = opt_xhr || new goog.net.XhrIo;
   this.inputIsFrom_ = "";
   var modeElement = document.createElement("table");
-  modeElement.id = "mode_bar";
+  modeElement.id = "nav-bar";
   modeElement.innerHTML = '<tr><td><a id="' + pagespeed.Caches.DisplayMode.METADATA_CACHE + '" href="javascript:void(0);">Show Metadata Cache</a> - </td><td><a id="' + pagespeed.Caches.DisplayMode.CACHE_STRUCTURE + '" href="javascript:void(0);">Show Cache Structure</a> - </td><td><a id="' + pagespeed.Caches.DisplayMode.PHYSICAL_CACHE + '" href="javascript:void(0);">Physical Caches</a> - </td><td><a id="' + pagespeed.Caches.DisplayMode.PURGE_CACHE + '" href="javascript:void(0);">Purge Cache</a></td></tr>';
   document.body.insertBefore(modeElement, document.getElementById(pagespeed.Caches.DisplayDiv.METADATA_CACHE));
   var metadataResult = document.createElement("pre");
   metadataResult.id = pagespeed.Caches.ElementId.METADATA_RESULT;
-  metadataResult.style.padding = "10px 0px 0px 5px";
-  metadataResult.style.fontFamily = "verdana";
+  metadataResult.className = "pagespeed-caches-result";
   document.getElementById(pagespeed.Caches.DisplayDiv.METADATA_CACHE).appendChild(metadataResult);
   var purgeResult = document.createElement("pre");
   purgeResult.id = pagespeed.Caches.ElementId.PURGE_RESULT;
-  purgeResult.style.padding = "10px 0px 0px 5px";
-  purgeResult.style.fontFamily = "verdana";
+  purgeResult.className = "pagespeed-caches-result";
   var purgeElement = document.getElementById(pagespeed.Caches.DisplayDiv.PURGE_CACHE);
   purgeElement.insertBefore(purgeResult, purgeElement.firstChild);
 }};
@@ -4628,12 +4626,12 @@ pagespeed.Caches.prototype.parseLocation = function() {
 pagespeed.Caches.prototype.show = function(div) {
   for (var i in pagespeed.Caches.DisplayDiv) {
     var chartDiv = pagespeed.Caches.DisplayDiv[i];
-    document.getElementById(chartDiv).style.display = chartDiv == div ? "" : "none";
+    document.getElementById(chartDiv).className = chartDiv == div ? "" : "pagespeed-hidden-offscreen";
   }
   var currentTab = document.getElementById(div + "_mode");
   for (i in pagespeed.Caches.DisplayMode) {
     var link = document.getElementById(pagespeed.Caches.DisplayMode[i]);
-    link == currentTab ? (link.style.textDecoration = "underline", link.style.color = "darkblue") : (link.style.textDecoration = "", link.style.color = "");
+    link.className = link == currentTab ? "pagespeed-underline-link" : "";
   }
   location.href = location.href.split("#")[0] + "#" + div;
 };

@@ -75,22 +75,20 @@ pagespeed.Statistics = function(opt_xhr) {
 
   // The UI table of auto-refresh and filtering.
   var uiTable = document.createElement('div');
-  uiTable.id = 'uiDiv';
+  uiTable.id = 'ui-div';
   uiTable.innerHTML =
-      '<table id="uiTable" border=1 style="float:left; border-collapse: ' +
+      '<table id="ui-table" border=1 style="float:left; border-collapse: ' +
       'collapse;border-color:silver;"><tr valign="center">' +
       '<td>Auto refresh (every 5 seconds): <input type="checkbox" ' +
-      'id="autoRefresh" ' + (this.autoRefresh_ ? 'checked' : '') +
+      'id="auto-refresh" ' + (this.autoRefresh_ ? 'checked' : '') +
       '></td><td>&nbsp;&nbsp;&nbsp;&nbsp;Filter: ' +
-      '<input id="txtFilter" type="text" size="70"></td>' +
+      '<input id="text-filter" type="text" size="70"></td>' +
       '</tr></table>';
   wrapper.appendChild(uiTable);
 
   var numElement = document.createElement('div');
   numElement.id = 'num';
-  numElement.style.color = 'green';
-  numElement.style.overflow = 'hidden';
-  numElement.style.padding = '5px 0px 0px 10px';
+  numElement.className = 'pagespeed-show-number';
   wrapper.appendChild(numElement);
 
   document.body.insertBefore(wrapper, document.getElementById('stat'));
@@ -257,11 +255,11 @@ pagespeed.Statistics.FREQUENCY_ = 5 * 1000;
 pagespeed.Statistics.Start = function() {
   var statisticsOnload = function() {
     var statisticsObj = new pagespeed.Statistics();
-    var filterElement = document.getElementById('txtFilter');
+    var filterElement = document.getElementById('text-filter');
     goog.events.listen(
         filterElement, 'keyup', goog.bind(statisticsObj.setFilter,
                                           statisticsObj, filterElement));
-    goog.events.listen(document.getElementById('autoRefresh'), 'change',
+    goog.events.listen(document.getElementById('auto-refresh'), 'change',
                        goog.bind(statisticsObj.toggleAutorefresh,
                                  statisticsObj));
     setInterval(statisticsObj.performRefresh.bind(statisticsObj),

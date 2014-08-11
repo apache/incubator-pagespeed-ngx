@@ -1,0 +1,124 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en-US">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>Testing the Mobilization Filter</title>
+<meta name="robots" content="index, nofollow" />
+<meta name="description" content="This page is for testing the mobilization filter [&hellip;]" />
+<meta name="viewport" content="width=100px;" />
+<link rel="stylesheet" href="http://test.com/not-a-valid-stylesheet.css" type="text/css" media="screen, projection" />
+<!--[if lte IE 8]><link rel="stylesheet" href="http://test.com/another-stylesheet.css" type="text/css" media="screen, projection" /><![endif]-->
+<link rel="stylesheet" href="http://anothersite.com/style.css" type="text/css" media="screen, projection" />
+<link rel="canonical" href="http://google.com/" />
+<link rel="alternate" type="application/rss+xml" title="Mobilize RSS Feed" href="http://test.com/not-a-valid-rss-feed.rss" />
+<link rel="shortcut icon" type="image/ico" href="http://google.com/favicon.ico">
+<script type='text/javascript' src='http://test.com/not-valid.js'></script>
+<script type='text/javascript' src='http://anothersite.com/not-valid.js'></script>
+<link media="screen, projection" type="text/css" href="http://content.site.com/not-valid.css" rel="stylesheet" />
+<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
+<script type="text/javascript" src="http://test.com/custom.js"></script>
+<style type="text/css" id="syntaxhighlighteranchor"></style>
+</head>
+<body class="custom">
+  <div id="nav_area" class="full_width" importance="navigational">
+    <div class="page">
+      <ul class="nav_menu">
+        <li class="tab"><a href="http://test.com">Home</a></li>
+        <li class="tab"><a href="http://test.com/about" title="About">About</a></li>
+        <li class="tab"><a href="http://test.com/articles" title="Articles">Articles</a></li>
+        <li class="tab"><a href="http://test.com/rss" title="RSS Feed" rel="nofollow">RSS</a></li>
+      </ul>
+    </div>
+  </div>
+  <script>
+    document.getElementById("stuff00").innerHTML = "JavaScript!";
+    alert('00');
+  </script>
+  <div id="header_area" class="full_width" importance="header">
+    <div class="page">
+      <div id="header">
+        <p id="title"><a href="http://test.com/">Mobilize all the Things</a></p>
+        <div>
+          <h1 id="author">Foobar</h1>
+          <h2 id="date"></h2>
+        </div>
+      </div>
+    </div>
+    <script>
+      document.getElementById("stuff01").innerHTML = "";
+      alert('01');
+    </script>
+  </div>
+  <div id="content_area" class="full_width">
+    <div class="aside" importance="marginal">
+      <script>
+        document.getElementById("stuff02").innerHTML = "";
+        alert('02');
+      </script>
+      <form action="http://test.com/form/" method="get">
+        <ul><li class="widget">
+            <h3>Months</h3>
+            <select name="archive" onchange='document.location.href=this.options[this.selectedIndex].value;'>
+              <option value="">Select Month</option>
+              <option value='http://test.com/m=apr'>April</option>
+              <option value='http://test.com/m=may'>May</option>
+              <option value='http://test.com/m=jun'>June</option>
+            </select>
+          </li><li class="widget">
+            <h3>Categories</h3>
+            <select name='cat' id='cat' onchange='document.location.href=this.options[this.selectedIndex].value;'>
+              <option value="">Select Category</option>
+              <option value='http://test.com/c=gnarly'>Gnarly</option>
+              <option value='http://test.com/c=tubular'>Tubular</option>
+              <option value='http://test.com/c=groovy'>Awesome</option>
+            </select>
+        </li></ul>
+      </form>
+    </div>
+    <div class="page" importance="content">
+      <div id="content" class="feed">
+        <div class="post type-post status-publish">
+          <div class="headline_area">
+            <h1 class="entry-title">Isn't Mobilization Cool!?</h1>
+            <p class="headline_author">
+              <span class="author">Foobar</span><br/>
+              <abbr class="published" title="2014-01-01">2014-01-01</abbr>
+            </p>
+          </div>
+          <div class="entry-content">
+            <div class="empty"></div>
+            <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur mi est, pulvinar id euismod non, aliquam non dui.<br />
+              Quisque vehicula luctus magna vitae lobortis. Suspendisse lacinia enim nisl. In id euismod augue, at consequat justo
+              <a href="http://google.com/" onclick="javascript:alert('');">vestibulum mollis</a> porta leo sed placerat. Aenean consectetur
+              tristique dolor vel interdum. Fusce blandit blandit dolor non dignissim.</p>
+            <p>Vivamus vel odio gravida felis malesuada luctus. Quisque sit amet eros ipsum. Nunc id enim non justo lobortis gravida. Aenean
+              hendrerit mollis velit, eget sollicitudin magna malesuada porttitor. Nam molestie lorem enim, sit amet imperdiet odio dapibus eu.
+              Phasellus nec feugiat sem. Etiam elit ligula, tincidunt lobortis sodales nec, laoreet in orci.</p>
+            <p><img align="middle" src="http://test.com/foobar.png" /></p>
+            <p>Vivamus dapibus dictum neque et adipiscing. Suspendisse sit amet purus lacinia, feugiat turpis eget, viverra libero.</p>
+            <pre class="brush: bash; title: ; notranslate" title="">
+// my first program in C++
+#include <iostream>
+
+int main()
+{
+  std::cout << "Hello World!";
+}
+            </pre>
+            <p>Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae; Nunc eu turpis lorem.</p>
+            <p>Vestibulum ut justo nulla. Sed condimentum nunc ante, <a href="http://google.com/" onclick="javascript:alert('');">vestibulum mollis</a>
+              eget convallis nibh sodales eu. Praesent eget eleifend mi, ut ullamcorper justo.</p>
+            <h3>Nunc eu turpis lorem</h3>
+            <p>Nunc ut pulvinar turpis. In lacinia arcu eget augue lacinia, et consectetur quam interdum.</p>
+            <p>Aenean nec lacus ac sapien ultrices placerat non ac sem.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p>Aenean nec lacus ac sapien ultrices placerat non ac sem. Quisque accumsan porta tortor semper egestas.</p>
+  <div class="footer" importance="marginal">
+    Nulla ac elit sed urna molestie iaculis. Morbi posuere ac libero in fringilla.
+    <br><a class="top"></a>
+  </div>
+</body>

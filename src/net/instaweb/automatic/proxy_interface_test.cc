@@ -1025,9 +1025,8 @@ TEST_F(ProxyInterfaceTest, MinCacheTtl) {
   // min caching is set to 600 seconds, we should get a cache hit. And since
   // the content is fetched from cache, the old content is returned.
   FetchFromProxy("text.css", true, &text, &response_headers);
-  ConvertTimeToString(MockTimer::kApr_5_2010_ms + 600 * Timer::kSecondMs,
-                      &expiry);
-  EXPECT_STREQ("max-age=200",
+  ConvertTimeToString(timer()->NowMs() + 600 * Timer::kSecondMs, &expiry);
+  EXPECT_STREQ("max-age=600",
                response_headers.Lookup1(HttpAttributes::kCacheControl));
   EXPECT_STREQ(expiry,
                response_headers.Lookup1(HttpAttributes::kExpires));
@@ -1044,8 +1043,7 @@ TEST_F(ProxyInterfaceTest, MinCacheTtl) {
   response_headers.Clear();
   AdvanceTimeMs(400 * 1000);
   FetchFromProxy("text.css", true, &text, &response_headers);
-  ConvertTimeToString(timer()->NowMs() + 600 * Timer::kSecondMs,
-                      &expiry);
+  ConvertTimeToString(timer()->NowMs() + 600 * Timer::kSecondMs, &expiry);
   EXPECT_STREQ("max-age=600",
                response_headers.Lookup1(HttpAttributes::kCacheControl));
   EXPECT_STREQ(expiry,

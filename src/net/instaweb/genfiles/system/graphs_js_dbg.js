@@ -4604,14 +4604,14 @@ pagespeed.Graphs = function(opt_xhr) {
     document.getElementById(pagespeed.Graphs.DisplayDiv[i]).className = "pagespeed-hidden-offscreen";
   }
   var navElement = document.createElement("table");
-  navElement.id = "navBar";
+  navElement.id = "nav-bar";
   navElement.innerHTML = '<tr><td><a id="' + pagespeed.Graphs.DisplayMode.CACHE_APPLIED + '" href="javascript:void(0);">Per application cache stats</a> - </td><td><a id="' + pagespeed.Graphs.DisplayMode.CACHE_TYPE + '" href="javascript:void(0);">Per type cache stats</a> - </td><td><a id="' + pagespeed.Graphs.DisplayMode.IPRO + '" href="javascript:void(0);">IPRO status</a> - </td><td><a id="' + pagespeed.Graphs.DisplayMode.REWRITE_IMAGE + '" href="javascript:void(0);">Image rewriting</a> - </td><td><a id="' + 
   pagespeed.Graphs.DisplayMode.REALTIME + '" href="javascript:void(0);">Realtime</a></td></tr>';
   var uiTable = document.createElement("div");
-  uiTable.id = "uiDiv";
-  uiTable.innerHTML = '<table id="uiTable" border=1 style="border-collapse: collapse;border-color:silver;"><tr valign="center"><td>Auto refresh (every 5 seconds): <input type="checkbox" id="autoRefresh" ' + (this.autoRefresh_ ? "checked" : "") + "></td></tr></table>";
+  uiTable.id = "ui-div";
+  uiTable.innerHTML = '<table id="ui-table" border=1 style="border-collapse: collapse;border-color:silver;"><tr valign="center"><td>Auto refresh (every 5 seconds): <input type="checkbox" id="auto-refresh" ' + (this.autoRefresh_ ? "checked" : "") + "></td></tr></table>";
   document.body.insertBefore(uiTable, document.getElementById(pagespeed.Graphs.DisplayDiv.CACHE_APPLIED));
-  document.body.insertBefore(navElement, document.getElementById("uiDiv"));
+  document.body.insertBefore(navElement, document.getElementById("ui-div"));
 };
 pagespeed.Graphs.prototype.show = function(div) {
   for (var i in pagespeed.Graphs.DisplayDiv) {
@@ -4621,7 +4621,7 @@ pagespeed.Graphs.prototype.show = function(div) {
   var currentTab = document.getElementById(div + "_mode");
   for (i in pagespeed.Graphs.DisplayMode) {
     var link = document.getElementById(pagespeed.Graphs.DisplayMode[i]);
-    link == currentTab ? (link.style.textDecoration = "underline", link.style.color = "darkblue") : (link.style.textDecoration = "", link.style.color = "");
+    link.className = link == currentTab ? "pagespeed-underline-link" : "";
   }
   location.href = location.href.split("#")[0] + "#" + div;
 };
@@ -4702,13 +4702,10 @@ pagespeed.Graphs.prototype.drawChart = function(settingPrefix, title, chartType,
     var targetElement = document.getElementById(targetId);
     "Loading Charts..." == targetElement.textContent && (targetElement.textContent = "");
     var dest = document.createElement("div");
-    dest.className = "chart";
-    dest.style.width = "1100px";
-    dest.style.height = "320px";
+    dest.className = "pagespeed-graphs-chart";
     var chartTitle = document.createElement("p");
     chartTitle.textContent = title;
-    chartTitle.style.fontWeight = "bold";
-    chartTitle.style.fontSize = "large";
+    chartTitle.className = "pagespeed-graphs-title";
     targetElement.appendChild(chartTitle);
     targetElement.appendChild(dest);
     theChart = new google.visualization[chartType](dest);
@@ -4749,8 +4746,8 @@ pagespeed.Graphs.prototype.drawChart = function(settingPrefix, title, chartType,
     theChart.draw(view, pagespeed.Graphs.BAR_CHART_OPTIONS_);
   }
 };
-pagespeed.Graphs.BAR_CHART_OPTIONS_ = {annotations:{highContrast:!1, textStyle:{fontSize:13, color:"black", auraColor:"white"}}, hAxis:{direction:-1}, vAxis:{textPosition:"in"}, legend:{position:"none"}, width:1E3, height:320, chartArea:{left:50, top:30, width:700}};
-pagespeed.Graphs.ANNOTATED_TIMELINE_OPTIONS_ = {thickness:1, displayExactValues:!0};
+pagespeed.Graphs.BAR_CHART_OPTIONS_ = {annotations:{highContrast:!1, textStyle:{fontSize:13, color:"black", auraColor:"white"}}, hAxis:{direction:-1}, vAxis:{textPosition:"in"}, legend:{position:"none"}, width:1E3, height:320, chartArea:{left:50, top:0, width:"85%", height:"80%"}};
+pagespeed.Graphs.ANNOTATED_TIMELINE_OPTIONS_ = {thickness:1, displayExactValues:!0, legendPosition:"newRow"};
 pagespeed.Graphs.FREQUENCY_ = 5;
 pagespeed.Graphs.TIMERANGE_ = 86400 / pagespeed.Graphs.FREQUENCY_;
 pagespeed.Graphs.Start = function() {
@@ -4761,7 +4758,7 @@ pagespeed.Graphs.Start = function() {
       goog.events.listen(document.getElementById(pagespeed.Graphs.DisplayMode[i]), "click", goog.bind(graphsObj.show, graphsObj, pagespeed.Graphs.DisplayDiv[i]));
     }
     goog.events.listen(window, "hashchange", goog.bind(graphsObj.parseLocation, graphsObj));
-    goog.events.listen(document.getElementById("autoRefresh"), "change", goog.bind(graphsObj.toggleAutorefresh, graphsObj));
+    goog.events.listen(document.getElementById("auto-refresh"), "change", goog.bind(graphsObj.toggleAutorefresh, graphsObj));
     goog.events.listen(graphsObj.xhr_, goog.net.EventType.COMPLETE, goog.bind(graphsObj.parseAjaxResponse, graphsObj));
     setInterval(graphsObj.performRefresh.bind(graphsObj), 1E3 * pagespeed.Graphs.FREQUENCY_);
     graphsObj.performRefresh();

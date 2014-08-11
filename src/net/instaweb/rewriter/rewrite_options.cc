@@ -655,6 +655,7 @@ const RewriteOptions::Filter kDangerousFilterSet[] = {
   RewriteOptions::kExperimentSpdy,
   RewriteOptions::kExplicitCloseTags,
   RewriteOptions::kFixReflows,
+  RewriteOptions::kMobilize,  // Prototype
   RewriteOptions::kSplitHtml,  // internal, enabled conditionally
   RewriteOptions::kSplitHtmlHelper,  // internal, enabled conditionally
   RewriteOptions::kStripNonCacheable,  // internal, enabled conditionally
@@ -806,6 +807,8 @@ const RewriteOptions::FilterEnumToIdAndNameEntry
     RewriteOptions::kLocalStorageCacheId, "Local Storage Cache" },
   { RewriteOptions::kMakeGoogleAnalyticsAsync,
     "ga", "Make Google Analytics Async" },
+  { RewriteOptions::kMobilize,
+    "mob", "Mobilize Webpage" },
   { RewriteOptions::kMoveCssAboveScripts,
     "cj", "Move Css Above Scripts" },
   { RewriteOptions::kMoveCssToHead,

@@ -52,7 +52,7 @@ pagespeed.Caches = function(opt_xhr) {
 
   // The navigation bar to switch among different display modes.
   var modeElement = document.createElement('table');
-  modeElement.id = 'mode_bar';
+  modeElement.id = 'nav-bar';
   modeElement.innerHTML =
       '<tr><td><a id="' +
       pagespeed.Caches.DisplayMode.METADATA_CACHE +
@@ -78,9 +78,7 @@ pagespeed.Caches = function(opt_xhr) {
   // Create a div to display the result of showing metadata cache entry.
   var metadataResult = document.createElement('pre');
   metadataResult.id = pagespeed.Caches.ElementId.METADATA_RESULT;
-  // TODO(xqyin): Move stylistic elements to a CSS file.
-  metadataResult.style.padding = '10px 0px 0px 5px';
-  metadataResult.style.fontFamily = 'verdana';
+  metadataResult.className = 'pagespeed-caches-result';
   var metadataElement = document.getElementById(
       pagespeed.Caches.DisplayDiv.METADATA_CACHE);
   metadataElement.appendChild(metadataResult);
@@ -88,8 +86,7 @@ pagespeed.Caches = function(opt_xhr) {
   // Create a div to display the result of cache purging.
   var purgeResult = document.createElement('pre');
   purgeResult.id = pagespeed.Caches.ElementId.PURGE_RESULT;
-  purgeResult.style.padding = '10px 0px 0px 5px';
-  purgeResult.style.fontFamily = 'verdana';
+  purgeResult.className = 'pagespeed-caches-result';
   var purgeElement = document.getElementById(
       pagespeed.Caches.DisplayDiv.PURGE_CACHE);
   purgeElement.insertBefore(purgeResult, purgeElement.firstChild);
@@ -184,9 +181,10 @@ pagespeed.Caches.prototype.show = function(div) {
   for (var i in pagespeed.Caches.DisplayDiv) {
     var chartDiv = pagespeed.Caches.DisplayDiv[i];
     if (chartDiv == div) {
-      document.getElementById(chartDiv).style.display = '';
+      document.getElementById(chartDiv).className = '';
     } else {
-      document.getElementById(chartDiv).style.display = 'none';
+      document.getElementById(chartDiv).className =
+          'pagespeed-hidden-offscreen';
     }
   }
 
@@ -195,11 +193,9 @@ pagespeed.Caches.prototype.show = function(div) {
   for (var i in pagespeed.Caches.DisplayMode) {
     var link = document.getElementById(pagespeed.Caches.DisplayMode[i]);
     if (link == currentTab) {
-      link.style.textDecoration = 'underline';
-      link.style.color = 'darkblue';
+      link.className = 'pagespeed-underline-link';
     } else {
-      link.style.textDecoration = '';
-      link.style.color = '';
+      link.className = '';
     }
   }
 

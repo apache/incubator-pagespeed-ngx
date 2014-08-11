@@ -4604,14 +4604,12 @@ var pagespeed = {Statistics:function(opt_xhr) {
   wrapper.style.overflow = "hidden";
   wrapper.style.clear = "both";
   var uiTable = document.createElement("div");
-  uiTable.id = "uiDiv";
-  uiTable.innerHTML = '<table id="uiTable" border=1 style="float:left; border-collapse: collapse;border-color:silver;"><tr valign="center"><td>Auto refresh (every 5 seconds): <input type="checkbox" id="autoRefresh" ' + (this.autoRefresh_ ? "checked" : "") + '></td><td>&nbsp;&nbsp;&nbsp;&nbsp;Filter: <input id="txtFilter" type="text" size="70"></td></tr></table>';
+  uiTable.id = "ui-div";
+  uiTable.innerHTML = '<table id="ui-table" border=1 style="float:left; border-collapse: collapse;border-color:silver;"><tr valign="center"><td>Auto refresh (every 5 seconds): <input type="checkbox" id="auto-refresh" ' + (this.autoRefresh_ ? "checked" : "") + '></td><td>&nbsp;&nbsp;&nbsp;&nbsp;Filter: <input id="text-filter" type="text" size="70"></td></tr></table>';
   wrapper.appendChild(uiTable);
   var numElement = document.createElement("div");
   numElement.id = "num";
-  numElement.style.color = "green";
-  numElement.style.overflow = "hidden";
-  numElement.style.padding = "5px 0px 0px 10px";
+  numElement.className = "pagespeed-show-number";
   wrapper.appendChild(numElement);
   document.body.insertBefore(wrapper, document.getElementById("stat"));
   this.updateMessageCount();
@@ -4675,9 +4673,9 @@ pagespeed.Statistics.prototype.parseAjaxResponse = function() {
 pagespeed.Statistics.FREQUENCY_ = 5E3;
 pagespeed.Statistics.Start = function() {
   goog.events.listen(window, "load", function() {
-    var statisticsObj = new pagespeed.Statistics, filterElement = document.getElementById("txtFilter");
+    var statisticsObj = new pagespeed.Statistics, filterElement = document.getElementById("text-filter");
     goog.events.listen(filterElement, "keyup", goog.bind(statisticsObj.setFilter, statisticsObj, filterElement));
-    goog.events.listen(document.getElementById("autoRefresh"), "change", goog.bind(statisticsObj.toggleAutorefresh, statisticsObj));
+    goog.events.listen(document.getElementById("auto-refresh"), "change", goog.bind(statisticsObj.toggleAutorefresh, statisticsObj));
     setInterval(statisticsObj.performRefresh.bind(statisticsObj), pagespeed.Statistics.FREQUENCY_);
     goog.events.listen(statisticsObj.xhr_, goog.net.EventType.COMPLETE, goog.bind(statisticsObj.parseAjaxResponse, statisticsObj));
     statisticsObj.performRefresh();

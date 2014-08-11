@@ -53,7 +53,10 @@
 namespace net_instaweb {
 
 // Generated from JS, CSS, and HTML source via net/instaweb/js/data_to_c.cc.
+extern const char* CSS_admin_site_css;
+extern const char* CSS_caches_css;
 extern const char* CSS_console_css;
+extern const char* CSS_graphs_css;
 extern const char* JS_caches_js;
 extern const char* JS_caches_js_opt;
 extern const char* JS_console_js;
@@ -65,27 +68,7 @@ extern const char* JS_messages_js_opt;
 extern const char* JS_statistics_js;
 extern const char* JS_statistics_js_opt;
 
-// We have to specify the size of the container elements explicitly when using
-// AnnotatedTimeLine on graphs page. Since we cannot read the size of elements
-// with 'display:none', we place the elements at -9999px to hide them off the
-// screen as an alternative.
-static const char kGraphsDivStyle[] =
-    "<style>.pagespeed-hidden-offscreen"
-    "{position:absolute; left:-9999px;}</style>\n";
-
 namespace {
-
-// This style fragment is copied from ../rewriter/console.css because it's
-// kind of nice.  However if we import the whole console.css into admin pages
-// it looks terrible.
-//
-// TODO(jmarantz): Get UX help to style the whole admin site better.
-// TODO(jmarantz): Factor this out into its own CSS file.
-const char kATagStyle[] =
-    "a {text-decoration:none; color:#15c; cursor:pointer;}"
-    "a:visited {color: #61c;}"
-    "a:hover {text-decoration:underline;}"
-    "a:active {text-decoration:underline; color:#d14836;}";
 
 struct Tab {
   const char* label;
@@ -143,7 +126,7 @@ class AdminHtml {
     // Generate some navigational links to help our users get to other
     // admin pages.
     fetch->Write("<!DOCTYPE html>\n<html><head>", handler_);
-    fetch->Write(StrCat("<style>", kATagStyle, "</style>"), handler_);
+    fetch->Write(StrCat("<style>", CSS_admin_site_css, "</style>"), handler_);
 
     GoogleString buf;
     for (int i = 0, n = arraysize(kTabs); i < n; ++i) {
@@ -303,8 +286,9 @@ void AdminSite::GraphsHandler(const RewriteOptions& options,
     ConsoleJsonHandler(query_params, fetch, statistics);
     return;
   }
-  AdminHtml admin_html("graphs", kGraphsDivStyle, source, fetch,
-                       message_handler_);
+  GoogleString head_markup = StrCat(
+      "<style>", CSS_graphs_css, "</style>\n");
+  AdminHtml admin_html("graphs", head_markup, source, fetch, message_handler_);
   fetch->Write("<div id=\"cache_applied\">Loading Charts...</div>"
                "<div id=\"cache_type\">Loading Charts...</div>"
                "<div id=\"ipro\">Loading Charts...</div>"
@@ -546,7 +530,10 @@ void AdminSite::PrintCaches(bool is_global, AdminSource source,
       }
     }
   } else {
-    AdminHtml admin_html("cache", "", source, fetch, message_handler_);
+    GoogleString head_markup = StrCat(
+        "<style>", CSS_caches_css, "</style>\n");
+    AdminHtml admin_html("cache", head_markup, source, fetch,
+                         message_handler_);
 
     fetch->Write("<div id=\"show_metadata\">", message_handler_);
     // Present a small form to enter a URL.
@@ -567,7 +554,7 @@ void AdminSite::PrintCaches(bool is_global, AdminSource source,
       // either of these flags to limit the content when someone asks
       // for info about the cache.
       flags |= SystemCaches::kIncludeMemcached;
-      fetch->Write("<div id=\"cache_struct\" style=\"display:none\">",
+      fetch->Write("<div id=\"cache_struct\">",
                    message_handler_);
       fetch->Write(kTableStart, message_handler_);
       CacheInterface* fsmdc = filesystem_metadata_cache;
@@ -582,7 +569,7 @@ void AdminSite::PrintCaches(bool is_global, AdminSource source,
       fetch->Write(kTableEnd, message_handler_);
       fetch->Write("</div>", message_handler_);
 
-      fetch->Write("<div id=\"physical_cache\" style=\"display:none\">",
+      fetch->Write("<div id=\"physical_cache\">",
                    message_handler_);
       GoogleString backend_stats;
       system_caches->PrintCacheStats(
@@ -592,7 +579,7 @@ void AdminSite::PrintCaches(bool is_global, AdminSource source,
       }
       fetch->Write("</div>", message_handler_);
 
-      fetch->Write("<div id=\"purge_cache\" style=\"display:none\">",
+      fetch->Write("<div id=\"purge_cache\">",
                    message_handler_);
       fetch->Write("<h3>Purge Set</h3><pre id=\"purge_set\">",
                    message_handler_);

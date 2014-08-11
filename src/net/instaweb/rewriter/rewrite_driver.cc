@@ -105,6 +105,7 @@
 #include "net/instaweb/rewriter/public/lazyload_images_filter.h"
 #include "net/instaweb/rewriter/public/local_storage_cache_filter.h"
 #include "net/instaweb/rewriter/public/meta_tag_filter.h"
+#include "net/instaweb/rewriter/public/mobilize_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/pedantic_filter.h"
@@ -853,6 +854,7 @@ void RewriteDriver::InitStats(Statistics* statistics) {
   JsInlineFilter::InitStats(statistics);
   LocalStorageCacheFilter::InitStats(statistics);
   MetaTagFilter::InitStats(statistics);
+  MobilizeRewriteFilter::InitStats(statistics);
   SplitHtmlBeaconFilter::InitStats(statistics);
   RewriteContext::InitStats(statistics);
   UrlInputResource::InitStats(statistics);
@@ -1194,6 +1196,9 @@ void RewriteDriver::AddPostRenderFilters() {
     // Happens before RemoveQuotes but after everything else.  Note:
     // we Must left trim urls BEFORE quote removal.
     AddUnownedPostRenderFilter(url_trim_filter_.get());
+  }
+  if (rewrite_options->Enabled(RewriteOptions::kMobilize)) {
+    AddOwnedPostRenderFilter(new MobilizeRewriteFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kFlushSubresources) &&
       !options()->pre_connect_url().empty()) {
@@ -3017,6 +3022,7 @@ OptionsAwareHTTPCacheCallback::OptionsAwareHTTPCacheCallback(
 
   response_headers()->set_implicit_cache_ttl_ms(
       rewrite_options->implicit_cache_ttl_ms());
+  response_headers()->set_min_cache_ttl_ms(rewrite_options->min_cache_ttl_ms());
 }
 
 OptionsAwareHTTPCacheCallback::~OptionsAwareHTTPCacheCallback() {}
@@ -3282,13 +3288,13 @@ FlushEarlyInfo* RewriteDriver::flush_early_info() {
 }
 
 void RewriteDriver::InsertDebugComment(StringPiece unescaped,
-                                       HtmlElement* element) {
-  if (DebugMode() && element != NULL && IsRewritable(element)) {
+                                       HtmlNode* node) {
+  if (DebugMode() && node != NULL && IsRewritable(node)) {
     GoogleString escaped;
     HtmlKeywords::Escape(unescaped, &escaped);
 
-    HtmlNode* comment_node = NewCommentNode(element->parent(), escaped);
-    InsertNodeAfterNode(element, comment_node);
+    HtmlNode* comment_node = NewCommentNode(node->parent(), escaped);
+    InsertNodeAfterNode(node, comment_node);
   }
 }
 

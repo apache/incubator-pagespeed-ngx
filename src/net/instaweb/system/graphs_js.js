@@ -111,7 +111,7 @@ pagespeed.Graphs = function(opt_xhr) {
 
   // The navigation bar to switch among different display modes.
   var navElement = document.createElement('table');
-  navElement.id = 'navBar';
+  navElement.id = 'nav-bar';
   navElement.innerHTML =
       '<tr><td><a id="' + pagespeed.Graphs.DisplayMode.CACHE_APPLIED +
       '" href="javascript:void(0);">' +
@@ -130,17 +130,17 @@ pagespeed.Graphs = function(opt_xhr) {
       'Realtime</a></td></tr>';
   // The UI table of auto-refresh.
   var uiTable = document.createElement('div');
-  uiTable.id = 'uiDiv';
+  uiTable.id = 'ui-div';
   uiTable.innerHTML =
-      '<table id="uiTable" border=1 style="border-collapse: ' +
+      '<table id="ui-table" border=1 style="border-collapse: ' +
       'collapse;border-color:silver;"><tr valign="center">' +
       '<td>Auto refresh (every 5 seconds): <input type="checkbox" ' +
-      'id="autoRefresh" ' + (this.autoRefresh_ ? 'checked' : '') +
+      'id="auto-refresh" ' + (this.autoRefresh_ ? 'checked' : '') +
       '></td></tr></table>';
   document.body.insertBefore(
       uiTable,
       document.getElementById(pagespeed.Graphs.DisplayDiv.CACHE_APPLIED));
-  document.body.insertBefore(navElement, document.getElementById('uiDiv'));
+  document.body.insertBefore(navElement, document.getElementById('ui-div'));
 };
 
 
@@ -165,11 +165,9 @@ pagespeed.Graphs.prototype.show = function(div) {
   for (var i in pagespeed.Graphs.DisplayMode) {
     var link = document.getElementById(pagespeed.Graphs.DisplayMode[i]);
     if (link == currentTab) {
-      link.style.textDecoration = 'underline';
-      link.style.color = 'darkblue';
+      link.className = 'pagespeed-underline-link';
     } else {
-      link.style.textDecoration = '';
-      link.style.color = '';
+      link.className = '';
     }
   }
 
@@ -465,15 +463,11 @@ pagespeed.Graphs.prototype.drawChart = function(settingPrefix, title,
       targetElement.textContent = '';
     }
     var dest = document.createElement('div');
-    // TODO(xqyin): Move all the CSS related to graphs page to a separate file
-    // then we can reference by classname here.
-    dest.className = 'chart';
-    dest.style.width = '1100px';
-    dest.style.height = '320px';
+    dest.className = 'pagespeed-graphs-chart';
     var chartTitle = document.createElement('p');
     chartTitle.textContent = title;
-    chartTitle.style.fontWeight = 'bold';
-    chartTitle.style.fontSize = 'large';
+
+    chartTitle.className = 'pagespeed-graphs-title';
     targetElement.appendChild(chartTitle);
     targetElement.appendChild(dest);
     theChart = new google.visualization[chartType](dest);
@@ -573,8 +567,10 @@ pagespeed.Graphs.BAR_CHART_OPTIONS_ = {
   'height': 320,
   'chartArea': {
     'left': 50,
-    'top': 30,
-    'width': 700
+    'top': 0,
+    'width': '85%',
+    'height': '80%'
+
   }
 };
 // All the option names should be put in single quotation marks. Otherwise
@@ -588,7 +584,8 @@ pagespeed.Graphs.BAR_CHART_OPTIONS_ = {
  */
 pagespeed.Graphs.ANNOTATED_TIMELINE_OPTIONS_ = {
   'thickness': 1,
-  'displayExactValues': true
+  'displayExactValues': true,
+  'legendPosition': 'newRow'
 };
 
 
@@ -627,7 +624,7 @@ pagespeed.Graphs.Start = function() {
     goog.events.listen(window, 'hashchange',
                        goog.bind(graphsObj.parseLocation, graphsObj));
 
-    goog.events.listen(document.getElementById('autoRefresh'), 'change',
+    goog.events.listen(document.getElementById('auto-refresh'), 'change',
                        goog.bind(graphsObj.toggleAutorefresh,
                                  graphsObj));
     // We call listen() here so this listener is added to the xhr only once.

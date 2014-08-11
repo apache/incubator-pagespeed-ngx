@@ -51,9 +51,11 @@ BASE_LIBS = \
   net/instaweb/libautomatic_util.a \
   net/instaweb/libinstaweb_add_instrumentation_data2c.a \
   net/instaweb/libinstaweb_add_instrumentation_opt_data2c.a \
+  net/instaweb/libinstaweb_admin_site_css_data2c.a \
   net/instaweb/libinstaweb_apr.a \
   net/instaweb/libinstaweb_automatic.a \
   net/instaweb/libinstaweb_cache_html_info_pb.a \
+  net/instaweb/libinstaweb_caches_css_data2c.a \
   net/instaweb/libinstaweb_caches_js_data2c.a \
   net/instaweb/libinstaweb_caches_js_opt_data2c.a \
   net/instaweb/libinstaweb_client_domain_rewriter_data2c.a \
@@ -85,6 +87,7 @@ BASE_LIBS = \
   net/instaweb/libinstaweb_extended_instrumentation_opt_data2c.a \
   net/instaweb/libinstaweb_flush_early_pb.a \
   net/instaweb/libinstaweb_ghost_click_buster_opt_data2c.a \
+  net/instaweb/libinstaweb_graphs_css_data2c.a \
   net/instaweb/libinstaweb_graphs_js_data2c.a \
   net/instaweb/libinstaweb_graphs_js_opt_data2c.a \
   net/instaweb/libinstaweb_image_types_pb.a \
@@ -97,6 +100,7 @@ BASE_LIBS = \
   net/instaweb/libinstaweb_logging_pb.a \
   net/instaweb/libinstaweb_messages_js_data2c.a \
   net/instaweb/libinstaweb_messages_js_opt_data2c.a \
+  net/instaweb/libinstaweb_mobilize_css_data2c.a \
   net/instaweb/libinstaweb_panel_loader_opt_data2c.a \
   net/instaweb/libinstaweb_propcache_pb.a \
   net/instaweb/libinstaweb_rendered_image_pb.a \
