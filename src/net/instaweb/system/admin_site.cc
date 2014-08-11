@@ -641,7 +641,7 @@ void AdminSite::MessageHistoryHandler(const RewriteOptions& options,
           case kWarning: {
             HtmlKeywords::WritePre(
                 message_handler_->ReformatMessage(messages[i]),
-                "color:blue; margin:0;", fetch, message_handler_);
+                "color:brown; margin:0;", fetch, message_handler_);
             break;
           }
           case kFatal: {

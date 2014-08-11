@@ -110,7 +110,7 @@ TEST_F(AdminSiteTest, ColorMessagesInHistoryPage) {
   EXPECT_THAT(
       buffer, ::testing::HasSubstr(StringPrintf(kColorTemplate, "red")));
   EXPECT_THAT(
-      buffer, ::testing::HasSubstr(StringPrintf(kColorTemplate, "blue")));
+      buffer, ::testing::HasSubstr(StringPrintf(kColorTemplate, "brown")));
   EXPECT_THAT(buffer, ::testing::HasSubstr("style=\"margin:0;\""));
 }
 // TODO(xqyin): Add unit tests for other methods in AdminSite.
