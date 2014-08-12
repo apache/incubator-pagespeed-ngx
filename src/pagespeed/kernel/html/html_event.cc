@@ -28,9 +28,7 @@ HtmlEvent::~HtmlEvent() {
 }
 
 void HtmlEvent::DebugPrint() {
-  GoogleString buf;
-  ToString(&buf);
-  fprintf(stdout, "%s\n", buf.c_str());
+  fprintf(stdout, "%s\n", ToString().c_str());
 }
 
 }  // namespace net_instaweb

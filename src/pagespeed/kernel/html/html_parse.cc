@@ -50,7 +50,6 @@ HtmlParse::HtmlParse(MessageHandler* message_handler)
       current_(queue_.end()),
       message_handler_(message_handler),
       line_number_(1),
-      deleted_current_(false),
       skip_increment_(false),
       determine_enabled_filters_called_(false),
       need_sanity_check_(false),
@@ -104,7 +103,6 @@ void HtmlParse::CheckParentFromAddEvent(HtmlEvent* event) {
   }
 }
 
-// Testing helper method
 void HtmlParse::AddEvent(HtmlEvent* event) {
   CheckParentFromAddEvent(event);
   queue_.push_back(event);
@@ -199,6 +197,11 @@ bool HtmlParse::StartParseId(const StringPiece& url, const StringPiece& id,
                              const ContentType& content_type) {
   delayed_start_literal_.reset();
   determine_enabled_filters_called_ = false;
+
+  // Paranoid debug-checking and unconditional clearing of state variables.
+  DCHECK(!skip_increment_);
+  skip_increment_ = false;
+
   if (dynamically_disabled_filter_list_ != NULL) {
     dynamically_disabled_filter_list_->clear();
   }
@@ -300,22 +303,24 @@ void HtmlParse::ApplyFilter(HtmlFilter* filter) {
   }
 
   ShowProgress(StrCat("ApplyFilter:", filter->Name()).c_str());
-  for (current_ = queue_.begin(); current_ != queue_.end(); ) {
+  for (current_ = queue_.begin(); current_ != queue_.end(); NextEvent()) {
     HtmlEvent* event = *current_;
     line_number_ = event->line_number();
     event->Run(filter);
-    deleted_current_ = false;
-    if (skip_increment_) {
-      skip_increment_ = false;
-    } else {
-      ++current_;
-    }
   }
   filter->Flush();
 
   if (need_sanity_check_) {
     SanityCheck();
     need_sanity_check_ = false;
+  }
+}
+
+void HtmlParse::NextEvent() {
+  if (skip_increment_) {
+    skip_increment_ = false;
+  } else {
+    ++current_;
   }
 }
 
@@ -360,14 +365,14 @@ void HtmlParse::DelayLiteralTag() {
 void HtmlParse::CheckEventParent(HtmlEvent* event, HtmlElement* expect,
                                  HtmlElement* actual) {
   if ((expect != NULL) && (actual != expect)) {
-    GoogleString actual_buf, expect_buf, event_buf;
+    GoogleString actual_buf;
     if (actual != NULL) {
-      actual->ToString(&actual_buf);
+      actual_buf = actual->ToString();
     } else {
       actual_buf = "(null)";
     }
-    expect->ToString(&expect_buf);
-    event->ToString(&event_buf);
+    GoogleString expect_buf = expect->ToString();
+    GoogleString event_buf = event->ToString();
     FatalErrorHere("HtmlElement Parents of %s do not match:\n"
                    "Actual:   %s\n"
                    "Expected: %s\n",
@@ -537,7 +542,7 @@ void HtmlParse::AppendChild(const HtmlElement* existing_parent,
 }
 
 void HtmlParse::InsertNodeBeforeCurrent(HtmlNode* new_node) {
-  if (deleted_current_) {
+  if (skip_increment_) {
     FatalErrorHere("InsertNodeBeforeCurrent after current has been "
                    "deleted.");
   }
@@ -581,7 +586,7 @@ void HtmlParse::InsertNodeAfterEvent(const HtmlEventListIterator& event,
 
 
 void HtmlParse::InsertNodeAfterCurrent(HtmlNode* new_node) {
-  if (deleted_current_) {
+  if (skip_increment_) {
     FatalErrorHere("InsertNodeAfterCurrent after current has been "
                    "deleted.");
   }
@@ -755,6 +760,15 @@ bool HtmlParse::DeleteNode(HtmlNode* node) {
 
       // Clean up any nested elements/leaves as we get to their 'end' event.
       HtmlEvent* event = *p;
+
+      // Check if we're about to delete the current event.
+      if (!skip_increment_ && (p == current_)) {
+        skip_increment_ = true;
+        current_ = node->end();
+        ++current_;
+      }
+      p = queue_.erase(p);
+
       HtmlNode* nested_node = event->GetElementIfEndEvent();
       if (nested_node == NULL) {
         nested_node = event->GetLeafNode();
@@ -764,26 +778,6 @@ bool HtmlParse::DeleteNode(HtmlNode* node) {
         nested_node->MarkAsDead(queue_.end());
       }
 
-      // Check if we're about to delete the current event.
-      bool about_to_delete_current = (p == current_);
-      if (about_to_delete_current && current_ == queue_.begin()) {
-        skip_increment_ = true;
-      }
-      p = queue_.erase(p);
-      if (about_to_delete_current) {
-        DCHECK(!deleted_current_);
-        deleted_current_ = true;
-        if (skip_increment_) {
-          // We can't move current back to before the 'begin', so we
-          // need to avoid incrementing it.
-          line_number_ = -1;
-          current_ = queue_.end();
-        } else {
-          current_ = p;  // p is the event *after* the old current.
-          --current_;    // Go to *previous* event so that we don't skip p.
-          line_number_ = (*current_)->line_number();
-        }
-      }
       delete event;
     }
 
@@ -884,12 +878,10 @@ void HtmlParse::ClearElements() {
 void HtmlParse::EmitQueue(MessageHandler* handler) {
   for (HtmlEventList::iterator p = queue_.begin(), e = queue_.end();
        p != e; ++p) {
-    GoogleString buf;
     HtmlEvent* event = *p;
-    event->ToString(&buf);
     handler->Message(kInfo, "%c %s (%p)\n",
                      p == current_ ? '*' : ' ',
-                     buf.c_str(),
+                     event->ToString().c_str(),
                      event->GetNode());
   }
 }
@@ -1037,8 +1029,7 @@ void HtmlParse::CloseElement(
         // from a site owner's perspective, and I think we are doing the right
         // thing anyway, but I'd like to hit this with a unit test if we can
         // find a case.
-        GoogleString buf;
-        event->ToString(&buf);
+        GoogleString buf = event->ToString();
         InfoHere("Deferred literal tag, expected a characters node : %s",
                  buf.c_str());
         LOG(DFATAL) << "Deferred literal tag, expected a characters node: "

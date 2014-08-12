@@ -2081,14 +2081,18 @@ TEST_F(HtmlParseTest, DisabledFilterWithReason) {
 class DeleteNodesFilter : public EmptyHtmlFilter {
  public:
   explicit DeleteNodesFilter(HtmlParse* html_parse)
-      : html_parse_(html_parse)
-      , delete_node_type_(HtmlName::kNotAKeyword)
-      , delete_from_type_(HtmlName::kNotAKeyword)
-      , delete_on_open_tag_(false) {}
+      : html_parse_(html_parse),
+        delete_node_type_(HtmlName::kNotAKeyword),
+        delete_from_type_(HtmlName::kNotAKeyword),
+        delete_on_open_tag_(false),
+        save_children_(true) {
+  }
 
   void set_delete_node_type(HtmlName::Keyword keyword) {
     delete_node_type_ = keyword;
   }
+
+  void set_save_children(bool x) { save_children_ = x; }
 
   void set_delete_from_type(HtmlName::Keyword keyword) {
     delete_from_type_ = keyword;
@@ -2138,8 +2142,12 @@ class DeleteNodesFilter : public EmptyHtmlFilter {
  private:
   void DeleteElements() {
     for (size_t i = 0; i < pending_deletes_.size(); i++) {
-      html_parse_->DeleteSavingChildren(pending_deletes_[i]);
-      num_deleted_elements_++;
+      bool success = save_children_
+          ? html_parse_->DeleteSavingChildren(pending_deletes_[i])
+          : html_parse_->DeleteNode(pending_deletes_[i]);
+      if (success) {
+        ++num_deleted_elements_;
+      }
     }
     pending_deletes_.clear();
   }
@@ -2149,6 +2157,7 @@ class DeleteNodesFilter : public EmptyHtmlFilter {
   HtmlName::Keyword delete_node_type_;
   HtmlName::Keyword delete_from_type_;
   bool delete_on_open_tag_;
+  bool save_children_;
   int num_start_elements_;
   int num_end_elements_;
   int num_char_elements_;
@@ -2156,6 +2165,76 @@ class DeleteNodesFilter : public EmptyHtmlFilter {
 
   DISALLOW_COPY_AND_ASSIGN(DeleteNodesFilter);
 };
+
+class HtmlParseDeleteTest : public HtmlParseTest {
+ protected:
+  HtmlParseDeleteTest()
+      : delete_filter_(html_parse()),
+        total_successes_(0),
+        total_failures_(0) {
+    html_parse()->AddFilter(&delete_filter_);
+    SetupWriter();
+  }
+
+  void DeleteTest(StringPiece input,
+                  StringPiece expected_output_if_deletes_worked) {
+    for (int i = 0, n = input.size(); i < n; ++i) {
+      GoogleString this_id = StringPrintf("http://test.com/%d", i);
+      html_parse_.StartParse(this_id);
+      html_parse_.ParseText(input.substr(0, i));
+      html_parse_.Flush();
+      html_parse_.ParseText(input.substr(i));
+      html_parse_.FinishParse();
+      if (delete_filter_.num_deleted_elements() != 0) {
+        EXPECT_STREQ(expected_output_if_deletes_worked,
+                     output_buffer_) << this_id;
+        ++total_successes_;
+      } else {
+        EXPECT_STREQ(input, output_buffer_) << this_id;
+        ++total_failures_;
+      }
+      output_buffer_.clear();
+    }
+  }
+
+  DeleteNodesFilter delete_filter_;
+  int total_successes_;
+  int total_failures_;
+};
+
+TEST_F(HtmlParseDeleteTest, DeleteAtStartAcrossFlush) {
+  delete_filter_.set_delete_on_open_tag(true);
+  delete_filter_.set_save_children(false);
+  delete_filter_.set_delete_node_type(HtmlName::kDiv);
+  delete_filter_.set_delete_from_type(HtmlName::kDiv);
+  DeleteTest("1<div id=a>hello</div>2", "12");
+
+  // If the flush happened in the middle of the div, then we will
+  // fail.  That will happen at least sometimes.
+  EXPECT_LT(0, total_failures_);
+
+  // If the both the StartElement and EndElement are visible, then
+  // we should successfully eliminate the div and its contents.  That
+  // will happen at least sometimes.
+  EXPECT_LT(0, total_successes_);
+}
+
+TEST_F(HtmlParseDeleteTest, DeleteAtEndAcrossFlush) {
+  delete_filter_.set_delete_on_open_tag(false);
+  delete_filter_.set_save_children(false);
+  delete_filter_.set_delete_node_type(HtmlName::kDiv);
+  delete_filter_.set_delete_from_type(HtmlName::kDiv);
+  DeleteTest("1<div id=a>hello</div>2", "12");
+
+  // If the flush happened in the middle of the div, then we will
+  // fail.  That will happen at least sometimes.
+  EXPECT_LT(0, total_failures_);
+
+  // If the both the StartElement and EndElement are visible, then
+  // we should successfully eliminate the div and its contents.  That
+  // will happen at least sometimes.
+  EXPECT_LT(0, total_successes_);
+}
 
 class EventListOrderTest : public HtmlParseTest {
  protected:

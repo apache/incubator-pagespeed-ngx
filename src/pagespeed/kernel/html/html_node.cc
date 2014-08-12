@@ -33,6 +33,11 @@ HtmlLeafNode::HtmlLeafNode(HtmlElement* parent,
 
 HtmlLeafNode::~HtmlLeafNode() {}
 
+GoogleString HtmlLeafNode::ToString() const {
+  HtmlEvent* event = *begin();
+  return event->ToString();
+}
+
 void HtmlLeafNode::MarkAsDead(const HtmlEventListIterator& end) {
   if (data_.get() != NULL) {
     set_iter(end);

@@ -34,7 +34,7 @@ class HtmlEvent {
   }
   virtual ~HtmlEvent();
   virtual void Run(HtmlFilter* filter) = 0;
-  virtual void ToString(GoogleString* buffer) = 0;
+  virtual GoogleString ToString() const = 0;
 
   // If this is a StartElement event, returns the HtmlElement that is being
   // started.  Otherwise returns NULL.
@@ -61,7 +61,7 @@ class HtmlStartDocumentEvent: public HtmlEvent {
  public:
   explicit HtmlStartDocumentEvent(int line_number) : HtmlEvent(line_number) {}
   virtual void Run(HtmlFilter* filter) { filter->StartDocument(); }
-  virtual void ToString(GoogleString* str) { *str += "StartDocument"; }
+  virtual GoogleString ToString() const { return "StartDocument"; }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(HtmlStartDocumentEvent);
@@ -71,7 +71,7 @@ class HtmlEndDocumentEvent: public HtmlEvent {
  public:
   explicit HtmlEndDocumentEvent(int line_number) : HtmlEvent(line_number) {}
   virtual void Run(HtmlFilter* filter) { filter->EndDocument(); }
-  virtual void ToString(GoogleString* str) { *str += "EndDocument"; }
+  virtual GoogleString ToString() const { return "EndDocument"; }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(HtmlEndDocumentEvent);
@@ -84,8 +84,8 @@ class HtmlStartElementEvent: public HtmlEvent {
         element_(element) {
   }
   virtual void Run(HtmlFilter* filter) { filter->StartElement(element_); }
-  virtual void ToString(GoogleString* str) {
-    StrAppend(str, "StartElement ", element_->name_str());
+  virtual GoogleString ToString() const {
+    return StrCat("StartElement ", element_->ToString());
   }
   virtual HtmlElement* GetElementIfStartEvent() { return element_; }
   virtual HtmlElement* GetNode() { return element_; }
@@ -102,8 +102,8 @@ class HtmlEndElementEvent: public HtmlEvent {
         element_(element) {
   }
   virtual void Run(HtmlFilter* filter) { filter->EndElement(element_); }
-  virtual void ToString(GoogleString* str) {
-    StrAppend(str, "EndElement ", element_->name_str());
+  virtual GoogleString ToString() const {
+    return StrCat("EndElement ", element_->ToString());
   }
   virtual HtmlElement* GetElementIfEndEvent() { return element_; }
   virtual HtmlElement* GetNode() { return element_; }
@@ -129,9 +129,8 @@ class HtmlIEDirectiveEvent: public HtmlLeafNodeEvent {
         directive_(directive) {
   }
   virtual void Run(HtmlFilter* filter) { filter->IEDirective(directive_); }
-  virtual void ToString(GoogleString* str) {
-    *str += "IEDirective ";
-    *str += directive_->contents();
+  virtual GoogleString ToString() const {
+    return StrCat("IEDirective ", directive_->contents());
   }
   virtual HtmlLeafNode* GetLeafNode() { return directive_; }
  private:
@@ -147,9 +146,8 @@ class HtmlCdataEvent: public HtmlLeafNodeEvent {
         cdata_(cdata) {
   }
   virtual void Run(HtmlFilter* filter) { filter->Cdata(cdata_); }
-  virtual void ToString(GoogleString* str) {
-    *str += "Cdata ";
-    *str += cdata_->contents();
+  virtual GoogleString ToString() const {
+    return StrCat("Cdata ", cdata_->contents());
   }
   virtual HtmlLeafNode* GetLeafNode() { return cdata_; }
  private:
@@ -165,9 +163,8 @@ class HtmlCommentEvent: public HtmlLeafNodeEvent {
         comment_(comment) {
   }
   virtual void Run(HtmlFilter* filter) { filter->Comment(comment_); }
-  virtual void ToString(GoogleString* str) {
-    *str += "Comment ";
-    *str += comment_->contents();
+  virtual GoogleString ToString() const {
+    return StrCat("Comment ", comment_->contents());
   }
   virtual HtmlLeafNode* GetLeafNode() { return comment_; }
 
@@ -184,9 +181,8 @@ class HtmlCharactersEvent: public HtmlLeafNodeEvent {
         characters_(characters) {
   }
   virtual void Run(HtmlFilter* filter) { filter->Characters(characters_); }
-  virtual void ToString(GoogleString* str) {
-    *str += "Characters ";
-    *str += characters_->contents();
+  virtual GoogleString ToString() const {
+    return StrCat("Characters ", characters_->contents());
   }
   virtual HtmlLeafNode* GetLeafNode() { return characters_; }
   virtual HtmlCharactersNode* GetCharactersNode() { return characters_; }
@@ -203,9 +199,8 @@ class HtmlDirectiveEvent: public HtmlLeafNodeEvent {
         directive_(directive) {
   }
   virtual void Run(HtmlFilter* filter) { filter->Directive(directive_); }
-  virtual void ToString(GoogleString* str) {
-    *str += "Directive: ";
-    *str += directive_->contents();
+  virtual GoogleString ToString() const {
+    return StrCat("Directive: ", directive_->contents());
   }
   virtual HtmlLeafNode* GetLeafNode() { return directive_; }
  private:

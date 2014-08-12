@@ -178,8 +178,7 @@ void CssOutlineFilter::OutlineStyle(HtmlElement* style_element,
     } else {
       driver()->InsertDebugComment(StrCat(
           "Cannot outline stylesheet with non-CSS type=", type), style_element);
-      GoogleString element_string;
-      style_element->ToString(&element_string);
+      GoogleString element_string = style_element->ToString();
       driver()->InfoHere("Cannot outline non-css stylesheet %s",
                          element_string.c_str());
     }

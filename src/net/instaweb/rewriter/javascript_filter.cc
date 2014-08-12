@@ -369,8 +369,7 @@ void JavascriptFilter::StartElementImpl(HtmlElement* element) {
       }
       break;
     case ScriptTagScanner::kUnknownScript: {
-      GoogleString script_dump;
-      element->ToString(&script_dump);
+      GoogleString script_dump = element->ToString();
       driver()->InfoHere("Unrecognized script:'%s'", script_dump.c_str());
       break;
     }

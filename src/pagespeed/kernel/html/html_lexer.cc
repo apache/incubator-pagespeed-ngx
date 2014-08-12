@@ -1112,9 +1112,7 @@ bool HtmlLexer::IsOptionallyClosedTag(HtmlName::Keyword keyword) const {
 
 void HtmlLexer::DebugPrintStack() {
   for (size_t i = kStartStack; i < element_stack_.size(); ++i) {
-    GoogleString buf;
-    element_stack_[i]->ToString(&buf);
-    fprintf(stdout, "%s\n", buf.c_str());
+    fprintf(stdout, "%s\n", element_stack_[i]->ToString().c_str());
   }
   fflush(stdout);
 }

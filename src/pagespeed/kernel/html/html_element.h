@@ -333,8 +333,9 @@ class HtmlElement : public HtmlNode {
 
   // Render an element as a string for debugging.  This is not
   // intended as a fully legal serialization.
-  void ToString(GoogleString* buf) const;
+  virtual GoogleString ToString() const;
   void DebugPrint() const;
+
 
   int begin_line_number() const { return data_->begin_line_number_; }
   int end_line_number() const { return data_->end_line_number_; }

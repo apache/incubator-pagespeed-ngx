@@ -47,6 +47,7 @@ class HtmlNode {
 
   HtmlElement* parent() const { return parent_; }
   virtual bool live() const = 0;
+  virtual GoogleString ToString() const = 0;
 
   // Marks a node as dead.  The queue's end iterator should be passed in,
   // to remove references to stale iterators, and to force IsRewritable to
@@ -104,6 +105,7 @@ class HtmlLeafNode : public HtmlNode {
   virtual ~HtmlLeafNode();
   virtual bool live() const { return (data_.get() != NULL) && data_->is_live_; }
   virtual void MarkAsDead(const HtmlEventListIterator& end);
+  virtual GoogleString ToString() const;
 
   const GoogleString& contents() const { return data_->contents_; }
   virtual HtmlEventListIterator begin() const {

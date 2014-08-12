@@ -510,6 +510,7 @@ class HtmlParse {
   void CoalesceAdjacentCharactersNodes();
   void ClearEvents();
   void EmitQueue(MessageHandler* handler);
+  inline void NextEvent();
 
   // Visible for testing only, via HtmlTestingPeer
   friend class HtmlTestingPeer;
@@ -540,7 +541,6 @@ class HtmlParse {
   GoogleUrl google_url_;
   GoogleString id_;  // Per-request identifier string used in error messages.
   int line_number_;
-  bool deleted_current_;
   bool skip_increment_;
   bool determine_enabled_filters_called_;
   bool need_sanity_check_;
