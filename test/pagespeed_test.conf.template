@@ -1123,6 +1123,16 @@ http {
   }
 
   server {
+    # Write all post data to temp files
+    client_body_in_file_only clean;
+    pagespeed CriticalImagesBeaconEnabled true;
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name beacon-post-temp-file.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+  }
+
+  server {
     listen @@SECONDARY_PORT@@;
     listen [::]:@@SECONDARY_PORT@@;
     server_name purge.example.com;

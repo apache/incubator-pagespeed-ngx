@@ -81,6 +81,7 @@ extern ngx_module_t ngx_pagespeed;
 // Unused flag, see
 // http://lxr.evanmiller.org/http/source/http/ngx_http_request.h#L130
 #define  NGX_HTTP_PAGESPEED_BUFFERED 0x08
+#define  POST_BUF_READ_SIZE 65536
 
 // Needed for SystemRewriteDriverFactory to use shared memory.
 #define PAGESPEED_SUPPORT_POSIX_SHARED_MEM
@@ -2609,7 +2610,6 @@ void ps_beacon_handler_helper(ngx_http_request_t* r,
   // header so wget doesn't hang.
 }
 
-
 // Load the request body into out.  ngx_http_read_client_request_body must
 // already have been called.  Return false on failure, true on success.
 bool ps_request_body_to_string_piece(
@@ -2622,13 +2622,32 @@ bool ps_request_body_to_string_piece(
   }
 
   if (r->request_body->temp_file) {
-    // For now raise an error instead of figuring out how to read temporary
-    // files.
-    ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
-                  "ps_request_body_to_string_piece: "
-                  "request body in temporary file unsupported."
-                  "Increase client_body_buffer_size.");
-    return false;
+    u_char buf[POST_BUF_READ_SIZE];
+    int count = 0;
+    ssize_t ret;
+    GoogleString tmp;
+
+    // Note that we depend on nginx to impose sensible limits on post data.
+    while ((ret = ngx_read_file(&r->request_body->temp_file->file,
+                                buf, POST_BUF_READ_SIZE, count)) > 0) {
+      tmp.append(reinterpret_cast<char*>(buf), ret);
+      count += ret;
+    }
+
+    if (ret < 0) {
+      ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
+		    "ps_request_body_to_string_piece: "
+		    "error reading post body.");
+      return false;
+    }
+
+    // We have read the complete post body, copy it to a buffer
+    // from the request's pool.
+    u_char* data = reinterpret_cast<u_char*>(ngx_palloc(r->pool, count));
+    memcpy(data, tmp.c_str(), count);
+    *out = StringPiece(reinterpret_cast<char*>(data), count);
+
+    return true;
   } else if (r->request_body->bufs->next == NULL) {
     // There's just one buffer, so we can simply return a StringPiece pointing
     // to this buffer.
