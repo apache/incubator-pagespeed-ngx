@@ -2585,9 +2585,11 @@ start_test pagespeed_admin and alternate_admin_path
 function check_admin_banner() {
   path="$1"
   title="$2"
-  echo $WGET_DUMP $PRIMARY_SERVER/$path '|' head -25 ...
-  OUT=$($WGET_DUMP $PRIMARY_SERVER/$path | head -25)
-  check_from "$OUT" fgrep -q "<title>PageSpeed $title</title>"
+  tmpfile=$TEMPDIR/admin.html
+  echo $WGET_DUMP $PRIMARY_SERVER/$path '>' $tmpfile ...
+  $WGET_DUMP $PRIMARY_SERVER/$path > $tmpfile
+  check fgrep -q "<title>PageSpeed $title</title>" $tmpfile
+  rm -f $tmpfile
 }
 for admin_path in pagespeed_admin pagespeed_global_admin alt/admin/path; do
   check_admin_banner $admin_path/statistics "Statistics"

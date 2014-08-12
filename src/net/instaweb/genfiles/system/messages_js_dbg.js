@@ -1314,6 +1314,216 @@ goog.reflect.canAccessProperty = function(obj, prop) {
   }
   return!1;
 };
+goog.object = {};
+goog.object.forEach = function(obj, f, opt_obj) {
+  for (var key in obj) {
+    f.call(opt_obj, obj[key], key, obj);
+  }
+};
+goog.object.filter = function(obj, f, opt_obj) {
+  var res = {}, key;
+  for (key in obj) {
+    f.call(opt_obj, obj[key], key, obj) && (res[key] = obj[key]);
+  }
+  return res;
+};
+goog.object.map = function(obj, f, opt_obj) {
+  var res = {}, key;
+  for (key in obj) {
+    res[key] = f.call(opt_obj, obj[key], key, obj);
+  }
+  return res;
+};
+goog.object.some = function(obj, f, opt_obj) {
+  for (var key in obj) {
+    if (f.call(opt_obj, obj[key], key, obj)) {
+      return!0;
+    }
+  }
+  return!1;
+};
+goog.object.every = function(obj, f, opt_obj) {
+  for (var key in obj) {
+    if (!f.call(opt_obj, obj[key], key, obj)) {
+      return!1;
+    }
+  }
+  return!0;
+};
+goog.object.getCount = function(obj) {
+  var rv = 0, key;
+  for (key in obj) {
+    rv++;
+  }
+  return rv;
+};
+goog.object.getAnyKey = function(obj) {
+  for (var key in obj) {
+    return key;
+  }
+};
+goog.object.getAnyValue = function(obj) {
+  for (var key in obj) {
+    return obj[key];
+  }
+};
+goog.object.contains = function(obj, val) {
+  return goog.object.containsValue(obj, val);
+};
+goog.object.getValues = function(obj) {
+  var res = [], i = 0, key;
+  for (key in obj) {
+    res[i++] = obj[key];
+  }
+  return res;
+};
+goog.object.getKeys = function(obj) {
+  var res = [], i = 0, key;
+  for (key in obj) {
+    res[i++] = key;
+  }
+  return res;
+};
+goog.object.getValueByKeys = function(obj, var_args) {
+  for (var isArrayLike = goog.isArrayLike(var_args), keys = isArrayLike ? var_args : arguments, i = isArrayLike ? 0 : 1;i < keys.length && (obj = obj[keys[i]], goog.isDef(obj));i++) {
+  }
+  return obj;
+};
+goog.object.containsKey = function(obj, key) {
+  return key in obj;
+};
+goog.object.containsValue = function(obj, val) {
+  for (var key in obj) {
+    if (obj[key] == val) {
+      return!0;
+    }
+  }
+  return!1;
+};
+goog.object.findKey = function(obj, f, opt_this) {
+  for (var key in obj) {
+    if (f.call(opt_this, obj[key], key, obj)) {
+      return key;
+    }
+  }
+};
+goog.object.findValue = function(obj, f, opt_this) {
+  var key = goog.object.findKey(obj, f, opt_this);
+  return key && obj[key];
+};
+goog.object.isEmpty = function(obj) {
+  for (var key in obj) {
+    return!1;
+  }
+  return!0;
+};
+goog.object.clear = function(obj) {
+  for (var i in obj) {
+    delete obj[i];
+  }
+};
+goog.object.remove = function(obj, key) {
+  var rv;
+  (rv = key in obj) && delete obj[key];
+  return rv;
+};
+goog.object.add = function(obj, key, val) {
+  if (key in obj) {
+    throw Error('The object already contains the key "' + key + '"');
+  }
+  goog.object.set(obj, key, val);
+};
+goog.object.get = function(obj, key, opt_val) {
+  return key in obj ? obj[key] : opt_val;
+};
+goog.object.set = function(obj, key, value) {
+  obj[key] = value;
+};
+goog.object.setIfUndefined = function(obj, key, value) {
+  return key in obj ? obj[key] : obj[key] = value;
+};
+goog.object.equals = function(a, b) {
+  if (!goog.array.equals(goog.object.getKeys(a), goog.object.getKeys(b))) {
+    return!1;
+  }
+  for (var k in a) {
+    if (a[k] !== b[k]) {
+      return!1;
+    }
+  }
+  return!0;
+};
+goog.object.clone = function(obj) {
+  var res = {}, key;
+  for (key in obj) {
+    res[key] = obj[key];
+  }
+  return res;
+};
+goog.object.unsafeClone = function(obj) {
+  var type = goog.typeOf(obj);
+  if ("object" == type || "array" == type) {
+    if (obj.clone) {
+      return obj.clone();
+    }
+    var clone = "array" == type ? [] : {}, key;
+    for (key in obj) {
+      clone[key] = goog.object.unsafeClone(obj[key]);
+    }
+    return clone;
+  }
+  return obj;
+};
+goog.object.transpose = function(obj) {
+  var transposed = {}, key;
+  for (key in obj) {
+    transposed[obj[key]] = key;
+  }
+  return transposed;
+};
+goog.object.PROTOTYPE_FIELDS_ = "constructor hasOwnProperty isPrototypeOf propertyIsEnumerable toLocaleString toString valueOf".split(" ");
+goog.object.extend = function(target, var_args) {
+  for (var key, source, i = 1;i < arguments.length;i++) {
+    source = arguments[i];
+    for (key in source) {
+      target[key] = source[key];
+    }
+    for (var j = 0;j < goog.object.PROTOTYPE_FIELDS_.length;j++) {
+      key = goog.object.PROTOTYPE_FIELDS_[j], Object.prototype.hasOwnProperty.call(source, key) && (target[key] = source[key]);
+    }
+  }
+};
+goog.object.create = function(var_args) {
+  var argLength = arguments.length;
+  if (1 == argLength && goog.isArray(arguments[0])) {
+    return goog.object.create.apply(null, arguments[0]);
+  }
+  if (argLength % 2) {
+    throw Error("Uneven number of arguments");
+  }
+  for (var rv = {}, i = 0;i < argLength;i += 2) {
+    rv[arguments[i]] = arguments[i + 1];
+  }
+  return rv;
+};
+goog.object.createSet = function(var_args) {
+  var argLength = arguments.length;
+  if (1 == argLength && goog.isArray(arguments[0])) {
+    return goog.object.createSet.apply(null, arguments[0]);
+  }
+  for (var rv = {}, i = 0;i < argLength;i++) {
+    rv[arguments[i]] = !0;
+  }
+  return rv;
+};
+goog.object.createImmutableView = function(obj) {
+  var result = obj;
+  Object.isFrozen && !Object.isFrozen(obj) && (result = Object.create(obj), Object.freeze(result));
+  return result;
+};
+goog.object.isImmutableView = function(obj) {
+  return!!Object.isFrozen && Object.isFrozen(obj);
+};
 goog.labs = {};
 goog.labs.userAgent = {};
 goog.labs.userAgent.util = {};
@@ -1366,7 +1576,7 @@ goog.labs.userAgent.browser.matchChrome_ = function() {
   return goog.labs.userAgent.util.matchUserAgent("Chrome") || goog.labs.userAgent.util.matchUserAgent("CriOS");
 };
 goog.labs.userAgent.browser.matchAndroidBrowser_ = function() {
-  return goog.labs.userAgent.util.matchUserAgent("Android") && !goog.labs.userAgent.util.matchUserAgent("Chrome") && !goog.labs.userAgent.util.matchUserAgent("CriOS");
+  return!goog.labs.userAgent.browser.isChrome() && goog.labs.userAgent.util.matchUserAgent("Android");
 };
 goog.labs.userAgent.browser.isOpera = goog.labs.userAgent.browser.matchOpera_;
 goog.labs.userAgent.browser.isIE = goog.labs.userAgent.browser.matchIE_;
@@ -1378,15 +1588,27 @@ goog.labs.userAgent.browser.isSilk = function() {
   return goog.labs.userAgent.util.matchUserAgent("Silk");
 };
 goog.labs.userAgent.browser.getVersion = function() {
+  function lookUpValueWithKeys(keys) {
+    var key = goog.array.find(keys, versionMapHasKey);
+    return versionMap[key] || "";
+  }
   var userAgentString = goog.labs.userAgent.util.getUserAgent();
   if (goog.labs.userAgent.browser.isIE()) {
     return goog.labs.userAgent.browser.getIEVersion_(userAgentString);
   }
+  var versionTuples = goog.labs.userAgent.util.extractVersionTuples(userAgentString), versionMap = {};
+  goog.array.forEach(versionTuples, function(tuple) {
+    versionMap[tuple[0]] = tuple[1];
+  });
+  var versionMapHasKey = goog.partial(goog.object.containsKey, versionMap);
   if (goog.labs.userAgent.browser.isOpera()) {
-    return goog.labs.userAgent.browser.getOperaVersion_(userAgentString);
+    return lookUpValueWithKeys(["Version", "Opera", "OPR"]);
   }
-  var versionTuples = goog.labs.userAgent.util.extractVersionTuples(userAgentString);
-  return goog.labs.userAgent.browser.getVersionFromTuples_(versionTuples);
+  if (goog.labs.userAgent.browser.isChrome()) {
+    return lookUpValueWithKeys(["Chrome", "CriOS"]);
+  }
+  var tuple = versionTuples[2];
+  return tuple && tuple[1] || "";
 };
 goog.labs.userAgent.browser.isVersionOrHigher = function(version) {
   return 0 <= goog.string.compareVersions(goog.labs.userAgent.browser.getVersion(), version);
@@ -1422,14 +1644,6 @@ goog.labs.userAgent.browser.getIEVersion_ = function(userAgent) {
     }
   }
   return version;
-};
-goog.labs.userAgent.browser.getOperaVersion_ = function(userAgent) {
-  var versionTuples = goog.labs.userAgent.util.extractVersionTuples(userAgent), lastTuple = goog.array.peek(versionTuples);
-  return "OPR" == lastTuple[0] && lastTuple[1] ? lastTuple[1] : goog.labs.userAgent.browser.getVersionFromTuples_(versionTuples);
-};
-goog.labs.userAgent.browser.getVersionFromTuples_ = function(versionTuples) {
-  goog.asserts.assert(2 < versionTuples.length, "Couldn't extract version tuple from user agent string");
-  return versionTuples[2] && versionTuples[2][1] ? versionTuples[2][1] : "";
 };
 goog.labs.userAgent.engine = {};
 goog.labs.userAgent.engine.isPresto = function() {
@@ -1727,216 +1941,6 @@ goog.events.ListenableKey = function() {
 goog.events.ListenableKey.counter_ = 0;
 goog.events.ListenableKey.reserveKey = function() {
   return++goog.events.ListenableKey.counter_;
-};
-goog.object = {};
-goog.object.forEach = function(obj, f, opt_obj) {
-  for (var key in obj) {
-    f.call(opt_obj, obj[key], key, obj);
-  }
-};
-goog.object.filter = function(obj, f, opt_obj) {
-  var res = {}, key;
-  for (key in obj) {
-    f.call(opt_obj, obj[key], key, obj) && (res[key] = obj[key]);
-  }
-  return res;
-};
-goog.object.map = function(obj, f, opt_obj) {
-  var res = {}, key;
-  for (key in obj) {
-    res[key] = f.call(opt_obj, obj[key], key, obj);
-  }
-  return res;
-};
-goog.object.some = function(obj, f, opt_obj) {
-  for (var key in obj) {
-    if (f.call(opt_obj, obj[key], key, obj)) {
-      return!0;
-    }
-  }
-  return!1;
-};
-goog.object.every = function(obj, f, opt_obj) {
-  for (var key in obj) {
-    if (!f.call(opt_obj, obj[key], key, obj)) {
-      return!1;
-    }
-  }
-  return!0;
-};
-goog.object.getCount = function(obj) {
-  var rv = 0, key;
-  for (key in obj) {
-    rv++;
-  }
-  return rv;
-};
-goog.object.getAnyKey = function(obj) {
-  for (var key in obj) {
-    return key;
-  }
-};
-goog.object.getAnyValue = function(obj) {
-  for (var key in obj) {
-    return obj[key];
-  }
-};
-goog.object.contains = function(obj, val) {
-  return goog.object.containsValue(obj, val);
-};
-goog.object.getValues = function(obj) {
-  var res = [], i = 0, key;
-  for (key in obj) {
-    res[i++] = obj[key];
-  }
-  return res;
-};
-goog.object.getKeys = function(obj) {
-  var res = [], i = 0, key;
-  for (key in obj) {
-    res[i++] = key;
-  }
-  return res;
-};
-goog.object.getValueByKeys = function(obj, var_args) {
-  for (var isArrayLike = goog.isArrayLike(var_args), keys = isArrayLike ? var_args : arguments, i = isArrayLike ? 0 : 1;i < keys.length && (obj = obj[keys[i]], goog.isDef(obj));i++) {
-  }
-  return obj;
-};
-goog.object.containsKey = function(obj, key) {
-  return key in obj;
-};
-goog.object.containsValue = function(obj, val) {
-  for (var key in obj) {
-    if (obj[key] == val) {
-      return!0;
-    }
-  }
-  return!1;
-};
-goog.object.findKey = function(obj, f, opt_this) {
-  for (var key in obj) {
-    if (f.call(opt_this, obj[key], key, obj)) {
-      return key;
-    }
-  }
-};
-goog.object.findValue = function(obj, f, opt_this) {
-  var key = goog.object.findKey(obj, f, opt_this);
-  return key && obj[key];
-};
-goog.object.isEmpty = function(obj) {
-  for (var key in obj) {
-    return!1;
-  }
-  return!0;
-};
-goog.object.clear = function(obj) {
-  for (var i in obj) {
-    delete obj[i];
-  }
-};
-goog.object.remove = function(obj, key) {
-  var rv;
-  (rv = key in obj) && delete obj[key];
-  return rv;
-};
-goog.object.add = function(obj, key, val) {
-  if (key in obj) {
-    throw Error('The object already contains the key "' + key + '"');
-  }
-  goog.object.set(obj, key, val);
-};
-goog.object.get = function(obj, key, opt_val) {
-  return key in obj ? obj[key] : opt_val;
-};
-goog.object.set = function(obj, key, value) {
-  obj[key] = value;
-};
-goog.object.setIfUndefined = function(obj, key, value) {
-  return key in obj ? obj[key] : obj[key] = value;
-};
-goog.object.equals = function(a, b) {
-  if (!goog.array.equals(goog.object.getKeys(a), goog.object.getKeys(b))) {
-    return!1;
-  }
-  for (var k in a) {
-    if (a[k] !== b[k]) {
-      return!1;
-    }
-  }
-  return!0;
-};
-goog.object.clone = function(obj) {
-  var res = {}, key;
-  for (key in obj) {
-    res[key] = obj[key];
-  }
-  return res;
-};
-goog.object.unsafeClone = function(obj) {
-  var type = goog.typeOf(obj);
-  if ("object" == type || "array" == type) {
-    if (obj.clone) {
-      return obj.clone();
-    }
-    var clone = "array" == type ? [] : {}, key;
-    for (key in obj) {
-      clone[key] = goog.object.unsafeClone(obj[key]);
-    }
-    return clone;
-  }
-  return obj;
-};
-goog.object.transpose = function(obj) {
-  var transposed = {}, key;
-  for (key in obj) {
-    transposed[obj[key]] = key;
-  }
-  return transposed;
-};
-goog.object.PROTOTYPE_FIELDS_ = "constructor hasOwnProperty isPrototypeOf propertyIsEnumerable toLocaleString toString valueOf".split(" ");
-goog.object.extend = function(target, var_args) {
-  for (var key, source, i = 1;i < arguments.length;i++) {
-    source = arguments[i];
-    for (key in source) {
-      target[key] = source[key];
-    }
-    for (var j = 0;j < goog.object.PROTOTYPE_FIELDS_.length;j++) {
-      key = goog.object.PROTOTYPE_FIELDS_[j], Object.prototype.hasOwnProperty.call(source, key) && (target[key] = source[key]);
-    }
-  }
-};
-goog.object.create = function(var_args) {
-  var argLength = arguments.length;
-  if (1 == argLength && goog.isArray(arguments[0])) {
-    return goog.object.create.apply(null, arguments[0]);
-  }
-  if (argLength % 2) {
-    throw Error("Uneven number of arguments");
-  }
-  for (var rv = {}, i = 0;i < argLength;i += 2) {
-    rv[arguments[i]] = arguments[i + 1];
-  }
-  return rv;
-};
-goog.object.createSet = function(var_args) {
-  var argLength = arguments.length;
-  if (1 == argLength && goog.isArray(arguments[0])) {
-    return goog.object.createSet.apply(null, arguments[0]);
-  }
-  for (var rv = {}, i = 0;i < argLength;i++) {
-    rv[arguments[i]] = !0;
-  }
-  return rv;
-};
-goog.object.createImmutableView = function(obj) {
-  var result = obj;
-  Object.isFrozen && !Object.isFrozen(obj) && (result = Object.create(obj), Object.freeze(result));
-  return result;
-};
-goog.object.isImmutableView = function(obj) {
-  return!!Object.isFrozen && Object.isFrozen(obj);
 };
 goog.events.Listener = function(listener, proxy, src, type, capture, opt_handler) {
   this.listener = listener;
