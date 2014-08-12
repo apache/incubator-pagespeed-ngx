@@ -55,6 +55,12 @@ pagespeed.Statistics = function(opt_xhr) {
   }
 
   /**
+   * The total number of unfiltered messages.
+   * @private {number}
+   */
+  this.numUnfilteredMessages_ = this.psolMessages_.length;
+
+  /**
    * We provide filtering functionality for users to search for certain
    * statistics like all the statistics related to caches. This option is the
    * matching pattern. Filtering is case-insensitive.
@@ -125,7 +131,8 @@ pagespeed.Statistics.prototype.updateMessageCount = function(opt_num) {
   // is not specified.
   var total = (opt_num != undefined) ? opt_num : this.psolMessages_.length;
   document.getElementById('num').textContent =
-      'The number of statistics: ' + total.toString();
+      'The number of statistics: ' + total.toString() + '/' +
+      this.numUnfilteredMessages_;
 };
 
 
@@ -134,6 +141,7 @@ pagespeed.Statistics.prototype.updateMessageCount = function(opt_num) {
  */
 pagespeed.Statistics.prototype.error = function() {
   goog.array.clear(this.psolMessages_);
+  this.numUnfilteredMessages_ = 0;
   this.updateMessageCount();
   document.getElementById('stat').textContent =
       pagespeed.Statistics.REFRESH_ERROR_;
@@ -183,6 +191,7 @@ pagespeed.Statistics.prototype.parseMessagesFromResponse = function(jsonData) {
     messages.push(line);
   }
   this.psolMessages_ = messages;
+  this.numUnfilteredMessages_ = messages.length;
   this.update();
 };
 

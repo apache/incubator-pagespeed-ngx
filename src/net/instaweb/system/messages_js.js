@@ -59,6 +59,12 @@ pagespeed.Messages = function(opt_xhr) {
   }
 
   /**
+   * The total number of unfiltered messages.
+   * @private {number}
+   */
+  this.numUnfilteredMessages_ = this.psolMessages_.length;
+
+  /**
    * The option of reversing list.
    * @private {boolean}
    */
@@ -143,7 +149,8 @@ pagespeed.Messages.prototype.updateMessageCount = function(opt_num) {
   // is not specified.
   var total = (opt_num != undefined) ? opt_num : this.psolMessages_.length;
   document.getElementById('num').textContent =
-      'The number of messages: ' + total.toString();
+      'The number of messages: ' + total.toString() + '/' +
+      this.numUnfilteredMessages_;
 };
 
 
@@ -207,9 +214,11 @@ pagespeed.Messages.prototype.parseMessagesFromResponse = function(text) {
     messages = text.substring(start, end).split('\n');
     messages.pop();
     this.psolMessages_ = messages;
+    this.numUnfilteredMessages_ = messages.length;
     this.update();
   } else {
     goog.array.clear(this.psolMessages_);
+    this.numUnfilteredMessages_ = 0;
     this.updateMessageCount();
     document.getElementById('log').textContent = pagespeed.Messages.DUMP_ERROR_;
   }
@@ -246,6 +255,7 @@ pagespeed.Messages.prototype.parseAjaxResponse = function() {
   } else {
     console.log(this.xhr_.getLastError());
     goog.array.clear(this.psolMessages_);
+    this.numUnfilteredMessages_ = 0;
     this.updateMessageCount();
     document.getElementById('log').textContent =
         pagespeed.Messages.REFRESH_ERROR_;

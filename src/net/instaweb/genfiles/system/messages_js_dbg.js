@@ -4602,6 +4602,7 @@ var pagespeed = {Messages:function(opt_xhr) {
   this.xhr_ = opt_xhr || new goog.net.XhrIo;
   this.psolMessages_ = document.getElementById("log").innerHTML.split("\n");
   0 < this.psolMessages_.length && this.psolMessages_.pop();
+  this.numUnfilteredMessages_ = this.psolMessages_.length;
   this.reverse_ = !1;
   this.filter_ = "";
   this.autoRefresh_ = !1;
@@ -4631,7 +4632,7 @@ pagespeed.Messages.prototype.setFilter = function(element) {
   this.update();
 };
 pagespeed.Messages.prototype.updateMessageCount = function(opt_num) {
-  document.getElementById("num").textContent = "The number of messages: " + (void 0 != opt_num ? opt_num : this.psolMessages_.length).toString();
+  document.getElementById("num").textContent = "The number of messages: " + (void 0 != opt_num ? opt_num : this.psolMessages_.length).toString() + "/" + this.numUnfilteredMessages_;
 };
 pagespeed.Messages.prototype.update = function() {
   var logElement = document.getElementById("log"), messages = goog.array.clone(this.psolMessages_);
@@ -4646,7 +4647,7 @@ pagespeed.Messages.prototype.update = function() {
 pagespeed.Messages.DUMP_ERROR_ = "Failed to write messages to this page. Verify that MessageBufferSize is not set to 0 in pagespeed.conf.";
 pagespeed.Messages.prototype.parseMessagesFromResponse = function(text) {
   var messages = [], start = text.indexOf('<div id="log">'), end = text.indexOf('<script type="text/javascript">', start);
-  0 <= start && 0 <= end ? (messages = text.substring(start + 14, end - 7).split("\n"), messages.pop(), this.psolMessages_ = messages, this.update()) : (goog.array.clear(this.psolMessages_), this.updateMessageCount(), document.getElementById("log").textContent = pagespeed.Messages.DUMP_ERROR_);
+  0 <= start && 0 <= end ? (messages = text.substring(start + 14, end - 7).split("\n"), messages.pop(), this.psolMessages_ = messages, this.numUnfilteredMessages_ = messages.length, this.update()) : (goog.array.clear(this.psolMessages_), this.numUnfilteredMessages_ = 0, this.updateMessageCount(), document.getElementById("log").textContent = pagespeed.Messages.DUMP_ERROR_);
 };
 pagespeed.Messages.REFRESH_ERROR_ = "Sorry, the message history cannot be loaded. Please wait and try again later.";
 pagespeed.Messages.prototype.autoRefresh = function() {
@@ -4657,7 +4658,7 @@ pagespeed.Messages.prototype.parseAjaxResponse = function() {
     var newText = this.xhr_.getResponseText();
     this.parseMessagesFromResponse(newText);
   } else {
-    console.log(this.xhr_.getLastError()), goog.array.clear(this.psolMessages_), this.updateMessageCount(), document.getElementById("log").textContent = pagespeed.Messages.REFRESH_ERROR_;
+    console.log(this.xhr_.getLastError()), goog.array.clear(this.psolMessages_), this.numUnfilteredMessages_ = 0, this.updateMessageCount(), document.getElementById("log").textContent = pagespeed.Messages.REFRESH_ERROR_;
   }
 };
 pagespeed.Messages.Start = function() {

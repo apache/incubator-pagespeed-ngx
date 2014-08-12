@@ -4602,6 +4602,7 @@ var pagespeed = {Statistics:function(opt_xhr) {
   this.xhr_ = opt_xhr || new goog.net.XhrIo;
   this.psolMessages_ = document.getElementById("stat").textContent.split("\n");
   0 < this.psolMessages_.length && this.psolMessages_.pop();
+  this.numUnfilteredMessages_ = this.psolMessages_.length;
   this.filter_ = "";
   this.autoRefresh_ = !1;
   var wrapper = document.createElement("div");
@@ -4626,10 +4627,11 @@ pagespeed.Statistics.prototype.setFilter = function(element) {
   this.update();
 };
 pagespeed.Statistics.prototype.updateMessageCount = function(opt_num) {
-  document.getElementById("num").textContent = "The number of statistics: " + (void 0 != opt_num ? opt_num : this.psolMessages_.length).toString();
+  document.getElementById("num").textContent = "The number of statistics: " + (void 0 != opt_num ? opt_num : this.psolMessages_.length).toString() + "/" + this.numUnfilteredMessages_;
 };
 pagespeed.Statistics.prototype.error = function() {
   goog.array.clear(this.psolMessages_);
+  this.numUnfilteredMessages_ = 0;
   this.updateMessageCount();
   document.getElementById("stat").textContent = pagespeed.Statistics.REFRESH_ERROR_;
 };
@@ -4654,6 +4656,7 @@ pagespeed.Statistics.prototype.parseMessagesFromResponse = function(jsonData) {
       messages.push(line);
     }
     this.psolMessages_ = messages;
+    this.numUnfilteredMessages_ = messages.length;
     this.update();
   }
 };
