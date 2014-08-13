@@ -65,6 +65,7 @@ class RequestProperties {
   bool GetScreenResolution(int* width, int* height) const;
   UserAgentMatcher::DeviceType GetDeviceType() const;
   bool IsMobile() const;
+  bool ForbidWebpInlining() const;
 
   // Does not own the vectors. Callers must ensure the lifetime of vectors
   // exceeds that of the RequestProperties.

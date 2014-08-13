@@ -56,6 +56,7 @@ enum InlineResult {
   INLINE_NO_DATA,
   INLINE_TOO_LARGE,
   INLINE_CACHE_SMALL_IMAGES_UNREWRITTEN,
+  INLINE_INTERNAL_ERROR,
 };
 
 // Identify img tags in html and optimize them.

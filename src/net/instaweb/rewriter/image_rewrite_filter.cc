@@ -331,6 +331,10 @@ const char* MessageForInlineResult(InlineResult inline_result) {
       message = "The image was not inlined because CacheSmallImagesUnrewritten "
         "has been set.";
       break;
+    case INLINE_INTERNAL_ERROR:
+      message = "The image was not inlined because the internal data was "
+        "corrupted.";
+      break;
   }
   return message;
 }
@@ -1732,7 +1736,21 @@ void ImageRewriteFilter::GetDimensions(
 InlineResult ImageRewriteFilter::TryInline(bool is_html, bool is_critical,
     int64 image_inline_max_bytes, const CachedResult* cached_result,
     ResourceSlot* slot, GoogleString* data_url) {
-  if (!driver()->request_properties()->SupportsImageInlining()) {
+  int32 image_type_value = cached_result->inlined_image_type();
+  if ((image_type_value < IMAGE_UNKNOWN) ||
+      (image_type_value > IMAGE_WEBP_LOSSLESS_OR_ALPHA)) {
+    // IMAGE_UNKNOWN and IMAGE_WEBP_LOSSLESS_OR_ALPHA must be the smallest
+    // and largest values, respectively, in ImageType enum.
+    LOG(DFATAL) << "Invalid inlined_image_type in cached_result";
+    return INLINE_INTERNAL_ERROR;
+  }
+  ImageType image_type = static_cast<ImageType>(image_type_value);
+
+  const RequestProperties* request_properties = driver()->request_properties();
+  if (!request_properties->SupportsImageInlining() ||
+      ((image_type == IMAGE_WEBP ||
+        image_type == IMAGE_WEBP_LOSSLESS_OR_ALPHA) &&
+       request_properties->ForbidWebpInlining())) {
     return INLINE_UNSUPPORTED_DEVICE;
   }
   if (is_html && driver()->options()->inline_only_critical_images() &&
@@ -1769,10 +1787,7 @@ InlineResult ImageRewriteFilter::TryInline(bool is_html, bool is_critical,
     slot->set_disable_rendering(true);
     return INLINE_CACHE_SMALL_IMAGES_UNREWRITTEN;
   }
-  DataUrl(
-      *Image::TypeToContentType(
-          static_cast<ImageType>(cached_result->inlined_image_type())),
-      BASE64, data, data_url);
+  DataUrl(*Image::TypeToContentType(image_type), BASE64, data, data_url);
   return INLINE_SUCCESS;
 }
 

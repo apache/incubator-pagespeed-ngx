@@ -85,6 +85,7 @@ class DeviceProperties {
   bool GetPreferredImageQualities(
       ImageQualityPreference preference, int* webp, int* jpeg) const;
   static int GetPreferredImageQualityCount();
+  bool ForbidWebpInlining() const;
 
  private:
   friend class ImageRewriteTest;

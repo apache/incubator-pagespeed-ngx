@@ -201,4 +201,8 @@ void RequestProperties::LogDeviceInfo(
       CanPreloadResources());
 }
 
+bool RequestProperties::ForbidWebpInlining() const {
+  return device_properties_->ForbidWebpInlining();
+}
+
 }  // namespace net_instaweb

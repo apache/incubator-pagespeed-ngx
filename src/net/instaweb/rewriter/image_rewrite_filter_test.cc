@@ -318,6 +318,31 @@ class ImageRewriteTest : public RewriteTestBase {
     EXPECT_STREQ("ic", AppliedRewriterStringFromLog());
   }
 
+  void TestInlining(bool convert_to_webp, const char* user_agent,
+                    const StringPiece& file_name, const ContentType& input_type,
+                    const ContentType& output_type, bool expect_inline) {
+    rewrite_driver()->SetUserAgent(user_agent);
+    options()->set_image_inline_max_bytes(1000000);
+    options()->EnableFilter(RewriteOptions::kInlineImages);
+    options()->EnableFilter(RewriteOptions::kConvertGifToPng);
+    options()->EnableFilter(RewriteOptions::kConvertPngToJpeg);
+    options()->EnableFilter(RewriteOptions::kRecompressJpeg);
+    options()->EnableFilter(RewriteOptions::kRecompressPng);
+
+    if (convert_to_webp) {
+      options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
+      options()->EnableFilter(RewriteOptions::kConvertToWebpLossless);
+
+      RequestHeaders request_headers;
+      request_headers.Add(HttpAttributes::kAccept, "image/webp");
+      rewrite_driver()->SetRequestHeaders(request_headers);
+    }
+
+    rewrite_driver()->AddFilters();
+    TestSingleRewrite(file_name, input_type, output_type, "", "",
+                      true /*expect_rewritten*/, expect_inline);
+  }
+
   // Helper class to collect image srcs.
   class ImageCollector : public EmptyHtmlFilter {
    public:
@@ -3566,6 +3591,63 @@ TEST_F(ImageRewriteTest, DebugMessageUnauthorized) {
       "-->");
 
   EXPECT_THAT(output_buffer_, HasSubstr(expected));
+}
+
+// Chrome on iPhone rewrites a photo-like GIF to lossy WebP but cannot inline
+// it.
+TEST_F(ImageRewriteTest, ChromeIphoneOutlinesWebP) {
+  TestInlining(true, UserAgentMatcherTestBase::kIPhoneChrome36UserAgent,
+               kChefGifFile, kContentTypeGif, kContentTypeWebp, false);
+}
+
+// Chrome on iPad rewrites a graphics-like PNG to lossless WebP but cannot
+// inline it.
+TEST_F(ImageRewriteTest, ChromeIpadInlinesPng) {
+  TestInlining(true, UserAgentMatcherTestBase::kIPadChrome36UserAgent,
+               kCuppaTPngFile, kContentTypePng, kContentTypeWebp, false);
+}
+
+// Chrome on iPad rewrites a JPEG to lossy WebP but cannot inline it.
+TEST_F(ImageRewriteTest, ChromeIpadOutlinesWebp) {
+  TestInlining(true, UserAgentMatcherTestBase::kIPadChrome36UserAgent,
+               kPuzzleJpgFile, kContentTypeJpeg, kContentTypeWebp, false);
+}
+
+// Chrome on iPhone rewrites a graphics-like PNG to another PNG and inlines it.
+TEST_F(ImageRewriteTest, ChromeIphoneInlinesPng) {
+  TestInlining(false, UserAgentMatcherTestBase::kIPhoneChrome36UserAgent,
+               kCuppaPngFile, kContentTypePng, kContentTypePng, true);
+}
+
+// Chrome on iPad rewrites a JPEG to another JPEG and inlines it.
+TEST_F(ImageRewriteTest, ChromeIpadInlinesJpeg) {
+  TestInlining(false, UserAgentMatcherTestBase::kIPadChrome36UserAgent,
+               kPuzzleJpgFile, kContentTypeJpeg, kContentTypeJpeg, true);
+}
+
+// Safari on iPhone rewrites a photo-like GIF to JPEG and inlines it.
+TEST_F(ImageRewriteTest, SafariIphoneInlinesJpeg) {
+  TestInlining(false, UserAgentMatcherTestBase::kIPhone4Safari,
+               kChefGifFile, kContentTypeGif, kContentTypeJpeg, true);
+}
+
+// Chrome on Android rewrites a photo-like PNG to lossy WebP and inlines it.
+TEST_F(ImageRewriteTest, ChromeAndroidInlinesWebP) {
+  TestInlining(true, UserAgentMatcherTestBase::kAndroidChrome21UserAgent,
+               kChefGifFile, kContentTypeGif, kContentTypeWebp, true);
+}
+
+// Chrome on desktop rewrites a JPEG to lossy WebP and inlines it.
+TEST_F(ImageRewriteTest, ChromeDesktopInlinesWebp) {
+  TestInlining(true, UserAgentMatcherTestBase::kChrome18UserAgent,
+               kPuzzleJpgFile, kContentTypeJpeg, kContentTypeWebp, true);
+}
+
+// Chrome on Android rewrites a graphics-like PNG to lossless WebP and
+// inlines it.
+TEST_F(ImageRewriteTest, ChromeAndroidInlinesLosslessWebp) {
+  TestInlining(true, UserAgentMatcherTestBase::kNexus10ChromeUserAgent,
+               kCuppaTPngFile, kContentTypePng, kContentTypeWebp, true);
 }
 
 }  // namespace net_instaweb
