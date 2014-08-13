@@ -698,12 +698,6 @@ goog.string.escapeChar = function(c) {
   }
   return goog.string.jsEscapeCache_[c] = rv;
 };
-goog.string.toMap = function(s) {
-  for (var rv = {}, i = 0;i < s.length;i++) {
-    rv[s.charAt(i)] = !0;
-  }
-  return rv;
-};
 goog.string.contains = function(str, subString) {
   return-1 != str.indexOf(subString);
 };

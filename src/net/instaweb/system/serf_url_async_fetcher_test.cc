@@ -68,7 +68,6 @@ namespace net_instaweb {
 
 namespace {
 const char kProxy[] = "";
-const int kMaxMs = 20000;
 const int kThreadedPollMs = 200;
 const int kWaitTimeoutMs = 5 * 1000;
 const int kFetcherTimeoutMs = 5 * 1000;
@@ -251,7 +250,7 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
         LOG(ERROR) << "Serf retrying flaky url " << urls_[idx];
         fetches_[idx]->Reset();
         StartFetch(idx);
-        WaitTillDone(idx, idx, kMaxMs);
+        WaitTillDone(idx, idx);
       }
       EXPECT_TRUE(fetches_[idx]->success());
 
@@ -275,18 +274,12 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
     usleep(1);
   }
 
-  int WaitTillDone(size_t first, size_t last, int64 delay_ms) {
+  int WaitTillDone(size_t first, size_t last) {
     bool done = false;
-    int64 now_ms = timer_->NowMs();
-    int64 end_ms = now_ms + delay_ms;
     size_t done_count = 0;
-    while (!done && (now_ms < end_ms)) {
-      int64 to_wait_ms = end_ms - now_ms;
-      if (to_wait_ms > kThreadedPollMs) {
-        to_wait_ms = kThreadedPollMs;
-      }
+    while (!done) {
       YieldToThread();
-      serf_url_async_fetcher_->Poll(to_wait_ms);
+      serf_url_async_fetcher_->Poll(kThreadedPollMs);
       done_count = 0;
       for (size_t idx = first; idx <= last; ++idx) {
         if (fetches_[idx]->IsDone()) {
@@ -297,14 +290,13 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
         prev_done_count = done_count;
         done = (done_count == (last - first + 1));
       }
-      now_ms = timer_->NowMs();
     }
     return done_count;
   }
 
   int TestFetch(size_t first, size_t last) {
     StartFetches(first, last);
-    int done = WaitTillDone(first, last, kMaxMs);
+    int done = WaitTillDone(first, last);
     ValidateFetches(first, last);
     return (done == (last - first + 1));
   }
@@ -312,7 +304,7 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
   // Exercise the Serf code when a connection is refused.
   void ConnectionRefusedTest() {
     StartFetches(kConnectionRefused, kConnectionRefused);
-    ASSERT_EQ(WaitTillDone(kConnectionRefused, kConnectionRefused, kMaxMs), 1);
+    ASSERT_EQ(WaitTillDone(kConnectionRefused, kConnectionRefused), 1);
     ASSERT_TRUE(fetches_[kConnectionRefused]->IsDone());
     EXPECT_EQ(HttpStatus::kNotFound,
               response_headers(kConnectionRefused)->status_code());
@@ -324,7 +316,7 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
     int num_fetches = last - first + 1;
     CHECK_LT(0, num_fetches);
     StartFetches(first, last);
-    ASSERT_EQ(num_fetches, WaitTillDone(first, last, kMaxMs));
+    ASSERT_EQ(num_fetches, WaitTillDone(first, last));
     for (int index = first; index <= last; ++index) {
       ASSERT_TRUE(fetches_[index]->IsDone()) << urls_[index];
       ASSERT_TRUE(content_starts_[index].empty()) << urls_[index];
@@ -360,7 +352,7 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
 
   // Verifies that an added & started fetch at index succeeds.
   void ExpectHttpsSucceeds(int index) {
-    ASSERT_EQ(WaitTillDone(index, index, kMaxMs), 1);
+    ASSERT_EQ(WaitTillDone(index, index), 1);
     ASSERT_TRUE(fetches_[index]->IsDone());
     ASSERT_FALSE(content_starts_[index].empty());
     EXPECT_FALSE(contents(index).empty());
@@ -417,7 +409,7 @@ TEST_F(SerfUrlAsyncFetcherTest, FetchOneURL) {
 TEST_F(SerfUrlAsyncFetcherTest, FetchUsingDifferentRequestMethod) {
   request_headers(kModpagespeedSite)->set_method(RequestHeaders::kPurge);
   StartFetches(kModpagespeedSite, kModpagespeedSite);
-  ASSERT_EQ(1, WaitTillDone(kModpagespeedSite, kModpagespeedSite, kMaxMs));
+  ASSERT_EQ(1, WaitTillDone(kModpagespeedSite, kModpagespeedSite));
   ASSERT_TRUE(fetches_[kModpagespeedSite]->IsDone());
   EXPECT_LT(static_cast<size_t>(0), contents(kModpagespeedSite).size());
   EXPECT_EQ(501,  // PURGE method not implemented in test apache servers.
@@ -434,7 +426,7 @@ TEST_F(SerfUrlAsyncFetcherTest, FetchOneURLGzipped) {
   request_headers(kModpagespeedSite)->Add(HttpAttributes::kAcceptEncoding,
                                           HttpAttributes::kGzip);
   StartFetches(kModpagespeedSite, kModpagespeedSite);
-  ASSERT_EQ(1, WaitTillDone(kModpagespeedSite, kModpagespeedSite, kMaxMs));
+  ASSERT_EQ(1, WaitTillDone(kModpagespeedSite, kModpagespeedSite));
   ASSERT_TRUE(fetches_[kModpagespeedSite]->IsDone());
   EXPECT_LT(static_cast<size_t>(0), contents(kModpagespeedSite).size());
   EXPECT_EQ(200, response_headers(kModpagespeedSite)->status_code());
@@ -563,15 +555,17 @@ TEST_F(SerfUrlAsyncFetcherTest, TestThreeThreadedAsync) {
 
 TEST_F(SerfUrlAsyncFetcherTest, TestThreeThreaded) {
   StartFetches(kModpagespeedSite, kGoogleLogo);
-  int done = WaitTillDone(kModpagespeedSite, kGoogleLogo, kMaxMs);
+  int done = WaitTillDone(kModpagespeedSite, kGoogleLogo);
   EXPECT_EQ(3, done);
   ValidateFetches(kModpagespeedSite, kGoogleLogo);
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, TestTimeout) {
   StartFetches(kCgiSlowJs, kCgiSlowJs);
-  ASSERT_EQ(0, WaitTillDone(kCgiSlowJs, kCgiSlowJs, kThreadedPollMs));
-  ASSERT_EQ(1, WaitTillDone(kCgiSlowJs, kCgiSlowJs, kFetcherTimeoutMs));
+  int64 start_ms = timer_->NowMs();
+  ASSERT_EQ(1, WaitTillDone(kCgiSlowJs, kCgiSlowJs));
+  int64 elapsed_ms = timer_->NowMs() - start_ms;
+  EXPECT_LE(kFetcherTimeoutMs, elapsed_ms);
   ASSERT_TRUE(fetches_[kCgiSlowJs]->IsDone());
   EXPECT_FALSE(fetches_[kCgiSlowJs]->success());
 
@@ -699,7 +693,7 @@ TEST_F(SerfUrlAsyncFetcherTest, ThreadedConnectionRefusedWithDetail) {
 TEST_F(SerfUrlAsyncFetcherTest, TestTrackOriginalContentLength) {
   serf_url_async_fetcher_->set_track_original_content_length(true);
   StartFetch(kModpagespeedSite);
-  WaitTillDone(kModpagespeedSite, kModpagespeedSite, kMaxMs);
+  WaitTillDone(kModpagespeedSite, kModpagespeedSite);
   const char* ocl_header = response_headers(kModpagespeedSite)->Lookup1(
       HttpAttributes::kXOriginalContentLength);
   ASSERT_TRUE(ocl_header != NULL);
