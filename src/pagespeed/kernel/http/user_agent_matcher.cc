@@ -119,6 +119,7 @@ const char* kPanelSupportMobileWhitelist[] = {
 const char* kWebpWhitelist[] = {
   "*Android *",
   "*Chrome/*",
+  "*CriOS/??.*",
   "*Opera/9.80*Version/??.*",
   "*Opera???.*",
   // User agents used only for internal testing.
@@ -143,6 +144,16 @@ const char* kWebpBlacklist[] = {
   "*Chrome/14.*",
   "*Chrome/15.*",
   "*Chrome/16.*",
+  "*CriOS/1?.*",
+  "*CriOS/20.*",
+  "*CriOS/21.*",
+  "*CriOS/22.*",
+  "*CriOS/23.*",
+  "*CriOS/24.*",
+  "*CriOS/25.*",
+  "*CriOS/26.*",
+  "*CriOS/27.*",
+  "*CriOS/28.*",
   "*Android *Chrome/1?.*",
   "*Android *Chrome/20.*",
   "*Opera/9.80*Version/10.*",
@@ -154,6 +165,7 @@ const char* kWebpBlacklist[] = {
 const char* kWebpLosslessAlphaWhitelist[] = {
   "*Chrome/??.*",
   "*Chrome/???.*",
+  "*CriOS/??.*",
   // User agent used only for internal testing.
   "webp-la",
 };
@@ -164,6 +176,16 @@ const char* kWebpLosslessAlphaBlacklist[] = {
   "*Chrome/20.*",
   "*Chrome/21.*",
   "*Chrome/22.*",
+  "*CriOS/1?.*",
+  "*CriOS/20.*",
+  "*CriOS/21.*",
+  "*CriOS/22.*",
+  "*CriOS/23.*",
+  "*CriOS/24.*",
+  "*CriOS/25.*",
+  "*CriOS/26.*",
+  "*CriOS/27.*",
+  "*CriOS/28.*",
 };
 
 // TODO(rahulbansal): We haven't added Safari here since it supports dns

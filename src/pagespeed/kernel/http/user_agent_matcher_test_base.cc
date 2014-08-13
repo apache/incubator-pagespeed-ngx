@@ -121,6 +121,15 @@ const char UserAgentMatcherTestBase::kIPadUserAgent[] =
     "Mozilla/5.0 (iPad; U; CPU OS 3_2 like Mac OS X; en-us) "
     "AppleWebKit/531.21.10 (KHTML, like Gecko) Version/4.0.4 "
     "Mobile/7B334b Safari/531.21.10";
+const char UserAgentMatcherTestBase::kIPadChrome28UserAgent[] =
+    "Mozilla/5.0 (iPad; CPU OS 613 like Mac OS X) AppleWebKit/536.26 (KHTML "
+    "like Gecko) CriOS/28.0.1500.12 Mobile/10B329 Safari/8536.25";
+const char UserAgentMatcherTestBase::kIPadChrome29UserAgent[] =
+    "Mozilla/5.0 (iPad; CPU OS 613 like Mac OS X) AppleWebKit/536.26 (KHTML "
+    "like Gecko) CriOS/29.0.1547.11 Mobile/10B329 Safari/8536.25";
+const char UserAgentMatcherTestBase::kIPadChrome36UserAgent[] =
+    "Mozilla/5.0 (iPad; CPU OS 7_1_1 like Mac OS X) AppleWebKit/537.51.2 "
+    "(KHTML, like Gecko) CriOS/36.0.1985.49 Mobile/11D201 Safari/9537.53";
 const char UserAgentMatcherTestBase::kIPhone4Safari[] =
     "Mozilla/5.0 (iPhone; CPU iPhone OS 5_0_1 like Mac OS X) AppleWebKit/534.46"
     " (KHTML, like Gecko) Version/5.1 Mobile/9A405 Safari/7534.48.3";
@@ -129,6 +138,10 @@ const char UserAgentMatcherTestBase::kIPhoneChrome21UserAgent[] =
     "Mozilla/5.0 (iPhone; CPU iPhone OS 6_0_1 like Mac OS X; en-us) "
     "AppleWebKit/534.46.0 (KHTML, like Gecko) CriOS/21.0.1180.82 "
     "Mobile/10A523 Safari/7534.48.3";
+const char UserAgentMatcherTestBase::kIPhoneChrome36UserAgent[] =
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 7_1_2 like Mac OS X) "
+    "AppleWebKit/537.51.2 (KHTML, like Gecko) CriOS/36.0.1985.49 "
+    "Mobile/11D257 Safari/9537.53";
 const char UserAgentMatcherTestBase::kIPhoneUserAgent[] =
     "Apple iPhone OS v2.1.1 CoreMedia v1.0.0.5F138";
 const char UserAgentMatcherTestBase::kIPodSafari[] =
