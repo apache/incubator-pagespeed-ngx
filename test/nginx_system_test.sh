@@ -1119,10 +1119,18 @@ check_200_http_response "$OUT"
 
 start_test MapProxyDomain
 # depends on MapProxyDomain in pagespeed_test.conf.template
-URL=$EXAMPLE_ROOT/proxy_external_resource.html
+LEAF="proxy_external_resource.html?PageSpeedFilters=-inline_images"
+URL="$EXAMPLE_ROOT/$LEAF"
 echo Rewrite HTML with reference to a proxyable image.
-fetch_until -save -recursive $URL?PageSpeedFilters=-inline_images \
-    'grep -c 1.gif.pagespeed' 1
+fetch_until -save -recursive $URL 'grep -c 1.gif.pagespeed' 1
+PAGESPEED_GIF=$(grep -o '/*1.gif.pagespeed[^"]*' $WGET_DIR/$LEAF)
+check_from "$PAGESPEED_GIF" grep "gif$"
+
+echo "If the next line fails, look in $WGET_DIR/wget_output.txt and you should"
+echo "see a 404.  This represents a failed attempt to download the proxied gif."
+# TODO(jefftk): debug why this test sometimes fails with the native fetcher.
+# https://github.com/pagespeed/ngx_pagespeed/issues/774
+check test -f "$WGET_DIR$PAGESPEED_GIF"
 
 start_test OptimizeForBandwidth
 # We use blocking-rewrite tests because we want to make sure we don't
@@ -1162,7 +1170,7 @@ test_optimize_for_bandwidth core_filters/rewrite_css.html \
 #
 # With the proper hash, we'll get a long cache lifetime.
 SECONDARY_HOST="http://mpd.example.com/gstatic_images"
-PROXIED_IMAGE="$SECONDARY_HOST/$(basename $WGET_DIR/*1.gif.pagespeed*)"
+PROXIED_IMAGE="$SECONDARY_HOST$PAGESPEED_GIF"
 WGET_ARGS="--save-headers"
 
 start_test $PROXIED_IMAGE expecting one year cache.
