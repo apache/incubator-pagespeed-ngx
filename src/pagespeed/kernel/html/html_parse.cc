@@ -60,6 +60,7 @@ HtmlParse::HtmlParse(MessageHandler* message_handler)
       running_filters_(false),
       parse_start_time_us_(0),
       timer_(NULL),
+      current_filter_(NULL),
       dynamically_disabled_filter_list_(NULL) {
   lexer_ = new HtmlLexer(this);
   HtmlKeywords::Init();
@@ -201,6 +202,14 @@ bool HtmlParse::StartParseId(const StringPiece& url, const StringPiece& id,
   // Paranoid debug-checking and unconditional clearing of state variables.
   DCHECK(!skip_increment_);
   skip_increment_ = false;
+  DCHECK(deferred_nodes_.empty());
+  deferred_nodes_.clear();
+  DCHECK(open_deferred_nodes_.empty());
+  open_deferred_nodes_.clear();
+  DCHECK(current_filter_ == NULL);
+  current_filter_ = NULL;
+  DCHECK(deferred_deleted_nodes_.empty());
+  deferred_deleted_nodes_.clear();
 
   if (dynamically_disabled_filter_list_ != NULL) {
     dynamically_disabled_filter_list_->clear();
@@ -296,6 +305,34 @@ void HtmlParse::CheckFilterEnabled(HtmlFilter* filter) {
 
 // This is factored out of Flush() for testing purposes.
 void HtmlParse::ApplyFilter(HtmlFilter* filter) {
+  // Keep track of the current filter in a state variable, for associating
+  // node-deferrals with the filter that requested them.
+  DCHECK(current_filter_ == NULL);
+  current_filter_ = filter;
+
+  // If, in a previous flush window, the current filter requested the deferral
+  // of an element that has not yet been closed, then move any events we've seen
+  // in this flush window into the element's node-list.  Do this up to the close
+  // event, if it's in this flush window.  If the close event is not in this
+  // flush window, then the entire flush window's worth events get moved.
+  FilterElementMap::iterator p = open_deferred_nodes_.find(filter);
+  if (p != open_deferred_nodes_.end()) {
+    HtmlNode* deferred_node = p->second.first;
+    HtmlEventList* node_events = p->second.second;
+    if (deferred_node->end() != queue_.end()) {
+      // The node is closed, we can now clean up this map.
+      open_deferred_nodes_.erase(p);
+      HtmlEventListIterator last = deferred_node->end();
+      ++last;  // splice is non-inclusive at end and we want to include the end.
+      node_events->splice(node_events->end(), queue_, queue_.begin(), last);
+    } else {
+      // The entire flush-window is part of this unclosed deferred node,
+      // so move all if it.
+      node_events->splice(node_events->end(), queue_, queue_.begin(),
+                          queue_.end());
+    }
+  }
+
   if (coalesce_characters_ && need_coalesce_characters_) {
     CoalesceAdjacentCharactersNodes();
     DelayLiteralTag();
@@ -314,6 +351,7 @@ void HtmlParse::ApplyFilter(HtmlFilter* filter) {
     SanityCheck();
     need_sanity_check_ = false;
   }
+  current_filter_ = NULL;
 }
 
 void HtmlParse::NextEvent() {
@@ -786,6 +824,18 @@ bool HtmlParse::DeleteNode(HtmlNode* node) {
     deleted = true;
     need_sanity_check_ = true;
     need_coalesce_characters_ = true;
+  } else if (current_ != queue_.end()) {
+    // If current_ is the StartElement of the requested node, then we
+    // can delete it even if the end-element has not been seen yet due
+    // to a flush window, by simply deferring it.  We just want to
+    // keep track of which deferred nodes we don't expect to restore.
+    HtmlEvent* event = *current_;
+    if ((event->GetNode() == node) &&
+        (event->GetElementIfEndEvent() == NULL)) {  // leaf or StartElement OK
+      DeferCurrentNode();
+      deferred_deleted_nodes_.insert(node);
+      deleted = true;
+    }
   }
   return deleted;
 }
@@ -855,14 +905,20 @@ HtmlElement* HtmlParse::CloneElement(HtmlElement* in_element) {
   return out_element;
 }
 
-bool HtmlParse::IsRewritable(const HtmlNode* node) const {
+bool HtmlParse::IsRewritableIgnoringDeferral(const HtmlNode* node) const {
   return (node->live() &&  // Avoid dereferencing NULL data for closed elements.
           IsInEventWindow(node->begin()) &&
           IsInEventWindow(node->end()));
 }
 
+bool HtmlParse::IsRewritable(const HtmlNode* node) const {
+  return (IsRewritableIgnoringDeferral(node) &&
+          (deferred_nodes_.find(node) == deferred_nodes_.end()));
+}
+
 bool HtmlParse::CanAppendChild(const HtmlNode* node) const {
   return (node->live() &&  // Avoid dereferencing NULL data for closed elements.
+          (deferred_nodes_.find(node) == deferred_nodes_.end()) &&
           IsInEventWindow(node->end()));
 }
 
@@ -871,6 +927,7 @@ bool HtmlParse::IsInEventWindow(const HtmlEventListIterator& iter) const {
 }
 
 void HtmlParse::ClearElements() {
+  ClearDeferredNodes();
   nodes_.DestroyObjects();
   DCHECK(!running_filters_);
 }
@@ -1138,6 +1195,117 @@ bool HtmlParse::InsertComment(StringPiece unescaped) {
         new HtmlCommentEvent(NewCommentNode(lexer_->Parent(), escaped), 0));
   }
   return true;
+}
+
+void HtmlParse::DeferCurrentNode() {
+  CHECK(current_ != queue_.end());
+  HtmlNode* node = (*current_)->GetNode();
+
+#ifndef NDEBUG
+  DCHECK(node->live());
+  DCHECK(open_deferred_nodes_.find(current_filter_) ==
+         open_deferred_nodes_.end());
+  DCHECK(deferred_nodes_.find(node) == deferred_nodes_.end());
+  DCHECK(node->begin() != queue_.end())
+      << "Cannot remove a node whose opening tag is flushed";
+#endif
+
+  // There are three cases:
+  //   1. We are removing a node totally in the flush window (fine)
+  //   2. We are remove an element at its StartElement event, but its
+  //      EndElement event is not in the flush window.
+  //   3. We are removing an element at its EndElement event, but its
+  //      StartElement event is not in the flush window.  We avoid this
+  //      case by requiring that callers run DeferCurentNode from the
+  //      StartElement event.
+  HtmlEventList* node_events = new HtmlEventList;
+  deferred_nodes_[node] = node_events;
+  HtmlEventListIterator node_last = node->end();
+  if (node_last != queue_.end()) {
+    // Case 1: node is totally in flush window.
+    ++node_last;
+  } else {
+    // Case 2: we need to keep track of the node-removals that are not closed,
+    // so as we lex in new child nodes we can put them onto the correct
+    // node-list, rather than the queue_, until it's closed.
+    HtmlElement* element = (*node->begin())->GetElementIfStartEvent();
+    CHECK(element != NULL) << "Only HtmlElements can cut across flush windows.";
+    DCHECK(current_filter_ != NULL);
+    open_deferred_nodes_[current_filter_] = DeferredNode(
+        node, node_events);
+  }
+
+  current_ = node_last;
+  skip_increment_ = true;
+
+  node_events->splice(node_events->end(), queue_, node->begin(), node_last);
+  need_sanity_check_ = true;
+
+  // We will attempt to coalesce Characters nodes brought together as a
+  // result of this 'defer', but this is not guaranteed to work at the end
+  // of a flush window, and I don't think that guarantee would be worth
+  // the complexity of pushing back the characters to the lexer.
+  need_coalesce_characters_ = true;
+}
+
+void HtmlParse::RestoreDeferredNode(HtmlNode* deferred_node) {
+  if (!IsRewritableIgnoringDeferral(deferred_node)) {
+    LOG(DFATAL) << "A node cannot be replaced until it is complete";
+    return;
+  }
+
+  DCHECK(deferred_deleted_nodes_.find(deferred_node) ==
+         deferred_deleted_nodes_.end()) << "You cannot restore a deleted node";
+
+  NodeToEventListMap::iterator p = deferred_nodes_.find(deferred_node);
+  if (p == deferred_nodes_.end()) {
+    LOG(DFATAL) << "Restoring a node that was not deferred";
+    return;
+  }
+  HtmlEventList* event_list = p->second;
+  deferred_nodes_.erase(p);
+
+  // There are three cases:
+  //  1. The removed node is complete now.
+  //  2. The removed node is incomplete (error).
+  // Note: you cannot restore a node on a Flush.
+  DCHECK(queue_.end() != current_);
+
+  // Correct the parent-pointer, as the new location for
+  // removed_node may be higher or lower in the hierarchy.
+  HtmlEvent* event = *current_;
+  HtmlElement* new_parent = event->GetNode()->parent();
+  deferred_node->set_parent(new_parent);
+
+  NextEvent();
+  queue_.splice(current_, *event_list,
+                event_list->begin(), event_list->end());
+  delete event_list;
+  current_ = deferred_node->begin();
+  DCHECK(!skip_increment_) << "Always false coming out of NextEvent()";
+  need_sanity_check_ = true;
+
+  // Like Defer above, we can attempt to coalesce characters here, but there
+  // is no guarantee at flush-window boundaries, and I don't think it's worth
+  // the complexity to provide one.
+  need_coalesce_characters_ = true;
+}
+
+void HtmlParse::ClearDeferredNodes() {
+  for (NodeToEventListMap::iterator p = deferred_nodes_.begin(),
+           e = deferred_nodes_.end(); p != e; ++p) {
+    const HtmlNode* node = p->first;
+    HtmlEventList* events = p->second;
+    if (deferred_deleted_nodes_.find(node) == deferred_deleted_nodes_.end()) {
+      message_handler_->Message(
+          kWarning, "Removed node %s never replaced", node->ToString().c_str());
+    }
+    STLDeleteElements(events);
+    delete events;
+  }
+  deferred_nodes_.clear();
+  deferred_deleted_nodes_.clear();
+  open_deferred_nodes_.clear();
 }
 
 }  // namespace net_instaweb

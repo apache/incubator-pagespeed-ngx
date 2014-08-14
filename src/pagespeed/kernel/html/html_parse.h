@@ -22,7 +22,9 @@
 #include <cstdarg>
 #include <cstddef>
 #include <list>
+#include <map>
 #include <set>
+#include <utility>
 #include <vector>
 
 #include "pagespeed/kernel/base/basictypes.h"
@@ -446,9 +448,47 @@ class HtmlParse {
     dynamically_disabled_filter_list_ = list;
   }
 
+  // Temporarily removes the current node from the parse tree.  This must
+  // be run as part of a filter callback, and it is the responsibility of
+  // the filter to save the node and call RestoreNode on it later.
+  //
+  // If current node is an HtmlElement, this must be called on the
+  // StartElement event, not the EndElement event.  When an element is
+  // defered, all its children are deferred as well.
+  //
+  // It is fine to restore a node after a Flush.  Note that while most
+  // HtmlNode objects are freed after a Flush window, a deferred one will
+  // be retained until it is Restored, or until the end of the document.
+  //
+  // If a node is not restored at end of document, a warning will be
+  // printed and the stored data cleaned up.  Functionally it will be
+  // as if the filter called DeleteNode.
+  //
+  // Note that a filter that defers a node and never restores it will never
+  // see the EndElement for that node.
+  //
+  // Note that if you defer a Characters node and restore it next to
+  // another Characters node, they will be coalesced prior to the next
+  // filter, but this filter will not see the coalesced nodes.
+  // Similarly, if you defer a non-characters node that was previously
+  // separating two characters nodes, that will also result in a
+  // coalesce seen only by downstream filters.
+  void DeferCurrentNode();
+
+  // Restores a node, inserting it after the current element.  If the node
+  // is an HtmlElement, the iteration will proceed with the first child node,
+  // or, if there were no children, then the EndElement method.
+  //
+  // Note: you cannot restore during Flush().
+  void RestoreDeferredNode(HtmlNode* deferred_node);
+
  protected:
   typedef std::vector<HtmlFilter*> FilterVector;
   typedef std::list<HtmlFilter*> FilterList;
+  typedef std::pair<HtmlNode*, HtmlEventList*> DeferredNode;
+  typedef std::map<const HtmlNode*, HtmlEventList*> NodeToEventListMap;
+  typedef std::map<HtmlFilter*, DeferredNode> FilterElementMap;
+  typedef std::set<const HtmlNode*> NodeSet;
 
   // HtmlParse::FinishParse() is equivalent to the sequence of
   // BeginFinishParse(); Flush(); EndFinishParse().
@@ -511,6 +551,8 @@ class HtmlParse {
   void ClearEvents();
   void EmitQueue(MessageHandler* handler);
   inline void NextEvent();
+  void ClearDeferredNodes();
+  inline bool IsRewritableIgnoringDeferral(const HtmlNode* node) const;
 
   // Visible for testing only, via HtmlTestingPeer
   friend class HtmlTestingPeer;
@@ -552,6 +594,23 @@ class HtmlParse {
   int64 parse_start_time_us_;
   scoped_ptr<HtmlEvent> delayed_start_literal_;
   Timer* timer_;
+  HtmlFilter* current_filter_;      // Filter currently running in ApplyFilter
+
+  // When deferring a node that spans a flush window, we present upstream
+  // filters with a view of the event-stream that is not impacted by the
+  // deferral.  To implement this, at the beginning of each flush window,
+  // we do the queue_ mutation for any outstanding deferrals right before
+  // running the filter that deferred them.
+  FilterElementMap open_deferred_nodes_;
+
+  // Keeps track of the deferred nodes that have not yet been restored.
+  NodeToEventListMap deferred_nodes_;
+
+  // We use the node-defer logic to implement DeleteNode for a node that
+  // hasn't been closed yet.  The only difference is that you cannot
+  // restore a deleted node, and the parser will not print a warning if
+  // a deleted node is never restored.
+  NodeSet deferred_deleted_nodes_;
 
   StringVector* dynamically_disabled_filter_list_;
 

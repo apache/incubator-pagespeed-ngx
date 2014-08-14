@@ -21,6 +21,7 @@
 
 #include <vector>
 
+#include "base/logging.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/gmock.h"
@@ -28,6 +29,7 @@
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/string_writer.h"
 #include "pagespeed/kernel/html/disable_test_filter.h"
 #include "pagespeed/kernel/html/empty_html_filter.h"
 #include "pagespeed/kernel/html/explicit_close_tag.h"
@@ -75,6 +77,18 @@ class HtmlParseTest : public HtmlParseTestBase {
   }
 
   virtual bool AddBody() const { return true; }
+
+  // Sends the input through the HtmlParse filter chain, flushing
+  // at flush_index.  Leaves resulting output in output_buffer_.
+  void ParseWithFlush(StringPiece input, int flush_index) {
+    GoogleString this_id = StringPrintf("http://test.com/%d", flush_index);
+    output_buffer_.clear();
+    html_parse_.StartParse(this_id);
+    html_parse_.ParseText(input.substr(0, flush_index));
+    html_parse_.Flush();
+    html_parse_.ParseText(input.substr(flush_index));
+    html_parse_.FinishParse();
+  }
 };
 
 class HtmlParseTestNoBody : public HtmlParseTestBase {
@@ -2073,12 +2087,52 @@ TEST_F(HtmlParseTest, DisabledFilterWithReason) {
               UnorderedElementsAre(filter.ExpectedDisabledMessage()));
 }
 
+class CountingCallbacksFilter : public EmptyHtmlFilter {
+ public:
+  CountingCallbacksFilter()
+      : num_start_elements_(0),
+        num_end_elements_(0),
+        num_char_elements_(0) {
+  }
+  int num_start_elements() const { return num_start_elements_; }
+  int num_end_elements() const { return num_end_elements_; }
+  int num_char_elements() const { return num_char_elements_; }
+
+ protected:
+  virtual void StartDocument() {
+    num_start_elements_ = 0;
+    num_end_elements_ = 0;
+    num_char_elements_ = 0;
+  }
+
+  virtual void StartElement(HtmlElement* element) {
+    ++num_start_elements_;
+  }
+
+  virtual void EndElement(HtmlElement* element) {
+    ++num_end_elements_;
+  }
+
+  virtual void Characters(HtmlCharactersNode* characters) {
+    ++num_char_elements_;
+  }
+
+  virtual const char* Name() const { return "CountingCallbacksFilter"; }
+
+ private:
+  int num_start_elements_;
+  int num_end_elements_;
+  int num_char_elements_;
+
+  DISALLOW_COPY_AND_ASSIGN(CountingCallbacksFilter);
+};
+
 // Checks that deleting nodes while preserving children does not change the
 // expected order of HTML parse events. We delete any node of del_node_type_,
 // but we only delete it when we see a tag of type del_from_type_ (and
 // del_from_start_tag indicates whether we do it when we see the start tag or
 // the end tag of del_from_type).
-class DeleteNodesFilter : public EmptyHtmlFilter {
+class DeleteNodesFilter : public CountingCallbacksFilter {
  public:
   explicit DeleteNodesFilter(HtmlParse* html_parse)
       : html_parse_(html_parse),
@@ -2102,22 +2156,16 @@ class DeleteNodesFilter : public EmptyHtmlFilter {
     delete_on_open_tag_ = del_from_start;
   }
 
-  int num_start_elements() const { return num_start_elements_; }
-  int num_end_elements() const { return num_end_elements_; }
-  int num_char_elements() const { return num_char_elements_; }
   int num_deleted_elements() const { return num_deleted_elements_; }
 
  protected:
   virtual void StartDocument() {
     pending_deletes_.clear();
-    num_start_elements_ = 0;
-    num_end_elements_ = 0;
-    num_char_elements_ = 0;
     num_deleted_elements_ = 0;
   }
 
   virtual void StartElement(HtmlElement* element) {
-    num_start_elements_++;
+    CountingCallbacksFilter::StartElement(element);
     if (element->keyword() == delete_node_type_) {
       pending_deletes_.push_back(element);
     }
@@ -2127,21 +2175,26 @@ class DeleteNodesFilter : public EmptyHtmlFilter {
   }
 
   virtual void EndElement(HtmlElement* element) {
-    num_end_elements_++;
+    CountingCallbacksFilter::EndElement(element);
     if (!delete_on_open_tag_ && element->keyword() == delete_from_type_) {
       DeleteElements();
     }
   }
 
-  virtual void Characters(HtmlCharactersNode* characters) {
-    num_char_elements_++;
+  virtual void Flush() {
+    // We can't delete an element that has been flushed.
+    for (int i = 0, n = pending_deletes_.size(); i < n; ++i) {
+      LOG(ERROR) << "FLUSH occurred before deleting element: "
+                 << pending_deletes_[i]->ToString();
+    }
+    pending_deletes_.clear();
   }
 
   virtual const char* Name() const { return "DeleteNodesFilter"; }
 
  private:
   void DeleteElements() {
-    for (size_t i = 0; i < pending_deletes_.size(); i++) {
+    for (int i = 0, n = pending_deletes_.size(); i < n; ++i) {
       bool success = save_children_
           ? html_parse_->DeleteSavingChildren(pending_deletes_[i])
           : html_parse_->DeleteNode(pending_deletes_[i]);
@@ -2158,9 +2211,6 @@ class DeleteNodesFilter : public EmptyHtmlFilter {
   HtmlName::Keyword delete_from_type_;
   bool delete_on_open_tag_;
   bool save_children_;
-  int num_start_elements_;
-  int num_end_elements_;
-  int num_char_elements_;
   int num_deleted_elements_;
 
   DISALLOW_COPY_AND_ASSIGN(DeleteNodesFilter);
@@ -2179,18 +2229,13 @@ class HtmlParseDeleteTest : public HtmlParseTest {
   void DeleteTest(StringPiece input,
                   StringPiece expected_output_if_deletes_worked) {
     for (int i = 0, n = input.size(); i < n; ++i) {
-      GoogleString this_id = StringPrintf("http://test.com/%d", i);
-      html_parse_.StartParse(this_id);
-      html_parse_.ParseText(input.substr(0, i));
-      html_parse_.Flush();
-      html_parse_.ParseText(input.substr(i));
-      html_parse_.FinishParse();
+      ParseWithFlush(input, i);
       if (delete_filter_.num_deleted_elements() != 0) {
         EXPECT_STREQ(expected_output_if_deletes_worked,
-                     output_buffer_) << this_id;
+                     output_buffer_) << " flush " << i;
         ++total_successes_;
       } else {
-        EXPECT_STREQ(input, output_buffer_) << this_id;
+        EXPECT_STREQ(input, output_buffer_) << " flush " << i;
         ++total_failures_;
       }
       output_buffer_.clear();
@@ -2207,16 +2252,18 @@ TEST_F(HtmlParseDeleteTest, DeleteAtStartAcrossFlush) {
   delete_filter_.set_save_children(false);
   delete_filter_.set_delete_node_type(HtmlName::kDiv);
   delete_filter_.set_delete_from_type(HtmlName::kDiv);
-  DeleteTest("1<div id=a>hello</div>2", "12");
+  const StringPiece kInput("1<div id=a>hello</div>2");
+  DeleteTest(kInput, "12");
 
-  // If the flush happened in the middle of the div, then we will
-  // fail.  That will happen at least sometimes.
-  EXPECT_LT(0, total_failures_);
+  // We can utilize the infrastructure in DeferCurrentNode to make it
+  // possible to delete nodes from thair StartElement even if their
+  // EndElement is not flushed.  So this never fails.
+  EXPECT_EQ(0, total_failures_);
 
   // If the both the StartElement and EndElement are visible, then
   // we should successfully eliminate the div and its contents.  That
-  // will happen at least sometimes.
-  EXPECT_LT(0, total_successes_);
+  // will happen every time.
+  EXPECT_EQ(kInput.size(), total_successes_);
 }
 
 TEST_F(HtmlParseDeleteTest, DeleteAtEndAcrossFlush) {
@@ -2354,6 +2401,552 @@ TEST_F(EventListOrderTest, DeleteSavingChildrenCalledOuterDistant) {
   EXPECT_EQ(delete_nodes_filter_.num_end_elements(), 4);
   EXPECT_EQ(delete_nodes_filter_.num_char_elements(), 3);
   EXPECT_EQ(delete_nodes_filter_.num_deleted_elements(), 1);
+}
+
+// Filter to remove nodes during parsing and restore them sometime later.
+class RestoreNodesFilter : public CountingCallbacksFilter {
+ public:
+  explicit RestoreNodesFilter(HtmlParse* html_parse)
+      : html_parse_(html_parse),
+        outstanding_deferred_elements_(0),
+        num_deletes_(0) {
+  }
+
+  // Establishes the ID or text of an element to defer, and the ID of an
+  // element to move after.
+  void MoveOnStart(const char* id_or_text, const char* restore_point) {
+    remove_map_[id_or_text] = restore_point;
+  }
+
+  void DeleteOnStart(const char* id_or_text) {
+    delete_set_.insert(id_or_text);
+  }
+
+  // Returns the number of nodes that have been deferred, but not yet restored.
+  bool AllRestored() const { return restore_map_.empty(); }
+  int outstanding_deferred_elements() const {
+    return outstanding_deferred_elements_;
+  }
+  int num_deletes() const { return num_deletes_; }
+
+ protected:
+  virtual void StartDocument() {
+    CountingCallbacksFilter::StartDocument();
+    restore_map_.clear();
+    outstanding_deferred_elements_ = 0;
+    num_deletes_ = 0;
+  }
+
+  virtual void Characters(HtmlCharactersNode* node) {
+    CountingCallbacksFilter::Characters(node);
+    const GoogleString& text = node->contents();
+    if (!MaybeRemoveNode(text, node) &&
+        !MaybeDeleteNode(text, node)) {
+      MaybeRestoreNode(text);
+    }
+  }
+
+  virtual void StartElement(HtmlElement* element) {
+    CountingCallbacksFilter::StartElement(element);
+    const char* id = FindId(element);
+    if (id != NULL) {
+      if (!MaybeRemoveNode(id, element)) {
+        MaybeDeleteNode(id, element);
+      }
+    }
+  }
+
+  virtual void EndElement(HtmlElement* element) {
+    CountingCallbacksFilter::EndElement(element);
+    const char* id = FindId(element);
+    if (id != NULL) {
+      MaybeRestoreNode(id);
+    }
+  }
+  virtual const char* Name() const { return "RestoreNodesFilter"; }
+
+ private:
+  typedef std::map<GoogleString, HtmlNode*> RestoreMap;
+
+  const char* FindId(HtmlElement* element) {
+    const HtmlElement::Attribute* attr = element->FindAttribute("id");
+    if (attr == NULL) {
+      return NULL;
+    }
+    return attr->DecodedValueOrNull();
+  }
+
+  bool MaybeRemoveNode(const GoogleString& id, HtmlNode* node) {
+    StringStringMap::iterator p = remove_map_.find(id);
+    if (p != remove_map_.end()) {
+      const GoogleString& restore_id = p->second;
+      EXPECT_TRUE(restore_map_[restore_id] == NULL);
+      restore_map_[restore_id] = node;
+      html_parse_->DeferCurrentNode();
+      if (dynamic_cast<HtmlElement*>(node) != NULL) {
+        ++outstanding_deferred_elements_;
+      }
+      return true;
+    }
+    return false;
+  }
+
+  bool MaybeDeleteNode(const GoogleString& id, HtmlNode* node) {
+    if (delete_set_.find(id) != delete_set_.end() &&
+        html_parse_->DeleteNode(node)) {
+      ++num_deletes_;
+      return true;
+    }
+    return false;
+  }
+
+  void MaybeRestoreNode(const GoogleString& id) {
+    RestoreMap::iterator p = restore_map_.find(id);
+    if (p != restore_map_.end()) {
+      HtmlNode* restore_node = p->second;
+      html_parse_->RestoreDeferredNode(restore_node);
+      restore_map_.erase(p);
+      if (dynamic_cast<HtmlElement*>(restore_node) != NULL) {
+        --outstanding_deferred_elements_;
+      }
+    }
+  }
+
+  HtmlParse* html_parse_;
+  StringStringMap remove_map_;
+  StringSet delete_set_;
+  RestoreMap restore_map_;
+  int outstanding_deferred_elements_;
+  int num_deletes_;
+
+  DISALLOW_COPY_AND_ASSIGN(RestoreNodesFilter);
+};
+
+class HtmlRestoreTest : public HtmlParseTest {
+ protected:
+  HtmlRestoreTest()
+      : upstream_writer_filter_(&html_parse_),
+        upstream_writer_(&upstream_buffer_),
+        restore_nodes_filter_(&html_parse_),
+        expect_restored_(true) {
+    // We are interested in the effect on deferring nodes on (a) the
+    // filter that does the deferring, (b) upstream filters and (c)
+    // downstream filters.  Downstream is covered by the normal
+    // HtmlWriterFilter filter that gets installed by SetupWriter.
+    // But Upstream is interesting too, especially when a FLUSH occurs
+    // while a deferred node is open.  Sowe simply install another
+    // writer filter before the RestoreNodesFilter, which should see
+    // the input unmodified.
+    html_parse_.AddFilter(&upstream_writer_filter_);
+    html_parse_.AddFilter(&pre_counts_filter_);
+    upstream_writer_filter_.set_writer(&upstream_writer_);
+    html_parse_.AddFilter(&restore_nodes_filter_);
+    html_parse_.AddFilter(&post_counts_filter_);
+  }
+
+  virtual bool AddBody() const { return false; }
+  virtual bool AddHtmlTags() const { return false; }
+
+  // Runs a test like ValidateExpected, but puts one or two Flush
+  // calls at aribtrary points in the text, covering all n^2 places
+  // to put the two flushes.
+  //
+  // Don't call this with an especially large 'before', otherwise the
+  // time taken will grow quadratically.  Calling this with 70 byte
+  // inputs appears to be OK, taking <300ms to run even in a debug build.
+  void RunTestsWithManyFlushWindows(StringPiece before,
+                                    StringPiece expected) {
+    SetupWriter();
+    int before_size = before.size();
+    for (int flush1 = 0; flush1 < before_size; ++flush1) {
+      for (int flush2 = flush1; flush2 < before_size; ++flush2) {
+        GoogleString this_id =
+            StringPrintf("http://test.com/%d_%d", flush1, flush2);
+        html_parse_.StartParse(this_id);
+        if (flush1 != 0) {
+          html_parse_.ParseText(before.substr(0, flush1));
+        }
+        if (flush2 != flush1) {
+          html_parse_.Flush();
+          html_parse_.ParseText(before.substr(flush1, flush2 - flush1));
+        }
+        if (flush2 != before_size) {
+          html_parse_.Flush();
+          html_parse_.ParseText(before.substr(flush2));
+        }
+        html_parse_.FinishParse();
+        ASSERT_STREQ(expected, output_buffer_) << this_id;
+        output_buffer_.clear();
+        ASSERT_STREQ(before, upstream_buffer_) << this_id;
+        upstream_buffer_.clear();
+
+        // If we expect that everything that was removed was restored, then the
+        // start/end/char-counts should all match before and during
+        // the RestoreNodes filter.
+        if (expect_restored_) {
+          EXPECT_TRUE(restore_nodes_filter_.AllRestored()) << this_id;
+          if (restore_nodes_filter_.num_deletes() == 0) {
+            ASSERT_EQ(pre_counts_filter_.num_start_elements(),
+                      restore_nodes_filter_.num_start_elements()) << this_id;
+            ASSERT_EQ(pre_counts_filter_.num_end_elements(),
+                      restore_nodes_filter_.num_end_elements()) << this_id;
+            ASSERT_EQ(pre_counts_filter_.num_start_elements(),
+                      post_counts_filter_.num_start_elements()) << this_id;
+            ASSERT_EQ(pre_counts_filter_.num_end_elements(),
+                      post_counts_filter_.num_end_elements()) << this_id;
+          }
+          ASSERT_EQ(pre_counts_filter_.num_char_elements(),
+                    restore_nodes_filter_.num_char_elements()) << this_id;
+
+          // We use ASSERT_GE here because some of the tests will result in
+          // characters being coalesced on the defer or on the restore.
+          ASSERT_GE(pre_counts_filter_.num_char_elements(),
+                    post_counts_filter_.num_char_elements()) << this_id;
+
+          // Of course, start and end element count must be balanced,
+          // as long as all deferred nodes were restored.
+          ASSERT_EQ(restore_nodes_filter_.num_start_elements(),
+                    (restore_nodes_filter_.num_end_elements() +
+                     restore_nodes_filter_.num_deletes())) << this_id;
+        } else {
+          // Otherwise there will be an extra Start tag for every
+          // unrestored element.
+          EXPECT_FALSE(restore_nodes_filter_.AllRestored()) << this_id;
+          ASSERT_EQ(
+              restore_nodes_filter_.num_start_elements(),
+              (restore_nodes_filter_.num_end_elements() +
+               restore_nodes_filter_.outstanding_deferred_elements()))
+              << this_id;
+        }
+
+        // Note that only the restore_nodes_filter itself can have mismatched
+        // start/end callback-counts.  Filters running before or after that one
+        // see a balanced set of callbacks.
+        ASSERT_EQ(pre_counts_filter_.num_start_elements(),
+                  pre_counts_filter_.num_end_elements()) << this_id;
+        ASSERT_EQ(post_counts_filter_.num_start_elements(),
+                  post_counts_filter_.num_end_elements()) << this_id;
+      }
+    }
+  }
+
+  void TestTwoFilters(const char* src1, const char* dest1,
+                      const char* src2, const char* dest2,
+                      const char* node_to_delete,
+                      StringPiece input,
+                      StringPiece expected) {
+    RestoreNodesFilter restore_nodes_filter2(&html_parse_);
+    html_parse_.AddFilter(&restore_nodes_filter2);
+    SetupWriter();
+    restore_nodes_filter_.MoveOnStart(src1, dest1);
+    if (node_to_delete != NULL) {
+      restore_nodes_filter_.DeleteOnStart(node_to_delete);
+    }
+    restore_nodes_filter2.MoveOnStart(src2, dest2);
+    RunTestsWithManyFlushWindows(input, expected);
+  }
+
+  HtmlWriterFilter upstream_writer_filter_;
+  CountingCallbacksFilter pre_counts_filter_;
+  StringWriter upstream_writer_;
+  GoogleString upstream_buffer_;
+  RestoreNodesFilter restore_nodes_filter_;
+  CountingCallbacksFilter post_counts_filter_;
+  bool expect_restored_;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(HtmlRestoreTest);
+};
+
+TEST_F(HtmlRestoreTest, MoveAAfterB) {
+  restore_nodes_filter_.MoveOnStart("a", "b");  // moves div 'a' after div 'b'
+  RunTestsWithManyFlushWindows(
+      ("0<div id=a>1<span>2</span>3</div>"
+       "4<div id=b>5<span>6</span></div>7"),
+      ("04<div id=b>5<span>6</span></div>"
+       "<div id=a>1<span>2</span>3</div>7"));
+}
+
+TEST_F(HtmlRestoreTest, MoveAAfterBUnclosed) {
+  restore_nodes_filter_.MoveOnStart("a", "b");  // moves div 'a' after div 'b'
+  RunTestsWithManyFlushWindows(
+      ("0<div id=a>1<span>2</span>3</div>"
+       "4<div id=b>5<span>6</span>7"),  // b unclosed, but lexer auto-closes it.
+      ("04<div id=b>5<span>6</span>7"
+       "<div id=a>1<span>2</span>3</div>"));
+}
+
+TEST_F(HtmlRestoreTest, MoveAAfterNestedB) {
+  restore_nodes_filter_.MoveOnStart("a", "b");  // moves div 'a' after div 'b'
+  RunTestsWithManyFlushWindows(
+      ("0<div id=a>1<span>2</span>3</div>"
+       "4<div><div id=b>5<span>6</span></div>7</div>"),
+      ("04<div><div id=b>5<span>6</span></div>"
+       "<div id=a>1<span>2</span>3</div>7</div>"));
+}
+
+
+TEST_F(HtmlRestoreTest, MoveABAfterC) {
+  restore_nodes_filter_.MoveOnStart("a", "c");
+  restore_nodes_filter_.MoveOnStart("b", "a");
+  RunTestsWithManyFlushWindows(
+      "0<img id=a />1<img id=b />2<img id=c />3",
+      "012<img id=c /><img id=a /><img id=b />3");
+}
+
+TEST_F(HtmlRestoreTest, MoveTextAfterDiv) {
+  restore_nodes_filter_.MoveOnStart("start", "a");
+  RunTestsWithManyFlushWindows(
+      "start<div id=a></div>",
+      "<div id=a></div>start");
+}
+
+TEST_F(HtmlRestoreTest, MoveDivAfterText) {
+  restore_nodes_filter_.MoveOnStart("a", "hello");
+  RunTestsWithManyFlushWindows(
+      "<div id=a></div>hello",
+      "hello<div id=a></div>");
+}
+
+TEST_F(HtmlRestoreTest, MoveTextfterText) {
+  restore_nodes_filter_.MoveOnStart("one", "two");
+  RunTestsWithManyFlushWindows("one<p>two", "<p>twoone");
+}
+
+TEST_F(HtmlRestoreTest, MoveStartWithEndNotVisibleAUnclosed) {
+  SetupWriter();
+  restore_nodes_filter_.MoveOnStart("a", "b");
+  expect_restored_ = false;
+  RunTestsWithManyFlushWindows("<div id=a>1<div id=b>2</div>", "");
+}
+
+TEST_F(HtmlRestoreTest, MoveDivWithMissingDestination) {
+  SetupWriter();
+  restore_nodes_filter_.MoveOnStart("a", "b");
+  expect_restored_ = false;
+  RunTestsWithManyFlushWindows("<div id=a>1</div>", "");
+}
+
+TEST_F(HtmlRestoreTest, MoveCharsWithMissingDestination) {
+  SetupWriter();
+  restore_nodes_filter_.MoveOnStart("text", "no_such_destination");
+  expect_restored_ = false;
+  RunTestsWithManyFlushWindows("text", "");
+}
+
+TEST_F(HtmlRestoreTest, TwoDeleteAcrossFlush) {
+  SetupWriter();
+  restore_nodes_filter_.DeleteOnStart("a");
+  RunTestsWithManyFlushWindows("1<div id=a></div>2", "12");
+}
+
+// This tests having two filters that each do deferrals.  The
+// interesting case is where the second filter in the chain defers a
+// node first, and then, before restoring first deferred node, another
+// filter defers a different node.
+TEST_F(HtmlRestoreTest, TwoDeferringFilters) {
+  TestTwoFilters(
+      "b", "c",
+      "a", "d",
+      NULL,  // Node to delete
+      "<img id=a /><img id=b /><img id=c /><img id=d />",
+      "<img id=c /><img id=b /><img id=d /><img id=a />");
+}
+
+TEST_F(HtmlRestoreTest, TwoDeferringFiltersWithDelete) {
+  TestTwoFilters(
+      "b", "c",  // In first filter, mov div b to after to div c.
+      "a", "d",  // In second filter, move div a to after div d.
+      "a",       // In first filter, delete node "a"
+      "<img id=a /><img id=b /><img id=c /><img id=d />",
+      "<img id=c /><img id=b /><img id=d />");
+}
+
+TEST_F(HtmlRestoreTest, TwoDeferringFiltersNestingOuterFirst) {
+  TestTwoFilters(
+      "a", "d",
+      "b", "c",
+      NULL,  // Node to delete
+      "<div id=a><div id=b></div><div id=c></div></div><div id=d></div>",
+      "<div id=d></div><div id=a><div id=c></div><div id=b></div></div>");
+}
+
+TEST_F(HtmlRestoreTest, TwoDeferringFiltersNestingOuterFirstWithDelete) {
+  TestTwoFilters(
+      "a", "d",
+      "b", "c",
+      "b",
+      "<div id=a><div id=b></div><div id=c></div></div><div id=d></div>",
+      "<div id=d></div><div id=a><div id=c></div></div>");
+}
+
+TEST_F(HtmlRestoreTest, TwoDeferringFiltersNestingInnerFirst) {
+  TestTwoFilters(
+      "b", "c",
+      "a", "d",
+      NULL,  // Node to delete
+      "<div id=a><div id=b></div><div id=c></div></div><div id=d></div>",
+      "<div id=d></div><div id=a><div id=c></div><div id=b></div></div>");
+}
+
+TEST_F(HtmlRestoreTest, TwoDeferringFiltersNestingInnerFirstWithDelete) {
+  TestTwoFilters(
+      "b", "c",
+      "a", "d",
+      "a",
+      "<div id=a><div id=b></div><div id=c></div></div><div id=d></div>",
+      "<div id=d></div>");
+}
+
+TEST_F(HtmlRestoreTest, DeferringAndDeletingFilters) {
+  DeleteNodesFilter delete_nodes_filter(&html_parse_);
+  RestoreNodesFilter restore_nodes_filter2(&html_parse_);
+  html_parse_.AddFilter(&delete_nodes_filter);  // Upstream
+  html_parse_.AddFilter(&restore_nodes_filter2);  // Downstream
+  SetupWriter();
+  // Don't do anything with restore_nodes_filter_
+  delete_nodes_filter.set_delete_node_type(HtmlName::kSpan);
+  delete_nodes_filter.set_delete_from_type(HtmlName::kDiv);
+  delete_nodes_filter.set_delete_on_open_tag(true);
+  restore_nodes_filter2.MoveOnStart("a", "d");
+  const StringPiece kInput(
+      "<span id=a><div id=b></div><div id=c></div></span><div id=d></div>");
+  ValidateExpected("defer_and_delete", kInput,
+                   "<div id=b></div><div id=c></div><div id=d></div>");
+  EXPECT_EQ(1, delete_nodes_filter.num_deleted_elements());
+
+  // With the same filter setup, put a flush in the middle.
+  output_buffer_.clear();
+  html_parse_.StartParse("http://test.com/with_flush");
+  html_parse_.ParseText(kInput.substr(0, kInput.size() / 2));
+  html_parse_.Flush();
+  html_parse_.ParseText(kInput.substr(kInput.size() / 2));
+  html_parse_.FinishParse();
+
+  // Because of the flush, deleting the 'span' did not work.  However,
+  // moving the span (and all its contents) after the 'd' did.
+  //
+  // TODO(jmarantz): consider making DeleteSavingChildren work even if
+  // the EndElement is not yet parsed, in which case we can switch to
+  // using RunTestsWithManyFlushWindows and expect the same results
+  // regardless of when the flush occurs.
+  EXPECT_STREQ(
+      "<div id=d></div><span id=a><div id=b></div><div id=c></div></span>",
+      output_buffer_);
+  EXPECT_EQ(0, delete_nodes_filter.num_deleted_elements());
+}
+
+TEST_F(HtmlRestoreTest, DeleteDeferredNode) {
+  DeleteNodesFilter delete_nodes_filter(&html_parse_);
+  RestoreNodesFilter restore_nodes_filter2(&html_parse_);
+  html_parse_.AddFilter(&delete_nodes_filter);  // Upstream
+  html_parse_.AddFilter(&restore_nodes_filter2);  // Downstream
+  SetupWriter();
+  // Don't do anything with restore_nodes_filter_
+  delete_nodes_filter.set_delete_node_type(HtmlName::kSpan);
+  delete_nodes_filter.set_delete_from_type(HtmlName::kDiv);
+  delete_nodes_filter.set_delete_on_open_tag(true);
+  restore_nodes_filter2.MoveOnStart("a", "d");
+  const StringPiece kInput("<span id=a></span><div id=d></div>");
+  ValidateExpected("delete_deferred", kInput, "<div id=d></div>");
+  EXPECT_EQ(1, delete_nodes_filter.num_deleted_elements());
+
+  // With the same filter setup, put a flush in the middle.
+  output_buffer_.clear();
+  html_parse_.StartParse("http://test.com/with_flush");
+  html_parse_.ParseText(kInput.substr(0, kInput.size() / 2));
+  html_parse_.Flush();
+  html_parse_.ParseText(kInput.substr(kInput.size() / 2));
+  html_parse_.FinishParse();
+
+  // Because of the flush, deleting the 'span' did not work.  However,
+  // moving the span after the 'd' did.
+  //
+  // TODO(jmarantz): consider making DeleteSavingChildren work even if
+  // the EndElement is not yet parsed, in which case we can switch to
+  // using RunTestsWithManyFlushWindows and expect the same results
+  // regardless of when the flush occurs.
+  EXPECT_STREQ("<div id=d></div><span id=a></span>", output_buffer_);
+  EXPECT_EQ(0, delete_nodes_filter.num_deleted_elements());
+}
+
+TEST_F(HtmlRestoreTest, CoalesceCharsAfterRestore) {
+  restore_nodes_filter_.MoveOnStart("1", "a");
+  SetupWriter();
+
+  const StringPiece kInput("1<img id=a />2");
+  int num_times_chars_are_coalesced = 0;
+  int num_times_chars_are_not_coalesced = 0;
+  for (int i = 0, n = kInput.size(); i < n; ++i) {
+    ParseWithFlush(kInput, i);
+    EXPECT_STREQ("<img id=a />12", output_buffer_) << i;
+
+    // Before the deferral, we had two Characters nodes.
+    EXPECT_EQ(2, pre_counts_filter_.num_char_elements()) << i;
+
+    // The filter that does the deferring also sees two Characters nodes.
+    EXPECT_EQ(2, restore_nodes_filter_.num_char_elements()) << i;
+
+    // After the restore, the Characters nodes may be coalesced,
+    // depending on the flush window.
+    EXPECT_TRUE((post_counts_filter_.num_char_elements() == 1) ||
+                (post_counts_filter_.num_char_elements() == 2)) << i;
+    if (post_counts_filter_.num_char_elements() == 1) {
+      ++num_times_chars_are_coalesced;
+    } else {
+      ++num_times_chars_are_not_coalesced;
+    }
+  }
+  EXPECT_LT(0, num_times_chars_are_coalesced);
+  EXPECT_LT(0, num_times_chars_are_not_coalesced);
+}
+
+TEST_F(HtmlRestoreTest, CoalesceCharsOnDefer) {
+  restore_nodes_filter_.MoveOnStart("a", "b");
+  SetupWriter();
+
+  const StringPiece kInput("1<img id=a />2<p id=b />");
+  int num_times_chars_are_coalesced = 0;
+  int num_times_chars_are_not_coalesced = 0;
+  for (int i = 0, n = kInput.size(); i < n; ++i) {
+    ParseWithFlush(kInput, i);
+    EXPECT_STREQ(output_buffer_, "12<p id=b /><img id=a />");
+
+    // Before the deferral, we had two Characters nodes.
+    EXPECT_EQ(2, pre_counts_filter_.num_char_elements()) << i;
+
+    // The filter that does the deferring also sees two Characters nodes.
+    EXPECT_EQ(2, restore_nodes_filter_.num_char_elements()) << i;
+
+    // After the restore, the Characters nodes may be coalesced,
+    // depending on the flush window.
+
+    // After the deferral, the Characters nodes may be coalesced,
+    // depending on the flush window.
+    EXPECT_TRUE((post_counts_filter_.num_char_elements() == 1) ||
+                (post_counts_filter_.num_char_elements() == 2)) << i;
+    if (post_counts_filter_.num_char_elements() == 1) {
+      ++num_times_chars_are_coalesced;
+    } else {
+      ++num_times_chars_are_not_coalesced;
+    }
+  }
+  EXPECT_LT(0, num_times_chars_are_coalesced);
+  EXPECT_LT(0, num_times_chars_are_not_coalesced);
+}
+
+// This test just shows that the lexer will, in the absense of Defer or
+// Delete calls, coalesce Characters nodes across Flush.  It does this
+// by being lazy and not emitting literals until it seems some HTML syntax.
+TEST_F(HtmlRestoreTest, CoalesceCharsAcrossFlush) {
+  SetupWriter();
+
+  const StringPiece kInput("12");
+  for (int i = 0, n = kInput.size(); i < n; ++i) {
+    ParseWithFlush(kInput, i);
+    EXPECT_STREQ("12", output_buffer_) << i;
+    EXPECT_EQ(1, pre_counts_filter_.num_char_elements()) << i;
+  }
 }
 
 }  // namespace net_instaweb
