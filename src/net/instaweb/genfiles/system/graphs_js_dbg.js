@@ -3984,6 +3984,397 @@ goog.log.info = function(logger, msg, opt_exception) {
 goog.log.fine = function(logger, msg, opt_exception) {
   goog.log.ENABLED && logger && logger.fine(msg, opt_exception);
 };
+goog.async = {};
+goog.async.throwException = function(exception) {
+  goog.global.setTimeout(function() {
+    throw exception;
+  }, 0);
+};
+goog.async.nextTick = function(callback, opt_context) {
+  var cb = callback;
+  opt_context && (cb = goog.bind(callback, opt_context));
+  cb = goog.async.nextTick.wrapCallback_(cb);
+  !goog.isFunction(goog.global.setImmediate) || goog.global.Window && goog.global.Window.prototype.setImmediate == goog.global.setImmediate ? (goog.async.nextTick.setImmediate_ || (goog.async.nextTick.setImmediate_ = goog.async.nextTick.getSetImmediateEmulator_()), goog.async.nextTick.setImmediate_(cb)) : goog.global.setImmediate(cb);
+};
+goog.async.nextTick.getSetImmediateEmulator_ = function() {
+  var Channel = goog.global.MessageChannel;
+  "undefined" === typeof Channel && "undefined" !== typeof window && window.postMessage && window.addEventListener && (Channel = function() {
+    var iframe = document.createElement("iframe");
+    iframe.style.display = "none";
+    iframe.src = "";
+    document.documentElement.appendChild(iframe);
+    var win = iframe.contentWindow, doc = win.document;
+    doc.open();
+    doc.write("");
+    doc.close();
+    var message = "callImmediate" + Math.random(), origin = "file:" == win.location.protocol ? "*" : win.location.protocol + "//" + win.location.host, onmessage = goog.bind(function(e) {
+      if (e.origin == origin || e.data == message) {
+        this.port1.onmessage();
+      }
+    }, this);
+    win.addEventListener("message", onmessage, !1);
+    this.port1 = {};
+    this.port2 = {postMessage:function() {
+      win.postMessage(message, origin);
+    }};
+  });
+  if ("undefined" !== typeof Channel && !goog.labs.userAgent.browser.isIE()) {
+    var channel = new Channel, head = {}, tail = head;
+    channel.port1.onmessage = function() {
+      head = head.next;
+      var cb = head.cb;
+      head.cb = null;
+      cb();
+    };
+    return function(cb) {
+      tail.next = {cb:cb};
+      tail = tail.next;
+      channel.port2.postMessage(0);
+    };
+  }
+  return "undefined" !== typeof document && "onreadystatechange" in document.createElement("script") ? function(cb) {
+    var script = document.createElement("script");
+    script.onreadystatechange = function() {
+      script.onreadystatechange = null;
+      script.parentNode.removeChild(script);
+      script = null;
+      cb();
+      cb = null;
+    };
+    document.documentElement.appendChild(script);
+  } : function(cb) {
+    goog.global.setTimeout(cb, 0);
+  };
+};
+goog.async.nextTick.wrapCallback_ = goog.functions.identity;
+goog.debug.entryPointRegistry.register(function(transformer) {
+  goog.async.nextTick.wrapCallback_ = transformer;
+});
+goog.testing = {};
+goog.testing.watchers = {};
+goog.testing.watchers.resetWatchers_ = [];
+goog.testing.watchers.signalClockReset = function() {
+  for (var watchers = goog.testing.watchers.resetWatchers_, i = 0;i < watchers.length;i++) {
+    goog.testing.watchers.resetWatchers_[i]();
+  }
+};
+goog.testing.watchers.watchClockReset = function(fn) {
+  goog.testing.watchers.resetWatchers_.push(fn);
+};
+goog.async.run = function(callback, opt_context) {
+  goog.async.run.schedule_ || goog.async.run.initializeRunner_();
+  goog.async.run.workQueueScheduled_ || (goog.async.run.schedule_(), goog.async.run.workQueueScheduled_ = !0);
+  goog.async.run.workQueue_.push(new goog.async.run.WorkItem_(callback, opt_context));
+};
+goog.async.run.initializeRunner_ = function() {
+  if (goog.global.Promise && goog.global.Promise.resolve) {
+    var promise = goog.global.Promise.resolve();
+    goog.async.run.schedule_ = function() {
+      promise.then(goog.async.run.processWorkQueue);
+    };
+  } else {
+    goog.async.run.schedule_ = function() {
+      goog.async.nextTick(goog.async.run.processWorkQueue);
+    };
+  }
+};
+goog.async.run.forceNextTick = function() {
+  goog.async.run.schedule_ = function() {
+    goog.async.nextTick(goog.async.run.processWorkQueue);
+  };
+};
+goog.async.run.workQueueScheduled_ = !1;
+goog.async.run.workQueue_ = [];
+goog.DEBUG && (goog.async.run.resetQueue_ = function() {
+  goog.async.run.workQueueScheduled_ = !1;
+  goog.async.run.workQueue_ = [];
+}, goog.testing.watchers.watchClockReset(goog.async.run.resetQueue_));
+goog.async.run.processWorkQueue = function() {
+  for (;goog.async.run.workQueue_.length;) {
+    var workItems = goog.async.run.workQueue_;
+    goog.async.run.workQueue_ = [];
+    for (var i = 0;i < workItems.length;i++) {
+      var workItem = workItems[i];
+      try {
+        workItem.fn.call(workItem.scope);
+      } catch (e) {
+        goog.async.throwException(e);
+      }
+    }
+  }
+  goog.async.run.workQueueScheduled_ = !1;
+};
+goog.async.run.WorkItem_ = function(fn, scope) {
+  this.fn = fn;
+  this.scope = scope;
+};
+goog.promise = {};
+goog.promise.Resolver = function() {
+};
+goog.Thenable = function() {
+};
+goog.Thenable.prototype.then = function() {
+};
+goog.Thenable.IMPLEMENTED_BY_PROP = "$goog_Thenable";
+goog.Thenable.addImplementation = function(ctor) {
+  goog.exportProperty(ctor.prototype, "then", ctor.prototype.then);
+  ctor.prototype[goog.Thenable.IMPLEMENTED_BY_PROP] = !0;
+};
+goog.Thenable.isImplementedBy = function(object) {
+  if (!object) {
+    return!1;
+  }
+  try {
+    return!!object[goog.Thenable.IMPLEMENTED_BY_PROP];
+  } catch (e) {
+    return!1;
+  }
+};
+goog.Promise = function(resolver, opt_context) {
+  this.state_ = goog.Promise.State_.PENDING;
+  this.result_ = void 0;
+  this.callbackEntries_ = this.parent_ = null;
+  this.executing_ = !1;
+  0 < goog.Promise.UNHANDLED_REJECTION_DELAY ? this.unhandledRejectionId_ = 0 : 0 == goog.Promise.UNHANDLED_REJECTION_DELAY && (this.hadUnhandledRejection_ = !1);
+  goog.Promise.LONG_STACK_TRACES && (this.stack_ = [], this.addStackTrace_(Error("created")), this.currentStep_ = 0);
+  try {
+    var self = this;
+    resolver.call(opt_context, function(value) {
+      self.resolve_(goog.Promise.State_.FULFILLED, value);
+    }, function(reason) {
+      self.resolve_(goog.Promise.State_.REJECTED, reason);
+    });
+  } catch (e) {
+    this.resolve_(goog.Promise.State_.REJECTED, e);
+  }
+};
+goog.Promise.LONG_STACK_TRACES = !1;
+goog.Promise.UNHANDLED_REJECTION_DELAY = 0;
+goog.Promise.State_ = {PENDING:0, BLOCKED:1, FULFILLED:2, REJECTED:3};
+goog.Promise.resolve = function(opt_value) {
+  return new goog.Promise(function(resolve) {
+    resolve(opt_value);
+  });
+};
+goog.Promise.reject = function(opt_reason) {
+  return new goog.Promise(function(resolve, reject) {
+    reject(opt_reason);
+  });
+};
+goog.Promise.race = function(promises) {
+  return new goog.Promise(function(resolve, reject) {
+    promises.length || resolve(void 0);
+    for (var i = 0, promise;promise = promises[i];i++) {
+      promise.then(resolve, reject);
+    }
+  });
+};
+goog.Promise.all = function(promises) {
+  return new goog.Promise(function(resolve, reject) {
+    var toFulfill = promises.length, values = [];
+    if (toFulfill) {
+      for (var onFulfill = function(index, value) {
+        toFulfill--;
+        values[index] = value;
+        0 == toFulfill && resolve(values);
+      }, onReject = function(reason) {
+        reject(reason);
+      }, i = 0, promise;promise = promises[i];i++) {
+        promise.then(goog.partial(onFulfill, i), onReject);
+      }
+    } else {
+      resolve(values);
+    }
+  });
+};
+goog.Promise.firstFulfilled = function(promises) {
+  return new goog.Promise(function(resolve, reject) {
+    var toReject = promises.length, reasons = [];
+    if (toReject) {
+      for (var onFulfill = function(value) {
+        resolve(value);
+      }, onReject = function(index, reason) {
+        toReject--;
+        reasons[index] = reason;
+        0 == toReject && reject(reasons);
+      }, i = 0, promise;promise = promises[i];i++) {
+        promise.then(onFulfill, goog.partial(onReject, i));
+      }
+    } else {
+      resolve(void 0);
+    }
+  });
+};
+goog.Promise.withResolver = function() {
+  var resolve, reject, promise = new goog.Promise(function(rs, rj) {
+    resolve = rs;
+    reject = rj;
+  });
+  return new goog.Promise.Resolver_(promise, resolve, reject);
+};
+goog.Promise.prototype.then = function(opt_onFulfilled, opt_onRejected, opt_context) {
+  null != opt_onFulfilled && goog.asserts.assertFunction(opt_onFulfilled, "opt_onFulfilled should be a function.");
+  null != opt_onRejected && goog.asserts.assertFunction(opt_onRejected, "opt_onRejected should be a function. Did you pass opt_context as the second argument instead of the third?");
+  goog.Promise.LONG_STACK_TRACES && this.addStackTrace_(Error("then"));
+  return this.addChildPromise_(goog.isFunction(opt_onFulfilled) ? opt_onFulfilled : null, goog.isFunction(opt_onRejected) ? opt_onRejected : null, opt_context);
+};
+goog.Thenable.addImplementation(goog.Promise);
+goog.Promise.prototype.thenCatch = function(onRejected, opt_context) {
+  goog.Promise.LONG_STACK_TRACES && this.addStackTrace_(Error("thenCatch"));
+  return this.addChildPromise_(null, onRejected, opt_context);
+};
+goog.Promise.prototype.addCallbackEntry_ = function(callbackEntry) {
+  this.callbackEntries_ && this.callbackEntries_.length || this.state_ != goog.Promise.State_.FULFILLED && this.state_ != goog.Promise.State_.REJECTED || this.scheduleCallbacks_();
+  this.callbackEntries_ || (this.callbackEntries_ = []);
+  this.callbackEntries_.push(callbackEntry);
+};
+goog.Promise.prototype.addChildPromise_ = function(onFulfilled, onRejected, opt_context) {
+  var callbackEntry = {child:null, onFulfilled:null, onRejected:null};
+  callbackEntry.child = new goog.Promise(function(resolve, reject) {
+    callbackEntry.onFulfilled = onFulfilled ? function(value) {
+      try {
+        var result = onFulfilled.call(opt_context, value);
+        resolve(result);
+      } catch (err) {
+        reject(err);
+      }
+    } : resolve;
+    callbackEntry.onRejected = onRejected ? function(reason) {
+      try {
+        var result = onRejected.call(opt_context, reason);
+        !goog.isDef(result) && reason instanceof goog.Promise.CancellationError ? reject(reason) : resolve(result);
+      } catch (err) {
+        reject(err);
+      }
+    } : reject;
+  });
+  callbackEntry.child.parent_ = this;
+  this.addCallbackEntry_(callbackEntry);
+  return callbackEntry.child;
+};
+goog.Promise.prototype.unblockAndFulfill_ = function(value) {
+  goog.asserts.assert(this.state_ == goog.Promise.State_.BLOCKED);
+  this.state_ = goog.Promise.State_.PENDING;
+  this.resolve_(goog.Promise.State_.FULFILLED, value);
+};
+goog.Promise.prototype.unblockAndReject_ = function(reason) {
+  goog.asserts.assert(this.state_ == goog.Promise.State_.BLOCKED);
+  this.state_ = goog.Promise.State_.PENDING;
+  this.resolve_(goog.Promise.State_.REJECTED, reason);
+};
+goog.Promise.prototype.resolve_ = function(state, x) {
+  if (this.state_ == goog.Promise.State_.PENDING) {
+    if (this == x) {
+      state = goog.Promise.State_.REJECTED, x = new TypeError("Promise cannot resolve to itself");
+    } else {
+      if (goog.Thenable.isImplementedBy(x)) {
+        this.state_ = goog.Promise.State_.BLOCKED;
+        x.then(this.unblockAndFulfill_, this.unblockAndReject_, this);
+        return;
+      }
+      if (goog.isObject(x)) {
+        try {
+          var then = x.then;
+          if (goog.isFunction(then)) {
+            this.tryThen_(x, then);
+            return;
+          }
+        } catch (e) {
+          state = goog.Promise.State_.REJECTED, x = e;
+        }
+      }
+    }
+    this.result_ = x;
+    this.state_ = state;
+    this.scheduleCallbacks_();
+    state != goog.Promise.State_.REJECTED || x instanceof goog.Promise.CancellationError || goog.Promise.addUnhandledRejection_(this, x);
+  }
+};
+goog.Promise.prototype.tryThen_ = function(thenable, then) {
+  this.state_ = goog.Promise.State_.BLOCKED;
+  var promise = this, called = !1, resolve = function(value) {
+    called || (called = !0, promise.unblockAndFulfill_(value));
+  }, reject = function(reason) {
+    called || (called = !0, promise.unblockAndReject_(reason));
+  };
+  try {
+    then.call(thenable, resolve, reject);
+  } catch (e) {
+    reject(e);
+  }
+};
+goog.Promise.prototype.scheduleCallbacks_ = function() {
+  this.executing_ || (this.executing_ = !0, goog.async.run(this.executeCallbacks_, this));
+};
+goog.Promise.prototype.executeCallbacks_ = function() {
+  for (;this.callbackEntries_ && this.callbackEntries_.length;) {
+    var entries = this.callbackEntries_;
+    this.callbackEntries_ = [];
+    for (var i = 0;i < entries.length;i++) {
+      goog.Promise.LONG_STACK_TRACES && this.currentStep_++, this.executeCallback_(entries[i], this.state_, this.result_);
+    }
+  }
+  this.executing_ = !1;
+};
+goog.Promise.prototype.executeCallback_ = function(callbackEntry, state, result) {
+  if (state == goog.Promise.State_.FULFILLED) {
+    callbackEntry.onFulfilled(result);
+  } else {
+    this.removeUnhandledRejection_(), callbackEntry.onRejected(result);
+  }
+};
+goog.Promise.prototype.addStackTrace_ = function(err) {
+  if (goog.Promise.LONG_STACK_TRACES && goog.isString(err.stack)) {
+    var trace = err.stack.split("\n", 4)[3], message = err.message, message = message + Array(11 - message.length).join(" ");
+    this.stack_.push(message + trace);
+  }
+};
+goog.Promise.prototype.appendLongStack_ = function(err) {
+  if (goog.Promise.LONG_STACK_TRACES && err && goog.isString(err.stack) && this.stack_.length) {
+    for (var longTrace = ["Promise trace:"], promise = this;promise;promise = promise.parent_) {
+      for (var i = this.currentStep_;0 <= i;i--) {
+        longTrace.push(promise.stack_[i]);
+      }
+      longTrace.push("Value: [" + (promise.state_ == goog.Promise.State_.REJECTED ? "REJECTED" : "FULFILLED") + "] <" + String(promise.result_) + ">");
+    }
+    err.stack += "\n\n" + longTrace.join("\n");
+  }
+};
+goog.Promise.prototype.removeUnhandledRejection_ = function() {
+  if (0 < goog.Promise.UNHANDLED_REJECTION_DELAY) {
+    for (var p = this;p && p.unhandledRejectionId_;p = p.parent_) {
+      goog.global.clearTimeout(p.unhandledRejectionId_), p.unhandledRejectionId_ = 0;
+    }
+  } else {
+    if (0 == goog.Promise.UNHANDLED_REJECTION_DELAY) {
+      for (p = this;p && p.hadUnhandledRejection_;p = p.parent_) {
+        p.hadUnhandledRejection_ = !1;
+      }
+    }
+  }
+};
+goog.Promise.addUnhandledRejection_ = function(promise, reason) {
+  0 < goog.Promise.UNHANDLED_REJECTION_DELAY ? promise.unhandledRejectionId_ = goog.global.setTimeout(function() {
+    promise.appendLongStack_(reason);
+    goog.Promise.handleRejection_.call(null, reason);
+  }, goog.Promise.UNHANDLED_REJECTION_DELAY) : 0 == goog.Promise.UNHANDLED_REJECTION_DELAY && (promise.hadUnhandledRejection_ = !0, goog.async.run(function() {
+    promise.hadUnhandledRejection_ && (promise.appendLongStack_(reason), goog.Promise.handleRejection_.call(null, reason));
+  }));
+};
+goog.Promise.handleRejection_ = goog.async.throwException;
+goog.Promise.setUnhandledRejectionHandler = function(handler) {
+  goog.Promise.handleRejection_ = handler;
+};
+goog.Promise.CancellationError = function(opt_message) {
+  goog.debug.Error.call(this, opt_message);
+};
+goog.inherits(goog.Promise.CancellationError, goog.debug.Error);
+goog.Promise.CancellationError.prototype.name = "cancel";
+goog.Promise.Resolver_ = function(promise, resolve, reject) {
+  this.promise = promise;
+  this.resolve = resolve;
+  this.reject = reject;
+};
 goog.Timer = function(opt_interval, opt_timerObject) {
   goog.events.EventTarget.call(this);
   this.interval_ = opt_interval || 1;
@@ -4030,6 +4421,17 @@ goog.Timer.callOnce = function(listener, opt_delay, opt_handler) {
 };
 goog.Timer.clear = function(timerId) {
   goog.Timer.defaultTimerObject.clearTimeout(timerId);
+};
+goog.Timer.promise = function(delay, opt_result) {
+  var timerKey;
+  return(new goog.Promise(function(resolve, reject) {
+    timerKey = goog.Timer.callOnce(function() {
+      resolve(opt_result);
+    }, delay);
+    -1 == timerKey && reject(Error("Failed to schedule timer."));
+  })).thenCatch(function() {
+    timerKey && goog.Timer.clear(timerKey);
+  });
 };
 goog.uri = {};
 goog.uri.utils = {};
@@ -4283,7 +4685,7 @@ goog.net.ErrorCode.getDebugMessage = function(errorCode) {
   }
 };
 goog.net.HttpStatus = {CONTINUE:100, SWITCHING_PROTOCOLS:101, OK:200, CREATED:201, ACCEPTED:202, NON_AUTHORITATIVE_INFORMATION:203, NO_CONTENT:204, RESET_CONTENT:205, PARTIAL_CONTENT:206, MULTIPLE_CHOICES:300, MOVED_PERMANENTLY:301, FOUND:302, SEE_OTHER:303, NOT_MODIFIED:304, USE_PROXY:305, TEMPORARY_REDIRECT:307, BAD_REQUEST:400, UNAUTHORIZED:401, PAYMENT_REQUIRED:402, FORBIDDEN:403, NOT_FOUND:404, METHOD_NOT_ALLOWED:405, NOT_ACCEPTABLE:406, PROXY_AUTHENTICATION_REQUIRED:407, REQUEST_TIMEOUT:408, 
-CONFLICT:409, GONE:410, LENGTH_REQUIRED:411, PRECONDITION_FAILED:412, REQUEST_ENTITY_TOO_LARGE:413, REQUEST_URI_TOO_LONG:414, UNSUPPORTED_MEDIA_TYPE:415, REQUEST_RANGE_NOT_SATISFIABLE:416, EXPECTATION_FAILED:417, INTERNAL_SERVER_ERROR:500, NOT_IMPLEMENTED:501, BAD_GATEWAY:502, SERVICE_UNAVAILABLE:503, GATEWAY_TIMEOUT:504, HTTP_VERSION_NOT_SUPPORTED:505, QUIRK_IE_NO_CONTENT:1223};
+CONFLICT:409, GONE:410, LENGTH_REQUIRED:411, PRECONDITION_FAILED:412, REQUEST_ENTITY_TOO_LARGE:413, REQUEST_URI_TOO_LONG:414, UNSUPPORTED_MEDIA_TYPE:415, REQUEST_RANGE_NOT_SATISFIABLE:416, EXPECTATION_FAILED:417, PRECONDITION_REQUIRED:428, TOO_MANY_REQUESTS:429, REQUEST_HEADER_FIELDS_TOO_LARGE:431, INTERNAL_SERVER_ERROR:500, NOT_IMPLEMENTED:501, BAD_GATEWAY:502, SERVICE_UNAVAILABLE:503, GATEWAY_TIMEOUT:504, HTTP_VERSION_NOT_SUPPORTED:505, NETWORK_AUTHENTICATION_REQUIRED:511, QUIRK_IE_NO_CONTENT:1223};
 goog.net.HttpStatus.isSuccess = function(status) {
   switch(status) {
     case goog.net.HttpStatus.OK:
@@ -4655,9 +5057,8 @@ pagespeed.Graphs.prototype.parseSnapshotMessages = function(text) {
   this.psolMessages_.push({messages:messages, timeReceived:new Date});
 };
 pagespeed.Graphs.prototype.requestUrl = function() {
-  var pathName = location.pathname, n = pathName.lastIndexOf("/");
-  n == pathName.length - 1 && (n = pathName.substring(0, n).lastIndexOf("/"));
-  return 0 < n ? pathName.substring(0, n) + "/stats_json" : "/stats_json";
+  var pathName = location.pathname, n = pathName.lastIndexOf("/", pathName.length - 2);
+  return 0 < n ? pathName.substring(0, n) + "/stats_json" : pathName + "/stats_json";
 };
 pagespeed.Graphs.prototype.performRefresh = function() {
   if (!this.xhr_.isActive()) {

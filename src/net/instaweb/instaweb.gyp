@@ -690,6 +690,20 @@
       ]
     },
     {
+      'target_name': 'instaweb_statistics_css_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'net/instaweb/system',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/system',
+        'var_name': 'statistics_css',
+      },
+      'sources': [
+        'genfiles/system/statistics_css.css',
+      ],
+      'includes': [
+        'data2c.gypi',
+      ]
+    },
+    {
       'target_name': 'instaweb_spriter_pb',
       'variables': {
         'instaweb_protoc_subdir': 'net/instaweb/spriter/public',
@@ -1271,6 +1285,7 @@
         'instaweb_split_html_beacon_data2c',
         'instaweb_split_html_beacon_opt_data2c',
         'instaweb_spriter',
+        'instaweb_statistics_css_data2c',
         'instaweb_statistics_js_data2c',
         'instaweb_statistics_js_opt_data2c',
         'instaweb_util',

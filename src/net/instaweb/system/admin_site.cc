@@ -57,6 +57,7 @@ extern const char* CSS_admin_site_css;
 extern const char* CSS_caches_css;
 extern const char* CSS_console_css;
 extern const char* CSS_graphs_css;
+extern const char* CSS_statistics_css;
 extern const char* JS_caches_js;
 extern const char* JS_caches_js_opt;
 extern const char* JS_console_js;
@@ -263,7 +264,10 @@ void AdminSite::StatisticsJsonHandler(AsyncFetch* fetch, Statistics* stats) {
 void AdminSite::StatisticsHandler(const RewriteOptions& options,
                                   AdminSource source, AsyncFetch* fetch,
                                   Statistics* stats) {
-  AdminHtml admin_html("statistics", "", source, fetch, message_handler_);
+  GoogleString head_markup = StrCat(
+      "<style>", CSS_statistics_css, "</style>\n");
+  AdminHtml admin_html("statistics", head_markup, source, fetch,
+                       message_handler_);
   // We have to call Dump() here to write data to sources for
   // system/system_test.sh: Line 79. We use JS to update the data in refreshes.
   fetch->Write("<pre id=\"stat\">", message_handler_);

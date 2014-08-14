@@ -300,15 +300,14 @@ pagespeed.Graphs.prototype.parseSnapshotMessages = function(text) {
  */
 pagespeed.Graphs.prototype.requestUrl = function() {
   var pathName = location.pathname;
-  var n = pathName.lastIndexOf('/');
-  // Ignore the ending '/'.
-  if (n == pathName.length - 1) {
-    n = pathName.substring(0, n).lastIndexOf('/');
-  }
+  // Ignore the trailing '/'.
+  var n = pathName.lastIndexOf('/', pathName.length - 2);
+  // e.g. /pagespeed_admin/foo or pagespeed_admin/foo
   if (n > 0) {
     return pathName.substring(0, n) + '/stats_json';
   } else {
-    return '/stats_json';
+    // e.g. /pagespeed_admin or pagespeed_admin
+    return pathName + '/stats_json';
   }
 };
 

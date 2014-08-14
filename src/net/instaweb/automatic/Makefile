@@ -116,6 +116,7 @@ BASE_LIBS = \
   net/instaweb/libinstaweb_split_html_beacon_opt_data2c.a \
   net/instaweb/libinstaweb_spriter.a \
   net/instaweb/libinstaweb_spriter_pb.a \
+  net/instaweb/libinstaweb_statistics_css_data2c.a \
   net/instaweb/libinstaweb_statistics_js_data2c.a \
   net/instaweb/libinstaweb_statistics_js_opt_data2c.a \
   net/instaweb/libinstaweb_system.a \

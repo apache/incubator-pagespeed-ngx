@@ -29,6 +29,10 @@ goog.require('goog.net.XhrIo');
 goog.require('goog.string');
 
 
+/** @typedef {{name: string, value:string}} */
+pagespeed.StatsNode;
+
+
 
 /**
  * @constructor
@@ -45,13 +49,18 @@ pagespeed.Statistics = function(opt_xhr) {
 
   /**
    * The most recent statistics list.
-   * @private {!Array.<string>}
+   * @private {Array.<pagespeed.StatsNode>}
    */
-  this.psolMessages_ = document.getElementById('stat').textContent.split('\n');
-  // The element with id 'stat' must exist.
-  if (this.psolMessages_.length > 0) {
-    // Remove the empty entry.
-    this.psolMessages_.pop();
+  this.psolMessages_ = [];
+  var messages = document.getElementById('stat').textContent.split('\n');
+  for (var i = 0; i < messages.length; ++i) {
+    var tmp = messages[i].split(':');
+    if (tmp.length < 2) continue;
+    var node = {
+      name: tmp[0].trim(),
+      value: tmp[1].trim()
+    };
+    this.psolMessages_.push(node);
   }
 
   /**
@@ -59,6 +68,22 @@ pagespeed.Statistics = function(opt_xhr) {
    * @private {number}
    */
   this.numUnfilteredMessages_ = this.psolMessages_.length;
+
+  /**
+   * The statistics list after last refresh. The type of this object is like
+   * the initializer below. this.lastValue_['cache_hits'] is the value of
+   * 'cache_hits' after last refresh.
+   * @private {!Object}
+   */
+  this.lastValue_ = {'statsName': 0};
+
+  /**
+   * The frequency of change since the first refresh. For example,
+   * this.timesOfChange_['cache_hits'] is the number of times of changes of
+   * 'cache_hits' since the first refresh.
+   * @private {!Object}
+   */
+  this.timesOfChange_ = {'statsName': 0};
 
   /**
    * We provide filtering functionality for users to search for certain
@@ -75,6 +100,22 @@ pagespeed.Statistics = function(opt_xhr) {
    */
   this.autoRefresh_ = false;
 
+  /**
+   * If this option is false, the statistics is sorted alphabetically. When it
+   * is set to true, the statistics is sorted in descending order of the
+   * frequency of change and secondarily alphabetic order.
+   * @private {boolean}
+   */
+  this.sortFrequency_ = false;
+
+  /**
+   * The flag of whether the first refresh is started. We need to call a
+   * refresh when loading the page to sort statistics. Default is false,
+   * which means the page hasn't started the first refresh yet.
+   * @private {boolean}
+   */
+  this.firstRefreshStarted_ = false;
+
   var wrapper = document.createElement('div');
   wrapper.style.overflow = 'hidden';
   wrapper.style.clear = 'both';
@@ -86,8 +127,8 @@ pagespeed.Statistics = function(opt_xhr) {
       '<table id="ui-table" border=1 style="float:left; border-collapse: ' +
       'collapse;border-color:silver;"><tr valign="center">' +
       '<td>Auto refresh (every 5 seconds): <input type="checkbox" ' +
-      'id="auto-refresh" ' + (this.autoRefresh_ ? 'checked' : '') +
-      '></td><td>&nbsp;&nbsp;&nbsp;&nbsp;Filter: ' +
+      'id="auto-refresh" ' + (this.autoRefresh_ ? 'checked' : '') + '></td>' +
+      '<td>&nbsp;&nbsp;&nbsp;&nbsp;Filter: ' +
       '<input id="text-filter" type="text" size="70"></td>' +
       '</tr></table>';
   wrapper.appendChild(uiTable);
@@ -108,6 +149,15 @@ pagespeed.Statistics = function(opt_xhr) {
  */
 pagespeed.Statistics.prototype.toggleAutorefresh = function() {
   this.autoRefresh_ = !this.autoRefresh_;
+};
+
+
+/**
+ * Updates the option of sort-by-frequency-of-change.
+ */
+pagespeed.Statistics.prototype.toggleSorting = function() {
+  this.sortFrequency_ = !this.sortFrequency_;
+  this.update();
 };
 
 
@@ -152,18 +202,111 @@ pagespeed.Statistics.prototype.error = function() {
  * Filters and displays updated statistics.
  */
 pagespeed.Statistics.prototype.update = function() {
+  if (this.sortFrequency_) {
+    // Sort in descending order of the frequency of change.
+    this.sortByFrequency();
+  } else {
+    // Sort in alphabetical order.
+    this.sortByAlphabet();
+  }
+
   var messages = goog.array.clone(this.psolMessages_);
   if (this.filter_) {
     for (var i = messages.length - 1; i >= 0; --i) {
-      if (!messages[i] ||
-          !goog.string.caseInsensitiveContains(messages[i], this.filter_)) {
+      if (!messages[i].name ||
+          !goog.string.caseInsensitiveContains(messages[i].name,
+                                               this.filter_)) {
         messages.splice(i, 1);
       }
     }
   }
   this.updateMessageCount(messages.length);
+
+  // From observation, it's much slower to add the table header in the
+  // constructor and update the table rows when refreshing the page.
+  // So we recreate the table here every time we call this.update().
+  var table = document.createElement('table');
+  for (var i = 0; i < messages.length; ++i) {
+    var row = table.insertRow(-1);
+    var cell = row.insertCell(0);
+    cell.textContent = messages[i].name;
+    cell.className = 'pagespeed-stats-name';
+    cell = row.insertCell(1);
+    cell.textContent = messages[i].value;
+    cell.className = 'pagespeed-stats-value';
+    cell = row.insertCell(2);
+    cell.textContent =
+        this.timesOfChange_[messages[i].name].toString();
+    cell.className = 'pagespeed-stats-frequency';
+  }
+  var header = table.createTHead().insertRow(0);
+  var cell = header.insertCell(0);
+  cell.innerHTML =
+      'Name <input type="checkbox" id="sort-alpha" ' +
+      'title="Sort in alphabetical order."' +
+      (!this.sortFrequency_ ? 'checked' : '') + '>';
+  cell.className = 'pagespeed-stats-first-column';
+  header.insertCell(1).textContent = 'Value';
+  cell = header.insertCell(2);
+  cell.innerHTML =
+      'Frequency of Change <input type="checkbox" id="sort-freq" ' +
+      'title="Sort by the frequency of change(descending order)."' +
+      (this.sortFrequency_ ? 'checked' : '') + '>';
+  cell.title = 'How many times the value changes during the auto-refresh.\n' +
+               'The frequency only accumulates when auto-refresh is on.';
+  cell.className = 'pagespeed-stats-third-column';
   var statElement = document.getElementById('stat');
-  statElement.textContent = messages.join('\n');
+  statElement.innerHTML = '';
+  statElement.appendChild(table);
+  goog.events.listen(document.getElementById('sort-freq'), 'change',
+                     goog.bind(this.toggleSorting, this));
+  goog.events.listen(document.getElementById('sort-alpha'), 'change',
+                     goog.bind(this.toggleSorting, this));
+};
+
+
+/**
+ * The comparison function to be passed into JS Array sort() method to
+ * sort the statistics in alphabetic and ascending order.
+ * @param {pagespeed.StatsNode} a The node to compare.
+ * @param {pagespeed.StatsNode} b The node to compare.
+ * @return {number} The return value of the comparison.
+ */
+pagespeed.Statistics.alphabetCompareFunc = function(a, b) {
+  if (a.name > b.name) {
+    return 1;
+  } else if (a.name < b.name) {
+    return -1;
+  } else {
+    return 0;
+  }
+};
+
+
+/**
+ * Sort the statistics by the frequency of change.
+ */
+pagespeed.Statistics.prototype.sortByFrequency = function() {
+  var compareFunc = function(a, b) {
+    var first = this.timesOfChange_[a.name];
+    var second = this.timesOfChange_[b.name];
+    // Sort in the descending order of frequency.
+    if (second != first) {
+      return second - first;
+    } else {
+      // Otherwise, sort in alphabetical order.
+      return pagespeed.Statistics.alphabetCompareFunc(a, b);
+    }
+  };
+  this.psolMessages_.sort(compareFunc.bind(this));
+};
+
+
+/**
+ * Sort the statistics in alphabetical order.
+ */
+pagespeed.Statistics.prototype.sortByAlphabet = function() {
+  this.psolMessages_.sort(pagespeed.Statistics.alphabetCompareFunc);
 };
 
 
@@ -184,11 +327,28 @@ pagespeed.Statistics.prototype.parseMessagesFromResponse = function(jsonData) {
 
   var messages = [];
   for (var name in variables) {
-    var numSpaces = maxLength - name.length -
-                    variables[name].toString().length;
-    var line = name + ':' + new Array(numSpaces + 2).join(' ') +
-               variables[name].toString();
-    messages.push(line);
+    // Remove elements with trailing underscores.
+    if (name[name.length - 1] == '_') continue;
+    // For visual consistency, use underscores instead of a mix of dashes and
+    // underscores.
+    var trimmedName = name.replace(/-/g, '_');
+    // Ignore the leading underscore.
+    if (trimmedName[0] == '_') {
+      trimmedName = trimmedName.substring(1);
+    }
+    var node = {
+      name: trimmedName,
+      value: variables[name].toString()
+    };
+    messages.push(node);
+
+    // Compute the frequency of change.
+    if (variables[name] != this.lastValue_[trimmedName]) {
+      this.timesOfChange_[trimmedName] =
+          this.timesOfChange_[trimmedName] == undefined ?
+          0 : this.timesOfChange_[trimmedName] + 1;
+    }
+    this.lastValue_[trimmedName] = variables[name];
   }
   this.psolMessages_ = messages;
   this.numUnfilteredMessages_ = messages.length;
@@ -212,15 +372,14 @@ pagespeed.Statistics.REFRESH_ERROR_ =
  */
 pagespeed.Statistics.prototype.requestUrl = function() {
   var pathName = location.pathname;
-  var n = pathName.lastIndexOf('/');
-  // Ignore the ending '/'.
-  if (n == pathName.length - 1) {
-    n = pathName.substring(0, n).lastIndexOf('/');
-  }
+  // Ignore the trailing '/'.
+  var n = pathName.lastIndexOf('/', pathName.length - 2);
+  // e.g. /pagespeed_admin/foo or pagespeed_admin/foo
   if (n > 0) {
     return pathName.substring(0, n) + '/stats_json';
   } else {
-    return '/stats_json';
+    // e.g. /pagespeed_admin or pagespeed_admin
+    return pathName + '/stats_json';
   }
 };
 
@@ -229,8 +388,11 @@ pagespeed.Statistics.prototype.requestUrl = function() {
  * Refreshes the page by making requsts to server.
  */
 pagespeed.Statistics.prototype.performRefresh = function() {
-  if (!this.xhr_.isActive() && this.autoRefresh_) {
-    this.xhr_.send(this.requestUrl());
+  if (!this.xhr_.isActive()) {
+    if (!this.firstRefreshStarted_ || this.autoRefresh_) {
+      this.firstRefreshStarted_ = true;
+      this.xhr_.send(this.requestUrl());
+    }
   }
 };
 
