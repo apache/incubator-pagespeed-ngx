@@ -99,6 +99,10 @@ StringPiece str_to_string_piece(ngx_str_t s) {
   return StringPiece(reinterpret_cast<char*>(s.data), s.len);
 }
 
+// Nginx uses memory pools, like Apache, allocating strings a request needs from
+// the pool and then throwing it all away when the request finishes.  Use this
+// when you need to pass a short string to nginx and want it to take ownership
+// of the string.
 char* string_piece_to_pool_string(ngx_pool_t* pool, StringPiece sp) {
   // Need space for the final null.
   ngx_uint_t buffer_size = sp.size() + 1;
@@ -113,6 +117,10 @@ char* string_piece_to_pool_string(ngx_pool_t* pool, StringPiece sp) {
   return s;
 }
 
+// When passing the body of http responses between filters Nginx uses a linked
+// list of buffers ("buffer chain"), again like Apache.  This constructs one of
+// those lists from a StringPiece.  This is what you use when you need to pass a
+// (potentially) longer string to nginx and want it to take ownership.
 ngx_int_t string_piece_to_buffer_chain(
     ngx_pool_t* pool, StringPiece sp, ngx_chain_t** link_ptr,
     bool send_last_buf) {
@@ -196,9 +204,12 @@ ngx_int_t string_piece_to_buffer_chain(
   return NGX_OK;
 }
 
-// modified from NgxBaseFetch::CopyHeadersFromTable()
 namespace {
 
+// Setting headers in nginx is tricky because it's not just a matter of adding
+// them to a list.  You also need to remove them if there's already one there,
+// as well as setting the shortcut pointers (both upper case and lower case).
+//
 // Based on ngx_http_add_cache_control.
 ngx_int_t ps_set_cache_control(ngx_http_request_t* r, char* cache_control) {
   // First strip existing cache-control headers.
@@ -529,6 +540,8 @@ void ps_ignore_sigpipe() {
   sigaction(SIGPIPE, &act, NULL);
 }
 
+// Given a directory path that pagespeed needs, create it and set permissions so
+// the worker can access, but only if needed.
 char* ps_init_dir(const StringPiece& directive,
                   const StringPiece& path,
                   ngx_conf_t* cf) {
@@ -577,10 +590,10 @@ char* ps_init_dir(const StringPiece& directive,
   return NULL;
 }
 
-// We support interpretation of nginx variables in some configuration settings, but
-// we also need to support literal dollar signs in those same settings.  Nginx has no good
-// solution for this, so we define $dollar to expand to '$', which lets people include
-// literal dollar signs if they need them.
+// We support interpretation of nginx variables in some configuration settings,
+// but we also need to support literal dollar signs in those same settings.
+// Nginx has no good solution for this, so we define $dollar to expand to '$',
+// which lets people include literal dollar signs if they need them.
 ngx_int_t ps_dollar(
     ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
   v->valid = 1;
@@ -591,6 +604,8 @@ ngx_int_t ps_dollar(
   return NGX_OK;
 }
 
+// Parse the configuration option represented by cf and add it to options,
+// creating options if necessary.
 char* ps_configure(ngx_conf_t* cf,
                    NgxRewriteOptions** options,
                    MessageHandler* handler,
@@ -693,10 +708,8 @@ char* ps_srv_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
 char* ps_loc_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
   ps_loc_conf_t* cfg_l = static_cast<ps_loc_conf_t*>(
       ngx_http_conf_get_module_loc_conf(cf, ngx_pagespeed));
-
-  return ps_configure(
-      cf, &cfg_l->options, cfg_l->handler,
-      net_instaweb::RewriteOptions::kDirectoryScope);
+  return ps_configure(cf, &cfg_l->options, cfg_l->handler,
+                      net_instaweb::RewriteOptions::kDirectoryScope);
 }
 
 void ps_cleanup_loc_conf(void* data) {
@@ -1138,6 +1151,9 @@ ngx_int_t ps_base_fetch_filter(ngx_http_request_t* r, ngx_chain_t* in) {
   return ctx->fetch_done ? NGX_OK : NGX_AGAIN;
 }
 
+// This runs on the nginx event loop in response to seeing the byte PageSpeed
+// sent over the pipe to trigger the nginx-side code.  Copy whatever is ready
+// from PageSpeed out to the browser (headers and/or body).
 ngx_int_t ps_base_fetch_handler(ngx_http_request_t* r) {
   ps_request_ctx_t* ctx = ps_get_request_context(r);
   ngx_int_t rc;
@@ -1228,6 +1244,8 @@ void ps_base_fetch_filter_init() {
 
 }  // namespace
 
+// Do some bookkeeping, cleanup, and error checking to keep the mess out of
+// ps_base_fetch_handler.
 void ps_connection_read_handler(ngx_event_t* ev) {
   CHECK(ev != NULL);
   ngx_connection_t* c = static_cast<ngx_connection_t*>(ev->data);
@@ -2168,6 +2186,8 @@ namespace html_rewrite {
 ngx_http_output_header_filter_pt ngx_http_next_header_filter;
 ngx_http_output_body_filter_pt ngx_http_next_body_filter;
 
+// After pagespeed has had a chance to run, copy the headers it produced to
+// nginx so it can send them out to the browser.
 ngx_int_t ps_html_rewrite_header_filter(ngx_http_request_t* r) {
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
   if (cfg_s->server_context == NULL) {
@@ -2306,6 +2326,9 @@ namespace in_place {
 ngx_http_output_header_filter_pt ngx_http_next_header_filter;
 ngx_http_output_body_filter_pt ngx_http_next_body_filter;
 
+// Header filter to support IPRO.
+//
+// The control flow here is tricky, probably excessively so.
 ngx_int_t ps_in_place_check_header_filter(ngx_http_request_t* r) {
   ps_request_ctx_t* ctx = ps_get_request_context(r);
 
@@ -2416,6 +2439,8 @@ ngx_int_t ps_in_place_check_header_filter(ngx_http_request_t* r) {
   return ps_decline_request(r);
 }
 
+// If we've decided that we should record this response for future optimization
+// with IPRO, then log the bytes as they come through
 ngx_int_t ps_in_place_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
   ps_request_ctx_t* ctx = ps_get_request_context(r);
   if (ctx == NULL || ctx->recorder == NULL) {
@@ -2491,6 +2516,8 @@ ngx_int_t send_out_headers_and_body(
   return ngx_http_output_filter(r, out);
 }
 
+// Handle responses where we have the content we need in memory and can just
+// send it right out.
 ngx_int_t ps_simple_handler(ngx_http_request_t* r,
                             NgxServerContext* server_context,
                             RequestRouting::Response response_category) {
@@ -2736,6 +2763,10 @@ void ps_beacon_body_handler(ngx_http_request_t* r) {
   }
 }
 
+// We need to get the beacon data to ps_beacon_body_handler so it can pass it
+// along to SystemServerContext::HandleBeacon, but it might have been POSTed.
+// If it's posted we need to make an async call to get the data, otherwise just
+// read it out of the query params.
 ngx_int_t ps_beacon_handler(ngx_http_request_t* r) {
   if (r->method == NGX_HTTP_POST) {
     // Use post body. Handler functions are called before the request body has
@@ -2758,8 +2789,12 @@ ngx_int_t ps_beacon_handler(ngx_http_request_t* r) {
   }
 }
 
-// Handle requests for resources like example.css.pagespeed.ce.LyfcM6Wulf.css
-// and for static content like /ngx_pagespeed_static/js_defer.q1EBmcgYOC.js
+// Some things pagespeed filters on the way past (html) and other things it
+// actually handles, like requests for resources
+// (example.css.pagespeed.ce.LyfcM6Wulf.css) and static content
+// (/ngx_pagespeed_static/js_defer.q1EBmcgYOC.js).  This is called once we know
+// we need to handle a resource, and it figures out which particular handler can
+// supply it to the user.
 ngx_int_t ps_content_handler(ngx_http_request_t* r) {
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
   if (cfg_s->server_context == NULL) {
@@ -2830,10 +2865,12 @@ ngx_int_t ps_phase_handler(ngx_http_request_t* r,
 namespace fix_headers {
 ngx_http_output_header_filter_pt ngx_http_next_header_filter;
 
+// Clear a few headers from html responses.
+
 ngx_int_t ps_html_rewrite_fix_headers_filter(ngx_http_request_t* r) {
   ps_request_ctx_t* ctx = ps_get_request_context(r);
-  if (r != r->main || ctx == NULL || !ctx->html_rewrite
-      || ctx->preserve_caching_headers == kPreserveAllCachingHeaders) {
+  if (r != r->main || ctx == NULL || !ctx->html_rewrite ||
+      ctx->preserve_caching_headers == kPreserveAllCachingHeaders) {
     return ngx_http_next_header_filter(r);
   }
   if (ctx->preserve_caching_headers == kDontPreserveHeaders) {
