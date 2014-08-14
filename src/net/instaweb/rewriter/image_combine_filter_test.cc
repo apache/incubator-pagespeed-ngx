@@ -528,7 +528,7 @@ TEST_F(CssImageMultiFilterTest, SpritesAndNonSprites) {
                         kCuppaPngFile, 0);
   cuppa_encoded = Encode("", "ce", "0", kCuppaPngFile, "png");
   after = StringPrintf(kHtmlTemplate3Divs, encoded.c_str(), encoded.c_str(),
-                       0, 999, cuppa_encoded.c_str());
+                       0, 999, cuppa_encoded.c_str(), 0);
   ValidateExpected("sprite_none_dimmensions", before, after);
 }
 
