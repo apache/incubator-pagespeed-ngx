@@ -20,6 +20,14 @@ goog.STRICT_MODE_COMPATIBLE = !1;
 goog.provide = function(name) {
   goog.exportPath_(name);
 };
+goog.module = function(name) {
+  if (!goog.inModuleLoader_) {
+    throw Error("Module " + name + " has been loaded incorrectly.");
+  }
+};
+goog.module.exportTestMethods = function() {
+  goog.exportModuleTestMethods_ = !0;
+};
 goog.setTestOnly = function(opt_message) {
   if (!goog.DEBUG) {
     throw opt_message = opt_message || "", Error("Importing test-only code into non-debug environment" + (opt_message ? ": " + opt_message : "."));
@@ -43,10 +51,10 @@ goog.globalize = function(obj, opt_global) {
     global[x] = obj[x];
   }
 };
-goog.addDependency = function(relPath, provides, requires) {
+goog.addDependency = function(relPath, provides, requires, opt_isModule) {
   if (goog.DEPENDENCIES_ENABLED) {
     for (var provide, require, path = relPath.replace(/\\/g, "/"), deps = goog.dependencies_, i = 0;provide = provides[i];i++) {
-      deps.nameToPath[provide] = path, path in deps.pathToNames || (deps.pathToNames[path] = {}), deps.pathToNames[path][provide] = !0;
+      deps.nameToPath[provide] = path, path in deps.pathToNames || (deps.pathToNames[path] = {}), deps.pathToNames[path][provide] = !0, deps.pathIsModule[path] = !!opt_isModule;
     }
     for (var j = 0;require = requires[j];j++) {
       path in deps.requires || (deps.requires[path] = {}), deps.requires[path][require] = !0;
@@ -55,6 +63,9 @@ goog.addDependency = function(relPath, provides, requires) {
 };
 goog.useStrictRequires = !1;
 goog.ENABLE_DEBUG_LOADER = !0;
+goog.logToConsole_ = function(msg) {
+  goog.global.console && goog.global.console.error(msg);
+};
 goog.require = function() {
 };
 goog.basePath = "";
@@ -76,8 +87,9 @@ goog.addSingletonGetter = function(ctor) {
   };
 };
 goog.instantiatedSingletons_ = [];
+goog.loadedModules_ = {};
 goog.DEPENDENCIES_ENABLED = !1;
-goog.DEPENDENCIES_ENABLED && (goog.included_ = {}, goog.dependencies_ = {pathToNames:{}, nameToPath:{}, requires:{}, visited:{}, written:{}}, goog.inHtmlDocument_ = function() {
+goog.DEPENDENCIES_ENABLED && (goog.included_ = {}, goog.dependencies_ = {pathToNames:{}, pathIsModule:{}, nameToPath:{}, requires:{}, visited:{}, written:{}}, goog.inHtmlDocument_ = function() {
   var doc = goog.global.document;
   return "undefined" != typeof doc && "write" in doc;
 }, goog.findBasePath_ = function() {
@@ -94,10 +106,53 @@ goog.DEPENDENCIES_ENABLED && (goog.included_ = {}, goog.dependencies_ = {pathToN
       }
     }
   }
-}, goog.importScript_ = function(src) {
-  var importScript = goog.global.CLOSURE_IMPORT_SCRIPT || goog.writeScriptTag_;
-  !goog.dependencies_.written[src] && importScript(src) && (goog.dependencies_.written[src] = !0);
-}, goog.writeScriptTag_ = function(src) {
+}, goog.importScript_ = function(src, opt_sourceText) {
+  (goog.global.CLOSURE_IMPORT_SCRIPT || goog.writeScriptTag_)(src, opt_sourceText) && (goog.dependencies_.written[src] = !0);
+}, goog.IS_OLD_IE_ = goog.global.document && goog.global.document.all && !goog.global.atob, goog.importModule_ = function(moduleName, src) {
+  goog.importScript_("", 'goog.retrieveAndExecModule_("' + moduleName + '","' + src + '");') && (goog.dependencies_.written[src] = !0);
+}, goog.queuedModules_ = [], goog.retrieveAndExecModule_ = function(moduleName, src) {
+  var importScript = goog.global.CLOSURE_IMPORT_SCRIPT || goog.writeScriptTag_, scriptText = null, xhr = new goog.global.XMLHttpRequest;
+  xhr.onload = function() {
+    scriptText = this.responseText;
+  };
+  xhr.open("get", src, !1);
+  xhr.send();
+  scriptText = xhr.responseText;
+  if (null != scriptText) {
+    var execModuleScript = goog.wrapModule_(moduleName, src, scriptText);
+    goog.IS_OLD_IE_ ? goog.queuedModules_.push(execModuleScript) : importScript(src, execModuleScript);
+    goog.dependencies_.written[src] = !0;
+  } else {
+    throw Error("load of " + src + "failed");
+  }
+}, goog.wrapModule_ = function(moduleName, srcUrl, scriptText) {
+  return'goog.loadModule("' + moduleName + '", function(exports) {"use strict";' + scriptText + "\n;return exports});\n//# sourceURL=" + srcUrl + "\n";
+}, goog.loadQueuedModules_ = function() {
+  var count = goog.queuedModules_.length;
+  if (0 < count) {
+    var queue = goog.queuedModules_;
+    goog.queuedModules_ = [];
+    for (var i = 0;i < count;i++) {
+      goog.globalEval(queue[i]);
+    }
+  }
+}, goog.loadModule = function(moduleName, moduleFn) {
+  try {
+    goog.inModuleLoader_ = !0;
+    var exports = {}, exports = moduleFn(exports);
+    Object.seal && Object.seal(exports);
+    goog.loadedModules_[moduleName] = exports;
+    if (goog.exportModuleTestMethods_) {
+      for (var entry in exports) {
+        if (0 === entry.indexOf("test", 0) || "tearDown" == entry || "setup" == entry) {
+          goog.global[entry] = exports[entry];
+        }
+      }
+    }
+  } finally {
+    goog.inModuleLoader_ = !1, goog.exportModuleTestMethods_ = !1;
+  }
+}, goog.writeScriptTag_ = function(src, opt_sourceText) {
   if (goog.inHtmlDocument_()) {
     var doc = goog.global.document;
     if ("complete" == doc.readyState) {
@@ -106,10 +161,23 @@ goog.DEPENDENCIES_ENABLED && (goog.included_ = {}, goog.dependencies_ = {pathToN
       }
       throw Error('Cannot write "' + src + '" after document load');
     }
-    doc.write('<script type="text/javascript" src="' + src + '">\x3c/script>');
+    var isOldIE = goog.IS_OLD_IE_;
+    if (void 0 === opt_sourceText) {
+      if (isOldIE) {
+        var state = " onreadystatechange='goog.onScriptLoad_(this, " + ++goog.lastNonModuleScriptIndex_ + ")' ";
+        doc.write('<script type="text/javascript" src="' + src + '"' + state + ">\x3c/script>");
+      } else {
+        doc.write('<script type="text/javascript" src="' + src + '">\x3c/script>');
+      }
+    } else {
+      doc.write('<script type="text/javascript">' + opt_sourceText + "\x3c/script>");
+    }
     return!0;
   }
   return!1;
+}, goog.lastNonModuleScriptIndex_ = 0, goog.onScriptLoad_ = function(script, scriptIndex) {
+  "complete" == script.readyState && goog.lastNonModuleScriptIndex_ == scriptIndex && goog.loadQueuedModules_();
+  return!0;
 }, goog.writeScripts_ = function() {
   function visitNode(path) {
     if (!(path in deps.written)) {
@@ -132,12 +200,26 @@ goog.DEPENDENCIES_ENABLED && (goog.included_ = {}, goog.dependencies_ = {pathToN
     deps.written[path$$0] || visitNode(path$$0);
   }
   for (var i = 0;i < scripts.length;i++) {
-    if (scripts[i]) {
-      goog.importScript_(goog.basePath + scripts[i]);
+    path$$0 = scripts[i], goog.dependencies_.written[path$$0] = !0;
+  }
+  var moduleState = goog.inModuleLoader_;
+  goog.inModuleLoader_ = !1;
+  for (i = 0;i < scripts.length;i++) {
+    if (path$$0 = scripts[i]) {
+      deps.pathIsModule[path$$0] ? goog.importModule_(goog.depsPathToName_(path$$0), goog.basePath + path$$0) : goog.importScript_(goog.basePath + path$$0);
     } else {
-      throw Error("Undefined script input");
+      throw goog.inModuleLoader_ = moduleState, Error("Undefined script input");
     }
   }
+  goog.inModuleLoader_ = moduleState;
+}, goog.depsPathToName_ = function(path) {
+  var names = goog.dependencies_.pathToNames[path], name;
+  for (name in names) {
+    if (Object.prototype.hasOwnProperty.call(names, name)) {
+      return name;
+    }
+  }
+  throw Error("missing module namespace");
 }, goog.getPathFromDeps_ = function(rule) {
   return rule in goog.dependencies_.nameToPath ? goog.dependencies_.nameToPath[rule] : null;
 }, goog.findBasePath_(), goog.global.CLOSURE_NO_DEPS || goog.importScript_(goog.basePath + "deps.js"));
