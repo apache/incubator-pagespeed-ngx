@@ -77,7 +77,7 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(
           new NgxMessageHandler(thread_system()->NewMutex())),
       install_crash_handler_(false),
       log_(NULL),
-      resolver_timeout_(NGX_CONF_UNSET_MSEC),
+      resolver_timeout_(10000),
       use_native_fetcher_(false),
       ngx_shared_circular_buffer_(NULL),
       hostname_(hostname.as_string()),
