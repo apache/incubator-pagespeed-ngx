@@ -336,7 +336,6 @@ class HtmlElement : public HtmlNode {
   virtual GoogleString ToString() const;
   void DebugPrint() const;
 
-
   int begin_line_number() const { return data_->begin_line_number_; }
   int end_line_number() const { return data_->end_line_number_; }
 
