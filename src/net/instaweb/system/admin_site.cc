@@ -585,10 +585,9 @@ void AdminSite::PrintCaches(bool is_global, AdminSource source,
 
       fetch->Write("<div id=\"purge_cache\">",
                    message_handler_);
-      fetch->Write("<h3>Purge Set</h3><pre id=\"purge_set\">",
+      // Filled in by JS in caches.js: updatePurgeSet().
+      fetch->Write("<h3>Purge Set</h3><pre id=\"purge_set\"></pre></div>",
                    message_handler_);
-      fetch->Write(options->PurgeSetString(), message_handler_);
-      fetch->Write("</pre></div>", message_handler_);
     }
     StringPiece caches_js = options->Enabled(RewriteOptions::kDebug) ?
         JS_caches_js :

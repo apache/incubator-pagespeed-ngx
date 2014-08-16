@@ -21,12 +21,26 @@ goog.provide = function(name) {
   goog.exportPath_(name);
 };
 goog.module = function(name) {
-  if (!goog.inModuleLoader_) {
+  if (!goog.isString(name) || !name) {
+    throw Error("Invalid module identifier");
+  }
+  if (!goog.isInModuleLoader_()) {
     throw Error("Module " + name + " has been loaded incorrectly.");
   }
+  if (goog.moduleLoaderState_.moduleName) {
+    throw Error("goog.module may only be called once per module.");
+  }
+  goog.moduleLoaderState_.moduleName = name;
+};
+goog.moduleLoaderState_ = null;
+goog.isInModuleLoader_ = function() {
+  return null != goog.moduleLoaderState_;
 };
 goog.module.exportTestMethods = function() {
-  goog.exportModuleTestMethods_ = !0;
+  if (!goog.isInModuleLoader_()) {
+    throw Error("goog.module.exportTestMethods must be called from within a goog.module");
+  }
+  goog.moduleLoaderState_.exportTestMethods = !0;
 };
 goog.setTestOnly = function(opt_message) {
   if (!goog.DEBUG) {
@@ -54,7 +68,7 @@ goog.globalize = function(obj, opt_global) {
 goog.addDependency = function(relPath, provides, requires, opt_isModule) {
   if (goog.DEPENDENCIES_ENABLED) {
     for (var provide, require, path = relPath.replace(/\\/g, "/"), deps = goog.dependencies_, i = 0;provide = provides[i];i++) {
-      deps.nameToPath[provide] = path, path in deps.pathToNames || (deps.pathToNames[path] = {}), deps.pathToNames[path][provide] = !0, deps.pathIsModule[path] = !!opt_isModule;
+      deps.nameToPath[provide] = path, deps.pathIsModule[path] = !!opt_isModule;
     }
     for (var j = 0;require = requires[j];j++) {
       path in deps.requires || (deps.requires[path] = {}), deps.requires[path][require] = !0;
@@ -89,7 +103,7 @@ goog.addSingletonGetter = function(ctor) {
 goog.instantiatedSingletons_ = [];
 goog.loadedModules_ = {};
 goog.DEPENDENCIES_ENABLED = !1;
-goog.DEPENDENCIES_ENABLED && (goog.included_ = {}, goog.dependencies_ = {pathToNames:{}, pathIsModule:{}, nameToPath:{}, requires:{}, visited:{}, written:{}}, goog.inHtmlDocument_ = function() {
+goog.DEPENDENCIES_ENABLED && (goog.included_ = {}, goog.dependencies_ = {pathIsModule:{}, nameToPath:{}, requires:{}, visited:{}, written:{}}, goog.inHtmlDocument_ = function() {
   var doc = goog.global.document;
   return "undefined" != typeof doc && "write" in doc;
 }, goog.findBasePath_ = function() {
@@ -108,9 +122,9 @@ goog.DEPENDENCIES_ENABLED && (goog.included_ = {}, goog.dependencies_ = {pathToN
   }
 }, goog.importScript_ = function(src, opt_sourceText) {
   (goog.global.CLOSURE_IMPORT_SCRIPT || goog.writeScriptTag_)(src, opt_sourceText) && (goog.dependencies_.written[src] = !0);
-}, goog.IS_OLD_IE_ = goog.global.document && goog.global.document.all && !goog.global.atob, goog.importModule_ = function(moduleName, src) {
-  goog.importScript_("", 'goog.retrieveAndExecModule_("' + moduleName + '","' + src + '");') && (goog.dependencies_.written[src] = !0);
-}, goog.queuedModules_ = [], goog.retrieveAndExecModule_ = function(moduleName, src) {
+}, goog.IS_OLD_IE_ = goog.global.document && goog.global.document.all && !goog.global.atob, goog.importModule_ = function(src) {
+  goog.importScript_("", 'goog.retrieveAndExecModule_("' + src + '");') && (goog.dependencies_.written[src] = !0);
+}, goog.queuedModules_ = [], goog.retrieveAndExecModule_ = function(src) {
   var importScript = goog.global.CLOSURE_IMPORT_SCRIPT || goog.writeScriptTag_, scriptText = null, xhr = new goog.global.XMLHttpRequest;
   xhr.onload = function() {
     scriptText = this.responseText;
@@ -119,14 +133,14 @@ goog.DEPENDENCIES_ENABLED && (goog.included_ = {}, goog.dependencies_ = {pathToN
   xhr.send();
   scriptText = xhr.responseText;
   if (null != scriptText) {
-    var execModuleScript = goog.wrapModule_(moduleName, src, scriptText);
+    var execModuleScript = goog.wrapModule_(src, scriptText);
     goog.IS_OLD_IE_ ? goog.queuedModules_.push(execModuleScript) : importScript(src, execModuleScript);
     goog.dependencies_.written[src] = !0;
   } else {
     throw Error("load of " + src + "failed");
   }
-}, goog.wrapModule_ = function(moduleName, srcUrl, scriptText) {
-  return'goog.loadModule("' + moduleName + '", function(exports) {"use strict";' + scriptText + "\n;return exports});\n//# sourceURL=" + srcUrl + "\n";
+}, goog.wrapModule_ = function(srcUrl, scriptText) {
+  return'goog.loadModule(function(exports) {"use strict";' + scriptText + "\n;return exports});\n//# sourceURL=" + srcUrl + "\n";
 }, goog.loadQueuedModules_ = function() {
   var count = goog.queuedModules_.length;
   if (0 < count) {
@@ -136,13 +150,17 @@ goog.DEPENDENCIES_ENABLED && (goog.included_ = {}, goog.dependencies_ = {pathToN
       goog.globalEval(queue[i]);
     }
   }
-}, goog.loadModule = function(moduleName, moduleFn) {
+}, goog.loadModule = function(moduleFn) {
   try {
-    goog.inModuleLoader_ = !0;
+    goog.moduleLoaderState_ = {moduleName:void 0, exportTestMethods:!1};
     var exports = {}, exports = moduleFn(exports);
     Object.seal && Object.seal(exports);
+    var moduleName = goog.moduleLoaderState_.moduleName;
+    if (!goog.isString(moduleName) || !moduleName) {
+      throw Error('Invalid module name "' + moduleName + '"');
+    }
     goog.loadedModules_[moduleName] = exports;
-    if (goog.exportModuleTestMethods_) {
+    if (goog.moduleLoaderState_.exportTestMethods) {
       for (var entry in exports) {
         if (0 === entry.indexOf("test", 0) || "tearDown" == entry || "setup" == entry) {
           goog.global[entry] = exports[entry];
@@ -150,7 +168,7 @@ goog.DEPENDENCIES_ENABLED && (goog.included_ = {}, goog.dependencies_ = {pathToN
       }
     }
   } finally {
-    goog.inModuleLoader_ = !1, goog.exportModuleTestMethods_ = !1;
+    goog.moduleLoaderState_ = null;
   }
 }, goog.writeScriptTag_ = function(src, opt_sourceText) {
   if (goog.inHtmlDocument_()) {
@@ -202,24 +220,16 @@ goog.DEPENDENCIES_ENABLED && (goog.included_ = {}, goog.dependencies_ = {pathToN
   for (var i = 0;i < scripts.length;i++) {
     path$$0 = scripts[i], goog.dependencies_.written[path$$0] = !0;
   }
-  var moduleState = goog.inModuleLoader_;
-  goog.inModuleLoader_ = !1;
+  var moduleState = goog.moduleLoaderState_;
+  goog.moduleLoaderState_ = null;
   for (i = 0;i < scripts.length;i++) {
     if (path$$0 = scripts[i]) {
-      deps.pathIsModule[path$$0] ? goog.importModule_(goog.depsPathToName_(path$$0), goog.basePath + path$$0) : goog.importScript_(goog.basePath + path$$0);
+      deps.pathIsModule[path$$0] ? goog.importModule_(goog.basePath + path$$0) : goog.importScript_(goog.basePath + path$$0);
     } else {
-      throw goog.inModuleLoader_ = moduleState, Error("Undefined script input");
+      throw goog.moduleLoaderState_ = moduleState, Error("Undefined script input");
     }
   }
-  goog.inModuleLoader_ = moduleState;
-}, goog.depsPathToName_ = function(path) {
-  var names = goog.dependencies_.pathToNames[path], name;
-  for (name in names) {
-    if (Object.prototype.hasOwnProperty.call(names, name)) {
-      return name;
-    }
-  }
-  throw Error("missing module namespace");
+  goog.moduleLoaderState_ = moduleState;
 }, goog.getPathFromDeps_ = function(rule) {
   return rule in goog.dependencies_.nameToPath ? goog.dependencies_.nameToPath[rule] : null;
 }, goog.findBasePath_(), goog.global.CLOSURE_NO_DEPS || goog.importScript_(goog.basePath + "deps.js"));
@@ -5079,6 +5089,7 @@ goog.debug.entryPointRegistry.register(function(transformer) {
 var pagespeed = {Caches:function(opt_xhr) {
   this.xhr_ = opt_xhr || new goog.net.XhrIo;
   this.inputIsFrom_ = "";
+  this.sortPurgeSetDescendingTime_ = !1;
   var modeElement = document.createElement("table");
   modeElement.id = "nav-bar";
   modeElement.innerHTML = '<tr><td><a id="' + pagespeed.Caches.DisplayMode.METADATA_CACHE + '" href="javascript:void(0);">Show Metadata Cache</a> - </td><td><a id="' + pagespeed.Caches.DisplayMode.CACHE_STRUCTURE + '" href="javascript:void(0);">Show Cache Structure</a> - </td><td><a id="' + pagespeed.Caches.DisplayMode.PHYSICAL_CACHE + '" href="javascript:void(0);">Physical Caches</a> - </td><td><a id="' + pagespeed.Caches.DisplayMode.PURGE_CACHE + '" href="javascript:void(0);">Purge Cache</a></td></tr>';
@@ -5100,7 +5111,8 @@ pagespeed.Caches.toggleDetail = function(id) {
 goog.exportSymbol("pagespeed.Caches.toggleDetail", pagespeed.Caches.toggleDetail);
 pagespeed.Caches.DisplayMode = {METADATA_CACHE:"show_metadata_mode", CACHE_STRUCTURE:"cache_struct_mode", PHYSICAL_CACHE:"physical_cache_mode", PURGE_CACHE:"purge_cache_mode"};
 pagespeed.Caches.DisplayDiv = {METADATA_CACHE:"show_metadata", CACHE_STRUCTURE:"cache_struct", PHYSICAL_CACHE:"physical_cache", PURGE_CACHE:"purge_cache"};
-pagespeed.Caches.ElementId = {METADATA_TEXT:"metadata_text", METADATA_SUBMIT:"metadata_submit", METADATA_RESULT:"metadata_result", METADATA_CLEAR:"metadata_clear", PURGE_TEXT:"purge_text", PURGE_SUBMIT:"purge_submit", PURGE_RESULT:"purge_result", PURGE_ALL:"purge_all", PURGE_SET:"purge_set", USER_AGENT:"user_agent"};
+pagespeed.Caches.ElementId = {METADATA_TEXT:"metadata_text", METADATA_SUBMIT:"metadata_submit", METADATA_RESULT:"metadata_result", METADATA_CLEAR:"metadata_clear", PURGE_TEXT:"purge_text", PURGE_SUBMIT:"purge_submit", PURGE_RESULT:"purge_result", PURGE_ALL:"purge_all", PURGE_SET:"purge_set", USER_AGENT:"user_agent", SORT:"sort"};
+pagespeed.Caches.PURGE_SUCCESS_ = "Purge successful";
 pagespeed.Caches.prototype.parseLocation = function() {
   var div = location.hash.substr(1);
   "" == div ? this.show(pagespeed.Caches.DisplayDiv.METADATA_CACHE) : goog.object.contains(pagespeed.Caches.DisplayDiv, div) && this.show(div);
@@ -5117,31 +5129,65 @@ pagespeed.Caches.prototype.show = function(div) {
   }
   location.href = location.href.split("#")[0] + "#" + div;
 };
+pagespeed.Caches.prototype.escapedUrl = function(url) {
+  return encodeURIComponent(url.trim());
+};
 pagespeed.Caches.prototype.sendPurgeRequest = function() {
   if (!this.xhr_.isActive()) {
-    var url = "?purge=" + encodeURIComponent(document.getElementById(pagespeed.Caches.ElementId.PURGE_TEXT).value);
-    this.inputIsFrom_ = pagespeed.Caches.ElementId.PURGE_RESULT;
-    this.xhr_.send(url);
+    var escapedText = this.escapedUrl(document.getElementById(pagespeed.Caches.ElementId.PURGE_TEXT).value);
+    this.inputIsFrom_ = "*" == escapedText ? pagespeed.Caches.ElementId.PURGE_ALL : pagespeed.Caches.ElementId.PURGE_TEXT;
+    this.xhr_.send("?purge=" + escapedText);
   }
 };
 pagespeed.Caches.prototype.sendPurgeAllRequest = function() {
-  this.xhr_.isActive() || (this.inputIsFrom_ = pagespeed.Caches.ElementId.PURGE_RESULT, this.xhr_.send("?purge=*"));
+  this.xhr_.isActive() || (this.inputIsFrom_ = pagespeed.Caches.ElementId.PURGE_ALL, this.xhr_.send("?purge=*"));
 };
 pagespeed.Caches.prototype.sendPurgeSetRequest = function() {
   this.xhr_.isActive() || (this.inputIsFrom_ = pagespeed.Caches.ElementId.PURGE_SET, this.xhr_.send("?new_set="));
 };
 pagespeed.Caches.prototype.sendMetadataRequest = function() {
   if (!this.xhr_.isActive()) {
-    var url = "?url=" + encodeURIComponent(document.getElementById(pagespeed.Caches.ElementId.METADATA_TEXT).value) + "&user_agent=" + encodeURIComponent(document.getElementById(pagespeed.Caches.ElementId.USER_AGENT).value);
+    var userAgentId = pagespeed.Caches.ElementId.USER_AGENT, url = "?url=" + this.escapedUrl(document.getElementById(pagespeed.Caches.ElementId.METADATA_TEXT).value) + "&user_agent=" + this.escapedUrl(document.getElementById(userAgentId).value);
     this.inputIsFrom_ = pagespeed.Caches.ElementId.METADATA_RESULT;
     this.xhr_.send(url);
   }
 };
+pagespeed.Caches.prototype.toggleSorting = function() {
+  this.sortPurgeSetDescendingTime_ = !this.sortPurgeSetDescendingTime_;
+  this.sendPurgeSetRequest();
+};
+pagespeed.Caches.prototype.updatePurgeSet = function(text) {
+  var element = document.getElementById(pagespeed.Caches.ElementId.PURGE_SET), messages = text.split("\n"), globalTimeVal = messages.shift(), globalTime = document.createElement("table"), row = globalTime.insertRow(0), cell = row.insertCell(0);
+  cell.textContent = "Everything before this time stamp is invalid:";
+  cell = row.insertCell(1);
+  cell.textContent = globalTimeVal.split("@")[1];
+  element.innerHTML = "";
+  element.appendChild(globalTime);
+  for (var table = document.createElement("table"), direction = this.sortPurgeSetDescendingTime_ ? -1 : 1, i = this.sortPurgeSetDescendingTime_ ? messages.length - 1 : 0;this.sortPurgeSetDescendingTime_ && 0 <= i || !this.sortPurgeSetDescendingTime_ && i < messages.length;i += direction) {
+    var index = messages[i].lastIndexOf("@"), url = messages[i].substring(0, index), time = messages[i].substring(index + 1), tableRow = table.insertRow(-1);
+    tableRow.insertCell(0).textContent = url;
+    tableRow.insertCell(1).textContent = time;
+  }
+  var header = table.createTHead().insertRow(0), cell = header.insertCell(0);
+  cell.textContent = "URL";
+  cell.className = "pagespeed-caches-first-column";
+  var checkBox = document.createElement("input");
+  checkBox.setAttribute("type", "checkbox");
+  checkBox.id = pagespeed.Caches.ElementId.SORT;
+  checkBox.checked = this.sortPurgeSetDescendingTime_ ? !0 : !1;
+  checkBox.title = "Change sort order.";
+  cell = header.insertCell(1);
+  cell.textContent = this.sortPurgeSetDescendingTime_ ? "Invalidation Time (Descending)" : "Invalidation Time (Ascending)";
+  cell.appendChild(checkBox);
+  cell.className = "pagespeed-stats-third-column";
+  element.appendChild(table);
+  goog.events.listen(document.getElementById(pagespeed.Caches.ElementId.SORT), "change", goog.bind(this.toggleSorting, this));
+};
 pagespeed.Caches.prototype.showResult = function() {
   if (this.xhr_.isSuccess()) {
     var text = this.xhr_.getResponseText();
-    this.inputIsFrom_ == pagespeed.Caches.ElementId.PURGE_RESULT && window.setTimeout(goog.bind(this.sendPurgeSetRequest, this), 0);
-    document.getElementById(this.inputIsFrom_).textContent = text;
+    this.inputIsFrom_ == pagespeed.Caches.ElementId.METADATA_RESULT ? document.getElementById(this.inputIsFrom_).textContent = text : this.inputIsFrom_ == pagespeed.Caches.ElementId.PURGE_SET ? this.updatePurgeSet(text) : (window.setTimeout(goog.bind(this.sendPurgeSetRequest, this), 0), text == pagespeed.Caches.PURGE_SUCCESS_ && this.inputIsFrom_ == pagespeed.Caches.ElementId.PURGE_TEXT && (text = "Added to Purge Set"), document.getElementById(pagespeed.Caches.ElementId.PURGE_RESULT).textContent = 
+    text);
   } else {
     console.log(this.xhr_.getLastError());
   }
@@ -5166,6 +5212,7 @@ pagespeed.Caches.Start = function() {
     goog.events.listen(document.getElementById(pagespeed.Caches.ElementId.METADATA_SUBMIT), "click", goog.bind(cachesObj.sendMetadataRequest, cachesObj));
     goog.events.listen(cachesObj.xhr_, goog.net.EventType.COMPLETE, goog.bind(cachesObj.showResult, cachesObj));
     goog.events.listen(document.getElementById(pagespeed.Caches.ElementId.METADATA_CLEAR), "click", location.reload.bind(location));
+    cachesObj.sendPurgeSetRequest();
   });
 };
 goog.exportSymbol("pagespeed.Caches.Start", pagespeed.Caches.Start);

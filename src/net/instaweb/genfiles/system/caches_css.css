@@ -27,14 +27,28 @@
 h3 {
   font-weight: bold;
   font-size: 1.6em;
-  margin: .83em 0
+  margin: 1em 0 0 0;
 }
-
+table, th, td {
+  padding: 2px;
+}
+thead {
+  font-family: sans-serif;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: bold;
+}
 /*------------------------------------------------------------------
 mod rules
 ------------------------------------------------------------------*/
 .pagespeed-caches-result {
   padding: 10px 0 10px 5px;
   font-family: verdana;
+}
+.pagespeed-caches-first-column {
+  width: 700px;
+}
+.pagespeed-stats-third-column {
+  width: 350px;
 }
 

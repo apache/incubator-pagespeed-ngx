@@ -50,6 +50,13 @@ pagespeed.Caches = function(opt_xhr) {
    */
   this.inputIsFrom_ = '';
 
+  /**
+   * The option of whether to sort the entries in Purge Set table in time
+   * descending order. The default purge set is in time ascending order.
+   * @private {boolean}
+   */
+  this.sortPurgeSetDescendingTime_ = false;
+
   // The navigation bar to switch among different display modes.
   var modeElement = document.createElement('table');
   modeElement.id = 'nav-bar';
@@ -154,8 +161,17 @@ pagespeed.Caches.ElementId = {
   PURGE_RESULT: 'purge_result',
   PURGE_ALL: 'purge_all',
   PURGE_SET: 'purge_set',
-  USER_AGENT: 'user_agent'
+  USER_AGENT: 'user_agent',
+  SORT: 'sort'
 };
+
+
+/**
+ * The info sent by server indicating the successful cache purging.
+ * @private {string}
+ * @const
+ */
+pagespeed.Caches.PURGE_SUCCESS_ = 'Purge successful';
 
 
 /**
@@ -204,15 +220,28 @@ pagespeed.Caches.prototype.show = function(div) {
 
 
 /**
+ * Encode special characters and remove whitespace from both sides of the url.
+ * @param {string} url The url from the input form.
+ * @return {string} The escaped url with whitespace removed.
+ */
+pagespeed.Caches.prototype.escapedUrl = function(url) {
+  return encodeURIComponent(url.trim());
+};
+
+
+/**
  * Send the cache purging URL to the sever.
  */
 pagespeed.Caches.prototype.sendPurgeRequest = function() {
   if (!this.xhr_.isActive()) {
     var urlId = pagespeed.Caches.ElementId.PURGE_TEXT;
-    var url =
-        '?purge=' +
-        encodeURIComponent(document.getElementById(urlId).value);
-    this.inputIsFrom_ = pagespeed.Caches.ElementId.PURGE_RESULT;
+    var escapedText = this.escapedUrl(document.getElementById(urlId).value);
+    if (escapedText == '*') {
+      this.inputIsFrom_ = pagespeed.Caches.ElementId.PURGE_ALL;
+    } else {
+      this.inputIsFrom_ = pagespeed.Caches.ElementId.PURGE_TEXT;
+    }
+    var url = '?purge=' + escapedText;
     this.xhr_.send(url);
   }
 };
@@ -224,7 +253,7 @@ pagespeed.Caches.prototype.sendPurgeRequest = function() {
 pagespeed.Caches.prototype.sendPurgeAllRequest = function() {
   if (!this.xhr_.isActive()) {
     var url = '?purge=*';
-    this.inputIsFrom_ = pagespeed.Caches.ElementId.PURGE_RESULT;
+    this.inputIsFrom_ = pagespeed.Caches.ElementId.PURGE_ALL;
     this.xhr_.send(url);
   }
 };
@@ -251,12 +280,78 @@ pagespeed.Caches.prototype.sendMetadataRequest = function() {
     var userAgentId = pagespeed.Caches.ElementId.USER_AGENT;
     var url =
         '?url=' +
-        encodeURIComponent(document.getElementById(urlId).value) +
+        this.escapedUrl(document.getElementById(urlId).value) +
         '&user_agent=' +
-        encodeURIComponent(document.getElementById(userAgentId).value);
+        this.escapedUrl(document.getElementById(userAgentId).value);
     this.inputIsFrom_ = pagespeed.Caches.ElementId.METADATA_RESULT;
     this.xhr_.send(url);
   }
+};
+
+
+/**
+ * Updates the option of sorting the purge set in time descending order.
+ */
+pagespeed.Caches.prototype.toggleSorting = function() {
+  this.sortPurgeSetDescendingTime_ = !this.sortPurgeSetDescendingTime_;
+  this.sendPurgeSetRequest();
+};
+
+
+/**
+ * Parse the string sent by server and update the Purge Set table.
+ * @param {string} text The updated Purge Set in string format sent by server.
+ */
+pagespeed.Caches.prototype.updatePurgeSet = function(text) {
+  var element = document.getElementById(pagespeed.Caches.ElementId.PURGE_SET);
+  var messages = text.split('\n');
+  var globalTimeVal = messages.shift();
+  var globalTime = document.createElement('table');
+  var row = globalTime.insertRow(0);
+  var cell = row.insertCell(0);
+  cell.textContent = 'Everything before this time stamp is invalid:';
+  cell = row.insertCell(1);
+  cell.textContent = globalTimeVal.split('@')[1];
+  element.innerHTML = '';
+  element.appendChild(globalTime);
+
+  var table = document.createElement('table');
+  // If this.sortPurgeSetDescendingTime_ is set to true, visit the array in
+  // reverse order.
+  var direction = this.sortPurgeSetDescendingTime_ ? -1 : 1;
+  for (var i = this.sortPurgeSetDescendingTime_ ? messages.length - 1 : 0;
+       (this.sortPurgeSetDescendingTime_ && i >= 0) ||
+       (!this.sortPurgeSetDescendingTime_ && i < messages.length);
+       i += direction) {
+    // Decode the results of PurgeSet::ToString in
+    // pagespeed/kernel/cache/purge_set.cc
+    var index = messages[i].lastIndexOf('@');
+    var url = messages[i].substring(0, index);
+    var time = messages[i].substring(index + 1);
+    var tableRow = table.insertRow(-1);
+    tableRow.insertCell(0).textContent = url;
+    tableRow.insertCell(1).textContent = time;
+  }
+  var header = table.createTHead().insertRow(0);
+  cell = header.insertCell(0);
+  cell.textContent = 'URL';
+  cell.className = 'pagespeed-caches-first-column';
+  var checkBox = document.createElement('input');
+  checkBox.setAttribute('type', 'checkbox');
+  checkBox.id = pagespeed.Caches.ElementId.SORT;
+  checkBox.checked = this.sortPurgeSetDescendingTime_ ? true : false;
+  checkBox.title = 'Change sort order.';
+  cell = header.insertCell(1);
+  if (this.sortPurgeSetDescendingTime_) {
+    cell.textContent = 'Invalidation Time (Descending)';
+  } else {
+    cell.textContent = 'Invalidation Time (Ascending)';
+  }
+  cell.appendChild(checkBox);
+  cell.className = 'pagespeed-stats-third-column';
+  element.appendChild(table);
+  goog.events.listen(document.getElementById(pagespeed.Caches.ElementId.SORT),
+                     'change', goog.bind(this.toggleSorting, this));
 };
 
 
@@ -266,12 +361,23 @@ pagespeed.Caches.prototype.sendMetadataRequest = function() {
 pagespeed.Caches.prototype.showResult = function() {
   if (this.xhr_.isSuccess()) {
     var text = this.xhr_.getResponseText();
-    if (this.inputIsFrom_ == pagespeed.Caches.ElementId.PURGE_RESULT) {
+    if (this.inputIsFrom_ == pagespeed.Caches.ElementId.METADATA_RESULT) {
+      document.getElementById(this.inputIsFrom_).textContent = text;
+    } else if (this.inputIsFrom_ == pagespeed.Caches.ElementId.PURGE_SET) {
+      this.updatePurgeSet(text);
+    } else {
       // Add updating purge set to the queue if the current request is
       // to purge cache.
       window.setTimeout(goog.bind(this.sendPurgeSetRequest, this), 0);
+      // TODO(jmarantz): Split the 'purge entire cache' case off in C++ instead
+      // of doing the check here.
+      if (text == pagespeed.Caches.PURGE_SUCCESS_ &&
+          this.inputIsFrom_ == pagespeed.Caches.ElementId.PURGE_TEXT) {
+        text = 'Added to Purge Set';
+      }
+      var id = pagespeed.Caches.ElementId.PURGE_RESULT;
+      document.getElementById(id).textContent = text;
     }
-    document.getElementById(this.inputIsFrom_).textContent = text;
   } else {
     console.log(this.xhr_.getLastError());
   }
@@ -332,6 +438,7 @@ pagespeed.Caches.Start = function() {
     goog.events.listen(
         document.getElementById(pagespeed.Caches.ElementId.METADATA_CLEAR),
         'click', location.reload.bind(location));
+    cachesObj.sendPurgeSetRequest();
   };
   goog.events.listen(window, 'load', cachesOnload);
 };
