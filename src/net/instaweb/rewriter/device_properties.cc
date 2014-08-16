@@ -310,8 +310,8 @@ int DeviceProperties::GetPreferredImageQualityCount() {
   return kPreferredImageQualityCount;
 }
 
-// Chrome 36 and later versions on iOS mobile devices failed to display
-// inlined WebP image, so inlining WebP on these devices is forbidden.
+// Chrome 36 on iOS devices failed to display inlined WebP image, so inlining
+// WebP on these devices is forbidden.
 // https://code.google.com/p/chromium/issues/detail?id=402514
 bool DeviceProperties::ForbidWebpInlining() const {
   if (ua_matcher_->IsiOSUserAgent(user_agent_)) {
@@ -321,9 +321,7 @@ bool DeviceProperties::ForbidWebpInlining() const {
     int patch = kNotSet;
     if (ua_matcher_->GetChromeBuildNumber(user_agent_, &major, &minor, &build,
                                           &patch) &&
-        major >= 36) {
-      // TODO(huibao): Update the test for versions when the fix for
-      // Issue 402514 is released.
+        (major == 36 || major == 37)) {
       return true;
     }
   }
