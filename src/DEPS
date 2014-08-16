@@ -27,9 +27,9 @@ vars = {
   "libpagespeed_trunk": "https://page-speed.googlecode.com/svn/lib/trunk/",
   "libpagespeed_revision": "@2439",
 
-  # Import libwebp 0.4.0 from the official repo.
+  # Import libwebp 0.4.1 from the official repo.
   "libwebp_src": "https://chromium.googlesource.com/webm/libwebp.git",
-  "libwebp_revision": "@68e7901da53cbda6ec93ddf93e039346d3c6a531",
+  "libwebp_revision": "@8af2771813632e2007988c8df6ad7e68b28ad121",
 
   "modspdy_src": "https://mod-spdy.googlecode.com/svn/trunk/src/",
   "modspdy_revision": "@387",
