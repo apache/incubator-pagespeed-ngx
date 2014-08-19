@@ -57,6 +57,15 @@ TEST_F(Sha1SignatureTest, SignaturesDiffer) {
   // Compare against known signature.
   SHA1Signature signature_length_10(10);
   EXPECT_EQ("ijqEvNDQBl", signature_length_10.Sign("hello", "world"));
+  // Compare against Python's implementation
+  // python -c 'import base64, hmac;from hashlib import
+  // sha1;key="key";data="data";hashed=hmac.new(key,data,sha1);print
+  // base64.urlsafe_b64encode(hashed.digest()).rstrip("\n")[0:25]'
+  SHA1Signature signature_length_25(25);
+  EXPECT_EQ("EEFSxb_coHvGM-69RhmfAlXJ9",
+            signature_length_25.Sign("key", "data"));
+  EXPECT_EQ("RrTsWGEXFU2s1J1mTl1j_ciO-",
+            signature_length_25.Sign("foo", "bar"));
 #endif
 }
 

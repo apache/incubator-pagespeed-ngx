@@ -153,7 +153,7 @@ goog.DEPENDENCIES_ENABLED && (goog.included_ = {}, goog.dependencies_ = {pathIsM
 }, goog.loadModule = function(moduleFn) {
   try {
     goog.moduleLoaderState_ = {moduleName:void 0, exportTestMethods:!1};
-    var exports = {}, exports = moduleFn(exports);
+    var exports = {}, exports = moduleFn.call(goog.global, exports);
     Object.seal && Object.seal(exports);
     var moduleName = goog.moduleLoaderState_.moduleName;
     if (!goog.isString(moduleName) || !moduleName) {

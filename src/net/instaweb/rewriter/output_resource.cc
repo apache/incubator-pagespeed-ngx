@@ -299,7 +299,15 @@ bool OutputResource::CheckSignature() {
       rewrite_options_->accept_invalid_signatures()) {
     return true;
   }
-  return full_name_.signature() == ComputeSignature();
+  GoogleString computed_signature = ComputeSignature();
+  StringPiece provided_signature = full_name_.signature();
+  // The following code is equivalent to "computed_signature ==
+  // provided_signature" but will not short-circuit. This protects us from
+  // timing attacks where someone may be able to figure out the correct
+  // signature by measuring that ones with the correct first N characters take
+  // slightly longer to check. See
+  // http://codahale.com/a-lesson-in-timing-attacks/
+  return CountCharacterMismatches(computed_signature, provided_signature) == 0;
 }
 
 }  // namespace net_instaweb

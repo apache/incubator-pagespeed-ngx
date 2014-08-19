@@ -20,6 +20,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdlib>
 #include <vector>
 
 #include "pagespeed/kernel/base/string.h"
@@ -461,6 +462,16 @@ StringPiece PieceAfterEquals(const StringPiece& piece) {
     return ret;
   }
   return StringPiece(piece.data(), 0);
+}
+
+int CountCharacterMismatches(StringPiece s1, StringPiece s2) {
+  int s1_length = s1.size();
+  int s2_length = s2.size();
+  int mismatches = 0;
+  for (int i = 0, n = std::min(s1_length, s2_length); i < n; ++i) {
+    mismatches += s1[i] != s2[i];
+  }
+  return mismatches + std::abs(s1_length - s2_length);
 }
 
 void ParseShellLikeString(const StringPiece& input,

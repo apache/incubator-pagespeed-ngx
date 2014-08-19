@@ -332,6 +332,11 @@ bool StringCaseEndsWith(const StringPiece& str, const StringPiece& suffix);
 bool StringEqualConcat(const StringPiece& str, const StringPiece& first,
                        const StringPiece& second);
 
+// Return the number of mismatched chars in two strings. Useful for string
+// comparisons without short-circuiting to prevent timing attacks.
+// See http://codahale.com/a-lesson-in-timing-attacks/
+int CountCharacterMismatches(StringPiece s1, StringPiece s2);
+
 struct CharStarCompareInsensitive {
   bool operator()(const char* s1, const char* s2) const {
     return (StringCaseCompare(s1, s2) < 0);
