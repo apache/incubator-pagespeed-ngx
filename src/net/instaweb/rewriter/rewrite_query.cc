@@ -273,27 +273,31 @@ RewriteQuery::Status RewriteQuery::Scan(
   //   ignore the cookie completely.
   RequestHeaders::CookieMultimapConstIter it, end;
   for (it = all_cookies.begin(), end = all_cookies.end(); it != end; ++it) {
-    GoogleUrl gurl;
     StringPiece cookie_name = it->first;
-    StringPiece cookie_value = it->second.first;
-    GoogleString unescaped = GoogleUrl::UnescapeIgnorePlus(cookie_value);
-    StringPiece sanitized = SanitizeValueAsQP(unescaped, &gurl);
-    GoogleString escaped = GoogleUrl::Escape(sanitized);
-    if (unescaped == sanitized && escaped == cookie_value) {
-      RequestContextPtr null_request_context;
-      if (ScanNameValue(cookie_name, unescaped, allow_options,
-                        null_request_context, request_properties.get(),
-                        options_.get(), handler) == kSuccess) {
-        pagespeed_option_cookies_.AddEscaped(cookie_name, unescaped);
-        status = kSuccess;
+    if (MightBeCustomOption(cookie_name)) {
+      GoogleUrl gurl;
+      StringPiece cookie_value = it->second.first;
+      GoogleString unescaped = GoogleUrl::UnescapeIgnorePlus(cookie_value);
+      StringPiece sanitized = SanitizeValueAsQP(unescaped, &gurl);
+      GoogleString escaped = GoogleUrl::Escape(sanitized);
+      if (unescaped == sanitized && escaped == cookie_value) {
+        RequestContextPtr null_request_context;
+        if (ScanNameValue(cookie_name, unescaped, allow_options,
+                          null_request_context, request_properties.get(),
+                          options_.get(), handler) == kSuccess) {
+          pagespeed_option_cookies_.AddEscaped(cookie_name, unescaped);
+          status = kSuccess;
+        }
+      } else {
+        // PageSpeed cookies with an invalid value will not be cleared. This
+        // is unfortunate but OK since they'll never apply (due to the invalid
+        // value) and will eventually expire anyway.
+        handler->Message(kInfo, "PageSpeed Cookie value seems mangled: "
+                         "name='%s', value='%s', escaped value='%s'",
+                         cookie_name.as_string().c_str(),
+                         cookie_value.as_string().c_str(),
+                         escaped.c_str());
       }
-      // A PageSpeed cookies with an invalid value will not be cleared. This
-      // is unfortunate but OK since they'll never apply (due to the invalid
-      // value) and will eventually expire anyway.
-    } else {
-      handler->Message(kInfo, "Cookie value seems mangled: "
-                       "cookie='%s', escaped='%s'",
-                       cookie_value.as_string().c_str(), escaped.c_str());
     }
   }
 
