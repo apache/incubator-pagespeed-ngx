@@ -171,7 +171,7 @@ void InsertGAFilter::AddScriptNode(HtmlElement* current_element,
                                    bool insert_immediately_after_current) {
   HtmlElement* script_element = driver()->NewElement(current_element,
                                                      HtmlName::kScript);
-  script_element->set_close_style(HtmlElement::EXPLICIT_CLOSE);
+  script_element->set_style(HtmlElement::EXPLICIT_CLOSE);
   driver()->AddAttribute(script_element, HtmlName::kType,
                          "text/javascript");
   HtmlNode* snippet =

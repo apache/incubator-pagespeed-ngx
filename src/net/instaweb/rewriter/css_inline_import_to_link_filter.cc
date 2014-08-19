@@ -268,7 +268,7 @@ void CssInlineImportToLinkFilter::InlineImportToLinkStyle() {
         HtmlElement* link_element =
             driver_->NewElement(style_element_->parent(), HtmlName::kLink);
         if (driver_->MimeTypeXhtmlStatus() != RewriteDriver::kIsNotXhtml) {
-          link_element->set_close_style(HtmlElement::BRIEF_CLOSE);
+          link_element->set_style(HtmlElement::BRIEF_CLOSE);
         }
         driver_->AddAttribute(link_element, HtmlName::kRel,
                               CssTagScanner::kStylesheet);

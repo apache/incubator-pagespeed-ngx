@@ -248,8 +248,21 @@ class HtmlParse {
   bool DeleteNode(HtmlNode* node);
 
   // Delete a parent element, retaining any children and moving them to
-  // reside under the parent's parent.
+  // reside under the parent's parent.  Note that an element must be
+  // fully inside the flush-window for this to work.  Returns false on
+  // failure.
+  //
+  // See also MakeElementInvisible
   bool DeleteSavingChildren(HtmlElement* element);
+
+  // Similar in effect to DeleteSavingChildren, but this has no structural
+  // effect on the DOM.  Instead it sets a bit in the HtmlElement that prevents
+  // it from being rendered by HtmlWriterFilter, though all its contents will
+  // be rendered.
+  //
+  // This fails, returning false, if the element's StartElement event has
+  // already been flushed.
+  bool MakeElementInvisible(HtmlElement* element);
 
   // Determines whether the element, in the context of its flush
   // window, has children.  If the element is not rewritable, or
@@ -408,7 +421,7 @@ class HtmlParse {
   }
 
   void AddElement(HtmlElement* element, int line_number);
-  void CloseElement(HtmlElement* element, HtmlElement::CloseStyle close_style,
+  void CloseElement(HtmlElement* element, HtmlElement::Style style,
                     int line_number);
 
   // Run a filter on the current queue of parse nodes.
@@ -475,7 +488,7 @@ class HtmlParse {
   // coalesce seen only by downstream filters.
   void DeferCurrentNode();
 
-  // Restores a node, inserting it after the current element.  If the node
+  // Restores a node, inserting it after the current event.  If the node
   // is an HtmlElement, the iteration will proceed with the first child node,
   // or, if there were no children, then the EndElement method.
   //
@@ -553,6 +566,7 @@ class HtmlParse {
   inline void NextEvent();
   void ClearDeferredNodes();
   inline bool IsRewritableIgnoringDeferral(const HtmlNode* node) const;
+  inline bool IsRewritableIgnoringEnd(const HtmlNode* node) const;
 
   // Visible for testing only, via HtmlTestingPeer
   friend class HtmlTestingPeer;

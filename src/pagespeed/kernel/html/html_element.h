@@ -47,12 +47,13 @@ class HtmlElement : public HtmlNode {
   // elements will have AUTO_CLOSE, and rewritten elements may
   // no longer qualify for the closing style with which they were
   // parsed.
-  enum CloseStyle {
+  enum Style {
     AUTO_CLOSE,      // synthesized tag, or not yet closed in source
     IMPLICIT_CLOSE,  // E.g. <img...> <meta...> <link...> <br...> <input...>
     EXPLICIT_CLOSE,  // E.g. <a href=...>anchor</a>
     BRIEF_CLOSE,     // E.g. <head/>
-    UNCLOSED         // Was never closed in source
+    UNCLOSED,        // Was never closed in source, so don't serialize close-tag
+    INVISIBLE,       // Programatically hidden element
   };
 
   // Various ways things can be quoted (or not)
@@ -328,8 +329,8 @@ class HtmlElement : public HtmlNode {
   friend class HtmlParse;
   friend class HtmlLexer;
 
-  CloseStyle close_style() const { return data_->close_style_; }
-  void set_close_style(CloseStyle style) { data_->close_style_ = style; }
+  Style style() const { return data_->style_; }
+  void set_style(Style style) { data_->style_ = style; }
 
   // Render an element as a string for debugging.  This is not
   // intended as a fully legal serialization.
@@ -373,7 +374,7 @@ class HtmlElement : public HtmlNode {
     unsigned begin_line_number_ : 24;
     unsigned live_ : 8;
     unsigned end_line_number_ : 24;
-    CloseStyle close_style_ : 8;
+    Style style_ : 8;
 
     HtmlName name_;
     AttributeList attributes_;

@@ -181,7 +181,7 @@ HtmlElement* HtmlParse::NewElement(HtmlElement* parent, const HtmlName& name) {
     // When we programmatically insert HTML nodes we should default to
     // including an explicit close-tag if they are optionally closed
     // such as <html>, <body>, and <p>.
-    element->set_close_style(HtmlElement::EXPLICIT_CLOSE);
+    element->set_style(HtmlElement::EXPLICIT_CLOSE);
   }
   return element;
 }
@@ -824,7 +824,7 @@ bool HtmlParse::DeleteNode(HtmlNode* node) {
     deleted = true;
     need_sanity_check_ = true;
     need_coalesce_characters_ = true;
-  } else if (current_ != queue_.end()) {
+  } else if (IsRewritableIgnoringEnd(node) && (current_ != queue_.end())) {
     // If current_ is the StartElement of the requested node, then we
     // can delete it even if the end-element has not been seen yet due
     // to a flush window, by simply deferring it.  We just want to
@@ -871,6 +871,18 @@ bool HtmlParse::DeleteSavingChildren(HtmlElement* element) {
   return deleted;
 }
 
+bool HtmlParse::MakeElementInvisible(HtmlElement* element) {
+  bool ret = false;
+  // We consider it an error to make an element invisible whose Start element
+  // has been flushed, though it's fine to make an element invisible whose
+  // End element is yet parsed.
+  if (IsRewritableIgnoringEnd(element)) {
+    element->set_style(HtmlElement::INVISIBLE);
+    ret = true;
+  }
+  return ret;
+}
+
 bool HtmlParse::HasChildrenInFlushWindow(HtmlElement* element) {
   bool has_children = false;
   if (IsRewritable(element)) {
@@ -895,7 +907,7 @@ bool HtmlParse::ReplaceNode(HtmlNode* existing_node, HtmlNode* new_node) {
 
 HtmlElement* HtmlParse::CloneElement(HtmlElement* in_element) {
   HtmlElement* out_element = NewElement(NULL, in_element->name());
-  out_element->set_close_style(in_element->close_style());
+  out_element->set_style(in_element->style());
 
   const HtmlElement::AttributeList& attrs = in_element->attributes();
   for (HtmlElement::AttributeConstIterator i(attrs.begin());
@@ -909,6 +921,12 @@ bool HtmlParse::IsRewritableIgnoringDeferral(const HtmlNode* node) const {
   return (node->live() &&  // Avoid dereferencing NULL data for closed elements.
           IsInEventWindow(node->begin()) &&
           IsInEventWindow(node->end()));
+}
+
+bool HtmlParse::IsRewritableIgnoringEnd(const HtmlNode* node) const {
+  return (node->live() &&  // Avoid dereferencing NULL data for closed elements.
+          (deferred_nodes_.find(node) == deferred_nodes_.end()) &&
+          IsInEventWindow(node->begin()));
 }
 
 bool HtmlParse::IsRewritable(const HtmlNode* node) const {
@@ -1053,8 +1071,7 @@ void HtmlParse::FatalErrorHere(const char* msg, ...) {
 }
 
 void HtmlParse::CloseElement(
-    HtmlElement* element, HtmlElement::CloseStyle close_style,
-    int line_number) {
+    HtmlElement* element, HtmlElement::Style style, int line_number) {
   if (delayed_start_literal_.get() != NULL) {
     HtmlElement* element = delayed_start_literal_->GetElementIfStartEvent();
     DCHECK(element != NULL);
@@ -1102,7 +1119,9 @@ void HtmlParse::CloseElement(
 
   HtmlEndElementEvent* end_event =
       new HtmlEndElementEvent(element, line_number);
-  element->set_close_style(close_style);
+  if (element->style() != HtmlElement::INVISIBLE) {
+    element->set_style(style);
+  }
   AddEvent(end_event);
   element->set_end(Last());
   element->set_end_line_number(line_number);
@@ -1249,6 +1268,11 @@ void HtmlParse::DeferCurrentNode() {
 }
 
 void HtmlParse::RestoreDeferredNode(HtmlNode* deferred_node) {
+  // There are two cases:
+  //  1. The removed node is complete now.
+  //  2. The removed node is incomplete (error).
+  // Note: you cannot restore a node on a Flush.
+  DCHECK(queue_.end() != current_);
   if (!IsRewritableIgnoringDeferral(deferred_node)) {
     LOG(DFATAL) << "A node cannot be replaced until it is complete";
     return;
@@ -1257,6 +1281,7 @@ void HtmlParse::RestoreDeferredNode(HtmlNode* deferred_node) {
   DCHECK(deferred_deleted_nodes_.find(deferred_node) ==
          deferred_deleted_nodes_.end()) << "You cannot restore a deleted node";
 
+  // Remove the previously deferred node from the list of deferred nodes.
   NodeToEventListMap::iterator p = deferred_nodes_.find(deferred_node);
   if (p == deferred_nodes_.end()) {
     LOG(DFATAL) << "Restoring a node that was not deferred";
@@ -1265,16 +1290,14 @@ void HtmlParse::RestoreDeferredNode(HtmlNode* deferred_node) {
   HtmlEventList* event_list = p->second;
   deferred_nodes_.erase(p);
 
-  // There are three cases:
-  //  1. The removed node is complete now.
-  //  2. The removed node is incomplete (error).
-  // Note: you cannot restore a node on a Flush.
-  DCHECK(queue_.end() != current_);
-
-  // Correct the parent-pointer, as the new location for
-  // removed_node may be higher or lower in the hierarchy.
+  // Correct the parent-pointer, as the new location for removed_node may be
+  // higher or lower in the hierarchy. There is a special case for when we
+  // restore on a start element, as the parent will be the current_ element.
   HtmlEvent* event = *current_;
   HtmlElement* new_parent = event->GetNode()->parent();
+  if (event->GetElementIfStartEvent() != NULL) {
+    new_parent = event->GetElementIfStartEvent();
+  }
   deferred_node->set_parent(new_parent);
 
   NextEvent();

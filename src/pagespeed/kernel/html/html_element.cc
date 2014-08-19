@@ -45,7 +45,7 @@ HtmlElement::Data::Data(const HtmlName& name,
     : begin_line_number_(0),
       live_(1),
       end_line_number_(0),
-      close_style_(AUTO_CLOSE),
+      style_(AUTO_CLOSE),
       name_(name),
       begin_(begin),
       end_(end) {
@@ -140,13 +140,14 @@ GoogleString HtmlElement::ToString() const {
       buf += quote;
     }
   }
-  switch (data_->close_style_) {
+  switch (data_->style_) {
     case AUTO_CLOSE:       buf += "> (not yet closed)"; break;
     case IMPLICIT_CLOSE:   buf += ">";  break;
     case EXPLICIT_CLOSE:   StrAppend(&buf, "></", data_->name_.value(), ">");
                            break;
     case BRIEF_CLOSE:      buf += "/>"; break;
     case UNCLOSED:         buf += "> (unclosed)"; break;
+    case INVISIBLE:        buf += "> (invisible)"; break;
   }
   if ((data_->begin_line_number_ != Data::kMaxLineNumber) ||
       (data_->end_line_number_ != Data::kMaxLineNumber)) {

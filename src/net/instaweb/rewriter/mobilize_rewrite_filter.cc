@@ -202,7 +202,7 @@ void MobilizeRewriteFilter::HandleStartTagInBody(HtmlElement* element) {
     if (CheckForKeyword(kTableTagsToBr, arraysize(kTableTagsToBr), keyword)) {
       HtmlElement* added_br_element = driver_->NewElement(
           element->parent(), HtmlName::kBr);
-      added_br_element->set_close_style(HtmlElement::IMPLICIT_CLOSE);
+      added_br_element->set_style(HtmlElement::IMPLICIT_CLOSE);
       driver_->InsertElementAfterElement(element, added_br_element);
     }
     if (driver_->DebugMode()) {
@@ -294,7 +294,7 @@ void MobilizeRewriteFilter::AddStyleAndViewport(HtmlElement* element) {
     // <meta name="viewport"... />
     HtmlElement* added_viewport_element = driver_->NewElement(
         element, HtmlName::kMeta);
-    added_viewport_element->set_close_style(HtmlElement::BRIEF_CLOSE);
+    added_viewport_element->set_style(HtmlElement::BRIEF_CLOSE);
     added_viewport_element->AddAttribute(
         driver_->MakeName(HtmlName::kName), "viewport",
         HtmlElement::SINGLE_QUOTE);

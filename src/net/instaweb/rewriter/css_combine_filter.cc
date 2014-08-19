@@ -284,7 +284,7 @@ class CssCombineFilter::Context : public RewriteContext {
           RewriteDriver::kIsNotXhtml) {
         int first_element_index = partition->input(0).index();
         HtmlElement* first_element = elements_[first_element_index];
-        first_element->set_close_style(HtmlElement::BRIEF_CLOSE);
+        first_element->set_style(HtmlElement::BRIEF_CLOSE);
       }
 
       // We want to call this here so that we disable_further_processing

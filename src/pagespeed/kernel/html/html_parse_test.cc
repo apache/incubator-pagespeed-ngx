@@ -519,12 +519,13 @@ class AnnotatingHtmlFilter : public EmptyHtmlFilter {
   }
   virtual void EndElement(HtmlElement* element) {
     StrAppend(&buffer_, " -", element->name_str());
-    switch (element->close_style()) {
+    switch (element->style()) {
       case HtmlElement::AUTO_CLOSE:      buffer_ += "(a)"; break;
       case HtmlElement::IMPLICIT_CLOSE:  buffer_ += "(i)"; break;
       case HtmlElement::EXPLICIT_CLOSE:  buffer_ += "(e)"; break;
       case HtmlElement::BRIEF_CLOSE:     buffer_ += "(b)"; break;
       case HtmlElement::UNCLOSED:        buffer_ += "(u)"; break;
+      case HtmlElement::INVISIBLE:       buffer_ += "(I)"; break;
     }
   }
   virtual void Characters(HtmlCharactersNode* characters) {
@@ -2001,7 +2002,7 @@ TEST_F(AttributeManipulationTest, CloneElement) {
   // The clone is identical (but not the same object).
   EXPECT_NE(clone, node_);
   EXPECT_EQ(HtmlName::kA, clone->keyword());
-  EXPECT_EQ(node_->close_style(), clone->close_style());
+  EXPECT_EQ(node_->style(), clone->style());
   EXPECT_EQ(4, NumAttributes(clone));
   EXPECT_EQ(HtmlName::kHref, AttributeAt(clone, 0)->keyword());
   EXPECT_STREQ("http://www.google.com/",
@@ -2127,11 +2128,13 @@ class CountingCallbacksFilter : public EmptyHtmlFilter {
   DISALLOW_COPY_AND_ASSIGN(CountingCallbacksFilter);
 };
 
-// Checks that deleting nodes while preserving children does not change the
-// expected order of HTML parse events. We delete any node of del_node_type_,
-// but we only delete it when we see a tag of type del_from_type_ (and
-// del_from_start_tag indicates whether we do it when we see the start tag or
-// the end tag of del_from_type).
+// Checks that deleting nodes does not change the expected order of
+// HTML parse events. We delete any node of del_node_type_, but we
+// only delete it when we see a tag of type del_from_type_ (and
+// del_from_start_tag indicates whether we do it when we see the start
+// tag or the end tag of del_from_type). Can be configured to remove
+// nodes using DeleteSavingChildren, DeleteNode, or
+// MakeElementInvisible.
 class DeleteNodesFilter : public CountingCallbacksFilter {
  public:
   explicit DeleteNodesFilter(HtmlParse* html_parse)
@@ -2139,7 +2142,8 @@ class DeleteNodesFilter : public CountingCallbacksFilter {
         delete_node_type_(HtmlName::kNotAKeyword),
         delete_from_type_(HtmlName::kNotAKeyword),
         delete_on_open_tag_(false),
-        save_children_(true) {
+        save_children_(true),
+        make_invisible_(false) {
   }
 
   void set_delete_node_type(HtmlName::Keyword keyword) {
@@ -2147,6 +2151,7 @@ class DeleteNodesFilter : public CountingCallbacksFilter {
   }
 
   void set_save_children(bool x) { save_children_ = x; }
+  void set_make_invisible(bool x) { make_invisible_ = x; }
 
   void set_delete_from_type(HtmlName::Keyword keyword) {
     delete_from_type_ = keyword;
@@ -2195,9 +2200,12 @@ class DeleteNodesFilter : public CountingCallbacksFilter {
  private:
   void DeleteElements() {
     for (int i = 0, n = pending_deletes_.size(); i < n; ++i) {
-      bool success = save_children_
-          ? html_parse_->DeleteSavingChildren(pending_deletes_[i])
-          : html_parse_->DeleteNode(pending_deletes_[i]);
+      HtmlElement* element = pending_deletes_[i];
+      bool success = make_invisible_
+          ? html_parse_->MakeElementInvisible(element)
+          : (save_children_
+             ? html_parse_->DeleteSavingChildren(element)
+             : html_parse_->DeleteNode(element));
       if (success) {
         ++num_deleted_elements_;
       }
@@ -2211,6 +2219,7 @@ class DeleteNodesFilter : public CountingCallbacksFilter {
   HtmlName::Keyword delete_from_type_;
   bool delete_on_open_tag_;
   bool save_children_;
+  bool make_invisible_;
   int num_deleted_elements_;
 
   DISALLOW_COPY_AND_ASSIGN(DeleteNodesFilter);
@@ -2256,8 +2265,8 @@ TEST_F(HtmlParseDeleteTest, DeleteAtStartAcrossFlush) {
   DeleteTest(kInput, "12");
 
   // We can utilize the infrastructure in DeferCurrentNode to make it
-  // possible to delete nodes from thair StartElement even if their
-  // EndElement is not flushed.  So this never fails.
+  // possible to delete nodes from their StartElement even if their
+  // EndElement is not in the flush window
   EXPECT_EQ(0, total_failures_);
 
   // If the both the StartElement and EndElement are visible, then
@@ -2272,6 +2281,37 @@ TEST_F(HtmlParseDeleteTest, DeleteAtEndAcrossFlush) {
   delete_filter_.set_delete_node_type(HtmlName::kDiv);
   delete_filter_.set_delete_from_type(HtmlName::kDiv);
   DeleteTest("1<div id=a>hello</div>2", "12");
+
+  // If the flush happened in the middle of the div, then we will
+  // fail.  That will happen at least sometimes.
+  EXPECT_LT(0, total_failures_);
+
+  // If the both the StartElement and EndElement are visible, then
+  // we should successfully eliminate the div and its contents.  That
+  // will happen at least sometimes.
+  EXPECT_LT(0, total_successes_);
+}
+
+TEST_F(HtmlParseDeleteTest, InvisibleAtStart) {
+  delete_filter_.set_delete_on_open_tag(true);
+  delete_filter_.set_make_invisible(true);
+  delete_filter_.set_delete_node_type(HtmlName::kDiv);
+  delete_filter_.set_delete_from_type(HtmlName::kDiv);
+  const StringPiece kInput("1<div id=a>hello</div>2");
+  DeleteTest(kInput, "1hello2");
+
+  // It is always possible to make nodes invisible as long as their
+  // StartElement has not been flushed.
+  EXPECT_EQ(0, total_failures_);
+  EXPECT_EQ(kInput.size(), total_successes_);
+}
+
+TEST_F(HtmlParseDeleteTest, InvisibleAtEnd) {
+  delete_filter_.set_delete_on_open_tag(false);
+  delete_filter_.set_make_invisible(true);
+  delete_filter_.set_delete_node_type(HtmlName::kDiv);
+  delete_filter_.set_delete_from_type(HtmlName::kDiv);
+  DeleteTest("1<div id=a>hello</div>2", "1hello2");
 
   // If the flush happened in the middle of the div, then we will
   // fail.  That will happen at least sometimes.
@@ -2409,7 +2449,8 @@ class RestoreNodesFilter : public CountingCallbacksFilter {
   explicit RestoreNodesFilter(HtmlParse* html_parse)
       : html_parse_(html_parse),
         outstanding_deferred_elements_(0),
-        num_deletes_(0) {
+        num_deletes_(0),
+        restore_on_open_(false) {
   }
 
   // Establishes the ID or text of an element to defer, and the ID of an
@@ -2420,6 +2461,10 @@ class RestoreNodesFilter : public CountingCallbacksFilter {
 
   void DeleteOnStart(const char* id_or_text) {
     delete_set_.insert(id_or_text);
+  }
+
+  void set_restore_on_open(bool restore) {
+    restore_on_open_ = restore;
   }
 
   // Returns the number of nodes that have been deferred, but not yet restored.
@@ -2453,13 +2498,16 @@ class RestoreNodesFilter : public CountingCallbacksFilter {
       if (!MaybeRemoveNode(id, element)) {
         MaybeDeleteNode(id, element);
       }
+      if (restore_on_open_) {
+        MaybeRestoreNode(id);
+      }
     }
   }
 
   virtual void EndElement(HtmlElement* element) {
     CountingCallbacksFilter::EndElement(element);
     const char* id = FindId(element);
-    if (id != NULL) {
+    if (id != NULL && !restore_on_open_) {
       MaybeRestoreNode(id);
     }
   }
@@ -2518,6 +2566,7 @@ class RestoreNodesFilter : public CountingCallbacksFilter {
   RestoreMap restore_map_;
   int outstanding_deferred_elements_;
   int num_deletes_;
+  bool restore_on_open_;
 
   DISALLOW_COPY_AND_ASSIGN(RestoreNodesFilter);
 };
@@ -2738,6 +2787,14 @@ TEST_F(HtmlRestoreTest, TwoDeleteAcrossFlush) {
   SetupWriter();
   restore_nodes_filter_.DeleteOnStart("a");
   RunTestsWithManyFlushWindows("1<div id=a></div>2", "12");
+}
+
+TEST_F(HtmlRestoreTest, RestoreOnOpenTag) {
+  SetupWriter();
+  restore_nodes_filter_.MoveOnStart("a", "b");
+  restore_nodes_filter_.set_restore_on_open(true);
+  RunTestsWithManyFlushWindows("<div id=a>abc</div><div id=b>def</div>",
+                               "<div id=b><div id=a>abc</div>def</div>");
 }
 
 // This tests having two filters that each do deferrals.  The

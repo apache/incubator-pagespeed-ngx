@@ -77,7 +77,7 @@ class HtmlWriterFilter : public HtmlFilter {
   // caller-specified option.
   void EmitName(const HtmlName& name);
 
-  HtmlElement::CloseStyle GetCloseStyle(HtmlElement* element);
+  HtmlElement::Style GetElementStyle(HtmlElement* element);
 
   // Escapes arbitrary text as HTML, e.g. turning & into &amp;.  If quoteChar
   // is non-zero, e.g. '"', then it would escape " as well.

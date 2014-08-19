@@ -45,13 +45,15 @@ void LoggingFilter::StartDocument() {
 
 void LoggingFilter::StartElement(HtmlElement* element) {
   // Does EndElement get called for singleton elements?
-  ++stats_[NUM_UNCLOSED];
-  ++stats_[NUM_TAGS];
+  if (element->style() != HtmlElement::INVISIBLE) {
+    ++stats_[NUM_UNCLOSED];
+    ++stats_[NUM_TAGS];
+  }
 }
 
 void LoggingFilter::EndElement(HtmlElement* element) {
   // Figure out what's up with the element (implicitly vs explicitly closed)
-  switch (element->close_style()) {
+  switch (element->style()) {
     case HtmlElement::EXPLICIT_CLOSE: {
       --stats_[NUM_UNCLOSED];
       ++stats_[NUM_CLOSED];
@@ -70,6 +72,7 @@ void LoggingFilter::EndElement(HtmlElement* element) {
       ++stats_[NUM_BRIEF_CLOSED];
       break;
     }
+    case HtmlElement::INVISIBLE:
     case HtmlElement::UNCLOSED: {
       // We assumed unmatchedness at StartElement, so do nothing.
       break;

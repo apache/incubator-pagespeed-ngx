@@ -86,6 +86,10 @@ void HtmlWriterFilter::EmitName(const HtmlName& name) {
 }
 
 void HtmlWriterFilter::StartElement(HtmlElement* element) {
+  HtmlElement::Style element_style = GetElementStyle(element);
+  if (element_style == HtmlElement::INVISIBLE) {
+    return;
+  }
   EmitBytes("<");
   EmitName(element->name());
 
@@ -125,7 +129,7 @@ void HtmlWriterFilter::StartElement(HtmlElement* element) {
   // when legal.  Such a change will introduce textual diffs between
   // input and output html that would cause htmlparse unit tests to require
   // a regold.  But the changes could be validated with the normalizer.
-  if (GetCloseStyle(element) == HtmlElement::BRIEF_CLOSE) {
+  if (element_style == HtmlElement::BRIEF_CLOSE) {
     lazy_close_element_ = element;
   } else {
     EmitBytes(">");
@@ -136,8 +140,8 @@ void HtmlWriterFilter::StartElement(HtmlElement* element) {
 // on construction, then we use that.  If the element was synthesized by
 // a rewrite pass, then it's stored as AUTO_CLOSE, and we can determine
 // whether the element is briefly closable or implicitly closed.
-HtmlElement::CloseStyle HtmlWriterFilter::GetCloseStyle(HtmlElement* element) {
-  HtmlElement::CloseStyle style = element->close_style();
+HtmlElement::Style HtmlWriterFilter::GetElementStyle(HtmlElement* element) {
+  HtmlElement::Style style = element->style();
   if (style == HtmlElement::AUTO_CLOSE) {
     HtmlName::Keyword keyword = element->keyword();
 
@@ -161,13 +165,13 @@ HtmlElement::CloseStyle HtmlWriterFilter::GetCloseStyle(HtmlElement* element) {
 }
 
 void HtmlWriterFilter::EndElement(HtmlElement* element) {
-  HtmlElement::CloseStyle style = GetCloseStyle(element);
-  switch (style) {
+  HtmlElement::Style element_style = GetElementStyle(element);
+  switch (element_style) {
     case HtmlElement::AUTO_CLOSE:
-      // This cannot happen because GetCloseStyle prevents won't
-      // return AUTO_CLOSE.
+      // This cannot happen because GetElementStyle won't return AUTO_CLOSE.
       html_parse_->message_handler()->FatalError(
-          __FILE__, __LINE__, "GetCloseStyle should never return AUTO_CLOSE.");
+          __FILE__, __LINE__,
+          "GetElementStyle should never return AUTO_CLOSE.");
       break;
     case HtmlElement::IMPLICIT_CLOSE:
       // Nothing new to write; the ">" was written in StartElement
@@ -199,6 +203,7 @@ void HtmlWriterFilter::EndElement(HtmlElement* element) {
       EmitName(element->name());
       EmitBytes(">");
       break;
+    case HtmlElement::INVISIBLE:
     case HtmlElement::UNCLOSED:
       // Nothing new to write; the ">" was written in StartElement
       break;

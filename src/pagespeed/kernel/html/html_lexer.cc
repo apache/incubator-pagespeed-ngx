@@ -814,9 +814,9 @@ void HtmlLexer::FinishParse() {
   for (int i = element_stack_.size() - 1; i > 0; --i) {
     HtmlElement* element = element_stack_.back();
     element->name_str().CopyToString(&token_);
-    HtmlElement::CloseStyle close_style = skip_parsing_ ?
+    HtmlElement::Style style = skip_parsing_ ?
         HtmlElement::EXPLICIT_CLOSE : HtmlElement::UNCLOSED;
-    EmitTagClose(close_style);
+    EmitTagClose(style);
     if (!HtmlKeywords::IsOptionallyClosedTag(element->keyword())) {
       html_parse_->Info(id_.c_str(), element->begin_line_number(),
                         "End-of-file with open tag: %s",
@@ -985,12 +985,12 @@ void HtmlLexer::EvalAttrValSq(char c) {
   }
 }
 
-void HtmlLexer::EmitTagClose(HtmlElement::CloseStyle close_style) {
+void HtmlLexer::EmitTagClose(HtmlElement::Style style) {
   HtmlElement* element = PopElementMatchingTag(token_);
   if (element != NULL) {
     DCHECK(StringCaseEqual(token_, element->name_str()));
     element->set_end_line_number(line_);
-    CloseElement(element, close_style);
+    CloseElement(element, style);
   } else {
     SyntaxError("Unexpected close-tag `%s', no tags are open",
                 token_.c_str());
@@ -1127,8 +1127,8 @@ HtmlElement* HtmlLexer::PopElement() {
 }
 
 void HtmlLexer::CloseElement(HtmlElement* element,
-                             HtmlElement::CloseStyle close_style) {
-  html_parse_->CloseElement(element, close_style, line_);
+                             HtmlElement::Style style) {
+  html_parse_->CloseElement(element, style, line_);
   if (size_limit_exceeded_) {
     skip_parsing_ = true;
   }

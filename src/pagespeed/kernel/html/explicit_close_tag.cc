@@ -24,10 +24,10 @@ namespace net_instaweb {
 ExplicitCloseTag::~ExplicitCloseTag() {}
 
 void ExplicitCloseTag::EndElement(HtmlElement* element) {
-  switch (element->close_style()) {
+  switch (element->style()) {
     case HtmlElement::AUTO_CLOSE:
     case HtmlElement::UNCLOSED:
-      element->set_close_style(HtmlElement::EXPLICIT_CLOSE);
+      element->set_style(HtmlElement::EXPLICIT_CLOSE);
       break;
     default:
       break;

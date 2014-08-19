@@ -140,7 +140,7 @@ class HtmlLexer {
   void EmitComment();
   void EmitLiteral();
   void EmitTagOpen(bool allow_implicit_close);  // expects element_ != NULL.
-  void EmitTagClose(HtmlElement::CloseStyle close_style);
+  void EmitTagClose(HtmlElement::Style style);
   void EmitTagBriefClose();
   void EmitDirective();
   void Restart(char c);
@@ -161,7 +161,7 @@ class HtmlLexer {
   HtmlElement* PopElementMatchingTag(const StringPiece& tag);
 
   HtmlElement* PopElement();
-  void CloseElement(HtmlElement* element, HtmlElement::CloseStyle close_style);
+  void CloseElement(HtmlElement* element, HtmlElement::Style style);
 
   // Minimal i18n analysis.  With utf-8 and gb2312 we can do this
   // context-free, and thus the method can be static.  If we add
