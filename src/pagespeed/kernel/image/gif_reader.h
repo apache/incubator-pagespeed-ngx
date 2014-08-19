@@ -199,9 +199,6 @@ class GifFrameReader : public MultipleFrameReader {
 
   // The following are for the current frame.
 
-  // Whether this frame is progressively encoded.
-  bool is_progressive_;
-
   // The next row to output via ReadScanline.
   size_px next_row_;
 

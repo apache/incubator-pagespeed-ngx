@@ -21,6 +21,7 @@
 
 #include <cstddef>
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/image/image_util.h"
 #include "pagespeed/kernel/image/scanline_interface.h"
 #include "pagespeed/kernel/image/scanline_status.h"
 
@@ -94,6 +95,7 @@ class JpegScanlineReader : public ScanlineReaderInterface {
   virtual PixelFormat GetPixelFormat() { return pixel_format_; }
   virtual size_t GetImageHeight() { return height_; }
   virtual size_t GetImageWidth() {  return width_; }
+  virtual bool IsProgressive() { return is_progressive_; }
 
  private:
   JpegEnv* jpeg_env_;  // State of libjpeg
@@ -104,6 +106,7 @@ class JpegScanlineReader : public ScanlineReaderInterface {
   size_t row_;
   size_t bytes_per_row_;
   bool was_initialized_;
+  bool is_progressive_;
   MessageHandler* message_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(JpegScanlineReader);

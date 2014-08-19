@@ -154,6 +154,7 @@ JpegScanlineReader::JpegScanlineReader(MessageHandler* handler) :
   row_(0),
   bytes_per_row_(0),
   was_initialized_(false),
+  is_progressive_(false),
   message_handler_(handler) {
   row_pointer_[0] = NULL;
 }
@@ -233,6 +234,7 @@ ScanlineStatus JpegScanlineReader::InitializeWithStatus(const void* image_data,
     pixel_format_ = RGB_888;
     bytes_per_row_ = 3 * width_;
   }
+  is_progressive_ = jpeg_decompress->progressive_mode;
 
   was_initialized_ = true;
   return ScanlineStatus(SCANLINE_STATUS_SUCCESS);

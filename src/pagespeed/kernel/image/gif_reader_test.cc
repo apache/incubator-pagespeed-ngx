@@ -38,6 +38,14 @@
 
 namespace {
 
+extern "C" {
+#ifdef USE_SYSTEM_LIBPNG
+#include "png.h"  // NOLINT
+#else
+#include "third_party/libpng/png.h"
+#endif
+}  // extern "C"
+
 using net_instaweb::MockMessageHandler;
 using net_instaweb::NullMutex;
 using pagespeed::image_compression::kAlphaOpaque;
@@ -809,6 +817,7 @@ class GifAnimationTest : public testing::Test {
       EXPECT_EQ(set_frame->height, frame_spec.height);
       EXPECT_EQ(set_frame->top, frame_spec.top);
       EXPECT_EQ(set_frame->left, frame_spec.left);
+      EXPECT_EQ(set_frame->interlace, frame_spec.hint_progressive);
       EXPECT_EQ(set_frame->transparent_idx >= 0 ?
                 RGBA_8888 : RGB_888, frame_spec.pixel_format);
       FrameSpec::DisposalMethod frame_disposal =
@@ -1065,7 +1074,7 @@ TEST_F(GifAnimationTest,
 // Non-animated, non-interlaced, only global colormap, varying
 // disposals, varying delays.
 TEST_F(GifAnimationTest, ReadSingleFrameDelayOpaque) {
-  const Frame frame = {10, 10, false, 10, 0, NULL, 0, -1, 2, 10, 10};
+  const Frame frame = {10, 10, true, 10, 0, NULL, 0, -1, 2, 10, 10};
   synth_frames_.push_back(frame);
 
   SynthesizeAndRead("single_frame_opaque", DefineImage());
@@ -1077,14 +1086,14 @@ TEST_F(GifAnimationTest, ReadMultipleFrameOpaque) {
   Frame frame1 = {20, 20, false, 100, 0, NULL, 0, -1, 2, 10, 10};
   synth_frames_.push_back(frame1);
 
-  Frame frame2 = {20, 20, false, 100, 0, NULL, 0, -1, 3, 20, 20};
+  Frame frame2 = {20, 20, true, 100, 0, NULL, 0, -1, 3, 20, 20};
   synth_frames_.push_back(frame2);
 
   SynthesizeAndRead("multiple_frame_opaque", DefineImage());
 }
 
 TEST_F(GifAnimationTest, ReadMultipleFrameOpaqueFirstFallingOffImage) {
-  Frame frame1 = {250, 250, false, 100, 0, NULL, 0, -1, 3, 90, 90};
+  Frame frame1 = {250, 250, true, 100, 0, NULL, 0, -1, 3, 90, 90};
   synth_frames_.push_back(frame1);
 
   Frame frame2 = {20, 20, false, 100, 0, NULL, 0, -1, 2, 79, 79};
@@ -1098,7 +1107,7 @@ TEST_F(GifAnimationTest, ReadMultipleFrameOpaqueSecondFallingOffImage) {
   Frame frame1 = {20, 20, false, 100, 0, NULL, 0, -1, 2, 79, 79};
   synth_frames_.push_back(frame1);
 
-  Frame frame2 = {250, 250, false, 100, 0, NULL, 0, -1, 3, 90, 90};
+  Frame frame2 = {250, 250, true, 100, 0, NULL, 0, -1, 3, 90, 90};
   synth_frames_.push_back(frame2);
 
   SynthesizeAndRead("multiple_frame_opaque_2nd_falling_off_image",
@@ -1106,7 +1115,7 @@ TEST_F(GifAnimationTest, ReadMultipleFrameOpaqueSecondFallingOffImage) {
 }
 
 TEST_F(GifAnimationTest, ReadMultipleFrameOpaqueFirstFallingOffImageAtOrigin) {
-  Frame frame1 = {250, 250, false, 100, 0, NULL, 0, -1, 3, 0, 0};
+  Frame frame1 = {250, 250, true, 100, 0, NULL, 0, -1, 3, 0, 0};
   synth_frames_.push_back(frame1);
 
   Frame frame2 = {20, 20, false, 100, 0, NULL, 0, -1, 2, 79, 79};

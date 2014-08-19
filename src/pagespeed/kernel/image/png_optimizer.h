@@ -32,6 +32,7 @@ extern "C" {
 
 #include <setjmp.h>
 #include <cstddef>
+#include "third_party/optipng/src/opngreduc/opngreduc.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
@@ -194,6 +195,7 @@ class PngScanlineReader : public ScanlineReaderInterface {
   virtual size_t GetImageHeight();
   virtual size_t GetImageWidth();
   virtual PixelFormat GetPixelFormat();
+  virtual bool IsProgressive();
 
   void set_transform(int transform);
   void set_require_opaque(bool require_opaque);
@@ -327,6 +329,7 @@ class PngScanlineReaderRaw : public ScanlineReaderInterface {
   virtual PixelFormat GetPixelFormat() { return pixel_format_; }
   virtual size_t GetImageHeight() { return height_; }
   virtual size_t GetImageWidth() {  return width_; }
+  virtual bool IsProgressive() { return is_progressive_; }
 
  private:
   PixelFormat pixel_format_;

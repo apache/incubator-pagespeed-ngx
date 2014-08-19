@@ -19,6 +19,7 @@
 #ifndef PAGESPEED_KERNEL_IMAGE_WEBP_OPTIMIZER_H_
 #define PAGESPEED_KERNEL_IMAGE_WEBP_OPTIMIZER_H_
 
+// For libwebp, encode.h must be included before gif2webp_util.h.
 #include <cstddef>
 #include "third_party/libwebp/src/webp/encode.h"
 #include "third_party/libwebp/examples/gif2webp_util.h"
@@ -205,6 +206,8 @@ class WebpScanlineReader : public ScanlineReaderInterface {
   virtual PixelFormat GetPixelFormat() { return pixel_format_; }
   virtual size_t GetImageHeight() { return height_; }
   virtual size_t GetImageWidth() {  return width_; }
+  // WebP does not have progressive mode.
+  virtual bool IsProgressive() { return false; }
 
  private:
   // Buffer and length of the input (compressed) image.

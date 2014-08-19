@@ -709,7 +709,6 @@ ScanlineStatus GifFrameReader::Reset() {
   has_loop_count_ = false;
   next_frame_ = 0;
 
-  is_progressive_ = false;
   next_row_ = 0;
   frame_transparent_index_ = kNoTransparentIndex;
 
@@ -1293,14 +1292,14 @@ ScanlineStatus GifFrameReader::PrepareNextFrame() {
     return status;
   }
 
-  is_progressive_ = (gif_file->Image.Interlace != 0);
+  frame_spec_.hint_progressive = (gif_file->Image.Interlace != 0);
   size_t bytes_per_row =
       GetBytesPerPixel(frame_spec_.pixel_format) * frame_spec_.width;
 
   // Allocate the memory we'll need to read the image data in
   // ReadNextScanline().
   frame_buffer_.reset(new GifPixelType[bytes_per_row]);
-  if (!is_progressive_) {
+  if (!frame_spec_.hint_progressive) {
     // We only read one row at a time.
     frame_index_.reset(new GifPixelType[frame_spec_.width]);
   } else {
@@ -1335,7 +1334,7 @@ ScanlineStatus GifFrameReader::ReadNextScanline(
 
   // For a progressive GIF, we have to decode the entire frame before
   // rendering any row.
-  if (is_progressive_ && (next_row_ == 0)) {
+  if (frame_spec_.hint_progressive && (next_row_ == 0)) {
     ScanlineStatus status = DecodeProgressiveGif();
     if (!status.Success()) {
       PS_LOG_INFO(message_handler(), "Failed to progressively decode GIF.");
@@ -1351,7 +1350,7 @@ ScanlineStatus GifFrameReader::ReadNextScanline(
   // Find out the color index for the requested row.
   GifPixelType* index_buffer = NULL;
   GifFileType* gif_file = gif_struct_->gif_file();
-  if (!is_progressive_) {
+  if (!frame_spec_.hint_progressive) {
     // For a non-progressive GIF, we decode the image a row at a time.
     index_buffer = frame_index_.get();
     if (DGifGetLine(gif_file, index_buffer, frame_spec_.width) == GIF_ERROR) {

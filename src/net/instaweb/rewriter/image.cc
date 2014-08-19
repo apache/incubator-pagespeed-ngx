@@ -1138,9 +1138,9 @@ inline bool ImageImpl::ComputeOutputContentsFromPngReader(
 
   AnalyzeImage(ImageTypeToImageFormat(input_type),
                string_for_image.data(), string_for_image.length(),
-               NULL /* width */, NULL /* height */, NULL /* is_animated */,
-               &has_transparency, &is_photo, NULL /* quality */,
-               NULL /* reader */, handler_.get());
+               NULL /* width */, NULL /* height */, NULL /* is_progressive */,
+               NULL /* is_animated */, &has_transparency, &is_photo,
+               NULL /* quality */, NULL /* reader */, handler_.get());
 
   debug_message_ = StringPrintf("Image has%s transparent pixels"
                                 " and is%s sensitive to compression noise.",

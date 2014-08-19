@@ -71,6 +71,11 @@ class ScanlineReaderInterface {
   // Returns the pixel format that need to be used by writer.
   virtual PixelFormat GetPixelFormat() = 0;
 
+  // Returns true if the original image was encoded progressively by the origin
+  // site, so that it could be progressively rendered while the image contents
+  // were being transferred
+  virtual bool IsProgressive() = 0;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(ScanlineReaderInterface);
 };

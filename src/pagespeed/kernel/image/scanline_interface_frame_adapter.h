@@ -64,6 +64,7 @@ class FrameToScanlineReaderAdapter : public ScanlineReaderInterface {
   virtual bool Reset();
   virtual size_t GetBytesPerScanline();
   virtual bool HasMoreScanLines();
+  virtual bool IsProgressive();
 
   // Will return an error status if the underlying MultipleFrameReader
   // is processing an animated image.

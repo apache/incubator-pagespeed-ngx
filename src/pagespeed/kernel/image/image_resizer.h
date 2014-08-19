@@ -22,6 +22,7 @@
 #include <cstddef>
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/image/image_util.h"
 #include "pagespeed/kernel/image/scanline_interface.h"
 #include "pagespeed/kernel/image/scanline_status.h"
 
@@ -97,6 +98,11 @@ class ScanlineResizer : public ScanlineReaderInterface {
   // Returns the pixel format of the image.
   virtual PixelFormat GetPixelFormat() {
     return reader_->GetPixelFormat();
+  }
+
+  // Returns true if the image is encoded in progressive / interlacing format.
+  virtual bool IsProgressive() {
+    return reader_->IsProgressive();
   }
 
   // This is a no-op and should not be called.

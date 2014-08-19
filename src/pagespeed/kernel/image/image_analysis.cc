@@ -260,6 +260,7 @@ bool AnalyzeImage(ImageFormat image_type,
                   size_t buffer_length,
                   int* width,
                   int* height,
+                  bool* is_progressive,
                   bool* is_animated,
                   bool* has_transparency,
                   bool* is_photo,
@@ -271,6 +272,7 @@ bool AnalyzeImage(ImageFormat image_type,
   bool image_is_animated = false;
   int image_width = 0;
   int image_height = 0;
+  bool image_is_progressive = false;
   ScanlineStatus status;
   if (image_type != IMAGE_GIF) {
     // PNG and JPEG images only have a single frame. WebP may have multiple
@@ -319,6 +321,7 @@ bool AnalyzeImage(ImageFormat image_type,
   if (!image_is_animated) {
     image_width = sf_reader->GetImageWidth();
     image_height = sf_reader->GetImageHeight();
+    image_is_progressive = sf_reader->IsProgressive();
   }
 
   // No matter how many frames the image has, we can always find out whether it
@@ -331,6 +334,9 @@ bool AnalyzeImage(ImageFormat image_type,
   }
   if (height != NULL) {
     *height = image_height;
+  }
+  if (is_progressive != NULL) {
+    *is_progressive = image_is_progressive;
   }
 
   // Finding whether the image is transparent or photo requires processing

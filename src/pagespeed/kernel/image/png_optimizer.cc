@@ -821,6 +821,11 @@ int PngScanlineReader::GetColorType() {
   return png_get_color_type(read_.png_ptr(), read_.info_ptr());
 }
 
+bool PngScanlineReader::IsProgressive() {
+  return (png_get_interlace_type(
+      read_.png_ptr(), read_.info_ptr()) == PNG_INTERLACE_ADAM7);
+}
+
 PixelFormat PngScanlineReader::GetPixelFormat() {
   int bit_depth = png_get_bit_depth(read_.png_ptr(), read_.info_ptr());
   int color_type = png_get_color_type(read_.png_ptr(), read_.info_ptr());

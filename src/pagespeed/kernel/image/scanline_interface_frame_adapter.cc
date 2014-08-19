@@ -57,6 +57,10 @@ bool FrameToScanlineReaderAdapter::HasMoreScanLines() {
   return impl_->HasMoreScanlines();
 }
 
+bool FrameToScanlineReaderAdapter::IsProgressive() {
+  return frame_spec_.hint_progressive;
+}
+
 ScanlineStatus FrameToScanlineReaderAdapter::InitializeWithStatus(
     const void* image_buffer,
     size_t const buffer_length) {
@@ -294,6 +298,7 @@ ScanlineStatus ScanlineToFrameReaderAdapter::PrepareNextFrame() {
   frame_spec_.top = 0;
   frame_spec_.left = 0;
   frame_spec_.pixel_format = impl_->GetPixelFormat();
+  frame_spec_.hint_progressive = impl_->IsProgressive();
   state_ = FRAME_PREPARED;
 
   return ScanlineStatus(SCANLINE_STATUS_SUCCESS);

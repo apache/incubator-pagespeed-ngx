@@ -94,6 +94,12 @@ struct FrameSpec {
   size_t duration_ms;
   DisposalMethod disposal;
 
+  // Whether this frame was progressively encoded by the origin site, so that
+  // it could begin to be rendered even before the entire image was
+  // transferred. This does not affect the data format passed in or out of
+  // this API, but provides a hint that API clients may choose to take.
+  bool hint_progressive;
+
   GoogleString ToString() const;
   bool Equals(const FrameSpec& other) const;
 };

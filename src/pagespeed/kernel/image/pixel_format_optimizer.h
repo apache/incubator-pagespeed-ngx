@@ -88,6 +88,11 @@ class PixelFormatOptimizer : public ScanlineReaderInterface {
     return pixel_format_;
   }
 
+  // Returns true if the image is encoded in progressive / interlacing format.
+  virtual bool IsProgressive() {
+    return reader_->IsProgressive();
+  }
+
   // This is a no-op and should not be called.
   virtual ScanlineStatus InitializeWithStatus(const void* image_buffer,
                                               size_t buffer_length);

@@ -82,11 +82,16 @@ bool IsPhoto(ScanlineReaderInterface* reader, MessageHandler* handler);
 
 // Return key information of the image. For the information which you do not
 // need, set the arguments to NULL so they will not be computed.
+//
+// "is_progressive" is only valid for single frame images. For animated images
+// it will always be set to "false" even if some frames were encoded in
+// progressive format.
 bool AnalyzeImage(ImageFormat image_type,
                   const void* image_buffer,
                   size_t buffer_length,
                   int* width,
                   int* height,
+                  bool* is_progressive,
                   bool* is_animated,
                   bool* has_transparency,
                   bool* is_photo,

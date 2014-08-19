@@ -87,13 +87,15 @@ void  FrameSpec::Reset() {
   pixel_format = UNSUPPORTED;
   duration_ms = 0;
   disposal = DISPOSAL_NONE;
+  hint_progressive = false;
 }
 
 GoogleString FrameSpec::ToString() const {
   return StringPrintf(
       "Frame: size %u x %u at (%u, %u) "
-      "pixel_format: %d, duration_ms: %lu, disposal: %d",
-      width, height, top, left, pixel_format, duration_ms, disposal);
+      "pixel_format: %d, duration_ms: %lu, disposal: %d, progressive: %s",
+      width, height, top, left, pixel_format, duration_ms, disposal,
+      (hint_progressive ? "yes" : "no"));
 }
 
 bool FrameSpec::Equals(const FrameSpec& other) const {
@@ -103,7 +105,8 @@ bool FrameSpec::Equals(const FrameSpec& other) const {
           (left == other.left) &&
           (pixel_format == other.pixel_format) &&
           (duration_ms == other.duration_ms) &&
-          (disposal == other.disposal));
+          (disposal == other.disposal) &&
+          (hint_progressive == other.hint_progressive));
 }
 
 ////////// MultipleFrameReader
