@@ -42,6 +42,7 @@ namespace net_instaweb {
 typedef bool (*response_handler_pt)(ngx_connection_t* c);
 
 class NgxUrlAsyncFetcher;
+class NgxConnection;
 class NgxFetch : public PoolElement<NgxFetch> {
  public:
   NgxFetch(const GoogleString& url,
@@ -103,19 +104,19 @@ class NgxFetch : public PoolElement<NgxFetch> {
     response_handler = handler;
   }
   // Only the Static functions could be used in callbacks.
-  static void NgxFetchResolveDone(ngx_resolver_ctx_t* ctx);
+  static void ResolveDoneHandler(ngx_resolver_ctx_t* ctx);
   // Write the request.
-  static void NgxFetchWrite(ngx_event_t* wev);
+  static void ConnectionWriteHandler(ngx_event_t* wev);
   // Wait for the response.
-  static void NgxFetchRead(ngx_event_t* rev);
+  static void ConnectionReadHandler(ngx_event_t* rev);
   // Read and parse the first status line.
-  static bool NgxFetchHandleStatusLine(ngx_connection_t* c);
+  static bool HandleStatusLine(ngx_connection_t* c);
   // Read and parse the HTTP headers.
-  static bool NgxFetchHandleHeader(ngx_connection_t* c);
+  static bool HandleHeader(ngx_connection_t* c);
   // Read the response body.
-  static bool NgxFetchHandleBody(ngx_connection_t* c);
+  static bool HandleBody(ngx_connection_t* c);
   // Cancel the fetch when it's timeout.
-  static void NgxFetchTimeout(ngx_event_t* tev);
+  static void TimeoutHandler(ngx_event_t* tev);
 
   // Add the pagespeed User-Agent.
   void FixUserAgent();
@@ -143,7 +144,7 @@ class NgxFetch : public PoolElement<NgxFetch> {
   ngx_http_request_t* r_;
   ngx_http_status_t* status_;
   ngx_event_t* timeout_event_;
-  ngx_connection_t* connection_;
+  NgxConnection* connection_;
   ngx_resolver_ctx_t* resolver_ctx_;
 
   DISALLOW_COPY_AND_ASSIGN(NgxFetch);

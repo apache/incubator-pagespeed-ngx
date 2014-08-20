@@ -24,6 +24,12 @@
 //  - The read handler parses the response. Add the response to the buffer at
 //    last.
 
+// TODO(oschaaf): Retry mechanism for failures on a re-used k-a connection
+// TODO(oschaaf): Currently the first applicable connection is picked from the
+// pool when re-using connections. Perhaps it would be worth it to pick the one
+// that was active the longest time ago to keep a larger pool available.
+// TODO(oschaaf): style: reindent namespace according to google C++ style guide
+
 extern "C" {
 #include <nginx.h>
 }
@@ -54,8 +60,209 @@ extern "C" {
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/writer.h"
+#include "net/instaweb/util/public/pthread_mutex.h"
 
 namespace net_instaweb {
+
+  class NgxConnection : public PoolElement<NgxConnection> {
+  public:
+    explicit NgxConnection(MessageHandler* handler);
+    ~NgxConnection();
+    void SetSock(u_char *sockaddr, socklen_t socklen) {
+      socklen_ = socklen;
+      ngx_memcpy(&sockaddr_, sockaddr, socklen);
+    }
+    void Close();
+    void set_keep_alive(bool k) { keepalive_ = k; }
+
+    typedef Pool<NgxConnection> NgxConnectionPool;
+
+    static NgxConnection* Connect(ngx_peer_connection_t *pc,
+                                  MessageHandler* handler);
+    static void IdleWriteHandler(ngx_event_t *ev);
+    static void IdleReadHandler(ngx_event_t *ev);
+
+    static NgxConnectionPool connection_pool;
+    static PthreadMutex connection_pool_mutex;
+
+    ngx_connection_t *c_;
+
+  private:
+    int64 keepalive_timeout_;
+    int max_requests_;
+    bool keepalive_;
+    socklen_t socklen_;
+    u_char sockaddr_[NGX_SOCKADDRLEN];
+    MessageHandler* handler_;
+
+    DISALLOW_COPY_AND_ASSIGN(NgxConnection);
+  };
+
+  NgxConnection::NgxConnectionPool NgxConnection::connection_pool;
+  PthreadMutex NgxConnection::connection_pool_mutex;
+
+  NgxConnection::NgxConnection(MessageHandler* handler) {
+    c_ = NULL;
+    keepalive_ = false;
+
+    // default keepalive 60s, max process 100 requests
+    keepalive_timeout_ = 60000;
+    max_requests_ = 100;
+    handler_ = handler;
+  }
+
+  NgxConnection::~NgxConnection() {
+    CHECK(c_ == NULL) << "NgxFetch: Underlying connection should be NULL";
+  }
+
+  NgxConnection* NgxConnection::Connect(ngx_peer_connection_t *pc,
+                                        MessageHandler* handler) {
+    NgxConnection* nc;
+
+    NgxConnection::connection_pool_mutex.Lock();
+    for (Pool<NgxConnection>::iterator p = connection_pool.begin();
+         p != connection_pool.end(); p++) {
+      nc = *p;
+      if (ngx_memn2cmp(static_cast<u_char*>(nc->sockaddr_),
+                       reinterpret_cast<u_char*>(pc->sockaddr),
+                       nc->socklen_, pc->socklen) == 0) {
+        CHECK(nc->c_->idle) << "Pool should only contain idle connections!";
+
+        nc->c_->idle = 0;
+        nc->c_->log = pc->log;
+        nc->c_->read->log = pc->log;
+        nc->c_->write->log = pc->log;
+        if (nc->c_->pool != NULL) {
+          nc->c_->pool->log = pc->log;
+        }
+
+        if (nc->c_->read->timer_set) {
+          ngx_del_timer(nc->c_->read);
+        }
+        connection_pool.Remove(nc);
+        NgxConnection::connection_pool_mutex.Unlock();
+        ngx_log_error(NGX_LOG_DEBUG, pc->log, 0,
+                      "NgxFetch: re-using connection %p (pool size: %l)\n",
+                      nc, connection_pool.size());
+        return nc;
+      }
+    }
+    connection_pool_mutex.Unlock();
+
+    int rc = ngx_event_connect_peer(pc);
+    if (rc == NGX_ERROR || rc == NGX_DECLINED || rc == NGX_BUSY) {
+      return NULL;
+    }
+
+    nc = new NgxConnection(handler);
+    nc->SetSock(reinterpret_cast<u_char*>(pc->sockaddr), pc->socklen);
+    nc->c_ = pc->connection;
+    return nc;
+  }
+
+  void NgxConnection::Close() {
+    bool removed_from_pool = false;
+
+    connection_pool_mutex.Lock();
+    for (Pool<NgxConnection>::iterator p = connection_pool.begin();
+         p != connection_pool.end(); p++) {
+      if (*p == this) {
+        // When we get here, that means that the connection either has timed
+        // out or has been closed remotely.
+        connection_pool.Remove(this);
+        ngx_log_error(NGX_LOG_DEBUG, c_->log, 0,
+                      "NgxFetch: removed connection %p (pool size: %l)\n",
+                      this, connection_pool.size());
+        removed_from_pool = true;
+        break;
+      }
+    }
+    connection_pool_mutex.Unlock();
+
+    max_requests_--;
+
+    if (c_->read->timer_set) {
+      ngx_del_timer(c_->read);
+    }
+
+    if (c_->write->timer_set) {
+      ngx_del_timer(c_->write);
+    }
+
+    if (!keepalive_ || max_requests_ <= 0 || removed_from_pool) {
+      ngx_close_connection(c_);
+      c_ = NULL;
+      delete this;
+      return;
+    }
+
+    ngx_add_timer(c_->read, static_cast<ngx_msec_t>(keepalive_timeout_));
+
+    c_->data = this;
+    c_->read->handler = NgxConnection::IdleReadHandler;
+    c_->write->handler = NgxConnection::IdleWriteHandler;
+    c_->idle = 1;
+
+    // This connection should not be associated with current fetch.
+    c_->log = ngx_cycle->log;
+    c_->read->log = ngx_cycle->log;
+    c_->write->log = ngx_cycle->log;
+    if (c_->pool != NULL) {
+      c_->pool->log = ngx_cycle->log;
+    }
+
+    // Allow this connection to be re-used, by adding it to the connection pool.
+    connection_pool_mutex.Lock();
+    connection_pool.Add(this);
+    ngx_log_error(NGX_LOG_DEBUG, c_->log, 0,
+                  "NgxFetch: Added connection %p (pool size: %l - "
+                  " max_requests %d)\n",
+                  this, connection_pool.size(), max_requests_);
+    connection_pool_mutex.Unlock();
+  }
+
+  void NgxConnection::IdleWriteHandler(ngx_event_t *ev) {
+    ngx_connection_t* c = static_cast<ngx_connection_t*>(ev->data);
+    u_char buf[1];
+    int n = c->recv(c, buf, 1);
+    if (c->write->timedout) {
+      DCHECK(false) << "NgxFetch: write timeout not expected." << n;
+    }
+    if (n == NGX_AGAIN) {
+      return;
+    }
+    DCHECK(false) << "NgxFetch: Unexpected write event" << n;
+  }
+
+  void NgxConnection::IdleReadHandler(ngx_event_t *ev) {
+    ngx_connection_t *c = static_cast<ngx_connection_t*>(ev->data);
+    NgxConnection *nc = static_cast<NgxConnection*>(c->data);
+
+    if (c->read->timedout) {
+      nc->set_keep_alive(false);
+      nc->Close();
+      return;
+    }
+
+    char buf[1];
+    int n;
+
+    // not a timeout event, we should check connection
+    n = recv(c->fd, buf, 1, MSG_PEEK);
+    if (n == -1 && ngx_socket_errno == NGX_EAGAIN) {
+      if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
+        nc->set_keep_alive(false);
+        nc->Close();
+        return;
+      }
+
+      return;
+    }
+
+    nc->set_keep_alive(false);
+    nc->Close();
+  }
+
   NgxFetch::NgxFetch(const GoogleString& url,
                      AsyncFetch* async_fetch,
                      MessageHandler* message_handler,
@@ -85,17 +292,24 @@ namespace net_instaweb {
         ngx_del_timer(timeout_event_);
     }
     if (connection_ != NULL) {
-      ngx_close_connection(connection_);
+      connection_->Close();
+      connection_ = NULL;
     }
     if (pool_ != NULL) {
       ngx_destroy_pool(pool_);
+      pool_ = NULL;
     }
   }
 
   // This function is called by NgxUrlAsyncFetcher::StartFetch.
   bool NgxFetch::Start(NgxUrlAsyncFetcher* fetcher) {
     fetcher_ = fetcher;
-    return Init();
+    bool ok = Init();
+    if (ok) {
+      ngx_log_error(NGX_LOG_DEBUG, log_, 0, "NgxFetch %p: initialized\n",
+                    this);
+    }  // else Init() will have emitted a reason
+    return ok;
   }
 
   // Create the pool, parse the url, add the timeout event and
@@ -121,10 +335,15 @@ namespace net_instaweb {
                                 "NgxFetch: ngx_pcalloc failed for timeout");
       return false;
     }
+
     timeout_event_->data = this;
-    timeout_event_->handler = NgxFetchTimeout;
+    timeout_event_->handler = NgxFetch::TimeoutHandler;
     timeout_event_->log = log_;
 
+    // TODO(oschaaf): fetcher_->fetch_timeout_ is 5000 by default, wich seems
+    // a little short for the google font api inline css test.
+    // Figure out why Serf seems to never fail on the test, while the native
+    // fetcher sometimes does.
     ngx_add_timer(timeout_event_, fetcher_->fetch_timeout_);
     r_ = static_cast<ngx_http_request_t*>(ngx_pcalloc(pool_,
                                            sizeof(ngx_http_request_t)));
@@ -172,6 +391,10 @@ namespace net_instaweb {
             kError, "NgxFetch: Couldn't start resolving, "
             "is there a proper resolver configured in nginx.conf?");
         return false;
+      } else {
+        ngx_log_error(NGX_LOG_DEBUG, log_, 0,
+                      "NgxFetch %p: start resolve for: %s\n",
+                      this, s_ipaddress.c_str());
       }
 
       resolver_ctx_->data = this;
@@ -182,7 +405,7 @@ namespace net_instaweb {
       resolver_ctx_->type = NGX_RESOLVE_A;
 #endif
 
-      resolver_ctx_->handler = NgxFetchResolveDone;
+      resolver_ctx_->handler = NgxFetch::ResolveDoneHandler;
       resolver_ctx_->timeout = fetcher_->resolver_timeout_;
 
       if (ngx_resolve_name(resolver_ctx_) != NGX_OK) {
@@ -206,6 +429,9 @@ namespace net_instaweb {
   // This function should be called only once. The only argument is sucess or
   // not.
   void NgxFetch::CallbackDone(bool success) {
+    ngx_log_error(NGX_LOG_DEBUG, log_, 0, "NgxFetch %p: CallbackDone: %s\n",
+                  this, success ? "OK":"FAIL");
+
     if (async_fetch_ == NULL) {
       LOG(FATAL)
           << "BUG: NgxFetch callback called more than once on same fetch"
@@ -220,11 +446,36 @@ namespace net_instaweb {
       ngx_del_timer(timeout_event_);
       timeout_event_ = NULL;
     }
-    if (connection_) {
-      ngx_close_connection(connection_);
+
+    if (connection_ != NULL) {
+      // Connection will be re-used only on responses that specify
+      // 'Connection: keep-alive' in their headers.
+      bool keepalive = false;
+
+      if (success) {
+        ConstStringStarVector v;
+        if (async_fetch_->response_headers()->Lookup(
+                StringPiece(HttpAttributes::kConnection), &v)) {
+          for (size_t i = 0; i < v.size(); i++) {
+            if (*v[i] == "keep-alive") {
+              keepalive = true;
+              break;
+            } else if (*v[i] == "close") {
+              break;
+            }
+          }
+        }
+        ngx_log_error(NGX_LOG_DEBUG, log_, 0,
+                      "NgxFetch %p: connection %p attempt keep-alive: %s\n",
+                      this, connection_, keepalive ? "Yes":"No");
+      }
+
+      connection_->set_keep_alive(keepalive);
+      connection_->Close();
       connection_ = NULL;
     }
 
+    // TODO(oschaaf): see https://github.com/pagespeed/ngx_pagespeed/pull/755
     async_fetch_->Done(success);
 
     if (fetcher_ != NULL) {
@@ -279,16 +530,17 @@ namespace net_instaweb {
   }
 
   // Issue a request after the resolver is done
-  void NgxFetch::NgxFetchResolveDone(ngx_resolver_ctx_t* resolver_ctx) {
+  void NgxFetch::ResolveDoneHandler(ngx_resolver_ctx_t* resolver_ctx) {
     NgxFetch* fetch = static_cast<NgxFetch*>(resolver_ctx->data);
     NgxUrlAsyncFetcher* fetcher = fetch->fetcher_;
+
     if (resolver_ctx->state != NGX_OK) {
       if (fetch->timeout_event() != NULL && fetch->timeout_event()->timer_set) {
         ngx_del_timer(fetch->timeout_event());
         fetch->set_timeout_event(NULL);
       }
       fetch->message_handler()->Message(
-          kWarning, "NgxFetch: failed to resolve host [%.*s]",
+          kWarning, "NgxFetch %p: failed to resolve host [%.*s]", fetch,
           static_cast<int>(resolver_ctx->name.len), resolver_ctx->name.data);
       fetch->CallbackDone(false);
       return;
@@ -316,10 +568,9 @@ namespace net_instaweb {
 
     char* ip_address = inet_ntoa(fetch->sin_.sin_addr);
 
-    fetch->message_handler()->Message(
-        kInfo, "NgxFetch: Resolved host [%.*s] to [%s]",
-        static_cast<int>(resolver_ctx->name.len), resolver_ctx->name.data,
-        ip_address);
+    ngx_log_error(NGX_LOG_DEBUG, fetch->log_, 0,
+                  "NgxFetch %p: Resolved host [%V] to [%s]", fetch,
+                  &resolver_ctx->name, ip_address);
 
     fetch->release_resolver();
 
@@ -329,7 +580,7 @@ namespace net_instaweb {
     }
   }
 
-  // prepare the send data for this fetch, and hook write event.
+  // Prepare the request data for this fetch, and hook the write event.
   int NgxFetch::InitRequest() {
     in_ = ngx_create_temp_buf(pool_, 4096);
     if (in_ == NULL) {
@@ -344,6 +595,12 @@ namespace net_instaweb {
     bool have_host = false;
     GoogleString port;
 
+    // TODO(oschaaf): I think we should look at max_requests_ at this point
+    // to determine if we should indicate that we want keep-alive here.
+    // We *might* also want to add the keepalive timeout that we use here
+    // to inform the server that we will close the connection at that point.
+    GoogleString ka("keep-alive");
+    request_headers->Add(HttpAttributes::kConnection, ka);
     const char* method = request_headers->method_string();
     size_t method_len = strlen(method);
 
@@ -403,7 +660,7 @@ namespace net_instaweb {
     *(out_->last++) = CR;
     *(out_->last++) = LF;
 
-    response_handler = NgxFetchHandleStatusLine;
+    response_handler = NgxFetch::HandleStatusLine;
     int rc = Connect();
     if (rc == NGX_AGAIN) {
       return NGX_OK;
@@ -411,7 +668,7 @@ namespace net_instaweb {
       return rc;
     }
 
-    NgxFetchWrite(connection_->write);
+    NgxFetch::ConnectionWriteHandler(connection_->c_->write);
     return NGX_OK;
   }
 
@@ -428,29 +685,37 @@ namespace net_instaweb {
     pc.log = fetcher_->log_;
     pc.rcvbuf = -1;
 
-    int rc = ngx_event_connect_peer(&pc);
-    if (rc == NGX_ERROR || rc == NGX_DECLINED || rc == NGX_BUSY) {
-      return rc;
+
+    connection_ = NgxConnection::Connect(&pc, message_handler());
+    ngx_log_error(NGX_LOG_DEBUG, fetcher_->log_, 0,
+                  "NgxFetch %p Connect() connection %p for [%s]\n",
+                  this, connection_, str_url());
+
+    if (connection_ == NULL) {
+      return NGX_ERROR;
     }
 
-    connection_ = pc.connection;
-    connection_->write->handler = NgxFetchWrite;
-    connection_->read->handler = NgxFetchRead;
-    connection_->data = this;
+    connection_->c_->write->handler = NgxFetch::ConnectionWriteHandler;
+    connection_->c_->read->handler = NgxFetch::ConnectionReadHandler;
+    connection_->c_->data = this;
 
     // Timer set in Init() is still in effect.
-    return rc;
+    return NGX_OK;
   }
 
   // When the fetch sends the request completely, it will hook the read event,
   // and prepare to parse the response.
-  void NgxFetch::NgxFetchWrite(ngx_event_t* wev) {
+  void NgxFetch::ConnectionWriteHandler(ngx_event_t* wev) {
     ngx_connection_t* c = static_cast<ngx_connection_t*>(wev->data);
     NgxFetch* fetch = static_cast<NgxFetch*>(c->data);
     ngx_buf_t* out = fetch->out_;
 
     while (out->pos < out->last) {
       int n = c->send(c, out->pos, out->last - out->pos);
+      ngx_log_error(NGX_LOG_DEBUG, fetch->log_, 0,
+                    "NgxFetch %p: ConnectionWriteHandler "
+                    "send result %d", fetch, n);
+
       if (n >= 0) {
         out->pos += n;
       } else if (n == NGX_AGAIN) {
@@ -474,7 +739,7 @@ namespace net_instaweb {
     return;
   }
 
-  void NgxFetch::NgxFetchRead(ngx_event_t* rev) {
+  void NgxFetch::ConnectionReadHandler(ngx_event_t* rev) {
     ngx_connection_t* c = static_cast<ngx_connection_t*>(rev->data);
     NgxFetch* fetch = static_cast<NgxFetch*>(c->data);
 
@@ -482,7 +747,11 @@ namespace net_instaweb {
       int n = c->recv(
           c, fetch->in_->start, fetch->in_->end - fetch->in_->start);
 
-      if (n == NGX_AGAIN) {
+      ngx_log_error(NGX_LOG_DEBUG, fetch->log_, 0,
+                    "NgxFetch %p: ConnectionReadHandler "
+                    "recv result %d", fetch, n);
+
+     if (n == NGX_AGAIN) {
         break;
       }
 
@@ -530,8 +799,11 @@ namespace net_instaweb {
   }
 
   // Parse the status line: "HTTP/1.1 200 OK\r\n"
-  bool NgxFetch::NgxFetchHandleStatusLine(ngx_connection_t* c) {
+  bool NgxFetch::HandleStatusLine(ngx_connection_t* c) {
     NgxFetch* fetch = static_cast<NgxFetch*>(c->data);
+    ngx_log_error(NGX_LOG_DEBUG, fetch->log_, 0,
+                  "NgxFetch %p: Handle status line\n", fetch);
+
     // This function only works after Nginx-1.1.4. Before nginx-1.1.4,
     // ngx_http_parse_status_line didn't save http_version.
     ngx_int_t n = ngx_http_parse_status_line(fetch->r_, fetch->in_,
@@ -549,17 +821,21 @@ namespace net_instaweb {
         static_cast<HttpStatus::Code>(fetch->get_status_code()));
     response_headers->set_major_version(fetch->get_major_version());
     response_headers->set_minor_version(fetch->get_minor_version());
-    fetch->set_response_handler(NgxFetchHandleHeader);
+    fetch->set_response_handler(NgxFetch::HandleHeader);
     return fetch->response_handler(c);
   }
 
   // Parse the HTTP headers
-  bool NgxFetch::NgxFetchHandleHeader(ngx_connection_t* c) {
+  bool NgxFetch::HandleHeader(ngx_connection_t* c) {
     NgxFetch* fetch = static_cast<NgxFetch*>(c->data);
     char* data = reinterpret_cast<char*>(fetch->in_->pos);
     size_t size = fetch->in_->last - fetch->in_->pos;
     size_t n = fetch->parser_.ParseChunk(StringPiece(data, size),
         fetch->message_handler_);
+
+    ngx_log_error(NGX_LOG_DEBUG, fetch->log_, 0,
+                  "NgxFetch %p: Handle headers\n", fetch);
+
     if (n > size) {
       return false;
     } else if (fetch->parser_.headers_complete()) {
@@ -571,6 +847,9 @@ namespace net_instaweb {
           return false;
         } else {
           fetch->content_length_known_ = true;
+          if (fetch->content_length_ == 0) {
+            fetch->done_ = true;
+          }
         }
       }
 
@@ -581,36 +860,45 @@ namespace net_instaweb {
       }
 
       fetch->in_->pos += n;
-      fetch->set_response_handler(NgxFetchHandleBody);
-      return fetch->response_handler(c);
+      fetch->set_response_handler(NgxFetch::HandleBody);
+      if ((fetch->in_->last - fetch->in_->pos) > 0) {
+        return fetch->response_handler(c);
+      }
+    } else {
+      fetch->in_->pos += n;
     }
     return true;
   }
 
   // Read the response body
-  bool NgxFetch::NgxFetchHandleBody(ngx_connection_t* c) {
+  bool NgxFetch::HandleBody(ngx_connection_t* c) {
     NgxFetch* fetch = static_cast<NgxFetch*>(c->data);
     char* data = reinterpret_cast<char*>(fetch->in_->pos);
     size_t size = fetch->in_->last - fetch->in_->pos;
-    if (size == 0) {
-      return true;
-    }
 
     fetch->bytes_received_add(size);
 
-    if (fetch->async_fetch_->Write(StringPiece(data, size),
-        fetch->message_handler())) {
-      if (fetch->content_length_known_ &&
-          fetch->bytes_received_ == fetch->content_length_) {
+    ngx_log_error(NGX_LOG_DEBUG, fetch->log_, 0,
+                  "NgxFetch %p: Handle body (%d bytes)\n", fetch, size);
+
+    if ( fetch->async_fetch_->Write(StringPiece(data, size),
+                                    fetch->message_handler()) ) {
+      if (fetch->bytes_received_ == fetch->content_length_) {
         fetch->done_ = true;
       }
-      return true;
+      fetch->in_->pos += size;
+    } else {
+      ngx_log_error(NGX_LOG_DEBUG, fetch->log_, 0,
+                    "NgxFetch %p: async fetch write failure\n", fetch);
+      return false;
     }
-    return false;
+    return true;
   }
 
-  void NgxFetch::NgxFetchTimeout(ngx_event_t* tev) {
+  void NgxFetch::TimeoutHandler(ngx_event_t* tev) {
     NgxFetch* fetch = static_cast<NgxFetch*>(tev->data);
+    ngx_log_error(NGX_LOG_DEBUG, fetch->log_, 0,
+                  "NgxFetch %p: TimeoutHandler called\n", fetch);
     fetch->CallbackDone(false);
   }
 
@@ -619,7 +907,7 @@ namespace net_instaweb {
     ConstStringStarVector v;
     RequestHeaders* request_headers = async_fetch_->request_headers();
     if (request_headers->Lookup(HttpAttributes::kUserAgent, &v)) {
-      for (int i = 0, n = v.size(); i < n; i++) {
+      for (size_t i = 0, n = v.size(); i < n; i++) {
         if (i != 0) {
           user_agent += " ";
         }
