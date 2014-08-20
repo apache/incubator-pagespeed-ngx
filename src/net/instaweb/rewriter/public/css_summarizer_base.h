@@ -44,10 +44,11 @@ class RewriteDriver;
 class Statistics;
 class Variable;
 
-// This class helps implement filters that try to compute some properties of
-// all the screen-affecting CSS in the page. They are expected to override
-// Summarize() to perform the per-CSS computation; then at SummariesDone() they
-// can lookup summaries via NumStyles/GetSummaryForStyle.
+// This class helps implement filters that try to compute some properties of all
+// the screen-affecting CSS in the page except for scoped <style> blocks (which
+// are left untouched). They are expected to override Summarize() to perform the
+// per-CSS computation; then at SummariesDone() they can lookup summaries via
+// NumStyles/GetSummaryForStyle.
 class CssSummarizerBase : public RewriteFilter {
  public:
   static const char kNumCssUsedForCriticalCssComputation[];

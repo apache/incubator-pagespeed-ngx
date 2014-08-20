@@ -347,10 +347,14 @@ void CssSummarizerBase::EndDocument() {
 void CssSummarizerBase::StartElementImpl(HtmlElement* element) {
   // HtmlParse should not pass us elements inside a style element.
   CHECK(style_element_ == NULL);
-  if (element->keyword() == HtmlName::kStyle) {
+  if (element->keyword() == HtmlName::kStyle &&
+      element->FindAttribute(HtmlName::kScoped) == NULL) {
     style_element_ = element;
   }
   // We deal with <link> elements in EndElement.
+  // We ignore scoped style elements, as they are already inlined,
+  // can't safely be moved, and take precedence in cascade order
+  // regardless of their position relative to non-scoped CSS.
 }
 
 void CssSummarizerBase::Characters(HtmlCharactersNode* characters_node) {

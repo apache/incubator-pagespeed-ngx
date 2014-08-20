@@ -376,11 +376,13 @@ TEST_F(CssSummarizerBaseTest, IgnoreNonSummarizable) {
   Parse("non-summarizable",
         "<style>* { background: blue; }</style>"
         "<style pagespeed_no_defer>div {display:none;}</style>"
+        "<style scoped>p {display:none;}</style>"
         "<link rel=stylesheet href='b.css' pagespeed_no_defer>"
         "<link rel=stylesheet href='a.css'>");
   EXPECT_STREQ("<html>\n"
                "<style>*{backgrou</style>"
                "<style pagespeed_no_defer>div {display:none;}</style>"
+               "<style scoped>p {display:none;}</style>"
                "<link rel=stylesheet href='b.css' pagespeed_no_defer>"
                "<style>div{displa</style>\n"
                "<!--OK/*{backgrou|OK/div{displa/rel=stylesheet|--></html>",
