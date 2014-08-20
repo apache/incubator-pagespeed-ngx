@@ -66,6 +66,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
+#include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/util/simple_random.h"
 #include "webutil/css/parser.h"
 
@@ -437,8 +438,8 @@ bool CssFilter::Context::RewriteCssText(const GoogleUrl& css_base_gurl,
   if (stylesheet.get() == NULL ||
       parser.errors_seen_mask() != Css::Parser::kNoError) {
     parsed = false;
-    Driver()->InfoAt(this, "CSS parsing error in %s",
-                     css_base_gurl.spec_c_str());
+    Driver()->message_handler()->Message(
+        kWarning, "CSS parsing error in %s", css_base_gurl.spec_c_str());
     filter_->num_parse_failures_->Add(1);
 
     // Report all parse errors (Note: Some of these are errors we recovered
