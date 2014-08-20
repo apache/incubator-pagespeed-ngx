@@ -62,7 +62,9 @@ class UrlNamer {
   // Returns 'false' if request_url was not encoded via this namer.
   //
   // Note: the default implementation always returns false.
+  // Note: rewrite_options may be NULL.
   virtual bool Decode(const GoogleUrl& request_url,
+                      const RewriteOptions* rewrite_options,
                       GoogleUrl* owner_domain,
                       GoogleString* decoded) const;
 

@@ -106,7 +106,8 @@ ProxyFetch* ProxyFetchFactory::CreateNewProxyFetch(
 
   bool cross_domain = false;
   if (gurl.IsWebValid()) {
-    if (namer->Decode(gurl, &request_origin, &decoded_resource)) {
+    if (namer->Decode(gurl, driver->options(), &request_origin,
+                      &decoded_resource)) {
       const RewriteOptions* options = driver->options();
       if (namer->IsAuthorized(gurl, *options)) {
         // The URL is proxied, but is not rewritten as a pagespeed resource,

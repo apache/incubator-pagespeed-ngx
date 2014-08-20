@@ -65,6 +65,7 @@ GoogleString UrlNamer::Encode(const RewriteOptions* rewrite_options,
 }
 
 bool UrlNamer::Decode(const GoogleUrl& request_url,
+                      const RewriteOptions* rewrite_options,
                       GoogleUrl* owner_domain,
                       GoogleString* decoded) const {
   return false;

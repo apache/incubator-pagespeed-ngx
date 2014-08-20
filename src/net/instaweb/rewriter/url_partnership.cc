@@ -106,7 +106,7 @@ bool UrlPartnership::FindResourceDomain(GoogleUrl* resource,
                                         MessageHandler* handler) const {
   bool ret = false;
   GoogleString resource_url;
-  if (url_namer_->Decode(*resource, NULL, &resource_url)) {
+  if (url_namer_->Decode(*resource, rewrite_options_, NULL, &resource_url)) {
     resource->Reset(resource_url);
     ret = resource->IsWebValid();
     resource->Origin().CopyToString(domain);

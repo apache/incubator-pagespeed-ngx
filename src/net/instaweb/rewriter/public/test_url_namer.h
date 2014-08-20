@@ -44,6 +44,7 @@ class TestUrlNamer : public UrlNamer {
                               EncodeOption encode_option) const;
 
   virtual bool Decode(const GoogleUrl& request_url,
+                      const RewriteOptions* rewrite_options,
                       GoogleUrl* owner_domain,
                       GoogleString* decoded) const;
 

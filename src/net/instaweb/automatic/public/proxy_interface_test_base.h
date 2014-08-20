@@ -58,6 +58,7 @@ class ProxyUrlNamer : public UrlNamer {
 
   // Given the request_url, generate the original url.
   virtual bool Decode(const GoogleUrl& gurl,
+                      const RewriteOptions* rewrite_options,
                       GoogleUrl* domain,
                       GoogleString* decoded) const;
 

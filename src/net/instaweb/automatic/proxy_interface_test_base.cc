@@ -124,6 +124,7 @@ class AsyncExpectStringAsyncFetch : public ExpectStringAsyncFetch {
 // ProxyUrlNamer.
 const char ProxyUrlNamer::kProxyHost[] = "proxy_host.com";
 bool ProxyUrlNamer::Decode(const GoogleUrl& gurl,
+                           const RewriteOptions* rewrite_options,
                            GoogleUrl* domain,
                            GoogleString* decoded) const {
   if (gurl.Host() != kProxyHost) {

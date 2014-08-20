@@ -1504,7 +1504,7 @@ bool RewriteDriver::DecodeOutputResourceNameHelper(
                                  "it is not proxy encoded.",
                                  gurl.spec_c_str());
       return false;
-    } else if (!url_namer->Decode(gurl, NULL, &decoded_url)) {
+    } else if (!url_namer->Decode(gurl, options_to_use, NULL, &decoded_url)) {
       message_handler()->Message(kInfo,
                                  "Decoding of resource name %s failed because "
                                  " the URL namer cannot decode it.",
@@ -2197,7 +2197,7 @@ ResourcePtr RewriteDriver::CreateInputResource(
     if (!may_rewrite) {
       UrlNamer* namer = server_context()->url_namer();
       GoogleString decoded_input;
-      if (namer->Decode(input_url, NULL, &decoded_input)) {
+      if (namer->Decode(input_url, options(), NULL, &decoded_input)) {
         GoogleUrl decoded_url(decoded_input);
         may_rewrite = MayRewriteUrl(decoded_base_url_, decoded_url,
                                     inline_authorization_policy,
@@ -2353,7 +2353,7 @@ void RewriteDriver::ParseTextInternal(const char* content, int size) {
 void RewriteDriver::SetDecodedUrlFromBase() {
   UrlNamer* namer = server_context()->url_namer();
   GoogleString decoded_base;
-  if (namer->Decode(base_url_, NULL, &decoded_base)) {
+  if (namer->Decode(base_url_, options(), NULL, &decoded_base)) {
     decoded_base_url_.Reset(decoded_base);
   } else {
     decoded_base_url_.Reset(base_url_);
