@@ -498,8 +498,7 @@ class CacheFindCallback : public HTTPCache::Callback {
         headers.date_ms(),
         headers.CacheExpirationTimeMs(),
         cache_->timer()->NowMs(),
-        // TODO(sligocki): Pipe in actual options.
-        kDeprecatedDefaultHttpOptions);
+        headers.http_options());
   }
 
   AsyncFetch* WrapCachePutFetchAndConditionalFetch(AsyncFetch* base_fetch) {

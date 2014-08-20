@@ -187,7 +187,6 @@ class StrippingFetch : public StringAsyncFetch {
     } else if (stripped_) {
       // Second pass -- declare completion.
       set_success(true);
-    // TODO(sligocki): Check for kPageSpeedHeader as well.
     } else if ((response_headers()->Lookup1(kModPagespeedHeader) != NULL) ||
                (response_headers()->Lookup1(kPageSpeedHeader) != NULL)) {
       // First pass -- the slurped site evidently had mod_pagespeed already
