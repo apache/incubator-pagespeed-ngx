@@ -78,6 +78,8 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(
       log_(NULL),
       resolver_timeout_(NGX_CONF_UNSET_MSEC),
       use_native_fetcher_(false),
+      // 100 Aligns to nginx's server-side default.
+      native_fetcher_max_keepalive_requests_(100),
       ngx_shared_circular_buffer_(NULL),
       hostname_(hostname.as_string()),
       port_(port),
@@ -112,6 +114,7 @@ UrlAsyncFetcher* NgxRewriteDriverFactory::AllocateFetcher(
         resolver_timeout_,
         config->blocking_fetch_timeout_ms(),
         resolver_,
+        native_fetcher_max_keepalive_requests_,
         thread_system(),
         message_handler());
     ngx_url_async_fetchers_.push_back(fetcher);

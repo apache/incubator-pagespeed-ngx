@@ -2699,8 +2699,8 @@ bool ps_request_body_to_string_piece(
 
     if (ret < 0) {
       ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
-		    "ps_request_body_to_string_piece: "
-		    "error reading post body.");
+                    "ps_request_body_to_string_piece: "
+                    "error reading post body.");
       return false;
     }
 

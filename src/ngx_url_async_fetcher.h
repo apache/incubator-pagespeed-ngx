@@ -53,7 +53,8 @@ class NgxUrlAsyncFetcher : public UrlAsyncFetcher {
   NgxUrlAsyncFetcher(
       const char* proxy, ngx_log_t* log, ngx_msec_t resolver_timeout,
       ngx_msec_t fetch_timeout, ngx_resolver_t* resolver,
-      ThreadSystem* thread_system, MessageHandler* handler);
+      int max_keepalive_requests, ThreadSystem* thread_system,
+      MessageHandler* handler);
 
   ~NgxUrlAsyncFetcher();
 
@@ -139,6 +140,7 @@ class NgxUrlAsyncFetcher : public UrlAsyncFetcher {
   ngx_connection_t* command_connection_;  // the command pipe
   int pipe_fd_;  // the write pipe end
   ngx_resolver_t* resolver_;
+  int max_keepalive_requests_;
   ngx_msec_t resolver_timeout_;
   ngx_msec_t fetch_timeout_;
 

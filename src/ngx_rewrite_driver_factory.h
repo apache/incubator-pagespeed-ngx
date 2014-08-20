@@ -105,6 +105,12 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
   void set_use_native_fetcher(bool x) {
     use_native_fetcher_ = x;
   }
+  int native_fetcher_max_keepalive_requests() {
+    return native_fetcher_max_keepalive_requests_;
+  }
+  void set_native_fetcher_max_keepalive_requests(int x) {
+    native_fetcher_max_keepalive_requests_ = x;
+  }
   bool process_script_variables() {
     return process_script_variables_;
   }
@@ -140,6 +146,8 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
   ngx_msec_t resolver_timeout_;
   ngx_resolver_t* resolver_;
   bool use_native_fetcher_;
+  int native_fetcher_max_keepalive_requests_;
+
   typedef std::set<NgxMessageHandler*> NgxMessageHandlerSet;
   NgxMessageHandlerSet server_context_message_handlers_;
 

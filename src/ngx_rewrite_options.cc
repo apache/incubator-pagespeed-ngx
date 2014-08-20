@@ -72,12 +72,14 @@ const char* const server_only_options[] = {
   "LoadFromFileMatch",
   "LoadFromFileRule",
   "LoadFromFileRuleMatch",
-  "UseNativeFetcher"
+  "UseNativeFetcher",
+  "NativeFetcherMaxKeepaliveRequests"
 };
 
 // Options that can only be used in the main (http) option scope.
 const char* const main_only_options[] = {
-  "UseNativeFetcher"
+  "UseNativeFetcher",
+  "NativeFetcherMaxKeepaliveRequests"
 };
 
 }  // namespace
@@ -343,6 +345,16 @@ const char* NgxRewriteOptions::ParseAndSetOptions(
       result = ParseAndSetOptionHelper<NgxRewriteDriverFactory>(
           arg, driver_factory,
           &NgxRewriteDriverFactory::set_use_native_fetcher);
+    } else if (IsDirective(directive, "NativeFetcherMaxKeepaliveRequests")) {
+      int max_keepalive_requests;
+      if (StringToInt(arg, &max_keepalive_requests) &&
+          max_keepalive_requests > 0) {
+        driver_factory->set_native_fetcher_max_keepalive_requests(
+            max_keepalive_requests);
+        result = RewriteOptions::kOptionOk;
+      } else {
+        result = RewriteOptions::kOptionValueInvalid;
+      }
     } else if (StringCaseEqual("ProcessScriptVariables", args[0])) {
       if (scope == RewriteOptions::kProcessScopeStrict) {
         if (StringCaseEqual(arg, "on")) {

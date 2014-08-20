@@ -24,6 +24,14 @@
 //  - The read handler parses the response. Add the response to the buffer at
 //    last.
 
+// TODO(oschaaf): Currently the first applicable connection is picked from the
+// pool when re-using connections. Perhaps it would be worth it to pick the one
+// that was active the longest time ago to keep a larger pool available.
+// TODO(oschaaf): style: reindent namespace according to google C++ style guide
+// TODO(oschaaf): Retry mechanism for failures on a re-used k-a connection.
+// Currently we don't think it's going to be an issue, see the comments at
+// https://github.com/pagespeed/ngx_pagespeed/pull/781.
+
 extern "C" {
 #include <nginx.h>
 }
@@ -56,294 +64,587 @@ extern "C" {
 #include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
-  NgxFetch::NgxFetch(const GoogleString& url,
-                     AsyncFetch* async_fetch,
-                     MessageHandler* message_handler,
-                     ngx_msec_t timeout_ms,
-                     ngx_log_t* log)
-      : str_url_(url),
-        fetcher_(NULL),
-        async_fetch_(async_fetch),
-        parser_(async_fetch->response_headers()),
-        message_handler_(message_handler),
-        bytes_received_(0),
-        fetch_start_ms_(0),
-        fetch_end_ms_(0),
-        done_(false),
-        content_length_(-1),
-        content_length_known_(false),
-        resolver_ctx_(NULL) {
-    ngx_memzero(&url_, sizeof(url_));
-    log_ = log;
+
+class NgxConnection : public PoolElement<NgxConnection> {
+ public:
+  NgxConnection(MessageHandler* handler, int max_keepalive_requests);
+  ~NgxConnection();
+  void SetSock(u_char *sockaddr, socklen_t socklen) {
+    socklen_ = socklen;
+    ngx_memcpy(&sockaddr_, sockaddr, socklen);
+  }
+  // Close ensures that NgxConnection deletes itself at the appropriate time,
+  // which can be after receiving a non-keepalive response, or when the remote
+  // server closes the connection when the NgxConnection is pooled and idle.
+  void Close();
+
+  // Once keepalive is disabled, it can't be toggled back on.
+  void set_keepalive(bool k) { keepalive_ = keepalive_ && k; }
+  bool keepalive() { return keepalive_; }
+
+  typedef Pool<NgxConnection> NgxConnectionPool;
+
+  static NgxConnection* Connect(ngx_peer_connection_t* pc,
+                                MessageHandler* handler,
+                                int max_keepalive_requests);
+  static void IdleWriteHandler(ngx_event_t* ev);
+  static void IdleReadHandler(ngx_event_t* ev);
+
+  static NgxConnectionPool connection_pool;
+  static PthreadMutex connection_pool_mutex;
+
+  // c_ is owned by NgxConnection and freed in ::Close()
+  ngx_connection_t* c_;
+  static const int64 keepalive_timeout_ms;
+  static const GoogleString ka_header;
+
+ private:
+  int max_keepalive_requests_;
+  bool keepalive_;
+  socklen_t socklen_;
+  u_char sockaddr_[NGX_SOCKADDRLEN];
+  MessageHandler* handler_;
+
+  DISALLOW_COPY_AND_ASSIGN(NgxConnection);
+};
+
+NgxConnection::NgxConnectionPool NgxConnection::connection_pool;
+PthreadMutex NgxConnection::connection_pool_mutex;
+// Default keepalive 60s.
+const int64 NgxConnection::keepalive_timeout_ms = 60000;
+const GoogleString NgxConnection::ka_header =
+    StrCat("keep-alive ",
+           Integer64ToString(NgxConnection::keepalive_timeout_ms));
+
+NgxConnection::NgxConnection(MessageHandler* handler,
+                             int max_keepalive_requests) {
+  c_ = NULL;
+  max_keepalive_requests_ = max_keepalive_requests;
+  handler_ = handler;
+  // max_keepalive_requests specifies the number of http requests that are
+  // allowed to be performed over a single connection. So, a
+  // max_keepalive_requests of 1 effectively disables keepalive.
+  keepalive_ = max_keepalive_requests_ > 1;
+}
+
+NgxConnection::~NgxConnection() {
+  CHECK(c_ == NULL) << "NgxFetch: Underlying connection should be NULL";
+}
+
+NgxConnection* NgxConnection::Connect(ngx_peer_connection_t* pc,
+                                      MessageHandler* handler,
+                                      int max_keepalive_requests) {
+  NgxConnection* nc;
+  {
+    ScopedMutex lock(&NgxConnection::connection_pool_mutex);
+
+    for (NgxConnectionPool::iterator p = connection_pool.begin();
+         p != connection_pool.end(); ++p) {
+      nc = *p;
+
+      if (ngx_memn2cmp(static_cast<u_char*>(nc->sockaddr_),
+                       reinterpret_cast<u_char*>(pc->sockaddr),
+                       nc->socklen_, pc->socklen) == 0) {
+        CHECK(nc->c_->idle) << "Pool should only contain idle connections!";
+
+        nc->c_->idle = 0;
+        nc->c_->log = pc->log;
+        nc->c_->read->log = pc->log;
+        nc->c_->write->log = pc->log;
+        if (nc->c_->pool != NULL) {
+          nc->c_->pool->log = pc->log;
+        }
+
+        if (nc->c_->read->timer_set) {
+          ngx_del_timer(nc->c_->read);
+        }
+        connection_pool.Remove(nc);
+
+        ngx_log_error(NGX_LOG_DEBUG, pc->log, 0,
+                      "NgxFetch: re-using connection %p (pool size: %l)\n",
+                      nc, connection_pool.size());
+        return nc;
+      }
+    }
+  }
+
+  int rc = ngx_event_connect_peer(pc);
+  if (rc == NGX_ERROR || rc == NGX_DECLINED || rc == NGX_BUSY) {
+    return NULL;
+  }
+
+  // NgxConnection deletes itself if NgxConnection::Close()
+  nc = new NgxConnection(handler, max_keepalive_requests);
+  nc->SetSock(reinterpret_cast<u_char*>(pc->sockaddr), pc->socklen);
+  nc->c_ = pc->connection;
+  return nc;
+}
+
+void NgxConnection::Close() {
+  bool removed_from_pool = false;
+
+  {
+    ScopedMutex lock(&NgxConnection::connection_pool_mutex);
+    for (NgxConnectionPool::iterator p = connection_pool.begin();
+         p != connection_pool.end(); ++p) {
+      if (*p == this) {
+        // When we get here, that means that the connection either has timed
+        // out or has been closed remotely.
+        connection_pool.Remove(this);
+        ngx_log_error(NGX_LOG_DEBUG, c_->log, 0,
+                      "NgxFetch: removed connection %p (pool size: %l)\n",
+                      this, connection_pool.size());
+        removed_from_pool = true;
+        break;
+      }
+    }
+  }
+
+  max_keepalive_requests_--;
+
+  if (c_->read->timer_set) {
+    ngx_del_timer(c_->read);
+  }
+
+  if (c_->write->timer_set) {
+    ngx_del_timer(c_->write);
+  }
+
+  if (!keepalive_ || max_keepalive_requests_ <= 0 || removed_from_pool) {
+    ngx_close_connection(c_);
+    c_ = NULL;
+    delete this;
+    return;
+  }
+
+  ngx_add_timer(c_->read, static_cast<ngx_msec_t>(
+      NgxConnection::keepalive_timeout_ms));
+
+  c_->data = this;
+  c_->read->handler = NgxConnection::IdleReadHandler;
+  c_->write->handler = NgxConnection::IdleWriteHandler;
+  c_->idle = 1;
+
+  // This connection should not be associated with current fetch.
+  c_->log = ngx_cycle->log;
+  c_->read->log = ngx_cycle->log;
+  c_->write->log = ngx_cycle->log;
+  if (c_->pool != NULL) {
+    c_->pool->log = ngx_cycle->log;
+  }
+
+  // Allow this connection to be re-used, by adding it to the connection pool.
+  {
+    ScopedMutex lock(&NgxConnection::connection_pool_mutex);
+    connection_pool.Add(this);
+    ngx_log_error(NGX_LOG_DEBUG, c_->log, 0,
+                  "NgxFetch: Added connection %p (pool size: %l - "
+                  " max_keepalive_requests_ %d)\n",
+                  this, connection_pool.size(), max_keepalive_requests_);
+  }
+}
+
+void NgxConnection::IdleWriteHandler(ngx_event_t* ev) {
+  ngx_connection_t* c = static_cast<ngx_connection_t*>(ev->data);
+  u_char buf[1];
+  int n = c->recv(c, buf, 1);
+  if (c->write->timedout) {
+    DCHECK(false) << "NgxFetch: write timeout not expected." << n;
+  }
+  if (n == NGX_AGAIN) {
+    return;
+  }
+  DCHECK(false) << "NgxFetch: Unexpected write event" << n;
+}
+
+void NgxConnection::IdleReadHandler(ngx_event_t* ev) {
+  ngx_connection_t* c = static_cast<ngx_connection_t*>(ev->data);
+  NgxConnection* nc = static_cast<NgxConnection*>(c->data);
+
+  if (c->read->timedout) {
+    nc->set_keepalive(false);
+    nc->Close();
+    return;
+  }
+
+  char buf[1];
+  int n;
+
+  // not a timeout event, we should check connection
+  n = recv(c->fd, buf, 1, MSG_PEEK);
+  if (n == -1 && ngx_socket_errno == NGX_EAGAIN) {
+    if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
+      nc->set_keepalive(false);
+      nc->Close();
+      return;
+    }
+
+    return;
+  }
+
+  nc->set_keepalive(false);
+  nc->Close();
+}
+
+NgxFetch::NgxFetch(const GoogleString& url,
+                   AsyncFetch* async_fetch,
+                   MessageHandler* message_handler,
+                   ngx_log_t* log)
+    : str_url_(url),
+      fetcher_(NULL),
+      async_fetch_(async_fetch),
+      parser_(async_fetch->response_headers()),
+      message_handler_(message_handler),
+      bytes_received_(0),
+      fetch_start_ms_(0),
+      fetch_end_ms_(0),
+      done_(false),
+      content_length_(-1),
+      content_length_known_(false),
+      resolver_ctx_(NULL) {
+  ngx_memzero(&url_, sizeof(url_));
+  log_ = log;
+  pool_ = NULL;
+  timeout_event_ = NULL;
+  connection_ = NULL;
+}
+
+NgxFetch::~NgxFetch() {
+  if (timeout_event_ != NULL && timeout_event_->timer_set) {
+    ngx_del_timer(timeout_event_);
+  }
+  if (connection_ != NULL) {
+    connection_->Close();
+    connection_ = NULL;
+  }
+  if (pool_ != NULL) {
+    ngx_destroy_pool(pool_);
     pool_ = NULL;
+  }
+}
+
+// This function is called by NgxUrlAsyncFetcher::StartFetch.
+bool NgxFetch::Start(NgxUrlAsyncFetcher* fetcher) {
+  fetcher_ = fetcher;
+  bool ok = Init();
+  if (ok) {
+    ngx_log_error(NGX_LOG_DEBUG, log_, 0, "NgxFetch %p: initialized\n",
+                  this);
+  }  // else Init() will have emitted a reason
+  return ok;
+}
+
+// Create the pool, parse the url, add the timeout event and
+// hook the DNS resolver if needed. Else we connect directly.
+// When this returns false, our caller (NgxUrlAsyncFetcher::StartFetch)
+// will call fetch->CallbackDone()
+bool NgxFetch::Init() {
+  pool_ = ngx_create_pool(12288, log_);
+  if (pool_ == NULL) {
+    message_handler_->Message(kError, "NgxFetch: ngx_create_pool failed");
+    return false;
+  }
+
+  if (!ParseUrl()) {
+    message_handler_->Message(kError, "NgxFetch: ParseUrl() failed");
+    return false;
+  }
+
+  timeout_event_ = static_cast<ngx_event_t*>(
+      ngx_pcalloc(pool_, sizeof(ngx_event_t)));
+  if (timeout_event_ == NULL) {
+    message_handler_->Message(kError,
+                              "NgxFetch: ngx_pcalloc failed for timeout");
+    return false;
+  }
+
+  timeout_event_->data = this;
+  timeout_event_->handler = NgxFetch::TimeoutHandler;
+  timeout_event_->log = log_;
+
+  ngx_add_timer(timeout_event_, fetcher_->fetch_timeout_);
+  r_ = static_cast<ngx_http_request_t*>(
+      ngx_pcalloc(pool_, sizeof(ngx_http_request_t)));
+
+  if (r_ == NULL) {
+    message_handler_->Message(kError,
+                              "NgxFetch: ngx_pcalloc failed for timer");
+    return false;
+  }
+  status_ = static_cast<ngx_http_status_t*>(
+      ngx_pcalloc(pool_, sizeof(ngx_http_status_t)));
+
+  if (status_ == NULL) {
+    message_handler_->Message(kError,
+                              "NgxFetch: ngx_pcalloc failed for status");
+    return false;
+  }
+
+  // The host is either a domain name or an IP address.  First check
+  // if it's a valid IP address and only if that fails fall back to
+  // using the DNS resolver.
+
+  // Maybe we have a Proxy.
+  ngx_url_t* tmp_url = &url_;
+  if (fetcher_->proxy_.url.len != 0) {
+    tmp_url = &fetcher_->proxy_;
+  }
+
+  GoogleString s_ipaddress(reinterpret_cast<char*>(tmp_url->host.data),
+                           tmp_url->host.len);
+  ngx_memzero(&sin_, sizeof(sin_));
+  sin_.sin_family = AF_INET;
+  sin_.sin_port = htons(tmp_url->port);
+  sin_.sin_addr.s_addr = inet_addr(s_ipaddress.c_str());
+
+  if (sin_.sin_addr.s_addr == INADDR_NONE) {
+    // inet_addr returned INADDR_NONE, which means the hostname
+    // isn't a valid IP address.  Check DNS.
+    ngx_resolver_ctx_t temp;
+    temp.name.data = tmp_url->host.data;
+    temp.name.len = tmp_url->host.len;
+    resolver_ctx_ = ngx_resolve_start(fetcher_->resolver_, &temp);
+    if (resolver_ctx_ == NULL || resolver_ctx_ == NGX_NO_RESOLVER) {
+      // TODO(oschaaf): this spams the log, but is useful in the fetcher's
+      // current state
+      message_handler_->Message(
+          kError, "NgxFetch: Couldn't start resolving, "
+          "is there a proper resolver configured in nginx.conf?");
+      return false;
+    } else {
+      ngx_log_error(NGX_LOG_DEBUG, log_, 0,
+                    "NgxFetch %p: start resolve for: %s\n",
+                    this, s_ipaddress.c_str());
+    }
+
+    resolver_ctx_->data = this;
+    resolver_ctx_->name.data = tmp_url->host.data;
+    resolver_ctx_->name.len = tmp_url->host.len;
+
+#if (nginx_version < 1005008)
+    resolver_ctx_->type = NGX_RESOLVE_A;
+#endif
+
+    resolver_ctx_->handler = NgxFetch::ResolveDoneHandler;
+    resolver_ctx_->timeout = fetcher_->resolver_timeout_;
+
+    if (ngx_resolve_name(resolver_ctx_) != NGX_OK) {
+      message_handler_->Message(kWarning,
+                                "NgxFetch: ngx_resolve_name failed");
+      return false;
+    }
+  } else {
+    if (InitRequest() != NGX_OK) {
+      message_handler()->Message(kError, "NgxFetch: InitRequest failed");
+      return false;
+    }
+  }
+  return true;
+}
+
+const char* NgxFetch::str_url() {
+  return str_url_.c_str();
+}
+
+// This function should be called only once. The only argument is sucess or
+// not.
+void NgxFetch::CallbackDone(bool success) {
+  ngx_log_error(NGX_LOG_DEBUG, log_, 0, "NgxFetch %p: CallbackDone: %s\n",
+                this, success ? "OK":"FAIL");
+
+  if (async_fetch_ == NULL) {
+    LOG(FATAL)
+        << "BUG: NgxFetch callback called more than once on same fetch"
+        << str_url_.c_str() << "(" << this << ").Please report this at"
+        << "https://groups.google.com/forum/#!forum/ngx-pagespeed-discuss";
+    return;
+  }
+
+  release_resolver();
+
+  if (timeout_event_ && timeout_event_->timer_set) {
+    ngx_del_timer(timeout_event_);
     timeout_event_ = NULL;
+  }
+
+  if (connection_ != NULL) {
+    // Connection will be re-used only on responses that specify
+    // 'Connection: keep-alive' in their headers.
+    bool keepalive = false;
+
+    if (success) {
+      ConstStringStarVector v;
+      if (async_fetch_->response_headers()->Lookup(
+              StringPiece(HttpAttributes::kConnection), &v)) {
+        for (size_t i = 0; i < v.size(); i++) {
+          if (*v[i] == "keep-alive") {
+            keepalive = true;
+            break;
+          } else if (*v[i] == "close") {
+            break;
+          }
+        }
+      }
+      ngx_log_error(NGX_LOG_DEBUG, log_, 0,
+                    "NgxFetch %p: connection %p attempt keep-alive: %s\n",
+                    this, connection_, keepalive ? "Yes":"No");
+    }
+
+    connection_->set_keepalive(keepalive);
+    connection_->Close();
     connection_ = NULL;
   }
 
-  NgxFetch::~NgxFetch() {
-    if (timeout_event_ != NULL && timeout_event_->timer_set) {
-        ngx_del_timer(timeout_event_);
-    }
-    if (connection_ != NULL) {
-      ngx_close_connection(connection_);
-    }
-    if (pool_ != NULL) {
-      ngx_destroy_pool(pool_);
-    }
-  }
+  // TODO(oschaaf): see https://github.com/pagespeed/ngx_pagespeed/pull/755
+  async_fetch_->Done(success);
 
-  // This function is called by NgxUrlAsyncFetcher::StartFetch.
-  bool NgxFetch::Start(NgxUrlAsyncFetcher* fetcher) {
-    fetcher_ = fetcher;
-    return Init();
-  }
-
-  // Create the pool, parse the url, add the timeout event and
-  // hook the DNS resolver if needed. Else we connect directly.
-  // When this returns false, our caller (NgxUrlAsyncFetcher::StartFetch)
-  // will call fetch->CallbackDone()
-  bool NgxFetch::Init() {
-    pool_ = ngx_create_pool(12288, log_);
-    if (pool_ == NULL) {
-      message_handler_->Message(kError, "NgxFetch: ngx_create_pool failed");
-      return false;
-    }
-
-    if (!ParseUrl()) {
-      message_handler_->Message(kError, "NgxFetch: ParseUrl() failed");
-      return false;
-    }
-
-    timeout_event_ = static_cast<ngx_event_t*>(
-        ngx_pcalloc(pool_, sizeof(ngx_event_t)));
-    if (timeout_event_ == NULL) {
-      message_handler_->Message(kError,
-                                "NgxFetch: ngx_pcalloc failed for timeout");
-      return false;
-    }
-    timeout_event_->data = this;
-    timeout_event_->handler = NgxFetchTimeout;
-    timeout_event_->log = log_;
-
-    ngx_add_timer(timeout_event_, fetcher_->fetch_timeout_);
-    r_ = static_cast<ngx_http_request_t*>(ngx_pcalloc(pool_,
-                                           sizeof(ngx_http_request_t)));
-    if (r_ == NULL) {
-      message_handler_->Message(kError,
-                                "NgxFetch: ngx_pcalloc failed for timer");
-      return false;
-    }
-    status_ = static_cast<ngx_http_status_t*>(ngx_pcalloc(pool_,
-                                              sizeof(ngx_http_status_t)));
-    if (status_ == NULL) {
-      message_handler_->Message(kError,
-                                "NgxFetch: ngx_pcalloc failed for status");
-      return false;
-    }
-
-    // The host is either a domain name or an IP address.  First check
-    // if it's a valid IP address and only if that fails fall back to
-    // using the DNS resolver.
-
-    // Maybe we have a Proxy.
-    ngx_url_t* tmp_url = &url_;
-    if (0 != fetcher_->proxy_.url.len) {
-      tmp_url = &fetcher_->proxy_;
-    }
-
-    GoogleString s_ipaddress(reinterpret_cast<char*>(tmp_url->host.data),
-                             tmp_url->host.len);
-    ngx_memzero(&sin_, sizeof(sin_));
-    sin_.sin_family = AF_INET;
-    sin_.sin_port = htons(tmp_url->port);
-    sin_.sin_addr.s_addr = inet_addr(s_ipaddress.c_str());
-
-    if (sin_.sin_addr.s_addr == INADDR_NONE) {
-      // inet_addr returned INADDR_NONE, which means the hostname
-      // isn't a valid IP address.  Check DNS.
-      ngx_resolver_ctx_t temp;
-      temp.name.data = tmp_url->host.data;
-      temp.name.len = tmp_url->host.len;
-      resolver_ctx_ = ngx_resolve_start(fetcher_->resolver_, &temp);
-      if (resolver_ctx_ == NULL || resolver_ctx_ == NGX_NO_RESOLVER) {
-        // TODO(oschaaf): this spams the log, but is useful in the fetcher's
-        // current state
-        message_handler_->Message(
-            kError, "NgxFetch: Couldn't start resolving, "
-            "is there a proper resolver configured in nginx.conf?");
-        return false;
-      }
-
-      resolver_ctx_->data = this;
-      resolver_ctx_->name.data = tmp_url->host.data;
-      resolver_ctx_->name.len = tmp_url->host.len;
-
-#if (nginx_version < 1005008)
-      resolver_ctx_->type = NGX_RESOLVE_A;
-#endif
-
-      resolver_ctx_->handler = NgxFetchResolveDone;
-      resolver_ctx_->timeout = fetcher_->resolver_timeout_;
-
-      if (ngx_resolve_name(resolver_ctx_) != NGX_OK) {
-        message_handler_->Message(kWarning,
-                                  "NgxFetch: ngx_resolve_name failed");
-        return false;
-      }
-    } else {
-      if (InitRequest() != NGX_OK) {
-        message_handler()->Message(kError, "NgxFetch: InitRequest failed");
-        return false;
-      }
-    }
-    return true;
-  }
-
-  const char* NgxFetch::str_url() {
-      return str_url_.c_str();
-  }
-
-  // This function should be called only once. The only argument is sucess or
-  // not.
-  void NgxFetch::CallbackDone(bool success) {
-    if (async_fetch_ == NULL) {
-      LOG(FATAL)
-          << "BUG: NgxFetch callback called more than once on same fetch"
-          << str_url_.c_str() << "(" << this << ").Please report this at"
-          << "https://groups.google.com/forum/#!forum/ngx-pagespeed-discuss";
-      return;
-    }
-
-    release_resolver();
-
-    if (timeout_event_ && timeout_event_->timer_set) {
-      ngx_del_timer(timeout_event_);
-      timeout_event_ = NULL;
-    }
-    if (connection_) {
-      ngx_close_connection(connection_);
-      connection_ = NULL;
-    }
-
-    async_fetch_->Done(success);
-
-    if (fetcher_ != NULL) {
-      if (fetcher_->track_original_content_length()
-          && async_fetch_->response_headers()->Has(
+  if (fetcher_ != NULL) {
+    if (fetcher_->track_original_content_length()
+        && async_fetch_->response_headers()->Has(
             HttpAttributes::kXOriginalContentLength)) {
-        async_fetch_->extra_response_headers()->SetOriginalContentLength(
-            bytes_received_);
-      }
-      fetcher_->FetchComplete(this);
+      async_fetch_->extra_response_headers()->SetOriginalContentLength(
+          bytes_received_);
     }
-
-    async_fetch_ = NULL;
+    fetcher_->FetchComplete(this);
   }
 
-  size_t NgxFetch::bytes_received() {
-      return bytes_received_;
-  }
-  void NgxFetch::bytes_received_add(int64 x) {
-      bytes_received_ += x;
-  }
+  async_fetch_ = NULL;
+}
 
-  int64 NgxFetch::fetch_start_ms() {
-      return fetch_start_ms_;
-  }
+size_t NgxFetch::bytes_received() {
+  return bytes_received_;
+}
+void NgxFetch::bytes_received_add(int64 x) {
+  bytes_received_ += x;
+}
 
-  void NgxFetch::set_fetch_start_ms(int64 start_ms) {
-    fetch_start_ms_ = start_ms;
-  }
+int64 NgxFetch::fetch_start_ms() {
+  return fetch_start_ms_;
+}
 
-  int64 NgxFetch::fetch_end_ms() {
-      return fetch_end_ms_;
-  }
+void NgxFetch::set_fetch_start_ms(int64 start_ms) {
+  fetch_start_ms_ = start_ms;
+}
 
-  void NgxFetch::set_fetch_end_ms(int64 end_ms) {
-      fetch_end_ms_ = end_ms;
-  }
+int64 NgxFetch::fetch_end_ms() {
+  return fetch_end_ms_;
+}
 
-  MessageHandler* NgxFetch::message_handler() {
-      return message_handler_;
-  }
+void NgxFetch::set_fetch_end_ms(int64 end_ms) {
+  fetch_end_ms_ = end_ms;
+}
 
-  bool NgxFetch::ParseUrl() {
-    url_.url.len = str_url_.length();
-    url_.url.data = static_cast<u_char*>(ngx_palloc(pool_, url_.url.len));
-    if (url_.url.data == NULL) {
-      return false;
+MessageHandler* NgxFetch::message_handler() {
+  return message_handler_;
+}
+
+bool NgxFetch::ParseUrl() {
+  url_.url.len = str_url_.length();
+  url_.url.data = static_cast<u_char*>(ngx_palloc(pool_, url_.url.len));
+  if (url_.url.data == NULL) {
+    return false;
+  }
+  str_url_.copy(reinterpret_cast<char*>(url_.url.data), str_url_.length(), 0);
+
+  return NgxUrlAsyncFetcher::ParseUrl(&url_, pool_);
+}
+
+// Issue a request after the resolver is done
+void NgxFetch::ResolveDoneHandler(ngx_resolver_ctx_t* resolver_ctx) {
+  NgxFetch* fetch = static_cast<NgxFetch*>(resolver_ctx->data);
+  NgxUrlAsyncFetcher* fetcher = fetch->fetcher_;
+
+  if (resolver_ctx->state != NGX_OK) {
+    if (fetch->timeout_event() != NULL && fetch->timeout_event()->timer_set) {
+      ngx_del_timer(fetch->timeout_event());
+      fetch->set_timeout_event(NULL);
     }
-    str_url_.copy(reinterpret_cast<char*>(url_.url.data), str_url_.length(), 0);
-
-    return NgxUrlAsyncFetcher::ParseUrl(&url_, pool_);
+    fetch->message_handler()->Message(
+        kWarning, "NgxFetch %p: failed to resolve host [%.*s]", fetch,
+        static_cast<int>(resolver_ctx->name.len), resolver_ctx->name.data);
+    fetch->CallbackDone(false);
+    return;
   }
 
-  // Issue a request after the resolver is done
-  void NgxFetch::NgxFetchResolveDone(ngx_resolver_ctx_t* resolver_ctx) {
-    NgxFetch* fetch = static_cast<NgxFetch*>(resolver_ctx->data);
-    NgxUrlAsyncFetcher* fetcher = fetch->fetcher_;
-    if (resolver_ctx->state != NGX_OK) {
-      if (fetch->timeout_event() != NULL && fetch->timeout_event()->timer_set) {
-        ngx_del_timer(fetch->timeout_event());
-        fetch->set_timeout_event(NULL);
-      }
-      fetch->message_handler()->Message(
-          kWarning, "NgxFetch: failed to resolve host [%.*s]",
-          static_cast<int>(resolver_ctx->name.len), resolver_ctx->name.data);
-      fetch->CallbackDone(false);
-      return;
+  ngx_uint_t i;
+  // Find the first ipv4 address. We don't support ipv6 yet.
+  for (i = 0; i < resolver_ctx->naddrs; i++) {
+    if (reinterpret_cast<struct sockaddr_in*>(
+            resolver_ctx->addrs[i].sockaddr)->sin_family == AF_INET) {
+      break;
     }
-    ngx_memzero(&fetch->sin_, sizeof(fetch->sin_));
+  }
+
+  // If no suitable ipv4 address was found, we fail.
+  if (i == resolver_ctx->naddrs) {
+    if (fetch->timeout_event() != NULL && fetch->timeout_event()->timer_set) {
+      ngx_del_timer(fetch->timeout_event());
+      fetch->set_timeout_event(NULL);
+    }
+    fetch->message_handler()->Message(
+        kWarning, "NgxFetch %p: no suitable address for host [%.*s]", fetch,
+        static_cast<int>(resolver_ctx->name.len), resolver_ctx->name.data);
+    fetch->CallbackDone(false);
+  }
+
+  ngx_memzero(&fetch->sin_, sizeof(fetch->sin_));
 
 #if (nginx_version < 1005008)
-    fetch->sin_.sin_addr.s_addr = resolver_ctx->addrs[0];
+  fetch->sin_.sin_addr.s_addr = resolver_ctx->addrs[i];
 #else
+  struct sockaddr_in* sin;
 
-    struct sockaddr_in* sin;
-    sin = reinterpret_cast<struct sockaddr_in*>(
-        resolver_ctx->addrs[0].sockaddr);
-    fetch->sin_.sin_family = sin->sin_family;
-    fetch->sin_.sin_addr.s_addr = sin->sin_addr.s_addr;
+  sin = reinterpret_cast<struct sockaddr_in*>(
+      resolver_ctx->addrs[i].sockaddr);
+
+  fetch->sin_.sin_family = sin->sin_family;
+  fetch->sin_.sin_addr.s_addr = sin->sin_addr.s_addr;
 #endif
 
-    fetch->sin_.sin_family = AF_INET;
-    fetch->sin_.sin_port = htons(fetch->url_.port);
+  fetch->sin_.sin_family = AF_INET;
+  fetch->sin_.sin_port = htons(fetch->url_.port);
 
-    // Maybe we have Proxy
-    if (0 != fetcher->proxy_.url.len) {
-      fetch->sin_.sin_port = htons(fetcher->proxy_.port);
-    }
-
-    char* ip_address = inet_ntoa(fetch->sin_.sin_addr);
-
-    fetch->message_handler()->Message(
-        kInfo, "NgxFetch: Resolved host [%.*s] to [%s]",
-        static_cast<int>(resolver_ctx->name.len), resolver_ctx->name.data,
-        ip_address);
-
-    fetch->release_resolver();
-
-    if (fetch->InitRequest() != NGX_OK) {
-      fetch->message_handler()->Message(kError, "NgxFetch: InitRequest failed");
-      fetch->CallbackDone(false);
-    }
+  // Maybe we have Proxy
+  if (0 != fetcher->proxy_.url.len) {
+    fetch->sin_.sin_port = htons(fetcher->proxy_.port);
   }
 
-  // prepare the send data for this fetch, and hook write event.
-  int NgxFetch::InitRequest() {
-    in_ = ngx_create_temp_buf(pool_, 4096);
-    if (in_ == NULL) {
-      return NGX_ERROR;
+  char* ip_address = inet_ntoa(fetch->sin_.sin_addr);
+
+  ngx_log_error(NGX_LOG_DEBUG, fetch->log_, 0,
+                "NgxFetch %p: Resolved host [%V] to [%s]", fetch,
+                &resolver_ctx->name, ip_address);
+
+  fetch->release_resolver();
+
+  if (fetch->InitRequest() != NGX_OK) {
+    fetch->message_handler()->Message(kError, "NgxFetch: InitRequest failed");
+    fetch->CallbackDone(false);
+  }
+}
+
+// Prepare the request data for this fetch, and hook the write event.
+int NgxFetch::InitRequest() {
+  in_ = ngx_create_temp_buf(pool_, 4096);
+  if (in_ == NULL) {
+    return NGX_ERROR;
+  }
+
+  FixUserAgent();
+
+  RequestHeaders* request_headers = async_fetch_->request_headers();
+  ConstStringStarVector v;
+  size_t size = 0;
+  bool have_host = false;
+  GoogleString port;
+
+  response_handler = NgxFetch::HandleStatusLine;
+  int rc = Connect();
+  if (rc == NGX_AGAIN || rc == NGX_OK) {
+    if (connection_->keepalive()) {
+      request_headers->Add(HttpAttributes::kConnection,
+                           NgxConnection::ka_header);
     }
-
-    FixUserAgent();
-
-    RequestHeaders* request_headers = async_fetch_->request_headers();
-    ConstStringStarVector v;
-    size_t size = 0;
-    bool have_host = false;
-    GoogleString port;
-
     const char* method = request_headers->method_string();
     size_t method_len = strlen(method);
 
@@ -361,8 +662,7 @@ namespace net_instaweb {
 
       // name: value\r\n
       size += request_headers->Name(i).length()
-           + request_headers->Value(i).length()
-           + 4;  // for ": \r\n"
+          + request_headers->Value(i).length() + 4;  // 4 for ": \r\n"
     }
 
     if (!have_host) {
@@ -402,243 +702,274 @@ namespace net_instaweb {
     }
     *(out_->last++) = CR;
     *(out_->last++) = LF;
-
-    response_handler = NgxFetchHandleStatusLine;
-    int rc = Connect();
     if (rc == NGX_AGAIN) {
       return NGX_OK;
-    } else if (rc < NGX_OK) {
-      return rc;
     }
-
-    NgxFetchWrite(connection_->write);
-    return NGX_OK;
-  }
-
-  int NgxFetch::Connect() {
-    ngx_peer_connection_t pc;
-    ngx_memzero(&pc, sizeof(pc));
-    pc.sockaddr = (struct sockaddr*)&sin_;
-    pc.socklen = sizeof(struct sockaddr_in);
-    pc.name = &url_.host;
-
-    // get callback is dummy function, it just returns NGX_OK
-    pc.get = ngx_event_get_peer;
-    pc.log_error = NGX_ERROR_ERR;
-    pc.log = fetcher_->log_;
-    pc.rcvbuf = -1;
-
-    int rc = ngx_event_connect_peer(&pc);
-    if (rc == NGX_ERROR || rc == NGX_DECLINED || rc == NGX_BUSY) {
-      return rc;
-    }
-
-    connection_ = pc.connection;
-    connection_->write->handler = NgxFetchWrite;
-    connection_->read->handler = NgxFetchRead;
-    connection_->data = this;
-
-    // Timer set in Init() is still in effect.
+  } else if (rc < NGX_OK) {
     return rc;
   }
+  CHECK(rc == NGX_OK);
+  NgxFetch::ConnectionWriteHandler(connection_->c_->write);
+  return NGX_OK;
+}
 
-  // When the fetch sends the request completely, it will hook the read event,
-  // and prepare to parse the response.
-  void NgxFetch::NgxFetchWrite(ngx_event_t* wev) {
-    ngx_connection_t* c = static_cast<ngx_connection_t*>(wev->data);
-    NgxFetch* fetch = static_cast<NgxFetch*>(c->data);
-    ngx_buf_t* out = fetch->out_;
+int NgxFetch::Connect() {
+  ngx_peer_connection_t pc;
+  ngx_memzero(&pc, sizeof(pc));
+  pc.sockaddr = (struct sockaddr*)&sin_;
+  pc.socklen = sizeof(struct sockaddr_in);
+  pc.name = &url_.host;
 
-    while (out->pos < out->last) {
-      int n = c->send(c, out->pos, out->last - out->pos);
-      if (n >= 0) {
-        out->pos += n;
-      } else if (n == NGX_AGAIN) {
-        if (ngx_handle_write_event(c->write, 0) != NGX_OK) {
-          fetch->CallbackDone(false);
-        }
-        // Timer set in Init() is still in effect.
-        return;
-      } else {
-        c->error = 1;
+  // get callback is dummy function, it just returns NGX_OK
+  pc.get = ngx_event_get_peer;
+  pc.log_error = NGX_ERROR_ERR;
+  pc.log = fetcher_->log_;
+  pc.rcvbuf = -1;
+
+
+  connection_ = NgxConnection::Connect(&pc, message_handler(),
+                                       fetcher_->max_keepalive_requests_);
+  ngx_log_error(NGX_LOG_DEBUG, fetcher_->log_, 0,
+                "NgxFetch %p Connect() connection %p for [%s]\n",
+                this, connection_, str_url());
+
+  if (connection_ == NULL) {
+    return NGX_ERROR;
+  }
+
+  connection_->c_->write->handler = NgxFetch::ConnectionWriteHandler;
+  connection_->c_->read->handler = NgxFetch::ConnectionReadHandler;
+  connection_->c_->data = this;
+
+  // Timer set in Init() is still in effect.
+  return NGX_OK;
+}
+
+// When the fetch sends the request completely, it will hook the read event,
+// and prepare to parse the response.
+void NgxFetch::ConnectionWriteHandler(ngx_event_t* wev) {
+  ngx_connection_t* c = static_cast<ngx_connection_t*>(wev->data);
+  NgxFetch* fetch = static_cast<NgxFetch*>(c->data);
+  ngx_buf_t* out = fetch->out_;
+
+  while (out->pos < out->last) {
+    int n = c->send(c, out->pos, out->last - out->pos);
+    ngx_log_error(NGX_LOG_DEBUG, fetch->log_, 0,
+                  "NgxFetch %p: ConnectionWriteHandler "
+                  "send result %d", fetch, n);
+
+    if (n >= 0) {
+      out->pos += n;
+    } else if (n == NGX_AGAIN) {
+      if (ngx_handle_write_event(c->write, 0) != NGX_OK) {
         fetch->CallbackDone(false);
-        return;
       }
-    }
-
-    if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
+      // Timer set in Init() is still in effect.
+      return;
+    } else {
       c->error = 1;
       fetch->CallbackDone(false);
-    }
-
-    return;
-  }
-
-  void NgxFetch::NgxFetchRead(ngx_event_t* rev) {
-    ngx_connection_t* c = static_cast<ngx_connection_t*>(rev->data);
-    NgxFetch* fetch = static_cast<NgxFetch*>(c->data);
-
-    for (;;) {
-      int n = c->recv(
-          c, fetch->in_->start, fetch->in_->end - fetch->in_->start);
-
-      if (n == NGX_AGAIN) {
-        break;
-      }
-
-      if (n == 0) {
-        // If the content length was not known, we assume that we have read
-        // all if we at least parsed the headers.
-        // If we do know the content length, having a mismatch on the bytes read
-        // will be interpreted as an error.
-        if (fetch->content_length_known_) {
-          fetch->CallbackDone(fetch->content_length_ == fetch->bytes_received_);
-        } else {
-          fetch->CallbackDone(fetch->parser_.headers_complete());
-        }
-
-        return;
-      } else if (n > 0) {
-        fetch->in_->pos = fetch->in_->start;
-        fetch->in_->last = fetch->in_->start + n;
-        if (!fetch->response_handler(c)) {
-          fetch->CallbackDone(false);
-          return;
-        }
-
-        if (fetch->done_) {
-          fetch->CallbackDone(true);
-          return;
-        }
-      }
-
-      if (!rev->ready) {
-        break;
-      }
-    }
-
-    if (fetch->done_) {
-      fetch->CallbackDone(true);
       return;
     }
-
-    if (ngx_handle_read_event(rev, 0) != NGX_OK) {
-      fetch->CallbackDone(false);
-    }
-
-    // Timer set in Init() is still in effect.
   }
 
-  // Parse the status line: "HTTP/1.1 200 OK\r\n"
-  bool NgxFetch::NgxFetchHandleStatusLine(ngx_connection_t* c) {
-    NgxFetch* fetch = static_cast<NgxFetch*>(c->data);
-    // This function only works after Nginx-1.1.4. Before nginx-1.1.4,
-    // ngx_http_parse_status_line didn't save http_version.
-    ngx_int_t n = ngx_http_parse_status_line(fetch->r_, fetch->in_,
-                                             fetch->status_);
-    if (n == NGX_ERROR) {  // parse status line error
-      fetch->message_handler()->Message(
-          kWarning, "NgxFetch: failed to parse status line");
-      return false;
-    } else if (n == NGX_AGAIN) {  // not completed
-      return true;
-    }
-    ResponseHeaders* response_headers =
-      fetch->async_fetch_->response_headers();
-    response_headers->SetStatusAndReason(
-        static_cast<HttpStatus::Code>(fetch->get_status_code()));
-    response_headers->set_major_version(fetch->get_major_version());
-    response_headers->set_minor_version(fetch->get_minor_version());
-    fetch->set_response_handler(NgxFetchHandleHeader);
-    return fetch->response_handler(c);
-  }
-
-  // Parse the HTTP headers
-  bool NgxFetch::NgxFetchHandleHeader(ngx_connection_t* c) {
-    NgxFetch* fetch = static_cast<NgxFetch*>(c->data);
-    char* data = reinterpret_cast<char*>(fetch->in_->pos);
-    size_t size = fetch->in_->last - fetch->in_->pos;
-    size_t n = fetch->parser_.ParseChunk(StringPiece(data, size),
-        fetch->message_handler_);
-    if (n > size) {
-      return false;
-    } else if (fetch->parser_.headers_complete()) {
-      if (fetch->async_fetch_->response_headers()->FindContentLength(
-              &fetch->content_length_)) {
-        if (fetch->content_length_ < 0) {
-          fetch->message_handler_->Message(
-              kError, "Negative content-length in response header");
-          return false;
-        } else {
-          fetch->content_length_known_ = true;
-        }
-      }
-
-      if (fetch->fetcher_->track_original_content_length()
-         && fetch->content_length_known_) {
-        fetch->async_fetch_->response_headers()->SetOriginalContentLength(
-            fetch->content_length_);
-      }
-
-      fetch->in_->pos += n;
-      fetch->set_response_handler(NgxFetchHandleBody);
-      return fetch->response_handler(c);
-    }
-    return true;
-  }
-
-  // Read the response body
-  bool NgxFetch::NgxFetchHandleBody(ngx_connection_t* c) {
-    NgxFetch* fetch = static_cast<NgxFetch*>(c->data);
-    char* data = reinterpret_cast<char*>(fetch->in_->pos);
-    size_t size = fetch->in_->last - fetch->in_->pos;
-    if (size == 0) {
-      return true;
-    }
-
-    fetch->bytes_received_add(size);
-
-    if (fetch->async_fetch_->Write(StringPiece(data, size),
-        fetch->message_handler())) {
-      if (fetch->content_length_known_ &&
-          fetch->bytes_received_ == fetch->content_length_) {
-        fetch->done_ = true;
-      }
-      return true;
-    }
-    return false;
-  }
-
-  void NgxFetch::NgxFetchTimeout(ngx_event_t* tev) {
-    NgxFetch* fetch = static_cast<NgxFetch*>(tev->data);
+  if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
+    c->error = 1;
     fetch->CallbackDone(false);
   }
 
-  void NgxFetch::FixUserAgent() {
-    GoogleString user_agent;
-    ConstStringStarVector v;
-    RequestHeaders* request_headers = async_fetch_->request_headers();
-    if (request_headers->Lookup(HttpAttributes::kUserAgent, &v)) {
-      for (int i = 0, n = v.size(); i < n; i++) {
-        if (i != 0) {
-          user_agent += " ";
-        }
+  return;
+}
 
-        if (v[i] != NULL) {
-          user_agent += *(v[i]);
+void NgxFetch::ConnectionReadHandler(ngx_event_t* rev) {
+  ngx_connection_t* c = static_cast<ngx_connection_t*>(rev->data);
+  NgxFetch* fetch = static_cast<NgxFetch*>(c->data);
+
+  for (;;) {
+    int n = c->recv(
+        c, fetch->in_->start, fetch->in_->end - fetch->in_->start);
+
+    ngx_log_error(NGX_LOG_DEBUG, fetch->log_, 0,
+                  "NgxFetch %p: ConnectionReadHandler "
+                  "recv result %d", fetch, n);
+
+    if (n == NGX_AGAIN) {
+      break;
+    }
+
+    if (n == 0) {
+      // If the content length was not known, we assume that we have read
+      // all if we at least parsed the headers.
+      // If we do know the content length, having a mismatch on the bytes read
+      // will be interpreted as an error.
+      if (fetch->content_length_known_) {
+        fetch->CallbackDone(fetch->content_length_ == fetch->bytes_received_);
+      } else {
+        fetch->CallbackDone(fetch->parser_.headers_complete());
+      }
+
+      return;
+    } else if (n > 0) {
+      fetch->in_->pos = fetch->in_->start;
+      fetch->in_->last = fetch->in_->start + n;
+      if (!fetch->response_handler(c)) {
+        fetch->CallbackDone(false);
+        return;
+      }
+
+      if (fetch->done_) {
+        fetch->CallbackDone(true);
+        return;
+      }
+    }
+
+    if (!rev->ready) {
+      break;
+    }
+  }
+
+  if (fetch->done_) {
+    fetch->CallbackDone(true);
+    return;
+  }
+
+  if (ngx_handle_read_event(rev, 0) != NGX_OK) {
+    fetch->CallbackDone(false);
+  }
+
+  // Timer set in Init() is still in effect.
+}
+
+// Parse the status line: "HTTP/1.1 200 OK\r\n"
+bool NgxFetch::HandleStatusLine(ngx_connection_t* c) {
+  NgxFetch* fetch = static_cast<NgxFetch*>(c->data);
+  ngx_log_error(NGX_LOG_DEBUG, fetch->log_, 0,
+                "NgxFetch %p: Handle status line\n", fetch);
+
+  // This function only works after Nginx-1.1.4. Before nginx-1.1.4,
+  // ngx_http_parse_status_line didn't save http_version.
+  ngx_int_t n = ngx_http_parse_status_line(fetch->r_, fetch->in_,
+                                           fetch->status_);
+  if (n == NGX_ERROR) {  // parse status line error
+    fetch->message_handler()->Message(
+        kWarning, "NgxFetch: failed to parse status line");
+    return false;
+  } else if (n == NGX_AGAIN) {  // not completed
+    return true;
+  }
+  ResponseHeaders* response_headers =
+      fetch->async_fetch_->response_headers();
+  response_headers->SetStatusAndReason(
+      static_cast<HttpStatus::Code>(fetch->get_status_code()));
+  response_headers->set_major_version(fetch->get_major_version());
+  response_headers->set_minor_version(fetch->get_minor_version());
+  fetch->set_response_handler(NgxFetch::HandleHeader);
+  return fetch->response_handler(c);
+}
+
+// Parse the HTTP headers
+bool NgxFetch::HandleHeader(ngx_connection_t* c) {
+  NgxFetch* fetch = static_cast<NgxFetch*>(c->data);
+  char* data = reinterpret_cast<char*>(fetch->in_->pos);
+  size_t size = fetch->in_->last - fetch->in_->pos;
+  size_t n = fetch->parser_.ParseChunk(StringPiece(data, size),
+                                       fetch->message_handler_);
+
+  ngx_log_error(NGX_LOG_DEBUG, fetch->log_, 0,
+                "NgxFetch %p: Handle headers\n", fetch);
+
+  if (n > size) {
+    return false;
+  } else if (fetch->parser_.headers_complete()) {
+    if (fetch->async_fetch_->response_headers()->FindContentLength(
+            &fetch->content_length_)) {
+      if (fetch->content_length_ < 0) {
+        fetch->message_handler_->Message(
+            kError, "Negative content-length in response header");
+        return false;
+      } else {
+        fetch->content_length_known_ = true;
+        if (fetch->content_length_ == 0) {
+          fetch->done_ = true;
         }
       }
-      request_headers->RemoveAll(HttpAttributes::kUserAgent);
     }
-    if (user_agent.empty()) {
-      user_agent += "NgxNativeFetcher";
+
+    if (fetch->fetcher_->track_original_content_length()
+        && fetch->content_length_known_) {
+      fetch->async_fetch_->response_headers()->SetOriginalContentLength(
+          fetch->content_length_);
     }
-    GoogleString version = StrCat(
-        " ", kModPagespeedSubrequestUserAgent,
-        "/" MOD_PAGESPEED_VERSION_STRING "-" LASTCHANGE_STRING);
-    if (!StringPiece(user_agent).ends_with(version)) {
-      user_agent += version;
+
+    fetch->in_->pos += n;
+    fetch->set_response_handler(NgxFetch::HandleBody);
+    if ((fetch->in_->last - fetch->in_->pos) > 0) {
+      return fetch->response_handler(c);
     }
-    request_headers->Add(HttpAttributes::kUserAgent, user_agent);
+  } else {
+    fetch->in_->pos += n;
   }
+  return true;
+}
+
+// Read the response body
+bool NgxFetch::HandleBody(ngx_connection_t* c) {
+  NgxFetch* fetch = static_cast<NgxFetch*>(c->data);
+  char* data = reinterpret_cast<char*>(fetch->in_->pos);
+  size_t size = fetch->in_->last - fetch->in_->pos;
+
+  fetch->bytes_received_add(size);
+
+  ngx_log_error(NGX_LOG_DEBUG, fetch->log_, 0,
+                "NgxFetch %p: Handle body (%d bytes)\n", fetch, size);
+
+  if ( fetch->async_fetch_->Write(StringPiece(data, size),
+                                  fetch->message_handler()) ) {
+    if (fetch->bytes_received_ == fetch->content_length_) {
+      fetch->done_ = true;
+    }
+    fetch->in_->pos += size;
+  } else {
+    ngx_log_error(NGX_LOG_DEBUG, fetch->log_, 0,
+                  "NgxFetch %p: async fetch write failure\n", fetch);
+    return false;
+  }
+  return true;
+}
+
+void NgxFetch::TimeoutHandler(ngx_event_t* tev) {
+  NgxFetch* fetch = static_cast<NgxFetch*>(tev->data);
+  ngx_log_error(NGX_LOG_DEBUG, fetch->log_, 0,
+                "NgxFetch %p: TimeoutHandler called\n", fetch);
+  fetch->CallbackDone(false);
+}
+
+void NgxFetch::FixUserAgent() {
+  GoogleString user_agent;
+  ConstStringStarVector v;
+  RequestHeaders* request_headers = async_fetch_->request_headers();
+  if (request_headers->Lookup(HttpAttributes::kUserAgent, &v)) {
+    for (size_t i = 0, n = v.size(); i < n; i++) {
+      if (i != 0) {
+        user_agent += " ";
+      }
+
+      if (v[i] != NULL) {
+        user_agent += *(v[i]);
+      }
+    }
+    request_headers->RemoveAll(HttpAttributes::kUserAgent);
+  }
+  if (user_agent.empty()) {
+    user_agent += "NgxNativeFetcher";
+  }
+  GoogleString version = StrCat(
+      " ", kModPagespeedSubrequestUserAgent,
+      "/" MOD_PAGESPEED_VERSION_STRING "-" LASTCHANGE_STRING);
+  if (!StringPiece(user_agent).ends_with(version)) {
+    user_agent += version;
+  }
+  request_headers->Add(HttpAttributes::kUserAgent, user_agent);
+}
+
 }  // namespace net_instaweb
