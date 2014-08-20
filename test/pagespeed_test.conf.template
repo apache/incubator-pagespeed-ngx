@@ -38,6 +38,10 @@ http {
   pagespeed StaticAssetPrefix /pagespeed_custom_static/;
 
   pagespeed MessageBufferSize 200000;
+  # Increase the default fetcher timeout to resolve sporadic flakeyness when
+  # the native fetcher uses 8.8.8.8 to resolve.
+  pagespeed FetcherTimeoutMs 10000;
+  pagespeed NativeFetcherMaxKeepaliveRequests 50;
 
   root "@@SERVER_ROOT@@";
 
