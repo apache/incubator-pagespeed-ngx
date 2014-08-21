@@ -308,7 +308,8 @@ class JsCombineFilterTest : public RewriteTestBase {
 
 class JsFilterAndCombineFilterTest : public JsCombineFilterTest {
   virtual void SetUpExtraFilters() {
-    options()->SoftEnableFilterForTesting(RewriteOptions::kRewriteJavascript);
+    options()->SoftEnableFilterForTesting(
+        RewriteOptions::kRewriteJavascriptExternal);
   }
 };
 

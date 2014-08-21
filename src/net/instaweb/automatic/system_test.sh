@@ -561,6 +561,28 @@ check grep -q preserved $FETCH_FILE                # Preserves certain comments.
 # Rewritten JS is cache-extended.
 check grep -qi "Cache-control: max-age=31536000" $WGET_OUTPUT
 check grep -qi "Expires:" $WGET_OUTPUT
+WGET_ARGS=""
+
+start_test rewrite_javascript_external
+URL="$EXAMPLE_ROOT/rewrite_javascript.html"
+fetch_until -save "$URL?PageSpeedFilters=rewrite_javascript_external" \
+  'grep -c src=.*rewrite_javascript\.js\.pagespeed\.jm\.' 2
+check_from "$(< $FETCH_UNTIL_OUTFILE)" \
+  fgrep -q "// This comment will be removed"
+
+start_test rewrite_javascript_inline
+URL="$EXAMPLE_ROOT/rewrite_javascript.html"
+# We test with blocking rewrites here because we are trying to prove
+# we will never rewrite the external JS, which is impractical to do
+# with fetch_until.
+OUT=$($WGET_DUMP --header=X-PSA-Blocking-Rewrite:psatest \
+  $URL?PageSpeedFilters=rewrite_javascript_inline)
+# Checks that the inline JS block was minified.
+check_not_from "$OUT" fgrep -q "// This comment will be removed"
+check_from "$OUT" fgrep -q 'id="int1">var state=0;document.write'
+# Checks that the external JS links were left alone.
+check [ $(echo "$OUT" | fgrep -c 'src="rewrite_javascript.js"') -eq 2 ]
+check_not_from "$OUT" fgrep -q 'src=.*rewrite_javascript\.js\.pagespeed\.jm\.'
 
 # Error path for fetch of outlined resources that are not in cache leaked
 # at one point of development.

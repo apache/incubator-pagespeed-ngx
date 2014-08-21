@@ -464,7 +464,8 @@ class CacheHtmlFlowTest : public ProxyInterfaceTestBase {
     server_context()->set_flush_early_info_finder(flush_early_info_finder_);
     options_.reset(server_context()->NewOptions());
     options_->EnableFilter(RewriteOptions::kCachePartialHtml);
-    options_->EnableFilter(RewriteOptions::kRewriteJavascript);
+    options_->EnableFilter(RewriteOptions::kRewriteJavascriptExternal);
+    options_->EnableFilter(RewriteOptions::kRewriteJavascriptInline);
     options_->set_non_cacheables_for_cache_partial_html(
         "class=item,id=beforeItems");
 
@@ -1557,7 +1558,8 @@ class CacheHtmlPrioritizeCriticalCssTest : public CacheHtmlFlowTest {
     options_->ClearSignatureForTesting();
     options_->EnableFilter(RewriteOptions::kCachePartialHtml);
     options_->EnableFilter(RewriteOptions::kPrioritizeCriticalCss);
-    options_->DisableFilter(RewriteOptions::kRewriteJavascript);
+    options_->DisableFilter(RewriteOptions::kRewriteJavascriptExternal);
+    options_->DisableFilter(RewriteOptions::kRewriteJavascriptInline);
     options_->set_non_cacheables_for_cache_partial_html(
         "class=item,id=beforeItems");
     options_->set_in_place_rewriting_enabled(true);

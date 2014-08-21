@@ -410,7 +410,10 @@ TEST_F(JsInlineFilterTest, InlineMinimizeInteraction) {
   // There was a bug in async mode where we would accidentally prevent
   // minification results from rendering when inlining was not to be done.
   SetHtmlMimetype();
-  options()->SoftEnableFilterForTesting(RewriteOptions::kRewriteJavascript);
+  options()->SoftEnableFilterForTesting(
+      RewriteOptions::kRewriteJavascriptExternal);
+  options()->SoftEnableFilterForTesting(
+      RewriteOptions::kRewriteJavascriptInline);
   options()->set_js_inline_max_bytes(4);
 
   TestInlineJavascriptGeneral(

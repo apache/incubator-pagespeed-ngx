@@ -1168,7 +1168,7 @@ TEST_F(RewriteDriverTest, RejectHttpsQuickly) {
   // Need to expressly authorize https even though we don't support it.
   options()->WriteableDomainLawyer()->AddDomain("https://*/",
                                                 message_handler());
-  AddFilter(RewriteOptions::kRewriteJavascript);
+  AddFilter(RewriteOptions::kRewriteJavascriptExternal);
 
   // When we don't support https then we fail quickly and cleanly.
   factory()->mock_url_async_fetcher()->set_fetcher_supports_https(false);

@@ -203,7 +203,9 @@ class RewriteQueryTest : public RewriteTestBase {
       EXPECT_EQ(RewriteOptions::kPassThrough, options->level());
       // Not a complete list. Only checks the important ones.
       EXPECT_FALSE(options->Enabled(RewriteOptions::kRewriteCss));
-      EXPECT_FALSE(options->Enabled(RewriteOptions::kRewriteJavascript));
+      EXPECT_FALSE(options->Enabled(
+          RewriteOptions::kRewriteJavascriptExternal));
+      EXPECT_FALSE(options->Enabled(RewriteOptions::kRewriteJavascriptInline));
     }
     if (expected_proxy_mode == RewriteQuery::kProxyModeNoTransform ||
         expected_proxy_mode == RewriteQuery::kProxyModeNoImageTransform) {
@@ -299,7 +301,8 @@ TEST_F(RewriteQueryTest, OnWithDefaultFiltersQuery) {
   EXPECT_TRUE(options->Enabled(RewriteOptions::kCombineCss));
   EXPECT_TRUE(options->Enabled(RewriteOptions::kResizeImages));
   EXPECT_TRUE(options->Enabled(RewriteOptions::kRewriteCss));
-  EXPECT_TRUE(options->Enabled(RewriteOptions::kRewriteJavascript));
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kRewriteJavascriptExternal));
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kRewriteJavascriptInline));
 }
 
 TEST_F(RewriteQueryTest, OnWithDefaultFiltersHeaders) {
@@ -311,7 +314,8 @@ TEST_F(RewriteQueryTest, OnWithDefaultFiltersHeaders) {
   EXPECT_TRUE(options->Enabled(RewriteOptions::kCombineCss));
   EXPECT_TRUE(options->Enabled(RewriteOptions::kResizeImages));
   EXPECT_TRUE(options->Enabled(RewriteOptions::kRewriteCss));
-  EXPECT_TRUE(options->Enabled(RewriteOptions::kRewriteJavascript));
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kRewriteJavascriptExternal));
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kRewriteJavascriptInline));
 }
 
 TEST_F(RewriteQueryTest, OnWithDefaultFiltersQueryPageSpeed) {
@@ -323,7 +327,8 @@ TEST_F(RewriteQueryTest, OnWithDefaultFiltersQueryPageSpeed) {
   EXPECT_TRUE(options->Enabled(RewriteOptions::kCombineCss));
   EXPECT_TRUE(options->Enabled(RewriteOptions::kResizeImages));
   EXPECT_TRUE(options->Enabled(RewriteOptions::kRewriteCss));
-  EXPECT_TRUE(options->Enabled(RewriteOptions::kRewriteJavascript));
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kRewriteJavascriptExternal));
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kRewriteJavascriptInline));
 }
 
 TEST_F(RewriteQueryTest, OnWithDefaultFiltersHeadersPageSpeed) {
@@ -335,7 +340,8 @@ TEST_F(RewriteQueryTest, OnWithDefaultFiltersHeadersPageSpeed) {
   EXPECT_TRUE(options->Enabled(RewriteOptions::kCombineCss));
   EXPECT_TRUE(options->Enabled(RewriteOptions::kResizeImages));
   EXPECT_TRUE(options->Enabled(RewriteOptions::kRewriteCss));
-  EXPECT_TRUE(options->Enabled(RewriteOptions::kRewriteJavascript));
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kRewriteJavascriptExternal));
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kRewriteJavascriptInline));
 }
 
 TEST_F(RewriteQueryTest, SetFiltersQuery) {
@@ -349,7 +355,8 @@ TEST_F(RewriteQueryTest, SetFiltersQuery) {
   EXPECT_FALSE(options->Enabled(RewriteOptions::kCombineCss));
   EXPECT_FALSE(options->Enabled(RewriteOptions::kResizeImages));
   EXPECT_FALSE(options->Enabled(RewriteOptions::kRewriteCss));
-  EXPECT_FALSE(options->Enabled(RewriteOptions::kRewriteJavascript));
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kRewriteJavascriptExternal));
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kRewriteJavascriptInline));
 }
 
 TEST_F(RewriteQueryTest, SetFiltersQueryCorePlusMinus) {
@@ -369,7 +376,8 @@ TEST_F(RewriteQueryTest, SetFiltersQueryCorePlusMinus) {
   EXPECT_TRUE(options->Enabled(RewriteOptions::kCombineCss));
   EXPECT_TRUE(options->Enabled(RewriteOptions::kResizeImages));
   EXPECT_TRUE(options->Enabled(RewriteOptions::kRewriteCss));
-  EXPECT_TRUE(options->Enabled(RewriteOptions::kRewriteJavascript));
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kRewriteJavascriptExternal));
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kRewriteJavascriptInline));
 }
 
 TEST_F(RewriteQueryTest, SetFiltersRequestHeaders) {
@@ -383,7 +391,8 @@ TEST_F(RewriteQueryTest, SetFiltersRequestHeaders) {
   EXPECT_FALSE(options->Enabled(RewriteOptions::kCombineCss));
   EXPECT_FALSE(options->Enabled(RewriteOptions::kResizeImages));
   EXPECT_FALSE(options->Enabled(RewriteOptions::kRewriteCss));
-  EXPECT_FALSE(options->Enabled(RewriteOptions::kRewriteJavascript));
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kRewriteJavascriptExternal));
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kRewriteJavascriptInline));
 }
 
 TEST_F(RewriteQueryTest, SetFiltersResponseHeaders) {
@@ -404,7 +413,8 @@ TEST_F(RewriteQueryTest, SetFiltersResponseHeaders) {
   EXPECT_FALSE(options->Enabled(RewriteOptions::kCombineCss));
   EXPECT_FALSE(options->Enabled(RewriteOptions::kResizeImages));
   EXPECT_FALSE(options->Enabled(RewriteOptions::kRewriteCss));
-  EXPECT_FALSE(options->Enabled(RewriteOptions::kRewriteJavascript));
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kRewriteJavascriptExternal));
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kRewriteJavascriptInline));
 }
 
 TEST_F(RewriteQueryTest, QueryAndRequestAndResponseAndCookies) {

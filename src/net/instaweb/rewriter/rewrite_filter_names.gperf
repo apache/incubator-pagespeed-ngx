@@ -97,7 +97,8 @@ struct FilterMap {
 "resize_rendered_image_dimensions",  RewriteOptions::kResizeToRenderedImageDimensions
 "rewrite_css",                       RewriteOptions::kRewriteCss
 "rewrite_domains",                   RewriteOptions::kRewriteDomains
-"rewrite_javascript",                RewriteOptions::kRewriteJavascript
+"rewrite_javascript_external",       RewriteOptions::kRewriteJavascriptExternal
+"rewrite_javascript_inline",         RewriteOptions::kRewriteJavascriptInline
 "rewrite_style_attributes",          RewriteOptions::kRewriteStyleAttributes
 "rewrite_style_attributes_with_url", RewriteOptions::kRewriteStyleAttributesWithUrl
 "split_html",                        RewriteOptions::kSplitHtml

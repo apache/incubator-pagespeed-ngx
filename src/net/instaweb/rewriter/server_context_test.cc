@@ -547,7 +547,7 @@ TEST_F(ServerContextTest, TestNamed) {
 }
 
 TEST_F(ServerContextTest, TestOutputInputUrl) {
-  options()->EnableFilter(RewriteOptions::kRewriteJavascript);
+  options()->EnableFilter(RewriteOptions::kRewriteJavascriptExternal);
   rewrite_driver()->AddFilters();
 
   GoogleString url = Encode("http://example.com/dir/123/",
@@ -563,7 +563,7 @@ TEST_F(ServerContextTest, TestOutputInputUrl) {
 }
 
 TEST_F(ServerContextTest, TestOutputInputUrlEvil) {
-  options()->EnableFilter(RewriteOptions::kRewriteJavascript);
+  options()->EnableFilter(RewriteOptions::kRewriteJavascriptExternal);
   rewrite_driver()->AddFilters();
 
   GoogleString url = MakeEvilUrl("example.com", "http://www.evil.com");
@@ -579,7 +579,7 @@ TEST_F(ServerContextTest, TestOutputInputUrlEvil) {
 TEST_F(ServerContextTest, TestOutputInputUrlBusy) {
   EXPECT_TRUE(options()->WriteableDomainLawyer()->AddOriginDomainMapping(
       "www.busy.com", "example.com", "", message_handler()));
-  options()->EnableFilter(RewriteOptions::kRewriteJavascript);
+  options()->EnableFilter(RewriteOptions::kRewriteJavascriptExternal);
   rewrite_driver()->AddFilters();
 
   GoogleString url = MakeEvilUrl("example.com", "http://www.busy.com");

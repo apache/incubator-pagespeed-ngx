@@ -291,7 +291,8 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
     rewrite_driver()->AppendRewriteFilter(css_filter_);
     options()->ClearSignatureForTesting();
     AddRecompressImageFilters();
-    options()->EnableFilter(RewriteOptions::kRewriteJavascript);
+    options()->EnableFilter(RewriteOptions::kRewriteJavascriptExternal);
+    options()->EnableFilter(RewriteOptions::kRewriteJavascriptInline);
     options()->EnableFilter(RewriteOptions::kRewriteCss);
     if (optimize_for_browser()) {
       options()->EnableFilter(RewriteOptions::kInPlaceOptimizeForBrowser);
@@ -447,7 +448,7 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
     options()->ClearSignatureForTesting();
     other_options()->ClearSignatureForTesting();
     AddRecompressImageFilters();
-    options()->EnableFilter(RewriteOptions::kRewriteJavascript);
+    options()->EnableFilter(RewriteOptions::kRewriteJavascriptExternal);
     options()->EnableFilter(RewriteOptions::kRewriteCss);
     options_->DistributeFilter(distributed_filter);
     options_->set_distributed_rewrite_servers("example.com:80");

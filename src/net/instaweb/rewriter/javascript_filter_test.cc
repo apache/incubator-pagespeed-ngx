@@ -113,7 +113,8 @@ class JavascriptFilterTest : public RewriteTestBase,
   }
 
   void InitFilters() {
-    options()->EnableFilter(RewriteOptions::kRewriteJavascript);
+    options()->EnableFilter(RewriteOptions::kRewriteJavascriptExternal);
+    options()->EnableFilter(RewriteOptions::kRewriteJavascriptInline);
     options()->EnableFilter(RewriteOptions::kCanonicalizeJavascriptLibraries);
     rewrite_driver_->AddFilters();
   }
@@ -335,12 +336,13 @@ TEST_P(JavascriptFilterTest, IdentifyLibraryTwice) {
 TEST_P(JavascriptFilterTest, JsPreserveURLsOnTest) {
   // Make sure that when in conservative mode the URL stays the same.
   RegisterLibrary();
-  options()->SoftEnableFilterForTesting(RewriteOptions::kRewriteJavascript);
+  options()->SoftEnableFilterForTesting(
+      RewriteOptions::kRewriteJavascriptExternal);
   options()->SoftEnableFilterForTesting(
       RewriteOptions::kCanonicalizeJavascriptLibraries);
   options()->set_js_preserve_urls(true);
   rewrite_driver()->AddFilters();
-  EXPECT_TRUE(options()->Enabled(RewriteOptions::kRewriteJavascript));
+  EXPECT_TRUE(options()->Enabled(RewriteOptions::kRewriteJavascriptExternal));
   // Verify that preserve had a chance to forbid some filters.
   EXPECT_FALSE(options()->Enabled(
       RewriteOptions::kCanonicalizeJavascriptLibraries));
@@ -375,7 +377,8 @@ TEST_P(JavascriptFilterTest, JsPreserveOverridingExtend) {
   global_options->EnableFilter(RewriteOptions::kExtendCacheCss);
 
   scoped_ptr<RewriteOptions> vhost_options(options()->NewOptions());
-  vhost_options->SoftEnableFilterForTesting(RewriteOptions::kRewriteJavascript);
+  vhost_options->SoftEnableFilterForTesting(
+      RewriteOptions::kRewriteJavascriptExternal);
   vhost_options->SoftEnableFilterForTesting(
       RewriteOptions::kCanonicalizeJavascriptLibraries);
   vhost_options->set_js_preserve_urls(true);
@@ -383,7 +386,7 @@ TEST_P(JavascriptFilterTest, JsPreserveOverridingExtend) {
   options()->Merge(*vhost_options);
 
   rewrite_driver()->AddFilters();
-  EXPECT_TRUE(options()->Enabled(RewriteOptions::kRewriteJavascript));
+  EXPECT_TRUE(options()->Enabled(RewriteOptions::kRewriteJavascriptExternal));
   InitTest(100);
 
   // Make sure the URL doesn't change.
@@ -414,14 +417,14 @@ TEST_P(JavascriptFilterTest, JsExtendOverridingPreserve) {
 
   scoped_ptr<RewriteOptions> global_options(options()->NewOptions());
   global_options->set_js_preserve_urls(true);
-  global_options->EnableFilter(RewriteOptions::kRewriteJavascript);
+  global_options->EnableFilter(RewriteOptions::kRewriteJavascriptExternal);
 
   scoped_ptr<RewriteOptions> vhost_options(options()->NewOptions());
   vhost_options->EnableFilter(RewriteOptions::kExtendCacheScripts);
   options()->Merge(*global_options);
   options()->Merge(*vhost_options);
   rewrite_driver()->AddFilters();
-  EXPECT_TRUE(options()->Enabled(RewriteOptions::kRewriteJavascript));
+  EXPECT_TRUE(options()->Enabled(RewriteOptions::kRewriteJavascriptExternal));
   InitTest(100);
 
   // Make sure the URL is updated.
@@ -449,11 +452,13 @@ TEST_P(JavascriptFilterTest, JsExtendOverridingPreserve) {
 TEST_P(JavascriptFilterTest, JsPreserveURLsNoPreemptiveRewriteTest) {
   // Make sure that when in conservative mode the URL stays the same.
   RegisterLibrary();
-  options()->SoftEnableFilterForTesting(RewriteOptions::kRewriteJavascript);
+  options()->SoftEnableFilterForTesting(
+      RewriteOptions::kRewriteJavascriptExternal);
   options()->set_js_preserve_urls(true);
   options()->set_in_place_preemptive_rewrite_javascript(false);
   rewrite_driver()->AddFilters();
-  EXPECT_TRUE(options()->Enabled(RewriteOptions::kRewriteJavascript));
+  EXPECT_TRUE(options()->Enabled(
+      RewriteOptions::kRewriteJavascriptExternal));
   InitTest(100);
   // Make sure the URL doesn't change.
   ValidateExpected("js_urls_preserved_no_preemptive",
@@ -545,7 +550,7 @@ TEST_P(JavascriptFilterTest, IdentifyFailureNoMinification) {
 TEST_P(JavascriptFilterTest, IgnoreLibraryNoIdentification) {
   RegisterLibrary();
   // We register the library but don't enable library redirection.
-  options()->EnableFilter(RewriteOptions::kRewriteJavascript);
+  options()->EnableFilter(RewriteOptions::kRewriteJavascriptExternal);
   rewrite_driver_->AddFilters();
   InitTest(100);
   ValidateExpected("ignore_library",
@@ -1234,6 +1239,59 @@ TEST_P(JavascriptFilterTest, SourceMapUnsanitaryUrl) {
       kJsMinData, "\n//# sourceMappingURL="
       "http://test.com/input.js,qevil=.pagespeed.sm.0.map\n");
   EXPECT_EQ(expected_output_js, output_js);
+}
+
+TEST_P(JavascriptFilterTest, InlineAndNotExternal) {
+  options()->EnableFilter(RewriteOptions::kRewriteJavascriptInline);
+  options()->DisableFilter(RewriteOptions::kRewriteJavascriptExternal);
+  rewrite_driver_->AddFilters();
+  InitTest(100);
+  ValidateExpected("inline_not_external",
+                   StrCat(StringPrintf(kInlineJs, kJsData),
+                          StringPrintf(kHtmlFormat, kOrigJsName)),
+                   StrCat(StringPrintf(kInlineJs, kJsMinData),
+                          StringPrintf(kHtmlFormat, kOrigJsName)));
+}
+
+TEST_P(JavascriptFilterTest, InlineAndNotExternalPreserve) {
+  // js_preserve_urls should not affect minification of inline JS.
+  options()->set_js_preserve_urls(true);
+  options()->set_in_place_preemptive_rewrite_javascript(false);
+  options()->EnableFilter(RewriteOptions::kRewriteJavascriptInline);
+  options()->DisableFilter(RewriteOptions::kRewriteJavascriptExternal);
+  rewrite_driver_->AddFilters();
+  InitTest(100);
+  ValidateExpected("inline_not_external",
+                   StrCat(StringPrintf(kInlineJs, kJsData),
+                          StringPrintf(kHtmlFormat, kOrigJsName)),
+                   StrCat(StringPrintf(kInlineJs, kJsMinData),
+                          StringPrintf(kHtmlFormat, kOrigJsName)));
+}
+
+TEST_P(JavascriptFilterTest, InlineAndCanonicalNotExternal) {
+  options()->EnableFilter(RewriteOptions::kRewriteJavascriptInline);
+  options()->EnableFilter(RewriteOptions::kCanonicalizeJavascriptLibraries);
+  options()->DisableFilter(RewriteOptions::kRewriteJavascriptExternal);
+  rewrite_driver_->AddFilters();
+  InitTest(100);
+  ValidateExpected("inline_and_canonical_and_not_external",
+                   StrCat(StringPrintf(kInlineJs, kJsData),
+                          StringPrintf(kHtmlFormat, kOrigJsName)),
+                   StrCat(StringPrintf(kInlineJs, kJsMinData),
+                          StringPrintf(kHtmlFormat, kOrigJsName)));
+}
+
+TEST_P(JavascriptFilterTest, ExternalAndNotInline) {
+  options()->EnableFilter(RewriteOptions::kRewriteJavascriptExternal);
+  options()->DisableFilter(RewriteOptions::kRewriteJavascriptInline);
+  rewrite_driver_->AddFilters();
+  InitTest(100);
+  ValidateExpected("external_not_inline",
+                   StrCat(StringPrintf(kInlineJs, kJsData),
+                          StringPrintf(kHtmlFormat, kOrigJsName)),
+                   StrCat(StringPrintf(kInlineJs, kJsData),
+                          StringPrintf(kHtmlFormat,
+                                       expected_rewritten_path_.c_str())));
 }
 
 // We test with use_experimental_minifier == GetParam() as both true and false.

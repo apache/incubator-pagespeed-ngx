@@ -2177,7 +2177,9 @@ TEST_F(RewriteOptionsTest, BandwidthMode) {
   EXPECT_TRUE(vhost_options->Enabled(RewriteOptions::kRecompressPng));
   EXPECT_TRUE(vhost_options->Enabled(RewriteOptions::kRecompressWebp));
   EXPECT_TRUE(vhost_options->Enabled(RewriteOptions::kRewriteCss));
-  EXPECT_TRUE(vhost_options->Enabled(RewriteOptions::kRewriteJavascript));
+  EXPECT_TRUE(vhost_options->Enabled(
+      RewriteOptions::kRewriteJavascriptExternal));
+  EXPECT_TRUE(vhost_options->Enabled(RewriteOptions::kRewriteJavascriptInline));
   EXPECT_TRUE(vhost_options->Enabled(RewriteOptions::kStripImageColorProfile));
   EXPECT_TRUE(vhost_options->Enabled(RewriteOptions::kStripImageMetaData));
   EXPECT_TRUE(vhost_options->Enabled(
@@ -2215,7 +2217,8 @@ TEST_F(RewriteOptionsTest, BandwidthMode) {
   EXPECT_TRUE(vhost_core->Enabled(RewriteOptions::kCombineCss));
   EXPECT_TRUE(vhost_core->Enabled(RewriteOptions::kRecompressJpeg));
   EXPECT_TRUE(vhost_core->Enabled(RewriteOptions::kRewriteCss));
-  EXPECT_TRUE(vhost_core->Enabled(RewriteOptions::kRewriteJavascript));
+  EXPECT_TRUE(vhost_core->Enabled(RewriteOptions::kRewriteJavascriptExternal));
+  EXPECT_TRUE(vhost_core->Enabled(RewriteOptions::kRewriteJavascriptInline));
   EXPECT_FALSE(vhost_core->Enabled(RewriteOptions::kInPlaceOptimizeForBrowser));
   EXPECT_FALSE(vhost_core->in_place_rewriting_enabled());
   EXPECT_FALSE(vhost_core->css_preserve_urls());
@@ -2231,7 +2234,8 @@ TEST_F(RewriteOptionsTest, BandwidthMode) {
   EXPECT_FALSE(options_.Enabled(RewriteOptions::kCombineCss));
   EXPECT_TRUE(options_.Enabled(RewriteOptions::kRecompressJpeg));
   EXPECT_TRUE(options_.Enabled(RewriteOptions::kRewriteCss));
-  EXPECT_TRUE(options_.Enabled(RewriteOptions::kRewriteJavascript));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kRewriteJavascriptExternal));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kRewriteJavascriptInline));
   EXPECT_TRUE(options_.Enabled(RewriteOptions::kInPlaceOptimizeForBrowser));
   EXPECT_TRUE(options_.in_place_rewriting_enabled());
   EXPECT_FALSE(options_.css_preserve_urls());

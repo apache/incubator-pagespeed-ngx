@@ -1105,13 +1105,22 @@ void RewriteDriver::AddPreRenderFilters() {
     // them opaque to analysis.
     EnableRewriteFilter(RewriteOptions::kJavascriptCombinerId);
   }
-  if (rewrite_options->Enabled(RewriteOptions::kRewriteJavascript) ||
+  if (rewrite_options->Enabled(RewriteOptions::kRewriteJavascriptExternal) ||
+      rewrite_options->Enabled(RewriteOptions::kRewriteJavascriptInline) ||
       rewrite_options->Enabled(
           RewriteOptions::kCanonicalizeJavascriptLibraries)) {
     // Since AddFilters only applies to the HTML rewrite path, we check here
     // if IPRO preemptive rewrites are disabled and skip the filter if so.
+    //
+    // Note that we minify before we inline, so if you enable
+    // rewrite_javascript_inline but not rewrite_javascript_external, we
+    // will only minify the already-inlined JavaScript, and we will not
+    // minify external JS that we decided later to inline.  It seems unlikely
+    // that someone would want to enable inline_javascript and not enable
+    // rewrite_javascript_external though.
     if (!rewrite_options->js_preserve_urls() ||
-        rewrite_options->in_place_preemptive_rewrite_javascript()) {
+        rewrite_options->in_place_preemptive_rewrite_javascript() ||
+        rewrite_options->Enabled(RewriteOptions::kRewriteJavascriptInline)) {
       // Rewrite (minify etc.) JavaScript code to reduce time to first
       // interaction.
       EnableRewriteFilter(RewriteOptions::kJavascriptMinId);

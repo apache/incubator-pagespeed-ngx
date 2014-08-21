@@ -150,7 +150,7 @@ class JavascriptFilter::Context : public SingleRewriteContext {
       // PossiblyRewriteToLibrary, so there's no specific failure metric here.
       return kRewriteFailed;
     }
-    if (!config_->minify()) {
+    if (!Options()->Enabled(RewriteOptions::kRewriteJavascriptExternal)) {
       config_->minification_disabled()->Add(1);
       return kRewriteFailed;
     }
@@ -359,12 +359,17 @@ class JavascriptFilter::Context : public SingleRewriteContext {
 void JavascriptFilter::StartElementImpl(HtmlElement* element) {
   DCHECK_EQ(kNoScript, script_type_);
   HtmlElement::Attribute* script_src;
+  const RewriteOptions* options = driver()->options();
   switch (script_tag_scanner_.ParseScriptElement(element, &script_src)) {
     case ScriptTagScanner::kJavaScript:
       if (script_src != NULL) {
-        script_type_ = kExternalScript;
-        RewriteExternalScript(element, script_src);
-      } else {
+        if (options->Enabled(RewriteOptions::kRewriteJavascriptExternal) ||
+            options->Enabled(
+                RewriteOptions::kCanonicalizeJavascriptLibraries)) {
+          script_type_ = kExternalScript;
+          RewriteExternalScript(element, script_src);
+        }
+      } else if (options->Enabled(RewriteOptions::kRewriteJavascriptInline)) {
         script_type_ = kInlineScript;
       }
       break;
@@ -393,11 +398,14 @@ void JavascriptFilter::Characters(HtmlCharactersNode* characters) {
 
 JavascriptRewriteConfig* JavascriptFilter::InitializeConfig(
     RewriteDriver* driver) {
+  const RewriteOptions* options = driver->options();
+  bool minify = options->Enabled(RewriteOptions::kRewriteJavascriptExternal) ||
+      options->Enabled(RewriteOptions::kRewriteJavascriptInline);
   return new JavascriptRewriteConfig(
                  driver->server_context()->statistics(),
-                 driver->options()->Enabled(RewriteOptions::kRewriteJavascript),
-                 driver->options()->use_experimental_js_minifier(),
-                 driver->options()->javascript_library_identification(),
+                 minify,
+                 options->use_experimental_js_minifier(),
+                 options->javascript_library_identification(),
                  driver->server_context()->js_tokenizer_patterns());
 }
 

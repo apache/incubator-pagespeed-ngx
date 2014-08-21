@@ -1642,7 +1642,8 @@ class FlushEarlyPrioritizeCriticalCssTest : public FlushEarlyFlowTest {
     // Disabling the inline filters so that the resources get flushed early
     // else our dummy resources are too small and always get inlined.
     rewrite_options->DisableFilter(RewriteOptions::kInlineCss);
-    rewrite_options->DisableFilter(RewriteOptions::kRewriteJavascript);
+    rewrite_options->DisableFilter(RewriteOptions::kRewriteJavascriptExternal);
+    rewrite_options->DisableFilter(RewriteOptions::kRewriteJavascriptInline);
 
     rewrite_options->set_enable_flush_early_critical_css(true);
     rewrite_options->set_use_selectors_for_critical_css(false);

@@ -455,7 +455,7 @@ bool JsCombineFilter::JsCombiner::WritePiece(
   // TODO(morlovich): And now we're not updating some stats instead.
   // Factor out that bit in JsFilter.
   const RewriteOptions* options = rewrite_driver_->options();
-  if (options->Enabled(RewriteOptions::kRewriteJavascript)) {
+  if (options->Enabled(RewriteOptions::kRewriteJavascriptExternal)) {
     JavascriptCodeBlock* code_block = BlockForResource(input);
     if (code_block->successfully_rewritten()) {
       not_escaped = code_block->rewritten_code();

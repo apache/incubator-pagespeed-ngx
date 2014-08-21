@@ -561,11 +561,12 @@ namespace {
 
 // When you change this, remember to update the documentation:
 //    doc/en/speed/pagespeed/module/config_filters.html
-// The documentation there includes the filter groups "rewrite_images" and
-// "extend_cache" which expand to multiple filters, all of which need to be
-// listed here.  config_filters.html both includes lists of filters in each
-// group and, redundantly, a table of all filters with one-liner documentation
-// and  which groups they are in.
+// The documentation there includes the filter groups
+// "rewrite_images", "extend_cache", and "rewrite_javascript", which
+// expand to multiple filters, all of which need to be listed here.
+// config_filters.html both includes lists of filters in each group
+// and, redundantly, a table of all filters with one-liner
+// documentation and which groups they are in.
 const RewriteOptions::Filter kCoreFilterSet[] = {
   RewriteOptions::kAddHead,
   RewriteOptions::kCombineCss,
@@ -590,7 +591,8 @@ const RewriteOptions::Filter kCoreFilterSet[] = {
   RewriteOptions::kRecompressWebp,                 // rewrite_images
   RewriteOptions::kResizeImages,                   // rewrite_images
   RewriteOptions::kRewriteCss,
-  RewriteOptions::kRewriteJavascript,
+  RewriteOptions::kRewriteJavascriptExternal,      // rewrite_javascript
+  RewriteOptions::kRewriteJavascriptInline,        // rewrite_javascript
   RewriteOptions::kRewriteStyleAttributesWithUrl,
   RewriteOptions::kStripImageColorProfile,         // rewrite_images
   RewriteOptions::kStripImageMetaData,             // rewrite_images
@@ -619,7 +621,8 @@ const RewriteOptions::Filter kOptimizeForBandwidthFilterSet[] = {
   RewriteOptions::kRecompressPng,                  // rewrite_images
   RewriteOptions::kRecompressWebp,                 // rewrite_images
   RewriteOptions::kRewriteCss,
-  RewriteOptions::kRewriteJavascript,
+  RewriteOptions::kRewriteJavascriptExternal,      // rewrite_javascript
+  RewriteOptions::kRewriteJavascriptInline,        // rewrite_javascript
   RewriteOptions::kStripImageColorProfile,         // rewrite_images
   RewriteOptions::kStripImageMetaData,             // rewrite_images
 };
@@ -841,8 +844,10 @@ const RewriteOptions::FilterEnumToIdAndNameEntry
     RewriteOptions::kCssFilterId, "Rewrite Css" },
   { RewriteOptions::kRewriteDomains,
     "rd", "Rewrite Domains" },
-  { RewriteOptions::kRewriteJavascript,
-    RewriteOptions::kJavascriptMinId, "Rewrite Javascript" },
+  { RewriteOptions::kRewriteJavascriptExternal,
+    RewriteOptions::kJavascriptMinId, "Rewrite External Javascript" },
+  { RewriteOptions::kRewriteJavascriptInline, "jj",
+    "Rewrite Inline Javascript" },
   { RewriteOptions::kRewriteStyleAttributes,
     "cs", "Rewrite Style Attributes" },
   { RewriteOptions::kRewriteStyleAttributesWithUrl,
@@ -2777,6 +2782,15 @@ bool RewriteOptions::AddByNameToFilterSet(
       set->Insert(kExtendCacheCss);
       set->Insert(kExtendCacheImages);
       set->Insert(kExtendCacheScripts);
+    } else if (option == "rewrite_javascript") {
+      // Every filter here needs to be listed in kCoreFilterSet and
+      // kOptimizeForBandwidthFilterSet.  Note that kRewriteJavascriptExternal
+      // makes sense in OptimizeForBandwidth because we start rewriting
+      // external JS files when we parse them in HTML, so that they are ready
+      // in cache for the IPRO request, even though we will not mutate the
+      // URLs in HTML.
+      set->Insert(kRewriteJavascriptExternal);
+      set->Insert(kRewriteJavascriptInline);
     } else if (option == "testing") {
       for (int i = 0, n = arraysize(kTestFilterSet); i < n; ++i) {
         set->Insert(kTestFilterSet[i]);

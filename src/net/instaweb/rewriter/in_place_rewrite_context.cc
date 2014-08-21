@@ -467,7 +467,7 @@ RewriteFilter* InPlaceRewriteContext::GetRewriteFilter(
     return Driver()->FindFilter(RewriteOptions::kCssFilterId);
   }
   if (type.IsJs() &&
-      options->Enabled(RewriteOptions::kRewriteJavascript)) {
+      options->Enabled(RewriteOptions::kRewriteJavascriptExternal)) {
     return Driver()->FindFilter(RewriteOptions::kJavascriptMinId);
   }
   if (type.IsImage() && options->ImageOptimizationEnabled()) {
