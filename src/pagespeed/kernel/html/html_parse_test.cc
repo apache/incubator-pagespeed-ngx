@@ -21,10 +21,10 @@
 
 #include <vector>
 
-#include "base/logging.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/gmock.h"
+#include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
@@ -2143,7 +2143,9 @@ class DeleteNodesFilter : public CountingCallbacksFilter {
         delete_from_type_(HtmlName::kNotAKeyword),
         delete_on_open_tag_(false),
         save_children_(true),
-        make_invisible_(false) {
+        make_invisible_(false),
+        num_deleted_elements_(0),
+        flushes_preventing_delete_(0) {
   }
 
   void set_delete_node_type(HtmlName::Keyword keyword) {
@@ -2162,11 +2164,16 @@ class DeleteNodesFilter : public CountingCallbacksFilter {
   }
 
   int num_deleted_elements() const { return num_deleted_elements_; }
+  int flushes_preventing_delete() const { return flushes_preventing_delete_; }
 
  protected:
   virtual void StartDocument() {
     pending_deletes_.clear();
     num_deleted_elements_ = 0;
+    flushes_preventing_delete_ = 0;
+    // Note: we do not clear save_children_ or make_invisible_ here because
+    // we re-use these settings when repeating tests with different flush
+    // windows.
   }
 
   virtual void StartElement(HtmlElement* element) {
@@ -2189,8 +2196,7 @@ class DeleteNodesFilter : public CountingCallbacksFilter {
   virtual void Flush() {
     // We can't delete an element that has been flushed.
     for (int i = 0, n = pending_deletes_.size(); i < n; ++i) {
-      LOG(ERROR) << "FLUSH occurred before deleting element: "
-                 << pending_deletes_[i]->ToString();
+      ++flushes_preventing_delete_;
     }
     pending_deletes_.clear();
   }
@@ -2221,6 +2227,7 @@ class DeleteNodesFilter : public CountingCallbacksFilter {
   bool save_children_;
   bool make_invisible_;
   int num_deleted_elements_;
+  int flushes_preventing_delete_;
 
   DISALLOW_COPY_AND_ASSIGN(DeleteNodesFilter);
 };
@@ -2763,24 +2770,32 @@ TEST_F(HtmlRestoreTest, MoveTextfterText) {
 }
 
 TEST_F(HtmlRestoreTest, MoveStartWithEndNotVisibleAUnclosed) {
+  message_handler_.AddPatternToSkipPrinting(
+      "*Removed node <div id=a> (unclosed)*");
   SetupWriter();
   restore_nodes_filter_.MoveOnStart("a", "b");
   expect_restored_ = false;
   RunTestsWithManyFlushWindows("<div id=a>1<div id=b>2</div>", "");
+  EXPECT_LT(0, message_handler_.MessagesOfType(kWarning));
 }
 
 TEST_F(HtmlRestoreTest, MoveDivWithMissingDestination) {
+  message_handler_.AddPatternToSkipPrinting("*Removed node <div id=a></div>*");
   SetupWriter();
   restore_nodes_filter_.MoveOnStart("a", "b");
   expect_restored_ = false;
   RunTestsWithManyFlushWindows("<div id=a>1</div>", "");
+  EXPECT_LT(0, message_handler_.MessagesOfType(kWarning));
 }
 
 TEST_F(HtmlRestoreTest, MoveCharsWithMissingDestination) {
+  message_handler_.AddPatternToSkipPrinting(
+      "*Removed node Characters text never replaced*");
   SetupWriter();
   restore_nodes_filter_.MoveOnStart("text", "no_such_destination");
   expect_restored_ = false;
   RunTestsWithManyFlushWindows("text", "");
+  EXPECT_LT(0, message_handler_.MessagesOfType(kWarning));
 }
 
 TEST_F(HtmlRestoreTest, TwoDeleteAcrossFlush) {
@@ -2907,6 +2922,7 @@ TEST_F(HtmlRestoreTest, DeleteDeferredNode) {
   const StringPiece kInput("<span id=a></span><div id=d></div>");
   ValidateExpected("delete_deferred", kInput, "<div id=d></div>");
   EXPECT_EQ(1, delete_nodes_filter.num_deleted_elements());
+  EXPECT_EQ(0, delete_nodes_filter.flushes_preventing_delete());
 
   // With the same filter setup, put a flush in the middle.
   output_buffer_.clear();
@@ -2925,6 +2941,7 @@ TEST_F(HtmlRestoreTest, DeleteDeferredNode) {
   // regardless of when the flush occurs.
   EXPECT_STREQ("<div id=d></div><span id=a></span>", output_buffer_);
   EXPECT_EQ(0, delete_nodes_filter.num_deleted_elements());
+  EXPECT_EQ(1, delete_nodes_filter.flushes_preventing_delete());
 }
 
 TEST_F(HtmlRestoreTest, CoalesceCharsAfterRestore) {
