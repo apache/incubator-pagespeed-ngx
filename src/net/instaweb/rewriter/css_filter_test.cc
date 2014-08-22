@@ -771,22 +771,46 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     "a { color: red;\n .foo { margin: 10px; }",
     "a { color: red;\n h1 { margin: 10px; }",
 
-    // Don't "fix" by adding space between 'and' and '('.
+    // Parsing failures from Alexa-1000.
+
+    // We don't properly skip over embedded () inside unknown functions.
+    // TODO(sligocki):  We should pass these through as unparsed regions.
+    ".foo {_height: expression((parentNode.offsetHeight-17));}",
+
+    // Malformed @media statements.
+    // TODO(sligocki):  We should pass these through as unparsed regions.
+    // Important: Don't "fix" by adding space between 'and' and '('.
     "@media only screen and(min-resolution:240dpi){ .bar{ background: red; }}",
+    "@media (max-de vice-width: 850px) {.pm-thumb-106{width:80px}}",
+    "@media screen\\0{.select:before{width:18px}}",
 
-    // Things from Alexa-100 that we get parsing errors for. Most are illegal
-    // syntax/typos. Some are CSS3 constructs.
+    // UTF-16
+    "\xFF\xFE"   // UTF-16 byte-order marker.
+    "\x2F\x00"   // /
+    "\x2A\x00"   // *
+    "\x2A\x00"   // *
+    "\x2F\x00",  // /
 
-    // kSelectorError from Alexa-100
-    // Typos
-    // Note: These fail because of the if (Done()) return NULL call in
-    // ParseRuleset
-    // Should fail (at least we should make sure CssCombineFilter does not
-    // combine them, since they do not contain full statements).
+    // Various Typos.
+    // TODO(sligocki):  We should pass these through as unparsed regions.
+    "</foobar>",
+    "@-moz-document url-prefix() { input[type=\"file\"] {border:none}}",
+    ".foo { background-image: (/i.png); width: 10px; }",
+    ".bigAd { background:14url(http://himg2.huanqiu.com/bigAd.jpg) center;}",
+    ".foo { background: url\n\n(../images/btn_login_min.gif) }",
+    "@-webkit-keyframes \"foo\" { 0 { transform: scale (.85) } }",
+    "-ms-filter:\"progid:DXImageTransform.Microsoft.Alpha\"(Opacity=70)",
+
+    // Trailing gibberish.
+    // Note: we are depending upon these failing to indicate to CssCombineFilter
+    // that they cannot be combined.
     "a",
     "a { color: red }\n */",
     "a { color: red }\n // Comment",
     "a { color: red } .foo",
+    "<!--\n\n // -->",
+    "<!-- 让四张图片都可以重叠在一起 -->",
+    "---------------------------",
   };
 
   DebugWithMessage("<!--CSS rewrite failed: Parse error in %url%-->");
@@ -794,6 +818,12 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     GoogleString id = StringPrintf("distilled_css_fail%d", i);
     ValidateFailParse(id, fail_examples[i]);
   }
+}
+
+TEST_F(CssFilterTest, EmbeddedTag) {
+  // We can only test this with ExternalCss, because inline it actually works :)
+  const char input[] = "a { color: red } </style><style>.foo { color: green }";
+  ValidateRewriteExternalCss("embedded_tag", input, input, kExpectFailure);
 }
 
 // Things we could be optimizing.
