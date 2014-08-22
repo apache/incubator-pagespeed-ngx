@@ -203,19 +203,25 @@ TEST_F(RewriteDriverTest, CloneMarksNested) {
 }
 
 TEST_F(RewriteDriverTest, TestLegacyUrl) {
+  GoogleString hash(32, '0');
   rewrite_driver()->AddFilters();
-  EXPECT_FALSE(CanDecodeUrl("http://example.com/dir/123/jm.0.orig"))
+  EXPECT_FALSE(CanDecodeUrl("http://example.com/dir/123/jm." + hash + ".orig"))
       << "not enough dots";
-  EXPECT_TRUE(CanDecodeUrl("http://example.com/dir/123/jm.0.orig.js"));
+  EXPECT_FALSE(CanDecodeUrl("http://example.com/dir/123/jm.0.orig.js"))
+      << "hash too short";
+  EXPECT_TRUE(CanDecodeUrl("http://example.com/dir/123/jm."+hash+".orig.js"));
   EXPECT_TRUE(CanDecodeUrl(
       "http://x.com/dir/123/jm.0123456789abcdef0123456789ABCDEF.orig.js"));
-  EXPECT_FALSE(CanDecodeUrl("http://example.com/dir/123/xx.0.orig.js"))
+  EXPECT_FALSE(CanDecodeUrl("http://example.com/dir/123/xx."+hash+".orig.js"))
       << "invalid filter xx";
-  ASSERT_FALSE(CanDecodeUrl("http://example.com/dir/123/jm.z.orig.js"))
+  GoogleString bad_hash(32, 'z');
+  EXPECT_FALSE(CanDecodeUrl("http://example.com/dir/123/jm." + bad_hash +
+                            ".orig.js"))
       << "invalid hash code -- not hex";
-  ASSERT_FALSE(CanDecodeUrl("http://example.com/dir/123/jm.ab.orig.js"))
-      << "invalid hash code -- not 1 or 32 chars";
-  ASSERT_FALSE(CanDecodeUrl("http://example.com/dir/123/jm.0.orig.x"))
+  EXPECT_FALSE(CanDecodeUrl("http://example.com/dir/123/jm.ab.orig.js"))
+      << "invalid hash code -- not 32 chars";
+  EXPECT_FALSE(CanDecodeUrl("http://example.com/dir/123/jm."
+                            + hash + ".orig.x"))
       << "invalid extension";
 }
 

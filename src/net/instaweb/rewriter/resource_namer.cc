@@ -171,8 +171,10 @@ bool ResourceNamer::LegacyDecode(const StringPiece& encoded_string) {
       names[1].CopyToString(&hash_);
 
       // The legacy hash codes were all either 1-character (for tests) or
-      // 32 characters, all in hex.
-      if ((hash_.size() != 1) && (hash_.size() != 32)) {
+      // 32 characters, all in hex. There is no point in being backwards
+      // compatible with tests, however, and it can occasionally cause us to
+      // log spam (issue 688), so we only accept the production one.
+      if (hash_.size() != 32) {
         return false;
       }
       for (int i = 0, n = hash_.size(); i < n; ++i) {
