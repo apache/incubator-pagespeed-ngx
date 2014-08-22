@@ -656,6 +656,8 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     // See http://dimox.net/personal-css-hacks-for-ie6-ie7-ie8/
     "a{color: red\\0/ ;background-color:green}",
     "a{font-family: font\\0  ;color:red}",
+    "@media screen and (min-width:0 \\0){.foo{color:red}}",
+    "@media screen and (min-width:0 \\\\0){.foo{color:red}}",
 
     "a{font:bold verdana 10px }",
     "a{foo: +bar }",
@@ -1112,6 +1114,14 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       "*opacity:1;*top:-2px;*left:-5px;*right:5px;*bottom:4px;"
       "-ms-filter:\"progid:DXImageTransform.Microsoft.Blur(pixelradius=5)\";"
       "opacity:1\\0/;top:-4px\\0/;left:-6px\\0/;right:5px\\0/;bottom:4px\\0/}"},
+
+    { "@media screen and (min-width: 0 \\0){.ending-actions li a .icon-top,.en"
+      "ding-actions li a .icon-feed{vertical-align:text-bottom}.nav-previous{m"
+      "argin:20px auto 0}}",
+
+      "@media screen and (min-width:0 \\0){.ending-actions li a .icon-top,.en"
+      "ding-actions li a .icon-feed{vertical-align:text-bottom}.nav-previous{m"
+      "argin:20px auto 0}}" },
 
     // Alexa-100 with parse errors (illegal syntax or CSS3).
     // Comma in values

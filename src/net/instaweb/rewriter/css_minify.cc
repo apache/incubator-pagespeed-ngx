@@ -170,9 +170,9 @@ void CssMinify::Minify(const Css::MediaExpression& expression) {
   Write(Css::EscapeIdentifier(expression.name()));
   if (expression.has_value()) {
     Write(":");
-    // Note: expression.value() is not a string, but it is not an identifier
-    // either. For example, we don't want to escape space in 20 < width < 300.
-    Write(Css::EscapeString(expression.value()));
+    const UnicodeText& value = expression.value();
+    // Note: Value is an unparsed region of raw bytes. So don't escape it.
+    Write(StringPiece(value.utf8_data(), value.utf8_length()));
   }
   Write(")");
 }
