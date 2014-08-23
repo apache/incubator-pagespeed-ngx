@@ -222,24 +222,20 @@ check_rewriting_status() {
   else
     check_not zgrep -q "pagespeed.ic" $OUT_CONTENTS_FILE
   fi
-  # Reset WGET_ARGS.
-  WGET_ARGS=""
 }
 
 # Helper method that obtains a gzipped response and verifies that rewriting
 # has happened. Also takes an extra parameter that identifies extra headers
 # to be added during wget.
 check_for_rewriting() {
-  WGET_ARGS="$GZIP_WGET_ARGS $1"
-  check_rewriting_status true
+  WGET_ARGS="$GZIP_WGET_ARGS $1" check_rewriting_status true
 }
 
 # Helper method that obtains a gzipped response and verifies that no rewriting
 # has happened. Also takes an extra parameter that identifies extra headers
 # to be added during wget.
 check_for_no_rewriting() {
-  WGET_ARGS="$GZIP_WGET_ARGS $1"
-  check_rewriting_status false
+  WGET_ARGS="$GZIP_WGET_ARGS $1" check_rewriting_status false
 }
 
 if $RUN_TESTS; then
@@ -582,8 +578,6 @@ URL="custom-paths.example.com/custom_pagespeed_admin/"
 OUT=$(http_proxy=$SECONDARY_HOSTNAME check $WGET_DUMP $URL)
 check_from "$OUT" fgrep -q Admin
 
-
-WGET_ARGS=""
 function gunzip_grep_0ff() {
   gunzip - | fgrep -q "color:#00f"
   echo $?
@@ -691,8 +685,6 @@ check_from "$JS_HEADERS" fgrep -qi 'Vary: Accept-Encoding'
 check_from "$JS_HEADERS" egrep -qi '(Etag: W/"0")|(Etag: W/"0-gzip")'
 check_from "$JS_HEADERS" fgrep -qi 'Last-Modified:'
 
-WGET_ARGS="" # Done with test_filter, so clear WGET_ARGS.
-
 start_test Respect X-Forwarded-Proto when told to
 FETCHED=$OUTDIR/x_forwarded_proto
 URL=$SECONDARY_HOSTNAME/mod_pagespeed_example/?PageSpeedFilters=add_base_tag
@@ -711,15 +703,14 @@ check fgrep -q retained $FETCHED        # RetainComment directive
 # non-exhaustive, the unit tests should cover the rest.
 # Note: We block with psatest here because this is a negative test.  We wouldn't
 # otherwise know how many wget attempts should be made.
+start_test PreserveURLs on prevents URL rewriting
 WGET_ARGS="--header=X-PSA-Blocking-Rewrite:psatest"
 WGET_ARGS+=" --header=Host:preserveurls.example.com"
 
-start_test PreserveURLs on prevents URL rewriting
 FILE=preserveurls/on/preserveurls.html
 URL=$SECONDARY_HOSTNAME/mod_pagespeed_test/$FILE
 FETCHED=$OUTDIR/preserveurls.html
 check run_wget_with_args $URL
-WGET_ARGS=""
 check_not fgrep -q .pagespeed. $FETCHED
 
 # When PreserveURLs is off do a quick check to make sure that normal rewriting
@@ -753,10 +744,8 @@ URL="$SECONDARY_HOSTNAME/mod_pagespeed_test/no_transform/BikeCrashIcn.png"
 wget -O - -S $URL $WGET_ARGS &> $FETCHED
 # Make sure that the no-transfrom header is still there
 check grep -q 'Cache-Control:.*no-transform' $FETCHED
-WGET_ARGS=""
 
 start_test respect vary user-agent
-WGET_ARGS=""
 URL="$SECONDARY_HOSTNAME/mod_pagespeed_test/vary/index.html"
 URL+="?PageSpeedFilters=inline_css"
 FETCH_CMD="$WGET_DUMP --header=Host:respectvary.example.com $URL"
@@ -785,7 +774,6 @@ start_test rewrite on Cache-control: no-transform
 URL=$TEST_ROOT/disable_no_transform/index.html?PageSpeedFilters=inline_css
 fetch_until -save -recursive $URL 'grep -c style' 2
 
-WGET_ARGS=""
 start_test ShardDomain directive in location block
 fetch_until -save $TEST_ROOT/shard/shard.html 'grep -c \.pagespeed\.' 4
 check [ $(grep -ce href=\"http://shard1 $FETCH_FILE) = 2 ];
@@ -865,7 +853,6 @@ start_test combine_javascript with long URL still works
 URL=$TEST_ROOT/combine_js_very_many.html?PageSpeedFilters=combine_javascript
 fetch_until $URL 'grep -c src=' 4
 
-WGET_ARGS=""
 start_test UseExperimentalJsMinifier
 URL="$TEST_ROOT/experimental_js_minifier/index.html"
 URL+="?PageSpeedFilters=rewrite_javascript"
@@ -1058,7 +1045,6 @@ wget -O - --header 'X-PSA-Blocking-Rewrite: psatest' $URL > $TEMPDIR/flush.$$
 check [ `wget -O - $URL | grep -o 'link rel="subresource"' | wc -l` = 0 ]
 rm -f $TEMPDIR/flush.$$
 
-WGET_ARGS=""
 start_test Respect custom options on resources.
 IMG_NON_CUSTOM="$EXAMPLE_ROOT/images/xPuzzle.jpg.pagespeed.ic.fakehash.jpg"
 IMG_CUSTOM="$TEST_ROOT/custom_options/xPuzzle.jpg.pagespeed.ic.fakehash.jpg"
@@ -1122,7 +1108,7 @@ start_test MapProxyDomain
 LEAF="proxy_external_resource.html?PageSpeedFilters=-inline_images"
 URL="$EXAMPLE_ROOT/$LEAF"
 echo Rewrite HTML with reference to a proxyable image.
-fetch_until -save -recursive $URL 'grep -c 1.gif.pagespeed' 1
+fetch_until -save -recursive $URL 'grep -c 1.gif.pagespeed' 1 --save-headers
 PAGESPEED_GIF=$(grep -o '/*1.gif.pagespeed[^"]*' $WGET_DIR/$LEAF)
 check_from "$PAGESPEED_GIF" grep "gif$"
 
@@ -1171,11 +1157,10 @@ test_optimize_for_bandwidth core_filters/rewrite_css.html \
 # With the proper hash, we'll get a long cache lifetime.
 SECONDARY_HOST="http://mpd.example.com/gstatic_images"
 PROXIED_IMAGE="$SECONDARY_HOST$PAGESPEED_GIF"
-WGET_ARGS="--save-headers"
 
 start_test $PROXIED_IMAGE expecting one year cache.
 http_proxy=$SECONDARY_HOSTNAME fetch_until $PROXIED_IMAGE \
-    "grep -c max-age=31536000" 1
+    "grep -c max-age=31536000" 1 --save-headers
 
 # With the wrong hash, we'll get a short cache lifetime (and also no output
 # cache hit.
@@ -1183,9 +1168,7 @@ WRONG_HASH="0"
 PROXIED_IMAGE="$SECONDARY_HOST/1.gif.pagespeed.ce.$WRONG_HASH.jpg"
 start_test Fetching $PROXIED_IMAGE expecting short private cache.
 http_proxy=$SECONDARY_HOSTNAME fetch_until $PROXIED_IMAGE \
-    "grep -c max-age=300,private" 1
-
-WGET_ARGS=""
+    "grep -c max-age=300,private" 1 --save-headers
 
 start_test ShowCache without URL gets a form, inputs, preloaded UA.
 ADMIN_CACHE=$PRIMARY_SERVER/pagespeed_admin/cache
@@ -1245,34 +1228,13 @@ fetch_until -save $TEST_ROOT/ssi/ssi.shtml?PageSpeedFilters=combine_css \
 check [ $(grep -ce $combine_css_filename $FETCH_FILE) = 1 ];
 
 start_test Embed image configuration in rewritten image URL.
-
-# The apache test names these virtual hosts as embed_config_*, which is
-# unfortunate as underscores are not allowed in domain names.  Apache doesn't
-# care, and nginx doesn't either, except when you're proxying.  So you can do:
-#
-#    GET /embed_config.html HTTP/1.1
-#    Host: embed_config_html.example.com
-#
-# and it will work fine, but if you do:
-#
-#    GET http://embed_config_html.example.com/embed_config.html HTTP/1.1
-#
-# then nginx will close the connection before you can even give it a Host
-# header.  I've modified this test code to replace embed_config_ with
-# embed-config-, but the html file on disk has the underscore versions.  Let's
-# make a new html file that has the hyphen version:
-cat "$SERVER_ROOT/mod_pagespeed_test/embed_config.html" | \
-  sed s/embed_config_/embed-config-/g > \
-  "$SERVER_ROOT/mod_pagespeed_test/embed-config.html"
-
 # The embedded configuration is placed between the "pagespeed" and "ic", e.g.
 # *xPuzzle.jpg.pagespeed.gp+jp+pj+js+rj+rp+rw+ri+cp+md+iq=73.ic.oFXPiLYMka.jpg
 # We use a regex matching "gp+jp+pj+js+rj+rp+rw+ri+cp+md+iq=73" rather than
 # spelling it out to avoid test regolds when we add image filter IDs.
-WGET_ARGS="--save-headers"
 http_proxy=$SECONDARY_HOSTNAME fetch_until -save -recursive \
-    http://embed-config-html.example.org/embed-config.html \
-    'grep -c \.pagespeed\.' 3
+    http://embed-config-html.example.org/embed_config.html \
+    'grep -c \.pagespeed\.' 3 --save-headers
 
 # with the default rewriters in vhost embed-config-resources.example.com
 # the image will be >200k.  But by enabling resizing & compression 73
@@ -1341,7 +1303,6 @@ function embed_image_config_post_flush() {
   # places where we flush cache, which requires sleeps since the
   # cache-flush is poll driven.
   start_test Embed image/css configuration decoding with clear cache.
-  WGET_ARGS=""
   echo Looking for $EMBED_CONFIGURATION_IMAGE expecting \
       $EMBED_CONFIGURATION_IMAGE_LENGTH bytes
   http_proxy=$SECONDARY_HOSTNAME fetch_until "$EMBED_CONFIGURATION_IMAGE" \
@@ -1561,7 +1522,6 @@ check [ $ERRS -ge 1 ]
 #
 # This rewrites the CSS, absolutifying the embedded relative image URL
 # reference based on the the main server host.
-WGET_ARGS=""
 start_test Relative images embedded in a CSS file served from a mapped domain
 DIR="mod_pagespeed_test/map_css_embedded"
 URL="http://www.example.com/$DIR/issue494.html"
@@ -1697,7 +1657,6 @@ function test_forbid_all_disabled() {
   $WGET $WGET_ARGS -q -O $OUTFILE $HEADER $URL
   check     egrep -q '<style>.yellow'        $OUTFILE
   rm -f $OUTFILE
-  WGET_ARGS=""
 }
 start_test ForbidAllDisabledFilters baseline check.
 test_forbid_all_disabled "" ""
@@ -1865,11 +1824,11 @@ check_not_from "$OUT" grep 'pagespeed_beacon.*exptid'
 # order they're defined in the config file.
 start_test Resource urls are rewritten to include experiment indexes.
 http_proxy=$SECONDARY_HOSTNAME \
-  WGET_ARGS="--header Cookie:PageSpeedExperiment=7" fetch_until $EXP_EXTEND_CACHE \
-    "fgrep -c .pagespeed.a.ic." 1
+  fetch_until $EXP_EXTEND_CACHE \
+    "fgrep -c .pagespeed.a.ic." 1 --header=Cookie:PageSpeedExperiment=7
 http_proxy=$SECONDARY_HOSTNAME \
-  WGET_ARGS="--header Cookie:PageSpeedExperiment=2" fetch_until $EXP_EXTEND_CACHE \
-    "fgrep -c .pagespeed.b.ic." 1
+  fetch_until $EXP_EXTEND_CACHE \
+    "fgrep -c .pagespeed.b.ic." 1 --header=Cookie:PageSpeedExperiment=2
 OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --header='Cookie: PageSpeedExperiment=7' \
       $EXP_EXTEND_CACHE)
 check_from "$OUT" fgrep ".pagespeed.a.ic."
@@ -1994,7 +1953,7 @@ check [ `grep -c '<style>[.]blue{[^}]*}[.]bold{[^}]*}</style>' \
 
 # Now repeat the critical_css_filter test on a host that processes post data via
 # temp files to test that ngx_pagespeed specific code path.
-start_test Able to read POST data from temp file.
+test_filter prioritize_critical_css Able to read POST data from temp file.
 URL="http://beacon-post-temp-file.example.com/mod_pagespeed_example/prioritize_critical_css.html"
 http_proxy=$SECONDARY_HOSTNAME\
   fetch_until -save $URL 'fgrep -c pagespeed.criticalCssBeaconInit' 1
@@ -2046,7 +2005,6 @@ MATCHES=$(echo "$RESPONSE_OUT" | grep -c pagespeed\.clientDomainRewriterInit)
 check [ $MATCHES -eq 1 ]
 
 # Verify rendered image dimensions test.
-WGET_ARGS=""
 start_test resize_rendered_image_dimensions with critical images beacon
 HOST_NAME="http://renderedimagebeacon.example.com"
 URL="$HOST_NAME/mod_pagespeed_test/image_rewriting/image_resize_using_rendered_dimensions.html"
@@ -2126,7 +2084,6 @@ check_from "$OUT3" grep -q "Cache-Control: private, max-age=3000"
 
 # Verify that we can send a critical image beacon and that lazyload_images
 # does not try to lazyload the critical images.
-WGET_ARGS=""
 start_test lazyload_images,rewrite_images with critical images beacon
 HOST_NAME="http://imagebeacon.example.com"
 URL="$HOST_NAME/mod_pagespeed_test/image_rewriting/rewrite_images.html"
@@ -2286,7 +2243,6 @@ check [ $(grep -c 'styles/big.css\"' $FETCH_UNTIL_OUTFILE) = 1 ]
 # response-headers from the server.  The reponse-headers from Serf never seem to
 # include the Connection header.  So we have to pick a JS file that is not
 # otherwise used after cache is flushed in this block.
-WGET_ARGS=""
 start_test Sane Connection header
 URL="$TEST_ROOT/normal.js"
 fetch_until -save $URL 'grep -c W/\"PSA-aj-' 1 --save-headers
@@ -2341,9 +2297,6 @@ function test_ipro_for_browser_webp() {
   OUT_CONTENT_TYPE="$1"; shift
   OUT_VARY="${1-}"; shift || true
   OUT_CC="${1-}"; shift || true
-  WGET_ARGS="--save-headers \
-             ${IN_UA:+--user-agent $IN_UA} \
-             ${IN_ACCEPT:+--header=Accept:image/$IN_ACCEPT}"
   # Remaining args are the expected headers (Name:Value), photo, or synthetic.
   if [ "$IMAGE_TYPE" = "photo" ]; then
     URL="http://ipro-for-browser.example.com/images/Puzzle.jpg"
@@ -2369,6 +2322,9 @@ function test_ipro_for_browser_webp() {
     TEST_ID+=" Cache-Control:${OUT_CC}."
   fi
   start_test $TEST_ID
+  WGET_ARGS="--save-headers \
+             ${IN_UA:+--user-agent $IN_UA} \
+             ${IN_ACCEPT:+--header=Accept:image/$IN_ACCEPT}"
   http_proxy=$SECONDARY_HOSTNAME \
     fetch_until -save $URL 'grep -c W/\"PSA-aj-' 1
   check_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" \
@@ -2449,7 +2405,6 @@ test_decent_browsers "New Opera" \
   "Opera/9.80 (Windows NT 6.0) Presto/2.12.388 Version/12.14"
 
 WGETRC=$OLD_WGETRC
-WGET_ARGS=""
 
 start_test Request Option Override : Correct values are passed
 HOST_NAME="http://request-option-override.example.com"
@@ -2669,7 +2624,6 @@ check test $RESOURCE_MAX_AGE -gt 300
 start_test IPRO-optimized resources should have fixed size, not chunked.
 URL="$EXAMPLE_ROOT/images/Puzzle.jpg"
 URL+="?PageSpeedJpegRecompressionQuality=75"
-WGET_ARGS=""
 fetch_until -save $URL "wc -c" 90000 "--save-headers" "-lt"
 check_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" fgrep -q 'Content-Length:'
 CONTENT_LENGTH=$(extract_headers $FETCH_UNTIL_OUTFILE | \
