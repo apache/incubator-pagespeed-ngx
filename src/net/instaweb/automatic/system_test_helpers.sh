@@ -154,6 +154,7 @@ mkdir -p $OUTDIR
 
 CURRENT_TEST="pre tests"
 function start_test() {
+  WGET_ARGS=""
   CURRENT_TEST="$@"
   echo "TEST: $CURRENT_TEST"
 }
@@ -243,6 +244,20 @@ function handle_failure() {
   if [ $# -eq 1 ]; then
     echo FAILed Input: "$1"
   fi
+
+  # From http://stackoverflow.com/questions/685435/bash-stacktrace
+  # to avoid printing 'handle_failure' we start with 1 to skip get_stack caller
+  local i
+  local stack_size=${#FUNCNAME[@]}
+  for (( i=1; i<$stack_size ; i++ )); do
+    local func="${FUNCNAME[$i]}"
+    [ -z "$func" ] && func=MAIN
+    local line_number="${BASH_LINENO[(( i - 1 ))]}"
+    local src="${BASH_SOURCE[$i]}"
+    [ -z "$src" ] && src=non_file_source
+    echo "${src}:${line_number}: $func"
+  done
+
   # Note: we print line number after "failed input" so that it doesn't get
   # knocked out of the terminal buffer.
   if type caller > /dev/null 2>&1 ; then

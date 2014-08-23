@@ -221,13 +221,14 @@ INCLUDE_PATH = \
     -I$(MOD_PAGESPEED_ROOT)/third_party/google-sparsehash/gen/$(INCLUDE_ARCH)/include \
     -I$(MOD_PAGESPEED_ROOT)/third_party/protobuf/src \
     -I$(MOD_PAGESPEED_ROOT)/third_party/re2/src
+PSOL = $(OUTPUT_DIR)/pagespeed_automatic.a
 OBJS          = $(OUTPUT_DIR)/static_rewriter_main.o \
 		$(OUTPUT_DIR)/static_rewriter.o \
-		$(OUTPUT_DIR)/pagespeed_automatic.a
+		$(PSOL)
 SPEED_TEST_OBJS = $(TESTBENCH_LIB) \
 		$(OUTPUT_DIR)/rewriter_speed_test.o \
 		$(OUTPUT_DIR)/static_rewriter.o \
-		$(OUTPUT_DIR)/pagespeed_automatic.a
+		$(PSOL)
 EXE           = $(OUTPUT_DIR)/static_rewriter
 SPEED_TEST    = $(OUTPUT_DIR)/rewriter_speed_test
 EXAMPLE_ROOT  = $(MOD_PAGESPEED_ROOT)/install/mod_pagespeed_example
@@ -252,7 +253,7 @@ all : build_libraries
 # with either BUILDTYPE=Release or BUILDTYPE=Debug
 CXXFLAGS = -g
 
-$(OUTPUT_DIR)/pagespeed_automatic.a : $(LIBS)
+$(PSOL) : $(LIBS)
 	@echo Merging libraries, logs in $(MERGE_LOG) ...
 	@./merge_libraries.sh $@.dirty $(LIBS) > $(MERGE_LOG)
 	@echo Cleaning namespace, logs in $(RENAME_LOG) ...
@@ -261,9 +262,14 @@ $(OUTPUT_DIR)/pagespeed_automatic.a : $(LIBS)
 
 .PHONY : psol
 psol : build_libraries
-	$(MAKE) $(OUTPUT_DIR)/pagespeed_automatic.a
+	$(MAKE) $(PSOL)
 
-$(OUTPUT_DIR)/%.o : %.cc
+# Ideally we want the main .o files to depend on all the headers in PSOL,
+# but that's not easy to keep up-to-date.  As a proxy for those, recompile
+# .o files whenever the library changes.  This is a little conservative
+# because the library might change without any header changes, but recompiling
+# the .o files is cheap.
+$(OUTPUT_DIR)/%.o : %.cc $(PSOL)
 	$(CXX) $(INCLUDE_PATH) $(CXXFLAGS) $(MOD_PAGESPEED_INCLUDE) -c $< -o $@
 
 $(EXE) : $(OBJS)

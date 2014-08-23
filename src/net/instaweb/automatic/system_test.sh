@@ -24,6 +24,7 @@ source "$this_dir/system_test_helpers.sh" || exit 1
 # "check_not_from", which will prevent the script from exiting.
 set -e
 set -u
+trap 'handle_failure Line:${LINENO}' ERR
 
 # General system tests
 
@@ -264,7 +265,6 @@ check grep -q "<script src=\".*swfobject\.js\.pagespeed\..*\.js\">" $FETCHED
 check grep -q \
   "<script src=\".*another_normal\.js\.pagespeed\..*\.js\">" $FETCHED
 
-WGET_ARGS=""
 start_test move_css_above_scripts works.
 URL=$EXAMPLE_ROOT/move_css_above_scripts.html?PageSpeedFilters=move_css_above_scripts
 $WGET_DUMP $URL > $FETCHED
@@ -349,7 +349,6 @@ check run_wget_with_args $URL
 check fgrep -q 'text/javascript' $FETCHED # should find script type
 check fgrep -q 'text/css' $FETCHED        # should find style type
 
-
 test_filter remove_comments removes comments but not IE directives.
 check run_wget_with_args $URL
 check_not grep removed $FETCHED   # comment, should not find
@@ -429,7 +428,6 @@ URL="$TEST_ROOT/image_rewriting/rewrite_images.html"
 WGET_ARGS="--header PageSpeedFilters:rewrite_images "
 WGET_ARGS+="--header ${IMAGES_QUALITY}:75 "
 fetch_until -save -recursive $URL 'grep -c .pagespeed.ic' 2   # 2 images optimized
-WGET_ARGS=""
 # This filter produces different images on 32 vs 64 bit builds. On 32 bit, the
 # size is 8157B, while on 64 it is 8155B. Initial investigation showed no
 # visible differences between the generated images.
@@ -447,7 +445,6 @@ WGET_ARGS="--header PageSpeedFilters:rewrite_images "
 WGET_ARGS+="--header ${IMAGES_QUALITY}:85 "
 WGET_ARGS+="--header ${JPEG_QUALITY}:70"
 fetch_until -save -recursive $URL 'grep -c .pagespeed.ic' 2   # 2 images optimized
-WGET_ARGS=""
 #
 # If this this test fails because the image size is 7673 bytes it means
 # that image_rewrite_filter.cc decided it was a good idea to convert to
@@ -482,7 +479,6 @@ check_200_http_response_file "$WGET_OUTPUT"
 
 # These have to run after image_rewrite tests. Otherwise it causes some images
 # to be loaded into memory before they should be.
-WGET_ARGS=""
 start_test rewrite_css,extend_cache extends cache of images in CSS.
 FILE=rewrite_css_images.html?PageSpeedFilters=rewrite_css,extend_cache
 URL=$EXAMPLE_ROOT/$FILE
@@ -600,9 +596,7 @@ check_error_code 8 \
 # We want status code 8 (server-issued error) and not 4
 # (network failure/timeout)
 
-WGET_ARGS=""
-
-# Simple test that https is working.
+start_test Simple test that https is working.
 if [ -n "$HTTPS_HOST" ]; then
   URL="$HTTPS_EXAMPLE_ROOT/combine_css.html"
   fetch_until $URL 'fgrep -c css+' 1 --no-check-certificate
@@ -881,9 +875,11 @@ check_not grep "yellow.background-color:" $FETCHED
 
 # Cache extend PDFs.
 test_filter extend_cache_pdfs PDF cache extension
+
+# Saves any WGET_ARGS computed by 'test_filter' into WGET_EC, past the
+# invocation of start_test Cache-extended PDFs below, which clears WGET_ARGS.
 WGET_EC="$WGET_DUMP $WGET_ARGS"
 
-start_test Html is rewritten with cache-extended PDFs.
 fetch_until -save $URL 'fgrep -c .pagespeed.' 3
 check grep -q 'a href=".*pagespeed.*\.pdf' $FETCH_FILE
 check grep -q 'embed src=".*pagespeed.*\.pdf' $FETCH_FILE
@@ -1120,7 +1116,6 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
 fi
 
 start_test PageSpeed resources should have a content length.
-WGET_ARGS=""
 HTML_URL="$EXAMPLE_ROOT/rewrite_css_images.html?PageSpeedFilters=rewrite_css"
 fetch_until -save "$HTML_URL" "fgrep -c rewrite_css_images.css.pagespeed.cf" 1
 # Pull the rewritten resource name out so we get an accurate hash.
@@ -1164,7 +1159,3 @@ check fgrep "Could not combine over barrier: IE directive" $FETCH_FILE
 
 # Cleanup
 rm -rf $OUTDIR
-
-# TODO(jefftk): Find out what test breaks without the next two lines and fix it.
-filter_spec_method="query_params"
-test_filter '' Null Filter
