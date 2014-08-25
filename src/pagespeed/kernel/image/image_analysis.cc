@@ -16,23 +16,23 @@
 
 // Author: Huibao Lin
 
-#include "third_party/pagespeed/kernel/image/image_analysis.h"
+#include "pagespeed/kernel/image/image_analysis.h"
 
 #include <stdbool.h>
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include "base/logging.h"
-#include "third_party/pagespeed/kernel/base/scoped_ptr.h"
-#include "third_party/pagespeed/kernel/base/string.h"
-#include "third_party/pagespeed/kernel/image/image_frame_interface.h"
-#include "third_party/pagespeed/kernel/image/jpeg_utils.h"
-#include "third_party/pagespeed/kernel/image/pixel_format_optimizer.h"
-#include "third_party/pagespeed/kernel/image/read_image.h"
-#include "third_party/pagespeed/kernel/image/scanline_interface.h"
-#include "third_party/pagespeed/kernel/image/scanline_interface_frame_adapter.h"
-#include "third_party/pagespeed/kernel/image/scanline_status.h"
-#include "third_party/pagespeed/kernel/image/scanline_utils.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/image/image_frame_interface.h"
+#include "pagespeed/kernel/image/jpeg_utils.h"
+#include "pagespeed/kernel/image/pixel_format_optimizer.h"
+#include "pagespeed/kernel/image/read_image.h"
+#include "pagespeed/kernel/image/scanline_interface.h"
+#include "pagespeed/kernel/image/scanline_interface_frame_adapter.h"
+#include "pagespeed/kernel/image/scanline_status.h"
+#include "pagespeed/kernel/image/scanline_utils.h"
 
 namespace pagespeed {
 
