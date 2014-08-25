@@ -274,6 +274,13 @@ void ProxyInterface::GetRewriteOptionsDone(RequestData* request_data,
     bool using_spdy = false;
     // TODO(pulkitg): Set is_original_resource_cacheable to false if pagespeed
     // resource is not cacheable.
+    const RewriteOptions* these_options =
+        (options == NULL ? server_context_->global_options() : options);
+    // TODO(sligocki): Should we be setting default options and then overriding
+    // here? It seems like it would be better to only set once, but that
+    // involves a lot of complicated code changes.
+    async_fetch->request_context()->ResetOptions(
+        these_options->ComputeHttpOptions());
     ResourceFetch::Start(*request_url, options, using_spdy,
                          server_context_, async_fetch);
   } else {
@@ -341,6 +348,10 @@ void ProxyInterface::GetRewriteOptionsDone(RequestData* request_data,
       // NewCustomRewriteDriver takes ownership of custom_options_.
       driver = server_context_->NewCustomRewriteDriver(options, request_ctx);
     }
+    // TODO(sligocki): Should we be setting default options and then overriding
+    // here? It seems like it would be better to only set once, but that
+    // involves a lot of complicated code changes.
+    request_ctx->ResetOptions(driver->options()->ComputeHttpOptions());
 
     // TODO(mmohabey): Remove duplicate setting of user agent and
     // request headers for different flows.

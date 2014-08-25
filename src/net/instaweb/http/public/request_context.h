@@ -364,6 +364,13 @@ class RequestContext : public RefCounted<RequestContext> {
     options_set_ = true;
     options_ = options;
   }
+  // This allows changing options already set.
+  // TODO(sligocki): It would be nice if we could make sure options are only
+  // set once. Is it worth the complexity to force that to be true?
+  void ResetOptions(const HttpOptions& options) {
+    options_set_ = true;
+    options_ = options;
+  }
   const HttpOptions& options() const {
     DCHECK(options_set_);
     return options_;
