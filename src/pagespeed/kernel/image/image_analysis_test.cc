@@ -19,17 +19,17 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdlib>
-#include "pagespeed/kernel/base/basictypes.h"
-#include "pagespeed/kernel/base/gtest.h"
-#include "pagespeed/kernel/base/mock_message_handler.h"
-#include "pagespeed/kernel/base/null_mutex.h"
-#include "pagespeed/kernel/base/scoped_ptr.h"
-#include "pagespeed/kernel/base/string.h"
-#include "pagespeed/kernel/image/image_analysis.h"
-#include "pagespeed/kernel/image/read_image.h"
-#include "pagespeed/kernel/image/scanline_interface.h"
-#include "pagespeed/kernel/image/scanline_utils.h"
-#include "pagespeed/kernel/image/test_utils.h"
+#include "third_party/pagespeed/kernel/base/basictypes.h"
+#include "third_party/pagespeed/kernel/base/gtest.h"
+#include "third_party/pagespeed/kernel/base/mock_message_handler.h"
+#include "third_party/pagespeed/kernel/base/null_mutex.h"
+#include "third_party/pagespeed/kernel/base/scoped_ptr.h"
+#include "third_party/pagespeed/kernel/base/string.h"
+#include "third_party/pagespeed/kernel/image/image_analysis.h"
+#include "third_party/pagespeed/kernel/image/read_image.h"
+#include "third_party/pagespeed/kernel/image/scanline_interface.h"
+#include "third_party/pagespeed/kernel/image/scanline_utils.h"
+#include "third_party/pagespeed/kernel/image/test_utils.h"
 
 namespace {
 
@@ -162,9 +162,15 @@ class ImageAnalysisTest : public testing::Test {
       EXPECT_EQ(images[i].is_progressive, is_progressive);
       EXPECT_EQ(images[i].is_animated, is_animated);
       EXPECT_EQ(images[i].has_transparency, has_transparency);
-      EXPECT_EQ(images[i].is_photo, is_photo);
       EXPECT_EQ(images[i].quality, quality);
-      if (is_animated) {
+
+      bool expected_is_photo = images[i].is_photo;
+      if (image_format == IMAGE_JPEG) {
+        expected_is_photo = true;
+      }
+      EXPECT_EQ(expected_is_photo, is_photo);
+
+      if (is_animated || image_format != IMAGE_JPEG) {
         EXPECT_EQ(static_cast<ScanlineReaderInterface*>(NULL), reader);
       } else {
         EXPECT_NE(static_cast<ScanlineReaderInterface*>(NULL), reader);

@@ -16,23 +16,23 @@
 
 // Author: Huibao Lin
 
-#include "pagespeed/kernel/image/image_analysis.h"
+#include "third_party/pagespeed/kernel/image/image_analysis.h"
 
 #include <stdbool.h>
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include "base/logging.h"
-#include "pagespeed/kernel/base/scoped_ptr.h"
-#include "pagespeed/kernel/base/string.h"
-#include "pagespeed/kernel/image/image_frame_interface.h"
-#include "pagespeed/kernel/image/jpeg_utils.h"
-#include "pagespeed/kernel/image/pixel_format_optimizer.h"
-#include "pagespeed/kernel/image/read_image.h"
-#include "pagespeed/kernel/image/scanline_interface.h"
-#include "pagespeed/kernel/image/scanline_interface_frame_adapter.h"
-#include "pagespeed/kernel/image/scanline_status.h"
-#include "pagespeed/kernel/image/scanline_utils.h"
+#include "third_party/pagespeed/kernel/base/scoped_ptr.h"
+#include "third_party/pagespeed/kernel/base/string.h"
+#include "third_party/pagespeed/kernel/image/image_frame_interface.h"
+#include "third_party/pagespeed/kernel/image/jpeg_utils.h"
+#include "third_party/pagespeed/kernel/image/pixel_format_optimizer.h"
+#include "third_party/pagespeed/kernel/image/read_image.h"
+#include "third_party/pagespeed/kernel/image/scanline_interface.h"
+#include "third_party/pagespeed/kernel/image/scanline_interface_frame_adapter.h"
+#include "third_party/pagespeed/kernel/image/scanline_status.h"
+#include "third_party/pagespeed/kernel/image/scanline_utils.h"
 
 namespace pagespeed {
 
@@ -362,7 +362,19 @@ bool AnalyzeImage(ImageFormat image_type,
       *has_transparency = (optimizer->GetPixelFormat() == RGBA_8888);
     }
     if (is_photo != NULL) {
-      *is_photo = IsPhoto(optimizer.get(), handler);
+      if (image_type == IMAGE_JPEG) {
+        // Assume all JPEG images are photos. JPEG is the most popular format
+        // in internet and most of them have photo content. For the very few
+        // JPEG image with graphics content, we can't really improve the quality
+        // by losslessly encoding them, so we simply assume all of them to
+        // be photos, in order to save computations.
+        *is_photo = true;
+      } else {
+        // IsPhoto will read all scanlines of the image, so optimizer cannot be
+        // used anymore.
+        *is_photo = IsPhoto(optimizer.get(), handler);
+        optimizer.reset();
+      }
     }
   }
 
