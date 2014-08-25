@@ -224,6 +224,7 @@ class HtmlName {
     kType,
     kU,
     kUl,
+    kValue,
     kValuetype,
     kVar,
     kVideo,
