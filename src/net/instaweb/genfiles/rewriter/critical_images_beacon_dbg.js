@@ -1161,6 +1161,13 @@ goog.array.removeIf = function(arr, f, opt_obj) {
   var i = goog.array.findIndex(arr, f, opt_obj);
   return 0 <= i ? (goog.array.removeAt(arr, i), !0) : !1;
 };
+goog.array.removeAllIf = function(arr, f, opt_obj) {
+  var removedCount = 0;
+  goog.array.forEachRight(arr, function(val, index) {
+    f.call(opt_obj, val, index, arr) && goog.array.removeAt(arr, index) && removedCount++;
+  });
+  return removedCount;
+};
 goog.array.concat = function(var_args) {
   return goog.array.ARRAY_PROTOTYPE_.concat.apply(goog.array.ARRAY_PROTOTYPE_, arguments);
 };

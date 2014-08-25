@@ -1163,6 +1163,13 @@ goog.array.removeIf = function(arr, f, opt_obj) {
   var i = goog.array.findIndex(arr, f, opt_obj);
   return 0 <= i ? (goog.array.removeAt(arr, i), !0) : !1;
 };
+goog.array.removeAllIf = function(arr, f, opt_obj) {
+  var removedCount = 0;
+  goog.array.forEachRight(arr, function(val, index) {
+    f.call(opt_obj, val, index, arr) && goog.array.removeAt(arr, index) && removedCount++;
+  });
+  return removedCount;
+};
 goog.array.concat = function(var_args) {
   return goog.array.ARRAY_PROTOTYPE_.concat.apply(goog.array.ARRAY_PROTOTYPE_, arguments);
 };
@@ -1883,6 +1890,8 @@ goog.disposable.IDisposable = function() {
 };
 goog.Disposable = function() {
   goog.Disposable.MONITORING_MODE != goog.Disposable.MonitoringMode.OFF && (goog.Disposable.instances_[goog.getUid(this)] = this);
+  this.disposed_ = this.disposed_;
+  this.onDisposeCallbacks_ = this.onDisposeCallbacks_;
 };
 goog.Disposable.MonitoringMode = {OFF:0, PERMANENT:1, INTERACTIVE:2};
 goog.Disposable.MONITORING_MODE = 0;
@@ -4247,10 +4256,16 @@ goog.Promise = function(resolver, opt_context) {
     resolver.call(opt_context, function(value) {
       self.resolve_(goog.Promise.State_.FULFILLED, value);
     }, function(reason) {
+      if (goog.DEBUG && !(reason instanceof goog.Promise.CancellationError)) {
+        try {
+          throw reason;
+        } catch (e) {
+        }
+      }
       self.resolve_(goog.Promise.State_.REJECTED, reason);
     });
-  } catch (e) {
-    this.resolve_(goog.Promise.State_.REJECTED, e);
+  } catch (e$$0) {
+    this.resolve_(goog.Promise.State_.REJECTED, e$$0);
   }
 };
 goog.Promise.LONG_STACK_TRACES = !1;
@@ -4489,6 +4504,7 @@ goog.Timer = function(opt_interval, opt_timerObject) {
 };
 goog.inherits(goog.Timer, goog.events.EventTarget);
 goog.Timer.MAX_TIMEOUT_ = 2147483647;
+goog.Timer.INVALID_TIMEOUT_ID_ = -1;
 goog.Timer.prototype.enabled = !1;
 goog.Timer.defaultTimerObject = goog.global;
 goog.Timer.intervalScale = .8;
@@ -4522,20 +4538,21 @@ goog.Timer.callOnce = function(listener, opt_delay, opt_handler) {
       throw Error("Invalid listener argument");
     }
   }
-  return opt_delay > goog.Timer.MAX_TIMEOUT_ ? -1 : goog.Timer.defaultTimerObject.setTimeout(listener, opt_delay || 0);
+  return opt_delay > goog.Timer.MAX_TIMEOUT_ ? goog.Timer.INVALID_TIMEOUT_ID_ : goog.Timer.defaultTimerObject.setTimeout(listener, opt_delay || 0);
 };
 goog.Timer.clear = function(timerId) {
   goog.Timer.defaultTimerObject.clearTimeout(timerId);
 };
 goog.Timer.promise = function(delay, opt_result) {
-  var timerKey;
+  var timerKey = null;
   return(new goog.Promise(function(resolve, reject) {
     timerKey = goog.Timer.callOnce(function() {
       resolve(opt_result);
     }, delay);
-    -1 == timerKey && reject(Error("Failed to schedule timer."));
-  })).thenCatch(function() {
-    timerKey && goog.Timer.clear(timerKey);
+    timerKey == goog.Timer.INVALID_TIMEOUT_ID_ && reject(Error("Failed to schedule timer."));
+  })).thenCatch(function(error) {
+    goog.Timer.clear(timerKey);
+    throw error;
   });
 };
 goog.uri = {};
