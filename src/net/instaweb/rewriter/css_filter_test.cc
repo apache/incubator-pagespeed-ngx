@@ -720,6 +720,7 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     // Expression
     "a{_top: expression(0+((e=document.documen))) }",
     "a{width: expression(this.width > 120 ? 120:tr) }",
+    "a{_height: expression((parentNode.offsetHeight-17))}",
     // Equals in function
     "a{progid:DXImageTransform.Microsoft.AlphaImageLoader"
     "(src=/images/lb/internet_e) }",
@@ -734,6 +735,13 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
 
     // Don't "fix" font properties.
     "a{font:12px,clean}",
+
+    // Various other Alexa results.
+    "@-moz-document url-prefix() { input[type=\"file\"] {border:none}}",
+    ".foo{background-image: (/i.png);width:10px}",
+    ".bigAd{background:14url(http://himg2.huanqiu.com/bigAd.jpg) center}",
+    ".foo{background: url\n\n(../images/btn_login_min.gif) }",
+    "@-webkit-keyframes \"foo\" { 0 { transform: scale (.85) } }",
   };
 
   for (int i = 0; i < arraysize(good_examples); ++i) {
@@ -775,10 +783,6 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
 
     // Parsing failures from Alexa-1000.
 
-    // We don't properly skip over embedded () inside unknown functions.
-    // TODO(sligocki):  We should pass these through as unparsed regions.
-    ".foo {_height: expression((parentNode.offsetHeight-17));}",
-
     // Malformed @media statements.
     // TODO(sligocki):  We should pass these through as unparsed regions.
     // Important: Don't "fix" by adding space between 'and' and '('.
@@ -796,11 +800,6 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     // Various Typos.
     // TODO(sligocki):  We should pass these through as unparsed regions.
     "</foobar>",
-    "@-moz-document url-prefix() { input[type=\"file\"] {border:none}}",
-    ".foo { background-image: (/i.png); width: 10px; }",
-    ".bigAd { background:14url(http://himg2.huanqiu.com/bigAd.jpg) center;}",
-    ".foo { background: url\n\n(../images/btn_login_min.gif) }",
-    "@-webkit-keyframes \"foo\" { 0 { transform: scale (.85) } }",
     "-ms-filter:\"progid:DXImageTransform.Microsoft.Alpha\"(Opacity=70)",
 
     // Trailing gibberish.
@@ -1220,6 +1219,20 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       ".connect_widget .page_stream img{max-width:120px;"
       "width:expression(this.width > 120 ? 120:true);color:red}" },
 
+    { "#fancybox-loading.fancybox-ie6 {\n"
+      "        position: absolute; margin-top: 0;\n"
+      "        top: expression( (-20 + (document.documentElement.clientHeight "
+      "? document.documentElement.clientHeight/2 : document.body.clientHeight/"
+      "2 ) + ( ignoreMe = document.documentElement.scrollTop ? document.docume"
+      "ntElement.scrollTop : document.body.scrollTop )) + 'px');\n"
+      "}\n",
+
+      "#fancybox-loading.fancybox-ie6{position:absolute;margin-top:0;"
+      "top: expression( (-20 + (document.documentElement.clientHeight "
+      "? document.documentElement.clientHeight/2 : document.body.clientHeight/"
+      "2 ) + ( ignoreMe = document.documentElement.scrollTop ? document.docume"
+      "ntElement.scrollTop : document.body.scrollTop )) + 'px')}" },
+
     // Equals in function
     { ".imdb_lb .header{width:726px;width=728px;height:12px;padding:1px;"
       "border-bottom:1px #000000 solid;background:#eeeeee;font-size:10px;"
@@ -1490,6 +1503,33 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       ".b { color: blue; }\n",
 
       ".a{color:red}@import url('foo.css');.b{color:#00f}" },
+
+    // Ignoring chars at end of function.
+    { "* html #profilePhoto {\n"
+      "  height: expression((this.flag == undefined) ? (this.scrollHeight > "
+      "500) ? this.flag = '500px' : 'auto' : '');\n"
+      "}",
+
+      "* html #profilePhoto{height: expression((this.flag == undefined) ? "
+      "(this.scrollHeight > 500) ? this.flag = '500px' : 'auto' : '')}" },
+
+    // Nonsense: (rgba(...)) (last line).
+    // From http://yandex.st/www/1.473/touch-bem/pages-touch/index/_index.css
+    { ".b-search__button{position:relative;min-width:50px;margin:0 0 0 -1px;"
+      "padding:1px 0 1px 1px;-webkit-border-top-left-radius:2px;"
+      "border-top-left-radius:2px;-webkit-border-bottom-left-radius:2px;"
+      "border-bottom-left-radius:2px;background:-webkit-gradient(linear,0 0,"
+      "0 100%,from(rgba(192,192,192,.6)),to(rgba(49,49,49,.3)));"
+      "background:-o-linear-gradient(top,(rgba(192,192,192,.6)),"
+      "(rgba(49,49,49,.3)))}",
+
+      ".b-search__button{position:relative;min-width:50px;margin:0 0 0 -1px;"
+      "padding:1px 0 1px 1px;-webkit-border-top-left-radius:2px;"
+      "border-top-left-radius:2px;-webkit-border-bottom-left-radius:2px;"
+      "border-bottom-left-radius:2px;background:-webkit-gradient(linear,0 0,"
+      "0 100%,from(rgba(192,192,192,.6)),to(rgba(49,49,49,.3)));"
+      "background:-o-linear-gradient(top,(rgba(192,192,192,.6)),"
+      "(rgba(49,49,49,.3)))}" },
   };
 
   for (int i = 0; i < arraysize(examples); ++i) {
@@ -1534,12 +1574,6 @@ TEST_F(CssFilterTest, ComplexCssTest) {
     "\t}\n"
     "}\n",
 
-    // Ignoring chars at end of function.
-    "* html #profilePhoto {\n"
-    "  height: expression((this.flag == undefined) ? (this.scrollHeight > 500) "
-    "? this.flag = '500px' : 'auto' : '');\n"
-    "}",
-
     // Zero width space <U+200B> = \xE2\x80\x8B
     // http://zenpencils.com/wp-content/plugins/zpcustomselectmenu/ddSlick.css
     "   .dd-container { \n"
@@ -1550,16 +1584,6 @@ TEST_F(CssFilterTest, ComplexCssTest) {
     "           font-weight:bold;\n"
     "           cursor:pointer !important;\n"
     "   }\xE2\x80\x8B",
-
-    // Nonsense: (rgba(...)) (last line).
-    // From http://yandex.st/www/1.473/touch-bem/pages-touch/index/_index.css
-    ".b-search__button{position:relative;min-width:50px;margin:0 0 0 -1px;"
-    "padding:1px 0 1px 1px;-webkit-border-top-left-radius:2px;"
-    "border-top-left-radius:2px;-webkit-border-bottom-left-radius:2px;"
-    "border-bottom-left-radius:2px;background:-webkit-gradient(linear,0 0,"
-    "0 100%,from(rgba(192,192,192,.6)),to(rgba(49,49,49,.3)));"
-    "background:-o-linear-gradient(top,(rgba(192,192,192,.6)),"
-    "(rgba(49,49,49,.3)))}",
 
     // !important in selectors.
     // From http://mstatic.allegrostatic.pl/allegro/touch/css/style.min.css

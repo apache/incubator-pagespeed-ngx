@@ -826,6 +826,8 @@ Value* Parser::ParseAny() {
       ReportParsingError(kValueError, StringPrintf(
           "Unsupported value starting with %c", *in_));
       char delim = *in_ == '(' ? ')' : ']';
+      // Move past this delimiter so that we don't double count it.
+      in_++;
       SkipPastDelimiter(delim);
       toret = NULL;  // we don't understand this construct.
       break;

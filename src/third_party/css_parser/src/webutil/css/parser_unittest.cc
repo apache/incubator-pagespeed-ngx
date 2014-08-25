@@ -2403,4 +2403,11 @@ TEST_F(ParserTest, ImportInMiddle) {
             s->ToString());
 }
 
+TEST_F(ParserTest, ParseAnyParens) {
+  scoped_ptr<Parser> p(new Parser("(2 + 3) 9 7)"));
+  scoped_ptr<Value> value(p->ParseAny());
+  // ParseAny() should parse past exactly "(2 + 3)".
+  EXPECT_STREQ(" 9 7)", p->in_);
+}
+
 }  // namespace Css

@@ -608,6 +608,7 @@ class Parser {
   FRIEND_TEST(ParserTest, SkipBlock);
   FRIEND_TEST(ParserTest, SkippedTokenError);
   FRIEND_TEST(ParserTest, ValueError);
+  FRIEND_TEST(ParserTest, ParseAnyParens);
   friend void ParseFontFamily(Parser* parser);
   friend class MediaAppliesToScreenTest;
 
