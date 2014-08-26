@@ -410,7 +410,7 @@ check_from "$OUT" egrep -q \
   '^X-Page-Speed: [0-9]+[.][0-9]+[.][0-9]+[.][0-9]+-[0-9]+'
 
 start_test pagespeed is defaulting to more than PassThrough
-fetch_until $TEST_ROOT/bot_test.html 'grep -c \.pagespeed\.' 2
+fetch_until $TEST_ROOT/bot_test.html 'fgrep -c .pagespeed.' 2
 
 start_test 404s are served and properly recorded.
 NUM_404=$(scrape_stat resource_404_count)
@@ -618,7 +618,7 @@ check_from "$OUT" fgrep -q "$EXPECTED_EXAMPLES_TEXT"
 # loses that header when we are not respecting vary.
 start_test Vary:User-Agent on resources is held by our cache.
 URL="$TEST_ROOT/vary/no_respect/index.html"
-fetch_until -save $URL 'grep -c \.pagespeed\.cf\.' 1
+fetch_until -save $URL 'fgrep -c .pagespeed.cf.' 1
 
 # Extract out the rewritten CSS file from the HTML saved by fetch_until
 # above (see -save and definition of fetch_until).  Fetch that CSS
@@ -775,7 +775,7 @@ URL=$TEST_ROOT/disable_no_transform/index.html?PageSpeedFilters=inline_css
 fetch_until -save -recursive $URL 'grep -c style' 2
 
 start_test ShardDomain directive in location block
-fetch_until -save $TEST_ROOT/shard/shard.html 'grep -c \.pagespeed\.' 4
+fetch_until -save $TEST_ROOT/shard/shard.html 'fgrep -c .pagespeed.ce' 4
 check [ $(grep -ce href=\"http://shard1 $FETCH_FILE) = 2 ];
 check [ $(grep -ce href=\"http://shard2 $FETCH_FILE) = 2 ];
 
@@ -1224,7 +1224,7 @@ check_from "$OUT" grep $'^Cache-Control: max-age=0, no-cache\r$'
 
 start_test server-side includes
 fetch_until -save $TEST_ROOT/ssi/ssi.shtml?PageSpeedFilters=combine_css \
-    'grep -c \.pagespeed\.' 1
+    'fgrep -c .pagespeed.' 1
 check [ $(grep -ce $combine_css_filename $FETCH_FILE) = 1 ];
 
 start_test Embed image configuration in rewritten image URL.
@@ -1234,7 +1234,7 @@ start_test Embed image configuration in rewritten image URL.
 # spelling it out to avoid test regolds when we add image filter IDs.
 http_proxy=$SECONDARY_HOSTNAME fetch_until -save -recursive \
     http://embed-config-html.example.org/embed_config.html \
-    'grep -c \.pagespeed\.' 3 --save-headers
+    'fgrep -c .pagespeed.' 3 --save-headers
 
 # with the default rewriters in vhost embed-config-resources.example.com
 # the image will be >200k.  But by enabling resizing & compression 73
