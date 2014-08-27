@@ -22,7 +22,14 @@
 #include <cstddef>
 
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/countdown_timer.h"
+#include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+
+namespace net_instaweb {
+class MessageHandler;
+class Timer;
+}
 
 namespace pagespeed {
 
@@ -120,6 +127,47 @@ size_t GetBytesPerPixel(PixelFormat pixel_format);
 // file is decoded.
 ImageFormat ComputeImageFormat(const StringPiece& buf,
                                bool* is_webp_lossless_alpha);
+
+// Class for managing image conversion timeouts.
+class ConversionTimeoutHandler {
+ public:
+  ConversionTimeoutHandler(int64 time_allowed_ms,
+                           net_instaweb::Timer* timer,
+                           net_instaweb::MessageHandler* handler) :
+    countdown_timer_(timer, NULL, time_allowed_ms),
+    time_allowed_ms_(time_allowed_ms),
+    time_elapsed_ms_(0),
+    was_timed_out_(false),
+    output_(NULL),
+    handler_(handler) {}
+
+  // Returns true if (1) the timer has not expired, or (2) the timer has
+  // expired but "output_" is not empty which means that some data are
+  // being written to it. This method can be passed as progress hook to
+  // WebP writer. Input parameter "user_data" must point to a
+  // ConversionTimeoutHandler object.
+  static bool Continue(int percent, void* user_data);
+
+  void Start(GoogleString* output) {
+    output_ = output;
+    countdown_timer_.Reset(time_allowed_ms_);
+  }
+
+  void Stop() {
+    time_elapsed_ms_ = countdown_timer_.TimeElapsedMs();
+  }
+
+  bool was_timed_out() const { return was_timed_out_; }
+  int64 time_elapsed_ms() const { return time_elapsed_ms_; }
+
+ private:
+  net_instaweb::CountdownTimer countdown_timer_;
+  const int64 time_allowed_ms_;
+  int64 time_elapsed_ms_;
+  bool was_timed_out_;
+  GoogleString* output_;
+  net_instaweb::MessageHandler* handler_;
+};
 
 }  // namespace image_compression
 

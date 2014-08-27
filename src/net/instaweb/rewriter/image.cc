@@ -29,7 +29,6 @@
 #include "net/instaweb/rewriter/public/image_url_encoder.h"
 #include "net/instaweb/rewriter/public/webp_optimizer.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/countdown_timer.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -64,6 +63,7 @@ extern "C" {
 
 using pagespeed::image_compression::AnalyzeImage;
 using pagespeed::image_compression::ComputeImageFormat;
+using pagespeed::image_compression::ConversionTimeoutHandler;
 using pagespeed::image_compression::CreateScanlineReader;
 using pagespeed::image_compression::CreateScanlineWriter;
 using pagespeed::image_compression::GifReader;
@@ -182,111 +182,25 @@ const double JpegPixelToByteRatio(int compression_level) {
   return ratio;
 }
 
-// Class to manage WebP conversion timeouts.
-class ConversionTimeoutHandler {
- public:
-  ConversionTimeoutHandler(const GoogleString& url,
-                     Timer* timer,
-                     MessageHandler* handler,
-                     int64 timeout_ms,
-                     GoogleString* output_contents) :
-      url_(url),
-      countdown_timer_(timer,
-                       this /* not used */,
-                       timeout_ms),
-      handler_(handler),
-      expired_(false),
-      output_(output_contents),
-      stopped_(false),
-      time_elapsed_(0) {}
-
-  ~ConversionTimeoutHandler() {
-    VLOG(1) << "WebP attempts (which " << (expired_ ? "DID" : "did NOT")
-            << " expire) took " << countdown_timer_.TimeElapsedMs()
-            << " ms for " << url_;
-    if (!stopped_) {
-      DCHECK(expired_) << "Should have called RegisterStatus()";
-    }
-  }
-
-  // The first time this is called, it records the elapsed time. Every
-  // time this is called, this updates conversion_vars according to
-  // the status 'ok' and the recorded elapsed time.
-  void RegisterStatus(bool ok,
-                      Image::ConversionVariables::VariableType var_type,
-                      Image::ConversionVariables* conversion_vars) {
-    if (!stopped_) {
-      time_elapsed_ = countdown_timer_.TimeElapsedMs();
-      stopped_ = true;
-    }
-    if (conversion_vars != NULL) {
-      Image::ConversionBySourceVariable* the_var =
-          conversion_vars->Get(var_type);
-      if (the_var != NULL) {
-        if (expired_) {
-          IncrementVariable(the_var->timeout_count);
-          DCHECK(!ok);
+void UpdateWebpStats(bool ok, bool was_timed_out, int64 time_elapsed_ms,
+                     Image::ConversionVariables::VariableType var_type,
+                     Image::ConversionVariables* conversion_vars) {
+  if (conversion_vars != NULL) {
+    Image::ConversionBySourceVariable* the_var = conversion_vars->Get(var_type);
+    if (the_var != NULL) {
+      if (was_timed_out) {
+        the_var->timeout_count->Add(1);
+        DCHECK(!ok);
+      } else {
+        if (ok) {
+          the_var->success_ms->Add(time_elapsed_ms);
         } else {
-          IncrementHistogram(ok ? the_var->success_ms : the_var->failure_ms);
+          the_var->failure_ms->Add(time_elapsed_ms);
         }
       }
     }
   }
-
-  // This function may be passed as a progress hook to
-  // ImageConverter::ConvertPngToWebp or to OptimizeWebp(). user_data
-  // should be a pointer to a WebpTimeoutHandler object. This function
-  // returns true if countdown_timer_ hasn't expired or there are some
-  // bytes in output_contents_ (meaning WebP conversion is essentially
-  // finished).
-  static bool Continue(int percent, void* user_data) {
-    ConversionTimeoutHandler* timeout_handler =
-        static_cast<ConversionTimeoutHandler*>(user_data);
-    VLOG(2) <<  "WebP conversions: " << percent <<"% done; time left: "
-            << timeout_handler->countdown_timer_.TimeLeftMs() << " ms";
-    VLOG(2) << "Progress: " << percent << "% for " << timeout_handler->url_;
-    if (!timeout_handler->HaveTimeLeft()) {
-      // We include the output_->empty() check after HaveTimeLeft()
-      // for testing, in case there's a callback that writes to
-      // output_ invoked at a time that triggers a timeout.
-      if (!timeout_handler->output_->empty()) {
-        VLOG(2) << "Output non-empty at " << percent
-                << "% for " << timeout_handler->url_;
-        return true;
-      }
-      PS_LOG_WARN(timeout_handler->handler_, "WebP conversion timed out!");
-      timeout_handler->expired_ = true;
-      return false;
-    }
-    return true;
-  }
-
-  bool HaveTimeLeft() {
-    return countdown_timer_.HaveTimeLeft();
-  }
-
- private:
-  void IncrementVariable(Variable* variable) {
-    if (variable) {
-      variable->Add(1);
-    }
-  }
-
-  void IncrementHistogram(Histogram* histogram) {
-    if (histogram) {
-      DCHECK(stopped_);
-      histogram->Add(time_elapsed_);
-    }
-  }
-
-  const GoogleString& url_;
-  CountdownTimer countdown_timer_;
-  MessageHandler* handler_;
-  bool expired_;
-  GoogleString* output_;
-  bool stopped_;
-  int64 time_elapsed_;
-};
+}
 
 // TODO(huibao): Unify ImageType and ImageFormat.
 ImageFormat ImageTypeToImageFormat(ImageType type) {
@@ -1101,20 +1015,24 @@ bool ImageImpl::ComputeOutputContents() {
 inline bool ImageImpl::ConvertJpegToWebp(
     const GoogleString& original_jpeg, int configured_quality,
     GoogleString* compressed_webp) {
-  ConversionTimeoutHandler timeout_handler(url_, timer_, handler_.get(),
-                                           options_->webp_conversion_timeout_ms,
-                                           compressed_webp);
+  ConversionTimeoutHandler timeout_handler(options_->webp_conversion_timeout_ms,
+                                           timer_, handler_.get());
+  timeout_handler.Start(compressed_webp);
   bool ok = OptimizeWebp(original_jpeg, configured_quality,
                          ConversionTimeoutHandler::Continue, &timeout_handler,
                          compressed_webp, handler_.get());
-  timeout_handler.RegisterStatus(
-      ok,
-      Image::ConversionVariables::FROM_JPEG,
-      options_->webp_conversion_variables);
-  timeout_handler.RegisterStatus(
-      ok,
-      Image::ConversionVariables::OPAQUE,
-      options_->webp_conversion_variables);
+  timeout_handler.Stop();
+
+  bool was_timed_out = timeout_handler.was_timed_out();
+  int64 time_elapsed_ms = timeout_handler.time_elapsed_ms();
+
+  UpdateWebpStats(ok, was_timed_out, time_elapsed_ms,
+                 Image::ConversionVariables::FROM_JPEG,
+                 options_->webp_conversion_variables);
+
+  UpdateWebpStats(ok, was_timed_out, time_elapsed_ms,
+                 Image::ConversionVariables::OPAQUE,
+                 options_->webp_conversion_variables);
   return ok;
 }
 
@@ -1237,10 +1155,8 @@ bool ImageImpl::ConvertPngToWebp(
       bool compress_color_losslessly,
       bool has_transparency,
       ConversionVariables::VariableType var_type) {
-  ConversionTimeoutHandler timeout_handler(
-      url_, timer_, handler_.get(),
-      options_->webp_conversion_timeout_ms,
-      &output_contents_);
+  ConversionTimeoutHandler timeout_handler(options_->webp_conversion_timeout_ms,
+                                           timer_, handler_.get());
   WebpConfiguration webp_config;
 
   // Quality/speed trade-off (0=fast, 6=slower-better).
@@ -1275,6 +1191,7 @@ bool ImageImpl::ConvertPngToWebp(
   // The technique they use can only detect some of the opaque images.
   // PixelFormatOptimizer has a more expensive, but comprehensive solution.
   bool not_used;
+  timeout_handler.Start(&output_contents_);
   bool ok = ImageConverter::ConvertPngToWebp(
       png_reader, input_image, webp_config,
       &output_contents_, &not_used, handler_.get());
@@ -1282,17 +1199,19 @@ bool ImageImpl::ConvertPngToWebp(
   if (ok) {
     image_type_ = target_image_type;
   }
+  timeout_handler.Stop();
 
-  timeout_handler.RegisterStatus(ok,
-                                 var_type,
-                                 options_->webp_conversion_variables);
+  bool was_timed_out = timeout_handler.was_timed_out();
+  int64 time_elapsed_ms = timeout_handler.time_elapsed_ms();
 
-  timeout_handler.RegisterStatus(
-      ok,
-      (has_transparency ?
-       Image::ConversionVariables::NONOPAQUE :
-       Image::ConversionVariables::OPAQUE),
-      options_->webp_conversion_variables);
+  UpdateWebpStats(ok, was_timed_out, time_elapsed_ms, var_type,
+                  options_->webp_conversion_variables);
+
+  UpdateWebpStats(ok, was_timed_out, time_elapsed_ms,
+                  (has_transparency ?
+                   Image::ConversionVariables::NONOPAQUE :
+                   Image::ConversionVariables::OPAQUE),
+                  options_->webp_conversion_variables);
 
   return ok;
 }

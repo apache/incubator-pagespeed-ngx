@@ -18,6 +18,9 @@
 
 #include "pagespeed/kernel/image/image_util.h"
 
+#include "pagespeed/kernel/base/countdown_timer.h"
+#include "pagespeed/kernel/base/message_handler.h"
+
 namespace pagespeed {
 
 namespace {
@@ -143,6 +146,24 @@ ImageFormat ComputeImageFormat(const StringPiece& buf,
     }
   }
   return image_format;
+}
+
+bool ConversionTimeoutHandler::Continue(int percent, void* user_data) {
+  ConversionTimeoutHandler* timeout_handler =
+    static_cast<ConversionTimeoutHandler*>(user_data);
+  if (timeout_handler != NULL &&
+      !timeout_handler->countdown_timer_.HaveTimeLeft()) {
+    // We include the output_->empty() check after HaveTimeLeft()
+    // for testing, in case there's a callback that writes to
+    // output_ invoked at a time that triggers a timeout.
+    if (!timeout_handler->output_->empty()) {
+      return true;
+    }
+    PS_LOG_WARN(timeout_handler->handler_, "Image conversion timed out.");
+    timeout_handler->was_timed_out_ = true;
+    return false;
+  }
+  return true;
 }
 
 }  // namespace image_compression

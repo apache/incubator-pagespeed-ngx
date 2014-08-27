@@ -1042,7 +1042,8 @@ TEST_F(ImageTest, JpegToWebpTimesOutTest) {
   options->preferred_webp = Image::WEBP_LOSSY;
   options->webp_quality = 75;
   options->webp_conversion_timeout_ms = 1;
-  timer_.SetTimeDeltaUs(1);  // When setting deadline
+  timer_.SetTimeDeltaUs(1);  // 1st increment of time, used for setting deadline
+  timer_.SetTimeDeltaUs(1);  // 2nd increment of time, used for setting deadline
   timer_.SetTimeDeltaUs(     // During conversion
       1000 * options->webp_conversion_timeout_ms + 1);
 
