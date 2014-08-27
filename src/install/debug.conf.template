@@ -51,6 +51,10 @@ ModPagespeedRetainComment " google_ad_section*"
 # Test proxying of non-.pagespeed. resources.
 ModPagespeedMapProxyDomain http://@@APACHE_DOMAIN@@/modpagespeed_http \
                            http://@@PAGESPEED-TEST-HOST@@/do_not_modify
+ModPagespeedMapProxyDomain http://@@APACHE_DOMAIN@@/content_type_present \
+                           http://@@PAGESPEED-TEST-HOST@@:8091
+ModPagespeedMapProxyDomain http://@@APACHE_DOMAIN@@/content_type_absent \
+                           http://@@PAGESPEED-TEST-HOST@@:8092
 
 # Turn on "KeepAlive" so we can test it in system_test.sh.
 KeepAlive On

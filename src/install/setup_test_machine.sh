@@ -67,3 +67,10 @@ fi
 sudo a2ensite default-ssl
 sudo a2enmod ssl
 sudo make-ssl-cert generate-default-snakeoil --force-overwrite
+
+# TODO(jefftk): We don't restart the test servers often enough for this to be
+# worth automating right now, but if it gets annoying then we should make it run
+# automatically on server startup.
+echo "In order for tests that check for servers on ports 8091 and 8092 to pass,"
+echo "now and after every server restart please run:"
+echo "  nohup scripts/serve_proxying_tests.sh > proxy_test_log.txt"

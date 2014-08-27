@@ -2428,13 +2428,28 @@ if [ $statistics_enabled = "1" ]; then
   check_stat $OLDSTATS $NEWSTATS cache_misses 0
 fi
 
-start_test Do not proxy content with unknown type
-URL="$PRIMARY_SERVER/modpagespeed_http/unknown_file.unknown"
+start_test Do not proxy content without a Content-Type header
+# These tests depend on modpagespeed.com being configured to serve an example
+# file with a content-type header on port 8091 and without one on port 8092.
+# scripts/serve_proxying_tests.sh can do this.
+URL="$PRIMARY_SERVER/content_type_absent/"
+CONTENTS="This file should not be proxied"
+
+
 OUT=$($CURL --include --silent $URL)
 check_from "$OUT" fgrep -q "403 Forbidden"
 check_from "$OUT" fgrep -q \
     "Missing Content-Type required for proxied resource"
-check_not_from "$OUT" fgrep -q "This file should not be proxied"
+check_not_from "$OUT" fgrep -q "$CONTENTS"
+
+start_test But do proxy content if the Content-Type header is present.
+URL="$PRIMARY_SERVER/content_type_present/"
+CONTENTS="This file should be proxied"
+
+
+OUT=$($CURL --include --silent $URL)
+check_from "$OUT" fgrep -q "200 OK"
+check_from "$OUT" fgrep -q "$CONTENTS"
 
 start_test proxying from external domain should optimize images in-place.
 # Keep fetching this until it's headers include the string "PSA-aj" which
