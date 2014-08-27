@@ -165,9 +165,11 @@ const char* const kIdentifierRegex =
     "([$_\\p{Lu}\\p{Ll}\\p{Lt}\\p{Lm}\\p{Lo}\\p{Nl}\\p{Mn}\\p{Mc}\\p{Nd}"
     "\\p{Pc}\xE2\x80\x8C\xE2\x80\x8D]|\\\\u[0-9A-Fa-f]{4})*";
 
-// Regex to match JavaScript line comments.
+// Regex to match JavaScript line comments.  This regex contains exactly one
+// capturing group, which will match the linebreak (or end-of-input) that
+// terminated the line comment.
 const char* const kLineCommentRegex =
-    "(//|<!--|-->)[^\r\n\\p{Zl}\\p{Zp}]*";
+    "(?://|<!--|-->)\\C*?([\r\n\\p{Zl}\\p{Zp}]|\\z)";
 
 // Regex to match JavaScript numeric literals.  This must be compiled in POSIX
 // mode, so that the |'s are leftmost-longest rather than leftmost-first.
@@ -230,18 +232,29 @@ const char* const kRegexLiteralRegex =
 
 // Regex to match JavaScript string literals.  For details, see page 22 of
 // http://www.ecma-international.org/publications/files/ECMA-ST/Ecma-262.pdf
+// This regex will still match when given a string literal containing an
+// unescaped linebreak, but the match will terminate after the linebreak; the
+// caller must then check whether the start and end characters of the match are
+// the same (both single quote or both double quote), and reject it if not.
 const char* const kStringLiteralRegex =
     // Single-quoted string literals can contain any characters that aren't
-    // single quotes, backslashes, or linebreaks.
-    "'([^'\\\\\n\r\\p{Zl}\\p{Zp}]|"
-    // They can also contain escape sequences, which is a backslash followed
-    // either by a linebreak or by any one character.  But note that the
-    // sequence \r\n counts as *one* linebreak for this purpose, as does \n\r.
-    "\\\\(\r\n|\n\r|\n|.))*'|"
+    // single quotes, backslashes, or linebreaks.  They can also contain escape
+    // sequences, which is a backslash followed either by a linebreak or by any
+    // one character.  But note that the sequence \r\n counts as *one*
+    // linebreak for this purpose, as does \n\r.  Finally, we use RE2's \C
+    // escape for matching arbitrary bytes, along with very careful use of
+    // greedy and non-greedy operators, to allow the string literal to contain
+    // invalid UTF-8 characters, in case we're given e.g. Latin1-encoded input.
+    // This is subtle and fragile, but fortunately we have unit tests that will
+    // break if we ever get this wrong.
+    //
+    // This would be easier if there were a way to say "match an invalid UTF8
+    // byte only", but apparently there is no way to do this in RE2.
+    // See https://groups.google.com/forum/#!topic/re2-dev/26wVIHcowh4
+    "'(\\C*?(\\\\(\r\n|\n\r|\n|.))?)*?['\n\r\\p{Zl}\\p{Zp}]|"
     // A string literal can also be double-quoted instead, which is the same,
     // except that double quotes must be escaped instead of single quotes.
-    "\"([^\"\\\\\n\r\\p{Zl}\\p{Zp}]|"
-    "\\\\(\r\n|\n\r|\n|.))*\"";
+    "\"(\\C*?(\\\\(\r\n|\n\r|\n|.))?)*?[\"\n\r\\p{Zl}\\p{Zp}]";
 
 // Regex to match JavaScript whitespace.  For details, see page 15 of
 // http://www.ecma-international.org/publications/files/ECMA-ST/Ecma-262.pdf
@@ -556,14 +569,15 @@ JsKeywords::Type JsTokenizer::ConsumeBlockComment(StringPiece* token_out) {
 
 JsKeywords::Type JsTokenizer::ConsumeLineComment(StringPiece* token_out) {
   Re2StringPiece unconsumed = StringPieceToRe2(input_);
-  if (!RE2::Consume(&unconsumed, patterns_->line_comment_pattern)) {
+  Re2StringPiece linebreak;
+  if (!RE2::Consume(&unconsumed, patterns_->line_comment_pattern, &linebreak)) {
     // We only call ConsumeLineComment when we're sure we're looking at a line
     // comment, so this ought not happen even for pathalogical input.
     LOG(DFATAL) << "Failed to match line comment pattern: "
                 << input_.substr(0, 50);
     return Error(token_out);
   }
-  Emit(input_.size() - unconsumed.size(), false, token_out);
+  Emit(input_.size() - unconsumed.size() - linebreak.size(), false, token_out);
   return JsKeywords::kComment;
 }
 
@@ -895,7 +909,8 @@ JsKeywords::Type JsTokenizer::ConsumeString(StringPiece* token_out) {
   DCHECK(!input_.empty());
   DCHECK(input_[0] == '"' || input_[0] == '\'');
   Re2StringPiece unconsumed = StringPieceToRe2(input_);
-  if (!RE2::Consume(&unconsumed, patterns_->string_literal_pattern)) {
+  if (!RE2::Consume(&unconsumed, patterns_->string_literal_pattern) ||
+      input_[input_.size() - unconsumed.size() - 1] != input_[0]) {
     // EOF or an unescaped linebreak in the string will cause an error.
     return Error(token_out);
   }

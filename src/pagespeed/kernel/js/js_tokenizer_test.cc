@@ -1251,6 +1251,47 @@ TEST_F(JsTokenizerTest, LinebreakInStringLiteral) {
   ExpectError("'foo\xE2\x80\xA8quux';");
 }
 
+TEST_F(JsTokenizerTest, EscapedQuotesInStringLiteral1) {
+  BeginTokenizing("'foo\\\\\\'bar';");
+  ExpectToken(JsKeywords::kStringLiteral, "'foo\\\\\\'bar'");
+  ExpectToken(JsKeywords::kOperator,   ";");
+  ExpectEndOfInput();
+}
+
+TEST_F(JsTokenizerTest, EscapedQuotesInStringLiteral2) {
+  BeginTokenizing("\"baz\"+'foo\\\\\\'ba\"r';");
+  ExpectToken(JsKeywords::kStringLiteral, "\"baz\"");
+  ExpectToken(JsKeywords::kOperator,   "+");
+  ExpectToken(JsKeywords::kStringLiteral, "'foo\\\\\\'ba\"r'");
+  ExpectToken(JsKeywords::kOperator,   ";");
+  ExpectEndOfInput();
+}
+
+TEST_F(JsTokenizerTest, EscapedQuotesInStringLiteral3) {
+  BeginTokenizing("'b\\\\az'+'foo\\'bar';");
+  ExpectToken(JsKeywords::kStringLiteral, "'b\\\\az'");
+  ExpectToken(JsKeywords::kOperator,   "+");
+  ExpectToken(JsKeywords::kStringLiteral, "'foo\\'bar'");
+  ExpectToken(JsKeywords::kOperator,   ";");
+  ExpectEndOfInput();
+}
+
+TEST_F(JsTokenizerTest, EscapedQuotesInStringLiteral4) {
+  BeginTokenizing("'b\\'az'+'foobar';");
+  ExpectToken(JsKeywords::kStringLiteral, "'b\\'az'");
+  ExpectToken(JsKeywords::kOperator,   "+");
+  ExpectToken(JsKeywords::kStringLiteral, "'foobar'");
+  ExpectToken(JsKeywords::kOperator,   ";");
+  ExpectEndOfInput();
+}
+
+TEST_F(JsTokenizerTest, EscapedQuotesInStringLiteral5) {
+  BeginTokenizing("\"f\xFFoo\\\\\\\"bar\";");
+  ExpectToken(JsKeywords::kStringLiteral, "\"f\xFFoo\\\\\\\"bar\"");
+  ExpectToken(JsKeywords::kOperator,   ";");
+  ExpectEndOfInput();
+}
+
 TEST_F(JsTokenizerTest, UnclosedStringLiteral) {
   BeginTokenizing("bar='quux;");
   ExpectToken(JsKeywords::kIdentifier, "bar");
@@ -1367,6 +1408,71 @@ TEST_F(JsTokenizerTest, NumberProperty) {
   ExpectToken(JsKeywords::kNumber,     "1.");
   ExpectToken(JsKeywords::kOperator,   ".");
   ExpectToken(JsKeywords::kIdentifier, "property");
+  ExpectEndOfInput();
+}
+
+TEST_F(JsTokenizerTest, LineCommentAtEndOfInput) {
+  BeginTokenizing("hello//world");
+  ExpectToken(JsKeywords::kIdentifier, "hello");
+  ExpectToken(JsKeywords::kComment,    "//world");
+  ExpectEndOfInput();
+}
+
+TEST_F(JsTokenizerTest, Latin1BlockComment) {
+  // Try to tokenize input that is Latin-1 encoded.  This is not valid UTF-8,
+  // but we should be able to proceed gracefully (in most cases) if the
+  // non-ascii characters only ever appear in string literals and comments.
+  BeginTokenizing("/* qu\xE9 pasa */\n");
+  ExpectToken(JsKeywords::kComment, "/* qu\xE9 pasa */");
+  ExpectToken(JsKeywords::kLineSeparator, "\n");
+  ExpectEndOfInput();
+}
+
+TEST_F(JsTokenizerTest, Latin1LineComment) {
+  // Try to tokenize input that is Latin-1 encoded.  This is not valid UTF-8,
+  // but we should be able to proceed gracefully (in most cases) if the
+  // non-ascii characters only ever appear in string literals and comments.
+  BeginTokenizing("// qu\xE9 pasa\n");
+  ExpectToken(JsKeywords::kComment, "// qu\xE9 pasa");
+  ExpectToken(JsKeywords::kLineSeparator, "\n");
+  ExpectEndOfInput();
+}
+
+TEST_F(JsTokenizerTest, Latin1StringLiteral) {
+  // Try to tokenize input that is Latin-1 encoded.  This is not valid UTF-8,
+  // but we should be able to proceed gracefully (in most cases) if the
+  // non-ascii characters only ever appear in string literals and comments.
+  BeginTokenizing("\"qu\xE9 pasa\"\n");
+  ExpectToken(JsKeywords::kStringLiteral, "\"qu\xE9 pasa\"");
+  ExpectToken(JsKeywords::kLineSeparator, "\n");
+  ExpectEndOfInput();
+
+  // An example with more complicated escaping:
+  BeginTokenizing("'\xAA\\'\xBB\\\r\n\xCC'\n");
+  ExpectToken(JsKeywords::kStringLiteral, "'\xAA\\'\xBB\\\r\n\xCC'");
+  ExpectToken(JsKeywords::kLineSeparator, "\n");
+  ExpectEndOfInput();
+}
+
+TEST_F(JsTokenizerTest, Latin1Input) {
+  // Try to tokenize input that is Latin-1 encoded.  This is not valid UTF-8,
+  // but we should be able to proceed gracefully (in most cases) if the
+  // non-ascii characters only ever appear in string literals and comments.
+  BeginTokenizing("str='Qu\xE9 pasa';// 'qu\xE9' means 'what'\n"
+                  "cents=/* 73\xA2 is $0.73 */73;");
+
+  ExpectToken(JsKeywords::kIdentifier, "str");
+  ExpectToken(JsKeywords::kOperator,   "=");
+  ExpectToken(JsKeywords::kStringLiteral, "'Qu\xE9 pasa'");
+  ExpectToken(JsKeywords::kOperator,   ";");
+  ExpectToken(JsKeywords::kComment,    "// 'qu\xE9' means 'what'");
+  ExpectToken(JsKeywords::kLineSeparator, "\n");
+
+  ExpectToken(JsKeywords::kIdentifier, "cents");
+  ExpectToken(JsKeywords::kOperator,   "=");
+  ExpectToken(JsKeywords::kComment,    "/* 73\xA2 is $0.73 */");
+  ExpectToken(JsKeywords::kNumber,     "73");
+  ExpectToken(JsKeywords::kOperator,   ";");
   ExpectEndOfInput();
 }
 

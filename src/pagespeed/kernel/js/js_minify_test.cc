@@ -523,6 +523,15 @@ TEST_F(JsMinifyTest, SemicolonInsertionDebuggerStmt) {
   CheckMinification("debugger\nfoo;", "debugger\nfoo;");
 }
 
+TEST_F(JsMinifyTest, Latin1Input) {
+  // Try to minify input that is Latin-1 encoded.  This is not valid UTF-8, but
+  // we should be able to proceed gracefully (in most cases) if the non-ascii
+  // characters only ever appear in string literals and comments.
+  CheckMinification("str='Qu\xE9 pasa';// 'qu\xE9' means 'what'\n"
+                    "cents=/* 73\xA2 is $0.73 */73;",
+                    "str='Qu\xE9 pasa';cents=73;");
+}
+
 const char kCollapsingStringTestString[] =
     "var x = 'asd \\' lse'\n"
     "var y /*comment*/ = /re'gex/\n"
