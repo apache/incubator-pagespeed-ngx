@@ -78,9 +78,13 @@ pagespeed.Statistics = function(opt_xhr) {
   this.lastValue_ = {'statsName': 0};
 
   /**
-   * The frequency of change since the first refresh. For example,
-   * this.timesOfChange_['cache_hits'] is the number of times of changes of
-   * 'cache_hits' since the first refresh.
+   * Heuristic for how often each variable changes. It basically
+   * counts the number of changes we've noticed since the first
+   * refresh. The exact value is not important, instead this is used
+   * to distinguish "more active" stats from "less active" ones.
+   *
+   * For example, this.timesOfChange_['cache_hits'] is the number of
+   * times of changes of 'cache_hits' since the first refresh.
    * @private {!Object}
    */
   this.timesOfChange_ = {'statsName': 0};
@@ -103,10 +107,10 @@ pagespeed.Statistics = function(opt_xhr) {
   /**
    * If this option is false, the statistics is sorted alphabetically. When it
    * is set to true, the statistics is sorted in descending order of the
-   * frequency of change and secondarily alphabetic order.
+   * number of changes and secondarily alphabetic order.
    * @private {boolean}
    */
-  this.sortFrequency_ = false;
+  this.sortByNumberOfChanges_ = false;
 
   /**
    * The flag of whether the first refresh is started. We need to call a
@@ -153,10 +157,10 @@ pagespeed.Statistics.prototype.toggleAutorefresh = function() {
 
 
 /**
- * Updates the option of sort-by-frequency-of-change.
+ * Updates the option of sort-by-number-of-changes.
  */
 pagespeed.Statistics.prototype.toggleSorting = function() {
-  this.sortFrequency_ = !this.sortFrequency_;
+  this.sortByNumberOfChanges_ = !this.sortByNumberOfChanges_;
   this.update();
 };
 
@@ -202,9 +206,9 @@ pagespeed.Statistics.prototype.error = function() {
  * Filters and displays updated statistics.
  */
 pagespeed.Statistics.prototype.update = function() {
-  if (this.sortFrequency_) {
-    // Sort in descending order of the frequency of change.
-    this.sortByFrequency();
+  if (this.sortByNumberOfChanges_) {
+    // Sort in descending order of the number of changes.
+    this.sortByNumberOfChanges();
   } else {
     // Sort in alphabetical order.
     this.sortByAlphabet();
@@ -237,23 +241,24 @@ pagespeed.Statistics.prototype.update = function() {
     cell = row.insertCell(2);
     cell.textContent =
         this.timesOfChange_[messages[i].name].toString();
-    cell.className = 'pagespeed-stats-frequency';
+    cell.className = 'pagespeed-stats-number-of-changes';
   }
   var header = table.createTHead().insertRow(0);
   var cell = header.insertCell(0);
   cell.innerHTML =
       'Name <input type="checkbox" id="sort-alpha" ' +
       'title="Sort in alphabetical order."' +
-      (!this.sortFrequency_ ? 'checked' : '') + '>';
+      (!this.sortByNumberOfChanges_ ? 'checked' : '') + '>';
   cell.className = 'pagespeed-stats-first-column';
   header.insertCell(1).textContent = 'Value';
   cell = header.insertCell(2);
   cell.innerHTML =
-      'Frequency of Change <input type="checkbox" id="sort-freq" ' +
-      'title="Sort by the frequency of change(descending order)."' +
-      (this.sortFrequency_ ? 'checked' : '') + '>';
-  cell.title = 'How many times the value changes during the auto-refresh.\n' +
-               'The frequency only accumulates when auto-refresh is on.';
+      'Number of changes <input type="checkbox" id="sort-freq" ' +
+      'title="Sort by the number of changes(descending order)."' +
+      (this.sortByNumberOfChanges_ ? 'checked' : '') + '>';
+  cell.title =
+      'How many times the value changes during the auto-refresh.\n' +
+      'The number of changes only accumulates when auto-refresh is on.';
   cell.className = 'pagespeed-stats-third-column';
   var statElement = document.getElementById('stat');
   statElement.innerHTML = '';
@@ -284,13 +289,13 @@ pagespeed.Statistics.alphabetCompareFunc = function(a, b) {
 
 
 /**
- * Sort the statistics by the frequency of change.
+ * Sort the statistics by the number of changes.
  */
-pagespeed.Statistics.prototype.sortByFrequency = function() {
+pagespeed.Statistics.prototype.sortByNumberOfChanges = function() {
   var compareFunc = function(a, b) {
     var first = this.timesOfChange_[a.name];
     var second = this.timesOfChange_[b.name];
-    // Sort in the descending order of frequency.
+    // Sort in the descending order of number of changes.
     if (second != first) {
       return second - first;
     } else {
@@ -342,13 +347,23 @@ pagespeed.Statistics.prototype.parseMessagesFromResponse = function(jsonData) {
     };
     messages.push(node);
 
-    // Compute the frequency of change.
-    if (variables[name] != this.lastValue_[trimmedName]) {
-      this.timesOfChange_[trimmedName] =
-          this.timesOfChange_[trimmedName] == undefined ?
-          0 : this.timesOfChange_[trimmedName] + 1;
+    // If the timesOfChange vector is uninitialized, we'll start
+    // it at 1 if the statistics value is non-zero.  This is not always
+    // correct because some stats might shrink back to zero, but this
+    // number-of-changes-count is an estimation anyway, and I believe this
+    // produces a more useful sort-by-number-of-changes function.
+    var newValue = variables[name];
+    var prevChangeCount = this.timesOfChange_[trimmedName];
+    if (prevChangeCount == undefined) {
+      if (newValue) {           // Not undefined, and not 0.
+        this.timesOfChange_[trimmedName] = 1;
+      } else {
+        this.timesOfChange_[trimmedName] = 0;
+      }
+    } else if (newValue != this.lastValue_[trimmedName]) {
+      this.timesOfChange_[trimmedName] = prevChangeCount + 1;
     }
-    this.lastValue_[trimmedName] = variables[name];
+    this.lastValue_[trimmedName] = newValue;
   }
   this.psolMessages_ = messages;
   this.numUnfilteredMessages_ = messages.length;

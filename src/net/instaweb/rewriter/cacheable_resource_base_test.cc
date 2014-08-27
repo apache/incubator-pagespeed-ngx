@@ -144,17 +144,17 @@ class CacheableResourceBaseTest : public RewriteTestBase {
   void CheckStats(TestResource* resource,
                   int expect_hits,
                   int expect_recent_fetch_failures,
-                  int expect_recent_uncacheables_treated_as_miss,
-                  int expect_recent_uncacheables_treated_as_failure,
+                  int expect_recent_uncacheables_miss,
+                  int expect_recent_uncacheables_failure,
                   int expect_misses) {
     EXPECT_EQ(expect_hits,
               resource->hits_->Get());
     EXPECT_EQ(expect_recent_fetch_failures,
               resource->recent_fetch_failures_->Get());
-    EXPECT_EQ(expect_recent_uncacheables_treated_as_miss,
-              resource->recent_uncacheables_treated_as_miss_->Get());
-    EXPECT_EQ(expect_recent_uncacheables_treated_as_failure,
-              resource->recent_uncacheables_treated_as_failure_->Get());
+    EXPECT_EQ(expect_recent_uncacheables_miss,
+              resource->recent_uncacheables_miss_->Get());
+    EXPECT_EQ(expect_recent_uncacheables_failure,
+              resource->recent_uncacheables_failure_->Get());
     EXPECT_EQ(expect_misses,
               resource->misses_->Get());
   }

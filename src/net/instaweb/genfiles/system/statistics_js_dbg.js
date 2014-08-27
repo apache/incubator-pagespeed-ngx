@@ -4258,7 +4258,10 @@ goog.Promise = function(resolver, opt_context) {
     }, function(reason) {
       if (goog.DEBUG && !(reason instanceof goog.Promise.CancellationError)) {
         try {
-          throw reason;
+          if (reason instanceof Error) {
+            throw reason;
+          }
+          throw Error("Promise rejected.");
         } catch (e) {
         }
       }
@@ -5130,7 +5133,7 @@ var pagespeed = {Statistics:function(opt_xhr) {
   this.lastValue_ = {statsName:0};
   this.timesOfChange_ = {statsName:0};
   this.filter_ = "";
-  this.firstRefreshStarted_ = this.sortFrequency_ = this.autoRefresh_ = !1;
+  this.firstRefreshStarted_ = this.sortByNumberOfChanges_ = this.autoRefresh_ = !1;
   var wrapper = document.createElement("div");
   wrapper.style.overflow = "hidden";
   wrapper.style.clear = "both";
@@ -5149,7 +5152,7 @@ pagespeed.Statistics.prototype.toggleAutorefresh = function() {
   this.autoRefresh_ = !this.autoRefresh_;
 };
 pagespeed.Statistics.prototype.toggleSorting = function() {
-  this.sortFrequency_ = !this.sortFrequency_;
+  this.sortByNumberOfChanges_ = !this.sortByNumberOfChanges_;
   this.update();
 };
 pagespeed.Statistics.prototype.setFilter = function(element) {
@@ -5166,7 +5169,7 @@ pagespeed.Statistics.prototype.error = function() {
   document.getElementById("stat").textContent = pagespeed.Statistics.REFRESH_ERROR_;
 };
 pagespeed.Statistics.prototype.update = function() {
-  this.sortFrequency_ ? this.sortByFrequency() : this.sortByAlphabet();
+  this.sortByNumberOfChanges_ ? this.sortByNumberOfChanges() : this.sortByAlphabet();
   var messages = goog.array.clone(this.psolMessages_);
   if (this.filter_) {
     for (var i = messages.length - 1;0 <= i;--i) {
@@ -5183,15 +5186,15 @@ pagespeed.Statistics.prototype.update = function() {
     cell.className = "pagespeed-stats-value";
     cell = row.insertCell(2);
     cell.textContent = this.timesOfChange_[messages[i].name].toString();
-    cell.className = "pagespeed-stats-frequency";
+    cell.className = "pagespeed-stats-number-of-changes";
   }
   var header = table.createTHead().insertRow(0), cell = header.insertCell(0);
-  cell.innerHTML = 'Name <input type="checkbox" id="sort-alpha" title="Sort in alphabetical order."' + (this.sortFrequency_ ? "" : "checked") + ">";
+  cell.innerHTML = 'Name <input type="checkbox" id="sort-alpha" title="Sort in alphabetical order."' + (this.sortByNumberOfChanges_ ? "" : "checked") + ">";
   cell.className = "pagespeed-stats-first-column";
   header.insertCell(1).textContent = "Value";
   cell = header.insertCell(2);
-  cell.innerHTML = 'Frequency of Change <input type="checkbox" id="sort-freq" title="Sort by the frequency of change(descending order)."' + (this.sortFrequency_ ? "checked" : "") + ">";
-  cell.title = "How many times the value changes during the auto-refresh.\nThe frequency only accumulates when auto-refresh is on.";
+  cell.innerHTML = 'Number of changes <input type="checkbox" id="sort-freq" title="Sort by the number of changes(descending order)."' + (this.sortByNumberOfChanges_ ? "checked" : "") + ">";
+  cell.title = "How many times the value changes during the auto-refresh.\nThe number of changes only accumulates when auto-refresh is on.";
   cell.className = "pagespeed-stats-third-column";
   var statElement = document.getElementById("stat");
   statElement.innerHTML = "";
@@ -5202,7 +5205,7 @@ pagespeed.Statistics.prototype.update = function() {
 pagespeed.Statistics.alphabetCompareFunc = function(a, b) {
   return a.name > b.name ? 1 : a.name < b.name ? -1 : 0;
 };
-pagespeed.Statistics.prototype.sortByFrequency = function() {
+pagespeed.Statistics.prototype.sortByNumberOfChanges = function() {
   this.psolMessages_.sort(function(a, b) {
     var first = this.timesOfChange_[a.name], second = this.timesOfChange_[b.name];
     return second != first ? second - first : pagespeed.Statistics.alphabetCompareFunc(a, b);
@@ -5222,8 +5225,9 @@ pagespeed.Statistics.prototype.parseMessagesFromResponse = function(jsonData) {
         var trimmedName = name.replace(/-/g, "_");
         "_" == trimmedName[0] && (trimmedName = trimmedName.substring(1));
         messages.push({name:trimmedName, value:variables[name].toString()});
-        variables[name] != this.lastValue_[trimmedName] && (this.timesOfChange_[trimmedName] = void 0 == this.timesOfChange_[trimmedName] ? 0 : this.timesOfChange_[trimmedName] + 1);
-        this.lastValue_[trimmedName] = variables[name];
+        var newValue = variables[name], prevChangeCount = this.timesOfChange_[trimmedName];
+        void 0 == prevChangeCount ? this.timesOfChange_[trimmedName] = newValue ? 1 : 0 : newValue != this.lastValue_[trimmedName] && (this.timesOfChange_[trimmedName] = prevChangeCount + 1);
+        this.lastValue_[trimmedName] = newValue;
       }
     }
     this.psolMessages_ = messages;

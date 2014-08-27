@@ -148,9 +148,14 @@ pagespeed.Messages.prototype.updateMessageCount = function(opt_num) {
   // The default number of messages is the length of the array when opt_num
   // is not specified.
   var total = (opt_num != undefined) ? opt_num : this.psolMessages_.length;
-  document.getElementById('num').textContent =
-      'The number of messages: ' + total.toString() + '/' +
+  if (total == this.numUnfilteredMessages_) {
+    document.getElementById('num').textContent = 'Total message count: ' +
+        total;
+  } else {
+    document.getElementById('num').textContent =
+      'Visible message count: ' + total + '/' +
       this.numUnfilteredMessages_;
+  }
 };
 
 

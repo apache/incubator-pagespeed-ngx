@@ -4258,7 +4258,10 @@ goog.Promise = function(resolver, opt_context) {
     }, function(reason) {
       if (goog.DEBUG && !(reason instanceof goog.Promise.CancellationError)) {
         try {
-          throw reason;
+          if (reason instanceof Error) {
+            throw reason;
+          }
+          throw Error("Promise rejected.");
         } catch (e) {
         }
       }

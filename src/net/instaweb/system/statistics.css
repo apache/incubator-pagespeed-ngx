@@ -43,7 +43,7 @@ mod rules
 .pagespeed-stats-value {
   text-align: right;
 }
-.pagespeed-stats-frequency {
+.pagespeed-stats-number-of-changes {
   text-align: center;
 }
 .pagespeed-stats-first-column {

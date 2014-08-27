@@ -99,6 +99,12 @@ pagespeed.Graphs = function(opt_xhr) {
    */
   this.secondRefreshStarted_ = false;
 
+  /**
+   * Maps chart titles to the chart object.
+   * @private {Object}
+   */
+  this.chartCache_ = {};
+
   // Hide all div elements.
   // To use AnnotatedTimeLine charts, we must specify the size of the container
   // elements explicitly instead of setting the size in the options of charts.
@@ -367,51 +373,43 @@ pagespeed.Graphs.prototype.parseAjaxResponse = function() {
  * Initialization for drawing all the charts.
  */
 pagespeed.Graphs.prototype.drawVisualization = function() {
-  var barChart = 'BarChart';
-  var timeLine = 'AnnotatedTimeLine';
-  var prefixes = [
-    ['pcache-cohorts-dom_', 'Property cache dom cohorts', barChart,
-     pagespeed.Graphs.DisplayDiv.CACHE_APPLIED],
-    ['pcache-cohorts-beacon_', 'Property cache beacon cohorts', barChart,
-     pagespeed.Graphs.DisplayDiv.CACHE_APPLIED],
-    ['rewrite_cached_output_', 'Rewrite cached output', barChart,
-     pagespeed.Graphs.DisplayDiv.CACHE_APPLIED],
-    ['url_input_', 'URL Input', barChart,
-     pagespeed.Graphs.DisplayDiv.CACHE_APPLIED],
+  this.drawBarChart('pcache-cohorts-dom', 'Property cache dom cohorts',
+                    pagespeed.Graphs.DisplayDiv.CACHE_APPLIED);
+  this.drawBarChart('pcache-cohorts-beacon', 'Property cache beacon cohorts',
+                    pagespeed.Graphs.DisplayDiv.CACHE_APPLIED);
+  this.drawBarChart('rewrite_cached_output', 'Rewrite cached output',
+                    pagespeed.Graphs.DisplayDiv.CACHE_APPLIED);
+  this.drawBarChart('url_input', 'URL Input',
+                    pagespeed.Graphs.DisplayDiv.CACHE_APPLIED);
 
-    ['cache_', 'Cache', barChart, pagespeed.Graphs.DisplayDiv.CACHE_TYPE],
-    ['file_cache_', 'File Cache', barChart,
-     pagespeed.Graphs.DisplayDiv.CACHE_TYPE],
-    ['memcached_', 'Memcached', barChart,
-     pagespeed.Graphs.DisplayDiv.CACHE_TYPE],
-    ['lru_cache_', 'LRU', barChart, pagespeed.Graphs.DisplayDiv.CACHE_TYPE],
-    ['shm_cache_', 'Shared Memory', barChart,
-     pagespeed.Graphs.DisplayDiv.CACHE_TYPE],
+  this.drawBarChart('cache', 'Cache',
+                    pagespeed.Graphs.DisplayDiv.CACHE_TYPE);
+  this.drawBarChart('file_cache', 'File Cache',
+                    pagespeed.Graphs.DisplayDiv.CACHE_TYPE);
+  this.drawBarChart('memcached', 'Memcached',
+                    pagespeed.Graphs.DisplayDiv.CACHE_TYPE);
+  this.drawBarChart('lru_cache', 'LRU',
+                    pagespeed.Graphs.DisplayDiv.CACHE_TYPE);
+  this.drawBarChart('shm_cache', 'Shared Memory',
+                    pagespeed.Graphs.DisplayDiv.CACHE_TYPE);
 
-    ['ipro_', 'In place resource optimization', barChart,
-     pagespeed.Graphs.DisplayDiv.IPRO],
+  this.drawBarChart('ipro', 'In place resource optimization',
+                    pagespeed.Graphs.DisplayDiv.IPRO);
 
-    ['image_rewrite_', 'Image rewrite', barChart,
-     pagespeed.Graphs.DisplayDiv.REWRITE_IMAGE],
-    ['image_rewrites_dropped_', 'Image rewrites dropped', barChart,
-     pagespeed.Graphs.DisplayDiv.REWRITE_IMAGE],
+  this.drawBarChart('image_rewrite', 'Image rewrite',
+                    pagespeed.Graphs.DisplayDiv.REWRITE_IMAGE);
+  this.drawBarChart('image_rewrites_dropped', 'Image rewrites dropped',
+                    pagespeed.Graphs.DisplayDiv.REWRITE_IMAGE);
 
-    ['http_', 'Http', timeLine,
-     pagespeed.Graphs.DisplayDiv.REALTIME, true],
-    ['file_cache_', 'File Cache RT', timeLine,
-     pagespeed.Graphs.DisplayDiv.REALTIME, true],
-    ['lru_cache_', 'LRU Cache RT', timeLine,
-     pagespeed.Graphs.DisplayDiv.REALTIME, true],
-    ['serf_fetch_', 'Serf stats RT', timeLine,
-     pagespeed.Graphs.DisplayDiv.REALTIME, true],
-    ['rewrite_', 'Rewrite stats RT', timeLine,
-     pagespeed.Graphs.DisplayDiv.REALTIME, true]
-  ];
-
-  for (var i = 0; i < prefixes.length; ++i) {
-    this.drawChart(prefixes[i][0], prefixes[i][1], prefixes[i][2],
-                   prefixes[i][3], prefixes[i][4]);
-  }
+  this.drawHistoryChart('http', 'Http', pagespeed.Graphs.DisplayDiv.REALTIME);
+  this.drawHistoryChart('file_cache', 'File Cache RT',
+                        pagespeed.Graphs.DisplayDiv.REALTIME);
+  this.drawHistoryChart('lru_cache', 'LRU Cache RT',
+                        pagespeed.Graphs.DisplayDiv.REALTIME);
+  this.drawHistoryChart('serf_fetch', 'Serf stats RT',
+                        pagespeed.Graphs.DisplayDiv.REALTIME);
+  this.drawHistoryChart('rewrite', 'Rewrite stats RT',
+                        pagespeed.Graphs.DisplayDiv.REALTIME);
 };
 
 
@@ -436,24 +434,20 @@ pagespeed.Graphs.screenData = function(prefix, name) {
   return use;
 };
 
-
 /**
- * Draw the chart using Google Charts API.
- * @param {string} settingPrefix The matching prefix of data for the chart.
+ * Initialize a chart using Google Charts API.
+ * @param {string} id The ID of the chart div to create.
  * @param {string} title The title of the chart.
  * @param {string} chartType The type of chart. AnnotatedTimeLine or BarChart.
  * @param {string} targetId The id of the target HTML element.
- * @param {boolean} showHistory The flag of history line charts.
+ * @return {Object} The created chart object.
  */
-pagespeed.Graphs.prototype.drawChart = function(settingPrefix, title,
-                                                chartType, targetId,
-                                                showHistory) {
-  this.drawChart.chartCache = this.drawChart.chartCache ?
-                              this.drawChart.chartCache : {};
+pagespeed.Graphs.prototype.initChart = function(
+    id, title, chartType, targetId) {
   var theChart;
   // TODO(oschaaf): Title might not be unique
-  if (this.drawChart.chartCache[title]) {
-    theChart = this.drawChart.chartCache[title];
+  if (this.chartCache_[title]) {
+    theChart = this.chartCache_[title];
   } else {
     // The element identified by the id must exist.
     var targetElement = document.getElementById(targetId);
@@ -462,7 +456,10 @@ pagespeed.Graphs.prototype.drawChart = function(settingPrefix, title,
       targetElement.textContent = '';
     }
     var dest = document.createElement('div');
-    dest.className = 'pagespeed-graphs-chart';
+    if (chartType == 'AnnotatedTimeLine') {
+      dest.className = 'pagespeed-graphs-chart';
+    }
+    dest.id = id;
     var chartTitle = document.createElement('p');
     chartTitle.textContent = title;
 
@@ -470,110 +467,141 @@ pagespeed.Graphs.prototype.drawChart = function(settingPrefix, title,
     targetElement.appendChild(chartTitle);
     targetElement.appendChild(dest);
     theChart = new google.visualization[chartType](dest);
-    this.drawChart.chartCache[title] = theChart;
+    this.chartCache_[title] = theChart;
   }
+  return theChart;
+};
 
+/**
+ * Draw a bar chart using Google Charts API.
+ * @param {string} prefix The statistics prefix of data for the chart.
+ * @param {string} title The title of the chart.
+ * @param {string} targetId The id of the target HTML element.
+ */
+pagespeed.Graphs.prototype.drawBarChart = function(prefix, title, targetId) {
+  var id = 'pagespeed-graphs-' + prefix;
+  var settingPrefix = prefix + '_';
+  var theChart = this.initChart(id, title, 'BarChart', targetId);
+  var dest = document.getElementById(id);
   var rows = [];
   var data = new google.visualization.DataTable();
 
-  // The graphs for recentest data.
-  if (!showHistory) {
-    var messages = goog.array.clone(
-        this.psolMessages_[this.psolMessages_.length - 1].messages);
-    for (var i = 0; i < messages.length; ++i) {
-      if (messages[i].value == '0') continue;
-      if (!pagespeed.Graphs.screenData(settingPrefix, messages[i].name)) {
-        continue;
-      }
-      // Removes the prefix.
-      var caption = messages[i].name.substring(settingPrefix.length);
-      // We use regexp here to replace underscores all at once.
-      // Using '_' would only replace one underscore at a time.
-      caption = caption.replace(/_/g, ' ');
-      rows.push([caption, Number(messages[i].value)]);
+  var messages = goog.array.clone(
+      this.psolMessages_[this.psolMessages_.length - 1].messages);
+  var numBars = 0;
+  for (var i = 0; i < messages.length; ++i) {
+    if (!pagespeed.Graphs.screenData(settingPrefix, messages[i].name)) {
+      continue;
     }
-    data.addColumn('string', 'Name');
-    data.addColumn('number', 'Value');
-    data.addRows(rows);
+    ++numBars;
 
-    var view = new google.visualization.DataView(data);
-    var getStats = function(dataTable, rowNum) {
-      var sum = 0;
-      for (var i = 0; i < dataTable.getNumberOfRows(); ++i) {
-        sum += dataTable.getValue(i, 1);
-      }
-      var value = dataTable.getValue(rowNum, 1);
-      var percent = value * 100 / sum;
-      return value.toString() + ' (' + percent.toFixed(2).toString() + '%)';
-    };
-    view.setColumns(
-        [0, 1, {'calc': getStats, 'type': 'string', 'role': 'annotation'}]);
-
-    theChart.draw(view, pagespeed.Graphs.BAR_CHART_OPTIONS_);
-
-  } else {
-    // The annotated time line for data history.
-    data.addColumn('datetime', 'Time');
-    var first = true;
-    for (var i = 0; i < this.psolMessages_.length; ++i) {
-      var messages = goog.array.clone(this.psolMessages_[i].messages);
-      var row = [];
-      row.push(this.psolMessages_[i].timeReceived);
-      for (var j = 0; j < messages.length; ++j) {
-        if (!pagespeed.Graphs.screenData(settingPrefix, messages[j].name)) {
-          continue;
-        }
-        row.push(Number(messages[j].value));
-        if (first) {
-          var caption = messages[j].name.substring(settingPrefix.length);
-          caption = caption.replace(/_/g, ' ');
-          data.addColumn('number', caption);
-        }
-      }
-      first = false;
-      rows.push(row);
-    }
-    data.addRows(rows);
-    theChart.draw(data, pagespeed.Graphs.ANNOTATED_TIMELINE_OPTIONS_);
+    // Removes the prefix.
+    var caption = messages[i].name.substring(settingPrefix.length);
+    // We use regexp here to replace underscores all at once.
+    // Using '_' would only replace one underscore at a time.
+    caption = caption.replace(/_/g, ' ');
+    rows.push([caption, Number(messages[i].value)]);
   }
-};
+  data.addColumn('string', 'Name');
+  data.addColumn('number', 'Value');
+  data.addRows(rows);
 
+  var view = new google.visualization.DataView(data);
+  var getStats = function(dataTable, rowNum) {
+    var sum = 0;
+    for (var i = 0; i < dataTable.getNumberOfRows(); ++i) {
+      sum += dataTable.getValue(i, 1);
+    }
+    var value = dataTable.getValue(rowNum, 1);
+    var percent = value * 100 / ((sum == 0) ? 1 : sum);
+    return value.toString() + ' (' + percent.toFixed(2).toString() + '%)';
+  };
+  view.setColumns(
+      [0, 1, {'calc': getStats, 'type': 'string', 'role': 'annotation'}]);
+
+  var barHeight = 40 * numBars + 10;
+  dest.style.height = barHeight + 20;
+
+  // The options used for drawing google.visualization.barChart graphs.
+  var barChartOptions = {
+    'annotations': {
+      // TODO(jmarantz): Although I kind of prefer the consistency of
+      // always showing labels outside the bar, it does waste a bit of
+      // horizontal space.  However we have no choice at the moment
+      // due to a Charts API bug estimating text sizes in the context
+      // of bars that are not high enough to fit two lines of text.
+      //
+      // Once this bug is fixed (best estimate: Oct 2014) we should
+      // consider setting 'alwaysOutside' to 'false', and then we can
+      // try changing the chartArea width percentage below from 60% to 80%.
+      'alwaysOutside': true,  // Always put the "value(%)" outside the bar.
+      'highContrast': true,
+      'textStyle': {
+        'fontSize': 12,
+        'color': 'black'
+      }
+    },
+    'hAxis': {
+      'direction': 1
+    },
+    'vAxis': {
+      'textPosition': 'out'   // position of left-most vertical axis label.
+    },
+    'legend': {
+      'position': 'none'
+    },
+    'width': 800,
+    'height': barHeight,
+    'chartArea': {
+      'left': 225,
+      'top': 0,
+      'width': '60%',         // Tweak this to avoid clipping outside labels.
+      'height': '80%'
+
+    }
+  };
+  theChart.draw(view, barChartOptions);
+};
 
 /**
- * The options used for drawing google.visualization.barChart graphs.
- * @private {Object}
- * @const
+ * Draw a history chart using Google Charts API.
+ * @param {string} prefix The statistics prefix of data for the chart.
+ * @param {string} title The title of the chart.
+ * @param {string} targetId The id of the target HTML element.
  */
-pagespeed.Graphs.BAR_CHART_OPTIONS_ = {
-  'annotations': {
-    'highContrast': false,
-    'textStyle': {
-      'fontSize': 13,
-      'color': 'black',
-      'auraColor': 'white'
-    }
-  },
-  'hAxis': {
-    'direction': -1
-  },
-  'vAxis': {
-    'textPosition': 'in'
-  },
-  'legend': {
-    'position': 'none'
-  },
-  'width': 1000,
-  'height': 320,
-  'chartArea': {
-    'left': 50,
-    'top': 0,
-    'width': '85%',
-    'height': '80%'
+pagespeed.Graphs.prototype.drawHistoryChart = function(
+    prefix, title, targetId) {
+  var id = 'pagespeed-graphs-' + prefix;
+  var settingPrefix = prefix + '_';
+  var theChart = this.initChart(id, title, 'AnnotatedTimeLine', targetId);
+  var dest = document.getElementById(id);
+  var rows = [];
+  var data = new google.visualization.DataTable();
 
+  // The annotated time line for data history.
+  data.addColumn('datetime', 'Time');
+  var first = true;
+  for (var i = 0; i < this.psolMessages_.length; ++i) {
+    var messages = goog.array.clone(this.psolMessages_[i].messages);
+    var row = [];
+    row.push(this.psolMessages_[i].timeReceived);
+    for (var j = 0; j < messages.length; ++j) {
+      if (!pagespeed.Graphs.screenData(settingPrefix, messages[j].name)) {
+        continue;
+      }
+      row.push(Number(messages[j].value));
+      if (first) {
+        var caption = messages[j].name.substring(settingPrefix.length);
+        caption = caption.replace(/_/g, ' ');
+        data.addColumn('number', caption);
+      }
+    }
+    first = false;
+    rows.push(row);
   }
+  data.addRows(rows);
+  theChart.draw(data, pagespeed.Graphs.ANNOTATED_TIMELINE_OPTIONS_);
 };
-// All the option names should be put in single quotation marks. Otherwise
-// they would not work when debug filter is turned off.
 
 
 /**

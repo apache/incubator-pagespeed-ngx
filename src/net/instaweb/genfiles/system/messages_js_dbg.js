@@ -4258,7 +4258,10 @@ goog.Promise = function(resolver, opt_context) {
     }, function(reason) {
       if (goog.DEBUG && !(reason instanceof goog.Promise.CancellationError)) {
         try {
-          throw reason;
+          if (reason instanceof Error) {
+            throw reason;
+          }
+          throw Error("Promise rejected.");
         } catch (e) {
         }
       }
@@ -5150,7 +5153,8 @@ pagespeed.Messages.prototype.setFilter = function(element) {
   this.update();
 };
 pagespeed.Messages.prototype.updateMessageCount = function(opt_num) {
-  document.getElementById("num").textContent = "The number of messages: " + (void 0 != opt_num ? opt_num : this.psolMessages_.length).toString() + "/" + this.numUnfilteredMessages_;
+  var total = void 0 != opt_num ? opt_num : this.psolMessages_.length;
+  document.getElementById("num").textContent = total == this.numUnfilteredMessages_ ? "Total message count: " + total : "Visible message count: " + total + "/" + this.numUnfilteredMessages_;
 };
 pagespeed.Messages.prototype.update = function() {
   var logElement = document.getElementById("log"), messages = goog.array.clone(this.psolMessages_);

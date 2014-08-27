@@ -50,10 +50,8 @@ namespace {
 
 const char kHitSuffix[] = "_hit";
 const char kRecentFetchFailureSuffix[] = "_recent_fetch_failure";
-const char kRecentUncacheableTreatedAsMiss[] =
-    "_recent_uncacheable_treated_as_miss";
-const char kRecentUncacheableTreatedAsFailure[] =
-    "_recent_uncacheable_treated_as_failure";
+const char kRecentUncacheableMiss[] = "_recent_uncacheable_miss";
+const char kRecentUncacheableFailure[] = "_recent_uncacheable_failure";
 const char kMissSuffix[] = "_miss";
 
 }  // namespace
@@ -514,11 +512,11 @@ void CacheableResourceBase::LoadHttpCacheCallback::Done(
     case HTTPCache::kRecentFetchNotCacheable:
       switch (not_cacheable_policy_) {
         case Resource::kLoadEvenIfNotCacheable:
-          resource_->recent_uncacheables_treated_as_miss_->Add(1);
+          resource_->recent_uncacheables_miss_->Add(1);
           LoadAndSaveToCache();
           break;
         case Resource::kReportFailureIfNotCacheable:
-          resource_->recent_uncacheables_treated_as_failure_->Add(1);
+          resource_->recent_uncacheables_failure_->Add(1);
           resource_callback_->Done(false /* lock_failure */,
                                    false /* resource_ok */);
           break;
@@ -652,11 +650,10 @@ CacheableResourceBase::CacheableResourceBase(
   hits_ = stats->GetVariable(StrCat(stat_prefix, kHitSuffix));
   recent_fetch_failures_ =
       stats->GetVariable(StrCat(stat_prefix, kRecentFetchFailureSuffix));
-  recent_uncacheables_treated_as_miss_ =
-      stats->GetVariable(StrCat(stat_prefix, kRecentUncacheableTreatedAsMiss));
-  recent_uncacheables_treated_as_failure_ =
-      stats->GetVariable(StrCat(stat_prefix,
-                                kRecentUncacheableTreatedAsFailure));
+  recent_uncacheables_miss_ =
+      stats->GetVariable(StrCat(stat_prefix, kRecentUncacheableMiss));
+  recent_uncacheables_failure_ =
+      stats->GetVariable(StrCat(stat_prefix, kRecentUncacheableFailure));
   misses_ = stats->GetVariable(StrCat(stat_prefix, kMissSuffix));
 }
 
@@ -700,9 +697,8 @@ void CacheableResourceBase::InitStats(StringPiece stat_prefix,
                                       Statistics* stats) {
   stats->AddVariable(StrCat(stat_prefix, kHitSuffix));
   stats->AddVariable(StrCat(stat_prefix, kRecentFetchFailureSuffix));
-  stats->AddVariable(StrCat(stat_prefix, kRecentUncacheableTreatedAsMiss));
-  stats->AddVariable(StrCat(stat_prefix,
-                            kRecentUncacheableTreatedAsFailure));
+  stats->AddVariable(StrCat(stat_prefix, kRecentUncacheableMiss));
+  stats->AddVariable(StrCat(stat_prefix, kRecentUncacheableFailure));
   stats->AddVariable(StrCat(stat_prefix, kMissSuffix));
 }
 

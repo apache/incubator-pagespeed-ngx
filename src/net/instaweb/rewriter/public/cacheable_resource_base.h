@@ -126,8 +126,8 @@ class CacheableResourceBase : public Resource {
   RewriteDriver* rewrite_driver_;
   Variable* hits_;
   Variable* recent_fetch_failures_;
-  Variable* recent_uncacheables_treated_as_miss_;
-  Variable* recent_uncacheables_treated_as_failure_;
+  Variable* recent_uncacheables_miss_;
+  Variable* recent_uncacheables_failure_;
   Variable* misses_;
 
   DISALLOW_COPY_AND_ASSIGN(CacheableResourceBase);

@@ -4258,7 +4258,10 @@ goog.Promise = function(resolver, opt_context) {
     }, function(reason) {
       if (goog.DEBUG && !(reason instanceof goog.Promise.CancellationError)) {
         try {
-          throw reason;
+          if (reason instanceof Error) {
+            throw reason;
+          }
+          throw Error("Promise rejected.");
         } catch (e) {
         }
       }
@@ -5122,6 +5125,7 @@ pagespeed.Graphs = function(opt_xhr) {
   this.xhr_ = opt_xhr || new goog.net.XhrIo;
   this.psolMessages_ = [];
   this.secondRefreshStarted_ = this.firstRefreshStarted_ = this.autoRefresh_ = !1;
+  this.chartCache_ = {};
   for (var i in pagespeed.Graphs.DisplayDiv) {
     document.getElementById(pagespeed.Graphs.DisplayDiv[i]).className = "pagespeed-hidden-offscreen";
   }
@@ -5202,72 +5206,90 @@ pagespeed.Graphs.prototype.parseAjaxResponse = function() {
   }
 };
 pagespeed.Graphs.prototype.drawVisualization = function() {
-  for (var prefixes = [["pcache-cohorts-dom_", "Property cache dom cohorts", "BarChart", pagespeed.Graphs.DisplayDiv.CACHE_APPLIED], ["pcache-cohorts-beacon_", "Property cache beacon cohorts", "BarChart", pagespeed.Graphs.DisplayDiv.CACHE_APPLIED], ["rewrite_cached_output_", "Rewrite cached output", "BarChart", pagespeed.Graphs.DisplayDiv.CACHE_APPLIED], ["url_input_", "URL Input", "BarChart", pagespeed.Graphs.DisplayDiv.CACHE_APPLIED], ["cache_", "Cache", "BarChart", pagespeed.Graphs.DisplayDiv.CACHE_TYPE], 
-  ["file_cache_", "File Cache", "BarChart", pagespeed.Graphs.DisplayDiv.CACHE_TYPE], ["memcached_", "Memcached", "BarChart", pagespeed.Graphs.DisplayDiv.CACHE_TYPE], ["lru_cache_", "LRU", "BarChart", pagespeed.Graphs.DisplayDiv.CACHE_TYPE], ["shm_cache_", "Shared Memory", "BarChart", pagespeed.Graphs.DisplayDiv.CACHE_TYPE], ["ipro_", "In place resource optimization", "BarChart", pagespeed.Graphs.DisplayDiv.IPRO], ["image_rewrite_", "Image rewrite", "BarChart", pagespeed.Graphs.DisplayDiv.REWRITE_IMAGE], 
-  ["image_rewrites_dropped_", "Image rewrites dropped", "BarChart", pagespeed.Graphs.DisplayDiv.REWRITE_IMAGE], ["http_", "Http", "AnnotatedTimeLine", pagespeed.Graphs.DisplayDiv.REALTIME, !0], ["file_cache_", "File Cache RT", "AnnotatedTimeLine", pagespeed.Graphs.DisplayDiv.REALTIME, !0], ["lru_cache_", "LRU Cache RT", "AnnotatedTimeLine", pagespeed.Graphs.DisplayDiv.REALTIME, !0], ["serf_fetch_", "Serf stats RT", "AnnotatedTimeLine", pagespeed.Graphs.DisplayDiv.REALTIME, !0], ["rewrite_", "Rewrite stats RT", 
-  "AnnotatedTimeLine", pagespeed.Graphs.DisplayDiv.REALTIME, !0]], i = 0;i < prefixes.length;++i) {
-    this.drawChart(prefixes[i][0], prefixes[i][1], prefixes[i][2], prefixes[i][3], prefixes[i][4]);
-  }
+  this.drawBarChart("pcache-cohorts-dom", "Property cache dom cohorts", pagespeed.Graphs.DisplayDiv.CACHE_APPLIED);
+  this.drawBarChart("pcache-cohorts-beacon", "Property cache beacon cohorts", pagespeed.Graphs.DisplayDiv.CACHE_APPLIED);
+  this.drawBarChart("rewrite_cached_output", "Rewrite cached output", pagespeed.Graphs.DisplayDiv.CACHE_APPLIED);
+  this.drawBarChart("url_input", "URL Input", pagespeed.Graphs.DisplayDiv.CACHE_APPLIED);
+  this.drawBarChart("cache", "Cache", pagespeed.Graphs.DisplayDiv.CACHE_TYPE);
+  this.drawBarChart("file_cache", "File Cache", pagespeed.Graphs.DisplayDiv.CACHE_TYPE);
+  this.drawBarChart("memcached", "Memcached", pagespeed.Graphs.DisplayDiv.CACHE_TYPE);
+  this.drawBarChart("lru_cache", "LRU", pagespeed.Graphs.DisplayDiv.CACHE_TYPE);
+  this.drawBarChart("shm_cache", "Shared Memory", pagespeed.Graphs.DisplayDiv.CACHE_TYPE);
+  this.drawBarChart("ipro", "In place resource optimization", pagespeed.Graphs.DisplayDiv.IPRO);
+  this.drawBarChart("image_rewrite", "Image rewrite", pagespeed.Graphs.DisplayDiv.REWRITE_IMAGE);
+  this.drawBarChart("image_rewrites_dropped", "Image rewrites dropped", pagespeed.Graphs.DisplayDiv.REWRITE_IMAGE);
+  this.drawHistoryChart("http", "Http", pagespeed.Graphs.DisplayDiv.REALTIME);
+  this.drawHistoryChart("file_cache", "File Cache RT", pagespeed.Graphs.DisplayDiv.REALTIME);
+  this.drawHistoryChart("lru_cache", "LRU Cache RT", pagespeed.Graphs.DisplayDiv.REALTIME);
+  this.drawHistoryChart("serf_fetch", "Serf stats RT", pagespeed.Graphs.DisplayDiv.REALTIME);
+  this.drawHistoryChart("rewrite", "Rewrite stats RT", pagespeed.Graphs.DisplayDiv.REALTIME);
 };
 pagespeed.Graphs.screenData = function(prefix, name) {
   var use = !0;
   0 != name.indexOf(prefix) ? use = !1 : 0 <= name.indexOf("cache_flush_timestamp_ms") ? use = !1 : 0 <= name.indexOf("cache_flush_count") ? use = !1 : 0 <= name.indexOf("cache_time_us") && (use = !1);
   return use;
 };
-pagespeed.Graphs.prototype.drawChart = function(settingPrefix, title, chartType, targetId, showHistory) {
-  this.drawChart.chartCache = this.drawChart.chartCache ? this.drawChart.chartCache : {};
+pagespeed.Graphs.prototype.initChart = function(id, title, chartType, targetId) {
   var theChart;
-  if (this.drawChart.chartCache[title]) {
-    theChart = this.drawChart.chartCache[title];
+  if (this.chartCache_[title]) {
+    theChart = this.chartCache_[title];
   } else {
     var targetElement = document.getElementById(targetId);
     "Loading Charts..." == targetElement.textContent && (targetElement.textContent = "");
     var dest = document.createElement("div");
-    dest.className = "pagespeed-graphs-chart";
+    "AnnotatedTimeLine" == chartType && (dest.className = "pagespeed-graphs-chart");
+    dest.id = id;
     var chartTitle = document.createElement("p");
     chartTitle.textContent = title;
     chartTitle.className = "pagespeed-graphs-title";
     targetElement.appendChild(chartTitle);
     targetElement.appendChild(dest);
     theChart = new google.visualization[chartType](dest);
-    this.drawChart.chartCache[title] = theChart;
+    this.chartCache_[title] = theChart;
   }
-  var rows = [], data = new google.visualization.DataTable;
-  if (showHistory) {
-    data.addColumn("datetime", "Time");
-    for (var first = !0, i$$0 = 0;i$$0 < this.psolMessages_.length;++i$$0) {
-      var messages = goog.array.clone(this.psolMessages_[i$$0].messages), row = [];
-      row.push(this.psolMessages_[i$$0].timeReceived);
-      for (var j = 0;j < messages.length;++j) {
-        pagespeed.Graphs.screenData(settingPrefix, messages[j].name) && (row.push(Number(messages[j].value)), first && (caption = messages[j].name.substring(settingPrefix.length), caption = caption.replace(/_/g, " "), data.addColumn("number", caption)));
-      }
-      first = !1;
-      rows.push(row);
-    }
-    data.addRows(rows);
-    theChart.draw(data, pagespeed.Graphs.ANNOTATED_TIMELINE_OPTIONS_);
-  } else {
-    for (var messages = goog.array.clone(this.psolMessages_[this.psolMessages_.length - 1].messages), i$$0 = 0;i$$0 < messages.length;++i$$0) {
-      if ("0" != messages[i$$0].value && pagespeed.Graphs.screenData(settingPrefix, messages[i$$0].name)) {
-        var caption = messages[i$$0].name.substring(settingPrefix.length), caption = caption.replace(/_/g, " ");
-        rows.push([caption, Number(messages[i$$0].value)]);
-      }
-    }
-    data.addColumn("string", "Name");
-    data.addColumn("number", "Value");
-    data.addRows(rows);
-    var view = new google.visualization.DataView(data);
-    view.setColumns([0, 1, {calc:function(dataTable, rowNum) {
-      for (var sum = 0, i = 0;i < dataTable.getNumberOfRows();++i) {
-        sum += dataTable.getValue(i, 1);
-      }
-      var value = dataTable.getValue(rowNum, 1);
-      return value.toString() + " (" + (100 * value / sum).toFixed(2).toString() + "%)";
-    }, type:"string", role:"annotation"}]);
-    theChart.draw(view, pagespeed.Graphs.BAR_CHART_OPTIONS_);
-  }
+  return theChart;
 };
-pagespeed.Graphs.BAR_CHART_OPTIONS_ = {annotations:{highContrast:!1, textStyle:{fontSize:13, color:"black", auraColor:"white"}}, hAxis:{direction:-1}, vAxis:{textPosition:"in"}, legend:{position:"none"}, width:1E3, height:320, chartArea:{left:50, top:0, width:"85%", height:"80%"}};
+pagespeed.Graphs.prototype.drawBarChart = function(prefix, title, targetId) {
+  for (var id = "pagespeed-graphs-" + prefix, settingPrefix = prefix + "_", theChart = this.initChart(id, title, "BarChart", targetId), dest = document.getElementById(id), rows = [], data = new google.visualization.DataTable, messages = goog.array.clone(this.psolMessages_[this.psolMessages_.length - 1].messages), numBars = 0, i$$0 = 0;i$$0 < messages.length;++i$$0) {
+    if (pagespeed.Graphs.screenData(settingPrefix, messages[i$$0].name)) {
+      ++numBars;
+      var caption = messages[i$$0].name.substring(settingPrefix.length), caption = caption.replace(/_/g, " ");
+      rows.push([caption, Number(messages[i$$0].value)]);
+    }
+  }
+  data.addColumn("string", "Name");
+  data.addColumn("number", "Value");
+  data.addRows(rows);
+  var view = new google.visualization.DataView(data);
+  view.setColumns([0, 1, {calc:function(dataTable, rowNum) {
+    for (var sum = 0, i = 0;i < dataTable.getNumberOfRows();++i) {
+      sum += dataTable.getValue(i, 1);
+    }
+    var value = dataTable.getValue(rowNum, 1);
+    return value.toString() + " (" + (100 * value / (0 == sum ? 1 : sum)).toFixed(2).toString() + "%)";
+  }, type:"string", role:"annotation"}]);
+  var barHeight = 40 * numBars + 10;
+  dest.style.height = barHeight + 20;
+  theChart.draw(view, {annotations:{alwaysOutside:!0, highContrast:!0, textStyle:{fontSize:12, color:"black"}}, hAxis:{direction:1}, vAxis:{textPosition:"out"}, legend:{position:"none"}, width:800, height:barHeight, chartArea:{left:225, top:0, width:"60%", height:"80%"}});
+};
+pagespeed.Graphs.prototype.drawHistoryChart = function(prefix, title, targetId) {
+  var settingPrefix = prefix + "_", theChart = this.initChart("pagespeed-graphs-" + prefix, title, "AnnotatedTimeLine", targetId), rows = [], data = new google.visualization.DataTable;
+  data.addColumn("datetime", "Time");
+  for (var first = !0, i = 0;i < this.psolMessages_.length;++i) {
+    var messages = goog.array.clone(this.psolMessages_[i].messages), row = [];
+    row.push(this.psolMessages_[i].timeReceived);
+    for (var j = 0;j < messages.length;++j) {
+      if (pagespeed.Graphs.screenData(settingPrefix, messages[j].name) && (row.push(Number(messages[j].value)), first)) {
+        var caption = messages[j].name.substring(settingPrefix.length), caption = caption.replace(/_/g, " ");
+        data.addColumn("number", caption);
+      }
+    }
+    first = !1;
+    rows.push(row);
+  }
+  data.addRows(rows);
+  theChart.draw(data, pagespeed.Graphs.ANNOTATED_TIMELINE_OPTIONS_);
+};
 pagespeed.Graphs.ANNOTATED_TIMELINE_OPTIONS_ = {thickness:1, displayExactValues:!0, legendPosition:"newRow"};
 pagespeed.Graphs.FREQUENCY_ = 5;
 pagespeed.Graphs.TIMERANGE_ = 86400 / pagespeed.Graphs.FREQUENCY_;
