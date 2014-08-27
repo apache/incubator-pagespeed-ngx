@@ -92,50 +92,50 @@ bool CssRewriteTestBase::ValidateWithStats(
   // Check stats
   if (success && !FlagSet(flags, kNoStatCheck)) {
     if (FlagSet(flags, kExpectSuccess)) {
-      EXPECT_EQ(1, num_blocks_rewritten_->Get()) << id;
-      EXPECT_EQ(0, num_fallback_rewrites_->Get()) << id;
-      EXPECT_EQ(0, num_parse_failures_->Get()) << id;
-      EXPECT_EQ(0, num_rewrites_dropped_->Get()) << id;
+      EXPECT_EQ(1, num_blocks_rewritten_->Get()) << css_input;
+      EXPECT_EQ(0, num_fallback_rewrites_->Get()) << css_input;
+      EXPECT_EQ(0, num_parse_failures_->Get()) << css_input;
+      EXPECT_EQ(0, num_rewrites_dropped_->Get()) << css_input;
       EXPECT_EQ(static_cast<int>(css_input.size()) -
                 static_cast<int>(expected_css_output.size()),
-                total_bytes_saved_->Get()) << id;
-      EXPECT_EQ(css_input.size(), total_original_bytes_->Get()) << id;
-      EXPECT_EQ(1, num_uses_->Get()) << id;
+                total_bytes_saved_->Get()) << css_input;
+      EXPECT_EQ(css_input.size(), total_original_bytes_->Get()) << css_input;
+      EXPECT_EQ(1, num_uses_->Get()) << css_input;
     } else if (FlagSet(flags, kExpectCached)) {
-      EXPECT_EQ(0, num_blocks_rewritten_->Get()) << id;
-      EXPECT_EQ(0, num_fallback_rewrites_->Get()) << id;
-      EXPECT_EQ(0, num_parse_failures_->Get()) << id;
-      EXPECT_EQ(0, total_bytes_saved_->Get()) << id;
-      EXPECT_EQ(0, total_original_bytes_->Get()) << id;
-      EXPECT_EQ(1, num_uses_->Get()) << id;  // The only non-zero value.
+      EXPECT_EQ(0, num_blocks_rewritten_->Get()) << css_input;
+      EXPECT_EQ(0, num_fallback_rewrites_->Get()) << css_input;
+      EXPECT_EQ(0, num_parse_failures_->Get()) << css_input;
+      EXPECT_EQ(0, total_bytes_saved_->Get()) << css_input;
+      EXPECT_EQ(0, total_original_bytes_->Get()) << css_input;
+      EXPECT_EQ(1, num_uses_->Get()) << css_input;  // The only non-zero value.
     } else if (FlagSet(flags, kExpectNoChange)) {
-      EXPECT_EQ(0, num_blocks_rewritten_->Get()) << id;
-      EXPECT_EQ(0, num_fallback_rewrites_->Get()) << id;
-      EXPECT_EQ(0, num_parse_failures_->Get()) << id;
+      EXPECT_EQ(0, num_blocks_rewritten_->Get()) << css_input;
+      EXPECT_EQ(0, num_fallback_rewrites_->Get()) << css_input;
+      EXPECT_EQ(0, num_parse_failures_->Get()) << css_input;
       // TODO(sligocki): Test num_rewrites_dropped_. Currently a couple tests
       // have kExpectNoChange, but fail at a different place in the code, so
       // they do not trigger the num_rewrites_dropped_ variable.
-      // EXPECT_EQ(1, num_rewrites_dropped_->Get()) << id;
-      EXPECT_EQ(0, total_bytes_saved_->Get()) << id;
-      EXPECT_EQ(0, total_original_bytes_->Get()) << id;
-      EXPECT_EQ(0, num_uses_->Get()) << id;
+      // EXPECT_EQ(1, num_rewrites_dropped_->Get()) << css_input;
+      EXPECT_EQ(0, total_bytes_saved_->Get()) << css_input;
+      EXPECT_EQ(0, total_original_bytes_->Get()) << css_input;
+      EXPECT_EQ(0, num_uses_->Get()) << css_input;
     } else if (FlagSet(flags, kExpectFallback)) {
-      EXPECT_EQ(0, num_blocks_rewritten_->Get()) << id;
-      EXPECT_EQ(1, num_fallback_rewrites_->Get()) << id;
-      EXPECT_EQ(1, num_parse_failures_->Get()) << id;
-      EXPECT_EQ(0, num_rewrites_dropped_->Get()) << id;
-      EXPECT_EQ(0, total_bytes_saved_->Get()) << id;
-      EXPECT_EQ(0, total_original_bytes_->Get()) << id;
-      EXPECT_EQ(1, num_uses_->Get()) << id;
+      EXPECT_EQ(0, num_blocks_rewritten_->Get()) << css_input;
+      EXPECT_EQ(1, num_fallback_rewrites_->Get()) << css_input;
+      EXPECT_EQ(1, num_parse_failures_->Get()) << css_input;
+      EXPECT_EQ(0, num_rewrites_dropped_->Get()) << css_input;
+      EXPECT_EQ(0, total_bytes_saved_->Get()) << css_input;
+      EXPECT_EQ(0, total_original_bytes_->Get()) << css_input;
+      EXPECT_EQ(1, num_uses_->Get()) << css_input;
     } else {
       CHECK(FlagSet(flags, kExpectFailure));
-      EXPECT_EQ(0, num_blocks_rewritten_->Get()) << id;
-      EXPECT_EQ(0, num_fallback_rewrites_->Get()) << id;
-      EXPECT_EQ(1, num_parse_failures_->Get()) << id;
-      EXPECT_EQ(0, num_rewrites_dropped_->Get()) << id;
-      EXPECT_EQ(0, total_bytes_saved_->Get()) << id;
-      EXPECT_EQ(0, total_original_bytes_->Get()) << id;
-      EXPECT_EQ(0, num_uses_->Get()) << id;
+      EXPECT_EQ(0, num_blocks_rewritten_->Get()) << css_input;
+      EXPECT_EQ(0, num_fallback_rewrites_->Get()) << css_input;
+      EXPECT_EQ(1, num_parse_failures_->Get()) << css_input;
+      EXPECT_EQ(0, num_rewrites_dropped_->Get()) << css_input;
+      EXPECT_EQ(0, total_bytes_saved_->Get()) << css_input;
+      EXPECT_EQ(0, total_original_bytes_->Get()) << css_input;
+      EXPECT_EQ(0, num_uses_->Get()) << css_input;
     }
   }
 
@@ -145,17 +145,17 @@ bool CssRewriteTestBase::ValidateWithStats(
   // doesn't count these as new errors so skip this check in that case.
   if (!FlagSet(flags, kExpectCached)) {
     EXPECT_EQ(FlagSet(flags, kFlattenImportsCharsetMismatch) ? 1 : 0,
-              num_flatten_imports_charset_mismatch_->Get()) << id;
+              num_flatten_imports_charset_mismatch_->Get()) << css_input;
     EXPECT_EQ(FlagSet(flags, kFlattenImportsInvalidUrl) ? 1 : 0,
-              num_flatten_imports_invalid_url_->Get()) << id;
+              num_flatten_imports_invalid_url_->Get()) << css_input;
     EXPECT_EQ(FlagSet(flags, kFlattenImportsLimitExceeded) ? 1 : 0,
-              num_flatten_imports_limit_exceeded_->Get()) << id;
+              num_flatten_imports_limit_exceeded_->Get()) << css_input;
     EXPECT_EQ(FlagSet(flags, kFlattenImportsMinifyFailed) ? 1 : 0,
-              num_flatten_imports_minify_failed_->Get()) << id;
+              num_flatten_imports_minify_failed_->Get()) << css_input;
     EXPECT_EQ(FlagSet(flags, kFlattenImportsRecursion) ? 1 : 0,
-              num_flatten_imports_recursion_->Get()) << id;
+              num_flatten_imports_recursion_->Get()) << css_input;
     EXPECT_EQ(FlagSet(flags, kFlattenImportsComplexQueries) ? 1 : 0,
-              num_flatten_imports_complex_queries_->Get()) << id;
+              num_flatten_imports_complex_queries_->Get()) << css_input;
   }
 
   // TODO(sligocki): This success value does not reflect failures in the
