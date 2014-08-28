@@ -41,6 +41,10 @@ namespace net_instaweb {
 
 namespace {
 
+// Note that some of the stastistics named below are really
+// UpDownCounters.  For now, we don't segregate them, but we just
+// figure out at initialization time which is which.
+
 // Variables used in /pagespeed_console. These will all be logged and
 // are the default set of variables sent back in JSON requests.
 const char* const kConsoleVars[] = {
@@ -136,20 +140,24 @@ StatisticsLogger::StatisticsLogger(
       update_interval_ms_(update_interval_ms),
       max_logfile_size_kb_(max_logfile_size_kb) {
   logfile_name.CopyToString(&logfile_name_);
-
-  // List of statistics to log.
-  for (int i = 0, n = arraysize(kConsoleVars); i < n; ++i) {
-    variables_to_log_.insert(kConsoleVars[i]);
-  }
-  for (int i = 0, n = arraysize(kOtherLoggedVars); i < n; ++i) {
-    variables_to_log_.insert(kOtherLoggedVars[i]);
-  }
-  for (int i = 0, n = arraysize(kGraphsVars); i < n; ++i) {
-    variables_to_log_.insert(kGraphsVars[i]);
-  }
 }
 
 StatisticsLogger::~StatisticsLogger() {
+}
+
+void StatisticsLogger::Init() {
+  variables_to_log_.clear();
+
+  // List of statistics to log.
+  for (int i = 0, n = arraysize(kConsoleVars); i < n; ++i) {
+    AddVariable(kConsoleVars[i]);
+  }
+  for (int i = 0, n = arraysize(kOtherLoggedVars); i < n; ++i) {
+    AddVariable(kOtherLoggedVars[i]);
+  }
+  for (int i = 0, n = arraysize(kGraphsVars); i < n; ++i) {
+    AddVariable(kGraphsVars[i]);
+  }
 }
 
 void StatisticsLogger::InitStatsForTest() {
@@ -163,6 +171,16 @@ void StatisticsLogger::InitStatsForTest() {
   for (int i = 0, n = arraysize(kGraphsVars); i < n; ++i) {
     statistics_->AddVariable(kGraphsVars[i]);
   }
+  Init();
+}
+
+void StatisticsLogger::AddVariable(StringPiece var_name) {
+  VariableOrCounter var_or_counter;
+  var_or_counter.first = statistics_->FindVariable(var_name);
+  if (var_or_counter.first == NULL) {
+    var_or_counter.second = statistics_->GetUpDownCounter(var_name);
+  }
+  variables_to_log_[var_name] = var_or_counter;
 }
 
 void StatisticsLogger::UpdateAndDumpIfRequired() {
@@ -207,14 +225,12 @@ void StatisticsLogger::DumpConsoleVarsToWriter(
   writer->Write(StringPrintf("timestamp: %s\n",
       Integer64ToString(current_time_ms).c_str()), message_handler_);
 
-  for (StringSet::const_iterator iter = variables_to_log_.begin();
+  for (VariableMap::const_iterator iter = variables_to_log_.begin();
        iter != variables_to_log_.end(); ++iter) {
-    GoogleString var_name = *iter;
-
-    // TODO(jmarantz): Do the Variable/TimedVariable/UpDownCounter lookup
-    // in the constructor rather than doing the lookup each time we want to
-    // see the values.  Statistics::LookupValue is intended only for testing.
-    int64 val = statistics_->LookupValue(var_name);
+    StringPiece var_name = iter->first;
+    VariableOrCounter var_or_counter = iter->second;
+    int64 val = (var_or_counter.first != NULL) ? var_or_counter.first->Get()
+        : var_or_counter.second->Get();
     writer->Write(StrCat(var_name, ": ", Integer64ToString(val), "\n"),
                   message_handler_);
   }

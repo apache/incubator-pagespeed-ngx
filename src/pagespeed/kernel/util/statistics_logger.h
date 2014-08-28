@@ -20,6 +20,7 @@
 
 #include <cstddef>
 #include <map>
+#include <utility>
 #include <vector>
 
 #include "pagespeed/kernel/base/basictypes.h"
@@ -34,6 +35,8 @@ class MutexedScalar;
 class Statistics;
 class StatisticsLogfileReader;
 class Timer;
+class UpDownCounter;
+class Variable;
 class Writer;
 
 class StatisticsLogger {
@@ -61,11 +64,24 @@ class StatisticsLogger {
   // Trim file down if it gets above max_logfile_size_kb.
   void TrimLogfileIfNeeded();
 
+  // Preload all the variables required for statistics logging.  This
+  // must be called after statistics have been established, and
+  // before any logging is done.
+  //
+  // It is OK to call this multiple times (e.g. before & after a fork).
+  void Init();
+
  private:
   friend class StatisticsLoggerTest;
 
   typedef std::vector<GoogleString> VariableInfo;
   typedef std::map<GoogleString, VariableInfo> VarMap;
+
+  // Note that exactly one of these will be non-null; this is really
+  // a union, but I'm too lazy to make the enum tag, and there's no
+  // space advantage to doing so when there are only two choices.
+  typedef std::pair<Variable*, UpDownCounter*> VariableOrCounter;
+  typedef std::map<StringPiece, VariableOrCounter> VariableMap;
 
   // Export statistics to a writer. Only export stats needed for console.
   // current_time_ms: The time at which the dump was triggered.
@@ -93,6 +109,8 @@ class StatisticsLogger {
   void PrintJSON(const std::vector<int64>& list_of_timestamps,
                  const VarMap& parsed_var_data,
                  Writer* writer, MessageHandler* message_handler) const;
+  void AddVariable(StringPiece var_name);
+
   // Initializes all stats that will be needed for logging. Only call this in
   // tests to make sure getting those stats will work.
   void InitStatsForTest();
@@ -109,7 +127,7 @@ class StatisticsLogger {
   const int64 update_interval_ms_;
   const int64 max_logfile_size_kb_;
   GoogleString logfile_name_;
-  StringSet variables_to_log_;
+  VariableMap variables_to_log_;
 
   DISALLOW_COPY_AND_ASSIGN(StatisticsLogger);
 };

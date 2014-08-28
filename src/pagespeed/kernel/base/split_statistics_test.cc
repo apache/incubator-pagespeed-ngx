@@ -97,8 +97,8 @@ class SplitStatisticsTest : public testing::Test {
     *mem_runtime_out = new InProcessSharedMem(threads_.get());
     return new SharedMemStatistics(3000,
                                    100000,
-                                   "/usr/local/apache2/logs/stats.log",
-                                   true,
+                                   "",  // statistics logging file (ignored)
+                                   false,  // no statistics logging.
                                    "in_mem",
                                    *mem_runtime_out,
                                    &message_handler_,

@@ -21,6 +21,7 @@
 #include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/statistics.h"
+#include "pagespeed/kernel/base/statistics_template.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_writer.h"
 #include "pagespeed/kernel/base/timer.h"
@@ -36,7 +37,9 @@ const char kVar1[] = "v1";
 const char kVar2[] = "num_flushes";
 const char kHist1[] = "H1";
 const char kHist2[] = "Html Time us Histogram";
-const char kStatsLogFile[] = "mod_pagespeed_stats.log";
+
+// We cannot init the logger unless all stats are initialized.
+const char kStatsLogFile[] = "";
 
 }  // namespace
 
@@ -62,8 +65,9 @@ void SharedMemStatisticsTestBase::SetUp() {
       new MockTimer(thread_system_->NewMutex(), MockTimer::kApr_5_2010_ms));
   file_system_.reset(new MemFileSystem(thread_system_.get(), timer_.get()));
   stats_.reset(new SharedMemStatistics(
-      kLogIntervalMs, kMaxLogfileSizeKb, kStatsLogFile, true, kPrefix,
-      shmem_runtime_.get(), &handler_, file_system_.get(), timer_.get()));
+      kLogIntervalMs, kMaxLogfileSizeKb, kStatsLogFile, false /* no logging */,
+      kPrefix, shmem_runtime_.get(), &handler_, file_system_.get(),
+      timer_.get()));
 }
 
 void SharedMemStatisticsTestBase::TearDown() {
@@ -91,8 +95,9 @@ bool SharedMemStatisticsTestBase::AddHistograms(SharedMemStatistics* stats) {
 
 SharedMemStatistics* SharedMemStatisticsTestBase::ChildInit() {
   scoped_ptr<SharedMemStatistics> stats(new SharedMemStatistics(
-          kLogIntervalMs, kMaxLogfileSizeKb, kStatsLogFile, true, kPrefix,
-          shmem_runtime_.get(), &handler_, file_system_.get(), timer_.get()));
+      kLogIntervalMs, kMaxLogfileSizeKb, kStatsLogFile, false /* no logging */,
+      kPrefix, shmem_runtime_.get(), &handler_, file_system_.get(),
+      timer_.get()));
   if (!AddVars(stats.get()) || !AddHistograms(stats.get())) {
     test_env_->ChildFailed();
     return NULL;

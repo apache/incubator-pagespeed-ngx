@@ -585,6 +585,10 @@ bool SharedMemStatistics::Init(bool parent,
     i++;
   }
 
+  if (console_logger_.get() != NULL) {
+    console_logger_->Init();
+  }
+
   return ok;
 }
 
