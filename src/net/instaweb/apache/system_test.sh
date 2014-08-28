@@ -873,8 +873,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   start_test $PROXIED_IMAGE expecting one year cache.
 
   # With the proper hash, we'll get a long cache lifetime.
-  check ls $WGET_DIR/*1.gif.pagespeed*
-  http_proxy=$SECONDARY_HOSTNAME fetch_until $PROXIED_IMAGE \
+  http_proxy=$SECONDARY_HOSTNAME fetch_until -save $PROXIED_IMAGE \
       "grep -c max-age=31536000" 1 --save-headers
 
   # With the wrong hash, we'll get a short cache lifetime (and also no output
