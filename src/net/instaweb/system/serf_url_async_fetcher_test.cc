@@ -143,7 +143,8 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
  protected:
   SerfUrlAsyncFetcherTest()
       : thread_system_(Platform::CreateThreadSystem()),
-        message_handler_(thread_system_->NewMutex()) {
+        message_handler_(thread_system_->NewMutex()),
+        flaky_retries_(0) {
   }
 
   virtual void SetUp() {
@@ -248,22 +249,27 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
     return completed;
   }
 
+  void FlakyRetry(int idx) {
+    for (int i = 0; !fetches_[idx]->success() && (i < 10); ++i) {
+      // We've started to see some flakiness in this test requesting
+      // google.com/favicon, so try, at most 10 times, to re-issue
+      // the request and sleep.
+      //
+      // Note: this flakiness appears to remain despite using static
+      // resources.
+      usleep(50 * Timer::kMsUs);
+      LOG(ERROR) << "Serf retrying flaky url " << urls_[idx];
+      ++flaky_retries_;
+      fetches_[idx]->Reset();
+      StartFetch(idx);
+      WaitTillDone(idx, idx);
+    }
+  }
+
   void ValidateFetches(size_t first, size_t last) {
     for (size_t idx = first; idx <= last; ++idx) {
       ASSERT_TRUE(fetches_[idx]->IsDone());
-
-      for (int i = 0; !fetches_[idx]->success() && (i < 10); ++i) {
-        // We've started to see some flakiness in this test requesting
-        // google.com/favicon, so try, at most 10 times, to re-issue
-        // the request and sleep.
-        // TODO(sligocki): See if this flakiness goes away now that we
-        // changed to a static resource.
-        usleep(50 * Timer::kMsUs);
-        LOG(ERROR) << "Serf retrying flaky url " << urls_[idx];
-        fetches_[idx]->Reset();
-        StartFetch(idx);
-        WaitTillDone(idx, idx);
-      }
+      FlakyRetry(idx);
       EXPECT_TRUE(fetches_[idx]->success());
 
       if (content_starts_[idx].empty()) {
@@ -364,7 +370,8 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
 
   // Verifies that an added & started fetch at index succeeds.
   void ExpectHttpsSucceeds(int index) {
-    ASSERT_EQ(WaitTillDone(index, index), 1);
+    ASSERT_EQ(1, WaitTillDone(index, index));
+    FlakyRetry(index);
     ASSERT_TRUE(fetches_[index]->IsDone());
     ASSERT_FALSE(content_starts_[index].empty());
     EXPECT_FALSE(contents(index).empty());
@@ -399,6 +406,7 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
   scoped_ptr<SimpleStats> statistics_;
   GoogleString https_favicon_url_;
   GoogleString favicon_head_;
+  int64 flaky_retries_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SerfUrlAsyncFetcherTest);
@@ -409,7 +417,7 @@ TEST_F(SerfUrlAsyncFetcherTest, FetchOneURL) {
   EXPECT_FALSE(response_headers(kModpagespeedSite)->IsGzipped());
   int request_count =
       statistics_->GetVariable(SerfStats::kSerfFetchRequestCount)->Get();
-  EXPECT_EQ(1, request_count);
+  EXPECT_EQ(1, request_count - flaky_retries_);
   int bytes_count =
       statistics_->GetVariable(SerfStats::kSerfFetchByteCount)->Get();
   // We don't care about the exact size, which can change, just that response
@@ -468,7 +476,7 @@ TEST_F(SerfUrlAsyncFetcherTest, FetchOneURLWithGzip) {
   EXPECT_FALSE(response_headers(kModpagespeedSite)->IsGzipped());
   int request_count =
       statistics_->GetVariable(SerfStats::kSerfFetchRequestCount)->Get();
-  EXPECT_EQ(1, request_count);
+  EXPECT_EQ(1, request_count - flaky_retries_);
   int bytes_count =
       statistics_->GetVariable(SerfStats::kSerfFetchByteCount)->Get();
   // Since we've asked for gzipped content, we expect between 2k and 5k.
@@ -486,7 +494,7 @@ TEST_F(SerfUrlAsyncFetcherTest, FetchTwoURLs) {
   EXPECT_TRUE(TestFetch(kGoogleFavicon, kGoogleLogo));
   int request_count =
       statistics_->GetVariable(SerfStats::kSerfFetchRequestCount)->Get();
-  EXPECT_EQ(2, request_count);
+  EXPECT_EQ(2, request_count - flaky_retries_);
   int bytes_count =
       statistics_->GetVariable(SerfStats::kSerfFetchByteCount)->Get();
   // Maybe also need a rough number here. We will break if google's icon or logo
@@ -744,6 +752,7 @@ TEST_F(SerfUrlAsyncFetcherTest, TestTrackOriginalContentLength) {
   serf_url_async_fetcher_->set_track_original_content_length(true);
   StartFetch(kModpagespeedSite);
   WaitTillDone(kModpagespeedSite, kModpagespeedSite);
+  FlakyRetry(kModpagespeedSite);
   const char* ocl_header = response_headers(kModpagespeedSite)->Lookup1(
       HttpAttributes::kXOriginalContentLength);
   ASSERT_TRUE(ocl_header != NULL);
