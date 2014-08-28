@@ -50,6 +50,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/http/google_url.h"
 #include "third_party/serf/src/serf.h"
 
 // This is an easy way to turn on lots of debug messages. Note that this
@@ -150,7 +151,27 @@ class SerfFetch : public PoolElement<SerfFetch> {
   // locked with fetcher->mutex_.
   bool Start(SerfUrlAsyncFetcher* fetcher);
 
-  const char* str_url() { return str_url_.c_str(); }
+  GoogleString DebugInfo() {
+    if (host_header_ != NULL &&
+        url_.scheme != NULL &&
+        url_.hostinfo != NULL) {
+      GoogleUrl base(StrCat(url_.scheme, "://", host_header_));
+      if (base.IsWebValid()) {
+        const char* url_path = apr_uri_unparse(pool_, &url_,
+                                               APR_URI_UNP_OMITSITEPART);
+        GoogleUrl abs_url(base, url_path);
+        if (abs_url.IsWebValid()) {
+          GoogleString debug_info;
+          abs_url.Spec().CopyToString(&debug_info);
+          if (StringPiece(url_.hostinfo) != host_header_) {
+            StrAppend(&debug_info, " (connecting to:", url_.hostinfo, ")");
+          }
+          return debug_info;
+        }
+      }
+    }
+    return str_url_;
+  }
 
   // This must be called while holding SerfUrlAsyncFetcher's mutex_.
   void Cancel() {
@@ -192,7 +213,7 @@ class SerfFetch : public PoolElement<SerfFetch> {
       fetcher_->FetchComplete(this);
     } else if (ssl_error_message_ == NULL) {
       LOG(FATAL) << "BUG: Serf callback called more than once on same fetch "
-                 << str_url() << " (" << this << ").  Please report this "
+                 << DebugInfo() << " (" << this << ").  Please report this "
                  << "at http://code.google.com/p/modpagespeed/issues/";
     }
   }
@@ -222,7 +243,7 @@ class SerfFetch : public PoolElement<SerfFetch> {
     if ((connection_ != NULL) &&
         serf_connection_is_in_error_state(connection_)) {
       message_handler_->Message(
-          kInfo, "Serf cleanup for error'd fetch of: %s", str_url());
+          kInfo, "Serf cleanup for error'd fetch of: %s", DebugInfo().c_str());
       Cancel();
     }
   }
@@ -325,7 +346,7 @@ class SerfFetch : public PoolElement<SerfFetch> {
     SerfFetch* fetch = static_cast<SerfFetch*>(closed_baton);
     if (why != APR_SUCCESS) {
       fetch->message_handler_->Warning(
-          fetch->str_url_.c_str(), 0, "Connection close (code=%d %s).",
+          fetch->DebugInfo().c_str(), 0, "Connection close (code=%d %s).",
           why, GetAprErrorString(why).c_str());
     }
     // Connection is closed.
@@ -438,7 +459,7 @@ class SerfFetch : public PoolElement<SerfFetch> {
     if (response == NULL) {
       message_handler_->Message(
           kInfo, "serf HandlerReponse called with NULL response for %s",
-          str_url());
+          DebugInfo().c_str());
       CallCallback(false);
       return APR_EGENERAL;
     }
@@ -540,7 +561,7 @@ class SerfFetch : public PoolElement<SerfFetch> {
           ResponseHeaders* response_headers = async_fetch_->response_headers();
           if (ssl_error_message_ != NULL) {
             response_headers->set_status_code(HttpStatus::kNotFound);
-            message_handler_->Message(kInfo, "%s: %s", str_url_.c_str(),
+            message_handler_->Message(kInfo, "%s: %s", DebugInfo().c_str(),
                                       ssl_error_message_);
             has_saved_byte_ = false;
           }
@@ -908,7 +929,7 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
       SerfFetch* fetch = xfer_fetches->RemoveOldest();
       if (StartFetch(fetch)) {
         SERF_DEBUG(LOG(INFO) << "Adding threaded fetch to url "
-                   << fetch->str_url()
+                   << fetch->DebugInfo()
                    << " (" << active_fetches_.size() << ")");
       }
     }
@@ -1000,7 +1021,7 @@ bool SerfFetch::Start(SerfUrlAsyncFetcher* fetcher) {
                                                 ClosedConnection, this,
                                                 pool_);
   if (status != APR_SUCCESS) {
-    message_handler_->Error(str_url_.c_str(), 0,
+    message_handler_->Error(DebugInfo().c_str(), 0,
                             "Error status=%d (%s) serf_connection_create2",
                             status, GetAprErrorString(status).c_str());
     return false;
@@ -1014,7 +1035,7 @@ bool SerfFetch::Start(SerfUrlAsyncFetcher* fetcher) {
   if (status == APR_SUCCESS || APR_STATUS_IS_TIMEUP(status)) {
     return true;
   } else {
-    message_handler_->Error(str_url_.c_str(), 0,
+    message_handler_->Error(DebugInfo().c_str(), 0,
                             "serf_context_run error status=%d (%s)",
                             status, GetAprErrorString(status).c_str());
     return false;
@@ -1172,7 +1193,7 @@ void SerfUrlAsyncFetcher::CancelActiveFetchesMutexHeld() {
     // but can invalidate iterators pointing to the affected fetch.  To avoid
     // trouble, we simply ask for the oldest element, knowing it will go away.
     SerfFetch* fetch = active_fetches_.oldest();
-    LOG(WARNING) << "Aborting fetch of " << fetch->str_url();
+    LOG(WARNING) << "Aborting fetch of " << fetch->DebugInfo();
     fetch->Cancel();
     ++num_canceled;
   }
@@ -1191,7 +1212,7 @@ bool SerfUrlAsyncFetcher::StartFetch(SerfFetch* fetch) {
     active_count_->Add(1);
   } else {
     fetch->message_handler()->Message(kWarning, "Fetch failed to start: %s",
-                                      fetch->str_url());
+                                      fetch->DebugInfo().c_str());
     fetch->CallbackDone(false);
     delete fetch;
   }
@@ -1218,7 +1239,7 @@ void SerfUrlAsyncFetcher::PrintActiveFetches(
            e = active_fetches_.end(); p != e; ++p) {
     SerfFetch* fetch = *p;
     handler->Message(kInfo, "Active fetch: %s",
-                     fetch->str_url());
+                     fetch->DebugInfo().c_str());
   }
 }
 
@@ -1245,7 +1266,7 @@ int SerfUrlAsyncFetcher::Poll(int64 max_wait_ms) {
         }
         message_handler_->Message(
             kWarning, "Fetch timed out: %s (%ld) waiting for %ld ms",
-            fetch->str_url(),
+            fetch->DebugInfo().c_str(),
             static_cast<long>(active_fetches_.size()),  // NOLINT
             static_cast<long>(max_wait_ms));            // NOLINT
         // Note that canceling the fetch will ultimately call FetchComplete and
@@ -1289,7 +1310,7 @@ int SerfUrlAsyncFetcher::Poll(int64 max_wait_ms) {
           SerfFetch* fetch = *p;
           int64 age_ms = now_ms - fetch->fetch_start_ms();
           message_handler_->Message(kError, "URL %s active for %ld ms",
-                                    fetch->str_url(),
+                                    fetch->DebugInfo().c_str(),
                                     static_cast<long>(age_ms));  // NOLINT
         }
       }

@@ -45,6 +45,7 @@
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/base/string_writer.h"
 #include "pagespeed/kernel/http/google_url.h"
 
 namespace {
@@ -146,11 +147,14 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
   }
 
   virtual void SetUp() {
-    StringPiece test_host(getenv("PAGESPEED_TEST_HOST"));
-    if (test_host.empty()) {
-      test_host = kFetchHost;
+    const char* env_host = getenv("PAGESPEED_TEST_HOST");
+    if (env_host != NULL) {
+      test_host_ = env_host;
     }
-    GoogleString fetch_test_domain = StrCat("//", test_host);
+    if (test_host_.empty()) {
+      test_host_ = kFetchHost;
+    }
+    GoogleString fetch_test_domain = StrCat("//", test_host_);
     apr_pool_create(&pool_, NULL);
     timer_.reset(Platform::CreateTimer());
     statistics_.reset(new SimpleStats(thread_system_.get()));
@@ -381,6 +385,7 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
   const GoogleString& contents(int idx) { return fetches_[idx]->buffer(); }
 
   apr_pool_t* pool_;
+  GoogleString test_host_;
   std::vector<GoogleString> urls_;
   std::vector<GoogleString> content_starts_;
   std::vector<SerfTestFetch*> fetches_;
@@ -704,6 +709,33 @@ TEST_F(SerfUrlAsyncFetcherTest, ThreadedConnectionRefusedWithDetail) {
   // messages.
   EXPECT_LE(1, message_handler_.SeriousMessages());
   EXPECT_GE(2, message_handler_.SeriousMessages());
+  GoogleString text;
+  StringWriter text_writer(&text);
+  message_handler_.Dump(&text_writer);
+  EXPECT_TRUE(text.find(StrCat("URL ", urls_[kConnectionRefused],
+                               " active for")) != GoogleString::npos)
+      << text;
+}
+
+// Make sure when we use URL and Host: mismatch to route request to
+// a particular point, that the message is helpful.
+TEST_F(SerfUrlAsyncFetcherTest,
+       ThreadedConnectionRefusedCustomRouteWithDetail) {
+  serf_url_async_fetcher_->set_list_outstanding_urls_on_error(true);
+
+  int index = AddTestUrl("http://127.0.0.1:1023/refused.jpg", "");
+  request_headers(index)->Add(HttpAttributes::kHost,
+                              StrCat(test_host_, ":1023"));
+  StartFetches(index, index);
+  ASSERT_EQ(WaitTillDone(index, index), 1);
+  ASSERT_TRUE(fetches_[index]->IsDone());
+  EXPECT_EQ(HttpStatus::kNotFound, response_headers(index)->status_code());
+  GoogleString text;
+  StringWriter text_writer(&text);
+  message_handler_.Dump(&text_writer);
+  GoogleString msg = StrCat(urls_[kConnectionRefused],
+                            " (connecting to:127.0.0.1:1023)");
+  EXPECT_TRUE(text.find(msg) != GoogleString::npos) << text;
 }
 
 // Test that the X-Original-Content-Length header is properly set
