@@ -5132,6 +5132,7 @@ pagespeed.Graphs = function(opt_xhr) {
   }
   var navElement = document.createElement("table");
   navElement.id = "nav-bar";
+  navElement.className = "pagespeed-sub-tabs";
   navElement.innerHTML = '<tr><td><a id="' + pagespeed.Graphs.DisplayMode.CACHE_APPLIED + '" href="javascript:void(0);">Per application cache stats</a> - </td><td><a id="' + pagespeed.Graphs.DisplayMode.CACHE_TYPE + '" href="javascript:void(0);">Per type cache stats</a> - </td><td><a id="' + pagespeed.Graphs.DisplayMode.IPRO + '" href="javascript:void(0);">IPRO status</a> - </td><td><a id="' + pagespeed.Graphs.DisplayMode.REWRITE_IMAGE + '" href="javascript:void(0);">Image rewriting</a> - </td><td><a id="' + 
   pagespeed.Graphs.DisplayMode.REALTIME + '" href="javascript:void(0);">Realtime</a></td></tr>';
   var uiTable = document.createElement("div");

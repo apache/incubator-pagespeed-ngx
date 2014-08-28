@@ -118,6 +118,7 @@ pagespeed.Graphs = function(opt_xhr) {
   // The navigation bar to switch among different display modes.
   var navElement = document.createElement('table');
   navElement.id = 'nav-bar';
+  navElement.className = 'pagespeed-sub-tabs';
   navElement.innerHTML =
       '<tr><td><a id="' + pagespeed.Graphs.DisplayMode.CACHE_APPLIED +
       '" href="javascript:void(0);">' +
@@ -156,7 +157,8 @@ pagespeed.Graphs = function(opt_xhr) {
  */
 pagespeed.Graphs.prototype.show = function(div) {
   // Only shows the div chosen by users.
-  for (var i in pagespeed.Graphs.DisplayDiv) {
+  var i;
+  for (i in pagespeed.Graphs.DisplayDiv) {
     var chartDiv = pagespeed.Graphs.DisplayDiv[i];
     if (chartDiv == div) {
       document.getElementById(chartDiv).className = '';
@@ -168,7 +170,7 @@ pagespeed.Graphs.prototype.show = function(div) {
 
   // Underline the current tab.
   var currentTab = document.getElementById(div + '_mode');
-  for (var i in pagespeed.Graphs.DisplayMode) {
+  for (i in pagespeed.Graphs.DisplayMode) {
     var link = document.getElementById(pagespeed.Graphs.DisplayMode[i]);
     if (link == currentTab) {
       link.className = 'pagespeed-underline-link';

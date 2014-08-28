@@ -103,3 +103,13 @@ mod rules
   left:-9999px;
   position:absolute;
 }
+.pagespeed-admin-body {
+  font-family: sans-serif;
+  font-size: 12px;
+}
+.pagespeed-admin-tabs {
+  font-size: 16px;
+}
+.pagespeed-sub-tabs {
+  font-size: 15px;
+}

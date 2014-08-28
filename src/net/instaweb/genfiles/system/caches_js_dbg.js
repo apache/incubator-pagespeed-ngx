@@ -5126,13 +5126,14 @@ var pagespeed = {Caches:function(opt_xhr) {
   this.sortPurgeSetDescendingTime_ = !1;
   var modeElement = document.createElement("table");
   modeElement.id = "nav-bar";
+  modeElement.className = "pagespeed-sub-tabs";
   modeElement.innerHTML = '<tr><td><a id="' + pagespeed.Caches.DisplayMode.METADATA_CACHE + '" href="javascript:void(0);">Show Metadata Cache</a> - </td><td><a id="' + pagespeed.Caches.DisplayMode.CACHE_STRUCTURE + '" href="javascript:void(0);">Show Cache Structure</a> - </td><td><a id="' + pagespeed.Caches.DisplayMode.PHYSICAL_CACHE + '" href="javascript:void(0);">Physical Caches</a> - </td><td><a id="' + pagespeed.Caches.DisplayMode.PURGE_CACHE + '" href="javascript:void(0);">Purge Cache</a></td></tr>';
   document.body.insertBefore(modeElement, document.getElementById(pagespeed.Caches.DisplayDiv.METADATA_CACHE));
   var metadataResult = document.createElement("pre");
   metadataResult.id = pagespeed.Caches.ElementId.METADATA_RESULT;
   metadataResult.className = "pagespeed-caches-result";
   document.getElementById(pagespeed.Caches.DisplayDiv.METADATA_CACHE).appendChild(metadataResult);
-  var purgeResult = document.createElement("pre");
+  var purgeResult = document.createElement("div");
   purgeResult.id = pagespeed.Caches.ElementId.PURGE_RESULT;
   purgeResult.className = "pagespeed-caches-result";
   var purgeElement = document.getElementById(pagespeed.Caches.DisplayDiv.PURGE_CACHE);
@@ -5145,8 +5146,9 @@ pagespeed.Caches.toggleDetail = function(id) {
 goog.exportSymbol("pagespeed.Caches.toggleDetail", pagespeed.Caches.toggleDetail);
 pagespeed.Caches.DisplayMode = {METADATA_CACHE:"show_metadata_mode", CACHE_STRUCTURE:"cache_struct_mode", PHYSICAL_CACHE:"physical_cache_mode", PURGE_CACHE:"purge_cache_mode"};
 pagespeed.Caches.DisplayDiv = {METADATA_CACHE:"show_metadata", CACHE_STRUCTURE:"cache_struct", PHYSICAL_CACHE:"physical_cache", PURGE_CACHE:"purge_cache"};
-pagespeed.Caches.ElementId = {METADATA_TEXT:"metadata_text", METADATA_SUBMIT:"metadata_submit", METADATA_RESULT:"metadata_result", METADATA_CLEAR:"metadata_clear", PURGE_TEXT:"purge_text", PURGE_SUBMIT:"purge_submit", PURGE_RESULT:"purge_result", PURGE_ALL:"purge_all", PURGE_SET:"purge_set", USER_AGENT:"user_agent", SORT:"sort"};
+pagespeed.Caches.ElementId = {METADATA_TEXT:"metadata_text", METADATA_SUBMIT:"metadata_submit", METADATA_RESULT:"metadata_result", METADATA_CLEAR:"metadata_clear", PURGE_TEXT:"purge_text", PURGE_SUBMIT:"purge_submit", PURGE_RESULT:"purge_result", PURGE_ALL:"purge_all", PURGE_GLOBAL:"purge_global", PURGE_TABLE:"purge_table", USER_AGENT:"user_agent", SORT:"sort"};
 pagespeed.Caches.PURGE_SUCCESS_ = "Purge successful";
+pagespeed.Caches.PURGE_NOT_ENABLED_ = "Purging not enabled";
 pagespeed.Caches.prototype.parseLocation = function() {
   var div = location.hash.substr(1);
   "" == div ? this.show(pagespeed.Caches.DisplayDiv.METADATA_CACHE) : goog.object.contains(pagespeed.Caches.DisplayDiv, div) && this.show(div);
@@ -5177,7 +5179,7 @@ pagespeed.Caches.prototype.sendPurgeAllRequest = function() {
   this.xhr_.isActive() || (this.inputIsFrom_ = pagespeed.Caches.ElementId.PURGE_ALL, this.xhr_.send("?purge=*"));
 };
 pagespeed.Caches.prototype.sendPurgeSetRequest = function() {
-  this.xhr_.isActive() || (this.inputIsFrom_ = pagespeed.Caches.ElementId.PURGE_SET, this.xhr_.send("?new_set="));
+  this.xhr_.isActive() || (this.inputIsFrom_ = pagespeed.Caches.ElementId.PURGE_TABLE, this.xhr_.send("?new_set="));
 };
 pagespeed.Caches.prototype.sendMetadataRequest = function() {
   if (!this.xhr_.isActive()) {
@@ -5191,37 +5193,56 @@ pagespeed.Caches.prototype.toggleSorting = function() {
   this.sendPurgeSetRequest();
 };
 pagespeed.Caches.prototype.updatePurgeSet = function(text) {
-  var element = document.getElementById(pagespeed.Caches.ElementId.PURGE_SET), messages = text.split("\n"), globalTimeVal = messages.shift(), globalTime = document.createElement("table"), row = globalTime.insertRow(0), cell = row.insertCell(0);
-  cell.textContent = "Everything before this time stamp is invalid:";
-  cell = row.insertCell(1);
-  cell.textContent = globalTimeVal.split("@")[1];
-  element.innerHTML = "";
-  element.appendChild(globalTime);
-  for (var table = document.createElement("table"), direction = this.sortPurgeSetDescendingTime_ ? -1 : 1, i = this.sortPurgeSetDescendingTime_ ? messages.length - 1 : 0;this.sortPurgeSetDescendingTime_ && 0 <= i || !this.sortPurgeSetDescendingTime_ && i < messages.length;i += direction) {
-    var index = messages[i].lastIndexOf("@"), url = messages[i].substring(0, index), time = messages[i].substring(index + 1), tableRow = table.insertRow(-1);
-    tableRow.insertCell(0).textContent = url;
-    tableRow.insertCell(1).textContent = time;
+  var messages = text.split("\n"), globalTimeVal = messages.shift();
+  document.getElementById(pagespeed.Caches.ElementId.PURGE_GLOBAL).textContent = "Everything before this time stamp is invalid: " + globalTimeVal.split("@")[1];
+  var tableDiv = document.getElementById(pagespeed.Caches.ElementId.PURGE_TABLE);
+  tableDiv.innerHTML = "";
+  if (0 < messages.length) {
+    tableDiv.appendChild(document.createElement("hr"));
+    var table = document.createElement("table");
+    this.sortPurgeSetDescendingTime_ && messages.reverse();
+    for (var i = 0;i < messages.length;++i) {
+      var index = messages[i].lastIndexOf("@"), url = messages[i].substring(0, index), time = messages[i].substring(index + 1), tableRow = table.insertRow(-1);
+      tableRow.insertCell(0).textContent = time;
+      var code = document.createElement("code");
+      code.className = "pagespeed-caches-purge-url";
+      code.textContent = url;
+      tableRow.insertCell(1).appendChild(code);
+    }
+    var header = table.createTHead().insertRow(0), cell = header.insertCell(0);
+    cell.className = "pagespeed-caches-date-column";
+    if (1 == messages.length) {
+      cell.textContent = "Invalidation Time";
+    } else {
+      var checkBox = document.createElement("input");
+      checkBox.setAttribute("type", "checkbox");
+      checkBox.id = pagespeed.Caches.ElementId.SORT;
+      checkBox.checked = this.sortPurgeSetDescendingTime_ ? !0 : !1;
+      checkBox.title = "Change sort order.";
+      cell.textContent = this.sortPurgeSetDescendingTime_ ? "Invalidation Time (Descending)" : "Invalidation Time (Ascending)";
+      cell.appendChild(checkBox);
+      goog.events.listen(checkBox, "change", goog.bind(this.toggleSorting, this));
+    }
+    cell = header.insertCell(1);
+    cell.textContent = "URL";
+    cell.className = "pagespeed-stats-url-column";
+    tableDiv.appendChild(table);
   }
-  var header = table.createTHead().insertRow(0), cell = header.insertCell(0);
-  cell.textContent = "URL";
-  cell.className = "pagespeed-caches-first-column";
-  var checkBox = document.createElement("input");
-  checkBox.setAttribute("type", "checkbox");
-  checkBox.id = pagespeed.Caches.ElementId.SORT;
-  checkBox.checked = this.sortPurgeSetDescendingTime_ ? !0 : !1;
-  checkBox.title = "Change sort order.";
-  cell = header.insertCell(1);
-  cell.textContent = this.sortPurgeSetDescendingTime_ ? "Invalidation Time (Descending)" : "Invalidation Time (Ascending)";
-  cell.appendChild(checkBox);
-  cell.className = "pagespeed-stats-third-column";
-  element.appendChild(table);
-  goog.events.listen(document.getElementById(pagespeed.Caches.ElementId.SORT), "change", goog.bind(this.toggleSorting, this));
 };
 pagespeed.Caches.prototype.showResult = function() {
   if (this.xhr_.isSuccess()) {
     var text = this.xhr_.getResponseText();
-    this.inputIsFrom_ == pagespeed.Caches.ElementId.METADATA_RESULT ? document.getElementById(this.inputIsFrom_).textContent = text : this.inputIsFrom_ == pagespeed.Caches.ElementId.PURGE_SET ? this.updatePurgeSet(text) : (window.setTimeout(goog.bind(this.sendPurgeSetRequest, this), 0), text == pagespeed.Caches.PURGE_SUCCESS_ && this.inputIsFrom_ == pagespeed.Caches.ElementId.PURGE_TEXT && (text = "Added to Purge Set"), document.getElementById(pagespeed.Caches.ElementId.PURGE_RESULT).textContent = 
-    text);
+    if (this.inputIsFrom_ == pagespeed.Caches.ElementId.METADATA_RESULT) {
+      document.getElementById(this.inputIsFrom_).textContent = text;
+    } else {
+      if (this.inputIsFrom_ == pagespeed.Caches.ElementId.PURGE_TABLE) {
+        this.updatePurgeSet(text);
+      } else {
+        window.setTimeout(goog.bind(this.sendPurgeSetRequest, this), 0);
+        var purgeResult = document.getElementById(pagespeed.Caches.ElementId.PURGE_RESULT);
+        text == pagespeed.Caches.PURGE_SUCCESS_ && this.inputIsFrom_ == pagespeed.Caches.ElementId.PURGE_TEXT ? purgeResult.textContent = "Added to Purge Set" : -1 != text.indexOf(pagespeed.Caches.PURGE_NOT_ENABLED_) ? purgeResult.innerHTML = text : purgeResult.textContent = text;
+      }
+    }
   } else {
     console.log(this.xhr_.getLastError());
   }

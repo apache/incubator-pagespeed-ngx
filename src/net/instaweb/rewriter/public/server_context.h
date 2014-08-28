@@ -658,6 +658,13 @@ class ServerContext {
   // "User Agent" field in the form.
   static GoogleString ShowCacheForm(StringPiece user_agent);
 
+  // Returns the format for specifying a configuration file option.  E.g.
+  // for option_name="EnableCachePurge", args="on", returns:
+  //     nginx: "pagespeed EnableCachePurge on;"
+  //     apache: "ModPagespeed EnableCachePurge on"
+  // The base class simply returns "EnableCachePurge on".
+  virtual GoogleString FormatOption(StringPiece option_name, StringPiece args);
+
  protected:
   // Takes ownership of the given pool, making sure to clean it up at the
   // appropriate spot during shutdown.

@@ -163,6 +163,8 @@ class ApacheServerContext : public SystemServerContext {
                          rewrite_stats()->slurp_404_count());
   }
 
+  virtual GoogleString FormatOption(StringPiece option_name, StringPiece args);
+
  private:
   virtual bool UpdateCacheFlushTimestampMs(int64 timestamp_ms);
 

@@ -60,6 +60,7 @@ pagespeed.Caches = function(opt_xhr) {
   // The navigation bar to switch among different display modes.
   var modeElement = document.createElement('table');
   modeElement.id = 'nav-bar';
+  modeElement.className = 'pagespeed-sub-tabs';
   modeElement.innerHTML =
       '<tr><td><a id="' +
       pagespeed.Caches.DisplayMode.METADATA_CACHE +
@@ -91,7 +92,7 @@ pagespeed.Caches = function(opt_xhr) {
   metadataElement.appendChild(metadataResult);
 
   // Create a div to display the result of cache purging.
-  var purgeResult = document.createElement('pre');
+  var purgeResult = document.createElement('div');
   purgeResult.id = pagespeed.Caches.ElementId.PURGE_RESULT;
   purgeResult.className = 'pagespeed-caches-result';
   var purgeElement = document.getElementById(
@@ -160,7 +161,8 @@ pagespeed.Caches.ElementId = {
   PURGE_SUBMIT: 'purge_submit',
   PURGE_RESULT: 'purge_result',
   PURGE_ALL: 'purge_all',
-  PURGE_SET: 'purge_set',
+  PURGE_GLOBAL: 'purge_global',
+  PURGE_TABLE: 'purge_table',
   USER_AGENT: 'user_agent',
   SORT: 'sort'
 };
@@ -173,6 +175,13 @@ pagespeed.Caches.ElementId = {
  */
 pagespeed.Caches.PURGE_SUCCESS_ = 'Purge successful';
 
+/**
+ * The info sent by server when a purge failure is due to the option
+ * not being enabled in the config file.
+ * @private {string}
+ * @const
+ */
+pagespeed.Caches.PURGE_NOT_ENABLED_ = 'Purging not enabled';
 
 /**
  * Parse the location URL to get its anchor part and show the div element.
@@ -265,7 +274,7 @@ pagespeed.Caches.prototype.sendPurgeAllRequest = function() {
 pagespeed.Caches.prototype.sendPurgeSetRequest = function() {
   if (!this.xhr_.isActive()) {
     var url = '?new_set=';
-    this.inputIsFrom_ = pagespeed.Caches.ElementId.PURGE_SET;
+    this.inputIsFrom_ = pagespeed.Caches.ElementId.PURGE_TABLE;
     this.xhr_.send(url);
   }
 };
@@ -303,55 +312,62 @@ pagespeed.Caches.prototype.toggleSorting = function() {
  * @param {string} text The updated Purge Set in string format sent by server.
  */
 pagespeed.Caches.prototype.updatePurgeSet = function(text) {
-  var element = document.getElementById(pagespeed.Caches.ElementId.PURGE_SET);
   var messages = text.split('\n');
   var globalTimeVal = messages.shift();
-  var globalTime = document.createElement('table');
-  var row = globalTime.insertRow(0);
-  var cell = row.insertCell(0);
-  cell.textContent = 'Everything before this time stamp is invalid:';
-  cell = row.insertCell(1);
-  cell.textContent = globalTimeVal.split('@')[1];
-  element.innerHTML = '';
-  element.appendChild(globalTime);
+  var globalTime =
+      document.getElementById(pagespeed.Caches.ElementId.PURGE_GLOBAL);
+  globalTime.textContent = 'Everything before this time stamp is invalid: ' +
+      globalTimeVal.split('@')[1];
 
-  var table = document.createElement('table');
-  // If this.sortPurgeSetDescendingTime_ is set to true, visit the array in
-  // reverse order.
-  var direction = this.sortPurgeSetDescendingTime_ ? -1 : 1;
-  for (var i = this.sortPurgeSetDescendingTime_ ? messages.length - 1 : 0;
-       (this.sortPurgeSetDescendingTime_ && i >= 0) ||
-       (!this.sortPurgeSetDescendingTime_ && i < messages.length);
-       i += direction) {
-    // Decode the results of PurgeSet::ToString in
-    // pagespeed/kernel/cache/purge_set.cc
-    var index = messages[i].lastIndexOf('@');
-    var url = messages[i].substring(0, index);
-    var time = messages[i].substring(index + 1);
-    var tableRow = table.insertRow(-1);
-    tableRow.insertCell(0).textContent = url;
-    tableRow.insertCell(1).textContent = time;
+  var tableDiv = document.getElementById(
+      pagespeed.Caches.ElementId.PURGE_TABLE);
+  tableDiv.innerHTML = '';    // Clears any old version of table.
+  if (messages.length > 0) {
+    tableDiv.appendChild(document.createElement('hr'));
+    var table = document.createElement('table');
+    if (this.sortPurgeSetDescendingTime_) {
+      messages.reverse();
+    }
+    for (var i = 0; i < messages.length; ++i) {
+      // Decode the results of PurgeSet::ToString in
+      // pagespeed/kernel/cache/purge_set.cc
+      var index = messages[i].lastIndexOf('@');
+      var url = messages[i].substring(0, index);
+      var time = messages[i].substring(index + 1);
+      var tableRow = table.insertRow(-1);
+      tableRow.insertCell(0).textContent = time;
+      var code = document.createElement('code');
+      code.className = 'pagespeed-caches-purge-url';
+      code.textContent = url;
+      var codeCell = tableRow.insertCell(1);
+      codeCell.appendChild(code);
+    }
+    var header = table.createTHead().insertRow(0);
+    var cell = header.insertCell(0);
+    cell.className = 'pagespeed-caches-date-column';
+    if (messages.length == 1) {
+      cell.textContent = 'Invalidation Time';
+    } else {
+      var checkBox = document.createElement('input');
+      checkBox.setAttribute('type', 'checkbox');
+      checkBox.id = pagespeed.Caches.ElementId.SORT;
+      checkBox.checked = this.sortPurgeSetDescendingTime_ ? true : false;
+      checkBox.title = 'Change sort order.';
+      if (this.sortPurgeSetDescendingTime_) {
+        cell.textContent = 'Invalidation Time (Descending)';
+      } else {
+        cell.textContent = 'Invalidation Time (Ascending)';
+      }
+      cell.appendChild(checkBox);
+      goog.events.listen(checkBox, 'change',
+                         goog.bind(this.toggleSorting, this));
+
+    }
+    cell = header.insertCell(1);
+    cell.textContent = 'URL';
+    cell.className = 'pagespeed-stats-url-column';
+    tableDiv.appendChild(table);
   }
-  var header = table.createTHead().insertRow(0);
-  cell = header.insertCell(0);
-  cell.textContent = 'URL';
-  cell.className = 'pagespeed-caches-first-column';
-  var checkBox = document.createElement('input');
-  checkBox.setAttribute('type', 'checkbox');
-  checkBox.id = pagespeed.Caches.ElementId.SORT;
-  checkBox.checked = this.sortPurgeSetDescendingTime_ ? true : false;
-  checkBox.title = 'Change sort order.';
-  cell = header.insertCell(1);
-  if (this.sortPurgeSetDescendingTime_) {
-    cell.textContent = 'Invalidation Time (Descending)';
-  } else {
-    cell.textContent = 'Invalidation Time (Ascending)';
-  }
-  cell.appendChild(checkBox);
-  cell.className = 'pagespeed-stats-third-column';
-  element.appendChild(table);
-  goog.events.listen(document.getElementById(pagespeed.Caches.ElementId.SORT),
-                     'change', goog.bind(this.toggleSorting, this));
 };
 
 
@@ -363,20 +379,29 @@ pagespeed.Caches.prototype.showResult = function() {
     var text = this.xhr_.getResponseText();
     if (this.inputIsFrom_ == pagespeed.Caches.ElementId.METADATA_RESULT) {
       document.getElementById(this.inputIsFrom_).textContent = text;
-    } else if (this.inputIsFrom_ == pagespeed.Caches.ElementId.PURGE_SET) {
+    } else if (this.inputIsFrom_ == pagespeed.Caches.ElementId.PURGE_TABLE) {
       this.updatePurgeSet(text);
     } else {
       // Add updating purge set to the queue if the current request is
       // to purge cache.
       window.setTimeout(goog.bind(this.sendPurgeSetRequest, this), 0);
+
+      var id = pagespeed.Caches.ElementId.PURGE_RESULT;
+      var purgeResult = document.getElementById(id);
+
       // TODO(jmarantz): Split the 'purge entire cache' case off in C++ instead
       // of doing the check here.
       if (text == pagespeed.Caches.PURGE_SUCCESS_ &&
           this.inputIsFrom_ == pagespeed.Caches.ElementId.PURGE_TEXT) {
-        text = 'Added to Purge Set';
+        purgeResult.textContent = 'Added to Purge Set';
+      } else if (text.indexOf(pagespeed.Caches.PURGE_NOT_ENABLED_) != -1) {
+        // The error response is rich HTML, which should be properly
+        // escaped, XSS free, and not affected by user input, per code in
+        // admin_site.cc, AdminSite::PrintCaches().
+        purgeResult.innerHTML = text;
+      } else {
+        purgeResult.textContent = text;
       }
-      var id = pagespeed.Caches.ElementId.PURGE_RESULT;
-      document.getElementById(id).textContent = text;
     }
   } else {
     console.log(this.xhr_.getLastError());

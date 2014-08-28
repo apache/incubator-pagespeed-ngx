@@ -220,4 +220,9 @@ void ApacheServerContext::ReportNotFoundHelper(MessageType message_type,
                              error_count->GetName().as_string().c_str());
 }
 
+GoogleString ApacheServerContext::FormatOption(StringPiece option_name,
+                                               StringPiece args) {
+  return StrCat("ModPagespeed", option_name, " ", args);
+}
+
 }  // namespace net_instaweb

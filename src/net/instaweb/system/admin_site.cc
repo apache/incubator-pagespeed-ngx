@@ -159,7 +159,8 @@ class AdminHtml {
 
     fetch->Write(StrCat(head_extra, "</head>"), handler_);
     fetch->Write(
-        StrCat("<body><div style='font-size:16px;font-family:sans-serif;'>\n"
+        StrCat("<body class='pagespeed-admin-body'>"
+               "<div class='pagespeed-admin-tabs'>\n"
                "<b>Pagespeed Admin</b>", kLongBreak, "\n"),
         handler_);
     fetch->Write(buf, handler_);
@@ -270,13 +271,13 @@ void AdminSite::StatisticsHandler(const RewriteOptions& options,
                        message_handler_);
   // We have to call Dump() here to write data to sources for
   // system/system_test.sh: Line 79. We use JS to update the data in refreshes.
-  fetch->Write("<pre id=\"stat\">", message_handler_);
+  fetch->Write("<pre id='stat'>", message_handler_);
   stats->Dump(fetch, message_handler_);
   fetch->Write("</pre>\n", message_handler_);
   StringPiece statistics_js = options.Enabled(RewriteOptions::kDebug) ?
         JS_statistics_js :
         JS_statistics_js_opt;
-  fetch->Write(StrCat("<script type=\"text/javascript\">", statistics_js,
+  fetch->Write(StrCat("<script type='text/javascript'>", statistics_js,
                       "\npagespeed.Statistics.Start();</script>\n"),
                message_handler_);
 }
@@ -293,19 +294,19 @@ void AdminSite::GraphsHandler(const RewriteOptions& options,
   GoogleString head_markup = StrCat(
       "<style>", CSS_graphs_css, "</style>\n");
   AdminHtml admin_html("graphs", head_markup, source, fetch, message_handler_);
-  fetch->Write("<div id=\"cache_applied\">Loading Charts...</div>"
-               "<div id=\"cache_type\">Loading Charts...</div>"
-               "<div id=\"ipro\">Loading Charts...</div>"
-               "<div id=\"image_rewriting\">Loading Charts...</div>"
-               "<div id=\"realtime\">Loading Charts...</div>",
+  fetch->Write("<div id='cache_applied'>Loading Charts...</div>"
+               "<div id='cache_type'>Loading Charts...</div>"
+               "<div id='ipro'>Loading Charts...</div>"
+               "<div id='image_rewriting'>Loading Charts...</div>"
+               "<div id='realtime'>Loading Charts...</div>",
                message_handler_);
-  fetch->Write("<script type=\"text/javascript\" "
-               "src=\"https://www.google.com/jsapi\"></script>",
+  fetch->Write("<script type='text/javascript' "
+               "src='https://www.google.com/jsapi'></script>",
                message_handler_);
   StringPiece graphs_js = options.Enabled(RewriteOptions::kDebug) ?
         JS_graphs_js :
         JS_graphs_js_opt;
-  fetch->Write(StrCat("<script type=\"text/javascript\">", graphs_js,
+  fetch->Write(StrCat("<script type='text/javascript'>", graphs_js,
                       "\npagespeed.Graphs.Start();</script>\n"),
                message_handler_);
 }
@@ -373,9 +374,9 @@ void AdminSite::PrintHistograms(AdminSource source, AsyncFetch* fetch,
 namespace {
 
 static const char kTableStart[] =
-    "<table style='font-family:sans-serif;font-size:0.9em'>\n"
+    "<table class='pagespeed-caches-structure'>\n"
     "  <thead>\n"
-    "    <tr style='font-weight:bold'>\n"
+    "    <tr>\n"
     "      <td>Cache</td><td>Detail</td><td>Structure</td>\n"
     "    </tr>\n"
     "  </thead>\n"
@@ -458,15 +459,15 @@ GoogleString IndentCacheDescriptor(StringPiece name) {
 
 GoogleString CacheInfoHtmlSnippet(StringPiece label, StringPiece descriptor) {
   GoogleString out, escaped;
-  StrAppend(&out, "<tr style=\"vertical-align:top;\"><td>", label,
-            "</td><td><input id=\"", label);
-  StrAppend(&out, "_toggle\" type=\"checkbox\" ",
-            "onclick=\"pagespeed.Caches.toggleDetail('", label,
-            "')\"/></td><td><code id=\"", label, "_summary\">");
+  StrAppend(&out, "<tr style='vertical-align:top;'><td>", label,
+            "</td><td><input id='", label);
+  StrAppend(&out, "_toggle' type='checkbox' ",
+            "onclick='pagespeed.Caches.toggleDetail('", label,
+            "')'/></td><td><code id='", label, "_summary'>");
   StrAppend(&out, HtmlKeywords::Escape(HackCacheDescriptor(descriptor),
                                        &escaped));
-  StrAppend(&out, "</code><code id=\"", label,
-            "_detail\" style=\"display:none;\">");
+  StrAppend(&out, "</code><code id='", label,
+            "_detail' style='display:none;'>");
   StrAppend(&out, IndentCacheDescriptor(descriptor));
   StrAppend(&out, "</code></td></tr>\n");
   return out;
@@ -508,9 +509,16 @@ void AdminSite::PrintCaches(bool is_global, AdminSource source,
       response_headers->Add(HttpAttributes::kContentType, "text/html");
       // TODO(jmarantz): virtualize the formatting of this message so that
       // it's correct in ngx_pagespeed and mod_pagespeed (and IISpeed etc).
-      fetch->Write("Purging not enabled: please add\n"
-                   "PagespeedEnableCachePurge on\n"
-                   "to your config", message_handler_);
+      fetch->Write("Purging not enabled: please add\n", message_handler_);
+      HtmlKeywords::WritePre(
+          StrCat("  ", server_context->FormatOption("EnableCachePurge", "on")),
+          "", fetch, message_handler_);
+      fetch->Write(
+          "\nto your configuration file. See the \n"
+          "<a href='https://developers.google.com/speed/pagespeed/module"
+          "/system#purge_cache'>documentation</a> "
+          "for more information about cache purging.",
+          message_handler_);
       fetch->Done(true);
     } else if (url == "*") {
       PurgeHandler(url, cache_path, fetch);
@@ -539,7 +547,7 @@ void AdminSite::PrintCaches(bool is_global, AdminSource source,
     AdminHtml admin_html("cache", head_markup, source, fetch,
                          message_handler_);
 
-    fetch->Write("<div id=\"show_metadata\">", message_handler_);
+    fetch->Write("<div id='show_metadata'>", message_handler_);
     // Present a small form to enter a URL.
     if (source == kPageSpeedAdmin) {
       const char* user_agent = fetch->request_headers()->Lookup1(
@@ -558,7 +566,7 @@ void AdminSite::PrintCaches(bool is_global, AdminSource source,
       // either of these flags to limit the content when someone asks
       // for info about the cache.
       flags |= SystemCaches::kIncludeMemcached;
-      fetch->Write("<div id=\"cache_struct\">",
+      fetch->Write("<div id='cache_struct'>",
                    message_handler_);
       fetch->Write(kTableStart, message_handler_);
       CacheInterface* fsmdc = filesystem_metadata_cache;
@@ -573,7 +581,7 @@ void AdminSite::PrintCaches(bool is_global, AdminSource source,
       fetch->Write(kTableEnd, message_handler_);
       fetch->Write("</div>", message_handler_);
 
-      fetch->Write("<div id=\"physical_cache\">",
+      fetch->Write("<div id='physical_cache'>",
                    message_handler_);
       GoogleString backend_stats;
       system_caches->PrintCacheStats(
@@ -583,10 +591,15 @@ void AdminSite::PrintCaches(bool is_global, AdminSource source,
       }
       fetch->Write("</div>", message_handler_);
 
-      fetch->Write("<div id=\"purge_cache\">",
+      fetch->Write("<div id='purge_cache'>",
                    message_handler_);
       // Filled in by JS in caches.js: updatePurgeSet().
-      fetch->Write("<h3>Purge Set</h3><pre id=\"purge_set\"></pre></div>",
+      fetch->Write("<h3>Purge Set</h3>"
+                   "<div id='purge_global'"
+                   " class='pagespeed-caches-purge-global'></div>"
+                   "<div id='purge_table'"
+                   " class='pagespeed-caches-purge-table'></div>"
+                   "</div>",  // closes 'purge_cache'.
                    message_handler_);
     }
     StringPiece caches_js = options->Enabled(RewriteOptions::kDebug) ?
@@ -595,7 +608,7 @@ void AdminSite::PrintCaches(bool is_global, AdminSource source,
     // Practice what we preach: put the blocking JS in the tail.
     // TODO(jmarantz): use static asset manager to compile & deliver JS
     // externally.
-    fetch->Write(StrCat("<script type=\"text/javascript\">", caches_js,
+    fetch->Write(StrCat("<script type='text/javascript'>", caches_js,
                         "\npagespeed.Caches.Start();</script>\n"),
                  message_handler_);
   }
@@ -628,7 +641,7 @@ void AdminSite::MessageHistoryHandler(const RewriteOptions& options,
   StringWriter log_writer(&log);
   AdminHtml admin_html("message_history", "", source, fetch, message_handler_);
   if (message_handler_->Dump(&log_writer)) {
-    fetch->Write("<div id=\"log\">", message_handler_);
+    fetch->Write("<div id='log'>", message_handler_);
     // Write pre-tag and color messages.
     StringPieceVector messages;
     message_handler_->ParseMessageDumpIntoMessages(log, &messages);
@@ -665,7 +678,7 @@ void AdminSite::MessageHistoryHandler(const RewriteOptions& options,
     StringPiece messages_js = options.Enabled(RewriteOptions::kDebug) ?
         JS_messages_js :
         JS_messages_js_opt;
-    fetch->Write(StrCat("<script type=\"text/javascript\">", messages_js,
+    fetch->Write(StrCat("<script type='text/javascript'>", messages_js,
                         "\npagespeed.Messages.Start();</script>\n"),
                  message_handler_);
   } else {

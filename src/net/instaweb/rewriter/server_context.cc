@@ -1311,4 +1311,9 @@ GoogleString ServerContext::ShowCacheForm(StringPiece user_agent) {
   return out;
 }
 
+GoogleString ServerContext::FormatOption(StringPiece option_name,
+                                         StringPiece args) {
+  return StrCat(option_name, " ", args);
+}
+
 }  // namespace net_instaweb
