@@ -16,6 +16,8 @@
 
 #include "net/instaweb/system/public/in_place_resource_recorder.h"
 
+#include <algorithm>
+
 #include "base/logging.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
@@ -72,6 +74,18 @@ InPlaceResourceRecorder::InPlaceResourceRecorder(
     num_dropped_due_to_load_->Add(1);
     failure_ = true;
   }
+
+  // The http cache also has a maximum response body length that it will accept,
+  // so we need to look at max_response_bytes_ and takes the most constraining
+  // of the two.
+  int64 cache_max_cl = cache_->max_cacheable_response_content_length();
+  if (cache_max_cl != -1) {
+    if (max_response_bytes_ <= 0) {
+      max_response_bytes_ = cache_max_cl;
+    } else {
+      max_response_bytes_ = std::min(max_response_bytes_, cache_max_cl);
+    }
+  }
 }
 
 InPlaceResourceRecorder::~InPlaceResourceRecorder() {
@@ -98,7 +112,7 @@ bool InPlaceResourceRecorder::Write(const StringPiece& contents,
 
   // Write into resource_value_ decompressing if needed.
   failure_ = !inflating_fetch_.Write(contents, handler_);
-  if (max_response_bytes_ == 0 ||
+  if (max_response_bytes_ <= 0 ||
       resource_value_.contents_size() < max_response_bytes_) {
     return !failure_;
   } else {
@@ -122,6 +136,18 @@ void InPlaceResourceRecorder::ConsiderResponseHeaders(
     inflating_fetch_.response_headers()->CopyFrom(*response_headers);
     write_to_resource_value_.response_headers()->set_status_code(
         HttpStatus::kOK);
+  }
+
+  // Shortcut for bailing out early when the response will be too large.
+  int64 content_length;
+  if (max_response_bytes_ <= 0 &&
+      response_headers->FindContentLength(&content_length) &&
+      content_length > max_response_bytes_) {
+    VLOG(1) << "IPRO: Content-Length header indicates that ["
+            << url_ << "] is too large to record (" << content_length
+            << " bytes)";
+    DroppedDueToSize();
+    return;
   }
 
   if (headers_kind != kFullHeaders) {
@@ -171,17 +197,6 @@ void InPlaceResourceRecorder::ConsiderResponseHeaders(
         url_, fragment_, status_code_ == 200, handler_);
     num_not_cacheable_->Add(1);
     failure_ = true;
-    return;
-  }
-  // Shortcut for bailing out early when the response will be too large
-  int64 content_length;
-  if (max_response_bytes_ != 0 &&
-      response_headers->FindContentLength(&content_length) &&
-      content_length > max_response_bytes_) {
-    VLOG(1) << "IPRO: Content-Length header indicates that ["
-            << url_ << "] is too large to record (" << content_length
-            << " bytes)";
-    DroppedDueToSize();
     return;
   }
 }

@@ -140,7 +140,7 @@ class InPlaceResourceRecorder : public Writer {
   const RequestHeaders::Properties request_properties_;
   const HttpOptions http_options_;
 
-  const unsigned int max_response_bytes_;
+  int64 max_response_bytes_;
   const int max_concurrent_recordings_;
 
   HTTPValue resource_value_;
