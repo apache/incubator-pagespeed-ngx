@@ -105,6 +105,7 @@
 #include "net/instaweb/rewriter/public/lazyload_images_filter.h"
 #include "net/instaweb/rewriter/public/local_storage_cache_filter.h"
 #include "net/instaweb/rewriter/public/meta_tag_filter.h"
+#include "net/instaweb/rewriter/public/mobilize_label_filter.h"
 #include "net/instaweb/rewriter/public/mobilize_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
@@ -854,6 +855,7 @@ void RewriteDriver::InitStats(Statistics* statistics) {
   JsInlineFilter::InitStats(statistics);
   LocalStorageCacheFilter::InitStats(statistics);
   MetaTagFilter::InitStats(statistics);
+  MobilizeLabelFilter::InitStats(statistics);
   MobilizeRewriteFilter::InitStats(statistics);
   SplitHtmlBeaconFilter::InitStats(statistics);
   RewriteContext::InitStats(statistics);
@@ -1207,6 +1209,7 @@ void RewriteDriver::AddPostRenderFilters() {
     AddUnownedPostRenderFilter(url_trim_filter_.get());
   }
   if (rewrite_options->Enabled(RewriteOptions::kMobilize)) {
+    AddOwnedPostRenderFilter(new MobilizeLabelFilter(this));
     AddOwnedPostRenderFilter(new MobilizeRewriteFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kFlushSubresources) &&

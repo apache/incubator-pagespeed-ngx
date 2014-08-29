@@ -180,6 +180,7 @@
         'rewriter/mock_critical_css_finder.cc',
         'rewriter/mock_critical_images_finder.cc',
         'rewriter/mock_resource_callback.cc',
+        'rewriter/mobilize_label_filter_test.cc',
         'rewriter/mobilize_rewrite_filter_test.cc',
         'rewriter/pedantic_filter_test.cc',
         'rewriter/property_cache_util_test.cc',

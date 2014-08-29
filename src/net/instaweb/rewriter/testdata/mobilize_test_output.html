@@ -49,9 +49,9 @@
   position: relative !important;
 }
 
-/* The blocks marked with an importance attribute should be in a single-column
-   layout */
-[importance] {
+/* The blocks marked with an data-mobile-role attribute should be in a
+   single-column layout */
+[data-mobile-role] {
   float: none !important;
   display: block !important;
   margin-left: 0 !important;
@@ -61,7 +61,7 @@
 }
 
 /* Some heuristics to make headers display a bit nicer, usually. */
-[importance="header"] div {
+[data-mobile-role="header"] div {
   float: none !important;
   display: block !important;
   margin: 0 !important;
@@ -69,7 +69,7 @@
 }
 
 /* Navigational sections often have a fixed height. */
-[importance="navigational"] {
+[data-mobile-role="navigational"] {
   height: auto !important;
 }
 
@@ -79,7 +79,7 @@
    automatically setting the links to be the opposite of the background color
    using the -webkit-filter: invert(100%); property, but this is not supported
    by all browsers. */
-[importance="navigational"] a {
+[data-mobile-role="navigational"] a {
   float: none !important;
   display: block !important;
   margin: 1px 1% !important;
@@ -96,13 +96,13 @@
 
 /* Give the main content a bit of space, mainly so text is not right against the
    edge of the screen. */
-[importance="content"] {
+[data-mobile-role="content"] {
  padding-left: 1% !important;
  padding-right: 1% !important;
 }
 
 /* Force the main content into a single-column layout. */
-[importance="content"] div {
+[data-mobile-role="content"] div {
   float: none !important;
   display: block !important;
   margin-left: 0 !important;
@@ -112,15 +112,15 @@
 }
 
 /* Increase the font size for content elements. */
-[importance="content"] a, [importance="content"] p,
-[importance="content"] div, [importance="content"] span {
+[data-mobile-role="content"] a, [data-mobile-role="content"] p,
+[data-mobile-role="content"] div, [data-mobile-role="content"] span {
   font-size: medium !important;
 }
 </style><meta name='viewport' content='width=device-width,user-scalable=no'/></head>
 <body class="custom"><script>
     document.getElementById("stuff00").innerHTML = "JavaScript!";
     alert('00');
-  </script><div id="header_area" class="full_width" importance="header">
+  </script><div id="header_area" class="full_width" data-mobile-role="header">
     <div class="page">
       <div id="header">
         <p id="title"><a href="http://test.com/">Mobilize all the Things</a></p>
@@ -134,7 +134,7 @@
       document.getElementById("stuff01").innerHTML = "";
       alert('01');
     </script>
-  </div><div id="nav_area" class="full_width" importance="navigational"><a href="http://test.com">Home</a><a href="http://test.com/about" title="About">About</a><a href="http://test.com/articles" title="Articles">Articles</a><a href="http://test.com/rss" title="RSS Feed" rel="nofollow">RSS</a></div><div class="page" importance="content">
+  </div><nav id="nav_area" class="full_width" data-mobile-role="navigational"><a href="http://test.com">Home</a><a href="http://test.com/about" title="About">About</a><a href="http://test.com/articles" title="Articles">Articles</a><a href="http://test.com/rss" title="RSS Feed" rel="nofollow">RSS</a></nav><div class="page" data-mobile-role="content">
       <div id="content" class="feed">
         <div class="post type-post status-publish">
           <div class="headline_area">
@@ -173,7 +173,7 @@ int main()
           </div>
         </div>
       </div>
-    </div><div class="aside" importance="marginal">
+    </div><div class="aside" data-mobile-role="marginal">
       <script>
         document.getElementById("stuff02").innerHTML = "";
         alert('02');
@@ -197,7 +197,7 @@ int main()
             </select>
         </li></ul>
       </form>
-    </div><div class="footer" importance="marginal">
+    </div><div class="footer" data-mobile-role="marginal">
     Nulla ac elit sed urna molestie iaculis. Morbi posuere ac libero in fringilla.
     <br><a class="top"></a>
   </div></body>

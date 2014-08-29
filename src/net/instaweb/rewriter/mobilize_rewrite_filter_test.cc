@@ -18,24 +18,30 @@
 
 #include "net/instaweb/rewriter/public/mobilize_rewrite_filter.h"
 
-#include "net/instaweb/htmlparse/public/html_parse.h"
+#include "base/logging.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/mock_message_handler.h"
-#include "net/instaweb/util/public/null_mutex.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/stdio_file_system.h"
-#include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/mock_message_handler.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/statistics.h"
+#include "pagespeed/kernel/base/stdio_file_system.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_node.h"
+#include "pagespeed/kernel/html/html_writer_filter.h"
 
 namespace net_instaweb {
 
 namespace {
-typedef MobilizeRewriteFilter::ImportanceLevel ImportanceLevel;
+
 const char kAddedStyle[] = "stylestring";
 const char kTestDataDir[] = "/net/instaweb/rewriter/testdata/";
 const char kOriginal[] = "mobilize_test.html";
 const char kRewritten[] = "mobilize_test_output.html";
+
 }  // namespace
 
 // Base class for doing our tests. Can access MobilizeRewriteFilter's private
@@ -85,11 +91,11 @@ class MobilizeRewriteFilterTest : public RewriteTestBase {
   bool FilterIsReorderContainer(HtmlElement* element) {
     return filter_->IsReorderContainer(element);
   }
-  HtmlElement* FilterImportanceToContainer(ImportanceLevel importance) {
-    return filter_->ImportanceToContainer(importance);
+  HtmlElement* FilterMobileRoleToContainer(MobileRole::Level mobile_role) {
+    return filter_->MobileRoleToContainer(mobile_role);
   }
-  ImportanceLevel FilterGetImportance(HtmlElement* element) {
-    return filter_->GetImportance(element);
+  MobileRole::Level FilterGetMobileRole(HtmlElement* element) {
+    return filter_->GetMobileRole(element);
   }
 
   scoped_ptr<MobilizeRewriteFilter> filter_;
@@ -159,38 +165,43 @@ TEST_F(MobilizeRewriteUnitTest, CheckGetContainers) {
                 "<div name='navigational'></div>"
                 "<div name='content'></div>"
                 "<div name='marginal'></div></body>");
-  for (size_t i = 0; i < MobilizeRewriteFilter::kImportancesSize; i++) {
-    ImportanceLevel level = MobilizeRewriteFilter::kImportances[i].level;
-    HtmlElement* container = FilterImportanceToContainer(level);
+  for (int i = 0; i < MobileRole::kInvalid; i++) {
+    MobileRole::Level expected = static_cast<MobileRole::Level>(i);
+    const MobileRole* role = &MobileRole::kMobileRoles[i];
+    EXPECT_EQ(expected, role->level);
+    const char* string = MobileRole::StringFromLevel(expected);
+    EXPECT_EQ(string, role->value);
+    EXPECT_EQ(expected, MobileRole::LevelFromString(string));
+    HtmlElement* container = FilterMobileRoleToContainer(expected);
     EXPECT_FALSE(container == NULL);
     EXPECT_TRUE(FilterIsReorderContainer(container));
   }
 }
 
-TEST_F(MobilizeRewriteUnitTest, ImportanceAttribute) {
+TEST_F(MobilizeRewriteUnitTest, MobileRoleAttribute) {
   HtmlElement* div = html_parse()->NewElement(NULL, HtmlName::kDiv);
-  html_parse()->AddAttribute(div, "importance", "navigational");
+  html_parse()->AddAttribute(div, "data-mobile-role", "navigational");
   // Add the new node to the parse tree so it will be deleted.
   html_parse()->InsertNodeBeforeCurrent(div);
-  EXPECT_EQ(MobilizeRewriteFilter::kNavigational,
-            FilterGetImportance(div));
+  EXPECT_EQ(MobileRole::kNavigational,
+            FilterGetMobileRole(div));
 }
 
-TEST_F(MobilizeRewriteUnitTest, InvalidImportanceAttribute) {
+TEST_F(MobilizeRewriteUnitTest, InvalidMobileRoleAttribute) {
   HtmlElement* div = html_parse()->NewElement(NULL, HtmlName::kDiv);
-  html_parse()->AddAttribute(div, "importance", "garbage");
+  html_parse()->AddAttribute(div, "data-mobile-role", "garbage");
   // Add the new node to the parse tree so it will be deleted.
   html_parse()->InsertNodeBeforeCurrent(div);
-  EXPECT_EQ(MobilizeRewriteFilter::kInvalid,
-            FilterGetImportance(div));
+  EXPECT_EQ(MobileRole::kInvalid,
+            FilterGetMobileRole(div));
 }
 
-TEST_F(MobilizeRewriteUnitTest, KeeperImportanceAttribute) {
+TEST_F(MobilizeRewriteUnitTest, KeeperMobileRoleAttribute) {
   HtmlElement* script = html_parse()->NewElement(NULL, HtmlName::kScript);
   // Add the new node to the parse tree so it will be deleted.
   html_parse()->InsertNodeBeforeCurrent(script);
-  EXPECT_EQ(MobilizeRewriteFilter::kKeeper,
-            FilterGetImportance(script));
+  EXPECT_EQ(MobileRole::kKeeper,
+            FilterGetMobileRole(script));
 }
 
 class MobilizeRewriteFunctionalTest : public MobilizeRewriteFilterTest {
@@ -299,12 +310,13 @@ TEST_F(MobilizeRewriteFunctionalTest, KeeperTagsUnmodified) {
 }
 
 TEST_F(MobilizeRewriteFunctionalTest, ReorderElements) {
-  ValidateExpected("reorder_elements", "<body><div importance='marginal'>"
-                   "<span>123</span></div><div importance='header'>"
-                   "<h1>foo</h1><p>bar</p></div></body>",
-                   "<body><div importance='header'><h1>foo</h1><p>bar</p>"
-                   "</div><div importance='marginal'><span>123</span></div>"
-                   "</body>");
+  ValidateExpected(
+      "reorder_elements", "<body><div data-mobile-role='marginal'>"
+      "<span>123</span></div><div data-mobile-role='header'>"
+      "<h1>foo</h1><p>bar</p></div></body>",
+      "<body><div data-mobile-role='header'><h1>foo</h1><p>bar</p>"
+      "</div><div data-mobile-role='marginal'><span>123</span></div>"
+      "</body>");
   CheckVariable(MobilizeRewriteFilter::kPagesMobilized, 1);
   CheckVariable(MobilizeRewriteFilter::kKeeperBlocks, 0);
   CheckVariable(MobilizeRewriteFilter::kHeaderBlocks, 1);
@@ -316,10 +328,10 @@ TEST_F(MobilizeRewriteFunctionalTest, ReorderElements) {
 
 TEST_F(MobilizeRewriteFunctionalTest, ReorderElements2) {
   ValidateExpected("reorder_elements_2",
-                   "<body>123<div importance='content'>890</div>456"
-                   "<div importance='header'>abc</div>def</body>",
-                   "<body><div importance='header'>abc</div>"
-                   "<div importance='content'>890</div></body>");
+                   "<body>123<div data-mobile-role='content'>890</div>456"
+                   "<div data-mobile-role='header'>abc</div>def</body>",
+                   "<body><div data-mobile-role='header'>abc</div>"
+                   "<div data-mobile-role='content'>890</div></body>");
   CheckVariable(MobilizeRewriteFilter::kPagesMobilized, 1);
   CheckVariable(MobilizeRewriteFilter::kKeeperBlocks, 0);
   CheckVariable(MobilizeRewriteFilter::kHeaderBlocks, 1);
@@ -330,10 +342,11 @@ TEST_F(MobilizeRewriteFunctionalTest, ReorderElements2) {
 }
 
 TEST_F(MobilizeRewriteFunctionalTest, RemoveTables) {
-  ValidateExpected("remove_tables",
-                   "<body><div importance='content'><table><tr><td>1</td>"
-                   "<td>2</td></tr></table></div></body>",
-                   "<body><div importance='content'>12<br><br></div></body>");
+  ValidateExpected(
+      "remove_tables",
+      "<body><div data-mobile-role='content'><table><tr><td>1</td>"
+      "<td>2</td></tr></table></div></body>",
+      "<body><div data-mobile-role='content'>12<br><br></div></body>");
   CheckVariable(MobilizeRewriteFilter::kPagesMobilized, 1);
   CheckVariable(MobilizeRewriteFilter::kKeeperBlocks, 0);
   CheckVariable(MobilizeRewriteFilter::kHeaderBlocks, 0);
@@ -345,9 +358,9 @@ TEST_F(MobilizeRewriteFunctionalTest, RemoveTables) {
 
 TEST_F(MobilizeRewriteFunctionalTest, StripNav) {
   ValidateExpected("strip_nav",
-                   "<body><div importance='navigational'><div>"
+                   "<body><div data-mobile-role='navigational'><div>"
                    "<a href='foo.com'>123</a></div></div></body>",
-                   "<body><div importance='navigational'>"
+                   "<body><div data-mobile-role='navigational'>"
                    "<a href='foo.com'>123</a></div></body>");
   CheckVariable(MobilizeRewriteFilter::kPagesMobilized, 1);
   CheckVariable(MobilizeRewriteFilter::kKeeperBlocks, 0);
@@ -359,13 +372,14 @@ TEST_F(MobilizeRewriteFunctionalTest, StripNav) {
 }
 
 TEST_F(MobilizeRewriteFunctionalTest, StripOnlyNav) {
-  ValidateExpected("strip_only_nav",
-                   "<body><div importance='navigational'><div>"
-                   "<a href='foo.com'>123</a></div></div>"
-                   "<div importance='header'><h1>foobar</h1></div></body>",
-                   "<body><div importance='header'><h1>foobar</h1></div>"
-                   "<div importance='navigational'><a href='foo.com'>123"
-                   "</a></div></body>");
+  ValidateExpected(
+      "strip_only_nav",
+      "<body><div data-mobile-role='navigational'><div>"
+      "<a href='foo.com'>123</a></div></div>"
+      "<div data-mobile-role='header'><h1>foobar</h1></div></body>",
+      "<body><div data-mobile-role='header'><h1>foobar</h1></div>"
+      "<div data-mobile-role='navigational'><a href='foo.com'>123"
+      "</a></div></body>");
   CheckVariable(MobilizeRewriteFilter::kPagesMobilized, 1);
   CheckVariable(MobilizeRewriteFilter::kKeeperBlocks, 0);
   CheckVariable(MobilizeRewriteFilter::kHeaderBlocks, 1);
@@ -375,12 +389,13 @@ TEST_F(MobilizeRewriteFunctionalTest, StripOnlyNav) {
   CheckVariable(MobilizeRewriteFilter::kDeletedElements, 1);
 }
 
-TEST_F(MobilizeRewriteFunctionalTest, UnknownImportance) {
-  // Its probably OK if the behavior resulting from having a weird importance
-  // value is unexpected, as long as it doesn't crash.
-  ValidateExpected("unknown_importance",
-                   "<body><div importance='garbage'><a>123</a></div></body>",
-                   "<body></body>");
+TEST_F(MobilizeRewriteFunctionalTest, UnknownMobileRole) {
+  // Its probably OK if the behavior resulting from having a weird
+  // data-mobile-role value is unexpected, as long as it doesn't crash.
+  ValidateExpected(
+      "unknown_mobile_role",
+      "<body><div data-mobile-role='garbage'><a>123</a></div></body>",
+      "<body></body>");
   CheckVariable(MobilizeRewriteFilter::kPagesMobilized, 1);
   CheckVariable(MobilizeRewriteFilter::kKeeperBlocks, 0);
   CheckVariable(MobilizeRewriteFilter::kHeaderBlocks, 0);
@@ -420,13 +435,14 @@ TEST_F(MobilizeRewriteFunctionalTest, MultipleBodys) {
 }
 
 TEST_F(MobilizeRewriteFunctionalTest, MultipleBodysWithContent) {
-  ValidateExpected("multiple_bodys_with_content",
-                   "<body>123<div importance='marginal'>567</div></body>"
-                   "<body><div importance='content'>890</div>"
-                   "<div importance='header'>abc</div></body>",
-                   "<body><div importance='marginal'>567</div></body><body>"
-                   "<div importance='header'>abc</div>"
-                   "<div importance='content'>890</div></body>");
+  ValidateExpected(
+      "multiple_bodys_with_content",
+      "<body>123<div data-mobile-role='marginal'>567</div></body>"
+      "<body><div data-mobile-role='content'>890</div>"
+      "<div data-mobile-role='header'>abc</div></body>",
+      "<body><div data-mobile-role='marginal'>567</div></body><body>"
+      "<div data-mobile-role='header'>abc</div>"
+      "<div data-mobile-role='content'>890</div></body>");
   CheckVariable(MobilizeRewriteFilter::kPagesMobilized, 1);
   CheckVariable(MobilizeRewriteFilter::kKeeperBlocks, 0);
   CheckVariable(MobilizeRewriteFilter::kHeaderBlocks, 1);
@@ -439,14 +455,12 @@ TEST_F(MobilizeRewriteFunctionalTest, MultipleBodysWithContent) {
 // Check we are called correctly from the driver.
 class MobilizeRewriteEndToEndTest : public RewriteTestBase {
  protected:
-  MobilizeRewriteEndToEndTest()
-      : message_handler_(new NullMutex) {}
+  MobilizeRewriteEndToEndTest() {}
 
   virtual bool AddBody() const { return false; }
   virtual bool AddHtmlTags() const { return false; }
 
   StdioFileSystem filesystem_;
-  MockMessageHandler message_handler_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MobilizeRewriteEndToEndTest);
@@ -459,12 +473,12 @@ TEST_F(MobilizeRewriteEndToEndTest, FullPage) {
   GoogleString original_filename =
       StrCat(GTestSrcDir(), kTestDataDir, kOriginal);
   ASSERT_TRUE(filesystem_.ReadFile(original_filename.c_str(), &original_buffer,
-                                   &message_handler_));
+                                   message_handler()));
   GoogleString rewritten_buffer;
   GoogleString rewritten_filename =
       StrCat(GTestSrcDir(), kTestDataDir, kRewritten);
   ASSERT_TRUE(filesystem_.ReadFile(rewritten_filename.c_str(),
-                                   &rewritten_buffer, &message_handler_));
+                                   &rewritten_buffer, message_handler()));
   AddFilter(RewriteOptions::kMobilize);
   ValidateExpected("full_page", original_buffer, rewritten_buffer);
 }

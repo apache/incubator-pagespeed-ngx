@@ -26,14 +26,15 @@
 ------------------------------------------------------------------*/
 h3 {
   font-weight: bold;
-  font-size: 15px;
+  font-size: 1.6em;
   margin: 1em 0 0 0;
 }
 table, th, td {
   padding: 2px;
 }
 thead {
-  font-size: 14px;
+  font-family: sans-serif;
+  font-size: 16px;
   font-style: normal;
   font-weight: bold;
 }
@@ -41,21 +42,13 @@ thead {
 mod rules
 ------------------------------------------------------------------*/
 .pagespeed-caches-result {
-  padding: 0 0 0 5px;
+  padding: 10px 0 10px 5px;
+  font-family: verdana;
 }
-.pagespeed-caches-purge-table {
-  padding-top: 5px;
-}
-.pagespeed-caches-purge-global {
-  padding-top: 5px;
-}
-.pagespeed-caches-purge-url {
-  font-family: monospace;
-}
-.pagespeed-caches-url-column {
+.pagespeed-caches-first-column {
   width: 700px;
 }
-.pagespeed-caches-date-column {
-  width: 250px;
+.pagespeed-stats-third-column {
+  width: 350px;
 }
 

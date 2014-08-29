@@ -29,9 +29,9 @@
   position: relative !important;
 }
 
-/* The blocks marked with an importance attribute should be in a single-column
-   layout */
-[importance] {
+/* The blocks marked with an data-mobile-role attribute should be in a
+   single-column layout */
+[data-mobile-role] {
   float: none !important;
   display: block !important;
   margin-left: 0 !important;
@@ -41,7 +41,7 @@
 }
 
 /* Some heuristics to make headers display a bit nicer, usually. */
-[importance="header"] div {
+[data-mobile-role="header"] div {
   float: none !important;
   display: block !important;
   margin: 0 !important;
@@ -49,7 +49,7 @@
 }
 
 /* Navigational sections often have a fixed height. */
-[importance="navigational"] {
+[data-mobile-role="navigational"] {
   height: auto !important;
 }
 
@@ -59,7 +59,7 @@
    automatically setting the links to be the opposite of the background color
    using the -webkit-filter: invert(100%); property, but this is not supported
    by all browsers. */
-[importance="navigational"] a {
+[data-mobile-role="navigational"] a {
   float: none !important;
   display: block !important;
   margin: 1px 1% !important;
@@ -76,13 +76,13 @@
 
 /* Give the main content a bit of space, mainly so text is not right against the
    edge of the screen. */
-[importance="content"] {
+[data-mobile-role="content"] {
  padding-left: 1% !important;
  padding-right: 1% !important;
 }
 
 /* Force the main content into a single-column layout. */
-[importance="content"] div {
+[data-mobile-role="content"] div {
   float: none !important;
   display: block !important;
   margin-left: 0 !important;
@@ -92,7 +92,7 @@
 }
 
 /* Increase the font size for content elements. */
-[importance="content"] a, [importance="content"] p,
-[importance="content"] div, [importance="content"] span {
+[data-mobile-role="content"] a, [data-mobile-role="content"] p,
+[data-mobile-role="content"] div, [data-mobile-role="content"] span {
   font-size: medium !important;
 }

@@ -22,24 +22,24 @@
 
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
-#include "net/instaweb/htmlparse/public/html_parse.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/util/public/statistics.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/html/html_element.h"
 
 namespace net_instaweb {
 
 extern const char* CSS_mobilize_css;
 
-const char MobilizeRewriteFilter::kImportanceAttributeName[] = "importance";
-const MobilizeRewriteFilter::Importance
-MobilizeRewriteFilter::kImportances[] = {
+const MobileRole MobileRole::kMobileRoles[MobileRole::kInvalid] = {
   // This is the order that the HTML content will be rearranged.
-  Importance(kKeeper, "keeper"),
-  Importance(kHeader, "header"),
-  Importance(kNavigational, "navigational"),
-  Importance(kContent, "content"),
-  Importance(kMarginal, "marginal")
+  MobileRole(MobileRole::kKeeper, "keeper"),
+  MobileRole(MobileRole::kHeader, "header"),
+  MobileRole(MobileRole::kNavigational, "navigational"),
+  MobileRole(MobileRole::kContent, "content"),
+  MobileRole(MobileRole::kMarginal, "marginal")
 };
-const int MobilizeRewriteFilter::kImportancesSize =
-    arraysize(MobilizeRewriteFilter::kImportances);
 
 const char MobilizeRewriteFilter::kPagesMobilized[] =
     "mobilization_pages_rewritten";
@@ -211,10 +211,10 @@ void MobilizeRewriteFilter::HandleStartTagInBody(HtmlElement* element) {
     }
     driver_->DeleteSavingChildren(element);
     num_elements_deleted_->Add(1);
-  } else if (GetImportance(element) != kInvalid) {
-    // Record that we are starting an element with an importance attribute.
+  } else if (GetMobileRole(element) != MobileRole::kInvalid) {
+    // Record that we are starting an element with a mobile role attribute.
     ++important_element_depth_;
-    if (GetImportance(element) == kNavigational) {
+    if (GetMobileRole(element) == MobileRole::kNavigational) {
       ++nav_element_depth_;
       if (nav_element_depth_ == 1) {
         nav_keyword_stack_.clear();
@@ -239,7 +239,7 @@ void MobilizeRewriteFilter::HandleStartTagInBody(HtmlElement* element) {
   } else if (!InImportantElement()) {
     if (driver_->DebugMode()) {
       GoogleString msg(
-          StrCat("Deleted element which did not have an importance: ",
+          StrCat("Deleted element which did not have a mobile role: ",
                  element->name_str()));
       driver_->InsertDebugComment(msg, element);
     }
@@ -251,27 +251,27 @@ void MobilizeRewriteFilter::HandleStartTagInBody(HtmlElement* element) {
 void MobilizeRewriteFilter::HandleEndTagInBody(HtmlElement* element) {
   if (reached_reorder_containers_) {
     // Stop rewriting once we've reached the containers at the end of the body.
-  } else if (GetImportance(element) != kInvalid) {
+  } else if (GetMobileRole(element) != MobileRole::kInvalid) {
     --important_element_depth_;
-    // Record that we've left an element with an importance attribute. If we are
+    // Record that we've left an element with a mobile role attribute. If we are
     // no longer in one, we can move all the content of this element into its
     // appropriate container for reordering.
-    HtmlElement* importance_container =
-        ImportanceToContainer(GetImportance(element));
-    DCHECK(importance_container != NULL)
+    HtmlElement* mobile_role_container =
+        MobileRoleToContainer(GetMobileRole(element));
+    DCHECK(mobile_role_container != NULL)
         << "Reorder containers were never initialized.";
     if (!InImportantElement()) {
       // Move element and its children into its container.
-      driver_->MoveCurrentInto(importance_container);
-      LogMovedBlock(GetImportance(element));
+      driver_->MoveCurrentInto(mobile_role_container);
+      LogMovedBlock(GetMobileRole(element));
     } else {
       // TODO(stevensr): Logging this may be too verbose, as having 'keepers'
       // inside <div>s is pretty common.
-      driver_->InfoHere("We have nested elements with an importance"
-                        " attribute. Assigning all children to the"
-                        " importance level of the their parent.");
+      driver_->InfoHere("We have nested elements with a mobile role"
+                        " attribute. Assigning all children the"
+                        " mobile role of the their parent.");
     }
-    if (GetImportance(element) == kNavigational) {
+    if (GetMobileRole(element) == MobileRole::kNavigational) {
       --nav_element_depth_;
     }
   } else if (nav_element_depth_ > 0) {
@@ -312,15 +312,17 @@ void MobilizeRewriteFilter::AddStyleAndViewport(HtmlElement* element) {
 // restructured.
 void MobilizeRewriteFilter::AddReorderContainers(HtmlElement* element) {
   if (!added_containers_) {
-    importance_containers_.clear();
-    for (int i = 0, n = arraysize(kImportances); i < n; ++i) {
+    mobile_role_containers_.clear();
+    for (int i = 0; i < MobileRole::kInvalid; ++i) {
+      MobileRole::Level level = static_cast<MobileRole::Level>(i);
       HtmlElement* added_container = driver_->NewElement(
           element, HtmlName::kDiv);
       added_container->AddAttribute(
-          driver_->MakeName(HtmlName::kName), kImportances[i].value,
+          driver_->MakeName(HtmlName::kName),
+          MobileRole::StringFromLevel(level),
           HtmlElement::SINGLE_QUOTE);
       driver_->AppendChild(element, added_container);
-      importance_containers_.push_back(added_container);
+      mobile_role_containers_.push_back(added_container);
     }
     added_containers_ = true;
   }
@@ -328,61 +330,67 @@ void MobilizeRewriteFilter::AddReorderContainers(HtmlElement* element) {
 
 void MobilizeRewriteFilter::RemoveReorderContainers() {
   if (added_containers_) {
-    for (int i = 0, n = importance_containers_.size(); i < n; ++i) {
+    for (int i = 0, n = mobile_role_containers_.size(); i < n; ++i) {
       if (driver_->DebugMode()) {
-        GoogleString msg(StrCat("End section: ", kImportances[i].value));
-        driver_->InsertDebugComment(msg, importance_containers_[i]);
+        MobileRole::Level level = static_cast<MobileRole::Level>(i);
+        GoogleString msg(StrCat("End section: ",
+                                MobileRole::StringFromLevel(level)));
+        driver_->InsertDebugComment(msg, mobile_role_containers_[i]);
       }
-      driver_->DeleteSavingChildren(importance_containers_[i]);
+      driver_->DeleteSavingChildren(mobile_role_containers_[i]);
     }
-    importance_containers_.clear();
+    mobile_role_containers_.clear();
     added_containers_ = false;
   }
 }
 
 bool MobilizeRewriteFilter::IsReorderContainer(HtmlElement* element) {
-  for (int i = 0, n = importance_containers_.size(); i < n; ++i) {
-    if (element == importance_containers_[i]) {
+  for (int i = 0, n = mobile_role_containers_.size(); i < n; ++i) {
+    if (element == mobile_role_containers_[i]) {
       return true;
     }
   }
   return false;
 }
 
-// Maps each importance type to the container we created for it, or NULL for
-// unrecognized importance types.
-HtmlElement* MobilizeRewriteFilter::ImportanceToContainer(
-    ImportanceLevel importance) {
-  for (int i = 0, n = arraysize(kImportances); i < n; ++i) {
-    if (importance == kImportances[i].level) {
-      return importance_containers_[i];
+// Maps each mobile role to the container we created for it, or NULL for
+// unrecognized mobile roles.
+HtmlElement* MobilizeRewriteFilter::MobileRoleToContainer(
+    MobileRole::Level level) {
+  return (level == MobileRole::kInvalid) ?
+      NULL : mobile_role_containers_[level];
+}
+
+const MobileRole* MobileRole::FromString(const StringPiece& mobile_role) {
+  for (int i = 0, n = arraysize(kMobileRoles); i < n; ++i) {
+    if (mobile_role == kMobileRoles[i].value) {
+      return &kMobileRoles[i];
     }
   }
   return NULL;
 }
 
-MobilizeRewriteFilter::ImportanceLevel
-MobilizeRewriteFilter::StringToImportance(const StringPiece& importance) {
-  for (int i = 0, n = arraysize(kImportances); i < n; ++i) {
-    if (importance == kImportances[i].value) {
-      return kImportances[i].level;
-    }
+MobileRole::Level MobileRole::LevelFromString(const StringPiece& mobile_role) {
+  const MobileRole* role = FromString(mobile_role);
+  if (role == NULL) {
+    return kInvalid;
+  } else {
+    return role->level;
   }
-  return kInvalid;
 }
 
-MobilizeRewriteFilter::ImportanceLevel MobilizeRewriteFilter::GetImportance(
+MobileRole::Level MobilizeRewriteFilter::GetMobileRole(
     HtmlElement* element) {
-  HtmlElement::Attribute* importance_attribute =
-      element->FindAttribute(kImportanceAttributeName);
-  if (importance_attribute) {
-    return StringToImportance(importance_attribute->escaped_value());
+  HtmlElement::Attribute* mobile_role_attribute =
+      element->FindAttribute(HtmlName::kDataMobileRole);
+  if (mobile_role_attribute) {
+    return MobileRole::LevelFromString(mobile_role_attribute->escaped_value());
   } else {
     if (CheckForKeyword(kKeeperTags, arraysize(kKeeperTags),
                         element->keyword())) {
-      return kKeeper;
+      return MobileRole::kKeeper;
     }
-    return kInvalid;
+    return MobileRole::kInvalid;
   }
 }
 
@@ -391,24 +399,24 @@ bool MobilizeRewriteFilter::CheckForKeyword(
   return std::binary_search(sorted_list, sorted_list+len, keyword);
 }
 
-void MobilizeRewriteFilter::LogMovedBlock(ImportanceLevel level) {
+void MobilizeRewriteFilter::LogMovedBlock(MobileRole::Level level) {
   switch (level) {
-    case kKeeper:
+    case MobileRole::kKeeper:
       num_keeper_blocks_->Add(1);
       break;
-    case kHeader:
+    case MobileRole::kHeader:
       num_header_blocks_->Add(1);
       break;
-    case kNavigational:
+    case MobileRole::kNavigational:
       num_navigational_blocks_->Add(1);
       break;
-    case kContent:
+    case MobileRole::kContent:
       num_content_blocks_->Add(1);
       break;
-    case kMarginal:
+    case MobileRole::kMarginal:
       num_marginal_blocks_->Add(1);
       break;
-    case kInvalid:
+    case MobileRole::kInvalid:
       // Should not happen.
       LOG(DFATAL) << "Attepted to move kInvalid element";
       break;

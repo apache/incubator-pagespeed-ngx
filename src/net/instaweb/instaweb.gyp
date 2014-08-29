@@ -1350,6 +1350,7 @@
         'rewriter/lazyload_images_filter.cc',
         'rewriter/local_storage_cache_filter.cc',
         'rewriter/meta_tag_filter.cc',
+        'rewriter/mobilize_label_filter.cc',
         'rewriter/mobilize_rewrite_filter.cc',
         'rewriter/pedantic_filter.cc',
         'rewriter/property_cache_util.cc',
