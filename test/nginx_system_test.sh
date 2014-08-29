@@ -2744,6 +2744,10 @@ if [ "$NATIVE_FETCHER" != "on" ]; then
     'grep -c /https_gstatic_dot_com/1.gif.pagespeed.ce' 1
 fi
 
+start_test Base config has purging disabled.  Check error message syntax.
+OUT=$($WGET_DUMP "$HOSTNAME/pagespeed_admin/cache?purge=*")
+check_from "$OUT" fgrep -q "pagespeed EnableCachePurge on;"
+
 if $USE_VALGRIND; then
     # It is possible that there are still ProxyFetches outstanding
     # at this point in time. Give them a few extra seconds to allow

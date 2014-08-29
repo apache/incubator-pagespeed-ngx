@@ -77,4 +77,9 @@ SystemRequestContext* NgxServerContext::NewRequestContext(
                                   str_to_string_piece(local_ip));
 }
 
+GoogleString NgxServerContext::FormatOption(StringPiece option_name,
+                                            StringPiece args) {
+  return StrCat("pagespeed ", option_name, " ", args, ";");
+}
+
 }  // namespace net_instaweb
