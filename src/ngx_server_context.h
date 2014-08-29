@@ -55,6 +55,8 @@ class NgxServerContext : public SystemServerContext {
     return dynamic_cast<NgxMessageHandler*>(message_handler());
   }
 
+  virtual GoogleString FormatOption(StringPiece option_name, StringPiece args);
+
  private:
   NgxRewriteDriverFactory* ngx_factory_;
 
