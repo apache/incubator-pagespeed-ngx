@@ -2220,7 +2220,7 @@ TEST_F(RewriteOptionsTest, BandwidthMode) {
   EXPECT_TRUE(vhost_core->Enabled(RewriteOptions::kRewriteJavascriptExternal));
   EXPECT_TRUE(vhost_core->Enabled(RewriteOptions::kRewriteJavascriptInline));
   EXPECT_FALSE(vhost_core->Enabled(RewriteOptions::kInPlaceOptimizeForBrowser));
-  EXPECT_FALSE(vhost_core->in_place_rewriting_enabled());
+  EXPECT_TRUE(vhost_core->in_place_rewriting_enabled());
   EXPECT_FALSE(vhost_core->css_preserve_urls());
   EXPECT_FALSE(vhost_core->image_preserve_urls());
   EXPECT_FALSE(vhost_core->js_preserve_urls());

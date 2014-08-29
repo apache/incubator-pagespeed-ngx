@@ -1349,7 +1349,7 @@ void RewriteOptions::AddProperties() {
       "public caching based on the origin TTL.", false);
 
   AddBaseProperty(
-      false, &RewriteOptions::in_place_rewriting_enabled_, "ipro",
+      true, &RewriteOptions::in_place_rewriting_enabled_, "ipro",
       kInPlaceResourceOptimization,
       kDirectoryScope,
       "Allow rewriting resources even when they are "

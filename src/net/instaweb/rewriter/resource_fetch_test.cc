@@ -88,6 +88,7 @@ TEST_F(ResourceFetchTest, BlockingFetchOfInvalidUrl) {
   StringWriter writer(&buffer);
   RewriteOptions* custom_options =
       server_context()->global_options()->Clone();
+  custom_options->set_in_place_rewriting_enabled(false);
   RewriteDriver* custom_driver =
       server_context()->NewCustomRewriteDriver(
           custom_options, CreateRequestContext());
