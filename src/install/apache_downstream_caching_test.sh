@@ -25,7 +25,7 @@
 # 2) MUST_BACKUP_DEFAULT_VCL should be set to 1 or 0 depending on
 # whether we want the existing default.vcl to be backed up and restored
 # before and after the test or it can be overwritten by the updated
-# debug_conf.vcl. By default, it is assumed to have the value 1.
+# debug_conf.v3.vcl. By default, it is assumed to have the value 1.
 
 this_dir="$( dirname "${BASH_SOURCE[0]}" )"
 INSTAWEB_CODE_DIR="$this_dir/../net/instaweb"
@@ -36,8 +36,8 @@ source "$INSTAWEB_CODE_DIR/automatic/system_test_helpers.sh" || exit 1
 
 DEFAULT_VCL="/etc/varnish/default.vcl"
 BACKUP_DEFAULT_VCL=$TEMPDIR"/default.vcl.bak"
-DEBUG_CONF_VCL="$this_dir/debug_conf.vcl"
-TMP_DEBUG_CONF_VCL=$TEMPDIR"/debug_conf.vcl"
+DEBUG_CONF_VCL="$this_dir/debug_conf.v3.vcl"
+TMP_DEBUG_CONF_VCL=$TEMPDIR"/debug_conf.v3.vcl"
 
 # Environment variables.
 # MUST_BACKUP_DEFAULT_VCL is 1 by default because we would not like to overwrite
@@ -133,10 +133,10 @@ else
     exit 1
   fi
   # Check whether the default.vcl being used by varnish is different from
-  # debug_conf.vcl.
+  # debug_conf.v3.vcl.
   # a) If there are no differences, we assume that varnish has been restarted
-  # after debug_conf.vcl contents were copied over to default.vcl and continue
-  # with the tests.
+  # after debug_conf.v3.vcl contents were copied over to default.vcl and
+  # continue with the tests.
   cp -f $DEBUG_CONF_VCL $TMP_DEBUG_CONF_VCL
   if ! cmp -s $DEFAULT_VCL $TMP_DEBUG_CONF_VCL; then
     # Copy over the permissions and ownership attributes for $DEFAULT_VCL onto
@@ -151,11 +151,11 @@ else
     else
       # c) If there are differences, and MUST_BACKUP_DEFAULT_VCL is set to
       # false, we assume that the user would like to permanently copy over
-      # debug_conf.vcl into default.vcl for continuous testing purposes.
+      # debug_conf.v3.vcl into default.vcl for continuous testing purposes.
       echo "*** Overwriting /etc/varnish/default.vcl with the latest version"
-      echo "*** of debug_conf.vcl and restarting varnish."
+      echo "*** of debug_conf.v3.vcl and restarting varnish."
       echo "*** You only need to do this once for every update to"
-      echo "*** debug_conf.vcl, which should not be very frequent."
+      echo "*** debug_conf.v3.vcl, which should not be very frequent."
     fi
     sudo cp -fp $TMP_DEBUG_CONF_VCL $DEFAULT_VCL
   fi

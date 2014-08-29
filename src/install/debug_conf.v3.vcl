@@ -1,6 +1,6 @@
 /*
-  This is the minimal VCL configuration required for passing the Apache
-  mod_pagespeed system tests. To install varnish and start the varnish
+  This is the minimal Varnish 3.x VCL configuration required for passing the
+  Apache mod_pagespeed system tests. To install varnish and start the varnish
   server at the right port, do the following:
   1) sudo apt-get install varnish
   2) sudo vim /etc/default/varnish and put in the following lines at the
@@ -61,9 +61,9 @@ sub generate_user_agent_based_key {
     if (req.http.User-Agent ~ "(?i)Firefox/[1-2]\.|MSIE [5-8]\.|bot|Yahoo!|Ruby|RPT-HTTPClient|(Google \(\+https\:\/\/developers\.google\.com\/\+\/web\/snippet\/\))|Android|iPad|TouchPad|Silk-Accelerated|Kindle Fire") {
       set req.http.PS-CapabilityList = req.http.default_ps_capability_list_for_large_screens;
     }
-    # Cache-fragment 4: Mobiles and small screen tablets will use image compression
-    # qualities applicable to small screens, but all other optimizations will be
-    # those that work on all browsers.
+    # Cache-fragment 4: Mobiles and small screen tablets will use image
+    # compression qualities applicable to small screens, but all other
+    # optimizations will be those that work on all browsers.
     if (req.http.User-Agent ~ "(?i)Mozilla.*Android.*Mobile*|iPhone|BlackBerry|Opera Mobi|Opera Mini|SymbianOS|UP.Browser|J-PHONE|Profile/MIDP|portalmmm|DoCoMo|Obigo|Galaxy Nexus|GT-I9300|GT-N7100|HTC One|Nexus [4|7|S]|Xoom|XT907") {
       set req.http.PS-CapabilityList = req.http.default_ps_capability_list_for_small_screens;
     }
