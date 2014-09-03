@@ -296,8 +296,7 @@ GoogleString OutputResource::ComputeSignature() {
 bool OutputResource::CheckSignature() {
   // If signing isn't enforced, then consider all URLs to be valid and just
   // ignore the passed signature if there is one.
-  if (rewrite_options_->url_signing_key().empty() ||
-      rewrite_options_->accept_invalid_signatures()) {
+  if (rewrite_options_->url_signing_key().empty()) {
     return true;
   }
   GoogleString computed_signature = ComputeSignature();
@@ -308,7 +307,23 @@ bool OutputResource::CheckSignature() {
   // signature by measuring that ones with the correct first N characters take
   // slightly longer to check. See
   // http://codahale.com/a-lesson-in-timing-attacks/
-  return CountCharacterMismatches(computed_signature, provided_signature) == 0;
+  bool valid =
+      CountCharacterMismatches(computed_signature, provided_signature) == 0;
+  if (!valid) {
+    MessageHandler* handler = server_context_->message_handler();
+    GoogleString message =
+        StrCat("Invalid resource signature for ", UrlEvenIfHashNotSet(),
+               " provided. Expected ", computed_signature, " Received ",
+               provided_signature);
+    handler->Message(
+        kInfo,
+        "Invalid resource signature for %s provided. Expected %s Received %s",
+        UrlEvenIfHashNotSet().c_str(), computed_signature.c_str(),
+        provided_signature.data());
+  }
+  // If signing isn't enforced, return true always, but do this after checking
+  // if the signature was correct for logging purposes.
+  return valid || rewrite_options_->accept_invalid_signatures();
 }
 
 }  // namespace net_instaweb
