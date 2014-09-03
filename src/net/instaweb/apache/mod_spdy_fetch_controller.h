@@ -26,10 +26,10 @@
 #define NET_INSTAWEB_APACHE_MOD_SPDY_FETCH_CONTROLLER_H_
 
 #include "net/instaweb/http/public/rate_controller.h"
-#include "net/instaweb/util/public/atomic_bool.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/queued_worker_pool.h"
-#include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/atomic_bool.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/thread/queued_worker_pool.h"
 
 namespace net_instaweb {
 

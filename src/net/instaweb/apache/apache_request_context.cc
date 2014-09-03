@@ -19,9 +19,9 @@
 #include "base/logging.h"
 #include "net/instaweb/apache/interface_mod_spdy.h"
 #include "net/instaweb/apache/mod_spdy_fetcher.h"
-#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_context.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/http/http_names.h"
 
 #include "httpd.h"  // NOLINT
 

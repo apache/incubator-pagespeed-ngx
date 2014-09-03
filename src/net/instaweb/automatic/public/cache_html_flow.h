@@ -21,10 +21,10 @@
 #define NET_INSTAWEB_AUTOMATIC_PUBLIC_CACHE_HTML_FLOW_H_
 
 #include "net/instaweb/rewriter/cache_html_info.pb.h"
-#include "net/instaweb/util/public/google_url.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/http/google_url.h"
 
 namespace net_instaweb {
 

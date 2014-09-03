@@ -18,9 +18,9 @@
 #include "net/instaweb/apache/apache_writer.h"
 #include "net/instaweb/apache/header_util.h"
 #include "net/instaweb/http/public/async_fetch.h"
-#include "net/instaweb/http/public/meta_data.h"
-#include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/http/http_names.h"
+#include "pagespeed/kernel/http/response_headers.h"
 
 #include "apr_strings.h"  // for apr_pstrdup    // NOLINT
 #include "httpd.h"                              // NOLINT

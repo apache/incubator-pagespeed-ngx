@@ -20,7 +20,7 @@
 
 #include "net/instaweb/util/public/timer.h"
 
-#include "net/instaweb/util/public/basictypes.h"
+#include "pagespeed/kernel/base/basictypes.h"
 
 using net_instaweb::Timer;
 

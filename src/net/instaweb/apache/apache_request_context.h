@@ -25,7 +25,7 @@
 
 #include "base/logging.h"
 #include "net/instaweb/system/public/system_request_context.h"
-#include "net/instaweb/util/public/basictypes.h"
+#include "pagespeed/kernel/base/basictypes.h"
 
 struct request_rec;
 struct spdy_slave_connection_factory;

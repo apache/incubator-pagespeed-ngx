@@ -25,11 +25,11 @@
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/rate_controller.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
-#include "net/instaweb/util/public/function.h"
-#include "net/instaweb/util/public/queued_worker_pool.h"
-#include "net/instaweb/util/public/statistics.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/base/function.h"
+#include "pagespeed/kernel/base/statistics.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/timer.h"
+#include "pagespeed/kernel/thread/queued_worker_pool.h"
 
 namespace net_instaweb {
 

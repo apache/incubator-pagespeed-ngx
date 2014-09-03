@@ -20,18 +20,18 @@
 #define NET_INSTAWEB_AUTOMATIC_PUBLIC_PROXY_INTERFACE_TEST_BASE_H_
 
 #include "net/instaweb/automatic/public/proxy_interface.h"
-#include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/http/public/async_fetch.h"
-#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/worker_test_base.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/html/empty_html_filter.h"
+#include "pagespeed/kernel/http/response_headers.h"
+#include "pagespeed/kernel/thread/worker_test_base.h"
 
 namespace net_instaweb {
 

@@ -22,10 +22,10 @@
 // return-types for functions that return RewriteOptions* in base class.
 #include "net/instaweb/apache/apache_config.h"
 #include "net/instaweb/system/public/system_rewrite_driver_factory.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 struct apr_pool_t;
 struct server_rec;

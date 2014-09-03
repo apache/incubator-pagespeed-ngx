@@ -38,12 +38,12 @@
 #include "base/logging.h"
 #include "net/instaweb/automatic/public/static_rewriter.h"
 #include "net/instaweb/rewriter/public/process_context.h"
-#include "net/instaweb/util/public/benchmark.h"
-#include "net/instaweb/util/public/google_message_handler.h"
-#include "net/instaweb/util/public/null_writer.h"
-#include "net/instaweb/util/public/stdio_file_system.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/benchmark.h"
+#include "pagespeed/kernel/base/google_message_handler.h"
+#include "pagespeed/kernel/base/null_writer.h"
+#include "pagespeed/kernel/base/stdio_file_system.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 

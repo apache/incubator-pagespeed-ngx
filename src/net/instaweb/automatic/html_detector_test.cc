@@ -20,9 +20,9 @@
 
 #include "net/instaweb/automatic/public/html_detector.h"
 
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
 

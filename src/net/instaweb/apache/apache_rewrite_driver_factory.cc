@@ -32,13 +32,13 @@
 #include "net/instaweb/apache/mod_spdy_fetch_controller.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/util/public/null_shared_mem.h"
-#include "net/instaweb/util/public/pthread_shared_mem.h"
-#include "net/instaweb/util/public/slow_worker.h"
-#include "net/instaweb/util/public/stl_util.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/thread_system.h"
+#include "pagespeed/kernel/base/null_shared_mem.h"
+#include "pagespeed/kernel/base/stl_util.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/thread/pthread_shared_mem.h"
+#include "pagespeed/kernel/thread/slow_worker.h"
 
 namespace net_instaweb {
 
