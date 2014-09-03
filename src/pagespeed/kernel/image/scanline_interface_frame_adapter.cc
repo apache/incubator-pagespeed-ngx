@@ -106,7 +106,7 @@ ScanlineStatus FrameToScanlineReaderAdapter::InitializeWithStatus(
   if (!image_and_frame_cols_coincide_ || !image_and_frame_rows_coincide_) {
     if (!image_spec_.use_bg_color) {
       return PS_LOGGED_STATUS(
-          PS_LOG_DFATAL, impl_->message_handler(),
+          PS_LOG_INFO, impl_->message_handler(),
           SCANLINE_STATUS_PARSE_ERROR,
           FRAME_TO_SCANLINE_READER_ADAPTER,
           "frame must have same dimensions as image");

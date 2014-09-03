@@ -121,6 +121,7 @@ const size_t kValidTransparentGifImageCount =
 const char kAnimatedGif[] = "animated";
 const char kBadGif[] = "bad";
 const char kCompletelyTransparentImage[] = "completely_transparent";
+const char kFrameSmallerThanScreen[] = "frame_smaller_than_screen";
 const char kInterlacedImage[] = "interlaced";
 const char kRedConforming[] = "red_conforming";
 const char kRedEmptyScreen[] = "red_empty_screen";
@@ -496,6 +497,14 @@ TEST_F(GifScanlineReaderRawTest, UnusedBackground) {
   DecodeAndCompareImages(IMAGE_PNG, png_image.c_str(), png_image.length(),
                          IMAGE_GIF, gif_image.c_str(), gif_image.length(),
                          &message_handler_);
+}
+
+TEST_F(GifScanlineReaderRawTest, FrameSmallerThanImage) {
+  ASSERT_FALSE(Initialize(kFrameSmallerThanScreen));
+  EXPECT_EQ(1, message_handler_.MessagesOfType(net_instaweb::kInfo));
+  EXPECT_EQ(0, message_handler_.MessagesOfType(net_instaweb::kWarning));
+  EXPECT_EQ(0, message_handler_.MessagesOfType(net_instaweb::kError));
+  EXPECT_EQ(0, message_handler_.MessagesOfType(net_instaweb::kFatal));
 }
 
 TEST(GifReaderUtil, DisposalMethod) {

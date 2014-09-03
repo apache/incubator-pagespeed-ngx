@@ -53,7 +53,8 @@ using net_instaweb::MessageHandler;
 class ScanlineStreamInput;
 
 struct PngCompressParams {
-  PngCompressParams(int level, int strategy);
+  PngCompressParams(int level, int strategy, bool is_progressive);
+  PngCompressParams(bool try_best_compression, bool is_progressive);
 
   // Indicates what png filter type to be used while compressing the image.
   // Valid values for this are
@@ -72,6 +73,11 @@ struct PngCompressParams {
   //   Z_FIXED
   //   Z_DEFAULT_STRATEGY
   int compression_strategy;
+  // Indicates whether to search for the smallest output by using Opti-PNG and
+  // multiple runs of compression. This mode will use more computation.
+  bool try_best_compression;
+  // Indicates whether to encode the image in progressive / interlacing format.
+  bool is_progressive;
 };
 
 // Helper that manages the lifetime of the png_ptr and info_ptr.
@@ -229,6 +235,8 @@ class PngOptimizer {
                                          GoogleString* out,
                                          MessageHandler* handler);
 
+  static bool CopyPngStructs(const ScopedPngStruct& from, ScopedPngStruct* to);
+
  private:
   explicit PngOptimizer(MessageHandler* handler);
   ~PngOptimizer();
@@ -247,9 +255,6 @@ class PngOptimizer {
 
   bool WritePng(ScopedPngStruct* write, GoogleString* buffer);
   bool CopyReadToWrite();
-  // The 'from' object is conceptually const, but libpng doesn't accept const
-  // pointers in the read functions.
-  bool CopyPngStructs(ScopedPngStruct* from, ScopedPngStruct* to);
   bool CreateBestOptimizedPngForParams(const PngCompressParams* param_list,
                                        size_t param_list_size,
                                        GoogleString* out);
@@ -386,13 +391,18 @@ class PngScanlineWriter : public ScanlineWriterInterface {
   bool Validate(const PngCompressParams* params,
                 GoogleString* png_image);
 
+  bool DoBestCompression();
+
  private:
   size_t width_;
   size_t height_;
+  size_t bytes_per_row_;
   size_t row_;
   PixelFormat pixel_format_;
   scoped_ptr<ScopedPngStruct> png_struct_;
   bool was_initialized_;
+  bool try_best_compression_;
+  net_instaweb::scoped_array<unsigned char> pixel_buffer_;
   MessageHandler* message_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(PngScanlineWriter);

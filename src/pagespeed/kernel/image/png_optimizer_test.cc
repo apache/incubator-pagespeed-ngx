@@ -50,6 +50,7 @@ using pagespeed::image_compression::kPngTestDir;
 using pagespeed::image_compression::kValidGifImageCount;
 using pagespeed::image_compression::kValidGifImages;
 using pagespeed::image_compression::GifReader;
+using pagespeed::image_compression::GRAY_8;
 using pagespeed::image_compression::ImageCompressionInfo;
 using pagespeed::image_compression::IMAGE_PNG;
 using pagespeed::image_compression::PixelFormat;
@@ -61,6 +62,7 @@ using pagespeed::image_compression::PngScanlineReaderRaw;
 using pagespeed::image_compression::PngScanlineReader;
 using pagespeed::image_compression::PngScanlineWriter;
 using pagespeed::image_compression::ReadTestFile;
+using pagespeed::image_compression::RGB_888;
 using pagespeed::image_compression::ScanlineReaderInterface;
 using pagespeed::image_compression::ScanlineWriterInterface;
 using pagespeed::image_compression::ScopedPngStruct;
@@ -242,14 +244,27 @@ void AssertPngEq(
   }
 }
 
+// If allow_expand_colors is set to false, both readers must have the same
+// color values, dimension, and pixel format. If it is set to true,
+// additionally reader1 can be GRAY_8 while reader2 can be RGB_888 and the
+// colors will be expanded prior to comparision.
 void AssertReadersMatch(ScanlineReaderInterface* reader1,
-                        ScanlineReaderInterface* reader2) {
+                        ScanlineReaderInterface* reader2,
+                        bool allow_expand_colors) {
   MockMessageHandler message_handler(new NullMutex);
 
   // Make sure the images sizes and the pixel formats are the same.
   ASSERT_EQ(reader1->GetImageWidth(), reader2->GetImageWidth());
   ASSERT_EQ(reader1->GetImageHeight(), reader2->GetImageHeight());
-  ASSERT_EQ(reader1->GetPixelFormat(), reader2->GetPixelFormat());
+  bool expand_colors = false;
+  if (!allow_expand_colors) {
+    ASSERT_EQ(reader1->GetPixelFormat(), reader2->GetPixelFormat());
+  } else {
+    expand_colors = (reader1->GetPixelFormat() == GRAY_8 &&
+                     reader2->GetPixelFormat() == RGB_888);
+    ASSERT_TRUE(expand_colors ||
+                (reader1->GetPixelFormat(), reader2->GetPixelFormat()));
+  }
 
   const int width = reader1->GetImageWidth();
   const int num_channels =
@@ -262,13 +277,21 @@ void AssertReadersMatch(ScanlineReaderInterface* reader1,
   while (reader1->HasMoreScanLines() &&
          reader2->HasMoreScanLines()) {
     ASSERT_TRUE(reader1->ReadNextScanline(
-      reinterpret_cast<void**>(&pixels2)));
-
-    ASSERT_TRUE(reader2->ReadNextScanline(
       reinterpret_cast<void**>(&pixels1)));
 
-    for (int i = 0; i < width*num_channels; ++i) {
-      ASSERT_EQ(pixels1[i], pixels2[i]);
+    ASSERT_TRUE(reader2->ReadNextScanline(
+      reinterpret_cast<void**>(&pixels2)));
+
+    if (!expand_colors) {
+      for (int i = 0; i < width*num_channels; ++i) {
+        ASSERT_EQ(pixels1[i], pixels2[i]);
+      }
+    } else {
+      for (int i = 0; i < width; ++i) {
+        ASSERT_EQ(pixels1[i], pixels2[3*i]);
+        ASSERT_EQ(pixels1[i], pixels2[3*i+1]);
+        ASSERT_EQ(pixels1[i], pixels2[3*i+2]);
+      }
     }
   }
 
@@ -568,7 +591,7 @@ class PngScanlineReaderRawTest : public testing::Test {
 class PngScanlineWriterTest : public testing::Test {
  public:
   PngScanlineWriterTest()
-    : params_(PngCompressParams(PNG_FILTER_NONE, Z_DEFAULT_STRATEGY)),
+    : params_(PngCompressParams(PNG_FILTER_NONE, Z_DEFAULT_STRATEGY, false)),
       message_handler_(new NullMutex) {
   }
 
@@ -578,6 +601,8 @@ class PngScanlineWriterTest : public testing::Test {
         height_, &params_, &output_, &message_handler_));
     return (writer_ != NULL);
   }
+
+  void TestRewritePng(bool best_compression, int* total_bytes);
 
  protected:
   scoped_ptr<ScanlineWriterInterface> writer_;
@@ -1199,7 +1224,9 @@ TEST_F(PngScanlineReaderRawTest, InvalidPngs) {
 // Libpng provides several options for writing a PNG. To verify that
 // PngScanlineWriter works on all of these options, the test uses a rotation
 // of configurations and verifies that all of the rewritten images are good.
-TEST_F(PngScanlineWriterTest, RewritePng) {
+void PngScanlineWriterTest::TestRewritePng(bool best_compression,
+                                          int* total_bytes) {
+  *total_bytes = 0;
   message_handler_.AddPatternToSkipPrinting(kMessagePatternUnrecognizedColor);
   PngScanlineReaderRaw original_reader(&message_handler_);
   PngScanlineReaderRaw rewritten_reader(&message_handler_);
@@ -1238,12 +1265,19 @@ TEST_F(PngScanlineWriterTest, RewritePng) {
     const int num_z = Z_FIXED - Z_DEFAULT_STRATEGY + 1;
     int compression_strategy = Z_DEFAULT_STRATEGY + (i % num_z);
     int filter_level = png_filter_list[(i / num_z) % 5];
-    PngCompressParams params(filter_level, compression_strategy);
+    scoped_ptr<PngCompressParams> params;
+    if (best_compression) {
+      params.reset(new PngCompressParams(true /*best compression*/,
+                                         true /*progressive*/));
+    } else {
+      params.reset(new PngCompressParams (filter_level, compression_strategy,
+                                          false));
+    }
 
     // Initialize the writer.
     writer_.reset(CreateScanlineWriter(
         pagespeed::image_compression::IMAGE_PNG, pixel_format, width,
-        height, &params, &rewritten_image, &message_handler_));
+        height, params.get(), &rewritten_image, &message_handler_));
     ASSERT_NE(static_cast<ScanlineWriterInterface *>(NULL), writer_.get());
 
     // Read the scanlines from the original image and write them to the new one.
@@ -1268,9 +1302,27 @@ TEST_F(PngScanlineWriterTest, RewritePng) {
                                             rewritten_image.length()));
 
     // Now make sure that the original and rewritten images have the
-    // same sizes, types, and pixel values.
-    AssertReadersMatch(&original_reader, &rewritten_reader);
+    // same dimensions, types, and pixel values. When "best_compression"
+    // is true, the pixel format (i.e., number of color channles) may change,
+    // so we allow expanding colors.
+    AssertReadersMatch(&original_reader, &rewritten_reader,
+                       best_compression /* allow expanding colors */);
+
+    *total_bytes += rewritten_image.length();
   }
+}
+
+TEST_F(PngScanlineWriterTest, RewritePng) {
+  int total_bytes = 0;
+  int total_bytes_best = 0;
+  TestRewritePng(false /* no best compression */, &total_bytes);
+  TestRewritePng(true /* best compression */, &total_bytes_best);
+  // PNG compression performance is sensitive to image data. For a given image,
+  // we cannot gurantee that the "best compression" output will be smaller than
+  // the original, or smaller than the "no best compression". However, for a
+  // large corpus of images, "best compression" should be better than the other
+  // two overall.
+  EXPECT_GT(total_bytes, total_bytes_best);
 }
 
 // Attempt to finalize without writing all of the scanlines.

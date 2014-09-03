@@ -53,10 +53,10 @@ namespace {
 // different parameters and this combination of 4 seems to work best for a large
 // set of PNGs from the web.
 const PngCompressParams kPngCompressionParams[] = {
-  PngCompressParams(PNG_ALL_FILTERS, Z_DEFAULT_STRATEGY),
-  PngCompressParams(PNG_ALL_FILTERS, Z_FILTERED),
-  PngCompressParams(PNG_FILTER_NONE, Z_DEFAULT_STRATEGY),
-  PngCompressParams(PNG_FILTER_NONE, Z_FILTERED)
+  PngCompressParams(PNG_ALL_FILTERS, Z_DEFAULT_STRATEGY, false),
+  PngCompressParams(PNG_ALL_FILTERS, Z_FILTERED, false),
+  PngCompressParams(PNG_FILTER_NONE, Z_DEFAULT_STRATEGY, false),
+  PngCompressParams(PNG_FILTER_NONE, Z_FILTERED, false)
 };
 
 const size_t kParamCount = arraysize(kPngCompressionParams);
@@ -147,8 +147,18 @@ namespace pagespeed {
 
 namespace image_compression {
 
-PngCompressParams::PngCompressParams(int level, int strategy)
-    : filter_level(level), compression_strategy(strategy) {
+PngCompressParams::PngCompressParams(int level, int strategy, bool progressive)
+  : filter_level(level),
+    compression_strategy(strategy),
+    try_best_compression(false),
+    is_progressive(progressive) {
+}
+
+PngCompressParams::PngCompressParams(bool compression, bool progressive)
+  : filter_level(PNG_FILTER_NONE),
+    compression_strategy(Z_NO_COMPRESSION),
+    try_best_compression(compression),
+    is_progressive(progressive) {
 }
 
 ScopedPngStruct::ScopedPngStruct(Type type,
@@ -277,7 +287,7 @@ bool PngOptimizer::CreateOptimizedPng(const PngReaderInterface& reader,
     return CreateBestOptimizedPngForParams(kPngCompressionParams, kParamCount,
                                            out);
   } else {
-    PngCompressParams params(PNG_FILTER_NONE, Z_DEFAULT_STRATEGY);
+    PngCompressParams params(PNG_FILTER_NONE, Z_DEFAULT_STRATEGY, false);
     return CreateOptimizedPngWithParams(&write_, params, out);
   }
 }
@@ -291,7 +301,7 @@ bool PngOptimizer::CreateBestOptimizedPngForParams(
     GoogleString temp_output;
     // libpng doesn't allow for reuse of the write structs, so we must copy on
     // each iteration of the loop.
-    CopyPngStructs(&write_, &write);
+    CopyPngStructs(write_, &write);
     if (CreateOptimizedPngWithParams(&write, param_list[idx], &temp_output)) {
       // If this gives better compression update the output.
       if (out->empty() || out->size() > temp_output.size()) {
@@ -475,17 +485,18 @@ bool PngOptimizer::WritePng(ScopedPngStruct* write, GoogleString* buffer) {
 }
 
 bool PngOptimizer::CopyReadToWrite() {
-  return CopyPngStructs(&read_, &write_);
+  return CopyPngStructs(read_, &write_);
 }
 
-bool PngOptimizer::CopyPngStructs(ScopedPngStruct* from, ScopedPngStruct* to) {
+bool PngOptimizer::CopyPngStructs(const ScopedPngStruct& from,
+                                  ScopedPngStruct* to) {
   png_uint_32 width, height;
   int bit_depth, color_type, interlace_type, compression_type, filter_type;
-  if (setjmp(png_jmpbuf(from->png_ptr()))) {
+  if (setjmp(png_jmpbuf(from.png_ptr()))) {
     return false;
   }
-  png_get_IHDR(from->png_ptr(),
-               from->info_ptr(),
+  png_get_IHDR(from.png_ptr(),
+               from.info_ptr(),
                &width,
                &height,
                &bit_depth,
@@ -514,17 +525,14 @@ bool PngOptimizer::CopyPngStructs(ScopedPngStruct* from, ScopedPngStruct* to) {
 #ifndef PNG_FREE_ME_SUPPORTED
 #error PNG_FREE_ME_SUPPORTED is required or double-frees may happen.
 #endif
-  png_bytepp row_pointers = png_get_rows(from->png_ptr(), from->info_ptr());
+  png_bytepp row_pointers = png_get_rows(from.png_ptr(), from.info_ptr());
   png_set_rows(to->png_ptr(), to->info_ptr(), row_pointers);
 
   png_colorp palette;
   int num_palette;
-  if (png_get_PLTE(
-          from->png_ptr(), from->info_ptr(), &palette, &num_palette) != 0) {
-    png_set_PLTE(to->png_ptr(),
-                 to->info_ptr(),
-                 palette,
-                 num_palette);
+  if (png_get_PLTE(from.png_ptr(), from.info_ptr(), &palette, &num_palette) !=
+      0) {
+    png_set_PLTE(to->png_ptr(), to->info_ptr(), palette, num_palette);
   }
 
   // Transparency is not considered metadata, although tRNS is
@@ -532,20 +540,13 @@ bool PngOptimizer::CopyPngStructs(ScopedPngStruct* from, ScopedPngStruct* to) {
   png_bytep trans;
   int num_trans;
   png_color_16p trans_values;
-  if (png_get_tRNS(from->png_ptr(),
-                   from->info_ptr(),
-                   &trans,
-                   &num_trans,
+  if (png_get_tRNS(from.png_ptr(), from.info_ptr(), &trans, &num_trans,
                    &trans_values) != 0) {
-    png_set_tRNS(to->png_ptr(),
-                 to->info_ptr(),
-                 trans,
-                 num_trans,
-                 trans_values);
+    png_set_tRNS(to->png_ptr(), to->info_ptr(), trans, num_trans, trans_values);
   }
 
   double gamma;
-  if (png_get_gAMA(from->png_ptr(), from->info_ptr(), &gamma) != 0) {
+  if (png_get_gAMA(from.png_ptr(), from.info_ptr(), &gamma) != 0) {
     png_set_gAMA(to->png_ptr(), to->info_ptr(), gamma);
   }
 
@@ -1214,6 +1215,7 @@ ScanlineStatus PngScanlineWriter::InitWithStatus(const size_t width,
   width_ = width;
   height_ = height;
   pixel_format_ = pixel_format;
+  bytes_per_row_ = width * GetBytesPerPixel(pixel_format);
   return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
 }
 
@@ -1260,17 +1262,20 @@ ScanlineStatus PngScanlineWriter::InitializeWriteWithStatus(
                             "libpng failed to compress the image.");
   }
 
-  if (png_params != NULL) {
-    png_set_compression_strategy(png_ptr, png_params->compression_strategy);
-    png_set_filter(png_ptr, PNG_FILTER_TYPE_BASE, png_params->filter_level);
-  }
-
+  png_set_compression_strategy(png_ptr, png_params->compression_strategy);
+  png_set_filter(png_ptr, PNG_FILTER_TYPE_BASE, png_params->filter_level);
   png_set_write_fn(png_ptr, png_image, &WritePngToString, &PngFlush);
+
+  int interlace_type = (png_params->is_progressive ?
+                        PNG_INTERLACE_ADAM7 :
+                        PNG_INTERLACE_NONE);
   png_set_IHDR(png_ptr, info_ptr, width_, height_, bit_depth, color_type,
-               PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT,
+               interlace_type, PNG_COMPRESSION_TYPE_DEFAULT,
                PNG_FILTER_TYPE_DEFAULT);
 
   png_write_info(png_ptr, info_ptr);
+  try_best_compression_ = png_params->try_best_compression;
+  pixel_buffer_.reset(new unsigned char[height_ * bytes_per_row_]);
   was_initialized_ = true;
   return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
 }
@@ -1279,9 +1284,9 @@ ScanlineStatus PngScanlineWriter::InitializeWriteWithStatus(
 ScanlineStatus PngScanlineWriter::WriteNextScanlineWithStatus(
     const void* const scanline_bytes) {
   if (was_initialized_ && row_ < height_) {
-    png_write_row(png_struct_->png_ptr(),
-                  reinterpret_cast<png_bytep>(
-                      const_cast<void*>(scanline_bytes)));
+    // Buffer the scanlines.
+    memcpy(pixel_buffer_.get() + row_ * bytes_per_row_, scanline_bytes,
+           bytes_per_row_);
     ++row_;
     return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
   }
@@ -1293,16 +1298,87 @@ ScanlineStatus PngScanlineWriter::WriteNextScanlineWithStatus(
 
 // Finalize write structure once all scanlines are written.
 ScanlineStatus PngScanlineWriter::FinalizeWriteWithStatus() {
-  if (was_initialized_ && row_ == height_) {
-    png_write_end(png_struct_->png_ptr(), png_struct_->info_ptr());
-    return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
-  } else {
+  if (!was_initialized_ || row_ != height_) {
     Reset();
     return PS_LOGGED_STATUS(PS_LOG_DFATAL, message_handler_,
                             SCANLINE_STATUS_INVOCATION_ERROR,
                             SCANLINE_PNGWRITER,
                             "not initialized or not all rows written");
   }
+
+  net_instaweb::scoped_array<unsigned char*> row_pointers(
+      new unsigned char*[height_]);
+  for (size_t row = 0; row < height_; ++row) {
+    row_pointers[row] = pixel_buffer_.get() + row * bytes_per_row_;
+  }
+  png_set_rows(png_struct_->png_ptr(), png_struct_->info_ptr(),
+               row_pointers.get());
+  png_write_png(png_struct_->png_ptr(), png_struct_->info_ptr(),
+                PNG_TRANSFORM_IDENTITY, NULL);
+
+  if (try_best_compression_) {
+    if (!DoBestCompression()) {
+      Reset();
+      return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler_,
+                              SCANLINE_STATUS_INTERNAL_ERROR,
+                              SCANLINE_PNGWRITER,
+                              "Failed to do the best compression");
+    }
+  }
+  return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
+}
+
+bool PngScanlineWriter::DoBestCompression() {
+  GoogleString* png_image = static_cast<GoogleString*>(
+      png_get_io_ptr(png_struct_->png_ptr()));
+  ScanlineStreamInput png_input(message_handler_);
+  png_input.Initialize(*png_image);
+  ScopedPngStruct png_read(ScopedPngStruct::READ, message_handler_);
+
+  if (setjmp(png_jmpbuf(png_read.png_ptr())) != 0) {
+    // Jump to here if any error happens.
+    Reset();
+    return false;
+  }
+
+  png_set_read_fn(png_read.png_ptr(), &png_input, &ReadPngFromStream);
+  png_read_png(png_read.png_ptr(), png_read.info_ptr(), PNG_TRANSFORM_IDENTITY,
+               NULL);
+  opng_reduce_image(png_read.png_ptr(), png_read.info_ptr(), OPNG_REDUCE_ALL);
+
+  int min_size = png_image->length();
+  for (size_t i = 0; i < kParamCount; ++i) {
+    ScopedPngStruct png_write(ScopedPngStruct::WRITE, message_handler_);
+    PngOptimizer::CopyPngStructs(png_read, &png_write);
+
+    if (setjmp(png_jmpbuf(png_write.png_ptr())) != 0) {
+      // Jump to here if any error happens.
+      Reset();
+      return false;
+    }
+
+    png_set_compression_level(png_write.png_ptr(), Z_BEST_COMPRESSION);
+    png_set_compression_mem_level(png_write.png_ptr(), 8);
+    png_set_compression_window_bits(png_write.png_ptr(), 15);
+    png_set_compression_strategy(png_write.png_ptr(),
+                                 kPngCompressionParams[i].compression_strategy);
+    png_set_filter(png_write.png_ptr(), PNG_FILTER_TYPE_BASE,
+                   kPngCompressionParams[i].filter_level);
+
+    GoogleString recompressed_image;
+    png_set_write_fn(png_write.png_ptr(), &recompressed_image,
+                     &WritePngToString, &PngFlush);
+    png_write_png(png_write.png_ptr(), png_write.info_ptr(),
+                  PNG_TRANSFORM_IDENTITY, NULL);
+
+    int recompressed_length = recompressed_image.length();
+    if (min_size > recompressed_length) {
+      min_size = recompressed_length;
+      swap(*png_image, recompressed_image);
+    }
+  }
+
+  return true;
 }
 
 }  // namespace image_compression

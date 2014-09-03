@@ -237,7 +237,7 @@ ImageFormat GetOutputImageFormat(ImageFormat in_format) {
 ScanlineWriterInterface* CreateUncompressedPngWriter(
     size_t width, size_t height, GoogleString* output,
     MessageHandler* handler, bool use_transparent_for_blank_image) {
-  PngCompressParams config(PNG_FILTER_NONE, Z_NO_COMPRESSION);
+  PngCompressParams config(PNG_FILTER_NONE, Z_NO_COMPRESSION, false);
   PixelFormat pixel_format =
       use_transparent_for_blank_image ?
       RGBA_8888 :
@@ -819,7 +819,8 @@ bool ImageImpl::ResizeTo(const ImageDim& new_dim) {
 
     case pagespeed::image_compression::IMAGE_PNG:
       {
-        PngCompressParams png_config(PNG_FILTER_NONE, Z_DEFAULT_STRATEGY);
+        PngCompressParams png_config(PNG_FILTER_NONE, Z_DEFAULT_STRATEGY,
+                                     false);
         writer.reset(CreateScanlineWriter(resized_format,
                                           resizer.GetPixelFormat(),
                                           resizer.GetImageWidth(),
