@@ -15,8 +15,8 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_DOWNSTREAM_CACHING_DIRECTIVES_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_DOWNSTREAM_CACHING_DIRECTIVES_H_
 
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/gtest_prod.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/gtest_prod.h"
 #include "pagespeed/kernel/base/string.h"  // for GoogleString
 
 namespace net_instaweb {

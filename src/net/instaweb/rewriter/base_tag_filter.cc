@@ -18,9 +18,9 @@
 
 #include "public/base_tag_filter.h"
 
-#include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_name.h"
 
 namespace net_instaweb {
 

@@ -22,12 +22,12 @@
 
 #include <cstdlib>
 
-#include "net/instaweb/http/public/meta_data.h"
-#include "net/instaweb/http/public/request_headers.h"
-#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/util/public/google_url.h"
-#include "net/instaweb/util/public/time_util.h"
+#include "pagespeed/kernel/base/time_util.h"
+#include "pagespeed/kernel/http/google_url.h"
+#include "pagespeed/kernel/http/http_names.h"
+#include "pagespeed/kernel/http/request_headers.h"
+#include "pagespeed/kernel/http/response_headers.h"
 
 namespace net_instaweb {
 namespace experiment {

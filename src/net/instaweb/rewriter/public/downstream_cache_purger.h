@@ -19,8 +19,8 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_DOWNSTREAM_CACHE_PURGER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_DOWNSTREAM_CACHE_PURGER_H_
 
-#include "net/instaweb/util/public/string.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
 class GoogleUrl;

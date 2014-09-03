@@ -18,11 +18,11 @@
 #include "net/instaweb/rewriter/public/google_analytics_filter.h"
 
 #include "net/instaweb/rewriter/google_analytics_snippet.h"
-#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 

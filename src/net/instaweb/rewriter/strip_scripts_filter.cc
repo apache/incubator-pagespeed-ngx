@@ -18,9 +18,9 @@
 
 #include "net/instaweb/rewriter/public/strip_scripts_filter.h"
 
-#include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/htmlparse/public/html_name.h"
-#include "net/instaweb/htmlparse/public/html_parse.h"
+#include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_name.h"
+#include "pagespeed/kernel/html/html_parse.h"
 
 namespace net_instaweb {
 

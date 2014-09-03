@@ -20,10 +20,6 @@
 #include <memory>
 
 #include "base/logging.h"
-#include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/htmlparse/public/html_keywords.h"
-#include "net/instaweb/htmlparse/public/html_name.h"
-#include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/critical_selector_filter.h"
@@ -36,9 +32,13 @@
 #include "net/instaweb/rewriter/public/rewrite_result.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
-#include "net/instaweb/util/public/data_url.h"
-#include "net/instaweb/util/public/google_url.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_keywords.h"
+#include "pagespeed/kernel/html/html_name.h"
+#include "pagespeed/kernel/http/data_url.h"
+#include "pagespeed/kernel/http/google_url.h"
+#include "pagespeed/kernel/http/semantic_type.h"
 
 namespace net_instaweb {
 

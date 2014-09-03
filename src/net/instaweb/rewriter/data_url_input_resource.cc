@@ -18,14 +18,14 @@
 
 #include "net/instaweb/rewriter/public/data_url_input_resource.h"
 
-#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_value.h"
-#include "net/instaweb/http/public/meta_data.h"
-#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/util/public/data_url.h"
+#include "pagespeed/kernel/http/content_type.h"
+#include "pagespeed/kernel/http/data_url.h"
+#include "pagespeed/kernel/http/http_names.h"
+#include "pagespeed/kernel/http/response_headers.h"
 
 namespace net_instaweb {
 

@@ -24,13 +24,13 @@
 #include <vector>
 
 #include "base/logging.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/google_url.h"
-#include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/stl_util.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/message_handler.h"
+#include "pagespeed/kernel/base/stl_util.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/wildcard.h"
+#include "pagespeed/kernel/http/google_url.h"
 
 namespace net_instaweb {
 

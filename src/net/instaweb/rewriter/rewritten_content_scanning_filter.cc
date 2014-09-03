@@ -20,15 +20,15 @@
 
 #include <memory>
 
-#include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
-#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/property_cache.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/http/google_url.h"
+#include "pagespeed/kernel/http/semantic_type.h"
 
 namespace net_instaweb {
 

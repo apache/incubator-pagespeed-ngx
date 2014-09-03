@@ -23,8 +23,8 @@
 #include "net/instaweb/rewriter/public/google_font_service_input_resource.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/util/public/string.h"
 #include "pagespeed/kernel/base/callback.h"
+#include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/http/google_url.h"
 
 namespace net_instaweb {

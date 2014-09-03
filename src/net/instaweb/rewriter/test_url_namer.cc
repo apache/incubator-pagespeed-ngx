@@ -23,8 +23,8 @@
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/util/public/google_url.h"
-#include "net/instaweb/util/public/string_util.h"        // for StringPiece
+#include "pagespeed/kernel/base/string_util.h"        // for StringPiece
+#include "pagespeed/kernel/http/google_url.h"
 
 namespace net_instaweb {
 

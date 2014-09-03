@@ -18,11 +18,11 @@
 
 #include <memory>
 
-#include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/flush_html_filter.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "pagespeed/kernel/http/semantic_type.h"
 
 namespace {
 

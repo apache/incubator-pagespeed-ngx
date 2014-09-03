@@ -23,9 +23,9 @@
 // BM_DomainLawyerIsAuthorizedAllowAll           3          3  259259259
 
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
-#include "net/instaweb/util/public/benchmark.h"
-#include "net/instaweb/util/public/google_url.h"
+#include "pagespeed/kernel/base/benchmark.h"
 #include "pagespeed/kernel/base/null_message_handler.h"
+#include "pagespeed/kernel/http/google_url.h"
 
 void RunIsDomainAuthorizedIters(const net_instaweb::DomainLawyer& lawyer,
                                 int iters) {

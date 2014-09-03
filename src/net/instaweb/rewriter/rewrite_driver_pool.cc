@@ -19,7 +19,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver_pool.h"
 
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/util/public/stl_util.h"
+#include "pagespeed/kernel/base/stl_util.h"
 
 namespace net_instaweb {
 

@@ -19,16 +19,16 @@
 #include "net/instaweb/rewriter/public/inline_rewrite_context.h"
 
 #include "base/logging.h"
-#include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
-#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_result.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/rewriter/public/server_context.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/html/html_element.h"
 
 namespace net_instaweb {
 

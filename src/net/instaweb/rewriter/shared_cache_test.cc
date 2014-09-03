@@ -18,7 +18,7 @@
 
 // Unit-test the interaction of shared cache (e.g. memcached) & LoadFromFile.
 
-#include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "pagespeed/kernel/html/html_parse_test_base.h"
 
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/log_record.h"
@@ -32,17 +32,17 @@
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/delay_cache.h"
-#include "net/instaweb/util/public/file_system.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/lru_cache.h"
-#include "net/instaweb/util/public/mem_file_system.h"
-#include "net/instaweb/util/public/mock_message_handler.h"
-#include "net/instaweb/util/public/ref_counted_ptr.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/file_system.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/mem_file_system.h"
+#include "pagespeed/kernel/base/mock_message_handler.h"
+#include "pagespeed/kernel/base/ref_counted_ptr.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/timer.h"
+#include "pagespeed/kernel/cache/delay_cache.h"
+#include "pagespeed/kernel/cache/lru_cache.h"
 
 namespace net_instaweb {
 

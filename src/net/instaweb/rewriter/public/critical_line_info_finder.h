@@ -23,8 +23,8 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_CRITICAL_LINE_INFO_FINDER_H_
 
 #include "net/instaweb/rewriter/public/critical_finder_support_util.h"
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/property_cache.h"
+#include "pagespeed/kernel/base/basictypes.h"
 
 namespace net_instaweb {
 

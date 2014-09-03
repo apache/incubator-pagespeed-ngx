@@ -25,8 +25,8 @@
 #include "net/instaweb/rewriter/public/critical_line_info_finder.h"
 
 #include "net/instaweb/rewriter/public/critical_finder_support_util.h"
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/property_cache.h"
+#include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {

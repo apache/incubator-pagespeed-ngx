@@ -18,15 +18,15 @@
 
 #include "net/instaweb/rewriter/public/simple_text_filter.h"
 
-#include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/public/resource.h"
-#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_result.h"
-#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/rewriter/public/server_context.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/http/content_type.h"
 
 namespace net_instaweb {
 

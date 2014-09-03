@@ -19,8 +19,8 @@
 #ifndef NET_INSTAWEB_REWRITER_IMAGE_TESTING_PEER_H_
 #define NET_INSTAWEB_REWRITER_IMAGE_TESTING_PEER_H_
 
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/rewriter/public/image.h"
+#include "pagespeed/kernel/base/basictypes.h"
 
 namespace net_instaweb {
 

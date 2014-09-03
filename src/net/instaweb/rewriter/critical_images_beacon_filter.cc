@@ -19,8 +19,6 @@
 #include "net/instaweb/rewriter/public/critical_images_beacon_filter.h"
 
 #include "base/logging.h"
-#include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/lazyload_images_filter.h"
 #include "net/instaweb/rewriter/public/request_properties.h"
@@ -29,12 +27,14 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/util/enums.pb.h"
-#include "net/instaweb/util/public/escaping.h"
-#include "net/instaweb/util/public/google_url.h"
-#include "net/instaweb/util/public/hasher.h"
-#include "net/instaweb/util/public/statistics.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_hash.h"
+#include "pagespeed/kernel/base/escaping.h"
+#include "pagespeed/kernel/base/hasher.h"
+#include "pagespeed/kernel/base/statistics.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_hash.h"
+#include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_name.h"
+#include "pagespeed/kernel/http/google_url.h"
 
 namespace net_instaweb {
 

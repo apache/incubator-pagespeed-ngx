@@ -18,13 +18,13 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_SUPPRESS_PREHEAD_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_SUPPRESS_PREHEAD_FILTER_H_
 
-#include "net/instaweb/htmlparse/public/html_writer_filter.h"
-#include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_writer.h"
-#include "net/instaweb/util/public/split_writer.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/split_writer.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_writer.h"
+#include "pagespeed/kernel/html/html_writer_filter.h"
+#include "pagespeed/kernel/http/response_headers.h"
 
 namespace net_instaweb {
 

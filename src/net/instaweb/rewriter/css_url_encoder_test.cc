@@ -18,14 +18,14 @@
 // Unit test for css_url_encoder.
 
 #include "net/instaweb/rewriter/cached_result.pb.h"
-#include "testing/base/public/gunit.h"
 #include "net/instaweb/rewriter/public/css_url_encoder.h"
-#include "net/instaweb/util/public/google_message_handler.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/public/request_properties.h"
-#include "net/instaweb/util/public/scoped_ptr.h"            // for scoped_ptr
+#include "testing/base/public/gunit.h"
+#include "pagespeed/kernel/base/google_message_handler.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"            // for scoped_ptr
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/http/user_agent_matcher.h"
 
 
 namespace net_instaweb {

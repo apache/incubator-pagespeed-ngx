@@ -19,11 +19,11 @@
 #include "net/instaweb/rewriter/public/resource_slot.h"
 
 #include "base/logging.h"
-#include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/html/html_element.h"
 
 namespace net_instaweb {
 

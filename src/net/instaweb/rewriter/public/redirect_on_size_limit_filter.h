@@ -20,7 +20,7 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_REDIRECT_ON_SIZE_LIMIT_FILTER_H_
 
 #include "net/instaweb/rewriter/public/common_filter.h"
-#include "net/instaweb/util/public/basictypes.h"
+#include "pagespeed/kernel/base/basictypes.h"
 
 namespace net_instaweb {
 

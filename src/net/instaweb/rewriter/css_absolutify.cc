@@ -22,10 +22,10 @@
 #include <vector>
 
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
-#include "net/instaweb/util/public/google_url.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/string_writer.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/string_writer.h"
+#include "pagespeed/kernel/http/google_url.h"
 #include "util/utf8/public/unicodetext.h"
 #include "webutil/css/parser.h"
 #include "webutil/css/property.h"

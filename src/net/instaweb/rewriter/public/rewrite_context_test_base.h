@@ -27,10 +27,6 @@
 #include <utility>
 #include <vector>
 
-#include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/htmlparse/public/html_name.h"
-#include "net/instaweb/htmlparse/public/html_parse_test_base.h"
-#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_combiner.h"
@@ -41,14 +37,18 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/simple_text_filter.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/timer.h"
-#include "net/instaweb/util/public/url_multipart_encoder.h"
-#include "net/instaweb/util/public/writer.h"
-#include "net/instaweb/util/worker_test_base.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/timer.h"
+#include "pagespeed/kernel/base/writer.h"
+#include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_name.h"
+#include "pagespeed/kernel/html/html_parse_test_base.h"
+#include "pagespeed/kernel/http/content_type.h"
+#include "pagespeed/kernel/thread/worker_test_base.h"
+#include "pagespeed/kernel/util/url_multipart_encoder.h"
 
 
 namespace net_instaweb {

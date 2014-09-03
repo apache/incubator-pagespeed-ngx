@@ -19,11 +19,11 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_IMAGE_URL_ENCODER_H_
 
 #include "net/instaweb/rewriter/cached_result.pb.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/gtest_prod.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/url_segment_encoder.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/gtest_prod.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/util/url_segment_encoder.h"
 
 namespace net_instaweb {
 

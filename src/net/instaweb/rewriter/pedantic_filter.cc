@@ -18,11 +18,11 @@
 
 #include "net/instaweb/rewriter/public/pedantic_filter.h"
 
-#include "net/instaweb/htmlparse/public/doctype.h"
-#include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/htmlparse/public/html_name.h"
-#include "net/instaweb/htmlparse/public/html_parse.h"
-#include "net/instaweb/util/public/basictypes.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/html/doctype.h"
+#include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_name.h"
+#include "pagespeed/kernel/html/html_parse.h"
 
 namespace net_instaweb {
 

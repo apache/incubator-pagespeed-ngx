@@ -19,10 +19,10 @@
 
 #include "net/instaweb/rewriter/public/image_test_base.h"
 
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/stdio_file_system.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/stdio_file_system.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 

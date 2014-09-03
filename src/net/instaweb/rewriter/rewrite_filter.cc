@@ -20,8 +20,8 @@
 
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/util/public/charset_util.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/charset_util.h"
+#include "pagespeed/kernel/base/string_util.h"
 #include "util/utf8/public/unicodetext.h"
 #include "webutil/css/parser.h"
 

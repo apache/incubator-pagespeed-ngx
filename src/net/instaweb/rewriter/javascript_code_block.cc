@@ -22,11 +22,11 @@
 #include <cstddef>
 
 #include "net/instaweb/rewriter/public/javascript_library_identification.h"
-#include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/statistics.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/source_map.h"
+#include "pagespeed/kernel/base/statistics.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/js/js_minify.h"
 
 namespace pagespeed { namespace js { struct JsTokenizerPatterns; } }

@@ -7,17 +7,17 @@
 #include <fstream>
 
 #include "base/logging.h"
-#include "net/instaweb/htmlparse/public/html_parse.h"
-#include "net/instaweb/htmlparse/public/html_writer_filter.h"
-#include "net/instaweb/rewriter/public/collapse_whitespace_filter.h"
-#include "net/instaweb/rewriter/public/elide_attributes_filter.h"
-#include "net/instaweb/rewriter/public/html_attribute_quote_removal.h"
-#include "net/instaweb/rewriter/public/remove_comments_filter.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/file_message_handler.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/string_writer.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/file_message_handler.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/string_writer.h"
+#include "pagespeed/kernel/html/collapse_whitespace_filter.h"
+#include "pagespeed/kernel/html/elide_attributes_filter.h"
+#include "pagespeed/kernel/html/html_attribute_quote_removal.h"
+#include "pagespeed/kernel/html/html_parse.h"
+#include "pagespeed/kernel/html/html_writer_filter.h"
+#include "pagespeed/kernel/html/remove_comments_filter.h"
 
 namespace {
 

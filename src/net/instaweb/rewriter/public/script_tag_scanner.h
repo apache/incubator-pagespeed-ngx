@@ -19,10 +19,10 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_SCRIPT_TAG_SCANNER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_SCRIPT_TAG_SCANNER_H_
 
-#include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/html/html_element.h"
 
 namespace net_instaweb {
 class HtmlParse;

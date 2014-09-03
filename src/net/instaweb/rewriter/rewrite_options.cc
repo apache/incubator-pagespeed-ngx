@@ -23,25 +23,25 @@
 #include <utility>
 
 #include "base/logging.h"
-#include "net/instaweb/http/public/request_headers.h"
-#include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/experiment_util.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
-#include "net/instaweb/util/public/abstract_mutex.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
-#include "net/instaweb/util/public/google_url.h"
-#include "net/instaweb/util/public/hasher.h"
-#include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/null_message_handler.h"
-#include "net/instaweb/util/public/null_rw_lock.h"
-#include "net/instaweb/util/public/stl_util.h"
-#include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/base/abstract_mutex.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/dynamic_annotations.h"  // RunningOnValgrind
+#include "pagespeed/kernel/base/hasher.h"
+#include "pagespeed/kernel/base/message_handler.h"
+#include "pagespeed/kernel/base/null_message_handler.h"
+#include "pagespeed/kernel/base/null_rw_lock.h"
 #include "pagespeed/kernel/base/rde_hash_map.h"
+#include "pagespeed/kernel/base/stl_util.h"
 #include "pagespeed/kernel/base/time_util.h"
+#include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/cache/purge_set.h"
+#include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/http/http_options.h"
+#include "pagespeed/kernel/http/request_headers.h"
+#include "pagespeed/kernel/http/semantic_type.h"
 
 namespace net_instaweb {
 

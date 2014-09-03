@@ -28,31 +28,31 @@
 #include "net/instaweb/http/public/rate_controller.h"
 #include "net/instaweb/http/public/rate_controlling_url_async_fetcher.h"
 #include "net/instaweb/http/public/wait_url_async_fetcher.h"
-#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/test_distributed_fetcher.h"
 #include "net/instaweb/rewriter/public/test_url_namer.h"
-#include "net/instaweb/util/public/basictypes.h"        // for int64
 #include "net/instaweb/util/public/cache_property_store.h"
-#include "net/instaweb/util/public/delay_cache.h"
-#include "net/instaweb/util/public/lru_cache.h"
-#include "net/instaweb/util/public/mem_file_system.h"
-#include "net/instaweb/util/public/mock_hasher.h"
-#include "net/instaweb/util/public/mock_message_handler.h"
-#include "net/instaweb/util/public/mock_scheduler.h"
-#include "net/instaweb/util/public/mock_timer.h"
-#include "net/instaweb/util/public/mock_time_cache.h"
-#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/property_cache.h"
-#include "net/instaweb/util/public/scoped_ptr.h"            // for scoped_ptr
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"  // for StrCat, etc
-#include "net/instaweb/util/public/threadsafe_cache.h"
-#include "net/instaweb/util/public/thread_system.h"
-#include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/base/basictypes.h"        // for int64
+#include "pagespeed/kernel/base/mem_file_system.h"
+#include "pagespeed/kernel/base/mock_hasher.h"
+#include "pagespeed/kernel/base/mock_message_handler.h"
+#include "pagespeed/kernel/base/mock_timer.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"            // for scoped_ptr
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"  // for StrCat, etc
+#include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/base/timer.h"
+#include "pagespeed/kernel/cache/delay_cache.h"
+#include "pagespeed/kernel/cache/lru_cache.h"
+#include "pagespeed/kernel/cache/mock_time_cache.h"
+#include "pagespeed/kernel/cache/threadsafe_cache.h"
+#include "pagespeed/kernel/thread/mock_scheduler.h"
 #include "pagespeed/kernel/util/mock_nonce_generator.h"
+#include "pagespeed/kernel/util/platform.h"
 
 namespace net_instaweb {
 

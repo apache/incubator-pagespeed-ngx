@@ -20,7 +20,7 @@
 
 #include "net/instaweb/rewriter/public/experiment_util.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/util/public/basictypes.h"  // for int64
+#include "pagespeed/kernel/base/basictypes.h"  // for int64
 
 namespace net_instaweb {
 

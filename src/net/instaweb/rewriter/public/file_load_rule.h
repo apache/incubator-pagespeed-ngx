@@ -19,10 +19,10 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_FILE_LOAD_RULE_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_FILE_LOAD_RULE_H_
 
-#include "net/instaweb/util/public/manually_ref_counted.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/re2.h"
-#include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/manually_ref_counted.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/util/re2.h"
 
 namespace net_instaweb {
 

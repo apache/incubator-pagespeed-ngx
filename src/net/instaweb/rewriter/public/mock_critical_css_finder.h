@@ -21,8 +21,8 @@
 #include <cstddef>
 
 #include "net/instaweb/rewriter/public/critical_css_finder.h"
-#include "net/instaweb/util/public/string_util.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 

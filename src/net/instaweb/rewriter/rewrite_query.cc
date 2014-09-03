@@ -20,15 +20,7 @@
 #include <vector>
 
 #include "base/logging.h"
-#include "net/instaweb/http/public/meta_data.h"
-#include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/util/public/google_url.h"
-#include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/query_params.h"
 #include "net/instaweb/http/public/request_context.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_multi_map.h"
-#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/rewriter/public/image_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/request_properties.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
@@ -37,7 +29,15 @@
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_multi_map.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/http/google_url.h"
+#include "pagespeed/kernel/http/http_names.h"
+#include "pagespeed/kernel/http/query_params.h"
+#include "pagespeed/kernel/http/response_headers.h"
 
 namespace net_instaweb {
 

@@ -21,8 +21,8 @@
 
 #include "base/logging.h"
 #include "net/instaweb/rewriter/public/resource.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/worker_test_base.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/thread/worker_test_base.h"
 
 namespace net_instaweb {
 class ThreadSystem;

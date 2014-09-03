@@ -21,12 +21,12 @@
 #include <algorithm>
 
 #include "base/logging.h"
-#include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/util/public/statistics.h"
+#include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_node.h"
 
 namespace net_instaweb {
 

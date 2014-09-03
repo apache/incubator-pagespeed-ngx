@@ -20,7 +20,7 @@
 #include "net/instaweb/rewriter/public/property_cache_util.h"
 
 #include "net/instaweb/util/public/property_cache.h"
-#include "net/instaweb/util/public/proto_util.h"
+#include "pagespeed/kernel/base/proto_util.h"
 
 namespace net_instaweb {
 

@@ -19,8 +19,8 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_FLUSH_EARLY_INFO_FINDER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_FLUSH_EARLY_INFO_FINDER_H_
 
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/property_cache.h"
+#include "pagespeed/kernel/base/basictypes.h"
 
 namespace net_instaweb {
 

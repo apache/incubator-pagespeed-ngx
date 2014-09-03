@@ -17,13 +17,13 @@
 #include <vector>
 
 #include "base/logging.h"
-#include "net/instaweb/http/public/bot_checker.h"
-#include "net/instaweb/http/public/user_agent_matcher.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/http/bot_checker.h"
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/http_names.h"
 #include "pagespeed/kernel/http/request_headers.h"
+#include "pagespeed/kernel/http/user_agent_matcher.h"
 
 namespace net_instaweb {
 

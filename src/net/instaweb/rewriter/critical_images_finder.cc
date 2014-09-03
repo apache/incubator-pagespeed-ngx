@@ -31,14 +31,14 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/rendered_image.pb.h"
 #include "net/instaweb/util/public/fallback_property_page.h"
-#include "net/instaweb/util/public/google_url.h"
-#include "net/instaweb/util/public/json.h"
-#include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/property_cache.h"
-#include "net/instaweb/util/public/proto_util.h"
-#include "net/instaweb/util/public/statistics.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/json.h"
+#include "pagespeed/kernel/base/message_handler.h"
+#include "pagespeed/kernel/base/proto_util.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/statistics.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/http/google_url.h"
 
 namespace net_instaweb {
 

@@ -22,14 +22,13 @@
 #include <set>
 #include <vector>
 
-#include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/rewriter/public/resource.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/ref_counted_ptr.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/vector_deque.h"
+#include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/ref_counted_ptr.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/vector_deque.h"
+#include "pagespeed/kernel/html/html_element.h"
 #include "pagespeed/kernel/http/google_url.h"
 
 namespace net_instaweb {

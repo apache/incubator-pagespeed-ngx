@@ -19,9 +19,9 @@
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/util/public/statistics.h"
-#include "net/instaweb/util/public/stl_util.h"
-#include "net/instaweb/util/public/waveform.h"
+#include "pagespeed/kernel/base/statistics.h"
+#include "pagespeed/kernel/base/stl_util.h"
+#include "pagespeed/kernel/base/waveform.h"
 
 namespace net_instaweb {
 

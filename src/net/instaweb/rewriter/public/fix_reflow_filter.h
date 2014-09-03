@@ -20,9 +20,9 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_FIX_REFLOW_FILTER_H_
 
 #include "base/macros.h"
-#include "net/instaweb/htmlparse/public/empty_html_filter.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/html/empty_html_filter.h"
 #include "util/hash/hash.h"
 
 namespace net_instaweb {

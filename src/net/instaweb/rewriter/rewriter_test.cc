@@ -18,16 +18,16 @@
 
 // Unit-test some small filters.
 
-#include "net/instaweb/htmlparse/public/html_parse_test_base.h"
-#include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/hasher.h"
-#include "net/instaweb/util/public/lru_cache.h"
-#include "net/instaweb/util/public/mock_message_handler.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/hasher.h"
+#include "pagespeed/kernel/base/mock_message_handler.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/cache/lru_cache.h"
+#include "pagespeed/kernel/html/html_parse_test_base.h"
+#include "pagespeed/kernel/http/content_type.h"
 
 namespace net_instaweb {
 

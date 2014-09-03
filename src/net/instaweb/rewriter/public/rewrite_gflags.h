@@ -19,7 +19,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_GFLAGS_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_GFLAGS_H_
 
-#include "net/instaweb/util/public/basictypes.h"
+#include "pagespeed/kernel/base/basictypes.h"
 
 namespace net_instaweb {
 

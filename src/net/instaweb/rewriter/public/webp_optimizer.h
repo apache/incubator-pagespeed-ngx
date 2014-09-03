@@ -19,7 +19,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_WEBP_OPTIMIZER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_WEBP_OPTIMIZER_H_
 
-#include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
 

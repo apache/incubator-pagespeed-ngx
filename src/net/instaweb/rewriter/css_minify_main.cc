@@ -21,14 +21,14 @@
 #include <vector>
 
 #include "net/instaweb/rewriter/public/css_minify.h"
-#include "net/instaweb/util/public/file_message_handler.h"
-#include "net/instaweb/util/public/file_system.h"
-#include "net/instaweb/util/public/file_writer.h"
-#include "net/instaweb/util/public/gflags.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/stdio_file_system.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/file_message_handler.h"
+#include "pagespeed/kernel/base/file_system.h"
+#include "pagespeed/kernel/base/file_writer.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/stdio_file_system.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/util/gflags.h"
 #include "webutil/css/parser.h"
 
 namespace net_instaweb {

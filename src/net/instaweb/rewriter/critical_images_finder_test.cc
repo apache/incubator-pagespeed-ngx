@@ -25,12 +25,12 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/rendered_image.pb.h"
-#include "net/instaweb/util/public/google_url.h"
-#include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/property_cache.h"
-#include "net/instaweb/util/public/proto_util.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/proto_util.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/timer.h"
+#include "pagespeed/kernel/http/google_url.h"
 
 namespace net_instaweb {
 

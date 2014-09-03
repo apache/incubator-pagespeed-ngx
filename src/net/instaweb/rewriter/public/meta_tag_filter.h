@@ -23,7 +23,7 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_META_TAG_FILTER_H_
 
 #include "net/instaweb/rewriter/public/common_filter.h"
-#include "net/instaweb/util/public/basictypes.h"
+#include "pagespeed/kernel/base/basictypes.h"
 
 namespace net_instaweb {
 

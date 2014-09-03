@@ -23,9 +23,9 @@
 
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/public/cacheable_resource_base.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"  // for GoogleString
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 struct ContentType;

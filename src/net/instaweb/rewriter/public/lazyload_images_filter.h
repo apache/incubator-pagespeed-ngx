@@ -21,7 +21,7 @@
 
 #include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/util/enums.pb.h"
-#include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
 

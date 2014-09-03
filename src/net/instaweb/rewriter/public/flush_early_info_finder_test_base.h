@@ -20,8 +20,8 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_FLUSH_EARLY_INFO_FINDER_TEST_BASE_H_
 
 #include "net/instaweb/rewriter/public/flush_early_info_finder.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/timer.h"
 
 namespace net_instaweb {
 

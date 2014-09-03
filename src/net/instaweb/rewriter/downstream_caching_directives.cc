@@ -15,10 +15,10 @@
 #include "net/instaweb/rewriter/public/downstream_caching_directives.h"
 
 #include "net/instaweb/public/global_constants.h"
-#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/util/public/basictypes.h"
+#include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/http/request_headers.h"
 
 namespace net_instaweb {
 

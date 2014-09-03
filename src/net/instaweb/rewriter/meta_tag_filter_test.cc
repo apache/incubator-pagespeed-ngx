@@ -20,15 +20,15 @@
 
 #include "net/instaweb/rewriter/public/meta_tag_filter.h"
 
-#include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/http/public/meta_data.h"  // for HttpAttributes, etc
-#include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/http/content_type.h"
+#include "pagespeed/kernel/http/http_names.h"  // for HttpAttributes, etc
+#include "pagespeed/kernel/http/response_headers.h"
 
 namespace net_instaweb {
 

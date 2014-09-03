@@ -20,12 +20,12 @@
 #include "net/instaweb/rewriter/public/url_input_resource.h"
 
 #include "base/logging.h"               // for COMPACT_GOOGLE_LOG_FATAL, etc
-#include "net/instaweb/http/public/request_headers.h"
-#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_query.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/google_url.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/http/google_url.h"
+#include "pagespeed/kernel/http/request_headers.h"
+#include "pagespeed/kernel/http/response_headers.h"
 
 namespace net_instaweb {
 

@@ -18,8 +18,8 @@
 
 #include "net/instaweb/rewriter/public/blink_util.h"
 
-#include "net/instaweb/util/public/string.h"
 #include "testing/base/public/gunit.h"
+#include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
 

@@ -16,14 +16,14 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_QUERY_H_
 
 #include "net/instaweb/rewriter/public/device_properties.h"
-#include "net/instaweb/util/public/gtest_prod.h"
-#include "net/instaweb/util/public/query_params.h"
 #include "net/instaweb/http/public/request_context.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/gtest_prod.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/http/headers.h"
+#include "pagespeed/kernel/http/query_params.h"
 #include "pagespeed/kernel/http/request_headers.h"
 
 namespace net_instaweb {

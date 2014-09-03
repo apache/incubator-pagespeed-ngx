@@ -18,10 +18,10 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_INSERT_DNS_PREFETCH_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_INSERT_DNS_PREFETCH_FILTER_H_
 
-#include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/rewriter/public/common_filter.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/string_util.h"  // for StringSet, etc
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/string_util.h"  // for StringSet, etc
+#include "pagespeed/kernel/html/html_element.h"
 
 namespace net_instaweb {
 

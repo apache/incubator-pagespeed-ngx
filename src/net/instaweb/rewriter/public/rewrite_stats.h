@@ -22,7 +22,7 @@
 #include <vector>
 
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
-#include "net/instaweb/util/public/basictypes.h"
+#include "pagespeed/kernel/base/basictypes.h"
 
 namespace net_instaweb {
 

@@ -16,8 +16,8 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_DECODE_REWRITTEN_URLS_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_DECODE_REWRITTEN_URLS_FILTER_H_
 
-#include "net/instaweb/htmlparse/public/empty_html_filter.h"
-#include "net/instaweb/util/public/basictypes.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/html/empty_html_filter.h"
 
 namespace net_instaweb {
 

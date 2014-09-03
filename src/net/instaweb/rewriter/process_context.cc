@@ -17,9 +17,9 @@
 #include "net/instaweb/rewriter/public/process_context.h"
 
 #include "base/logging.h"
-#include "net/instaweb/htmlparse/public/html_keywords.h"
-#include "net/instaweb/util/public/gflags.h"
+#include "pagespeed/kernel/html/html_keywords.h"
 #include "pagespeed/kernel/js/js_tokenizer.h"
+#include "pagespeed/kernel/util/gflags.h"
 
 #include "third_party/protobuf/src/google/protobuf/stubs/common.h"
 #include "url/url_util.h"

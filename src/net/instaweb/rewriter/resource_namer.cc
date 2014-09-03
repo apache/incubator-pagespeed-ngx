@@ -23,11 +23,11 @@
 #include <vector>
 
 #include "base/logging.h"
-#include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/util/public/hasher.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/url_escaper.h"
+#include "pagespeed/kernel/base/hasher.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/http/content_type.h"
+#include "pagespeed/kernel/util/url_escaper.h"
 
 namespace net_instaweb {
 

@@ -22,15 +22,15 @@
 
 #include <vector>
 
-#include "net/instaweb/htmlparse/public/html_writer_filter.h"
 #include "net/instaweb/rewriter/cache_html_info.pb.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/property_cache.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/string_writer.h"
-#include "net/instaweb/util/public/json.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/json.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/string_writer.h"
+#include "pagespeed/kernel/html/html_writer_filter.h"
 
 namespace net_instaweb {
 

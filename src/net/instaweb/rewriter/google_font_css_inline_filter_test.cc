@@ -17,18 +17,18 @@
 // Author: morlovich@google.com (Maksim Orlovich)
 // Unit tests for GoogleFontCssInlineFilter
 
-#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/ua_sensitive_test_fetcher.h"
-#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
-#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
+#include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/timer.h"
+#include "pagespeed/kernel/http/content_type.h"
+#include "pagespeed/kernel/http/response_headers.h"
 
 namespace net_instaweb {
 

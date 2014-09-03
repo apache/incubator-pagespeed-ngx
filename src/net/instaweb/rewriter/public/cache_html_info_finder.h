@@ -19,9 +19,9 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_CACHE_HTML_INFO_FINDER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_CACHE_HTML_INFO_FINDER_H_
 
-#include "net/instaweb/http/public/user_agent_matcher.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/http/user_agent_matcher.h"
 
 namespace net_instaweb {
 

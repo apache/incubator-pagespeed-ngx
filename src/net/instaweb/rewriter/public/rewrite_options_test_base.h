@@ -19,10 +19,10 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_OPTIONS_TEST_BASE_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_OPTIONS_TEST_BASE_H_
 
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/platform.h"
-#include "net/instaweb/util/public/thread_system.h"
+#include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/util/platform.h"
 
 namespace net_instaweb {
 

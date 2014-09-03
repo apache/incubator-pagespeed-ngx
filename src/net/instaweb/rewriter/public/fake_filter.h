@@ -19,15 +19,15 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_FAKE_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_FAKE_FILTER_H_
 
-#include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
-#include "net/instaweb/util/public/string.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/http/semantic_type.h"
 
 namespace net_instaweb {
 

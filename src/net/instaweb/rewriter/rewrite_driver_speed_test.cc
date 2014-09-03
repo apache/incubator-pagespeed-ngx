@@ -32,7 +32,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
-#include "net/instaweb/util/public/benchmark.h"
+#include "pagespeed/kernel/base/benchmark.h"
 
 using net_instaweb::RequestContext;
 

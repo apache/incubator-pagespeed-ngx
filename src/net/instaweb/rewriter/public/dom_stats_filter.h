@@ -21,9 +21,9 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_DOM_STATS_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_DOM_STATS_FILTER_H_
 
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
+#include "pagespeed/kernel/base/basictypes.h"
 
 namespace net_instaweb {
 

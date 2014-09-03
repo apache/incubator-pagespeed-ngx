@@ -19,7 +19,6 @@
 #include "net/instaweb/rewriter/public/google_font_service_input_resource.h"
 
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
-#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/ua_sensitive_test_fetcher.h"
 #include "net/instaweb/rewriter/public/mock_resource_callback.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -33,6 +32,7 @@
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/google_url.h"
+#include "pagespeed/kernel/http/response_headers.h"
 
 namespace net_instaweb {
 

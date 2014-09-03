@@ -22,8 +22,8 @@
 #include <cstddef>  // for NULL
 #include <vector>
 
-#include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/http/public/semantic_type.h"
+#include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/http/semantic_type.h"
 
 namespace net_instaweb {
 

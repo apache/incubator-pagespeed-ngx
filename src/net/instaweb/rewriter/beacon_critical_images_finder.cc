@@ -26,8 +26,8 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/fallback_property_page.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_hash.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_hash.h"
 #include "pagespeed/kernel/base/timer.h"
 
 namespace net_instaweb {

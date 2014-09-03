@@ -20,17 +20,17 @@
 
 #include "net/instaweb/rewriter/public/experiment_matcher.h"
 
-#include "net/instaweb/http/public/meta_data.h"  // for HttpAttributes, etc
-#include "net/instaweb/http/public/request_headers.h"
-#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/experiment_util.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_options_test_base.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/null_message_handler.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/time_util.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/null_message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/time_util.h"
+#include "pagespeed/kernel/http/http_names.h"  // for HttpAttributes, etc
+#include "pagespeed/kernel/http/request_headers.h"
+#include "pagespeed/kernel/http/response_headers.h"
 
 namespace net_instaweb {
 

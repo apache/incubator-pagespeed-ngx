@@ -22,8 +22,8 @@
 
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
-#include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/google_url.h"
+#include "pagespeed/kernel/base/message_handler.h"
+#include "pagespeed/kernel/http/google_url.h"
 
 namespace net_instaweb {
 

@@ -36,8 +36,8 @@
 // BM_EscapeStringSuperSpecial/512      11478      11629      63636
 // BM_EscapeStringSuperSpecial/4k       90466      91283       7778
 
-#include "net/instaweb/util/public/benchmark.h"
-#include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/benchmark.h"
+#include "pagespeed/kernel/base/string.h"
 #include "webutil/css/tostring.h"
 
 namespace net_instaweb {
