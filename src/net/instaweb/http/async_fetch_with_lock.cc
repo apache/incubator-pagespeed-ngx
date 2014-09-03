@@ -21,13 +21,13 @@
 #include "base/logging.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/hasher.h"
-#include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/named_lock_manager.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/hasher.h"
+#include "pagespeed/kernel/base/message_handler.h"
+#include "pagespeed/kernel/base/named_lock_manager.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/timer.h"
 
 namespace net_instaweb {
 

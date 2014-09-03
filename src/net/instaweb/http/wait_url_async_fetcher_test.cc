@@ -21,12 +21,12 @@
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/request_context.h"
-#include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/google_message_handler.h"
-#include "net/instaweb/util/public/platform.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/thread_system.h"
+#include "pagespeed/kernel/base/google_message_handler.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/http/response_headers.h"
+#include "pagespeed/kernel/util/platform.h"
 
 namespace net_instaweb {
 

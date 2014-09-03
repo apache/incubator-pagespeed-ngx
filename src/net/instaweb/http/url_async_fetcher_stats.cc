@@ -20,11 +20,11 @@
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/async_fetch.h"
-#include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/util/public/statistics.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/base/statistics.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/timer.h"
+#include "pagespeed/kernel/http/response_headers.h"
 
 namespace {
 

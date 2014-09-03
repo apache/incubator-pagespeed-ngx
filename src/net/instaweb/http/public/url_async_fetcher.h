@@ -19,8 +19,8 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_URL_ASYNC_FETCHER_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_URL_ASYNC_FETCHER_H_
 
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
 

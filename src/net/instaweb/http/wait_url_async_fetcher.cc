@@ -21,11 +21,11 @@
 #include <vector>
 
 #include "base/logging.h"
-#include "net/instaweb/util/public/abstract_mutex.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/stl_util.h"
-#include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/abstract_mutex.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/stl_util.h"
+#include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
 

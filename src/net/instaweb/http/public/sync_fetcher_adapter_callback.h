@@ -20,12 +20,12 @@
 
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/request_context.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/thread_system.h"
-#include "net/instaweb/util/public/writer.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/thread_annotations.h"
+#include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/base/writer.h"
 
 namespace net_instaweb {
 

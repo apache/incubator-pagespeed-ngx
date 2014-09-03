@@ -18,11 +18,11 @@
 
 // Unit tests for remove cookie operations.
 
-#include "net/instaweb/http/public/meta_data.h"
-#include "net/instaweb/http/public/request_headers.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/http/http_names.h"
+#include "pagespeed/kernel/http/request_headers.h"
 
 namespace net_instaweb {
 

@@ -25,13 +25,13 @@
 #include "base/logging.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/request_context.h"
-#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/http/http_names.h"
+#include "pagespeed/kernel/http/request_headers.h"
 
 namespace net_instaweb {
 

@@ -19,13 +19,13 @@
 // Unit-test the lru cache
 
 #include "net/instaweb/http/public/http_value.h"
-#include "net/instaweb/http/public/meta_data.h"
-#include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/google_message_handler.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/shared_string.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/google_message_handler.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/shared_string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/http/http_names.h"
+#include "pagespeed/kernel/http/response_headers.h"
 
 namespace {
 const int kMaxSize = 100;

@@ -22,15 +22,15 @@
 #include "net/instaweb/http/public/reflecting_test_fetcher.h"
 
 #include "net/instaweb/http/public/mock_callback.h"
-#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/request_context.h"
-#include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/util/public/google_message_handler.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/platform.h"
-#include "net/instaweb/util/public/scoped_ptr.h"            // for scoped_ptr
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/thread_system.h"
+#include "pagespeed/kernel/base/google_message_handler.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/http/request_headers.h"
+#include "pagespeed/kernel/http/response_headers.h"
+#include "pagespeed/kernel/util/platform.h"
 
 namespace net_instaweb {
 

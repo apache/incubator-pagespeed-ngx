@@ -24,12 +24,12 @@
 
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/request_context.h"
-#include "net/instaweb/http/public/request_headers.h"
-#include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/writer.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/writer.h"
+#include "pagespeed/kernel/http/request_headers.h"
+#include "pagespeed/kernel/http/response_headers.h"
 
 
 namespace net_instaweb {

@@ -20,14 +20,14 @@
 #include "base/logging.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/request_context.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/mem_file_system.h"
-#include "net/instaweb/util/public/mock_scheduler.h"
-#include "net/instaweb/util/public/mock_timer.h"
-#include "net/instaweb/util/public/platform.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/thread_system.h"
 #include "pagespeed/kernel/base/google_message_handler.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/mem_file_system.h"
+#include "pagespeed/kernel/base/mock_timer.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/thread/mock_scheduler.h"
+#include "pagespeed/kernel/util/platform.h"
 
 namespace net_instaweb {
 

@@ -20,10 +20,10 @@
 #define NET_INSTAWEB_HTTP_PUBLIC_INFLATING_FETCH_H_
 
 #include "net/instaweb/http/public/async_fetch.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/gzip_inflater.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/util/gzip_inflater.h"
 
 namespace net_instaweb {
 

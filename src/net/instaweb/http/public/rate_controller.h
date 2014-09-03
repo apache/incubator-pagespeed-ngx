@@ -21,11 +21,11 @@
 
 #include <map>
 
-#include "net/instaweb/util/public/atomic_bool.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/ref_counted_ptr.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/atomic_bool.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/ref_counted_ptr.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
 

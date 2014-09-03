@@ -19,11 +19,11 @@
 #include "net/instaweb/http/public/inflating_fetch.h"
 
 #include "base/logging.h"
-#include "net/instaweb/http/public/request_headers.h"
-#include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/http/public/meta_data.h"
-#include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/stack_buffer.h"
+#include "pagespeed/kernel/base/message_handler.h"
+#include "pagespeed/kernel/base/stack_buffer.h"
+#include "pagespeed/kernel/http/http_names.h"
+#include "pagespeed/kernel/http/request_headers.h"
+#include "pagespeed/kernel/http/response_headers.h"
 
 namespace net_instaweb {
 

@@ -22,13 +22,13 @@
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/fetcher_test.h"
 #include "net/instaweb/http/public/wait_url_async_fetcher.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/mock_timer.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mem_file_system.h"
+#include "pagespeed/kernel/base/mock_timer.h"
 #include "pagespeed/kernel/base/null_mutex.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 

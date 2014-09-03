@@ -24,11 +24,11 @@
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/request_context.h"
-#include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/statistics.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/statistics.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/timer.h"
+#include "pagespeed/kernel/http/response_headers.h"
 
 namespace net_instaweb {
 

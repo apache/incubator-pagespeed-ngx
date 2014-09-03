@@ -19,17 +19,17 @@
 #include "net/instaweb/htmlparse/public/file_driver.h"
 
 #include "net/instaweb/htmlparse/public/file_statistics_log.h"
-#include "net/instaweb/htmlparse/public/html_parse.h"
-#include "net/instaweb/htmlparse/public/html_writer_filter.h"
 #include "net/instaweb/htmlparse/public/logging_html_filter.h"
 #include "pagespeed/kernel/base/basictypes.h"
-#include "net/instaweb/util/public/chunking_writer.h"
+#include "pagespeed/kernel/base/chunking_writer.h"
 #include "pagespeed/kernel/base/file_system.h"
-#include "net/instaweb/util/public/file_writer.h"
+#include "pagespeed/kernel/base/file_writer.h"
 #include "pagespeed/kernel/base/stack_buffer.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/writer.h"
+#include "pagespeed/kernel/html/html_parse.h"
+#include "pagespeed/kernel/html/html_writer_filter.h"
 #include "pagespeed/kernel/http/content_type.h"
 
 namespace net_instaweb {

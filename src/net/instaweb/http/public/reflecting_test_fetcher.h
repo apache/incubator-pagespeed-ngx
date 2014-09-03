@@ -23,12 +23,12 @@
 #define NET_INSTAWEB_HTTP_PUBLIC_REFLECTING_TEST_FETCHER_H_
 
 #include "net/instaweb/http/public/async_fetch.h"
-#include "net/instaweb/http/public/meta_data.h"
-#include "net/instaweb/http/public/request_headers.h"
-#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/http/http_names.h"
+#include "pagespeed/kernel/http/request_headers.h"
+#include "pagespeed/kernel/http/response_headers.h"
 
 namespace net_instaweb {
 

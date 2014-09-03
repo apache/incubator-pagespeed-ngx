@@ -18,12 +18,12 @@
 #include "net/instaweb/http/public/sync_fetcher_adapter_callback.h"
 
 #include "base/logging.h"
-#include "net/instaweb/util/public/abstract_mutex.h"
-#include "net/instaweb/util/public/condvar.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/thread_system.h"
-#include "net/instaweb/util/public/writer.h"
+#include "pagespeed/kernel/base/abstract_mutex.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/condvar.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/base/writer.h"
 
 namespace net_instaweb {
 

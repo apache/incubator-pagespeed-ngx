@@ -17,8 +17,8 @@
 // Author: jmaessen@google.com (Jan Maessen)
 
 #include "net/instaweb/htmlparse/public/logging_html_filter.h"
-#include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/statistics_log.h"
+#include "pagespeed/kernel/html/html_element.h"
 
 // TODO(jmarantz): convert to Statistics interface
 

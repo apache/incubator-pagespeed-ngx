@@ -22,9 +22,9 @@
 #include <cstddef>
 
 #include "net/instaweb/http/public/http_cache.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {

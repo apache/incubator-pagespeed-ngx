@@ -22,11 +22,11 @@
 #include <map>
 
 #include "net/instaweb/http/public/url_async_fetcher.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/file_system.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/thread_annotations.h"
 
 namespace net_instaweb {

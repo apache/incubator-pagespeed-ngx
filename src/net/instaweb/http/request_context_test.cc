@@ -19,8 +19,8 @@
 #include "testing/base/public/gunit.h"
 
 #include "net/instaweb/http/public/request_context.h"
-#include "net/instaweb/util/public/mock_timer.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/mock_timer.h"
 #include "pagespeed/kernel/base/null_mutex.h"
 
 namespace net_instaweb {

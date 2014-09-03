@@ -21,18 +21,18 @@
 #include "net/instaweb/http/public/inflating_fetch.h"
 
 #include "net/instaweb/http/public/async_fetch.h"  // for StringAsyncFetch
-#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_context.h"
-#include "net/instaweb/http/public/request_headers.h"
-#include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/google_message_handler.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/platform.h"
-#include "net/instaweb/util/public/scoped_ptr.h"            // for scoped_ptr
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/thread_system.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/google_message_handler.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/http/http_names.h"
+#include "pagespeed/kernel/http/request_headers.h"
+#include "pagespeed/kernel/http/response_headers.h"
+#include "pagespeed/kernel/util/platform.h"
 
 namespace {
 

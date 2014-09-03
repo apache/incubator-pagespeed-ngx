@@ -20,11 +20,11 @@
 #define NET_INSTAWEB_HTTP_PUBLIC_HTTP_RESPONSE_PARSER_H_
 
 #include <cstdio>                      // for FILE
-#include "net/instaweb/util/public/basictypes.h"
+#include "pagespeed/kernel/base/basictypes.h"
 // TODO(sligocki): Find a way to forward declare FileSystem::InputFile.
-#include "net/instaweb/http/public/response_headers_parser.h"
-#include "net/instaweb/util/public/file_system.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/file_system.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/http/response_headers_parser.h"
 
 namespace net_instaweb {
 

@@ -23,8 +23,8 @@
 
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/request_context.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/gtest.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/gtest.h"
 
 namespace net_instaweb {
 

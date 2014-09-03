@@ -4,14 +4,14 @@
 #include "net/instaweb/http/public/http_response_parser.h"
 
 #include "net/instaweb/http/public/fetcher_test.h"
-#include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/util/public/google_message_handler.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/mock_timer.h"
-#include "net/instaweb/util/public/stdio_file_system.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_writer.h"
+#include "pagespeed/kernel/base/google_message_handler.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/mock_timer.h"
 #include "pagespeed/kernel/base/null_mutex.h"
+#include "pagespeed/kernel/base/stdio_file_system.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_writer.h"
+#include "pagespeed/kernel/http/response_headers.h"
 
 namespace net_instaweb {
 

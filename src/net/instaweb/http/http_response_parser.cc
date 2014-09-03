@@ -19,11 +19,11 @@
 #include "net/instaweb/http/public/http_response_parser.h"
 
 #include <cstdio>
-#include "net/instaweb/http/public/response_headers_parser.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/file_system.h"
-#include "net/instaweb/util/public/writer.h"
-#include "net/instaweb/util/stack_buffer.h"
+#include "pagespeed/kernel/base/file_system.h"
+#include "pagespeed/kernel/base/stack_buffer.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/writer.h"
+#include "pagespeed/kernel/http/response_headers_parser.h"
 
 namespace net_instaweb {
 

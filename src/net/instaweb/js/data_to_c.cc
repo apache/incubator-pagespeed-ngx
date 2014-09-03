@@ -4,13 +4,13 @@
 #include <algorithm>
 #include <cstdlib>
 
-#include "net/instaweb/util/public/gflags.h"
-#include "net/instaweb/util/public/null_message_handler.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/stdio_file_system.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/base/null_message_handler.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/stdio_file_system.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/timer.h"
+#include "pagespeed/kernel/util/gflags.h"
 
 using namespace google;  // NOLINT
 

@@ -22,8 +22,6 @@
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/request_context.h"
-#include "net/instaweb/http/public/request_headers.h"
-#include "net/instaweb/http/public/response_headers.h"
 #include "pagespeed/kernel/base/google_message_handler.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mock_timer.h"
@@ -35,6 +33,8 @@
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/http_names.h"
+#include "pagespeed/kernel/http/request_headers.h"
+#include "pagespeed/kernel/http/response_headers.h"
 #include "pagespeed/kernel/util/platform.h"
 
 namespace net_instaweb {
