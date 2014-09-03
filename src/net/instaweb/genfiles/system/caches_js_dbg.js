@@ -32,15 +32,20 @@ goog.module = function(name) {
   }
   goog.moduleLoaderState_.moduleName = name;
 };
+goog.module.get = function(name) {
+  return goog.module.getInternal_(name);
+};
+goog.module.getInternal_ = function() {
+};
 goog.moduleLoaderState_ = null;
 goog.isInModuleLoader_ = function() {
   return null != goog.moduleLoaderState_;
 };
-goog.module.exportTestMethods = function() {
+goog.module.declareTestMethods = function() {
   if (!goog.isInModuleLoader_()) {
-    throw Error("goog.module.exportTestMethods must be called from within a goog.module");
+    throw Error("goog.module.declareTestMethods must be called from within a goog.module");
   }
-  goog.moduleLoaderState_.exportTestMethods = !0;
+  goog.moduleLoaderState_.declareTestMethods = !0;
 };
 goog.setTestOnly = function(opt_message) {
   if (!goog.DEBUG) {
@@ -102,6 +107,7 @@ goog.addSingletonGetter = function(ctor) {
 };
 goog.instantiatedSingletons_ = [];
 goog.LOAD_MODULE_USING_EVAL = !0;
+goog.SEAL_MODULE_EXPORTS = goog.DEBUG;
 goog.loadedModules_ = {};
 goog.DEPENDENCIES_ENABLED = !1;
 goog.DEPENDENCIES_ENABLED && (goog.included_ = {}, goog.dependencies_ = {pathIsModule:{}, nameToPath:{}, requires:{}, visited:{}, written:{}}, goog.inHtmlDocument_ = function() {
@@ -153,7 +159,7 @@ goog.DEPENDENCIES_ENABLED && (goog.included_ = {}, goog.dependencies_ = {pathIsM
   }
 }, goog.loadModule = function(moduleDef) {
   try {
-    goog.moduleLoaderState_ = {moduleName:void 0, exportTestMethods:!1};
+    goog.moduleLoaderState_ = {moduleName:void 0, declareTestMethods:!1};
     var exports;
     if (goog.isFunction(moduleDef)) {
       exports = moduleDef.call(goog.global, {});
@@ -164,13 +170,13 @@ goog.DEPENDENCIES_ENABLED && (goog.included_ = {}, goog.dependencies_ = {pathIsM
         throw Error("Invalid module definition");
       }
     }
-    Object.seal && Object.seal(exports);
+    goog.SEAL_MODULE_EXPORTS && Object.seal && Object.seal(exports);
     var moduleName = goog.moduleLoaderState_.moduleName;
     if (!goog.isString(moduleName) || !moduleName) {
       throw Error('Invalid module name "' + moduleName + '"');
     }
     goog.loadedModules_[moduleName] = exports;
-    if (goog.moduleLoaderState_.exportTestMethods) {
+    if (goog.moduleLoaderState_.declareTestMethods) {
       for (var entry in exports) {
         if (0 === entry.indexOf("test", 0) || "tearDown" == entry || "setup" == entry) {
           goog.global[entry] = exports[entry];
@@ -507,6 +513,7 @@ goog.defineClass.createSealingConstructor_ = function(ctr, superClass) {
     }
     var wrappedCtr = function() {
       var instance = ctr.apply(this, arguments) || this;
+      instance[goog.UID_PROPERTY_] = instance[goog.UID_PROPERTY_];
       this.constructor === wrappedCtr && Object.seal(instance);
       return instance;
     };
@@ -1294,11 +1301,16 @@ goog.array.stableSort = function(arr, opt_compareFn) {
     arr[i] = arr[i].value;
   }
 };
-goog.array.sortObjectsByKey = function(arr, key, opt_compareFn) {
-  var compare = opt_compareFn || goog.array.defaultCompare;
+goog.array.sortByKey = function(arr, keyFn, opt_compareFn) {
+  var keyCompareFn = opt_compareFn || goog.array.defaultCompare;
   goog.array.sort(arr, function(a, b) {
-    return compare(a[key], b[key]);
+    return keyCompareFn(keyFn(a), keyFn(b));
   });
+};
+goog.array.sortObjectsByKey = function(arr, key, opt_compareFn) {
+  goog.array.sortByKey(arr, function(obj) {
+    return obj[key];
+  }, opt_compareFn);
 };
 goog.array.isSorted = function(arr, opt_compareFn, opt_strict) {
   for (var compare = opt_compareFn || goog.array.defaultCompare, i = 1;i < arr.length;i++) {
@@ -5125,13 +5137,14 @@ var pagespeed = {Caches:function(opt_xhr) {
   this.sortPurgeSetDescendingTime_ = !1;
   var modeElement = document.createElement("table");
   modeElement.id = "nav-bar";
+  modeElement.className = "pagespeed-sub-tabs";
   modeElement.innerHTML = '<tr><td><a id="' + pagespeed.Caches.DisplayMode.METADATA_CACHE + '" href="javascript:void(0);">Show Metadata Cache</a> - </td><td><a id="' + pagespeed.Caches.DisplayMode.CACHE_STRUCTURE + '" href="javascript:void(0);">Show Cache Structure</a> - </td><td><a id="' + pagespeed.Caches.DisplayMode.PHYSICAL_CACHE + '" href="javascript:void(0);">Physical Caches</a> - </td><td><a id="' + pagespeed.Caches.DisplayMode.PURGE_CACHE + '" href="javascript:void(0);">Purge Cache</a></td></tr>';
   document.body.insertBefore(modeElement, document.getElementById(pagespeed.Caches.DisplayDiv.METADATA_CACHE));
   var metadataResult = document.createElement("pre");
   metadataResult.id = pagespeed.Caches.ElementId.METADATA_RESULT;
   metadataResult.className = "pagespeed-caches-result";
   document.getElementById(pagespeed.Caches.DisplayDiv.METADATA_CACHE).appendChild(metadataResult);
-  var purgeResult = document.createElement("pre");
+  var purgeResult = document.createElement("div");
   purgeResult.id = pagespeed.Caches.ElementId.PURGE_RESULT;
   purgeResult.className = "pagespeed-caches-result";
   var purgeElement = document.getElementById(pagespeed.Caches.DisplayDiv.PURGE_CACHE);
@@ -5144,8 +5157,9 @@ pagespeed.Caches.toggleDetail = function(id) {
 goog.exportSymbol("pagespeed.Caches.toggleDetail", pagespeed.Caches.toggleDetail);
 pagespeed.Caches.DisplayMode = {METADATA_CACHE:"show_metadata_mode", CACHE_STRUCTURE:"cache_struct_mode", PHYSICAL_CACHE:"physical_cache_mode", PURGE_CACHE:"purge_cache_mode"};
 pagespeed.Caches.DisplayDiv = {METADATA_CACHE:"show_metadata", CACHE_STRUCTURE:"cache_struct", PHYSICAL_CACHE:"physical_cache", PURGE_CACHE:"purge_cache"};
-pagespeed.Caches.ElementId = {METADATA_TEXT:"metadata_text", METADATA_SUBMIT:"metadata_submit", METADATA_RESULT:"metadata_result", METADATA_CLEAR:"metadata_clear", PURGE_TEXT:"purge_text", PURGE_SUBMIT:"purge_submit", PURGE_RESULT:"purge_result", PURGE_ALL:"purge_all", PURGE_SET:"purge_set", USER_AGENT:"user_agent", SORT:"sort"};
+pagespeed.Caches.ElementId = {METADATA_TEXT:"metadata_text", METADATA_SUBMIT:"metadata_submit", METADATA_RESULT:"metadata_result", METADATA_CLEAR:"metadata_clear", PURGE_TEXT:"purge_text", PURGE_SUBMIT:"purge_submit", PURGE_RESULT:"purge_result", PURGE_ALL:"purge_all", PURGE_GLOBAL:"purge_global", PURGE_TABLE:"purge_table", USER_AGENT:"user_agent", SORT:"sort"};
 pagespeed.Caches.PURGE_SUCCESS_ = "Purge successful";
+pagespeed.Caches.PURGE_NOT_ENABLED_ = "Purging not enabled";
 pagespeed.Caches.prototype.parseLocation = function() {
   var div = location.hash.substr(1);
   "" == div ? this.show(pagespeed.Caches.DisplayDiv.METADATA_CACHE) : goog.object.contains(pagespeed.Caches.DisplayDiv, div) && this.show(div);
@@ -5176,7 +5190,7 @@ pagespeed.Caches.prototype.sendPurgeAllRequest = function() {
   this.xhr_.isActive() || (this.inputIsFrom_ = pagespeed.Caches.ElementId.PURGE_ALL, this.xhr_.send("?purge=*"));
 };
 pagespeed.Caches.prototype.sendPurgeSetRequest = function() {
-  this.xhr_.isActive() || (this.inputIsFrom_ = pagespeed.Caches.ElementId.PURGE_SET, this.xhr_.send("?new_set="));
+  this.xhr_.isActive() || (this.inputIsFrom_ = pagespeed.Caches.ElementId.PURGE_TABLE, this.xhr_.send("?new_set="));
 };
 pagespeed.Caches.prototype.sendMetadataRequest = function() {
   if (!this.xhr_.isActive()) {
@@ -5190,37 +5204,56 @@ pagespeed.Caches.prototype.toggleSorting = function() {
   this.sendPurgeSetRequest();
 };
 pagespeed.Caches.prototype.updatePurgeSet = function(text) {
-  var element = document.getElementById(pagespeed.Caches.ElementId.PURGE_SET), messages = text.split("\n"), globalTimeVal = messages.shift(), globalTime = document.createElement("table"), row = globalTime.insertRow(0), cell = row.insertCell(0);
-  cell.textContent = "Everything before this time stamp is invalid:";
-  cell = row.insertCell(1);
-  cell.textContent = globalTimeVal.split("@")[1];
-  element.innerHTML = "";
-  element.appendChild(globalTime);
-  for (var table = document.createElement("table"), direction = this.sortPurgeSetDescendingTime_ ? -1 : 1, i = this.sortPurgeSetDescendingTime_ ? messages.length - 1 : 0;this.sortPurgeSetDescendingTime_ && 0 <= i || !this.sortPurgeSetDescendingTime_ && i < messages.length;i += direction) {
-    var index = messages[i].lastIndexOf("@"), url = messages[i].substring(0, index), time = messages[i].substring(index + 1), tableRow = table.insertRow(-1);
-    tableRow.insertCell(0).textContent = url;
-    tableRow.insertCell(1).textContent = time;
+  var messages = text.split("\n"), globalTimeVal = messages.shift();
+  document.getElementById(pagespeed.Caches.ElementId.PURGE_GLOBAL).textContent = "Everything before this time stamp is invalid: " + globalTimeVal.split("@")[1];
+  var tableDiv = document.getElementById(pagespeed.Caches.ElementId.PURGE_TABLE);
+  tableDiv.innerHTML = "";
+  if (0 < messages.length) {
+    tableDiv.appendChild(document.createElement("hr"));
+    var table = document.createElement("table");
+    this.sortPurgeSetDescendingTime_ && messages.reverse();
+    for (var i = 0;i < messages.length;++i) {
+      var index = messages[i].lastIndexOf("@"), url = messages[i].substring(0, index), time = messages[i].substring(index + 1), tableRow = table.insertRow(-1);
+      tableRow.insertCell(0).textContent = time;
+      var code = document.createElement("code");
+      code.className = "pagespeed-caches-purge-url";
+      code.textContent = url;
+      tableRow.insertCell(1).appendChild(code);
+    }
+    var header = table.createTHead().insertRow(0), cell = header.insertCell(0);
+    cell.className = "pagespeed-caches-date-column";
+    if (1 == messages.length) {
+      cell.textContent = "Invalidation Time";
+    } else {
+      var checkBox = document.createElement("input");
+      checkBox.setAttribute("type", "checkbox");
+      checkBox.id = pagespeed.Caches.ElementId.SORT;
+      checkBox.checked = this.sortPurgeSetDescendingTime_ ? !0 : !1;
+      checkBox.title = "Change sort order.";
+      cell.textContent = this.sortPurgeSetDescendingTime_ ? "Invalidation Time (Descending)" : "Invalidation Time (Ascending)";
+      cell.appendChild(checkBox);
+      goog.events.listen(checkBox, "change", goog.bind(this.toggleSorting, this));
+    }
+    cell = header.insertCell(1);
+    cell.textContent = "URL";
+    cell.className = "pagespeed-stats-url-column";
+    tableDiv.appendChild(table);
   }
-  var header = table.createTHead().insertRow(0), cell = header.insertCell(0);
-  cell.textContent = "URL";
-  cell.className = "pagespeed-caches-first-column";
-  var checkBox = document.createElement("input");
-  checkBox.setAttribute("type", "checkbox");
-  checkBox.id = pagespeed.Caches.ElementId.SORT;
-  checkBox.checked = this.sortPurgeSetDescendingTime_ ? !0 : !1;
-  checkBox.title = "Change sort order.";
-  cell = header.insertCell(1);
-  cell.textContent = this.sortPurgeSetDescendingTime_ ? "Invalidation Time (Descending)" : "Invalidation Time (Ascending)";
-  cell.appendChild(checkBox);
-  cell.className = "pagespeed-stats-third-column";
-  element.appendChild(table);
-  goog.events.listen(document.getElementById(pagespeed.Caches.ElementId.SORT), "change", goog.bind(this.toggleSorting, this));
 };
 pagespeed.Caches.prototype.showResult = function() {
   if (this.xhr_.isSuccess()) {
     var text = this.xhr_.getResponseText();
-    this.inputIsFrom_ == pagespeed.Caches.ElementId.METADATA_RESULT ? document.getElementById(this.inputIsFrom_).textContent = text : this.inputIsFrom_ == pagespeed.Caches.ElementId.PURGE_SET ? this.updatePurgeSet(text) : (window.setTimeout(goog.bind(this.sendPurgeSetRequest, this), 0), text == pagespeed.Caches.PURGE_SUCCESS_ && this.inputIsFrom_ == pagespeed.Caches.ElementId.PURGE_TEXT && (text = "Added to Purge Set"), document.getElementById(pagespeed.Caches.ElementId.PURGE_RESULT).textContent = 
-    text);
+    if (this.inputIsFrom_ == pagespeed.Caches.ElementId.METADATA_RESULT) {
+      document.getElementById(this.inputIsFrom_).textContent = text;
+    } else {
+      if (this.inputIsFrom_ == pagespeed.Caches.ElementId.PURGE_TABLE) {
+        this.updatePurgeSet(text);
+      } else {
+        window.setTimeout(goog.bind(this.sendPurgeSetRequest, this), 0);
+        var purgeResult = document.getElementById(pagespeed.Caches.ElementId.PURGE_RESULT);
+        text == pagespeed.Caches.PURGE_SUCCESS_ && this.inputIsFrom_ == pagespeed.Caches.ElementId.PURGE_TEXT ? purgeResult.textContent = "Added to Purge Set" : -1 != text.indexOf(pagespeed.Caches.PURGE_NOT_ENABLED_) ? purgeResult.innerHTML = text : purgeResult.textContent = text;
+      }
+    }
   } else {
     console.log(this.xhr_.getLastError());
   }

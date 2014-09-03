@@ -32,15 +32,20 @@ goog.module = function(name) {
   }
   goog.moduleLoaderState_.moduleName = name;
 };
+goog.module.get = function(name) {
+  return goog.module.getInternal_(name);
+};
+goog.module.getInternal_ = function() {
+};
 goog.moduleLoaderState_ = null;
 goog.isInModuleLoader_ = function() {
   return null != goog.moduleLoaderState_;
 };
-goog.module.exportTestMethods = function() {
+goog.module.declareTestMethods = function() {
   if (!goog.isInModuleLoader_()) {
-    throw Error("goog.module.exportTestMethods must be called from within a goog.module");
+    throw Error("goog.module.declareTestMethods must be called from within a goog.module");
   }
-  goog.moduleLoaderState_.exportTestMethods = !0;
+  goog.moduleLoaderState_.declareTestMethods = !0;
 };
 goog.setTestOnly = function(opt_message) {
   if (!goog.DEBUG) {
@@ -102,6 +107,7 @@ goog.addSingletonGetter = function(ctor) {
 };
 goog.instantiatedSingletons_ = [];
 goog.LOAD_MODULE_USING_EVAL = !0;
+goog.SEAL_MODULE_EXPORTS = goog.DEBUG;
 goog.loadedModules_ = {};
 goog.DEPENDENCIES_ENABLED = !1;
 goog.DEPENDENCIES_ENABLED && (goog.included_ = {}, goog.dependencies_ = {pathIsModule:{}, nameToPath:{}, requires:{}, visited:{}, written:{}}, goog.inHtmlDocument_ = function() {
@@ -153,7 +159,7 @@ goog.DEPENDENCIES_ENABLED && (goog.included_ = {}, goog.dependencies_ = {pathIsM
   }
 }, goog.loadModule = function(moduleDef) {
   try {
-    goog.moduleLoaderState_ = {moduleName:void 0, exportTestMethods:!1};
+    goog.moduleLoaderState_ = {moduleName:void 0, declareTestMethods:!1};
     var exports;
     if (goog.isFunction(moduleDef)) {
       exports = moduleDef.call(goog.global, {});
@@ -164,13 +170,13 @@ goog.DEPENDENCIES_ENABLED && (goog.included_ = {}, goog.dependencies_ = {pathIsM
         throw Error("Invalid module definition");
       }
     }
-    Object.seal && Object.seal(exports);
+    goog.SEAL_MODULE_EXPORTS && Object.seal && Object.seal(exports);
     var moduleName = goog.moduleLoaderState_.moduleName;
     if (!goog.isString(moduleName) || !moduleName) {
       throw Error('Invalid module name "' + moduleName + '"');
     }
     goog.loadedModules_[moduleName] = exports;
-    if (goog.moduleLoaderState_.exportTestMethods) {
+    if (goog.moduleLoaderState_.declareTestMethods) {
       for (var entry in exports) {
         if (0 === entry.indexOf("test", 0) || "tearDown" == entry || "setup" == entry) {
           goog.global[entry] = exports[entry];
@@ -507,6 +513,7 @@ goog.defineClass.createSealingConstructor_ = function(ctr, superClass) {
     }
     var wrappedCtr = function() {
       var instance = ctr.apply(this, arguments) || this;
+      instance[goog.UID_PROPERTY_] = instance[goog.UID_PROPERTY_];
       this.constructor === wrappedCtr && Object.seal(instance);
       return instance;
     };
@@ -1250,11 +1257,16 @@ goog.array.stableSort = function(arr, opt_compareFn) {
     arr[i] = arr[i].value;
   }
 };
-goog.array.sortObjectsByKey = function(arr, key, opt_compareFn) {
-  var compare = opt_compareFn || goog.array.defaultCompare;
+goog.array.sortByKey = function(arr, keyFn, opt_compareFn) {
+  var keyCompareFn = opt_compareFn || goog.array.defaultCompare;
   goog.array.sort(arr, function(a, b) {
-    return compare(a[key], b[key]);
+    return keyCompareFn(keyFn(a), keyFn(b));
   });
+};
+goog.array.sortObjectsByKey = function(arr, key, opt_compareFn) {
+  goog.array.sortByKey(arr, function(obj) {
+    return obj[key];
+  }, opt_compareFn);
 };
 goog.array.isSorted = function(arr, opt_compareFn, opt_strict) {
   for (var compare = opt_compareFn || goog.array.defaultCompare, i = 1;i < arr.length;i++) {
