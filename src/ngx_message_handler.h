@@ -25,10 +25,10 @@ extern "C" {
 #include <cstdarg>
 
 #include "net/instaweb/system/public/system_message_handler.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/message_handler.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 

@@ -57,11 +57,11 @@ ngx_feature="psol"
 ngx_feature_name=""
 ngx_feature_run=no
 ngx_feature_incs="
-#include \"net/instaweb/htmlparse/public/html_parse.h\"
-#include \"net/instaweb/htmlparse/public/html_writer_filter.h\"
-#include \"net/instaweb/util/public/string.h\"
-#include \"net/instaweb/util/public/string_writer.h\"
-#include \"net/instaweb/util/public/null_message_handler.h\"
+#include \"pagespeed/kernel/base/string.h\"
+#include \"pagespeed/kernel/base/string_writer.h\"
+#include \"pagespeed/kernel/base/null_message_handler.h\"
+#include \"pagespeed/kernel/html/html_parse.h\"
+#include \"pagespeed/kernel/html/html_writer_filter.h\"
 "
 
 os_name='unknown_os'

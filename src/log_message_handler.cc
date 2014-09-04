@@ -29,7 +29,7 @@
 #include "base/debug/stack_trace.h"
 #include "base/logging.h"
 #include "net/instaweb/public/version.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 // Make sure we don't attempt to use LOG macros here, since doing so
 // would cause us to go into an infinite log loop.

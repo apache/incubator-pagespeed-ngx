@@ -31,8 +31,8 @@ extern "C" {
 #include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/system/public/system_caches.h"
-#include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/base/message_handler.h"
+#include "pagespeed/kernel/base/timer.h"
 
 namespace net_instaweb {
 

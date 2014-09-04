@@ -21,10 +21,10 @@
 
 #include "ngx_pagespeed.h"
 
-#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
-#include "net/instaweb/util/public/google_message_handler.h"
-#include "net/instaweb/util/public/message_handler.h"
+#include "pagespeed/kernel/base/google_message_handler.h"
+#include "pagespeed/kernel/base/message_handler.h"
+#include "pagespeed/kernel/http/response_headers.h"
 
 namespace net_instaweb {
 

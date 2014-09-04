@@ -34,10 +34,10 @@ extern "C" {
 
 #include <vector>
 #include "net/instaweb/http/public/url_async_fetcher.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/pool.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/thread_system.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/pool.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/thread_system.h"
 
 
 namespace net_instaweb {
