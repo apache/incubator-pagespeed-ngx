@@ -29,31 +29,32 @@ extern "C" {
 }
 
 #include "ngx_fetch.h"
-#include "net/instaweb/util/public/basictypes.h"
+
 #include "base/logging.h"
 
 #include <algorithm>
 #include <string>
 #include <vector>
 
-#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/inflating_fetch.h"
-#include "net/instaweb/http/public/request_headers.h"
-#include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/http/public/response_headers_parser.h"
 #include "net/instaweb/public/version.h"
 #include "net/instaweb/public/global_constants.h"
-#include "net/instaweb/util/public/condvar.h"
-#include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/pool.h"
-#include "net/instaweb/util/public/pool_element.h"
-#include "net/instaweb/util/public/statistics.h"
-#include "net/instaweb/util/public/string_writer.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/thread_system.h"
-#include "net/instaweb/util/public/timer.h"
-#include "net/instaweb/util/public/writer.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/condvar.h"
+#include "pagespeed/kernel/base/message_handler.h"
+#include "pagespeed/kernel/base/pool.h"
+#include "pagespeed/kernel/base/pool_element.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/statistics.h"
+#include "pagespeed/kernel/base/string_writer.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/base/timer.h"
+#include "pagespeed/kernel/base/writer.h"
+#include "pagespeed/kernel/http/request_headers.h"
+#include "pagespeed/kernel/http/response_headers.h"
+#include "pagespeed/kernel/http/response_headers_parser.h"
 
 namespace net_instaweb {
   NgxFetch::NgxFetch(const GoogleString& url,

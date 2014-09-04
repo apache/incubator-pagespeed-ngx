@@ -48,8 +48,8 @@ extern "C" {
 #include "ngx_server_context.h"
 
 #include "net/instaweb/http/public/async_fetch.h"
-#include "net/instaweb/http/public/headers.h"
-#include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/http/headers.h"
 
 namespace net_instaweb {
 

@@ -29,8 +29,8 @@ extern "C" {
 #include <set>
 
 #include "net/instaweb/system/public/system_rewrite_driver_factory.h"
-#include "net/instaweb/util/public/md5_hasher.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
+#include "pagespeed/kernel/base/md5_hasher.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
 
 // TODO(oschaaf): We should reparent ApacheRewriteDriverFactory and
 // NgxRewriteDriverFactory to a new class OriginRewriteDriverFactory and factor

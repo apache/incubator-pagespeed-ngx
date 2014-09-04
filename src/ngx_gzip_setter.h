@@ -60,7 +60,7 @@ extern "C" {
 
 #include "ngx_pagespeed.h"
 
-#include "net/instaweb/util/public/basictypes.h"
+#include "pagespeed/kernel/base/basictypes.h"
 
 namespace net_instaweb {
 

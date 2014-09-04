@@ -18,13 +18,13 @@
 
 #include <signal.h>
 
-#include "net/instaweb/util/public/abstract_mutex.h"
-#include "net/instaweb/util/public/debug.h"
-#include "net/instaweb/util/public/shared_circular_buffer.h"
-#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/public/version.h"
+#include "pagespeed/kernel/base/abstract_mutex.h"
+#include "pagespeed/kernel/base/debug.h"
 #include "pagespeed/kernel/base/posix_timer.h"
+#include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/time_util.h"
+#include "pagespeed/kernel/sharedmem/shared_circular_buffer.h"
 
 namespace {
 

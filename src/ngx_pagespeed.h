@@ -34,8 +34,8 @@ extern "C" {
 }
 
 #include "base/logging.h"
-#include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/http/response_headers.h"
 
 namespace net_instaweb {
 
