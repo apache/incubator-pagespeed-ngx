@@ -23,7 +23,6 @@
 
 #include "net/instaweb/rewriter/public/image.h"
 
-#include "net/instaweb/rewriter/image_types.pb.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
@@ -32,6 +31,7 @@
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/stdio_file_system.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/http/image_types.pb.h"
 
 namespace net_instaweb {
 

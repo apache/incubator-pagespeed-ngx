@@ -90,7 +90,6 @@ BASE_LIBS = \
   net/instaweb/libinstaweb_graphs_css_data2c.a \
   net/instaweb/libinstaweb_graphs_js_data2c.a \
   net/instaweb/libinstaweb_graphs_js_opt_data2c.a \
-  net/instaweb/libinstaweb_image_types_pb.a \
   net/instaweb/libinstaweb_js_defer_data2c.a \
   net/instaweb/libinstaweb_js_defer_opt_data2c.a \
   net/instaweb/libinstaweb_lazyload_images_data2c.a \
@@ -121,7 +120,6 @@ BASE_LIBS = \
   net/instaweb/libinstaweb_statistics_js_opt_data2c.a \
   net/instaweb/libinstaweb_system.a \
   net/instaweb/libinstaweb_util.a \
-  net/instaweb/libinstaweb_util_enums_pb.a \
   net/instaweb/libprocess_context.a \
   net/instaweb/libtest_infrastructure.a \
   pagespeed/libjs_tokenizer.a \
@@ -137,7 +135,9 @@ BASE_LIBS = \
   pagespeed/libpagespeed_http_gperf.a \
   pagespeed/libpagespeed_http_pb.a \
   pagespeed/libpagespeed_image_processing.a \
+  pagespeed/libpagespeed_image_types_pb.a \
   pagespeed/libpagespeed_javascript_gperf.a \
+  pagespeed/libpagespeed_logging_enums_pb.a \
   pagespeed/libpagespeed_sharedmem.a \
   pagespeed/libpagespeed_sharedmem_pb.a \
   pagespeed/libpagespeed_thread.a \

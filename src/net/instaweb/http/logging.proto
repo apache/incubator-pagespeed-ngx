@@ -18,8 +18,8 @@ syntax = "proto2";
 
 option optimize_for = LITE_RUNTIME;
 
-import "net/instaweb/rewriter/image_types.proto";
-import "net/instaweb/util/enums.proto";
+import "pagespeed/kernel/http/image_types.proto";
+import "pagespeed/opt/logging/enums.proto";
 
 package net_instaweb;
 

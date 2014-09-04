@@ -1397,32 +1397,6 @@
       },
     },
     {
-      'target_name': 'instaweb_image_types_pb',
-      'variables': {
-        'instaweb_protoc_subdir': 'net/instaweb/rewriter',
-      },
-      'sources': [
-        'rewriter/image_types.proto',
-        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/image_types.pb.cc',
-      ],
-      'includes': [
-        'protoc.gypi',
-      ],
-    },
-    {
-      'target_name': 'instaweb_util_enums_pb',
-      'variables': {
-        'instaweb_protoc_subdir': 'net/instaweb/util',
-      },
-      'sources': [
-        'util/enums.proto',
-        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/enums.pb.cc',
-      ],
-      'includes': [
-        'protoc.gypi',
-      ],
-    },
-    {
       'target_name': 'instaweb_logging_pb',
       'variables': {
         'instaweb_protoc_subdir': 'net/instaweb/http',
@@ -1432,8 +1406,8 @@
         '<(protoc_out_dir)/<(instaweb_protoc_subdir)/logging.pb.cc',
       ],
       'dependencies': [
-        'instaweb_image_types_pb',
-        'instaweb_util_enums_pb',
+        '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_image_types_pb',
+        '<(DEPTH)/pagespeed/opt.gyp:pagespeed_logging_enums_pb',
       ],
       'includes': [
         'protoc.gypi',

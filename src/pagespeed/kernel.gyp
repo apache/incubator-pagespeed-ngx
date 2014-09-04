@@ -317,6 +317,19 @@
       ],
     },
     {
+      'target_name': 'pagespeed_image_types_pb',
+      'variables': {
+        'instaweb_protoc_subdir': 'pagespeed/kernel/http',
+      },
+      'sources': [
+        'kernel/http/image_types.proto',
+        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/image_types.pb.cc',
+      ],
+      'includes': [
+        '../net/instaweb/protoc.gypi',
+      ],
+    },
+    {
       'target_name': 'jsminify',
       'type': '<(library)',
       'sources': [

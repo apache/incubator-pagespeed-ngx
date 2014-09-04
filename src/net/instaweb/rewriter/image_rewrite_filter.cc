@@ -50,7 +50,6 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
-#include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/message_handler.h"
@@ -68,6 +67,7 @@
 #include "pagespeed/kernel/util/simple_random.h"
 #include "pagespeed/kernel/util/statistics_work_bound.h"
 #include "pagespeed/kernel/util/work_bound.h"
+#include "pagespeed/opt/logging/enums.pb.h"
 
 namespace net_instaweb {
 

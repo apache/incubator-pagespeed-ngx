@@ -50,7 +50,6 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/rewriter/public/usage_data_reporter.h"
-#include "net/instaweb/util/enums.pb.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/charset_util.h"
 #include "pagespeed/kernel/base/hasher.h"
@@ -68,6 +67,7 @@
 #include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/http/response_headers.h"
 #include "pagespeed/kernel/util/simple_random.h"
+#include "pagespeed/opt/logging/enums.pb.h"
 #include "webutil/css/parser.h"
 
 #include "base/at_exit.h"

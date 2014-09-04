@@ -22,7 +22,6 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 
-#include "net/instaweb/rewriter/image_types.pb.h"
 #include "net/instaweb/rewriter/public/image_test_base.h"
 #include "pagespeed/kernel/base/dynamic_annotations.h"  // RunningOnValgrind
 #include "pagespeed/kernel/base/gtest.h"
@@ -30,6 +29,7 @@
 #include "pagespeed/kernel/base/mock_timer.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/http/image_types.pb.h"
 
 namespace net_instaweb {
 namespace {

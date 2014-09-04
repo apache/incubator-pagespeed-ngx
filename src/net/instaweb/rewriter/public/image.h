@@ -21,12 +21,12 @@
 
 #include <cstddef>
 
-#include "net/instaweb/rewriter/image_types.pb.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/http/image_types.pb.h"
 
 namespace net_instaweb {
 class Histogram;

@@ -14,10 +14,14 @@
 
 {
   'variables': {
+  'instaweb_root': '..',
     # Setting chromium_code to 1 turns on extra warnings. Also, if the compiler
     # is whitelisted in our common.gypi, those warnings will get treated as
     # errors.
     'chromium_code': 1,
+    'protoc_out_dir': '<(SHARED_INTERMEDIATE_DIR)/protoc_out/instaweb',
+    'protoc_executable':
+        '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)protoc<(EXECUTABLE_SUFFIX)',
   },
   'targets': [
     {
@@ -34,6 +38,19 @@
       'dependencies': [
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_base_core',
         '<(DEPTH)/third_party/re2/re2.gyp:re2',
+      ],
+    },
+    {
+      'target_name': 'pagespeed_logging_enums_pb',
+      'variables': {
+        'instaweb_protoc_subdir': 'pagespeed/opt/logging',
+      },
+      'sources': [
+        'opt/logging/enums.proto',
+        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/enums.pb.cc',
+      ],
+      'includes': [
+        '../net/instaweb/protoc.gypi',
       ],
     },
   ]

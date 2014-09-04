@@ -25,7 +25,6 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/util/enums.pb.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
@@ -34,6 +33,7 @@
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/http/response_headers.h"
 #include "pagespeed/kernel/http/user_agent_matcher_test_base.h"
+#include "pagespeed/opt/logging/enums.pb.h"
 
 // TODO(bharathbhushan): Test interaction with the flush early flow and related
 // filters.

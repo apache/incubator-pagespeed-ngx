@@ -20,18 +20,17 @@
 #define NET_INSTAWEB_HTTP_PUBLIC_LOG_RECORD_H_
 
 #include <map>
-// TODO(gee): Should this be in public?  Do we really care?
-#include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/http/public/logging_proto.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
 // TODO(gee):  Hmm, this sort of sucks.
 #include "net/instaweb/http/public/request_context.h"  // TimingInfo
-#include "net/instaweb/rewriter/image_types.pb.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest_prod.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/http/image_types.pb.h"
+#include "pagespeed/opt/logging/enums.pb.h"
 
 // If your .cc file needs to use the types declared in logging_proto.h,
 // you must also include net/instaweb/http/public/logging_proto_impl.h
