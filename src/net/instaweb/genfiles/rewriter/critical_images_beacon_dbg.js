@@ -613,7 +613,9 @@ goog.string.normalizeSpaces = function(str) {
 goog.string.collapseBreakingSpaces = function(str) {
   return str.replace(/[\t\r\n ]+/g, " ").replace(/^[\t\r\n ]+|[\t\r\n ]+$/g, "");
 };
-goog.string.trim = function(str) {
+goog.string.trim = goog.TRUSTED_SITE && String.prototype.trim ? function(str) {
+  return str.trim();
+} : function(str) {
   return str.replace(/^[\s\xa0]+|[\s\xa0]+$/g, "");
 };
 goog.string.trimLeft = function(str) {

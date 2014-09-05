@@ -61,11 +61,22 @@
 }
 
 /* Some heuristics to make headers display a bit nicer, usually. */
+[data-mobile-role="header"] * {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
 [data-mobile-role="header"] div {
   float: none !important;
   display: block !important;
   margin: 0 !important;
   padding: 0 !important;
+}
+
+[data-mobile-role="header"] {
+  height: auto !important;
+  padding-left: 1% !important;
+  padding-right: 1% !important;
 }
 
 /* Navigational sections often have a fixed height. */
