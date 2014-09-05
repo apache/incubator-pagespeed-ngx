@@ -23,7 +23,7 @@
 #include "apr_thread_mutex.h"
 
 #include "base/logging.h"
-#include "net/instaweb/util/stack_buffer.h"
+#include "pagespeed/kernel/base/stack_buffer.h"
 
 namespace net_instaweb {
 

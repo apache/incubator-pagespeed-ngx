@@ -23,10 +23,10 @@
 
 #include "net/instaweb/util/public/abstract_property_store_get_callback.h"
 #include "net/instaweb/util/public/property_cache.h"
-#include "net/instaweb/util/public/string.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/callback.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
 

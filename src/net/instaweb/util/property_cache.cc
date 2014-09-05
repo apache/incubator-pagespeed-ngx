@@ -24,13 +24,13 @@
 #include "base/logging.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/util/property_cache.pb.h"
-#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/abstract_property_store_get_callback.h"
-#include "net/instaweb/util/public/cache_stats.h"
 #include "net/instaweb/util/public/property_store.h"
-#include "net/instaweb/util/public/stl_util.h"
-#include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/callback.h"
+#include "pagespeed/kernel/base/stl_util.h"
+#include "pagespeed/kernel/base/timer.h"
+#include "pagespeed/kernel/cache/cache_stats.h"
 
 namespace net_instaweb {
 

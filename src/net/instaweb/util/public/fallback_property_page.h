@@ -24,12 +24,12 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_FALLBACK_PROPERTY_PAGE_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_FALLBACK_PROPERTY_PAGE_H_
 
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/property_cache.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/cache/cache_interface.h"
 
 namespace net_instaweb {
 

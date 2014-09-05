@@ -20,13 +20,13 @@
 
 #include "net/instaweb/util/public/property_store.h"
 
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/mock_timer.h"
-#include "net/instaweb/util/public/platform.h"
-#include "net/instaweb/util/public/simple_stats.h"
-#include "net/instaweb/util/public/thread_system.h"
 #include "pagespeed/kernel/base/callback.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/mock_timer.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/util/platform.h"
+#include "pagespeed/kernel/util/simple_stats.h"
 
 namespace net_instaweb {
 

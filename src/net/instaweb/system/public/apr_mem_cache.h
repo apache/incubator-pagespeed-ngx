@@ -22,12 +22,12 @@
 #include <cstddef>
 #include <vector>
 
-#include "net/instaweb/util/public/atomic_bool.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/cache_interface.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/base/atomic_bool.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/timer.h"
+#include "pagespeed/kernel/cache/cache_interface.h"
 
 struct apr_memcache2_t;
 struct apr_memcache2_server_t;

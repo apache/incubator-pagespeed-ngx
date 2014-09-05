@@ -30,8 +30,8 @@
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/property_store.h"
 #include "pagespeed/kernel/base/basictypes.h"
-#include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 

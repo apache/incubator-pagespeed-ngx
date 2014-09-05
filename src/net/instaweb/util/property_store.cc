@@ -19,10 +19,10 @@
 #include "net/instaweb/util/public/property_store.h"
 
 #include "base/logging.h"
-#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/property_cache.h"
-#include "net/instaweb/util/public/statistics.h"
-#include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/base/abstract_mutex.h"
+#include "pagespeed/kernel/base/statistics.h"
+#include "pagespeed/kernel/base/timer.h"
 
 namespace net_instaweb {
 

@@ -20,12 +20,12 @@
 
 #include "base/logging.h"
 #include "net/instaweb/util/property_cache.pb.h"
-#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/abstract_property_store_get_callback.h"
-#include "net/instaweb/util/public/thread_system.h"
+#include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/callback.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/thread_system.h"
 
 namespace net_instaweb {
 

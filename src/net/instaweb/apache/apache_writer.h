@@ -17,7 +17,7 @@
 #ifndef NET_INSTAWEB_APACHE_APACHE_WRITER_H_
 #define NET_INSTAWEB_APACHE_APACHE_WRITER_H_
 
-#include "net/instaweb/util/public/basictypes.h"
+#include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/writer.h"
 #include "httpd.h"  // NOLINT

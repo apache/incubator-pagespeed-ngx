@@ -19,7 +19,7 @@
 
 #include "apr.h"
 
-#include "net/instaweb/util/public/basictypes.h"
+#include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/file_system.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string_util.h"

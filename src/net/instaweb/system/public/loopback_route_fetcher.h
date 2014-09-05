@@ -22,8 +22,8 @@
 #define NET_INSTAWEB_SYSTEM_PUBLIC_LOOPBACK_ROUTE_FETCHER_H_
 
 #include "net/instaweb/http/public/url_async_fetcher.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/string.h"
 
 struct apr_sockaddr_t;
 

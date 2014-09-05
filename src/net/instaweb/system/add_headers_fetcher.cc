@@ -18,7 +18,7 @@
 
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/http/public/request_headers.h"
+#include "pagespeed/kernel/http/request_headers.h"
 
 namespace net_instaweb {
 

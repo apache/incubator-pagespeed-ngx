@@ -19,11 +19,11 @@
 #ifndef NET_INSTAWEB_SPRITER_MOCK_IMAGE_LIBRARY_INTERFACE_H_
 #define NET_INSTAWEB_SPRITER_MOCK_IMAGE_LIBRARY_INTERFACE_H_
 
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/gmock.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/spriter/image_library_interface.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/gmock.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/string.h"
 
 
 namespace net_instaweb {

@@ -24,8 +24,8 @@
 #ifndef NET_INSTAWEB_SYSTEM_PUBLIC_SYSTEM_THREAD_SYSTEM_H_
 #define NET_INSTAWEB_SYSTEM_PUBLIC_SYSTEM_THREAD_SYSTEM_H_
 
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/pthread_thread_system.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/thread/pthread_thread_system.h"
 
 namespace net_instaweb {
 

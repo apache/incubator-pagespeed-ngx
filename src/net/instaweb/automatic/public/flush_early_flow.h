@@ -19,7 +19,7 @@
 #ifndef NET_INSTAWEB_AUTOMATIC_PUBLIC_FLUSH_EARLY_FLOW_H_
 #define NET_INSTAWEB_AUTOMATIC_PUBLIC_FLUSH_EARLY_FLOW_H_
 
-#include "net/instaweb/util/public/basictypes.h"
+#include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/string_writer.h"

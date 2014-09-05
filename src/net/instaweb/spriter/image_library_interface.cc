@@ -16,7 +16,7 @@
 // Author: skerner@google.com (Sam Kerner)
 
 #include "net/instaweb/spriter/image_library_interface.h"
-#include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
 namespace spriter {

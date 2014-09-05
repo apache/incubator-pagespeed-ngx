@@ -27,14 +27,14 @@
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/system/public/system_rewrite_options.h"
 #include "net/instaweb/system/public/system_server_context.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/platform.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/thread_system.h"
 #include "pagespeed/kernel/base/gmock.h"
+#include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/util/platform.h"
 
 namespace net_instaweb {
 

@@ -18,9 +18,8 @@
 #ifndef NET_INSTAWEB_APACHE_APR_TIMER_H_
 #define NET_INSTAWEB_APACHE_APR_TIMER_H_
 
-#include "net/instaweb/util/public/timer.h"
-
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/timer.h"
 
 using net_instaweb::Timer;
 

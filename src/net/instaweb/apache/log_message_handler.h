@@ -21,7 +21,7 @@
 #include <algorithm>  // for std::min
 #include "apr_pools.h"
 
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 struct server_rec;
 

@@ -16,12 +16,12 @@
 // Author: skerner@google.com (Sam Kerner)
 
 #include "net/instaweb/spriter/image_library_interface.h"
+#include "net/instaweb/spriter/mock_image_library_interface.h"
 #include "net/instaweb/spriter/public/image_spriter.h"
 #include "net/instaweb/spriter/public/image_spriter.pb.h"
-#include "net/instaweb/spriter/mock_image_library_interface.h"
-#include "net/instaweb/util/public/gmock.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
+#include "pagespeed/kernel/base/gmock.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
 
 namespace net_instaweb {
 namespace spriter {

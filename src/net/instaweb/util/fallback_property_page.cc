@@ -19,7 +19,7 @@
 #include "net/instaweb/util/public/fallback_property_page.h"
 
 #include "base/logging.h"
-#include "net/instaweb/util/public/google_url.h"
+#include "pagespeed/kernel/http/google_url.h"
 
 namespace net_instaweb {
 

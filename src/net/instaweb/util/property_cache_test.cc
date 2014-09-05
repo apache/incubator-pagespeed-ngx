@@ -21,19 +21,19 @@
 #include "net/instaweb/util/public/property_cache.h"
 
 #include <cstddef>
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_property_store.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_property_page.h"
-#include "net/instaweb/util/public/mock_timer.h"
-#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/property_store.h"
-#include "net/instaweb/util/public/simple_stats.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/thread_system.h"
-#include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/mock_timer.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/base/timer.h"
+#include "pagespeed/kernel/cache/lru_cache.h"
+#include "pagespeed/kernel/util/platform.h"
+#include "pagespeed/kernel/util/simple_stats.h"
 
 namespace net_instaweb {
 

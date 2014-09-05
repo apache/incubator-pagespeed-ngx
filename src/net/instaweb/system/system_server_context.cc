@@ -30,16 +30,16 @@
 #include "net/instaweb/system/public/system_request_context.h"
 #include "net/instaweb/system/public/system_rewrite_driver_factory.h"
 #include "net/instaweb/system/public/system_rewrite_options.h"
-#include "net/instaweb/util/public/file_system.h"
-#include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/null_message_handler.h"
-#include "net/instaweb/util/public/shared_mem_statistics.h"
-#include "net/instaweb/util/public/split_statistics.h"
-#include "net/instaweb/util/public/statistics.h"
-#include "net/instaweb/util/public/thread_system.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
+#include "pagespeed/kernel/base/file_system.h"
+#include "pagespeed/kernel/base/message_handler.h"
+#include "pagespeed/kernel/base/null_message_handler.h"
+#include "pagespeed/kernel/base/split_statistics.h"
+#include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/base/timer.h"
+#include "pagespeed/kernel/sharedmem/shared_mem_statistics.h"
 
 namespace net_instaweb {
 
