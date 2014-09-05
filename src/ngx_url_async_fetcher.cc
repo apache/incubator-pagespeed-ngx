@@ -55,6 +55,7 @@ namespace net_instaweb {
                                          ngx_msec_t resolver_timeout,
                                          ngx_msec_t fetch_timeout,
                                          ngx_resolver_t* resolver,
+                                         int max_keepalive_requests,
                                          ThreadSystem* thread_system,
                                          MessageHandler* handler)
     : fetchers_count_(0),
@@ -63,7 +64,8 @@ namespace net_instaweb {
       byte_count_(0),
       thread_system_(thread_system),
       message_handler_(handler),
-      mutex_(NULL) {
+      mutex_(NULL),
+      max_keepalive_requests_(max_keepalive_requests) {
     resolver_timeout_ = resolver_timeout;
     fetch_timeout_ = fetch_timeout;
     ngx_memzero(&proxy_, sizeof(proxy_));
@@ -223,7 +225,7 @@ namespace net_instaweb {
                                  AsyncFetch* async_fetch) {
     async_fetch = EnableInflation(async_fetch);
     NgxFetch* fetch = new NgxFetch(url, async_fetch,
-          message_handler, fetch_timeout_, log_);
+          message_handler, log_);
     ScopedMutex lock(mutex_);
     pending_fetches_.Add(fetch);
     SendCmd('F');
