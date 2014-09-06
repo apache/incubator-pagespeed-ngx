@@ -93,7 +93,7 @@ TEST_F(ImageOomTest, BlankImageNotTooLarge) {
 #endif
 
   Image::CompressionOptions* options = new Image::CompressionOptions();
-  ImagePtr not_too_large(BlankImageWithOptions(4000, 4000, IMAGE_PNG,
+  ImagePtr not_too_large(BlankImageWithOptions(4096, 2048, IMAGE_PNG,
                                                GTestTempDir(), &timer_,
                                                &message_handler_, options));
   // Image of this size can be created.
