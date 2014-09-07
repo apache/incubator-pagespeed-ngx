@@ -1297,7 +1297,17 @@ void ps_connection_read_handler(ngx_event_t* ev) {
     return;
   }
 
-  ngx_http_finalize_request(r, ps_base_fetch_handler(r));
+  int rc2 = ps_base_fetch_handler(r);
+  // If the base fetch says it is done, we don't want to hear about pending read
+  // events from our base fetch connection anymore.
+  // TODO(oschaaf): refactor this to make this easier to reason about and put
+  // some sanity checks in place.
+  if (ctx->pagespeed_connection != NULL && rc2 == NGX_DONE) {
+    ctx->pagespeed_connection = NULL;
+    ngx_close_connection(c);
+  }
+
+  ngx_http_finalize_request(r, rc2);
 }
 
 ngx_int_t ps_create_connection(
