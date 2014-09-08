@@ -78,6 +78,10 @@ TEST_F(DecisionTreeTest, PredictionTest) {
   EXPECT_EQ(0.0, tree.Predict(sample));
 }
 
+// These test to ensure our sanity checking will reject invalid decision trees.
+// Because sanity checking is only enabled in debug mode, these tests are only
+// able to run in debug mode.
+#ifndef NDEBUG
 class DecisionTreeDeathTest : public DecisionTreeTest {
  protected:
   DecisionTreeDeathTest() {
@@ -137,6 +141,7 @@ TEST_F(DecisionTreeDeathTest, InvalidConfidenceDeathTest) {
   int num_nodes = arraysize(nodes);
   ASSERT_DEATH(DecisionTree tree(nodes, num_nodes), "Invalid confidence 1.7");
 }
+#endif  // NDEBUG
 
 }  // namespace
 }  // namespace net_instaweb
