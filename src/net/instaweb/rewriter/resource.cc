@@ -111,7 +111,9 @@ bool Resource::IsSafeToRewrite(bool rewrite_uncacheable,
                   "Fetch status not set when IsSafeToRewrite was called, ");
         break;
       case kFetchStatusOK:
-        CHECK(false) << "Fetch status OK but !HttpStatusOk in IsSafeToRewrite!";
+        LOG(WARNING) << "Fetch status OK but !HttpStatusOk in IsSafeToRewrite!";
+        StrAppend(reason,
+                  "Fetch status OK but !HttpStatusOk in IsSafeToRewrite!  ");
         break;
     }
   } else if (!rewrite_uncacheable && !IsValidAndCacheable()) {

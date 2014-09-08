@@ -135,6 +135,7 @@
         'rewriter/css_url_encoder_test.cc',
         'rewriter/css_util_test.cc',
         'rewriter/debug_filter_test.cc',
+        'rewriter/decision_tree_test.cc',
         'rewriter/decode_rewritten_urls_filter_test.cc',
         'rewriter/dedup_inlined_images_filter_test.cc',
         'rewriter/defer_iframe_filter_test.cc',

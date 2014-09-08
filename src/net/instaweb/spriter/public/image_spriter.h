@@ -16,8 +16,8 @@
 
 // Author: skerner@google.com (Sam Kerner)
 
-#ifndef NET_INSTAWEB_SPRITER_IMAGE_SPRITER_H_
-#define NET_INSTAWEB_SPRITER_IMAGE_SPRITER_H_
+#ifndef NET_INSTAWEB_SPRITER_PUBLIC_IMAGE_SPRITER_H_
+#define NET_INSTAWEB_SPRITER_PUBLIC_IMAGE_SPRITER_H_
 
 #include "net/instaweb/spriter/image_library_interface.h"
 
@@ -47,4 +47,4 @@ class ImageSpriter {
 }  // namespace spriter
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_SPRITER_IMAGE_SPRITER_H_
+#endif  // NET_INSTAWEB_SPRITER_PUBLIC_IMAGE_SPRITER_H_
