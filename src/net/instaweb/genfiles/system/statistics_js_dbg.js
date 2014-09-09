@@ -2984,7 +2984,10 @@ goog.iter.every = function(iterable, f, opt_obj) {
   return!0;
 };
 goog.iter.chain = function(var_args) {
-  var iterator = goog.iter.toIterator(arguments), iter = new goog.iter.Iterator, current = null;
+  return goog.iter.chainFromIterable(arguments);
+};
+goog.iter.chainFromIterable = function(iterable) {
+  var iterator = goog.iter.toIterator(iterable), iter = new goog.iter.Iterator, current = null;
   iter.next = function() {
     for (;;) {
       if (null == current) {
@@ -3002,9 +3005,6 @@ goog.iter.chain = function(var_args) {
     }
   };
   return iter;
-};
-goog.iter.chainFromIterable = function(iterable) {
-  return goog.iter.chain.apply(void 0, iterable);
 };
 goog.iter.dropWhile = function(iterable, f, opt_obj) {
   var iterator = goog.iter.toIterator(iterable), newIter = new goog.iter.Iterator, dropping = !0;
