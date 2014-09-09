@@ -780,6 +780,11 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     "a { color: red",
     "a { color: red;\n .foo { margin: 10px; }",
     "a { color: red;\n h1 { margin: 10px; }",
+    // Unclosed comment.
+    "/*",
+    "a { color: red; }/*",
+    "a { color/*: red; }",
+    "a { color: /*red; }",
 
     // Parsing failures from Alexa-1000.
 

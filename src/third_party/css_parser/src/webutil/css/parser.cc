@@ -57,6 +57,7 @@ const uint64 Parser::kBlockError;
 const uint64 Parser::kNumberError;
 const uint64 Parser::kImportError;
 const uint64 Parser::kAtRuleError;
+const uint64 Parser::kCssCommentError;
 
 const int Parser::kMaxErrorsRemembered;
 
@@ -200,6 +201,7 @@ void Parser::SkipComment() {
       in_++;
     }
   }
+  ReportParsingError(kCssCommentError, "Unexpected EOF in CSS comment.");
   in_ = end_;
 }
 

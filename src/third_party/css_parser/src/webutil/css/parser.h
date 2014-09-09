@@ -181,22 +181,23 @@ class Parser {
 
   // This is a bitmask of errors seen during the parse.  This is decidedly
   // incomplete --- there are definitely many errors that are not reported here.
-  static const uint64 kNoError          = 0;
-  static const uint64 kUtf8Error        = 1ULL << 0; // 1
-  static const uint64 kDeclarationError = 1ULL << 1; // 2
-  static const uint64 kSelectorError    = 1ULL << 2; // 4
-  static const uint64 kFunctionError    = 1ULL << 3; // 8
-  static const uint64 kMediaError       = 1ULL << 4; // 16
-  static const uint64 kCounterError     = 1ULL << 5; // 32
-  static const uint64 kHtmlCommentError = 1ULL << 6; // 64
-  static const uint64 kValueError       = 1ULL << 7; // 128
-  static const uint64 kRulesetError     = 1ULL << 8; // 256
-  static const uint64 kSkippedTokenError = 1ULL << 9; // 512
-  static const uint64 kCharsetError     = 1ULL << 10; // 1024
-  static const uint64 kBlockError       = 1ULL << 11; // 2048
-  static const uint64 kNumberError      = 1ULL << 12; // 4096
-  static const uint64 kImportError      = 1ULL << 13; // 8192
-  static const uint64 kAtRuleError      = 1ULL << 14; // 16384
+  static const uint64 kNoError           = 0;
+  static const uint64 kUtf8Error         = 1ULL << 0;   // 1
+  static const uint64 kDeclarationError  = 1ULL << 1;   // 2
+  static const uint64 kSelectorError     = 1ULL << 2;   // 4
+  static const uint64 kFunctionError     = 1ULL << 3;   // 8
+  static const uint64 kMediaError        = 1ULL << 4;   // 16
+  static const uint64 kCounterError      = 1ULL << 5;   // 32
+  static const uint64 kHtmlCommentError  = 1ULL << 6;   // 64
+  static const uint64 kValueError        = 1ULL << 7;   // 128
+  static const uint64 kRulesetError      = 1ULL << 8;   // 256
+  static const uint64 kSkippedTokenError = 1ULL << 9;   // 512
+  static const uint64 kCharsetError      = 1ULL << 10;  // 1024
+  static const uint64 kBlockError        = 1ULL << 11;  // 2048
+  static const uint64 kNumberError       = 1ULL << 12;  // 4096
+  static const uint64 kImportError       = 1ULL << 13;  // 8192
+  static const uint64 kAtRuleError       = 1ULL << 14;  // 16384
+  static const uint64 kCssCommentError   = 1ULL << 15;  // 32768
   uint64 errors_seen_mask() const { return errors_seen_mask_; }
   uint64 unparseable_sections_seen_mask() const {
     return unparseable_sections_seen_mask_;

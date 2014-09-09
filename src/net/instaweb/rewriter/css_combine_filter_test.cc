@@ -1511,6 +1511,18 @@ TEST_F(CssCombineFilterTest, NoCombineParseErrorsAtRule) {
                                         CssLinkHref("b.css")));
 }
 
+TEST_F(CssCombineFilterTest, NoCombineParseErrorsUnclosedComment) {
+  // Notice: This CSS file does not close its /* and thus would break the
+  // next stylesheet if they were combined.
+  SetResponseWithDefaultHeaders("a.css", kContentTypeCss,
+                                "h1 { color: red; } /* ", 100);
+  SetResponseWithDefaultHeaders("b.css", kContentTypeCss,
+                                "h2 { color: blue; }", 100);
+
+  ValidateNoChanges("bad_parse", StrCat(CssLinkHref("a.css"),
+                                        CssLinkHref("b.css")));
+}
+
 // See: http://www.alistapart.com/articles/alternate/
 //  and http://www.w3.org/TR/html4/present/styles.html#h-14.3.1
 TEST_F(CssCombineFilterTest, AlternateStylesheets) {
