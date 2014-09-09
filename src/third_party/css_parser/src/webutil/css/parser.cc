@@ -2051,8 +2051,6 @@ MediaQueries* Parser::ParseMediaQueries() {
     }
     SkipSpace();
     if (Done()) {
-      ReportParsingError(kMediaError,
-                         "Unexpected EOF while parsing media query.");
       return media_queries.release();
     }
     switch (*in_) {
@@ -2224,8 +2222,10 @@ Import* Parser::ParseImport() {
 
   scoped_ptr<Value> v(ParseAny());
   if (!v.get() || (v->GetLexicalUnitType() != Value::STRING &&
-                   v->GetLexicalUnitType() != Value::URI))
+                   v->GetLexicalUnitType() != Value::URI)) {
+    ReportParsingError(kImportError, "Unexpected token while parsing @import");
     return NULL;
+  }
 
   Import* import = new Import();
   import->set_link(v->GetStringValue());

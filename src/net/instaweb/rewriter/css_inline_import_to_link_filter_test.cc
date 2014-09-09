@@ -310,6 +310,9 @@ TEST_F(CssInlineImportToLinkFilterTest, DoNotConvertBadStyle) {
   ValidateStyleUnchanged("<style/>");
   ValidateStyleUnchanged("<style></style>");
   ValidateStyleUnchanged("<style>@import assets/styles.css;</style>");
+  ValidateStyleUnchanged("<style>@import assets/styles.css</style>");
+  ValidateStyleUnchanged("<style>@import styles.css</style>");
+  ValidateStyleUnchanged("<style>@import foo</style>");
   ValidateStyleUnchanged("<style>@import url (assets/styles.css);</style>");
   ValidateStyleUnchanged("<style>@ import url(assets/styles.css)</style>");
   ValidateStyleUnchanged("<style>*border: 0px</style>");

@@ -2326,8 +2326,6 @@ TEST_F(ParserTest, ParseMediaQueries) {
   EXPECT_EQ(1, q->size());
   EXPECT_EQ(MediaQuery::NO_QUALIFIER, (*q)[0]->qualifier());
   EXPECT_EQ("screen", UnicodeTextToUTF8((*q)[0]->media_type()));
-  // now it requires ";" at the end of the input query.
-  EXPECT_EQ(Parser::kMediaError, a->errors_seen_mask());
 
   // qualifier
   a.reset(new Parser("only screen"));

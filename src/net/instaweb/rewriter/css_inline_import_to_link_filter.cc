@@ -258,7 +258,8 @@ void CssInlineImportToLinkFilter::InlineImportToLinkStyle() {
                                          &style_media);
     }
 
-    if (ok && parser.Done()) {
+    if (ok && parser.Done() &&
+        (parser.errors_seen_mask() == Css::Parser::kNoError)) {
       HtmlElement* insert_after_element = style_element_;
       for (int i = 0, n = imports.size(); i < n; ++i) {
         Css::Import* import = imports[i];
