@@ -18,8 +18,8 @@
 // Author: jrm@google.com (Jim Meehan)
 
 
-#ifndef UTIL_UTF8_UNICODETEXT_H_
-#define UTIL_UTF8_UNICODETEXT_H_
+#ifndef UTIL_UTF8_PUBLIC_UNICODETEXT_H_
+#define UTIL_UTF8_PUBLIC_UNICODETEXT_H_
 
 #include <stddef.h>                     // for NULL, ptrdiff_t
 #include <iterator>                     // for bidirectional_iterator_tag, etc
@@ -462,4 +462,4 @@ inline string UnicodeTextToUTF8(const UnicodeText& t) {
 // integer is followed by a space. E.g., "61 62 6A 3005 ".
 string CodepointString(const UnicodeText& t);
 
-#endif  // UTIL_UTF8_UNICODETEXT_H_
+#endif  // UTIL_UTF8_PUBLIC_UNICODETEXT_H_
