@@ -756,17 +756,23 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     "@import url(styles.css), url(other.css); a { color: red; }",
     "@import \"styles.css\"...; a { color: red; }",
 
+    // Unclosed at-rules.
+    // These are technically valid, but we consider them a parsing errors
+    // because combining is invalid for them.
+    "@import url(styles.css)",
+    "@import url(styles.css) screen",
+    "@charset 'utf-8'",
+    "@media print ",
+    "@foobar ",
+    // Mismatch in unparseable at-rule.
+    "@foobar {",
+    "@foobar }",
+
     // Should fail, mismatched {}s.
     "{",
     "}",
     "}{",
     "a { color: red; }}}",
-    // Mismatch in unparseable at-rule.
-    "@foobar {",
-    "@foobar }",
-    // Unclosed at-rule that will break the first statement in the next CSS
-    // file if combined.
-    "@foobar ",
     // Mismatch in unparseable selector.
     "a[{] { color: red; }",
     "a {",
@@ -1614,7 +1620,7 @@ TEST_F(CssFilterTest, NoAlwaysRewriteCss) {
   DebugWithMessage("");
   server_context()->ComputeSignature(options());
   ValidateRewrite("expanding_example",
-                  "@import url(http://www.example.com)",
+                  "@import url(http://www.example.com);",
                   "@import url(http://www.example.com) ;",
                   kExpectSuccess);
 
@@ -1625,8 +1631,8 @@ TEST_F(CssFilterTest, NoAlwaysRewriteCss) {
   DebugWithMessage("<!--CSS rewrite failed: Cannot improve %url%-->");
   server_context()->ComputeSignature(options());
   ValidateRewrite("non_expanding_example",
-                  "@import url(http://www.example.com)",
-                  "@import url(http://www.example.com)",
+                  "@import url(http://www.example.com);",
+                  "@import url(http://www.example.com);",
                   kExpectNoChange);
 
   // When we force always_rewrite_css, we allow rewriting something to nothing.

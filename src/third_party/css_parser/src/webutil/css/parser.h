@@ -519,7 +519,7 @@ class Parser {
   MediaQuery* ParseMediaQuery();
 
   // ParseImport starts just after @import and consumes the import
-  // declaration, including the closing ;.  It returns a Import*
+  // declaration, but not the closing ;.  It returns a Import*
   // containing the imported name and the media.
   Import* ParseImport();
 

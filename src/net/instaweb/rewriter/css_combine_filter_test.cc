@@ -826,7 +826,7 @@ TEST_F(CssCombineFilterWithDebugTest, NonStandardAttributesBarrier) {
 
 TEST_F(CssCombineFilterTest, CombineCssWithImportInFirst) {
   CssLink::Vector css_in, css_out;
-  css_in.Add("1.css", "@Import '1a.css'", "", true);
+  css_in.Add("1.css", "@Import '1a.css';", "", true);
   css_in.Add("2.css", kYellow, "", true);
   css_in.Add("3.css", kYellow, "", true);
   BarrierTestHelper("combine_css_with_import1", css_in, &css_out);
@@ -836,7 +836,7 @@ TEST_F(CssCombineFilterTest, CombineCssWithImportInFirst) {
 TEST_F(CssCombineFilterTest, CombineCssWithImportInSecond) {
   CssLink::Vector css_in, css_out;
   css_in.Add("1.css", kYellow, "", true);
-  css_in.Add("2.css", "@Import '2a.css'", "", true);
+  css_in.Add("2.css", "@Import '2a.css';", "", true);
   css_in.Add("3.css", kYellow, "", true);
   BarrierTestHelper("combine_css_with_import1", css_in, &css_out);
   EXPECT_EQ("1.css", css_out[0]->url_);
@@ -1516,6 +1516,18 @@ TEST_F(CssCombineFilterTest, NoCombineParseErrorsUnclosedComment) {
   // next stylesheet if they were combined.
   SetResponseWithDefaultHeaders("a.css", kContentTypeCss,
                                 "h1 { color: red; } /* ", 100);
+  SetResponseWithDefaultHeaders("b.css", kContentTypeCss,
+                                "h2 { color: blue; }", 100);
+
+  ValidateNoChanges("bad_parse", StrCat(CssLinkHref("a.css"),
+                                        CssLinkHref("b.css")));
+}
+
+TEST_F(CssCombineFilterTest, NoCombineParseErrorUnclosedImport) {
+  // Notice: This CSS file does not close its @import (with a ;)
+  // and thus would break the next stylesheet if they were combined.
+  SetResponseWithDefaultHeaders("a.css", kContentTypeCss,
+                                "@import url(b.css)", 100);
   SetResponseWithDefaultHeaders("b.css", kContentTypeCss,
                                 "h2 { color: blue; }", 100);
 

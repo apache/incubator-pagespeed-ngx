@@ -1899,7 +1899,7 @@ Import* Parser::ParseNextImport() {
   }
 
   Import* import = ParseImport();
-
+  SkipToAtRuleEnd();
   SkipSpace();
 
   return import;
@@ -2231,7 +2231,6 @@ Import* Parser::ParseImport() {
   import->set_link(v->GetStringValue());
   import->set_media_queries(ParseMediaQueries());
 
-  if (in_ < end_ && *in_ == ';') in_++;
   return import;
 }
 
@@ -2259,11 +2258,27 @@ void Parser::ParseAtRule(Stylesheet* stylesheet) {
       error = true;
     } else {
       scoped_ptr<Import> import(ParseImport());
-      if (import.get()) {
-        stylesheet->mutable_imports().push_back(import.release());
-      } else {
+      SkipSpace();
+      if (Done()) {
+        if (import.get()) {
+          stylesheet->mutable_imports().push_back(import.release());
+        }
+        ReportParsingError(kImportError,
+                           "Unexpected EOF in @import statement.");
+        return;
+
+      } else if (!import.get()) {
         ReportParsingError(kImportError, "Failed to parse import.");
-        SkipPastDelimiter(';');
+        SkipToAtRuleEnd();
+
+      } else if (*in_ == ';') {
+        // Success
+        in_++;
+        stylesheet->mutable_imports().push_back(import.release());
+
+      } else {
+        ReportParsingError(kImportError, "Ignoring chars at end of @import.");
+        SkipToAtRuleEnd();
       }
     }
 
