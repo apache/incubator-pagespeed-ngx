@@ -28,7 +28,7 @@
 
 #include "base/logging.h"
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
-#include "net/instaweb/util/public/null_message_handler.h"
+#include "pagespeed/kernel/base/null_message_handler.h"
 
 namespace net_instaweb {
 

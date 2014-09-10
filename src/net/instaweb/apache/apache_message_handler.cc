@@ -24,9 +24,9 @@
 
 #include "httpd.h"
 #include "net/instaweb/apache/apache_logging_includes.h"
-#include "net/instaweb/util/public/abstract_mutex.h"
-#include "net/instaweb/util/public/debug.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/abstract_mutex.h"
+#include "pagespeed/kernel/base/debug.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace {
 

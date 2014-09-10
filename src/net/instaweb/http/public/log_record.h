@@ -24,11 +24,11 @@
 #include "net/instaweb/http/public/logging_proto_impl.h"
 // TODO(gee):  Hmm, this sort of sucks.
 #include "net/instaweb/http/public/request_context.h"  // TimingInfo
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/gtest_prod.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/gtest_prod.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/http/image_types.pb.h"
 #include "pagespeed/opt/logging/enums.pb.h"
 

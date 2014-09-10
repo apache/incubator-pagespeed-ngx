@@ -16,10 +16,9 @@
 
 // Author: jefftk@google.com (Jeff Kaufman)
 
-#include "pagespeed/kernel/base/gtest.h"
-
 #include "net/instaweb/system/public/system_request_context.h"
 #include "third_party/domain_registry_provider/src/domain_registry/domain_registry.h"
+#include "pagespeed/kernel/base/gtest.h"
 
 namespace net_instaweb {
 
