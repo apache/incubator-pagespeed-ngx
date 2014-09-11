@@ -39,7 +39,7 @@ NgxBaseFetch::NgxBaseFetch(ngx_http_request_t* r, int pipe_fd,
       last_buf_sent_(false),
       pipe_fd_(pipe_fd),
       references_(2),
-      handle_error_(true),
+      ipro_lookup_(false),
       preserve_caching_headers_(preserve_caching_headers) {
   if (pthread_mutex_init(&mutex_, NULL)) CHECK(0);
 }
@@ -137,14 +137,20 @@ void NgxBaseFetch::HandleHeadersComplete() {
   int status_code = response_headers()->status_code();
   bool status_ok = (status_code != 0) && (status_code < 400);
 
-  if (status_ok || handle_error_) {
+  if (!ipro_lookup_ || status_ok) {
     // If this is a 404 response we need to count it in the stats.
     if (response_headers()->status_code() == HttpStatus::kNotFound) {
       server_context_->rewrite_stats()->resource_404_count()->Add(1);
     }
   }
 
-  RequestCollection();  // Headers available.
+  // For the IPRO lookup, supress notification of the nginx side here.
+  // If we send both this event and the one from done, nasty stuff will happen
+  // if we loose the race with with the nginx side destructing this base fetch
+  // instance (and thereby clearing the byte and its pending extraneous event.
+  if (!ipro_lookup_) {
+    RequestCollection();  // Headers available.
+  }
 }
 
 bool NgxBaseFetch::HandleFlush(MessageHandler* handler) {
