@@ -498,6 +498,10 @@ NgxRewriteOptions* NgxRewriteOptions::Clone() const {
   return options;
 }
 
+void NgxRewriteOptions::Merge(const RewriteOptions& src) {
+  SystemRewriteOptions::Merge(src);
+}
+
 const NgxRewriteOptions* NgxRewriteOptions::DynamicCast(
     const RewriteOptions* instance) {
   return dynamic_cast<const NgxRewriteOptions*>(instance);

@@ -140,6 +140,7 @@ class NgxRewriteOptions : public SystemRewriteOptions {
 
   // Make an identical copy of these options and return it.
   virtual NgxRewriteOptions* Clone() const;
+  virtual void Merge(const RewriteOptions& src);
 
   // Returns a suitably down cast version of 'instance' if it is an instance
   // of this class, NULL if not.
