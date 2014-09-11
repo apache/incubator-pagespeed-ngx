@@ -2022,7 +2022,7 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
         url_string.c_str());
 
     ctx->in_place = true;
-    ctx->base_fetch->set_handle_error(false);
+    ctx->base_fetch->set_ipro_lookup(true);
     ctx->driver->FetchInPlaceResource(
         url, false /* proxy_mode */, ctx->base_fetch);
 
