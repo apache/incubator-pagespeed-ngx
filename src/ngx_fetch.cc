@@ -256,7 +256,6 @@ void NgxConnection::IdleWriteHandler(ngx_event_t* ev) {
   if (n == NGX_AGAIN) {
     return;
   }
-  DCHECK(false) << "NgxFetch: Unexpected write event" << n;
 }
 
 void NgxConnection::IdleReadHandler(ngx_event_t* ev) {
