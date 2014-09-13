@@ -1279,6 +1279,15 @@ void ps_connection_read_handler(ngx_event_t* ev) {
     rc = read(c->fd, chr, 256);
   } while (rc > 0 || (rc == -1 && errno == EINTR));  // Retry on EINTR.
 
+  if (r->connection->error) {
+    ngx_log_error(NGX_LOG_DEBUG, ngx_cycle->log, 0,
+                  "pagespeed [%p] request already finalized", r);
+    ctx->pagespeed_connection = NULL;
+    ngx_close_connection(c);
+    ngx_http_finalize_request(r, NGX_ERROR);
+    return;
+  }
+
   if (rc == -1 && errno != EAGAIN && errno != EWOULDBLOCK) {
     ctx->pagespeed_connection = NULL;
     ngx_close_connection(c);
