@@ -882,7 +882,43 @@ TEST_F(ParserTest, values) {
                                       ->GetIdentifierText()));
 }
 
-TEST_F(ParserTest, SkipBlock) {
+TEST_F(ParserTest, SkipCornerCases) {
+  // Comments are not nested.
+  scoped_ptr<Parser> p(new Parser("\f /* foobar /* */ foobar */"));
+  p->SkipSpace();
+  EXPECT_STREQ("foobar */", p->in_);
+
+  // Proper nesting. Ignore escaped closing chars.
+  p.reset(new Parser("{[ (]}) foo\\]\\}bar ] \\} } Now it's closed. }"));
+  EXPECT_TRUE(p->SkipMatching());
+  EXPECT_STREQ(" Now it's closed. }", p->in_);
+
+  // Ignore closing chars in comments and strings.
+  p.reset(new Parser("[/*]*/ 'fake ]' () { \"also fake }\" ]} ] Finally."));
+  EXPECT_TRUE(p->SkipMatching());
+  EXPECT_STREQ(" Finally.", p->in_);
+
+  // False on unclosed.
+  p.reset(new Parser("("));
+  EXPECT_FALSE(p->SkipMatching());
+  EXPECT_STREQ("", p->in_);
+
+  p.reset(new Parser("foo({[)]}, bar\\)(), ')', /*)*/,), baz"));
+  EXPECT_TRUE(p->SkipPastDelimiter(','));
+  EXPECT_STREQ(" baz", p->in_);
+
+  // SkipPastDelimiter should only work with DELIMs, it cannot cut tokens
+  // in half.
+  p.reset(new Parser("foo bar"));
+  EXPECT_FALSE(p->SkipPastDelimiter('o'));
+  EXPECT_STREQ("", p->in_);
+
+  p.reset(new Parser("{[](} f\\(oo)} @rule bar"));
+  EXPECT_TRUE(p->SkipToNextAny());
+  EXPECT_STREQ("bar", p->in_);
+}
+
+TEST_F(ParserTest, SkipMatching) {
   static const char* truetestcases[] = {
     "{{{{}}}} serif",
     "{ {  { {  }    }   }    } serif",  // whitespace
@@ -892,7 +928,7 @@ TEST_F(ParserTest, SkipBlock) {
   for (int i = 0; i < arraysize(truetestcases); ++i) {
     SCOPED_TRACE(truetestcases[i]);
     Parser p(truetestcases[i]);
-    EXPECT_TRUE(p.SkipBlock());
+    EXPECT_TRUE(p.SkipMatching());
     Values values;
     EXPECT_TRUE(p.ParseFontFamily(&values));
     ASSERT_EQ(1, values.size());
@@ -908,14 +944,13 @@ TEST_F(ParserTest, SkipBlock) {
   for (int i = 0; i < arraysize(falsetestcases); ++i) {
     SCOPED_TRACE(falsetestcases[i]);
     Parser p(falsetestcases[i]);
-    p.SkipBlock();
+    p.SkipMatching();
     Values values;
     p.ParseFontFamily(&values);
     EXPECT_EQ(0, values.size());
   }
 
 }
-
 
 TEST_F(ParserTest, declarations) {
   scoped_ptr<Parser> a(new Parser(
@@ -1663,11 +1698,11 @@ TEST_F(ParserTest, SelectorError) {
   Parser p(".bold: { font-weight: bold }");
   scoped_ptr<Stylesheet> stylesheet(p.ParseStylesheet());
   EXPECT_EQ(0, stylesheet->rulesets().size());
-  EXPECT_EQ(Parser::kSelectorError, p.errors_seen_mask());
+  EXPECT_TRUE(Parser::kSelectorError & p.errors_seen_mask());
 
   Parser p2("div:nth-child(1n) { color: red; }");
   stylesheet.reset(p2.ParseStylesheet());
-  EXPECT_EQ(Parser::kSelectorError, p2.errors_seen_mask());
+  EXPECT_TRUE(Parser::kSelectorError & p2.errors_seen_mask());
   // Note: We fail to parse the (1n). If this is fixed, this test should be
   // updated accordingly.
   EXPECT_EQ("/* AUTHOR */\n\n\ndiv:nth-child {color: #ff0000}\n",
@@ -1676,11 +1711,11 @@ TEST_F(ParserTest, SelectorError) {
   Parser p3("}}");
   stylesheet.reset(p3.ParseStylesheet());
   EXPECT_EQ(0, stylesheet->rulesets().size());
-  EXPECT_EQ(Parser::kSelectorError, p3.errors_seen_mask());
+  EXPECT_TRUE(Parser::kSelectorError & p3.errors_seen_mask());
 
   Parser p4("div[too=many=equals] { color: red; }");
   stylesheet.reset(p4.ParseStylesheet());
-  EXPECT_EQ(Parser::kSelectorError, p4.errors_seen_mask());
+  EXPECT_TRUE(Parser::kSelectorError & p4.errors_seen_mask());
   EXPECT_EQ("/* AUTHOR */\n\n\ndiv[too=\"many\"] {color: #ff0000}\n",
             stylesheet->ToString());
 }
@@ -2001,7 +2036,7 @@ TEST_F(ParserTest, MediaQueries) {
            "@media { .a { color: red; } }\n"
            "@media onLy screen And (max-width: 250px) { .a { color: green } }\n"
            ".a { color: blue; }\n"
-           "@media (nonsense: foo(')', \")\", [)])) { body { color: red } }\n");
+           "@media (nonsense: foo(')', \")\")) { body { color: red } }\n");
 
   scoped_ptr<Stylesheet> s(p.ParseStylesheet());
   EXPECT_EQ(Parser::kNoError, p.errors_seen_mask());
@@ -2068,7 +2103,7 @@ TEST_F(ParserTest, MediaQueries) {
   EXPECT_EQ("nonsense", UnicodeTextToUTF8(
       s->ruleset(3).media_query(0).expression(0).name()));
   ASSERT_TRUE(s->ruleset(3).media_query(0).expression(0).has_value());
-  EXPECT_EQ("foo(')', \")\", [)])", UnicodeTextToUTF8(
+  EXPECT_EQ("foo(')', \")\")", UnicodeTextToUTF8(
       s->ruleset(3).media_query(0).expression(0).value()));
 }
 
@@ -2276,7 +2311,7 @@ TEST_F(ParserTest, EOFOther) {
 
 // Check that SkipPastDelimiter() correctly respects matching delimiters.
 TEST_F(ParserTest, SkipPastDelimiter) {
-  EXPECT_STREQ("6789",    SkipPast('5', "123456789"));
+  EXPECT_STREQ(" 6 7 8 9",    SkipPast('5', "1 2 3 4 5 6 7 8 9"));
   EXPECT_STREQ(" 1, bar", SkipPast(',', "foo(a, b), 1, bar"));
   EXPECT_STREQ(" bar }",  SkipPast('}', "foo: 'end brace: }'; } bar }"));
   EXPECT_STREQ(" h1 { color: blue}\n",

@@ -656,7 +656,6 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     // See http://dimox.net/personal-css-hacks-for-ie6-ie7-ie8/
     "a{color: red\\0/ ;background-color:green}",
     "a{font-family: font\\0  ;color:red}",
-    "@media screen and (min-width:0 \\0){.foo{color:red}}",
     "@media screen and (min-width:0 \\\\0){.foo{color:red}}",
 
     "a{font:bold verdana 10px }",
@@ -667,9 +666,6 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     // http://code.google.com/p/modpagespeed/issues/detail?id=50
     "@media screen and (max-width:290px){a{color:red}}",
     "@media only print and (color){a{color:red}}",
-    // Nonsensical, but syntactic, media query.
-    "@media not (-moz-dimension-constraints:20 < width < 300 and 45 < height "
-    "< 1000){a{color:red}}",
 
     // Unexpected @-statements
     "@keyframes wiggle { 0% { transform: rotate(6deg); } }",
@@ -800,6 +796,10 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     "@media only screen and(min-resolution:240dpi){ .bar{ background: red; }}",
     "@media (max-de vice-width: 850px) {.pm-thumb-106{width:80px}}",
     "@media screen\\0{.select:before{width:18px}}",
+    "@media screen and (min-width:0 \\0){.foo{color:red}}",
+    // Nonsensical, but syntactic, media query.
+    "@media not (-moz-dimension-constraints:20 < width < 300 and 45 < height "
+    "< 1000){a{color:red}}",
 
     // UTF-16
     "\xFF\xFE"   // UTF-16 byte-order marker.
@@ -1124,14 +1124,6 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       "*opacity:1;*top:-2px;*left:-5px;*right:5px;*bottom:4px;"
       "-ms-filter:\"progid:DXImageTransform.Microsoft.Blur(pixelradius=5)\";"
       "opacity:1\\0/;top:-4px\\0/;left:-6px\\0/;right:5px\\0/;bottom:4px\\0/}"},
-
-    { "@media screen and (min-width: 0 \\0){.ending-actions li a .icon-top,.en"
-      "ding-actions li a .icon-feed{vertical-align:text-bottom}.nav-previous{m"
-      "argin:20px auto 0}}",
-
-      "@media screen and (min-width:0 \\0){.ending-actions li a .icon-top,.en"
-      "ding-actions li a .icon-feed{vertical-align:text-bottom}.nav-previous{m"
-      "argin:20px auto 0}}" },
 
     // Alexa-100 with parse errors (illegal syntax or CSS3).
     // Comma in values
@@ -1568,6 +1560,10 @@ TEST_F(CssFilterTest, ComplexCssTest) {
     "-moz-background-size:776px 18px;-o-background-size:776px 18px;"
     "-webkit-background-size:776px 18px;background-size:776px 18px;}"
     ".ui-icon-alt{background-image:url(images/icons-36-black.png);}}",
+
+    "@media screen and (min-width: 0 \\0){.ending-actions li a .icon-top,.en"
+    "ding-actions li a .icon-feed{vertical-align:text-bottom}.nav-previous{m"
+    "argin:20px auto 0}}",
 
     // Things discovered in the wild by shanemc:
 

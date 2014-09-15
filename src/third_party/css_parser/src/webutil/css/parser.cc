@@ -205,14 +205,33 @@ void Parser::SkipComment() {
   in_ = end_;
 }
 
-// skips until delim is seen or end-of-stream. returns if delim is actually
-// seen.
-bool Parser::SkipPastDelimiter(char delim) {
-  // Stack of delims to look for. It starts just looking for top delim,
-  // but if ({[ are encountered, their respective closing delims are added
-  // to the stack.
+// Starting with {, [ or ( at in_, skip ahead to the matching closing char.
+// Returns true if end was found, false if EOF was reached first.
+bool Parser::SkipMatching() {
+  Tracer trace(__func__, this);
+  DCHECK(*in_ == '{' || *in_ == '[' || *in_ == '(');
+
+  ReportParsingError(kBlockError, "Ignoring {}, [] or () block.");
+
+  // Stack of closing delims to look for.
   string delim_stack;
-  delim_stack.push_back(delim);
+
+  switch (*in_) {
+    case '(':
+      ++in_;
+      delim_stack.push_back(')');
+      break;
+    case '[':
+      ++in_;
+      delim_stack.push_back(']');
+      break;
+    case '{':
+      ++in_;
+      delim_stack.push_back('}');
+      break;
+    default:
+      return false;
+  }
 
   SkipSpace();
   while (in_ < end_) {
@@ -220,7 +239,7 @@ bool Parser::SkipPastDelimiter(char delim) {
       ++in_;
       delim_stack.erase(delim_stack.size() - 1);
       if (delim_stack.empty()) {
-        // Found original delim.
+        // Found outermost closing delimiter.
         return true;
       }
     } else {
@@ -237,27 +256,53 @@ bool Parser::SkipPastDelimiter(char delim) {
           ++in_;
           delim_stack.push_back('}');
           break;
-        case '\'':
-          // Ignore results.
-          ParseString<'\''>();
-          break;
-        case '"':
-          // Ignore results.
-          ParseString<'"'>();
-          break;
         default:
-          ++in_;
+          // Ignore whatever there is to parse.
+          scoped_ptr<Value> v(ParseAny());
           break;
       }
     }
     SkipSpace();  // Skips comments too.
   }
 
-  DCHECK(Done());
+  // Reached EOF before block was closed.
   return false;
 }
 
-// returns true if there might be a token to read
+// Skips until delim is seen or EOF.
+// Returns true if delim was found, false if EOF was reached first.
+bool Parser::SkipPastDelimiter(char delim) {
+  Tracer trace(__func__, this);
+
+  SkipSpace();
+  while (in_ < end_) {
+    if (*in_ == delim) {
+      ++in_;
+      return true;
+    } else {
+      switch (*in_) {
+        // Properly match and skip over nested {}, [] and ().
+        case '{':
+        case '[':
+        case '(':
+          // Ignore result.
+          SkipMatching();
+          break;
+        // Skip over all other tokens.
+        default:
+          // Ignore whatever there is to parse.
+          scoped_ptr<Value> v(ParseAny());
+          break;
+      }
+    }
+    SkipSpace();
+  }
+
+  // Reached EOF before delimiter reached.
+  return false;
+}
+
+// Returns true if an "any" token was found, false if EOF was reached first.
 bool Parser::SkipToNextAny() {
   Tracer trace(__func__, this);
 
@@ -267,16 +312,17 @@ bool Parser::SkipToNextAny() {
       case '{':
         ReportParsingError(kSkippedTokenError,
                            "Ignoring block between tokens.");
-        SkipBlock();  // ignore
+        SkipMatching();  // ignore
         break;
       case '@':
         ReportParsingError(kSkippedTokenError,
                            "Ignoring @ident between tokens.");
         in_++;
-        // TODO(sligocki): Should we just skip the at-keyword, or an entire
-        // at-rule with SkipToAtRuleEnd(). This affects how a declatation like:
-        //   foo: #000 @ident url(foo.mks) { block { rep } } end
-        // would be parsed. Specifically, should the url() be ignored?
+        // Note: CSS spec seems to say that when unexpected at-keywords are
+        // encountered you should skip ahead to the end of the at-rule (which
+        // would skip everything till the first ;, {} block or closing })
+        // but browsers do not seem to do this, instead they seem to just
+        // skip to the end of the keyword and then invalidate that declaration.
         ParseIdent();  // ignore
         break;
       case ';': case '}':
@@ -287,6 +333,51 @@ bool Parser::SkipToNextAny() {
     }
     SkipSpace();
   }
+
+  // Reached EOF before an "any" value.
+  return false;
+}
+
+// From http://www.w3.org/TR/CSS2/syndata.html#parsing-errors:
+//
+//   At-rules with unknown at-keywords. User agents must ignore an invalid
+//   at-keyword together with everything following it, up to the end of the
+//   block that contains the invalid at-keyword, or up to and including the
+//   next semicolon (;), or up to and including the next block ({...}),
+//   whichever comes first.
+bool Parser::SkipToAtRuleEnd() {
+  Tracer trace(__func__, this);
+
+  SkipSpace();
+  while (in_ < end_) {
+    switch (*in_) {
+      // "up to the end of the block that contains the invalid at-keyword"
+      case '}':
+        // Note: Do not advance in_, so that caller will see closing '}'.
+        return true;
+      // "up to and including the next semicolon (;)"
+      case ';':
+        ++in_;
+        return true;
+      // "up to and including the next block ({...})"
+      case '{':
+        return SkipMatching();
+
+      // Properly match nested [] and ().
+      case '[':
+      case '(':
+        // Ignore result.
+        SkipMatching();
+      // Skip over all other tokens.
+      default:
+        // Ignore whatever there is to parse.
+        scoped_ptr<Value> v(ParseAny());
+        break;
+    }
+    SkipSpace();
+  }
+
+  // Reached EOF before syntactically closing @-rule.
   return false;
 }
 
@@ -1581,7 +1672,9 @@ Declarations* Parser::ParseRawDeclarations() {
       while (in_ < end_ && *in_ != ';' && *in_ != '}') {
         // IE (and IE only) ignores {} blocks in quirks mode.
         if (*in_ == '{' && !quirks_mode_) {
-          SkipBlock();  // ignore
+          // Move past this delimiter so that we don't double count it.
+          in_++;
+          SkipPastDelimiter('}');
         } else {
           in_++;
           SkipSpace();
@@ -1726,8 +1819,6 @@ SimpleSelector* Parser::ParseSimpleSelector() {
         ReportParsingError(kSelectorError,
                            "Cannot parse parameters for pseudoclass.");
         in_++;
-        SkipSpace();
-        ParseIdent();
         if (!SkipPastDelimiter(')'))
           break;
       }
@@ -1963,7 +2054,7 @@ UnicodeText Parser::ParseCharset() {
     ReportParsingError(kCharsetError,
                        "Ignoring chars at end of charset declaration.");
   }
-  SkipPastDelimiter(';');
+  SkipToAtRuleEnd();
   return result;
 }
 
@@ -2268,7 +2359,7 @@ void Parser::ParseAtRule(Stylesheet* stylesheet) {
         return;
 
       } else if (!import.get()) {
-        ReportParsingError(kImportError, "Failed to parse import.");
+        ReportParsingError(kImportError, "Failed to parse @import.");
         SkipToAtRuleEnd();
 
       } else if (*in_ == ';') {
@@ -2277,7 +2368,7 @@ void Parser::ParseAtRule(Stylesheet* stylesheet) {
         stylesheet->mutable_imports().push_back(import.release());
 
       } else {
-        ReportParsingError(kImportError, "Ignoring chars at end of @import.");
+        ReportParsingError(kImportError, "Unexpected chars at end of @import.");
         SkipToAtRuleEnd();
       }
     }
@@ -2360,83 +2451,6 @@ void Parser::ParseAtRule(Stylesheet* stylesheet) {
       errors_seen_mask_ = start_errors_seen_mask;
     }
   }
-}
-
-// From http://www.w3.org/TR/CSS2/syndata.html#parsing-errors:
-//
-//   At-rules with unknown at-keywords. User agents must ignore an invalid
-//   at-keyword together with everything following it, up to the end of the
-//   block that contains the invalid at-keyword, or up to and including the
-//   next semicolon (;), or up to and including the next block ({...}),
-//   whichever comes first.
-bool Parser::SkipToAtRuleEnd() {
-  Tracer trace(__func__, this);
-
-  while (in_ < end_) {
-    switch (*in_) {
-      // "up to the end of the block that contains the invalid at-keyword"
-      case '}':
-        // Note: Do not advance in_, so that caller will see closing '}'.
-        return true;
-      // "up to and including the next semicolon (;)"
-      case ';':
-        ++in_;
-        return true;
-      // "up to and including the next block ({...})"
-      case '{':
-        return SkipBlock();
-      // Skip over all other chars.
-      default:
-        ++in_;
-        break;
-    }
-  }
-
-  // Reached EOF before syntactically closing @-rule.
-  return false;
-}
-
-// TODO(sligocki): Combine this function with SkipPastDelimiter(). For example,
-// the current function does not deal with () or [] correctly.
-bool Parser::SkipBlock() {
-  Tracer trace(__func__, this);
-
-  ReportParsingError(kBlockError, "Ignoring {} block.");
-
-  SkipSpace();
-  DCHECK_LT(in_, end_);
-  DCHECK_EQ('{', *in_);
-  int depth = 0;
-  while (in_ < end_) {
-    switch (*in_) {
-      case '{':
-        in_++;
-        depth++;
-        break;
-      case '@':
-        in_++;
-        ParseIdent();
-        break;
-      case ';':
-        in_++;
-        break;
-      case '}':
-        in_++;
-        depth--;
-        if (depth == 0)
-          // We successfully reached the end of the block.
-          return true;
-        break;
-      default:
-        // Ignore whatever there is to parse.
-        scoped_ptr<Value> v(ParseAny());
-        break;
-    }
-    SkipSpace();
-  }
-
-  // We reached EOF before the end of the block. It is unclosed.
-  return false;
 }
 
 Stylesheet* Parser::ParseRawStylesheet() {

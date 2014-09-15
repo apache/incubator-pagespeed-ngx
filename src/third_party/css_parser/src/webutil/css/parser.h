@@ -231,7 +231,12 @@ class Parser {
   // the end of the document.
   void SkipComment();
 
-  // Skips following characters until delimiter delim or end is seen, delim is
+  // Starting at '{', '[' or '(', SkipMatching consumes to the closing '}',
+  // ']' or ')' respecting nested blocks.  We discard the result.
+  // Returns true if matching '}' was found, false if EOF was reached first.
+  bool SkipMatching();
+
+  // Skips following tokens until delimiter delim or end is seen, delim is
   // consumed if found. Smart enough to skip over matches inside comments,
   // quoted strings or balanced parentheses ()[]{}.
   // For example, if in_ = "foo(a, b), 1, bar"
@@ -246,7 +251,20 @@ class Parser {
   // ending delimiter ([;}!]).
   bool SkipToNextAny();
 
+  // Skip until the end of the at-rule. Used for at-rules that we do not
+  // recognize. Return value is whether or not the at-rule was closed correctly.
+  // Returns true if at-rule is correctly closed (by ; or end of block),
+  // false if EOF was reached first.
   //
+  // From http://www.w3.org/TR/CSS2/syndata.html#parsing-errors:
+  //
+  //   At-rules with unknown at-keywords. User agents must ignore an invalid
+  //   at-keyword together with everything following it, up to the end of the
+  //   block that contains the invalid at-keyword, or up to and including the
+  //   next semicolon (;), or up to and including the next block ({...}),
+  //   whichever comes first.
+  bool SkipToAtRuleEnd();
+
   // Parse functions.
   //
   // When the comment reads 'starting at foo', it's a dchecked runtime
@@ -538,25 +556,6 @@ class Parser {
   // Parse the charset after an @charset rule.
   UnicodeText ParseCharset();
 
-  // Skip until the end of the at-rule. Used for at-rules that we do not
-  // recognize. Return value is whether or not the at-rule was closed correctly.
-  // Returns true if at-rule is correctly closed (by ; or end of block),
-  // false if EOF was reached first.
-  //
-  // From http://www.w3.org/TR/CSS2/syndata.html#parsing-errors:
-  //
-  //   At-rules with unknown at-keywords. User agents must ignore an invalid
-  //   at-keyword together with everything following it, up to the end of the
-  //   block that contains the invalid at-keyword, or up to and including the
-  //   next semicolon (;), or up to and including the next block ({...}),
-  //   whichever comes first.
-  bool SkipToAtRuleEnd();
-
-  // Starting at '{', SkipBlock consumes to the matching '}', respecting
-  // nested blocks.  We discard the result. Returns true if matching '}' was
-  // found, false if EOF was reached first.
-  bool SkipBlock();
-
   // Current position in document (bytes from beginning).
   int CurrentOffset() const { return in_ - begin_; }
 
@@ -606,7 +605,8 @@ class Parser {
   FRIEND_TEST(ParserTest, ruleset_starts_with_combinator);
   FRIEND_TEST(ParserTest, atrules);
   FRIEND_TEST(ParserTest, percentage_colors);
-  FRIEND_TEST(ParserTest, SkipBlock);
+  FRIEND_TEST(ParserTest, SkipCornerCases);
+  FRIEND_TEST(ParserTest, SkipMatching);
   FRIEND_TEST(ParserTest, SkippedTokenError);
   FRIEND_TEST(ParserTest, ValueError);
   FRIEND_TEST(ParserTest, ParseAnyParens);
