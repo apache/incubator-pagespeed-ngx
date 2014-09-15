@@ -123,6 +123,7 @@ class UserAgentMatcherTestBase : public testing::Test {
   static const char kSpiceUserAgent[];
   static const char kTIANYUUserAgent[];
   static const char kVodafoneMobileUserAgent[];
+  static const char kWindowsPhoneUserAgent[];
   static const char kWinWAPUserAgent[];
   static const char kXWapProfile[];
   static const char kXWapProfileHeaderValue[];

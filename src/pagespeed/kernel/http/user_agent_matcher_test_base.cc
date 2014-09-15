@@ -268,6 +268,11 @@ const char UserAgentMatcherTestBase::kVodafoneMobileUserAgent[] =
     "Vodafone/1.0/0Vodafone710/B616 Browser/Obigo-Browser/Q04A "
     "MMS/Obigo-MMS/Q04A SyncML/HW-SyncML/1.0 Java/QVM/4.1 Profile/MIDP-2.0 "
     "Configuration/CLDC-1.1";
+// http://msdn.microsoft.com/en-us/library/ie/hh869301(v=vs.85).aspx
+const char UserAgentMatcherTestBase::kWindowsPhoneUserAgent[] =
+    "Mozilla/5.0 (Mobile; Windows Phone 8.1; Android 4.0; ARM; Trident/7.0; "
+    "Touch; rv:11.0; IEMobile/11.0; NOKIA; Lumia 928) like iPhone OS 7_0_3 "
+    "Mac OS X AppleWebKit/537 (KHTML, like Gecko) Mobile Safari/537";
 const char UserAgentMatcherTestBase::kWinWAPUserAgent[] =
     "WinWAP/1.3 (1.3.0.0;WinCE;PPC2003)";
 const char UserAgentMatcherTestBase::kXWapProfileHeaderValue[] =

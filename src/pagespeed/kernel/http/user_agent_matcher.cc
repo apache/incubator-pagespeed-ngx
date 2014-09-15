@@ -160,6 +160,7 @@ const char* kWebpBlacklist[] = {
   "*Opera?10.*",
   "*Opera/9.80*Version/11.0*",
   "*Opera?11.0*",
+  "*Windows Phone*",
 };
 
 const char* kWebpLosslessAlphaWhitelist[] = {

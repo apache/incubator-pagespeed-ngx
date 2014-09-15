@@ -329,6 +329,8 @@ TEST_F(UserAgentMatcherTest, DoesntSupportWebp) {
       kIPhoneChrome21UserAgent));
   EXPECT_FALSE(user_agent_matcher_->SupportsWebp(
       kIPadChrome28UserAgent));
+  EXPECT_FALSE(user_agent_matcher_->SupportsWebp(
+      kWindowsPhoneUserAgent));
 }
 
 TEST_F(UserAgentMatcherTest, IsAndroidUserAgentTest) {
@@ -510,6 +512,8 @@ TEST_F(UserAgentMatcherTest, DoesntSupportWebpLosslessAlpha) {
       kSafariUserAgent));
   EXPECT_FALSE(user_agent_matcher_->SupportsWebpLosslessAlpha(
       kIPadChrome28UserAgent));
+  EXPECT_FALSE(user_agent_matcher_->SupportsWebpLosslessAlpha(
+      kWindowsPhoneUserAgent));
 }
 
 TEST_F(UserAgentMatcherTest, SupportsDnsPrefetchUsingRelPrefetch) {
