@@ -16,10 +16,9 @@
 
 // Author: gee@google.com (Adam Gee)
 
-#include "testing/base/public/gunit.h"
-
-#include "net/instaweb/http/public/request_context.h"
+#include "net/instaweb/http/public/request_timing_info.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mock_timer.h"
 #include "pagespeed/kernel/base/null_mutex.h"
 
@@ -27,10 +26,10 @@ namespace net_instaweb {
 
 namespace {
 
-TEST(RequestContext_TimingInfo, Noop) {
+TEST(RequestTimingInfoTest, Noop) {
   MockTimer timer(new NullMutex, 101);
   NullMutex mutex;
-  RequestContext::TimingInfo timing_info(&timer, &mutex);
+  RequestTimingInfo timing_info(&timer, &mutex);
   EXPECT_EQ(timer.NowMs(), timing_info.init_ts_ms());
   EXPECT_EQ(0, timing_info.GetElapsedMs());
   EXPECT_EQ(-1, timing_info.start_ts_ms());
@@ -41,20 +40,20 @@ TEST(RequestContext_TimingInfo, Noop) {
   ASSERT_FALSE(timing_info.GetFetchHeaderLatencyMs(&elapsed));
 }
 
-TEST(RequestContext_TimingInfo, StartTime) {
+TEST(RequestTimingInfoTest, StartTime) {
   MockTimer timer(new NullMutex, 101);
   NullMutex mutex;
-  RequestContext::TimingInfo timing_info(&timer, &mutex);
+  RequestTimingInfo timing_info(&timer, &mutex);
 
   timer.AdvanceMs(1);
   timing_info.RequestStarted();
   EXPECT_EQ(102, timing_info.start_ts_ms());
 }
 
-TEST(RequestContext_TimingInfo, FetchTiming) {
+TEST(RequestTimingInfoTest, FetchTiming) {
   MockTimer timer(new NullMutex, 100);
   NullMutex mutex;
-  RequestContext::TimingInfo timing_info(&timer, &mutex);
+  RequestTimingInfo timing_info(&timer, &mutex);
   timing_info.RequestStarted();
 
   int64 latency;
@@ -82,10 +81,10 @@ TEST(RequestContext_TimingInfo, FetchTiming) {
   EXPECT_EQ(5, elapsed);
 }
 
-TEST(RequestContext_TimingInfo, ProcessingTime) {
+TEST(RequestTimingInfoTest, ProcessingTime) {
   MockTimer timer(new NullMutex, 100);
   NullMutex mutex;
-  RequestContext::TimingInfo timing_info(&timer, &mutex);
+  RequestTimingInfo timing_info(&timer, &mutex);
 
   timing_info.RequestStarted();
 
@@ -109,10 +108,10 @@ TEST(RequestContext_TimingInfo, ProcessingTime) {
   EXPECT_EQ(16, timing_info.GetElapsedMs());
 }
 
-TEST(RequestContext_TimingInfo, ProcessingTimeNoFetch) {
+TEST(RequestTimingInfoTest, ProcessingTimeNoFetch) {
   MockTimer timer(new NullMutex, 100);
   NullMutex mutex;
-  RequestContext::TimingInfo timing_info(&timer, &mutex);
+  RequestTimingInfo timing_info(&timer, &mutex);
 
   timing_info.RequestStarted();
 
@@ -131,10 +130,10 @@ TEST(RequestContext_TimingInfo, ProcessingTimeNoFetch) {
   EXPECT_EQ(1, timing_info.GetElapsedMs());
 }
 
-TEST(RequestContext_TimingInfo, TimeToStartProcessing) {
+TEST(RequestTimingInfoTest, TimeToStartProcessing) {
   MockTimer timer(new NullMutex, 100);
   NullMutex mutex;
-  RequestContext::TimingInfo timing_info(&timer, &mutex);
+  RequestTimingInfo timing_info(&timer, &mutex);
 
   int64 elapsed;
   ASSERT_FALSE(timing_info.GetTimeToStartProcessingMs(&elapsed));
@@ -149,10 +148,10 @@ TEST(RequestContext_TimingInfo, TimeToStartProcessing) {
   EXPECT_EQ(2, elapsed);
 }
 
-TEST(RequestContext_TimingInfo, PcacheLookup) {
+TEST(RequestTimingInfoTest, PcacheLookup) {
   MockTimer timer(new NullMutex, 100);
   NullMutex mutex;
-  RequestContext::TimingInfo timing_info(&timer, &mutex);
+  RequestTimingInfo timing_info(&timer, &mutex);
 
   int64 elapsed;
   ASSERT_FALSE(timing_info.GetTimeToPropertyCacheLookupStartMs(&elapsed));
@@ -177,10 +176,10 @@ TEST(RequestContext_TimingInfo, PcacheLookup) {
   EXPECT_EQ(7, elapsed);
 }
 
-TEST(RequestContext_TimingInfo, TimeToStartParse) {
+TEST(RequestTimingInfoTest, TimeToStartParse) {
   MockTimer timer(new NullMutex, 100);
   NullMutex mutex;
-  RequestContext::TimingInfo timing_info(&timer, &mutex);
+  RequestTimingInfo timing_info(&timer, &mutex);
 
   int64 elapsed;
   ASSERT_FALSE(timing_info.GetTimeToStartParseMs(&elapsed));
@@ -195,9 +194,9 @@ TEST(RequestContext_TimingInfo, TimeToStartParse) {
   EXPECT_EQ(2, elapsed);
 }
 
-TEST(RequestContext_TimingInfo, CacheLatency) {
+TEST(RequestTimingInfoTest, CacheLatency) {
   NullMutex mutex;
-  RequestContext::TimingInfo timing_info(NULL, &mutex);
+  RequestTimingInfo timing_info(NULL, &mutex);
 
   int64 latency_ms;
   ASSERT_FALSE(timing_info.GetHTTPCacheLatencyMs(&latency_ms));

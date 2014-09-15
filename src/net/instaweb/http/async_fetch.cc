@@ -21,6 +21,7 @@
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/http_cache.h"
+#include "net/instaweb/http/public/request_timing_info.h"
 #include "pagespeed/kernel/base/ref_counted_ptr.h"
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/http/http_names.h"
@@ -192,7 +193,7 @@ GoogleString AsyncFetch::LoggingString() {
   }
 
   int64 latency;
-  const RequestContext::TimingInfo& timing_info = request_ctx_->timing_info();
+  const RequestTimingInfo& timing_info = request_ctx_->timing_info();
   if (timing_info.GetHTTPCacheLatencyMs(&latency)) {
     StrAppend(&logging_info_str, "c1:", Integer64ToString(latency), ";");
   }

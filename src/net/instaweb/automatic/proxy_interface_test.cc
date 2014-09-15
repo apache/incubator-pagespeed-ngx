@@ -29,6 +29,7 @@
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/reflecting_test_fetcher.h"
 #include "net/instaweb/http/public/request_context.h"
+#include "net/instaweb/http/public/request_timing_info.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/experiment_util.h"
@@ -59,7 +60,6 @@
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/http/http_names.h"
-#include "pagespeed/kernel/http/http_options.h"
 #include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/response_headers.h"
 #include "pagespeed/kernel/http/semantic_type.h"
@@ -330,7 +330,7 @@ TEST_F(ProxyInterfaceTest, LoggingInfo) {
 
   CheckBackgroundFetch(headers, false);
   CheckNumBackgroundFetches(0);
-  const RequestContext::TimingInfo& rti = timing_info();
+  const RequestTimingInfo& rti = timing_info();
   int64 latency_ms;
   ASSERT_TRUE(rti.GetHTTPCacheLatencyMs(&latency_ms));
   EXPECT_EQ(0, latency_ms);

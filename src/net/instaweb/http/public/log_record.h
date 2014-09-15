@@ -23,7 +23,6 @@
 #include "net/instaweb/http/public/logging_proto.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
 // TODO(gee):  Hmm, this sort of sucks.
-#include "net/instaweb/http/public/request_context.h"  // TimingInfo
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/gtest_prod.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
@@ -40,6 +39,7 @@
 namespace net_instaweb {
 
 class AbstractMutex;
+class RequestTimingInfo;
 
 // This class is a wrapper around a protobuf used to collect logging
 // information. It also provides a simple aggregation mechanism for
@@ -253,7 +253,7 @@ class AbstractLogRecord  {
     int max_rewrite_info_log_size);
 
   // Set timing information in the logging implementation.
-  virtual void SetTimingInfo(const RequestContext::TimingInfo& timing_info) {}
+  virtual void SetTimingInfo(const RequestTimingInfo& timing_info) {}
 
  protected:
   // Implements setting Blink specific log information; base impl is a no-op.

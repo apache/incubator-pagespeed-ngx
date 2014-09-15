@@ -19,6 +19,7 @@
 #include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
 
 #include "net/instaweb/http/public/request_context.h"
+#include "net/instaweb/http/public/request_timing_info.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
@@ -174,7 +175,7 @@ TEST_F(AddInstrumentationFilterTest, TestExtendedInstrumentation) {
 
 // Test that headers fetch timing reporting is done correctly.
 TEST_F(AddInstrumentationFilterTest, TestHeadersFetchTimingReporting) {
-  RequestContext::TimingInfo* timing_info = mutable_timing_info();
+  RequestTimingInfo* timing_info = mutable_timing_info();
   timing_info->FetchStarted();
   AdvanceTimeMs(200);
   timing_info->FetchHeaderReceived();

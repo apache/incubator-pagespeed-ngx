@@ -70,6 +70,7 @@ class MockLogRecord;
 class MockScheduler;
 class ProcessContext;
 class RequestHeaders;
+class RequestTimingInfo;
 class ResourceNamer;
 class RewriteFilter;
 class Statistics;
@@ -715,8 +716,8 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   void AdjustTimeUsWithoutWakingAlarms(int64 time_us);
 
   // Accessor for TimingInfo.
-  const RequestContext::TimingInfo& timing_info();
-  RequestContext::TimingInfo* mutable_timing_info();
+  const RequestTimingInfo& timing_info();
+  RequestTimingInfo* mutable_timing_info();
 
   // Convenience method to pull the logging info proto out of the current
   // request context's log record. The request context owns the log record, and

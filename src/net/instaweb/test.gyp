@@ -86,7 +86,7 @@
         'http/mock_url_fetcher_test.cc',
         'http/rate_controlling_url_async_fetcher_test.cc',
         'http/reflecting_test_fetcher_test.cc',
-        'http/request_context_test.cc',
+        'http/request_timing_info_test.cc',
         # SimulatedDelayFetcher isn't currently used in {mod_,ngx_}pagespeed,
         # so we only build it into the test binary.
         'http/simulated_delay_fetcher.cc',

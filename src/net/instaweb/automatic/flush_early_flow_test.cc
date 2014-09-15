@@ -26,6 +26,7 @@
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/request_context.h"
+#include "net/instaweb/http/public/request_timing_info.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/beacon_critical_line_info_finder.h"
 #include "net/instaweb/rewriter/public/critical_css_filter.h"
@@ -44,7 +45,6 @@
 #include "net/instaweb/rewriter/public/test_url_namer.h"
 #include "net/instaweb/util/public/mock_property_page.h"
 #include "net/instaweb/util/public/property_cache.h"
-#include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mock_timer.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
@@ -836,7 +836,7 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
   }
 
   void SetHeaderLatencyMs(int64 latency_ms) {
-    RequestContext::TimingInfo* timing_info = mutable_timing_info();
+    RequestTimingInfo* timing_info = mutable_timing_info();
     timing_info->FetchStarted();
     AdvanceTimeMs(latency_ms);
     timing_info->FetchHeaderReceived();

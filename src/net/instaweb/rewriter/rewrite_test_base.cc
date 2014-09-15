@@ -52,21 +52,13 @@
 #include "net/instaweb/rewriter/public/test_url_namer.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/base64_util.h"
-#include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/gtest.h"
-#include "pagespeed/kernel/base/mem_file_system.h"
-#include "pagespeed/kernel/base/mock_message_handler.h"
-#include "pagespeed/kernel/base/mock_timer.h"
 #include "pagespeed/kernel/base/ref_counted_ptr.h"
-#include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/stdio_file_system.h"
 #include "pagespeed/kernel/base/stl_util.h"
-#include "pagespeed/kernel/base/string.h"
-#include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/string_writer.h"
 #include "pagespeed/kernel/base/thread_system.h"
-#include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/cache/delay_cache.h"
 #include "pagespeed/kernel/cache/lru_cache.h"
 #include "pagespeed/kernel/cache/mock_time_cache.h"
@@ -83,9 +75,10 @@
 #include "pagespeed/kernel/thread/mock_scheduler.h"
 #include "pagespeed/kernel/util/simple_stats.h"
 #include "pagespeed/kernel/util/url_multipart_encoder.h"
-#include "pagespeed/kernel/util/url_segment_encoder.h"
 
 namespace net_instaweb {
+
+class RequestTimingInfo;
 
 namespace {
 
@@ -1143,12 +1136,12 @@ void RewriteTestBase::AdjustTimeUsWithoutWakingAlarms(int64 time_us) {
   factory_->mock_timer()->SetTimeUs(time_us);
 }
 
-const RequestContext::TimingInfo& RewriteTestBase::timing_info() {
+const RequestTimingInfo& RewriteTestBase::timing_info() {
   CHECK(rewrite_driver()->request_context().get() != NULL);
   return rewrite_driver()->request_context()->timing_info();
 }
 
-RequestContext::TimingInfo* RewriteTestBase::mutable_timing_info() {
+RequestTimingInfo* RewriteTestBase::mutable_timing_info() {
   CHECK(rewrite_driver()->request_context().get() != NULL);
   return rewrite_driver()->request_context()->mutable_timing_info();
 }

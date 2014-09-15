@@ -28,6 +28,7 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/http/http_options.h"
+#include "net/instaweb/http/public/request_timing_info.h"
 
 namespace net_instaweb {
 
@@ -59,8 +60,8 @@ class RequestContext : public RefCounted<RequestContext> {
   // |logging_mutex| will be passed to the request context's AbstractLogRecord,
   // which will take ownership of it. If you will be doing logging in a real
   // (threaded) environment, pass in a real mutex. If not, a NullMutex is fine.
-  // |timer| will be passed to the TimingInfo, which will *not* take ownership.
-  // Passing NULL for |timer| is allowed.
+  // |timer| will be passed to the RequestTimingInfo, which will *not* take
+  // ownership. Passing NULL for |timer| is allowed.
   RequestContext(const HttpOptions& options, AbstractMutex* logging_mutex,
                  Timer* timer);
   // If you use this constructor, you MUST set_options() later.
@@ -190,7 +191,7 @@ class RequestContext : public RefCounted<RequestContext> {
 
   // Prepare the AbstractLogRecord for a subsequent call to WriteLog.  This
   // might include propagating information collected in the RequestContext,
-  // TimingInfo for example, to the underlying logging infrastructure.
+  // RequestTimingInfo for example, to the underlying logging infrastructure.
   void PrepareLogRecordForOutput();
 
   // Write the log for background rewriting into disk.
@@ -204,160 +205,8 @@ class RequestContext : public RefCounted<RequestContext> {
       bool log_url_indices,
       int max_rewrite_info_log_size);
 
-  // TimingInfo tracks various event timestamps over the lifetime of a request.
-  // The timeline looks (roughly) like the following, with the associated
-  // TimingInfo calls.
-  // - Request Received/Context created: Init
-  // <queueing delay>
-  // - Trigger: RequestStarted
-  // <option lookup>
-  // - Start Processing: ProcessingStarted
-  // - Lookup Properties?: PropertyCacheLookup*
-  // - Fetch?: Fetch*
-  // - Start parsing?: ParsingStarted
-  // - First byte sent to client: FirstByteReturned.
-  // - Finish: RequestFinished
-  // NOTE: This class is thread safe.
-  class TimingInfo {
-   public:
-    // Initialize the TimingInfo with the specified Timer.  Sets init_ts_ to
-    // Timer::NowMs, from which GetElapsedMs is based.
-    // NOTE: Timer and mutex are not owned by TimingInfo.
-    TimingInfo(Timer* timer, AbstractMutex* mutex);
-
-    // This should be called when the request "starts", potentially after
-    // queuing. It denotes the request "start time", which "elapsed" timing
-    // values are relative to.
-    void RequestStarted();
-
-    // This should be called once the options are available and PSOL can start
-    // doing meaningful work.
-    void ProcessingStarted() { SetToNow(&processing_start_ts_ms_); }
-
-    // This should be called if/when HTML parsing begins.
-    void ParsingStarted() { SetToNow(&parsing_start_ts_ms_); }
-
-    // Called when the first byte is sent back to the user.
-    void FirstByteReturned();
-
-    // This should be called when a PropertyCache lookup is initiated.
-    void PropertyCacheLookupStarted() {
-      SetToNow(&pcache_lookup_start_ts_ms_);
-    }
-
-    // This should be called when a PropertyCache lookup completes.
-    void PropertyCacheLookupFinished() { SetToNow(&pcache_lookup_end_ts_ms_); }
-
-    // Called when the request is finished, i.e. the response has been sent to
-    // the client.
-    void RequestFinished() { SetToNow(&end_ts_ms_); }
-
-    // Fetch related timing events.
-    // Note:  Only the first call to FetchStarted will have an effect,
-    // subsequent calls are silent no-ops.
-    // TODO(gee): Fetch and cache timing is busted for reconstructing resources
-    // with multiple inputs.
-    void FetchStarted();
-    void FetchHeaderReceived();
-    void FetchFinished();
-
-    // TODO(gee): I'd really prefer these to be start/end calls, but the
-    // WriteThroughCache design pattern will not allow for this.
-    void SetHTTPCacheLatencyMs(int64 latency_ms);
-    void SetL2HTTPCacheLatencyMs(int64 latency_ms);
-
-    // Milliseconds since Init.
-    int64 GetElapsedMs() const;
-
-    // Milliseconds from request start to processing start.
-    bool GetTimeToStartProcessingMs(int64* elapsed_ms) const {
-      return GetTimeFromStart(processing_start_ts_ms_, elapsed_ms);
-    }
-
-    // Milliseconds spent "processing": end time - start time - fetch time.
-    // TODO(gee): This naming is somewhat misleading since it is from request
-    // start not processing start.  Leaving as is for historical reasons, at
-    // least for the time being.
-    bool GetProcessingElapsedMs(int64* elapsed_ms) const;
-
-    // Milliseconds from request start to pcache lookup start.
-    bool GetTimeToPropertyCacheLookupStartMs(int64* elapsed_ms) const {
-      return GetTimeFromStart(pcache_lookup_start_ts_ms_, elapsed_ms);
-    }
-
-    // Milliseconds from request start to pcache lookup end.
-    bool GetTimeToPropertyCacheLookupEndMs(int64* elapsed_ms) const {
-      return GetTimeFromStart(pcache_lookup_end_ts_ms_, elapsed_ms);
-    }
-
-    // HTTP Cache latencies.
-    bool GetHTTPCacheLatencyMs(int64* latency_ms) const;
-    bool GetL2HTTPCacheLatencyMs(int64* latency_ms) const;
-
-    // Milliseconds from request start to fetch start.
-    bool GetTimeToStartFetchMs(int64* elapsed_ms) const;
-
-    // Milliseconds from fetch start to header received.
-    bool GetFetchHeaderLatencyMs(int64* latency_ms) const;
-
-    // Milliseconds from fetch start to fetch end.
-    bool GetFetchLatencyMs(int64* latency_ms) const;
-
-    // Milliseconds from receiving the request (Init) to responding with the
-    // first byte of data.
-    bool GetTimeToFirstByte(int64* latency_ms) const;
-
-    // Milliseconds from request start to parse start.
-    bool GetTimeToStartParseMs(int64* elapsed_ms) const {
-      return GetTimeFromStart(parsing_start_ts_ms_, elapsed_ms);
-    }
-
-    int64 init_ts_ms() const { return init_ts_ms_; }
-
-    int64 start_ts_ms() const { return start_ts_ms_; }
-
-   private:
-    int64 NowMs() const;
-
-    // Set "ts_ms" to NowMs().
-    void SetToNow(int64* ts_ms) const;
-
-    // Set "elapsed_ms" to "ts_ms" - start_ms_ and returns true on success.
-    // Returns false if either start_ms_ or "ts_ms" have not been set (< 0).
-    bool GetTimeFromStart(int64 ts_ms, int64* elapsed_ms) const;
-
-
-    Timer* timer_;
-
-    // Event Timestamps.  These should appear in (roughly) chronological order.
-    // These need not be protected by mu_ as they are only accessed by a single
-    // thread at any given time, and subsequent accesses are made through
-    // paths which are synchronized by other locks (pcache callback collector,
-    // sequences, etc.).
-    int64 init_ts_ms_;
-    int64 start_ts_ms_;
-    int64 processing_start_ts_ms_;
-    int64 pcache_lookup_start_ts_ms_;
-    int64 pcache_lookup_end_ts_ms_;
-    int64 parsing_start_ts_ms_;
-    int64 end_ts_ms_;
-
-    AbstractMutex* mu_;  // Not owned by TimingInfo.
-    // The following members are protected by mu_;
-    int64 fetch_start_ts_ms_;
-    int64 fetch_header_ts_ms_;
-    int64 fetch_end_ts_ms_;
-    int64 first_byte_ts_ms_;
-
-    // Latencies.
-    int64 http_cache_latency_ms_;
-    int64 l2http_cache_latency_ms_;
-
-    DISALLOW_COPY_AND_ASSIGN(TimingInfo);
-  };
-
-  const TimingInfo& timing_info() const { return timing_info_; }
-  TimingInfo* mutable_timing_info() { return &timing_info_; }
+  const RequestTimingInfo& timing_info() const { return timing_info_; }
+  RequestTimingInfo* mutable_timing_info() { return &timing_info_; }
 
   void set_options(const HttpOptions& options) {
     DCHECK(!options_set_);
@@ -390,7 +239,7 @@ class RequestContext : public RefCounted<RequestContext> {
   // Always non-NULL.
   scoped_ptr<AbstractLogRecord> log_record_;
 
-  TimingInfo timing_info_;
+  RequestTimingInfo timing_info_;
 
   // Logs tracing events associated with the root request.
   scoped_ptr<RequestTrace> root_trace_context_;

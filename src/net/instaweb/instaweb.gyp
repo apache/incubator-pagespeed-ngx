@@ -967,6 +967,7 @@
         'http/rate_controller.cc',
         'http/rate_controlling_url_async_fetcher.cc',
         'http/request_context.cc',
+        'http/request_timing_info.cc',
         'http/sync_fetcher_adapter_callback.cc',
         'http/url_async_fetcher.cc',
         'http/url_async_fetcher_stats.cc',

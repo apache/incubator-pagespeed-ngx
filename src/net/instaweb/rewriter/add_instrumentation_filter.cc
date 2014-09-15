@@ -20,6 +20,7 @@
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/request_context.h"
+#include "net/instaweb/http/public/request_timing_info.h"
 #include "net/instaweb/rewriter/public/experiment_util.h"
 #include "net/instaweb/rewriter/public/request_properties.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -175,7 +176,7 @@ GoogleString AddInstrumentationFilter::GetScriptJs(StringPiece event) {
     }
   }
 
-  const RequestContext::TimingInfo& timing_info =
+  const RequestTimingInfo& timing_info =
       driver()->request_context()->timing_info();
   int64 header_fetch_ms;
   if (timing_info.GetFetchHeaderLatencyMs(&header_fetch_ms)) {

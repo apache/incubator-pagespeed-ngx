@@ -146,7 +146,7 @@ class HTTPCache {
     // Called upon completion of a cache lookup trigged by HTTPCache::Find by
     // the HTTPCache code with the latency in milliseconds.  Will invoke
     // ReportLatencyMsImpl for non-background fetches in order for system
-    // implementations, like RequestContext::TimingInfo, to record the cache
+    // implementations, like RequestTimingInfo, to record the cache
     // latency.
     void ReportLatencyMs(int64 latency_ms);
 
@@ -199,7 +199,7 @@ class HTTPCache {
 
    protected:
     // Virtual implementation for subclasses to override.  Default
-    // implementation calls RequestContext::TimingInfo::SetHTTPCacheLatencyMs.
+    // implementation calls RequestTimingInfo::SetHTTPCacheLatencyMs.
     virtual void ReportLatencyMsImpl(int64 latency_ms);
 
    private:

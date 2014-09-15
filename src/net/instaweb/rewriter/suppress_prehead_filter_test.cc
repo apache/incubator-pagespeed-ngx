@@ -19,7 +19,7 @@
 
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
-#include "net/instaweb/http/public/request_context.h"
+#include "net/instaweb/http/public/request_timing_info.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/flush_early_info_finder_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -150,7 +150,7 @@ TEST_F(SuppressPreheadFilterTest, FlushEarlyHeadSuppress) {
       "</head>"
       "<body></body></html>";
   GoogleString html_input = StrCat(pre_head_input, post_head_input);
-  RequestContext::TimingInfo* timing_info = mutable_timing_info();
+  RequestTimingInfo* timing_info = mutable_timing_info();
   timing_info->FetchStarted();
   AdvanceTimeMs(100);
   timing_info->FetchHeaderReceived();
@@ -188,7 +188,7 @@ TEST_F(SuppressPreheadFilterTest, FlushEarlyHeadSuppressWithCacheableHtml) {
       "</head>"
       "<body></body></html>";
   GoogleString html_input = StrCat(pre_head_input, post_head_input);
-  RequestContext::TimingInfo* timing_info = mutable_timing_info();
+  RequestTimingInfo* timing_info = mutable_timing_info();
   timing_info->FetchStarted();
   AdvanceTimeMs(100);
   timing_info->FetchHeaderReceived();
