@@ -853,13 +853,24 @@ class GifAnimationTest : public testing::Test {
             // Since we're comparing pixel by pixel, correlated errors
             // would generate huge output if we use EXPECT rather than
             // ASSERT below.
-            ASSERT_EQ(0, memcmp(scanline + col * bytes_per_pixel,
-                                cmap + set_frame->square_color_idx, kRgbBytes));
-            if (frame_spec.pixel_format == RGBA_8888) {
-              ASSERT_EQ(*(scanline + col * bytes_per_pixel + kRgbBytes),
-                        ((set_frame->transparent_idx ==
-                          set_frame->square_color_idx) ?
-                         kAlphaTransparent : kAlphaOpaque));
+            if (frame_spec.pixel_format == RGBA_8888 &&
+                (set_frame->transparent_idx == set_frame->square_color_idx)) {
+              // This pixel is fully transparent so other channels do not
+              // matter.
+              ASSERT_EQ(kAlphaTransparent,
+                        *(scanline + col * bytes_per_pixel + kRgbBytes));
+              const uint8 black_pixel[3] = {0, 0, 0};
+              ASSERT_EQ(0, memcmp(scanline + col * bytes_per_pixel, black_pixel,
+                                  kRgbBytes));
+            } else {
+              // This pixel must be opaque. Check all color channels.
+              ASSERT_EQ(0, memcmp(scanline + col * bytes_per_pixel,
+                                  cmap + set_frame->square_color_idx,
+                                  kRgbBytes));
+              if (frame_spec.pixel_format == RGBA_8888) {
+                ASSERT_EQ(kAlphaOpaque,
+                          *(scanline + col * bytes_per_pixel + kRgbBytes));
+              }
             }
           }
         }

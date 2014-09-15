@@ -1171,7 +1171,13 @@ ScanlineStatus GifFrameReader::CreateColorMap() {
   if ((frame_transparent_index_ >= 0) &&
       (frame_transparent_index_ < color_map->ColorCount)) {
     frame_spec_.pixel_format = RGBA_8888;
+    // Set the alpha channel of the transparent color to 0 (kAlphaTransparent).
+    // Since this pixel is fully transparent, for the purpose of better
+    // compression ratio, also set the other channels to 0.
     gif_palette_[frame_transparent_index_].alpha_ = kAlphaTransparent;
+    gif_palette_[frame_transparent_index_].red_ = 0;
+    gif_palette_[frame_transparent_index_].green_ = 0;
+    gif_palette_[frame_transparent_index_].blue_ = 0;
   } else {
     frame_spec_.pixel_format = RGB_888;
   }
