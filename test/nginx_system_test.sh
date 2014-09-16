@@ -1128,6 +1128,7 @@ function test_optimize_for_bandwidth() {
         $SECONDARY_HOST/mod_pagespeed_test/optimize_for_bandwidth/$1)
   check_from "$OUT" grep -q "$2"
   if [ "$#" -ge 3 ]; then
+    sleep 0.1
     check_from "$OUT" grep -q "$3"
   fi
 }
