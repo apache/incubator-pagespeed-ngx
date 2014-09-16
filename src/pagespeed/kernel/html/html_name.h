@@ -189,6 +189,7 @@ class HtmlName {
     kRel,
     kRequired,
     kReversed,
+    kRole,
     kRowspan,
     kRp,
     kRt,

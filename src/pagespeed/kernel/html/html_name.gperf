@@ -177,6 +177,7 @@ struct KeywordMap {const char* name; net_instaweb::HtmlName::Keyword keyword;};
 "rel",                        HtmlName::kRel
 "required",                   HtmlName::kRequired
 "reversed",                   HtmlName::kReversed
+"role",                       HtmlName::kRole
 "rowspan",                    HtmlName::kRowspan
 "rp",                         HtmlName::kRp
 "rt",                         HtmlName::kRt

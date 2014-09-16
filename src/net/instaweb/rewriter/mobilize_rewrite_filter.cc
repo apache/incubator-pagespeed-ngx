@@ -58,8 +58,6 @@ const char MobilizeRewriteFilter::kDeletedElements[] =
 
 namespace {
 const char kViewportContent[] = "width=device-width,user-scalable=no";
-const HtmlName::Keyword kKeeperTags[] = {
-  HtmlName::kArea, HtmlName::kMap, HtmlName::kScript, HtmlName::kStyle};
 const HtmlName::Keyword kPreserveNavTags[] = {HtmlName::kA};
 const HtmlName::Keyword kTableTags[] = {
   HtmlName::kCaption, HtmlName::kCol, HtmlName::kColgroup, HtmlName::kTable,
@@ -75,6 +73,10 @@ void CheckKeywordsSorted(const HtmlName::Keyword* list, int len) {
 }
 #endif  // #ifndef NDEBUG
 }  // namespace
+
+const HtmlName::Keyword MobilizeRewriteFilter::kKeeperTags[] = {
+  HtmlName::kArea, HtmlName::kMap, HtmlName::kScript, HtmlName::kStyle};
+const int MobilizeRewriteFilter::kNumKeeperTags = arraysize(kKeeperTags);
 
 MobilizeRewriteFilter::MobilizeRewriteFilter(RewriteDriver* rewrite_driver)
     : driver_(rewrite_driver),
@@ -94,7 +96,7 @@ MobilizeRewriteFilter::MobilizeRewriteFilter(RewriteDriver* rewrite_driver)
   num_marginal_blocks_ = stats->GetVariable(kMarginalBlocks);
   num_elements_deleted_ = stats->GetVariable(kDeletedElements);
 #ifndef NDEBUG
-  CheckKeywordsSorted(kKeeperTags, arraysize(kKeeperTags));
+  CheckKeywordsSorted(kKeeperTags, kNumKeeperTags);
   CheckKeywordsSorted(kPreserveNavTags, arraysize(kPreserveNavTags));
   CheckKeywordsSorted(kTableTags, arraysize(kTableTags));
   CheckKeywordsSorted(kTableTagsToBr, arraysize(kTableTagsToBr));
@@ -386,7 +388,7 @@ MobileRole::Level MobilizeRewriteFilter::GetMobileRole(
   if (mobile_role_attribute) {
     return MobileRole::LevelFromString(mobile_role_attribute->escaped_value());
   } else {
-    if (CheckForKeyword(kKeeperTags, arraysize(kKeeperTags),
+    if (CheckForKeyword(kKeeperTags, kNumKeeperTags,
                         element->keyword())) {
       return MobileRole::kKeeper;
     }

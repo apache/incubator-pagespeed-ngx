@@ -120,6 +120,11 @@ class MobilizeRewriteFilter : public EmptyHtmlFilter {
   static const char kMarginalBlocks[];
   static const char kDeletedElements[];
 
+  // Static list of tags we keep without traversing.  Public so
+  // MobilizeLabelFilter knows which tags to ignore.
+  static const HtmlName::Keyword kKeeperTags[];
+  static const int kNumKeeperTags;
+
   explicit MobilizeRewriteFilter(RewriteDriver* rewrite_driver);
   virtual ~MobilizeRewriteFilter();
 
