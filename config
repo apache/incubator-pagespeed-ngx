@@ -69,6 +69,31 @@ else
   buildtype=Release
 fi
 
+psol_binary="${PSOL_BINARY:-unset}"
+if [ "$psol_binary" = "unset" ] ; then
+  if $build_from_source ; then
+    psol_binary="\
+        $mod_pagespeed_dir/net/instaweb/automatic/pagespeed_automatic.a"
+  else
+    psol_library_dir="$ngx_addon_dir/psol/lib/$buildtype/$os_name/$arch_name"
+    psol_binary="$psol_library_dir/pagespeed_automatic.a"
+  fi
+fi
+
+echo "mod_pagespeed_dir=$mod_pagespeed_dir"
+echo "build_from_source=$build_from_source"
+
+ngx_feature="psol"
+ngx_feature_name=""
+ngx_feature_run=no
+ngx_feature_incs="
+#include \"net/instaweb/htmlparse/public/html_parse.h\"
+#include \"net/instaweb/htmlparse/public/html_writer_filter.h\"
+#include \"net/instaweb/util/public/string.h\"
+#include \"net/instaweb/util/public/string_writer.h\"
+#include \"net/instaweb/util/public/null_message_handler.h\"
+"
+
 # The compiler needs to know that __sync_add_and_fetch_4 is ok,
 # and this requires an instruction that didn't exist on i586 or i386.
 if [ "$uname_arch" = "i686" ]; then
