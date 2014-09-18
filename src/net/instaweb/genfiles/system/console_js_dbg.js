@@ -1803,10 +1803,10 @@ goog.iter.toArray = function(iterable) {
   });
   return array;
 };
-goog.iter.equals = function(iterable1, iterable2) {
-  var pairs = goog.iter.zipLongest({}, iterable1, iterable2);
+goog.iter.equals = function(iterable1, iterable2, opt_equalsFn) {
+  var pairs = goog.iter.zipLongest({}, iterable1, iterable2), equalsFn = opt_equalsFn || goog.array.defaultCompareEquality;
   return goog.iter.every(pairs, function(pair) {
-    return pair[0] == pair[1];
+    return equalsFn(pair[0], pair[1]);
   });
 };
 goog.iter.nextOrValue = function(iterable, defaultValue) {

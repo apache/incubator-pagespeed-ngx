@@ -122,6 +122,66 @@ const char kGifString[] = "gif";
 const char kPngString[] = "png";
 const uint8 kAlphaOpaque = 255;
 
+// To estimate the number of bytes from the number of pixels, we divide
+// by a magic ratio.  The 'correct' ratio is of course dependent on the
+// image itself, but we are ignoring that so we can make a fast judgement.
+// It is also dependent on a variety of image optimization settings, but
+// for now we will assume the 'rewrite_images' bucket is on, and vary only
+// on the jpeg compression level.
+//
+// Consider a testcase from our system tests, which resizes
+// mod_pagespeed_example/images/Puzzle.jpg to 256x192, or 49152
+// pixels, using compression level 75.  Our default byte threshold for
+// jpeg progressive conversion is 10240 (rewrite_options.cc).
+// Converting to progressive in this case makes the image slightly
+// larger (8251 bytes vs 8157 bytes), so we'd like this to be the
+// threshold where we decide *not* to convert to progressive.
+// Dividing 49152 by 5 (multiplying by 0.2) gets us just under our
+// default 10k byte threshold.
+//
+// Making this number smaller will break apache/system_test.sh with this
+// failure:
+//     failure at line 353
+// FAILed Input: /tmp/.../fetched_directory/*256x192*Puzzle* : 8251 -le 8157
+// in 'quality of jpeg output images with generic quality flag'
+// FAIL.
+//
+// A first attempt at computing that ratio is based on an analysis of Puzzle.jpg
+// at various compression ratios.  Sized to 256x192, or 49152 pixels:
+//
+// compression level    size(no progressive)  no_progressive/49152
+// 50,                  5891,                 0.1239217122
+// 55,                  6186,                 0.1299615486
+// 60,                  6661,                 0.138788298
+// 65,                  7068,                 0.1467195606
+// 70,                  7811,                 0.1611197005
+// 75,                  8402,                 0.1728746669
+// 80,                  9800,                 0.1976280565
+// 85,                  11001,                0.220020749
+// 90,                  15021,                0.2933279089
+// 95,                  19078,                0.3703545493
+// 100,                 19074,                0.3704283796
+//
+// At compression level 100, byte-sizes are almost identical to compression 95
+// so we throw this data-point out.
+//
+// Plotting this data in a graph the data is non-linear.  Experimenting in a
+// spreadsheet we get decent visual linearity by transforming the somewhat
+// arbitrary compression ratio with the formula (1 / (110 - compression_level)).
+// Drawing a line through the data-points at compression levels 50 and 95, we
+// get a slope of 4.92865674 and an intercept of 0.04177743.  Double-checking,
+// this fits the other data-points we have reasonably well, except for the
+// one at compression_level 100.
+const double JpegPixelToByteRatio(int compression_level) {
+  if ((compression_level > 95) || (compression_level < 0)) {
+    compression_level = 95;
+  }
+  double kSlope = 4.92865674;
+  double kIntercept = 0.04177743;
+  double ratio = kSlope / (110.0 - compression_level) + kIntercept;
+  return ratio;
+}
+
 void UpdateWebpStats(bool ok, bool was_timed_out, int64 time_elapsed_ms,
                      Image::ConversionVariables::VariableType var_type,
                      Image::ConversionVariables* conversion_vars) {
@@ -398,13 +458,35 @@ ImageImpl::ImageImpl(int width, int height, ImageType type,
 bool ImageImpl::GenerateBlankImage() {
   DCHECK(image_type_ == IMAGE_PNG) << "Blank image must be a PNG.";
 
-  if (pagespeed::image_compression::GenerateBlankImage(dims_.width(),
-      dims_.height(), options_->use_transparent_for_blank_image,
-      &output_contents_, handler_.get())) {
-    output_valid_ = true;
-    return true;
+  // Create a PNG writer with no compression.
+  scoped_ptr<ScanlineWriterInterface> png_writer(
+      CreateUncompressedPngWriter(dims_.width(), dims_.height(),
+                                  &output_contents_, handler_.get(),
+                                  options_->use_transparent_for_blank_image));
+  if (png_writer == NULL) {
+    PS_LOG_ERROR(handler_, "Failed to create an image writer.");
+    return false;
   }
-  return false;
+
+  // Create a transparent scanline.
+  const size_t bytes_per_scanline = dims_.width() *
+      GetNumChannelsFromPixelFormat(RGBA_8888, handler_.get());
+  scoped_array<unsigned char> scanline(new unsigned char[bytes_per_scanline]);
+  memset(scanline.get(), 0, bytes_per_scanline);
+
+  // Fill the entire image with the blank scanline.
+  for (int row = 0; row < dims_.height(); ++row) {
+    if (!png_writer->WriteNextScanline(
+        reinterpret_cast<void*>(scanline.get()))) {
+      return false;
+    }
+  }
+
+  if (!png_writer->FinalizeWrite()) {
+    return false;
+  }
+  output_valid_ = true;
+  return true;
 }
 
 Image* BlankImageWithOptions(int width, int height, ImageType type,
@@ -1203,18 +1285,24 @@ void ImageImpl::ConvertToJpegOptions(const Image::CompressionOptions& options,
 
 bool ImageImpl::ShouldConvertToProgressive(int64 quality) const {
   bool progressive = false;
-  const ImageDim* expected_dimensions = &dims_;
-  if (ImageUrlEncoder::HasValidDimensions(resized_dimensions_)) {
-    expected_dimensions = &resized_dimensions_;
-  }
-  if (ImageUrlEncoder::HasValidDimensions(*expected_dimensions)) {
-    progressive = pagespeed::image_compression::ShouldConvertToProgressive(
-        quality, options_->progressive_jpeg_min_bytes,
-        original_contents_.size(), expected_dimensions->width(),
-        expected_dimensions->height());
-  } else {
-    progressive = (static_cast<int64>(original_contents_.size()) >=
-                   options_->progressive_jpeg_min_bytes);
+
+  if (static_cast<int64>(original_contents_.size()) >=
+      options_->progressive_jpeg_min_bytes) {
+    progressive = true;
+    const ImageDim* expected_dimensions = &dims_;
+    if (ImageUrlEncoder::HasValidDimensions(resized_dimensions_)) {
+      expected_dimensions = &resized_dimensions_;
+    }
+    if (ImageUrlEncoder::HasValidDimensions(*expected_dimensions)) {
+      int64 estimated_output_pixels =
+          static_cast<int64>(expected_dimensions->width()) *
+          static_cast<int64>(expected_dimensions->height());
+      double ratio = JpegPixelToByteRatio(quality);
+      int64 estimated_output_bytes = estimated_output_pixels * ratio;
+      if (estimated_output_bytes < options_->progressive_jpeg_min_bytes) {
+        progressive = false;
+      }
+    }
   }
   return progressive;
 }

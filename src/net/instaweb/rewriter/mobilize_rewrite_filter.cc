@@ -80,7 +80,6 @@ const int MobilizeRewriteFilter::kNumKeeperTags = arraysize(kKeeperTags);
 
 MobilizeRewriteFilter::MobilizeRewriteFilter(RewriteDriver* rewrite_driver)
     : driver_(rewrite_driver),
-      important_element_depth_(0),
       body_element_depth_(0),
       nav_element_depth_(0),
       reached_reorder_containers_(false),
@@ -116,12 +115,13 @@ void MobilizeRewriteFilter::InitStats(Statistics* statistics) {
 }
 
 void MobilizeRewriteFilter::StartDocument() {
-  important_element_depth_ = 0;
   body_element_depth_ = 0;
   nav_element_depth_ = 0;
   reached_reorder_containers_ = false;
   added_style_ = false;
   added_containers_ = false;
+  element_roles_stack_.clear();
+  nav_keyword_stack_.clear();
 }
 
 void MobilizeRewriteFilter::EndDocument() {
@@ -214,9 +214,10 @@ void MobilizeRewriteFilter::HandleStartTagInBody(HtmlElement* element) {
     driver_->DeleteSavingChildren(element);
     num_elements_deleted_->Add(1);
   } else if (GetMobileRole(element) != MobileRole::kInvalid) {
+    MobileRole::Level element_role = GetMobileRole(element);
     // Record that we are starting an element with a mobile role attribute.
-    ++important_element_depth_;
-    if (GetMobileRole(element) == MobileRole::kNavigational) {
+    element_roles_stack_.push_back(element_role);
+    if (element_role == MobileRole::kNavigational) {
       ++nav_element_depth_;
       if (nav_element_depth_ == 1) {
         nav_keyword_stack_.clear();
@@ -254,27 +255,24 @@ void MobilizeRewriteFilter::HandleEndTagInBody(HtmlElement* element) {
   if (reached_reorder_containers_) {
     // Stop rewriting once we've reached the containers at the end of the body.
   } else if (GetMobileRole(element) != MobileRole::kInvalid) {
-    --important_element_depth_;
+    MobileRole::Level element_role = GetMobileRole(element);
+    element_roles_stack_.pop_back();
+    if (element_role == MobileRole::kNavigational) {
+      --nav_element_depth_;
+    }
     // Record that we've left an element with a mobile role attribute. If we are
     // no longer in one, we can move all the content of this element into its
     // appropriate container for reordering.
     HtmlElement* mobile_role_container =
-        MobileRoleToContainer(GetMobileRole(element));
+        MobileRoleToContainer(element_role);
     DCHECK(mobile_role_container != NULL)
         << "Reorder containers were never initialized.";
-    if (!InImportantElement()) {
-      // Move element and its children into its container.
+    // Move element and its children into its container, unless we are already
+    // in an element that has the same mobile role.
+    if (element_roles_stack_.empty() ||
+        element_roles_stack_.back() != element_role) {
       driver_->MoveCurrentInto(mobile_role_container);
-      LogMovedBlock(GetMobileRole(element));
-    } else {
-      // TODO(stevensr): Logging this may be too verbose, as having 'keepers'
-      // inside <div>s is pretty common.
-      driver_->InfoHere("We have nested elements with a mobile role"
-                        " attribute. Assigning all children the"
-                        " mobile role of the their parent.");
-    }
-    if (GetMobileRole(element) == MobileRole::kNavigational) {
-      --nav_element_depth_;
+      LogMovedBlock(element_role);
     }
   } else if (nav_element_depth_ > 0) {
     HtmlName::Keyword keyword = element->keyword();

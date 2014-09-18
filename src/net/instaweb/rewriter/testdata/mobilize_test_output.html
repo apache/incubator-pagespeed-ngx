@@ -131,7 +131,13 @@
 <body class="custom"><script>
     document.getElementById("stuff00").innerHTML = "JavaScript!";
     alert('00');
-  </script><div id="header_area" class="full_width" data-mobile-role="header">
+  </script><script>
+      document.getElementById("stuff01").innerHTML = "";
+      alert('01');
+    </script><script>
+        document.getElementById("stuff02").innerHTML = "";
+        alert('02');
+      </script><div id="header_area" class="full_width" data-mobile-role="header">
     <div class="page">
       <div id="header">
         <p id="title"><a href="http://test.com/">Mobilize all the Things</a></p>
@@ -141,11 +147,9 @@
         </div>
       </div>
     </div>
-    <script>
-      document.getElementById("stuff01").innerHTML = "";
-      alert('01');
-    </script>
-  </div><nav id="nav_area" class="full_width" data-mobile-role="navigational"><a href="http://test.com">Home</a><a href="http://test.com/about" title="About">About</a><a href="http://test.com/articles" title="Articles">Articles</a><a href="http://test.com/rss" title="RSS Feed" rel="nofollow">RSS</a></nav><div class="page" data-mobile-role="content">
+    
+    
+  </div><nav id="nav_area" class="full_width" data-mobile-role="navigational"><a href="http://test.com">Home</a><a href="http://test.com/about" title="About">About</a><a href="http://test.com/articles" title="Articles">Articles</a><a href="http://test.com/rss" title="RSS Feed" rel="nofollow">RSS</a></nav><div class="navbar" data-mobile-role="navigational"><a href="http://test.com/way_cool">Way Cool</a><a href="http://test.com/mondo">Mondo</a><a href="http://test.com/outrageous">Outrageous</a><a href="http://test.com/funky">Funky</a></div><div class="page" data-mobile-role="content">
       <div id="content" class="feed">
         <div class="post type-post status-publish">
           <div class="headline_area">
@@ -185,10 +189,7 @@ int main()
         </div>
       </div>
     </div><div class="aside" data-mobile-role="marginal">
-      <script>
-        document.getElementById("stuff02").innerHTML = "";
-        alert('02');
-      </script>
+      
       <form action="http://test.com/form/" method="get">
         <ul><li class="widget">
             <h3>Months</h3>

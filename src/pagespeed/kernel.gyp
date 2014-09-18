@@ -271,6 +271,7 @@
       'type': '<(library)',
       'sources': [
         'kernel/http/data_url.cc',
+        'kernel/http/domain_registry.cc',
         'kernel/http/headers.cc',
         'kernel/http/http_options.cc',
         'kernel/http/response_headers_parser.cc',
@@ -280,6 +281,7 @@
         'kernel/http/user_agent_normalizer.cc',
       ],
       'dependencies': [
+        '<(DEPTH)/third_party/domain_registry_provider/src/domain_registry/domain_registry.gyp:init_registry_tables_lib',
         'pagespeed_http_core',
         'pagespeed_http_gperf',
         'pagespeed_http_pb',

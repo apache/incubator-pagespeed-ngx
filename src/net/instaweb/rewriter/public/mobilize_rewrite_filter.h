@@ -148,7 +148,7 @@ class MobilizeRewriteFilter : public EmptyHtmlFilter {
   MobileRole::Level GetMobileRole(HtmlElement* element);
 
   bool InImportantElement() {
-    return (important_element_depth_ > 0);
+    return (!element_roles_stack_.empty());
   }
 
   bool CheckForKeyword(
@@ -156,9 +156,9 @@ class MobilizeRewriteFilter : public EmptyHtmlFilter {
   void LogMovedBlock(MobileRole::Level level);
 
   RewriteDriver* driver_;
+  std::vector<MobileRole::Level> element_roles_stack_;
   std::vector<HtmlName::Keyword> nav_keyword_stack_;
   std::vector<HtmlElement*> mobile_role_containers_;
-  int important_element_depth_;
   int body_element_depth_;
   int nav_element_depth_;
   bool reached_reorder_containers_;

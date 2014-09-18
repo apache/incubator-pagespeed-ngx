@@ -39,7 +39,6 @@
 #include "net/instaweb/system/public/system_server_context.h"
 #include "net/instaweb/system/public/system_thread_system.h"
 #include "net/instaweb/util/public/property_cache.h"
-#include "third_party/domain_registry_provider/src/domain_registry/domain_registry.h"
 #include "pagespeed/kernel/base/abstract_shared_mem.h"
 #include "pagespeed/kernel/base/file_system.h"
 #include "pagespeed/kernel/base/google_message_handler.h"
@@ -250,9 +249,6 @@ void SystemRewriteDriverFactory::RootInit() {
   }
 
   caches_->RootInit();
-
-  // Required for SystemRequestContext to be able to call GetRegistryLength().
-  InitializeDomainRegistry();
 }
 
 void SystemRewriteDriverFactory::ChildInit() {

@@ -112,16 +112,8 @@ class MobilizeLabelFilterTest : public RewriteTestBase {
     GlobalEraseBracketedSubstring(
         "ContainedNonBlankPercent", ", ", &output_buffer_);
     GlobalReplaceSubstring("-->", ", -->", &output_buffer_);
-    GlobalEraseBracketedSubstring("article percent:", ", ", &output_buffer_);
-    GlobalEraseBracketedSubstring("aside percent:", ", ", &output_buffer_);
     GlobalEraseBracketedSubstring("div percent:", ", ", &output_buffer_);
-    GlobalEraseBracketedSubstring("footer percent:", ", ", &output_buffer_);
     GlobalEraseBracketedSubstring("h1 percent:", ", ", &output_buffer_);
-    GlobalEraseBracketedSubstring("header percent:", ", ", &output_buffer_);
-    GlobalEraseBracketedSubstring("main percent:", ", ", &output_buffer_);
-    GlobalEraseBracketedSubstring("menu percent:", ", ", &output_buffer_);
-    GlobalEraseBracketedSubstring("nav percent:", ", ", &output_buffer_);
-    GlobalEraseBracketedSubstring("section percent:", ", ", &output_buffer_);
     GlobalReplaceSubstring(", -->", "-->", &output_buffer_);
   }
 
@@ -287,6 +279,8 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       "  <menu data-mobile-role=\"navigational\">navvy</menu>\n"
       "</footer>\n"
       "</body>";
+  // Note how the HTML5 tags used for training / instant classification are
+  // treated as divs in the instrumented data.
   const char kOutputHtml[] =
       "<head></head><body>\n"
       "<nav data-mobile-role=\"navigational\">Labeled\n"
@@ -298,7 +292,7 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedTagCount: 1,"
       " ContainedContentBytes: 9,"
       " ContainedNonBlankBytes: 9,"
-      " menu count: 1-->\n"
+      " div count: 1-->\n"
       "</nav>"
       "<!--role: navigational,"
       " ElementTagDepth: 1,"
@@ -307,8 +301,7 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedTagCount: 2,"
       " ContainedContentBytes: 16,"
       " ContainedNonBlankBytes: 16,"
-      " menu count: 1,"
-      " nav count: 1-->\n"
+      " div count: 2-->\n"
       "<menu data-mobile-role=\"navigational\">Labeled</menu>"
       "<!--role: navigational,"
       " ElementTagDepth: 1,"
@@ -318,7 +311,7 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedTagCount: 1,"
       " ContainedContentBytes: 7,"
       " ContainedNonBlankBytes: 7,"
-      " menu count: 1-->\n"
+      " div count: 1-->\n"
       "<header data-mobile-role=\"header\"><h1>Labeled</h1></header>"
       "<!--role: header,"
       " ElementTagDepth: 1,"
@@ -328,8 +321,8 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedTagCount: 2,"
       " ContainedContentBytes: 7,"
       " ContainedNonBlankBytes: 7,"
-      " h1 count: 1,"
-      " header count: 1-->\n"
+      " div count: 1,"
+      " h1 count: 1-->\n"
       "<div id='body'>\n"
       "  <main data-mobile-role=\"content\">labeled\n"
       "    <article><section>unlabeled</section>"
@@ -340,7 +333,7 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedTagCount: 1,"
       " ContainedContentBytes: 9,"
       " ContainedNonBlankBytes: 9,"
-      " section count: 1-->\n"
+      " div count: 1-->\n"
       "    </article>"
       "<!--ElementTagDepth: 3,"
       " PreviousTagCount: 7,"
@@ -349,8 +342,7 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedTagCount: 2,"
       " ContainedContentBytes: 9,"
       " ContainedNonBlankBytes: 9,"
-      " article count: 1,"
-      " section count: 1-->\n"
+      " div count: 2-->\n"
       "  </main>"
       "<!--role: content,"
       " ElementTagDepth: 2,"
@@ -360,9 +352,7 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedTagCount: 3,"
       " ContainedContentBytes: 16,"
       " ContainedNonBlankBytes: 16,"
-      " article count: 1,"
-      " main count: 1,"
-      " section count: 1-->\n"
+      " div count: 3-->\n"
       "  <article data-mobile-role=\"content\">also labeled</article>"
       "<!--role: content,"
       " ElementTagDepth: 2,"
@@ -372,7 +362,7 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedTagCount: 1,"
       " ContainedContentBytes: 12,"
       " ContainedNonBlankBytes: 11,"
-      " article count: 1-->\n"
+      " div count: 1-->\n"
       "  <section data-mobile-role=\"content\">this too\n"
       "    <aside data-mobile-role=\"marginal\">and this, it differs.</aside>"
       "<!--role: marginal,"
@@ -383,7 +373,7 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedTagCount: 1,"
       " ContainedContentBytes: 21,"
       " ContainedNonBlankBytes: 18,"
-      " aside count: 1-->\n"
+      " div count: 1-->\n"
       "  </section>"
       "<!--role: content,"
       " ElementTagDepth: 2,"
@@ -393,8 +383,7 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedTagCount: 2,"
       " ContainedContentBytes: 29,"
       " ContainedNonBlankBytes: 25,"
-      " aside count: 1,"
-      " section count: 1-->\n"
+      " div count: 2-->\n"
       "</div>"
       "<!--ElementTagDepth: 1,"
       " PreviousTagCount: 5,"
@@ -404,11 +393,7 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedContentBytes: 57,"
       " ContainedNonBlankBytes: 52,"
       " body: 1,"
-      " article count: 2,"
-      " aside count: 1,"
-      " div count: 1,"
-      " main count: 1,"
-      " section count: 2-->\n"
+      " div count: 7-->\n"
       "<aside data-mobile-role=\"marginal\">Labeled</aside>"
       "<!--role: marginal,"
       " ElementTagDepth: 1,"
@@ -418,7 +403,7 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedTagCount: 1,"
       " ContainedContentBytes: 7,"
       " ContainedNonBlankBytes: 7,"
-      " aside count: 1-->\n"
+      " div count: 1-->\n"
       "<footer data-mobile-role=\"marginal\">labeled\n"
       "  <menu data-mobile-role=\"navigational\">navvy</menu>"
       "<!--role: navigational,"
@@ -429,7 +414,7 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedTagCount: 1,"
       " ContainedContentBytes: 5,"
       " ContainedNonBlankBytes: 5,"
-      " menu count: 1-->\n"
+      " div count: 1-->\n"
       "</footer>"
       "<!--role: marginal,"
       " ElementTagDepth: 1,"
@@ -439,8 +424,7 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedTagCount: 2,"
       " ContainedContentBytes: 12,"
       " ContainedNonBlankBytes: 12,"
-      " footer count: 1,"
-      " menu count: 1-->\n"
+      " div count: 2-->\n"
       "</body>";
   Parse("html5_tags_in_body", Unlabel(kLabeledHtml));
   GoogleString xbody = StrCat(doctype_string_, AddHtmlBody(kOutputHtml));

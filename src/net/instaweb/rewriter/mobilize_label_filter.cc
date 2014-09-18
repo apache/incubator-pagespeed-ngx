@@ -243,14 +243,15 @@ void ElementSample::ComputeProportionalFeatures(ElementSample* normalized) {
   }
 }
 
-GoogleString ElementSample::ToString(bool symbolic, HtmlParse* parser) {
+GoogleString ElementSample::ToString(bool readable, HtmlParse* parser) {
   GoogleString sample_string;
-  const char* k = symbolic ? "" : "'k";
-  const char* q = symbolic ? "" : "'";
-  if (symbolic && role != MobileRole::kInvalid && parent->role != role) {
+  const char* k = readable ? "" : "'k";
+  const char* q = readable ? "" : "'";
+  if (role != MobileRole::kInvalid && (!readable || parent->role != role)) {
     StrAppend(
         &sample_string,
-        "role: ", MobileRole::kMobileRoles[role].value, ", ");
+        StringPrintf("%srole%s: %s%s%s, ",
+                     q, q, q, MobileRole::kMobileRoles[role].value, q));
   }
   StrAppend(
       &sample_string,
@@ -301,7 +302,7 @@ GoogleString ElementSample::ToString(bool symbolic, HtmlParse* parser) {
   for (int i = 0; i < kNumAttrStrings; ++i) {
     if (features[kHasAttrString + i] == 1.0) {
       const char* substring = kRelevantAttrSubstrings[i].substring;
-      if (symbolic) {
+      if (readable) {
         StrAppend(&sample_string, ", ", substring, ": 1");
       } else {
         StrAppend(&sample_string,
@@ -314,7 +315,7 @@ GoogleString ElementSample::ToString(bool symbolic, HtmlParse* parser) {
     if (features[kRelevantTagCount + i] > 0) {
       GoogleString tag;
       parser->MakeName(kRelevantTags[i].html_name).value().CopyToString(&tag);
-      if (symbolic) {
+      if (readable) {
         const char* tag_c_str = tag.c_str();
         StrAppend(&sample_string,
                   StringPrintf(", %s count: %.f, %s percent: %.2f",
@@ -414,8 +415,18 @@ void MobilizeLabelFilter::StartElementImpl(HtmlElement* element) {
     if (tag_metadata->is_div_like) {
       HandleDivLikeElement(element, tag_metadata->mobile_role);
     }
-    sample_stack_.back()->
-        features[kRelevantTagCount + tag_metadata->relevant_tag]++;
+    if (tag_metadata->mobile_role == MobileRole::kInvalid) {
+      sample_stack_.back()->
+          features[kRelevantTagCount + tag_metadata->relevant_tag]++;
+    } else {
+      // Note that we do not count role tags (at the moment) because we're using
+      // their presence to select training data -- as a result we end up with
+      // classifiers that classify first based on the role tags and then fall
+      // back to the other criteria we'd like to use.  So instead we count all
+      // of these tags as <div>s.
+      sample_stack_.back()->
+          features[kRelevantTagCount + kDivTag]++;
+    }
   }
   ++tag_count_;
 }
@@ -662,7 +673,7 @@ void MobilizeLabelFilter::DebugLabel() {
     // and control sample string dumping independently of debug.
     if (driver()->DebugMode()) {
       driver()->InsertDebugComment(
-          sample->ToString(true /* symbolic */, driver()), sample->element);
+          sample->ToString(true /* readable */, driver()), sample->element);
     }
     GoogleString sample_string =
         sample->ToString(false /* numeric */, driver());

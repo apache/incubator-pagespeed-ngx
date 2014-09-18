@@ -74,7 +74,7 @@ class MobilizeRewriteFilterTest : public RewriteTestBase {
     if (var == NULL) {
       CHECK(false) << "Checked for a variable that doesn't exit.";
     } else {
-      EXPECT_EQ(var->Get(), value) << name;
+      EXPECT_EQ(value, var->Get()) << name;
     }
   }
 
@@ -450,6 +450,36 @@ TEST_F(MobilizeRewriteFunctionalTest, MultipleBodysWithContent) {
   CheckVariable(MobilizeRewriteFilter::kContentBlocks, 1);
   CheckVariable(MobilizeRewriteFilter::kMarginalBlocks, 1);
   CheckVariable(MobilizeRewriteFilter::kDeletedElements, 1);
+}
+
+TEST_F(MobilizeRewriteFunctionalTest, DifferentRoleWithinRole) {
+  ValidateExpected(
+      "different_role_within_role",
+      "<body><div data-mobile-role='content'>123<div data-mobile-role='header'>"
+      "456</div>789</div></body>",
+      "<body><div data-mobile-role='header'>456</div>"
+      "<div data-mobile-role='content'>123789</div></body>");
+  CheckVariable(MobilizeRewriteFilter::kPagesMobilized, 1);
+  CheckVariable(MobilizeRewriteFilter::kKeeperBlocks, 0);
+  CheckVariable(MobilizeRewriteFilter::kHeaderBlocks, 1);
+  CheckVariable(MobilizeRewriteFilter::kNavigationalBlocks, 0);
+  CheckVariable(MobilizeRewriteFilter::kContentBlocks, 1);
+  CheckVariable(MobilizeRewriteFilter::kMarginalBlocks, 0);
+  CheckVariable(MobilizeRewriteFilter::kDeletedElements, 0);
+}
+
+TEST_F(MobilizeRewriteFunctionalTest, SameRoleWithinRole) {
+  ValidateNoChanges(
+      "different_role_within_role",
+      "<body><div data-mobile-role='header'>123<div data-mobile-role='header'>"
+      "456</div>789</div></body>");
+  CheckVariable(MobilizeRewriteFilter::kPagesMobilized, 1);
+  CheckVariable(MobilizeRewriteFilter::kKeeperBlocks, 0);
+  CheckVariable(MobilizeRewriteFilter::kHeaderBlocks, 1);
+  CheckVariable(MobilizeRewriteFilter::kNavigationalBlocks, 0);
+  CheckVariable(MobilizeRewriteFilter::kContentBlocks, 0);
+  CheckVariable(MobilizeRewriteFilter::kMarginalBlocks, 0);
+  CheckVariable(MobilizeRewriteFilter::kDeletedElements, 0);
 }
 
 // Check we are called correctly from the driver.

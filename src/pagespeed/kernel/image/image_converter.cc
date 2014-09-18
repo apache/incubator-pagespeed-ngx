@@ -34,16 +34,13 @@ extern "C" {
 
 #include "base/logging.h"
 #include "pagespeed/kernel/base/message_handler.h"
-#include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/image/image_frame_interface.h"
 #include "pagespeed/kernel/image/image_util.h"
 #include "pagespeed/kernel/image/jpeg_optimizer.h"
 #include "pagespeed/kernel/image/png_optimizer.h"
-#include "pagespeed/kernel/image/read_image.h"
 #include "pagespeed/kernel/image/scanline_interface.h"
 #include "pagespeed/kernel/image/scanline_interface_frame_adapter.h"
-#include "pagespeed/kernel/image/scanline_utils.h"
 
 namespace {
 // In some cases, converting a PNG to JPEG results in a smaller
@@ -84,68 +81,7 @@ void SelectSmallerImage(
         "%p best is now %d", static_cast<void *>(best_image_type), \
         new_image_type);
   }
-}
-
-// To estimate the number of bytes from the number of pixels, we divide
-// by a magic ratio.  The 'correct' ratio is of course dependent on the
-// image itself, but we are ignoring that so we can make a fast judgement.
-// It is also dependent on a variety of image optimization settings, but
-// for now we will assume the 'rewrite_images' bucket is on, and vary only
-// on the jpeg compression level.
-//
-// Consider a testcase from our system tests, which resizes
-// mod_pagespeed_example/images/Puzzle.jpg to 256x192, or 49152
-// pixels, using compression level 75.  Our default byte threshold for
-// jpeg progressive conversion is 10240 (rewrite_options.cc).
-// Converting to progressive in this case makes the image slightly
-// larger (8251 bytes vs 8157 bytes), so we'd like this to be the
-// threshold where we decide *not* to convert to progressive.
-// Dividing 49152 by 5 (multiplying by 0.2) gets us just under our
-// default 10k byte threshold.
-//
-// Making this number smaller will break apache/system_test.sh with this
-// failure:
-//     failure at line 353
-// FAILed Input: /tmp/.../fetched_directory/*256x192*Puzzle* : 8251 -le 8157
-// in 'quality of jpeg output images with generic quality flag'
-// FAIL.
-//
-// A first attempt at computing that ratio is based on an analysis of Puzzle.jpg
-// at various compression ratios.  Sized to 256x192, or 49152 pixels:
-//
-// compression level    size(no progressive)  no_progressive/49152
-// 50,                  5891,                 0.1239217122
-// 55,                  6186,                 0.1299615486
-// 60,                  6661,                 0.138788298
-// 65,                  7068,                 0.1467195606
-// 70,                  7811,                 0.1611197005
-// 75,                  8402,                 0.1728746669
-// 80,                  9800,                 0.1976280565
-// 85,                  11001,                0.220020749
-// 90,                  15021,                0.2933279089
-// 95,                  19078,                0.3703545493
-// 100,                 19074,                0.3704283796
-//
-// At compression level 100, byte-sizes are almost identical to compression 95
-// so we throw this data-point out.
-//
-// Plotting this data in a graph the data is non-linear.  Experimenting in a
-// spreadsheet we get decent visual linearity by transforming the somewhat
-// arbitrary compression ratio with the formula (1 / (110 - compression_level)).
-// Drawing a line through the data-points at compression levels 50 and 95, we
-// get a slope of 4.92865674 and an intercept of 0.04177743.  Double-checking,
-// this fits the other data-points we have reasonably well, except for the
-// one at compression_level 100.
-const double JpegPixelToByteRatio(int compression_level) {
-  if ((compression_level > 95) || (compression_level < 0)) {
-    compression_level = 95;
-  }
-  double kSlope = 4.92865674;
-  double kIntercept = 0.04177743;
-  double ratio = kSlope / (110.0 - compression_level) + kIntercept;
-  return ratio;
-}
-
+};
 }  // namespace
 
 namespace pagespeed {
@@ -438,60 +374,6 @@ ImageConverter::ImageType ImageConverter::GetSmallestOfPngJpegWebp(
   out->assign((best_image != NULL) ? *best_image : in);
 
   return best_image_type;
-}
-
-bool GenerateBlankImage(size_t width, size_t height, bool has_transparency,
-                        GoogleString* output, MessageHandler* handler) {
-  // Create a PNG writer with no compression.
-  PngCompressParams config(PNG_FILTER_NONE, Z_NO_COMPRESSION);
-  PixelFormat pixel_format = (has_transparency ? RGBA_8888 : RGB_888);
-
-  scoped_ptr<ScanlineWriterInterface> png_writer(
-      CreateScanlineWriter(IMAGE_PNG, pixel_format, width, height, &config,
-                           output, handler));
-  if (png_writer == NULL) {
-    PS_LOG_ERROR(handler, "Failed to create an image writer.");
-    return false;
-  }
-
-  // Create a transparent scanline.
-  const size_t bytes_per_scanline = width *
-    GetNumChannelsFromPixelFormat(pixel_format, handler);
-  net_instaweb::scoped_array<unsigned char> scanline(
-      new unsigned char[bytes_per_scanline]);
-  memset(scanline.get(), 0, bytes_per_scanline);
-
-  // Fill the entire image with the blank scanline.
-  for (int row = 0; row < static_cast<int>(height); ++row) {
-    if (!png_writer->WriteNextScanline(
-        reinterpret_cast<void*>(scanline.get()))) {
-      return false;
-    }
-  }
-
-  if (!png_writer->FinalizeWrite()) {
-    return false;
-  }
-  return true;
-}
-
-bool ShouldConvertToProgressive(int64 quality, int threshold,
-                                int num_bytes, int desired_width,
-                                int desired_height) {
-  bool progressive = false;
-
-  if (num_bytes >= threshold) {
-    progressive = true;
-    int num_pixels = desired_width * desired_height;
-
-    double ratio = JpegPixelToByteRatio(quality);
-    int64 estimated_bytes = num_pixels * ratio;
-
-    if (estimated_bytes < threshold) {
-      progressive = false;
-    }
-  }
-  return progressive;
 }
 
 }  // namespace image_compression

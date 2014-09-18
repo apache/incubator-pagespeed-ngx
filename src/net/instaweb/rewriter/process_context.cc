@@ -18,6 +18,7 @@
 
 #include "base/logging.h"
 #include "pagespeed/kernel/html/html_keywords.h"
+#include "pagespeed/kernel/http/domain_registry.h"
 #include "pagespeed/kernel/js/js_tokenizer.h"
 #include "pagespeed/kernel/util/gflags.h"
 
@@ -43,6 +44,7 @@ ProcessContext::ProcessContext()
   CHECK_EQ(1, construction_count)
       << "ProcessContext must only be constructed once.";
 
+  domain_registry::Init();
   HtmlKeywords::Init();
 
   // url/url_util.cc lazily initializes its "standard_schemes" table in a

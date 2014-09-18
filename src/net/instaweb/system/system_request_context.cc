@@ -16,9 +16,8 @@
 
 #include "net/instaweb/system/public/system_request_context.h"
 
-#include <cstddef>                     // for size_t
 #include "base/logging.h"
-#include "third_party/domain_registry_provider/src/domain_registry/domain_registry.h"
+#include "pagespeed/kernel/http/domain_registry.h"
 
 namespace net_instaweb {
 
@@ -46,7 +45,7 @@ SystemRequestContext::SystemRequestContext(
     : RequestContext(logging_mutex, timer),
       local_port_(local_port),
       local_ip_(BracketIpv6(local_ip)) {
-  set_minimal_private_suffix(MinimalPrivateSuffix(
+  set_minimal_private_suffix(domain_registry::MinimalPrivateSuffix(
       hostname_for_cache_fragmentation));
 }
 
@@ -59,33 +58,6 @@ SystemRequestContext* SystemRequestContext::DynamicCast(RequestContext* rc) {
                       << "functional behavior. System handling flows must use "
                       << "SystemRequestContexts or a subclass.";
   return out;
-}
-
-StringPiece SystemRequestContext::MinimalPrivateSuffix(StringPiece hostname) {
-  if (hostname.empty()) {
-    return "";
-  }
-
-  size_t length_of_public_suffix =
-      GetRegistryLength(hostname.as_string().c_str());
-  if (length_of_public_suffix == 0) {
-    // Unrecognized top level domain.  We don't know what kind of multi-level
-    // public suffixes they might have created, so be on the safe side and
-    // treat the entire hostname as a private suffix.
-    return hostname;
-  }
-
-  stringpiece_ssize_type last_dot_before_private_suffix =
-      hostname.rfind('.', hostname.size() - length_of_public_suffix
-                     - 1 /* don't include the dot */
-                     - 1 /* pos is inclusive */);
-  if (last_dot_before_private_suffix == StringPiece::npos) {
-    // Hostname is already a minimal private suffix.
-    last_dot_before_private_suffix = 0;
-  } else {
-    last_dot_before_private_suffix++;  // Don't include the dot.
-  }
-  return hostname.substr(last_dot_before_private_suffix);
 }
 
 }  // namespace net_instaweb
