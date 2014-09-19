@@ -18,7 +18,10 @@ goog.LOCALE = "en";
 goog.TRUSTED_SITE = !0;
 goog.STRICT_MODE_COMPATIBLE = !1;
 goog.provide = function(name) {
-  goog.exportPath_(name);
+  goog.constructNamespace_(name);
+};
+goog.constructNamespace_ = function(name, opt_obj) {
+  goog.exportPath_(name, opt_obj);
 };
 goog.module = function(name) {
   if (!goog.isString(name) || !name) {
@@ -46,6 +49,9 @@ goog.module.declareTestMethods = function() {
     throw Error("goog.module.declareTestMethods must be called from within a goog.module");
   }
   goog.moduleLoaderState_.declareTestMethods = !0;
+};
+goog.module.declareLegacyNamespace = function() {
+  goog.moduleLoaderState_.declareLegacyNamespace = !0;
 };
 goog.setTestOnly = function(opt_message) {
   if (!goog.DEBUG) {
@@ -170,11 +176,11 @@ goog.DEPENDENCIES_ENABLED && (goog.included_ = {}, goog.dependencies_ = {pathIsM
         throw Error("Invalid module definition");
       }
     }
-    goog.SEAL_MODULE_EXPORTS && Object.seal && Object.seal(exports);
     var moduleName = goog.moduleLoaderState_.moduleName;
     if (!goog.isString(moduleName) || !moduleName) {
       throw Error('Invalid module name "' + moduleName + '"');
     }
+    goog.moduleLoaderState_.declareLegacyNamespace ? goog.constructNamespace_(moduleName, exports) : goog.SEAL_MODULE_EXPORTS && Object.seal && Object.seal(exports);
     goog.loadedModules_[moduleName] = exports;
     if (goog.moduleLoaderState_.declareTestMethods) {
       for (var entry in exports) {
