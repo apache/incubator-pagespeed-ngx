@@ -147,6 +147,10 @@ class JsTokenizer {
   // false.
   bool TryInsertLinebreakSemicolon();
 
+  // Returns true if an open brace at this parse state begins an object
+  // literal, or false if it begins a block.
+  static bool CanPreceedObjectLiteral(ParseState state);
+
   const JsTokenizerPatterns* patterns_;
   std::vector<ParseState> parse_stack_;
   std::deque<std::pair<JsKeywords::Type, StringPiece> > lookahead_queue_;

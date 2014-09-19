@@ -98,27 +98,27 @@
 //
 // The progression of the parse stack would look like this:
 //
-//   if       -> BkKwd             "if" is a block keyword, so it needs (...).
-//   (        -> BkKwd (
-//   [        -> BkKwd ( [
-//   ]        -> BkKwd ( Expr      [] is an expression (array literal).
-//   )        -> BkHdr             Now "if (...)" is a complete block header.
-//   {        -> {                 We can forget about the BkHdr now.
-//   foo      -> { Expr            An identifier is usually an expression...
-//   :        -> {                 ...nevermind, a label.  Roll back statement.
-//   while    -> { BkKwd           "while" is a block keyword, just like "if".
-//   ( true ) -> { BkHdr           Three more tokens gives us the block header.
-//   break    -> { BkHdr Jump      "break" is special, slashes can't follow it.
-//   ;        -> {                 Semicolon, roll back to start-of-statement.
-//   }        ->                   Block finished.
-//   else     -> BkHdr             "else" is a block header by itself.
-//   /x/      -> BkHdr Expr        A slash after BkHdr is a regex.
-//   .        -> BkHdr Expr Oper   A period is essentially a binary operator.
-//   test     -> BkHdr Expr        "Expr Oper Expr" collapses to "Expr"
-//   (        -> BkHdr Expr (
-//   'y'      -> BkHdr Expr ( Expr
-//   )        -> BkHdr Expr        Method call collapses into a single Expr.
-//   ;        ->                   Semicolon, roll back to start-of-statement.
+//   if     -> BkKwd               "if" is a block keyword, so it needs (...).
+//   (      -> BkKwd (
+//   [      -> BkKwd ( [
+//   ]      -> BkKwd ( Expr        [] is an expression (array literal).
+//   )      -> BkHdr               Now "if (...)" is a complete block header.
+//   {      -> BkHdr {
+//   foo    -> BkHdr { Expr        An identifier is usually an expression...
+//   :      -> BkHdr {             ...nevermind, a label.  Roll back statement.
+//   while  -> BkHdr { BkKwd       "while" is a block keyword, just like "if".
+//   (true) -> BkHdr { BkHdr       Three more tokens gives us the block header.
+//   break  -> BkHdr { BkHdr Jump  "break" is special, slashes can't follow it.
+//   ;      -> BkHdr {             Semicolon, roll back to start-of-statement.
+//   }      ->                     Block finished.
+//   else   -> BkHdr               "else" is a block header by itself.
+//   /x/    -> BkHdr Expr          A slash after BkHdr is a regex.
+//   .      -> BkHdr Expr Oper     A period is essentially a binary operator.
+//   test   -> BkHdr Expr          "Expr Oper Expr" collapses to "Expr"
+//   (      -> BkHdr Expr (
+//   'y'    -> BkHdr Expr ( Expr
+//   )      -> BkHdr Expr          Method call collapses into a single Expr.
+//   ;      ->                     Semicolon, roll back to start-of-statement.
 //
 // In general, this class is focused on tokenizing, not actual parsing or
 // detecting syntax errors, so there are many kinds of syntax errors that we
@@ -435,8 +435,6 @@ JsKeywords::Type JsTokenizer::ConsumeOpenBrace(StringPiece* token_out) {
   if (state == kExpression || state == kBlockKeyword ||
       state == kJumpKeyword || state == kOtherKeyword) {
     return Error(token_out);
-  } else if (state == kBlockHeader) {
-    parse_stack_.pop_back();
   }
   parse_stack_.push_back(kOpenBrace);
   Emit(1, true, token_out);
@@ -460,13 +458,29 @@ JsKeywords::Type JsTokenizer::ConsumeCloseBrace(StringPiece* token_out) {
       parse_stack_.pop_back();
     }
   }
+  // If the open brace was preceeded by a BlockHeader, we can pop that off the
+  // stack at this point.  The presense of a BlockHeader means these braces
+  // were a block (rather than an object literal), and usually after popping it
+  // off we'll now be back at a start-of-statement (in which case we'll
+  // correctly deduce below that this was a block).  The one exception is
+  // anonymous function literals, which is the one case where the block header
+  // will (necessarily) be preceeded by an operator, or open paran, or
+  // something else indicating an expression (e.g. foo=function(){};).  In that
+  // case, after popping the BlockHeader, we will correctly conclude below that
+  // we have just created an Expression.
+  //
+  // (If there were no braces after the BlockHeader (e.g. "if (x) return;"),
+  // then that BlockHeader will be popped when we roll back to
+  // start-of-statement for some other reason, such as encountering a
+  // semicolon.)
+  if (parse_stack_.back() == kBlockHeader) {
+    parse_stack_.pop_back();
+  }
   // Depending on the parse state that came before the kOpenBrace, we just
   // closed either an object literal (which is a kExpression), or a block
   // (which isn't).
   DCHECK(!parse_stack_.empty());
-  const ParseState state = parse_stack_.back();
-  if (state == kOperator || state == kQuestionMark || state == kOpenBracket ||
-      state == kOpenParen || state == kReturnThrow) {
+  if (CanPreceedObjectLiteral(parse_stack_.back())) {
     PushExpression();
   }
   // Emit a token for the close brace.
@@ -612,8 +626,23 @@ JsKeywords::Type JsTokenizer::ConsumeColon(StringPiece* token_out) {
       // If we reach the start of the statement without seeing a kQuestionMark,
       // this was a label.  No need to push any new parse state.
       case kStartOfInput:
-      case kOpenBrace:
       case kBlockHeader:
+        Emit(1, true, token_out);
+        return JsKeywords::kOperator;
+      // If we hit an open brace, check if it's for an object literal or a
+      // block.  If it's an object literal, then this colon was for a property
+      // name; push a kOperator state so that we know that what follows is an
+      // expression (rather than the next property name).  If it's a block,
+      // then we're back to start-of-statement (as above) so there's no need to
+      // push any new parse state.
+      case kOpenBrace:
+        // Since the top state is currently kOpenBrace, and the bottom state is
+        // always kStartOfInput, we know that the parse stack has at least two
+        // entries right now.
+        DCHECK_GE(parse_stack_.size(), 2u);
+        if (CanPreceedObjectLiteral(parse_stack_[parse_stack_.size() - 2])) {
+          PushOperator();
+        }
         Emit(1, true, token_out);
         return JsKeywords::kOperator;
       // Skip past anything that could lie between the colon and the question
@@ -1088,6 +1117,12 @@ bool JsTokenizer::TryInsertLinebreakSemicolon() {
     parse_stack_.pop_back();
   }
   return true;
+}
+
+bool JsTokenizer::CanPreceedObjectLiteral(ParseState state) {
+  return (state == kOperator || state == kQuestionMark ||
+          state == kOpenBracket || state == kOpenParen ||
+          state == kReturnThrow);
 }
 
 JsTokenizerPatterns::JsTokenizerPatterns()
