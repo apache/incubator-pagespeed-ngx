@@ -27,8 +27,8 @@ if [ "$mod_pagespeed_dir" = "unset" ] ; then
     echo "   You need to separately download the pagespeed library:"
     echo ""
     echo "     $ cd /path/to/ngx_pagespeed"
-    echo "     $ wget https://dl.google.com/dl/page-speed/psol/1.8.31.2.tar.gz"
-    echo "     $ tar -xzvf 1.8.31.2.tar.gz # expands to psol/"
+    echo "     $ wget https://dl.google.com/dl/page-speed/psol/1.9.32.1.tar.gz"
+    echo "     $ tar -xzvf 1.9.32.1.tar.gz # expands to psol/"
     echo ""
     echo "   Or see the installation instructions:"
     echo "     https://github.com/pagespeed/ngx_pagespeed#how-to-build"
@@ -38,31 +38,6 @@ if [ "$mod_pagespeed_dir" = "unset" ] ; then
 else
   build_from_source=true
 fi
-
-psol_binary="${PSOL_BINARY:-unset}"
-if [ "$psol_binary" = "unset" ] ; then
-  if $build_from_source ; then
-    psol_binary="\
-        $mod_pagespeed_dir/net/instaweb/automatic/pagespeed_automatic.a"
-  else
-    psol_library_dir="$ngx_addon_dir/psol/lib/$buildtype/$os_name/$arch_name"
-    psol_binary="$psol_library_dir/pagespeed_automatic.a"
-  fi
-fi
-
-echo "mod_pagespeed_dir=$mod_pagespeed_dir"
-echo "build_from_source=$build_from_source"
-
-ngx_feature="psol"
-ngx_feature_name=""
-ngx_feature_run=no
-ngx_feature_incs="
-#include \"pagespeed/kernel/base/string.h\"
-#include \"pagespeed/kernel/base/string_writer.h\"
-#include \"pagespeed/kernel/base/null_message_handler.h\"
-#include \"pagespeed/kernel/html/html_parse.h\"
-#include \"pagespeed/kernel/html/html_writer_filter.h\"
-"
 
 os_name='unknown_os'
 arch_name='unknown_arch'
@@ -123,6 +98,31 @@ esac
 if [ "$WNO_ERROR" = "YES" ]; then
     CFLAGS="$CFLAGS -Wno-error"
 fi
+
+psol_binary="${PSOL_BINARY:-unset}"
+if [ "$psol_binary" = "unset" ] ; then
+  if $build_from_source ; then
+    psol_binary="\
+        $mod_pagespeed_dir/net/instaweb/automatic/pagespeed_automatic.a"
+  else
+    psol_library_dir="$ngx_addon_dir/psol/lib/$buildtype/$os_name/$arch_name"
+    psol_binary="$psol_library_dir/pagespeed_automatic.a"
+  fi
+fi
+
+echo "mod_pagespeed_dir=$mod_pagespeed_dir"
+echo "build_from_source=$build_from_source"
+
+ngx_feature="psol"
+ngx_feature_name=""
+ngx_feature_run=no
+ngx_feature_incs="
+#include \"pagespeed/kernel/base/string.h\"
+#include \"pagespeed/kernel/base/string_writer.h\"
+#include \"pagespeed/kernel/base/null_message_handler.h\"
+#include \"pagespeed/kernel/html/html_parse.h\"
+#include \"pagespeed/kernel/html/html_writer_filter.h\"
+"
 
 pagespeed_include="\
   $mod_pagespeed_dir \
