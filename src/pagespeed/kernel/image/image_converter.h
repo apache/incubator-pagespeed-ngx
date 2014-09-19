@@ -19,6 +19,8 @@
 #ifndef PAGESPEED_KERNEL_IMAGE_IMAGE_CONVERTER_H_
 #define PAGESPEED_KERNEL_IMAGE_IMAGE_CONVERTER_H_
 
+#include <cstddef>
+#include "third_party/optipng/src/opngreduc/opngreduc.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/image/jpeg_optimizer.h"
@@ -144,6 +146,15 @@ class ImageConverter {
 
   DISALLOW_COPY_AND_ASSIGN(ImageConverter);
 };
+
+// Returns a blank PNG image with specified size and transparency.
+bool GenerateBlankImage(size_t width, size_t height, bool has_transparency,
+                        GoogleString* output, MessageHandler* handler);
+
+// Returns whether progressive format will result in a smaller JPEG image.
+bool ShouldConvertToProgressive(int64 quality, int threshold,
+                                int num_bytes, int desired_width,
+                                int desired_height);
 
 }  // namespace image_compression
 
