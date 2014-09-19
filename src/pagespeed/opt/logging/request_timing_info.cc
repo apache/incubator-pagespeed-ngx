@@ -16,7 +16,7 @@
 
 // Author: piatek@google.com (Michael Piatek)
 
-#include "net/instaweb/http/public/request_timing_info.h"
+#include "pagespeed/opt/logging/request_timing_info.h"
 
 #include "base/logging.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"

@@ -81,12 +81,9 @@
         'http/http_response_parser_test.cc',
         'http/http_value_test.cc',
         'http/inflating_fetch_test.cc',
-        'http/log_record_test.cc',
-        'http/log_record_test_helper.cc',
         'http/mock_url_fetcher_test.cc',
         'http/rate_controlling_url_async_fetcher_test.cc',
         'http/reflecting_test_fetcher_test.cc',
-        'http/request_timing_info_test.cc',
         # SimulatedDelayFetcher isn't currently used in {mod_,ngx_}pagespeed,
         # so we only build it into the test binary.
         'http/simulated_delay_fetcher.cc',
@@ -346,6 +343,10 @@
         '<(DEPTH)/pagespeed/kernel/util/url_to_filename_encoder_test.cc',
         '<(DEPTH)/pagespeed/opt/ads/ads_util_test.cc',
         '<(DEPTH)/pagespeed/opt/ads/show_ads_snippet_parser_test.cc',
+        '<(DEPTH)/pagespeed/opt/logging/log_record_test.cc',
+        '<(DEPTH)/pagespeed/opt/logging/log_record_test_helper.cc',
+        '<(DEPTH)/pagespeed/opt/logging/request_timing_info_test.cc',
+
 # Rolling hash test fails to build in 32-bit g++ 4.1
 #        '<(DEPTH)/pagespeed/kernel/base/rolling_hash_test.cc',
 #        'util/split_writer_test.cc',               # not currently needed
@@ -441,7 +442,6 @@
       'sources': [
         '<(DEPTH)/pagespeed/kernel/html/html_parse_test_base.cc',
         'http/mock_url_fetcher.cc',
-        'http/log_record_test_helper.cc',
         'rewriter/fake_filter.cc',
         'rewriter/rewrite_test_base.cc',
         'rewriter/test_distributed_fetcher.cc',

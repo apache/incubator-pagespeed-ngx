@@ -96,7 +96,6 @@ BASE_LIBS = \
   net/instaweb/libinstaweb_lazyload_images_opt_data2c.a \
   net/instaweb/libinstaweb_local_storage_cache_data2c.a \
   net/instaweb/libinstaweb_local_storage_cache_opt_data2c.a \
-  net/instaweb/libinstaweb_logging_pb.a \
   net/instaweb/libinstaweb_messages_js_data2c.a \
   net/instaweb/libinstaweb_messages_js_opt_data2c.a \
   net/instaweb/libinstaweb_mobilize_css_data2c.a \
@@ -137,7 +136,9 @@ BASE_LIBS = \
   pagespeed/libpagespeed_image_processing.a \
   pagespeed/libpagespeed_image_types_pb.a \
   pagespeed/libpagespeed_javascript_gperf.a \
+  pagespeed/libpagespeed_logging.a \
   pagespeed/libpagespeed_logging_enums_pb.a \
+  pagespeed/libpagespeed_logging_pb.a \
   pagespeed/libpagespeed_sharedmem.a \
   pagespeed/libpagespeed_sharedmem_pb.a \
   pagespeed/libpagespeed_thread.a \

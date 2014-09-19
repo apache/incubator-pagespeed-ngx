@@ -16,7 +16,7 @@
 
 // Author: bharathbhushan@google.com (Bharath Bhushan Kowshik Raghupathi)
 
-#include "net/instaweb/http/public/log_record_test_helper.h"
+#include "pagespeed/opt/logging/log_record_test_helper.h"
 
 namespace net_instaweb {
 

@@ -16,12 +16,12 @@
 
 // Author: marq@google.com (Mark Cogan)
 
-#include "net/instaweb/http/public/log_record.h"
+#include "pagespeed/opt/logging/log_record.h"
 
-#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/null_mutex.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/opt/logging/logging_proto_impl.h"
 
 namespace net_instaweb {
 

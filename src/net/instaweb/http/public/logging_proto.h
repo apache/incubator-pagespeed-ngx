@@ -1,4 +1,4 @@
-// Copyright 2012 Google Inc.
+// Copyright 2014 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,33 +11,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-// Author: Mark Cogan (marq@google.com)
+//
 
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_LOGGING_PROTO_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_LOGGING_PROTO_H_
 
-
-namespace net_instaweb {
-
-class BlinkInfo;
-class CacheHtmlLoggingInfo;
-class CriticalCssInfo;
-class DeviceInfo;
-class FlushEarlyFilterInfo;
-class FlushEarlyResourceInfo;
-class ImageRewriteResourceInfo;
-class LoggingInfo;
-class MetadataCacheInfo;
-class PropertyCohortInfo;
-class PropertyPageInfo;
-class RewriterInfo;
-class RewriteStatusCount;
-class RewriterStats;
-class RewriteResourceInfo;
-class TimingInfo;
-
-}  // namespace net_instaweb
-
+// TODO(morlovich): Remove this forwarding header and change all references.
+#include "pagespeed/opt/logging/logging_proto.h"
 
 #endif  // NET_INSTAWEB_HTTP_PUBLIC_LOGGING_PROTO_H_

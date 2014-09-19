@@ -16,7 +16,8 @@
 
 // Author: gee@google.com (Adam Gee)
 
-#include "net/instaweb/http/public/request_timing_info.h"
+#include "pagespeed/opt/logging/request_timing_info.h"
+
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mock_timer.h"

@@ -16,7 +16,7 @@
 
 // Author: marq@google.com (Mark Cogan)
 
-#include "net/instaweb/http/public/log_record.h"
+#include "pagespeed/opt/logging/log_record.h"
 
 #include <map>
 #include <set>

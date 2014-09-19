@@ -53,6 +53,48 @@
         '../net/instaweb/protoc.gypi',
       ],
     },
+    {
+      'target_name': 'pagespeed_logging_pb',
+      'variables': {
+        'instaweb_protoc_subdir': 'pagespeed/opt/logging',
+      },
+      'sources': [
+        'opt/logging/logging.proto',
+        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/logging.pb.cc',
+      ],
+      'includes': [
+        '../net/instaweb/protoc.gypi',
+      ],
+      'dependencies': [
+        '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_image_types_pb',
+        'pagespeed_logging_enums_pb',
+      ]
+    },
+    {
+      'target_name': 'pagespeed_logging',
+      'type': '<(library)',
+      'dependencies': [
+        'pagespeed_logging_pb',
+        '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_base_core',
+      ],
+      'sources': [
+        'opt/logging/log_record.cc',
+        'opt/logging/request_timing_info.cc',
+      ],
+      'include_dirs': [
+        '<(instaweb_root)',
+        '<(DEPTH)',
+      ],
+      'direct_dependent_settings': {
+        'include_dirs': [
+          '<(instaweb_root)',
+          '<(DEPTH)',
+        ],
+      },
+      'export_dependent_settings': [
+        'pagespeed_logging_pb',
+      ],
+    }
   ]
 }
 
