@@ -1401,8 +1401,10 @@ bool ps_set_experiment_state_and_cookie(ngx_http_request_t* r,
                                         const StringPiece& host) {
   CHECK(options->running_experiment());
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
-  bool need_cookie = cfg_s->server_context->experiment_matcher()->
-      ClassifyIntoExperiment(*request_headers, options);
+  bool need_cookie =
+      cfg_s->server_context->experiment_matcher()->ClassifyIntoExperiment(
+          *request_headers, *cfg_s->server_context->user_agent_matcher(),
+          options);
   if (need_cookie && host.length() > 0) {
     PosixTimer timer;
     int64 time_now_ms = timer.NowMs();
