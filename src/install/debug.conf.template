@@ -1369,6 +1369,17 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_noned_shmm"
 #EXPERIMENT_NO_GA ModPagespeedExperimentSpec "id=2;enable=recompress_images,rewrite_javascript;percent=50;options=AvoidRenamingIntrospectiveJavascript=on"
 #EXPERIMENT_NO_GA ModPagespeedExperimentSpec "id=3;default;percent=0"
 
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName experiment.devicematch.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
+
+  ModPagespeedRewriteLevel PassThrough
+
+  ModPagespeedRunExperiment on
+  ModPagespeedExperimentSpec "id=1;percent=100;matches_device_type=mobile;enable=recompress_images"
+</VirtualHost>
+
 # Support for embedded configurations, where image flags in the
 # VirtualHost serving HTML is not the same as the one serving resources,
 # and thus we must embed the image flags in the rewritten image URLs.

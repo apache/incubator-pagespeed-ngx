@@ -28,6 +28,7 @@
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/request_context.h"
+#include "net/instaweb/http/public/request_timing_info.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
 #include "net/instaweb/rewriter/public/experiment_matcher.h"
 #include "net/instaweb/rewriter/public/resource_fetch.h"
@@ -38,6 +39,7 @@
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/hasher.h"
 #include "pagespeed/kernel/base/hostname_util.h"
+#include "pagespeed/kernel/base/ref_counted_ptr.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
@@ -299,8 +301,10 @@ void ProxyInterface::GetRewriteOptionsDone(RequestData* request_data,
     // well.
     bool need_to_store_experiment_data = false;
     if (options != NULL && options->running_experiment()) {
-      need_to_store_experiment_data = server_context_->experiment_matcher()->
-          ClassifyIntoExperiment(*async_fetch->request_headers(), options);
+      need_to_store_experiment_data =
+          server_context_->experiment_matcher()->ClassifyIntoExperiment(
+              *async_fetch->request_headers(),
+              *server_context_->user_agent_matcher(), options);
       options->set_need_to_store_experiment_data(need_to_store_experiment_data);
     }
     const char* user_agent = async_fetch->request_headers()->Lookup1(

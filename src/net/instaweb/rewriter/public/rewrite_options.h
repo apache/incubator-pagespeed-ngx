@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_OPTIONS_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_OPTIONS_H_
 
+#include <bitset>
 #include <cstddef>                      // for size_t
 #include <map>
 #include <set>
@@ -48,6 +49,7 @@
 #include "pagespeed/kernel/base/wildcard.h"
 #include "pagespeed/kernel/http/http_names.h"
 #include "pagespeed/kernel/http/semantic_type.h"
+#include "pagespeed/kernel/http/user_agent_matcher.h"
 #include "pagespeed/kernel/util/copy_on_write.h"
 
 namespace net_instaweb {
@@ -714,7 +716,7 @@ class RewriteOptions {
     // If spec doesn't have an id, then id_ will be set to
     // experiment::kExperimentNotSet.  These ExperimentSpecs will then be
     // rejected by AddExperimentSpec().
-    ExperimentSpec(const StringPiece& spec, RewriteOptions* options,
+    ExperimentSpec(const StringPiece& spec, const RewriteOptions* options,
                    MessageHandler* handler);
 
     // Creates a ExperimentSpec with id_=id.  All other variables
@@ -738,6 +740,7 @@ class RewriteOptions {
     FilterSet enabled_filters() const { return enabled_filters_; }
     FilterSet disabled_filters() const { return disabled_filters_; }
     OptionSet filter_options() const { return filter_options_; }
+    bool matches_device_type(UserAgentMatcher::DeviceType type) const;
     bool use_default() const { return use_default_; }
     GoogleString ToString() const;
 
@@ -748,13 +751,25 @@ class RewriteOptions {
     // preserve vs extend_cache, *this will take precedence.
     void Merge(const ExperimentSpec& spec);
 
+    typedef std::bitset<net_instaweb::UserAgentMatcher::kEndOfDeviceType>
+        DeviceTypeBitSet;
+
+    static bool ParseDeviceTypeBitSet(const StringPiece& in,
+                                      DeviceTypeBitSet* out,
+                                      MessageHandler* handler);
+
    private:
     FRIEND_TEST(RewriteOptionsTest, ExperimentMergeTest);
+    FRIEND_TEST(RewriteOptionsTest, DeviceTypeMergeTest);
 
-    // Initialize parses spec and sets the FilterSets, rewrite level,
-    // inlining thresholds, and OptionSets accordingly.
+    // Parse 'spec' and set the FilterSets, rewrite level, inlining thresholds,
+    // and OptionSets accordingly.
     void Initialize(const StringPiece& spec, MessageHandler* handler);
 
+    //
+    // If you add any members to this list, be sure to also add them to the
+    // Merge method.
+    //
     int id_;  // id for this experiment
     GoogleString ga_id_;  // Google Analytics ID for this experiment
     int ga_variable_slot_;
@@ -763,6 +778,10 @@ class RewriteOptions {
     FilterSet enabled_filters_;
     FilterSet disabled_filters_;
     OptionSet filter_options_;
+    // bitset to indicate which device types this ExperimentSpec should apply
+    // to. If NULL, no device type was specified and the experiment applies
+    // to all device types.
+    scoped_ptr<DeviceTypeBitSet> matches_device_types_;
     // Use whatever RewriteOptions' settings are without experiments
     // for this experiment.
     bool use_default_;

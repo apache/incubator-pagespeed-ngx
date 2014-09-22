@@ -29,6 +29,8 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/time_util.h"
 #include "pagespeed/kernel/http/http_names.h"  // for HttpAttributes, etc
+#include "pagespeed/kernel/http/user_agent_matcher.h"
+#include "pagespeed/kernel/http/user_agent_matcher_test_base.h"  // for User Agent constants
 #include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/response_headers.h"
 
@@ -50,9 +52,11 @@ TEST_F(ExperimentMatcherTest, ClassifyIntoExperiment) {
   RewriteOptions options(thread_system_.get());
   options.set_running_experiment(true);
   NullMessageHandler handler;
+  UserAgentMatcher matcher;
   ASSERT_TRUE(options.AddExperimentSpec("id=1;percent=100", &handler));
   ASSERT_EQ(1, options.num_experiments());
   bool need_cookie = experiment_matcher_.ClassifyIntoExperiment(req_headers,
+                                                                matcher,
                                                                 &options);
 
   // We expect 1 here because we set up an experiment above (id=1;percent=100)
@@ -62,12 +66,12 @@ TEST_F(ExperimentMatcherTest, ClassifyIntoExperiment) {
 
   req_headers.Add(HttpAttributes::kCookie, "PageSpeedExperiment=1");
   need_cookie = experiment_matcher_.ClassifyIntoExperiment(
-      req_headers, &options);
+      req_headers, matcher, &options);
   ASSERT_FALSE(need_cookie);
 
   experiment::RemoveExperimentCookie(&req_headers);
   need_cookie = experiment_matcher_.ClassifyIntoExperiment(
-      req_headers, &options);
+      req_headers, matcher, &options);
 
   // Same as above comment.
   ASSERT_EQ(1, options.experiment_id());
@@ -95,12 +99,13 @@ TEST_F(ExperimentMatcherTest, ClassifyIntoExperimentStaleCookie) {
   RewriteOptions options(thread_system_.get());
   options.set_running_experiment(true);
   NullMessageHandler handler;
+  UserAgentMatcher matcher;
   ASSERT_TRUE(options.AddExperimentSpec("id=1;percent=100", &handler));
 
   // Test that a new cookie is set when the incoming cookie has an invalid id.
   req_headers.Add(HttpAttributes::kCookie, "PageSpeedExperiment=4");
-  bool need_cookie =
-      experiment_matcher_.ClassifyIntoExperiment(req_headers, &options);
+  bool need_cookie = experiment_matcher_.ClassifyIntoExperiment(
+      req_headers, matcher, &options);
   ASSERT_TRUE(need_cookie);
 }
 
@@ -109,13 +114,14 @@ TEST_F(ExperimentMatcherTest, ClassifyIntoExperimentNoExptCookie) {
   RewriteOptions options(thread_system_.get());
   options.set_running_experiment(true);
   NullMessageHandler handler;
+  UserAgentMatcher matcher;
   ASSERT_TRUE(options.AddExperimentSpec("id=1;percent=100", &handler));
 
   // Test that a new cookie is not assigned when the incoming cookie has the
   // no-expt cookie.
   req_headers.Add(HttpAttributes::kCookie, "PageSpeedExperiment=0");
-  bool need_cookie =
-      experiment_matcher_.ClassifyIntoExperiment(req_headers, &options);
+  bool need_cookie = experiment_matcher_.ClassifyIntoExperiment(
+      req_headers, matcher, &options);
   ASSERT_FALSE(need_cookie);
 }
 
@@ -125,14 +131,15 @@ TEST_F(ExperimentMatcherTest, ClassifyIntoExperimentEnrollExperiment) {
   options.set_running_experiment(true);
   options.set_enroll_experiment_id(0);
   NullMessageHandler handler;
+  UserAgentMatcher matcher;
   ASSERT_TRUE(options.AddExperimentSpec("id=1;percent=100", &handler));
 
   req_headers.Add(HttpAttributes::kCookie, "PageSpeedExperiment=1");
 
   // User should be force-assigned to id=0, even though 0 is for 0% of users and
   // they're already in group 1.
-  bool need_cookie =
-      experiment_matcher_.ClassifyIntoExperiment(req_headers, &options);
+  bool need_cookie = experiment_matcher_.ClassifyIntoExperiment(
+      req_headers, matcher, &options);
   ASSERT_TRUE(need_cookie);
   ASSERT_EQ(0, options.experiment_id());
 }
@@ -143,13 +150,14 @@ TEST_F(ExperimentMatcherTest, ClassifyIntoExperimentEnrollNotSet) {
   options.set_running_experiment(true);
   options.set_enroll_experiment_id(experiment::kExperimentNotSet);
   NullMessageHandler handler;
+  UserAgentMatcher matcher;
   ASSERT_TRUE(options.AddExperimentSpec("id=1;percent=100", &handler));
 
   req_headers.Add(HttpAttributes::kCookie, "PageSpeedExperiment=0");
 
   // User should be assigned to id=1, even though they're already in group 0.
-  bool need_cookie =
-      experiment_matcher_.ClassifyIntoExperiment(req_headers, &options);
+  bool need_cookie = experiment_matcher_.ClassifyIntoExperiment(
+      req_headers, matcher, &options);
   ASSERT_TRUE(need_cookie);
   ASSERT_EQ(1, options.experiment_id());
 }
@@ -160,14 +168,15 @@ TEST_F(ExperimentMatcherTest, ClassifyIntoExperimentEnrollBadNum) {
   options.set_running_experiment(true);
   options.set_enroll_experiment_id(2);
   NullMessageHandler handler;
+  UserAgentMatcher matcher;
   ASSERT_TRUE(options.AddExperimentSpec("id=1;percent=100", &handler));
 
   req_headers.Add(HttpAttributes::kCookie, "PageSpeedExperiment=0");
 
   // User should remain in group 0 because forcing a nonexistent experiment
   // should do nothing.
-  bool need_cookie =
-      experiment_matcher_.ClassifyIntoExperiment(req_headers, &options);
+  bool need_cookie = experiment_matcher_.ClassifyIntoExperiment(
+      req_headers, matcher, &options);
   ASSERT_FALSE(need_cookie);
   ASSERT_EQ(0, options.experiment_id());
 }
@@ -177,11 +186,12 @@ TEST_F(ExperimentMatcherTest, ClassifyIntoExperimentNoActiveExperiments) {
   RewriteOptions options(thread_system_.get());
   options.set_running_experiment(true);
   NullMessageHandler handler;
+  UserAgentMatcher matcher;
   ASSERT_TRUE(options.AddExperimentSpec("id=1;percent=0", &handler));
 
   // No cookie should be set because there's no active experiment.
-  bool need_cookie =
-      experiment_matcher_.ClassifyIntoExperiment(req_headers, &options);
+  bool need_cookie = experiment_matcher_.ClassifyIntoExperiment(
+      req_headers, matcher, &options);
   ASSERT_FALSE(need_cookie);
   ASSERT_EQ(experiment::kExperimentNotSet, options.experiment_id());
 }
@@ -191,13 +201,14 @@ TEST_F(ExperimentMatcherTest, ClassifyIntoExperimentNoActiveExperimentsKeep) {
   RewriteOptions options(thread_system_.get());
   options.set_running_experiment(true);
   NullMessageHandler handler;
+  UserAgentMatcher matcher;
   ASSERT_TRUE(options.AddExperimentSpec("id=1;percent=0", &handler));
 
   req_headers.Add(HttpAttributes::kCookie, "PageSpeedExperiment=1");
 
   // Even though there's no active experiment, keep the user in group 1.
-  bool need_cookie =
-      experiment_matcher_.ClassifyIntoExperiment(req_headers, &options);
+  bool need_cookie = experiment_matcher_.ClassifyIntoExperiment(
+      req_headers, matcher, &options);
   ASSERT_FALSE(need_cookie);
   ASSERT_EQ(1, options.experiment_id());
 }
@@ -208,13 +219,14 @@ TEST_F(ExperimentMatcherTest, ClassifyIntoExperimentNoActiveExperimentsUnset) {
   options.set_running_experiment(true);
   options.set_enroll_experiment_id(experiment::kExperimentNotSet);
   NullMessageHandler handler;
+  UserAgentMatcher matcher;
   ASSERT_TRUE(options.AddExperimentSpec("id=1;percent=0", &handler));
 
   // Normally no cookie would be set because there's no active experiment, but
   // we forced kExperimentNotSet which is for resetting cookie values so set the
   // cookie to 0.
-  bool need_cookie =
-      experiment_matcher_.ClassifyIntoExperiment(req_headers, &options);
+  bool need_cookie = experiment_matcher_.ClassifyIntoExperiment(
+      req_headers, matcher, &options);
   ASSERT_TRUE(need_cookie);
   ASSERT_EQ(0, options.experiment_id());
 }
@@ -225,13 +237,103 @@ TEST_F(ExperimentMatcherTest, ClassifyIntoExperimentNoActiveExperimentsEnroll) {
   options.set_running_experiment(true);
   options.set_enroll_experiment_id(1);
   NullMessageHandler handler;
+  UserAgentMatcher matcher;
   ASSERT_TRUE(options.AddExperimentSpec("id=1;percent=0", &handler));
 
   // We should still be able to force-assign users to percent=0 categories.
-  bool need_cookie =
-      experiment_matcher_.ClassifyIntoExperiment(req_headers, &options);
+  bool need_cookie = experiment_matcher_.ClassifyIntoExperiment(
+      req_headers, matcher, &options);
   ASSERT_TRUE(need_cookie);
   ASSERT_EQ(1, options.experiment_id());
+}
+
+TEST_F(ExperimentMatcherTest, ExperimentMatchesDeviceType) {
+  // Ideally these tests would be performed with a mock UserAgentMatcher,
+  // but we don't have one. These constants ought to be good enough.
+  {
+    // Desktop only experiment does not apply to mobile User Agent
+    RequestHeaders req_headers;
+    RewriteOptions options(thread_system_.get());
+    options.set_running_experiment(true);
+    NullMessageHandler handler;
+    UserAgentMatcher matcher;
+
+    ASSERT_TRUE(options.AddExperimentSpec(
+        "id=1;percent=100;matches_device_type=desktop", &handler));
+
+    req_headers.Replace(HttpAttributes::kUserAgent,
+                        UserAgentMatcherTestBase::kAndroidChrome21UserAgent);
+
+    bool need_cookie = experiment_matcher_.ClassifyIntoExperiment(req_headers,
+                                                                  matcher,
+                                                                  &options);
+
+    ASSERT_TRUE(need_cookie);
+    EXPECT_EQ(0, options.experiment_id());
+  }
+  {
+    // Desktop only experiment applies to desktop User Agent
+    RequestHeaders req_headers;
+    RewriteOptions options(thread_system_.get());
+    options.set_running_experiment(true);
+    NullMessageHandler handler;
+    UserAgentMatcher matcher;
+
+    ASSERT_TRUE(options.AddExperimentSpec(
+        "id=1;percent=100;matches_device_type=desktop", &handler));
+
+    req_headers.Replace(HttpAttributes::kUserAgent,
+                        UserAgentMatcherTestBase::kChrome18UserAgent);
+
+    bool need_cookie = experiment_matcher_.ClassifyIntoExperiment(req_headers,
+                                                                  matcher,
+                                                                  &options);
+
+    ASSERT_TRUE(need_cookie);
+    EXPECT_EQ(1, options.experiment_id());
+  }
+  {
+    // tablet+mobile experiment applies to tablet User Agent
+    RequestHeaders req_headers;
+    RewriteOptions options(thread_system_.get());
+    options.set_running_experiment(true);
+    NullMessageHandler handler;
+    UserAgentMatcher matcher;
+
+    ASSERT_TRUE(options.AddExperimentSpec(
+        "id=1;percent=100;matches_device_type=tablet,mobile", &handler));
+
+    req_headers.Replace(HttpAttributes::kUserAgent,
+                        UserAgentMatcherTestBase::kIPadChrome36UserAgent);
+
+    bool need_cookie = experiment_matcher_.ClassifyIntoExperiment(req_headers,
+                                                                  matcher,
+                                                                  &options);
+
+    ASSERT_TRUE(need_cookie);
+    EXPECT_EQ(1, options.experiment_id());
+  }
+  {
+    // tablet+mobile experiment does not apply to desktop User Agent
+    RequestHeaders req_headers;
+    RewriteOptions options(thread_system_.get());
+    options.set_running_experiment(true);
+    NullMessageHandler handler;
+    UserAgentMatcher matcher;
+
+    ASSERT_TRUE(options.AddExperimentSpec(
+        "id=1;percent=100;matches_device_type=tablet,mobile", &handler));
+
+    req_headers.Replace(HttpAttributes::kUserAgent,
+                        UserAgentMatcherTestBase::kChrome18UserAgent);
+
+    bool need_cookie = experiment_matcher_.ClassifyIntoExperiment(req_headers,
+                                                                  matcher,
+                                                                  &options);
+
+    ASSERT_TRUE(need_cookie);
+    EXPECT_EQ(0, options.experiment_id());
+  }
 }
 
 

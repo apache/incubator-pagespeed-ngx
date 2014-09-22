@@ -30,6 +30,7 @@
 #include "pagespeed/kernel/http/http_names.h"
 #include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/response_headers.h"
+#include "pagespeed/kernel/http/user_agent_matcher.h"
 
 namespace net_instaweb {
 
@@ -102,6 +103,8 @@ TEST_F(ExperimentUtilTest, DetermineExperimentState) {
   RewriteOptions options(thread_system_.get());
   options.set_running_experiment(true);
   NullMessageHandler handler;
+  RequestHeaders headers;
+  UserAgentMatcher ua_matcher;
   ASSERT_TRUE(options.AddExperimentSpec("id=1;percent=35", &handler));
   ASSERT_TRUE(options.AddExperimentSpec("id=2;percent=35", &handler));
   ASSERT_EQ(2, options.num_experiments());
@@ -112,7 +115,7 @@ TEST_F(ExperimentUtilTest, DetermineExperimentState) {
   // In 100000000 runs, with 70% of the traffic in an experiment, we should
   // get some of each.
   for (int i = 0; i < runs; ++i) {
-    int state = DetermineExperimentState(&options);
+    int state = DetermineExperimentState(&options, headers, ua_matcher);
     switch (state) {
       case kNoExperiment:  // explicitly not in experiment
         ++none;

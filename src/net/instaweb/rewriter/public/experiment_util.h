@@ -33,6 +33,7 @@ namespace net_instaweb {
 class RequestHeaders;
 class ResponseHeaders;
 class RewriteOptions;
+class UserAgentMatcher;
 
 namespace experiment {
 
@@ -74,7 +75,9 @@ void SetExperimentCookie(ResponseHeaders* headers, int state,
                          const StringPiece& url, int64 expiration_time_ms);
 
 // Determines which side of the experiment this request should end up on.
-int DetermineExperimentState(const RewriteOptions* options);
+int DetermineExperimentState(const RewriteOptions* options,
+                             const RequestHeaders& headers,
+                             const UserAgentMatcher& matcher);
 
 // Are there any experiments defined with percent > 0?
 bool AnyActiveExperiments(const RewriteOptions* options);

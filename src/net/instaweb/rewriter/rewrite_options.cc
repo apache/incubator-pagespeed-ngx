@@ -42,6 +42,7 @@
 #include "pagespeed/kernel/http/http_options.h"
 #include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/semantic_type.h"
+#include "pagespeed/kernel/http/user_agent_matcher.h"
 
 namespace net_instaweb {
 
@@ -3972,6 +3973,23 @@ GoogleString RewriteOptions::ExperimentSpec::ToString() const {
     sep = ",";
   }
 
+  if (matches_device_types_.get() != NULL) {
+    StrAppend(&out, ";matches_device_type=");
+    sep = "";
+    if ((*matches_device_types_)[UserAgentMatcher::kDesktop]) {
+      StrAppend(&out, sep, "desktop");
+      sep = ",";
+    }
+    if ((*matches_device_types_)[UserAgentMatcher::kTablet]) {
+      StrAppend(&out, sep, "tablet");
+      sep = ",";
+    }
+    if ((*matches_device_types_)[UserAgentMatcher::kMobile]) {
+      StrAppend(&out, sep, "mobile");
+      sep = ",";
+    }
+  }
+
   return out;
 }
 
@@ -4133,7 +4151,7 @@ void RewriteOptions::SetRequiredExperimentFilters() {
 }
 
 RewriteOptions::ExperimentSpec::ExperimentSpec(const StringPiece& spec,
-                                               RewriteOptions* options,
+                                               const RewriteOptions* options,
                                                MessageHandler* handler)
     : id_(experiment::kExperimentNotSet),
       ga_id_(options->ga_id()),
@@ -4167,6 +4185,10 @@ void RewriteOptions::ExperimentSpec::Merge(const ExperimentSpec& spec) {
   percent_ = spec.percent_;
   rewrite_level_ = spec.rewrite_level_;
   use_default_ = spec.use_default_;
+  if (spec.matches_device_types_.get() != NULL) {
+    matches_device_types_.reset(
+        new DeviceTypeBitSet(*spec.matches_device_types_));
+  }
 }
 
 RewriteOptions::ExperimentSpec* RewriteOptions::ExperimentSpec::Clone() {
@@ -4233,11 +4255,68 @@ void RewriteOptions::ExperimentSpec::Initialize(const StringPiece& spec,
       if (options.length() > 0) {
         AddCommaSeparatedListToOptionSet(options, &filter_options_, handler);
       }
+    } else if (StringCaseStartsWith(piece, "matches_device_type")) {
+      matches_device_types_.reset(new DeviceTypeBitSet());
+      ParseDeviceTypeBitSet(PieceAfterEquals(piece),
+                            matches_device_types_.get(), handler);
     } else {
       handler->Message(kWarning, "Skipping unknown experiment setting: %s",
                        piece.as_string().c_str());
     }
   }
+}
+
+bool RewriteOptions::ExperimentSpec::ParseDeviceTypeBitSet(
+    const StringPiece& in, ExperimentSpec::DeviceTypeBitSet* out,
+    MessageHandler* handler) {
+  bool success = false;
+
+  StringPieceVector devices;
+  SplitStringPieceToVector(in, ",", &devices, true);
+
+  for (int i = 0, n = devices.size(); i < n; ++i) {
+    StringPiece device = devices[i];
+
+    UserAgentMatcher::DeviceType device_type =
+        UserAgentMatcher::kEndOfDeviceType;
+
+    if (device == "desktop") {
+      device_type = UserAgentMatcher::kDesktop;
+    } else if (device == "mobile") {
+      device_type = UserAgentMatcher::kMobile;
+    } else if (device == "tablet") {
+      device_type = UserAgentMatcher::kTablet;
+    }
+
+    if (device_type != UserAgentMatcher::kEndOfDeviceType) {
+      out->set(device_type, true);
+      success = true;
+    } else {
+      handler->Message(kWarning, "Skipping unknown device type: %s",
+                       device.as_string().c_str());
+    }
+  }
+
+  return success;
+}
+
+bool RewriteOptions::ExperimentSpec::matches_device_type(
+    UserAgentMatcher::DeviceType type) const {
+
+  // It would be nice to use matches_device_types_->size() for the second
+  // if clause. Unfortunately, matches_device_types_ might be NULL and
+  // size is not static, despite it being a template paramater.
+  if (type < 0 || type >= UserAgentMatcher::kEndOfDeviceType) {
+    LOG(DFATAL) << "DeviceType out of range: " << type;
+    return false;
+  }
+
+  // If no device_type filter has been specified, this will match all devices.
+  if (matches_device_types_.get() == NULL) {
+    return true;
+  }
+
+  return (*matches_device_types_)[type];
 }
 
 void RewriteOptions::AddInlineUnauthorizedResourceType(
