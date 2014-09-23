@@ -493,7 +493,14 @@ void AdminSite::PrintCaches(bool is_global, AdminSource source,
     // URL, which it may do asynchronously, so we cannot use the
     // AdminHtml abstraction which closes the connection in its
     // destructor.
-    server_context->ShowCacheHandler(url, fetch, options->Clone());
+    GoogleString json_dummy;
+    ServerContext::Format format = ServerContext::kFormatAsHtml;
+    if (query_params.Lookup1Unescaped("json", &json_dummy)) {
+      format = ServerContext::kFormatAsJson;
+    }
+    GoogleString ua;
+    query_params.Lookup1Unescaped("user_agent", &ua);
+    server_context->ShowCacheHandler(format, url, ua, fetch, options->Clone());
   } else if ((source == kPageSpeedAdmin) &&
              query_params.Lookup1Unescaped("new_set", &url)) {
     ResponseHeaders* response_headers = fetch->response_headers();

@@ -648,10 +648,15 @@ class ServerContext {
     return js_tokenizer_patterns_;
   }
 
+  enum Format {
+    kFormatAsHtml,
+    kFormatAsJson
+  };
+
   // Shows cached data related to a URL.  Ownership of options is transferred
   // to this function.
-  void ShowCacheHandler(StringPiece url, AsyncFetch* fetch,
-                        RewriteOptions* options);
+  void ShowCacheHandler(Format format, StringPiece url, StringPiece ua,
+                        AsyncFetch* fetch, RewriteOptions* options);
 
   // Returns an HTML form for entering a URL for ShowCacheHandler.  If
   // the user_agent is non-null, then it's used to prepopulate the

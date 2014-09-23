@@ -138,6 +138,13 @@ goog.DEPENDENCIES_ENABLED && (goog.included_ = {}, goog.dependencies_ = {pathIsM
 }, goog.IS_OLD_IE_ = goog.global.document && goog.global.document.all && !goog.global.atob, goog.importModule_ = function(src) {
   goog.importScript_("", 'goog.retrieveAndExecModule_("' + src + '");') && (goog.dependencies_.written[src] = !0);
 }, goog.queuedModules_ = [], goog.retrieveAndExecModule_ = function(src) {
+  for (var separator;-1 != (separator = src.indexOf("/./"));) {
+    src = src.substr(0, separator) + src.substr(separator + 2);
+  }
+  for (;-1 != (separator = src.indexOf("/../"));) {
+    var previousComponent = src.lastIndexOf("/", separator - 1);
+    src = src.substr(0, previousComponent) + src.substr(separator + 3);
+  }
   var importScript = goog.global.CLOSURE_IMPORT_SCRIPT || goog.writeScriptTag_, scriptText = null, xhr = new goog.global.XMLHttpRequest;
   xhr.onload = function() {
     scriptText = this.responseText;

@@ -52,8 +52,9 @@
 #include "net/instaweb/util/public/cache_property_store.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
-#include "pagespeed/kernel/base/basictypes.h"        // for int64
+#include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/dynamic_annotations.h"  // RunningOnValgrind
+#include "pagespeed/kernel/base/escaping.h"
 #include "pagespeed/kernel/base/hasher.h"
 #include "pagespeed/kernel/base/md5_hasher.h"
 #include "pagespeed/kernel/base/message_handler.h"
@@ -1135,15 +1136,47 @@ const CacheInterface* ServerContext::pcache_cache_backend() {
 
 namespace {
 
+void FormatResponse(ServerContext::Format format,
+                    const GoogleString& text,
+                    AsyncFetch* fetch,
+                    MessageHandler* handler) {
+  ResponseHeaders* response_headers = fetch->response_headers();
+  response_headers->SetStatusAndReason(HttpStatus::kOK);
+  response_headers->Add(HttpAttributes::kCacheControl,
+                        HttpAttributes::kNoStore);
+  response_headers->Add(RewriteQuery::kPageSpeed, "off");
+
+  if (format == ServerContext::kFormatAsHtml) {
+    response_headers->Add(HttpAttributes::kContentType, "text/html");
+    HtmlKeywords::WritePre(text, "", fetch, handler);
+  } else {
+    response_headers->Add(
+        HttpAttributes::kContentType, "application/javascript; charset=utf-8");
+    response_headers->Add("X-Content-Type-Options", "nosniff");
+    // Prevent some cases of improper embedding of data, which risks
+    // misinterpreting it.
+    response_headers->Add("Content-Disposition",
+                          "attachment; filename=\"data.json\"");
+    fetch->Write(")]}\n", handler);
+
+    GoogleString escaped;
+    EscapeToJsonStringLiteral(text, true, &escaped);
+    fetch->Write(StrCat("{\"value\":", escaped, "}"), handler);
+  }
+  fetch->Done(true);
+}
+
 class MetadataCacheResultCallback
     : public RewriteContext::CacheLookupResultCallback {
  public:
   // Will cleanup the driver
-  MetadataCacheResultCallback(ServerContext* server_context,
+  MetadataCacheResultCallback(ServerContext::Format format,
+                              ServerContext* server_context,
                               RewriteDriver* driver,
                               AsyncFetch* fetch,
                               MessageHandler* handler)
-      : server_context_(server_context),
+      : format_(format),
+        server_context_(server_context),
         driver_(driver),
         fetch_(fetch),
         handler_(handler) {
@@ -1156,12 +1189,6 @@ class MetadataCacheResultCallback
     scoped_ptr<RewriteContext::CacheLookupResult> result(in_result);
     driver_->Cleanup();
 
-    ResponseHeaders* response_headers = fetch_->response_headers();
-    response_headers->SetStatusAndReason(HttpStatus::kOK);
-    response_headers->Add(HttpAttributes::kCacheControl,
-                          HttpAttributes::kNoStore);
-    response_headers->Add(HttpAttributes::kContentType, "text/html");
-    response_headers->Add(RewriteQuery::kPageSpeed, "off");
     GoogleString cache_dump;
     StringWriter cache_writer(&cache_dump);
     cache_writer.Write(StrCat("Metadata cache key:", cache_key, "\n"),
@@ -1173,58 +1200,8 @@ class MetadataCacheResultCallback
         StrCat("can_revalidate:", (result->can_revalidate ? "true" : "false"),
         "\n"), handler_);
     if (result->partitions.get() != NULL) {
-      const OutputPartitions* partitions = result->partitions.get();
       // Display the input info which has the minimum expiration time of all
       // the inputs.
-      //
-      // TODO(morlovich): consider killing this minimum thing: IMHO it only
-      // makes the output harder to read (alternatively it needs some better
-      // formatting).
-      int min_partition_index = -1;
-      int min_input_index = -1;
-      int64 min_input_expiration_ms = kint64max;
-      for (int j = 0, m = partitions->partition_size(); j < m; ++j) {
-        const CachedResult& partition = partitions->partition(j);
-        for (int k = 0, l = partition.input_size(); k < l; ++k) {
-          const InputInfo& input_info = partition.input(k);
-          if (input_info.type() == InputInfo::CACHED &&
-              input_info.has_expiration_time_ms() &&
-              input_info.expiration_time_ms() < min_input_expiration_ms) {
-             min_input_expiration_ms = input_info.expiration_time_ms();
-             min_partition_index = j;
-             min_input_index = k;
-          }
-        }
-      }
-      if (min_partition_index != -1 && min_input_index != -1) {
-        const InputInfo& input_info =
-            partitions->partition(min_partition_index).input(min_input_index);
-        cache_writer.Write(
-            StrCat("partition_min_expiration_input {\n",
-            input_info.DebugString(), "}\n"),
-            handler_);
-      }
-
-      // Display the other dependency field which has the minimum expiration
-      // time of all the dependencies.
-      int64 min_other_expiration_ms = kint64max;
-      int min_other_index = -1;
-      for (int i = 0, n = partitions->other_dependency_size(); i < n; ++i) {
-        const InputInfo& input_info = partitions->other_dependency(i);
-        if (input_info.type() == InputInfo::CACHED &&
-            input_info.has_expiration_time_ms() &&
-            input_info.expiration_time_ms() < min_other_expiration_ms) {
-           min_other_expiration_ms = input_info.expiration_time_ms();
-           min_other_index = i;
-        }
-      }
-      if (min_other_index != -1) {
-        cache_writer.Write(
-            StrCat("partition_min_expiration_other_dependency {\n",
-            partitions->other_dependency(min_other_index).DebugString(),
-            "}\n"), handler_);
-      }
-
       cache_writer.Write(
           StrCat("partitions:", result->partitions->DebugString(), "\n"),
           handler_);
@@ -1232,16 +1209,16 @@ class MetadataCacheResultCallback
       cache_writer.Write("partitions is NULL\n", handler_);
     }
     for (int i = 0, n = result->revalidate.size(); i < n; ++i) {
-      cache_writer.Write(StrCat("Revalidate entry ", IntegerToString(i),
-                           result->revalidate[i]->DebugString(), "\n"),
+      cache_writer.Write(StrCat("Revalidate entry ", IntegerToString(i), " ",
+                                result->revalidate[i]->DebugString(), "\n"),
                     handler_);
     }
-    fetch_->Write(cache_dump, handler_);
-    fetch_->Done(true);
+    FormatResponse(format_, cache_dump, fetch_, handler_);
     delete this;
   }
 
  private:
+  ServerContext::Format format_;
   ServerContext* server_context_;
   RewriteDriver* driver_;
   AsyncFetch* fetch_;
@@ -1251,39 +1228,25 @@ class MetadataCacheResultCallback
 }  // namespace
 
 void ServerContext::ShowCacheHandler(
-    StringPiece url, AsyncFetch* fetch, RewriteOptions* options_arg) {
+    Format format,  StringPiece url, StringPiece ua, AsyncFetch* fetch,
+    RewriteOptions* options_arg) {
   scoped_ptr<RewriteOptions> options(options_arg);
-  const char* user_agent = fetch->request_headers()->Lookup1(
-      HttpAttributes::kUserAgent);
   if (url.empty()) {
-    ResponseHeaders* response_headers = fetch->response_headers();
-    response_headers->SetStatusAndReason(HttpStatus::kOK);
-    response_headers->Add(HttpAttributes::kCacheControl,
-                          HttpAttributes::kNoStore);
-    response_headers->Add(HttpAttributes::kContentType, "text/html");
-    fetch->Write("Empty URL", message_handler_);
-    fetch->Done(true);
+    FormatResponse(format, "Empty URL", fetch, message_handler_);
   } else if (!GoogleUrl(url).IsWebValid()) {
-    ResponseHeaders* response_headers = fetch->response_headers();
-    response_headers->SetStatusAndReason(HttpStatus::kOK);
-    response_headers->Add(HttpAttributes::kContentType, "text/html");
-    fetch->Write("Invalid URL", message_handler_);
-    fetch->Done(false);
+    FormatResponse(format, "Invalid URL", fetch, message_handler_);
   } else {
     RewriteDriver* driver = NewCustomRewriteDriver(
         options.release(), fetch->request_context());
-    if (user_agent != NULL) {
-      driver->SetUserAgent(user_agent);
-    }
+    driver->SetUserAgent(ua);
+
     GoogleString error_out;
     MetadataCacheResultCallback* callback = new MetadataCacheResultCallback(
-        this, driver, fetch, message_handler_);
+        format, this, driver, fetch, message_handler_);
     if (!driver->LookupMetadataForOutputResource(url, &error_out, callback)) {
       driver->Cleanup();
       delete callback;
-      fetch->response_headers()->SetStatusAndReason(HttpStatus::kOK);
-      fetch->Write(error_out, message_handler_);
-      fetch->Done(false);
+      FormatResponse(format, error_out, fetch, message_handler_);
     }
   }
 }
@@ -1304,9 +1267,9 @@ GoogleString ServerContext::ShowCacheForm(StringPiece user_agent) {
       "  User-Agent: <input id=user_agent type=text size=103 name=user_agent ",
       ua_default,
       "/></br> \n",
-      "  <input id=metadata_submit type=button "
+      "  <input id=metadata_submit type=submit "
       "   value='Show Metadata Cache Entry' />"
-      "  <input id=metadata_clear type=button value='Clear' />",
+      "  <input id=metadata_clear type=reset value='Clear' />",
       "</form>\n");
   return out;
 }

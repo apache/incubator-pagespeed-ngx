@@ -97,6 +97,19 @@ TEST_F(EscapingTest, JsDontEscapeWayTooMuch) {
   EXPECT_EQ("-----!", out);
 }
 
+TEST_F(EscapingTest, JsonEscapeBasic) {
+  GoogleString out;
+  EscapeToJsonStringLiteral("abc\1\3\n\t\"\\", true, &out);
+  EXPECT_EQ("\"abc\\u0001\\u0003\\u000a\\u0009\\u0022\\u005c\"", out);
+}
+
+TEST_F(EscapingTest, JsonEscapeAppend) {
+  GoogleString out;
+  EscapeToJsonStringLiteral("ab", true, &out);
+  EscapeToJsStringLiteral("cd", false, &out);
+  EXPECT_EQ("\"ab\"cd", out);
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

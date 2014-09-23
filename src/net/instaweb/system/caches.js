@@ -227,6 +227,18 @@ pagespeed.Caches.prototype.show = function(div) {
   location.href = location.href.split('#')[0] + '#' + div;
 };
 
+/**
+ * Extracts text packaged as JSON (in a value: field) with a prepended
+ * XSSI guard.
+ * @param {string} responseText Raw response.
+ * @return {string} Decoded value.
+ * @private
+ */
+pagespeed.Caches.decodeFromJson_ = function(responseText) {
+  // 4 = length of the )]}\n XSSI guard.
+  return JSON.parse(responseText.substring(4)).value;
+};
+
 
 /**
  * Encode special characters and remove whitespace from both sides of the url.
@@ -282,16 +294,19 @@ pagespeed.Caches.prototype.sendPurgeSetRequest = function() {
 
 /**
  * Send the cache purging URL to the sever.
+ * @param {Event} event The DOM event that activated this.
  */
-pagespeed.Caches.prototype.sendMetadataRequest = function() {
+pagespeed.Caches.prototype.sendMetadataRequest = function(event) {
   if (!this.xhr_.isActive()) {
+    event.preventDefault();
     var urlId = pagespeed.Caches.ElementId.METADATA_TEXT;
     var userAgentId = pagespeed.Caches.ElementId.USER_AGENT;
     var url =
         '?url=' +
         this.escapedUrl(document.getElementById(urlId).value) +
         '&user_agent=' +
-        this.escapedUrl(document.getElementById(userAgentId).value);
+        this.escapedUrl(document.getElementById(userAgentId).value) +
+        '&json=1';
     this.inputIsFrom_ = pagespeed.Caches.ElementId.METADATA_RESULT;
     this.xhr_.send(url);
   }
@@ -378,6 +393,7 @@ pagespeed.Caches.prototype.showResult = function() {
   if (this.xhr_.isSuccess()) {
     var text = this.xhr_.getResponseText();
     if (this.inputIsFrom_ == pagespeed.Caches.ElementId.METADATA_RESULT) {
+      text = pagespeed.Caches.decodeFromJson_(text);
       document.getElementById(this.inputIsFrom_).textContent = text;
     } else if (this.inputIsFrom_ == pagespeed.Caches.ElementId.PURGE_TABLE) {
       this.updatePurgeSet(text);

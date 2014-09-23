@@ -106,4 +106,28 @@ void EscapeToJsStringLiteral(const StringPiece& original,
   }
 }
 
+void EscapeToJsonStringLiteral(const StringPiece& original,
+                               bool add_quotes,
+                               GoogleString* escaped) {
+  // Optimistically assume no escaping will be required and reserve enough space
+  // for that result.
+  escaped->reserve(escaped->size() + original.size() + (add_quotes ? 2 : 0));
+  if (add_quotes) {
+    (*escaped) += "\"";
+  }
+  for (size_t c = 0; c < original.length(); ++c) {
+    unsigned char code = static_cast<unsigned char>(original[c]);
+
+    if (code <= 0x1F || code > 0x7F || code == '<' || code == '>' ||
+        code == '"' || code == '\\') {
+      *(escaped) += StringPrintf("\\u00%02x", code);
+    } else {
+      *(escaped) += original[c];
+    }
+  }
+  if (add_quotes) {
+    (*escaped) += "\"";
+  }
+}
+
 }  // namespace net_instaweb
