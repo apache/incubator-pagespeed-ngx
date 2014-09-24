@@ -953,6 +953,14 @@ string HtmlColor::ToString() const {
   return StringPrintf("#%02x%02x%02x", r_, g_, b_);
 }
 
+bool HtmlColor::Equals(const HtmlColor& color) const {
+  if (IsDefined() != color.IsDefined())
+    return false;
+  if (IsDefined())
+    return rgb() == color.rgb();
+  return true;
+}
+
 
 //
 // == HtmlColorUtils ==

@@ -138,6 +138,11 @@ class HtmlColor {
   //   http://www.w3.org/TR/css3-color/#svg-color
   void SetValueFromName(StringPiece str);
 
+  // Two IsDefined() colors are equal if their rgb()s are equal.
+  // An IsDefined() color is not equal to a !IsDefined() color.
+  // Two !IsDefined() colors are equal regardless of their rgb()s.
+  bool Equals(const HtmlColor& color) const;
+
   int r() const { return static_cast<int>(r_); }
   int g() const { return static_cast<int>(g_); }
   int b() const { return static_cast<int>(b_); }

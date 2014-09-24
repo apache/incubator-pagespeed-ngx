@@ -428,6 +428,13 @@ ModPagespeedCompressMetadataCache true
   ModPagespeedDisableFilters add_instrumentation
 </Directory>
 
+# Directory config for gathering sample data from instrumented pages for
+# purposes of mobilization.
+<Directory "@@APACHE_DOC_ROOT@@/mobilization/" >
+  ModPagespeedRewriteLevel PassThrough
+  ModPagespeedEnableFilters mobilize,debug
+</Directory>
+
 # Another VirtualHost can be enabled by default as it does no harm.  This can
 # be used for testing alternate configuration settings in system tests without
 # restarting Apache.
