@@ -274,6 +274,7 @@ const char* kIeUserAgents[] = {
   "*IE 1*",                 // Initial numeral avoids Samsung UA
   "*Trident/7*",            // Opera sometimes pretends to be earlier Trident
 };
+const int kIEBefore11Index = 0;
 
 // Match either 'CriOS' (iOS Chrome) or 'Chrome'. ':?' marks a non-capturing
 // group.
@@ -328,10 +329,8 @@ UserAgentMatcher::UserAgentMatcher()
     // Explicitly allowed blink UAs should also allow defer_javascript.
     defer_js_whitelist_.Allow(kPanelSupportDesktopWhitelist[i]);
   }
-  for (int i = 0, n = arraysize(kIeUserAgents); i < n; ++i) {
-    blink_desktop_whitelist_.Allow(kIeUserAgents[i]);
-    defer_js_whitelist_.Allow(kIeUserAgents[i]);
-  }
+  blink_desktop_whitelist_.Allow(kIeUserAgents[kIEBefore11Index]);
+  defer_js_whitelist_.Allow(kIeUserAgents[kIEBefore11Index]);
   for (int i = 0, n = arraysize(kDeferJSWhitelist); i < n; ++i) {
     defer_js_whitelist_.Allow(kDeferJSWhitelist[i]);
   }

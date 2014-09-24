@@ -154,6 +154,10 @@ TEST_F(UserAgentMatcherTest, PrefetchMechanism) {
 TEST_F(UserAgentMatcherTest, SupportsJsDefer) {
   EXPECT_TRUE(user_agent_matcher_->SupportsJsDefer(
       kIe9UserAgent, false));
+  for (int i = 0; i < kIe11UserAgentsArraySize; ++i) {
+    EXPECT_FALSE(user_agent_matcher_->SupportsJsDefer(
+        kIe11UserAgents[i], false)) << i << ": " << kIe11UserAgents[i];
+  }
   EXPECT_TRUE(user_agent_matcher_->SupportsJsDefer(
       kChromeUserAgent, false));
   EXPECT_TRUE(user_agent_matcher_->SupportsJsDefer(
@@ -559,6 +563,17 @@ TEST_F(UserAgentMatcherTest, GetScreenResolution) {
       XT907UserAgent, &width, &height));
   EXPECT_EQ(540, width);
   EXPECT_EQ(960, height);
+}
+
+TEST_F(UserAgentMatcherTest, IE11BlinkFailure) {
+  RequestHeaders* not_used = NULL;
+  for (int i = 0; i < kIe11UserAgentsArraySize; ++i) {
+    const char* user_agent = kIe11UserAgents[i];
+    UserAgentMatcher::BlinkRequestType blink_type =
+        user_agent_matcher_->GetBlinkRequestType(user_agent, not_used);
+    EXPECT_EQ(UserAgentMatcher::kDoesNotSupportBlink, blink_type);
+    EXPECT_FALSE(user_agent_matcher_->SupportsJsDefer(user_agent, true));
+  }
 }
 
 }  // namespace net_instaweb

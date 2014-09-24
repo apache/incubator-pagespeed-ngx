@@ -297,7 +297,8 @@ const char* const
 UserAgentMatcherTestBase::kIe11UserAgents[] = {
   "Windows-RSS-Platform/2.0 (IE 11.0; Windows NT 6.1)",
   "Mozilla/5.0 (compatible; IE 11.0; Win32; Trident/7.0)",
-  "Mozilla/5.0 (Windows NT 6.1; WOW64; ***********; rv:11.0) like Gecko"
+  "Mozilla/5.0 (Windows NT 6.1; WOW64; ***********; rv:11.0) like Gecko",
+  "Mozilla/5.0 (Windows NT 6.1; Win64; x64; Trident/7.0; rv:11.0) like Gecko",
 };
 
 const char* const UserAgentMatcherTestBase::kMobileUserAgents[] = {
@@ -390,6 +391,7 @@ UserAgentMatcherTestBase::kImageInliningSupportedUserAgents[] = {
   UserAgentMatcherTestBase::kIe11UserAgents[0],
   UserAgentMatcherTestBase::kIe11UserAgents[1],
   UserAgentMatcherTestBase::kIe11UserAgents[2],
+  UserAgentMatcherTestBase::kIe11UserAgents[3],
 };
 
 const char* const UserAgentMatcherTestBase::kSplitHtmlSupportedUserAgents[] = {
@@ -397,9 +399,6 @@ const char* const UserAgentMatcherTestBase::kSplitHtmlSupportedUserAgents[] = {
   UserAgentMatcherTestBase::kFirefoxUserAgent,
   UserAgentMatcherTestBase::kIe9UserAgent,
   UserAgentMatcherTestBase::kSafariUserAgent,
-  UserAgentMatcherTestBase::kIe11UserAgents[0],
-  UserAgentMatcherTestBase::kIe11UserAgents[1],
-  UserAgentMatcherTestBase::kIe11UserAgents[2],
 };
 
 const char* const
@@ -409,6 +408,10 @@ UserAgentMatcherTestBase::kSplitHtmlUnSupportedUserAgents[] = {
   UserAgentMatcherTestBase::kFirefox3UserAgent,
   UserAgentMatcherTestBase::kIe6UserAgent,
   UserAgentMatcherTestBase::kIe8UserAgent,
+  UserAgentMatcherTestBase::kIe11UserAgents[0],
+  UserAgentMatcherTestBase::kIe11UserAgents[1],
+  UserAgentMatcherTestBase::kIe11UserAgents[2],
+  UserAgentMatcherTestBase::kIe11UserAgents[3],
   UserAgentMatcherTestBase::kNokiaUserAgent,
   UserAgentMatcherTestBase::kOpera5UserAgent,
   UserAgentMatcherTestBase::kPSPUserAgent,
