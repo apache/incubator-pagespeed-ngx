@@ -494,6 +494,10 @@ bool UserAgentMatcher::IsiOSUserAgent(const StringPiece& user_agent) const {
       user_agent.find("iPad") != GoogleString::npos;
 }
 
+bool UserAgentMatcher::IsChromeLike(const StringPiece& user_agent) const {
+  return user_agent.find("Chrome/") != StringPiece::npos;
+}
+
 bool UserAgentMatcher::GetChromeBuildNumber(const StringPiece& user_agent,
                                             int* major, int* minor, int* build,
                                             int* patch) const {

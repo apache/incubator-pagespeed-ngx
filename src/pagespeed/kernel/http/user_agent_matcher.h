@@ -118,6 +118,16 @@ class UserAgentMatcher {
   virtual bool IsAndroidUserAgent(const StringPiece& user_agent) const;
   virtual bool IsiOSUserAgent(const StringPiece& user_agent) const;
 
+  // Determines based on the user-agent whether the browser claims to be Chrome.
+  // Based on https://code.google.com/p/modpagespeed/issues/detail?id=978,
+  // Desktop IE11 will start masquerading as Chrome soon, and according to
+  // https://groups.google.com/forum/?utm_medium=email&utm_source=footer#!msg/mod-pagespeed-discuss/HYzzdOzJu_k/ftdV8koVgUEJ
+  // a browser called Midori might (at some point) masquerade as Chrome as well.
+  //
+  // This function returns 'true' for real Chrome, and any of these
+  // masquerades.
+  bool IsChromeLike(const StringPiece& user_agent) const;
+
   // Returns false if this is not a Chrome user agent, or parsing the
   // string build number fails.
   virtual bool GetChromeBuildNumber(const StringPiece& user_agent, int* major,

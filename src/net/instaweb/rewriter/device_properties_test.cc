@@ -157,6 +157,56 @@ TEST_F(DevicePropertiesTest, WebpUserAgentIdentificationNoAccept) {
   EXPECT_TRUE(device_properties_.SupportsWebpLosslessAlpha());
 }
 
+// See https://code.google.com/p/modpagespeed/issues/detail?id=978
+//
+// Microsoft (v-evgena@microsoft.com and tobint@microsoft.com)
+// suggests that they are planning to start masquerading IE11 on
+// desktop as Chrome, and wants us not to send webp.  They have not
+// coughed up what the UA will actually be, however, so we can't do
+// this with a blacklist yet.
+TEST_F(DevicePropertiesTest, NoWebpForChromeWithoutAcceptHeader) {
+  // Android Browser is OK -- we will serve it webp without an accept header.
+  // Mobile IE actually *does* masquerade as IE as of August 2014, but
+  // it's easy to avoid confusion because the UA includes 'Windows Phone'.
+  device_properties_.SetUserAgent(
+      UserAgentMatcherTestBase::kAndroidICSUserAgent);
+  EXPECT_FALSE(device_properties_.SupportsWebpInPlace());
+  EXPECT_TRUE(device_properties_.SupportsWebpRewrittenUrls());
+  EXPECT_FALSE(device_properties_.SupportsWebpLosslessAlpha());
+
+  device_properties_.SetUserAgent(
+      UserAgentMatcherTestBase::kWindowsPhoneUserAgent);
+  EXPECT_FALSE(device_properties_.SupportsWebpInPlace());
+  EXPECT_FALSE(device_properties_.SupportsWebpRewrittenUrls());
+  EXPECT_FALSE(device_properties_.SupportsWebpLosslessAlpha());
+
+  // However Chrome will generally send us an Accept:image/webp header, whereas
+  // other browsers such as (we think) IE11 in the future, will not send
+  // such Accept headers.  Unfortunately, Chrome only started sending
+  // accept:image/webp at version 25, so version 18 will no longer get webp
+  // as of this change.
+  device_properties_.SetUserAgent(UserAgentMatcherTestBase::kChrome18UserAgent);
+  EXPECT_FALSE(device_properties_.SupportsWebpInPlace());
+  EXPECT_FALSE(device_properties_.SupportsWebpRewrittenUrls());
+  EXPECT_FALSE(device_properties_.SupportsWebpLosslessAlpha());
+
+  // However, Chrome 25 and 37 will get webp due to the accept header.
+  RequestHeaders headers;
+  headers.Add(HttpAttributes::kAccept, "image/webp");
+  device_properties_.ParseRequestHeaders(headers);
+
+  device_properties_.SetUserAgent(UserAgentMatcherTestBase::kChrome37UserAgent);
+  EXPECT_TRUE(device_properties_.SupportsWebpInPlace());
+  EXPECT_TRUE(device_properties_.SupportsWebpRewrittenUrls());
+  EXPECT_TRUE(device_properties_.SupportsWebpLosslessAlpha());
+
+  device_properties_.SetUserAgent(
+      UserAgentMatcherTestBase::kOpera1110UserAgent);
+  EXPECT_TRUE(device_properties_.SupportsWebpInPlace());
+  EXPECT_TRUE(device_properties_.SupportsWebpRewrittenUrls());
+  EXPECT_FALSE(device_properties_.SupportsWebpLosslessAlpha());
+}
+
 TEST_F(DevicePropertiesTest, WebpUserAgentIdentificationAccept) {
   RequestHeaders headers;
   headers.Add(HttpAttributes::kAccept, "*/*");

@@ -93,7 +93,7 @@ const char kCssContent[] = "* { display: none; }";
 
 const char kSampleJpgFile[] = "Sample.jpg";
 
-const char kLinuxUserAgent[] =
+const char kChromeLinuxUserAgent[] =
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/536.5 "
     "(KHTML, like Gecko) Chrome/19.0.1084.46 Safari/536.5";
 
@@ -556,7 +556,8 @@ class CacheHtmlFlowTest : public ProxyInterfaceTestBase {
 
   void GetDefaultRequestHeaders(RequestHeaders* request_headers) {
     // Request from an internal ip.
-    request_headers->Add(HttpAttributes::kUserAgent, kLinuxUserAgent);
+    request_headers->Add(HttpAttributes::kUserAgent, kChromeLinuxUserAgent);
+    request_headers->Add(HttpAttributes::kAccept, "image/webp");
     request_headers->Add(HttpAttributes::kXForwardedFor, "127.0.0.1");
     request_headers->Add(HttpAttributes::kXGoogleRequestEventId,
                          "1345815119391831");
@@ -1427,7 +1428,7 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlFlowWithHeadRequest) {
   GoogleString text;
   ResponseHeaders response_headers;
   RequestHeaders request_headers;
-  request_headers.Add(HttpAttributes::kUserAgent, kLinuxUserAgent);
+  request_headers.Add(HttpAttributes::kUserAgent, kChromeLinuxUserAgent);
   request_headers.set_method(RequestHeaders::kHead);
   FetchFromProxy("text.html", true, request_headers,
                  &text, &response_headers, false);

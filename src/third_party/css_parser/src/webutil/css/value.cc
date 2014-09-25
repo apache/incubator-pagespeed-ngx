@@ -151,11 +151,7 @@ bool Value::Equals(const Value& other) const {
         return identifier_.ident_text() == other.identifier_.ident_text();
       return true;
     case COLOR:
-      if (color_.IsDefined() != other.color_.IsDefined())
-        return false;
-      if (color_.IsDefined())
-        return color_.rgb() == other.color_.rgb();
-      return true;
+      return color_.Equals(other.color_);
     case FUNCTION:
       if (str_ != other.str_)
         return false;

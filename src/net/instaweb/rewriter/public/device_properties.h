@@ -99,6 +99,7 @@ class DeviceProperties {
   void SetScreenResolution(int width, int height) const;
   // Returns true if there are valid preferred image qualities.
   bool HasPreferredImageQualities() const;
+  bool PossiblyMasqueradingAsChrome() const;
 
   GoogleString user_agent_;
   GoogleString accept_header_;
