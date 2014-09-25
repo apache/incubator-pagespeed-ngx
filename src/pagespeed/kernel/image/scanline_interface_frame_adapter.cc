@@ -387,6 +387,14 @@ ScanlineStatus ScanlineToFrameWriterAdapter::FinalizeWrite() {
 ScanlineStatus ScanlineToFrameWriterAdapter::PrepareImage(
     const ImageSpec* const spec) {
   image_spec_ = spec;
+  if (spec->num_frames > 1) {
+    state_ = ERROR;
+    return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler(),
+                            SCANLINE_STATUS_UNSUPPORTED_FEATURE,
+                            SCANLINE_TO_FRAME_WRITER_ADAPTER,
+                            "animated images not supported in Scanline"
+                            "interface");
+  }
   state_ = IMAGE_PREPARED;
   return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
 }
