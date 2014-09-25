@@ -716,6 +716,12 @@ void ps_cleanup_loc_conf(void* data) {
 }
 
 bool factory_deleted = false;
+// We track if factory->Init() is called, because if it isn't at the time we
+// destruct it the factury destruction will cause a crash. With this flag we
+// can call factory->Init() before we delete it when appropriate. This happens
+// when nginx can't start - for example when it wants to bind to port 80 but has
+// no permission to do so.
+bool factory_init_called = false;
 void ps_cleanup_srv_conf(void* data) {
   ps_srv_conf_t* cfg_s = static_cast<ps_srv_conf_t*>(data);
 
@@ -725,7 +731,13 @@ void ps_cleanup_srv_conf(void* data) {
   // from being executed
 
   if (!factory_deleted && cfg_s->server_context != NULL) {
-    delete cfg_s->server_context->factory();
+    NgxRewriteDriverFactory* factory = dynamic_cast<NgxRewriteDriverFactory*>(
+        cfg_s->server_context->factory());
+
+    if (!factory_init_called) {
+      factory->Init();
+    }
+    delete factory;
     factory_deleted = true;
   }
   if (cfg_s->proxy_fetch_factory != NULL) {
@@ -749,6 +761,7 @@ void ps_cleanup_main_conf(void* data) {
   // in case of a configuration reload.
   // TODO(oschaaf): get rid of the factory_deleted flag
   factory_deleted = false;
+  factory_init_called = false;
 }
 
 template <typename ConfT> ConfT* ps_create_conf(ngx_conf_t* cf) {
@@ -795,7 +808,6 @@ void* ps_create_main_conf(ngx_conf_t* cf) {
       new SystemThreadSystem(),
       "" /* hostname, not used */,
       -1 /* port, not used */);
-  cfg_m->driver_factory->Init();
   ps_set_conf_cleanup_handler(cf, ps_cleanup_main_conf, cfg_m);
   return cfg_m;
 }
@@ -3060,6 +3072,9 @@ ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
   }
 
   if (!server_contexts.empty()) {
+    cfg_m->driver_factory->LoggingInit(cycle->log);
+    cfg_m->driver_factory->Init();
+    factory_init_called = true;
     // TODO(oschaaf): this ignores sigpipe messages from memcached.
     // however, it would be better to not have those signals generated
     // in the first place, as suppressing them this way may interfere
@@ -3085,7 +3100,6 @@ ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
       return NGX_ERROR;
     }
 
-    cfg_m->driver_factory->LoggingInit(cycle->log);
     cfg_m->driver_factory->RootInit();
   } else {
     delete cfg_m->driver_factory;
