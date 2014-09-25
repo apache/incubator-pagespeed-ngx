@@ -1854,12 +1854,19 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
     CHECK(ctx == NULL);
     ctx = new ps_request_ctx_t();
 
+    ctx->base_fetch = NULL;
+    ctx->pagespeed_connection = NULL;
     ctx->r = r;
-    ctx->write_pending = false;
     ctx->html_rewrite = false;
     ctx->in_place = false;
-    ctx->pagespeed_connection = NULL;
+    ctx->write_pending = false;
+    ctx->fetch_done = false;
     ctx->preserve_caching_headers = kDontPreserveHeaders;
+    ctx->proxy_fetch = NULL;
+    ctx->inflater_ = NULL;
+    ctx->driver = NULL;
+    ctx->recorder = NULL;
+    ctx->ipro_response_headers = NULL;
 
     // See build_context_for_request() in mod_instaweb.cc
     // TODO(jefftk): Is this the right place to be modifying caching headers for
