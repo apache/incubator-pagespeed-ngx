@@ -186,7 +186,7 @@ TEST_F(CriticalSelectorFilterTest, BasicOperation) {
   GoogleString critical_css =
       "<style>*{display:none}</style>"  // from the inline
       "<style>div,*::first-letter{display:block}</style>"  // from a.css
-      "<style>@media screen{*{margin:0px}}</style>";  // from b.css
+      "<style>@media screen{*{margin:0}}</style>";  // from b.css
 
   GoogleString html = StrCat(
       "<head>",
@@ -213,7 +213,7 @@ TEST_F(CriticalSelectorFilterTest, UnauthorizedCss) {
       "<style>*{display:none}</style>"  // from the inline
       "<link rel=stylesheet href=http://unauthorized.com/unauth.css>"
       "<style>div,*::first-letter{display:block}</style>"  // from a.css
-      "<style>@media screen{*{margin:0px}}</style>";  // from b.css
+      "<style>@media screen{*{margin:0}}</style>";  // from b.css
 
   GoogleString html = StrCat(
       "<head>",
@@ -247,7 +247,7 @@ TEST_F(CriticalSelectorFilterTest, AllowUnauthorizedCss) {
       "<style>*{display:none}</style>"  // from the inline
       "<style>div{background-color:#00f}</style>"  // from unauth.css
       "<style>div,*::first-letter{display:block}</style>"  // from a.css
-      "<style>@media screen{*{margin:0px}}</style>";  // from b.css
+      "<style>@media screen{*{margin:0}}</style>";  // from b.css
 
   GoogleString html = StrCat(
       "<head>",
@@ -277,7 +277,7 @@ TEST_F(CriticalSelectorFilterTest, StylesInBody) {
       "<style>*{display:none}</style>"  // from the inline
       "<style>div,*::first-letter{display:block}</style>";  // from a.css
   GoogleString critical_css_b =
-      "<style>@media screen{*{margin:0px}}</style>";  // from b.css
+      "<style>@media screen{*{margin:0}}</style>";  // from b.css
 
   GoogleString html = StrCat(
       "<head></head><body>", css_a,
@@ -338,7 +338,7 @@ TEST_F(CriticalSelectorFilterTest, NoScript) {
   GoogleString critical_css =
       "<style>*{display:none}</style>"  // from the inline
       "<noscript></noscript>"  // from a.css
-      "<style>@media screen{*{margin:0px}}</style>";  // from b.css
+      "<style>@media screen{*{margin:0}}</style>";  // from b.css
 
   GoogleString html = StrCat(
       "<head>",
@@ -363,7 +363,7 @@ TEST_F(CriticalSelectorFilterTest, Alternate) {
     CssLinkHref("b.css"));
 
   GoogleString critical_css =
-    "<style>@media screen{*{margin:0px}}</style>";  // from b.css
+    "<style>@media screen{*{margin:0}}</style>";  // from b.css
 
   GoogleString html = StrCat(
       "<head>",
@@ -393,7 +393,7 @@ TEST_F(CriticalSelectorFilterTest, Media) {
           "div,*::first-letter{display:block}"  // from a.css
       "</style>"
       "<style media=\"screen and (color)\">"
-          "@media screen{*{margin:0px}}"  // from b.css
+          "@media screen{*{margin:0}}"  // from b.css
       "</style>";
 
   GoogleString html = StrCat(
@@ -421,7 +421,7 @@ TEST_F(CriticalSelectorFilterTest, NonScreenMedia) {
           "div,*::first-letter{display:block}"  // from a.css
       "</style>"
       "<style media=\"screen and (color)\">"
-          "@media screen{*{margin:0px}}"  // from b.css
+          "@media screen{*{margin:0}}"  // from b.css
       "</style>";
 
   GoogleString html = StrCat(
@@ -558,7 +558,7 @@ TEST_F(CriticalSelectorFilterTest, InlineAndAddStyleForFlushingEarly) {
           "div,*::first-letter{display:block}</style>"  // from a.css
       "<noscript></noscript>"  // from noscript.css
       "<style data-pagespeed-flush-style=\"0\">"
-          "@media screen{*{margin:0px}}</style>";  // from b.css
+          "@media screen{*{margin:0}}</style>";  // from b.css
 
   GoogleString input_html = StrCat(
       "<head>",
@@ -661,7 +661,7 @@ TEST_F(CriticalSelectorWithRewriteCssFilterTest, ProperlyUsedOptimized) {
 
   GoogleString critical_css =
       "<style>div,*::first-letter{display:block}</style>"  // from a.css
-      "<style>@media screen{*{margin:0px}}</style>";  // from b.css
+      "<style>@media screen{*{margin:0}}</style>";  // from b.css
 
   GoogleString optimized_css = StrCat(
       CssLinkHref(Encode("", "cf", "0", "a.css", "css")),
@@ -696,7 +696,7 @@ TEST_F(CriticalSelectorWithCombinerFilterTest, Interaction) {
   // Only one <style> element since combine_css ran before us.
   GoogleString critical_css =
       "<style>div,*::first-letter{display:block}"  // from a.css
-      "@media screen{*{margin:0px}}</style>";  // from b.css
+      "@media screen{*{margin:0}}</style>";  // from b.css
 
   GoogleString combined_url = Encode("", "cc", "0",
                                      MultiUrl("a.css", "b.css"), "css");
@@ -719,7 +719,7 @@ TEST_F(CriticalSelectorWithCombinerFilterTest, ResolveWhenCombineAcrossPaths) {
     // Only one <style> element since combine_css ran before us.
   GoogleString critical_css =
       "<style>*{background-image:url(dir/d.png)}"  // from dir/a.css
-      "@media screen{*{margin:0px}}</style>";  // from b.css
+      "@media screen{*{margin:0}}</style>";  // from b.css
 
   GoogleString combined_url = "dir,_a.css+b.css.pagespeed.cc.0.css";
 
@@ -750,7 +750,7 @@ TEST_F(CriticalSelectorWithInlineCssFilterTest, AvoidTryingToInlineTwice) {
       CssLinkHref("b.css"));
   GoogleString critical_css =
       "<style>div,*::first-letter{display:block}</style>"  // from a.css
-      "<style>@media screen{*{margin:0px}}</style>";  // from b.css
+      "<style>@media screen{*{margin:0}}</style>";  // from b.css
 
   GoogleString input_html = StrCat(
       "<head>", css, "</head>"

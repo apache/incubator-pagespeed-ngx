@@ -40,9 +40,9 @@ const char kPuzzleJpgFile[] = "Puzzle.jpg";
 const char kChefGifFile[] = "IronChef2.gif";
 
 const char* kHtmlTemplate3Divs = "<head><style>"
-    "#div1{background:url(%s) 0px 0px;width:10px;height:10px}"
-    "#div2{background:url(%s) 0px %dpx;width:%dpx;height:10px}"
-    "#div3{background:url(%s) 0px %dpx;width:10px;height:10px}"
+    "#div1{background:url(%s) 0 0;width:10px;height:10px}"
+    "#div2{background:url(%s) 0 %s;width:%s;height:10px}"
+    "#div3{background:url(%s) 0 %s;width:10px;height:10px}"
     "</style></head>";
 
 // Image spriting tests.
@@ -71,7 +71,7 @@ class CssImageCombineTest : public CssRewriteTestBase {
     // The JPEG will not be included in the sprite because we only handle PNGs.
     const char* html = "<head><style>"
         "#div1{background-image:url(%s);"
-        "background-position:0px 0px;width:10px;height:10px}"
+        "background-position:0 0;width:10px;height:10px}"
         "#div2{background:transparent url(%s);"
         "background-position:%s;width:10px;height:10px}"
         "#div3{background-image:url(%s);width:10px;height:10px}"
@@ -86,7 +86,7 @@ class CssImageCombineTest : public CssRewriteTestBase {
     // Try it again, this time using the background shorthand with a couple
     // different orderings
     const char* html2 = "<head><style>"
-        "#div1{background:0px 0px url(%s) no-repeat transparent scroll;"
+        "#div1{background:0 0 url(%s) no-repeat transparent scroll;"
         "width:10px;height:10px}"
         "#div2{background:url(%s) %s repeat fixed;width:10px;height:10px}"
         "#div3{background-image:url(%s);width:10px;height:10px}"
@@ -112,8 +112,8 @@ TEST_F(CssImageCombineTest, SpritesImages) {
   // align the image 70px above the div (i.e. -70px).
   // All the divs are 10px by 10px (which affects the resulting
   // alignments).
-  TestSpriting("0px 0px", "0px -70px", true);
-  TestSpriting("left top", "0px -70px", true);
+  TestSpriting("0 0", "0 -70px", true);
+  TestSpriting("left top", "0 -70px", true);
   TestSpriting("top 10px", "10px -70px", true);
   // TODO(nforman): Have spriting reject this since the 5px will
   // display part of the image above this one.
@@ -166,7 +166,7 @@ TEST_F(CssImageCombineTest, UnauthorizedDomain) {
   const char kDebugStatistics[] = "";
   const char* html = "<head><style>"
       "#div2{background:transparent url(%s);"
-      "background-position:0px 0px;width:10px;height:10px}"
+      "background-position:0 0;width:10px;height:10px}"
       "</style>%s</head>%s";
   GoogleString before = StringPrintf(html, bike_path.c_str(), "", "");
   GoogleString after = StringPrintf(html, bike_path.c_str(),
@@ -185,24 +185,24 @@ class CssImageCombineTestCustomOptions : public CssImageCombineTest {
 TEST_F(CssImageCombineTest, SpritesMultiple) {
   GoogleString before, after, sprite;
   // With the same image present 3 times, there should be no sprite.
-  before = StringPrintf(kHtmlTemplate3Divs, kBikePngFile, kBikePngFile, 0, 10,
-                        kBikePngFile, 0);
+  before = StringPrintf(kHtmlTemplate3Divs, kBikePngFile,
+                        kBikePngFile, "0", "10px", kBikePngFile, "0");
   ValidateNoChanges("no_sprite_3_bikes", before);
 
   // With 2 of the same and 1 different, there should be a sprite without
   // duplication.
-  before = StringPrintf(kHtmlTemplate3Divs, kBikePngFile, kBikePngFile, 0, 10,
-                        kCuppaPngFile, 0);
+  before = StringPrintf(kHtmlTemplate3Divs, kBikePngFile,
+                        kBikePngFile, "0", "10px", kCuppaPngFile, "0");
   sprite = Encode("", "is", "0",
                   MultiUrl(kBikePngFile, kCuppaPngFile), "png").c_str();
   after = StringPrintf(kHtmlTemplate3Divs, sprite.c_str(),
-                       sprite.c_str(), 0, 10, sprite.c_str(), -100);
+                       sprite.c_str(), "0", "10px", sprite.c_str(), "-100px");
   ValidateExpected("sprite_2_bikes_1_cuppa", before, after);
 
   // If the second occurrence of the image is unspriteable (e.g. if the div is
   // larger than the image), then don't sprite anything.
-  before = StringPrintf(kHtmlTemplate3Divs, kBikePngFile, kBikePngFile, 0, 999,
-                        kCuppaPngFile, 0);
+  before = StringPrintf(kHtmlTemplate3Divs, kBikePngFile,
+                        kBikePngFile, "0", "999px", kCuppaPngFile, "0");
   ValidateNoChanges("sprite_none_dimensions", before);
 }
 
@@ -211,8 +211,8 @@ TEST_F(CssImageCombineTest, NoSpritesMultiple) {
   // If the second occurrence of the image is unspriteable (e.g. if the div is
   // larger than the image), then don't sprite anything.
   GoogleString in_text =
-      StringPrintf(kHtmlTemplate3Divs, kBikePngFile, kBikePngFile, 0, 999,
-                   kCuppaPngFile, 0);
+      StringPrintf(kHtmlTemplate3Divs, kBikePngFile,
+                   kBikePngFile, "0", "999px", kCuppaPngFile, "0");
   ValidateNoChanges("no_sprite", in_text);
 }
 
@@ -261,9 +261,9 @@ TEST_F(CssImageCombineTest, SpritesImagesExternal) {
   const GoogleString spriteCss = StrCat(
       "#div1{background-image:url(", sprite, ");"
       "width:10px;height:10px;"
-      "background-position:0px 0px}"
+      "background-position:0 0}"
       "#div2{background:transparent url(", sprite,
-      ");width:10px;height:10px;background-position:0px -70px}");
+      ");width:10px;height:10px;background-position:0 -70px}");
   // kNoStatCheck because ImageCombineFilter uses different stats.
   ValidateRewriteExternalCss("wip", beforeCss, spriteCss,
                              kExpectSuccess | kNoClearFetcher | kNoStatCheck);
@@ -337,10 +337,10 @@ TEST_F(CssImageCombineTest, SpritesMultiSite) {
 
   GoogleString after = StringPrintf(
       kHtmlTemplate,
-      test_sprite.c_str(), ";background-position:0px 0px",
-      alt_sprite.c_str(), ";background-position:0px 0px",
-      test_sprite.c_str(), ";background-position:0px -100px",
-      alt_sprite.c_str(), ";background-position:0px -100px");
+      test_sprite.c_str(), ";background-position:0 0",
+      alt_sprite.c_str(), ";background-position:0 0",
+      test_sprite.c_str(), ";background-position:0 -100px",
+      alt_sprite.c_str(), ";background-position:0 -100px");
   ValidateExpected("multi_site", before, after);
 
   // For this test, a partition should get created for the alt_bike image,
@@ -353,9 +353,9 @@ TEST_F(CssImageCombineTest, SpritesMultiSite) {
                         test_bike.c_str(), "");
   after = StringPrintf(kHtmlTemplate,
                        alt_bike.c_str(), "",
-                       test_sprite.c_str(), ";background-position:0px 0px",
-                       test_sprite.c_str(), ";background-position:0px -100px",
-                       test_sprite.c_str(), ";background-position:0px 0px");
+                       test_sprite.c_str(), ";background-position:0 0",
+                       test_sprite.c_str(), ";background-position:0 -100px",
+                       test_sprite.c_str(), ";background-position:0 0");
   ValidateExpected("multi_site_one_sprite", before, after);
 }
 
@@ -383,7 +383,7 @@ TEST_F(CssImageCombineTest, CombineManyFiles) {
     GoogleString url = StringPrintf("%s%.02d%s", kTestDomain, i, kBikePngFile);
     AddFileToMockFetcher(url, kBikePngFile, kContentTypePng, 100);
     html.append(StringPrintf(
-        "#div%d{background:url(%s) 0px 0px;width:10px;height:10px}",
+        "#div%d{background:url(%s) 0 0;width:10px;height:10px}",
         i, url.c_str()));
   }
   html.append("</style></head>");
@@ -406,10 +406,18 @@ TEST_F(CssImageCombineTest, CombineManyFiles) {
   int combo_index = 0;
   GoogleString result = "<head><style>";
   while (image_index < kNumImages) {
+    int offset = (image_index - (combo_index * kImagesInCombination)) * -100;
+    GoogleString offset_str;
+    if (offset == 0) {
+      // Minification artifact.
+      offset_str = "0";
+    } else {
+      offset_str = StringPrintf("%dpx", offset);
+    }
+
     result.append(StringPrintf(
-        "#div%d{background:url(%s) 0px %dpx;width:10px;height:10px}",
-        image_index, combinations[combo_index].c_str(),
-        (image_index - (combo_index * kImagesInCombination)) * -100));
+        "#div%d{background:url(%s) 0 %s;width:10px;height:10px}",
+        image_index, combinations[combo_index].c_str(), offset_str.c_str()));
     ++image_index;
     if (image_index % kImagesInCombination == 0) {
       ++combo_index;
@@ -425,15 +433,15 @@ TEST_F(CssImageCombineTest, SpritesBrokenUp) {
   // un-spritable images in between.
   GoogleString before, after;
 
-  before = StringPrintf(kHtmlTemplate3Divs, kBikePngFile, kPuzzleJpgFile, 0, 10,
-                        kCuppaPngFile, 0);
+  before = StringPrintf(kHtmlTemplate3Divs, kBikePngFile,
+                        kPuzzleJpgFile, "0", "10px", kCuppaPngFile, "0");
 
   const GoogleString sprite_string =
       Encode("", "is", "0", MultiUrl(kBikePngFile, kCuppaPngFile), "png");
   const char* sprite = sprite_string.c_str();
 
-  after = StringPrintf(kHtmlTemplate3Divs, sprite, kPuzzleJpgFile, 0, 10,
-                       sprite, -100);
+  after = StringPrintf(kHtmlTemplate3Divs, sprite,
+                       kPuzzleJpgFile, "0", "10px", sprite, "-100px");
   ValidateExpected("sprite_broken_up", before, after);
 }
 
@@ -442,8 +450,8 @@ TEST_F(CssImageCombineTest, SpritesGifsWithPngs) {
   // un-spritable images in between.
   GoogleString before, after;
 
-  before = StringPrintf(kHtmlTemplate3Divs, kBikePngFile, kChefGifFile, 0, 10,
-                        kCuppaPngFile, 0);
+  before = StringPrintf(kHtmlTemplate3Divs, kBikePngFile,
+                        kChefGifFile, "0", "10px", kCuppaPngFile, "0");
 
   const GoogleString sprite_string =
       Encode("", "is", "0", MultiUrl(kBikePngFile, kChefGifFile, kCuppaPngFile),
@@ -453,8 +461,8 @@ TEST_F(CssImageCombineTest, SpritesGifsWithPngs) {
   // The BikePng is 100px tall, the ChefGif is 256px tall, so we
   // expect the Chef to be offset by -100, and the CuppaPng to be
   // offset by -356.
-  after = StringPrintf(kHtmlTemplate3Divs, sprite, sprite, -100, 10,
-                       sprite, -356);
+  after = StringPrintf(kHtmlTemplate3Divs, sprite,
+                       sprite, "-100px", "10px", sprite, "-356px");
   ValidateExpected("sprite_with_gif", before, after);
 }
 
@@ -478,7 +486,7 @@ TEST_F(CssImageCombineTest, SpriteWrongMime) {
 
   GoogleString before, after;
   before = StringPrintf(kHtmlTemplate3Divs, wrong_bike.c_str(),
-                        wrong_cuppa.c_str(), 0, 10, kCuppaPngFile, 0);
+                        wrong_cuppa.c_str(), "0", "10px", kCuppaPngFile, "0");
 
   // The BikePng is 100px tall, the cuppa is 70px tall, so we
   // expect the cuppa to be offset by -100, and the right-path cuppa to be
@@ -487,8 +495,8 @@ TEST_F(CssImageCombineTest, SpriteWrongMime) {
   // First 2 original URLs were absolute, so rewritten ones are as well.
   // Last was relative, so it is preserved as relative.
   after = StringPrintf(kHtmlTemplate3Divs,
-                       abs_sprite.c_str(), abs_sprite.c_str(), -100, 10,
-                       rel_sprite.c_str(), -170);
+                       abs_sprite.c_str(), abs_sprite.c_str(), "-100px", "10px",
+                       rel_sprite.c_str(), "-170px");
   ValidateExpected("wrong_mime", before, after);
 }
 
@@ -505,30 +513,30 @@ TEST_F(CssImageMultiFilterTest, SpritesAndNonSprites) {
 
   GoogleString before, after, encoded, cuppa_encoded, sprite;
   // With the same image present 3 times, there should be no sprite.
-  before = StringPrintf(kHtmlTemplate3Divs, kBikePngFile, kBikePngFile, 0, 10,
-                        kBikePngFile, 0);
+  before = StringPrintf(kHtmlTemplate3Divs, kBikePngFile,
+                        kBikePngFile, "0", "10px", kBikePngFile, "0");
   encoded = Encode("", "ce", "0", kBikePngFile, "png");
-  after = StringPrintf(kHtmlTemplate3Divs, encoded.c_str(), encoded.c_str(),
-                       0, 10, encoded.c_str(), 0);
+  after = StringPrintf(kHtmlTemplate3Divs, encoded.c_str(),
+                       encoded.c_str(), "0", "10px", encoded.c_str(), "0");
   ValidateExpected("no_sprite_3_bikes", before, after);
 
   // With 2 of the same and 1 different, there should be a sprite without
   // duplication.
-  before = StringPrintf(kHtmlTemplate3Divs, kBikePngFile, kBikePngFile, 0, 10,
-                        kCuppaPngFile, 0);
+  before = StringPrintf(kHtmlTemplate3Divs, kBikePngFile,
+                        kBikePngFile, "0", "10px", kCuppaPngFile, "0");
   sprite = Encode("", "is", "0",
                   MultiUrl(kBikePngFile, kCuppaPngFile), "png").c_str();
   after = StringPrintf(kHtmlTemplate3Divs, sprite.c_str(),
-                       sprite.c_str(), 0, 10, sprite.c_str(), -100);
+                       sprite.c_str(), "0", "10px", sprite.c_str(), "-100px");
   ValidateExpected("sprite_2_bikes_1_cuppa", before, after);
 
   // If the second occurrence of the image is unspriteable (e.g. if the div is
   // larger than the image), we shouldn't sprite any of them.
-  before = StringPrintf(kHtmlTemplate3Divs, kBikePngFile, kBikePngFile, 0, 999,
-                        kCuppaPngFile, 0);
+  before = StringPrintf(kHtmlTemplate3Divs, kBikePngFile,
+                        kBikePngFile, "0", "999px", kCuppaPngFile, "0");
   cuppa_encoded = Encode("", "ce", "0", kCuppaPngFile, "png");
   after = StringPrintf(kHtmlTemplate3Divs, encoded.c_str(), encoded.c_str(),
-                       0, 999, cuppa_encoded.c_str(), 0);
+                       "0", "999px", cuppa_encoded.c_str(), "0");
   ValidateExpected("sprite_none_dimmensions", before, after);
 }
 
@@ -541,18 +549,18 @@ TEST_F(CssImageCombineTest, CssDifferentBase) {
   AddFileToMockFetcher("subdir/BikeCrashIcn.png", kBikePngFile,
                        kContentTypePng, 100);
   GoogleString css_before =
-      ".a {background: 0px 0px url(Cuppa.png) no-repeat;"
+      ".a {background: 0 0 url(Cuppa.png) no-repeat;"
       " width:10px; height:10px}"
-      ".b {background: 0px 0px url(BikeCrashIcn.png) no-repeat;"
+      ".b {background: 0 0 url(BikeCrashIcn.png) no-repeat;"
       " width:10px; height:10px}";
   SetResponseWithDefaultHeaders("subdir/foo.css", kContentTypeCss,
                                 css_before, 100);
 
   GoogleString expected_css_after =
-      ".a{background:0px 0px"
+      ".a{background:0 0"
       " url(Cuppa.png+BikeCrashIcn.png.pagespeed.is.0.png)"
       " no-repeat;width:10px;height:10px}"
-      ".b{background:0px -70px"
+      ".b{background:0 -70px"
       " url(Cuppa.png+BikeCrashIcn.png.pagespeed.is.0.png)"
       " no-repeat;width:10px;height:10px}";
 
@@ -578,9 +586,9 @@ TEST_F(CssImageMultiFilterTest, WithFlattening) {
                        kContentTypePng, 100);
 
   const char kLeafCss[] =
-      ".a {background: 0px 0px url(Cuppa.png) no-repeat;"
+      ".a {background: 0 0 url(Cuppa.png) no-repeat;"
       " width:10px; height:10px}"
-      ".b {background: 0px 0px url(BikeCrashIcn.png) no-repeat;"
+      ".b {background: 0 0 url(BikeCrashIcn.png) no-repeat;"
       " width:10px; height:10px}";
   SetResponseWithDefaultHeaders("dir/a.css", kContentTypeCss, kLeafCss, 100);
 
@@ -590,10 +598,10 @@ TEST_F(CssImageMultiFilterTest, WithFlattening) {
   // given that the original URL in the original stylesheet was relative.
   const char kAfterHtml[] =
       "<style>"
-      ".a{background:0px 0px"
+      ".a{background:0 0"
       " url(http://test.com/dir/Cuppa.png+BikeCrashIcn.png.pagespeed.is.0.png)"
       " no-repeat;width:10px;height:10px}"
-      ".b{background:0px -70px"
+      ".b{background:0 -70px"
       " url(http://test.com/dir/Cuppa.png+BikeCrashIcn.png.pagespeed.is.0.png)"
       " no-repeat;width:10px;height:10px}"
       "</style>";
@@ -610,14 +618,14 @@ TEST_F(CssImageMultiFilterTest, NoCombineAcrossFlattening) {
   AddFileToMockFetcher("dir/Cuppa.png", kCuppaPngFile, kContentTypePng, 100);
 
   const char kLeafCss[] =
-      ".a {background: 0px 0px url(Cuppa.png) no-repeat;"
+      ".a {background: 0 0 url(Cuppa.png) no-repeat;"
       " width:10px; height:10px}";
   SetResponseWithDefaultHeaders("dir/a.css", kContentTypeCss, kLeafCss, 100);
 
   const char kBeforeHtml[] =
       "<style>\n"
       "@import url(dir/a.css);\n"
-      ".b {background: 0px 0px url(BikeCrashIcn.png) no-repeat;"
+      ".b {background: 0 0 url(BikeCrashIcn.png) no-repeat;"
       " width:10px; height:10px}\n"
       "</style>";
   // TODO(sligocki): Any reason not to combine images across flattening
@@ -626,9 +634,9 @@ TEST_F(CssImageMultiFilterTest, NoCombineAcrossFlattening) {
   // given that the original URL in the original stylesheet was relative.
   const char kAfterHtml[] =
       "<style>"
-      ".a{background:0px 0px url(http://test.com/dir/Cuppa.png) no-repeat;"
+      ".a{background:0 0 url(http://test.com/dir/Cuppa.png) no-repeat;"
       "width:10px;height:10px}"
-      ".b{background:0px 0px url(BikeCrashIcn.png) no-repeat;"
+      ".b{background:0 0 url(BikeCrashIcn.png) no-repeat;"
       "width:10px;height:10px}"
       "</style>";
 

@@ -1679,7 +1679,7 @@ class FlushEarlyPrioritizeCriticalCssTest : public FlushEarlyFlowTest {
         "<!doctype html PUBLIC \"HTML 4.0.1 Strict>"
         "<html><head>",
         FlushedCss("div,*::first-letter{display:block}"),  // a.css
-        FlushedCss("@media screen{*{margin:0px}}"),  // b.css
+        FlushedCss("@media screen{*{margin:0}}"),  // b.css
         StringPrintf(FlushEarlyContentWriterFilter::kPrefetchStartTimeScript,
                      2 /* num_resources_flushed */),
         "<title>Flush Subresources Early example</title>");
@@ -1755,7 +1755,7 @@ TEST_F(FlushEarlyPrioritizeCriticalCssTest,
   critical_css_finder->AddCriticalCss(
       "http://test.com/a.css", "div,*::first-letter{display:block}", 100);
   critical_css_finder->AddCriticalCss(
-      "http://test.com/b.css?x=1&y=2", "@media screen{*{margin:0px}}", 100);
+      "http://test.com/b.css?x=1&y=2", "@media screen{*{margin:0}}", 100);
 
   GoogleString full_styles_html = StrCat(
       "<noscript class=\"psa_add_styles\">",
@@ -1766,9 +1766,9 @@ TEST_F(FlushEarlyPrioritizeCriticalCssTest,
       CriticalCssFilter::kAddStylesScript,
       "window['pagespeed'] = window['pagespeed'] || {};"
       "window['pagespeed']['criticalCss'] = {"
-      "  'total_critical_inlined_size': 62,"
+      "  'total_critical_inlined_size': 60,"
       "  'total_original_external_size': 200,"
-      "  'total_overhead_size': 62,"
+      "  'total_overhead_size': 60,"
       "  'num_replaced_links': 2,"
       "  'num_unreplaced_links': 0};"
       "</script>");

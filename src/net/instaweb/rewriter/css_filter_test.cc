@@ -600,16 +600,14 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     // http://code.google.com/p/modpagespeed/issues/detail?id=121
     "a{color:inherit}",
     // Added for code coverage.
-    // TODO(sligocki): Get rid of the space at end?
-    // ";" may be needed for some browsers.
-    "@import url(http://www.example.com) ;",
+    "@import url(http://www.example.com);",
     "@media a,b{a{color:red}}",
     "@charset \"foobar\";",
     // Unescaped string: Odd chars: \(\)\,\"\'
     "a{content:\"Odd chars: \\(\\)\\,\\\"\\\'\"}",
     // Unescaped string: Unicode: \A0\A0
     "a{content:\"Unicode: \\A0\\A0\"}",
-    "img{clip:rect(0px,60px,200px,0px)}",
+    "img{clip:rect(0,60px,200px,0)}",
     // CSS3-style pseudo-elements.
     "p.normal::selection{background:#c00;color:#fff}",
     "::-moz-focus-inner{border:0}",
@@ -844,8 +842,11 @@ TEST_F(CssFilterTest, ToOptimize) {
   const char* examples[][2] = {
     // Noticed from YUI minification.
     { ".gb1, .gb3 {}",
-      // Could be: ""
+      // Could be: "" (Completely removed since it's empty).
       ".gb1,.gb3{}", },
+    { "@media screen and (color) { .foo {} .bar {} }",
+      // Could be: "" (Completely removed since it's empty).
+      "@media screen and (color){.foo{}.bar{}}", },
     { ".lst:focus { outline:none; }",
       // Could be: ".lst:focus{outline:0}"
       ".lst:focus{outline:none}", },
@@ -1010,7 +1011,7 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       "}\n"
       ".foo { color: rgba(1, 2, 3, 0.4); }\n",
 
-      "body{background-image:-webkit-gradient(linear,50% 0%,50% 100%,"
+      "body{background-image:-webkit-gradient(linear,50% 0,50% 100%,"
       "from(#e8edf0),to(#fcfcfd));color:red}.foo{color:rgba(1,2,3,.4)}" },
 
     // Counters
@@ -1297,11 +1298,11 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       "}\n",
 
       ".ciuNoteEditBox .topLeft{background-position:left top;"
-      "background-repeat:no-repeat;font-size:4px;padding:0px 0px 0px 1px;"
+      "background-repeat:no-repeat;font-size:4px;padding:0 0 0 1px;"
       "width:7px}// css hack to make font-size 0px in only ff2.0 and older "
       "(http://pornel.net/firefoxhack)\n"
       ".ciuNoteBox .topLeft,\n"
-      ".ciuNoteEditBox .topLeft, x:-moz-any-link {font-size:0px}" },
+      ".ciuNoteEditBox .topLeft, x:-moz-any-link {font-size:0}" },
 
     // Parameters for pseudoclass
     { "/* Opera（＋Firefox、Safari） */\n"
@@ -1616,8 +1617,8 @@ TEST_F(CssFilterTest, NoAlwaysRewriteCss) {
   DebugWithMessage("");
   server_context()->ComputeSignature(options());
   ValidateRewrite("expanding_example",
+                  "@import 'http://www.example.com';",
                   "@import url(http://www.example.com);",
-                  "@import url(http://www.example.com) ;",
                   kExpectSuccess);
 
   // With it set false, we do not expand CSS (as long as we didn't do anything
@@ -1627,8 +1628,8 @@ TEST_F(CssFilterTest, NoAlwaysRewriteCss) {
   DebugWithMessage("<!--CSS rewrite failed: Cannot improve %url%-->");
   server_context()->ComputeSignature(options());
   ValidateRewrite("non_expanding_example",
-                  "@import url(http://www.example.com);",
-                  "@import url(http://www.example.com);",
+                  "@import 'http://www.example.com';",
+                  "@import 'http://www.example.com';",
                   kExpectNoChange);
 
   // When we force always_rewrite_css, we allow rewriting something to nothing.
@@ -1825,7 +1826,7 @@ TEST_F(CssFilterTest, DontAbsolutifyEmptyUrl) {
                   kExpectSuccess);
 
   const char kEmptyUrlImport[] = "@import url('');";
-  const char kNoUrlImport[] = "@import url() ;";
+  const char kNoUrlImport[] = "@import url();";
   ValidateRewrite("empty_url_in_import", kEmptyUrlImport, kNoUrlImport,
                   kExpectSuccess);
 }
@@ -2265,7 +2266,7 @@ TEST_F(CssFilterTest, AbsolutifyServingFallback) {
       "@import url(x.ss);\n"
       "body { background: url(a.png); }\n";
   const char expected_output[] =
-      "@import url(http://cdn.example.com/x.ss) ;"
+      "@import url(http://cdn.example.com/x.ss);"
       "body{background:url(http://cdn.example.com/a.png)}";
 
   UseMd5Hasher();
@@ -2376,7 +2377,7 @@ TEST_F(CssFilterTestUrlNamer, AbsolutifyWithBom) {
       "body { background: url(a.png); }\n";
   const char expected_output[] =
       "\xEF\xBB\xBF"
-      "@import url(http://test.com/x.ss) ;"
+      "@import url(http://test.com/x.ss);"
       "body{background:url(http://test.com/a.png)}";
   // with image rewriting
   TestUrlAbsolutification("absolutify_with_bom_with",

@@ -141,8 +141,11 @@ void CssMinify::Minify(const Css::Charsets& charsets) {
 void CssMinify::Minify(const Css::Import& import) {
   Write("@import url(");
   WriteURL(import.link());
-  Write(") ");
-  JoinMinify(import.media_queries(), ",");
+  Write(")");
+  if (!import.media_queries().empty()) {
+    Write(" ");
+    JoinMinify(import.media_queries(), ",");
+  }
   Write(";");
 }
 
@@ -178,6 +181,10 @@ void CssMinify::Minify(const Css::MediaExpression& expression) {
 }
 
 void CssMinify::MinifyRulesetIgnoringMedia(const Css::Ruleset& ruleset) {
+  // TODO(sligocki): Only write out ruleset if declarations() is non-empty.
+  // Note that we should also propagate this up to not print @media rules
+  // if all their rulesets are empty. Otherwise we'll fail the css_minify_test
+  // which checks for idempotent minifications.
   switch (ruleset.type()) {
     case Css::Ruleset::RULESET:
       if (ruleset.selectors().is_dummy()) {
@@ -339,12 +346,15 @@ void CssMinify::Minify(const Css::Value& value) {
         Write(number_string);
       }
 
-      GoogleString unit = value.GetDimensionUnitText();
-      // Unit can be either "%" or an identifier.
-      if (unit != "%") {
-        unit = Css::EscapeIdentifier(unit);
+      // Optimization: Do not print units if value is 0.
+      if (value.GetFloatValue() != 0) {
+        GoogleString unit = value.GetDimensionUnitText();
+        // Unit can be either "%" or an identifier.
+        if (unit != "%") {
+          unit = Css::EscapeIdentifier(unit);
+        }
+        Write(unit);
       }
-      Write(unit);
       break;
     }
     case Css::Value::URI:

@@ -136,7 +136,11 @@ class CssHierarchyTest : public RewriteTestBase {
   bool AreEquivalent(const CssHierarchy& one, const CssHierarchy& two);
 
   GoogleString MakeAtImport(StringPiece url, StringPiece media) {
-    return StrCat("@import url(", url, ") ", media, ";");
+    if (media.empty()) {
+      return StrCat("@import url(", url, ");");
+    } else {
+      return StrCat("@import url(", url, ") ", media, ";");
+    }
   }
 
   MessageHandler* message_handler() { return &handler_; }
