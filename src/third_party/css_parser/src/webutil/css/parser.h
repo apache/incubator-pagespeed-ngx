@@ -231,6 +231,13 @@ class Parser {
   // the end of the document.
   void SkipComment();
 
+  // Helper method for the other Skip* methods. Skips over the next bit of text.
+  // Note: It does not yet lex all tokens, only strings, comments and escape
+  // sequences. These are specifically lexed to avoid naively interpreting:
+  // "}", /*]*/ or identifier\)foo as closing brackets.
+  // Note: We do not use ParseAny() for this to avoid excessive recursion.
+  void SkipNextToken();
+
   // Starting at '{', '[' or '(', SkipMatching consumes to the closing '}',
   // ']' or ')' respecting nested blocks.  We discard the result.
   // Returns true if matching '}' was found, false if EOF was reached first.

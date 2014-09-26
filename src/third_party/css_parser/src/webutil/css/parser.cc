@@ -205,6 +205,33 @@ void Parser::SkipComment() {
   in_ = end_;
 }
 
+// This is very basic right now and only skips full strings, comments and
+// escapes.
+// TODO(sligocki): Improve to parse all tokens in CSS lexing grammar.
+// Note: We intentionally do not consume the ( in a FUNCTION token so that
+// SkipNextToken can be used by SkipMatching, etc. and still preserve nesting.
+void Parser::SkipNextToken() {
+  Tracer trace(__func__, this);
+
+  SkipSpace();
+  if (Done()) return;
+
+  switch (*in_) {
+    case '\'':
+      ParseString<'\''>();  // Ignore result.
+      break;
+    case '"':
+      ParseString<'"'>();  // Ignore result.
+      break;
+    case '\\':
+      ParseEscape();  // Ignore result.
+      break;
+    default:
+      in_++;
+      break;
+  }
+}
+
 // Starting with {, [ or ( at in_, skip ahead to the matching closing char.
 // Returns true if end was found, false if EOF was reached first.
 bool Parser::SkipMatching() {
@@ -258,7 +285,7 @@ bool Parser::SkipMatching() {
           break;
         default:
           // Ignore whatever there is to parse.
-          scoped_ptr<Value> v(ParseAny());
+          SkipNextToken();
           break;
       }
     }
@@ -291,7 +318,7 @@ bool Parser::SkipPastDelimiter(char delim) {
         // Skip over all other tokens.
         default:
           // Ignore whatever there is to parse.
-          scoped_ptr<Value> v(ParseAny());
+          SkipNextToken();
           break;
       }
     }
@@ -368,10 +395,12 @@ bool Parser::SkipToAtRuleEnd() {
       case '(':
         // Ignore result.
         SkipMatching();
+        break;
+
       // Skip over all other tokens.
       default:
         // Ignore whatever there is to parse.
-        scoped_ptr<Value> v(ParseAny());
+        SkipNextToken();
         break;
     }
     SkipSpace();

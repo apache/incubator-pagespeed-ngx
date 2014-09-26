@@ -665,6 +665,10 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     "@media screen and (max-width:290px){a{color:red}}",
     "@media only print and (color){a{color:red}}",
 
+    // Nonsensical, but syntactic, media query.
+    "@media not (-moz-dimension-constraints:20 < width < 300 and 45 < height "
+    "< 1000){a{color:red}}",
+
     // Unexpected @-statements
     "@keyframes wiggle { 0% { transform: rotate(6deg); } }",
     "@font-face { font-family: 'Ubuntu'; font-style: normal }",
@@ -795,9 +799,6 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     "@media (max-de vice-width: 850px) {.pm-thumb-106{width:80px}}",
     "@media screen\\0{.select:before{width:18px}}",
     "@media screen and (min-width:0 \\0){.foo{color:red}}",
-    // Nonsensical, but syntactic, media query.
-    "@media not (-moz-dimension-constraints:20 < width < 300 and 45 < height "
-    "< 1000){a{color:red}}",
 
     // UTF-16
     "\xFF\xFE"   // UTF-16 byte-order marker.

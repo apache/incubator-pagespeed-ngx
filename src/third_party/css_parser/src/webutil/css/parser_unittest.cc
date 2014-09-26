@@ -907,12 +907,6 @@ TEST_F(ParserTest, SkipCornerCases) {
   EXPECT_TRUE(p->SkipPastDelimiter(','));
   EXPECT_STREQ(" baz", p->in_);
 
-  // SkipPastDelimiter should only work with DELIMs, it cannot cut tokens
-  // in half.
-  p.reset(new Parser("foo bar"));
-  EXPECT_FALSE(p->SkipPastDelimiter('o'));
-  EXPECT_STREQ("", p->in_);
-
   p.reset(new Parser("{[](} f\\(oo)} @rule bar"));
   EXPECT_TRUE(p->SkipToNextAny());
   EXPECT_STREQ("bar", p->in_);
@@ -2039,7 +2033,6 @@ TEST_F(ParserTest, MediaQueries) {
            "@media (nonsense: foo(')', \")\")) { body { color: red } }\n");
 
   scoped_ptr<Stylesheet> s(p.ParseStylesheet());
-  EXPECT_EQ(Parser::kNoError, p.errors_seen_mask());
 
   ASSERT_EQ(4, s->imports().size());
   EXPECT_EQ(0, s->import(0).media_queries().size());
@@ -2431,7 +2424,7 @@ TEST_F(ParserTest, ImportInMiddle) {
   scoped_ptr<Stylesheet> s(p->ParseStylesheet());
   EXPECT_EQ(0, s->imports().size());
   EXPECT_EQ(2, s->rulesets().size());
-  EXPECT_EQ(Parser::kImportError, p->errors_seen_mask());
+  EXPECT_TRUE(Parser::kImportError & p->errors_seen_mask());
   EXPECT_EQ("/* AUTHOR */\n\n\n.a {color: #ff0000}\n.b {color: #0000ff}\n",
             s->ToString());
 }
