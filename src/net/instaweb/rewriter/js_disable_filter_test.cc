@@ -343,7 +343,7 @@ TEST_F(JsDisableFilterTest, DisablesScriptOnlyFromFirstSrc) {
 }
 
 TEST_F(JsDisableFilterTest, AddsMetaTagForIE) {
-  rewrite_driver()->SetUserAgent("Mozilla/5.0 ( MSIE 9.0; Trident/5.0)");
+  rewrite_driver()->SetUserAgent("Mozilla/5.0 ( MSIE 10.0; Trident/5.0)");
   const GoogleString input_html = StrCat(
       "<body>",
       kUnrelatedNoscriptTags,

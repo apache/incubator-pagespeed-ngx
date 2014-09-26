@@ -1564,10 +1564,10 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestWithLocalStorageDoesNotCrash) {
 TEST_F(FlushEarlyFlowTest, FlushEarlyFlowWithIEAddUACompatibilityHeader) {
   SetupForFlushEarlyFlow();
   RequestHeaders request_headers;
-  // Useragent is set to "MSIE 9." because we need to check if appropriate
+  // Useragent is set to "MSIE 10." because we need to check if appropriate
   // HttpAttributes::kXUACompatible header is added, which happens only with
-  // MSIE 9 and above.
-  request_headers.Replace(HttpAttributes::kUserAgent, " MSIE 9.");
+  // MSIE 9 and above, but IE9 is now blacklisted from defer_js.
+  request_headers.Replace(HttpAttributes::kUserAgent, " MSIE 10.");
   scoped_ptr<RewriteOptions> custom_options(
       server_context()->global_options()->Clone());
   custom_options->EnableFilter(RewriteOptions::kDeferJavascript);
@@ -1604,7 +1604,7 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowWithDeferJsAndSplitEnabled) {
   SetupForFlushEarlyFlow();
   RequestHeaders request_headers;
   request_headers.Replace(HttpAttributes::kUserAgent,
-                          " MSIE 9.");
+                          " MSIE 10.");
   scoped_ptr<RewriteOptions> custom_options(
       server_context()->global_options()->Clone());
   custom_options->EnableFilter(RewriteOptions::kDeferJavascript);

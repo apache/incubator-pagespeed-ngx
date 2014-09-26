@@ -64,6 +64,7 @@ class UserAgentMatcherTestBase : public testing::Test {
   static const char kIe7UserAgent[];
   static const char kIe8UserAgent[];
   static const char kIe9UserAgent[];
+  static const char kIe10UserAgent[];
   static const char kIPadChrome28UserAgent[];
   static const char kIPadChrome29UserAgent[];
   static const char kIPadChrome36UserAgent[];

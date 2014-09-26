@@ -334,6 +334,10 @@ UserAgentMatcher::UserAgentMatcher()
   for (int i = 0, n = arraysize(kDeferJSWhitelist); i < n; ++i) {
     defer_js_whitelist_.Allow(kDeferJSWhitelist[i]);
   }
+
+  // https://code.google.com/p/modpagespeed/issues/detail?id=982
+  defer_js_whitelist_.Disallow("* MSIE 9.*");
+
   for (int i = 0, n = arraysize(kPanelSupportDesktopBlacklist); i < n; ++i) {
     blink_desktop_blacklist_.Allow(kPanelSupportDesktopBlacklist[i]);
 

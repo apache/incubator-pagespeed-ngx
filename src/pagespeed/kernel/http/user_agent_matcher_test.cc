@@ -152,7 +152,7 @@ TEST_F(UserAgentMatcherTest, PrefetchMechanism) {
 }
 
 TEST_F(UserAgentMatcherTest, SupportsJsDefer) {
-  EXPECT_TRUE(user_agent_matcher_->SupportsJsDefer(
+  EXPECT_FALSE(user_agent_matcher_->SupportsJsDefer(
       kIe9UserAgent, false));
   for (int i = 0; i < kIe11UserAgentsArraySize; ++i) {
     EXPECT_FALSE(user_agent_matcher_->SupportsJsDefer(

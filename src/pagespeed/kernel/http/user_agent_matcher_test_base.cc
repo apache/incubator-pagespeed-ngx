@@ -117,6 +117,8 @@ const char UserAgentMatcherTestBase::kIe8UserAgent[] =
     " .NET4.0C; .NET4.0E; FDM)";
 const char UserAgentMatcherTestBase::kIe9UserAgent[] =
     "Mozilla/5.0 (Windows; U; MSIE 9.0; WIndows NT 9.0; en-US))";
+const char UserAgentMatcherTestBase::kIe10UserAgent[] =
+    "Mozilla/5.0 (Windows; U; MSIE 10.0; WIndows NT 9.0; en-US))";
 const char UserAgentMatcherTestBase::kIPadTabletUserAgent[] =
     "Mozilla/5.0 (iPad; CPU OS 6_1_3 like Mac OS X) AppleWebKit/536.26 (KHTML, "
     "like Gecko) Version/6.0 Mobile/10B329 Safari/8536.25";
@@ -388,6 +390,7 @@ UserAgentMatcherTestBase::kImageInliningSupportedUserAgents[] = {
   UserAgentMatcherTestBase::kChromeUserAgent,
   UserAgentMatcherTestBase::kFirefoxUserAgent,
   UserAgentMatcherTestBase::kIe9UserAgent,
+  UserAgentMatcherTestBase::kIe10UserAgent,
   UserAgentMatcherTestBase::kIPhoneUserAgent,
   UserAgentMatcherTestBase::kOpera8UserAgent,
   UserAgentMatcherTestBase::kSafariUserAgent,
@@ -400,7 +403,7 @@ UserAgentMatcherTestBase::kImageInliningSupportedUserAgents[] = {
 const char* const UserAgentMatcherTestBase::kSplitHtmlSupportedUserAgents[] = {
   UserAgentMatcherTestBase::kChromeUserAgent,
   UserAgentMatcherTestBase::kFirefoxUserAgent,
-  UserAgentMatcherTestBase::kIe9UserAgent,
+  UserAgentMatcherTestBase::kIe10UserAgent,
   UserAgentMatcherTestBase::kSafariUserAgent,
 };
 
@@ -411,6 +414,7 @@ UserAgentMatcherTestBase::kSplitHtmlUnSupportedUserAgents[] = {
   UserAgentMatcherTestBase::kFirefox3UserAgent,
   UserAgentMatcherTestBase::kIe6UserAgent,
   UserAgentMatcherTestBase::kIe8UserAgent,
+  UserAgentMatcherTestBase::kIe9UserAgent,
   UserAgentMatcherTestBase::kIe11UserAgents[0],
   UserAgentMatcherTestBase::kIe11UserAgents[1],
   UserAgentMatcherTestBase::kIe11UserAgents[2],
