@@ -242,7 +242,42 @@ class ParserTest : public testing::Test {
     EXPECT_FALSE(p.SkipPastDelimiter(delim)) << input_text;
     EXPECT_TRUE(p.Done());
   }
+
 };
+
+// Like util_callback::IgnoreResult, but deletes the result.
+template<typename Result>
+class DeleteResultImpl : public Closure {
+ public:
+  explicit DeleteResultImpl(ResultCallback<Result*>* callback)
+      : callback_(CHECK_NOTNULL(callback)) {
+  }
+
+  void Run() {
+    CHECK(callback_ != NULL);
+    if (callback_->IsRepeatable()) {
+      delete callback_->Run();
+    } else {
+      delete callback_.release()->Run();
+      delete this;
+    }
+  }
+
+  bool IsRepeatable() const {
+    CHECK(callback_ != NULL);
+    return callback_->IsRepeatable();
+  }
+
+ private:
+  scoped_ptr<ResultCallback<Result*> > callback_;
+
+  DISALLOW_COPY_AND_ASSIGN(DeleteResultImpl);
+};
+
+template<typename Result>
+static Closure* DeleteResult(ResultCallback<Result*>* callback) {
+  return new DeleteResultImpl<Result>(callback);
+}
 
 
 
@@ -1888,8 +1923,18 @@ TEST_F(ParserTest, ComplexFunction) {
   Parser p(
       "-webkit-gradient(linear, left top, left bottom, from(#ccc), to(#ddd))");
   scoped_ptr<Value> val(ParseAny(&p));
+  EXPECT_EQ(Value::FUNCTION, val->GetLexicalUnitType());
+  EXPECT_EQ(Parser::kNoError, p.errors_seen_mask());
   EXPECT_EQ("-webkit-gradient(linear, left top, left bottom, "
             "from(#cccccc), to(#dddddd))", val->ToString());
+}
+
+TEST_F(ParserTest, MaxNestedFunctions) {
+  Parser p("a(b(1,2,3))");
+  p.set_max_function_depth(1);
+  scoped_ptr<Value> val(ParseAny(&p));
+  EXPECT_TRUE(NULL == val.get());
+  EXPECT_TRUE(Parser::kFunctionError & p.errors_seen_mask());
 }
 
 TEST_F(ParserTest, Counter) {

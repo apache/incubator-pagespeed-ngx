@@ -179,6 +179,13 @@ class Parser {
   bool preservation_mode() const { return preservation_mode_; }
   void set_preservation_mode(bool x) { preservation_mode_ = x; }
 
+  // Maximum recursive function depth. How deeply should the parser parse
+  // functions inside of functions. It is important to limit this to avoid
+  // unbounded stack-frame depth on untrusted input. See b/17628553
+  int max_function_depth() const { return max_function_depth_; }
+  void set_max_function_depth(int x) { max_function_depth_ = x; }
+  static const int kDefaultMaxFunctionDepth = 10;
+
   // This is a bitmask of errors seen during the parse.  This is decidedly
   // incomplete --- there are definitely many errors that are not reported here.
   static const uint64 kNoError           = 0;
@@ -407,7 +414,10 @@ class Parser {
   //
   // ParseFunction() does not consume closing ')' and returns a vector of
   // values if successful, and NULL if the contents were mal-formed.
-  FunctionParameters* ParseFunction();
+  //
+  // We limit the max depth of nested functions to avoid unbounded stack depth.
+  // See b/17628553
+  FunctionParameters* ParseFunction(int max_function_depth);
 
   // Converts a Value number or percentage to an RGB value.
   static unsigned char ValueToRGB(Value* v);
@@ -462,6 +472,8 @@ class Parser {
   // If no value is found, ParseAny returns NULL and make sure at least one
   // character is consumed (to make progress).
   Value* ParseAny();
+  // Helper function which limits the levels of recursion.
+  Value* ParseAnyWithFunctionDepth(int max_function_depth);
 
   // Parse a list of values for the given property.
   // We parse until we see a !, ;, or } delimiter. However, if there are any
@@ -580,6 +592,8 @@ class Parser {
   // stylesheet (including unparseable constructs such as proprietary CSS
   // and CSS hacks) so that they can be re-serialized precisely.
   bool preservation_mode_;
+  int max_function_depth_;
+
   // errors_seen_mask_ is non-zero iff we failed to parse part of the CSS
   // and could not recover and so we have lost information.
   uint64 errors_seen_mask_;

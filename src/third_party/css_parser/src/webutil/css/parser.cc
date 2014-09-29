@@ -60,6 +60,7 @@ const uint64 Parser::kAtRuleError;
 const uint64 Parser::kCssCommentError;
 
 const int Parser::kMaxErrorsRemembered;
+const int Parser::kDefaultMaxFunctionDepth;
 
 class Tracer {  // in opt mode, do nothing.
  public:
@@ -78,6 +79,7 @@ Parser::Parser(const char* utf8text, const char* textend)
       end_(textend),
       quirks_mode_(true),
       preservation_mode_(false),
+      max_function_depth_(kDefaultMaxFunctionDepth),
       errors_seen_mask_(kNoError),
       unparseable_sections_seen_mask_(kNoError) {
 }
@@ -88,6 +90,7 @@ Parser::Parser(const char* utf8text)
       end_(utf8text + strlen(utf8text)),
       quirks_mode_(true),
       preservation_mode_(false),
+      max_function_depth_(kDefaultMaxFunctionDepth),
       errors_seen_mask_(kNoError),
       unparseable_sections_seen_mask_(kNoError) {
 }
@@ -98,6 +101,7 @@ Parser::Parser(StringPiece s)
       end_(s.end()),
       quirks_mode_(true),
       preservation_mode_(false),
+      max_function_depth_(kDefaultMaxFunctionDepth),
       errors_seen_mask_(kNoError),
       unparseable_sections_seen_mask_(kNoError) {
 }
@@ -751,7 +755,7 @@ HtmlColor Parser::ParseColor() {
 // consuming final right-paren.
 //
 // Both commas and spaces are allowed as separators and are remembered.
-FunctionParameters* Parser::ParseFunction() {
+FunctionParameters* Parser::ParseFunction(int max_function_depth) {
   Tracer trace(__func__, this);
   scoped_ptr<FunctionParameters> params(new FunctionParameters);
 
@@ -776,7 +780,7 @@ FunctionParameters* Parser::ParseFunction() {
         in_++;
         break;
       default: {
-        scoped_ptr<Value> val(ParseAny());
+        scoped_ptr<Value> val(ParseAnyWithFunctionDepth(max_function_depth));
         if (!val.get()) {
           ReportParsingError(kFunctionError,
                              "Cannot parse parameter in function");
@@ -922,6 +926,10 @@ Value* Parser::ParseAnyExpectingColor() {
 
 // Parses a CSS value.  Could be just about anything.
 Value* Parser::ParseAny() {
+  return ParseAnyWithFunctionDepth(max_function_depth_);
+}
+
+Value* Parser::ParseAnyWithFunctionDepth(int max_function_depth) {
   Tracer trace(__func__, this);
   Value* toret = NULL;
 
@@ -985,32 +993,38 @@ Value* Parser::ParseAny() {
         toret = NULL;
       } else if (!Done() && *in_ == '(') {
         in_++;
-        if (StringCaseEquals(id, "url")) {
-          toret = ParseUrl();
-        } else if (StringCaseEquals(id, "rgb")) {
-          toret = ParseRgbColor();
-        } else if (StringCaseEquals(id, "rect")) {
-          scoped_ptr<FunctionParameters> params(ParseFunction());
-          if (params.get() != NULL && params->size() == 4) {
-            toret = new Value(Value::RECT, params.release());
+        if (max_function_depth > 0) {
+          if (StringCaseEquals(id, "url")) {
+            toret = ParseUrl();
+          } else if (StringCaseEquals(id, "rgb")) {
+            toret = ParseRgbColor();
+          } else if (StringCaseEquals(id, "rect")) {
+            scoped_ptr<FunctionParameters> params(
+                ParseFunction(max_function_depth - 1));
+            if (params.get() != NULL && params->size() == 4) {
+              toret = new Value(Value::RECT, params.release());
+            } else {
+              ReportParsingError(kFunctionError, "Could not parse parameters "
+                                 "for function rect");
+            }
           } else {
-            ReportParsingError(kFunctionError, "Could not parse parameters "
-                               "for function rect");
+            scoped_ptr<FunctionParameters> params(
+                ParseFunction(max_function_depth - 1));
+            if (params.get() != NULL) {
+              toret = new Value(id, params.release());
+            } else {
+              ReportParsingError(kFunctionError, StringPrintf(
+                  "Could not parse function parameters for function %s",
+                  UnicodeTextToUTF8(id).c_str()));
+            }
+          }
+          SkipSpace();
+          if (!Done() && *in_ != ')') {
+            ReportParsingError(kFunctionError,
+                               "Ignored chars at end of function.");
           }
         } else {
-          scoped_ptr<FunctionParameters> params(ParseFunction());
-          if (params.get() != NULL) {
-            toret = new Value(id, params.release());
-          } else {
-            ReportParsingError(kFunctionError, StringPrintf(
-                "Could not parse function parameters for function %s",
-                UnicodeTextToUTF8(id).c_str()));
-          }
-        }
-        SkipSpace();
-        if (!Done() && *in_ != ')') {
-          ReportParsingError(kFunctionError,
-                             "Ignored chars at end of function.");
+          ReportParsingError(kFunctionError, "Functions nested too deeply.");
         }
         SkipPastDelimiter(')');
       } else {
