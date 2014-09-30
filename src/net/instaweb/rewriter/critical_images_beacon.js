@@ -289,8 +289,8 @@ pagespeed.CriticalImages.Beacon_.prototype.getImageRenderedMap = function() {
              img.width > 0 && img.height > 0 &&
              img.naturalWidth > 0 && img.naturalHeight > 0) ||
         ((key in renderedImageDimensions) &&
-             img.width >= renderedImageDimensions[img.src].rw &&
-             img.height >= renderedImageDimensions[img.src].rh)) {
+             img.width >= renderedImageDimensions[key].rw &&
+             img.height >= renderedImageDimensions[key].rh)) {
       renderedImageDimensions[key] = {
         'rw' : img.width,
         'rh' : img.height,

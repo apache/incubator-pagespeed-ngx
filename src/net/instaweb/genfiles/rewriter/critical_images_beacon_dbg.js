@@ -1532,7 +1532,7 @@ pagespeed.CriticalImages.Beacon_.prototype.getImageRenderedMap = function() {
   }
   for (var i = 0;img = images[i];++i) {
     var key = img.getAttribute("pagespeed_url_hash");
-    key && (!(key in renderedImageDimensions) && 0 < img.width && 0 < img.height && 0 < img.naturalWidth && 0 < img.naturalHeight || key in renderedImageDimensions && img.width >= renderedImageDimensions[img.src].rw && img.height >= renderedImageDimensions[img.src].rh) && (renderedImageDimensions[key] = {rw:img.width, rh:img.height, ow:img.naturalWidth, oh:img.naturalHeight});
+    key && (!(key in renderedImageDimensions) && 0 < img.width && 0 < img.height && 0 < img.naturalWidth && 0 < img.naturalHeight || key in renderedImageDimensions && img.width >= renderedImageDimensions[key].rw && img.height >= renderedImageDimensions[key].rh) && (renderedImageDimensions[key] = {rw:img.width, rh:img.height, ow:img.naturalWidth, oh:img.naturalHeight});
   }
   return renderedImageDimensions;
 };
