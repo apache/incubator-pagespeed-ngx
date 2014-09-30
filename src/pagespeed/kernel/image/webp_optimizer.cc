@@ -168,15 +168,15 @@ ScanlineStatus WebpFrameWriter::PrepareImage(const ImageSpec* image_spec) {
   if ((image_spec->height > WEBP_MAX_DIMENSION) ||
       (image_spec->width > WEBP_MAX_DIMENSION)) {
     return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler(),
-                            SCANLINE_STATUS_INVOCATION_ERROR,
+                            SCANLINE_STATUS_UNSUPPORTED_FEATURE,
                             FRAME_WEBPWRITER,
-                            "image dimensions larger than the maximum of %d",
+                            "each image dimension must be at most %d",
                             WEBP_MAX_DIMENSION);
   }
 
   if ((image_spec->height < 1) || (image_spec->width < 1)) {
     return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler(),
-                            SCANLINE_STATUS_INVOCATION_ERROR,
+                            SCANLINE_STATUS_UNSUPPORTED_FEATURE,
                             FRAME_WEBPWRITER,
                             "each image dimension must be at least 1");
   }
