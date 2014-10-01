@@ -404,6 +404,7 @@ class RewriteOptions {
   static const char kMemcachedServers[];
   static const char kMemcachedThreads[];
   static const char kMemcachedTimeoutUs[];
+  static const char kProxySuffix[];
   static const char kRateLimitBackgroundFetches[];
   static const char kServeWebpToAnyAgent[];
   static const char kSlurpDirectory[];

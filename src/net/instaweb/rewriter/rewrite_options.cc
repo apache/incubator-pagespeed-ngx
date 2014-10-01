@@ -324,6 +324,7 @@ const char RewriteOptions::kLruCacheKbPerProcess[] = "LRUCacheKbPerProcess";
 const char RewriteOptions::kMemcachedServers[] = "MemcachedServers";
 const char RewriteOptions::kMemcachedThreads[] = "MemcachedThreads";
 const char RewriteOptions::kMemcachedTimeoutUs[] = "MemcachedTimeoutUs";
+const char RewriteOptions::kProxySuffix[] = "ProxySuffix";
 const char RewriteOptions::kRateLimitBackgroundFetches[] =
     "RateLimitBackgroundFetches";
 const char RewriteOptions::kRequestOptionOverride[] = "RequestOptionOverride";
@@ -2990,6 +2991,8 @@ RewriteOptions::OptionSettingResult RewriteOptions::ParseAndSetOptionFromName1(
     DistributeFiltersByCommaSeparatedList(arg, handler);
   } else if (StringCaseEqual(name, kDomain)) {
     WriteableDomainLawyer()->AddDomain(arg, handler);
+  } else if (StringCaseEqual(name, kProxySuffix)) {
+    WriteableDomainLawyer()->set_proxy_suffix(arg.as_string());
   } else if (StringCaseEqual(name, kDownstreamCachePurgeLocationPrefix)) {
     GoogleUrl gurl(arg);
     if (gurl.IsWebValid()) {

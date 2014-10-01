@@ -950,6 +950,14 @@ void DomainLawyer::Merge(const DomainLawyer& src) {
 
   can_rewrite_domains_ |= src.can_rewrite_domains_;
   authorize_all_domains_ |= src.authorize_all_domains_;
+  if (!src.proxy_suffix_.empty()) {
+    if (!proxy_suffix_.empty() && (proxy_suffix_ != src.proxy_suffix_)) {
+      LOG(WARNING)
+          << "Merging incompatible proxy suffixes " << proxy_suffix_ << " and "
+          << src.proxy_suffix_;
+    }
+    proxy_suffix_ = src.proxy_suffix_;
+  }
 }
 
 bool DomainLawyer::ShardDomain(const StringPiece& domain_name,
@@ -1041,6 +1049,9 @@ GoogleString DomainLawyer::Signature() const {
       iterator != domain_map_.end(); ++iterator) {
     StrAppend(&signature, "D:", iterator->second->Signature(), "-");
   }
+  if (!proxy_suffix_.empty()) {
+    StrAppend(&signature, ",PS:", proxy_suffix_);
+  }
 
   return signature;
 }
@@ -1051,6 +1062,9 @@ GoogleString DomainLawyer::ToString(StringPiece line_prefix) const {
       iterator != domain_map_.end(); ++iterator) {
     StrAppend(&output, line_prefix, iterator->second->ToString(), "\n");
   }
+  if (!proxy_suffix_.empty()) {
+    StrAppend(&output, "Proxy Suffix: ", proxy_suffix_);
+  }
   return output;
 }
 
@@ -1059,6 +1073,22 @@ void DomainLawyer::Clear() {
   can_rewrite_domains_ = false;
   authorize_all_domains_ = false;
   wildcarded_domains_.clear();
+  proxy_suffix_.clear();
+}
+
+bool DomainLawyer::StripProxySuffix(const GoogleUrl& gurl, GoogleString* url,
+                                    GoogleString* host) const {
+  bool ret = false;
+  if (gurl.IsWebValid() && !proxy_suffix_.empty()) {
+    StringPiece host_and_port = gurl.HostAndPort();
+    if (host_and_port.ends_with(proxy_suffix_)) {
+      host_and_port.remove_suffix(proxy_suffix_.size());
+      host_and_port.CopyToString(host);  // Remove any other port, I suppose.
+      *url = StrCat(gurl.Scheme(), "://", host_and_port, gurl.PathAndLeaf());
+      ret = true;
+    }
+  }
+  return ret;
 }
 
 }  // namespace net_instaweb

@@ -1569,4 +1569,54 @@ TEST_F(DomainLawyerTest, AboutBlank) {
   EXPECT_FALSE(lawyer.MapOriginUrl(foo, &out, &host_header, &is_proxy));
 }
 
+TEST_F(DomainLawyerTest, ProxySuffix) {
+  DomainLawyer lawyer;
+  GoogleUrl gurl("http://example.com.suffix/path");
+  GoogleString host, url = gurl.Spec().as_string();
+  EXPECT_FALSE(lawyer.can_rewrite_domains());
+  EXPECT_FALSE(lawyer.StripProxySuffix(gurl, &url, &host));
+  lawyer.set_proxy_suffix(".suffix");
+  EXPECT_TRUE(lawyer.can_rewrite_domains());
+  EXPECT_TRUE(lawyer.StripProxySuffix(gurl, &url, &host));
+  EXPECT_STREQ("http://example.com/path", url);
+  EXPECT_STREQ("example.com", host);
+
+  // The ':80' will get removed by GoogleUrl.
+  GoogleUrl http_gurl_80("http://example.com.suffix:80/path");
+  url = http_gurl_80.Spec().as_string();
+  host.clear();
+  url.clear();
+  EXPECT_TRUE(lawyer.StripProxySuffix(http_gurl_80, &url, &host));
+  EXPECT_STREQ("http://example.com/path", url);
+  EXPECT_STREQ("example.com", host);
+
+  // However an ':81' makes the proxy-suffix mismatch.
+  GoogleUrl http_gurl_81("http://example.com.suffix:81/path");
+  url.clear();
+  host.clear();
+  EXPECT_FALSE(lawyer.StripProxySuffix(http_gurl_81, &url, &host));
+
+  // 443 on http.  We need to understand why we see this in Apache slurping
+  // with a Firefox proxy, but punt for now.
+  GoogleUrl http_gurl_443("http://example.com.suffix:443/path");
+  url.clear();
+  host.clear();
+  EXPECT_FALSE(lawyer.StripProxySuffix(http_gurl_443, &url, &host));
+
+  // 443 on https -- that should canonicalize out in GoogleUrl.
+  GoogleUrl https_gurl_443("https://example.com.suffix:443/path");
+  url.clear();
+  host.clear();
+  EXPECT_TRUE(lawyer.StripProxySuffix(https_gurl_443, &url, &host));
+  EXPECT_STREQ("https://example.com/path", url);
+  EXPECT_STREQ("example.com", host);
+
+  GoogleUrl https_gurl("https://example.com.suffix/path");
+  url.clear();
+  host.clear();
+  EXPECT_TRUE(lawyer.StripProxySuffix(https_gurl, &url, &host));
+  EXPECT_STREQ("https://example.com/path", url);
+  EXPECT_STREQ("example.com", host);
+}
+
 }  // namespace net_instaweb
