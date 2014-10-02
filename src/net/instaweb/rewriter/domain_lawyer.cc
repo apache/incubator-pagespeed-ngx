@@ -30,6 +30,7 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/wildcard.h"
+#include "pagespeed/kernel/http/domain_registry.h"
 #include "pagespeed/kernel/http/google_url.h"
 
 namespace net_instaweb {
@@ -1089,6 +1090,41 @@ bool DomainLawyer::StripProxySuffix(const GoogleUrl& gurl, GoogleString* url,
     }
   }
   return ret;
+}
+
+bool DomainLawyer::AddProxySuffix(const GoogleUrl& base_url,
+                                  GoogleString* href) const {
+  // Let's say we have a proxy-prefix of ".suffix".  When we visit
+  // http://www.example.com.suffix, we can leave relative URLs alone
+  // in hyperlinkes.  However, if we see an absolute link to
+  // http://www.example.com/foo or http://foo.www.example.com/bar then
+  // we want to add the suffix to the hyperlink attribute.
+  StringPiece base_host = base_url.Host();
+  if (!proxy_suffix_.empty() && base_host.ends_with(proxy_suffix_)) {
+    // Remove the suffix from the host so we can find a-tag references to it.
+    StringPiece base_host_no_suffix = base_host.substr(
+        0, base_host.size() - proxy_suffix_.size());
+    GoogleUrl href_gurl(base_url, *href);
+
+    if (href_gurl.IsWebValid() &&
+        (href_gurl.Scheme() == base_url.Scheme())) {
+      StringPiece href_domain, base_domain;
+      StringPiece href_host = href_gurl.Host();
+      if (href_host == base_host_no_suffix) {
+        // TODO(jmarantz): handle alternate ports.
+        *href = StrCat(href_gurl.Scheme(), "://", base_host,
+                       href_gurl.PathAndLeaf());
+        return true;
+      } else if (domain_registry::MinimalPrivateSuffix(href_host) ==
+                 domain_registry::MinimalPrivateSuffix(base_host_no_suffix)) {
+        *href = StrCat(href_gurl.Scheme(), "://",
+                       href_host, proxy_suffix_,
+                       href_gurl.PathAndLeaf());
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 }  // namespace net_instaweb

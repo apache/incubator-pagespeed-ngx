@@ -324,6 +324,10 @@ class DomainLawyer {
   bool StripProxySuffix(const GoogleUrl& gurl,
                         GoogleString* url, GoogleString* host) const;
 
+  // Adds a proxy suffix to the Host in *href if it matches the the base URL.
+  // Returns true if the href was modified, false if it wasn't.
+  bool AddProxySuffix(const GoogleUrl& base_url, GoogleString* href) const;
+
   // Computes a signature for the DomainLawyer object including containing
   // classes (Domain).
   GoogleString Signature() const;

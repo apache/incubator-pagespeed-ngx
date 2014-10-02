@@ -1569,7 +1569,7 @@ TEST_F(DomainLawyerTest, AboutBlank) {
   EXPECT_FALSE(lawyer.MapOriginUrl(foo, &out, &host_header, &is_proxy));
 }
 
-TEST_F(DomainLawyerTest, ProxySuffix) {
+TEST_F(DomainLawyerTest, StripProxySuffix) {
   DomainLawyer lawyer;
   GoogleUrl gurl("http://example.com.suffix/path");
   GoogleString host, url = gurl.Spec().as_string();
@@ -1617,6 +1617,33 @@ TEST_F(DomainLawyerTest, ProxySuffix) {
   EXPECT_TRUE(lawyer.StripProxySuffix(https_gurl, &url, &host));
   EXPECT_STREQ("https://example.com/path", url);
   EXPECT_STREQ("example.com", host);
+}
+
+TEST_F(DomainLawyerTest, AddProxySuffix) {
+  DomainLawyer lawyer;
+  GoogleUrl base("http://www.example.com.suffix");
+  lawyer.set_proxy_suffix(".suffix");
+  EXPECT_TRUE(lawyer.can_rewrite_domains());
+
+  // No need to change relative URLs.
+  GoogleString url = "relative.html";
+  EXPECT_FALSE(lawyer.AddProxySuffix(base, &url));
+
+  // An absolute reference to a new destination in the origin domain gets
+  // suffixed.
+  url = "http://www.example.com/absolute.html";
+  EXPECT_TRUE(lawyer.AddProxySuffix(base, &url));
+  EXPECT_STREQ("http://www.example.com.suffix/absolute.html", url);
+
+  // It also works even if the reference is a domain that's related to the
+  // base, by consulting the known suffixes list via domain_registry.
+  url = "http://other.example.com/absolute.html";
+  EXPECT_TRUE(lawyer.AddProxySuffix(base, &url));
+  EXPECT_STREQ("http://other.example.com.suffix/absolute.html", url);
+
+  // However a link to a completely unrelated domain is left unchanged.
+  url = "http://other.com/x.html";
+  EXPECT_FALSE(lawyer.AddProxySuffix(base, &url));
 }
 
 }  // namespace net_instaweb

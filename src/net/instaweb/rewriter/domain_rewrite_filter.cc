@@ -87,41 +87,49 @@ void DomainRewriteFilter::UpdateLocationHeader(const GoogleUrl& base_url,
 }
 
 void DomainRewriteFilter::StartElementImpl(HtmlElement* element) {
+  // The base URL is used to rewrite the attribute URL, which is all this
+  // method does; if it isn't valid we can't so there's no point in going on.
   if (!BaseUrlIsValid()) {
     // The base URL is used to rewrite the attribute URL, which is all this
     // method does; if it isn't valid we can't so there's no point in going on.
+    //
+    // Note that this will be the case for any HTML elements that
+    // preceed a meta tag, as the HTML spec is ambiguous whether the
+    // base tag applies for that set of elements.
     return;
   }
   resource_tag_scanner::UrlCategoryVector attributes;
-  resource_tag_scanner::ScanElement(element, driver()->options(), &attributes);
+  const RewriteOptions* options = driver()->options();
+  const DomainLawyer* domain_lawyer = options->domain_lawyer();
+  resource_tag_scanner::ScanElement(element, options, &attributes);
   bool element_is_embed_or_frame_or_iframe = (
       element->keyword() == HtmlName::kEmbed ||
       element->keyword() == HtmlName::kFrame ||
       element->keyword() == HtmlName::kIframe);
   for (int i = 0, n = attributes.size(); i < n; ++i) {
-    // Disable domain_rewrite for non-image, non-script, non-stylesheet urls
-    // unless ModPagespeedDomainRewriteHyperlinks is on
-    if (attributes[i].category != semantic_type::kImage &&
-        attributes[i].category != semantic_type::kScript &&
-        attributes[i].category != semantic_type::kStylesheet &&
-        !driver()->options()->domain_rewrite_hyperlinks()) {
-      continue;
-    }
-    StringPiece val(attributes[i].url->DecodedValueOrNull());
-    if (val.empty()) {
-      // We don't rewrite empty URLs so bail early in that case.
-      continue;
-    }
-    GoogleString rewritten_val;
-    // Don't shard hyperlinks, prefetch, embeds, frames, or iframes.
-    bool apply_sharding = (
-        !element_is_embed_or_frame_or_iframe &&
-        attributes[i].category != semantic_type::kHyperlink &&
-        attributes[i].category != semantic_type::kPrefetch);
-    if (Rewrite(val, driver()->base_url(), driver(),
-                apply_sharding, &rewritten_val) == kRewroteDomain) {
-      attributes[i].url->SetValue(rewritten_val);
-      rewrite_count_->Add(1);
+    // Only rewrite attributes that are resource-tags.  If hyperlinks
+    // is on that's fine too.
+    if (options->domain_rewrite_hyperlinks() ||
+        attributes[i].category == semantic_type::kImage ||
+        attributes[i].category == semantic_type::kScript ||
+        attributes[i].category == semantic_type::kStylesheet) {
+      StringPiece val(attributes[i].url->DecodedValueOrNull());
+      if (!val.empty()) {
+        GoogleString rewritten_val;
+        // Don't shard hyperlinks, prefetch, embeds, frames, or iframes.
+        bool apply_sharding = (
+            !element_is_embed_or_frame_or_iframe &&
+            attributes[i].category != semantic_type::kHyperlink &&
+            attributes[i].category != semantic_type::kPrefetch);
+        const GoogleUrl& base_url = driver()->base_url();
+        if ((Rewrite(val, base_url, driver(),
+                     apply_sharding, &rewritten_val) == kRewroteDomain) ||
+            ((attributes[i].category == semantic_type::kHyperlink) &&
+             domain_lawyer->AddProxySuffix(base_url, &rewritten_val))) {
+          attributes[i].url->SetValue(rewritten_val);
+          rewrite_count_->Add(1);
+        }
+      }
     }
   }
 }
