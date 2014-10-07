@@ -483,19 +483,21 @@ TEST_F(CssFlattenImportsTest, FlattenInvalidCSS) {
                              kInvalidMediaCss, kInvalidMediaCss,
                              kExpectFailure);
 
-  DebugWithMessage("<!--CSS rewrite failed: Parse error in %url%-->");
-  const char kInvalidImportCss[] = "@import styles.css; a { color:red }";
-  ValidateRewriteExternalCss("flatten_invalid_css_import",
-                             kInvalidImportCss, kInvalidImportCss,
-                             kExpectFailure);
-
-  // This gets a parse error but thanks to the idea of "unparseable sections"
-  // in the CSS parser it's not treated as an error as such and the "bad" text
-  // is kept, and since the @import itself is valid we DO flatten.
-  const char kUnparseableCss[] = "@import url(styles.css);a{ #color: 333 }";
   const char kFilename[] = "styles.css";
   SetResponseWithDefaultHeaders(kFilename, kContentTypeCss, kSimpleCss, 100);
 
+  // This gets a parse error but thanks to the idea of "unparseable sections"
+  // in the CSS parser it's not treated as an error and the "bad" text is kept.
+  // Because the error was in the bogus @import statement, we do NOT flatten.
+  DebugWithMessage("");
+  const char kUnparseableImportCss[] = "@import styles.css; a { color:red }";
+  const char kFlattenedImportCss[] = "@import styles.css;a{color:red}";
+  ValidateRewriteExternalCss("flatten_unparseable_css_import",
+                             kUnparseableImportCss, kFlattenedImportCss,
+                             kExpectSuccess | kNoClearFetcher);
+
+  // Same as above, but since the @import itself is valid we DO flatten.
+  const char kUnparseableCss[] = "@import url(styles.css) ;a{ #color: 333 }";
   GoogleString kFlattenedInvalidCss = StrCat(kSimpleCss, "a{#color: 333 }");
 
   DebugWithMessage("");

@@ -265,10 +265,11 @@ class Parser {
   // ending delimiter ([;}!]).
   bool SkipToNextAny();
 
-  // Skip until the end of the at-rule. Used for at-rules that we do not
+  // Skip past the end of the at-rule. Used for at-rules that we do not
   // recognize. Return value is whether or not the at-rule was closed correctly.
   // Returns true if at-rule is correctly closed (by ; or end of block),
   // false if EOF was reached first.
+  // Ending ; or {}-block are consumed. However, closing } are not consumed.
   //
   // From http://www.w3.org/TR/CSS2/syndata.html#parsing-errors:
   //
@@ -278,6 +279,12 @@ class Parser {
   //   next semicolon (;), or up to and including the next block ({...}),
   //   whichever comes first.
   bool SkipToAtRuleEnd();
+
+  // Skip until the end of a single media query. @media statements may have
+  // multiple comma-separated media queries. If one cannot be parsed, the others
+  // are still valid, so we need to skip just the one.
+  // Does not consume the tokens marking the end of the media query.
+  void SkipToMediaQueryEnd();
 
   // Parse functions.
   //
@@ -552,7 +559,7 @@ class Parser {
   //
 
   // Starting at whitespace or the start of a media query, parses and returns
-  // the entire query. Returns NULL if the media query is empty.
+  // the entire query. Returns NULL if the media query is invalid.
   MediaQuery* ParseMediaQuery();
 
   // ParseImport starts just after @import and consumes the import
@@ -560,13 +567,11 @@ class Parser {
   // containing the imported name and the media.
   Import* ParseImport();
 
-  // Starting at @, ParseAtRule parses @import, @charset, and @medium
+  // Starting at @, ParseAtRule parses @import, @charset, and @media
   // declarations and adds the information to the stylesheet.
   //
   // For other (unsupported) at-keywords (like @font-face or @keyframes),
   // we set an error and skip over and ignore the entire at-rule.
-  // TODO(sligocki): In preservation mode, we should save a dummy at-rule
-  // type for passing through verbatim bytes.
   //
   // Consumes the @-rule, including the closing ';' or '}'.  Does not
   // consume trailing whitespace.

@@ -603,6 +603,8 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     "@import url(http://www.example.com);",
     "@media a,b{a{color:red}}",
     "@charset \"foobar\";",
+    // Invalid charset (string should be quoted).
+    "@charset utf-8;",
     // Unescaped string: Odd chars: \(\)\,\"\'
     "a{content:\"Odd chars: \\(\\)\\,\\\"\\\'\"}",
     // Unescaped string: Unicode: \A0\A0
@@ -660,14 +662,30 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     "a{foo: +bar }",
     "a{color: rgb(foo,+,) }",
 
+    // Malformed @import statements.
+    "@import styles.css;a{color:red}",
+    "@import \"styles.css\", \"other.css\";a{color:red}",
+    "@import url(styles.css), url(other.css);a{color:red}",
+    "@import \"styles.css\"...;a{color:red}",
+
     // CSS3 media queries.
     // http://code.google.com/p/modpagespeed/issues/detail?id=50
     "@media screen and (max-width:290px){a{color:red}}",
     "@media only print and (color){a{color:red}}",
 
+    // Malformed @media statements.
+    // Important: Don't "fix" by adding space between 'and' and '('.
+    "@media only screen and(min-resolution:240dpi){ .bar{ background: red; }}",
+    // Unexpected space in media feature name.
+    "@media (max-de vice-width: 850px) { .pm-thumb-106 { width: 80px; } }",
+    // Unexpected \0 in various places. Common browser hack.
+    "@media screen\\0{ .select:before { width: 18px; } }",
+    "@media screen and (min-width:0 \\0) { .foo { color: red; } }",
     // Nonsensical, but syntactic, media query.
     "@media not (-moz-dimension-constraints:20 < width < 300 and 45 < height "
     "< 1000){a{color:red}}",
+    // Empty media queries.
+    "@media , { a { color: red; } }",
 
     // Unexpected @-statements
     "@keyframes wiggle { 0% { transform: rotate(6deg); } }",
@@ -748,12 +766,6 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
   }
 
   const char* fail_examples[] = {
-    // Malformed @import statements.
-    "@import styles.css; a { color: red; }",
-    "@import \"styles.css\", \"other.css\"; a { color: red; }",
-    "@import url(styles.css), url(other.css); a { color: red; }",
-    "@import \"styles.css\"...; a { color: red; }",
-
     // Unclosed at-rules.
     // These are technically valid, but we consider them a parsing errors
     // because combining is invalid for them.
@@ -791,14 +803,6 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     "a { color: /*red; }",
 
     // Parsing failures from Alexa-1000.
-
-    // Malformed @media statements.
-    // TODO(sligocki):  We should pass these through as unparsed regions.
-    // Important: Don't "fix" by adding space between 'and' and '('.
-    "@media only screen and(min-resolution:240dpi){ .bar{ background: red; }}",
-    "@media (max-de vice-width: 850px) {.pm-thumb-106{width:80px}}",
-    "@media screen\\0{.select:before{width:18px}}",
-    "@media screen and (min-width:0 \\0){.foo{color:red}}",
 
     // UTF-16
     "\xFF\xFE"   // UTF-16 byte-order marker.
@@ -1535,6 +1539,75 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       "0 100%,from(rgba(192,192,192,.6)),to(rgba(49,49,49,.3)));"
       "background:-o-linear-gradient(top,(rgba(192,192,192,.6)),"
       "(rgba(49,49,49,.3)))}" },
+
+    // Malformed: media type, "screen", must be first.
+    { "@media (color) and screen { .a { color: red; } }",
+
+      "@media (color) and screen { .a { color: red; } }" },
+
+    // Do not "fix" by putting a space between 'and' and '('.
+    { "@media only screen and(-webkit-min-device-pixel-ratio:1.5),"
+      "only screen and(min--moz-device-pixel-ratio:1.5),"
+      "only screen and(min-resolution:240dpi){"
+      ".ui-icon-plus,.ui-icon-minus,.ui-icon-delete,.ui-icon-arrow-r,"
+      ".ui-icon-arrow-l,.ui-icon-arrow-u,.ui-icon-arrow-d,.ui-icon-check,"
+      ".ui-icon-gear,.ui-icon-refresh,.ui-icon-forward,.ui-icon-back,"
+      ".ui-icon-grid,.ui-icon-star,.ui-icon-alert,.ui-icon-info,.ui-icon-home,"
+      ".ui-icon-search,.ui-icon-searchfield:after,.ui-icon-checkbox-off,"
+      ".ui-icon-checkbox-on,.ui-icon-radio-off,.ui-icon-radio-on{"
+      "background-image:url(images/icons-36-white.png);"
+      "-moz-background-size:776px 18px;-o-background-size:776px 18px;"
+      "-webkit-background-size:776px 18px;background-size:776px 18px;}"
+      ".ui-icon-alt{background-image:url(images/icons-36-black.png);}}",
+
+      "@media only screen and(-webkit-min-device-pixel-ratio:1.5),"
+      "only screen and(min--moz-device-pixel-ratio:1.5),"
+      "only screen and(min-resolution:240dpi){"
+      ".ui-icon-plus,.ui-icon-minus,.ui-icon-delete,.ui-icon-arrow-r,"
+      ".ui-icon-arrow-l,.ui-icon-arrow-u,.ui-icon-arrow-d,.ui-icon-check,"
+      ".ui-icon-gear,.ui-icon-refresh,.ui-icon-forward,.ui-icon-back,"
+      ".ui-icon-grid,.ui-icon-star,.ui-icon-alert,.ui-icon-info,.ui-icon-home,"
+      ".ui-icon-search,.ui-icon-searchfield:after,.ui-icon-checkbox-off,"
+      ".ui-icon-checkbox-on,.ui-icon-radio-off,.ui-icon-radio-on{"
+      "background-image:url(images/icons-36-white.png);"
+      "-moz-background-size:776px 18px;-o-background-size:776px 18px;"
+      "-webkit-background-size:776px 18px;background-size:776px 18px;}"
+      ".ui-icon-alt{background-image:url(images/icons-36-black.png);}}" },
+
+    // No space between "and" and "(".
+    { "@media all and(-webkit-max-device-pixel-ratio:10000),\n"
+      "   not all and(-webkit-min-device-pixel-ratio:0) {\n"
+      "\n"
+      "\t:root .RadTreeView_rtl .rtPlus,\n"
+      "\t:root .RadTreeView_rtl .rtMinus\n"
+      "\t{\n"
+      "\t\tposition: relative;\n"
+      "\t\tmargin-left: 2px;\n"
+      "\t\tmargin-right: -13px;\n"
+      "\t\tright: -15px;\n"
+      "\t}\n"
+      "}\n",
+
+      "@media all and(-webkit-max-device-pixel-ratio:10000),\n"
+      "   not all and(-webkit-min-device-pixel-ratio:0) {\n"
+      "\n"
+      "\t:root .RadTreeView_rtl .rtPlus,\n"
+      "\t:root .RadTreeView_rtl .rtMinus\n"
+      "\t{\n"
+      "\t\tposition: relative;\n"
+      "\t\tmargin-left: 2px;\n"
+      "\t\tmargin-right: -13px;\n"
+      "\t\tright: -15px;\n"
+      "\t}\n"
+      "}" },
+
+    { "@media screen and (min-width: 0 \\0){.ending-actions li a .icon-top,.en"
+      "ding-actions li a .icon-feed{vertical-align:text-bottom}.nav-previous{m"
+      "argin:20px auto 0}}",
+
+      "@media screen and (min-width: 0 \\0){.ending-actions li a .icon-top,.en"
+      "ding-actions li a .icon-feed{vertical-align:text-bottom}.nav-previous{m"
+      "argin:20px auto 0}}" },
   };
 
   for (int i = 0; i < arraysize(examples); ++i) {
@@ -1546,42 +1619,15 @@ TEST_F(CssFilterTest, ComplexCssTest) {
     // Bad syntax
     "}}",
     "@foobar this is totally wrong CSS syntax }",
-    "@media (color) and screen { .a { color: red; } }",
 
-    // Do not "fix" by putting a space between 'and' and '('.
-    "@media only screen and(-webkit-min-device-pixel-ratio:1.5),"
-    "only screen and(min--moz-device-pixel-ratio:1.5),"
-    "only screen and(min-resolution:240dpi){"
-    ".ui-icon-plus,.ui-icon-minus,.ui-icon-delete,.ui-icon-arrow-r,"
-    ".ui-icon-arrow-l,.ui-icon-arrow-u,.ui-icon-arrow-d,.ui-icon-check,"
-    ".ui-icon-gear,.ui-icon-refresh,.ui-icon-forward,.ui-icon-back,"
-    ".ui-icon-grid,.ui-icon-star,.ui-icon-alert,.ui-icon-info,.ui-icon-home,"
-    ".ui-icon-search,.ui-icon-searchfield:after,.ui-icon-checkbox-off,"
-    ".ui-icon-checkbox-on,.ui-icon-radio-off,.ui-icon-radio-on{"
-    "background-image:url(images/icons-36-white.png);"
-    "-moz-background-size:776px 18px;-o-background-size:776px 18px;"
-    "-webkit-background-size:776px 18px;background-size:776px 18px;}"
-    ".ui-icon-alt{background-image:url(images/icons-36-black.png);}}",
-
-    "@media screen and (min-width: 0 \\0){.ending-actions li a .icon-top,.en"
-    "ding-actions li a .icon-feed{vertical-align:text-bottom}.nav-previous{m"
-    "argin:20px auto 0}}",
+    // Unclosed @media block.
+    "@media screen and (max-width: 478px) {\n"
+    "  .main-header h2 {\n"
+    "    height: auto;\n"
+    "    margin-top: 2px;\n"
+    "    width: 70px;\n",
 
     // Things discovered in the wild by shanemc:
-
-    // No space between "and" and "(".
-    "@media all and(-webkit-max-device-pixel-ratio:10000),\n"
-    "   not all and(-webkit-min-device-pixel-ratio:0) {\n"
-    "\n"
-    "\t:root .RadTreeView_rtl .rtPlus,\n"
-    "\t:root .RadTreeView_rtl .rtMinus\n"
-    "\t{\n"
-    "\t\tposition: relative;\n"
-    "\t\tmargin-left: 2px;\n"
-    "\t\tmargin-right: -13px;\n"
-    "\t\tright: -15px;\n"
-    "\t}\n"
-    "}\n",
 
     // Zero width space <U+200B> = \xE2\x80\x8B
     // http://zenpencils.com/wp-content/plugins/zpcustomselectmenu/ddSlick.css

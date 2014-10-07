@@ -945,6 +945,52 @@ TEST_F(ParserTest, SkipCornerCases) {
   p.reset(new Parser("{[](} f\\(oo)} @rule bar"));
   EXPECT_TRUE(p->SkipToNextAny());
   EXPECT_STREQ("bar", p->in_);
+
+  // First {} block ends @media statement.
+  p.reset(new Parser("not all and (color), print { .a { color: red; } } "
+                     ".b { color: green; }"));
+  EXPECT_TRUE(p->SkipToAtRuleEnd());
+  EXPECT_STREQ(" .b { color: green; }", p->in_);
+
+  // But not nested inside parentheses.
+  p.reset(new Parser("and(\"don't\" { stop, here }) { } .b { color: green; }"));
+  EXPECT_TRUE(p->SkipToAtRuleEnd());
+  EXPECT_STREQ(" .b { color: green; }", p->in_);
+
+  // ; technically also ends a @media statement.
+  p.reset(new Parser("screen; .a { color: red; }"));
+  EXPECT_TRUE(p->SkipToAtRuleEnd());
+  EXPECT_STREQ(" .a { color: red; }", p->in_);
+
+  // Or it runs to EOF.
+  p.reset(new Parser("screen and (color, print"));
+  EXPECT_FALSE(p->SkipToAtRuleEnd());
+  EXPECT_STREQ("", p->in_);
+
+  // Commas separate each media query.
+  p.reset(new Parser("not all and (color), print { .a { color: red; } }"));
+  p->SkipToMediaQueryEnd();
+  EXPECT_STREQ(", print { .a { color: red; } }", p->in_);
+
+  // But not nested inside parentheses.
+  p.reset(new Parser("and(\"don't\", stop, here), screen { }"));
+  p->SkipToMediaQueryEnd();
+  EXPECT_STREQ(", screen { }", p->in_);
+
+  // { also signals end of media query.
+  p.reset(new Parser("screen { .a { color: red; } }"));
+  p->SkipToMediaQueryEnd();
+  EXPECT_STREQ("{ .a { color: red; } }", p->in_);
+
+  // ; technically also ends a media query.
+  p.reset(new Parser("screen; .a { color: red; }"));
+  p->SkipToMediaQueryEnd();
+  EXPECT_STREQ("; .a { color: red; }", p->in_);
+
+  // Or it runs to EOF.
+  p.reset(new Parser("screen and (color, print"));
+  p->SkipToMediaQueryEnd();
+  EXPECT_STREQ("", p->in_);
 }
 
 TEST_F(ParserTest, SkipMatching) {
@@ -1522,7 +1568,7 @@ TEST_F(ParserTest, rulesets) {
 
 TEST_F(ParserTest, atrules) {
   scoped_ptr<Parser> a(new Parser(
-      "@IMPORT url(assets/style.css) screen,printer"));
+      "@IMPORT url(assets/style.css) screen,printer;"));
   scoped_ptr<Stylesheet> t(new Stylesheet());
   a->ParseAtRule(t.get());
 
@@ -1750,10 +1796,33 @@ TEST_F(ParserTest, SelectorError) {
 }
 
 TEST_F(ParserTest, MediaError) {
-  Parser p("@media screen and (max-width^?` { .a { color: red; } }");
-  scoped_ptr<Stylesheet> stylesheet(p.ParseStylesheet());
-  EXPECT_EQ(Parser::kMediaError, p.errors_seen_mask());
-  EXPECT_EQ("/* AUTHOR */\n\n\n@media screen { .a {color: #ff0000} }\n",
+  scoped_ptr<Parser> p(new Parser(
+      "@media screen and (max-width^?`) { .a { color: red; } }"));
+  scoped_ptr<Stylesheet> stylesheet(p->ParseStylesheet());
+  EXPECT_TRUE(Parser::kMediaError & p->errors_seen_mask());
+  // Note: User agents are to represent a media query as "not all" when one
+  // of the specified media features is not known.
+  // http://www.w3.org/TR/css3-mediaqueries/#error-handling
+  EXPECT_EQ("/* AUTHOR */\n\n\n"
+            "@media not all { .a {color: #ff0000} }\n",
+            stylesheet->ToString());
+
+  p.reset(new Parser(
+      "@media screen and (max-width^?`), print { .a { color: red; } }"));
+  stylesheet.reset(p->ParseStylesheet());
+  EXPECT_TRUE(Parser::kMediaError & p->errors_seen_mask());
+  // Note: First media query should be treated as "not all", but the second
+  // one should be used normally.
+  EXPECT_EQ("/* AUTHOR */\n\n\n"
+            "@media not all, print { .a {color: #ff0000} }\n",
+            stylesheet->ToString());
+
+  p.reset(new Parser("@media { .a { color: red; } }"));
+  stylesheet.reset(p->ParseStylesheet());
+  EXPECT_FALSE(Parser::kMediaError & p->errors_seen_mask());
+  // Note: Empty media query means no media restrictions.
+  EXPECT_EQ("/* AUTHOR */\n\n\n"
+            ".a {color: #ff0000}\n",
             stylesheet->ToString());
 }
 
@@ -1795,20 +1864,29 @@ TEST_F(ParserTest, SkippedTokenError) {
 }
 
 TEST_F(ParserTest, CharsetError) {
+  // Valid
   Parser p("@charset \"UTF-8\";");
   scoped_ptr<Stylesheet> stylesheet(p.ParseStylesheet());
   EXPECT_EQ(Parser::kNoError, p.errors_seen_mask());
   EXPECT_EQ("/* AUTHOR */\n@charset \"UTF-8\";\n\n\n", stylesheet->ToString());
 
+  // Error: Identifier instead of string.
   Parser p2("@charset foobar;");
   stylesheet.reset(p2.ParseStylesheet());
   EXPECT_EQ(Parser::kCharsetError, p2.errors_seen_mask());
-  EXPECT_EQ("/* AUTHOR */\n@charset \"\";\n\n\n", stylesheet->ToString());
+  EXPECT_EQ("/* AUTHOR */\n\n\n\n", stylesheet->ToString());
 
+  // Error: Bad format.
   Parser p3("@charset \"UTF-8\" \"or 9\";");
   stylesheet.reset(p3.ParseStylesheet());
   EXPECT_EQ(Parser::kCharsetError, p3.errors_seen_mask());
-  EXPECT_EQ("/* AUTHOR */\n@charset \"UTF-8\";\n\n\n", stylesheet->ToString());
+  EXPECT_EQ("/* AUTHOR */\n\n\n\n", stylesheet->ToString());
+
+  // Error: No closing ;
+  Parser p4("@charset \"UTF-8\"");
+  stylesheet.reset(p4.ParseStylesheet());
+  EXPECT_EQ(Parser::kCharsetError, p4.errors_seen_mask());
+  EXPECT_EQ("/* AUTHOR */\n\n\n\n", stylesheet->ToString());
 }
 
 TEST_F(ParserTest, AcceptCorrectValues) {
@@ -1957,7 +2035,7 @@ TEST_F(ParserTest, Counter) {
 
 TEST_F(ParserTest, ParseNextImport) {
   scoped_ptr<Parser> parser(new Parser(
-      "@IMPORT url(assets/style.css) screen,printer"));
+      "@IMPORT url(assets/style.css) screen,printer;"));
   scoped_ptr<Import> import(parser->ParseNextImport());
   EXPECT_TRUE(import.get() != NULL);
   EXPECT_TRUE(parser->Done());
@@ -2028,7 +2106,7 @@ TEST_F(ParserTest, ParseNextImport) {
 
 TEST_F(ParserTest, ParseSingleImport) {
   scoped_ptr<Parser> parser(new Parser(
-      "@IMPORT url(assets/style.css) screen,printer"));
+      "@IMPORT url(assets/style.css) screen,printer;"));
   scoped_ptr<Import> import(parser->ParseAsSingleImport());
   EXPECT_TRUE(import.get() != NULL);
   if (import.get() != NULL) {
@@ -2159,42 +2237,42 @@ TEST_F(ParserTest, InvalidMediaQueries) {
   //      http://lists.w3.org/Archives/Public/www-style/2012Dec/0263.html
   p.reset(new Parser("@media all and(color) { a { color: red; } }"));
   s.reset(p->ParseStylesheet());
-  EXPECT_EQ(Parser::kMediaError, p->errors_seen_mask());
+  EXPECT_TRUE(Parser::kMediaError & p->errors_seen_mask());
 
   // Missing "and" between "all" and "(color)".
   p.reset(new Parser("@media all (color) { a { color: red; } }"));
   s.reset(p->ParseStylesheet());
-  EXPECT_EQ(Parser::kMediaError, p->errors_seen_mask());
+  EXPECT_TRUE(Parser::kMediaError & p->errors_seen_mask());
 
   // Missing "and" and space between "all" and "(color)".
   p.reset(new Parser("@media all(color) { a { color: red; } }"));
   s.reset(p->ParseStylesheet());
-  EXPECT_EQ(Parser::kMediaError, p->errors_seen_mask());
+  EXPECT_TRUE(Parser::kMediaError & p->errors_seen_mask());
 
   // Too many "and"s.
   p.reset(new Parser("@media all and and (color) { a { color: red; } }"));
   s.reset(p->ParseStylesheet());
-  EXPECT_EQ(Parser::kMediaError, p->errors_seen_mask());
+  EXPECT_TRUE(Parser::kMediaError & p->errors_seen_mask());
 
   // Too many "and"s and missing space.
   p.reset(new Parser("@media all and and(color) { a { color: red; } }"));
   s.reset(p->ParseStylesheet());
-  EXPECT_EQ(Parser::kMediaError, p->errors_seen_mask());
+  EXPECT_TRUE(Parser::kMediaError & p->errors_seen_mask());
 
   // Trailing "and".
   p.reset(new Parser("@media all and { a { color: red; } }"));
   s.reset(p->ParseStylesheet());
-  EXPECT_EQ(Parser::kMediaError, p->errors_seen_mask());
+  EXPECT_TRUE(Parser::kMediaError & p->errors_seen_mask());
 
   // Starting "and".
   p.reset(new Parser("@media and (color) { a { color: red; } }"));
   s.reset(p->ParseStylesheet());
-  EXPECT_EQ(Parser::kMediaError, p->errors_seen_mask());
+  EXPECT_TRUE(Parser::kMediaError & p->errors_seen_mask());
 
   // Starting "and" and no space.
   p.reset(new Parser("@media and(color) { a { color: red; } }"));
   s.reset(p->ParseStylesheet());
-  EXPECT_EQ(Parser::kMediaError, p->errors_seen_mask());
+  EXPECT_TRUE(Parser::kMediaError & p->errors_seen_mask());
 }
 
 TEST_F(ParserTest, ExtractCharset) {
@@ -2214,7 +2292,7 @@ TEST_F(ParserTest, ExtractCharset) {
   parser.reset(new Parser("@charset \"UTF-8\" \"or 9\";"));
   charset = parser->ExtractCharset();
   EXPECT_EQ(Parser::kCharsetError, parser->errors_seen_mask());
-  EXPECT_EQ("UTF-8", UnicodeTextToUTF8(charset));
+  EXPECT_EQ("", UnicodeTextToUTF8(charset));
 
   parser.reset(new Parser("@charsets \"UTF-8\" and \"ISO-8859-1\";"));
   charset = parser->ExtractCharset();
@@ -2452,14 +2530,15 @@ TEST_F(ParserTest, ParseMediaQueries) {
   EXPECT_EQ(1, q->size());
   EXPECT_EQ("foobar", UnicodeTextToUTF8((*q)[0]->media_type()));
 
-  // same results with or without "and".
-  scoped_ptr<Parser> b;
-  scoped_ptr<MediaQueries> r;
-  a.reset(new Parser("screen (max-width: 640px)"));
-  b.reset(new Parser("screen and (max-width: 640px)"));
+  // Basic media query
+  a.reset(new Parser("screen and (max-width: 640px)"));
   q.reset(a->ParseMediaQueries());
-  r.reset(b->ParseMediaQueries());
-  EXPECT_EQ(r->ToString(), q->ToString());
+  EXPECT_EQ("screen and (max-width: 640px)", q->ToString());
+
+  // Missing "and" invalidates media query.
+  a.reset(new Parser("screen (max-width: 640px)"));
+  q.reset(a->ParseMediaQueries());
+  EXPECT_EQ("not all", q->ToString());
 }
 
 TEST_F(ParserTest, ImportInMiddle) {
