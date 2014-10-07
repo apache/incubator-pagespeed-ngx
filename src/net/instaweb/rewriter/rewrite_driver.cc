@@ -157,7 +157,6 @@
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/http/http_names.h"
-#include "pagespeed/kernel/http/http_options.h"
 #include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/thread/scheduler.h"
 #include "pagespeed/kernel/util/statistics_logger.h"
@@ -1413,33 +1412,9 @@ void RewriteDriver::SetSessionFetcher(UrlAsyncFetcher* f) {
 
 CacheUrlAsyncFetcher* RewriteDriver::CreateCustomCacheFetcher(
     UrlAsyncFetcher* base_fetcher) {
-  CacheUrlAsyncFetcher* cache_fetcher = new CacheUrlAsyncFetcher(
-      server_context()->lock_hasher(),
-      server_context()->lock_manager(),
-      server_context()->http_cache(),
-      CacheFragment(),
-      cache_url_async_fetcher_async_op_hooks_.get(),
+  return server_context()->CreateCustomCacheFetcher(
+      options(), CacheFragment(), cache_url_async_fetcher_async_op_hooks_.get(),
       base_fetcher);
-  RewriteStats* stats = server_context_->rewrite_stats();
-  cache_fetcher->set_respect_vary(options()->respect_vary());
-  cache_fetcher->set_default_cache_html(options()->default_cache_html());
-  cache_fetcher->set_backend_first_byte_latency_histogram(
-      stats->backend_latency_histogram());
-  cache_fetcher->set_fallback_responses_served(
-      stats->fallback_responses_served());
-  cache_fetcher->set_fallback_responses_served_while_revalidate(
-      stats->fallback_responses_served_while_revalidate());
-  cache_fetcher->set_num_conditional_refreshes(
-      stats->num_conditional_refreshes());
-  cache_fetcher->set_serve_stale_if_fetch_error(
-      options()->serve_stale_if_fetch_error());
-  cache_fetcher->set_proactively_freshen_user_facing_request(
-      options()->proactively_freshen_user_facing_request());
-  cache_fetcher->set_num_proactively_freshen_user_facing_request(
-      stats->num_proactively_freshen_user_facing_request());
-  cache_fetcher->set_serve_stale_while_revalidate_threshold_sec(
-      options()->serve_stale_while_revalidate_threshold_sec());
-  return cache_fetcher;
 }
 
 CacheUrlAsyncFetcher* RewriteDriver::CreateCacheFetcher() {

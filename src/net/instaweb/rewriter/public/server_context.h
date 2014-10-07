@@ -25,6 +25,7 @@
 #include <utility>
 #include <vector>
 
+#include "net/instaweb/http/public/cache_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
@@ -208,6 +209,13 @@ class ServerContext {
   UrlAsyncFetcher* DefaultDistributedFetcher() {
     return default_distributed_fetcher_;
   }
+
+  // Creates a caching-fetcher based on the specified options.  If you call
+  // this with DefaultSystemFetcher() then it will not include any loopback
+  // fetching installed in the RewriteDriver.
+  CacheUrlAsyncFetcher* CreateCustomCacheFetcher(
+      const RewriteOptions* options, const GoogleString& fragment,
+      CacheUrlAsyncFetcher::AsyncOpHooks* hooks, UrlAsyncFetcher* fetcher);
 
   Timer* timer() const { return timer_; }
 

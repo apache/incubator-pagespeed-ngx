@@ -1279,4 +1279,36 @@ GoogleString ServerContext::FormatOption(StringPiece option_name,
   return StrCat(option_name, " ", args);
 }
 
+CacheUrlAsyncFetcher* ServerContext::CreateCustomCacheFetcher(
+    const RewriteOptions* options, const GoogleString& fragment,
+    CacheUrlAsyncFetcher::AsyncOpHooks* hooks, UrlAsyncFetcher* fetcher) {
+  CacheUrlAsyncFetcher* cache_fetcher = new CacheUrlAsyncFetcher(
+      lock_hasher(),
+      lock_manager(),
+      http_cache(),
+      fragment,
+      hooks,
+      fetcher);
+  RewriteStats* stats = rewrite_stats();
+  cache_fetcher->set_respect_vary(options->respect_vary());
+  cache_fetcher->set_default_cache_html(options->default_cache_html());
+  cache_fetcher->set_backend_first_byte_latency_histogram(
+      stats->backend_latency_histogram());
+  cache_fetcher->set_fallback_responses_served(
+      stats->fallback_responses_served());
+  cache_fetcher->set_fallback_responses_served_while_revalidate(
+      stats->fallback_responses_served_while_revalidate());
+  cache_fetcher->set_num_conditional_refreshes(
+      stats->num_conditional_refreshes());
+  cache_fetcher->set_serve_stale_if_fetch_error(
+      options->serve_stale_if_fetch_error());
+  cache_fetcher->set_proactively_freshen_user_facing_request(
+      options->proactively_freshen_user_facing_request());
+  cache_fetcher->set_num_proactively_freshen_user_facing_request(
+      stats->num_proactively_freshen_user_facing_request());
+  cache_fetcher->set_serve_stale_while_revalidate_threshold_sec(
+      options->serve_stale_while_revalidate_threshold_sec());
+  return cache_fetcher;
+}
+
 }  // namespace net_instaweb
