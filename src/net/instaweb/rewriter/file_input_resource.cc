@@ -21,6 +21,8 @@
 #include "base/logging.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "pagespeed/kernel/base/file_system.h"
 #include "pagespeed/kernel/base/message_handler.h"
@@ -38,16 +40,17 @@ const int64 kTimestampUnset = 0;
 
 namespace net_instaweb {
 
-class RewriteDriver;
-
 FileInputResource::FileInputResource(const RewriteDriver* driver,
-                                     const ContentType* type,
-                                     StringPiece url,
+                                     const ContentType* type, StringPiece url,
                                      StringPiece filename)
     : Resource(driver, type),
       url_(url.data(), url.size()),
       filename_(filename.data(), filename.size()),
-      last_modified_time_sec_(kTimestampUnset) {
+      last_modified_time_sec_(kTimestampUnset),
+      load_from_file_cache_ttl_ms_(
+          driver->options()->load_from_file_cache_ttl_ms()),
+      load_from_file_ttl_set_(
+          driver->options()->load_from_file_cache_ttl_ms_was_set()) {
 }
 
 FileInputResource::~FileInputResource() {
@@ -114,8 +117,13 @@ void FileInputResource::SetDefaultHeaders(const ContentType* content_type,
   // Note(sligocki): We are setting these to get FileInputResources
   // automatically cached for 5 minutes on the sync pathway. We could
   // probably remove it once we kill the sync pathway.
-  header->SetDateAndCaching(server_context_->timer()->NowMs(),
-                            header->implicit_cache_ttl_ms());
+  int64 cache_ttl_ms;
+  if (load_from_file_ttl_set_) {
+    cache_ttl_ms = load_from_file_cache_ttl_ms_;
+  } else {
+    cache_ttl_ms = header->implicit_cache_ttl_ms();
+  }
+  header->SetDateAndCaching(server_context_->timer()->NowMs(), cache_ttl_ms);
   header->SetLastModified(last_modified_time_sec_ * Timer::kSecondMs);
   header->ComputeCaching();
 }

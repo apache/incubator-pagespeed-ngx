@@ -189,6 +189,7 @@ const char RewriteOptions::kJsPreserveURLs[] = "JsPreserveURLs";
 const char RewriteOptions::kLazyloadImagesAfterOnload[] =
     "LazyloadImagesAfterOnload";
 const char RewriteOptions::kLazyloadImagesBlankUrl[] = "LazyloadImagesBlankUrl";
+const char RewriteOptions::kLoadFromFileCacheTtlMs[] = "LoadFromFileCacheTtlMs";
 const char RewriteOptions::kLogBackgroundRewrite[] = "LogBackgroundRewrite";
 const char RewriteOptions::kLogRewriteTiming[] = "LogRewriteTiming";
 const char RewriteOptions::kLogUrlIndices[] = "LogUrlIndices";
@@ -419,6 +420,8 @@ const int64 RewriteOptions::kDefaultMinResourceCacheTimeToRewriteMs = 0;
 const int64 RewriteOptions::kDefaultFlushBufferLimitBytes = 100 * 1024;
 const int64 RewriteOptions::kDefaultIdleFlushTimeMs = 10;
 const int64 RewriteOptions::kDefaultImplicitCacheTtlMs = 5 * Timer::kMinuteMs;
+const int64 RewriteOptions::kDefaultLoadFromFileCacheTtlMs =
+    5 * Timer::kMinuteMs;
 const int64 RewriteOptions::kDefaultMinCacheTtlMs = -1;
 const int64 RewriteOptions::kDefaultMetadataInputErrorsCacheTtlMs =
     5 * Timer::kMinuteMs;
@@ -1301,6 +1304,14 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       "Time in milliseconds to cache resources that lack an Expires or "
       "Cache-Control header", true);
+  AddBaseProperty(
+      kDefaultLoadFromFileCacheTtlMs,
+      &RewriteOptions::load_from_file_cache_ttl_ms_, "lfct",
+      kLoadFromFileCacheTtlMs,
+      kDirectoryScope,
+      "Time in milliseconds to cache resources loaded from file that lack an "
+      "Expires or Cache-Control header. If not explicitly set, defaults to "
+      "using the value set by implicit_cache_ttl_ms", true);
   AddBaseProperty(
       kDefaultImageMaxRewritesAtOnce,
       &RewriteOptions::image_max_rewrites_at_once_,

@@ -1570,6 +1570,7 @@ Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedImageWebpRecompressionQuality 85
 #ALL_DIRECTIVES ModPagespeedImageWebpRecompressionQualityForSmallScreens 85
 #ALL_DIRECTIVES ModPagespeedImplicitCacheTtlMs 60000
+#ALL_DIRECTIVES ModPagespeedLoadFromFileCacheTtlMs 60000
 #ALL_DIRECTIVES ModPagespeedInPlaceResourceOptimization on
 #ALL_DIRECTIVES ModPagespeedIncreaseSpeedTracking true
 #ALL_DIRECTIVES ModPagespeedInstallCrashHandler off

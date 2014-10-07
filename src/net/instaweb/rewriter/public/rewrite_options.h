@@ -296,6 +296,7 @@ class RewriteOptions {
   static const char kJsPreserveURLs[];
   static const char kLazyloadImagesAfterOnload[];
   static const char kLazyloadImagesBlankUrl[];
+  static const char kLoadFromFileCacheTtlMs[];
   static const char kLogBackgroundRewrite[];
   static const char kLogRewriteTiming[];
   static const char kLogUrlIndices[];
@@ -646,6 +647,7 @@ class RewriteOptions {
   static const int64 kDefaultBlinkHtmlChangeDetectionTimeMs;
   static const int kDefaultMaxPrefetchJsElements;
   static const int64 kDefaultOptionCookiesDurationMs;
+  static const int64 kDefaultLoadFromFileCacheTtlMs;
 
   // IE limits URL size overall to about 2k characters.  See
   // http://support.microsoft.com/kb/208427/EN-US
@@ -2198,6 +2200,16 @@ class RewriteOptions {
     return implicit_cache_ttl_ms_.value();
   }
 
+  void set_load_from_file_cache_ttl_ms(int64 x) {
+    set_option(x, &load_from_file_cache_ttl_ms_);
+  }
+  int64 load_from_file_cache_ttl_ms() const {
+    return load_from_file_cache_ttl_ms_.value();
+  }
+  bool load_from_file_cache_ttl_ms_was_set() const {
+    return load_from_file_cache_ttl_ms_.was_set();
+  }
+
   void set_x_header_value(const StringPiece& p) {
     set_option(p.as_string(), &x_header_value_);
   }
@@ -3672,6 +3684,12 @@ class RewriteOptions {
   // are "likely cacheable" (e.g. images, js, css, not html) and have no
   // explicit cache ttl or expiration date.
   Option<int64> implicit_cache_ttl_ms_;
+
+  // The number of miliseconds of cache TTL we assign to resources that are
+  // loaded from file and "likely cacheable" and have no explicit cache ttl or
+  // expiration date. If this option is not set explicitly, fall back to using
+  // implicit_cache_ttl_ms for load from file cache ttl.
+  Option<int64> load_from_file_cache_ttl_ms_;
 
   // Maximum length (in bytes) of response content.
   Option<int64> max_cacheable_response_content_length_;

@@ -68,6 +68,8 @@ class FileInputResource : public Resource {
   GoogleString url_;
   GoogleString filename_;
   int64 last_modified_time_sec_;  // Loaded from file mtime.
+  int64 load_from_file_cache_ttl_ms_;
+  bool load_from_file_ttl_set_;
 
   DISALLOW_COPY_AND_ASSIGN(FileInputResource);
 };

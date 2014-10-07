@@ -915,6 +915,7 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
     RewriteOptions::kJsPreserveURLs,
     RewriteOptions::kLazyloadImagesAfterOnload,
     RewriteOptions::kLazyloadImagesBlankUrl,
+    RewriteOptions::kLoadFromFileCacheTtlMs,
     RewriteOptions::kLogBackgroundRewrite,
     RewriteOptions::kLogRewriteTiming,
     RewriteOptions::kLogUrlIndices,
