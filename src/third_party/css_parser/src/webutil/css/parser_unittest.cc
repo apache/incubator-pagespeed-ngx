@@ -1577,10 +1577,17 @@ TEST_F(ParserTest, atrules) {
   EXPECT_EQ(2, t->import(0).media_queries().size());
   EXPECT_EQ(true, a->Done());
 
+  a.reset(new Parser("@import url(foo.css)"));
+  t.reset(new Stylesheet());
+  a->ParseAtRule(t.get());
+  // We should raise an error for unclosed @import.
+  EXPECT_NE(Parser::kNoError, a->errors_seen_mask());
+  // But also still record it.
+  EXPECT_EQ(1, t->imports().size());
+
   a.reset(new Parser("@charset \"ISO-8859-1\" ;"));
   t.reset(new Stylesheet());
   a->ParseAtRule(t.get());
-
   EXPECT_EQ(true, a->Done());
 
   a.reset(new Parser(
@@ -1886,7 +1893,8 @@ TEST_F(ParserTest, CharsetError) {
   Parser p4("@charset \"UTF-8\"");
   stylesheet.reset(p4.ParseStylesheet());
   EXPECT_EQ(Parser::kCharsetError, p4.errors_seen_mask());
-  EXPECT_EQ("/* AUTHOR */\n\n\n\n", stylesheet->ToString());
+  // @charset is still recorded even though it was unclosed.
+  EXPECT_EQ("/* AUTHOR */\n@charset \"UTF-8\";\n\n\n", stylesheet->ToString());
 }
 
 TEST_F(ParserTest, AcceptCorrectValues) {

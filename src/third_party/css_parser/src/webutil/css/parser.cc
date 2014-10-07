@@ -2466,12 +2466,15 @@ void Parser::ParseAtRule(Stylesheet* stylesheet) {
     } else {
       scoped_ptr<Import> import(ParseImport());
       SkipSpace();
-      if (Done()) {
-        ReportParsingError(kImportError,
-                           "Unexpected EOF in @import statement.");
-        correctly_terminated = false;
-      } else if (import.get()) {
-        if (*in_ == ';') {
+      if (import.get()) {
+        if (Done()) {
+          ReportParsingError(kImportError,
+                             "Unexpected EOF in @import statement.");
+          correctly_terminated = false;
+          // @import was not closed with a ; and so we must preserve an error
+          // message, but we still need to save this import.
+          stylesheet->mutable_imports().push_back(import.release());
+        } else if (*in_ == ';') {
           in_++;
           stylesheet->mutable_imports().push_back(import.release());
         } else {
@@ -2492,14 +2495,14 @@ void Parser::ParseAtRule(Stylesheet* stylesheet) {
     } else {
       UnicodeText s = ParseCharset();
       SkipSpace();
-      if (Done()) {
+      if (preservation_mode_ && (errors_seen_mask_ != start_errors_seen_mask)) {
+        ReportParsingError(kCharsetError, "Failed to parse @charset.");
+        correctly_terminated = SkipToAtRuleEnd();
+      } else if (Done()) {
         ReportParsingError(kCharsetError,
                            "Unexpected EOF in @charset statement.");
         correctly_terminated = false;
-      } else if (preservation_mode_ &&
-                 (errors_seen_mask_ != start_errors_seen_mask)) {
-        ReportParsingError(kCharsetError, "Failed to parse @charset.");
-        correctly_terminated = SkipToAtRuleEnd();
+        stylesheet->mutable_charsets().push_back(s);
       } else {
         if (*in_ == ';') {
           in_++;
