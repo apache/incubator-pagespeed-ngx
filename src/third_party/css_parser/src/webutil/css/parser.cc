@@ -2556,6 +2556,7 @@ void Parser::ParseAtRule(Stylesheet* stylesheet) {
         DCHECK_EQ('}', *in_);
         in_++;
       } else {
+        ReportParsingError(kMediaError, "Unexpected EOF in @media statement.");
         correctly_terminated = false;
       }
     }
