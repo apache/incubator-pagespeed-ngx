@@ -32,8 +32,14 @@ class Writer {
   virtual ~Writer();
 
   virtual bool Write(const StringPiece& str, MessageHandler* handler) = 0;
-
   virtual bool Flush(MessageHandler* message_handler) = 0;
+
+  // Dumps the contents of what's been written to the Writer.  Many
+  // Writer implementations will not be able to do this, and the default
+  // implementation will return false.  But StringWriter and
+  // SharedCircularBuffer can dump their contents, and override
+  // this with implementations that return true.
+  virtual bool Dump(Writer* writer, MessageHandler* message_handler);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Writer);

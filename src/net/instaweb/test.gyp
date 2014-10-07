@@ -222,6 +222,7 @@
         'spriter/image_spriter_test.cc',
         'spriter/libpng_image_library_test.cc',
         'system/apr_mem_cache_test.cc',
+        'system/system_message_handler_test.cc',
         'util/cache_property_store_test.cc',
         'util/fallback_property_page_test.cc',
         'util/property_cache_test.cc',

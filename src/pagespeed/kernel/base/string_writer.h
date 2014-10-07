@@ -35,6 +35,7 @@ class StringWriter : public Writer {
   virtual ~StringWriter();
   virtual bool Write(const StringPiece& str, MessageHandler* message_handler);
   virtual bool Flush(MessageHandler* message_handler);
+  virtual bool Dump(Writer* writer, MessageHandler* message_handler);
  private:
   GoogleString* string_;
 

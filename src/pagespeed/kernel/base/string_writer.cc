@@ -37,4 +37,8 @@ bool StringWriter::Flush(MessageHandler* message_handler) {
   return true;
 }
 
+bool StringWriter::Dump(Writer* writer, MessageHandler* message_handler) {
+  return writer->Write(*string_, message_handler);
+}
+
 }  // namespace net_instaweb

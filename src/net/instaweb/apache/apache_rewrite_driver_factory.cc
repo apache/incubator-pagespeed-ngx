@@ -37,13 +37,13 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/sharedmem/shared_circular_buffer.h"
 #include "pagespeed/kernel/thread/pthread_shared_mem.h"
 #include "pagespeed/kernel/thread/slow_worker.h"
 
 namespace net_instaweb {
 
 class ProcessContext;
-class SharedCircularBuffer;
 
 ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
     const ProcessContext& process_context,

@@ -21,6 +21,7 @@
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
+#include "pagespeed/kernel/base/null_message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/sharedmem/shared_mem_test_base.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -67,6 +68,7 @@ class SharedCircularBufferTestBase : public testing::Test {
   scoped_ptr<AbstractSharedMem> shmem_runtime_;
   scoped_ptr<ThreadSystem> thread_system_;
   MockMessageHandler handler_;
+  NullMessageHandler null_handler_;
   // Message to write in Child process.
   // We can't pass in argument in callback functions in this TestBase,
   // stick value to member variable instead.

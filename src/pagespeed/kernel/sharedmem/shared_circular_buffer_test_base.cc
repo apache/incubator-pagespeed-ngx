@@ -17,6 +17,7 @@
 #include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
+#include "pagespeed/kernel/base/null_message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/thread_system.h"
@@ -68,7 +69,7 @@ SharedCircularBuffer* SharedCircularBufferTestBase::ParentInit() {
 void SharedCircularBufferTestBase::TestCreate() {
   // Create buffer from root Process.
   scoped_ptr<SharedCircularBuffer> buff(ParentInit());
-  buff->Write("parent");
+  buff->Write("parent", &null_handler_);
   EXPECT_EQ("parent", buff->ToString(&handler_));
   ASSERT_TRUE(CreateChild(&SharedCircularBufferTestBase::TestCreateChild));
   test_env_->WaitForChildren();
@@ -82,7 +83,7 @@ void SharedCircularBufferTestBase::TestCreate() {
 void SharedCircularBufferTestBase::TestCreateChild() {
   scoped_ptr<SharedCircularBuffer> buff(ChildInit());
   // Child writes to buffer.
-  if (!buff->Write("kid")) {
+  if (!buff->Write("kid", &null_handler_)) {
     test_env_->ChildFailed();
   }
 }
@@ -102,14 +103,14 @@ void SharedCircularBufferTestBase::TestAdd() {
 
 void SharedCircularBufferTestBase::TestAddChild() {
   scoped_ptr<SharedCircularBuffer> buff(ChildInit());
-  buff->Write("012");
+  buff->Write("012", &null_handler_);
 }
 
 void SharedCircularBufferTestBase::TestClear() {
   // We can clear things from the child
   scoped_ptr<SharedCircularBuffer> buff(ParentInit());
   // Write a string to buffer.
-  buff->Write("012");
+  buff->Write("012", &null_handler_);
   EXPECT_EQ("012", buff->ToString(&handler_));
   ASSERT_TRUE(CreateChild(&SharedCircularBufferTestBase::TestClearChild));
   test_env_->WaitForChildren();
@@ -128,7 +129,7 @@ void SharedCircularBufferTestBase::TestClearChild() {
 void SharedCircularBufferTestBase::TestChildWrite() {
   scoped_ptr<SharedCircularBuffer> buff(ChildInit());
   buff->InitSegment(false, &handler_);
-  buff->Write(message_);
+  buff->Write(message_, &null_handler_);
 }
 
 void SharedCircularBufferTestBase::TestChildBuff() {
@@ -145,7 +146,7 @@ void SharedCircularBufferTestBase::TestCircular() {
   scoped_ptr<SharedCircularBuffer> parent(ParentInit());
   parent->Clear();
   // Write in parent process.
-  parent->Write("012345");
+  parent->Write("012345", &null_handler_);
   EXPECT_EQ("012345", parent->ToString(&handler_));
   // Write in a child process.
   message_ = "67";
@@ -154,7 +155,7 @@ void SharedCircularBufferTestBase::TestCircular() {
   test_env_->WaitForChildren();
   EXPECT_EQ("01234567", parent->ToString(&handler_));
   // Write in parent process.
-  parent->Write("89");
+  parent->Write("89", &null_handler_);
   // Check buffer content in a child process.
   // Buffer size is 10. It should be filled exactly so far.
   expected_result_ = "0123456789";
@@ -162,10 +163,10 @@ void SharedCircularBufferTestBase::TestCircular() {
       &SharedCircularBufferTestBase::TestChildBuff));
   test_env_->WaitForChildren();
   // Lose the first char.
-  parent->Write("a");
+  parent->Write("a", &null_handler_);
   EXPECT_EQ("123456789a", parent->ToString(&handler_));
   // Write a message with length larger than buffer.
-  parent->Write("bcdefghijkl");
+  parent->Write("bcdefghijkl", &null_handler_);
   EXPECT_EQ("cdefghijkl", parent->ToString(&handler_));
   parent->GlobalCleanup(&handler_);
 }

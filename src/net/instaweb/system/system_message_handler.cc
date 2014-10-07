@@ -21,10 +21,11 @@
 #include <unistd.h>
 
 #include "pagespeed/kernel/base/abstract_mutex.h"
+#include "pagespeed/kernel/base/null_message_handler.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/time_util.h"
 #include "pagespeed/kernel/base/timer.h"
-#include "pagespeed/kernel/sharedmem/shared_circular_buffer.h"
+#include "pagespeed/kernel/base/writer.h"
 
 namespace net_instaweb {
 
@@ -38,27 +39,36 @@ SystemMessageHandler::SystemMessageHandler(Timer* timer, AbstractMutex* mutex)
 SystemMessageHandler::~SystemMessageHandler() {
 }
 
-void SystemMessageHandler::set_buffer(SharedCircularBuffer* buff) {
+void SystemMessageHandler::set_buffer(Writer* buff) {
   ScopedMutex lock(mutex_.get());
   buffer_ = buff;
 }
 
 void SystemMessageHandler::AddMessageToBuffer(
-    MessageType type, GoogleString formatted_message) {
+    MessageType type, StringPiece formatted_message) {
+  if (formatted_message.empty()) {
+    return;
+  }
   GoogleString message;
   GoogleString time;
-  GoogleString type_str = MessageTypeToString(type);
+  const char* type_str = MessageTypeToString(type);
   if (!ConvertTimeToString(timer_->NowMs(), &time)) {
     time = "?";
   }
-  StrAppend(&message, type_str.substr(0, 1), "[", time, "] ",
-            "[", type_str, "] ");
-  StrAppend(&message, pid_string_, " ", formatted_message, "\n");
+  StringPiece type_char = StringPiece(type_str, 1);
+  StringPieceVector lines;
+  SplitStringPieceToVector(formatted_message, "\n", &lines, false);
+  StrAppend(&message, type_char, "[", time, "] [", type_str, "] ");
+  StrAppend(&message, pid_string_, " ", lines[0], "\n");
+  for (int i = 1, n = lines.size(); i < n; ++i) {
+    StrAppend(&message, type_char, lines[i], "\n");
+  }
   {
     ScopedMutex lock(mutex_.get());
     // Cannot write to SharedCircularBuffer before it's set up.
     if (buffer_ != NULL) {
-      buffer_->Write(message);
+      NullMessageHandler null_handler;
+      buffer_->Write(message, &null_handler);
     }
   }
 }

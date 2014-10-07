@@ -23,6 +23,7 @@
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/writer.h"
 
 namespace net_instaweb {
 
@@ -31,7 +32,6 @@ class AbstractSharedMemSegment;
 class AbstractMutex;
 class CircularBuffer;
 class MessageHandler;
-class Writer;
 
 // Shared memory circular buffer, the content of its shared memory segment is a
 // Mutex and a CircularBuffer.
@@ -40,7 +40,7 @@ class Writer;
 // calling InitSegment(true, handler) once in the parent process and calling
 // InitSegment(false, handler) in each child.
 
-class SharedCircularBuffer {
+class SharedCircularBuffer : public Writer {
  public:
   // Construct with shared memory, data buffer capacity, filename_prefix and
   // filename_suffix. filename_prefix and filename_suffix are used to name
@@ -58,9 +58,11 @@ class SharedCircularBuffer {
   // Reset circular buffer.
   void Clear();
   // Write content to circular buffer.
-  bool Write(const StringPiece& message);
+  virtual bool Write(const StringPiece& message, MessageHandler* handler);
+  virtual bool Flush(MessageHandler* message_handler) { return true; }
+
   // Write content of data in buffer to writer, without clearing the buffer.
-  bool Dump(Writer* writer, MessageHandler* handler);
+  virtual bool Dump(Writer* writer, MessageHandler* handler);
   // Return data content as string. This is for test purposes.
   GoogleString ToString(MessageHandler* handler);
   // This should be called from the root process as it is about to exit, when no

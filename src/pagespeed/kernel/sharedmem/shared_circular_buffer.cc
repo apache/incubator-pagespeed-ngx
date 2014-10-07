@@ -101,7 +101,8 @@ void SharedCircularBuffer::Clear() {
   buffer_->Clear();
 }
 
-bool SharedCircularBuffer::Write(const StringPiece& message) {
+bool SharedCircularBuffer::Write(const StringPiece& message,
+                                 MessageHandler* handler) {
   ScopedMutex hold_lock(mutex_.get());
   return buffer_->Write(message);
 }
