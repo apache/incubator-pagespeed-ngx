@@ -25,7 +25,6 @@
 #include "net/instaweb/apache/apache_request_context.h"
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 #include "net/instaweb/apache/apache_server_context.h"
-#include "net/instaweb/apache/apache_slurp.h"
 #include "net/instaweb/apache/apache_writer.h"
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/header_util.h"
@@ -1047,14 +1046,23 @@ apr_status_t InstawebHandler::instaweb_handler(request_rec* request) {
                  handle_as_resource(server_context, request, &gurl)) {
         ret = OK;
       }
-    }
 
-    // Check for HTTP_NO_CONTENT here since that's the status used for a
-    // successfully handled beacon.
-    if (ret != OK && ret != HTTP_NO_CONTENT &&
-        (global_config->slurping_enabled() || global_config->test_proxy())) {
-      SlurpUrl(server_context, request);
-      ret = OK;
+      // Check for HTTP_NO_CONTENT here since that's the status used for a
+      // successfully handled beacon.
+      if (ret != OK && ret != HTTP_NO_CONTENT &&
+          gurl.Host() != "localhost" &&
+          (global_config->slurping_enabled() || global_config->test_proxy() ||
+           !global_config->domain_lawyer()->proxy_suffix().empty())) {
+        // TODO(jmarantz): Consider moving the InstawebHandler up above
+        // where we assign 'const char* url' above because we are repeating
+        // a bunch of string-hacking here in the constructor.  However, we
+        // really want the query-param evaluation happening inside the
+        // constructor here.
+        InstawebHandler instaweb_handler(request);
+        if (instaweb_handler.ProxyUrl()) {
+          ret = OK;
+        }
+      }
     }
   }
   return ret;

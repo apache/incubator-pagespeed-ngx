@@ -173,6 +173,11 @@ class InstawebHandler {
   // Waits for an outstanding fetch (obtained by MakeFetch) to complete.
   void WaitForFetch();
 
+  // Loads the URL based on the fetchers and other infrastructure in the
+  // factory, returning true if the request was handled.  This is used
+  // both for slurping and for handling URLs ending with proxy_suffix.
+  bool ProxyUrl();
+
   RequestHeaders* ReleaseRequestHeaders() { return request_headers_.release(); }
 
   // Returns the options, whether they were custom-computed due to htaccess

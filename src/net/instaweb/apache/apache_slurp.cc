@@ -14,46 +14,24 @@
 //
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/apache/apache_slurp.h"
-
-// Must precede any Apache includes, for now, due a conflict in
-// the use of 'OK" as an Instaweb enum and as an Apache #define.
-#include "net/instaweb/apache/header_util.h"
-#include "net/instaweb/apache/apache_config.h"
-#include "net/instaweb/apache/instaweb_context.h"
-
-// TODO(jmarantz): serf_url_async_fetcher evidently sets
-// 'gzip' unconditionally, and the response includes the 'gzip'
-// encoding header, but serf unzips the response itself.
-//
-// I think the correct behavior is that our async fetcher should
-// transmit the 'gzip' request header if it was specified in the call
-// to StreamingFetch.  This would be easy to fix.
-//
-// Unfortunately, serf 0.31 appears to unzip the content for us, which
-// is not what we are asking for.  And it leaves the 'gzip' response
-// header in despite having unzipped it itself.  I have tried later
-// versions of serf, but the API is not compatible (easy to deal with)
-// but the resulting binary has unresolved symbols.  I am wondering
-// whether we will have to go to libcurl.
-//
-// For now use wget when slurping additional files.
-
 #include "base/logging.h"
 #include "net/instaweb/apache/apache_server_context.h"
 #include "net/instaweb/apache/apache_writer.h"
+#include "net/instaweb/apache/instaweb_handler.h"
 #include "net/instaweb/http/public/async_fetch.h"
+#include "net/instaweb/http/public/cache_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_dump_url_fetcher.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
-#include "net/instaweb/rewriter/public/rewrite_query.h"
+#include "net/instaweb/system/public/system_rewrite_options.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/chunking_writer.h"
 #include "pagespeed/kernel/base/condvar.h"
 #include "pagespeed/kernel/base/message_handler.h"
+#include "pagespeed/kernel/base/ref_counted_ptr.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -63,11 +41,11 @@
 #include "pagespeed/kernel/http/http_names.h"
 #include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/response_headers.h"
-#include "pagespeed/kernel/http/query_params.h"
 
 // The Apache headers must be after instaweb headers.  Otherwise, the
 // compiler will complain
 //   "strtoul_is_not_a_portable_function_use_strtol_instead".
+// Also note the use of 'OK" as an Instaweb enum and as an Apache #define.
 #include "http_protocol.h"
 #include "httpd.h"
 
@@ -75,68 +53,9 @@ namespace net_instaweb {
 
 namespace {
 
-// Default handler when the file is not found
-void SlurpDefaultHandler(request_rec* r) {
-  ap_set_content_type(r, "text/html; charset=utf-8");
-  GoogleString buf = StringPrintf(
-      "<html><head><title>Slurp Error</title></head>"
-      "<body><h1>Slurp failed</h1>\n"
-      "<p>host=%s\n"
-      "<p>uri=%s\n"
-      "</body></html>",
-      r->hostname, r->unparsed_uri);
-  ap_rputs(buf.c_str(), r);
-  r->status = HttpStatus::kNotFound;
-  r->status_line = "Not Found";
-}
-
-// Remove any mod-pagespeed-specific modifiers before we go to our slurped
-// fetcher.
-//
-// TODO(jmarantz): share the string constants from mod_instaweb.cc and
-// formalize the prefix-matching assumed here.
-GoogleString RemoveModPageSpeedQueryParams(
-    const GoogleString& uri, const char* query_param_string) {
-  QueryParams query_params, stripped_query_params;
-  query_params.ParseFromUntrustedString(query_param_string);
-  bool rewrite_query_params = false;
-
-  for (int i = 0; i < query_params.size(); ++i) {
-    StringPiece name = query_params.name(i);
-    if (name.starts_with(RewriteQuery::kModPagespeed) ||
-        name.starts_with(RewriteQuery::kPageSpeed)) {
-      rewrite_query_params = true;
-    } else {
-      const GoogleString* value = query_params.EscapedValue(i);
-      StringPiece value_piece;  // NULL data by default.
-      if (value != NULL) {
-        value_piece = *value;
-      }
-      stripped_query_params.AddEscaped(name, value_piece);
-    }
-  }
-
-  GoogleString stripped_url;
-  if (rewrite_query_params) {
-    // TODO(jmarantz): It would be nice to use GoogleUrl to do this but
-    // it's not clear how it would help.  Instead just hack the string.
-    GoogleString::size_type question_mark = uri.find('?');
-    CHECK(question_mark != GoogleString::npos);
-    stripped_url.append(uri.data(), question_mark);  // does not include "?" yet
-    if (stripped_query_params.size() != 0) {
-      StrAppend(&stripped_url, "?", stripped_query_params.ToEscapedString());
-    }
-  } else {
-    stripped_url = uri;
-  }
-  return stripped_url;
-}
-
 // Some of the sites we are trying to slurp have pagespeed enabled already.
 // We actually want to start with the non-pagespeed-enabled site.  But we'd
 // rather not send ModPagespeed=off to servers that are not expecting it.
-// TODO(sligocki): Perhaps we should just send the "ModPagespeed: off" header
-// which seems less intrusive.
 class StrippingFetch : public StringAsyncFetch {
  public:
   StrippingFetch(const GoogleString& url_input,
@@ -160,6 +79,8 @@ class StrippingFetch : public StringAsyncFetch {
     // To test sharding domains from a slurp of a site that does not support
     // sharded domains, we apply mapping origin domain here.  Simply map all
     // the shards back into the origin domain in pagespeed.conf.
+    request_headers()->Add(kPageSpeedHeader, "off");
+    request_headers()->Add(kModPagespeedHeader, "off");
     GoogleString origin_url;
     GoogleString host_header;
     bool is_proxy = false;
@@ -190,6 +111,10 @@ class StrippingFetch : public StringAsyncFetch {
                (response_headers()->Lookup1(kPageSpeedHeader) != NULL)) {
       // First pass -- the slurped site evidently had mod_pagespeed already
       // enabled.  Turn it off and re-fetch.
+
+      // Note that the request headers might be sanitized as we are entering
+      // the origin network, so there's no guarantees.  We might need to
+      // send in the query-params after all.
       LOG(ERROR) << "URL " << url_ << " already has mod_pagespeed.  Stripping.";
       Reset();  // Clears output buffer and response_headers.
       GoogleString::size_type question = url_.find('?');
@@ -199,8 +124,6 @@ class StrippingFetch : public StringAsyncFetch {
         url_ += "&ModPagespeed=off";
       }
       stripped_ = true;
-      // TODO(sligocki): This currently allows infinite looping behavior if
-      // someone returns X-Mod-Pagespeed headers unexpectedly.
       fetcher_->Fetch(url_, message_handler_, this);
       done = false;
     } else {
@@ -233,46 +156,70 @@ class StrippingFetch : public StringAsyncFetch {
 
 }  // namespace
 
-void SlurpUrl(ApacheServerContext* server_context, request_rec* r) {
-  const char* url =
-      InstawebContext::MakeRequestUrl(*server_context->global_options(), r);
-  GoogleString stripped_url = RemoveModPageSpeedQueryParams(
-      url, r->parsed_uri.query);
+bool InstawebHandler::ProxyUrl() {
+  GoogleString origin_host;
+  GoogleString stripped_url = stripped_gurl_.Spec().as_string();
+  const DomainLawyer* lawyer = options()->domain_lawyer();
+  const GoogleString& proxy_suffix = lawyer->proxy_suffix();
+  if (!proxy_suffix.empty() &&
+      !lawyer->StripProxySuffix(stripped_gurl_, &stripped_url, &origin_host)) {
+    // This is simply a request for a URL whose host does not end in
+    // proxy_suffix.  Let another Apache handler handle it; it might
+    // be a static asset, mod_pagespeed_example, etc.  Note that this
+    // typically only happens when testing via forward proxy setting
+    // in the browser.
+    return false;
+  }
 
   // Figure out if we should be using a slurp fetcher rather than the default
   // system fetcher.
-  UrlAsyncFetcher* fetcher = server_context->DefaultSystemFetcher();
-  scoped_ptr<HttpDumpUrlFetcher> slurp_fetcher;
+  UrlAsyncFetcher* fetcher = server_context_->DefaultSystemFetcher();
+  scoped_ptr<UrlAsyncFetcher> slurp_fetcher;
 
-  ApacheConfig* global_config = server_context->global_config();
-  if (global_config->test_proxy() &&
-      !global_config->test_proxy_slurp().empty()) {
+  if (options()->test_proxy() && !options()->test_proxy_slurp().empty()) {
     slurp_fetcher.reset(new HttpDumpUrlFetcher(
-        global_config->test_proxy_slurp(), server_context->file_system(),
-        server_context->timer()));
+        options()->test_proxy_slurp(), server_context_->file_system(),
+        server_context_->timer()));
+    fetcher = slurp_fetcher.get();
+  } else if (!options()->slurping_enabled()) {
+    // Passing the 'fetcher' explicitly here rather than calling
+    // CreateCacheFetcher() avoids getting the driver's loopback
+    // fetcher.  We don't want the loopback fetcher because we
+    // are proxying an external site.
+
+    const GoogleString& fragment = options()->cache_fragment().empty()
+        ? request_context_->minimal_private_suffix()
+        : options()->cache_fragment();
+    slurp_fetcher.reset(server_context_->CreateCustomCacheFetcher(
+        options(), fragment, NULL, fetcher));
     fetcher = slurp_fetcher.get();
   }
 
-  MessageHandler* handler = server_context->message_handler();
+  MessageHandler* handler = server_context_->message_handler();
   RequestContextPtr request_context(
       // TODO(sligocki): Do we want custom options here?
-      new RequestContext(global_config->ComputeHttpOptions(),
-                         server_context->thread_system()->NewMutex(),
-                         server_context->timer()));
-  StrippingFetch fetch(stripped_url, global_config->domain_lawyer(),
-                       fetcher, server_context->thread_system(),
+      new RequestContext(options()->ComputeHttpOptions(),
+                         server_context_->thread_system()->NewMutex(),
+                         server_context_->timer()));
+  StrippingFetch fetch(stripped_url, options()->domain_lawyer(),
+                       fetcher, server_context_->thread_system(),
                        request_context, handler);
-  ApacheRequestToRequestHeaders(*r, fetch.request_headers());
+  fetch.set_request_headers(request_headers_.get());
+  if (!origin_host.empty()) {
+    // origin_host has proxy_suffix (if any) stripped out, allowing us
+    // to fetch the origin content.
+    fetch.request_headers()->Replace(HttpAttributes::kHost, origin_host);
+  }
 
   bool fetch_succeeded = fetch.Fetch();
   if (fetch_succeeded) {
     // We always disable downstream header filters when sending out
     // slurped resources, since we've captured them from the origin
     // in the fetch we did to write the slurp.
-    ApacheWriter apache_writer(r);
+    ApacheWriter apache_writer(request_);
     apache_writer.set_disable_downstream_header_filters(true);
     ChunkingWriter chunking_writer(
-        &apache_writer, global_config->slurp_flush_limit());
+        &apache_writer, options()->slurp_flush_limit());
     apache_writer.OutputHeaders(fetch.response_headers());
     chunking_writer.Write(fetch.buffer(), handler);
   } else {
@@ -284,8 +231,9 @@ void SlurpUrl(ApacheServerContext* server_context, request_rec* r) {
   }
 
   if (!fetch_succeeded || fetch.response_headers()->IsErrorStatus()) {
-    server_context->ReportSlurpNotFound(stripped_url, r);
+    server_context_->ReportSlurpNotFound(stripped_url, request_);
   }
+  return true;
 }
 
 }  // namespace net_instaweb
