@@ -487,10 +487,8 @@ ScanlineStatus WebpFrameWriter::FinalizeWrite() {
   WebPDataClear(&webp_data);
 
   PS_DLOG_INFO(message_handler(), \
-      "Stats: coded_size: %d; lossless_size: %d; alpha size: %d;"
-      " layer size: %d",
-      stats_.coded_size, stats_.lossless_size, stats_.alpha_data_size,
-      stats_.layer_data_size);
+      "Stats: coded_size: %d; lossless_size: %d; alpha size: %d;",
+      stats_.coded_size, stats_.lossless_size, stats_.alpha_data_size);
 
   return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
 }
