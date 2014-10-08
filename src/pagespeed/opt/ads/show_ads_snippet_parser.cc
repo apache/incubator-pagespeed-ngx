@@ -28,20 +28,18 @@ namespace {
 
 const char kAttributeNamePatternItem[] =
     "google_"
-    "([a-zA-Z0-9]*)_"
-    "([a-zA-Z0-9_]*)";
+    "([a-zA-Z0-9]*)"
+    "(_[a-zA-Z0-9_]*)?";
 
-const char kAdFormatPattern[] = "([0-9]*)x([0-9]*)";
+const char kAdFormatPattern[] = "([0-9]*)x([0-9]*)(_[a-zA-Z0-9_]+)?";
 
 bool IsValidAttributeName(StringPiece name) {
   return RE2::FullMatch(StringPieceToRe2(name), kAttributeNamePatternItem);
 }
 
 bool IsValid(StringPiece attribute_name, StringPiece attribute_value) {
-  // TODO(chenyu): check if we can support "_as" suffix.
   if (attribute_name == net_instaweb::ads_attribute::kGoogleAdFormat) {
     TrimWhitespace(&attribute_value);
-    // For now we only support ad format in the form of widhtxheight.
     return RE2::FullMatch(StringPieceToRe2(attribute_value), kAdFormatPattern);
   }
   return true;

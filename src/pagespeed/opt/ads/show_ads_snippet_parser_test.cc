@@ -150,6 +150,24 @@ TEST_F(ShowAdsSnippetParserTest, ParseStrictGoogleAdFormat) {
   EXPECT_EQ("90", parsed_attributes_["google_ad_height"]);
 }
 
+TEST_F(ShowAdsSnippetParserTest, ParseWeirdGoogleAdFormat1) {
+  EXPECT_TRUE(parser_.ParseStrict(
+      "google_ad_format = \"728x90_as\";",
+      &parsed_attributes_));
+
+  EXPECT_EQ(1, parsed_attributes_.size());
+  EXPECT_EQ("728x90_as", parsed_attributes_["google_ad_format"]);
+}
+
+TEST_F(ShowAdsSnippetParserTest, ParseWeirdGoogleAdFormat2) {
+  EXPECT_TRUE(parser_.ParseStrict(
+      "google_ad_format = \"180x90_0ads_al_s\";",
+      &parsed_attributes_));
+
+  EXPECT_EQ(1, parsed_attributes_.size());
+  EXPECT_EQ("180x90_0ads_al_s", parsed_attributes_["google_ad_format"]);
+}
+
 TEST_F(ShowAdsSnippetParserTest, ParseStrictGoogleAdFormatWithWhiteSpaces) {
   EXPECT_TRUE(parser_.ParseStrict(
       "google_ad_client = \"ca-pub-xxxxxxxxxxxxxx\";"
@@ -168,6 +186,14 @@ TEST_F(ShowAdsSnippetParserTest, ParseStrictGoogleAdFormatWithWhiteSpaces) {
   EXPECT_EQ("90", parsed_attributes_["google_ad_height"]);
 }
 
+TEST_F(ShowAdsSnippetParserTest, ParseShortAttribute) {
+  EXPECT_TRUE(
+      parser_.ParseStrict("google_language = \"de\"", &parsed_attributes_));
+
+  EXPECT_EQ(1, parsed_attributes_.size());
+  EXPECT_EQ("de", parsed_attributes_["google_language"]);
+}
+
 TEST_F(ShowAdsSnippetParserTest,
        ParseStrictGoogleAdFormatWithUnexpectedPrefix) {
   EXPECT_FALSE(parser_.ParseStrict(
@@ -175,18 +201,6 @@ TEST_F(ShowAdsSnippetParserTest,
       "/* ad served */"
       "google_ad_slot = \"xxxxxxxxx\";"
       "google_ad_format = \"test_722x92\";"
-      "google_ad_width = 728;"
-      "google_ad_height = 90;",
-      &parsed_attributes_));
-}
-
-TEST_F(ShowAdsSnippetParserTest,
-       ParseStrictGoogleAdFormatWithUnexpectedSuffix) {
-  EXPECT_FALSE(parser_.ParseStrict(
-      "google_ad_client = \"ca-pub-xxxxxxxxxxxxxx\";"
-      "/* ad served */"
-      "google_ad_slot = \"xxxxxxxxx\";"
-      "google_ad_format = \"722x92_rimg\";"
       "google_ad_width = 728;"
       "google_ad_height = 90;",
       &parsed_attributes_));
@@ -269,6 +283,14 @@ TEST_F(ShowAdsSnippetParserTest, ParseStrictInvalidAssignment) {
       "google_ad_slot = \"xxxxxxxxx\";"
       "google_ad_width = 728;"
       "google_ad_height = google_ad_width;",
+      &parsed_attributes_));
+}
+
+TEST_F(ShowAdsSnippetParserTest, ParseColorArray) {
+  // TODO(morlovich): This could in principle be handled, but it's unclear it's
+  // common enough to be worth the effort.
+  EXPECT_FALSE(parser_.ParseStrict(
+      "google_color_border = [\"336699\",\"CC99CC\",\"578A24\",\"191933\"]",
       &parsed_attributes_));
 }
 

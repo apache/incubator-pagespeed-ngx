@@ -343,6 +343,7 @@
         '<(DEPTH)/pagespeed/kernel/util/url_escaper_test.cc',
         '<(DEPTH)/pagespeed/kernel/util/url_multipart_encoder_test.cc',
         '<(DEPTH)/pagespeed/kernel/util/url_to_filename_encoder_test.cc',
+        '<(DEPTH)/pagespeed/opt/ads/ads_attribute_test.cc',
         '<(DEPTH)/pagespeed/opt/ads/ads_util_test.cc',
         '<(DEPTH)/pagespeed/opt/ads/show_ads_snippet_parser_test.cc',
         '<(DEPTH)/pagespeed/opt/logging/log_record_test.cc',

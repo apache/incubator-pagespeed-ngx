@@ -40,14 +40,17 @@ GoogleString LookupAdsByGoogleAttributeName(
     StringPiece show_ads_attribute_name) {
   StringPieceVector items;
   SplitStringPieceToVector(
-    show_ads_attribute_name, "_", &items, false); /* don't omit empty */
-  // TODO(chenyu): check if we want to translate "google-color-*" or other
-  // attributes.
+      show_ads_attribute_name, "_", &items, false); /* don't omit empty */
   // TODO(chenyu): check if 'show_ads_attribute_name' is valid.
-  if (items.size() < 3 || items.at(0) != "google") {
+  if (items.size() < 2 || items.at(0) != "google") {
     return "";
   }
-  return StrCat("data-", items.at(1), "-", items.at(2));
+
+  GoogleString result = "data";
+  for (int i = 1, n = items.size(); i < n; ++i) {
+    StrAppend(&result, "-", items.at(i));
+  }
+  return result;
 }
 
 }  // namespace ads_attribute
