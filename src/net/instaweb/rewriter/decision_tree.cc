@@ -18,9 +18,7 @@
 
 #include "net/instaweb/rewriter/public/decision_tree.h"
 
-#include "pagespeed/kernel/base/mock_message_handler.h"
-#include "pagespeed/kernel/base/null_mutex.h"
-#include "pagespeed/kernel/base/stdio_file_system.h"
+#include "base/logging.h"
 
 namespace net_instaweb {
 
@@ -45,12 +43,14 @@ DecisionTree::DecisionTree(const Node* nodes, int num_nodes)
 
 DecisionTree::~DecisionTree() {}
 
-const DecisionTree::Node* DecisionTree::Root() {
+const DecisionTree::Node* DecisionTree::Root() const {
   return &nodes_[0];
 }
 
-double DecisionTree::Predict(std::vector<double> const& sample) {
-  DCHECK_EQ(static_cast<int>(sample.size()), num_features_);
+double DecisionTree::Predict(std::vector<double> const& sample) const {
+  // num_features_ can be smaller than sample.size() if we are ignoring some
+  // signals (because they are new or considered irrelevant after training).
+  DCHECK_LE(num_features_, static_cast<int>(sample.size()));
   const Node* cur = Root();
   while (cur != NULL && !cur->IsLeafNode()) {
     if (sample[cur->feature_index] <= cur->feature_threshold) {
@@ -63,7 +63,7 @@ double DecisionTree::Predict(std::vector<double> const& sample) {
   return cur->confidence;
 }
 
-void DecisionTree::SanityCheck() {
+void DecisionTree::SanityCheck() const {
   // We will do a tree traversal to to ensure the following invariants about
   // a constructed decision tree:
   // 1) All nodes are reachable.
@@ -77,7 +77,7 @@ void DecisionTree::SanityCheck() {
   DCHECK_LE(num_observed_nodes, num_nodes_) << "Extraneous nodes";
 }
 
-void DecisionTree::SanityCheckTraversal(const Node* cur, int* num_nodes) {
+void DecisionTree::SanityCheckTraversal(const Node* cur, int* num_nodes) const {
   (*num_nodes)++;
   DCHECK((cur->left != NULL && cur->right != NULL) ||
          (cur->left == NULL && cur->right == NULL))

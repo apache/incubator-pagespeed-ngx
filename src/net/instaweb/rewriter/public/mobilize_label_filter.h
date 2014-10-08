@@ -52,110 +52,12 @@ struct ElementSample {
   // Here normalized represents 100 / global measurement, used
   // as a multiplier to compute percent features.
   void ComputeProportionalFeatures(ElementSample* normalized);
-  GoogleString ToString(bool symbolic, HtmlParse* parser);
+  GoogleString ToString(bool readable, HtmlParse* parser);
 
   HtmlElement* element;          // NULL for global count
   ElementSample* parent;         // NULL for global count
   MobileRole::Level role;        // Mobile role (from parent where applicable)
   std::vector<double> features;  // feature vector, always of size kNumFeatures.
-};
-
-// Tags that are considered relevant and are counted in a sample.  Some tags are
-// role tags or otherwise considered div-like.  These tag names are used to
-// index the RelevantTagCount and RelevantTagPercent features below.
-// Note that it's possible to add new tags to this list.
-enum MobileRelevantTag {
-  kATag = 0,
-  kArticleTag,  // role tag
-  kAsideTag,    // role tag
-  kContentTag,  // role tag
-  kDivTag,      // div-like tag
-  kFooterTag,   // role tag
-  kH1Tag,
-  kH2Tag,
-  kH3Tag,
-  kH4Tag,
-  kH5Tag,
-  kH6Tag,
-  kHeaderTag,   // role tag
-  kImgTag,
-  kMainTag,     // role tag
-  kMenuTag,     // role tag
-  kNavTag,      // role tag
-  kPTag,
-  kSectionTag,  // role tag
-  kSpanTag,
-  kNumRelevantTags
-};
-
-// Attribute substrings that are considered interesting if they occur in the id,
-// class, or role of a div-like tag.
-enum MobileAttrSubstring {
-  kArticleAttr = 0,
-  kAsideAttr,
-  kBodyAttr,
-  kBottomAttr,
-  kColumnAttr,
-  kCommentAttr,
-  kContentAttr,
-  kFootAttr,
-  kHeadAttr,
-  kHdrAttr,
-  kLogoAttr,
-  kMainAttr,
-  kMarginAttr,
-  kMenuAttr,
-  kNavAttr,
-  kSecAttr,
-  kTitleAttr,
-  kNumAttrStrings
-};
-
-// Every feature has a symbolic name given by Name or Name + Index.
-// DEFINITIONS OF FEATURES:
-// * "Previous" features do not include the tag being labeled.
-// * "Contained" and "Relevant" features do include the tag being labeled.
-// * "TagCount" features ignore clearly non-user-visible tags such as <script>,
-//   <style>, and <link>, and include only tags inside <body>.
-// * "TagDepth" features include only div-like tags such as <div>, <section>,
-//   <header>, and <aside> (see kRoleTags and kDivLikeTags in
-//   mobilize_label_filter.cc).  They are the nesting depth of the tag within
-//   <body>.
-// * ElementTagDepth is the depth of the tag being sampled itself.
-// * ContainedTagDepth is the maximum depth of any div-like child of this tag.
-// * ContainedTagRelativeDepth is the difference between these two depths.
-// * ContentBytes Ignores tags and their attributes, and also ignores leading
-//   and trailing whitespace between tags.  So "hi there" is 8 ContentBytes,
-//   but "hi <i class='foo'>there</i>" is only 7 ContentBytes.
-// * NonBlankBytes is like ContentBytes but ignores all whitespace.
-// * HasAttrString is a family of 0/1 entries indicating whether the
-//   corresponding string (see kRelevantAttrSubstrings in
-//   mobilize_label_filter.cc) occurs in the class, id, or role attribute of the
-//   sampled tag.
-// * RelevantTagCount is a series of counters indicating the number of various
-//   "interesting" HTML tags within the current tag.  This includes all div-like
-//   tags along with tags such as <p>, <a>, <h1>, and <img> (see kRelevantTags
-//   in mobilize_label_filter.cc).
-enum FeatureName {
-  kElementTagDepth = 0,
-  kPreviousTagCount,
-  kPreviousTagPercent,
-  kPreviousContentBytes,
-  kPreviousContentPercent,
-  kPreviousNonBlankBytes,
-  kPreviousNonBlankPercent,
-  kContainedTagDepth,
-  kContainedTagRelativeDepth,
-  kContainedTagCount,
-  kContainedTagPercent,
-  kContainedContentBytes,
-  kContainedContentPercent,
-  kContainedNonBlankBytes,
-  kContainedNonBlankPercent,
-  kHasAttrString,
-  kRelevantTagCount = kHasAttrString + kNumAttrStrings,
-  kRelevantTagPercent = kRelevantTagCount + kNumRelevantTags,
-  kNumFeatures = kRelevantTagPercent + kNumRelevantTags
 };
 
 // Classify DOM elements by adding importance= attributes so that the
@@ -175,6 +77,13 @@ enum FeatureName {
 // TODO(jmaessen): use actual classifier output.
 class MobilizeLabelFilter : public CommonFilter {
  public:
+  enum LabelingMode {
+    kDoNotLabel = 0,
+    kUseTagNames = 1,
+    kUseClassifier = 2,
+    kUseTagNamesAndClassifier = 3,
+  };
+
   // Monitoring variable names
   static const char kPagesLabeled[];  // Pages run through labeler.
   static const char kPagesRoleAdded[];
@@ -182,6 +91,8 @@ class MobilizeLabelFilter : public CommonFilter {
   static const char kHeaderRoles[];
   static const char kContentRoles[];
   static const char kMarginalRoles[];
+  static const char kDivsUnlabeled[];
+  static const char kAmbiguousRoleLabels[];
 
   explicit MobilizeLabelFilter(RewriteDriver* driver);
   virtual ~MobilizeLabelFilter();
@@ -194,6 +105,14 @@ class MobilizeLabelFilter : public CommonFilter {
   virtual void EndElementImpl(HtmlElement* element);
   virtual void Characters(HtmlCharactersNode* characters);
   virtual void EndDocument();
+  // Set labeling mode to use during traversal.
+  // Intended for testing and debugging.
+  void set_labeling_mode(LabelingMode m) {
+    labeling_mode_ = m;
+  }
+  LabelingMode labeling_mode() const {
+    return labeling_mode_;
+  }
 
  private:
   void Init();
@@ -217,6 +136,7 @@ class MobilizeLabelFilter : public CommonFilter {
   int content_bytes_;
   int content_non_blank_bytes_;
   bool were_roles_added_;
+  LabelingMode labeling_mode_;
 
   std::vector<ElementSample*> samples_;  // in document order
   std::vector<ElementSample*> sample_stack_;
@@ -224,6 +144,8 @@ class MobilizeLabelFilter : public CommonFilter {
   Variable* pages_labeled_;
   Variable* pages_role_added_;
   Variable* role_variables_[MobileRole::kInvalid];
+  Variable* divs_unlabeled_;
+  Variable* ambiguous_role_labels_;
 
   DISALLOW_COPY_AND_ASSIGN(MobilizeLabelFilter);
 };

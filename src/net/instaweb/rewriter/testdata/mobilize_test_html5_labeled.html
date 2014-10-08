@@ -20,7 +20,7 @@
 <style type="text/css" id="syntaxhighlighteranchor"></style>
 </head>
 <body class="custom">
-  <div id="nav_area" class="full_width" data-mobile-role="navigational">
+  <nav id="nav_area" class="full_width" data-mobile-role="navigational">
     <div class="page">
       <ul class="nav_menu">
         <li class="tab"><a href="http://test.com">Home</a></li>
@@ -29,12 +29,12 @@
         <li class="tab"><a href="http://test.com/rss" title="RSS Feed" rel="nofollow">RSS</a></li>
       </ul>
     </div>
-  </div>
+  </nav>
   <script>
     document.getElementById("stuff00").innerHTML = "JavaScript!";
     alert('00');
   </script>
-  <div id="header_area" class="full_width" data-mobile-role="header">
+  <header id="header_area" class="full_width" data-mobile-role="header">
     <div class="page">
       <div id="header">
         <p id="title"><a href="http://test.com/">Mobilize all the Things</a></p>
@@ -44,19 +44,13 @@
         </div>
       </div>
     </div>
-    <div class="navbar" data-mobile-role="navigational">
-      <a href="http://test.com/way_cool">Way Cool</a>
-      <a href="http://test.com/mondo">Mondo</a>
-      <a href="http://test.com/outrageous">Outrageous</a>
-      <a href="http://test.com/funky">Funky</a>
-    </div>
     <script>
       document.getElementById("stuff01").innerHTML = "";
       alert('01');
     </script>
-  </div>
+  </header>
   <div id="content_area" class="full_width">
-    <div class="aside" data-mobile-role="marginal">
+    <aside class="aside" data-mobile-role="marginal">
       <script>
         document.getElementById("stuff02").innerHTML = "";
         alert('02');
@@ -80,11 +74,11 @@
             </select>
         </li></ul>
       </form>
-    </div>
-    <div class="page" data-mobile-role="content">
+    </aside>
+    <content class="page" data-mobile-role="content">
       <div id="content" class="feed">
         <div class="post type-post status-publish">
-          <div class="headline_area">
+          <div class="headline_area" data-mobile-role="header">
             <h1 class="entry-title">Isn't Mobilization Cool!?</h1>
             <p class="headline_author">
               <span class="author">Foobar</span><br/>
@@ -121,10 +115,10 @@ int main()
         </div>
       </div>
     </div>
-  </div>
+  </content>
   <p>Aenean nec lacus ac sapien ultrices placerat non ac sem. Quisque accumsan porta tortor semper egestas.</p>
-  <div class="footer" data-mobile-role="marginal">
+  <footer class="footer" data-mobile-role="marginal">
     Nulla ac elit sed urna molestie iaculis. Morbi posuere ac libero in fringilla.
     <br><a class="top"></a>
-  </div>
+  </footer>
 </body>

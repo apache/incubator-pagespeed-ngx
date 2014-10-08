@@ -34,9 +34,9 @@
     document.getElementById("stuff00").innerHTML = "JavaScript!";
     alert('00');
   </script>
-  <div id="header_area" class="full_width" data-mobile-role="header">
+  <div id="header_area" class="full_width">
     <div class="page">
-      <div id="header">
+      <div id="header" data-mobile-role="header">
         <p id="title"><a href="http://test.com/">Mobilize all the Things</a></p>
         <div>
           <h1 id="author">Foobar</h1>
@@ -44,7 +44,7 @@
         </div>
       </div>
     </div>
-    <div class="navbar" data-mobile-role="navigational">
+    <div class="navbar" data-mobile-role="marginal">
       <a href="http://test.com/way_cool">Way Cool</a>
       <a href="http://test.com/mondo">Mondo</a>
       <a href="http://test.com/outrageous">Outrageous</a>
@@ -84,7 +84,7 @@
     <div class="page" data-mobile-role="content">
       <div id="content" class="feed">
         <div class="post type-post status-publish">
-          <div class="headline_area">
+          <div class="headline_area" data-mobile-role="header">
             <h1 class="entry-title">Isn't Mobilization Cool!?</h1>
             <p class="headline_author">
               <span class="author">Foobar</span><br/>

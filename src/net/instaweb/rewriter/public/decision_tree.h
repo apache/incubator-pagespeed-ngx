@@ -19,10 +19,8 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_DECISION_TREE_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_DECISION_TREE_H_
 
+#include <cstddef>
 #include <vector>
-#include <utility>
-
-#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 
@@ -56,7 +54,7 @@ class DecisionTree {
   DecisionTree(const Node* nodes, int num_nodes);
   ~DecisionTree();
 
-  int num_features() { return num_features_; }
+  int num_features() const { return num_features_; }
 
   // Predict whether this sample belongs in the positive or negative class,
   // returning the confidence that it is in the positive class. The sample
@@ -64,13 +62,13 @@ class DecisionTree {
   // in the same order that was used to train the tree.
   // TODO(stevensr): The ordering of measurements in the sample will become
   // more concrete when the feature measurement logic is committed.
-  double Predict(std::vector<double> const& sample);
+  double Predict(std::vector<double> const& sample) const;
 
  private:
-  void SanityCheck();
-  void SanityCheckTraversal(const Node* cur, int* num_nodes);
+  void SanityCheck() const;
+  void SanityCheckTraversal(const Node* cur, int* num_nodes) const;
 
-  const Node* Root();
+  const Node* Root() const;
 
   const Node* nodes_;
   int num_nodes_;

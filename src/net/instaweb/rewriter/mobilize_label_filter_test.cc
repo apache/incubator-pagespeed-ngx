@@ -37,6 +37,8 @@ namespace {
 const char kTestDataDir[] = "/net/instaweb/rewriter/testdata/";
 const char kOriginal[] = "mobilize_test.html";
 const char kOriginalHtml5[] = "mobilize_test_html5.html";
+const char kOriginalLabeled[] = "mobilize_test_labeled.html";
+const char kOriginalHtml5Labeled[] = "mobilize_test_html5_labeled.html";
 
 // Erase shortest substrings in string bracketed by left and right.
 // ("[", "]", "abc[def]g[h]i]j[k") -> "abcgi]j[k"
@@ -79,6 +81,10 @@ class MobilizeLabelFilterTest : public RewriteTestBase {
         stats->GetVariable(MobilizeLabelFilter::kContentRoles);
     marginal_roles_ =
         stats->GetVariable(MobilizeLabelFilter::kMarginalRoles);
+    divs_unlabeled_ =
+        stats->GetVariable(MobilizeLabelFilter::kDivsUnlabeled);
+    ambiguous_role_labels_ =
+        stats->GetVariable(MobilizeLabelFilter::kAmbiguousRoleLabels);
   }
 
   // Remove data-mobile-role labeling from a labeled document
@@ -124,6 +130,8 @@ class MobilizeLabelFilterTest : public RewriteTestBase {
   Variable* header_roles_;
   Variable* content_roles_;
   Variable* marginal_roles_;
+  Variable* divs_unlabeled_;
+  Variable* ambiguous_role_labels_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MobilizeLabelFilterTest);
@@ -149,14 +157,34 @@ TEST_F(MobilizeLabelFilterTest, EraseBracketedSubstring) {
 
 TEST_F(MobilizeLabelFilterTest, AlreadyLabeled) {
   StdioFileSystem filesystem;
+  GoogleString html5_filename =
+      StrCat(GTestSrcDir(), kTestDataDir, kOriginalHtml5);
+  GoogleString html5_contents;
+  ASSERT_TRUE(filesystem.ReadFile(
+      html5_filename.c_str(), &html5_contents, message_handler()));
+  // Classify using only tag names.  Shouldn't change anything.
+  filter_->set_labeling_mode(MobilizeLabelFilter::kUseTagNames);
+  ValidateNoChanges("already_labeled", html5_contents);
+  EXPECT_EQ(1, pages_labeled_->Get());
+  EXPECT_EQ(0, pages_role_added_->Get());
+  // Classify fully, compare against gold labeling.
+  // Note that changes are fairly minimal.
+  filter_->set_labeling_mode(MobilizeLabelFilter::kUseTagNamesAndClassifier);
   GoogleString labeled_filename =
-      StrCat(GTestSrcDir(), kTestDataDir, kOriginal);
+      StrCat(GTestSrcDir(), kTestDataDir, kOriginalHtml5Labeled);
   GoogleString labeled_contents;
   ASSERT_TRUE(filesystem.ReadFile(
       labeled_filename.c_str(), &labeled_contents, message_handler()));
-  ValidateNoChanges("already_labeled", labeled_contents);
-  EXPECT_EQ(1, pages_labeled_->Get());
-  EXPECT_EQ(0, pages_role_added_->Get());
+  ValidateExpected("already_labeled_adding_labels",
+                   html5_contents, labeled_contents);
+  EXPECT_EQ(2, pages_labeled_->Get());
+  EXPECT_EQ(1, pages_role_added_->Get());
+  EXPECT_EQ(0, navigational_roles_->Get());
+  EXPECT_EQ(1, header_roles_->Get());
+  EXPECT_EQ(0, content_roles_->Get());
+  EXPECT_EQ(0, marginal_roles_->Get());
+  EXPECT_EQ(0, ambiguous_role_labels_->Get());
+  EXPECT_EQ(21, divs_unlabeled_->Get());
 }
 
 TEST_F(MobilizeLabelFilterTest, Html5TagsInHead) {
@@ -176,9 +204,10 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInHead) {
 TEST_F(MobilizeLabelFilterTest, TinyCount) {
   EnableDebug();
   const char kOutputHtml[] =
-      "<div role='content'>Hello there,"
+      "<div role='content' data-mobile-role=\"navigational\">Hello there,"
       " <a href='http://theworld.com/'>World</a></div>"
-      "<!--ElementTagDepth: 1,"
+      "<!--role: navigational,"
+      " ElementTagDepth: 1,"
       " ContainedTagDepth: 2,"       // <a> tag
       " ContainedTagRelativeDepth: 1,"
       " ContainedTagCount: 2,"       // Includes <div> itself.
@@ -195,7 +224,38 @@ TEST_F(MobilizeLabelFilterTest, TinyCount) {
   ValidateExpected("Small count nav",
                    Unlabel(kOutputHtml), kOutputHtml);
   EXPECT_EQ(1, pages_labeled_->Get());
-  EXPECT_EQ(0, pages_role_added_->Get());
+  EXPECT_EQ(1, pages_role_added_->Get());
+  EXPECT_EQ(1, navigational_roles_->Get());
+  EXPECT_EQ(0, header_roles_->Get());
+  EXPECT_EQ(0, content_roles_->Get());
+  EXPECT_EQ(0, marginal_roles_->Get());
+  EXPECT_EQ(0, ambiguous_role_labels_->Get());
+  EXPECT_EQ(0, divs_unlabeled_->Get());
+}
+
+TEST_F(MobilizeLabelFilterTest, MarginalPropagation) {
+  // Test that marginal content gets labeled as such, and the
+  // labels get propagated up the DOM (but only as far as the
+  // outermost parent that isn't otherwise labeled).
+  const char kOutputHtml[] =
+      "<div>\n"
+      " <div data-mobile-role='header'>header</div>\n"
+      " <div data-mobile-role=\"marginal\">\n"
+      "  <div role='footer'>footer</div>\n"
+      "  <div role='junk'>junk</div>\n"
+      "  <div>more junk</div>\n"
+      " </div>\n"
+      "</div>";
+  ValidateExpected("Marginal propagation",
+                   Unlabel(kOutputHtml), kOutputHtml);
+  EXPECT_EQ(1, pages_labeled_->Get());
+  EXPECT_EQ(1, pages_role_added_->Get());
+  EXPECT_EQ(0, navigational_roles_->Get());
+  EXPECT_EQ(0, header_roles_->Get());
+  EXPECT_EQ(0, content_roles_->Get());
+  EXPECT_EQ(1, marginal_roles_->Get());
+  EXPECT_EQ(0, ambiguous_role_labels_->Get());
+  EXPECT_EQ(4, divs_unlabeled_->Get());
 }
 
 TEST_F(MobilizeLabelFilterTest, SmallCountNav) {
@@ -204,12 +264,14 @@ TEST_F(MobilizeLabelFilterTest, SmallCountNav) {
       "<head></head><body>\n"
       "<div class='container'>\n"
       " <a href='a'>a</a>\n"
-      " <div class='menu' id='hdr' role='nav'><ul>\n"
+      " <div class='menu' id='hdr' role='nav'"
+      " data-mobile-role=\"navigational\"><ul>\n"
       "  <li><a href='n1'>nav 1</a></li>\n"
       "  <li><a href='n2'>nav 2</a></li>\n"
       "  <li><a href='n3'>nav 3</a></li>\n"
       " </ul></div>"
-      "<!--ElementTagDepth: 2,"
+      "<!--role: navigational,"
+      " ElementTagDepth: 2,"
       " PreviousTagCount: 2,"
       " PreviousTagPercent: 20.00,"
       " PreviousContentBytes: 1,"
@@ -249,7 +311,13 @@ TEST_F(MobilizeLabelFilterTest, SmallCountNav) {
   ValidateExpected("Small count nav",
                    Unlabel(kOutputHtml), kOutputHtml);
   EXPECT_EQ(1, pages_labeled_->Get());
-  EXPECT_EQ(0, pages_role_added_->Get());
+  EXPECT_EQ(1, pages_role_added_->Get());
+  EXPECT_EQ(1, navigational_roles_->Get());
+  EXPECT_EQ(0, header_roles_->Get());
+  EXPECT_EQ(0, content_roles_->Get());
+  EXPECT_EQ(0, marginal_roles_->Get());
+  EXPECT_EQ(0, ambiguous_role_labels_->Get());
+  EXPECT_EQ(1, divs_unlabeled_->Get());
 }
 
 TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
@@ -436,6 +504,39 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
   EXPECT_EQ(1, header_roles_->Get());
   EXPECT_EQ(3, content_roles_->Get());
   EXPECT_EQ(3, marginal_roles_->Get());
+}
+
+TEST_F(MobilizeLabelFilterTest, LargeUnlabeled) {
+  StdioFileSystem filesystem;
+  GoogleString original_filename =
+      StrCat(GTestSrcDir(), kTestDataDir, kOriginal);
+  GoogleString original_contents;
+  ASSERT_TRUE(filesystem.ReadFile(
+      original_filename.c_str(), &original_contents, message_handler()));
+  GoogleString unlabeled_contents = Unlabel(original_contents);
+  // Classify using only tag names.  Shouldn't change anything.
+  filter_->set_labeling_mode(MobilizeLabelFilter::kUseTagNames);
+  ValidateNoChanges("unlabeled", unlabeled_contents);
+  EXPECT_EQ(1, pages_labeled_->Get());
+  EXPECT_EQ(0, pages_role_added_->Get());
+  // Classify fully, compare against gold labeling.
+  // Note that we don't necessarily match the labeling of the original!
+  filter_->set_labeling_mode(MobilizeLabelFilter::kUseTagNamesAndClassifier);
+  GoogleString labeled_filename =
+      StrCat(GTestSrcDir(), kTestDataDir, kOriginalLabeled);
+  GoogleString labeled_contents;
+  ASSERT_TRUE(filesystem.ReadFile(
+      labeled_filename.c_str(), &labeled_contents, message_handler()));
+  ValidateExpected("unlabeled_adding_labels",
+                   unlabeled_contents, labeled_contents);
+  EXPECT_EQ(2, pages_labeled_->Get());
+  EXPECT_EQ(1, pages_role_added_->Get());
+  EXPECT_EQ(1, navigational_roles_->Get());
+  EXPECT_EQ(2, header_roles_->Get());
+  EXPECT_EQ(1, content_roles_->Get());
+  EXPECT_EQ(3, marginal_roles_->Get());
+  EXPECT_EQ(0, ambiguous_role_labels_->Get());
+  EXPECT_EQ(27, divs_unlabeled_->Get());
 }
 
 }  // namespace

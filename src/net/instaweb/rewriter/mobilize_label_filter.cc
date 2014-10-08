@@ -22,6 +22,8 @@
 #include <cstddef>
 
 #include "base/logging.h"
+#include "net/instaweb/rewriter/public/decision_tree.h"
+#include "net/instaweb/rewriter/public/mobilize_decision_trees.h"
 #include "net/instaweb/rewriter/public/mobilize_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "pagespeed/kernel/base/message_handler.h"
@@ -47,6 +49,10 @@ const char MobilizeLabelFilter::kContentRoles[] =
     "mobilization_content_roles";
 const char MobilizeLabelFilter::kMarginalRoles[] =
     "mobilization_marginal_roles";
+const char MobilizeLabelFilter::kDivsUnlabeled[] =
+    "mobilization_divs_unlabeled";
+const char MobilizeLabelFilter::kAmbiguousRoleLabels[] =
+    "mobilization_divs_with_ambiguous_role_label";
 
 namespace {
 
@@ -65,27 +71,37 @@ struct RelevantTagMetadata {
 // For div-like sectioning tags (those with roles), see also
 // https://developers.whatwg.org/sections.html#sections
 const RelevantTagMetadata kRelevantTags[] = {
-  /* tag name           tag symbol   div_like?   role */
-  { HtmlName::kA,       kATag,       false,    MobileRole::kInvalid },
-  { HtmlName::kArticle, kArticleTag, true,     MobileRole::kContent },
-  { HtmlName::kAside,   kAsideTag,   true,     MobileRole::kMarginal },
-  { HtmlName::kContent, kContentTag, true,     MobileRole::kContent },
-  { HtmlName::kDiv,     kDivTag,     true,     MobileRole::kInvalid },
-  { HtmlName::kFooter,  kFooterTag,  true,     MobileRole::kMarginal },
-  { HtmlName::kH1,      kH1Tag,      false,    MobileRole::kInvalid },
-  { HtmlName::kH2,      kH2Tag,      false,    MobileRole::kInvalid },
-  { HtmlName::kH3,      kH3Tag,      false,    MobileRole::kInvalid },
-  { HtmlName::kH4,      kH4Tag,      false,    MobileRole::kInvalid },
-  { HtmlName::kH5,      kH5Tag,      false,    MobileRole::kInvalid },
-  { HtmlName::kH6,      kH6Tag,      false,    MobileRole::kInvalid },
-  { HtmlName::kHeader,  kHeaderTag,  true,     MobileRole::kHeader },
-  { HtmlName::kImg,     kImgTag,     false,    MobileRole::kInvalid },
-  { HtmlName::kMain,    kMainTag,    true,     MobileRole::kContent },
-  { HtmlName::kMenu,    kMenuTag,    true,     MobileRole::kNavigational },
-  { HtmlName::kNav,     kNavTag,     true,     MobileRole::kNavigational },
-  { HtmlName::kP,       kPTag,       false,    MobileRole::kInvalid },
-  { HtmlName::kSection, kSectionTag, true,     MobileRole::kContent },
-  { HtmlName::kSpan,    kSpanTag,    false,    MobileRole::kInvalid },
+  /* tag name            tag symbol    div_like?   role */
+  { HtmlName::kA,        kATag,        false,    MobileRole::kInvalid },
+  { HtmlName::kArticle,  kArticleTag,  true,     MobileRole::kContent },
+  { HtmlName::kAside,    kAsideTag,    true,     MobileRole::kMarginal },
+  { HtmlName::kButton,   kButtonTag,   false,    MobileRole::kInvalid },
+  { HtmlName::kContent,  kContentTag,  true,     MobileRole::kContent },
+  { HtmlName::kDatalist, kDatalistTag, false,    MobileRole::kInvalid },
+  { HtmlName::kDiv,      kDivTag,      true,     MobileRole::kInvalid },
+  { HtmlName::kFieldset, kFieldsetTag, false,    MobileRole::kInvalid },
+  { HtmlName::kFooter,   kFooterTag,   true,     MobileRole::kMarginal },
+  { HtmlName::kForm,     kFormTag,     true,     MobileRole::kInvalid },
+  { HtmlName::kH1,       kH1Tag,       false,    MobileRole::kInvalid },
+  { HtmlName::kH2,       kH2Tag,       false,    MobileRole::kInvalid },
+  { HtmlName::kH3,       kH3Tag,       false,    MobileRole::kInvalid },
+  { HtmlName::kH4,       kH4Tag,       false,    MobileRole::kInvalid },
+  { HtmlName::kH5,       kH5Tag,       false,    MobileRole::kInvalid },
+  { HtmlName::kH6,       kH6Tag,       false,    MobileRole::kInvalid },
+  { HtmlName::kHeader,   kHeaderTag,   true,     MobileRole::kHeader },
+  { HtmlName::kImg,      kImgTag,      false,    MobileRole::kInvalid },
+  { HtmlName::kInput,    kInputTag,    false,    MobileRole::kInvalid },
+  { HtmlName::kLegend,   kLegendTag,   false,    MobileRole::kInvalid },
+  { HtmlName::kMain,     kMainTag,     true,     MobileRole::kContent },
+  { HtmlName::kMenu,     kMenuTag,     true,     MobileRole::kNavigational },
+  { HtmlName::kNav,      kNavTag,      true,     MobileRole::kNavigational },
+  { HtmlName::kOptgroup, kOptgroupTag, false,    MobileRole::kInvalid },
+  { HtmlName::kOption,   kOptionTag,   false,    MobileRole::kInvalid },
+  { HtmlName::kP,        kPTag,        false,    MobileRole::kInvalid },
+  { HtmlName::kSection,  kSectionTag,  true,     MobileRole::kContent },
+  { HtmlName::kSelect,   kSelectTag,   false,    MobileRole::kInvalid },
+  { HtmlName::kSpan,     kSpanTag,     false,    MobileRole::kInvalid },
+  { HtmlName::kTextarea, kTextareaTag, false,    MobileRole::kInvalid },
 };
 
 // These tags are for the purposes of this filter just enclosing semantic noise
@@ -109,19 +125,26 @@ const RelevantAttrMetadata kRelevantAttrSubstrings[] = {
   {kAsideAttr,   "aside"},
   {kBodyAttr,    "body"},
   {kBottomAttr,  "bottom"},
+  {kCenterAttr,  "center"},
   {kColumnAttr,  "column"},
   {kCommentAttr, "comment"},
   {kContentAttr, "content"},
+  {kFindAttr,    "find"},
   {kFootAttr,    "foot"},
-  {kHeadAttr,    "head"},
   {kHdrAttr,     "hdr"},
+  {kHeadAttr,    "head"},
+  {kLeftAttr,    "left"},
   {kLogoAttr,    "logo"},
   {kMainAttr,    "main"},
   {kMarginAttr,  "margin"},
   {kMenuAttr,    "menu"},
+  {kMiddleAttr,  "middle"},
   {kNavAttr,     "nav"},
+  {kRightAttr,   "right"},
+  {kSearchAttr,  "search"},
   {kSecAttr,     "sec"},
   {kTitleAttr,   "title"},
+  {kTopAttr,     "top"},
 };
 
 // We search the following attributes on div-like tags, as these attributes tend
@@ -336,7 +359,8 @@ GoogleString ElementSample::ToString(bool readable, HtmlParse* parser) {
 }
 
 MobilizeLabelFilter::MobilizeLabelFilter(RewriteDriver* driver)
-    : CommonFilter(driver) {
+    : CommonFilter(driver),
+      labeling_mode_(kUseTagNamesAndClassifier) {
   Init();
   Statistics* stats = driver->statistics();
   pages_labeled_ = stats->GetVariable(kPagesLabeled);
@@ -347,6 +371,8 @@ MobilizeLabelFilter::MobilizeLabelFilter(RewriteDriver* driver)
       stats->GetVariable(kNavigationalRoles);
   role_variables_[MobileRole::kContent] = stats->GetVariable(kContentRoles);
   role_variables_[MobileRole::kMarginal] = stats->GetVariable(kMarginalRoles);
+  divs_unlabeled_ = stats->GetVariable(kDivsUnlabeled);
+  ambiguous_role_labels_ = stats->GetVariable(kAmbiguousRoleLabels);
 #ifndef NDEBUG
   CHECK_EQ(kNumRelevantTags, arraysize(kRelevantTags));
   CHECK_EQ(kNumAttrStrings, arraysize(kRelevantAttrSubstrings));
@@ -372,12 +398,14 @@ void MobilizeLabelFilter::Init() {
 }
 
 void MobilizeLabelFilter::InitStats(Statistics* statistics) {
-  statistics->AddVariable(MobilizeLabelFilter::kPagesLabeled);
-  statistics->AddVariable(MobilizeLabelFilter::kPagesRoleAdded);
-  statistics->AddVariable(MobilizeLabelFilter::kNavigationalRoles);
-  statistics->AddVariable(MobilizeLabelFilter::kHeaderRoles);
-  statistics->AddVariable(MobilizeLabelFilter::kContentRoles);
-  statistics->AddVariable(MobilizeLabelFilter::kMarginalRoles);
+  statistics->AddVariable(kPagesLabeled);
+  statistics->AddVariable(kPagesRoleAdded);
+  statistics->AddVariable(kNavigationalRoles);
+  statistics->AddVariable(kHeaderRoles);
+  statistics->AddVariable(kContentRoles);
+  statistics->AddVariable(kMarginalRoles);
+  statistics->AddVariable(kDivsUnlabeled);
+  statistics->AddVariable(kAmbiguousRoleLabels);
 }
 
 void MobilizeLabelFilter::StartDocumentImpl() {
@@ -412,10 +440,15 @@ void MobilizeLabelFilter::StartElementImpl(HtmlElement* element) {
   if (tag_metadata != NULL) {
     // Tag that we want to count (includes all the div-like tags).
     IncrementRelevantTagDepth();
+    MobileRole::Level mobile_role =
+        (labeling_mode_ == kUseTagNames ||
+         labeling_mode_ == kUseTagNamesAndClassifier) ?
+        tag_metadata->mobile_role :
+        MobileRole::kInvalid;
     if (tag_metadata->is_div_like) {
-      HandleDivLikeElement(element, tag_metadata->mobile_role);
+      HandleDivLikeElement(element, mobile_role);
     }
-    if (tag_metadata->mobile_role == MobileRole::kInvalid) {
+    if (mobile_role == MobileRole::kInvalid) {
       sample_stack_.back()->
           features[kRelevantTagCount + tag_metadata->relevant_tag]++;
     } else {
@@ -434,13 +467,14 @@ void MobilizeLabelFilter::StartElementImpl(HtmlElement* element) {
 void MobilizeLabelFilter::HandleDivLikeElement(HtmlElement* element,
                                                MobileRole::Level role) {
   ElementSample* sample = MakeNewSample(element);
-  if (role != MobileRole::kInvalid) {
-    // If the keyword matches a known HTML5 tag name, accept
-    // it unconditionally.
+  // Handle hand-annotated element.
+  HtmlElement::Attribute* mobile_role_attribute =
+      element->FindAttribute(HtmlName::kDataMobileRole);
+  if (mobile_role_attribute != NULL) {
+    sample->role =
+        MobileRole::LevelFromString(mobile_role_attribute->escaped_value());
+  } else {
     sample->role = role;
-    if (sample->parent->role != role) {
-      SetMobileRole(element, role);
-    }
   }
   // Now search the attributes for any indicative strings.
   for (int i = 0; i < static_cast<int>(arraysize(kAttrsToSearch)); ++i) {
@@ -500,14 +534,14 @@ void MobilizeLabelFilter::EndDocument() {
   sample_stack_.pop_back();
   ComputeContained(global);
   pages_labeled_->Add(1);
-  if (were_roles_added_) {
-    pages_role_added_->Add(1);
-  }
   // Now that we have global information, compute sample that require
   // normalization (eg percent of links in page, percent of text, etc.).
   // Use this to label the DOM elements.
   ComputeProportionalFeatures();
   Label();
+  if (were_roles_added_) {
+    pages_role_added_->Add(1);
+  }
   if (driver()->DebugMode()) {
     DebugLabel();
   }
@@ -654,11 +688,80 @@ void MobilizeLabelFilter::ComputeProportionalFeatures() {
 }
 
 void MobilizeLabelFilter::Label() {
-  for (int i = 1, n = samples_.size(); i < n; ++i) {
+  DecisionTree navigational(kNavigationalTree, kNavigationalTreeSize);
+  DecisionTree header(kHeaderTree, kHeaderTreeSize);
+  DecisionTree content(kContentTree, kContentTreeSize);
+  int n = samples_.size();
+
+  // Default classification to carry down tree.
+  samples_[0]->role =
+      (labeling_mode_ == kUseClassifier ||
+       labeling_mode_ == kUseTagNamesAndClassifier) ?
+      MobileRole::kKeeper : MobileRole::kInvalid;
+  // Now classify in opening tag order (parents before children).
+  for (int i = 1; i < n; ++i) {
     ElementSample* sample = samples_[i];
+    if (sample->role != MobileRole::kInvalid) {
+      // Hand-labeled or HTML5.
+      continue;
+    }
+    if (labeling_mode_ == kUseClassifier ||
+        labeling_mode_ == kUseTagNamesAndClassifier) {
+      double navigational_confidence = navigational.Predict(sample->features);
+      bool is_navigational =
+          navigational_confidence >= kNavigationalTreeThreshold;
+      double header_confidence = header.Predict(sample->features);
+      bool is_header = header_confidence >= kHeaderTreeThreshold;
+      double content_confidence = content.Predict(sample->features);
+      bool is_content = content_confidence >= kContentTreeThreshold;
+      // If exactly one classification is chosen, use that.
+      if (is_navigational) {
+        if (!is_header && !is_content) {
+          sample->role = MobileRole::kNavigational;
+        } else {
+          ambiguous_role_labels_->Add(1);
+        }
+      } else if (is_header) {
+        if (!is_content) {
+          sample->role = MobileRole::kHeader;
+        } else {
+          ambiguous_role_labels_->Add(1);
+        }
+      } else if (is_content) {
+        sample->role = MobileRole::kContent;
+      }
+    }
+    if (sample->role == MobileRole::kInvalid) {
+      // No or ambiguous classification.  Carry over from parent.
+      sample->role = sample->parent->role;
+    }
+  }
+  // All unclassified nodes have been labeled with kKeeper using parent
+  // propagation.  We want to mark as kMarginal all the kKeeper nodes whose
+  // children are also Marginal.  If a node is labeled kKeeper and any child is
+  // non-Marginal we want to mark it kInvalid.  We work in reverse DOM order,
+  // basically invalidating parents of non-marginal content.
+  for (int i = n - 1; i > 0; --i) {
+    ElementSample* sample = samples_[i];
+    if (sample->role == MobileRole::kKeeper) {
+        sample->role = MobileRole::kMarginal;
+    } else if (sample->role != MobileRole::kMarginal &&
+               sample->parent->role == MobileRole::kKeeper) {
+      // Non-marginal child with keeper parent; parent is invalid.
+      sample->parent->role = MobileRole::kInvalid;
+    }
+  }
+  // Finally, go through the nodes in DOM order and actually add labels at
+  // mobile role transition points.
+  samples_[0]->role = MobileRole::kInvalid;
+  for (int i = 1; i < n; ++i) {
+    ElementSample* sample = samples_[i];
+    DCHECK_NE(MobileRole::kKeeper, sample->role);
     if (sample->role != MobileRole::kInvalid &&
-        sample->parent->role == MobileRole::kInvalid) {
+        sample->role != sample->parent->role) {
       SetMobileRole(sample->element, sample->role);
+    } else {
+      divs_unlabeled_->Add(1);
     }
   }
 }
@@ -674,14 +777,14 @@ void MobilizeLabelFilter::DebugLabel() {
     if (driver()->DebugMode()) {
       driver()->InsertDebugComment(
           sample->ToString(true /* readable */, driver()), sample->element);
+      GoogleString sample_string =
+          sample->ToString(false /* numeric */, driver());
+      driver()->message_handler()->Message(
+          kInfo, "%s: %s { %s }",
+          driver()->url(),
+          sample->element->name_str().as_string().c_str(),
+          sample_string.c_str());
     }
-    GoogleString sample_string =
-        sample->ToString(false /* numeric */, driver());
-    driver()->message_handler()->Message(
-        kInfo, "%s: %s { %s }",
-        driver()->url(),
-        sample->element->name_str().as_string().c_str(),
-        sample_string.c_str());
   }
 }
 
