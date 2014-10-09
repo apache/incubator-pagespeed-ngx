@@ -965,7 +965,7 @@ TEST_F(CssImageRewriterTest, DummyRuleset) {
       "}\n"
       "@to-infinity and beyond;\n";
   const GoogleString css_after =
-      StrCat("@font-face { font-family: 'Robotnik'; font-style: normal }"
+      StrCat("@font-face{font-family:'Robotnik';font-style:normal}"
              "body{background-image:url(",
              Encode("", "ce", "0", "foo.png", "png"),
              ")}@to-infinity and beyond;");

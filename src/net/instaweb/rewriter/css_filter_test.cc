@@ -605,6 +605,7 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     "@charset \"foobar\";",
     // Invalid charset (string should be quoted).
     "@charset utf-8;",
+    "@font-face{font-family:'Ubuntu';font-style:normal}",
     // Unescaped string: Odd chars: \(\)\,\"\'
     "a{content:\"Odd chars: \\(\\)\\,\\\"\\\'\"}",
     // Unescaped string: Unicode: \A0\A0
@@ -689,7 +690,6 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
 
     // Unexpected @-statements
     "@keyframes wiggle { 0% { transform: rotate(6deg); } }",
-    "@font-face { font-family: 'Ubuntu'; font-style: normal }",
 
     // Invalid font declaration.
     "a{font: menu foobar }",
@@ -1405,7 +1405,9 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       "  100% {transform:rotate(6deg);}\n"
       "}" },
 
-    { "@font-face{font-family:'Ubuntu';font-style:normal;font-weight:normal;"
+    // @font-face
+    // TODO(sligocki): src: attributes with multiple attributes are not parsed.
+    { "@font-face {font-family:'Ubuntu';font-style:normal;font-weight:normal;"
       "src:local('Ubuntu'), url('http://themes.googleusercontent.com/static/"
       "fonts/ubuntu/v2/2Q-AW1e_taO6pHwMXcXW5w.ttf') format('truetype')}"
       "@font-face{font-family:'Ubuntu';font-style:normal;font-weight:bold;"
@@ -1420,6 +1422,50 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       "src:local('Ubuntu Bold'), local('Ubuntu-Bold'), url('http://themes."
       "googleusercontent.com/static/fonts/ubuntu/v2/0ihfXUL2emPh0ROJezvraKCWc"
       "ynf_cDxXwCLxiixG1c.ttf') format('truetype')}" },
+
+    { "@font-face { font-family: 'Roboto Condensed'; font-style: normal; "
+      "font-weight: 400; src: local('Roboto Condensed Regular'), "
+      "local('RobotoCondensed-Regular'), url(http://stc.v3.news.zing.vn/css/"
+      "fonts/Roboto-Condensed.woff) format('woff'); }\n",
+
+      "@font-face{font-family:'Roboto Condensed';font-style:normal;"
+      "font-weight:400;src: local('Roboto Condensed Regular'), "
+      "local('RobotoCondensed-Regular'), url(http://stc.v3.news.zing.vn/css/"
+      "fonts/Roboto-Condensed.woff) format('woff')}" },
+
+    // Multiple src properties.
+    { "@font-face {\n"
+      "  font-family: 'BebasNeueRegular';\n"
+      "  src: url('fonts/BebasNeue-webfont.eot');\n"
+      "  src: url('fonts/BebasNeue-webfont.eot?#iefix') "
+      "format('embedded-opentype'),\n"
+      "    url('fonts/BebasNeue-webfont.woff') format('woff'),\n"
+      "    url('fonts/BebasNeue-webfont.ttf') format('truetype'),\n"
+      "    url('fonts/BebasNeue-webfont.svg#BebasNeueRegular') format('svg');\n"
+      "  font-weight: normal;\n"
+      "  font-style: normal;\n"
+      "}\n",
+
+      "@font-face{font-family:'BebasNeueRegular';"
+      "src:url(fonts/BebasNeue-webfont.eot);"
+      "src: url('fonts/BebasNeue-webfont.eot?#iefix') "
+      "format('embedded-opentype'),\n"
+      "    url('fonts/BebasNeue-webfont.woff') format('woff'),\n"
+      "    url('fonts/BebasNeue-webfont.ttf') format('truetype'),\n"
+      "    url('fonts/BebasNeue-webfont.svg#BebasNeueRegular') format('svg');"
+      "font-weight:normal;font-style:normal}" },
+
+    // @font-face inside @media
+    { "@media screen and (-webkit-min-device-pixel-ratio:0) {\n"
+      "  @font-face {\n"
+      "    font-family: 'tiefontello';\n"
+      "    src: url('fonts/tiefontello.svg?88026028#fontello') format('svg');\n"
+      "  }\n"
+      "}\n",
+
+      "@media screen and (-webkit-min-device-pixel-ratio:0){"
+      "@font-face{font-family:'tiefontello';"
+      "src:url(fonts/tiefontello.svg?88026028#fontello) format('svg')}}" },
 
     // CSS3 media queries.
     // http://code.google.com/p/modpagespeed/issues/detail?id=50
@@ -1621,6 +1667,18 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       "@media screen and (min-width: 0 \\0){.ending-actions li a .icon-top,.en"
       "ding-actions li a .icon-feed{vertical-align:text-bottom}.nav-previous{m"
       "argin:20px auto 0}}" },
+
+    { "@media screen {\n"
+      "  .foo { color: red; }\n"
+      "  @font-face { font-family: 'Cibric'; }\n"
+      "}\n",
+
+      // Note: It is safe to pull @font-face above Rulesets:
+      //   http://lists.w3.org/Archives/Public/www-style/2014Sep/0272.html
+      // Note: We could combine these both into the same @media block, but
+      // I (sligocki) am not convinced it's worth the effort.
+      "@media screen{@font-face{font-family:'Cibric'}}"
+      "@media screen{.foo{color:red}}" },
   };
 
   for (int i = 0; i < arraysize(examples); ++i) {

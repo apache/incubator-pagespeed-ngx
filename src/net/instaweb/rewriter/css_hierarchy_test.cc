@@ -52,7 +52,7 @@ static const char kTestDomain[] = "http://test.com/";
 //      +- TopChild2Child1
 static const char kTopCss[] =
     ".background_red{background-color:red}"
-    "@font-face { font-family: 'Magellan'; font-style: normal }"
+    "@foobar { font-family: 'Magellan'; font-style: normal }"
     ".foreground_yellow{color:#ff0}";
 static const char kTopChild1Css[] =
     ".background_blue{background-color:#00f}"
@@ -62,7 +62,7 @@ static const char kTopChild1Child1Css[] =
     ".foreground_pink{color:#ffc0cb}";
 static const char kTopChild2Css[] =
     ".background_white{background-color:#fff}"
-    "@font-face { font-family: 'Cook'; font-style: normal }"
+    "@foobar { font-family: 'Cook'; font-style: normal }"
     ".foreground_black{color:#000}";
 static const char kTopChild2Child1Css[] =
     ".background_green{background-color:#0f0}"

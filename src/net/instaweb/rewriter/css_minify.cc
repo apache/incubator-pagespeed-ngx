@@ -92,6 +92,29 @@ void CssMinify::JoinMinifyIter(const Iterator& begin, const Iterator& end,
 }
 
 template<>
+void CssMinify::JoinMinifyIter<Css::FontFaces::const_iterator>(
+    const Css::FontFaces::const_iterator& begin,
+    const Css::FontFaces::const_iterator& end,
+    const StringPiece& sep) {
+  // Go through the list of @font-faces finding the contiguous subsets with the
+  // same set of media (f.ex [a b b b a a] -> [a] [b b b] [a a]). For each
+  // such subset, emit the start of the @media rule (if required), then emit
+  // each @font-face without an @media rule, separating them by the given 'sep',
+  // then emit the end of the @media rule (if required).
+  for (Css::FontFaces::const_iterator iter = begin; iter != end; ) {
+    const Css::MediaQueries& first_media_queries = (*iter)->media_queries();
+    MinifyMediaStart(first_media_queries);
+    MinifyFontFaceIgnoringMedia(**iter);
+    for (++iter; iter != end && Equals(first_media_queries,
+                                       (*iter)->media_queries()); ++iter) {
+      Write(sep);
+      MinifyFontFaceIgnoringMedia(**iter);
+    }
+    MinifyMediaEnd(first_media_queries);
+  }
+}
+
+template<>
 void CssMinify::JoinMinifyIter<Css::Rulesets::const_iterator>(
     const Css::Rulesets::const_iterator& begin,
     const Css::Rulesets::const_iterator& end,
@@ -102,15 +125,15 @@ void CssMinify::JoinMinifyIter<Css::Rulesets::const_iterator>(
   // each ruleset without an @media rule, separating them by the given 'sep',
   // then emit the end of the @media rule (if required).
   for (Css::Rulesets::const_iterator iter = begin; iter != end; ) {
-    Css::Rulesets::const_iterator first = iter;
-    MinifyRulesetMediaStart(**first);
-    MinifyRulesetIgnoringMedia(**first);
-    for (++iter; iter != end && Equals((*first)->media_queries(),
+    const Css::MediaQueries& first_media_queries = (*iter)->media_queries();
+    MinifyMediaStart(first_media_queries);
+    MinifyRulesetIgnoringMedia(**iter);
+    for (++iter; iter != end && Equals(first_media_queries,
                                        (*iter)->media_queries()); ++iter) {
       Write(sep);
       MinifyRulesetIgnoringMedia(**iter);
     }
-    MinifyRulesetMediaEnd(**first);
+    MinifyMediaEnd(first_media_queries);
   }
 }
 
@@ -126,6 +149,11 @@ void CssMinify::Minify(const Css::Stylesheet& stylesheet) {
   // so that some readability is preserved.
   Minify(stylesheet.charsets());
   JoinMinify(stylesheet.imports(), "");
+  // Note: Adjacent @font-face with the same media type are placed in the same
+  // @media block. The same is true for adjacent Ruelsets. However, we do not
+  // yet combine @font-face with Rulesets into the same @media block because
+  // we do not expect this to be worth the trouble.
+  JoinMinify(stylesheet.font_faces(), "");
   JoinMinify(stylesheet.rulesets(), "");
 }
 
@@ -180,6 +208,26 @@ void CssMinify::Minify(const Css::MediaExpression& expression) {
   Write(")");
 }
 
+void CssMinify::MinifyMediaStart(const Css::MediaQueries& media_queries) {
+  if (!media_queries.empty()) {
+    Write("@media ");
+    JoinMinify(media_queries, ",");
+    Write("{");
+  }
+}
+
+void CssMinify::MinifyMediaEnd(const Css::MediaQueries& media_queries) {
+  if (!media_queries.empty()) {
+    Write("}");
+  }
+}
+
+void CssMinify::MinifyFontFaceIgnoringMedia(const Css::FontFace& font_face) {
+  Write("@font-face{");
+  JoinMinify(font_face.declarations(), ";");
+  Write("}");
+}
+
 void CssMinify::MinifyRulesetIgnoringMedia(const Css::Ruleset& ruleset) {
   // TODO(sligocki): Only write out ruleset if declarations() is non-empty.
   // Note that we should also propagate this up to not print @media rules
@@ -199,20 +247,6 @@ void CssMinify::MinifyRulesetIgnoringMedia(const Css::Ruleset& ruleset) {
     case Css::Ruleset::UNPARSED_REGION:
       Minify(*ruleset.unparsed_region());
       break;
-  }
-}
-
-void CssMinify::MinifyRulesetMediaStart(const Css::Ruleset& ruleset) {
-  if (!ruleset.media_queries().empty()) {
-    Write("@media ");
-    JoinMinify(ruleset.media_queries(), ",");
-    Write("{");
-  }
-}
-
-void CssMinify::MinifyRulesetMediaEnd(const Css::Ruleset& ruleset) {
-  if (!ruleset.media_queries().empty()) {
-    Write("}");
   }
 }
 

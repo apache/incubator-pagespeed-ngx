@@ -39,6 +39,7 @@ namespace Css {
 class Declaration;
 class Declarations;
 class Import;
+class FontFace;
 class Stylesheet;
 class Ruleset;
 
@@ -544,6 +545,17 @@ class Parser {
   // ones.
   SimpleSelectors* ParseSimpleSelectors(bool expecting_combinator);
 
+  // Parse an at-rule or ruleset.
+  //
+  // This may be nested inside of an @media rule if media_queries != NULL.
+  // If media_queries == NULL, this is not nested.
+  //
+  // Although @media rules are allowed to be nested inside other @media rules
+  // in CSS3, we do not parse such nested rules, and therefore avoid unbounded
+  // recursive depth.
+  void ParseStatement(const MediaQueries* media_queries,
+                      Stylesheet* stylesheet);
+
   // ParseRuleset() starts from the first character of the first
   // selector (note: it does not skip whitespace) and consumes the
   // ruleset, including the closing '}'. Return NULL if the parsing fails.
@@ -567,18 +579,11 @@ class Parser {
   // containing the imported name and the media.
   Import* ParseImport();
 
-  // Starting at @, ParseAtRule parses @import, @charset, and @media
-  // declarations and adds the information to the stylesheet.
-  //
-  // For other (unsupported) at-keywords (like @font-face or @keyframes),
-  // we set an error and skip over and ignore the entire at-rule.
-  //
-  // Consumes the @-rule, including the closing ';' or '}'.  Does not
-  // consume trailing whitespace.
-  void ParseAtRule(Stylesheet* stylesheet);  // parse @ rules.
-
   // Parse the charset after an @charset rule.
   UnicodeText ParseCharset();
+
+  // Parse an @font-face statement.
+  FontFace* ParseFontFace();
 
   // Current position in document (bytes from beginning).
   int CurrentOffset() const { return in_ - begin_; }
@@ -759,7 +764,7 @@ class UnparsedRegion {
 // that we don't parse, they are stored in dummy Rulesets.
 class Ruleset {
  public:
-  // TODO(sligocki): Allow other parsed at-rules, like @font-family.
+  // TODO(sligocki): Allow other parsed at-rules, like @page.
   enum Type { RULESET, UNPARSED_REGION, };
 
   Ruleset() : type_(RULESET), media_queries_(new MediaQueries),
@@ -897,6 +902,37 @@ class Imports : public std::vector<Css::Import*> {
   ~Imports();
 };
 
+class FontFace {
+ public:
+  FontFace() {}
+  ~FontFace() {}
+
+  const MediaQueries& media_queries() const { return *media_queries_; }
+  // Stores all font-face properties as Declarations.
+  // TODO(sligocki): Provide accessors for individual properties, like src?
+  const Declarations& declarations() const { return *declarations_; }
+
+  void set_media_queries(MediaQueries* media_queries) {
+    media_queries_.reset(media_queries);
+  }
+  void set_declarations(Declarations* declarations) {
+    declarations_.reset(declarations);
+  }
+
+  string ToString() const;
+ private:
+  scoped_ptr<MediaQueries> media_queries_;
+  scoped_ptr<Declarations> declarations_;
+
+  DISALLOW_COPY_AND_ASSIGN(FontFace);
+};
+
+class FontFaces : public std::vector<Css::FontFace*> {
+ public:
+  FontFaces() : std::vector<Css::FontFace*>() { }
+  ~FontFaces();
+};
+
 // A stylesheet consists of a list of import information and a list of
 // rulesets.
 class Stylesheet {
@@ -908,15 +944,18 @@ class Stylesheet {
   StylesheetType type() const { return type_; }
   const Charsets& charsets() const { return charsets_; }
   const Imports& imports() const { return imports_; }
+  const FontFaces& font_faces() const { return font_faces_; }
   const Rulesets& rulesets() const { return rulesets_; }
 
   const UnicodeText& charset(int i) const { return charsets_[i]; }
   const Import& import(int i) const { return *imports_[i]; }
+  const FontFace& font_face(int i) const { return *font_faces_[i]; }
   const Ruleset& ruleset(int i) const { return *rulesets_[i]; }
 
   void set_type(StylesheetType type) { type_ = type; }
   Charsets& mutable_charsets() { return charsets_; }
   Imports& mutable_imports() { return imports_; }
+  FontFaces& mutable_font_faces() { return font_faces_; }
   Rulesets& mutable_rulesets() { return rulesets_; }
 
   string ToString() const;
@@ -924,10 +963,12 @@ class Stylesheet {
   StylesheetType type_;
   Charsets charsets_;
   Imports imports_;
+  FontFaces font_faces_;
+
   // Note: CSS spec specifies that a stylesheet is a list of statements each
   // of which is either a ruleset or at-rule. Since we want to support the
-  // legacy rulesets() interface and most at-rules are not parsed, at-rules
-  // are currently being stored as dummy rulesets.
+  // legacy rulesets() interface and most at-rules are not parsed, unparsed
+  // at-rules are currently being stored as dummy rulesets.
   Rulesets rulesets_;
 
   DISALLOW_COPY_AND_ASSIGN(Stylesheet);

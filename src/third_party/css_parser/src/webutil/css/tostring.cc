@@ -486,11 +486,22 @@ string Import::ToString() const {
                       media_queries().ToString().c_str());
 }
 
+string FontFace::ToString() const {
+  string result;
+  if (!media_queries().empty())
+    result += StringPrintf("@media %s { ", media_queries().ToString().c_str());
+  result += "@font-face { " + declarations().ToString() + " }";
+  if (!media_queries().empty())
+    result += " }";
+  return result;
+}
+
 string Stylesheet::ToString() const {
   string result;
   result += "/* " + StylesheetTypeString(type()) + " */\n";
   result += charsets().ToString() + "\n";
   result += JoinElementStrings(imports(), "\n") + "\n";
+  result += JoinElementStrings(font_faces(), "\n") + "\n";
   result += JoinElementStrings(rulesets(), "\n") + "\n";
   return result;
 }

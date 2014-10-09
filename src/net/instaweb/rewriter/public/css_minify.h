@@ -29,6 +29,7 @@ class Import;
 class MediaQuery;
 class MediaQueries;
 class MediaExpression;
+class FontFace;
 class Ruleset;
 class Selector;
 class SimpleSelector;
@@ -93,13 +94,14 @@ class CssMinify {
   // Start followed by Ignoring followed by End gives the same result as the
   // Ruleset version of Minify above.
 
-  // Emits the ruleset's selectors and declarations without wrapping them in
-  // an @media rule.
-  void MinifyRulesetIgnoringMedia(const Css::Ruleset& ruleset);
   // Emits the start of the @media rule iff required (non-empty media set).
-  void MinifyRulesetMediaStart(const Css::Ruleset& ruleset);
+  void MinifyMediaStart(const Css::MediaQueries& media_queries);
   // Emits the end of the @media rule iff required (non-empty media set).
-  void MinifyRulesetMediaEnd(const Css::Ruleset& ruleset);
+  void MinifyMediaEnd(const Css::MediaQueries& media_queries);
+
+  // Emits rulesets or @font-faces without @media wrappers.
+  void MinifyFontFaceIgnoringMedia(const Css::FontFace& font_face);
+  void MinifyRulesetIgnoringMedia(const Css::Ruleset& ruleset);
 
   // Font requires special output format.
   void MinifyFont(const Css::Values& font_values);

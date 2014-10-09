@@ -2440,155 +2440,231 @@ Import* Parser::ParseImport() {
   return import.release();
 }
 
-void Parser::ParseAtRule(Stylesheet* stylesheet) {
+FontFace* Parser::ParseFontFace() {
   Tracer trace(__func__, this);
-  DCHECK(stylesheet != NULL);
 
+  scoped_ptr<FontFace> font_face(new FontFace());
   SkipSpace();
-  DCHECK_LT(in_, end_);
-  DCHECK_EQ('@', *in_);
-
-  // The starting point is saved so that we may pass through verbatim text
-  // in case the @-rule cannot be parsed correctly.
-  const char* at_rule_start = in_;
-  const uint64 start_errors_seen_mask = errors_seen_mask_;
-  // Is the current at-rule correctly terminated? Used for error handling.
-  bool correctly_terminated = true;
-  in_++;
-
-  UnicodeText ident = ParseIdent();
-
-  // @import string|uri medium-list ? ;
-  if (StringCaseEquals(ident, "import")) {
-    if (!stylesheet->rulesets().empty()) {
-      ReportParsingError(kImportError, "@import found after rulesets.");
-      correctly_terminated = SkipToAtRuleEnd();
-    } else {
-      scoped_ptr<Import> import(ParseImport());
-      SkipSpace();
-      if (import.get()) {
-        if (Done()) {
-          ReportParsingError(kImportError,
-                             "Unexpected EOF in @import statement.");
-          correctly_terminated = false;
-          // @import was not closed with a ; and so we must preserve an error
-          // message, but we still need to save this import.
-          stylesheet->mutable_imports().push_back(import.release());
-        } else if (*in_ == ';') {
-          in_++;
-          stylesheet->mutable_imports().push_back(import.release());
-        } else {
-          ReportParsingError(kImportError, "Ignoring chars at end of @import.");
-          correctly_terminated = SkipToAtRuleEnd();
-        }
-      } else {
-        ReportParsingError(kImportError, "Failed to parse @import.");
-        correctly_terminated = SkipToAtRuleEnd();
-      }
-    }
-
-  // @charset string ;
-  } else if (StringCaseEquals(ident, "charset")) {
-    if (!stylesheet->rulesets().empty() || !stylesheet->imports().empty()) {
-      ReportParsingError(kCharsetError, "@charset found after other rules.");
-      correctly_terminated = SkipToAtRuleEnd();
-    } else {
-      UnicodeText s = ParseCharset();
-      SkipSpace();
-      if (preservation_mode_ && (errors_seen_mask_ != start_errors_seen_mask)) {
-        ReportParsingError(kCharsetError, "Failed to parse @charset.");
-        correctly_terminated = SkipToAtRuleEnd();
-      } else if (Done()) {
-        ReportParsingError(kCharsetError,
-                           "Unexpected EOF in @charset statement.");
-        correctly_terminated = false;
-        stylesheet->mutable_charsets().push_back(s);
-      } else {
-        if (*in_ == ';') {
-          in_++;
-          stylesheet->mutable_charsets().push_back(s);
-        } else {
-          ReportParsingError(kCharsetError,
-                             "Ignoring chars at end of @charset.");
-          correctly_terminated = SkipToAtRuleEnd();
-        }
-      }
-    }
-
-  // @media medium-list { ruleset-list }
-  } else if (StringCaseEquals(ident, "media")) {
-    scoped_ptr<MediaQueries> media_queries(ParseMediaQueries());
-    if (preservation_mode_ && (errors_seen_mask_ != start_errors_seen_mask)) {
-      ReportParsingError(kMediaError,
-                         "Error parsing media queries, ignoring block.");
-      correctly_terminated = SkipToAtRuleEnd();
-    } else if (Done()) {
-      ReportParsingError(kMediaError, "Unexpected EOF in @media statement.");
-      correctly_terminated = false;
-    } else if (*in_ == ';') {
-      // @media tags ending in ';' are no-ops, we simply ignore them.
-      // Skip over ending ';'
-      in_++;
-      return;
-    } else if (*in_ != '{') {
-      ReportParsingError(kMediaError, "Malformed @media statement.");
-      correctly_terminated = SkipToAtRuleEnd();
-    } else {
-      DCHECK(!Done());
-      DCHECK_EQ('{', *in_);
-      in_++;
-      SkipSpace();
-      while (in_ < end_ && *in_ != '}') {
-        const char* oldin = in_;
-        // TODO(sligocki): Do we need to be able to parse at-rules here.
-        scoped_ptr<Ruleset> ruleset(ParseRuleset());
-        if (!ruleset.get() && in_ == oldin) {
-          ReportParsingError(kSelectorError, StringPrintf(
-              "Could not parse ruleset: illegal char %c", *in_));
-          in_++;
-        }
-        if (ruleset.get()) {
-          // TODO(sligocki): Do we want to restructure this so we don't have
-          // to make so many copies?
-          ruleset->set_media_queries(media_queries->DeepCopy());
-          stylesheet->mutable_rulesets().push_back(ruleset.release());
-        }
-        SkipSpace();
-      }
-      if (in_ < end_) {
-        DCHECK_EQ('}', *in_);
-        in_++;
-      } else {
-        ReportParsingError(kMediaError, "Unexpected EOF in @media statement.");
-        correctly_terminated = false;
-      }
-    }
-
-  // Unexpected @-rule.
-  } else {
-    string ident_string(ident.utf8_data(), ident.utf8_length());
-    ReportParsingError(kAtRuleError, StringPrintf(
-        "Cannot parse unknown @-statement: %s", ident_string.c_str()));
-    correctly_terminated = SkipToAtRuleEnd();
+  if (Done()) {
+    ReportParsingError(kAtRuleError, "Unexpected EOF in @font-face.");
+    return NULL;
   }
 
-  // We can only preserve the @-rule if it is correctly terminated. If it
-  // is not (because we reach EOF before it terminates) we must preserve
-  // the error.
-  if (errors_seen_mask_ != start_errors_seen_mask &&
-      correctly_terminated && preservation_mode_) {
-    // Add a place-holder with verbatim text because we failed to parse
-    // this @-rule correctly. This is saved so that it can be
-    // serialized back out in case it was actually meaningful even though
-    // we could not understand it.
-    StringPiece bytes_in_original_buffer(at_rule_start, in_ - at_rule_start);
-    stylesheet->mutable_rulesets().push_back(
-        new Ruleset(new UnparsedRegion(bytes_in_original_buffer)));
-    // All errors that occurred sinse we started this declaration are
-    // demoted to unparseable sections now that we've saved the dummy
-    // element.
-    unparseable_sections_seen_mask_ |= errors_seen_mask_;
-    errors_seen_mask_ = start_errors_seen_mask;
+  if ('{' != *in_) {
+    ReportParsingError(kAtRuleError, "Expected '{' after @font-face.");
+    return NULL;
+  }
+  in_++;
+
+  font_face->set_declarations(ParseRawDeclarations());
+
+  SkipSpace();
+  if (Done() || *in_ != '}') {
+    ReportParsingError(kAtRuleError, "Ignored chars at end of @font-face.");
+  }
+  SkipPastDelimiter('}');
+
+  return font_face.release();
+}
+
+void Parser::ParseStatement(const MediaQueries* media_queries,
+                            Stylesheet* stylesheet) {
+  Tracer trace(__func__, this);
+
+  SkipSpace();
+  if (Done()) return;
+  DCHECK_LT(in_, end_);
+  // The starting point is saved so that we may pass through verbatim text
+  // in case the @-rule cannot be parsed correctly.
+  const char* oldin = in_;
+  const uint64 start_errors_seen_mask = errors_seen_mask_;
+
+  if (*in_ == '@') {
+    bool correctly_terminated = true;
+    in_++;
+    UnicodeText ident = ParseIdent();
+
+    // @import string|uri medium-list ? ;
+    if (StringCaseEquals(ident, "import")) {
+      if (media_queries != NULL) {
+        ReportParsingError(kImportError, "@import found inside @media");
+        correctly_terminated = SkipToAtRuleEnd();
+      } else if (!stylesheet->rulesets().empty() ||
+                 !stylesheet->font_faces().empty()) {
+        ReportParsingError(kImportError, "@import found after rulesets.");
+        correctly_terminated = SkipToAtRuleEnd();
+      } else {
+        scoped_ptr<Import> import(ParseImport());
+        SkipSpace();
+        if (import.get()) {
+          if (Done()) {
+            ReportParsingError(kImportError,
+                               "Unexpected EOF in @import statement.");
+            correctly_terminated = false;
+            // @import was not closed with a ; and so we must preserve an error
+            // message, but we still need to save this import.
+            stylesheet->mutable_imports().push_back(import.release());
+          } else if (*in_ == ';') {
+            in_++;
+            stylesheet->mutable_imports().push_back(import.release());
+          } else {
+            ReportParsingError(kImportError,
+                               "Ignoring chars at end of @import.");
+            correctly_terminated = SkipToAtRuleEnd();
+          }
+        } else {
+          ReportParsingError(kImportError, "Failed to parse @import.");
+          correctly_terminated = SkipToAtRuleEnd();
+        }
+      }
+
+    // @charset string ;
+    } else if (StringCaseEquals(ident, "charset")) {
+      if (media_queries != NULL) {
+        ReportParsingError(kCharsetError, "@charset found inside @media");
+        correctly_terminated = SkipToAtRuleEnd();
+      } else if (!stylesheet->rulesets().empty() ||
+                 !stylesheet->imports().empty() ||
+                 !stylesheet->font_faces().empty()) {
+        ReportParsingError(kCharsetError, "@charset found after other rules.");
+        correctly_terminated = SkipToAtRuleEnd();
+      } else {
+        UnicodeText s = ParseCharset();
+        SkipSpace();
+        if (preservation_mode_ &&
+            (errors_seen_mask_ != start_errors_seen_mask)) {
+          ReportParsingError(kCharsetError, "Failed to parse @charset.");
+          correctly_terminated = SkipToAtRuleEnd();
+        } else if (Done()) {
+          ReportParsingError(kCharsetError,
+                             "Unexpected EOF in @charset statement.");
+          correctly_terminated = false;
+          stylesheet->mutable_charsets().push_back(s);
+        } else {
+          if (*in_ == ';') {
+            in_++;
+            stylesheet->mutable_charsets().push_back(s);
+          } else {
+            ReportParsingError(kCharsetError,
+                               "Ignoring chars at end of @charset.");
+            correctly_terminated = SkipToAtRuleEnd();
+          }
+        }
+      }
+
+      // @media medium-list { ruleset-list }
+    } else if (StringCaseEquals(ident, "media")) {
+      if (media_queries != NULL) {
+        // Note: We do not parse nested @media rules although they are
+        // technically allowed in CSS3. Among other things, this makes our
+        // lives easier by avoiding unbounded recursive depth.
+        ReportParsingError(kMediaError, "@media found inside @media");
+        correctly_terminated = SkipToAtRuleEnd();
+      } else {
+        scoped_ptr<MediaQueries> media_queries(ParseMediaQueries());
+        if (preservation_mode_ && errors_seen_mask_ != start_errors_seen_mask) {
+          ReportParsingError(kMediaError,
+                             "Error parsing media queries, ignoring block.");
+          correctly_terminated = SkipToAtRuleEnd();
+        } else if (Done()) {
+          ReportParsingError(kMediaError, "Unexpected EOF in @media statement");
+          correctly_terminated = false;
+        } else if (*in_ == ';') {
+          // @media tags ending in ';' are no-ops, we simply ignore them.
+          // Skip over ending ';'
+          in_++;
+          return;
+        } else if (*in_ != '{') {
+          ReportParsingError(kMediaError, "Malformed @media statement.");
+          correctly_terminated = SkipToAtRuleEnd();
+        } else {
+          DCHECK(!Done());
+          DCHECK_EQ('{', *in_);
+          in_++;
+          SkipSpace();
+          while (in_ < end_ && *in_ != '}') {
+            const char* oldin = in_;
+            // Parse either a ruleset or at-rule.
+            ParseStatement(media_queries.get(), stylesheet);
+            if (in_ == oldin) {
+              ReportParsingError(kSelectorError, StringPrintf(
+                  "Could not parse ruleset: illegal char %c", *in_));
+              in_++;
+            }
+            SkipSpace();
+          }
+          if (in_ < end_) {
+            DCHECK_EQ('}', *in_);
+            in_++;
+          } else {
+            ReportParsingError(kMediaError,
+                               "Unexpected EOF in @media statement.");
+            correctly_terminated = false;
+          }
+        }
+      }
+
+    } else if (StringCaseEquals(ident, "font-face")) {
+      scoped_ptr<FontFace> font_face(ParseFontFace());
+      if ((preservation_mode_ && (errors_seen_mask_ != start_errors_seen_mask))
+          || font_face.get() == NULL) {
+        ReportParsingError(kAtRuleError, "Could not parse @font-face rule.");
+        correctly_terminated = SkipToAtRuleEnd();
+      } else {
+        if (media_queries != NULL) {
+          font_face->set_media_queries(media_queries->DeepCopy());
+        } else {
+          // Blank media queries.
+          font_face->set_media_queries(new MediaQueries);
+        }
+        stylesheet->mutable_font_faces().push_back(font_face.release());
+      }
+
+      // Unexpected @-rule.
+    } else {
+      string ident_string(ident.utf8_data(), ident.utf8_length());
+      ReportParsingError(kAtRuleError, StringPrintf(
+          "Cannot parse unknown @-statement: %s", ident_string.c_str()));
+      correctly_terminated = SkipToAtRuleEnd();
+    }
+
+    // We can only preserve the @-rule if it is correctly terminated. If it
+    // is not (because we reach EOF before it terminates) we must preserve
+    // the error.
+    if (errors_seen_mask_ != start_errors_seen_mask &&
+        correctly_terminated && preservation_mode_) {
+      // Add a place-holder with verbatim text because we failed to parse
+      // this @-rule correctly. This is saved so that it can be
+      // serialized back out in case it was actually meaningful even though
+      // we could not understand it.
+      StringPiece bytes_in_original_buffer(oldin, in_ - oldin);
+
+      Ruleset* ruleset =
+          new Ruleset(new UnparsedRegion(bytes_in_original_buffer));
+      if (media_queries != NULL) {
+        ruleset->set_media_queries(media_queries->DeepCopy());
+      }
+      stylesheet->mutable_rulesets().push_back(ruleset);
+
+      // All errors that occurred sinse we started this declaration are
+      // demoted to unparseable sections now that we've saved the dummy
+      // element.
+      unparseable_sections_seen_mask_ |= errors_seen_mask_;
+      errors_seen_mask_ = start_errors_seen_mask;
+    }
+  } else {
+    scoped_ptr<Ruleset> ruleset(ParseRuleset());
+    if (ruleset.get() == NULL && oldin == in_) {
+      ReportParsingError(kSelectorError, StringPrintf(
+          "Could not parse ruleset: illegal char %c", *in_));
+      in_++;
+    }
+    if (ruleset.get() != NULL) {
+      if (media_queries != NULL) {
+        ruleset->set_media_queries(media_queries->DeepCopy());
+      }
+      stylesheet->mutable_rulesets().push_back(ruleset.release());
+    }
   }
 }
 
@@ -2621,21 +2697,9 @@ Stylesheet* Parser::ParseRawStylesheet() {
           ReportParsingError(kHtmlCommentError, "- without following ->");
         }
         break;
-      case '@':
-        ParseAtRule(stylesheet);
+      default:
+        ParseStatement(NULL, stylesheet);
         break;
-      default: {
-        const char* oldin = in_;
-        scoped_ptr<Ruleset> ruleset(ParseRuleset());
-        if (!ruleset.get() && oldin == in_) {
-          ReportParsingError(kSelectorError, StringPrintf(
-              "Could not parse ruleset: illegal char %c", *in_));
-          in_++;
-        }
-        if (ruleset.get())
-          stylesheet->mutable_rulesets().push_back(ruleset.release());
-        break;
-      }
     }
     SkipSpace();
   }
@@ -2669,5 +2733,6 @@ Declarations::~Declarations() { STLDeleteElements(this); }
 Rulesets::~Rulesets() { STLDeleteElements(this); }
 Charsets::~Charsets() {}
 Imports::~Imports() { STLDeleteElements(this); }
+FontFaces::~FontFaces() { STLDeleteElements(this); }
 
 }  // namespace Css
