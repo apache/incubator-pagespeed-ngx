@@ -1,51 +1,54 @@
-(function(){var pagespeedutils = {MAX_POST_SIZE:131072, sendBeacon:function(beaconUrl, htmlUrl, data) {
-  var httpRequest;
+(function(){var pagespeedutils = {MAX_POST_SIZE:131072, sendBeacon:function(a, b, c) {
+  var d;
   if (window.XMLHttpRequest) {
-    httpRequest = new XMLHttpRequest;
+    d = new XMLHttpRequest;
   } else {
     if (window.ActiveXObject) {
       try {
-        httpRequest = new ActiveXObject("Msxml2.XMLHTTP");
-      } catch (e) {
+        d = new ActiveXObject("Msxml2.XMLHTTP");
+      } catch (g) {
         try {
-          httpRequest = new ActiveXObject("Microsoft.XMLHTTP");
-        } catch (e2) {
+          d = new ActiveXObject("Microsoft.XMLHTTP");
+        } catch (e) {
         }
       }
     }
   }
-  if (!httpRequest) {
+  if (!d) {
     return!1;
   }
-  httpRequest.open("POST", beaconUrl + (-1 == beaconUrl.indexOf("?") ? "?" : "&") + "url=" + encodeURIComponent(htmlUrl));
-  httpRequest.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-  httpRequest.send(data);
+  var f = -1 == a.indexOf("?") ? "?" : "&";
+  a = a + f + "url=" + encodeURIComponent(b);
+  d.open("POST", a);
+  d.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+  d.send(c);
   return!0;
-}, addHandler:function(elem, eventName, func) {
-  if (elem.addEventListener) {
-    elem.addEventListener(eventName, func, !1);
+}, addHandler:function(a, b, c) {
+  if (a.addEventListener) {
+    a.addEventListener(b, c, !1);
   } else {
-    if (elem.attachEvent) {
-      elem.attachEvent("on" + eventName, func);
+    if (a.attachEvent) {
+      a.attachEvent("on" + b, c);
     } else {
-      var oldHandler = elem["on" + eventName];
-      elem["on" + eventName] = function() {
-        func.call(this);
-        oldHandler && oldHandler.call(this);
+      var d = a["on" + b];
+      a["on" + b] = function() {
+        c.call(this);
+        d && d.call(this);
       };
     }
   }
-}, getPosition:function(element) {
-  for (var top = element.offsetTop, left = element.offsetLeft;element.offsetParent;) {
-    element = element.offsetParent, top += element.offsetTop, left += element.offsetLeft;
+}, getPosition:function(a) {
+  for (var b = a.offsetTop, c = a.offsetLeft;a.offsetParent;) {
+    a = a.offsetParent, b += a.offsetTop, c += a.offsetLeft;
   }
-  return{top:top, left:left};
+  return{top:b, left:c};
 }, getWindowSize:function() {
   return{height:window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight, width:window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth};
-}, inViewport:function(element, windowSize) {
-  return pagespeedutils.positionInViewport(pagespeedutils.getPosition(element), windowSize);
-}, positionInViewport:function(pos, windowSize) {
-  return pos.top < windowSize.height && pos.left < windowSize.width;
+}, inViewport:function(a, b) {
+  var c = pagespeedutils.getPosition(a);
+  return pagespeedutils.positionInViewport(c, b);
+}, positionInViewport:function(a, b) {
+  return a.top < b.height && a.left < b.width;
 }, getRequestAnimationFrame:function() {
   return window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || window.oRequestAnimationFrame || window.msRequestAnimationFrame || null;
 }};
@@ -65,6 +68,7 @@ deferJsNs.DeferJs = function() {
   this.origGetElementById_ = document.getElementById;
   this.origGetElementsByTagName_ = document.getElementsByTagName;
   this.origDocWrite_ = document.write;
+  this.origDocWriteln_ = document.writeln;
   this.origDocOpen_ = document.open;
   this.origDocClose_ = document.close;
   this.origDocAddEventListener_ = document.addEventListener;
@@ -94,156 +98,152 @@ deferJsNs.DeferJs.PSA_ORIG_TYPE = "pagespeed_orig_type";
 deferJsNs.DeferJs.PSA_ORIG_SRC = "pagespeed_orig_src";
 deferJsNs.DeferJs.PSA_ORIG_INDEX = "orig_index";
 deferJsNs.DeferJs.PAGESPEED_ONLOAD = "data-pagespeed-onload";
-deferJsNs.DeferJs.prototype.log = function(line, opt_exception) {
-  this.logs && (this.logs.push("" + line), opt_exception && (this.logs.push(opt_exception), "undefined" != typeof console && "undefined" != typeof console.log && console.log("PSA ERROR: " + line + opt_exception.message)));
+deferJsNs.DeferJs.prototype.log = function(a, b) {
+  this.logs && (this.logs.push("" + a), b && (this.logs.push(b), "undefined" != typeof console && "undefined" != typeof console.log && console.log("PSA ERROR: " + a + b.message)));
 };
-deferJsNs.DeferJs.prototype.submitTask = function(task, opt_pos) {
-  this.queue_.splice(opt_pos ? opt_pos : this.queue_.length, 0, task);
+deferJsNs.DeferJs.prototype.submitTask = function(a, b) {
+  this.queue_.splice(b ? b : this.queue_.length, 0, a);
 };
-deferJsNs.DeferJs.prototype.globalEval = function(str, opt_script_elem) {
-  var script = this.cloneScriptNode(opt_script_elem);
-  script.text = str;
-  script.setAttribute("type", "text/javascript");
-  var currentElem = this.getCurrentDomLocation();
-  currentElem.parentNode.insertBefore(script, currentElem);
-  return script;
+deferJsNs.DeferJs.prototype.globalEval = function(a, b) {
+  var c = this.cloneScriptNode(b);
+  c.text = a;
+  c.setAttribute("type", "text/javascript");
+  var d = this.getCurrentDomLocation();
+  d.parentNode.insertBefore(c, d);
+  return c;
 };
 deferJsNs.DeferJs.prototype.createIdVars = function() {
-  for (var elems = document.getElementsByTagName("*"), idVarsString = "", i = 0;i < elems.length;i++) {
-    if (elems[i].hasAttribute("id")) {
-      var idStr = elems[i].getAttribute("id");
-      if (idStr && -1 == idStr.search(/[-:.]/) && -1 == idStr.search(/^[0-9]/)) {
+  for (var a = document.getElementsByTagName("*"), b = "", c = 0;c < a.length;c++) {
+    if (a[c].hasAttribute("id")) {
+      var d = a[c].getAttribute("id");
+      if (d && -1 == d.search(/[-:.]/) && -1 == d.search(/^[0-9]/)) {
         try {
-          window[idStr] && window[idStr].tagName && (idVarsString += "var " + idStr + '=document.getElementById("' + idStr + '");');
-        } catch (err) {
-          this.log("Exception while evaluating.", err);
+          window[d] && window[d].tagName && (b += "var " + d + '=document.getElementById("' + d + '");');
+        } catch (g) {
+          this.log("Exception while evaluating.", g);
         }
       }
     }
   }
-  if (idVarsString) {
-    var script = this.globalEval(idVarsString);
-    script.setAttribute(deferJsNs.DeferJs.PSA_NOT_PROCESSED, "");
-    script.setAttribute(deferJsNs.DeferJs.PRIORITY_PSA_NOT_PROCESSED, "");
-  }
+  b && (a = this.globalEval(b), a.setAttribute(deferJsNs.DeferJs.PSA_NOT_PROCESSED, ""), a.setAttribute(deferJsNs.DeferJs.PRIORITY_PSA_NOT_PROCESSED, ""));
 };
-deferJsNs.DeferJs.prototype.attemptPrefetchOrQueue = function(url) {
-  this.isWebKit() && ((new Image).src = url);
+deferJsNs.DeferJs.prototype.attemptPrefetchOrQueue = function(a) {
+  this.isWebKit() && ((new Image).src = a);
 };
-deferJsNs.DeferJs.prototype.addNode = function(script, opt_pos, opt_prefetch) {
-  var src = script.getAttribute(deferJsNs.DeferJs.PSA_ORIG_SRC) || script.getAttribute("src");
-  src ? (opt_prefetch && this.attemptPrefetchOrQueue(src), this.addUrl(src, script, opt_pos)) : this.addStr(script.innerHTML || script.textContent || script.data || "", script, opt_pos);
+deferJsNs.DeferJs.prototype.addNode = function(a, b, c) {
+  var d = a.getAttribute(deferJsNs.DeferJs.PSA_ORIG_SRC) || a.getAttribute("src");
+  d ? (c && this.attemptPrefetchOrQueue(d), this.addUrl(d, a, b)) : this.addStr(a.innerHTML || a.textContent || a.data || "", a, b);
 };
-deferJsNs.DeferJs.prototype.addStr = function(str, script_elem, opt_pos) {
+deferJsNs.DeferJs.prototype.addStr = function(a, b, c) {
   if (this.isFireFox()) {
-    this.addUrl("data:text/javascript," + encodeURIComponent(str), script_elem, opt_pos);
+    this.addUrl("data:text/javascript," + encodeURIComponent(a), b, c);
   } else {
-    this.logs.push("Add to queue str: " + str);
-    var me = this;
+    this.logs.push("Add to queue str: " + a);
+    var d = this;
     this.submitTask(function() {
-      me.removeNotProcessedAttributeTillNode(script_elem);
-      me.nextPsaJsNode().setAttribute(deferJsNs.DeferJs.PSA_CURRENT_NODE, "");
+      d.removeNotProcessedAttributeTillNode(b);
+      d.nextPsaJsNode().setAttribute(deferJsNs.DeferJs.PSA_CURRENT_NODE, "");
       try {
-        me.globalEval(str, script_elem);
-      } catch (err) {
-        me.log("Exception while evaluating.", err);
+        d.globalEval(a, b);
+      } catch (c) {
+        d.log("Exception while evaluating.", c);
       }
-      me.log("Evaluated: " + str);
-      me.runNext();
-    }, opt_pos);
+      d.log("Evaluated: " + a);
+      d.runNext();
+    }, c);
   }
 };
 deferJsNs.DeferJs.prototype.addStr = deferJsNs.DeferJs.prototype.addStr;
-deferJsNs.DeferJs.prototype.cloneScriptNode = function(opt_script_elem) {
-  var newScript = this.origCreateElement_.call(document, "script");
-  if (opt_script_elem) {
-    for (var a = opt_script_elem.attributes, i = a.length - 1;0 <= i;--i) {
-      "type" != a[i].name && "src" != a[i].name && "async" != a[i].name && "defer" != a[i].name && a[i].name != deferJsNs.DeferJs.PSA_ORIG_TYPE && a[i].name != deferJsNs.DeferJs.PSA_ORIG_SRC && a[i].name != deferJsNs.DeferJs.PSA_ORIG_INDEX && a[i].name != deferJsNs.DeferJs.PSA_CURRENT_NODE && a[i].name != this.psaNotProcessed_ && (newScript.setAttribute(a[i].name, a[i].value), opt_script_elem.removeAttribute(a[i].name));
+deferJsNs.DeferJs.prototype.cloneScriptNode = function(a) {
+  var b = this.origCreateElement_.call(document, "script");
+  if (a) {
+    for (var c = a.attributes, d = c.length - 1;0 <= d;--d) {
+      "type" != c[d].name && "src" != c[d].name && "async" != c[d].name && "defer" != c[d].name && c[d].name != deferJsNs.DeferJs.PSA_ORIG_TYPE && c[d].name != deferJsNs.DeferJs.PSA_ORIG_SRC && c[d].name != deferJsNs.DeferJs.PSA_ORIG_INDEX && c[d].name != deferJsNs.DeferJs.PSA_CURRENT_NODE && c[d].name != this.psaNotProcessed_ && (b.setAttribute(c[d].name, c[d].value), a.removeAttribute(c[d].name));
     }
   }
-  return newScript;
+  return b;
 };
-deferJsNs.DeferJs.prototype.scriptOnLoad = function(url) {
-  var script = this.origCreateElement_.call(document, "script");
-  script.setAttribute("type", "text/javascript");
-  script.async = !1;
-  script.setAttribute(deferJsNs.DeferJs.PSA_TO_BE_DELETED, "");
-  script.setAttribute(deferJsNs.DeferJs.PSA_NOT_PROCESSED, "");
-  script.setAttribute(deferJsNs.DeferJs.PRIORITY_PSA_NOT_PROCESSED, "");
-  var me = this, runNextHandler = function() {
+deferJsNs.DeferJs.prototype.scriptOnLoad = function(a) {
+  var b = this.origCreateElement_.call(document, "script");
+  b.setAttribute("type", "text/javascript");
+  b.async = !1;
+  b.setAttribute(deferJsNs.DeferJs.PSA_TO_BE_DELETED, "");
+  b.setAttribute(deferJsNs.DeferJs.PSA_NOT_PROCESSED, "");
+  b.setAttribute(deferJsNs.DeferJs.PRIORITY_PSA_NOT_PROCESSED, "");
+  var c = this, d = function() {
     if (document.querySelector) {
-      var node = document.querySelector("[" + deferJsNs.DeferJs.PSA_TO_BE_DELETED + "]");
-      node && node.parentNode.removeChild(node);
+      var b = document.querySelector("[" + deferJsNs.DeferJs.PSA_TO_BE_DELETED + "]");
+      b && b.parentNode.removeChild(b);
     }
-    me.log("Executed: " + url);
-    me.runNext();
+    c.log("Executed: " + a);
+    c.runNext();
   };
-  deferJsNs.addOnload(script, runNextHandler);
-  pagespeedutils.addHandler(script, "error", runNextHandler);
-  script.src = "data:text/javascript," + encodeURIComponent("window.pagespeed.psatemp=0;");
-  var currentElem = this.getCurrentDomLocation();
-  currentElem.parentNode.insertBefore(script, currentElem);
+  deferJsNs.addOnload(b, d);
+  pagespeedutils.addHandler(b, "error", d);
+  b.src = "data:text/javascript," + encodeURIComponent("window.pagespeed.psatemp=0;");
+  d = this.getCurrentDomLocation();
+  d.parentNode.insertBefore(b, d);
 };
-deferJsNs.DeferJs.prototype.addUrl = function(url, script_elem, opt_pos) {
-  this.logs.push("Add to queue url: " + url);
-  var me = this;
+deferJsNs.DeferJs.prototype.addUrl = function(a, b, c) {
+  this.logs.push("Add to queue url: " + a);
+  var d = this;
   this.submitTask(function() {
-    me.removeNotProcessedAttributeTillNode(script_elem);
-    var script = me.cloneScriptNode(script_elem);
-    script.setAttribute("type", "text/javascript");
-    var useSyncScript = !0;
-    "async" in script ? script.async = !1 : script.readyState && (useSyncScript = !1, pagespeedutils.addHandler(script, "readystatechange", function() {
-      if ("complete" == script.readyState || "loaded" == script.readyState) {
-        script.onreadystatechange = null, me.log("Executed: " + url), me.runNext();
+    d.removeNotProcessedAttributeTillNode(b);
+    var c = d.cloneScriptNode(b);
+    c.setAttribute("type", "text/javascript");
+    var e = !0;
+    "async" in c ? c.async = !1 : c.readyState && (e = !1, pagespeedutils.addHandler(c, "readystatechange", function() {
+      if ("complete" == c.readyState || "loaded" == c.readyState) {
+        c.onreadystatechange = null, d.log("Executed: " + a), d.runNext();
       }
     }));
-    script.setAttribute("src", url);
-    var str = script_elem.innerHTML || script_elem.textContent || script_elem.data;
-    str && script.appendChild(document.createTextNode(str));
-    var currentElem = me.nextPsaJsNode();
-    currentElem.setAttribute(deferJsNs.DeferJs.PSA_CURRENT_NODE, "");
-    currentElem.parentNode.insertBefore(script, currentElem);
-    useSyncScript && me.scriptOnLoad(url);
-  }, opt_pos);
+    c.setAttribute("src", a);
+    var f = b.innerHTML || b.textContent || b.data;
+    f && c.appendChild(document.createTextNode(f));
+    f = d.nextPsaJsNode();
+    f.setAttribute(deferJsNs.DeferJs.PSA_CURRENT_NODE, "");
+    f.parentNode.insertBefore(c, f);
+    e && d.scriptOnLoad(a);
+  }, c);
 };
 deferJsNs.DeferJs.prototype.addUrl = deferJsNs.DeferJs.prototype.addUrl;
-deferJsNs.DeferJs.prototype.removeNotProcessedAttributeTillNode = function(opt_node) {
+deferJsNs.DeferJs.prototype.removeNotProcessedAttributeTillNode = function(a) {
   if (document.querySelectorAll && !(8 >= this.getIEVersion())) {
-    for (var nodes = document.querySelectorAll("[" + this.psaNotProcessed_ + "]"), i = 0;i < nodes.length;i++) {
-      var dom_node = nodes.item(i);
-      if (dom_node == opt_node) {
+    for (var b = document.querySelectorAll("[" + this.psaNotProcessed_ + "]"), c = 0;c < b.length;c++) {
+      var d = b.item(c);
+      if (d == a) {
         break;
       }
-      dom_node.getAttribute("type") != this.psaScriptType_ && dom_node.removeAttribute(this.psaNotProcessed_);
+      d.getAttribute("type") != this.psaScriptType_ && d.removeAttribute(this.psaNotProcessed_);
     }
   }
 };
 deferJsNs.DeferJs.prototype.setNotProcessedAttributeForNodes = function() {
-  for (var nodes = this.origGetElementsByTagName_.call(document, "*"), i = 0;i < nodes.length;i++) {
-    nodes.item(i).setAttribute(this.psaNotProcessed_, "");
+  for (var a = this.origGetElementsByTagName_.call(document, "*"), b = 0;b < a.length;b++) {
+    a.item(b).setAttribute(this.psaNotProcessed_, "");
   }
 };
 deferJsNs.DeferJs.prototype.nextPsaJsNode = function() {
-  var current_node = null;
-  document.querySelector && (current_node = document.querySelector('[type="' + this.psaScriptType_ + '"]'));
-  return current_node;
+  var a = null;
+  document.querySelector && (a = document.querySelector('[type="' + this.psaScriptType_ + '"]'));
+  return a;
 };
 deferJsNs.DeferJs.prototype.getCurrentDomLocation = function() {
-  var current_node;
-  document.querySelector && (current_node = document.querySelector("[" + deferJsNs.DeferJs.PSA_CURRENT_NODE + "]"));
-  return current_node || this.origGetElementsByTagName_.call(document, "psanode")[0];
+  var a;
+  document.querySelector && (a = document.querySelector("[" + deferJsNs.DeferJs.PSA_CURRENT_NODE + "]"));
+  return a || this.origGetElementsByTagName_.call(document, "psanode")[0];
 };
 deferJsNs.DeferJs.prototype.removeCurrentDomLocation = function() {
-  var oldNode = this.getCurrentDomLocation();
-  "SCRIPT" == oldNode.nodeName && oldNode.parentNode.removeChild(oldNode);
+  var a = this.getCurrentDomLocation();
+  "SCRIPT" == a.nodeName && a.parentNode.removeChild(a);
 };
 deferJsNs.DeferJs.prototype.onComplete = function() {
   if (!(this.state_ >= deferJsNs.DeferJs.STATES.WAITING_FOR_ONLOAD)) {
     if (this.lastIncrementalRun_ && this.isLowPriorityDeferJs() && (this.getIEVersion() && document.documentElement.originalDoScroll && (document.documentElement.doScroll = document.documentElement.originalDoScroll), Object.defineProperty && delete document.readyState, this.getIEVersion() && Object.defineProperty && delete document.all), this.overrideDefaultImplementation_ = !1, this.lastIncrementalRun_) {
       if (this.state_ = deferJsNs.DeferJs.STATES.WAITING_FOR_ONLOAD, this.isLowPriorityDeferJs()) {
-        var me = this;
+        var a = this;
         "complete" != document.readyState ? deferJsNs.addOnload(window, function() {
-          me.fireOnload();
+          a.fireOnload();
         }) : (document.onreadystatechange && this.exec(document.onreadystatechange, document), window.onload && (psaAddEventListener(window, "onload", window.onload), window.onload = null), this.fireOnload());
       } else {
         this.highPriorityFinalize();
@@ -257,47 +257,48 @@ deferJsNs.DeferJs.prototype.fireOnload = function() {
   this.isLowPriorityDeferJs() && (this.addDeferredOnloadListeners(), pagespeed.highPriorityDeferJs.fireOnload());
   this.fireEvent(deferJsNs.DeferJs.EVENT.LOAD);
   if (this.isLowPriorityDeferJs()) {
-    for (var psanodes = document.body.getElementsByTagName("psanode"), i = psanodes.length - 1;0 <= i;i--) {
-      document.body.removeChild(psanodes[i]);
+    for (var a = document.body.getElementsByTagName("psanode"), b = a.length - 1;0 <= b;b--) {
+      document.body.removeChild(a[b]);
     }
-    for (var prefetchContainers = document.body.getElementsByClassName("psa_prefetch_container"), i = prefetchContainers.length - 1;0 <= i;i--) {
-      prefetchContainers[i].parentNode.removeChild(prefetchContainers[i]);
+    a = document.body.getElementsByClassName("psa_prefetch_container");
+    for (b = a.length - 1;0 <= b;b--) {
+      a[b].parentNode.removeChild(a[b]);
     }
   }
   this.state_ = deferJsNs.DeferJs.STATES.SCRIPTS_DONE;
   this.fireEvent(deferJsNs.DeferJs.EVENT.AFTER_SCRIPTS);
 };
 deferJsNs.DeferJs.prototype.highPriorityFinalize = function() {
-  var me = this;
+  var a = this;
   window.setTimeout(function() {
     pagespeed.deferJs = pagespeed.lowPriorityDeferJs;
     pagespeed.deferJs = pagespeed.lowPriorityDeferJs;
-    me.incrementalScriptsDoneCallback_ ? (pagespeed.deferJs.registerScriptTags(me.incrementalScriptsDoneCallback_, me.optLastIndex_), me.incrementalScriptsDoneCallback_ = null) : pagespeed.deferJs.registerScriptTags();
+    a.incrementalScriptsDoneCallback_ ? (pagespeed.deferJs.registerScriptTags(a.incrementalScriptsDoneCallback_, a.optLastIndex_), a.incrementalScriptsDoneCallback_ = null) : pagespeed.deferJs.registerScriptTags();
     pagespeed.deferJs.execute();
   }, 0);
 };
-deferJsNs.DeferJs.prototype.checkNodeInDom = function(node) {
-  for (;node = node.parentNode;) {
-    if (node == document) {
+deferJsNs.DeferJs.prototype.checkNodeInDom = function(a) {
+  for (;a = a.parentNode;) {
+    if (a == document) {
       return!0;
     }
   }
   return!1;
 };
-deferJsNs.DeferJs.prototype.getNumScriptsWithNoOnload = function(dynamicInsertedScriptList) {
-  for (var count = 0, len = dynamicInsertedScriptList.length, i = 0;i < len;++i) {
-    var node = dynamicInsertedScriptList[i], parent = node.parentNode, src = node.src, text = node.textContent;
-    (8 < this.getIEVersion() && (!parent || "" == src && "" == text) || !(this.getIEVersion() || this.checkNodeInDom(node) && "" != src)) && count++;
+deferJsNs.DeferJs.prototype.getNumScriptsWithNoOnload = function(a) {
+  for (var b = 0, c = a.length, d = 0;d < c;++d) {
+    var g = a[d], e = g.parentNode, f = g.src, h = g.textContent;
+    (8 < this.getIEVersion() && (!e || "" == f && "" == h) || !(this.getIEVersion() || this.checkNodeInDom(g) && "" != f)) && b++;
   }
-  return count;
+  return b;
 };
 deferJsNs.DeferJs.prototype.canCallOnComplete = function() {
   if (this.state_ != deferJsNs.DeferJs.STATES.SYNC_SCRIPTS_DONE) {
     return!1;
   }
-  var count = 0;
-  0 != this.dynamicInsertedScriptCount_ && (count = this.getNumScriptsWithNoOnload(this.dynamicInsertedScript_));
-  return this.dynamicInsertedScriptCount_ == count ? !0 : !1;
+  var a = 0;
+  0 != this.dynamicInsertedScriptCount_ && (a = this.getNumScriptsWithNoOnload(this.dynamicInsertedScript_));
+  return this.dynamicInsertedScriptCount_ == a ? !0 : !1;
 };
 deferJsNs.DeferJs.prototype.scriptsAreDone = function() {
   return this.state_ === deferJsNs.DeferJs.STATES.SCRIPTS_DONE;
@@ -318,90 +319,84 @@ deferJsNs.DeferJs.prototype.runNext = function() {
     }
   }
 };
-deferJsNs.DeferJs.prototype.nodeListToArray = function(nodeList) {
-  for (var arr = [], len = nodeList.length, i = 0;i < len;++i) {
-    arr.push(nodeList.item(i));
+deferJsNs.DeferJs.prototype.nodeListToArray = function(a) {
+  for (var b = [], c = a.length, d = 0;d < c;++d) {
+    b.push(a.item(d));
   }
-  return arr;
+  return b;
 };
 deferJsNs.DeferJs.prototype.setUp = function() {
-  var me = this;
+  var a = this;
   if (this.firstIncrementalRun_ && !this.isLowPriorityDeferJs()) {
-    var initialContextNode = document.createElement("psanode");
-    initialContextNode.setAttribute("psa_dw_target", "true");
-    document.body.appendChild(initialContextNode);
+    var b = document.createElement("psanode");
+    b.setAttribute("psa_dw_target", "true");
+    document.body.appendChild(b);
     this.getIEVersion() && this.createIdVars();
     if (Object.defineProperty) {
       try {
-        var propertyDescriptor = {configurable:!0, get:function() {
-          return me.state_ >= deferJsNs.DeferJs.STATES.SYNC_SCRIPTS_DONE ? "interactive" : "loading";
+        var c = {configurable:!0, get:function() {
+          return a.state_ >= deferJsNs.DeferJs.STATES.SYNC_SCRIPTS_DONE ? "interactive" : "loading";
         }};
-        Object.defineProperty(document, "readyState", propertyDescriptor);
-      } catch (err$$0) {
-        this.log("Exception while overriding document.readyState.", err$$0);
+        Object.defineProperty(document, "readyState", c);
+      } catch (d) {
+        this.log("Exception while overriding document.readyState.", d);
       }
     }
     if (this.getIEVersion() && (document.documentElement.originalDoScroll = document.documentElement.doScroll, document.documentElement.doScroll = function() {
       throw "psa exception";
     }, Object.defineProperty)) {
       try {
-        propertyDescriptor = {configurable:!0, get:function() {
-        }}, Object.defineProperty(document, "all", propertyDescriptor);
-      } catch (err$$1) {
-        this.log("Exception while overriding document.all.", err$$1);
+        c = {configurable:!0, get:function() {
+        }}, Object.defineProperty(document, "all", c);
+      } catch (g) {
+        this.log("Exception while overriding document.all.", g);
       }
     }
   }
   this.overrideAddEventListeners();
-  document.writeln = function(x) {
-    me.writeHtml(x + "\n");
+  document.writeln = function(b) {
+    a.writeHtml(b + "\n");
   };
-  document.write = function(x) {
-    me.writeHtml(x);
+  document.write = function(b) {
+    a.writeHtml(b);
   };
   document.open = function() {
-    me.overrideDefaultImplementation_ || me.origDocOpen_.call(document);
+    a.overrideDefaultImplementation_ || a.origDocOpen_.call(document);
   };
   document.close = function() {
-    me.overrideDefaultImplementation_ || me.origDocClose_.call(document);
+    a.overrideDefaultImplementation_ || a.origDocClose_.call(document);
   };
-  document.getElementById = function(str) {
-    me.handlePendingDocumentWrites();
-    var node = me.origGetElementById_.call(document, str);
-    return null == node || node.hasAttribute(me.psaNotProcessed_) ? null : node;
+  document.getElementById = function(b) {
+    a.handlePendingDocumentWrites();
+    b = a.origGetElementById_.call(document, b);
+    return null == b || b.hasAttribute(a.psaNotProcessed_) ? null : b;
   };
-  !document.querySelectorAll || 8 >= me.getIEVersion() || (document.getElementsByTagName = function(tagName) {
-    if (me.overrideDefaultImplementation_) {
+  !document.querySelectorAll || 8 >= a.getIEVersion() || (document.getElementsByTagName = function(b) {
+    if (a.overrideDefaultImplementation_) {
       try {
-        return document.querySelectorAll(tagName + ":not([" + me.psaNotProcessed_ + "])");
-      } catch (err) {
+        return document.querySelectorAll(b + ":not([" + a.psaNotProcessed_ + "])");
+      } catch (c) {
       }
     }
-    return me.origGetElementsByTagName_.call(document, tagName);
+    return a.origGetElementsByTagName_.call(document, b);
   });
-  document.createElement = function(str) {
-    var elem = me.origCreateElement_.call(document, str);
-    if (me.overrideDefaultImplementation_ && "script" == str.toLowerCase()) {
-      me.dynamicInsertedScript_.push(elem);
-      me.dynamicInsertedScriptCount_++;
-      var onload = function() {
-        me.dynamicInsertedScriptCount_--;
-        var index = me.dynamicInsertedScript_.indexOf(this);
-        if (-1 != index && (me.dynamicInsertedScript_.splice(index, 1), me.canCallOnComplete())) {
-          me.onComplete();
-        }
-      };
-      deferJsNs.addOnload(elem, onload);
-      pagespeedutils.addHandler(elem, "error", onload);
-    }
-    return elem;
+  document.createElement = function(b) {
+    var c = a.origCreateElement_.call(document, b);
+    a.overrideDefaultImplementation_ && "script" == b.toLowerCase() && (a.dynamicInsertedScript_.push(c), a.dynamicInsertedScriptCount_++, b = function() {
+      a.dynamicInsertedScriptCount_--;
+      var b = a.dynamicInsertedScript_.indexOf(this);
+      if (-1 != b && (a.dynamicInsertedScript_.splice(b, 1), a.canCallOnComplete())) {
+        a.onComplete();
+      }
+    }, deferJsNs.addOnload(c, b), pagespeedutils.addHandler(c, "error", b));
+    return c;
   };
 };
 deferJsNs.DeferJs.prototype.execute = function() {
   if (this.state_ == deferJsNs.DeferJs.STATES.SCRIPTS_REGISTERED) {
-    var count = 0;
-    0 != this.noDeferAsyncScriptsCount_ && (count = this.getNumScriptsWithNoOnload(this.noDeferAsyncScripts_));
-    this.noDeferAsyncScriptsCount_ == count && this.run();
+    var a = 0;
+    0 != this.noDeferAsyncScriptsCount_ && (a = this.getNumScriptsWithNoOnload(this.noDeferAsyncScripts_));
+    this.noDeferAsyncScriptsCount_ == a && this.run();
   }
 };
 deferJsNs.DeferJs.prototype.execute = deferJsNs.DeferJs.prototype.execute;
@@ -409,175 +404,166 @@ deferJsNs.DeferJs.prototype.run = function() {
   this.state_ == deferJsNs.DeferJs.STATES.SCRIPTS_REGISTERED && (this.firstIncrementalRun_ && this.fireEvent(deferJsNs.DeferJs.EVENT.BEFORE_SCRIPTS), this.state_ = deferJsNs.DeferJs.STATES.SCRIPTS_EXECUTING, this.setUp(), this.runNext());
 };
 deferJsNs.DeferJs.prototype.run = deferJsNs.DeferJs.prototype.run;
-deferJsNs.DeferJs.prototype.parseHtml = function(html) {
-  var div = this.origCreateElement_.call(document, "div");
-  div.innerHTML = "<div>_</div>" + html;
-  div.removeChild(div.firstChild);
-  return div;
+deferJsNs.DeferJs.prototype.parseHtml = function(a) {
+  var b = this.origCreateElement_.call(document, "div");
+  b.innerHTML = "<div>_</div>" + a;
+  b.removeChild(b.firstChild);
+  return b;
 };
-deferJsNs.DeferJs.prototype.disown = function(node) {
-  var parentNode = node.parentNode;
-  parentNode && parentNode.removeChild(node);
+deferJsNs.DeferJs.prototype.disown = function(a) {
+  var b = a.parentNode;
+  b && b.removeChild(a);
 };
-deferJsNs.DeferJs.prototype.insertNodesBeforeElem = function(nodes, elem) {
-  for (var nodeArray = this.nodeListToArray(nodes), len = nodeArray.length, parentNode = elem.parentNode, i = 0;i < len;++i) {
-    var node = nodeArray[i];
-    this.disown(node);
-    parentNode.insertBefore(node, elem);
+deferJsNs.DeferJs.prototype.insertNodesBeforeElem = function(a, b) {
+  for (var c = this.nodeListToArray(a), d = c.length, g = b.parentNode, e = 0;e < d;++e) {
+    var f = c[e];
+    this.disown(f);
+    g.insertBefore(f, b);
   }
 };
-deferJsNs.DeferJs.prototype.isJSNode = function(node) {
-  if ("SCRIPT" != node.nodeName) {
-    return!1;
-  }
-  if (node.hasAttribute("type")) {
-    var type = node.getAttribute("type");
-    return!type || -1 != this.jsMimeTypes.indexOf(type);
-  }
-  if (node.hasAttribute("language")) {
-    var lang = node.getAttribute("language");
-    return!lang || -1 != this.jsMimeTypes.indexOf("text/" + lang.toLowerCase());
-  }
-  return!0;
+deferJsNs.DeferJs.prototype.isJSNode = function(a) {
+  return "SCRIPT" != a.nodeName ? !1 : a.hasAttribute("type") ? (a = a.getAttribute("type"), !a || -1 != this.jsMimeTypes.indexOf(a)) : a.hasAttribute("language") ? (a = a.getAttribute("language"), !a || -1 != this.jsMimeTypes.indexOf("text/" + a.toLowerCase())) : !0;
 };
-deferJsNs.DeferJs.prototype.markNodesAndExtractScriptNodes = function(node, scriptNodes) {
-  if (node.childNodes) {
-    for (var nodeArray = this.nodeListToArray(node.childNodes), len = nodeArray.length, i = 0;i < len;++i) {
-      var child = nodeArray[i];
-      "SCRIPT" == child.nodeName ? this.isJSNode(child) && (scriptNodes.push(child), child.setAttribute(deferJsNs.DeferJs.PSA_ORIG_TYPE, child.type), child.setAttribute("type", this.psaScriptType_), child.setAttribute(deferJsNs.DeferJs.PSA_ORIG_SRC, child.src), child.setAttribute("src", ""), child.setAttribute(this.psaNotProcessed_, "")) : this.markNodesAndExtractScriptNodes(child, scriptNodes);
+deferJsNs.DeferJs.prototype.markNodesAndExtractScriptNodes = function(a, b) {
+  if (a.childNodes) {
+    for (var c = this.nodeListToArray(a.childNodes), d = c.length, g = 0;g < d;++g) {
+      var e = c[g];
+      "SCRIPT" == e.nodeName ? this.isJSNode(e) && (b.push(e), e.setAttribute(deferJsNs.DeferJs.PSA_ORIG_TYPE, e.type), e.setAttribute("type", this.psaScriptType_), e.setAttribute(deferJsNs.DeferJs.PSA_ORIG_SRC, e.src), e.setAttribute("src", ""), e.setAttribute(this.psaNotProcessed_, "")) : this.markNodesAndExtractScriptNodes(e, b);
     }
   }
 };
-deferJsNs.DeferJs.prototype.deferScripts = function(scripts, pos) {
-  for (var len = scripts.length, i = 0;i < len;++i) {
-    this.addNode(scripts[i], pos + i, !!i);
+deferJsNs.DeferJs.prototype.deferScripts = function(a, b) {
+  for (var c = a.length, d = 0;d < c;++d) {
+    this.addNode(a[d], b + d, !!d);
   }
 };
-deferJsNs.DeferJs.prototype.insertHtml = function(html, pos, opt_elem) {
-  var node = this.parseHtml(html), scriptNodes = [];
-  this.markNodesAndExtractScriptNodes(node, scriptNodes);
-  opt_elem ? this.insertNodesBeforeElem(node.childNodes, opt_elem) : this.log("Unable to insert nodes, no context element found");
-  this.deferScripts(scriptNodes, pos);
+deferJsNs.DeferJs.prototype.insertHtml = function(a, b, c) {
+  a = this.parseHtml(a);
+  var d = [];
+  this.markNodesAndExtractScriptNodes(a, d);
+  c ? this.insertNodesBeforeElem(a.childNodes, c) : this.log("Unable to insert nodes, no context element found");
+  this.deferScripts(d, b);
 };
 deferJsNs.DeferJs.prototype.handlePendingDocumentWrites = function() {
   if ("" != this.documentWriteHtml_) {
     this.log("handle_dw: " + this.documentWriteHtml_);
-    var html = this.documentWriteHtml_;
+    var a = this.documentWriteHtml_;
     this.documentWriteHtml_ = "";
-    var currentElem = this.getCurrentDomLocation();
-    this.insertHtml(html, this.next_, currentElem);
+    var b = this.getCurrentDomLocation();
+    this.insertHtml(a, this.next_, b);
   }
 };
-deferJsNs.DeferJs.prototype.writeHtml = function(html) {
-  this.overrideDefaultImplementation_ ? (this.log("dw: " + html), this.documentWriteHtml_ += html) : this.origDocWrite_.call(document, html);
+deferJsNs.DeferJs.prototype.writeHtml = function(a) {
+  this.overrideDefaultImplementation_ ? (this.log("dw: " + a), this.documentWriteHtml_ += a) : this.origDocWrite_.call(document, a);
 };
 deferJsNs.DeferJs.prototype.addDeferredOnloadListeners = function() {
-  var onloadDeferredElements;
-  document.querySelectorAll && (onloadDeferredElements = document.querySelectorAll("[" + deferJsNs.DeferJs.PAGESPEED_ONLOAD + "][data-pagespeed-loaded]"));
-  for (var i = 0;i < onloadDeferredElements.length;i++) {
-    var elem = onloadDeferredElements.item(i), functionStr = "var psaFunc=function() {" + elem.getAttribute(deferJsNs.DeferJs.PAGESPEED_ONLOAD) + "};";
-    window.eval.call(window, functionStr);
-    "function" != typeof window.psaFunc ? this.log("Function is not defined", Error("")) : psaAddEventListener(elem, "onload", window.psaFunc);
+  var a;
+  document.querySelectorAll && (a = document.querySelectorAll("[" + deferJsNs.DeferJs.PAGESPEED_ONLOAD + "][data-pagespeed-loaded]"));
+  for (var b = 0;b < a.length;b++) {
+    var c = a.item(b), d = "var psaFunc=function() {" + c.getAttribute(deferJsNs.DeferJs.PAGESPEED_ONLOAD) + "};";
+    window.eval.call(window, d);
+    "function" != typeof window.psaFunc ? this.log("Function is not defined", Error("")) : psaAddEventListener(c, "onload", window.psaFunc);
   }
 };
-deferJsNs.DeferJs.prototype.addBeforeDeferRunFunctions = function(func) {
-  psaAddEventListener(window, "onbeforescripts", func);
+deferJsNs.DeferJs.prototype.addBeforeDeferRunFunctions = function(a) {
+  psaAddEventListener(window, "onbeforescripts", a);
 };
 deferJsNs.DeferJs.prototype.addBeforeDeferRunFunctions = deferJsNs.DeferJs.prototype.addBeforeDeferRunFunctions;
-deferJsNs.DeferJs.prototype.addAfterDeferRunFunctions = function(func) {
-  psaAddEventListener(window, "onafterscripts", func);
+deferJsNs.DeferJs.prototype.addAfterDeferRunFunctions = function(a) {
+  psaAddEventListener(window, "onafterscripts", a);
 };
 deferJsNs.DeferJs.prototype.addAfterDeferRunFunctions = deferJsNs.DeferJs.prototype.addAfterDeferRunFunctions;
-deferJsNs.DeferJs.prototype.fireEvent = function(evt) {
-  this.eventState_ = evt;
-  this.log("Firing Event: " + evt);
-  for (var eventListeners = this.eventListenersMap_[evt] || [], i = 0;i < eventListeners.length;++i) {
-    this.exec(eventListeners[i]);
+deferJsNs.DeferJs.prototype.fireEvent = function(a) {
+  this.eventState_ = a;
+  this.log("Firing Event: " + a);
+  a = this.eventListenersMap_[a] || [];
+  for (var b = 0;b < a.length;++b) {
+    this.exec(a[b]);
   }
-  eventListeners.length = 0;
+  a.length = 0;
 };
-deferJsNs.DeferJs.prototype.exec = function(func, opt_scopeObject) {
+deferJsNs.DeferJs.prototype.exec = function(a, b) {
   try {
-    func.call(opt_scopeObject || window);
-  } catch (err) {
-    this.log("Exception while evaluating.", err);
+    a.call(b || window);
+  } catch (c) {
+    this.log("Exception while evaluating.", c);
   }
 };
 deferJsNs.DeferJs.prototype.overrideAddEventListeners = function() {
-  var me = this;
-  window.addEventListener ? (document.addEventListener = function(eventName, func, capture) {
-    psaAddEventListener(document, eventName, func, me.origDocAddEventListener_, capture);
-  }, window.addEventListener = function(eventName, func, capture) {
-    psaAddEventListener(window, eventName, func, me.origWindowAddEventListener_, capture);
-  }) : window.attachEvent && (document.attachEvent = function(eventName, func) {
-    psaAddEventListener(document, eventName, func, me.origDocAttachEvent_);
-  }, window.attachEvent = function(eventName, func) {
-    psaAddEventListener(window, eventName, func, me.origWindowAttachEvent_);
+  var a = this;
+  window.addEventListener ? (document.addEventListener = function(b, c, d) {
+    psaAddEventListener(document, b, c, a.origDocAddEventListener_, d);
+  }, window.addEventListener = function(b, c, d) {
+    psaAddEventListener(window, b, c, a.origWindowAddEventListener_, d);
+  }) : window.attachEvent && (document.attachEvent = function(b, c) {
+    psaAddEventListener(document, b, c, a.origDocAttachEvent_);
+  }, window.attachEvent = function(b, c) {
+    psaAddEventListener(window, b, c, a.origWindowAttachEvent_);
   });
 };
-var psaAddEventListener = function(elem, eventName, func, opt_originalAddEventListener, opt_capture) {
-  var deferJs = pagespeed.deferJs;
-  if (deferJs.state_ >= deferJsNs.DeferJs.STATES.WAITING_FOR_ONLOAD) {
-    if (opt_originalAddEventListener) {
-      opt_originalAddEventListener.call(elem, eventName, func, opt_capture);
+var psaAddEventListener = function(a, b, c, d, g) {
+  var e = pagespeed.deferJs;
+  if (e.state_ >= deferJsNs.DeferJs.STATES.WAITING_FOR_ONLOAD) {
+    if (d) {
+      d.call(a, b, c, g);
       return;
     }
-    if (deferJs.state_ >= deferJsNs.DeferJs.STATES.SCRIPTS_DONE) {
+    if (e.state_ >= deferJsNs.DeferJs.STATES.SCRIPTS_DONE) {
       return;
     }
   }
-  var deferJsEvent, deferJsEventName;
-  if (deferJs.eventState_ < deferJsNs.DeferJs.EVENT.DOM_READY && ("DOMContentLoaded" == eventName || "readystatechange" == eventName || "onDOMContentLoaded" == eventName || "onreadystatechange" == eventName)) {
-    deferJsEvent = deferJsNs.DeferJs.EVENT.DOM_READY, deferJsEventName = "DOMContentLoaded";
+  var f;
+  if (e.eventState_ < deferJsNs.DeferJs.EVENT.DOM_READY && ("DOMContentLoaded" == b || "readystatechange" == b || "onDOMContentLoaded" == b || "onreadystatechange" == b)) {
+    b = deferJsNs.DeferJs.EVENT.DOM_READY, f = "DOMContentLoaded";
   } else {
-    if (deferJs.eventState_ < deferJsNs.DeferJs.EVENT.LOAD && ("load" == eventName || "onload" == eventName)) {
-      deferJsEvent = deferJsNs.DeferJs.EVENT.LOAD, deferJsEventName = "load";
+    if (e.eventState_ < deferJsNs.DeferJs.EVENT.LOAD && ("load" == b || "onload" == b)) {
+      b = deferJsNs.DeferJs.EVENT.LOAD, f = "load";
     } else {
-      if ("onbeforescripts" == eventName) {
-        deferJsEvent = deferJsNs.DeferJs.EVENT.BEFORE_SCRIPTS;
+      if ("onbeforescripts" == b) {
+        b = deferJsNs.DeferJs.EVENT.BEFORE_SCRIPTS;
       } else {
-        if ("onafterscripts" == eventName) {
-          deferJsEvent = deferJsNs.DeferJs.EVENT.AFTER_SCRIPTS;
+        if ("onafterscripts" == b) {
+          b = deferJsNs.DeferJs.EVENT.AFTER_SCRIPTS;
         } else {
-          opt_originalAddEventListener && opt_originalAddEventListener.call(elem, eventName, func, opt_capture);
+          d && d.call(a, b, c, g);
           return;
         }
       }
     }
   }
-  deferJs.eventListenersMap_[deferJsEvent] || (deferJs.eventListenersMap_[deferJsEvent] = []);
-  deferJs.eventListenersMap_[deferJsEvent].push(function() {
-    var customEvent = {bubbles:!1, cancelable:!1, eventPhase:2};
-    customEvent.timeStamp = (new Date).getTime();
-    customEvent.type = deferJsEventName;
-    customEvent.target = elem != window ? elem : document;
-    customEvent.currentTarget = elem;
-    func.call(elem, customEvent);
+  e.eventListenersMap_[b] || (e.eventListenersMap_[b] = []);
+  e.eventListenersMap_[b].push(function() {
+    var b = {bubbles:!1, cancelable:!1, eventPhase:2};
+    b.timeStamp = (new Date).getTime();
+    b.type = f;
+    b.target = a != window ? a : document;
+    b.currentTarget = a;
+    c.call(a, b);
   });
 };
-deferJsNs.DeferJs.prototype.registerScriptTags = function(opt_callback, opt_last_index) {
+deferJsNs.DeferJs.prototype.registerScriptTags = function(a, b) {
   if (!(this.state_ >= deferJsNs.DeferJs.STATES.SCRIPTS_REGISTERED)) {
-    if (opt_callback) {
+    if (a) {
       if (!deferJsNs.DeferJs.isExperimentalMode) {
-        opt_callback();
+        a();
         return;
       }
       this.lastIncrementalRun_ = !1;
-      this.incrementalScriptsDoneCallback_ = opt_callback;
-      opt_last_index && (this.optLastIndex_ = opt_last_index);
+      this.incrementalScriptsDoneCallback_ = a;
+      b && (this.optLastIndex_ = b);
     } else {
       this.lastIncrementalRun_ = !0;
     }
     this.state_ = deferJsNs.DeferJs.STATES.SCRIPTS_REGISTERED;
-    for (var scripts = document.getElementsByTagName("script"), len = scripts.length, i = 0;i < len;++i) {
-      var isFirstScript = this.queue_.length == this.next_, script = scripts[i];
-      script.getAttribute("type") == this.psaScriptType_ && (opt_callback ? script.getAttribute(deferJsNs.DeferJs.PSA_ORIG_INDEX) <= this.optLastIndex_ && this.addNode(script, void 0, !isFirstScript) : (script.getAttribute(deferJsNs.DeferJs.PSA_ORIG_INDEX) < this.optLastIndex_ && this.log("Executing a script twice. Orig_Index: " + script.getAttribute(deferJsNs.DeferJs.PSA_ORIG_INDEX), Error("")), this.addNode(script, void 0, !isFirstScript)));
+    for (var c = document.getElementsByTagName("script"), d = c.length, g = 0;g < d;++g) {
+      var e = this.queue_.length == this.next_, f = c[g];
+      f.getAttribute("type") == this.psaScriptType_ && (a ? f.getAttribute(deferJsNs.DeferJs.PSA_ORIG_INDEX) <= this.optLastIndex_ && this.addNode(f, void 0, !e) : (f.getAttribute(deferJsNs.DeferJs.PSA_ORIG_INDEX) < this.optLastIndex_ && this.log("Executing a script twice. Orig_Index: " + f.getAttribute(deferJsNs.DeferJs.PSA_ORIG_INDEX), Error("")), this.addNode(f, void 0, !e)));
     }
   }
 };
 deferJsNs.DeferJs.prototype.registerScriptTags = deferJsNs.DeferJs.prototype.registerScriptTags;
-deferJsNs.addOnload = function(elem, func) {
-  pagespeedutils.addHandler(elem, "load", func);
+deferJsNs.addOnload = function(a, b) {
+  pagespeedutils.addHandler(a, "load", b);
 };
 pagespeed.addOnload = deferJsNs.addOnload;
 deferJsNs.DeferJs.prototype.isFireFox = function() {
@@ -587,33 +573,27 @@ deferJsNs.DeferJs.prototype.isWebKit = function() {
   return-1 != navigator.userAgent.indexOf("AppleWebKit");
 };
 deferJsNs.DeferJs.prototype.getIEVersion = function() {
-  var version = /(?:MSIE.(\d+\.\d+))/.exec(navigator.userAgent);
-  return version && version[1] ? document.documentMode || parseFloat(version[1]) : NaN;
+  var a = /(?:MSIE.(\d+\.\d+))/.exec(navigator.userAgent);
+  return a && a[1] ? document.documentMode || parseFloat(a[1]) : NaN;
 };
-deferJsNs.DeferJs.prototype.setType = function(type) {
-  this.psaScriptType_ = type;
+deferJsNs.DeferJs.prototype.setType = function(a) {
+  this.psaScriptType_ = a;
 };
-deferJsNs.DeferJs.prototype.setPsaNotProcessed = function(psaNotProcessed) {
-  this.psaNotProcessed_ = psaNotProcessed;
+deferJsNs.DeferJs.prototype.setPsaNotProcessed = function(a) {
+  this.psaNotProcessed_ = a;
 };
 deferJsNs.DeferJs.prototype.isLowPriorityDeferJs = function() {
   return this.psaScriptType_ == deferJsNs.DeferJs.PSA_SCRIPT_TYPE ? !0 : !1;
 };
 deferJsNs.DeferJs.prototype.noDeferCreateElementOverride = function() {
-  var me = this;
-  document.createElement = function(str) {
-    var elem = me.origCreateElement_.call(document, str);
-    if (me.overrideDefaultImplementation_ && "script" == str.toLowerCase()) {
-      me.noDeferAsyncScripts_.push(elem);
-      me.noDeferAsyncScriptsCount_++;
-      var onload = function() {
-        var index = me.noDeferAsyncScripts_.indexOf(this);
-        -1 != index && (me.noDeferAsyncScripts_.splice(index, 1), me.noDeferAsyncScriptsCount_--, me.execute());
-      };
-      deferJsNs.addOnload(elem, onload);
-      pagespeedutils.addHandler(elem, "error", onload);
-    }
-    return elem;
+  var a = this;
+  document.createElement = function(b) {
+    var c = a.origCreateElement_.call(document, b);
+    a.overrideDefaultImplementation_ && "script" == b.toLowerCase() && (a.noDeferAsyncScripts_.push(c), a.noDeferAsyncScriptsCount_++, b = function() {
+      var b = a.noDeferAsyncScripts_.indexOf(this);
+      -1 != b && (a.noDeferAsyncScripts_.splice(b, 1), a.noDeferAsyncScriptsCount_--, a.execute());
+    }, deferJsNs.addOnload(c, b), pagespeedutils.addHandler(c, "error", b));
+    return c;
   };
 };
 deferJsNs.DeferJs.prototype.isExperimentalMode = function() {

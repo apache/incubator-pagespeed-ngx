@@ -165,6 +165,7 @@ function insertStubAtIndex(parentNode, childIndex, panelId) {
  * @param {string} xpath - Xpath for specific location in the DOM.
  * @param {string} panelId - panelId of the stub.
  * @return {Node} - End stub corresponding to the panelId.
+ * @suppress {missingReturn}
  */
 function insertMissingStubUsingXpath(xpath, panelId) {
   var xpathUnits = xpath.split('/');

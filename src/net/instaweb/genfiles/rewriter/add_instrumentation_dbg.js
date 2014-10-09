@@ -1,56 +1,98 @@
-(function(){window.pagespeed = window.pagespeed || {};
+(function(){var pagespeedutils = {MAX_POST_SIZE:131072, sendBeacon:function(a, c, b) {
+  var d;
+  if (window.XMLHttpRequest) {
+    d = new XMLHttpRequest;
+  } else {
+    if (window.ActiveXObject) {
+      try {
+        d = new ActiveXObject("Msxml2.XMLHTTP");
+      } catch (e) {
+        try {
+          d = new ActiveXObject("Microsoft.XMLHTTP");
+        } catch (g) {
+        }
+      }
+    }
+  }
+  if (!d) {
+    return!1;
+  }
+  var f = -1 == a.indexOf("?") ? "?" : "&";
+  a = a + f + "url=" + encodeURIComponent(c);
+  d.open("POST", a);
+  d.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+  d.send(b);
+  return!0;
+}, addHandler:function(a, c, b) {
+  if (a.addEventListener) {
+    a.addEventListener(c, b, !1);
+  } else {
+    if (a.attachEvent) {
+      a.attachEvent("on" + c, b);
+    } else {
+      var d = a["on" + c];
+      a["on" + c] = function() {
+        b.call(this);
+        d && d.call(this);
+      };
+    }
+  }
+}, getPosition:function(a) {
+  for (var c = a.offsetTop, b = a.offsetLeft;a.offsetParent;) {
+    a = a.offsetParent, c += a.offsetTop, b += a.offsetLeft;
+  }
+  return{top:c, left:b};
+}, getWindowSize:function() {
+  return{height:window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight, width:window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth};
+}, inViewport:function(a, c) {
+  var b = pagespeedutils.getPosition(a);
+  return pagespeedutils.positionInViewport(b, c);
+}, positionInViewport:function(a, c) {
+  return a.top < c.height && a.left < c.width;
+}, getRequestAnimationFrame:function() {
+  return window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || window.oRequestAnimationFrame || window.msRequestAnimationFrame || null;
+}};
+window.pagespeed = window.pagespeed || {};
 var pagespeed = window.pagespeed;
-pagespeed.AddInstrumentation = function(beaconUrlPrefix, event, extraParams, htmlUrl) {
-  this.beaconUrlPrefix_ = beaconUrlPrefix;
-  this.event_ = event;
-  this.extraParams_ = extraParams;
-  this.htmlUrl_ = htmlUrl;
+pagespeed.AddInstrumentation = function(a, c, b, d) {
+  this.beaconUrlPrefix_ = a;
+  this.event_ = c;
+  this.extraParams_ = b;
+  this.htmlUrl_ = d;
 };
 pagespeed.beaconUrl = "";
 pagespeed.AddInstrumentation.prototype.sendBeacon = function() {
-  var url = this.beaconUrlPrefix_, oldStartTime = window.mod_pagespeed_start, traditionalPLT = Number(new Date) - oldStartTime, url = url + (-1 == url.indexOf("?") ? "?" : "&"), url = url + "ets=" + ("load" == this.event_ ? "load:" : "unload:"), url = url + traditionalPLT;
+  var a = this.beaconUrlPrefix_, c = window.mod_pagespeed_start, b = Number(new Date) - c, a = a + (-1 == a.indexOf("?") ? "?" : "&"), a = a + "ets=" + ("load" == this.event_ ? "load:" : "unload:"), a = a + b;
   if ("beforeunload" != this.event_ || !window.mod_pagespeed_loaded) {
-    url += "&r" + this.event_ + "=";
+    a += "&r" + this.event_ + "=";
     if (window.performance) {
-      var timingApi = window.performance.timing, navStartTime = timingApi.navigationStart, requestStartTime = timingApi.requestStart, url = url + (timingApi[this.event_ + "EventStart"] - navStartTime), url = url + ("&nav=" + (timingApi.fetchStart - navStartTime)), url = url + ("&dns=" + (timingApi.domainLookupEnd - timingApi.domainLookupStart)), url = url + ("&connect=" + (timingApi.connectEnd - timingApi.connectStart)), url = url + ("&req_start=" + (requestStartTime - navStartTime)), url = url + 
-      ("&ttfb=" + (timingApi.responseStart - requestStartTime)), url = url + ("&dwld=" + (timingApi.responseEnd - timingApi.responseStart)), url = url + ("&dom_c=" + (timingApi.domContentLoadedEventStart - navStartTime));
-      window.performance.navigation && (url += "&nt=" + window.performance.navigation.type);
-      var firstPaintTime = -1;
-      timingApi.msFirstPaint ? firstPaintTime = timingApi.msFirstPaint : window.chrome && window.chrome.loadTimes && (firstPaintTime = Math.floor(1E3 * window.chrome.loadTimes().firstPaintTime));
-      firstPaintTime -= requestStartTime;
-      0 <= firstPaintTime && (url += "&fp=" + firstPaintTime);
+      var b = window.performance.timing, d = b.navigationStart, e = b.requestStart, a = a + (b[this.event_ + "EventStart"] - d), a = a + ("&nav=" + (b.fetchStart - d)), a = a + ("&dns=" + (b.domainLookupEnd - b.domainLookupStart)), a = a + ("&connect=" + (b.connectEnd - b.connectStart)), a = a + ("&req_start=" + (e - d)), a = a + ("&ttfb=" + (b.responseStart - e)), a = a + ("&dwld=" + (b.responseEnd - b.responseStart)), a = a + ("&dom_c=" + (b.domContentLoadedEventStart - d));
+      window.performance.navigation && (a += "&nt=" + window.performance.navigation.type);
+      d = -1;
+      b.msFirstPaint ? d = b.msFirstPaint : window.chrome && window.chrome.loadTimes && (d = Math.floor(1E3 * window.chrome.loadTimes().firstPaintTime));
+      d -= e;
+      0 <= d && (a += "&fp=" + d);
     } else {
-      url += traditionalPLT;
+      a += b;
     }
-    pagespeed.getResourceTimingData && window.parent == window && (url += pagespeed.getResourceTimingData());
-    url += window.parent != window ? "&ifr=1" : "&ifr=0";
-    if ("load" == this.event_) {
-      window.mod_pagespeed_loaded = !0;
-      var numPrefetchedResources = window.mod_pagespeed_num_resources_prefetched;
-      numPrefetchedResources && (url += "&nrp=" + numPrefetchedResources);
-      var prefetchStartTime = window.mod_pagespeed_prefetch_start;
-      prefetchStartTime && (url += "&htmlAt=" + (oldStartTime - prefetchStartTime));
-    }
-    if (pagespeed.panelLoader) {
-      var bcsi = pagespeed.panelLoader.getCsiTimingsString();
-      "" != bcsi && (url += "&b_csi=" + bcsi);
-    }
-    if (pagespeed.criticalCss) {
-      var cc = pagespeed.criticalCss, url = url + ("&ccis=" + cc.total_critical_inlined_size + "&cces=" + cc.total_original_external_size + "&ccos=" + cc.total_overhead_size + "&ccrl=" + cc.num_replaced_links + "&ccul=" + cc.num_unreplaced_links)
-    }
-    "" != this.extraParams_ && (url += this.extraParams_);
-    document.referrer && (url += "&ref=" + encodeURIComponent(document.referrer));
-    url += "&url=" + encodeURIComponent(this.htmlUrl_);
-    pagespeed.beaconUrl = url;
-    (new Image).src = url;
+    pagespeed.getResourceTimingData && window.parent == window && (a += pagespeed.getResourceTimingData());
+    a += window.parent != window ? "&ifr=1" : "&ifr=0";
+    "load" == this.event_ && (window.mod_pagespeed_loaded = !0, (b = window.mod_pagespeed_num_resources_prefetched) && (a += "&nrp=" + b), (b = window.mod_pagespeed_prefetch_start) && (a += "&htmlAt=" + (c - b)));
+    pagespeed.panelLoader && (c = pagespeed.panelLoader.getCsiTimingsString(), "" != c && (a += "&b_csi=" + c));
+    pagespeed.criticalCss && (c = pagespeed.criticalCss, a += "&ccis=" + c.total_critical_inlined_size + "&cces=" + c.total_original_external_size + "&ccos=" + c.total_overhead_size + "&ccrl=" + c.num_replaced_links + "&ccul=" + c.num_unreplaced_links);
+    "" != this.extraParams_ && (a += this.extraParams_);
+    document.referrer && (a += "&ref=" + encodeURIComponent(document.referrer));
+    a += "&url=" + encodeURIComponent(this.htmlUrl_);
+    pagespeed.beaconUrl = a;
+    (new Image).src = a;
   }
 };
-pagespeed.addInstrumentationInit = function(beaconUrl, event, extraParams, htmlUrl) {
-  var temp = new pagespeed.AddInstrumentation(beaconUrl, event, extraParams, htmlUrl);
-  window.addEventListener ? window.addEventListener(event, function() {
-    temp.sendBeacon();
-  }, !1) : window.attachEvent("on" + event, function() {
-    temp.sendBeacon();
+pagespeed.addInstrumentationInit = function(a, c, b, d) {
+  var e = new pagespeed.AddInstrumentation(a, c, b, d);
+  window.addEventListener ? window.addEventListener(c, function() {
+    e.sendBeacon();
+  }, !1) : window.attachEvent("on" + c, function() {
+    e.sendBeacon();
   });
 };
 pagespeed.addInstrumentationInit = pagespeed.addInstrumentationInit;

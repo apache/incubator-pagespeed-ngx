@@ -1,51 +1,54 @@
-(function(){var pagespeedutils = {MAX_POST_SIZE:131072, sendBeacon:function(beaconUrl, htmlUrl, data) {
-  var httpRequest;
+(function(){var pagespeedutils = {MAX_POST_SIZE:131072, sendBeacon:function(a, b, c) {
+  var d;
   if (window.XMLHttpRequest) {
-    httpRequest = new XMLHttpRequest;
+    d = new XMLHttpRequest;
   } else {
     if (window.ActiveXObject) {
       try {
-        httpRequest = new ActiveXObject("Msxml2.XMLHTTP");
-      } catch (e) {
+        d = new ActiveXObject("Msxml2.XMLHTTP");
+      } catch (g) {
         try {
-          httpRequest = new ActiveXObject("Microsoft.XMLHTTP");
-        } catch (e2) {
+          d = new ActiveXObject("Microsoft.XMLHTTP");
+        } catch (e) {
         }
       }
     }
   }
-  if (!httpRequest) {
+  if (!d) {
     return!1;
   }
-  httpRequest.open("POST", beaconUrl + (-1 == beaconUrl.indexOf("?") ? "?" : "&") + "url=" + encodeURIComponent(htmlUrl));
-  httpRequest.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-  httpRequest.send(data);
+  var h = -1 == a.indexOf("?") ? "?" : "&";
+  a = a + h + "url=" + encodeURIComponent(b);
+  d.open("POST", a);
+  d.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+  d.send(c);
   return!0;
-}, addHandler:function(elem, eventName, func) {
-  if (elem.addEventListener) {
-    elem.addEventListener(eventName, func, !1);
+}, addHandler:function(a, b, c) {
+  if (a.addEventListener) {
+    a.addEventListener(b, c, !1);
   } else {
-    if (elem.attachEvent) {
-      elem.attachEvent("on" + eventName, func);
+    if (a.attachEvent) {
+      a.attachEvent("on" + b, c);
     } else {
-      var oldHandler = elem["on" + eventName];
-      elem["on" + eventName] = function() {
-        func.call(this);
-        oldHandler && oldHandler.call(this);
+      var d = a["on" + b];
+      a["on" + b] = function() {
+        c.call(this);
+        d && d.call(this);
       };
     }
   }
-}, getPosition:function(element) {
-  for (var top = element.offsetTop, left = element.offsetLeft;element.offsetParent;) {
-    element = element.offsetParent, top += element.offsetTop, left += element.offsetLeft;
+}, getPosition:function(a) {
+  for (var b = a.offsetTop, c = a.offsetLeft;a.offsetParent;) {
+    a = a.offsetParent, b += a.offsetTop, c += a.offsetLeft;
   }
-  return{top:top, left:left};
+  return{top:b, left:c};
 }, getWindowSize:function() {
   return{height:window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight, width:window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth};
-}, inViewport:function(element, windowSize) {
-  return pagespeedutils.positionInViewport(pagespeedutils.getPosition(element), windowSize);
-}, positionInViewport:function(pos, windowSize) {
-  return pos.top < windowSize.height && pos.left < windowSize.width;
+}, inViewport:function(a, b) {
+  var c = pagespeedutils.getPosition(a);
+  return pagespeedutils.positionInViewport(c, b);
+}, positionInViewport:function(a, b) {
+  return a.top < b.height && a.left < b.width;
 }, getRequestAnimationFrame:function() {
   return window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || window.oRequestAnimationFrame || window.msRequestAnimationFrame || null;
 }};
@@ -54,97 +57,101 @@ var pagespeed = window.pagespeed;
 pagespeed.LocalStorageCache = function() {
   this.regenerate_cookie_ = !0;
 };
-pagespeed.LocalStorageCache.prototype.hasExpired = function(obj) {
-  var expiry = parseInt(obj.substring(0, obj.indexOf(" ")), 10);
-  return!isNaN(expiry) && expiry <= Date.now();
+pagespeed.LocalStorageCache.prototype.hasExpired = function(a) {
+  a = parseInt(a.substring(0, a.indexOf(" ")), 10);
+  return!isNaN(a) && a <= Date.now();
 };
 pagespeed.LocalStorageCache.prototype.hasExpired = pagespeed.LocalStorageCache.prototype.hasExpired;
-pagespeed.LocalStorageCache.prototype.getData = function(obj) {
-  return obj.substring(obj.indexOf(" ", obj.indexOf(" ") + 1) + 1);
+pagespeed.LocalStorageCache.prototype.getData = function(a) {
+  var b = a.indexOf(" "), b = a.indexOf(" ", b + 1);
+  return a.substring(b + 1);
 };
 pagespeed.LocalStorageCache.prototype.getData = pagespeed.LocalStorageCache.prototype.getData;
-pagespeed.LocalStorageCache.prototype.replaceLastScript = function(newElement) {
-  var scripts = document.getElementsByTagName("script"), lastElement = scripts[scripts.length - 1];
-  lastElement.parentNode.replaceChild(newElement, lastElement);
+pagespeed.LocalStorageCache.prototype.replaceLastScript = function(a) {
+  var b = document.getElementsByTagName("script"), b = b[b.length - 1];
+  b.parentNode.replaceChild(a, b);
 };
 pagespeed.LocalStorageCache.prototype.replaceLastScript = pagespeed.LocalStorageCache.prototype.replaceLastScript;
-pagespeed.LocalStorageCache.prototype.inlineCss = function(url) {
-  var obj = window.localStorage.getItem("pagespeed_lsc_url:" + url), newNode = document.createElement(obj ? "style" : "link");
-  obj && !this.hasExpired(obj) ? (newNode.type = "text/css", newNode.appendChild(document.createTextNode(this.getData(obj)))) : (newNode.rel = "stylesheet", newNode.href = url, this.regenerate_cookie_ = !0);
-  this.replaceLastScript(newNode);
+pagespeed.LocalStorageCache.prototype.inlineCss = function(a) {
+  var b = window.localStorage.getItem("pagespeed_lsc_url:" + a), c = document.createElement(b ? "style" : "link");
+  b && !this.hasExpired(b) ? (c.type = "text/css", c.appendChild(document.createTextNode(this.getData(b)))) : (c.rel = "stylesheet", c.href = a, this.regenerate_cookie_ = !0);
+  this.replaceLastScript(c);
 };
 pagespeed.LocalStorageCache.prototype.inlineCss = pagespeed.LocalStorageCache.prototype.inlineCss;
-pagespeed.LocalStorageCache.prototype.inlineImg = function(url, hash) {
-  var obj = window.localStorage.getItem("pagespeed_lsc_url:" + url + " pagespeed_lsc_hash:" + hash), newNode = document.createElement("img");
-  obj && !this.hasExpired(obj) ? newNode.src = this.getData(obj) : (newNode.src = url, this.regenerate_cookie_ = !0);
-  for (var i = 2, n = arguments.length;i < n;++i) {
-    var pos = arguments[i].indexOf("=");
-    newNode.setAttribute(arguments[i].substring(0, pos), arguments[i].substring(pos + 1));
+pagespeed.LocalStorageCache.prototype.inlineImg = function(a, b) {
+  var c = window.localStorage.getItem("pagespeed_lsc_url:" + a + " pagespeed_lsc_hash:" + b), d = document.createElement("img");
+  c && !this.hasExpired(c) ? d.src = this.getData(c) : (d.src = a, this.regenerate_cookie_ = !0);
+  for (var c = 2, g = arguments.length;c < g;++c) {
+    var e = arguments[c].indexOf("=");
+    d.setAttribute(arguments[c].substring(0, e), arguments[c].substring(e + 1));
   }
-  this.replaceLastScript(newNode);
+  this.replaceLastScript(d);
 };
 pagespeed.LocalStorageCache.prototype.inlineImg = pagespeed.LocalStorageCache.prototype.inlineImg;
-pagespeed.LocalStorageCache.prototype.processTags_ = function(tagName, isHashInKey, dataFunc) {
-  for (var elements = document.getElementsByTagName(tagName), i = 0, n = elements.length;i < n;++i) {
-    var element = elements[i], hash = element.getAttribute("pagespeed_lsc_hash"), url = element.getAttribute("pagespeed_lsc_url");
-    if (hash && url) {
-      var urlkey = "pagespeed_lsc_url:" + url;
-      isHashInKey && (urlkey += " pagespeed_lsc_hash:" + hash);
-      var expiry = element.getAttribute("pagespeed_lsc_expiry"), millis = expiry ? (new Date(expiry)).getTime() : "", data = dataFunc(element);
-      if (!data) {
-        var obj = window.localStorage.getItem(urlkey);
-        obj && (data = this.getData(obj));
+pagespeed.LocalStorageCache.prototype.processTags_ = function(a, b, c) {
+  a = document.getElementsByTagName(a);
+  for (var d = 0, g = a.length;d < g;++d) {
+    var e = a[d], h = e.getAttribute("pagespeed_lsc_hash"), f = e.getAttribute("pagespeed_lsc_url");
+    if (h && f) {
+      f = "pagespeed_lsc_url:" + f;
+      b && (f += " pagespeed_lsc_hash:" + h);
+      var k = e.getAttribute("pagespeed_lsc_expiry"), k = k ? (new Date(k)).getTime() : "", e = c(e);
+      if (!e) {
+        var l = window.localStorage.getItem(f);
+        l && (e = this.getData(l));
       }
-      data && (window.localStorage.setItem(urlkey, millis + " " + hash + " " + data), this.regenerate_cookie_ = !0);
+      e && (window.localStorage.setItem(f, k + " " + h + " " + e), this.regenerate_cookie_ = !0);
     }
   }
 };
 pagespeed.LocalStorageCache.prototype.saveInlinedData_ = function() {
-  this.processTags_("img", !0, function(e) {
-    return e.src;
+  this.processTags_("img", !0, function(a) {
+    return a.src;
   });
-  this.processTags_("style", !1, function(e) {
-    return e.firstChild ? e.firstChild.nodeValue : null;
+  this.processTags_("style", !1, function(a) {
+    return a.firstChild ? a.firstChild.nodeValue : null;
   });
 };
 pagespeed.LocalStorageCache.prototype.generateCookie_ = function() {
   if (this.regenerate_cookie_) {
-    for (var deadUns = [], goodUns = [], minExpiry = 0, currentTime = Date.now(), i = 0, n = window.localStorage.length;i < n;++i) {
-      var key = window.localStorage.key(i);
-      if (!key.indexOf("pagespeed_lsc_url:")) {
-        var obj = window.localStorage.getItem(key), pos1 = obj.indexOf(" "), expiry = parseInt(obj.substring(0, pos1), 10);
-        if (!isNaN(expiry)) {
-          if (expiry <= currentTime) {
-            deadUns.push(key);
+    for (var a = [], b = [], c = 0, d = Date.now(), g = 0, e = window.localStorage.length;g < e;++g) {
+      var h = window.localStorage.key(g);
+      if (!h.indexOf("pagespeed_lsc_url:")) {
+        var f = window.localStorage.getItem(h), k = f.indexOf(" "), l = parseInt(f.substring(0, k), 10);
+        if (!isNaN(l)) {
+          if (l <= d) {
+            a.push(h);
             continue;
           } else {
-            if (expiry < minExpiry || 0 == minExpiry) {
-              minExpiry = expiry;
+            if (l < c || 0 == c) {
+              c = l;
             }
           }
         }
-        goodUns.push(obj.substring(pos1 + 1, obj.indexOf(" ", pos1 + 1)));
+        h = f.indexOf(" ", k + 1);
+        f = f.substring(k + 1, h);
+        b.push(f);
       }
     }
-    var expires = "";
-    minExpiry && (expires = "; expires=" + (new Date(minExpiry)).toUTCString());
-    document.cookie = "_GPSLSC=" + goodUns.join("!") + expires;
-    i = 0;
-    for (n = deadUns.length;i < n;++i) {
-      window.localStorage.removeItem(deadUns[i]);
+    d = "";
+    c && (d = "; expires=" + (new Date(c)).toUTCString());
+    document.cookie = "_GPSLSC=" + b.join("!") + d;
+    g = 0;
+    for (e = a.length;g < e;++g) {
+      window.localStorage.removeItem(a[g]);
     }
     this.regenerate_cookie_ = !1;
   }
 };
 pagespeed.localStorageCacheInit = function() {
   if (window.localStorage) {
-    var temp = new pagespeed.LocalStorageCache;
-    pagespeed.localStorageCache = temp;
+    var a = new pagespeed.LocalStorageCache;
+    pagespeed.localStorageCache = a;
     pagespeedutils.addHandler(window, "load", function() {
-      temp.saveInlinedData_();
+      a.saveInlinedData_();
     });
     pagespeedutils.addHandler(window, "load", function() {
-      temp.generateCookie_();
+      a.generateCookie_();
     });
   }
 };
