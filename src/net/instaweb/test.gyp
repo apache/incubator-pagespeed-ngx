@@ -174,6 +174,7 @@
         'rewriter/js_outline_filter_test.cc',
         'rewriter/lazyload_images_filter_test.cc',
         'rewriter/local_storage_cache_filter_test.cc',
+        'rewriter/make_show_ads_async_filter_test.cc',
         'rewriter/meta_tag_filter_test.cc',
         'rewriter/mock_critical_css_finder.cc',
         'rewriter/mock_critical_images_finder.cc',

@@ -1290,6 +1290,7 @@
         'instaweb_util',
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_http',
+        '<(DEPTH)/pagespeed/opt.gyp:pagespeed_ads_util',
         '<(DEPTH)/third_party/css_parser/css_parser.gyp:css_parser',
       ],
       'sources': [
@@ -1351,6 +1352,7 @@
         'rewriter/js_outline_filter.cc',
         'rewriter/lazyload_images_filter.cc',
         'rewriter/local_storage_cache_filter.cc',
+        'rewriter/make_show_ads_async_filter.cc',
         'rewriter/meta_tag_filter.cc',
         'rewriter/mobilize_label_filter.cc',
         'rewriter/mobilize_rewrite_filter.cc',
