@@ -1908,7 +1908,6 @@ goog.userAgent.initPlatform_ = function() {
   goog.userAgent.detectedMac_ = goog.string.contains(goog.userAgent.PLATFORM, "Mac");
   goog.userAgent.detectedWindows_ = goog.string.contains(goog.userAgent.PLATFORM, "Win");
   goog.userAgent.detectedLinux_ = goog.string.contains(goog.userAgent.PLATFORM, "Linux");
-  goog.userAgent.detectedX11_ = !!goog.userAgent.getNavigator() && goog.string.contains(goog.userAgent.getNavigator().appVersion || "", "X11");
   var a = goog.userAgent.getUserAgentString();
   goog.userAgent.detectedAndroid_ = !!a && goog.string.contains(a, "Android");
   goog.userAgent.detectedIPhone_ = !!a && goog.string.contains(a, "iPhone");
@@ -1918,7 +1917,11 @@ goog.userAgent.PLATFORM_KNOWN_ || goog.userAgent.initPlatform_();
 goog.userAgent.MAC = goog.userAgent.PLATFORM_KNOWN_ ? goog.userAgent.ASSUME_MAC : goog.userAgent.detectedMac_;
 goog.userAgent.WINDOWS = goog.userAgent.PLATFORM_KNOWN_ ? goog.userAgent.ASSUME_WINDOWS : goog.userAgent.detectedWindows_;
 goog.userAgent.LINUX = goog.userAgent.PLATFORM_KNOWN_ ? goog.userAgent.ASSUME_LINUX : goog.userAgent.detectedLinux_;
-goog.userAgent.X11 = goog.userAgent.PLATFORM_KNOWN_ ? goog.userAgent.ASSUME_X11 : goog.userAgent.detectedX11_;
+goog.userAgent.isX11_ = function() {
+  var a = goog.userAgent.getNavigator();
+  return!!a && goog.string.contains(a.appVersion || "", "X11");
+};
+goog.userAgent.X11 = goog.userAgent.PLATFORM_KNOWN_ ? goog.userAgent.ASSUME_X11 : goog.userAgent.isX11_();
 goog.userAgent.ANDROID = goog.userAgent.PLATFORM_KNOWN_ ? goog.userAgent.ASSUME_ANDROID : goog.userAgent.detectedAndroid_;
 goog.userAgent.IPHONE = goog.userAgent.PLATFORM_KNOWN_ ? goog.userAgent.ASSUME_IPHONE : goog.userAgent.detectedIPhone_;
 goog.userAgent.IPAD = goog.userAgent.PLATFORM_KNOWN_ ? goog.userAgent.ASSUME_IPAD : goog.userAgent.detectedIPad_;
@@ -3106,19 +3109,12 @@ goog.iter.dropWhile = function(a, b, c) {
 goog.iter.takeWhile = function(a, b, c) {
   var d = goog.iter.toIterator(a);
   a = new goog.iter.Iterator;
-  var e = !0;
   a.next = function() {
-    for (;;) {
-      if (e) {
-        var a = d.next();
-        if (b.call(c, a, void 0, d)) {
-          return a;
-        }
-        e = !1;
-      } else {
-        throw goog.iter.StopIteration;
-      }
+    var a = d.next();
+    if (b.call(c, a, void 0, d)) {
+      return a;
     }
+    throw goog.iter.StopIteration;
   };
   return a;
 };

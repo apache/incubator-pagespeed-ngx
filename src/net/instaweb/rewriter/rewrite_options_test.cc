@@ -23,6 +23,7 @@
 #include "net/instaweb/rewriter/public/experiment_util.h"
 #include "net/instaweb/rewriter/public/rewrite_options_test_base.h"
 #include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/message_handler_test_base.h"
 #include "pagespeed/kernel/base/mock_hasher.h"
 #include "pagespeed/kernel/base/mock_timer.h"
@@ -938,6 +939,9 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
     RewriteOptions::kMinCacheTtlMs,
     RewriteOptions::kMinImageSizeLowResolutionBytes,
     RewriteOptions::kMinResourceCacheTimeToRewriteMs,
+    RewriteOptions::kMobLayout,
+    RewriteOptions::kMobLogo,
+    RewriteOptions::kMobNav,
     RewriteOptions::kModifyCachingHeaders,
     RewriteOptions::kNoTransformOptimizedImages,
     RewriteOptions::kNonCacheablesForCachePartialHtml,

@@ -21,7 +21,9 @@
 #include <algorithm>
 
 #include "base/logging.h"
+#include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -57,13 +59,33 @@ const char MobilizeRewriteFilter::kDeletedElements[] =
     "mobilization_elements_deleted";
 
 namespace {
-const char kViewportContent[] = "width=device-width,user-scalable=no";
+
+// The 'book' says to use add ",user-scalable=no" but jmarantz hates
+// this.  I want to be able to zoom in.  Debate with the writers of
+// that book will need to occur.
+const char kViewportContent[] = "width=device-width";
+
 const HtmlName::Keyword kPreserveNavTags[] = {HtmlName::kA};
 const HtmlName::Keyword kTableTags[] = {
   HtmlName::kCaption, HtmlName::kCol, HtmlName::kColgroup, HtmlName::kTable,
   HtmlName::kTbody, HtmlName::kTd, HtmlName::kTfoot, HtmlName::kTh,
   HtmlName::kThead, HtmlName::kTr};
 const HtmlName::Keyword kTableTagsToBr[] = {HtmlName::kTable, HtmlName::kTr};
+
+const char* const kPolymerElementLinks[] = {
+    "core-drawer-panel/core-drawer-panel.html",
+    "core-header-panel/core-header-panel.html",
+    "core-icon-button/core-icon-button.html",
+    "core-icons/core-icons.html",
+    "core-item/core-item.html",
+    "core-menu/core-menu.html",
+    "core-menu/core-submenu.html",
+    "core-scaffold/core-scaffold.html",
+    "core-toolbar/core-toolbar.html",
+    "paper-icon-button/paper-icon-button.html",
+    "paper-fab/paper-fab.html"};
+
+const char* const kPolymerCustomElementLinks[] = {"polymer-elements.html"};
 
 #ifndef NDEBUG
 void CheckKeywordsSorted(const HtmlName::Keyword* list, int len) {
@@ -83,9 +105,30 @@ MobilizeRewriteFilter::MobilizeRewriteFilter(RewriteDriver* rewrite_driver)
       body_element_depth_(0),
       nav_element_depth_(0),
       reached_reorder_containers_(false),
+      found_viewport_(false),
       added_style_(false),
       added_containers_(false),
+      added_mob_js_(false),
+      in_script_(false),
+      use_cxx_layout_(false),
+      use_js_layout_(rewrite_driver->options()->mob_layout()),
+      use_js_logo_(rewrite_driver->options()->mob_logo()),
+      use_js_nav_(rewrite_driver->options()->mob_nav()),
       style_css_(CSS_mobilize_css) {
+
+  // If a domain proxy-suffix is specified, and it starts with ".",
+  // then we'll remove the "." from that and use that as the location
+  // of the shared static files (JS, CSS, and Polymer HTML).  E.g.
+  // for a proxy_suffix of ".suffix" we'll look for static files in
+  // "//suffix/static/".
+  StringPiece suffix(
+      rewrite_driver->options()->domain_lawyer()->proxy_suffix());
+  if (!suffix.empty() && suffix.starts_with(".")) {
+    suffix.remove_prefix(1);
+    static_file_prefix_ = StrCat("//", suffix, "/static/");
+  }
+
+  use_cxx_layout_ = !(use_js_layout_ || use_js_logo_ || use_js_nav_);
   Statistics* stats = rewrite_driver->statistics();
   num_pages_mobilized_ = stats->GetVariable(kPagesMobilized);
   num_keeper_blocks_ = stats->GetVariable(kKeeperBlocks);
@@ -118,8 +161,11 @@ void MobilizeRewriteFilter::StartDocument() {
   body_element_depth_ = 0;
   nav_element_depth_ = 0;
   reached_reorder_containers_ = false;
+  found_viewport_ = false;
   added_style_ = false;
   added_containers_ = false;
+  added_mob_js_ = false;
+  in_script_ = false;
   element_roles_stack_.clear();
   nav_keyword_stack_.clear();
 }
@@ -131,42 +177,133 @@ void MobilizeRewriteFilter::EndDocument() {
 void MobilizeRewriteFilter::StartElement(HtmlElement* element) {
   HtmlName::Keyword keyword = element->keyword();
 
-  // Remove any existing viewport tags.
+  // Unminify jquery for javascript debugging.
+  if ((keyword == HtmlName::kScript) && !use_cxx_layout_) {
+    in_script_ = true;
+
+    HtmlElement::Attribute* src_attribute =
+        element->FindAttribute(HtmlName::kSrc);
+    if (src_attribute != NULL) {
+      StringPiece src(src_attribute->DecodedValueOrNull());
+      if (src.find("jquery.min.js") != StringPiece::npos) {
+        GoogleString new_value = src.as_string();
+        GlobalReplaceSubstring("/jquery.min.js", "/jquery.js", &new_value);
+        src_attribute->SetValue(new_value);
+      }
+    }
+  }
+
+  // Remove any existing viewport tags, other than the one we created
+  // at start of head.
   if (keyword == HtmlName::kMeta) {
     HtmlElement::Attribute* name_attribute =
         element->FindAttribute(HtmlName::kName);
     if (name_attribute != NULL &&
         (StringPiece(name_attribute->escaped_value()) == "viewport")) {
-      driver_->DeleteNode(element);
-      num_elements_deleted_->Add(1);
+      StringPiece content(element->AttributeValue(HtmlName::kContent));
+      if (content == kViewportContent) {
+        found_viewport_ = true;
+      } else {
+        driver_->DeleteNode(element);
+        num_elements_deleted_->Add(1);
+      }
       return;
     }
   }
 
   if (keyword == HtmlName::kBody) {
+    // TODO(jmarantz): Prevents FOUC for polymer but we have all other kinds
+    // of FOUC anyway.  Resolve this when we have resolved those.
+    // driver_->AddAttribute(element, "unresolved", "");
+
     ++body_element_depth_;
-    AddReorderContainers(element);
+    if (use_cxx_layout_) {
+      AddReorderContainers(element);
+    }
   } else if (body_element_depth_ > 0) {
-    HandleStartTagInBody(element);
+    if (use_cxx_layout_) {
+      HandleStartTagInBody(element);
+    }
   }
 }
 
 void MobilizeRewriteFilter::EndElement(HtmlElement* element) {
   HtmlName::Keyword keyword = element->keyword();
+
+  if (keyword == HtmlName::kScript) {
+    in_script_ = false;
+  }
+
   if (keyword == HtmlName::kBody) {
     --body_element_depth_;
     if (body_element_depth_ == 0) {
-      RemoveReorderContainers();
+      if (use_js_layout_ || use_js_nav_) {
+        if (!added_mob_js_) {
+          added_mob_js_ = true;
+
+          // TODO(jmarantz): Consider using CommonFilter::InsertNodeAtBodyEnd.
+          if (use_js_layout_) {
+            HtmlElement* script = driver_->NewElement(element->parent(),
+                                                      HtmlName::kScript);
+            script->set_style(HtmlElement::EXPLICIT_CLOSE);
+            driver_->InsertNodeAfterCurrent(script);
+            driver_->AddAttribute(script, HtmlName::kSrc,
+                                  StrCat(static_file_prefix_, "mob.js"));
+          }
+          if (use_js_nav_) {
+            HtmlElement* script =
+                driver_->NewElement(element->parent(), HtmlName::kScript);
+            script->set_style(HtmlElement::EXPLICIT_CLOSE);
+            driver_->InsertNodeAfterCurrent(script);
+            driver_->AddAttribute(script, HtmlName::kSrc,
+                                  StrCat(static_file_prefix_, "mob_nav.js"));
+          }
+          if (use_js_logo_) {
+            HtmlElement* script =
+                driver_->NewElement(element->parent(), HtmlName::kScript);
+            script->set_style(HtmlElement::EXPLICIT_CLOSE);
+            driver_->InsertNodeAfterCurrent(script);
+            driver_->AddAttribute(script, HtmlName::kSrc,
+                                  StrCat(static_file_prefix_, "mob_logo.js"));
+          }
+        }
+      } else {
+        RemoveReorderContainers();
+      }
       reached_reorder_containers_ = false;
     }
   } else if (body_element_depth_ == 0 && keyword == HtmlName::kHead) {
+    // TODO(jmarantz): this uses AppendChild, but probably should use
+    // InsertBeforeCurrent to make it work with flush windows.
     AddStyleAndViewport(element);
+
+    // TODO(jmarantz): if we want to debug with Closure constructs, uncomment:
+    // HtmlElement* script_element =
+    //     driver_->NewElement(element, HtmlName::kScript);
+    // driver_->AppendChild(element, script_element);
+    // driver_->AddAttribute(script_element, HtmlName::kSrc,
+    //                       StrCat(static_file_prefix_, "closure/base.js"));
   } else if (body_element_depth_ > 0) {
-    HandleEndTagInBody(element);
+    if (use_cxx_layout_) {
+      HandleEndTagInBody(element);
+    }
   }
 }
 
 void MobilizeRewriteFilter::Characters(HtmlCharactersNode* characters) {
+  if (!use_cxx_layout_) {
+    if (in_script_) {
+      // This is a temporary hack for removing a SPOF from
+      // http://www.cardpersonalizzate.it/, whose reference
+      // to a file in e.mouseflow.com hangs and stops the
+      // browser from making progress.
+      GoogleString* contents = characters->mutable_contents();
+      if (contents->find("//e.mouseflow.com/projects") != GoogleString::npos) {
+        *contents = StrCat("/*", *contents, "*/");
+      }
+    }
+    return;
+  }
   if (body_element_depth_ == 0 || reached_reorder_containers_) {
     return;
   }
@@ -284,26 +421,77 @@ void MobilizeRewriteFilter::HandleEndTagInBody(HtmlElement* element) {
 
 void MobilizeRewriteFilter::AddStyleAndViewport(HtmlElement* element) {
   if (!added_style_) {
-    // <style>...</style>
-    HtmlElement* added_style_element = driver_->NewElement(
-        element, HtmlName::kStyle);
-    driver_->AppendChild(element, added_style_element);
-    HtmlCharactersNode* add_style_text = driver_->NewCharactersNode(
-        added_style_element, style_css_);
-    driver_->AppendChild(added_style_element, add_style_text);
-    // <meta name="viewport"... />
-    HtmlElement* added_viewport_element = driver_->NewElement(
-        element, HtmlName::kMeta);
-    added_viewport_element->set_style(HtmlElement::BRIEF_CLOSE);
-    added_viewport_element->AddAttribute(
-        driver_->MakeName(HtmlName::kName), "viewport",
-        HtmlElement::SINGLE_QUOTE);
-    added_viewport_element->AddAttribute(
-        driver_->MakeName(HtmlName::kContent), kViewportContent,
-        HtmlElement::SINGLE_QUOTE);
-    driver_->AppendChild(element, added_viewport_element);
     added_style_ = true;
+
+    if (use_cxx_layout_) {
+      HtmlElement* added_style_element = driver_->NewElement(
+          element, HtmlName::kStyle);
+      driver_->AppendChild(element, added_style_element);
+      HtmlCharactersNode* add_style_text = driver_->NewCharactersNode(
+          added_style_element, style_css_);
+      driver_->AppendChild(added_style_element, add_style_text);
+    }
+
+    // <meta name="viewport"... />
+    if (!found_viewport_) {
+      found_viewport_ = true;
+      HtmlElement* added_viewport_element = driver_->NewElement(
+          element, HtmlName::kMeta);
+      added_viewport_element->set_style(HtmlElement::BRIEF_CLOSE);
+      added_viewport_element->AddAttribute(
+          driver_->MakeName(HtmlName::kName), "viewport",
+          HtmlElement::SINGLE_QUOTE);
+      added_viewport_element->AddAttribute(
+          driver_->MakeName(HtmlName::kContent), kViewportContent,
+          HtmlElement::SINGLE_QUOTE);
+      driver_->AppendChild(element, added_viewport_element);
+    }
+
+    // <style>...</style>
+    if (!use_cxx_layout_) {
+      HtmlElement* link = driver_->NewElement(element, HtmlName::kLink);
+      driver_->AppendChild(element, link);
+      driver_->AddAttribute(link, HtmlName::kRel, "stylesheet");
+      driver_->AddAttribute(link, HtmlName::kHref, StrCat(static_file_prefix_,
+                                                          "lite.css"));
+    }
+
+    if (use_js_nav_) {
+      GoogleString polymer_base_url = StrCat(static_file_prefix_, "polymer/");
+
+      // Insert the script tag for polymer's platform.js.
+      HtmlElement* polymer_script =
+          driver_->NewElement(element, HtmlName::kScript);
+      driver_->AppendChild(element, polymer_script);
+      polymer_script->AddAttribute(
+          driver_->MakeName(HtmlName::kSrc),
+          StrCat(polymer_base_url, "platform/platform.js"),
+          HtmlElement::DOUBLE_QUOTE);
+      polymer_script->set_style(HtmlElement::EXPLICIT_CLOSE);
+
+      // Insert the link tags for the polymer elements
+      for (int i = 0, n = arraysize(kPolymerElementLinks); i < n; ++i) {
+        InsertPolymerLink(element,
+                          StrCat(polymer_base_url, kPolymerElementLinks[i]));
+      }
+
+      for (int i = 0, n = arraysize(kPolymerCustomElementLinks); i < n; ++i) {
+        InsertPolymerLink(
+            element, StrCat(static_file_prefix_,
+                            kPolymerCustomElementLinks[i]));
+      }
+    }
   }
+}
+
+void MobilizeRewriteFilter::InsertPolymerLink(HtmlElement* element,
+                                              StringPiece url) {
+  HtmlElement* polymer_link = driver_->NewElement(element, HtmlName::kLink);
+  driver_->AppendChild(element, polymer_link);
+  polymer_link->AddAttribute(driver_->MakeName(HtmlName::kRel), "import",
+                             HtmlElement::DOUBLE_QUOTE);
+  polymer_link->AddAttribute(driver_->MakeName(HtmlName::kHref), url,
+                             HtmlElement::DOUBLE_QUOTE);
 }
 
 // Adds containers at the end of the element (preferrably the body), which we

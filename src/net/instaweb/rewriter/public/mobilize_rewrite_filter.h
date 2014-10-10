@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/empty_html_filter.h"
 #include "pagespeed/kernel/html/html_name.h"
@@ -146,6 +147,7 @@ class MobilizeRewriteFilter : public EmptyHtmlFilter {
   bool IsReorderContainer(HtmlElement* element);
   HtmlElement* MobileRoleToContainer(MobileRole::Level level);
   MobileRole::Level GetMobileRole(HtmlElement* element);
+  void InsertPolymerLink(HtmlElement* element, StringPiece url);
 
   bool InImportantElement() {
     return (!element_roles_stack_.empty());
@@ -162,8 +164,16 @@ class MobilizeRewriteFilter : public EmptyHtmlFilter {
   int body_element_depth_;
   int nav_element_depth_;
   bool reached_reorder_containers_;
+  bool found_viewport_;
   bool added_style_;
   bool added_containers_;
+  bool added_mob_js_;
+  bool in_script_;
+  bool use_cxx_layout_;   // Use C++ layout resynthesis (none of below options).
+  bool use_js_layout_;
+  bool use_js_logo_;
+  bool use_js_nav_;
+  GoogleString static_file_prefix_;
 
   // Statistics
   // Number of web pages we have mobilized.

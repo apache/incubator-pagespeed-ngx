@@ -1859,19 +1859,12 @@ goog.iter.dropWhile = function(a, b, c) {
 goog.iter.takeWhile = function(a, b, c) {
   var d = goog.iter.toIterator(a);
   a = new goog.iter.Iterator;
-  var e = !0;
   a.next = function() {
-    for (;;) {
-      if (e) {
-        var a = d.next();
-        if (b.call(c, a, void 0, d)) {
-          return a;
-        }
-        e = !1;
-      } else {
-        throw goog.iter.StopIteration;
-      }
+    var a = d.next();
+    if (b.call(c, a, void 0, d)) {
+      return a;
     }
+    throw goog.iter.StopIteration;
   };
   return a;
 };

@@ -36,6 +36,7 @@
 #include "pagespeed/kernel/base/enum_set.h"
 #include "pagespeed/kernel/base/fast_wildcard_group.h"
 #include "pagespeed/kernel/base/gtest_prod.h"
+#include "pagespeed/kernel/base/hasher.h"
 #include "pagespeed/kernel/base/md5_hasher.h"
 #include "pagespeed/kernel/base/proto_util.h"
 #include "pagespeed/kernel/base/rde_hash_map.h"
@@ -54,7 +55,6 @@
 
 namespace net_instaweb {
 
-class Hasher;
 class HttpOptions;
 class MessageHandler;
 class PurgeSet;
@@ -319,6 +319,9 @@ class RewriteOptions {
   static const char kMinCacheTtlMs[];
   static const char kMinImageSizeLowResolutionBytes[];
   static const char kMinResourceCacheTimeToRewriteMs[];
+  static const char kMobLayout[];
+  static const char kMobLogo[];
+  static const char kMobNav[];
   static const char kModifyCachingHeaders[];
   static const char kNoTransformOptimizedImages[];
   static const char kNonCacheablesForCachePartialHtml[];
@@ -2432,6 +2435,11 @@ class RewriteOptions {
     return option_cookies_duration_ms_.value();
   }
 
+  bool mob_layout() const { return mob_layout_.value(); }
+  bool mob_logo() const { return mob_logo_.value(); }
+  bool mob_nav() const { return mob_nav_.value(); }
+
+
   // Merge src into 'this'.  Generally, options that are explicitly
   // set in src will override those explicitly set in 'this' (except that
   // filters forbidden in 'this' cannot be enabled by 'src'), although
@@ -3877,6 +3885,10 @@ class RewriteOptions {
   scoped_ptr<std::vector<ElementAttributeCategory> > url_valued_attributes_;
 
   Option<ResourceCategorySet> inline_unauthorized_resource_types_;
+
+  Option<bool> mob_layout_;
+  Option<bool> mob_logo_;
+  Option<bool> mob_nav_;
 
   CopyOnWrite<JavascriptLibraryIdentification>
       javascript_library_identification_;
