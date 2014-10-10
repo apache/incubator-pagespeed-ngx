@@ -42,7 +42,7 @@ const char* const Value::kDimensionUnitText[] = {
 Value::Value(ValueType ty)
     : type_(ty),
       color_(0, 0, 0) {
-  DCHECK(ty == DEFAULT || ty == UNKNOWN);
+  DCHECK(ty == COMMA || ty == DEFAULT || ty == UNKNOWN);
 }
 
 Value::Value(double num, const UnicodeText& unit)

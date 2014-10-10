@@ -429,6 +429,10 @@ void CssMinify::Minify(const Css::Value& value) {
     case Css::Value::IDENT:
       Write(Css::EscapeIdentifier(value.GetIdentifierText()));
       break;
+    case Css::Value::COMMA:
+      // TODO(sligocki): Do not add spaces around COMMA tokens.
+      Write(",");
+      break;
     case Css::Value::UNKNOWN:
       handler_->Message(kError, "Unknown attribute");
       ok_ = false;

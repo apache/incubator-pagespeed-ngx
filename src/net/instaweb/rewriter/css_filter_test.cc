@@ -36,6 +36,7 @@
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/dynamic_annotations.h"  // RunningOnValgrind
 #include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/statistics.h"
@@ -49,8 +50,6 @@
 #include "webutil/css/parser.h"
 
 namespace net_instaweb {
-
-class MessageHandler;
 
 namespace {
 
@@ -648,7 +647,8 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     // http://code.google.com/p/modpagespeed/issues/detail?id=220
     // See https://developer.mozilla.org/en/CSS/-moz-transition-property
     // and http://www.webkit.org/blog/138/css-animation/
-    "a{-webkit-transition-property:opacity,-webkit-transform }",
+    // TODO(sligocki): rm spaces around COMMA token.
+    "a{-webkit-transition-property:opacity , -webkit-transform}",
 
     // Parameterized pseudo-selector.
     "div:nth-child(1n) {color:red}",
@@ -708,7 +708,7 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
 
     // kDeclarationError from Alexa-100
     // Comma in values
-    "a{webkit-transition-property: color, background-color }",
+    "a{webkit-transition-property:color , background-color}",
     // Special chars in property
     "a{//display: inline-block }",
     ".ad_300x250{/margin-top:-120px }",
@@ -719,7 +719,7 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     "a{z-i ndex:19 }",
     "a{width:352px;height62px ;display:block}",
     "a{color: #5552 }",
-    "a{1font-family:Tahoma, Arial, sans-serif }",
+    "a{1font-family:Tahoma , Arial , sans-serif}",
     "a{text align:center }",
 
     // kSelectorError from Alexa-100
@@ -1124,7 +1124,7 @@ TEST_F(CssFilterTest, ComplexCssTest) {
 
       ".mui-navbar-wrap,.mui-navbar-clone{"
       "opacity:1;-webkit-transform:translateX(0);"
-      "-webkit-transition-property:opacity,-webkit-transform;"
+      "-webkit-transition-property:opacity , -webkit-transform;"
       "-webkit-transition-duration:400ms}" },
 
     // IE 8 hack \0/.
@@ -1156,7 +1156,7 @@ TEST_F(CssFilterTest, ComplexCssTest) {
 
       ".cnn_html_slideshow_controls>.cnn_html_slideshow_pager_container>"
       ".cnn_html_slideshow_pager>li{"
-      "font-size:16px;-webkit-transition-property: color, background-color;"
+      "font-size:16px;-webkit-transition-property:color , background-color;"
       "-webkit-transition-duration:.5s}" },
 
     { "a.login,a.home{position:absolute;right:15px;top:15px;display:block;"
@@ -1180,11 +1180,11 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       "text-shadow:0 -1px 0 rgba(0,0,0,.2);background:#607890;padding:0 12px;"
       "opacity:.9;text-decoration:none;border:1px solid #2e4459;"
       "-moz-border-radius:6px;-webkit-border-radius:6px;border-radius:6px;"
-      "-moz-box-shadow:0 1px 0 rgba(255,255,255,0.15),0 1px 0"
-      " rgba(255,255,255,0.15) inset;-webkit-box-shadow:0 1px 0 "
-      "rgba(255,255,255,0.15),0 1px 0 rgba(255,255,255,0.15) inset;"
-      "box-shadow:0 1px 0 rgba(255,255,255,0.15),0 1px 0 "
-      "rgba(255,255,255,0.15) inset}" },
+      "-moz-box-shadow:0 1px 0 rgba(255,255,255,.15) , 0 1px 0"
+      " rgba(255,255,255,.15) inset;-webkit-box-shadow:0 1px 0 "
+      "rgba(255,255,255,.15) , 0 1px 0 rgba(255,255,255,.15) inset;"
+      "box-shadow:0 1px 0 rgba(255,255,255,.15) , 0 1px 0 "
+      "rgba(255,255,255,.15) inset}" },
 
     // Special chars in property
     { ".authorization .mail .login input, .authorization .pswd input {"
@@ -1416,12 +1416,12 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       "ynf_cDxXwCLxiixG1c.ttf') format('truetype')}",
 
       "@font-face{font-family:'Ubuntu';font-style:normal;font-weight:normal;"
-      "src:local('Ubuntu'), url('http://themes.googleusercontent.com/static/"
-      "fonts/ubuntu/v2/2Q-AW1e_taO6pHwMXcXW5w.ttf') format('truetype')}"
+      "src:local('Ubuntu') , url(http://themes.googleusercontent.com/static/"
+      "fonts/ubuntu/v2/2Q-AW1e_taO6pHwMXcXW5w.ttf) format('truetype')}"
       "@font-face{font-family:'Ubuntu';font-style:normal;font-weight:bold;"
-      "src:local('Ubuntu Bold'), local('Ubuntu-Bold'), url('http://themes."
+      "src:local('Ubuntu Bold') , local('Ubuntu-Bold') , url(http://themes."
       "googleusercontent.com/static/fonts/ubuntu/v2/0ihfXUL2emPh0ROJezvraKCWc"
-      "ynf_cDxXwCLxiixG1c.ttf') format('truetype')}" },
+      "ynf_cDxXwCLxiixG1c.ttf) format('truetype')}" },
 
     { "@font-face { font-family: 'Roboto Condensed'; font-style: normal; "
       "font-weight: 400; src: local('Roboto Condensed Regular'), "
@@ -1429,8 +1429,8 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       "fonts/Roboto-Condensed.woff) format('woff'); }\n",
 
       "@font-face{font-family:'Roboto Condensed';font-style:normal;"
-      "font-weight:400;src: local('Roboto Condensed Regular'), "
-      "local('RobotoCondensed-Regular'), url(http://stc.v3.news.zing.vn/css/"
+      "font-weight:400;src:local('Roboto Condensed Regular') , "
+      "local('RobotoCondensed-Regular') , url(http://stc.v3.news.zing.vn/css/"
       "fonts/Roboto-Condensed.woff) format('woff')}" },
 
     // Multiple src properties.
@@ -1448,11 +1448,11 @@ TEST_F(CssFilterTest, ComplexCssTest) {
 
       "@font-face{font-family:'BebasNeueRegular';"
       "src:url(fonts/BebasNeue-webfont.eot);"
-      "src: url('fonts/BebasNeue-webfont.eot?#iefix') "
-      "format('embedded-opentype'),\n"
-      "    url('fonts/BebasNeue-webfont.woff') format('woff'),\n"
-      "    url('fonts/BebasNeue-webfont.ttf') format('truetype'),\n"
-      "    url('fonts/BebasNeue-webfont.svg#BebasNeueRegular') format('svg');"
+      "src:url(fonts/BebasNeue-webfont.eot?#iefix) "
+      "format('embedded-opentype') , "
+      "url(fonts/BebasNeue-webfont.woff) format('woff') , "
+      "url(fonts/BebasNeue-webfont.ttf) format('truetype') , "
+      "url(fonts/BebasNeue-webfont.svg#BebasNeueRegular) format('svg');"
       "font-weight:normal;font-style:normal}" },
 
     // @font-face inside @media
@@ -2132,10 +2132,9 @@ TEST_F(CssFilterTest, NoWebpLaRewritingFromPngIfDisabled) {
 TEST_F(CssFilterTest, DontAbsolutifyUrlsIfNoDomainMapping) {
   // We are not using a proxy URL namer (TestUrlNamer) nor any domain
   // rewriting/sharding, so relative URLs can stay relative.
-  // Note: the CSS with multiple urls is valid CSS3 but not valid CSS2.1.
   const char css_input[] =
       "body{background:url(a.png)}"
-      "body{background: url(a.png), url( http://test.com/b.png ), "
+      "@foobar {background: url(a.png), url( http://test.com/b.png ), "
       "url('sub/c.png'), url( \"/sub/d.png\"  )}";
   // with image rewriting
   TestUrlAbsolutification("dont_absolutify_unparseable_urls_etc_with",
@@ -2156,14 +2155,13 @@ TEST_F(CssFilterTest, DontAbsolutifyUrlsIfNoDomainMapping) {
 TEST_F(CssFilterTest, AbsolutifyUnparseableUrlsWithDomainMapping) {
   // We are not using a proxy URL namer (TestUrlNamer) but we ARE mapping and
   // sharding domains, so we expect the relative URLs to be absolutified.
-  // Note: the CSS with multiple urls is valid CSS3 but not valid CSS2.1.
   const char css_input[] =
       "body{background:url(a.png)}"
-      "body{background: url(a.png), url( http://test.com/b.png ), "
+      "@foobar {background: url(a.png), url( http://test.com/b.png ), "
       "url('sub/c.png'), url( \"/sub/d.png\"  )}";
   const char css_output[] =
       "body{background:url(http://cdn2.com/a.png)}"
-      "body{background: url(http://cdn2.com/a.png), "
+      "@foobar {background: url(http://cdn2.com/a.png), "
       "url(http://cdn1.com/b.png), "
       "url('http://cdn1.com/sub/c.png'), "
       "url(\"http://cdn2.com/sub/d.png\")}";
@@ -2419,16 +2417,15 @@ class CssFilterTestUrlNamer : public CssFilterTest {
 TEST_F(CssFilterTestUrlNamer, AbsolutifyUnparseableUrls) {
   // Here we ARE using a proxy URL namer (TestUrlNamer) so the URLs in
   // unparseable CSS must be absolutified.
-  // This CSS is valid CSS3 but not valid CSS2.1 because of the multiple urls.
   const char css_input[] =
-      "body { background: url(a.png), url( http://test.com/b.png ), "
+      "@foobar { background: url(a.png), url( http://test.com/b.png ), "
       "url('sub/c.png'), url( \"/sub/d.png\"  ); }\n";
   const char expected_output[] =
-      "body{background: "
+      "@foobar { background: "
       "url(http://test.com/a.png), "
       "url( http://test.com/b.png ), "  // already absolute means no change
       "url('http://test.com/sub/c.png'), "
-      "url(\"http://test.com/sub/d.png\")}";
+      "url(\"http://test.com/sub/d.png\"); }";
   // with image rewriting
   TestUrlAbsolutification("absolutify_unparseable_urls_with",
                           css_input, expected_output,

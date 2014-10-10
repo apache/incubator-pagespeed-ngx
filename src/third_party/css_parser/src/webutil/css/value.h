@@ -52,8 +52,8 @@ class Values;
 // various accessors.
 class Value {
  public:
-  enum ValueType { NUMBER, URI, FUNCTION, RECT,
-                   COLOR, STRING, IDENT, UNKNOWN, DEFAULT };
+  enum ValueType { NUMBER, URI, FUNCTION, RECT, COLOR, STRING, IDENT, COMMA,
+                   UNKNOWN, DEFAULT };
   enum Unit { EM, EX, PX, CM, MM, IN, PT, PC,
               DEG, RAD, GRAD, MS, S, HZ, KHZ, PERCENT, OTHER, NO_UNIT,
               NUM_UNITS };
@@ -62,7 +62,7 @@ class Value {
 
   Value() : type_(DEFAULT), color_(0, 0, 0) { }
 
-  // UNKNOWN or DEFAULT
+  // COMMA, UNKNOWN or DEFAULT
   Value(ValueType ty);  // NOLINT
 
   // NUMBER with unit.  OTHER is not a valid unit here.  Use the next form:

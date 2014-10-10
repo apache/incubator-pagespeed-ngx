@@ -1011,6 +1011,11 @@ Value* Parser::ParseAnyWithFunctionDepth(int max_function_depth) {
         toret = NULL;
       break;
     }
+    case ',':
+      // TODO(sligocki): Add other possible value tokens like DELIM.
+      toret = new Value(Value::COMMA);
+      in_++;
+      break;
     case '+':
       toret = ParseNumber();
       break;

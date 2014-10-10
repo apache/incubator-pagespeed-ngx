@@ -2372,18 +2372,17 @@ TEST_F(ParserTest, AtFontFace) {
 
 
   // Complex src values.
-  // TODO(sligocki): Complex src values are not yet parsed correctly.
   parser.reset(new Parser(
       "@media print {\n"
       "  @font-face { font-family: 'Dothraki'; src: local('Khal'),"
       " url('dothraki.woff') format('woff'); }\n"
       "}\n"));
   stylesheet.reset(parser->ParseStylesheet());
-  EXPECT_NE(Parser::kNoError, parser->errors_seen_mask());
+  EXPECT_EQ(Parser::kNoError, parser->errors_seen_mask());
   EXPECT_EQ("/* AUTHOR */\n\n\n"
-            // Failed to parse complex src: value.
-            "@media print { @font-face { font-family: \"Dothraki\" } }\n\n",
-            stylesheet->ToString());
+            "@media print { @font-face { font-family: \"Dothraki\"; "
+            "src: local(\"Khal\") , url(dothraki.woff) format(\"woff\") } }\n"
+            "\n", stylesheet->ToString());
 
   // @font-face with all properties.
   parser.reset(new Parser(
@@ -2391,14 +2390,12 @@ TEST_F(ParserTest, AtFontFace) {
       "  font-family: MainText;\n"
       "  src: url(gentium.eot);\n"  // For use with older UAs.
       // Overrides last src.
-      // TODO(sligocki): Parse complex src.
       "  src: local(\"Gentium\"), url('gentium.ttf') format('truetype'), "
       "url(gentium.woff);\n"
       "  font-style: italic;\n"
       "  font-weight: 800;\n"
       "  font-stretch: ultra-condensed;\n"
-      // TODO(sligocki): Parse unicode-range, font-variant and
-      // font-feature-settings.
+      // TODO(sligocki): Parse unicode-range and font-variant.
       "  unicode-range: U+590-5ff, u+4??, U+1F63B;\n"
       "  font-variant: historical-forms, character-variant(cv13), "
       "annotiation(circled);\n"
@@ -2408,8 +2405,12 @@ TEST_F(ParserTest, AtFontFace) {
   EXPECT_NE(Parser::kNoError, parser->errors_seen_mask());
   EXPECT_EQ("/* AUTHOR */\n\n\n"
             "@font-face { font-family: MainText; src: url(gentium.eot);"
+            " src: local(\"Gentium\") ,"
+            " url(gentium.ttf) format(\"truetype\") ,"
+            " url(gentium.woff);"
             " font-style: italic; font-weight: 800;"
-            " font-stretch: ultra-condensed }\n\n",
+            " font-stretch: ultra-condensed;"
+            " font-feature-settings: \"hwid\" , \"swsh\" 2 }\n\n",
             stylesheet->ToString());
 }
 
