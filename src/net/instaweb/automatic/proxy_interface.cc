@@ -65,6 +65,9 @@ const char kPagespeedRequestCount[] = "pagespeed-requests";
 const char kRejectedRequestCount[] = "publisher-rejected-requests";
 const char kRejectedRequestHtmlResponse[] = "Unable to serve "
     "content as the content is blocked by the administrator of the domain.";
+const char kNoDomainConfigRequestCount[] = "without-domain-config-requests";
+const char kNoDomainConfigResourceRequestCount[] =
+    "without-domain-config-resource-requests";
 
 }  // namespace
 
@@ -85,7 +88,11 @@ ProxyInterface::ProxyInterface(const StringPiece& hostname, int port,
       pagespeed_requests_(stats->GetTimedVariable(kPagespeedRequestCount)),
       cache_html_flow_requests_(
           stats->GetTimedVariable(kCacheHtmlRequestCount)),
-      rejected_requests_(stats->GetTimedVariable(kRejectedRequestCount)) {
+      rejected_requests_(stats->GetTimedVariable(kRejectedRequestCount)),
+      requests_without_domain_config_(
+          stats->GetTimedVariable(kNoDomainConfigRequestCount)),
+      resource_requests_without_domain_config_(
+          stats->GetTimedVariable(kNoDomainConfigResourceRequestCount)) {
   proxy_fetch_factory_.reset(new ProxyFetchFactory(server_context));
 }
 
@@ -100,6 +107,12 @@ void ProxyInterface::InitStats(Statistics* statistics) {
   statistics->AddTimedVariable(kCacheHtmlRequestCount,
                                ServerContext::kStatisticsGroup);
   statistics->AddTimedVariable(kRejectedRequestCount,
+                               ServerContext::kStatisticsGroup);
+  statistics->AddTimedVariable(kRejectedRequestCount,
+                               ServerContext::kStatisticsGroup);
+  statistics->AddTimedVariable(kNoDomainConfigRequestCount,
+                               ServerContext::kStatisticsGroup);
+  statistics->AddTimedVariable(kNoDomainConfigResourceRequestCount,
                                ServerContext::kStatisticsGroup);
   CacheHtmlFlow::InitStats(statistics);
   FlushEarlyFlow::InitStats(statistics);
@@ -215,6 +228,13 @@ void ProxyInterface::GetRewriteOptionsDone(RequestData* request_data,
   GoogleUrl* request_url = request_data->request_url.get();
   AsyncFetch* async_fetch = request_data->async_fetch;
   MessageHandler* handler = request_data->handler;
+
+  if (domain_options == NULL) {
+    requests_without_domain_config_->IncBy(1);
+    if (is_resource_fetch) {
+      resource_requests_without_domain_config_->IncBy(1);
+    }
+  }
 
   // Parse the query options, headers, and cookies.
   RewriteQuery query;

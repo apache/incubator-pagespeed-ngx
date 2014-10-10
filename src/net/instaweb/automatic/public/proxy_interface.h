@@ -116,6 +116,10 @@ class ProxyInterface : public UrlAsyncFetcher {
   TimedVariable* cache_html_flow_requests_;
   // Rejected requests counter.
   TimedVariable* rejected_requests_;
+  // Number of requests without domain-specific config.
+  TimedVariable* requests_without_domain_config_;
+  // Number of resource requests without domain-specific config.
+  TimedVariable* resource_requests_without_domain_config_;
 
   scoped_ptr<ProxyFetchFactory> proxy_fetch_factory_;
 
