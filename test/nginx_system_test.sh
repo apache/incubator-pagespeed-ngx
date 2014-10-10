@@ -2748,6 +2748,14 @@ start_test Base config has purging disabled.  Check error message syntax.
 OUT=$($WGET_DUMP "$HOSTNAME/pagespeed_admin/cache?purge=*")
 check_from "$OUT" fgrep -q "pagespeed EnableCachePurge on;"
 
+start_test deleted headers stay put
+WGET_ARGS=""
+URL="$SECONDARY_HOSTNAME/mod_pagespeed_example/"
+FETCH_CMD="$WGET_DUMP --header=Host:header-delete.example.com $URL"
+OUT=$($FETCH_CMD)
+check_not_from "$OUT" fgrep "X-PageSpeed"
+check_not_from "$OUT" fgrep "Server"
+
 if $USE_VALGRIND; then
     # It is possible that there are still ProxyFetches outstanding
     # at this point in time. Give them a few extra seconds to allow

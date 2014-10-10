@@ -403,8 +403,26 @@ ngx_int_t copy_response_headers_to_ngx(
       continue;
     } else if (STR_EQ_LITERAL(name, "Transfer-Encoding")) {
       continue;
-    } else if (STR_EQ_LITERAL(name, "Server")) {
-      continue;
+    } else {
+      // Update or append response headers.
+      NgxListIterator it(&(r->headers_out.headers.part));
+      ngx_table_elt_t* header;
+      bool handled = false;
+
+      while ((header = it.Next()) != NULL) {
+        StringPiece sp(reinterpret_cast<char*>(header->key.data),
+                       static_cast<int>(header->key.len));
+        if (StringCaseEqual(sp, name_gs)) {
+          header->value.len = value.len;
+          header->value.data = value_s;
+          handled = true;
+          break;
+        }
+      }
+
+      if (handled) {
+        continue;
+      }
     }
 
     u_char* name_s = ngx_pstrdup(r->pool, &name);
@@ -1179,9 +1197,8 @@ ngx_int_t ps_base_fetch_handler(ngx_http_request_t* r) {
           header->hash = 0;
         }
       }
-    } else {
-      ngx_http_clean_header(r);
     }
+
     // collect response headers from pagespeed
     rc = ctx->base_fetch->CollectHeaders(&r->headers_out);
     if (rc == NGX_ERROR) {
