@@ -25,6 +25,7 @@
 
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
+#include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -34,6 +35,7 @@
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/charset_util.h"
 #include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/cache/lru_cache.h"
@@ -226,7 +228,7 @@ class JsCombineFilterTest : public RewriteTestBase {
     EXPECT_TRUE(info.url.empty());
     EXPECT_EQ(
         StrCat("eval(",
-               JsCombineFilter::VarName(server_context(), abs_url),
+               JsCombineFilter::VarName(rewrite_driver(), abs_url),
                ");"),
         info.text_content);
   }
@@ -1251,6 +1253,45 @@ TEST_F(JsCombineFilterTest, IsLikelyStrictMode) {
       JsCombineFilter::IsLikelyStrictMode(
           server_context()->js_tokenizer_patterns(),
           "+ * ! 'use strict';"));
+}
+
+TEST_F(JsCombineFilterTest, MapRewriteDomainAccrossDirs) {
+  // Setup a MapRewriteDomain "CDN" with a subdir.
+  const char kSubDir[] = "subdir/";
+  options()->ClearSignatureForTesting();
+  options()->WriteableDomainLawyer()->AddRewriteDomainMapping(
+      StrCat(other_domain_, kSubDir),
+      kTestDomain,
+      message_handler());
+  server_context()->ComputeSignature(options());
+  SimulateJsResourceOnDomain(other_domain_, StrCat(kSubDir, kJsUrl1), kJsText1);
+  SimulateJsResourceOnDomain(other_domain_, StrCat(kSubDir, kJsUrl2), kJsText2);
+
+  const char kDataHash1[] = "K4w22M2i$3";
+  const char kDataHash2[] = "4SWUiisZ$T";
+
+  GoogleString combined_url =
+      StrCat(other_domain_, kSubDir, "a.js+b.js.pagespeed.jc.8HvRqZnJ8O.js");
+
+  ValidateExpected("rewrite_subdir", TestHtml(),
+                   StrCat(
+                       StrCat("<script src=\"", combined_url, "\"></script>"),
+                       StrCat("<script>eval(mod_pagespeed_", kDataHash1,
+                              ");</script>"),
+                       StrCat("<script>eval(mod_pagespeed_", kDataHash2,
+                              ");</script>")));
+  // Now make sure hashes on other domain match, on reconstruction.
+  EXPECT_EQ(0, lru_cache()->num_deletes());
+  lru_cache()->Delete(HttpCacheKey(combined_url));
+  EXPECT_EQ(1, lru_cache()->num_deletes());  // deleted OK.
+  lru_cache()->ClearStats();
+  GoogleString combination_src;
+  ASSERT_TRUE(FetchResourceUrl(combined_url, &combination_src));
+  EXPECT_TRUE(combination_src.find(kDataHash1) != GoogleString::npos)
+      << combination_src;
+  EXPECT_TRUE(combination_src.find(kDataHash2) != GoogleString::npos)
+      << combination_src;
+  EXPECT_GT(lru_cache()->num_inserts(), 0);  // Actually did work.
 }
 
 }  // namespace net_instaweb

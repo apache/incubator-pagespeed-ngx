@@ -76,7 +76,10 @@ bool UrlPartnership::AddUrl(const StringPiece& untrimmed_resource_url,
       handler->Message(kInfo,
                        "Rewriting URL %s is disallowed via configuration",
                        resolved_request->spec_c_str());
-    } else if (FindResourceDomain(resolved_request.get(),
+    } else if (FindResourceDomain(original_origin_and_path_,
+                                  url_namer_,
+                                  rewrite_options_,
+                                  resolved_request.get(),
                                   &mapped_domain_name,
                                   handler)) {
       if (url_vector_.empty()) {
@@ -101,18 +104,21 @@ bool UrlPartnership::AddUrl(const StringPiece& untrimmed_resource_url,
   return ret;
 }
 
-bool UrlPartnership::FindResourceDomain(GoogleUrl* resource,
+bool UrlPartnership::FindResourceDomain(const GoogleUrl& base_url,
+                                        const UrlNamer* url_namer,
+                                        const RewriteOptions* rewrite_options,
+                                        GoogleUrl* resource,
                                         GoogleString* domain,
-                                        MessageHandler* handler) const {
+                                        MessageHandler* handler) {
   bool ret = false;
   GoogleString resource_url;
-  if (url_namer_->Decode(*resource, rewrite_options_, NULL, &resource_url)) {
+  if (url_namer->Decode(*resource, rewrite_options, NULL, &resource_url)) {
     resource->Reset(resource_url);
     ret = resource->IsWebValid();
     resource->Origin().CopyToString(domain);
   } else {
-    ret = rewrite_options_->domain_lawyer()->MapRequestToDomain(
-        original_origin_and_path_, resource->Spec(), domain,
+    ret = rewrite_options->domain_lawyer()->MapRequestToDomain(
+        base_url, resource->Spec(), domain,
         resource, handler);
   }
   return ret;
