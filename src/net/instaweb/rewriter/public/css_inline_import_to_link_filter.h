@@ -31,10 +31,17 @@ class Statistics;
 class Variable;
 
 // Filter to rewrite style tags of the form:
-//   <style type="text/css" ...>@import url(URL) ;</style>
+//   <style type="text/css" ...>
+//     @import url(URL1);
+//     @import url(URL2);
+//     foobar
+//   </style>
 // to
-//   <link type="text/css" ... rel="stylesheet" href="URL"/>
-//
+//   <link type="text/css" ... rel="stylesheet" href="URL1"/>
+//   <link type="text/css" ... rel="stylesheet" href="URL2"/>
+//   <style type="text/css" ...>
+//     foobar
+//   </style>
 class CssInlineImportToLinkFilter : public EmptyHtmlFilter {
  public:
   explicit CssInlineImportToLinkFilter(RewriteDriver* driver,

@@ -2061,6 +2061,9 @@ Import* Parser::ParseNextImport() {
 
   SkipSpace();
   if (Done()) return NULL;
+
+  const char* oldin = in_;
+
   DCHECK_LT(in_, end_);
   if (*in_ != '@') return NULL;
   ++in_;
@@ -2069,6 +2072,9 @@ Import* Parser::ParseNextImport() {
 
   // @import string|uri medium-list ? ;
   if (!StringCaseEquals(ident, "import")) {
+    // Rewind to beginning of at-rule, since it wasn't an @import and we want
+    // to leave the parser in a consistent state.
+    in_ = oldin;
     return NULL;
   }
 

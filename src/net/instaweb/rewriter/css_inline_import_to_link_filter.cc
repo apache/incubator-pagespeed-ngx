@@ -18,8 +18,8 @@
 
 #include "net/instaweb/rewriter/public/css_inline_import_to_link_filter.h"
 
-#include <cstddef>
 #include <algorithm>
+#include <memory>
 #include <vector>
 
 #include "base/logging.h"
@@ -43,11 +43,6 @@ namespace {
 
 // names for Statistics variables.
 const char kCssImportsToLinks[] = "css_imports_to_links";
-
-// If style elements contents is more than this number of bytes we won't even
-// check to see if it's an @import, because URLs are generally considered to
-// be at most 2083 bytes (an IE limitation).
-const size_t kMaxCssToSave = 4096;
 
 }  // namespace
 
@@ -95,13 +90,7 @@ void CssInlineImportToLinkFilter::EndElement(HtmlElement* element) {
 void CssInlineImportToLinkFilter::Characters(HtmlCharactersNode* characters) {
   if (style_element_ != NULL) {
     DCHECK(style_characters_ == NULL);  // HTML Parser guarantees this.
-    if (characters->contents().size() > kMaxCssToSave) {
-      driver_->InfoHere("Inline element not rewritten because its size "
-                        "is above threshold %ld", (long) kMaxCssToSave);
-      ResetState();
-    } else {
-      style_characters_ = characters;
-    }
+    style_characters_ = characters;
   }
 }
 
@@ -207,15 +196,15 @@ bool CheckConversionOfImportToLink(const Css::Import* import,
 
 }  // namespace
 
-// Change the <style>...</style> element into one or more <link/> elements.
+// Pull out each @import from a <style> element into <link> elements.
 void CssInlineImportToLinkFilter::InlineImportToLinkStyle() {
-  // Conditions for rewriting a style element to a link element:
+  // Conditions for rewriting @imports from within a style element:
   // * The element isn't empty.
   // * The element is rewritable.
   // * It doesn't already have an href or rel attribute, since we add these.
   // * It doesn't have a scoped attribute, since scoped styles can't be
   //   done with a <link>
-  // * Its contents comprise one or more valid @import statement.
+  // * It begins with one or more valid @import statement.
   // * Each @import actually imports something (the url isn't empty).
   // * Each @import's media, if any, are the same as style's, if any.
   if (style_characters_ != NULL &&
@@ -224,14 +213,7 @@ void CssInlineImportToLinkFilter::InlineImportToLinkStyle() {
       style_element_->FindAttribute(HtmlName::kRel) == NULL &&
       style_element_->FindAttribute(HtmlName::kScoped) == NULL) {
     // Parse imports until we hit the end of them; if there's anything else
-    // in the CSS we bail out.
-    // TODO(matterbury): leave any *remaining* CSS (after any imports) as an
-    // inline style containing the original CSS minus the converted imports.
-    // AFAIK this should work fine as I believe browsers block processing the
-    // CSS on earlier stylesheet links. It would be nice to also handle a
-    // leading @charset, say by adding charset attributes to the links and
-    // leaving the @charset in the CSS (with imports removed), however this is
-    // likely to be unreliable given the rules for determining CSS's charset.
+    // in the CSS we leave that in the inline style.
     Css::Parser parser(style_characters_->contents());
     Css::Imports imports;
     Css::Import* import;
@@ -258,14 +240,13 @@ void CssInlineImportToLinkFilter::InlineImportToLinkStyle() {
                                          &style_media);
     }
 
-    if (ok && parser.Done() &&
+    if (ok && (imports.size() > 0) &&
         (parser.errors_seen_mask() == Css::Parser::kNoError)) {
-      HtmlElement* insert_after_element = style_element_;
       for (int i = 0, n = imports.size(); i < n; ++i) {
         Css::Import* import = imports[i];
         StringPiece url(import->link().utf8_data(),
                         import->link().utf8_length());
-        // Create new link element to replace the style element.
+        // Create new link element to replace the @import.
         HtmlElement* link_element =
             driver_->NewElement(style_element_->parent(), HtmlName::kLink);
         if (driver_->MimeTypeXhtmlStatus() != RewriteDriver::kIsNotXhtml) {
@@ -291,13 +272,20 @@ void CssInlineImportToLinkFilter::InlineImportToLinkStyle() {
           driver_->AddAttribute(link_element, HtmlName::kMedia, media[i]);
         }
         // Add the link to the DOM.
-        driver_->InsertNodeAfterNode(insert_after_element, link_element);
-        insert_after_element = link_element;
+        driver_->InsertNodeBeforeNode(style_element_, link_element);
       }
 
-      // Now we don't need it any more, remove the style element from the DOM.
-      if (!driver_->DeleteNode(style_element_)) {
-        driver_->ErrorHere("Failed to delete inline style element");
+      if (parser.Done()) {
+        // <style> contained only @imports, so remove it now.
+        if (!driver_->DeleteNode(style_element_)) {
+          driver_->ErrorHere("Failed to delete inline style element");
+        }
+      } else {
+        // Erase parsed @imports from contents, but leave rest of CSS.
+        int parser_offset = parser.CurrentOffset();
+        style_characters_->mutable_contents()->erase(0, parser_offset);
+        // Note: parser cannot be used after this point. It contains invalid
+        // pointers into the old style_characters_->contents().
       }
 
       counter_->Add(1);

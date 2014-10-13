@@ -192,18 +192,30 @@ TEST_F(CssInlineImportToLinkFilterTest, ConvertStyleWithMultipleImports) {
       " href=\"http://example.com/style3_tmp.css\" type=\"text/css\""
       " title=\"currentStyle\" media=\"screen\">");
 
+  // Pull out @import statements, even if there is trailing CSS.
+  ValidateStyleToLink(
+      "<style>"
+      "@import \"first.css\" all;\n"
+      "@import url('second.css' );\n"
+      "@import \"third.css\";\n"
+      ".a { background-color: red }"
+      "</style>",
+
+      "<link rel=\"stylesheet\" href=\"first.css\" media=\"all\">"
+      "<link rel=\"stylesheet\" href=\"second.css\">"
+      "<link rel=\"stylesheet\" href=\"third.css\">"
+      "<style>"
+      ".a { background-color: red }"
+      "</style>");
+
   // Variations where there's more than just valid @imports.
-  ValidateStyleUnchanged("<style>"
-                         "@import \"first.css\" all;\n"
-                         "@import url('second.css' );\n"
-                         "@import \"third.css\";\n"
-                         ".a { background-color: red }"
-                         "</style>");
+  // We do not convert because of the invalid @import.
   ValidateStyleUnchanged("<style>"
                          "@import \"first.css\" all;\n"
                          "@import url( );\n"
                          "@import \"third.css\";\n"
                          "</style>");
+  // We do not convert because of the @charset
   ValidateStyleUnchanged("<style>"
                          "@charset \"ISO-8859-1\";\n"
                          "@import \"first.css\" all;\n"
@@ -235,6 +247,33 @@ TEST_F(CssInlineImportToLinkFilterTest, ConvertStyleWithMultipleImports) {
                          "@import \"first.css\" screen;\n"
                          "@import \"third.css\" not screen;\n"
                          "</style>");
+}
+
+TEST_F(CssInlineImportToLinkFilterTest, OnlyConvertPrefix) {
+  AddFilter(RewriteOptions::kInlineImportToLink);
+
+  // Trailing content.
+  ValidateStyleToLink("<style>@import url(assets/styles.css);\n"
+                      "a { color: red; }</style>",
+
+                      "<link rel=\"stylesheet\" href=\"assets/styles.css\">"
+                      "<style>a { color: red; }</style>");
+
+  // Nonsense @-rule.
+  ValidateStyleToLink("<style>@import url(assets/styles.css);\n"
+                      "@foobar</style>",
+
+                      "<link rel=\"stylesheet\" href=\"assets/styles.css\">"
+                      "<style>@foobar</style>");
+
+  // @import later in the CSS.
+  ValidateStyleToLink("<style>@import url(a.css);\n"
+                      "@font-face { src: url(b.woff) }\n"
+                      "@import url(c.css);</style>",
+
+                      "<link rel=\"stylesheet\" href=\"a.css\">"
+                      "<style>@font-face { src: url(b.woff) }\n"
+                      "@import url(c.css);</style>");
 }
 
 TEST_F(CssInlineImportToLinkFilterTest, ConvertStyleWithAttributes) {
@@ -319,26 +358,38 @@ TEST_F(CssInlineImportToLinkFilterTest, DoNotConvertBadStyle) {
   ValidateStyleUnchanged("<style>@charset \"ISO-8859-1\";\n"
                          "@import \"mystyle.css\" all;</style>");
   ValidateStyleUnchanged("<style><p/>@import url(assets/styles.css)</style>");
-  ValidateStyleUnchanged("<style>@import url(assets/styles.css);<p/</style>");
   ValidateStyleUnchanged("<style><![CDATA[@import url(assets/styles.css);]]\n");
-  ValidateStyleUnchanged("<style>@import url(assets/styles.css);\n"
-                         "<![CDATA[\njunky junk junk!\n]]\\></style>");
   ValidateStyleUnchanged("<style><![CDATA[\njunky junk junk!\n]]\\>\n"
                          "@import url(assets/styles.css);</style>");
-  ValidateStyleUnchanged("<style>@import url(assets/styles.css);"
-                         "<!-- comment --></style>");
   ValidateStyleUnchanged("<style><!-- comment -->"
                          "@import url(assets/styles.css);</style>");
   ValidateStyleUnchanged("<style href='x'>@import url(styles.css);</style>");
   ValidateStyleUnchanged("<style rel='x'>@import url(styles.css);</style>");
   ValidateStyleUnchanged("<style type=\"text/javascript\">"
                          "@import url(assets/styles.css);</style>");
+  ValidateStyleUnchanged("<style>@import url(styles.css)<style/></style>");
 
-  // Note: this test fails because Css::Parser parses <style/> as a media type
-  // (and converts it to 'style') and since the real style element has no media
-  // type we end up with a link with media type of 'style'. I don't know if
-  // this is correct behavior so I am leaving it out but commenting it.
-  // ValidateStyleUnchanged("<style>@import url(styles.css)<style/></style>");
+  // These are fine to convert. These have errors, but only after valid
+  // @import statements. Turning them into links is safe.
+  ValidateStyleToLink(
+      "<style>@import url(assets/styles.css);<p/</style>",
+
+      "<link rel=\"stylesheet\" href=\"assets/styles.css\">"
+      "<style><p/</style>");
+
+  ValidateStyleToLink(
+      "<style>@import url(assets/styles.css);\n"
+      "<![CDATA[\njunky junk junk!\n]]\\></style>",
+
+      "<link rel=\"stylesheet\" href=\"assets/styles.css\">"
+      "<style><![CDATA[\njunky junk junk!\n]]\\></style>");
+
+  ValidateStyleToLink(
+      "<style>@import url(assets/styles.css);"
+      "<!-- comment --></style>",
+
+      "<link rel=\"stylesheet\" href=\"assets/styles.css\">"
+      "<style><!-- comment --></style>");
 }
 
 class CssInlineImportToLinkFilterTestNoTags
@@ -369,15 +420,17 @@ TEST_F(CssInlineImportToLinkFilterTest, ConvertThenCacheExtend) {
                           "\">"));
 }
 
-TEST_F(CssInlineImportToLinkFilterTest, DontConvertButCacheExtend) {
+TEST_F(CssInlineImportToLinkFilterTest, DontConvertOrCacheExtend) {
   options()->EnableFilter(RewriteOptions::kInlineImportToLink);
   options()->EnableFilter(RewriteOptions::kExtendCacheCss);
   rewrite_driver()->AddFilters();
   // Cache for 100s.
   SetResponseWithDefaultHeaders(kCssFile, kContentTypeCss, kCssData, 100);
 
-  const GoogleString kStyleElement = StrCat("<style>@import url(",
-                                            kCssFile, ");\n",
+  // Note: This @import is not converted because it is preceded by a @foobar.
+  const GoogleString kStyleElement = StrCat("<style>\n"
+                                            "@foobar ;\n"
+                                            "@import url(", kCssFile, ");\n",
                                             "body { color: red; }\n",
                                             "</style>");
 

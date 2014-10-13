@@ -145,6 +145,8 @@ class Parser {
   // Parse the next @import statement from the document. If it's not an @import
   // or if there's a syntax error, NULL is returned. Added for mod_pagespeed's
   // conversion to a link of @imports inside a style element.
+  // If the next statement is not an @import rule, in_ is left at the
+  // beginning of that statement.
   Import* ParseNextImport();
 
   // Parse the document as a single @import statement. If it's not exactly
@@ -160,6 +162,9 @@ class Parser {
 
   // current position in the parse.
   const char* getpos() const { return in_; }
+
+  // Current position in document (bytes from beginning).
+  int CurrentOffset() const { return in_ - begin_; }
 
   // Done with the parse?
   bool Done() const {
@@ -584,9 +589,6 @@ class Parser {
 
   // Parse an @font-face statement.
   FontFace* ParseFontFace();
-
-  // Current position in document (bytes from beginning).
-  int CurrentOffset() const { return in_ - begin_; }
 
   static const int kErrorContext;
 
