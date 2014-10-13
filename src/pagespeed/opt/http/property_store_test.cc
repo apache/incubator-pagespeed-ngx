@@ -18,7 +18,7 @@
 
 // Unit test for PropertyStore.
 
-#include "net/instaweb/util/public/property_store.h"
+#include "pagespeed/opt/http/property_store.h"
 
 #include "pagespeed/kernel/base/callback.h"
 #include "pagespeed/kernel/base/gtest.h"

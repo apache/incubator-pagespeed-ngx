@@ -16,14 +16,10 @@
 
 // Author: pulkitg@google.com (Pulkit Goyal)
 
-#include "net/instaweb/util/public/fallback_property_page.h"
+#include "pagespeed/opt/http/fallback_property_page.h"
 
 #include <cstddef>
 
-#include "net/instaweb/util/public/cache_property_store.h"
-#include "net/instaweb/util/public/mock_property_page.h"
-#include "net/instaweb/util/public/property_cache.h"
-#include "net/instaweb/util/public/property_store.h"
 #include "testing/base/public/gunit.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/mock_timer.h"
@@ -32,6 +28,10 @@
 #include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/util/platform.h"
 #include "pagespeed/kernel/util/simple_stats.h"
+#include "pagespeed/opt/http/cache_property_store.h"
+#include "pagespeed/opt/http/mock_property_page.h"
+#include "pagespeed/opt/http/property_cache.h"
+#include "pagespeed/opt/http/property_store.h"
 
 namespace net_instaweb {
 

@@ -16,15 +16,11 @@
 
 // Author: pulkitg@google.com (Pulkit Goyal)
 
-#include "net/instaweb/util/public/two_level_property_store.h"
+#include "pagespeed/opt/http/two_level_property_store.h"
 
 #include <cstddef>
 
 #include "base/logging.h"
-#include "net/instaweb/util/property_cache.pb.h"
-#include "net/instaweb/util/public/abstract_property_store_get_callback.h"
-#include "net/instaweb/util/public/cache_property_store.h"
-#include "net/instaweb/util/public/mock_property_page.h"
 #include "pagespeed/kernel/base/cache_interface.h"
 #include "pagespeed/kernel/base/callback.h"
 #include "pagespeed/kernel/base/gtest.h"
@@ -35,6 +31,10 @@
 #include "pagespeed/kernel/cache/lru_cache.h"
 #include "pagespeed/kernel/util/platform.h"
 #include "pagespeed/kernel/util/simple_stats.h"
+#include "pagespeed/opt/http/abstract_property_store_get_callback.h"
+#include "pagespeed/opt/http/cache_property_store.h"
+#include "pagespeed/opt/http/mock_property_page.h"
+#include "pagespeed/opt/http/property_cache.pb.h"
 
 namespace net_instaweb {
 

@@ -16,14 +16,14 @@
 
 // Author: piatek@google.com (Michael Piatek)
 
-#include "net/instaweb/http/public/request_context.h"
+#include "pagespeed/opt/http/request_context.h"
 
 #include "base/logging.h"
-#include "net/instaweb/http/public/log_record.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/request_trace.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/http/http_options.h"
+#include "pagespeed/opt/logging/log_record.h"
 
 namespace net_instaweb {
 

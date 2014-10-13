@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Google Inc.
+ * Copyright 2012 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,16 +14,13 @@
  * limitations under the License.
  */
 
-// Author: pulkitg@google.com (Pulkit Goyal)
+// Author: nikhilmadan@google.com (Nikhil Madan)
 
-#include "net/instaweb/util/public/abstract_property_store_get_callback.h"
+#include "pagespeed/opt/http/mock_property_page.h"
 
 namespace net_instaweb {
 
-AbstractPropertyStoreGetCallback::AbstractPropertyStoreGetCallback() {
-}
-
-AbstractPropertyStoreGetCallback::~AbstractPropertyStoreGetCallback() {
+MockPropertyPage::~MockPropertyPage() {
 }
 
 }  // namespace net_instaweb

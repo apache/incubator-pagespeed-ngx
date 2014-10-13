@@ -16,16 +16,16 @@
 
 // Author: pulkitg@google.com (Pulkit Goyal)
 
-#include "net/instaweb/util/public/two_level_property_store.h"
+#include "pagespeed/opt/http/two_level_property_store.h"
 
 #include "base/logging.h"
-#include "net/instaweb/util/property_cache.pb.h"
-#include "net/instaweb/util/public/abstract_property_store_get_callback.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/callback.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/opt/http/abstract_property_store_get_callback.h"
+#include "pagespeed/opt/http/property_cache.pb.h"
 
 namespace net_instaweb {
 

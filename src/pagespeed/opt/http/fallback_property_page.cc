@@ -16,7 +16,7 @@
 
 // Author: pulkitg@google.com (Pulkit Goyal)
 
-#include "net/instaweb/util/public/fallback_property_page.h"
+#include "pagespeed/opt/http/fallback_property_page.h"
 
 #include "base/logging.h"
 #include "pagespeed/kernel/http/google_url.h"

@@ -16,13 +16,13 @@
 
 // Author: pulkitg@google.com (Pulkit Goyal)
 
-#include "net/instaweb/util/public/property_store.h"
+#include "pagespeed/opt/http/property_store.h"
 
 #include "base/logging.h"
-#include "net/instaweb/util/public/property_cache.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/timer.h"
+#include "pagespeed/opt/http/property_cache.h"
 
 namespace net_instaweb {
 

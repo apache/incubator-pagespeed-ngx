@@ -891,19 +891,6 @@
       ],
     },
     {
-      'target_name': 'instaweb_propcache_pb',
-      'variables': {
-        'instaweb_protoc_subdir': 'net/instaweb/util',
-      },
-      'sources': [
-        'util/property_cache.proto',
-        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/property_cache.pb.cc',
-      ],
-      'includes': [
-        'protoc.gypi',
-      ],
-    },
-    {
       'target_name': 'instaweb_rewriter_html_gperf',
       'variables': {
         'instaweb_gperf_subdir': 'net/instaweb/rewriter',
@@ -938,7 +925,6 @@
       'target_name': 'instaweb_util',
       'type': '<(library)',
       'dependencies': [
-        'instaweb_propcache_pb',
         '<(instaweb_root)/third_party/base64/base64.gyp:base64',
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_base_core',
@@ -948,6 +934,7 @@
         '<(DEPTH)/pagespeed/kernel.gyp:util',
         '<(DEPTH)/pagespeed/kernel.gyp:proto_util',
         '<(DEPTH)/pagespeed/opt.gyp:pagespeed_logging',
+        '<(DEPTH)/pagespeed/opt.gyp:pagespeed_opt_http',
         '<(DEPTH)/third_party/zlib/zlib.gyp:zlib',
       ],
       'sources': [
@@ -965,21 +952,12 @@
         'http/inflating_fetch.cc',
         'http/rate_controller.cc',
         'http/rate_controlling_url_async_fetcher.cc',
-        'http/request_context.cc',
         'http/sync_fetcher_adapter_callback.cc',
         'http/url_async_fetcher.cc',
         'http/url_async_fetcher_stats.cc',
         'http/wait_url_async_fetcher.cc',
         'http/wget_url_fetcher.cc',
         'http/write_through_http_cache.cc',
-
-        'util/abstract_property_store_get_callback.cc',
-        'util/cache_property_store.cc',
-        'util/fallback_property_page.cc',
-        'util/mock_property_page.cc',
-        'util/property_cache.cc',
-        'util/property_store.cc',
-        'util/two_level_property_store.cc',
       ],
       'include_dirs': [
         '<(instaweb_root)',

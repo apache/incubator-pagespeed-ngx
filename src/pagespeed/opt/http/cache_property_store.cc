@@ -16,14 +16,12 @@
 
 // Author: pulkitg@google.com (Pulkit Goyal)
 
-#include "net/instaweb/util/public/cache_property_store.h"
+#include "pagespeed/opt/http/cache_property_store.h"
 
 #include <algorithm>
 #include <utility>
 
 #include "base/logging.h"
-#include "net/instaweb/http/public/log_record.h"
-#include "net/instaweb/util/property_cache.pb.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/cache_interface.h"
 #include "pagespeed/kernel/base/proto_util.h"
@@ -32,6 +30,8 @@
 #include "pagespeed/kernel/base/stl_util.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/cache/cache_stats.h"
+#include "pagespeed/opt/http/property_cache.pb.h"
+#include "pagespeed/opt/logging/log_record.h"
 
 namespace net_instaweb {
 

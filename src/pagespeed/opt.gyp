@@ -94,7 +94,52 @@
       'export_dependent_settings': [
         'pagespeed_logging_pb',
       ],
-    }
+    },
+    {
+      'target_name': 'pagespeed_property_cache_pb',
+      'variables': {
+        'instaweb_protoc_subdir': 'pagespeed/opt/http',
+      },
+      'sources': [
+        'opt/http/property_cache.proto',
+        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/property_cache.pb.cc',
+      ],
+      'includes': [
+        '../net/instaweb/protoc.gypi',
+      ],
+    },
+    {
+      'target_name': 'pagespeed_opt_http',
+      'type': '<(library)',
+      'dependencies': [
+        'pagespeed_property_cache_pb',
+        'pagespeed_logging',
+        '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_http',
+      ],
+      'sources': [
+        'opt/http/abstract_property_store_get_callback.cc',
+        'opt/http/cache_property_store.cc',
+        'opt/http/fallback_property_page.cc',
+        'opt/http/mock_property_page.cc',
+        'opt/http/property_cache.cc',
+        'opt/http/property_store.cc',
+        'opt/http/request_context.cc',
+        'opt/http/two_level_property_store.cc',
+      ],
+      'include_dirs': [
+        '<(instaweb_root)',
+        '<(DEPTH)',
+      ],
+      'direct_dependent_settings': {
+        'include_dirs': [
+          '<(instaweb_root)',
+          '<(DEPTH)',
+        ],
+      },
+      'export_dependent_settings': [
+        'pagespeed_property_cache_pb',
+      ],
+    },
   ]
 }
 

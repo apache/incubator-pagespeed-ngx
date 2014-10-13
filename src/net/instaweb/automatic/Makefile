@@ -100,7 +100,6 @@ BASE_LIBS = \
   net/instaweb/libinstaweb_messages_js_opt_data2c.a \
   net/instaweb/libinstaweb_mobilize_css_data2c.a \
   net/instaweb/libinstaweb_panel_loader_opt_data2c.a \
-  net/instaweb/libinstaweb_propcache_pb.a \
   net/instaweb/libinstaweb_rendered_image_pb.a \
   net/instaweb/libinstaweb_rewriter.a \
   net/instaweb/libinstaweb_rewriter_base.a \
@@ -139,6 +138,8 @@ BASE_LIBS = \
   pagespeed/libpagespeed_logging.a \
   pagespeed/libpagespeed_logging_enums_pb.a \
   pagespeed/libpagespeed_logging_pb.a \
+  pagespeed/libpagespeed_opt_http.a \
+  pagespeed/libpagespeed_property_cache_pb.a \
   pagespeed/libpagespeed_sharedmem.a \
   pagespeed/libpagespeed_sharedmem_pb.a \
   pagespeed/libpagespeed_thread.a \

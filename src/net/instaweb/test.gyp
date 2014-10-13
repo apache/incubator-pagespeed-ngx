@@ -224,11 +224,6 @@
         'spriter/libpng_image_library_test.cc',
         'system/apr_mem_cache_test.cc',
         'system/system_message_handler_test.cc',
-        'util/cache_property_store_test.cc',
-        'util/fallback_property_page_test.cc',
-        'util/property_cache_test.cc',
-        'util/property_store_test.cc',
-        'util/two_level_property_store_test.cc',
         '<(DEPTH)/pagespeed/kernel/base/annotated_message_handler_test.cc',
         '<(DEPTH)/pagespeed/kernel/base/arena_test.cc',
         '<(DEPTH)/pagespeed/kernel/base/base64_test.cc',
@@ -350,6 +345,13 @@
         '<(DEPTH)/pagespeed/opt/logging/log_record_test.cc',
         '<(DEPTH)/pagespeed/opt/logging/log_record_test_helper.cc',
         '<(DEPTH)/pagespeed/opt/logging/request_timing_info_test.cc',
+        '<(DEPTH)/pagespeed/opt/http/cache_property_store_test.cc',
+        '<(DEPTH)/pagespeed/opt/http/fallback_property_page_test.cc',
+        '<(DEPTH)/pagespeed/opt/http/mock_property_page.cc',
+        '<(DEPTH)/pagespeed/opt/http/property_cache_test.cc',
+        '<(DEPTH)/pagespeed/opt/http/property_store_test.cc',
+        '<(DEPTH)/pagespeed/opt/http/two_level_property_store_test.cc',
+
 
 # Rolling hash test fails to build in 32-bit g++ 4.1
 #        '<(DEPTH)/pagespeed/kernel/base/rolling_hash_test.cc',

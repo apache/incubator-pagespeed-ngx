@@ -18,12 +18,9 @@
 
 // Unit-test the property cache
 
-#include "net/instaweb/util/public/property_cache.h"
+#include "pagespeed/opt/http/property_cache.h"
 
 #include <cstddef>
-#include "net/instaweb/util/public/cache_property_store.h"
-#include "net/instaweb/util/public/mock_property_page.h"
-#include "net/instaweb/util/public/property_store.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mock_timer.h"
@@ -34,6 +31,9 @@
 #include "pagespeed/kernel/cache/lru_cache.h"
 #include "pagespeed/kernel/util/platform.h"
 #include "pagespeed/kernel/util/simple_stats.h"
+#include "pagespeed/opt/http/cache_property_store.h"
+#include "pagespeed/opt/http/mock_property_page.h"
+#include "pagespeed/opt/http/property_store.h"
 
 namespace net_instaweb {
 
