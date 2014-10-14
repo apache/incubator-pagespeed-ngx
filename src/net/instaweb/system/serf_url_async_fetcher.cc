@@ -699,7 +699,7 @@ class SerfFetch : public PoolElement<SerfFetch> {
   bool ParseUrl() {
     apr_status_t status = 0;
     status = apr_uri_parse(pool_, str_url_.c_str(), &url_);
-    if (status != APR_SUCCESS) {
+    if (status != APR_SUCCESS || url_.scheme == NULL) {
       return false;  // Failed to parse URL.
     }
     bool is_https = StringCaseEqual(url_.scheme, "https");

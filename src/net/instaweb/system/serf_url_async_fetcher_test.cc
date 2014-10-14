@@ -68,7 +68,6 @@ const char kFetchHost[] = "modpagespeed.com";
 namespace net_instaweb {
 
 namespace {
-const char kProxy[] = "";
 const int kThreadedPollMs = 200;
 const int kWaitTimeoutMs = 5 * 1000;
 const int kFetcherTimeoutMs = 5 * 1000;
@@ -133,7 +132,7 @@ class SerfTestFetch : public AsyncFetch {
 
 }  // namespace
 
-class SerfUrlAsyncFetcherTest: public ::testing::Test {
+class SerfUrlAsyncFetcherTest : public ::testing::Test {
  public:
   static void SetUpTestCase() {
     apr_initialize();
@@ -148,6 +147,10 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
   }
 
   virtual void SetUp() {
+    SetUpWithProxy("");
+  }
+
+  void SetUpWithProxy(const char* proxy) {
     const char* env_host = getenv("PAGESPEED_TEST_HOST");
     if (env_host != NULL) {
       test_host_ = env_host;
@@ -161,7 +164,7 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
     statistics_.reset(new SimpleStats(thread_system_.get()));
     SerfUrlAsyncFetcher::InitStats(statistics_.get());
     serf_url_async_fetcher_.reset(
-        new SerfUrlAsyncFetcher(kProxy, pool_, thread_system_.get(),
+        new SerfUrlAsyncFetcher(proxy, pool_, thread_system_.get(),
                                 statistics_.get(), timer_.get(),
                                 kFetcherTimeoutMs, &message_handler_));
     mutex_.reset(thread_system_->NewMutex());
@@ -802,6 +805,24 @@ TEST_F(SerfUrlAsyncFetcherTest, TestPortRemoval) {
   EXPECT_EQ(
       "[::1]",
       SerfUrlAsyncFetcher::RemovePortFromHostHeader("[::1]:80"));
+}
+
+class SerfUrlAsyncFetcherTestWithProxy : public SerfUrlAsyncFetcherTest {
+ protected:
+  virtual void SetUp() {
+    // We don't expect this to be a working proxy; this is only used for
+    // just covering a crash bug.
+    SetUpWithProxy("127.0.0.1:8080");
+  }
+};
+
+TEST_F(SerfUrlAsyncFetcherTestWithProxy, TestBlankUrl) {
+  // Fetcher used to have problems if blank URLs got to it somehow.
+  int index = AddTestUrl("", "");
+  StartFetches(index, index);
+  ASSERT_EQ(WaitTillDone(index, index), 1);
+  ASSERT_TRUE(fetches_[index]->IsDone());
+  EXPECT_EQ(HttpStatus::kNotFound, response_headers(index)->status_code());
 }
 
 }  // namespace net_instaweb
