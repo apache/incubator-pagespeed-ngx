@@ -551,6 +551,10 @@ void MobilizeLabelFilter::EndDocument() {
 
 void MobilizeLabelFilter::SetMobileRole(HtmlElement* element,
                                         MobileRole::Level role) {
+  if (!driver()->IsRewritable(element)) {
+    LOG(WARNING) << "Dropped mobile role annotation due to flush.";
+    return;
+  }
   if (element->FindAttribute(HtmlName::kDataMobileRole) != NULL) {
     return;
   }

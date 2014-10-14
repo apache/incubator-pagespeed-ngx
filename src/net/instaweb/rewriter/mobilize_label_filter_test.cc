@@ -233,6 +233,20 @@ TEST_F(MobilizeLabelFilterTest, TinyCount) {
   EXPECT_EQ(0, divs_unlabeled_->Get());
 }
 
+TEST_F(MobilizeLabelFilterTest, DontCrashWithFlush) {
+  SetupWriter();
+  rewrite_driver()->StartParse(kTestDomain);
+  rewrite_driver()->ParseText(
+      "<html><head></head><body>\n"
+      "<div role='nav'><a href='http://theworld.com/'>\n"
+      "Hello, World\n"
+      "</a></div>");
+  rewrite_driver()->Flush();
+  rewrite_driver()->ParseText(
+      "</body></html>");
+  rewrite_driver()->FinishParse();
+}
+
 TEST_F(MobilizeLabelFilterTest, MarginalPropagation) {
   // Test that marginal content gets labeled as such, and the
   // labels get propagated up the DOM (but only as far as the
