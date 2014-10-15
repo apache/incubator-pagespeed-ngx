@@ -779,14 +779,16 @@ void MobilizeLabelFilter::DebugLabel() {
     // TODO(jmaessen): Have a better format for the sample string,
     // and control sample string dumping independently of debug.
     if (driver()->DebugMode()) {
+      HtmlElement* element = sample->element;
       driver()->InsertDebugComment(
-          sample->ToString(true /* readable */, driver()), sample->element);
+          sample->ToString(true /* readable */, driver()), element);
       GoogleString sample_string =
           sample->ToString(false /* numeric */, driver());
       driver()->message_handler()->Message(
           kInfo, "%s: %s { %s }",
           driver()->url(),
-          sample->element->name_str().as_string().c_str(),
+          element->live() ? element->name_str().as_string().c_str()
+                          : "(flushed element)",
           sample_string.c_str());
     }
   }

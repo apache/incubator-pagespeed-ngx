@@ -242,8 +242,21 @@ TEST_F(MobilizeLabelFilterTest, DontCrashWithFlush) {
       "Hello, World\n"
       "</a></div>");
   rewrite_driver()->Flush();
+  rewrite_driver()->ParseText("</body></html>");
+  rewrite_driver()->FinishParse();
+}
+
+TEST_F(MobilizeLabelFilterTest, DontCrashWithFlushAndDebug) {
+  options()->EnableFilter(RewriteOptions::kDebug);
+  SetupWriter();
+  rewrite_driver()->StartParse(kTestDomain);
   rewrite_driver()->ParseText(
-      "</body></html>");
+      "<html><head></head><body>\n"
+      "<div role='nav'><a href='http://theworld.com/'>\n"
+      "Hello, World\n"
+      "</a></div>");
+  rewrite_driver()->Flush();
+  rewrite_driver()->ParseText("</body></html>");
   rewrite_driver()->FinishParse();
 }
 
