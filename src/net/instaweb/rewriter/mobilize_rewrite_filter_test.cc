@@ -58,6 +58,10 @@ class MobilizeRewriteFilterTest : public RewriteTestBase {
 
   virtual void SetUp() {
     RewriteTestBase::SetUp();
+    options()->ClearSignatureForTesting();
+    options()->set_mob_cxx_layout(true);
+    server_context()->ComputeSignature(options());
+
     filter_.reset(new MobilizeRewriteFilter(rewrite_driver()));
     filter_->style_css_ = kAddedStyle;
   }
@@ -509,6 +513,7 @@ TEST_F(MobilizeRewriteEndToEndTest, FullPage) {
       StrCat(GTestSrcDir(), kTestDataDir, kRewritten);
   ASSERT_TRUE(filesystem_.ReadFile(rewritten_filename.c_str(),
                                    &rewritten_buffer, message_handler()));
+  options()->set_mob_cxx_layout(true);
   AddFilter(RewriteOptions::kMobilize);
   ValidateExpected("full_page", original_buffer, rewritten_buffer);
 }

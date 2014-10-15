@@ -221,6 +221,7 @@ const char RewriteOptions::kMinImageSizeLowResolutionBytes[] =
     "MinImageSizeLowResolutionBytes";
 const char RewriteOptions::kMinResourceCacheTimeToRewriteMs[] =
     "MinResourceCacheTimeToRewriteMs";
+const char RewriteOptions::kMobCxxLayout[] = "MobCxxLayout";
 const char RewriteOptions::kMobLayout[] = "MobLayout";
 const char RewriteOptions::kMobLogo[] = "MobLogo";
 const char RewriteOptions::kMobNav[] = "MobNav";
@@ -2175,17 +2176,22 @@ void RewriteOptions::AddProperties() {
       "The max-age in ms of cookies that set PageSpeed options.", true);
 
   AddBaseProperty(
-      false, &RewriteOptions::mob_layout_, "mlayout", "MobLayout",
-      kQueryScope,
-      "whether to run layout resynthesis when mobilizing", true);
+      false, &RewriteOptions::mob_cxx_layout_, "mcxxlayout", kMobCxxLayout,
+      kServerScope,
+      "(experimental) whether to run the C++ version of mobilizer", true);
   AddBaseProperty(
-      false, &RewriteOptions::mob_logo_, "mlogo", "MobLogo",
+      false, &RewriteOptions::mob_layout_, "mlayout", kMobLayout,
       kQueryScope,
-      "whether to run logo resynthesis when mobilizing", true);
+      "(experimental) whether to run layout resynthesis when mobilizing", true);
   AddBaseProperty(
-      false, &RewriteOptions::mob_nav_, "mnav", "MobNav",
+      false, &RewriteOptions::mob_logo_, "mlogo", kMobLogo,
       kQueryScope,
-      "whether to run navigation resynthesis when mobilizing", true);
+      "(experimental) whether to run logo resynthesis when mobilizing", true);
+  AddBaseProperty(
+      false, &RewriteOptions::mob_nav_, "mnav", kMobNav,
+      kQueryScope,
+      "(experimental) whether to run navigation resynthesis when mobilizing",
+      true);
 
   // Test-only, so no enum.
   AddRequestProperty(false,

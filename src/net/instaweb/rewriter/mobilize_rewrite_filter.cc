@@ -128,7 +128,8 @@ MobilizeRewriteFilter::MobilizeRewriteFilter(RewriteDriver* rewrite_driver)
     static_file_prefix_ = StrCat("//", suffix, "/static/");
   }
 
-  use_cxx_layout_ = !(use_js_layout_ || use_js_logo_ || use_js_nav_);
+  use_cxx_layout_ =  rewrite_driver->options()->mob_cxx_layout() &&
+                         !(use_js_layout_ || use_js_logo_ || use_js_nav_);
   Statistics* stats = rewrite_driver->statistics();
   num_pages_mobilized_ = stats->GetVariable(kPagesMobilized);
   num_keeper_blocks_ = stats->GetVariable(kKeeperBlocks);
