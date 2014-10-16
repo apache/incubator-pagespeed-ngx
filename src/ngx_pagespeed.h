@@ -84,7 +84,6 @@ enum PreserveCachingHeaders {
 typedef struct {
   NgxBaseFetch* base_fetch;
 
-  ngx_connection_t* pagespeed_connection;
   ngx_http_request_t* r;
 
   bool html_rewrite;
@@ -109,6 +108,7 @@ typedef struct {
   GoogleString url_string;
 } ps_request_ctx_t;
 
+ps_request_ctx_t* ps_get_request_context(ngx_http_request_t* r);
 
 void copy_request_headers_from_ngx(const ngx_http_request_t* r,
                                    RequestHeaders* headers);
@@ -122,6 +122,12 @@ ngx_int_t copy_response_headers_to_ngx(
     PreserveCachingHeaders preserve_caching_headers);
 
 StringPiece ps_determine_host(ngx_http_request_t* r);
+
+namespace ps_base_fetch {
+
+ngx_int_t ps_base_fetch_handler(ngx_http_request_t* r);
+
+}  // namespace ps_base_fetch
 
 }  // namespace net_instaweb
 
