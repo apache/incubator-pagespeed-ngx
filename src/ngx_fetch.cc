@@ -225,8 +225,6 @@ namespace net_instaweb {
       connection_ = NULL;
     }
 
-    async_fetch_->Done(success);
-
     if (fetcher_ != NULL) {
       if (fetcher_->track_original_content_length()
           && async_fetch_->response_headers()->Has(
@@ -237,6 +235,7 @@ namespace net_instaweb {
       fetcher_->FetchComplete(this);
     }
 
+    async_fetch_->Done(success);
     async_fetch_ = NULL;
   }
 
