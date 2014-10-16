@@ -89,6 +89,8 @@ extern ngx_module_t ngx_pagespeed;
 namespace net_instaweb {
 
 const char* kInternalEtagName = "@psol-etag";
+bool factory_init_called = false;
+
 // The process context takes care of proactively initialising
 // a few libraries for us, some of which are not thread-safe
 // when they are initialized lazily.
@@ -605,6 +607,16 @@ char* ps_configure(ngx_conf_t* cf,
                    NgxRewriteOptions** options,
                    MessageHandler* handler,
                    net_instaweb::RewriteOptions::OptionScope option_scope) {
+  ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
+      ngx_http_conf_get_module_main_conf(cf, ngx_pagespeed));
+
+  if (!factory_init_called) {
+    // Init logging to nginx's default error_log.
+    cfg_m->driver_factory->LoggingInit(cf->cycle->log);
+    cfg_m->driver_factory->Init();
+    factory_init_called = true;
+  }
+
   // args[0] is always "pagespeed"; ignore it.
   ngx_uint_t n_args = cf->args->nelts - 1;
 
@@ -655,8 +667,6 @@ char* ps_configure(ngx_conf_t* cf,
     // directive yet.  That happens below in ParseAndSetOptions().
   }
 
-  ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
-      ngx_http_cycle_get_module_main_conf(cf->cycle, ngx_pagespeed));
   if (*options == NULL) {
     *options = new NgxRewriteOptions(
         cfg_m->driver_factory->thread_system());
@@ -725,7 +735,16 @@ void ps_cleanup_srv_conf(void* data) {
   // from being executed
 
   if (!factory_deleted && cfg_s->server_context != NULL) {
-    delete cfg_s->server_context->factory();
+    NgxRewriteDriverFactory* factory = dynamic_cast<NgxRewriteDriverFactory*>(
+      cfg_s->server_context->factory());
+
+    if (!factory_init_called) {
+      factory->LoggingInit(ngx_cycle->log);
+      factory->Init();
+      factory_init_called = true;
+    }
+
+    delete factory;
     factory_deleted = true;
   }
   if (cfg_s->proxy_fetch_factory != NULL) {
@@ -795,7 +814,7 @@ void* ps_create_main_conf(ngx_conf_t* cf) {
       new SystemThreadSystem(),
       "" /* hostname, not used */,
       -1 /* port, not used */);
-  cfg_m->driver_factory->Init();
+  factory_init_called = false;
   ps_set_conf_cleanup_handler(cf, ps_cleanup_main_conf, cfg_m);
   return cfg_m;
 }
@@ -3091,10 +3110,15 @@ ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
           "UseNativeFetcher is on, please configure a resolver.");
       return NGX_ERROR;
     }
-
+    // Update logging to the configured error_log in the http{} block.
     cfg_m->driver_factory->LoggingInit(cycle->log);
     cfg_m->driver_factory->RootInit();
   } else {
+    if (!factory_init_called) {
+      cfg_m->driver_factory->LoggingInit(cycle->log);
+      cfg_m->driver_factory->Init();
+      factory_init_called = true;
+    }
     delete cfg_m->driver_factory;
     cfg_m->driver_factory = NULL;
   }
@@ -3131,11 +3155,11 @@ ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
     // Some server{} blocks may not have a ServerContext in that case we must
     // not instantiate a ProxyFetchFactory.
     if (cfg_s->server_context != NULL) {
-      cfg_s->proxy_fetch_factory = new ProxyFetchFactory(cfg_s->server_context);
       ngx_http_core_loc_conf_t* clcf = static_cast<ngx_http_core_loc_conf_t*>(
           cscfp[s]->ctx->loc_conf[ngx_http_core_module.ctx_index]);
       cfg_m->driver_factory->SetServerContextMessageHandler(
           cfg_s->server_context, clcf->error_log);
+      cfg_s->proxy_fetch_factory = new ProxyFetchFactory(cfg_s->server_context);
     }
   }
 
