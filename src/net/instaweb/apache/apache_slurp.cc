@@ -190,6 +190,8 @@ bool InstawebHandler::ProxyUrl() {
     const GoogleString& fragment = options()->cache_fragment().empty()
         ? request_context_->minimal_private_suffix()
         : options()->cache_fragment();
+    // Note that the cache fetcher is aware of request methods, so it won't
+    // cache POSTs improperly.
     slurp_fetcher.reset(server_context_->CreateCustomCacheFetcher(
         options(), fragment, NULL, fetcher));
     fetcher = slurp_fetcher.get();
@@ -205,6 +207,23 @@ bool InstawebHandler::ProxyUrl() {
                        fetcher, server_context_->thread_system(),
                        request_context, handler);
   fetch.set_request_headers(request_headers_.get());
+
+  // Handle a POST if needed.
+  if (request_->method_number == M_POST) {
+    apr_status_t ret;
+    GoogleString payload;
+    if (!parse_body_from_post(request_, &payload, &ret)) {
+      handler->Message(kInfo, "Trouble parsing POST of %s.",
+                       stripped_url.c_str());
+      request_->status = HttpStatus::kBadRequest;
+      ap_send_error_response(request_, 0);
+      return true;
+    } else {
+      fetch.request_headers()->set_method(RequestHeaders::kPost);
+      fetch.request_headers()->set_message_body(payload);
+    }
+  }
+
   if (!origin_host.empty()) {
     // origin_host has proxy_suffix (if any) stripped out, allowing us
     // to fetch the origin content.
