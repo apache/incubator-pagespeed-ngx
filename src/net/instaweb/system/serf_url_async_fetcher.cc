@@ -664,13 +664,34 @@ class SerfFetch : public PoolElement<SerfFetch> {
     // by hacking source.  We hacked source.
     //
     // See src/third_party/serf/src/instaweb_context.c
-
     fetch->FixUserAgent();
-
     RequestHeaders* request_headers = fetch->async_fetch_->request_headers();
+
+    // Don't want to forward hop-by-hop stuff.
+    StringPieceVector names_to_sanitize =
+        HttpAttributes::SortedHopByHopHeaders();
+    request_headers->RemoveAllFromSortedArray(&names_to_sanitize[0],
+                                              names_to_sanitize.size());
+
+    // Also leave Content-Length to serf.
+    request_headers->RemoveAll(HttpAttributes::kContentLength);
+
+    serf_bucket_t* body_bkt = NULL;
+    const GoogleString& message_body = request_headers->message_body();
+    bool post_payload =
+        !message_body.empty() &&
+        (request_headers->method() == RequestHeaders::kPost);
+
+    if (post_payload) {
+      body_bkt = serf_bucket_simple_create(
+          message_body.data(), message_body.length(),
+          NULL /* no free function */, NULL /* no free baton*/,
+          serf_request_get_alloc(request));
+    }
+
     *req_bkt = serf_request_bucket_request_create_for_host(
         request, request_headers->method_string(),
-        url_path, NULL,
+        url_path, body_bkt,
         serf_request_get_alloc(request), fetch->host_header_);
     serf_bucket_t* hdrs_bkt = serf_bucket_request_get_headers(*req_bkt);
 

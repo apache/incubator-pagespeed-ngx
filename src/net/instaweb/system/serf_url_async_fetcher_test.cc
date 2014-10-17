@@ -32,6 +32,7 @@
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/dynamic_annotations.h"
 #include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/statistics.h"
@@ -805,6 +806,18 @@ TEST_F(SerfUrlAsyncFetcherTest, TestPortRemoval) {
   EXPECT_EQ(
       "[::1]",
       SerfUrlAsyncFetcher::RemovePortFromHostHeader("[::1]:80"));
+}
+
+TEST_F(SerfUrlAsyncFetcherTest, TestPost) {
+  int index = AddTestUrl(StrCat("http://", test_host_,
+                                "/do_not_modify/cgi/verify_post.cgi"),
+                         "PASS");
+  request_headers(index)->set_method(RequestHeaders::kPost);
+  request_headers(index)->set_message_body("a=b&c=d");
+  StartFetches(index, index);
+  ASSERT_EQ(WaitTillDone(index, index), 1);
+  ValidateFetches(index, index);
+  EXPECT_EQ(HttpStatus::kOK, response_headers(index)->status_code());
 }
 
 class SerfUrlAsyncFetcherTestWithProxy : public SerfUrlAsyncFetcherTest {
