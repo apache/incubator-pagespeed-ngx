@@ -239,7 +239,7 @@ goog.DEPENDENCIES_ENABLED && (goog.included_ = {}, goog.dependencies_ = {pathIsM
     goog.loadedModules_[c] = b;
     if (goog.moduleLoaderState_.declareTestMethods) {
       for (var d in b) {
-        if (0 === d.indexOf("test", 0) || "tearDown" == d || "setup" == d) {
+        if (0 === d.indexOf("test", 0) || "tearDown" == d || "setUp" == d || "setUpPage" == d || "tearDownPage" == d) {
           goog.global[d] = b[d];
         }
       }
@@ -1634,11 +1634,13 @@ goog.object.setIfUndefined = function(a, b, c) {
   return b in a ? a[b] : a[b] = c;
 };
 goog.object.equals = function(a, b) {
-  if (!goog.array.equals(goog.object.getKeys(a), goog.object.getKeys(b))) {
-    return!1;
-  }
   for (var c in a) {
-    if (a[c] !== b[c]) {
+    if (!(c in b) || a[c] !== b[c]) {
+      return!1;
+    }
+  }
+  for (c in b) {
+    if (!(c in a)) {
       return!1;
     }
   }
@@ -4306,7 +4308,7 @@ goog.async.nextTick.getSetImmediateEmulator_ = function() {
     a.write("");
     a.close();
     var c = "callImmediate" + Math.random(), d = "file:" == b.location.protocol ? "*" : b.location.protocol + "//" + b.location.host, a = goog.bind(function(a) {
-      if (a.origin == d || a.data == c) {
+      if (a.origin == d && a.data == c) {
         this.port1.onmessage();
       }
     }, this);
@@ -4319,10 +4321,12 @@ goog.async.nextTick.getSetImmediateEmulator_ = function() {
   if ("undefined" !== typeof a && !goog.labs.userAgent.browser.isIE()) {
     var b = new a, c = {}, d = c;
     b.port1.onmessage = function() {
-      c = c.next;
-      var a = c.cb;
-      c.cb = null;
-      a();
+      if (goog.isDef(c.next)) {
+        c = c.next;
+        var a = c.cb;
+        c.cb = null;
+        a();
+      }
     };
     return function(a) {
       d.next = {cb:a};

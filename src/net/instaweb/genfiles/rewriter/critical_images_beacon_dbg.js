@@ -239,7 +239,7 @@ goog.DEPENDENCIES_ENABLED && (goog.included_ = {}, goog.dependencies_ = {pathIsM
     goog.loadedModules_[c] = b;
     if (goog.moduleLoaderState_.declareTestMethods) {
       for (var d in b) {
-        if (0 === d.indexOf("test", 0) || "tearDown" == d || "setup" == d) {
+        if (0 === d.indexOf("test", 0) || "tearDown" == d || "setUp" == d || "setUpPage" == d || "tearDownPage" == d) {
           goog.global[d] = b[d];
         }
       }

@@ -239,7 +239,7 @@ goog.DEPENDENCIES_ENABLED && (goog.included_ = {}, goog.dependencies_ = {pathIsM
     goog.loadedModules_[c] = b;
     if (goog.moduleLoaderState_.declareTestMethods) {
       for (var d in b) {
-        if (0 === d.indexOf("test", 0) || "tearDown" == d || "setup" == d) {
+        if (0 === d.indexOf("test", 0) || "tearDown" == d || "setUp" == d || "setUpPage" == d || "tearDownPage" == d) {
           goog.global[d] = b[d];
         }
       }
@@ -2260,11 +2260,13 @@ goog.object.setIfUndefined = function(a, b, c) {
   return b in a ? a[b] : a[b] = c;
 };
 goog.object.equals = function(a, b) {
-  if (!goog.array.equals(goog.object.getKeys(a), goog.object.getKeys(b))) {
-    return!1;
-  }
   for (var c in a) {
-    if (a[c] !== b[c]) {
+    if (!(c in b) || a[c] !== b[c]) {
+      return!1;
+    }
+  }
+  for (c in b) {
+    if (!(c in a)) {
       return!1;
     }
   }
