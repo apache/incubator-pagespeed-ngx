@@ -22,6 +22,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
@@ -360,37 +361,22 @@ TEST_F(MobilizeRewriteFunctionalTest, RemoveTables) {
   CheckVariable(MobilizeRewriteFilter::kDeletedElements, 4);
 }
 
-TEST_F(MobilizeRewriteFunctionalTest, StripNav) {
-  ValidateExpected("strip_nav",
-                   "<body><div data-mobile-role='navigational'><div>"
-                   "<a href='foo.com'>123</a></div></div></body>",
-                   "<body><div data-mobile-role='navigational'>"
-                   "<a href='foo.com'>123</a></div></body>");
-  CheckVariable(MobilizeRewriteFilter::kPagesMobilized, 1);
-  CheckVariable(MobilizeRewriteFilter::kKeeperBlocks, 0);
-  CheckVariable(MobilizeRewriteFilter::kHeaderBlocks, 0);
-  CheckVariable(MobilizeRewriteFilter::kNavigationalBlocks, 1);
-  CheckVariable(MobilizeRewriteFilter::kContentBlocks, 0);
-  CheckVariable(MobilizeRewriteFilter::kMarginalBlocks, 0);
-  CheckVariable(MobilizeRewriteFilter::kDeletedElements, 1);
-}
-
-TEST_F(MobilizeRewriteFunctionalTest, StripOnlyNav) {
+TEST_F(MobilizeRewriteFunctionalTest, Nav) {
   ValidateExpected(
       "strip_only_nav",
       "<body><div data-mobile-role='navigational'><div>"
       "<a href='foo.com'>123</a></div></div>"
       "<div data-mobile-role='header'><h1>foobar</h1></div></body>",
-      "<body><div data-mobile-role='header'><h1>foobar</h1></div>"
-      "<div data-mobile-role='navigational'><a href='foo.com'>123"
-      "</a></div></body>");
+      "<body><div data-mobile-role='header'><h1>foobar</h1></div><div "
+      "data-mobile-role='navigational'><div><a "
+      "href='foo.com'>123</a></div></div></body>");
   CheckVariable(MobilizeRewriteFilter::kPagesMobilized, 1);
   CheckVariable(MobilizeRewriteFilter::kKeeperBlocks, 0);
   CheckVariable(MobilizeRewriteFilter::kHeaderBlocks, 1);
   CheckVariable(MobilizeRewriteFilter::kNavigationalBlocks, 1);
   CheckVariable(MobilizeRewriteFilter::kContentBlocks, 0);
   CheckVariable(MobilizeRewriteFilter::kMarginalBlocks, 0);
-  CheckVariable(MobilizeRewriteFilter::kDeletedElements, 1);
+  CheckVariable(MobilizeRewriteFilter::kDeletedElements, 0);
 }
 
 TEST_F(MobilizeRewriteFunctionalTest, UnknownMobileRole) {

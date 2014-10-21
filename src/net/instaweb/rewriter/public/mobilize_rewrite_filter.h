@@ -147,7 +147,6 @@ class MobilizeRewriteFilter : public EmptyHtmlFilter {
   bool IsReorderContainer(HtmlElement* element);
   HtmlElement* MobileRoleToContainer(MobileRole::Level level);
   MobileRole::Level GetMobileRole(HtmlElement* element);
-  void InsertPolymerLink(HtmlElement* element, StringPiece url);
 
   bool InImportantElement() {
     return (!element_roles_stack_.empty());

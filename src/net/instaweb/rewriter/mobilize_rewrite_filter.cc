@@ -23,6 +23,7 @@
 #include "base/logging.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
@@ -72,21 +73,6 @@ const HtmlName::Keyword kTableTags[] = {
   HtmlName::kThead, HtmlName::kTr};
 const HtmlName::Keyword kTableTagsToBr[] = {HtmlName::kTable, HtmlName::kTr};
 
-const char* const kPolymerElementLinks[] = {
-    "core-drawer-panel/core-drawer-panel.html",
-    "core-header-panel/core-header-panel.html",
-    "core-icon-button/core-icon-button.html",
-    "core-icons/core-icons.html",
-    "core-item/core-item.html",
-    "core-menu/core-menu.html",
-    "core-menu/core-submenu.html",
-    "core-scaffold/core-scaffold.html",
-    "core-toolbar/core-toolbar.html",
-    "paper-icon-button/paper-icon-button.html",
-    "paper-fab/paper-fab.html"};
-
-const char* const kPolymerCustomElementLinks[] = {"polymer-elements.html"};
-
 #ifndef NDEBUG
 void CheckKeywordsSorted(const HtmlName::Keyword* list, int len) {
   for (int i = 1; i < len; ++i) {
@@ -118,7 +104,7 @@ MobilizeRewriteFilter::MobilizeRewriteFilter(RewriteDriver* rewrite_driver)
 
   // If a domain proxy-suffix is specified, and it starts with ".",
   // then we'll remove the "." from that and use that as the location
-  // of the shared static files (JS, CSS, and Polymer HTML).  E.g.
+  // of the shared static files (JS and CSS).  E.g.
   // for a proxy_suffix of ".suffix" we'll look for static files in
   // "//suffix/static/".
   StringPiece suffix(
@@ -213,10 +199,6 @@ void MobilizeRewriteFilter::StartElement(HtmlElement* element) {
   }
 
   if (keyword == HtmlName::kBody) {
-    // TODO(jmarantz): Prevents FOUC for polymer but we have all other kinds
-    // of FOUC anyway.  Resolve this when we have resolved those.
-    // driver_->AddAttribute(element, "unresolved", "");
-
     ++body_element_depth_;
     if (use_cxx_layout_) {
       AddReorderContainers(element);
@@ -315,10 +297,6 @@ void MobilizeRewriteFilter::Characters(HtmlCharactersNode* characters) {
     del = true;
     debug_msg = "Deleted characters which were not in an element which"
         " was tagged as important: ";
-  } else if (nav_element_depth_ > 0 && nav_keyword_stack_.empty()) {
-    del = true;
-    debug_msg = "Deleted characters inside a navigational section"
-        " which were not considered to be relevant to navigation: ";
   }
 
   if (del) {
@@ -355,28 +333,6 @@ void MobilizeRewriteFilter::HandleStartTagInBody(HtmlElement* element) {
     MobileRole::Level element_role = GetMobileRole(element);
     // Record that we are starting an element with a mobile role attribute.
     element_roles_stack_.push_back(element_role);
-    if (element_role == MobileRole::kNavigational) {
-      ++nav_element_depth_;
-      if (nav_element_depth_ == 1) {
-        nav_keyword_stack_.clear();
-      }
-    }
-  } else if (nav_element_depth_ > 0) {
-    // Remove all navigational content not inside a desired tag.
-    if (CheckForKeyword(
-            kPreserveNavTags, arraysize(kPreserveNavTags), keyword)) {
-      nav_keyword_stack_.push_back(keyword);
-    }
-    if (nav_keyword_stack_.empty()) {
-      if (driver_->DebugMode()) {
-        GoogleString msg(
-            StrCat("Deleted non-nav element in navigational section: ",
-                   element->name_str()));
-        driver_->InsertDebugComment(msg, element);
-      }
-      driver_->DeleteSavingChildren(element);
-      num_elements_deleted_->Add(1);
-    }
   } else if (!InImportantElement()) {
     if (driver_->DebugMode()) {
       GoogleString msg(
@@ -395,9 +351,6 @@ void MobilizeRewriteFilter::HandleEndTagInBody(HtmlElement* element) {
   } else if (GetMobileRole(element) != MobileRole::kInvalid) {
     MobileRole::Level element_role = GetMobileRole(element);
     element_roles_stack_.pop_back();
-    if (element_role == MobileRole::kNavigational) {
-      --nav_element_depth_;
-    }
     // Record that we've left an element with a mobile role attribute. If we are
     // no longer in one, we can move all the content of this element into its
     // appropriate container for reordering.
@@ -411,11 +364,6 @@ void MobilizeRewriteFilter::HandleEndTagInBody(HtmlElement* element) {
         element_roles_stack_.back() != element_role) {
       driver_->MoveCurrentInto(mobile_role_container);
       LogMovedBlock(element_role);
-    }
-  } else if (nav_element_depth_ > 0) {
-    HtmlName::Keyword keyword = element->keyword();
-    if (!nav_keyword_stack_.empty() && (keyword == nav_keyword_stack_.back())) {
-      nav_keyword_stack_.pop_back();
     }
   }
 }
@@ -458,41 +406,13 @@ void MobilizeRewriteFilter::AddStyleAndViewport(HtmlElement* element) {
     }
 
     if (use_js_nav_) {
-      GoogleString polymer_base_url = StrCat(static_file_prefix_, "polymer/");
-
-      // Insert the script tag for polymer's platform.js.
-      HtmlElement* polymer_script =
-          driver_->NewElement(element, HtmlName::kScript);
-      driver_->AppendChild(element, polymer_script);
-      polymer_script->AddAttribute(
-          driver_->MakeName(HtmlName::kSrc),
-          StrCat(polymer_base_url, "platform/platform.js"),
-          HtmlElement::DOUBLE_QUOTE);
-      polymer_script->set_style(HtmlElement::EXPLICIT_CLOSE);
-
-      // Insert the link tags for the polymer elements
-      for (int i = 0, n = arraysize(kPolymerElementLinks); i < n; ++i) {
-        InsertPolymerLink(element,
-                          StrCat(polymer_base_url, kPolymerElementLinks[i]));
-      }
-
-      for (int i = 0, n = arraysize(kPolymerCustomElementLinks); i < n; ++i) {
-        InsertPolymerLink(
-            element, StrCat(static_file_prefix_,
-                            kPolymerCustomElementLinks[i]));
-      }
+      HtmlElement* link = driver_->NewElement(element, HtmlName::kLink);
+      driver_->AppendChild(element, link);
+      driver_->AddAttribute(link, HtmlName::kRel, "stylesheet");
+      driver_->AddAttribute(link, HtmlName::kHref,
+                            StrCat(static_file_prefix_, "mob_nav.css"));
     }
   }
-}
-
-void MobilizeRewriteFilter::InsertPolymerLink(HtmlElement* element,
-                                              StringPiece url) {
-  HtmlElement* polymer_link = driver_->NewElement(element, HtmlName::kLink);
-  driver_->AppendChild(element, polymer_link);
-  polymer_link->AddAttribute(driver_->MakeName(HtmlName::kRel), "import",
-                             HtmlElement::DOUBLE_QUOTE);
-  polymer_link->AddAttribute(driver_->MakeName(HtmlName::kHref), url,
-                             HtmlElement::DOUBLE_QUOTE);
 }
 
 // Adds containers at the end of the element (preferrably the body), which we
