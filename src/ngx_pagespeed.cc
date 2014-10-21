@@ -208,6 +208,13 @@ ngx_int_t string_piece_to_buffer_chain(
 
 namespace {
 
+// Get the context for this request.  ps_connection_read_handler should already
+// have been called to create it.
+ps_request_ctx_t* ps_get_request_context(ngx_http_request_t* r) {
+  return static_cast<ps_request_ctx_t*>(
+      ngx_http_get_module_ctx(r, ngx_pagespeed));
+}
+
 // Setting headers in nginx is tricky because it's not just a matter of adding
 // them to a list.  You also need to remove them if there's already one there,
 // as well as setting the shortcut pointers (both upper case and lower case).
@@ -432,7 +439,10 @@ ngx_int_t copy_response_headers_to_ngx(
     } else if (STR_EQ_LITERAL(name, "Last-Modified")) {
       headers_out->last_modified = header;
     } else if (STR_EQ_LITERAL(name, "Location")) {
-      headers_out->location = header;
+      ps_request_ctx_t* ctx = ps_get_request_context(r);
+      if (ctx->location_field_set) {
+        headers_out->location = header;
+      }
     } else if (STR_EQ_LITERAL(name, "Server")) {
       headers_out->server = header;
     } else if (STR_EQ_LITERAL(name, "Content-Length")) {
@@ -1096,13 +1106,6 @@ GoogleString ps_determine_url(ngx_http_request_t* r) {
 
   return StrCat(ps_is_https(r) ? "https://" : "http://",
                 host, port_string, str_to_string_piece(r->unparsed_uri));
-}
-
-// Get the context for this request.  ps_connection_read_handler should already
-// have been called to create it.
-ps_request_ctx_t* ps_get_request_context(ngx_http_request_t* r) {
-  return static_cast<ps_request_ctx_t*>(
-      ngx_http_get_module_ctx(r, ngx_pagespeed));
 }
 
 void ps_release_base_fetch(ps_request_ctx_t* ctx);
@@ -1886,6 +1889,7 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
     ctx->driver = NULL;
     ctx->recorder = NULL;
     ctx->ipro_response_headers = NULL;
+    ctx->location_field_set = false;
 
     // See build_context_for_request() in mod_instaweb.cc
     // TODO(jefftk): Is this the right place to be modifying caching headers for
@@ -2299,6 +2303,8 @@ ngx_int_t ps_html_rewrite_header_filter(ngx_http_request_t* r) {
   }
 
   ps_strip_html_headers(r);
+  // See https://github.com/pagespeed/ngx_pagespeed/issues/819
+  ctx->location_field_set = r->headers_out.location != NULL;
 
   // TODO(jefftk): is this thread safe?
   copy_response_headers_from_ngx(r, ctx->base_fetch->response_headers());

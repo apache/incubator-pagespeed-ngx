@@ -107,6 +107,7 @@ typedef struct {
   // We need to remember the URL here as well since we may modify what NGX
   // gets by stripping our special query params and honoring X-Forwarded-Proto.
   GoogleString url_string;
+  bool location_field_set;
 } ps_request_ctx_t;
 
 
