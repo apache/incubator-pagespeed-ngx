@@ -670,14 +670,43 @@ JsKeywords::Type JsTokenizer::ConsumeColon(StringPiece* token_out) {
 bool JsTokenizer::TryConsumeIdentifierOrKeyword(
     JsKeywords::Type* type_out, StringPiece* token_out) {
   DCHECK(!input_.empty());
-  // First, check if we're looking at an identifier (or keyword); if not,
-  // return immediately.
-  Re2StringPiece unconsumed = StringPieceToRe2(input_);
-  if (!RE2::Consume(&unconsumed, patterns_->identifier_pattern)) {
-    return false;
+  // This method gets very hot under load, and regex matching is slow.  We need
+  // RE2 here mainly for the unicode support, but most JS files are plain
+  // ASCII.  So first try to match against ASCII identifiers; only if we run
+  // into a non-ASCII byte will we resort to RE2.
+  int index = 0;
+  {
+    bool use_regex = false;
+    const unsigned char first = input_[0];
+    if (first >= 0x80) {
+      use_regex = true;
+    } else if (('a' <= first && first <= 'z') || first == '_' ||
+               ('A' <= first && first <= 'Z') || first == '$' ||
+               first == '\\') {
+      int size = input_.size();
+      for (index = 1; index < size; ++index) {
+        const unsigned char ch = input_[index];
+        if (ch >= 0x80) {
+          use_regex = true;
+          break;
+        } else if (!net_instaweb::IsAsciiAlphaNumeric(ch) && ch != '_' &&
+                   ch != '$' && ch != '\\') {
+          break;
+        }
+      }
+    } else {
+      return false;
+    }
+    if (use_regex) {
+      Re2StringPiece unconsumed = StringPieceToRe2(input_);
+      if (!RE2::Consume(&unconsumed, patterns_->identifier_pattern)) {
+        return false;
+      }
+      index = input_.size() - unconsumed.size();
+    }
   }
+  DCHECK_GT(index, 0);
   // We have a match.  Determine which keyword it is, if any.
-  const int index = input_.size() - unconsumed.size();
   JsKeywords::Flag flag_ignored;
   JsKeywords::Type type =
       JsKeywords::Lookup(input_.substr(0, index), &flag_ignored);
@@ -952,17 +981,42 @@ bool JsTokenizer::TryConsumeWhitespace(
     bool allow_semicolon_insertion,
     JsKeywords::Type* type_out, StringPiece* token_out) {
   DCHECK(!input_.empty());
-  // First, check if we're looking at whitespace; if not, return immediately.
-  Re2StringPiece unconsumed = StringPieceToRe2(input_);
-  Re2StringPiece linebreak;
-  if (!RE2::Consume(&unconsumed, patterns_->whitespace_pattern, &linebreak)) {
+  // This method gets very hot under load, and regex matching is slow.  We need
+  // RE2 here mainly for the unicode support, but most JS files are plain
+  // ASCII.  So first try to match against ASCII whitespace; only if we run
+  // into a non-ASCII byte will we resort to RE2.
+  bool has_linebreak = false;
+  bool use_regex = false;
+  int token_size = 0, size = input_.size();
+  for (; token_size < size; ++token_size) {
+    const unsigned char ch = input_[token_size];
+    if (ch >= 0x80) {
+      use_regex = true;
+      break;
+    } else if (ch == '\n' || ch == '\r') {
+      has_linebreak = true;
+    } else if (ch != ' ' && ch != '\t' && ch != '\f' && ch != '\v') {
+      break;
+    }
+  }
+  if (use_regex) {
+    Re2StringPiece unconsumed = StringPieceToRe2(input_);
+    Re2StringPiece linebreak;
+    if (!RE2::Consume(&unconsumed, patterns_->whitespace_pattern, &linebreak)) {
+      return false;
+    }
+    has_linebreak = !linebreak.empty();
+    token_size = input_.size() - unconsumed.size();
+    DCHECK_GT(token_size, 0);
+  }
+  // If we consumed anything, then this was indeed whitespace, so emit a token.
+  if (token_size == 0) {
     return false;
   }
-  // Yep, this was whitespace; emit a token.
-  Emit(input_.size() - unconsumed.size(), false, token_out);
+  Emit(token_size, false, token_out);
   // Now we have to decide what kind of whitespace this was.  If it contained
   // no linebreaks, it's just regular whitespace.
-  if (linebreak.empty()) {
+  if (!has_linebreak) {
     *type_out = JsKeywords::kWhitespace;
   } else {
     // Otherwise, we have to decide whether or not this linebreak will cause

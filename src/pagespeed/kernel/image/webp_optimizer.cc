@@ -258,14 +258,6 @@ ScanlineStatus WebpFrameWriter::CacheCurrentFrame() {
                             "CacheCurrentFrame: not all scanlines written");
   }
 
-  struct WebPMuxFrameInfo webp_frame_info;
-  memset(&webp_frame_info, 0, sizeof(webp_frame_info));
-  webp_frame_info.id = WEBP_CHUNK_ANMF;
-  webp_frame_info.dispose_method =
-      FrameDisposalToWebPDisposal(frame_spec_.disposal);
-  webp_frame_info.blend_method = WEBP_MUX_BLEND;
-  webp_frame_info.duration = frame_spec_.duration_ms;
-
   // We need to pass image to add frame.
   WebPFrameRect frame_rect = {
     static_cast<int>(frame_spec_.left),
@@ -279,6 +271,13 @@ ScanlineStatus WebpFrameWriter::CacheCurrentFrame() {
     CHECK(webp_image_->user_data == this);
   }
 
+  struct WebPMuxFrameInfo webp_frame_info;
+  memset(&webp_frame_info, 0, sizeof(webp_frame_info));
+  webp_frame_info.id = WEBP_CHUNK_ANMF;
+  webp_frame_info.dispose_method =
+      FrameDisposalToWebPDisposal(frame_spec_.disposal);
+  webp_frame_info.blend_method = WEBP_MUX_BLEND;
+  webp_frame_info.duration = frame_spec_.duration_ms;
   if (!WebPFrameCacheAddFrame(webp_frame_cache_, &webp_config_, &frame_rect,
                               webp_image_, &webp_frame_info)) {
     if (webp_image_->error_code == kWebPErrorTimeout) {
