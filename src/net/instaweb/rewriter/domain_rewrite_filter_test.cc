@@ -62,6 +62,7 @@ class DomainRewriteFilterTest : public RewriteTestBase {
     AddFilter(RewriteOptions::kRewriteDomains);
     domain_rewrites_ = statistics()->GetVariable("domain_rewrites");
     prev_num_rewrites_ = 0;
+    add_html_tags_ = true;
   }
 
   void ExpectNoChange(const char* tag, const StringPiece& url) {
@@ -88,6 +89,10 @@ class DomainRewriteFilterTest : public RewriteTestBase {
   }
 
   virtual bool AddBody() const { return false; }
+  virtual bool AddHtmlTags() const { return add_html_tags_; }
+
+ protected:
+  bool add_html_tags_;
 
  private:
   Variable* domain_rewrites_;
@@ -245,9 +250,46 @@ TEST_F(DomainRewriteFilterTest, ProxySuffix) {
                       "<a href='http://other.example.com.suffix/x.html'>r</a>");
 
   // However a link to a completely unrelated domain is left unchanged.
+  ValidateNoChanges(url, "<a href='http://other.com/x.html'>r</a>");
+
   ValidateExpectedUrl(url,
-                      "<a href='http://other.com/x.html'>r</a>",
-                      "<a href='http://other.com/x.html'>r</a>");
+                      StrCat("<img src='http://", kOriginalHost,
+                             "/image.png'>"),
+                      StrCat("<img src='http://", kOriginalHost, kSuffix,
+                             "/image.png'>"));
+
+  ValidateNoChanges(url, "<img src='http://other.example/image.png'>");
+}
+
+TEST_F(DomainRewriteFilterTest, ProxyBaseUrl) {
+  options()->ClearSignatureForTesting();
+  options()->set_domain_rewrite_hyperlinks(true);
+  static const char kSuffix[] = ".suffix";
+  static const char kOriginalHost[] = "www.example.com";
+  GoogleString origin_no_suffix(StrCat("http://", kOriginalHost));
+  GoogleString origin_with_suffix(StrCat(origin_no_suffix, kSuffix));
+  GoogleString url(StrCat(origin_with_suffix, "/index.html"));
+  GoogleUrl gurl(url);
+  options()->WriteableDomainLawyer()->set_proxy_suffix(kSuffix);
+  EXPECT_TRUE(options()->domain_lawyer()->can_rewrite_domains());
+
+  add_html_tags_ = false;
+  ValidateExpectedUrl(url,
+                      StrCat("<html><head><base href='",
+                             origin_no_suffix,
+                             "'/></head></html>"),
+                      StrCat("<html><head><base href='",
+                             origin_with_suffix,
+                             "/'/></head></html>"));
+
+  ValidateNoChanges(url,
+                    "<html><head><base href='http://other.example.com/'/>"
+                    "</head></html>");
+
+  ValidateNoChanges(url,
+                    StrCat("<html><head><base href='",
+                           origin_with_suffix,
+                           "/'/></head></html>"));
 }
 
 }  // namespace net_instaweb

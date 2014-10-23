@@ -124,7 +124,8 @@ void DomainRewriteFilter::StartElementImpl(HtmlElement* element) {
         const GoogleUrl& base_url = driver()->base_url();
         if ((Rewrite(val, base_url, driver(),
                      apply_sharding, &rewritten_val) == kRewroteDomain) ||
-            ((attributes[i].category == semantic_type::kHyperlink) &&
+            (((attributes[i].category == semantic_type::kHyperlink) ||
+              (attributes[i].category == semantic_type::kImage)) &&
              domain_lawyer->AddProxySuffix(base_url, &rewritten_val))) {
           attributes[i].url->SetValue(rewritten_val);
           rewrite_count_->Add(1);
@@ -137,8 +138,8 @@ void DomainRewriteFilter::StartElementImpl(HtmlElement* element) {
 // Resolve the url we want to rewrite, and then shard as appropriate.
 DomainRewriteFilter::RewriteResult DomainRewriteFilter::Rewrite(
     const StringPiece& url_to_rewrite, const GoogleUrl& base_url,
-    const RewriteDriver* driver,
-    bool apply_sharding, GoogleString* rewritten_url) const {
+    const RewriteDriver* driver, bool apply_sharding,
+    GoogleString* rewritten_url) const {
   if (url_to_rewrite.empty()) {
     rewritten_url->clear();
     return kDomainUnchanged;

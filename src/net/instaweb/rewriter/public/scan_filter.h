@@ -44,6 +44,7 @@ class ScanFilter : public EmptyHtmlFilter {
 
   virtual void StartDocument();
   virtual void StartElement(HtmlElement* element);
+  virtual void EndElement(HtmlElement* element);
   virtual void Cdata(HtmlCdataNode* cdata);
   virtual void Comment(HtmlCommentNode* comment);
   virtual void IEDirective(HtmlIEDirectiveNode* directive);

@@ -84,8 +84,8 @@ class MobilizeRewriteFilterTest : public RewriteTestBase {
   }
 
   // Wrappers for MobilizeRewriteFilter private API.
-  void FilterAddStyleAndViewport(HtmlElement* element) {
-    filter_->AddStyleAndViewport(element);
+  void FilterAddStyle(HtmlElement* element) {
+    filter_->AddStyle(element);
   }
   void FilterAddReorderContainers(HtmlElement* element) {
     filter_->AddReorderContainers(element);
@@ -134,15 +134,14 @@ class MobilizeRewriteUnitTest : public MobilizeRewriteFilterTest {
   DISALLOW_COPY_AND_ASSIGN(MobilizeRewriteUnitTest);
 };
 
-TEST_F(MobilizeRewriteUnitTest, AddStyles) {
+TEST_F(MobilizeRewriteUnitTest, AddStyle) {
   HtmlElement* head = html_parse()->NewElement(NULL, HtmlName::kHead);
   html_parse()->InsertNodeBeforeCurrent(head);
   HtmlCharactersNode* content = html_parse()->NewCharactersNode(head, "123");
   html_parse()->AppendChild(head, content);
   CheckExpected("<head>123</head>");
-  FilterAddStyleAndViewport(head);
-  CheckExpected("<head>123<style>stylestring</style><meta name='viewport'"
-                " content='width=device-width'/></head>");
+  FilterAddStyle(head);
+  CheckExpected("<head>123<style>stylestring</style></head>");
 }
 
 TEST_F(MobilizeRewriteUnitTest, HandleContainers) {
@@ -225,8 +224,9 @@ class MobilizeRewriteFunctionalTest : public MobilizeRewriteFilterTest {
 TEST_F(MobilizeRewriteFunctionalTest, AddStyleAndViewport) {
   ValidateExpected("add_style_and_viewport",
                    "<head></head>",
-                   "<head><style>stylestring</style><meta name='viewport'"
-                   " content='width=device-width'/></head>");
+                   "<head><meta name='viewport'"
+                   " content='width=device-width'/>"
+                   "<style>stylestring</style></head>");
   CheckVariable(MobilizeRewriteFilter::kPagesMobilized, 1);
   CheckVariable(MobilizeRewriteFilter::kKeeperBlocks, 0);
   CheckVariable(MobilizeRewriteFilter::kHeaderBlocks, 0);
@@ -239,8 +239,24 @@ TEST_F(MobilizeRewriteFunctionalTest, AddStyleAndViewport) {
 TEST_F(MobilizeRewriteFunctionalTest, RemoveExistingViewport) {
   ValidateExpected("remove_existing_viewport",
                    "<head><meta name='viewport' content='value' /></head>",
-                   "<head><style>stylestring</style><meta name='viewport'"
-                   " content='width=device-width'/></head>");
+                   "<head><meta name='viewport'"
+                   " content='width=device-width'/>"
+                   "<style>stylestring</style></head>");
+  CheckVariable(MobilizeRewriteFilter::kPagesMobilized, 1);
+  CheckVariable(MobilizeRewriteFilter::kKeeperBlocks, 0);
+  CheckVariable(MobilizeRewriteFilter::kHeaderBlocks, 0);
+  CheckVariable(MobilizeRewriteFilter::kNavigationalBlocks, 0);
+  CheckVariable(MobilizeRewriteFilter::kContentBlocks, 0);
+  CheckVariable(MobilizeRewriteFilter::kMarginalBlocks, 0);
+  CheckVariable(MobilizeRewriteFilter::kDeletedElements, 1);
+}
+
+TEST_F(MobilizeRewriteFunctionalTest, RemoveExistingViewportThatMatches) {
+  ValidateExpected("remove_existing_viewport",
+                   "<head><meta name='viewport' content='width=device-width'/>"
+                   "</head>",
+                   "<head><meta name='viewport' content='width=device-width'/>"
+                   "<style>stylestring</style></head>");
   CheckVariable(MobilizeRewriteFilter::kPagesMobilized, 1);
   CheckVariable(MobilizeRewriteFilter::kKeeperBlocks, 0);
   CheckVariable(MobilizeRewriteFilter::kHeaderBlocks, 0);
@@ -254,9 +270,10 @@ TEST_F(MobilizeRewriteFunctionalTest, HeadUnmodified) {
   ValidateExpected("head_unmodified",
                    "<head><meta name='keywords' content='cool,stuff'/>"
                    "<style>abcd</style></head>",
-                   "<head><meta name='keywords' content='cool,stuff'/>"
-                   "<style>abcd</style><style>stylestring</style><meta"
-                   " name='viewport' content='width=device-width'/>"
+                   "<head>"
+                   "<meta name='viewport' content='width=device-width'/>"
+                   "<meta name='keywords' content='cool,stuff'/>"
+                   "<style>abcd</style><style>stylestring</style>"
                    "</head>");
   CheckVariable(MobilizeRewriteFilter::kPagesMobilized, 1);
   CheckVariable(MobilizeRewriteFilter::kKeeperBlocks, 0);
@@ -271,9 +288,10 @@ TEST_F(MobilizeRewriteFunctionalTest, HeadLinksUnmodified) {
   ValidateExpected("head_unmodified",
                    "<head><link rel='stylesheet' type='text/css'"
                    " href='theme.css'></head>",
-                   "<head><link rel='stylesheet' type='text/css'"
-                   " href='theme.css'><style>stylestring</style>"
+                   "<head>"
                    "<meta name='viewport' content='width=device-width'/>"
+                   "<link rel='stylesheet' type='text/css'"
+                   " href='theme.css'><style>stylestring</style>"
                    "</head>");
   CheckVariable(MobilizeRewriteFilter::kPagesMobilized, 1);
   CheckVariable(MobilizeRewriteFilter::kKeeperBlocks, 0);
@@ -399,8 +417,9 @@ TEST_F(MobilizeRewriteFunctionalTest, MultipleHeads) {
   // Check we only add the style and viewport tag once.
   ValidateExpected("multiple_heads",
                    "<head></head><head></head>",
-                   "<head><style>stylestring</style><meta name='viewport'"
-                   " content='width=device-width'/></head>"
+                   "<head><meta name='viewport'"
+                   " content='width=device-width'/>"
+                   "<style>stylestring</style></head>"
                    "<head></head>");
   CheckVariable(MobilizeRewriteFilter::kPagesMobilized, 1);
   CheckVariable(MobilizeRewriteFilter::kKeeperBlocks, 0);

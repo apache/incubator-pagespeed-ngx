@@ -141,7 +141,7 @@ class MobilizeRewriteFilter : public EmptyHtmlFilter {
  private:
   void HandleStartTagInBody(HtmlElement* element);
   void HandleEndTagInBody(HtmlElement* element);
-  void AddStyleAndViewport(HtmlElement* element);
+  void AddStyle(HtmlElement* element);
   void AddReorderContainers(HtmlElement* element);
   void RemoveReorderContainers();
   bool IsReorderContainer(HtmlElement* element);
@@ -163,7 +163,7 @@ class MobilizeRewriteFilter : public EmptyHtmlFilter {
   int body_element_depth_;
   int nav_element_depth_;
   bool reached_reorder_containers_;
-  bool found_viewport_;
+  bool added_viewport_;
   bool added_style_;
   bool added_containers_;
   bool added_mob_js_;

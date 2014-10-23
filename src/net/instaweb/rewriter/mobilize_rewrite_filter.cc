@@ -91,7 +91,7 @@ MobilizeRewriteFilter::MobilizeRewriteFilter(RewriteDriver* rewrite_driver)
       body_element_depth_(0),
       nav_element_depth_(0),
       reached_reorder_containers_(false),
-      found_viewport_(false),
+      added_viewport_(false),
       added_style_(false),
       added_containers_(false),
       added_mob_js_(false),
@@ -148,7 +148,7 @@ void MobilizeRewriteFilter::StartDocument() {
   body_element_depth_ = 0;
   nav_element_depth_ = 0;
   reached_reorder_containers_ = false;
-  found_viewport_ = false;
+  added_viewport_ = false;
   added_style_ = false;
   added_containers_ = false;
   added_mob_js_ = false;
@@ -178,27 +178,52 @@ void MobilizeRewriteFilter::StartElement(HtmlElement* element) {
         src_attribute->SetValue(new_value);
       }
     }
-  }
-
-  // Remove any existing viewport tags, other than the one we created
-  // at start of head.
-  if (keyword == HtmlName::kMeta) {
-    HtmlElement::Attribute* name_attribute =
-        element->FindAttribute(HtmlName::kName);
-    if (name_attribute != NULL &&
-        (StringPiece(name_attribute->escaped_value()) == "viewport")) {
-      StringPiece content(element->AttributeValue(HtmlName::kContent));
-      if (content == kViewportContent) {
-        found_viewport_ = true;
-      } else {
-        driver_->DeleteNode(element);
-        num_elements_deleted_->Add(1);
-      }
-      return;
+  } else if (keyword == HtmlName::kMeta) {
+    // Remove any existing viewport tags, other than the one we created
+    // at start of head.
+    StringPiece name(element->EscapedAttributeValue(HtmlName::kName));
+    if (name == "viewport") {
+      driver_->DeleteNode(element);
+      num_elements_deleted_->Add(1);
     }
-  }
+  } else if (keyword == HtmlName::kHead) {
+    // <meta name="viewport"... />
+    if (!added_viewport_) {
+      added_viewport_ = true;
 
-  if (keyword == HtmlName::kBody) {
+      if (use_js_layout_) {
+        // Attempt to capture the window width before applying the viewport,
+        // so that we get the 'truth' from the browser.
+        // TODO(jmarantz): verify this actually has some benefit compared
+        // with picking up this value later.
+        HtmlElement* script = driver_->NewElement(element, HtmlName::kScript);
+        script->set_style(HtmlElement::EXPLICIT_CLOSE);
+        driver_->InsertNodeAfterCurrent(script);
+        HtmlCharactersNode* script_text = driver_->NewCharactersNode(
+            script, "window.PageSpeedMaxWidth = window.innerWidth || 400;");
+        driver_->AppendChild(script, script_text);
+      }
+
+      // TODO(jmarantz): Consider waiting to see if we have a charset directive
+      // and move this after that.  This requires some constraints on when
+      // flushes occur.  As we sort out our 'flush' strategy we should ensure
+      // the charset is declared as early as possible.
+      //
+      // OTOH convert_meta_tags should make that moot by copying the
+      // charset into the HTTP headers, so maybe that filter should
+      // be a prereq of this one.
+      HtmlElement* added_viewport_element = driver_->NewElement(
+          element, HtmlName::kMeta);
+      added_viewport_element->set_style(HtmlElement::BRIEF_CLOSE);
+      added_viewport_element->AddAttribute(
+          driver_->MakeName(HtmlName::kName), "viewport",
+          HtmlElement::SINGLE_QUOTE);
+      added_viewport_element->AddAttribute(
+          driver_->MakeName(HtmlName::kContent), kViewportContent,
+          HtmlElement::SINGLE_QUOTE);
+      driver_->InsertNodeAfterCurrent(added_viewport_element);
+    }
+  } else if (keyword == HtmlName::kBody) {
     ++body_element_depth_;
     if (use_cxx_layout_) {
       AddReorderContainers(element);
@@ -258,7 +283,7 @@ void MobilizeRewriteFilter::EndElement(HtmlElement* element) {
   } else if (body_element_depth_ == 0 && keyword == HtmlName::kHead) {
     // TODO(jmarantz): this uses AppendChild, but probably should use
     // InsertBeforeCurrent to make it work with flush windows.
-    AddStyleAndViewport(element);
+    AddStyle(element);
 
     // TODO(jmarantz): if we want to debug with Closure constructs, uncomment:
     // HtmlElement* script_element =
@@ -368,7 +393,7 @@ void MobilizeRewriteFilter::HandleEndTagInBody(HtmlElement* element) {
   }
 }
 
-void MobilizeRewriteFilter::AddStyleAndViewport(HtmlElement* element) {
+void MobilizeRewriteFilter::AddStyle(HtmlElement* element) {
   if (!added_style_) {
     added_style_ = true;
 
@@ -379,21 +404,6 @@ void MobilizeRewriteFilter::AddStyleAndViewport(HtmlElement* element) {
       HtmlCharactersNode* add_style_text = driver_->NewCharactersNode(
           added_style_element, style_css_);
       driver_->AppendChild(added_style_element, add_style_text);
-    }
-
-    // <meta name="viewport"... />
-    if (!found_viewport_) {
-      found_viewport_ = true;
-      HtmlElement* added_viewport_element = driver_->NewElement(
-          element, HtmlName::kMeta);
-      added_viewport_element->set_style(HtmlElement::BRIEF_CLOSE);
-      added_viewport_element->AddAttribute(
-          driver_->MakeName(HtmlName::kName), "viewport",
-          HtmlElement::SINGLE_QUOTE);
-      added_viewport_element->AddAttribute(
-          driver_->MakeName(HtmlName::kContent), kViewportContent,
-          HtmlElement::SINGLE_QUOTE);
-      driver_->AppendChild(element, added_viewport_element);
     }
 
     // <style>...</style>
