@@ -1775,6 +1775,29 @@ TEST_F(ResponseHeadersTest, CheckErrorCodes) {
   EXPECT_TRUE(response_headers_.IsServerErrorStatus());
 }
 
+TEST_F(ResponseHeadersTest, CheckRedirectStatus) {
+  response_headers_.SetStatusAndReason(HttpStatus::kOK);
+  EXPECT_FALSE(response_headers_.IsRedirectStatus());
+
+  response_headers_.SetStatusAndReason(HttpStatus::kNotModified);
+  EXPECT_FALSE(response_headers_.IsRedirectStatus());
+
+  response_headers_.SetStatusAndReason(HttpStatus::kBadRequest);
+  EXPECT_FALSE(response_headers_.IsRedirectStatus());
+
+  response_headers_.SetStatusAndReason(HttpStatus::kBadRequest);
+  EXPECT_FALSE(response_headers_.IsRedirectStatus());
+
+  response_headers_.SetStatusAndReason(HttpStatus::kMovedPermanently);
+  EXPECT_TRUE(response_headers_.IsRedirectStatus());
+
+  response_headers_.SetStatusAndReason(HttpStatus::kTemporaryRedirect);
+  EXPECT_TRUE(response_headers_.IsRedirectStatus());
+
+  response_headers_.SetStatusAndReason(HttpStatus::kFound);
+  EXPECT_TRUE(response_headers_.IsRedirectStatus());
+}
+
 TEST_F(ResponseHeadersTest, IsHtmlLike) {
   // No header means, not html-like.
   EXPECT_FALSE(IsHtmlLike(""));

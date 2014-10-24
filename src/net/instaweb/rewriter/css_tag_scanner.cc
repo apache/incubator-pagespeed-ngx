@@ -29,6 +29,8 @@
 #include "pagespeed/kernel/base/writer.h"
 #include "pagespeed/kernel/html/html_element.h"
 #include "pagespeed/kernel/html/html_name.h"
+#include "pagespeed/kernel/html/html_parse.h"
+#include "pagespeed/kernel/http/google_url.h"
 #include "webutil/css/tostring.h"
 
 namespace {
@@ -36,8 +38,6 @@ const char kTextCss[] = "text/css";
 }
 
 namespace net_instaweb {
-
-class HtmlParse;
 
 CssTagScanner::Transformer::~Transformer() {
 }
@@ -437,8 +437,10 @@ CssTagScanner::Transformer::TransformStatus RewriteDomainTransformer::Transform(
     GoogleString* str) {
   GoogleString rewritten;  // Result of rewriting domain.
   GoogleString out;        // Result after trimming.
-  if (domain_rewriter_->Rewrite(*str, *old_base_url_, driver_,
-                                true /* apply_sharding */,
+  if (domain_rewriter_->Rewrite(*str, *old_base_url_, driver_->server_context(),
+                                driver_->options(),
+                                true, /* apply_sharding */
+                                true, /* apply_domain_suffix */
                                 &rewritten)
       == DomainRewriteFilter::kFail) {
     return kFailure;

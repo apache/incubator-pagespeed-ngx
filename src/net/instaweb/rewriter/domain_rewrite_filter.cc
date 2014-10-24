@@ -58,7 +58,8 @@ void DomainRewriteFilter::StartDocumentImpl() {
   if (rewrite_hyperlinks) {
     // TODO(nikhilmadan): Rewrite the domain for cookies.
     // Rewrite the Location header for redirects.
-    UpdateLocationHeader(driver()->base_url(), driver(),
+    UpdateLocationHeader(driver()->base_url(), driver()->server_context(),
+                         driver()->options(),
                          driver()->mutable_response_headers());
   }
 }
@@ -69,15 +70,16 @@ void DomainRewriteFilter::InitStats(Statistics* statistics) {
   statistics->AddVariable(kDomainRewrites);
 }
 
-void DomainRewriteFilter::UpdateLocationHeader(const GoogleUrl& base_url,
-                                               RewriteDriver* driver,
-                                               ResponseHeaders* headers) const {
+void DomainRewriteFilter::UpdateLocationHeader(
+    const GoogleUrl& base_url, const ServerContext* server_context,
+    const RewriteOptions* options, ResponseHeaders* headers) {
   if (headers != NULL) {
     const char* location = headers->Lookup1(HttpAttributes::kLocation);
     if (location != NULL) {
       GoogleString new_location;
       DomainRewriteFilter::RewriteResult status = Rewrite(
-          location, base_url, driver, false /* !apply_sharding */,
+          location, base_url, server_context, options,
+          false /* !apply_sharding */, true /* apply_domain_suffix*/,
           &new_location);
       if (status == kRewroteDomain) {
         headers->Replace(HttpAttributes::kLocation, new_location);
@@ -100,7 +102,6 @@ void DomainRewriteFilter::StartElementImpl(HtmlElement* element) {
   }
   resource_tag_scanner::UrlCategoryVector attributes;
   const RewriteOptions* options = driver()->options();
-  const DomainLawyer* domain_lawyer = options->domain_lawyer();
   resource_tag_scanner::ScanElement(element, options, &attributes);
   bool element_is_embed_or_frame_or_iframe = (
       element->keyword() == HtmlName::kEmbed ||
@@ -121,12 +122,13 @@ void DomainRewriteFilter::StartElementImpl(HtmlElement* element) {
             !element_is_embed_or_frame_or_iframe &&
             attributes[i].category != semantic_type::kHyperlink &&
             attributes[i].category != semantic_type::kPrefetch);
+        bool apply_domain_suffix =
+              (attributes[i].category == semantic_type::kHyperlink ||
+               attributes[i].category == semantic_type::kImage);
         const GoogleUrl& base_url = driver()->base_url();
-        if ((Rewrite(val, base_url, driver(),
-                     apply_sharding, &rewritten_val) == kRewroteDomain) ||
-            (((attributes[i].category == semantic_type::kHyperlink) ||
-              (attributes[i].category == semantic_type::kImage)) &&
-             domain_lawyer->AddProxySuffix(base_url, &rewritten_val))) {
+        if (Rewrite(val, base_url, driver()->server_context(),
+                    driver()->options(), apply_sharding, apply_domain_suffix,
+                    &rewritten_val) == kRewroteDomain) {
           attributes[i].url->SetValue(rewritten_val);
           rewrite_count_->Add(1);
         }
@@ -138,8 +140,9 @@ void DomainRewriteFilter::StartElementImpl(HtmlElement* element) {
 // Resolve the url we want to rewrite, and then shard as appropriate.
 DomainRewriteFilter::RewriteResult DomainRewriteFilter::Rewrite(
     const StringPiece& url_to_rewrite, const GoogleUrl& base_url,
-    const RewriteDriver* driver, bool apply_sharding,
-    GoogleString* rewritten_url) const {
+    const ServerContext* server_context, const RewriteOptions* options,
+    bool apply_sharding, bool apply_domain_suffix,
+    GoogleString* rewritten_url) {
   if (url_to_rewrite.empty()) {
     rewritten_url->clear();
     return kDomainUnchanged;
@@ -156,11 +159,19 @@ DomainRewriteFilter::RewriteResult DomainRewriteFilter::Rewrite(
   }
 
   StringPiece orig_spec = orig_url.Spec();
-  const RewriteOptions* options = driver->options();
+  const DomainLawyer* lawyer = options->domain_lawyer();
+
+  // For now, we have a proxy suffix override all other mappings.
+  if (apply_domain_suffix) {
+    url_to_rewrite.CopyToString(rewritten_url);
+    if (lawyer->AddProxySuffix(base_url, rewritten_url)) {
+      return kRewroteDomain;
+    }
+  }
 
   if (!options->IsAllowed(orig_spec) ||
       // Don't rewrite a domain from an already-rewritten resource.
-      server_context()->IsPagespeedResource(orig_url)) {
+      server_context->IsPagespeedResource(orig_url)) {
     // Even though domain is unchanged, we need to store absolute URL in
     // rewritten_url.
     orig_url.Spec().CopyToString(rewritten_url);
@@ -174,12 +185,11 @@ DomainRewriteFilter::RewriteResult DomainRewriteFilter::Rewrite(
   // so they are distinct and (b) only do the resolution once, as it
   // is expensive.  I think the ResourceSlot system offers a good
   // framework to do this.
-  const DomainLawyer* lawyer = options->domain_lawyer();
   GoogleString mapped_domain_name;
   GoogleUrl resolved_request;
   if (!lawyer->MapRequestToDomain(base_url, url_to_rewrite,
                                   &mapped_domain_name, &resolved_request,
-                                  driver->message_handler())) {
+                                  server_context->message_handler())) {
     // Even though domain is unchanged, we need to store absolute URL in
     // rewritten_url.
     orig_url.Spec().CopyToString(rewritten_url);

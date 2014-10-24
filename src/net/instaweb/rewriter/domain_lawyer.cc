@@ -1106,8 +1106,10 @@ bool DomainLawyer::AddProxySuffix(const GoogleUrl& base_url,
         0, base_host.size() - proxy_suffix_.size());
     GoogleUrl href_gurl(base_url, *href);
 
-    if (href_gurl.IsWebValid() &&
-        (href_gurl.Scheme() == base_url.Scheme())) {
+    // Note that we purposefully do not check schemes here since we want to
+    // permit redirects from http:// to https:// (and likewise inclusion of
+    // resources).
+    if (href_gurl.IsWebValid() && base_url.IsWebValid()) {
       StringPiece href_domain, base_domain;
       StringPiece href_host = href_gurl.Host();
       if (href_host == base_host_no_suffix) {

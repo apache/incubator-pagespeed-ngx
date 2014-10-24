@@ -25,6 +25,7 @@
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
+#include "net/instaweb/rewriter/public/domain_rewrite_filter.h"
 #include "net/instaweb/system/public/system_rewrite_options.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
@@ -232,6 +233,18 @@ bool InstawebHandler::ProxyUrl() {
 
   bool fetch_succeeded = fetch.Fetch();
   if (fetch_succeeded) {
+    if (fetch.response_headers()->status_code() >= 300 &&
+        fetch.response_headers()->status_code() <= 399) {
+      // For redirects, we will need to update the Location: header.
+      // We have to do it here rather than relying on normal rewriting
+      // via DomainRewriteFilter since Apache 2.4's implementation of
+      // AddOutputFilterByType doesn't apply to non-200s, and the check
+      // doesn't appear to be possible to disable just for us.
+      DomainRewriteFilter::UpdateLocationHeader(
+          stripped_gurl_, server_context_, server_context_->global_options(),
+          fetch.response_headers());
+    }
+
     // We always disable downstream header filters when sending out
     // slurped resources, since we've captured them from the origin
     // in the fetch we did to write the slurp.

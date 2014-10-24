@@ -20,16 +20,18 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_DOMAIN_REWRITE_FILTER_H_
 
 #include "net/instaweb/rewriter/public/common_filter.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/http/google_url.h"
+#include "pagespeed/kernel/http/response_headers.h"
 
 namespace net_instaweb {
 
-class HtmlElement;
-class GoogleUrl;
-class ResponseHeaders;
-class RewriteDriver;
 class Statistics;
 class Variable;
 
@@ -60,16 +62,25 @@ class DomainRewriteFilter : public CommonFilter {
   //
   // Absolute URL output_url will be set if kRewroteDomain or
   // kDomainUnchanged returned.
-  RewriteResult Rewrite(const StringPiece& input_url,
-                        const GoogleUrl& base_url,
-                        const RewriteDriver* driver,
-                        bool apply_sharding,
-                        GoogleString* output_url) const;
+  //
+  // static for use in UpdateLocationHeader.
+  static RewriteResult Rewrite(const StringPiece& input_url,
+                               const GoogleUrl& base_url,
+                               const ServerContext* server_context,
+                               const RewriteOptions* options,
+                               bool apply_sharding,
+                               bool apply_domain_suffix,
+                               GoogleString* output_url);
 
   // Update the url in the location header as per the rewrite rules configured
   // for this domain.
-  void UpdateLocationHeader(const GoogleUrl& base_url, RewriteDriver* driver,
-                            ResponseHeaders* headers) const;
+  //
+  // static since we may need to do it in Apache with no appropriate
+  // RewriteDriver available.
+  static void UpdateLocationHeader(const GoogleUrl& base_url,
+                                   const ServerContext* server_context,
+                                   const RewriteOptions* options,
+                                   ResponseHeaders* headers);
 
  private:
   // Stats on how much domain-rewriting we've done.

@@ -242,6 +242,12 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
     return status >= 500 && status <= 599;
   }
 
+  // Returns true if our status denotes a redirect.
+  bool IsRedirectStatus() {
+    int status = status_code();
+    return status >= 300 && status <= 399 && status != 304;
+  }
+
   // Determines whether a response header is marked as gzipped.
   bool IsGzipped() const;
   bool WasGzippedLast() const;

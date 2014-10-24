@@ -16,6 +16,8 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
+#include "net/instaweb/rewriter/public/domain_rewrite_filter.h"
+
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -259,6 +261,14 @@ TEST_F(DomainRewriteFilterTest, ProxySuffix) {
                              "/image.png'>"));
 
   ValidateNoChanges(url, "<img src='http://other.example/image.png'>");
+
+  // Also test that we can fix up location: headers.
+  ResponseHeaders headers;
+  headers.Add(HttpAttributes::kLocation, "https://sub.example.com/a.html");
+  DomainRewriteFilter::UpdateLocationHeader(gurl, server_context(),
+                                            options(), &headers);
+  EXPECT_STREQ("https://sub.example.com.suffix/a.html",
+               headers.Lookup1(HttpAttributes::kLocation));
 }
 
 TEST_F(DomainRewriteFilterTest, ProxyBaseUrl) {

@@ -67,7 +67,6 @@
 #include "pagespeed/kernel/base/string_writer.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/base/timer.h"
-#include "pagespeed/kernel/cache/cache_interface.h"
 #include "pagespeed/kernel/html/html_keywords.h"
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/google_url.h"
@@ -77,6 +76,7 @@
 #include "pagespeed/kernel/http/response_headers.h"
 #include "pagespeed/kernel/http/user_agent_matcher.h"
 #include "pagespeed/kernel/thread/thread_synchronizer.h"
+#include "pagespeed/opt/http/property_store.h"
 
 namespace net_instaweb {
 
@@ -503,7 +503,7 @@ void ServerContext::AddOriginalContentLengthHeader(
   }
 }
 
-bool ServerContext::IsPagespeedResource(const GoogleUrl& url) {
+bool ServerContext::IsPagespeedResource(const GoogleUrl& url) const {
   ResourceNamer namer;
   OutputResourceKind kind;
   RewriteFilter* filter;

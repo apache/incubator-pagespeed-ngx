@@ -28,16 +28,25 @@
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/request_context.h"
+#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/util/public/property_cache.h"
+#include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/atomic_bool.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/cache_interface.h"
+#include "pagespeed/kernel/base/function.h"
+#include "pagespeed/kernel/base/hasher.h"
 #include "pagespeed/kernel/base/md5_hasher.h"
 #include "pagespeed/kernel/base/ref_counted_ptr.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/http/content_type.h"
+#include "pagespeed/kernel/http/request_headers.h"
+#include "pagespeed/kernel/http/response_headers.h"
 #include "pagespeed/kernel/thread/queued_worker_pool.h"
 #include "pagespeed/kernel/util/simple_random.h"
 
@@ -45,10 +54,8 @@ namespace pagespeed { namespace js { struct JsTokenizerPatterns; } }
 
 namespace net_instaweb {
 
-class AbstractMutex;
 class AsyncFetch;
 class CacheHtmlInfoFinder;
-class CacheInterface;
 class CachePropertyStore;
 class CriticalCssFinder;
 class CriticalImagesFinder;
@@ -58,15 +65,11 @@ class RequestProperties;
 class ExperimentMatcher;
 class FileSystem;
 class FlushEarlyInfoFinder;
-class Function;
 class GoogleUrl;
-class Hasher;
 class MessageHandler;
 class NamedLock;
 class NamedLockManager;
 class PropertyStore;
-class RequestHeaders;
-class ResponseHeaders;
 class RewriteDriver;
 class RewriteDriverFactory;
 class RewriteDriverPool;
@@ -80,13 +83,10 @@ class Scheduler;
 class StaticAssetManager;
 class Statistics;
 class ThreadSynchronizer;
-class ThreadSystem;
 class Timer;
-class UrlAsyncFetcher;
 class UrlNamer;
 class UsageDataReporter;
 class UserAgentMatcher;
-struct ContentType;
 
 typedef RefCountedPtr<OutputResource> OutputResourcePtr;
 typedef std::vector<OutputResourcePtr> OutputResourceVector;
@@ -160,7 +160,7 @@ class ServerContext {
                               ResponseHeaders* headers);
 
   // Is this URL a ref to a Pagespeed resource?
-  bool IsPagespeedResource(const GoogleUrl& url);
+  bool IsPagespeedResource(const GoogleUrl& url) const;
 
   // Returns a filter to be used for decoding URLs & options for given
   // filter id. This should not be used for actual fetches.

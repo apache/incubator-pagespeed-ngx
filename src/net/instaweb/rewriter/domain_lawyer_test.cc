@@ -1644,6 +1644,11 @@ TEST_F(DomainLawyerTest, AddProxySuffix) {
   // However a link to a completely unrelated domain is left unchanged.
   url = "http://other.com/x.html";
   EXPECT_FALSE(lawyer.AddProxySuffix(base, &url));
+
+  // Link to same domain on HTTPS is also OK.
+  url = "https://www.example.com/absolute.html";
+  EXPECT_TRUE(lawyer.AddProxySuffix(base, &url));
+  EXPECT_STREQ("https://www.example.com.suffix/absolute.html", url);
 }
 
 }  // namespace net_instaweb
