@@ -1499,6 +1499,11 @@ goog.functions.nth = function(a) {
 goog.functions.withReturnValue = function(a, b) {
   return goog.functions.sequence(a, goog.functions.constant(b));
 };
+goog.functions.equalTo = function(a, b) {
+  return function(c) {
+    return b ? a == c : a === c;
+  };
+};
 goog.functions.compose = function(a, b) {
   var c = arguments, d = c.length;
   return function() {

@@ -2751,6 +2751,11 @@ goog.functions.nth = function(a) {
 goog.functions.withReturnValue = function(a, b) {
   return goog.functions.sequence(a, goog.functions.constant(b));
 };
+goog.functions.equalTo = function(a, b) {
+  return function(c) {
+    return b ? a == c : a === c;
+  };
+};
 goog.functions.compose = function(a, b) {
   var c = arguments, d = c.length;
   return function() {
@@ -4162,9 +4167,14 @@ goog.debug.Logger.prototype.log = function(a, b, c) {
   goog.debug.LOGGING_ENABLED && this.isLoggable(a) && (goog.isFunction(b) && (b = b()), this.doLogRecord_(this.getLogRecord(a, b, c, goog.debug.Logger.prototype.log)));
 };
 goog.debug.Logger.prototype.getLogRecord = function(a, b, c, d) {
-  a = goog.debug.LogBuffer.isBufferingEnabled() ? goog.debug.LogBuffer.getInstance().addRecord(a, b, this.name_) : new goog.debug.LogRecord(a, String(b), this.name_);
-  c && (a.setException(c), a.setExceptionText(goog.debug.exposeException(c, d || goog.debug.Logger.prototype.getLogRecord)));
-  return a;
+  var e = goog.debug.LogBuffer.isBufferingEnabled() ? goog.debug.LogBuffer.getInstance().addRecord(a, b, this.name_) : new goog.debug.LogRecord(a, String(b), this.name_);
+  if (c) {
+    var f;
+    f = goog.STRICT_MODE_COMPATIBLE ? d || goog.debug.Logger.prototype.getLogRecord : d || arguments.callee.caller;
+    e.setException(c);
+    e.setExceptionText(goog.debug.exposeException(c, f));
+  }
+  return e;
 };
 goog.debug.Logger.prototype.shout = function(a, b) {
   goog.debug.LOGGING_ENABLED && this.log(goog.debug.Logger.Level.SHOUT, a, b);
@@ -4308,7 +4318,7 @@ goog.async.nextTick.getSetImmediateEmulator_ = function() {
     a.write("");
     a.close();
     var c = "callImmediate" + Math.random(), d = "file:" == b.location.protocol ? "*" : b.location.protocol + "//" + b.location.host, a = goog.bind(function(a) {
-      if (a.origin == d && a.data == c) {
+      if (("*" == d || a.origin == d) && a.data == c) {
         this.port1.onmessage();
       }
     }, this);
@@ -4664,7 +4674,7 @@ goog.Promise.prototype.executeCallback_ = function(a, b, c) {
   if (b == goog.Promise.State_.FULFILLED) {
     a.onFulfilled(c);
   } else {
-    this.removeUnhandledRejection_(), a.onRejected(c);
+    a.child && this.removeUnhandledRejection_(), a.onRejected(c);
   }
 };
 goog.Promise.prototype.addStackTrace_ = function(a) {
