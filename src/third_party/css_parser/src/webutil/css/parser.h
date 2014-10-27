@@ -921,6 +921,9 @@ class FontFace {
     declarations_.reset(declarations);
   }
 
+  MediaQueries& mutable_media_queries() { return *media_queries_; }
+  Declarations& mutable_declarations() { return *declarations_; }
+
   string ToString() const;
  private:
   scoped_ptr<MediaQueries> media_queries_;
@@ -955,6 +958,8 @@ class Stylesheet {
   const Ruleset& ruleset(int i) const { return *rulesets_[i]; }
 
   void set_type(StylesheetType type) { type_ = type; }
+  // TODO(sligocki): Return pointer instead of ref as per Google-style for
+  // non-const return values.
   Charsets& mutable_charsets() { return charsets_; }
   Imports& mutable_imports() { return imports_; }
   FontFaces& mutable_font_faces() { return font_faces_; }

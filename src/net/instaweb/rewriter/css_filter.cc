@@ -82,8 +82,6 @@ namespace net_instaweb {
 
 class CacheExtender;
 class ImageCombineFilter;
-class MessageHandler;
-class UrlSegmentEncoder;
 
 namespace {
 
@@ -646,15 +644,13 @@ void CssFilter::Context::Harvest() {
     // (*) When proxying the root of the path can change so we need to
     // absolutify.
     if (should_absolutify || proxying) {
-      if (!css_rewritten_ || hierarchy_.unparseable_detected()) {
-        absolutified_urls |= CssAbsolutify::AbsolutifyUrls(
-            hierarchy_.mutable_stylesheet(),
-            css_base_gurl_to_use,
-            !css_rewritten_,                   /* handle_parseable_sections */
-            hierarchy_.unparseable_detected(), /* handle_unparseable_sections */
-            Driver(),
-            Driver()->message_handler());
-      }
+      absolutified_urls |= CssAbsolutify::AbsolutifyUrls(
+          hierarchy_.mutable_stylesheet(),
+          css_base_gurl_to_use,
+          !css_rewritten_,             /* handle_parseable_ruleset_sections */
+          hierarchy_.unparseable_detected(), /* handle_unparseable_sections */
+          Driver(),
+          Driver()->message_handler());
     }
 
     ok = SerializeCss(
