@@ -56,6 +56,7 @@ extern "C" {
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/pool.h"
 #include "net/instaweb/util/public/pool_element.h"
+#include "net/instaweb/util/public/pthread_mutex.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/string_util.h"
