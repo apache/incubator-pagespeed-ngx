@@ -48,6 +48,7 @@
 #include "net/instaweb/rewriter/rendered_image.pb.h"
 #include "net/instaweb/util/public/mock_property_page.h"
 #include "net/instaweb/util/public/property_cache.h"
+#include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/dynamic_annotations.h"  // RunningOnValgrind
 #include "pagespeed/kernel/base/gmock.h"
@@ -78,8 +79,6 @@
 #include "pagespeed/opt/logging/enums.pb.h"
 
 namespace net_instaweb {
-
-class AbstractMutex;
 
 using pagespeed::image_compression::kMessagePatternPixelFormat;
 using pagespeed::image_compression::kMessagePatternStats;
@@ -2054,6 +2053,38 @@ TEST_F(ImageRewriteTest, InlineTestWithResizeWithOptimize) {
       false, /* is_resized_using_rendered_dimensions */
       48, /* resized_width */
       64 /* resized_height */);
+}
+
+TEST_F(ImageRewriteTest, InlineTestWithResizeKeepDims) {
+  // their dimensions when we inline.
+  options()->set_image_inline_max_bytes(10000);
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  options()->EnableFilter(RewriteOptions::kInlineImages);
+  options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
+  options()->EnableFilter(RewriteOptions::kConvertGifToPng);
+  options()->EnableFilter(RewriteOptions::kDebug);
+  rewrite_driver()->AddFilters();
+
+  GoogleString initial_url = StrCat(kTestDomain, kChefGifFile);
+  GoogleString page_url = StrCat(kTestDomain, "test.html");
+  AddFileToMockFetcher(initial_url, kChefGifFile, kContentTypeGif, 100);
+  const char kResizedDims[] = " width=48 height=64";
+  const char html_boilerplate[] = "<td background='%s'%s></td>";
+  GoogleString html_input =
+      StringPrintf(html_boilerplate, initial_url.c_str(), kResizedDims);
+  ParseUrl(page_url, html_input);
+  // Image should have been resized
+  EXPECT_THAT(
+      output_buffer_,
+      testing::HasSubstr("<!--Resized image from 192x256 to 48x64-->"));
+  // And inlined
+  EXPECT_THAT(
+      output_buffer_,
+      testing::HasSubstr("<td background='data:"));
+  // But dimensions should still be there.
+  EXPECT_THAT(
+      output_buffer_,
+      testing::HasSubstr(kResizedDims));
 }
 
 TEST_F(ImageRewriteTest, InlineTestWithResizeWithOptimizeAndUrlLogging) {

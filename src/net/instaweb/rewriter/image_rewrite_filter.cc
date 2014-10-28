@@ -71,8 +71,6 @@
 
 namespace net_instaweb {
 
-class UrlSegmentEncoder;
-
 namespace {
 
 // Determines the image options to be used for the given image. If neither
@@ -1370,6 +1368,10 @@ void SetHeightFromAttribute(const HtmlElement* element, ImageDim* page_dim) {
 
 void DeleteMatchingImageDimsAfterInline(
     const CachedResult* cached, HtmlElement* element) {
+  // Never strip width= or height= attributes from non-img elements.
+  if (element->keyword() != HtmlName::kImg) {
+    return;
+  }
   // We used to take the absence of desired_image_dims here as license to delete
   // dimensions.  That was incorrect, as sometimes there were dimensions in the
   // page but the image was being enlarged on page and we can't strip the
