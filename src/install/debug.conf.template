@@ -432,7 +432,8 @@ ModPagespeedCompressMetadataCache true
 # purposes of mobilization.
 <Directory "@@APACHE_DOC_ROOT@@/mobilization/" >
   ModPagespeedRewriteLevel PassThrough
-  ModPagespeedEnableFilters mobilize,debug
+  ModPagespeedEnableFilters mobilize
+  ModPagespeedLogMobilizationSamples true
 </Directory>
 
 # Another VirtualHost can be enabled by default as it does no harm.  This can

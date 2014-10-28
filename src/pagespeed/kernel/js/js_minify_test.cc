@@ -164,6 +164,11 @@ TEST_F(JsMinifyTest, AlreadyMinified) {
   CheckMinification(kAfterCompilationNew, kAfterCompilationNew);
 }
 
+TEST_F(JsMinifyTest, Json) {
+  CheckMinification("{  \"foo\": {\"bar\": 1}, \"baz\": 2 } ",
+                    "{\"foo\":{\"bar\":1},\"baz\":2}");
+}
+
 TEST_F(JsMinifyTest, ErrorUnclosedComment) {
   CheckError("/* not valid javascript");
 }

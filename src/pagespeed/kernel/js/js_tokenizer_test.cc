@@ -484,10 +484,10 @@ TEST_F(JsTokenizerTest, StrictModeReservedWords) {
   //   checking, at which point we should add a test with "use strict".
   BeginTokenizing("var implements,interface,let,package\n"
                   "   ,private,protected,public,static,yield;");
-  ExpectToken(JsKeywords::kVar,        "var");
+  ExpectToken(JsKeywords::kVar,        "var",        "Start Other");
   ExpectToken(JsKeywords::kWhitespace, " ");
-  ExpectToken(JsKeywords::kIdentifier, "implements");
-  ExpectToken(JsKeywords::kOperator,   ",");
+  ExpectToken(JsKeywords::kIdentifier, "implements", "Start Other Expr");
+  ExpectToken(JsKeywords::kOperator,   ",",          "Start Other");
   ExpectToken(JsKeywords::kIdentifier, "interface");
   ExpectToken(JsKeywords::kOperator,   ",");
   ExpectToken(JsKeywords::kIdentifier, "let");
@@ -507,6 +507,49 @@ TEST_F(JsTokenizerTest, StrictModeReservedWords) {
   ExpectToken(JsKeywords::kIdentifier, "yield");
   ExpectToken(JsKeywords::kOperator,   ";");
   ExpectEndOfInput();
+}
+
+TEST_F(JsTokenizerTest, ReservedWordsAsFieldNames1) {
+  // Reserved words may be used as identifiers in certain contexts, such as
+  // field access.
+  // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Lexical_grammar#Reserved_word_usage
+  BeginTokenizing("document.true=true;");
+  ExpectToken(JsKeywords::kIdentifier, "document");
+  ExpectToken(JsKeywords::kOperator,   ".");
+  ExpectToken(JsKeywords::kIdentifier, "true");
+  ExpectToken(JsKeywords::kOperator,   "=");
+  ExpectToken(JsKeywords::kTrue,       "true");
+  ExpectToken(JsKeywords::kOperator,   ";");
+  ExpectEndOfInput();
+}
+
+TEST_F(JsTokenizerTest, ReservedWordsAsFieldNames2) {
+  // Reserved words may be used as identifiers in certain contexts, such as
+  // object literal property names.
+  // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Lexical_grammar#Reserved_word_usage
+  BeginTokenizing("x={if:false,class:3};");
+  ExpectToken(JsKeywords::kIdentifier, "x",     "Start Expr");
+  ExpectToken(JsKeywords::kOperator,   "=",     "Start Expr Oper");
+  ExpectToken(JsKeywords::kOperator,   "{",     "Start Expr Oper {");
+  ExpectToken(JsKeywords::kIdentifier, "if",    "Start Expr Oper { Expr");
+  ExpectToken(JsKeywords::kOperator,   ":",     "Start Expr Oper { Oper");
+  ExpectToken(JsKeywords::kFalse,      "false", "Start Expr Oper { Expr");
+  ExpectToken(JsKeywords::kOperator,   ",",     "Start Expr Oper {");
+  ExpectToken(JsKeywords::kIdentifier, "class", "Start Expr Oper { Expr");
+  ExpectToken(JsKeywords::kOperator,   ":",     "Start Expr Oper { Oper");
+  ExpectToken(JsKeywords::kNumber,     "3",     "Start Expr Oper { Expr");
+  ExpectToken(JsKeywords::kOperator,   "}",     "Start Expr");
+  ExpectToken(JsKeywords::kOperator,   ";",     "Start");
+  ExpectEndOfInput();
+}
+
+TEST_F(JsTokenizerTest, ReservedWordsAsLabelNames) {
+  // Reserved words may NOT be used as label identifiers.  We should
+  // distinguish this case from the object literal case above.
+  BeginTokenizing("{if:false,class:3};");
+  ExpectToken(JsKeywords::kOperator,   "{",     "Start {");
+  ExpectToken(JsKeywords::kIf,         "if",    "Start { BkKwd");
+  ExpectError(":false,class:3};");
 }
 
 TEST_F(JsTokenizerTest, Comments) {
@@ -727,7 +770,7 @@ TEST_F(JsTokenizerTest, RegexVsSlash) {
   ExpectToken(JsKeywords::kRegex,      "/d<e/");
   ExpectParseStack("Start BkHdr Expr");
   ExpectToken(JsKeywords::kOperator,   ".");
-  ExpectParseStack("Start BkHdr Expr Oper");
+  ExpectParseStack("Start BkHdr Expr .");
   ExpectToken(JsKeywords::kIdentifier, "exec");
   ExpectParseStack("Start BkHdr Expr");
   ExpectToken(JsKeywords::kOperator,   "(");
@@ -745,7 +788,7 @@ TEST_F(JsTokenizerTest, RegexVsSlash) {
   ExpectToken(JsKeywords::kRegex,      "/x/");
   ExpectParseStack("Start BkHdr Expr");
   ExpectToken(JsKeywords::kOperator,   ".");
-  ExpectParseStack("Start BkHdr Expr Oper");
+  ExpectParseStack("Start BkHdr Expr .");
   ExpectToken(JsKeywords::kIdentifier, "exec");
   ExpectParseStack("Start BkHdr Expr");
   ExpectToken(JsKeywords::kOperator,   "(");
@@ -953,11 +996,11 @@ TEST_F(JsTokenizerTest, ObjectLiteralsArray) {
   ExpectToken(JsKeywords::kOperator,   ":",  "Start [ { Oper");
   ExpectToken(JsKeywords::kNumber,     "42", "Start [ { Expr");
   ExpectToken(JsKeywords::kOperator,   "}",  "Start [ Expr");
-  ExpectToken(JsKeywords::kOperator,   ",",  "Start [ Expr Oper");
-  ExpectToken(JsKeywords::kOperator,   "{",  "Start [ Expr Oper {");
-  ExpectToken(JsKeywords::kIdentifier, "a",  "Start [ Expr Oper { Expr");
-  ExpectToken(JsKeywords::kOperator,   ":",  "Start [ Expr Oper { Oper");
-  ExpectToken(JsKeywords::kNumber,     "32", "Start [ Expr Oper { Expr");
+  ExpectToken(JsKeywords::kOperator,   ",",  "Start [");
+  ExpectToken(JsKeywords::kOperator,   "{",  "Start [ {");
+  ExpectToken(JsKeywords::kIdentifier, "a",  "Start [ { Expr");
+  ExpectToken(JsKeywords::kOperator,   ":",  "Start [ { Oper");
+  ExpectToken(JsKeywords::kNumber,     "32", "Start [ { Expr");
   ExpectToken(JsKeywords::kOperator,   "}",  "Start [ Expr");
   ExpectToken(JsKeywords::kOperator,   "]",  "Start Expr");
   ExpectEndOfInput();
@@ -972,15 +1015,30 @@ TEST_F(JsTokenizerTest, TrailingCommas) {
   ExpectToken(JsKeywords::kIdentifier, "a",  "Start Expr Oper { Expr");
   ExpectToken(JsKeywords::kOperator,   ":",  "Start Expr Oper { Oper");
   ExpectToken(JsKeywords::kNumber,     "1",  "Start Expr Oper { Expr");
-  ExpectToken(JsKeywords::kOperator,   ",",  "Start Expr Oper { Expr Oper");
+  ExpectToken(JsKeywords::kOperator,   ",",  "Start Expr Oper {");
   ExpectToken(JsKeywords::kOperator,   "}",  "Start Expr");
   ExpectToken(JsKeywords::kSemiInsert, "\n", "Start");
   ExpectToken(JsKeywords::kIdentifier, "y",  "Start Expr");
   ExpectToken(JsKeywords::kOperator,   "=",  "Start Expr Oper");
   ExpectToken(JsKeywords::kOperator,   "[",  "Start Expr Oper [");
-  ExpectToken(JsKeywords::kOperator,   ",",  "Start Expr Oper [ Oper");
-  ExpectToken(JsKeywords::kOperator,   ",",  "Start Expr Oper [ Oper");
+  ExpectToken(JsKeywords::kOperator,   ",",  "Start Expr Oper [");
+  ExpectToken(JsKeywords::kOperator,   ",",  "Start Expr Oper [");
   ExpectToken(JsKeywords::kOperator,   "]",  "Start Expr");
+  ExpectEndOfInput();
+}
+
+TEST_F(JsTokenizerTest, CommaOperator) {
+  BeginTokenizing("x=(y++,y*5)");
+  ExpectToken(JsKeywords::kIdentifier, "x",  "Start Expr");
+  ExpectToken(JsKeywords::kOperator,   "=",  "Start Expr Oper");
+  ExpectToken(JsKeywords::kOperator,   "(",  "Start Expr Oper (");
+  ExpectToken(JsKeywords::kIdentifier, "y",  "Start Expr Oper ( Expr");
+  ExpectToken(JsKeywords::kOperator,   "++", "Start Expr Oper ( Expr");
+  ExpectToken(JsKeywords::kOperator,   ",",  "Start Expr Oper ( Expr Oper");
+  ExpectToken(JsKeywords::kIdentifier, "y",  "Start Expr Oper ( Expr");
+  ExpectToken(JsKeywords::kOperator,   "*",  "Start Expr Oper ( Expr Oper");
+  ExpectToken(JsKeywords::kNumber,     "5",  "Start Expr Oper ( Expr");
+  ExpectToken(JsKeywords::kOperator,   ")",  "Start Expr");
   ExpectEndOfInput();
 }
 
@@ -1525,6 +1583,36 @@ TEST_F(JsTokenizerTest, Latin1Input) {
   ExpectToken(JsKeywords::kComment,    "/* 73\xA2 is $0.73 */");
   ExpectToken(JsKeywords::kNumber,     "73");
   ExpectToken(JsKeywords::kOperator,   ";");
+  ExpectEndOfInput();
+}
+
+TEST_F(JsTokenizerTest, JsonHeuristic) {
+  // Sometimes we put JSON data through the JavaScript tokenizer.  Most JSON
+  // will parse just fine, but JSON object literals, without parse context to
+  // mark them as expressions (rather than code blocks) will generally not
+  // parse as JavaScript code.  Therefore, the tokenizer has a heuristic to
+  // recognize input consisting of a JSON object literal and alter the parse
+  // state to handle it.
+  BeginTokenizing("{\"foo\":{\"bar\":1},\"baz\":2}");
+  // At first, we assume this is JS code, as usual:
+  ExpectToken(JsKeywords::kOperator,      "{",       "Start {");
+  ExpectToken(JsKeywords::kStringLiteral, "\"foo\"", "Start { Expr");
+  // Once we see the colon, we know this is actually a JSON object literal
+  // rather than a code block (a string literal followed by a colon isn't valid
+  // syntax at start-of-statement).  Adding a synthetic Oper parse state in
+  // front of the { state allows us to treat this as an object literal rather
+  // than a code block.  From here we can proceed as normal.
+  ExpectToken(JsKeywords::kOperator,      ":", "Start Oper { Oper");
+  ExpectToken(JsKeywords::kOperator,      "{", "Start Oper { Oper {");
+  ExpectToken(JsKeywords::kStringLiteral, "\"bar\"");
+  ExpectToken(JsKeywords::kOperator,      ":", "Start Oper { Oper { Oper");
+  ExpectToken(JsKeywords::kNumber,        "1", "Start Oper { Oper { Expr");
+  ExpectToken(JsKeywords::kOperator,      "}", "Start Oper { Expr");
+  ExpectToken(JsKeywords::kOperator,      ",", "Start Oper {");
+  ExpectToken(JsKeywords::kStringLiteral, "\"baz\"");
+  ExpectToken(JsKeywords::kOperator,      ":", "Start Oper { Oper");
+  ExpectToken(JsKeywords::kNumber,        "2", "Start Oper { Expr");
+  ExpectToken(JsKeywords::kOperator,      "}", "Start Expr");
   ExpectEndOfInput();
 }
 

@@ -49,6 +49,12 @@ class JsTokenizerPatterns;
 // (note however that many other kinds of syntax errors will be ignored; being
 // a complete parser or syntax checker is a non-goal of this class).
 //
+// This class can also be used to tokenize JSON.  Note that a JSON object, such
+// as {"foo":"bar"}, is NOT legal JavaScript code by itself (since, absent any
+// context, the braces will be interpreted as a code block rather than as an
+// object literal); however, JsTokenizer contains special logic to recognize
+// this case and still tokenize it correctly.
+//
 // This separation of tokens and classification of whitespace means that this
 // class can be used to create a robust JavaScript minifier (see js_minify.h).
 // It could also perhaps be used as the basis of a more complete JavaScript
@@ -86,6 +92,7 @@ class JsTokenizer {
     kStartOfInput,  // For convenience, the bottom of the stack is always this.
     kExpression,
     kOperator,      // A prefix or binary operator (including some keywords).
+    kPeriod,
     kQuestionMark,
     kOpenBrace,
     kOpenBracket,
@@ -95,6 +102,17 @@ class JsTokenizer {
     kReturnThrow,   // A return or throw keyword.
     kJumpKeyword,   // A break, continue, or debugger keyword.
     kOtherKeyword,  // A const, default, or var keyword.
+  };
+
+  // Enum for tracking whether the first three tokens in the input are open
+  // brace, string literal, colon.  If so, we're parsing a JSON object,
+  // otherwise we'll assume we're parsing legal JS code.
+  enum JsonStep {
+    kJsonStart,
+    kJsonOpenBrace,
+    kJsonOpenBraceStringLiteral,
+    kIsJsonObject,
+    kIsNotJsonObject,
   };
 
   // Consumes an appropriate amount of input and return an appropriate token.
@@ -107,6 +125,7 @@ class JsTokenizer {
   JsKeywords::Type ConsumeBlockComment(StringPiece* token_out);
   JsKeywords::Type ConsumeLineComment(StringPiece* token_out);
   JsKeywords::Type ConsumeColon(StringPiece* token_out);
+  JsKeywords::Type ConsumeComma(StringPiece* token_out);
   JsKeywords::Type ConsumeNumber(StringPiece* token_out);
   JsKeywords::Type ConsumeOperator(StringPiece* token_out);
   JsKeywords::Type ConsumePeriod(StringPiece* token_out);
@@ -131,9 +150,12 @@ class JsTokenizer {
   JsKeywords::Type Error(StringPiece* token_out);
 
   // Stores the next num_chars characters of the input into *token_out, and
-  // then increment the start of input_ by num_chars characters.  If
-  // non_whitespace is true, also sets start_of_line_ to false.
-  void Emit(int num_chars, bool non_whitespace, StringPiece* token_out);
+  // then increment the start of input_ by num_chars characters.  If the token
+  // type is not comment or whitespace, sets start_of_line_ to false.  Also
+  // updates json_step_ based on the token type.  Returns the token type passed
+  // in, for convenience.
+  JsKeywords::Type Emit(JsKeywords::Type type, int num_chars,
+                        StringPiece* token_out);
 
   // Pushes a new state onto the parse_stack_, merging states as needed.
   void PushBlockHeader();
@@ -155,6 +177,7 @@ class JsTokenizer {
   std::vector<ParseState> parse_stack_;
   std::deque<std::pair<JsKeywords::Type, StringPiece> > lookahead_queue_;
   StringPiece input_;  // The portion of input that has yet to be consumed.
+  JsonStep json_step_;
   bool start_of_line_;  // No non-whitespace/comment tokens on this line yet.
   bool error_;
 

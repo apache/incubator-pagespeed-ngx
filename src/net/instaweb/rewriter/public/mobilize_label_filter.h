@@ -23,17 +23,15 @@
 
 #include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/mobilize_rewrite_filter.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_node.h"
+#include "pagespeed/kernel/html/html_parse.h"
 
 namespace net_instaweb {
-
-class HtmlCharactersNode;
-class HtmlElement;
-class HtmlParse;
-class RewriteDriver;
-class Statistics;
-class Variable;
 
 // Sample capturing the feature vector for a given DOM element.  We compute
 // these up the DOM tree, aggregating into the parent when each child finishes.
@@ -60,7 +58,7 @@ struct ElementSample {
   std::vector<double> features;  // feature vector, always of size kNumFeatures.
 };
 
-// Classify DOM elements by adding importance= attributes so that the
+// Classify DOM elements by adding data-mobile-role= attributes so that the
 // MoblizeRewriteFilter can rewrite them to be mobile-friendly.  The classes
 // are:
 //   Navigational: things like nav and menu bars, mostly in the header
@@ -68,13 +66,10 @@ struct ElementSample {
 //   Content: The content we think the user wants to see.
 //   Marginal: Other stuff on the page that typically resides in the margins,
 //     header, or footer.
-// Initially we just attempt Navigational and Header classification.
-// TODO(jmaessen): do the rest of the classification.
 // We do this bottom-up, since we want to process children in a streaming
 // fashion before their parent's close tag.  We take the presence of html5 tags
-// as authoritative (though in practice this might not be the case), but we've
+// as authoritative if UseTagNames is in LabelingMode; note that we've
 // assumed that they're authoritative in training our classifiers.
-// TODO(jmaessen): use actual classifier output.
 class MobilizeLabelFilter : public CommonFilter {
  public:
   enum LabelingMode {
@@ -132,6 +127,7 @@ class MobilizeLabelFilter : public CommonFilter {
   HtmlElement* active_no_traverse_element_;
   int relevant_tag_depth_;
   int max_relevant_tag_depth_;
+  int link_depth_;
   int tag_count_;
   int content_bytes_;
   int content_non_blank_bytes_;

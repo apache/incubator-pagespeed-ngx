@@ -21,6 +21,7 @@
 #include <cstddef>
 
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
@@ -29,6 +30,7 @@
 #include "pagespeed/kernel/base/stdio_file_system.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/html/html_parse_test_base.h"
 
 namespace net_instaweb {
 
@@ -85,6 +87,11 @@ class MobilizeLabelFilterTest : public RewriteTestBase {
         stats->GetVariable(MobilizeLabelFilter::kDivsUnlabeled);
     ambiguous_role_labels_ =
         stats->GetVariable(MobilizeLabelFilter::kAmbiguousRoleLabels);
+  }
+
+  void EnableVerbose() {
+    options()->set_log_mobilization_samples(true);
+    EnableDebug();
   }
 
   // Remove data-mobile-role labeling from a labeled document
@@ -188,7 +195,7 @@ TEST_F(MobilizeLabelFilterTest, AlreadyLabeled) {
 }
 
 TEST_F(MobilizeLabelFilterTest, Html5TagsInHead) {
-  EnableDebug();
+  EnableVerbose();
   const char kInputHtml[] =
       "<head>"
       "<menu>Should not be labeled</menu>"
@@ -202,11 +209,11 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInHead) {
 }
 
 TEST_F(MobilizeLabelFilterTest, TinyCount) {
-  EnableDebug();
+  EnableVerbose();
   const char kOutputHtml[] =
-      "<div role='content' data-mobile-role=\"navigational\">Hello there,"
+      "<div role='content' data-mobile-role=\"marginal\">Hello there,"
       " <a href='http://theworld.com/'>World</a></div>"
-      "<!--role: navigational,"
+      "<!--role: marginal,"
       " ElementTagDepth: 1,"
       " ContainedTagDepth: 2,"       // <a> tag
       " ContainedTagRelativeDepth: 1,"
@@ -216,6 +223,9 @@ TEST_F(MobilizeLabelFilterTest, TinyCount) {
       " ContainedContentPercent: 100.00,"
       " ContainedNonBlankBytes: 16,"
       " ContainedNonBlankPercent: 100.00,"
+      " ContainedAContentBytes: 5,"
+      " ContainedAContentLocalPercent: 29.41,"
+      " ContainedNonAContentBytes: 12,"
       " content: 1,"
       " a count: 1,"
       " a percent: 100.00,"
@@ -225,10 +235,45 @@ TEST_F(MobilizeLabelFilterTest, TinyCount) {
                    Unlabel(kOutputHtml), kOutputHtml);
   EXPECT_EQ(1, pages_labeled_->Get());
   EXPECT_EQ(1, pages_role_added_->Get());
-  EXPECT_EQ(1, navigational_roles_->Get());
+  EXPECT_EQ(0, navigational_roles_->Get());
   EXPECT_EQ(0, header_roles_->Get());
   EXPECT_EQ(0, content_roles_->Get());
-  EXPECT_EQ(0, marginal_roles_->Get());
+  EXPECT_EQ(1, marginal_roles_->Get());
+  EXPECT_EQ(0, ambiguous_role_labels_->Get());
+  EXPECT_EQ(0, divs_unlabeled_->Get());
+}
+
+TEST_F(MobilizeLabelFilterTest, ImgInsideAndOutsideA) {
+  EnableVerbose();
+  const char kOutputHtml[] =
+      "<div role='content' data-mobile-role=\"marginal\">"
+      " <img src='a.png'>"
+      " <img src='b.jpg'>"
+      " <a href='http://theworld.com/'><img src='world.gif'></a></div>"
+      "<!--role: marginal,"
+      " ElementTagDepth: 1,"
+      " ContainedTagDepth: 3,"       // <a><img></a>
+      " ContainedTagRelativeDepth: 2,"
+      " ContainedTagCount: 5,"       // Includes <div> itself.
+      " ContainedTagPercent: 100.00,"
+      " ContainedAImgTag: 1,"
+      " ContainedAImgLocalPercent: 33.33,"
+      " ContainedNonAImgTag: 2,"
+      " content: 1,"
+      " a count: 1,"
+      " a percent: 100.00,"
+      " div count: 1,"
+      " div percent: 100.00,"
+      " img count: 3,"
+      " img percent: 100.00-->\n";
+  ValidateExpected("Small count nav",
+                   Unlabel(kOutputHtml), kOutputHtml);
+  EXPECT_EQ(1, pages_labeled_->Get());
+  EXPECT_EQ(1, pages_role_added_->Get());
+  EXPECT_EQ(0, navigational_roles_->Get());
+  EXPECT_EQ(0, header_roles_->Get());
+  EXPECT_EQ(0, content_roles_->Get());
+  EXPECT_EQ(1, marginal_roles_->Get());
   EXPECT_EQ(0, ambiguous_role_labels_->Get());
   EXPECT_EQ(0, divs_unlabeled_->Get());
 }
@@ -286,7 +331,7 @@ TEST_F(MobilizeLabelFilterTest, MarginalPropagation) {
 }
 
 TEST_F(MobilizeLabelFilterTest, SmallCountNav) {
-  EnableDebug();
+  EnableVerbose();
   const char kOutputHtml[] =
       "<head></head><body>\n"
       "<div class='container'>\n"
@@ -313,6 +358,8 @@ TEST_F(MobilizeLabelFilterTest, SmallCountNav) {
       " ContainedContentPercent: 93.75,"
       " ContainedNonBlankBytes: 12,"
       " ContainedNonBlankPercent: 92.31,"
+      " ContainedAContentBytes: 15,"
+      " ContainedAContentLocalPercent: 100.00,"
       " hdr: 1,"
       " menu: 1,"
       " nav: 1,"
@@ -330,6 +377,8 @@ TEST_F(MobilizeLabelFilterTest, SmallCountNav) {
       " ContainedContentPercent: 100.00,"
       " ContainedNonBlankBytes: 13,"
       " ContainedNonBlankPercent: 100.00,"
+      " ContainedAContentBytes: 16,"
+      " ContainedAContentLocalPercent: 100.00,"
       " a count: 4,"
       " a percent: 100.00,"
       " div count: 2,"
@@ -348,7 +397,7 @@ TEST_F(MobilizeLabelFilterTest, SmallCountNav) {
 }
 
 TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
-  EnableDebug();
+  EnableVerbose();
   // Just for clarity we include the labeled HTML without the sample comments
   // emitted by debug.  The input HTML is this with the data-mobile-role
   // annotations stripped out.
@@ -387,6 +436,7 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedTagCount: 1,"
       " ContainedContentBytes: 9,"
       " ContainedNonBlankBytes: 9,"
+      " ContainedNonAContentBytes: 9,"
       " div count: 1-->\n"
       "</nav>"
       "<!--role: navigational,"
@@ -396,6 +446,7 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedTagCount: 2,"
       " ContainedContentBytes: 16,"
       " ContainedNonBlankBytes: 16,"
+      " ContainedNonAContentBytes: 16,"
       " div count: 2-->\n"
       "<menu data-mobile-role=\"navigational\">Labeled</menu>"
       "<!--role: navigational,"
@@ -406,6 +457,7 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedTagCount: 1,"
       " ContainedContentBytes: 7,"
       " ContainedNonBlankBytes: 7,"
+      " ContainedNonAContentBytes: 7,"
       " div count: 1-->\n"
       "<header data-mobile-role=\"header\"><h1>Labeled</h1></header>"
       "<!--role: header,"
@@ -416,6 +468,7 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedTagCount: 2,"
       " ContainedContentBytes: 7,"
       " ContainedNonBlankBytes: 7,"
+      " ContainedNonAContentBytes: 7,"
       " div count: 1,"
       " h1 count: 1-->\n"
       "<div id='body'>\n"
@@ -428,6 +481,7 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedTagCount: 1,"
       " ContainedContentBytes: 9,"
       " ContainedNonBlankBytes: 9,"
+      " ContainedNonAContentBytes: 9,"
       " div count: 1-->\n"
       "    </article>"
       "<!--ElementTagDepth: 3,"
@@ -437,6 +491,7 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedTagCount: 2,"
       " ContainedContentBytes: 9,"
       " ContainedNonBlankBytes: 9,"
+      " ContainedNonAContentBytes: 9,"
       " div count: 2-->\n"
       "  </main>"
       "<!--role: content,"
@@ -447,6 +502,7 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedTagCount: 3,"
       " ContainedContentBytes: 16,"
       " ContainedNonBlankBytes: 16,"
+      " ContainedNonAContentBytes: 16,"
       " div count: 3-->\n"
       "  <article data-mobile-role=\"content\">also labeled</article>"
       "<!--role: content,"
@@ -457,6 +513,7 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedTagCount: 1,"
       " ContainedContentBytes: 12,"
       " ContainedNonBlankBytes: 11,"
+      " ContainedNonAContentBytes: 12,"
       " div count: 1-->\n"
       "  <section data-mobile-role=\"content\">this too\n"
       "    <aside data-mobile-role=\"marginal\">and this, it differs.</aside>"
@@ -468,6 +525,7 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedTagCount: 1,"
       " ContainedContentBytes: 21,"
       " ContainedNonBlankBytes: 18,"
+      " ContainedNonAContentBytes: 21,"
       " div count: 1-->\n"
       "  </section>"
       "<!--role: content,"
@@ -478,6 +536,7 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedTagCount: 2,"
       " ContainedContentBytes: 29,"
       " ContainedNonBlankBytes: 25,"
+      " ContainedNonAContentBytes: 29,"
       " div count: 2-->\n"
       "</div>"
       "<!--ElementTagDepth: 1,"
@@ -487,6 +546,7 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedTagCount: 7,"
       " ContainedContentBytes: 57,"
       " ContainedNonBlankBytes: 52,"
+      " ContainedNonAContentBytes: 57,"
       " body: 1,"
       " div count: 7-->\n"
       "<aside data-mobile-role=\"marginal\">Labeled</aside>"
@@ -498,6 +558,7 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedTagCount: 1,"
       " ContainedContentBytes: 7,"
       " ContainedNonBlankBytes: 7,"
+      " ContainedNonAContentBytes: 7,"
       " div count: 1-->\n"
       "<footer data-mobile-role=\"marginal\">labeled\n"
       "  <menu data-mobile-role=\"navigational\">navvy</menu>"
@@ -509,6 +570,7 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedTagCount: 1,"
       " ContainedContentBytes: 5,"
       " ContainedNonBlankBytes: 5,"
+      " ContainedNonAContentBytes: 5,"
       " div count: 1-->\n"
       "</footer>"
       "<!--role: marginal,"
@@ -519,6 +581,7 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedTagCount: 2,"
       " ContainedContentBytes: 12,"
       " ContainedNonBlankBytes: 12,"
+      " ContainedNonAContentBytes: 12,"
       " div count: 2-->\n"
       "</body>";
   Parse("html5_tags_in_body", Unlabel(kLabeledHtml));
@@ -558,10 +621,10 @@ TEST_F(MobilizeLabelFilterTest, LargeUnlabeled) {
                    unlabeled_contents, labeled_contents);
   EXPECT_EQ(2, pages_labeled_->Get());
   EXPECT_EQ(1, pages_role_added_->Get());
-  EXPECT_EQ(1, navigational_roles_->Get());
+  EXPECT_EQ(2, navigational_roles_->Get());
   EXPECT_EQ(2, header_roles_->Get());
   EXPECT_EQ(1, content_roles_->Get());
-  EXPECT_EQ(3, marginal_roles_->Get());
+  EXPECT_EQ(2, marginal_roles_->Get());
   EXPECT_EQ(0, ambiguous_role_labels_->Get());
   EXPECT_EQ(27, divs_unlabeled_->Get());
 }

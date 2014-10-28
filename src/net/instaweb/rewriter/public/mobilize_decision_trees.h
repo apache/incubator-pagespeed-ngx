@@ -119,6 +119,9 @@ enum MobileAttrSubstring {
 //   "interesting" HTML tags within the current tag.  This includes all div-like
 //   tags along with tags such as <p>, <a>, <h1>, and <img> (see kRelevantTags
 //   in mobilize_label_filter.cc).
+// * ContainedA / ContainedNonA statistics count occurrences that are nested
+//   inside <a> tags vs not nested inside <a> tags.  LocalPercent is the ratio
+//   of ContainedA / (ContainedA+ContainedNonA).
 enum FeatureName {
   kElementTagDepth = 0,
   kPreviousTagCount,
@@ -135,6 +138,12 @@ enum FeatureName {
   kContainedContentPercent,
   kContainedNonBlankBytes,
   kContainedNonBlankPercent,
+  kContainedAContentBytes,
+  kContainedNonAContentBytes,
+  kContainedAContentLocalPercent,
+  kContainedAImgTag,
+  kContainedNonAImgTag,
+  kContainedAImgLocalPercent,
   kHasAttrString,
   kRelevantTagCount = kHasAttrString + kNumAttrStrings,
   kRelevantTagPercent = kRelevantTagCount + kNumRelevantTags,

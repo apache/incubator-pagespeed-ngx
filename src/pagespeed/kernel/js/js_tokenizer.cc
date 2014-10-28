@@ -56,6 +56,12 @@
 //   postfix operator must follow an expression, and an expression followed by
 //   a postfix operator is still just an expresion.)
 //
+// - kPeriod is for the "." operator (this parse state is *not* used for
+//   decimal points in numeric literals).  It is similar to other operators,
+//   but a reserved word just after a period is an identifier.  For example,
+//   even though "if" is normally a reserved word, "foo.if" is legal code, and
+//   is equivalent to "foo['if']".
+//
 // - kQuestionMark is for the "?" character.  It behaves just like other
 //   operators, but we must track it separately in order to determine whether a
 //   given ":" character is for a label or a ternary operator.  This matters
@@ -193,10 +199,11 @@ const char* const kNumericLiteralPosixRegex =
     // followed by an exponent.
     "([eE][+-]?[0-9]+)?";
 
-// Regex to match JavaScript operators.
+// Regex to match most JavaScript operators (some operators, such as comma,
+// period, question mark, and colon are special-cased elsewhere).
 const char* const kOperatorRegex =
-    // && || ++ --
-    "&&|\\|\\||\\+\\+|--|"
+    // && || ++ -- ~
+    "&&|\\|\\||\\+\\+|--|~|"
     // * *= / /= % %= ^ ^= & &= | |= + += - -=
     "[*/%^&|+-]=?|"
     // ! != !== = == ===
@@ -204,9 +211,7 @@ const char* const kOperatorRegex =
     // < <= << <<=
     "<{1,2}=?|"
     // > >= >> >>= >>> >>>=
-    ">{1,3}=?|"
-    // Other operators:
-    "[~,]";
+    ">{1,3}=?";
 
 // Regex to match JavaScript regex literals.  For details, see page 25 of
 // http://www.ecma-international.org/publications/files/ECMA-ST/Ecma-262.pdf
@@ -294,7 +299,7 @@ const char* const kLineContinuationRegex =
 
 JsTokenizer::JsTokenizer(const JsTokenizerPatterns* patterns,
                          StringPiece input)
-    : patterns_(patterns), input_(input),
+    : patterns_(patterns), input_(input), json_step_(kJsonStart),
       start_of_line_(true), error_(false) {
   parse_stack_.push_back(kStartOfInput);
 }
@@ -359,6 +364,8 @@ JsKeywords::Type JsTokenizer::NextToken(StringPiece* token_out) {
       return ConsumeCloseParen(token_out);
     case ':':
       return ConsumeColon(token_out);
+    case ',':
+      return ConsumeComma(token_out);
     case '.':
       return ConsumePeriod(token_out);
     case '?':
@@ -410,6 +417,7 @@ GoogleString JsTokenizer::ParseStackForTest() const {
       case kStartOfInput: output.append("Start"); break;
       case kExpression:   output.append("Expr");  break;
       case kOperator:     output.append("Oper");  break;
+      case kPeriod:       output.append(".");     break;
       case kQuestionMark: output.append("?");     break;
       case kOpenBrace:    output.append("{");     break;
       case kOpenBracket:  output.append("[");     break;
@@ -432,13 +440,12 @@ JsKeywords::Type JsTokenizer::ConsumeOpenBrace(StringPiece* token_out) {
   DCHECK(!input_.empty());
   DCHECK_EQ('{', input_[0]);
   const ParseState state = parse_stack_.back();
-  if (state == kExpression || state == kBlockKeyword ||
+  if (state == kExpression || state == kPeriod || state == kBlockKeyword ||
       state == kJumpKeyword || state == kOtherKeyword) {
     return Error(token_out);
   }
   parse_stack_.push_back(kOpenBrace);
-  Emit(1, true, token_out);
-  return JsKeywords::kOperator;
+  return Emit(JsKeywords::kOperator, 1, token_out);
 }
 
 JsKeywords::Type JsTokenizer::ConsumeCloseBrace(StringPiece* token_out) {
@@ -484,21 +491,19 @@ JsKeywords::Type JsTokenizer::ConsumeCloseBrace(StringPiece* token_out) {
     PushExpression();
   }
   // Emit a token for the close brace.
-  Emit(1, true, token_out);
-  return JsKeywords::kOperator;
+  return Emit(JsKeywords::kOperator, 1, token_out);
 }
 
 JsKeywords::Type JsTokenizer::ConsumeOpenBracket(StringPiece* token_out) {
   DCHECK(!input_.empty());
   DCHECK_EQ('[', input_[0]);
   const ParseState state = parse_stack_.back();
-  if (state == kBlockKeyword || state == kJumpKeyword ||
+  if (state == kPeriod || state == kBlockKeyword || state == kJumpKeyword ||
       state == kOtherKeyword) {
     return Error(token_out);
   }
   parse_stack_.push_back(kOpenBracket);
-  Emit(1, true, token_out);
-  return JsKeywords::kOperator;
+  return Emit(JsKeywords::kOperator, 1, token_out);
 }
 
 JsKeywords::Type JsTokenizer::ConsumeCloseBracket(StringPiece* token_out) {
@@ -521,20 +526,18 @@ JsKeywords::Type JsTokenizer::ConsumeCloseBracket(StringPiece* token_out) {
   }
   PushExpression();
   // Emit a token for the close bracket.
-  Emit(1, true, token_out);
-  return JsKeywords::kOperator;
+  return Emit(JsKeywords::kOperator, 1, token_out);
 }
 
 JsKeywords::Type JsTokenizer::ConsumeOpenParen(StringPiece* token_out) {
   DCHECK(!input_.empty());
   DCHECK_EQ('(', input_[0]);
   const ParseState state = parse_stack_.back();
-  if (state == kJumpKeyword || state == kOtherKeyword) {
+  if (state == kPeriod || state == kJumpKeyword || state == kOtherKeyword) {
     return Error(token_out);
   }
   parse_stack_.push_back(kOpenParen);
-  Emit(1, true, token_out);
-  return JsKeywords::kOperator;
+  return Emit(JsKeywords::kOperator, 1, token_out);
 }
 
 JsKeywords::Type JsTokenizer::ConsumeCloseParen(StringPiece* token_out) {
@@ -565,8 +568,7 @@ JsKeywords::Type JsTokenizer::ConsumeCloseParen(StringPiece* token_out) {
     PushExpression();
   }
   // Emit a token for the close parenthesis.
-  Emit(1, true, token_out);
-  return JsKeywords::kOperator;
+  return Emit(JsKeywords::kOperator, 1, token_out);
 }
 
 JsKeywords::Type JsTokenizer::ConsumeBlockComment(StringPiece* token_out) {
@@ -577,8 +579,7 @@ JsKeywords::Type JsTokenizer::ConsumeBlockComment(StringPiece* token_out) {
   if (index == StringPiece::npos) {
     return Error(token_out);
   }
-  Emit(index + 2, false, token_out);
-  return JsKeywords::kComment;
+  return Emit(JsKeywords::kComment, index + 2, token_out);
 }
 
 JsKeywords::Type JsTokenizer::ConsumeLineComment(StringPiece* token_out) {
@@ -591,8 +592,9 @@ JsKeywords::Type JsTokenizer::ConsumeLineComment(StringPiece* token_out) {
                 << input_.substr(0, 50);
     return Error(token_out);
   }
-  Emit(input_.size() - unconsumed.size() - linebreak.size(), false, token_out);
-  return JsKeywords::kComment;
+  return Emit(JsKeywords::kComment,
+              input_.size() - unconsumed.size() - linebreak.size(),
+              token_out);
 }
 
 bool JsTokenizer::TryConsumeComment(
@@ -621,14 +623,12 @@ JsKeywords::Type JsTokenizer::ConsumeColon(StringPiece* token_out) {
       case kQuestionMark:
         parse_stack_.pop_back();
         PushOperator();
-        Emit(1, true, token_out);
-        return JsKeywords::kOperator;
+        return Emit(JsKeywords::kOperator, 1, token_out);
       // If we reach the start of the statement without seeing a kQuestionMark,
       // this was a label.  No need to push any new parse state.
       case kStartOfInput:
       case kBlockHeader:
-        Emit(1, true, token_out);
-        return JsKeywords::kOperator;
+        return Emit(JsKeywords::kOperator, 1, token_out);
       // If we hit an open brace, check if it's for an object literal or a
       // block.  If it's an object literal, then this colon was for a property
       // name; push a kOperator state so that we know that what follows is an
@@ -643,8 +643,7 @@ JsKeywords::Type JsTokenizer::ConsumeColon(StringPiece* token_out) {
         if (CanPreceedObjectLiteral(parse_stack_[parse_stack_.size() - 2])) {
           PushOperator();
         }
-        Emit(1, true, token_out);
-        return JsKeywords::kOperator;
+        return Emit(JsKeywords::kOperator, 1, token_out);
       // Skip past anything that could lie between the colon and the question
       // mark or start-of-statement.  This includes the kOtherKeyword parse
       // state for the sake of the "default" keyword.
@@ -654,6 +653,7 @@ JsKeywords::Type JsTokenizer::ConsumeColon(StringPiece* token_out) {
         break;
       // Reaching any other parse state is an error.
       case kOperator:
+      case kPeriod:
       case kOpenBracket:
       case kOpenParen:
       case kBlockKeyword:
@@ -665,6 +665,42 @@ JsKeywords::Type JsTokenizer::ConsumeColon(StringPiece* token_out) {
         return Error(token_out);
     }
   }
+}
+
+JsKeywords::Type JsTokenizer::ConsumeComma(StringPiece* token_out) {
+  DCHECK(!input_.empty());
+  DCHECK_EQ(',', input_[0]);
+  const ParseState state = parse_stack_.back();
+  if (state == kExpression) {
+    // Since the top state is currently kExpression, and the bottom state is
+    // always kStartOfInput, we know that the parse stack has at least two
+    // entries right now.
+    DCHECK_GE(parse_stack_.size(), 2u);
+    const ParseState prev = parse_stack_[parse_stack_.size() - 2];
+    // One use of commas is as the separator for array/object literals and for
+    // identifier lists for e.g. the var keyword.  For any of those, pop the
+    // stack back up to the opening delimiter, so that we see the same parse
+    // stack state for each item in the list.
+    if (prev == kOtherKeyword || prev == kOpenBracket ||
+        (prev == kOpenBrace &&
+         // Similarly, if the second-from-top state is kOpenBrace (or anything
+         // else other than kStartOfInput), we know the parse stack has at
+         // least three entries.
+         CanPreceedObjectLiteral(parse_stack_[parse_stack_.size() - 3]))) {
+      parse_stack_.pop_back();
+    } else {
+      // A comma can also be a binary operator (executing the first operand and
+      // returning the second, as it does in C).
+      PushOperator();
+    }
+  } else if (state != kOpenBracket) {
+    // The only time commas show up other than right after an expression or
+    // identifier is when you have an array literal with missing entries, such
+    // as [,2,,3].  So if the top state isn't kExpression, it had better be
+    // kOpenBracket.
+    return Error(token_out);
+  }
+  return Emit(JsKeywords::kOperator, 1, token_out);
 }
 
 bool JsTokenizer::TryConsumeIdentifierOrKeyword(
@@ -710,6 +746,18 @@ bool JsTokenizer::TryConsumeIdentifierOrKeyword(
   JsKeywords::Flag flag_ignored;
   JsKeywords::Type type =
       JsKeywords::Lookup(input_.substr(0, index), &flag_ignored);
+  // A reserved word immediately after a period operator is treated as an
+  // identifier.  For example, even though "if" is normally a reserved word,
+  // "foo.if" is legal code, and is equivalent to "foo['if']".  Similarly, a
+  // reserved word is an identifier when used as a property name for an object
+  // literal.
+  if (parse_stack_.back() == kPeriod ||
+      (parse_stack_.back() == kOpenBrace &&
+       CanPreceedObjectLiteral(parse_stack_[parse_stack_.size() - 2]))) {
+    PushExpression();
+    *type_out = Emit(JsKeywords::kIdentifier, index, token_out);
+    return true;
+  }
   switch (type) {
     // If the word isn't a keyword, then it's an identifier.  Also, these other
     // "keywords" are only reserved for future use in strict mode, and
@@ -812,8 +860,7 @@ bool JsTokenizer::TryConsumeIdentifierOrKeyword(
       *type_out = Error(token_out);
       return true;
   }
-  Emit(index, true, token_out);
-  *type_out = type;
+  *type_out = Emit(type, index, token_out);
   return true;
 }
 
@@ -827,8 +874,8 @@ JsKeywords::Type JsTokenizer::ConsumeNumber(StringPiece* token_out) {
     return Error(token_out);
   }
   PushExpression();
-  Emit(input_.size() - unconsumed.size(), true, token_out);
-  return JsKeywords::kNumber;
+  return Emit(JsKeywords::kNumber, input_.size() - unconsumed.size(),
+              token_out);
 }
 
 JsKeywords::Type JsTokenizer::ConsumeOperator(StringPiece* token_out) {
@@ -838,7 +885,8 @@ JsKeywords::Type JsTokenizer::ConsumeOperator(StringPiece* token_out) {
     // Unrecognized character:
     return Error(token_out);
   }
-  Emit(input_.size() - unconsumed.size(), true, token_out);
+  const JsKeywords::Type type =
+      Emit(JsKeywords::kOperator, input_.size() - unconsumed.size(), token_out);
   const StringPiece token = *token_out;
   // Is this a postfix operator?  We treat those differently than prefix or
   // unary operators.
@@ -850,7 +898,7 @@ JsKeywords::Type JsTokenizer::ConsumeOperator(StringPiece* token_out) {
     // Prefix or binary operator; push it onto the stack.
     PushOperator();
   }
-  return JsKeywords::kOperator;
+  return type;
 }
 
 JsKeywords::Type JsTokenizer::ConsumePeriod(StringPiece* token_out) {
@@ -862,9 +910,8 @@ JsKeywords::Type JsTokenizer::ConsumePeriod(StringPiece* token_out) {
       return ConsumeNumber(token_out);
     }
   }
-  PushOperator();
-  Emit(1, true, token_out);
-  return JsKeywords::kOperator;
+  parse_stack_.push_back(kPeriod);
+  return Emit(JsKeywords::kOperator, 1, token_out);
 }
 
 JsKeywords::Type JsTokenizer::ConsumeQuestionMark(StringPiece* token_out) {
@@ -875,8 +922,7 @@ JsKeywords::Type JsTokenizer::ConsumeQuestionMark(StringPiece* token_out) {
     return Error(token_out);
   }
   parse_stack_.push_back(kQuestionMark);
-  Emit(1, true, token_out);
-  return JsKeywords::kOperator;
+  return Emit(JsKeywords::kOperator, 1, token_out);
 }
 
 JsKeywords::Type JsTokenizer::ConsumeRegex(StringPiece* token_out) {
@@ -888,8 +934,7 @@ JsKeywords::Type JsTokenizer::ConsumeRegex(StringPiece* token_out) {
     return Error(token_out);
   }
   PushExpression();
-  Emit(input_.size() - unconsumed.size(), true, token_out);
-  return JsKeywords::kRegex;
+  return Emit(JsKeywords::kRegex, input_.size() - unconsumed.size(), token_out);
 }
 
 JsKeywords::Type JsTokenizer::ConsumeSemicolon(StringPiece* token_out) {
@@ -921,8 +966,7 @@ JsKeywords::Type JsTokenizer::ConsumeSemicolon(StringPiece* token_out) {
     parse_stack_.pop_back();
   }
   // Emit a token for the semicolon.
-  Emit(1, true, token_out);
-  return JsKeywords::kOperator;
+  return Emit(JsKeywords::kOperator, 1, token_out);
 }
 
 JsKeywords::Type JsTokenizer::ConsumeSlash(StringPiece* token_out) {
@@ -953,6 +997,7 @@ JsKeywords::Type JsTokenizer::ConsumeSlash(StringPiece* token_out) {
     case kBlockHeader:
     case kReturnThrow:
       return ConsumeRegex(token_out);
+    case kPeriod:
     case kBlockKeyword:
     case kJumpKeyword:
     case kOtherKeyword:
@@ -973,8 +1018,8 @@ JsKeywords::Type JsTokenizer::ConsumeString(StringPiece* token_out) {
     return Error(token_out);
   }
   PushExpression();
-  Emit(input_.size() - unconsumed.size(), true, token_out);
-  return JsKeywords::kStringLiteral;
+  return Emit(JsKeywords::kStringLiteral, input_.size() - unconsumed.size(),
+              token_out);
 }
 
 bool JsTokenizer::TryConsumeWhitespace(
@@ -1009,18 +1054,18 @@ bool JsTokenizer::TryConsumeWhitespace(
     token_size = input_.size() - unconsumed.size();
     DCHECK_GT(token_size, 0);
   }
-  // If we consumed anything, then this was indeed whitespace, so emit a token.
   if (token_size == 0) {
     return false;
   }
-  Emit(token_size, false, token_out);
+  // Yep, this was whitespace.  Emit a token now, since we may need to do some
+  // lookahead in a moment.  We may change *type_out in a moment, but
+  // kWhitespace is good enough to get Emit() to do the right thing for now.
+  *type_out = Emit(JsKeywords::kWhitespace, token_size, token_out);
   // Now we have to decide what kind of whitespace this was.  If it contained
-  // no linebreaks, it's just regular whitespace.
-  if (!has_linebreak) {
-    *type_out = JsKeywords::kWhitespace;
-  } else {
-    // Otherwise, we have to decide whether or not this linebreak will cause
-    // semicolon insertion.
+  // no linebreaks, it's just regular whitespace; otherwise, we have to decide
+  // whether or not this linebreak will cause semicolon insertion, and set
+  // *type_out accordingly.
+  if (has_linebreak) {
     start_of_line_ = true;
     if (allow_semicolon_insertion && TryInsertLinebreakSemicolon()) {
       *type_out = JsKeywords::kSemiInsert;
@@ -1038,16 +1083,64 @@ JsKeywords::Type JsTokenizer::Error(StringPiece* token_out) {
   return JsKeywords::kError;
 }
 
-void JsTokenizer::Emit(int num_chars, bool non_whitespace,
-                       StringPiece* token_out) {
+JsKeywords::Type JsTokenizer::Emit(JsKeywords::Type type, int num_chars,
+                                   StringPiece* token_out) {
   DCHECK_GT(num_chars, 0);
   DCHECK_LE(static_cast<size_t>(num_chars), input_.size());
   const StringPiece token = input_.substr(0, num_chars);
-  if (non_whitespace) {
+  if (type != JsKeywords::kComment && type != JsKeywords::kWhitespace &&
+      type != JsKeywords::kLineSeparator && type != JsKeywords::kSemiInsert) {
     start_of_line_ = false;
+    // Check if it looks like we're tokenizing a JSON object rather than JS
+    // code.  If the first three tokens in the input are open brace, string
+    // literal, colon, then this is a JSON object (since that would be illegal
+    // syntax at the start of JS code), and we should tweak the parse stack so
+    // that we treat the outer braces as an object literal rather than as a
+    // code block.  If the first three tokens in the input are anything else,
+    // then we can assume this is JS code.
+    switch (json_step_) {
+      case kJsonStart:
+        if (type == JsKeywords::kOperator && token == "{") {
+          json_step_ = kJsonOpenBrace;
+        } else {
+          json_step_ = kIsNotJsonObject;
+        }
+        break;
+      case kJsonOpenBrace:
+        if (type == JsKeywords::kStringLiteral) {
+          json_step_ = kJsonOpenBraceStringLiteral;
+        } else {
+          json_step_ = kIsNotJsonObject;
+        }
+        break;
+      case kJsonOpenBraceStringLiteral:
+        if (type == JsKeywords::kOperator && token == ":") {
+          json_step_ = kIsJsonObject;
+          // The first three tokens were open brace, string literal, colon.
+          // That will make the parse stack look like "Start {".  We will add
+          // an Oper state in between Start and { to make the braces look like
+          // an object literal, and then add an Oper state at the end, since
+          // that's what we do for colons in an object literal.  The resulting
+          // parse stack is "Start Oper { Oper", and we can just continue as
+          // normal from there.
+          DCHECK_EQ(2u, parse_stack_.size());
+          DCHECK_EQ(kStartOfInput, parse_stack_[0]);
+          DCHECK_EQ(kOpenBrace, parse_stack_[1]);
+          parse_stack_.pop_back();
+          parse_stack_.push_back(kOperator);
+          parse_stack_.push_back(kOpenBrace);
+          parse_stack_.push_back(kOperator);
+        } else {
+          json_step_ = kIsNotJsonObject;
+        }
+        break;
+      default:
+        break;
+    }
   }
   *token_out = token;
   input_ = input_.substr(num_chars);
+  return type;
 }
 
 void JsTokenizer::PushBlockHeader() {
@@ -1066,7 +1159,7 @@ void JsTokenizer::PushExpression() {
   // and "foo(1)" -> "Expr ( Expr )" becomes "Expr Expr" becomes "Expr").
   DCHECK(!parse_stack_.empty());
   while (parse_stack_.back() == kExpression ||
-         parse_stack_.back() == kOperator) {
+         parse_stack_.back() == kOperator || parse_stack_.back() == kPeriod) {
     parse_stack_.pop_back();
     DCHECK(!parse_stack_.empty());
   }
@@ -1144,6 +1237,7 @@ bool JsTokenizer::TryInsertLinebreakSemicolon() {
     // Binary and prefix operators should not have semicolon insertion happen
     // after them.
     case kOperator:
+    case kPeriod:
     case kQuestionMark:
       return false;
     // Line continuations are never permitted after return, throw, break,

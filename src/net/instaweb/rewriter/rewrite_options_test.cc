@@ -918,6 +918,7 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
     RewriteOptions::kLazyloadImagesBlankUrl,
     RewriteOptions::kLoadFromFileCacheTtlMs,
     RewriteOptions::kLogBackgroundRewrite,
+    RewriteOptions::kLogMobilizationSamples,
     RewriteOptions::kLogRewriteTiming,
     RewriteOptions::kLogUrlIndices,
     RewriteOptions::kLowercaseHtmlNames,

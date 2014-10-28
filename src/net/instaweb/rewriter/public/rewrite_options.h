@@ -298,6 +298,7 @@ class RewriteOptions {
   static const char kLazyloadImagesBlankUrl[];
   static const char kLoadFromFileCacheTtlMs[];
   static const char kLogBackgroundRewrite[];
+  static const char kLogMobilizationSamples[];
   static const char kLogRewriteTiming[];
   static const char kLogUrlIndices[];
   static const char kLowercaseHtmlNames[];
@@ -1629,6 +1630,13 @@ class RewriteOptions {
   }
   bool log_background_rewrites() const {
     return log_background_rewrites_.value();
+  }
+
+  void set_log_mobilization_samples(bool x) {
+    set_option(x, &log_mobilization_samples_);
+  }
+  bool log_mobilization_samples() const {
+    return log_mobilization_samples_.value();
   }
 
   void set_log_rewrite_timing(bool x) {
@@ -3493,6 +3501,7 @@ class RewriteOptions {
   Option<bool> private_not_vary_for_ie_;
   Option<bool> combine_across_paths_;
   Option<bool> log_background_rewrites_;
+  Option<bool> log_mobilization_samples_;
   Option<bool> log_rewrite_timing_;   // Should we time HtmlParser?
   Option<bool> log_url_indices_;
   Option<bool> lowercase_html_names_;

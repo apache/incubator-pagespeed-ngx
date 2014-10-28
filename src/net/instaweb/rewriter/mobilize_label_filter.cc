@@ -26,6 +26,7 @@
 #include "net/instaweb/rewriter/public/mobilize_decision_trees.h"
 #include "net/instaweb/rewriter/public/mobilize_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/stl_util.h"
@@ -322,6 +323,37 @@ GoogleString ElementSample::ToString(bool readable, HtmlParse* parser) {
         k, q, features[kContainedNonBlankBytes],
         k, q, features[kContainedNonBlankPercent]));
   }
+  if (features[kContainedAContentBytes] > 0) {
+    StrAppend(
+        &sample_string,
+        StringPrintf(
+            ", %sContainedAContentBytes%s: %.f"
+            ", %sContainedAContentLocalPercent%s: %.2f",
+            k, q, features[kContainedAContentBytes],
+            k, q, features[kContainedAContentLocalPercent]));
+  }
+  if (features[kContainedNonAContentBytes] > 0) {
+    StrAppend(
+        &sample_string,
+        StringPrintf(
+            ", %sContainedNonAContentBytes%s: %.f",
+            k, q, features[kContainedNonAContentBytes]));
+  }
+  if (features[kContainedAImgTag] > 0) {
+    StrAppend(
+        &sample_string,
+        StringPrintf(
+            ", %sContainedAImgTag%s: %.f, %sContainedAImgLocalPercent%s: %.2f",
+            k, q, features[kContainedAImgTag],
+            k, q, features[kContainedAImgLocalPercent]));
+  }
+  if (features[kContainedNonAImgTag] > 0) {
+    StrAppend(
+        &sample_string,
+        StringPrintf(
+            ", %sContainedNonAImgTag%s: %.f",
+            k, q, features[kContainedNonAImgTag]));
+  }
   for (int i = 0; i < kNumAttrStrings; ++i) {
     if (features[kHasAttrString + i] == 1.0) {
       const char* substring = kRelevantAttrSubstrings[i].substring;
@@ -391,6 +423,7 @@ void MobilizeLabelFilter::Init() {
   active_no_traverse_element_ = NULL;
   relevant_tag_depth_ = 0;
   max_relevant_tag_depth_ = 0;
+  link_depth_ = 0;
   tag_count_ = 0;
   content_bytes_ = 0;
   content_non_blank_bytes_ = 0;
@@ -438,6 +471,14 @@ void MobilizeLabelFilter::StartElementImpl(HtmlElement* element) {
   // Now decide how interesting the tag might be.
   const RelevantTagMetadata* tag_metadata = FindTagMetadata(element->keyword());
   if (tag_metadata != NULL) {
+    if (element->keyword() == HtmlName::kA) {
+      ++link_depth_;
+    } else if (element->keyword() == HtmlName::kImg) {
+      // Track whether this img is inside or outside an <a> tag.
+      FeatureName contained_a_img_feature =
+          link_depth_ > 0 ? kContainedAImgTag : kContainedNonAImgTag;
+      sample_stack_.back()->features[contained_a_img_feature]++;
+    }
     // Tag that we want to count (includes all the div-like tags).
     IncrementRelevantTagDepth();
     MobileRole::Level mobile_role =
@@ -506,6 +547,9 @@ void MobilizeLabelFilter::EndElementImpl(HtmlElement* element) {
   if (FindTagMetadata(element->keyword()) != NULL) {
     --relevant_tag_depth_;
   }
+  if (element->keyword() == HtmlName::kA) {
+    --link_depth_;
+  }
 }
 
 void MobilizeLabelFilter::Characters(HtmlCharactersNode* characters) {
@@ -518,6 +562,10 @@ void MobilizeLabelFilter::Characters(HtmlCharactersNode* characters) {
   StringPiece contents(characters->contents());
   TrimWhitespace(&contents);
   content_bytes_ += contents.size();
+  FeatureName contained_a_content_bytes_feature =
+      link_depth_ > 0 ? kContainedAContentBytes : kContainedNonAContentBytes;
+  sample_stack_.back()->features[contained_a_content_bytes_feature] +=
+      contents.size();
   // Now trim characters from the StringPiece, counting only non-whitespace.
   while (!contents.empty()) {
     ++content_non_blank_bytes_;
@@ -542,7 +590,8 @@ void MobilizeLabelFilter::EndDocument() {
   if (were_roles_added_) {
     pages_role_added_->Add(1);
   }
-  if (driver()->DebugMode()) {
+  if (driver()->DebugMode() ||
+      driver()->options()->log_mobilization_samples()) {
     DebugLabel();
   }
   SanityCheckEndOfDocumentState();
@@ -598,6 +647,19 @@ void MobilizeLabelFilter::ComputeContained(ElementSample* sample) {
       content_bytes_ - sample->features[kPreviousContentBytes];
   sample->features[kContainedNonBlankBytes] =
       content_non_blank_bytes_ - sample->features[kPreviousNonBlankBytes];
+  double a_content_bytes = sample->features[kContainedAContentBytes];
+  if (a_content_bytes > 0.0) {
+    sample->features[kContainedAContentLocalPercent] =
+        100.0 * (a_content_bytes /
+                 (a_content_bytes +
+                  sample->features[kContainedNonAContentBytes]));
+  }
+  double a_img_tag = sample->features[kContainedAImgTag];
+  if (a_img_tag > 0.0) {
+    sample->features[kContainedAImgLocalPercent] =
+        100.0 * (a_img_tag /
+                 (a_img_tag + sample->features[kContainedNonAImgTag]));
+  }
 }
 
 void MobilizeLabelFilter::AggregateToTopOfStack(ElementSample* sample) {
@@ -607,6 +669,14 @@ void MobilizeLabelFilter::AggregateToTopOfStack(ElementSample* sample) {
   parent->features[kContainedTagDepth] =
       std::max(parent->features[kContainedTagDepth],
                sample->features[kContainedTagDepth]);
+  parent->features[kContainedAContentBytes] +=
+      sample->features[kContainedAContentBytes];
+  parent->features[kContainedNonAContentBytes] +=
+      sample->features[kContainedNonAContentBytes];
+  parent->features[kContainedAImgTag] +=
+      sample->features[kContainedAImgTag];
+  parent->features[kContainedNonAImgTag] +=
+      sample->features[kContainedNonAImgTag];
   for (int i = 0; i < kNumRelevantTags; ++i) {
     parent->features[kRelevantTagCount + i] +=
         sample->features[kRelevantTagCount + i];
@@ -668,6 +738,18 @@ void MobilizeLabelFilter::SanityCheckEndOfDocumentState() {
              sample->features[kContainedContentBytes]);
     CHECK_GE(parent->features[kContainedNonBlankBytes],
              sample->features[kContainedNonBlankBytes]);
+    CHECK_GE(parent->features[kContainedAContentBytes],
+             sample->features[kContainedAContentBytes]);
+    CHECK_GE(parent->features[kContainedNonAContentBytes],
+             sample->features[kContainedNonAContentBytes]);
+    CHECK_GE(parent->features[kContainedAImgTag],
+             sample->features[kContainedAImgTag]);
+    CHECK_GE(parent->features[kContainedNonAImgTag],
+             sample->features[kContainedNonAImgTag]);
+    for (int i = 0; i < kNumRelevantTags; ++i) {
+      CHECK_GE(parent->features[kRelevantTagCount + i],
+               sample->features[kRelevantTagCount + i]);
+    }
   }
   global->features[kPreviousTagCount] = 0;
   global->features[kContainedTagCount]--;
@@ -774,18 +856,24 @@ void MobilizeLabelFilter::DebugLabel() {
   // Map relevant attr keywords back to the corresponding string.  Sadly
   // html_name doesn't give us an easy mechanism for accomplishing this
   // transformation.
+  bool debug_mode = driver()->DebugMode();
+  bool log_samples = driver()->options()->log_mobilization_samples();
   for (int i = 1, n = samples_.size(); i < n; ++i) {
     ElementSample* sample = samples_[i];
-    // TODO(jmaessen): Have a better format for the sample string,
-    // and control sample string dumping independently of debug.
-    if (driver()->DebugMode()) {
-      HtmlElement* element = sample->element;
+    HtmlElement* element = sample->element;
+    if (debug_mode) {
       driver()->InsertDebugComment(
           sample->ToString(true /* readable */, driver()), element);
+    }
+    if (log_samples) {
+      // TODO(jmaessen): This should really send samples to a separate file,
+      // rather than the error log, but that requires solving some simple
+      // concurrency problems that aren't currently worth it for this use case
+      // alone.
       GoogleString sample_string =
           sample->ToString(false /* numeric */, driver());
       driver()->message_handler()->Message(
-          kInfo, "%s: %s { %s }",
+          kError, "%s: %s { %s }",
           driver()->url(),
           element->live() ? element->name_str().as_string().c_str()
                           : "(flushed element)",
