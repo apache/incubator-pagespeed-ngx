@@ -168,6 +168,10 @@ void MobilizeRewriteFilter::StartElement(HtmlElement* element) {
   if ((keyword == HtmlName::kScript) && !use_cxx_layout_) {
     in_script_ = true;
 
+#if 0
+    // Uncomment to translate jquery.min.js to jquery.js for debugging.
+    // Alternatively, do this only if this is served from google APIs where
+    // we know we have access to both versions.
     HtmlElement::Attribute* src_attribute =
         element->FindAttribute(HtmlName::kSrc);
     if (src_attribute != NULL) {
@@ -178,6 +182,7 @@ void MobilizeRewriteFilter::StartElement(HtmlElement* element) {
         src_attribute->SetValue(new_value);
       }
     }
+#endif
   } else if (keyword == HtmlName::kMeta) {
     // Remove any existing viewport tags, other than the one we created
     // at start of head.
