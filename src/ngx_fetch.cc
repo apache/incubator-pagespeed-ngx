@@ -42,6 +42,7 @@ extern "C" {
 
 #include <algorithm>
 #include <string>
+#include <typeinfo>
 #include <vector>
 
 #include "net/instaweb/util/public/scoped_ptr.h"
@@ -570,8 +571,16 @@ void NgxFetch::ResolveDoneHandler(ngx_resolver_ctx_t* resolver_ctx) {
   ngx_uint_t i;
   // Find the first ipv4 address. We don't support ipv6 yet.
   for (i = 0; i < resolver_ctx->naddrs; i++) {
-    if (reinterpret_cast<struct sockaddr_in*>(
-            resolver_ctx->addrs[i].sockaddr)->sin_family == AF_INET) {
+    // Old versions of nginx and tengine have a different definition of addrs,
+    // work around to make sure we are using the right type (ngx_addr_t*).
+    ngx_addr_t* ngx_addrs = reinterpret_cast<ngx_addr_t*>(resolver_ctx->addrs);
+    if (typeid(*ngx_addrs) == typeid(*resolver_ctx->addrs)) {
+      if (reinterpret_cast<struct sockaddr_in*>(ngx_addrs[i].sockaddr)
+              ->sin_family == AF_INET) {
+        break;
+      }
+    } else {
+      // We're using an old version that uses in_addr_t* for addrs.
       break;
     }
   }
