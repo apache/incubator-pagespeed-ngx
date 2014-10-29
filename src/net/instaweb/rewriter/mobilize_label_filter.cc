@@ -57,6 +57,8 @@ const char MobilizeLabelFilter::kAmbiguousRoleLabels[] =
 
 namespace {
 
+const char kNbsp[] = "&nbsp;";
+
 struct RelevantTagMetadata {
   HtmlName::Keyword html_name;
   MobileRelevantTag relevant_tag;
@@ -93,6 +95,7 @@ const RelevantTagMetadata kRelevantTags[] = {
   { HtmlName::kImg,      kImgTag,      false,    MobileRole::kInvalid },
   { HtmlName::kInput,    kInputTag,    false,    MobileRole::kInvalid },
   { HtmlName::kLegend,   kLegendTag,   false,    MobileRole::kInvalid },
+  { HtmlName::kLi,       kLiTag,       false,    MobileRole::kInvalid },
   { HtmlName::kMain,     kMainTag,     true,     MobileRole::kContent },
   { HtmlName::kMenu,     kMenuTag,     true,     MobileRole::kNavigational },
   { HtmlName::kNav,      kNavTag,      true,     MobileRole::kNavigational },
@@ -103,6 +106,7 @@ const RelevantTagMetadata kRelevantTags[] = {
   { HtmlName::kSelect,   kSelectTag,   false,    MobileRole::kInvalid },
   { HtmlName::kSpan,     kSpanTag,     false,    MobileRole::kInvalid },
   { HtmlName::kTextarea, kTextareaTag, false,    MobileRole::kInvalid },
+  { HtmlName::kUl,       kUlTag,       true,     MobileRole::kInvalid },
 };
 
 // These tags are for the purposes of this filter just enclosing semantic noise
@@ -124,6 +128,7 @@ struct RelevantAttrMetadata {
 const RelevantAttrMetadata kRelevantAttrSubstrings[] = {
   {kArticleAttr, "article"},
   {kAsideAttr,   "aside"},
+  {kBarAttr,     "bar"},
   {kBodyAttr,    "body"},
   {kBottomAttr,  "bottom"},
   {kCenterAttr,  "center"},
@@ -141,6 +146,7 @@ const RelevantAttrMetadata kRelevantAttrSubstrings[] = {
   {kMenuAttr,    "menu"},
   {kMiddleAttr,  "middle"},
   {kNavAttr,     "nav"},
+  {kPostAttr,    "post"},
   {kRightAttr,   "right"},
   {kSearchAttr,  "search"},
   {kSecAttr,     "sec"},
@@ -222,6 +228,53 @@ bool IsKeeperTag(HtmlName::Keyword tag) {
 bool IsIgnoreTag(HtmlName::Keyword tag) {
   return std::binary_search(
       kIgnoreTags, kIgnoreTags + arraysize(kIgnoreTags), tag);
+}
+
+int CountNonWhitespaceChars(const StringPiece contents) {
+  int result = 0;
+  for (stringpiece_ssize_type i = 0; i < contents.size(); ++i) {
+    if (!IsHtmlSpace(contents[i])) {
+      result++;
+    }
+  }
+  return result;
+}
+
+bool TrimLeadingWhitespaceAndNbsp(StringPiece* str) {
+  bool trimmed = false;
+  while (!str->empty()) {
+    if (IsHtmlSpace(str->data()[0])) {
+      trimmed = true;
+      str->remove_prefix(1);
+    } else if (str->starts_with(kNbsp)) {
+      trimmed = true;
+      str->remove_prefix(STATIC_STRLEN(kNbsp));
+    } else {
+      break;
+    }
+  }
+  return trimmed;
+}
+
+bool TrimTrailingWhitespaceAndNbsp(StringPiece* str) {
+  bool trimmed = false;
+  while (!str->empty()) {
+    if (IsHtmlSpace(str->data()[str->size() - 1])) {
+      trimmed = true;
+      str->remove_suffix(1);
+    } else if (str->ends_with(kNbsp)) {
+      trimmed = true;
+      str->remove_suffix(STATIC_STRLEN(kNbsp));
+    } else {
+      break;
+    }
+  }
+  return trimmed;
+}
+
+bool TrimWhitespaceAndNbsp(StringPiece* str) {
+  return (TrimLeadingWhitespaceAndNbsp(str) |
+          TrimTrailingWhitespaceAndNbsp(str));
 }
 
 }  // namespace
@@ -560,18 +613,17 @@ void MobilizeLabelFilter::Characters(HtmlCharactersNode* characters) {
   // since long strings of HTML markup often include whitespace for readability,
   // and it generally (though not universally) lacks semantic content.
   StringPiece contents(characters->contents());
-  TrimWhitespace(&contents);
-  content_bytes_ += contents.size();
+  TrimWhitespaceAndNbsp(&contents);
+  int content_nbsp_count = CountSubstring(contents, kNbsp);
+  int content_size_adjustment = content_nbsp_count * (STATIC_STRLEN(kNbsp) - 1);
+  content_bytes_ += contents.size() - content_size_adjustment;
   FeatureName contained_a_content_bytes_feature =
       link_depth_ > 0 ? kContainedAContentBytes : kContainedNonAContentBytes;
   sample_stack_.back()->features[contained_a_content_bytes_feature] +=
-      contents.size();
-  // Now trim characters from the StringPiece, counting only non-whitespace.
-  while (!contents.empty()) {
-    ++content_non_blank_bytes_;
-    contents.remove_prefix(1);
-    TrimLeadingWhitespace(&contents);
-  }
+      contents.size() - content_size_adjustment;
+  content_non_blank_bytes_ +=
+      CountNonWhitespaceChars(contents) -
+      (content_nbsp_count + content_size_adjustment);
 }
 
 void MobilizeLabelFilter::EndDocument() {

@@ -51,6 +51,7 @@ enum MobileRelevantTag {
   kImgTag,
   kInputTag,
   kLegendTag,
+  kLiTag,
   kMainTag,
   kMenuTag,
   kNavTag,
@@ -61,6 +62,7 @@ enum MobileRelevantTag {
   kSelectTag,
   kSpanTag,
   kTextareaTag,
+  kUlTag,
   kNumRelevantTags
 };
 
@@ -69,6 +71,7 @@ enum MobileRelevantTag {
 enum MobileAttrSubstring {
   kArticleAttr = 0,
   kAsideAttr,
+  kBarAttr,
   kBodyAttr,
   kBottomAttr,
   kCenterAttr,
@@ -86,6 +89,7 @@ enum MobileAttrSubstring {
   kMenuAttr,
   kMiddleAttr,
   kNavAttr,
+  kPostAttr,
   kRightAttr,
   kSearchAttr,
   kSecAttr,

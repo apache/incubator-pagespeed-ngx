@@ -191,7 +191,7 @@ TEST_F(MobilizeLabelFilterTest, AlreadyLabeled) {
   EXPECT_EQ(0, content_roles_->Get());
   EXPECT_EQ(0, marginal_roles_->Get());
   EXPECT_EQ(0, ambiguous_role_labels_->Get());
-  EXPECT_EQ(21, divs_unlabeled_->Get());
+  EXPECT_EQ(25, divs_unlabeled_->Get());
 }
 
 TEST_F(MobilizeLabelFilterTest, Html5TagsInHead) {
@@ -212,6 +212,42 @@ TEST_F(MobilizeLabelFilterTest, TinyCount) {
   EnableVerbose();
   const char kOutputHtml[] =
       "<div role='content' data-mobile-role=\"marginal\">Hello there,"
+      " <a href='http://theworld.com/'>World</a></div>"
+      "<!--role: marginal,"
+      " ElementTagDepth: 1,"
+      " ContainedTagDepth: 2,"       // <a> tag
+      " ContainedTagRelativeDepth: 1,"
+      " ContainedTagCount: 2,"       // Includes <div> itself.
+      " ContainedTagPercent: 100.00,"
+      " ContainedContentBytes: 17,"  // Whitespace before <a> ignored.
+      " ContainedContentPercent: 100.00,"
+      " ContainedNonBlankBytes: 16,"
+      " ContainedNonBlankPercent: 100.00,"
+      " ContainedAContentBytes: 5,"
+      " ContainedAContentLocalPercent: 29.41,"
+      " ContainedNonAContentBytes: 12,"
+      " content: 1,"
+      " a count: 1,"
+      " a percent: 100.00,"
+      " div count: 1,"
+      " div percent: 100.00-->\n";
+  ValidateExpected("Small count nav",
+                   Unlabel(kOutputHtml), kOutputHtml);
+  EXPECT_EQ(1, pages_labeled_->Get());
+  EXPECT_EQ(1, pages_role_added_->Get());
+  EXPECT_EQ(0, navigational_roles_->Get());
+  EXPECT_EQ(0, header_roles_->Get());
+  EXPECT_EQ(0, content_roles_->Get());
+  EXPECT_EQ(1, marginal_roles_->Get());
+  EXPECT_EQ(0, ambiguous_role_labels_->Get());
+  EXPECT_EQ(0, divs_unlabeled_->Get());
+}
+
+TEST_F(MobilizeLabelFilterTest, TinyCountNbsp) {
+  EnableVerbose();
+  const char kOutputHtml[] =
+      "<div role='content' data-mobile-role=\"marginal\">"
+      "  &nbsp;Hello&nbsp;there,&nbsp;&nbsp;  "
       " <a href='http://theworld.com/'>World</a></div>"
       "<!--role: marginal,"
       " ElementTagDepth: 1,"
@@ -341,7 +377,31 @@ TEST_F(MobilizeLabelFilterTest, SmallCountNav) {
       "  <li><a href='n1'>nav 1</a></li>\n"
       "  <li><a href='n2'>nav 2</a></li>\n"
       "  <li><a href='n3'>nav 3</a></li>\n"
-      " </ul></div>"
+      " </ul>"
+      "<!--ElementTagDepth: 3,"
+      " PreviousTagCount: 3,"
+      " PreviousTagPercent: 30.00,"
+      " PreviousContentBytes: 1,"
+      " PreviousContentPercent: 6.25,"
+      " PreviousNonBlankBytes: 1,"
+      " PreviousNonBlankPercent: 7.69,"
+      " ContainedTagDepth: 5,"
+      " ContainedTagRelativeDepth: 2,"
+      " ContainedTagCount: 7,"
+      " ContainedTagPercent: 70.00,"
+      " ContainedContentBytes: 15,"
+      " ContainedContentPercent: 93.75,"
+      " ContainedNonBlankBytes: 12,"
+      " ContainedNonBlankPercent: 92.31,"
+      " ContainedAContentBytes: 15,"
+      " ContainedAContentLocalPercent: 100.00,"
+      " a count: 3,"
+      " a percent: 75.00,"
+      " li count: 3,"
+      " li percent: 100.00,"
+      " ul count: 1,"
+      " ul percent: 100.00-->\n"
+      " </div>"
       "<!--role: navigational,"
       " ElementTagDepth: 2,"
       " PreviousTagCount: 2,"
@@ -350,8 +410,8 @@ TEST_F(MobilizeLabelFilterTest, SmallCountNav) {
       " PreviousContentPercent: 6.25,"
       " PreviousNonBlankBytes: 1,"
       " PreviousNonBlankPercent: 7.69,"
-      " ContainedTagDepth: 3,"
-      " ContainedTagRelativeDepth: 1,"
+      " ContainedTagDepth: 5,"
+      " ContainedTagRelativeDepth: 3,"
       " ContainedTagCount: 8,"
       " ContainedTagPercent: 80.00,"
       " ContainedContentBytes: 15,"
@@ -366,11 +426,15 @@ TEST_F(MobilizeLabelFilterTest, SmallCountNav) {
       " a count: 3,"
       " a percent: 75.00,"
       " div count: 1,"
-      " div percent: 50.00-->\n"
+      " div percent: 50.00,"
+      " li count: 3,"
+      " li percent: 100.00,"
+      " ul count: 1,"
+      " ul percent: 100.00-->\n"
       "</div>"
       "<!--ElementTagDepth: 1,"
-      " ContainedTagDepth: 3,"
-      " ContainedTagRelativeDepth: 2,"
+      " ContainedTagDepth: 5,"
+      " ContainedTagRelativeDepth: 4,"
       " ContainedTagCount: 10,"
       " ContainedTagPercent: 100.00,"
       " ContainedContentBytes: 16,"
@@ -382,7 +446,11 @@ TEST_F(MobilizeLabelFilterTest, SmallCountNav) {
       " a count: 4,"
       " a percent: 100.00,"
       " div count: 2,"
-      " div percent: 100.00-->\n"
+      " div percent: 100.00,"
+      " li count: 3,"
+      " li percent: 100.00,"
+      " ul count: 1,"
+      " ul percent: 100.00-->\n"
       "</body>";
   ValidateExpected("Small count nav",
                    Unlabel(kOutputHtml), kOutputHtml);
@@ -393,7 +461,79 @@ TEST_F(MobilizeLabelFilterTest, SmallCountNav) {
   EXPECT_EQ(0, content_roles_->Get());
   EXPECT_EQ(0, marginal_roles_->Get());
   EXPECT_EQ(0, ambiguous_role_labels_->Get());
-  EXPECT_EQ(1, divs_unlabeled_->Get());
+  EXPECT_EQ(2, divs_unlabeled_->Get());
+}
+
+TEST_F(MobilizeLabelFilterTest, NavInsideHeader) {
+  // A common pattern in sites is to have a header area with a logo and some
+  // navigational content.  We'd like to flag the navigational content!
+  EnableVerbose();
+  const char kOutputHtml[] =
+      "<head></head><body>\n"
+      " <header data-mobile-role=\"header\">\n"
+      "  <img src='logo.gif'>\n"
+      "  <ul id='nav_menu' data-mobile-role=\"navigational\">\n"
+      "   <li><a href='about.html'>About us</a>\n"
+      "   <li><a href='contact.html'>Contact</a>\n"
+      "   <li><a href='faq.html'>FAQ</a>\n"
+      "  </ul>"
+      "<!--role: navigational,"
+      " ElementTagDepth: 2,"
+      " PreviousTagCount: 2,"
+      " PreviousTagPercent: 22.22,"
+      " ContainedTagDepth: 4,"
+      " ContainedTagRelativeDepth: 2,"
+      " ContainedTagCount: 7,"
+      " ContainedTagPercent: 77.78,"
+      " ContainedContentBytes: 18,"
+      " ContainedContentPercent: 100.00,"
+      " ContainedNonBlankBytes: 17,"
+      " ContainedNonBlankPercent: 100.00,"
+      " ContainedAContentBytes: 18,"
+      " ContainedAContentLocalPercent: 100.00,"
+      " menu: 1,"
+      " nav: 1,"
+      " a count: 3,"
+      " a percent: 100.00,"
+      " li count: 3,"
+      " li percent: 100.00,"
+      " ul count: 1,"
+      " ul percent: 100.00-->\n"
+      " </header>"
+      "<!--role: header,"
+      " ElementTagDepth: 1,"
+      " ContainedTagDepth: 4,"
+      " ContainedTagRelativeDepth: 3,"
+      " ContainedTagCount: 9,"
+      " ContainedTagPercent: 100.00,"
+      " ContainedContentBytes: 18,"
+      " ContainedContentPercent: 100.00,"
+      " ContainedNonBlankBytes: 17,"
+      " ContainedNonBlankPercent: 100.00,"
+      " ContainedAContentBytes: 18,"
+      " ContainedAContentLocalPercent: 100.00,"
+      " ContainedNonAImgTag: 1,"
+      " a count: 3,"
+      " a percent: 100.00,"
+      " div count: 1,"
+      " div percent: 100.00,"
+      " img count: 1,"
+      " img percent: 100.00,"
+      " li count: 3,"
+      " li percent: 100.00,"
+      " ul count: 1,"
+      " ul percent: 100.00-->\n"
+      "</body>";
+  ValidateExpected("Nav inside header",
+                   Unlabel(kOutputHtml), kOutputHtml);
+  EXPECT_EQ(1, pages_labeled_->Get());
+  EXPECT_EQ(1, pages_role_added_->Get());
+  EXPECT_EQ(1, navigational_roles_->Get());
+  EXPECT_EQ(1, header_roles_->Get());
+  EXPECT_EQ(0, content_roles_->Get());
+  EXPECT_EQ(0, marginal_roles_->Get());
+  EXPECT_EQ(0, ambiguous_role_labels_->Get());
+  EXPECT_EQ(0, divs_unlabeled_->Get());
 }
 
 TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
@@ -626,7 +766,7 @@ TEST_F(MobilizeLabelFilterTest, LargeUnlabeled) {
   EXPECT_EQ(1, content_roles_->Get());
   EXPECT_EQ(2, marginal_roles_->Get());
   EXPECT_EQ(0, ambiguous_role_labels_->Get());
-  EXPECT_EQ(27, divs_unlabeled_->Get());
+  EXPECT_EQ(31, divs_unlabeled_->Get());
 }
 
 }  // namespace
