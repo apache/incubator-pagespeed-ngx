@@ -95,6 +95,7 @@ MobilizeRewriteFilter::MobilizeRewriteFilter(RewriteDriver* rewrite_driver)
       added_style_(false),
       added_containers_(false),
       added_mob_js_(false),
+      added_progress_(false),
       in_script_(false),
       use_cxx_layout_(false),
       use_js_layout_(rewrite_driver->options()->mob_layout()),
@@ -152,6 +153,7 @@ void MobilizeRewriteFilter::StartDocument() {
   added_style_ = false;
   added_containers_ = false;
   added_mob_js_ = false;
+  added_progress_ = false;
   in_script_ = false;
   element_roles_stack_.clear();
   nav_keyword_stack_.clear();
@@ -227,9 +229,34 @@ void MobilizeRewriteFilter::StartElement(HtmlElement* element) {
           driver_->MakeName(HtmlName::kContent), kViewportContent,
           HtmlElement::SINGLE_QUOTE);
       driver_->InsertNodeAfterCurrent(added_viewport_element);
+
+      /*
+      HtmlElement* progress_script = driver_->NewElement(
+          element->parent(),
+          HtmlName::kScript);
+      script->set_style(HtmlElement::EXPLICIT_CLOSE);
+      driver_->InsertNodeAfterCurrent(script);
+      driver_->AddAttribute(script, HtmlName::kSrc,
+                            StrCat(static_file_prefix_, "mob_progress.js"));
+
+      */
     }
   } else if (keyword == HtmlName::kBody) {
     ++body_element_depth_;
+    if (use_js_layout_ && !added_progress_) {
+      added_progress_ = true;
+      HtmlElement* scrim = driver_->NewElement(element, HtmlName::kDiv);
+      driver_->InsertNodeAfterCurrent(scrim);
+      driver_->AddAttribute(scrim, HtmlName::kId, "ps-progress-scrim");
+      driver_->AddAttribute(scrim, HtmlName::kClass, "psProgressScrim");
+      HtmlElement* bar = driver_->NewElement(scrim, HtmlName::kDiv);
+      driver_->AddAttribute(bar, HtmlName::kClass, "psProgressBar");
+      driver_->AppendChild(scrim, bar);
+      HtmlElement* span = driver_->NewElement(bar, HtmlName::kSpan);
+      driver_->AddAttribute(span, HtmlName::kId, "ps-progress-span");
+      driver_->AddAttribute(span, HtmlName::kClass, "psProgressSpan");
+      driver_->AppendChild(bar, span);
+    }
     if (use_cxx_layout_) {
       AddReorderContainers(element);
     }

@@ -167,6 +167,7 @@ class MobilizeRewriteFilter : public EmptyHtmlFilter {
   bool added_style_;
   bool added_containers_;
   bool added_mob_js_;
+  bool added_progress_;
   bool in_script_;
   bool use_cxx_layout_;   // Use C++ layout resynthesis (none of below options).
   bool use_js_layout_;
