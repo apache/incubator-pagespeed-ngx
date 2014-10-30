@@ -505,14 +505,14 @@ char* ps_loc_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf);
 // not NGX_HTTP_LOC_CONF_OFFSET or NGX_HTTP_MAIN_CONF_OFFSET.
 ngx_command_t ps_commands[] = {
   { ngx_string("pagespeed"),
-    NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1|
+    NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1|NGX_CONF_MULTI|
     NGX_CONF_TAKE2|NGX_CONF_TAKE3|NGX_CONF_TAKE4|NGX_CONF_TAKE5,
     ps_main_configure,
     NGX_HTTP_SRV_CONF_OFFSET,
     0,
     NULL },
   { ngx_string("pagespeed"),
-    NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1|
+    NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1|NGX_CONF_MULTI|
     NGX_CONF_TAKE2|NGX_CONF_TAKE3|NGX_CONF_TAKE4|NGX_CONF_TAKE5,
     ps_srv_configure,
     NGX_HTTP_SRV_CONF_OFFSET,
@@ -520,7 +520,7 @@ ngx_command_t ps_commands[] = {
     NULL },
 
   { ngx_string("pagespeed"),
-    NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1|
+    NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1||NGX_CONF_MULTI|
     NGX_CONF_TAKE2|NGX_CONF_TAKE3|NGX_CONF_TAKE4|NGX_CONF_TAKE5,
     ps_loc_configure,
     NGX_HTTP_SRV_CONF_OFFSET,
