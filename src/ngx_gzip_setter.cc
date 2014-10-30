@@ -381,7 +381,7 @@ void NgxGZipSetter::AddGZipHTTPTypes(ngx_conf_t* cf) {
 }
 
 void NgxGZipSetter::RollBackAndDisable(ngx_conf_t* cf) {
-  ngx_conf_log_error(NGX_LOG_INFO, cf, 0,
+  ngx_conf_log_error(NGX_LOG_DEBUG, cf, 0,
                      "pagespeed: rollback gzip, explicit configuration");
   for (std::vector<ngx_flag_t*>::iterator i = ngx_flags_set_.begin();
        i != ngx_flags_set_.end(); ++i) {
