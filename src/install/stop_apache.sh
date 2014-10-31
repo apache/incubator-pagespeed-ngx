@@ -49,12 +49,17 @@ done
 
 # Even worse with 2.2 worker we have to wait for processes to exit too.
 first=1
+iter=0
 while [ $(pgrep $httpd|wc -l) -ne 0 ]; do
   if [ $first -eq 1 ]; then
     /bin/echo -n "Waiting for $httpd to exit"
     first=0
   else
     /bin/echo -n "."
+    iter=$[$iter + 1]
+  fi
+  if [ $iter -ge 30 ]; then # Run for 30 seconds, if not dead, just kill apache.
+    killall -9 $httpd
   fi
   sleep 1
 done
