@@ -31,6 +31,7 @@
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/symbol_table.h"
 #include "pagespeed/kernel/base/timer.h"
+#include "pagespeed/kernel/html/doctype.h"
 #include "pagespeed/kernel/html/html_element.h"
 #include "pagespeed/kernel/html/html_event.h"
 #include "pagespeed/kernel/html/html_filter.h"
@@ -41,7 +42,6 @@
 #include "pagespeed/kernel/http/google_url.h"
 
 namespace net_instaweb {
-class DocType;
 
 HtmlParse::HtmlParse(MessageHandler* message_handler)
     : lexer_(NULL),  // Can't initialize here, since "this" should not be used
@@ -172,6 +172,16 @@ HtmlDirectiveNode* HtmlParse::NewDirectiveNode(HtmlElement* parent,
   HtmlDirectiveNode* directive =
       new (&nodes_) HtmlDirectiveNode(parent, contents, queue_.end());
   return directive;
+}
+
+HtmlElement* HtmlParse::AppendAnchor(StringPiece link, StringPiece text,
+                                     HtmlElement* parent) {
+  HtmlElement* a_tag = NewElement(parent, HtmlName::kA);
+  AppendChild(parent, a_tag);
+  AddAttribute(a_tag, HtmlName::kHref, link);
+  HtmlNode* text_node = NewCharactersNode(a_tag, text);
+  AppendChild(a_tag, text_node);
+  return a_tag;
 }
 
 HtmlElement* HtmlParse::NewElement(HtmlElement* parent, const HtmlName& name) {

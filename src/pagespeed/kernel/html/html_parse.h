@@ -165,6 +165,10 @@ class HtmlParse {
 
   // Utility methods for implementing filters
 
+  // These "New*" functions do *not* append the new node to the parent; you
+  // must do that yourself.  Also note that in the context of a filter, you
+  // must add parents to the DOM in some fashion, before appending children to
+  // parents.
   HtmlCdataNode* NewCdataNode(HtmlElement* parent,
                               const StringPiece& contents);
   HtmlCharactersNode* NewCharactersNode(HtmlElement* parent,
@@ -175,6 +179,11 @@ class HtmlParse {
                                       const StringPiece& contents);
   HtmlIEDirectiveNode* NewIEDirectiveNode(HtmlElement* parent,
                                           const StringPiece& contents);
+
+  // Creates and appends an Anchor tag into the HTML, and then returns it.
+  // TODO(jmaessen): refactor and use this in the relevant places.
+  HtmlElement* AppendAnchor(StringPiece link, StringPiece text,
+                            HtmlElement* parent);
 
   // DOM-manipulation methods.
   // TODO(sligocki): Find Javascript equivalents and list them or even change

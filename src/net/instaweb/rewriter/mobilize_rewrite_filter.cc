@@ -30,6 +30,7 @@
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/html_element.h"
 #include "pagespeed/kernel/html/html_node.h"
+#include "pagespeed/kernel/http/google_url.h"
 
 namespace net_instaweb {
 
@@ -80,6 +81,7 @@ void CheckKeywordsSorted(const HtmlName::Keyword* list, int len) {
   }
 }
 #endif  // #ifndef NDEBUG
+
 }  // namespace
 
 const HtmlName::Keyword MobilizeRewriteFilter::kKeeperTags[] = {
@@ -207,7 +209,9 @@ void MobilizeRewriteFilter::StartElement(HtmlElement* element) {
         script->set_style(HtmlElement::EXPLICIT_CLOSE);
         driver_->InsertNodeAfterCurrent(script);
         HtmlCharactersNode* script_text = driver_->NewCharactersNode(
-            script, "window.PageSpeedMaxWidth = window.innerWidth || 400;");
+            script,
+            StrCat("window.PageSpeedMaxWidth = window.innerWidth || 400;"
+                   "psDebugMode = ", driver_->DebugMode() ? "true" : "false"));
         driver_->AppendChild(script, script_text);
       }
 
@@ -249,6 +253,24 @@ void MobilizeRewriteFilter::StartElement(HtmlElement* element) {
       driver_->InsertNodeAfterCurrent(scrim);
       driver_->AddAttribute(scrim, HtmlName::kId, "ps-progress-scrim");
       driver_->AddAttribute(scrim, HtmlName::kClass, "psProgressScrim");
+
+      HtmlElement* remove_bar = driver_->AppendAnchor(
+          "javascript:psRemoveProgressBar();",
+          "Remove Progress Bar (doesn't stop mobilization)",
+          scrim);
+      driver_->AddAttribute(remove_bar, HtmlName::kId,
+                            "ps-progress-remove");
+      const GoogleUrl& gurl = driver_->google_url();
+      GoogleString origin_url, host;
+      if (gurl.IsWebValid() &&
+          driver_->options()->domain_lawyer()->StripProxySuffix(
+              gurl, &origin_url, &host)) {
+        driver_->AppendChild(scrim, driver_->NewElement(scrim, HtmlName::kBr));
+        driver_->AppendAnchor(
+            origin_url,
+            "Abort mobilization and load page from origin",
+            scrim);
+      }
       HtmlElement* bar = driver_->NewElement(scrim, HtmlName::kDiv);
       driver_->AddAttribute(bar, HtmlName::kClass, "psProgressBar");
       driver_->AppendChild(scrim, bar);
@@ -256,6 +278,10 @@ void MobilizeRewriteFilter::StartElement(HtmlElement* element) {
       driver_->AddAttribute(span, HtmlName::kId, "ps-progress-span");
       driver_->AddAttribute(span, HtmlName::kClass, "psProgressSpan");
       driver_->AppendChild(bar, span);
+      HtmlElement* log = driver_->NewElement(scrim, HtmlName::kPre);
+      driver_->AddAttribute(log, HtmlName::kId, "ps-progress-log");
+      driver_->AddAttribute(log, HtmlName::kClass, "psProgressLog");
+      driver_->AppendChild(scrim, log);
     }
     if (use_cxx_layout_) {
       AddReorderContainers(element);
