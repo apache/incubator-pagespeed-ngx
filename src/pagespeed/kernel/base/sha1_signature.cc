@@ -23,7 +23,7 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #if ENABLE_URL_SIGNATURES
-#include "third_party/openssl/openssl/crypto/hmac/hmac.h"
+#include "third_party/boringssl/src/include/openssl/hmac.h"
 #endif
 
 namespace net_instaweb {

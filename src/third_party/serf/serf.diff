@@ -267,8 +267,8 @@
 +    return serf_request_bucket_request_create_for_host(
 +        request, method, uri, body, allocator, NULL);
 +}
---- serf/src/buckets/ssl_buckets.c	2012-08-29 13:52:29.443913000 -0400
-+++ src/third_party/serf/instaweb_ssl_buckets.c	2013-05-14 09:56:37.292605000 -0400
+--- serf/src/buckets/ssl_buckets.c      2012-08-29 13:29:42.000000000 -0400
++++ src/third_party/serf/instaweb_ssl_buckets.c 2014-10-29 14:24:16.000000000 -0400
 @@ -34,6 +34,11 @@
   * Originally developed by Aaron Bannert and Justin Erenkrantz, eBuilt.
   */
@@ -281,7 +281,35 @@
  #include <apr_pools.h>
  #include <apr_network_io.h>
  #include <apr_portable.h>
-@@ -1160,7 +1165,9 @@
+@@ -873,7 +878,9 @@
+ #if APR_HAS_THREADS
+         int i, numlocks;
+ #endif
++#ifndef OPENSSL_IS_BORINGSSL
+         CRYPTO_malloc_init();
++#endif
+         ERR_load_crypto_strings();
+         SSL_load_error_strings();
+         SSL_library_init();
+@@ -972,7 +979,7 @@
+             int err = ERR_get_error();
+             ERR_clear_error();
+             if (ERR_GET_LIB(err) == ERR_LIB_PKCS12 &&
+-                ERR_GET_REASON(err) == PKCS12_R_MAC_VERIFY_FAILURE) {
++                ERR_GET_REASON(err) == 113 /*PKCS12_R_MAC_VERIFY_FAILURE*/) {
+                 if (ctx->cert_pw_callback) {
+                     const char *password;
+ 
+@@ -1102,6 +1109,8 @@
+     ssl_ctx->allocator = allocator;
+ 
+     ssl_ctx->ctx = SSL_CTX_new(SSLv23_client_method());
++    /* Use the best possible protocol version, but disable the broken SSLv2/3 */
++    SSL_CTX_set_options(ssl_ctx->ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3);
+ 
+     SSL_CTX_set_client_cert_cb(ssl_ctx->ctx, ssl_need_client_cert);
+     ssl_ctx->cached_cert = 0;
+@@ -1160,7 +1169,9 @@
  
      /* SSL_free implicitly frees the underlying BIO. */
      SSL_free(ssl_ctx->ssl);
@@ -291,7 +319,7 @@
  
      p = ssl_ctx->pool;
  
-@@ -1209,6 +1216,28 @@
+@@ -1209,6 +1220,28 @@
      return result ? APR_SUCCESS : APR_EGENERAL;
  }
  
@@ -320,7 +348,7 @@
  apr_status_t serf_ssl_load_cert_file(
      serf_ssl_certificate_t **cert,
      const char *file_path,
-@@ -1527,6 +1556,7 @@
+@@ -1527,6 +1560,7 @@
  
      if (!--ctx->ssl_ctx->refcount) {
          ssl_free_context(ctx->ssl_ctx);
@@ -328,3 +356,4 @@
      }
  
      serf_default_destroy_and_data(bucket);
+

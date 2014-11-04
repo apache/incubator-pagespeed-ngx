@@ -878,7 +878,9 @@ static void init_ssl_libraries(void)
 #if APR_HAS_THREADS
         int i, numlocks;
 #endif
+#ifndef OPENSSL_IS_BORINGSSL
         CRYPTO_malloc_init();
+#endif
         ERR_load_crypto_strings();
         SSL_load_error_strings();
         SSL_library_init();
@@ -976,8 +978,13 @@ static int ssl_need_client_cert(SSL *ssl, X509 **cert, EVP_PKEY **pkey)
         else {
             int err = ERR_get_error();
             ERR_clear_error();
+#ifndef OPENSSL_IS_BORINGSSL
             if (ERR_GET_LIB(err) == ERR_LIB_PKCS12 &&
                 ERR_GET_REASON(err) == PKCS12_R_MAC_VERIFY_FAILURE) {
+#else
+            if (ERR_GET_LIB(err) == ERR_LIB_PKCS8 &&
+                ERR_GET_REASON(err) == PKCS8_R_INCORRECT_PASSWORD) {
+#endif
                 if (ctx->cert_pw_callback) {
                     const char *password;
 
