@@ -1328,6 +1328,7 @@
         'rewriter/js_disable_filter.cc',
         'rewriter/js_inline_filter.cc',
         'rewriter/js_outline_filter.cc',
+        'rewriter/js_replacer.cc',
         'rewriter/lazyload_images_filter.cc',
         'rewriter/local_storage_cache_filter.cc',
         'rewriter/make_show_ads_async_filter.cc',
