@@ -53,9 +53,13 @@ struct MobileRole {
     // and remains pretty much untouched with respect to modifying HTML or
     // styling.
     kMarginal,
-    // Elements without a data-mobile-role attribute, or with an unknown
-    // attribute value, will be kInvalid.
-    kInvalid
+    // Elements below don't have a defined role (the order matters).
+    // Elements that we've decided should not have a data-mobile-role attribute
+    // will be kInvalid.
+    kInvalid,
+    // Elements whose data-mobile-role is still undecided will be kUnassigned.
+    // This value must not exist after labeling.
+    kUnassigned
   };
 
   static const MobileRole kMobileRoles[kInvalid];

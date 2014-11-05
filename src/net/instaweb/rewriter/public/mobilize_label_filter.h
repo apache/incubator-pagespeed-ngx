@@ -72,12 +72,15 @@ struct ElementSample {
 // assumed that they're authoritative in training our classifiers.
 class MobilizeLabelFilter : public CommonFilter {
  public:
-  enum LabelingMode {
-    kDoNotLabel = 0,
-    kUseTagNames = 1,
-    kUseClassifier = 2,
-    kUseTagNamesAndClassifier = 3,
+  struct LabelingMode {
+    bool use_tag_names : 1;
+    bool use_classifier : 1;
+    bool propagate_to_parent : 1;
   };
+
+  static const LabelingMode kDoNotLabel;
+  static const LabelingMode kUseTagNames;
+  static const LabelingMode kDefaultLabelingMode;
 
   // Monitoring variable names
   static const char kPagesLabeled[];  // Pages run through labeler.
@@ -102,8 +105,8 @@ class MobilizeLabelFilter : public CommonFilter {
   virtual void EndDocument();
   // Set labeling mode to use during traversal.
   // Intended for testing and debugging.
-  void set_labeling_mode(LabelingMode m) {
-    labeling_mode_ = m;
+  LabelingMode& mutable_labeling_mode() {
+    return labeling_mode_;
   }
   LabelingMode labeling_mode() const {
     return labeling_mode_;
@@ -121,6 +124,7 @@ class MobilizeLabelFilter : public CommonFilter {
   void IncrementRelevantTagDepth();
   void SanityCheckEndOfDocumentState();
   void ComputeProportionalFeatures();
+  void PropagateUniqueToParent(MobileRole::Level level);
   void Label();
   void DebugLabel();
 

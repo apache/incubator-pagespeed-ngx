@@ -170,13 +170,13 @@ TEST_F(MobilizeLabelFilterTest, AlreadyLabeled) {
   ASSERT_TRUE(filesystem.ReadFile(
       html5_filename.c_str(), &html5_contents, message_handler()));
   // Classify using only tag names.  Shouldn't change anything.
-  filter_->set_labeling_mode(MobilizeLabelFilter::kUseTagNames);
+  filter_->mutable_labeling_mode() = MobilizeLabelFilter::kUseTagNames;
   ValidateNoChanges("already_labeled", html5_contents);
   EXPECT_EQ(1, pages_labeled_->Get());
   EXPECT_EQ(0, pages_role_added_->Get());
   // Classify fully, compare against gold labeling.
   // Note that changes are fairly minimal.
-  filter_->set_labeling_mode(MobilizeLabelFilter::kUseTagNamesAndClassifier);
+  filter_->mutable_labeling_mode() = MobilizeLabelFilter::kDefaultLabelingMode;
   GoogleString labeled_filename =
       StrCat(GTestSrcDir(), kTestDataDir, kOriginalHtml5Labeled);
   GoogleString labeled_contents;
@@ -366,14 +366,33 @@ TEST_F(MobilizeLabelFilterTest, MarginalPropagation) {
   EXPECT_EQ(4, divs_unlabeled_->Get());
 }
 
+TEST_F(MobilizeLabelFilterTest, ParentPropagation) {
+  filter_->mutable_labeling_mode() = MobilizeLabelFilter::kUseTagNames;
+  filter_->mutable_labeling_mode().propagate_to_parent = true;
+  // Make sure an element all of whose children are labeled inherits the label,
+  // and an element whose children's labels conflict does not.
+  const char kOutputHtml[] =
+      "<div>\n"  // One nav, one header -> no label.
+      " <div data-mobile-role=\"navigational\">\n"  // Both children nav.
+      "  <div>\n"  // Only child is nav, so nav.
+      "   <nav></nav>\n"
+      "  </div>\n"
+      "  <nav></nav>\n"
+      " </div>\n"
+      " <header data-mobile-role=\"header\"></header>\n"
+      "</div>\n";
+  ValidateExpected("Parent propagation",
+                   Unlabel(kOutputHtml), kOutputHtml);
+}
+
 TEST_F(MobilizeLabelFilterTest, SmallCountNav) {
   EnableVerbose();
   const char kOutputHtml[] =
       "<head></head><body>\n"
-      "<div class='container'>\n"
+      "<div class='container'"
+      " data-mobile-role=\"navigational\">\n"
       " <a href='a'>a</a>\n"
-      " <div class='menu' id='hdr' role='nav'"
-      " data-mobile-role=\"navigational\"><ul>\n"
+      " <div class='menu' id='hdr' role='nav'><ul>\n"
       "  <li><a href='n1'>nav 1</a></li>\n"
       "  <li><a href='n2'>nav 2</a></li>\n"
       "  <li><a href='n3'>nav 3</a></li>\n"
@@ -402,8 +421,7 @@ TEST_F(MobilizeLabelFilterTest, SmallCountNav) {
       " ul count: 1,"
       " ul percent: 100.00-->\n"
       " </div>"
-      "<!--role: navigational,"
-      " ElementTagDepth: 2,"
+      "<!--ElementTagDepth: 2,"
       " PreviousTagCount: 2,"
       " PreviousTagPercent: 20.00,"
       " PreviousContentBytes: 1,"
@@ -432,7 +450,8 @@ TEST_F(MobilizeLabelFilterTest, SmallCountNav) {
       " ul count: 1,"
       " ul percent: 100.00-->\n"
       "</div>"
-      "<!--ElementTagDepth: 1,"
+      "<!--role: navigational,"
+      " ElementTagDepth: 1,"
       " ContainedTagDepth: 5,"
       " ContainedTagRelativeDepth: 4,"
       " ContainedTagCount: 10,"
@@ -548,8 +567,8 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       "</nav>\n"
       "<menu data-mobile-role=\"navigational\">Labeled</menu>\n"
       "<header data-mobile-role=\"header\"><h1>Labeled</h1></header>\n"
-      "<div id='body'>\n"
-      "  <main data-mobile-role=\"content\">labeled\n"
+      "<div id='body' data-mobile-role=\"content\">\n"
+      "  <main>labeled\n"
       "    <article><section>unlabeled</section>\n"
       "    </article>\n"
       "  </main>\n"
@@ -611,8 +630,8 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedNonAContentBytes: 7,"
       " div count: 1,"
       " h1 count: 1-->\n"
-      "<div id='body'>\n"
-      "  <main data-mobile-role=\"content\">labeled\n"
+      "<div id='body' data-mobile-role=\"content\">\n"
+      "  <main>labeled\n"
       "    <article><section>unlabeled</section>"
       "<!--ElementTagDepth: 4,"
       " PreviousTagCount: 8,"
@@ -634,8 +653,7 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedNonAContentBytes: 9,"
       " div count: 2-->\n"
       "  </main>"
-      "<!--role: content,"
-      " ElementTagDepth: 2,"
+      "<!--ElementTagDepth: 2,"
       " PreviousTagCount: 6,"
       " ContainedTagDepth: 4,"
       " ContainedTagRelativeDepth: 2,"
@@ -644,9 +662,8 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedNonBlankBytes: 16,"
       " ContainedNonAContentBytes: 16,"
       " div count: 3-->\n"
-      "  <article data-mobile-role=\"content\">also labeled</article>"
-      "<!--role: content,"
-      " ElementTagDepth: 2,"
+      "  <article>also labeled</article>"
+      "<!--ElementTagDepth: 2,"
       " PreviousTagCount: 9,"
       " ContainedTagDepth: 2,"
       " ContainedTagRelativeDepth: 0,"
@@ -655,7 +672,7 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedNonBlankBytes: 11,"
       " ContainedNonAContentBytes: 12,"
       " div count: 1-->\n"
-      "  <section data-mobile-role=\"content\">this too\n"
+      "  <section>this too\n"
       "    <aside data-mobile-role=\"marginal\">and this, it differs.</aside>"
       "<!--role: marginal,"
       " ElementTagDepth: 3,"
@@ -668,8 +685,7 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedNonAContentBytes: 21,"
       " div count: 1-->\n"
       "  </section>"
-      "<!--role: content,"
-      " ElementTagDepth: 2,"
+      "<!--ElementTagDepth: 2,"
       " PreviousTagCount: 10,"
       " ContainedTagDepth: 3,"
       " ContainedTagRelativeDepth: 1,"
@@ -679,7 +695,8 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedNonAContentBytes: 29,"
       " div count: 2-->\n"
       "</div>"
-      "<!--ElementTagDepth: 1,"
+      "<!--role: content,"
+      " ElementTagDepth: 1,"
       " PreviousTagCount: 5,"
       " ContainedTagDepth: 4,"
       " ContainedTagRelativeDepth: 3,"
@@ -732,7 +749,7 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
   EXPECT_EQ(1, pages_role_added_->Get());
   EXPECT_EQ(3, navigational_roles_->Get());
   EXPECT_EQ(1, header_roles_->Get());
-  EXPECT_EQ(3, content_roles_->Get());
+  EXPECT_EQ(1, content_roles_->Get());
   EXPECT_EQ(3, marginal_roles_->Get());
 }
 
@@ -745,13 +762,13 @@ TEST_F(MobilizeLabelFilterTest, LargeUnlabeled) {
       original_filename.c_str(), &original_contents, message_handler()));
   GoogleString unlabeled_contents = Unlabel(original_contents);
   // Classify using only tag names.  Shouldn't change anything.
-  filter_->set_labeling_mode(MobilizeLabelFilter::kUseTagNames);
+  filter_->mutable_labeling_mode() = MobilizeLabelFilter::kUseTagNames;
   ValidateNoChanges("unlabeled", unlabeled_contents);
   EXPECT_EQ(1, pages_labeled_->Get());
   EXPECT_EQ(0, pages_role_added_->Get());
   // Classify fully, compare against gold labeling.
   // Note that we don't necessarily match the labeling of the original!
-  filter_->set_labeling_mode(MobilizeLabelFilter::kUseTagNamesAndClassifier);
+  filter_->mutable_labeling_mode() = MobilizeLabelFilter::kDefaultLabelingMode;
   GoogleString labeled_filename =
       StrCat(GTestSrcDir(), kTestDataDir, kOriginalLabeled);
   GoogleString labeled_contents;

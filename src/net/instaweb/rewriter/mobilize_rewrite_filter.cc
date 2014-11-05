@@ -594,8 +594,9 @@ void MobilizeRewriteFilter::LogMovedBlock(MobileRole::Level level) {
       num_marginal_blocks_->Add(1);
       break;
     case MobileRole::kInvalid:
+    case MobileRole::kUnassigned:
       // Should not happen.
-      LOG(DFATAL) << "Attepted to move kInvalid element";
+      LOG(DFATAL) << "Attepted to move kInvalid or kUnassigned element";
       break;
   }
 }
