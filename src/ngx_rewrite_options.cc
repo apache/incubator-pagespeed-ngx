@@ -276,10 +276,11 @@ const char* NgxRewriteOptions::ParseAndSetOptions(
 
   ScriptLine* script_line;
   script_line = NULL;
-  // Only allow script variable support for LoadFromFile for now.
   // Note that LoadFromFile should not be scriptable on wildcard hosts,
   // as browsers might be able to manipulate its natural use-case: $http_host.
-  if (!StringCaseStartsWith(directive, "LoadFromFile")) {
+  if (!StringCaseStartsWith(directive, "LoadFromFile") &&
+      !StringCaseEqual(directive, "EnableFilters") &&
+      !StringCaseEqual(directive, "DisableFilters")) {
     compile_scripts = false;
   }
 
