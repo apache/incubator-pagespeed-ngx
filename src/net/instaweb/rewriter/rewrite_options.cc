@@ -2752,6 +2752,7 @@ bool RewriteOptions::AdjustFiltersByCommaSeparatedList(
   bool non_incremental = names.empty();
   for (int i = 0, n = names.size(); i < n; ++i) {
     StringPiece& option = names[i];
+    TrimWhitespace(&option);
     if (!option.empty()) {
       if (option[0] == '-') {
         option.remove_prefix(1);

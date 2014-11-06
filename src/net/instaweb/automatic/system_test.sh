@@ -100,8 +100,9 @@ echo "Image gets rewritten by default."
 WGET_ARGS="--header='X-PSA-Blocking-Rewrite:psatest'"
 fetch_until $URL 'fgrep -c BikeCrashIcn.png.pagespeed.ic' 1
 echo "Image doesn't get rewritten when we turn it off with headers."
+# The space after '-convert_png_to_jpeg,' is to test that we do strip spaces.
 OUT=$($WGET_DUMP --header="X-PSA-Blocking-Rewrite:psatest" \
-  --header="PageSpeedFilters:-convert_png_to_jpeg,-recompress_png" $URL)
+  --header="PageSpeedFilters:-convert_png_to_jpeg, -recompress_png" $URL)
 check_not_from "$OUT" fgrep -q "BikeCrashIcn.png.pagespeed.ic"
 
 # TODO(vchudnov): This test is not doing quite what it advertises. It

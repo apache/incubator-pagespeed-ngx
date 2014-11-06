@@ -708,7 +708,7 @@ TEST_F(RewriteOptionsTest, CoreByNameNotLevel) {
 
 TEST_F(RewriteOptionsTest, PlusAndMinus) {
   static const char kList[] =
-      "core,+div_structure,-inline_css,+extend_cache_css";
+      "core,+div_structure, -inline_css,+extend_cache_css";
   NullMessageHandler handler;
   options_.SetRewriteLevel(RewriteOptions::kPassThrough);
   ASSERT_TRUE(options_.AdjustFiltersByCommaSeparatedList(kList, &handler));
