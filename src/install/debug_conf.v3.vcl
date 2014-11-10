@@ -42,7 +42,7 @@ sub generate_user_agent_based_key {
     # Cache-fragment 1: Desktop User-Agents that support lazyload_images (ll),
     # inline_images (ii) and defer_javascript (dj).
     # Note: Wget is added for testing purposes only.
-    if (req.http.User-Agent ~ "(?i)Chrome/|Firefox/|MSIE |Safari|Wget") {
+    if (req.http.User-Agent ~ "(?i)Chrome/|Firefox/|Trident/6\.|Safari|Wget") {
       set req.http.PS-CapabilityList = "ll,ii,dj:";
     }
     # Cache-fragment 2: Desktop User-Agents that support lazyload_images (ll),
@@ -58,7 +58,7 @@ sub generate_user_agent_based_key {
     # compression qualities applicable to large screens. Note that even tablets
     # that are capable of supporting inline or webp images, for e.g. Android
     # 4.1.2, will not get these advanced optimizations.
-    if (req.http.User-Agent ~ "(?i)Firefox/[1-2]\.|MSIE [5-8]\.|bot|Yahoo!|Ruby|RPT-HTTPClient|(Google \(\+https\:\/\/developers\.google\.com\/\+\/web\/snippet\/\))|Android|iPad|TouchPad|Silk-Accelerated|Kindle Fire") {
+    if (req.http.User-Agent ~ "(?i)Firefox/[1-2]\.|bot|Yahoo!|Ruby|RPT-HTTPClient|(Google \(\+https\:\/\/developers\.google\.com\/\+\/web\/snippet\/\))|Android|iPad|TouchPad|Silk-Accelerated|Kindle Fire") {
       set req.http.PS-CapabilityList = req.http.default_ps_capability_list_for_large_screens;
     }
     # Cache-fragment 4: Mobiles and small screen tablets will use image
