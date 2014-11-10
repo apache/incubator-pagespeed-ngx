@@ -171,11 +171,11 @@ TEST_F(MobilizeRewriteUnitTest, CheckGetContainers) {
                 "<div name='marginal'></div></body>");
   for (int i = 0; i < MobileRole::kInvalid; i++) {
     MobileRole::Level expected = static_cast<MobileRole::Level>(i);
-    const MobileRole* role = &MobileRole::kMobileRoles[i];
+    const MobileRoleData* role = &MobileRoleData::kMobileRoles[i];
     EXPECT_EQ(expected, role->level);
-    const char* string = MobileRole::StringFromLevel(expected);
+    const char* string = MobileRoleData::StringFromLevel(expected);
     EXPECT_EQ(string, role->value);
-    EXPECT_EQ(expected, MobileRole::LevelFromString(string));
+    EXPECT_EQ(expected, MobileRoleData::LevelFromString(string));
     HtmlElement* container = FilterMobileRoleToContainer(expected);
     EXPECT_FALSE(container == NULL);
     EXPECT_TRUE(FilterIsReorderContainer(container));

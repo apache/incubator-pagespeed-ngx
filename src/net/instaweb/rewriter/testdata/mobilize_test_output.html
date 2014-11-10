@@ -149,13 +149,7 @@
     </div>
     
     
-  </div><div class="headline_area" data-mobile-role="header">
-            <h1 class="entry-title">Isn't Mobilization Cool!?</h1>
-            <p class="headline_author">
-              <span class="author">Foobar</span><br/>
-              <abbr class="published" title="2014-01-01">2014-01-01</abbr>
-            </p>
-          </div><div id="nav_area" class="full_width" data-mobile-role="navigational">
+  </div><div id="nav_area" class="full_width" data-mobile-role="navigational">
     <div class="page">
       <ul class="nav_menu">
         <li class="tab"><a href="http://test.com">Home</a></li>
@@ -169,10 +163,36 @@
       <a href="http://test.com/mondo">Mondo</a>
       <a href="http://test.com/outrageous">Outrageous</a>
       <a href="http://test.com/funky">Funky</a>
-    </div><div class="page" data-mobile-role="content">
+    </div><form action="http://test.com/form/" method="get" data-mobile-role="content">
+        <ul><li class="widget">
+            <h3>Months</h3>
+            <select name="archive" onchange='document.location.href=this.options[this.selectedIndex].value;'>
+              <option value="">Select Month</option>
+              <option value='http://test.com/m=apr'>April</option>
+              <option value='http://test.com/m=may'>May</option>
+              <option value='http://test.com/m=jun'>June</option>
+            </select>
+          </li><li class="widget">
+            <h3>Categories</h3>
+            <select name='cat' id='cat' onchange='document.location.href=this.options[this.selectedIndex].value;'>
+              <option value="">Select Category</option>
+              <option value='http://test.com/c=gnarly'>Gnarly</option>
+              <option value='http://test.com/c=tubular'>Tubular</option>
+              <option value='http://test.com/c=groovy'>Awesome</option>
+            </select>
+        </li></ul>
+      </form><div id="content_area" class="full_width" data-mobile-role="content">
+    
+    <div class="page" data-mobile-role="content">
       <div id="content" class="feed">
         <div class="post type-post status-publish">
-          
+          <div class="headline_area">
+            <h1 class="entry-title">Isn't Mobilization Cool!?</h1>
+            <p class="headline_author">
+              <span class="author">Foobar</span><br/>
+              <abbr class="published" title="2014-01-01">2014-01-01</abbr>
+            </p>
+          </div>
           <div class="entry-content">
             <div class="empty"></div>
             <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur mi est, pulvinar id euismod non, aliquam non dui.<br/>
@@ -202,27 +222,10 @@ int main()
           </div>
         </div>
       </div>
-    </div><div class="aside" data-mobile-role="marginal">
+    </div>
+  </div><div class="aside" data-mobile-role="marginal">
       
-      <form action="http://test.com/form/" method="get">
-        <ul><li class="widget">
-            <h3>Months</h3>
-            <select name="archive" onchange='document.location.href=this.options[this.selectedIndex].value;'>
-              <option value="">Select Month</option>
-              <option value='http://test.com/m=apr'>April</option>
-              <option value='http://test.com/m=may'>May</option>
-              <option value='http://test.com/m=jun'>June</option>
-            </select>
-          </li><li class="widget">
-            <h3>Categories</h3>
-            <select name='cat' id='cat' onchange='document.location.href=this.options[this.selectedIndex].value;'>
-              <option value="">Select Category</option>
-              <option value='http://test.com/c=gnarly'>Gnarly</option>
-              <option value='http://test.com/c=tubular'>Tubular</option>
-              <option value='http://test.com/c=groovy'>Awesome</option>
-            </select>
-        </li></ul>
-      </form>
+      
     </div><div class="footer" data-mobile-role="marginal">
     Nulla ac elit sed urna molestie iaculis. Morbi posuere ac libero in fringilla.
     <br><a class="top"></a>

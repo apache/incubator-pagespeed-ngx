@@ -80,6 +80,8 @@ struct RelevantTagMetadata {
 
 // For div-like sectioning tags (those with roles), see also
 // https://developers.whatwg.org/sections.html#sections
+// Entries with trailing comment are potentially useless and
+// being monitored for removal.
 const RelevantTagMetadata kRelevantTags[] = {
   /* tag name            tag symbol    div_like?   role */
   { HtmlName::kA,        kATag,        false,    MobileRole::kUnassigned },
@@ -87,7 +89,7 @@ const RelevantTagMetadata kRelevantTags[] = {
   { HtmlName::kAside,    kAsideTag,    true,     MobileRole::kMarginal },
   { HtmlName::kButton,   kButtonTag,   false,    MobileRole::kUnassigned },
   { HtmlName::kContent,  kContentTag,  true,     MobileRole::kContent },
-  { HtmlName::kDatalist, kDatalistTag, false,    MobileRole::kUnassigned },
+  { HtmlName::kDatalist, kDatalistTag, false,    MobileRole::kUnassigned },  //
   { HtmlName::kDiv,      kDivTag,      true,     MobileRole::kUnassigned },
   { HtmlName::kFieldset, kFieldsetTag, false,    MobileRole::kUnassigned },
   { HtmlName::kFooter,   kFooterTag,   true,     MobileRole::kMarginal },
@@ -101,16 +103,16 @@ const RelevantTagMetadata kRelevantTags[] = {
   { HtmlName::kHeader,   kHeaderTag,   true,     MobileRole::kHeader },
   { HtmlName::kImg,      kImgTag,      false,    MobileRole::kUnassigned },
   { HtmlName::kInput,    kInputTag,    false,    MobileRole::kUnassigned },
-  { HtmlName::kLegend,   kLegendTag,   false,    MobileRole::kUnassigned },
+  { HtmlName::kLegend,   kLegendTag,   false,    MobileRole::kUnassigned },  //
   { HtmlName::kLi,       kLiTag,       false,    MobileRole::kUnassigned },
   { HtmlName::kMain,     kMainTag,     true,     MobileRole::kContent },
   { HtmlName::kMenu,     kMenuTag,     true,     MobileRole::kNavigational },
   { HtmlName::kNav,      kNavTag,      true,     MobileRole::kNavigational },
-  { HtmlName::kOptgroup, kOptgroupTag, false,    MobileRole::kUnassigned },
+  { HtmlName::kOptgroup, kOptgroupTag, false,    MobileRole::kUnassigned },  //
   { HtmlName::kOption,   kOptionTag,   false,    MobileRole::kUnassigned },
   { HtmlName::kP,        kPTag,        false,    MobileRole::kUnassigned },
-  { HtmlName::kSection,  kSectionTag,  true,     MobileRole::kContent },
-  { HtmlName::kSelect,   kSelectTag,   false,    MobileRole::kUnassigned },
+  { HtmlName::kSection,  kSectionTag,  true,     MobileRole::kUnassigned },
+  { HtmlName::kSelect,   kSelectTag,   false,    MobileRole::kUnassigned },  //
   { HtmlName::kSpan,     kSpanTag,     false,    MobileRole::kUnassigned },
   { HtmlName::kTextarea, kTextareaTag, false,    MobileRole::kUnassigned },
   { HtmlName::kUl,       kUlTag,       true,     MobileRole::kUnassigned },
@@ -133,32 +135,34 @@ struct RelevantAttrMetadata {
 // kNumAttrStrings must be kept up to date when you change this (you should get
 // a compile error if you add entries, but be very careful when removing them).
 const RelevantAttrMetadata kRelevantAttrSubstrings[] = {
-  {kArticleAttr, "article"},
-  {kAsideAttr,   "aside"},
+  {kArticleAttr, "article"},   // Useless?
+  {kAsideAttr,   "aside"},     // Useless?
+  {kBannerAttr,  "banner"},
   {kBarAttr,     "bar"},
-  {kBodyAttr,    "body"},
-  {kBottomAttr,  "bottom"},
-  {kCenterAttr,  "center"},
-  {kColumnAttr,  "column"},
+  {kBodyAttr,    "body"},      // Useless?
+  {kBotAttr,     "bot"},
+  {kCenterAttr,  "center"},    // Useless?
+  {kColAttr,     "col"},
   {kCommentAttr, "comment"},
   {kContentAttr, "content"},
-  {kFindAttr,    "find"},
+  {kFindAttr,    "find"},      // Useless?
   {kFootAttr,    "foot"},
-  {kHdrAttr,     "hdr"},
+  {kHdrAttr,     "hdr"},       // Useless?
   {kHeadAttr,    "head"},
-  {kLeftAttr,    "left"},
+  {kLeftAttr,    "left"},      // Useless?
   {kLogoAttr,    "logo"},
-  {kMainAttr,    "main"},
-  {kMarginAttr,  "margin"},
+  {kMainAttr,    "main"},      // Useless?
+  {kMarginAttr,  "margin"},    // Useless?
   {kMenuAttr,    "menu"},
-  {kMiddleAttr,  "middle"},
+  {kMidAttr,     "mid"},
   {kNavAttr,     "nav"},
   {kPostAttr,    "post"},
-  {kRightAttr,   "right"},
+  {kRightAttr,   "right"},     // Useless?
   {kSearchAttr,  "search"},
   {kSecAttr,     "sec"},
-  {kTitleAttr,   "title"},
+  {kTitleAttr,   "title"},     // Useless?
   {kTopAttr,     "top"},
+  {kWrapAttr,    "wrap"},
 };
 
 // We search the following attributes on div-like tags, as these attributes tend
@@ -340,7 +344,7 @@ GoogleString ElementSample::ToString(bool readable, HtmlParse* parser) {
     StrAppend(
         &sample_string,
         StringPrintf("%srole%s: %s%s%s, ",
-                     q, q, q, MobileRole::kMobileRoles[role].value, q));
+                     q, q, q, MobileRoleData::kMobileRoles[role].value, q));
   }
   StrAppend(
       &sample_string,
@@ -577,7 +581,7 @@ void MobilizeLabelFilter::HandleDivLikeElement(HtmlElement* element,
       element->FindAttribute(HtmlName::kDataMobileRole);
   if (mobile_role_attribute != NULL) {
     sample->role =
-        MobileRole::LevelFromString(mobile_role_attribute->escaped_value());
+        MobileRoleData::LevelFromString(mobile_role_attribute->escaped_value());
   } else {
     sample->role = role;
   }
@@ -671,7 +675,7 @@ void MobilizeLabelFilter::SetMobileRole(HtmlElement* element,
     return;
   }
   driver()->AddEscapedAttribute(element, HtmlName::kDataMobileRole,
-                                MobileRole::StringFromLevel(role));
+                                MobileRoleData::StringFromLevel(role));
   were_roles_added_ = true;
   role_variables_[role]->Add(1);
 }
@@ -972,8 +976,7 @@ void MobilizeLabelFilter::Label() {
   samples_[0]->role = MobileRole::kInvalid;
   for (int i = 1; i < n; ++i) {
     ElementSample* sample = samples_[i];
-    if (IsRoleValid(sample->role) &&
-        sample->role != sample->parent->role) {
+    if (IsRoleValid(sample->role) && sample->role != sample->parent->role) {
       SetMobileRole(sample->element, sample->role);
     } else {
       if (sample->role == MobileRole::kUnassigned) {

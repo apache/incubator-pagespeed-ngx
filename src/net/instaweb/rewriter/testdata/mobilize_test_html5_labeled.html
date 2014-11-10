@@ -49,13 +49,13 @@
       alert('01');
     </script>
   </header>
-  <div id="content_area" class="full_width">
+  <div id="content_area" class="full_width" data-mobile-role="content">
     <aside class="aside" data-mobile-role="marginal">
       <script>
         document.getElementById("stuff02").innerHTML = "";
         alert('02');
       </script>
-      <form action="http://test.com/form/" method="get">
+      <form action="http://test.com/form/" method="get" data-mobile-role="content">
         <ul><li class="widget">
             <h3>Months</h3>
             <select name="archive" onchange='document.location.href=this.options[this.selectedIndex].value;'>
@@ -78,7 +78,7 @@
     <content class="page" data-mobile-role="content">
       <div id="content" class="feed">
         <div class="post type-post status-publish">
-          <div class="headline_area" data-mobile-role="header">
+          <div class="headline_area">
             <h1 class="entry-title">Isn't Mobilization Cool!?</h1>
             <p class="headline_author">
               <span class="author">Foobar</span><br/>

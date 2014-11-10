@@ -23,6 +23,32 @@
 
 namespace net_instaweb {
 
+namespace MobileRole {
+  enum Level {
+    // Tags which aren't explicitly tagged with a data-mobile-role attribute,
+    // but we want to keep anyway, such as <style> or <script> tags in the body.
+    kKeeper = 0,
+    // The page header, such as <h1> or logos.
+    kHeader,
+    // Nav sections of the page. The HTML of nav blocks will be completely
+    // rewritten to be mobile friendly.
+    kNavigational,
+    // Main content of the page.
+    kContent,
+    // Any block that isn't one of the above. Marginal content is put at the end
+    // and otherwise remains pretty much untouched with respect to modifying
+    // HTML or styling.
+    kMarginal,
+    // Elements below don't have a defined role (the order matters).
+    // Elements that we've decided should not have a data-mobile-role attribute
+    // will be kInvalid.
+    kInvalid,
+    // Elements whose data-mobile-role is still undecided will be kUnassigned.
+    // This value must not exist after labeling.
+    kUnassigned
+  };
+}  // namespace MobileRole
+
 // The following three enums are used to name signals used by the decision trees
 // and computed by the mobilize_label_filter.
 
@@ -36,7 +62,7 @@ enum MobileRelevantTag {
   kAsideTag,
   kButtonTag,
   kContentTag,
-  kDatalistTag,
+  kDatalistTag,  // Useless?
   kDivTag,
   kFieldsetTag,
   kFooterTag,
@@ -50,16 +76,16 @@ enum MobileRelevantTag {
   kHeaderTag,
   kImgTag,
   kInputTag,
-  kLegendTag,
+  kLegendTag,    // Useless?
   kLiTag,
   kMainTag,
   kMenuTag,
   kNavTag,
-  kOptgroupTag,
+  kOptgroupTag,  // Useless?
   kOptionTag,
   kPTag,
   kSectionTag,
-  kSelectTag,
+  kSelectTag,    // Useless?
   kSpanTag,
   kTextareaTag,
   kUlTag,
@@ -69,32 +95,34 @@ enum MobileRelevantTag {
 // Attribute substrings that are considered interesting if they occur in the id,
 // class, or role of a div-like tag.
 enum MobileAttrSubstring {
-  kArticleAttr = 0,
-  kAsideAttr,
+  kArticleAttr = 0,  // Useless?
+  kAsideAttr,        // Useless?
+  kBannerAttr,
   kBarAttr,
-  kBodyAttr,
-  kBottomAttr,
-  kCenterAttr,
-  kColumnAttr,
+  kBodyAttr,         // Useless?
+  kBotAttr,
+  kCenterAttr,       // Useless?
+  kColAttr,
   kCommentAttr,
   kContentAttr,
-  kFindAttr,
+  kFindAttr,         // Useless?
   kFootAttr,
-  kHdrAttr,
+  kHdrAttr,          // Useless?
   kHeadAttr,
-  kLeftAttr,
+  kLeftAttr,         // Useless?
   kLogoAttr,
-  kMainAttr,
-  kMarginAttr,
+  kMainAttr,         // Useless?
+  kMarginAttr,       // Useless?
   kMenuAttr,
-  kMiddleAttr,
+  kMidAttr,
   kNavAttr,
   kPostAttr,
-  kRightAttr,
+  kRightAttr,        // Useless?
   kSearchAttr,
   kSecAttr,
-  kTitleAttr,
+  kTitleAttr,        // Useless?
   kTopAttr,
+  kWrapAttr,
   kNumAttrStrings
 };
 
@@ -151,7 +179,8 @@ enum FeatureName {
   kHasAttrString,
   kRelevantTagCount = kHasAttrString + kNumAttrStrings,
   kRelevantTagPercent = kRelevantTagCount + kNumRelevantTags,
-  kNumFeatures = kRelevantTagPercent + kNumRelevantTags
+  kParentRoleIs = kRelevantTagPercent + kNumRelevantTags,
+  kNumFeatures = kParentRoleIs + MobileRole::kUnassigned
 };
 
 // Forward declarations for the machine-generated decision trees used by

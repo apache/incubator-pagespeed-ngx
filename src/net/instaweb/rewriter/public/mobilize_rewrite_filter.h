@@ -21,6 +21,7 @@
 
 #include <vector>
 
+#include "net/instaweb/rewriter/public/mobilize_decision_trees.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -36,45 +37,20 @@ class Statistics;
 class Variable;
 
 // A mobile role and its associated HTML attribute value.
-struct MobileRole {
-  enum Level {
-    // Tags which aren't explicitly tagged with a data-mobile-role attribute,
-    // but we want to keep anyway, such as <style> or <script> tags in the body.
-    kKeeper = 0,
-    // The page header, such as <h1> or logos.
-    kHeader,
-    // Nav sections of the page. The HTML of nav blocks will be completely
-    // rewritten to be mobile friendly by deleting unwanted elements in the
-    // block.
-    kNavigational,
-    // Main content of the page.
-    kContent,
-    // Any block that isn't one of the above. Marginal content is put at the end
-    // and remains pretty much untouched with respect to modifying HTML or
-    // styling.
-    kMarginal,
-    // Elements below don't have a defined role (the order matters).
-    // Elements that we've decided should not have a data-mobile-role attribute
-    // will be kInvalid.
-    kInvalid,
-    // Elements whose data-mobile-role is still undecided will be kUnassigned.
-    // This value must not exist after labeling.
-    kUnassigned
-  };
+struct MobileRoleData {
+  static const MobileRoleData kMobileRoles[MobileRole::kInvalid];
 
-  static const MobileRole kMobileRoles[kInvalid];
-
-  MobileRole(Level level, const char* value)
+  MobileRoleData(MobileRole::Level level, const char* value)
       : level(level),
         value(value) { }
 
-  static const MobileRole* FromString(const StringPiece& mobile_role);
-  static Level LevelFromString(const StringPiece& mobile_role);
-  static const char* StringFromLevel(Level level) {
-    return (level < kInvalid) ? kMobileRoles[level].value : NULL;
+  static const MobileRoleData* FromString(const StringPiece& mobile_role);
+  static MobileRole::Level LevelFromString(const StringPiece& mobile_role);
+  static const char* StringFromLevel(MobileRole::Level level) {
+    return (level < MobileRole::kInvalid) ? kMobileRoles[level].value : NULL;
   }
 
-  const Level level;
+  const MobileRole::Level level;
   const char* const value;  // Set to a static string in cc.
 };
 

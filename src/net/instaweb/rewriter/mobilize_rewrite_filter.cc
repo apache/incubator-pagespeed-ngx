@@ -36,13 +36,13 @@ namespace net_instaweb {
 
 extern const char* CSS_mobilize_css;
 
-const MobileRole MobileRole::kMobileRoles[MobileRole::kInvalid] = {
+const MobileRoleData MobileRoleData::kMobileRoles[MobileRole::kInvalid] = {
   // This is the order that the HTML content will be rearranged.
-  MobileRole(MobileRole::kKeeper, "keeper"),
-  MobileRole(MobileRole::kHeader, "header"),
-  MobileRole(MobileRole::kNavigational, "navigational"),
-  MobileRole(MobileRole::kContent, "content"),
-  MobileRole(MobileRole::kMarginal, "marginal")
+  MobileRoleData(MobileRole::kKeeper, "keeper"),
+  MobileRoleData(MobileRole::kHeader, "header"),
+  MobileRoleData(MobileRole::kNavigational, "navigational"),
+  MobileRoleData(MobileRole::kContent, "content"),
+  MobileRoleData(MobileRole::kMarginal, "marginal")
 };
 
 const char MobilizeRewriteFilter::kPagesMobilized[] =
@@ -506,7 +506,7 @@ void MobilizeRewriteFilter::AddReorderContainers(HtmlElement* element) {
           element, HtmlName::kDiv);
       added_container->AddAttribute(
           driver_->MakeName(HtmlName::kName),
-          MobileRole::StringFromLevel(level),
+          MobileRoleData::StringFromLevel(level),
           HtmlElement::SINGLE_QUOTE);
       driver_->AppendChild(element, added_container);
       mobile_role_containers_.push_back(added_container);
@@ -521,7 +521,7 @@ void MobilizeRewriteFilter::RemoveReorderContainers() {
       if (driver_->DebugMode()) {
         MobileRole::Level level = static_cast<MobileRole::Level>(i);
         GoogleString msg(StrCat("End section: ",
-                                MobileRole::StringFromLevel(level)));
+                                MobileRoleData::StringFromLevel(level)));
         driver_->InsertDebugComment(msg, mobile_role_containers_[i]);
       }
       driver_->DeleteSavingChildren(mobile_role_containers_[i]);
@@ -548,7 +548,8 @@ HtmlElement* MobilizeRewriteFilter::MobileRoleToContainer(
       NULL : mobile_role_containers_[level];
 }
 
-const MobileRole* MobileRole::FromString(const StringPiece& mobile_role) {
+const MobileRoleData*
+MobileRoleData::FromString(const StringPiece& mobile_role) {
   for (int i = 0, n = arraysize(kMobileRoles); i < n; ++i) {
     if (mobile_role == kMobileRoles[i].value) {
       return &kMobileRoles[i];
@@ -557,10 +558,11 @@ const MobileRole* MobileRole::FromString(const StringPiece& mobile_role) {
   return NULL;
 }
 
-MobileRole::Level MobileRole::LevelFromString(const StringPiece& mobile_role) {
-  const MobileRole* role = FromString(mobile_role);
+MobileRole::Level
+MobileRoleData::LevelFromString(const StringPiece& mobile_role) {
+  const MobileRoleData* role = FromString(mobile_role);
   if (role == NULL) {
-    return kInvalid;
+    return MobileRole::kInvalid;
   } else {
     return role->level;
   }
@@ -571,7 +573,8 @@ MobileRole::Level MobilizeRewriteFilter::GetMobileRole(
   HtmlElement::Attribute* mobile_role_attribute =
       element->FindAttribute(HtmlName::kDataMobileRole);
   if (mobile_role_attribute) {
-    return MobileRole::LevelFromString(mobile_role_attribute->escaped_value());
+    return MobileRoleData::LevelFromString(
+        mobile_role_attribute->escaped_value());
   } else {
     if (CheckForKeyword(kKeeperTags, kNumKeeperTags,
                         element->keyword())) {

@@ -127,6 +127,7 @@ class MobilizeLabelFilterTest : public RewriteTestBase {
     GlobalReplaceSubstring("-->", ", -->", &output_buffer_);
     GlobalEraseBracketedSubstring("div percent:", ", ", &output_buffer_);
     GlobalEraseBracketedSubstring("h1 percent:", ", ", &output_buffer_);
+    GlobalEraseBracketedSubstring("section percent:", ", ", &output_buffer_);
     GlobalReplaceSubstring(", -->", "-->", &output_buffer_);
   }
 
@@ -187,10 +188,10 @@ TEST_F(MobilizeLabelFilterTest, AlreadyLabeled) {
   EXPECT_EQ(2, pages_labeled_->Get());
   EXPECT_EQ(1, pages_role_added_->Get());
   EXPECT_EQ(0, navigational_roles_->Get());
-  EXPECT_EQ(1, header_roles_->Get());
-  EXPECT_EQ(0, content_roles_->Get());
+  EXPECT_EQ(0, header_roles_->Get());
+  EXPECT_EQ(2, content_roles_->Get());
   EXPECT_EQ(0, marginal_roles_->Get());
-  EXPECT_EQ(0, ambiguous_role_labels_->Get());
+  EXPECT_EQ(2, ambiguous_role_labels_->Get());
   EXPECT_EQ(25, divs_unlabeled_->Get());
 }
 
@@ -211,9 +212,9 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInHead) {
 TEST_F(MobilizeLabelFilterTest, TinyCount) {
   EnableVerbose();
   const char kOutputHtml[] =
-      "<div role='content' data-mobile-role=\"marginal\">Hello there,"
+      "<div role='content' data-mobile-role=\"header\">Hello there,"
       " <a href='http://theworld.com/'>World</a></div>"
-      "<!--role: marginal,"
+      "<!--role: header,"
       " ElementTagDepth: 1,"
       " ContainedTagDepth: 2,"       // <a> tag
       " ContainedTagRelativeDepth: 1,"
@@ -236,9 +237,9 @@ TEST_F(MobilizeLabelFilterTest, TinyCount) {
   EXPECT_EQ(1, pages_labeled_->Get());
   EXPECT_EQ(1, pages_role_added_->Get());
   EXPECT_EQ(0, navigational_roles_->Get());
-  EXPECT_EQ(0, header_roles_->Get());
+  EXPECT_EQ(1, header_roles_->Get());
   EXPECT_EQ(0, content_roles_->Get());
-  EXPECT_EQ(1, marginal_roles_->Get());
+  EXPECT_EQ(0, marginal_roles_->Get());
   EXPECT_EQ(0, ambiguous_role_labels_->Get());
   EXPECT_EQ(0, divs_unlabeled_->Get());
 }
@@ -246,10 +247,10 @@ TEST_F(MobilizeLabelFilterTest, TinyCount) {
 TEST_F(MobilizeLabelFilterTest, TinyCountNbsp) {
   EnableVerbose();
   const char kOutputHtml[] =
-      "<div role='content' data-mobile-role=\"marginal\">"
+      "<div role='content' data-mobile-role=\"header\">"
       "  &nbsp;Hello&nbsp;there,&nbsp;&nbsp;  "
       " <a href='http://theworld.com/'>World</a></div>"
-      "<!--role: marginal,"
+      "<!--role: header,"
       " ElementTagDepth: 1,"
       " ContainedTagDepth: 2,"       // <a> tag
       " ContainedTagRelativeDepth: 1,"
@@ -272,9 +273,9 @@ TEST_F(MobilizeLabelFilterTest, TinyCountNbsp) {
   EXPECT_EQ(1, pages_labeled_->Get());
   EXPECT_EQ(1, pages_role_added_->Get());
   EXPECT_EQ(0, navigational_roles_->Get());
-  EXPECT_EQ(0, header_roles_->Get());
+  EXPECT_EQ(1, header_roles_->Get());
   EXPECT_EQ(0, content_roles_->Get());
-  EXPECT_EQ(1, marginal_roles_->Get());
+  EXPECT_EQ(0, marginal_roles_->Get());
   EXPECT_EQ(0, ambiguous_role_labels_->Get());
   EXPECT_EQ(0, divs_unlabeled_->Get());
 }
@@ -348,10 +349,72 @@ TEST_F(MobilizeLabelFilterTest, MarginalPropagation) {
   const char kOutputHtml[] =
       "<div>\n"
       " <div data-mobile-role='header'>header</div>\n"
+      " <div data-mobile-role=\"content\">\n"
+      "  <p>Content</p>\n"
+      "  <p>More content</p>\n"
+      "  <p>Still more content</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      "  <p>Are we still here? This is really quite a lot of content.</p>\n"
+      " </div>\n"
       " <div data-mobile-role=\"marginal\">\n"
-      "  <div role='footer'>footer</div>\n"
-      "  <div role='junk'>junk</div>\n"
-      "  <div>more junk</div>\n"
+      "  A Marginal Title\n"
+      "  <div role='footer'><a>footer</a></div>\n"
+      "  <div role='junk'><a>junk</a></div>\n"
+      "  <div><a>more junk</a></div>\n"
       " </div>\n"
       "</div>";
   ValidateExpected("Marginal propagation",
@@ -360,7 +423,7 @@ TEST_F(MobilizeLabelFilterTest, MarginalPropagation) {
   EXPECT_EQ(1, pages_role_added_->Get());
   EXPECT_EQ(0, navigational_roles_->Get());
   EXPECT_EQ(0, header_roles_->Get());
-  EXPECT_EQ(0, content_roles_->Get());
+  EXPECT_EQ(1, content_roles_->Get());
   EXPECT_EQ(1, marginal_roles_->Get());
   EXPECT_EQ(0, ambiguous_role_labels_->Get());
   EXPECT_EQ(4, divs_unlabeled_->Get());
@@ -641,7 +704,7 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedContentBytes: 9,"
       " ContainedNonBlankBytes: 9,"
       " ContainedNonAContentBytes: 9,"
-      " div count: 1-->\n"
+      " section count: 1-->\n"
       "    </article>"
       "<!--ElementTagDepth: 3,"
       " PreviousTagCount: 7,"
@@ -651,7 +714,8 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedContentBytes: 9,"
       " ContainedNonBlankBytes: 9,"
       " ContainedNonAContentBytes: 9,"
-      " div count: 2-->\n"
+      " div count: 1,"
+      " section count: 1-->\n"
       "  </main>"
       "<!--ElementTagDepth: 2,"
       " PreviousTagCount: 6,"
@@ -661,7 +725,8 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedContentBytes: 16,"
       " ContainedNonBlankBytes: 16,"
       " ContainedNonAContentBytes: 16,"
-      " div count: 3-->\n"
+      " div count: 2,"
+      " section count: 1-->\n"
       "  <article>also labeled</article>"
       "<!--ElementTagDepth: 2,"
       " PreviousTagCount: 9,"
@@ -693,7 +758,8 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedContentBytes: 29,"
       " ContainedNonBlankBytes: 25,"
       " ContainedNonAContentBytes: 29,"
-      " div count: 2-->\n"
+      " div count: 1,"
+      " section count: 1-->\n"
       "</div>"
       "<!--role: content,"
       " ElementTagDepth: 1,"
@@ -705,7 +771,8 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedNonBlankBytes: 52,"
       " ContainedNonAContentBytes: 57,"
       " body: 1,"
-      " div count: 7-->\n"
+      " div count: 5,"
+      " section count: 2-->\n"
       "<aside data-mobile-role=\"marginal\">Labeled</aside>"
       "<!--role: marginal,"
       " ElementTagDepth: 1,"
@@ -779,11 +846,11 @@ TEST_F(MobilizeLabelFilterTest, LargeUnlabeled) {
   EXPECT_EQ(2, pages_labeled_->Get());
   EXPECT_EQ(1, pages_role_added_->Get());
   EXPECT_EQ(2, navigational_roles_->Get());
-  EXPECT_EQ(2, header_roles_->Get());
+  EXPECT_EQ(1, header_roles_->Get());
   EXPECT_EQ(1, content_roles_->Get());
-  EXPECT_EQ(2, marginal_roles_->Get());
-  EXPECT_EQ(0, ambiguous_role_labels_->Get());
-  EXPECT_EQ(31, divs_unlabeled_->Get());
+  EXPECT_EQ(1, marginal_roles_->Get());
+  EXPECT_EQ(2, ambiguous_role_labels_->Get());
+  EXPECT_EQ(33, divs_unlabeled_->Get());
 }
 
 }  // namespace
