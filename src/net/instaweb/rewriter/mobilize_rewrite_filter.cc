@@ -210,8 +210,8 @@ void MobilizeRewriteFilter::StartElement(HtmlElement* element) {
         driver_->InsertNodeAfterCurrent(script);
         HtmlCharactersNode* script_text = driver_->NewCharactersNode(
             script,
-            StrCat("window.PageSpeedMaxWidth = window.innerWidth || 400;"
-                   "psDebugMode = ", driver_->DebugMode() ? "true" : "false"));
+            StrCat("window.PageSpeedMaxWidth=screen.width||400;"
+                   "psDebugMode=", driver_->DebugMode() ? "true;" : "false;"));
         driver_->AppendChild(script, script_text);
       }
 
@@ -260,6 +260,16 @@ void MobilizeRewriteFilter::StartElement(HtmlElement* element) {
           scrim);
       driver_->AddAttribute(remove_bar, HtmlName::kId,
                             "ps-progress-remove");
+      if (!driver_->DebugMode()) {
+        driver_->AppendChild(scrim, driver_->NewElement(scrim, HtmlName::kBr));
+        driver_->AppendAnchor(
+            "javascript:psSetDebugMode();",
+            "Show Debug Log In Progress Bar",
+          scrim);
+        driver_->AddAttribute(remove_bar, HtmlName::kId,
+                              "ps-progress-show-log");
+      }
+
       const GoogleUrl& gurl = driver_->google_url();
       GoogleString origin_url, host;
       if (gurl.IsWebValid() &&

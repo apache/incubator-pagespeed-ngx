@@ -219,6 +219,12 @@ ScanlineStatus WebpFrameWriter::PrepareImage(const ImageSpec* image_spec) {
       image_spec->width, image_spec->height, kMin, kMax,
       false /* don't allow mixing lossy and lossless frames */);
 
+  if (webp_frame_cache_ == NULL) {
+    return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler(),
+                            SCANLINE_STATUS_MEMORY_ERROR,
+                            FRAME_WEBPWRITER, "WebPFrameCacheNew()");
+  }
+
   frame_position_px_ = NULL;
   frame_stride_px_ = 0;
   next_scanline_ = 0;
