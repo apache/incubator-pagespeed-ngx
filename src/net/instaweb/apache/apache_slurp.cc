@@ -26,6 +26,7 @@
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/domain_rewrite_filter.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/system/public/system_rewrite_options.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
@@ -249,7 +250,15 @@ bool InstawebHandler::ProxyUrl() {
     // slurped resources, since we've captured them from the origin
     // in the fetch we did to write the slurp.
     ApacheWriter apache_writer(request_);
-    apache_writer.set_disable_downstream_header_filters(true);
+
+    // TODO(jmarantz): This is a bit of a hack, but we need to be able to
+    // tweak headers from pagespeed.conf while experimenting with mobilization.
+    // Longer term we might not need this, or we might want to make this
+    // a separate option.
+    if (!options()->Enabled(RewriteOptions::kMobilize)) {
+      apache_writer.set_disable_downstream_header_filters(true);
+    }
+
     ChunkingWriter chunking_writer(
         &apache_writer, options()->slurp_flush_limit());
     apache_writer.OutputHeaders(fetch.response_headers());

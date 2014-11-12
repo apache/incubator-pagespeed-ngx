@@ -201,17 +201,15 @@ void MobilizeRewriteFilter::StartElement(HtmlElement* element) {
       added_viewport_ = true;
 
       if (use_js_layout_) {
-        // Attempt to capture the window width before applying the viewport,
-        // so that we get the 'truth' from the browser.
-        // TODO(jmarantz): verify this actually has some benefit compared
-        // with picking up this value later.
+        // Transmit to the mobilization scripts whether they are run in debug
+        // mode or not by setting 'psDebugMode'.
         HtmlElement* script = driver_->NewElement(element, HtmlName::kScript);
         script->set_style(HtmlElement::EXPLICIT_CLOSE);
         driver_->InsertNodeAfterCurrent(script);
         HtmlCharactersNode* script_text = driver_->NewCharactersNode(
             script,
-            StrCat("window.PageSpeedMaxWidth=screen.width||400;"
-                   "psDebugMode=", driver_->DebugMode() ? "true;" : "false;"));
+            StrCat("var psDebugMode=", driver_->DebugMode()
+                   ? "true;" : "false;"));
         driver_->AppendChild(script, script_text);
       }
 
