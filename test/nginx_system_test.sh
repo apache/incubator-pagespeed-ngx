@@ -271,12 +271,16 @@ PSA_JS_LIBRARY_URL_PREFIX="pagespeed_custom_static"
 PAGESPEED_EXPECTED_FAILURES="
 "
 
-# Some tests are flakey under valgrind. For now, add them to the expected failures
-# when running under valgrind.
+# Some tests are flakey under valgrind. For now, add them to the expected
+# failures when running under valgrind.
+#
+# TODO(sligicki): When the prioritize critical css race condition is fixed, the
+# two prioritize_critical_css tests no longer need to be listed here.
 if $USE_VALGRIND; then
     PAGESPEED_EXPECTED_FAILURES+="
 ~combine_css Maximum size of combined CSS.~
 ~prioritize_critical_css~
+~prioritize_critical_css Able to read POST data from temp file.~
 ~IPRO flow uses cache as expected.~
 ~IPRO flow doesn't copy uncacheable resources multiple times.~
 ~inline_unauthorized_resources allows unauthorized css selectors~
