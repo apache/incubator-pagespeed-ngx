@@ -956,6 +956,9 @@ goog.string.toTitleCase = function(a, b) {
     return b + c.toUpperCase();
   });
 };
+goog.string.capitalize = function(a) {
+  return String(a.charAt(0)).toUpperCase() + String(a.substr(1)).toLowerCase();
+};
 goog.string.parseInt = function(a) {
   isFinite(a) && (a = String(a));
   return goog.isString(a) ? /^\s*-?0x/i.test(a) ? parseInt(a, 16) : parseInt(a, 10) : NaN;
