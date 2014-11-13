@@ -19,11 +19,11 @@
 #include "pagespeed/kernel/image/read_image.h"
 
 #include <setjmp.h>
-#include <stdbool.h>
 #include <stdlib.h>
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/image/frame_interface_optimizer.h"
 #include "pagespeed/kernel/image/gif_reader.h"
 #include "pagespeed/kernel/image/image_frame_interface.h"
 #include "pagespeed/kernel/image/jpeg_optimizer.h"
@@ -80,7 +80,9 @@ ScanlineReaderInterface* InstantiateScanlineReader(
       if (!mf_reader->set_quirks_mode(QUIRKS_CHROME, status)) {
         return NULL;
       }
-      reader = new FrameToScanlineReaderAdapter(mf_reader.release());
+      reader =
+          new FrameToScanlineReaderAdapter(
+              new MultipleFramePaddingReader(mf_reader.release()));
       break;
     }
 
@@ -267,12 +269,13 @@ MultipleFrameReader* CreateImageFrameReader(
     ImageFormat image_type,
     const void* image_buffer,
     size_t buffer_length,
+    QuirksMode quirks_mode,
     MessageHandler* handler,
     ScanlineStatus* status) {
   scoped_ptr<MultipleFrameReader> reader(
       InstantiateImageFrameReader(image_type, handler, status));
   return (status->Success() &&
-          reader->set_quirks_mode(QUIRKS_CHROME, status) &&
+          reader->set_quirks_mode(quirks_mode, status) &&
           reader->Initialize(image_buffer, buffer_length, status)) ?
           reader.release() : NULL;
 }

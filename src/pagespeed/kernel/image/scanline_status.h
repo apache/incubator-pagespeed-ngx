@@ -70,6 +70,7 @@ namespace image_compression {
     _X(SCANLINE_TO_FRAME_WRITER_ADAPTER),       \
     _X(FRAME_GIFREADER),                        \
     _X(FRAME_WEBPWRITER),                       \
+    _X(FRAME_PADDING_READER),                   \
                                                 \
     _X(NUM_SCANLINE_SOURCE)
 
@@ -160,6 +161,7 @@ class ScanlineStatus {
       case FRAME_TO_SCANLINE_READER_ADAPTER:
       case SCANLINE_TO_FRAME_READER_ADAPTER:
       case FRAME_GIFREADER:
+      case FRAME_PADDING_READER:
         return true;
       default:
         return false;

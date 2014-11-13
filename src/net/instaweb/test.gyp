@@ -299,6 +299,8 @@
         '<(DEPTH)/pagespeed/kernel/http/user_agent_matcher_test.cc',
         '<(DEPTH)/pagespeed/kernel/http/user_agent_matcher_test_base.cc',
         '<(DEPTH)/pagespeed/kernel/http/user_agent_normalizer_test.cc',
+        '<(DEPTH)/pagespeed/kernel/image/frame_interface_integration_test.cc',
+        '<(DEPTH)/pagespeed/kernel/image/frame_interface_optimizer_test.cc',
         '<(DEPTH)/pagespeed/kernel/image/gif_reader_test.cc',
         '<(DEPTH)/pagespeed/kernel/image/image_converter_test.cc',
         '<(DEPTH)/pagespeed/kernel/image/image_analysis_test.cc',

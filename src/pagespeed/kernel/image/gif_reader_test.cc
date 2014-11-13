@@ -36,6 +36,21 @@
 #include "pagespeed/kernel/image/scanline_utils.h"
 #include "pagespeed/kernel/image/test_utils.h"
 
+namespace pagespeed {
+
+namespace image_compression {
+
+// Friend adapter so we can instantiate GifFrameReader.
+class TestGifFrameReader : public GifFrameReader {
+ public:
+  explicit TestGifFrameReader(MessageHandler* handler) :
+      GifFrameReader(handler) {}
+};
+
+}  // namespace image_compression
+
+}  // namespace pagespeed
+
 namespace {
 
 extern "C" {
@@ -68,11 +83,14 @@ using pagespeed::image_compression::ImageSpec;
 using pagespeed::image_compression::IMAGE_GIF;
 using pagespeed::image_compression::IMAGE_PNG;
 using pagespeed::image_compression::MultipleFrameReader;
+using pagespeed::image_compression::PackAsArgb;
 using pagespeed::image_compression::PixelFormat;
 using pagespeed::image_compression::PixelFormat;
+using pagespeed::image_compression::PixelRgbaChannels;
 using pagespeed::image_compression::PngReaderInterface;
 using pagespeed::image_compression::ReadTestFile;
 using pagespeed::image_compression::ReadFile;
+using pagespeed::image_compression::RgbaChannels;
 using pagespeed::image_compression::QUIRKS_CHROME;
 using pagespeed::image_compression::QUIRKS_FIREFOX;
 using pagespeed::image_compression::QUIRKS_NONE;
@@ -84,6 +102,7 @@ using pagespeed::image_compression::RGBA_GREEN;
 using pagespeed::image_compression::RGBA_RED;
 using pagespeed::image_compression::ScanlineStatus;
 using pagespeed::image_compression::ScopedPngStruct;
+using pagespeed::image_compression::TestGifFrameReader;
 using pagespeed::image_compression::kMessagePatternFailedToOpen;
 using pagespeed::image_compression::kMessagePatternFailedToRead;
 using pagespeed::image_compression::kMessagePatternLibpngError;
@@ -328,7 +347,7 @@ class GifScanlineReaderRawTest : public testing::Test {
   GifScanlineReaderRawTest()
     : scanline_(NULL),
       message_handler_(new NullMutex),
-      reader_(new GifFrameReader(&message_handler_)) {
+      reader_(new TestGifFrameReader(&message_handler_)) {
   }
 
   bool Initialize(const char* file_name) {
@@ -545,21 +564,38 @@ void CheckQuirksModeChangesToImageSpec(const FrameSpec& frame_spec,
 
   GifFrameReader::ApplyQuirksModeToImage(QUIRKS_FIREFOX, has_loop_count,
                                          frame_spec, &firefox_spec);
-  EXPECT_TRUE(firefox_spec.Equals(expected_firefox_spec));
+  EXPECT_TRUE(firefox_spec.Equals(expected_firefox_spec))
+      << "\nActual:\n" << firefox_spec.ToString()
+      << "\nExpected:\n" << expected_firefox_spec.ToString();
 
   GifFrameReader::ApplyQuirksModeToImage(QUIRKS_CHROME, has_loop_count,
                                          frame_spec, &chrome_spec);
-  EXPECT_TRUE(chrome_spec.Equals(expected_chrome_spec));
+  EXPECT_TRUE(chrome_spec.Equals(expected_chrome_spec))
+      << "\nActual:\n" << chrome_spec.ToString()
+      << "\nExpected:\n" << expected_chrome_spec.ToString();
 }
 
-TEST(ApplyQuirksModeToImage, TestWidth) {
+void SetOpaqueBackground(PixelRgbaChannels rgba) {
+  static const PixelRgbaChannels kOpaqueBackground =
+      {0x80, 0x80, 0x80, kAlphaOpaque};
+  for (int channel = 0;
+       channel < static_cast<RgbaChannels>(channel);
+       ++channel) {
+    rgba[channel] = kOpaqueBackground[channel];
+  }
+}
+
+TEST(ApplyQuirksModeToImage, TestFrameWidthLargerThanImageWidth) {
   ImageSpec image_spec;
-  FrameSpec frame_spec;
   image_spec.width = 100;
   image_spec.height = 100;
+  image_spec.num_frames = 2;
+  SetOpaqueBackground(image_spec.bg_color);
+
+  FrameSpec frame_spec;
   frame_spec.width = 200;
-  frame_spec.height = 50;
-  frame_spec.top= 10;
+  frame_spec.height = 100;
+  frame_spec.top = 10;
   frame_spec.left = 2;
 
   ImageSpec expected_noquirks_spec = image_spec;
@@ -568,6 +604,17 @@ TEST(ApplyQuirksModeToImage, TestWidth) {
 
   expected_chrome_spec.width = frame_spec.width;
   expected_chrome_spec.height = frame_spec.height;
+  expected_chrome_spec.image_size_adjusted = true;
+
+  CheckQuirksModeChangesToImageSpec(frame_spec, image_spec, false,
+                                    expected_noquirks_spec,
+                                    expected_firefox_spec,
+                                    expected_chrome_spec);
+
+  image_spec.num_frames =
+      expected_noquirks_spec.num_frames =
+      expected_firefox_spec.num_frames =
+      expected_chrome_spec.num_frames = 1;
 
   CheckQuirksModeChangesToImageSpec(frame_spec, image_spec, false,
                                     expected_noquirks_spec,
@@ -575,14 +622,18 @@ TEST(ApplyQuirksModeToImage, TestWidth) {
                                     expected_chrome_spec);
 }
 
-TEST(ApplyQuirksModeToImage, TestHeight) {
+
+TEST(ApplyQuirksModeToImage, TestFrameHeightLargerThanImageHeight) {
   ImageSpec image_spec;
-  FrameSpec frame_spec;
   image_spec.width = 100;
   image_spec.height = 100;
-  frame_spec.width = 50;
+  image_spec.num_frames = 2;
+  SetOpaqueBackground(image_spec.bg_color);
+
+  FrameSpec frame_spec;
+  frame_spec.width = 100;
   frame_spec.height = 200;
-  frame_spec.top= 10;
+  frame_spec.top = 10;
   frame_spec.left = 2;
 
   ImageSpec expected_noquirks_spec = image_spec;
@@ -591,6 +642,135 @@ TEST(ApplyQuirksModeToImage, TestHeight) {
 
   expected_chrome_spec.width = frame_spec.width;
   expected_chrome_spec.height = frame_spec.height;
+  expected_chrome_spec.image_size_adjusted = true;
+
+  CheckQuirksModeChangesToImageSpec(frame_spec, image_spec, false,
+                                    expected_noquirks_spec,
+                                    expected_firefox_spec,
+                                    expected_chrome_spec);
+
+  image_spec.num_frames =
+      expected_noquirks_spec.num_frames =
+      expected_firefox_spec.num_frames =
+      expected_chrome_spec.num_frames = 1;
+
+  CheckQuirksModeChangesToImageSpec(frame_spec, image_spec, false,
+                                    expected_noquirks_spec,
+                                    expected_firefox_spec,
+                                    expected_chrome_spec);
+}
+
+TEST(ApplyQuirksModeToImage, TestFrameWidthSmallerThanImageWidth) {
+  ImageSpec image_spec;
+  image_spec.width = 100;
+  image_spec.height = 100;
+  image_spec.num_frames = 2;
+  SetOpaqueBackground(image_spec.bg_color);
+
+  FrameSpec frame_spec;
+  frame_spec.width = 50;
+  frame_spec.height = 100;
+  frame_spec.top = 10;
+  frame_spec.left = 2;
+
+  ImageSpec expected_noquirks_spec = image_spec;
+  ImageSpec expected_firefox_spec = image_spec;
+  ImageSpec expected_chrome_spec = image_spec;
+
+  CheckQuirksModeChangesToImageSpec(frame_spec, image_spec, false,
+                                    expected_noquirks_spec,
+                                    expected_firefox_spec,
+                                    expected_chrome_spec);
+
+  // With only one frame that is smaller than the image, the
+  // background color becomes fully transparent.
+  image_spec.num_frames =
+      expected_noquirks_spec.num_frames =
+      expected_firefox_spec.num_frames =
+      expected_chrome_spec.num_frames = 1;
+
+  expected_chrome_spec.bg_color[RGBA_ALPHA] = kAlphaTransparent;
+  expected_firefox_spec.bg_color[RGBA_ALPHA] = kAlphaTransparent;
+
+  CheckQuirksModeChangesToImageSpec(frame_spec, image_spec, false,
+                                    expected_noquirks_spec,
+                                    expected_firefox_spec,
+                                    expected_chrome_spec);
+}
+
+TEST(ApplyQuirksModeToImage, TestFrameHeightSmallerThanImageHeight) {
+  ImageSpec image_spec;
+  image_spec.width = 100;
+  image_spec.height = 100;
+  image_spec.num_frames = 2;
+  SetOpaqueBackground(image_spec.bg_color);
+
+  FrameSpec frame_spec;
+  frame_spec.width = 100;
+  frame_spec.height = 50;
+  frame_spec.top = 10;
+  frame_spec.left = 2;
+
+  ImageSpec expected_noquirks_spec = image_spec;
+  ImageSpec expected_firefox_spec = image_spec;
+  ImageSpec expected_chrome_spec = image_spec;
+
+  CheckQuirksModeChangesToImageSpec(frame_spec, image_spec, false,
+                                    expected_noquirks_spec,
+                                    expected_firefox_spec,
+                                    expected_chrome_spec);
+
+  // With only one frame that is smaller than the image, the
+  // background color becomes fully transparent.
+  image_spec.num_frames =
+      expected_noquirks_spec.num_frames =
+      expected_firefox_spec.num_frames =
+      expected_chrome_spec.num_frames = 1;
+
+  expected_chrome_spec.bg_color[RGBA_ALPHA] = kAlphaTransparent;
+  expected_firefox_spec.bg_color[RGBA_ALPHA] = kAlphaTransparent;
+
+  CheckQuirksModeChangesToImageSpec(frame_spec, image_spec, false,
+                                    expected_noquirks_spec,
+                                    expected_firefox_spec,
+                                    expected_chrome_spec);
+}
+
+TEST(ApplyQuirksModeToImage, TestFrameHeightSmallerWidthLargerThanImage) {
+  ImageSpec image_spec;
+  image_spec.width = 100;
+  image_spec.height = 100;
+  image_spec.num_frames = 2;
+  SetOpaqueBackground(image_spec.bg_color);
+
+  FrameSpec frame_spec;
+  frame_spec.width = 150;
+  frame_spec.height = 50;
+  frame_spec.top = 10;
+  frame_spec.left = 2;
+
+  ImageSpec expected_noquirks_spec = image_spec;
+  ImageSpec expected_firefox_spec = image_spec;
+  ImageSpec expected_chrome_spec = image_spec;
+
+  expected_chrome_spec.width = frame_spec.width;
+  expected_chrome_spec.height = frame_spec.height;
+  expected_chrome_spec.image_size_adjusted = true;
+
+  CheckQuirksModeChangesToImageSpec(frame_spec, image_spec, false,
+                                    expected_noquirks_spec,
+                                    expected_firefox_spec,
+                                    expected_chrome_spec);
+
+  // With only one frame that is smaller than the image, the
+  // background color becomes fully transparent.
+  image_spec.num_frames =
+      expected_noquirks_spec.num_frames =
+      expected_firefox_spec.num_frames =
+      expected_chrome_spec.num_frames = 1;
+
+  expected_chrome_spec.bg_color[RGBA_ALPHA] = kAlphaTransparent;
+  expected_firefox_spec.bg_color[RGBA_ALPHA] = kAlphaTransparent;
 
   CheckQuirksModeChangesToImageSpec(frame_spec, image_spec, false,
                                     expected_noquirks_spec,
@@ -606,7 +786,7 @@ TEST(ApplyQuirksModeToImage, TestLoopCount) {
   image_spec.loop_count = 3;
   frame_spec.width = 100;
   frame_spec.height = 100;
-  frame_spec.top= 0;
+  frame_spec.top = 0;
   frame_spec.left = 0;
 
   ImageSpec expected_noquirks_spec = image_spec;
@@ -633,7 +813,7 @@ TEST(ApplyQuirksModeToImage, TestNoop) {
   image_spec.height = 100;
   frame_spec.width = 50;
   frame_spec.height = 50;
-  frame_spec.top= 10;
+  frame_spec.top = 10;
   frame_spec.left = 2;
 
   ImageSpec expected_noquirks_spec = image_spec;
@@ -656,17 +836,32 @@ void CheckQuirksModeChangesToFirstFrameSpec(
   FrameSpec firefox_spec = original_spec;
   FrameSpec chrome_spec = original_spec;
 
+  ImageSpec image = image_spec;
+  GifFrameReader::ApplyQuirksModeToImage(QUIRKS_NONE, false, noquirks_spec,
+                                         &image);
   GifFrameReader::ApplyQuirksModeToFirstFrame(QUIRKS_NONE,
-                                              image_spec, &noquirks_spec);
-  EXPECT_TRUE(noquirks_spec.Equals(expected_noquirks_spec));
+                                              image, &noquirks_spec);
+  EXPECT_TRUE(noquirks_spec.Equals(expected_noquirks_spec))
+      << " Got: " << noquirks_spec.ToString()
+      << "\n Expected: " << expected_noquirks_spec.ToString();
 
+  image = image_spec;
+  GifFrameReader::ApplyQuirksModeToImage(QUIRKS_FIREFOX, false, firefox_spec,
+                                         &image);
   GifFrameReader::ApplyQuirksModeToFirstFrame(QUIRKS_FIREFOX,
-                                              image_spec, &firefox_spec);
-  EXPECT_TRUE(firefox_spec.Equals(expected_firefox_spec));
+                                              image, &firefox_spec);
+  EXPECT_TRUE(firefox_spec.Equals(expected_firefox_spec))
+      << "      Got: " << firefox_spec.ToString()
+      << "\n Expected: " << expected_firefox_spec.ToString();
 
+  image = image_spec;
+  GifFrameReader::ApplyQuirksModeToImage(QUIRKS_CHROME, false, chrome_spec,
+                                         &image);
   GifFrameReader::ApplyQuirksModeToFirstFrame(QUIRKS_CHROME,
-                                              image_spec, &chrome_spec);
-  EXPECT_TRUE(chrome_spec.Equals(expected_chrome_spec));
+                                              image, &chrome_spec);
+  EXPECT_TRUE(chrome_spec.Equals(expected_chrome_spec))
+      << "      Got: " << chrome_spec.ToString()
+      << "\n Expected: " << expected_chrome_spec.ToString();
 }
 
 TEST(ApplyQuirksModeToFirstFrame, TestWidth) {
@@ -676,7 +871,7 @@ TEST(ApplyQuirksModeToFirstFrame, TestWidth) {
   image_spec.height = 100;
   frame_spec.width = 200;
   frame_spec.height = 50;
-  frame_spec.top= 10;
+  frame_spec.top = 10;
   frame_spec.left = 2;
 
   FrameSpec expected_noquirks_spec = frame_spec;
@@ -685,6 +880,11 @@ TEST(ApplyQuirksModeToFirstFrame, TestWidth) {
 
   expected_firefox_spec.top = 0;
   expected_firefox_spec.left = 0;
+  expected_firefox_spec.width = 0;
+  expected_firefox_spec.height = 0;
+
+  expected_chrome_spec.top = 0;
+  expected_chrome_spec.left = 0;
 
   CheckQuirksModeChangesToFirstFrameSpec(image_spec, frame_spec,
                                          expected_noquirks_spec,
@@ -699,7 +899,7 @@ TEST(ApplyQuirksModeToFirstFrame, TestHeight) {
   image_spec.height = 100;
   frame_spec.width = 50;
   frame_spec.height = 200;
-  frame_spec.top= 10;
+  frame_spec.top = 10;
   frame_spec.left = 2;
 
   FrameSpec expected_noquirks_spec = frame_spec;
@@ -708,6 +908,96 @@ TEST(ApplyQuirksModeToFirstFrame, TestHeight) {
 
   expected_firefox_spec.top = 0;
   expected_firefox_spec.left = 0;
+  expected_firefox_spec.width = 0;
+  expected_firefox_spec.height = 0;
+
+  expected_chrome_spec.top = 0;
+  expected_chrome_spec.left = 0;
+
+  CheckQuirksModeChangesToFirstFrameSpec(image_spec, frame_spec,
+                                         expected_noquirks_spec,
+                                         expected_firefox_spec,
+                                         expected_chrome_spec);
+}
+
+TEST(ApplyQuirksModeToFirstFrame, TestZeroWidthFrame) {
+  ImageSpec image_spec;
+  FrameSpec frame_spec;
+  image_spec.width = 100;
+  image_spec.height = 120;
+  frame_spec.width = 0;
+  frame_spec.height = 50;
+  frame_spec.top = 10;
+  frame_spec.left = 2;
+
+  FrameSpec expected_noquirks_spec = frame_spec;
+  FrameSpec expected_chrome_spec = frame_spec;
+  FrameSpec expected_firefox_spec = frame_spec;
+
+  expected_chrome_spec.height = image_spec.height;
+  expected_chrome_spec.width = image_spec.width;
+  expected_chrome_spec.top = 0;
+  expected_chrome_spec.left = 0;
+
+  expected_firefox_spec.top = 0;
+  expected_firefox_spec.left = 0;
+  expected_firefox_spec.width = 0;
+  expected_firefox_spec.height = 0;
+
+  CheckQuirksModeChangesToFirstFrameSpec(image_spec, frame_spec,
+                                         expected_noquirks_spec,
+                                         expected_firefox_spec,
+                                         expected_chrome_spec);
+}
+
+TEST(ApplyQuirksModeToFirstFrame, TestZeroHeightFrame) {
+  ImageSpec image_spec;
+  FrameSpec frame_spec;
+  image_spec.width = 100;
+  image_spec.height = 120;
+  frame_spec.width = 50;
+  frame_spec.height = 0;
+  frame_spec.top = 10;
+  frame_spec.left = 2;
+
+  FrameSpec expected_noquirks_spec = frame_spec;
+  FrameSpec expected_chrome_spec = frame_spec;
+  FrameSpec expected_firefox_spec = frame_spec;
+
+  expected_chrome_spec.height = image_spec.height;
+  expected_chrome_spec.width = image_spec.width;
+  expected_chrome_spec.top = 0;
+  expected_chrome_spec.left = 0;
+
+  expected_firefox_spec.top = 0;
+  expected_firefox_spec.left = 0;
+  expected_firefox_spec.width = 0;
+  expected_firefox_spec.height = 0;
+
+  CheckQuirksModeChangesToFirstFrameSpec(image_spec, frame_spec,
+                                         expected_noquirks_spec,
+                                         expected_firefox_spec,
+                                         expected_chrome_spec);
+}
+
+TEST(ApplyQuirksModeToFirstFrame, TestNoopChrome) {
+  ImageSpec image_spec;
+  FrameSpec frame_spec;
+  image_spec.width = 100;
+  image_spec.height = 120;
+  frame_spec.width = 60;
+  frame_spec.height = 50;
+  frame_spec.top = 10;
+  frame_spec.left = 2;
+
+  FrameSpec expected_noquirks_spec = frame_spec;
+  FrameSpec expected_firefox_spec = frame_spec;
+  FrameSpec expected_chrome_spec = frame_spec;
+
+  expected_firefox_spec.top = 0;
+  expected_firefox_spec.left = 0;
+  expected_firefox_spec.width = 0;
+  expected_firefox_spec.height = 0;
 
   CheckQuirksModeChangesToFirstFrameSpec(image_spec, frame_spec,
                                          expected_noquirks_spec,
@@ -719,11 +1009,11 @@ TEST(ApplyQuirksModeToFirstFrame, TestNoop) {
   ImageSpec image_spec;
   FrameSpec frame_spec;
   image_spec.width = 100;
-  image_spec.height = 100;
-  frame_spec.width = 50;
-  frame_spec.height = 50;
-  frame_spec.top= 10;
-  frame_spec.left = 2;
+  image_spec.height = 120;
+  frame_spec.width = 100;
+  frame_spec.height = 120;
+  frame_spec.top = 0;
+  frame_spec.left = 0;
 
   FrameSpec expected_noquirks_spec = frame_spec;
   FrameSpec expected_firefox_spec = frame_spec;
@@ -762,7 +1052,7 @@ class GifAnimationTest : public testing::Test {
       : scanline_(NULL),
         message_handler_(new NullMutex),
         gif_(true, &message_handler_),
-        reader_(new GifFrameReader(&message_handler_)),
+        reader_(new TestGifFrameReader(&message_handler_)),
         read_all_scanlines_(true) {
   }
 

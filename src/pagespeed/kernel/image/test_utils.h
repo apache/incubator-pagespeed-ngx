@@ -23,7 +23,8 @@
 
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
-#include "pagespeed/kernel/image/scanline_interface.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/image/image_util.h"
 
 namespace net_instaweb {
 class MessageHandler;
@@ -34,6 +35,8 @@ namespace pagespeed {
 namespace image_compression {
 
 using net_instaweb::MessageHandler;
+
+class ScanlineReaderInterface;
 
   const char kTestRootDir[] = "/pagespeed/kernel/image/testdata/";
 
@@ -229,6 +232,34 @@ void CompareImageRegions(const uint8_t* image1, PixelFormat format1,
 void SynthesizeImage(int width, int height, int bytes_per_line,
                      int num_channels, const uint8_t* seed_value,
                      const int* delta_x, const int* delta_y, uint8_t* image);
+
+
+// Returns a string with a hex representation of the RGBA byteas
+// encoded in 'channels'.
+inline GoogleString PixelRgbaChannelsToString(const uint8_t* const channels) {
+  return StringPrintf("%02hhx%02hhx%02hhx%02hhx",
+                      channels[RGBA_RED],
+                      channels[RGBA_GREEN],
+                      channels[RGBA_BLUE],
+                      channels[RGBA_ALPHA]);
+}
+
+// Packs the given A, R, G, B values into a single RGBA uint32.
+inline uint32_t PackAsRgba(uint8_t alpha,
+                           uint8_t red,
+                           uint8_t green,
+                           uint8_t blue) {
+  return PackHiToLo(red, green, blue, alpha);
+}
+
+// Packs a pixel's color channel data in RGBA format to a single
+// uint32_t in RGBA format.
+inline uint32_t RgbaToPackedRgba(const PixelRgbaChannels rgba) {
+  return PackAsRgba(rgba[RGBA_ALPHA],
+                    rgba[RGBA_RED],
+                    rgba[RGBA_GREEN],
+                    rgba[RGBA_BLUE]);
+}
 
 }  // namespace image_compression
 

@@ -19,7 +19,6 @@
 #ifndef PAGESPEED_KERNEL_IMAGE_GIF_READER_H_
 #define PAGESPEED_KERNEL_IMAGE_GIF_READER_H_
 
-#include <stdbool.h>
 #include <cstddef>
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/message_handler.h"
@@ -76,21 +75,27 @@ class GifReader : public PngReaderInterface {
   DISALLOW_COPY_AND_ASSIGN(GifReader);
 };
 
-// GifFrameReader decodes GIF images and outputs the raw pixel
-// data, image size, pixel type, etc. The class accepts single frame
-// (non-animated) GIF. The output is RGB_888 if transparent color is
-// not specified, or RGBA_8888 otherwise. Animated GIFs are not
-// supported and fail on Initialize().
+// GifFrameReader decodes GIF images and outputs the raw pixel data,
+// image size, pixel type, etc. The class accepts both single frame
+// and animated GIFs. The output is RGB_888 if transparent color is
+// not specified, or RGBA_8888 otherwise.
 //
 // Note: The input image stream must be valid throughout the life of
 //   the object. In other words, the image_buffer input you set to
 //   Initialize() cannot be changed until your last call to the
-//   ReadNextScanline(). That said, if you are sure that
-//   your image is a progressive GIF, you can modify image_buffer
-//   after the first call to ReadNextScanline().
+//   ReadNextScanline(). That said, if you are sure that your image is
+//   a single-frame progressive GIF, you can modify image_buffer after
+//   the first call to ReadNextScanline().
+//
+// Note: In the wild, there are many static GIFs that don't conform to
+//   the GIF standard by having, for example, image dimensions larger
+//   than frame dimensions. The workaround for such images is to
+//   properly pad those frames. Because this is such a common
+//   occurrence, we disallow instantiating GifFrameReader directly and
+//   instead require that clients call CreateImageFrameReader() to
+//   instantiate this class.
 class GifFrameReader : public MultipleFrameReader {
  public:
-  explicit GifFrameReader(MessageHandler* handler);
   virtual ~GifFrameReader();
 
   virtual ScanlineStatus Reset();
@@ -156,6 +161,20 @@ class GifFrameReader : public MultipleFrameReader {
                                           FrameSpec* frame_spec);
 
  private:
+  // Clients should call this function to instantiate
+  // GifFrameReader. This function is defined in read_image.cc.
+  friend MultipleFrameReader* InstantiateImageFrameReader(
+      ImageFormat image_type,
+      MessageHandler* handler,
+      ScanlineStatus* status);
+
+  // Used in gif_reader_test.cc and frame_interface_integration_test.cc.
+  friend class TestGifFrameReader;
+
+  // To instantiate this class, use InstantiateImageFrameReader, which
+  // is declared a friend function above.
+  explicit GifFrameReader(MessageHandler* handler);
+
   // The GIF format can specify one palette index which is treated as
   // transparent; we store this index in frame_transparent_index_. In
   // case the GIF file does not employ transparency, we store the

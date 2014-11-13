@@ -421,6 +421,7 @@
         '<(DEPTH)/third_party/zlib/zlib.gyp:zlib',
       ],
       'sources': [
+        'kernel/image/frame_interface_optimizer.cc',
         'kernel/image/gif_reader.cc',
         'kernel/image/image_analysis.cc',
         'kernel/image/image_converter.cc',

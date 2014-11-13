@@ -1088,24 +1088,55 @@ void GifFrameReader::ApplyQuirksModeToImage(QuirksMode quirks_mode,
                                             const bool got_loop_count,
                                             const FrameSpec& frame_spec,
                                             ImageSpec* image_spec) {
+  bool clear_bg_color = false;
+
   switch (quirks_mode) {
-    case QUIRKS_CHROME:
-      // Based on Chrome 35 behavior on Linux.
-      if ((frame_spec.width > image_spec->width) ||
-          (frame_spec.height > image_spec->height)) {
+    case QUIRKS_CHROME: {
+      // Based on Chrome 38 behavior on Linux.
+      bool image_smaller_than_first_frame = (
+          (frame_spec.width > image_spec->width) ||
+          (frame_spec.height > image_spec->height));
+
+      if (image_smaller_than_first_frame) {
+        image_spec->image_size_adjusted = true;
+
         image_spec->width = frame_spec.width;
         image_spec->height = frame_spec.height;
+
+        clear_bg_color = true;
       }
+
       if (got_loop_count) {
         image_spec->loop_count++;
       }
       break;
-    case QUIRKS_FIREFOX:
+    }
+    case QUIRKS_FIREFOX: {
+      // Based on Firefox 32 behavior on Linux.
+      bool image_and_frame_match = (
+          (frame_spec.width == image_spec->width) &&
+          (frame_spec.height == image_spec->height) &&
+          (frame_spec.left == 0) &&
+          (frame_spec.top == 0));
+      if (!image_and_frame_match) {
+        clear_bg_color = true;
+      }
       break;
+    }
     case QUIRKS_NONE:
       // We enumerate all cases and purposefully exclude the default
       // label so compiler will complain about unhandled values.
       break;
+  }
+
+  if (clear_bg_color) {
+    image_spec->bg_color[RGBA_ALPHA] = kAlphaTransparent;
+    image_spec->use_bg_color = true;
+
+    // To maximize compression, make the other channels all be zero.
+    image_spec->bg_color[RGBA_RED] = 0;
+    image_spec->bg_color[RGBA_GREEN] = 0;
+    image_spec->bg_color[RGBA_BLUE] = 0;
   }
 }
 
@@ -1113,16 +1144,41 @@ void GifFrameReader::ApplyQuirksModeToFirstFrame(const QuirksMode quirks_mode,
                                                  const ImageSpec& image_spec,
                                                  FrameSpec* frame_spec) {
   switch (quirks_mode) {
-    case QUIRKS_CHROME:
-      break;
-    case QUIRKS_FIREFOX:
-      // Based on Firefox 29 behavior on Linux.
-      if ((frame_spec->width > image_spec.width) ||
-          (frame_spec->height > image_spec.height)) {
+    case QUIRKS_CHROME: {
+      // Based on Chrome 38 behavior on Linux.
+      bool first_frame_zero_dimension = (
+          (frame_spec->width == 0) || (frame_spec->height == 0));
+
+      if (first_frame_zero_dimension) {
+        frame_spec->width = image_spec.width;
+        frame_spec->height = image_spec.height;
         frame_spec->left = 0;
         frame_spec->top = 0;
       }
+
+      if (image_spec.image_size_adjusted) {
+        frame_spec->left = 0;
+        frame_spec->top = 0;
+      }
+
       break;
+    }
+    case QUIRKS_FIREFOX: {
+      // Based on Firefox 32 behavior on Linux.
+      bool image_and_frame_match = (
+          (frame_spec->width == image_spec.width) &&
+          (frame_spec->height == image_spec.height) &&
+          (frame_spec->left == 0) &&
+          (frame_spec->top == 0));
+      if (!image_and_frame_match) {
+        frame_spec->height = 0;
+        frame_spec->width = 0;
+        frame_spec->top = 0;
+        frame_spec->left = 0;
+      }
+      break;
+    }
+
     case QUIRKS_NONE:
       // We enumerate all cases and purposefully exclude the default
       // label so compiler will complain about unhandled values.

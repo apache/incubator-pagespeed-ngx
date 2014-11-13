@@ -16,7 +16,6 @@
 
 // Author: Satyanarayana Manyam
 
-#include <stdbool.h>
 #include <cstddef>
 
 #include "pagespeed/kernel/base/gtest.h"
@@ -27,7 +26,10 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/image/gif_reader.h"
 #include "pagespeed/kernel/image/image_converter.h"
+#include "pagespeed/kernel/image/image_util.h"
 #include "pagespeed/kernel/image/png_optimizer.h"
+#include "pagespeed/kernel/image/read_image.h"
+#include "pagespeed/kernel/image/scanline_interface.h"
 #include "pagespeed/kernel/image/test_utils.h"
 
 namespace {
@@ -40,12 +42,18 @@ using pagespeed::image_compression::kPngSuiteGifTestDir;
 using pagespeed::image_compression::kPngTestDir;
 using pagespeed::image_compression::GifReader;
 using pagespeed::image_compression::ImageConverter;
+using pagespeed::image_compression::IMAGE_GIF;
+using pagespeed::image_compression::IMAGE_PNG;
+using pagespeed::image_compression::IMAGE_WEBP;
 using pagespeed::image_compression::JpegLossyOptions;
 using pagespeed::image_compression::PngOptimizer;
 using pagespeed::image_compression::PngReader;
 using pagespeed::image_compression::PngReaderInterface;
 using pagespeed::image_compression::WebpConfiguration;
 using pagespeed::image_compression::ReadTestFile;
+using pagespeed::image_compression::ScanlineReaderInterface;
+using pagespeed::image_compression::ScanlineStatus;
+using pagespeed::image_compression::ScanlineWriterInterface;
 using pagespeed::image_compression::kMessagePatternLibpngError;
 using pagespeed::image_compression::kMessagePatternLibpngWarning;
 using pagespeed::image_compression::kMessagePatternPixelFormat;
@@ -437,6 +445,29 @@ TEST_F(ImageConverterTest, NotConvertTransparentGifToJpeg) {
       << "output size mismatch";
 }
 
+TEST_F(ImageConverterTest, ConvertPaddedGifToWebp) {
+  GoogleString in, out;
+  WebpConfiguration options;
+  ScanlineStatus status;
+
+  ReadTestFile(kGifTestDir, "frame_smaller_than_screen", "gif", &in);
+  EXPECT_EQ(static_cast<size_t>(45), in.size())
+      << "input size mismatch";
+
+  scoped_ptr<ScanlineReaderInterface> reader(
+      CreateScanlineReader(IMAGE_GIF, in.c_str(), in.size(),
+                           &message_handler_, &status));
+  EXPECT_TRUE(status.Success()) << status.ToString();
+  scoped_ptr<ScanlineWriterInterface> writer(
+      CreateScanlineWriter(IMAGE_WEBP, reader->GetPixelFormat(),
+                           reader->GetImageWidth(), reader->GetImageHeight(),
+                           &options, &out, &message_handler_, &status));
+
+  EXPECT_TRUE(status.Success()) << status.ToString();
+  status = ImageConverter::ConvertImageWithStatus(reader.get(), writer.get());
+  EXPECT_TRUE(status.Success()) << status.ToString();
+}
+
 // To manually inspect all gif conversions tested, uncomment the lines
 // indicated in the *Convert*GifTo* test cases above, run this
 // test, and then generate an html page as follows:
@@ -457,4 +488,3 @@ TEST_F(ImageConverterTest, NotConvertTransparentGifToJpeg) {
 // and to test GetSmallestOfPngJpegWebp
 
 }  // namespace
-

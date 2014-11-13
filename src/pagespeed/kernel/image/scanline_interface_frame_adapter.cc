@@ -36,16 +36,6 @@ FrameToScanlineReaderAdapter::FrameToScanlineReaderAdapter(
 bool FrameToScanlineReaderAdapter::Reset() {
   image_spec_.Reset();
   frame_spec_.Reset();
-  image_and_frame_cols_coincide_ = false;
-  image_and_frame_rows_coincide_ = false;
-  current_image_row_ = 0;
-  displayed_frame_first_col_byte_ = 0;
-  displayed_frame_col_byte_width_ = 0;
-  displayed_frame_row_num_begin_ = 0;
-  displayed_frame_row_num_end_ = 0;
-  image_width_bytes_ = 0;
-  row_buffer_.reset();
-  row_template_.reset();
   return impl_->Reset().Success();
 }
 
@@ -65,107 +55,32 @@ ScanlineStatus FrameToScanlineReaderAdapter::InitializeWithStatus(
     const void* image_buffer,
     size_t const buffer_length) {
   ScanlineStatus status;
-  if (!(impl_->Initialize(image_buffer, buffer_length, &status) &&
-        impl_->GetImageSpec(&image_spec_, &status))) {
-    return status;
-  }
-  if (image_spec_.num_frames > 1) {
-    return PS_LOGGED_STATUS(
-        PS_DLOG_INFO, impl_->message_handler(),
-        SCANLINE_STATUS_UNSUPPORTED_FEATURE,
-        FRAME_TO_SCANLINE_READER_ADAPTER,
-        "animated images not supported in Scanline interface. %s",
-        image_spec_.ToString().c_str());
-  }
-
-  if (!(impl_->PrepareNextFrame(&status) &&
-        impl_->GetFrameSpec(&frame_spec_, &status))) {
-    return status;
-  }
-
-  size_t bytes_per_pixel = GetBytesPerPixel(frame_spec_.pixel_format);
-  DVLOG(1) << image_spec_.ToString();
-  DVLOG(1) << frame_spec_.ToString();
-
-  size_px displayed_frame_col_num_begin =
-      image_spec_.TruncateXIndex(frame_spec_.left);
-  size_px displayed_frame_col_num_end =
-      image_spec_.TruncateXIndex(frame_spec_.left + frame_spec_.width);
-  size_px displayed_frame_row_num_begin_ =
-      image_spec_.TruncateYIndex(frame_spec_.top);
-  size_px displayed_frame_row_num_end_ =
-      image_spec_.TruncateYIndex(frame_spec_.top + frame_spec_.height);
-
-  image_and_frame_cols_coincide_ =
-      (displayed_frame_col_num_begin == 0) &&
-      (displayed_frame_col_num_end == image_spec_.width);
-  image_and_frame_rows_coincide_ =
-      (displayed_frame_row_num_begin_ == 0) &&
-      (displayed_frame_row_num_end_ == image_spec_.height);
-
-  if (!image_and_frame_cols_coincide_ || !image_and_frame_rows_coincide_) {
-    if (!image_spec_.use_bg_color) {
-      return PS_LOGGED_STATUS(
+  if ((impl_->Initialize(image_buffer, buffer_length, &status) &&
+       impl_->GetImageSpec(&image_spec_, &status) &&
+       impl_->PrepareNextFrame(&status) &&
+       impl_->GetFrameSpec(&frame_spec_, &status))) {
+    if (image_spec_.num_frames > 1) {
+      status = PS_LOGGED_STATUS(
+          PS_DLOG_INFO, impl_->message_handler(),
+          SCANLINE_STATUS_UNSUPPORTED_FEATURE,
+          FRAME_TO_SCANLINE_READER_ADAPTER,
+          "animated images not supported in Scanline interface. %s",
+          image_spec_.ToString().c_str());
+    } else if ((frame_spec_.width != image_spec_.width) ||
+               (frame_spec_.height != image_spec_.height)) {
+      status = PS_LOGGED_STATUS(
           PS_LOG_INFO, impl_->message_handler(),
           SCANLINE_STATUS_PARSE_ERROR,
           FRAME_TO_SCANLINE_READER_ADAPTER,
           "frame must have same dimensions as image");
     }
-
-    displayed_frame_first_col_byte_ =
-        bytes_per_pixel * displayed_frame_col_num_begin;
-    displayed_frame_col_byte_width_ =
-        bytes_per_pixel * (displayed_frame_col_num_end -
-                           displayed_frame_col_num_begin);
-
-    image_width_bytes_ = bytes_per_pixel * image_spec_.width;
-    row_buffer_.reset(new PixelRgbaChannels[image_width_bytes_]);
-    row_template_.reset(new PixelRgbaChannels[image_width_bytes_]);
-
-    PixelRgbaChannels* current_pixel  = row_template_.get();
-    for (size_px pixel_index = 0;
-         pixel_index < image_spec_.width;
-         ++pixel_index) {
-      memcpy(current_pixel, image_spec_.bg_color, bytes_per_pixel);
-      current_pixel += bytes_per_pixel;
-    }
   }
-
   return status;
 }
 
 ScanlineStatus FrameToScanlineReaderAdapter::ReadNextScanlineWithStatus(
     void** const out_scanline_bytes) {
-  ScanlineStatus status;
-
-  bool frame_in_row = (
-      image_and_frame_rows_coincide_ ||
-      ((current_image_row_ >= displayed_frame_row_num_begin_) &&
-       (current_image_row_ < displayed_frame_row_num_end_)));
-
-  ++current_image_row_;
-
-  if (frame_in_row) {
-    if (!impl_->ReadNextScanline(const_cast<const void**>(out_scanline_bytes),
-                                 &status)) {
-      return status;
-    }
-
-    if (image_and_frame_cols_coincide_) {
-      return status;
-    }
-  }
-
-  memcpy(row_buffer_.get(), row_template_.get(), image_width_bytes_);
-
-  if (frame_in_row) {
-    memcpy(row_buffer_.get() + displayed_frame_first_col_byte_,
-           *out_scanline_bytes,
-           displayed_frame_col_byte_width_);
-  }
-
-  *out_scanline_bytes = row_buffer_.get();
-  return status;
+  return impl_->ReadNextScanline(const_cast<const void**>(out_scanline_bytes));
 }
 
 size_t FrameToScanlineReaderAdapter::GetImageHeight() {

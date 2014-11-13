@@ -19,6 +19,7 @@
 #include "base/logging.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/image/image_frame_interface.h"
+#include "pagespeed/kernel/image/image_util.h"
 
 namespace pagespeed {
 
@@ -37,16 +38,17 @@ void ImageSpec::Reset() {
     loop_count = 1;
     memset(bg_color, 0, sizeof(bg_color));
     use_bg_color = true;
+    image_size_adjusted = false;
 }
 
-size_px ImageSpec::TruncateXIndex(const size_px x) {
+size_px ImageSpec::TruncateXIndex(const size_px x) const {
   if (x > width) {
     return width;
   }
   return x;
 }
 
-size_px ImageSpec::TruncateYIndex(const size_px y) {
+size_px ImageSpec::TruncateYIndex(const size_px y) const {
   if (y > height) {
     return height;
   }
@@ -59,8 +61,11 @@ bool ImageSpec::CanContainFrame(const FrameSpec& frame_spec) const {
 }
 
 GoogleString ImageSpec::ToString() const {
-  return StringPrintf("Image: %d x %d : %u frames, repeated %u times",
-                      width, height, num_frames, loop_count);
+  return StringPrintf(
+      "Image: %d x %d : %u frames, repeated %u times; "
+      "bg_color: %s, RGBA: 0x%08X",
+      width, height, num_frames, loop_count,
+      use_bg_color ? "ON":"OFF", RgbaToPackedArgb(bg_color));
 }
 
 bool ImageSpec::Equals(const ImageSpec& other) const {
@@ -69,7 +74,8 @@ bool ImageSpec::Equals(const ImageSpec& other) const {
           (num_frames == other.num_frames) &&
           (loop_count == other.loop_count) &&
           (memcmp(bg_color, other.bg_color, sizeof(bg_color)) == 0) &&
-          (use_bg_color == other.use_bg_color));
+          (use_bg_color == other.use_bg_color) &&
+          (image_size_adjusted == other.image_size_adjusted));
 }
 
 ////////// FrameSpec

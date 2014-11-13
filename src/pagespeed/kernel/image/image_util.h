@@ -35,6 +35,16 @@ namespace pagespeed {
 
 namespace image_compression {
 
+// Sometimes image readers or writers may need to tweak their behavior
+// away from what is in the spec to emulate or adapt to the
+// idiosyncratic behavior of real renderers in the wild. This enum
+// allow those classes to parametrize that quirky behavior.
+enum QuirksMode {
+  QUIRKS_NONE = 0,
+  QUIRKS_CHROME,
+  QUIRKS_FIREFOX
+};
+
 enum ImageFormat {
   IMAGE_UNKNOWN,
   IMAGE_JPEG,
@@ -63,16 +73,25 @@ const uint8_t kAlphaOpaque = 255;
 const uint8_t kAlphaTransparent = 0;
 typedef uint8_t PixelRgbaChannels[RGBA_NUM_CHANNELS];
 
-// Packs the given A, R, G, B values into a single uint32.
+// Packs four uint8_ts into a single uint32_t in the high-to-low order
+// given.
+inline uint32_t PackHiToLo(uint8_t i3,
+                           uint8_t i2,
+                           uint8_t i1,
+                           uint8_t i0) {
+  return
+      (static_cast<uint32_t>(i3) << 24) |
+      (i2 << 16) |
+      (i1 << 8) |
+      (i0);
+}
+
+// Packs the given A, R, G, B values into a single ARGB uint32.
 inline uint32_t PackAsArgb(uint8_t alpha,
                            uint8_t red,
                            uint8_t green,
                            uint8_t blue) {
-  return
-      (static_cast<uint32_t>(alpha) << 24) |
-      (red << 16) |
-      (green << 8) |
-      (blue);
+  return PackHiToLo(alpha, red, green, blue);
 }
 
 // Packs a pixel's color channel data in RGBA format to a single
