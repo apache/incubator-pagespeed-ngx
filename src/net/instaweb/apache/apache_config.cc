@@ -18,14 +18,14 @@
 
 #include "base/logging.h"
 #include "net/instaweb/public/version.h"
+#include "pagespeed/kernel/base/thread_system.h"
 
 namespace net_instaweb {
-
-class ThreadSystem;
 
 namespace {
 
 const char kModPagespeedStatisticsHandlerPath[] = "/mod_pagespeed_statistics";
+const char kProxyAuth[] = "ProxyAuth";
 
 }  // namespace
 
@@ -68,7 +68,17 @@ void ApacheConfig::AddProperties() {
   AddApacheProperty(
       false, &ApacheConfig::fetch_from_mod_spdy_, "ffms",
       RewriteOptions::kFetchFromModSpdy,
-      "Fetch SSL resources with help of recent mod_spdy", true);
+      "Fetch SSL resources with help of recent mod_spdy",
+      true /* safe_to_print */);
+
+  AddApacheProperty(
+      "", &ApacheConfig::proxy_auth_, "prxa",
+      kProxyAuth,
+      "CookieName[=Value][:RedirectUrl] -- checks proxy requests for "
+      "CookieName.  If CookieValue is specified, checks for that.  If "
+      "Redirect is specified, a failure results in a redirection to that URL "
+      "otherwise a 403 is generated.",
+      false /* safe_to_print */);
 
   MergeSubclassProperties(apache_properties_);
 
@@ -107,6 +117,37 @@ ApacheConfig* ApacheConfig::DynamicCast(RewriteOptions* instance) {
   ApacheConfig* config = dynamic_cast<ApacheConfig*>(instance);
   DCHECK(config != NULL);
   return config;
+}
+
+bool ApacheConfig::GetProxyAuth(StringPiece* name, StringPiece* value,
+                                StringPiece* redirect) const {
+  StringPiece auth = proxy_auth_.value();
+  TrimWhitespace(&auth);
+  if (auth.empty()) {
+    return false;
+  }
+
+  // Strip the redirect off the tail if a colon is present.  Note that
+  // a colon may exist in the redirect URL but we search from the beginning
+  // so it's no problem.
+  stringpiece_ssize_type colon = auth.find(':');
+  if (colon == StringPiece::npos) {
+    redirect->clear();
+  } else {
+    *redirect = auth.substr(colon + 1);
+    auth = auth.substr(0, colon);
+  }
+
+  // Split into name/value if an equals is present.
+  stringpiece_ssize_type equals = auth.find('=');
+  if (equals == StringPiece::npos) {
+    *name = auth;
+    value->clear();
+  } else {
+    *name = auth.substr(0, equals);
+    *value = auth.substr(equals + 1);
+  }
+  return true;
 }
 
 }  // namespace net_instaweb

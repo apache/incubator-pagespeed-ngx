@@ -179,4 +179,17 @@ TEST_F(RequestHeadersTest, GetAllCookies) {
   }
 }
 
+TEST_F(RequestHeadersTest, HasCookie) {
+  request_headers_.Clear();
+  EXPECT_FALSE(request_headers_.HasCookie("cookie"));
+  request_headers_.Add(HttpAttributes::kCookie, "cookie=a;x=b;cookie=c;");
+  request_headers_.Add(HttpAttributes::kCookie, "cookie=d;");
+  EXPECT_TRUE(request_headers_.HasCookie("cookie"));
+  EXPECT_TRUE(request_headers_.HasCookieValue("cookie", "a"));
+  EXPECT_FALSE(request_headers_.HasCookieValue("cookie", "b"));
+  EXPECT_TRUE(request_headers_.HasCookieValue("cookie", "c"));
+  EXPECT_TRUE(request_headers_.HasCookieValue("cookie", "d"));
+  EXPECT_TRUE(request_headers_.HasCookieValue("x", "b"));
+}
+
 }  // namespace net_instaweb

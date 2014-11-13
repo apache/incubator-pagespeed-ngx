@@ -705,6 +705,7 @@ bool DomainLawyer::DomainNameToTwoProtocols(
 bool DomainLawyer::TwoProtocolDomainHelper(
       const StringPiece& to_domain_name,
       const StringPiece& from_domain_name,
+      const StringPiece& host_header,
       SetDomainFn set_domain_fn,
       bool authorize,
       MessageHandler* handler) {
@@ -717,7 +718,7 @@ bool DomainLawyer::TwoProtocolDomainHelper(
     return false;
   }
   if (!MapDomainHelper(http_to_url, http_from_url,
-                       "" /* host_header */,
+                       host_header,
                        set_domain_fn,
                        false, /* allow_wildcards */
                        false, /* allow_map_to_https */
@@ -725,7 +726,7 @@ bool DomainLawyer::TwoProtocolDomainHelper(
     return false;
   }
   if (!MapDomainHelper(https_to_url, https_from_url,
-                       "" /* host_header */,
+                       host_header,
                        set_domain_fn,
                        false, /* allow_wildcards */
                        true, /* allow_map_to_https */
@@ -741,6 +742,7 @@ bool DomainLawyer::AddTwoProtocolRewriteDomainMapping(
     const StringPiece& from_domain_name,
     MessageHandler* handler) {
   bool result = TwoProtocolDomainHelper(to_domain_name, from_domain_name,
+                                        "" /* host_header */,
                                         &Domain::SetRewriteDomain,
                                         true /*authorize */, handler);
   can_rewrite_domains_ |= result;
@@ -817,8 +819,10 @@ bool DomainLawyer::AddProxyDomainMapping(
 bool DomainLawyer::AddTwoProtocolOriginDomainMapping(
     const StringPiece& to_domain_name,
     const StringPiece& from_domain_name,
+    const StringPiece& host_header,
     MessageHandler* handler) {
   return TwoProtocolDomainHelper(to_domain_name, from_domain_name,
+                                 host_header,
                                  &Domain::SetOriginDomain,
                                  false /*authorize */, handler);
 }

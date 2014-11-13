@@ -173,10 +173,13 @@ class DomainLawyer {
                                           MessageHandler* handler);
 
   // Adds a domain mapping, to assist with fetching resources from locally
-  // signficant names/ip-addresses.
+  // signficant names/ip-addresses. host_header may be empty ("") in which case
+  // the corresponding from_domain will be used.
   //
   // Wildcards may not be used in the to_domain, but they can be used
-  // in the from_domains.
+  // in the from_domains. Various tests depend on being able to add a port on
+  // to_domain (reference domain), though this functionality should not be
+  // relied on in production.
   //
   // This routine can be called multiple times for the same to_domain.  If
   // the 'from' domains overlap due to wildcards, this will not be detected.
@@ -224,11 +227,13 @@ class DomainLawyer {
 
   // Adds domain mappings that handle fetches on both http and https for the
   // given from_domain.  No wildcards may be used in either domain, and both
-  // must be protocol-free and should not have port numbers.
+  // must be protocol-free and should not have port numbers.  host_header
+  // behaves the same as passed into AddOriginDomainMapping.
   //
-  // This routine can be called multiple times for the same to_domain.
+  // This routine may be called multiple times for the same to_domain.
   bool AddTwoProtocolOriginDomainMapping(const StringPiece& to_domain_name,
                                          const StringPiece& from_domain_name,
+                                         const StringPiece& host_header,
                                          MessageHandler* handler);
 
   // Specifies domain-sharding.  This implicitly calls AddDomain(to_domain).
@@ -375,6 +380,7 @@ class DomainLawyer {
   bool TwoProtocolDomainHelper(
       const StringPiece& to_domain_name,
       const StringPiece& from_domain_name,
+      const StringPiece& host_header,
       SetDomainFn set_domain_fn,
       bool authorize,
       MessageHandler* handler);

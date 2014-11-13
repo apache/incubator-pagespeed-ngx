@@ -16,6 +16,9 @@
 
 #include "pagespeed/kernel/http/request_headers.h"
 
+#include <map>
+#include <utility>
+
 #include "base/logging.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -174,6 +177,25 @@ RequestHeaders::Properties RequestHeaders::GetProperties() const {
                         Has(HttpAttributes::kCookie2),
                         Has(HttpAttributes::kAuthorization));
   return properties;
+}
+
+bool RequestHeaders::HasCookie(StringPiece cookie_name) const {
+  const CookieMultimap& cookies = GetAllCookies();
+  return cookies.find(cookie_name) != cookies.end();
+}
+
+bool RequestHeaders::HasCookieValue(StringPiece cookie_name,
+                                    StringPiece cookie_value) const {
+  const CookieMultimap& cookies = GetAllCookies();
+  typedef CookieMultimap::const_iterator Iter;
+  std::pair<Iter, Iter> range = cookies.equal_range(cookie_name);
+  for (Iter p = range.first; p != range.second; ++p) {
+    const ValueAndAttributes& value_attr = p->second;
+    if (value_attr.first == cookie_value) {
+      return true;
+    }
+  }
+  return false;
 }
 
 }  // namespace net_instaweb

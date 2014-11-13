@@ -32,6 +32,9 @@
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/google_url.h"
+#include "pagespeed/kernel/http/query_params.h"
+#include "pagespeed/kernel/http/request_headers.h"
+#include "pagespeed/kernel/http/response_headers.h"
 
 #include "apr_pools.h"  // for apr_status_t
 // The httpd header must be after the instaweb_context.h. Otherwise,
@@ -45,9 +48,6 @@ class ApacheRequestContext;
 class ApacheRewriteDriverFactory;
 class ApacheServerContext;
 class InPlaceResourceRecorder;
-class QueryParams;
-class RequestHeaders;
-class ResponseHeaders;
 class RewriteDriver;
 class ServerContext;
 class SystemRewriteOptions;
@@ -177,6 +177,14 @@ class InstawebHandler {
   // factory, returning true if the request was handled.  This is used
   // both for slurping and for handling URLs ending with proxy_suffix.
   bool ProxyUrl();
+
+  // Checks to see whether the configuration has set up cookie-based
+  // proxy authentication.  If so, and the cookies are not present,
+  // clients will be redirected to a page where the cookies can be
+  // obtained.  Returns true if the client is authorized for proxying.
+  // Return false and responds to the request_ if the client was not
+  // authorized.
+  bool AuthenticateProxy();
 
   RequestHeaders* ReleaseRequestHeaders() { return request_headers_.release(); }
 

@@ -15,6 +15,7 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "base/logging.h"
+#include "net/instaweb/apache/apache_config.h"
 #include "net/instaweb/apache/apache_server_context.h"
 #include "net/instaweb/apache/apache_writer.h"
 #include "net/instaweb/apache/instaweb_handler.h"
@@ -39,6 +40,7 @@
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/base/timer.h"
+#include "pagespeed/kernel/html/html_keywords.h"
 #include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/http/http_names.h"
 #include "pagespeed/kernel/http/request_headers.h"
@@ -173,6 +175,10 @@ bool InstawebHandler::ProxyUrl() {
     return false;
   }
 
+  if (!AuthenticateProxy()) {
+    return true;
+  }
+
   // Figure out if we should be using a slurp fetcher rather than the default
   // system fetcher.
   UrlAsyncFetcher* fetcher = server_context_->DefaultSystemFetcher();
@@ -273,6 +279,32 @@ bool InstawebHandler::ProxyUrl() {
 
   if (!fetch_succeeded || fetch.response_headers()->IsErrorStatus()) {
     server_context_->ReportSlurpNotFound(stripped_url, request_);
+  }
+  return true;
+}
+
+bool InstawebHandler::AuthenticateProxy() {
+  StringPiece cookie_name, cookie_value, redirect;
+  const ApacheConfig* config = ApacheConfig::DynamicCast(options());
+  if (config->GetProxyAuth(&cookie_name, &cookie_value, &redirect)) {
+    bool ok = cookie_value.empty()
+        ? request_headers_->HasCookie(cookie_name)
+        : request_headers_->HasCookieValue(cookie_name, cookie_value);
+    if (!ok) {
+      ResponseHeaders response_headers;
+      if (redirect.empty()) {
+        response_headers.SetStatusAndReason(HttpStatus::kForbidden);
+      } else {
+        response_headers.SetStatusAndReason(HttpStatus::kTemporaryRedirect);
+        response_headers.Add(HttpAttributes::kContentType, "text/html");
+        response_headers.Add(HttpAttributes::kLocation, redirect);
+        GoogleString redirect_escaped;
+        HtmlKeywords::Escape(redirect, &redirect_escaped);
+        send_out_headers_and_body(request_, response_headers, StrCat(
+            "Redirecting to ", redirect_escaped));
+      }
+      return false;
+    }
   }
   return true;
 }

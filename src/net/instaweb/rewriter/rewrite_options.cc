@@ -3024,7 +3024,7 @@ RewriteOptions::OptionSettingResult RewriteOptions::ParseAndSetOptionFromName1(
 
   // TODO(matterbury): use a hash map for faster lookup/switching.
   if (StringCaseEqual(name, kAllow)) {
-      Allow(arg);
+    Allow(arg);
   } else if (StringCaseEqual(name, kDisableFilters)) {
     if (!DisableFiltersByCommaSeparatedList(arg, handler)) {
       *msg = "Failed to disable some filters.";

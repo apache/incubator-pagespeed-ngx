@@ -101,6 +101,13 @@ class RequestHeaders : public Headers<HttpRequestHeaders> {
   // how this is handled is up to the caller.
   const CookieMultimap& GetAllCookies() const;
 
+  // Determines whether the specified Cookie is present in the request.
+  bool HasCookie(StringPiece cookie_name) const;
+
+  // Determines whether the specified Cookie and value are present in the
+  // request.
+  bool HasCookieValue(StringPiece cookie_name, StringPiece cookie_value) const;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(RequestHeaders);
 };

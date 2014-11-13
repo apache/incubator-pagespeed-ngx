@@ -74,6 +74,15 @@ class DomainLawyerTest : public testing::Test {
                                     &is_proxy) && !is_proxy;
   }
 
+  bool MapOriginAndHost(const StringPiece& in, GoogleString* origin,
+                        GoogleString* host_header) {
+    bool is_proxy = true;
+    origin->clear();
+    host_header->clear();
+    return domain_lawyer_.MapOrigin(in, origin, host_header,
+                                    &is_proxy) && !is_proxy;
+  }
+
   bool MapProxy(const StringPiece& in, GoogleString* out) {
     bool is_proxy = false;
     out->clear();
@@ -360,16 +369,96 @@ TEST_F(DomainLawyerTest, MapHttpsAcrossSchemesAndPorts) {
 
 TEST_F(DomainLawyerTest, AddTwoProtocolDomainMapping) {
   ASSERT_TRUE(domain_lawyer_.AddTwoProtocolOriginDomainMapping(
-      "ref.nytimes.com", "www.nytimes.com", &message_handler_));
+      "ref.nytimes.com", "www.nytimes.com", "", &message_handler_));
   // This will rewrite domains of fetches, but not change urls in page:
   EXPECT_FALSE(domain_lawyer_.can_rewrite_domains());
   GoogleString mapped;
-  ASSERT_TRUE(MapOrigin(
-      "http://www.nytimes.com/index.html", &mapped));
+  GoogleString host_header;
+  ASSERT_TRUE(MapOriginAndHost(
+      "http://www.nytimes.com/index.html", &mapped, &host_header));
   EXPECT_STREQ("http://ref.nytimes.com/index.html", mapped);
-  ASSERT_TRUE(MapOrigin(
-      "https://www.nytimes.com/index.html", &mapped));
+  EXPECT_STREQ("www.nytimes.com", host_header);
+  ASSERT_TRUE(MapOriginAndHost(
+      "https://www.nytimes.com/index.html", &mapped, &host_header));
   EXPECT_STREQ("https://ref.nytimes.com/index.html", mapped);
+  EXPECT_STREQ("www.nytimes.com", host_header);
+}
+
+TEST_F(DomainLawyerTest, AddTwoProtocolDomainMappingWithRefPort) {
+  ASSERT_TRUE(domain_lawyer_.AddTwoProtocolOriginDomainMapping(
+      "ref.nytimes.com:8089", "www.nytimes.com", "", &message_handler_));
+  // This will rewrite domains of fetches, but not change urls in page:
+  EXPECT_FALSE(domain_lawyer_.can_rewrite_domains());
+  GoogleString mapped;
+  GoogleString host_header;
+  ASSERT_TRUE(MapOriginAndHost(
+      "http://www.nytimes.com/index.html", &mapped, &host_header));
+  EXPECT_STREQ("http://ref.nytimes.com:8089/index.html", mapped);
+  EXPECT_STREQ("www.nytimes.com", host_header);
+  ASSERT_TRUE(MapOriginAndHost(
+      "https://www.nytimes.com/index.html", &mapped, &host_header));
+  EXPECT_STREQ("https://ref.nytimes.com:8089/index.html", mapped);
+  EXPECT_STREQ("www.nytimes.com", host_header);
+}
+
+TEST_F(DomainLawyerTest, AddTwoProtocolDomainMappingWithServingPort) {
+  ASSERT_TRUE(domain_lawyer_.AddTwoProtocolOriginDomainMapping(
+      "ref.nytimes.com", "www.nytimes.com:8080", "", &message_handler_));
+  // This will rewrite domains of fetches, but not change urls in page:
+  EXPECT_FALSE(domain_lawyer_.can_rewrite_domains());
+  GoogleString mapped;
+  GoogleString host_header;
+  ASSERT_TRUE(MapOriginAndHost(
+      "http://www.nytimes.com:8080/index.html", &mapped, &host_header));
+  EXPECT_STREQ("http://ref.nytimes.com/index.html", mapped);
+  EXPECT_STREQ("www.nytimes.com:8080", host_header);
+  ASSERT_TRUE(MapOriginAndHost(
+      "http://www.nytimes.com/index.html", &mapped, &host_header));
+  EXPECT_STREQ("http://www.nytimes.com/index.html", mapped);
+  EXPECT_STREQ("www.nytimes.com", host_header);
+  ASSERT_TRUE(MapOriginAndHost(
+      "https://www.nytimes.com:8080/index.html", &mapped, &host_header));
+  EXPECT_STREQ("https://ref.nytimes.com/index.html", mapped);
+  EXPECT_STREQ("www.nytimes.com:8080", host_header);
+  ASSERT_TRUE(MapOriginAndHost(
+      "https://www.nytimes.com/index.html", &mapped, &host_header));
+  EXPECT_STREQ("https://www.nytimes.com/index.html", mapped);
+  EXPECT_STREQ("www.nytimes.com", host_header);
+}
+
+TEST_F(DomainLawyerTest, AddTwoProtocolDomainMappingWithBothPorts) {
+  ASSERT_TRUE(domain_lawyer_.AddTwoProtocolOriginDomainMapping(
+      "ref.nytimes.com:9999", "www.nytimes.com:8080", "", &message_handler_));
+  // This will rewrite domains of fetches, but not change urls in page:
+  EXPECT_FALSE(domain_lawyer_.can_rewrite_domains());
+  GoogleString mapped;
+  GoogleString host_header;
+  ASSERT_TRUE(MapOriginAndHost(
+      "http://www.nytimes.com:8080/index.html", &mapped, &host_header));
+  EXPECT_STREQ("http://ref.nytimes.com:9999/index.html", mapped);
+  EXPECT_STREQ("www.nytimes.com:8080", host_header);
+  ASSERT_TRUE(MapOriginAndHost(
+      "https://www.nytimes.com:8080/index.html", &mapped, &host_header));
+  EXPECT_STREQ("https://ref.nytimes.com:9999/index.html", mapped);
+  EXPECT_STREQ("www.nytimes.com:8080", host_header);
+}
+
+TEST_F(DomainLawyerTest, AddTwoProtocolDomainMappingWithHostHeader) {
+  ASSERT_TRUE(domain_lawyer_.AddTwoProtocolOriginDomainMapping(
+      "ref.nytimes.com", "www.nytimes.com", "host.nytimes.com",
+      &message_handler_));
+  // This will rewrite domains of fetches, but not change urls in page:
+  EXPECT_FALSE(domain_lawyer_.can_rewrite_domains());
+  GoogleString mapped;
+  GoogleString host_header;
+  ASSERT_TRUE(MapOriginAndHost(
+      "http://www.nytimes.com/index.html", &mapped, &host_header));
+  EXPECT_STREQ("http://ref.nytimes.com/index.html", mapped);
+  EXPECT_STREQ("host.nytimes.com", host_header);
+  ASSERT_TRUE(MapOriginAndHost(
+      "https://www.nytimes.com/index.html", &mapped, &host_header));
+  EXPECT_STREQ("https://ref.nytimes.com/index.html", mapped);
+  EXPECT_STREQ("host.nytimes.com", host_header);
 }
 
 TEST_F(DomainLawyerTest, MapOriginExplicitHost) {

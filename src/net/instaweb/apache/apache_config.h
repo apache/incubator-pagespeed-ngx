@@ -20,11 +20,11 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/system/public/system_rewrite_options.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/thread_system.h"
 
 namespace net_instaweb {
-
-class ThreadSystem;
 
 // Establishes a context for VirtualHosts and directory-scoped
 // options, either via .htaccess or <Directory>...</Directory>.
@@ -46,6 +46,19 @@ class ApacheConfig : public SystemRewriteOptions {
 
   // Make a new empty set of options.
   virtual ApacheConfig* NewOptions() const;
+
+  // Gets proxy authentication settings from the config file.  Returns true
+  // if any settings were found, populating *name. *value and *redirect will
+  // be non-empty if specified in the config file.
+  bool GetProxyAuth(StringPiece* name, StringPiece* value,
+                    StringPiece* redirect) const;
+
+  void set_proxy_auth(StringPiece p) {
+    set_option(p.as_string(), &proxy_auth_);
+  }
+  const GoogleString& proxy_auth() const {
+    return proxy_auth_.value();
+  }
 
   // Returns a suitably down cast version of 'instance' if it is an instance
   // of this class, NULL if not.
@@ -74,6 +87,7 @@ class ApacheConfig : public SystemRewriteOptions {
   void Init();
 
   Option<bool> fetch_from_mod_spdy_;
+  Option<GoogleString> proxy_auth_;  // CookieName[=Value][:RedirectUrl]
 
   DISALLOW_COPY_AND_ASSIGN(ApacheConfig);
 };

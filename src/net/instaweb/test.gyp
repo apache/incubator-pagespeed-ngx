@@ -400,6 +400,7 @@
       ],
       'sources': [
         'apache/apr_file_system_test.cc',
+        'apache/apache_config_test.cc',
         # header_util.cc is dependent on the version of httpd, so it
         # is not included in 'instaweb_apr' which is httpd-version independent.
         # Note that the unit tests are only run against Apache 2.2.  In module
