@@ -30,6 +30,7 @@
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/request_context.h"
+#include "net/instaweb/http/public/wait_url_async_fetcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/image_testing_peer.h"
 #include "net/instaweb/rewriter/public/dom_stats_filter.h"
@@ -3546,6 +3547,82 @@ TEST_F(ImageRewriteTest, NoTransformOptimized) {
     found |= *(values[i]) == "no-transform";
   }
   EXPECT_TRUE(found);
+}
+
+TEST_F(ImageRewriteTest, ReportDimensionsToJs) {
+  options()->EnableFilter(RewriteOptions::kExperimentCollectMobImageInfo);
+  AddRecompressImageFilters();
+  rewrite_driver()->AddFilters();
+  AddFileToMockFetcher(StrCat(kTestDomain, "a.png"), kBikePngFile,
+                       kContentTypePng, 100);
+  AddFileToMockFetcher(StrCat(kTestDomain, "b.jpeg"), kPuzzleJpgFile,
+                       kContentTypeJpeg, 100);
+
+  SetupWriter();
+  rewrite_driver()->StartParse(StrCat(kTestDomain, "dims.html"));
+  rewrite_driver()->ParseText(StrCat("<img src=\"", kTestDomain, "a.png\">"));
+  rewrite_driver()->Flush();
+  rewrite_driver()->ParseText(StrCat("<img src=\"", kTestDomain, "b.jpeg\">"));
+  rewrite_driver()->FinishParse();
+
+  GoogleString out_png_url(Encode(kTestDomain, "ic", "0", "a.png", "jpg"));
+  GoogleString out_jpeg_url(Encode(kTestDomain, "ic", "0", "b.jpeg", "jpg"));
+  GoogleString js = StrCat(
+      "psMobStaticImageInfo = {"
+      "\"", out_png_url, "\":{w:100,h:100},"
+      "\"", out_jpeg_url, "\":{w:1023,h:766},"
+      "}");
+  EXPECT_EQ(StrCat(StrCat("<img src=\"", out_png_url, "\">"),
+                   StrCat("<img src=\"", out_jpeg_url, "\">"),
+                          "<script>", js, "</script>"),
+            output_buffer_);
+}
+
+TEST_F(ImageRewriteTest, ReportDimensionsToJsPartial) {
+  // Test where one image isn't loaded in time. We report partial info.
+  SetupWaitFetcher();
+  options()->EnableFilter(RewriteOptions::kExperimentCollectMobImageInfo);
+  AddRecompressImageFilters();
+  rewrite_driver()->AddFilters();
+  AddFileToMockFetcher(StrCat(kTestDomain, "a.png"), kBikePngFile,
+                       kContentTypePng, 100);
+  AddFileToMockFetcher(StrCat(kTestDomain, "b.jpeg"), kPuzzleJpgFile,
+                       kContentTypeJpeg, 100);
+  factory()->wait_url_async_fetcher()->DoNotDelay(StrCat(kTestDomain, "a.png"));
+
+  SetupWriter();
+  rewrite_driver()->StartParse(StrCat(kTestDomain, "dims.html"));
+  rewrite_driver()->ParseText("<img src=\"a.png\"><img src=\"b.jpeg\">");
+  rewrite_driver()->FinishParse();
+
+  GoogleString out_png_url(Encode("", "ic", "0", "a.png", "jpg"));
+  GoogleString out_jpeg_url(Encode("", "ic", "0", "b.jpeg", "jpg"));
+  GoogleString js1 = StrCat(
+      "psMobStaticImageInfo = {"
+      "\"", kTestDomain, out_png_url, "\":{w:100,h:100},"
+      "}");
+  GoogleString js2 = StrCat(
+      "psMobStaticImageInfo = {"
+      "\"", kTestDomain, out_png_url, "\":{w:100,h:100},"
+      "\"", kTestDomain, out_jpeg_url, "\":{w:1023,h:766},"
+      "}");
+  EXPECT_EQ(StrCat(StrCat("<img src=\"", out_png_url, "\">"),
+                   "<img src=\"b.jpeg\">",
+                   "<script>", js1, "</script>"),
+            output_buffer_);
+
+  CallFetcherCallbacks();
+
+  // Next time all is available.
+  output_buffer_.clear();
+  SetupWriter();
+  rewrite_driver()->StartParse(StrCat(kTestDomain, "dims2.html"));
+  rewrite_driver()->ParseText("<img src=\"a.png\"><img src=\"b.jpeg\">");
+  rewrite_driver()->FinishParse();
+  EXPECT_EQ(StrCat(StrCat("<img src=\"", out_png_url, "\">"),
+                   StrCat("<img src=\"", out_jpeg_url, "\">"),
+                   "<script>", js2, "</script>"),
+            output_buffer_);
 }
 
 TEST_F(ImageRewriteTest, DebugMessageImageInfo) {

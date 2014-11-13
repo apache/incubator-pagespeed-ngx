@@ -28,6 +28,12 @@ message ImageDim {
   optional int32 height = 2 [ default = -1 ];
 };
 
+// Information about an images indirectly associated with this resource.
+message AssociatedImageInfo {
+  optional string url = 1;
+  optional ImageDim dimensions = 2;
+};
+
 // Info about the input resource that was used to create a CachedResult.
 // Next free tag: 10.
 message InputInfo {
@@ -89,7 +95,7 @@ message InputInfo {
 // is a sequence of input URLs and a filter id. The input array
 // tells us which inputs are used to construct this output; it must be
 // interpreted using the URL-sequence that was used to form the key.
-// Next free tag: 23
+// Next free tag: 24
 message CachedResult {
   // Tags 1-7 are for internal use by output_resource.
 
@@ -191,6 +197,10 @@ message CachedResult {
   // currently requries IPRO to add a Vary:Accept header to the optimized image.
   optional ResourceContext.LibWebpLevel
     minimal_webp_support = 22 [ default = LIBWEBP_LOSSY_ONLY ];
+
+  // Information about any images indirectly included via this resource, or
+  // its dependencies.
+  repeated AssociatedImageInfo associated_image_info = 23;
 }
 
 // Contains the mapping of input URLs to output URLs.  In the general

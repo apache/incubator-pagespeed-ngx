@@ -52,6 +52,7 @@
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/escaping.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/statistics.h"
@@ -60,6 +61,7 @@
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/html/html_element.h"
 #include "pagespeed/kernel/html/html_name.h"
+#include "pagespeed/kernel/html/html_node.h"
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/data_url.h"
 #include "pagespeed/kernel/http/google_url.h"
@@ -454,6 +456,17 @@ void ImageRewriteFilter::Context::Render() {
       rewrote_url = filter_->FinishRewriteImageUrl(
           result, resource_context(), html_slot->element(),
           html_slot->attribute(), html_index_, html_slot, &inline_result);
+
+      // Register image metrics for images inside HTML here. We don't deal with
+      // images inside CSS here since we might not even run --- our work may get
+      // cached at CSS filter level.
+      if (Driver()->options()->Enabled(
+              RewriteOptions::kExperimentCollectMobImageInfo)) {
+        AssociatedImageInfo aii;
+        aii.set_url(result->url());
+        *aii.mutable_dimensions() = result->image_file_dims();
+        filter_->RegisterImageInfo(aii);
+      }
     }
 
     if (Driver()->options()->Enabled(RewriteOptions::kInlineImages)) {
@@ -491,7 +504,8 @@ void ImageRewriteFilter::Context::EncodeUserAgentIntoResourceContext(
 
 ImageRewriteFilter::ImageRewriteFilter(RewriteDriver* driver)
     : RewriteFilter(driver),
-      image_counter_(0) {
+      image_counter_(0),
+      saw_end_document_(false) {
   Statistics* stats = server_context()->statistics();
   image_rewrites_ = stats->GetVariable(kImageRewrites);
   image_resized_using_rendered_dimensions_ =
@@ -662,9 +676,43 @@ void ImageRewriteFilter::AddRelatedOptions(StringPieceVector* target) {
 
 void ImageRewriteFilter::StartDocumentImpl() {
   image_counter_ = 0;
+  saw_end_document_ = false;
   inlinable_urls_.clear();
   driver()->log_record()->LogRewriterHtmlStatus(
       RewriteOptions::kImageCompressionId, RewriterHtmlApplication::ACTIVE);
+}
+
+void ImageRewriteFilter::EndDocument() {
+  saw_end_document_  = true;
+}
+
+void ImageRewriteFilter::RenderDone() {
+  // Only care about the very end, not every flush window.
+  if (!saw_end_document_) {
+    return;
+  }
+  if (!image_info_.empty()) {
+    GoogleString code =
+        "psMobStaticImageInfo = {";
+    for (AssociatedImageInfoMap::iterator i = image_info_.begin(),
+                                          e = image_info_.end();
+         i != e; ++i) {
+      const AssociatedImageInfo& image_info = i->second;
+      EscapeToJsStringLiteral(image_info.url(), true /* want quotes */,
+                              &code);
+      StrAppend(&code, ":{");
+      StrAppend(&code, "w:",
+                IntegerToString(image_info.dimensions().width()), ",");
+      StrAppend(&code, "h:",
+                IntegerToString(image_info.dimensions().height()), "},");
+    }
+    StrAppend(&code, "}");
+    HtmlElement* script = driver()->NewElement(NULL, HtmlName::kScript);
+    HtmlCharactersNode* chars = driver()->NewCharactersNode(script, code);
+    InsertNodeAtBodyEnd(script);
+    driver()->AppendChild(script, chars);
+  }
+  image_info_.clear();
 }
 
 // Allocate and initialize CompressionOptions object based on RewriteOptions and
@@ -1962,6 +2010,16 @@ void ImageRewriteFilter::DisableRelatedFilters(RewriteOptions* options) {
   for (int i = 0; i < kRelatedFiltersSize; ++i) {
     options->DisableFilter(kRelatedFilters[i]);
   }
+}
+
+void ImageRewriteFilter::RegisterImageInfo(
+    const AssociatedImageInfo& image_info) {
+  if (!driver()->options()->Enabled(
+          RewriteOptions::kExperimentCollectMobImageInfo)) {
+    return;
+  }
+
+  image_info_[image_info.url()] = image_info;
 }
 
 }  // namespace net_instaweb

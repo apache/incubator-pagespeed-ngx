@@ -53,6 +53,7 @@ struct FilterMap {
 "disable_javascript",                RewriteOptions::kDisableJavascript
 "div_structure",                     RewriteOptions::kDivStructure
 "elide_attributes",                  RewriteOptions::kElideAttributes
+"experiment_collect_mob_image_info", RewriteOptions::kExperimentCollectMobImageInfo
 "experiment_spdy",                   RewriteOptions::kExperimentSpdy
 "explicit_close_tags",               RewriteOptions::kExplicitCloseTags
 "extend_cache_css",                  RewriteOptions::kExtendCacheCss

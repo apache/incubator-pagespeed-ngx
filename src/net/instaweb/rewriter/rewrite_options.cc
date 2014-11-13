@@ -665,6 +665,7 @@ const RewriteOptions::Filter kDangerousFilterSet[] = {
   RewriteOptions::kDeterministicJs,   // used for measurement
   RewriteOptions::kDisableJavascript,
   RewriteOptions::kDivStructure,
+  RewriteOptions::kExperimentCollectMobImageInfo,
   RewriteOptions::kExperimentSpdy,
   RewriteOptions::kExplicitCloseTags,
   RewriteOptions::kFixReflows,
@@ -766,6 +767,8 @@ const RewriteOptions::FilterEnumToIdAndNameEntry
     "ds", "Div Structure" },
   { RewriteOptions::kElideAttributes,
     "ea", "Elide Attributes" },
+  { RewriteOptions::kExperimentCollectMobImageInfo,
+    "xi", "Experiment: collect image info to help mobilization" },
   { RewriteOptions::kExperimentSpdy,
     "xs", "SPDY Resources Experiment" },
   { RewriteOptions::kExplicitCloseTags,
