@@ -761,6 +761,81 @@ TEST_F(CriticalSelectorWithInlineCssFilterTest, AvoidTryingToInlineTwice) {
   ValidateExpected("with_inline_css", input_html, expected_html);
 }
 
+class CriticalSelectorWithBackgroundImageCacheExtensionTest
+    : public CriticalSelectorFilterTest {
+ protected:
+  virtual void SetUp() {
+    options()->EnableFilter(RewriteOptions::kExtendCacheImages);
+    options()->EnableFilter(RewriteOptions::kRewriteCss);
+    CriticalSelectorFilterTest::SetUp();
+  }
+};
+
+// Specific test for a bug where inline style blocks would not be treated
+// correctly. Even though they should have been rewritten by rewrite_css,
+// the unoptimized <style> block would be copied to the bottom of the page.
+// TODO(sligocki): This test currently demonstrates the incorrect behavior of
+// this filter. Fix it to have the correct behavior.
+TEST_F(CriticalSelectorWithBackgroundImageCacheExtensionTest,
+       DontMixUnoptAndOptStyles) {
+  SetResponseWithDefaultHeaders("background.png", kContentTypePng,
+                                "Dummy contents", 100);
+  SetResponseWithDefaultHeaders("extern.css", kContentTypeCss,
+                                "* {background: url(background.png)}\n"
+                                ".not-critical { margin: 0 }", 100);
+
+  GoogleString input_css = StrCat(
+      "  <style>div { background: url(background.png) }"
+      ".not-critical { color: red; }</style>\n"
+      "  ", CssLinkHref("extern.css"), "\n");
+
+  GoogleString critical_css = StrCat(
+      "  <style>div{background:url(",
+      Encode("", "ce", "0", "background.png", "png"), ")}"
+      // TODO(sligocki): Non-critical CSS should be stripped.
+      ".not-critical{color:red}</style>\n"
+      "  <style>*{background:url(",
+      Encode("", "ce", "0", "background.png", "png"), ")}</style>\n");
+  // TODO(sligocki): The critical_css should be:
+  // GoogleString critical_css = StrCat(
+  //     "  <style>div{background:url(",
+  //     Encode("", "ce", "0", "background.png", "png"), ")}</style>\n"
+  //     "  <style>*{background:url(",
+  //     Encode("", "ce", "0", "background.png", "png"), ")}</style>\n");
+
+  // Both inline and external CSS should be rewritten here.
+  GoogleString rewritten_css = StrCat(
+      // TODO(sligocki): This should be rewritten/minified.
+      "<style>div { background: url(background.png) }"
+      ".not-critical { color: red; }</style>",
+      CssLinkHref(Encode("", "cf", "0", "extern.css", "css")));
+  // TODO(sligocki): The rewritten_css should be:
+  // GoogleString rewritten_css = StrCat(
+  //     "<style>div{background:url(",
+  //     Encode("", "ce", "0", "background.png", "png"), ")}"
+  //     ".not-critical{color:red}</style>",
+  //     CssLinkHref(Encode("", "cf", "0", "extern.css", "css")));
+
+  GoogleString input_html = StrCat(
+      "<head>\n",
+      input_css,
+      "</head>\n"
+      "<body>\n"
+      "  <div>Foo</div>\n"
+      "  <span>Bar</span>\n"
+      "</body>\n");
+  GoogleString expected_html = StrCat(
+      "<head>\n",
+      critical_css,
+      "</head>\n"
+      "<body>\n"
+      "  <div>Foo</div>\n"
+      "  <span>Bar</span>\n",
+      LoadRestOfCss(rewritten_css),
+      "</body>\n");
+  ValidateExpected("dont_mix_unopt_and_opt", input_html, expected_html);
+}
+
 }  // namespace
 
 }  // namespace net_instaweb
