@@ -1149,6 +1149,20 @@ http {
   server {
     listen @@SECONDARY_PORT@@;
     listen [::]:@@SECONDARY_PORT@@;
+    server_name script-filters.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@_purge";
+    root "@@SERVER_ROOT@@";
+    set $filters "";
+    if ($http_X_Script) {
+        set $filters "add_instrumentation";
+    }
+    pagespeed RewriteLevel PassThrough;
+    pagespeed EnableFilters $filters;
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name purge.example.com;
 
     # Test purging individual URLs without flushing the entire metadata cache.
