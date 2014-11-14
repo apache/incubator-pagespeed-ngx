@@ -33,6 +33,7 @@
 #include "pagespeed/kernel/html/html_element.h"
 #include "pagespeed/kernel/html/html_node.h"
 #include "pagespeed/kernel/html/html_writer_filter.h"
+#include "pagespeed/kernel/http/user_agent_matcher_test_base.h"
 
 namespace net_instaweb {
 
@@ -61,6 +62,7 @@ class MobilizeRewriteFilterTest : public RewriteTestBase {
     RewriteTestBase::SetUp();
     options()->ClearSignatureForTesting();
     options()->set_mob_cxx_layout(true);
+    options()->set_mob_always(true);
     server_context()->ComputeSignature(options());
 
     filter_.reset(new MobilizeRewriteFilter(rewrite_driver()));
@@ -113,6 +115,8 @@ class MobilizeRewriteFilterTest : public RewriteTestBase {
 
   DISALLOW_COPY_AND_ASSIGN(MobilizeRewriteFilterTest);
 };
+
+namespace {
 
 // For testing private functions in isolation.
 class MobilizeRewriteUnitTest : public MobilizeRewriteFilterTest {
@@ -519,8 +523,32 @@ TEST_F(MobilizeRewriteEndToEndTest, FullPage) {
   ASSERT_TRUE(filesystem_.ReadFile(rewritten_filename.c_str(),
                                    &rewritten_buffer, message_handler()));
   options()->set_mob_cxx_layout(true);
+  rewrite_driver()->SetUserAgent(
+      UserAgentMatcherTestBase::kAndroidChrome21UserAgent);
   AddFilter(RewriteOptions::kMobilize);
   ValidateExpected("full_page", original_buffer, rewritten_buffer);
 }
+
+TEST_F(MobilizeRewriteEndToEndTest, NonMobile) {
+  // Don't mobilize on a non-mobile browser.
+  GoogleString original_buffer;
+  GoogleString original_filename =
+      StrCat(GTestSrcDir(), kTestDataDir, kOriginal);
+  ASSERT_TRUE(filesystem_.ReadFile(original_filename.c_str(), &original_buffer,
+                                   message_handler()));
+  // We don't particularly care for the moment if the labeler runs and annotates
+  // the page.
+  GoogleString expected_buffer(original_buffer);
+  GlobalEraseBracketedSubstring(" data-mobile-role=\"", "\"", &expected_buffer);
+  options()->set_mob_cxx_layout(true);
+  rewrite_driver()->SetUserAgent(
+      UserAgentMatcherTestBase::kChrome37UserAgent);
+  AddFilter(RewriteOptions::kMobilize);
+  Parse("EndToEndNonMobile", original_buffer);
+  GlobalEraseBracketedSubstring(" data-mobile-role=\"", "\"", &output_buffer_);
+  EXPECT_STREQ(expected_buffer, output_buffer_);
+}
+
+}  // namespace
 
 }  // namespace net_instaweb

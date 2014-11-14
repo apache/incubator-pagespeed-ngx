@@ -215,6 +215,7 @@ class RewriteOptions {
   static const char kAddOptionsToUrls[];
   static const char kAllowLoggingUrlsInLogRecord[];
   static const char kAllowOptionsToBeSetByCookies[];
+  static const char kAlwaysMobilize[];
   static const char kAlwaysRewriteCss[];
   static const char kAnalyticsID[];
   static const char kAvoidRenamingIntrospectiveJavascript[];
@@ -2445,6 +2446,8 @@ class RewriteOptions {
     return option_cookies_duration_ms_.value();
   }
 
+  bool mob_always() const { return mob_always_.value(); }
+  void set_mob_always(bool x) { set_option(x, &mob_always_); }
   bool mob_layout() const { return mob_layout_.value(); }
   bool mob_cxx_layout() const { return mob_cxx_layout_.value(); }
   void set_mob_cxx_layout(bool x) { set_option(x, &mob_cxx_layout_); }
@@ -3899,6 +3902,7 @@ class RewriteOptions {
 
   Option<ResourceCategorySet> inline_unauthorized_resource_types_;
 
+  Option<bool> mob_always_;
   Option<bool> mob_layout_;
   Option<bool> mob_cxx_layout_;
   Option<bool> mob_logo_;

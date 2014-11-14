@@ -219,6 +219,13 @@ int GlobalReplaceSubstring(const StringPiece& substring,
 stringpiece_ssize_type FindIgnoreCase(StringPiece haystack, StringPiece needle);
 
 
+// Erase shortest substrings in string bracketed by left and right, working
+// from the left.
+// ("[", "]", "abc[def]g[h]i]j[k") -> "abcgi]j[k"
+// Returns the number of substrings erased.
+int GlobalEraseBracketedSubstring(StringPiece left, StringPiece right,
+                                  GoogleString* string);
+
 // Output a string which is the combination of all values in vector, separated
 // by delim. Does not ignore empty strings in vector. So:
 // JoinStringStar({"foo", "", "bar"}, ", ") == "foo, , bar". (Pseudocode)

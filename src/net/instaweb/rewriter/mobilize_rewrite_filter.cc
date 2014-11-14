@@ -22,6 +22,7 @@
 
 #include "base/logging.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
+#include "net/instaweb/rewriter/public/request_properties.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "pagespeed/kernel/base/basictypes.h"
@@ -145,6 +146,23 @@ void MobilizeRewriteFilter::InitStats(Statistics* statistics) {
   statistics->AddVariable(kContentBlocks);
   statistics->AddVariable(kMarginalBlocks);
   statistics->AddVariable(kDeletedElements);
+}
+
+void MobilizeRewriteFilter::DetermineEnabled(GoogleString* disabled_reason) {
+  // Note: we may need to narrow the set of applicable user agents here, but for
+  // now we (very) optimistically assume that our JS works on any mobile UA.
+  // TODO(jmaessen): Some debate over whether to include tablet UAs here.  We
+  // almost certainly want touch-friendliness, but the geometric constraints are
+  // very different and we probably want to turn off almost all non-navigational
+  // mobilization.
+  // TODO(jmaessen): If we want to inject instrumentation on desktop pages to
+  // beacon back data useful for mobile page views, this should change and we'll
+  // want to check at code injection points instead.
+  if (!driver_->options()->mob_always() &&
+      !driver_->request_properties()->IsMobile()) {
+    disabled_reason->assign("Not a mobile User Agent.");
+    set_is_enabled(false);
+  }
 }
 
 void MobilizeRewriteFilter::StartDocument() {

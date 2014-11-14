@@ -18,8 +18,6 @@
 
 #include "net/instaweb/rewriter/public/mobilize_label_filter.h"
 
-#include <cstddef>
-
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
@@ -41,26 +39,6 @@ const char kOriginal[] = "mobilize_test.html";
 const char kOriginalHtml5[] = "mobilize_test_html5.html";
 const char kOriginalLabeled[] = "mobilize_test_labeled.html";
 const char kOriginalHtml5Labeled[] = "mobilize_test_html5_labeled.html";
-
-// Erase shortest substrings in string bracketed by left and right.
-// ("[", "]", "abc[def]g[h]i]j[k") -> "abcgi]j[k"
-int GlobalEraseBracketedSubstring(StringPiece left, StringPiece right,
-                                  GoogleString* string) {
-  int deletions = 0;
-  size_t left_pos = 0;
-  while ((left_pos = string->find(left.data(), left_pos, left.size())) !=
-         GoogleString::npos) {
-    size_t right_pos =
-        string->find(right.data(), left_pos + left.size(), right.size());
-    if (right_pos == GoogleString::npos) {
-      break;
-    }
-    right_pos += right.size();
-    string->erase(left_pos, right_pos - left_pos);
-    ++deletions;
-  }
-  return deletions;
-}
 
 class MobilizeLabelFilterTest : public RewriteTestBase {
  protected:
@@ -144,24 +122,6 @@ class MobilizeLabelFilterTest : public RewriteTestBase {
  private:
   DISALLOW_COPY_AND_ASSIGN(MobilizeLabelFilterTest);
 };
-
-TEST_F(MobilizeLabelFilterTest, EraseBracketedSubstring) {
-  GoogleString test0("abc[def]g[h]i]j[k");
-  EXPECT_EQ(2, GlobalEraseBracketedSubstring("[", "]", &test0));
-  EXPECT_STREQ("abcgi]j[k", test0);
-  GoogleString test1("abc/*ignored*/def/*also*/ghi");
-  EXPECT_EQ(2, GlobalEraseBracketedSubstring("/*", "*/", &test1));
-  EXPECT_STREQ("abcdefghi", test1);
-  GoogleString test2("abc/*ignored*/def/*ghi");
-  EXPECT_EQ(1, GlobalEraseBracketedSubstring("/*", "*/", &test2));
-  EXPECT_STREQ("abcdef/*ghi", test2);
-  GoogleString test3("abc/*ignored*/def*/ghi");
-  EXPECT_EQ(1, GlobalEraseBracketedSubstring("/*", "*/", &test3));
-  EXPECT_STREQ("abcdef*/ghi", test3);
-  GoogleString test4("abc/*ignored/*nested*/def*/ghi");
-  EXPECT_EQ(1, GlobalEraseBracketedSubstring("/*", "*/", &test4));
-  EXPECT_STREQ("abcdef*/ghi", test4);
-}
 
 TEST_F(MobilizeLabelFilterTest, AlreadyLabeled) {
   StdioFileSystem filesystem;

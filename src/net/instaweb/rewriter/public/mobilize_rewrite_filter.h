@@ -111,6 +111,7 @@ class MobilizeRewriteFilter : public EmptyHtmlFilter {
 
   static void InitStats(Statistics* statistics);
 
+  virtual void DetermineEnabled(GoogleString* disabled_reason);
   virtual void StartDocument();
   virtual void EndDocument();
   virtual void StartElement(HtmlElement* element);

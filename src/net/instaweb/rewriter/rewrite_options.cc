@@ -60,6 +60,7 @@ const char RewriteOptions::kAllowLoggingUrlsInLogRecord[] =
     "AllowLoggingUrlsInLogRecord";
 const char RewriteOptions::kAllowOptionsToBeSetByCookies[] =
     "AllowOptionsToBeSetByCookies";
+const char RewriteOptions::kAlwaysMobilize[] = "AlwaysMobilize";
 const char RewriteOptions::kAlwaysRewriteCss[] = "AlwaysRewriteCss";
 const char RewriteOptions::kAnalyticsID[] = "AnalyticsID";
 const char RewriteOptions::kAvoidRenamingIntrospectiveJavascript[] =
@@ -2186,6 +2187,11 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       "The max-age in ms of cookies that set PageSpeed options.", true);
 
+  AddBaseProperty(
+      false, &RewriteOptions::mob_always_, "malways", kAlwaysMobilize,
+      kQueryScope,
+      "(experimental) Unconditionally mobilize page regardless of user-agent.",
+      true);
   AddBaseProperty(
       false, &RewriteOptions::mob_cxx_layout_, "mcxxlayout", kMobCxxLayout,
       kServerScope,

@@ -560,6 +560,39 @@ TEST(BasicUtilsTest, StringPieceFindWithNull) {
   EXPECT_EQ(StringPiece::npos, null_piece.find("not found"));
 }
 
+TEST(BasicUtilsTest, EraseBracketedSubstring) {
+  GoogleString test0("abc[def]g[h]i]j[k");
+  EXPECT_EQ(2, GlobalEraseBracketedSubstring("[", "]", &test0));
+  EXPECT_STREQ("abcgi]j[k", test0);
+  GoogleString test1("abc/*ignored*/def/*also*/ghi");
+  EXPECT_EQ(2, GlobalEraseBracketedSubstring("/*", "*/", &test1));
+  EXPECT_STREQ("abcdefghi", test1);
+  GoogleString test2("abc/*ignored*/def/*ghi");
+  EXPECT_EQ(1, GlobalEraseBracketedSubstring("/*", "*/", &test2));
+  EXPECT_STREQ("abcdef/*ghi", test2);
+  GoogleString test3("abc/*ignored*/def*/ghi");
+  EXPECT_EQ(1, GlobalEraseBracketedSubstring("/*", "*/", &test3));
+  EXPECT_STREQ("abcdef*/ghi", test3);
+  GoogleString test4("abc/*ignored/*nested*/def*/ghi");
+  EXPECT_EQ(1, GlobalEraseBracketedSubstring("/*", "*/", &test4));
+  EXPECT_STREQ("abcdef*/ghi", test4);
+  // Trailing delimiters
+  GoogleString test5("abc/*ignored*/def/*");
+  EXPECT_EQ(1, GlobalEraseBracketedSubstring("/*", "*/", &test5));
+  EXPECT_STREQ("abcdef/*", test5);
+  GoogleString test6("abc/*ignored*/");
+  EXPECT_EQ(1, GlobalEraseBracketedSubstring("/*", "*/", &test6));
+  EXPECT_STREQ("abc", test6);
+  // Leading delimiter
+  GoogleString test7("/*ignored*/abc/*def");
+  EXPECT_EQ(1, GlobalEraseBracketedSubstring("/*", "*/", &test7));
+  EXPECT_STREQ("abc/*def", test7);
+  // Identical start and end delimiters
+  GoogleString test8("a//x//bc//skip//de//f");
+  EXPECT_EQ(2, GlobalEraseBracketedSubstring("//", "//", &test8));
+  EXPECT_STREQ("abcde//f", test8);
+}
+
 class JoinCollectionTest : public testing::Test {
  public:
   JoinCollectionTest() { }

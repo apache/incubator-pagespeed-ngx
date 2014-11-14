@@ -833,6 +833,7 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
     RewriteOptions::kAddOptionsToUrls,
     RewriteOptions::kAllowLoggingUrlsInLogRecord,
     RewriteOptions::kAllowOptionsToBeSetByCookies,
+    RewriteOptions::kAlwaysMobilize,
     RewriteOptions::kAlwaysRewriteCss,
     RewriteOptions::kAnalyticsID,
     RewriteOptions::kAvoidRenamingIntrospectiveJavascript,
