@@ -2738,6 +2738,16 @@ HEADERS="--header=Host:proxy-post.example.com --post-data=abcdefgh"
 OUT=$($WGET_DUMP -S $HEADERS $URL 2>&1)
 check_from "$OUT" fgrep -qi 'addInstrumentationInit'
 
+start_test Test that we can modify filters via script variables.
+URL="http://$SECONDARY_HOSTNAME/mod_pagespeed_example/rewrite_images.html"
+HEADERS="--header=Host:script-filters.example.com --header=X-Script:1"
+OUT=$($WGET_DUMP -S $HEADERS $URL 2>&1)
+check_from "$OUT" fgrep -qi 'addInstrumentationInit'
+
+HEADERS="--header=Host:script-filters.example.com"
+OUT=$($WGET_DUMP -S $HEADERS $URL 2>&1)
+check_not_from "$OUT" fgrep -qi 'addInstrumentationInit'
+
 if [ "$NATIVE_FETCHER" != "on" ]; then
   start_test Test that we can rewrite an HTTPS resource.
   fetch_until $TEST_ROOT/https_fetch/https_fetch.html \
