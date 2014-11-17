@@ -23,9 +23,11 @@
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/css_filter.h"
 #include "net/instaweb/rewriter/public/css_hierarchy.h"
+#include "net/instaweb/rewriter/public/css_image_rewriter.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/rewriter/public/rewrite_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_result.h"
@@ -41,8 +43,6 @@
 #include "pagespeed/kernel/http/content_type.h"
 
 namespace net_instaweb {
-
-class RewriteContext;
 
 // Context used by CssFilter under async flow that flattens @imports.
 class CssFlattenImportsContext : public SingleRewriteContext {
@@ -139,6 +139,9 @@ class CssFlattenImportsContext : public SingleRewriteContext {
 
   void Harvest() {
     DCHECK_EQ(1, num_output_partitions());
+
+    // Propagate any info on images from child rewrites.
+    CssImageRewriter::InheritChildImageInfo(this);
 
     // Roll up the rewritten CSS(s) regardless of success or failure.
     // Failure means we can't flatten it for some reason, such as incompatible

@@ -1208,6 +1208,55 @@ TEST_F(CssImageRewriterTest, DebugMessage) {
                            kNoStatCheck | kExpectCached);
 }
 
+// This inherits off CssRewriteTestBase and not CssImageRewriterTest to
+// skip the weird filter twiddling that does to test preserve_urls(),
+// which doesn't really work for an experimental flag.
+class CssImageRewriterMetricsTest : public CssRewriteTestBase {
+ public:
+  virtual void SetUp() {
+    options()->EnableFilter(RewriteOptions::kExperimentCollectMobImageInfo);
+    options()->EnableFilter(RewriteOptions::kRecompressPng);
+    options()->EnableFilter(RewriteOptions::kRecompressJpeg);
+    // Recursively process other CSS but not actually flatten.
+    options()->EnableFilter(RewriteOptions::kFlattenCssImports);
+    options()->set_css_flatten_max_bytes(1);
+    CssRewriteTestBase::SetUp();
+  }
+};
+
+TEST_F(CssImageRewriterMetricsTest, ReportDimensionsToJs) {
+  AddFileToMockFetcher(StrCat(kTestDomain, "a.png"), kBikePngFile,
+                       kContentTypePng, 100);
+  AddFileToMockFetcher(StrCat(kTestDomain, "b.jpg"), kPuzzleJpgFile,
+                       kContentTypeJpeg, 100);
+
+  const char kOuterCss[] =
+      "@import url(inner.css); * { background-image: url(a.png) }";
+  const char kInnerCss[] =
+      "* { background-image: url(b.jpg) }";
+  SetResponseWithDefaultHeaders(
+      "outer.css", kContentTypeCss, kOuterCss, 100);
+  SetResponseWithDefaultHeaders(
+      "inner.css", kContentTypeCss, kInnerCss, 100);
+  GoogleString css_out_url(Encode("", "cf", "0", "outer.css", "css"));
+  GoogleString a_out_url(Encode(kTestDomain, "ic", "0", "a.png", "png"));
+  GoogleString b_out_url(Encode(kTestDomain, "ic", "0", "b.jpg", "jpg"));
+  GoogleString js = StrCat(
+      "psMobStaticImageInfo = {"
+      "\"", a_out_url, "\":{w:100,h:100},"
+      "\"", b_out_url, "\":{w:1023,h:766},}");
+
+  // We write directly since default framework makes assumptions involving
+  // newlines it appends that don't work with things inserted at body end.
+  SetupWriter();
+  rewrite_driver()->StartParse(StrCat(kTestDomain, "dims.html"));
+  rewrite_driver()->ParseText(CssLinkHref("outer.css"));
+  rewrite_driver()->FinishParse();
+
+  EXPECT_EQ(StrCat(CssLinkHref(css_out_url), "<script>", js, "</script>"),
+            output_buffer_);
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

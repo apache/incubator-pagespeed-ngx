@@ -19,12 +19,15 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_CSS_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_CSS_FILTER_H_
 
+#include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/css_hierarchy.h"
 #include "net/instaweb/rewriter/public/css_resource_slot.h"
 #include "net/instaweb/rewriter/public/css_url_encoder.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
+#include "net/instaweb/rewriter/public/rewrite_context.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -34,7 +37,9 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_node.h"
 #include "pagespeed/kernel/http/google_url.h"
+#include "pagespeed/kernel/util/url_segment_encoder.h"
 
 namespace Css {
 
@@ -48,18 +53,12 @@ class AssociationTransformer;
 class AsyncFetch;
 class CssImageRewriter;
 class CacheExtender;
-class HtmlCharactersNode;
 class ImageCombineFilter;
 class ImageRewriteFilter;
 class MessageHandler;
-class OutputPartitions;
-class ResourceContext;
-class RewriteContext;
-class RewriteDriver;
 class RewriteDomainTransformer;
 class Statistics;
 class UpDownCounter;
-class UrlSegmentEncoder;
 class Variable;
 
 // Find and parse all CSS in the page and apply transformations including:
@@ -364,6 +363,7 @@ class CssFilter::Context : public SingleRewriteContext {
 
   CssFilter* filter_;
   scoped_ptr<CssImageRewriter> css_image_rewriter_;
+  ImageRewriteFilter* image_rewrite_filter_;
   CssResourceSlotFactory slot_factory_;
   CssHierarchy hierarchy_;
   bool css_rewritten_;

@@ -33,16 +33,16 @@
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/http/google_url.h"
+#include "pagespeed/kernel/http/response_headers.h"
 #include "pagespeed/kernel/util/url_segment_encoder.h"
 
 namespace net_instaweb {
 
 class AsyncFetch;
-class GoogleUrl;
 class MessageHandler;
 class NamedLock;
 class RequestTrace;
-class ResponseHeaders;
 class RewriteDriver;
 class RewriteOptions;
 class Statistics;
@@ -266,6 +266,14 @@ class RewriteContext {
   RewriteContext* parent() { return parent_; }
   const RewriteContext* parent() const { return parent_; }
 
+  // Accessors for the nested rewrites.
+  int num_nested() const { return nested_.size(); }
+  RewriteContext* nested(int i) const { return nested_[i]; }
+
+  RewriteDriver* Driver() const {
+    return driver_;
+  }
+
   // If called with true, forces a rewrite and re-generates the output.
   void set_force_rewrite(bool x) { force_rewrite_ = x; }
 
@@ -297,13 +305,6 @@ class RewriteContext {
   // not a deep tree.  Same with Driver() and Options().
   ServerContext* FindServerContext() const;
   const RewriteOptions* Options() const;
-  RewriteDriver* Driver() const {
-    return driver_;
-  }
-
-  // Accessors for the nested rewrites.
-  int num_nested() const { return nested_.size(); }
-  RewriteContext* nested(int i) const { return nested_[i]; }
 
   OutputPartitions* partitions() { return partitions_.get(); }
 

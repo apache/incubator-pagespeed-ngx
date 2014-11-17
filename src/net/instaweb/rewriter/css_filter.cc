@@ -188,6 +188,7 @@ CssFilter::Context::Context(CssFilter* filter, RewriteDriver* driver,
           new CssImageRewriter(this, filter,
                                cache_extender, image_rewriter,
                                image_combiner)),
+      image_rewrite_filter_(image_rewriter),
       hierarchy_(filter),
       css_rewritten_(false),
       has_utf8_bom_(false),
@@ -327,6 +328,14 @@ void CssFilter::Context::Render() {
           id(), slot(0)->resource()->url(), RewriterApplication::APPLIED_OK);
     }
     filter_->num_uses_->Add(1);
+  }
+
+  if (Driver()->options()->Enabled(
+          RewriteOptions::kExperimentCollectMobImageInfo) &&
+      !has_parent() /* only report at top-level*/) {
+    for (int i = 0; i < result.associated_image_info_size(); ++i) {
+      image_rewrite_filter_->RegisterImageInfo(result.associated_image_info(i));
+    }
   }
 }
 
@@ -575,6 +584,9 @@ bool CssFilter::Context::FallbackRewriteUrls(
 void CssFilter::Context::Harvest() {
   GoogleString out_text;
   bool ok = false;
+
+  // Propagate any info on images from child rewrites.
+  CssImageRewriter::InheritChildImageInfo(this);
 
   if (fallback_mode_) {
     // If CSS was not successfully parsed.

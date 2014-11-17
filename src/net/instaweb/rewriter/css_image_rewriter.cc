@@ -19,8 +19,12 @@
 #include "net/instaweb/rewriter/public/css_image_rewriter.h"
 
 #include <cstddef>
+#include <map>
+#include <utility>
 #include <vector>
 
+#include "base/logging.h"
+#include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
 #include "net/instaweb/rewriter/public/css_filter.h"
 #include "net/instaweb/rewriter/public/css_hierarchy.h"
@@ -149,6 +153,50 @@ void CssImageRewriter::RewriteSlot(const ResourceSlotPtr& slot,
   }
 
   // TODO(sligocki): DomainRewriter or is this done automatically?
+}
+
+void CssImageRewriter::InheritChildImageInfo(RewriteContext* context) {
+  typedef ImageRewriteFilter::AssociatedImageInfoMap AssociatedImageInfoMap;
+  if (!context->Driver()->options()->Enabled(
+      RewriteOptions::kExperimentCollectMobImageInfo)) {
+    return;
+  }
+
+  if (context->num_outputs() != 1) {
+    LOG(DFATAL) << "InheritChildImageInfo on context with wrong # of outputs:"
+                << context->num_outputs();
+    return;
+  }
+
+  AssociatedImageInfoMap child_image_info;
+  for (int i = 0; i < context->num_nested(); ++i) {
+    RewriteContext* nested_context = context->nested(i);
+    for (int j = 0; j < nested_context->num_output_partitions(); ++j) {
+      const CachedResult* child_result = nested_context->output_partition(j);
+
+      // Image info may be directly included inside the CachedResult, if
+      // child_result came from the image filter.
+      AssociatedImageInfo from_image_filter;
+      if (ImageRewriteFilter::ExtractAssociatedImageInfo(child_result,
+                                                         &from_image_filter)) {
+        child_image_info[from_image_filter.url()] = from_image_filter;
+      }
+
+      // Info on multiple images may be stored as AssociatedImageInfo by CSS
+      // rewriting or flattening.
+      for (int k = 0; k < child_result->associated_image_info_size(); ++k) {
+        const AssociatedImageInfo& image_info =
+            child_result->associated_image_info(k);
+        child_image_info[image_info.url()] = image_info;
+      }
+    }
+  }
+
+  for (AssociatedImageInfoMap::iterator i = child_image_info.begin(),
+                                        e = child_image_info.end();
+       i != e; ++i) {
+    *context->output_partition(0)->add_associated_image_info() = i->second;
+  }
 }
 
 bool CssImageRewriter::RewriteCss(int64 image_inline_max_bytes,

@@ -463,9 +463,9 @@ void ImageRewriteFilter::Context::Render() {
       if (Driver()->options()->Enabled(
               RewriteOptions::kExperimentCollectMobImageInfo)) {
         AssociatedImageInfo aii;
-        aii.set_url(result->url());
-        *aii.mutable_dimensions() = result->image_file_dims();
-        filter_->RegisterImageInfo(aii);
+        if (ExtractAssociatedImageInfo(result, &aii)) {
+          filter_->RegisterImageInfo(aii);
+        }
       }
     }
 
@@ -687,7 +687,10 @@ void ImageRewriteFilter::EndDocument() {
 }
 
 void ImageRewriteFilter::RenderDone() {
-  // Only care about the very end, not every flush window.
+  // Only care about the very end, not every flush window; framework orders
+  // EndDocument before the last RenderDone (and after previous ones) so we
+  // use EndDocument() having been called to distinguish the last flush window
+  // from previous ones.
   if (!saw_end_document_) {
     return;
   }
@@ -2020,6 +2023,16 @@ void ImageRewriteFilter::RegisterImageInfo(
   }
 
   image_info_[image_info.url()] = image_info;
+}
+
+bool ImageRewriteFilter::ExtractAssociatedImageInfo(
+    const CachedResult* result, AssociatedImageInfo* out) {
+  if (result->has_image_file_dims()) {
+    out->set_url(result->url());
+    *out->mutable_dimensions() = result->image_file_dims();
+    return true;
+  }
+  return false;
 }
 
 }  // namespace net_instaweb

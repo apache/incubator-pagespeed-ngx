@@ -127,6 +127,11 @@ class ImageRewriteFilter : public RewriteFilter {
   // context: the parser thread or a Render() method.
   void RegisterImageInfo(const AssociatedImageInfo& image_info);
 
+  // Tries to extract information stored by the image rewrite filter
+  // in *in, and to store it in *out. Returns whether successful.
+  static bool ExtractAssociatedImageInfo(const CachedResult* in,
+                                         AssociatedImageInfo* out);
+
   // Can we inline resource?  If so, encode its contents into the data_url,
   // otherwise leave data_url alone.
   InlineResult TryInline(bool is_html, bool is_critical,
