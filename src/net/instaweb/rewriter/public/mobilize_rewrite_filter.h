@@ -122,6 +122,7 @@ class MobilizeRewriteFilter : public EmptyHtmlFilter {
  private:
   void HandleStartTagInBody(HtmlElement* element);
   void HandleEndTagInBody(HtmlElement* element);
+  void AppendStylesheet(const StringPiece& css_file_name, HtmlElement* element);
   void AddStyle(HtmlElement* element);
   void AddReorderContainers(HtmlElement* element);
   void RemoveReorderContainers();

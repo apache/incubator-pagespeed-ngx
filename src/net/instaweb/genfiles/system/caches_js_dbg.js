@@ -992,6 +992,28 @@ goog.string.splitLimit = function(a, b, c) {
   a.length && d.push(a.join(b));
   return d;
 };
+goog.string.editDistance = function(a, b) {
+  var c = [], d = [];
+  if (a == b) {
+    return 0;
+  }
+  if (!a.length || !b.length) {
+    return Math.max(a.length, b.length);
+  }
+  for (var e = 0;e < b.length + 1;e++) {
+    c[e] = e;
+  }
+  for (e = 0;e < a.length;e++) {
+    d[0] = e + 1;
+    for (var f = 0;f < b.length;f++) {
+      d[f + 1] = Math.min(d[f] + 1, c[f + 1] + 1, c[f] + (a[e] != b[f]));
+    }
+    for (f = 0;f < c.length;f++) {
+      c[f] = d[f];
+    }
+  }
+  return d[b.length];
+};
 goog.asserts = {};
 goog.asserts.ENABLE_ASSERTS = goog.DEBUG;
 goog.asserts.AssertionError = function(a, b) {
@@ -2433,9 +2455,6 @@ goog.events.removeAll = function(a, b) {
     }
   }
   return d;
-};
-goog.events.removeAllNativeListeners = function() {
-  return goog.events.listenerCountEstimate_ = 0;
 };
 goog.events.getListeners = function(a, b, c) {
   return goog.events.Listenable.isImplementedBy(a) ? a.getListeners(b, c) : a ? (a = goog.events.getListenerMap_(a)) ? a.getListeners(b, c) : [] : [];

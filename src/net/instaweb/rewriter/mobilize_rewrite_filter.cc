@@ -477,6 +477,15 @@ void MobilizeRewriteFilter::HandleEndTagInBody(HtmlElement* element) {
   }
 }
 
+void MobilizeRewriteFilter::AppendStylesheet(const StringPiece& css_file_name,
+                                             HtmlElement* element) {
+  HtmlElement* link = driver_->NewElement(element, HtmlName::kLink);
+  driver_->AppendChild(element, link);
+  driver_->AddAttribute(link, HtmlName::kRel, "stylesheet");
+  driver_->AddAttribute(link, HtmlName::kHref, StrCat(static_file_prefix_,
+                                                      css_file_name));
+}
+
 void MobilizeRewriteFilter::AddStyle(HtmlElement* element) {
   if (!added_style_) {
     added_style_ = true;
@@ -492,19 +501,15 @@ void MobilizeRewriteFilter::AddStyle(HtmlElement* element) {
 
     // <style>...</style>
     if (!use_cxx_layout_) {
-      HtmlElement* link = driver_->NewElement(element, HtmlName::kLink);
-      driver_->AppendChild(element, link);
-      driver_->AddAttribute(link, HtmlName::kRel, "stylesheet");
-      driver_->AddAttribute(link, HtmlName::kHref, StrCat(static_file_prefix_,
-                                                          "lite.css"));
+      AppendStylesheet("lite.css", element);
+    }
+
+    if (use_js_logo_) {
+      AppendStylesheet("mob_logo.css", element);
     }
 
     if (use_js_nav_) {
-      HtmlElement* link = driver_->NewElement(element, HtmlName::kLink);
-      driver_->AppendChild(element, link);
-      driver_->AddAttribute(link, HtmlName::kRel, "stylesheet");
-      driver_->AddAttribute(link, HtmlName::kHref,
-                            StrCat(static_file_prefix_, "mob_nav.css"));
+      AppendStylesheet("mob_nav.css", element);
     }
   }
 }
