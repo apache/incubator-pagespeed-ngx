@@ -147,7 +147,7 @@ pagespeed.cf.hash.css"
 combine_css_filename=\
 styles/yellow.css+blue.css+big.css+bold.css.pagespeed.cc.xo4He3_gYf.css
 
-OUTDIR=$TEMPDIR/fetched_directory
+OUTDIR=$TEMPDIR/fetched_directory.$$
 rm -rf $OUTDIR
 mkdir -p $OUTDIR
 
