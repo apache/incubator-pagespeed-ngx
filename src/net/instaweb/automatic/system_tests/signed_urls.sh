@@ -15,8 +15,8 @@ http_proxy=$SECONDARY_HOSTNAME fetch_until $URL \
   "fgrep -c $COMBINED_CSS" 1
 
 start_test Signed Urls : Incorrect URL signature is passed
-# Substring, all but signature and extension.
-URL="${URL:0:100}"
+# Substring, all but last 14 chars (signature and extension).
+URL=$(echo "$URL" | sed 's/.\{14\}$//')
 FINAL_URL="${URL}AAAAAAAAAA.css"
 echo http_proxy=$SECONDARY_HOSTNAME wget $FINAL_URL
 OUT="$(http_proxy=$SECONDARY_HOSTNAME check_not $WGET $FINAL_URL -O - 2>&1)"
@@ -39,8 +39,8 @@ http_proxy=$SECONDARY_HOSTNAME fetch_until $URL \
   "fgrep -c $COMBINED_CSS" 1
 
 start_test Signed Urls, ignored signatures : Incorrect URL signature is passed
-# Substring, all but signature and extension.
-URL="${URL:0:111}"
+# Substring, all but last 14 chars (signature and extension).
+URL=$(echo "$URL" | sed 's/.\{14\}$//')
 FINAL_URL="${URL}AAAAAAAAAA.css"
 http_proxy=$SECONDARY_HOSTNAME fetch_until $FINAL_URL \
   "fgrep -c $COMBINED_CSS" 1
