@@ -187,28 +187,7 @@ goog.DEPENDENCIES_ENABLED && (goog.included_ = {}, goog.dependencies_ = {pathIsM
   (goog.global.CLOSURE_IMPORT_SCRIPT || goog.writeScriptTag_)(a, b) && (goog.dependencies_.written[a] = !0);
 }, goog.IS_OLD_IE_ = goog.global.document && goog.global.document.all && !goog.global.atob, goog.importModule_ = function(a) {
   goog.importScript_("", 'goog.retrieveAndExecModule_("' + a + '");') && (goog.dependencies_.written[a] = !0);
-}, goog.queuedModules_ = [], goog.retrieveAndExecModule_ = function(a) {
-  for (var b = a, c;-1 != (c = a.indexOf("/./"));) {
-    a = a.substr(0, c) + a.substr(c + 2);
-  }
-  for (;-1 != (c = a.indexOf("/../"));) {
-    var d = a.lastIndexOf("/", c - 1);
-    a = a.substr(0, d) + a.substr(c + 3);
-  }
-  c = goog.global.CLOSURE_IMPORT_SCRIPT || goog.writeScriptTag_;
-  var e = null, d = new goog.global.XMLHttpRequest;
-  d.onload = function() {
-    e = this.responseText;
-  };
-  d.open("get", a, !1);
-  d.send();
-  e = d.responseText;
-  if (null != e) {
-    d = goog.wrapModule_(a, e), goog.IS_OLD_IE_ ? (goog.dependencies_.deferred[b] = d, goog.queuedModules_.push(b)) : c(a, d);
-  } else {
-    throw Error("load of " + a + "failed");
-  }
-}, goog.wrapModule_ = function(a, b) {
+}, goog.queuedModules_ = [], goog.wrapModule_ = function(a, b) {
   return goog.LOAD_MODULE_USING_EVAL && goog.isDef(goog.global.JSON) ? "goog.loadModule(" + goog.global.JSON.stringify(b + "\n//# sourceURL=" + a + "\n") + ");" : 'goog.loadModule(function(exports) {"use strict";' + b + "\n;return exports});\n//# sourceURL=" + a + "\n";
 }, goog.loadQueuedModules_ = function() {
   var a = goog.queuedModules_.length;
@@ -325,6 +304,31 @@ goog.DEPENDENCIES_ENABLED && (goog.included_ = {}, goog.dependencies_ = {pathIsM
 }, goog.getPathFromDeps_ = function(a) {
   return a in goog.dependencies_.nameToPath ? goog.dependencies_.nameToPath[a] : null;
 }, goog.findBasePath_(), goog.global.CLOSURE_NO_DEPS || goog.importScript_(goog.basePath + "deps.js"));
+goog.normalizePath_ = function(a) {
+  a = a.split("/");
+  for (var b = 0;b < a.length;) {
+    "." == a[b] ? a.splice(b, 1) : b && ".." == a[b] && a[b - 1] && ".." != a[b - 1] ? a.splice(--b, 2) : b++;
+  }
+  return a.join("/");
+};
+goog.retrieveAndExecModule_ = function(a) {
+  if (!COMPILED) {
+    var b = a;
+    a = goog.normalizePath_(a);
+    var c = goog.global.CLOSURE_IMPORT_SCRIPT || goog.writeScriptTag_, d = null, e = new goog.global.XMLHttpRequest;
+    e.onload = function() {
+      d = this.responseText;
+    };
+    e.open("get", a, !1);
+    e.send();
+    d = e.responseText;
+    if (null != d) {
+      e = goog.wrapModule_(a, d), goog.IS_OLD_IE_ ? (goog.dependencies_.deferred[b] = e, goog.queuedModules_.push(b)) : c(a, e);
+    } else {
+      throw Error("load of " + a + "failed");
+    }
+  }
+};
 goog.typeOf = function(a) {
   var b = typeof a;
   if ("object" == b) {
@@ -625,6 +629,7 @@ goog.dom = {};
 goog.dom.NodeType = {ELEMENT:1, ATTRIBUTE:2, TEXT:3, CDATA_SECTION:4, ENTITY_REFERENCE:5, ENTITY:6, PROCESSING_INSTRUCTION:7, COMMENT:8, DOCUMENT:9, DOCUMENT_TYPE:10, DOCUMENT_FRAGMENT:11, NOTATION:12};
 goog.string = {};
 goog.string.DETECT_DOUBLE_ESCAPING = !1;
+goog.string.FORCE_NON_DOM_HTML_UNESCAPING = !1;
 goog.string.Unicode = {NBSP:"\u00a0"};
 goog.string.startsWith = function(a, b) {
   return 0 == a.lastIndexOf(b, 0);
@@ -764,7 +769,7 @@ goog.string.NULL_RE_ = /\x00/g;
 goog.string.E_RE_ = /e/g;
 goog.string.ALL_RE_ = goog.string.DETECT_DOUBLE_ESCAPING ? /[\x00&<>"'e]/ : /[\x00&<>"']/;
 goog.string.unescapeEntities = function(a) {
-  return goog.string.contains(a, "&") ? "document" in goog.global ? goog.string.unescapeEntitiesUsingDom_(a) : goog.string.unescapePureXmlEntities_(a) : a;
+  return goog.string.contains(a, "&") ? !goog.string.FORCE_NON_DOM_HTML_UNESCAPING && "document" in goog.global ? goog.string.unescapeEntitiesUsingDom_(a) : goog.string.unescapePureXmlEntities_(a) : a;
 };
 goog.string.unescapeEntitiesWithDocument = function(a, b) {
   return goog.string.contains(a, "&") ? goog.string.unescapeEntitiesUsingDom_(a, b) : a;
@@ -1302,17 +1307,15 @@ goog.array.toArray = function(a) {
 goog.array.clone = goog.array.toArray;
 goog.array.extend = function(a, b) {
   for (var c = 1;c < arguments.length;c++) {
-    var d = arguments[c], e;
-    if (goog.isArray(d) || (e = goog.isArrayLike(d)) && Object.prototype.hasOwnProperty.call(d, "callee")) {
-      a.push.apply(a, d);
-    } else {
-      if (e) {
-        for (var f = a.length, g = d.length, h = 0;h < g;h++) {
-          a[f + h] = d[h];
-        }
-      } else {
-        a.push(d);
+    var d = arguments[c];
+    if (goog.isArrayLike(d)) {
+      var e = a.length || 0, f = d.length || 0;
+      a.length = e + f;
+      for (var g = 0;g < f;g++) {
+        a[e + g] = d[g];
       }
+    } else {
+      a.push(d);
     }
   }
 };

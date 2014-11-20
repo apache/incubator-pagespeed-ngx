@@ -14,7 +14,7 @@
 
 {
   'variables': {
-    'jsoncpp_root': '<(DEPTH)/third_party/jsoncpp',
+    'jsoncpp_root': '<(DEPTH)/third_party/jsoncpp/src',
   },
   'targets': [
     {
@@ -24,14 +24,14 @@
         '<(jsoncpp_root)/include',
       ],
       'sources': [
-        'src/lib_json/json_batchallocator.h',
-        'src/lib_json/json_internalarray.inl',
-        'src/lib_json/json_internalmap.inl',
-        'src/lib_json/json_reader.cpp',
-        'src/lib_json/json_tool.h',
-        'src/lib_json/json_value.cpp',
-        'src/lib_json/json_valueiterator.inl',
-        'src/lib_json/json_writer.cpp',
+        'src/src/lib_json/json_batchallocator.h',
+        'src/src/lib_json/json_internalarray.inl',
+        'src/src/lib_json/json_internalmap.inl',
+        'src/src/lib_json/json_reader.cpp',
+        'src/src/lib_json/json_tool.h',
+        'src/src/lib_json/json_value.cpp',
+        'src/src/lib_json/json_valueiterator.inl',
+        'src/src/lib_json/json_writer.cpp',
       ],
     },
   ],

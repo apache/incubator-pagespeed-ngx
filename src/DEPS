@@ -53,8 +53,8 @@ vars = {
     "https://svn.apache.org/repos/asf/httpd/httpd/tags/2.4.1/",
   "apache_httpd24_revision": "@head",
 
-  "jsoncpp_src": "https://svn.code.sf.net/p/jsoncpp/code/trunk/",
-  "jsoncpp_revision": "@247",
+  "jsoncpp_src": "https://github.com/open-source-parsers/jsoncpp.git",
+  "jsoncpp_revision": "@7165f6ac4c482e68475c9e1dac086f9e12fff0d0",
 
   "gflags_root":
     "https://gflags.googlecode.com/svn/tags/gflags-1.5/src/",
@@ -186,10 +186,7 @@ deps = {
 
   # Json cpp.
   "src/third_party/jsoncpp/src":
-    Var("jsoncpp_src") + "jsoncpp/src/" + Var("jsoncpp_revision"),
-
-  "src/third_party/jsoncpp/include":
-    Var("jsoncpp_src") + "jsoncpp/include/" + Var("jsoncpp_revision"),
+    Var("jsoncpp_src") + Var("jsoncpp_revision"),
 
   # Serf
   "src/third_party/serf/src": Var("serf_src") + Var("serf_revision"),
