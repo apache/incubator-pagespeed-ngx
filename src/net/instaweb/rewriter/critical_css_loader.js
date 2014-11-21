@@ -32,7 +32,6 @@ pagespeed.CriticalCssLoader.stylesAdded_ = false;
 /**
  * Loads deferred CSS in noscript tags by copying the text of the noscript into
  * a new div element.
- * @export
  */
 pagespeed.CriticalCssLoader.addAllStyles = function() {
   if (pagespeed.CriticalCssLoader.stylesAdded_) { return; }

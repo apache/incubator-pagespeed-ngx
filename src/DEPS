@@ -53,6 +53,11 @@ vars = {
     "https://svn.apache.org/repos/asf/httpd/httpd/tags/2.4.1/",
   "apache_httpd24_revision": "@head",
 
+  # The closure library doesn't have versioned releases so using head from
+  # 2014-11-11.
+  "closure_library": "https://github.com/google/closure-library.git",
+  "closure_library_revision": "@555e0138c83ed54d25a3e1cd82a7e789e88335a7",
+
   "jsoncpp_src": "https://github.com/open-source-parsers/jsoncpp.git",
   "jsoncpp_revision": "@7165f6ac4c482e68475c9e1dac086f9e12fff0d0",
 
@@ -176,6 +181,9 @@ deps = {
   "src/third_party/chromium/src/url":
     Var("chromium_trunk") + "src/url@" + Var("chromium_revision_num"),
 
+  "src/third_party/closure_library":
+    Var("closure_library") + Var("closure_library_revision"),
+
   "src/third_party/gflags/src": Var("gflags_root") + Var("gflags_revision"),
   "src/third_party/google-sparsehash/src":
     Var("google_sparsehash_root") + Var("google_sparsehash_revision"),
@@ -252,7 +260,7 @@ skip_child_includes = [
 
 
 hooks = [
-   {
+  {
     # Pull clang on mac. If nothing changed, or on non-mac platforms, this takes
     # zero seconds to run. If something changed, it downloads a prebuilt clang,
     # which takes ~20s, but clang speeds up builds by more than 20s.
@@ -264,5 +272,9 @@ hooks = [
     "pattern": ".",
     "action": ["python", "src/build/gyp_chromium",
                "-Dchromium_revision=" + Var("chromium_revision_num")],
+  },
+  {
+    "pattern": ".",
+    "action": ["src/third_party/closure/download.sh"],
   },
 ]
