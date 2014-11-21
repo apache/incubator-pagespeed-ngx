@@ -1,6 +1,6 @@
 start_test move_css_above_scripts works.
 URL=$EXAMPLE_ROOT/move_css_above_scripts.html?PageSpeedFilters=move_css_above_scripts
-FETCHED=$WGET_DIR/output-file
+FETCHED=$OUTDIR/output-file
 $WGET_DUMP $URL > $FETCHED
 # Link moved before script.
 check grep -q "styles/all_styles.css\"><script" $FETCHED

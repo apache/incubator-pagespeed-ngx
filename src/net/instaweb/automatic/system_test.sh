@@ -28,22 +28,6 @@ trap 'handle_failure Line:${LINENO}' ERR
 
 # General system tests
 
-# Individual tests are now in separate files.
-# TODO(jefftk): make tests run in parallel.
-function run_test() {
-  local test_name=$1
-  # Use a subshell to keep modifications tests make to the test environment from
-  # interfering with eachother.
-  (source "$this_dir/system_tests/${test_name}.sh")
-}
-
-# When we start running things asynchronously, this will wait until all tests
-# are done before continuing, in case there are tests that don't work with
-# parallelism.
-function barrier() {
-  echo "barrier: do nothing for now"
-}
-
 IMAGES_QUALITY="PageSpeedImageRecompressionQuality"
 JPEG_QUALITY="PageSpeedJpegRecompressionQuality"
 WEBP_QUALITY="PageSpeedWebpRecompressionQuality"
@@ -72,7 +56,7 @@ run_test broken_images
 # These have to run after image_rewrite tests. Otherwise it causes some images
 # to be loaded into memory before they should be.
 # TODO(jefftk): Is this actually a problem?
-barrier
+wait_for_async_tests
 run_test css_images
 run_test fallback_rewrite_css_urls
 run_test images_in_styles
@@ -102,7 +86,10 @@ fi
 run_test content_length
 run_test keep_data_urls
 
-barrier
+wait_for_async_tests
 
-# Cleanup
+# Remaining tests aren't converted to async, so we need to define the fetch
+# variables for them and cleanup the now-shared OUTDIR.
+define_fetch_variables
+
 rm -rf $OUTDIR

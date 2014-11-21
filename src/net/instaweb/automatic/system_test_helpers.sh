@@ -33,6 +33,11 @@
 #       ~compression is enabled for rewritten JS.~
 #       ~convert_meta_tags~
 #       ~regression test with same filtered input twice in combination"
+#
+#
+# By default tests that are in separate files and run with run_test are run
+# asynchronously.  To disable this, for more predictable debugging, set the
+# environment variable RUN_TESTS_ASYNC to "off".
 
 set -u  # Disallow referencing undefined variables.
 
@@ -49,6 +54,14 @@ if [ $# -lt 1 -o $# -gt 3 ]; then
   echo Usage: $(basename $0) HOSTNAME [HTTPS_HOST [PROXY_HOST]]
   exit 2
 fi;
+
+if [ "${RUN_TESTS_ASYNC:-on}" = "on" ]; then
+  RUN_TESTS_IN_BACKGROUND=true
+else
+  RUN_TESTS_IN_BACKGROUND=false
+fi
+
+PARALLEL_MAX=20  # How many tests should be allowed to run in parallel.
 
 TEMPDIR=${TEMPDIR-/tmp/mod_pagespeed_test.$USER}
 FAILURES="${TEMPDIR}/failures"
@@ -151,6 +164,85 @@ OUTDIR=$TEMPDIR/fetched_directory.$$
 rm -rf $OUTDIR
 mkdir -p $OUTDIR
 
+# Lots of tests clear OUTDIR or otherwise expect to have full control over it.
+# When running tests in parallel this would have them stomping all over each
+# other, so give each its own OUTDIR.
+#
+# This should always be run in its own subshell.
+function set_outdir_and_run_test {
+  local test_name=$1
+
+  # We want $BASHPID instead of $$ because we want the PID of the currently
+  # running subshell process and bash doesn't update $$ for subshells.
+  FAIL_LOG="$OUTDIR/$BASHPID-$test_name.log"
+  OUTDIR="$OUTDIR/outdir-$BASHPID"
+  mkdir -p "$OUTDIR"
+  define_fetch_variables
+  source $this_dir/system_tests/$test_name.sh &> "$FAIL_LOG"
+
+  # If any tests fail they'll call exit, so if we get here the tests all passed.
+  # Exit with a success error code.
+  return 0
+}
+
+# Individual tests are in separate files under system_tests/ and are safe to run
+# simultaneously in the background.  If one test must be run after another, the
+# best solution is to put them in the same file.
+BACKGROUND_TEST_PIDS=()  # array of pids
+BACKGROUND_TEST_NAMES=() # hash from pid to name of test
+function run_test() {
+  local test_name=$1
+
+  if $RUN_TESTS_IN_BACKGROUND; then
+    while [ $(jobs | wc -l) -gt $PARALLEL_MAX ]; do
+      sleep .1  # Wait for background tasks to complete.
+    done
+
+    echo "Running $test_name in the background."
+    set_outdir_and_run_test $test_name &
+    local test_pid=$!
+    BACKGROUND_TEST_PIDS+=($test_pid)
+    BACKGROUND_TEST_NAMES[$test_pid]=$test_name
+  else
+    # Use a subshell to keep modifications tests make to the test environment
+    # from interfering with eachother.
+    (source "$this_dir/system_tests/${test_name}.sh")
+  fi
+}
+
+function wait_for_async_tests {
+  if ! $RUN_TESTS_IN_BACKGROUND; then
+    return # Nothing to do.
+  fi
+
+  # Loop over the running/finished tests, examine their exit codes, and include
+  # the logs of any failing tests in our output.
+  local failed_pids=()
+  for pid in "${BACKGROUND_TEST_PIDS[@]}"; do
+    # We can't just use the 0-arg version of wait because it won't aggregate the
+    # exit codes.
+    if ! wait $pid; then
+      echo
+      echo "Test ${BACKGROUND_TEST_NAMES[$pid]} (PID $pid) failed::"
+      cat "$OUTDIR/$pid-${BACKGROUND_TEST_NAMES[$pid]}.log"
+      failed_pids+=($pid)
+    fi
+  done
+
+  # If any failed, print the names of the log files that have more details.
+  if [ ${#failed_pids[@]} -gt 0 ]; then
+    echo "Test log output in:"
+    for pid in "${failed_pids[@]}"; do
+      echo "  $OUTDIR/$pid-${BACKGROUND_TEST_NAMES[$pid]}.log"
+    done
+    echo "FAIL"
+    exit 1
+  fi
+
+  # Clear the pid array so we can run more background tests followed by another
+  # round of wait_for_async_tests.
+  BACKGROUND_TEST_PIDS=()
+}
 
 CURRENT_TEST="pre tests"
 function start_test() {
@@ -189,16 +281,21 @@ function start_test() {
 # TODO(morlovich): This isn't actually true, since we never pass in -r,
 #                  so this fetch isn't recursive. Clean this up.
 
+function define_fetch_variables {
+  # Many of these variables need to be computed relative to OUTDIR, so we need
+  # to set them after set_outdir_and_run_test() redefines OUTDIR.
 
-WGET_OUTPUT=$OUTDIR/wget_output.txt
-# We use a separate directory so that it can be rm'd without disturbing other
-# data in $OUTDIR.
-WGET_DIR=$OUTDIR/wget
-WGET_DUMP="$WGET -q -O - --save-headers"
-WGET_DUMP_HTTPS="$WGET -q -O - --save-headers --no-check-certificate"
-PREREQ_ARGS="-H -p -S -o $WGET_OUTPUT -nd -P $WGET_DIR/ -e robots=off"
-WGET_PREREQ="$WGET $PREREQ_ARGS"
-WGET_ARGS=""
+  WGET_OUTPUT=$OUTDIR/wget_output.txt
+  # We use a separate directory so that it can be rm'd without disturbing other
+  # data in $OUTDIR.
+  WGET_DIR=$OUTDIR/wget
+  WGET_DUMP="$WGET -q -O - --save-headers"
+  WGET_DUMP_HTTPS="$WGET -q -O - --save-headers --no-check-certificate"
+  PREREQ_ARGS="-H -p -S -o $WGET_OUTPUT -nd -P $WGET_DIR/ -e robots=off"
+  WGET_PREREQ="$WGET $PREREQ_ARGS"
+  WGET_ARGS=""
+}
+define_fetch_variables
 
 function run_wget_with_args() {
   echo $WGET_PREREQ $WGET_ARGS "$@"
@@ -284,7 +381,7 @@ function check() {
 # Like check, but the first argument is text to pipe into the command given in
 # the remaining arguments.
 function check_from() {
-  text="$1"
+  local text="$1"
   shift
   echo "     check_from" "$@"
   echo "$text" | "$@" || handle_failure "$text"
@@ -300,19 +397,19 @@ function check_not() {
 
 # Runs a command and verifies that it exits with an expected error code.
 function check_error_code() {
-  expected_error_code=$1
+  local expected_error_code=$1
   shift
   echo "     check_error_code $expected_error_code $@"
   # We use "|| true" here to avoid having the script exit if it was being run
   # under 'set -e'
-  error_code=$("$@" || echo $? || true)
+  local error_code=$("$@" || echo $? || true)
   check [ $error_code = $expected_error_code ]
 }
 
 # Like check_not, but the first argument is text to pipe into the
 # command given in the remaining arguments.
 function check_not_from() {
-  text="$1"
+  local text="$1"
   shift
   echo "     check_not_from" "$@"
   # We use "|| true" here to avoid having the script exit if it was being run
@@ -333,10 +430,10 @@ function check_200_http_response_file() {
 # check that its size meets constraint identified with $2 $3, e.g.
 #   check_file_size "$WGET_DIR/xPuzzle*" -le 60000
 function check_file_size() {
-  filename_pattern="$1"
-  op="$2"
-  expected_value="$3"
-  SIZE=$(stat -c %s $filename_pattern) || handle_failure \
+  local filename_pattern="$1"
+  local op="$2"
+  local expected_value="$3"
+  local SIZE=$(stat -c %s $filename_pattern) || handle_failure \
       "$filename_pattern not found"
   [ "$SIZE" "$op" "$expected_value" ] || handle_failure \
       "$filename_pattern : $SIZE $op $expected_value"
@@ -363,12 +460,12 @@ function check_stat() {
   if [ "${statistics_enabled:-1}" -eq "0" ]; then
     return
   fi
-  OLD_STATS_FILE=$1
-  NEW_STATS_FILE=$2
-  COUNTER_NAME=$3
-  EXPECTED_DIFF=$4
-  OLD_VAL=$(get_stat ${COUNTER_NAME} <${OLD_STATS_FILE})
-  NEW_VAL=$(get_stat ${COUNTER_NAME} <${NEW_STATS_FILE})
+  local OLD_STATS_FILE=$1
+  local NEW_STATS_FILE=$2
+  local COUNTER_NAME=$3
+  local EXPECTED_DIFF=$4
+  local OLD_VAL=$(get_stat ${COUNTER_NAME} <${OLD_STATS_FILE})
+  local NEW_VAL=$(get_stat ${COUNTER_NAME} <${NEW_STATS_FILE})
 
   # This extra check is necessary because the syntax error in the second if
   # does not cause bash to fail :/
@@ -379,14 +476,12 @@ function check_stat() {
   fi
 
   # Failure
-  EXPECTED_VAL=$((${OLD_VAL} + ${EXPECTED_DIFF}))
+  local EXPECTED_VAL=$((${OLD_VAL} + ${EXPECTED_DIFF}))
   echo -n "Mismatched counter value : ${COUNTER_NAME} : "
   echo "Expected=${EXPECTED_VAL} Actual=${NEW_VAL}"
   echo "Compare stat files ${OLD_STATS_FILE} and ${NEW_STATS_FILE}"
   handle_failure
 }
-
-FETCH_UNTIL_OUTFILE="$WGET_DIR/fetch_until_output.$$"
 
 # Continuously fetches URL and pipes the output to COMMAND.  Loops until COMMAND
 # outputs RESULT, in which case we return 0, or until TIMEOUT seconds have
@@ -401,19 +496,21 @@ FETCH_UNTIL_OUTFILE="$WGET_DIR/fetch_until_output.$$"
 # If "-recursive" is specified, then the resources referenced from the HTML
 # file are loaded into $WGET_DIR as a result of this command.
 function fetch_until() {
-  save=0
+  FETCH_UNTIL_OUTFILE="$WGET_DIR/fetch_until_output.$$"
+
+  local save=0
   if [ "$1" = "-save" ]; then
     save=1
     shift
   fi
 
-  gzip=""
+  local gzip=""
   if [ "$1" = "-gzip" ]; then
     gzip="--header=Accept-Encoding:gzip"
     shift
   fi
 
-  recursive=0
+  local recursive=0
   if [ "$1" = "-recursive" ]; then
     recursive=1
     shift
@@ -549,8 +646,9 @@ function scrape_content_length {
 
 # Pulls the headers out of a 'wget --save-headers' dump.
 function extract_headers {
-  carriage_return=$(printf "\r")
-  last_line_number=$(grep --text -n \^${carriage_return}\$ $1 | cut -f1 -d:)
+  local carriage_return=$(printf "\r")
+  local last_line_number=$(
+    grep --text -n \^${carriage_return}\$ $1 | cut -f1 -d:)
   head --lines=$last_line_number "$1" | sed -e "s/$carriage_return//"
 }
 
