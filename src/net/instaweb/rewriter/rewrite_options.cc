@@ -2542,17 +2542,6 @@ void RewriteOptions::DisallowTroublesomeResources() {
   DisableLazyloadForClassName("*lazy*");
   DisableLazyloadForClassName("*nivo*");
   DisableLazyloadForClassName("*slider*");
-
-  // It is pretty well established that PSOL and the WordPress admin
-  // pages (wp-admin) don't work together.  Until we figure out why,
-  // black-list.
-  //
-  // http://snowulf.com/2013/03/06/
-  // wordpress-3-5-and-mod_pagespeed-does-not-play-well-together/
-  //
-  // TODO(jmarantz): Remove this blacklist once the source of the
-  // trouble is found and a more surgical workaround can be found.
-  Disallow("*/wp-admin/*");
 }
 
 // Note: this is not called by default in mod_pagespeed.
