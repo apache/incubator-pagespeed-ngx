@@ -143,7 +143,7 @@ class CriticalSelectorFilterTest : public RewriteTestBase {
     return StrCat(
         "<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
         rewrite_driver()->server_context()->static_asset_manager()->GetAsset(
-            StaticAssetManager::kCriticalCssLoaderJs,
+            StaticAssetEnum::CRITICAL_CSS_LOADER_JS,
             rewrite_driver()->options()),
         "pagespeed.CriticalCssLoader.Run();</script>");
   }

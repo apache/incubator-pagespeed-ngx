@@ -48,7 +48,7 @@ class DeferIframeFilterTest : public RewriteTestBase {
 TEST_F(DeferIframeFilterTest, TestDeferIframe) {
   StringPiece defer_iframe_js_code =
       server_context()->static_asset_manager()->GetAsset(
-          StaticAssetManager::kDeferIframe, options());
+          StaticAssetEnum::DEFER_IFRAME, options());
   GoogleString input_html = "<head></head>"
       "<body>"
       "<iframe src=\"http://test.com/1.html\"/>"
@@ -81,7 +81,7 @@ TEST_F(DeferIframeFilterTest, TestIframeInNoscript) {
 TEST_F(DeferIframeFilterTest, TestMultipleIframePresent) {
   StringPiece defer_iframe_js_code =
       server_context()->static_asset_manager()->GetAsset(
-          StaticAssetManager::kDeferIframe, options());
+          StaticAssetEnum::DEFER_IFRAME, options());
   GoogleString input_html = "<head></head>"
       "<body>"
       "<iframe src=\"http://test.com/1.html\"/>"

@@ -76,7 +76,7 @@ class StaticAssetManagerTest : public RewriteTestBase {
 
 TEST_F(StaticAssetManagerTest, TestBlinkHandler) {
   const char blink_url[] = "http://proxy-domain/psajs/blink.0.js";
-  EXPECT_STREQ(blink_url, manager_->GetAssetUrl(StaticAssetManager::kBlinkJs,
+  EXPECT_STREQ(blink_url, manager_->GetAssetUrl(StaticAssetEnum::BLINK_JS,
                                                 options_));
 }
 
@@ -84,61 +84,59 @@ TEST_F(StaticAssetManagerTest, TestBlinkGstatic) {
   manager_->set_static_asset_base("http://proxy-domain");
   manager_->set_serve_asset_from_gstatic(true);
   manager_->set_gstatic_hash(
-      StaticAssetManager::kBlinkJs, StaticAssetManager::kGStaticBase, "1");
+      StaticAssetEnum::BLINK_JS, StaticAssetManager::kGStaticBase, "1");
   const char blink_url[] =
       "//www.gstatic.com/psa/static/1-blink.js";
-  EXPECT_STREQ(blink_url, manager_->GetAssetUrl(StaticAssetManager::kBlinkJs,
+  EXPECT_STREQ(blink_url, manager_->GetAssetUrl(StaticAssetEnum::BLINK_JS,
                                                 options_));
 }
 
 TEST_F(StaticAssetManagerTest, TestBlinkDebug) {
   manager_->set_serve_asset_from_gstatic(true);
   manager_->set_gstatic_hash(
-      StaticAssetManager::kBlinkJs, StaticAssetManager::kGStaticBase, "1");
+      StaticAssetEnum::BLINK_JS, StaticAssetManager::kGStaticBase, "1");
   options_->EnableFilter(RewriteOptions::kDebug);
   const char blink_url[] = "http://proxy-domain/psajs/blink_debug.0.js";
-  EXPECT_STREQ(blink_url, manager_->GetAssetUrl(StaticAssetManager::kBlinkJs,
+  EXPECT_STREQ(blink_url, manager_->GetAssetUrl(StaticAssetEnum::BLINK_JS,
                                                 options_));
 }
 
 TEST_F(StaticAssetManagerTest, TestDeferJsGstatic) {
   manager_->set_serve_asset_from_gstatic(true);
   manager_->set_gstatic_hash(
-      StaticAssetManager::kDeferJs, StaticAssetManager::kGStaticBase, "1");
+      StaticAssetEnum::DEFER_JS, StaticAssetManager::kGStaticBase, "1");
   const char defer_js_url[] =
       "//www.gstatic.com/psa/static/1-js_defer.js";
   EXPECT_STREQ(defer_js_url, manager_->GetAssetUrl(
-      StaticAssetManager::kDeferJs, options_));
+      StaticAssetEnum::DEFER_JS, options_));
 }
 
 TEST_F(StaticAssetManagerTest, TestDeferJsDebug) {
   manager_->set_serve_asset_from_gstatic(true);
   manager_->set_gstatic_hash(
-      StaticAssetManager::kDeferJs, StaticAssetManager::kGStaticBase, "1");
+      StaticAssetEnum::DEFER_JS, StaticAssetManager::kGStaticBase, "1");
   options_->EnableFilter(RewriteOptions::kDebug);
   const char defer_js_debug_url[] =
       "http://proxy-domain/psajs/js_defer_debug.0.js";
   EXPECT_STREQ(defer_js_debug_url, manager_->GetAssetUrl(
-      StaticAssetManager::kDeferJs, options_));
+      StaticAssetEnum::DEFER_JS, options_));
 }
 
 TEST_F(StaticAssetManagerTest, TestDeferJsNonGStatic) {
   const char defer_js_url[] =
       "http://proxy-domain/psajs/js_defer.0.js";
   EXPECT_STREQ(defer_js_url, manager_->GetAssetUrl(
-      StaticAssetManager::kDeferJs, options_));
+      StaticAssetEnum::DEFER_JS, options_));
 }
 
 TEST_F(StaticAssetManagerTest, TestJsDebug) {
   options_->EnableFilter(RewriteOptions::kDebug);
-  for (int i = 0;
-       i < static_cast<int>(StaticAssetManager::kEndOfModules);
-       ++i) {
-    StaticAssetManager::StaticAsset module =
-        static_cast<StaticAssetManager::StaticAsset>(i);
+  for (int i = 0; i < StaticAssetEnum::StaticAsset_ARRAYSIZE; ++i) {
+    StaticAssetEnum::StaticAsset module =
+        static_cast<StaticAssetEnum::StaticAsset>(i);
     // TODO(sligocki): This should generalize to all resources which don't have
     // kContentTypeJs. But no interface provides content types currently :/
-    if (module != StaticAssetManager::kBlankGif) {
+    if (module != StaticAssetEnum::BLANK_GIF) {
       GoogleString script(manager_->GetAsset(module, options_));
       // Debug code is also put through the closure compiler to resolve any uses
       // of goog.require. As part of this, comments also get stripped out.
@@ -149,14 +147,12 @@ TEST_F(StaticAssetManagerTest, TestJsDebug) {
 }
 
 TEST_F(StaticAssetManagerTest, TestJsOpt) {
-  for (int i = 0;
-       i < static_cast<int>(StaticAssetManager::kEndOfModules);
-       ++i) {
-    StaticAssetManager::StaticAsset module =
-        static_cast<StaticAssetManager::StaticAsset>(i);
+  for (int i = 0; i < StaticAssetEnum::StaticAsset_ARRAYSIZE; ++i) {
+    StaticAssetEnum::StaticAsset module =
+        static_cast<StaticAssetEnum::StaticAsset>(i);
     // TODO(sligocki): This should generalize to all resources which don't have
     // kContentTypeJs. But no interface provides content types currently :/
-    if (module != StaticAssetManager::kBlankGif) {
+    if (module != StaticAssetEnum::BLANK_GIF) {
       GoogleString script(manager_->GetAsset(module, options_));
       EXPECT_EQ(GoogleString::npos, script.find("/*"))
           << "Comment found in opt version of asset " << module;
@@ -194,11 +190,9 @@ TEST_F(StaticAssetManagerTest, TestHtml5InsertInlineJs) {
 }
 
 TEST_F(StaticAssetManagerTest, TestEncodedUrls) {
-  for (int i = 0;
-       i < static_cast<int>(StaticAssetManager::kEndOfModules);
-       ++i) {
-    StaticAssetManager::StaticAsset module =
-        static_cast<StaticAssetManager::StaticAsset>(i);
+  for (int i = 0; i < StaticAssetEnum::StaticAsset_ARRAYSIZE; ++i) {
+    StaticAssetEnum::StaticAsset module =
+        static_cast<StaticAssetEnum::StaticAsset>(i);
 
     GoogleString url = manager_->GetAssetUrl(module, options_);
     StringPiece file_name = url;

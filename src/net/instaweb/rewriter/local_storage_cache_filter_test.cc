@@ -135,7 +135,7 @@ class LocalStorageCacheTest : public RewriteTestBase,
         StrCat("<script type=\"text/javascript\" pagespeed_no_defer>"
                "//<![CDATA[\n",
                static_asset_manager->GetAsset(
-                   StaticAssetManager::kLocalStorageCacheJs, options()),
+                   StaticAssetEnum::LOCAL_STORAGE_CACHE_JS, options()),
                LocalStorageCacheFilter::kLscInitializer,
                "\n//]]></script>");
   }

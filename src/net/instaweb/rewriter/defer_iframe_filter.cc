@@ -66,7 +66,7 @@ void DeferIframeFilter::StartElementImpl(HtmlElement* element) {
 
       GoogleString js = StrCat(
           static_asset_manager_->GetAsset(
-              StaticAssetManager::kDeferIframe, driver()->options()),
+              StaticAssetEnum::DEFER_IFRAME, driver()->options()),
               kDeferIframeInit);
       static_asset_manager_->AddJsToElement(js, script, driver());
       script_inserted_ = true;

@@ -242,7 +242,7 @@ void DomainRewriteFilter::EndDocument() {
       driver()->server_context()->static_asset_manager();
   GoogleString js =
       StrCat(static_asset_manager->GetAsset(
-                 StaticAssetManager::kClientDomainRewriter,
+                 StaticAssetEnum::CLIENT_DOMAIN_REWRITER,
                  driver()->options()),
              "pagespeed.clientDomainRewriterInit([",
              comma_separated_from_domains, "]);");

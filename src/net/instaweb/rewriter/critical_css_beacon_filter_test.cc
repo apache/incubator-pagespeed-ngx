@@ -136,7 +136,7 @@ class CriticalCssBeaconFilterTestBase : public RewriteTestBase {
         "<head>", head, "</head><body><p>content</p>"
         "<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
         server_context()->static_asset_manager()->GetAsset(
-            StaticAssetManager::kCriticalCssBeaconJs, options()),
+            StaticAssetEnum::CRITICAL_CSS_BEACON_JS, options()),
         "pagespeed.selectors=[", selectors, "];");
     StrAppend(&html,
               "pagespeed.criticalCssBeaconInit('",

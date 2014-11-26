@@ -114,7 +114,7 @@ class DedupInlinedImagesTest : public RewriteTestBase,
     dedup_inlined_images_js_ =
         StrCat("<script type=\"text/javascript\" pagespeed_no_defer>",
                static_asset_manager->GetAsset(
-                   StaticAssetManager::kDedupInlinedImagesJs, options()),
+                   StaticAssetEnum::DEDUP_INLINED_IMAGES_JS, options()),
                DedupInlinedImagesFilter::kDiiInitializer,
                "</script>");
   }

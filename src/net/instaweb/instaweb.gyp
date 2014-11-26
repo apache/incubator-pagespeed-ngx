@@ -1204,6 +1204,19 @@
       ],
     },
     {
+      'target_name': 'instaweb_static_asset_enum_pb',
+      'variables': {
+        'instaweb_protoc_subdir': 'net/instaweb/rewriter',
+      },
+      'sources': [
+        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/static_asset_enum.pb.cc',
+        'rewriter/static_asset_enum.proto',
+      ],
+      'includes': [
+        'protoc.gypi',
+      ],
+    },
+    {
       'target_name': 'instaweb_mobilize_css_data2c',
       'variables': {
         'instaweb_data2c_subdir': 'net/instaweb/rewriter',
@@ -1330,6 +1343,7 @@
         'instaweb_rendered_image_pb',
         'instaweb_rewriter_html_gperf',
         'instaweb_rewriter_pb',
+        'instaweb_static_asset_enum_pb',
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_cache',
         '<(DEPTH)/pagespeed/kernel.gyp:proto_util',

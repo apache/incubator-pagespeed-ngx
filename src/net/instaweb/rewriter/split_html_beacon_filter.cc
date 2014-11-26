@@ -114,7 +114,7 @@ void SplitHtmlBeaconFilter::EndDocument() {
   StaticAssetManager* static_asset_manager =
       driver()->server_context()->static_asset_manager();
   GoogleString js = static_asset_manager->GetAsset(
-      StaticAssetManager::kSplitHtmlBeaconJs, driver()->options());
+      StaticAssetEnum::SPLIT_HTML_BEACON_JS, driver()->options());
 
   // Create the init string to append at the end of the static JS.
   const RewriteOptions::BeaconUrl& beacons = driver()->options()->beacon_url();

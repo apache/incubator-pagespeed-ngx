@@ -48,7 +48,7 @@ class DeterministicJsFilterTest : public RewriteTestBase {
 TEST_F(DeterministicJsFilterTest, DeterministicJsInjection) {
   StringPiece deterministic_js_code =
       server_context()->static_asset_manager()->GetAsset(
-          StaticAssetManager::kDeterministicJs, options());
+          StaticAssetEnum::DETERMINISTIC_JS, options());
   GoogleString expected_str = StrCat("<head><script type=\"text/javascript\" "
                                      "pagespeed_no_defer>",
                                      deterministic_js_code,
@@ -66,7 +66,7 @@ TEST_F(DeterministicJsFilterTest, DeterministicJsInjection) {
 TEST_F(DeterministicJsFilterTest, DeterministicJsInjectionWithSomeHeadContent) {
   StringPiece deterministic_js_code =
       server_context()->static_asset_manager()->GetAsset(
-          StaticAssetManager::kDeterministicJs, options());
+          StaticAssetEnum::DETERMINISTIC_JS, options());
   GoogleString expected_str = StrCat("<head><script type=\"text/javascript\" "
                                      "pagespeed_no_defer>",
                                      deterministic_js_code,

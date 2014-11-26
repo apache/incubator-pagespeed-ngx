@@ -410,7 +410,7 @@ void CriticalSelectorFilter::RenderDone() {
     InsertNodeAtBodyEnd(script);
     GoogleString js =
         driver()->server_context()->static_asset_manager()->GetAsset(
-            StaticAssetManager::kCriticalCssLoaderJs, driver()->options());
+            StaticAssetEnum::CRITICAL_CSS_LOADER_JS, driver()->options());
     if (!driver()->options()
              ->test_only_prioritize_critical_css_dont_apply_original_css()) {
       StrAppend(&js, "pagespeed.CriticalCssLoader.Run();");

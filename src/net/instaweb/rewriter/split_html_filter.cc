@@ -403,7 +403,7 @@ void SplitHtmlFilter::InsertSplitInitScripts(HtmlElement* element) {
     StrAppend(&defer_js_with_blink, "<script type=\"text/javascript\">");
     StringPiece ghost_click_buster_js =
         static_asset_manager()->GetAsset(
-            StaticAssetManager::kGhostClickBusterJs, options_);
+            StaticAssetEnum::GHOST_CLICK_BUSTER_JS, options_);
     StrAppend(&defer_js_with_blink, ghost_click_buster_js);
     StrAppend(&defer_js_with_blink, "</script>");
   }
@@ -571,7 +571,7 @@ GoogleString SplitHtmlFilter::GetPanelIdForInstance(HtmlElement* element) {
 const GoogleString& SplitHtmlFilter::GetBlinkJsUrl(
       const RewriteOptions* options,
       const StaticAssetManager* static_asset_manager) {
-  return static_asset_manager->GetAssetUrl(StaticAssetManager::kBlinkJs,
+  return static_asset_manager->GetAssetUrl(StaticAssetEnum::BLINK_JS,
                                            options);
 }
 

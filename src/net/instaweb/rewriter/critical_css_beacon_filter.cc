@@ -199,7 +199,7 @@ void CriticalCssBeaconFilter::SummariesDone() {
       driver()->server_context()->static_asset_manager();
   if (driver()->server_context()->factory()->UseBeaconResultsInFilters()) {
     script = asset_manager->GetAsset(
-        StaticAssetManager::kCriticalCssBeaconJs, driver()->options());
+        StaticAssetEnum::CRITICAL_CSS_BEACON_JS, driver()->options());
     AppendSelectorsInitJs(&script, selectors);
     AppendBeaconInitJs(metadata, &script);
   } else {

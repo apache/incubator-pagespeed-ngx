@@ -317,7 +317,7 @@ GoogleString LazyloadImagesFilter::GetBlankImageSrc(
     const StaticAssetManager* static_asset_manager) {
   const GoogleString& options_url = options->lazyload_images_blank_url();
   if (options_url.empty()) {
-    return static_asset_manager->GetAssetUrl(StaticAssetManager::kBlankGif,
+    return static_asset_manager->GetAssetUrl(StaticAssetEnum::BLANK_GIF,
                                              options);
   } else {
     return options_url;
@@ -331,7 +331,7 @@ GoogleString LazyloadImagesFilter::GetLazyloadJsSnippet(
       options->lazyload_images_after_onload() ? kTrue : kFalse;
   StringPiece lazyload_images_js =
       static_asset_manager->GetAsset(
-          StaticAssetManager::kLazyloadImagesJs, options);
+          StaticAssetEnum::LAZYLOAD_IMAGES_JS, options);
   const GoogleString& blank_image_url =
       GetBlankImageSrc(options, static_asset_manager);
   GoogleString lazyload_js =

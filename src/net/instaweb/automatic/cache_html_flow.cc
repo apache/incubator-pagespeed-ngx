@@ -763,7 +763,7 @@ void CacheHtmlFlow::CacheHtmlRewriteDone(bool flushed_split_js) {
   if (!flushed_split_js) {
     base_fetch_->Write(StringPrintf(kBlinkJsString,
         static_asset_manager->GetAssetUrl(
-            StaticAssetManager::kBlinkJs, options_).c_str()), handler_);
+            StaticAssetEnum::BLINK_JS, options_).c_str()), handler_);
     base_fetch_->Write(kCacheHtmlSuffixJsString, handler_);
   }
   const char* user_ip = base_fetch_->request_headers()->Lookup1(

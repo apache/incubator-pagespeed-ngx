@@ -176,7 +176,7 @@ void DedupInlinedImagesFilter::InsertOurScriptElement(HtmlElement* before) {
       server_context()->static_asset_manager();
   StringPiece dedup_inlined_images_js =
       static_asset_manager->GetAsset(
-          StaticAssetManager::kDedupInlinedImagesJs, driver()->options());
+          StaticAssetEnum::DEDUP_INLINED_IMAGES_JS, driver()->options());
   const GoogleString& initialized_js = StrCat(dedup_inlined_images_js,
                                               kDiiInitializer);
   HtmlElement* script_element = driver()->NewElement(before->parent(),

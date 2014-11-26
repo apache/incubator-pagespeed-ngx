@@ -275,9 +275,9 @@ void FlushEarlyContentWriterFilter::FlushDeferJavascriptEarly() {
       driver_->request_properties()->SupportsJsDefer(
           driver_->options()->enable_aggressive_rewriters_for_mobile());
   if (should_flush_early_js_defer_script) {
-    const StaticAssetManager::StaticAsset& defer_js_module =
-        split_html_enabled_ ? StaticAssetManager::kBlinkJs :
-        StaticAssetManager::kDeferJs;
+    StaticAssetEnum::StaticAsset defer_js_module =
+        split_html_enabled_ ? StaticAssetEnum::BLINK_JS :
+        StaticAssetEnum::DEFER_JS;
     StaticAssetManager* static_asset_manager =
         driver_->server_context()->static_asset_manager();
     GoogleString defer_js = static_asset_manager->GetAsset(

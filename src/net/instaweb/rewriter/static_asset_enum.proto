@@ -1,0 +1,44 @@
+// Copyright 2014 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// Author: morlovich@google.com (Maksim Orlovich)
+syntax = "proto2";
+
+option optimize_for = LITE_RUNTIME;
+
+package net_instaweb;
+
+// Rewriter application status codes.
+message StaticAssetEnum {
+  enum StaticAsset {
+    ADD_INSTRUMENTATION_JS = 0;
+    BLANK_GIF = 1;
+    BLINK_JS = 2;
+    CLIENT_DOMAIN_REWRITER = 3;
+    CRITICAL_CSS_BEACON_JS = 4;
+    CRITICAL_CSS_LOADER_JS = 5;
+    CRITICAL_IMAGES_BEACON_JS = 6;
+    DEDUP_INLINED_IMAGES_JS = 7;
+    DEFER_IFRAME = 8;
+    DEFER_JS = 9;
+    DELAY_IMAGES_INLINE_JS = 10;
+    DELAY_IMAGES_JS = 11;
+    DETERMINISTIC_JS = 12;
+    EXTENDED_INSTRUMENTATION_JS = 13;
+    GHOST_CLICK_BUSTER_JS = 14;
+    LAZYLOAD_IMAGES_JS = 15;
+    LOCAL_STORAGE_CACHE_JS = 16;
+    SPLIT_HTML_BEACON_JS = 17;
+  };
+}

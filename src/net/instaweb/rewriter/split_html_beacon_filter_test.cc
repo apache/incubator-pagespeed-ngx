@@ -113,7 +113,7 @@ class SplitHtmlBeaconFilterTest : public RewriteTestBase {
     GoogleString script =
         StrCat("<script type=\"text/javascript\" pagespeed_no_defer=\"\">",
                server_context()->static_asset_manager()->GetAsset(
-                   StaticAssetManager::kSplitHtmlBeaconJs, options()));
+                   StaticAssetEnum::SPLIT_HTML_BEACON_JS, options()));
     StrAppend(&script, "\npagespeed.splitHtmlBeaconInit('",
               options()->beacon_url().http, "', '", kTestDomain, "', '0', '",
               ExpectedNonce(), "');");

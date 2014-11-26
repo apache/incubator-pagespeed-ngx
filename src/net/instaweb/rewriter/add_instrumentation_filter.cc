@@ -155,10 +155,10 @@ GoogleString AddInstrumentationFilter::GetScriptJs(StringPiece event) {
   if (!added_unload_script_) {
     if (driver()->options()->enable_extended_instrumentation()) {
       js = static_asset_manager->GetAsset(
-          StaticAssetManager::kExtendedInstrumentationJs, driver()->options());
+          StaticAssetEnum::EXTENDED_INSTRUMENTATION_JS, driver()->options());
     }
     StrAppend(&js, static_asset_manager->GetAsset(
-        StaticAssetManager::kAddInstrumentationJs, driver()->options()));
+        StaticAssetEnum::ADD_INSTRUMENTATION_JS, driver()->options()));
   }
 
   GoogleString js_event = (event == kLoadTag) ? "load" : "beforeunload";

@@ -22,6 +22,7 @@
 #include <map>
 #include <vector>
 
+#include "net/instaweb/rewriter/static_asset_enum.pb.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -46,28 +47,6 @@ class StaticAssetManager {
   static const char kGStaticBase[];
   static const char kDefaultLibraryUrlPrefix[];
 
-  enum StaticAsset {
-    kAddInstrumentationJs,
-    kBlankGif,
-    kBlinkJs,
-    kClientDomainRewriter,
-    kCriticalCssBeaconJs,
-    kCriticalCssLoaderJs,
-    kCriticalImagesBeaconJs,
-    kDedupInlinedImagesJs,
-    kDeferIframe,
-    kDeferJs,
-    kDelayImagesInlineJs,
-    kDelayImagesJs,
-    kDeterministicJs,
-    kExtendedInstrumentationJs,
-    kGhostClickBusterJs,
-    kLazyloadImagesJs,
-    kLocalStorageCacheJs,
-    kSplitHtmlBeaconJs,
-    kEndOfModules,  // Keep this as the last enum value.
-  };
-
   StaticAssetManager(const GoogleString& static_asset_base,
                      Hasher* hasher,
                      MessageHandler* message_handler);
@@ -76,11 +55,11 @@ class StaticAssetManager {
 
   // Returns the url based on the value of debug filter and the value of
   // serve_asset_from_gstatic flag.
-  const GoogleString& GetAssetUrl(const StaticAsset& module,
+  const GoogleString& GetAssetUrl(StaticAssetEnum::StaticAsset module,
                                   const RewriteOptions* options) const;
 
   // Returns the contents of the asset.
-  const char* GetAsset(const StaticAsset& module,
+  const char* GetAsset(StaticAssetEnum::StaticAsset module,
                        const RewriteOptions* options) const;
 
   // Get the asset to be served as external file for the file names file_name.
@@ -100,7 +79,7 @@ class StaticAssetManager {
 
   // If set_serve_asset_from_gstatic is true, update the URL for module to use
   // gstatic.
-  void set_gstatic_hash(const StaticAsset& module,
+  void set_gstatic_hash(StaticAssetEnum::StaticAsset module,
                         const GoogleString& gstatic_base,
                         const GoogleString& hash);
 
@@ -127,7 +106,8 @@ class StaticAssetManager {
  private:
   class Asset;
 
-  typedef std::map<GoogleString, StaticAsset> FileNameToModuleMap;
+  typedef std::map<GoogleString, StaticAssetEnum::StaticAsset>
+      FileNameToModuleMap;
 
   void InitializeAssetStrings();
   void InitializeAssetUrls();

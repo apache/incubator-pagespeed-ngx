@@ -193,11 +193,11 @@ void DelayImagesFilter::InsertLowResImagesAndJs(HtmlElement* element,
   if (!is_script_inserted_) {
     inline_script = StrCat(
         static_asset_manager_->GetAsset(
-            StaticAssetManager::kDelayImagesInlineJs,
+            StaticAssetEnum::DELAY_IMAGES_INLINE_JS,
             driver_->options()),
         kDelayImagesInlineSuffix,
         static_asset_manager_->GetAsset(
-            StaticAssetManager::kDelayImagesJs,
+            StaticAssetEnum::DELAY_IMAGES_JS,
             driver_->options()),
         kDelayImagesSuffix);
     HtmlElement* script_element =

@@ -123,8 +123,8 @@ class DelayImagesFilterTest : public RewriteTestBase {
     return StringPrintf(
         kScriptTemplate,
         StrCat(GetDelayImagesInlineCode(),
-               GetJsCode(StaticAssetManager::kDelayImagesJs,
-                          DelayImagesFilter::kDelayImagesSuffix)).c_str());
+               GetJsCode(StaticAssetEnum::DELAY_IMAGES_JS,
+                         DelayImagesFilter::kDelayImagesSuffix)).c_str());
   }
 
   GoogleString GetHighResScript() {
@@ -138,11 +138,11 @@ class DelayImagesFilterTest : public RewriteTestBase {
   }
 
   GoogleString GetDelayImagesInlineCode() {
-    return GetJsCode(StaticAssetManager::kDelayImagesInlineJs,
+    return GetJsCode(StaticAssetEnum::DELAY_IMAGES_INLINE_JS,
                      DelayImagesFilter::kDelayImagesInlineSuffix);
   }
 
-  GoogleString GetJsCode(StaticAssetManager::StaticAsset module,
+  GoogleString GetJsCode(StaticAssetEnum::StaticAsset module,
                          const StringPiece& call) {
     StringPiece code =
         server_context()->static_asset_manager()->GetAsset(module, options());

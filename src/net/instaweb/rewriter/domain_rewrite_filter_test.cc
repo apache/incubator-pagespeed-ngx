@@ -205,7 +205,7 @@ TEST_F(DomainRewriteFilterTest, ClientDomainRewrite) {
   options()->set_client_domain_rewrite(true);
   StringPiece client_domain_rewriter_code =
       server_context_->static_asset_manager()->GetAsset(
-          StaticAssetManager::kClientDomainRewriter, options());
+          StaticAssetEnum::CLIENT_DOMAIN_REWRITER, options());
 
   SetupWriter();
   html_parse()->StartParse("http://test.com/");

@@ -170,7 +170,7 @@ class SplitHtmlFilterTest : public RewriteTestBase {
     StaticAssetManager* static_asset_manager =
         rewrite_driver()->server_context()->static_asset_manager();
     blink_js_url_ = static_asset_manager->GetAssetUrl(
-        StaticAssetManager::kBlinkJs, options_).c_str();
+        StaticAssetEnum::BLINK_JS, options_).c_str();
     nodefer_str_ = HtmlKeywords::KeywordToString(HtmlName::kPagespeedNoDefer);
   }
 
@@ -898,7 +898,7 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlWithGhostClickBuster) {
   EXPECT_EQ(StringPrintf(kHtmlExpectedOutputForIgnoreScript1,
                          StrCat("<script type=\"text/javascript\">",
                                 static_asset_manager->GetAsset(
-                                    StaticAssetManager::kGhostClickBusterJs,
+                                    StaticAssetEnum::GHOST_CLICK_BUSTER_JS,
                                     options_), "</script>").c_str(),
                          "", "",
                          expected_output_suffix.c_str()).c_str(), output_);

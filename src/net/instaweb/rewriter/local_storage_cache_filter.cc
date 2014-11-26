@@ -162,7 +162,7 @@ void LocalStorageCacheFilter::InsertOurScriptElement(HtmlElement* before) {
       driver()->server_context()->static_asset_manager();
   StringPiece local_storage_cache_js =
       static_asset_manager->GetAsset(
-          StaticAssetManager::kLocalStorageCacheJs, driver()->options());
+          StaticAssetEnum::LOCAL_STORAGE_CACHE_JS, driver()->options());
   const GoogleString& initialized_js = StrCat(local_storage_cache_js,
                                               kLscInitializer);
   HtmlElement* script_element = driver()->NewElement(before->parent(),
