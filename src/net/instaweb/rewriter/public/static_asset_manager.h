@@ -22,7 +22,7 @@
 #include <map>
 #include <vector>
 
-#include "net/instaweb/rewriter/static_asset_enum.pb.h"
+#include "net/instaweb/rewriter/static_asset_config.pb.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
