@@ -38,6 +38,9 @@
 # By default tests that are in separate files and run with run_test are run
 # asynchronously.  To disable this, for more predictable debugging, set the
 # environment variable RUN_TESTS_ASYNC to "off".
+#
+# Callers need to set SERVER_NAME, and not run this more than once
+# simultaneously with the same SERVER_NAME value.
 
 set -u  # Disallow referencing undefined variables.
 
@@ -63,9 +66,21 @@ fi
 
 PARALLEL_MAX=20  # How many tests should be allowed to run in parallel.
 
-TEMPDIR=${TEMPDIR-/tmp/mod_pagespeed_test.$USER}
+if [ -z "${TEMPDIR:-}" ]; then
+  TEMPDIR="/tmp/mod_pagespeed_test.$USER/$SERVER_NAME"
+  # If someone else is supplying a TEMPDIR then it's their responsibility to
+  # make sure it's clean, but if we're using the default one then we need to
+  # clean it up on start so settings from previous tests don't affect this one.
+  # Cleaning up on exit doesn't work because if there's a test failure we want
+  # to leave things as they are to help with debugging.
+  #
+  # Because TEMPDIR includes SERVER_NAME this still allows, for example,
+  # parallel Apache and Nginx test execution.
+  rm -rf "$TEMPDIR"
+  mkdir -p "$TEMPDIR"
+fi
+
 FAILURES="${TEMPDIR}/failures"
-rm -f "$FAILURES"
 
 # Make this easier to process so we're always looking for '~target~'.
 PAGESPEED_EXPECTED_FAILURES="~${PAGESPEED_EXPECTED_FAILURES=}~"
@@ -106,6 +121,13 @@ export WGETRC=$TEMPDIR/wgetrc
 cat > $WGETRC <<EOF
 user_agent = Mozilla/5.0 (X11; U; Linux x86_64; en-US) AppleWebKit/534.0 (KHTML, like Gecko) Chrome/6.0.408.1 Safari/534.0
 EOF
+
+# Individual tests should use $TESTTMP if they need to store something
+# temporarily.  Infrastructure can use $ORIGINAL_TEMPDIR if it's ok with
+# parallel use.
+TESTTMP="$TEMPDIR"
+ORIGINAL_TEMPDIR="$TEMPDIR"
+unset TEMPDIR
 
 HOSTNAME=$1
 PRIMARY_SERVER=http://$HOSTNAME
@@ -160,7 +182,7 @@ pagespeed.cf.hash.css"
 combine_css_filename=\
 styles/yellow.css+blue.css+big.css+bold.css.pagespeed.cc.xo4He3_gYf.css
 
-OUTDIR=$TEMPDIR/fetched_directory.$$
+OUTDIR=$TESTTMP/fetched_directory
 rm -rf $OUTDIR
 mkdir -p $OUTDIR
 
@@ -172,11 +194,11 @@ mkdir -p $OUTDIR
 function set_outdir_and_run_test {
   local test_name=$1
 
-  # We want $BASHPID instead of $$ because we want the PID of the currently
-  # running subshell process and bash doesn't update $$ for subshells.
-  FAIL_LOG="$OUTDIR/$BASHPID-$test_name.log"
-  OUTDIR="$OUTDIR/outdir-$BASHPID"
+  FAIL_LOG="$ORIGINAL_TEMPDIR/$test_name.log"
+  OUTDIR="$OUTDIR/outdir-$test_name"
   mkdir -p "$OUTDIR"
+  TESTTMP="$TESTTMP/testtmp-$test_name"
+  mkdir -p "$TESTTMP"
   define_fetch_variables
   source $this_dir/system_tests/$test_name.sh &> "$FAIL_LOG"
 
@@ -223,8 +245,8 @@ function wait_for_async_tests {
     # exit codes.
     if ! wait $pid; then
       echo
-      echo "Test ${BACKGROUND_TEST_NAMES[$pid]} (PID $pid) failed::"
-      cat "$OUTDIR/$pid-${BACKGROUND_TEST_NAMES[$pid]}.log"
+      echo "Test ${BACKGROUND_TEST_NAMES[$pid]} (PID $pid) failed:"
+      cat "$ORIGINAL_TEMPDIR/${BACKGROUND_TEST_NAMES[$pid]}.log"
       failed_pids+=($pid)
     fi
   done
@@ -233,7 +255,7 @@ function wait_for_async_tests {
   if [ ${#failed_pids[@]} -gt 0 ]; then
     echo "Test log output in:"
     for pid in "${failed_pids[@]}"; do
-      echo "  $OUTDIR/$pid-${BACKGROUND_TEST_NAMES[$pid]}.log"
+      echo "  $ORIGINAL_TEMPDIR/${BACKGROUND_TEST_NAMES[$pid]}.log"
     done
     echo "FAIL"
     exit 1
@@ -363,6 +385,11 @@ function handle_failure() {
   fi
   echo "in '$CURRENT_TEST'"
   if is_expected_failure ; then
+    # This is probably atomic, but depending on the filesystem isn't guaranteed
+    # to be.  Which would be bad, because with parallel system tests we could be
+    # calling this from multiple processes simultaneously.  On the other hand,
+    # test failures are rare enough compared to the amount of time the tests run
+    # for that this shouldn't actually be a problem.
     echo $CURRENT_TEST >> $FAILURES
     echo "Continuing after expected failure..."
   else

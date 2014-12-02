@@ -1,8 +1,7 @@
 start_test Filters do not rewrite blacklisted JavaScript files.
 URL=$TEST_ROOT/blacklist/blacklist.html?PageSpeedFilters=extend_cache,rewrite_javascript,trim_urls
-FETCHED=$OUTDIR/blacklist.html
-fetch_until $URL 'grep -c .js.pagespeed.' 4
-$WGET_DUMP $URL > $FETCHED
+fetch_until -save $URL 'grep -c .js.pagespeed.' 4
+FETCHED=$FETCH_UNTIL_OUTFILE
 check grep -q "<script src=\".*normal\.js\.pagespeed\..*\.js\">" $FETCHED
 check grep -q "<script src=\"js_tinyMCE\.js\"></script>" $FETCHED
 check grep -q "<script src=\"tiny_mce\.js\"></script>" $FETCHED

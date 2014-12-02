@@ -14,6 +14,7 @@ INSTAWEB_CODE_DIR="$this_dir/../net/instaweb"
 if [ ! -e "$INSTAWEB_CODE_DIR" ] ; then
   INSTAWEB_CODE_DIR="$this_dir/../../"
 fi
+SERVER_NAME=apache
 source "$INSTAWEB_CODE_DIR/automatic/system_test_helpers.sh" || exit 1
 
 echo Test that we can rewrite an HTTPS resource from a domain with a valid cert.

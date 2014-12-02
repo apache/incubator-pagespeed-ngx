@@ -34,6 +34,8 @@ SUDO=${SUDO:-}
 # all scripts that use TEST_PROXY_ORIGIN.
 PAGESPEED_TEST_HOST=${PAGESPEED_TEST_HOST:-modpagespeed.com}
 
+SERVER_NAME=apache
+
 # Extract secondary hostname when set. Currently it's only set when doing the
 # cache flush test, but it can be used in other tests we run in that run.
 # Note that we use $1 not $HOSTNAME as that is only set up later by _helpers.sh.
@@ -159,8 +161,8 @@ if [ $statistics_enabled = "1" ]; then
   MACHINE_NAME=$(hostname)
   ALT_STAT_URL=$(echo $STATISTICS_URL | sed s#localhost#$MACHINE_NAME#)
 
-  check_error_code 8 wget -q $ALT_STAT_URL >& $TEMPDIR/alt_stat_url.$$
-  rm -f "$TEMPDIR/alt_stat_url.$$"
+  check_error_code 8 wget -q $ALT_STAT_URL >& $TESTTMP/alt_stat_url
+  rm -f "$TESTTMP/alt_stat_url"
 
 
 
@@ -785,12 +787,12 @@ PageSpeedFilters=flush_subresources,extend_cache_css,\
 extend_cache_scripts"
 # Fetch once with X-PSA-Blocking-Rewrite so that the resources get rewritten and
 # property cache is updated with them.
-wget -O - --header 'X-PSA-Blocking-Rewrite: psatest' $URL > $TEMPDIR/flush.$$
+wget -O - --header 'X-PSA-Blocking-Rewrite: psatest' $URL > $TESTTMP/flush
 # Fetch again. The property cache has the subresources this time but
 # flush_subresources rewriter is not applied. This is a negative test case
 # because this rewriter does not exist in mod_pagespeed yet.
 check [ `wget -O - $URL | grep -o 'link rel="subresource"' | wc -l` = 0 ]
-rm -f $TEMPDIR/flush.$$
+rm -f $TESTTMP/flush
 
 start_test Respect custom options on resources.
 IMG_NON_CUSTOM="$EXAMPLE_ROOT/images/xPuzzle.jpg.pagespeed.ic.fakehash.jpg"
@@ -1024,7 +1026,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   echo "Rewrite HTML with reference to proxyable image on CDN."
   PROXY_PM="http://proxy.pm.example.com"
   URL="$PROXY_PM/transitive_proxy.html"
-  PDT_STATSDIR=$TEMPDIR/stats
+  PDT_STATSDIR=$TESTTMP/stats
   rm -rf $PDT_STATSDIR
   mkdir -p $PDT_STATSDIR
   PDT_OLDSTATS=$PDT_STATSDIR/blocking_rewrite_stats.old
@@ -1195,10 +1197,17 @@ if [ "$CACHE_FLUSH_TEST" = "on" ]; then
   $SUDO touch ${MOD_PAGESPEED_CACHE}_ipro_for_browser/cache.flush
   sleep 1
 
-  URL_PATH=cache_flush/cache_flush_test.html
+  CACHE_TESTING_DIR="$APACHE_DOC_ROOT/mod_pagespeed_test/cache_flush/"
+  CACHE_TESTING_TMPDIR="$CACHE_TESTING_DIR/$$"
+  echo $SUDO mkdir "$CACHE_TESTING_TMPDIR"
+  $SUDO mkdir "$CACHE_TESTING_TMPDIR"
+  echo $SUDO cp "$CACHE_TESTING_DIR/cache_flush_test.html"\
+                "$CACHE_TESTING_TMPDIR/"
+  $SUDO cp "$CACHE_TESTING_DIR/cache_flush_test.html" "$CACHE_TESTING_TMPDIR/"
+  CSS_FILE="$CACHE_TESTING_TMPDIR/update.css"
+  URL_PATH=cache_flush/$$/cache_flush_test.html
   URL=$TEST_ROOT/$URL_PATH
-  CSS_FILE=$APACHE_DOC_ROOT/mod_pagespeed_test/cache_flush/update.css
-  TMP_CSS_FILE=$TEMPDIR/update.css.$$
+  TMP_CSS_FILE=$TESTTMP/update.css
 
   # First, write color 0 into the css file and make sure it gets inlined into
   # the html.
@@ -1262,10 +1271,9 @@ if [ "$CACHE_FLUSH_TEST" = "on" ]; then
   sleep 1
   http_proxy=$SECONDARY_HOSTNAME fetch_until $SECONDARY_URL "grep -c $COLOR1" 1
 
-  # Clean up update.css from mod_pagespeed_test so it doesn't leave behind
-  # a stray file not under source control.
-  echo $SUDO rm -f $CSS_FILE
-  $SUDO rm -f $CSS_FILE
+  # Clean up so we don't leave behind a stray file not under source control.
+  echo $SUDO rm -f $CACHE_TESTING_TMPDIR
+  $SUDO rm -rf "$CACHE_TESTING_TMPDIR"
   rm -f $TMP_CSS_FILE
 
   # connection_refused.html references modpagespeed.com:1023/someimage.png.
@@ -1281,7 +1289,7 @@ if [ "$CACHE_FLUSH_TEST" = "on" ]; then
     start_test Connection refused handling
 
     # Monitor the Apache log starting now.  tail -F will catch log rotations.
-    SERF_REFUSED_PATH=$TEMPDIR/instaweb_apache_serf_refused.$$
+    SERF_REFUSED_PATH=$TESTTMP/instaweb_apache_serf_refused
     rm -f $SERF_REFUSED_PATH
     echo APACHE_LOG = $APACHE_LOG
     tail --sleep-interval=0.1 -F $APACHE_LOG > $SERF_REFUSED_PATH &
@@ -1394,7 +1402,7 @@ blocking_rewrite_another.html?PageSpeedFilters=rewrite_images"
     QUERYP="$1"
     HEADER="$2"
     URL="$FORBIDDEN_TEST_ROOT/forbidden.html"
-    OUTFILE="$TEMPDIR/test_forbid_filters.$$"
+    OUTFILE="$TESTTMP/test_forbid_filters"
     echo http_proxy=$SECONDARY_HOSTNAME $WGET $HEADER $URL$QUERYP
     http_proxy=$SECONDARY_HOSTNAME $WGET -q -O $OUTFILE $HEADER $URL$QUERYP
     check egrep -q '<link rel="stylesheet' $OUTFILE
@@ -1430,7 +1438,7 @@ blocking_rewrite_another.html?PageSpeedFilters=rewrite_images"
   # so it will be >200k (optimized) rather than <20k (resized).
   # Use a blocking fetch to force all -allowed- rewriting to be done.
   RESIZED=$FORBIDDEN_IMAGES_ROOT/256x192xPuzzle.jpg.pagespeed.ic.8AB3ykr7Of.jpg
-  HEADERS="$OUTDIR/headers.$$"
+  HEADERS="$OUTDIR/headers"
   http_proxy=$SECONDARY_HOSTNAME $WGET -q --server-response -O /dev/null \
     --header 'X-PSA-Blocking-Rewrite: psatest' $RESIZED >& $HEADERS
   LENGTH=$(grep '^ *Content-Length:' $HEADERS | sed -e 's/.*://')
@@ -1706,7 +1714,7 @@ function test_forbid_all_disabled() {
   URL1=$TEST_ROOT/forbid_all_disabled/forbidden.html
   URL2=$TEST_ROOT/forbid_all_disabled/disabled/forbidden.html
   URL3=$TEST_ROOT/forbid_all_disabled/disabled/cheat/forbidden.html
-  OUTFILE="$TEMPDIR/test_forbid_all_disabled.$$"
+  OUTFILE="$TESTTMP/test_forbid_all_disabled"
   # Fetch testing that forbidden filters stay disabled.
   echo $WGET $HEADER $URL1$QUERYP$INLINE_CSS
   $WGET $WGET_ARGS -q -O $OUTFILE $HEADER $URL1$QUERYP$INLINE_CSS
@@ -2127,7 +2135,7 @@ because its domain (www.google.com) is not authorized-->"
     HOST_NAME="http://absolute-urls.example.com"
 
     # Monitor the Apache log; tail -F will catch log rotations.
-    ABSOLUTE_URLS_LOG_PATH=/tmp/instaweb_apache_absolute_urls_log.$$
+    ABSOLUTE_URLS_LOG_PATH=$TESTTMP/instaweb_apache_absolute_urls.log
     echo APACHE_LOG = $APACHE_LOG
     tail --sleep-interval=0.1 -F $APACHE_LOG > $ABSOLUTE_URLS_LOG_PATH &
     TAIL_PID=$!
@@ -2199,8 +2207,8 @@ because its domain (www.google.com) is not authorized-->"
   start_test Pass through headers when Cache-Control is set early on HTML.
   http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \
       http://issue809.example.com/mod_pagespeed_example/index.html \
-      -O $TEMPDIR/issue809.http
-  check_from "$(extract_headers $TEMPDIR/issue809.http)" \
+      -O $TESTTMP/issue809.http
+  check_from "$(extract_headers $TESTTMP/issue809.http)" \
       grep -q "Issue809: Issue809Value"
 
   start_test Pass through common headers from origin on combined resources.
@@ -2215,8 +2223,8 @@ because its domain (www.google.com) is not authorized-->"
   if [ ${CSS:0:7} != "http://" ]; then
     CSS="http://issue809.example.com/mod_pagespeed_example/$CSS"
   fi
-  http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $CSS -O $TEMPDIR/combined.http
-  check_from "$(extract_headers $TEMPDIR/combined.http)" \
+  http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $CSS -O $TESTTMP/combined.http
+  check_from "$(extract_headers $TESTTMP/combined.http)" \
       grep -q "Issue809: Issue809Value"
 
   # Test a scenario where a multi-domain installation is using a
@@ -2321,7 +2329,7 @@ because its domain (www.google.com) is not authorized-->"
 
   # Wordy UAs need to be stored in the WGETRC file to avoid death by quoting.
   OLD_WGETRC=$WGETRC
-  WGETRC=$TEMPDIR/wgetrc-ua
+  WGETRC=$TESTTMP/wgetrc-ua
   export WGETRC
 
   # IE 9 and later must re-validate Vary: Accept.  We should send CC: private.
@@ -2578,7 +2586,7 @@ start_test pagespeed_admin and alternate_admin_path
 function check_admin_banner() {
   path="$1"
   title="$2"
-  tmpfile=$TEMPDIR/admin.html
+  tmpfile=$TESTTMP/admin.html
   echo $WGET_DUMP $PRIMARY_SERVER/$path '>' $tmpfile ...
   $WGET_DUMP $PRIMARY_SERVER/$path > $tmpfile
   check fgrep -q "<title>PageSpeed $title</title>" $tmpfile

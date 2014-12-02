@@ -32,12 +32,13 @@ INSTAWEB_CODE_DIR="$this_dir/../net/instaweb"
 if [ ! -e "$INSTAWEB_CODE_DIR" ] ; then
   INSTAWEB_CODE_DIR="$this_dir/../../"
 fi
+SERVER_NAME=apache
 source "$INSTAWEB_CODE_DIR/automatic/system_test_helpers.sh" || exit 1
 
 DEFAULT_VCL="/etc/varnish/default.vcl"
-BACKUP_DEFAULT_VCL=$TEMPDIR"/default.vcl.bak"
+BACKUP_DEFAULT_VCL=$TESTTMP"/default.vcl.bak"
 DEBUG_CONF_VCL="$this_dir/debug_conf.v3.vcl"
-TMP_DEBUG_CONF_VCL=$TEMPDIR"/debug_conf.v3.vcl"
+TMP_DEBUG_CONF_VCL=$TESTTMP"/debug_conf.v3.vcl"
 
 # Environment variables.
 # MUST_BACKUP_DEFAULT_VCL is 1 by default because we would not like to overwrite

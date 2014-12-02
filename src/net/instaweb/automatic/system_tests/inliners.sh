@@ -16,7 +16,7 @@ if [ -z ${DISABLE_FONT_API_TESTS:-} ]; then
   # Now try with IE6 user-agent. We do this with setting WGETRC due to
   # quoting madness
   WGETRC_OLD=$WGETRC
-  export WGETRC=$TEMPDIR/wgetrc-ie
+  export WGETRC=$TESTTMP/wgetrc-ie
   cat > $WGETRC <<EOF
 user_agent = Mozilla/4.0 (compatible; MSIE 6.01; Windows NT 6.0)
 EOF
