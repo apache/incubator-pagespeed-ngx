@@ -372,11 +372,6 @@ const char* InstawebContext::MakeRequestUrl(
       GoogleUrl gurl(request->unparsed_uri);
       if (gurl.IsAnyValid()) {
         url = apr_pstrdup(request->pool, request->unparsed_uri);
-      } else if (const char* p = strstr(request->unparsed_uri, ":443")) {
-        int len_without_443 = p - request->unparsed_uri;
-        GoogleString buf = StrCat(
-            "https://", StringPiece(request->unparsed_uri, len_without_443));
-        url = apr_pstrdup(request->pool, buf.c_str());
       } else {
         url = ap_construct_url(request->pool, request->unparsed_uri, request);
       }
@@ -406,20 +401,6 @@ const char* InstawebContext::MakeRequestUrl(
                        << " for URL " << url << " protocol not changed.";
         }
       }
-    }
-
-    StringPiece url_piece(url);
-    if (url_piece.ends_with(":443")) {
-      url_piece.remove_suffix(4);
-      if (url_piece.starts_with("http://")) {
-        url_piece.remove_prefix(7);
-      }
-      GoogleString buf = StrCat("https://", url_piece);
-      url = apr_pstrdup(request->pool, buf.c_str());
-    } else if (!url_piece.starts_with("http://") &&
-               !url_piece.starts_with("https://")) {
-      GoogleString buf = StrCat("http://", url_piece);
-      url = apr_pstrdup(request->pool, buf.c_str());
     }
 
     // Note: apr_table_setn does not take ownership of url, it is owned by
