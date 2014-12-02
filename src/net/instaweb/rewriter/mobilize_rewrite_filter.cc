@@ -333,15 +333,6 @@ void MobilizeRewriteFilter::EndElement(HtmlElement* element) {
         if (!added_mob_js_) {
           added_mob_js_ = true;
 
-          // TODO(jmarantz): Consider using CommonFilter::InsertNodeAtBodyEnd.
-          if (use_js_layout_) {
-            HtmlElement* script = driver_->NewElement(element->parent(),
-                                                      HtmlName::kScript);
-            script->set_style(HtmlElement::EXPLICIT_CLOSE);
-            driver_->InsertNodeAfterCurrent(script);
-            driver_->AddAttribute(script, HtmlName::kSrc,
-                                  StrCat(static_file_prefix_, "mob.js"));
-          }
           if (use_js_nav_) {
             HtmlElement* script =
                 driver_->NewElement(element->parent(), HtmlName::kScript);
@@ -357,6 +348,15 @@ void MobilizeRewriteFilter::EndElement(HtmlElement* element) {
             driver_->InsertNodeAfterCurrent(script);
             driver_->AddAttribute(script, HtmlName::kSrc,
                                   StrCat(static_file_prefix_, "mob_logo.js"));
+          }
+          // TODO(jmarantz): Consider using CommonFilter::InsertNodeAtBodyEnd.
+          if (use_js_layout_) {
+            HtmlElement* script = driver_->NewElement(element->parent(),
+                                                      HtmlName::kScript);
+            script->set_style(HtmlElement::EXPLICIT_CLOSE);
+            driver_->InsertNodeAfterCurrent(script);
+            driver_->AddAttribute(script, HtmlName::kSrc,
+                                  StrCat(static_file_prefix_, "mob.js"));
           }
         }
       } else {
