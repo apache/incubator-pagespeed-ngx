@@ -256,6 +256,8 @@ statistics_enabled=1
 CACHE_FLUSH_TEST="on"
 CACHE_PURGE_METHODS="PURGE GET"
 
+SERVER_NAME=nginx
+
 # run generic system tests
 SYSTEM_TEST_FILE="$MOD_PAGESPEED_DIR/src/net/instaweb/system/system_test.sh"
 
@@ -451,15 +453,15 @@ if [ "$HOSTNAME" = "localhost:$PRIMARY_PORT" ] ; then
   # Make sure we can't load statistics from NON_LOCAL_IP.
   ALT_STAT_URL=$(echo $STATISTICS_URL | sed s#localhost#$NON_LOCAL_IP#)
 
-  echo "wget $ALT_STAT_URL >& $TEMPDIR/alt_stat_url.$$"
-  check_error_code 8 wget $ALT_STAT_URL >& "$TEMPDIR/alt_stat_url.$$"
-  rm -f "$TEMPDIR/alt_stat_url.$$"
+  echo "wget $ALT_STAT_URL >& $TESTTMP/alt_stat_url"
+  check_error_code 8 wget $ALT_STAT_URL >& "$TESTTMP/alt_stat_url"
+  rm -f "$TESTTMP/alt_stat_url"
 
   ALT_CE_URL="$ALT_STAT_URL.pagespeed.ce.8CfGBvwDhH.css"
-  check_error_code 8 wget -O - $ALT_CE_URL  >& "$TEMPDIR/alt_ce_url.$$"
+  check_error_code 8 wget -O - $ALT_CE_URL  >& "$TESTTMP/alt_ce_url"
   check_error_code 8 wget -O - --header="Host: $HOSTNAME" $ALT_CE_URL \
-    >& "$TEMPDIR/alt_ce_url.$$"
-  rm -f "$TEMPDIR/alt_ce_url.$$"
+    >& "$TESTTMP/alt_ce_url"
+  rm -f "$TESTTMP/alt_ce_url"
 
   # Even though we don't have a cookie, we will conservatively avoid
   # optimizing resources with Vary:Cookie set on the response, so we
@@ -1041,13 +1043,13 @@ PageSpeedFilters=flush_subresources,extend_cache_css,\
 extend_cache_scripts"
 # Fetch once with X-PSA-Blocking-Rewrite so that the resources get rewritten and
 # property cache (once it's ported to ngx_pagespeed) is updated with them.
-wget -O - --header 'X-PSA-Blocking-Rewrite: psatest' $URL > $TEMPDIR/flush.$$
+wget -O - --header 'X-PSA-Blocking-Rewrite: psatest' $URL > $TESTTMP/flush
 # Fetch again. The property cache has (would have, if it were ported) the
 # subresources this time but flush_subresources rewriter is not applied. This is
 # a negative test case because this rewriter does not exist in ngx_pagespeed
 # yet.
 check [ `wget -O - $URL | grep -o 'link rel="subresource"' | wc -l` = 0 ]
-rm -f $TEMPDIR/flush.$$
+rm -f $TESTTMP/flush
 
 start_test Respect custom options on resources.
 IMG_NON_CUSTOM="$EXAMPLE_ROOT/images/xPuzzle.jpg.pagespeed.ic.fakehash.jpg"
@@ -1356,10 +1358,14 @@ check touch "$SECONDARY_CACHE/cache.flush"
 check touch "$IPRO_CACHE/cache.flush"
 sleep 1
 
-CSS_FILE="$SERVER_ROOT/mod_pagespeed_test/cache_flush/update.css"
+CACHE_TESTING_DIR="$SERVER_ROOT/mod_pagespeed_test/cache_flush/"
+CACHE_TESTING_TMPDIR="$CACHE_TESTING_DIR/$$"
+mkdir "$CACHE_TESTING_TMPDIR"
+cp "$CACHE_TESTING_DIR/cache_flush_test.html" "$CACHE_TESTING_TMPDIR/"
+CSS_FILE="$CACHE_TESTING_TMPDIR/update.css"
 echo ".class myclass { color: $COLOR0; }" > "$CSS_FILE"
 
-URL_PATH="mod_pagespeed_test/cache_flush/cache_flush_test.html"
+URL_PATH="mod_pagespeed_test/cache_flush/$$/cache_flush_test.html"
 
 URL="$SECONDARY_HOSTNAME/$URL_PATH"
 CACHE_A="--header=Host:cache_a.example.com"
@@ -1456,9 +1462,8 @@ check [ $NUM_FINAL_FLUSHES_A -eq $NUM_MEDIAL_FLUSHES_A ]
 check [ $(($NUM_FINAL_FLUSHES_B - $NUM_MEDIAL_FLUSHES_B)) -eq 1 ]
 check [ $(($NUM_FINAL_FLUSHES_C - $NUM_MEDIAL_FLUSHES_C)) -eq 1 ]
 
-# Clean up update.css from mod_pagespeed_test so it doesn't leave behind
-# a stray file not under source control.
-rm -f $CSS_FILE
+# Clean up so we don't leave behind a stray file not under source control.
+rm -rf "$CACHE_TESTING_TMPDIR"
 
 # connection_refused.html references modpagespeed.com:1023/someimage.png.
 # Pagespeed will attempt to connect to that host and port to fetch the input
@@ -1469,7 +1474,7 @@ rm -f $CSS_FILE
 start_test Connection refused handling
 
 # Monitor the log starting now.  tail -F will catch log rotations.
-FETCHER_REFUSED_PATH=$TEMPDIR/instaweb_fetcher_refused.$$
+FETCHER_REFUSED_PATH=$TESTTMP/instaweb_fetcher_refused
 rm -f $FETCHER_REFUSED_PATH
 LOG="$TEST_TMP/error.log"
 echo LOG = $LOG
@@ -1553,7 +1558,7 @@ function test_forbid_filters() {
   QUERYP="$1"
   HEADER="$2"
   URL="$FORBIDDEN_TEST_ROOT/forbidden.html"
-  OUTFILE="$TEMPDIR/test_forbid_filters.$$"
+  OUTFILE="$TESTTMP/test_forbid_filters"
   echo http_proxy=$SECONDARY_HOSTNAME $WGET $HEADER $URL$QUERYP
   http_proxy=$SECONDARY_HOSTNAME $WGET -q -O $OUTFILE $HEADER $URL$QUERYP
   check egrep -q '<link rel="stylesheet' $OUTFILE
@@ -1589,7 +1594,7 @@ check_from "$OUT" fgrep -q "404 Not Found"
 # so it will be >200k (optimized) rather than <20k (resized).
 # Use a blocking fetch to force all -allowed- rewriting to be done.
 RESIZED=$FORBIDDEN_IMAGES_ROOT/256x192xPuzzle.jpg.pagespeed.ic.8AB3ykr7Of.jpg
-HEADERS="$WGET_DIR/headers.$$"
+HEADERS="$WGET_DIR/headers"
 http_proxy=$SECONDARY_HOSTNAME $WGET -q --server-response -O /dev/null \
   --header 'X-PSA-Blocking-Rewrite: psatest' $RESIZED >& $HEADERS
 LENGTH=$(grep '^ *Content-Length:' $HEADERS | sed -e 's/.*://')
@@ -1649,7 +1654,7 @@ function test_forbid_all_disabled() {
   fi
   WGET_ARGS="--header=X-PSA-Blocking-Rewrite:psatest"
   URL=$TEST_ROOT/forbid_all_disabled/disabled/forbidden.html
-  OUTFILE="$TEMPDIR/test_forbid_all_disabled.$$"
+  OUTFILE="$TESTTMP/test_forbid_all_disabled"
   # Fetch testing that forbidden filters stay disabled.
   echo $WGET $HEADER $URL$QUERYP$INLINE_CSS
   $WGET $WGET_ARGS -q -O $OUTFILE $HEADER $URL$QUERYP$INLINE_CSS
@@ -2364,7 +2369,7 @@ test_ipro_for_browser_webp "" "webp-la" "webp" synth png
 
 # Wordy UAs need to be stored in the WGETRC file to avoid death by quoting.
 OLD_WGETRC=$WGETRC
-WGETRC=$TEMPDIR/wgetrc-ua
+WGETRC=$TESTTMP/wgetrc-ua
 export WGETRC
 
 # IE 9 and later must re-validate Vary: Accept.  We should send CC: private.
