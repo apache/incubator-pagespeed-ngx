@@ -134,10 +134,15 @@ PRIMARY_SERVER=http://$HOSTNAME
 EXAMPLE_ROOT=$PRIMARY_SERVER/mod_pagespeed_example
 # TODO(sligocki): Should we be rewriting the statistics page by default?
 # Currently we are, so disable that so that it doesn't spoil our stats.
-STATISTICS_URL="$PRIMARY_SERVER/mod_pagespeed_statistics?PageSpeed=off"
+DEFAULT_STATISTICS_URL=$PRIMARY_SERVER/mod_pagespeed_statistics?PageSpeed=off
+STATISTICS_URL=${STATISTICS_URL:-$DEFAULT_STATISTICS_URL}
 BAD_RESOURCE_URL=$PRIMARY_SERVER/mod_pagespeed/W.bad.pagespeed.cf.hash.css
 MESSAGE_URL=$PRIMARY_SERVER/pagespeed_admin/message_history
 CONSOLE_URL=$PRIMARY_SERVER/pagespeed_admin/console
+
+# In some servers (Nginx) PageSpeed process html after headers are finalized,
+# while in others (Apache) it runs before and has to treat them as tentative.
+HEADERS_FINALIZED=${HEADERS_FINALIZED:-true}
 
 # The following shake-and-bake ensures that we set REWRITTEN_TEST_ROOT based on
 # the TEST_ROOT in effect when we start up, if any, but if it was not set before
