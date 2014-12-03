@@ -24,6 +24,7 @@
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
+#include "net/instaweb/rewriter/static_asset_config.pb.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -293,15 +294,19 @@ class DedupInlinePreviewImagesTest : public DedupInlinedImagesTest {
 TEST_F(DedupInlinePreviewImagesTest, DedupInlinePreviewImages) {
   GoogleString image_filename = StrCat(kTestDomain, kCuppaPngFilename);
   GoogleString input_img = StrCat("<img src='", image_filename, "'/>");
-  GoogleString inlined_img = StrCat("<img pagespeed_high_res_src='",
-                                    image_filename, "' src=\"",
-                                    kCuppaPngWildcardData, "\" onload=\"",
-                                    DelayImagesFilter::kImageOnloadCode,
-                                    "\" id=\"pagespeed_img_0\"/>");
+  GoogleString inlined_img =
+      StrCat("<img pagespeed_high_res_src='", image_filename,
+             "' src=\"", kCuppaPngWildcardData,
+             "\" onload=\"", DelayImagesFilter::kImageOnloadCode,
+             "\" onerror=\"this.onerror=null;",
+             DelayImagesFilter::kImageOnloadCode,
+             "\" id=\"pagespeed_img_0\"/>");
   GoogleString scripted_img =
       StrCat("<img pagespeed_high_res_src='", image_filename,
-             "' onload=\"pagespeed.switchToHighResAndMaybeBeacon(this);\""
-             " id=\"pagespeed_img_0\"/>");
+             "' onload=\"", DelayImagesFilter::kImageOnloadCode,
+             "\" onerror=\"this.onerror=null;",
+             DelayImagesFilter::kImageOnloadCode,
+             "\" id=\"pagespeed_img_0\"/>");
   GoogleString script_1 = StringPrintf(kInlinedScriptFormat, 1, 1);
   GoogleString script_2 = StringPrintf(kInlinedScriptFormat, 2, 2);
   GoogleString input_html = StrCat("<head></head>"

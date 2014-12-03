@@ -30,7 +30,9 @@
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
+#include "net/instaweb/rewriter/static_asset_config.pb.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
+#include "pagespeed/kernel/base/gmock.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -114,8 +116,9 @@ class DelayImagesFilterTest : public RewriteTestBase {
   GoogleString GenerateRewrittenImageTag(const GoogleString& url,
                                          const GoogleString& low_res_src) {
     return StrCat(
-        "<img pagespeed_high_res_src=\"", url, "\"",
-        " src=\"", low_res_src, "\" onload=\"",
+        "<img pagespeed_high_res_src=\"", url, "\" src=\"", low_res_src,
+        "\" onload=\"", DelayImagesFilter::kImageOnloadCode,
+        "\" onerror=\"this.onerror=null;",
         DelayImagesFilter::kImageOnloadCode, "\"/>");
   }
 
@@ -391,7 +394,9 @@ TEST_F(DelayImagesFilterTest, DelayImageWithSrcAndUrlValuedAttribute) {
       GetImageOnloadScriptBlock(),
       "<img pagespeed_high_res_src=\"http://test.com/1.webp\" "
       "data-src=\"http://test.com/2.jpeg\" src=\"", kSampleWebpData,
-      "\" onload=\"", DelayImagesFilter::kImageOnloadCode, "\"/></body>");
+      StrCat("\" onload=\"", DelayImagesFilter::kImageOnloadCode,
+             "\" onerror=\"this.onerror=null;",
+             DelayImagesFilter::kImageOnloadCode, "\"/></body>"));
   MatchOutputAndCountBytes(input_html, output_html);
 }
 
@@ -511,7 +516,7 @@ TEST_F(DelayImagesFilterTest, DelayImageMobileWithUrlValuedAttribute) {
   GoogleString output_html = StrCat(
       "<head></head><body>",
       GetNoscript(),
-      "<img data-src=\"http://test.com/1.webp\"/>",
+      "<img data-src=\"http://test.com/1.webp\"/>"
       "</body>");
   MatchOutputAndCountBytes(input_html, output_html);
 }
@@ -531,9 +536,9 @@ TEST_F(DelayImagesFilterTest, DelayImageWithMobileLazyLoad) {
       "<head></head><body>",
       GetNoscript(),
       "<img pagespeed_high_res_src=\"http://test.com/1.jpeg\"/>",
-      StrCat(GetInlineScript(),
-             GenerateAddLowResScript("http://test.com/1.jpeg", kSampleJpegData),
-             GetLazyHighResScript(), "</body>"));
+      GetInlineScript(),
+      GenerateAddLowResScript("http://test.com/1.jpeg", kSampleJpegData),
+      GetLazyHighResScript(), "</body>");
   MatchOutputAndCountBytes(input_html, output_html);
 }
 
@@ -769,10 +774,11 @@ TEST_F(DelayImagesFilterTest, ResizeForResolution) {
       "<body>",
       GetNoscript(),
       GetImageOnloadScriptBlock(),
-      "<img pagespeed_high_res_src=\"http://test.com/1.jpeg\" ",
+      "<img pagespeed_high_res_src=\"http://test.com/1.jpeg\" "
       "src=\"", kSampleJpegData,
-      "\" onload=\"pagespeed.switchToHighResAndMaybeBeacon(this);\"/>",
-      "</body>");
+      StrCat("\" onload=\"", DelayImagesFilter::kImageOnloadCode,
+             "\" onerror=\"this.onerror=null;",
+             DelayImagesFilter::kImageOnloadCode, "\"/></body>"));
 
   // Mobile output should be smaller than desktop because inlined low quality
   // image is resized smaller for mobile.
@@ -832,11 +838,11 @@ TEST_F(DelayImagesFilterTest, ResizeForResolutionNegative) {
       "</body>";
   GoogleString output_html = StrCat(
       kHeadHtml,
-      StrCat("<body>",
-             GetNoscript(),
-             GetImageOnloadScriptBlock(),
-             "<img pagespeed_high_res_src=\"http://test.com/1.jpeg\" "),
-      "src=\"", kSampleJpegData, "\"/>", "</body>");
+      "<body>",
+      GetNoscript(),
+      GetImageOnloadScriptBlock(),
+      "<img pagespeed_high_res_src=\"http://test.com/1.jpeg\" "
+      "src=\"", kSampleJpegData, "\"/></body>");
 
   // If kResizeMobileImages is not explicitly enabled, desktop and mobile
   // outputs will have the same size.

@@ -149,6 +149,7 @@ struct KeywordMap {const char* name; net_instaweb::HtmlName::Keyword keyword;};
 "object",                     HtmlName::kObject
 "ol",                         HtmlName::kOl
 "onclick",                    HtmlName::kOnclick
+"onerror",                    HtmlName::kOnerror
 "onload",                     HtmlName::kOnload
 "open",                       HtmlName::kOpen
 "optgroup",                   HtmlName::kOptgroup

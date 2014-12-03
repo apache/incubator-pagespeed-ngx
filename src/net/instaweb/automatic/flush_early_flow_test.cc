@@ -43,11 +43,13 @@
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/test_url_namer.h"
+#include "net/instaweb/rewriter/static_asset_config.pb.h"
 #include "net/instaweb/util/public/mock_property_page.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mock_timer.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/time_util.h"
@@ -437,10 +439,12 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
         rewritten_html = RewrittenHtmlWithDeferJs(
             split_html_enabled,
             StrCat("<img pagespeed_lazy_src=\"", rewritten_img_url_1_,
-                   "\" src=\"/psajs/1.0.gif\"", " onload=\"",
-                   LazyloadImagesFilter::kImageOnloadCode, "\"/>",
-                   "<script type=\"text/javascript\" pagespeed_no_defer=\"\">",
-                   "pagespeed.lazyLoadImages.overrideAttributeFunctions();",
+                   "\" src=\"/psajs/1.0.gif\" onload=\"",
+                   LazyloadImagesFilter::kImageOnloadCode,
+                   "\" onerror=\"this.onerror=null;",
+                   LazyloadImagesFilter::kImageOnloadCode, "\"/>"
+                   "<script type=\"text/javascript\" pagespeed_no_defer=\"\">"
+                   "pagespeed.lazyLoadImages.overrideAttributeFunctions();"
                    "</script>"),
             is_ie);
       } else {
@@ -635,11 +639,12 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
         "<link rel=\"stylesheet\" type=\"text/css\" href=\"%s\">"
         "<img pagespeed_lazy_src=http://test.com/1.jpg.pagespeed.ce.%s.jpg"
         " src=\"/psajs/1.0.gif\""
-        " onload=\"%s\"/>"
+        " onload=\"%s\" onerror=\"this.onerror=null;%s\"/>"
         "Hello, mod_pagespeed!"
         "<script type=\"text/javascript\" pagespeed_no_defer=\"\">"
         "pagespeed.lazyLoadImages.overrideAttributeFunctions();</script>"
         "</body></html>", rewritten_css_url_1_.c_str(), kMockHashValue,
+        LazyloadImagesFilter::kImageOnloadCode,
         LazyloadImagesFilter::kImageOnloadCode));
 
     GoogleString kMobileOutputHtml = StrCat(
@@ -669,11 +674,12 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
         "</script>"
         "<img pagespeed_lazy_src=http://test.com/1.jpg.pagespeed.ce.%s.jpg"
         " src=\"/psajs/1.0.gif\""
-        " onload=\"%s\"/>"
+        " onload=\"%s\" onerror=\"this.onerror=null;%s\"/>"
         "Hello, mod_pagespeed!"
         "<script type=\"text/javascript\" pagespeed_no_defer=\"\">"
         "pagespeed.lazyLoadImages.overrideAttributeFunctions();</script>"
         "</body></html>", kMockHashValue,
+        LazyloadImagesFilter::kImageOnloadCode,
         LazyloadImagesFilter::kImageOnloadCode));
 
     ResponseHeaders headers;
@@ -1478,11 +1484,12 @@ TEST_F(FlushEarlyFlowTest, InsertLazyloadJsOnlyIfResourceHtmlNotEmpty) {
       "</script>"
       "<img pagespeed_lazy_src=http://test.com/1.jpg.pagespeed.ce.%s.jpg"
       " src=\"/psajs/1.0.gif\""
-      " onload=\"%s\"/>"
+      " onload=\"%s\" onerror=\"this.onerror=null;%s\"/>"
       "Hello, mod_pagespeed!"
       "<script type=\"text/javascript\" pagespeed_no_defer=\"\">"
       "pagespeed.lazyLoadImages.overrideAttributeFunctions();</script>"
       "</body></html>", kMockHashValue,
+      LazyloadImagesFilter::kImageOnloadCode,
       LazyloadImagesFilter::kImageOnloadCode));
 
   ResponseHeaders headers;

@@ -105,14 +105,18 @@ class SplitHtmlHelperFilterTest : public RewriteTestBase {
     return StrCat("<img pagespeed_lazy_src='", url, "'",
         no_transform ? " pagespeed_no_transform=" : "",
         " src=\"/psajs/1.0.gif\" "
-        "onload=\"", LazyloadImagesFilter::kImageOnloadCode, "\">");
+        "onload=\"", LazyloadImagesFilter::kImageOnloadCode,
+        "\" onerror=\"this.onerror=null;",
+        LazyloadImagesFilter::kImageOnloadCode, "\">");
   }
 
   GoogleString GetInlinePreviewImageTag(const GoogleString& url,
                                         const GoogleString& low_res_src) {
     return StrCat(
         "<img pagespeed_high_res_src=\"", url, "\" src=\"", low_res_src,
-        "\" onload=\"", DelayImagesFilter::kImageOnloadCode, "\">");
+        "\" onload=\"", DelayImagesFilter::kImageOnloadCode,
+        "\" onerror=\"this.onerror=null;", DelayImagesFilter::kImageOnloadCode,
+        "\">");
   }
 
   GoogleString GetImageOnloadScriptBlock() const {

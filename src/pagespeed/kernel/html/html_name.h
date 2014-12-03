@@ -161,6 +161,7 @@ class HtmlName {
     kObject,
     kOl,
     kOnclick,
+    kOnerror,
     kOnload,
     kOpen,
     kOptgroup,

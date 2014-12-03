@@ -34,6 +34,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
+#include "net/instaweb/rewriter/static_asset_config.pb.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/html/html_element.h"
 #include "pagespeed/kernel/html/html_name.h"
@@ -158,8 +159,13 @@ void DelayImagesFilter::EndElementImpl(HtmlElement* element) {
         // beaconing code. We re-introduce this beaconing onload logic via
         // kImageOnloadCode.
         element->DeleteAttribute(HtmlName::kOnload);
-        driver_->AddEscapedAttribute(
-            element, HtmlName::kOnload, kImageOnloadCode);
+        driver_->AddAttribute(element, HtmlName::kOnload, kImageOnloadCode);
+        // Add onerror handler just in case the low res image doesn't load.
+        element->DeleteAttribute(HtmlName::kOnerror);
+        // Note: this.onerror=null to avoid infinitely repeating on failure:
+        //   See: http://stackoverflow.com/questions/3984287
+        driver()->AddAttribute(element, HtmlName::kOnerror,
+                               StrCat("this.onerror=null;", kImageOnloadCode));
         MaybeAddImageOnloadJsSnippet(element);
       } else {
         // Low res image data is collected in low_res_data_map_ map. This

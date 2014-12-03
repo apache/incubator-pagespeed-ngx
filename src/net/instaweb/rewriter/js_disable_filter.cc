@@ -219,6 +219,7 @@ void JsDisableFilter::StartElementImpl(HtmlElement* element) {
     onload->set_name(driver()->MakeName("data-pagespeed-onload"));
     driver()->AddEscapedAttribute(element, HtmlName::kOnload,
                                   kElementOnloadCode);
+    // TODO(sligocki): Should we add onerror handler here too?
   }
 }
 

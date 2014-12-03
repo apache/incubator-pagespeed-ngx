@@ -66,10 +66,10 @@ class LazyloadImagesFilterTest : public RewriteTestBase {
       const StringPiece& additional_attributes) {
     return StrCat("<", tag, " pagespeed_lazy_src=\"", url, "\" ",
                   additional_attributes,
-                  StrCat("src=\"",
-                         blank_image_src_,
-                         "\" onload=\"", LazyloadImagesFilter::kImageOnloadCode,
-                         "\"/>"));
+                  "src=\"", blank_image_src_,
+                  StrCat("\" onload=\"", LazyloadImagesFilter::kImageOnloadCode,
+                         "\" onerror=\"this.onerror=null;",
+                         LazyloadImagesFilter::kImageOnloadCode, "\"/>"));
   }
 
   void ExpectLogRecord(int index, int status, bool is_blacklisted,

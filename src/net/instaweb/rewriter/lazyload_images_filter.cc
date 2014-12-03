@@ -25,6 +25,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
+#include "net/instaweb/rewriter/static_asset_config.pb.h"
 #include "net/instaweb/util/public/fallback_property_page.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -275,8 +276,15 @@ void LazyloadImagesFilter::EndElementImpl(HtmlElement* element) {
   // before coming here, the only onload handler that we would delete would
   // be the one added by our very own beaconing code. We re-introduce this
   // beaconing onload logic via kImageOnloadCode.
+  // TODO(jud): Add these with addEventListener rather than with the attributes.
   element->DeleteAttribute(HtmlName::kOnload);
   driver()->AddAttribute(element, HtmlName::kOnload, kImageOnloadCode);
+  // Add onerror handler just in case the temporary pixel doesn't load.
+  element->DeleteAttribute(HtmlName::kOnerror);
+  // Note: this.onerror=null to avoid infinitely repeating on failure:
+  //   See: http://stackoverflow.com/questions/3984287
+  driver()->AddAttribute(element, HtmlName::kOnerror,
+                         StrCat("this.onerror=null;", kImageOnloadCode));
   ++num_images_lazily_loaded_;
 }
 

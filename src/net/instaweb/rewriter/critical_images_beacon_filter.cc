@@ -26,6 +26,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
+#include "net/instaweb/rewriter/static_asset_config.pb.h"
 #include "pagespeed/kernel/base/escaping.h"
 #include "pagespeed/kernel/base/hasher.h"
 #include "pagespeed/kernel/base/statistics.h"
@@ -186,6 +187,7 @@ void CriticalImagesBeaconFilter::EndElementImpl(HtmlElement* element) {
             // non-rewritten page.
             driver()->AddAttribute(
                 element, HtmlName::kOnload, kImageOnloadCode);
+            // TODO(sligocki): Should we add onerror handler here too?
             // If beacon javascript has not been added yet, we need to add it
             // before the current node because we are going to use the js for
             // the image criticality check on image-onload.
