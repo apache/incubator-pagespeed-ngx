@@ -12,6 +12,8 @@ if [ -z ${DISABLE_FONT_API_TESTS:-} ]; then
   check_from "$OUT" fgrep -qi "format('woff')"
   check_not_from "$OUT" fgrep -qi "format('truetype')"
   check_not_from "$OUT" fgrep -qi "format('embedded-opentype')"
+  check_not_from "$OUT" fgrep -qi ".ttf"
+  check_not_from "$OUT" fgrep -qi ".eot"
 
   # Now try with IE6 user-agent. We do this with setting WGETRC due to
   # quoting madness
@@ -25,8 +27,8 @@ EOF
   # This should get an eot font. (It might also ship a woff, so we don't
   # check_not_from for that)
   OUT=$($WGET_DUMP $URL)
-  check_from "$OUT" fgrep -qi "format('embedded-opentype')"
-  check_not_from "$OUT" fgrep -qi "format('truetype')"
+  check_from "$OUT" fgrep -qi ".eot"
+  check_not_from "$OUT" fgrep -qi ".ttf"
   export WGETRC=$WGETRC_OLD
 fi
 
