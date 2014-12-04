@@ -196,8 +196,10 @@ mkdir -p $OUTDIR
 # other, so give each its own OUTDIR.
 #
 # This should always be run in its own subshell.
+RUNNING_TEST_IN_BACKGROUND=false
 function set_outdir_and_run_test {
   local test_name=$1
+  RUNNING_TEST_IN_BACKGROUND=true
 
   FAIL_LOG="$ORIGINAL_TEMPDIR/$test_name.log"
   OUTDIR="$OUTDIR/outdir-$test_name"
@@ -334,13 +336,16 @@ function run_wget_with_args() {
 # listed in PAGESPEED_EXPECTED_FAILURES will let us continue.  This prints out
 # failure information for these tests, if appropriate.
 #
-# This function always exits the scripts with status 0 or 1.
+# This function always exits the script:
+#   Status 0: pass
+#   Status 1: fail
+#   Status 3: only expected failures
 function check_failures_and_exit() {
   if [ -e $FAILURES ] ; then
-    echo Failing Tests:
+    echo Expected Failing Tests:
     sed 's/^/  /' $FAILURES
-    echo "FAIL."
-    exit 1
+    echo "MOSTLY PASS.  Expected failures only."
+    exit 3
   fi
   echo "PASS."
   exit 0
@@ -567,14 +572,20 @@ function fetch_until() {
   fi
 
   # TIMEOUT is how long to keep trying, in seconds.
-  if is_expected_failure ; then
+  if $RUNNING_TEST_IN_BACKGROUND; then
+    # This is longer than PageSpeed should normally ever take to rewrite
+    # resources, but if it's running under Valgrind it might occasionally take a
+    # really long time.  Especially with parallel tests.
+    #
+    # Give this long period even to expected failures.
+    TIMEOUT=180
+  elif is_expected_failure ; then
     # For tests that we expect to fail, don't wait long hoping for the right
     # result.
     TIMEOUT=10
   else
-    # This is longer than PageSpeed should normally ever take to rewrite
-    # resources, but if it's running under Valgrind it might occasionally take a
-    # really long time.
+    # Foreground tests shouldn't wait as long as background tests can, but still
+    # longer than you'd think we'd need, because of Valgrind.
     TIMEOUT=100
   fi
 
