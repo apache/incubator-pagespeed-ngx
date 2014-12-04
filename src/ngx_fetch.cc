@@ -447,7 +447,7 @@ const char* NgxFetch::str_url() {
   return str_url_.c_str();
 }
 
-// This function should be called only once. The only argument is sucess or
+// This function should be called only once. The only argument is success or
 // not.
 void NgxFetch::CallbackDone(bool success) {
   ngx_log_error(NGX_LOG_DEBUG, log_, 0, "NgxFetch %p: CallbackDone: %s\n",
