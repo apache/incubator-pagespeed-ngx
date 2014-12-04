@@ -3972,6 +3972,14 @@ GoogleString RewriteOptions::OptionsToString() const {
   return output;
 }
 
+GoogleString RewriteOptions::ExperimentSpec::QuoteHostPort(
+    const GoogleString& in) {
+  if (in.find(":") != GoogleString::npos) {
+    return StrCat("\"", in, "\"");
+  }
+  return in;
+}
+
 GoogleString RewriteOptions::ExperimentSpec::ToString() const {
   GoogleString out;
   StrAppend(&out, "id=", IntegerToString(id_));
@@ -4030,6 +4038,20 @@ GoogleString RewriteOptions::ExperimentSpec::ToString() const {
     if ((*matches_device_types_)[UserAgentMatcher::kMobile]) {
       StrAppend(&out, sep, "mobile");
       sep = ",";
+    }
+  }
+
+  for (AlternateOriginDomains::const_iterator i =
+           alternate_origin_domains_.begin();
+       i != alternate_origin_domains_.end(); ++i) {
+    const AlternateOriginDomainSpec& spec = *i;
+
+    StrAppend(&out, ";alternate_origin_domain=",
+              JoinCollection(spec.serving_domains, ","), ":",
+              QuoteHostPort(spec.origin_domain));
+
+    if (!spec.host_header.empty()) {
+      StrAppend(&out, ":", QuoteHostPort(spec.host_header));
     }
   }
 
@@ -4182,6 +4204,8 @@ bool RewriteOptions::SetupExperimentRewriters() {
   // Options were already checked during config parsing.
   NullMessageHandler null_message_handler;
   SetOptionsFromName(spec->filter_options(), &null_message_handler);
+  spec->ApplyAlternateOriginsToDomainLawyer(WriteableDomainLawyer(),
+                                            &null_message_handler);
   return true;
 }
 
@@ -4231,6 +4255,9 @@ void RewriteOptions::ExperimentSpec::Merge(const ExperimentSpec& spec) {
   if (spec.matches_device_types_.get() != NULL) {
     matches_device_types_.reset(
         new DeviceTypeBitSet(*spec.matches_device_types_));
+  }
+  if (!spec.alternate_origin_domains_.empty()) {
+    alternate_origin_domains_ = spec.alternate_origin_domains_;
   }
 }
 
@@ -4302,11 +4329,128 @@ void RewriteOptions::ExperimentSpec::Initialize(const StringPiece& spec,
       matches_device_types_.reset(new DeviceTypeBitSet());
       ParseDeviceTypeBitSet(PieceAfterEquals(piece),
                             matches_device_types_.get(), handler);
+    } else if (StringCaseStartsWith(piece, "alternate_origin_domain=")) {
+      alternate_origin_domains_.push_back(AlternateOriginDomainSpec());
+      if (!ParseAlternateOriginDomain(PieceAfterEquals(piece),
+                                      &alternate_origin_domains_.back(),
+                                      handler)) {
+        handler->Message(kWarning,
+                         "Ignorning invalid alternate_origin_domain: '%s'",
+                         piece.as_string().c_str());
+        alternate_origin_domains_.pop_back();
+      }
     } else {
       handler->Message(kWarning, "Skipping unknown experiment setting: %s",
                        piece.as_string().c_str());
     }
   }
+}
+
+void RewriteOptions::ExperimentSpec::CombineQuotedHostPort(
+    StringPieceVector* vec, size_t first_pos,
+    GoogleString* combined_container) {
+  if (first_pos + 1 >= vec->size()) {
+    return;
+  }
+
+  StringPiece& a = (*vec)[first_pos];
+  StringPiece& b = (*vec)[first_pos + 1];
+
+  if (a.starts_with("\"") && b.ends_with("\"")) {
+    a.remove_prefix(1);
+    b.remove_suffix(1);
+    *combined_container = a.as_string() + ":" + b.as_string();
+    (*vec)[first_pos] = StringPiece(*combined_container);
+    vec->erase(vec->begin() + first_pos + 1);
+  }
+}
+
+bool RewriteOptions::ExperimentSpec::LooksLikeValidHost(const StringPiece& s) {
+  // This will only return true if s is non-empty.
+  return s.find_first_not_of("1234567890") != GoogleString::npos;
+}
+
+bool RewriteOptions::ExperimentSpec::ParseAlternateOriginDomain(
+    const StringPiece& in, AlternateOriginDomainSpec* out,
+    MessageHandler* handler) {
+  // Input format: serving_domain[,...]:alt_origin_domain[:host_header]
+  // alt_origin_domain and host_header can include a port, in which case
+  // they must be quoted:
+  // serving_domain:"alt_origin_domain:port":"host_header:port"
+
+  StringPieceVector args_str;
+  SplitStringPieceToVector(in, ":", &args_str, false);
+
+  GoogleString ref_combined_container;
+  if (args_str.size() >= 3) {
+    CombineQuotedHostPort(&args_str, 1, &ref_combined_container);
+  }
+
+  GoogleString host_combined_container;
+  if (args_str.size() >= 4) {
+    CombineQuotedHostPort(&args_str, 2, &host_combined_container);
+  }
+
+  if (args_str.size() < 2 || args_str.size() > 3) {
+    handler->Message(
+        kWarning, "Incorrect number of arguments for alternate_origin_domain");
+    return false;
+  }
+
+  out->serving_domains.clear();
+  out->origin_domain = args_str[1].as_string();
+  if (args_str.size() > 2) {
+    out->host_header = args_str[2].as_string();
+  } else {
+    out->host_header.clear();
+  }
+
+  // We now attempt to configure a DomainLaywer with the supplied arguments.
+  // If there is a problem, we want to find out now (ie: parse time) and
+  // not when we later try and configure a DomainLawyer for real.
+  // We also check for non-numeric in the headers, since that's likely a stray
+  // port number and a valid hostname must contain a non-numeric.
+
+  DomainLawyer lawyer;
+  // origin_domain cannot be empty or the lawyer will be very unhappy.
+  if (!LooksLikeValidHost(out->origin_domain) ||
+      !lawyer.AddTwoProtocolOriginDomainMapping(out->origin_domain, "good.com",
+                                                "", handler)) {
+    handler->Message(kWarning, "Invalid origin domain: '%s'",
+                     out->origin_domain.c_str());
+    // This breaks *everything* else below, so we have to early exit.
+    return false;
+  }
+
+  lawyer.Clear();
+  if (!out->host_header.empty() &&
+      (!LooksLikeValidHost(out->host_header) ||
+       !lawyer.AddTwoProtocolOriginDomainMapping(out->origin_domain, "good.com",
+                                                 out->host_header, handler))) {
+    handler->Message(kWarning, "Invalid host header: '%s'",
+                     out->host_header.c_str());
+    return false;
+  }
+
+  StringPieceVector serving_domains;
+  SplitStringPieceToVector(args_str[0], ",", &serving_domains, true);
+
+  lawyer.Clear();
+
+  for (StringPieceVector::const_iterator i = serving_domains.begin();
+       i != serving_domains.end(); ++i) {
+    const StringPiece& serving_domain = *i;
+    if (LooksLikeValidHost(serving_domain) &&
+        lawyer.AddTwoProtocolOriginDomainMapping(
+            out->origin_domain, serving_domain, out->host_header, handler)) {
+      out->serving_domains.push_back(serving_domain.as_string());
+    } else {
+      handler->Message(kWarning, "Invalid serving domain: '%s'",
+                       serving_domain.as_string().c_str());
+    }
+  }
+
+  return !out->serving_domains.empty();
 }
 
 bool RewriteOptions::ExperimentSpec::ParseDeviceTypeBitSet(
@@ -4360,6 +4504,24 @@ bool RewriteOptions::ExperimentSpec::matches_device_type(
   }
 
   return (*matches_device_types_)[type];
+}
+
+void RewriteOptions::ExperimentSpec::ApplyAlternateOriginsToDomainLawyer(
+    DomainLawyer* lawyer, MessageHandler* handler) const {
+  for (AlternateOriginDomains::const_iterator i =
+           alternate_origin_domains_.begin();
+       i != alternate_origin_domains_.end(); ++i) {
+    const AlternateOriginDomainSpec& alt_spec = *i;
+
+    for (StringVector::const_iterator j = alt_spec.serving_domains.begin();
+         j != alt_spec.serving_domains.end(); ++j) {
+      const GoogleString& serving_domain = *j;
+
+      lawyer->AddTwoProtocolOriginDomainMapping(alt_spec.origin_domain,
+                                                serving_domain,
+                                                alt_spec.host_header, handler);
+    }
+  }
 }
 
 void RewriteOptions::AddInlineUnauthorizedResourceType(
@@ -4563,6 +4725,5 @@ bool RewriteOptions::CacheFragmentOption::SetFromString(
   set(value.as_string());
   return true;
 }
-
 
 }  // namespace net_instaweb

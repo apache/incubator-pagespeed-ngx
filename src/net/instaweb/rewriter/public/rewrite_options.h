@@ -754,6 +754,10 @@ class RewriteOptions {
     bool use_default() const { return use_default_; }
     GoogleString ToString() const;
 
+    // Mutate the origin domains in DomainLawyer with alternate_origin_domains_.
+    void ApplyAlternateOriginsToDomainLawyer(DomainLawyer* domain_lawyer,
+                                             MessageHandler* handler) const;
+
    protected:
     // Merges a spec into this. This follows the same semantics as
     // RewriteOptions. Specifically, filter/options list get unioned, and
@@ -768,9 +772,42 @@ class RewriteOptions {
                                       DeviceTypeBitSet* out,
                                       MessageHandler* handler);
 
+    struct AlternateOriginDomainSpec {
+      StringVector serving_domains;
+      GoogleString origin_domain;
+      GoogleString host_header;
+    };
+
+    // Simple check that 's' is not obviously an invalid host. Used to avoid
+    // problems when a port number is accidentally placed in a host field.
+    static bool LooksLikeValidHost(const StringPiece& s);
+
+    // Parses the string after an 'alternate_origin_domain' experiment
+    // option, returning if it was successfull. If it returns false, the spec is
+    // invalid and should be discarded.
+    static bool ParseAlternateOriginDomain(const StringPiece& in,
+                                           AlternateOriginDomainSpec* out,
+                                           MessageHandler* handler);
+
+    // Combine consecutive entries in a StringPieceVector such that
+    // [ a, b, "host, port" ] can be turned into [ a, b, host:port ].
+    // Inspects vec[first_pos] and vec[first_pos + 1]. If they appear to be a
+    // quoted tuple, will replace vec[first_pos] with a combined value and
+    // vec[first_pos + 1] will be removed, ie: vec will reduce in size by 1.
+    // combined_container is used as the underlying storage for the combined
+    // string, if necessary.
+    static void CombineQuotedHostPort(StringPieceVector* vec, size_t first_pos,
+                                      GoogleString* combined_container);
+
+    // Returns a copy of the input string that will be surrounded by double
+    // quotes if the input string contains a colon. This is used to turn
+    // host:port into "host:port" when printing an ExperimentSpec.
+    static GoogleString QuoteHostPort(const GoogleString& in);
+
    private:
     FRIEND_TEST(RewriteOptionsTest, ExperimentMergeTest);
     FRIEND_TEST(RewriteOptionsTest, DeviceTypeMergeTest);
+    FRIEND_TEST(RewriteOptionsTest, AlternateOriginDomainMergeTest);
 
     // Parse 'spec' and set the FilterSets, rewrite level, inlining thresholds,
     // and OptionSets accordingly.
@@ -795,6 +832,11 @@ class RewriteOptions {
     // Use whatever RewriteOptions' settings are without experiments
     // for this experiment.
     bool use_default_;
+    // vector of parsed alternate_origin_domain options. These mutations will
+    // be applied to a DomainLawyer when passed to MutateDomainLawer.
+    typedef std::vector<AlternateOriginDomainSpec> AlternateOriginDomains;
+    AlternateOriginDomains alternate_origin_domains_;
+
     DISALLOW_COPY_AND_ASSIGN(ExperimentSpec);
   };
 
