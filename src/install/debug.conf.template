@@ -1087,6 +1087,8 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_noned_shmm"
   ModPagespeedRewriteLevel OptimizeForBandwidth
   ModPagespeedDisableFilters add_instrumentation
 
+  ModPagespeedBlockingRewriteKey psatest
+
   <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/optimize_for_bandwidth/inline_css" >
     ModPagespeedEnableFilters inline_css
   </Directory>
