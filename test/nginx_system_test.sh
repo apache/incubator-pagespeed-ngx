@@ -920,24 +920,6 @@ OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --header='Cookie: PageSpeedExper
       $EXP_NO_GA_EXTEND_CACHE)
 check_not_from "$OUT" fgrep -q 'Experiment:'
 
-# check_failures_and_exit will actually call exit, but we don't want it to.
-# Specifically we want it to call exit 3 instad of exit 1 if it finds
-# something.  Reimplement it here:
-#
-# TODO(jefftk): change this in mod_pagespeed and push it out, then remove this
-# modified copy.
-
-function check_failures_and_exit() {
-  if [ -e $FAILURES ] ; then
-    echo Failing Tests:
-    sed 's/^/  /' $FAILURES
-    echo "FAIL."
-    exit 3
-  fi
-  echo "PASS."
-  exit 0
-}
-
 # Repeat the critical_css_filter test on a host that processes post data via
 # temp files to test that ngx_pagespeed specific code path.
 filter_spec_method="headers"
