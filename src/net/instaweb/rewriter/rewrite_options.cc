@@ -223,7 +223,6 @@ const char RewriteOptions::kMinImageSizeLowResolutionBytes[] =
     "MinImageSizeLowResolutionBytes";
 const char RewriteOptions::kMinResourceCacheTimeToRewriteMs[] =
     "MinResourceCacheTimeToRewriteMs";
-const char RewriteOptions::kMobCxxLayout[] = "MobCxxLayout";
 const char RewriteOptions::kMobLayout[] = "MobLayout";
 const char RewriteOptions::kMobLogo[] = "MobLogo";
 const char RewriteOptions::kMobNav[] = "MobNav";
@@ -2192,10 +2191,6 @@ void RewriteOptions::AddProperties() {
       kQueryScope,
       "(experimental) Unconditionally mobilize page regardless of user-agent.",
       true);
-  AddBaseProperty(
-      false, &RewriteOptions::mob_cxx_layout_, "mcxxlayout", kMobCxxLayout,
-      kServerScope,
-      "(experimental) whether to run the C++ version of mobilizer", true);
   AddBaseProperty(
       false, &RewriteOptions::mob_layout_, "mlayout", kMobLayout,
       kQueryScope,

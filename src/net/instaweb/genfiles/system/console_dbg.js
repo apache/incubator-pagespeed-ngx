@@ -567,6 +567,18 @@ goog.tagUnsealableClass = function(a) {
   !COMPILED && goog.defineClass.SEAL_CLASS_INSTANCES && (a.prototype[goog.UNSEALABLE_CONSTRUCTOR_PROPERTY_] = !0);
 };
 goog.UNSEALABLE_CONSTRUCTOR_PROPERTY_ = "goog_defineClass_legacy_unsealable";
+goog.debug = {};
+goog.debug.Error = function(a) {
+  if (Error.captureStackTrace) {
+    Error.captureStackTrace(this, goog.debug.Error);
+  } else {
+    var b = Error().stack;
+    b && (this.stack = b);
+  }
+  a && (this.message = String(a));
+};
+goog.inherits(goog.debug.Error, Error);
+goog.debug.Error.prototype.name = "CustomError";
 goog.structs = {};
 goog.structs.Collection = function() {
 };
@@ -677,18 +689,6 @@ goog.functions.cacheReturnValue = function(a) {
     return c;
   };
 };
-goog.debug = {};
-goog.debug.Error = function(a) {
-  if (Error.captureStackTrace) {
-    Error.captureStackTrace(this, goog.debug.Error);
-  } else {
-    var b = Error().stack;
-    b && (this.stack = b);
-  }
-  a && (this.message = String(a));
-};
-goog.inherits(goog.debug.Error, Error);
-goog.debug.Error.prototype.name = "CustomError";
 goog.string = {};
 goog.string.DETECT_DOUBLE_ESCAPING = !1;
 goog.string.Unicode = {NBSP:"\u00a0"};

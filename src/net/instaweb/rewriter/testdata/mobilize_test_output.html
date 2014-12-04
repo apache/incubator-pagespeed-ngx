@@ -1,6 +1,6 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en-US">
-<head><meta name='viewport' content='width=device-width'/>
+<head><script>var psDebugMode=false;</script><meta name='viewport' content='width=device-width'/>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
 <title>Testing the Mobilization Filter</title>
 <meta name="robots" content="index, nofollow"/>
@@ -18,124 +18,23 @@
 <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
 <script type="text/javascript" src="http://test.com/custom.js"></script>
 <style type="text/css" id="syntaxhighlighteranchor"></style>
-<style>/*
- * Copyright 2014 Google Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
- * @fileoverview Stylesheet injected into mobilized pages.
- *
- * @author stevensr@google.com (Ryan Stevens)
- */
-
-/* Force all elements into the mobile viewport. */
-* {
-  max-width: 100% !important;
-  min-width: 0 !important;
-  width: auto !important;
-  position: relative !important;
-}
-
-/* The blocks marked with an data-mobile-role attribute should be in a
-   single-column layout */
-[data-mobile-role] {
-  float: none !important;
-  display: block !important;
-  margin-left: 0 !important;
-  margin-right: 0 !important;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-}
-
-/* Some heuristics to make headers display a bit nicer, usually. */
-[data-mobile-role="header"] * {
-  margin-left: 0 !important;
-  margin-right: 0 !important;
-}
-
-[data-mobile-role="header"] div {
-  float: none !important;
-  display: block !important;
-  margin: 0 !important;
-  padding: 0 !important;
-}
-
-[data-mobile-role="header"] {
-  height: auto !important;
-  padding-left: 1% !important;
-  padding-right: 1% !important;
-}
-
-/* Navigational sections often have a fixed height. */
-[data-mobile-role="navigational"] {
-  height: auto !important;
-}
-
-/* Make links display as mobile-friendly buttons instead of just text. For now
-   the colors are set to some generic values, but it might be better to set the
-   links such that the blend with the page. One fancy way to do this is by
-   automatically setting the links to be the opposite of the background color
-   using the -webkit-filter: invert(100%); property, but this is not supported
-   by all browsers. */
-[data-mobile-role="navigational"] a {
-  float: none !important;
-  display: block !important;
-  margin: 1px 1% !important;
-  font-size: x-large !important;
-  text-decoration: none !important;
-  background-color: #EEEEEE !important;
-  color: #333333 !important;
-  padding: 2px 6px 2px 6px !important;
-  border-top: 1px solid #CCCCCC !important;
-  border-right: 1px solid #333333 !important;
-  border-bottom: 1px solid #333333 !important;
-  border-left: 1px solid #CCCCCC !important;
-}
-
-/* Give the main content a bit of space, mainly so text is not right against the
-   edge of the screen. */
-[data-mobile-role="content"] {
- padding-left: 1% !important;
- padding-right: 1% !important;
-}
-
-/* Force the main content into a single-column layout. */
-[data-mobile-role="content"] div {
-  float: none !important;
-  display: block !important;
-  margin-left: 0 !important;
-  margin-right: 0 !important;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-}
-
-/* Increase the font size for content elements. */
-[data-mobile-role="content"] a, [data-mobile-role="content"] p,
-[data-mobile-role="content"] div, [data-mobile-role="content"] span {
-  font-size: medium !important;
-}</style></head>
-<body class="custom"><script>
+<link rel="stylesheet" href="lite.css"><link rel="stylesheet" href="mob_logo.css"><link rel="stylesheet" href="mob_nav.css"></head>
+<body class="custom"><div id="ps-progress-scrim" class="psProgressScrim"><a href="javascript:psRemoveProgressBar();" id="ps-progress-remove" id="ps-progress-show-log">Remove Progress Bar (doesn't stop mobilization)</a><br><a href="javascript:psSetDebugMode();">Show Debug Log In Progress Bar</a><div class="psProgressBar"><span id="ps-progress-span" class="psProgressSpan"></span></div><pre id="ps-progress-log" class="psProgressLog"/></div>
+  <div id="nav_area" class="full_width" data-mobile-role="navigational">
+    <div class="page">
+      <ul class="nav_menu">
+        <li class="tab"><a href="http://test.com">Home</a></li>
+        <li class="tab"><a href="http://test.com/about" title="About">About</a></li>
+        <li class="tab"><a href="http://test.com/articles" title="Articles">Articles</a></li>
+        <li class="tab"><a href="http://test.com/rss" title="RSS Feed" rel="nofollow">RSS</a></li>
+      </ul>
+    </div>
+  </div>
+  <script>
     document.getElementById("stuff00").innerHTML = "JavaScript!";
     alert('00');
-  </script><script>
-      document.getElementById("stuff01").innerHTML = "";
-      alert('01');
-    </script><script>
-        document.getElementById("stuff02").innerHTML = "";
-        alert('02');
-      </script><div id="header_area" class="full_width" data-mobile-role="header">
+  </script>
+  <div id="header_area" class="full_width" data-mobile-role="header">
     <div class="page">
       <div id="header">
         <p id="title"><a href="http://test.com/">Mobilize all the Things</a></p>
@@ -145,23 +44,24 @@
         </div>
       </div>
     </div>
-    
-    
-  </div><div id="nav_area" class="full_width" data-mobile-role="navigational">
-    <div class="page">
-      <ul class="nav_menu">
-        <li class="tab"><a href="http://test.com">Home</a></li>
-        <li class="tab"><a href="http://test.com/about" title="About">About</a></li>
-        <li class="tab"><a href="http://test.com/articles" title="Articles">Articles</a></li>
-        <li class="tab"><a href="http://test.com/rss" title="RSS Feed" rel="nofollow">RSS</a></li>
-      </ul>
-    </div>
-  </div><div class="navbar" data-mobile-role="navigational">
+    <div class="navbar" data-mobile-role="navigational">
       <a href="http://test.com/way_cool">Way Cool</a>
       <a href="http://test.com/mondo">Mondo</a>
       <a href="http://test.com/outrageous">Outrageous</a>
       <a href="http://test.com/funky">Funky</a>
-    </div><form action="http://test.com/form/" method="get" data-mobile-role="content">
+    </div>
+    <script>
+      document.getElementById("stuff01").innerHTML = "";
+      alert('01');
+    </script>
+  </div>
+  <div id="content_area" class="full_width" data-mobile-role="content">
+    <div class="aside" data-mobile-role="marginal">
+      <script>
+        document.getElementById("stuff02").innerHTML = "";
+        alert('02');
+      </script>
+      <form action="http://test.com/form/" method="get" data-mobile-role="content">
         <ul><li class="widget">
             <h3>Months</h3>
             <select name="archive" onchange='document.location.href=this.options[this.selectedIndex].value;'>
@@ -179,8 +79,8 @@
               <option value='http://test.com/c=groovy'>Awesome</option>
             </select>
         </li></ul>
-      </form><div id="content_area" class="full_width" data-mobile-role="content">
-    
+      </form>
+    </div>
     <div class="page" data-mobile-role="content">
       <div id="content" class="feed">
         <div class="post type-post status-publish">
@@ -221,10 +121,10 @@ int main()
         </div>
       </div>
     </div>
-  </div><div class="aside" data-mobile-role="marginal">
-      
-      
-    </div><div class="footer" data-mobile-role="marginal">
+  </div>
+  <p>Aenean nec lacus ac sapien ultrices placerat non ac sem. Quisque accumsan porta tortor semper egestas.</p>
+  <div class="footer" data-mobile-role="marginal">
     Nulla ac elit sed urna molestie iaculis. Morbi posuere ac libero in fringilla.
     <br><a class="top"></a>
-  </div></body>
+  </div>
+<script src="mob_nav.js"></script><script src="mob_logo.js"></script><script src="mob.js"></script></body>

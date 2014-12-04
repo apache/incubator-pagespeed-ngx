@@ -98,7 +98,6 @@ BASE_LIBS = \
   net/instaweb/libinstaweb_local_storage_cache_opt_data2c.a \
   net/instaweb/libinstaweb_messages_js_data2c.a \
   net/instaweb/libinstaweb_messages_js_opt_data2c.a \
-  net/instaweb/libinstaweb_mobilize_css_data2c.a \
   net/instaweb/libinstaweb_panel_loader_opt_data2c.a \
   net/instaweb/libinstaweb_rendered_image_pb.a \
   net/instaweb/libinstaweb_rewriter.a \

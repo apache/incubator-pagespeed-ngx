@@ -35,8 +35,6 @@
 
 namespace net_instaweb {
 
-extern const char* CSS_mobilize_css;
-
 const MobileRoleData MobileRoleData::kMobileRoles[MobileRole::kInvalid] = {
   // This is the order that the HTML content will be rearranged.
   MobileRoleData(MobileRole::kKeeper, "keeper"),
@@ -49,15 +47,15 @@ const MobileRoleData MobileRoleData::kMobileRoles[MobileRole::kInvalid] = {
 const char MobilizeRewriteFilter::kPagesMobilized[] =
     "mobilization_pages_rewritten";
 const char MobilizeRewriteFilter::kKeeperBlocks[] =
-    "mobilization_keeper_blocks_moved";
+    "mobilization_keeper_blocks_found";
 const char MobilizeRewriteFilter::kHeaderBlocks[] =
-    "mobilization_header_blocks_moved";
+    "mobilization_header_blocks_found";
 const char MobilizeRewriteFilter::kNavigationalBlocks[] =
-    "mobilization_navigational_blocks_moved";
+    "mobilization_navigational_blocks_found";
 const char MobilizeRewriteFilter::kContentBlocks[] =
-    "mobilization_content_blocks_moved";
+    "mobilization_content_blocks_found";
 const char MobilizeRewriteFilter::kMarginalBlocks[] =
-    "mobilization_marginal_blocks_moved";
+    "mobilization_marginal_blocks_found";
 const char MobilizeRewriteFilter::kDeletedElements[] =
     "mobilization_elements_deleted";
 
@@ -90,9 +88,9 @@ const HtmlName::Keyword MobilizeRewriteFilter::kKeeperTags[] = {
 const int MobilizeRewriteFilter::kNumKeeperTags = arraysize(kKeeperTags);
 
 MobilizeRewriteFilter::MobilizeRewriteFilter(RewriteDriver* rewrite_driver)
-    : driver_(rewrite_driver),
+    : CommonFilter(rewrite_driver),
       body_element_depth_(0),
-      nav_element_depth_(0),
+      keeper_element_depth_(0),
       reached_reorder_containers_(false),
       added_viewport_(false),
       added_style_(false),
@@ -100,11 +98,9 @@ MobilizeRewriteFilter::MobilizeRewriteFilter(RewriteDriver* rewrite_driver)
       added_mob_js_(false),
       added_progress_(false),
       in_script_(false),
-      use_cxx_layout_(false),
       use_js_layout_(rewrite_driver->options()->mob_layout()),
       use_js_logo_(rewrite_driver->options()->mob_logo()),
-      use_js_nav_(rewrite_driver->options()->mob_nav()),
-      style_css_(CSS_mobilize_css) {
+      use_js_nav_(rewrite_driver->options()->mob_nav()) {
 
   // If a domain proxy-suffix is specified, and it starts with ".",
   // then we'll remove the "." from that and use that as the location
@@ -117,9 +113,6 @@ MobilizeRewriteFilter::MobilizeRewriteFilter(RewriteDriver* rewrite_driver)
     suffix.remove_prefix(1);
     static_file_prefix_ = StrCat("//", suffix, "/static/");
   }
-
-  use_cxx_layout_ =  rewrite_driver->options()->mob_cxx_layout() &&
-                         !(use_js_layout_ || use_js_logo_ || use_js_nav_);
   Statistics* stats = rewrite_driver->statistics();
   num_pages_mobilized_ = stats->GetVariable(kPagesMobilized);
   num_keeper_blocks_ = stats->GetVariable(kKeeperBlocks);
@@ -158,16 +151,20 @@ void MobilizeRewriteFilter::DetermineEnabled(GoogleString* disabled_reason) {
   // TODO(jmaessen): If we want to inject instrumentation on desktop pages to
   // beacon back data useful for mobile page views, this should change and we'll
   // want to check at code injection points instead.
-  if (!driver_->options()->mob_always() &&
-      !driver_->request_properties()->IsMobile()) {
+  if (!driver()->options()->mob_always() &&
+      !driver()->request_properties()->IsMobile()) {
     disabled_reason->assign("Not a mobile User Agent.");
     set_is_enabled(false);
   }
 }
 
-void MobilizeRewriteFilter::StartDocument() {
+void MobilizeRewriteFilter::StartDocumentImpl() {
+}
+
+void MobilizeRewriteFilter::EndDocument() {
+  num_pages_mobilized_->Add(1);
   body_element_depth_ = 0;
-  nav_element_depth_ = 0;
+  keeper_element_depth_ = 0;
   reached_reorder_containers_ = false;
   added_viewport_ = false;
   added_style_ = false;
@@ -175,19 +172,13 @@ void MobilizeRewriteFilter::StartDocument() {
   added_mob_js_ = false;
   added_progress_ = false;
   in_script_ = false;
-  element_roles_stack_.clear();
-  nav_keyword_stack_.clear();
 }
 
-void MobilizeRewriteFilter::EndDocument() {
-  num_pages_mobilized_->Add(1);
-}
-
-void MobilizeRewriteFilter::StartElement(HtmlElement* element) {
+void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
   HtmlName::Keyword keyword = element->keyword();
 
   // Unminify jquery for javascript debugging.
-  if ((keyword == HtmlName::kScript) && !use_cxx_layout_) {
+  if (keyword == HtmlName::kScript) {
     in_script_ = true;
 
 #if 0
@@ -205,12 +196,13 @@ void MobilizeRewriteFilter::StartElement(HtmlElement* element) {
       }
     }
 #endif
-  } else if (keyword == HtmlName::kMeta) {
+  }
+  if (keyword == HtmlName::kMeta) {
     // Remove any existing viewport tags, other than the one we created
     // at start of head.
     StringPiece name(element->EscapedAttributeValue(HtmlName::kName));
     if (name == "viewport") {
-      driver_->DeleteNode(element);
+      driver()->DeleteNode(element);
       num_elements_deleted_->Add(1);
     }
   } else if (keyword == HtmlName::kHead) {
@@ -221,14 +213,14 @@ void MobilizeRewriteFilter::StartElement(HtmlElement* element) {
       if (use_js_layout_) {
         // Transmit to the mobilization scripts whether they are run in debug
         // mode or not by setting 'psDebugMode'.
-        HtmlElement* script = driver_->NewElement(element, HtmlName::kScript);
+        HtmlElement* script = driver()->NewElement(element, HtmlName::kScript);
         script->set_style(HtmlElement::EXPLICIT_CLOSE);
-        driver_->InsertNodeAfterCurrent(script);
-        HtmlCharactersNode* script_text = driver_->NewCharactersNode(
+        driver()->InsertNodeAfterCurrent(script);
+        HtmlCharactersNode* script_text = driver()->NewCharactersNode(
             script,
-            StrCat("var psDebugMode=", driver_->DebugMode()
+            StrCat("var psDebugMode=", driver()->DebugMode()
                    ? "true;" : "false;"));
-        driver_->AppendChild(script, script_text);
+        driver()->AppendChild(script, script_text);
       }
 
       // TODO(jmarantz): Consider waiting to see if we have a charset directive
@@ -239,25 +231,25 @@ void MobilizeRewriteFilter::StartElement(HtmlElement* element) {
       // OTOH convert_meta_tags should make that moot by copying the
       // charset into the HTTP headers, so maybe that filter should
       // be a prereq of this one.
-      HtmlElement* added_viewport_element = driver_->NewElement(
+      HtmlElement* added_viewport_element = driver()->NewElement(
           element, HtmlName::kMeta);
       added_viewport_element->set_style(HtmlElement::BRIEF_CLOSE);
       added_viewport_element->AddAttribute(
-          driver_->MakeName(HtmlName::kName), "viewport",
+          driver()->MakeName(HtmlName::kName), "viewport",
           HtmlElement::SINGLE_QUOTE);
       added_viewport_element->AddAttribute(
-          driver_->MakeName(HtmlName::kContent), kViewportContent,
+          driver()->MakeName(HtmlName::kContent), kViewportContent,
           HtmlElement::SINGLE_QUOTE);
-      driver_->InsertNodeAfterCurrent(added_viewport_element);
+      driver()->InsertNodeAfterCurrent(added_viewport_element);
 
       /*
-      HtmlElement* progress_script = driver_->NewElement(
+      HtmlElement* progress_script = driver()->NewElement(
           element->parent(),
           HtmlName::kScript);
       script->set_style(HtmlElement::EXPLICIT_CLOSE);
-      driver_->InsertNodeAfterCurrent(script);
-      driver_->AddAttribute(script, HtmlName::kSrc,
-                            StrCat(static_file_prefix_, "mob_progress.js"));
+      driver()->InsertNodeAfterCurrent(script);
+      driver()->AddAttribute(script, HtmlName::kSrc,
+                             StrCat(static_file_prefix_, "mob_progress.js"));
 
       */
     }
@@ -265,61 +257,66 @@ void MobilizeRewriteFilter::StartElement(HtmlElement* element) {
     ++body_element_depth_;
     if (use_js_layout_ && !added_progress_) {
       added_progress_ = true;
-      HtmlElement* scrim = driver_->NewElement(element, HtmlName::kDiv);
-      driver_->InsertNodeAfterCurrent(scrim);
-      driver_->AddAttribute(scrim, HtmlName::kId, "ps-progress-scrim");
-      driver_->AddAttribute(scrim, HtmlName::kClass, "psProgressScrim");
+      HtmlElement* scrim = driver()->NewElement(element, HtmlName::kDiv);
+      driver()->InsertNodeAfterCurrent(scrim);
+      driver()->AddAttribute(scrim, HtmlName::kId, "ps-progress-scrim");
+      driver()->AddAttribute(scrim, HtmlName::kClass, "psProgressScrim");
 
-      HtmlElement* remove_bar = driver_->AppendAnchor(
+      HtmlElement* remove_bar = driver()->AppendAnchor(
           "javascript:psRemoveProgressBar();",
           "Remove Progress Bar (doesn't stop mobilization)",
           scrim);
-      driver_->AddAttribute(remove_bar, HtmlName::kId,
-                            "ps-progress-remove");
-      if (!driver_->DebugMode()) {
-        driver_->AppendChild(scrim, driver_->NewElement(scrim, HtmlName::kBr));
-        driver_->AppendAnchor(
+      driver()->AddAttribute(remove_bar, HtmlName::kId,
+                             "ps-progress-remove");
+      if (!driver()->DebugMode()) {
+        driver()->AppendChild(
+            scrim, driver()->NewElement(scrim, HtmlName::kBr));
+        driver()->AppendAnchor(
             "javascript:psSetDebugMode();",
             "Show Debug Log In Progress Bar",
           scrim);
-        driver_->AddAttribute(remove_bar, HtmlName::kId,
-                              "ps-progress-show-log");
+        driver()->AddAttribute(remove_bar, HtmlName::kId,
+                               "ps-progress-show-log");
       }
 
-      const GoogleUrl& gurl = driver_->google_url();
+      const GoogleUrl& gurl = driver()->google_url();
       GoogleString origin_url, host;
       if (gurl.IsWebValid() &&
-          driver_->options()->domain_lawyer()->StripProxySuffix(
+          driver()->options()->domain_lawyer()->StripProxySuffix(
               gurl, &origin_url, &host)) {
-        driver_->AppendChild(scrim, driver_->NewElement(scrim, HtmlName::kBr));
-        driver_->AppendAnchor(
+        driver()->AppendChild(
+            scrim, driver()->NewElement(scrim, HtmlName::kBr));
+        driver()->AppendAnchor(
             origin_url,
             "Abort mobilization and load page from origin",
             scrim);
       }
-      HtmlElement* bar = driver_->NewElement(scrim, HtmlName::kDiv);
-      driver_->AddAttribute(bar, HtmlName::kClass, "psProgressBar");
-      driver_->AppendChild(scrim, bar);
-      HtmlElement* span = driver_->NewElement(bar, HtmlName::kSpan);
-      driver_->AddAttribute(span, HtmlName::kId, "ps-progress-span");
-      driver_->AddAttribute(span, HtmlName::kClass, "psProgressSpan");
-      driver_->AppendChild(bar, span);
-      HtmlElement* log = driver_->NewElement(scrim, HtmlName::kPre);
-      driver_->AddAttribute(log, HtmlName::kId, "ps-progress-log");
-      driver_->AddAttribute(log, HtmlName::kClass, "psProgressLog");
-      driver_->AppendChild(scrim, log);
-    }
-    if (use_cxx_layout_) {
-      AddReorderContainers(element);
+      HtmlElement* bar = driver()->NewElement(scrim, HtmlName::kDiv);
+      driver()->AddAttribute(bar, HtmlName::kClass, "psProgressBar");
+      driver()->AppendChild(scrim, bar);
+      HtmlElement* span = driver()->NewElement(bar, HtmlName::kSpan);
+      driver()->AddAttribute(span, HtmlName::kId, "ps-progress-span");
+      driver()->AddAttribute(span, HtmlName::kClass, "psProgressSpan");
+      driver()->AppendChild(bar, span);
+      HtmlElement* log = driver()->NewElement(scrim, HtmlName::kPre);
+      driver()->AddAttribute(log, HtmlName::kId, "ps-progress-log");
+      driver()->AddAttribute(log, HtmlName::kClass, "psProgressLog");
+      driver()->AppendChild(scrim, log);
     }
   } else if (body_element_depth_ > 0) {
-    if (use_cxx_layout_) {
-      HandleStartTagInBody(element);
+    MobileRole::Level element_role = GetMobileRole(element);
+    if (element_role != MobileRole::kInvalid) {
+      if (keeper_element_depth_ == 0) {
+        LogEncounteredBlock(element_role);
+      }
+      if (element_role == MobileRole::kKeeper) {
+        ++keeper_element_depth_;
+      }
     }
   }
 }
 
-void MobilizeRewriteFilter::EndElement(HtmlElement* element) {
+void MobilizeRewriteFilter::EndElementImpl(HtmlElement* element) {
   HtmlName::Keyword keyword = element->keyword();
 
   if (keyword == HtmlName::kScript) {
@@ -329,38 +326,35 @@ void MobilizeRewriteFilter::EndElement(HtmlElement* element) {
   if (keyword == HtmlName::kBody) {
     --body_element_depth_;
     if (body_element_depth_ == 0) {
-      if (use_js_layout_ || use_js_nav_) {
+      if (use_js_layout_ || use_js_nav_ || use_js_logo_) {
         if (!added_mob_js_) {
           added_mob_js_ = true;
 
           if (use_js_nav_) {
             HtmlElement* script =
-                driver_->NewElement(element->parent(), HtmlName::kScript);
+                driver()->NewElement(element->parent(), HtmlName::kScript);
             script->set_style(HtmlElement::EXPLICIT_CLOSE);
-            driver_->InsertNodeAfterCurrent(script);
-            driver_->AddAttribute(script, HtmlName::kSrc,
-                                  StrCat(static_file_prefix_, "mob_nav.js"));
+            InsertNodeAtBodyEnd(script);
+            driver()->AddAttribute(script, HtmlName::kSrc,
+                                   StrCat(static_file_prefix_, "mob_nav.js"));
           }
           if (use_js_logo_) {
             HtmlElement* script =
-                driver_->NewElement(element->parent(), HtmlName::kScript);
+                driver()->NewElement(element->parent(), HtmlName::kScript);
             script->set_style(HtmlElement::EXPLICIT_CLOSE);
-            driver_->InsertNodeAfterCurrent(script);
-            driver_->AddAttribute(script, HtmlName::kSrc,
-                                  StrCat(static_file_prefix_, "mob_logo.js"));
+            InsertNodeAtBodyEnd(script);
+            driver()->AddAttribute(script, HtmlName::kSrc,
+                                   StrCat(static_file_prefix_, "mob_logo.js"));
           }
-          // TODO(jmarantz): Consider using CommonFilter::InsertNodeAtBodyEnd.
           if (use_js_layout_) {
-            HtmlElement* script = driver_->NewElement(element->parent(),
-                                                      HtmlName::kScript);
+            HtmlElement* script = driver()->NewElement(element->parent(),
+                                                       HtmlName::kScript);
             script->set_style(HtmlElement::EXPLICIT_CLOSE);
-            driver_->InsertNodeAfterCurrent(script);
-            driver_->AddAttribute(script, HtmlName::kSrc,
-                                  StrCat(static_file_prefix_, "mob.js"));
+            InsertNodeAtBodyEnd(script);
+            driver()->AddAttribute(script, HtmlName::kSrc,
+                                   StrCat(static_file_prefix_, "mob.js"));
           }
         }
-      } else {
-        RemoveReorderContainers();
       }
       reached_reorder_containers_ = false;
     }
@@ -371,138 +365,45 @@ void MobilizeRewriteFilter::EndElement(HtmlElement* element) {
 
     // TODO(jmarantz): if we want to debug with Closure constructs, uncomment:
     // HtmlElement* script_element =
-    //     driver_->NewElement(element, HtmlName::kScript);
-    // driver_->AppendChild(element, script_element);
-    // driver_->AddAttribute(script_element, HtmlName::kSrc,
-    //                       StrCat(static_file_prefix_, "closure/base.js"));
-  } else if (body_element_depth_ > 0) {
-    if (use_cxx_layout_) {
-      HandleEndTagInBody(element);
+    //     driver()->NewElement(element, HtmlName::kScript);
+    // driver()->AppendChild(element, script_element);
+    // driver()->AddAttribute(script_element, HtmlName::kSrc,
+    //                        StrCat(static_file_prefix_, "closure/base.js"));
+  } else if (keeper_element_depth_ > 0) {
+    MobileRole::Level element_role = GetMobileRole(element);
+    if (element_role == MobileRole::kKeeper) {
+      --keeper_element_depth_;
     }
   }
 }
 
 void MobilizeRewriteFilter::Characters(HtmlCharactersNode* characters) {
-  if (!use_cxx_layout_) {
-    if (in_script_) {
-      // This is a temporary hack for removing a SPOF from
-      // http://www.cardpersonalizzate.it/, whose reference
-      // to a file in e.mouseflow.com hangs and stops the
-      // browser from making progress.
-      GoogleString* contents = characters->mutable_contents();
-      if (contents->find("//e.mouseflow.com/projects") != GoogleString::npos) {
-        *contents = StrCat("/*", *contents, "*/");
-      }
-    }
-    return;
-  }
-  if (body_element_depth_ == 0 || reached_reorder_containers_) {
-    return;
-  }
-
-  bool del = false;
-  GoogleString debug_msg;
-  if (!InImportantElement()) {
-    del = true;
-    debug_msg = "Deleted characters which were not in an element which"
-        " was tagged as important: ";
-  }
-
-  if (del) {
-    if (driver_->DebugMode() && !OnlyWhitespace(characters->contents())) {
-      GoogleString msg = debug_msg + characters->contents();
-      driver_->InsertDebugComment(msg, characters);
-    }
-    driver_->DeleteNode(characters);
-    num_elements_deleted_->Add(1);
-  }
-}
-
-void MobilizeRewriteFilter::HandleStartTagInBody(HtmlElement* element) {
-  HtmlName::Keyword keyword = element->keyword();
-  if (reached_reorder_containers_) {
-    // Stop rewriting once we've reached the containers at the end of the body.
-  } else if (IsReorderContainer(element)) {
-    reached_reorder_containers_ = true;
-  } else if (CheckForKeyword(kTableTags, arraysize(kTableTags), keyword)) {
-    // Remove any table tags.
-    if (CheckForKeyword(kTableTagsToBr, arraysize(kTableTagsToBr), keyword)) {
-      HtmlElement* added_br_element = driver_->NewElement(
-          element->parent(), HtmlName::kBr);
-      added_br_element->set_style(HtmlElement::IMPLICIT_CLOSE);
-      driver_->InsertElementAfterElement(element, added_br_element);
-    }
-    if (driver_->DebugMode()) {
-      GoogleString msg(StrCat("Deleted table tag: ", element->name_str()));
-      driver_->InsertDebugComment(msg, element);
-    }
-    driver_->DeleteSavingChildren(element);
-    num_elements_deleted_->Add(1);
-  } else if (GetMobileRole(element) != MobileRole::kInvalid) {
-    MobileRole::Level element_role = GetMobileRole(element);
-    // Record that we are starting an element with a mobile role attribute.
-    element_roles_stack_.push_back(element_role);
-  } else if (!InImportantElement()) {
-    if (driver_->DebugMode()) {
-      GoogleString msg(
-          StrCat("Deleted element which did not have a mobile role: ",
-                 element->name_str()));
-      driver_->InsertDebugComment(msg, element);
-    }
-    driver_->DeleteSavingChildren(element);
-    num_elements_deleted_->Add(1);
-  }
-}
-
-void MobilizeRewriteFilter::HandleEndTagInBody(HtmlElement* element) {
-  if (reached_reorder_containers_) {
-    // Stop rewriting once we've reached the containers at the end of the body.
-  } else if (GetMobileRole(element) != MobileRole::kInvalid) {
-    MobileRole::Level element_role = GetMobileRole(element);
-    element_roles_stack_.pop_back();
-    // Record that we've left an element with a mobile role attribute. If we are
-    // no longer in one, we can move all the content of this element into its
-    // appropriate container for reordering.
-    HtmlElement* mobile_role_container =
-        MobileRoleToContainer(element_role);
-    DCHECK(mobile_role_container != NULL)
-        << "Reorder containers were never initialized.";
-    // Move element and its children into its container, unless we are already
-    // in an element that has the same mobile role.
-    if (element_roles_stack_.empty() ||
-        element_roles_stack_.back() != element_role) {
-      driver_->MoveCurrentInto(mobile_role_container);
-      LogMovedBlock(element_role);
+  if (in_script_) {
+    // This is a temporary hack for removing a SPOF from
+    // http://www.cardpersonalizzate.it/, whose reference
+    // to a file in e.mouseflow.com hangs and stops the
+    // browser from making progress.
+    GoogleString* contents = characters->mutable_contents();
+    if (contents->find("//e.mouseflow.com/projects") != GoogleString::npos) {
+      *contents = StrCat("/*", *contents, "*/");
     }
   }
 }
 
 void MobilizeRewriteFilter::AppendStylesheet(const StringPiece& css_file_name,
                                              HtmlElement* element) {
-  HtmlElement* link = driver_->NewElement(element, HtmlName::kLink);
-  driver_->AppendChild(element, link);
-  driver_->AddAttribute(link, HtmlName::kRel, "stylesheet");
-  driver_->AddAttribute(link, HtmlName::kHref, StrCat(static_file_prefix_,
-                                                      css_file_name));
+  HtmlElement* link = driver()->NewElement(element, HtmlName::kLink);
+  driver()->AppendChild(element, link);
+  driver()->AddAttribute(link, HtmlName::kRel, "stylesheet");
+  driver()->AddAttribute(link, HtmlName::kHref, StrCat(static_file_prefix_,
+                                                       css_file_name));
 }
 
 void MobilizeRewriteFilter::AddStyle(HtmlElement* element) {
   if (!added_style_) {
     added_style_ = true;
-
-    if (use_cxx_layout_) {
-      HtmlElement* added_style_element = driver_->NewElement(
-          element, HtmlName::kStyle);
-      driver_->AppendChild(element, added_style_element);
-      HtmlCharactersNode* add_style_text = driver_->NewCharactersNode(
-          added_style_element, style_css_);
-      driver_->AppendChild(added_style_element, add_style_text);
-    }
-
     // <style>...</style>
-    if (!use_cxx_layout_) {
-      AppendStylesheet("lite.css", element);
-    }
+    AppendStylesheet("lite.css", element);
 
     if (use_js_logo_) {
       AppendStylesheet("mob_logo.css", element);
@@ -512,61 +413,6 @@ void MobilizeRewriteFilter::AddStyle(HtmlElement* element) {
       AppendStylesheet("mob_nav.css", element);
     }
   }
-}
-
-// Adds containers at the end of the element (preferrably the body), which we
-// use to reorganize elements in the DOM by moving elements into the correct
-// container. Later, we will delete these elements once the HTML has been
-// restructured.
-void MobilizeRewriteFilter::AddReorderContainers(HtmlElement* element) {
-  if (!added_containers_) {
-    mobile_role_containers_.clear();
-    for (int i = 0; i < MobileRole::kInvalid; ++i) {
-      MobileRole::Level level = static_cast<MobileRole::Level>(i);
-      HtmlElement* added_container = driver_->NewElement(
-          element, HtmlName::kDiv);
-      added_container->AddAttribute(
-          driver_->MakeName(HtmlName::kName),
-          MobileRoleData::StringFromLevel(level),
-          HtmlElement::SINGLE_QUOTE);
-      driver_->AppendChild(element, added_container);
-      mobile_role_containers_.push_back(added_container);
-    }
-    added_containers_ = true;
-  }
-}
-
-void MobilizeRewriteFilter::RemoveReorderContainers() {
-  if (added_containers_) {
-    for (int i = 0, n = mobile_role_containers_.size(); i < n; ++i) {
-      if (driver_->DebugMode()) {
-        MobileRole::Level level = static_cast<MobileRole::Level>(i);
-        GoogleString msg(StrCat("End section: ",
-                                MobileRoleData::StringFromLevel(level)));
-        driver_->InsertDebugComment(msg, mobile_role_containers_[i]);
-      }
-      driver_->DeleteSavingChildren(mobile_role_containers_[i]);
-    }
-    mobile_role_containers_.clear();
-    added_containers_ = false;
-  }
-}
-
-bool MobilizeRewriteFilter::IsReorderContainer(HtmlElement* element) {
-  for (int i = 0, n = mobile_role_containers_.size(); i < n; ++i) {
-    if (element == mobile_role_containers_[i]) {
-      return true;
-    }
-  }
-  return false;
-}
-
-// Maps each mobile role to the container we created for it, or NULL for
-// unrecognized mobile roles.
-HtmlElement* MobilizeRewriteFilter::MobileRoleToContainer(
-    MobileRole::Level level) {
-  return (level == MobileRole::kInvalid) ?
-      NULL : mobile_role_containers_[level];
 }
 
 const MobileRoleData*
@@ -610,7 +456,7 @@ bool MobilizeRewriteFilter::CheckForKeyword(
   return std::binary_search(sorted_list, sorted_list+len, keyword);
 }
 
-void MobilizeRewriteFilter::LogMovedBlock(MobileRole::Level level) {
+void MobilizeRewriteFilter::LogEncounteredBlock(MobileRole::Level level) {
   switch (level) {
     case MobileRole::kKeeper:
       num_keeper_blocks_->Add(1);

@@ -1217,20 +1217,6 @@
       ],
     },
     {
-      'target_name': 'instaweb_mobilize_css_data2c',
-      'variables': {
-        'instaweb_data2c_subdir': 'net/instaweb/rewriter',
-        'instaweb_js_subdir': 'rewriter',
-        'var_name': 'mobilize_css',
-      },
-      'sources': [
-        'rewriter/mobilize.css',
-      ],
-      'includes': [
-        'data2c.gypi',
-      ]
-    },
-    {
       # TODO: break this up into sub-libs (mocks, real, etc)
       'target_name': 'instaweb_util',
       'type': '<(library)',
@@ -1564,7 +1550,6 @@
         'instaweb_local_storage_cache_opt_data2c',
         'instaweb_messages_js_data2c',
         'instaweb_messages_js_opt_data2c',
-        'instaweb_mobilize_css_data2c',
         'instaweb_panel_loader_opt_data2c',
         'instaweb_rewriter_base',
         'instaweb_rewriter_css',

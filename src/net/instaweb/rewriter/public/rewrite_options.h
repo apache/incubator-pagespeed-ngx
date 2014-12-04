@@ -322,7 +322,6 @@ class RewriteOptions {
   static const char kMinCacheTtlMs[];
   static const char kMinImageSizeLowResolutionBytes[];
   static const char kMinResourceCacheTimeToRewriteMs[];
-  static const char kMobCxxLayout[];
   static const char kMobLayout[];
   static const char kMobLogo[];
   static const char kMobNav[];
@@ -2491,10 +2490,11 @@ class RewriteOptions {
   bool mob_always() const { return mob_always_.value(); }
   void set_mob_always(bool x) { set_option(x, &mob_always_); }
   bool mob_layout() const { return mob_layout_.value(); }
-  bool mob_cxx_layout() const { return mob_cxx_layout_.value(); }
-  void set_mob_cxx_layout(bool x) { set_option(x, &mob_cxx_layout_); }
+  void set_mob_layout(bool x) { set_option(x, &mob_layout_); }
   bool mob_logo() const { return mob_logo_.value(); }
+  void set_mob_logo(bool x) { set_option(x, &mob_logo_); }
   bool mob_nav() const { return mob_nav_.value(); }
+  void set_mob_nav(bool x) { set_option(x, &mob_nav_); }
 
 
   // Merge src into 'this'.  Generally, options that are explicitly
@@ -3946,7 +3946,6 @@ class RewriteOptions {
 
   Option<bool> mob_always_;
   Option<bool> mob_layout_;
-  Option<bool> mob_cxx_layout_;
   Option<bool> mob_logo_;
   Option<bool> mob_nav_;
 

@@ -19,22 +19,18 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_MOBILIZE_REWRITE_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_MOBILIZE_REWRITE_FILTER_H_
 
-#include <vector>
-
+#include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/mobilize_decision_trees.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
-#include "pagespeed/kernel/html/empty_html_filter.h"
+#include "pagespeed/kernel/html/html_element.h"
 #include "pagespeed/kernel/html/html_name.h"
+#include "pagespeed/kernel/html/html_node.h"
 
 namespace net_instaweb {
-
-class HtmlCharactersNode;
-class HtmlElement;
-class RewriteDriver;
-class Statistics;
-class Variable;
 
 // A mobile role and its associated HTML attribute value.
 struct MobileRoleData {
@@ -91,7 +87,7 @@ struct MobileRoleData {
 //    one that might be extra finicky (e.g. don't touch my admin pages).
 //  - TODO (stevensr): Turn on css_move_to_head_filter.cc to reorder elements
 //    we inject into the head.
-class MobilizeRewriteFilter : public EmptyHtmlFilter {
+class MobilizeRewriteFilter : public CommonFilter {
  public:
   static const char kPagesMobilized[];
   static const char kKeeperBlocks[];
@@ -112,38 +108,24 @@ class MobilizeRewriteFilter : public EmptyHtmlFilter {
   static void InitStats(Statistics* statistics);
 
   virtual void DetermineEnabled(GoogleString* disabled_reason);
-  virtual void StartDocument();
+  virtual void StartDocumentImpl();
   virtual void EndDocument();
-  virtual void StartElement(HtmlElement* element);
-  virtual void EndElement(HtmlElement* element);
+  virtual void StartElementImpl(HtmlElement* element);
+  virtual void EndElementImpl(HtmlElement* element);
   virtual void Characters(HtmlCharactersNode* characters);
   virtual const char* Name() const { return "MobilizeRewrite"; }
 
  private:
-  void HandleStartTagInBody(HtmlElement* element);
-  void HandleEndTagInBody(HtmlElement* element);
   void AppendStylesheet(const StringPiece& css_file_name, HtmlElement* element);
   void AddStyle(HtmlElement* element);
-  void AddReorderContainers(HtmlElement* element);
-  void RemoveReorderContainers();
-  bool IsReorderContainer(HtmlElement* element);
-  HtmlElement* MobileRoleToContainer(MobileRole::Level level);
   MobileRole::Level GetMobileRole(HtmlElement* element);
-
-  bool InImportantElement() {
-    return (!element_roles_stack_.empty());
-  }
 
   bool CheckForKeyword(
       const HtmlName::Keyword* sorted_list, int len, HtmlName::Keyword keyword);
-  void LogMovedBlock(MobileRole::Level level);
+  void LogEncounteredBlock(MobileRole::Level level);
 
-  RewriteDriver* driver_;
-  std::vector<MobileRole::Level> element_roles_stack_;
-  std::vector<HtmlName::Keyword> nav_keyword_stack_;
-  std::vector<HtmlElement*> mobile_role_containers_;
   int body_element_depth_;
-  int nav_element_depth_;
+  int keeper_element_depth_;
   bool reached_reorder_containers_;
   bool added_viewport_;
   bool added_style_;
@@ -151,7 +133,6 @@ class MobilizeRewriteFilter : public EmptyHtmlFilter {
   bool added_mob_js_;
   bool added_progress_;
   bool in_script_;
-  bool use_cxx_layout_;   // Use C++ layout resynthesis (none of below options).
   bool use_js_layout_;
   bool use_js_logo_;
   bool use_js_nav_;
@@ -171,10 +152,6 @@ class MobilizeRewriteFilter : public EmptyHtmlFilter {
 
   // Used for overriding default behavior in testing.
   friend class MobilizeRewriteFilterTest;
-  // Style content we are injecting into the page. Usually points to a static
-  // asset, but MobilizeRewriteFilterTest will override this with something
-  // small to simplify testing.
-  const char* style_css_;
 
   DISALLOW_COPY_AND_ASSIGN(MobilizeRewriteFilter);
 };
