@@ -742,9 +742,9 @@ class CriticalSelectorWithInlineCssFilterTest
   }
 };
 
+// When CriticalSelectorFilter and InlineCss are both enabled, only
+// CriticalSelectorFilter will be applied.
 TEST_F(CriticalSelectorWithInlineCssFilterTest, AvoidTryingToInlineTwice) {
-  // Verify that the critical selector filter stops further processing of
-  // the rewrite contexts.
   GoogleString css = StrCat(
       CssLinkHref("a.css"),
       CssLinkHref("b.css"));
@@ -774,8 +774,6 @@ class CriticalSelectorWithBackgroundImageCacheExtensionTest
 // Specific test for a bug where inline style blocks would not be treated
 // correctly. Even though they should have been rewritten by rewrite_css,
 // the unoptimized <style> block would be copied to the bottom of the page.
-// TODO(sligocki): This test currently demonstrates the incorrect behavior of
-// this filter. Fix it to have the correct behavior.
 TEST_F(CriticalSelectorWithBackgroundImageCacheExtensionTest,
        DontMixUnoptAndOptStyles) {
   SetResponseWithDefaultHeaders("background.png", kContentTypePng,
@@ -791,30 +789,16 @@ TEST_F(CriticalSelectorWithBackgroundImageCacheExtensionTest,
 
   GoogleString critical_css = StrCat(
       "  <style>div{background:url(",
-      Encode("", "ce", "0", "background.png", "png"), ")}"
-      // TODO(sligocki): Non-critical CSS should be stripped.
-      ".not-critical{color:red}</style>\n"
+      Encode("", "ce", "0", "background.png", "png"), ")}</style>\n"
       "  <style>*{background:url(",
       Encode("", "ce", "0", "background.png", "png"), ")}</style>\n");
-  // TODO(sligocki): The critical_css should be:
-  // GoogleString critical_css = StrCat(
-  //     "  <style>div{background:url(",
-  //     Encode("", "ce", "0", "background.png", "png"), ")}</style>\n"
-  //     "  <style>*{background:url(",
-  //     Encode("", "ce", "0", "background.png", "png"), ")}</style>\n");
 
   // Both inline and external CSS should be rewritten here.
   GoogleString rewritten_css = StrCat(
-      // TODO(sligocki): This should be rewritten/minified.
-      "<style>div { background: url(background.png) }"
-      ".not-critical { color: red; }</style>",
+      "<style>div{background:url(",
+      Encode("", "ce", "0", "background.png", "png"), ")}"
+      ".not-critical{color:red}</style>",
       CssLinkHref(Encode("", "cf", "0", "extern.css", "css")));
-  // TODO(sligocki): The rewritten_css should be:
-  // GoogleString rewritten_css = StrCat(
-  //     "<style>div{background:url(",
-  //     Encode("", "ce", "0", "background.png", "png"), ")}"
-  //     ".not-critical{color:red}</style>",
-  //     CssLinkHref(Encode("", "cf", "0", "extern.css", "css")));
 
   GoogleString input_html = StrCat(
       "<head>\n",

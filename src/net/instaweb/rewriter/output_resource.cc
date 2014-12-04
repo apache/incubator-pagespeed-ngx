@@ -220,8 +220,8 @@ void OutputResource::SetHash(StringPiece hash) {
 void OutputResource::LoadAndCallback(NotCacheablePolicy not_cacheable_policy,
                                      const RequestContextPtr& request_context,
                                      AsyncCallback* callback) {
-  DCHECK(false) << "Output resources shouldn't be loaded via "
-                   "LoadAsync, but rather through FetchResource";
+  LOG(DFATAL) << "Output resources shouldn't be loaded via "
+                 "LoadAsync, but rather through FetchResource";
   callback->Done(false /* lock_failure */, writing_complete_);
 }
 

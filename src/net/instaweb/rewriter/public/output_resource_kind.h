@@ -24,11 +24,18 @@
 namespace net_instaweb {
 
 enum OutputResourceKind {
-  kRewrittenResource,  // derived from some input resource URL or URLs.
-  kOnTheFlyResource,   // derived from some input resource URL or URLs in a
+  kRewrittenResource,  // Derived from some input resource URL or URLs.
+  kOnTheFlyResource,   // Derived from some input resource URL or URLs in a
                        //   very inexpensive way --- it makes no sense to
                        //   cache the output contents.
-  kOutlinedResource    // derived from page HTML.
+  kInlineResource,     // Inline output resource derived from inline
+                       //   input resource. Thus neither input nor output
+                       //   have URLs. These output resources will never
+                       //   be fetched from the cache, so we do not store
+                       //   them there. Instead the result is stored in the
+                       //   metadata cache.
+  kOutlinedResource,   // External output resource derived from inline
+                       //   input resource. Thus input has no URL.
 };
 
 }  // namespace net_instaweb

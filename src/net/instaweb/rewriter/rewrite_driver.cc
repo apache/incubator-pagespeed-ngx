@@ -788,6 +788,7 @@ void RewriteDriver::FlushAsyncDone(int num_rewrites, Function* callback) {
     initiated_rewrites_.clear();
 
     slots_.clear();
+    inline_slots_.clear();
   }
 
   // Notify all enabled pre-render filters that rendering is done.
@@ -2900,14 +2901,28 @@ RewriteFilter* RewriteDriver::FindFilter(const StringPiece& id) const {
 HtmlResourceSlotPtr RewriteDriver::GetSlot(
     const ResourcePtr& resource, HtmlElement* elt,
     HtmlElement::Attribute* attr) {
-  HtmlResourceSlot* slot_obj = new HtmlResourceSlot(resource, elt, attr, this);
-  HtmlResourceSlotPtr slot(slot_obj);
-  std::pair<HtmlResourceSlotSet::iterator, bool> iter_found =
+  HtmlResourceSlotPtr slot(new HtmlResourceSlot(resource, elt, attr, this));
+  std::pair<HtmlResourceSlotSet::iterator, bool> iter_inserted =
       slots_.insert(slot);
-  if (!iter_found.second) {
+  if (!iter_inserted.second) {
     // The slot was already in the set.  Release the one we just
     // allocated and use the one already in.
-    HtmlResourceSlotSet::iterator iter = iter_found.first;
+    HtmlResourceSlotSet::iterator iter = iter_inserted.first;
+    slot.reset(*iter);
+  }
+  return slot;
+}
+
+InlineResourceSlotPtr RewriteDriver::GetInlineSlot(
+    const ResourcePtr& resource, HtmlElement* parent) {
+  InlineResourceSlotPtr slot(
+      new InlineResourceSlot(resource, parent, UrlLine()));
+  std::pair<InlineResourceSlotSet::iterator, bool> iter_inserted =
+      inline_slots_.insert(slot);
+  if (!iter_inserted.second) {
+    // The slot was already in the set.  Release the one we just
+    // allocated and use the one already in.
+    InlineResourceSlotSet::iterator iter = iter_inserted.first;
     slot.reset(*iter);
   }
   return slot;
@@ -3419,6 +3434,7 @@ bool RewriteDriver::Write(const ResourceVector& inputs,
 
     HTTPCache* http_cache = server_context_->http_cache();
     if (output->kind() != kOnTheFlyResource &&
+        output->kind() != kInlineResource &&
         (http_cache->force_caching() || meta_data->IsProxyCacheable())) {
       // This URL should already be mapped to the canonical rewrite domain,
       // But we should store its unsharded form in the cache.
@@ -3436,7 +3452,8 @@ bool RewriteDriver::Write(const ResourceVector& inputs,
     // If our URL is derived from some pre-existing URL (and not invented by
     // us due to something like outlining), cache the mapping from original URL
     // to the constructed one.
-    if (output->kind() != kOutlinedResource) {
+    if (output->kind() == kRewrittenResource ||
+        output->kind() == kOnTheFlyResource) {
       CachedResult* cached = output->EnsureCachedResultCreated();
       cached->set_optimizable(true);
       cached->set_url(output->url());  // Note: output->url() will be sharded.

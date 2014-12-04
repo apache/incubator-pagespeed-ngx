@@ -66,7 +66,7 @@ InPlaceRewriteResourceSlot::InPlaceRewriteResourceSlot(
 
 InPlaceRewriteResourceSlot::~InPlaceRewriteResourceSlot() {}
 
-GoogleString InPlaceRewriteResourceSlot::LocationString() {
+GoogleString InPlaceRewriteResourceSlot::LocationString() const {
   return kIproSlotLocation;
 }
 

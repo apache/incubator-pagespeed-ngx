@@ -126,7 +126,7 @@ class AssociationSlot : public ResourceSlot {
     return true;
   }
 
-  virtual GoogleString LocationString() {
+  virtual GoogleString LocationString() const {
     // TODO(sligocki): Improve quality of this diagnostic.
     // Also improve CssResourceSlot::LocationString() which is identical.
     return "Inside CSS";

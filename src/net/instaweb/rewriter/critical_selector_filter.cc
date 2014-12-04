@@ -265,6 +265,12 @@ void CriticalSelectorFilter::RenderSummary(
   // Update the DOM --- either an existing style element, or replace link
   // with style.
   if (char_node != NULL) {
+    // Note: This depends upon all previous filters also mutating the contents
+    // of the original Characters Node. If any previous filters replaces the
+    // Characters Node with another one or makes some other change, this node
+    // will be out of date and the update will not do anything.
+    // TODO(sligocki): We should use a non-trivial ResourceSlot to update this
+    // instead so that it is not so delicate.
     *char_node->mutable_contents() = *css_to_use;
   } else {
     HtmlElement* style_element = driver()->NewElement(NULL, HtmlName::kStyle);

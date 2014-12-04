@@ -27,6 +27,7 @@
 #include "net/instaweb/rewriter/public/css_inline_filter.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/data_url_input_resource.h"
+#include "net/instaweb/rewriter/public/inline_resource_slot.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
@@ -53,30 +54,6 @@
 namespace net_instaweb {
 
 class UrlSegmentEncoder;
-
-namespace {
-
-// A slot we use when rewriting inline CSS --- there is no place or need
-// to write out an output URL, so it has a no-op Render().
-// TODO(morlovich): Dupe'd from CssFilter; refactor?
-class InlineCssSummarizerSlot : public ResourceSlot {
- public:
-  InlineCssSummarizerSlot(HtmlElement* element,
-                          const ResourcePtr& resource,
-                          const GoogleString& location)
-      : ResourceSlot(resource), element_(element), location_(location) {}
-  virtual ~InlineCssSummarizerSlot() {}
-  virtual HtmlElement* element() const { return element_; }
-  virtual void Render() {}
-  virtual GoogleString LocationString() { return location_; }
-
- private:
-  HtmlElement* element_;
-  GoogleString location_;
-  DISALLOW_COPY_AND_ASSIGN(InlineCssSummarizerSlot);
-};
-
-}  // namespace
 
 // Rewrite context for CssSummarizerBase --- it invokes the filter's
 // summarization functions on parsed CSS ASTs when available, and synchronizes
@@ -189,6 +166,8 @@ void CssSummarizerBase::Context::Render() {
       if (summary_info.is_external) {
         summary_info.base = slot(0)->resource()->url();
       }
+      // TODO(sligocki): text_ could easily be out of date. We should use the
+      // ResourceSlot to render the result.
       filter_->RenderSummary(pos_, element_, text_, &is_element_deleted);
     } else {
       summary_info.state = kSummaryCssParseError;
@@ -510,16 +489,15 @@ void CssSummarizerBase::StartExternalRewrite(
   driver()->InitiateRewrite(context);
 }
 
-ResourceSlot* CssSummarizerBase::MakeSlotForInlineCss(
-    HtmlElement* element, const StringPiece& content) {
+ResourceSlotPtr CssSummarizerBase::MakeSlotForInlineCss(
+    HtmlElement* parent, const StringPiece& content) {
   // Create the input resource for the slot.
   GoogleString data_url;
   // TODO(morlovich): This does a lot of useless conversions and
   // copying. Get rid of them.
   DataUrl(kContentTypeCss, PLAIN, content, &data_url);
   ResourcePtr input_resource(DataUrlInputResource::Make(data_url, driver()));
-  return new InlineCssSummarizerSlot(
-      element, input_resource, driver()->UrlLine());
+  return ResourceSlotPtr(driver()->GetInlineSlot(input_resource, parent));
 }
 
 CssSummarizerBase::Context* CssSummarizerBase::CreateContextAndSummaryInfo(

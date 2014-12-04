@@ -46,8 +46,6 @@ namespace net_instaweb {
 
 class ResourceSlotTest : public RewriteTestBase {
  protected:
-  typedef std::set<HtmlResourceSlotPtr, HtmlResourceSlotComparator> SlotSet;
-
   virtual bool AddBody() const { return false; }
 
   virtual void SetUp() {

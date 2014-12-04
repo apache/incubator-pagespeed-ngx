@@ -78,6 +78,15 @@ GoogleString ResourceSlot::RelativizeOrPassthrough(
   }
 }
 
+NullResourceSlot::NullResourceSlot(const ResourcePtr& resource,
+                                   StringPiece location)
+    : ResourceSlot(resource),
+      location_(location.data(), location.size()) {
+}
+
+NullResourceSlot::~NullResourceSlot() {
+}
+
 FetchResourceSlot::~FetchResourceSlot() {
 }
 
@@ -85,7 +94,7 @@ void FetchResourceSlot::Render() {
   DLOG(FATAL) << "FetchResourceSlot::Render should never be called";
 }
 
-GoogleString FetchResourceSlot::LocationString() {
+GoogleString FetchResourceSlot::LocationString() const {
   return StrCat("Fetch of ", resource()->url());
 }
 
@@ -125,7 +134,7 @@ void HtmlResourceSlot::Render() {
   }
 }
 
-GoogleString HtmlResourceSlot::LocationString() {
+GoogleString HtmlResourceSlot::LocationString() const {
   if (begin_line_number_ == end_line_number_) {
     return StrCat(driver_->id(), ":", IntegerToString(begin_line_number_));
   } else {
@@ -157,10 +166,7 @@ bool HtmlResourceSlotComparator::operator()(const HtmlResourceSlotPtr& p,
   } else if (p->element() > q->element()) {
     return false;
   }
-  if (p->attribute() < q->attribute()) {
-    return true;
-  }
-  return false;
+  return (p->attribute() < q->attribute());
 }
 
 }  // namespace net_instaweb

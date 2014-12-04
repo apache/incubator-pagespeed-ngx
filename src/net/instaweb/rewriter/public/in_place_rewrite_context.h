@@ -64,7 +64,7 @@ class InPlaceRewriteResourceSlot : public ResourceSlot {
   virtual void Render();
 
   // Implements ResourceSlot::LocationString().
-  virtual GoogleString LocationString();
+  virtual GoogleString LocationString() const;
 
  protected:
   virtual ~InPlaceRewriteResourceSlot();

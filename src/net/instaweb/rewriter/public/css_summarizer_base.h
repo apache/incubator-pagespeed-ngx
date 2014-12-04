@@ -243,8 +243,8 @@ class CssSummarizerBase : public RewriteFilter {
                                        StringPiece base_for_resources,
                                        StringPiece rel);
 
-  ResourceSlot* MakeSlotForInlineCss(HtmlElement* element,
-                                     const StringPiece& content);
+  ResourceSlotPtr MakeSlotForInlineCss(HtmlElement* parent,
+                                       const StringPiece& content);
 
   // Stores all the computed summaries.
   std::vector<SummaryInfo> summaries_;

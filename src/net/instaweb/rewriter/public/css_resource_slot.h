@@ -45,7 +45,7 @@ class CssResourceSlot : public ResourceSlot {
  public:
   virtual void Render();
   virtual void Finished();
-  virtual GoogleString LocationString();
+  virtual GoogleString LocationString() const;
 
   virtual HtmlElement* element() const { return NULL; }
   Css::Values* values() const { return values_; }

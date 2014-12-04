@@ -163,7 +163,7 @@ class ResourceSlot : public RefCounted<ResourceSlot> {
 
   // Returns a human-readable description of where this slot occurs, for use
   // in log messages.
-  virtual GoogleString LocationString() = 0;
+  virtual GoogleString LocationString() const = 0;
 
   // Either relativize the URL or pass it through depending on options set.
   // PRECONDITION: url must parse as a valid GoogleUrl.
@@ -191,6 +191,25 @@ class ResourceSlot : public RefCounted<ResourceSlot> {
   DISALLOW_COPY_AND_ASSIGN(ResourceSlot);
 };
 
+// A dummy slot used in various cases where Rendering will be performed in
+// RewriteContext::Render() instead of ResourceSlot::Render().
+class NullResourceSlot : public ResourceSlot {
+ public:
+  NullResourceSlot(const ResourcePtr& resource, StringPiece location);
+  virtual HtmlElement* element() const { return NULL; }
+  virtual void Render() {}
+  virtual GoogleString LocationString() const { return location_; }
+
+ protected:
+  REFCOUNT_FRIEND_DECLARATION(NullResourceSlot);
+  virtual ~NullResourceSlot();
+
+ private:
+  GoogleString location_;
+
+  DISALLOW_COPY_AND_ASSIGN(NullResourceSlot);
+};
+
 // A resource-slot created for a Fetch has an empty Render method -- Render
 // should never be called.
 class FetchResourceSlot : public ResourceSlot {
@@ -200,7 +219,7 @@ class FetchResourceSlot : public ResourceSlot {
   }
   virtual HtmlElement* element() const { return NULL; }
   virtual void Render();
-  virtual GoogleString LocationString();
+  virtual GoogleString LocationString() const;
 
  protected:
   REFCOUNT_FRIEND_DECLARATION(FetchResourceSlot);
@@ -221,7 +240,7 @@ class HtmlResourceSlot : public ResourceSlot {
   HtmlElement::Attribute* attribute() const { return attribute_; }
 
   virtual void Render();
-  virtual GoogleString LocationString();
+  virtual GoogleString LocationString() const;
   virtual bool DirectSetUrl(const StringPiece& url);
   virtual bool CanDirectSetUrl() { return true; }
 

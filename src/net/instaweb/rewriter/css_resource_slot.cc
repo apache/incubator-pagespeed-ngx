@@ -87,7 +87,7 @@ void CssResourceSlot::Finished() {
   Render();
 }
 
-GoogleString CssResourceSlot::LocationString() {
+GoogleString CssResourceSlot::LocationString() const {
   // TODO(morlovich): Improve quality of this diagnostic.
   return "Inside CSS";
 }
