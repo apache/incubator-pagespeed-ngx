@@ -59,7 +59,7 @@ class NgxUrlAsyncFetcher : public UrlAsyncFetcher {
   ~NgxUrlAsyncFetcher();
 
   // It should be called in the module init_process callback function. Do some
-  // intializations which can't be done in the master process
+  // initializations which can't be done in the master process
   bool Init();
 
   // shutdown all the fetches.

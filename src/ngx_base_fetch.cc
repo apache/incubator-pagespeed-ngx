@@ -144,7 +144,7 @@ void NgxBaseFetch::HandleHeadersComplete() {
     }
   }
 
-  // For the IPRO lookup, supress notification of the nginx side here.
+  // For the IPRO lookup, suppress notification of the nginx side here.
   // If we send both this event and the one from done, nasty stuff will happen
   // if we loose the race with with the nginx side destructing this base fetch
   // instance (and thereby clearing the byte and its pending extraneous event.
