@@ -101,6 +101,7 @@ struct StaticAssetManager::Asset {
   GoogleString js_debug_hash;
   GoogleString opt_url;
   GoogleString debug_url;
+  GoogleString release_label;
   ContentType content_type;
 };
 
@@ -139,14 +140,43 @@ const GoogleString& StaticAssetManager::GetAssetUrl(
       assets_[module]->opt_url;
 }
 
-void StaticAssetManager::set_gstatic_hash(StaticAssetEnum::StaticAsset module,
-                                          const GoogleString& gstatic_base,
-                                          const GoogleString& hash) {
-  if (serve_asset_from_gstatic_) {
-    CHECK(!hash.empty());
-    assets_[module]->opt_url =
-        StrCat(gstatic_base, hash, "-", assets_[module]->file_name,
-               assets_[module]->content_type.file_extension());
+void StaticAssetManager::SetGStaticHashForTest(
+    StaticAssetEnum::StaticAsset module, const GoogleString& gstatic_base,
+    const GoogleString& hash) {
+  CHECK(!hash.empty());
+  StaticAssetConfig config;
+  StaticAssetConfig::Asset* asset_conf = config.add_asset();
+  asset_conf->set_role(module);
+  asset_conf->set_name(StrCat(assets_[module]->file_name,
+                              assets_[module]->content_type.file_extension()));
+  asset_conf->set_debug_hash(hash);
+  asset_conf->set_opt_hash(hash);
+  ApplyGStaticConfiguration(gstatic_base, config, kInitialConfiguration);
+}
+
+void StaticAssetManager::ApplyGStaticConfiguration(
+    const GoogleString& gstatic_base, const StaticAssetConfig& config,
+    ConfigurationMode mode) {
+  if (!serve_asset_from_gstatic_) {
+    return;
+  }
+
+  for (int i = 0; i < config.asset_size(); ++i) {
+    const StaticAssetConfig::Asset& asset_conf = config.asset(i);
+    if (!StaticAssetEnum::StaticAsset_IsValid(asset_conf.role())) {
+      LOG(DFATAL) << "Invalid asset role: " << asset_conf.role();
+      return;
+    }
+    Asset* asset = assets_[asset_conf.role()];
+    bool should_update = (mode == kInitialConfiguration) ||
+                         (asset->release_label == config.release_label());
+    if (should_update) {
+      asset->opt_url = StrCat(gstatic_base, asset_conf.opt_hash(), "-",
+                              asset_conf.name());
+      asset->debug_url = StrCat(gstatic_base, asset_conf.debug_hash(), "-",
+                                asset_conf.name());
+      asset->release_label = config.release_label();
+    }
   }
 }
 

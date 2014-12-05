@@ -83,7 +83,7 @@ TEST_F(StaticAssetManagerTest, TestBlinkHandler) {
 TEST_F(StaticAssetManagerTest, TestBlinkGstatic) {
   manager_->set_static_asset_base("http://proxy-domain");
   manager_->set_serve_asset_from_gstatic(true);
-  manager_->set_gstatic_hash(
+  manager_->SetGStaticHashForTest(
       StaticAssetEnum::BLINK_JS, StaticAssetManager::kGStaticBase, "1");
   const char blink_url[] =
       "//www.gstatic.com/psa/static/1-blink.js";
@@ -93,17 +93,17 @@ TEST_F(StaticAssetManagerTest, TestBlinkGstatic) {
 
 TEST_F(StaticAssetManagerTest, TestBlinkDebug) {
   manager_->set_serve_asset_from_gstatic(true);
-  manager_->set_gstatic_hash(
+  manager_->SetGStaticHashForTest(
       StaticAssetEnum::BLINK_JS, StaticAssetManager::kGStaticBase, "1");
   options_->EnableFilter(RewriteOptions::kDebug);
-  const char blink_url[] = "http://proxy-domain/psajs/blink_debug.0.js";
+  const char blink_url[] = "//www.gstatic.com/psa/static/1-blink.js";
   EXPECT_STREQ(blink_url, manager_->GetAssetUrl(StaticAssetEnum::BLINK_JS,
                                                 options_));
 }
 
 TEST_F(StaticAssetManagerTest, TestDeferJsGstatic) {
   manager_->set_serve_asset_from_gstatic(true);
-  manager_->set_gstatic_hash(
+  manager_->SetGStaticHashForTest(
       StaticAssetEnum::DEFER_JS, StaticAssetManager::kGStaticBase, "1");
   const char defer_js_url[] =
       "//www.gstatic.com/psa/static/1-js_defer.js";
@@ -113,11 +113,11 @@ TEST_F(StaticAssetManagerTest, TestDeferJsGstatic) {
 
 TEST_F(StaticAssetManagerTest, TestDeferJsDebug) {
   manager_->set_serve_asset_from_gstatic(true);
-  manager_->set_gstatic_hash(
+  manager_->SetGStaticHashForTest(
       StaticAssetEnum::DEFER_JS, StaticAssetManager::kGStaticBase, "1");
   options_->EnableFilter(RewriteOptions::kDebug);
   const char defer_js_debug_url[] =
-      "http://proxy-domain/psajs/js_defer_debug.0.js";
+      "//www.gstatic.com/psa/static/1-js_defer.js";
   EXPECT_STREQ(defer_js_debug_url, manager_->GetAssetUrl(
       StaticAssetEnum::DEFER_JS, options_));
 }
@@ -125,6 +125,14 @@ TEST_F(StaticAssetManagerTest, TestDeferJsDebug) {
 TEST_F(StaticAssetManagerTest, TestDeferJsNonGStatic) {
   const char defer_js_url[] =
       "http://proxy-domain/psajs/js_defer.0.js";
+  EXPECT_STREQ(defer_js_url, manager_->GetAssetUrl(
+      StaticAssetEnum::DEFER_JS, options_));
+}
+
+TEST_F(StaticAssetManagerTest, TestDeferJsNonGStaticDebug) {
+  const char defer_js_url[] =
+      "http://proxy-domain/psajs/js_defer_debug.0.js";
+  options_->EnableFilter(RewriteOptions::kDebug);
   EXPECT_STREQ(defer_js_url, manager_->GetAssetUrl(
       StaticAssetEnum::DEFER_JS, options_));
 }
@@ -206,6 +214,152 @@ TEST_F(StaticAssetManagerTest, TestEncodedUrls) {
                                    &cache_header));
     EXPECT_EQ("max-age=31536000", cache_header);
   }
+}
+
+TEST_F(StaticAssetManagerTest, FullGStaticConf) {
+  scoped_ptr<RewriteOptions> debug_options(options_->Clone());
+  debug_options->EnableFilter(RewriteOptions::kDebug);
+
+  manager_->set_serve_asset_from_gstatic(true);
+
+  // Setup initial batch configuration.
+  StaticAssetConfig config;
+  config.set_release_label("100");
+  StaticAssetConfig::Asset* asset_conf = config.add_asset();
+  asset_conf->set_role(StaticAssetEnum::ADD_INSTRUMENTATION_JS);
+  asset_conf->set_name("add_instr.js");
+  asset_conf->set_debug_hash("dbg1");
+  asset_conf->set_opt_hash("opt1");
+
+  asset_conf = config.add_asset();
+  asset_conf->set_role(StaticAssetEnum::LAZYLOAD_IMAGES_JS);
+  asset_conf->set_name("lazy.js");
+  asset_conf->set_debug_hash("dbg2");
+  asset_conf->set_opt_hash("opt2");
+
+  manager_->ApplyGStaticConfiguration(
+      "http://actually_any_cdn.com/",
+      config,
+      StaticAssetManager::kInitialConfiguration);
+
+  // The configuration is sparse, so things still retain defaults.
+  EXPECT_EQ("http://proxy-domain/psajs/js_defer.0.js",
+            manager_->GetAssetUrl(StaticAssetEnum::DEFER_JS, options_));
+  EXPECT_EQ("http://proxy-domain/psajs/js_defer_debug.0.js",
+            manager_->GetAssetUrl(StaticAssetEnum::DEFER_JS,
+                                  debug_options.get()));
+
+  // The configured things do work, however.
+  EXPECT_EQ("http://actually_any_cdn.com/opt1-add_instr.js",
+            manager_->GetAssetUrl(StaticAssetEnum::ADD_INSTRUMENTATION_JS,
+                                  options_));
+  EXPECT_EQ("http://actually_any_cdn.com/dbg1-add_instr.js",
+            manager_->GetAssetUrl(StaticAssetEnum::ADD_INSTRUMENTATION_JS,
+                                  debug_options.get()));
+
+  EXPECT_EQ("http://actually_any_cdn.com/opt2-lazy.js",
+            manager_->GetAssetUrl(StaticAssetEnum::LAZYLOAD_IMAGES_JS,
+                                  options_));
+  EXPECT_EQ("http://actually_any_cdn.com/dbg2-lazy.js",
+            manager_->GetAssetUrl(StaticAssetEnum::LAZYLOAD_IMAGES_JS,
+                                  debug_options.get()));
+
+  // Now try updating with a config with different version.
+  StaticAssetConfig config2;
+  config2.set_release_label("99");
+  asset_conf = config2.add_asset();
+  asset_conf->set_role(StaticAssetEnum::ADD_INSTRUMENTATION_JS);
+  asset_conf->set_name("add_instr.js");
+  asset_conf->set_debug_hash("dbg0");
+  asset_conf->set_opt_hash("opt0");
+
+  asset_conf = config2.add_asset();
+  asset_conf->set_role(StaticAssetEnum::LAZYLOAD_IMAGES_JS);
+  asset_conf->set_name("lazy.js");
+  asset_conf->set_debug_hash("dbg0");
+  asset_conf->set_opt_hash("opt0");
+
+  asset_conf = config2.add_asset();
+  asset_conf->set_role(StaticAssetEnum::DEFER_JS);
+  asset_conf->set_name("defer.js");
+  asset_conf->set_debug_hash("dbg0");
+  asset_conf->set_opt_hash("opt0");
+
+  manager_->ApplyGStaticConfiguration(
+      "http://actually_any_cdn.com/",
+      config2,
+      StaticAssetManager::kUpdateConfiguration);
+
+  // Nothing is actually changed.
+  EXPECT_EQ("http://proxy-domain/psajs/js_defer.0.js",
+            manager_->GetAssetUrl(StaticAssetEnum::DEFER_JS, options_));
+  EXPECT_EQ("http://proxy-domain/psajs/js_defer_debug.0.js",
+            manager_->GetAssetUrl(StaticAssetEnum::DEFER_JS,
+                                  debug_options.get()));
+
+  EXPECT_EQ("http://actually_any_cdn.com/opt1-add_instr.js",
+            manager_->GetAssetUrl(StaticAssetEnum::ADD_INSTRUMENTATION_JS,
+                                  options_));
+  EXPECT_EQ("http://actually_any_cdn.com/dbg1-add_instr.js",
+            manager_->GetAssetUrl(StaticAssetEnum::ADD_INSTRUMENTATION_JS,
+                                  debug_options.get()));
+
+  EXPECT_EQ("http://actually_any_cdn.com/opt2-lazy.js",
+            manager_->GetAssetUrl(StaticAssetEnum::LAZYLOAD_IMAGES_JS,
+                                  options_));
+  EXPECT_EQ("http://actually_any_cdn.com/dbg2-lazy.js",
+            manager_->GetAssetUrl(StaticAssetEnum::LAZYLOAD_IMAGES_JS,
+                                  debug_options.get()));
+
+  // Now with matching version, things can change. Notice that we still didn't
+  // update things that were not specified in initial config. This is a design
+  // tradeoff: it makes it harder to hotfix things, but means we won't get stuck
+  // with a stale override in CDD.
+  StaticAssetConfig config3;
+  config3.set_release_label("100");
+  asset_conf = config3.add_asset();
+  asset_conf->set_role(StaticAssetEnum::ADD_INSTRUMENTATION_JS);
+  asset_conf->set_name("add_instr.js");
+  asset_conf->set_debug_hash("dbg3");
+  asset_conf->set_opt_hash("opt3");
+
+  asset_conf = config3.add_asset();
+  asset_conf->set_role(StaticAssetEnum::LAZYLOAD_IMAGES_JS);
+  asset_conf->set_name("lazy.js");
+  asset_conf->set_debug_hash("dbg4");
+  asset_conf->set_opt_hash("opt4");
+
+  asset_conf = config3.add_asset();
+  asset_conf->set_role(StaticAssetEnum::DEFER_JS);
+  asset_conf->set_name("defer.js");
+  asset_conf->set_debug_hash("dbg5");
+  asset_conf->set_opt_hash("opt5");
+
+  manager_->ApplyGStaticConfiguration(
+      "http://actually_any_cdn.com/",
+      config3,
+      StaticAssetManager::kUpdateConfiguration);
+
+  // Everything that was initially configured via this is changed.
+  EXPECT_EQ("http://proxy-domain/psajs/js_defer.0.js",
+            manager_->GetAssetUrl(StaticAssetEnum::DEFER_JS, options_));
+  EXPECT_EQ("http://proxy-domain/psajs/js_defer_debug.0.js",
+            manager_->GetAssetUrl(StaticAssetEnum::DEFER_JS,
+                                  debug_options.get()));
+
+  EXPECT_EQ("http://actually_any_cdn.com/opt3-add_instr.js",
+            manager_->GetAssetUrl(StaticAssetEnum::ADD_INSTRUMENTATION_JS,
+                                  options_));
+  EXPECT_EQ("http://actually_any_cdn.com/dbg3-add_instr.js",
+            manager_->GetAssetUrl(StaticAssetEnum::ADD_INSTRUMENTATION_JS,
+                                  debug_options.get()));
+
+  EXPECT_EQ("http://actually_any_cdn.com/opt4-lazy.js",
+            manager_->GetAssetUrl(StaticAssetEnum::LAZYLOAD_IMAGES_JS,
+                                  options_));
+  EXPECT_EQ("http://actually_any_cdn.com/dbg4-lazy.js",
+            manager_->GetAssetUrl(StaticAssetEnum::LAZYLOAD_IMAGES_JS,
+                                  debug_options.get()));
 }
 
 }  // namespace

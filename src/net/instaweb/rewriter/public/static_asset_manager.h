@@ -47,6 +47,11 @@ class StaticAssetManager {
   static const char kGStaticBase[];
   static const char kDefaultLibraryUrlPrefix[];
 
+  enum ConfigurationMode {
+    kInitialConfiguration,
+    kUpdateConfiguration
+  };
+
   StaticAssetManager(const GoogleString& static_asset_base,
                      Hasher* hasher,
                      MessageHandler* message_handler);
@@ -78,19 +83,29 @@ class StaticAssetManager {
 
 
   // If set_serve_asset_from_gstatic is true, update the URL for module to use
-  // gstatic.
-  void set_gstatic_hash(StaticAssetEnum::StaticAsset module,
-                        const GoogleString& gstatic_base,
-                        const GoogleString& hash);
+  // gstatic. This sets both debug and release versions, and is meant to be
+  // used to simplify tests.
+  void SetGStaticHashForTest(StaticAssetEnum::StaticAsset module,
+                             const GoogleString& gstatic_base,
+                             const GoogleString& hash);
 
   // Set serve_asset_from_gstatic_ to serve the files from gstatic. Note that
-  // files won't actually get served from gstatic until you also call
-  // set_gstatic_hash for the URL that you'd like served from gstatic.
-  // set_gstatic_hash should be called after calling
+  // files won't actually get served from gstatic until you also configure the
+  // particular asset via SetGStaticHashForTest or ApplyGStaticConfiguration.
+  // These methods should be called after calling
   // set_server_asset_from_gstatic(true).
   void set_serve_asset_from_gstatic(bool serve_asset_from_gstatic) {
     serve_asset_from_gstatic_ = serve_asset_from_gstatic;
   }
+
+
+  // If serve_asset_from_gstatic is true, uses information in config to
+  // set up serving urls.
+  // mode == kInitialConfiguration will always overwrite settings.
+  // mode == kUpdateConfiguration which have a matching value of release_label.
+  void ApplyGStaticConfiguration(const GoogleString& gstatic_base,
+                                 const StaticAssetConfig& config,
+                                 ConfigurationMode mode);
 
   // Set the prefix for the URLs of assets.
   void set_library_url_prefix(const StringPiece& url_prefix) {
