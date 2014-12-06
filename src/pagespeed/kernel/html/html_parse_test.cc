@@ -3023,4 +3023,141 @@ TEST_F(HtmlRestoreTest, CoalesceCharsAcrossFlush) {
   }
 }
 
+class InsertScriptsFilter : public EmptyHtmlFilter {
+ public:
+  explicit InsertScriptsFilter(HtmlParse* parse)
+      : html_parse_(parse),
+        at_start_(false),
+        before_(false),
+        external_(false) {
+  }
+
+  void set_insert_before(bool before) { before_ = before; }
+  void set_at_start(bool at_start) { at_start_ = at_start; }
+  void set_external(bool external) { external_ = external; }
+
+ protected:
+  virtual void StartElement(HtmlElement* element) { Insert(true, element); }
+  virtual void EndElement(HtmlElement* element) { Insert(false, element); }
+  virtual const char* Name() const { return "InsertScriptsFilter"; }
+
+ private:
+  void Insert(bool at_start, HtmlElement* element) {
+    if (element->keyword() == HtmlName::kHead) {
+      if (at_start == at_start_) {
+        if (before_) {
+          html_parse_->InsertScriptBeforeCurrent("inserted", external_);
+        } else {
+          html_parse_->InsertScriptAfterCurrent("inserted", external_);
+        }
+      }
+    }
+  }
+
+
+ private:
+  HtmlParse* html_parse_;
+  bool at_start_;
+  bool before_;
+  bool external_;
+
+  DISALLOW_COPY_AND_ASSIGN(InsertScriptsFilter);
+};
+
+TEST_F(HtmlParseTestNoBody, InsertInlineScriptAfterStartOfHead) {
+  InsertScriptsFilter insert_scripts(&html_parse_);
+  insert_scripts.set_insert_before(false);
+  insert_scripts.set_at_start(true);
+  insert_scripts.set_external(false);
+  html_parse_.AddFilter(&insert_scripts);
+  SetupWriter();
+  ValidateExpected("1",
+                   "<head>text</head>",
+                   "<head><script>inserted</script>text</head>");
+}
+
+TEST_F(HtmlParseTestNoBody, InsertInlineScriptBeforeEndOfHead) {
+  InsertScriptsFilter insert_scripts(&html_parse_);
+  insert_scripts.set_insert_before(true);
+  insert_scripts.set_at_start(false);
+  insert_scripts.set_external(false);
+  html_parse_.AddFilter(&insert_scripts);
+  SetupWriter();
+  ValidateExpected("1",
+                   "<head>text</head>",
+                   "<head>text<script>inserted</script></head>");
+}
+
+TEST_F(HtmlParseTestNoBody, InsertInlineScriptBeforeStartOfHead) {
+  InsertScriptsFilter insert_scripts(&html_parse_);
+  insert_scripts.set_insert_before(true);
+  insert_scripts.set_at_start(true);
+  insert_scripts.set_external(false);
+  html_parse_.AddFilter(&insert_scripts);
+  SetupWriter();
+  ValidateExpected("1",
+                   "<head>text</head>",
+                   "<script>inserted</script><head>text</head>");
+}
+
+TEST_F(HtmlParseTestNoBody, InsertInlineScriptAfterEndOfHead) {
+  InsertScriptsFilter insert_scripts(&html_parse_);
+  insert_scripts.set_insert_before(false);
+  insert_scripts.set_at_start(false);
+  insert_scripts.set_external(false);
+  html_parse_.AddFilter(&insert_scripts);
+  SetupWriter();
+  ValidateExpected("1",
+                   "<head>text</head>",
+                   "<head>text</head><script>inserted</script>");
+}
+
+TEST_F(HtmlParseTestNoBody, InsertExternalScriptAfterStartOfHead) {
+  InsertScriptsFilter insert_scripts(&html_parse_);
+  insert_scripts.set_insert_before(false);
+  insert_scripts.set_at_start(true);
+  insert_scripts.set_external(true);
+  html_parse_.AddFilter(&insert_scripts);
+  SetupWriter();
+  ValidateExpected("1",
+                   "<head>text</head>",
+                   "<head><script src=\"inserted\"></script>text</head>");
+}
+
+TEST_F(HtmlParseTestNoBody, InsertExternalScriptBeforeEndOfHead) {
+  InsertScriptsFilter insert_scripts(&html_parse_);
+  insert_scripts.set_insert_before(true);
+  insert_scripts.set_at_start(false);
+  insert_scripts.set_external(true);
+  html_parse_.AddFilter(&insert_scripts);
+  SetupWriter();
+  ValidateExpected("1",
+                   "<head>text</head>",
+                   "<head>text<script src=\"inserted\"></script></head>");
+}
+
+TEST_F(HtmlParseTestNoBody, InsertExternalScriptBeforeStartOfHead) {
+  InsertScriptsFilter insert_scripts(&html_parse_);
+  insert_scripts.set_insert_before(true);
+  insert_scripts.set_at_start(true);
+  insert_scripts.set_external(true);
+  html_parse_.AddFilter(&insert_scripts);
+  SetupWriter();
+  ValidateExpected("1",
+                   "<head>text</head>",
+                   "<script src=\"inserted\"></script><head>text</head>");
+}
+
+TEST_F(HtmlParseTestNoBody, InsertExternalScriptAfterEndOfHead) {
+  InsertScriptsFilter insert_scripts(&html_parse_);
+  insert_scripts.set_insert_before(false);
+  insert_scripts.set_at_start(false);
+  insert_scripts.set_external(true);
+  html_parse_.AddFilter(&insert_scripts);
+  SetupWriter();
+  ValidateExpected("1",
+                   "<head>text</head>",
+                   "<head>text</head><script src=\"inserted\"></script>");
+}
+
 }  // namespace net_instaweb

@@ -100,8 +100,9 @@ MobilizeRewriteFilter::MobilizeRewriteFilter(RewriteDriver* rewrite_driver)
       in_script_(false),
       use_js_layout_(rewrite_driver->options()->mob_layout()),
       use_js_logo_(rewrite_driver->options()->mob_logo()),
-      use_js_nav_(rewrite_driver->options()->mob_nav()) {
-
+      use_js_nav_(rewrite_driver->options()->mob_nav()),
+      rewrite_js_(rewrite_driver->options()->Enabled(
+          RewriteOptions::kRewriteJavascriptExternal)) {
   // If a domain proxy-suffix is specified, and it starts with ".",
   // then we'll remove the "." from that and use that as the location
   // of the shared static files (JS and CSS).  E.g.
@@ -213,14 +214,9 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
       if (use_js_layout_) {
         // Transmit to the mobilization scripts whether they are run in debug
         // mode or not by setting 'psDebugMode'.
-        HtmlElement* script = driver()->NewElement(element, HtmlName::kScript);
-        script->set_style(HtmlElement::EXPLICIT_CLOSE);
-        driver()->InsertNodeAfterCurrent(script);
-        HtmlCharactersNode* script_text = driver()->NewCharactersNode(
-            script,
-            StrCat("var psDebugMode=", driver()->DebugMode()
-                   ? "true;" : "false;"));
-        driver()->AppendChild(script, script_text);
+        GoogleString src = StrCat(
+            "var psDebugMode=", driver()->DebugMode() ? "true;" : "false;");
+        driver()->InsertScriptAfterCurrent(src, false);
       }
 
       // TODO(jmarantz): Consider waiting to see if we have a charset directive
@@ -316,6 +312,13 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
   }
 }
 
+void MobilizeRewriteFilter::AddStaticScript(StringPiece script) {
+  // TODO(jmarantz): Consider using CommonFilter::InsertNodeAtBodyEnd.
+  // TODO(jmarantz): Integrate with StaticAssetManager.
+  GoogleString script_path = StrCat(static_file_prefix_, script);
+  driver()->InsertScriptBeforeCurrent(script_path, true);
+}
+
 void MobilizeRewriteFilter::EndElementImpl(HtmlElement* element) {
   HtmlName::Keyword keyword = element->keyword();
 
@@ -330,29 +333,30 @@ void MobilizeRewriteFilter::EndElementImpl(HtmlElement* element) {
         if (!added_mob_js_) {
           added_mob_js_ = true;
 
+          if (use_js_layout_ && !rewrite_js_) {
+            // Include the base closure file to allow goog.provide
+            // etc to work.
+            driver()->InsertScriptBeforeCurrent(
+                "var CLOSURE_UNCOMPILED_DEFINES = "
+                "{'goog.ENABLE_DEBUG_LOADER': false};",
+                false);
+            AddStaticScript("goog/base.js");
+          }
           if (use_js_nav_) {
-            HtmlElement* script =
-                driver()->NewElement(element->parent(), HtmlName::kScript);
-            script->set_style(HtmlElement::EXPLICIT_CLOSE);
-            InsertNodeAtBodyEnd(script);
-            driver()->AddAttribute(script, HtmlName::kSrc,
-                                   StrCat(static_file_prefix_, "mob_nav.js"));
+            AddStaticScript("mob_nav.js");
           }
           if (use_js_logo_) {
-            HtmlElement* script =
-                driver()->NewElement(element->parent(), HtmlName::kScript);
-            script->set_style(HtmlElement::EXPLICIT_CLOSE);
-            InsertNodeAtBodyEnd(script);
-            driver()->AddAttribute(script, HtmlName::kSrc,
-                                   StrCat(static_file_prefix_, "mob_logo.js"));
+            AddStaticScript("mob_logo.js");
           }
           if (use_js_layout_) {
-            HtmlElement* script = driver()->NewElement(element->parent(),
-                                                       HtmlName::kScript);
-            script->set_style(HtmlElement::EXPLICIT_CLOSE);
-            InsertNodeAtBodyEnd(script);
-            driver()->AddAttribute(script, HtmlName::kSrc,
-                                   StrCat(static_file_prefix_, "mob.js"));
+            if (rewrite_js_) {
+              AddStaticScript("mob_jsc.js");
+            } else {
+              AddStaticScript("mob_util.js");
+              AddStaticScript("mob_xhr.js");
+              AddStaticScript("mob_layout.js");
+              AddStaticScript("mob.js");
+            }
           }
         }
       }

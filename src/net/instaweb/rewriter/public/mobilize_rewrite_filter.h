@@ -119,6 +119,7 @@ class MobilizeRewriteFilter : public CommonFilter {
   void AppendStylesheet(const StringPiece& css_file_name, HtmlElement* element);
   void AddStyle(HtmlElement* element);
   MobileRole::Level GetMobileRole(HtmlElement* element);
+  void AddStaticScript(StringPiece script);
 
   bool CheckForKeyword(
       const HtmlName::Keyword* sorted_list, int len, HtmlName::Keyword keyword);
@@ -136,6 +137,7 @@ class MobilizeRewriteFilter : public CommonFilter {
   bool use_js_layout_;
   bool use_js_logo_;
   bool use_js_nav_;
+  bool rewrite_js_;
   GoogleString static_file_prefix_;
 
   // Statistics

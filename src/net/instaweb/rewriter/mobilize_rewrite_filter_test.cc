@@ -50,8 +50,14 @@ const char kHeadAndViewport[] =
     "<script>var psDebugMode=false;</script>"
     "<meta name='viewport' content='width=device-width'/>";
 const char kTrailingScriptLoads[] =
+    "<script>var CLOSURE_UNCOMPILED_DEFINES = "
+    "{'goog.ENABLE_DEBUG_LOADER': false};</script>"
+    "<script src=\"goog/base.js\"></script>"
     "<script src=\"mob_nav.js\"></script>"
     "<script src=\"mob_logo.js\"></script>"
+    "<script src=\"mob_util.js\"></script>"
+    "<script src=\"mob_xhr.js\"></script>"
+    "<script src=\"mob_layout.js\"></script>"
     "<script src=\"mob.js\"></script>";
 
 }  // namespace
@@ -449,6 +455,8 @@ TEST_F(MobilizeRewriteEndToEndTest, FullPage) {
       StrCat(GTestSrcDir(), kTestDataDir, kRewritten);
   ASSERT_TRUE(filesystem_.ReadFile(rewritten_filename.c_str(),
                                    &rewritten_buffer, message_handler()));
+  GlobalReplaceSubstring("@@TRAILING_SCRIPT_LOADS@@", kTrailingScriptLoads,
+                         &rewritten_buffer);
   rewrite_driver()->SetUserAgent(
       UserAgentMatcherTestBase::kAndroidChrome21UserAgent);
   ValidateExpected("full_page", original_buffer, rewritten_buffer);

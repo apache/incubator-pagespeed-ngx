@@ -184,6 +184,28 @@ HtmlElement* HtmlParse::AppendAnchor(StringPiece link, StringPiece text,
   return a_tag;
 }
 
+void HtmlParse::SetupScript(StringPiece text, bool external,
+                            HtmlElement* script) {
+  if (external) {
+    AddAttribute(script, HtmlName::kSrc, text);
+  } else {
+    HtmlNode* text_node = NewCharactersNode(script, text);
+    AppendChild(script, text_node);
+  }
+}
+
+void HtmlParse::InsertScriptBeforeCurrent(StringPiece text, bool external) {
+  HtmlElement* script = NewElement(NULL, HtmlName::kScript);
+  InsertNodeBeforeCurrent(script);
+  SetupScript(text, external, script);
+}
+
+void HtmlParse::InsertScriptAfterCurrent(StringPiece text, bool external) {
+  HtmlElement* script = NewElement(NULL, HtmlName::kScript);
+  InsertNodeAfterCurrent(script);
+  SetupScript(text, external, script);
+}
+
 HtmlElement* HtmlParse::NewElement(HtmlElement* parent, const HtmlName& name) {
   HtmlElement* element =
       new (&nodes_) HtmlElement(parent, name, queue_.end(), queue_.end());
@@ -583,10 +605,14 @@ void HtmlParse::PrependChild(const HtmlElement* existing_parent,
 
 void HtmlParse::AppendChild(const HtmlElement* existing_parent,
                             HtmlNode* new_child) {
-  message_handler_->Check(existing_parent->end() != queue_.end(),
-                          "AppendChild: existing_parent invalid");
-  new_child->set_parent(const_cast<HtmlElement*>(existing_parent));
-  InsertNodeBeforeEvent(existing_parent->end(), new_child);
+  if (existing_parent != NULL) {
+    message_handler_->Check(existing_parent->end() != queue_.end(),
+                            "AppendChild: existing_parent invalid");
+    new_child->set_parent(const_cast<HtmlElement*>(existing_parent));
+    InsertNodeBeforeEvent(existing_parent->end(), new_child);
+  } else {
+    InsertNodeBeforeEvent(queue_.end(), new_child);
+  }
 }
 
 void HtmlParse::InsertNodeBeforeCurrent(HtmlNode* new_node) {
@@ -640,6 +666,18 @@ void HtmlParse::InsertNodeAfterCurrent(HtmlNode* new_node) {
   }
   if (current_ == queue_.end()) {
     FatalErrorHere("InsertNodeAfterCurrent called with queue at end.");
+  }
+  if ((new_node->parent() == NULL) && (current_ != queue_.end())) {
+    HtmlElement* parent = (*current_)->GetElementIfEndEvent();
+    if (parent != NULL) {
+      parent = parent->parent();
+    } else {
+      parent = (*current_)->GetElementIfStartEvent();
+      if (parent == NULL) {
+        parent = (*current_)->GetNode()->parent();
+      }
+    }
+    new_node->set_parent(parent);
   }
   ++current_;
   InsertNodeBeforeEvent(current_, new_node);

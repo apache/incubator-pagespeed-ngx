@@ -179,6 +179,8 @@ class HtmlParse {
                                       const StringPiece& contents);
   HtmlIEDirectiveNode* NewIEDirectiveNode(HtmlElement* parent,
                                           const StringPiece& contents);
+  void InsertScriptAfterCurrent(StringPiece text, bool external);
+  void InsertScriptBeforeCurrent(StringPiece text, bool external);
 
   // Creates and appends an Anchor tag into the HTML, and then returns it.
   // TODO(jmaessen): refactor and use this in the relevant places.
@@ -576,6 +578,7 @@ class HtmlParse {
   void ClearDeferredNodes();
   inline bool IsRewritableIgnoringDeferral(const HtmlNode* node) const;
   inline bool IsRewritableIgnoringEnd(const HtmlNode* node) const;
+  void SetupScript(StringPiece text, bool external, HtmlElement* script);
 
   // Visible for testing only, via HtmlTestingPeer
   friend class HtmlTestingPeer;
