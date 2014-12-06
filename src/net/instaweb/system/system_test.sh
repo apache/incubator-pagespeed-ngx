@@ -1183,9 +1183,18 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   URL="$HOST_NAME/mod_pagespeed_test/unauthorized/prioritize_critical_css.html"
   URL+="?PageSpeedFilters=prioritize_critical_css,debug"
   # gsc-completion-selected string should occur once in the html and once in the
-  # selector list.
+  # selector list.  with_unauthorized_imports.css.pagespeed.cf should appear
+  # once that file has been optimized.  We need to wait until both of them have
+  # been optimized.
+  REWRITTEN_UNAUTH_CSS="with_unauthorized_imports\.css\.pagespeed\.cf"
+  GSC_SELECTOR="gsc-completion-selected"
+  function unauthorized_resources_fully_rewritten() {
+    tr '\n' ' ' | \
+      grep "$REWRITTEN_UNAUTH_CSS.*$GSC_SELECTOR.*$GSC_SELECTOR" | \
+      wc -l
+  }
   http_proxy=$SECONDARY_HOSTNAME \
-     fetch_until -save $URL 'fgrep -c gsc-completion-selected' 2
+     fetch_until -save $URL unauthorized_resources_fully_rewritten 1
   # Verify that this page had beaconing javascript on it.
   check [ $(fgrep -c "pagespeed.criticalCssBeaconInit" $FETCH_FILE) -eq 3 ]
   # From the css file containing an unauthorized @import line,
@@ -1198,10 +1207,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   # c) selectors that don't depend on flattening should appear in the selector
   #    list.
   check [ $(fgrep -c "non_flattened_selector" $FETCH_FILE) -eq 1 ]
-  # TODO(jmarantz): I have seen this test flake, and I suspect that it's
-  # possible to achieve 2 occurrences of gsc-completion-selected before the
-  # flattening is attempted.
-  check grep -q "$EXPECTED_IMPORT_FAILURE_LINE" $FETCH_FILE
+  check_from "$(cat $FETCH_FILE)" grep -q "$EXPECTED_IMPORT_FAILURE_LINE"
 
   # http://code.google.com/p/modpagespeed/issues/detail?id=494 -- test
   # that fetching a css with embedded relative images from a different
