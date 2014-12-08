@@ -120,6 +120,8 @@ BASE_LIBS = \
   net/instaweb/libinstaweb_util.a \
   net/instaweb/libprocess_context.a \
   net/instaweb/libtest_infrastructure.a \
+  pagespeed/libinstaweb_mobilize_nav_data2c.a \
+  pagespeed/libinstaweb_mobilize_nav_opt_data2c.a \
   pagespeed/libjs_tokenizer.a \
   pagespeed/libjsminify.a \
   pagespeed/libpagespeed_base.a \

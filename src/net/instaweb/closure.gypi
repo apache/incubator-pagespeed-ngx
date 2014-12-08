@@ -62,7 +62,7 @@
           '--output_wrapper=\'(function(){%output%})();\'',
           '--generate_exports',
           '--manage_closure_dependencies',
-          '--externs=js/externs.js',
+          '--externs=<(DEPTH)/net/instaweb/js/externs.js',
           '<@(extra_closure_flags)',
         ],
         'conditions': [

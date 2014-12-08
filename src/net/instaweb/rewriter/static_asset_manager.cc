@@ -70,6 +70,8 @@ extern const char* JS_lazyload_images;
 extern const char* JS_lazyload_images_opt;
 extern const char* JS_local_storage_cache;
 extern const char* JS_local_storage_cache_opt;
+extern const char* JS_mobilize_nav;
+extern const char* JS_mobilize_nav_opt;
 extern const char* JS_panel_loader_opt;
 extern const char* JS_split_html_beacon;
 extern const char* JS_split_html_beacon_opt;
@@ -226,6 +228,7 @@ void StaticAssetManager::InitializeAssetStrings() {
       "ghost_click_buster";
   assets_[StaticAssetEnum::LOCAL_STORAGE_CACHE_JS]->file_name =
       "local_storage_cache";
+  assets_[StaticAssetEnum::MOBILIZE_NAV_JS]->file_name = "mobilize_nav";
   assets_[StaticAssetEnum::SPLIT_HTML_BEACON_JS]->file_name =
       "split_html_beacon";
 
@@ -261,6 +264,7 @@ void StaticAssetManager::InitializeAssetStrings() {
       JS_ghost_click_buster_opt;
   assets_[StaticAssetEnum::LOCAL_STORAGE_CACHE_JS]->js_optimized =
       JS_local_storage_cache_opt;
+  assets_[StaticAssetEnum::MOBILIZE_NAV_JS]->js_optimized = JS_mobilize_nav_opt;
   assets_[StaticAssetEnum::SPLIT_HTML_BEACON_JS]->js_optimized =
       JS_split_html_beacon_opt;
 
@@ -294,6 +298,7 @@ void StaticAssetManager::InitializeAssetStrings() {
       JS_ghost_click_buster_opt;
   assets_[StaticAssetEnum::LOCAL_STORAGE_CACHE_JS]->js_debug =
       JS_local_storage_cache;
+  assets_[StaticAssetEnum::MOBILIZE_NAV_JS]->js_debug = JS_mobilize_nav;
   assets_[StaticAssetEnum::SPLIT_HTML_BEACON_JS]->js_debug =
       JS_split_html_beacon;
 

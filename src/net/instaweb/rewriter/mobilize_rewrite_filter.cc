@@ -25,6 +25,9 @@
 #include "net/instaweb/rewriter/public/request_properties.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/rewriter/public/static_asset_manager.h"
+#include "net/instaweb/rewriter/static_asset_config.pb.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
@@ -343,7 +346,15 @@ void MobilizeRewriteFilter::EndElementImpl(HtmlElement* element) {
             AddStaticScript("goog/base.js");
           }
           if (use_js_nav_) {
-            AddStaticScript("mob_nav.js");
+            HtmlElement* script =
+                driver()->NewElement(element->parent(), HtmlName::kScript);
+            script->set_style(HtmlElement::EXPLICIT_CLOSE);
+            InsertNodeAtBodyEnd(script);
+            StaticAssetManager* manager =
+                driver()->server_context()->static_asset_manager();
+            StringPiece js = manager->GetAsset(StaticAssetEnum::MOBILIZE_NAV_JS,
+                                               driver()->options());
+            manager->AddJsToElement(js, script, driver());
           }
           if (use_js_logo_) {
             AddStaticScript("mob_logo.js");
@@ -413,6 +424,7 @@ void MobilizeRewriteFilter::AddStyle(HtmlElement* element) {
       AppendStylesheet("mob_logo.css", element);
     }
 
+    // TODO(jud): Move mob_nav.css out of experimental.
     if (use_js_nav_) {
       AppendStylesheet("mob_nav.css", element);
     }

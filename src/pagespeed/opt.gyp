@@ -22,6 +22,11 @@
     'protoc_out_dir': '<(SHARED_INTERMEDIATE_DIR)/protoc_out/instaweb',
     'protoc_executable':
         '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)protoc<(EXECUTABLE_SUFFIX)',
+    'compiled_js_dir': '<(SHARED_INTERMEDIATE_DIR)/closure_out/instaweb',
+    'data2c_out_dir': '<(SHARED_INTERMEDIATE_DIR)/data2c_out/instaweb',
+    'data2c_exe':
+        '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)instaweb_data2c<(EXECUTABLE_SUFFIX)',
+
   },
   'targets': [
     {
@@ -140,6 +145,64 @@
         'pagespeed_property_cache_pb',
       ],
     },
+
+    {
+      'target_name': 'mobilize_nav_js_dbg',
+      'variables': {
+        'js_dir': 'opt/mobilize',
+        'closure_build_type': 'dbg',
+        'extra_closure_flags': [
+          '--closure_entry_point=pagespeed.Mob.Nav',
+          '--js', '<(instaweb_root)/third_party/closure_library',
+          '--only_closure_dependencies',
+          '--externs=opt/mobilize/externs.js',
+          '--warning_level=VERBOSE',
+        ],
+      },
+      'sources': ['opt/mobilize/mobilize_nav.js'],
+      'includes': ['../net/instaweb/closure.gypi',],
+    },
+    {
+      'target_name': 'mobilize_nav_js_opt',
+      'variables': {
+        'js_dir': 'opt/mobilize',
+        'extra_closure_flags': [
+          '--closure_entry_point=pagespeed.Mob.Nav',
+          '--js', '<(instaweb_root)/third_party/closure_library',
+          '--only_closure_dependencies',
+          '--externs=opt/mobilize/externs.js',
+          '--warning_level=VERBOSE',
+        ],
+      },
+      'sources': ['opt/mobilize/mobilize_nav.js'],
+      'includes': ['../net/instaweb/closure.gypi'],
+    },
+
+    {
+      'target_name': 'instaweb_mobilize_nav_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'pagespeed/opt/mobilize',
+        'instaweb_js_subdir': '<(compiled_js_dir)/opt/mobilize',
+        'var_name': 'mobilize_nav',
+      },
+      'sources': [
+        '<(compiled_js_dir)/opt/mobilize/mobilize_nav_dbg.js',
+      ],
+      'includes': ['../net/instaweb/data2c.gypi']
+    },
+    {
+      'target_name': 'instaweb_mobilize_nav_opt_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'pagespeed/opt/mobilize',
+        'instaweb_js_subdir': '<(compiled_js_dir)/opt/mobilize',
+        'var_name': 'mobilize_nav_opt',
+      },
+      'sources': [
+        '<(compiled_js_dir)/opt/mobilize/mobilize_nav_opt.js',
+      ],
+      'includes': ['../net/instaweb/data2c.gypi']
+    },
+
   ]
 }
 

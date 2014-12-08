@@ -72,9 +72,7 @@
       'process_outputs_as_sources': 1,
     },
   ],
-  'dependencies': [
-    'instaweb_data2c',
-  ],
+  'dependencies': ['<(DEPTH)/net/instaweb/instaweb.gyp:instaweb_data2c'],
   'hard_dependency': 1,
   'all_dependent_settings': {
     'hard_dependency': 1,
