@@ -176,13 +176,15 @@ pagespeed.Mob.Nav.prototype.labelNavDepth_ = function(node, currDepth) {
   for (var child = node.firstChild; child; child = child.nextSibling) {
     if (child.tagName == 'UL') {
       // If this is the first UL, then start labeling its nodes at depth 1.
-      goog.array.join(navATags, this.labelNavDepth_(child, currDepth + 1));
+      navATags =
+          goog.array.join(navATags, this.labelNavDepth_(child, currDepth + 1));
     } else {
       if (child.tagName == 'A') {
         child.setAttribute('data-mobilize-nav-level', currDepth);
         navATags.push(child);
       }
-      goog.array.join(navATags, this.labelNavDepth_(child, currDepth));
+      navATags =
+          goog.array.join(navATags, this.labelNavDepth_(child, currDepth));
     }
   }
   return navATags;
@@ -281,7 +283,6 @@ pagespeed.Mob.Nav.prototype.addNavPanel_ = function() {
     var navSubmenus = [];
     navSubmenus.push(navTopUl);
 
-
     for (var j = 0, n = navATags.length; j < n; j++) {
       var navLevel1 = navATags[j].getAttribute('data-mobilize-nav-level');
       var navLevel2 = (j + 1 == n) ? navLevel1 : navATags[j + 1].getAttribute(
@@ -361,7 +362,7 @@ pagespeed.Mob.Nav.prototype.addMenuButtonEvents_ = function() {
       e.stopPropagation();
       e.preventDefault();
     }
-  }, /* useCapture */ true);
+  }.bind(this), /* useCapture */ true);
 };
 
 
