@@ -23,9 +23,13 @@
 #include <vector>
 
 #include "net/instaweb/rewriter/static_asset_config.pb.h"
+#include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/thread_annotations.h"
+#include "pagespeed/kernel/base/thread_system.h"
 
 namespace net_instaweb {
 
@@ -53,6 +57,7 @@ class StaticAssetManager {
   };
 
   StaticAssetManager(const GoogleString& static_asset_base,
+                     ThreadSystem* threads,
                      Hasher* hasher,
                      MessageHandler* message_handler);
 
@@ -95,9 +100,9 @@ class StaticAssetManager {
   // These methods should be called after calling
   // set_server_asset_from_gstatic(true).
   void set_serve_asset_from_gstatic(bool serve_asset_from_gstatic) {
+    ScopedMutex write_lock(lock_.get());
     serve_asset_from_gstatic_ = serve_asset_from_gstatic;
   }
-
 
   // If serve_asset_from_gstatic is true, uses information in config to
   // set up serving urls.
@@ -109,11 +114,13 @@ class StaticAssetManager {
 
   // Set the prefix for the URLs of assets.
   void set_library_url_prefix(const StringPiece& url_prefix) {
+    ScopedMutex write_lock(lock_.get());
     url_prefix.CopyToString(&library_url_prefix_);
     InitializeAssetUrls();
   }
 
   void set_static_asset_base(const StringPiece& x) {
+    ScopedMutex write_lock(lock_.get());
     x.CopyToString(&static_asset_base_);
     InitializeAssetUrls();
   }
@@ -125,20 +132,21 @@ class StaticAssetManager {
       FileNameToModuleMap;
 
   void InitializeAssetStrings();
-  void InitializeAssetUrls();
+  void InitializeAssetUrls() EXCLUSIVE_LOCKS_REQUIRED(lock_);
 
   GoogleString static_asset_base_;
   // Set in the constructor, this class does not own the following objects.
   Hasher* hasher_;
   MessageHandler* message_handler_;
 
-  std::vector<Asset*> assets_;
-  FileNameToModuleMap file_name_to_module_map_;
+  scoped_ptr<ThreadSystem::RWLock> lock_;
+  std::vector<Asset*> assets_ GUARDED_BY(lock_);
+  FileNameToModuleMap file_name_to_module_map_ GUARDED_BY(lock_);
 
-  bool serve_asset_from_gstatic_;
-  GoogleString library_url_prefix_;
-  GoogleString cache_header_with_long_ttl_;
-  GoogleString cache_header_with_private_ttl_;
+  bool serve_asset_from_gstatic_ GUARDED_BY(lock_);
+  GoogleString library_url_prefix_ GUARDED_BY(lock_);
+  GoogleString cache_header_with_long_ttl_ GUARDED_BY(lock_);
+  GoogleString cache_header_with_private_ttl_ GUARDED_BY(lock_);
 
   DISALLOW_COPY_AND_ASSIGN(StaticAssetManager);
 };

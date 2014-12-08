@@ -107,11 +107,13 @@ struct StaticAssetManager::Asset {
 
 StaticAssetManager::StaticAssetManager(
     const GoogleString& static_asset_base,
+    ThreadSystem* threads,
     Hasher* hasher,
     MessageHandler* message_handler)
     : static_asset_base_(static_asset_base),
       hasher_(hasher),
       message_handler_(message_handler),
+      lock_(threads->NewRWLock()),
       serve_asset_from_gstatic_(false),
       library_url_prefix_(kDefaultLibraryUrlPrefix) {
   InitializeAssetStrings();
@@ -135,6 +137,7 @@ StaticAssetManager::~StaticAssetManager() {
 
 const GoogleString& StaticAssetManager::GetAssetUrl(
     StaticAssetEnum::StaticAsset module, const RewriteOptions* options) const {
+  ThreadSystem::ScopedReader read_lock(lock_.get());
   return options->Enabled(RewriteOptions::kDebug) ?
       assets_[module]->debug_url :
       assets_[module]->opt_url;
@@ -147,8 +150,12 @@ void StaticAssetManager::SetGStaticHashForTest(
   StaticAssetConfig config;
   StaticAssetConfig::Asset* asset_conf = config.add_asset();
   asset_conf->set_role(module);
-  asset_conf->set_name(StrCat(assets_[module]->file_name,
-                              assets_[module]->content_type.file_extension()));
+  {
+    ThreadSystem::ScopedReader read_lock(lock_.get());  // read from assets_
+    asset_conf->set_name(
+        StrCat(assets_[module]->file_name,
+               assets_[module]->content_type.file_extension()));
+  }
   asset_conf->set_debug_hash(hash);
   asset_conf->set_opt_hash(hash);
   ApplyGStaticConfiguration(gstatic_base, config, kInitialConfiguration);
@@ -157,6 +164,7 @@ void StaticAssetManager::SetGStaticHashForTest(
 void StaticAssetManager::ApplyGStaticConfiguration(
     const GoogleString& gstatic_base, const StaticAssetConfig& config,
     ConfigurationMode mode) {
+  ScopedMutex write_lock(lock_.get());
   if (!serve_asset_from_gstatic_) {
     return;
   }
@@ -181,6 +189,7 @@ void StaticAssetManager::ApplyGStaticConfiguration(
 }
 
 void StaticAssetManager::InitializeAssetStrings() {
+  ScopedMutex write_lock(lock_.get());
   assets_.resize(StaticAssetEnum::StaticAsset_ARRAYSIZE);
   for (std::vector<Asset*>::iterator it = assets_.begin();
        it != assets_.end(); ++it) {
@@ -337,6 +346,7 @@ void StaticAssetManager::InitializeAssetUrls() {
 
 const char* StaticAssetManager::GetAsset(
     StaticAssetEnum::StaticAsset module, const RewriteOptions* options) const {
+  ThreadSystem::ScopedReader read_lock(lock_.get());
   CHECK(StaticAssetEnum::StaticAsset_IsValid(module));
   return options->Enabled(RewriteOptions::kDebug) ?
       assets_[module]->js_debug.c_str() :
@@ -390,6 +400,7 @@ bool StaticAssetManager::GetAsset(StringPiece file_name,
                                              strlen("_debug"));
   }
 
+  ThreadSystem::ScopedReader read_lock(lock_.get());
   FileNameToModuleMap::const_iterator p =
       file_name_to_module_map_.find(plain_file_name);
   if (p != file_name_to_module_map_.end()) {

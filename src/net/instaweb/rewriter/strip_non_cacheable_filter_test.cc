@@ -125,7 +125,7 @@ TEST_F(StripNonCacheableFilterTest, StripNonCacheable) {
 
 TEST_F(StripNonCacheableFilterTest, TestGstatic) {
   StaticAssetManager static_asset_manager(
-      "", server_context()->hasher(),
+      "", server_context()->thread_system(), server_context()->hasher(),
       server_context()->message_handler());
   static_asset_manager.set_serve_asset_from_gstatic(true);
   static_asset_manager.SetGStaticHashForTest(

@@ -42,6 +42,7 @@ class StaticAssetManagerTest : public RewriteTestBase {
  protected:
   StaticAssetManagerTest() {
     manager_.reset(new StaticAssetManager("http://proxy-domain",
+                                          server_context()->thread_system(),
                                           server_context()->hasher(),
                                           server_context()->message_handler()));
   }

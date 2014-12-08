@@ -29,6 +29,7 @@
 #include "net/instaweb/rewriter/public/beacon_critical_line_info_finder.h"
 #include "net/instaweb/rewriter/public/critical_css_finder.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
+#include "net/instaweb/rewriter/public/critical_line_info_finder.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/device_properties.h"
 #include "net/instaweb/rewriter/public/experiment_matcher.h"
@@ -63,6 +64,7 @@
 #include "pagespeed/kernel/thread/scheduler.h"
 #include "pagespeed/kernel/util/file_system_lock_manager.h"
 #include "pagespeed/kernel/util/nonce_generator.h"
+#include "pagespeed/opt/http/property_cache.h"
 
 namespace net_instaweb {
 
@@ -73,8 +75,6 @@ const int kWebpQualityArray[] = {20, 35, 50, 70, 85};
 const int kJpegQualityArray[] = {30, 50, 65, 80, 90};
 
 }  // namespace
-
-class Statistics;
 
 RewriteDriverFactory::RewriteDriverFactory(
     const ProcessContext& process_context, ThreadSystem* thread_system)
@@ -368,6 +368,7 @@ UserAgentMatcher* RewriteDriverFactory::DefaultUserAgentMatcher() {
 
 StaticAssetManager* RewriteDriverFactory::DefaultStaticAssetManager() {
   return new StaticAssetManager(url_namer()->proxy_domain(),
+                                thread_system(),
                                 hasher(),
                                 message_handler());
 }

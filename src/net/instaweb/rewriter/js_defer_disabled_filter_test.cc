@@ -181,6 +181,7 @@ TEST_F(JsDeferDisabledFilterTest, DisAllowMobileUserAgent) {
 
 TEST_F(JsDeferDisabledFilterTest, TestDeferJsUrlFromGStatic) {
   StaticAssetManager static_asset_manager("",
+                                          server_context()->thread_system(),
                                           server_context()->hasher(),
                                           server_context()->message_handler());
   static_asset_manager.set_serve_asset_from_gstatic(true);
