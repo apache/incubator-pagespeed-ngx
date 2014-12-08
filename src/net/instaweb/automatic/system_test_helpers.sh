@@ -239,6 +239,19 @@ function run_test() {
   fi
 }
 
+# This function expects to be run in the background and then killed when we know
+# how the test finished.
+function tail_while_waiting() {
+  local test_name="$1"
+  local test_log="$2"
+
+  # In case it's already done or nearly done, don't print anything.
+  sleep 1
+  echo "Still waiting for $test_name"
+  echo "tail -f $test_log"
+  tail -f "$test_log"
+}
+
 function wait_for_async_tests {
   if ! $RUN_TESTS_IN_BACKGROUND; then
     return # Nothing to do.
@@ -250,12 +263,22 @@ function wait_for_async_tests {
   for pid in "${BACKGROUND_TEST_PIDS[@]}"; do
     # We can't just use the 0-arg version of wait because it won't aggregate the
     # exit codes.
+
+    local test_name="${BACKGROUND_TEST_NAMES[$pid]}"
+    local test_log="$ORIGINAL_TEMPDIR/${BACKGROUND_TEST_NAMES[$pid]}.log"
+
+    tail_while_waiting "$test_name" "$test_log" &
+    local tail_pid=$!
+
     if ! wait $pid; then
       echo
       echo "Test ${BACKGROUND_TEST_NAMES[$pid]} (PID $pid) failed:"
       cat "$ORIGINAL_TEMPDIR/${BACKGROUND_TEST_NAMES[$pid]}.log"
       failed_pids+=($pid)
     fi
+
+    kill $tail_pid
+    wait $! 2> /dev/null || true  # Suppress "terminated" message from bash.
   done
 
   # If any failed, print the names of the log files that have more details.
