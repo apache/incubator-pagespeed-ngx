@@ -46,7 +46,10 @@ class DecisionTree {
     double confidence;
     const Node* left;
     const Node* right;
-    bool IsLeafNode() const { return (left == NULL && right == NULL); }
+    // Nodes must be strictly binary.  Out of an excess of caution we
+    // consider any node with a single child to be a leaf, as that avoids
+    // crashes in Predict(...).
+    bool IsLeafNode() const { return (left == NULL || right == NULL); }
   };
 
   // The nodes variable is expected to be statically allocated in the code, and

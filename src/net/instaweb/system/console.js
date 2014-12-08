@@ -451,13 +451,15 @@ pagespeed.Console.prototype.drawGraphsFromJsonData = function(data) {
              * @param {string} name  variable name.
              * @return {number}  Variable value at timestamp j.
              */
-            return function(name) {
+            var fn = function(name) {
               if (name in variables) {
                 return variables[name][j];
               } else {
                 pagespeed.error('JSON data missing required variable.');
+                return 0;
               }
-            }
+            };
+            return fn;
           }(this.variables_)));
     }
     this.graphs_[i].overallPercent = statTimeSeries[statTimeSeries.length - 1];
