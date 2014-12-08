@@ -63,6 +63,8 @@ if [ "${RUN_TESTS_ASYNC:-on}" = "on" ]; then
 else
   RUN_TESTS_IN_BACKGROUND=false
 fi
+# TODO(jefftk): get this less flaky and turn background testing back on.
+RUN_TESTS_IN_BACKGROUND=false
 
 PARALLEL_MAX=20  # How many tests should be allowed to run in parallel.
 
