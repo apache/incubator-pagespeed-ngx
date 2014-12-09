@@ -293,6 +293,17 @@ inline bool IsRoleValid(MobileRole::Level role) {
   return role < MobileRole::kInvalid;
 }
 
+// A *simple* ASCII-only capitalization function for known lower-case strings.
+// Used for output, or this would be the slow way to accomplish this task.
+GoogleString Capitalize(StringPiece s) {
+  GoogleString result;
+  s.CopyToString(&result);
+  if (!result.empty()) {
+    result[0] = UpperChar(result[0]);
+  }
+  return result;
+}
+
 }  // namespace
 
 ElementSample::ElementSample(int relevant_tag_depth, int tag_count,
@@ -344,7 +355,7 @@ GoogleString ElementSample::ToString(bool readable, HtmlParse* parser) {
     StrAppend(
         &sample_string,
         StringPrintf("%srole%s: %s%s%s, ",
-                     q, q, q, MobileRoleData::kMobileRoles[role].value, q));
+                     q, q, q, MobileRoleData::StringFromLevel(role), q));
   }
   StrAppend(
       &sample_string,
@@ -430,8 +441,7 @@ GoogleString ElementSample::ToString(bool readable, HtmlParse* parser) {
         StrAppend(&sample_string, ", ", substring, ": 1");
       } else {
         StrAppend(&sample_string,
-                  StringPrintf(", 'kHasAttrString + k%c%sAttr': 1",
-                               UpperChar(substring[0]), substring+1));
+                  ", 'kHasAttrString + k", Capitalize(substring), "Attr': 1");
       }
     }
   }
@@ -446,13 +456,28 @@ GoogleString ElementSample::ToString(bool readable, HtmlParse* parser) {
                                tag_c_str, features[kRelevantTagCount + i],
                                tag_c_str, features[kRelevantTagPercent + i]));
       } else {
-        tag[0] = UpperChar(tag[0]);
-        const char* tag_c_str = tag.c_str();
+        GoogleString capitalized = Capitalize(tag);
+        const char* tag_c_str = capitalized.c_str();
         StrAppend(&sample_string,
                   StringPrintf(", 'kRelevantTagCount + k%sTag': %.f"
                                ", 'kRelevantTagPercent + k%sTag': %.f",
                                tag_c_str, features[kRelevantTagCount + i],
                                tag_c_str, features[kRelevantTagPercent + i]));
+      }
+    }
+  }
+  for (int i = 0; i < MobileRole::kMarginal; ++i) {
+    MobileRole::Level role = static_cast<MobileRole::Level>(i);
+    if (features[kParentRoleIs + role] > 0) {
+      const char* role_name = MobileRoleData::StringFromLevel(role);
+      if (readable) {
+        StrAppend(
+            &sample_string,
+            StringPrintf(", parent role is %s", role_name));
+      } else {
+        StrAppend(
+            &sample_string,
+            ", 'kParentRoleIs + MobileRole::k", Capitalize(role_name), "': 1");
       }
     }
   }
@@ -819,6 +844,19 @@ void MobilizeLabelFilter::SanityCheckEndOfDocumentState() {
       CHECK_GE(parent->features[kRelevantTagCount + i],
                sample->features[kRelevantTagCount + i]);
     }
+    for (int i = 0; i < MobileRole::kMarginal; ++i) {
+      MobileRole::Level role = static_cast<MobileRole::Level>(i);
+      if (sample->features[kParentRoleIs + role] != 0) {
+        // Must have been propagated from parent.
+        CHECK_EQ(role, parent->role)
+            << MobileRoleData::StringFromLevel(role);
+      } else if (parent->role == role) {
+        // parent->role must have been set by parent propagation,
+        // so our role must match.
+        CHECK_EQ(role, sample->role)
+            << MobileRoleData::StringFromLevel(role);
+      }
+    }
   }
   global->features[kPreviousTagCount] = 0;
   global->features[kContainedTagCount]--;
@@ -907,6 +945,12 @@ void MobilizeLabelFilter::Label() {
   // Now classify in opening tag order (parents before children)
   for (int i = 1; i < n; ++i) {
     ElementSample* sample = samples_[i];
+    if (sample->parent->role < MobileRole::kMarginal) {
+      // Set appropriate kParentRoleIs feature.  This must be done for all
+      // samples or we can't use the feature for training.  We can't do it until
+      // we get here because the parent node must have been classified.
+      sample->features[kParentRoleIs + sample->parent->role] = 1.0;
+    }
     if (IsRoleValid(sample->role)) {
       // Hand-labeled or HTML5.
       continue;

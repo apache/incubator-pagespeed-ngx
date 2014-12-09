@@ -148,11 +148,11 @@ TEST_F(MobilizeLabelFilterTest, AlreadyLabeled) {
   EXPECT_EQ(2, pages_labeled_->Get());
   EXPECT_EQ(1, pages_role_added_->Get());
   EXPECT_EQ(0, navigational_roles_->Get());
-  EXPECT_EQ(0, header_roles_->Get());
-  EXPECT_EQ(2, content_roles_->Get());
+  EXPECT_EQ(1, header_roles_->Get());
+  EXPECT_EQ(3, content_roles_->Get());
   EXPECT_EQ(0, marginal_roles_->Get());
-  EXPECT_EQ(2, ambiguous_role_labels_->Get());
-  EXPECT_EQ(25, divs_unlabeled_->Get());
+  EXPECT_EQ(1, ambiguous_role_labels_->Get());
+  EXPECT_EQ(23, divs_unlabeled_->Get());
 }
 
 TEST_F(MobilizeLabelFilterTest, Html5TagsInHead) {
@@ -243,11 +243,11 @@ TEST_F(MobilizeLabelFilterTest, TinyCountNbsp) {
 TEST_F(MobilizeLabelFilterTest, ImgInsideAndOutsideA) {
   EnableVerbose();
   const char kOutputHtml[] =
-      "<div role='content' data-mobile-role=\"marginal\">"
+      "<div role='content' data-mobile-role=\"header\">"
       " <img src='a.png'>"
       " <img src='b.jpg'>"
       " <a href='http://theworld.com/'><img src='world.gif'></a></div>"
-      "<!--role: marginal,"
+      "<!--role: header,"
       " ElementTagDepth: 1,"
       " ContainedTagDepth: 3,"       // <a><img></a>
       " ContainedTagRelativeDepth: 2,"
@@ -268,9 +268,9 @@ TEST_F(MobilizeLabelFilterTest, ImgInsideAndOutsideA) {
   EXPECT_EQ(1, pages_labeled_->Get());
   EXPECT_EQ(1, pages_role_added_->Get());
   EXPECT_EQ(0, navigational_roles_->Get());
-  EXPECT_EQ(0, header_roles_->Get());
+  EXPECT_EQ(1, header_roles_->Get());
   EXPECT_EQ(0, content_roles_->Get());
-  EXPECT_EQ(1, marginal_roles_->Get());
+  EXPECT_EQ(0, marginal_roles_->Get());
   EXPECT_EQ(0, ambiguous_role_labels_->Get());
   EXPECT_EQ(0, divs_unlabeled_->Get());
 }
@@ -540,7 +540,8 @@ TEST_F(MobilizeLabelFilterTest, NavInsideHeader) {
       " li count: 3,"
       " li percent: 100.00,"
       " ul count: 1,"
-      " ul percent: 100.00-->\n"
+      " ul percent: 100.00,"
+      " parent role is header-->\n"
       " </header>"
       "<!--role: header,"
       " ElementTagDepth: 1,"
@@ -619,7 +620,8 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedContentBytes: 9,"
       " ContainedNonBlankBytes: 9,"
       " ContainedNonAContentBytes: 9,"
-      " div count: 1-->\n"
+      " div count: 1,"
+      " parent role is navigational-->\n"
       "</nav>"
       "<!--role: navigational,"
       " ElementTagDepth: 1,"
@@ -664,7 +666,8 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedContentBytes: 9,"
       " ContainedNonBlankBytes: 9,"
       " ContainedNonAContentBytes: 9,"
-      " section count: 1-->\n"
+      " section count: 1,"
+      " parent role is content-->\n"
       "    </article>"
       "<!--ElementTagDepth: 3,"
       " PreviousTagCount: 7,"
@@ -675,7 +678,8 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedNonBlankBytes: 9,"
       " ContainedNonAContentBytes: 9,"
       " div count: 1,"
-      " section count: 1-->\n"
+      " section count: 1,"
+      " parent role is content-->\n"
       "  </main>"
       "<!--ElementTagDepth: 2,"
       " PreviousTagCount: 6,"
@@ -686,7 +690,8 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedNonBlankBytes: 16,"
       " ContainedNonAContentBytes: 16,"
       " div count: 2,"
-      " section count: 1-->\n"
+      " section count: 1,"
+      " parent role is content-->\n"
       "  <article>also labeled</article>"
       "<!--ElementTagDepth: 2,"
       " PreviousTagCount: 9,"
@@ -696,7 +701,8 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedContentBytes: 12,"
       " ContainedNonBlankBytes: 11,"
       " ContainedNonAContentBytes: 12,"
-      " div count: 1-->\n"
+      " div count: 1,"
+      " parent role is content-->\n"
       "  <section>this too\n"
       "    <aside data-mobile-role=\"marginal\">and this, it differs.</aside>"
       "<!--role: marginal,"
@@ -708,7 +714,8 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedContentBytes: 21,"
       " ContainedNonBlankBytes: 18,"
       " ContainedNonAContentBytes: 21,"
-      " div count: 1-->\n"
+      " div count: 1,"
+      " parent role is content-->\n"
       "  </section>"
       "<!--ElementTagDepth: 2,"
       " PreviousTagCount: 10,"
@@ -719,7 +726,8 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedNonBlankBytes: 25,"
       " ContainedNonAContentBytes: 29,"
       " div count: 1,"
-      " section count: 1-->\n"
+      " section count: 1,"
+      " parent role is content-->\n"
       "</div>"
       "<!--role: content,"
       " ElementTagDepth: 1,"
@@ -807,10 +815,10 @@ TEST_F(MobilizeLabelFilterTest, LargeUnlabeled) {
   EXPECT_EQ(1, pages_role_added_->Get());
   EXPECT_EQ(2, navigational_roles_->Get());
   EXPECT_EQ(1, header_roles_->Get());
-  EXPECT_EQ(1, content_roles_->Get());
+  EXPECT_EQ(2, content_roles_->Get());
   EXPECT_EQ(1, marginal_roles_->Get());
-  EXPECT_EQ(2, ambiguous_role_labels_->Get());
-  EXPECT_EQ(33, divs_unlabeled_->Get());
+  EXPECT_EQ(3, ambiguous_role_labels_->Get());
+  EXPECT_EQ(32, divs_unlabeled_->Get());
 }
 
 }  // namespace

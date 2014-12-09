@@ -154,6 +154,12 @@ enum MobileAttrSubstring {
 // * ContainedA / ContainedNonA statistics count occurrences that are nested
 //   inside <a> tags vs not nested inside <a> tags.  LocalPercent is the ratio
 //   of ContainedA / (ContainedA+ContainedNonA).
+// * ParentRoleIs tracks the role of the parent of an element.  Only
+//   kNavigational, kContent, and kHeader are classified; kMarginal is only
+//   assigned after the fact to nodes with no otherwise-classified children.  We
+//   actually train the classifiers looking only at the signals *different* from
+//   the signal being trained, since parent->child propagation will assign the
+//   parent's role to us automatically if no other role is assigned.
 enum FeatureName {
   kElementTagDepth = 0,
   kPreviousTagCount,
@@ -180,7 +186,7 @@ enum FeatureName {
   kRelevantTagCount = kHasAttrString + kNumAttrStrings,
   kRelevantTagPercent = kRelevantTagCount + kNumRelevantTags,
   kParentRoleIs = kRelevantTagPercent + kNumRelevantTags,
-  kNumFeatures = kParentRoleIs + MobileRole::kUnassigned
+  kNumFeatures = kParentRoleIs + MobileRole::kMarginal
 };
 
 // Forward declarations for the machine-generated decision trees used by
