@@ -203,6 +203,66 @@
       'includes': ['../net/instaweb/data2c.gypi']
     },
 
+
+    # TODO(jmarantz): Figure out how to factor out this boilerplate from
+    # the similar lines above for mobilize_nav.
+    {
+      'target_name': 'mobilize_xhr_js_dbg',
+      'variables': {
+        'js_dir': 'opt/mobilize',
+        'closure_build_type': 'dbg',
+        'extra_closure_flags': [
+          '--closure_entry_point=pagespeed.XhrHijack',
+          '--js', '<(instaweb_root)/third_party/closure_library',
+          '--only_closure_dependencies',
+          '--externs=opt/mobilize/externs.js',
+          '--warning_level=VERBOSE',
+        ],
+      },
+      'sources': ['opt/mobilize/mobilize_xhr.js'],
+      'includes': ['../net/instaweb/closure.gypi',],
+    },
+    {
+      'target_name': 'mobilize_xhr_js_opt',
+      'variables': {
+        'js_dir': 'opt/mobilize',
+        'extra_closure_flags': [
+          '--closure_entry_point=pagespeed.XhrHijack',
+          '--js', '<(instaweb_root)/third_party/closure_library',
+          '--only_closure_dependencies',
+          '--externs=opt/mobilize/externs.js',
+          '--warning_level=VERBOSE',
+        ],
+      },
+      'sources': ['opt/mobilize/mobilize_xhr.js'],
+      'includes': ['../net/instaweb/closure.gypi'],
+    },
+
+    {
+      'target_name': 'instaweb_mobilize_xhr_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'pagespeed/opt/mobilize',
+        'instaweb_js_subdir': '<(compiled_js_dir)/opt/mobilize',
+        'var_name': 'mobilize_xhr',
+      },
+      'sources': [
+        '<(compiled_js_dir)/opt/mobilize/mobilize_xhr_dbg.js',
+      ],
+      'includes': ['../net/instaweb/data2c.gypi']
+    },
+    {
+      'target_name': 'instaweb_mobilize_xhr_opt_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'pagespeed/opt/mobilize',
+        'instaweb_js_subdir': '<(compiled_js_dir)/opt/mobilize',
+        'var_name': 'mobilize_xhr_opt',
+      },
+      'sources': [
+        '<(compiled_js_dir)/opt/mobilize/mobilize_xhr_opt.js',
+      ],
+      'includes': ['../net/instaweb/data2c.gypi']
+    },
+
   ]
 }
 

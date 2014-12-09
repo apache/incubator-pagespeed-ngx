@@ -27,7 +27,6 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
-#include "net/instaweb/rewriter/static_asset_config.pb.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
@@ -241,6 +240,30 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
           HtmlElement::SINGLE_QUOTE);
       driver()->InsertNodeAfterCurrent(added_viewport_element);
 
+      if (use_js_layout_) {
+        // Hijack XHR early so that we don't miss mobilizing any responses.
+        // TODO(jmarantz): Move this block to inject before the first script.
+        if (rewrite_js_) {
+          StaticAssetManager* manager =
+              driver()->server_context()->static_asset_manager();
+          StringPiece js = manager->GetAsset(StaticAssetEnum::MOBILIZE_XHR_JS,
+                                             driver()->options());
+          driver()->InsertScriptAfterCurrent(js, false);
+        } else {
+          driver()->InsertScriptAfterCurrent(
+              "var CLOSURE_UNCOMPILED_DEFINES = "
+              "{'goog.ENABLE_DEBUG_LOADER': false};",
+              false);
+          // Include the base closure file to allow goog.provide
+          // etc to work.
+          driver()->InsertScriptAfterCurrent(
+              StrCat(static_file_prefix_, "goog/base.js"), true);
+          GoogleString script_path = StrCat(
+              static_file_prefix_, "mobilize_xhr.js");
+          driver()->InsertScriptAfterCurrent(script_path, true);
+        }
+      }
+
       /*
       HtmlElement* progress_script = driver()->NewElement(
           element->parent(),
@@ -336,15 +359,6 @@ void MobilizeRewriteFilter::EndElementImpl(HtmlElement* element) {
         if (!added_mob_js_) {
           added_mob_js_ = true;
 
-          if (use_js_layout_ && !rewrite_js_) {
-            // Include the base closure file to allow goog.provide
-            // etc to work.
-            driver()->InsertScriptBeforeCurrent(
-                "var CLOSURE_UNCOMPILED_DEFINES = "
-                "{'goog.ENABLE_DEBUG_LOADER': false};",
-                false);
-            AddStaticScript("goog/base.js");
-          }
           if (use_js_nav_) {
             HtmlElement* script =
                 driver()->NewElement(element->parent(), HtmlName::kScript);
@@ -364,7 +378,6 @@ void MobilizeRewriteFilter::EndElementImpl(HtmlElement* element) {
               AddStaticScript("mob_jsc.js");
             } else {
               AddStaticScript("mob_util.js");
-              AddStaticScript("mob_xhr.js");
               AddStaticScript("mob_layout.js");
               AddStaticScript("mob.js");
             }

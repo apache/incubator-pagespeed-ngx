@@ -1567,6 +1567,8 @@
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_http',
         '<(DEPTH)/pagespeed/opt.gyp:instaweb_mobilize_nav_data2c',
         '<(DEPTH)/pagespeed/opt.gyp:instaweb_mobilize_nav_opt_data2c',
+        '<(DEPTH)/pagespeed/opt.gyp:instaweb_mobilize_xhr_data2c',
+        '<(DEPTH)/pagespeed/opt.gyp:instaweb_mobilize_xhr_opt_data2c',
         '<(DEPTH)/pagespeed/opt.gyp:pagespeed_ads_util',
         '<(DEPTH)/third_party/css_parser/css_parser.gyp:css_parser',
       ],
