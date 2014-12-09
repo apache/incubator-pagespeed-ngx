@@ -24,7 +24,6 @@
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
-#include "net/instaweb/rewriter/static_asset_config.pb.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
@@ -50,7 +49,11 @@ const char kStyles[] =
     "<link rel=\"stylesheet\" href=\"mob_nav.css\">";
 const char kHeadAndViewport[] =
     "<script>var psDebugMode=false;</script>"
-    "<meta name='viewport' content='width=device-width'/>";
+    "<meta name='viewport' content='width=device-width'/>"
+    "<script>var CLOSURE_UNCOMPILED_DEFINES = "
+    "{'goog.ENABLE_DEBUG_LOADER': false};</script>"
+    "<script src=\"goog/base.js\"></script>"
+    "<script src=\"mobilize_xhr.js\"></script>";
 
 }  // namespace
 
@@ -105,18 +108,14 @@ class MobilizeRewriteFilterTest : public RewriteTestBase {
     filter_->added_progress_ = added;
   }
 
-  GoogleString ScriptHtml() {
+  GoogleString ScriptsAtEndOfBody() {
     return StrCat(
-        "<script>var CLOSURE_UNCOMPILED_DEFINES = "
-        "{'goog.ENABLE_DEBUG_LOADER': false};</script>"
-        "<script src=\"goog/base.js\"></script>"
         "<script type=\"text/javascript\">",
         server_context()->static_asset_manager()->GetAsset(
             StaticAssetEnum::MOBILIZE_NAV_JS, options()),
         "</script>"
         "<script src=\"mob_logo.js\"></script>"
         "<script src=\"mob_util.js\"></script>"
-        "<script src=\"mob_xhr.js\"></script>"
         "<script src=\"mob_layout.js\"></script>"
         "<script src=\"mob.js\"></script>");
   }
@@ -227,7 +226,7 @@ class MobilizeRewriteFunctionalTest : public MobilizeRewriteFilterTest {
     GoogleString original =
         StrCat("<body>", original_body, "</body>");
     GoogleString expected =
-        StrCat("<body>", expected_mid_body, ScriptHtml(), "</body>");
+        StrCat("<body>", expected_mid_body, ScriptsAtEndOfBody(), "</body>");
     ValidateExpected(name, original, expected);
     CheckVariable(MobilizeRewriteFilter::kPagesMobilized, 1);
   }
@@ -251,7 +250,7 @@ class MobilizeRewriteFunctionalTest : public MobilizeRewriteFilterTest {
     GoogleString original =
         StrCat("<body>", first_body,
                "</body><body>", second_body, "</body>");
-    GoogleString expected = StrCat("<body>", first_body, ScriptHtml(),
+    GoogleString expected = StrCat("<body>", first_body, ScriptsAtEndOfBody(),
                                    "</body><body>", second_body, "</body>");
     ValidateExpected(name, original, expected);
     CheckVariable(MobilizeRewriteFilter::kPagesMobilized, 1);
@@ -289,7 +288,7 @@ TEST_F(MobilizeRewriteFunctionalTest, HeadLinksUnmodified) {
 }
 
 TEST_F(MobilizeRewriteFunctionalTest, EmptyBody) {
-  GoogleString expected = StrCat("<body>", ScriptHtml(), "</body>");
+  GoogleString expected = StrCat("<body>", ScriptsAtEndOfBody(), "</body>");
   ValidateExpected("empty_body",
                    "<body></body>", expected);
   CheckVariable(MobilizeRewriteFilter::kPagesMobilized, 1);
@@ -314,7 +313,7 @@ TEST_F(MobilizeRewriteFunctionalTest, EmptyBodyWithProgress) {
       "<div class=\"psProgressBar\">"
       "<span id=\"ps-progress-span\" class=\"psProgressSpan\"></span>"
       "</div><pre id=\"ps-progress-log\" class=\"psProgressLog\"/></div>",
-      ScriptHtml(), "</body>");
+      ScriptsAtEndOfBody(), "</body>");
   ValidateExpected("empty_body_with_progress",
                    "<body></body>", expected);
   CheckVariable(MobilizeRewriteFilter::kPagesMobilized, 1);
@@ -463,7 +462,9 @@ TEST_F(MobilizeRewriteEndToEndTest, FullPage) {
       StrCat(GTestSrcDir(), kTestDataDir, kRewritten);
   ASSERT_TRUE(filesystem_.ReadFile(rewritten_filename.c_str(),
                                    &rewritten_buffer, message_handler()));
-  GlobalReplaceSubstring("@@TRAILING_SCRIPT_LOADS@@", ScriptHtml(),
+  GlobalReplaceSubstring("@@HEAD_SCRIPT_LOADS@@", kHeadAndViewport,
+                         &rewritten_buffer);
+  GlobalReplaceSubstring("@@TRAILING_SCRIPT_LOADS@@", ScriptsAtEndOfBody(),
                          &rewritten_buffer);
   rewrite_driver()->SetUserAgent(
       UserAgentMatcherTestBase::kAndroidChrome21UserAgent);
@@ -478,13 +479,15 @@ TEST_F(MobilizeRewriteEndToEndTest, NonMobile) {
   ASSERT_TRUE(filesystem_.ReadFile(original_filename.c_str(), &original_buffer,
                                    message_handler()));
   // We don't particularly care for the moment if the labeler runs and annotates
-  // the page.
+  // the page, or if add-ids adds ids.
   GoogleString expected_buffer(original_buffer);
   GlobalEraseBracketedSubstring(" data-mobile-role=\"", "\"", &expected_buffer);
+  GlobalEraseBracketedSubstring(" id=\"PageSpeed-", "\"", &expected_buffer);
   rewrite_driver()->SetUserAgent(
       UserAgentMatcherTestBase::kChrome37UserAgent);
   Parse("EndToEndNonMobile", original_buffer);
   GlobalEraseBracketedSubstring(" data-mobile-role=\"", "\"", &output_buffer_);
+  GlobalEraseBracketedSubstring(" id=\"PageSpeed-", "\"", &output_buffer_);
   EXPECT_STREQ(expected_buffer, output_buffer_);
 }
 

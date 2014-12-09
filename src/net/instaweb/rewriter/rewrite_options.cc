@@ -712,6 +712,8 @@ const RewriteOptions::FilterEnumToIdAndNameEntry
     "ab", "Add Base Tag" },
   { RewriteOptions::kAddHead,
     "ah", "Add Head" },
+  { RewriteOptions::kAddIds,
+    "ad", "Add Ids" },
   { RewriteOptions::kAddInstrumentation,
     "ai", "Add Instrumentation" },
   { RewriteOptions::kComputeStatistics,

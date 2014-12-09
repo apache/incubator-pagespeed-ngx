@@ -106,6 +106,7 @@ class RewriteOptions {
   enum Filter {
     kAddBaseTag,  // Update kFirstFilter if you add something before this.
     kAddHead,
+    kAddIds,
     kAddInstrumentation,
     kComputeStatistics,
     kCachePartialHtml,

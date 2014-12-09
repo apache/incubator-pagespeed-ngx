@@ -1,6 +1,6 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en-US">
-<head><script>var psDebugMode=false;</script><meta name='viewport' content='width=device-width'/>
+<head><script>var psDebugMode=false;</script><meta name='viewport' content='width=device-width'/><script>var CLOSURE_UNCOMPILED_DEFINES = {'goog.ENABLE_DEBUG_LOADER': false};</script><script src="goog/base.js"></script><script src="mobilize_xhr.js"></script>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
 <title>Testing the Mobilization Filter</title>
 <meta name="robots" content="index, nofollow"/>
@@ -21,8 +21,8 @@
 <link rel="stylesheet" href="lite.css"><link rel="stylesheet" href="mob_logo.css"><link rel="stylesheet" href="mob_nav.css"></head>
 <body class="custom"><div id="ps-progress-scrim" class="psProgressScrim"><a href="javascript:psRemoveProgressBar();" id="ps-progress-remove" id="ps-progress-show-log">Remove Progress Bar (doesn't stop mobilization)</a><br><a href="javascript:psSetDebugMode();">Show Debug Log In Progress Bar</a><div class="psProgressBar"><span id="ps-progress-span" class="psProgressSpan"></span></div><pre id="ps-progress-log" class="psProgressLog"/></div>
   <div id="nav_area" class="full_width" data-mobile-role="navigational">
-    <div class="page">
-      <ul class="nav_menu">
+    <div class="page" id="PageSpeed-nav_area-0">
+      <ul class="nav_menu" id="PageSpeed-nav_area-0-0">
         <li class="tab"><a href="http://test.com">Home</a></li>
         <li class="tab"><a href="http://test.com/about" title="About">About</a></li>
         <li class="tab"><a href="http://test.com/articles" title="Articles">Articles</a></li>
@@ -35,16 +35,16 @@
     alert('00');
   </script>
   <div id="header_area" class="full_width" data-mobile-role="header">
-    <div class="page" data-mobile-role="content">
+    <div class="page" id="PageSpeed-header_area-0">
       <div id="header">
         <p id="title"><a href="http://test.com/">Mobilize all the Things</a></p>
-        <div>
+        <div id="PageSpeed-header-1">
           <h1 id="author">Foobar</h1>
           <h2 id="date"></h2>
         </div>
       </div>
     </div>
-    <div class="navbar" data-mobile-role="navigational">
+    <div class="navbar" data-mobile-role="navigational" id="PageSpeed-header_area-1">
       <a href="http://test.com/way_cool">Way Cool</a>
       <a href="http://test.com/mondo">Mondo</a>
       <a href="http://test.com/outrageous">Outrageous</a>
@@ -56,13 +56,13 @@
     </script>
   </div>
   <div id="content_area" class="full_width" data-mobile-role="content">
-    <div class="aside" data-mobile-role="marginal">
+    <div class="aside" data-mobile-role="marginal" id="PageSpeed-content_area-0">
       <script>
         document.getElementById("stuff02").innerHTML = "";
         alert('02');
       </script>
-      <form action="http://test.com/form/" method="get" data-mobile-role="content">
-        <ul><li class="widget">
+      <form action="http://test.com/form/" method="get" id="PageSpeed-content_area-0-1" data-mobile-role="content">
+        <ul id="PageSpeed-content_area-0-1-0"><li class="widget">
             <h3>Months</h3>
             <select name="archive" onchange='document.location.href=this.options[this.selectedIndex].value;'>
               <option value="">Select Month</option>
@@ -81,18 +81,18 @@
         </li></ul>
       </form>
     </div>
-    <div class="page" data-mobile-role="content">
+    <div class="page" data-mobile-role="content" id="PageSpeed-content_area-1">
       <div id="content" class="feed">
-        <div class="post type-post status-publish">
-          <div class="headline_area" data-mobile-role="header">
+        <div class="post type-post status-publish" id="PageSpeed-content-0">
+          <div class="headline_area" id="PageSpeed-content-0-0" data-mobile-role="header">
             <h1 class="entry-title">Isn't Mobilization Cool!?</h1>
             <p class="headline_author">
               <span class="author">Foobar</span><br/>
               <abbr class="published" title="2014-01-01">2014-01-01</abbr>
             </p>
           </div>
-          <div class="entry-content">
-            <div class="empty"></div>
+          <div class="entry-content" id="PageSpeed-content-0-1">
+            <div class="empty" id="PageSpeed-content-0-1-0"></div>
             <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur mi est, pulvinar id euismod non, aliquam non dui.<br/>
               Quisque vehicula luctus magna vitae lobortis. Suspendisse lacinia enim nisl. In id euismod augue, at consequat justo
               <a href="http://google.com/" onclick="javascript:alert('');">vestibulum mollis</a> porta leo sed placerat. Aenean consectetur
@@ -123,7 +123,7 @@ int main()
     </div>
   </div>
   <p>Aenean nec lacus ac sapien ultrices placerat non ac sem. Quisque accumsan porta tortor semper egestas.</p>
-  <div class="footer" data-mobile-role="marginal">
+  <div class="footer" data-mobile-role="marginal" id="PageSpeed-6">
     Nulla ac elit sed urna molestie iaculis. Morbi posuere ac libero in fringilla.
     <br><a class="top"></a>
   </div>

@@ -1574,6 +1574,7 @@
       ],
       'sources': [
         'rewriter/add_head_filter.cc',
+        'rewriter/add_ids_filter.cc',
         'rewriter/add_instrumentation_filter.cc',
         'rewriter/base_tag_filter.cc',
         'rewriter/blink_util.cc',

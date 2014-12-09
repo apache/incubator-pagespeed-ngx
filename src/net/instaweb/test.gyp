@@ -94,6 +94,7 @@
         'http/url_async_fetcher_stats_test.cc',
         'http/wait_url_async_fetcher_test.cc',
         'http/write_through_http_cache_test.cc',
+        'rewriter/add_ids_filter_test.cc',
         'rewriter/add_instrumentation_filter_test.cc',
         'rewriter/association_transformer_test.cc',
         'rewriter/base_tag_filter_test.cc',

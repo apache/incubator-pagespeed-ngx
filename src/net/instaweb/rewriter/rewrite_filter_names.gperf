@@ -29,6 +29,7 @@ struct FilterMap {
 # from e.g. query params!) here.
 "add_base_tag",                      RewriteOptions::kAddBaseTag
 "add_head",                          RewriteOptions::kAddHead
+"add_ids",                           RewriteOptions::kAddIds
 "add_instrumentation",               RewriteOptions::kAddInstrumentation
 "cache_partial_html",                RewriteOptions::kCachePartialHtml
 "canonicalize_javascript_libraries", RewriteOptions::kCanonicalizeJavascriptLibraries

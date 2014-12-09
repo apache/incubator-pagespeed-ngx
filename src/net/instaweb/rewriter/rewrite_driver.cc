@@ -44,6 +44,7 @@
 #include "net/instaweb/rewriter/critical_line_info.pb.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/add_head_filter.h"
+#include "net/instaweb/rewriter/public/add_ids_filter.h"
 #include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
 #include "net/instaweb/rewriter/public/base_tag_filter.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
@@ -131,6 +132,7 @@
 #include "net/instaweb/util/public/property_cache.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/callback.h"
+#include "pagespeed/kernel/base/file_system.h"
 #include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/hasher.h"
 #include "pagespeed/kernel/base/message_handler.h"
@@ -224,8 +226,6 @@ class RewriteDriverCacheUrlAsyncFetcherAsyncOpHooks
 };
 
 }  // namespace
-
-class FileSystem;
 
 const char RewriteDriver::kDomCohort[] = "dom";
 const char RewriteDriver::kBeaconCohort[] = "beacon_cohort";
@@ -1002,6 +1002,10 @@ void RewriteDriver::AddPreRenderFilters() {
   }
   if (rewrite_options->Enabled(RewriteOptions::kAddBaseTag)) {
     AddOwnedEarlyPreRenderFilter(new BaseTagFilter(this));
+  }
+  if (rewrite_options->Enabled(RewriteOptions::kAddIds) ||
+      rewrite_options->Enabled(RewriteOptions::kMobilize)) {
+    AddOwnedEarlyPreRenderFilter(new AddIdsFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kStripScripts)) {
     // Experimental filter that blindly strips all scripts from a page.
