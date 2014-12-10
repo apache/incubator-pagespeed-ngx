@@ -70,7 +70,7 @@ extern "C" {
   }
 }
 
-NgxGZipSetter::NgxGZipSetter() : enabled_(0) { }
+NgxGZipSetter::NgxGZipSetter() : enabled_(false), initialized_(false) { }
 NgxGZipSetter::~NgxGZipSetter() { }
 
 // Helper functions to determine signature.
@@ -95,7 +95,7 @@ bool IsNgxBitmaskCommand(ngx_command_t* command) {
           HasLocalConfig(command));
 }
 
-// Initialize the NgxGzipSetter.
+// Initialize the NgxGZipSetter.
 // Find the gzip, gzip_vary, gzip_http_version and gzip_types commands in the
 // gzip module. Enable if the signature of the zip command matches with what we
 // trust. Also sets up redirects for the configurations. These redirect handle
@@ -105,6 +105,16 @@ void NgxGZipSetter::Init(ngx_conf_t* cf) {
 #if (NGX_HTTP_GZIP)
   bool gzip_signature_mismatch = false;
   bool other_signature_mismatch = false;
+  // If we initialized already we don't have to scan again.
+  if (initialized_) {
+    // Config might have changed, so re-enable if we have gzip.
+    if (gzip_command_.command_ != NULL) {
+      enabled_ = true;
+    } else {
+      enabled_ = false;
+    }
+    return;
+  } 
   for (int m = 0; ngx_modules[m] != NULL; m++) {
     if (ngx_modules[m]->commands != NULL) {
       for (int c = 0; ngx_modules[m]->commands[c].name.len; c++) {
@@ -122,7 +132,7 @@ void NgxGZipSetter::Init(ngx_conf_t* cf) {
             current_command->set = ngx_gzip_redirect_conf_set_flag_slot;
             gzip_command_.command_ = current_command;
             gzip_command_.module_ = ngx_modules[m];
-            enabled_ = 1;
+            enabled_ = true;
           } else {
             ngx_conf_log_error(
                 NGX_LOG_WARN, cf, 0,
@@ -189,6 +199,7 @@ void NgxGZipSetter::Init(ngx_conf_t* cf) {
       }
     }
   }
+  initialized_ = true;
   if (gzip_signature_mismatch) {
     return;  // Already logged error.
   } else if (!enabled_) {

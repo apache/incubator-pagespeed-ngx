@@ -91,6 +91,7 @@ class NgxGZipSetter {
   ngx_command_ctx gzip_vary_command_;
   ngx_command_ctx gzip_http_version_command_;
   bool enabled_;
+  bool initialized_;
 
  public:
   NgxGZipSetter();
