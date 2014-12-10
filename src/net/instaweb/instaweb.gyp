@@ -139,6 +139,8 @@
         'js_dir': 'system',
         'closure_build_type': 'dbg',
         'extra_closure_flags': [
+          '--externs=system/js_externs.js',
+          '--externs=<(DEPTH)/third_party/closure/externs/google_visualization_api.js',
           '--js', '<(instaweb_root)/third_party/closure_library',
           '--closure_entry_point', 'pagespeed.Console',
           '--closure_entry_point', 'pagespeed.statistics',
@@ -146,6 +148,7 @@
         ],
       },
       'sources': [ 'system/console.js' ],
+      'js_includes': [ 'system/console_start.js' ],
       'includes': [ 'closure.gypi', ],
     },
     {
@@ -153,6 +156,8 @@
       'variables': {
         'js_dir': 'system',
         'extra_closure_flags': [
+          '--externs=system/js_externs.js',
+          '--externs=<(DEPTH)/third_party/closure/externs/google_visualization_api.js',
           '--js', '<(instaweb_root)/third_party/closure_library',
           '--closure_entry_point', 'pagespeed.Console',
           '--closure_entry_point', 'pagespeed.statistics',
@@ -160,6 +165,7 @@
         ],
       },
       'sources': [ 'system/console.js' ],
+      'js_includes': [ 'system/console_start.js' ],
       'includes': [ 'closure.gypi', ],
     },
 
@@ -229,6 +235,7 @@
         'js_dir': 'system',
         'closure_build_type': 'dbg',
         'extra_closure_flags': [
+          '--externs=<(DEPTH)/third_party/closure/externs/google_visualization_api.js',
           '--closure_entry_point=pagespeed.Graphs',
           '--js', '<(instaweb_root)/third_party/closure_library',
           '--only_closure_dependencies',
@@ -242,6 +249,7 @@
       'variables': {
         'js_dir': 'system',
         'extra_closure_flags': [
+          '--externs=<(DEPTH)/third_party/closure/externs/google_visualization_api.js',
           '--closure_entry_point=pagespeed.Graphs',
           '--js', '<(instaweb_root)/third_party/closure_library',
           '--only_closure_dependencies',

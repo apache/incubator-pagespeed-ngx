@@ -63,6 +63,7 @@
           '--generate_exports',
           '--manage_closure_dependencies',
           '--externs=<(DEPTH)/net/instaweb/js/externs.js',
+          '--warning_level=VERBOSE',
           '<@(extra_closure_flags)',
         ],
         'conditions': [
