@@ -776,6 +776,11 @@ class CriticalSelectorWithBackgroundImageCacheExtensionTest
 // the unoptimized <style> block would be copied to the bottom of the page.
 TEST_F(CriticalSelectorWithBackgroundImageCacheExtensionTest,
        DontMixUnoptAndOptStyles) {
+  // Triggers calling InlineOutputResource::url().
+  options()->ClearSignatureForTesting();
+  options()->set_enable_cache_purge(true);
+  options()->ComputeSignature();
+
   SetResponseWithDefaultHeaders("background.png", kContentTypePng,
                                 "Dummy contents", 100);
   SetResponseWithDefaultHeaders("extern.css", kContentTypeCss,

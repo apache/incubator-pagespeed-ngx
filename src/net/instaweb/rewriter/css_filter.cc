@@ -136,6 +136,13 @@ const char* const kRelatedOptions[] = {
   RewriteOptions::kMaxUrlSize,
 };
 
+bool IsInlineResource(const ResourcePtr& resource) {
+  // InlineOutputResources have no URL, but original inline resources are
+  // stored as DataUrlInputResources, thus have data url()
+  // TODO(sligocki): Harmonize these all to use the same method.
+  return (!resource->has_url() || IsDataUrl(resource->url()));
+}
+
 }  // namespace
 
 const RewriteOptions::Filter* CssFilter::merged_filters_ = NULL;
@@ -212,7 +219,7 @@ CssFilter::Context::~Context() {
 // initials and not be mutated.
 void CssFilter::Context::GetCssBaseUrlToUse(
     const ResourcePtr& input_resource, GoogleUrl* css_base_gurl_to_use) {
-  if (!IsDataUrl(input_resource->url())) {
+  if (!IsInlineResource(input_resource)) {
     css_base_gurl_to_use->Reset(input_resource->url());
   } else {
     css_base_gurl_to_use->Reset(initial_css_base_gurl_);
@@ -223,7 +230,7 @@ void CssFilter::Context::GetCssTrimUrlToUse(
     const ResourcePtr& input_resource,
     const StringPiece& output_url_base,
     GoogleUrl* css_trim_gurl_to_use) {
-  if (!IsDataUrl(input_resource->url())) {
+  if (!IsInlineResource(input_resource)) {
     css_trim_gurl_to_use->Reset(output_url_base);
   } else {
     css_trim_gurl_to_use->Reset(initial_css_trim_gurl_);
@@ -234,7 +241,7 @@ void CssFilter::Context::GetCssTrimUrlToUse(
     const ResourcePtr& input_resource,
     const OutputResourcePtr& output_resource,
     GoogleUrl* css_trim_gurl_to_use) {
-  if (!IsDataUrl(input_resource->url())) {
+  if (!IsInlineResource(input_resource)) {
     css_trim_gurl_to_use->Reset(output_resource->UrlEvenIfHashNotSet());
   } else {
     css_trim_gurl_to_use->Reset(initial_css_trim_gurl_);

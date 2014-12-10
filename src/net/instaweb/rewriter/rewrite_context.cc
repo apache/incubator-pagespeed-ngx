@@ -75,7 +75,6 @@
 #include "pagespeed/kernel/http/data_url.h"
 #include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/http/http_names.h"
-#include "pagespeed/kernel/http/http_options.h"
 #include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/response_headers.h"
 #include "pagespeed/kernel/thread/queued_alarm.h"
@@ -965,7 +964,7 @@ class RewriteContext::FetchContext {
     ResourcePtr input(rewrite_context_->slot(0)->resource());
     handler_->Message(
         kInfo, "Deadline exceeded for rewrite of resource %s with %s.",
-        input->url().c_str(), rewrite_context_->id());
+        input->UrlForDebug().c_str(), rewrite_context_->id());
     FetchFallbackDoneImpl(input->contents(), input->response_headers());
   }
 
@@ -1050,7 +1049,7 @@ class RewriteContext::FetchContext {
           // html-derived rewrites.  We might also want to guard Rewrite-IPRO
           // as well.
           handler_->Message(kWarning, "Rewrite %s failed while fetching %s",
-                            input_resource->url().c_str(),
+                            input_resource->UrlForDebug().c_str(),
                             output_resource_->UrlEvenIfHashNotSet().c_str());
           // TODO(sligocki): Log variable for number of failed rewrites in
           // fetch path.
@@ -1069,11 +1068,10 @@ class RewriteContext::FetchContext {
           ok = rewrite_context_->SendFallbackResponse(
               original_output_url_, contents, async_fetch_, handler_);
         } else {
-          GoogleString url = input_resource->url();
           handler_->Warning(
               output_resource_->name().as_string().c_str(), 0,
               "Resource based on %s but cannot access the original",
-              url.c_str());
+              input_resource->UrlForDebug().c_str());
         }
       }
     }
