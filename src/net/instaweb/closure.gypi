@@ -84,7 +84,7 @@
           ['"<!(echo $BUILD_JS)" != "1"', {
             'action': [
               'cp',
-              'genfiles/<(js_dir)/<(RULE_INPUT_ROOT)_<(closure_build_type).js',
+              '<(DEPTH)/net/instaweb/genfiles/<(js_dir)/<(RULE_INPUT_ROOT)_<(closure_build_type).js',
               '<(compiled_js_dir)/<(js_dir)/<(RULE_INPUT_ROOT)_<(closure_build_type).js',
             ],
           }, {
