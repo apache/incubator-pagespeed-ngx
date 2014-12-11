@@ -151,7 +151,7 @@ TEST_F(MobilizeLabelFilterTest, AlreadyLabeled) {
   EXPECT_EQ(1, header_roles_->Get());
   EXPECT_EQ(3, content_roles_->Get());
   EXPECT_EQ(0, marginal_roles_->Get());
-  EXPECT_EQ(1, ambiguous_role_labels_->Get());
+  EXPECT_EQ(0, ambiguous_role_labels_->Get());
   EXPECT_EQ(23, divs_unlabeled_->Get());
 }
 
@@ -172,9 +172,9 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInHead) {
 TEST_F(MobilizeLabelFilterTest, TinyCount) {
   EnableVerbose();
   const char kOutputHtml[] =
-      "<div role='content' data-mobile-role=\"header\">Hello there,"
+      "<div role='content' data-mobile-role=\"marginal\">Hello there,"
       " <a href='http://theworld.com/'>World</a></div>"
-      "<!--role: header,"
+      "<!--role: marginal,"
       " ElementTagDepth: 1,"
       " ContainedTagDepth: 2,"       // <a> tag
       " ContainedTagRelativeDepth: 1,"
@@ -197,9 +197,9 @@ TEST_F(MobilizeLabelFilterTest, TinyCount) {
   EXPECT_EQ(1, pages_labeled_->Get());
   EXPECT_EQ(1, pages_role_added_->Get());
   EXPECT_EQ(0, navigational_roles_->Get());
-  EXPECT_EQ(1, header_roles_->Get());
+  EXPECT_EQ(0, header_roles_->Get());
   EXPECT_EQ(0, content_roles_->Get());
-  EXPECT_EQ(0, marginal_roles_->Get());
+  EXPECT_EQ(1, marginal_roles_->Get());
   EXPECT_EQ(0, ambiguous_role_labels_->Get());
   EXPECT_EQ(0, divs_unlabeled_->Get());
 }
@@ -207,10 +207,10 @@ TEST_F(MobilizeLabelFilterTest, TinyCount) {
 TEST_F(MobilizeLabelFilterTest, TinyCountNbsp) {
   EnableVerbose();
   const char kOutputHtml[] =
-      "<div role='content' data-mobile-role=\"header\">"
+      "<div role='content' data-mobile-role=\"marginal\">"
       "  &nbsp;Hello&nbsp;there,&nbsp;&nbsp;  "
       " <a href='http://theworld.com/'>World</a></div>"
-      "<!--role: header,"
+      "<!--role: marginal,"
       " ElementTagDepth: 1,"
       " ContainedTagDepth: 2,"       // <a> tag
       " ContainedTagRelativeDepth: 1,"
@@ -233,9 +233,9 @@ TEST_F(MobilizeLabelFilterTest, TinyCountNbsp) {
   EXPECT_EQ(1, pages_labeled_->Get());
   EXPECT_EQ(1, pages_role_added_->Get());
   EXPECT_EQ(0, navigational_roles_->Get());
-  EXPECT_EQ(1, header_roles_->Get());
+  EXPECT_EQ(0, header_roles_->Get());
   EXPECT_EQ(0, content_roles_->Get());
-  EXPECT_EQ(0, marginal_roles_->Get());
+  EXPECT_EQ(1, marginal_roles_->Get());
   EXPECT_EQ(0, ambiguous_role_labels_->Get());
   EXPECT_EQ(0, divs_unlabeled_->Get());
 }
@@ -442,7 +442,8 @@ TEST_F(MobilizeLabelFilterTest, SmallCountNav) {
       " li count: 3,"
       " li percent: 100.00,"
       " ul count: 1,"
-      " ul percent: 100.00-->\n"
+      " ul percent: 100.00,"
+      " parent role is navigational-->\n"
       " </div>"
       "<!--ElementTagDepth: 2,"
       " PreviousTagCount: 2,"
@@ -814,11 +815,11 @@ TEST_F(MobilizeLabelFilterTest, LargeUnlabeled) {
   EXPECT_EQ(2, pages_labeled_->Get());
   EXPECT_EQ(1, pages_role_added_->Get());
   EXPECT_EQ(2, navigational_roles_->Get());
-  EXPECT_EQ(1, header_roles_->Get());
+  EXPECT_EQ(2, header_roles_->Get());
   EXPECT_EQ(2, content_roles_->Get());
   EXPECT_EQ(1, marginal_roles_->Get());
-  EXPECT_EQ(3, ambiguous_role_labels_->Get());
-  EXPECT_EQ(32, divs_unlabeled_->Get());
+  EXPECT_EQ(0, ambiguous_role_labels_->Get());
+  EXPECT_EQ(31, divs_unlabeled_->Get());
 }
 
 }  // namespace

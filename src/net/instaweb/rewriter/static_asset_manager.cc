@@ -118,7 +118,7 @@ StaticAssetManager::StaticAssetManager(
       hasher_(hasher),
       message_handler_(message_handler),
       lock_(threads->NewRWLock()),
-      serve_assets_from_gstatic_(false),
+      serve_asset_from_gstatic_(false),
       library_url_prefix_(kDefaultLibraryUrlPrefix) {
   InitializeAssetStrings();
 
@@ -148,7 +148,8 @@ const GoogleString& StaticAssetManager::GetAssetUrl(
 }
 
 void StaticAssetManager::SetGStaticHashForTest(
-    StaticAssetEnum::StaticAsset module, const GoogleString& hash) {
+    StaticAssetEnum::StaticAsset module, const GoogleString& gstatic_base,
+    const GoogleString& hash) {
   CHECK(!hash.empty());
   StaticAssetConfig config;
   StaticAssetConfig::Asset* asset_conf = config.add_asset();
@@ -161,46 +162,14 @@ void StaticAssetManager::SetGStaticHashForTest(
   }
   asset_conf->set_debug_hash(hash);
   asset_conf->set_opt_hash(hash);
-  ApplyGStaticConfiguration(config, kInitialConfiguration);
+  ApplyGStaticConfiguration(gstatic_base, config, kInitialConfiguration);
 }
 
 void StaticAssetManager::ApplyGStaticConfiguration(
-    const StaticAssetConfig& config,
+    const GoogleString& gstatic_base, const StaticAssetConfig& config,
     ConfigurationMode mode) {
   ScopedMutex write_lock(lock_.get());
-  if (mode == kInitialConfiguration) {
-    initial_gstatic_config_.reset(new StaticAssetConfig);
-    *initial_gstatic_config_ = config;
-    ApplyGStaticConfigurationImpl(*initial_gstatic_config_,
-                                  kInitialConfiguration);
-  } else {
-    // Apply initial + config.
-    CHECK(initial_gstatic_config_.get() != NULL);
-    StaticAssetConfig merged_config = *initial_gstatic_config_;
-    merged_config.set_release_label(config.release_label());
-    for (int i = 0, n = config.asset_size(); i < n; ++i) {
-      const StaticAssetConfig::Asset& in = config.asset(i);
-      StaticAssetConfig::Asset* out = merged_config.add_asset();
-      *out = in;
-    }
-    ApplyGStaticConfigurationImpl(merged_config, kUpdateConfiguration);
-  }
-}
-
-void StaticAssetManager::ResetGStaticConfiguration() {
-  ScopedMutex write_lock(lock_.get());
-  if (initial_gstatic_config_.get() != NULL) {
-    // If there is no initial there is no update, so it's fine to do nothing
-    // in the other case.
-    ApplyGStaticConfigurationImpl(*initial_gstatic_config_,
-                                  kInitialConfiguration);
-  }
-}
-
-void StaticAssetManager::ApplyGStaticConfigurationImpl(
-    const StaticAssetConfig& config, ConfigurationMode mode) {
-
-  if (!serve_assets_from_gstatic_) {
+  if (!serve_asset_from_gstatic_) {
     return;
   }
 
@@ -214,9 +183,9 @@ void StaticAssetManager::ApplyGStaticConfigurationImpl(
     bool should_update = (mode == kInitialConfiguration) ||
                          (asset->release_label == config.release_label());
     if (should_update) {
-      asset->opt_url = StrCat(gstatic_base_, asset_conf.opt_hash(), "-",
+      asset->opt_url = StrCat(gstatic_base, asset_conf.opt_hash(), "-",
                               asset_conf.name());
-      asset->debug_url = StrCat(gstatic_base_, asset_conf.debug_hash(), "-",
+      asset->debug_url = StrCat(gstatic_base, asset_conf.debug_hash(), "-",
                                 asset_conf.name());
       asset->release_label = config.release_label();
     }

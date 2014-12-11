@@ -969,12 +969,22 @@ void MobilizeLabelFilter::Label() {
           sample->role = MobileRole::kNavigational;
         } else {
           ambiguous_role_labels_->Add(1);
+          if (is_header) {
+            driver()->message_handler()->Message(
+                kInfo, "Both navigational and header");
+          }
+          if (is_content) {
+            driver()->message_handler()->Message(
+                kInfo, "Both navigational and content");
+          }
         }
       } else if (is_header) {
         if (!is_content) {
           sample->role = MobileRole::kHeader;
         } else {
           ambiguous_role_labels_->Add(1);
+          driver()->message_handler()->Message(
+              kInfo, "Both header and content");
         }
       } else if (is_content) {
         sample->role = MobileRole::kContent;
