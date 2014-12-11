@@ -56,6 +56,7 @@ class StaticAssetManager {
     kUpdateConfiguration
   };
 
+  // static_asset_base is path on this host we serve resources from.
   StaticAssetManager(const GoogleString& static_asset_base,
                      ThreadSystem* threads,
                      Hasher* hasher,
@@ -87,30 +88,46 @@ class StaticAssetManager {
                       RewriteDriver* driver) const;
 
 
-  // If set_serve_asset_from_gstatic is true, update the URL for module to use
+  // If serve_assets_from_gstatic_ is true, update the URL for module to use
   // gstatic. This sets both debug and release versions, and is meant to be
   // used to simplify tests.
   void SetGStaticHashForTest(StaticAssetEnum::StaticAsset module,
-                             const GoogleString& gstatic_base,
                              const GoogleString& hash);
 
-  // Set serve_asset_from_gstatic_ to serve the files from gstatic. Note that
-  // files won't actually get served from gstatic until you also configure the
-  // particular asset via SetGStaticHashForTest or ApplyGStaticConfiguration.
-  // These methods should be called after calling
-  // set_server_asset_from_gstatic(true).
-  void set_serve_asset_from_gstatic(bool serve_asset_from_gstatic) {
+  // Sets serve_assets_from_gstatic_ to true, enabling serving of files from
+  // gstatic, and configures the base URL. Note that files won't actually get
+  // served from gstatic until you also configure the particular assets this
+  // should apply to via SetGStaticHashForTest or ApplyGStaticConfiguration.
+  void ServeAssetsFromGStatic(StringPiece gstatic_base) {
     ScopedMutex write_lock(lock_.get());
-    serve_asset_from_gstatic_ = serve_asset_from_gstatic;
+    serve_assets_from_gstatic_ = true;
+    gstatic_base.CopyToString(&gstatic_base_);
   }
 
-  // If serve_asset_from_gstatic is true, uses information in config to
+  void DoNotServeAssetsFromGStatic() {
+    ScopedMutex write_lock(lock_.get());
+    serve_assets_from_gstatic_ = false;
+    gstatic_base_.clear();
+  }
+
+  // If serve_assets_from_gstatic_ is true, uses information in config to
   // set up serving urls.
   // mode == kInitialConfiguration will always overwrite settings.
-  // mode == kUpdateConfiguration which have a matching value of release_label.
-  void ApplyGStaticConfiguration(const GoogleString& gstatic_base,
-                                 const StaticAssetConfig& config,
+  // mode == kUpdateConfiguration will only update those which have a matching
+  // value of release_label, and expect a previous call with
+  // kInitialConfiguration.
+  //
+  // Note that the computed config is always based on the last call with
+  // update mode applied on top of the initial config; multiple calls of
+  // update are not concatenated together.
+  void ApplyGStaticConfiguration(const StaticAssetConfig& config,
                                  ConfigurationMode mode);
+
+  // If serve_assets_from_gstatic_ is true, reset configuration to what was last
+  // set by ApplyGStaticConfiguration with mod == kInitialConfiguration.
+  // Precondition: ApplyGStaticConfiguration(kInitialConfiguration) must have
+  // been called.
+  void ResetGStaticConfiguration();
 
   // Set the prefix for the URLs of assets.
   void set_library_url_prefix(const StringPiece& url_prefix) {
@@ -134,6 +151,13 @@ class StaticAssetManager {
   void InitializeAssetStrings();
   void InitializeAssetUrls() EXCLUSIVE_LOCKS_REQUIRED(lock_);
 
+  // Backend for ApplyGStaticConfiguration and ResetGStaticConfiguration;
+  // the 'config' parameter is the appropriate composition of initial
+  // plus config.
+  void ApplyGStaticConfigurationImpl(const StaticAssetConfig& config,
+                                     ConfigurationMode mode)
+      EXCLUSIVE_LOCKS_REQUIRED(lock_);
+
   GoogleString static_asset_base_;
   // Set in the constructor, this class does not own the following objects.
   Hasher* hasher_;
@@ -143,7 +167,9 @@ class StaticAssetManager {
   std::vector<Asset*> assets_ GUARDED_BY(lock_);
   FileNameToModuleMap file_name_to_module_map_ GUARDED_BY(lock_);
 
-  bool serve_asset_from_gstatic_ GUARDED_BY(lock_);
+  bool serve_assets_from_gstatic_ GUARDED_BY(lock_);
+  GoogleString gstatic_base_ GUARDED_BY(lock_);
+  scoped_ptr<StaticAssetConfig> initial_gstatic_config_ GUARDED_BY(lock_);
   GoogleString library_url_prefix_ GUARDED_BY(lock_);
   GoogleString cache_header_with_long_ttl_ GUARDED_BY(lock_);
   GoogleString cache_header_with_private_ttl_ GUARDED_BY(lock_);

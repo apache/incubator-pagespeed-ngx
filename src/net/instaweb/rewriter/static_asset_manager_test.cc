@@ -83,9 +83,9 @@ TEST_F(StaticAssetManagerTest, TestBlinkHandler) {
 
 TEST_F(StaticAssetManagerTest, TestBlinkGstatic) {
   manager_->set_static_asset_base("http://proxy-domain");
-  manager_->set_serve_asset_from_gstatic(true);
+  manager_->ServeAssetsFromGStatic(StaticAssetManager::kGStaticBase);
   manager_->SetGStaticHashForTest(
-      StaticAssetEnum::BLINK_JS, StaticAssetManager::kGStaticBase, "1");
+      StaticAssetEnum::BLINK_JS,  "1");
   const char blink_url[] =
       "//www.gstatic.com/psa/static/1-blink.js";
   EXPECT_STREQ(blink_url, manager_->GetAssetUrl(StaticAssetEnum::BLINK_JS,
@@ -93,9 +93,8 @@ TEST_F(StaticAssetManagerTest, TestBlinkGstatic) {
 }
 
 TEST_F(StaticAssetManagerTest, TestBlinkDebug) {
-  manager_->set_serve_asset_from_gstatic(true);
-  manager_->SetGStaticHashForTest(
-      StaticAssetEnum::BLINK_JS, StaticAssetManager::kGStaticBase, "1");
+  manager_->ServeAssetsFromGStatic(StaticAssetManager::kGStaticBase);
+  manager_->SetGStaticHashForTest(StaticAssetEnum::BLINK_JS, "1");
   options_->EnableFilter(RewriteOptions::kDebug);
   const char blink_url[] = "//www.gstatic.com/psa/static/1-blink.js";
   EXPECT_STREQ(blink_url, manager_->GetAssetUrl(StaticAssetEnum::BLINK_JS,
@@ -103,9 +102,8 @@ TEST_F(StaticAssetManagerTest, TestBlinkDebug) {
 }
 
 TEST_F(StaticAssetManagerTest, TestDeferJsGstatic) {
-  manager_->set_serve_asset_from_gstatic(true);
-  manager_->SetGStaticHashForTest(
-      StaticAssetEnum::DEFER_JS, StaticAssetManager::kGStaticBase, "1");
+  manager_->ServeAssetsFromGStatic(StaticAssetManager::kGStaticBase);
+  manager_->SetGStaticHashForTest(StaticAssetEnum::DEFER_JS, "1");
   const char defer_js_url[] =
       "//www.gstatic.com/psa/static/1-js_defer.js";
   EXPECT_STREQ(defer_js_url, manager_->GetAssetUrl(
@@ -113,9 +111,8 @@ TEST_F(StaticAssetManagerTest, TestDeferJsGstatic) {
 }
 
 TEST_F(StaticAssetManagerTest, TestDeferJsDebug) {
-  manager_->set_serve_asset_from_gstatic(true);
-  manager_->SetGStaticHashForTest(
-      StaticAssetEnum::DEFER_JS, StaticAssetManager::kGStaticBase, "1");
+  manager_->ServeAssetsFromGStatic(StaticAssetManager::kGStaticBase);
+  manager_->SetGStaticHashForTest(StaticAssetEnum::DEFER_JS, "1");
   options_->EnableFilter(RewriteOptions::kDebug);
   const char defer_js_debug_url[] =
       "//www.gstatic.com/psa/static/1-js_defer.js";
@@ -221,7 +218,7 @@ TEST_F(StaticAssetManagerTest, FullGStaticConf) {
   scoped_ptr<RewriteOptions> debug_options(options_->Clone());
   debug_options->EnableFilter(RewriteOptions::kDebug);
 
-  manager_->set_serve_asset_from_gstatic(true);
+  manager_->ServeAssetsFromGStatic("http://actually_any_cdn.com/");
 
   // Setup initial batch configuration.
   StaticAssetConfig config;
@@ -239,9 +236,7 @@ TEST_F(StaticAssetManagerTest, FullGStaticConf) {
   asset_conf->set_opt_hash("opt2");
 
   manager_->ApplyGStaticConfiguration(
-      "http://actually_any_cdn.com/",
-      config,
-      StaticAssetManager::kInitialConfiguration);
+      config, StaticAssetManager::kInitialConfiguration);
 
   // The configuration is sparse, so things still retain defaults.
   EXPECT_EQ("http://proxy-domain/psajs/js_defer.0.js",
@@ -287,7 +282,6 @@ TEST_F(StaticAssetManagerTest, FullGStaticConf) {
   asset_conf->set_opt_hash("opt0");
 
   manager_->ApplyGStaticConfiguration(
-      "http://actually_any_cdn.com/",
       config2,
       StaticAssetManager::kUpdateConfiguration);
 
@@ -337,7 +331,6 @@ TEST_F(StaticAssetManagerTest, FullGStaticConf) {
   asset_conf->set_opt_hash("opt5");
 
   manager_->ApplyGStaticConfiguration(
-      "http://actually_any_cdn.com/",
       config3,
       StaticAssetManager::kUpdateConfiguration);
 
@@ -359,6 +352,29 @@ TEST_F(StaticAssetManagerTest, FullGStaticConf) {
             manager_->GetAssetUrl(StaticAssetEnum::LAZYLOAD_IMAGES_JS,
                                   options_));
   EXPECT_EQ("http://actually_any_cdn.com/dbg4-lazy.js",
+            manager_->GetAssetUrl(StaticAssetEnum::LAZYLOAD_IMAGES_JS,
+                                  debug_options.get()));
+
+  // Now test that resetting config works.
+  manager_->ResetGStaticConfiguration();
+  EXPECT_EQ("http://proxy-domain/psajs/js_defer.0.js",
+            manager_->GetAssetUrl(StaticAssetEnum::DEFER_JS, options_));
+  EXPECT_EQ("http://proxy-domain/psajs/js_defer_debug.0.js",
+            manager_->GetAssetUrl(StaticAssetEnum::DEFER_JS,
+                                  debug_options.get()));
+
+  // The configured things do work, however.
+  EXPECT_EQ("http://actually_any_cdn.com/opt1-add_instr.js",
+            manager_->GetAssetUrl(StaticAssetEnum::ADD_INSTRUMENTATION_JS,
+                                  options_));
+  EXPECT_EQ("http://actually_any_cdn.com/dbg1-add_instr.js",
+            manager_->GetAssetUrl(StaticAssetEnum::ADD_INSTRUMENTATION_JS,
+                                  debug_options.get()));
+
+  EXPECT_EQ("http://actually_any_cdn.com/opt2-lazy.js",
+            manager_->GetAssetUrl(StaticAssetEnum::LAZYLOAD_IMAGES_JS,
+                                  options_));
+  EXPECT_EQ("http://actually_any_cdn.com/dbg2-lazy.js",
             manager_->GetAssetUrl(StaticAssetEnum::LAZYLOAD_IMAGES_JS,
                                   debug_options.get()));
 }

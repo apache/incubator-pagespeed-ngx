@@ -184,9 +184,8 @@ TEST_F(JsDeferDisabledFilterTest, TestDeferJsUrlFromGStatic) {
                                           server_context()->thread_system(),
                                           server_context()->hasher(),
                                           server_context()->message_handler());
-  static_asset_manager.set_serve_asset_from_gstatic(true);
-  static_asset_manager.SetGStaticHashForTest(
-      StaticAssetEnum::DEFER_JS, StaticAssetManager::kGStaticBase, "1");
+  static_asset_manager.ServeAssetsFromGStatic(StaticAssetManager::kGStaticBase);
+  static_asset_manager.SetGStaticHashForTest(StaticAssetEnum::DEFER_JS, "1");
 
   server_context()->set_static_asset_manager(&static_asset_manager);
 
