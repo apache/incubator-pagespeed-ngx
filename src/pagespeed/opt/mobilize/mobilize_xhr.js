@@ -106,7 +106,6 @@ pagespeed.XhrHijack.listener_['xhrSendHook'] = function() {
 };
 
 
-
 /**
  * Default handler for xhrResponseHook.
  * @param {number} http_status
@@ -114,7 +113,6 @@ pagespeed.XhrHijack.listener_['xhrSendHook'] = function() {
 pagespeed.XhrHijack.listener_['xhrResponseHook'] = function(http_status) {
   pagespeed.XhrHijack.queuedEvents_.push(http_status);
 };
-
 
 
 /**
@@ -144,6 +142,7 @@ pagespeed.XhrHijack.setListener = function(listener) {
   pagespeed.XhrHijack.queuedEvents_ = null;  // Will not be used again.
 };
 window['pagespeedXhrHijackSetListener'] = pagespeed.XhrHijack.setListener;
+
 
 /**
  * Captures the native XMLHttpRequest constructor, so we can insert
