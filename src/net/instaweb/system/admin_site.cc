@@ -462,8 +462,8 @@ GoogleString CacheInfoHtmlSnippet(StringPiece label, StringPiece descriptor) {
   StrAppend(&out, "<tr style='vertical-align:top;'><td>", label,
             "</td><td><input id='", label);
   StrAppend(&out, "_toggle' type='checkbox' ",
-            "onclick='pagespeed.Caches.toggleDetail('", label,
-            "')'/></td><td><code id='", label, "_summary'>");
+            "onclick=\"pagespeed.Caches.toggleDetail('", label,
+            "')\"/></td><td><code id='", label, "_summary'>");
   StrAppend(&out, HtmlKeywords::Escape(HackCacheDescriptor(descriptor),
                                        &escaped));
   StrAppend(&out, "</code><code id='", label,
