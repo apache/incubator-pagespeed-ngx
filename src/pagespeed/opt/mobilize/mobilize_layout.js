@@ -91,6 +91,32 @@ pagespeed.MobLayout.CLAMPED_STYLES_ = [
 
 
 /**
+ * HTML tag names (upper-cased) that should be treated as flexible in
+ * width.  This means that if their css-width is specified as being
+ * too wide for our screen, we'll override it to 'auto'.
+ *
+ * @private {Object.<string, boolean>}
+ */
+pagespeed.MobLayout.FLEXIBLE_WIDTH_TAGS_ = {
+  'A': true,
+  'DIV': true,
+  'FORM': true,
+  'H1': true,
+  'H2': true,
+  'H3': true,
+  'H4': true,
+  'P': true,
+  'SPAN': true,
+  'TBODY': true,
+  'TD': true,
+  'TFOOT': true,
+  'TH': true,
+  'THEAD': true,
+  'TR': true
+};
+
+
+/**
  * List of attributes for which we want to remove any percentage specs
  * @private {Array.<string>}
  * @const
@@ -296,7 +322,8 @@ pagespeed.MobLayout.prototype.shrinkWideElements_ = function(element) {
   // TODO(jmarantz): there are a variety of other tagNames that we should
   // allow to scroll as well.
   if ((element.tagName.toUpperCase() == 'PRE') ||
-      (computedStyle.getPropertyValue('white-space') == 'pre')) {
+      (computedStyle.getPropertyValue('white-space') == 'pre') &&
+      (element.offsetWidth > this.maxWidth_)) {
     element.style.overflowX = 'scroll';
   }
 
@@ -551,21 +578,7 @@ pagespeed.MobLayout.prototype.resizeIfTooWide_ = function(element) {
           (tagName == 'PRE') ||
           (tagName == 'UL')) {
         this.makeHorizontallyScrollable_(element);
-      } else if ((tagName == 'P') ||
-          (tagName == 'FORM') ||
-          (tagName == 'H1') ||
-          (tagName == 'H2') ||
-          (tagName == 'H3') ||
-          (tagName == 'H4') ||
-          (tagName == 'A') ||
-          (tagName == 'SPAN') ||
-          (tagName == 'TR') ||
-          (tagName == 'TBODY') ||
-          (tagName == 'THEAD') ||
-          (tagName == 'TFOOT') ||
-          (tagName == 'TD') ||
-          (tagName == 'TH') ||
-          (tagName == 'DIV')) {
+      } else if (pagespeed.MobLayout.FLEXIBLE_WIDTH_TAGS_[tagName]) {
         pagespeed.MobUtil.setPropertyImportant(
             element, 'max-width', '100%');
         pagespeed.MobUtil.removeProperty(element, 'width');
