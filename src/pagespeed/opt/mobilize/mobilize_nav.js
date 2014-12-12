@@ -15,19 +15,12 @@
  */
 
 
-goog.provide('pagespeed.Mob.Nav');
+goog.provide('pagespeed.MobNav');
 
 goog.require('goog.array');
 goog.require('goog.dom');
 goog.require('goog.dom.classlist');
-
-
-/**
- * Size in pixels of the header bar.
- * TODO(jud): This should be in a higher-level file, like mob.js.
- * @const
- */
-pagespeed.Mob.HEADER_BAR_HEIGHT = 60;
+goog.require('pagespeed.MobUtil');
 
 
 
@@ -35,7 +28,7 @@ pagespeed.Mob.HEADER_BAR_HEIGHT = 60;
  * Create mobile navigation menus.
  * @constructor
  */
-pagespeed.Mob.Nav = function() {
+pagespeed.MobNav = function() {
   this.navSections_ = [];
   /**
    * Controls whether we use the color detected from mob_logo.js, or a
@@ -47,11 +40,20 @@ pagespeed.Mob.Nav = function() {
 
 
 /**
+ * Size in pixels of the header bar.
+ * TODO(jud): This should be in a higher-level file, like mob.js.
+ * @const
+ * @private
+ */
+pagespeed.MobNav.HEADER_BAR_HEIGHT_ = 60;
+
+
+/**
  * PNG image of an arrow icon, used to indicate hierarchical menus.
  * @const
  * @private
  */
-pagespeed.Mob.Nav.prototype.ARROW_ICON_ =
+pagespeed.MobNav.prototype.ARROW_ICON_ =
     'data:image/png;base64,iVBORw0KGgoA' +
     'AAANSUhEUgAAAJAAAACQCAQAAABNTyozAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA' +
     '6mAAADqYAAAXcJy6UTwAAAACYktHRAD/h4/MvwAAAAlwSFlzAAALEwAACxMBAJqcGAAAATdJ' +
@@ -69,7 +71,7 @@ pagespeed.Mob.Nav.prototype.ARROW_ICON_ =
  * to the nav sections found by the machine learning, then add them here.
  * @private
  */
-pagespeed.Mob.Nav.prototype.findNavSections_ = function() {
+pagespeed.MobNav.prototype.findNavSections_ = function() {
   this.navSections_ = goog.array.concat(
       goog.array.toArray(
           document.querySelectorAll('[data-mobile-role="navigational"]')),
@@ -89,7 +91,7 @@ pagespeed.Mob.Nav.prototype.findNavSections_ = function() {
  * TODO(jud): This belongs in mobilize.js instead of mobilize_nav.js.
  * @private
  */
-pagespeed.Mob.Nav.prototype.fixExistingElements_ = function() {
+pagespeed.MobNav.prototype.fixExistingElements_ = function() {
   var elements = document.getElementsByTagName('*');
   var topOffset = 0;
   for (var i = 0, element; element = elements[i]; i++) {
@@ -97,7 +99,7 @@ pagespeed.Mob.Nav.prototype.fixExistingElements_ = function() {
     if (style.getPropertyValue('position') == 'fixed') {
       var elTop = element.getBoundingClientRect().top;
       element.style.top =
-          String(pagespeed.Mob.HEADER_BAR_HEIGHT + elTop) + 'px';
+          String(pagespeed.MobNav.HEADER_BAR_HEIGHT_ + elTop) + 'px';
     }
 
     if (style.getPropertyValue('z-index') >= 999999) {
@@ -112,7 +114,7 @@ pagespeed.Mob.Nav.prototype.fixExistingElements_ = function() {
  * Insert a header bar element as the first node in the body.
  * @private
  */
-pagespeed.Mob.Nav.prototype.addHeaderBar_ = function() {
+pagespeed.MobNav.prototype.addHeaderBar_ = function() {
   // The header bar is position:fixed, so create an empty div at the top to move
   // the rest of the elements down.
   var spacerDiv = document.createElement('div');
@@ -143,7 +145,7 @@ pagespeed.Mob.Nav.prototype.addHeaderBar_ = function() {
  * mob_logo.js, or a predefined color.
  * @private
  */
-pagespeed.Mob.Nav.prototype.addThemeColor_ = function() {
+pagespeed.MobNav.prototype.addThemeColor_ = function() {
   var backgroundColor = (this.useDetectedThemeColor_ && psMenuBackColor) ?
                             psMenuBackColor :
                             '#3c78d8';
@@ -171,7 +173,7 @@ pagespeed.Mob.Nav.prototype.addThemeColor_ = function() {
  * @return {!Array.<!Node>} The A tags labeled with depth.
  * @private
  */
-pagespeed.Mob.Nav.prototype.labelNavDepth_ = function(node, currDepth) {
+pagespeed.MobNav.prototype.labelNavDepth_ = function(node, currDepth) {
   var navATags = [];
   for (var child = node.firstChild; child; child = child.nextSibling) {
     if (child.tagName == 'UL') {
@@ -198,7 +200,7 @@ pagespeed.Mob.Nav.prototype.labelNavDepth_ = function(node, currDepth) {
  * nodesToDelete. addNavPanel takes care of actually deleting the nodes.
  * @private
  */
-pagespeed.Mob.Nav.prototype.dedupNavMenuItems_ = function() {
+pagespeed.MobNav.prototype.dedupNavMenuItems_ = function() {
   var aTags = document.querySelector('.psmob-nav-panel > ul a');
 
   var menuItems = {};
@@ -235,7 +237,7 @@ pagespeed.Mob.Nav.prototype.dedupNavMenuItems_ = function() {
  * If an A tag has no text, but has a title, use the title for the text.
  * @private
  */
-pagespeed.Mob.Nav.prototype.cleanupNavPanel_ = function() {
+pagespeed.MobNav.prototype.cleanupNavPanel_ = function() {
   var nodes = document.querySelectorAll('.psmob-nav-panel *');
   for (var i = 0, node; node = nodes[i]; i++) {
     node.removeAttribute('style');
@@ -263,7 +265,7 @@ pagespeed.Mob.Nav.prototype.cleanupNavPanel_ = function() {
  * Add a nav panel.
  * @private
  */
-pagespeed.Mob.Nav.prototype.addNavPanel_ = function() {
+pagespeed.MobNav.prototype.addNavPanel_ = function() {
   // Create the nav panel element and insert immediatly after the header bar.
   var header = document.getElementsByClassName('psmob-header-bar')[0];
   var navPanel = /** @type {Element} */ (document.body.insertBefore(
@@ -286,7 +288,7 @@ pagespeed.Mob.Nav.prototype.addNavPanel_ = function() {
     for (var j = 0, n = navATags.length; j < n; j++) {
       var navLevel1 = navATags[j].getAttribute('data-mobilize-nav-level');
       var navLevel2 = (j + 1 == n) ? navLevel1 : navATags[j + 1].getAttribute(
-                                                     'data-mobilize-nav-level');
+          'data-mobilize-nav-level');
       // Create a new submenu if the next item is nested under this one.
       if (navLevel1 < navLevel2) {
         var item = document.createElement('li');
@@ -327,7 +329,7 @@ pagespeed.Mob.Nav.prototype.addNavPanel_ = function() {
  * panel so that is opens/closes.
  * @private
  */
-pagespeed.Mob.Nav.prototype.toggleNavPanel_ = function() {
+pagespeed.MobNav.prototype.toggleNavPanel_ = function() {
   var navPanelElement = document.querySelector('.psmob-nav-panel');
   var headerBarElement = document.querySelector('.psmob-header-bar');
   goog.dom.classlist.toggle(headerBarElement, 'open');
@@ -341,7 +343,7 @@ pagespeed.Mob.Nav.prototype.toggleNavPanel_ = function() {
  * clicked. Also allow clicking outside of the nav menu to close the nav panel.
  * @private
  */
-pagespeed.Mob.Nav.prototype.addMenuButtonEvents_ = function() {
+pagespeed.MobNav.prototype.addMenuButtonEvents_ = function() {
   var menuBtn = document.querySelector('.psmob-menu-button');
 
   document.body.addEventListener('click', function(e) {
@@ -370,18 +372,18 @@ pagespeed.Mob.Nav.prototype.addMenuButtonEvents_ = function() {
  * Add events to the buttons in the nav panel.
  * @private
  */
-pagespeed.Mob.Nav.prototype.addNavButtonEvents_ = function() {
+pagespeed.MobNav.prototype.addNavButtonEvents_ = function() {
   var navUl = document.querySelector('nav.psmob-nav-panel > ul');
   navUl.addEventListener('click', function(e) {
     // We want to handle clicks on the LI that contains a nested UL. So if
     // somebody clicks on the expand icon in the LI, make sure we handle that
     // by popping up to the parent node.
     var target = goog.dom.isElement(e.target) &&
-                         goog.dom.classlist.contains(
-                             /** @type {Element} */ (e.target),
-                             'psmob-menu-expand-icon') ?
-                     e.target.parentNode :
-                     e.target;
+        goog.dom.classlist.contains(
+            /** @type {Element} */ (e.target),
+            'psmob-menu-expand-icon') ?
+                e.target.parentNode :
+                e.target;
     if (target.tagName == 'DIV') {
       // A click was registered on the div that has the hierarchical menu text
       // and icon. Open up the UL, which should be the next element.
@@ -397,7 +399,7 @@ pagespeed.Mob.Nav.prototype.addNavButtonEvents_ = function() {
  * Main entry point of nav mobilization. Should be called when logo detection is
  * finished.
  */
-pagespeed.Mob.Nav.prototype.Run = function() {
+pagespeed.MobNav.prototype.Run = function() {
   // TODO(jud): Use a goog.log or the logging ability in mob.js instead of
   // console.log.
   console.log('Starting nav resynthesis.');
@@ -410,19 +412,10 @@ pagespeed.Mob.Nav.prototype.Run = function() {
   // if we are in an iFrame.
   // TODO(jud): If there are nav elements in the iframe, we should try to move
   // them to the top-level nav.
-  if ((this.navSections_.length != 0) && !psInFriendlyIframe()) {
+  if ((this.navSections_.length != 0) &&
+      !pagespeed.MobUtil.inFriendlyIframe()) {
     this.addNavPanel_();
     this.addMenuButtonEvents_();
     this.addNavButtonEvents_();
   }
-};
-
-
-/**
- * Provide an exported function to create a nav object and run nav synthesis.
- * @export
- */
-var fixNav = function() {
-  var mobNav = new pagespeed.Mob.Nav();
-  mobNav.Run();
 };

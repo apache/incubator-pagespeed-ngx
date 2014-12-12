@@ -41,7 +41,7 @@ message StaticAssetEnum {
     LAZYLOAD_IMAGES_JS = 15;
     LOCAL_STORAGE_CACHE_JS = 16;
     SPLIT_HTML_BEACON_JS = 17;
-    MOBILIZE_NAV_JS = 18;
+    MOBILIZE_JS = 18;
     MOBILIZE_XHR_JS = 19;
   };
 }

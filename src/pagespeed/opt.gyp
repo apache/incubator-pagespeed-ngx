@@ -147,63 +147,69 @@
     },
 
     {
-      'target_name': 'mobilize_nav_js_dbg',
+      'target_name': 'mobilize_js_dbg',
       'variables': {
         'js_dir': 'opt/mobilize',
         'closure_build_type': 'dbg',
         'extra_closure_flags': [
-          '--closure_entry_point=pagespeed.Mob.Nav',
+          '--closure_entry_point=pagespeed.Mob',
           '--js', '<(instaweb_root)/third_party/closure_library',
           '--only_closure_dependencies',
           '--externs=opt/mobilize/externs.js',
+          '--js', 'opt/mobilize/mobilize_layout.js',
+          '--js', 'opt/mobilize/mobilize_nav.js',
+          '--js', 'opt/mobilize/mobilize_util.js',
         ],
       },
-      'sources': ['opt/mobilize/mobilize_nav.js'],
+      'sources': [ 'opt/mobilize/mobilize.js' ],
       'includes': ['../net/instaweb/closure.gypi',],
     },
     {
-      'target_name': 'mobilize_nav_js_opt',
+      'target_name': 'mobilize_js_opt',
       'variables': {
         'js_dir': 'opt/mobilize',
         'extra_closure_flags': [
-          '--closure_entry_point=pagespeed.Mob.Nav',
+          '--closure_entry_point=pagespeed.Mob',
           '--js', '<(instaweb_root)/third_party/closure_library',
           '--only_closure_dependencies',
           '--externs=opt/mobilize/externs.js',
+          '--js', 'opt/mobilize/mobilize_layout.js',
+          '--js', 'opt/mobilize/mobilize_nav.js',
+          '--js', 'opt/mobilize/mobilize_util.js',
         ],
       },
-      'sources': ['opt/mobilize/mobilize_nav.js'],
+      'sources': [ 'opt/mobilize/mobilize.js' ],
       'includes': ['../net/instaweb/closure.gypi'],
     },
 
     {
-      'target_name': 'instaweb_mobilize_nav_data2c',
+      'target_name': 'instaweb_mobilize_data2c',
       'variables': {
         'instaweb_data2c_subdir': 'pagespeed/opt/mobilize',
         'instaweb_js_subdir': '<(compiled_js_dir)/opt/mobilize',
-        'var_name': 'mobilize_nav',
+        'var_name': 'mobilize',
       },
       'sources': [
-        '<(compiled_js_dir)/opt/mobilize/mobilize_nav_dbg.js',
+        '<(compiled_js_dir)/opt/mobilize/mobilize_dbg.js',
       ],
       'includes': ['../net/instaweb/data2c.gypi']
     },
     {
-      'target_name': 'instaweb_mobilize_nav_opt_data2c',
+      'target_name': 'instaweb_mobilize_opt_data2c',
       'variables': {
         'instaweb_data2c_subdir': 'pagespeed/opt/mobilize',
         'instaweb_js_subdir': '<(compiled_js_dir)/opt/mobilize',
-        'var_name': 'mobilize_nav_opt',
+        'var_name': 'mobilize_opt',
       },
       'sources': [
-        '<(compiled_js_dir)/opt/mobilize/mobilize_nav_opt.js',
+        '<(compiled_js_dir)/opt/mobilize/mobilize_opt.js',
       ],
       'includes': ['../net/instaweb/data2c.gypi']
     },
 
 
     # TODO(jmarantz): Figure out how to factor out this boilerplate from
-    # the similar lines above for mobilize_nav.
+    # the similar lines above for mobilize.
     {
       'target_name': 'mobilize_xhr_js_dbg',
       'variables': {

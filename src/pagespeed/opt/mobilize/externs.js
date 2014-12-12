@@ -18,10 +18,8 @@
  * @fileoverview Externs used by mobilization JS.
  */
 
-// From mob.js
-var psInFriendlyIframe;
-
-// From mob_logo.js
-var psHeaderBarHtml;
-var psMenuBackColor;
-var psMenuFrontColor;
+var psDebugMode;                // From C++
+var psHeaderBarHtml;            // From mob_logo.js
+var psMenuBackColor;            // From mob_logo.js
+var psMenuFrontColor;           // From mob_logo.js
+var psNavMode;                  // From C++

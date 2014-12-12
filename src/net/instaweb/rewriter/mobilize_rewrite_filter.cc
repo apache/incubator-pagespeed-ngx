@@ -216,8 +216,14 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
       if (use_js_layout_) {
         // Transmit to the mobilization scripts whether they are run in debug
         // mode or not by setting 'psDebugMode'.
+        //
+        // Also, transmit to the mobilization scripts whether navigation is
+        // enabled.  That is bundled into the same JS compile unit as the
+        // layout, so we cannot do a 'undefined' check in JS to determine
+        // whether it was enabled.
         GoogleString src = StrCat(
-            "var psDebugMode=", driver()->DebugMode() ? "true;" : "false;");
+            "var psDebugMode=", (driver()->DebugMode() ? "true;" : "false;"),
+            "var psNavMode=", (use_js_nav_ ? "true;" : "false;"));
         driver()->InsertScriptAfterCurrent(src, false);
       }
 
@@ -250,10 +256,17 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
                                              driver()->options());
           driver()->InsertScriptAfterCurrent(js, false);
         } else {
-          driver()->InsertScriptAfterCurrent(
-              "var CLOSURE_UNCOMPILED_DEFINES = "
-              "{'goog.ENABLE_DEBUG_LOADER': false};",
-              false);
+          /*
+           * Idealy I'd like to prevent base.js from loading the deps.  However
+           * mobilize_nav.js currently loads a few dependencies that would be
+           * hard to maintain manually.  If we are able to make mobilize_nav.js
+           * closure-free we can uncomoment this.
+           *
+           * driver()->InsertScriptAfterCurrent(
+               "var CLOSURE_UNCOMPILED_DEFINES = "
+               "{'goog.ENABLE_DEBUG_LOADER': false};",
+               false);
+          */
           // Include the base closure file to allow goog.provide
           // etc to work.
           driver()->InsertScriptAfterCurrent(
@@ -263,17 +276,6 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
           driver()->InsertScriptAfterCurrent(script_path, true);
         }
       }
-
-      /*
-      HtmlElement* progress_script = driver()->NewElement(
-          element->parent(),
-          HtmlName::kScript);
-      script->set_style(HtmlElement::EXPLICIT_CLOSE);
-      driver()->InsertNodeAfterCurrent(script);
-      driver()->AddAttribute(script, HtmlName::kSrc,
-                             StrCat(static_file_prefix_, "mob_progress.js"));
-
-      */
     }
   } else if (keyword == HtmlName::kBody) {
     ++body_element_depth_;
@@ -355,32 +357,21 @@ void MobilizeRewriteFilter::EndElementImpl(HtmlElement* element) {
   if (keyword == HtmlName::kBody) {
     --body_element_depth_;
     if (body_element_depth_ == 0) {
-      if (use_js_layout_ || use_js_nav_ || use_js_logo_) {
+      if (use_js_layout_) {
         if (!added_mob_js_) {
           added_mob_js_ = true;
-
-          if (use_js_nav_) {
-            HtmlElement* script =
-                driver()->NewElement(element->parent(), HtmlName::kScript);
-            script->set_style(HtmlElement::EXPLICIT_CLOSE);
-            InsertNodeAtBodyEnd(script);
-            StaticAssetManager* manager =
-                driver()->server_context()->static_asset_manager();
-            StringPiece js = manager->GetAsset(StaticAssetEnum::MOBILIZE_NAV_JS,
-                                               driver()->options());
-            manager->AddJsToElement(js, script, driver());
-          }
+          // TODO(jmarantz): have just one option for mob_logo_ and mob_nav_.
+          // They are co-dependent.
           if (use_js_logo_) {
             AddStaticScript("mob_logo.js");
           }
-          if (use_js_layout_) {
-            if (rewrite_js_) {
-              AddStaticScript("mob_jsc.js");
-            } else {
-              AddStaticScript("mob_util.js");
-              AddStaticScript("mob_layout.js");
-              AddStaticScript("mob.js");
-            }
+          if (rewrite_js_) {
+            AddStaticScript("mobilize_opt_jsc.js");
+          } else {
+            AddStaticScript("mobilize_util.js");
+            AddStaticScript("mobilize_layout.js");
+            AddStaticScript("mobilize_nav.js");
+            AddStaticScript("mobilize.js");
           }
         }
       }
@@ -438,7 +429,7 @@ void MobilizeRewriteFilter::AddStyle(HtmlElement* element) {
     }
 
     // TODO(jud): Move mob_nav.css out of experimental.
-    if (use_js_nav_) {
+    if (use_js_nav_ || use_js_logo_) {
       AppendStylesheet("mob_nav.css", element);
     }
   }

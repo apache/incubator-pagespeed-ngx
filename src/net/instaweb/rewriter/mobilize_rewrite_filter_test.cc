@@ -23,7 +23,6 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
@@ -48,10 +47,8 @@ const char kStyles[] =
     "<link rel=\"stylesheet\" href=\"mob_logo.css\">"
     "<link rel=\"stylesheet\" href=\"mob_nav.css\">";
 const char kHeadAndViewport[] =
-    "<script>var psDebugMode=false;</script>"
+    "<script>var psDebugMode=false;var psNavMode=true;</script>"
     "<meta name='viewport' content='width=device-width'/>"
-    "<script>var CLOSURE_UNCOMPILED_DEFINES = "
-    "{'goog.ENABLE_DEBUG_LOADER': false};</script>"
     "<script src=\"goog/base.js\"></script>"
     "<script src=\"mobilize_xhr.js\"></script>";
 
@@ -109,15 +106,12 @@ class MobilizeRewriteFilterTest : public RewriteTestBase {
   }
 
   GoogleString ScriptsAtEndOfBody() {
-    return StrCat(
-        "<script type=\"text/javascript\">",
-        server_context()->static_asset_manager()->GetAsset(
-            StaticAssetEnum::MOBILIZE_NAV_JS, options()),
-        "</script>"
+    return
         "<script src=\"mob_logo.js\"></script>"
-        "<script src=\"mob_util.js\"></script>"
-        "<script src=\"mob_layout.js\"></script>"
-        "<script src=\"mob.js\"></script>");
+        "<script src=\"mobilize_util.js\"></script>"
+        "<script src=\"mobilize_layout.js\"></script>"
+        "<script src=\"mobilize_nav.js\"></script>"
+        "<script src=\"mobilize.js\"></script>";
   }
 
   scoped_ptr<MobilizeRewriteFilter> filter_;
@@ -462,7 +456,7 @@ TEST_F(MobilizeRewriteEndToEndTest, FullPage) {
       StrCat(GTestSrcDir(), kTestDataDir, kRewritten);
   ASSERT_TRUE(filesystem_.ReadFile(rewritten_filename.c_str(),
                                    &rewritten_buffer, message_handler()));
-  GlobalReplaceSubstring("@@HEAD_SCRIPT_LOADS@@", kHeadAndViewport,
+  GlobalReplaceSubstring("@@HEAD_SCRIPT_LOAD@@", kHeadAndViewport,
                          &rewritten_buffer);
   GlobalReplaceSubstring("@@TRAILING_SCRIPT_LOADS@@", ScriptsAtEndOfBody(),
                          &rewritten_buffer);
