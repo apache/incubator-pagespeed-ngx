@@ -79,7 +79,7 @@
           }],
           ['js_includes != ""', {
             'inputs': [ '<(js_includes)' ],
-            'closure_flags': [ '--js', '<(js_includes)' ],
+            'closure_flags': ['<!@(python -c "print \' \'.join([\'--js \' + js for js in \'<(js_includes)\'.split()]) ")'],
           }],
           ['"<!(echo $BUILD_JS)" != "1"', {
             'action': [

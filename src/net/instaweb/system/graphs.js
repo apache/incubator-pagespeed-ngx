@@ -436,6 +436,7 @@ pagespeed.Graphs.screenData = function(prefix, name) {
   return use;
 };
 
+
 /**
  * Initialize a chart using Google Charts API.
  * @param {string} id The ID of the chart div to create.
@@ -473,6 +474,7 @@ pagespeed.Graphs.prototype.initChart = function(
   }
   return theChart;
 };
+
 
 /**
  * Draw a bar chart using Google Charts API.
@@ -564,6 +566,7 @@ pagespeed.Graphs.prototype.drawBarChart = function(prefix, title, targetId) {
   };
   theChart.draw(view, barChartOptions);
 };
+
 
 /**
  * Draw a history chart using Google Charts API.
@@ -664,7 +667,7 @@ pagespeed.Graphs.Start = function() {
     goog.events.listen(
         graphsObj.xhr_, goog.net.EventType.COMPLETE,
         goog.bind(graphsObj.parseAjaxResponse, graphsObj));
-    setInterval(graphsObj.performRefresh.bind(graphsObj),
+    setInterval(goog.bind(graphsObj.performRefresh, graphsObj),
                 pagespeed.Graphs.FREQUENCY_ * 1000);
     graphsObj.performRefresh();
   };

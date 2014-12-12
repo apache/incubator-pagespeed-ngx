@@ -175,6 +175,7 @@ pagespeed.Caches.ElementId = {
  */
 pagespeed.Caches.PURGE_SUCCESS_ = 'Purge successful';
 
+
 /**
  * The info sent by server when a purge failure is due to the option
  * not being enabled in the config file.
@@ -182,6 +183,7 @@ pagespeed.Caches.PURGE_SUCCESS_ = 'Purge successful';
  * @const
  */
 pagespeed.Caches.PURGE_NOT_ENABLED_ = 'Purging not enabled';
+
 
 /**
  * Parse the location URL to get its anchor part and show the div element.
@@ -226,6 +228,7 @@ pagespeed.Caches.prototype.show = function(div) {
 
   location.href = location.href.split('#')[0] + '#' + div;
 };
+
 
 /**
  * Extracts text packaged as JSON (in a value: field) with a prepended
@@ -478,7 +481,7 @@ pagespeed.Caches.Start = function() {
         goog.bind(cachesObj.showResult, cachesObj));
     goog.events.listen(
         document.getElementById(pagespeed.Caches.ElementId.METADATA_CLEAR),
-        'click', location.reload.bind(location));
+        'click', goog.bind(location.reload, location));
     cachesObj.sendPurgeSetRequest();
   };
   goog.events.listen(window, 'load', cachesOnload);

@@ -66,7 +66,6 @@
       # 'rewriter/ghost_click_buster.js',
       'rewriter/js_defer.js',
       'rewriter/local_storage_cache.js',
-      'rewriter/split_html_beacon.js',
     ],
   },
   'targets': [
@@ -334,6 +333,33 @@
       'sources': [ 'rewriter/panel_loader.js', ],
       'includes': [ 'closure.gypi', ],
     },
+
+    {
+      'target_name': 'split_html_beacon_js_dbg',
+      'variables': {
+        'js_dir': 'rewriter',
+        'closure_build_type': 'dbg',
+        'js_includes' : [
+            'js/js_utils.js',
+            'js/critical_xpaths.js',
+         ]
+      },
+      'sources': [ 'rewriter/split_html_beacon.js', ],
+      'includes': [ 'closure.gypi', ],
+    },
+    {
+      'target_name': 'split_html_beacon_js_opt',
+      'variables': {
+        'js_dir': 'rewriter',
+        'js_includes' : [
+            'js/js_utils.js',
+            'js/critical_xpaths.js',
+         ]
+      },
+      'sources': [ 'rewriter/split_html_beacon.js', ],
+      'includes': [ 'closure.gypi', ],
+    },
+
     {
       'target_name': 'instaweb_data2c',
       'type': 'executable',

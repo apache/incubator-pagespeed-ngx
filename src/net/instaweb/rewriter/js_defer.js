@@ -24,6 +24,7 @@
 
 goog.require('pagespeedutils');
 
+
 /**
  * Defer javascript will be executed in two phases. First phase will be for
  * high priority scripts and second phase is for low priority scripts. Order
@@ -50,6 +51,8 @@ var pagespeed = window['pagespeed'];
 
 pagespeed['deferJsNs'] = {};
 var deferJsNs = pagespeed['deferJsNs'];
+
+
 
 /**
  * @constructor
@@ -132,7 +135,7 @@ deferJsNs.DeferJs = function() {
    * After OnLoad, however, these should go back to behaving as they originally
    * did.  This flag deals with the case where client JS code in turn overrides
    * our overridden implementations.
-   * @type boolean
+   * @type {boolean}
    * @private
    */
   this.overrideDefaultImplementation_ = true;
@@ -275,11 +278,13 @@ deferJsNs.DeferJs = function() {
   this.optLastIndex_ = -1;
 };
 
+
 /**
  * Indicates if experimental js in deferJS is active.
  * @type {boolean}
  */
 deferJsNs.DeferJs.isExperimentalMode = false;
+
 
 /**
  * State Machine
@@ -327,6 +332,7 @@ deferJsNs.DeferJs.STATES = {
   SCRIPTS_DONE: 6
 };
 
+
 /**
  * Constants for different events used by deferJs.
  * @enum {number}
@@ -354,12 +360,14 @@ deferJsNs.DeferJs.EVENT = {
   AFTER_SCRIPTS: 4
 };
 
+
 /**
  * Name of the attribute set for the nodes that are not reached so far during
  * priority scripts execution.
  * @const {string}
  */
 deferJsNs.DeferJs.PRIORITY_PSA_NOT_PROCESSED = 'priority_psa_not_processed';
+
 
 /**
  * Name of the attribute set for the nodes that are not reached so far during
@@ -368,11 +376,13 @@ deferJsNs.DeferJs.PRIORITY_PSA_NOT_PROCESSED = 'priority_psa_not_processed';
  */
 deferJsNs.DeferJs.PSA_NOT_PROCESSED = 'psa_not_processed';
 
+
 /**
  * Name of the attribute set for the current node to mark the current location.
  * @const {string}
  */
 deferJsNs.DeferJs.PSA_CURRENT_NODE = 'psa_current_node';
+
 
 /**
  * Name of the attribute to mark the script node for deletion after the
@@ -381,11 +391,13 @@ deferJsNs.DeferJs.PSA_CURRENT_NODE = 'psa_current_node';
  */
 deferJsNs.DeferJs.PSA_TO_BE_DELETED = 'psa_to_be_deleted';
 
+
 /**
  * Value for psa dummy script nodes.
  * @const {string}
  */
 deferJsNs.DeferJs.PSA_SCRIPT_TYPE = 'text/psajs';
+
 
 /**
  * Value of psa dummmy priority script nodes.
@@ -393,11 +405,13 @@ deferJsNs.DeferJs.PSA_SCRIPT_TYPE = 'text/psajs';
  */
 deferJsNs.DeferJs.PRIORITY_PSA_SCRIPT_TYPE = 'text/prioritypsajs';
 
+
 /**
  * Name of orig_type attribute in deferred script node.
  * @const {string}
  */
 deferJsNs.DeferJs.PSA_ORIG_TYPE = 'pagespeed_orig_type';
+
 
 /**
  * Name of orig_src attribute in deferred script node.
@@ -405,11 +419,13 @@ deferJsNs.DeferJs.PSA_ORIG_TYPE = 'pagespeed_orig_type';
  */
 deferJsNs.DeferJs.PSA_ORIG_SRC = 'pagespeed_orig_src';
 
+
 /**
  * Name of orig_index attribute in deferred script node.
  * @const {string}
  */
 deferJsNs.DeferJs.PSA_ORIG_INDEX = 'orig_index';
+
 
 /**
  * Name of the deferred onload attribute.
@@ -417,10 +433,11 @@ deferJsNs.DeferJs.PSA_ORIG_INDEX = 'orig_index';
  */
 deferJsNs.DeferJs.PAGESPEED_ONLOAD = 'data-pagespeed-onload';
 
+
 /**
  * Add to defer_logs if logs are enabled.
  * @param {string} line line to be added to log.
- * @param {Error} opt_exception optional exception to pass to log.
+ * @param {Error=} opt_exception optional exception to pass to log.
  */
 deferJsNs.DeferJs.prototype.log = function(line, opt_exception) {
   if (this.logs) {
@@ -435,19 +452,21 @@ deferJsNs.DeferJs.prototype.log = function(line, opt_exception) {
   }
 };
 
+
 /**
  * Adds task to the end of queue, unless position is explicitly given.
  * @param {!function()} task Function closure to be executed later.
- * @param {number} opt_pos optional position for ordering of jobs.
+ * @param {number=} opt_pos optional position for ordering of jobs.
  */
 deferJsNs.DeferJs.prototype.submitTask = function(task, opt_pos) {
   var pos = opt_pos ? opt_pos : this.queue_.length;
   this.queue_.splice(pos, 0, task);
 };
 
+
 /**
  * @param {string} str to be evaluated.
- * @param {Element} opt_script_elem Script element to copy attributes into the
+ * @param {Element=} opt_script_elem Script element to copy attributes into the
  *     new script node.
  * @return {Element} Script cloned element which is created.
  */
@@ -459,6 +478,7 @@ deferJsNs.DeferJs.prototype.globalEval = function(str, opt_script_elem) {
   currentElem.parentNode.insertBefore(script, currentElem);
   return script;
 };
+
 
 /**
  * Defines a new var in the name of id's present in the doc. This is the fix for
@@ -495,6 +515,7 @@ deferJsNs.DeferJs.prototype.createIdVars = function() {
   }
 };
 
+
 /**
  * Tries to prefetch the file using image technique based on browser.
  * We are using image technique to prefetch only for webkit based browsers.
@@ -506,11 +527,12 @@ deferJsNs.DeferJs.prototype.attemptPrefetchOrQueue = function(url) {
   }
 };
 
+
 /**
  * Defers execution of scriptNode, by adding it to the queue.
  * @param {Element} script script node.
- * @param {number} opt_pos Optional position for ordering.
- * @param {boolean} opt_prefetch Script file is prefetched if true.
+ * @param {number=} opt_pos Optional position for ordering.
+ * @param {boolean=} opt_prefetch Script file is prefetched if true.
  */
 deferJsNs.DeferJs.prototype.addNode = function(script, opt_pos, opt_prefetch) {
   var src = script.getAttribute(deferJsNs.DeferJs.PSA_ORIG_SRC) ||
@@ -528,11 +550,12 @@ deferJsNs.DeferJs.prototype.addNode = function(script, opt_pos, opt_prefetch) {
   }
 };
 
+
 /**
  * Defers execution of 'str', by adding it to the queue.
  * @param {!string} str valid javascript snippet.
  * @param {Element} script_elem Psa inserted script used as context element.
- * @param {number} opt_pos Optional position for ordering.
+ * @param {number=} opt_pos Optional position for ordering.
  */
 deferJsNs.DeferJs.prototype.addStr = function(str, script_elem, opt_pos) {
   if (this.isFireFox()) {
@@ -563,9 +586,10 @@ deferJsNs.DeferJs.prototype.addStr = function(str, script_elem, opt_pos) {
 };
 deferJsNs.DeferJs.prototype['addStr'] = deferJsNs.DeferJs.prototype.addStr;
 
+
 /**
  * Clones a Script Node. This is equivalent of 'cloneNode'.
- * @param {Element} opt_script_elem Psa inserted script used for cloning the
+ * @param {Element=} opt_script_elem Psa inserted script used for cloning the
  *     new element.
  * @return {Element} Script Element with all attributes copied from
  *     opt_script_elem.
@@ -593,6 +617,7 @@ deferJsNs.DeferJs.prototype.cloneScriptNode = function(opt_script_elem) {
   }
   return newScript;
 };
+
 
 /**
  * Creates a dummy script node on load of which the next deferred script is
@@ -630,11 +655,12 @@ deferJsNs.DeferJs.prototype.scriptOnLoad = function(url) {
   currentElem.parentNode.insertBefore(script, currentElem);
 };
 
+
 /**
  * Defers execution of contents of 'url'.
  * @param {!string} url returns javascript when fetched.
  * @param {Element} script_elem Psa inserted script used as context element.
- * @param {number} opt_pos Optional position for ordering.
+ * @param {number=} opt_pos Optional position for ordering.
  */
 deferJsNs.DeferJs.prototype.addUrl = function(url, script_elem, opt_pos) {
   this.logs.push('Add to queue url: ' + url);
@@ -684,9 +710,10 @@ deferJsNs.DeferJs.prototype.addUrl = function(url, script_elem, opt_pos) {
 };
 deferJsNs.DeferJs.prototype['addUrl'] = deferJsNs.DeferJs.prototype.addUrl;
 
+
 /**
  * Remove psaNotProcessed_ attribute till the given node.
- * @param {Node} opt_node Stop node.
+ * @param {Node=} opt_node Stop node.
  */
 deferJsNs.DeferJs.prototype.removeNotProcessedAttributeTillNode = function(
     opt_node) {
@@ -705,6 +732,7 @@ deferJsNs.DeferJs.prototype.removeNotProcessedAttributeTillNode = function(
   }
 };
 
+
 /**
  * Set 'psa_not_processed' attribute to all Nodes in DOM.
  */
@@ -715,6 +743,7 @@ deferJsNs.DeferJs.prototype.setNotProcessedAttributeForNodes = function() {
     dom_node.setAttribute(this.psaNotProcessed_, '');
   }
 };
+
 
 /**
  * Get the next script psajs node to be executed.
@@ -728,6 +757,7 @@ deferJsNs.DeferJs.prototype.nextPsaJsNode = function() {
   }
   return current_node;
 };
+
 
 /**
  * Get the current location in DOM for the new nodes insertion. New nodes are
@@ -744,6 +774,7 @@ deferJsNs.DeferJs.prototype.getCurrentDomLocation = function() {
       this.origGetElementsByTagName_.call(document, 'psanode')[0];
 };
 
+
 /**
  * Removes the processed script node with 'text/psajs'.
  */
@@ -754,6 +785,7 @@ deferJsNs.DeferJs.prototype.removeCurrentDomLocation = function() {
     oldNode.parentNode.removeChild(oldNode);
   }
 };
+
 
 /**
  * Called when the script Queue execution is finished.
@@ -826,6 +858,7 @@ deferJsNs.DeferJs.prototype.onComplete = function() {
   }
 };
 
+
 /**
  * Fires 'onload' event.
  */
@@ -860,6 +893,7 @@ deferJsNs.DeferJs.prototype.fireOnload = function() {
   this.fireEvent(deferJsNs.DeferJs.EVENT.AFTER_SCRIPTS);
 };
 
+
 /**
  * Finalize function for high priority scripts execution that start the
  * execution of low priority scripts.
@@ -870,8 +904,8 @@ deferJsNs.DeferJs.prototype.highPriorityFinalize = function() {
     pagespeed.deferJs = pagespeed.lowPriorityDeferJs;
     pagespeed['deferJs'] = pagespeed.lowPriorityDeferJs;
     if (me.incrementalScriptsDoneCallback_) {
-      pagespeed.deferJs.registerScriptTags(
-        me.incrementalScriptsDoneCallback_, me.optLastIndex_);
+      pagespeed.deferJs.registerScriptTags(me.incrementalScriptsDoneCallback_,
+                                           me.optLastIndex_);
       me.incrementalScriptsDoneCallback_ = null;
     } else {
       pagespeed.deferJs.registerScriptTags();
@@ -879,6 +913,7 @@ deferJsNs.DeferJs.prototype.highPriorityFinalize = function() {
     pagespeed.deferJs.execute();
   }, 0);
 };
+
 
 /**
  * Checks if node is present in the dom.
@@ -894,6 +929,7 @@ deferJsNs.DeferJs.prototype.checkNodeInDom = function(node) {
   }
   return false;
 };
+
 
 /**
  * Script onload is not triggered if src is empty because such scripts
@@ -927,6 +963,7 @@ deferJsNs.DeferJs.prototype.getNumScriptsWithNoOnload =
   return count;
 };
 
+
 /**
  *  Checks if onComplete() function can be called or not.
  *  @return {boolean} returns true if onComplete() can be called.
@@ -947,6 +984,7 @@ deferJsNs.DeferJs.prototype.canCallOnComplete = function() {
   return false;
 };
 
+
 /**
  * Whether all the deferred scripts are done executing.
  * @return {boolean} true if all deferred scripts are done executing, false
@@ -957,6 +995,7 @@ deferJsNs.DeferJs.prototype.scriptsAreDone = function() {
 };
 deferJsNs.DeferJs.prototype['scriptsAreDone'] =
     deferJsNs.DeferJs.prototype.scriptsAreDone;
+
 
 /**
  * Schedules the next task in the queue.
@@ -984,6 +1023,7 @@ deferJsNs.DeferJs.prototype.runNext = function() {
   }
 };
 
+
 /**
  * Converts from NodeList to array of nodes.
  * @param {!NodeList} nodeList NodeList from a DOM node.
@@ -997,6 +1037,7 @@ deferJsNs.DeferJs.prototype.nodeListToArray = function(nodeList) {
   }
   return arr;
 };
+
 
 /**
  * SetUp needed before deferrred scripts execution.
@@ -1123,6 +1164,7 @@ deferJsNs.DeferJs.prototype.setUp = function() {
   };
 };
 
+
 /**
  * Start the execution of the deferred script only if there is no async script
  * pending that was created by non deferred.
@@ -1141,6 +1183,7 @@ deferJsNs.DeferJs.prototype.execute = function() {
 };
 deferJsNs.DeferJs.prototype['execute'] = deferJsNs.DeferJs.prototype.execute;
 
+
 /**
  * Starts the execution of all the deferred scripts.
  */
@@ -1158,6 +1201,7 @@ deferJsNs.DeferJs.prototype.run = function() {
 };
 deferJsNs.DeferJs.prototype['run'] = deferJsNs.DeferJs.prototype.run;
 
+
 /**
  * Parses the given html snippet.
  * @param {!string} html to be parsed.
@@ -1173,6 +1217,7 @@ deferJsNs.DeferJs.prototype.parseHtml = function(html) {
   return div;
 };
 
+
 /**
  * Removes the node from its parent if it has one.
  * @param {Node} node Node to be disowned from parent.
@@ -1183,6 +1228,7 @@ deferJsNs.DeferJs.prototype.disown = function(node) {
     parentNode.removeChild(node);
   }
 };
+
 
 /**
  * Inserts all the nodes before elem. It must have a parentNode for this
@@ -1201,6 +1247,7 @@ deferJsNs.DeferJs.prototype.insertNodesBeforeElem = function(nodes, elem) {
   }
 };
 
+
 /**
  * Returns if the node is JavaScript Node.
  * @param {!Node} node valid script Node.
@@ -1212,16 +1259,16 @@ deferJsNs.DeferJs.prototype.isJSNode = function(node) {
   }
 
   if (node.hasAttribute('type')) {
-      var type = node.getAttribute('type');
-      return !type ||
-             (this.jsMimeTypes.indexOf(type) != -1);
+    var type = node.getAttribute('type');
+    return !type || (this.jsMimeTypes.indexOf(type) != -1);
   } else if (node.hasAttribute('language')) {
-      var lang = node.getAttribute('language');
-      return !lang ||
-             (this.jsMimeTypes.indexOf('text/' + lang.toLowerCase()) != -1);
+    var lang = node.getAttribute('language');
+    return !lang ||
+           (this.jsMimeTypes.indexOf('text/' + lang.toLowerCase()) != -1);
   }
   return true;
 };
+
 
 /**
  * Given the list of nodes, sets the not_processed attributes to all nodes and
@@ -1265,6 +1312,7 @@ deferJsNs.DeferJs.prototype.markNodesAndExtractScriptNodes = function(
   }
 };
 
+
 /**
  * @param {!Array.<Element>} scripts Array of script nodes to be deferred.
  * @param {!number} pos position for script ordering.
@@ -1276,11 +1324,12 @@ deferJsNs.DeferJs.prototype.deferScripts = function(scripts, pos) {
   }
 };
 
+
 /**
  * Inserts html in the before elem, with scripts inside added to queue at pos.
  * @param {!string} html contains the snippet.
  * @param {!number} pos optional position to add to queue.
- * @param {Element} opt_elem optional context element.
+ * @param {Element=} opt_elem optional context element.
  */
 deferJsNs.DeferJs.prototype.insertHtml = function(html, pos, opt_elem) {
   // Parse the html.
@@ -1301,6 +1350,7 @@ deferJsNs.DeferJs.prototype.insertHtml = function(html, pos, opt_elem) {
   this.deferScripts(scriptNodes, pos);
 };
 
+
 /**
  * Renders the document.write() buffer before the context
  * element.
@@ -1320,6 +1370,7 @@ deferJsNs.DeferJs.prototype.handlePendingDocumentWrites = function() {
   this.insertHtml(html, this.next_, currentElem);
 };
 
+
 /**
  * Writes html like document.write to the current context item.
  * @param {string} html Html to be written before current context elem.
@@ -1332,6 +1383,7 @@ deferJsNs.DeferJs.prototype.writeHtml = function(html) {
     this.origDocWrite_.call(document, html);
   }
 };
+
 
 /**
  * Adds page onload event listeners to our own list and called them later.
@@ -1357,6 +1409,7 @@ deferJsNs.DeferJs.prototype.addDeferredOnloadListeners = function() {
   }
 };
 
+
 /**
  * Adds functions that run as the first thing in run().
  * @param {!function()} func onload listener.
@@ -1366,6 +1419,7 @@ deferJsNs.DeferJs.prototype.addBeforeDeferRunFunctions = function(func) {
 };
 deferJsNs.DeferJs.prototype['addBeforeDeferRunFunctions'] =
     deferJsNs.DeferJs.prototype.addBeforeDeferRunFunctions;
+
 
 /**
  * Adds functions that run after all the deferred scripts, DOM ready listeners
@@ -1377,6 +1431,7 @@ deferJsNs.DeferJs.prototype.addAfterDeferRunFunctions = function(func) {
 };
 deferJsNs.DeferJs.prototype['addAfterDeferRunFunctions'] =
     deferJsNs.DeferJs.prototype.addAfterDeferRunFunctions;
+
 
 /**
  * Firing event will execute all listeners registered for the event.
@@ -1392,10 +1447,12 @@ deferJsNs.DeferJs.prototype.fireEvent = function(evt) {
   eventListeners.length = 0;
 };
 
+
 /**
  * Execute function under try catch.
  * @param {!function()} func Function to be executed.
- * @param {Window|Element|Document} opt_scopeObject Element to be used as scope.
+ * @param {Window|Element|Document=} opt_scopeObject Element to be used as
+ *     scope.
  */
 deferJsNs.DeferJs.prototype.exec = function(func, opt_scopeObject) {
   try {
@@ -1404,6 +1461,7 @@ deferJsNs.DeferJs.prototype.exec = function(func, opt_scopeObject) {
     this.log('Exception while evaluating.', err);
   }
 };
+
 
 /**
  * Override native event registration function on window and document objects.
@@ -1432,15 +1490,16 @@ deferJsNs.DeferJs.prototype.overrideAddEventListeners = function() {
   }
 };
 
+
 /**
  * Registers an event with the element.
  * @param {!(Window|Node|Document)} elem Element which is registering for the
  * event.
  * @param {!string} eventName Name of the event.
  * @param {(Function|EventListener|function())} func Event handler.
- * @param {Function} opt_originalAddEventListener Original Add event Listener
+ * @param {Function=} opt_originalAddEventListener Original Add event Listener
  * function.
- * @param {boolean} opt_capture Capture event.
+ * @param {boolean=} opt_capture Capture event.
  */
 var psaAddEventListener = function(elem, eventName, func,
                                    opt_originalAddEventListener, opt_capture) {
@@ -1464,12 +1523,13 @@ var psaAddEventListener = function(elem, eventName, func,
   var deferJsEventName;
 
   if (deferJs.eventState_ < deferJsNs.DeferJs.EVENT.DOM_READY &&
-     (eventName == 'DOMContentLoaded' || eventName == 'readystatechange' ||
-      eventName == 'onDOMContentLoaded' || eventName == 'onreadystatechange')) {
+      (eventName == 'DOMContentLoaded' || eventName == 'readystatechange' ||
+       eventName == 'onDOMContentLoaded' ||
+       eventName == 'onreadystatechange')) {
     deferJsEvent = deferJsNs.DeferJs.EVENT.DOM_READY;
     deferJsEventName = 'DOMContentLoaded';
   } else if (deferJs.eventState_ < deferJsNs.DeferJs.EVENT.LOAD &&
-            (eventName == 'load' || eventName == 'onload')) {
+             (eventName == 'load' || eventName == 'onload')) {
     deferJsEvent = deferJsNs.DeferJs.EVENT.LOAD;
     deferJsEventName = 'load';
   } else if (eventName == 'onbeforescripts') {
@@ -1509,15 +1569,16 @@ var psaAddEventListener = function(elem, eventName, func,
       eventListenerClosure);
 };
 
+
 /**
  * Registers all script tags which are marked text/psajs, by adding themselves
  * as the context element to the script embedded inside them.
- * @param {function()} opt_callback Called when critical scripts are
+ * @param {function()=} opt_callback Called when critical scripts are
  *     done executing.
- * @param {number} opt_last_index till where its safe to run scripts.
+ * @param {number=} opt_last_index till where its safe to run scripts.
  */
-deferJsNs.DeferJs.prototype.registerScriptTags = function(
-  opt_callback, opt_last_index) {
+deferJsNs.DeferJs.prototype.registerScriptTags =
+    function(opt_callback, opt_last_index) {
   if (this.state_ >= deferJsNs.DeferJs.STATES.SCRIPTS_REGISTERED) {
     return;
   }
@@ -1564,6 +1625,7 @@ deferJsNs.DeferJs.prototype.registerScriptTags = function(
 deferJsNs.DeferJs.prototype['registerScriptTags'] =
     deferJsNs.DeferJs.prototype.registerScriptTags;
 
+
 /**
  * Runs the function when element is loaded.
  * @param {Window|Element} elem Element to attach handler.
@@ -1574,6 +1636,7 @@ deferJsNs.addOnload = function(elem, func) {
 };
 pagespeed['addOnload'] = deferJsNs.addOnload;
 
+
 /**
  * @return {boolean} true if browser is Firefox.
  */
@@ -1581,12 +1644,14 @@ deferJsNs.DeferJs.prototype.isFireFox = function() {
   return (navigator.userAgent.indexOf('Firefox') != -1);
 };
 
+
 /**
  * @return {boolean} true if browser is WebKit based.
  */
 deferJsNs.DeferJs.prototype.isWebKit = function() {
   return (navigator.userAgent.indexOf('AppleWebKit') != -1);
 };
+
 
 /**
  * @return {number} version number if browser is IE.
@@ -1598,6 +1663,7 @@ deferJsNs.DeferJs.prototype.getIEVersion = function() {
          NaN;
 };
 
+
 /**
  * Set the type of the scripts which will be executed.
  * @param {string} type of psa dummy nodes that need to be processed.
@@ -1606,6 +1672,7 @@ deferJsNs.DeferJs.prototype.setType = function(type) {
   this.psaScriptType_ = type;
 };
 
+
 /**
  * Set the psaNotProcessed marker.
  * @param {string} psaNotProcessed marker.
@@ -1613,6 +1680,7 @@ deferJsNs.DeferJs.prototype.setType = function(type) {
 deferJsNs.DeferJs.prototype.setPsaNotProcessed = function(psaNotProcessed) {
   this.psaNotProcessed_ = psaNotProcessed;
 };
+
 
 /**
  * Whether defer javascript is executing low priority scripts.
@@ -1625,6 +1693,7 @@ deferJsNs.DeferJs.prototype.isLowPriorityDeferJs = function() {
   }
   return false;
 };
+
 
 /**
  * Overrides createElement for the non-deferred scripts. Any async script
@@ -1655,6 +1724,7 @@ deferJsNs.DeferJs.prototype.noDeferCreateElementOverride = function() {
   };
 };
 
+
 /**
  * @return {boolean} true if deferJs is running with experimental flag.
  */
@@ -1663,6 +1733,7 @@ deferJsNs.DeferJs.prototype.isExperimentalMode = function() {
 };
 deferJsNs.DeferJs.prototype['isExperimentalMode'] =
     deferJsNs.DeferJs.prototype.isExperimentalMode;
+
 
 /**
  * Initialize defer javascript.
@@ -1675,14 +1746,14 @@ deferJsNs.deferInit = function() {
   deferJsNs.DeferJs.isExperimentalMode = pagespeed['defer_js_experimental'];
   pagespeed.highPriorityDeferJs = new deferJsNs.DeferJs();
   pagespeed.highPriorityDeferJs.setType(
-    deferJsNs.DeferJs.PRIORITY_PSA_SCRIPT_TYPE);
+      deferJsNs.DeferJs.PRIORITY_PSA_SCRIPT_TYPE);
   pagespeed.highPriorityDeferJs.setPsaNotProcessed(
-    deferJsNs.DeferJs.PRIORITY_PSA_NOT_PROCESSED);
+      deferJsNs.DeferJs.PRIORITY_PSA_NOT_PROCESSED);
   pagespeed.highPriorityDeferJs.setNotProcessedAttributeForNodes();
   pagespeed.lowPriorityDeferJs = new deferJsNs.DeferJs();
   pagespeed.lowPriorityDeferJs.setType(deferJsNs.DeferJs.PSA_SCRIPT_TYPE);
   pagespeed.lowPriorityDeferJs.setPsaNotProcessed(
-    deferJsNs.DeferJs.PSA_NOT_PROCESSED);
+      deferJsNs.DeferJs.PSA_NOT_PROCESSED);
   pagespeed.lowPriorityDeferJs.setNotProcessedAttributeForNodes();
   pagespeed.deferJs = pagespeed.highPriorityDeferJs;
 
@@ -1692,11 +1763,13 @@ deferJsNs.deferInit = function() {
 
 deferJsNs.deferInit();
 
+
 /**
  * Indicates if deferJs started executing.
  * @type {boolean}
  */
 pagespeed.deferJsStarted = false;
+
 
 /**
  * Starts deferJs execution.

@@ -16,6 +16,8 @@ var NON_CRITICAL_LOADED = 'ncl';
 window['pagespeed'] = window['pagespeed'] || {};
 var pagespeed = window['pagespeed'];
 
+
+
 /**
  * Class for loading panels.
  *
@@ -48,6 +50,7 @@ pagespeed.PanelLoader = function() {
   this.changePageLoadState(CRITICAL_DATA_LOADED, 0);
 };
 
+
 /**
  * Main state machine for loading panels.
  * NOTE: This function assumes the following order of calls:
@@ -57,7 +60,7 @@ pagespeed.PanelLoader = function() {
 pagespeed.PanelLoader.prototype.loadData = function() {
   if (this.nonCriticalDataPresent && this.readyToLoadNonCritical &&
       this.state != NON_CRITICAL_LOADED) {
-      this.pageManager.instantiatePage(this.nonCriticalData);
+    this.pageManager.instantiatePage(this.nonCriticalData);
     // Remove 'DONT_BIND' in all non-cacheable objects.
     for (var panelId in this.nonCacheablePanelInstances) {
       if (!this.nonCacheablePanelInstances.hasOwnProperty(panelId)) continue;
@@ -115,6 +118,7 @@ pagespeed.PanelLoader.prototype.isStateInCriticalPath = function(state) {
   return state == CRITICAL_DATA_LOADED;
 };
 
+
 /**
  * Accessor for csi timings as a string.
  * @return {string} Returns the csi timing as a string.
@@ -131,6 +135,7 @@ pagespeed.PanelLoader.prototype.getCsiTimingsString = function() {
 };
 pagespeed.PanelLoader.prototype['getCsiTimingsString'] =
     pagespeed.PanelLoader.prototype.getCsiTimingsString;
+
 
 /**
  * Updates the dashboard.
@@ -161,10 +166,11 @@ pagespeed.PanelLoader.prototype.updateDashboard = function() {
   }
 };
 
+
 /**
  * Updates the state and the dashboard with the debugging info.
  * @param {string} newState
- * @param {number} opt_size
+ * @param {number=} opt_size
  */
 pagespeed.PanelLoader.prototype.changePageLoadState = function(newState,
                                                                opt_size) {
@@ -179,6 +185,7 @@ pagespeed.PanelLoader.prototype.changePageLoadState = function(newState,
   }
   this.updateDashboard();
 };
+
 
 /**
  * Executes above the fold scripts till a panel stub is encountered.
@@ -197,6 +204,7 @@ pagespeed.PanelLoader.prototype.executeATFScripts = function() {
   }
 };
 
+
 // -------------------------- API EXPOSED --------------------------------
 /**
  * Sets the request from internal ip.
@@ -207,19 +215,21 @@ pagespeed.PanelLoader.prototype.setRequestFromInternalIp = function() {
 pagespeed.PanelLoader.prototype['setRequestFromInternalIp'] =
     pagespeed.PanelLoader.prototype.setRequestFromInternalIp;
 
+
 /**
  * Adds debugging info like timing and size to the dashboard.
  * TODO(ksimbili,anupama): Start adding the timing information into pagespeed
  * global variables instead of local ones.
  * @param {string} variable
  * @param {number} time
- * @param {number} opt_size
+ * @param {number=} opt_size
  */
 pagespeed.PanelLoader.prototype.addCsiTiming = function(variable, time,
                                                         opt_size) {
   this.csiTimings.time[variable] = time;
   if (opt_size) this.csiTimings.size[variable] = opt_size;
 };
+
 
 /**
  * Loads cookies.
@@ -232,6 +242,7 @@ pagespeed.PanelLoader.prototype.loadCookies = function(data) {
 };
 pagespeed.PanelLoader.prototype['loadCookies'] =
     pagespeed.PanelLoader.prototype.loadCookies;
+
 
 /**
  * Attempts to load non-cacheable object. If failed will buffer the object and
@@ -265,6 +276,7 @@ pagespeed.PanelLoader.prototype.loadNonCacheableObject = function(data) {
 pagespeed.PanelLoader.prototype['loadNonCacheableObject'] =
     pagespeed.PanelLoader.prototype.loadNonCacheableObject;
 
+
 /**
  * Callback function for DeferJs, when critical scripts are done.
  */
@@ -275,10 +287,11 @@ pagespeed.PanelLoader.prototype.criticalScriptsDone = function() {
 pagespeed.PanelLoader.prototype['criticalScriptsDone'] =
     pagespeed.PanelLoader.prototype.criticalScriptsDone;
 
+
 /**
  * Buffers the non critical data and loads it if hi res images are loaded.
  * @param {Object} data Non-Critical Data.
- * @param {boolean} opt_delay_bind if set to true, will save the data passed in
+ * @param {boolean=} opt_delay_bind if set to true, will save the data passed in
  *    and use the saved data that when the function is called again without
  *    opt_delay_bind (note: will overwrite whatever data is passed in at that
  *    point with the saved value if something was saved).
@@ -300,6 +313,7 @@ pagespeed.PanelLoader.prototype.bufferNonCriticalData = function(
 };
 pagespeed.PanelLoader.prototype['bufferNonCriticalData'] =
     pagespeed.PanelLoader.prototype.bufferNonCriticalData;
+
 
 /**
  * Iniitialize the panel loader.

@@ -153,8 +153,7 @@ pagespeed.Messages.prototype.updateMessageCount = function(opt_num) {
         total;
   } else {
     document.getElementById('num').textContent =
-      'Visible message count: ' + total + '/' +
-      this.numUnfilteredMessages_;
+        'Visible message count: ' + total + '/' + this.numUnfilteredMessages_;
   }
 };
 
@@ -285,7 +284,7 @@ pagespeed.Messages.Start = function() {
                        goog.bind(messagesObj.toggleAutorefresh, messagesObj));
     goog.events.listen(messagesObj.xhr_, goog.net.EventType.COMPLETE,
                        goog.bind(messagesObj.parseAjaxResponse, messagesObj));
-    setInterval(messagesObj.autoRefresh.bind(messagesObj), 5000);
+    setInterval(goog.bind(messagesObj.autoRefresh, messagesObj), 5000);
   };
   goog.events.listen(window, 'load', messagesOnload);
 };

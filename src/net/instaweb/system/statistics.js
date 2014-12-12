@@ -303,7 +303,7 @@ pagespeed.Statistics.prototype.sortByNumberOfChanges = function() {
       return pagespeed.Statistics.alphabetCompareFunc(a, b);
     }
   };
-  this.psolMessages_.sort(compareFunc.bind(this));
+  this.psolMessages_.sort(goog.bind(compareFunc, this));
 };
 
 
@@ -448,7 +448,7 @@ pagespeed.Statistics.Start = function() {
     goog.events.listen(document.getElementById('auto-refresh'), 'change',
                        goog.bind(statisticsObj.toggleAutorefresh,
                                  statisticsObj));
-    setInterval(statisticsObj.performRefresh.bind(statisticsObj),
+    setInterval(goog.bind(statisticsObj.performRefresh, statisticsObj),
                 pagespeed.Statistics.FREQUENCY_);
     goog.events.listen(
         statisticsObj.xhr_, goog.net.EventType.COMPLETE,
