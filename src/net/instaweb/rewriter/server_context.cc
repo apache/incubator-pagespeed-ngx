@@ -820,8 +820,7 @@ void ServerContext::ReleaseRewriteDriverImpl(RewriteDriver* rewrite_driver) {
 
   int count = active_rewrite_drivers_.erase(rewrite_driver);
   if (count != 1) {
-    LOG(ERROR) << "ReleaseRewriteDriver called with driver not in active set.";
-    DLOG(FATAL);
+    LOG(DFATAL) << "ReleaseRewriteDriver called with driver not in active set.";
   } else {
     RewriteDriverPool* pool = rewrite_driver->controlling_pool();
     if (pool == NULL) {

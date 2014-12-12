@@ -20,14 +20,13 @@
 
 #include "base/logging.h"
 #include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/rewriter/public/rewrite_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/html_element.h"
 
 namespace net_instaweb {
-
-class RewriteContext;
 
 ResourceSlot::~ResourceSlot() {
 }
@@ -55,7 +54,7 @@ void ResourceSlot::DetachContext(RewriteContext* context) {
   } else if (contexts_.back() == context) {
     contexts_.pop_back();
   } else {
-    DLOG(FATAL) << "Can only detach first or last context";
+    LOG(DFATAL) << "Can only detach first or last context";
   }
 }
 
@@ -91,7 +90,7 @@ FetchResourceSlot::~FetchResourceSlot() {
 }
 
 void FetchResourceSlot::Render() {
-  DLOG(FATAL) << "FetchResourceSlot::Render should never be called";
+  LOG(DFATAL) << "FetchResourceSlot::Render should never be called";
 }
 
 GoogleString FetchResourceSlot::LocationString() const {

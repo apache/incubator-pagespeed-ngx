@@ -2201,7 +2201,7 @@ ResourcePtr RewriteDriver::CreateInputResource(
     // Shouldn't happen?
     message_handler()->Message(
         kFatal, "invalid decoded_base_url_ for '%s'", input_url.spec_c_str());
-    DLOG(FATAL);
+    LOG(DFATAL);
   }
   RewriteStats* stats = server_context_->rewrite_stats();
   if (may_rewrite) {

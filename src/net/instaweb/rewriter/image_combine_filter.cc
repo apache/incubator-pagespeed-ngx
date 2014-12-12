@@ -52,6 +52,7 @@
 #include "pagespeed/kernel/base/stl_util.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/http/image_types.pb.h"
@@ -62,8 +63,6 @@
 #include "webutil/css/value.h"
 
 namespace net_instaweb {
-class Timer;
-class UrlSegmentEncoder;
 
 typedef std::map<GoogleString, const spriter::Rect*> RectMap;
 namespace {
@@ -846,7 +845,7 @@ class ImageCombineFilter::Context : public RewriteContext {
       if (num_inputs > 1) {
         if (!partition->has_spriter_result()) {
           // TODO(nforman): some error handling here.
-          DLOG(FATAL) << "spriting failed during Render";
+          LOG(DFATAL) << "spriting failed during Render";
           break;
         }
         const spriter::SpriterResult& spriter_result =

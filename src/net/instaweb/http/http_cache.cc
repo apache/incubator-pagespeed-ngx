@@ -34,6 +34,7 @@
 #include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/http/http_names.h"
 #include "pagespeed/kernel/http/response_headers.h"
+#include "pagespeed/opt/logging/request_timing_info.h"
 
 namespace net_instaweb {
 
@@ -545,7 +546,7 @@ void HTTPCache::Callback::ReportLatencyMs(int64 latency_ms) {
   }
 
   if (request_context().get() == NULL) {
-    DLOG(FATAL) << "NOTREACHED";
+    LOG(DFATAL) << "NOTREACHED";
     return;
   }
 

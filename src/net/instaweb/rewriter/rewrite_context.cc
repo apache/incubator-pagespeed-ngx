@@ -456,7 +456,7 @@ class RewriteContext::OutputCacheCallback : public CacheInterface::Callback {
         return true;
     }
 
-    DLOG(FATAL) << "Corrupt InputInfo object !?";
+    LOG(DFATAL) << "Corrupt InputInfo object !?";
     return false;
   }
 

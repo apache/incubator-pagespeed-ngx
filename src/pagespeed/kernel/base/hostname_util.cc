@@ -53,7 +53,7 @@ GoogleString GetHostname() {
   // but ensure an empty (safe) value under Release.
   int err = gethostname(hostname, sizeof(hostname) - 1);
   if (err != 0) {
-    DLOG(FATAL) << "gethostname failed: " << err;
+    LOG(DFATAL) << "gethostname failed: " << err;
     hostname[0] = '\0';
   }
 

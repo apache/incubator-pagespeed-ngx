@@ -291,7 +291,7 @@ void AbstractLogRecord::PopulateRewriterStatusCounts() {
   }
 
   if (logging_info()->rewriter_stats_size() > 0) {
-    DLOG(FATAL) <<  "PopulateRewriterStatusCounts should be called only once";
+    LOG(DFATAL) <<  "PopulateRewriterStatusCounts should be called only once";
     return;
   }
 

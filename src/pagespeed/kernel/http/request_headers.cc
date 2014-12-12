@@ -93,7 +93,7 @@ RequestHeaders::Method RequestHeaders::method() const {
     case HttpRequestHeaders::PURGE:       return kPurge;
     case HttpRequestHeaders::INVALID:     return kError;
   }
-  DLOG(FATAL) << "Invalid method";
+  LOG(DFATAL) << "Invalid method";
   return kGet;
 }
 
@@ -111,7 +111,7 @@ const char* RequestHeaders::method_string() const {
     case HttpRequestHeaders::PURGE:       return "PURGE";
     case HttpRequestHeaders::INVALID:     return "ERROR";
   }
-  DLOG(FATAL) << "Invalid method";
+  LOG(DFATAL) << "Invalid method";
   return NULL;
 }
 

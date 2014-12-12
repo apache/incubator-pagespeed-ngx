@@ -45,12 +45,12 @@ bool ThreadSystem::Thread::Start() {
 
 void ThreadSystem::Thread::Join() {
   if (!started_) {
-    DLOG(FATAL) << "Trying to join thread that wasn't Start()ed";
+    LOG(DFATAL) << "Trying to join thread that wasn't Start()ed";
     return;
   }
 
   if ((flags_ & ThreadSystem::kJoinable) == 0) {
-    DLOG(FATAL) << "Trying to join a detached thread";
+    LOG(DFATAL) << "Trying to join a detached thread";
     return;
   }
 
