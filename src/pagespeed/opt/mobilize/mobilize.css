@@ -1,0 +1,373 @@
+/*
+ * Copyright 2014 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/**
+ * @fileoverview Stylesheet injected into mobilized pages.
+ *
+ * @author jud@google.com (Jud Porter)
+ *         jmarantz@google.com (Joshua Marantz)
+ *         huibao@google.com (Huibao Lin)
+ */
+
+/* TODO(jmarantz): make class names consistent */
+
+/* General mobile-friendly overrides for content CSS */
+* {
+  max-width: 100% !important;
+  min-width: 0 !important;
+  line-height: initial !important;
+}
+
+body {
+  /* Give the body some margin so text doesn't go right to the bezel */
+  margin-left: 8px;
+  margin-right: 8px;
+  padding: 0px !important;
+}
+
+html {
+  /* Allows overflow: hidden to work when nav menu is out. */
+  height: 100%;
+}
+
+.noscroll {
+  /* position: fixed; */
+  overflow: hidden;
+}
+
+.psmob-header-bar {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  z-index: 999999;
+
+  padding: 0px;
+
+  width: 100%;
+  height: 60px;
+
+  box-shadow: 0px 5px 6px -1px rgba(0, 0, 0, 0.4);
+
+  /* Center the menu button in the bar. Consider using flexbox instead. */
+  line-height: 60px;
+  text-align: left;
+
+  /*
+  display: -ms-flexbox;
+  display: -webkit-flex;
+  display: flex;
+
+  -ms-flex-direction: row;
+  -webkit-flex-direction: row;
+  flex-direction: row;
+  */
+
+  -webkit-transition: -webkit-transform 0.3s ease-out;
+  transition: transform 0.3s ease-out;
+}
+
+.psmob-header-bar button {
+  width: 60px;
+  height: 60px;
+
+  margin: 0;
+  padding: 0;
+
+  background-image: none;
+  background-color: transparent;
+
+  border: none;
+
+  padding: 0;
+
+  -webkit-transition: background-color 0.2s ease-out;
+  transition: background-color 0.2s ease-out;
+}
+
+.psmob-header-bar button img {
+  width: 60px;
+  height: 60px;
+  padding: 0;
+}
+
+.psmob-header-bar button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.psmob-header-bar button:focus {
+  background-color: rgba(255, 255, 255, 0.2);
+  outline: 0;
+}
+
+.psmob-header-bar button:active {
+  background-color: rgba(255, 255, 255, 0.4);
+}
+
+.psmob-nav-panel {
+  position: fixed !important;
+
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 250px !important;
+  height: auto;
+
+  /* Wordpress sets a z-index of 99999 for its admin header bar, so set a larger
+   * value so our nav bar ends up on top of it. */
+  z-index: 999999;
+
+  margin: 60px 0 0px !important;
+  padding: 0 !important;
+
+  box-shadow: 5px 0px 6px -1px rgba(0, 0, 0, 0.4);
+
+  overflow-y: auto;
+
+  -webkit-transition: -webkit-transform 0.3s ease-out;
+  transition: transform 0.3s ease-out;
+  -webkit-transform: translate(-250px,0);
+  transform: translate(-250px,0);
+}
+
+.psmob-nav-panel.open {
+  -webkit-transform: translate(0,0);
+  transform: translate(0,0);
+}
+
+.psmob-nav-panel ul {
+  width: 100%;
+  padding: 0;
+  margin: 0;
+
+  list-style-type: none;
+  display: none;
+}
+
+/* TODO(jud): Consider using class labels instead of deeply nested rules. */
+.psmob-nav-panel ul li {
+  border-bottom-style: solid;
+  border-width: 1px;
+  border-color: white;
+
+  background: none;
+
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  box-sizing: border-box;
+
+  text-align: left;
+
+  font-size: medium !important;
+
+  padding-right: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  line-height: 60px !important;
+  text-decoration: none;
+
+  -webkit-transition: background-color 0.2s ease-out;
+  transition: background-color 0.2s ease-out;
+}
+
+.psmob-nav-panel ul li a, .psmob-nav-panel ul li div {
+  display: block;
+  padding-right: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  line-height: 60px !important;
+  text-decoration: none;
+  font-size: medium !important;
+
+  -webkit-transition: background-color 0.2s ease-out;
+  transition: background-color 0.2s ease-out;
+}
+
+.psmob-nav-panel ul.open {
+  display: block;
+}
+
+.psmob-nav-panel ul li a:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.psmob-nav-panel ul li a:focus {
+  background-color: rgba(255, 255, 255, 0.3);
+  outline: 0;
+}
+
+.psmob-nav-panel ul li a:active {
+  background-color: rgba(255, 255, 255, 0.4);
+}
+
+.psmob-menu-expand-icon {
+  display: inline-block;
+  vertical-align: middle;
+  width: 20px;
+  height: 20px;
+}
+
+.psmob-menu-expand-icon.open {
+  -ms-transofrm: rotate(180deg);
+  -webkit-transform: rotate(180deg);
+  transform: rotate(180deg);
+}
+
+/* TODO(jud): This is probably slow to match, so consider using a class. */
+.psmob-nav-panel img:not(.psmob-menu-expand-icon) {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.psmob-header-spacer-div {
+  position: relative;
+  height: 60px;
+  width: 100%;
+}
+
+/* Commmon patterns applied to a broad range of elements */
+.psSingleColumn {
+    border-left: 0px !important;
+    border-right: 0px !important;
+    margin-left: 0px !important;
+    margin-right: 0px !important;
+    padding-left: 0px !important;
+    padding-right: 0px !important;
+}
+
+/* Logo-specific CSS */
+.psmob-logo-span {
+  display: inline-block;
+  vertical-align: top;
+  padding-top: 5px;
+  width: 80%;
+  height: 75%;
+  position: relative;
+}
+
+/* TODO(jmarantz): convert to a class */
+[data-mobile-role="logo"] {
+  margin: auto;
+  max-height: 75%;
+  max-width: 100% !important;
+  position: absolute;
+  top: 15%;
+  left: 0;
+  bottom: 0;
+  right: 60px;
+}
+
+/* Progess Bar elements */
+.psProgressScrim {
+    z-index: 100000 !important;
+    position: fixed;
+    top: 0px !important;
+    margin: 0px !important;
+    padding-top: 100px !important;
+    background: white;
+    border: 0px;
+    width: 100%;
+    height: 100%;
+}
+
+.psProgressBar {
+    margin-top: 50px !important;
+    margin-left: 20% !important;
+    height: 20px;  /* Can be anything */
+    width: 60%;
+    margin: 0px;
+    background: #555;
+    -moz-border-radius: 25px;
+    -webkit-border-radius: 25px;
+    border-radius: 25px;
+    padding: 10px;
+    -webkit-box-shadow: inset 0 -1px 1px rgba(255,255,255,0.3);
+    -moz-box-shadow   : inset 0 -1px 1px rgba(255,255,255,0.3);
+    box-shadow        : inset 0 -1px 1px rgba(255,255,255,0.3);
+
+    /*
+     * Simplified Meyer Reset
+     * http://meyerweb.com/eric/tools/css/reset/
+     */
+    border: 0px;
+    font-size: 100%;
+    font: inherit;
+    vertical-align: baseline;
+    display: block;
+    line-height: 1;
+    list-style: none;
+    quotes: none;
+    content: '';
+    content: none;
+    border-collapse: collapse;
+    border-spacing: 0px;
+}
+
+.psProgressSpan {
+    display: block;
+    height: 100%;
+    position: relative;
+    width: 0%;
+
+    -webkit-border-top-right-radius: 8px;
+    -webkit-border-bottom-right-radius: 8px;
+    -moz-border-radius-topright: 8px;
+    -moz-border-radius-bottomright: 8px;
+    border-top-right-radius: 8px;
+    border-bottom-right-radius: 8px;
+    -webkit-border-top-left-radius: 20px;
+    -webkit-border-bottom-left-radius: 20px;
+    -moz-border-radius-topleft: 20px;
+    -moz-border-radius-bottomleft: 20px;
+    border-top-left-radius: 20px;
+    border-bottom-left-radius: 20px;
+    background-color: rgb(43,194,83);
+    background-image: -webkit-gradient(
+        linear,
+        left bottom,
+        left top,
+        color-stop(0, rgb(43,194,83)),
+        color-stop(1, rgb(84,240,84))
+    );
+    background-image: -moz-linear-gradient(
+        center bottom,
+        rgb(43,194,83) 37%,
+        rgb(84,240,84) 69%
+    );
+    -webkit-box-shadow:
+    inset 0 2px 9px  rgba(255,255,255,0.3),
+    inset 0 -2px 6px rgba(0,0,0,0.4);
+    -moz-box-shadow:
+    inset 0 2px 9px  rgba(255,255,255,0.3),
+    inset 0 -2px 6px rgba(0,0,0,0.4);
+    box-shadow:
+    inset 0 2px 9px  rgba(255,255,255,0.3),
+    inset 0 -2px 6px rgba(0,0,0,0.4);
+    position: relative;
+    overflow: hidden;
+}
+
+.psProgressLog {
+    margin-top: 30px !important;
+    margin-left: 10% !important;
+    background: white;
+    /* Invisible by default; in debug mode we override. */
+    color: white;
+    font-family: sans-serif !important;
+    font-size: 12px;
+    overflow-y: auto;
+    height: 300px;
+    width: 80%;
+}

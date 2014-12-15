@@ -421,17 +421,7 @@ void MobilizeRewriteFilter::AppendStylesheet(const StringPiece& css_file_name,
 void MobilizeRewriteFilter::AddStyle(HtmlElement* element) {
   if (!added_style_) {
     added_style_ = true;
-    // <style>...</style>
-    AppendStylesheet("lite.css", element);
-
-    if (use_js_logo_) {
-      AppendStylesheet("mob_logo.css", element);
-    }
-
-    // TODO(jud): Move mob_nav.css out of experimental.
-    if (use_js_nav_ || use_js_logo_) {
-      AppendStylesheet("mob_nav.css", element);
-    }
+    AppendStylesheet("mobilize.css", element);
   }
 }
 

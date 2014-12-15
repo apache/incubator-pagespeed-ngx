@@ -42,10 +42,7 @@ namespace {
 const char kTestDataDir[] = "/net/instaweb/rewriter/testdata/";
 const char kOriginal[] = "mobilize_test.html";
 const char kRewritten[] = "mobilize_test_output.html";
-const char kStyles[] =
-    "<link rel=\"stylesheet\" href=\"lite.css\">"
-    "<link rel=\"stylesheet\" href=\"mob_logo.css\">"
-    "<link rel=\"stylesheet\" href=\"mob_nav.css\">";
+const char kStyles[] = "<link rel=\"stylesheet\" href=\"mobilize.css\">";
 const char kHeadAndViewport[] =
     "<script>var psDebugMode=false;var psNavMode=true;</script>"
     "<meta name='viewport' content='width=device-width'/>"
@@ -458,6 +455,7 @@ TEST_F(MobilizeRewriteEndToEndTest, FullPage) {
                                    &rewritten_buffer, message_handler()));
   GlobalReplaceSubstring("@@HEAD_SCRIPT_LOAD@@", kHeadAndViewport,
                          &rewritten_buffer);
+  GlobalReplaceSubstring("@@HEAD_STYLES@@", kStyles, &rewritten_buffer);
   GlobalReplaceSubstring("@@TRAILING_SCRIPT_LOADS@@", ScriptsAtEndOfBody(),
                          &rewritten_buffer);
   rewrite_driver()->SetUserAgent(
