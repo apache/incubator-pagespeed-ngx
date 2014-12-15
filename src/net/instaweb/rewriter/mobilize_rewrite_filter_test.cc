@@ -67,7 +67,6 @@ class MobilizeRewriteFilterTest : public RewriteTestBase {
     options()->ClearSignatureForTesting();
     options()->set_mob_always(true);
     options()->set_mob_layout(true);
-    options()->set_mob_logo(true);
     options()->set_mob_nav(true);
     server_context()->ComputeSignature(options());
     SetHtmlMimetype();  // Don't wrap scripts in <![CDATA[ ]]>
@@ -426,7 +425,6 @@ class MobilizeRewriteEndToEndTest : public MobilizeRewriteFilterTest {
     SetHtmlMimetype();  // Don't wrap scripts in <![CDATA[ ]]>
     options()->ClearSignatureForTesting();
     options()->set_mob_layout(true);
-    options()->set_mob_logo(true);
     options()->set_mob_nav(true);
     AddFilter(RewriteOptions::kMobilize);
   }

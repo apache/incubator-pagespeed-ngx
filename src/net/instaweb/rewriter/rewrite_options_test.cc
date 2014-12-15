@@ -969,7 +969,6 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
     RewriteOptions::kMinImageSizeLowResolutionBytes,
     RewriteOptions::kMinResourceCacheTimeToRewriteMs,
     RewriteOptions::kMobLayout,
-    RewriteOptions::kMobLogo,
     RewriteOptions::kMobNav,
     RewriteOptions::kModifyCachingHeaders,
     RewriteOptions::kNoTransformOptimizedImages,

@@ -224,7 +224,6 @@ const char RewriteOptions::kMinImageSizeLowResolutionBytes[] =
 const char RewriteOptions::kMinResourceCacheTimeToRewriteMs[] =
     "MinResourceCacheTimeToRewriteMs";
 const char RewriteOptions::kMobLayout[] = "MobLayout";
-const char RewriteOptions::kMobLogo[] = "MobLogo";
 const char RewriteOptions::kMobNav[] = "MobNav";
 const char RewriteOptions::kModifyCachingHeaders[] = "ModifyCachingHeaders";
 const char RewriteOptions::kNoTransformOptimizedImages[] =
@@ -2197,10 +2196,6 @@ void RewriteOptions::AddProperties() {
       false, &RewriteOptions::mob_layout_, "mlayout", kMobLayout,
       kQueryScope,
       "(experimental) whether to run layout resynthesis when mobilizing", true);
-  AddBaseProperty(
-      false, &RewriteOptions::mob_logo_, "mlogo", kMobLogo,
-      kQueryScope,
-      "(experimental) whether to run logo resynthesis when mobilizing", true);
   AddBaseProperty(
       false, &RewriteOptions::mob_nav_, "mnav", kMobNav,
       kQueryScope,

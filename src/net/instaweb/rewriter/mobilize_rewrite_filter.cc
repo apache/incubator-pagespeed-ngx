@@ -101,7 +101,6 @@ MobilizeRewriteFilter::MobilizeRewriteFilter(RewriteDriver* rewrite_driver)
       added_progress_(false),
       in_script_(false),
       use_js_layout_(rewrite_driver->options()->mob_layout()),
-      use_js_logo_(rewrite_driver->options()->mob_logo()),
       use_js_nav_(rewrite_driver->options()->mob_nav()),
       rewrite_js_(rewrite_driver->options()->Enabled(
           RewriteOptions::kRewriteJavascriptExternal)) {
@@ -362,7 +361,7 @@ void MobilizeRewriteFilter::EndElementImpl(HtmlElement* element) {
           added_mob_js_ = true;
           // TODO(jmarantz): have just one option for mob_logo_ and mob_nav_.
           // They are co-dependent.
-          if (use_js_logo_) {
+          if (use_js_nav_) {
             AddStaticScript("mob_logo.js");
           }
           if (rewrite_js_) {

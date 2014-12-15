@@ -324,7 +324,6 @@ class RewriteOptions {
   static const char kMinImageSizeLowResolutionBytes[];
   static const char kMinResourceCacheTimeToRewriteMs[];
   static const char kMobLayout[];
-  static const char kMobLogo[];
   static const char kMobNav[];
   static const char kModifyCachingHeaders[];
   static const char kNoTransformOptimizedImages[];
@@ -2492,8 +2491,6 @@ class RewriteOptions {
   void set_mob_always(bool x) { set_option(x, &mob_always_); }
   bool mob_layout() const { return mob_layout_.value(); }
   void set_mob_layout(bool x) { set_option(x, &mob_layout_); }
-  bool mob_logo() const { return mob_logo_.value(); }
-  void set_mob_logo(bool x) { set_option(x, &mob_logo_); }
   bool mob_nav() const { return mob_nav_.value(); }
   void set_mob_nav(bool x) { set_option(x, &mob_nav_); }
 
@@ -3947,7 +3944,6 @@ class RewriteOptions {
 
   Option<bool> mob_always_;
   Option<bool> mob_layout_;
-  Option<bool> mob_logo_;
   Option<bool> mob_nav_;
 
   CopyOnWrite<JavascriptLibraryIdentification>
