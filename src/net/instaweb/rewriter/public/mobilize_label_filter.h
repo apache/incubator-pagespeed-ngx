@@ -53,8 +53,10 @@ struct ElementSample {
   GoogleString ToString(bool readable, HtmlParse* parser);
 
   HtmlElement* element;          // NULL for global count
+  GoogleString id;               // id of *element, which might be flushed.
   ElementSample* parent;         // NULL for global count
   MobileRole::Level role;        // Mobile role (from parent where applicable)
+  bool explicitly_labeled;       // Was this DOM element explicitly labeled?
   std::vector<double> features;  // feature vector, always of size kNumFeatures.
 };
 
@@ -116,7 +118,6 @@ class MobilizeLabelFilter : public CommonFilter {
   void Init();
   void HandleDivLikeElement(HtmlElement* element, MobileRole::Level role);
   void CheckAttributeStrings(HtmlElement* element);
-  void SetMobileRole(HtmlElement* element, MobileRole::Level role);
   ElementSample* MakeNewSample(HtmlElement* element);
   void PopSampleStack();
   void ComputeContained(ElementSample* sample);
@@ -124,9 +125,11 @@ class MobilizeLabelFilter : public CommonFilter {
   void IncrementRelevantTagDepth();
   void SanityCheckEndOfDocumentState();
   void ComputeProportionalFeatures();
-  void PropagateUniqueToParent(MobileRole::Level level);
+  void PropagateChildrenToParent(MobileRole::Level level);
   void Label();
   void DebugLabel();
+  void InjectLabelJavascript();
+  void NonMobileUnlabel();
 
   HtmlElement* active_no_traverse_element_;
   int relevant_tag_depth_;

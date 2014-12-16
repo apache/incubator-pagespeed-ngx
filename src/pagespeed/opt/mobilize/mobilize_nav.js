@@ -72,9 +72,18 @@ pagespeed.MobNav.prototype.ARROW_ICON_ =
  * @private
  */
 pagespeed.MobNav.prototype.findNavSections_ = function() {
+  var elements;
+  if (pagespeedNavigationalIds) {
+    var n = pagespeedNavigationalIds.length;
+    elements = Array(n);
+    for (var i = 0, id; id = pagespeedNavigationalIds[i]; i++) {
+      elements[i] = document.getElementById(id);
+    }
+  } else {
+    elements = Array(0);
+  }
   this.navSections_ = goog.array.concat(
-      goog.array.toArray(
-          document.querySelectorAll('[data-mobile-role="navigational"]')),
+      elements,
       // TODO(jud): Fix MobilizeLabelFilter so that it identifies this section
       // as nav. This fix is for customaquariums.com.
       goog.array.toArray(document.querySelectorAll('.topNavList')));

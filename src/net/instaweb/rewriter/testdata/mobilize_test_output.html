@@ -21,8 +21,8 @@
 @@HEAD_STYLES@@</head>
 <body class="custom"><div id="ps-progress-scrim" class="psProgressScrim"><a href="javascript:psRemoveProgressBar();" id="ps-progress-remove" id="ps-progress-show-log">Remove Progress Bar (doesn't stop mobilization)</a><br><a href="javascript:psSetDebugMode();">Show Debug Log In Progress Bar</a><div class="psProgressBar"><span id="ps-progress-span" class="psProgressSpan"></span></div><pre id="ps-progress-log" class="psProgressLog"/></div>
   <div id="nav_area" class="full_width" data-mobile-role="navigational">
-    <div class="page" id="PageSpeed-nav_area-0">
-      <ul class="nav_menu" id="PageSpeed-nav_area-0-0">
+    <div class="page">
+      <ul class="nav_menu">
         <li class="tab"><a href="http://test.com">Home</a></li>
         <li class="tab"><a href="http://test.com/about" title="About">About</a></li>
         <li class="tab"><a href="http://test.com/articles" title="Articles">Articles</a></li>
@@ -35,7 +35,7 @@
     alert('00');
   </script>
   <div id="header_area" class="full_width" data-mobile-role="header">
-    <div class="page" id="PageSpeed-header_area-0">
+    <div class="page">
       <div id="header">
         <p id="title"><a href="http://test.com/">Mobilize all the Things</a></p>
         <div id="PageSpeed-header-1">
@@ -55,14 +55,14 @@
       alert('01');
     </script>
   </div>
-  <div id="content_area" class="full_width" data-mobile-role="content">
+  <div id="content_area" class="full_width">
     <div class="aside" data-mobile-role="marginal" id="PageSpeed-content_area-0">
       <script>
         document.getElementById("stuff02").innerHTML = "";
         alert('02');
       </script>
-      <form action="http://test.com/form/" method="get" id="PageSpeed-content_area-0-1" data-mobile-role="content">
-        <ul id="PageSpeed-content_area-0-1-0"><li class="widget">
+      <form action="http://test.com/form/" method="get" id="PageSpeed-content_area-0-1">
+        <ul><li class="widget">
             <h3>Months</h3>
             <select name="archive" onchange='document.location.href=this.options[this.selectedIndex].value;'>
               <option value="">Select Month</option>
@@ -81,18 +81,18 @@
         </li></ul>
       </form>
     </div>
-    <div class="page" data-mobile-role="content" id="PageSpeed-content_area-1">
+    <div class="page" data-mobile-role="content">
       <div id="content" class="feed">
-        <div class="post type-post status-publish" id="PageSpeed-content-0">
-          <div class="headline_area" id="PageSpeed-content-0-0" data-mobile-role="header">
+        <div class="post type-post status-publish">
+          <div class="headline_area" id="PageSpeed-content-0-0">
             <h1 class="entry-title">Isn't Mobilization Cool!?</h1>
             <p class="headline_author">
               <span class="author">Foobar</span><br/>
               <abbr class="published" title="2014-01-01">2014-01-01</abbr>
             </p>
           </div>
-          <div class="entry-content" id="PageSpeed-content-0-1">
-            <div class="empty" id="PageSpeed-content-0-1-0"></div>
+          <div class="entry-content">
+            <div class="empty"></div>
             <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur mi est, pulvinar id euismod non, aliquam non dui.<br/>
               Quisque vehicula luctus magna vitae lobortis. Suspendisse lacinia enim nisl. In id euismod augue, at consequat justo
               <a href="http://google.com/" onclick="javascript:alert('');">vestibulum mollis</a> porta leo sed placerat. Aenean consectetur
@@ -127,4 +127,8 @@ int main()
     Nulla ac elit sed urna molestie iaculis. Morbi posuere ac libero in fringilla.
     <br><a class="top"></a>
   </div>
-@@TRAILING_SCRIPT_LOADS@@</body>
+<script type="text/javascript">pagespeedHeaderIds=['header_area','PageSpeed-content-0-0'];
+pagespeedNavigationalIds=['nav_area','PageSpeed-header_area-1'];
+pagespeedContentIds=['PageSpeed-header-1','content_area','PageSpeed-content_area-0-1'];
+pagespeedMarginalIds=['PageSpeed-content_area-0','PageSpeed-6'];
+</script><script src="mob_logo.js"></script><script src="mobilize_util.js"></script><script src="mobilize_layout.js"></script><script src="mobilize_nav.js"></script><script src="mobilize.js"></script></body>

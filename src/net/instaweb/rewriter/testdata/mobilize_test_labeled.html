@@ -20,7 +20,7 @@
 <style type="text/css" id="syntaxhighlighteranchor"></style>
 </head>
 <body class="custom">
-  <div id="nav_area" class="full_width" data-mobile-role="navigational">
+  <div id="nav_area" class="full_width">
     <div class="page">
       <ul class="nav_menu">
         <li class="tab"><a href="http://test.com">Home</a></li>
@@ -34,17 +34,17 @@
     document.getElementById("stuff00").innerHTML = "JavaScript!";
     alert('00');
   </script>
-  <div id="header_area" class="full_width" data-mobile-role="header">
+  <div id="header_area" class="full_width">
     <div class="page">
       <div id="header">
         <p id="title"><a href="http://test.com/">Mobilize all the Things</a></p>
-        <div data-mobile-role="content">
+        <div id="PageSpeed-header-1">
           <h1 id="author">Foobar</h1>
           <h2 id="date"></h2>
         </div>
       </div>
     </div>
-    <div class="navbar" data-mobile-role="navigational">
+    <div class="navbar" id="PageSpeed-header_area-1">
       <a href="http://test.com/way_cool">Way Cool</a>
       <a href="http://test.com/mondo">Mondo</a>
       <a href="http://test.com/outrageous">Outrageous</a>
@@ -55,7 +55,7 @@
       alert('01');
     </script>
   </div>
-  <div id="content_area" class="full_width" data-mobile-role="content">
+  <div id="content_area" class="full_width">
     <div class="aside">
       <script>
         document.getElementById("stuff02").innerHTML = "";
@@ -84,7 +84,7 @@
     <div class="page">
       <div id="content" class="feed">
         <div class="post type-post status-publish">
-          <div class="headline_area" data-mobile-role="header">
+          <div class="headline_area" id="PageSpeed-content-0-0">
             <h1 class="entry-title">Isn't Mobilization Cool!?</h1>
             <p class="headline_author">
               <span class="author">Foobar</span><br/>
@@ -123,8 +123,12 @@ int main()
     </div>
   </div>
   <p>Aenean nec lacus ac sapien ultrices placerat non ac sem. Quisque accumsan porta tortor semper egestas.</p>
-  <div class="footer" data-mobile-role="marginal">
+  <div class="footer" id="PageSpeed-6">
     Nulla ac elit sed urna molestie iaculis. Morbi posuere ac libero in fringilla.
     <br><a class="top"></a>
   </div>
-</body>
+<script type="text/javascript">pagespeedHeaderIds=['header_area','PageSpeed-content-0-0'];
+pagespeedNavigationalIds=['nav_area','PageSpeed-header_area-1'];
+pagespeedContentIds=['PageSpeed-header-1','content_area'];
+pagespeedMarginalIds=['PageSpeed-6'];
+</script></body>

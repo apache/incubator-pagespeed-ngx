@@ -288,7 +288,7 @@ TEST_F(CssSummarizerBaseTest, RenderSummary) {
   filter_->set_render_summaries_in_place(true);
   Parse("link", StrCat(CssLinkHref("a.css"),
                        "<style>* { background: blue; }</style>"));
-  EXPECT_STREQ("<html>\n<style>div{displa</style><style>*{backgrou</style>\n"
+  EXPECT_STREQ("<html>\n<style>div{displa</style><style>*{backgrou</style>"
                "<!--OK/div{displa/rel=stylesheet|"
                    "OK/*{backgrou|--></html>", output_buffer_);
 }
@@ -337,7 +337,7 @@ TEST_F(CssSummarizerBaseTest, WillNotRenderSummaryWait) {
   EXPECT_STREQ(StrCat("<html>\n",
                       "<!--WillNotRender:0 --- Pending-->",
                       CssLinkHref("a.css"),
-                      "\n</html>"),
+                      "</html>"),
                output_buffer_);
   CallFetcherCallbacks();
 }
@@ -348,7 +348,7 @@ TEST_F(CssSummarizerBaseTest, Base) {
       StrCat(CssLinkHref("a.css"), "<style>*{display:block;}</style>");
   Parse("base", css);
   EXPECT_STREQ(
-      StrCat("<html>\n", css, "\n",
+      StrCat("<html>\n", css,
              StrCat("<!--OK/div{displa/rel=stylesheet/base=",
                     kTestDomain, "a.css"),
              StrCat("|OK/*{display:/base=", kTestDomain, "base.html|-->"),
@@ -384,7 +384,7 @@ TEST_F(CssSummarizerBaseTest, IgnoreNonSummarizable) {
                "<style pagespeed_no_defer>div {display:none;}</style>"
                "<style scoped>p {display:none;}</style>"
                "<link rel=stylesheet href='b.css' pagespeed_no_defer>"
-               "<style>div{displa</style>\n"
+               "<style>div{displa</style>"
                "<!--OK/*{backgrou|OK/div{displa/rel=stylesheet|--></html>",
                output_buffer_);
 }
@@ -406,7 +406,7 @@ TEST_F(CssSummarizerBaseWithCombinerFilterTest, Interaction) {
 
   Parse("with_combine", StrCat(CssLinkHref("a.css"), CssLinkHref("a2.css")));
   EXPECT_EQ(StrCat("<html>\n", CssLinkHref(combined_url),
-                   "\n<!--OK/div{displa/rel=stylesheet|"
+                   "<!--OK/div{displa/rel=stylesheet|"
                    "SlotRemoved//rel=stylesheet|--></html>"),
             output_buffer_);
 }
@@ -450,7 +450,7 @@ TEST_F(CssSummarizerBaseWithCombinerFilterTest, BaseAcrossPaths) {
   Parse("base_accross_paths",
         StrCat(CssLinkHref("b/a2.css"), CssLinkHref("a.css")));
   EXPECT_EQ(StrCat(
-      "<html>\n", CssLinkHref(combined_url), "\n"
+      "<html>\n", CssLinkHref(combined_url),
       "<!--OK/span{displ/rel=stylesheet/base=", kTestDomain, combined_url,
       "|SlotRemoved//rel=stylesheet/base=", kTestDomain, "a.css"
       "|--></html>"),

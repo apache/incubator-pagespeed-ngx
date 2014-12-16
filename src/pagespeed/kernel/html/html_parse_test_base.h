@@ -31,10 +31,9 @@
 #include "pagespeed/kernel/base/string_writer.h"
 #include "pagespeed/kernel/html/html_parse.h"
 #include "pagespeed/kernel/html/html_writer_filter.h"
+#include "pagespeed/kernel/http/google_url.h"
 
 namespace net_instaweb {
-
-class GoogleUrl;
 
 // Shared infrastructure for unit-testing the HTML parser.
 class HtmlParseTestBaseNoAlloc : public testing::Test {
@@ -63,7 +62,7 @@ class HtmlParseTestBaseNoAlloc : public testing::Test {
   // override this variable to indicate which they prefer.
   virtual bool AddBody() const = 0;
 
-  // If true, prepends "<html>\n" and appends "\n</html>" to input text
+  // If true, prepends "<html>\n" and appends "</html>" to input text
   // prior to parsing it.  This was originally done for consistency with
   // libxml2 but that's long since been made irrelevant and we should probably
   // just stop doing it.  Adding the virtual function here should help us
@@ -81,7 +80,7 @@ class HtmlParseTestBaseNoAlloc : public testing::Test {
     GoogleString ret;
     if (AddHtmlTags()) {
       ret = AddBody() ? "<html><body>\n" : "<html>\n";
-      StrAppend(&ret, html, (AddBody() ? "\n</body></html>\n" : "\n</html>"));
+      StrAppend(&ret, html, (AddBody() ? "</body></html>\n" : "</html>"));
     } else {
       html.CopyToString(&ret);
     }
@@ -157,8 +156,7 @@ class HtmlParseTestBaseNoAlloc : public testing::Test {
 
 class HtmlParseTestBase : public HtmlParseTestBaseNoAlloc {
  public:
-  HtmlParseTestBase() : html_parse_(&message_handler_) {
-  };
+  HtmlParseTestBase() : html_parse_(&message_handler_) { }
  protected:
   virtual HtmlParse* html_parse() { return &html_parse_; }
 

@@ -1407,7 +1407,6 @@ TEST_F(CssCombineFilterWithDebugTest, DebugUnauthorizedDomain) {
                       "    Hello, mod_pagespeed!\n"
                       "  </div>\n"
                       "</body>\n"
-                      "\n"
                       "</html>"
                       "<!--", output_buffer_);
   EXPECT_HAS_SUBSTR(

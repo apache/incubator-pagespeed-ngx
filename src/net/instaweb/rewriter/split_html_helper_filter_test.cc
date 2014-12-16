@@ -477,7 +477,7 @@ TEST_F(SplitHtmlHelperFilterTest, AtfRequestWithInlinePreview) {
       "</div>"
       "<div id='b'><img src=\"2.jpeg\"></div>"
       "<div id='c'><img src=\"3.jpeg\"></div>"
-      "</body>\n</html>");
+      "</body></html>");
   Parse("split_helper_atf_with_inline_preview", input_html);
   EXPECT_TRUE(Wildcard(output_html).Match(output_buffer_))
       << "Expected:\n" << output_html << "\n\nGot:\n" << output_buffer_;
@@ -543,7 +543,7 @@ TEST_F(SplitHtmlHelperFilterTest, AtfNestedPanelsRequestWithInlinePreview) {
         "<div id='c'></div>"
         "<img src=\"2.jpeg\"></div>"
       "<div id='d'><img src=\"3.jpeg\"></div>"
-      "</body>\n</html>");
+      "</body></html>");
   Parse("split_helper_atf_with_inline_preview", input_html);
   EXPECT_TRUE(Wildcard(output_html).Match(output_buffer_))
       << "Expected:\n" << output_html << "\n\nGot:\n" << output_buffer_;

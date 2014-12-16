@@ -171,7 +171,7 @@ TEST_F(InsertDnsPrefetchFilterTest, IgnoreDomainsInHead) {
         "<link rel=\"dns-prefetch\" href=\"http://c.com\">"
       "</head><body></body>";
   Parse("ignore_domains_in_head", html);
-  EXPECT_EQ(StrCat("<html>\n", html, "\n</html>"), output_);
+  EXPECT_EQ(AddHtmlBody(html), output_);
   CheckPrefetchInfo(0, 0, 0, "");
 }
 
@@ -184,7 +184,7 @@ TEST_F(InsertDnsPrefetchFilterTest, StoreDomainsInBody) {
         "<img src=\"http://c.com/\"/>"
       "</body>";
   Parse("store_domains_in_body", html);
-  EXPECT_EQ(StrCat("<html>\n", html, "\n</html>"), output_);
+  EXPECT_EQ(AddHtmlBody(html), output_);
   CheckPrefetchInfo(3, 0, 3, "a.com,b.com,c.com");
 }
 
@@ -203,7 +203,7 @@ TEST_F(InsertDnsPrefetchFilterTest, IgnoreCurrentDomain) {
       "\">"
       "</body>");
   Parse("ignore_current_domain", html);
-  EXPECT_EQ(StrCat("<html>\n", html, "\n</html>"), output_);
+  EXPECT_EQ(AddHtmlBody(html), output_);
   CheckPrefetchInfo(0, 0, 0, "");
 }
 
@@ -218,7 +218,7 @@ TEST_F(InsertDnsPrefetchFilterTest,
         "<img src=\"http://c.com/\"/>"
       "</body>";
   Parse("store_domains_in_body", html);
-  EXPECT_EQ(StrCat("<html>\n", html, "\n</html>"), output_);
+  EXPECT_EQ(AddHtmlBody(html), output_);
   CheckPrefetchInfo(0, 0, 0, "");
   CheckLogStatus(RewriterHtmlApplication::USER_AGENT_NOT_SUPPORTED);
 }
@@ -234,7 +234,7 @@ TEST_F(InsertDnsPrefetchFilterTest, StoreDomainsOnlyInBody) {
         "<img src=\"http://c.com/\"/>"
       "</body>";
   Parse("store_domains_in_body", html);
-  EXPECT_EQ(StrCat("<html>\n", html, "\n</html>"), output_);
+  EXPECT_EQ(AddHtmlBody(html), output_);
   // b.com is not stored since it is already in HEAD.
   CheckPrefetchInfo(2, 0, 2, "a.com,c.com");
 }
@@ -242,7 +242,7 @@ TEST_F(InsertDnsPrefetchFilterTest, StoreDomainsOnlyInBody) {
 TEST_F(InsertDnsPrefetchFilterTest, StoreDomainsInBodyMax) {
   GoogleString html(CreateHtml(10));
   Parse("store_domains_in_body_max", html);
-  EXPECT_EQ(StrCat("<html>\n", html, "\n</html>"), output_);
+  EXPECT_EQ(AddHtmlBody(html), output_);
   // Only 8/10 domains get stored.
   CheckPrefetchInfo(10, 0, 8, CreateDomainsVector(8));
 }
@@ -279,7 +279,7 @@ TEST_F(InsertDnsPrefetchFilterTest, LinkTagTest) {
         "<script src=\"http://k.com/\"/>"
       "</body>";
   Parse("test_different_link_tags", html);
-  EXPECT_EQ(StrCat("<html>\n", html, "\n</html>"), output_);
+  EXPECT_EQ(AddHtmlBody(html), output_);
   // The following link types are for resources or relevant to DNS prefetch
   // tags: dns-prefetch, icon, prefetch, stylesheet. The domains in those tags
   // are not stored. The rest of link types have hyperlinks and their domains
@@ -290,13 +290,13 @@ TEST_F(InsertDnsPrefetchFilterTest, LinkTagTest) {
 TEST_F(InsertDnsPrefetchFilterTest, FullFlowTest) {
   GoogleString html_input = CreateHtml(10);
   Parse("store_8_of_10", html_input);
-  EXPECT_EQ(StrCat("<html>\n", html_input, "\n</html>"), output_);
+  EXPECT_EQ(AddHtmlBody(html_input), output_);
   CheckPrefetchInfo(10, 0, 8, CreateDomainsVector(8));
   output_.clear();
 
   html_input = CreateHtml(9);
   Parse("store_8_of_9", html_input);
-  EXPECT_EQ(StrCat("<html>\n", html_input, "\n</html>"), output_);
+  EXPECT_EQ(AddHtmlBody(html_input), output_);
   CheckPrefetchInfo(9, 10, 8, CreateDomainsVector(8));
   output_.clear();
 
@@ -308,7 +308,7 @@ TEST_F(InsertDnsPrefetchFilterTest, FullFlowTest) {
   // next rewrite.
   GoogleString html_output = CreateHtmlWithPrefetchTags(6, 8);
   Parse("stable_domain_list_so_insert_tags", html_input);
-  EXPECT_EQ(StrCat("<html>\n", html_output, "\n</html>"), output_);
+  EXPECT_EQ(AddHtmlBody(html_output), output_);
   CheckPrefetchInfo(6, 9, 6, CreateDomainsVector(6));
   output_.clear();
   CheckLogStatus(RewriterHtmlApplication::ACTIVE,
@@ -318,7 +318,7 @@ TEST_F(InsertDnsPrefetchFilterTest, FullFlowTest) {
   // Since the last response caused instability in the domain list, we don't
   // insert any prefetch tags in this rewrite.
   Parse("after_unstable_response", html_input);
-  EXPECT_EQ(StrCat("<html>\n", html_input, "\n</html>"), output_);
+  EXPECT_EQ(AddHtmlBody(html_input), output_);
   CheckPrefetchInfo(6, 6, 6, CreateDomainsVector(6));
   output_.clear();
 }
@@ -326,13 +326,13 @@ TEST_F(InsertDnsPrefetchFilterTest, FullFlowTest) {
 TEST_F(InsertDnsPrefetchFilterTest, FullFlowTestForLogging) {
   GoogleString html_input = CreateHtml(10);
   Parse("store_8_of_10", html_input);
-  EXPECT_EQ(StrCat("<html>\n", html_input, "\n</html>"), output_);
+  EXPECT_EQ(AddHtmlBody(html_input), output_);
   CheckPrefetchInfo(10, 0, 8, CreateDomainsVector(8));
   output_.clear();
 
   html_input = CreateHtml(9);
   Parse("store_8_of_9", html_input);
-  EXPECT_EQ(StrCat("<html>\n", html_input, "\n</html>"), output_);
+  EXPECT_EQ(AddHtmlBody(html_input), output_);
   CheckPrefetchInfo(9, 10, 8, CreateDomainsVector(8));
   CheckLogStatus(RewriterHtmlApplication::ACTIVE,
                  RewriterApplication::NOT_APPLIED,
@@ -356,7 +356,7 @@ TEST_F(InsertDnsPrefetchFilterTest, InsertDnsPrefetchFilterWithOtherFilters) {
         "<img src=\"http://c.com/\"/>"
       "</body>";
   Parse("store_domains_in_body", html);
-  EXPECT_EQ(StrCat("<html>\n", html, "\n</html>"), output_);
+  EXPECT_EQ(AddHtmlBody(html), output_);
   // b.com is not stored since it is already in HEAD.
   CheckPrefetchInfo(2, 0, 2, "a.com,c.com");
 }
@@ -376,7 +376,7 @@ TEST_F(InsertDnsPrefetchFilterTest, InsertDomainsinHeadForFlushEarlyFlow) {
         "<img src=\"http://c.com/\"/>"
       "</body>";
   Parse("store_domains_in_body", html);
-  EXPECT_EQ(StrCat("<html>\n", html, "\n</html>"), output_);
+  EXPECT_EQ(AddHtmlBody(html), output_);
   CheckPrefetchInfo(4, 0, 4, "b.com,d.com,a.com,c.com");
 }
 
@@ -392,7 +392,7 @@ TEST_F(InsertDnsPrefetchFilterTest, NoDomainsWhileFlushingEarly) {
         "<img src=\"http://c.com/\"/>"
       "</body>";
   Parse("store_domains_in_body", html);
-  EXPECT_EQ(StrCat("<html>\n", html, "\n</html>"), output_);
+  EXPECT_EQ(AddHtmlBody(html), output_);
   CheckPrefetchInfo(0, 0, 0, "");
 }
 

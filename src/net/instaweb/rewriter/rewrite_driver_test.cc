@@ -169,17 +169,17 @@ const char kBikePngFile[] = "BikeCrashIcn.png";
 
 const char kNonRewrittenCachableHtml[] =
     "<html>\n<link rel=stylesheet href=a.css>  "
-    "<link rel=stylesheet href=test/b.css>\n</html>";
+    "<link rel=stylesheet href=test/b.css></html>";
 
 const char kRewrittenCachableHtmlWithCacheExtension[] =
     "<html>\n"
     "<link rel=stylesheet href=a.css.pagespeed.ce.0.css>  "
     "<link rel=stylesheet href=test/b.css.pagespeed.ce.0.css>"
-    "\n</html>";
+    "</html>";
 
 const char kRewrittenCachableHtmlWithCollapseWhitespace[] =
     "<html>\n<link rel=stylesheet href=a.css> "
-    "<link rel=stylesheet href=test/b.css>\n</html>";
+    "<link rel=stylesheet href=test/b.css></html>";
 
 TEST_F(RewriteDriverTest, NoChanges) {
   ValidateNoChanges("no_changes",

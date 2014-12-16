@@ -171,7 +171,7 @@ TEST_F(StaticAssetManagerTest, TestHtmlInsertInlineJs) {
   rewrite_driver()->AddFilter(&filter);
   ParseUrl(kTestDomain, kHtml);
   EXPECT_EQ("<html>\n<body><script type=\"text/javascript\">alert('foo');"
-            "</script><br></body>\n</html>", output_buffer_);
+            "</script><br></body></html>", output_buffer_);
 }
 
 TEST_F(StaticAssetManagerTest, TestXhtmlInsertInlineJs) {
@@ -180,7 +180,7 @@ TEST_F(StaticAssetManagerTest, TestXhtmlInsertInlineJs) {
   rewrite_driver()->AddFilter(&filter);
   ParseUrl(kTestDomain, kHtml);
   EXPECT_EQ("<html>\n<body><script type=\"text/javascript\">//<![CDATA[\n"
-            "alert('foo');\n//]]></script><br></body>\n</html>",
+            "alert('foo');\n//]]></script><br></body></html>",
             output_buffer_);
 }
 
@@ -191,7 +191,7 @@ TEST_F(StaticAssetManagerTest, TestHtml5InsertInlineJs) {
   GoogleString html = StrCat("<!DOCTYPE html>", kHtml);
   ParseUrl(kTestDomain, html);
   EXPECT_EQ("<html>\n<!DOCTYPE html><body><script>alert('foo');"
-            "</script><br></body>\n</html>", output_buffer_);
+            "</script><br></body></html>", output_buffer_);
 }
 
 TEST_F(StaticAssetManagerTest, TestEncodedUrls) {

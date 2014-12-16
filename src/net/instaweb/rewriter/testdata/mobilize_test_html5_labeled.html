@@ -1,5 +1,3 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" lang="en-US">
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
 <title>Testing the Mobilization Filter</title>
@@ -38,7 +36,7 @@
     <div class="page">
       <div id="header">
         <p id="title"><a href="http://test.com/">Mobilize all the Things</a></p>
-        <div data-mobile-role="content">
+        <div id="PageSpeed-header-1">
           <h1 id="author">Foobar</h1>
           <h2 id="date"></h2>
         </div>
@@ -49,13 +47,13 @@
       alert('01');
     </script>
   </header>
-  <div id="content_area" class="full_width" data-mobile-role="content">
-    <aside class="aside" data-mobile-role="marginal">
+  <div id="content_area" class="full_width">
+    <aside class="aside" data-mobile-role="marginal" id="PageSpeed-content_area-0">
       <script>
         document.getElementById("stuff02").innerHTML = "";
         alert('02');
       </script>
-      <form action="http://test.com/form/" method="get" data-mobile-role="content">
+      <form action="http://test.com/form/" method="get" id="PageSpeed-content_area-0-1">
         <ul><li class="widget">
             <h3>Months</h3>
             <select name="archive" onchange='document.location.href=this.options[this.selectedIndex].value;'>
@@ -78,7 +76,7 @@
     <content class="page" data-mobile-role="content">
       <div id="content" class="feed">
         <div class="post type-post status-publish">
-          <div class="headline_area" data-mobile-role="header">
+          <div class="headline_area" id="PageSpeed-content-0-0">
             <h1 class="entry-title">Isn't Mobilization Cool!?</h1>
             <p class="headline_author">
               <span class="author">Foobar</span><br/>
@@ -117,8 +115,12 @@ int main()
     </div>
   </content>
   <p>Aenean nec lacus ac sapien ultrices placerat non ac sem. Quisque accumsan porta tortor semper egestas.</p>
-  <footer class="footer" data-mobile-role="marginal">
+  <footer class="footer" data-mobile-role="marginal" id="PageSpeed-6">
     Nulla ac elit sed urna molestie iaculis. Morbi posuere ac libero in fringilla.
     <br><a class="top"></a>
   </footer>
-</body>
+<script type="text/javascript">pagespeedHeaderIds=['header_area','PageSpeed-content-0-0'];
+pagespeedNavigationalIds=['nav_area'];
+pagespeedContentIds=['PageSpeed-header-1','content_area','PageSpeed-content_area-0-1'];
+pagespeedMarginalIds=['PageSpeed-content_area-0','PageSpeed-6'];
+</script></body>

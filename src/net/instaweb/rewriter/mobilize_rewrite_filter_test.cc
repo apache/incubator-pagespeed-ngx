@@ -468,17 +468,9 @@ TEST_F(MobilizeRewriteEndToEndTest, NonMobile) {
       StrCat(GTestSrcDir(), kTestDataDir, kOriginal);
   ASSERT_TRUE(filesystem_.ReadFile(original_filename.c_str(), &original_buffer,
                                    message_handler()));
-  // We don't particularly care for the moment if the labeler runs and annotates
-  // the page, or if add-ids adds ids.
-  GoogleString expected_buffer(original_buffer);
-  GlobalEraseBracketedSubstring(" data-mobile-role=\"", "\"", &expected_buffer);
-  GlobalEraseBracketedSubstring(" id=\"PageSpeed-", "\"", &expected_buffer);
   rewrite_driver()->SetUserAgent(
       UserAgentMatcherTestBase::kChrome37UserAgent);
-  Parse("EndToEndNonMobile", original_buffer);
-  GlobalEraseBracketedSubstring(" data-mobile-role=\"", "\"", &output_buffer_);
-  GlobalEraseBracketedSubstring(" id=\"PageSpeed-", "\"", &output_buffer_);
-  EXPECT_STREQ(expected_buffer, output_buffer_);
+  ValidateNoChanges("EndToEndNonMobile", original_buffer);
 }
 
 }  // namespace

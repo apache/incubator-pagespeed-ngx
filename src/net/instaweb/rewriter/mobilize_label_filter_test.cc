@@ -18,6 +18,7 @@
 
 #include "net/instaweb/rewriter/public/mobilize_label_filter.h"
 
+#include "net/instaweb/rewriter/public/add_ids_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
@@ -46,8 +47,12 @@ class MobilizeLabelFilterTest : public RewriteTestBase {
 
   virtual void SetUp() {
     RewriteTestBase::SetUp();
-    filter_.reset(new MobilizeLabelFilter(rewrite_driver()));
-    html_parse()->AddFilter(filter_.get());
+    add_ids_filter_.reset(new AddIdsFilter(rewrite_driver()));
+    label_filter_.reset(new MobilizeLabelFilter(rewrite_driver()));
+    options()->set_mob_always(true);
+    html_parse()->AddFilter(add_ids_filter_.get());
+    html_parse()->AddFilter(label_filter_.get());
+    SetHtmlMimetype();
     Statistics* stats = statistics();
     pages_labeled_ =
         stats->GetVariable(MobilizeLabelFilter::kPagesLabeled);
@@ -79,6 +84,9 @@ class MobilizeLabelFilterTest : public RewriteTestBase {
     GlobalEraseBracketedSubstring(" data-mobile-role=\"", "\"", &result);
     GlobalEraseBracketedSubstring("<!--ElementTagDepth: ", "-->", &result);
     GlobalEraseBracketedSubstring("<!--role: ", "-->", &result);
+    GlobalEraseBracketedSubstring(" id=\"PageSpeed-", "\"", &result);
+    GlobalEraseBracketedSubstring("<script type=\"text/javascript\">",
+                                  "</script>", &result);
     return result;
   }
 
@@ -109,7 +117,8 @@ class MobilizeLabelFilterTest : public RewriteTestBase {
     GlobalReplaceSubstring(", -->", "-->", &output_buffer_);
   }
 
-  scoped_ptr<MobilizeLabelFilter> filter_;
+  scoped_ptr<AddIdsFilter> add_ids_filter_;
+  scoped_ptr<MobilizeLabelFilter> label_filter_;
   Variable* pages_labeled_;
   Variable* pages_role_added_;
   Variable* navigational_roles_;
@@ -130,14 +139,19 @@ TEST_F(MobilizeLabelFilterTest, AlreadyLabeled) {
   GoogleString html5_contents;
   ASSERT_TRUE(filesystem.ReadFile(
       html5_filename.c_str(), &html5_contents, message_handler()));
-  // Classify using only tag names.  Shouldn't change anything.
-  filter_->mutable_labeling_mode() = MobilizeLabelFilter::kUseTagNames;
-  ValidateNoChanges("already_labeled", html5_contents);
+  // Classify using only tag names.  Shouldn't add new mobile roles.
+  label_filter_->mutable_labeling_mode() = MobilizeLabelFilter::kUseTagNames;
+  Parse("already_labeled", html5_contents);
+  GlobalEraseBracketedSubstring(" id=\"PageSpeed-", "\"", &output_buffer_);
+  GlobalEraseBracketedSubstring(
+      "<script type=\"text/javascript\">", "</script>", &output_buffer_);
+  EXPECT_STREQ(AddHtmlBody(html5_contents), output_buffer_);
   EXPECT_EQ(1, pages_labeled_->Get());
   EXPECT_EQ(0, pages_role_added_->Get());
   // Classify fully, compare against gold labeling.
   // Note that changes are fairly minimal.
-  filter_->mutable_labeling_mode() = MobilizeLabelFilter::kDefaultLabelingMode;
+  label_filter_->mutable_labeling_mode() =
+      MobilizeLabelFilter::kDefaultLabelingMode;
   GoogleString labeled_filename =
       StrCat(GTestSrcDir(), kTestDataDir, kOriginalHtml5Labeled);
   GoogleString labeled_contents;
@@ -147,24 +161,25 @@ TEST_F(MobilizeLabelFilterTest, AlreadyLabeled) {
                    html5_contents, labeled_contents);
   EXPECT_EQ(2, pages_labeled_->Get());
   EXPECT_EQ(1, pages_role_added_->Get());
-  EXPECT_EQ(0, navigational_roles_->Get());
-  EXPECT_EQ(1, header_roles_->Get());
-  EXPECT_EQ(3, content_roles_->Get());
-  EXPECT_EQ(0, marginal_roles_->Get());
+  EXPECT_EQ(2, navigational_roles_->Get());
+  EXPECT_EQ(3, header_roles_->Get());
+  EXPECT_EQ(4, content_roles_->Get());
+  EXPECT_EQ(4, marginal_roles_->Get());
   EXPECT_EQ(0, ambiguous_role_labels_->Get());
   EXPECT_EQ(23, divs_unlabeled_->Get());
 }
 
 TEST_F(MobilizeLabelFilterTest, Html5TagsInHead) {
   EnableVerbose();
-  const char kInputHtml[] =
-      "<head>"
-      "<menu>Should not be labeled</menu>"
-      "<header><h1>Also unlabeled</h1></header>"
-      "<article>Still untouched</article>"
-      "<footer>Also untouched</footer>"
+  const char kOutputHtml[] =
+      "<head>\n"
+      "<menu id=\"PageSpeed-0-0\">Should not be labeled</menu>\n"
+      "<header id=\"PageSpeed-0-1\"><h1>Also unlabeled</h1></header>\n"
+      "<article id=\"PageSpeed-0-2\">Still untouched</article>\n"
+      "<footer id=\"PageSpeed-0-3\">Also untouched</footer>\n"
       "</head>";
-  ValidateNoChanges("html5_tags_in_head", kInputHtml);
+  ValidateExpected("html5_tags_in_head",
+                   Unlabel(kOutputHtml), kOutputHtml);
   EXPECT_EQ(1, pages_labeled_->Get());
   EXPECT_EQ(0, pages_role_added_->Get());
 }
@@ -172,9 +187,10 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInHead) {
 TEST_F(MobilizeLabelFilterTest, TinyCount) {
   EnableVerbose();
   const char kOutputHtml[] =
-      "<div role='content' data-mobile-role=\"marginal\">Hello there,"
+      "<div role='header' id=\"PageSpeed-0\" data-mobile-role=\"header\">"
+      "  Hello there,"
       " <a href='http://theworld.com/'>World</a></div>"
-      "<!--role: marginal,"
+      "<!--role: header,"
       " ElementTagDepth: 1,"
       " ContainedTagDepth: 2,"       // <a> tag
       " ContainedTagRelativeDepth: 1,"
@@ -187,19 +203,23 @@ TEST_F(MobilizeLabelFilterTest, TinyCount) {
       " ContainedAContentBytes: 5,"
       " ContainedAContentLocalPercent: 29.41,"
       " ContainedNonAContentBytes: 12,"
-      " content: 1,"
+      " head: 1,"
       " a count: 1,"
       " a percent: 100.00,"
       " div count: 1,"
-      " div percent: 100.00-->\n";
+      " div percent: 100.00-->\n"
+      "<script type=\"text/javascript\">"
+      ""
+      "pagespeedHeaderIds=['PageSpeed-0'];\n"
+      "</script>";
   ValidateExpected("Small count nav",
                    Unlabel(kOutputHtml), kOutputHtml);
   EXPECT_EQ(1, pages_labeled_->Get());
   EXPECT_EQ(1, pages_role_added_->Get());
   EXPECT_EQ(0, navigational_roles_->Get());
-  EXPECT_EQ(0, header_roles_->Get());
+  EXPECT_EQ(1, header_roles_->Get());
   EXPECT_EQ(0, content_roles_->Get());
-  EXPECT_EQ(1, marginal_roles_->Get());
+  EXPECT_EQ(0, marginal_roles_->Get());
   EXPECT_EQ(0, ambiguous_role_labels_->Get());
   EXPECT_EQ(0, divs_unlabeled_->Get());
 }
@@ -207,10 +227,10 @@ TEST_F(MobilizeLabelFilterTest, TinyCount) {
 TEST_F(MobilizeLabelFilterTest, TinyCountNbsp) {
   EnableVerbose();
   const char kOutputHtml[] =
-      "<div role='content' data-mobile-role=\"marginal\">"
+      "<div role='header' id=\"PageSpeed-0\" data-mobile-role=\"header\">"
       "  &nbsp;Hello&nbsp;there,&nbsp;&nbsp;  "
       " <a href='http://theworld.com/'>World</a></div>"
-      "<!--role: marginal,"
+      "<!--role: header,"
       " ElementTagDepth: 1,"
       " ContainedTagDepth: 2,"       // <a> tag
       " ContainedTagRelativeDepth: 1,"
@@ -223,19 +243,23 @@ TEST_F(MobilizeLabelFilterTest, TinyCountNbsp) {
       " ContainedAContentBytes: 5,"
       " ContainedAContentLocalPercent: 29.41,"
       " ContainedNonAContentBytes: 12,"
-      " content: 1,"
+      " head: 1,"
       " a count: 1,"
       " a percent: 100.00,"
       " div count: 1,"
-      " div percent: 100.00-->\n";
+      " div percent: 100.00-->\n"
+      "<script type=\"text/javascript\">"
+      ""
+      "pagespeedHeaderIds=['PageSpeed-0'];\n"
+      "</script>";
   ValidateExpected("Small count nav",
                    Unlabel(kOutputHtml), kOutputHtml);
   EXPECT_EQ(1, pages_labeled_->Get());
   EXPECT_EQ(1, pages_role_added_->Get());
   EXPECT_EQ(0, navigational_roles_->Get());
-  EXPECT_EQ(0, header_roles_->Get());
+  EXPECT_EQ(1, header_roles_->Get());
   EXPECT_EQ(0, content_roles_->Get());
-  EXPECT_EQ(1, marginal_roles_->Get());
+  EXPECT_EQ(0, marginal_roles_->Get());
   EXPECT_EQ(0, ambiguous_role_labels_->Get());
   EXPECT_EQ(0, divs_unlabeled_->Get());
 }
@@ -243,7 +267,7 @@ TEST_F(MobilizeLabelFilterTest, TinyCountNbsp) {
 TEST_F(MobilizeLabelFilterTest, ImgInsideAndOutsideA) {
   EnableVerbose();
   const char kOutputHtml[] =
-      "<div role='content' data-mobile-role=\"header\">"
+      "<div role='content' id=\"PageSpeed-0\" data-mobile-role=\"header\">"
       " <img src='a.png'>"
       " <img src='b.jpg'>"
       " <a href='http://theworld.com/'><img src='world.gif'></a></div>"
@@ -262,7 +286,11 @@ TEST_F(MobilizeLabelFilterTest, ImgInsideAndOutsideA) {
       " div count: 1,"
       " div percent: 100.00,"
       " img count: 3,"
-      " img percent: 100.00-->\n";
+      " img percent: 100.00-->\n"
+      "<script type=\"text/javascript\">"
+      ""
+      "pagespeedHeaderIds=['PageSpeed-0'];\n"
+      "</script>";
   ValidateExpected("Small count nav",
                    Unlabel(kOutputHtml), kOutputHtml);
   EXPECT_EQ(1, pages_labeled_->Get());
@@ -276,30 +304,57 @@ TEST_F(MobilizeLabelFilterTest, ImgInsideAndOutsideA) {
 }
 
 TEST_F(MobilizeLabelFilterTest, DontCrashWithFlush) {
+  // Note that we cannot remove unused ids inserted before the flush.
+  const char kBody1[] =
+      "<html><head></head><body>\n"
+      "<div id=\"PageSpeed-1\">\n"
+      "<div role='nav' id=\"PageSpeed-1-0\"><a href='http://theworld.com/'>\n"
+      "Hello, World\n"
+      "</a></div>";
+  const char kBody2[] =
+      "</div>\n"
+      "<script type=\"text/javascript\">"
+      ""
+      "pagespeedNavigationalIds=['PageSpeed-1'];\n"
+      "</script>"
+      "</body></html>";
   SetupWriter();
   rewrite_driver()->StartParse(kTestDomain);
-  rewrite_driver()->ParseText(
-      "<html><head></head><body>\n"
-      "<div role='nav'><a href='http://theworld.com/'>\n"
-      "Hello, World\n"
-      "</a></div>");
+  rewrite_driver()->ParseText(Unlabel(kBody1));
   rewrite_driver()->Flush();
-  rewrite_driver()->ParseText("</body></html>");
+  rewrite_driver()->ParseText(Unlabel(kBody2));
   rewrite_driver()->FinishParse();
+  GoogleString expected = StrCat(kBody1, kBody2);
+  EXPECT_STREQ(expected, output_buffer_);
 }
 
 TEST_F(MobilizeLabelFilterTest, DontCrashWithFlushAndDebug) {
-  options()->EnableFilter(RewriteOptions::kDebug);
+  EnableDebug();
+  // We can't insert helpful comments because the tags aren't rewritable
+  // anymore.  Note that this is true even for the spanning <div>, where we
+  // arguably ought to be able to insert *after* the closing tag as it's still
+  // in the flush window.
+  const char kBody1[] =
+      "<html><head></head><body>\n"
+      "<div id=\"PageSpeed-1\">\n"
+      "<div role='nav' id=\"PageSpeed-1-0\"><a href='http://theworld.com/'>\n"
+      "Hello, World\n"
+      "</a></div>";
+  const char kBody2[] =
+      "</div>\n"
+      "<script type=\"text/javascript\">"
+      ""
+      "pagespeedNavigationalIds=['PageSpeed-1'];\n"
+      "</script>"
+      "</body></html>";
   SetupWriter();
   rewrite_driver()->StartParse(kTestDomain);
-  rewrite_driver()->ParseText(
-      "<html><head></head><body>\n"
-      "<div role='nav'><a href='http://theworld.com/'>\n"
-      "Hello, World\n"
-      "</a></div>");
+  rewrite_driver()->ParseText(Unlabel(kBody1));
   rewrite_driver()->Flush();
-  rewrite_driver()->ParseText("</body></html>");
+  rewrite_driver()->ParseText(Unlabel(kBody2));
   rewrite_driver()->FinishParse();
+  GoogleString expected = StrCat(kBody1, kBody2);
+  EXPECT_STREQ(expected, output_buffer_);
 }
 
 TEST_F(MobilizeLabelFilterTest, MarginalPropagation) {
@@ -308,8 +363,8 @@ TEST_F(MobilizeLabelFilterTest, MarginalPropagation) {
   // outermost parent that isn't otherwise labeled).
   const char kOutputHtml[] =
       "<div>\n"
-      " <div data-mobile-role='header'>header</div>\n"
-      " <div data-mobile-role=\"content\">\n"
+      " <div data-mobile-role='header' id=\"PageSpeed-0-0\">header</div>\n"
+      " <div id=\"PageSpeed-0-1\">\n"
       "  <p>Content</p>\n"
       "  <p>More content</p>\n"
       "  <p>Still more content</p>\n"
@@ -370,19 +425,24 @@ TEST_F(MobilizeLabelFilterTest, MarginalPropagation) {
       "  <p>Are we still here? This is really quite a lot of content.</p>\n"
       "  <p>Are we still here? This is really quite a lot of content.</p>\n"
       " </div>\n"
-      " <div data-mobile-role=\"marginal\">\n"
+      " <div id=\"PageSpeed-0-2\">\n"
       "  A Marginal Title\n"
       "  <div role='footer'><a>footer</a></div>\n"
       "  <div role='junk'><a>junk</a></div>\n"
       "  <div><a>more junk</a></div>\n"
       " </div>\n"
-      "</div>";
+      "</div>"
+      "<script type=\"text/javascript\">"
+      "pagespeedHeaderIds=['PageSpeed-0-0'];\n"
+      "pagespeedContentIds=['PageSpeed-0-1'];\n"
+      "pagespeedMarginalIds=['PageSpeed-0-2'];\n"
+      "</script>";
   ValidateExpected("Marginal propagation",
                    Unlabel(kOutputHtml), kOutputHtml);
   EXPECT_EQ(1, pages_labeled_->Get());
   EXPECT_EQ(1, pages_role_added_->Get());
   EXPECT_EQ(0, navigational_roles_->Get());
-  EXPECT_EQ(0, header_roles_->Get());
+  EXPECT_EQ(1, header_roles_->Get());
   EXPECT_EQ(1, content_roles_->Get());
   EXPECT_EQ(1, marginal_roles_->Get());
   EXPECT_EQ(0, ambiguous_role_labels_->Get());
@@ -390,20 +450,24 @@ TEST_F(MobilizeLabelFilterTest, MarginalPropagation) {
 }
 
 TEST_F(MobilizeLabelFilterTest, ParentPropagation) {
-  filter_->mutable_labeling_mode() = MobilizeLabelFilter::kUseTagNames;
-  filter_->mutable_labeling_mode().propagate_to_parent = true;
+  label_filter_->mutable_labeling_mode() = MobilizeLabelFilter::kUseTagNames;
+  label_filter_->mutable_labeling_mode().propagate_to_parent = true;
   // Make sure an element all of whose children are labeled inherits the label,
   // and an element whose children's labels conflict does not.
   const char kOutputHtml[] =
       "<div>\n"  // One nav, one header -> no label.
-      " <div data-mobile-role=\"navigational\">\n"  // Both children nav.
+      " <div id=\"PageSpeed-0-0\">\n"  // Both children nav.
       "  <div>\n"  // Only child is nav, so nav.
       "   <nav></nav>\n"
       "  </div>\n"
       "  <nav></nav>\n"
       " </div>\n"
-      " <header data-mobile-role=\"header\"></header>\n"
-      "</div>\n";
+      " <header id=\"PageSpeed-0-1\"></header>\n"
+      "</div>\n"
+      "<script type=\"text/javascript\">"
+      "pagespeedHeaderIds=['PageSpeed-0-1'];\n"
+      "pagespeedNavigationalIds=['PageSpeed-0-0'];\n"
+      "</script>";
   ValidateExpected("Parent propagation",
                    Unlabel(kOutputHtml), kOutputHtml);
 }
@@ -412,14 +476,15 @@ TEST_F(MobilizeLabelFilterTest, SmallCountNav) {
   EnableVerbose();
   const char kOutputHtml[] =
       "<head></head><body>\n"
-      "<div class='container'"
+      "<div class='container' id=\"PageSpeed-1\""
       " data-mobile-role=\"navigational\">\n"
       " <a href='a'>a</a>\n"
-      " <div class='menu' id='hdr' role='nav'><ul>\n"
-      "  <li><a href='n1'>nav 1</a></li>\n"
-      "  <li><a href='n2'>nav 2</a></li>\n"
-      "  <li><a href='n3'>nav 3</a></li>\n"
-      " </ul>"
+      " <div class='menu' id='hdr' role='nav'>\n"
+      "  <ul id=\"PageSpeed-hdr-0\">\n"
+      "   <li><a href='n1'>nav 1</a></li>\n"
+      "   <li><a href='n2'>nav 2</a></li>\n"
+      "   <li><a href='n3'>nav 3</a></li>\n"
+      "  </ul>"
       "<!--ElementTagDepth: 3,"
       " PreviousTagCount: 3,"
       " PreviousTagPercent: 30.00,"
@@ -493,7 +558,9 @@ TEST_F(MobilizeLabelFilterTest, SmallCountNav) {
       " li percent: 100.00,"
       " ul count: 1,"
       " ul percent: 100.00-->\n"
-      "</body>";
+      "<script type=\"text/javascript\">"
+      "pagespeedNavigationalIds=['PageSpeed-1'];\n"
+      "</script></body>";
   ValidateExpected("Small count nav",
                    Unlabel(kOutputHtml), kOutputHtml);
   EXPECT_EQ(1, pages_labeled_->Get());
@@ -512,7 +579,7 @@ TEST_F(MobilizeLabelFilterTest, NavInsideHeader) {
   EnableVerbose();
   const char kOutputHtml[] =
       "<head></head><body>\n"
-      " <header data-mobile-role=\"header\">\n"
+      " <header id=\"PageSpeed-1\" data-mobile-role=\"header\">\n"
       "  <img src='logo.gif'>\n"
       "  <ul id='nav_menu' data-mobile-role=\"navigational\">\n"
       "   <li><a href='about.html'>About us</a>\n"
@@ -566,7 +633,10 @@ TEST_F(MobilizeLabelFilterTest, NavInsideHeader) {
       " li percent: 100.00,"
       " ul count: 1,"
       " ul percent: 100.00-->\n"
-      "</body>";
+      "<script type=\"text/javascript\">"
+      "pagespeedHeaderIds=['PageSpeed-1'];\n"
+      "pagespeedNavigationalIds=['nav_menu'];\n"
+      "</script></body>";
   ValidateExpected("Nav inside header",
                    Unlabel(kOutputHtml), kOutputHtml);
   EXPECT_EQ(1, pages_labeled_->Get());
@@ -589,29 +659,34 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       "<nav data-mobile-role=\"navigational\">Labeled\n"
       "  <menu>unlabeled</menu>\n"
       "</nav>\n"
-      "<menu data-mobile-role=\"navigational\">Labeled</menu>\n"
-      "<header data-mobile-role=\"header\"><h1>Labeled</h1></header>\n"
+      "<menu data-mobile-role=\"navigational\">\n"
+      "  Labeled</menu>\n"
+      "<header data-mobile-role=\"header\">\n"
+      "  <h1>Labeled</h1></header>\n"
       "<div id='body' data-mobile-role=\"content\">\n"
       "  <main>labeled\n"
-      "    <article><section>unlabeled</section>\n"
+      "    <article>\n"
+      "      <section>unlabeled</section>\n"
       "    </article>\n"
       "  </main>\n"
       "  <article data-mobile-role=\"content\">also labeled</article>\n"
       "  <section data-mobile-role=\"content\">this too\n"
-      "    <aside data-mobile-role=\"marginal\">and this, it differs.</aside>\n"
+      "    <aside data-mobile-role=\"marginal\">\n"
+      "      and this, it differs.</aside>\n"
       "  </section>\n"
       "</div>\n"
       "<aside data-mobile-role=\"marginal\">Labeled</aside>\n"
       "<footer data-mobile-role=\"marginal\">labeled\n"
-      "  <menu data-mobile-role=\"navigational\">navvy</menu>\n"
+      "  <menu data-mobile-role=\"navigational\">\n"
+      "    navvy</menu>\n"
       "</footer>\n"
       "</body>";
   // Note how the HTML5 tags used for training / instant classification are
   // treated as divs in the instrumented data.
   const char kOutputHtml[] =
       "<head></head><body>\n"
-      "<nav data-mobile-role=\"navigational\">Labeled\n"
-      "  <menu>unlabeled</menu>"
+      "<nav id=\"PageSpeed-1\" data-mobile-role=\"navigational\">Labeled\n"
+      "  <menu id=\"PageSpeed-1-0\">unlabeled</menu>"
       "<!--ElementTagDepth: 2,"
       " PreviousTagCount: 1,"
       " ContainedTagDepth: 2,"
@@ -632,7 +707,8 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedNonBlankBytes: 16,"
       " ContainedNonAContentBytes: 16,"
       " div count: 2-->\n"
-      "<menu data-mobile-role=\"navigational\">Labeled</menu>"
+      "<menu id=\"PageSpeed-2\" data-mobile-role=\"navigational\">\n"
+      "  Labeled</menu>"
       "<!--role: navigational,"
       " ElementTagDepth: 1,"
       " PreviousTagCount: 2,"
@@ -643,7 +719,8 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedNonBlankBytes: 7,"
       " ContainedNonAContentBytes: 7,"
       " div count: 1-->\n"
-      "<header data-mobile-role=\"header\"><h1>Labeled</h1></header>"
+      "<header id=\"PageSpeed-3\" data-mobile-role=\"header\">\n"
+      "  <h1>Labeled</h1></header>"
       "<!--role: header,"
       " ElementTagDepth: 1,"
       " PreviousTagCount: 3,"
@@ -656,8 +733,9 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " div count: 1,"
       " h1 count: 1-->\n"
       "<div id='body' data-mobile-role=\"content\">\n"
-      "  <main>labeled\n"
-      "    <article><section>unlabeled</section>"
+      "  <main id=\"PageSpeed-body-0\">labeled\n"
+      "    <article id=\"PageSpeed-body-0-0\">\n"
+      "      <section id=\"PageSpeed-body-0-0-0\">unlabeled</section>"
       "<!--ElementTagDepth: 4,"
       " PreviousTagCount: 8,"
       " ContainedTagDepth: 4,"
@@ -692,7 +770,7 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " div count: 2,"
       " section count: 1,"
       " parent role is content-->\n"
-      "  <article>also labeled</article>"
+      "  <article id=\"PageSpeed-body-1\">also labeled</article>"
       "<!--ElementTagDepth: 2,"
       " PreviousTagCount: 9,"
       " ContainedTagDepth: 2,"
@@ -703,8 +781,9 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedNonAContentBytes: 12,"
       " div count: 1,"
       " parent role is content-->\n"
-      "  <section>this too\n"
-      "    <aside data-mobile-role=\"marginal\">and this, it differs.</aside>"
+      "  <section id=\"PageSpeed-body-2\">this too\n"
+      "    <aside id=\"PageSpeed-body-2-0\" data-mobile-role=\"marginal\">\n"
+      "      and this, it differs.</aside>"
       "<!--role: marginal,"
       " ElementTagDepth: 3,"
       " PreviousTagCount: 11,"
@@ -741,7 +820,7 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " body: 1,"
       " div count: 5,"
       " section count: 2-->\n"
-      "<aside data-mobile-role=\"marginal\">Labeled</aside>"
+      "<aside id=\"PageSpeed-5\" data-mobile-role=\"marginal\">Labeled</aside>"
       "<!--role: marginal,"
       " ElementTagDepth: 1,"
       " PreviousTagCount: 12,"
@@ -752,8 +831,9 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedNonBlankBytes: 7,"
       " ContainedNonAContentBytes: 7,"
       " div count: 1-->\n"
-      "<footer data-mobile-role=\"marginal\">labeled\n"
-      "  <menu data-mobile-role=\"navigational\">navvy</menu>"
+      "<footer id=\"PageSpeed-6\" data-mobile-role=\"marginal\">labeled\n"
+      "  <menu id=\"PageSpeed-6-0\" data-mobile-role=\"navigational\">\n"
+      "    navvy</menu>"
       "<!--role: navigational,"
       " ElementTagDepth: 2,"
       " PreviousTagCount: 14,"
@@ -775,7 +855,14 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
       " ContainedNonBlankBytes: 12,"
       " ContainedNonAContentBytes: 12,"
       " div count: 2-->\n"
-      "</body>";
+      "<script type=\"text/javascript\">"
+      "pagespeedHeaderIds=['PageSpeed-3'];\n"
+      "pagespeedNavigationalIds="
+      "['PageSpeed-1','PageSpeed-2','PageSpeed-6-0'];\n"
+      "pagespeedContentIds=['body'];\n"
+      "pagespeedMarginalIds="
+      "['PageSpeed-body-2-0','PageSpeed-5','PageSpeed-6'];\n"
+      "</script></body>";
   Parse("html5_tags_in_body", Unlabel(kLabeledHtml));
   GoogleString xbody = StrCat(doctype_string_, AddHtmlBody(kOutputHtml));
   RemoveRedundantDataFromOutputBuffer();
@@ -797,13 +884,14 @@ TEST_F(MobilizeLabelFilterTest, LargeUnlabeled) {
       original_filename.c_str(), &original_contents, message_handler()));
   GoogleString unlabeled_contents = Unlabel(original_contents);
   // Classify using only tag names.  Shouldn't change anything.
-  filter_->mutable_labeling_mode() = MobilizeLabelFilter::kUseTagNames;
+  label_filter_->mutable_labeling_mode() = MobilizeLabelFilter::kUseTagNames;
   ValidateNoChanges("unlabeled", unlabeled_contents);
   EXPECT_EQ(1, pages_labeled_->Get());
   EXPECT_EQ(0, pages_role_added_->Get());
   // Classify fully, compare against gold labeling.
   // Note that we don't necessarily match the labeling of the original!
-  filter_->mutable_labeling_mode() = MobilizeLabelFilter::kDefaultLabelingMode;
+  label_filter_->mutable_labeling_mode() =
+      MobilizeLabelFilter::kDefaultLabelingMode;
   GoogleString labeled_filename =
       StrCat(GTestSrcDir(), kTestDataDir, kOriginalLabeled);
   GoogleString labeled_contents;

@@ -944,13 +944,13 @@ goog.string.getRandomString = function() {
 };
 goog.string.compareVersions = function(a, b) {
   for (var c = 0, d = goog.string.trim(String(a)).split("."), e = goog.string.trim(String(b)).split("."), f = Math.max(d.length, e.length), g = 0;0 == c && g < f;g++) {
-    var h = d[g] || "", k = e[g] || "", l = RegExp("(\\d*)(\\D*)", "g"), m = RegExp("(\\d*)(\\D*)", "g");
+    var h = d[g] || "", k = e[g] || "", l = RegExp("(\\d*)(\\D*)", "g"), p = RegExp("(\\d*)(\\D*)", "g");
     do {
-      var n = l.exec(h) || ["", "", ""], p = m.exec(k) || ["", "", ""];
-      if (0 == n[0].length && 0 == p[0].length) {
+      var m = l.exec(h) || ["", "", ""], n = p.exec(k) || ["", "", ""];
+      if (0 == m[0].length && 0 == n[0].length) {
         break;
       }
-      var c = 0 == n[1].length ? 0 : parseInt(n[1], 10), q = 0 == p[1].length ? 0 : parseInt(p[1], 10), c = goog.string.compareElements_(c, q) || goog.string.compareElements_(0 == n[2].length, 0 == p[2].length) || goog.string.compareElements_(n[2], p[2]);
+      var c = 0 == m[1].length ? 0 : parseInt(m[1], 10), q = 0 == n[1].length ? 0 : parseInt(n[1], 10), c = goog.string.compareElements_(c, q) || goog.string.compareElements_(0 == m[2].length, 0 == n[2].length) || goog.string.compareElements_(m[2], n[2]);
     } while (0 == c);
   }
   return c;
@@ -2973,462 +2973,27 @@ goog.dom.DomHelper.prototype.isNodeList = goog.dom.isNodeList;
 goog.dom.DomHelper.prototype.getAncestorByTagNameAndClass = goog.dom.getAncestorByTagNameAndClass;
 goog.dom.DomHelper.prototype.getAncestorByClass = goog.dom.getAncestorByClass;
 goog.dom.DomHelper.prototype.getAncestor = goog.dom.getAncestor;
-var pagespeed = {MobUtil:{}};
-pagespeed.MobUtil.intersects = function(a, b) {
-  return a.left <= b.right && b.left <= a.right && a.top <= b.bottom && b.top <= a.bottom;
-};
-pagespeed.MobUtil.pixelValue = function(a) {
-  var b = null;
-  a && (b = a.indexOf("px"), -1 != b && (a = a.substring(0, b)), b = parseInt(a, 10), isNaN(b) && (b = null));
-  return b;
-};
-pagespeed.MobUtil.computedDimension = function(a, b) {
-  var c = null;
-  a && (c = pagespeed.MobUtil.pixelValue(a.getPropertyValue(b)));
-  return c;
-};
-pagespeed.MobUtil.removeProperty = function(a, b) {
-  a.style && a.style.removeProperty(b);
-  a.removeAttribute(b);
-};
-pagespeed.MobUtil.findRequestedDimension = function(a, b) {
-  var c = null;
-  a.style && (c = pagespeed.MobUtil.pixelValue(a.style.getPropertyValue(b)));
-  null == c && (c = pagespeed.MobUtil.pixelValue(a.getAttribute(b)));
-  return c;
-};
-pagespeed.MobUtil.setPropertyImportant = function(a, b, c) {
-  a.style.setProperty(b, c, "important");
-};
-pagespeed.MobUtil.aboutEqual = function(a, b) {
-  return.95 < (a > b ? b / a : a / b);
-};
-pagespeed.MobUtil.addStyles = function(a, b) {
-  if (b && 0 != b.length) {
-    var c = a.getAttribute("style") || "";
-    0 < c.length && ";" != c[c.length - 1] && (c += ";");
-    a.setAttribute("style", c + b);
-  }
-};
-pagespeed.MobUtil.boundingRect = function(a) {
-  a = a.getBoundingClientRect();
-  var b = document.body, c = document.documentElement || b.parentNode || b, b = "pageXOffset" in window ? window.pageXOffset : c.scrollLeft, c = "pageYOffset" in window ? window.pageYOffset : c.scrollTop;
-  a.top += c;
-  a.bottom += c;
-  a.left += b;
-  a.right += b;
-  return a;
-};
-pagespeed.MobUtil.isSinglePixel = function(a) {
-  return 1 == a.naturalHeight && 1 == a.naturalWidth;
-};
-pagespeed.MobUtil.findBackgroundImage = function(a) {
-  var b = null;
-  "SCRIPT" != a.tagName && "STYLE" != a.tagName && a.style && (a = window.getComputedStyle(a)) && (b = a.getPropertyValue("background-image"), "none" == b && (b = null), b && 5 < b.length && 0 == b.indexOf("url(") && ")" == b[b.length - 1] && (b = b.substring(4, b.length - 1)));
-  return b;
-};
-pagespeed.MobUtil.inFriendlyIframe = function() {
-  if (null != window.parent && window != window.parent) {
-    try {
-      if (window.parent.document.domain == document.domain) {
-        return!0;
-      }
-    } catch (a) {
-    }
-  }
-  return!1;
-};
-pagespeed.MobUtil.possiblyInQuirksMode = function() {
-  return "CSS1Compat" !== document.compatMode;
-};
-pagespeed.MobUtil.hasIntersectingRects = function(a) {
-  for (var b = 0;b < a.length;++b) {
-    for (var c = b + 1;c < a.length;++c) {
-      if (pagespeed.MobUtil.intersects(a[b], a[c])) {
-        return!0;
-      }
-    }
-  }
-  return!1;
-};
-pagespeed.MobUtil.createXPathFromNode = function(a) {
-  for (var b = document.getElementsByTagName("*"), c, d = [], e;goog.dom.isElement(a);a = a.parentNode) {
-    if (a.hasAttribute("id")) {
-      for (e = c = 0;e < b.length && 1 >= c;++e) {
-        b[e].hasAttribute("id") && b[e].id == a.id && ++c;
-      }
-      if (1 == c) {
-        return d.unshift('id("' + a.getAttribute("id") + '")'), d.join("/");
-      }
-      d.unshift(a.localName.toLowerCase() + '[@id="' + a.getAttribute("id") + '"]');
-    } else {
-      if (a.hasAttribute("class")) {
-        d.unshift(a.localName.toLowerCase() + '[@class="' + a.getAttribute("class") + '"]');
-      } else {
-        c = 1;
-        for (e = a.previousSibling;e;e = e.previousSibling) {
-          e.localName == a.localName && c++;
-        }
-        d.unshift(a.localName.toLowerCase() + "[" + c + "]");
-      }
-    }
-  }
-  return d.length ? "/" + d.join("/") : null;
-};
-pagespeed.MobUtil.countNodes = function(a) {
-  var b = 1;
-  for (a = a.firstChild;a;a = a.nextSibling) {
-    b += pagespeed.MobUtil.countNodes(a);
-  }
-  return b;
-};
-pagespeed.MobLayout = function(a) {
-  this.psMob_ = a;
-  this.dontTouchIds_ = {};
-  this.maxWidth_ = this.computeMaxWidth_();
-  console.log("window.pagespeed.MobLayout.maxWidth=" + this.maxWidth_);
-};
-pagespeed.MobLayout.CLAMPED_STYLES_ = "padding-left padding-bottom padding-right padding-top margin-left margin-bottom margin-right margin-top border-left-width border-bottom-width border-right-width border-top-width left top".split(" ");
-pagespeed.MobLayout.FLEXIBLE_WIDTH_TAGS_ = {A:!0, DIV:!0, FORM:!0, H1:!0, H2:!0, H3:!0, H4:!0, P:!0, SPAN:!0, TBODY:!0, TD:!0, TFOOT:!0, TH:!0, THEAD:!0, TR:!0};
-pagespeed.MobLayout.NO_PERCENT_ = ["left", "width"];
-pagespeed.MobLayout.prototype.addDontTouchId = function(a) {
-  this.dontTouchIds_[a] = !0;
-};
-pagespeed.MobLayout.prototype.computeMaxWidth_ = function() {
-  var a = document.documentElement.clientWidth;
-  if (a) {
-    for (var b = window.getComputedStyle(document.body), c = ["padding-left", "padding-right"], d = 0;d < c.length;++d) {
-      var e = pagespeed.MobUtil.computedDimension(b, c[d]);
-      e && (a -= e);
-    }
-  } else {
-    a = 400;
-  }
-  return a;
-};
-pagespeed.MobLayout.prototype.castElement_ = function(a) {
-  return goog.dom.isElement(a) ? a : null;
-};
-pagespeed.MobLayout.prototype.dontTouch_ = function(a) {
-  if (!a) {
-    return!0;
-  }
-  var b = a.tagName.toUpperCase();
-  return "SCRIPT" == b || "STYLE" == b || "IFRAME" == b || a.id && this.dontTouchIds_[a.id] || a.classList.contains("psmob-nav-panel") || a.classList.contains("psmob-header-bar") || a.classList.contains("psmob-header-spacer-div") || a.classList.contains("psmob-logo-span");
-};
-pagespeed.MobLayout.prototype.getMobilizeElement = function(a) {
-  a = this.castElement_(a);
-  return this.dontTouch_(a) ? null : a;
-};
-pagespeed.MobLayout.prototype.childElements_ = function(a) {
-  var b = [];
-  for (a = a.firstChild;a;a = a.nextSibling) {
-    null != this.castElement_(a) && b.push(a);
-  }
-  return b;
-};
-pagespeed.MobLayout.prototype.forEachMobilizableChild_ = function(a, b) {
-  for (var c = a.firstChild;c;c = c.nextSibling) {
-    null != this.getMobilizeElement(c) && b.call(this, c);
-  }
-};
-pagespeed.MobLayout.numberOfPasses = function() {
-  return pagespeed.MobLayout.sequence_.length / 2;
-};
-pagespeed.MobLayout.prototype.shrinkWideElements_ = function(a) {
-  var b = window.getComputedStyle(a), c = pagespeed.MobUtil.findBackgroundImage(a);
-  if (c && (c = this.psMob_.findImgTagForUrl(c)) && c.width && c.height) {
-    var d = c.height;
-    b.getPropertyValue("background-repeat");
-    if (c.width > this.maxWidth_) {
-      var d = Math.round(this.maxWidth_ / c.width * c.height), e = "background-size:" + this.maxWidth_ + "px " + d + "px;background-repeat:no-repeat;", f = pagespeed.MobUtil.computedDimension(b, "height");
-      c.height == f && (e += "height:" + d + "px;");
-      pagespeed.MobUtil.addStyles(a, e);
-    }
-    pagespeed.MobUtil.setPropertyImportant(a, "min-height", "" + d + "px");
-  }
-  if ("PRE" == a.tagName.toUpperCase() || "pre" == b.getPropertyValue("white-space") && a.offsetWidth > this.maxWidth_) {
-    a.style.overflowX = "scroll";
-  }
-  this.forEachMobilizableChild_(a, this.shrinkWideElements_);
-};
-pagespeed.MobLayout.prototype.computeAllSizingAndResynthesize = function() {
-  if (null != document.body) {
-    for (var a = 0;a < pagespeed.MobLayout.sequence_.length;++a) {
-      pagespeed.MobLayout.sequence_[a].call(this, document.body), ++a, this.psMob_.layoutPassDone(pagespeed.MobLayout.sequence_[a]);
-    }
-  }
-};
-pagespeed.MobLayout.prototype.makeHorizontallyScrollable_ = function(a) {
-  pagespeed.MobUtil.setPropertyImportant(a, "overflow-x", "auto");
-  pagespeed.MobUtil.setPropertyImportant(a, "width", "auto");
-  pagespeed.MobUtil.setPropertyImportant(a, "display", "block");
-};
-pagespeed.MobLayout.prototype.resizeVertically_ = function(a) {
-  this.resizeVerticallyAndReturnBottom_(a, 0);
-};
-pagespeed.MobLayout.prototype.resizeVerticallyAndReturnBottom_ = function(a, b) {
-  var c, d;
-  if (d = pagespeed.MobUtil.boundingRect(a)) {
-    c = d.top, d = d.bottom;
-  } else {
-    c = b;
-    if (a.offsetParent == a.parentNode) {
-      c += a.offsetTop;
-    } else {
-      if (a.offsetParent != a.parentNode.parentNode) {
-        return null;
-      }
-    }
-    d = c + a.offsetHeight - 1;
-  }
-  if (this.dontTouch_(a)) {
-    return d;
-  }
-  d = c - 1;
-  var e = window.getComputedStyle(a);
-  if (!e) {
-    return null;
-  }
-  var f = pagespeed.MobUtil.computedDimension(e, "min-height");
-  null != f && (d += f);
-  for (var f = c + a.offsetHeight - 1, g = !1, h = !1, k, l = a.firstChild;l;l = l.nextSibling) {
-    if (k = this.castElement_(l)) {
-      var m = window.getComputedStyle(k);
-      m && "absolute" == m.position && "0px" != m.getPropertyValue("height") && (h = !0);
-      k = this.resizeVerticallyAndReturnBottom_(k, c);
-      null != k && (g = !0, d = Math.max(d, k));
-    }
-  }
-  if ("fixed" == e.getPropertyValue("position") && g) {
-    return null;
-  }
-  e = a.tagName.toUpperCase();
-  "BODY" != e && (l = f - c + 1, g ? d != f && (h ? pagespeed.MobUtil.setPropertyImportant(a, "height", "" + (d - c + 1) + "px") : pagespeed.MobUtil.setPropertyImportant(a, "height", "auto")) : ("IMG" != e && 0 < l && "" == a.style.backgroundSize && (pagespeed.MobUtil.removeProperty(a, "height"), pagespeed.MobUtil.setPropertyImportant(a, "height", "auto"), a.offsetHeight && (f = c + a.offsetHeight)), d = f));
-  return d;
-};
-pagespeed.MobLayout.prototype.resizeIfTooWide_ = function(a) {
-  for (var b = this.childElements_(a), c = 0;c < b.length;++c) {
-    this.resizeIfTooWide_(b[c]);
-  }
-  if (!(a.offsetWidth <= this.maxWidth_)) {
-    if (b = a.tagName.toUpperCase(), "TABLE" == b) {
-      this.isDataTable_(a) ? this.makeHorizontallyScrollable_(a) : pagespeed.MobUtil.possiblyInQuirksMode() ? this.reorganizeTableQuirksMode_(a, this.maxWidth_) : this.reorganizeTableNoQuirksMode_(a, this.maxWidth_);
-    } else {
-      var c = null, d = a.offsetWidth, e = a.offsetHeight, f = "img";
-      if ("IMG" == b) {
-        c = a.getAttribute("src");
-      } else {
-        var f = "background-image", c = pagespeed.MobUtil.findBackgroundImage(a), g = null == c ? null : this.psMob_.findImgTagForUrl(c);
-        g && (d = g.width, e = g.height);
-      }
-      null != c ? (g = d / this.maxWidth_, 1 < g && (g = e / g, console.log("Shrinking " + f + " " + c + " from " + d + "x" + e + " to " + this.maxWidth_ + "x" + g), "IMG" == b ? (pagespeed.MobUtil.setPropertyImportant(a, "width", "" + this.maxWidth_ + "px"), pagespeed.MobUtil.setPropertyImportant(a, "height", "" + g + "px")) : pagespeed.MobUtil.setPropertyImportant(a, "background-size", "" + this.maxWidth_ + "px " + g + "px"))) : "CODE" == b || "PRE" == b || "UL" == b ? this.makeHorizontallyScrollable_(a) : 
-      pagespeed.MobLayout.FLEXIBLE_WIDTH_TAGS_[b] ? (pagespeed.MobUtil.setPropertyImportant(a, "max-width", "100%"), pagespeed.MobUtil.removeProperty(a, "width")) : console.log("Punting on resize of " + b + " which wants to be " + a.offsetWidth + " but this.maxWidth_=" + this.maxWidth_);
-    }
-  }
-};
-pagespeed.MobLayout.prototype.countContainers_ = function(a) {
-  var b = 0, c = a.tagName.toUpperCase();
-  "DIV" != c && "TABLE" != c && "UL" != c || ++b;
-  for (a = a.firstChild;a;a = a.nextSibling) {
-    c = this.castElement_(a), null != c && (b += this.countContainers_(c));
-  }
-  return b;
-};
-pagespeed.MobLayout.prototype.isDataTable_ = function(a) {
-  for (var b = 0, c = a.firstChild;c;c = c.nextSibling) {
-    for (var d = c.firstChild;d;d = d.nextSibling) {
-      var e = c.tagName.toUpperCase();
-      if ("THEAD" == e || "TFOOT" == e) {
-        return!0;
-      }
-      for (e = d.firstChild;e;e = e.nextSibling) {
-        if (e.tagName && "TH" == e.tagName.toUpperCase()) {
-          return!0;
-        }
-        ++b;
-      }
-    }
-  }
-  return 3 * this.countContainers_(a) > b ? !1 : !0;
-};
-pagespeed.MobLayout.prototype.reorganizeTableQuirksMode_ = function(a, b) {
-  var c, d, e, f, g, h, k, l = document.createElement("DIV");
-  l.style.display = "inline-block";
-  var m = this.childElements_(a);
-  for (c = 0;c < m.length;++c) {
-    var n = this.childElements_(m[c]);
-    for (d = 0;d < n.length;++d) {
-      var p = this.childElements_(n[d]);
-      for (e = 0;e < p.length;++e) {
-        if (h = p[e], 1 == h.childNodes.length) {
-          g = h.childNodes[0], h.removeChild(g), l.appendChild(g);
-        } else {
-          if (1 < h.childNodes.length) {
-            k = document.createElement("DIV");
-            k.style.display = "inline-block";
-            var q = this.childElements_(h);
-            for (f = 0;f < q.length;++f) {
-              g = q[f], h.removeChild(g), k.appendChild(g);
-            }
-            l.appendChild(k);
-          }
-        }
-      }
-    }
-  }
-  a.parentNode.replaceChild(l, a);
-};
-pagespeed.MobLayout.prototype.reorganizeTableNoQuirksMode_ = function(a, b) {
-  var c, d, e, f;
-  pagespeed.MobUtil.removeProperty(a, "width");
-  pagespeed.MobUtil.setPropertyImportant(a, "max-width", "100%");
-  for (c = a.firstChild;c;c = c.nextSibling) {
-    if (d = this.castElement_(c), null != d) {
-      for (pagespeed.MobUtil.removeProperty(d, "width"), pagespeed.MobUtil.setPropertyImportant(d, "max-width", "100%"), d = d.firstChild;d;d = d.nextSibling) {
-        if (e = this.castElement_(d), null != e && "TR" == e.tagName.toUpperCase()) {
-          for (pagespeed.MobUtil.removeProperty(e, "width"), pagespeed.MobUtil.setPropertyImportant(e, "max-width", "100%"), e = e.firstChild;e;e = e.nextSibling) {
-            f = this.castElement_(e), null != f && "TD" == f.tagName.toUpperCase() && (pagespeed.MobUtil.setPropertyImportant(f, "max-width", "100%"), pagespeed.MobUtil.setPropertyImportant(f, "display", "inline-block"));
-          }
-        }
-      }
-    }
-  }
-};
-pagespeed.MobLayout.prototype.cleanupStyles_ = function(a) {
-  var b = document.body.style.display;
-  document.body.style.display = "none";
-  this.cleanupStylesHelper_(a);
-  document.body.style.display = b;
-};
-pagespeed.MobLayout.prototype.cleanupStylesHelper_ = function(a) {
-  var b = window.getComputedStyle(a);
-  "nowrap" == b.getPropertyValue("white-space") && pagespeed.MobUtil.setPropertyImportant(a, "white-space", "normal");
-  this.forEachMobilizableChild_(a, this.cleanupStylesHelper_);
-  var b = window.getComputedStyle(a), c, d, e;
-  for (c = 0;c < pagespeed.MobLayout.NO_PERCENT_.length;++c) {
-    d = pagespeed.MobLayout.NO_PERCENT_[c], (e = b.getPropertyValue(d)) && "100%" != e && "auto" != e && 0 < e.length && "%" == e[e.length - 1] && pagespeed.MobUtil.setPropertyImportant(a, d, "auto");
-  }
-  c = a.tagName.toUpperCase();
-  var f = "UL" == c || "OL" == c, g = "BODY" == c, h = "";
-  for (c = 0;c < pagespeed.MobLayout.CLAMPED_STYLES_.length;++c) {
-    d = pagespeed.MobLayout.CLAMPED_STYLES_[c], f && goog.string.endsWith(d, "-left") || g && goog.string.startsWith(d, "margin-") || (e = pagespeed.MobUtil.computedDimension(b, d), null != e && (4 < e ? h += d + ":4px !important;" : 0 > e && (h += d + ":0px !important;")));
-  }
-  pagespeed.MobUtil.addStyles(a, h);
-};
-pagespeed.MobLayout.prototype.repairDistortedImages_ = function(a) {
-  this.forEachMobilizableChild_(a, this.repairDistortedImages_);
-  if ("IMG" == a.tagName.toUpperCase()) {
-    var b = window.getComputedStyle(a), c = pagespeed.MobUtil.findRequestedDimension(a, "width"), d = pagespeed.MobUtil.findRequestedDimension(a, "height");
-    if (c && d && b) {
-      var e = pagespeed.MobUtil.computedDimension(b, "width"), b = pagespeed.MobUtil.computedDimension(b, "height");
-      e && b && (e /= c, b /= d, pagespeed.MobUtil.aboutEqual(e, b) || (console.log("aspect ratio problem for " + a.getAttribute("src")), pagespeed.MobUtil.isSinglePixel(a) ? (b = Math.min(e, b), pagespeed.MobUtil.removeProperty(a, "width"), pagespeed.MobUtil.removeProperty(a, "height"), a.style.width = c * b, a.style.height = d * b) : e > b ? pagespeed.MobUtil.removeProperty(a, "height") : (pagespeed.MobUtil.removeProperty(a, "width"), pagespeed.MobUtil.removeProperty(a, "height"), a.style.maxHeight = 
-      d)), .25 > e && (console.log("overshrinkage for " + a.getAttribute("src")), this.reallocateWidthToTableData_(a)));
-    }
-  }
-};
-pagespeed.MobLayout.prototype.reallocateWidthToTableData_ = function(a) {
-  for (;a && "TD" != a.tagName.toUpperCase();) {
-    a = a.parentNode;
-  }
-  if (a) {
-    var b = a.parentNode;
-    if (b) {
-      var c = 0;
-      for (a = b.firstChild;a;a = a.nextSibling) {
-        a.tagName && "TD" == a.tagName.toUpperCase() && ++c;
-      }
-      if (1 < c) {
-        for (c = "width:" + Math.round(100 / c) + "%;", b = b.firstChild;b;b = b.nextSibling) {
-          a = this.castElement_(b), null != a && "TD" == a.tagName.toUpperCase() && pagespeed.MobUtil.addStyles(a, c);
-        }
-      }
-    }
-  }
-};
-pagespeed.MobLayout.prototype.stripFloats_ = function(a) {
-  var b = window.getComputedStyle(a).getPropertyValue("position");
-  if ("fixed" == b) {
-    return "fixed";
-  }
-  var c, d, e, f = [], g = [];
-  for (d = a.firstChild;d;d = d.nextSibling) {
-    if (c = this.getMobilizeElement(d), null != c && (e = this.stripFloats_(c), "fixed" != e && null != this.getMobilizeElement(c))) {
-      if ("absolute" == e) {
-        g.push(c);
-      } else {
-        var h = window.getComputedStyle(c);
-        e = h.getPropertyValue("float");
-        var k = "right" == e;
-        if (k || "left" == e) {
-          pagespeed.MobUtil.setPropertyImportant(c, "float", "none"), "none" != h.getPropertyValue("display") && pagespeed.MobUtil.setPropertyImportant(c, "display", "inline-block");
-        }
-        k && f.push(c);
-      }
-    }
-  }
-  for (c = f.length - 1;0 <= c;--c) {
-    d = f[c], a.removeChild(d);
-  }
-  for (c = f.length - 1;0 <= c;--c) {
-    d = f[c], a.appendChild(d);
-  }
-  return b;
-};
-pagespeed.MobLayout.prototype.removeWidthConstraint_ = function(a, b) {
-  var c = a.tagName.toUpperCase();
-  "INPUT" != c && "SELECT" != c && ("" == a.style.backgroundSize && "auto" != b.getPropertyValue("width") && pagespeed.MobUtil.setPropertyImportant(a, "width", "auto"), "IMG" != c && a.removeAttribute("width"), pagespeed.MobUtil.removeProperty(a, "border-left"), pagespeed.MobUtil.removeProperty(a, "border-right"), pagespeed.MobUtil.removeProperty(a, "margin-left"), pagespeed.MobUtil.removeProperty(a, "margin-right"), pagespeed.MobUtil.removeProperty(a, "padding-left"), pagespeed.MobUtil.removeProperty(a, 
-  "padding-right"), a.className = "" != a.className ? a.className + " psSingleColumn" : "psSingleColumn");
-};
-pagespeed.MobLayout.prototype.expandColumns_ = function(a) {
-  if ("fixed" != window.getComputedStyle(a).getPropertyValue("position")) {
-    var b, c = [], d = [];
-    for (b = a.firstChild;b;b = b.nextSibling) {
-      if (a = this.getMobilizeElement(b), null != a) {
-        var e = window.getComputedStyle(a), f = e.getPropertyValue("position");
-        "fixed" != f && "absolute" != f && 0 != b.offsetWidth && (c.push(a), d.push(e));
-      }
-    }
-    e = null;
-    for (f = 0;f < c.length;++f) {
-      a = c[f];
-      b = f < c.length - 1 ? c[f + 1] : null;
-      var g = a.offsetLeft + a.offsetWidth;
-      (null == e || a.offsetLeft < e) && (null == b || b.offsetLeft < g) && (this.removeWidthConstraint_(a, d[f]), this.expandColumns_(a));
-      e = g;
-    }
-  }
-};
-pagespeed.MobLayout.sequence_ = [pagespeed.MobLayout.prototype.shrinkWideElements_, "shrink wide elements", pagespeed.MobLayout.prototype.stripFloats_, "string floats", pagespeed.MobLayout.prototype.cleanupStyles_, "cleanup styles", pagespeed.MobLayout.prototype.repairDistortedImages_, "repair distored images", pagespeed.MobLayout.prototype.resizeIfTooWide_, "resize if too wide", pagespeed.MobLayout.prototype.expandColumns_, "expand columns", pagespeed.MobLayout.prototype.resizeVertically_, "resize vertically"];
-pagespeed.MobNav = function() {
+var pagespeed = {Mob:{}};
+pagespeed.Mob.HEADER_BAR_HEIGHT = 60;
+pagespeed.Mob.Nav = function() {
   this.navSections_ = [];
   this.useDetectedThemeColor_ = !0;
 };
-pagespeed.MobNav.HEADER_BAR_HEIGHT_ = 60;
-pagespeed.MobNav.prototype.ARROW_ICON_ = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJAAAACQCAQAAABNTyozAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAACYktHRAD/h4/MvwAAAAlwSFlzAAALEwAACxMBAJqcGAAAATdJREFUeNrt0klOBTEQREHfDI7FTEn/4M2GBULQo22wK+ICKT1lKQAAAAAAAAAAAAAAAAAA/Jm7rmv3o+W5laU8d1uLspQYLc/SLVF8rsVoefokii9rMVqe9oni21qMlqdtovhhLUbL0y5R/LIWo+VZylKeuuX5t4nW8tRPFBtrMV6gmolic+t9xA/VSjRonl6JBs7TI9HgeVonmiDPvkSPmfO0SjRRnhaJJstTO9GEeWom2s7zVgZVI9HEeWokmjzPvkQPmfNcSZQkz9lEifKcSZQsz9FECfMcSZQ0z95E23ley8S2E6XOcz3R9HmuJUqR53yiNHnOJUqV53iidHmOJUqZZ3+itHn2JXopyd3kOZ9IntVE8qwmkmc1kTyrieRZTSTPaiJ5AAAAAAAAAAAAAAAAAGjgA62rM0XB6dNxAAAAAElFTkSuQmCC";
-pagespeed.MobNav.prototype.findNavSections_ = function() {
-  var a;
-  if (pagespeedNavigationalIds) {
-    a = Array(pagespeedNavigationalIds.length);
-    for (var b = 0, c;c = pagespeedNavigationalIds[b];b++) {
-      a[b] = document.getElementById(c);
-    }
-  } else {
-    a = [];
-  }
-  this.navSections_ = goog.array.concat(a, goog.array.toArray(document.querySelectorAll(".topNavList")));
+pagespeed.Mob.Nav.prototype.ARROW_ICON_ = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJAAAACQCAQAAABNTyozAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAACYktHRAD/h4/MvwAAAAlwSFlzAAALEwAACxMBAJqcGAAAATdJREFUeNrt0klOBTEQREHfDI7FTEn/4M2GBULQo22wK+ICKT1lKQAAAAAAAAAAAAAAAAAA/Jm7rmv3o+W5laU8d1uLspQYLc/SLVF8rsVoefokii9rMVqe9oni21qMlqdtovhhLUbL0y5R/LIWo+VZylKeuuX5t4nW8tRPFBtrMV6gmolic+t9xA/VSjRonl6JBs7TI9HgeVonmiDPvkSPmfO0SjRRnhaJJstTO9GEeWom2s7zVgZVI9HEeWokmjzPvkQPmfNcSZQkz9lEifKcSZQsz9FECfMcSZQ0z95E23ley8S2E6XOcz3R9HmuJUqR53yiNHnOJUqV53iidHmOJUqZZ3+itHn2JXopyd3kOZ9IntVE8qwmkmc1kTyrieRZTSTPaiJ5AAAAAAAAAAAAAAAAAGjgA62rM0XB6dNxAAAAAElFTkSuQmCC";
+pagespeed.Mob.Nav.prototype.findNavSections_ = function() {
+  this.navSections_ = goog.array.concat(goog.array.toArray(document.querySelectorAll('[data-mobile-role="navigational"]')), goog.array.toArray(document.querySelectorAll(".topNavList")));
 };
-pagespeed.MobNav.prototype.fixExistingElements_ = function() {
+pagespeed.Mob.Nav.prototype.fixExistingElements_ = function() {
   for (var a = document.getElementsByTagName("*"), b = 0, c;c = a[b];b++) {
     var d = window.getComputedStyle(c);
     if ("fixed" == d.getPropertyValue("position")) {
       var e = c.getBoundingClientRect().top;
-      c.style.top = String(pagespeed.MobNav.HEADER_BAR_HEIGHT_ + e) + "px";
+      c.style.top = String(pagespeed.Mob.HEADER_BAR_HEIGHT + e) + "px";
     }
     999999 <= d.getPropertyValue("z-index") && (console.log("Element z-index exceeded 999999, setting to 999998."), c.style.zIndex = 999998);
   }
 };
-pagespeed.MobNav.prototype.addHeaderBar_ = function() {
+pagespeed.Mob.Nav.prototype.addHeaderBar_ = function() {
   var a = document.createElement("div");
   document.body.insertBefore(a, document.body.childNodes[0]);
   goog.dom.classlist.add(a, "psmob-header-spacer-div");
@@ -3442,19 +3007,19 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function() {
     b.style.backgroundColor = a.style.backgroundColor;
   }
 };
-pagespeed.MobNav.prototype.addThemeColor_ = function() {
+pagespeed.Mob.Nav.prototype.addThemeColor_ = function() {
   var a = this.useDetectedThemeColor_ && psMenuBackColor ? psMenuBackColor : "#3c78d8", a = ".psmob-header-bar { background-color: " + a + " }\n.psmob-nav-panel { background-color: " + (this.useDetectedThemeColor_ && psMenuFrontColor ? psMenuFrontColor : "white") + " }\n.psmob-nav-panel > ul li { color: " + a + " }\n.psmob-nav-panel > ul li a { color: " + a + " }\n", b = document.createElement("style");
   b.type = "text/css";
   b.appendChild(document.createTextNode(a));
   document.head.appendChild(b);
 };
-pagespeed.MobNav.prototype.labelNavDepth_ = function(a, b) {
+pagespeed.Mob.Nav.prototype.labelNavDepth_ = function(a, b) {
   for (var c = [], d = a.firstChild;d;d = d.nextSibling) {
     "UL" == d.tagName ? c = goog.array.join(c, this.labelNavDepth_(d, b + 1)) : ("A" == d.tagName && (d.setAttribute("data-mobilize-nav-level", b), c.push(d)), c = goog.array.join(c, this.labelNavDepth_(d, b)));
   }
   return c;
 };
-pagespeed.MobNav.prototype.dedupNavMenuItems_ = function() {
+pagespeed.Mob.Nav.prototype.dedupNavMenuItems_ = function() {
   for (var a = document.querySelector(".psmob-nav-panel > ul a"), b = {}, c = [], d = 0, e;e = a[d];d++) {
     if (e.href in b) {
       var f = e.innerHTML.toLowerCase();
@@ -3467,7 +3032,7 @@ pagespeed.MobNav.prototype.dedupNavMenuItems_ = function() {
     a.parentNode.removeChild(a);
   }
 };
-pagespeed.MobNav.prototype.cleanupNavPanel_ = function() {
+pagespeed.Mob.Nav.prototype.cleanupNavPanel_ = function() {
   for (var a = document.querySelectorAll(".psmob-nav-panel *"), b = 0, c;c = a[b];b++) {
     c.removeAttribute("style"), c.removeAttribute("width"), c.removeAttribute("height"), "A" == c.tagName && "" == c.innerText && c.hasAttribute("title") && c.appendChild(document.createTextNode(c.getAttribute("title")));
   }
@@ -3477,7 +3042,7 @@ pagespeed.MobNav.prototype.cleanupNavPanel_ = function() {
     c.setAttribute("height", d);
   }
 };
-pagespeed.MobNav.prototype.addNavPanel_ = function() {
+pagespeed.Mob.Nav.prototype.addNavPanel_ = function() {
   var a = document.getElementsByClassName("psmob-header-bar")[0], a = document.body.insertBefore(document.createElement("nav"), a.nextSibling);
   goog.dom.classlist.add(a, "psmob-nav-panel");
   a = a.appendChild(document.createElement("ul"));
@@ -3508,13 +3073,13 @@ pagespeed.MobNav.prototype.addNavPanel_ = function() {
   this.dedupNavMenuItems_();
   this.cleanupNavPanel_();
 };
-pagespeed.MobNav.prototype.toggleNavPanel_ = function() {
+pagespeed.Mob.Nav.prototype.toggleNavPanel_ = function() {
   var a = document.querySelector(".psmob-nav-panel"), b = document.querySelector(".psmob-header-bar");
   goog.dom.classlist.toggle(b, "open");
   goog.dom.classlist.toggle(a, "open");
   goog.dom.classlist.toggle(document.body, "noscroll");
 };
-pagespeed.MobNav.prototype.addMenuButtonEvents_ = function() {
+pagespeed.Mob.Nav.prototype.addMenuButtonEvents_ = function() {
   var a = document.querySelector(".psmob-menu-button");
   document.body.addEventListener("click", function(b) {
     if (a.contains(b.target)) {
@@ -3525,159 +3090,22 @@ pagespeed.MobNav.prototype.addMenuButtonEvents_ = function() {
     }
   }.bind(this), !0);
 };
-pagespeed.MobNav.prototype.addNavButtonEvents_ = function() {
+pagespeed.Mob.Nav.prototype.addNavButtonEvents_ = function() {
   document.querySelector("nav.psmob-nav-panel > ul").addEventListener("click", function(a) {
     a = goog.dom.isElement(a.target) && goog.dom.classlist.contains(a.target, "psmob-menu-expand-icon") ? a.target.parentNode : a.target;
     "DIV" == a.tagName && (goog.dom.classlist.toggle(a.nextSibling, "open"), goog.dom.classlist.toggle(a.firstChild, "open"));
   });
 };
-pagespeed.MobNav.prototype.Run = function() {
+pagespeed.Mob.Nav.prototype.Run = function() {
   console.log("Starting nav resynthesis.");
   this.findNavSections_();
   this.fixExistingElements_();
   this.addHeaderBar_();
   this.addThemeColor_();
-  0 == this.navSections_.length || pagespeed.MobUtil.inFriendlyIframe() || (this.addNavPanel_(), this.addMenuButtonEvents_(), this.addNavButtonEvents_());
+  0 == this.navSections_.length || psInFriendlyIframe() || (this.addNavPanel_(), this.addMenuButtonEvents_(), this.addNavButtonEvents_());
 };
-pagespeed.Mob = function() {
-  this.activeRequestCount_ = 0;
-  this.imageMap_ = {};
-  this.startTimeMs_ = Date.now();
-  this.debugMode_ = !1;
-  this.pendingImageLoadCount_ = this.workDone_ = this.prevPercentage_ = this.totalWork_ = this.domElementCount_ = 0;
-  this.mobilizeAfterImageLoad_ = !1;
-  this.workPerLayoutPass_ = this.pendingCallbacks_ = 0;
-  this.layout_ = new pagespeed.MobLayout(this);
-  this.layout_.addDontTouchId(pagespeed.Mob.PROGRESS_SCRIM_ID_);
+var fixNav = function() {
+  (new pagespeed.Mob.Nav).Run();
 };
-pagespeed.Mob.PROGRESS_SAVE_VISIBLITY_ = "ps-save-visibility";
-pagespeed.Mob.PROGRESS_SCRIM_ID_ = "ps-progress-scrim";
-pagespeed.Mob.PROGRESS_REMOVE_ID_ = "ps-progress-remove";
-pagespeed.Mob.PROGRESS_LOG_ID_ = "ps-progress-log";
-pagespeed.Mob.PROGRESS_SPAN_ID_ = "ps-progress-span";
-pagespeed.Mob.PROGRESS_SHOW_LOG_ID_ = "ps-progress-show-log";
-pagespeed.Mob.COST_PER_IMAGE_ = 1E3;
-pagespeed.Mob.prototype.mobilizeSite_ = function() {
-  if (0 == this.pendingImageLoadCount_) {
-    console.log("mobilizing site");
-    var a = window.extractTheme;
-    a && !pagespeed.MobUtil.inFriendlyIframe() ? (++this.pendingCallbacks_, a(this.imageMap_, this.logoComplete_.bind(this))) : this.maybeRunLayout();
-  } else {
-    this.mobilizeAfterImageLoad_ = !0;
-  }
-};
-pagespeed.Mob.prototype.logoComplete_ = function() {
-  --this.pendingCallbacks_;
-  this.updateProgressBar(this.domElementCount_, "extract theme");
-  window.psNavMode && ((new pagespeed.MobNav).Run(), this.updateProgressBar(this.domElementCount_, "navigation"));
-  this.maybeRunLayout();
-};
-pagespeed.Mob.prototype.backgroundImageLoaded_ = function() {
-  --this.pendingImageLoadCount_;
-  this.updateProgressBar(pagespeed.Mob.COST_PER_IMAGE_, "background image");
-  0 == this.pendingImageLoadCount_ && this.mobilizeAfterImageLoad_ && (this.mobilizeSite_(), this.mobilizeAfterImageLoad_ = !1);
-};
-pagespeed.Mob.prototype.collectBackgroundImages_ = function(a) {
-  a = this.layout_.getMobilizeElement(a);
-  if (null != a) {
-    var b = pagespeed.MobUtil.findBackgroundImage(a);
-    if (b && (goog.string.startsWith(b, "http://") || goog.string.startsWith(b, "https://")) && !this.imageMap_[b]) {
-      var c = new Image;
-      ++this.pendingImageLoadCount_;
-      c.onload = this.backgroundImageLoaded_.bind(this);
-      c.onerror = c.onload;
-      c.src = b;
-      this.imageMap_[b] = c;
-    }
-    for (a = a.firstChild;a;a = a.nextSibling) {
-      this.collectBackgroundImages_(a);
-    }
-  }
-};
-pagespeed.Mob.prototype.xhrSendHook = function() {
-  ++this.activeRequestCount_;
-};
-pagespeed.Mob.prototype.xhrResponseHook = function(a) {
-  --this.activeRequestCount_;
-  this.addExtraWorkForDom();
-  this.maybeRunLayout();
-};
-pagespeed.Mob.prototype.initiateMobilization = function() {
-  this.setDebugMode(window.psDebugMode);
-  this.domElementCount_ = pagespeed.MobUtil.countNodes(document.body);
-  this.workPerLayoutPass_ = this.domElementCount_ * pagespeed.MobLayout.numberOfPasses();
-  this.addExtraWorkForDom();
-  window.extractTheme && pagespeed.MobUtil.inFriendlyIframe() && (this.totalWork_ += this.domElementCount_, window.psNavMode && (this.totalWork_ += this.domElementCount_));
-  null != document.body && this.collectBackgroundImages_(document.body);
-  this.totalWork_ += this.pendingImageLoadCount_ * pagespeed.Mob.COST_PER_IMAGE_;
-  window.pagespeedXhrHijackSetListener(this);
-  this.mobilizeSite_();
-};
-pagespeed.Mob.prototype.isReady = function() {
-  return 0 == this.activeRequestCount_ && 0 == this.pendingCallbacks_ && 0 == this.pendingImageLoadCount_;
-};
-pagespeed.Mob.prototype.maybeRunLayout = function() {
-  if (this.isReady()) {
-    if (this.layout_.computeAllSizingAndResynthesize(), this.debugMode_) {
-      var a = document.getElementById(pagespeed.Mob.PROGRESS_REMOVE_ID_);
-      a && (a.textContent = "Remove Progress Bar and show mobilized site");
-    } else {
-      this.removeProgressBar();
-    }
-  }
-};
-pagespeed.Mob.prototype.layoutPassDone = function(a) {
-  this.updateProgressBar(this.domElementCount_, a);
-};
-pagespeed.Mob.prototype.findImgTagForUrl = function(a) {
-  return this.imageMap_[a];
-};
-pagespeed.Mob.prototype.addExtraWorkForDom = function() {
-  this.totalWork_ += this.workPerLayoutPass_;
-};
-pagespeed.Mob.prototype.setDebugMode = function(a) {
-  this.debugMode_ = a;
-  var b = document.getElementById(pagespeed.Mob.PROGRESS_LOG_ID_);
-  b && (b.style.color = a ? "#333" : "white");
-  a && (a = document.getElementById(pagespeed.Mob.PROGRESS_SHOW_LOG_ID_)) && (a.style.display = "none");
-};
-pagespeed.Mob.prototype.getVisibility = function(a) {
-  var b = a.getAttribute(pagespeed.Mob.PROGRESS_SAVE_VISIBLITY_);
-  b || ((a = window.getComputedStyle(a)) && (b = a.getPropertyValue("visibility")), b || (b = "visible"));
-  return b;
-};
-pagespeed.Mob.prototype.updateProgressBar = function(a, b) {
-  this.workDone_ += a;
-  var c = 100;
-  0 < this.totalWork_ && (c = Math.round(100 * this.workDone_ / this.totalWork_), 100 < c && (c = 100));
-  if (c != this.prevPercentage_) {
-    var d = document.getElementById(pagespeed.Mob.PROGRESS_SPAN_ID_);
-    d && (d.style.width = c + "%");
-    this.prevPercentage_ = c;
-  }
-  d = Date.now() - this.startTimeMs_;
-  c = "" + c + "% " + d + "ms: " + b;
-  console.log(c);
-  if (d = document.getElementById(pagespeed.Mob.PROGRESS_LOG_ID_)) {
-    d.textContent += c + "\n";
-  }
-};
-pagespeed.Mob.prototype.removeProgressBar = function() {
-  var a = document.getElementById(pagespeed.Mob.PROGRESS_SCRIM_ID_);
-  a && (a.style.display = "none", a.parentNode.removeChild(a));
-};
-var psMob = new pagespeed.Mob;
-psMob.initiateMobilization();
-function psGetVisiblity(a) {
-  psMob.getVisibility(a);
-}
-goog.exportSymbol("psGetVisiblity", psGetVisiblity);
-function psSetDebugMode() {
-  psMob.setDebugMode(!0);
-}
-goog.exportSymbol("psSetDebugMode", psSetDebugMode);
-function psRemoveProgressBar() {
-  psMob.removeProgressBar();
-}
-goog.exportSymbol("psRemoveProgressBar", psRemoveProgressBar);
+goog.exportSymbol("fixNav", fixNav);
 })();
