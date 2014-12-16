@@ -421,8 +421,7 @@ void CriticalSelectorFilter::RenderDone() {
              ->test_only_prioritize_critical_css_dont_apply_original_css()) {
       StrAppend(&js, "pagespeed.CriticalCssLoader.Run();");
     }
-    driver()->server_context()->static_asset_manager()->AddJsToElement(
-        js, script, driver());
+    AddJsToElement(js, script);
   }
 
   STLDeleteElements(&css_elements_);
@@ -511,8 +510,7 @@ void CriticalSelectorFilter::ApplyCssFlushedEarly(
     driver()->AddAttribute(script, HtmlName::kId, kMoveScriptId);
     driver()->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
     driver()->InsertNodeBeforeNode(element, script);
-    driver()->server_context()->static_asset_manager()->AddJsToElement(
-        kApplyFlushEarlyCss, script, driver());
+    AddJsToElement(kApplyFlushEarlyCss, script);
   }
 
   HtmlElement* script_element =
@@ -523,8 +521,7 @@ void CriticalSelectorFilter::ApplyCssFlushedEarly(
   GoogleString js_data = StringPrintf(kInvokeFlushEarlyCssTemplate,
                                       style_id.c_str(),
                                       (media != NULL ? media : ""));
-  driver()->server_context()->static_asset_manager()->AddJsToElement(
-      js_data, script_element, driver());
+  AddJsToElement(js_data, script_element);
 }
 
 }  // namespace net_instaweb

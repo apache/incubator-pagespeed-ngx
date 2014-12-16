@@ -26,7 +26,6 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
-#include "net/instaweb/rewriter/static_asset_config.pb.h"
 #include "pagespeed/kernel/base/escaping.h"
 #include "pagespeed/kernel/base/hasher.h"
 #include "pagespeed/kernel/base/statistics.h"
@@ -146,7 +145,7 @@ void CriticalImagesBeaconFilter::MaybeAddBeaconJavascript(
   // might be an img node that needs the beacon js for its
   // checkImageForCriticality onload handler.
   driver()->InsertNodeBeforeNode(element, script);
-  static_asset_manager->AddJsToElement(js, script, driver());
+  AddJsToElement(js, script);
   critical_images_beacon_added_count_->Add(1);
 }
 

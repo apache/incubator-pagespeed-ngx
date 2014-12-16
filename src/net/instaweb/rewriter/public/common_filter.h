@@ -21,19 +21,18 @@
 
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/empty_html_filter.h"
+#include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_node.h"
+#include "pagespeed/kernel/http/google_url.h"
+#include "pagespeed/kernel/http/response_headers.h"
 
 namespace net_instaweb {
-class GoogleUrl;
-class HtmlCharactersNode;
-class HtmlElement;
-class HtmlNode;
-class ResponseHeaders;
-class RewriteOptions;
-class ServerContext;
 
 // CommonFilter encapsulates useful functionality that many filters will want.
 // All filters who want this functionality should inherit from CommonFilter and
@@ -163,6 +162,10 @@ class CommonFilter : public EmptyHtmlFilter {
   // is to support AllowWhenInlining.  Unlike AllowUnauthorizedDomain() this
   // doesn't have security implications and is just used for performance tuning.
   virtual bool IntendedForInlining() const { return false; }
+
+  // Add JavaScript code to an HtmlElement*.  Requires MimeTypeXhtmlStatus(),
+  // preventing this from going into HtmlParse.
+  void AddJsToElement(StringPiece js, HtmlElement* script);
 
  protected:
   ServerContext* server_context() const { return server_context_; }

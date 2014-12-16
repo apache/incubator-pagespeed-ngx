@@ -22,7 +22,6 @@
 #include <memory>
 #include <utility>
 #include "base/logging.h"
-#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "pagespeed/kernel/base/hasher.h"
@@ -30,10 +29,6 @@
 #include "pagespeed/kernel/base/stl_util.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
-#include "pagespeed/kernel/html/doctype.h"
-#include "pagespeed/kernel/html/html_element.h"
-#include "pagespeed/kernel/html/html_name.h"
-#include "pagespeed/kernel/html/html_node.h"
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/http_names.h"
 #include "pagespeed/kernel/http/http_options.h"
@@ -394,29 +389,6 @@ const char* StaticAssetManager::GetAsset(
   return options->Enabled(RewriteOptions::kDebug) ?
       assets_[module]->js_debug.c_str() :
       assets_[module]->js_optimized.c_str();
-}
-
-void StaticAssetManager::AddJsToElement(
-    StringPiece js, HtmlElement* script, RewriteDriver* driver) const {
-  DCHECK(script->keyword() == HtmlName::kScript);
-  // CDATA tags are required for inlined JS in XHTML pages to prevent
-  // interpretation of certain characters (like &). In apache, something
-  // downstream of mod_pagespeed could modify the content type of the response.
-  // So CDATA tags are added conservatively if we are not sure that it is safe
-  // to exclude them.
-  GoogleString js_str;
-
-  if (!(driver->server_context()->response_headers_finalized() &&
-        driver->MimeTypeXhtmlStatus() == RewriteDriver::kIsNotXhtml)) {
-    StrAppend(&js_str, "//<![CDATA[\n", js, "\n//]]>");
-    js = js_str;
-  }
-
-  if (!driver->doctype().IsVersion5()) {
-    driver->AddAttribute(script, HtmlName::kType, "text/javascript");
-  }
-  HtmlCharactersNode* script_content = driver->NewCharactersNode(script, js);
-  driver->AppendChild(script, script_content);
 }
 
 bool StaticAssetManager::GetAsset(StringPiece file_name,

@@ -123,8 +123,7 @@ void AddInstrumentationFilter::EndElementImpl(HtmlElement* element) {
         driver()->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
       }
       driver()->InsertNodeBeforeCurrent(script);
-      driver()->server_context()->static_asset_manager()->AddJsToElement(
-          js, script, driver());
+      AddJsToElement(js, script);
       added_unload_script_ = true;
     }
   }
@@ -143,8 +142,7 @@ void AddInstrumentationFilter::EndDocument() {
     driver()->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
   }
   InsertNodeAtBodyEnd(script);
-  driver()->server_context()->static_asset_manager()->AddJsToElement(js, script,
-                                                                     driver());
+  AddJsToElement(js, script);
 }
 
 GoogleString AddInstrumentationFilter::GetScriptJs(StringPiece event) {

@@ -18,6 +18,7 @@
 
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 
+#include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
@@ -25,7 +26,6 @@
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string_util.h"
-#include "pagespeed/kernel/html/empty_html_filter.h"
 #include "pagespeed/kernel/html/html_element.h"
 #include "pagespeed/kernel/html/html_name.h"
 #include "pagespeed/kernel/html/html_parse_test_base.h"
@@ -52,23 +52,22 @@ class StaticAssetManagerTest : public RewriteTestBase {
   }
 
   // Helper filters to help test inserting of static JS.
-  class AddStaticJsBeforeBr: public EmptyHtmlFilter {
+  class AddStaticJsBeforeBr: public CommonFilter {
    public:
-    explicit AddStaticJsBeforeBr(RewriteDriver* driver) : driver_(driver) {
-    }
-
-    virtual void EndElement(HtmlElement* element) {
+    explicit AddStaticJsBeforeBr(RewriteDriver* driver)
+        : CommonFilter(driver) { }
+    virtual void StartDocumentImpl() { }
+    virtual void StartElementImpl(HtmlElement* element) { }
+    virtual void EndElementImpl(HtmlElement* element) {
       if (element->keyword() == HtmlName::kBr) {
-        HtmlElement* script = driver_->NewElement(element->parent(),
+        HtmlElement* script = driver()->NewElement(element->parent(),
                                                   HtmlName::kScript);
-        driver_->InsertNodeBeforeNode(element, script);
-        driver_->server_context()->static_asset_manager()->
-            AddJsToElement(kScript, script, driver_);
+        driver()->InsertNodeBeforeNode(element, script);
+        AddJsToElement(kScript, script);
       }
     }
     virtual const char* Name() const { return "AddStaticJsBeforeBr"; }
    private:
-    RewriteDriver* driver_;
     DISALLOW_COPY_AND_ASSIGN(AddStaticJsBeforeBr);
   };
 

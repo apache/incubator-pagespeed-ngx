@@ -34,9 +34,7 @@
 namespace net_instaweb {
 
 class Hasher;
-class HtmlElement;
 class MessageHandler;
-class RewriteDriver;
 class RewriteOptions;
 struct ContentType;
 
@@ -80,13 +78,6 @@ class StaticAssetManager {
   // Returns true iff the content for filename is found.
   bool GetAsset(StringPiece file_name, StringPiece* content,
                 ContentType* content_type, StringPiece* cache_header) const;
-
-  // Add a CharacterNode to an already created script element, properly escaping
-  // the text with CDATA tags is necessary. The script element should be added
-  // already, say with a call to InsertNodeBeforeNode.
-  void AddJsToElement(StringPiece js, HtmlElement* script,
-                      RewriteDriver* driver) const;
-
 
   // If serve_assets_from_gstatic_ is true, update the URL for module to use
   // gstatic. This sets both debug and release versions, and is meant to be

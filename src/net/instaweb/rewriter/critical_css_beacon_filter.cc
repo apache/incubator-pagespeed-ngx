@@ -209,7 +209,7 @@ void CriticalCssBeaconFilter::SummariesDone() {
   HtmlElement* script_element = driver()->NewElement(NULL, HtmlName::kScript);
   driver()->AddAttribute(script_element, HtmlName::kPagespeedNoDefer, "");
   InsertNodeAtBodyEnd(script_element);
-  asset_manager->AddJsToElement(script, script_element, driver());
+  AddJsToElement(script, script_element);
 
   if (critical_css_beacon_added_count_ != NULL) {
     critical_css_beacon_added_count_->Add(1);

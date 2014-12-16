@@ -72,14 +72,14 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_DELAY_IMAGES_FILTER_H_
 
 #include "net/instaweb/rewriter/public/common_filter.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/html/html_element.h"
 
 namespace net_instaweb {
 
-class HtmlElement;
-class RewriteDriver;
-class StaticAssetManager;
 class Statistics;
 
 class DelayImagesFilter : public CommonFilter {
@@ -119,9 +119,6 @@ class DelayImagesFilter : public CommonFilter {
   // Returns a boolean indicating whether we should insert low resolution images
   // in place.
   bool ShouldRewriteInplace() const;
-
-  RewriteDriver* driver_;
-  StaticAssetManager* static_asset_manager_;
 
   int num_low_res_inlined_images_;
   StringStringMap low_res_data_map_;

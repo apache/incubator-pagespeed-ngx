@@ -38,7 +38,6 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/hasher.h"
 #include "pagespeed/kernel/base/stl_util.h"
@@ -253,8 +252,7 @@ void CriticalCssFilter::EndDocument() {
                      total_overhead_size,
                      num_replaced_links_,
                      num_unreplaced_links_));
-    driver()->server_context()->static_asset_manager()->AddJsToElement(
-        critical_css_script, script, driver());
+    AddJsToElement(critical_css_script, script);
 
     driver()->log_record()->SetCriticalCssInfo(
         total_critical_size_, total_original_size_, total_overhead_size);
@@ -369,8 +367,8 @@ void CriticalCssFilter::EndElementImpl(HtmlElement* element) {
                              CriticalSelectorFilter::kMoveScriptId);
       driver()->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
       driver()->InsertNodeBeforeNode(element, script);
-      driver()->server_context()->static_asset_manager()->AddJsToElement(
-          CriticalSelectorFilter::kApplyFlushEarlyCss, script, driver());
+      AddJsToElement(
+          CriticalSelectorFilter::kApplyFlushEarlyCss, script);
     }
 
     HtmlElement* script_element =
@@ -384,8 +382,7 @@ void CriticalCssFilter::EndElementImpl(HtmlElement* element) {
         CriticalSelectorFilter::kInvokeFlushEarlyCssTemplate,
         style_id.c_str(), media);
 
-    driver()->server_context()->static_asset_manager()->AddJsToElement(
-        js_data, script_element, driver());
+    AddJsToElement(js_data, script_element);
   } else {
     // Replace link with critical CSS rules.
     HtmlElement* style_element =

@@ -246,7 +246,7 @@ void DomainRewriteFilter::EndDocument() {
                  driver()->options()),
              "pagespeed.clientDomainRewriterInit([",
              comma_separated_from_domains, "]);");
-  static_asset_manager->AddJsToElement(js, script_node, driver());
+  AddJsToElement(js, script_node);
 }
 
 }  // namespace net_instaweb

@@ -25,7 +25,6 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
-#include "net/instaweb/rewriter/static_asset_config.pb.h"
 #include "net/instaweb/util/public/fallback_property_page.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -296,7 +295,7 @@ void LazyloadImagesFilter::InsertLazyloadJsCode(HtmlElement* element) {
         driver()->server_context()->static_asset_manager();
     GoogleString lazyload_js = GetLazyloadJsSnippet(
         driver()->options(), static_asset_manager);
-    static_asset_manager->AddJsToElement(lazyload_js, script, driver());
+    AddJsToElement(lazyload_js, script);
     driver()->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
   }
   main_script_inserted_ = true;

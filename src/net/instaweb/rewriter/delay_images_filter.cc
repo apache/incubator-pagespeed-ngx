@@ -34,7 +34,6 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
-#include "net/instaweb/rewriter/static_asset_config.pb.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/html/html_element.h"
 #include "pagespeed/kernel/html/html_name.h"
@@ -69,9 +68,6 @@ const char DelayImagesFilter::kImageOnloadJsSnippet[] =
 
 DelayImagesFilter::DelayImagesFilter(RewriteDriver* driver)
     : CommonFilter(driver),
-      driver_(driver),
-      static_asset_manager_(
-          driver->server_context()->static_asset_manager()),
       num_low_res_inlined_images_(0),
       insert_low_res_images_inplace_(false),
       lazyload_highres_images_(false),
@@ -87,8 +83,8 @@ void DelayImagesFilter::StartDocumentImpl() {
   // agent is not a mobile, or if mobile aggressive rewriters are turned off.
   // Otherwise, the low res images are inserted at the end of the flush window.
   insert_low_res_images_inplace_ = ShouldRewriteInplace();
-  lazyload_highres_images_ = driver_->options()->lazyload_highres_images() &&
-      driver_->request_properties()->IsMobile();
+  lazyload_highres_images_ = driver()->options()->lazyload_highres_images() &&
+      driver()->request_properties()->IsMobile();
   is_script_inserted_ = false;
   added_image_onload_js_ = false;
 }
@@ -98,14 +94,13 @@ void DelayImagesFilter::MaybeAddImageOnloadJsSnippet(HtmlElement* element) {
     return;
   }
   added_image_onload_js_ = true;
-  HtmlElement* script = driver_->NewElement(NULL, HtmlName::kScript);
-  driver_->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
+  HtmlElement* script = driver()->NewElement(NULL, HtmlName::kScript);
+  driver()->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
   // Always add the image-onload js before the current node, because the
   // current node might be an img node that needs the image-onload js for
   // setting its onload handler.
-  driver_->InsertNodeBeforeNode(element, script);
-  static_asset_manager_->AddJsToElement(kImageOnloadJsSnippet,
-                                        script, driver_);
+  driver()->InsertNodeBeforeNode(element, script);
+  AddJsToElement(kImageOnloadJsSnippet, script);
 }
 
 void DelayImagesFilter::EndDocument() {
@@ -116,7 +111,7 @@ void DelayImagesFilter::EndElementImpl(HtmlElement* element) {
   if (element->keyword() == HtmlName::kBody) {
     InsertLowResImagesAndJs(element, /* insert_after_element */ false);
     InsertHighResJs(element);
-  } else if (driver_->IsRewritable(element) &&
+  } else if (driver()->IsRewritable(element) &&
              (element->keyword() == HtmlName::kImg ||
               element->keyword() == HtmlName::kInput)) {
     // We only handle img and input tag images.  Note that delay_images.js and
@@ -135,22 +130,22 @@ void DelayImagesFilter::EndElementImpl(HtmlElement* element) {
     HtmlElement::Attribute* src = element->FindAttribute(HtmlName::kSrc);
     semantic_type::Category category =
         resource_tag_scanner::CategorizeAttribute(
-            element, src, driver_->options());
+            element, src, driver()->options());
     if (category != semantic_type::kImage ||
         src->DecodedValueOrNull() == NULL) {
       return;  // Failed to find valid Image-valued src attribute.
     }
     ++num_low_res_inlined_images_;
     if (CanAddPagespeedOnloadToImage(*element)) {
-      driver_->log_record()->SetRewriterLoggingStatus(
+      driver()->log_record()->SetRewriterLoggingStatus(
           RewriteOptions::FilterId(RewriteOptions::kDelayImages),
           RewriterApplication::APPLIED_OK);
       // High res src is added and original img src attribute is removed
       // from img tag.
-      driver_->SetAttributeName(src, HtmlName::kPagespeedHighResSrc);
+      driver()->SetAttributeName(src, HtmlName::kPagespeedHighResSrc);
       if (insert_low_res_images_inplace_) {
         // Set the src as the low resolution image.
-        driver_->AddAttribute(element, HtmlName::kSrc,
+        driver()->AddAttribute(element, HtmlName::kSrc,
                               low_res_src->DecodedValueOrNull());
         // Add an onload function to set the high resolution image after
         // deleting any existing onload handler. Since we check
@@ -159,7 +154,7 @@ void DelayImagesFilter::EndElementImpl(HtmlElement* element) {
         // beaconing code. We re-introduce this beaconing onload logic via
         // kImageOnloadCode.
         element->DeleteAttribute(HtmlName::kOnload);
-        driver_->AddAttribute(element, HtmlName::kOnload, kImageOnloadCode);
+        driver()->AddAttribute(element, HtmlName::kOnload, kImageOnloadCode);
         // Add onerror handler just in case the low res image doesn't load.
         element->DeleteAttribute(HtmlName::kOnerror);
         // Note: this.onerror=null to avoid infinitely repeating on failure:
@@ -179,7 +174,7 @@ void DelayImagesFilter::EndElementImpl(HtmlElement* element) {
         low_res_data_map_[src_content] = low_res_src->DecodedValueOrNull();
       }
     }
-    if (num_low_res_inlined_images_ == driver_->num_inline_preview_images()) {
+    if (num_low_res_inlined_images_ == driver()->num_inline_preview_images()) {
       if (!insert_low_res_images_inplace_) {
         InsertLowResImagesAndJs(element, /* insert_after_element */ true);
       }
@@ -197,29 +192,30 @@ void DelayImagesFilter::InsertLowResImagesAndJs(HtmlElement* element,
   HtmlElement* current_element = element;
   // Check script for changing src to low res data url is inserted once.
   if (!is_script_inserted_) {
+    StaticAssetManager* manager =
+        driver()->server_context()->static_asset_manager();
     inline_script = StrCat(
-        static_asset_manager_->GetAsset(
+        manager->GetAsset(
             StaticAssetEnum::DELAY_IMAGES_INLINE_JS,
-            driver_->options()),
+            driver()->options()),
         kDelayImagesInlineSuffix,
-        static_asset_manager_->GetAsset(
+        manager->GetAsset(
             StaticAssetEnum::DELAY_IMAGES_JS,
-            driver_->options()),
+            driver()->options()),
         kDelayImagesSuffix);
     HtmlElement* script_element =
-        driver_->NewElement(element, HtmlName::kScript);
-    driver_->AddAttribute(script_element, HtmlName::kPagespeedNoDefer, "");
+        driver()->NewElement(element, HtmlName::kScript);
+    driver()->AddAttribute(script_element, HtmlName::kPagespeedNoDefer, "");
     if (insert_after_element) {
       DCHECK(element->keyword() == HtmlName::kImg ||
              element->keyword() == HtmlName::kInput);
-      driver_->InsertNodeAfterNode(current_element, script_element);
+      driver()->InsertNodeAfterNode(current_element, script_element);
       current_element = script_element;
     } else {
       DCHECK(element->keyword() == HtmlName::kBody);
-      driver_->AppendChild(element, script_element);
+      driver()->AppendChild(element, script_element);
     }
-    static_asset_manager_->AddJsToElement(
-        inline_script, script_element, driver_);
+    AddJsToElement(inline_script, script_element);
     is_script_inserted_ = true;
   }
 
@@ -235,16 +231,15 @@ void DelayImagesFilter::InsertLowResImagesAndJs(HtmlElement* element,
     StrAppend(&inline_data_script,
               "\npagespeed.delayImagesInline.replaceWithLowRes();\n");
     HtmlElement* low_res_element =
-        driver_->NewElement(current_element, HtmlName::kScript);
-    driver_->AddAttribute(low_res_element, HtmlName::kPagespeedNoDefer, "");
+        driver()->NewElement(current_element, HtmlName::kScript);
+    driver()->AddAttribute(low_res_element, HtmlName::kPagespeedNoDefer, "");
     if (insert_after_element) {
-      driver_->InsertNodeAfterNode(current_element, low_res_element);
+      driver()->InsertNodeAfterNode(current_element, low_res_element);
       current_element = low_res_element;
     } else {
-      driver_->AppendChild(element, low_res_element);
+      driver()->AppendChild(element, low_res_element);
     }
-    static_asset_manager_->AddJsToElement(
-        inline_data_script, low_res_element, driver_);
+    AddJsToElement(inline_data_script, low_res_element);
   }
   low_res_data_map_.clear();
 }
@@ -261,22 +256,22 @@ void DelayImagesFilter::InsertHighResJs(HtmlElement* body_element) {
     StrAppend(&js,
               "\npagespeed.delayImages.replaceWithHighRes();\n");
   }
-  HtmlElement* script = driver_->NewElement(body_element, HtmlName::kScript);
-  driver_->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
-  driver_->AppendChild(body_element, script);
-  static_asset_manager_->AddJsToElement(js, script, driver_);
+  HtmlElement* script = driver()->NewElement(body_element, HtmlName::kScript);
+  driver()->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
+  driver()->AppendChild(body_element, script);
+  AddJsToElement(js, script);
 }
 
 bool DelayImagesFilter::ShouldRewriteInplace() const {
-  const RewriteOptions* options = driver_->options();
+  const RewriteOptions* options = driver()->options();
   return (options->use_blank_image_for_inline_preview() ||
           !(options->enable_aggressive_rewriters_for_mobile() &&
-            driver_->request_properties()->IsMobile()));
+            driver()->request_properties()->IsMobile()));
 }
 
 void DelayImagesFilter::DetermineEnabled(GoogleString* disabled_reason) {
-  AbstractLogRecord* log_record = driver_->log_record();
-  if (!driver_->request_properties()->SupportsImageInlining()) {
+  AbstractLogRecord* log_record = driver()->log_record();
+  if (!driver()->request_properties()->SupportsImageInlining()) {
     log_record->LogRewriterHtmlStatus(
         RewriteOptions::FilterId(RewriteOptions::kDelayImages),
         RewriterHtmlApplication::USER_AGENT_NOT_SUPPORTED);
@@ -284,9 +279,9 @@ void DelayImagesFilter::DetermineEnabled(GoogleString* disabled_reason) {
     return;
   }
   CriticalImagesFinder* finder =
-      driver_->server_context()->critical_images_finder();
-  if ((finder->Available(driver_) == CriticalImagesFinder::kNoDataYet) &&
-      !driver_->options()->Enabled(RewriteOptions::kSplitHtmlHelper)) {
+      driver()->server_context()->critical_images_finder();
+  if ((finder->Available(driver()) == CriticalImagesFinder::kNoDataYet) &&
+      !driver()->options()->Enabled(RewriteOptions::kSplitHtmlHelper)) {
     log_record->LogRewriterHtmlStatus(
         RewriteOptions::FilterId(RewriteOptions::kDelayImages),
         RewriterHtmlApplication::PROPERTY_CACHE_MISS);

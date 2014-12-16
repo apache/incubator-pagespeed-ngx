@@ -24,6 +24,7 @@
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/html/doctype.h"
 #include "pagespeed/kernel/html/html_element.h"
 #include "pagespeed/kernel/html/html_name.h"
 #include "pagespeed/kernel/html/html_node.h"
@@ -278,6 +279,27 @@ bool CommonFilter::CanAddPagespeedOnloadToImage(const HtmlElement& element) {
 void CommonFilter::LogFilterModifiedContent() {
   driver()->log_record()->SetRewriterLoggingStatus(
       LoggingId(), RewriterApplication::APPLIED_OK);
+}
+
+void CommonFilter::AddJsToElement(StringPiece js, HtmlElement* script) {
+  DCHECK(script->keyword() == HtmlName::kScript);
+  // CDATA tags are required for inlined JS in XHTML pages to prevent
+  // interpretation of certain characters (like &). In apache, something
+  // downstream of mod_pagespeed could modify the content type of the response.
+  // So CDATA tags are added conservatively if we are not sure that it is safe
+  // to exclude them.
+  GoogleString js_str;
+
+  if (!(driver_->MimeTypeXhtmlStatus() == RewriteDriver::kIsNotXhtml)) {
+    StrAppend(&js_str, "//<![CDATA[\n", js, "\n//]]>");
+    js = js_str;
+  }
+
+  if (!driver_->doctype().IsVersion5()) {
+    driver_->AddAttribute(script, HtmlName::kType, "text/javascript");
+  }
+  HtmlCharactersNode* script_content = driver_->NewCharactersNode(script, js);
+  driver_->AppendChild(script, script_content);
 }
 
 }  // namespace net_instaweb

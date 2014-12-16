@@ -27,12 +27,17 @@
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/request_context.h"
+#include "net/instaweb/http/public/url_async_fetcher.h"
+#include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/critical_keys.pb.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/downstream_cache_purger.h"
 #include "net/instaweb/rewriter/public/inline_resource_slot.h"
+#include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_context.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -40,6 +45,7 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/printf_format.h"
 #include "pagespeed/kernel/base/proto_util.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
@@ -47,25 +53,27 @@
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/thread_annotations.h"
 #include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/base/writer.h"
 #include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_filter.h"
+#include "pagespeed/kernel/html/html_node.h"
 #include "pagespeed/kernel/html/html_parse.h"
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/google_url.h"
+#include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/response_headers.h"
 #include "pagespeed/kernel/http/user_agent_matcher.h"
 #include "pagespeed/kernel/thread/queued_worker_pool.h"
 #include "pagespeed/kernel/thread/scheduler.h"
 #include "pagespeed/kernel/util/categorized_refcount.h"
 #include "pagespeed/kernel/util/url_segment_encoder.h"
+#include "pagespeed/opt/http/property_cache.h"
 
 namespace net_instaweb {
 
 class AbstractLogRecord;
-class AbstractMutex;
-class AbstractPropertyPage;
 class AsyncFetch;
 class CriticalCssResult;
-class CriticalKeys;
 class CriticalLineInfo;
 class DebugFilter;
 class DomStatsFilter;
@@ -74,25 +82,16 @@ class FallbackPropertyPage;
 class FileSystem;
 class FlushEarlyInfo;
 class FlushEarlyRenderInfo;
-class Function;
-class HtmlFilter;
 class HtmlWriterFilter;
 class MessageHandler;
-class OutputResource;
-class PropertyPage;
-class RequestHeaders;
 class RequestProperties;
 class RequestTrace;
-class ResourceContext;
-class ResourceNamer;
 class RewriteDriverPool;
 class RewriteFilter;
 class SplitHtmlConfig;
 class Statistics;
-class UrlAsyncFetcher;
 class UrlLeftTrimFilter;
 class UrlNamer;
-class Writer;
 
 // This extends class HtmlParse (which should renamed HtmlContext) by providing
 // context for rewriting resources (css, js, images).

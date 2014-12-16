@@ -28,29 +28,29 @@
 namespace net_instaweb {
 
 DeterministicJsFilter::DeterministicJsFilter(RewriteDriver* driver)
-    : driver_(driver),
+    : CommonFilter(driver),
       found_head_(false) {
 }
 
 DeterministicJsFilter::~DeterministicJsFilter() {}
 
-void DeterministicJsFilter::StartDocument() {
+void DeterministicJsFilter::StartDocumentImpl() {
   found_head_ = false;
 }
 
-void DeterministicJsFilter::StartElement(HtmlElement* element) {
+void DeterministicJsFilter::StartElementImpl(HtmlElement* element) {
   if (!found_head_ && element->keyword() == HtmlName::kHead) {
     found_head_ = true;
-    HtmlElement* script = driver_->NewElement(element, HtmlName::kScript);
-    driver_->InsertNodeAfterCurrent(script);
+    HtmlElement* script = driver()->NewElement(element, HtmlName::kScript);
+    driver()->InsertNodeAfterCurrent(script);
     StaticAssetManager* static_asset_manager =
-        driver_->server_context()->static_asset_manager();
+        driver()->server_context()->static_asset_manager();
     StringPiece deterministic_js =
         static_asset_manager->GetAsset(
-            StaticAssetEnum::DETERMINISTIC_JS, driver_->options());
-    static_asset_manager->AddJsToElement(deterministic_js, script, driver_);
+            StaticAssetEnum::DETERMINISTIC_JS, driver()->options());
+    AddJsToElement(deterministic_js, script);
     script->AddAttribute(
-        driver_->MakeName(HtmlName::kPagespeedNoDefer), NULL,
+        driver()->MakeName(HtmlName::kPagespeedNoDefer), NULL,
         HtmlElement::NO_QUOTE);
   }
 }
