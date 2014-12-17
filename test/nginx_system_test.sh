@@ -124,7 +124,7 @@ killall nginx
 
 TEST_TMP="$this_dir/tmp"
 rm -r "$TEST_TMP"
-check_simple mkdir "$TEST_TMP"
+check_simple mkdir -p "$TEST_TMP"
 PROXY_CACHE="$TEST_TMP/proxycache"
 TMP_PROXY_CACHE="$TEST_TMP/tmpproxycache"
 ERROR_LOG="$TEST_TMP/error.log"
