@@ -1281,7 +1281,8 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   # Use a blocking fetch to force all -allowed- rewriting to be done.
   RESIZED=$FORBIDDEN_IMAGES_ROOT/256x192xPuzzle.jpg.pagespeed.ic.8AB3ykr7Of.jpg
   HEADERS="$OUTDIR/headers"
-  http_proxy=$SECONDARY_HOSTNAME $WGET -q --server-response -O /dev/null \
+  http_proxy=$SECONDARY_HOSTNAME $WGET -q --server-response \
+    -O $WGET_DIR/forbid.jpg \
     --header 'X-PSA-Blocking-Rewrite: psatest' $RESIZED >& $HEADERS
   LENGTH=$(grep '^ *Content-Length:' $HEADERS | sed -e 's/.*://')
   check test -n "$LENGTH"
