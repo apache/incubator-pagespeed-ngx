@@ -64,6 +64,11 @@ while [ $(pgrep $httpd|wc -l) -ne 0 ]; do
   sleep 1
 done
 
+if [ $(netstat -anp 2>&1 | grep -c "::$port .*valgrind.bin") -ne 0 ]; then
+  /bin/echo "Valgrind still running, killing it."
+  killall memcheck-amd64-
+fi
+
 first=1
 while [ $(netstat -anp 2>&1 | grep -c "::$port .* LISTEN ") -ne 0 ]; do
   if [ $first -eq 1 ]; then
