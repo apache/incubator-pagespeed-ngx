@@ -158,8 +158,11 @@
           '--externs=opt/mobilize/externs.js',
         ],
         'js_includes' : [
+          'opt/mobilize/mobilize_color.js',
           'opt/mobilize/mobilize_layout.js',
+          'opt/mobilize/mobilize_logo.js',
           'opt/mobilize/mobilize_nav.js',
+          'opt/mobilize/mobilize_theme.js',
           'opt/mobilize/mobilize_util.js',
         ],
       },
@@ -177,8 +180,11 @@
           '--externs=opt/mobilize/externs.js',
         ],
         'js_includes' : [
+          'opt/mobilize/mobilize_color.js',
           'opt/mobilize/mobilize_layout.js',
+          'opt/mobilize/mobilize_logo.js',
           'opt/mobilize/mobilize_nav.js',
+          'opt/mobilize/mobilize_theme.js',
           'opt/mobilize/mobilize_util.js',
         ],
       },

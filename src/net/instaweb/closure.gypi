@@ -44,12 +44,19 @@
       'extension': 'js',
       'message': 'Compiling JS code from <(RULE_INPUT_PATH)',
       'variables': {
+        # Note that it might be possible to eliminate this nesting of variables
+        # blocks with a better understanding of gyp file processing order. As it
+        # stands, without the nested block, the action block below doesn't see
+        # the variables declared here, so nested it is. Note though that this
+        # requires another declaration of the inputs var below so that it can be
+        # used as a value for the inputs key at the top level. Ugh.
         'variables': {
           # Provide default values if these inputs vars are not defined.
           'extra_closure_flags%': [],
           'closure_build_type%': 'opt',
           'js_includes%': '',
         },
+        'inputs': '<(js_includes)',
         'output_file': '<(compiled_js_dir)/<(js_dir)/<(RULE_INPUT_ROOT)_<(closure_build_type).js',
         # TODO(jud): Simplify extra_closure_flags so that only the entry point
         # needs to be defined. --closure_entry_point and
@@ -78,7 +85,6 @@
             ],
           }],
           ['js_includes != ""', {
-            'inputs': [ '<(js_includes)' ],
             'closure_flags': ['<!@(python -c "print \' \'.join([\'--js \' + js for js in \'<(js_includes)\'.split()]) ")'],
           }],
           ['"<!(echo $BUILD_JS)" != "1"', {
@@ -95,6 +101,7 @@
           }],
         ],
       },
+      'inputs': [ '<@(inputs)' ],
       'outputs': [ '<(output_file)', ],
       'action': [ '<@(action)' ],
       'process_outputs_as_sources': 1,

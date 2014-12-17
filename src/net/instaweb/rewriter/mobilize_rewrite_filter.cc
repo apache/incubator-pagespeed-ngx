@@ -359,15 +359,14 @@ void MobilizeRewriteFilter::EndElementImpl(HtmlElement* element) {
       if (use_js_layout_) {
         if (!added_mob_js_) {
           added_mob_js_ = true;
-          // TODO(jmarantz): have just one option for mob_logo_ and mob_nav_.
-          // They are co-dependent.
-          if (use_js_nav_) {
-            AddStaticScript("mob_logo.js");
-          }
+
           if (rewrite_js_) {
             AddStaticScript("mobilize_opt_jsc.js");
           } else {
             AddStaticScript("mobilize_util.js");
+            AddStaticScript("mobilize_color.js");
+            AddStaticScript("mobilize_logo.js");
+            AddStaticScript("mobilize_theme.js");
             AddStaticScript("mobilize_layout.js");
             AddStaticScript("mobilize_nav.js");
             AddStaticScript("mobilize.js");

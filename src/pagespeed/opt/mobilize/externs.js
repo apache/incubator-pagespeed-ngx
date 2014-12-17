@@ -22,7 +22,4 @@ var pagespeedContentIds;       // From C++
 var pagespeedHeaderIds;        // From C++
 var pagespeedNavigationalIds;  // From C++
 var psDebugMode;                // From C++
-var psHeaderBarHtml;            // From mob_logo.js
-var psMenuBackColor;            // From mob_logo.js
-var psMenuFrontColor;           // From mob_logo.js
 var psNavMode;                  // From C++

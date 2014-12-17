@@ -20,6 +20,7 @@
 goog.provide('pagespeed.MobUtil');
 
 goog.require('goog.dom');
+goog.require('goog.math.Box');
 
 
 /**
@@ -28,17 +29,27 @@ goog.require('goog.dom');
  */
 
 
+
 /**
- * Returns true if the two rectangles intersect.
- * @param {!ClientRect} a A rectangle
- * @param {!ClientRect} b Another rectangle
- * @return {boolean}
+ * Create a rectangle (Rect) struct.
+ * @struct
+ * @constructor
  */
-pagespeed.MobUtil.intersects = function(a, b) {
-  return (a.left <= b.right &&
-          b.left <= a.right &&
-          a.top <= b.bottom &&
-          b.top <= a.bottom);
+pagespeed.MobUtil.Rect = function() {
+  /** @type {number} Top of the bounding box */
+  this.top = 0;
+  /** @type {number} Left of the bounding box */
+  this.left = 0;
+  /** @type {number} Right of the bounding box */
+  this.right = 0;
+  /** @type {number} Bottom of the bounding box */
+  this.bottom = 0;
+  /** @type {number} Width of the content (e.g. image). This may be different
+   * from width of the bounding box. */
+  this.width = 0;
+  /** @type {number} Height of the content (e.g., image). This may be different
+   * from height of the bounding box. */
+  this.height = 0;
 };
 
 
@@ -175,7 +186,7 @@ pagespeed.MobUtil.addStyles = function(element, newStyles) {
  * Gets the bounding box of a node, taking into account any global
  * scroll position.
  * @param {!Element} node
- * @return {ClientRect}
+ * @return {!goog.math.Box}
  */
 pagespeed.MobUtil.boundingRect = function(node) {
   var rect = node.getBoundingClientRect();
@@ -190,11 +201,10 @@ pagespeed.MobUtil.boundingRect = function(node) {
   var scrollY = 'pageYOffset' in window ? window.pageYOffset :
       scrollElement.scrollTop;
 
-  rect.top += scrollY;
-  rect.bottom += scrollY;
-  rect.left += scrollX;
-  rect.right += scrollX;
-  return rect;
+  return new goog.math.Box(rect.top + scrollY,
+                           rect.right + scrollX,
+                           rect.bottom + scrollY,
+                           rect.left + scrollX);
 };
 
 
@@ -265,14 +275,14 @@ pagespeed.MobUtil.possiblyInQuirksMode = function() {
 
 /**
  * TODO(jmarantz): Think of faster algorithm.
- * @param {!Array.<!ClientRect>} rects
+ * @param {!Array.<!goog.math.Box>} rects
  * @return {boolean}
  */
 pagespeed.MobUtil.hasIntersectingRects = function(rects) {
   // N^2 loop to determine whether there are any intersections.
   for (var i = 0; i < rects.length; ++i) {
     for (var j = i + 1; j < rects.length; ++j) {
-      if (pagespeed.MobUtil.intersects(rects[i], rects[j])) {
+      if (goog.math.Box.intersects(rects[i], rects[j])) {
         return true;
       }
     }
@@ -335,4 +345,350 @@ pagespeed.MobUtil.countNodes = function(node) {
     count += pagespeed.MobUtil.countNodes(child);
   }
   return count;
+};
+
+
+/**
+ * If a node is actually an element, returns it as an element.  Otherwise,
+ * returns null.
+ *
+ * @param {!Node} node
+ * @return {?Element} element
+ */
+pagespeed.MobUtil.castElement = function(node) {
+  if (goog.dom.isElement(node)) {
+    return /** @type {Element} */ (node);
+  }
+  return null;
+};
+
+
+/**
+ * Enum for image source. We consider images from 'IMG' tag, 'SVG' tag, and
+ * background.
+ * @enum {string}
+ * @export
+ */
+pagespeed.MobUtil.ImageSource = {
+  // TODO(huibao): Consider <INPUT> tag, which can also have image src.
+  IMG: 'IMG',
+  SVG: 'SVG',
+  BACKGROUND: 'background-image'
+};
+
+
+
+/**
+ * Theme data.
+ * @param {string} frontColor
+ * @param {string} backColor
+ * @param {string} headerBarHtml
+ * @constructor
+ */
+pagespeed.MobUtil.ThemeData = function(frontColor, backColor, headerBarHtml) {
+  /** @type {string} */
+  this.menuFrontColor = frontColor;
+  /** @type {string} */
+  this.menuBackColor = backColor;
+  /** @type {string} */
+  this.headerBarHtml = headerBarHtml;
+};
+
+
+/**
+ * Return text between the leftmost '(' and the rightmost ')'. If there is not
+ * a pair of '(', ')', return null.
+ * @param {string} str
+ * @return {?string}
+ */
+pagespeed.MobUtil.textBetweenBrackets = function(str) {
+  var left = str.indexOf('(');
+  var right = str.lastIndexOf(')');
+  if (left >= 0 && right > left) {
+    return str.substring(left + 1, right);
+  }
+  return null;
+};
+
+
+/**
+ * Convert color string '(n1, n2, ..., nm)' to numberical array
+ * [n1, n2, ..., nm]. If the color string does not have a valid format, return
+ * null.
+ * @param {string} str
+ * @return {Array.<number>}
+ */
+pagespeed.MobUtil.colorStringToNumbers = function(str) {
+  var subStr = pagespeed.MobUtil.textBetweenBrackets(str).split(', ');
+  var numbers = [];
+  for (var i = 0, len = subStr.length; i < len; ++i) {
+    numbers[i] = parseInt(subStr[i], 10);
+    if (isNaN(numbers[i])) {
+      return null;
+    }
+  }
+  return numbers;
+};
+
+
+/**
+ * Convert a color array to a string. For example, [0, 255, 255] will be
+ * converted to '#00FFFF'.
+ * @param {!Array.<number>} color
+ * @return {string}
+ */
+pagespeed.MobUtil.colorNumbersToString = function(color) {
+  // TODO(huibao): Consider using goog.color.rgbArrayToHex.
+  var str = '#';
+  for (var i = 0, len = color.length; i < len; ++i) {
+    var val = Math.round(color[i]);
+    if (val < 0) {
+      val = 0;
+    } else if (val > 255) {
+      val = 255;
+    }
+    var s = val.toString(16);
+    if (s.length == 1) {
+      s = '0' + s;
+    }
+    str += s;
+  }
+  return str;
+};
+
+
+/**
+ * Extract characters 'a'-'z', 'A'-'Z', and '0'-'9' from string 'str'.
+ * 'A'-'Z' are converted to lower case.
+ * @param {string} str
+ * @return {string}
+ */
+pagespeed.MobUtil.stripNonAlphaNumeric = function(str) {
+  str = str.toLowerCase();
+  var newString = '';
+  for (var i = 0, len = str.length; i < len; ++i) {
+    var ch = str.charAt(i);
+    if ((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9')) {
+      newString += ch;
+    }
+  }
+  return newString;
+};
+
+
+/**
+ * Extracts the characters 'a'-'z', 'A'-'Z', and '0'-'9' from both strings
+ * and returns whether the first converted string contains the latter.
+ * If it does, return 1; otherwise, return 0.
+ * @param {string} str
+ * @param {string} pattern
+ * @return {number}
+ */
+pagespeed.MobUtil.findPattern = function(str, pattern) {
+  return (pagespeed.MobUtil.stripNonAlphaNumeric(str).indexOf(
+      pagespeed.MobUtil.stripNonAlphaNumeric(pattern)) >= 0 ? 1 : 0);
+};
+
+
+/**
+ * Remove the substring after 'symbol' multiple times from 'str'.
+ * @param {string} str
+ * @param {string} symbol
+ * @param {number} num
+ * @return {string}
+ */
+pagespeed.MobUtil.removeSuffixNTimes = function(str, symbol, num) {
+  var len = str.length;
+  for (var i = 0; i < num; ++i) {
+    var pos = str.lastIndexOf(symbol, len - 1);
+    if (pos >= 0) {
+      len = pos;
+    } else {
+      break;
+    }
+  }
+  if (pos >= 0) {
+    return str.substring(0, len);
+  }
+  return str;
+};
+
+
+/**
+ * Return the origanization name.
+ * For example, if the domain is 'sub1.sub2.ORGANIZATION.com.uk.psproxy.com'
+ * this method will return 'organization'.
+ * @return {?string}
+ */
+pagespeed.MobUtil.getSiteOrganization = function() {
+  // TODO(huibao): Compute the organization name in C++ and export it to
+  // JS code as a variable. This can be done by using
+  // DomainLawyer::StripProxySuffix to strip any proxy suffix and then using
+  // DomainRegistry::MinimalPrivateSuffix.
+  var org = document.domain;
+  var segments = org.toLowerCase().split('.');
+  var len = segments.length;
+  if (len > 4 && segments[len - 3].length == 2) {
+    // Contry level domain has exactly 2 characters. It will be skipped if
+    // the origin has it.
+    // http://en.wikipedia.org/wiki/List_of_Internet_top-level_domains
+    return segments[len - 5];
+  } else if (len > 3) {
+    return segments[len - 4];
+  } else {
+    return null;
+  }
+};
+
+
+/**
+ * Returns file name of the resource. File name is defined as the string between
+ * the last '/' and the last '.'. For example, for
+ * 'http://www.example.com/FILE_NAME.jpg', it will return 'FILE_NAME'.
+ * @param {?string} url
+ * @return {string}
+ */
+pagespeed.MobUtil.resourceFileName = function(url) {
+  if (!url || url.indexOf('data:image/') >= 0) {
+    return '';
+  }
+
+  var lastSlash = url.lastIndexOf('/');
+  if (lastSlash < 0) {
+    lastSlash = 0;
+  } else {
+    ++lastSlash;  // Skip the slash
+  }
+  var lastDot = url.indexOf('.', lastSlash);
+  if (lastDot < 0) {
+    lastDot = url.length;
+  }
+
+  return url.substring(lastSlash, lastDot);
+};
+
+
+/**
+ * Try to add proxy suffix and 'www.' prefix to URL so it has the same origin
+ * as the HTML.
+ *
+ * For example, if the origin is 'sub.example.com.psproxy.net',
+ * URL 'http://sub.example.com/image.jpg' will be converted to
+ * 'http://sub.example.com.psproxy.net/image.jpg'.
+ *
+ * As another example, if the origin is 'www.example.com.psproxy.net',
+ * URL 'http://example.com/image.jpg' and
+ * URL 'http://example.com.psproxy.net/image.jpg' will be converted to
+ * 'http://www.example.com.psproxy.net/image.jpg'.
+ *
+ * @param {string} url
+ * @return {string}
+ */
+pagespeed.MobUtil.proxyImageUrl = function(url) {
+  if (!url) {
+    return '';
+  }
+
+  // If this URL has the same origin as the HTML, we don't need to do anything.
+  if (!pagespeed.MobUtil.isCrossOrigin(url)) {
+    return url;
+  }
+
+  // Skip suffix after last 2 dots. For example, 'www.example.com.psproxy.net'
+  // will become 'www.example.com'.
+  var domain = document.domain;
+  var domainWithoutProxy =
+      pagespeed.MobUtil.removeSuffixNTimes(domain, '.', 2);
+
+  // If domain is 'www.example.com' while image is
+  // 'http://example.com/image.url', modify the image URL so it has the same
+  // domain as the HTML.
+  // TODO(huibao): Investigate whether to add sub-domain prefix (including
+  // 'www.') if this is missing in the URL.
+  var pos = null;
+  if (domainWithoutProxy.indexOf('www.') == 0 && url.indexOf('//www.') < 0) {
+    var domainWithoutWwwProxy = domainWithoutProxy.substring(4);
+    pos = url.indexOf(domainWithoutWwwProxy);
+    if (pos >= 0) {
+      url = url.substring(0, pos) + domainWithoutProxy +
+          url.substring(pos + domainWithoutWwwProxy.length);
+    }
+  }
+
+  if (!pagespeed.MobUtil.isCrossOrigin(url)) {
+    return url;
+  }
+
+  pos = url.indexOf(domainWithoutProxy);
+  if (pos >= 0) {
+    url = url.substring(0, pos) + domain +
+        url.substring(pos + domainWithoutProxy.length, url.length);
+  }
+
+  return url;
+};
+
+
+/**
+ * Extract the image from IMG and SVG tags, or from the background.
+ * @param {!Element} element
+ * @param {!pagespeed.MobUtil.ImageSource} source
+ * @return {?string}
+ */
+pagespeed.MobUtil.extractImage = function(element, source) {
+  var imageSrc = null;
+  switch (source) {
+    case pagespeed.MobUtil.ImageSource.IMG:
+      if (element.tagName == source) {
+        imageSrc = element.src;
+      }
+      break;
+
+    case pagespeed.MobUtil.ImageSource.SVG:
+      if (element.tagName == source) {
+        var svgString = new XMLSerializer().serializeToString(element);
+        var domUrl = self.URL || self.webkitURL || self;
+        var svgBlob = new Blob([svgString],
+                               {type: 'image/svg+xml;charset=utf-8'});
+        imageSrc = domUrl.createObjectURL(svgBlob);
+      }
+      break;
+
+    case pagespeed.MobUtil.ImageSource.BACKGROUND:
+      imageSrc = pagespeed.MobUtil.findBackgroundImage(element);
+      break;
+  }
+  if (imageSrc) {
+    return pagespeed.MobUtil.proxyImageUrl(imageSrc);
+  }
+  return null;
+};
+
+
+/**
+ * Return whether the resource URL has an origin different from HTML.
+ * @param {string} url
+ * @return {boolean}
+ */
+pagespeed.MobUtil.isCrossOrigin = function(url) {
+  return (!goog.string.startsWith(url, document.location.origin + '/') &&
+          !goog.string.startsWith(url, 'data:image/'));
+};
+
+
+/**
+ * Return bounding box and size of the element.
+ * @param {!Element} element
+ * @return {!pagespeed.MobUtil.Rect}
+ */
+pagespeed.MobUtil.boundingRectAndSize = function(element) {
+  var rect = pagespeed.MobUtil.boundingRect(element);
+  var psRect = new pagespeed.MobUtil.Rect();
+  psRect.top = rect.top;
+  psRect.bottom = rect.bottom;
+  psRect.left = rect.left;
+  psRect.right = rect.right;
+  psRect.height = rect.bottom - rect.top;
+  psRect.width = rect.right - rect.left;
+  return psRect;
 };

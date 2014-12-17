@@ -121,9 +121,10 @@ pagespeed.MobNav.prototype.fixExistingElements_ = function() {
 
 /**
  * Insert a header bar element as the first node in the body.
+ * @param {!pagespeed.MobUtil.ThemeData} themeData
  * @private
  */
-pagespeed.MobNav.prototype.addHeaderBar_ = function() {
+pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
   // The header bar is position:fixed, so create an empty div at the top to move
   // the rest of the elements down.
   var spacerDiv = document.createElement('div');
@@ -134,8 +135,8 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function() {
   document.body.insertBefore(header, spacerDiv);
   goog.dom.classlist.add(header, 'psmob-header-bar');
   // TODO(jud): This is defined in mob_logo.js
-  header.innerHTML = psHeaderBarHtml;
-  header.style.borderBottom = 'thin solid ' + psMenuFrontColor;
+  header.innerHTML = themeData.headerBarHtml;
+  header.style.borderBottom = 'thin solid ' + themeData.menuFrontColor;
 
   var logoSpan = document.getElementsByClassName('psmob-logo-span')[0];
   if (logoSpan) {
@@ -152,15 +153,17 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function() {
  * Insert a style tag at the end of the head with the theme colors. The member
  * bool useDetectedThemeColor controls whether we use the color detected from
  * mob_logo.js, or a predefined color.
+ * @param {!pagespeed.MobUtil.ThemeData} themeData
  * @private
  */
-pagespeed.MobNav.prototype.addThemeColor_ = function() {
-  var backgroundColor = (this.useDetectedThemeColor_ && psMenuBackColor) ?
-                            psMenuBackColor :
-                            '#3c78d8';
-  var color = (this.useDetectedThemeColor_ && psMenuFrontColor) ?
-                  psMenuFrontColor :
-                  'white';
+pagespeed.MobNav.prototype.addThemeColor_ = function(themeData) {
+  var backgroundColor =
+      (this.useDetectedThemeColor_ && themeData.menuBackColor) ?
+      themeData.menuBackColor :
+      '#3c78d8';
+  var color = (this.useDetectedThemeColor_ && themeData.menuFrontColor) ?
+      themeData.menuFrontColor :
+      'white';
   var css = '.psmob-header-bar { background-color: ' + backgroundColor +
             ' }\n' +
             '.psmob-nav-panel { background-color: ' + color + ' }\n' +
@@ -407,15 +410,16 @@ pagespeed.MobNav.prototype.addNavButtonEvents_ = function() {
 /**
  * Main entry point of nav mobilization. Should be called when logo detection is
  * finished.
+ * @param {!pagespeed.MobUtil.ThemeData} themeData
  */
-pagespeed.MobNav.prototype.Run = function() {
+pagespeed.MobNav.prototype.Run = function(themeData) {
   // TODO(jud): Use a goog.log or the logging ability in mob.js instead of
   // console.log.
   console.log('Starting nav resynthesis.');
   this.findNavSections_();
   this.fixExistingElements_();
-  this.addHeaderBar_();
-  this.addThemeColor_();
+  this.addHeaderBar_(themeData);
+  this.addThemeColor_(themeData);
 
   // Don't insert nav stuff if there are no navigational sections on the page or
   // if we are in an iFrame.

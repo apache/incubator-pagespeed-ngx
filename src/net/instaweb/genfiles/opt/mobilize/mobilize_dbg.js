@@ -567,18 +567,72 @@ goog.tagUnsealableClass = function(a) {
   !COMPILED && goog.defineClass.SEAL_CLASS_INSTANCES && (a.prototype[goog.UNSEALABLE_CONSTRUCTOR_PROPERTY_] = !0);
 };
 goog.UNSEALABLE_CONSTRUCTOR_PROPERTY_ = "goog_defineClass_legacy_unsealable";
-goog.debug = {};
-goog.debug.Error = function(a) {
-  if (Error.captureStackTrace) {
-    Error.captureStackTrace(this, goog.debug.Error);
-  } else {
-    var b = Error().stack;
-    b && (this.stack = b);
-  }
-  a && (this.message = String(a));
+goog.dom = {};
+goog.dom.NodeType = {ELEMENT:1, ATTRIBUTE:2, TEXT:3, CDATA_SECTION:4, ENTITY_REFERENCE:5, ENTITY:6, PROCESSING_INSTRUCTION:7, COMMENT:8, DOCUMENT:9, DOCUMENT_TYPE:10, DOCUMENT_FRAGMENT:11, NOTATION:12};
+goog.dom.TagName = {A:"A", ABBR:"ABBR", ACRONYM:"ACRONYM", ADDRESS:"ADDRESS", APPLET:"APPLET", AREA:"AREA", ARTICLE:"ARTICLE", ASIDE:"ASIDE", AUDIO:"AUDIO", B:"B", BASE:"BASE", BASEFONT:"BASEFONT", BDI:"BDI", BDO:"BDO", BIG:"BIG", BLOCKQUOTE:"BLOCKQUOTE", BODY:"BODY", BR:"BR", BUTTON:"BUTTON", CANVAS:"CANVAS", CAPTION:"CAPTION", CENTER:"CENTER", CITE:"CITE", CODE:"CODE", COL:"COL", COLGROUP:"COLGROUP", COMMAND:"COMMAND", DATA:"DATA", DATALIST:"DATALIST", DD:"DD", DEL:"DEL", DETAILS:"DETAILS", DFN:"DFN", 
+DIALOG:"DIALOG", DIR:"DIR", DIV:"DIV", DL:"DL", DT:"DT", EM:"EM", EMBED:"EMBED", FIELDSET:"FIELDSET", FIGCAPTION:"FIGCAPTION", FIGURE:"FIGURE", FONT:"FONT", FOOTER:"FOOTER", FORM:"FORM", FRAME:"FRAME", FRAMESET:"FRAMESET", H1:"H1", H2:"H2", H3:"H3", H4:"H4", H5:"H5", H6:"H6", HEAD:"HEAD", HEADER:"HEADER", HGROUP:"HGROUP", HR:"HR", HTML:"HTML", I:"I", IFRAME:"IFRAME", IMG:"IMG", INPUT:"INPUT", INS:"INS", ISINDEX:"ISINDEX", KBD:"KBD", KEYGEN:"KEYGEN", LABEL:"LABEL", LEGEND:"LEGEND", LI:"LI", LINK:"LINK", 
+MAP:"MAP", MARK:"MARK", MATH:"MATH", MENU:"MENU", META:"META", METER:"METER", NAV:"NAV", NOFRAMES:"NOFRAMES", NOSCRIPT:"NOSCRIPT", OBJECT:"OBJECT", OL:"OL", OPTGROUP:"OPTGROUP", OPTION:"OPTION", OUTPUT:"OUTPUT", P:"P", PARAM:"PARAM", PRE:"PRE", PROGRESS:"PROGRESS", Q:"Q", RP:"RP", RT:"RT", RUBY:"RUBY", S:"S", SAMP:"SAMP", SCRIPT:"SCRIPT", SECTION:"SECTION", SELECT:"SELECT", SMALL:"SMALL", SOURCE:"SOURCE", SPAN:"SPAN", STRIKE:"STRIKE", STRONG:"STRONG", STYLE:"STYLE", SUB:"SUB", SUMMARY:"SUMMARY", 
+SUP:"SUP", SVG:"SVG", TABLE:"TABLE", TBODY:"TBODY", TD:"TD", TEXTAREA:"TEXTAREA", TFOOT:"TFOOT", TH:"TH", THEAD:"THEAD", TIME:"TIME", TITLE:"TITLE", TR:"TR", TRACK:"TRACK", TT:"TT", U:"U", UL:"UL", VAR:"VAR", VIDEO:"VIDEO", WBR:"WBR"};
+goog.math = {};
+goog.math.Size = function(a, b) {
+  this.width = a;
+  this.height = b;
 };
-goog.inherits(goog.debug.Error, Error);
-goog.debug.Error.prototype.name = "CustomError";
+goog.math.Size.equals = function(a, b) {
+  return a == b ? !0 : a && b ? a.width == b.width && a.height == b.height : !1;
+};
+goog.math.Size.prototype.clone = function() {
+  return new goog.math.Size(this.width, this.height);
+};
+goog.DEBUG && (goog.math.Size.prototype.toString = function() {
+  return "(" + this.width + " x " + this.height + ")";
+});
+goog.math.Size.prototype.getLongest = function() {
+  return Math.max(this.width, this.height);
+};
+goog.math.Size.prototype.getShortest = function() {
+  return Math.min(this.width, this.height);
+};
+goog.math.Size.prototype.area = function() {
+  return this.width * this.height;
+};
+goog.math.Size.prototype.perimeter = function() {
+  return 2 * (this.width + this.height);
+};
+goog.math.Size.prototype.aspectRatio = function() {
+  return this.width / this.height;
+};
+goog.math.Size.prototype.isEmpty = function() {
+  return!this.area();
+};
+goog.math.Size.prototype.ceil = function() {
+  this.width = Math.ceil(this.width);
+  this.height = Math.ceil(this.height);
+  return this;
+};
+goog.math.Size.prototype.fitsInside = function(a) {
+  return this.width <= a.width && this.height <= a.height;
+};
+goog.math.Size.prototype.floor = function() {
+  this.width = Math.floor(this.width);
+  this.height = Math.floor(this.height);
+  return this;
+};
+goog.math.Size.prototype.round = function() {
+  this.width = Math.round(this.width);
+  this.height = Math.round(this.height);
+  return this;
+};
+goog.math.Size.prototype.scale = function(a, b) {
+  var c = goog.isNumber(b) ? b : a;
+  this.width *= a;
+  this.height *= c;
+  return this;
+};
+goog.math.Size.prototype.scaleToFit = function(a) {
+  a = this.aspectRatio() > a.aspectRatio() ? a.width / this.width : a.height / this.height;
+  return this.scale(a);
+};
 goog.object = {};
 goog.object.forEach = function(a, b, c) {
   for (var d in a) {
@@ -790,12 +844,6 @@ goog.object.createImmutableView = function(a) {
 goog.object.isImmutableView = function(a) {
   return!!Object.isFrozen && Object.isFrozen(a);
 };
-goog.dom = {};
-goog.dom.TagName = {A:"A", ABBR:"ABBR", ACRONYM:"ACRONYM", ADDRESS:"ADDRESS", APPLET:"APPLET", AREA:"AREA", ARTICLE:"ARTICLE", ASIDE:"ASIDE", AUDIO:"AUDIO", B:"B", BASE:"BASE", BASEFONT:"BASEFONT", BDI:"BDI", BDO:"BDO", BIG:"BIG", BLOCKQUOTE:"BLOCKQUOTE", BODY:"BODY", BR:"BR", BUTTON:"BUTTON", CANVAS:"CANVAS", CAPTION:"CAPTION", CENTER:"CENTER", CITE:"CITE", CODE:"CODE", COL:"COL", COLGROUP:"COLGROUP", COMMAND:"COMMAND", DATA:"DATA", DATALIST:"DATALIST", DD:"DD", DEL:"DEL", DETAILS:"DETAILS", DFN:"DFN", 
-DIALOG:"DIALOG", DIR:"DIR", DIV:"DIV", DL:"DL", DT:"DT", EM:"EM", EMBED:"EMBED", FIELDSET:"FIELDSET", FIGCAPTION:"FIGCAPTION", FIGURE:"FIGURE", FONT:"FONT", FOOTER:"FOOTER", FORM:"FORM", FRAME:"FRAME", FRAMESET:"FRAMESET", H1:"H1", H2:"H2", H3:"H3", H4:"H4", H5:"H5", H6:"H6", HEAD:"HEAD", HEADER:"HEADER", HGROUP:"HGROUP", HR:"HR", HTML:"HTML", I:"I", IFRAME:"IFRAME", IMG:"IMG", INPUT:"INPUT", INS:"INS", ISINDEX:"ISINDEX", KBD:"KBD", KEYGEN:"KEYGEN", LABEL:"LABEL", LEGEND:"LEGEND", LI:"LI", LINK:"LINK", 
-MAP:"MAP", MARK:"MARK", MATH:"MATH", MENU:"MENU", META:"META", METER:"METER", NAV:"NAV", NOFRAMES:"NOFRAMES", NOSCRIPT:"NOSCRIPT", OBJECT:"OBJECT", OL:"OL", OPTGROUP:"OPTGROUP", OPTION:"OPTION", OUTPUT:"OUTPUT", P:"P", PARAM:"PARAM", PRE:"PRE", PROGRESS:"PROGRESS", Q:"Q", RP:"RP", RT:"RT", RUBY:"RUBY", S:"S", SAMP:"SAMP", SCRIPT:"SCRIPT", SECTION:"SECTION", SELECT:"SELECT", SMALL:"SMALL", SOURCE:"SOURCE", SPAN:"SPAN", STRIKE:"STRIKE", STRONG:"STRONG", STYLE:"STYLE", SUB:"SUB", SUMMARY:"SUMMARY", 
-SUP:"SUP", SVG:"SVG", TABLE:"TABLE", TBODY:"TBODY", TD:"TD", TEXTAREA:"TEXTAREA", TFOOT:"TFOOT", TH:"TH", THEAD:"THEAD", TIME:"TIME", TITLE:"TITLE", TR:"TR", TRACK:"TRACK", TT:"TT", U:"U", UL:"UL", VAR:"VAR", VIDEO:"VIDEO", WBR:"WBR"};
-goog.dom.NodeType = {ELEMENT:1, ATTRIBUTE:2, TEXT:3, CDATA_SECTION:4, ENTITY_REFERENCE:5, ENTITY:6, PROCESSING_INSTRUCTION:7, COMMENT:8, DOCUMENT:9, DOCUMENT_TYPE:10, DOCUMENT_FRAGMENT:11, NOTATION:12};
 goog.string = {};
 goog.string.DETECT_DOUBLE_ESCAPING = !1;
 goog.string.Unicode = {NBSP:"\u00a0"};
@@ -1193,66 +1241,18 @@ goog.labs.userAgent.util.extractVersionTuples = function(a) {
   }
   return c;
 };
-goog.math = {};
-goog.math.Size = function(a, b) {
-  this.width = a;
-  this.height = b;
+goog.debug = {};
+goog.debug.Error = function(a) {
+  if (Error.captureStackTrace) {
+    Error.captureStackTrace(this, goog.debug.Error);
+  } else {
+    var b = Error().stack;
+    b && (this.stack = b);
+  }
+  a && (this.message = String(a));
 };
-goog.math.Size.equals = function(a, b) {
-  return a == b ? !0 : a && b ? a.width == b.width && a.height == b.height : !1;
-};
-goog.math.Size.prototype.clone = function() {
-  return new goog.math.Size(this.width, this.height);
-};
-goog.DEBUG && (goog.math.Size.prototype.toString = function() {
-  return "(" + this.width + " x " + this.height + ")";
-});
-goog.math.Size.prototype.getLongest = function() {
-  return Math.max(this.width, this.height);
-};
-goog.math.Size.prototype.getShortest = function() {
-  return Math.min(this.width, this.height);
-};
-goog.math.Size.prototype.area = function() {
-  return this.width * this.height;
-};
-goog.math.Size.prototype.perimeter = function() {
-  return 2 * (this.width + this.height);
-};
-goog.math.Size.prototype.aspectRatio = function() {
-  return this.width / this.height;
-};
-goog.math.Size.prototype.isEmpty = function() {
-  return!this.area();
-};
-goog.math.Size.prototype.ceil = function() {
-  this.width = Math.ceil(this.width);
-  this.height = Math.ceil(this.height);
-  return this;
-};
-goog.math.Size.prototype.fitsInside = function(a) {
-  return this.width <= a.width && this.height <= a.height;
-};
-goog.math.Size.prototype.floor = function() {
-  this.width = Math.floor(this.width);
-  this.height = Math.floor(this.height);
-  return this;
-};
-goog.math.Size.prototype.round = function() {
-  this.width = Math.round(this.width);
-  this.height = Math.round(this.height);
-  return this;
-};
-goog.math.Size.prototype.scale = function(a, b) {
-  var c = goog.isNumber(b) ? b : a;
-  this.width *= a;
-  this.height *= c;
-  return this;
-};
-goog.math.Size.prototype.scaleToFit = function(a) {
-  a = this.aspectRatio() > a.aspectRatio() ? a.width / this.width : a.height / this.height;
-  return this.scale(a);
-};
+goog.inherits(goog.debug.Error, Error);
+goog.debug.Error.prototype.name = "CustomError";
 goog.asserts = {};
 goog.asserts.ENABLE_ASSERTS = goog.DEBUG;
 goog.asserts.AssertionError = function(a, b) {
@@ -1815,6 +1815,281 @@ goog.dom.classlist.addRemove = function(a, b, c) {
   goog.dom.classlist.remove(a, b);
   goog.dom.classlist.add(a, c);
 };
+goog.math.randomInt = function(a) {
+  return Math.floor(Math.random() * a);
+};
+goog.math.uniformRandom = function(a, b) {
+  return a + Math.random() * (b - a);
+};
+goog.math.clamp = function(a, b, c) {
+  return Math.min(Math.max(a, b), c);
+};
+goog.math.modulo = function(a, b) {
+  var c = a % b;
+  return 0 > c * b ? c + b : c;
+};
+goog.math.lerp = function(a, b, c) {
+  return a + c * (b - a);
+};
+goog.math.nearlyEquals = function(a, b, c) {
+  return Math.abs(a - b) <= (c || 1E-6);
+};
+goog.math.standardAngle = function(a) {
+  return goog.math.modulo(a, 360);
+};
+goog.math.standardAngleInRadians = function(a) {
+  return goog.math.modulo(a, 2 * Math.PI);
+};
+goog.math.toRadians = function(a) {
+  return a * Math.PI / 180;
+};
+goog.math.toDegrees = function(a) {
+  return 180 * a / Math.PI;
+};
+goog.math.angleDx = function(a, b) {
+  return b * Math.cos(goog.math.toRadians(a));
+};
+goog.math.angleDy = function(a, b) {
+  return b * Math.sin(goog.math.toRadians(a));
+};
+goog.math.angle = function(a, b, c, d) {
+  return goog.math.standardAngle(goog.math.toDegrees(Math.atan2(d - b, c - a)));
+};
+goog.math.angleDifference = function(a, b) {
+  var c = goog.math.standardAngle(b) - goog.math.standardAngle(a);
+  180 < c ? c -= 360 : -180 >= c && (c = 360 + c);
+  return c;
+};
+goog.math.sign = function(a) {
+  return 0 == a ? 0 : 0 > a ? -1 : 1;
+};
+goog.math.longestCommonSubsequence = function(a, b, c, d) {
+  c = c || function(a, b) {
+    return a == b;
+  };
+  d = d || function(b, c) {
+    return a[b];
+  };
+  for (var e = a.length, f = b.length, g = [], h = 0;h < e + 1;h++) {
+    g[h] = [], g[h][0] = 0;
+  }
+  for (var k = 0;k < f + 1;k++) {
+    g[0][k] = 0;
+  }
+  for (h = 1;h <= e;h++) {
+    for (k = 1;k <= f;k++) {
+      c(a[h - 1], b[k - 1]) ? g[h][k] = g[h - 1][k - 1] + 1 : g[h][k] = Math.max(g[h - 1][k], g[h][k - 1]);
+    }
+  }
+  for (var l = [], h = e, k = f;0 < h && 0 < k;) {
+    c(a[h - 1], b[k - 1]) ? (l.unshift(d(h - 1, k - 1)), h--, k--) : g[h - 1][k] > g[h][k - 1] ? h-- : k--;
+  }
+  return l;
+};
+goog.math.sum = function(a) {
+  return goog.array.reduce(arguments, function(a, c) {
+    return a + c;
+  }, 0);
+};
+goog.math.average = function(a) {
+  return goog.math.sum.apply(null, arguments) / arguments.length;
+};
+goog.math.sampleVariance = function(a) {
+  var b = arguments.length;
+  if (2 > b) {
+    return 0;
+  }
+  var c = goog.math.average.apply(null, arguments);
+  return goog.math.sum.apply(null, goog.array.map(arguments, function(a) {
+    return Math.pow(a - c, 2);
+  })) / (b - 1);
+};
+goog.math.standardDeviation = function(a) {
+  return Math.sqrt(goog.math.sampleVariance.apply(null, arguments));
+};
+goog.math.isInt = function(a) {
+  return isFinite(a) && 0 == a % 1;
+};
+goog.math.isFiniteNumber = function(a) {
+  return isFinite(a) && !isNaN(a);
+};
+goog.math.log10Floor = function(a) {
+  if (0 < a) {
+    var b = Math.round(Math.log(a) * Math.LOG10E);
+    return b - (parseFloat("1e" + b) > a);
+  }
+  return 0 == a ? -Infinity : NaN;
+};
+goog.math.safeFloor = function(a, b) {
+  goog.asserts.assert(!goog.isDef(b) || 0 < b);
+  return Math.floor(a + (b || 2E-15));
+};
+goog.math.safeCeil = function(a, b) {
+  goog.asserts.assert(!goog.isDef(b) || 0 < b);
+  return Math.ceil(a - (b || 2E-15));
+};
+goog.math.Coordinate = function(a, b) {
+  this.x = goog.isDef(a) ? a : 0;
+  this.y = goog.isDef(b) ? b : 0;
+};
+goog.math.Coordinate.prototype.clone = function() {
+  return new goog.math.Coordinate(this.x, this.y);
+};
+goog.DEBUG && (goog.math.Coordinate.prototype.toString = function() {
+  return "(" + this.x + ", " + this.y + ")";
+});
+goog.math.Coordinate.equals = function(a, b) {
+  return a == b ? !0 : a && b ? a.x == b.x && a.y == b.y : !1;
+};
+goog.math.Coordinate.distance = function(a, b) {
+  var c = a.x - b.x, d = a.y - b.y;
+  return Math.sqrt(c * c + d * d);
+};
+goog.math.Coordinate.magnitude = function(a) {
+  return Math.sqrt(a.x * a.x + a.y * a.y);
+};
+goog.math.Coordinate.azimuth = function(a) {
+  return goog.math.angle(0, 0, a.x, a.y);
+};
+goog.math.Coordinate.squaredDistance = function(a, b) {
+  var c = a.x - b.x, d = a.y - b.y;
+  return c * c + d * d;
+};
+goog.math.Coordinate.difference = function(a, b) {
+  return new goog.math.Coordinate(a.x - b.x, a.y - b.y);
+};
+goog.math.Coordinate.sum = function(a, b) {
+  return new goog.math.Coordinate(a.x + b.x, a.y + b.y);
+};
+goog.math.Coordinate.prototype.ceil = function() {
+  this.x = Math.ceil(this.x);
+  this.y = Math.ceil(this.y);
+  return this;
+};
+goog.math.Coordinate.prototype.floor = function() {
+  this.x = Math.floor(this.x);
+  this.y = Math.floor(this.y);
+  return this;
+};
+goog.math.Coordinate.prototype.round = function() {
+  this.x = Math.round(this.x);
+  this.y = Math.round(this.y);
+  return this;
+};
+goog.math.Coordinate.prototype.translate = function(a, b) {
+  a instanceof goog.math.Coordinate ? (this.x += a.x, this.y += a.y) : (this.x += a, goog.isNumber(b) && (this.y += b));
+  return this;
+};
+goog.math.Coordinate.prototype.scale = function(a, b) {
+  var c = goog.isNumber(b) ? b : a;
+  this.x *= a;
+  this.y *= c;
+  return this;
+};
+goog.math.Coordinate.prototype.rotateRadians = function(a, b) {
+  var c = b || new goog.math.Coordinate(0, 0), d = this.x, e = this.y, f = Math.cos(a), g = Math.sin(a);
+  this.x = (d - c.x) * f - (e - c.y) * g + c.x;
+  this.y = (d - c.x) * g + (e - c.y) * f + c.y;
+};
+goog.math.Coordinate.prototype.rotateDegrees = function(a, b) {
+  this.rotateRadians(goog.math.toRadians(a), b);
+};
+goog.math.Box = function(a, b, c, d) {
+  this.top = a;
+  this.right = b;
+  this.bottom = c;
+  this.left = d;
+};
+goog.math.Box.boundingBox = function(a) {
+  for (var b = new goog.math.Box(arguments[0].y, arguments[0].x, arguments[0].y, arguments[0].x), c = 1;c < arguments.length;c++) {
+    var d = arguments[c];
+    b.top = Math.min(b.top, d.y);
+    b.right = Math.max(b.right, d.x);
+    b.bottom = Math.max(b.bottom, d.y);
+    b.left = Math.min(b.left, d.x);
+  }
+  return b;
+};
+goog.math.Box.prototype.getWidth = function() {
+  return this.right - this.left;
+};
+goog.math.Box.prototype.getHeight = function() {
+  return this.bottom - this.top;
+};
+goog.math.Box.prototype.clone = function() {
+  return new goog.math.Box(this.top, this.right, this.bottom, this.left);
+};
+goog.DEBUG && (goog.math.Box.prototype.toString = function() {
+  return "(" + this.top + "t, " + this.right + "r, " + this.bottom + "b, " + this.left + "l)";
+});
+goog.math.Box.prototype.contains = function(a) {
+  return goog.math.Box.contains(this, a);
+};
+goog.math.Box.prototype.expand = function(a, b, c, d) {
+  goog.isObject(a) ? (this.top -= a.top, this.right += a.right, this.bottom += a.bottom, this.left -= a.left) : (this.top -= a, this.right += b, this.bottom += c, this.left -= d);
+  return this;
+};
+goog.math.Box.prototype.expandToInclude = function(a) {
+  this.left = Math.min(this.left, a.left);
+  this.top = Math.min(this.top, a.top);
+  this.right = Math.max(this.right, a.right);
+  this.bottom = Math.max(this.bottom, a.bottom);
+};
+goog.math.Box.equals = function(a, b) {
+  return a == b ? !0 : a && b ? a.top == b.top && a.right == b.right && a.bottom == b.bottom && a.left == b.left : !1;
+};
+goog.math.Box.contains = function(a, b) {
+  return a && b ? b instanceof goog.math.Box ? b.left >= a.left && b.right <= a.right && b.top >= a.top && b.bottom <= a.bottom : b.x >= a.left && b.x <= a.right && b.y >= a.top && b.y <= a.bottom : !1;
+};
+goog.math.Box.relativePositionX = function(a, b) {
+  return b.x < a.left ? b.x - a.left : b.x > a.right ? b.x - a.right : 0;
+};
+goog.math.Box.relativePositionY = function(a, b) {
+  return b.y < a.top ? b.y - a.top : b.y > a.bottom ? b.y - a.bottom : 0;
+};
+goog.math.Box.distance = function(a, b) {
+  var c = goog.math.Box.relativePositionX(a, b), d = goog.math.Box.relativePositionY(a, b);
+  return Math.sqrt(c * c + d * d);
+};
+goog.math.Box.intersects = function(a, b) {
+  return a.left <= b.right && b.left <= a.right && a.top <= b.bottom && b.top <= a.bottom;
+};
+goog.math.Box.intersectsWithPadding = function(a, b, c) {
+  return a.left <= b.right + c && b.left <= a.right + c && a.top <= b.bottom + c && b.top <= a.bottom + c;
+};
+goog.math.Box.prototype.ceil = function() {
+  this.top = Math.ceil(this.top);
+  this.right = Math.ceil(this.right);
+  this.bottom = Math.ceil(this.bottom);
+  this.left = Math.ceil(this.left);
+  return this;
+};
+goog.math.Box.prototype.floor = function() {
+  this.top = Math.floor(this.top);
+  this.right = Math.floor(this.right);
+  this.bottom = Math.floor(this.bottom);
+  this.left = Math.floor(this.left);
+  return this;
+};
+goog.math.Box.prototype.round = function() {
+  this.top = Math.round(this.top);
+  this.right = Math.round(this.right);
+  this.bottom = Math.round(this.bottom);
+  this.left = Math.round(this.left);
+  return this;
+};
+goog.math.Box.prototype.translate = function(a, b) {
+  a instanceof goog.math.Coordinate ? (this.left += a.x, this.right += a.x, this.top += a.y, this.bottom += a.y) : (this.left += a, this.right += a, goog.isNumber(b) && (this.top += b, this.bottom += b));
+  return this;
+};
+goog.math.Box.prototype.scale = function(a, b) {
+  var c = goog.isNumber(b) ? b : a;
+  this.left *= a;
+  this.right *= a;
+  this.top *= c;
+  this.bottom *= c;
+  return this;
+};
 goog.labs.userAgent.engine = {};
 goog.labs.userAgent.engine.isPresto = function() {
   return goog.labs.userAgent.util.matchUserAgent("Presto");
@@ -2026,185 +2301,6 @@ goog.userAgent.DOCUMENT_MODE = function() {
 }();
 goog.dom.BrowserFeature = {CAN_ADD_NAME_OR_TYPE_ATTRIBUTES:!goog.userAgent.IE || goog.userAgent.isDocumentModeOrHigher(9), CAN_USE_CHILDREN_ATTRIBUTE:!goog.userAgent.GECKO && !goog.userAgent.IE || goog.userAgent.IE && goog.userAgent.isDocumentModeOrHigher(9) || goog.userAgent.GECKO && goog.userAgent.isVersionOrHigher("1.9.1"), CAN_USE_INNER_TEXT:goog.userAgent.IE && !goog.userAgent.isVersionOrHigher("9"), CAN_USE_PARENT_ELEMENT_PROPERTY:goog.userAgent.IE || goog.userAgent.OPERA || goog.userAgent.WEBKIT, 
 INNER_HTML_NEEDS_SCOPED_ELEMENT:goog.userAgent.IE, LEGACY_IE_RANGES:goog.userAgent.IE && !goog.userAgent.isDocumentModeOrHigher(9)};
-goog.math.randomInt = function(a) {
-  return Math.floor(Math.random() * a);
-};
-goog.math.uniformRandom = function(a, b) {
-  return a + Math.random() * (b - a);
-};
-goog.math.clamp = function(a, b, c) {
-  return Math.min(Math.max(a, b), c);
-};
-goog.math.modulo = function(a, b) {
-  var c = a % b;
-  return 0 > c * b ? c + b : c;
-};
-goog.math.lerp = function(a, b, c) {
-  return a + c * (b - a);
-};
-goog.math.nearlyEquals = function(a, b, c) {
-  return Math.abs(a - b) <= (c || 1E-6);
-};
-goog.math.standardAngle = function(a) {
-  return goog.math.modulo(a, 360);
-};
-goog.math.standardAngleInRadians = function(a) {
-  return goog.math.modulo(a, 2 * Math.PI);
-};
-goog.math.toRadians = function(a) {
-  return a * Math.PI / 180;
-};
-goog.math.toDegrees = function(a) {
-  return 180 * a / Math.PI;
-};
-goog.math.angleDx = function(a, b) {
-  return b * Math.cos(goog.math.toRadians(a));
-};
-goog.math.angleDy = function(a, b) {
-  return b * Math.sin(goog.math.toRadians(a));
-};
-goog.math.angle = function(a, b, c, d) {
-  return goog.math.standardAngle(goog.math.toDegrees(Math.atan2(d - b, c - a)));
-};
-goog.math.angleDifference = function(a, b) {
-  var c = goog.math.standardAngle(b) - goog.math.standardAngle(a);
-  180 < c ? c -= 360 : -180 >= c && (c = 360 + c);
-  return c;
-};
-goog.math.sign = function(a) {
-  return 0 == a ? 0 : 0 > a ? -1 : 1;
-};
-goog.math.longestCommonSubsequence = function(a, b, c, d) {
-  c = c || function(a, b) {
-    return a == b;
-  };
-  d = d || function(b, c) {
-    return a[b];
-  };
-  for (var e = a.length, f = b.length, g = [], h = 0;h < e + 1;h++) {
-    g[h] = [], g[h][0] = 0;
-  }
-  for (var k = 0;k < f + 1;k++) {
-    g[0][k] = 0;
-  }
-  for (h = 1;h <= e;h++) {
-    for (k = 1;k <= f;k++) {
-      c(a[h - 1], b[k - 1]) ? g[h][k] = g[h - 1][k - 1] + 1 : g[h][k] = Math.max(g[h - 1][k], g[h][k - 1]);
-    }
-  }
-  for (var l = [], h = e, k = f;0 < h && 0 < k;) {
-    c(a[h - 1], b[k - 1]) ? (l.unshift(d(h - 1, k - 1)), h--, k--) : g[h - 1][k] > g[h][k - 1] ? h-- : k--;
-  }
-  return l;
-};
-goog.math.sum = function(a) {
-  return goog.array.reduce(arguments, function(a, c) {
-    return a + c;
-  }, 0);
-};
-goog.math.average = function(a) {
-  return goog.math.sum.apply(null, arguments) / arguments.length;
-};
-goog.math.sampleVariance = function(a) {
-  var b = arguments.length;
-  if (2 > b) {
-    return 0;
-  }
-  var c = goog.math.average.apply(null, arguments);
-  return goog.math.sum.apply(null, goog.array.map(arguments, function(a) {
-    return Math.pow(a - c, 2);
-  })) / (b - 1);
-};
-goog.math.standardDeviation = function(a) {
-  return Math.sqrt(goog.math.sampleVariance.apply(null, arguments));
-};
-goog.math.isInt = function(a) {
-  return isFinite(a) && 0 == a % 1;
-};
-goog.math.isFiniteNumber = function(a) {
-  return isFinite(a) && !isNaN(a);
-};
-goog.math.log10Floor = function(a) {
-  if (0 < a) {
-    var b = Math.round(Math.log(a) * Math.LOG10E);
-    return b - (parseFloat("1e" + b) > a);
-  }
-  return 0 == a ? -Infinity : NaN;
-};
-goog.math.safeFloor = function(a, b) {
-  goog.asserts.assert(!goog.isDef(b) || 0 < b);
-  return Math.floor(a + (b || 2E-15));
-};
-goog.math.safeCeil = function(a, b) {
-  goog.asserts.assert(!goog.isDef(b) || 0 < b);
-  return Math.ceil(a - (b || 2E-15));
-};
-goog.math.Coordinate = function(a, b) {
-  this.x = goog.isDef(a) ? a : 0;
-  this.y = goog.isDef(b) ? b : 0;
-};
-goog.math.Coordinate.prototype.clone = function() {
-  return new goog.math.Coordinate(this.x, this.y);
-};
-goog.DEBUG && (goog.math.Coordinate.prototype.toString = function() {
-  return "(" + this.x + ", " + this.y + ")";
-});
-goog.math.Coordinate.equals = function(a, b) {
-  return a == b ? !0 : a && b ? a.x == b.x && a.y == b.y : !1;
-};
-goog.math.Coordinate.distance = function(a, b) {
-  var c = a.x - b.x, d = a.y - b.y;
-  return Math.sqrt(c * c + d * d);
-};
-goog.math.Coordinate.magnitude = function(a) {
-  return Math.sqrt(a.x * a.x + a.y * a.y);
-};
-goog.math.Coordinate.azimuth = function(a) {
-  return goog.math.angle(0, 0, a.x, a.y);
-};
-goog.math.Coordinate.squaredDistance = function(a, b) {
-  var c = a.x - b.x, d = a.y - b.y;
-  return c * c + d * d;
-};
-goog.math.Coordinate.difference = function(a, b) {
-  return new goog.math.Coordinate(a.x - b.x, a.y - b.y);
-};
-goog.math.Coordinate.sum = function(a, b) {
-  return new goog.math.Coordinate(a.x + b.x, a.y + b.y);
-};
-goog.math.Coordinate.prototype.ceil = function() {
-  this.x = Math.ceil(this.x);
-  this.y = Math.ceil(this.y);
-  return this;
-};
-goog.math.Coordinate.prototype.floor = function() {
-  this.x = Math.floor(this.x);
-  this.y = Math.floor(this.y);
-  return this;
-};
-goog.math.Coordinate.prototype.round = function() {
-  this.x = Math.round(this.x);
-  this.y = Math.round(this.y);
-  return this;
-};
-goog.math.Coordinate.prototype.translate = function(a, b) {
-  a instanceof goog.math.Coordinate ? (this.x += a.x, this.y += a.y) : (this.x += a, goog.isNumber(b) && (this.y += b));
-  return this;
-};
-goog.math.Coordinate.prototype.scale = function(a, b) {
-  var c = goog.isNumber(b) ? b : a;
-  this.x *= a;
-  this.y *= c;
-  return this;
-};
-goog.math.Coordinate.prototype.rotateRadians = function(a, b) {
-  var c = b || new goog.math.Coordinate(0, 0), d = this.x, e = this.y, f = Math.cos(a), g = Math.sin(a);
-  this.x = (d - c.x) * f - (e - c.y) * g + c.x;
-  this.y = (d - c.x) * g + (e - c.y) * f + c.y;
-};
-goog.math.Coordinate.prototype.rotateDegrees = function(a, b) {
-  this.rotateRadians(goog.math.toRadians(a), b);
-};
 goog.dom.ASSUME_QUIRKS_MODE = !1;
 goog.dom.ASSUME_STANDARDS_MODE = !1;
 goog.dom.COMPAT_MODE_KNOWN_ = goog.dom.ASSUME_QUIRKS_MODE || goog.dom.ASSUME_STANDARDS_MODE;
@@ -2974,8 +3070,8 @@ goog.dom.DomHelper.prototype.getAncestorByTagNameAndClass = goog.dom.getAncestor
 goog.dom.DomHelper.prototype.getAncestorByClass = goog.dom.getAncestorByClass;
 goog.dom.DomHelper.prototype.getAncestor = goog.dom.getAncestor;
 var pagespeed = {MobUtil:{}};
-pagespeed.MobUtil.intersects = function(a, b) {
-  return a.left <= b.right && b.left <= a.right && a.top <= b.bottom && b.top <= a.bottom;
+pagespeed.MobUtil.Rect = function() {
+  this.height = this.width = this.bottom = this.right = this.left = this.top = 0;
 };
 pagespeed.MobUtil.pixelValue = function(a) {
   var b = null;
@@ -3013,11 +3109,7 @@ pagespeed.MobUtil.addStyles = function(a, b) {
 pagespeed.MobUtil.boundingRect = function(a) {
   a = a.getBoundingClientRect();
   var b = document.body, c = document.documentElement || b.parentNode || b, b = "pageXOffset" in window ? window.pageXOffset : c.scrollLeft, c = "pageYOffset" in window ? window.pageYOffset : c.scrollTop;
-  a.top += c;
-  a.bottom += c;
-  a.left += b;
-  a.right += b;
-  return a;
+  return new goog.math.Box(a.top + c, a.right + b, a.bottom + c, a.left + b);
 };
 pagespeed.MobUtil.isSinglePixel = function(a) {
   return 1 == a.naturalHeight && 1 == a.naturalWidth;
@@ -3044,7 +3136,7 @@ pagespeed.MobUtil.possiblyInQuirksMode = function() {
 pagespeed.MobUtil.hasIntersectingRects = function(a) {
   for (var b = 0;b < a.length;++b) {
     for (var c = b + 1;c < a.length;++c) {
-      if (pagespeed.MobUtil.intersects(a[b], a[c])) {
+      if (goog.math.Box.intersects(a[b], a[c])) {
         return!0;
       }
     }
@@ -3082,6 +3174,126 @@ pagespeed.MobUtil.countNodes = function(a) {
   }
   return b;
 };
+pagespeed.MobUtil.castElement = function(a) {
+  return goog.dom.isElement(a) ? a : null;
+};
+pagespeed.MobUtil.ImageSource = {IMG:"IMG", SVG:"SVG", BACKGROUND:"background-image"};
+goog.exportSymbol("pagespeed.MobUtil.ImageSource", pagespeed.MobUtil.ImageSource);
+pagespeed.MobUtil.ThemeData = function(a, b, c) {
+  this.menuFrontColor = a;
+  this.menuBackColor = b;
+  this.headerBarHtml = c;
+};
+pagespeed.MobUtil.textBetweenBrackets = function(a) {
+  var b = a.indexOf("("), c = a.lastIndexOf(")");
+  return 0 <= b && c > b ? a.substring(b + 1, c) : null;
+};
+pagespeed.MobUtil.colorStringToNumbers = function(a) {
+  a = pagespeed.MobUtil.textBetweenBrackets(a).split(", ");
+  for (var b = [], c = 0, d = a.length;c < d;++c) {
+    if (b[c] = parseInt(a[c], 10), isNaN(b[c])) {
+      return null;
+    }
+  }
+  return b;
+};
+pagespeed.MobUtil.colorNumbersToString = function(a) {
+  for (var b = "#", c = 0, d = a.length;c < d;++c) {
+    var e = Math.round(a[c]);
+    0 > e ? e = 0 : 255 < e && (e = 255);
+    e = e.toString(16);
+    1 == e.length && (e = "0" + e);
+    b += e;
+  }
+  return b;
+};
+pagespeed.MobUtil.stripNonAlphaNumeric = function(a) {
+  a = a.toLowerCase();
+  for (var b = "", c = 0, d = a.length;c < d;++c) {
+    var e = a.charAt(c);
+    if ("a" <= e && "z" >= e || "0" <= e && "9" >= e) {
+      b += e;
+    }
+  }
+  return b;
+};
+pagespeed.MobUtil.findPattern = function(a, b) {
+  return 0 <= pagespeed.MobUtil.stripNonAlphaNumeric(a).indexOf(pagespeed.MobUtil.stripNonAlphaNumeric(b)) ? 1 : 0;
+};
+pagespeed.MobUtil.removeSuffixNTimes = function(a, b, c) {
+  for (var d = a.length, e = 0;e < c;++e) {
+    var f = a.lastIndexOf(b, d - 1);
+    if (0 <= f) {
+      d = f;
+    } else {
+      break;
+    }
+  }
+  return 0 <= f ? a.substring(0, d) : a;
+};
+pagespeed.MobUtil.getSiteOrganization = function() {
+  var a = document.domain.toLowerCase().split("."), b = a.length;
+  return 4 < b && 2 == a[b - 3].length ? a[b - 5] : 3 < b ? a[b - 4] : null;
+};
+pagespeed.MobUtil.resourceFileName = function(a) {
+  if (!a || 0 <= a.indexOf("data:image/")) {
+    return "";
+  }
+  var b = a.lastIndexOf("/");
+  0 > b ? b = 0 : ++b;
+  var c = a.indexOf(".", b);
+  0 > c && (c = a.length);
+  return a.substring(b, c);
+};
+pagespeed.MobUtil.proxyImageUrl = function(a) {
+  if (!a) {
+    return "";
+  }
+  if (!pagespeed.MobUtil.isCrossOrigin(a)) {
+    return a;
+  }
+  var b = document.domain, c = pagespeed.MobUtil.removeSuffixNTimes(b, ".", 2), d = null;
+  if (0 == c.indexOf("www.") && 0 > a.indexOf("//www.")) {
+    var e = c.substring(4), d = a.indexOf(e);
+    0 <= d && (a = a.substring(0, d) + c + a.substring(d + e.length));
+  }
+  if (!pagespeed.MobUtil.isCrossOrigin(a)) {
+    return a;
+  }
+  d = a.indexOf(c);
+  0 <= d && (a = a.substring(0, d) + b + a.substring(d + c.length, a.length));
+  return a;
+};
+pagespeed.MobUtil.extractImage = function(a, b) {
+  var c = null;
+  switch(b) {
+    case pagespeed.MobUtil.ImageSource.IMG:
+      a.tagName == b && (c = a.src);
+      break;
+    case pagespeed.MobUtil.ImageSource.SVG:
+      if (a.tagName == b) {
+        var d = (new XMLSerializer).serializeToString(a), c = self.URL || self.webkitURL || self, d = new Blob([d], {type:"image/svg+xml;charset=utf-8"}), c = c.createObjectURL(d)
+      }
+      break;
+    case pagespeed.MobUtil.ImageSource.BACKGROUND:
+      c = pagespeed.MobUtil.findBackgroundImage(a);
+  }
+  return c ? pagespeed.MobUtil.proxyImageUrl(c) : null;
+};
+pagespeed.MobUtil.isCrossOrigin = function(a) {
+  return!goog.string.startsWith(a, document.location.origin + "/") && !goog.string.startsWith(a, "data:image/");
+};
+pagespeed.MobUtil.boundingRectAndSize = function(a) {
+  a = pagespeed.MobUtil.boundingRect(a);
+  var b = new pagespeed.MobUtil.Rect;
+  b.top = a.top;
+  b.bottom = a.bottom;
+  b.left = a.left;
+  b.right = a.right;
+  b.height = a.bottom - a.top;
+  b.width = a.right - a.left;
+  return b;
+};
 pagespeed.MobLayout = function(a) {
   this.psMob_ = a;
   this.dontTouchIds_ = {};
@@ -3091,6 +3303,7 @@ pagespeed.MobLayout = function(a) {
 pagespeed.MobLayout.CLAMPED_STYLES_ = "padding-left padding-bottom padding-right padding-top margin-left margin-bottom margin-right margin-top border-left-width border-bottom-width border-right-width border-top-width left top".split(" ");
 pagespeed.MobLayout.FLEXIBLE_WIDTH_TAGS_ = {A:!0, DIV:!0, FORM:!0, H1:!0, H2:!0, H3:!0, H4:!0, P:!0, SPAN:!0, TBODY:!0, TD:!0, TFOOT:!0, TH:!0, THEAD:!0, TR:!0};
 pagespeed.MobLayout.NO_PERCENT_ = ["left", "width"];
+pagespeed.MobLayout.NEGATIVE_BOTTOM_MARGIN_ATTR_ = "data-pagespeed-negative-bottom-margin";
 pagespeed.MobLayout.prototype.addDontTouchId = function(a) {
   this.dontTouchIds_[a] = !0;
 };
@@ -3106,9 +3319,6 @@ pagespeed.MobLayout.prototype.computeMaxWidth_ = function() {
   }
   return a;
 };
-pagespeed.MobLayout.prototype.castElement_ = function(a) {
-  return goog.dom.isElement(a) ? a : null;
-};
 pagespeed.MobLayout.prototype.dontTouch_ = function(a) {
   if (!a) {
     return!0;
@@ -3117,13 +3327,13 @@ pagespeed.MobLayout.prototype.dontTouch_ = function(a) {
   return "SCRIPT" == b || "STYLE" == b || "IFRAME" == b || a.id && this.dontTouchIds_[a.id] || a.classList.contains("psmob-nav-panel") || a.classList.contains("psmob-header-bar") || a.classList.contains("psmob-header-spacer-div") || a.classList.contains("psmob-logo-span");
 };
 pagespeed.MobLayout.prototype.getMobilizeElement = function(a) {
-  a = this.castElement_(a);
+  a = pagespeed.MobUtil.castElement(a);
   return this.dontTouch_(a) ? null : a;
 };
 pagespeed.MobLayout.prototype.childElements_ = function(a) {
   var b = [];
   for (a = a.firstChild;a;a = a.nextSibling) {
-    null != this.castElement_(a) && b.push(a);
+    null != pagespeed.MobUtil.castElement(a) && b.push(a);
   }
   return b;
 };
@@ -3193,9 +3403,9 @@ pagespeed.MobLayout.prototype.resizeVerticallyAndReturnBottom_ = function(a, b) 
   var f = pagespeed.MobUtil.computedDimension(e, "min-height");
   null != f && (d += f);
   for (var f = c + a.offsetHeight - 1, g = !1, h = !1, k, l = a.firstChild;l;l = l.nextSibling) {
-    if (k = this.castElement_(l)) {
+    if (k = pagespeed.MobUtil.castElement(l)) {
       var m = window.getComputedStyle(k);
-      m && "absolute" == m.position && "0px" != m.getPropertyValue("height") && (h = !0);
+      m && "absolute" == m.position && "0px" != m.getPropertyValue("height") && "hidden" != m.getPropertyValue("visibility") && (h = !0);
       k = this.resizeVerticallyAndReturnBottom_(k, c);
       null != k && (g = !0, d = Math.max(d, k));
     }
@@ -3231,7 +3441,7 @@ pagespeed.MobLayout.prototype.countContainers_ = function(a) {
   var b = 0, c = a.tagName.toUpperCase();
   "DIV" != c && "TABLE" != c && "UL" != c || ++b;
   for (a = a.firstChild;a;a = a.nextSibling) {
-    c = this.castElement_(a), null != c && (b += this.countContainers_(c));
+    c = pagespeed.MobUtil.castElement(a), null != c && (b += this.countContainers_(c));
   }
   return b;
 };
@@ -3284,11 +3494,11 @@ pagespeed.MobLayout.prototype.reorganizeTableNoQuirksMode_ = function(a, b) {
   pagespeed.MobUtil.removeProperty(a, "width");
   pagespeed.MobUtil.setPropertyImportant(a, "max-width", "100%");
   for (c = a.firstChild;c;c = c.nextSibling) {
-    if (d = this.castElement_(c), null != d) {
+    if (d = pagespeed.MobUtil.castElement(c), null != d) {
       for (pagespeed.MobUtil.removeProperty(d, "width"), pagespeed.MobUtil.setPropertyImportant(d, "max-width", "100%"), d = d.firstChild;d;d = d.nextSibling) {
-        if (e = this.castElement_(d), null != e && "TR" == e.tagName.toUpperCase()) {
+        if (e = pagespeed.MobUtil.castElement(d), null != e && "TR" == e.tagName.toUpperCase()) {
           for (pagespeed.MobUtil.removeProperty(e, "width"), pagespeed.MobUtil.setPropertyImportant(e, "max-width", "100%"), e = e.firstChild;e;e = e.nextSibling) {
-            f = this.castElement_(e), null != f && "TD" == f.tagName.toUpperCase() && (pagespeed.MobUtil.setPropertyImportant(f, "max-width", "100%"), pagespeed.MobUtil.setPropertyImportant(f, "display", "inline-block"));
+            f = pagespeed.MobUtil.castElement(e), null != f && "TD" == f.tagName.toUpperCase() && (pagespeed.MobUtil.setPropertyImportant(f, "max-width", "100%"), pagespeed.MobUtil.setPropertyImportant(f, "display", "inline-block"));
           }
         }
       }
@@ -3312,7 +3522,7 @@ pagespeed.MobLayout.prototype.cleanupStylesHelper_ = function(a) {
   c = a.tagName.toUpperCase();
   var f = "UL" == c || "OL" == c, g = "BODY" == c, h = "";
   for (c = 0;c < pagespeed.MobLayout.CLAMPED_STYLES_.length;++c) {
-    d = pagespeed.MobLayout.CLAMPED_STYLES_[c], f && goog.string.endsWith(d, "-left") || g && goog.string.startsWith(d, "margin-") || (e = pagespeed.MobUtil.computedDimension(b, d), null != e && (4 < e ? h += d + ":4px !important;" : 0 > e && (h += d + ":0px !important;")));
+    d = pagespeed.MobLayout.CLAMPED_STYLES_[c], f && goog.string.endsWith(d, "-left") || g && goog.string.startsWith(d, "margin-") || (e = pagespeed.MobUtil.computedDimension(b, d), null != e && (4 < e ? h += d + ":4px !important;" : 0 > e && ("margin-bottom" == d ? a.setAttribute(pagespeed.MobLayout.NEGATIVE_BOTTOM_MARGIN_ATTR_, "1") : h += d + ":0px !important;")));
   }
   pagespeed.MobUtil.addStyles(a, h);
 };
@@ -3340,7 +3550,7 @@ pagespeed.MobLayout.prototype.reallocateWidthToTableData_ = function(a) {
       }
       if (1 < c) {
         for (c = "width:" + Math.round(100 / c) + "%;", b = b.firstChild;b;b = b.nextSibling) {
-          a = this.castElement_(b), null != a && "TD" == a.tagName.toUpperCase() && pagespeed.MobUtil.addStyles(a, c);
+          a = pagespeed.MobUtil.castElement(b), null != a && "TD" == a.tagName.toUpperCase() && pagespeed.MobUtil.addStyles(a, c);
         }
       }
     }
@@ -3351,27 +3561,33 @@ pagespeed.MobLayout.prototype.stripFloats_ = function(a) {
   if ("fixed" == b) {
     return "fixed";
   }
-  var c, d, e, f = [], g = [];
+  var c, d, e, f, g = [];
+  c = null;
+  var h, k = [], l = !1;
   for (d = a.firstChild;d;d = d.nextSibling) {
-    if (c = this.getMobilizeElement(d), null != c && (e = this.stripFloats_(c), "fixed" != e && null != this.getMobilizeElement(c))) {
-      if ("absolute" == e) {
-        g.push(c);
+    if (e = this.getMobilizeElement(d), null != e && (f = this.stripFloats_(e), "fixed" != f && null != this.getMobilizeElement(e))) {
+      if ("absolute" == f) {
+        k.push(e);
       } else {
-        var h = window.getComputedStyle(c);
-        e = h.getPropertyValue("float");
-        var k = "right" == e;
-        if (k || "left" == e) {
-          pagespeed.MobUtil.setPropertyImportant(c, "float", "none"), "none" != h.getPropertyValue("display") && pagespeed.MobUtil.setPropertyImportant(c, "display", "inline-block");
+        var m = window.getComputedStyle(e);
+        f = m.getPropertyValue("float");
+        var n = "right" == f;
+        h = "inline-block";
+        if (n || "left" == f) {
+          n && "right" == m.getPropertyValue("clear") && (n = !1, h = "block", c && l && pagespeed.MobUtil.setPropertyImportant(c, "margin-bottom", "0px")), pagespeed.MobUtil.setPropertyImportant(e, "float", "none"), "none" != m.getPropertyValue("display") && pagespeed.MobUtil.setPropertyImportant(e, "display", h);
         }
-        k && f.push(c);
+        n && g.push(e);
+        c = e;
+        e = pagespeed.MobUtil.computedDimension(m, "margin-bottom");
+        l = null != e && 0 > e;
       }
     }
   }
-  for (c = f.length - 1;0 <= c;--c) {
-    d = f[c], a.removeChild(d);
+  for (c = g.length - 1;0 <= c;--c) {
+    d = g[c], a.removeChild(d);
   }
-  for (c = f.length - 1;0 <= c;--c) {
-    d = f[c], a.appendChild(d);
+  for (c = g.length - 1;0 <= c;--c) {
+    d = g[c], a.appendChild(d);
   }
   return b;
 };
@@ -3382,20 +3598,18 @@ pagespeed.MobLayout.prototype.removeWidthConstraint_ = function(a, b) {
 };
 pagespeed.MobLayout.prototype.expandColumns_ = function(a) {
   if ("fixed" != window.getComputedStyle(a).getPropertyValue("position")) {
-    var b, c = [], d = [];
-    for (b = a.firstChild;b;b = b.nextSibling) {
-      if (a = this.getMobilizeElement(b), null != a) {
-        var e = window.getComputedStyle(a), f = e.getPropertyValue("position");
-        "fixed" != f && "absolute" != f && 0 != b.offsetWidth && (c.push(a), d.push(e));
+    var b, c, d, e = [], f = [];
+    for (c = a.firstChild;c;c = c.nextSibling) {
+      if (d = this.getMobilizeElement(c), null != d) {
+        b = window.getComputedStyle(d);
+        var g = b.getPropertyValue("position");
+        "fixed" != g && "absolute" != g && 0 != c.offsetWidth && (e.push(d), f.push(b));
       }
     }
-    e = null;
-    for (f = 0;f < c.length;++f) {
-      a = c[f];
-      b = f < c.length - 1 ? c[f + 1] : null;
-      var g = a.offsetLeft + a.offsetWidth;
-      (null == e || a.offsetLeft < e) && (null == b || b.offsetLeft < g) && (this.removeWidthConstraint_(a, d[f]), this.expandColumns_(a));
-      e = g;
+    var h = null;
+    for (c = 0;c < e.length;++c) {
+      d = e[c], b = c < e.length - 1 ? e[c + 1] : null, g = d.offsetLeft + d.offsetWidth, (null == h || d.offsetLeft < h) && (null == b || b.offsetLeft < g) && (this.removeWidthConstraint_(d, f[c]), this.expandColumns_(d)), a.getAttribute(pagespeed.MobLayout.NEGATIVE_BOTTOM_MARGIN_ATTR_) && (a.removeAttribute(pagespeed.MobLayout.NEGATIVE_BOTTOM_MARGIN_ATTR_), b = window.getComputedStyle(a), d = pagespeed.MobUtil.computedDimension(b, "height"), null != d && pagespeed.MobUtil.setPropertyImportant(a, 
+      "margin-bottom", "" + -d + "px")), h = g;
     }
   }
 };
@@ -3407,7 +3621,16 @@ pagespeed.MobNav = function() {
 pagespeed.MobNav.HEADER_BAR_HEIGHT_ = 60;
 pagespeed.MobNav.prototype.ARROW_ICON_ = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJAAAACQCAQAAABNTyozAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAACYktHRAD/h4/MvwAAAAlwSFlzAAALEwAACxMBAJqcGAAAATdJREFUeNrt0klOBTEQREHfDI7FTEn/4M2GBULQo22wK+ICKT1lKQAAAAAAAAAAAAAAAAAA/Jm7rmv3o+W5laU8d1uLspQYLc/SLVF8rsVoefokii9rMVqe9oni21qMlqdtovhhLUbL0y5R/LIWo+VZylKeuuX5t4nW8tRPFBtrMV6gmolic+t9xA/VSjRonl6JBs7TI9HgeVonmiDPvkSPmfO0SjRRnhaJJstTO9GEeWom2s7zVgZVI9HEeWokmjzPvkQPmfNcSZQkz9lEifKcSZQsz9FECfMcSZQ0z95E23ley8S2E6XOcz3R9HmuJUqR53yiNHnOJUqV53iidHmOJUqZZ3+itHn2JXopyd3kOZ9IntVE8qwmkmc1kTyrieRZTSTPaiJ5AAAAAAAAAAAAAAAAAGjgA62rM0XB6dNxAAAAAElFTkSuQmCC";
 pagespeed.MobNav.prototype.findNavSections_ = function() {
-  this.navSections_ = goog.array.concat(goog.array.toArray(document.querySelectorAll('[data-mobile-role="navigational"]')), goog.array.toArray(document.querySelectorAll(".topNavList")));
+  var a;
+  if (pagespeedNavigationalIds) {
+    a = Array(pagespeedNavigationalIds.length);
+    for (var b = 0, c;c = pagespeedNavigationalIds[b];b++) {
+      a[b] = document.getElementById(c);
+    }
+  } else {
+    a = [];
+  }
+  this.navSections_ = goog.array.concat(a, goog.array.toArray(document.querySelectorAll(".topNavList")));
 };
 pagespeed.MobNav.prototype.fixExistingElements_ = function() {
   for (var a = document.getElementsByTagName("*"), b = 0, c;c = a[b];b++) {
@@ -3419,22 +3642,24 @@ pagespeed.MobNav.prototype.fixExistingElements_ = function() {
     999999 <= d.getPropertyValue("z-index") && (console.log("Element z-index exceeded 999999, setting to 999998."), c.style.zIndex = 999998);
   }
 };
-pagespeed.MobNav.prototype.addHeaderBar_ = function() {
-  var a = document.createElement("div");
-  document.body.insertBefore(a, document.body.childNodes[0]);
-  goog.dom.classlist.add(a, "psmob-header-spacer-div");
-  var b = document.createElement("header");
-  document.body.insertBefore(b, a);
-  goog.dom.classlist.add(b, "psmob-header-bar");
-  b.innerHTML = psHeaderBarHtml;
-  b.style.borderBottom = "thin solid " + psMenuFrontColor;
-  (a = document.getElementsByClassName("psmob-logo-span")[0]) && b.appendChild(a);
+pagespeed.MobNav.prototype.addHeaderBar_ = function(a) {
+  var b = document.createElement("div");
+  document.body.insertBefore(b, document.body.childNodes[0]);
+  goog.dom.classlist.add(b, "psmob-header-spacer-div");
+  var c = document.createElement("header");
+  document.body.insertBefore(c, b);
+  goog.dom.classlist.add(c, "psmob-header-bar");
+  c.innerHTML = a.headerBarHtml;
+  c.style.borderBottom = "thin solid " + a.menuFrontColor;
+  (a = document.getElementsByClassName("psmob-logo-span")[0]) && c.appendChild(a);
   if (a = document.querySelector('[data-mobile-role="logo"]')) {
-    b.style.backgroundColor = a.style.backgroundColor;
+    c.style.backgroundColor = a.style.backgroundColor;
   }
 };
-pagespeed.MobNav.prototype.addThemeColor_ = function() {
-  var a = this.useDetectedThemeColor_ && psMenuBackColor ? psMenuBackColor : "#3c78d8", a = ".psmob-header-bar { background-color: " + a + " }\n.psmob-nav-panel { background-color: " + (this.useDetectedThemeColor_ && psMenuFrontColor ? psMenuFrontColor : "white") + " }\n.psmob-nav-panel > ul li { color: " + a + " }\n.psmob-nav-panel > ul li a { color: " + a + " }\n", b = document.createElement("style");
+pagespeed.MobNav.prototype.addThemeColor_ = function(a) {
+  var b = this.useDetectedThemeColor_ && a.menuBackColor ? a.menuBackColor : "#3c78d8";
+  a = ".psmob-header-bar { background-color: " + b + " }\n.psmob-nav-panel { background-color: " + (this.useDetectedThemeColor_ && a.menuFrontColor ? a.menuFrontColor : "white") + " }\n.psmob-nav-panel > ul li { color: " + b + " }\n.psmob-nav-panel > ul li a { color: " + b + " }\n";
+  b = document.createElement("style");
   b.type = "text/css";
   b.appendChild(document.createTextNode(a));
   document.head.appendChild(b);
@@ -3522,12 +3747,12 @@ pagespeed.MobNav.prototype.addNavButtonEvents_ = function() {
     "DIV" == a.tagName && (goog.dom.classlist.toggle(a.nextSibling, "open"), goog.dom.classlist.toggle(a.firstChild, "open"));
   });
 };
-pagespeed.MobNav.prototype.Run = function() {
+pagespeed.MobNav.prototype.Run = function(a) {
   console.log("Starting nav resynthesis.");
   this.findNavSections_();
   this.fixExistingElements_();
-  this.addHeaderBar_();
-  this.addThemeColor_();
+  this.addHeaderBar_(a);
+  this.addThemeColor_(a);
   0 == this.navSections_.length || pagespeed.MobUtil.inFriendlyIframe() || (this.addNavPanel_(), this.addMenuButtonEvents_(), this.addNavButtonEvents_());
 };
 pagespeed.Mob = function() {
@@ -3557,10 +3782,10 @@ pagespeed.Mob.prototype.mobilizeSite_ = function() {
     this.mobilizeAfterImageLoad_ = !0;
   }
 };
-pagespeed.Mob.prototype.logoComplete_ = function() {
+pagespeed.Mob.prototype.logoComplete_ = function(a) {
   --this.pendingCallbacks_;
   this.updateProgressBar(this.domElementCount_, "extract theme");
-  window.psNavMode && ((new pagespeed.MobNav).Run(), this.updateProgressBar(this.domElementCount_, "navigation"));
+  window.psNavMode && ((new pagespeed.MobNav).Run(a), this.updateProgressBar(this.domElementCount_, "navigation"));
   this.maybeRunLayout();
 };
 pagespeed.Mob.prototype.backgroundImageLoaded_ = function() {

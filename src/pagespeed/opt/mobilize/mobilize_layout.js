@@ -168,22 +168,6 @@ pagespeed.MobLayout.prototype.computeMaxWidth_ = function() {
 
 
 /**
- * If a node is actually an element, returns it as an element.  Otherwise,
- * returns null.
- *
- * @param {!Node} node
- * @return {?Element} element
- * @private
- */
-pagespeed.MobLayout.prototype.castElement_ = function(node) {
-  if (goog.dom.isElement(node)) {
-    return /** @type {Element} */ (node);
-  }
-  return null;
-};
-
-
-/**
  * Determines whether this element should not be touched.
  * @param {Element} element
  * @return {boolean}
@@ -216,7 +200,7 @@ pagespeed.MobLayout.prototype.dontTouch_ = function(element) {
  * @return {?Element}
  */
 pagespeed.MobLayout.prototype.getMobilizeElement = function(node) {
-  var element = this.castElement_(node);
+  var element = pagespeed.MobUtil.castElement(node);
   if (this.dontTouch_(element)) {
     return null;
   }
@@ -240,7 +224,7 @@ pagespeed.MobLayout.prototype.getMobilizeElement = function(node) {
 pagespeed.MobLayout.prototype.childElements_ = function(element) {
   var children = [];
   for (var child = element.firstChild; child; child = child.nextSibling) {
-    var childElement = this.castElement_(child);
+    var childElement = pagespeed.MobUtil.castElement(child);
     if (childElement != null) {
       children.push(child);
     }
@@ -427,7 +411,7 @@ pagespeed.MobLayout.prototype.resizeVerticallyAndReturnBottom_ =
   var childBottom;
 
   for (var next, child = element.firstChild; child; child = child.nextSibling) {
-    var childElement = this.castElement_(child);
+    var childElement = pagespeed.MobUtil.castElement(child);
     if (childElement) {
       var childComputedStyle = window.getComputedStyle(childElement);
       var absolute = false;
@@ -618,7 +602,7 @@ pagespeed.MobLayout.prototype.countContainers_ = function(element) {
     ++ret;
   }
   for (var child = element.firstChild; child; child = child.nextSibling) {
-    var childElement = this.castElement_(child);
+    var childElement = pagespeed.MobUtil.castElement(child);
     if (childElement != null) {
       ret += this.countContainers_(childElement);
     }
@@ -789,17 +773,17 @@ pagespeed.MobLayout.prototype.reorganizeTableNoQuirksMode_ =
   pagespeed.MobUtil.removeProperty(table, 'width');
   pagespeed.MobUtil.setPropertyImportant(table, 'max-width', fullWidth);
   for (tnode = table.firstChild; tnode; tnode = tnode.nextSibling) {
-    tchild = this.castElement_(tnode);
+    tchild = pagespeed.MobUtil.castElement(tnode);
     if (tchild != null) {
       pagespeed.MobUtil.removeProperty(tchild, 'width');
       pagespeed.MobUtil.setPropertyImportant(tchild, 'max-width', fullWidth);
       for (rnode = tchild.firstChild; rnode; rnode = rnode.nextSibling) {
-        row = this.castElement_(rnode);
+        row = pagespeed.MobUtil.castElement(rnode);
         if ((row != null) && (row.tagName.toUpperCase() == 'TR')) {
           pagespeed.MobUtil.removeProperty(row, 'width');
           pagespeed.MobUtil.setPropertyImportant(row, 'max-width', fullWidth);
           for (dnode = row.firstChild; dnode; dnode = dnode.nextSibling) {
-            data = this.castElement_(dnode);
+            data = pagespeed.MobUtil.castElement(dnode);
             if ((data != null) && (data.tagName.toUpperCase() == 'TD')) {
               pagespeed.MobUtil.setPropertyImportant(
                   data, 'max-width', fullWidth);
@@ -999,7 +983,7 @@ pagespeed.MobLayout.prototype.reallocateWidthToTableData_ = function(element) {
       if (numTds > 1) {
         var style = 'width:' + Math.round(100 / numTds) + '%;';
         for (dnode = tr.firstChild; dnode; dnode = dnode.nextSibling) {
-          td = this.castElement_(dnode);
+          td = pagespeed.MobUtil.castElement(dnode);
           if ((td != null) && (td.tagName.toUpperCase() == 'TD')) {
             pagespeed.MobUtil.addStyles(td, style);
           }

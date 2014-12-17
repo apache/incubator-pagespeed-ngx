@@ -103,8 +103,10 @@ class MobilizeRewriteFilterTest : public RewriteTestBase {
 
   GoogleString ScriptsAtEndOfBody() {
     return
-        "<script src=\"mob_logo.js\"></script>"
         "<script src=\"mobilize_util.js\"></script>"
+        "<script src=\"mobilize_color.js\"></script>"
+        "<script src=\"mobilize_logo.js\"></script>"
+        "<script src=\"mobilize_theme.js\"></script>"
         "<script src=\"mobilize_layout.js\"></script>"
         "<script src=\"mobilize_nav.js\"></script>"
         "<script src=\"mobilize.js\"></script>";

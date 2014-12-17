@@ -213,14 +213,15 @@ pagespeed.Mob.prototype.mobilizeSite_ = function() {
 
 /**
  * Called after logo computation is complete.
+ * @param {!pagespeed.MobUtil.ThemeData} themeData
  * @private
  */
-pagespeed.Mob.prototype.logoComplete_ = function() {
+pagespeed.Mob.prototype.logoComplete_ = function(themeData) {
   --this.pendingCallbacks_;
   this.updateProgressBar(this.domElementCount_, 'extract theme');
   if (window['psNavMode']) {
     var mobNav = new pagespeed.MobNav();
-    mobNav.Run();
+    mobNav.Run(themeData);
     this.updateProgressBar(this.domElementCount_, 'navigation');
   }
   this.maybeRunLayout();
