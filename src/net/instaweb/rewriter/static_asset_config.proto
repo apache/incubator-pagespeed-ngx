@@ -41,6 +41,7 @@ message StaticAssetEnum {
     SPLIT_HTML_BEACON_JS = 17;
     MOBILIZE_JS = 18;
     MOBILIZE_XHR_JS = 19;
+    MOBILIZE_CSS = 20;
   };
 }
 

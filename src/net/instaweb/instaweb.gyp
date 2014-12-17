@@ -1599,6 +1599,7 @@
         'instaweb_util',
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_http',
+        '<(DEPTH)/pagespeed/opt.gyp:instaweb_mobilize_css_data2c',
         '<(DEPTH)/pagespeed/opt.gyp:instaweb_mobilize_data2c',
         '<(DEPTH)/pagespeed/opt.gyp:instaweb_mobilize_opt_data2c',
         '<(DEPTH)/pagespeed/opt.gyp:instaweb_mobilize_xhr_data2c',
