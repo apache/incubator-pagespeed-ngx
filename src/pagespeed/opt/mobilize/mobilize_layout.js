@@ -128,6 +128,14 @@ pagespeed.MobLayout.NO_PERCENT_ = [
 
 
 /**
+ * Marker for elements with negative bottom margin.
+ * @private {string}
+ */
+pagespeed.MobLayout.NEGATIVE_BOTTOM_MARGIN_ATTR_ =
+    'data-pagespeed-negative-bottom-margin';
+
+
+/**
  * Adds a new DOM id to the set of IDs that we should not mobilize.
  * @param {string} id
  */
@@ -445,7 +453,8 @@ pagespeed.MobLayout.prototype.resizeVerticallyAndReturnBottom_ =
         // the eventual size of this absolute child, we will shrink
         // it here.
         if ((position == 'absolute') &&
-            (childComputedStyle.getPropertyValue('height') != '0px')) {
+            (childComputedStyle.getPropertyValue('height') != '0px') &&
+            (childComputedStyle.getPropertyValue('visibility') != 'hidden')) {
           hasAbsoluteChildren = true;
           absolute = true;
         }
@@ -886,7 +895,22 @@ pagespeed.MobLayout.prototype.cleanupStylesHelper_ = function(element) {
           //element.style[name] = '4px !important';
           style += name + ':4px !important;';
         } else if (value < 0) {
-          style += name + ':0px !important;';
+          if (name == 'margin-bottom') {
+            // This might be a slide-show implemented with a negative
+            // margin-bottom based on the element height.  However, it's
+            // likely that our usage of max-width:100% and viewports has
+            // caused some heights to change (without any explicit JS
+            // overrides.  We then may make further adjustments to the element
+            // height in expandColumns or elsewhere.  So at this
+            // phase we don't adjust the margin-bottom, but just mark the
+            // element with an attribute we can easily find later.
+            // See http://goo.gl/gzWY6I [smashingmagazine.com]
+            element.setAttribute(
+                pagespeed.MobLayout.NEGATIVE_BOTTOM_MARGIN_ATTR_, '1');
+            // TODO(jmarantz): do this for margin-right as well.
+          } else {
+            style += name + ':0px !important;';
+          }
         }
       }
     }
@@ -1006,7 +1030,9 @@ pagespeed.MobLayout.prototype.stripFloats_ = function(element) {
   // them at the end of the child-list in reverse order to their
   // accumulation here.
   var i, child, childElement, childPosition, floatStyle, reorderNodes = [];
-  var absoluteNodes = [];
+  var previousChild = null;
+  var displayOverride, absoluteNodes = [];
+  var marginBottom, previousChildHasNegativeBottomMargin = false;
 
   for (child = element.firstChild; child; child = child.nextSibling) {
     childElement = this.getMobilizeElement(child);
@@ -1025,7 +1051,24 @@ pagespeed.MobLayout.prototype.stripFloats_ = function(element) {
         var childStyle = window.getComputedStyle(childElement);
         floatStyle = childStyle.getPropertyValue('float');
         var floatRight = (floatStyle == 'right');
+        displayOverride = 'inline-block';
+
         if (floatRight || (floatStyle == 'left')) {
+          // One pattern seen on the web is to use a sequence of
+          // elements with style="float:right;clear:right;" to make
+          // a second column.  On mobile, this won't fly because there
+          // likely won't be room for a second column.  However, we
+          // don't want to reorder the nodes like a sequence of same-line
+          // "float:right"s.  Instead we want to just strip the float.
+          if (floatRight && (childStyle.getPropertyValue('clear') == 'right')) {
+            floatRight = false;
+            displayOverride = 'block';
+            if (previousChild && previousChildHasNegativeBottomMargin) {
+              pagespeed.MobUtil.setPropertyImportant(
+                  previousChild, 'margin-bottom', '0px');
+            }
+          }
+
           // It won't be effective to call style.removeProperty('float'); when
           // it's computed from CSS rules, but we can explicitly set it to
           // 'none' right on the object, which will override a value in
@@ -1037,12 +1080,17 @@ pagespeed.MobLayout.prototype.stripFloats_ = function(element) {
             // got a 'float' attribute, then we don't want to make it
             // visible now; we just want to strip the 'float'.
             pagespeed.MobUtil.setPropertyImportant(
-                childElement, 'display', 'inline-block');
+                childElement, 'display', displayOverride);
           }
         }
         if (floatRight) {
           reorderNodes.push(childElement);
         }
+        previousChild = childElement;
+        marginBottom = pagespeed.MobUtil.computedDimension(
+            childStyle, 'margin-bottom');
+        previousChildHasNegativeBottomMargin =
+            ((marginBottom != null) && (marginBottom < 0));
       }
     }
   }
@@ -1147,6 +1195,18 @@ pagespeed.MobLayout.prototype.expandColumns_ = function(element) {
         ((next == null) || (next.offsetLeft < offsetRight))) {
       this.removeWidthConstraint_(childElement, childComputedStyles[i]);
       this.expandColumns_(childElement);
+    }
+
+    var attr = element.getAttribute(
+        pagespeed.MobLayout.NEGATIVE_BOTTOM_MARGIN_ATTR_);
+    if (attr) {
+      element.removeAttribute(pagespeed.MobLayout.NEGATIVE_BOTTOM_MARGIN_ATTR_);
+      computedStyle = window.getComputedStyle(element);
+      var height = pagespeed.MobUtil.computedDimension(computedStyle, 'height');
+      if (height != null) {
+        pagespeed.MobUtil.setPropertyImportant(
+            element, 'margin-bottom', '' + -height + 'px');
+      }
     }
     prevOffsetRight = offsetRight;
   }
