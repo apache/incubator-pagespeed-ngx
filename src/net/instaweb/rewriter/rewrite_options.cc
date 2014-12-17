@@ -1952,11 +1952,12 @@ void RewriteOptions::AddProperties() {
       "If set to true, addition instrumentation js is added to that page that "
       "the beacon can collect more information.", true);
   AddBaseProperty(
-      false, &RewriteOptions::use_experimental_js_minifier_, "uejsm",
+      true, &RewriteOptions::use_experimental_js_minifier_, "uejsm",
       kUseExperimentalJsMinifier,
       kDirectoryScope,
-      "If set to true, uses the new JsTokenizer-based minifier. This option "
-      "will be removed when that minifier has matured.", true);
+      "If set to false, uses the old legacy::MinifyJs-based minifier. "
+      "This option will be deprecated once we do a successful release with the "
+      "new minifier.", true);
   AddBaseProperty(
       kDefaultMaxCombinedCssBytes,
       &RewriteOptions::max_combined_css_bytes_, "xcc",

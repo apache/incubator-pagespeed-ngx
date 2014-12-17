@@ -28,6 +28,7 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/js/js_minify.h"
+#include "pagespeed/kernel/js/js_tokenizer.h"
 #include "pagespeed/kernel/util/gflags.h"
 
 // Command-line javascript minifier and metadata printer.  Takes a single
@@ -46,8 +47,8 @@ DEFINE_bool(print_size_and_hash, false,
             "This yields results suitable for a "
             "ModPagespeedLibrary directive.");
 
-DEFINE_bool(use_experimental_minifier, false,
-            "Use the new experimental JS minifier to minify the input instead "
+DEFINE_bool(use_experimental_minifier, true,
+            "Use the new JS minifier to minify the input instead "
             "of the old one.");
 
 namespace {
@@ -59,9 +60,9 @@ bool JSMinifyMain(int argc, char** argv) {
     handler.Message(kError,
                     "Usage: \n"
                     "  js_minify [--print_size_and_hash] "
-                    "[--use_experimental_minifier] foo.js\n"
+                    "[--nouse_experimental_minifier] foo.js\n"
                     "  js_minify [--print_size_and_hash] "
-                    "[--use_experimental_minifier] < foo.js\n"
+                    "[--nouse_experimental_minifier] < foo.js\n"
                     "Without --print_size_and_hash prints minified foo.js\n"
                     "With --print_size_and_hash instead prints minified "
                     "size and content hash suitable for ModPagespeedLibrary\n");
