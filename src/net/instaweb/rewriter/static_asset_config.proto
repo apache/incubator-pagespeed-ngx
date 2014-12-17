@@ -15,8 +15,6 @@
 // Author: morlovich@google.com (Maksim Orlovich)
 syntax = "proto2";
 
-option optimize_for = LITE_RUNTIME;
-
 package net_instaweb;
 
 // Various resources used by PageSpeed filters that are served with help of

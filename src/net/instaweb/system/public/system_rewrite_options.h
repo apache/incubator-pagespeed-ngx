@@ -17,19 +17,27 @@
 #ifndef NET_INSTAWEB_SYSTEM_PUBLIC_SYSTEM_REWRITE_OPTIONS_H_
 #define NET_INSTAWEB_SYSTEM_PUBLIC_SYSTEM_REWRITE_OPTIONS_H_
 
+#include <set>
+
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/static_asset_config.pb.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/util/copy_on_write.h"
 
 namespace net_instaweb {
 
+class StaticAssetConfig;
 class ThreadSystem;
 
 // This manages configuration options specific to server implementations of
 // pagespeed optimization libraries, such as mod_pagespeed and ngx_pagespeed.
 class SystemRewriteOptions : public RewriteOptions {
  public:
+  typedef std::set<StaticAssetEnum::StaticAsset> StaticAssetSet;
+  static const char kStaticAssetCDN[];
+
   static void Initialize();
   static void Terminate();
 
@@ -230,6 +238,26 @@ class SystemRewriteOptions : public RewriteOptions {
     set_option(x, &test_proxy_);
   }
 
+  // Returns true if we were asked to configure StaticAssetManager to
+  // serve static assets that are usually compiled in from an external
+  // base URL.
+  bool has_static_assets_to_cdn() const {
+    return static_assets_to_cdn_.was_set();
+  }
+
+  // Particular assets to serve of an external URL.
+  const StaticAssetSet& static_assets_to_cdn() const {
+    return static_assets_to_cdn_.asset_set();
+  }
+
+  // Base URL to serve them from.
+  const GoogleString& static_assets_cdn_base() const {
+    return static_assets_to_cdn_.value();
+  }
+
+  // Fills in an options proto based on the CDN settings passed above.
+  void FillInStaticAssetCDNConf(StaticAssetConfig* out_conf) const;
+
   // This configures the fetcher we use for fallback handling if test_proxy()
   // is on:
   //  - If this is empty, we use the usual fetcher (e.g. Serf)
@@ -271,6 +299,25 @@ class SystemRewriteOptions : public RewriteOptions {
    public:
     virtual bool SetFromString(StringPiece value_string,
                                GoogleString* error_detail);
+  };
+
+  class StaticAssetCDNOptions : public OptionTemplateBase<GoogleString> {
+   public:
+    virtual bool SetFromString(StringPiece value_string,
+                               GoogleString* error_detail);
+
+    virtual GoogleString Signature(const Hasher* hasher) const;
+    virtual GoogleString ToString() const;
+    virtual void Merge(const OptionBase* src);
+
+    // value() here is just the base path.
+    const StaticAssetSet& asset_set() const {
+      return *static_assets_to_cdn_.get();
+    }
+
+   private:
+    // The string is the base path,
+    CopyOnWrite<StaticAssetSet> static_assets_to_cdn_;
   };
 
   // Keeps the properties added by this subclass.  These are merged into
@@ -360,6 +407,8 @@ class SystemRewriteOptions : public RewriteOptions {
   Option<int64> ipro_max_concurrent_recordings_;
   Option<int64> default_shared_memory_cache_kb_;
   Option<GoogleString> purge_method_;
+
+  StaticAssetCDNOptions static_assets_to_cdn_;
 
   DISALLOW_COPY_AND_ASSIGN(SystemRewriteOptions);
 };

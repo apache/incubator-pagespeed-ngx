@@ -414,6 +414,7 @@
         'system/loopback_route_fetcher_test.cc',
         'system/serf_url_async_fetcher_test.cc',
         'system/system_caches_test.cc',
+        'system/system_rewrite_options_test.cc',
         '<(DEPTH)/pagespeed/kernel/base/mem_debug.cc',
       ],
     },

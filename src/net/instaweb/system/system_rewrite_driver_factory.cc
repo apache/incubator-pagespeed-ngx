@@ -265,6 +265,20 @@ void SystemRewriteDriverFactory::ChildInit() {
 
   caches_->ChildInit();
 
+  // Static asset config is process-global.
+  const SystemRewriteOptions* conf =
+      SystemRewriteOptions::DynamicCast(default_options());
+  CHECK(conf != NULL);
+  if (conf->has_static_assets_to_cdn()) {
+    StaticAssetConfig out_conf;
+    conf->FillInStaticAssetCDNConf(&out_conf);
+    static_asset_manager()->ServeAssetsFromGStatic(
+        conf->static_assets_cdn_base());
+    static_asset_manager()->ApplyGStaticConfiguration(
+        out_conf,
+        StaticAssetManager::kInitialConfiguration);
+  }
+
   for (SystemServerContextSet::iterator
            p = uninitialized_server_contexts_.begin(),
            e = uninitialized_server_contexts_.end(); p != e; ++p) {

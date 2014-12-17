@@ -33,6 +33,8 @@ const char kFetchHttps[] = "FetchHttps";
 
 }  // namespace
 
+const char SystemRewriteOptions::kStaticAssetCDN[] = "StaticAssetCDN";
+
 RewriteOptions::Properties* SystemRewriteOptions::system_properties_ = NULL;
 
 void SystemRewriteOptions::Initialize() {
@@ -229,6 +231,13 @@ void SystemRewriteOptions::AddProperties() {
                     "this is set to PURGE, but you must ensure that only "
                     "authorized clients have access to this method.", false);
 
+  AddSystemProperty("",
+                    &SystemRewriteOptions:: static_assets_to_cdn_,
+                    "sacdn", kStaticAssetCDN, kProcessScopeStrict,
+                    "Configures serving of helper scripts from external "
+                    "URLs rather than from compiled-in versions via static "
+                    "handler.", true);
+
   MergeSubclassProperties(system_properties_);
 
   // We allow a special instantiation of the options with a null thread system
@@ -240,6 +249,9 @@ void SystemRewriteOptions::AddProperties() {
   // slurping read-only and slurp read/write.
   SystemRewriteOptions config("dummy_options", NULL);
   config.slurp_read_only_.DoNotUseForSignatureComputation();
+
+  // This one shouldn't be changed live either nor control any cache keys.
+  config.static_assets_to_cdn_.DoNotUseForSignatureComputation();
 }
 
 SystemRewriteOptions* SystemRewriteOptions::Clone() const {
@@ -274,6 +286,85 @@ bool SystemRewriteOptions::HttpsOptions::SetFromString(
     set(value.as_string());
   }
   return success;
+}
+
+bool SystemRewriteOptions::StaticAssetCDNOptions::SetFromString(
+    StringPiece value, GoogleString* error_detail) {
+  StringPieceVector args;
+  SplitStringPieceToVector(value, ",", &args, true);
+  if (args.size() < 2) {
+    *error_detail = "Not enough arguments.";
+    return false;
+  }
+
+  StaticAssetSet* new_set = static_assets_to_cdn_.MakeWriteable();
+  new_set->clear();
+  for (int i = 1, n = args.size(); i < n; ++i) {
+    StaticAssetEnum::StaticAsset value;
+    TrimWhitespace(&args[i]);
+    if (StaticAssetEnum::StaticAsset_Parse(args[i].as_string(), &value)) {
+      new_set->insert(value);
+    } else {
+      *error_detail = StrCat("Invalid static asset label: ", args[i]);
+      return false;
+    }
+  }
+
+  args[0].CopyToString(&mutable_value());
+  return true;
+}
+
+GoogleString SystemRewriteOptions::StaticAssetCDNOptions::Signature(
+    const Hasher* hasher) const {
+  LOG(DFATAL) << "StaticAssetCDNOptions shouldn't be in signature computation?";
+  return "";
+}
+
+GoogleString SystemRewriteOptions::StaticAssetCDNOptions::ToString() const {
+  GoogleString result = value();
+  for (StaticAssetSet::const_iterator i = static_assets_to_cdn_->begin();
+       i != static_assets_to_cdn_->end(); ++i) {
+    StrAppend(&result, "&", StaticAssetEnum::StaticAsset_Name(*i));
+  }
+  return result;
+}
+
+void SystemRewriteOptions::StaticAssetCDNOptions::Merge(const OptionBase* src) {
+  const SystemRewriteOptions::StaticAssetCDNOptions* cdn_src =
+      dynamic_cast<const SystemRewriteOptions::StaticAssetCDNOptions*>(src);
+  CHECK(cdn_src != NULL);
+  if (cdn_src->was_set()) {
+    mutable_value() = cdn_src->value();
+    static_assets_to_cdn_ = cdn_src->static_assets_to_cdn_;
+  }
+}
+
+void SystemRewriteOptions::FillInStaticAssetCDNConf(
+    StaticAssetConfig* out_conf) const {
+  const SystemRewriteOptions::StaticAssetSet& assets_to_enable =
+      static_assets_to_cdn();
+  for (SystemRewriteOptions::StaticAssetSet::const_iterator i =
+            assets_to_enable.begin();
+        i != assets_to_enable.end(); ++i) {
+    StaticAssetEnum::StaticAsset role = *i;
+    GoogleString name = StaticAssetEnum::StaticAsset_Name(role);
+    StaticAssetConfig::Asset* asset_out = out_conf->add_asset();
+    asset_out->set_role(role);
+    // For file base name, we just lowercase the enum and convert
+    // the last _ into . Combined with prefixes set below, this mostly produces
+    // sensible filenames, like opt-blank.gif, dbg-mobilize_xhr.js, as the last
+    // word in the enum tends to be the extension. A few cases get a bit weird
+    // (client_domain.rewriter, defer.iframe), but they don't seem worth
+    // worrying about for a developer-targeted feature.
+    LowerString(&name);
+    size_t last_under = name.find_last_of('_');
+    if (last_under != GoogleString::npos) {
+      name[last_under] = '.';
+    }
+    asset_out->set_name(name);
+    asset_out->set_debug_hash("dbg");
+    asset_out->set_opt_hash("opt");
+  }
 }
 
 }  // namespace net_instaweb
