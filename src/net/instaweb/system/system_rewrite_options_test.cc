@@ -90,8 +90,9 @@ TEST_F(SystemRewriteOptionsTest, StaticAssetCdn) {
   // Test merging.
 
   // Merge of something w/o these options.
-  SystemRewriteOptions options2(&thread_system_);
-  options_.Merge(options2);
+  scoped_ptr<SystemRewriteOptions> options2(
+      new SystemRewriteOptions(&thread_system_));
+  options_.Merge(*options2);
 
   EXPECT_TRUE(options_.has_static_assets_to_cdn());
   EXPECT_EQ("//foo.com", options_.static_assets_cdn_base());
@@ -105,13 +106,14 @@ TEST_F(SystemRewriteOptionsTest, StaticAssetCdn) {
               assets2.end());
 
   // Merge of something with the same path --- overwrites both.
-  SystemRewriteOptions options3(&thread_system_);
-  result = options3.ParseAndSetOptionFromName1(
+  scoped_ptr<SystemRewriteOptions> options3(
+      new SystemRewriteOptions(&thread_system_));
+  result = options3->ParseAndSetOptionFromName1(
       SystemRewriteOptions::kStaticAssetCDN,
       "//foo.com, BLANK_GIF, MOBILIZE_JS", &msg, &handler_);
   ASSERT_EQ(result, RewriteOptions::kOptionOk) << msg;
 
-  options_.Merge(options3);
+  options_.Merge(*options3);
   EXPECT_TRUE(options_.has_static_assets_to_cdn());
   EXPECT_EQ("//foo.com", options_.static_assets_cdn_base());
   const SystemRewriteOptions::StaticAssetSet& assets3 =
@@ -121,13 +123,14 @@ TEST_F(SystemRewriteOptionsTest, StaticAssetCdn) {
   EXPECT_TRUE(assets3.find(StaticAssetEnum::MOBILIZE_JS) != assets3.end());
 
   // Merge of something with different path --- overwrites as well.
-  SystemRewriteOptions options4(&thread_system_);
-  result = options4.ParseAndSetOptionFromName1(
+  scoped_ptr<SystemRewriteOptions> options4(
+      new SystemRewriteOptions(&thread_system_));
+  result = options4->ParseAndSetOptionFromName1(
       SystemRewriteOptions::kStaticAssetCDN,
       "//bar.com, MOBILIZE_JS", &msg, &handler_);
   ASSERT_EQ(result, RewriteOptions::kOptionOk) << msg;
 
-  options_.Merge(options4);
+  options_.Merge(*options4);
   EXPECT_TRUE(options_.has_static_assets_to_cdn());
   EXPECT_EQ("//bar.com", options_.static_assets_cdn_base());
   const SystemRewriteOptions::StaticAssetSet& assets4 =
