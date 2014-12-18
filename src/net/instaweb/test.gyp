@@ -466,6 +466,8 @@
       'type': 'executable',
       'dependencies': [
         'test_util',
+        '<(DEPTH)/net/instaweb/instaweb.gyp:instaweb_console_css_data2c',
+        '<(DEPTH)/net/instaweb/instaweb.gyp:instaweb_console_js_data2c',
         '<(DEPTH)/pagespeed/kernel.gyp:pthread_system',
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_base_core',
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_http',
@@ -481,6 +483,7 @@
         'rewriter/css_minify_speed_test.cc',
         'rewriter/domain_lawyer_speed_test.cc',
         'rewriter/image_speed_test.cc',
+        'rewriter/javascript_minify_speed_test.cc',
         'rewriter/rewrite_driver_speed_test.cc',
         '<(DEPTH)/pagespeed/kernel/base/fast_wildcard_group_speed_test.cc',
         '<(DEPTH)/pagespeed/kernel/base/string_multi_map_speed_test.cc',

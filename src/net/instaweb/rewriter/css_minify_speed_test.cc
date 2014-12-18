@@ -17,32 +17,65 @@
 // Author: sligocki@google.com (Shawn Ligocki)
 //
 //
-// CPU: Intel Nehalem with HyperThreading (2 cores) dL1:32KB dL2:256KB
+// CPU: Intel Nehalem with HyperThreading (4 cores) dL1:32KB dL2:256KB
 // Benchmark                         Time(ns)    CPU(ns) Iterations
 // ----------------------------------------------------------------
-// BM_EscapeStringNormal/1                 26         26   26923077
-// BM_EscapeStringNormal/8                 82         82    8750000
-// BM_EscapeStringNormal/64               482        480    1458333
-// BM_EscapeStringNormal/512             3107       3109     218750
-// BM_EscapeStringNormal/4k             25049      25000      28000
-// BM_EscapeStringSpecial/1                31         31   22580645
-// BM_EscapeStringSpecial/8               198        201    3888889
-// BM_EscapeStringSpecial/64              796        789     875000
-// BM_EscapeStringSpecial/512            5609       5600     100000
-// BM_EscapeStringSpecial/4k            44625      44356      15556
-// BM_EscapeStringSuperSpecial/1           43         43   16666667
-// BM_EscapeStringSuperSpecial/8          257        256    2692308
-// BM_EscapeStringSuperSpecial/64        1631       1623     437500
-// BM_EscapeStringSuperSpecial/512      11478      11629      63636
-// BM_EscapeStringSuperSpecial/4k       90466      91283       7778
+// BM_MinifyCss/64                        747        749    1000000
+// BM_MinifyCss/512                      1292       1297     520318
+// BM_MinifyCss/4k                     114173     114521       6107
+// BM_MinifyCss/32k                    983916     987433        709
+// BM_MinifyCss/256k                  8443277    8479080        100
+// BM_EscapeStringNormal/1                 33         33   21614011
+// BM_EscapeStringNormal/8                108        109    6519694
+// BM_EscapeStringNormal/64               566        568    1000000
+// BM_EscapeStringNormal/512             3572       3583     196299
+// BM_EscapeStringNormal/4k             28471      28582      23328
+// BM_EscapeStringSpecial/1                41         41   16962254
+// BM_EscapeStringSpecial/8               265        265    2593371
+// BM_EscapeStringSpecial/64             1287       1292     554701
+// BM_EscapeStringSpecial/512            9719       9756      71318
+// BM_EscapeStringSpecial/4k            75572      75791       9101
+// BM_EscapeStringSuperSpecial/1           47         47   15656068
+// BM_EscapeStringSuperSpecial/8          308        309    2304694
+// BM_EscapeStringSuperSpecial/64        1941       1947     361238
+// BM_EscapeStringSuperSpecial/512      13333      13375      51935
+// BM_EscapeStringSuperSpecial/4k      105527     105909       6768
 
+#include "net/instaweb/rewriter/public/css_minify.h"
 #include "pagespeed/kernel/base/benchmark.h"
+#include "pagespeed/kernel/base/null_message_handler.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_writer.h"
+#include "webutil/css/parser.h"
 #include "webutil/css/tostring.h"
 
 namespace net_instaweb {
 
+extern const char* CSS_console_css;
+
 namespace {
+
+static void BM_MinifyCss(int iters, int size) {
+  GoogleString in_text;
+  for (int i = 0; i < size; i += strlen(CSS_console_css)) {
+    in_text += CSS_console_css;
+  }
+  in_text.resize(size);
+
+  NullMessageHandler handler;
+  for (int i = 0; i < iters; ++i) {
+    Css::Parser parser(in_text);
+    parser.set_preservation_mode(true);
+    parser.set_quirks_mode(false);
+    scoped_ptr<Css::Stylesheet> stylesheet(parser.ParseRawStylesheet());
+
+    GoogleString result;
+    StringWriter writer(&result);
+    CssMinify::Stylesheet(*stylesheet, &writer, &handler);
+  }
+}
+BENCHMARK_RANGE(BM_MinifyCss, 1<<6, 1<<18);
 
 // Common-case, all chars are normal alpha-num that don't need to be escaped.
 static void BM_EscapeStringNormal(int iters, int size) {
