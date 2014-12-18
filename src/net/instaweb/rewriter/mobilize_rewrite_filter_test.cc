@@ -42,12 +42,12 @@ namespace {
 const char kTestDataDir[] = "/net/instaweb/rewriter/testdata/";
 const char kOriginal[] = "mobilize_test.html";
 const char kRewritten[] = "mobilize_test_output.html";
-const char kStyles[] = "<link rel=\"stylesheet\" href=\"mobilize.css\">";
+const char kStyles[] =
+    "<link rel=\"stylesheet\" href=\"/psajs/mobilize_css.0.css\">";
 const char kHeadAndViewport[] =
     "<script>var psDebugMode=false;var psNavMode=true;</script>"
     "<meta name='viewport' content='width=device-width'/>"
-    "<script src=\"goog/base.js\"></script>"
-    "<script src=\"mobilize_xhr.js\"></script>";
+    "<script src=\"/psajs/mobilize_xhr.0.js\"></script>";
 
 }  // namespace
 
@@ -102,14 +102,7 @@ class MobilizeRewriteFilterTest : public RewriteTestBase {
   }
 
   GoogleString ScriptsAtEndOfBody() {
-    return
-        "<script src=\"mobilize_util.js\"></script>"
-        "<script src=\"mobilize_color.js\"></script>"
-        "<script src=\"mobilize_logo.js\"></script>"
-        "<script src=\"mobilize_theme.js\"></script>"
-        "<script src=\"mobilize_layout.js\"></script>"
-        "<script src=\"mobilize_nav.js\"></script>"
-        "<script src=\"mobilize.js\"></script>";
+    return "<script src=\"/psajs/mobilize.0.js\"></script>";
   }
 
   scoped_ptr<MobilizeRewriteFilter> filter_;

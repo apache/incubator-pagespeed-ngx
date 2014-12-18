@@ -970,6 +970,7 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
     RewriteOptions::kMinResourceCacheTimeToRewriteMs,
     RewriteOptions::kMobLayout,
     RewriteOptions::kMobNav,
+    RewriteOptions::kMobStatic,
     RewriteOptions::kModifyCachingHeaders,
     RewriteOptions::kNoTransformOptimizedImages,
     RewriteOptions::kNonCacheablesForCachePartialHtml,

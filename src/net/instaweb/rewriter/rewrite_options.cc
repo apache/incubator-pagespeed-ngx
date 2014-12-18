@@ -225,6 +225,7 @@ const char RewriteOptions::kMinResourceCacheTimeToRewriteMs[] =
     "MinResourceCacheTimeToRewriteMs";
 const char RewriteOptions::kMobLayout[] = "MobLayout";
 const char RewriteOptions::kMobNav[] = "MobNav";
+const char RewriteOptions::kMobStatic[] = "MobStatic";
 const char RewriteOptions::kModifyCachingHeaders[] = "ModifyCachingHeaders";
 const char RewriteOptions::kNoTransformOptimizedImages[] =
     "NoTransformOptimizedImages";
@@ -2201,6 +2202,11 @@ void RewriteOptions::AddProperties() {
       false, &RewriteOptions::mob_nav_, "mnav", kMobNav,
       kQueryScope,
       "(experimental) whether to run navigation resynthesis when mobilizing",
+      true);
+  AddBaseProperty(
+      false, &RewriteOptions::mob_static_, "mstatic", kMobStatic,
+      kQueryScope,
+      "(experimental) whether to load discrete mobilization JS",
       true);
 
   // Test-only, so no enum.

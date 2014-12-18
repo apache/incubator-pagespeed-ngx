@@ -501,7 +501,7 @@ pagespeed.MobLogo.prototype.findLogoBackground_ = function(logo) {
 
 /**
  * Extract theme of the page. This is the entry method.
- * @param {Array.<string,Element>} imageMap
+ * @param {Object.<string,Element>} imageMap
  * @return {pagespeed.MobLogo.LogoRecord}
  * @export
  */

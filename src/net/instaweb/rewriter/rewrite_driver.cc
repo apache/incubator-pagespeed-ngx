@@ -1131,6 +1131,19 @@ void RewriteDriver::AddPreRenderFilters() {
       EnableRewriteFilter(RewriteOptions::kJavascriptMinId);
     }
   }
+
+  // Mobilize after JS-rewrite and before JS-inline.  We don't
+  // want to use the PageSpeed minifier to re-optimize the
+  // closure-compiled mobilization code because (a) it won't
+  // do much good (b) it would rename the URL to something we won't
+  // find on /mod_pagespeed_static and (c) we certainly don't want
+  // source-maps for the compiled code.  However, we do want
+  // the inliner to work on the small compiled mobilize_xhr.js.
+  if (rewrite_options->Enabled(RewriteOptions::kMobilize)) {
+    AppendOwnedPreRenderFilter(new MobilizeLabelFilter(this));
+    AppendOwnedPreRenderFilter(new MobilizeRewriteFilter(this));
+  }
+
   if (rewrite_options->Enabled(RewriteOptions::kInlineJavascript)) {
     // Inline small Javascript files.  Give JS minification a chance to run
     // before we decide what counts as "small".
@@ -1210,10 +1223,6 @@ void RewriteDriver::AddPostRenderFilters() {
     // Happens before RemoveQuotes but after everything else.  Note:
     // we Must left trim urls BEFORE quote removal.
     AddUnownedPostRenderFilter(url_trim_filter_.get());
-  }
-  if (rewrite_options->Enabled(RewriteOptions::kMobilize)) {
-    AddOwnedPostRenderFilter(new MobilizeLabelFilter(this));
-    AddOwnedPostRenderFilter(new MobilizeRewriteFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kFlushSubresources) &&
       !options()->pre_connect_url().empty()) {

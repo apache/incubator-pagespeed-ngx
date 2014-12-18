@@ -794,9 +794,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
     # Disabling of combine CSS should get inherited.
     check_not_from "$SECONDARY_SPDY_CONFIG" egrep -q "Combine Css"
   fi
-fi
 
-if [ "$SECONDARY_HOSTNAME" != "" ]; then
   if [ -n "$APACHE_LOG" ]; then
     start_test Encoded absolute urls are not respected
     HOST_NAME="http://absolute-urls.example.com"
@@ -853,6 +851,60 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $CSS -O $TESTTMP/combined.http
   check_from "$(extract_headers $TESTTMP/combined.http)" \
       grep -q "Issue809: Issue809Value"
+
+  start_test Base config has purging disabled.  Check error message syntax.
+  OUT=$($WGET_DUMP "$HOSTNAME/pagespeed_admin/cache?purge=*")
+  check_from "$OUT" fgrep -q "ModPagespeedEnableCachePurge on"
+
+  start_test mobilizer with inlined XHR-helper and other JS compiled.
+  MOB_SUFFIX_RE="\\.\\w+\\.js"
+  URL="http://${PAGESPEED_TEST_HOST}.suffix.net/mod_pagespeed_example/index.html"
+  # We use fetch_until because we only inline the XHR file once it's
+  # in cache.
+  http_proxy=$SECONDARY_HOSTNAME fetch_until -save "$URL" \
+    'fgrep -c window.XMLHttpRequest=' 1
+  OUT=$(grep script $FETCH_UNTIL_OUTFILE)
+  check_from "$OUT" egrep -q "pagespeed_static/mobilize$MOB_SUFFIX_RE"
+  check_not_from "$OUT" egrep -q "pagespeed_static/mobilize_xhr_opt$MOB_SUFFIX_RE"
+  check_not_from "$OUT" fgrep -q mobilize_xhr.js
+  check_not_from "$OUT" fgrep -q mobilize_layout.js
+  check_not_from "$OUT" fgrep -q mobilize_util.js
+  check_not_from "$OUT" fgrep -q mobilize_nav.js
+
+  start_test mobilizer with MobStatic on
+  OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \
+    "$URL?PageSpeedMobStatic=on" | grep script)
+  check_not_from "$OUT" egrep -q \
+    "pagespeed_static/mobilize_xhr_debug$MOB_SUFFIX_RE"
+  check_not_from "$OUT" egrep -q "pagespeed_static/mobilize_debug$MOB_SUFFIX_RE"
+  check_from "$OUT" fgrep -q mobilize_xhr.js
+  check_from "$OUT" fgrep -q mobilize_layout.js
+  check_from "$OUT" fgrep -q mobilize_util.js
+  check_from "$OUT" fgrep -q mobilize_nav.js
+
+  start_test mobilizer with debug on
+  OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \
+    "$URL?PageSpeedFilters=+debug" | grep script)
+  # We don't inline the XHR js in debug mode because it will be too large.
+  check_from "$OUT" egrep -q "pagespeed_static/mobilize_xhr_debug$MOB_SUFFIX_RE"
+  check_from "$OUT" egrep -q "pagespeed_static/mobilize_debug$MOB_SUFFIX_RE"
+  check_not_from "$OUT" fgrep -q mobilize_xhr.js
+  check_not_from "$OUT" fgrep -q mobilize_layout.js
+  check_not_from "$OUT" fgrep -q mobilize_util.js
+  check_not_from "$OUT" fgrep -q mobilize_nav.js
+
+  start_test no mobilization files if we turn mobilization off
+  OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \
+    --header 'X-PSA-Blocking-Rewrite: psatest' \
+    "$URL?PageSpeedFilters=-mobilize")
+  check_not_from "$OUT" fgrep -q window.XMLHttpRequest
+  check_not_from "$OUT" egrep -q "pagespeed_static/mobilize$MOB_SUFFIX_RE"
+  check_not_from "$OUT" egrep -q "pagespeed_static/mobilize_xhr_opt$MOB_SUFFIX_RE"
+  check_not_from "$OUT" fgrep -q mobilize_xhr.js
+  check_not_from "$OUT" fgrep -q mobilize_layout.js
+  check_not_from "$OUT" fgrep -q mobilize_util.js
+  check_not_from "$OUT" fgrep -q mobilize_nav.js
+
 fi
 
 start_test Issue 609 -- proxying non-.pagespeed content, and caching it locally
@@ -1018,10 +1070,6 @@ OUT=$($WGET_DUMP  --header 'X-PSA-Blocking-Rewrite: psatest' \
     $EXAMPLE_ROOT/styles/A.rewrite_css_images.css.pagespeed.cf.rnLTdExmOm.css)
 check_not_from "$OUT" grep -q 'png.pagespeed.'
 COMMENTING_BLOCK
-
-start_test Base config has purging disabled.  Check error message syntax.
-OUT=$($WGET_DUMP "$HOSTNAME/pagespeed_admin/cache?purge=*")
-check_from "$OUT" fgrep -q "ModPagespeedEnableCachePurge on"
 
 # Cleanup
 rm -rf $OUTDIR

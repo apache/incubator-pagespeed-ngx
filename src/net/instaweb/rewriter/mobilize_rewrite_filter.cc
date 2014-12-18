@@ -102,6 +102,7 @@ MobilizeRewriteFilter::MobilizeRewriteFilter(RewriteDriver* rewrite_driver)
       in_script_(false),
       use_js_layout_(rewrite_driver->options()->mob_layout()),
       use_js_nav_(rewrite_driver->options()->mob_nav()),
+      use_static_(rewrite_driver->options()->mob_static()),
       rewrite_js_(rewrite_driver->options()->Enabled(
           RewriteOptions::kRewriteJavascriptExternal)) {
   // If a domain proxy-suffix is specified, and it starts with ".",
@@ -114,6 +115,8 @@ MobilizeRewriteFilter::MobilizeRewriteFilter(RewriteDriver* rewrite_driver)
   if (!suffix.empty() && suffix.starts_with(".")) {
     suffix.remove_prefix(1);
     static_file_prefix_ = StrCat("//", suffix, "/static/");
+  } else {
+    use_static_ = false;
   }
   Statistics* stats = rewrite_driver->statistics();
   num_pages_mobilized_ = stats->GetVariable(kPagesMobilized);
@@ -248,13 +251,7 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
       if (use_js_layout_) {
         // Hijack XHR early so that we don't miss mobilizing any responses.
         // TODO(jmarantz): Move this block to inject before the first script.
-        if (rewrite_js_) {
-          StaticAssetManager* manager =
-              driver()->server_context()->static_asset_manager();
-          StringPiece js = manager->GetAsset(StaticAssetEnum::MOBILIZE_XHR_JS,
-                                             driver()->options());
-          driver()->InsertScriptAfterCurrent(js, false);
-        } else {
+        if (use_static_) {
           /*
            * Idealy I'd like to prevent base.js from loading the deps.  However
            * mobilize_nav.js currently loads a few dependencies that would be
@@ -273,6 +270,12 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
           GoogleString script_path = StrCat(
               static_file_prefix_, "mobilize_xhr.js");
           driver()->InsertScriptAfterCurrent(script_path, true);
+        } else {
+          StaticAssetManager* manager =
+              driver()->server_context()->static_asset_manager();
+          StringPiece js = manager->GetAssetUrl(
+              StaticAssetEnum::MOBILIZE_XHR_JS, driver()->options());
+          driver()->InsertScriptAfterCurrent(js, true);
         }
       }
     }
@@ -359,17 +362,22 @@ void MobilizeRewriteFilter::EndElementImpl(HtmlElement* element) {
       if (use_js_layout_) {
         if (!added_mob_js_) {
           added_mob_js_ = true;
-
-          if (rewrite_js_) {
-            AddStaticScript("mobilize_opt_jsc.js");
-          } else {
+          if (use_static_) {
             AddStaticScript("mobilize_util.js");
             AddStaticScript("mobilize_color.js");
             AddStaticScript("mobilize_logo.js");
             AddStaticScript("mobilize_theme.js");
             AddStaticScript("mobilize_layout.js");
-            AddStaticScript("mobilize_nav.js");
+            if (use_js_nav_) {
+              AddStaticScript("mobilize_nav.js");
+            }
             AddStaticScript("mobilize.js");
+          } else {
+            StaticAssetManager* manager =
+                driver()->server_context()->static_asset_manager();
+            StringPiece js = manager->GetAssetUrl(
+                StaticAssetEnum::MOBILIZE_JS, driver()->options());
+            driver()->InsertScriptBeforeCurrent(js, true);
           }
         }
       }
@@ -412,8 +420,17 @@ void MobilizeRewriteFilter::AppendStylesheet(const StringPiece& css_file_name,
   HtmlElement* link = driver()->NewElement(element, HtmlName::kLink);
   driver()->AppendChild(element, link);
   driver()->AddAttribute(link, HtmlName::kRel, "stylesheet");
-  driver()->AddAttribute(link, HtmlName::kHref, StrCat(static_file_prefix_,
-                                                       css_file_name));
+  // TODO(jmarantz): MOBILIZE_CSS is needed before this can work.
+  if (use_static_) {
+    driver()->AddAttribute(link, HtmlName::kHref, StrCat(static_file_prefix_,
+                                                         css_file_name));
+  } else {
+    StaticAssetManager* manager =
+        driver()->server_context()->static_asset_manager();
+    StringPiece css = manager->GetAssetUrl(
+        StaticAssetEnum::MOBILIZE_CSS, driver()->options());
+    driver()->AddAttribute(link, HtmlName::kHref, css);
+  }
 }
 
 void MobilizeRewriteFilter::AddStyle(HtmlElement* element) {

@@ -1531,6 +1531,24 @@ Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
   ModPagespeedCriticalImagesBeaconEnabled false
 </VirtualHost>
 
+# Host for testing mobilization and proxy_suffix.
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName @@PAGESPEED-TEST-HOST@@.suffix.net
+  ModPagespeedProxySuffix .suffix.net
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@_proxysuffix"
+  ModPagespeedRewriteLevel PassThrough
+  ModPagespeedMobLayout on
+  ModPagespeedMobNav on
+  ModPagespeedAlwaysMobilize on
+  ModPagespeedProxySuffix .suffix.net
+  ModPagespeedDisableFilters add_instrumentation,rewrite_images
+  ModPagespeedEnableFilters rewrite_domains,mobilize
+  ModPagespeedEnableFilters inline_javascript,rewrite_javascript
+  ModPagespeedDomainRewriteHyperlinks on
+  ModPagespeedCriticalImagesBeaconEnabled false
+</VirtualHost>
+
 #ALL_DIRECTIVES # Invoke all ModPagespeed* directives to make sure they work:
 #ALL_DIRECTIVES ModPagespeedAllow foo
 #ALL_DIRECTIVES ModPagespeedAnalyticsID 1234

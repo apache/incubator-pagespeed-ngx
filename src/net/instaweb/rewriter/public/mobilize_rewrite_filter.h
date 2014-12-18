@@ -135,8 +135,8 @@ class MobilizeRewriteFilter : public CommonFilter {
   bool added_progress_;
   bool in_script_;
   bool use_js_layout_;
-  bool use_js_logo_;
   bool use_js_nav_;
+  bool use_static_;
   bool rewrite_js_;
   GoogleString static_file_prefix_;
 

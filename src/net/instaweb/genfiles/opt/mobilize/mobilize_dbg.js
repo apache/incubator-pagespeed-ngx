@@ -567,72 +567,26 @@ goog.tagUnsealableClass = function(a) {
   !COMPILED && goog.defineClass.SEAL_CLASS_INSTANCES && (a.prototype[goog.UNSEALABLE_CONSTRUCTOR_PROPERTY_] = !0);
 };
 goog.UNSEALABLE_CONSTRUCTOR_PROPERTY_ = "goog_defineClass_legacy_unsealable";
-goog.dom = {};
-goog.dom.NodeType = {ELEMENT:1, ATTRIBUTE:2, TEXT:3, CDATA_SECTION:4, ENTITY_REFERENCE:5, ENTITY:6, PROCESSING_INSTRUCTION:7, COMMENT:8, DOCUMENT:9, DOCUMENT_TYPE:10, DOCUMENT_FRAGMENT:11, NOTATION:12};
-goog.dom.TagName = {A:"A", ABBR:"ABBR", ACRONYM:"ACRONYM", ADDRESS:"ADDRESS", APPLET:"APPLET", AREA:"AREA", ARTICLE:"ARTICLE", ASIDE:"ASIDE", AUDIO:"AUDIO", B:"B", BASE:"BASE", BASEFONT:"BASEFONT", BDI:"BDI", BDO:"BDO", BIG:"BIG", BLOCKQUOTE:"BLOCKQUOTE", BODY:"BODY", BR:"BR", BUTTON:"BUTTON", CANVAS:"CANVAS", CAPTION:"CAPTION", CENTER:"CENTER", CITE:"CITE", CODE:"CODE", COL:"COL", COLGROUP:"COLGROUP", COMMAND:"COMMAND", DATA:"DATA", DATALIST:"DATALIST", DD:"DD", DEL:"DEL", DETAILS:"DETAILS", DFN:"DFN", 
-DIALOG:"DIALOG", DIR:"DIR", DIV:"DIV", DL:"DL", DT:"DT", EM:"EM", EMBED:"EMBED", FIELDSET:"FIELDSET", FIGCAPTION:"FIGCAPTION", FIGURE:"FIGURE", FONT:"FONT", FOOTER:"FOOTER", FORM:"FORM", FRAME:"FRAME", FRAMESET:"FRAMESET", H1:"H1", H2:"H2", H3:"H3", H4:"H4", H5:"H5", H6:"H6", HEAD:"HEAD", HEADER:"HEADER", HGROUP:"HGROUP", HR:"HR", HTML:"HTML", I:"I", IFRAME:"IFRAME", IMG:"IMG", INPUT:"INPUT", INS:"INS", ISINDEX:"ISINDEX", KBD:"KBD", KEYGEN:"KEYGEN", LABEL:"LABEL", LEGEND:"LEGEND", LI:"LI", LINK:"LINK", 
-MAP:"MAP", MARK:"MARK", MATH:"MATH", MENU:"MENU", META:"META", METER:"METER", NAV:"NAV", NOFRAMES:"NOFRAMES", NOSCRIPT:"NOSCRIPT", OBJECT:"OBJECT", OL:"OL", OPTGROUP:"OPTGROUP", OPTION:"OPTION", OUTPUT:"OUTPUT", P:"P", PARAM:"PARAM", PRE:"PRE", PROGRESS:"PROGRESS", Q:"Q", RP:"RP", RT:"RT", RUBY:"RUBY", S:"S", SAMP:"SAMP", SCRIPT:"SCRIPT", SECTION:"SECTION", SELECT:"SELECT", SMALL:"SMALL", SOURCE:"SOURCE", SPAN:"SPAN", STRIKE:"STRIKE", STRONG:"STRONG", STYLE:"STYLE", SUB:"SUB", SUMMARY:"SUMMARY", 
-SUP:"SUP", SVG:"SVG", TABLE:"TABLE", TBODY:"TBODY", TD:"TD", TEXTAREA:"TEXTAREA", TFOOT:"TFOOT", TH:"TH", THEAD:"THEAD", TIME:"TIME", TITLE:"TITLE", TR:"TR", TRACK:"TRACK", TT:"TT", U:"U", UL:"UL", VAR:"VAR", VIDEO:"VIDEO", WBR:"WBR"};
-goog.math = {};
-goog.math.Size = function(a, b) {
-  this.width = a;
-  this.height = b;
+goog.debug = {};
+goog.debug.Error = function(a) {
+  if (Error.captureStackTrace) {
+    Error.captureStackTrace(this, goog.debug.Error);
+  } else {
+    var b = Error().stack;
+    b && (this.stack = b);
+  }
+  a && (this.message = String(a));
 };
-goog.math.Size.equals = function(a, b) {
-  return a == b ? !0 : a && b ? a.width == b.width && a.height == b.height : !1;
-};
-goog.math.Size.prototype.clone = function() {
-  return new goog.math.Size(this.width, this.height);
-};
-goog.DEBUG && (goog.math.Size.prototype.toString = function() {
-  return "(" + this.width + " x " + this.height + ")";
-});
-goog.math.Size.prototype.getLongest = function() {
-  return Math.max(this.width, this.height);
-};
-goog.math.Size.prototype.getShortest = function() {
-  return Math.min(this.width, this.height);
-};
-goog.math.Size.prototype.area = function() {
-  return this.width * this.height;
-};
-goog.math.Size.prototype.perimeter = function() {
-  return 2 * (this.width + this.height);
-};
-goog.math.Size.prototype.aspectRatio = function() {
-  return this.width / this.height;
-};
-goog.math.Size.prototype.isEmpty = function() {
-  return!this.area();
-};
-goog.math.Size.prototype.ceil = function() {
-  this.width = Math.ceil(this.width);
-  this.height = Math.ceil(this.height);
-  return this;
-};
-goog.math.Size.prototype.fitsInside = function(a) {
-  return this.width <= a.width && this.height <= a.height;
-};
-goog.math.Size.prototype.floor = function() {
-  this.width = Math.floor(this.width);
-  this.height = Math.floor(this.height);
-  return this;
-};
-goog.math.Size.prototype.round = function() {
-  this.width = Math.round(this.width);
-  this.height = Math.round(this.height);
-  return this;
-};
-goog.math.Size.prototype.scale = function(a, b) {
-  var c = goog.isNumber(b) ? b : a;
-  this.width *= a;
-  this.height *= c;
-  return this;
-};
-goog.math.Size.prototype.scaleToFit = function(a) {
-  a = this.aspectRatio() > a.aspectRatio() ? a.width / this.width : a.height / this.height;
-  return this.scale(a);
-};
+goog.inherits(goog.debug.Error, Error);
+goog.debug.Error.prototype.name = "CustomError";
+goog.color = {};
+goog.color.names = {aliceblue:"#f0f8ff", antiquewhite:"#faebd7", aqua:"#00ffff", aquamarine:"#7fffd4", azure:"#f0ffff", beige:"#f5f5dc", bisque:"#ffe4c4", black:"#000000", blanchedalmond:"#ffebcd", blue:"#0000ff", blueviolet:"#8a2be2", brown:"#a52a2a", burlywood:"#deb887", cadetblue:"#5f9ea0", chartreuse:"#7fff00", chocolate:"#d2691e", coral:"#ff7f50", cornflowerblue:"#6495ed", cornsilk:"#fff8dc", crimson:"#dc143c", cyan:"#00ffff", darkblue:"#00008b", darkcyan:"#008b8b", darkgoldenrod:"#b8860b", 
+darkgray:"#a9a9a9", darkgreen:"#006400", darkgrey:"#a9a9a9", darkkhaki:"#bdb76b", darkmagenta:"#8b008b", darkolivegreen:"#556b2f", darkorange:"#ff8c00", darkorchid:"#9932cc", darkred:"#8b0000", darksalmon:"#e9967a", darkseagreen:"#8fbc8f", darkslateblue:"#483d8b", darkslategray:"#2f4f4f", darkslategrey:"#2f4f4f", darkturquoise:"#00ced1", darkviolet:"#9400d3", deeppink:"#ff1493", deepskyblue:"#00bfff", dimgray:"#696969", dimgrey:"#696969", dodgerblue:"#1e90ff", firebrick:"#b22222", floralwhite:"#fffaf0", 
+forestgreen:"#228b22", fuchsia:"#ff00ff", gainsboro:"#dcdcdc", ghostwhite:"#f8f8ff", gold:"#ffd700", goldenrod:"#daa520", gray:"#808080", green:"#008000", greenyellow:"#adff2f", grey:"#808080", honeydew:"#f0fff0", hotpink:"#ff69b4", indianred:"#cd5c5c", indigo:"#4b0082", ivory:"#fffff0", khaki:"#f0e68c", lavender:"#e6e6fa", lavenderblush:"#fff0f5", lawngreen:"#7cfc00", lemonchiffon:"#fffacd", lightblue:"#add8e6", lightcoral:"#f08080", lightcyan:"#e0ffff", lightgoldenrodyellow:"#fafad2", lightgray:"#d3d3d3", 
+lightgreen:"#90ee90", lightgrey:"#d3d3d3", lightpink:"#ffb6c1", lightsalmon:"#ffa07a", lightseagreen:"#20b2aa", lightskyblue:"#87cefa", lightslategray:"#778899", lightslategrey:"#778899", lightsteelblue:"#b0c4de", lightyellow:"#ffffe0", lime:"#00ff00", limegreen:"#32cd32", linen:"#faf0e6", magenta:"#ff00ff", maroon:"#800000", mediumaquamarine:"#66cdaa", mediumblue:"#0000cd", mediumorchid:"#ba55d3", mediumpurple:"#9370db", mediumseagreen:"#3cb371", mediumslateblue:"#7b68ee", mediumspringgreen:"#00fa9a", 
+mediumturquoise:"#48d1cc", mediumvioletred:"#c71585", midnightblue:"#191970", mintcream:"#f5fffa", mistyrose:"#ffe4e1", moccasin:"#ffe4b5", navajowhite:"#ffdead", navy:"#000080", oldlace:"#fdf5e6", olive:"#808000", olivedrab:"#6b8e23", orange:"#ffa500", orangered:"#ff4500", orchid:"#da70d6", palegoldenrod:"#eee8aa", palegreen:"#98fb98", paleturquoise:"#afeeee", palevioletred:"#db7093", papayawhip:"#ffefd5", peachpuff:"#ffdab9", peru:"#cd853f", pink:"#ffc0cb", plum:"#dda0dd", powderblue:"#b0e0e6", 
+purple:"#800080", red:"#ff0000", rosybrown:"#bc8f8f", royalblue:"#4169e1", saddlebrown:"#8b4513", salmon:"#fa8072", sandybrown:"#f4a460", seagreen:"#2e8b57", seashell:"#fff5ee", sienna:"#a0522d", silver:"#c0c0c0", skyblue:"#87ceeb", slateblue:"#6a5acd", slategray:"#708090", slategrey:"#708090", snow:"#fffafa", springgreen:"#00ff7f", steelblue:"#4682b4", tan:"#d2b48c", teal:"#008080", thistle:"#d8bfd8", tomato:"#ff6347", turquoise:"#40e0d0", violet:"#ee82ee", wheat:"#f5deb3", white:"#ffffff", whitesmoke:"#f5f5f5", 
+yellow:"#ffff00", yellowgreen:"#9acd32"};
 goog.object = {};
 goog.object.forEach = function(a, b, c) {
   for (var d in a) {
@@ -844,6 +798,12 @@ goog.object.createImmutableView = function(a) {
 goog.object.isImmutableView = function(a) {
   return!!Object.isFrozen && Object.isFrozen(a);
 };
+goog.dom = {};
+goog.dom.NodeType = {ELEMENT:1, ATTRIBUTE:2, TEXT:3, CDATA_SECTION:4, ENTITY_REFERENCE:5, ENTITY:6, PROCESSING_INSTRUCTION:7, COMMENT:8, DOCUMENT:9, DOCUMENT_TYPE:10, DOCUMENT_FRAGMENT:11, NOTATION:12};
+goog.dom.TagName = {A:"A", ABBR:"ABBR", ACRONYM:"ACRONYM", ADDRESS:"ADDRESS", APPLET:"APPLET", AREA:"AREA", ARTICLE:"ARTICLE", ASIDE:"ASIDE", AUDIO:"AUDIO", B:"B", BASE:"BASE", BASEFONT:"BASEFONT", BDI:"BDI", BDO:"BDO", BIG:"BIG", BLOCKQUOTE:"BLOCKQUOTE", BODY:"BODY", BR:"BR", BUTTON:"BUTTON", CANVAS:"CANVAS", CAPTION:"CAPTION", CENTER:"CENTER", CITE:"CITE", CODE:"CODE", COL:"COL", COLGROUP:"COLGROUP", COMMAND:"COMMAND", DATA:"DATA", DATALIST:"DATALIST", DD:"DD", DEL:"DEL", DETAILS:"DETAILS", DFN:"DFN", 
+DIALOG:"DIALOG", DIR:"DIR", DIV:"DIV", DL:"DL", DT:"DT", EM:"EM", EMBED:"EMBED", FIELDSET:"FIELDSET", FIGCAPTION:"FIGCAPTION", FIGURE:"FIGURE", FONT:"FONT", FOOTER:"FOOTER", FORM:"FORM", FRAME:"FRAME", FRAMESET:"FRAMESET", H1:"H1", H2:"H2", H3:"H3", H4:"H4", H5:"H5", H6:"H6", HEAD:"HEAD", HEADER:"HEADER", HGROUP:"HGROUP", HR:"HR", HTML:"HTML", I:"I", IFRAME:"IFRAME", IMG:"IMG", INPUT:"INPUT", INS:"INS", ISINDEX:"ISINDEX", KBD:"KBD", KEYGEN:"KEYGEN", LABEL:"LABEL", LEGEND:"LEGEND", LI:"LI", LINK:"LINK", 
+MAP:"MAP", MARK:"MARK", MATH:"MATH", MENU:"MENU", META:"META", METER:"METER", NAV:"NAV", NOFRAMES:"NOFRAMES", NOSCRIPT:"NOSCRIPT", OBJECT:"OBJECT", OL:"OL", OPTGROUP:"OPTGROUP", OPTION:"OPTION", OUTPUT:"OUTPUT", P:"P", PARAM:"PARAM", PRE:"PRE", PROGRESS:"PROGRESS", Q:"Q", RP:"RP", RT:"RT", RUBY:"RUBY", S:"S", SAMP:"SAMP", SCRIPT:"SCRIPT", SECTION:"SECTION", SELECT:"SELECT", SMALL:"SMALL", SOURCE:"SOURCE", SPAN:"SPAN", STRIKE:"STRIKE", STRONG:"STRONG", STYLE:"STYLE", SUB:"SUB", SUMMARY:"SUMMARY", 
+SUP:"SUP", SVG:"SVG", TABLE:"TABLE", TBODY:"TBODY", TD:"TD", TEXTAREA:"TEXTAREA", TFOOT:"TFOOT", TH:"TH", THEAD:"THEAD", TIME:"TIME", TITLE:"TITLE", TR:"TR", TRACK:"TRACK", TT:"TT", U:"U", UL:"UL", VAR:"VAR", VIDEO:"VIDEO", WBR:"WBR"};
 goog.string = {};
 goog.string.DETECT_DOUBLE_ESCAPING = !1;
 goog.string.Unicode = {NBSP:"\u00a0"};
@@ -1241,18 +1201,6 @@ goog.labs.userAgent.util.extractVersionTuples = function(a) {
   }
   return c;
 };
-goog.debug = {};
-goog.debug.Error = function(a) {
-  if (Error.captureStackTrace) {
-    Error.captureStackTrace(this, goog.debug.Error);
-  } else {
-    var b = Error().stack;
-    b && (this.stack = b);
-  }
-  a && (this.message = String(a));
-};
-goog.inherits(goog.debug.Error, Error);
-goog.debug.Error.prototype.name = "CustomError";
 goog.asserts = {};
 goog.asserts.ENABLE_ASSERTS = goog.DEBUG;
 goog.asserts.AssertionError = function(a, b) {
@@ -1748,6 +1696,128 @@ goog.array.shuffle = function(a, b) {
     a[e] = f;
   }
 };
+goog.labs.userAgent.engine = {};
+goog.labs.userAgent.engine.isPresto = function() {
+  return goog.labs.userAgent.util.matchUserAgent("Presto");
+};
+goog.labs.userAgent.engine.isTrident = function() {
+  return goog.labs.userAgent.util.matchUserAgent("Trident") || goog.labs.userAgent.util.matchUserAgent("MSIE");
+};
+goog.labs.userAgent.engine.isWebKit = function() {
+  return goog.labs.userAgent.util.matchUserAgentIgnoreCase("WebKit");
+};
+goog.labs.userAgent.engine.isGecko = function() {
+  return goog.labs.userAgent.util.matchUserAgent("Gecko") && !goog.labs.userAgent.engine.isWebKit() && !goog.labs.userAgent.engine.isTrident();
+};
+goog.labs.userAgent.engine.getVersion = function() {
+  var a = goog.labs.userAgent.util.getUserAgent();
+  if (a) {
+    var a = goog.labs.userAgent.util.extractVersionTuples(a), b = a[1];
+    if (b) {
+      return "Gecko" == b[0] ? goog.labs.userAgent.engine.getVersionForKey_(a, "Firefox") : b[1];
+    }
+    var a = a[0], c;
+    if (a && (c = a[2]) && (c = /Trident\/([^\s;]+)/.exec(c))) {
+      return c[1];
+    }
+  }
+  return "";
+};
+goog.labs.userAgent.engine.isVersionOrHigher = function(a) {
+  return 0 <= goog.string.compareVersions(goog.labs.userAgent.engine.getVersion(), a);
+};
+goog.labs.userAgent.engine.getVersionForKey_ = function(a, b) {
+  var c = goog.array.find(a, function(a) {
+    return b == a[0];
+  });
+  return c && c[1] || "";
+};
+goog.labs.userAgent.browser = {};
+goog.labs.userAgent.browser.matchOpera_ = function() {
+  return goog.labs.userAgent.util.matchUserAgent("Opera") || goog.labs.userAgent.util.matchUserAgent("OPR");
+};
+goog.labs.userAgent.browser.matchIE_ = function() {
+  return goog.labs.userAgent.util.matchUserAgent("Trident") || goog.labs.userAgent.util.matchUserAgent("MSIE");
+};
+goog.labs.userAgent.browser.matchFirefox_ = function() {
+  return goog.labs.userAgent.util.matchUserAgent("Firefox");
+};
+goog.labs.userAgent.browser.matchSafari_ = function() {
+  return goog.labs.userAgent.util.matchUserAgent("Safari") && !goog.labs.userAgent.util.matchUserAgent("Chrome") && !goog.labs.userAgent.util.matchUserAgent("CriOS") && !goog.labs.userAgent.util.matchUserAgent("Android");
+};
+goog.labs.userAgent.browser.matchCoast_ = function() {
+  return goog.labs.userAgent.util.matchUserAgent("Coast");
+};
+goog.labs.userAgent.browser.matchIosWebview_ = function() {
+  return(goog.labs.userAgent.util.matchUserAgent("iPad") || goog.labs.userAgent.util.matchUserAgent("iPhone")) && !goog.labs.userAgent.browser.matchSafari_() && !goog.labs.userAgent.browser.matchChrome_() && !goog.labs.userAgent.browser.matchCoast_() && goog.labs.userAgent.util.matchUserAgent("AppleWebKit");
+};
+goog.labs.userAgent.browser.matchChrome_ = function() {
+  return goog.labs.userAgent.util.matchUserAgent("Chrome") || goog.labs.userAgent.util.matchUserAgent("CriOS");
+};
+goog.labs.userAgent.browser.matchAndroidBrowser_ = function() {
+  return!goog.labs.userAgent.browser.isChrome() && goog.labs.userAgent.util.matchUserAgent("Android");
+};
+goog.labs.userAgent.browser.isOpera = goog.labs.userAgent.browser.matchOpera_;
+goog.labs.userAgent.browser.isIE = goog.labs.userAgent.browser.matchIE_;
+goog.labs.userAgent.browser.isFirefox = goog.labs.userAgent.browser.matchFirefox_;
+goog.labs.userAgent.browser.isSafari = goog.labs.userAgent.browser.matchSafari_;
+goog.labs.userAgent.browser.isCoast = goog.labs.userAgent.browser.matchCoast_;
+goog.labs.userAgent.browser.isIosWebview = goog.labs.userAgent.browser.matchIosWebview_;
+goog.labs.userAgent.browser.isChrome = goog.labs.userAgent.browser.matchChrome_;
+goog.labs.userAgent.browser.isAndroidBrowser = goog.labs.userAgent.browser.matchAndroidBrowser_;
+goog.labs.userAgent.browser.isSilk = function() {
+  return goog.labs.userAgent.util.matchUserAgent("Silk");
+};
+goog.labs.userAgent.browser.getVersion = function() {
+  function a(a) {
+    a = goog.array.find(a, d);
+    return c[a] || "";
+  }
+  var b = goog.labs.userAgent.util.getUserAgent();
+  if (goog.labs.userAgent.browser.isIE()) {
+    return goog.labs.userAgent.browser.getIEVersion_(b);
+  }
+  var b = goog.labs.userAgent.util.extractVersionTuples(b), c = {};
+  goog.array.forEach(b, function(a) {
+    c[a[0]] = a[1];
+  });
+  var d = goog.partial(goog.object.containsKey, c);
+  return goog.labs.userAgent.browser.isOpera() ? a(["Version", "Opera", "OPR"]) : goog.labs.userAgent.browser.isChrome() ? a(["Chrome", "CriOS"]) : (b = b[2]) && b[1] || "";
+};
+goog.labs.userAgent.browser.isVersionOrHigher = function(a) {
+  return 0 <= goog.string.compareVersions(goog.labs.userAgent.browser.getVersion(), a);
+};
+goog.labs.userAgent.browser.getIEVersion_ = function(a) {
+  var b = /rv: *([\d\.]*)/.exec(a);
+  if (b && b[1]) {
+    return b[1];
+  }
+  var b = "", c = /MSIE +([\d\.]+)/.exec(a);
+  if (c && c[1]) {
+    if (a = /Trident\/(\d.\d)/.exec(a), "7.0" == c[1]) {
+      if (a && a[1]) {
+        switch(a[1]) {
+          case "4.0":
+            b = "8.0";
+            break;
+          case "5.0":
+            b = "9.0";
+            break;
+          case "6.0":
+            b = "10.0";
+            break;
+          case "7.0":
+            b = "11.0";
+        }
+      } else {
+        b = "7.0";
+      }
+    } else {
+      b = c[1];
+    }
+  }
+  return b;
+};
 goog.dom.classlist = {};
 goog.dom.classlist.ALWAYS_USE_DOM_TOKEN_LIST = !1;
 goog.dom.classlist.get = function(a) {
@@ -1815,6 +1885,96 @@ goog.dom.classlist.addRemove = function(a, b, c) {
   goog.dom.classlist.remove(a, b);
   goog.dom.classlist.add(a, c);
 };
+goog.userAgent = {};
+goog.userAgent.ASSUME_IE = !1;
+goog.userAgent.ASSUME_GECKO = !1;
+goog.userAgent.ASSUME_WEBKIT = !1;
+goog.userAgent.ASSUME_MOBILE_WEBKIT = !1;
+goog.userAgent.ASSUME_OPERA = !1;
+goog.userAgent.ASSUME_ANY_VERSION = !1;
+goog.userAgent.BROWSER_KNOWN_ = goog.userAgent.ASSUME_IE || goog.userAgent.ASSUME_GECKO || goog.userAgent.ASSUME_MOBILE_WEBKIT || goog.userAgent.ASSUME_WEBKIT || goog.userAgent.ASSUME_OPERA;
+goog.userAgent.getUserAgentString = function() {
+  return goog.labs.userAgent.util.getUserAgent();
+};
+goog.userAgent.getNavigator = function() {
+  return goog.global.navigator || null;
+};
+goog.userAgent.OPERA = goog.userAgent.BROWSER_KNOWN_ ? goog.userAgent.ASSUME_OPERA : goog.labs.userAgent.browser.isOpera();
+goog.userAgent.IE = goog.userAgent.BROWSER_KNOWN_ ? goog.userAgent.ASSUME_IE : goog.labs.userAgent.browser.isIE();
+goog.userAgent.GECKO = goog.userAgent.BROWSER_KNOWN_ ? goog.userAgent.ASSUME_GECKO : goog.labs.userAgent.engine.isGecko();
+goog.userAgent.WEBKIT = goog.userAgent.BROWSER_KNOWN_ ? goog.userAgent.ASSUME_WEBKIT || goog.userAgent.ASSUME_MOBILE_WEBKIT : goog.labs.userAgent.engine.isWebKit();
+goog.userAgent.isMobile_ = function() {
+  return goog.userAgent.WEBKIT && goog.labs.userAgent.util.matchUserAgent("Mobile");
+};
+goog.userAgent.MOBILE = goog.userAgent.ASSUME_MOBILE_WEBKIT || goog.userAgent.isMobile_();
+goog.userAgent.SAFARI = goog.userAgent.WEBKIT;
+goog.userAgent.determinePlatform_ = function() {
+  var a = goog.userAgent.getNavigator();
+  return a && a.platform || "";
+};
+goog.userAgent.PLATFORM = goog.userAgent.determinePlatform_();
+goog.userAgent.ASSUME_MAC = !1;
+goog.userAgent.ASSUME_WINDOWS = !1;
+goog.userAgent.ASSUME_LINUX = !1;
+goog.userAgent.ASSUME_X11 = !1;
+goog.userAgent.ASSUME_ANDROID = !1;
+goog.userAgent.ASSUME_IPHONE = !1;
+goog.userAgent.ASSUME_IPAD = !1;
+goog.userAgent.PLATFORM_KNOWN_ = goog.userAgent.ASSUME_MAC || goog.userAgent.ASSUME_WINDOWS || goog.userAgent.ASSUME_LINUX || goog.userAgent.ASSUME_X11 || goog.userAgent.ASSUME_ANDROID || goog.userAgent.ASSUME_IPHONE || goog.userAgent.ASSUME_IPAD;
+goog.userAgent.initPlatform_ = function() {
+  goog.userAgent.detectedMac_ = goog.string.contains(goog.userAgent.PLATFORM, "Mac");
+  goog.userAgent.detectedWindows_ = goog.string.contains(goog.userAgent.PLATFORM, "Win");
+  goog.userAgent.detectedLinux_ = goog.string.contains(goog.userAgent.PLATFORM, "Linux");
+  var a = goog.userAgent.getUserAgentString();
+  goog.userAgent.detectedAndroid_ = !!a && goog.string.contains(a, "Android");
+  goog.userAgent.detectedIPhone_ = !!a && goog.string.contains(a, "iPhone");
+  goog.userAgent.detectedIPad_ = !!a && goog.string.contains(a, "iPad");
+};
+goog.userAgent.PLATFORM_KNOWN_ || goog.userAgent.initPlatform_();
+goog.userAgent.MAC = goog.userAgent.PLATFORM_KNOWN_ ? goog.userAgent.ASSUME_MAC : goog.userAgent.detectedMac_;
+goog.userAgent.WINDOWS = goog.userAgent.PLATFORM_KNOWN_ ? goog.userAgent.ASSUME_WINDOWS : goog.userAgent.detectedWindows_;
+goog.userAgent.LINUX = goog.userAgent.PLATFORM_KNOWN_ ? goog.userAgent.ASSUME_LINUX : goog.userAgent.detectedLinux_;
+goog.userAgent.isX11_ = function() {
+  var a = goog.userAgent.getNavigator();
+  return!!a && goog.string.contains(a.appVersion || "", "X11");
+};
+goog.userAgent.X11 = goog.userAgent.PLATFORM_KNOWN_ ? goog.userAgent.ASSUME_X11 : goog.userAgent.isX11_();
+goog.userAgent.ANDROID = goog.userAgent.PLATFORM_KNOWN_ ? goog.userAgent.ASSUME_ANDROID : goog.userAgent.detectedAndroid_;
+goog.userAgent.IPHONE = goog.userAgent.PLATFORM_KNOWN_ ? goog.userAgent.ASSUME_IPHONE : goog.userAgent.detectedIPhone_;
+goog.userAgent.IPAD = goog.userAgent.PLATFORM_KNOWN_ ? goog.userAgent.ASSUME_IPAD : goog.userAgent.detectedIPad_;
+goog.userAgent.determineVersion_ = function() {
+  var a = "", b;
+  if (goog.userAgent.OPERA && goog.global.opera) {
+    return a = goog.global.opera.version, goog.isFunction(a) ? a() : a;
+  }
+  goog.userAgent.GECKO ? b = /rv\:([^\);]+)(\)|;)/ : goog.userAgent.IE ? b = /\b(?:MSIE|rv)[: ]([^\);]+)(\)|;)/ : goog.userAgent.WEBKIT && (b = /WebKit\/(\S+)/);
+  b && (a = (a = b.exec(goog.userAgent.getUserAgentString())) ? a[1] : "");
+  return goog.userAgent.IE && (b = goog.userAgent.getDocumentMode_(), b > parseFloat(a)) ? String(b) : a;
+};
+goog.userAgent.getDocumentMode_ = function() {
+  var a = goog.global.document;
+  return a ? a.documentMode : void 0;
+};
+goog.userAgent.VERSION = goog.userAgent.determineVersion_();
+goog.userAgent.compare = function(a, b) {
+  return goog.string.compareVersions(a, b);
+};
+goog.userAgent.isVersionOrHigherCache_ = {};
+goog.userAgent.isVersionOrHigher = function(a) {
+  return goog.userAgent.ASSUME_ANY_VERSION || goog.userAgent.isVersionOrHigherCache_[a] || (goog.userAgent.isVersionOrHigherCache_[a] = 0 <= goog.string.compareVersions(goog.userAgent.VERSION, a));
+};
+goog.userAgent.isVersion = goog.userAgent.isVersionOrHigher;
+goog.userAgent.isDocumentModeOrHigher = function(a) {
+  return goog.userAgent.IE && goog.userAgent.DOCUMENT_MODE >= a;
+};
+goog.userAgent.isDocumentMode = goog.userAgent.isDocumentModeOrHigher;
+goog.userAgent.DOCUMENT_MODE = function() {
+  var a = goog.global.document;
+  return a && goog.userAgent.IE ? goog.userAgent.getDocumentMode_() || ("CSS1Compat" == a.compatMode ? parseInt(goog.userAgent.VERSION, 10) : 5) : void 0;
+}();
+goog.dom.BrowserFeature = {CAN_ADD_NAME_OR_TYPE_ATTRIBUTES:!goog.userAgent.IE || goog.userAgent.isDocumentModeOrHigher(9), CAN_USE_CHILDREN_ATTRIBUTE:!goog.userAgent.GECKO && !goog.userAgent.IE || goog.userAgent.IE && goog.userAgent.isDocumentModeOrHigher(9) || goog.userAgent.GECKO && goog.userAgent.isVersionOrHigher("1.9.1"), CAN_USE_INNER_TEXT:goog.userAgent.IE && !goog.userAgent.isVersionOrHigher("9"), CAN_USE_PARENT_ELEMENT_PROPERTY:goog.userAgent.IE || goog.userAgent.OPERA || goog.userAgent.WEBKIT, 
+INNER_HTML_NEEDS_SCOPED_ELEMENT:goog.userAgent.IE, LEGACY_IE_RANGES:goog.userAgent.IE && !goog.userAgent.isDocumentModeOrHigher(9)};
+goog.math = {};
 goog.math.randomInt = function(a) {
   return Math.floor(Math.random() * a);
 };
@@ -1927,6 +2087,236 @@ goog.math.safeFloor = function(a, b) {
 goog.math.safeCeil = function(a, b) {
   goog.asserts.assert(!goog.isDef(b) || 0 < b);
   return Math.ceil(a - (b || 2E-15));
+};
+goog.color.parse = function(a) {
+  var b = {};
+  a = String(a);
+  var c = goog.color.prependHashIfNecessaryHelper(a);
+  if (goog.color.isValidHexColor_(c)) {
+    return b.hex = goog.color.normalizeHex(c), b.type = "hex", b;
+  }
+  c = goog.color.isValidRgbColor_(a);
+  if (c.length) {
+    return b.hex = goog.color.rgbArrayToHex(c), b.type = "rgb", b;
+  }
+  if (goog.color.names && (c = goog.color.names[a.toLowerCase()])) {
+    return b.hex = c, b.type = "named", b;
+  }
+  throw Error(a + " is not a valid color string");
+};
+goog.color.isValidColor = function(a) {
+  var b = goog.color.prependHashIfNecessaryHelper(a);
+  return!!(goog.color.isValidHexColor_(b) || goog.color.isValidRgbColor_(a).length || goog.color.names && goog.color.names[a.toLowerCase()]);
+};
+goog.color.parseRgb = function(a) {
+  var b = goog.color.isValidRgbColor_(a);
+  if (!b.length) {
+    throw Error(a + " is not a valid RGB color");
+  }
+  return b;
+};
+goog.color.hexToRgbStyle = function(a) {
+  return goog.color.rgbStyle_(goog.color.hexToRgb(a));
+};
+goog.color.hexTripletRe_ = /#(.)(.)(.)/;
+goog.color.normalizeHex = function(a) {
+  if (!goog.color.isValidHexColor_(a)) {
+    throw Error("'" + a + "' is not a valid hex color");
+  }
+  4 == a.length && (a = a.replace(goog.color.hexTripletRe_, "#$1$1$2$2$3$3"));
+  return a.toLowerCase();
+};
+goog.color.hexToRgb = function(a) {
+  a = goog.color.normalizeHex(a);
+  var b = parseInt(a.substr(1, 2), 16), c = parseInt(a.substr(3, 2), 16);
+  a = parseInt(a.substr(5, 2), 16);
+  return[b, c, a];
+};
+goog.color.rgbToHex = function(a, b, c) {
+  a = Number(a);
+  b = Number(b);
+  c = Number(c);
+  if (isNaN(a) || 0 > a || 255 < a || isNaN(b) || 0 > b || 255 < b || isNaN(c) || 0 > c || 255 < c) {
+    throw Error('"(' + a + "," + b + "," + c + '") is not a valid RGB color');
+  }
+  a = goog.color.prependZeroIfNecessaryHelper(a.toString(16));
+  b = goog.color.prependZeroIfNecessaryHelper(b.toString(16));
+  c = goog.color.prependZeroIfNecessaryHelper(c.toString(16));
+  return "#" + a + b + c;
+};
+goog.color.rgbArrayToHex = function(a) {
+  return goog.color.rgbToHex(a[0], a[1], a[2]);
+};
+goog.color.rgbToHsl = function(a, b, c) {
+  a /= 255;
+  b /= 255;
+  c /= 255;
+  var d = Math.max(a, b, c), e = Math.min(a, b, c), f = 0, g = 0, h = .5 * (d + e);
+  d != e && (d == a ? f = 60 * (b - c) / (d - e) : d == b ? f = 60 * (c - a) / (d - e) + 120 : d == c && (f = 60 * (a - b) / (d - e) + 240), g = 0 < h && .5 >= h ? (d - e) / (2 * h) : (d - e) / (2 - 2 * h));
+  return[Math.round(f + 360) % 360, g, h];
+};
+goog.color.rgbArrayToHsl = function(a) {
+  return goog.color.rgbToHsl(a[0], a[1], a[2]);
+};
+goog.color.hueToRgb_ = function(a, b, c) {
+  0 > c ? c += 1 : 1 < c && --c;
+  return 1 > 6 * c ? a + 6 * (b - a) * c : 1 > 2 * c ? b : 2 > 3 * c ? a + (b - a) * (2 / 3 - c) * 6 : a;
+};
+goog.color.hslToRgb = function(a, b, c) {
+  var d = 0, e = 0, f = 0;
+  a /= 360;
+  if (0 == b) {
+    d = e = f = 255 * c;
+  } else {
+    var g = f = 0, g = .5 > c ? c * (1 + b) : c + b - b * c, f = 2 * c - g, d = 255 * goog.color.hueToRgb_(f, g, a + 1 / 3), e = 255 * goog.color.hueToRgb_(f, g, a), f = 255 * goog.color.hueToRgb_(f, g, a - 1 / 3)
+  }
+  return[Math.round(d), Math.round(e), Math.round(f)];
+};
+goog.color.hslArrayToRgb = function(a) {
+  return goog.color.hslToRgb(a[0], a[1], a[2]);
+};
+goog.color.validHexColorRe_ = /^#(?:[0-9a-f]{3}){1,2}$/i;
+goog.color.isValidHexColor_ = function(a) {
+  return goog.color.validHexColorRe_.test(a);
+};
+goog.color.normalizedHexColorRe_ = /^#[0-9a-f]{6}$/;
+goog.color.isNormalizedHexColor_ = function(a) {
+  return goog.color.normalizedHexColorRe_.test(a);
+};
+goog.color.rgbColorRe_ = /^(?:rgb)?\((0|[1-9]\d{0,2}),\s?(0|[1-9]\d{0,2}),\s?(0|[1-9]\d{0,2})\)$/i;
+goog.color.isValidRgbColor_ = function(a) {
+  var b = a.match(goog.color.rgbColorRe_);
+  if (b) {
+    a = Number(b[1]);
+    var c = Number(b[2]), b = Number(b[3]);
+    if (0 <= a && 255 >= a && 0 <= c && 255 >= c && 0 <= b && 255 >= b) {
+      return[a, c, b];
+    }
+  }
+  return[];
+};
+goog.color.prependZeroIfNecessaryHelper = function(a) {
+  return 1 == a.length ? "0" + a : a;
+};
+goog.color.prependHashIfNecessaryHelper = function(a) {
+  return "#" == a.charAt(0) ? a : "#" + a;
+};
+goog.color.rgbStyle_ = function(a) {
+  return "rgb(" + a.join(",") + ")";
+};
+goog.color.hsvToRgb = function(a, b, c) {
+  var d = 0, e = 0, f = 0;
+  if (0 == b) {
+    f = e = d = c;
+  } else {
+    var g = Math.floor(a / 60), h = a / 60 - g;
+    a = c * (1 - b);
+    var k = c * (1 - b * h);
+    b = c * (1 - b * (1 - h));
+    switch(g) {
+      case 1:
+        d = k;
+        e = c;
+        f = a;
+        break;
+      case 2:
+        d = a;
+        e = c;
+        f = b;
+        break;
+      case 3:
+        d = a;
+        e = k;
+        f = c;
+        break;
+      case 4:
+        d = b;
+        e = a;
+        f = c;
+        break;
+      case 5:
+        d = c;
+        e = a;
+        f = k;
+        break;
+      case 6:
+      ;
+      case 0:
+        d = c, e = b, f = a;
+    }
+  }
+  return[Math.floor(d), Math.floor(e), Math.floor(f)];
+};
+goog.color.rgbToHsv = function(a, b, c) {
+  var d = Math.max(Math.max(a, b), c), e = Math.min(Math.min(a, b), c);
+  if (e == d) {
+    e = a = 0;
+  } else {
+    var f = d - e, e = f / d;
+    a = 60 * (a == d ? (b - c) / f : b == d ? 2 + (c - a) / f : 4 + (a - b) / f);
+    0 > a && (a += 360);
+    360 < a && (a -= 360);
+  }
+  return[a, e, d];
+};
+goog.color.rgbArrayToHsv = function(a) {
+  return goog.color.rgbToHsv(a[0], a[1], a[2]);
+};
+goog.color.hsvArrayToRgb = function(a) {
+  return goog.color.hsvToRgb(a[0], a[1], a[2]);
+};
+goog.color.hexToHsl = function(a) {
+  a = goog.color.hexToRgb(a);
+  return goog.color.rgbToHsl(a[0], a[1], a[2]);
+};
+goog.color.hslToHex = function(a, b, c) {
+  return goog.color.rgbArrayToHex(goog.color.hslToRgb(a, b, c));
+};
+goog.color.hslArrayToHex = function(a) {
+  return goog.color.rgbArrayToHex(goog.color.hslToRgb(a[0], a[1], a[2]));
+};
+goog.color.hexToHsv = function(a) {
+  return goog.color.rgbArrayToHsv(goog.color.hexToRgb(a));
+};
+goog.color.hsvToHex = function(a, b, c) {
+  return goog.color.rgbArrayToHex(goog.color.hsvToRgb(a, b, c));
+};
+goog.color.hsvArrayToHex = function(a) {
+  return goog.color.hsvToHex(a[0], a[1], a[2]);
+};
+goog.color.hslDistance = function(a, b) {
+  var c, d;
+  c = .5 >= a[2] ? a[1] * a[2] : a[1] * (1 - a[2]);
+  d = .5 >= b[2] ? b[1] * b[2] : b[1] * (1 - b[2]);
+  return(a[2] - b[2]) * (a[2] - b[2]) + c * c + d * d - 2 * c * d * Math.cos(2 * (a[0] / 360 - b[0] / 360) * Math.PI);
+};
+goog.color.blend = function(a, b, c) {
+  c = goog.math.clamp(c, 0, 1);
+  return[Math.round(c * a[0] + (1 - c) * b[0]), Math.round(c * a[1] + (1 - c) * b[1]), Math.round(c * a[2] + (1 - c) * b[2])];
+};
+goog.color.darken = function(a, b) {
+  return goog.color.blend([0, 0, 0], a, b);
+};
+goog.color.lighten = function(a, b) {
+  return goog.color.blend([255, 255, 255], a, b);
+};
+goog.color.highContrast = function(a, b) {
+  for (var c = [], d = 0;d < b.length;d++) {
+    c.push({color:b[d], diff:goog.color.yiqBrightnessDiff_(b[d], a) + goog.color.colorDiff_(b[d], a)});
+  }
+  c.sort(function(a, b) {
+    return b.diff - a.diff;
+  });
+  return c[0].color;
+};
+goog.color.yiqBrightness_ = function(a) {
+  return Math.round((299 * a[0] + 587 * a[1] + 114 * a[2]) / 1E3);
+};
+goog.color.yiqBrightnessDiff_ = function(a, b) {
+  return Math.abs(goog.color.yiqBrightness_(a) - goog.color.yiqBrightness_(b));
+};
+goog.color.colorDiff_ = function(a, b) {
+  return Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2]);
 };
 goog.math.Coordinate = function(a, b) {
   this.x = goog.isDef(a) ? a : 0;
@@ -2090,217 +2480,65 @@ goog.math.Box.prototype.scale = function(a, b) {
   this.bottom *= c;
   return this;
 };
-goog.labs.userAgent.engine = {};
-goog.labs.userAgent.engine.isPresto = function() {
-  return goog.labs.userAgent.util.matchUserAgent("Presto");
+goog.math.Size = function(a, b) {
+  this.width = a;
+  this.height = b;
 };
-goog.labs.userAgent.engine.isTrident = function() {
-  return goog.labs.userAgent.util.matchUserAgent("Trident") || goog.labs.userAgent.util.matchUserAgent("MSIE");
+goog.math.Size.equals = function(a, b) {
+  return a == b ? !0 : a && b ? a.width == b.width && a.height == b.height : !1;
 };
-goog.labs.userAgent.engine.isWebKit = function() {
-  return goog.labs.userAgent.util.matchUserAgentIgnoreCase("WebKit");
+goog.math.Size.prototype.clone = function() {
+  return new goog.math.Size(this.width, this.height);
 };
-goog.labs.userAgent.engine.isGecko = function() {
-  return goog.labs.userAgent.util.matchUserAgent("Gecko") && !goog.labs.userAgent.engine.isWebKit() && !goog.labs.userAgent.engine.isTrident();
+goog.DEBUG && (goog.math.Size.prototype.toString = function() {
+  return "(" + this.width + " x " + this.height + ")";
+});
+goog.math.Size.prototype.getLongest = function() {
+  return Math.max(this.width, this.height);
 };
-goog.labs.userAgent.engine.getVersion = function() {
-  var a = goog.labs.userAgent.util.getUserAgent();
-  if (a) {
-    var a = goog.labs.userAgent.util.extractVersionTuples(a), b = a[1];
-    if (b) {
-      return "Gecko" == b[0] ? goog.labs.userAgent.engine.getVersionForKey_(a, "Firefox") : b[1];
-    }
-    var a = a[0], c;
-    if (a && (c = a[2]) && (c = /Trident\/([^\s;]+)/.exec(c))) {
-      return c[1];
-    }
-  }
-  return "";
+goog.math.Size.prototype.getShortest = function() {
+  return Math.min(this.width, this.height);
 };
-goog.labs.userAgent.engine.isVersionOrHigher = function(a) {
-  return 0 <= goog.string.compareVersions(goog.labs.userAgent.engine.getVersion(), a);
+goog.math.Size.prototype.area = function() {
+  return this.width * this.height;
 };
-goog.labs.userAgent.engine.getVersionForKey_ = function(a, b) {
-  var c = goog.array.find(a, function(a) {
-    return b == a[0];
-  });
-  return c && c[1] || "";
+goog.math.Size.prototype.perimeter = function() {
+  return 2 * (this.width + this.height);
 };
-goog.labs.userAgent.browser = {};
-goog.labs.userAgent.browser.matchOpera_ = function() {
-  return goog.labs.userAgent.util.matchUserAgent("Opera") || goog.labs.userAgent.util.matchUserAgent("OPR");
+goog.math.Size.prototype.aspectRatio = function() {
+  return this.width / this.height;
 };
-goog.labs.userAgent.browser.matchIE_ = function() {
-  return goog.labs.userAgent.util.matchUserAgent("Trident") || goog.labs.userAgent.util.matchUserAgent("MSIE");
+goog.math.Size.prototype.isEmpty = function() {
+  return!this.area();
 };
-goog.labs.userAgent.browser.matchFirefox_ = function() {
-  return goog.labs.userAgent.util.matchUserAgent("Firefox");
+goog.math.Size.prototype.ceil = function() {
+  this.width = Math.ceil(this.width);
+  this.height = Math.ceil(this.height);
+  return this;
 };
-goog.labs.userAgent.browser.matchSafari_ = function() {
-  return goog.labs.userAgent.util.matchUserAgent("Safari") && !goog.labs.userAgent.util.matchUserAgent("Chrome") && !goog.labs.userAgent.util.matchUserAgent("CriOS") && !goog.labs.userAgent.util.matchUserAgent("Android");
+goog.math.Size.prototype.fitsInside = function(a) {
+  return this.width <= a.width && this.height <= a.height;
 };
-goog.labs.userAgent.browser.matchCoast_ = function() {
-  return goog.labs.userAgent.util.matchUserAgent("Coast");
+goog.math.Size.prototype.floor = function() {
+  this.width = Math.floor(this.width);
+  this.height = Math.floor(this.height);
+  return this;
 };
-goog.labs.userAgent.browser.matchIosWebview_ = function() {
-  return(goog.labs.userAgent.util.matchUserAgent("iPad") || goog.labs.userAgent.util.matchUserAgent("iPhone")) && !goog.labs.userAgent.browser.matchSafari_() && !goog.labs.userAgent.browser.matchChrome_() && !goog.labs.userAgent.browser.matchCoast_() && goog.labs.userAgent.util.matchUserAgent("AppleWebKit");
+goog.math.Size.prototype.round = function() {
+  this.width = Math.round(this.width);
+  this.height = Math.round(this.height);
+  return this;
 };
-goog.labs.userAgent.browser.matchChrome_ = function() {
-  return goog.labs.userAgent.util.matchUserAgent("Chrome") || goog.labs.userAgent.util.matchUserAgent("CriOS");
+goog.math.Size.prototype.scale = function(a, b) {
+  var c = goog.isNumber(b) ? b : a;
+  this.width *= a;
+  this.height *= c;
+  return this;
 };
-goog.labs.userAgent.browser.matchAndroidBrowser_ = function() {
-  return!goog.labs.userAgent.browser.isChrome() && goog.labs.userAgent.util.matchUserAgent("Android");
+goog.math.Size.prototype.scaleToFit = function(a) {
+  a = this.aspectRatio() > a.aspectRatio() ? a.width / this.width : a.height / this.height;
+  return this.scale(a);
 };
-goog.labs.userAgent.browser.isOpera = goog.labs.userAgent.browser.matchOpera_;
-goog.labs.userAgent.browser.isIE = goog.labs.userAgent.browser.matchIE_;
-goog.labs.userAgent.browser.isFirefox = goog.labs.userAgent.browser.matchFirefox_;
-goog.labs.userAgent.browser.isSafari = goog.labs.userAgent.browser.matchSafari_;
-goog.labs.userAgent.browser.isCoast = goog.labs.userAgent.browser.matchCoast_;
-goog.labs.userAgent.browser.isIosWebview = goog.labs.userAgent.browser.matchIosWebview_;
-goog.labs.userAgent.browser.isChrome = goog.labs.userAgent.browser.matchChrome_;
-goog.labs.userAgent.browser.isAndroidBrowser = goog.labs.userAgent.browser.matchAndroidBrowser_;
-goog.labs.userAgent.browser.isSilk = function() {
-  return goog.labs.userAgent.util.matchUserAgent("Silk");
-};
-goog.labs.userAgent.browser.getVersion = function() {
-  function a(a) {
-    a = goog.array.find(a, d);
-    return c[a] || "";
-  }
-  var b = goog.labs.userAgent.util.getUserAgent();
-  if (goog.labs.userAgent.browser.isIE()) {
-    return goog.labs.userAgent.browser.getIEVersion_(b);
-  }
-  var b = goog.labs.userAgent.util.extractVersionTuples(b), c = {};
-  goog.array.forEach(b, function(a) {
-    c[a[0]] = a[1];
-  });
-  var d = goog.partial(goog.object.containsKey, c);
-  return goog.labs.userAgent.browser.isOpera() ? a(["Version", "Opera", "OPR"]) : goog.labs.userAgent.browser.isChrome() ? a(["Chrome", "CriOS"]) : (b = b[2]) && b[1] || "";
-};
-goog.labs.userAgent.browser.isVersionOrHigher = function(a) {
-  return 0 <= goog.string.compareVersions(goog.labs.userAgent.browser.getVersion(), a);
-};
-goog.labs.userAgent.browser.getIEVersion_ = function(a) {
-  var b = /rv: *([\d\.]*)/.exec(a);
-  if (b && b[1]) {
-    return b[1];
-  }
-  var b = "", c = /MSIE +([\d\.]+)/.exec(a);
-  if (c && c[1]) {
-    if (a = /Trident\/(\d.\d)/.exec(a), "7.0" == c[1]) {
-      if (a && a[1]) {
-        switch(a[1]) {
-          case "4.0":
-            b = "8.0";
-            break;
-          case "5.0":
-            b = "9.0";
-            break;
-          case "6.0":
-            b = "10.0";
-            break;
-          case "7.0":
-            b = "11.0";
-        }
-      } else {
-        b = "7.0";
-      }
-    } else {
-      b = c[1];
-    }
-  }
-  return b;
-};
-goog.userAgent = {};
-goog.userAgent.ASSUME_IE = !1;
-goog.userAgent.ASSUME_GECKO = !1;
-goog.userAgent.ASSUME_WEBKIT = !1;
-goog.userAgent.ASSUME_MOBILE_WEBKIT = !1;
-goog.userAgent.ASSUME_OPERA = !1;
-goog.userAgent.ASSUME_ANY_VERSION = !1;
-goog.userAgent.BROWSER_KNOWN_ = goog.userAgent.ASSUME_IE || goog.userAgent.ASSUME_GECKO || goog.userAgent.ASSUME_MOBILE_WEBKIT || goog.userAgent.ASSUME_WEBKIT || goog.userAgent.ASSUME_OPERA;
-goog.userAgent.getUserAgentString = function() {
-  return goog.labs.userAgent.util.getUserAgent();
-};
-goog.userAgent.getNavigator = function() {
-  return goog.global.navigator || null;
-};
-goog.userAgent.OPERA = goog.userAgent.BROWSER_KNOWN_ ? goog.userAgent.ASSUME_OPERA : goog.labs.userAgent.browser.isOpera();
-goog.userAgent.IE = goog.userAgent.BROWSER_KNOWN_ ? goog.userAgent.ASSUME_IE : goog.labs.userAgent.browser.isIE();
-goog.userAgent.GECKO = goog.userAgent.BROWSER_KNOWN_ ? goog.userAgent.ASSUME_GECKO : goog.labs.userAgent.engine.isGecko();
-goog.userAgent.WEBKIT = goog.userAgent.BROWSER_KNOWN_ ? goog.userAgent.ASSUME_WEBKIT || goog.userAgent.ASSUME_MOBILE_WEBKIT : goog.labs.userAgent.engine.isWebKit();
-goog.userAgent.isMobile_ = function() {
-  return goog.userAgent.WEBKIT && goog.labs.userAgent.util.matchUserAgent("Mobile");
-};
-goog.userAgent.MOBILE = goog.userAgent.ASSUME_MOBILE_WEBKIT || goog.userAgent.isMobile_();
-goog.userAgent.SAFARI = goog.userAgent.WEBKIT;
-goog.userAgent.determinePlatform_ = function() {
-  var a = goog.userAgent.getNavigator();
-  return a && a.platform || "";
-};
-goog.userAgent.PLATFORM = goog.userAgent.determinePlatform_();
-goog.userAgent.ASSUME_MAC = !1;
-goog.userAgent.ASSUME_WINDOWS = !1;
-goog.userAgent.ASSUME_LINUX = !1;
-goog.userAgent.ASSUME_X11 = !1;
-goog.userAgent.ASSUME_ANDROID = !1;
-goog.userAgent.ASSUME_IPHONE = !1;
-goog.userAgent.ASSUME_IPAD = !1;
-goog.userAgent.PLATFORM_KNOWN_ = goog.userAgent.ASSUME_MAC || goog.userAgent.ASSUME_WINDOWS || goog.userAgent.ASSUME_LINUX || goog.userAgent.ASSUME_X11 || goog.userAgent.ASSUME_ANDROID || goog.userAgent.ASSUME_IPHONE || goog.userAgent.ASSUME_IPAD;
-goog.userAgent.initPlatform_ = function() {
-  goog.userAgent.detectedMac_ = goog.string.contains(goog.userAgent.PLATFORM, "Mac");
-  goog.userAgent.detectedWindows_ = goog.string.contains(goog.userAgent.PLATFORM, "Win");
-  goog.userAgent.detectedLinux_ = goog.string.contains(goog.userAgent.PLATFORM, "Linux");
-  var a = goog.userAgent.getUserAgentString();
-  goog.userAgent.detectedAndroid_ = !!a && goog.string.contains(a, "Android");
-  goog.userAgent.detectedIPhone_ = !!a && goog.string.contains(a, "iPhone");
-  goog.userAgent.detectedIPad_ = !!a && goog.string.contains(a, "iPad");
-};
-goog.userAgent.PLATFORM_KNOWN_ || goog.userAgent.initPlatform_();
-goog.userAgent.MAC = goog.userAgent.PLATFORM_KNOWN_ ? goog.userAgent.ASSUME_MAC : goog.userAgent.detectedMac_;
-goog.userAgent.WINDOWS = goog.userAgent.PLATFORM_KNOWN_ ? goog.userAgent.ASSUME_WINDOWS : goog.userAgent.detectedWindows_;
-goog.userAgent.LINUX = goog.userAgent.PLATFORM_KNOWN_ ? goog.userAgent.ASSUME_LINUX : goog.userAgent.detectedLinux_;
-goog.userAgent.isX11_ = function() {
-  var a = goog.userAgent.getNavigator();
-  return!!a && goog.string.contains(a.appVersion || "", "X11");
-};
-goog.userAgent.X11 = goog.userAgent.PLATFORM_KNOWN_ ? goog.userAgent.ASSUME_X11 : goog.userAgent.isX11_();
-goog.userAgent.ANDROID = goog.userAgent.PLATFORM_KNOWN_ ? goog.userAgent.ASSUME_ANDROID : goog.userAgent.detectedAndroid_;
-goog.userAgent.IPHONE = goog.userAgent.PLATFORM_KNOWN_ ? goog.userAgent.ASSUME_IPHONE : goog.userAgent.detectedIPhone_;
-goog.userAgent.IPAD = goog.userAgent.PLATFORM_KNOWN_ ? goog.userAgent.ASSUME_IPAD : goog.userAgent.detectedIPad_;
-goog.userAgent.determineVersion_ = function() {
-  var a = "", b;
-  if (goog.userAgent.OPERA && goog.global.opera) {
-    return a = goog.global.opera.version, goog.isFunction(a) ? a() : a;
-  }
-  goog.userAgent.GECKO ? b = /rv\:([^\);]+)(\)|;)/ : goog.userAgent.IE ? b = /\b(?:MSIE|rv)[: ]([^\);]+)(\)|;)/ : goog.userAgent.WEBKIT && (b = /WebKit\/(\S+)/);
-  b && (a = (a = b.exec(goog.userAgent.getUserAgentString())) ? a[1] : "");
-  return goog.userAgent.IE && (b = goog.userAgent.getDocumentMode_(), b > parseFloat(a)) ? String(b) : a;
-};
-goog.userAgent.getDocumentMode_ = function() {
-  var a = goog.global.document;
-  return a ? a.documentMode : void 0;
-};
-goog.userAgent.VERSION = goog.userAgent.determineVersion_();
-goog.userAgent.compare = function(a, b) {
-  return goog.string.compareVersions(a, b);
-};
-goog.userAgent.isVersionOrHigherCache_ = {};
-goog.userAgent.isVersionOrHigher = function(a) {
-  return goog.userAgent.ASSUME_ANY_VERSION || goog.userAgent.isVersionOrHigherCache_[a] || (goog.userAgent.isVersionOrHigherCache_[a] = 0 <= goog.string.compareVersions(goog.userAgent.VERSION, a));
-};
-goog.userAgent.isVersion = goog.userAgent.isVersionOrHigher;
-goog.userAgent.isDocumentModeOrHigher = function(a) {
-  return goog.userAgent.IE && goog.userAgent.DOCUMENT_MODE >= a;
-};
-goog.userAgent.isDocumentMode = goog.userAgent.isDocumentModeOrHigher;
-goog.userAgent.DOCUMENT_MODE = function() {
-  var a = goog.global.document;
-  return a && goog.userAgent.IE ? goog.userAgent.getDocumentMode_() || ("CSS1Compat" == a.compatMode ? parseInt(goog.userAgent.VERSION, 10) : 5) : void 0;
-}();
-goog.dom.BrowserFeature = {CAN_ADD_NAME_OR_TYPE_ATTRIBUTES:!goog.userAgent.IE || goog.userAgent.isDocumentModeOrHigher(9), CAN_USE_CHILDREN_ATTRIBUTE:!goog.userAgent.GECKO && !goog.userAgent.IE || goog.userAgent.IE && goog.userAgent.isDocumentModeOrHigher(9) || goog.userAgent.GECKO && goog.userAgent.isVersionOrHigher("1.9.1"), CAN_USE_INNER_TEXT:goog.userAgent.IE && !goog.userAgent.isVersionOrHigher("9"), CAN_USE_PARENT_ELEMENT_PROPERTY:goog.userAgent.IE || goog.userAgent.OPERA || goog.userAgent.WEBKIT, 
-INNER_HTML_NEEDS_SCOPED_ELEMENT:goog.userAgent.IE, LEGACY_IE_RANGES:goog.userAgent.IE && !goog.userAgent.isDocumentModeOrHigher(9)};
 goog.dom.ASSUME_QUIRKS_MODE = !1;
 goog.dom.ASSUME_STANDARDS_MODE = !1;
 goog.dom.COMPAT_MODE_KNOWN_ = goog.dom.ASSUME_QUIRKS_MODE || goog.dom.ASSUME_STANDARDS_MODE;
@@ -3294,6 +3532,131 @@ pagespeed.MobUtil.boundingRectAndSize = function(a) {
   b.width = a.right - a.left;
   return b;
 };
+pagespeed.MobColor = function() {
+  this.numPendingImages_ = 0;
+  this.backgroundData_ = this.foregroundData_ = this.logo_ = null;
+};
+pagespeed.MobColor.prototype.EPSILON_ = 1E-10;
+pagespeed.MobColor.prototype.MIN_CONTRAST_ = 3;
+pagespeed.MobColor.ThemeColors = function(a, b) {
+  this.background = a;
+  this.foreground = b;
+};
+pagespeed.MobColor.prototype.distance_ = function(a, b) {
+  if (3 != a.length || 3 != b.length) {
+    return Infinity;
+  }
+  var c = a[0] - b[0], d = a[1] - b[1], e = a[2] - b[2];
+  return Math.sqrt(c * c + d * d + e * e);
+};
+pagespeed.MobColor.prototype.srgbToRgb_ = function(a) {
+  a /= 255;
+  return a = .03928 >= a ? a / 12.92 : Math.pow((a + .055) / 1.055, 2.4);
+};
+pagespeed.MobColor.prototype.rgbToGray_ = function(a) {
+  return.2126 * this.srgbToRgb_(a[0]) + .7152 * this.srgbToRgb_(a[1]) + .0722 * this.srgbToRgb_(a[2]);
+};
+pagespeed.MobColor.prototype.enhanceColors_ = function(a) {
+  var b = a.background, c = a.foreground, d = this.rgbToGray_(b), e = this.rgbToGray_(c);
+  if (d < this.EPSILON_ && e < this.EPSILON_) {
+    return a;
+  }
+  d = e / d;
+  1 > d && (d = 1 / d);
+  if (d > this.MIN_CONTRAST_) {
+    return a;
+  }
+  b = goog.color.rgbArrayToHsv(b);
+  c = goog.color.rgbArrayToHsv(c);
+  d = a = null;
+  b[2] < c[2] ? (a = b[2], d = c[2]) : (a = c[2], d = b[2]);
+  e = (this.MIN_CONTRAST_ * a - d) / (this.MIN_CONTRAST_ + 1);
+  a = a > e ? a - e : 0;
+  d = d < 1 - 2 * e ? d + 2 * e : 255;
+  b[2] < c[2] ? (b[2] = a, c[2] = d) : (c[2] = a, b[2] = d);
+  b = goog.color.hsvArrayToRgb(b);
+  c = goog.color.hsvArrayToRgb(c);
+  return new pagespeed.MobColor.ThemeColors(b, c);
+};
+pagespeed.MobColor.prototype.computeColors_ = function(a, b, c, d) {
+  var e = [], f, g, h;
+  for (g = 0;g < d;++g) {
+    for (f = 0;f < c;++f) {
+      var k = 4 * (g * c + f);
+      h = 3 * (g * c + f);
+      var l = a[k + 3] / 255, m = 1 - l;
+      e[h] = l * a[k] + m * b[0];
+      e[h + 1] = l * a[k + 1] + m * b[1];
+      e[h + 2] = l * a[k + 2] + m * b[2];
+    }
+  }
+  k = [0, 0, 0];
+  for (f = l = g = 0;f < c;++f) {
+    h = 3 * ((d - 1) * c + f), k[0] += e[h], k[1] += e[h + 1], k[2] += e[h + 2], l += a[h + 3], ++g;
+  }
+  if (l > 127.5 * g) {
+    for (f = 0;3 > f;++f) {
+      k[f] /= g;
+    }
+  } else {
+    k = b;
+  }
+  a = Math.floor(.25 * c);
+  b = Math.floor(.75 * c);
+  l = Math.floor(.25 * d);
+  d = Math.floor(.75 * d);
+  var m = 0, n = [];
+  for (g = l;g <= d;++g) {
+    for (f = a;f <= b;++f) {
+      h = 3 * (g * c + f), n[m] = this.distance_(e.slice(h, h + 3), k), ++m;
+    }
+  }
+  f = n.sort(function(a, b) {
+    return a - b;
+  });
+  var p = Math.max(1, f[Math.floor(.75 * m)]), m = 0, n = [0, 0, 0];
+  for (g = l;g <= d;++g) {
+    for (f = a;f <= b;++f) {
+      h = 3 * (g * c + f), this.distance_(e.slice(h, h + 3), k) >= p && (n[0] += e[h], n[1] += e[h + 1], n[2] += e[h + 2], ++m);
+    }
+  }
+  if (0 < m) {
+    for (f = 0;3 > f;++f) {
+      n[f] = Math.floor(n[f] / m);
+    }
+  }
+  return this.enhanceColors_(new pagespeed.MobColor.ThemeColors(k, n));
+};
+pagespeed.MobColor.prototype.synthesizeCallback_ = function() {
+  --this.numPendingImages_;
+  if (!(0 < this.numPendingImages_)) {
+    var a = [255, 255, 255], b = [0, 0, 0], c = this.logo_;
+    this.foregroundData_ && this.foregroundData_.data && c && c.foregroundRect && c.backgroundColor ? (b = this.computeColors_(this.foregroundData_.data, c.backgroundColor, c.foregroundRect.width, c.foregroundRect.height), a = b.background, b = b.foreground) : c && c.backgroundColor && (a = c.backgroundColor, b = 178.5 < goog.color.rgbArrayToHsv(a)[2] ? [0, 0, 0] : [255, 255, 255]);
+    console.log("Theme color. Background: " + a + " foreground: " + b);
+    this.doneCallback_(this.logo_, pagespeed.MobUtil.colorNumbersToString(a), pagespeed.MobUtil.colorNumbersToString(b));
+  }
+};
+pagespeed.MobColor.prototype.getImageDataAndSynthesize_ = function(a, b, c) {
+  var d = new Image;
+  d.onload = goog.bind(function() {
+    var b = document.createElement("canvas"), f = null, g = null;
+    c && 0 < c.width && 0 < c.height ? (f = c.width, g = c.height) : (f = d.naturalWidth, g = d.naturalHeight);
+    b.width = f;
+    b.height = g;
+    b = b.getContext("2d");
+    b.drawImage(d, 0, 0);
+    "foreground" == a ? this.foregroundData_ = b.getImageData(0, 0, f, g) : this.backgroundData_ = b.getImageData(0, 0, f, g);
+    this.synthesizeCallback_();
+  }, this);
+  d.onerror = goog.bind(this.synthesizeCallback_, this);
+  d.src = b;
+};
+pagespeed.MobColor.prototype.run = function(a, b) {
+  this.logo_ = a;
+  this.doneCallback_ && alert("A callback which was supposed to run after extracting theme color  was not executed.");
+  this.doneCallback_ = b;
+  a && a.foregroundImage && !pagespeed.MobUtil.isCrossOrigin(a.foregroundImage) ? (this.numPendingImages_ = 1, this.getImageDataAndSynthesize_("foreground", a.foregroundImage, a.foregroundRect), console.log("Found logo. Theme color will be computed from logo.")) : (a && a.foregroundImage ? console.log("Found logo but its origin is different that of HTML. Use default color.") : console.log("Could not find logo. Use default color."), this.synthesizeCallback_());
+};
 pagespeed.MobLayout = function(a) {
   this.psMob_ = a;
   this.dontTouchIds_ = {};
@@ -3614,6 +3977,142 @@ pagespeed.MobLayout.prototype.expandColumns_ = function(a) {
   }
 };
 pagespeed.MobLayout.sequence_ = [pagespeed.MobLayout.prototype.shrinkWideElements_, "shrink wide elements", pagespeed.MobLayout.prototype.stripFloats_, "string floats", pagespeed.MobLayout.prototype.cleanupStyles_, "cleanup styles", pagespeed.MobLayout.prototype.repairDistortedImages_, "repair distored images", pagespeed.MobLayout.prototype.resizeIfTooWide_, "resize if too wide", pagespeed.MobLayout.prototype.expandColumns_, "expand columns", pagespeed.MobLayout.prototype.resizeVertically_, "resize vertically"];
+pagespeed.MobLogo = function() {
+  this.candidates_ = [];
+};
+pagespeed.MobLogo.LogoRecord = function() {
+  this.metric = -1;
+  this.foregroundElement = this.logoElement = null;
+  this.foregroundImage = "";
+  this.backgroundColor = this.backgroundRect = this.backgroundImage = this.backgroundElement = this.foregroundRect = this.foregroundSource = null;
+};
+pagespeed.MobLogo.prototype.MIN_WIDTH_ = 20;
+pagespeed.MobLogo.prototype.MIN_HEIGHT_ = 10;
+pagespeed.MobLogo.prototype.MAX_HEIGHT_ = 200;
+pagespeed.MobLogo.prototype.MIN_PIXELS_ = 400;
+pagespeed.MobLogo.prototype.MAX_TOP_ = 6E3;
+pagespeed.MobLogo.prototype.RATIO_AREA_ = .5;
+pagespeed.MobLogo.findLogoInFileName = function(a) {
+  return a && (a = a.toLowerCase(), 0 <= a.indexOf("logo") && 0 > a.indexOf("logout") && 0 > a.indexOf("no_logo") && 0 > a.indexOf("no-logo")) ? 1 : 0;
+};
+pagespeed.MobLogo.prototype.findForeground_ = function(a, b, c, d) {
+  var e = pagespeed.MobUtil.boundingRectAndSize(a), f = "hidden" != psGetVisiblity(a), g = e.width * e.height, h = e.width > this.MIN_WIDTH_ && e.height > this.MIN_HEIGHT_ && g > this.MIN_PIXELS_ && e.top < this.MAX_TOP_ && e.height < this.MAX_HEIGHT_;
+  if (f && h && g >= b && g <= c) {
+    var g = f = null, k;
+    for (k in pagespeed.MobUtil.ImageSource) {
+      if (g = pagespeed.MobUtil.extractImage(a, pagespeed.MobUtil.ImageSource[k])) {
+        return f = pagespeed.MobUtil.ImageSource[k], f == pagespeed.MobUtil.ImageSource.IMG && (e.width = a.naturalWidth, e.height = a.naturalHeight), b = new pagespeed.MobLogo.LogoRecord, b.foregroundImage = g, b.foregroundElement = a, b.foregroundSource = f, b.foregroundRect = e, b;
+      }
+    }
+  }
+  if (d) {
+    for (a = a.firstChild;a;a = a.nextSibling) {
+      if (e = pagespeed.MobUtil.castElement(a), null != e && (e = this.findForeground_(e, b, c, d))) {
+        return e;
+      }
+    }
+  } else {
+    if (a.parentNode && (a = pagespeed.MobUtil.castElement(a.parentNode), null != a)) {
+      return this.findForeground_(a, b, c, d);
+    }
+  }
+  return null;
+};
+pagespeed.MobLogo.prototype.findLogoNode_ = function(a, b) {
+  var c = pagespeed.MobUtil.boundingRectAndSize(a), d = "hidden" != psGetVisiblity(a);
+  if (!(c.top < this.MAX_TOP_ && c.height < this.MAX_HEIGHT_ && d)) {
+    return null;
+  }
+  d = 0;
+  a.title && (d += goog.string.caseInsensitiveContains(a.title, "logo"));
+  a.id && (d += goog.string.caseInsensitiveContains(a.id, "logo"));
+  a.className && (d += goog.string.caseInsensitiveContains(a.className, "logo"));
+  a.alt && (d += goog.string.caseInsensitiveContains(a.alt, "logo"));
+  var e = pagespeed.MobUtil.getSiteOrganization(), f = 0;
+  e && (a.id && (d += goog.string.caseInsensitiveContains(a.id, e)), a.className && (d += goog.string.caseInsensitiveContains(a.className, e)), a.title && (f += pagespeed.MobUtil.findPattern(a.title, e)), a.alt && (f += pagespeed.MobUtil.findPattern(a.alt, e)));
+  var g = c.width * c.height;
+  (c = this.findForeground_(a, g * this.RATIO_AREA_, g, !0)) || (c = this.findForeground_(a, g, Infinity, !1));
+  return c && (g = pagespeed.MobUtil.resourceFileName(c.foregroundImage), d += pagespeed.MobLogo.findLogoInFileName(g), g && e && (f += pagespeed.MobUtil.findPattern(g, e)), d += f, 0 < d) ? (c.metric = d, c.logoElement = a, c) : null;
+};
+pagespeed.MobLogo.prototype.findLogoCandidates_ = function(a, b) {
+  var c = this.findLogoNode_(a, b);
+  c && (this.candidates_ = this.candidates_.concat(c), ++b);
+  for (c = a.firstChild;c;c = c.nextSibling) {
+    var d = pagespeed.MobUtil.castElement(c);
+    null != d && this.findLogoCandidates_(d, b);
+  }
+};
+pagespeed.MobLogo.prototype.findBestLogo_ = function() {
+  var a = null;
+  if (0 == this.candidates_.length) {
+    return null;
+  }
+  var b = this.candidates_;
+  if (1 == b.length) {
+    return a = b[0];
+  }
+  for (var c = 0, d = 0, e = Infinity, a = 0, f;f = b[a];++a) {
+    var g = f.foregroundRect, e = Math.min(e, g.top), d = Math.max(d, g.bottom), c = Math.max(c, g.width * g.height)
+  }
+  for (a = 0;f = b[a];++a) {
+    g = f.foregroundRect, f.metric = g.width * g.height / c * f.metric * (1 - (g.top - e) / (d - e));
+  }
+  for (a = g = 0;f = b[a];++a) {
+    g = Math.max(g, f.metric);
+  }
+  c = [];
+  for (a = 0;f = b[a];++a) {
+    f.metric == g && (c = c.concat(f));
+  }
+  if (1 == c.length) {
+    return a = c[0];
+  }
+  b = c[0];
+  d = b.foregroundRect;
+  for (a = 1;f = c[a];++a) {
+    if (g = f.foregroundRect, d.top > g.top || d.top == g.top && d.left > g.left || d.top == g.top && d.left == g.left && d.width * d.height > g.width * g.height) {
+      b = f, d = b.foregroundRect;
+    }
+  }
+  return b;
+};
+pagespeed.MobLogo.prototype.extractBackgroundColor_ = function(a) {
+  if (a = document.defaultView.getComputedStyle(a, null)) {
+    if (a = a.getPropertyValue("background-color")) {
+      if (a = pagespeed.MobUtil.colorStringToNumbers(a), 3 == a.length || 4 == a.length && 0 != a[3]) {
+        return a;
+      }
+    }
+  }
+  return null;
+};
+pagespeed.MobLogo.prototype.findLogoBackground_ = function(a) {
+  if (!a || !a.foregroundElement) {
+    return null;
+  }
+  var b = a.foregroundElement, c = null;
+  if (a.foregroundSource == pagespeed.MobUtil.ImageSource.IMG || a.foregroundSource == pagespeed.MobUtil.ImageSource.SVG) {
+    c = pagespeed.MobUtil.extractImage(b, pagespeed.MobUtil.ImageSource.BACKGROUND);
+  }
+  var d = this.extractBackgroundColor_(b), e = null;
+  for (b.parentNode && (e = pagespeed.MobUtil.castElement(b.parentNode));e && !c && !d;) {
+    b = e, c = pagespeed.MobUtil.extractImage(b, pagespeed.MobUtil.ImageSource.IMG) || pagespeed.MobUtil.extractImage(b, pagespeed.MobUtil.ImageSource.SVG) || pagespeed.MobUtil.extractImage(b, pagespeed.MobUtil.ImageSource.BACKGROUND), d = this.extractBackgroundColor_(b), e = b.parentNode ? pagespeed.MobUtil.castElement(b.parentNode) : null;
+  }
+  a.backgroundElement = b;
+  a.backgroundImage = c;
+  a.backgroundColor = d || [255, 255, 255];
+  a.backgroundRect = pagespeed.MobUtil.boundingRectAndSize(b);
+  return a;
+};
+pagespeed.MobLogo.prototype.run = function(a) {
+  if (!document.body) {
+    return null;
+  }
+  this.findLogoCandidates_(document.body, 0);
+  a = this.findBestLogo_();
+  return this.findLogoBackground_(a);
+};
+goog.exportSymbol("pagespeed.MobLogo.prototype.run", pagespeed.MobLogo.prototype.run);
 pagespeed.MobNav = function() {
   this.navSections_ = [];
   this.useDetectedThemeColor_ = !0;
@@ -3755,6 +4254,58 @@ pagespeed.MobNav.prototype.Run = function(a) {
   this.addThemeColor_(a);
   0 == this.navSections_.length || pagespeed.MobUtil.inFriendlyIframe() || (this.addNavPanel_(), this.addMenuButtonEvents_(), this.addNavButtonEvents_());
 };
+pagespeed.MobTheme = function() {
+  this.logo = null;
+};
+pagespeed.MobTheme.menuIconString_ = function(a, b, c) {
+  var d = String(Math.floor(.25 * b)), e = String(Math.floor(.5 * b)), f = String(Math.floor(.75 * b));
+  return'<svg height="' + b + 'px" width="' + a + 'px" style="stroke:' + c + ";stroke-width:" + String(Math.floor(.15 * b)) + 'px" ><line x1="4px" y1="' + d + 'px" x2="' + (a - 4) + 'px" y2="' + d + 'px"/><line x1="4px" y1="' + e + 'px" x2="' + (a - 4) + 'px" y2="' + e + 'px"/><line x1="4px" y1="' + f + 'px" x2="' + (a - 4) + 'px" y2="' + f + 'px"/></svg>';
+};
+pagespeed.MobTheme.synthesizeHamburgerIcon_ = function(a) {
+  return'<button class="psmob-menu-button">' + pagespeed.MobTheme.menuIconString_(28, 28, a) + "</button>";
+};
+pagespeed.MobTheme.synthesizeLogoSpan_ = function(a, b, c) {
+  var d = document.createElement("span");
+  d.classList.add("psmob-logo-span");
+  if (a && a.foregroundImage) {
+    var e = document.createElement("IMG");
+    e.src = a.foregroundImage;
+    e.style.backgroundColor = b;
+    e.setAttribute("data-mobile-role", "logo");
+    d.appendChild(e);
+  } else {
+    d.innerHTML = window.location.host;
+  }
+  a = pagespeed.MobTheme.synthesizeHamburgerIcon_(c);
+  document.body.appendChild(d);
+  return new pagespeed.MobUtil.ThemeData(c, b, a);
+};
+pagespeed.MobTheme.removeLogoImage_ = function(a) {
+  if (a && a.foregroundElement && a.foregroundSource) {
+    var b = a.foregroundElement;
+    switch(a.foregroundSource) {
+      case pagespeed.MobUtil.ImageSource.IMG:
+      ;
+      case pagespeed.MobUtil.ImageSource.SVG:
+        b.parentNode.removeChild(b);
+        break;
+      case pagespeed.MobUtil.ImageSource.BACKGROUND:
+        b.style.backgroundImage = "none";
+    }
+  }
+};
+pagespeed.MobTheme.prototype.colorComplete_ = function(a, b, c) {
+  b = pagespeed.MobTheme.synthesizeLogoSpan_(a, b, c);
+  pagespeed.MobTheme.removeLogoImage_(a);
+  this.doneCallback(b);
+};
+pagespeed.MobTheme.extractTheme = function(a, b) {
+  b || alert("Not expecting to start onloads after the callback is called");
+  var c = new pagespeed.MobTheme;
+  c.doneCallback = b;
+  c.logo = (new pagespeed.MobLogo).run(a);
+  (new pagespeed.MobColor).run(c.logo, goog.bind(c.colorComplete_, c));
+};
 pagespeed.Mob = function() {
   this.activeRequestCount_ = 0;
   this.imageMap_ = {};
@@ -3774,18 +4325,13 @@ pagespeed.Mob.PROGRESS_SPAN_ID_ = "ps-progress-span";
 pagespeed.Mob.PROGRESS_SHOW_LOG_ID_ = "ps-progress-show-log";
 pagespeed.Mob.COST_PER_IMAGE_ = 1E3;
 pagespeed.Mob.prototype.mobilizeSite_ = function() {
-  if (0 == this.pendingImageLoadCount_) {
-    console.log("mobilizing site");
-    var a = window.extractTheme;
-    a && !pagespeed.MobUtil.inFriendlyIframe() ? (++this.pendingCallbacks_, a(this.imageMap_, this.logoComplete_.bind(this))) : this.maybeRunLayout();
-  } else {
-    this.mobilizeAfterImageLoad_ = !0;
-  }
+  0 == this.pendingImageLoadCount_ ? (console.log("mobilizing site"), window.psNavMode && !pagespeed.MobUtil.inFriendlyIframe() ? (++this.pendingCallbacks_, pagespeed.MobTheme.extractTheme(this.imageMap_, this.logoComplete_.bind(this))) : this.maybeRunLayout()) : this.mobilizeAfterImageLoad_ = !0;
 };
 pagespeed.Mob.prototype.logoComplete_ = function(a) {
   --this.pendingCallbacks_;
   this.updateProgressBar(this.domElementCount_, "extract theme");
-  window.psNavMode && ((new pagespeed.MobNav).Run(a), this.updateProgressBar(this.domElementCount_, "navigation"));
+  (new pagespeed.MobNav).Run(a);
+  this.updateProgressBar(this.domElementCount_, "navigation");
   this.maybeRunLayout();
 };
 pagespeed.Mob.prototype.backgroundImageLoaded_ = function() {
@@ -3823,7 +4369,7 @@ pagespeed.Mob.prototype.initiateMobilization = function() {
   this.domElementCount_ = pagespeed.MobUtil.countNodes(document.body);
   this.workPerLayoutPass_ = this.domElementCount_ * pagespeed.MobLayout.numberOfPasses();
   this.addExtraWorkForDom();
-  window.extractTheme && pagespeed.MobUtil.inFriendlyIframe() && (this.totalWork_ += this.domElementCount_, window.psNavMode && (this.totalWork_ += this.domElementCount_));
+  window.psNavMode && pagespeed.MobUtil.inFriendlyIframe() && (this.totalWork_ += this.domElementCount_, this.totalWork_ += this.domElementCount_);
   null != document.body && this.collectBackgroundImages_(document.body);
   this.totalWork_ += this.pendingImageLoadCount_ * pagespeed.Mob.COST_PER_IMAGE_;
   window.pagespeedXhrHijackSetListener(this);

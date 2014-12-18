@@ -22,6 +22,7 @@ goog.provide('pagespeed.Mob');
 goog.require('goog.string');
 goog.require('pagespeed.MobLayout');
 goog.require('pagespeed.MobNav');
+goog.require('pagespeed.MobTheme');
 goog.require('pagespeed.MobUtil');
 
 
@@ -198,10 +199,10 @@ pagespeed.Mob.prototype.mobilizeSite_ = function() {
     console.log('mobilizing site');
     // TODO(jmarantz): Remove this hack once we are compiling mob_logo.js in
     // the same module.
-    var extractTheme = window['extractTheme'];
-    if (extractTheme && !pagespeed.MobUtil.inFriendlyIframe()) {
+    if (window['psNavMode'] && !pagespeed.MobUtil.inFriendlyIframe()) {
       ++this.pendingCallbacks_;
-      extractTheme(this.imageMap_, this.logoComplete_.bind(this));
+      pagespeed.MobTheme.extractTheme(
+          this.imageMap_, this.logoComplete_.bind(this));
     } else {
       this.maybeRunLayout();
     }
@@ -219,11 +220,9 @@ pagespeed.Mob.prototype.mobilizeSite_ = function() {
 pagespeed.Mob.prototype.logoComplete_ = function(themeData) {
   --this.pendingCallbacks_;
   this.updateProgressBar(this.domElementCount_, 'extract theme');
-  if (window['psNavMode']) {
-    var mobNav = new pagespeed.MobNav();
-    mobNav.Run(themeData);
-    this.updateProgressBar(this.domElementCount_, 'navigation');
-  }
+  var mobNav = new pagespeed.MobNav();
+  mobNav.Run(themeData);
+  this.updateProgressBar(this.domElementCount_, 'navigation');
   this.maybeRunLayout();
 };
 
@@ -326,12 +325,9 @@ pagespeed.Mob.prototype.initiateMobilization = function() {
   // We multiply the number of DOM elements by the number of passes.
   // That includes all the layout passes, plus 2 for menus and navigation.
   var extraPasses = 0;
-  var extractTheme = window['extractTheme'];
-  if (extractTheme && pagespeed.MobUtil.inFriendlyIframe()) {
-    this.totalWork_ += this.domElementCount_;
-    if (window.psNavMode) {
-      this.totalWork_ += this.domElementCount_;
-    }
+  if (window.psNavMode && pagespeed.MobUtil.inFriendlyIframe()) {
+    this.totalWork_ += this.domElementCount_;  // logo
+    this.totalWork_ += this.domElementCount_;  // nav
   }
 
   if (document.body != null) {

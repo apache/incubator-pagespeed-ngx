@@ -18,6 +18,8 @@
 
 goog.provide('pagespeed.MobTheme');
 
+goog.require('pagespeed.MobColor');
+goog.require('pagespeed.MobLogo');
 goog.require('pagespeed.MobUtil');
 
 
@@ -163,11 +165,10 @@ pagespeed.MobTheme.prototype.colorComplete_ = function(
 
 /**
  * Extract theme of the page. This is the entry method.
- * @param {Array.<string,Element>} imageMap
+ * @param {Object.<string,Element>} imageMap
  * @param {function(!pagespeed.MobUtil.ThemeData)} doneCallback
- * @export
  */
-window.extractTheme = function(imageMap, doneCallback) {
+pagespeed.MobTheme.extractTheme = function(imageMap, doneCallback) {
   // TODO(huibao): If the logo image is in 'imageMap', use it directly instead
   // of creating a new IMG tag.
   if (!doneCallback) {
