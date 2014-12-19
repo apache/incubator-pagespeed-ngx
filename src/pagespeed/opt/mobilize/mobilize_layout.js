@@ -281,9 +281,9 @@ pagespeed.MobLayout.prototype.shrinkWideElements_ = function(element) {
   if (image) {
     var img = this.psMob_.findImgTagForUrl(image);
     var style = '';
-    if (img && img.width && img.height) {
+    if (img && img.width && img.height &&
+        (computedStyle.getPropertyValue('background-position') == 'none')) {
       var height = img.height;
-      var repeat = computedStyle.getPropertyValue('background-repeat');
 
       if (img.width > this.maxWidth_) {
         var shrinkage = this.maxWidth_ / img.width;
@@ -863,6 +863,7 @@ pagespeed.MobLayout.prototype.cleanupStylesHelper_ = function(element) {
   var tagName = element.tagName.toUpperCase();
   var isList = (tagName == 'UL') || (tagName == 'OL');
   var isBody = (tagName == 'BODY');
+  var clampToZero = false;
 
   // Reduce excess padding on margins.  We don't want to eliminate
   // all padding as that looks terrible on many sites.
@@ -879,10 +880,22 @@ pagespeed.MobLayout.prototype.cleanupStylesHelper_ = function(element) {
           //element.style[name] = '4px !important';
           style += name + ':4px !important;';
         } else if (value < 0) {
+          clampToZero = true;
+
           if (name == 'margin-bottom') {
-            // This might be a slide-show implemented with a negative
-            // margin-bottom based on the element height.  However, it's
-            // likely that our usage of max-width:100% and viewports has
+            // This *might* be a slide-show implemented with a negative
+            // margin-bottom based on the element height.  However, it
+            // also might just be a small correction.  Heuristically
+            // try to distinguish them.
+            // TODO(jmarantz): A better heuristic is to make the determination
+            // of whether the original margin-bottom matches the element height
+            // before applying a viewport and max-width:100%.
+            clampToZero = (value > -30);
+          }
+          if (clampToZero) {
+            style += name + ':0px !important;';
+          } else {
+            // It's likely that our usage of max-width:100% and viewports has
             // caused some heights to change (without any explicit JS
             // overrides.  We then may make further adjustments to the element
             // height in expandColumns or elsewhere.  So at this
@@ -892,8 +905,6 @@ pagespeed.MobLayout.prototype.cleanupStylesHelper_ = function(element) {
             element.setAttribute(
                 pagespeed.MobLayout.NEGATIVE_BOTTOM_MARGIN_ATTR_, '1');
             // TODO(jmarantz): do this for margin-right as well.
-          } else {
-            style += name + ':0px !important;';
           }
         }
       }
@@ -968,7 +979,8 @@ pagespeed.MobLayout.prototype.repairDistortedImages_ = function(element) {
  */
 pagespeed.MobLayout.prototype.reallocateWidthToTableData_ = function(element) {
   var tdParent = element;
-  while (tdParent && tdParent.tagName.toUpperCase() != 'TD') {
+  while (tdParent && tdParent.tagName &&
+         (tdParent.tagName.toUpperCase() != 'TD')) {
     tdParent = tdParent.parentNode;
   }
   if (tdParent) {
@@ -1109,7 +1121,7 @@ pagespeed.MobLayout.prototype.removeWidthConstraint_ =
   if ((tagName != 'INPUT') && (tagName != 'SELECT')) {
     // Determine whether this element has a width constraint.
     if ((element.style.backgroundSize == '') &&
-        (computedStyle.getPropertyValue('width') != 'auto')) {
+        (computedStyle.width != 'auto')) {
       pagespeed.MobUtil.setPropertyImportant(element, 'width', 'auto');
     }
     if (tagName != 'IMG') {
