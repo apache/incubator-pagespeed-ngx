@@ -49,10 +49,10 @@ class NgxMessageHandler : public SystemMessageHandler {
   ngx_log_t* log() { return log_; }
 
  protected:
-  virtual void MessageVImpl(MessageType type, const char* msg, va_list args);
+  virtual void MessageSImpl(MessageType type, const GoogleString& message);
 
-  virtual void FileMessageVImpl(MessageType type, const char* filename,
-                                int line, const char* msg, va_list args);
+  virtual void FileMessageSImpl(MessageType type, const char* file,
+                                int line, const GoogleString& message);
 
  private:
   ngx_uint_t GetNgxLogLevel(MessageType type);
