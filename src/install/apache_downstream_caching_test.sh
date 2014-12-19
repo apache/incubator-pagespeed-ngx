@@ -28,7 +28,7 @@
 # debug_conf.v3.vcl. By default, it is assumed to have the value 1.
 
 this_dir="$( dirname "${BASH_SOURCE[0]}" )"
-INSTAWEB_CODE_DIR="$this_dir/../net/instaweb"
+INSTAWEB_CODE_DIR="$this_dir/../../../net/instaweb"
 if [ ! -e "$INSTAWEB_CODE_DIR" ] ; then
   INSTAWEB_CODE_DIR="$this_dir/../../"
 fi

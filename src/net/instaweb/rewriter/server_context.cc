@@ -323,7 +323,7 @@ ServerContext::~ServerContext() {
     deferred_release_rewrite_drivers_.clear();
   }
 
-  // We scan for "leaked_rewrite_drivers" in apache/install/Makefile.tests
+  // We scan for "leaked_rewrite_drivers" in install/Makefile.tests
   if (!active_rewrite_drivers_.empty()) {
     message_handler_->Message(
         kError, "ServerContext: %d leaked_rewrite_drivers on destruction",
