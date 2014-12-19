@@ -88,31 +88,28 @@ ngx_uint_t NgxMessageHandler::GetNgxLogLevel(MessageType type) {
   return NGX_LOG_ALERT;
 }
 
-void NgxMessageHandler::MessageVImpl(MessageType type, const char* msg,
-                                     va_list args) {
-  ngx_uint_t log_level = GetNgxLogLevel(type);
-  GoogleString formatted_message = Format(msg, args);
+void NgxMessageHandler::MessageSImpl(MessageType type,
+                                     const GoogleString& message) {
   if (log_ != NULL) {
+    ngx_uint_t log_level = GetNgxLogLevel(type);
     ngx_log_error(log_level, log_, 0/*ngx_err_t*/, "[%s %s] %s",
-                  kModuleName, kModPagespeedVersion, formatted_message.c_str());
+                  kModuleName, kModPagespeedVersion, message.c_str());
   } else {
-    GoogleMessageHandler::MessageVImpl(type, msg, args);
+    GoogleMessageHandler::MessageSImpl(type, message);
   }
   // Prepare a log message for the SharedCircularBuffer only.
-  AddMessageToBuffer(type, formatted_message);
+  AddMessageToBuffer(type, message);
 }
 
-void NgxMessageHandler::FileMessageVImpl(MessageType type, const char* file,
-                                         int line, const char* msg,
-                                         va_list args) {
-  ngx_uint_t log_level = GetNgxLogLevel(type);
-  GoogleString formatted_message = Format(msg, args);
+void NgxMessageHandler::FileMessageSImpl(
+    MessageType type, const char* file, int line, const GoogleString& message) {
   if (log_ != NULL) {
+    ngx_uint_t log_level = GetNgxLogLevel(type);
     ngx_log_error(log_level, log_, 0/*ngx_err_t*/, "[%s %s] %s:%d:%s",
                   kModuleName, kModPagespeedVersion, file, line,
-                  formatted_message.c_str());
+                  message.c_str());
   } else {
-    GoogleMessageHandler::FileMessageVImpl(type, file, line, msg, args);
+    GoogleMessageHandler::FileMessageSImpl(type, file, line, message);
   }
 }
 
