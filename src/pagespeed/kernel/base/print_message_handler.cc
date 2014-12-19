@@ -18,11 +18,9 @@
 
 #include "pagespeed/kernel/base/print_message_handler.h"
 
-#include <cstdarg>
 #include <cstdio>
 
 #include "pagespeed/kernel/base/string.h"
-#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 
@@ -32,22 +30,17 @@ PrintMessageHandler::PrintMessageHandler() {
 PrintMessageHandler::~PrintMessageHandler() {
 }
 
-void PrintMessageHandler::MessageVImpl(MessageType type,
-                                       const char* msg,
-                                       va_list args) {
-  GoogleString buffer;
-  StringAppendV(&buffer, msg, args);
-  fputs(buffer.c_str(), stdout);
+void PrintMessageHandler::MessageSImpl(MessageType type,
+                                       const GoogleString& message) {
+  fputs(message.c_str(), stdout);
   fflush(stdout);
 }
 
-void PrintMessageHandler::FileMessageVImpl(MessageType type,
-                                           const char* filename,
-                                           int line,
-                                           const char* msg,
-                                           va_list args) {
+void PrintMessageHandler::FileMessageSImpl(
+    MessageType type, const char* filename, int line,
+    const GoogleString& message) {
   // This is the PrintMessageHandler, so we always print!
-  MessageVImpl(type, msg, args);
+  MessageSImpl(type, message);
 }
 
 }  // namespace net_instaweb

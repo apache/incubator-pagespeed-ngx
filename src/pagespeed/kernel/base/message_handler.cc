@@ -81,6 +81,21 @@ void MessageHandler::MessageV(MessageType type, const char* msg, va_list args) {
   }
 }
 
+void MessageHandler::MessageS(
+    MessageType type, const GoogleString& message) {
+  if (type >= min_message_type_) {
+    MessageSImpl(type, message);
+  }
+}
+
+// Default implementation of MessageVImpl formats and then calls MessageS.
+void MessageHandler::MessageVImpl(
+    MessageType type, const char* msg, va_list args) {
+  GoogleString buffer;
+  FormatTo(&buffer, msg, args);
+  MessageSImpl(type, buffer);
+}
+
 void MessageHandler::FileMessage(MessageType type, const char* file, int line,
                                  const char* msg, ...) {
   va_list args;
@@ -94,6 +109,21 @@ void MessageHandler::FileMessageV(MessageType type, const char* filename,
   if (type >= min_message_type_) {
     FileMessageVImpl(type, filename, line, msg, args);
   }
+}
+
+void MessageHandler::FileMessageS(MessageType type, const char* filename,
+                                  int line, const GoogleString& message) {
+  if (type >= min_message_type_) {
+    FileMessageSImpl(type, filename, line, message);
+  }
+}
+
+void MessageHandler::FileMessageVImpl(
+    MessageType type, const char* filename, int line,
+    const char* msg, va_list args) {
+  GoogleString buffer;
+  FormatTo(&buffer, msg, args);
+  FileMessageSImpl(type, filename, line, buffer);
 }
 
 void MessageHandler::Check(bool condition, const char* msg, ...) {
@@ -138,13 +168,11 @@ void MessageHandler::FatalError(
   va_end(args);
 }
 
-GoogleString MessageHandler::Format(const char* msg, va_list args) {
-  GoogleString buffer;
-
+void MessageHandler::FormatTo(GoogleString* buffer,
+                              const char* msg, va_list args) {
   // Ignore the name of this routine: it formats with vsnprintf.
   // See base/stringprintf.cc.
-  StringAppendV(&buffer, msg, args);
-  return buffer;
+  StringAppendV(buffer, msg, args);
 }
 
 bool MessageHandler::Dump(Writer* writer) {

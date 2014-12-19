@@ -19,6 +19,7 @@
 #include "pagespeed/kernel/base/message_handler.h"
 
 #include <cstdarg>
+#include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 
 #ifndef PAGESPEED_KERNEL_BASE_MESSAGE_HANDLER_TEST_BASE_H_
@@ -31,11 +32,13 @@ class TestMessageHandler : public net_instaweb::MessageHandler {
   const StringVector& messages() { return messages_; }
 
  protected:
-  virtual void MessageVImpl(MessageType type, const char* msg,
-                            va_list args);
+  virtual void MessageVImpl(MessageType type, const char* msg, va_list args);
+  virtual void MessageSImpl(MessageType type, const GoogleString& message);
 
   virtual void FileMessageVImpl(MessageType type, const char* filename,
                                 int line, const char* msg, va_list args);
+  virtual void FileMessageSImpl(MessageType type, const char* filename,
+                                int line, const GoogleString& message);
 
  private:
   StringVector messages_;

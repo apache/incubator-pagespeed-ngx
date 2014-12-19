@@ -18,7 +18,6 @@
 
 #include "pagespeed/kernel/base/mock_message_handler.h"
 
-#include <cstdarg>
 #include <map>
 #include <utility>
 
@@ -38,31 +37,26 @@ MockMessageHandler::MockMessageHandler(AbstractMutex* mutex)
 MockMessageHandler::~MockMessageHandler() {
 }
 
-void MockMessageHandler::MessageVImpl(MessageType type,
-                                      const char* msg,
-                                      va_list args) {
+void MockMessageHandler::MessageSImpl(MessageType type,
+                                      const GoogleString& message) {
   ScopedMutex hold_mutex(mutex_.get());
-  if (ShouldPrintMessage(Format(msg, args).c_str())) {
-    GoogleMessageHandler::MessageVImpl(type, msg, args);
-    GoogleString formatted_message = Format(msg, args);
+  if (ShouldPrintMessage(message)) {
+    internal_handler_.MessageSImpl(type, message);
     GoogleString type_str = MessageTypeToString(type);
-    GoogleString message;
-    StrAppend(&message, type_str.substr(0, 1), "[Wed Jan 01 00:00:00 2014] [",
-              type_str, "] ");
-    StrAppend(&message, "[00000]", " ", formatted_message, "\n");
-    StrAppend(&buffer_, message);
+    StrAppend(&buffer_, type_str.substr(0, 1), "[Wed Jan 01 00:00:00 2014] [",
+              type_str, "] [00000] ", message, "\n");
   } else {
     ++skipped_message_counts_[type];
   }
   ++message_counts_[type];
 }
 
-void MockMessageHandler::FileMessageVImpl(MessageType type,
+void MockMessageHandler::FileMessageSImpl(MessageType type,
                                           const char* filename, int line,
-                                          const char* msg, va_list args) {
+                                          const GoogleString& message) {
   ScopedMutex hold_mutex(mutex_.get());
-  if (ShouldPrintMessage(Format(msg, args).c_str())) {
-    GoogleMessageHandler::FileMessageVImpl(type, filename, line, msg, args);
+  if (ShouldPrintMessage(message)) {
+    internal_handler_.FileMessageSImpl(type, filename, line, message);
   } else {
     ++skipped_message_counts_[type];
   }
@@ -125,8 +119,9 @@ void MockMessageHandler::AddPatternToSkipPrinting(
   patterns_to_skip_.Allow(GoogleString(pattern));
 }
 
-bool MockMessageHandler::ShouldPrintMessage(const char* msg) {
-  return !patterns_to_skip_.Match(GoogleString(msg), false);
+bool MockMessageHandler::ShouldPrintMessage(
+    const StringPiece& msg) {
+  return !patterns_to_skip_.Match(msg, false);
 }
 
 bool MockMessageHandler::Dump(Writer* writer) {

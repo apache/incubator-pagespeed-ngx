@@ -19,6 +19,8 @@
 #ifndef NET_INSTAWEB_SYSTEM_PUBLIC_SYSTEM_MESSAGE_HANDLER_H_
 #define NET_INSTAWEB_SYSTEM_PUBLIC_SYSTEM_MESSAGE_HANDLER_H_
 
+#include <cstdarg>
+
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/google_message_handler.h"
 #include "pagespeed/kernel/base/message_handler.h"
@@ -58,6 +60,11 @@ class SystemMessageHandler : public GoogleMessageHandler {
   // different servers can choose how to format the message window.
   virtual void AddMessageToBuffer(MessageType type,
                                   StringPiece formatted_message);
+  // Since we subclass GoogleMessageHandler but want to format messages
+  // internally we must provide overrides of these two logging methods.
+  virtual void MessageVImpl(MessageType type, const char* msg, va_list args);
+  virtual void FileMessageVImpl(MessageType type, const char* file,
+                                int line, const char* msg, va_list args);
 
  private:
   friend class SystemMessageHandlerTest;

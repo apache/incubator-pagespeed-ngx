@@ -31,8 +31,23 @@ FileMessageHandler::FileMessageHandler(FILE* file) : file_(file) {
 
 void FileMessageHandler::MessageVImpl(MessageType type, const char* msg,
                                       va_list args) {
-  fprintf(file_, "%s: ", MessageTypeToString(type));
+  // Effectively we're using stdio's buffer to hold the data we're logging
+  // rather than formatting it into a temporary intermediate buffer.
+  fputs(MessageTypeToString(type), file_);
+  fputs(": ", file_);
   vfprintf(file_, msg, args);
+  fputc('\n', file_);
+
+  if (type == kFatal) {
+    abort();
+  }
+}
+
+void FileMessageHandler::MessageSImpl(MessageType type,
+                                      const GoogleString& message) {
+  fputs(MessageTypeToString(type), file_);
+  fputs(": ", file_);
+  fputs(message.c_str(), file_);
   fputc('\n', file_);
 
   if (type == kFatal) {
@@ -45,6 +60,18 @@ void FileMessageHandler::FileMessageVImpl(MessageType type,
                                           const char *msg, va_list args) {
   fprintf(file_, "%s: %s:%d: ", MessageTypeToString(type), filename, line);
   vfprintf(file_, msg, args);
+  fputc('\n', file_);
+
+  if (type == kFatal) {
+    abort();
+  }
+}
+
+void FileMessageHandler::FileMessageSImpl(
+    MessageType type, const char* filename, int line,
+    const GoogleString& message) {
+  fprintf(file_, "%s: %s:%d: ", MessageTypeToString(type), filename, line);
+  fputs(message.c_str(), file_);
   fputc('\n', file_);
 
   if (type == kFatal) {

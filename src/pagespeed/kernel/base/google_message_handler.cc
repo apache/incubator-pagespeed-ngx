@@ -28,8 +28,26 @@
 
 namespace net_instaweb {
 
+void GoogleMessageHandler::MessageSImpl(MessageType type,
+                                        const GoogleString& message) {
+  switch (type) {
+    case kInfo:
+      LOG(INFO) << message;
+      break;
+    case kWarning:
+      LOG(WARNING) << message;
+      break;
+    case kError:
+      LOG(ERROR) << message;
+      break;
+    case kFatal:
+      LOG(FATAL) << message;
+      break;
+  }
+}
 void GoogleMessageHandler::MessageVImpl(MessageType type, const char* msg,
                                         va_list args) {
+  // The seeming duplication avoids formatting if loglevel doesn't require it.
   switch (type) {
     case kInfo:
       LOG(INFO) << Format(msg, args);
@@ -46,9 +64,28 @@ void GoogleMessageHandler::MessageVImpl(MessageType type, const char* msg,
   }
 }
 
+void GoogleMessageHandler::FileMessageSImpl(
+    MessageType type, const char* file, int line, const GoogleString& message) {
+  switch (type) {
+    case kInfo:
+      LOG(INFO) << file << ":" << line << ": " << message;
+      break;
+    case kWarning:
+      LOG(WARNING) << file << ":" << line << ": " << message;
+      break;
+    case kError:
+      LOG(ERROR) << file << ":" << line << ": " << message;
+      break;
+    case kFatal:
+      LOG(FATAL) << file << ":" << line << ": " << message;
+      break;
+  }
+}
+
 void GoogleMessageHandler::FileMessageVImpl(MessageType type, const char* file,
                                             int line, const char* msg,
                                             va_list args) {
+  // The seeming duplication avoids formatting if loglevel doesn't require it.
   switch (type) {
     case kInfo:
       LOG(INFO) << file << ":" << line << ": " << Format(msg, args);
@@ -63,6 +100,12 @@ void GoogleMessageHandler::FileMessageVImpl(MessageType type, const char* file,
       LOG(FATAL) << file << ":" << line << ": " << Format(msg, args);
       break;
   }
+}
+
+GoogleString GoogleMessageHandler::Format(const char* msg, va_list args) {
+  GoogleString result;
+  FormatTo(&result, msg, args);
+  return result;
 }
 
 }  // namespace net_instaweb

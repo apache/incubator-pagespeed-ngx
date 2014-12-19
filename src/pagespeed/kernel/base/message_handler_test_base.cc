@@ -26,10 +26,15 @@ namespace net_instaweb {
 
 void TestMessageHandler::MessageVImpl(MessageType type, const char* msg,
                                       va_list args) {
-  GoogleString message;
-  StringAppendF(&message, "%s: ", MessageTypeToString(type));
+  GoogleString message = StrCat(MessageTypeToString(type), ": ");
   StringAppendV(&message, msg, args);
   messages_.push_back(message);
+}
+
+void TestMessageHandler::MessageSImpl(MessageType type,
+                                      const GoogleString& message) {
+  messages_.push_back(
+      StrCat(MessageTypeToString(type), ": ", message));
 }
 
 void TestMessageHandler::FileMessageVImpl(MessageType type,
@@ -41,6 +46,16 @@ void TestMessageHandler::FileMessageVImpl(MessageType type,
                 filename, line);
   StringAppendV(&message, msg, args);
   messages_.push_back(message);
+}
+
+void TestMessageHandler::FileMessageSImpl(
+    MessageType type, const char* filename, int line,
+    const GoogleString& message) {
+  GoogleString actual;
+  StringAppendF(&actual, "%s: %s: %d: ", MessageTypeToString(type),
+                filename, line);
+  StrAppend(&actual, message);
+  messages_.push_back(actual);
 }
 
 }  // namespace net_instaweb

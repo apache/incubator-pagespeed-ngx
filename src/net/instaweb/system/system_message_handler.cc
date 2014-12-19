@@ -73,6 +73,21 @@ void SystemMessageHandler::AddMessageToBuffer(
   }
 }
 
+void SystemMessageHandler::MessageVImpl(MessageType type, const char* msg,
+                                        va_list args) {
+  GoogleString buffer;
+  FormatTo(&buffer, msg, args);
+  MessageSImpl(type, buffer);
+}
+
+void SystemMessageHandler::FileMessageVImpl(MessageType type, const char* file,
+                                            int line, const char* msg,
+                                            va_list args) {
+  GoogleString buffer;
+  FormatTo(&buffer, msg, args);
+  FileMessageSImpl(type, file, line, buffer);
+}
+
 bool SystemMessageHandler::Dump(Writer* writer) {
   if (buffer_ == NULL) {
     return false;

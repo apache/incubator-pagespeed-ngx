@@ -62,7 +62,6 @@ class MessageHandler {
   void FileMessageV(MessageType type, const char* filename, int line,
                     const char* msg, va_list args);
 
-
   // Conditional errors.
   void Check(bool condition, const char* msg, ...) INSTAWEB_PRINTF_FORMAT(3, 4);
   void CheckV(bool condition, const char* msg, va_list args);
@@ -93,12 +92,11 @@ class MessageHandler {
     FileMessageV(kFatal, fname, line, msg, a);
   }
 
-  // 'MessageVImpl' and 'FileMessageVImpl' are public methods in order to
-  // simplify delegation.
-  virtual void MessageVImpl(MessageType type, const char* msg,
-                            va_list args) = 0;
-  virtual void FileMessageVImpl(MessageType type, const char* filename,
-                                int line, const char* msg, va_list args) = 0;
+  // Unformatted messaging.  Delegating classes can call directly to
+  // MessageSImpl and FileMessageSImpl, but clients should call these methods.
+  void MessageS(MessageType type, const GoogleString& message);
+  void FileMessageS(MessageType type, const char* filename, int line,
+                    const GoogleString& message);
 
   // Dumps recent messages, or returns false if this was not possible.
   // The default implementation returns false, but derived classes may
@@ -116,7 +114,21 @@ class MessageHandler {
   virtual StringPiece ReformatMessage(StringPiece message);
 
  protected:
-  GoogleString Format(const char* msg, va_list args);
+  // 'MessageVImpl' and 'FileMessageVImpl' have default implementations in terms
+  // of MessageSImpl and FileMessageSImpl.
+  virtual void MessageVImpl(MessageType type, const char* msg,
+                            va_list args);
+  virtual void FileMessageVImpl(MessageType type, const char* filename,
+                                int line, const char* msg, va_list args);
+  // These methods don't perform any formatting on the string, since it turns
+  // out delegating message_handlers generally only need to format once at the
+  // top of the stack and then propagate the formatted string inwards.
+  virtual void MessageSImpl(MessageType type, const GoogleString& message) = 0;
+  virtual void FileMessageSImpl(
+      MessageType type, const char* filename, int line,
+      const GoogleString& message) = 0;
+  // FormatTo appends to *buffer.
+  void FormatTo(GoogleString* buffer, const char* msg, va_list args);
 
  private:
   // The minimum message type to log at. Any messages below this level

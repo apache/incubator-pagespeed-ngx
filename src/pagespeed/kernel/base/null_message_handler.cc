@@ -27,13 +27,21 @@ namespace net_instaweb {
 NullMessageHandler::~NullMessageHandler() {
 }
 
-void NullMessageHandler::MessageVImpl(MessageType type, const char* msg,
-                                      va_list args) {
+void NullMessageHandler::MessageVImpl(
+    MessageType type, const char* msg, va_list args) {
 }
 
-void NullMessageHandler::FileMessageVImpl(MessageType type, const char* file,
-                                          int line, const char* msg,
-                                          va_list args) {
+void NullMessageHandler::MessageSImpl(
+    MessageType type, const GoogleString& message) {
+}
+
+void NullMessageHandler::FileMessageVImpl(
+    MessageType type, const char* file, int line,
+    const char* msg, va_list args) {
+}
+
+void NullMessageHandler::FileMessageSImpl(
+    MessageType type, const char* file, int line, const GoogleString& message) {
 }
 
 }  // namespace net_instaweb

@@ -17,8 +17,6 @@
 #ifndef NET_INSTAWEB_APACHE_APACHE_MESSAGE_HANDLER_H_
 #define NET_INSTAWEB_APACHE_APACHE_MESSAGE_HANDLER_H_
 
-#include <cstdarg>
-
 #include "net/instaweb/system/public/system_message_handler.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/message_handler.h"
@@ -46,10 +44,10 @@ class ApacheMessageHandler : public SystemMessageHandler {
   static void InstallCrashHandler(server_rec* global_server);
 
  protected:
-  virtual void MessageVImpl(MessageType type, const char* msg, va_list args);
+  virtual void MessageSImpl(MessageType type, const GoogleString& message);
 
-  virtual void FileMessageVImpl(MessageType type, const char* filename,
-                                int line, const char* msg, va_list args);
+  virtual void FileMessageSImpl(MessageType type, const char* filename,
+                                int line, const GoogleString& message);
 
  private:
   int GetApacheLogLevel(MessageType type);

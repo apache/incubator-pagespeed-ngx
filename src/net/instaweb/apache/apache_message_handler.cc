@@ -27,6 +27,7 @@
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/debug.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/timer.h"
 
 namespace {
 
@@ -105,26 +106,23 @@ int ApacheMessageHandler::GetApacheLogLevel(MessageType type) {
   return APLOG_ALERT;
 }
 
-void ApacheMessageHandler::MessageVImpl(MessageType type, const char* msg,
-                                        va_list args) {
+void ApacheMessageHandler::MessageSImpl(
+    MessageType type, const GoogleString& message) {
   int log_level = GetApacheLogLevel(type);
-  GoogleString formatted_message = Format(msg, args);
   ap_log_error(APLOG_MARK, log_level, APR_SUCCESS, server_rec_,
                "[%s %s @%ld] %s",
                kModuleName, version_.c_str(), static_cast<long>(getpid()),
-               formatted_message.c_str());
-  AddMessageToBuffer(type, formatted_message);
+               message.c_str());
+  AddMessageToBuffer(type, message);
 }
 
-void ApacheMessageHandler::FileMessageVImpl(MessageType type, const char* file,
-                                            int line, const char* msg,
-                                            va_list args) {
+void ApacheMessageHandler::FileMessageSImpl(
+    MessageType type, const char* file, int line, const GoogleString& message) {
   int log_level = GetApacheLogLevel(type);
-  GoogleString formatted_message = Format(msg, args);
   ap_log_error(APLOG_MARK, log_level, APR_SUCCESS, server_rec_,
                "[%s %s @%ld] %s:%d: %s",
                kModuleName, version_.c_str(), static_cast<long>(getpid()),
-               file, line, formatted_message.c_str());
+               file, line, message.c_str());
 }
 
 }  // namespace net_instaweb

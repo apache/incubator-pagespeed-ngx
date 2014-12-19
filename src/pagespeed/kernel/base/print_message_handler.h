@@ -19,9 +19,9 @@
 #ifndef PAGESPEED_KERNEL_BASE_PRINT_MESSAGE_HANDLER_H_
 #define PAGESPEED_KERNEL_BASE_PRINT_MESSAGE_HANDLER_H_
 
-#include <cstdarg>
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/message_handler.h"
+#include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
 
@@ -32,10 +32,9 @@ class PrintMessageHandler : public MessageHandler {
   virtual ~PrintMessageHandler();
 
  protected:
-  virtual void MessageVImpl(MessageType type, const char* msg,
-                            va_list args);
-  virtual void FileMessageVImpl(MessageType type, const char* filename,
-                                int line, const char* msg, va_list args);
+  virtual void MessageSImpl(MessageType type, const GoogleString& message);
+  virtual void FileMessageSImpl(MessageType type, const char* filename,
+                                int line, const GoogleString& message);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(PrintMessageHandler);
