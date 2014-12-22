@@ -268,6 +268,37 @@ pagespeed.MobLayout.numberOfPasses = function() {
 
 
 /**
+ * Determines whether the computedStyle looks like it might be a sprite.
+ *
+ * @param {CSSStyleDeclaration} computedStyle
+ * @return {boolean}
+ * @private
+ */
+pagespeed.MobLayout.prototype.isProbablyASprite_ = function(computedStyle) {
+  var origin = computedStyle.getPropertyValue('background-origin');
+  if (origin == 'padding-box') {
+    return true;
+  }
+  var size = computedStyle.getPropertyValue('background-size');
+  if (size == 'auto') {
+    return false;
+  }
+  var pos = computedStyle.getPropertyValue('background-position');
+  if (pos == 'none') {
+    return false;
+  }
+  // A precisely positioned pixel-position probaby indicates a sprite.
+  var pieces = pos.split(' ');
+  if ((pieces.length == 2) &&
+      (pagespeed.MobUtil.pixelValue(pieces[0]) != null) &&
+      (pagespeed.MobUtil.pixelValue(pieces[1]) != null)) {
+    return true;
+  }
+  return false;
+};
+
+
+/**
  * Resizes huge background images, add scrolling to 'pre' tags.
  *
  * See also resizeIfTooWide_, which is focused primarily on tables.
@@ -282,7 +313,7 @@ pagespeed.MobLayout.prototype.shrinkWideElements_ = function(element) {
     var img = this.psMob_.findImgTagForUrl(image);
     var style = '';
     if (img && img.width && img.height &&
-        (computedStyle.getPropertyValue('background-position') == 'none')) {
+        !pagespeed.MobLayout.prototype.isProbablyASprite_(computedStyle)) {
       var height = img.height;
 
       if (img.width > this.maxWidth_) {
@@ -437,6 +468,7 @@ pagespeed.MobLayout.prototype.resizeVerticallyAndReturnBottom_ =
         // the eventual size of this absolute child, we will shrink
         // it here.
         if ((position == 'absolute') &&
+            !pagespeed.MobUtil.isOffScreen(childComputedStyle) &&
             (childComputedStyle.getPropertyValue('height') != '0px') &&
             (childComputedStyle.getPropertyValue('visibility') != 'hidden')) {
           hasAbsoluteChildren = true;
@@ -1007,6 +1039,20 @@ pagespeed.MobLayout.prototype.reallocateWidthToTableData_ = function(element) {
 
 
 /**
+ * Determines whether an element looks like it might be a slide-show.
+ * @param {!Element} element
+ * @return {boolean}
+ * @private
+ */
+pagespeed.MobLayout.prototype.isPossiblyASlideShow_ = function(element) {
+  if (element.classList.contains('nivoSlider')) {
+    return true;
+  }
+  return false;
+};
+
+
+/**
  * Reorders containers with 'float' elements so they are no longer needed.
  * If there are multiple 'float:right' elements, their order is reversed
  * in addition to stripping their float attributes.
@@ -1021,30 +1067,39 @@ pagespeed.MobLayout.prototype.stripFloats_ = function(element) {
   if (position == 'fixed') {
     return 'fixed';
   }
+  if (this.isPossiblyASlideShow_(element)) {
+    return position;
+  }
 
   // Contains nodes that we want to reorder in element, putting
   // them at the end of the child-list in reverse order to their
   // accumulation here.
   var i, child, childElement, childPosition, floatStyle, reorderNodes = [];
   var previousChild = null;
-  var displayOverride, absoluteNodes = [];
+  var displayOverride;
   var marginBottom, previousChildHasNegativeBottomMargin = false;
 
   for (child = element.firstChild; child; child = child.nextSibling) {
     childElement = this.getMobilizeElement(child);
     if (childElement != null) {
+      var childStyle = window.getComputedStyle(childElement);
+
       // Clean up the children first, because they might pick up 'float'
       // attributes from their parent.  If we clean the float attributes
       // from the parent first, then we won't be able to detect it when
       // testing the children.
       childPosition = this.stripFloats_(childElement);
       if ((childPosition == 'fixed') ||
+          (childStyle == null) ||
           (this.getMobilizeElement(childElement) == null)) {
         // do nothing
-      } else if (childPosition == 'absolute') {
-        absoluteNodes.push(childElement);
       } else {
-        var childStyle = window.getComputedStyle(childElement);
+        if ((childPosition == 'absolute') &&
+            !pagespeed.MobUtil.isOffScreen(childStyle)) {
+          pagespeed.MobUtil.setPropertyImportant(
+              childElement, 'position', 'relative');
+        }
+
         floatStyle = childStyle.getPropertyValue('float');
         var floatRight = (floatStyle == 'right');
         displayOverride = 'inline-block';

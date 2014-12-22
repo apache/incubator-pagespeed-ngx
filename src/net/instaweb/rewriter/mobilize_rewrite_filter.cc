@@ -368,9 +368,7 @@ void MobilizeRewriteFilter::EndElementImpl(HtmlElement* element) {
             AddStaticScript("mobilize_logo.js");
             AddStaticScript("mobilize_theme.js");
             AddStaticScript("mobilize_layout.js");
-            if (use_js_nav_) {
-              AddStaticScript("mobilize_nav.js");
-            }
+            AddStaticScript("mobilize_nav.js");
             AddStaticScript("mobilize.js");
           } else {
             StaticAssetManager* manager =

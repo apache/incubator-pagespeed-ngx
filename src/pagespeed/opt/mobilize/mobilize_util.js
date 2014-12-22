@@ -29,6 +29,20 @@ goog.require('goog.math.Box');
  */
 
 
+/**
+ * Ascii code for '0'
+ * @private {number}
+ */
+pagespeed.MobUtil.ASCII_0_ = '0'.charCodeAt(0);
+
+
+/**
+ * Ascii code for '9'
+ * @private {number}
+ */
+pagespeed.MobUtil.ASCII_9_ = '9'.charCodeAt(0);
+
+
 
 /**
  * Create a rectangle (Rect) struct.
@@ -54,6 +68,22 @@ pagespeed.MobUtil.Rect = function() {
 
 
 /**
+ * Returns whether the character at index's ascii code is a digit.
+ * @param {string} str
+ * @param {number} index
+ * @return {boolean}
+ */
+pagespeed.MobUtil.isDigit = function(str, index) {
+  if (str.length <= index) {
+    return false;
+  }
+  var ascii = str.charCodeAt(index);
+  return ((ascii >= pagespeed.MobUtil.ASCII_0_) &&
+          (ascii <= pagespeed.MobUtil.ASCII_9_));
+};
+
+
+/**
  * Takes a value, potentially ending in "px", and returns it as an
  * integer, or null.  Use 'if (return_value != null)' to validate the
  * return value of this function.  'if (return_value)' will not do what
@@ -63,19 +93,21 @@ pagespeed.MobUtil.Rect = function() {
  * units other than 'px'.  But if the dimensions are specified without any
  * units extension, this will assume pixels and return them as a number.
  *
- * @param {?string} value Attribute value.
+ * @param {number|?string} value Attribute value.
  * @return {?number} integer value in pixels or null.
  */
 pagespeed.MobUtil.pixelValue = function(value) {
   var ret = null;
-  if (value) {
+  if (value && (typeof value == 'string')) {
     var px = value.indexOf('px');
     if (px != -1) {
       value = value.substring(0, px);
     }
-    ret = parseInt(value, 10);
-    if (isNaN(ret)) {
-      ret = null;
+    if (pagespeed.MobUtil.isDigit(value, value.length - 1)) {
+      ret = parseInt(value, 10);
+      if (isNaN(ret)) {
+        ret = null;
+      }
     }
   }
   return ret;
@@ -691,4 +723,17 @@ pagespeed.MobUtil.boundingRectAndSize = function(element) {
   psRect.height = rect.bottom - rect.top;
   psRect.width = rect.right - rect.left;
   return psRect;
+};
+
+
+/**
+ * Computes whether the element is positioned off the screen.
+ * @param {!CSSStyleDeclaration} style
+ * @return {boolean}
+ */
+pagespeed.MobUtil.isOffScreen = function(style) {
+  var top = pagespeed.MobUtil.pixelValue(style.top);
+  var left = pagespeed.MobUtil.pixelValue(style.left);
+  return (((top != null) && (top < -100)) ||
+          ((left != null) && (left < -100)));
 };
