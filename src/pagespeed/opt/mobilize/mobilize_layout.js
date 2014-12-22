@@ -275,10 +275,6 @@ pagespeed.MobLayout.numberOfPasses = function() {
  * @private
  */
 pagespeed.MobLayout.prototype.isProbablyASprite_ = function(computedStyle) {
-  var origin = computedStyle.getPropertyValue('background-origin');
-  if (origin == 'padding-box') {
-    return true;
-  }
   var size = computedStyle.getPropertyValue('background-size');
   if (size == 'auto') {
     return false;

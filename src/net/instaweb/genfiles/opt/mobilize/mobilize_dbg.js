@@ -3727,9 +3727,6 @@ pagespeed.MobLayout.numberOfPasses = function() {
   return pagespeed.MobLayout.sequence_.length / 2;
 };
 pagespeed.MobLayout.prototype.isProbablyASprite_ = function(a) {
-  if ("padding-box" == a.getPropertyValue("background-origin")) {
-    return!0;
-  }
   if ("auto" == a.getPropertyValue("background-size")) {
     return!1;
   }
