@@ -14,7 +14,7 @@
 //
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/apache/apache_config.h"
+#include "pagespeed/apache/apache_config.h"
 
 #include "base/logging.h"
 #include "net/instaweb/public/version.h"

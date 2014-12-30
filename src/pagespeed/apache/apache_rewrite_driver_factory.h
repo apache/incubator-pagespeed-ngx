@@ -20,7 +20,7 @@
 
 // Note: We must include apache_config.h to allow using ApacheConfig*
 // return-types for functions that return RewriteOptions* in base class.
-#include "net/instaweb/apache/apache_config.h"
+#include "pagespeed/apache/apache_config.h"
 #include "net/instaweb/system/public/system_rewrite_driver_factory.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"

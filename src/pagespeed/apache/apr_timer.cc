@@ -16,7 +16,7 @@
 //         lsong@google.com (Libo Song)
 
 #include "apr_time.h"
-#include "net/instaweb/apache/apr_timer.h"
+#include "pagespeed/apache/apr_timer.h"
 
 namespace net_instaweb {
 

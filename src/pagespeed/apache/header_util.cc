@@ -14,7 +14,7 @@
 //
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/apache/header_util.h"
+#include "pagespeed/apache/header_util.h"
 
 #include <cstdio>
 #include <memory>

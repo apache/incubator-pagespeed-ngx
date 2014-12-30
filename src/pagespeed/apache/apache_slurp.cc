@@ -15,10 +15,10 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "base/logging.h"
-#include "net/instaweb/apache/apache_config.h"
-#include "net/instaweb/apache/apache_server_context.h"
-#include "net/instaweb/apache/apache_writer.h"
-#include "net/instaweb/apache/instaweb_handler.h"
+#include "pagespeed/apache/apache_config.h"
+#include "pagespeed/apache/apache_server_context.h"
+#include "pagespeed/apache/apache_writer.h"
+#include "pagespeed/apache/instaweb_handler.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_dump_url_fetcher.h"

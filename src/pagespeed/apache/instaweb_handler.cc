@@ -15,21 +15,21 @@
 // Author: lsong@google.com (Libo Song)
 //         jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/apache/instaweb_handler.h"
+#include "pagespeed/apache/instaweb_handler.h"
 
 #include <cstddef>
 
 #include "base/logging.h"
-#include "net/instaweb/apache/apache_config.h"
-#include "net/instaweb/apache/apache_message_handler.h"
-#include "net/instaweb/apache/apache_request_context.h"
-#include "net/instaweb/apache/apache_rewrite_driver_factory.h"
-#include "net/instaweb/apache/apache_server_context.h"
-#include "net/instaweb/apache/apache_writer.h"
-#include "net/instaweb/apache/apr_timer.h"
-#include "net/instaweb/apache/header_util.h"
-#include "net/instaweb/apache/instaweb_context.h"
-#include "net/instaweb/apache/mod_instaweb.h"
+#include "pagespeed/apache/apache_config.h"
+#include "pagespeed/apache/apache_message_handler.h"
+#include "pagespeed/apache/apache_request_context.h"
+#include "pagespeed/apache/apache_rewrite_driver_factory.h"
+#include "pagespeed/apache/apache_server_context.h"
+#include "pagespeed/apache/apache_writer.h"
+#include "pagespeed/apache/apr_timer.h"
+#include "pagespeed/apache/header_util.h"
+#include "pagespeed/apache/instaweb_context.h"
+#include "pagespeed/apache/mod_instaweb.h"
 #include "net/instaweb/automatic/public/proxy_fetch.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
@@ -65,7 +65,7 @@
 #include "http_protocol.h"
 #include "http_request.h"
 #include "util_filter.h"
-#include "net/instaweb/apache/apache_logging_includes.h"
+#include "pagespeed/apache/apache_logging_includes.h"
 
 namespace net_instaweb {
 

@@ -16,9 +16,9 @@
 
 // Author: morlovich@google.com (Maksim Orlovich)
 
-#include "net/instaweb/apache/apache_thread_system.h"
+#include "pagespeed/apache/apache_thread_system.h"
 
-#include "net/instaweb/apache/apr_timer.h"
+#include "pagespeed/apache/apr_timer.h"
 
 namespace net_instaweb {
 

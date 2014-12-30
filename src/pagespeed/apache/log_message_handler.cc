@@ -15,7 +15,7 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 // Author: sligocki@google.com (Shawn Ligocki)
 
-#include "net/instaweb/apache/log_message_handler.h"
+#include "pagespeed/apache/log_message_handler.h"
 
 #include <unistd.h>
 
@@ -27,7 +27,7 @@
 #include "base/logging.h"
 
 #include "httpd.h"
-#include "net/instaweb/apache/apache_logging_includes.h"
+#include "pagespeed/apache/apache_logging_includes.h"
 
 // Make sure we don't attempt to use LOG macros here, since doing so
 // would cause us to go into an infinite log loop.

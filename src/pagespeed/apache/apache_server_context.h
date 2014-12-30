@@ -17,7 +17,7 @@
 #ifndef NET_INSTAWEB_APACHE_APACHE_SERVER_CONTEXT_H_
 #define NET_INSTAWEB_APACHE_APACHE_SERVER_CONTEXT_H_
 
-#include "net/instaweb/apache/apache_config.h"
+#include "pagespeed/apache/apache_config.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/system/public/system_server_context.h"

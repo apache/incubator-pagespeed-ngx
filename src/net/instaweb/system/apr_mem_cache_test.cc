@@ -24,7 +24,7 @@
 
 #include "apr_pools.h"
 
-#include "net/instaweb/apache/apr_timer.h"
+#include "pagespeed/apache/apr_timer.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/google_message_handler.h"
 #include "pagespeed/kernel/base/gtest.h"

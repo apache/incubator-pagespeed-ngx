@@ -15,8 +15,8 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "base/logging.h"
-#include "net/instaweb/apache/apache_writer.h"
-#include "net/instaweb/apache/header_util.h"
+#include "pagespeed/apache/apache_writer.h"
+#include "pagespeed/apache/header_util.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/http/http_names.h"

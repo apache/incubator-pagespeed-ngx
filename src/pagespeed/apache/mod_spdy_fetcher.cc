@@ -22,7 +22,7 @@
 // Based in large part on mod_spdy's http_to_spdy_filter.cc and
 // spdy_to_http_filter.cc
 
-#include "net/instaweb/apache/mod_spdy_fetcher.h"
+#include "pagespeed/apache/mod_spdy_fetcher.h"
 
 #include "util_filter.h"
 
@@ -30,8 +30,8 @@
 #include <cstddef>
 
 #include "base/logging.h"
-#include "net/instaweb/apache/interface_mod_spdy.h"
-#include "net/instaweb/apache/mod_spdy_fetch_controller.h"
+#include "pagespeed/apache/interface_mod_spdy.h"
+#include "pagespeed/apache/mod_spdy_fetch_controller.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/http_response_parser.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"

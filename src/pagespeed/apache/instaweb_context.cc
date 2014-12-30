@@ -15,12 +15,12 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 //         lsong@google.com (Libo Song)
 
-#include "net/instaweb/apache/instaweb_context.h"
+#include "pagespeed/apache/instaweb_context.h"
 
 #include "base/logging.h"
-#include "net/instaweb/apache/apache_server_context.h"
-#include "net/instaweb/apache/header_util.h"
-#include "net/instaweb/apache/mod_instaweb.h"
+#include "pagespeed/apache/apache_server_context.h"
+#include "pagespeed/apache/header_util.h"
+#include "pagespeed/apache/mod_instaweb.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/public/experiment_matcher.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"

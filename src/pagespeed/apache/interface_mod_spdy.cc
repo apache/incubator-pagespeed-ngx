@@ -16,7 +16,7 @@
 //
 // Interfaces with mod_spdy
 
-#include "net/instaweb/apache/interface_mod_spdy.h"
+#include "pagespeed/apache/interface_mod_spdy.h"
 
 #include <cstddef>
 

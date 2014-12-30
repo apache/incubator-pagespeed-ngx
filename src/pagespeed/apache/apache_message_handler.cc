@@ -14,16 +14,16 @@
 
 // Author: sligocki@google.com (Shawn Ligocki)
 
-#include "net/instaweb/apache/apache_message_handler.h"
+#include "pagespeed/apache/apache_message_handler.h"
 
 #include <signal.h>
 #include <unistd.h>
 
-#include "net/instaweb/apache/apr_timer.h"
-#include "net/instaweb/apache/log_message_handler.h"
+#include "pagespeed/apache/apr_timer.h"
+#include "pagespeed/apache/log_message_handler.h"
 
 #include "httpd.h"
-#include "net/instaweb/apache/apache_logging_includes.h"
+#include "pagespeed/apache/apache_logging_includes.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/debug.h"
 #include "pagespeed/kernel/base/string_util.h"

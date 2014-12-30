@@ -15,7 +15,7 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 //         lsong@google.com (Libo Song)
 
-#include "net/instaweb/apache/apache_rewrite_driver_factory.h"
+#include "pagespeed/apache/apache_rewrite_driver_factory.h"
 
 #include <unistd.h>
 
@@ -24,12 +24,12 @@
 #include "ap_mpm.h"
 
 #include "base/logging.h"
-#include "net/instaweb/apache/apache_config.h"
-#include "net/instaweb/apache/apache_message_handler.h"
-#include "net/instaweb/apache/apache_server_context.h"
-#include "net/instaweb/apache/apache_thread_system.h"
-#include "net/instaweb/apache/apr_timer.h"
-#include "net/instaweb/apache/mod_spdy_fetch_controller.h"
+#include "pagespeed/apache/apache_config.h"
+#include "pagespeed/apache/apache_message_handler.h"
+#include "pagespeed/apache/apache_server_context.h"
+#include "pagespeed/apache/apache_thread_system.h"
+#include "pagespeed/apache/apr_timer.h"
+#include "pagespeed/apache/mod_spdy_fetch_controller.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "pagespeed/kernel/base/null_shared_mem.h"

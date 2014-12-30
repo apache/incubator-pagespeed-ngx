@@ -139,6 +139,8 @@ charntorune(Rune *rune, const char *str, int length)
 		l = ((((((c << Bitx) | c1) << Bitx) | c2) << Bitx) | c3) & Rune4;
 		if (l <= Rune3)
 			goto bad;
+		if (l > Runemax)
+			goto bad;
 		*rune = l;
 		return 4;
 	}
@@ -221,6 +223,8 @@ chartorune(Rune *rune, const char *str)
 	if (c < T5) {
 		l = ((((((c << Bitx) | c1) << Bitx) | c2) << Bitx) | c3) & Rune4;
 		if (l <= Rune3)
+			goto bad;
+		if (l > Runemax)
 			goto bad;
 		*rune = l;
 		return 4;

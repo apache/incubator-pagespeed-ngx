@@ -96,6 +96,14 @@ EXAMPLE_BIG_CSS = $(EXAMPLE)/styles/big.css.pagespeed.ce.01O-NppLwe.css
 EXAMPLE_COMBINE_CSS = $(EXAMPLE)/combine_css.html
 TEST_ROOT = $(APACHE_SERVER)/mod_pagespeed_test
 
+ifeq ($(wildcard $(MOD_PAGESPEED_ROOT)/pagespeed),)
+  APACHE_SYSTEM_TEST = $(MOD_PAGESPEED_ROOT)/third_party/pagespeed/apache/system_test.sh
+else
+  APACHE_SYSTEM_TEST = $(MOD_PAGESPEED_ROOT)/pagespeed/apache/system_test.sh
+endif
+
+SYSTEM_SYSTEM_TEST = $(MOD_PAGESPEED_ROOT)/net/instaweb/system/system_test.sh
+
 # Installs debug configuration and runs a smoke test against it.
 # This will blow away your existing pagespeed.conf,
 # and clear the cache.  It will also run with statistics off at the end,
@@ -109,17 +117,17 @@ apache_debug_smoke_test : apache_install_conf apache_debug_restart
 	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
 	APACHE_TERTIARY_PORT=$(APACHE_TERTIARY_PORT) \
 	APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
+	SYSTEM_SYSTEM_TEST=$(SYSTEM_SYSTEM_TEST) \
 	FIRST_RUN=true \
-	$(MOD_PAGESPEED_ROOT)/net/instaweb/apache/system_test.sh \
-	    $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
+	    $(APACHE_SYSTEM_TEST) $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 	#
 	@echo '***' System-test with warm cache
 	CACHE_FLUSH_TEST=on \
 	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
 	APACHE_TERTIARY_PORT=$(APACHE_TERTIARY_PORT) \
 	APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
-	$(MOD_PAGESPEED_ROOT)/net/instaweb/apache/system_test.sh \
-	    $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
+	SYSTEM_SYSTEM_TEST=$(SYSTEM_SYSTEM_TEST) \
+	    $(APACHE_SYSTEM_TEST) $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 	@echo '***' System-test with statistics off
 	mv $(APACHE_DEBUG_PAGESPEED_CONF) $(APACHE_DEBUG_PAGESPEED_CONF).save
 	sed -e "s/# ModPagespeedStatistics off/ModPagespeedStatistics off/" \
@@ -132,9 +140,9 @@ apache_debug_smoke_test : apache_install_conf apache_debug_restart
 	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
 	APACHE_TERTIARY_PORT=$(APACHE_TERTIARY_PORT) \
 	APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
+	SYSTEM_SYSTEM_TEST=$(SYSTEM_SYSTEM_TEST) \
 	CACHE_FLUSH_TEST=on \
-	    $(MOD_PAGESPEED_ROOT)/net/instaweb/apache/system_test.sh \
-	    $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
+	    $(APACHE_SYSTEM_TEST) $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 	#
 	# Now turn off ModPagespeedInheritVHostConfig, turn stats back on.
 	@echo '***' System-test without InheritVhostConfig, stats on.
@@ -150,8 +158,8 @@ apache_debug_smoke_test : apache_install_conf apache_debug_restart
 	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
 	APACHE_TERTIARY_PORT=$(APACHE_TERTIARY_PORT) \
 	APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
-	    $(MOD_PAGESPEED_ROOT)/net/instaweb/apache/system_test.sh \
-	    $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
+	SYSTEM_SYSTEM_TEST=$(SYSTEM_SYSTEM_TEST) \
+	    $(APACHE_SYSTEM_TEST) $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 	#
 	# Restore config
 	mv $(APACHE_DEBUG_PAGESPEED_CONF).save $(APACHE_DEBUG_PAGESPEED_CONF)
@@ -204,14 +212,13 @@ apache_debug_memcached_test :
 apache_debug_memcached_test_run :
 	$(MAKE) apache_install_conf OPT_MEMCACHED_TEST="MEMCACHED_TEST=1"
 	$(MAKE) apache_debug_restart
-	$(MOD_PAGESPEED_ROOT)/net/instaweb/apache/system_test.sh \
-	    $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
-	env \
-	    CACHE_FLUSH_TEST=on \
-	    APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
-	    APACHE_TERTIARY_PORT=$(APACHE_TERTIARY_PORT) \
-	        $(MOD_PAGESPEED_ROOT)/net/instaweb/apache/system_test.sh \
-	        $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
+	SYSTEM_SYSTEM_TEST=$(SYSTEM_SYSTEM_TEST) \
+	  $(APACHE_SYSTEM_TEST) $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
+	CACHE_FLUSH_TEST=on \
+	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
+	APACHE_TERTIARY_PORT=$(APACHE_TERTIARY_PORT) \
+	SYSTEM_SYSTEM_TEST=$(SYSTEM_SYSTEM_TEST) \
+	  $(APACHE_SYSTEM_TEST) $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 
 # This test checks that when ModPagespeedFetchWithGzip is enabled we
 # fetch resources from origin with the gzip flag.  Note that big.css
@@ -389,8 +396,8 @@ apache_debug_stats_logging_test :
 	$(MAKE) apache_install_conf \
 	    OPT_STATS_LOGGING_TEST="STATS_LOGGING_TEST=1"
 	$(MAKE) apache_debug_restart
-	$(MOD_PAGESPEED_ROOT)/net/instaweb/apache/system_test.sh \
-	    $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
+	SYSTEM_SYSTEM_TEST=$(SYSTEM_SYSTEM_TEST) \
+	  $(APACHE_SYSTEM_TEST) $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 
 # Tests that setting the root configuration 'unplugged' can't be overridden
 # with a query-param, but can be overridden with an explicit vhost setting.

@@ -27,7 +27,7 @@
 #include "httpd.h"
 
 
-#include "net/instaweb/apache/interface_mod_spdy.h"
+#include "pagespeed/apache/interface_mod_spdy.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"

@@ -29,16 +29,16 @@
 #include <vector>
 
 #include "base/logging.h"
-#include "net/instaweb/apache/apache_config.h"
-#include "net/instaweb/apache/apache_rewrite_driver_factory.h"
-#include "net/instaweb/apache/apache_server_context.h"
-#include "net/instaweb/apache/apr_timer.h"
-#include "net/instaweb/apache/header_util.h"
-#include "net/instaweb/apache/instaweb_context.h"
-#include "net/instaweb/apache/instaweb_handler.h"
-#include "net/instaweb/apache/interface_mod_spdy.h"
-#include "net/instaweb/apache/mod_instaweb.h"
-#include "net/instaweb/apache/mod_spdy_fetcher.h"
+#include "pagespeed/apache/apache_config.h"
+#include "pagespeed/apache/apache_rewrite_driver_factory.h"
+#include "pagespeed/apache/apache_server_context.h"
+#include "pagespeed/apache/apr_timer.h"
+#include "pagespeed/apache/header_util.h"
+#include "pagespeed/apache/instaweb_context.h"
+#include "pagespeed/apache/instaweb_handler.h"
+#include "pagespeed/apache/interface_mod_spdy.h"
+#include "pagespeed/apache/mod_instaweb.h"
+#include "pagespeed/apache/mod_spdy_fetcher.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/public/version.h"
 #include "net/instaweb/rewriter/public/process_context.h"
@@ -77,9 +77,9 @@
 
 // This include-file is order-dependent; it must come after the above apache
 // includes, and not be in abc-order with the net/instaweb/... includes.
-#include "net/instaweb/apache/apache_logging_includes.h"
+#include "pagespeed/apache/apache_logging_includes.h"
 
-#include "net/instaweb/apache/log_message_handler.h"
+#include "pagespeed/apache/log_message_handler.h"
 #include "unixd.h"                                                 // NOLINT
 
 #if (AP_SERVER_MAJORVERSION_NUMBER == 2) && (AP_SERVER_MINORVERSION_NUMBER >= 4)

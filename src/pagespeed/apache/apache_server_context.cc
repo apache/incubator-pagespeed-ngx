@@ -14,15 +14,15 @@
 //
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/apache/apache_server_context.h"
+#include "pagespeed/apache/apache_server_context.h"
 
 #include "httpd.h"                  // NOLINT
 #include "http_protocol.h"          // NOLINT
 #include "base/logging.h"
-#include "net/instaweb/apache/apache_config.h"
-#include "net/instaweb/apache/apache_request_context.h"
-#include "net/instaweb/apache/apache_rewrite_driver_factory.h"
-#include "net/instaweb/apache/mod_spdy_fetcher.h"
+#include "pagespeed/apache/apache_config.h"
+#include "pagespeed/apache/apache_request_context.h"
+#include "pagespeed/apache/apache_rewrite_driver_factory.h"
+#include "pagespeed/apache/mod_spdy_fetcher.h"
 #include "net/instaweb/automatic/public/proxy_fetch.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_pool.h"

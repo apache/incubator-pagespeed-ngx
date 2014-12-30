@@ -20,7 +20,7 @@
 #ifndef NET_INSTAWEB_APACHE_INSTAWEB_HANDLER_H_
 #define NET_INSTAWEB_APACHE_INSTAWEB_HANDLER_H_
 
-#include "net/instaweb/apache/apache_writer.h"
+#include "pagespeed/apache/apache_writer.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"

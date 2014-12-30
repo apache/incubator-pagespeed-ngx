@@ -18,10 +18,10 @@
 //
 // See the .h for an overview.
 
-#include "net/instaweb/apache/mod_spdy_fetch_controller.h"
+#include "pagespeed/apache/mod_spdy_fetch_controller.h"
 
 #include "base/logging.h"
-#include "net/instaweb/apache/mod_spdy_fetcher.h"
+#include "pagespeed/apache/mod_spdy_fetcher.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/rate_controller.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"

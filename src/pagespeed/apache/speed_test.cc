@@ -15,7 +15,7 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/apache/apr_timer.h"
+#include "pagespeed/apache/apr_timer.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 
 namespace net_instaweb {
