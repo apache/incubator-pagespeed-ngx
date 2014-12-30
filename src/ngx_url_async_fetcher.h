@@ -33,6 +33,9 @@ extern "C" {
 }
 
 #include <vector>
+
+#include "ngx_event_connection.h"
+
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/pool.h"
@@ -60,10 +63,13 @@ class NgxUrlAsyncFetcher : public UrlAsyncFetcher {
 
   // It should be called in the module init_process callback function. Do some
   // intializations which can't be done in the master process
-  bool Init();
+  bool Init(ngx_cycle_t* cycle);
 
   // shutdown all the fetches.
   virtual void ShutDown();
+
+  // the read handler in the main thread
+  static void ReadCallback(const ps_event_data& data);
 
   virtual bool SupportsHttps() const { return false; }
 
@@ -71,10 +77,6 @@ class NgxUrlAsyncFetcher : public UrlAsyncFetcher {
                      MessageHandler* message_handler,
                      AsyncFetch* callback);
 
-  // send the command from the current thread to main thread
-  bool SendCmd(const char command);
-  // the read handler in the main thread
-  static void CommandHandler(ngx_event_t* cmdev);
   bool StartFetch(NgxFetch* fetch);
 
   // Remove the completed fetch from the active fetch set, and put it into a
@@ -137,12 +139,12 @@ class NgxUrlAsyncFetcher : public UrlAsyncFetcher {
 
   ngx_pool_t* pool_;
   ngx_log_t* log_;
-  ngx_connection_t* command_connection_;  // the command pipe
-  int pipe_fd_;  // the write pipe end
   ngx_resolver_t* resolver_;
   int max_keepalive_requests_;
   ngx_msec_t resolver_timeout_;
   ngx_msec_t fetch_timeout_;
+
+  NgxEventConnection* event_connection_;
 
   DISALLOW_COPY_AND_ASSIGN(NgxUrlAsyncFetcher);
 };

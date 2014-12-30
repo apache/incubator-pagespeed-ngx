@@ -203,6 +203,145 @@ ngx_int_t string_piece_to_buffer_chain(
   return NGX_OK;
 }
 
+// Get the context for this request.  ps_connection_read_handler should already
+// have been called to create it.
+ps_request_ctx_t* ps_get_request_context(ngx_http_request_t* r) {
+  return static_cast<ps_request_ctx_t*>(
+      ngx_http_get_module_ctx(r, ngx_pagespeed));
+}
+
+// Tell nginx whether we have network activity we're waiting for so that it sets
+// a write handler.  See src/http/ngx_http_request.c:2083.
+void ps_set_buffered(ngx_http_request_t* r, bool on) {
+  if (on) {
+    r->buffered |= NGX_HTTP_PAGESPEED_BUFFERED;
+  } else {
+    r->buffered &= ~NGX_HTTP_PAGESPEED_BUFFERED;
+  }
+}
+
+namespace ps_base_fetch {
+
+ngx_http_output_header_filter_pt ngx_http_next_header_filter;
+ngx_http_output_body_filter_pt ngx_http_next_body_filter;
+
+ngx_int_t ps_base_fetch_filter(ngx_http_request_t* r, ngx_chain_t* in) {
+  ps_request_ctx_t* ctx = ps_get_request_context(r);
+
+  if (ctx == NULL || ctx->base_fetch == NULL) {
+    return ngx_http_next_body_filter(r, in);
+  }
+
+  ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                 "http pagespeed write filter \"%V\"", &r->uri);
+
+  // send response body
+  if (in || ctx->write_pending) {
+    ngx_int_t rc = ngx_http_next_body_filter(r, in);
+    ctx->write_pending = (rc == NGX_AGAIN);
+    if (rc == NGX_OK && !ctx->fetch_done) {
+      return NGX_AGAIN;
+    }
+    return rc;
+  }
+
+  return ctx->fetch_done ? NGX_OK : NGX_AGAIN;
+}
+
+// This runs on the nginx event loop in response to seeing the byte PageSpeed
+// sent over the pipe to trigger the nginx-side code.  Copy whatever is ready
+// from PageSpeed out to the browser (headers and/or body).
+ngx_int_t ps_base_fetch_handler(ngx_http_request_t* r) {
+  ps_request_ctx_t* ctx = ps_get_request_context(r);
+  ngx_int_t rc;
+  ngx_chain_t* cl = NULL;
+
+  ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                 "ps fetch handler: %V", &r->uri);
+
+  if (!r->header_sent) {
+    if (ctx->preserve_caching_headers != kDontPreserveHeaders) {
+      ngx_table_elt_t* header;
+      NgxListIterator it(&(r->headers_out.headers.part));
+      while ((header = it.Next()) != NULL) {
+        // We need to remember a few headers when ModifyCachingHeaders is off,
+        // so we can send them unmodified in copy_response_headers_to_ngx().
+        // This just sets the hash to 0 for all other headers. That way, we
+        // avoid  some relatively complicated code to reconstruct these headers.
+        if (!(STR_CASE_EQ_LITERAL(header->key, "Cache-Control") ||
+              (ctx->preserve_caching_headers == kPreserveAllCachingHeaders &&
+               (STR_CASE_EQ_LITERAL(header->key, "Etag") ||
+                STR_CASE_EQ_LITERAL(header->key, "Date") ||
+                STR_CASE_EQ_LITERAL(header->key, "Last-Modified") ||
+                STR_CASE_EQ_LITERAL(header->key, "Expires"))))) {
+          header->hash = 0;
+        }
+      }
+    } else {
+      ngx_http_clean_header(r);
+    }
+    // collect response headers from pagespeed
+    rc = ctx->base_fetch->CollectHeaders(&r->headers_out);
+    if (rc == NGX_ERROR) {
+      return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
+    // send response headers
+    rc = ngx_http_next_header_filter(r);
+
+    // standard nginx send header check see ngx_http_send_response
+    if (rc == NGX_ERROR || rc > NGX_OK) {
+      return ngx_http_filter_finalize_request(r, NULL, rc);
+    }
+
+    // for in_place_check_header_filter
+    if (rc < NGX_OK && rc != NGX_AGAIN) {
+      CHECK(rc == NGX_DONE);
+      return NGX_DONE;
+    }
+
+    ctx->write_pending = (rc == NGX_AGAIN);
+
+    ps_set_buffered(r, true);
+  }
+
+  // collect response body from pagespeed
+  // Pass the optimized content along to later body filters.
+  // From Weibin: This function should be called mutiple times. Store the
+  // whole file in one chain buffers is too aggressive. It could consume
+  // too much memory in busy servers.
+
+  rc = ctx->base_fetch->CollectAccumulatedWrites(&cl);
+  ngx_log_error(NGX_LOG_DEBUG, ctx->r->connection->log, 0,
+                "CollectAccumulatedWrites, %d", rc);
+
+  if (rc == NGX_ERROR) {
+    ps_set_buffered(r, false);
+    return NGX_HTTP_INTERNAL_SERVER_ERROR;
+  }
+
+  if (rc == NGX_AGAIN && cl == NULL) {
+    // there is no body buffer to send now.
+    return NGX_AGAIN;
+  }
+
+  if (rc == NGX_OK) {
+    ps_set_buffered(r, false);
+    ctx->fetch_done = true;
+  }
+
+  return ps_base_fetch_filter(r, cl);
+}
+
+void ps_base_fetch_filter_init() {
+  ngx_http_next_header_filter = ngx_http_top_header_filter;
+  ngx_http_next_body_filter = ngx_http_top_body_filter;
+  ngx_http_top_body_filter = ps_base_fetch_filter;
+}
+
+}  // namespace ps_base_fetch
+
+
 namespace {
 
 // Setting headers in nginx is tricky because it's not just a matter of adding
@@ -731,6 +870,7 @@ void ps_cleanup_srv_conf(void* data) {
   if (!factory_deleted && cfg_s->server_context != NULL) {
     delete cfg_s->server_context->factory();
     factory_deleted = true;
+    NgxBaseFetch::Terminate();
   }
   if (cfg_s->proxy_fetch_factory != NULL) {
     delete cfg_s->proxy_fetch_factory;
@@ -967,16 +1107,6 @@ char* ps_merge_loc_conf(ngx_conf_t* cf, void* parent, void* child) {
 // _ef_ is a shorthand for ETag Filter
 ngx_http_output_header_filter_pt ngx_http_ef_next_header_filter;
 
-// Tell nginx whether we have network activity we're waiting for so that it sets
-// a write handler.  See src/http/ngx_http_request.c:2083.
-void ps_set_buffered(ngx_http_request_t* r, bool on) {
-  if (on) {
-    r->buffered |= NGX_HTTP_PAGESPEED_BUFFERED;
-  } else {
-    r->buffered &= ~NGX_HTTP_PAGESPEED_BUFFERED;
-  }
-}
-
 bool ps_is_https(ngx_http_request_t* r) {
   // Based on ngx_http_variable_scheme.
 #if (NGX_HTTP_SSL)
@@ -1083,13 +1213,6 @@ GoogleString ps_determine_url(ngx_http_request_t* r) {
                 host, port_string, str_to_string_piece(r->unparsed_uri));
 }
 
-// Get the context for this request.  ps_connection_read_handler should already
-// have been called to create it.
-ps_request_ctx_t* ps_get_request_context(ngx_http_request_t* r) {
-  return static_cast<ps_request_ctx_t*>(
-      ngx_http_get_module_ctx(r, ngx_pagespeed));
-}
-
 void ps_release_base_fetch(ps_request_ctx_t* ctx);
 
 // we are still at pagespeed phase
@@ -1120,230 +1243,6 @@ ngx_int_t ps_async_wait_response(ngx_http_request_t* r) {
   ps_set_buffered(r, true);
   // We don't need to add a timer here, as it will be set by nginx.
   return NGX_DONE;
-}
-
-namespace {
-
-ngx_http_output_header_filter_pt ngx_http_next_header_filter;
-ngx_http_output_body_filter_pt ngx_http_next_body_filter;
-
-ngx_int_t ps_base_fetch_filter(ngx_http_request_t* r, ngx_chain_t* in) {
-  ps_request_ctx_t* ctx = ps_get_request_context(r);
-
-  if (ctx == NULL || ctx->base_fetch == NULL) {
-    return ngx_http_next_body_filter(r, in);
-  }
-
-  ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                 "http pagespeed write filter \"%V\"", &r->uri);
-
-  // send response body
-  if (in || ctx->write_pending) {
-    ngx_int_t rc = ngx_http_next_body_filter(r, in);
-    ctx->write_pending = (rc == NGX_AGAIN);
-    if (rc == NGX_OK && !ctx->fetch_done) {
-      return NGX_AGAIN;
-    }
-    return rc;
-  }
-
-  return ctx->fetch_done ? NGX_OK : NGX_AGAIN;
-}
-
-// This runs on the nginx event loop in response to seeing the byte PageSpeed
-// sent over the pipe to trigger the nginx-side code.  Copy whatever is ready
-// from PageSpeed out to the browser (headers and/or body).
-ngx_int_t ps_base_fetch_handler(ngx_http_request_t* r) {
-  ps_request_ctx_t* ctx = ps_get_request_context(r);
-  ngx_int_t rc;
-  ngx_chain_t* cl = NULL;
-
-  ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                 "ps fetch handler: %V", &r->uri);
-
-  if (!r->header_sent) {
-    if (ctx->preserve_caching_headers != kDontPreserveHeaders) {
-      ngx_table_elt_t* header;
-      NgxListIterator it(&(r->headers_out.headers.part));
-      while ((header = it.Next()) != NULL) {
-        // We need to remember a few headers when ModifyCachingHeaders is off,
-        // so we can send them unmodified in copy_response_headers_to_ngx().
-        // This just sets the hash to 0 for all other headers. That way, we
-        // avoid  some relatively complicated code to reconstruct these headers.
-        if (!(STR_CASE_EQ_LITERAL(header->key, "Cache-Control") ||
-              (ctx->preserve_caching_headers == kPreserveAllCachingHeaders &&
-               (STR_CASE_EQ_LITERAL(header->key, "Etag") ||
-                STR_CASE_EQ_LITERAL(header->key, "Date") ||
-                STR_CASE_EQ_LITERAL(header->key, "Last-Modified") ||
-                STR_CASE_EQ_LITERAL(header->key, "Expires"))))) {
-          header->hash = 0;
-        }
-      }
-    } else {
-      ngx_http_clean_header(r);
-    }
-    // collect response headers from pagespeed
-    rc = ctx->base_fetch->CollectHeaders(&r->headers_out);
-    if (rc == NGX_ERROR) {
-      return NGX_HTTP_INTERNAL_SERVER_ERROR;
-    }
-
-    // send response headers
-    rc = ngx_http_next_header_filter(r);
-
-    // standard nginx send header check see ngx_http_send_response
-    if (rc == NGX_ERROR || rc > NGX_OK) {
-      return ngx_http_filter_finalize_request(r, NULL, rc);
-    }
-
-    // for in_place_check_header_filter
-    if (rc < NGX_OK && rc != NGX_AGAIN) {
-      CHECK(rc == NGX_DONE);
-      return rc;
-    }
-
-    ctx->write_pending = (rc == NGX_AGAIN);
-
-    ps_set_buffered(r, true);
-  }
-
-  // collect response body from pagespeed
-  // Pass the optimized content along to later body filters.
-  // From Weibin: This function should be called mutiple times. Store the
-  // whole file in one chain buffers is too aggressive. It could consume
-  // too much memory in busy servers.
-
-  rc = ctx->base_fetch->CollectAccumulatedWrites(&cl);
-  ngx_log_error(NGX_LOG_DEBUG, ctx->r->connection->log, 0,
-                "CollectAccumulatedWrites, %d", rc);
-
-  if (rc == NGX_ERROR) {
-    ps_set_buffered(r, false);
-    return NGX_HTTP_INTERNAL_SERVER_ERROR;
-  }
-
-  if (rc == NGX_AGAIN && cl == NULL) {
-    // there is no body buffer to send now.
-    return NGX_AGAIN;
-  }
-
-  if (rc == NGX_OK) {
-    ps_set_buffered(r, false);
-    ctx->fetch_done = true;
-  }
-
-  return ps_base_fetch_filter(r, cl);
-}
-
-void ps_base_fetch_filter_init() {
-  ngx_http_next_header_filter = ngx_http_top_header_filter;
-  ngx_http_next_body_filter = ngx_http_top_body_filter;
-  ngx_http_top_body_filter = ps_base_fetch_filter;
-}
-
-}  // namespace
-
-// Do some bookkeeping, cleanup, and error checking to keep the mess out of
-// ps_base_fetch_handler.
-void ps_connection_read_handler(ngx_event_t* ev) {
-  CHECK(ev != NULL);
-  ngx_connection_t* c = static_cast<ngx_connection_t*>(ev->data);
-  CHECK(c != NULL);
-
-  int rc;
-
-  // Request has been finalized, do nothing just clear the pipe.
-  if (c->error) {
-    do {
-      char chr[256];
-      rc = read(c->fd, chr, 256);
-    } while (rc > 0 || (rc == -1 && errno == EINTR));  // Retry on EINTR.
-
-    if (rc == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
-      return;
-    }
-
-    // Write peer close or error occur.
-    ngx_close_connection(c);
-    return;
-  }
-
-  ps_request_ctx_t* ctx = static_cast<ps_request_ctx_t*>(c->data);
-  CHECK(ctx != NULL);
-  ngx_http_request_t* r = ctx->r;
-  CHECK(r != NULL);
-
-  // Clear the pipe.
-  do {
-    char chr[256];
-    rc = read(c->fd, chr, 256);
-  } while (rc > 0 || (rc == -1 && errno == EINTR));  // Retry on EINTR.
-
-  if (r->connection->error) {
-    ngx_log_error(NGX_LOG_DEBUG, ngx_cycle->log, 0,
-                  "pagespeed [%p] request already finalized", r);
-    ctx->pagespeed_connection = NULL;
-    ngx_close_connection(c);
-    ngx_http_finalize_request(r, NGX_ERROR);
-    return;
-  }
-
-  if (rc == -1 && errno != EAGAIN && errno != EWOULDBLOCK) {
-    ctx->pagespeed_connection = NULL;
-    ngx_close_connection(c);
-    return ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-  }
-
-  // AGAIN or rc == 0.
-  if (rc == 0) {
-    // Close the pipe here to avoid SIGPIPE
-    // Done will be check in RequestCollection.
-    ctx->pagespeed_connection = NULL;
-    ngx_close_connection(c);
-  }
-
-  if (ctx->fetch_done) {
-    return;
-  }
-
-  ngx_http_finalize_request(r, ps_base_fetch_handler(r));
-}
-
-ngx_int_t ps_create_connection(
-    ps_request_ctx_t* ctx, NgxServerContext* server_context, int pipe_fd) {
-  // We have to use the server_context's log (which is the server context's
-  // ngx_http_core_loc_conf_t->error_log) and not the request's log because
-  // this connection can outlast the request by a little while.
-  ngx_log_t* server_context_log = server_context->ngx_message_handler()->log();
-  if (server_context_log == NULL) {
-    ngx_log_debug0(NGX_LOG_INFO, ctx->r->connection->log, 0,
-                   "ps_create_connection failed to get server context log");
-    return NGX_ERROR;
-  }
-
-  ngx_connection_t* c = ngx_get_connection(pipe_fd, server_context_log);
-  if (c == NULL) {
-    return NGX_ERROR;
-  }
-
-  c->recv = ngx_recv;
-  c->send = ngx_send;
-  c->recv_chain = ngx_recv_chain;
-  c->send_chain = ngx_send_chain;
-
-  c->log_error = ctx->r->connection->log_error;
-
-  c->read->log = c->log;
-  c->write->log = c->log;
-
-  ctx->pagespeed_connection = c;
-
-  // Tell nginx to monitor this pipe and call us back when there's data.
-  c->data = ctx;
-  c->read->handler = ps_connection_read_handler;
-  ngx_add_event(c->read, NGX_READ_EVENT, 0);
-
-  return NGX_OK;
 }
 
 // Populate cfg_* with configuration information for this request.
@@ -1590,7 +1489,6 @@ bool is_pagespeed_subrequest(ngx_http_request_t* r) {
   return (user_agent.find(kModPagespeedSubrequestUserAgent) != user_agent.npos);
 }
 
-// TODO(chaizhenhua): merge into NgxBaseFetch::Release()
 void ps_release_base_fetch(ps_request_ctx_t* ctx) {
   // In the normal flow BaseFetch doesn't delete itself in HandleDone() because
   // we still need to receive notification via pipe and call
@@ -1598,14 +1496,8 @@ void ps_release_base_fetch(ps_request_ctx_t* ctx) {
   // then HandleDone() hasn't been called yet and we need the base fetch to wait
   // for that and then delete itself.
   if (ctx->base_fetch != NULL) {
-    ctx->base_fetch->Release();
+    ctx->base_fetch->Detach();
     ctx->base_fetch = NULL;
-  }
-
-  if (ctx->pagespeed_connection != NULL) {
-    // Tell pagespeed connection ctx has been released.
-    ctx->pagespeed_connection->error = 1;
-    ctx->pagespeed_connection = NULL;
   }
 }
 
@@ -1614,45 +1506,13 @@ ngx_int_t ps_create_base_fetch(ps_request_ctx_t* ctx,
                                RequestContextPtr request_context) {
   ngx_http_request_t* r = ctx->r;
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
-  int file_descriptors[2];
 
-  int rc = pipe(file_descriptors);
-  if (rc != 0) {
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "pipe() failed");
-    return NGX_ERROR;
-  }
-
-  if (ngx_nonblocking(file_descriptors[0]) == -1) {
-    ngx_log_error(NGX_LOG_EMERG, r->connection->log, ngx_socket_errno,
-                  ngx_nonblocking_n " pipe[0] failed");
-    close(file_descriptors[0]);
-    close(file_descriptors[1]);
-    return NGX_ERROR;
-  }
-
-  if (ngx_nonblocking(file_descriptors[1]) == -1) {
-    ngx_log_error(NGX_LOG_EMERG, r->connection->log, ngx_socket_errno,
-                  ngx_nonblocking_n " pipe[1] failed");
-    close(file_descriptors[0]);
-    close(file_descriptors[1]);
-    return NGX_ERROR;
-  }
-
-  rc = ps_create_connection(ctx, cfg_s->server_context, file_descriptors[0]);
-  if (rc != NGX_OK) {
-    close(file_descriptors[0]);
-    close(file_descriptors[1]);
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                  "ps_route_request: no pagespeed connection.");
-    return NGX_ERROR;
-  }
-
-  // Handles its own deletion.  We need to call Release() when we're done with
+  // Handles its own deletion.  We need to call Release when we're done with
   // it, and call Done() on the associated parent (Proxy or Resource) fetch. If
   // we fail before creating the associated fetch then we need to call Done() on
   // the BaseFetch ourselves.
   ctx->base_fetch = new NgxBaseFetch(
-      r, file_descriptors[1], cfg_s->server_context,
+      r, cfg_s->server_context,
       request_context, ctx->preserve_caching_headers);
 
   return NGX_OK;
@@ -1858,7 +1718,6 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
     ctx->write_pending = false;
     ctx->html_rewrite = false;
     ctx->in_place = false;
-    ctx->pagespeed_connection = NULL;
     ctx->preserve_caching_headers = kDontPreserveHeaders;
 
     // See build_context_for_request() in mod_instaweb.cc
@@ -2372,6 +2231,16 @@ ngx_int_t ps_in_place_check_header_filter(ngx_http_request_t* r) {
 
   if (!ctx->in_place) {
     return ngx_http_next_header_filter(r);
+  }
+
+  // If our request was finalized during the IPRO lookup, we decline.
+  if (r->connection->error) {
+    ctx->driver->Cleanup();
+    ctx->driver = NULL;
+    // enable html_rewrite
+    ctx->html_rewrite = true;
+    ctx->in_place = false;
+    return ps_decline_request(r);
   }
 
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -2985,7 +2854,7 @@ ngx_int_t ps_init(ngx_conf_t* cf) {
     ps_in_place_filter_init();
 
     ps_html_rewrite_fix_headers_filter_init();
-    ps_base_fetch_filter_init();
+    ps_base_fetch::ps_base_fetch_filter_init();
     ps_html_rewrite_filter_init();
 
     ngx_http_core_main_conf_t* cmcf = static_cast<ngx_http_core_main_conf_t*>(
@@ -3104,6 +2973,9 @@ ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
   }
 
   SystemRewriteDriverFactory::InitApr();
+  if (!NgxBaseFetch::Initialize(cycle)) {
+    return NGX_ERROR;
+  }
 
   // ChildInit() will initialise all ServerContexts, which we need to
   // create ProxyFetchFactories below
