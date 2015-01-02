@@ -52,8 +52,10 @@
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/http/http_names.h"
@@ -94,9 +96,6 @@
 struct apr_pool_t;
 
 namespace net_instaweb {
-
-class Statistics;
-class ThreadSystem;
 
 namespace {
 
@@ -1262,7 +1261,8 @@ static char* CheckGlobalOption(const cmd_parms* cmd,
     if (mode == kErrorInVHost) {
       return vhost_error;
     } else {
-      handler->Message(kWarning, "%s", vhost_error);
+      GoogleString message(vhost_error);
+      handler->MessageS(kWarning, message);
     }
   }
   if (cmd->directive->data != NULL) {

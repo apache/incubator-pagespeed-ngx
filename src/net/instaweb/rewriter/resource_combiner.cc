@@ -138,7 +138,7 @@ TimedBool ResourceCombiner::AddResourceNoFetch(const ResourcePtr& resource,
       added = false;
     }
   } else {
-    handler->Message(kInfo, "Cannot combine: partnership forbids");
+    handler->MessageS(kInfo, "Cannot combine: partnership forbids");
   }
   ret.value = added;
   return ret;

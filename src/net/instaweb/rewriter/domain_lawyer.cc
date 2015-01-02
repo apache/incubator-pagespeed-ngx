@@ -370,7 +370,7 @@ DomainLawyer::Domain* DomainLawyer::AddDomainHelper(
     // only have pre-validated (non-empty) domains.  So it should not
     // be possible to get here from Merge.
     if (handler != NULL) {
-      handler->Message(kWarning, "Empty domain passed to AddDomain");
+      handler->MessageS(kWarning, "Empty domain passed to AddDomain");
     }
     return NULL;
   }

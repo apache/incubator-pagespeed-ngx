@@ -161,7 +161,7 @@ void Sector<kBlockSize>::ReturnBlocksToFreeList(const BlockVector& blocks) {
     sector_header_->free_list_front = block_num;
   }
   sector_header_->stats.used_blocks -= blocks.size();
-};
+}
 
 template<size_t kBlockSize>
 void Sector<kBlockSize>::InsertEntryIntoLRU(EntryNum entry_num) {
@@ -307,7 +307,7 @@ void Sector<kBlockSize>::DumpStats(MessageHandler* handler) {
   mutex()->Lock();
   GoogleString dump = sector_stats()->Dump(cache_entries_, data_blocks_);
   mutex()->Unlock();
-  handler->Message(kError, "%s", dump.c_str());
+  handler->MessageS(kError, dump);
 }
 
 template class Sector<64>;

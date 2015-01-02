@@ -33,6 +33,7 @@
 #include "net/instaweb/rewriter/public/rewrite_result.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/printf_format.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -216,6 +217,8 @@ class ImageRewriteFilter : public RewriteFilter {
   friend class Context;
 
   // Helper methods.
+  void InfoAndTrace(Context* context, const char* format, ...)
+      INSTAWEB_PRINTF_FORMAT(3, 4);
   const ContentType* ImageToContentType(const GoogleString& origin_url,
                                         Image* image);
   void BeginRewriteImageUrl(HtmlElement* element, HtmlElement::Attribute* src);

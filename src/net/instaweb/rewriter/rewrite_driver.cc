@@ -514,7 +514,12 @@ void RewriteDriver::BoundedWaitFor(WaitMode mode, int64 timeout_ms) {
     CheckForCompletionAsync(mode, timeout_ms, &wait);
   }
   wait.Block();
-  DCHECK_EQ(waiting_, kNoWait);
+#ifndef NDEBUG
+  {
+    ScopedMutex lock(rewrite_mutex());
+    CHECK_EQ(waiting_, kNoWait);
+  }
+#endif
 }
 
 void RewriteDriver::CheckForCompletionAsync(WaitMode wait_mode,
@@ -624,7 +629,7 @@ void RewriteDriver::Flush() {
 
 void RewriteDriver::FlushAsync(Function* callback) {
   DCHECK(request_context_.get() != NULL);
-  TracePrintf("RewriteDriver::FlushAsync()");
+  TraceLiteral("RewriteDriver::FlushAsync()");
   if (debug_filter_ != NULL) {
     debug_filter_->StartRender();
   }
@@ -726,7 +731,7 @@ void RewriteDriver::QueueFlushAsyncDone(int num_rewrites, Function* callback) {
 
 void RewriteDriver::FlushAsyncDone(int num_rewrites, Function* callback) {
   DCHECK(request_context_.get() != NULL);
-  TracePrintf("RewriteDriver::FlushAsyncDone()");
+  TraceLiteral("RewriteDriver::FlushAsyncDone()");
 
   {
     ScopedMutex lock(rewrite_mutex());
@@ -921,16 +926,27 @@ RequestTrace* RewriteDriver::trace_context() {
 }
 
 void RewriteDriver::TracePrintf(const char* fmt, ...) {
-  if (trace_context() == NULL) {
-    return;
-  }
-  if (!trace_context()->tracing_enabled()) {
+  if (trace_context() == NULL || !trace_context()->tracing_enabled()) {
     return;
   }
   va_list argp;
   va_start(argp, fmt);
   trace_context()->TraceVPrintf(fmt, argp);
   va_end(argp);
+}
+
+void RewriteDriver::TraceLiteral(const char* literal) {
+  if (trace_context() == NULL || !trace_context()->tracing_enabled()) {
+    return;
+  }
+  trace_context()->TraceLiteral(literal);
+}
+
+void RewriteDriver::TraceString(const GoogleString& s) {
+  if (trace_context() == NULL || !trace_context()->tracing_enabled()) {
+    return;
+  }
+  trace_context()->TraceString(s);
 }
 
 void RewriteDriver::AddFilters() {
@@ -2638,12 +2654,12 @@ GoogleString RewriteDriver::ToString(bool show_detached_contexts) {
 }
 
 void RewriteDriver::PrintState(bool show_detached_contexts) {
-  fprintf(stderr, "%s\n", ToString(show_detached_contexts).c_str());
+  fputs(ToString(show_detached_contexts).c_str(), stderr);
+  fputc('\n', stderr);
 }
 
 void RewriteDriver::PrintStateToErrorLog(bool show_detached_contexts) {
-  message_handler()->Message(kError, "%s",
-                             ToString(show_detached_contexts).c_str());
+  message_handler()->MessageS(kError, ToString(show_detached_contexts));
 }
 
 void RewriteDriver::LogStats() {
@@ -2720,7 +2736,7 @@ void RewriteDriver::InfoAt(const RewriteContext* context,
                 ((c == context->num_slots() - 1) ? ": " : " "));
     }
     StringAppendV(&new_msg, msg, args);
-    message_handler()->Message(kInfo, "%s", new_msg.c_str());
+    message_handler()->MessageS(kInfo, new_msg);
   }
 
   va_end(args);

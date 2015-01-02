@@ -95,7 +95,7 @@ bool InflatingFetch::HandleWrite(const StringPiece& sp,
         }
       }
     } else {
-      handler->Message(kWarning, "inflation failure SetInput returning false");
+      handler->MessageS(kWarning, "inflation failure SetInput returning false");
       inflate_failure_ = true;
     }
   }

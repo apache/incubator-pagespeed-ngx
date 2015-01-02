@@ -43,15 +43,14 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/writer.h"
+#include "pagespeed/kernel/html/html_element.h"
 #include "pagespeed/kernel/html/html_parse_test_base.h"
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/response_headers.h"
 #include "pagespeed/kernel/util/url_multipart_encoder.h"
+#include "pagespeed/kernel/util/url_segment_encoder.h"
 
 namespace net_instaweb {
-
-class HtmlElement;
-class UrlSegmentEncoder;
 
 namespace {
 
@@ -80,7 +79,7 @@ class TestCombineFilter : public RewriteFilter {
    public:
     explicit TestCombiner(RewriteDriver* driver, RewriteFilter* filter)
         : ResourceCombiner(driver, kTestCombinerExt, filter) {
-    };
+    }
 
     // Provides the test access to the protected method so we can
     // directly test combining without setting up a complete filter
@@ -262,20 +261,20 @@ class ResourceCombinerTest : public RewriteTestBase {
 
     if (resource.get() == NULL) {
       // Resource is not creatable, and never will be.
-      handler->Message(kInfo, "Cannot combine: null resource");
+      handler->MessageS(kInfo, "Cannot combine: null resource");
       return ret;
     }
 
     if (!ReadIfCached(resource)) {
       // Resource is not cached, but may be soon.
-      handler->Message(kInfo, "Cannot combine: not cached");
+      handler->MessageS(kInfo, "Cannot combine: not cached");
       return ret;
     }
 
     if (!resource->HttpStatusOk()) {
       // Resource is not valid, but may be someday.
       // TODO(sligocki): Perhaps we should follow redirects.
-      handler->Message(kInfo, "Cannot combine: invalid contents");
+      handler->MessageS(kInfo, "Cannot combine: invalid contents");
       return ret;
     }
 

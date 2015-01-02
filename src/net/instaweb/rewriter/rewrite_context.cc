@@ -143,7 +143,7 @@ class FreshenMetadataUpdateManager {
     if (partitions_.get() == NULL) {
       // Copy OutputPartitions lazily.
       OutputPartitions* cloned_partitions = new OutputPartitions;
-      cloned_partitions->CopyFrom(partitions);
+      *cloned_partitions = partitions;
       partitions_.reset(cloned_partitions);
     }
     num_pending_freshens_++;
@@ -1872,7 +1872,7 @@ void RewriteContext::RepeatedSuccess(const RewriteContext* primary) {
   if (primary->was_too_busy_) {
     MarkTooBusy();
   }
-  partitions_->CopyFrom(*primary->partitions_.get());
+  partitions_->CopyFrom(*primary->partitions_);
   for (int i = 0, n = primary->num_outputs(); i < n; ++i) {
     outputs_.push_back(primary->outputs_[i]);
     if ((outputs_[i].get() != NULL) && !outputs_[i]->loaded()) {
@@ -2238,7 +2238,7 @@ void RewriteContext::CheckAndAddOtherDependency(const InputInfo& input_info) {
   }
 
   InputInfo* dep = partitions_->add_other_dependency();
-  dep->CopyFrom(input_info);
+  *dep = input_info;
   // The input index here is with respect to the nested context's inputs,
   // so would not be interpretable at top-level, and we don't use it for
   // other_dependency entries anyway, so be both defensive and frugal
@@ -2451,10 +2451,8 @@ void RewriteContext::AttachDependentRequestTrace(const StringPiece& label) {
 
 void RewriteContext::TracePrintf(const char* fmt, ...) {
   RewriteDriver* driver = Driver();
-  if (driver->trace_context() == NULL) {
-    return;
-  }
-  if (!driver->trace_context()->tracing_enabled()) {
+  if (driver->trace_context() == NULL ||
+      !driver->trace_context()->tracing_enabled()) {
     return;
   }
   va_list argp;
@@ -2463,10 +2461,10 @@ void RewriteContext::TracePrintf(const char* fmt, ...) {
   StringAppendV(&buf, fmt, argp);
   va_end(argp);
   // Log in the root trace.
-  driver->trace_context()->TracePrintf("%s", buf.c_str());
+  driver->trace_context()->TraceString(buf);
   // Log to our context's request trace, if any.
   if (dependent_request_trace_ != NULL) {
-    dependent_request_trace_->TracePrintf("%s", buf.c_str());
+    dependent_request_trace_->TraceString(buf);
   }
 }
 
@@ -2664,7 +2662,7 @@ void RewriteContext::CheckAndFreshenResource(
       RewriteFreshenCallback* callback =
           new RewriteFreshenCallback(resource, partition_index, input_index,
                                      freshen_manager);
-      freshen_manager->IncrementFreshens(*partitions_.get());
+      freshen_manager->IncrementFreshens(*partitions_);
       resource->Freshen(callback, FindServerContext()->message_handler());
     } else {
       // TODO(nikhilmadan): We don't actually update the metadata when the
@@ -2769,7 +2767,7 @@ bool RewriteContext::DecodeFetchUrls(
       if (check_for_multiple_rewrites) {
         scoped_ptr<GoogleUrl> orig_based_url(
             new GoogleUrl(original_base, urls[i]));
-        if (FindServerContext()->IsPagespeedResource(*orig_based_url.get())) {
+        if (FindServerContext()->IsPagespeedResource(*orig_based_url)) {
           url = orig_based_url.release();
         }
       }

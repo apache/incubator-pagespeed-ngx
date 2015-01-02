@@ -228,9 +228,11 @@ class RewriteDriver : public HtmlParse {
   // if both are configured and NULL otherwise.
   RequestTrace* trace_context();
 
-  // Convenience method to issue a trace annotation if tracing is enabled.
-  // If tracing is disabled, this function is a no-op.
+  // Convenience methods to issue a trace annotation if tracing is enabled.
+  // If tracing is disabled, these methods are no-ops.
   void TracePrintf(const char* fmt, ...);
+  void TraceLiteral(const char* literal);
+  void TraceString(const GoogleString& s);
 
   // Return a mutable pointer to the response headers that filters can update
   // before the first flush.  Returns NULL after Flush has occurred.

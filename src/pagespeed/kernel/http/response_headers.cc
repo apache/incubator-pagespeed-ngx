@@ -863,31 +863,32 @@ void ResponseHeaders::SetCacheControlMaxAge(int64 ttl_ms) {
 }
 
 void ResponseHeaders::DebugPrint() const {
-  fprintf(stderr, "%s\n", ToString().c_str());
-  fprintf(stderr, "cache_fields_dirty_ = %s\n",
-          BoolToString(cache_fields_dirty_));
-  fprintf(stderr, "is_implicitly_cacheable = %s\n",
-          BoolToString(proto()->is_implicitly_cacheable()));
-  fprintf(stderr, "http_options_.implicit_cache_ttl_ms = %s\n",
-          Integer64ToString(http_options_.implicit_cache_ttl_ms).c_str());
-  fprintf(stderr, "http_options_.min_cache_ttl_ms = %s\n",
-          Integer64ToString(http_options_.min_cache_ttl_ms).c_str());
-  fprintf(stderr, "min_cache_ttl_applied_ = %s\n",
-          BoolToString(min_cache_ttl_applied_));
+  fputs(ToString().c_str(), stderr);
+  fputs("\ncache_fields_dirty_ = ", stderr);
+  fputs(BoolToString(cache_fields_dirty_), stderr);
+  fputs("\nis_implicitly_cacheable = ", stderr);
+  fputs(BoolToString(proto()->is_implicitly_cacheable()), stderr);
+  fputs("\nhttp_options_.implicit_cache_ttl_ms = ", stderr);
+  fputs(Integer64ToString(http_options_.implicit_cache_ttl_ms).c_str(), stderr);
+  fputs("\nhttp_options_.min_cache_ttl_ms = ", stderr);
+  fputs(Integer64ToString(http_options_.min_cache_ttl_ms).c_str(), stderr);
+  fputs("\nmin_cache_ttl_applied_ = ", stderr);
+  fputs(BoolToString(min_cache_ttl_applied_), stderr);
   if (!cache_fields_dirty_) {
-    fprintf(stderr, "expiration_time_ms_ = %s\n",
-            Integer64ToString(proto()->expiration_time_ms()).c_str());
-    fprintf(stderr, "last_modified_time_ms_ = %s\n",
-            Integer64ToString(last_modified_time_ms()).c_str());
-    fprintf(stderr, "date_ms_ = %s\n",
-            Integer64ToString(proto()->date_ms()).c_str());
-    fprintf(stderr, "cache_ttl_ms_ = %s\n",
-            Integer64ToString(proto()->cache_ttl_ms()).c_str());
-    fprintf(stderr, "browser_cacheable_ = %s\n",
-            BoolToString(proto()->browser_cacheable()));
-    fprintf(stderr, "proxy_cacheable_ = %s\n",
-            BoolToString(proto()->proxy_cacheable()));
+    fputs("\nexpiration_time_ms_ = ", stderr);
+    fputs(Integer64ToString(proto()->expiration_time_ms()).c_str(), stderr);
+    fputs("\nlast_modified_time_ms_ = ", stderr);
+    fputs(Integer64ToString(last_modified_time_ms()).c_str(), stderr);
+    fputs("\ndate_ms_ = ", stderr);
+    fputs(Integer64ToString(proto()->date_ms()).c_str(), stderr);
+    fputs("\ncache_ttl_ms_ = ", stderr);
+    fputs(Integer64ToString(proto()->cache_ttl_ms()).c_str(), stderr);
+    fputs("\nbrowser_cacheable_ = ", stderr);
+    fputs(BoolToString(proto()->browser_cacheable()), stderr);
+    fputs("\nproxy_cacheable_ = ", stderr);
+    fputs(BoolToString(proto()->proxy_cacheable()), stderr);
   }
+  fputc('\n', stderr);
 }
 
 bool ResponseHeaders::FindContentLength(int64* content_length) const {

@@ -144,11 +144,11 @@ int PrintAttributeCallback(void *rec, const char *key, const char *value) {
 // This routine is intended for debugging so fprintf to stdout is the way
 // to get instant feedback.
 void PrintHeaders(request_rec* request) {
-  fprintf(stdout, "Input headers:\n");
+  puts("Input headers:");
   apr_table_do(PrintAttributeCallback, NULL, request->headers_in, NULL);
-  fprintf(stdout, "Output headers:\n");
+  puts("Output headers:");
   apr_table_do(PrintAttributeCallback, NULL, request->headers_out, NULL);
-  fprintf(stdout, "Err_Output headers:\n");
+  puts("Err_Output headers:");
   apr_table_do(PrintAttributeCallback, NULL, request->err_headers_out, NULL);
   fflush(stdout);
 }

@@ -36,6 +36,7 @@
 #include "pagespeed/kernel/base/abstract_shared_mem.h"
 #include "pagespeed/kernel/base/md5_hasher.h"
 #include "pagespeed/kernel/base/message_handler.h"
+#include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_writer.h"
 #include "pagespeed/kernel/base/thread_system.h"
@@ -48,7 +49,6 @@
 #include "pagespeed/kernel/cache/file_cache.h"
 #include "pagespeed/kernel/cache/purge_context.h"
 #include "pagespeed/kernel/cache/write_through_cache.h"
-#include "pagespeed/kernel/html/html_keywords.h"
 #include "pagespeed/kernel/thread/queued_worker_pool.h"
 #include "pagespeed/kernel/thread/slow_worker.h"
 
@@ -581,7 +581,7 @@ void SystemCaches::ChildInit() {
   for (int i = 0, n = memcache_servers_.size(); i < n; ++i) {
     AprMemCache* mem_cache = memcache_servers_[i];
     if (!mem_cache->Connect()) {
-      factory_->message_handler()->Message(kError, "Memory cache failed");
+      factory_->message_handler()->MessageS(kError, "Memory cache failed");
       abort();  // TODO(jmarantz): is there a better way to exit?
     }
   }

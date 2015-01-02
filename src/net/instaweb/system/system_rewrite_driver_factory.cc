@@ -37,6 +37,7 @@
 #include "net/instaweb/system/public/system_caches.h"
 #include "net/instaweb/system/public/system_rewrite_options.h"
 #include "net/instaweb/system/public/system_server_context.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/system/public/system_thread_system.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "pagespeed/kernel/base/abstract_shared_mem.h"
@@ -52,15 +53,16 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/sharedmem/shared_circular_buffer.h"
 #include "pagespeed/kernel/sharedmem/shared_mem_statistics.h"
 #include "pagespeed/kernel/thread/pthread_shared_mem.h"
 #include "pagespeed/kernel/thread/queued_worker_pool.h"
 #include "pagespeed/kernel/util/input_file_nonce_generator.h"
+#include "pagespeed/kernel/util/nonce_generator.h"
 
 namespace net_instaweb {
 
-class NonceGenerator;
 class ProcessContext;
 
 namespace {
@@ -462,7 +464,7 @@ void SystemRewriteDriverFactory::ShutDown() {
   if (!is_root_process_) {
     Variable* child_shutdown_count = statistics()->GetVariable(kShutdownCount);
     child_shutdown_count->Add(1);
-    message_handler()->Message(kInfo, "Shutting down PageSpeed child");
+    message_handler()->MessageS(kInfo, "Shutting down PageSpeed child");
   }
   StopCacheActivity();
 

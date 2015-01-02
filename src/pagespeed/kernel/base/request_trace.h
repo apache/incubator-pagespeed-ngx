@@ -22,6 +22,7 @@
 #include <cstdarg>
 
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
 
@@ -35,6 +36,12 @@ class RequestTrace {
   // Logs formatted output to the distributed tracing context.
   virtual void TraceVPrintf(const char* fm, va_list argp) = 0;
   void TracePrintf(const char* fmt, ...);
+  // Logs a literal C string to the tracing context.  The literal has indefinite
+  // lifespan (ie it must be a compile time constant); use TraceString if your
+  // data has a bounded lifetime.
+  virtual void TraceLiteral(const char* literal) = 0;
+  // Logs a short-lived string to the tracing context.
+  virtual void TraceString(const GoogleString& s) = 0;
 
   // Returns true iff tracing is enabled. This can be used to avoid virtual
   // function call overhead in the common case that tracing is not active for

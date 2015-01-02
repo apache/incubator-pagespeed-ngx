@@ -52,6 +52,7 @@
 #include "pagespeed/kernel/http/response_headers.h"
 #include "pagespeed/kernel/thread/queued_alarm.h"
 #include "pagespeed/kernel/thread/thread_synchronizer.h"
+#include "pagespeed/opt/logging/request_timing_info.h"
 
 namespace net_instaweb {
 
@@ -833,7 +834,7 @@ void ProxyFetch::ScheduleQueueExecutionIfNeeded() {
 
 void ProxyFetch::PropertyCacheComplete(
     ProxyFetchPropertyCallbackCollector* callback_collector) {
-  driver_->TracePrintf("PropertyCache lookup completed");
+  driver_->TraceLiteral("PropertyCache lookup completed");
   ScopedMutex lock(mutex_.get());
 
   if (driver_ == NULL) {
@@ -1296,7 +1297,7 @@ ProxyFetchPropertyCallbackCollector*
   RequestContextPtr request_ctx = async_fetch->request_context();
   DCHECK(request_ctx.get() != NULL);
   if (request_ctx->root_trace_context() != NULL) {
-    request_ctx->root_trace_context()->TracePrintf(
+    request_ctx->root_trace_context()->TraceLiteral(
         "PropertyCache lookup start");
   }
   StringPiece user_agent =

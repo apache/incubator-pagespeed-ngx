@@ -31,12 +31,10 @@
 #include "pagespeed/kernel/html/html_event.h"
 #include "pagespeed/kernel/html/html_keywords.h"
 #include "pagespeed/kernel/html/html_name.h"
+#include "pagespeed/kernel/html/html_node.h"
 #include "pagespeed/kernel/html/html_parse.h"
 
 namespace net_instaweb {
-
-class HtmlCommentNode;
-class HtmlIEDirectiveNode;
 
 namespace {
 
@@ -896,7 +894,7 @@ void HtmlLexer::EvalAttrName(char c) {
   }
 }
 
-//"<x y ".
+// "<x y ".
 // HTML5 spec state name: After attribute name
 void HtmlLexer::EvalAttrNameSpace(char c) {
   if (c == '=') {
@@ -1112,7 +1110,7 @@ bool HtmlLexer::IsOptionallyClosedTag(HtmlName::Keyword keyword) const {
 
 void HtmlLexer::DebugPrintStack() {
   for (size_t i = kStartStack; i < element_stack_.size(); ++i) {
-    fprintf(stdout, "%s\n", element_stack_[i]->ToString().c_str());
+    puts(element_stack_[i]->ToString().c_str());
   }
   fflush(stdout);
 }

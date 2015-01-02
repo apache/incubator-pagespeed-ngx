@@ -51,9 +51,8 @@ void AprReportError(MessageHandler* message_handler, const char* filename,
                     int line, const char* message, int error_code) {
   char buf[kStackBufferSize];
   apr_strerror(error_code, buf, sizeof(buf));
-  GoogleString error_format(message);
-  error_format.append(" (code=%d %s)");
-  message_handler->Error(filename, line, error_format.c_str(), error_code, buf);
+  message_handler->Error(filename, line, "%s (code=%d %s)",
+                         message, error_code, buf);
 }
 
 // Helper class to factor out common implementation details between Input and

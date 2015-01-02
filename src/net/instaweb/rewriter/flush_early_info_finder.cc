@@ -56,7 +56,7 @@ void FlushEarlyInfoFinder::UpdateFlushEarlyInfoInDriver(RewriteDriver* driver) {
   if (decode_status == kPropertyCacheDecodeOk) {
     driver->set_flush_early_render_info(flush_early_render_info.release());
   } else if (decode_status == kPropertyCacheDecodeParseError) {
-    driver->message_handler()->Message(kError, "Parsing value from cache "
+    driver->message_handler()->MessageS(kError, "Parsing value from cache "
                                         "into FlushEarlyRenderInfo failed.");
   }
 }

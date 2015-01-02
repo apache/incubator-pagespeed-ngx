@@ -3242,7 +3242,7 @@ bool RewriteOptions::SetOptionFromNameAndLog(StringPiece name,
   if (result == kOptionOk) {
     return true;
   } else {
-    handler->Message(kWarning, "%s", msg.c_str());
+    handler->MessageS(kWarning, msg);
     return false;
   }
 }
@@ -3550,7 +3550,8 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
   javascript_library_identification_.MergeOrShare(
       src.javascript_library_identification_);
   {
-    ScopedMutex lock(cache_purge_mutex_.get());
+    ScopedMutex this_lock(cache_purge_mutex_.get());
+    ScopedMutex src_lock(src.cache_purge_mutex_.get());
     purge_set_.MergeOrShare(src.purge_set_);
   }
 

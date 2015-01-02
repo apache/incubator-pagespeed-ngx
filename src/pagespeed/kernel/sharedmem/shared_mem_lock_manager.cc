@@ -293,16 +293,16 @@ bool SharedMemLockManager::Initialize() {
   seg_.reset(shm_runtime_->CreateSegment(path_, Data::SegmentSize(lock_size_),
                                          handler_));
   if (seg_.get() == NULL) {
-    handler_->Message(kError, "Unable to create memory segment for locks.");
+    handler_->MessageS(kError, "Unable to create memory segment for locks.");
     return false;
   }
 
   // Create the mutexes for each bucket
   for (size_t bucket = 0; bucket < Data::kBuckets; ++bucket) {
     if (!seg_->InitializeSharedMutex(MutexOffset(Bucket(bucket)), handler_)) {
-      handler_->Message(kError, "%s",
-                        StrCat("Unable to create lock service mutex #",
-                               Integer64ToString(bucket)).c_str());
+      handler_->MessageS(kError,
+                         StrCat("Unable to create lock service mutex #",
+                                Integer64ToString(bucket)));
       return false;
     }
   }
@@ -313,7 +313,8 @@ bool SharedMemLockManager::Attach() {
   size_t size = Data::SegmentSize(shm_runtime_->SharedMutexSize());
   seg_.reset(shm_runtime_->AttachToSegment(path_, size, handler_));
   if (seg_.get() == NULL) {
-    handler_->Message(kWarning, "Unable to attach to lock service SHM segment");
+    handler_->MessageS(kWarning,
+                       "Unable to attach to lock service SHM segment");
     return false;
   }
 

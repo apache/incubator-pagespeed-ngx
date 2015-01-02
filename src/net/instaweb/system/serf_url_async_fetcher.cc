@@ -1520,14 +1520,14 @@ GoogleString SerfUrlAsyncFetcher::RemovePortFromHostHeader(
 bool SerfUrlAsyncFetcher::SetHttpsOptions(StringPiece directive) {
   GoogleString error_message;
   if (!ParseHttpsOptions(directive, &https_options_, &error_message)) {
-    message_handler_->Message(kError, "%s", error_message.c_str());
+    message_handler_->MessageS(kError, error_message);
     return false;
   }
 
 #if !SERF_HTTPS_FETCHING
   if (allow_https()) {
-    message_handler_->Message(kError, "HTTPS fetching has not been compiled "
-                              "into the binary, so it has not been enabled.");
+    message_handler_->MessageS(kError, "HTTPS fetching has not been compiled "
+                               "into the binary, so it has not been enabled.");
     https_options_ = 0;
   }
 #endif

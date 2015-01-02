@@ -79,7 +79,7 @@ bool HttpDumpUrlFetcher::GetFilenameFromUrl(const StringPiece& root_dir,
                      "GetFilenameFromUrl: root_dir must end in slash, was %s",
                      root_dir.as_string().c_str());
   } else if (!gurl.IsWebValid()) {
-    handler->Message(kError, "GetFilenameFromUrl: gurl is invalid");
+    handler->MessageS(kError, "GetFilenameFromUrl: gurl is invalid");
   } else {
     ret = true;
 

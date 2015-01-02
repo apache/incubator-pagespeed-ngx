@@ -44,7 +44,7 @@ int ResponseHeadersParser::ParseChunk(const StringPiece& text,
     char c = text[num_consumed];
     if ((c == '/') && (parse_name_ == "HTTP")) {
       if (response_headers_->has_major_version()) {
-        handler->Message(kError, "Multiple HTTP Lines");
+        handler->MessageS(kError, "Multiple HTTP Lines");
       } else {
         parsing_http_ = true;
         parsing_value_ = true;

@@ -434,7 +434,7 @@ void CssMinify::Minify(const Css::Value& value) {
       Write(",");
       break;
     case Css::Value::UNKNOWN:
-      handler_->Message(kError, "Unknown attribute");
+      handler_->MessageS(kError, "Unknown attribute");
       ok_ = false;
       break;
     case Css::Value::DEFAULT:

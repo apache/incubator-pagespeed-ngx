@@ -164,7 +164,7 @@ GoogleString HtmlElement::ToString() const {
 }
 
 void HtmlElement::DebugPrint() const {
-  fprintf(stdout, "%s\n", ToString().c_str());
+  puts(ToString().c_str());
 }
 
 void HtmlElement::AddAttribute(const Attribute& src_attr) {

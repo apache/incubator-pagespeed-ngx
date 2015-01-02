@@ -22,12 +22,13 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 
-#include <algorithm>                    // for min
+#include <algorithm>
+#include <cstdarg>
 #include <memory>
 #include <utility>
 #include <vector>
 
-#include "base/logging.h"               // for CHECK, etc
+#include "base/logging.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
@@ -896,6 +897,19 @@ int64 GetCurrentCpuTimeMs(Timer* timer) {
 
 }  // namespace
 
+// Format as InfoAt and using TracePrintf.
+// TODO(jmaessen): Avoid formatting if neither applies.
+void ImageRewriteFilter::InfoAndTrace(
+    Context* rewrite_context, const char* format, ...) {
+  va_list args;
+  va_start(args, format);
+  GoogleString message;
+  StringAppendV(&message, format, args);
+  driver()->InfoAt(rewrite_context, "%s", message.c_str());
+  driver()->TraceString(message);
+  va_end(args);
+}
+
 RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
       Context* rewrite_context, const ResourcePtr& input_resource,
       const OutputResourcePtr& result) {
@@ -906,7 +920,7 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
   ResourceContext resource_context;
   const RewriteOptions* options = driver()->options();
 
-  resource_context.CopyFrom(*rewrite_context->resource_context());
+  resource_context = *rewrite_context->resource_context();
 
   if (!encoder_.Decode(result->name(),
                        &urls, &resource_context, message_handler)) {
@@ -1031,39 +1045,35 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
         } else {
           // Server fails to write merged files.
           image_rewrites_dropped_server_write_fail_->Add(1);
-          GoogleString msg(StringPrintf(
-              "Server fails writing image content for `%s'; "
-              "rewriting dropped.",
-              input_resource->url().c_str()));
-          driver()->InfoAt(rewrite_context, "%s", msg.c_str());
-          rewrite_context->TracePrintf("%s", msg.c_str());
+          InfoAndTrace(
+              rewrite_context,
+              "Server fails writing image content for `%s'; rewriting dropped.",
+              input_resource->url().c_str());
         }
       } else if (is_resized) {
         // Eliminate any image dimensions from a resize operation that
         // succeeded, but yielded overly-large output.
         image_rewrites_dropped_nosaving_resize_->Add(1);
-        GoogleString msg(StringPrintf(
+        InfoAndTrace(
+            rewrite_context,
             "Shrink of image `%s' (%u -> %u bytes) doesn't save space; "
             "dropped.",
             input_resource->url().c_str(),
             static_cast<unsigned>(image->input_size()),
-            static_cast<unsigned>(image->output_size())));
-        driver()->InfoAt(rewrite_context, "%s", msg.c_str());
-        rewrite_context->TracePrintf("%s", msg.c_str());
+            static_cast<unsigned>(image->output_size()));
         ImageDim* dims = cached->mutable_image_file_dims();
         dims->clear_width();
         dims->clear_height();
       } else if (options->ImageOptimizationEnabled()) {
         // Fails due to overly-large output without resize.
         image_rewrites_dropped_nosaving_noresize_->Add(1);
-        GoogleString msg(StringPrintf(
+        InfoAndTrace(
+            rewrite_context,
             "Recompressing image `%s' (%u -> %u bytes) doesn't save space; "
             "dropped.",
             input_resource->url().c_str(),
             static_cast<unsigned>(image->input_size()),
-            static_cast<unsigned>(image->output_size())));
-        driver()->InfoAt(rewrite_context, "%s", msg.c_str());
-        rewrite_context->TracePrintf("%s", msg.c_str());
+            static_cast<unsigned>(image->output_size()));
       }
     }
     cached->set_minimal_webp_support(image->MinimalWebpSupport());
@@ -1156,10 +1166,9 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
     image_rewrite_latency_total_ms_->Add(latency_ms);
   } else {
     image_rewrites_dropped_due_to_load_->IncBy(1);
-    GoogleString msg(StringPrintf("%s: Too busy to rewrite image.",
-                                  input_resource->url().c_str()));
-    rewrite_context->TracePrintf("%s", msg.c_str());
-    message_handler->Message(kInfo, "%s", msg.c_str());
+    InfoAndTrace(rewrite_context,
+                 "%s: Too busy to rewrite image.",
+                 input_resource->url().c_str());
   }
 
   // All other conditions were updated in other code paths above.
@@ -1918,12 +1927,12 @@ RewriteContext* ImageRewriteFilter::MakeNestedRewriteContextForCss(
   ResourceContext* cloned_context = new ResourceContext;
   const ResourceContext* parent_context = parent->resource_context();
   if (parent_context != NULL) {
-    cloned_context->CopyFrom(*parent_context);
+    *cloned_context = *parent_context;
   }
 
   if (cloned_context->libwebp_level() != ResourceContext::LIBWEBP_NONE) {
-    // CopyFrom parent_context is not sufficient because parent_context checks
-    // only UserAgentSupportsWebp when creating the context, but while
+    // Assignment from parent_context is not sufficient because parent_context
+    // checks only UserAgentSupportsWebp when creating the context, but while
     // rewriting the image, rewrite options should also be checked.
     ImageUrlEncoder::SetLibWebpLevel(
         *driver()->options(), *driver()->request_properties(),
@@ -1945,7 +1954,7 @@ RewriteContext* ImageRewriteFilter::MakeNestedRewriteContext(
   DCHECK(parent != NULL);
   DCHECK(parent->resource_context() != NULL);
   if (parent != NULL && parent->resource_context() != NULL) {
-    resource_context->CopyFrom(*(parent->resource_context()));
+    *resource_context = *(parent->resource_context());
   }
   Context* context = new Context(
       0 /*No Css inling */, this, NULL /* driver */, parent, resource_context,
