@@ -96,11 +96,12 @@ EXAMPLE_BIG_CSS = $(EXAMPLE)/styles/big.css.pagespeed.ce.01O-NppLwe.css
 EXAMPLE_COMBINE_CSS = $(EXAMPLE)/combine_css.html
 TEST_ROOT = $(APACHE_SERVER)/mod_pagespeed_test
 
-ifeq ($(wildcard $(MOD_PAGESPEED_ROOT)/pagespeed),)
-  APACHE_SYSTEM_TEST = $(MOD_PAGESPEED_ROOT)/third_party/pagespeed/apache/system_test.sh
-else
-  APACHE_SYSTEM_TEST = $(MOD_PAGESPEED_ROOT)/pagespeed/apache/system_test.sh
-endif
+APACHE_SYSTEM_TEST = $(shell \
+  if [ -d $(MOD_PAGESPEED_ROOT)/pagespeed ]; then \
+    echo $(MOD_PAGESPEED_ROOT)/pagespeed/apache/system_test.sh ;\
+  else \
+    echo $(MOD_PAGESPEED_ROOT)/third_party/pagespeed/apache/system_test.sh ;\
+  fi)
 
 SYSTEM_SYSTEM_TEST = $(MOD_PAGESPEED_ROOT)/net/instaweb/system/system_test.sh
 
