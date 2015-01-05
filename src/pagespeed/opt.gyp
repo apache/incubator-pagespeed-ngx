@@ -193,11 +193,11 @@
     },
 
     {
-      'target_name': 'instaweb_mobilize_data2c',
+      'target_name': 'instaweb_mobilize_js_data2c',
       'variables': {
         'instaweb_data2c_subdir': 'pagespeed/opt/mobilize',
         'instaweb_js_subdir': '<(compiled_js_dir)/opt/mobilize',
-        'var_name': 'mobilize',
+        'var_name': 'mobilize_js',
       },
       'sources': [
         '<(compiled_js_dir)/opt/mobilize/mobilize_dbg.js',
@@ -205,11 +205,11 @@
       'includes': ['../net/instaweb/data2c.gypi']
     },
     {
-      'target_name': 'instaweb_mobilize_opt_data2c',
+      'target_name': 'instaweb_mobilize_js_opt_data2c',
       'variables': {
         'instaweb_data2c_subdir': 'pagespeed/opt/mobilize',
         'instaweb_js_subdir': '<(compiled_js_dir)/opt/mobilize',
-        'var_name': 'mobilize_opt',
+        'var_name': 'mobilize_js_opt',
       },
       'sources': [
         '<(compiled_js_dir)/opt/mobilize/mobilize_opt.js',
@@ -251,11 +251,11 @@
     },
 
     {
-      'target_name': 'instaweb_mobilize_xhr_data2c',
+      'target_name': 'instaweb_mobilize_xhr_js_data2c',
       'variables': {
         'instaweb_data2c_subdir': 'pagespeed/opt/mobilize',
         'instaweb_js_subdir': '<(compiled_js_dir)/opt/mobilize',
-        'var_name': 'mobilize_xhr',
+        'var_name': 'mobilize_xhr_js',
       },
       'sources': [
         '<(compiled_js_dir)/opt/mobilize/mobilize_xhr_dbg.js',
@@ -263,11 +263,11 @@
       'includes': ['../net/instaweb/data2c.gypi']
     },
     {
-      'target_name': 'instaweb_mobilize_xhr_opt_data2c',
+      'target_name': 'instaweb_mobilize_xhr_js_opt_data2c',
       'variables': {
         'instaweb_data2c_subdir': 'pagespeed/opt/mobilize',
         'instaweb_js_subdir': '<(compiled_js_dir)/opt/mobilize',
-        'var_name': 'mobilize_xhr_opt',
+        'var_name': 'mobilize_xhr_js_opt',
       },
       'sources': [
         '<(compiled_js_dir)/opt/mobilize/mobilize_xhr_opt.js',
