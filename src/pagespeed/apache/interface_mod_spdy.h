@@ -16,8 +16,8 @@
 //
 // Interfaces with mod_spdy's exported functions.
 
-#ifndef NET_INSTAWEB_APACHE_INTERFACE_MOD_SPDY_H_
-#define NET_INSTAWEB_APACHE_INTERFACE_MOD_SPDY_H_
+#ifndef PAGESPEED_APACHE_INTERFACE_MOD_SPDY_H_
+#define PAGESPEED_APACHE_INTERFACE_MOD_SPDY_H_
 
 #include "util_filter.h"
 
@@ -61,4 +61,4 @@ bool mod_ssl_is_https(conn_rec* conn);
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_APACHE_INTERFACE_MOD_SPDY_H_
+#endif  // PAGESPEED_APACHE_INTERFACE_MOD_SPDY_H_

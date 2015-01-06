@@ -18,11 +18,11 @@
 //
 // A wrapper around SystemThreadSystem that substitutes an AprTimer.
 
-#ifndef NET_INSTAWEB_APACHE_APACHE_THREAD_SYSTEM_H_
-#define NET_INSTAWEB_APACHE_APACHE_THREAD_SYSTEM_H_
+#ifndef PAGESPEED_APACHE_APACHE_THREAD_SYSTEM_H_
+#define PAGESPEED_APACHE_APACHE_THREAD_SYSTEM_H_
 
-#include "net/instaweb/system/public/system_thread_system.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/system/public/system_thread_system.h"
 
 namespace net_instaweb {
 
@@ -40,4 +40,4 @@ class ApacheThreadSystem : public SystemThreadSystem {
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_APACHE_APACHE_THREAD_SYSTEM_H_
+#endif  // PAGESPEED_APACHE_APACHE_THREAD_SYSTEM_H_

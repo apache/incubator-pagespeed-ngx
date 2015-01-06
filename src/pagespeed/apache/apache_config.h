@@ -14,15 +14,15 @@
 //
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#ifndef NET_INSTAWEB_APACHE_APACHE_CONFIG_H_
-#define NET_INSTAWEB_APACHE_APACHE_CONFIG_H_
+#ifndef PAGESPEED_APACHE_APACHE_CONFIG_H_
+#define PAGESPEED_APACHE_APACHE_CONFIG_H_
 
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/system/public/system_rewrite_options.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/system/public/system_rewrite_options.h"
 
 namespace net_instaweb {
 
@@ -94,4 +94,4 @@ class ApacheConfig : public SystemRewriteOptions {
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_APACHE_APACHE_CONFIG_H_
+#endif  // PAGESPEED_APACHE_APACHE_CONFIG_H_

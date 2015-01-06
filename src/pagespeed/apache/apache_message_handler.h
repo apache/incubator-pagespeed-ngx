@@ -14,14 +14,14 @@
 
 // Author: sligocki@google.com (Shawn Ligocki)
 
-#ifndef NET_INSTAWEB_APACHE_APACHE_MESSAGE_HANDLER_H_
-#define NET_INSTAWEB_APACHE_APACHE_MESSAGE_HANDLER_H_
+#ifndef PAGESPEED_APACHE_APACHE_MESSAGE_HANDLER_H_
+#define PAGESPEED_APACHE_APACHE_MESSAGE_HANDLER_H_
 
-#include "net/instaweb/system/public/system_message_handler.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/system/public/system_message_handler.h"
 
 struct server_rec;
 
@@ -60,4 +60,4 @@ class ApacheMessageHandler : public SystemMessageHandler {
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_APACHE_APACHE_MESSAGE_HANDLER_H_
+#endif  // PAGESPEED_APACHE_APACHE_MESSAGE_HANDLER_H_

@@ -15,8 +15,8 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 // Author: sligocki@google.com (Shawn Ligocki)
 
-#ifndef NET_INSTAWEB_APACHE_LOG_MESSAGE_HANDLER_H_
-#define NET_INSTAWEB_APACHE_LOG_MESSAGE_HANDLER_H_
+#ifndef PAGESPEED_APACHE_LOG_MESSAGE_HANDLER_H_
+#define PAGESPEED_APACHE_LOG_MESSAGE_HANDLER_H_
 
 #include <algorithm>  // for std::min
 #include "apr_pools.h"
@@ -46,4 +46,4 @@ void ShutDown();
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_APACHE_LOG_MESSAGE_HANDLER_H_
+#endif  // PAGESPEED_APACHE_LOG_MESSAGE_HANDLER_H_

@@ -19,8 +19,8 @@
 // A fetcher that talks to mod_spdy for requests matching a certain
 // domain (and passes the rest to fallthrough fetcher).
 
-#ifndef NET_INSTAWEB_APACHE_MOD_SPDY_FETCHER_H_
-#define NET_INSTAWEB_APACHE_MOD_SPDY_FETCHER_H_
+#ifndef PAGESPEED_APACHE_MOD_SPDY_FETCHER_H_
+#define PAGESPEED_APACHE_MOD_SPDY_FETCHER_H_
 
 #include "net/instaweb/http/public/url_async_fetcher.h"
 
@@ -90,4 +90,4 @@ class ModSpdyFetcher : public UrlAsyncFetcher {
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_APACHE_MOD_SPDY_FETCHER_H_
+#endif  // PAGESPEED_APACHE_MOD_SPDY_FETCHER_H_

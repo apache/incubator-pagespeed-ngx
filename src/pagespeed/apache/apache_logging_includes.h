@@ -18,8 +18,8 @@
 // Google LOG() macros, and with proper per-module logging support in
 // Apache 2.4
 
-#ifndef NET_INSTAWEB_APACHE_APACHE_LOGGING_INCLUDES_H_
-#define NET_INSTAWEB_APACHE_APACHE_LOGGING_INCLUDES_H_
+#ifndef PAGESPEED_APACHE_APACHE_LOGGING_INCLUDES_H_
+#define PAGESPEED_APACHE_APACHE_LOGGING_INCLUDES_H_
 
 // When HAVE_SYSLOG is defined, apache http_log.h will include syslog.h, which
 // #defines LOG_* as numbers. This conflicts with definitions of the LOG(x)
@@ -35,4 +35,4 @@ APLOG_USE_MODULE(pagespeed);
 }
 #endif
 
-#endif  // NET_INSTAWEB_APACHE_APACHE_LOGGING_INCLUDES_H_
+#endif  // PAGESPEED_APACHE_APACHE_LOGGING_INCLUDES_H_

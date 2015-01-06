@@ -84,7 +84,7 @@ class PropertyStore {
   //
   // It is strongly recommended that you provide a static GoogleString
   // FormatName(...) method for use in formatting the Name() return,
-  // and in testing, e.g. in net/instaweb/system/system_caches_test.cc.
+  // and in testing, e.g. in third_party/pagespeed/system/system_caches_test.cc.
   virtual GoogleString Name() const = 0;
 
  private:

@@ -115,7 +115,7 @@
           '--only_closure_dependencies',
         ],
       },
-      'sources': [ 'system/caches.js' ],
+      'sources': [ '<(DEPTH)/pagespeed/system/caches.js' ],
       'includes': [ 'closure.gypi', ],
     },
     {
@@ -128,7 +128,7 @@
           '--only_closure_dependencies',
         ],
       },
-      'sources': [ 'system/caches.js' ],
+      'sources': [ '<(DEPTH)/pagespeed/system/caches.js' ],
       'includes': [ 'closure.gypi', ],
     },
 
@@ -138,7 +138,7 @@
         'js_dir': 'system',
         'closure_build_type': 'dbg',
         'extra_closure_flags': [
-          '--externs=system/js_externs.js',
+          '--externs=<(DEPTH)/pagespeed/system/js_externs.js',
           '--externs=<(DEPTH)/third_party/closure/externs/google_visualization_api.js',
           '--js', '<(instaweb_root)/third_party/closure_library',
           '--closure_entry_point', 'pagespeed.Console',
@@ -146,8 +146,8 @@
           '--only_closure_dependencies',
         ],
       },
-      'sources': [ 'system/console.js' ],
-      'js_includes': [ 'system/console_start.js' ],
+      'sources': [ '<(DEPTH)/pagespeed/system/console.js' ],
+      'js_includes': [ '<(DEPTH)/pagespeed/system/console_start.js' ],
       'includes': [ 'closure.gypi', ],
     },
     {
@@ -155,7 +155,7 @@
       'variables': {
         'js_dir': 'system',
         'extra_closure_flags': [
-          '--externs=system/js_externs.js',
+          '--externs=<(DEPTH)/pagespeed/system/js_externs.js',
           '--externs=<(DEPTH)/third_party/closure/externs/google_visualization_api.js',
           '--js', '<(instaweb_root)/third_party/closure_library',
           '--closure_entry_point', 'pagespeed.Console',
@@ -163,8 +163,8 @@
           '--only_closure_dependencies',
         ],
       },
-      'sources': [ 'system/console.js' ],
-      'js_includes': [ 'system/console_start.js' ],
+      'sources': [ '<(DEPTH)/pagespeed/system/console.js' ],
+      'js_includes': [ '<(DEPTH)/pagespeed/system/console_start.js' ],
       'includes': [ 'closure.gypi', ],
     },
 
@@ -240,7 +240,7 @@
           '--only_closure_dependencies',
         ],
       },
-      'sources': [ 'system/graphs.js' ],
+      'sources': [ '<(DEPTH)/pagespeed/system/graphs.js' ],
       'includes': [ 'closure.gypi', ],
     },
     {
@@ -254,7 +254,7 @@
           '--only_closure_dependencies',
         ],
       },
-      'sources': [ 'system/graphs.js' ],
+      'sources': [ '<(DEPTH)/pagespeed/system/graphs.js' ],
       'includes': [ 'closure.gypi', ],
     },
 
@@ -269,7 +269,7 @@
           '--only_closure_dependencies',
         ],
       },
-      'sources': [ 'system/messages.js' ],
+      'sources': [ '<(DEPTH)/pagespeed/system/messages.js' ],
       'includes': [ 'closure.gypi', ],
     },
     {
@@ -282,7 +282,7 @@
           '--only_closure_dependencies',
         ],
       },
-      'sources': [ 'system/messages.js' ],
+      'sources': [ '<(DEPTH)/pagespeed/system/messages.js' ],
       'includes': [ 'closure.gypi', ],
     },
 
@@ -297,7 +297,7 @@
           '--only_closure_dependencies',
         ],
       },
-      'sources': [ 'system/statistics.js' ],
+      'sources': [ '<(DEPTH)/pagespeed/system/statistics.js' ],
       'includes': [ 'closure.gypi', ],
     },
     {
@@ -310,7 +310,7 @@
           '--only_closure_dependencies',
         ],
       },
-      'sources': [ 'system/statistics.js' ],
+      'sources': [ '<(DEPTH)/pagespeed/system/statistics.js' ],
       'includes': [ 'closure.gypi', ],
     },
 
@@ -771,7 +771,7 @@
     {
       'target_name': 'instaweb_messages_js_data2c',
       'variables': {
-        'instaweb_data2c_subdir': 'net/instaweb/system',
+        'instaweb_data2c_subdir': 'pagespeed/system',
         'instaweb_js_subdir': '<(compiled_js_dir)/system',
         'var_name': 'messages_js',
       },
@@ -785,7 +785,7 @@
     {
       'target_name': 'instaweb_messages_js_opt_data2c',
       'variables': {
-        'instaweb_data2c_subdir': 'net/instaweb/system',
+        'instaweb_data2c_subdir': 'pagespeed/system',
         'instaweb_js_subdir': '<(compiled_js_dir)/system',
         'var_name': 'messages_js_opt',
       },
@@ -799,7 +799,7 @@
     {
       'target_name': 'instaweb_caches_js_data2c',
       'variables': {
-        'instaweb_data2c_subdir': 'net/instaweb/system',
+        'instaweb_data2c_subdir': 'pagespeed/system',
         'instaweb_js_subdir': '<(compiled_js_dir)/system',
         'var_name': 'caches_js',
       },
@@ -813,7 +813,7 @@
     {
       'target_name': 'instaweb_caches_js_opt_data2c',
       'variables': {
-        'instaweb_data2c_subdir': 'net/instaweb/system',
+        'instaweb_data2c_subdir': 'pagespeed/system',
         'instaweb_js_subdir': '<(compiled_js_dir)/system',
         'var_name': 'caches_js_opt',
       },
@@ -827,7 +827,7 @@
     {
       'target_name': 'instaweb_graphs_js_data2c',
       'variables': {
-        'instaweb_data2c_subdir': 'net/instaweb/system',
+        'instaweb_data2c_subdir': 'pagespeed/system',
         'instaweb_js_subdir': '<(compiled_js_dir)/system',
         'var_name': 'graphs_js',
       },
@@ -841,7 +841,7 @@
     {
       'target_name': 'instaweb_graphs_js_opt_data2c',
       'variables': {
-        'instaweb_data2c_subdir': 'net/instaweb/system',
+        'instaweb_data2c_subdir': 'pagespeed/system',
         'instaweb_js_subdir': '<(compiled_js_dir)/system',
         'var_name': 'graphs_js_opt',
       },
@@ -855,7 +855,7 @@
     {
       'target_name': 'instaweb_statistics_js_data2c',
       'variables': {
-        'instaweb_data2c_subdir': 'net/instaweb/system',
+        'instaweb_data2c_subdir': 'pagespeed/system',
         'instaweb_js_subdir': '<(compiled_js_dir)/system',
         'var_name': 'statistics_js',
       },
@@ -869,7 +869,7 @@
     {
       'target_name': 'instaweb_statistics_js_opt_data2c',
       'variables': {
-        'instaweb_data2c_subdir': 'net/instaweb/system',
+        'instaweb_data2c_subdir': 'pagespeed/system',
         'instaweb_js_subdir': '<(compiled_js_dir)/system',
         'var_name': 'statistics_js_opt',
       },
@@ -939,7 +939,7 @@
     {
       'target_name': 'instaweb_console_js_data2c',
       'variables': {
-        'instaweb_data2c_subdir': 'net/instaweb/system',
+        'instaweb_data2c_subdir': 'pagespeed/system',
         'instaweb_js_subdir': '<(compiled_js_dir)/system',
         'var_name': 'console_js',
       },
@@ -953,7 +953,7 @@
     {
       'target_name': 'instaweb_console_js_opt_data2c',
       'variables': {
-        'instaweb_data2c_subdir': 'net/instaweb/system',
+        'instaweb_data2c_subdir': 'pagespeed/system',
         'instaweb_js_subdir': '<(compiled_js_dir)/system',
         'var_name': 'console_js_opt',
       },
@@ -967,12 +967,12 @@
     {
       'target_name': 'instaweb_admin_site_css_data2c',
       'variables': {
-        'instaweb_data2c_subdir': 'net/instaweb/system',
+        'instaweb_data2c_subdir': 'pagespeed/system',
         'instaweb_js_subdir': 'system',
         'var_name': 'admin_site_css',
       },
       'sources': [
-        'system/admin_site.css',
+        '<(DEPTH)/pagespeed/system/admin_site.css',
       ],
       'includes': [
         'data2c.gypi',
@@ -981,12 +981,12 @@
     {
       'target_name': 'instaweb_caches_css_data2c',
       'variables': {
-        'instaweb_data2c_subdir': 'net/instaweb/system',
+        'instaweb_data2c_subdir': 'pagespeed/system',
         'instaweb_js_subdir': 'system',
         'var_name': 'caches_css',
       },
       'sources': [
-        'system/caches.css',
+        '<(DEPTH)/pagespeed/system/caches.css',
       ],
       'includes': [
         'data2c.gypi',
@@ -995,12 +995,12 @@
     {
       'target_name': 'instaweb_console_css_data2c',
       'variables': {
-        'instaweb_data2c_subdir': 'net/instaweb/system',
+        'instaweb_data2c_subdir': 'pagespeed/system',
         'instaweb_js_subdir': 'system',
         'var_name': 'console_css',
       },
       'sources': [
-        'system/console.css',
+        '<(DEPTH)/pagespeed/system/console.css',
       ],
       'includes': [
         'data2c.gypi',
@@ -1009,12 +1009,12 @@
     {
       'target_name': 'instaweb_graphs_css_data2c',
       'variables': {
-        'instaweb_data2c_subdir': 'net/instaweb/system',
+        'instaweb_data2c_subdir': 'pagespeed/system',
         'instaweb_js_subdir': 'system',
         'var_name': 'graphs_css',
       },
       'sources': [
-        'system/graphs.css',
+        '<(DEPTH)/pagespeed/system/graphs.css',
       ],
       'includes': [
         'data2c.gypi',
@@ -1023,12 +1023,12 @@
     {
       'target_name': 'instaweb_statistics_css_data2c',
       'variables': {
-        'instaweb_data2c_subdir': 'net/instaweb/system',
+        'instaweb_data2c_subdir': 'pagespeed/system',
         'instaweb_js_subdir': 'system',
         'var_name': 'statistics_css',
       },
       'sources': [
-        'system/statistics.css',
+        '<(DEPTH)/pagespeed/system/statistics.css',
       ],
       'includes': [
         'data2c.gypi',
@@ -1745,24 +1745,29 @@
       'type': '<(library)',
       'dependencies': [
         'instaweb_util',
+        '<(DEPTH)/build/build_util.gyp:mod_pagespeed_version_header',
+        '<(DEPTH)/third_party/serf/serf.gyp:serf',
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_http',
         '<(DEPTH)/third_party/apr/apr.gyp:include',
         '<(DEPTH)/third_party/aprutil/aprutil.gyp:include',
         '<(DEPTH)/third_party/domain_registry_provider/src/domain_registry/domain_registry.gyp:init_registry_tables_lib',
       ],
       'sources': [
-        'system/admin_site.cc',
-        'system/apr_mem_cache.cc',
-        'system/apr_thread_compatible_pool.cc',
-        'system/in_place_resource_recorder.cc',
-        'system/system_cache_path.cc',
-        'system/system_caches.cc',
-        'system/system_message_handler.cc',
-        'system/system_rewrite_driver_factory.cc',
-        'system/system_rewrite_options.cc',
-        'system/system_request_context.cc',
-        'system/system_server_context.cc',
-        'system/system_thread_system.cc',
+        '<(DEPTH)/pagespeed/system/add_headers_fetcher.cc',
+        '<(DEPTH)/pagespeed/system/admin_site.cc',
+        '<(DEPTH)/pagespeed/system/apr_mem_cache.cc',
+        '<(DEPTH)/pagespeed/system/apr_thread_compatible_pool.cc',
+        '<(DEPTH)/pagespeed/system/in_place_resource_recorder.cc',
+        '<(DEPTH)/pagespeed/system/loopback_route_fetcher.cc',
+        '<(DEPTH)/pagespeed/system/serf_url_async_fetcher.cc',
+        '<(DEPTH)/pagespeed/system/system_cache_path.cc',
+        '<(DEPTH)/pagespeed/system/system_caches.cc',
+        '<(DEPTH)/pagespeed/system/system_message_handler.cc',
+        '<(DEPTH)/pagespeed/system/system_request_context.cc',
+        '<(DEPTH)/pagespeed/system/system_rewrite_driver_factory.cc',
+        '<(DEPTH)/pagespeed/system/system_rewrite_options.cc',
+        '<(DEPTH)/pagespeed/system/system_server_context.cc',
+        '<(DEPTH)/pagespeed/system/system_thread_system.cc',
         '<(DEPTH)/third_party/aprutil/apr_memcache2.c',
       ],
     },

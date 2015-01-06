@@ -103,7 +103,7 @@ APACHE_SYSTEM_TEST = $(shell \
     echo $(MOD_PAGESPEED_ROOT)/third_party/pagespeed/apache/system_test.sh ;\
   fi)
 
-SYSTEM_SYSTEM_TEST = $(MOD_PAGESPEED_ROOT)/net/instaweb/system/system_test.sh
+AUTOMATIC_SYSTEM_TEST = $(MOD_PAGESPEED_ROOT)/net/instaweb/automatic/system_test.sh
 
 # Installs debug configuration and runs a smoke test against it.
 # This will blow away your existing pagespeed.conf,
@@ -118,7 +118,7 @@ apache_debug_smoke_test : apache_install_conf apache_debug_restart
 	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
 	APACHE_TERTIARY_PORT=$(APACHE_TERTIARY_PORT) \
 	APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
-	SYSTEM_SYSTEM_TEST=$(SYSTEM_SYSTEM_TEST) \
+	AUTOMATIC_SYSTEM_TEST=$(AUTOMATIC_SYSTEM_TEST) \
 	FIRST_RUN=true \
 	    $(APACHE_SYSTEM_TEST) $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 	#
@@ -127,7 +127,7 @@ apache_debug_smoke_test : apache_install_conf apache_debug_restart
 	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
 	APACHE_TERTIARY_PORT=$(APACHE_TERTIARY_PORT) \
 	APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
-	SYSTEM_SYSTEM_TEST=$(SYSTEM_SYSTEM_TEST) \
+	AUTOMATIC_SYSTEM_TEST=$(AUTOMATIC_SYSTEM_TEST) \
 	    $(APACHE_SYSTEM_TEST) $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 	@echo '***' System-test with statistics off
 	mv $(APACHE_DEBUG_PAGESPEED_CONF) $(APACHE_DEBUG_PAGESPEED_CONF).save
@@ -141,7 +141,7 @@ apache_debug_smoke_test : apache_install_conf apache_debug_restart
 	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
 	APACHE_TERTIARY_PORT=$(APACHE_TERTIARY_PORT) \
 	APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
-	SYSTEM_SYSTEM_TEST=$(SYSTEM_SYSTEM_TEST) \
+	AUTOMATIC_SYSTEM_TEST=$(AUTOMATIC_SYSTEM_TEST) \
 	CACHE_FLUSH_TEST=on \
 	    $(APACHE_SYSTEM_TEST) $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 	#
@@ -159,7 +159,7 @@ apache_debug_smoke_test : apache_install_conf apache_debug_restart
 	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
 	APACHE_TERTIARY_PORT=$(APACHE_TERTIARY_PORT) \
 	APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
-	SYSTEM_SYSTEM_TEST=$(SYSTEM_SYSTEM_TEST) \
+	AUTOMATIC_SYSTEM_TEST=$(AUTOMATIC_SYSTEM_TEST) \
 	    $(APACHE_SYSTEM_TEST) $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 	#
 	# Restore config
@@ -213,12 +213,12 @@ apache_debug_memcached_test :
 apache_debug_memcached_test_run :
 	$(MAKE) apache_install_conf OPT_MEMCACHED_TEST="MEMCACHED_TEST=1"
 	$(MAKE) apache_debug_restart
-	SYSTEM_SYSTEM_TEST=$(SYSTEM_SYSTEM_TEST) \
+	AUTOMATIC_SYSTEM_TEST=$(AUTOMATIC_SYSTEM_TEST) \
 	  $(APACHE_SYSTEM_TEST) $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 	CACHE_FLUSH_TEST=on \
 	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
 	APACHE_TERTIARY_PORT=$(APACHE_TERTIARY_PORT) \
-	SYSTEM_SYSTEM_TEST=$(SYSTEM_SYSTEM_TEST) \
+	AUTOMATIC_SYSTEM_TEST=$(AUTOMATIC_SYSTEM_TEST) \
 	  $(APACHE_SYSTEM_TEST) $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 
 # This test checks that when ModPagespeedFetchWithGzip is enabled we
@@ -397,7 +397,7 @@ apache_debug_stats_logging_test :
 	$(MAKE) apache_install_conf \
 	    OPT_STATS_LOGGING_TEST="STATS_LOGGING_TEST=1"
 	$(MAKE) apache_debug_restart
-	SYSTEM_SYSTEM_TEST=$(SYSTEM_SYSTEM_TEST) \
+	AUTOMATIC_SYSTEM_TEST=$(AUTOMATIC_SYSTEM_TEST) \
 	  $(APACHE_SYSTEM_TEST) $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 
 # Tests that setting the root configuration 'unplugged' can't be overridden

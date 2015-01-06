@@ -15,10 +15,6 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "base/logging.h"
-#include "pagespeed/apache/apache_config.h"
-#include "pagespeed/apache/apache_server_context.h"
-#include "pagespeed/apache/apache_writer.h"
-#include "pagespeed/apache/instaweb_handler.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_dump_url_fetcher.h"
@@ -28,7 +24,10 @@
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/domain_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/system/public/system_rewrite_options.h"
+#include "pagespeed/apache/apache_config.h"
+#include "pagespeed/apache/apache_server_context.h"
+#include "pagespeed/apache/apache_writer.h"
+#include "pagespeed/apache/instaweb_handler.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/chunking_writer.h"
@@ -45,6 +44,7 @@
 #include "pagespeed/kernel/http/http_names.h"
 #include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/response_headers.h"
+#include "pagespeed/system/public/system_rewrite_options.h"
 
 // The Apache headers must be after instaweb headers.  Otherwise, the
 // compiler will complain

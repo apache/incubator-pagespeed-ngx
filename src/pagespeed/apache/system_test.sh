@@ -7,7 +7,7 @@
 # See automatic/system_test_helpers.sh for usage.
 #
 # Expects APACHE_DEBUG_PAGESPEED_CONF to point to our config file, APACHE_LOG to
-# the log file, and SYSTEM_SYSTEM_TEST to system/system_test.sh.
+# the log file, and AUTOMATIC_SYSTEM_TEST to automatic/system_test.sh.
 #
 # CACHE_FLUSH_TEST=on can be passed to test our cache.flush behavior
 # NO_VHOST_MERGE=on can be passed to tell tests to assume
@@ -80,7 +80,11 @@ CACHE_PURGE_METHODS="PURGE GET"
 
 # Run General system tests.
 #
-source "$SYSTEM_SYSTEM_TEST" || exit 1
+# We need to know the directory this file is located in.  Unfortunately,
+# if we're 'source'd from a script in a different directory $(dirname $0) gives
+# us the directory that *that* script is located in
+this_dir=$(dirname "${BASH_SOURCE[0]}")
+source "$this_dir/../system/system_test.sh" || exit 1
 
 # TODO(jefftk): most of these tests aren't Apache-specific and should be
 # slightly generalized and moved to system/ where other implementations (like

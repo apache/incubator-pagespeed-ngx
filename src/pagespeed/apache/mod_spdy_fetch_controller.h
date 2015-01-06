@@ -22,8 +22,8 @@
 // which will then cause ModSpdyFetcher::BlockingFetch to be called on a
 // thread in a hopefully intelligent manner.
 
-#ifndef NET_INSTAWEB_APACHE_MOD_SPDY_FETCH_CONTROLLER_H_
-#define NET_INSTAWEB_APACHE_MOD_SPDY_FETCH_CONTROLLER_H_
+#ifndef PAGESPEED_APACHE_MOD_SPDY_FETCH_CONTROLLER_H_
+#define PAGESPEED_APACHE_MOD_SPDY_FETCH_CONTROLLER_H_
 
 #include "net/instaweb/http/public/rate_controller.h"
 #include "pagespeed/kernel/base/atomic_bool.h"
@@ -76,4 +76,4 @@ class ModSpdyFetchController {
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_APACHE_MOD_SPDY_FETCH_CONTROLLER_H_
+#endif  // PAGESPEED_APACHE_MOD_SPDY_FETCH_CONTROLLER_H_

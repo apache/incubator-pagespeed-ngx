@@ -15,17 +15,17 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 //         lsong@google.com (Libo Song)
 
-#ifndef NET_INSTAWEB_APACHE_APACHE_REWRITE_DRIVER_FACTORY_H_
-#define NET_INSTAWEB_APACHE_APACHE_REWRITE_DRIVER_FACTORY_H_
+#ifndef PAGESPEED_APACHE_APACHE_REWRITE_DRIVER_FACTORY_H_
+#define PAGESPEED_APACHE_APACHE_REWRITE_DRIVER_FACTORY_H_
 
 // Note: We must include apache_config.h to allow using ApacheConfig*
 // return-types for functions that return RewriteOptions* in base class.
 #include "pagespeed/apache/apache_config.h"
-#include "net/instaweb/system/public/system_rewrite_driver_factory.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/system/public/system_rewrite_driver_factory.h"
 
 struct apr_pool_t;
 struct server_rec;
@@ -166,4 +166,4 @@ class ApacheRewriteDriverFactory : public SystemRewriteDriverFactory {
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_APACHE_APACHE_REWRITE_DRIVER_FACTORY_H_
+#endif  // PAGESPEED_APACHE_APACHE_REWRITE_DRIVER_FACTORY_H_

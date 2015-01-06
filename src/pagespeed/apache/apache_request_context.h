@@ -20,12 +20,12 @@
 // the port (used for loopback fetches) and (if enabled & serving spdy)
 // a factory for generating SPDY fetches.
 
-#ifndef NET_INSTAWEB_APACHE_APACHE_REQUEST_CONTEXT_H_
-#define NET_INSTAWEB_APACHE_APACHE_REQUEST_CONTEXT_H_
+#ifndef PAGESPEED_APACHE_APACHE_REQUEST_CONTEXT_H_
+#define PAGESPEED_APACHE_APACHE_REQUEST_CONTEXT_H_
 
 #include "base/logging.h"
-#include "net/instaweb/system/public/system_request_context.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/system/public/system_request_context.h"
 
 struct request_rec;
 struct spdy_slave_connection_factory;
@@ -71,4 +71,4 @@ class ApacheRequestContext : public SystemRequestContext {
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_APACHE_APACHE_REQUEST_CONTEXT_H_
+#endif  // PAGESPEED_APACHE_APACHE_REQUEST_CONTEXT_H_

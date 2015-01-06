@@ -17,8 +17,8 @@
 //
 // The Apache handler for rewriten resources and a couple other Apache hooks.
 
-#ifndef NET_INSTAWEB_APACHE_INSTAWEB_HANDLER_H_
-#define NET_INSTAWEB_APACHE_INSTAWEB_HANDLER_H_
+#ifndef PAGESPEED_APACHE_INSTAWEB_HANDLER_H_
+#define PAGESPEED_APACHE_INSTAWEB_HANDLER_H_
 
 #include "pagespeed/apache/apache_writer.h"
 #include "net/instaweb/http/public/async_fetch.h"
@@ -320,4 +320,4 @@ class InstawebHandler {
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_APACHE_INSTAWEB_HANDLER_H_
+#endif  // PAGESPEED_APACHE_INSTAWEB_HANDLER_H_

@@ -14,18 +14,18 @@
 //
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#ifndef NET_INSTAWEB_APACHE_APACHE_SERVER_CONTEXT_H_
-#define NET_INSTAWEB_APACHE_APACHE_SERVER_CONTEXT_H_
+#ifndef PAGESPEED_APACHE_APACHE_SERVER_CONTEXT_H_
+#define PAGESPEED_APACHE_APACHE_SERVER_CONTEXT_H_
 
-#include "pagespeed/apache/apache_config.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
-#include "net/instaweb/system/public/system_server_context.h"
+#include "pagespeed/apache/apache_config.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/system/public/system_server_context.h"
 
 struct request_rec;
 struct server_rec;
@@ -196,4 +196,4 @@ class ApacheServerContext : public SystemServerContext {
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_APACHE_APACHE_SERVER_CONTEXT_H_
+#endif  // PAGESPEED_APACHE_APACHE_SERVER_CONTEXT_H_

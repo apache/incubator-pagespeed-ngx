@@ -15,8 +15,8 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 //         lsong@google.com (Libo Song)
 
-#ifndef NET_INSTAWEB_APACHE_INSTAWEB_CONTEXT_H_
-#define NET_INSTAWEB_APACHE_INSTAWEB_CONTEXT_H_
+#ifndef PAGESPEED_APACHE_INSTAWEB_CONTEXT_H_
+#define PAGESPEED_APACHE_INSTAWEB_CONTEXT_H_
 
 #include "net/instaweb/automatic/public/html_detector.h"
 #include "net/instaweb/http/public/request_context.h"
@@ -148,4 +148,4 @@ class InstawebContext {
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_APACHE_INSTAWEB_CONTEXT_H_
+#endif  // PAGESPEED_APACHE_INSTAWEB_CONTEXT_H_

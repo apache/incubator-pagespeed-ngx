@@ -14,8 +14,8 @@
 //
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#ifndef NET_INSTAWEB_APACHE_HEADER_UTIL_H_
-#define NET_INSTAWEB_APACHE_HEADER_UTIL_H_
+#ifndef PAGESPEED_APACHE_HEADER_UTIL_H_
+#define PAGESPEED_APACHE_HEADER_UTIL_H_
 
 #include <cstddef>
 
@@ -89,4 +89,4 @@ void DisableCacheControlHeader(request_rec* request);
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_APACHE_HEADER_UTIL_H_
+#endif  // PAGESPEED_APACHE_HEADER_UTIL_H_

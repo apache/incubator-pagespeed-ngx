@@ -14,8 +14,8 @@
 //
 // Author: lsong@google.com (Libo Song)
 
-#ifndef NET_INSTAWEB_APACHE_APR_FILE_SYSTEM_H_
-#define NET_INSTAWEB_APACHE_APR_FILE_SYSTEM_H_
+#ifndef PAGESPEED_APACHE_APR_FILE_SYSTEM_H_
+#define PAGESPEED_APACHE_APR_FILE_SYSTEM_H_
 
 #include "apr.h"
 
@@ -102,4 +102,4 @@ class AprFileSystem : public FileSystem {
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_APACHE_APR_FILE_SYSTEM_H_
+#endif  // PAGESPEED_APACHE_APR_FILE_SYSTEM_H_

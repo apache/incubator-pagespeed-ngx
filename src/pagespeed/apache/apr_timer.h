@@ -15,8 +15,8 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 //         lsong@google.com (Libo Song)
 
-#ifndef NET_INSTAWEB_APACHE_APR_TIMER_H_
-#define NET_INSTAWEB_APACHE_APR_TIMER_H_
+#ifndef PAGESPEED_APACHE_APR_TIMER_H_
+#define PAGESPEED_APACHE_APR_TIMER_H_
 
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/timer.h"
@@ -34,4 +34,4 @@ class AprTimer : public Timer {
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_APACHE_APR_TIMER_H_
+#endif  // PAGESPEED_APACHE_APR_TIMER_H_

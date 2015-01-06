@@ -29,6 +29,12 @@
 #include <vector>
 
 #include "base/logging.h"
+#include "net/instaweb/public/global_constants.h"
+#include "net/instaweb/public/version.h"
+#include "net/instaweb/rewriter/public/process_context.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_query.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "pagespeed/apache/apache_config.h"
 #include "pagespeed/apache/apache_rewrite_driver_factory.h"
 #include "pagespeed/apache/apache_server_context.h"
@@ -39,16 +45,6 @@
 #include "pagespeed/apache/interface_mod_spdy.h"
 #include "pagespeed/apache/mod_instaweb.h"
 #include "pagespeed/apache/mod_spdy_fetcher.h"
-#include "net/instaweb/public/global_constants.h"
-#include "net/instaweb/public/version.h"
-#include "net/instaweb/rewriter/public/process_context.h"
-#include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/rewriter/public/rewrite_query.h"
-#include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/system/public/in_place_resource_recorder.h"
-#include "net/instaweb/system/public/loopback_route_fetcher.h"
-#include "net/instaweb/system/public/system_rewrite_options.h"
-#include "net/instaweb/system/public/system_server_context.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
@@ -60,6 +56,10 @@
 #include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/http/http_names.h"
 #include "pagespeed/kernel/http/response_headers.h"
+#include "pagespeed/system/public/in_place_resource_recorder.h"
+#include "pagespeed/system/public/loopback_route_fetcher.h"
+#include "pagespeed/system/public/system_rewrite_options.h"
+#include "pagespeed/system/public/system_server_context.h"
 
 #include "util_filter.h"                                             // NOLINT
 // Note: a very useful reference is this file, which demos many Apache module

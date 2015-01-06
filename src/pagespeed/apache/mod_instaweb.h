@@ -14,8 +14,8 @@
 //
 // Author: jefftk@google.com (Jeff Kaufman)
 
-#ifndef NET_INSTAWEB_APACHE_MOD_INSTAWEB_H_
-#define NET_INSTAWEB_APACHE_MOD_INSTAWEB_H_
+#ifndef PAGESPEED_APACHE_MOD_INSTAWEB_H_
+#define PAGESPEED_APACHE_MOD_INSTAWEB_H_
 
 #include "http_config.h"
 #include "httpd.h"
@@ -39,4 +39,4 @@ extern "C" {
 extern module AP_MODULE_DECLARE_DATA pagespeed_module;
 }
 
-#endif  // NET_INSTAWEB_APACHE_MOD_INSTAWEB_H_
+#endif  // PAGESPEED_APACHE_MOD_INSTAWEB_H_
