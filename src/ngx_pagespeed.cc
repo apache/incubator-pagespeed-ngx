@@ -52,12 +52,6 @@
 #include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
-#include "net/instaweb/system/public/in_place_resource_recorder.h"
-#include "net/instaweb/system/public/system_caches.h"
-#include "net/instaweb/system/public/system_request_context.h"
-#include "net/instaweb/system/public/system_rewrite_options.h"
-#include "net/instaweb/system/public/system_server_context.h"
-#include "net/instaweb/system/public/system_thread_system.h"
 #include "net/instaweb/util/public/fallback_property_page.h"
 #include "pagespeed/kernel/base/google_message_handler.h"
 #include "pagespeed/kernel/base/null_message_handler.h"
@@ -74,6 +68,12 @@
 #include "pagespeed/kernel/thread/pthread_shared_mem.h"
 #include "pagespeed/kernel/util/gzip_inflater.h"
 #include "pagespeed/kernel/util/statistics_logger.h"
+#include "pagespeed/system/public/in_place_resource_recorder.h"
+#include "pagespeed/system/public/system_caches.h"
+#include "pagespeed/system/public/system_request_context.h"
+#include "pagespeed/system/public/system_rewrite_options.h"
+#include "pagespeed/system/public/system_server_context.h"
+#include "pagespeed/system/public/system_thread_system.h"
 
 extern ngx_module_t ngx_pagespeed;
 
