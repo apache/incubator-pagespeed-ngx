@@ -763,7 +763,8 @@ bool CssFilter::Context::Partition(OutputPartitions* partitions,
     CachedResult* partition = partitions->add_partition();
     slot(0)->resource()->AddInputInfoToPartition(
         Resource::kOmitInputHash, 0, partition);
-    OutputResourcePtr output_resource(new InlineOutputResource(Driver()));
+    OutputResourcePtr output_resource(
+        InlineOutputResource::MakeInlineOutputResource(Driver()));
     output_resource->set_cached_result(partition);
     outputs->push_back(output_resource);
     return true;

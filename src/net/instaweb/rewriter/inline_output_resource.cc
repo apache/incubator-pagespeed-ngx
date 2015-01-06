@@ -26,14 +26,21 @@
 
 namespace net_instaweb {
 
-InlineOutputResource::InlineOutputResource(const RewriteDriver* driver)
+OutputResourcePtr InlineOutputResource::MakeInlineOutputResource(
+    const RewriteDriver* driver) {
+  ResourceNamer namer;
+  return OutputResourcePtr(new InlineOutputResource(driver, namer));
+}
+
+InlineOutputResource::InlineOutputResource(const RewriteDriver* driver,
+                                           const ResourceNamer& namer)
     : OutputResource(driver,
                      // TODO(sligocki): Modify OutputResource so that it does
                      // not depend upon having these dummy fields.
                      "dummy:/" /* resolved_base */,
                      "dummy:/" /* unmapped_base */,
                      "dummy:/" /* original_base */,
-                     ResourceNamer(),
+                     namer,
                      kInlineResource) {
 }
 

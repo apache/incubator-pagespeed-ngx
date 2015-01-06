@@ -20,6 +20,8 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_INLINE_OUTPUT_RESOURCE_H_
 
 #include "net/instaweb/rewriter/public/output_resource.h"
+#include "net/instaweb/rewriter/public/resource_namer.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
@@ -28,13 +30,16 @@ class RewriteDriver;
 
 class InlineOutputResource : public OutputResource {
  public:
-  explicit InlineOutputResource(const RewriteDriver* driver);
+  static OutputResourcePtr MakeInlineOutputResource(
+      const RewriteDriver* driver);
 
   // Inline resources have no URL.
   virtual bool has_url() const { return false; }
   virtual GoogleString url() const;
   virtual GoogleString UrlForDebug() const;
   virtual GoogleString cache_key() const;
+ private:
+  InlineOutputResource(const RewriteDriver* driver, const ResourceNamer& namer);
 };
 
 }  // namespace net_instaweb
