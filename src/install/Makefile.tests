@@ -97,7 +97,7 @@ EXAMPLE_COMBINE_CSS = $(EXAMPLE)/combine_css.html
 TEST_ROOT = $(APACHE_SERVER)/mod_pagespeed_test
 
 APACHE_SYSTEM_TEST = $(shell \
-  if [ -d $(MOD_PAGESPEED_ROOT)/pagespeed/apache/system_test.sh ]; then \
+  if [ -f $(MOD_PAGESPEED_ROOT)/pagespeed/apache/system_test.sh ]; then \
     echo $(MOD_PAGESPEED_ROOT)/pagespeed/apache/system_test.sh ;\
   else \
     echo $(MOD_PAGESPEED_ROOT)/third_party/pagespeed/apache/system_test.sh ;\
