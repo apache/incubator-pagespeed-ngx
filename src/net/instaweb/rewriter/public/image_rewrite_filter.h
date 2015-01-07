@@ -130,7 +130,11 @@ class ImageRewriteFilter : public RewriteFilter {
 
   // Tries to extract information stored by the image rewrite filter
   // in *in, and to store it in *out. Returns whether successful.
+  //
+  // The context is used to try to find a name for the image if it was
+  // not optimized.
   static bool ExtractAssociatedImageInfo(const CachedResult* in,
+                                         RewriteContext* context,
                                          AssociatedImageInfo* out);
 
   // Can we inline resource?  If so, encode its contents into the data_url,

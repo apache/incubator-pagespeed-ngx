@@ -178,6 +178,7 @@ void CssImageRewriter::InheritChildImageInfo(RewriteContext* context) {
       // child_result came from the image filter.
       AssociatedImageInfo from_image_filter;
       if (ImageRewriteFilter::ExtractAssociatedImageInfo(child_result,
+                                                         nested_context,
                                                          &from_image_filter)) {
         child_image_info[from_image_filter.url()] = from_image_filter;
       }

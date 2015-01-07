@@ -464,7 +464,7 @@ void ImageRewriteFilter::Context::Render() {
       if (Driver()->options()->Enabled(
               RewriteOptions::kExperimentCollectMobImageInfo)) {
         AssociatedImageInfo aii;
-        if (ExtractAssociatedImageInfo(result, &aii)) {
+        if (ExtractAssociatedImageInfo(result, this, &aii)) {
           filter_->RegisterImageInfo(aii);
         }
       }
@@ -2035,13 +2035,24 @@ void ImageRewriteFilter::RegisterImageInfo(
 }
 
 bool ImageRewriteFilter::ExtractAssociatedImageInfo(
-    const CachedResult* result, AssociatedImageInfo* out) {
+    const CachedResult* result, RewriteContext* context,
+    AssociatedImageInfo* out) {
+  bool ret = false;
   if (result->has_image_file_dims()) {
-    out->set_url(result->url());
-    *out->mutable_dimensions() = result->image_file_dims();
-    return true;
+    if (result->url().empty()) {
+      if (context->num_slots() == 1) {
+        out->set_url(context->slot(0)->resource()->url());
+        ret = true;
+      }
+    } else {
+      out->set_url(result->url());
+      ret = true;
+    }
   }
-  return false;
+  if (ret) {
+    *out->mutable_dimensions() = result->image_file_dims();
+  }
+  return ret;
 }
 
 }  // namespace net_instaweb

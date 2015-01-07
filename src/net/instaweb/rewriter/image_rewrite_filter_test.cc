@@ -99,6 +99,7 @@ const char kLargePngFile[] = "Large.png";        // blank image; gray scale
 const char kPuzzleJpgFile[] = "Puzzle.jpg";      // photo; no alpha
 const char kRedbrushAlphaPngFile[] = "RedbrushAlpha-0.5.png";  // photo; alpha
 const char kSmallDataFile[] = "small-data.png";   // not an image
+const char k1x1GifFile[] = "o.gif";               // unoptimizable gif
 
 const char kChefDims[] = " width=\"192\" height=\"256\"";
 
@@ -3557,24 +3558,30 @@ TEST_F(ImageRewriteTest, ReportDimensionsToJs) {
                        kContentTypePng, 100);
   AddFileToMockFetcher(StrCat(kTestDomain, "b.jpeg"), kPuzzleJpgFile,
                        kContentTypeJpeg, 100);
+  const GoogleString kTest1Gif = StrCat(kTestDomain, k1x1GifFile);
+  AddFileToMockFetcher(kTest1Gif, k1x1GifFile, kContentTypeGif, 100);
 
   SetupWriter();
   rewrite_driver()->StartParse(StrCat(kTestDomain, "dims.html"));
   rewrite_driver()->ParseText(StrCat("<img src=\"", kTestDomain, "a.png\">"));
   rewrite_driver()->Flush();
   rewrite_driver()->ParseText(StrCat("<img src=\"", kTestDomain, "b.jpeg\">"));
+  rewrite_driver()->Flush();
+  rewrite_driver()->ParseText(StrCat("<img src=\"", kTest1Gif, "\">"));
   rewrite_driver()->FinishParse();
 
   GoogleString out_png_url(Encode(kTestDomain, "ic", "0", "a.png", "jpg"));
   GoogleString out_jpeg_url(Encode(kTestDomain, "ic", "0", "b.jpeg", "jpg"));
   GoogleString js = StrCat(
       "psMobStaticImageInfo = {"
+      "\"", kTest1Gif, "\":{w:1,h:1},"  // not optimized.
       "\"", out_png_url, "\":{w:100,h:100},"
       "\"", out_jpeg_url, "\":{w:1023,h:766},"
       "}");
-  EXPECT_EQ(StrCat(StrCat("<img src=\"", out_png_url, "\">"),
-                   StrCat("<img src=\"", out_jpeg_url, "\">"),
-                          "<script>", js, "</script>"),
+  EXPECT_EQ(StrCat("<img src=\"", out_png_url, "\">"
+                   "<img src=\"", out_jpeg_url, "\">"
+                   "<img src=\"", kTest1Gif, "\">"
+                   "<script>", js, "</script>"),
             output_buffer_);
 }
 
