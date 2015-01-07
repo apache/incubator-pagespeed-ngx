@@ -3123,7 +3123,11 @@ bool RewriteContext::IsNestedIn(StringPiece id) const {
   return parent_ != NULL && id == parent_->id();
 }
 
-GoogleString RewriteContext::ToString(StringPiece prefix) const {
+GoogleString RewriteContext::ToString() const {
+  return ToStringWithPrefix("");
+}
+
+GoogleString RewriteContext::ToStringWithPrefix(StringPiece prefix) const {
   GoogleString out;
   StrAppend(&out, prefix, "Outputs(", IntegerToString(num_outputs()), "):");
   for (int i = 0; i < num_outputs(); ++i) {

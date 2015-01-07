@@ -287,7 +287,8 @@ class RewriteContext {
   }
 
   // Returns debug information about this RewriteContext.
-  GoogleString ToString(StringPiece prefix) const;
+  GoogleString ToString() const;
+  GoogleString ToStringWithPrefix(StringPiece prefix) const;
 
   // Initializes statistics.
   static void InitStats(Statistics* stats);

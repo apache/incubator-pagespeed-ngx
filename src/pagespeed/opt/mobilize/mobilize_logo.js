@@ -182,9 +182,21 @@ pagespeed.MobLogo.prototype.findForeground_ = function(element, minArea,
           element, pagespeed.MobUtil.ImageSource[id]);
       if (image) {
         source = pagespeed.MobUtil.ImageSource[id];
+        // If the foreground is IMG tag, and the image has been loaded,
+        // use the natural dimension.
+        //
+        // TODO(huibao): Instead of naturalWidth and naturalHeight,
+        // use the dimension computed in the C++ code.
         if (source == pagespeed.MobUtil.ImageSource.IMG) {
-          rect.width = element.naturalWidth;
-          rect.height = element.naturalHeight;
+          if (element.naturalWidth > this.MIN_WIDTH_ &&
+              element.naturalHeight > this.MIN_HEIGHT_ &&
+              element.naturalHeight < this.MAX_HEIGHT_) {
+            rect.width = element.naturalWidth;
+            rect.height = element.naturalHeight;
+          } else {
+            console.log('Image ' + element.src + ' may be the logo. ' +
+                        'It has not been loaded so may be missed.');
+          }
         }
 
         var logoRecord = new pagespeed.MobLogo.LogoRecord();
@@ -323,7 +335,7 @@ pagespeed.MobLogo.prototype.findLogoCandidates_ = function(
     element, inheritedMetric) {
   var newCandidate = this.findLogoNode_(element, inheritedMetric);
   if (newCandidate) {
-    this.candidates_ = this.candidates_.concat(newCandidate);
+    this.candidates_.push(newCandidate);
     ++inheritedMetric;
   }
 
@@ -345,19 +357,21 @@ pagespeed.MobLogo.prototype.findLogoCandidates_ = function(
  *   - the candidate with the smallest left border
  *   - the candidate with the largest size
  *
- * If there are still mutliple candidates after these rules, then the first
+ * If there are still multiple candidates after these rules, then the first
  * one which was found will be chosen.
  *
- * @return {pagespeed.MobLogo.LogoRecord}
+ * If there are no logo candidates then null is returned.
+ *
+ * @return {?pagespeed.MobLogo.LogoRecord}
  * @private
  */
 pagespeed.MobLogo.prototype.findBestLogo_ = function() {
   var logo = null;
-  if (this.candidates_.length == 0) {
+  var logoCandidates = this.candidates_;
+  if (!logoCandidates || logoCandidates.length == 0) {
     return null;
   }
 
-  var logoCandidates = this.candidates_;
   if (logoCandidates.length == 1) {
     logo = logoCandidates[0];
     return logo;
@@ -365,31 +379,33 @@ pagespeed.MobLogo.prototype.findBestLogo_ = function() {
 
   // Use the position and size to update the metric.
   // TODO(huibao): Split the update into a method.
-  var maxArea = 0;
+  var maxArea = 1;  // Initialize to 1 to avoid division by 0.
   var maxBot = 0;
   var minTop = Infinity;
-  for (var i = 0, candidate; candidate = logoCandidates[i]; ++i) {
-    var rect = candidate.foregroundRect;
+  var area, rect, i, candidate;
+  for (i = 0; candidate = logoCandidates[i]; ++i) {
+    rect = candidate.foregroundRect;
     minTop = Math.min(minTop, rect.top);
     maxBot = Math.max(maxBot, rect.bottom);
-    maxArea = Math.max(maxArea, rect.width * rect.height);
+    area = rect.width * rect.height;
+    maxArea = Math.max(maxArea, area);
   }
-  for (var i = 0, candidate; candidate = logoCandidates[i]; ++i) {
-    var rect = candidate.foregroundRect;
+  for (i = 0; candidate = logoCandidates[i]; ++i) {
+    rect = candidate.foregroundRect;
     var multTop = 1 - (rect.top - minTop) / (maxBot - minTop);
     var multArea = rect.width * rect.height / maxArea;
     candidate.metric *= (multTop * multArea);
   }
 
   var maxMetric = 0;
-  for (var i = 0, candidate; candidate = logoCandidates[i]; ++i) {
+  for (i = 0; candidate = logoCandidates[i]; ++i) {
     maxMetric = Math.max(maxMetric, candidate.metric);
   }
 
   var bestCandidates = [];
-  for (var i = 0, candidate; candidate = logoCandidates[i]; ++i) {
+  for (i = 0; candidate = logoCandidates[i]; ++i) {
     if (candidate.metric == maxMetric) {
-      bestCandidates = bestCandidates.concat(candidate);
+      bestCandidates.push(candidate);
     }
   }
 
@@ -404,8 +420,8 @@ pagespeed.MobLogo.prototype.findBestLogo_ = function() {
   var minArea = Infinity;
   var bestLogo = bestCandidates[0];
   var bestRect = bestLogo.foregroundRect;
-  for (var i = 1, candidate; candidate = bestCandidates[i]; ++i) {
-    var rect = candidate.foregroundRect;
+  for (i = 1; candidate = bestCandidates[i]; ++i) {
+    rect = candidate.foregroundRect;
     if (bestRect.top > rect.top ||
         (bestRect.top == rect.top && bestRect.left > rect.left) ||
         (bestRect.top == rect.top && bestRect.left == rect.left &&

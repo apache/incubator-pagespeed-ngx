@@ -317,7 +317,8 @@ runelen(Rune rune)
 int
 runenlen(const Rune *r, int nrune)
 {
-	int nb, c;
+	int nb;
+	ulong c;	/* Rune is signed, so use unsigned for range check. */
 
 	nb = 0;
 	while(nrune--) {
@@ -328,8 +329,10 @@ runenlen(const Rune *r, int nrune)
 			nb += 2;
 		else if (c <= Rune3)
 			nb += 3;
-		else /* assert(c <= Rune4) */ 
+		else if (c <= Runemax)
 			nb += 4;
+		else
+			nb += 3;	/* Runeerror = 0xFFFD, see runetochar */
 	}
 	return nb;
 }

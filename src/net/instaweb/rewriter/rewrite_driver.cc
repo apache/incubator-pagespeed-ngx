@@ -2629,7 +2629,7 @@ GoogleString RewriteDriver::ToString(bool show_detached_contexts) {
                e = detached_rewrites_.end(); p != e; ++p) {
         RewriteContext* detached_rewrite = *p;
         StrAppend(&out, "  Detached Rewrite:\n",
-                  detached_rewrite->ToString("  "));
+                  detached_rewrite->ToStringWithPrefix("  "));
       }
     }
     AppendBool(&out, "RewritesComplete()", RewritesComplete());
