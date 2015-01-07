@@ -1,0 +1,48 @@
+/*
+ * Copyright 2014 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/**
+ * @fileoverview Stylesheet injected into mobilized pages.
+ *
+ * @author jmarantz@google.com (Joshua Marantz)
+ * Stylesheet injected into desktop pages to help fit them to
+ * a mobile format.
+ */
+
+/* TODO(jmarantz): make class names consistent */
+
+/* General mobile-friendly overrides for content CSS */
+* {
+  max-width: 100% !important;
+  min-width: 0 !important;
+  line-height: initial !important;
+}
+
+body {
+  /* Give the body some margin so text doesn't go right to the bezel */
+  margin-left: 8px;
+  margin-right: 8px;
+  padding: 0px !important;
+}
+
+/* Commmon patterns applied to a broad range of elements */
+.psSingleColumn {
+    border-left: 0px !important;
+    border-right: 0px !important;
+    margin-left: 0px !important;
+    margin-right: 0px !important;
+    padding-left: 0px !important;
+    padding-right: 0px !important;
+}

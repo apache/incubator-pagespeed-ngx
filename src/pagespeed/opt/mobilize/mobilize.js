@@ -338,7 +338,9 @@ pagespeed.Mob.prototype.initiateMobilization = function() {
 
   // Instructs our XHR hijack to call this.xhrSendHook and this.xhrResponseHook
   // whenever XHRs are sent and responses are received.
-  window['pagespeedXhrHijackSetListener'](this);
+  if (window.psLayoutMode) {
+    window['pagespeedXhrHijackSetListener'](this);
+  }
   this.mobilizeSite_();
 };
 
@@ -358,7 +360,9 @@ pagespeed.Mob.prototype.isReady = function() {
  */
 pagespeed.Mob.prototype.maybeRunLayout = function() {
   if (this.isReady()) {
-    this.layout_.computeAllSizingAndResynthesize();
+    if (window.psLayoutMode) {
+      this.layout_.computeAllSizingAndResynthesize();
+    }
     if (this.debugMode_) {
       var progressRemoveAnchor = document.getElementById(
           pagespeed.Mob.PROGRESS_REMOVE_ID_);

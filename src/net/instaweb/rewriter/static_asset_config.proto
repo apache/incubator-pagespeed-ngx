@@ -42,6 +42,7 @@ message StaticAssetEnum {
     MOBILIZE_JS = 18;
     MOBILIZE_XHR_JS = 19;
     MOBILIZE_CSS = 20;
+    MOBILIZE_LAYOUT_CSS = 21;
   };
 }
 

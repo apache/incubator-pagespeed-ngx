@@ -215,19 +215,18 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
     if (!added_viewport_) {
       added_viewport_ = true;
 
-      if (use_js_layout_) {
-        // Transmit to the mobilization scripts whether they are run in debug
-        // mode or not by setting 'psDebugMode'.
-        //
-        // Also, transmit to the mobilization scripts whether navigation is
-        // enabled.  That is bundled into the same JS compile unit as the
-        // layout, so we cannot do a 'undefined' check in JS to determine
-        // whether it was enabled.
-        GoogleString src = StrCat(
-            "var psDebugMode=", (driver()->DebugMode() ? "true;" : "false;"),
-            "var psNavMode=", (use_js_nav_ ? "true;" : "false;"));
-        driver()->InsertScriptAfterCurrent(src, false);
-      }
+      // Transmit to the mobilization scripts whether they are run in debug
+      // mode or not by setting 'psDebugMode'.
+      //
+      // Also, transmit to the mobilization scripts whether navigation is
+      // enabled.  That is bundled into the same JS compile unit as the
+      // layout, so we cannot do a 'undefined' check in JS to determine
+      // whether it was enabled.
+      GoogleString src = StrCat(
+          "var psDebugMode=", (driver()->DebugMode() ? "true;" : "false;"),
+          "var psNavMode=", (use_js_nav_ ? "true;" : "false;"),
+          "var psLayoutMode=", (use_js_layout_ ? "true;" : "false;"));
+      driver()->InsertScriptAfterCurrent(src, false);
 
       // TODO(jmarantz): Consider waiting to see if we have a charset directive
       // and move this after that.  This requires some constraints on when
@@ -237,36 +236,27 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
       // OTOH convert_meta_tags should make that moot by copying the
       // charset into the HTTP headers, so maybe that filter should
       // be a prereq of this one.
-      HtmlElement* added_viewport_element = driver()->NewElement(
-          element, HtmlName::kMeta);
-      added_viewport_element->set_style(HtmlElement::BRIEF_CLOSE);
-      added_viewport_element->AddAttribute(
-          driver()->MakeName(HtmlName::kName), "viewport",
-          HtmlElement::SINGLE_QUOTE);
-      added_viewport_element->AddAttribute(
-          driver()->MakeName(HtmlName::kContent), kViewportContent,
-          HtmlElement::SINGLE_QUOTE);
-      driver()->InsertNodeAfterCurrent(added_viewport_element);
+      if (use_js_layout_) {
+        HtmlElement* added_viewport_element = driver()->NewElement(
+            element, HtmlName::kMeta);
+        added_viewport_element->set_style(HtmlElement::BRIEF_CLOSE);
+        added_viewport_element->AddAttribute(
+            driver()->MakeName(HtmlName::kName), "viewport",
+            HtmlElement::SINGLE_QUOTE);
+        added_viewport_element->AddAttribute(
+            driver()->MakeName(HtmlName::kContent), kViewportContent,
+            HtmlElement::SINGLE_QUOTE);
+        driver()->InsertNodeAfterCurrent(added_viewport_element);
+      }
 
       if (use_js_layout_) {
-        // Hijack XHR early so that we don't miss mobilizing any responses.
-        // TODO(jmarantz): Move this block to inject before the first script.
         if (use_static_) {
-          /*
-           * Idealy I'd like to prevent base.js from loading the deps.  However
-           * mobilize_nav.js currently loads a few dependencies that would be
-           * hard to maintain manually.  If we are able to make mobilize_nav.js
-           * closure-free we can uncomoment this.
-           *
-           * driver()->InsertScriptAfterCurrent(
-               "var CLOSURE_UNCOMPILED_DEFINES = "
-               "{'goog.ENABLE_DEBUG_LOADER': false};",
-               false);
-          */
-          // Include the base closure file to allow goog.provide
-          // etc to work.
+          // Include the base closure file to allow goog.provide etc to work.
           driver()->InsertScriptAfterCurrent(
               StrCat(static_file_prefix_, "goog/base.js"), true);
+
+          // Hijack XHR early so that we don't miss mobilizing any responses.
+          // TODO(jmarantz): Move this block to inject before the first script.
           GoogleString script_path = StrCat(
               static_file_prefix_, "mobilize_xhr.js");
           driver()->InsertScriptAfterCurrent(script_path, true);
@@ -281,7 +271,7 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
     }
   } else if (keyword == HtmlName::kBody) {
     ++body_element_depth_;
-    if (use_js_layout_ && !added_progress_) {
+    if (!added_progress_) {
       added_progress_ = true;
       HtmlElement* scrim = driver()->NewElement(element, HtmlName::kDiv);
       driver()->InsertNodeAfterCurrent(scrim);
@@ -359,24 +349,30 @@ void MobilizeRewriteFilter::EndElementImpl(HtmlElement* element) {
   if (keyword == HtmlName::kBody) {
     --body_element_depth_;
     if (body_element_depth_ == 0) {
-      if (use_js_layout_) {
-        if (!added_mob_js_) {
-          added_mob_js_ = true;
-          if (use_static_) {
-            AddStaticScript("mobilize_util.js");
-            AddStaticScript("mobilize_color.js");
-            AddStaticScript("mobilize_logo.js");
-            AddStaticScript("mobilize_theme.js");
-            AddStaticScript("mobilize_layout.js");
-            AddStaticScript("mobilize_nav.js");
-            AddStaticScript("mobilize.js");
-          } else {
-            StaticAssetManager* manager =
-                driver()->server_context()->static_asset_manager();
-            StringPiece js = manager->GetAssetUrl(
-                StaticAssetEnum::MOBILIZE_JS, driver()->options());
-            driver()->InsertScriptBeforeCurrent(js, true);
+      if (!added_mob_js_) {
+        added_mob_js_ = true;
+        if (use_static_) {
+          // If we had layout enabled we would have added base.js earlier
+          // before hijacking XHR.  But we'll still need base.js event if
+          // we are not doing layout -- but we don't need it blocking in
+          // the head.
+          if (!use_js_layout_) {
+            AddStaticScript("goog/base.js");
           }
+
+          AddStaticScript("mobilize_util.js");
+          AddStaticScript("mobilize_color.js");
+          AddStaticScript("mobilize_logo.js");
+          AddStaticScript("mobilize_theme.js");
+          AddStaticScript("mobilize_layout.js");
+          AddStaticScript("mobilize_nav.js");
+          AddStaticScript("mobilize.js");
+        } else {
+          StaticAssetManager* manager =
+              driver()->server_context()->static_asset_manager();
+          StringPiece js = manager->GetAssetUrl(
+              StaticAssetEnum::MOBILIZE_JS, driver()->options());
+          driver()->InsertScriptBeforeCurrent(js, true);
         }
       }
       reached_reorder_containers_ = false;
@@ -414,19 +410,18 @@ void MobilizeRewriteFilter::Characters(HtmlCharactersNode* characters) {
 }
 
 void MobilizeRewriteFilter::AppendStylesheet(const StringPiece& css_file_name,
+                                             StaticAssetEnum::StaticAsset asset,
                                              HtmlElement* element) {
   HtmlElement* link = driver()->NewElement(element, HtmlName::kLink);
   driver()->AppendChild(element, link);
   driver()->AddAttribute(link, HtmlName::kRel, "stylesheet");
-  // TODO(jmarantz): MOBILIZE_CSS is needed before this can work.
   if (use_static_) {
     driver()->AddAttribute(link, HtmlName::kHref, StrCat(static_file_prefix_,
                                                          css_file_name));
   } else {
     StaticAssetManager* manager =
         driver()->server_context()->static_asset_manager();
-    StringPiece css = manager->GetAssetUrl(
-        StaticAssetEnum::MOBILIZE_CSS, driver()->options());
+    StringPiece css = manager->GetAssetUrl(asset, driver()->options());
     driver()->AddAttribute(link, HtmlName::kHref, css);
   }
 }
@@ -434,7 +429,11 @@ void MobilizeRewriteFilter::AppendStylesheet(const StringPiece& css_file_name,
 void MobilizeRewriteFilter::AddStyle(HtmlElement* element) {
   if (!added_style_) {
     added_style_ = true;
-    AppendStylesheet("mobilize.css", element);
+    AppendStylesheet("mobilize.css", StaticAssetEnum::MOBILIZE_CSS, element);
+    if (use_js_layout_) {
+      AppendStylesheet("mobilize_layout.css",
+                       StaticAssetEnum::MOBILIZE_LAYOUT_CSS, element);
+    }
   }
 }
 

@@ -42,12 +42,25 @@ namespace {
 const char kTestDataDir[] = "/net/instaweb/rewriter/testdata/";
 const char kOriginal[] = "mobilize_test.html";
 const char kRewritten[] = "mobilize_test_output.html";
-const char kStyles[] =
-    "<link rel=\"stylesheet\" href=\"/psajs/mobilize_css.0.css\">";
-const char kHeadAndViewport[] =
-    "<script>var psDebugMode=false;var psNavMode=true;</script>"
-    "<meta name='viewport' content='width=device-width'/>"
-    "<script src=\"/psajs/mobilize_xhr.0.js\"></script>";
+
+GoogleString Styles(bool layout_mode) {
+  return StrCat(
+      "<link rel=\"stylesheet\" href=\"/psajs/mobilize_css.0.css\">",
+      (layout_mode
+       ? "<link rel=\"stylesheet\" href=\"/psajs/mobilize_layout_css.0.css\">"
+       : ""));
+}
+
+GoogleString HeadAndViewport(bool layout_mode) {
+  return StrCat(
+      "<script>var psDebugMode=false;var psNavMode=true;var psLayoutMode=",
+      layout_mode ? "true" : "false", ";"
+      "</script>",
+      (layout_mode
+       ? ("<meta name='viewport' content='width=device-width'/>"
+          "<script src=\"/psajs/mobilize_xhr.0.js\"></script>")
+       : ""));
+}
 
 }  // namespace
 
@@ -66,7 +79,7 @@ class MobilizeRewriteFilterTest : public RewriteTestBase {
     RewriteTestBase::SetUp();
     options()->ClearSignatureForTesting();
     options()->set_mob_always(true);
-    options()->set_mob_layout(true);
+    options()->set_mob_layout(LayoutMode());
     options()->set_mob_nav(true);
     server_context()->ComputeSignature(options());
     SetHtmlMimetype();  // Don't wrap scripts in <![CDATA[ ]]>
@@ -78,6 +91,7 @@ class MobilizeRewriteFilterTest : public RewriteTestBase {
     RewriteTestBase::TearDown();
   }
 
+  virtual bool LayoutMode() const { return true; }
   virtual bool AddBody() const { return false; }
   virtual bool AddHtmlTags() const { return false; }
 
@@ -101,7 +115,7 @@ class MobilizeRewriteFilterTest : public RewriteTestBase {
     filter_->added_progress_ = added;
   }
 
-  GoogleString ScriptsAtEndOfBody() {
+  GoogleString ScriptsAtEndOfBody() const {
     return "<script src=\"/psajs/mobilize.0.js\"></script>";
   }
 
@@ -145,7 +159,7 @@ TEST_F(MobilizeRewriteUnitTest, AddStyle) {
   html_parse()->AppendChild(head, content);
   CheckExpected("<head>123</head>");
   FilterAddStyle(head);
-  CheckExpected(StrCat("<head>123", kStyles, "</head>"));
+  CheckExpected(StrCat("<head>123", Styles(LayoutMode()), "</head>"));
 }
 
 TEST_F(MobilizeRewriteUnitTest, MobileRoleAttribute) {
@@ -189,10 +203,10 @@ class MobilizeRewriteFunctionalTest : public MobilizeRewriteFilterTest {
   void HeadTest(const char* name,
                 StringPiece original_head, StringPiece expected_mid_head,
                 int deleted_elements) {
-    GoogleString original = StrCat("<head>", original_head, "</head>");
+    GoogleString original = StrCat("<head>", original_head, "</head>", Body());
     GoogleString expected =
-        StrCat("<head>", kHeadAndViewport, expected_mid_head, kStyles,
-               "</head>");
+        StrCat("<head>", HeadAndViewport(LayoutMode()), expected_mid_head,
+               Styles(LayoutMode()), "</head>", ExpectedBody());
     ValidateExpected(name, original, expected);
     CheckVariable(MobilizeRewriteFilter::kPagesMobilized, 1);
     CheckVariable(MobilizeRewriteFilter::kKeeperBlocks, 0);
@@ -239,6 +253,14 @@ class MobilizeRewriteFunctionalTest : public MobilizeRewriteFilterTest {
                                    "</body><body>", second_body, "</body>");
     ValidateExpected(name, original, expected);
     CheckVariable(MobilizeRewriteFilter::kPagesMobilized, 1);
+  }
+
+  GoogleString Body() const {
+    return "<body>hello, world!</body>";
+  }
+
+  GoogleString ExpectedBody() const {
+    return StrCat("<body>hello, world!", ScriptsAtEndOfBody(), "</body>");
   }
 
  private:
@@ -345,8 +367,9 @@ TEST_F(MobilizeRewriteFunctionalTest, MultipleHeads) {
   // Check we only add the style and viewport tag once.
   const char kRestOfHeads[] = "</head><head></head>";
   GoogleString original = StrCat("<head>", kRestOfHeads);
-  GoogleString expected =
-      StrCat("<head>", kHeadAndViewport, kStyles, kRestOfHeads);
+  GoogleString expected = StrCat(
+      "<head>", HeadAndViewport(LayoutMode()), Styles(LayoutMode()),
+      kRestOfHeads);
   ValidateExpected("multiple_heads", original, expected);
   CheckVariable(MobilizeRewriteFilter::kPagesMobilized, 1);
   CheckVariable(MobilizeRewriteFilter::kKeeperBlocks, 0);
@@ -446,9 +469,9 @@ TEST_F(MobilizeRewriteEndToEndTest, FullPage) {
       StrCat(GTestSrcDir(), kTestDataDir, kRewritten);
   ASSERT_TRUE(filesystem_.ReadFile(rewritten_filename.c_str(),
                                    &rewritten_buffer, message_handler()));
-  GlobalReplaceSubstring("@@HEAD_SCRIPT_LOAD@@", kHeadAndViewport,
+  GlobalReplaceSubstring("@@HEAD_SCRIPT_LOAD@@", HeadAndViewport(true),
                          &rewritten_buffer);
-  GlobalReplaceSubstring("@@HEAD_STYLES@@", kStyles, &rewritten_buffer);
+  GlobalReplaceSubstring("@@HEAD_STYLES@@", Styles(true), &rewritten_buffer);
   GlobalReplaceSubstring("@@TRAILING_SCRIPT_LOADS@@", ScriptsAtEndOfBody(),
                          &rewritten_buffer);
   rewrite_driver()->SetUserAgent(
@@ -466,6 +489,15 @@ TEST_F(MobilizeRewriteEndToEndTest, NonMobile) {
   rewrite_driver()->SetUserAgent(
       UserAgentMatcherTestBase::kChrome37UserAgent);
   ValidateNoChanges("EndToEndNonMobile", original_buffer);
+}
+
+class MobilizeRewriteFilterNoLayoutTest : public MobilizeRewriteFunctionalTest {
+ protected:
+  virtual bool LayoutMode() const { return false; }
+};
+
+TEST_F(MobilizeRewriteFilterNoLayoutTest, AddStyleAndViewport) {
+  HeadTest("add_style_and_viewport", "", "", 0);
 }
 
 }  // namespace

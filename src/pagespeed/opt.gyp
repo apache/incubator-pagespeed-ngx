@@ -288,6 +288,19 @@
       'includes': ['../net/instaweb/data2c.gypi']
     },
 
+    {
+      'target_name': 'instaweb_mobilize_layout_css_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'pagespeed/opt/mobilize',
+        'instaweb_js_subdir': 'opt/mobilize',
+        'var_name': 'mobilize_layout_css',
+      },
+      'sources': [
+        'opt/mobilize/mobilize_layout.css',
+      ],
+      'includes': ['../net/instaweb/data2c.gypi']
+    },
+
   ]
 }
 

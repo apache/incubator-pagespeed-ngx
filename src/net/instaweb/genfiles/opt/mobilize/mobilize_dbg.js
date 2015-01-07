@@ -4405,7 +4405,7 @@ pagespeed.Mob.prototype.initiateMobilization = function() {
   window.psNavMode && pagespeed.MobUtil.inFriendlyIframe() && (this.totalWork_ += this.domElementCount_, this.totalWork_ += this.domElementCount_);
   null != document.body && this.collectBackgroundImages_(document.body);
   this.totalWork_ += this.pendingImageLoadCount_ * pagespeed.Mob.COST_PER_IMAGE_;
-  window.pagespeedXhrHijackSetListener(this);
+  window.psLayoutMode && window.pagespeedXhrHijackSetListener(this);
   this.mobilizeSite_();
 };
 pagespeed.Mob.prototype.isReady = function() {
@@ -4413,7 +4413,7 @@ pagespeed.Mob.prototype.isReady = function() {
 };
 pagespeed.Mob.prototype.maybeRunLayout = function() {
   if (this.isReady()) {
-    if (this.layout_.computeAllSizingAndResynthesize(), this.debugMode_) {
+    if (window.psLayoutMode && this.layout_.computeAllSizingAndResynthesize(), this.debugMode_) {
       var a = document.getElementById(pagespeed.Mob.PROGRESS_REMOVE_ID_);
       a && (a.textContent = "Remove Progress Bar and show mobilized site");
     } else {

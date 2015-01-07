@@ -1602,6 +1602,7 @@
         '<(DEPTH)/pagespeed/opt.gyp:instaweb_mobilize_css_data2c',
         '<(DEPTH)/pagespeed/opt.gyp:instaweb_mobilize_js_data2c',
         '<(DEPTH)/pagespeed/opt.gyp:instaweb_mobilize_js_opt_data2c',
+        '<(DEPTH)/pagespeed/opt.gyp:instaweb_mobilize_layout_css_data2c',
         '<(DEPTH)/pagespeed/opt.gyp:instaweb_mobilize_xhr_js_data2c',
         '<(DEPTH)/pagespeed/opt.gyp:instaweb_mobilize_xhr_js_opt_data2c',
         '<(DEPTH)/pagespeed/opt.gyp:pagespeed_ads_util',

@@ -22,6 +22,7 @@
 #include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/mobilize_decision_trees.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
@@ -116,7 +117,9 @@ class MobilizeRewriteFilter : public CommonFilter {
   virtual const char* Name() const { return "MobilizeRewrite"; }
 
  private:
-  void AppendStylesheet(const StringPiece& css_file_name, HtmlElement* element);
+  void AppendStylesheet(const StringPiece& css_file_name,
+                        StaticAssetEnum::StaticAsset asset,
+                        HtmlElement* element);
   void AddStyle(HtmlElement* element);
   MobileRole::Level GetMobileRole(HtmlElement* element);
   void AddStaticScript(StringPiece script);
