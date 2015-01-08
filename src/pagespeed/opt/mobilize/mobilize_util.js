@@ -67,6 +67,22 @@ pagespeed.MobUtil.Rect = function() {
 };
 
 
+
+/**
+ * Create a dimensions (Dimensions) struct.
+ * @struct
+ * @param {number} width
+ * @param {number} height
+ * @constructor
+ */
+pagespeed.MobUtil.Dimensions = function(width, height) {
+  /** @type {number} width */
+  this.width = width;
+  /** @type {number} height */
+  this.height = height;
+};
+
+
 /**
  * Returns whether the character at index's ascii code is a digit.
  * @param {string} str
@@ -270,6 +286,15 @@ pagespeed.MobUtil.findBackgroundImage = function(element) {
             (image.indexOf('url(') == 0) &&
             (image[image.length - 1] == ')')) {
           image = image.substring(4, image.length - 1);
+
+          // TODO(jmarantz): change logic to handle multiple comma-separated
+          // background images, which will be overlayed on one another.  E.g.
+          //     backgrond-image: url(a.png), url(b.png);
+          //  if ((image.indexOf(',') != -1) ||
+          //    (image.indexOf('(') != -1) ||
+          //    (image.indexOf('}') != -1)) {
+          //   debugger;
+          // }
         }
       }
     }

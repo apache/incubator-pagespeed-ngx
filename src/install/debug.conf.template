@@ -1542,11 +1542,14 @@ Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
   ModPagespeedMobNav on
   ModPagespeedAlwaysMobilize on
   ModPagespeedProxySuffix .suffix.net
-  ModPagespeedDisableFilters add_instrumentation,rewrite_images
+  ModPagespeedEnableFilters rewrite_domains,collapse_whitespace,mobilize
+  ModPagespeedEnableFilters rewrite_images,experiment_collect_mob_image_info,rewrite_css
   ModPagespeedEnableFilters rewrite_domains,mobilize
   ModPagespeedEnableFilters inline_javascript,rewrite_javascript
+  ModPagespeedDisableFilters add_instrumentation,inline_images
   ModPagespeedDomainRewriteHyperlinks on
   ModPagespeedCriticalImagesBeaconEnabled false
+  ModPagespeedRewriteDeadlinePerFlushMs 5000
 </VirtualHost>
 
 #ALL_DIRECTIVES # Invoke all ModPagespeed* directives to make sure they work:

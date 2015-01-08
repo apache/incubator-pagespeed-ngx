@@ -3313,6 +3313,10 @@ pagespeed.MobUtil.ASCII_9_ = 57;
 pagespeed.MobUtil.Rect = function() {
   this.height = this.width = this.bottom = this.right = this.left = this.top = 0;
 };
+pagespeed.MobUtil.Dimensions = function(a, b) {
+  this.width = a;
+  this.height = b;
+};
 pagespeed.MobUtil.isDigit = function(a, b) {
   if (a.length <= b) {
     return!1;
@@ -3739,14 +3743,14 @@ pagespeed.MobLayout.prototype.isProbablyASprite_ = function(a) {
 };
 pagespeed.MobLayout.prototype.shrinkWideElements_ = function(a) {
   var b = window.getComputedStyle(a), c = pagespeed.MobUtil.findBackgroundImage(a);
-  if (c && (c = this.psMob_.findImgTagForUrl(c)) && c.width && c.height && !pagespeed.MobLayout.prototype.isProbablyASprite_(b)) {
-    var d = c.height;
-    if (c.width > this.maxWidth_) {
-      var d = Math.round(this.maxWidth_ / c.width * c.height), e = "background-size:" + this.maxWidth_ + "px " + d + "px;background-repeat:no-repeat;", f = pagespeed.MobUtil.computedDimension(b, "height");
-      c.height == f && (e += "height:" + d + "px;");
-      pagespeed.MobUtil.addStyles(a, e);
+  if (c && (c = this.psMob_.findImageSize(c)) && c.width && c.height && !pagespeed.MobLayout.prototype.isProbablyASprite_(b)) {
+    var d = c.width, c = c.height;
+    if (d > this.maxWidth_) {
+      var c = Math.round(this.maxWidth_ / d * c), d = "background-size:" + this.maxWidth_ + "px " + c + "px;background-repeat:no-repeat;", e = pagespeed.MobUtil.computedDimension(b, "height");
+      c == e && (d += "height:" + c + "px;");
+      pagespeed.MobUtil.addStyles(a, d);
     }
-    pagespeed.MobUtil.setPropertyImportant(a, "min-height", "" + d + "px");
+    pagespeed.MobUtil.setPropertyImportant(a, "min-height", "" + c + "px");
   }
   if ("PRE" == a.tagName.toUpperCase() || "pre" == b.getPropertyValue("white-space") && a.offsetWidth > this.maxWidth_) {
     a.style.overflowX = "scroll";
@@ -3820,7 +3824,7 @@ pagespeed.MobLayout.prototype.resizeIfTooWide_ = function(a) {
       if ("IMG" == b) {
         c = a.getAttribute("src");
       } else {
-        var f = "background-image", c = pagespeed.MobUtil.findBackgroundImage(a), g = null == c ? null : this.psMob_.findImgTagForUrl(c);
+        var f = "background-image", c = pagespeed.MobUtil.findBackgroundImage(a), g = null == c ? null : this.psMob_.findImageSize(c);
         g && (d = g.width, e = g.height);
       }
       null != c ? (g = d / this.maxWidth_, 1 < g && (g = e / g, console.log("Shrinking " + f + " " + c + " from " + d + "x" + e + " to " + this.maxWidth_ + "x" + g), "IMG" == b ? (pagespeed.MobUtil.setPropertyImportant(a, "width", "" + this.maxWidth_ + "px"), pagespeed.MobUtil.setPropertyImportant(a, "height", "" + g + "px")) : pagespeed.MobUtil.setPropertyImportant(a, "background-size", "" + this.maxWidth_ + "px " + g + "px"))) : "CODE" == b || "PRE" == b || "UL" == b ? this.makeHorizontallyScrollable_(a) : 
@@ -4011,7 +4015,8 @@ pagespeed.MobLayout.prototype.expandColumns_ = function(a) {
   }
 };
 pagespeed.MobLayout.sequence_ = [pagespeed.MobLayout.prototype.shrinkWideElements_, "shrink wide elements", pagespeed.MobLayout.prototype.stripFloats_, "string floats", pagespeed.MobLayout.prototype.cleanupStyles_, "cleanup styles", pagespeed.MobLayout.prototype.repairDistortedImages_, "repair distored images", pagespeed.MobLayout.prototype.resizeIfTooWide_, "resize if too wide", pagespeed.MobLayout.prototype.expandColumns_, "expand columns", pagespeed.MobLayout.prototype.resizeVertically_, "resize vertically"];
-pagespeed.MobLogo = function() {
+pagespeed.MobLogo = function(a) {
+  this.psMob_ = a;
   this.candidates_ = [];
 };
 pagespeed.MobLogo.LogoRecord = function() {
@@ -4030,12 +4035,21 @@ pagespeed.MobLogo.findLogoInFileName = function(a) {
   return a && (a = a.toLowerCase(), 0 <= a.indexOf("logo") && 0 > a.indexOf("logout") && 0 > a.indexOf("no_logo") && 0 > a.indexOf("no-logo")) ? 1 : 0;
 };
 pagespeed.MobLogo.prototype.findForeground_ = function(a, b, c, d) {
-  var e = pagespeed.MobUtil.boundingRectAndSize(a), f = "hidden" != psGetVisiblity(a), g = e.width * e.height, h = e.width > this.MIN_WIDTH_ && e.height > this.MIN_HEIGHT_ && g > this.MIN_PIXELS_ && e.top < this.MAX_TOP_ && e.height < this.MAX_HEIGHT_;
+  var e = pagespeed.MobUtil.boundingRectAndSize(a), f = "hidden" != this.psMob_.getVisibility(a), g = e.width * e.height, h = e.width > this.MIN_WIDTH_ && e.height > this.MIN_HEIGHT_ && g > this.MIN_PIXELS_ && e.top < this.MAX_TOP_ && e.height < this.MAX_HEIGHT_;
   if (f && h && g >= b && g <= c) {
     var g = f = null, k;
     for (k in pagespeed.MobUtil.ImageSource) {
       if (g = pagespeed.MobUtil.extractImage(a, pagespeed.MobUtil.ImageSource[k])) {
-        return f = pagespeed.MobUtil.ImageSource[k], f == pagespeed.MobUtil.ImageSource.IMG && (a.naturalWidth > this.MIN_WIDTH_ && a.naturalHeight > this.MIN_HEIGHT_ && a.naturalHeight < this.MAX_HEIGHT_ ? (e.width = a.naturalWidth, e.height = a.naturalHeight) : console.log("Image " + a.src + " may be the logo. It has not been loaded so may be missed.")), b = new pagespeed.MobLogo.LogoRecord, b.foregroundImage = g, b.foregroundElement = a, b.foregroundSource = f, b.foregroundRect = e, b;
+        f = pagespeed.MobUtil.ImageSource[k];
+        h = !0;
+        if (f == pagespeed.MobUtil.ImageSource.IMG) {
+          var l = this.psMob_.findImageSize(a.src);
+          l ? (e.width = l.width, e.height = l.height) : a.naturalWidth ? (e.width = a.naturalWidth, e.height = a.naturalHeight) : (console.log("Image " + a.src + " may be the logo. It has not been loaded so may be missed."), h = !1);
+          h && (e.width <= this.MIN_WIDTH_ || e.height <= this.MIN_HEIGHT_ || e.height >= this.MAX_HEIGHT_) && (h = !1);
+        }
+        if (h) {
+          return b = new pagespeed.MobLogo.LogoRecord, b.foregroundImage = g, b.foregroundElement = a, b.foregroundSource = f, b.foregroundRect = e, b;
+        }
       }
     }
   }
@@ -4053,7 +4067,7 @@ pagespeed.MobLogo.prototype.findForeground_ = function(a, b, c, d) {
   return null;
 };
 pagespeed.MobLogo.prototype.findLogoNode_ = function(a, b) {
-  var c = pagespeed.MobUtil.boundingRectAndSize(a), d = "hidden" != psGetVisiblity(a);
+  var c = pagespeed.MobUtil.boundingRectAndSize(a), d = "hidden" != this.psMob_.getVisibility(a);
   if (!(c.top < this.MAX_TOP_ && c.height < this.MAX_HEIGHT_ && d)) {
     return null;
   }
@@ -4137,12 +4151,12 @@ pagespeed.MobLogo.prototype.findLogoBackground_ = function(a) {
   a.backgroundRect = pagespeed.MobUtil.boundingRectAndSize(b);
   return a;
 };
-pagespeed.MobLogo.prototype.run = function(a) {
+pagespeed.MobLogo.prototype.run = function() {
   if (!document.body) {
     return null;
   }
   this.findLogoCandidates_(document.body, 0);
-  a = this.findBestLogo_();
+  var a = this.findBestLogo_();
   return this.findLogoBackground_(a);
 };
 goog.exportSymbol("pagespeed.MobLogo.prototype.run", pagespeed.MobLogo.prototype.run);
@@ -4336,7 +4350,7 @@ pagespeed.MobTheme.extractTheme = function(a, b) {
   b || alert("Not expecting to start onloads after the callback is called");
   var c = new pagespeed.MobTheme;
   c.doneCallback = b;
-  c.logo = (new pagespeed.MobLogo).run(a);
+  c.logo = (new pagespeed.MobLogo(a)).run();
   (new pagespeed.MobColor).run(c.logo, goog.bind(c.colorComplete_, c));
 };
 pagespeed.Mob = function() {
@@ -4356,9 +4370,10 @@ pagespeed.Mob.PROGRESS_REMOVE_ID_ = "ps-progress-remove";
 pagespeed.Mob.PROGRESS_LOG_ID_ = "ps-progress-log";
 pagespeed.Mob.PROGRESS_SPAN_ID_ = "ps-progress-span";
 pagespeed.Mob.PROGRESS_SHOW_LOG_ID_ = "ps-progress-show-log";
+pagespeed.Mob.IN_TRANSIT_ = new pagespeed.MobUtil.Dimensions(-1, -1);
 pagespeed.Mob.COST_PER_IMAGE_ = 1E3;
 pagespeed.Mob.prototype.mobilizeSite_ = function() {
-  0 == this.pendingImageLoadCount_ ? (console.log("mobilizing site"), window.psNavMode && !pagespeed.MobUtil.inFriendlyIframe() ? (++this.pendingCallbacks_, pagespeed.MobTheme.extractTheme(this.imageMap_, this.logoComplete_.bind(this))) : this.maybeRunLayout()) : this.mobilizeAfterImageLoad_ = !0;
+  0 == this.pendingImageLoadCount_ ? (console.log("mobilizing site"), window.psNavMode && !pagespeed.MobUtil.inFriendlyIframe() ? (++this.pendingCallbacks_, pagespeed.MobTheme.extractTheme(this, this.logoComplete_.bind(this))) : this.maybeRunLayout()) : this.mobilizeAfterImageLoad_ = !0;
 };
 pagespeed.Mob.prototype.logoComplete_ = function(a) {
   --this.pendingCallbacks_;
@@ -4367,7 +4382,8 @@ pagespeed.Mob.prototype.logoComplete_ = function(a) {
   this.updateProgressBar(this.domElementCount_, "navigation");
   this.maybeRunLayout();
 };
-pagespeed.Mob.prototype.backgroundImageLoaded_ = function() {
+pagespeed.Mob.prototype.backgroundImageLoaded_ = function(a) {
+  this.imageMap_[a.src] = new pagespeed.MobUtil.Dimensions(a.width, a.height);
   --this.pendingImageLoadCount_;
   this.updateProgressBar(pagespeed.Mob.COST_PER_IMAGE_, "background image");
   0 == this.pendingImageLoadCount_ && this.mobilizeAfterImageLoad_ && (this.mobilizeSite_(), this.mobilizeAfterImageLoad_ = !1);
@@ -4377,12 +4393,12 @@ pagespeed.Mob.prototype.collectBackgroundImages_ = function(a) {
   if (null != a) {
     var b = pagespeed.MobUtil.findBackgroundImage(a);
     if (b && (goog.string.startsWith(b, "http://") || goog.string.startsWith(b, "https://")) && !this.imageMap_[b]) {
+      this.imageMap_[b] = pagespeed.Mob.IN_TRANSIT_;
       var c = new Image;
       ++this.pendingImageLoadCount_;
-      c.onload = this.backgroundImageLoaded_.bind(this);
+      c.onload = this.backgroundImageLoaded_.bind(this, c);
       c.onerror = c.onload;
       c.src = b;
-      this.imageMap_[b] = c;
     }
     for (a = a.firstChild;a;a = a.nextSibling) {
       this.collectBackgroundImages_(a);
@@ -4403,7 +4419,13 @@ pagespeed.Mob.prototype.initiateMobilization = function() {
   this.workPerLayoutPass_ = this.domElementCount_ * pagespeed.MobLayout.numberOfPasses();
   this.addExtraWorkForDom();
   window.psNavMode && pagespeed.MobUtil.inFriendlyIframe() && (this.totalWork_ += this.domElementCount_, this.totalWork_ += this.domElementCount_);
-  null != document.body && this.collectBackgroundImages_(document.body);
+  if (null != document.body) {
+    for (var a in window.psMobStaticImageInfo) {
+      var b = window.psMobStaticImageInfo[a];
+      this.imageMap_[a] = new pagespeed.MobUtil.Dimensions(b.w, b.h);
+    }
+    this.collectBackgroundImages_(document.body);
+  }
   this.totalWork_ += this.pendingImageLoadCount_ * pagespeed.Mob.COST_PER_IMAGE_;
   window.psLayoutMode && window.pagespeedXhrHijackSetListener(this);
   this.mobilizeSite_();
@@ -4424,8 +4446,10 @@ pagespeed.Mob.prototype.maybeRunLayout = function() {
 pagespeed.Mob.prototype.layoutPassDone = function(a) {
   this.updateProgressBar(this.domElementCount_, a);
 };
-pagespeed.Mob.prototype.findImgTagForUrl = function(a) {
-  return this.imageMap_[a];
+pagespeed.Mob.prototype.findImageSize = function(a) {
+  a = this.imageMap_[a];
+  a == pagespeed.Mob.IN_TRANSIT_ && (a = null);
+  return a;
 };
 pagespeed.Mob.prototype.addExtraWorkForDom = function() {
   this.totalWork_ += this.workPerLayoutPass_;
@@ -4462,11 +4486,7 @@ pagespeed.Mob.prototype.removeProgressBar = function() {
   a && (a.style.display = "none", a.parentNode.removeChild(a));
 };
 var psMob = new pagespeed.Mob;
-psMob.initiateMobilization();
-function psGetVisiblity(a) {
-  psMob.getVisibility(a);
-}
-goog.exportSymbol("psGetVisiblity", psGetVisiblity);
+window.addEventListener("load", goog.bind(psMob.initiateMobilization, psMob));
 function psSetDebugMode() {
   psMob.setDebugMode(!0);
 }

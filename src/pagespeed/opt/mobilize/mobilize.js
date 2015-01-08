@@ -48,9 +48,17 @@ pagespeed.Mob = function() {
   this.activeRequestCount_ = 0;
 
   /**
-   * Maps image URLs to 'img' tags synthesized to force an image
-   * load so we can detect image sizes for background images.
-   * @private {Object.<string, Element>}
+   * Maps image URLs to Dimensions structures so we can detect image sizes
+   * for background images.  The Map is populated initially via from JSON
+   * created by ImageRewriteFilter::RenderDone in
+   * net/instaweb/rewriter/image_rewrite_filter.cc.
+   *
+   * Any images that are not populated from C++ will be populated in the
+   * same format from an new image onload callback.  To avoid initiating
+   * redundant fetches for the same image, we will initiatially populate
+   * the map with the sential Dimensions pagespeed.Mob.IN_TRANSIT_.
+   *
+   * @private {Object.<string, pagespeed.MobUtil.Dimensions>}
    */
   this.imageMap_ = {};
 
@@ -132,7 +140,7 @@ pagespeed.Mob = function() {
 
 /**
  * HTML attribute to save the visibility state of the body.
- * @private
+ * @private {string}
  * @const
  */
 pagespeed.Mob.PROGRESS_SAVE_VISIBLITY_ = 'ps-save-visibility';
@@ -140,7 +148,7 @@ pagespeed.Mob.PROGRESS_SAVE_VISIBLITY_ = 'ps-save-visibility';
 
 /**
  * HTML ID of the scrim element.
- * @private
+ * @private {string}
  * @const
  */
 pagespeed.Mob.PROGRESS_SCRIM_ID_ = 'ps-progress-scrim';
@@ -148,7 +156,7 @@ pagespeed.Mob.PROGRESS_SCRIM_ID_ = 'ps-progress-scrim';
 
 /**
  * HTML ID of the button to remove the progress bar.
- * @private
+ * @private {string}
  * @const
  */
 pagespeed.Mob.PROGRESS_REMOVE_ID_ = 'ps-progress-remove';
@@ -156,7 +164,7 @@ pagespeed.Mob.PROGRESS_REMOVE_ID_ = 'ps-progress-remove';
 
 /**
  * HTML ID of the progress log div.
- * @private
+ * @private {string}
  * @const
  */
 pagespeed.Mob.PROGRESS_LOG_ID_ = 'ps-progress-log';
@@ -164,7 +172,7 @@ pagespeed.Mob.PROGRESS_LOG_ID_ = 'ps-progress-log';
 
 /**
  * HTML ID of the progress bar.
- * @private
+ * @private {string}
  * @const
  */
 pagespeed.Mob.PROGRESS_SPAN_ID_ = 'ps-progress-span';
@@ -172,10 +180,19 @@ pagespeed.Mob.PROGRESS_SPAN_ID_ = 'ps-progress-span';
 
 /**
  * HTML ID of the button to show the mobilization error log.
- * @private
+ * @private {string}
  * @const
  */
 pagespeed.Mob.PROGRESS_SHOW_LOG_ID_ = 'ps-progress-show-log';
+
+
+/**
+ * String used as a temporary imageMap_ value after an image has
+ * started to load, but before it's done loading.
+ * @private {!pagespeed.MobUtil.Dimensions}
+ * @const
+ */
+pagespeed.Mob.IN_TRANSIT_ = new pagespeed.MobUtil.Dimensions(-1, -1);
 
 
 /**
@@ -199,10 +216,9 @@ pagespeed.Mob.prototype.mobilizeSite_ = function() {
     console.log('mobilizing site');
     // TODO(jmarantz): Remove this hack once we are compiling mob_logo.js in
     // the same module.
-    if (window['psNavMode'] && !pagespeed.MobUtil.inFriendlyIframe()) {
+    if (window.psNavMode && !pagespeed.MobUtil.inFriendlyIframe()) {
       ++this.pendingCallbacks_;
-      pagespeed.MobTheme.extractTheme(
-          this.imageMap_, this.logoComplete_.bind(this));
+      pagespeed.MobTheme.extractTheme(this, this.logoComplete_.bind(this));
     } else {
       this.maybeRunLayout();
     }
@@ -229,9 +245,12 @@ pagespeed.Mob.prototype.logoComplete_ = function(themeData) {
 
 /**
  * Called each time a single background image is loaded.
+ * @param {!Element} img
  * @private
  */
-pagespeed.Mob.prototype.backgroundImageLoaded_ = function() {
+pagespeed.Mob.prototype.backgroundImageLoaded_ = function(img) {
+  this.imageMap_[img.src] = new pagespeed.MobUtil.Dimensions(
+      img.width, img.height);
   --this.pendingImageLoadCount_;
   this.updateProgressBar(pagespeed.Mob.COST_PER_IMAGE_, 'background image');
   if (this.pendingImageLoadCount_ == 0) {
@@ -262,12 +281,12 @@ pagespeed.Mob.prototype.collectBackgroundImages_ = function(node) {
       (goog.string.startsWith(image, 'http://') ||
       (goog.string.startsWith(image, 'https://'))) &&
       !this.imageMap_[image]) {
+    this.imageMap_[image] = pagespeed.Mob.IN_TRANSIT_;
     var img = new Image();
     ++this.pendingImageLoadCount_;
-    img.onload = this.backgroundImageLoaded_.bind(this);
+    img.onload = this.backgroundImageLoaded_.bind(this, img);
     img.onerror = img.onload;
     img.src = image;
-    this.imageMap_[image] = img;
   }
 
   for (var child = element.firstChild; child; child = child.nextSibling) {
@@ -331,6 +350,14 @@ pagespeed.Mob.prototype.initiateMobilization = function() {
   }
 
   if (document.body != null) {
+    // Iterate over the JSON responses and convert them into our
+    // closure-compiler-safe Dimensions structure to avoid confusing
+    // renaming of the JSON variables.
+    for (var url in window.psMobStaticImageInfo) {
+      var dims = window.psMobStaticImageInfo[url];
+      this.imageMap_[url] = new pagespeed.MobUtil.Dimensions(
+          dims['w'], dims['h']);
+    }
     this.collectBackgroundImages_(document.body);
   }
   this.totalWork_ += this.pendingImageLoadCount_ *
@@ -388,13 +415,19 @@ pagespeed.Mob.prototype.layoutPassDone = function(name) {
 
 /**
  * Looks up the sizing for an image URL, which is collected before
- * mobilization can begin.
+ * mobilization can begin.  The object returns has w:WIDTH, h:HEIGHT.
+ *
+ * Returns null if the image was not mapped.
  *
  * @param {string} url
- * @return {Element}
+ * @return {?pagespeed.MobUtil.Dimensions}
  */
-pagespeed.Mob.prototype.findImgTagForUrl = function(url) {
-  return this.imageMap_[url];
+pagespeed.Mob.prototype.findImageSize = function(url) {
+  var values = this.imageMap_[url];
+  if (values == pagespeed.Mob.IN_TRANSIT_) {
+    values = null;
+  }
+  return values;
 };
 
 
@@ -433,7 +466,7 @@ pagespeed.Mob.prototype.setDebugMode = function(debug) {
  * Determines the visibility of an element, as if the progress bar was not
  * present.
  *
- * @param {Element} element
+ * @param {!Element} element
  * @return {string}
  */
 pagespeed.Mob.prototype.getVisibility = function(element) {
@@ -506,21 +539,7 @@ var psMob = new pagespeed.Mob();
 
 // Hide the body, then set a timer so we can start analyzing its geometry,
 // assuming it will be laid out.
-psMob.initiateMobilization();
-
-
-// TODO(jmarantz): eliminate compatibility entry-points for mob_logo.js
-// and C++-generated JS.
-
-
-/**
- * Called by mob_logo.js.
- * @param {Element} element
- * @export
- */
-function psGetVisiblity(element) {
-  psMob.getVisibility(element);
-}
+window.addEventListener('load', goog.bind(psMob.initiateMobilization, psMob));
 
 
 /**

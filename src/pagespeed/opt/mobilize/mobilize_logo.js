@@ -25,11 +25,16 @@ goog.require('pagespeed.MobUtil');
 
 /**
  * Creates a context for Pagespeed logo detector.
+ * @param {!pagespeed.Mob} psMob
  * @constructor
  */
-pagespeed.MobLogo = function() {
-  // TODO(huibao): Take psMob from constructor, and remove the use of
-  // psGetVisiblity.
+pagespeed.MobLogo = function(psMob) {
+  /**
+   * Mobilization context.
+   *
+   * @private {!pagespeed.Mob}
+   */
+  this.psMob_ = psMob;
 
   /**
    * Array of logo candidates.
@@ -166,7 +171,7 @@ pagespeed.MobLogo.findLogoInFileName = function(str) {
 pagespeed.MobLogo.prototype.findForeground_ = function(element, minArea,
                                                        maxArea, searchDown) {
   var rect = pagespeed.MobUtil.boundingRectAndSize(element);
-  var validVisibility = (psGetVisiblity(element) != 'hidden');
+  var validVisibility = (this.psMob_.getVisibility(element) != 'hidden');
   var area = rect.width * rect.height;
   var validDisplay = rect.width > this.MIN_WIDTH_ &&
       rect.height > this.MIN_HEIGHT_ &&
@@ -182,29 +187,45 @@ pagespeed.MobLogo.prototype.findForeground_ = function(element, minArea,
           element, pagespeed.MobUtil.ImageSource[id]);
       if (image) {
         source = pagespeed.MobUtil.ImageSource[id];
+
         // If the foreground is IMG tag, and the image has been loaded,
         // use the natural dimension.
-        //
-        // TODO(huibao): Instead of naturalWidth and naturalHeight,
-        // use the dimension computed in the C++ code.
+        var returnLogo = true;
         if (source == pagespeed.MobUtil.ImageSource.IMG) {
-          if (element.naturalWidth > this.MIN_WIDTH_ &&
-              element.naturalHeight > this.MIN_HEIGHT_ &&
-              element.naturalHeight < this.MAX_HEIGHT_) {
+          var imageSize = this.psMob_.findImageSize(element.src);
+          if (imageSize) {
+            rect.width = imageSize.width;
+            rect.height = imageSize.height;
+          } else if (element.naturalWidth) {
+            // Take the image size from the IMG element, assuming it's
+            // been loaded.  Note that C++ will not necessarily load
+            // all the images.  However, the IMG tag might be populated
+            // correctly anyway.
             rect.width = element.naturalWidth;
             rect.height = element.naturalHeight;
           } else {
+            // TODO(huibao): Instead of printing a message and punting,
+            // continue processing when the image is loaded.
             console.log('Image ' + element.src + ' may be the logo. ' +
-                        'It has not been loaded so may be missed.');
+                'It has not been loaded so may be missed.');
+            returnLogo = false;
+          }
+          if (returnLogo &&
+              (rect.width <= this.MIN_WIDTH_ ||
+               rect.height <= this.MIN_HEIGHT_ ||
+               rect.height >= this.MAX_HEIGHT_)) {
+            returnLogo = false;
           }
         }
 
-        var logoRecord = new pagespeed.MobLogo.LogoRecord();
-        logoRecord.foregroundImage = image;
-        logoRecord.foregroundElement = element;
-        logoRecord.foregroundSource = source;
-        logoRecord.foregroundRect = rect;
-        return logoRecord;
+        if (returnLogo) {
+          var logoRecord = new pagespeed.MobLogo.LogoRecord();
+          logoRecord.foregroundImage = image;
+          logoRecord.foregroundElement = element;
+          logoRecord.foregroundSource = source;
+          logoRecord.foregroundRect = rect;
+          return logoRecord;
+        }
       }
     }
   }
@@ -254,7 +275,7 @@ pagespeed.MobLogo.prototype.findForeground_ = function(element, minArea,
  */
 pagespeed.MobLogo.prototype.findLogoNode_ = function(element, inheritedMetric) {
   var rect = pagespeed.MobUtil.boundingRectAndSize(element);
-  var validVisibility = (psGetVisiblity(element) != 'hidden');
+  var validVisibility = (this.psMob_.getVisibility(element) != 'hidden');
   var validDisplay = rect.top < this.MAX_TOP_ &&
       rect.height < this.MAX_HEIGHT_;
 
@@ -517,11 +538,10 @@ pagespeed.MobLogo.prototype.findLogoBackground_ = function(logo) {
 
 /**
  * Extract theme of the page. This is the entry method.
- * @param {Object.<string,Element>} imageMap
  * @return {pagespeed.MobLogo.LogoRecord}
  * @export
  */
-pagespeed.MobLogo.prototype.run = function(imageMap) {
+pagespeed.MobLogo.prototype.run = function() {
   if (!document.body) {
     return null;
   }

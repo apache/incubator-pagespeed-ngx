@@ -306,15 +306,16 @@ pagespeed.MobLayout.prototype.shrinkWideElements_ = function(element) {
   var computedStyle = window.getComputedStyle(element);
   var image = pagespeed.MobUtil.findBackgroundImage(element);
   if (image) {
-    var img = this.psMob_.findImgTagForUrl(image);
+    var imageSize = this.psMob_.findImageSize(image);
     var style = '';
-    if (img && img.width && img.height &&
+    if (imageSize && imageSize.width && imageSize.height &&
         !pagespeed.MobLayout.prototype.isProbablyASprite_(computedStyle)) {
-      var height = img.height;
+      var width = imageSize.width;
+      var height = imageSize.height;
 
-      if (img.width > this.maxWidth_) {
-        var shrinkage = this.maxWidth_ / img.width;
-        height = Math.round(img.height * shrinkage);
+      if (width > this.maxWidth_) {
+        var shrinkage = this.maxWidth_ / width;
+        height = Math.round(height * shrinkage);
 
         var styles = 'background-size:' + this.maxWidth_ + 'px ' +
             height + 'px;background-repeat:no-repeat;';
@@ -323,7 +324,7 @@ pagespeed.MobLayout.prototype.shrinkWideElements_ = function(element) {
         // the height of the div to match the new height of the background.
         var elementHeight = pagespeed.MobUtil.computedDimension(
             computedStyle, 'height');
-        if (img.height == elementHeight) {
+        if (height == elementHeight) {
           styles += 'height:' + height + 'px;';
         }
         pagespeed.MobUtil.addStyles(element, styles);
@@ -564,11 +565,11 @@ pagespeed.MobLayout.prototype.resizeIfTooWide_ = function(element) {
     } else {
       type = 'background-image';
       image = pagespeed.MobUtil.findBackgroundImage(element);
-      var img = (image == null) ? null :
-          this.psMob_.findImgTagForUrl(image);
-      if (img) {
-        width = img.width;
-        height = img.height;
+      var imageSize = (image == null) ? null :
+          this.psMob_.findImageSize(image);
+      if (imageSize) {
+        width = imageSize.width;
+        height = imageSize.height;
       }
     }
     if (image != null) {

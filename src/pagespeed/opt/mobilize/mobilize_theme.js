@@ -165,10 +165,10 @@ pagespeed.MobTheme.prototype.colorComplete_ = function(
 
 /**
  * Extract theme of the page. This is the entry method.
- * @param {Object.<string,Element>} imageMap
+ * @param {!pagespeed.Mob} psMob
  * @param {function(!pagespeed.MobUtil.ThemeData)} doneCallback
  */
-pagespeed.MobTheme.extractTheme = function(imageMap, doneCallback) {
+pagespeed.MobTheme.extractTheme = function(psMob, doneCallback) {
   // TODO(huibao): If the logo image is in 'imageMap', use it directly instead
   // of creating a new IMG tag.
   if (!doneCallback) {
@@ -177,7 +177,7 @@ pagespeed.MobTheme.extractTheme = function(imageMap, doneCallback) {
 
   var mobLogo = new pagespeed.MobTheme();
   mobLogo.doneCallback = doneCallback;
-  mobLogo.logo = (new pagespeed.MobLogo()).run(imageMap);
+  mobLogo.logo = (new pagespeed.MobLogo(psMob)).run();
   (new pagespeed.MobColor()).run(mobLogo.logo,
                                  goog.bind(mobLogo.colorComplete_, mobLogo));
 };
