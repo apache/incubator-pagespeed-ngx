@@ -33,7 +33,6 @@ const char ImageTestBase::kCradle[] = "CradleAnimation.gif";
 const char ImageTestBase::kCuppa[] = "Cuppa.png";
 const char ImageTestBase::kCuppaTransparent[] = "CuppaT.png";
 const char ImageTestBase::kIronChef[] = "IronChef2.gif";
-const char ImageTestBase::kLarge[] = "Large.png";
 const char ImageTestBase::kPuzzle[] = "Puzzle.jpg";
 const char ImageTestBase::kScenery[] = "Scenery.webp";
 const char ImageTestBase::kTransparent[] = "transparent.gif";

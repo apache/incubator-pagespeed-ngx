@@ -100,6 +100,16 @@ const char kPuzzleJpgFile[] = "Puzzle.jpg";      // photo; no alpha
 const char kRedbrushAlphaPngFile[] = "RedbrushAlpha-0.5.png";  // photo; alpha
 const char kSmallDataFile[] = "small-data.png";   // not an image
 const char k1x1GifFile[] = "o.gif";               // unoptimizable gif
+const char kResolutionLimitPngFile[] = "ResolutionLimit.png";
+const char kResolutionLimitJpegFile[] = "ResolutionLimit.jpg";
+
+// Both ResolutionLimit.png and ResolutionLimit.jpg have 4096 x 2048 pixels.
+// We assume that each pixel has 4 bytes when we check whether the images are
+// within the limit, so
+//   width * height * pixel_depth = 4096 x 2048 x 4 = 33554432 =
+//       kResolutionLimitBytes.
+// 33554432 is also the default resolution limit (in bytes) in mod_pagespeed.
+const int kResolutionLimitBytes = 33554432;
 
 const char kChefDims[] = " width=\"192\" height=\"256\"";
 
@@ -941,6 +951,49 @@ class ImageRewriteTest : public RewriteTestBase {
     EXPECT_TRUE(FetchResourceUrl(url, &request, &content_ignored, response));
     const char* etag = response->Lookup1(HttpAttributes::kEtag);
     EXPECT_STREQ("W/\"PSA-aj-0\"", etag);
+  }
+
+  void TestResolutionLimit(int resolution, const char* image_file,
+                           const ContentType& content_type, bool try_webp,
+                           bool try_resize, bool expect_rewritten) {
+    rewrite_driver()->SetUserAgent("webp-la");
+    options()->set_image_resolution_limit_bytes(resolution);
+    options()->set_image_jpeg_recompress_quality(85);
+    options()->EnableFilter(RewriteOptions::kRecompressPng);
+    options()->EnableFilter(RewriteOptions::kRecompressJpeg);
+
+    ContentType rewritten_type = content_type;
+    if (try_webp) {
+      options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
+      options()->EnableFilter(RewriteOptions::kConvertToWebpLossless);
+      if (expect_rewritten) {
+        rewritten_type = kContentTypeWebp;
+      }
+    }
+
+    const char* dimension = NULL;
+    if (try_resize) {
+      options()->EnableFilter(RewriteOptions::kResizeImages);
+      dimension = " width=4000 height=2000";
+    } else {
+      dimension = "";
+    }
+    rewrite_driver()->AddFilters();
+
+    TestSingleRewrite(image_file, content_type, rewritten_type, dimension,
+                      dimension, expect_rewritten, false);
+
+    Variable* image_rewrites = statistics()->GetVariable(
+        ImageRewriteFilter::kImageRewrites);
+    Variable* no_rewrites = statistics()->GetVariable(
+        ImageRewriteFilter::kImageNoRewritesHighResolution);
+    if (expect_rewritten) {
+      EXPECT_EQ(1, image_rewrites->Get());
+      EXPECT_EQ(0, no_rewrites->Get());
+    } else {
+      EXPECT_EQ(0, image_rewrites->Get());
+      EXPECT_EQ(1, no_rewrites->Get());
+    }
   }
 
  private:
@@ -2982,7 +3035,7 @@ void SetNumberOfScans(int num_scans, int num_scans_small_screen,
                       ImageRewriteFilter* image_rewrite_filter,
                       ResourceContext* ctx,
                       scoped_ptr<Image::CompressionOptions>* img_options) {
-  static const int DO_NOT_SET=-10;
+  static const int DO_NOT_SET = -10;
   ctx->Clear();
   if ((num_scans != DO_NOT_SET)  ||
       (num_scans_small_screen != DO_NOT_SET)) {
@@ -3002,7 +3055,7 @@ void SetNumberOfScans(int num_scans, int num_scans_small_screen,
 }
 
 TEST_F(ImageRewriteTest, JpegProgressiveScansForSmallScreens) {
-  static const int DO_NOT_SET=-10;
+  static const int DO_NOT_SET = -10;
   rewrite_driver()->SetUserAgent("Mozilla/5.0 (Linux; U; Android 4.0.1; en-us; "
       "Galaxy Nexus Build/ICL27) AppleWebKit/534.30 (KHTML, like Gecko) "
       "Version/4.0 Mobile Safari/534.30");
@@ -3653,8 +3706,7 @@ TEST_F(ImageRewriteTest, DebugMessageImageInfo) {
       "<img src=graphic_transparent.png>"
       "<!--Image does not appear to need resizing.-->"
       "<!--Image has transparent pixels and is sensitive to "
-      "compression noise.-->"
-      );
+      "compression noise.-->");
 
   EXPECT_THAT(output_buffer_, HasSubstr(expected));
 }
@@ -3763,6 +3815,58 @@ TEST_F(ImageRewriteTest, ChromeDesktopInlinesWebp) {
 TEST_F(ImageRewriteTest, ChromeAndroidInlinesLosslessWebp) {
   TestInlining(true, UserAgentMatcherTestBase::kNexus10ChromeUserAgent,
                kCuppaTPngFile, kContentTypePng, kContentTypeWebp, true);
+}
+
+TEST_F(ImageRewriteTest, PngExceedResolutionLimit) {
+  TestResolutionLimit(kResolutionLimitBytes - 1, kResolutionLimitPngFile,
+                      kContentTypePng, false /*try_webp*/,
+                      false /*try_resize*/, false /*expect_rewritten*/);
+}
+
+TEST_F(ImageRewriteTest, JpegExceedResolutionLimit) {
+  TestResolutionLimit(kResolutionLimitBytes - 1, kResolutionLimitJpegFile,
+                      kContentTypeJpeg, false /*try_webp*/,
+                      false /*try_resize*/, false /*expect_rewritten*/);
+}
+
+TEST_F(ImageRewriteTest, PngInResolutionLimit) {
+  if (RunningOnValgrind()) {
+    return;
+  }
+
+  TestResolutionLimit(kResolutionLimitBytes, kResolutionLimitPngFile,
+                      kContentTypePng, true /*try_webp*/, true /*try_resize*/,
+                      true /*expect_rewritten*/);
+}
+
+TEST_F(ImageRewriteTest, PngInResolutionLimitNoResizing) {
+  if (RunningOnValgrind()) {
+    return;
+  }
+
+  TestResolutionLimit(kResolutionLimitBytes, kResolutionLimitPngFile,
+                      kContentTypePng, true /*try_webp*/,
+                      false /*try_resize*/, true /*expect_rewritten*/);
+}
+
+TEST_F(ImageRewriteTest, JpegInResolutionLimit) {
+  if (RunningOnValgrind()) {
+    return;
+  }
+
+  TestResolutionLimit(kResolutionLimitBytes, kResolutionLimitJpegFile,
+                      kContentTypeJpeg, true /*try_webp*/,
+                      true /*try_resize*/, true /*expect_rewritten*/);
+}
+
+TEST_F(ImageRewriteTest, JpegInResolutionLimitNoResizing) {
+  if (RunningOnValgrind()) {
+    return;
+  }
+
+  TestResolutionLimit(kResolutionLimitBytes, kResolutionLimitJpegFile,
+                      kContentTypeJpeg, true /*try_webp*/,
+                      false /*try_resize*/, true /*expect_rewritten*/);
 }
 
 }  // namespace net_instaweb

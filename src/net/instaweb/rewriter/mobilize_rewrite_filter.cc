@@ -225,7 +225,9 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
       GoogleString src = StrCat(
           "var psDebugMode=", (driver()->DebugMode() ? "true;" : "false;"),
           "var psNavMode=", (use_js_nav_ ? "true;" : "false;"),
-          "var psLayoutMode=", (use_js_layout_ ? "true;" : "false;"));
+          "var psLayoutMode=", (use_js_layout_ ? "true;" : "false;"),
+          "var psAddCallButton=",
+          (driver()->options()->mob_call_button() ? "true;" : "false;"));
       driver()->InsertScriptAfterCurrent(src, false);
 
       // TODO(jmarantz): Consider waiting to see if we have a charset directive

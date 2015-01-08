@@ -55,7 +55,7 @@ GoogleString HeadAndViewport(bool layout_mode) {
   return StrCat(
       "<script>var psDebugMode=false;var psNavMode=true;var psLayoutMode=",
       layout_mode ? "true" : "false", ";"
-      "</script>",
+      "var psAddCallButton=true;</script>",
       (layout_mode
        ? ("<meta name='viewport' content='width=device-width'/>"
           "<script src=\"/psajs/mobilize_xhr.0.js\"></script>")
@@ -79,6 +79,7 @@ class MobilizeRewriteFilterTest : public RewriteTestBase {
     RewriteTestBase::SetUp();
     options()->ClearSignatureForTesting();
     options()->set_mob_always(true);
+    options()->set_mob_call_button(true);
     options()->set_mob_layout(LayoutMode());
     options()->set_mob_nav(true);
     server_context()->ComputeSignature(options());
@@ -442,6 +443,7 @@ class MobilizeRewriteEndToEndTest : public MobilizeRewriteFilterTest {
     RewriteTestBase::SetUp();
     SetHtmlMimetype();  // Don't wrap scripts in <![CDATA[ ]]>
     options()->ClearSignatureForTesting();
+    options()->set_mob_call_button(true);
     options()->set_mob_layout(true);
     options()->set_mob_nav(true);
     AddFilter(RewriteOptions::kMobilize);

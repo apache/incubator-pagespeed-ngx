@@ -19,6 +19,7 @@
 
 goog.provide('pagespeed.MobUtil');
 
+goog.require('goog.color');
 goog.require('goog.dom');
 goog.require('goog.math.Box');
 
@@ -437,15 +438,16 @@ pagespeed.MobUtil.ImageSource = {
 
 /**
  * Theme data.
- * @param {string} frontColor
- * @param {string} backColor
+ * @param {!goog.color.Rgb} frontColor
+ * @param {!goog.color.Rgb} backColor
  * @param {string} headerBarHtml
+ * @struct
  * @constructor
  */
 pagespeed.MobUtil.ThemeData = function(frontColor, backColor, headerBarHtml) {
-  /** @type {string} */
+  /** @type {!goog.color.Rgb} */
   this.menuFrontColor = frontColor;
-  /** @type {string} */
+  /** @type {!goog.color.Rgb} */
   this.menuBackColor = backColor;
   /** @type {string} */
   this.headerBarHtml = headerBarHtml;
@@ -495,8 +497,6 @@ pagespeed.MobUtil.colorStringToNumbers = function(str) {
  * @return {string}
  */
 pagespeed.MobUtil.colorNumbersToString = function(color) {
-  // TODO(huibao): Consider using goog.color.rgbArrayToHex.
-  var str = '#';
   for (var i = 0, len = color.length; i < len; ++i) {
     var val = Math.round(color[i]);
     if (val < 0) {
@@ -504,13 +504,9 @@ pagespeed.MobUtil.colorNumbersToString = function(color) {
     } else if (val > 255) {
       val = 255;
     }
-    var s = val.toString(16);
-    if (s.length == 1) {
-      s = '0' + s;
-    }
-    str += s;
+    color[i] = val;
   }
-  return str;
+  return goog.color.rgbArrayToHex(color);
 };
 
 

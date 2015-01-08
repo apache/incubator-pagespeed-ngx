@@ -158,7 +158,6 @@
         'rewriter/handle_noscript_redirect_filter_test.cc',
         'rewriter/image_combine_filter_test.cc',
         'rewriter/image_endian_test.cc',
-        'rewriter/image_oom_test.cc',
         'rewriter/image_rewrite_filter_test.cc',
         'rewriter/image_test.cc',
         'rewriter/image_test_base.cc',

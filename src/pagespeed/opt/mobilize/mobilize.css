@@ -85,8 +85,6 @@ body {
 }
 
 .psmob-header-bar button img {
-  width: 60px;
-  height: 60px;
   padding: 0;
 }
 
@@ -101,6 +99,10 @@ body {
 
 .psmob-header-bar button:active {
   background-color: rgba(255, 255, 255, 0.4);
+}
+
+.psmob-call-button {
+  float: right;
 }
 
 .psmob-nav-panel {

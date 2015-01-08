@@ -18,6 +18,7 @@
 goog.provide('pagespeed.MobNav');
 
 goog.require('goog.array');
+goog.require('goog.color');
 goog.require('goog.dom');
 goog.require('goog.dom.classlist');
 goog.require('pagespeed.MobUtil');
@@ -33,7 +34,7 @@ pagespeed.MobNav = function() {
   /**
    * Controls whether we use the color detected from mob_logo.js, or a
    * predefined color.
-   * @private
+   * @private {boolean}
    */
   this.useDetectedThemeColor_ = true;
 };
@@ -43,7 +44,7 @@ pagespeed.MobNav = function() {
  * Size in pixels of the header bar.
  * TODO(jud): This should be in a higher-level file, like mob.js.
  * @const
- * @private
+ * @private {number}
  */
 pagespeed.MobNav.HEADER_BAR_HEIGHT_ = 60;
 
@@ -51,7 +52,7 @@ pagespeed.MobNav.HEADER_BAR_HEIGHT_ = 60;
 /**
  * PNG image of an arrow icon, used to indicate hierarchical menus.
  * @const
- * @private
+ * @private {string}
  */
 pagespeed.MobNav.prototype.ARROW_ICON_ =
     'data:image/png;base64,iVBORw0KGgoA' +
@@ -64,6 +65,34 @@ pagespeed.MobNav.prototype.ARROW_ICON_ =
     'SZQ0z95E23ley8S2E6XOcz3R9HmuJUqR53yiNHnOJUqV53iidHmOJUqZZ3+itHn2JXopyd3k' +
     'OZ9IntVE8qwmkmc1kTyrieRZTSTPaiJ5AAAAAAAAAAAAAAAAAGjgA62rM0XB6dNxAAAAAElF' +
     'TkSuQmCC';
+
+
+/**
+ * PNG image of call button. To view this image, add prefix of
+ * 'data:image/gif;base64,' to it.
+ * @const
+ * @private {string}
+ */
+pagespeed.MobNav.prototype.CALL_BUTTON_ =
+    'R0lGODlhJAAkAPAAAAAA/wAAACH5BAEAAAEALAAAAAAkACQAAAJkjA95y+2e4psURVXzulx7' +
+    '3nkUCIoPWZoNmqoWe7kvjMm0JM9ovrE8s/utWkIdrmgEIIFEJGnZC0EDz2lwpPxUT8fMlSmt' +
+    'fJNZ7xemDd40t7W5PZ7A49h5TWQvu+DCtpPeF8NQAAA7';
+
+
+/**
+ * Return a call button image with the specified color.
+ * @param {!goog.color.Rgb} color
+ * @return {string}
+ * @private
+ */
+pagespeed.MobNav.prototype.callButtonImage_ = function(color) {
+  var imageTemplate = window.atob(this.CALL_BUTTON_);
+  var imageData = imageTemplate.substring(0, 13) +
+      String.fromCharCode(color[0], color[1], color[2]) +
+      imageTemplate.substring(16, imageTemplate.length);
+  var imageUrl = 'data:image/gif;base64,' + window.btoa(imageData);
+  return imageUrl;
+};
 
 
 /**
@@ -120,7 +149,10 @@ pagespeed.MobNav.prototype.fixExistingElements_ = function() {
 
 
 /**
- * Insert a header bar element as the first node in the body.
+ * Insert a header bar to the top of the page. For this goal, firstly we
+ * insert an empty div so all contents, except those with fixed position,
+ * are pushed down. Then we insert the header bar. The header bar may contain
+ * a hamburger icon, a logo image, and a call button.
  * @param {!pagespeed.MobUtil.ThemeData} themeData
  * @private
  */
@@ -136,7 +168,8 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
   goog.dom.classlist.add(header, 'psmob-header-bar');
   // TODO(jud): This is defined in mob_logo.js
   header.innerHTML = themeData.headerBarHtml;
-  header.style.borderBottom = 'thin solid ' + themeData.menuFrontColor;
+  header.style.borderBottom = 'thin solid ' +
+      pagespeed.MobUtil.colorNumbersToString(themeData.menuFrontColor);
 
   var logoSpan = document.getElementsByClassName('psmob-logo-span')[0];
   if (logoSpan) {
@@ -145,6 +178,19 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
   var logo = document.querySelector('[data-mobile-role="logo"]');
   if (logo) {
     header.style.backgroundColor = logo.style.backgroundColor;
+  }
+
+  // Add call button.
+  if (window.psAddCallButton) {
+    // Shrink logo span for making space for the call button.
+    logoSpan.style.width = '65%';
+    // Add button.
+    var callButton = document.createElement('button');
+    goog.dom.classlist.add(callButton, 'psmob-call-button');
+    var callImage = document.createElement('img');
+    callImage.src = this.callButtonImage_(themeData.menuFrontColor);
+    callButton.appendChild(callImage);
+    header.appendChild(callButton);
   }
 };
 
@@ -157,12 +203,11 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
  * @private
  */
 pagespeed.MobNav.prototype.addThemeColor_ = function(themeData) {
-  var backgroundColor =
-      (this.useDetectedThemeColor_ && themeData.menuBackColor) ?
-      themeData.menuBackColor :
+  var backgroundColor = this.useDetectedThemeColor_ ?
+      pagespeed.MobUtil.colorNumbersToString(themeData.menuBackColor) :
       '#3c78d8';
-  var color = (this.useDetectedThemeColor_ && themeData.menuFrontColor) ?
-      themeData.menuFrontColor :
+  var color = this.useDetectedThemeColor_ ?
+      pagespeed.MobUtil.colorNumbersToString(themeData.menuFrontColor) :
       'white';
   var css = '.psmob-header-bar { background-color: ' + backgroundColor +
             ' }\n' +

@@ -44,7 +44,6 @@ class ImageTestBase : public testing::Test {
   static const char kCuppa[];
   static const char kCuppaTransparent[];
   static const char kIronChef[];
-  static const char kLarge[];
   static const char kPuzzle[];
   static const char kRedbrush[];
   static const char kScenery[];

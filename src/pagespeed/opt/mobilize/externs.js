@@ -21,6 +21,7 @@
 var pagespeedContentIds;       // From C++
 var pagespeedHeaderIds;        // From C++
 var pagespeedNavigationalIds;  // From C++
+var psAddCallButton;           // From C++
 var psDebugMode;               // From C++
 var psLayoutMode;              // From C++
 var psMobStaticImageInfo;      // From C++

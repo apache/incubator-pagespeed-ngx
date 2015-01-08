@@ -73,11 +73,7 @@ void LoopbackRouteFetcher::Fetch(const GoogleString& original_url,
   // Note that in case of an origin mapping the parsed_url will contain the
   // fetch host, not the original host, so the domain_lawyer will know about it
   // and the if body will not run.
-  const DomainLawyer* lawyer = options_->domain_lawyer();
-  GoogleString host;
-  if (lawyer->StripProxySuffix(parsed_url, &url, &host)) {
-    request_headers->Replace(HttpAttributes::kHost, host);
-  } else if (!options_->domain_lawyer()->IsOriginKnown(parsed_url) &&
+  if (!options_->domain_lawyer()->IsOriginKnown(parsed_url) &&
       !fetch->request_context()->IsSessionAuthorizedFetchOrigin(
           parsed_url.Origin().as_string())) {
     // If there is no host header, make sure to add one, since we are about

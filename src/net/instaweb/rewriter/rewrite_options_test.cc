@@ -968,6 +968,7 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
     RewriteOptions::kMinCacheTtlMs,
     RewriteOptions::kMinImageSizeLowResolutionBytes,
     RewriteOptions::kMinResourceCacheTimeToRewriteMs,
+    RewriteOptions::kMobCallButton,
     RewriteOptions::kMobLayout,
     RewriteOptions::kMobNav,
     RewriteOptions::kMobStatic,

@@ -30,7 +30,8 @@ goog.require('pagespeed.MobUtil');
 pagespeed.MobColor = function() {
   /**
    * Callback to invoke when this object finishes its work.
-   * @private {function(pagespeed.MobLogo.LogoRecord, string, string)}
+   * @private {function(pagespeed.MobLogo.LogoRecord, !goog.color.Rgb,
+   *                    !goog.color.Rgb)}
    */
   this.doneCallback_;
 
@@ -360,9 +361,7 @@ pagespeed.MobColor.prototype.synthesizeCallback_ = function() {
   console.log('Theme color. Background: ' + backgroundColor +
               ' foreground: ' + foregroundColor);
 
-  this.doneCallback_(this.logo_,
-      pagespeed.MobUtil.colorNumbersToString(backgroundColor),
-      pagespeed.MobUtil.colorNumbersToString(foregroundColor));
+  this.doneCallback_(this.logo_, backgroundColor, foregroundColor);
 };
 
 
@@ -407,7 +406,8 @@ pagespeed.MobColor.prototype.getImageDataAndSynthesize_ = function(mode, src,
 /**
  * Compute color and synthesize logo span.
  * @param {pagespeed.MobLogo.LogoRecord} logo
- * @param {function(pagespeed.MobLogo.LogoRecord, string, string)} doneCallback
+ * @param {function(pagespeed.MobLogo.LogoRecord, !goog.color.Rgb,
+ *                  !goog.color.Rgb)} doneCallback
  * @this {pagespeed.MobColor}
  */
 pagespeed.MobColor.prototype.run = function(logo, doneCallback) {

@@ -90,20 +90,21 @@ pagespeed.MobTheme.synthesizeHamburgerIcon_ = function(foregroundColorStr) {
 /**
  * Add a logo span to window.document.
  * @param {pagespeed.MobLogo.LogoRecord} logo
- * @param {string} backgroundColorStr
- * @param {string} foregroundColorStr
+ * @param {!goog.color.Rgb} backgroundColor
+ * @param {!goog.color.Rgb} foregroundColor
  * @return {!pagespeed.MobUtil.ThemeData}
  * @private
  */
-pagespeed.MobTheme.synthesizeLogoSpan_ = function(logo, backgroundColorStr,
-                                                  foregroundColorStr) {
+pagespeed.MobTheme.synthesizeLogoSpan_ = function(logo, backgroundColor,
+                                                  foregroundColor) {
   var logoSpan = document.createElement('span');
   logoSpan.classList.add('psmob-logo-span');
 
   if (logo && logo.foregroundImage) {
     var newImage = document.createElement('IMG');
     newImage.src = logo.foregroundImage;
-    newImage.style.backgroundColor = backgroundColorStr;
+    newImage.style.backgroundColor =
+        pagespeed.MobUtil.colorNumbersToString(backgroundColor);
     newImage.setAttribute('data-mobile-role', 'logo');
     logoSpan.appendChild(newImage);
   } else {
@@ -111,14 +112,15 @@ pagespeed.MobTheme.synthesizeLogoSpan_ = function(logo, backgroundColorStr,
   }
 
   var headerBarHtml =
-      pagespeed.MobTheme.synthesizeHamburgerIcon_(foregroundColorStr);
+      pagespeed.MobTheme.synthesizeHamburgerIcon_(
+          pagespeed.MobUtil.colorNumbersToString(foregroundColor));
 
   // TODO(huibao): Instead of appending the new logo span to document, sending
   // them to MobNav as part of themeData.
   document.body.appendChild(logoSpan);
 
-  var themeData = new pagespeed.MobUtil.ThemeData(foregroundColorStr,
-                                                  backgroundColorStr,
+  var themeData = new pagespeed.MobUtil.ThemeData(foregroundColor,
+                                                  backgroundColor,
                                                   headerBarHtml);
   return themeData;
 };
@@ -148,16 +150,16 @@ pagespeed.MobTheme.removeLogoImage_ = function(logo) {
 /**
  * Compute color and synthesize logo span.
  * @param {pagespeed.MobLogo.LogoRecord} logo
- * @param {string} backgroundColorStr
- * @param {string} foregroundColorStr
+ * @param {!goog.color.Rgb} backgroundColor
+ * @param {!goog.color.Rgb} foregroundColor
  * @this {pagespeed.MobTheme}
  * @private
  */
 pagespeed.MobTheme.prototype.colorComplete_ = function(
-    logo, backgroundColorStr, foregroundColorStr) {
+    logo, backgroundColor, foregroundColor) {
   var themeData = pagespeed.MobTheme.synthesizeLogoSpan_(logo,
-                                                         backgroundColorStr,
-                                                         foregroundColorStr);
+                                                         backgroundColor,
+                                                         foregroundColor);
   pagespeed.MobTheme.removeLogoImage_(logo);
   this.doneCallback(themeData);
 };
