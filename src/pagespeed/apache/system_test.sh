@@ -857,7 +857,8 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   check_from "$OUT" fgrep -q "ModPagespeedEnableCachePurge on"
 
   start_test mobilizer with inlined XHR-helper and other JS compiled.
-  MOB_SUFFIX_RE="\\.\\w+\\.js"
+  MOB_SUFFIX_RE="\\.[A-Za-z0-9_\-]+\\.js"
+
   URL="http://${PAGESPEED_TEST_HOST}.suffix.net/mod_pagespeed_example/index.html"
   # We use fetch_until because we only inline the XHR file once it's
   # in cache.
