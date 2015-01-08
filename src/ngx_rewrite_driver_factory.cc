@@ -154,9 +154,7 @@ RewriteOptions* NgxRewriteDriverFactory::NewRewriteOptions() {
 bool NgxRewriteDriverFactory::InitNgxUrlAsyncFetchers() {
   log_ = ngx_cycle->log;
   for (size_t i = 0; i < ngx_url_async_fetchers_.size(); ++i) {
-    // TODO(oschaaf): Can we pass the log from the server{} block here?
-    if (!ngx_url_async_fetchers_[i]->Init(
-      const_cast<ngx_cycle_t*>(ngx_cycle))) {
+    if (!ngx_url_async_fetchers_[i]->Init()) {
       return false;
     }
   }
