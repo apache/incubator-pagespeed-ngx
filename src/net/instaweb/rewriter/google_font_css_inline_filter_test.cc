@@ -127,10 +127,11 @@ class GoogleFontCssInlineFilterSizeLimitTest
  protected:
   virtual void SetUp() {
     GoogleFontCssInlineFilterTestBase::SetUp();
-    // GoogleFontCssInlineFilter honors css_inline_max_bytes.
+    // GoogleFontCssInlineFilter uses google_font_css_inline_max_bytes.
     // Set a threshold at font_safieri, which should prevent longer
     // font_chromezilla from inlining.
-    options()->set_css_inline_max_bytes(STATIC_STRLEN("font_safieri"));
+    options()->set_google_font_css_inline_max_bytes(
+        STATIC_STRLEN("font_safieri"));
     SetUpForFontFilterTest(RewriteOptions::kInlineGoogleFontCss);
   }
 };

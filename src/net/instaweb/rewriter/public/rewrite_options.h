@@ -266,6 +266,7 @@ class RewriteOptions {
   static const char kFlushBufferLimitBytes[];
   static const char kFlushHtml[];
   static const char kFlushMoreResourcesEarlyIfTimePermits[];
+  static const char kGoogleFontCssInlineMaxBytes[];
   static const char kForbidAllDisabledFilters[];
   static const char kHideRefererUsingMeta[];
   static const char kIdleFlushTimeMs[];
@@ -620,6 +621,7 @@ class RewriteOptions {
   static const int64 kDefaultCssImageInlineMaxBytes;
   static const int64 kDefaultCssInlineMaxBytes;
   static const int64 kDefaultCssOutlineMinBytes;
+  static const int64 kDefaultGoogleFontCssInlineMaxBytes;
   static const int64 kDefaultImageInlineMaxBytes;
   static const int64 kDefaultJsInlineMaxBytes;
   static const int64 kDefaultJsOutlineMinBytes;
@@ -1346,6 +1348,12 @@ class RewriteOptions {
   int64 css_inline_max_bytes() const { return css_inline_max_bytes_.value(); }
   void set_css_inline_max_bytes(int64 x) {
     set_option(x, &css_inline_max_bytes_);
+  }
+  int64 google_font_css_inline_max_bytes() const {
+    return google_font_css_inline_max_bytes_.value();
+  }
+  void set_google_font_css_inline_max_bytes(int64 x) {
+    set_option(x, &google_font_css_inline_max_bytes_);
   }
   int64 js_inline_max_bytes() const { return js_inline_max_bytes_.value(); }
   void set_js_inline_max_bytes(int64 x) {
@@ -3454,6 +3462,7 @@ class RewriteOptions {
   Option<int64> css_image_inline_max_bytes_;
   Option<int64> css_inline_max_bytes_;
   Option<int64> css_outline_min_bytes_;
+  Option<int64> google_font_css_inline_max_bytes_;
 
   // Preserve URL options
   Option<bool> css_preserve_urls_;

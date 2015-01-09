@@ -5,11 +5,18 @@ fetch_until $URL 'grep -c <style' 3
 # restrictions on external connections
 if [ -z ${DISABLE_FONT_API_TESTS:-} ]; then
   test_filter inline_google_font_css Can inline Google Font API loader CSS
-  fetch_until $URL 'grep -c @font-face' 1
+  # Use a more recent version of Chrome UA than our default, which will get
+  # a very large (which hit our previous default size limits) CSS using woff2
+  WGETRC_OLD=$WGETRC
+  export WGETRC=$TESTTMP/wgetrc-chrome
+  cat > $WGETRC <<EOF
+user_agent =Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/40.0.2214.45 Safari/537.36
+EOF
 
-  # By default we use a Chrome UA, so it should get woff
+  fetch_until $URL 'grep -c @font-face' 7
+
   OUT=$($WGET_DUMP $URL)
-  check_from "$OUT" fgrep -qi "format('woff')"
+  check_from "$OUT" fgrep -qi "format('woff2')"
   check_not_from "$OUT" fgrep -qi "format('truetype')"
   check_not_from "$OUT" fgrep -qi "format('embedded-opentype')"
   check_not_from "$OUT" fgrep -qi ".ttf"
@@ -17,7 +24,6 @@ if [ -z ${DISABLE_FONT_API_TESTS:-} ]; then
 
   # Now try with IE6 user-agent. We do this with setting WGETRC due to
   # quoting madness
-  WGETRC_OLD=$WGETRC
   export WGETRC=$TESTTMP/wgetrc-ie
   cat > $WGETRC <<EOF
 user_agent = Mozilla/4.0 (compatible; MSIE 6.01; Windows NT 6.0)

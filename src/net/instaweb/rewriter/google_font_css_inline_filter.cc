@@ -32,6 +32,8 @@ namespace net_instaweb {
 GoogleFontCssInlineFilter::GoogleFontCssInlineFilter(RewriteDriver* driver)
     : CssInlineFilter(driver) {
   set_id(RewriteOptions::kGoogleFontCssInlineId);
+  set_size_threshold_bytes(
+      driver->options()->google_font_css_inline_max_bytes());
   driver->AddResourceUrlClaimant(
       NewPermanentCallback(
           this, &GoogleFontCssInlineFilter::CheckIfFontServiceUrl));
