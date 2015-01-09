@@ -171,19 +171,17 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
   header.style.borderBottom = 'thin solid ' +
       pagespeed.MobUtil.colorNumbersToString(themeData.menuFrontColor);
 
-  var logoSpan = document.getElementsByClassName('psmob-logo-span')[0];
+  var logoSpan = document.getElementById('psmob-logo-span');
   if (logoSpan) {
     header.appendChild(logoSpan);
   }
-  var logo = document.querySelector('[data-mobile-role="logo"]');
+  var logo = document.getElementById('psmob-logo-image');
   if (logo) {
     header.style.backgroundColor = logo.style.backgroundColor;
   }
 
   // Add call button.
   if (window.psAddCallButton) {
-    // Shrink logo span for making space for the call button.
-    logoSpan.style.width = '65%';
     // Add button.
     var callButton = document.createElement('button');
     goog.dom.classlist.add(callButton, 'psmob-call-button');

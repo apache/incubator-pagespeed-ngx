@@ -72,6 +72,9 @@ body {
 
   margin: 0;
   padding: 0;
+  position: absolute;
+  top: 0;
+  bottom: 0;
 
   background-image: none;
   background-color: transparent;
@@ -101,8 +104,34 @@ body {
   background-color: rgba(255, 255, 255, 0.4);
 }
 
+.psmob-menu-button {
+  left: 0;
+}
+
 .psmob-call-button {
-  float: right;
+  right: 0;
+}
+
+#psmob-logo-span {
+  height: 60px;
+  padding: 0;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 70px;
+  right: 70px;
+}
+
+#psmob-logo-image {
+  margin: auto;
+  max-height: 75%;
+  max-width: 100% !important;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  vertical-align: middle;
 }
 
 .psmob-nav-panel {
@@ -235,28 +264,6 @@ body {
     margin-right: 0px !important;
     padding-left: 0px !important;
     padding-right: 0px !important;
-}
-
-/* Logo-specific CSS */
-.psmob-logo-span {
-  display: inline-block;
-  vertical-align: top;
-  padding-top: 5px;
-  width: 80%;
-  height: 75%;
-  position: relative;
-}
-
-/* TODO(jmarantz): convert to a class */
-[data-mobile-role="logo"] {
-  margin: auto;
-  max-height: 75%;
-  max-width: 100% !important;
-  position: absolute;
-  top: 15%;
-  left: 0;
-  bottom: 0;
-  right: 60px;
 }
 
 /* Progess Bar elements */

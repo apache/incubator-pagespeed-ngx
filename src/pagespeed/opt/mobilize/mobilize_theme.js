@@ -18,6 +18,7 @@
 
 goog.provide('pagespeed.MobTheme');
 
+goog.require('goog.dom');
 goog.require('pagespeed.MobColor');
 goog.require('pagespeed.MobLogo');
 goog.require('pagespeed.MobUtil');
@@ -98,14 +99,15 @@ pagespeed.MobTheme.synthesizeHamburgerIcon_ = function(foregroundColorStr) {
 pagespeed.MobTheme.synthesizeLogoSpan_ = function(logo, backgroundColor,
                                                   foregroundColor) {
   var logoSpan = document.createElement('span');
-  logoSpan.classList.add('psmob-logo-span');
+  logoSpan.id = 'psmob-logo-span';
 
   if (logo && logo.foregroundImage) {
     var newImage = document.createElement('IMG');
     newImage.src = logo.foregroundImage;
     newImage.style.backgroundColor =
         pagespeed.MobUtil.colorNumbersToString(backgroundColor);
-    newImage.setAttribute('data-mobile-role', 'logo');
+
+    newImage.id = 'psmob-logo-image';
     logoSpan.appendChild(newImage);
   } else {
     logoSpan.innerHTML = window.location.host;

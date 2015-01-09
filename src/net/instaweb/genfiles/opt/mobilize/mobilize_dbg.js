@@ -4201,10 +4201,18 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(a) {
   goog.dom.classlist.add(c, "psmob-header-bar");
   c.innerHTML = a.headerBarHtml;
   c.style.borderBottom = "thin solid " + pagespeed.MobUtil.colorNumbersToString(a.menuFrontColor);
-  (b = document.getElementsByClassName("psmob-logo-span")[0]) && c.appendChild(b);
-  var d = document.querySelector('[data-mobile-role="logo"]');
-  d && (c.style.backgroundColor = d.style.backgroundColor);
-  window.psAddCallButton && (b.style.width = "65%", b = document.createElement("button"), goog.dom.classlist.add(b, "psmob-call-button"), d = document.createElement("img"), d.src = this.callButtonImage_(a.menuFrontColor), b.appendChild(d), c.appendChild(b));
+  (b = document.getElementById("psmob-logo-span")) && c.appendChild(b);
+  if (b = document.getElementById("psmob-logo-image")) {
+    c.style.backgroundColor = b.style.backgroundColor;
+  }
+  if (window.psAddCallButton) {
+    b = document.createElement("button");
+    goog.dom.classlist.add(b, "psmob-call-button");
+    var d = document.createElement("img");
+    d.src = this.callButtonImage_(a.menuFrontColor);
+    b.appendChild(d);
+    c.appendChild(b);
+  }
 };
 pagespeed.MobNav.prototype.addThemeColor_ = function(a) {
   var b = this.useDetectedThemeColor_ ? pagespeed.MobUtil.colorNumbersToString(a.menuBackColor) : "#3c78d8";
@@ -4318,12 +4326,12 @@ pagespeed.MobTheme.synthesizeHamburgerIcon_ = function(a) {
 };
 pagespeed.MobTheme.synthesizeLogoSpan_ = function(a, b, c) {
   var d = document.createElement("span");
-  d.classList.add("psmob-logo-span");
+  d.id = "psmob-logo-span";
   if (a && a.foregroundImage) {
     var e = document.createElement("IMG");
     e.src = a.foregroundImage;
     e.style.backgroundColor = pagespeed.MobUtil.colorNumbersToString(b);
-    e.setAttribute("data-mobile-role", "logo");
+    e.id = "psmob-logo-image";
     d.appendChild(e);
   } else {
     d.innerHTML = window.location.host;
