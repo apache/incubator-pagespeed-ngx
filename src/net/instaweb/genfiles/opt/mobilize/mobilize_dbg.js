@@ -4172,9 +4172,9 @@ pagespeed.MobNav.prototype.callButtonImage_ = function(a) {
 };
 pagespeed.MobNav.prototype.findNavSections_ = function() {
   var a;
-  if (pagespeedNavigationalIds) {
-    a = Array(pagespeedNavigationalIds.length);
-    for (var b = 0, c;c = pagespeedNavigationalIds[b];b++) {
+  if (window.pagespeedNavigationalIds) {
+    a = Array(window.pagespeedNavigationalIds.length);
+    for (var b = 0, c;c = window.pagespeedNavigationalIds[b];b++) {
       a[b] = document.getElementById(c);
     }
   } else {

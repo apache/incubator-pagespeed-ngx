@@ -102,10 +102,10 @@ pagespeed.MobNav.prototype.callButtonImage_ = function(color) {
  */
 pagespeed.MobNav.prototype.findNavSections_ = function() {
   var elements;
-  if (pagespeedNavigationalIds) {
-    var n = pagespeedNavigationalIds.length;
+  if (window.pagespeedNavigationalIds) {
+    var n = window.pagespeedNavigationalIds.length;
     elements = Array(n);
-    for (var i = 0, id; id = pagespeedNavigationalIds[i]; i++) {
+    for (var i = 0, id; id = window.pagespeedNavigationalIds[i]; i++) {
       elements[i] = document.getElementById(id);
     }
   } else {
@@ -182,7 +182,6 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
 
   // Add call button.
   if (window.psAddCallButton) {
-    // Add button.
     var callButton = document.createElement('button');
     goog.dom.classlist.add(callButton, 'psmob-call-button');
     var callImage = document.createElement('img');
