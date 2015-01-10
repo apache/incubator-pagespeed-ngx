@@ -65,7 +65,8 @@ namespace net_instaweb {
       thread_system_(thread_system),
       message_handler_(handler),
       mutex_(NULL),
-      max_keepalive_requests_(max_keepalive_requests) {
+      max_keepalive_requests_(max_keepalive_requests),
+      event_connection_(NULL) {
     resolver_timeout_ = resolver_timeout;
     fetch_timeout_ = fetch_timeout;
     ngx_memzero(&proxy_, sizeof(proxy_));
@@ -76,12 +77,11 @@ namespace net_instaweb {
     mutex_ = thread_system_->NewMutex();
     log_ = log;
     pool_ = NULL;
-    command_connection_ = NULL;
-    pipe_fd_ = -1;
     resolver_ = resolver;
   }
 
   NgxUrlAsyncFetcher::~NgxUrlAsyncFetcher() {
+    DCHECK(shutdown_)  << "Shut down before destructing NgxUrlAsyncFetcher.";
     message_handler_->Message(
         kInfo,
         "Destruct NgxUrlAsyncFetcher with [%d] active fetchers",
@@ -89,18 +89,11 @@ namespace net_instaweb {
 
     CancelActiveFetches();
     active_fetches_.DeleteAll();
+    NgxConnection::Terminate();
 
     if (pool_ != NULL) {
       ngx_destroy_pool(pool_);
       pool_ = NULL;
-    }
-    if (command_connection_ != NULL) {
-      ngx_close_connection(command_connection_);
-      command_connection_ = NULL;
-    }
-    if (pipe_fd_ != -1) {
-      close(pipe_fd_);
-      pipe_fd_ = -1;
     }
     if (mutex_ != NULL) {
       delete mutex_;
@@ -152,9 +145,13 @@ namespace net_instaweb {
 
   // Create the pool for fetcher, create the pipe, add the read event for main
   // thread. It should be called in the worker process.
-  bool NgxUrlAsyncFetcher::Init() {
-    log_ = ngx_cycle->log;
-
+  bool NgxUrlAsyncFetcher::Init(ngx_cycle_t* cycle) {
+    log_ = cycle->log;
+    CHECK(event_connection_ == NULL) << "event connection already set";
+    event_connection_ = new NgxEventConnection(ReadCallback);
+    if (!event_connection_->Init(cycle)) {
+      return false;
+    }
     if (pool_ == NULL) {
       pool_ = ngx_create_pool(4096, log_);
       if (pool_ == NULL) {
@@ -163,41 +160,6 @@ namespace net_instaweb {
         return false;
       }
     }
-
-    int pipe_fds[2];
-    int rc = pipe(pipe_fds);
-    if (rc != 0) {
-      ngx_log_error(NGX_LOG_ERR, log_, 0, "pipe() failed");
-      return false;
-    }
-    if (ngx_nonblocking(pipe_fds[0]) == -1) {
-      ngx_log_error(NGX_LOG_ERR, log_, 0, "nonblocking pipe[0] failed");
-      return false;
-    }
-    if (ngx_nonblocking(pipe_fds[1]) == -1) {
-      ngx_log_error(NGX_LOG_ERR, log_, 0, "nonblocking pipe[1] failed");
-      return false;
-    }
-
-    pipe_fd_ = pipe_fds[1];
-    command_connection_ = ngx_get_connection(pipe_fds[0], log_);
-    if (command_connection_ == NULL) {
-      close(pipe_fds[1]);
-      close(pipe_fds[0]);
-      pipe_fd_ = -1;
-      return false;
-    }
-
-    command_connection_->recv = ngx_recv;
-    command_connection_->send = ngx_send;
-    command_connection_->recv_chain = ngx_recv_chain;
-    command_connection_->send_chain = ngx_send_chain;
-    command_connection_->log = log_;
-    command_connection_->read->log = log_;
-    command_connection_->write->log = log_;
-    command_connection_->data = this;
-    command_connection_->read->handler = CommandHandler;
-    ngx_add_event(command_connection_->read, NGX_READ_EVENT, 0);
 
     if (proxy_.url.len == 0) {
       return true;
@@ -214,8 +176,24 @@ namespace net_instaweb {
   }
 
   void NgxUrlAsyncFetcher::ShutDown() {
-      shutdown_ = true;
-      SendCmd('S');
+    shutdown_ = true;
+    if (!pending_fetches_.empty()) {
+      pending_fetches_.DeleteAll();
+    }
+
+    if (!active_fetches_.empty()) {
+      for (Pool<NgxFetch>::iterator p = active_fetches_.begin(),
+           e = active_fetches_.end(); p != e; p++) {
+        NgxFetch* fetch = *p;
+        fetch->CallbackDone(false);
+      }
+      active_fetches_.Clear();
+    }
+    if (event_connection_ != NULL) {
+      event_connection_->Shutdown();
+      delete event_connection_;
+      event_connection_ = NULL;
+    }
   }
 
   // It's called in the rewrite thread. All the fetches are started at
@@ -228,87 +206,35 @@ namespace net_instaweb {
           message_handler, log_);
     ScopedMutex lock(mutex_);
     pending_fetches_.Add(fetch);
-    SendCmd('F');
-  }
 
-  // send command to nginx main thread
-  // 'F' : start a fetch
-  // 'S' : shutdown the fetcher
-  bool NgxUrlAsyncFetcher::SendCmd(const char command) {
-    int rc;
-    while (true) {
-      rc = write(pipe_fd_, &command, 1);
-      if (rc == 1) {
-        return true;
-      } else if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) {
-        // TODO(junmin): It's rare. But it need be fixed.
-      } else {
-        return false;
-      }
-    }
-    return true;
+    // TODO(oschaaf): thread safety on written vs shutdown.
+    // It is possible that shutdown() is called after writing an event? In that
+    // case, this could (rarely) fail when it shouldn't.
+    bool written = event_connection_->WriteEvent(this);
+    CHECK(written || shutdown_) << "NgxUrlAsyncFetcher: event write failure";
   }
 
   // This is the read event which is called in the main thread.
   // It will do the real work. Add the work event and start the fetch.
-  void NgxUrlAsyncFetcher::CommandHandler(ngx_event_t* cmdev) {
-    char command;
-    int rc;
-    ngx_connection_t* c = static_cast<ngx_connection_t*>(cmdev->data);
-    NgxUrlAsyncFetcher* fetcher = static_cast<NgxUrlAsyncFetcher*>(c->data);
-    do {
-      rc = read(c->fd, &command, 1);
-    } while (rc == -1 && errno == EINTR);
+  void NgxUrlAsyncFetcher::ReadCallback(const ps_event_data& data) {
+    std::vector<NgxFetch*> to_start;
+    NgxUrlAsyncFetcher* fetcher = reinterpret_cast<NgxUrlAsyncFetcher*>(
+      data.sender);
 
-    CHECK(rc == -1 || rc == 0 || rc == 1);
+    fetcher->mutex_->Lock();
+    fetcher->completed_fetches_.DeleteAll();
 
-    if (rc == -1 || rc == 0) {
-      // EAGAIN
-      return;
+    for (Pool<NgxFetch>::iterator p = fetcher->pending_fetches_.begin(),
+             e = fetcher->pending_fetches_.end(); p != e; p++) {
+      NgxFetch* fetch = *p;
+      to_start.push_back(fetch);
     }
 
-    std::vector<NgxFetch*> to_start;
+    fetcher->pending_fetches_.Clear();
+    fetcher->mutex_->Unlock();
 
-    switch (command) {
-      // All the new fetches are appended in the pending_fetches.
-      // Start all these fetches.
-      case 'F':
-        fetcher->mutex_->Lock();
-        fetcher->completed_fetches_.DeleteAll();
-        for (Pool<NgxFetch>::iterator p = fetcher->pending_fetches_.begin(),
-                 e = fetcher->pending_fetches_.end(); p != e; p++) {
-          NgxFetch* fetch = *p;
-          to_start.push_back(fetch);
-        }
-
-        fetcher->pending_fetches_.Clear();
-        fetcher->mutex_->Unlock();
-
-        for (size_t i = 0; i < to_start.size(); i++) {
-          fetcher->StartFetch(to_start[i]);
-        }
-        CHECK(ngx_handle_read_event(cmdev, 0) == NGX_OK);
-        break;
-
-      // Shutdown all the fetches.
-      case 'S':
-        if (!fetcher->pending_fetches_.empty()) {
-          fetcher->pending_fetches_.DeleteAll();
-        }
-
-        if (!fetcher->active_fetches_.empty()) {
-          for (Pool<NgxFetch>::iterator p = fetcher->active_fetches_.begin(),
-               e = fetcher->active_fetches_.end(); p != e; p++) {
-            NgxFetch* fetch = *p;
-            fetch->CallbackDone(false);
-          }
-          fetcher->active_fetches_.Clear();
-        }
-        CHECK(ngx_del_event(cmdev, NGX_READ_EVENT, 0) == NGX_OK);
-        break;
-
-      default:
-        break;
+    for (size_t i = 0; i < to_start.size(); i++) {
+      fetcher->StartFetch(to_start[i]);
     }
 
     return;
