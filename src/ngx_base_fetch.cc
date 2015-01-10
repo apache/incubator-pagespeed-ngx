@@ -63,6 +63,7 @@ bool NgxBaseFetch::Initialize(ngx_cycle_t* cycle) {
 
 void NgxBaseFetch::Terminate() {
   if (event_connection != NULL) {
+    event_connection->Shutdown();
     delete event_connection;
     event_connection = NULL;
   }
