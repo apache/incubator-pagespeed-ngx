@@ -63,7 +63,7 @@ class AddIdsFilter : public EmptyHtmlFilter {
   // div_count_stack_ above the topmost kIsId.
   static const int kIsId;
   std::vector<int> div_count_stack_;
-  std::vector<const char*> id_stack_;
+  std::vector<const HtmlElement::Attribute*> id_stack_;
   RewriteDriver* driver_;
 };
 

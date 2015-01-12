@@ -29,6 +29,7 @@
 #include "net/instaweb/rewriter/public/request_properties.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "pagespeed/kernel/base/escaping.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/stl_util.h"
@@ -208,7 +209,7 @@ void CheckAttrSubstrings() {
     CHECK_EQ(id, kRelevantAttrSubstrings[i].id);
     const char* string = kRelevantAttrSubstrings[i].substring;
     CHECK(string != NULL) << i;
-    CHECK_LT(static_cast<typeof(strlen(string))>(1), strlen(string))
+    CHECK_LT(1, static_cast<uint64>(strlen(string)))
         << i << " '" << string << "'";
   }
 }
@@ -621,7 +622,7 @@ void MobilizeLabelFilter::HandleDivLikeElement(HtmlElement* element,
   // Now search the attributes for any indicative strings.
   for (int i = 0; i < static_cast<int>(arraysize(kAttrsToSearch)); ++i) {
     HtmlName::Keyword attr = kAttrsToSearch[i];
-    StringPiece value(element->AttributeValue(attr));
+    StringPiece value(element->EscapedAttributeValue(attr));
     if (value.empty()) {
       continue;
     }
@@ -727,11 +728,16 @@ ElementSample* MobilizeLabelFilter::MakeNewSample(HtmlElement* element) {
     result->element = element;
     result->parent = sample_stack_.back();
     result->role = result->parent->role;
-    const char* id = element->AttributeValue(HtmlName::kId);
+    const HtmlElement::Attribute* id = element->FindAttribute(HtmlName::kId);
     if (id == NULL) {
+      driver()->InfoAt(NULL, "%s element lacks an id!",
+                       element->name_str().as_string().c_str());
       LOG(DFATAL) << "Element lacks an id!";
     } else {
-      result->id.assign(id);
+      const char* value = id->escaped_value();
+      if (value != NULL) {
+        result->id.assign(value);
+      }
     }
   }
   samples_.push_back(result);
@@ -807,7 +813,7 @@ void MobilizeLabelFilter::SanityCheckEndOfDocumentState() {
   CHECK_EQ(0, relevant_tag_depth_);
   // The horrifying static cast here avoids warnings under gcc, while allowing a
   // system-dependent return type for .size().
-  CHECK_LE(static_cast<typeof(samples_.size())>(1), samples_.size());
+  CHECK_LE(1, static_cast<uint64>(samples_.size()));
   ElementSample* global = samples_[0];
   CHECK_EQ(0, global->features[kElementTagDepth]);
   CHECK_EQ(0, global->features[kPreviousTagCount]);
@@ -1107,14 +1113,14 @@ void MobilizeLabelFilter::InjectLabelJavascript() {
       if (!IsRoleValid(role)) {
         LOG(DFATAL) << "Invalid role " << role <<
             " below valid one " << sample->parent->role;
-      } else if (sample->id.empty()) {
-        LOG(ERROR) << "Empty element id!  Not injecting into JS.";
       } else {
         if (!sample->explicitly_labeled) {
           were_roles_added_ = true;
         }
         role_variables_[role]->Add(1);
-        StrAppend(&role_id_list_js[role], "'", sample->id, "',");
+        EscapeToJsStringLiteral(
+            sample->id, false /* no quotes */, &role_id_list_js[role]);
+        StrAppend(&role_id_list_js[role], "','");
         any_roles_listed = true;
         continue;
       }
@@ -1136,11 +1142,13 @@ void MobilizeLabelFilter::InjectLabelJavascript() {
     MobileRole::Level level = static_cast<MobileRole::Level>(i);
     if (!role_id_list_js[level].empty()) {
       StringPiece s(role_id_list_js[level]);
-      // Remove trailing "," as it's not allowed in ES3.
-      s.remove_suffix(1);
+      // Remove trailing ",'"
+      s.remove_suffix(2);
+      // Create identifier and bind it. Example:
+      // pageSpeedNavigationalIds=['id1','id2'];
       StrAppend(&js, "pagespeed",
                 Capitalize(MobileRoleData::StringFromLevel(level)),
-                "Ids=[", s, "];\n");
+                "Ids=['", s, "];\n");
     }
   }
   HtmlElement* script = driver()->NewElement(NULL, HtmlName::kScript);

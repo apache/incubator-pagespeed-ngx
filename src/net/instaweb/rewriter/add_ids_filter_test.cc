@@ -203,6 +203,22 @@ TEST_F(AddIdsFilterTest, MidTagFlushTest) {
   EXPECT_EQ(StrCat(kExpected1, kExpected2), output_buffer_);
 }
 
+TEST_F(AddIdsFilterTest, UnicodeInIdTest) {
+  // If there's already an id, don't add another one -- even if the existing id
+  // uses characters we don't like!
+  const char kExpected[] =
+      "<header id='g\xc5\x82\xc3\xb3wna'>Header</header>\n";
+  ValidateNoChanges("Unicode id", kExpected);
+}
+
+TEST_F(AddIdsFilterTest, EmptyIdTest) {
+  // Don't touch an empty or bare id.
+  const char kExpected[] =
+      "<header id=''>Header</header>\n"
+      "<content id>Content</content>\n";
+  ValidateNoChanges("Empty id", kExpected);
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

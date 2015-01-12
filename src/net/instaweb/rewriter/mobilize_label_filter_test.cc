@@ -209,7 +209,6 @@ TEST_F(MobilizeLabelFilterTest, TinyCount) {
       " div count: 1,"
       " div percent: 100.00-->\n"
       "<script type=\"text/javascript\">"
-      ""
       "pagespeedHeaderIds=['PageSpeed-0'];\n"
       "</script>";
   ValidateExpected("Small count nav",
@@ -249,7 +248,6 @@ TEST_F(MobilizeLabelFilterTest, TinyCountNbsp) {
       " div count: 1,"
       " div percent: 100.00-->\n"
       "<script type=\"text/javascript\">"
-      ""
       "pagespeedHeaderIds=['PageSpeed-0'];\n"
       "</script>";
   ValidateExpected("Small count nav",
@@ -288,7 +286,6 @@ TEST_F(MobilizeLabelFilterTest, ImgInsideAndOutsideA) {
       " img count: 3,"
       " img percent: 100.00-->\n"
       "<script type=\"text/javascript\">"
-      ""
       "pagespeedHeaderIds=['PageSpeed-0'];\n"
       "</script>";
   ValidateExpected("Small count nav",
@@ -303,6 +300,51 @@ TEST_F(MobilizeLabelFilterTest, ImgInsideAndOutsideA) {
   EXPECT_EQ(0, divs_unlabeled_->Get());
 }
 
+TEST_F(MobilizeLabelFilterTest, DontCrashWithUnicodeId) {
+  const char kOutputHtml[] =
+      "<header id='g\xc5\x82\xc3\xb3wna'>Header</header>\n"
+      "<script type=\"text/javascript\">"
+      "pagespeedHeaderIds=['g\xc5\x82\xc3\xb3wna'];\n"
+      "</script>";
+  ValidateExpected("Unicode id", Unlabel(kOutputHtml), kOutputHtml);
+}
+
+TEST_F(MobilizeLabelFilterTest, DontCrashWithEmptyId) {
+  const char kOutputHtml[] =
+      "<header id=''>Header</header>\n"
+      "<script type=\"text/javascript\">"
+      "pagespeedHeaderIds=[''];\n"
+      "</script>";
+  ValidateExpected("Empty id", Unlabel(kOutputHtml), kOutputHtml);
+}
+
+TEST_F(MobilizeLabelFilterTest, DontCrashWithBlankId) {
+  const char kOutputHtml[] =
+      "<header id>Header</header>\n"
+      "<script type=\"text/javascript\">"
+      "pagespeedHeaderIds=[''];\n"
+      "</script>";
+  ValidateExpected("Blank id", Unlabel(kOutputHtml), kOutputHtml);
+}
+
+TEST_F(MobilizeLabelFilterTest, InternalQuotesAndSpacesInId) {
+  const char kOutputHtml[] =
+      "<header id=\"'Quotes'\\slashes\">Header</header>\n"
+      "<script type=\"text/javascript\">"
+      "pagespeedHeaderIds=['\\'Quotes\\'\\\\slashes'];\n"
+      "</script>";
+  ValidateExpected("Quotes\\slashes in id", Unlabel(kOutputHtml), kOutputHtml);
+}
+
+TEST_F(MobilizeLabelFilterTest, CloseScriptInId) {
+  const char kOutputHtml[] =
+      "<header id='</script>'>Header</header>\n"
+      "<script type=\"text/javascript\">"
+      "pagespeedHeaderIds=['<\\/script>'];\n"
+      "</script>";
+  ValidateExpected("Close script in id", Unlabel(kOutputHtml), kOutputHtml);
+}
+
 TEST_F(MobilizeLabelFilterTest, DontCrashWithFlush) {
   // Note that we cannot remove unused ids inserted before the flush.
   const char kBody1[] =
@@ -314,7 +356,6 @@ TEST_F(MobilizeLabelFilterTest, DontCrashWithFlush) {
   const char kBody2[] =
       "</div>\n"
       "<script type=\"text/javascript\">"
-      ""
       "pagespeedNavigationalIds=['PageSpeed-1'];\n"
       "</script>"
       "</body></html>";
@@ -343,7 +384,6 @@ TEST_F(MobilizeLabelFilterTest, DontCrashWithFlushAndDebug) {
   const char kBody2[] =
       "</div>\n"
       "<script type=\"text/javascript\">"
-      ""
       "pagespeedNavigationalIds=['PageSpeed-1'];\n"
       "</script>"
       "</body></html>";

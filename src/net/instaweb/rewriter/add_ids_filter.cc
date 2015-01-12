@@ -123,7 +123,8 @@ void AddIdsFilter::StartDocument() {
 // </html>                         | 2
 void AddIdsFilter::StartElement(HtmlElement* element) {
   HtmlName::Keyword tag = element->keyword();
-  const char* id = element->AttributeValue(HtmlName::kId);
+  const HtmlElement::Attribute* id =
+      element->FindAttribute(HtmlName::kId);
   if (id != NULL) {
     id_stack_.push_back(id);
     div_count_stack_.push_back(kIsId);
@@ -140,7 +141,7 @@ void AddIdsFilter::EndElement(HtmlElement* element) {
   DCHECK(!div_count_stack_.empty());
   DCHECK_NE(kIsId, div_count_stack_.back());
   if (!id_stack_.empty() &&
-      id_stack_.back() == element->AttributeValue(HtmlName::kId)) {
+      id_stack_.back() == element->FindAttribute(HtmlName::kId)) {
     DCHECK_LT(2, div_count_stack_.size());
     // For an element with an id the stack looks like:
     // ... my_count_in_parent kIsId child_count
@@ -168,7 +169,8 @@ GoogleString AddIdsFilter::GetDivCountStackEncoding() {
   DCHECK_NE(kIsId, div_count_stack_.back());
   GoogleString result(kClassPrefix);
   if (!id_stack_.empty()) {
-    StrAppend(&result, "-", id_stack_.back());
+    // Note: we make use of StringPiece(NULL) -> "" in this call.
+    StrAppend(&result, "-", id_stack_.back()->escaped_value());
   }
   int size = div_count_stack_.size();
   int count_index = size - 1;
