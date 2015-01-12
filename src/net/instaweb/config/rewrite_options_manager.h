@@ -21,6 +21,7 @@
 
 #include "pagespeed/kernel/base/callback.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/opt/http/request_context.h"
 
 
 namespace net_instaweb {
@@ -46,6 +47,7 @@ class RewriteOptionsManager {
   // be owned by the caller.
   typedef Callback1<bool> BoolCallback;
   virtual void PrepareRequest(const RewriteOptions* rewrite_options,
+                              const RequestContextPtr& request_context,
                               GoogleString* url,
                               RequestHeaders* request_headers,
                               BoolCallback* done);

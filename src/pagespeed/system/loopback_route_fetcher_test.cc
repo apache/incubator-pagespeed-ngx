@@ -22,18 +22,21 @@
 
 #include <cstdlib>
 
+#include "net/instaweb/config/rewrite_options_manager.h"
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/reflecting_test_fetcher.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_options_test_base.h"
+#include "pagespeed/kernel/base/callback.h"
 #include "pagespeed/kernel/base/google_message_handler.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/ref_counted_ptr.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/response_headers.h"
 #include "pagespeed/kernel/util/platform.h"
 
@@ -67,6 +70,10 @@ class LoopbackRouteFetcherTest : public RewriteOptionsTestBase<RewriteOptions> {
 
   virtual void TearDown() {
     apr_pool_destroy(pool_);
+  }
+
+  void PrepareDone(bool ok) {
+    EXPECT_TRUE(ok);
   }
 
  protected:
@@ -198,6 +205,24 @@ TEST_F(LoopbackRouteFetcherTest, CanDetectSelfSrc) {
       << DumpAddr(not_loopback_2);
   EXPECT_FALSE(LoopbackRouteFetcher::IsLoopbackAddr(not_loopback_3))
       << DumpAddr(not_loopback_3);
+}
+
+TEST_F(LoopbackRouteFetcherTest, ProxySuffix) {
+  RewriteOptionsManager options_manager;
+  DomainLawyer* lawyer = options_.WriteableDomainLawyer();
+  lawyer->set_proxy_suffix(".suffix");
+
+  ExpectStringAsyncFetch dest(
+      true, RequestContext::NewTestRequestContext(thread_system_.get()));
+
+  GoogleString url("http://www.foo.com.suffix");
+  RequestHeaders request_headers;
+  options_manager.PrepareRequest(
+      &options_, dest.request_context(), &url, &request_headers,
+      NewCallback(this, &LoopbackRouteFetcherTest::PrepareDone));
+  loopback_route_fetcher_.Fetch("http://www.foo.com", &handler_, &dest);
+  EXPECT_STREQ("http://www.foo.com", dest.buffer());
+  EXPECT_EQ(NULL, dest.response_headers()->Lookup1("Host"));
 }
 
 }  // namespace

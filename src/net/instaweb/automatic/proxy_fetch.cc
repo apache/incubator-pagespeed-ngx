@@ -746,6 +746,7 @@ void ProxyFetch::SetupForHtml() {
 void ProxyFetch::StartFetch() {
   factory_->server_context_->rewrite_options_manager()->PrepareRequest(
       Options(),
+      request_context(),
       &url_,
       request_headers(),
       NewCallback(this, &ProxyFetch::DoFetch));

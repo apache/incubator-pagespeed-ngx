@@ -1892,7 +1892,7 @@ class DistributedFetchResourceFetch : public SharedAsyncFetch {
     GoogleString url = driver_->fetch_url().as_string();
     driver_->increment_async_events_count();
     rewrite_options_manager->PrepareRequest(
-        driver_->options(), &url, request_headers(),
+        driver_->options(), driver_->request_context(), &url, request_headers(),
         NewCallback(this, &DistributedFetchResourceFetch::StartFetch));
   }
 

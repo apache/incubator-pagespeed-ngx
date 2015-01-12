@@ -40,7 +40,6 @@
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/http/http_names.h"
-#include "pagespeed/kernel/http/http_options.h"
 #include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/response_headers.h"
 
@@ -167,6 +166,7 @@ class CacheableResourceBase::FetchCallbackBase : public AsyncFetchWithLock {
 
     server_context_->rewrite_options_manager()->PrepareRequest(
         rewrite_options_,
+        request_context(),
         &fetch_url_,
         request_headers(),
         NewCallback(this, &FetchCallbackBase::PrepareRequestDone));

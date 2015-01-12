@@ -811,7 +811,8 @@ class RewriteContext::DistributedRewriteFetch : public AsyncFetch {
     RewriteOptionsManager* rewrite_options_manager =
         rewrite_context_->FindServerContext()->rewrite_options_manager();
     rewrite_options_manager->PrepareRequest(
-        rewrite_context_->Options(), &url_, request_headers(),
+        rewrite_context_->Options(),
+        request_context(), &url_, request_headers(),
         NewCallback(this, &DistributedRewriteFetch::StartFetch));
   }
 

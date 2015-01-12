@@ -71,6 +71,7 @@
         'automatic/proxy_fetch_test.cc',
         'automatic/proxy_interface_test.cc',
         'automatic/proxy_interface_test_base.cc',
+        'config/rewrite_options_manager_test.cc',
         'http/async_fetch_test.cc',
         'http/cache_url_async_fetcher_test.cc',
         'http/fetcher_test.cc',
