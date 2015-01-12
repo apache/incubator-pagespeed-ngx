@@ -45,46 +45,26 @@ pagespeed.MobTheme = function() {
 
 
 /**
- * Return an SVG image for the hamburger icon.
- * @param {number} width
- * @param {number} height
- * @param {string} foregroundColorStr
- * @return {string}
+ * Create an element for the menu button.
+ * @param {!goog.color.Rgb} color
+ * @return {!Element}
  * @private
  */
-pagespeed.MobTheme.menuIconString_ = function(width, height,
-                                              foregroundColorStr) {
-  // TODO(huibao): Use div and CSS to contruct the hamburger icon for more
-  // browser support.
-  var y1 = String(Math.floor(0.25 * height));
-  var y2 = String(Math.floor(0.5 * height));
-  var y3 = String(Math.floor(0.75 * height));
-  var strokeWidth = String(Math.floor(0.15 * height));
+pagespeed.MobTheme.createMenuButton_ = function(color) {
+  var button = document.createElement('button');
+  goog.dom.classlist.add(button, 'psmob-menu-button');
+  var hamburgerDiv = document.createElement('div');
+  goog.dom.classlist.add(hamburgerDiv, 'psmob-hamburger-div');
+  button.appendChild(hamburgerDiv);
 
-  var icon = '<svg height="' + height + 'px" ' + 'width="' + width + 'px" ' +
-      'style="stroke:' + foregroundColorStr +
-      ';stroke-width:' + strokeWidth + 'px" >' +
-      '<line x1="4px" y1="' + y1 + 'px" ' +
-      'x2="' + (width - 4) + 'px" ' + 'y2="' + y1 + 'px"/>' +
-      '<line x1="4px" y1="' + y2 + 'px" ' +
-      'x2="' + (width - 4) + 'px" ' + 'y2="' + y2 + 'px"/>' +
-      '<line x1="4px" y1="' + y3 + 'px" ' +
-      'x2="' + (width - 4) + 'px" ' + 'y2="' + y3 + 'px"/>' +
-      '</svg>';
-  return icon;
-};
-
-
-/**
- * Return the string for a button.
- * @param {string} foregroundColorStr
- * @return {string}
- * @private
- */
-pagespeed.MobTheme.synthesizeHamburgerIcon_ = function(foregroundColorStr) {
-  return '<button class="psmob-menu-button">' +
-         pagespeed.MobTheme.menuIconString_(28, 28, foregroundColorStr) +
-         '</button>';
+  var colorStr = pagespeed.MobUtil.colorNumbersToString(color);
+  for (var i = 0; i < 3; ++i) {
+    var hamburgerLine = document.createElement('div');
+    goog.dom.classlist.add(hamburgerLine, 'psmob-hamburger-line');
+    hamburgerLine.style.backgroundColor = colorStr;
+    hamburgerDiv.appendChild(hamburgerLine);
+  }
+  return button;
 };
 
 
@@ -113,17 +93,11 @@ pagespeed.MobTheme.synthesizeLogoSpan_ = function(logo, backgroundColor,
     logoSpan.innerHTML = window.location.host;
   }
 
-  var headerBarHtml =
-      pagespeed.MobTheme.synthesizeHamburgerIcon_(
-          pagespeed.MobUtil.colorNumbersToString(foregroundColor));
-
-  // TODO(huibao): Instead of appending the new logo span to document, sending
-  // them to MobNav as part of themeData.
-  document.body.appendChild(logoSpan);
-
+  var menuButton = pagespeed.MobTheme.createMenuButton_(foregroundColor);
   var themeData = new pagespeed.MobUtil.ThemeData(foregroundColor,
                                                   backgroundColor,
-                                                  headerBarHtml);
+                                                  menuButton,
+                                                  logoSpan);
   return themeData;
 };
 

@@ -440,17 +440,21 @@ pagespeed.MobUtil.ImageSource = {
  * Theme data.
  * @param {!goog.color.Rgb} frontColor
  * @param {!goog.color.Rgb} backColor
- * @param {string} headerBarHtml
- * @struct
+ * @param {!Element} menuButton
+ * @param {!Element} logoSpan
  * @constructor
  */
-pagespeed.MobUtil.ThemeData = function(frontColor, backColor, headerBarHtml) {
+pagespeed.MobUtil.ThemeData = function(frontColor, backColor, menuButton,
+                                       logoSpan) {
+
   /** @type {!goog.color.Rgb} */
   this.menuFrontColor = frontColor;
   /** @type {!goog.color.Rgb} */
   this.menuBackColor = backColor;
-  /** @type {string} */
-  this.headerBarHtml = headerBarHtml;
+  /** @type {!Element} */
+  this.menuButton = menuButton;
+  /** @type {!Element} */
+  this.logoSpan = logoSpan;
 };
 
 
@@ -478,7 +482,12 @@ pagespeed.MobUtil.textBetweenBrackets = function(str) {
  * @return {Array.<number>}
  */
 pagespeed.MobUtil.colorStringToNumbers = function(str) {
-  var subStr = pagespeed.MobUtil.textBetweenBrackets(str).split(', ');
+  var subStr = pagespeed.MobUtil.textBetweenBrackets(str);
+  if (!subStr) {
+    return null;
+  }
+
+  subStr = subStr.split(',');
   var numbers = [];
   for (var i = 0, len = subStr.length; i < len; ++i) {
     numbers[i] = parseInt(subStr[i], 10);
@@ -757,4 +766,23 @@ pagespeed.MobUtil.isOffScreen = function(style) {
   var left = pagespeed.MobUtil.pixelValue(style.left);
   return (((top != null) && (top < -100)) ||
           ((left != null) && (left < -100)));
+};
+
+
+/**
+ * Take a JS string and escape it to obtain a CSS string1 (double quoted).
+ * See http://www.w3.org/TR/css3-selectors/#w3cselgrammar
+ * @param {string} unescaped JS string
+ * @return {string} escaped, quoted CSS string1
+ */
+pagespeed.MobUtil.toCssString1 = function(unescaped) {
+  // There are actually relatively few forbidden characters [^\r\n\f\\"], so
+  // just replace each one of them by a safe escape.
+  // All the escapes start with backslash, so escape existing backslashes first.
+  var result = unescaped.replace(/\\/g, '\\\\');
+  result = result.replace(/"/g, '\\"');
+  result = result.replace(/\n/g, '\\a ');
+  result = result.replace(/\f/g, '\\c ');
+  result = result.replace(/\r/g, '\\d ');
+  return '"' + result + '"';
 };

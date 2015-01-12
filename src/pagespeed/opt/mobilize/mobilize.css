@@ -134,6 +134,19 @@ body {
   vertical-align: middle;
 }
 
+.psmob-hamburger-line {
+  width: 42px;
+  height: 8px;
+  margin-bottom: 4px;
+}
+
+.psmob-hamburger-div {
+  padding-top: 14px;
+  padding-bottom: 10px;
+  padding-left: 9px;
+  padding-right: 9px;
+}
+
 .psmob-nav-panel {
   position: fixed !important;
 

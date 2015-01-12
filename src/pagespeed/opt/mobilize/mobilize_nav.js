@@ -105,8 +105,16 @@ pagespeed.MobNav.prototype.findNavSections_ = function() {
   if (window.pagespeedNavigationalIds) {
     var n = window.pagespeedNavigationalIds.length;
     elements = Array(n);
-    for (var i = 0, id; id = window.pagespeedNavigationalIds[i]; i++) {
-      elements[i] = document.getElementById(id);
+    for (var i = 0; i < n; i++) {
+      var id = window.pagespeedNavigationalIds[i];
+      // Attempt to use querySelector(...) if getElementById(...) fails.  This
+      // handles the empty string (not retrieved by getElementById) gracefully,
+      // and should deal with other corner cases as well.
+      elements[i] = (document.getElementById(id) ||
+                     document.querySelector(
+                         '[id=' +
+                         pagespeed.MobUtil.toCssString1(id) +
+                         ']'));
     }
   } else {
     elements = Array(0);
@@ -167,18 +175,12 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
   document.body.insertBefore(header, spacerDiv);
   goog.dom.classlist.add(header, 'psmob-header-bar');
   // TODO(jud): This is defined in mob_logo.js
-  header.innerHTML = themeData.headerBarHtml;
+  header.appendChild(themeData.menuButton);
+  header.appendChild(themeData.logoSpan);
   header.style.borderBottom = 'thin solid ' +
       pagespeed.MobUtil.colorNumbersToString(themeData.menuFrontColor);
-
-  var logoSpan = document.getElementById('psmob-logo-span');
-  if (logoSpan) {
-    header.appendChild(logoSpan);
-  }
-  var logo = document.getElementById('psmob-logo-image');
-  if (logo) {
-    header.style.backgroundColor = logo.style.backgroundColor;
-  }
+  header.style.backgroundColor =
+      pagespeed.MobUtil.colorNumbersToString(themeData.menuBackColor);
 
   // Add call button.
   if (window.psAddCallButton) {

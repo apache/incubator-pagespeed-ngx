@@ -468,8 +468,9 @@ pagespeed.MobLogo.prototype.extractBackgroundColor_ = function(element) {
     var colorString = computedStyle.getPropertyValue('background-color');
     if (colorString) {
       var colorValues = pagespeed.MobUtil.colorStringToNumbers(colorString);
-      if (colorValues.length == 3 ||
-          (colorValues.length == 4 && colorValues[3] != 0)) {
+      if (colorValues &&
+          (colorValues.length == 3 ||
+           (colorValues.length == 4 && colorValues[3] != 0))) {
         // colorValue should be in RGB format (3 element-array) or RGBA format
         // (4 element-array). If it is in RGBA format and the last element is 0,
         // this color is fully transparent and should be ignored.
