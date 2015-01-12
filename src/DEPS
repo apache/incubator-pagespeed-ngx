@@ -79,12 +79,11 @@ vars = {
   # TODO(jmarantz): create an easy way to choose this option from the
   # 'gclient' command, without having to edit the gyp & DEPS files.
   #
-  # BoringSSL chosen at 10.13.2014 commit.
-  # BoringSSL is not vulnerable to POODLE.
-  # See http://blog.cloudflare.com/sslv3-support-disabled-by-default-due-to-vulnerability/
+  # BoringSSL chosen at 01.09.2014 commit.
+  # to match up with the CVEs fixed in OpenSSL 1.0.1k
   # We pull boringssl from the git, and the build system from Chromium svn.
   "boringssl_src": "https://boringssl.googlesource.com/boringssl.git",
-  "boringssl_git_revision": "@02488899507d895c5635e01ed3036f8aa43cea83",
+  "boringssl_git_revision": "@ca9a538aa0f2ebdd261783efa032e69a2ea17fbc",
   "boringssl_revision": "292488",
 
 
