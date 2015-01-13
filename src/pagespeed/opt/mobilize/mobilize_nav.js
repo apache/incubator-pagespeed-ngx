@@ -119,11 +119,7 @@ pagespeed.MobNav.prototype.findNavSections_ = function() {
   } else {
     elements = Array(0);
   }
-  this.navSections_ = goog.array.concat(
-      elements,
-      // TODO(jud): Fix MobilizeLabelFilter so that it identifies this section
-      // as nav. This fix is for customaquariums.com.
-      goog.array.toArray(document.querySelectorAll('.topNavList')));
+  this.navSections_ = elements;
 };
 
 

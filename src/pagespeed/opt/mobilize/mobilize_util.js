@@ -477,25 +477,45 @@ pagespeed.MobUtil.textBetweenBrackets = function(str) {
 /**
  * Convert color string '(n1, n2, ..., nm)' to numberical array
  * [n1, n2, ..., nm]. If the color string does not have a valid format, return
- * null.
+ * null. Note that this only understandards the color formats that can occur
+ * in getComputedStyle output, not all formats that can be used by CSS.
+ * See: http://dev.w3.org/csswg/cssom/#serialize-a-css-component-value
  * @param {string} str
  * @return {Array.<number>}
  */
 pagespeed.MobUtil.colorStringToNumbers = function(str) {
   var subStr = pagespeed.MobUtil.textBetweenBrackets(str);
   if (!subStr) {
+    // Mozilla likes to return 'transparent' for things with alpha == 0,
+    // so handle that here.
+    if (str == 'transparent') {
+      return [0, 0, 0, 0];
+    }
     return null;
   }
-
+  // TODO(huibao): Verify that rgb( and rgba( are present and used
+  // appropriately.
   subStr = subStr.split(',');
   var numbers = [];
   for (var i = 0, len = subStr.length; i < len; ++i) {
-    numbers[i] = parseInt(subStr[i], 10);
+    if (i != 3) {
+      // Non-alpha channels are integers.
+      numbers[i] = parseInt(subStr[i], 10);
+    } else {
+      // Alpha is floating point.
+      numbers[i] = parseFloat(subStr[i]);
+    }
     if (isNaN(numbers[i])) {
       return null;
     }
   }
-  return numbers;
+
+  // Only 3 or 4 compontents is normal.
+  if (numbers.length == 3 || numbers.length == 4) {
+    return numbers;
+  } else {
+    return null;
+  }
 };
 
 
