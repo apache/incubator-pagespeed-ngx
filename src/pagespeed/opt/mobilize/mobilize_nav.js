@@ -18,7 +18,6 @@
 goog.provide('pagespeed.MobNav');
 
 goog.require('goog.array');
-goog.require('goog.color');
 goog.require('goog.dom');
 goog.require('goog.dom.classlist');
 goog.require('pagespeed.MobUtil');
@@ -135,7 +134,6 @@ pagespeed.MobNav.prototype.findNavSections_ = function() {
  */
 pagespeed.MobNav.prototype.fixExistingElements_ = function() {
   var elements = document.getElementsByTagName('*');
-  var topOffset = 0;
   for (var i = 0, element; element = elements[i]; i++) {
     var style = window.getComputedStyle(element);
     if (style.getPropertyValue('position') == 'fixed') {
@@ -349,7 +347,7 @@ pagespeed.MobNav.prototype.addNavPanel_ = function() {
             div.appendChild(document.createElement('img')));
         icon.setAttribute('src', this.ARROW_ICON_);
         goog.dom.classlist.add(icon, 'psmob-menu-expand-icon');
-        var text = div.appendChild(document.createTextNode(
+        div.appendChild(document.createTextNode(
             navATags[j].textContent || navATags[j].innerText));
         navSubmenus[navSubmenus.length - 1].appendChild(item);
         var submenu = document.createElement('ul');

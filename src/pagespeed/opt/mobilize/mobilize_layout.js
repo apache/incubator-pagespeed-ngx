@@ -19,7 +19,6 @@
 
 goog.provide('pagespeed.MobLayout');
 
-goog.require('goog.dom');
 goog.require('goog.string');
 goog.require('pagespeed.MobUtil');
 
@@ -307,7 +306,6 @@ pagespeed.MobLayout.prototype.shrinkWideElements_ = function(element) {
   var image = pagespeed.MobUtil.findBackgroundImage(element);
   if (image) {
     var imageSize = this.psMob_.findImageSize(image);
-    var style = '';
     if (imageSize && imageSize.width && imageSize.height &&
         !pagespeed.MobLayout.prototype.isProbablyASprite_(computedStyle)) {
       var width = imageSize.width;
@@ -438,11 +436,10 @@ pagespeed.MobLayout.prototype.resizeVerticallyAndReturnBottom_ =
   var hasAbsoluteChildren = false;
   var childBottom;
 
-  for (var next, child = element.firstChild; child; child = child.nextSibling) {
+  for (var child = element.firstChild; child; child = child.nextSibling) {
     var childElement = pagespeed.MobUtil.castElement(child);
     if (childElement) {
       var childComputedStyle = window.getComputedStyle(childElement);
-      var absolute = false;
       if (childComputedStyle) {
         var position = childComputedStyle.position;
         // For some reason, the iframe holding the tweets on
@@ -469,7 +466,6 @@ pagespeed.MobLayout.prototype.resizeVerticallyAndReturnBottom_ =
             (childComputedStyle.getPropertyValue('height') != '0px') &&
             (childComputedStyle.getPropertyValue('visibility') != 'hidden')) {
           hasAbsoluteChildren = true;
-          absolute = true;
         }
       }
       childBottom = this.resizeVerticallyAndReturnBottom_(childElement, top);
@@ -716,7 +712,6 @@ pagespeed.MobLayout.prototype.isDataTable_ = function(table) {
  */
 pagespeed.MobLayout.prototype.reorganizeTableQuirksMode_ =
     function(table, maxWidth) {
-  var elements = [];
   var i, j, k, m, element, data, div, new_element;
 
   // pagespeed.MobUtil.createXPathFromNode(table));

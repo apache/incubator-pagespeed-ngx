@@ -18,7 +18,7 @@
 
 goog.provide('pagespeed.MobTheme');
 
-goog.require('goog.dom');
+goog.require('goog.dom.classlist');
 goog.require('pagespeed.MobColor');
 goog.require('pagespeed.MobLogo');
 goog.require('pagespeed.MobUtil');

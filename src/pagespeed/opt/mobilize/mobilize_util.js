@@ -22,6 +22,8 @@ goog.provide('pagespeed.MobUtil');
 goog.require('goog.color');
 goog.require('goog.dom');
 goog.require('goog.math.Box');
+goog.require('goog.string');
+
 
 
 /**

@@ -19,6 +19,7 @@
 
 goog.provide('pagespeed.MobLogo');
 
+goog.require('goog.string');
 goog.require('pagespeed.MobUtil');
 
 
@@ -437,8 +438,6 @@ pagespeed.MobLogo.prototype.findBestLogo_ = function() {
 
   // There are multiple candiates with the same largest metric.
   minTop = Infinity;
-  var minLeft = Infinity;
-  var minArea = Infinity;
   var bestLogo = bestCandidates[0];
   var bestRect = bestLogo.foregroundRect;
   for (i = 1; candidate = bestCandidates[i]; ++i) {

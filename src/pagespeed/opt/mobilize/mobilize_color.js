@@ -52,12 +52,6 @@ pagespeed.MobColor = function() {
    * @private {ImageData}
    */
   this.foregroundData_ = null;
-
-  /**
-   * Data of the logo background image.
-   * @private {ImageData}
-   */
-  this.backgroundData_ = null;
 };
 
 
@@ -393,8 +387,6 @@ pagespeed.MobColor.prototype.getImageDataAndSynthesize_ = function(mode, src,
     context.drawImage(imageElement, 0, 0);
     if (mode == 'foreground') {
       this.foregroundData_ = context.getImageData(0, 0, width, height);
-    } else {
-      this.backgroundData_ = context.getImageData(0, 0, width, height);
     }
     this.synthesizeCallback_();
   }, this);

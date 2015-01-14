@@ -343,7 +343,6 @@ pagespeed.Mob.prototype.initiateMobilization = function() {
 
   // We multiply the number of DOM elements by the number of passes.
   // That includes all the layout passes, plus 2 for menus and navigation.
-  var extraPasses = 0;
   if (window.psNavMode && pagespeed.MobUtil.inFriendlyIframe()) {
     this.totalWork_ += this.domElementCount_;  // logo
     this.totalWork_ += this.domElementCount_;  // nav
