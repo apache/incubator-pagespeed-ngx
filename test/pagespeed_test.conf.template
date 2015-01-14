@@ -825,6 +825,14 @@ http {
     pagespeed FileCachePath "@@FILE_CACHE@@";
   }
 
+  server { 
+    listen @@SECONDARY_PORT@@;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+    server_name header-delete.example.com;
+    more_clear_headers 'Server';
+    more_clear_headers 'X-Page-Speed';
+  }
+
   server {
     listen @@SECONDARY_PORT@@;
     listen [::]:@@SECONDARY_PORT@@;
