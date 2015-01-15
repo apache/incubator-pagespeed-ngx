@@ -30,12 +30,50 @@ goog.require('pagespeed.MobUtil');
  */
 pagespeed.MobNav = function() {
   this.navSections_ = [];
+
   /**
    * Controls whether we use the color detected from mob_logo.js, or a
    * predefined color.
    * @private {boolean}
    */
   this.useDetectedThemeColor_ = true;
+
+  /**
+   * The header bar element inserted at the top of the page.
+   * @private {Element}
+   */
+  this.headerBar_ = null;
+
+  /**
+   * Spacer div element inserted at the top of the page to push the rest of the
+   * content down.
+   * @private {Element}
+   */
+  this.spacerDiv_ = null;
+
+  /**
+   * The span containing the logo.
+   * @private {Element}
+   */
+  this.logoSpan_ = null;
+
+  /**
+   * Menu button in the header bar.
+   * @private {Element}
+   */
+  this.menuButton_ = null;
+
+  /**
+   * Call button in the header bar.
+   * @private {Element}
+   */
+  this.callButton_ = null;
+
+  /**
+   * Side nav bar.
+   * @private {Element}
+   */
+  this.navPanel_ = null;
 };
 
 
@@ -161,29 +199,32 @@ pagespeed.MobNav.prototype.fixExistingElements_ = function() {
 pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
   // The header bar is position:fixed, so create an empty div at the top to move
   // the rest of the elements down.
-  var spacerDiv = document.createElement('div');
-  document.body.insertBefore(spacerDiv, document.body.childNodes[0]);
-  goog.dom.classlist.add(spacerDiv, 'psmob-header-spacer-div');
+  this.spacerDiv_ = document.createElement('div');
+  document.body.insertBefore(this.spacerDiv_, document.body.childNodes[0]);
+  goog.dom.classlist.add(this.spacerDiv_, 'psmob-header-spacer-div');
 
-  var header = document.createElement('header');
-  document.body.insertBefore(header, spacerDiv);
-  goog.dom.classlist.add(header, 'psmob-header-bar');
+  this.headerBar_ = document.createElement('header');
+  document.body.insertBefore(this.headerBar_, this.spacerDiv_);
+  goog.dom.classlist.add(this.headerBar_, 'psmob-header-bar');
   // TODO(jud): This is defined in mob_logo.js
-  header.appendChild(themeData.menuButton);
-  header.appendChild(themeData.logoSpan);
-  header.style.borderBottom = 'thin solid ' +
+  this.menuButton_ = themeData.menuButton;
+  this.headerBar_.appendChild(this.menuButton_);
+  this.logoSpan_ = themeData.logoSpan;
+  this.headerBar_.appendChild(this.logoSpan_);
+  this.headerBar_.style.borderBottom =
+      'thin solid ' +
       pagespeed.MobUtil.colorNumbersToString(themeData.menuFrontColor);
-  header.style.backgroundColor =
+  this.headerBar_.style.backgroundColor =
       pagespeed.MobUtil.colorNumbersToString(themeData.menuBackColor);
 
   // Add call button.
   if (window.psAddCallButton) {
-    var callButton = document.createElement('button');
-    goog.dom.classlist.add(callButton, 'psmob-call-button');
+    this.callButton_ = document.createElement('button');
+    goog.dom.classlist.add(this.callButton_, 'psmob-call-button');
     var callImage = document.createElement('img');
     callImage.src = this.callButtonImage_(themeData.menuFrontColor);
-    callButton.appendChild(callImage);
-    header.appendChild(callButton);
+    this.callButton_.appendChild(callImage);
+    this.headerBar_.appendChild(this.callButton_);
   }
 };
 
@@ -288,7 +329,7 @@ pagespeed.MobNav.prototype.dedupNavMenuItems_ = function() {
  * @private
  */
 pagespeed.MobNav.prototype.cleanupNavPanel_ = function() {
-  var nodes = document.querySelectorAll('.psmob-nav-panel *');
+  var nodes = this.navPanel_.querySelectorAll('*');
   for (var i = 0, node; node = nodes[i]; i++) {
     node.removeAttribute('style');
     node.removeAttribute('width');
@@ -301,8 +342,8 @@ pagespeed.MobNav.prototype.cleanupNavPanel_ = function() {
   }
 
   var maxImageHeight = 40;
-  var images = document.querySelectorAll(
-      '.psmob-nav-panel img:not(.psmob-menu-expand-icon)');
+  var images =
+      this.navPanel_.querySelectorAll('img:not(.psmob-menu-expand-icon)');
   for (var i = 0, img; img = images[i]; ++i) {
     // Avoid blowing up an image over double it's natural height.
     var height = Math.min(img.naturalHeight * 2, maxImageHeight);
@@ -317,12 +358,11 @@ pagespeed.MobNav.prototype.cleanupNavPanel_ = function() {
  */
 pagespeed.MobNav.prototype.addNavPanel_ = function() {
   // Create the nav panel element and insert immediatly after the header bar.
-  var header = document.getElementsByClassName('psmob-header-bar')[0];
-  var navPanel = /** @type {Element} */ (document.body.insertBefore(
-      document.createElement('nav'), header.nextSibling));
-  goog.dom.classlist.add(navPanel, 'psmob-nav-panel');
-  var navTopUl = /** @type {Element} */ (
-      navPanel.appendChild(document.createElement('ul')));
+  this.navPanel_ = document.createElement('nav');
+  document.body.insertBefore(this.navPanel_, this.headerBar_.nextSibling);
+  goog.dom.classlist.add(this.navPanel_, 'psmob-nav-panel');
+  var navTopUl = document.createElement('ul');
+  this.navPanel_.appendChild(navTopUl);
   // By default, UL elements in the nav panel have display:none, which makes
   // hierarchical menus collapsed by default. However, we want the top level
   // menu to always be displayed, so give it the open class.
@@ -343,8 +383,8 @@ pagespeed.MobNav.prototype.addNavPanel_ = function() {
       if (navLevel1 < navLevel2) {
         var item = document.createElement('li');
         var div = item.appendChild(document.createElement('div'));
-        var icon = /** @type {Element} */ (
-            div.appendChild(document.createElement('img')));
+        var icon = document.createElement('img');
+        div.appendChild(document.createElement('img'));
         icon.setAttribute('src', this.ARROW_ICON_);
         goog.dom.classlist.add(icon, 'psmob-menu-expand-icon');
         div.appendChild(document.createTextNode(
@@ -380,10 +420,8 @@ pagespeed.MobNav.prototype.addNavPanel_ = function() {
  * @private
  */
 pagespeed.MobNav.prototype.toggleNavPanel_ = function() {
-  var navPanelElement = document.querySelector('.psmob-nav-panel');
-  var headerBarElement = document.querySelector('.psmob-header-bar');
-  goog.dom.classlist.toggle(headerBarElement, 'open');
-  goog.dom.classlist.toggle(navPanelElement, 'open');
+  goog.dom.classlist.toggle(this.headerBar_, 'open');
+  goog.dom.classlist.toggle(this.navPanel_, 'open');
   goog.dom.classlist.toggle(document.body, 'noscroll');
 };
 
@@ -394,18 +432,15 @@ pagespeed.MobNav.prototype.toggleNavPanel_ = function() {
  * @private
  */
 pagespeed.MobNav.prototype.addMenuButtonEvents_ = function() {
-  var menuBtn = document.querySelector('.psmob-menu-button');
-
   document.body.addEventListener('click', function(e) {
-    if (menuBtn.contains(/** @type {Node} */ (e.target))) {
+    if (this.menuButton_.contains(/** @type {Node} */ (e.target))) {
       this.toggleNavPanel_();
       return;
     }
 
-    var navPanelElement = document.querySelector('.psmob-nav-panel');
     // If the panel is open, allow clicks outside of the panel to close it.
-    if (goog.dom.classlist.contains(navPanelElement, 'open') &&
-        !navPanelElement.contains(/** @type {Node} */ (e.target))) {
+    if (goog.dom.classlist.contains(this.navPanel_, 'open') &&
+        !this.navPanel_.contains(/** @type {Node} */ (e.target))) {
       this.toggleNavPanel_();
       // Make sure that the only action taken because of the click is closing
       // the menu. We also make sure to set the useCapture param of
