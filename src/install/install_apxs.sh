@@ -179,8 +179,8 @@ check APACHE_GROUP "[ ! -z \'${APACHE_GROUP}\' ]" "Apache group"
 check APACHE_USER "id '${APACHE_USER}' &> /dev/null" "valid Apache user '${APACHE_USER}'"
 
 # Make sure the group is valid.
-# TODO: is there a way to ask the system if a group exists, similar to
-# the 'id' command?
+# TODO(bmcquade): is there a way to ask the system if a group exists, similar
+# to the 'id' command?
 check APACHE_GROUP "egrep -q '^${APACHE_GROUP}:' /etc/group" "valid Apache group '${APACHE_GROUP}'"
 
 MODPAGESPEED_CONFDIR=${MODPAGESPEED_CONFDIR:-${APACHE_CONFDIR}}

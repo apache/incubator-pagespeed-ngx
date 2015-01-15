@@ -252,11 +252,11 @@ goog.addDependency = function(relPath, provides, requires) {
 goog.require = function(rule) {
 
   // if the object already exists we do not need do do anything
-  // TODO: If we start to support require based on file name this has
-  //            to change
-  // TODO: If we allow goog.foo.* this has to change
-  // TODO: If we implement dynamic load after page load we should probably
-  //            not remove this code for the compiled output
+  // TODO(abliss): If we start to support require based on file name this has
+  //               to change.
+  // TODO(abliss): If we allow goog.foo.* this has to change.
+  // TODO(abliss): If we implement dynamic load after page load we should
+  //               probably not remove this code for the compiled output.
   if (!COMPILED) {
     if (goog.getObjectByName(rule)) {
       return;
@@ -801,9 +801,9 @@ goog.getHashCode = function(obj) {
   // In IE, DOM nodes do not extend Object so they do not have this method.
   // we need to check hasOwnProperty because the proto might have this set.
 
-  // TODO: There is a proposal to add hashcode as a global function to JS2
-  //            we should keep track of this process so we can use that whenever
-  //            it starts to show up in the real world.
+  // TODO(abliss): There is a proposal to add hashcode as a global function to
+  //               JS2 we should keep track of this process so we can use that
+  //               whenever it starts to show up in the real world.
   if (obj.hasOwnProperty && obj.hasOwnProperty(goog.HASH_CODE_PROPERTY_)) {
     return obj[goog.HASH_CODE_PROPERTY_];
   }
@@ -859,7 +859,7 @@ goog.cloneObject = function(proto) {
   var type = goog.typeOf(proto);
   if (type == 'object' || type == 'array') {
     if (proto.clone) {
-      // TODO Change to proto.clone() once # args warn is removed
+      // TODO(abliss): Change to proto.clone() once # args warn is removed
       return proto.clone.call(proto);
     }
     var clone = type == 'array' ? [] : {};
@@ -878,7 +878,7 @@ goog.cloneObject = function(proto) {
  * compiler can better support duck-typing constructs as used in
  * goog.cloneObject.
  *
- * TODO: Remove once the JSCompiler can infer that the check for
+ * TODO(abliss): Remove once the JSCompiler can infer that the check for
  * proto.clone is safe in goog.cloneObject.
  *
  * @type {Function}

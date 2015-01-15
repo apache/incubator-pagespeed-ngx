@@ -231,7 +231,7 @@ DEFINE_int64(lru_cache_size_bytes, 10 * 1024 * 1024, "LRU cache size");
 DEFINE_bool(force_caching, false,
             "Ignore caching headers and cache everything.");
 DEFINE_bool(flush_html, false, "Pass fetcher-generated flushes through HTML");
-// TODO(pulkig): Remove proactively_freshen_user_facing_request flag after
+// TODO(pulkitg): Remove proactively_freshen_user_facing_request flag after
 // testing is done.
 DEFINE_bool(proactively_freshen_user_facing_request, false,
             "Proactively freshen user facing requests if they are about to"

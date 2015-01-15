@@ -1987,7 +1987,7 @@ TEST_F(CollapseWhitespaceGeneralTest, CollapseAfterCombine) {
            link in noscript tag
            change in 'media'
            incompatible domain
-           intervening inline style tag (TODO: outline first?)
+           intervening inline style tag (TODO(jmarantz): outline first?)
 */
 
 }  // namespace

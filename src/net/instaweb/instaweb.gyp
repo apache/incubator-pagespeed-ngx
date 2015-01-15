@@ -1251,7 +1251,7 @@
       ],
     },
     {
-      # TODO: break this up into sub-libs (mocks, real, etc)
+      # TODO(lsong): break this up into sub-libs (mocks, real, etc)
       'target_name': 'instaweb_util',
       'type': '<(library)',
       'dependencies': [

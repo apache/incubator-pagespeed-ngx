@@ -738,7 +738,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
     fi
     check_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" \
       grep -q "Cache-Control: ${OUT_CC:-max-age=[0-9]*}$"
-    # TODO: check file type of webp.  Irrelevant for now.
+    # TODO(jmaessen): check file type of webp.  Irrelevant for now.
   }
 
   ##############################################################################

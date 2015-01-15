@@ -289,6 +289,7 @@ pagespeed.MobUtil.findBackgroundImage = function(element) {
             (image.indexOf('url(') == 0) &&
             (image[image.length - 1] == ')')) {
           image = image.substring(4, image.length - 1);
+          return image;
 
           // TODO(jmarantz): change logic to handle multiple comma-separated
           // background images, which will be overlayed on one another.  E.g.
@@ -302,7 +303,7 @@ pagespeed.MobUtil.findBackgroundImage = function(element) {
       }
     }
   }
-  return image;
+  return null;
 };
 
 

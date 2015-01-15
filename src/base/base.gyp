@@ -6,7 +6,7 @@
 # dependencies of this package.  Specifically, we would like to avoid
 # depending on the chrome directory, which contains the chrome version
 # and branding information.
-# TODO: push this refactoring to chronium trunk.
+# TODO(morlovich): push this refactoring to chronium trunk.
 
 {
   'variables': {
