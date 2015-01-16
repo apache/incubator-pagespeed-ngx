@@ -45,6 +45,8 @@ extern "C" {
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/http/response_headers.h"
 #include "pagespeed/kernel/http/response_headers_parser.h"
+#include "pagespeed/kernel/thread/pthread_mutex.h"
+
 
 namespace net_instaweb {
 
@@ -52,6 +54,51 @@ typedef bool (*response_handler_pt)(ngx_connection_t* c);
 
 class NgxUrlAsyncFetcher;
 class NgxConnection;
+
+class NgxConnection : public PoolElement<NgxConnection> {
+ public:
+  NgxConnection(MessageHandler* handler, int max_keepalive_requests);
+  ~NgxConnection();
+  void SetSock(u_char *sockaddr, socklen_t socklen) {
+    socklen_ = socklen;
+    ngx_memcpy(&sockaddr_, sockaddr, socklen);
+  }
+  // Close ensures that NgxConnection deletes itself at the appropriate time,
+  // which can be after receiving a non-keepalive response, or when the remote
+  // server closes the connection when the NgxConnection is pooled and idle.
+  void Close();
+
+  // Once keepalive is disabled, it can't be toggled back on.
+  void set_keepalive(bool k) { keepalive_ = keepalive_ && k; }
+  bool keepalive() { return keepalive_; }
+
+  typedef Pool<NgxConnection> NgxConnectionPool;
+
+  static NgxConnection* Connect(ngx_peer_connection_t* pc,
+                                MessageHandler* handler,
+                                int max_keepalive_requests);
+  static void IdleWriteHandler(ngx_event_t* ev);
+  static void IdleReadHandler(ngx_event_t* ev);
+  // Terminate will cleanup any idle connections upon shutdown.
+  static void Terminate();
+
+  static NgxConnectionPool connection_pool;
+  static PthreadMutex connection_pool_mutex;
+
+  // c_ is owned by NgxConnection and freed in ::Close()
+  ngx_connection_t* c_;
+  static const int64 keepalive_timeout_ms;
+  static const GoogleString ka_header;
+
+ private:
+  int max_keepalive_requests_;
+  bool keepalive_;
+  socklen_t socklen_;
+  u_char sockaddr_[NGX_SOCKADDRLEN];
+  MessageHandler* handler_;
+
+  DISALLOW_COPY_AND_ASSIGN(NgxConnection);
+};
 
 class NgxFetch : public PoolElement<NgxFetch> {
  public:

@@ -169,6 +169,7 @@ if [ $ngx_found = yes ]; then
     $ps_src/log_message_handler.h \
     $ps_src/ngx_base_fetch.h \
     $ps_src/ngx_caching_headers.h \
+    $ps_src/ngx_event_connection.h \
     $ps_src/ngx_fetch.h \
     $ps_src/ngx_gzip_setter.h \
     $ps_src/ngx_list_iterator.h \
@@ -183,6 +184,7 @@ if [ $ngx_found = yes ]; then
     $ps_src/log_message_handler.cc \
     $ps_src/ngx_base_fetch.cc \
     $ps_src/ngx_caching_headers.cc \
+    $ps_src/ngx_event_connection.cc \
     $ps_src/ngx_fetch.cc \
     $ps_src/ngx_gzip_setter.cc \
     $ps_src/ngx_list_iterator.cc \
