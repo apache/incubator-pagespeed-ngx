@@ -57,6 +57,11 @@ class DomainRewriteFilter : public CommonFilter {
     kFail,
   };
 
+  enum HeaderSource {
+    kHttp,
+    kMetaHttpEquiv
+  };
+
   // Rewrites the specified URL (which might be relative to the base tag)
   // into an absolute sharded url.
   //
@@ -72,17 +77,46 @@ class DomainRewriteFilter : public CommonFilter {
                                bool apply_domain_suffix,
                                GoogleString* output_url);
 
-  // Update the url in the location header as per the rewrite rules configured
+  // Update url and domains in headers as per the rewrite rules configured
   // for this domain.
+  //
+  // For now this only fixes Location: and Refresh:
+  // TODO(morlovich): Also adjust Set-Cookie:
   //
   // static since we may need to do it in Apache with no appropriate
   // RewriteDriver available.
-  static void UpdateLocationHeader(const GoogleUrl& base_url,
-                                   const ServerContext* server_context,
-                                   const RewriteOptions* options,
-                                   ResponseHeaders* headers);
+  static void UpdateDomainHeaders(const GoogleUrl& base_url,
+                                  const ServerContext* server_context,
+                                  const RewriteOptions* options,
+                                  ResponseHeaders* headers);
+
+  // Update an indivual header based on domain rewrite rules. Returns true
+  // if a change was made, in which case *out should be committed.
+  static bool UpdateOneDomainHeader(HeaderSource src,
+                                    const GoogleUrl& base_url,
+                                    const ServerContext* server_context,
+                                    const RewriteOptions* options,
+                                    StringPiece name,
+                                    StringPiece value_in,
+                                    GoogleString* out);
+
+  // Tries to parse the content of a Refresh header, returning if successful.
+  // *before gets anything before the URL or its opening quotes. *url gets the
+  // portion of parse that's the URL itself, and *after gets everything after
+  // the URL and its closing quote, if any. Note that this means that
+  // reassembling the URL may require addition of new quotes and escaping.
+  static bool ParseRefreshContent(StringPiece parse,
+                                  StringPiece* before,
+                                  StringPiece* url,
+                                  StringPiece* after);
 
  private:
+  static void TryUpdateOneHttpDomainHeader(const GoogleUrl& base_url,
+                                           const ServerContext* server_context,
+                                           const RewriteOptions* options,
+                                           StringPiece name,
+                                           ResponseHeaders* headers);
+
   // Stats on how much domain-rewriting we've done.
   Variable* rewrite_count_;
 

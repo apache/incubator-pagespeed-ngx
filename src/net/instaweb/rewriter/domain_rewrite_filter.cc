@@ -53,15 +53,9 @@ DomainRewriteFilter::DomainRewriteFilter(RewriteDriver* rewrite_driver,
       rewrite_count_(stats->GetVariable(kDomainRewrites)) {}
 
 void DomainRewriteFilter::StartDocumentImpl() {
-  bool rewrite_hyperlinks = driver()->options()->domain_rewrite_hyperlinks();
-
-  if (rewrite_hyperlinks) {
-    // TODO(nikhilmadan): Rewrite the domain for cookies.
-    // Rewrite the Location header for redirects.
-    UpdateLocationHeader(driver()->base_url(), driver()->server_context(),
-                         driver()->options(),
-                         driver()->mutable_response_headers());
-  }
+  UpdateDomainHeaders(driver()->base_url(), driver()->server_context(),
+                      driver()->options(),
+                      driver()->mutable_response_headers());
 }
 
 DomainRewriteFilter::~DomainRewriteFilter() {}
@@ -70,22 +64,149 @@ void DomainRewriteFilter::InitStats(Statistics* statistics) {
   statistics->AddVariable(kDomainRewrites);
 }
 
-void DomainRewriteFilter::UpdateLocationHeader(
+void DomainRewriteFilter::UpdateDomainHeaders(
     const GoogleUrl& base_url, const ServerContext* server_context,
     const RewriteOptions* options, ResponseHeaders* headers) {
-  if (headers != NULL) {
-    const char* location = headers->Lookup1(HttpAttributes::kLocation);
-    if (location != NULL) {
-      GoogleString new_location;
+  if (headers == NULL) {
+    return;
+  }
+  TryUpdateOneHttpDomainHeader(base_url, server_context, options,
+                               HttpAttributes::kLocation, headers);
+  TryUpdateOneHttpDomainHeader(base_url, server_context, options,
+                               HttpAttributes::kRefresh, headers);
+}
+
+void DomainRewriteFilter::TryUpdateOneHttpDomainHeader(
+    const GoogleUrl& base_url,
+    const ServerContext* server_context,
+    const RewriteOptions* options,
+    StringPiece name,
+    ResponseHeaders* headers) {
+  const char* val = headers->Lookup1(name);
+  if (val != NULL) {
+    GoogleString new_val;
+    if (UpdateOneDomainHeader(kHttp, base_url, server_context, options,
+                              name, val, &new_val)) {
+      headers->Replace(name, new_val);
+    }
+  }
+}
+
+bool DomainRewriteFilter::UpdateOneDomainHeader(
+    HeaderSource src, const GoogleUrl& base_url,
+    const ServerContext* server_context, const RewriteOptions* options,
+    StringPiece name, StringPiece value_in, GoogleString* out) {
+  bool rewrite_hyperlinks = options->domain_rewrite_hyperlinks();
+  if (!rewrite_hyperlinks) {
+    return false;
+  }
+
+  if (src == kHttp && StringCaseEqual(name, HttpAttributes::kLocation)) {
+    DomainRewriteFilter::RewriteResult status = Rewrite(
+        value_in, base_url, server_context, options,
+        false /* !apply_sharding */, true /* apply_domain_suffix*/,
+        out);
+    return (status == kRewroteDomain);
+  }
+
+  if (StringCaseEqual(name, HttpAttributes::kRefresh)) {
+    StringPiece before, url, after;
+    if (ParseRefreshContent(value_in, &before, &url, &after)) {
+      GoogleString rewritten_url;
       DomainRewriteFilter::RewriteResult status = Rewrite(
-          location, base_url, server_context, options,
+          url, base_url, server_context, options,
           false /* !apply_sharding */, true /* apply_domain_suffix*/,
-          &new_location);
+          &rewritten_url);
       if (status == kRewroteDomain) {
-        headers->Replace(HttpAttributes::kLocation, new_location);
+        // We quote the URL with ". This is because the double-quote
+        // isn't a reserved character in URLs, so %-encoding to encode any
+        // pre-existing doubles quotes is safe, while doing so with single
+        // quotes is not guaranteed to be a no-op.
+        // (see rfc3986, 2.2)
+        GlobalReplaceSubstring("\"", "%22", &rewritten_url);
+        out->assign(StrCat(before, "\"", rewritten_url, "\"", after));
+        return true;
+      } else {
+        return false;
       }
     }
   }
+  // TODO(morlovich): Rewrite the domain for cookies.
+  return false;
+}
+
+bool DomainRewriteFilter::ParseRefreshContent(StringPiece input,
+                                              StringPiece* before,
+                                              StringPiece* url,
+                                              StringPiece* after) {
+  // Refresh is commonly found in Http-Equiv, but also works in HTTP headers;
+  // it appears to never have been spec'd for HTTP use, but thankfully
+  // HTML5 specifies its syntax:
+  // https://html.spec.whatwg.org/multipage/semantics.html#attr-meta-http-equiv-refresh
+  // ... except that spec seems to not match reality (as tested on Chrome and
+  // FF on Linux) on two points:
+  // 1) Embedded whitespace is not actually stripped.
+  // 2) url= is not actually required.
+  StringPiece parse = input;
+  TrimLeadingWhitespace(&parse);
+
+  // Skip over the delay.
+  while (!parse.empty()) {
+    char inp = parse[0];
+    if ((inp >= '0' && inp <= '9') || inp == '.') {
+      parse.remove_prefix(1);
+    } else {
+      break;
+    }
+  }
+
+  TrimLeadingWhitespace(&parse);
+  if (parse.empty() || (parse[0] != ',' && parse[0] != ';')) {
+    return false;
+  }
+  parse.remove_prefix(1);
+
+  TrimLeadingWhitespace(&parse);
+  // Try to match the (effectivelly optional) url=
+  if (StringCaseStartsWith(parse, "url")) {
+    StringPiece spec = parse;
+    spec.remove_prefix(3);
+    TrimLeadingWhitespace(&spec);
+    if (spec.starts_with("=")) {
+      spec.remove_prefix(1);
+      parse = spec;
+    }
+  }
+
+  // See if there is any quoting.
+  TrimLeadingWhitespace(&parse);
+  // ... but regardless, the pre-URL + maybe-quotes portion ends here.
+  *before = StringPiece(input.data(), parse.data() - input.data());
+
+  char quote = ' ';  // used to mark no quote.
+  if (parse.starts_with("'")) {
+    quote = '\'';
+    parse.remove_prefix(1);
+  } else if (parse.starts_with("\"")) {
+    quote = '"';
+    parse.remove_prefix(1);
+  }
+
+  stringpiece_ssize_type quote_pos =
+      quote == ' ' ? StringPiece::npos : parse.find(quote);
+  if (quote_pos != StringPiece::npos) {
+    *url = parse.substr(0, quote_pos);
+    const char* after_start = url->data() + url->length() + 1;
+    *after = StringPiece(after_start,
+                        input.data() + input.length() - after_start);
+  } else {
+    *url = parse;
+    // Nothing after.
+    *after = StringPiece();
+  }
+  TrimWhitespace(url);
+
+  return !url->empty();
 }
 
 void DomainRewriteFilter::StartElementImpl(HtmlElement* element) {
@@ -133,6 +254,26 @@ void DomainRewriteFilter::StartElementImpl(HtmlElement* element) {
           rewrite_count_->Add(1);
         }
       }
+    }
+  }
+
+  // Rewrite any <meta http-equiv="a" content="b">
+  if (element->keyword() == HtmlName::kMeta) {
+    const char* equiv = element->AttributeValue(HtmlName::kHttpEquiv);
+    HtmlElement::Attribute* content_attr =
+        element->FindAttribute(HtmlName::kContent);
+    const char* content = (content_attr != NULL) ?
+                              content_attr->DecodedValueOrNull() : NULL;
+    GoogleString out;
+    if (equiv != NULL && content != NULL &&
+        UpdateOneDomainHeader(kMetaHttpEquiv,
+                              driver()->base_url(),
+                              driver()->server_context(),
+                              driver()->options(),
+                              equiv,
+                              content,
+                              &out)) {
+      content_attr->SetValue(out);
     }
   }
 }

@@ -265,8 +265,8 @@ TEST_F(DomainRewriteFilterTest, ProxySuffix) {
   // Also test that we can fix up location: headers.
   ResponseHeaders headers;
   headers.Add(HttpAttributes::kLocation, "https://sub.example.com/a.html");
-  DomainRewriteFilter::UpdateLocationHeader(gurl, server_context(),
-                                            options(), &headers);
+  DomainRewriteFilter::UpdateDomainHeaders(gurl, server_context(),
+                                           options(), &headers);
   EXPECT_STREQ("https://sub.example.com.suffix/a.html",
                headers.Lookup1(HttpAttributes::kLocation));
 }
@@ -300,6 +300,114 @@ TEST_F(DomainRewriteFilterTest, ProxyBaseUrl) {
                     StrCat("<html><head><base href='",
                            origin_with_suffix,
                            "/'/></head></html>"));
+}
+
+TEST_F(DomainRewriteFilterTest, TestParseRefreshContent) {
+  StringPiece before, url, after;
+  EXPECT_FALSE(
+      DomainRewriteFilter::ParseRefreshContent("42", &before, &url, &after));
+  EXPECT_FALSE(
+      DomainRewriteFilter::ParseRefreshContent("42 !", &before, &url, &after));
+  EXPECT_FALSE(
+      DomainRewriteFilter::ParseRefreshContent("42, ", &before, &url, &after));
+
+  // Real-life, not spec behavior.
+  EXPECT_TRUE(
+      DomainRewriteFilter::ParseRefreshContent("42, rul",
+                                               &before, &url, &after));
+  EXPECT_EQ("42, ", before);
+  EXPECT_EQ("rul", url);
+  EXPECT_EQ("", after);
+
+  // Real-life, not spec behavior.
+  EXPECT_TRUE(
+      DomainRewriteFilter::ParseRefreshContent("43, url",
+                                               &before, &url, &after));
+  EXPECT_EQ("43, ", before);
+  EXPECT_EQ("url", url);
+  EXPECT_EQ("", after);
+
+
+  EXPECT_FALSE(
+      DomainRewriteFilter::ParseRefreshContent("42, url = ",
+                                               &before, &url, &after));
+
+  EXPECT_TRUE(
+      DomainRewriteFilter::ParseRefreshContent("44, url=a.org",
+                                               &before, &url, &after));
+  EXPECT_EQ("44, url=", before);
+  EXPECT_EQ("a.org", url);
+  EXPECT_EQ("", after);
+
+  EXPECT_TRUE(
+      DomainRewriteFilter::ParseRefreshContent(" 42.45; UrL = b.com  ",
+                                               &before, &url, &after));
+  EXPECT_EQ(" 42.45; UrL = ", before);
+  EXPECT_EQ("b.com", url);
+  EXPECT_EQ("", after);
+
+  EXPECT_TRUE(
+      DomainRewriteFilter::ParseRefreshContent(" 42 ; url='c.gov ' ",
+                                               &before, &url, &after));
+  EXPECT_EQ(" 42 ; url=", before);
+  EXPECT_EQ("c.gov", url);
+  EXPECT_EQ(" ", after);
+
+  EXPECT_TRUE(
+      DomainRewriteFilter::ParseRefreshContent(" 42 ; url='c.gov 'foo",
+                                               &before, &url, &after));
+  EXPECT_EQ(" 42 ; url=", before);
+  EXPECT_EQ("c.gov", url);
+  EXPECT_EQ("foo", after);
+
+  EXPECT_TRUE(
+      DomainRewriteFilter::ParseRefreshContent(" 42 ; url=\"d.edu ",
+                                               &before, &url, &after));
+  EXPECT_EQ(" 42 ; url=", before);
+  EXPECT_EQ("d.edu", url);
+  EXPECT_EQ("", after);
+}
+
+TEST_F(DomainRewriteFilterTest, ProxySuffixRefresh) {
+  options()->ClearSignatureForTesting();
+  options()->set_domain_rewrite_hyperlinks(true);
+  static const char kSuffix[] = ".suffix";
+  static const char kOriginalHost[] = "www.example.com";
+  GoogleString origin_no_suffix(StrCat("http://", kOriginalHost));
+  GoogleString origin_with_suffix(StrCat(origin_no_suffix, kSuffix));
+  GoogleString url(StrCat(origin_with_suffix, "/index.html"));
+  GoogleUrl gurl(url);
+  options()->WriteableDomainLawyer()->set_proxy_suffix(kSuffix);
+  EXPECT_TRUE(options()->domain_lawyer()->can_rewrite_domains());
+
+  add_html_tags_ = false;
+  ValidateExpectedUrl(url,
+                      StrCat("<meta http-equiv=refresh content=\"5; url=",
+                             origin_no_suffix, "\">"),
+                      StrCat("<meta http-equiv=refresh content=\"5; url=",
+                             "&quot;", origin_with_suffix, "/&quot;\">"));
+
+  // Also test that we can fix it up in headers.
+  ResponseHeaders headers;
+  headers.Add(HttpAttributes::kRefresh, "42; https://sub.example.com/a.html");
+  DomainRewriteFilter::UpdateDomainHeaders(gurl, server_context(),
+                                           options(), &headers);
+  EXPECT_STREQ("42; \"https://sub.example.com.suffix/a.html\"",
+               headers.Lookup1(HttpAttributes::kRefresh));
+
+  // Make sure we quote things correctly. This can't be a suffix, but requires
+  // the more usual mapping.
+  GoogleString after = "http://someotherhost.com/\"Subdir\"";
+  options()->WriteableDomainLawyer()->Clear();
+  options()->WriteableDomainLawyer()->AddRewriteDomainMapping(
+      after, kOriginalHost, &message_handler_);
+
+  headers.Replace(HttpAttributes::kRefresh,
+                  StrCat("10; http://", kOriginalHost, "/a.html"));
+  DomainRewriteFilter::UpdateDomainHeaders(gurl, server_context(),
+                                           options(), &headers);
+  EXPECT_STREQ("10; \"http://someotherhost.com/%22Subdir%22/a.html\"",
+               headers.Lookup1(HttpAttributes::kRefresh));
 }
 
 }  // namespace net_instaweb

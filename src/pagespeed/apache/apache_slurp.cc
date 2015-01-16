@@ -240,14 +240,16 @@ bool InstawebHandler::ProxyUrl() {
 
   bool fetch_succeeded = fetch.Fetch();
   if (fetch_succeeded) {
-    if (fetch.response_headers()->status_code() >= 300 &&
-        fetch.response_headers()->status_code() <= 399) {
+    if (fetch.response_headers()->status_code() != HttpStatus::kOK) {
       // For redirects, we will need to update the Location: header.
       // We have to do it here rather than relying on normal rewriting
       // via DomainRewriteFilter since Apache 2.4's implementation of
       // AddOutputFilterByType doesn't apply to non-200s, and the check
       // doesn't appear to be possible to disable just for us.
-      DomainRewriteFilter::UpdateLocationHeader(
+      //
+      // Similarly other non-200s may have cookies, so may also need patching.
+      // (200s will get handled by DomainRewriteFilter via normal rewriting).
+      DomainRewriteFilter::UpdateDomainHeaders(
           stripped_gurl_, server_context_, server_context_->global_options(),
           fetch.response_headers());
     }
