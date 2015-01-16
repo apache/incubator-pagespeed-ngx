@@ -128,6 +128,7 @@ class MobilizeLabelFilter : public CommonFilter {
   void PropagateChildrenToParent(MobileRole::Level level);
   void Label();
   void DebugLabel();
+  void UnlabelledDiv(ElementSample* sample);
   void InjectLabelJavascript();
   void NonMobileUnlabel();
 

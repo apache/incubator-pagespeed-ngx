@@ -613,6 +613,63 @@ TEST_F(MobilizeLabelFilterTest, SmallCountNav) {
   EXPECT_EQ(2, divs_unlabeled_->Get());
 }
 
+TEST_F(MobilizeLabelFilterTest, NoLabelInsideA) {
+  // First, make sure we identify things correctly without <a>
+  const char kOutputHtmlNoA[] =
+      "<head></head><body>\n"
+      "  <div role='header' id=\"PageSpeed-1\">\n"
+      "    <h1><img src='logo.gif'>Header!</h1></div>\n"
+      " <div class='container' id=\"PageSpeed-2\">\n"
+      "  <a href='a'>a</a>\n"
+      "  <div class='menu' id='hdr' role='nav'>\n"
+      "   <ul>\n"
+      "    <li><a href='n1'>nav 1</a></li>\n"
+      "    <li><a href='n2'>nav 2</a></li>\n"
+      "    <li><a href='n3'>nav 3</a></li>\n"
+      "   </ul>\n"
+      "  </div>\n"
+      " </div>\n"
+      "<script type=\"text/javascript\">"
+      "pagespeedHeaderIds=['PageSpeed-1'];\n"
+      "pagespeedNavigationalIds=['PageSpeed-2'];\n"
+      "</script></body>";
+  ValidateExpected("Label not inside <a>",
+                   Unlabel(kOutputHtmlNoA), kOutputHtmlNoA);
+  // Now make sure that inside <a> we don't identify the header, but we do
+  // identify the nav because it in turn contains nested links indicating that
+  // the outer <a> was an error.
+  const char kOutputHtmlWithA[] =
+      "<head></head><body>\n"
+      "<a href=top.html>\n"  // Now enclosed by a
+      "  <div role='header'>\n"  // Not labeled => no id
+      "    <h1><img src='logo.gif'>Header!</h1></div></a>\n"
+      "<a href=menu.html>\n"  // Also enclosed by a
+      " <div class='container' id=\"PageSpeed-2-0\">\n"
+      "  <a href='a'>a</a>\n"  // But contains lots of a, so still label.
+      "  <div class='menu' id='hdr' role='nav'>\n"
+      "   <ul>\n"
+      "    <li><a href='n1'>nav 1</a></li>\n"
+      "    <li><a href='n2'>nav 2</a></li>\n"
+      "    <li><a href='n3'>nav 3</a></li>\n"
+      "   </ul>\n"
+      "  </div>\n"
+      " </div>\n"
+      "</a>\n"
+      "<script type=\"text/javascript\">"  // No header divs remain.
+      "pagespeedNavigationalIds=['PageSpeed-2-0'];\n"
+      "</script></body>";
+  ValidateExpected("No label inside <a>",
+                   Unlabel(kOutputHtmlWithA), kOutputHtmlWithA);
+  EXPECT_EQ(2, pages_labeled_->Get());
+  EXPECT_EQ(2, pages_role_added_->Get());
+  EXPECT_EQ(2, navigational_roles_->Get());
+  EXPECT_EQ(1, header_roles_->Get());
+  EXPECT_EQ(0, content_roles_->Get());
+  EXPECT_EQ(0, marginal_roles_->Get());
+  EXPECT_EQ(0, ambiguous_role_labels_->Get());
+  EXPECT_EQ(5, divs_unlabeled_->Get());
+}
+
 TEST_F(MobilizeLabelFilterTest, NavInsideHeader) {
   // A common pattern in sites is to have a header area with a logo and some
   // navigational content.  We'd like to flag the navigational content!

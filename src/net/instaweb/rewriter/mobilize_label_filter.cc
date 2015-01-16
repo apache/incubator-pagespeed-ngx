@@ -651,7 +651,20 @@ void MobilizeLabelFilter::EndElementImpl(HtmlElement* element) {
     return;
   }
   if (element == sample_stack_.back()->element) {
+    ElementSample* sample_to_delete = NULL;
+    if (link_depth_ > 0 &&
+        samples_.back() == sample_stack_.back() &&
+        samples_.back()->features[kRelevantTagCount + kATag] == 0.0) {
+      // Throw away samples that occur within a link (unless nested links
+      // strongly suggest this is a link in error).  Avoids nav-classifying text
+      // fragments or individual images.  We still need to aggregate the nested
+      // statistics to the parent node, though, which is done by PopSampleStack.
+      sample_to_delete = samples_.back();
+      UnlabelledDiv(sample_to_delete);
+      samples_.pop_back();
+    }
     PopSampleStack();
+    delete sample_to_delete;
   }
   if (FindTagMetadata(element->keyword()) != NULL) {
     --relevant_tag_depth_;
@@ -1100,12 +1113,22 @@ void MobilizeLabelFilter::DebugLabel() {
   }
 }
 
+// The div corresponding to *sample will be unlabelled.  Bump stats and remove
+// its id if it was PageSpeed-inserted.
+void MobilizeLabelFilter::UnlabelledDiv(ElementSample* sample) {
+  divs_unlabeled_->Add(1);
+  if (!driver()->DebugMode() && driver()->IsRewritable(sample->element) &&
+      StringPiece(sample->id).starts_with(AddIdsFilter::kClassPrefix)) {
+    // Strip out id if it was inserted by PageSpeed.
+    sample->element->DeleteAttribute(HtmlName::kId);
+  }
+}
+
 void MobilizeLabelFilter::InjectLabelJavascript() {
   // Go through the nodes in DOM order and collect role transition points.
   GoogleString role_id_list_js[MobileRole::kInvalid];
   int n = samples_.size();
   bool any_roles_listed = false;
-  bool debug_mode = driver()->DebugMode();
   for (int i = 1; i < n; ++i) {
     ElementSample* sample = samples_[i];
     MobileRole::Level role = sample->role;
@@ -1125,12 +1148,7 @@ void MobilizeLabelFilter::InjectLabelJavascript() {
         continue;
       }
     }
-    divs_unlabeled_->Add(1);
-    if (!debug_mode && driver()->IsRewritable(sample->element) &&
-        StringPiece(sample->id).starts_with(AddIdsFilter::kClassPrefix)) {
-      // Strip out id if it was inserted by PageSpeed.
-      sample->element->DeleteAttribute(HtmlName::kId);
-    }
+    UnlabelledDiv(sample);
   }
   if (!any_roles_listed) {
     // Don't inject any code if there's nothing to do.
