@@ -23,7 +23,7 @@ goog.require('goog.color');
 goog.require('goog.dom');
 goog.require('goog.math.Box');
 goog.require('goog.string');
-
+goog.require('goog.uri.utils');
 
 
 /**
@@ -654,62 +654,51 @@ pagespeed.MobUtil.resourceFileName = function(url) {
 
 
 /**
- * Try to add proxy suffix and 'www.' prefix to URL so it has the same origin
- * as the HTML.
+ * Add proxy suffix and/or 'www.' prefix to URL, if it makes the URL to have
+ * the same orgin as the HTML; otherwise, return the original URL. This method
+ * also replaces the scheme with that of the HTML when it modifies the URL.
  *
- * For example, if the origin is 'sub.example.com.psproxy.net',
+ * For example, if the origin is 'http://sub.example.com.psproxy.net',
  * URL 'http://sub.example.com/image.jpg' will be converted to
  * 'http://sub.example.com.psproxy.net/image.jpg'.
  *
- * As another example, if the origin is 'www.example.com.psproxy.net',
+ * As another example, if the origin is 'https://www.example.com.psproxy.net',
  * URL 'http://example.com/image.jpg' and
  * URL 'http://example.com.psproxy.net/image.jpg' will be converted to
- * 'http://www.example.com.psproxy.net/image.jpg'.
+ * 'https://www.example.com.psproxy.net/image.jpg'.
  *
  * @param {string} url
+ * @param {?string=} opt_origin Origin used for testing
  * @return {string}
  */
-pagespeed.MobUtil.proxyImageUrl = function(url) {
-  if (!url) {
-    return '';
-  }
+pagespeed.MobUtil.proxyImageUrl = function(url, opt_origin) {
+  var origin = opt_origin || document.location.origin;
+  var originDomain = goog.uri.utils.getDomain(origin);
+  var urlDomain = goog.uri.utils.getDomain(url);
 
-  // If this URL has the same origin as the HTML, we don't need to do anything.
-  if (!pagespeed.MobUtil.isCrossOrigin(url)) {
+  if (originDomain == null || urlDomain == null) {
     return url;
   }
 
-  // Skip suffix after last 2 dots. For example, 'www.example.com.psproxy.net'
-  // will become 'www.example.com'.
-  var domain = document.domain;
-  var domainWithoutProxy =
-      pagespeed.MobUtil.removeSuffixNTimes(domain, '.', 2);
-
-  // If domain is 'www.example.com' while image is
-  // 'http://example.com/image.url', modify the image URL so it has the same
-  // domain as the HTML.
-  // TODO(huibao): Investigate whether to add sub-domain prefix (including
-  // 'www.') if this is missing in the URL.
-  var pos = null;
-  if (domainWithoutProxy.indexOf('www.') == 0 && url.indexOf('//www.') < 0) {
-    var domainWithoutWwwProxy = domainWithoutProxy.substring(4);
-    pos = url.indexOf(domainWithoutWwwProxy);
-    if (pos >= 0) {
-      url = url.substring(0, pos) + domainWithoutProxy +
-          url.substring(pos + domainWithoutWwwProxy.length);
+  var canProxy = false;
+  if (originDomain == urlDomain) {
+    canProxy = true;
+  } else if (originDomain.indexOf(urlDomain) >= 0) {
+    var originDomainPieces = originDomain.split('.');
+    var len = originDomainPieces.length;
+    if (len >= 3 &&
+        (urlDomain == originDomainPieces.slice(0, len - 2).join('.') ||
+         (originDomainPieces[0] == 'www' &&
+          (urlDomain == originDomainPieces.slice(1, len - 2).join('.') ||
+           urlDomain == originDomainPieces.slice(1, len).join('.'))))) {
+      canProxy = true;
     }
   }
 
-  if (!pagespeed.MobUtil.isCrossOrigin(url)) {
-    return url;
+  if (canProxy) {
+    var urlPos = url.indexOf(urlDomain) + urlDomain.length;
+    return (origin + url.substring(urlPos));
   }
-
-  pos = url.indexOf(domainWithoutProxy);
-  if (pos >= 0) {
-    url = url.substring(0, pos) + domain +
-        url.substring(pos + domainWithoutProxy.length, url.length);
-  }
-
   return url;
 };
 
