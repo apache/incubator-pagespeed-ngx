@@ -1181,6 +1181,22 @@ http {
   }
 
   server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name headers.example.com;
+    root "@@SERVER_ROOT@@";
+    pagespeed FileCachePath "@@FILE_CACHE@@_purge";
+    pagespeed RewriteLevel CoreFilters;
+
+    pagespeed InPlaceRewriteDeadlineMs -1;
+    pagespeed LoadFromFile "http://headers.example.com/"
+              "@@SERVER_ROOT@@/";
+    location /mod_pagespeed_test/ {
+      more_set_headers "Server: overriden";
+    }
+  }
+
+  server {
     listen @@PRIMARY_PORT@@;
     listen [::]:@@PRIMARY_PORT@@;
     server_name  localhost;
