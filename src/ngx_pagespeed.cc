@@ -542,8 +542,6 @@ ngx_int_t copy_response_headers_to_ngx(
       continue;
     } else if (STR_EQ_LITERAL(name, "Transfer-Encoding")) {
       continue;
-    } else if (STR_EQ_LITERAL(name, "Server")) {
-      continue;
     }
 
     u_char* name_s = ngx_pstrdup(r->pool, &name);
