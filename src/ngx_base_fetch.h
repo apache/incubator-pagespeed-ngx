@@ -64,12 +64,19 @@ extern "C" {
 
 namespace net_instaweb {
 
+enum NgxBaseFetchType {
+  kIproLookup,
+  kHtmlTransform,
+  kPageSpeedResource,
+  kAdminPage
+};
 
 class NgxBaseFetch : public AsyncFetch {
  public:
   NgxBaseFetch(ngx_http_request_t* r, NgxServerContext* server_context,
                const RequestContextPtr& request_ctx,
-               PreserveCachingHeaders preserve_caching_headers);
+               PreserveCachingHeaders preserve_caching_headers,
+               NgxBaseFetchType base_fetch_type);
   virtual ~NgxBaseFetch();
   // Statically initializes event_connection, require for PSOL and nginx to
   // communicate.
@@ -99,8 +106,6 @@ class NgxBaseFetch : public AsyncFetch {
 
   // Called by pagespeed to increment the refcount.
   int IncrementRefCount();
-
-  void set_ipro_lookup(bool x) { ipro_lookup_ = x; }
 
   // Detach() is called when the nginx side releases this base fetch. It
   // sets detached_ to true and decrements the refcount. We need to know
@@ -151,10 +156,11 @@ class NgxBaseFetch : public AsyncFetch {
   // decremented on the nginx side for each event read for it.
   int references_;
   pthread_mutex_t mutex_;
-  bool ipro_lookup_;
+  NgxBaseFetchType base_fetch_type_;
   PreserveCachingHeaders preserve_caching_headers_;
   // Set to true just before the nginx side releases its reference
   bool detached_;
+  bool suppress_;
 
   DISALLOW_COPY_AND_ASSIGN(NgxBaseFetch);
 };
