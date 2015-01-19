@@ -38,16 +38,18 @@ NgxEventConnection* NgxBaseFetch::event_connection = NULL;
 NgxBaseFetch::NgxBaseFetch(ngx_http_request_t* r,
                            NgxServerContext* server_context,
                            const RequestContextPtr& request_ctx,
-                           PreserveCachingHeaders preserve_caching_headers)
+                           PreserveCachingHeaders preserve_caching_headers,
+                           NgxBaseFetchType base_fetch_type)
     : AsyncFetch(request_ctx),
       request_(r),
       server_context_(server_context),
       done_called_(false),
       last_buf_sent_(false),
       references_(2),
-      ipro_lookup_(false),
+      base_fetch_type_(base_fetch_type),
       preserve_caching_headers_(preserve_caching_headers),
-      detached_(false) {
+      detached_(false),
+      suppress_(false) {
   if (pthread_mutex_init(&mutex_, NULL)) CHECK(0);
 }
 
@@ -69,16 +71,32 @@ void NgxBaseFetch::Terminate() {
   }
 }
 
+const char* BaseFetchTypeToCStr(NgxBaseFetchType type) {
+  switch(type) {
+    case kPageSpeedResource:
+      return "ps resource";
+    case kHtmlTransform:
+      return "html transform";
+    case kAdminPage:
+      return "admin page";
+    case kIproLookup:
+      return "ipro lookup";
+  }
+  CHECK(false);
+  return "can't get here";
+}
+
 void NgxBaseFetch::ReadCallback(const ps_event_data& data) {
   NgxBaseFetch* base_fetch = reinterpret_cast<NgxBaseFetch*>(data.sender);
   ngx_http_request_t* r = base_fetch->request();
   bool detached = base_fetch->detached();
+  const char* type = BaseFetchTypeToCStr(base_fetch->base_fetch_type_);
   int refcount = base_fetch->DecrementRefCount();
 
   #if (NGX_DEBUG)
   ngx_log_error(NGX_LOG_DEBUG, ngx_cycle->log, 0,
-     "pagespeed [%p] event: %c. bf:%p - refcnt:%d - det: %c", r,
-     data.type, base_fetch, refcount, detached ? 'Y': 'N');
+     "pagespeed [%p] event: %c. bf:%p (%s) - refcnt:%d - det: %c", r,
+     data.type, base_fetch, type, refcount, detached ? 'Y': 'N');
   #endif
 
   // If we ended up destructing the base fetch, or the request context is
@@ -99,7 +117,8 @@ void NgxBaseFetch::ReadCallback(const ps_event_data& data) {
 
   // If we are unlucky enough to have our connection finalized mid-ipro-lookup,
   // we must enter a different flow. Also see ps_in_place_check_header_filter().
-  if (!ctx->base_fetch->ipro_lookup_ && r->connection->error) {
+  if ((ctx->base_fetch->base_fetch_type_ != kIproLookup)
+      && r->connection->error) {
     ngx_log_error(NGX_LOG_DEBUG, ngx_cycle->log, 0,
       "pagespeed [%p] request already finalized", r);
     ngx_http_finalize_request(r, NGX_ERROR);
@@ -184,6 +203,10 @@ ngx_int_t NgxBaseFetch::CollectHeaders(ngx_http_headers_out_t* headers_out) {
 }
 
 void NgxBaseFetch::RequestCollection(char type) {
+  if (suppress_) {
+    return;
+  }
+
   // We must optimistically increment the refcount, and decrement it
   // when we conclude we failed. If we only increment on a successfull write,
   // there's a small chance that between writing and adding to the refcount
@@ -199,19 +222,21 @@ void NgxBaseFetch::HandleHeadersComplete() {
   int status_code = response_headers()->status_code();
   bool status_ok = (status_code != 0) && (status_code < 400);
 
-  if (!ipro_lookup_ || status_ok) {
+  if ((base_fetch_type_ != kIproLookup) || status_ok) {
     // If this is a 404 response we need to count it in the stats.
     if (response_headers()->status_code() == HttpStatus::kNotFound) {
       server_context_->rewrite_stats()->resource_404_count()->Add(1);
     }
   }
 
+  RequestCollection(kHeadersComplete);  // Headers available.
+
   // For the IPRO lookup, supress notification of the nginx side here.
-  // If we send both this event and the one from done, nasty stuff will happen
-  // if we loose the race with with the nginx side destructing this base fetch
-  // instance (and thereby clearing the byte and its pending extraneous event).
-  if (!ipro_lookup_) {
-    RequestCollection(kHeadersComplete);  // Headers available.
+  // If we send both the headerscomplete event and the one from done, nasty
+  // stuff will happen if we loose the race with with the nginx side destructing
+  // this base fetch instance.
+  if (base_fetch_type_ == kIproLookup && !status_ok) {
+    suppress_ = true;
   }
 }
 
