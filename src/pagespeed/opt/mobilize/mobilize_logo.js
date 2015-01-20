@@ -401,22 +401,21 @@ pagespeed.MobLogo.prototype.findBestLogo_ = function() {
 
   // Use the position and size to update the metric.
   // TODO(huibao): Split the update into a method.
-  var maxArea = 1;  // Initialize to 1 to avoid division by 0.
   var maxBot = 0;
   var minTop = Infinity;
-  var area, rect, i, candidate;
+  var rect, i, candidate;
   for (i = 0; candidate = logoCandidates[i]; ++i) {
     rect = candidate.foregroundRect;
     minTop = Math.min(minTop, rect.top);
     maxBot = Math.max(maxBot, rect.bottom);
-    area = rect.width * rect.height;
-    maxArea = Math.max(maxArea, area);
   }
   for (i = 0; candidate = logoCandidates[i]; ++i) {
     rect = candidate.foregroundRect;
-    var multTop = 1 - (rect.top - minTop) / (maxBot - minTop);
-    var multArea = rect.width * rect.height / maxArea;
-    candidate.metric *= (multTop * multArea);
+    // TODO(huibao): Investigate a better way for incorporating size and
+    // position in the selection of the best logo, for example
+    // Math.sqrt((maxBot - rect.bottom) / (maxBot - minTop)).
+    var multTop = Math.sqrt((maxBot - rect.top) / (maxBot - minTop));
+    candidate.metric *= multTop;
   }
 
   var maxMetric = 0;
