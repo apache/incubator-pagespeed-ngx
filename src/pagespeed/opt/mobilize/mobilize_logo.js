@@ -104,7 +104,7 @@ pagespeed.MobLogo.prototype.MIN_HEIGHT_ = 10;
  * @private {number}
  * @const
  */
-pagespeed.MobLogo.prototype.MAX_HEIGHT_ = 200;
+pagespeed.MobLogo.prototype.MAX_HEIGHT_ = 400;
 
 
 /**
@@ -204,7 +204,7 @@ pagespeed.MobLogo.prototype.findForeground_ = function(element, minArea,
             // correctly anyway.
             rect.width = element.naturalWidth;
             rect.height = element.naturalHeight;
-          } else {
+          } else if (!rect.width || !rect.height) {
             // TODO(huibao): Instead of printing a message and punting,
             // continue processing when the image is loaded.
             console.log('Image ' + element.src + ' may be the logo. ' +
@@ -318,6 +318,19 @@ pagespeed.MobLogo.prototype.findLogoNode_ = function(element, inheritedMetric) {
 
   var maxArea = rect.width * rect.height;
   var minArea = maxArea * this.RATIO_AREA_;
+
+  // If the element has 'href' and it points to the landing page, the element
+  // may be a logo candidate. Typical construct looks like
+  //   <a href='...'><img src='...'></a>
+  // We don't expect such element to fully cover the image, so maxArea is
+  // reset to infinity.
+  var metricHref = 0;
+  if (element.href &&
+      element.href == window.location.origin + window.location.pathname) {
+    ++metricHref;
+    maxArea = Infinity;
+  }
+
   var searchDown = true;
   // Try to seach down in the DOM tree for foreground image.
   var logoRecord = this.findForeground_(element, minArea, maxArea, searchDown);
@@ -335,7 +348,7 @@ pagespeed.MobLogo.prototype.findLogoNode_ = function(element, inheritedMetric) {
       metricOrg += pagespeed.MobUtil.findPattern(imageSrc, org);
     }
 
-    var metric = metricLogo + metricOrg;
+    var metric = metricLogo + metricOrg + metricHref;
     if (metric > 0) {
       logoRecord.metric = metric;
       logoRecord.logoElement = element;
