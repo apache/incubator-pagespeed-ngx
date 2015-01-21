@@ -97,23 +97,27 @@ void NgxBaseFetch::ReadCallback(const ps_event_data& data) {
 
   CHECK(r->count > 0) << "r->count: " << r->count;
 
+  int rc;
   // If we are unlucky enough to have our connection finalized mid-ipro-lookup,
   // we must enter a different flow. Also see ps_in_place_check_header_filter().
   if (!ctx->base_fetch->ipro_lookup_ && r->connection->error) {
     ngx_log_error(NGX_LOG_DEBUG, ngx_cycle->log, 0,
       "pagespeed [%p] request already finalized", r);
-    ngx_http_finalize_request(r, NGX_ERROR);
-    return;
+    rc = NGX_ERROR;
+  } else {
+    rc = ps_base_fetch::ps_base_fetch_handler(r);
   }
-
-  int rc = ps_base_fetch::ps_base_fetch_handler(r);
 
 #if (NGX_DEBUG)
   ngx_log_error(NGX_LOG_DEBUG, ngx_cycle->log, 0,
                 "pagespeed [%p] ps_base_fetch_handler() returned %d for %c",
                 r, rc, data.type);
 #endif
+
+  ngx_connection_t* c = r->connection;
   ngx_http_finalize_request(r, rc);
+  // See http://forum.nginx.org/read.php?2,253006,253061
+  ngx_http_run_posted_requests(c);
 }
 
 void NgxBaseFetch::Lock() {
