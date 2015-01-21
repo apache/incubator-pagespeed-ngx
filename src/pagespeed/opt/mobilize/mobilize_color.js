@@ -246,18 +246,19 @@ pagespeed.MobColor.prototype.computeColors_ = function(pixels, bkColor,
   var numBk = 0;
   var alpha = 0;
   for (x = 0; x < width; ++x) {
-    idx = 3 * ((height - 1) * width + x);
+    var idxPixel = ((height - 1) * width + x);
+    idx = 3 * idxPixel;
     bk[0] += rgb[idx];
     bk[1] += rgb[idx + 1];
     bk[2] += rgb[idx + 2];
-    alpha += pixels[idx + 3];
+    alpha += pixels[4 * idxPixel + 3];
     ++numBk;
   }
   // If the border is at least half transparent, we just use the background
   // color without considering the logo image.
   if (alpha > 0.5 * 255 * numBk) {
     for (var i = 0; i < 3; ++i) {
-      bk[i] /= numBk;
+      bk[i] = Math.floor(bk[i] / numBk);
     }
   } else {
     bk = bkColor;
