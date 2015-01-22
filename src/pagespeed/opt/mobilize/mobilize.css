@@ -89,6 +89,8 @@ body {
 
 .psmob-header-bar button img {
   padding: 0;
+  height: 50%;
+  width: 50%;
 }
 
 .psmob-header-bar button:hover {
