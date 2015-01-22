@@ -90,7 +90,9 @@ pagespeed.MobTheme.synthesizeLogoSpan_ = function(logo, backgroundColor,
     newImage.id = 'psmob-logo-image';
     logoSpan.appendChild(newImage);
   } else {
-    logoSpan.innerHTML = window.location.host;
+    logoSpan.textContent = window.location.host;
+    logoSpan.style.color =
+        pagespeed.MobUtil.colorNumbersToString(foregroundColor);
   }
 
   var menuButton = pagespeed.MobTheme.createMenuButton_(foregroundColor);
