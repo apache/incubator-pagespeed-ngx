@@ -265,7 +265,11 @@ bool GifSquare::Close() {
   }
   if (!closed_ &&
       (gif_file_ != NULL) &&
+#if GIFLIB_MAJOR < 5 || (GIFLIB_MAJOR == 5 && GIFLIB_MINOR == 0)
       !Log(EGifCloseFile(gif_file_), "EGifCloseFile")) {
+#else
+      !Log(EGifCloseFile(gif_file_, NULL), "EGifCloseFile")) {
+#endif
     return false;
   }
   closed_ = true;

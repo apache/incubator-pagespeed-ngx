@@ -44,6 +44,10 @@ extern "C" {
 #include "third_party/giflib/lib/gif_lib.h"
 }
 
+#if GIFLIB_MAJOR < 5 || (GIFLIB_MAJOR == 5 && GIFLIB_MINOR == 0)
+#define DGifCloseFile(a, b) DGifCloseFile(a)
+#endif
+
 using net_instaweb::MessageHandler;
 using pagespeed::image_compression::ScopedPngStruct;
 
@@ -565,7 +569,7 @@ bool GifReader::ReadPng(const GoogleString& body,
   bool result = ReadGifToPng(gif_file, png_ptr, info_ptr,
                              expand_colormap, strip_alpha,
                              require_opaque, message_handler_);
-  if (DGifCloseFile(gif_file) == GIF_ERROR) {
+  if (DGifCloseFile(gif_file, NULL) == GIF_ERROR) {
     PS_DLOG_INFO(message_handler_, "Failed to close GIF.");
   }
 
@@ -638,7 +642,7 @@ class ScopedGifStruct {
 
   bool Reset(ScanlineStatus* status) {
     if (gif_file_ != NULL) {
-      if (DGifCloseFile(gif_file_) == GIF_ERROR) {
+      if (DGifCloseFile(gif_file_, NULL) == GIF_ERROR) {
         *status = PS_LOGGED_STATUS(PS_LOG_INFO,
                                    message_handler_,
                                    SCANLINE_STATUS_INTERNAL_ERROR,
