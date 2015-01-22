@@ -164,13 +164,12 @@ pagespeed.MobLogo.findLogoInFileName = function(str) {
  *
  * @param {!Element} element
  * @param {number} minArea
- * @param {number} maxArea
  * @param {boolean} searchDown
  * @return {pagespeed.MobLogo.LogoRecord}
  * @private
  */
 pagespeed.MobLogo.prototype.findForeground_ = function(element, minArea,
-                                                       maxArea, searchDown) {
+                                                       searchDown) {
   var rect = pagespeed.MobUtil.boundingRectAndSize(element);
   var validVisibility = (this.psMob_.getVisibility(element) != 'hidden');
   var area = rect.width * rect.height;
@@ -180,7 +179,7 @@ pagespeed.MobLogo.prototype.findForeground_ = function(element, minArea,
       rect.top < this.MAX_TOP_ &&
       rect.height < this.MAX_HEIGHT_;
 
-  if (validVisibility && validDisplay && area >= minArea && area <= maxArea) {
+  if (validVisibility && validDisplay && area >= minArea) {
     var source = null;
     var image = null;
     for (var id in pagespeed.MobUtil.ImageSource) {
@@ -235,7 +234,7 @@ pagespeed.MobLogo.prototype.findForeground_ = function(element, minArea,
     for (var child = element.firstChild; child; child = child.nextSibling) {
       var childElement = pagespeed.MobUtil.castElement(child);
       if (childElement != null) {
-        var foreground = this.findForeground_(childElement, minArea, maxArea,
+        var foreground = this.findForeground_(childElement, minArea,
                                               searchDown);
         if (foreground) {
           return foreground;
@@ -246,7 +245,7 @@ pagespeed.MobLogo.prototype.findForeground_ = function(element, minArea,
   } else if (element.parentNode) {
     var parentElement = pagespeed.MobUtil.castElement(element.parentNode);
     if (parentElement != null) {
-      return this.findForeground_(parentElement, minArea, maxArea, searchDown);
+      return this.findForeground_(parentElement, minArea, searchDown);
     }
   }
   return null;
@@ -316,27 +315,24 @@ pagespeed.MobLogo.prototype.findLogoNode_ = function(element, inheritedMetric) {
     }
   }
 
-  var maxArea = rect.width * rect.height;
-  var minArea = maxArea * this.RATIO_AREA_;
+  var area = rect.width * rect.height;
+  var minArea = area * this.RATIO_AREA_;
 
   // If the element has 'href' and it points to the landing page, the element
   // may be a logo candidate. Typical construct looks like
   //   <a href='...'><img src='...'></a>
-  // We don't expect such element to fully cover the image, so maxArea is
-  // reset to infinity.
   var metricHref = 0;
   if (element.href &&
       element.href == window.location.origin + window.location.pathname) {
     ++metricHref;
-    maxArea = Infinity;
   }
 
   var searchDown = true;
   // Try to seach down in the DOM tree for foreground image.
-  var logoRecord = this.findForeground_(element, minArea, maxArea, searchDown);
+  var logoRecord = this.findForeground_(element, minArea, searchDown);
   if (!logoRecord) {
     // Now try searching up in the DOM tree.
-    logoRecord = this.findForeground_(element, maxArea, Infinity, !searchDown);
+    logoRecord = this.findForeground_(element, area, !searchDown);
   }
 
   if (logoRecord) {
