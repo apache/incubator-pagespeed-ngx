@@ -2942,9 +2942,9 @@ HtmlResourceSlotPtr RewriteDriver::GetSlot(
 }
 
 InlineResourceSlotPtr RewriteDriver::GetInlineSlot(
-    const ResourcePtr& resource, HtmlElement* parent) {
+    const ResourcePtr& resource, HtmlCharactersNode* char_node) {
   InlineResourceSlotPtr slot(
-      new InlineResourceSlot(resource, parent, UrlLine()));
+      new InlineResourceSlot(resource, char_node, UrlLine()));
   std::pair<InlineResourceSlotSet::iterator, bool> iter_inserted =
       inline_slots_.insert(slot);
   if (!iter_inserted.second) {

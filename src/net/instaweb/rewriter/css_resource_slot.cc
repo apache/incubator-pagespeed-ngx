@@ -54,7 +54,7 @@ CssResourceSlot::~CssResourceSlot() {
 }
 
 void CssResourceSlot::Render() {
-  if (disable_rendering()) {
+  if (disable_rendering() || preserve_urls()) {
     return;  // nothing done here.
   } else {
     GoogleString url = resource()->url();

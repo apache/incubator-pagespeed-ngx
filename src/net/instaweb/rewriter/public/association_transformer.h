@@ -112,7 +112,7 @@ class AssociationSlot : public ResourceSlot {
     if (!resource()->is_authorized_domain()) {
       return;
     }
-    if (!disable_rendering()) {
+    if (!disable_rendering() && !preserve_urls()) {
       (*map_)[key_] = resource()->url();
     }
   }

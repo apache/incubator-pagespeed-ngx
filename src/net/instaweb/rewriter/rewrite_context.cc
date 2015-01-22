@@ -40,6 +40,7 @@
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/inline_output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
@@ -2593,23 +2594,42 @@ bool RewriteContext::CreateOutputResourceForCachedOutput(
     const CachedResult* cached_result,
     OutputResourcePtr* output_resource) {
   bool ret = false;
-  GoogleUrl gurl(cached_result->url());
-  const ContentType* content_type =
-      NameExtensionToContentType(StrCat(".", cached_result->extension()));
+  // Note: We cannot simply test has_inlined_data() here, because inlined_data
+  // field is used a couple of places that do not create InlineOutputResources.
+  if (cached_result->is_inline_output_resource()) {
+    DCHECK(cached_result->has_inlined_data());
+    if (cached_result->has_inlined_data()) {
+      // Inline resource.
+      output_resource->reset(
+          InlineOutputResource::MakeInlineOutputResource(Driver()));
 
-  ResourceNamer namer;
-  if (gurl.IsWebValid() &&
-      Driver()->Decode(gurl.LeafWithQuery(), &namer)) {
-    output_resource->reset(
-        new OutputResource(Driver(),
-                           gurl.AllExceptLeaf() /* resolved_base */,
-                           gurl.AllExceptLeaf() /* unmapped_base */,
-                           Driver()->base_url().Origin() /* original_base */,
-                           namer, kind()));
-    // We trust the type here since we should have gotten it right when
-    // writing it into the cache.
-    (*output_resource)->SetType(content_type);
-    ret = true;
+      MessageHandler* handler = Driver()->message_handler();
+      Writer* writer = (*output_resource)->BeginWrite(handler);
+      ret = writer->Write(cached_result->inlined_data(), handler);
+      (*output_resource)->EndWrite(handler);
+      // Needed to indicate that this resource is loaded.
+      (*output_resource)->response_headers()->set_status_code(HttpStatus::kOK);
+    }
+  } else {
+    // External resource.
+    GoogleUrl gurl(cached_result->url());
+    const ContentType* content_type =
+        NameExtensionToContentType(StrCat(".", cached_result->extension()));
+
+    ResourceNamer namer;
+    if (gurl.IsWebValid() &&
+        Driver()->Decode(gurl.LeafWithQuery(), &namer)) {
+      output_resource->reset(
+          new OutputResource(Driver(),
+                             gurl.AllExceptLeaf() /* resolved_base */,
+                             gurl.AllExceptLeaf() /* unmapped_base */,
+                             Driver()->base_url().Origin() /* original_base */,
+                             namer, kind()));
+      // We trust the type here since we should have gotten it right when
+      // writing it into the cache.
+      (*output_resource)->SetType(content_type);
+      ret = true;
+    }
   }
   return ret;
 }

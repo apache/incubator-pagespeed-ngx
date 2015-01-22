@@ -33,6 +33,7 @@
 
 namespace net_instaweb {
 
+class CachedResults;
 class HtmlResourceSlot;
 class ResourceSlot;
 class RewriteContext;
@@ -53,6 +54,7 @@ class ResourceSlot : public RefCounted<ResourceSlot> {
  public:
   explicit ResourceSlot(const ResourcePtr& resource)
       : resource_(resource),
+        preserve_urls_(false),
         disable_rendering_(false),
         should_delete_element_(false),
         disable_further_processing_(false),
@@ -77,6 +79,11 @@ class ResourceSlot : public RefCounted<ResourceSlot> {
   // preventing unwanted interference between renderer's reads and
   // worker writes.
   void SetResource(const ResourcePtr& resource);
+
+  // Disables changing the URL of resources (does nothing if slot is not
+  // associated with a URL (for example, InlineResourceSlot).
+  void set_preserve_urls(bool x) { preserve_urls_ = x; }
+  bool preserve_urls() const { return preserve_urls_; }
 
   // If disable_rendering is true, this slot will do nothing on rendering,
   // neither changing the URL or deleting any elements. This is intended for
@@ -179,6 +186,7 @@ class ResourceSlot : public RefCounted<ResourceSlot> {
 
  private:
   ResourcePtr resource_;
+  bool preserve_urls_;
   bool disable_rendering_;
   bool should_delete_element_;
   bool disable_further_processing_;

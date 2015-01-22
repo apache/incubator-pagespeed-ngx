@@ -1353,7 +1353,7 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
       !options->Enabled(RewriteOptions::kResizeImages) &&
       !options->Enabled(RewriteOptions::kResizeToRenderedImageDimensions) &&
       !options->Enabled(RewriteOptions::kInlineImages)) {
-    slot->set_disable_rendering(true);
+    slot->set_preserve_urls(true);
   }
   driver()->InitiateRewrite(context);
 }
@@ -1506,7 +1506,8 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
     image_inlined = true;
   }
 
-  if (!image_inlined && !slot->disable_rendering()) {
+  // Rewrite URL in case this image was not inlined (and URL rewriting allowed).
+  if (!image_inlined && !slot->preserve_urls()) {
     // Not inlined means we cannot store it in local storage.
     LocalStorageCacheFilter::RemoveLscAttributes(element, driver());
     if (cached->optimizable()) {
@@ -1544,7 +1545,7 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
     int max_preview_image_index =
         driver()->options()->max_inlined_preview_images_index();
     if (!image_inlined &&
-        !slot->disable_rendering() &&
+        !slot->preserve_urls() &&
         is_critical_image &&
         driver()->request_properties()->SupportsImageInlining() &&
         driver()->server_context()->critical_images_finder()->Available(

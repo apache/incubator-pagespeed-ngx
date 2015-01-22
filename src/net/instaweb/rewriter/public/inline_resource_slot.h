@@ -31,13 +31,12 @@ class InlineResourceSlot : public ResourceSlot {
  public:
   // TODO(sligocki): Construct resource in this function??
   InlineResourceSlot(const ResourcePtr& resource,
-                     // TODO(sligocki): Take the Characters Node instead.
-                     HtmlElement* parent,
+                     HtmlCharactersNode* char_node,
                      StringPiece location);
 
   // Debug information should be placed next to <style> or <script> block
   // surrounding the Characters node.
-  virtual HtmlElement* element() const { return parent_; }
+  virtual HtmlElement* element() const { return char_node_->parent(); }
 
   virtual void Render();
   virtual GoogleString LocationString() const;
@@ -47,7 +46,7 @@ class InlineResourceSlot : public ResourceSlot {
   virtual ~InlineResourceSlot();
 
  private:
-  HtmlElement* parent_;
+  HtmlCharactersNode* char_node_;
   const GoogleString location_;
 
   DISALLOW_COPY_AND_ASSIGN(InlineResourceSlot);

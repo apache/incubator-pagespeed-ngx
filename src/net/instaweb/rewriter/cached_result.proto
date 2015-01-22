@@ -95,7 +95,7 @@ message InputInfo {
 // is a sequence of input URLs and a filter id. The input array
 // tells us which inputs are used to construct this output; it must be
 // interpreted using the URL-sequence that was used to form the key.
-// Next free tag: 24
+// Next free tag: 25
 message CachedResult {
   // Tags 1-7 are for internal use by output_resource.
 
@@ -201,6 +201,10 @@ message CachedResult {
   // Information about any images indirectly included via this resource, or
   // its dependencies.
   repeated AssociatedImageInfo associated_image_info = 23;
+
+  // Does this CachedResult represent an InlineOutputResource?
+  // If false, this represents a plain OutputResource instead.
+  optional bool is_inline_output_resource = 24 [ default = false ];
 }
 
 // Contains the mapping of input URLs to output URLs.  In the general

@@ -126,6 +126,7 @@ void InlineRewriteContext::Render() {
       output_partition(0)->has_inlined_data() &&
       !slot(0)->should_delete_element()) {
     // We've decided to inline, and no one destroyed our element before us.
+    // Set disable_rendering = true because we will render directly here.
     slot(0)->set_disable_rendering(true);
     ResourceSlotPtr our_slot = slot(0);
     RenderInline(

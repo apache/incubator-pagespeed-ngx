@@ -361,7 +361,7 @@ class JsCombineFilter::Context : public RewriteContext {
           }
           combiner_.AddFileCountReduction(partition_size - 1);
         } else {
-          // Make sure we don't change any of the URLs.
+          // Disable slot rendering, because we're doing all the rendering here.
           for (int i = 0; i < partition_size; ++i) {
             slot(partition->input(i).index())->set_disable_rendering(true);
           }

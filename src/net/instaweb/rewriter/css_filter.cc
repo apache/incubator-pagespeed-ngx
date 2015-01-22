@@ -87,6 +87,37 @@ class ImageCombineFilter;
 
 namespace {
 
+class StyleAttributeSlot : public ResourceSlot {
+ public:
+  StyleAttributeSlot(HtmlElement* element,
+                     HtmlElement::Attribute* attribute,
+                     const ResourcePtr& resource,
+                     StringPiece location)
+      : ResourceSlot(resource),
+        element_(element),
+        attribute_(attribute),
+        location_(location.data(), location.size()) {}
+  virtual ~StyleAttributeSlot() {}
+  virtual HtmlElement* element() const { return element_; }
+  virtual GoogleString LocationString() const { return location_; }
+
+  virtual void Render() {
+    if (!disable_rendering()) {
+      DCHECK(attribute_ != NULL);
+      if (attribute_ != NULL) {
+        attribute_->SetValue(resource()->contents());
+      }
+    }
+  }
+
+ private:
+  HtmlElement* element_;
+  HtmlElement::Attribute* attribute_;
+  GoogleString location_;
+
+  DISALLOW_COPY_AND_ASSIGN(StyleAttributeSlot);
+};
+
 // A simple transformer that resolves URLs against a base. Unlike
 // RewriteDomainTransformer, does not do any mapping or trimming.
 class SimpleAbsolutifyTransformer : public CssTagScanner::Transformer {
@@ -301,20 +332,9 @@ void CssFilter::Context::Render() {
 
   const CachedResult& result = *output_partition(0);
   if (result.optimizable()) {
-    // Note: We take care of rewriting external resource URLs in the normal
-    // ResourceSlot::Render() method. However, inline or in-attribute CSS
-    // is handled here. We could probably add a new slot type to encapsulate
-    // these specific difference, but we don't currently.
-    if (rewrite_inline_char_node_ != NULL) {
-      // Note: It is important that we mutate the contents of the existing
-      // Characters Node instead of replacing it with a new one because
-      // downstream filters (critical_selector_filter) have already saved
-      // a pointer to the original Characters Node.
-      rewrite_inline_char_node_->mutable_contents()->assign(
-          result.inlined_data());
-    } else if (rewrite_inline_attribute_ != NULL) {
-      rewrite_inline_attribute_->SetValue(result.inlined_data());
-    } else {
+    // Note: All actual rendering is done inside ResourceSlot::Render() methods.
+    if (rewrite_inline_char_node_ == NULL &&
+        rewrite_inline_attribute_ == NULL) {
       // External css.
       Driver()->log_record()->SetRewriterLoggingStatus(
           id(), slot(0)->resource()->url(), RewriterApplication::APPLIED_OK);
@@ -671,6 +691,7 @@ void CssFilter::Context::Harvest() {
                                                      output_resource_);
     } else {
       output_partition(0)->set_inlined_data(out_text);
+      output_partition(0)->set_is_inline_output_resource(true);
     }
     ok = Driver()->Write(ResourceVector(1, input_resource_),
                          out_text,
@@ -1027,14 +1048,16 @@ void CssFilter::EndElementImpl(HtmlElement* element) {
   }
 }
 
-void CssFilter::StartInlineRewrite(HtmlCharactersNode* text) {
-  HtmlElement* element = text->parent();
-  ResourceSlotPtr slot(MakeSlotForInlineCss(element, text->contents()));
+void CssFilter::StartInlineRewrite(HtmlCharactersNode* char_node) {
+  ResourcePtr input_resource(MakeInlineResource(char_node->contents()));
+  ResourceSlotPtr slot(driver()->GetInlineSlot(input_resource, char_node));
+
   CssFilter::Context* rewriter = StartRewriting(slot);
   if (rewriter == NULL) {
     return;
   }
-  rewriter->SetupInlineRewrite(element, text);
+  HtmlElement* element = char_node->parent();
+  rewriter->SetupInlineRewrite(element, char_node);
 
   // Get the applicable media and charset. As style elements can't have a
   // charset attribute pass NULL to GetApplicableCharset instead of 'element'.
@@ -1056,8 +1079,13 @@ void CssFilter::StartInlineRewrite(HtmlCharactersNode* text) {
 void CssFilter::StartAttributeRewrite(HtmlElement* element,
                                       HtmlElement::Attribute* style,
                                       InlineCssKind inline_css_kind) {
-  ResourceSlotPtr slot(
-      MakeSlotForInlineCss(element, style->DecodedValueOrNull()));
+  ResourcePtr input_resource(MakeInlineResource(style->DecodedValueOrNull()));
+  // TODO(sligocki): Create a new driver()->GetAttributeSlot() function to use
+  // here so that if we ever add another filter which manipulates attributes
+  // they work together properly.
+  ResourceSlotPtr slot(new StyleAttributeSlot(element, style, input_resource,
+                                              driver()->UrlLine()));
+
   CssFilter::Context* rewriter = StartRewriting(slot);
   if (rewriter == NULL) {
     return;
@@ -1107,15 +1135,12 @@ void CssFilter::StartExternalRewrite(HtmlElement* link,
   }
 }
 
-ResourceSlotPtr CssFilter::MakeSlotForInlineCss(HtmlElement* parent,
-                                                const StringPiece& content) {
-  // Create the input resource for the slot.
+ResourcePtr CssFilter::MakeInlineResource(StringPiece content) {
   GoogleString data_url;
   // TODO(morlovich): This does a lot of useless conversions and
   // copying. Get rid of them.
   DataUrl(kContentTypeCss, PLAIN, content, &data_url);
-  ResourcePtr input_resource(DataUrlInputResource::Make(data_url, driver()));
-  return ResourceSlotPtr(driver()->GetInlineSlot(input_resource, parent));
+  return DataUrlInputResource::Make(data_url, driver());
 }
 
 CssFilter::Context* CssFilter::StartRewriting(const ResourceSlotPtr& slot) {
@@ -1123,9 +1148,8 @@ CssFilter::Context* CssFilter::StartRewriting(const ResourceSlotPtr& slot) {
   DCHECK(driver()->can_rewrite_resources());
   CssFilter::Context* rewriter = MakeContext(driver(), NULL);
   rewriter->AddSlot(slot);
-  // Don't render if we're preserving URLs
   if (driver()->options()->css_preserve_urls()) {
-    slot->set_disable_rendering(true);
+    slot->set_preserve_urls(true);
   }
   if (!driver()->InitiateRewrite(rewriter)) {
     rewriter = NULL;

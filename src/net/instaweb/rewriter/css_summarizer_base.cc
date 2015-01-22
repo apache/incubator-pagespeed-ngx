@@ -442,7 +442,7 @@ void CssSummarizerBase::ReportSummariesDone() {
 
 void CssSummarizerBase::StartInlineRewrite(
     HtmlElement* style, HtmlCharactersNode* text) {
-  ResourceSlotPtr slot(MakeSlotForInlineCss(style, text->contents()));
+  ResourceSlotPtr slot(MakeSlotForInlineCss(text));
   Context* context =
       CreateContextAndSummaryInfo(style, false /* not external */,
                                   slot, slot->LocationString(),
@@ -490,14 +490,14 @@ void CssSummarizerBase::StartExternalRewrite(
 }
 
 ResourceSlotPtr CssSummarizerBase::MakeSlotForInlineCss(
-    HtmlElement* parent, const StringPiece& content) {
+    HtmlCharactersNode* char_node) {
   // Create the input resource for the slot.
   GoogleString data_url;
   // TODO(morlovich): This does a lot of useless conversions and
   // copying. Get rid of them.
-  DataUrl(kContentTypeCss, PLAIN, content, &data_url);
+  DataUrl(kContentTypeCss, PLAIN, char_node->contents(), &data_url);
   ResourcePtr input_resource(DataUrlInputResource::Make(data_url, driver()));
-  return ResourceSlotPtr(driver()->GetInlineSlot(input_resource, parent));
+  return ResourceSlotPtr(driver()->GetInlineSlot(input_resource, char_node));
 }
 
 CssSummarizerBase::Context* CssSummarizerBase::CreateContextAndSummaryInfo(

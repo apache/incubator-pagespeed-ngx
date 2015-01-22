@@ -125,7 +125,7 @@ bool CssImageRewriter::RewriteImage(int64 image_inline_max_bytes,
       root_context_->slot_factory()->GetSlot(resource, trim_url, options,
                                              values, value_index));
   if (options->image_preserve_urls()) {
-    slot->set_disable_rendering(true);
+    slot->set_preserve_urls(true);
   }
 
   RewriteSlot(ResourceSlotPtr(slot), image_inline_max_bytes, parent);
@@ -137,9 +137,9 @@ void CssImageRewriter::RewriteSlot(const ResourceSlotPtr& slot,
                                    RewriteContext* parent) {
   const RewriteOptions* options = driver()->options();
   if (options->ImageOptimizationEnabled() || image_inline_max_bytes > 0) {
-    // If this isn't an IPRO rewrite or we've enabled preemptive IPRO CSS
-    // rewrites.
-    if (!slot->disable_rendering() ||
+    // Do not rewrite external resource if preserve_urls is enabled unless
+    // we allow preemptive rewriting.
+    if (!slot->preserve_urls() ||
         options->in_place_preemptive_rewrite_css_images()) {
       parent->AddNestedContext(
           image_rewriter_->MakeNestedRewriteContextForCss(

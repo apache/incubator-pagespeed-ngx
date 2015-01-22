@@ -466,7 +466,7 @@ void JavascriptFilter::RewriteExternalScript(
   ResourceSlotPtr slot(
       driver()->GetSlot(resource, script_in_progress, script_src));
   if (driver()->options()->js_preserve_urls()) {
-    slot->set_disable_rendering(true);
+    slot->set_preserve_urls(true);
   }
   Context* jrc = new Context(driver(), NULL, config_.get(),
                              false /* output_source_map */);

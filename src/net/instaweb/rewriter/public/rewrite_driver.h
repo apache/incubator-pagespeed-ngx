@@ -686,12 +686,12 @@ class RewriteDriver : public HtmlParse {
                               HtmlElement* elt,
                               HtmlElement::Attribute* attr);
 
-  // Creates and registers an inline ressource slot for rewriting.
+  // Creates and registers an inline resource slot for rewriting.
   // If this is the first time called for this position, a new slot will be
   // returned. On subsequent calls, the original slot will be returned so
   // that rewrites are propagated between filters.
   InlineResourceSlotPtr GetInlineSlot(const ResourcePtr& resource,
-                                      HtmlElement* parent);
+                                      HtmlCharactersNode* char_node);
 
   // Method to start a resource rewrite.  This is called by a filter during
   // parsing, although the Rewrite might continue after deadlines expire

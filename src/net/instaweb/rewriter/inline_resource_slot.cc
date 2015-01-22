@@ -22,10 +22,10 @@
 namespace net_instaweb {
 
 InlineResourceSlot::InlineResourceSlot(const ResourcePtr& resource,
-                                       HtmlElement* parent,
+                                       HtmlCharactersNode* char_node,
                                        StringPiece location)
     : ResourceSlot(resource),
-      parent_(parent),
+      char_node_(char_node),
       location_(location.data(), location.size()) {
 }
 
@@ -33,11 +33,15 @@ InlineResourceSlot::~InlineResourceSlot() {
 }
 
 void InlineResourceSlot::Render() {
-  // TODO(sligocki): Render here rather than in Contexts.
-  // CHECK(!disable_rendering());
-  // CHECK(!should_delete_element());
-  //
-  // old_char_node_->mutable_contents()->assign(cached_result()->inline_data());
+  if (!disable_rendering()) {
+    DCHECK(char_node_ != NULL);
+    // Note: This should be an InlineOutputResource so it will be loaded by
+    // default.
+    DCHECK(resource()->loaded());
+    if (char_node_ != NULL && resource()->loaded()) {
+      resource()->contents().CopyToString(char_node_->mutable_contents());
+    }
+  }
 }
 
 // TODO(sligocki): Use code from HtmlResourceSlot or pass in the RewriteDriver

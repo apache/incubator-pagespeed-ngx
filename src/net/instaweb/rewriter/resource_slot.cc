@@ -125,7 +125,7 @@ void HtmlResourceSlot::Render() {
       driver_->DeleteNode(element_);
       element_ = NULL;
     }
-  } else {
+  } else if (!preserve_urls()) {
     DirectSetUrl(RelativizeOrPassthrough(driver_->options(), resource()->url(),
                                          url_relativity_, driver_->base_url()));
     // Note that to insert image dimensions, we explicitly save
