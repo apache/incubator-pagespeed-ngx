@@ -615,7 +615,6 @@ typedef struct {
 namespace RequestRouting {
 enum Response {
   kError,
-  kNotUnderstood,
   kStaticContent,
   kInvalidUrl,
   kPagespeedDisabled,
@@ -628,7 +627,6 @@ enum Response {
   kCachePurge,
   kGlobalAdmin,
   kPagespeedSubrequest,
-  kNotHeadOrGet,
   kErrorResponse,
   kResource,
 };
@@ -1500,8 +1498,12 @@ void ps_release_base_fetch(ps_request_ctx_t* ctx) {
 }
 
 // TODO(chaizhenhua): merge into NgxBaseFetch ctor
-ngx_int_t ps_create_base_fetch(ps_request_ctx_t* ctx,
-                               RequestContextPtr request_context) {
+void ps_create_base_fetch(ps_request_ctx_t* ctx,
+                               RequestContextPtr request_context,
+                               RequestHeaders* request_headers,
+                               NgxBaseFetchType type) {
+  CHECK(ctx->base_fetch == NULL) << "Pre-existing base fetch!";
+
   ngx_http_request_t* r = ctx->r;
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
 
@@ -1509,11 +1511,10 @@ ngx_int_t ps_create_base_fetch(ps_request_ctx_t* ctx,
   // it, and call Done() on the associated parent (Proxy or Resource) fetch. If
   // we fail before creating the associated fetch then we need to call Done() on
   // the BaseFetch ourselves.
-  ctx->base_fetch = new NgxBaseFetch(
-      r, cfg_s->server_context,
-      request_context, ctx->preserve_caching_headers);
-
-  return NGX_OK;
+  ctx->base_fetch = new NgxBaseFetch(r, cfg_s->server_context,
+                                     request_context,
+                                     ctx->preserve_caching_headers, type);
+  ctx->base_fetch->SetRequestHeadersTakingOwnership(request_headers);
 }
 
 void ps_release_request_context(void* data) {
@@ -1754,35 +1755,19 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
     ngx_http_set_ctx(r, ctx, ngx_pagespeed);
   }
 
-  if (ps_create_base_fetch(ctx, request_context) != NGX_OK) {
-    // Do not need to release request context 'ctx'.
-    // http_pool_cleanup will call ps_release_request_context
-    return NGX_ERROR;
-  }
-
-  ctx->base_fetch->SetRequestHeadersTakingOwnership(request_headers.release());
-
-  bool page_callback_added = false;
-  scoped_ptr<ProxyFetchPropertyCallbackCollector>
-      property_callback(
-          ProxyFetchFactory::InitiatePropertyCacheLookup(
-              !html_rewrite /* is_resource_fetch */,
-              url,
-              cfg_s->server_context,
-              options,
-              ctx->base_fetch,
-              false /* requires_blink_cohort (no longer unused) */,
-              &page_callback_added));
-
   if (pagespeed_resource) {
     // TODO(jefftk): Set using_spdy appropriately.  See
     // ProxyInterface::ProxyRequestCallback
+    ps_create_base_fetch(ctx, request_context, request_headers.release(),
+                         kPageSpeedResource);
     ResourceFetch::Start(
         url,
         custom_options.release() /* null if there aren't custom options */,
         false /* using_spdy */, cfg_s->server_context, ctx->base_fetch);
     return ps_async_wait_response(r);
   } else if (is_an_admin_handler) {
+    ps_create_base_fetch(ctx, request_context, request_headers.release(),
+                         kAdminPage);
     QueryParams query_params;
     query_params.ParseFromUrl(url);
 
@@ -1826,6 +1811,8 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
   }
 
   if (html_rewrite) {
+    ps_create_base_fetch(ctx, request_context, request_headers.release(),
+                         kHtmlTransform);
     // Do not store driver in request_context, it's not safe.
     RewriteDriver* driver;
 
@@ -1852,12 +1839,22 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
     driver->set_pagespeed_option_cookies(pagespeed_option_cookies);
 
     // TODO(jefftk): FlushEarlyFlow would go here.
+    bool page_callback_added = false;
+    ProxyFetchPropertyCallbackCollector* property_callback =
+        ProxyFetchFactory::InitiatePropertyCacheLookup(
+            !html_rewrite /* is_resource_fetch */,
+            url,
+            cfg_s->server_context,
+            options,
+            ctx->base_fetch,
+            false /* requires_blink_cohort (no longer unused) */,
+            &page_callback_added);
 
     // Will call StartParse etc.  The rewrite driver will take care of deleting
     // itself if necessary.
     ctx->proxy_fetch = cfg_s->proxy_fetch_factory->CreateNewProxyFetch(
         url_string, ctx->base_fetch, driver,
-        property_callback.release(),
+        property_callback,
         NULL /* original_content_fetch */);
     return NGX_OK;
   }
@@ -1865,6 +1862,9 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
   if (options->in_place_rewriting_enabled() &&
       options->enabled() &&
       options->IsAllowed(url.Spec())) {
+    ps_create_base_fetch(ctx, request_context, request_headers.release(),
+                         kIproLookup);
+
     // Do not store driver in request_context, it's not safe.
     RewriteDriver* driver;
     if (custom_options.get() == NULL) {
@@ -1890,7 +1890,6 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
         url_string.c_str());
 
     ctx->in_place = true;
-    ctx->base_fetch->set_ipro_lookup(true);
     ctx->driver->FetchInPlaceResource(
         url, false /* proxy_mode */, ctx->base_fetch);
 
@@ -1903,9 +1902,7 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
   ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0,
                 "Passing on content handling for non-pagespeed resource '%s'",
                 url_string.c_str());
-
-  ctx->base_fetch->Done(false);
-  ps_release_base_fetch(ctx);
+  CHECK(ctx->base_fetch == NULL);
   // set html_rewrite flag.
   ctx->html_rewrite = true;
   return NGX_DECLINED;
@@ -2690,11 +2687,9 @@ ngx_int_t ps_content_handler(ngx_http_request_t* r) {
   switch (response_category) {
     case RequestRouting::kError:
       return NGX_ERROR;
-    case RequestRouting::kNotUnderstood:
     case RequestRouting::kPagespeedDisabled:
     case RequestRouting::kInvalidUrl:
     case RequestRouting::kPagespeedSubrequest:
-    case RequestRouting::kNotHeadOrGet:
     case RequestRouting::kErrorResponse:
       return NGX_DECLINED;
     case RequestRouting::kBeacon:
