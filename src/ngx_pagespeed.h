@@ -89,9 +89,6 @@ typedef struct {
   bool html_rewrite;
   bool in_place;
 
-  bool write_pending;
-  bool fetch_done;
-
   PreserveCachingHeaders preserve_caching_headers;
 
   // for html rewrite
