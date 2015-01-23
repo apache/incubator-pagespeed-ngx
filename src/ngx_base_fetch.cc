@@ -105,14 +105,8 @@ void NgxBaseFetch::ReadCallback(const ps_event_data& data) {
     return;
   }
   ps_request_ctx_t* ctx = ps_get_request_context(r);
+
   CHECK(data.sender == ctx->base_fetch);
-
-  // ngx_base_fetch_handler() ends up setting ctx->fetch_done, which
-  // means we shouldn't call it anymore.
-  if (ctx->fetch_done) {
-    return;
-  }
-
   CHECK(r->count > 0) << "r->count: " << r->count;
 
   int rc;
