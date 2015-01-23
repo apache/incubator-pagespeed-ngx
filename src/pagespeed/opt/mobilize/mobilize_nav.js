@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+// TODO(jud): Test on a wider range of browsers and restrict to only modern
+// browsers. This uses a few modern web features, like css3 animations, that are
+// not supported on opera mini for example.
 
 goog.provide('pagespeed.MobNav');
 
@@ -74,6 +77,21 @@ pagespeed.MobNav = function() {
    * @private {Element}
    */
   this.navPanel_ = null;
+
+
+  /**
+   * Tracks time since last scroll to figure out when scrolling is finished.
+   * Will be null when not scrolling.
+   * @private {?number}
+   */
+  this.scrollTimer_ = null;
+
+
+  /**
+   * Tracks number of current touches to know when scrolling is finished.
+   * @private {number}
+   */
+  this.currentTouches_ = 0;
 };
 
 
@@ -196,6 +214,87 @@ pagespeed.MobNav.prototype.fixExistingElements_ = function() {
 
 
 /**
+ * Redraw the header after scrolling or zooming finishes.
+ * @private
+ */
+pagespeed.MobNav.prototype.redrawHeader_ = function() {
+  // Redraw the bar to the top of page by offsetting by the amount scrolled.
+  this.headerBar_.style.top = window.scrollY + 'px';
+  this.headerBar_.style.left = window.scrollX + 'px';
+
+  // Resize the bar by scaling to compensate for the amount zoomed.
+  var scaleTransform =
+      'scale(' + window.innerWidth / document.documentElement.clientWidth + ')';
+  this.headerBar_.style['-webkit-transform'] = scaleTransform;
+  this.headerBar_.style.transform = scaleTransform;
+
+  // Restore visibility since the bar was hidden while scrolling and zooming.
+  goog.dom.classlist.remove(this.headerBar_, 'hide');
+
+  // Get the new size of the header bar and rescale the containing elements to
+  // fit inside.
+  var height = this.headerBar_.offsetHeight;
+
+  this.menuButton_.style.width = height + 'px';
+  this.menuButton_.style.height = height + 'px';
+
+  this.callButton_.style.width = height + 'px';
+  this.callButton_.style.height = height + 'px';
+
+  this.spacerDiv_.style.height = height + 'px';
+
+  // Use a 200ms fade in effect to make the transition smoother.
+};
+
+
+/**
+ * Add events for capturing header bar resize.
+ * @private
+ */
+pagespeed.MobNav.prototype.addHeaderBarResizeEvents_ = function() {
+  // Draw the header bar initially.
+  this.redrawHeader_();
+
+  // Don't redraw the header bar unless there has not been a scroll event for 50
+  // ms and there are no touches currently on the screen. This keeps the
+  // redrawing from happening until scrolling is finished.
+  var scrollHandler = function() {
+    if (this.scrollTimer_ != null) {
+      window.clearTimeout(this.scrollTimer_);
+      this.scrollTimer_ = null;
+    }
+    this.scrollTimer_ = window.setTimeout(goog.bind(function() {
+      if (this.currentTouches_ == 0) {
+        this.redrawHeader_();
+      }
+      this.scrollTimer_ = null;
+    }, this), 50);
+  };
+
+  window.addEventListener('scroll', goog.bind(scrollHandler, this), false);
+
+  // Keep track of number of touches currently on the screen so that we don't
+  // redraw until scrolling and zooming is finished.
+  window.addEventListener('touchstart', goog.bind(function(e) {
+    this.currentTouches_ = e.targetTouches.length;
+  }, this), false);
+
+  window.addEventListener('touchmove', goog.bind(function() {
+    if (!goog.dom.classlist.contains(document.body, 'noscroll')) {
+      goog.dom.classlist.add(this.headerBar_, 'hide');
+    }
+  }, this), false);
+
+  window.addEventListener('touchend', goog.bind(function(e) {
+    this.currentTouches_ = e.targetTouches.length;
+    if (this.scrollTimer_ == null && this.currentTouches_ == 0) {
+      this.redrawHeader_();
+    }
+  }, this), false);
+};
+
+
+/**
  * Insert a header bar to the top of the page. For this goal, firstly we
  * insert an empty div so all contents, except those with fixed position,
  * are pushed down. Then we insert the header bar. The header bar may contain
@@ -233,6 +332,8 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
     this.callButton_.appendChild(callImage);
     this.headerBar_.appendChild(this.callButton_);
   }
+
+  this.addHeaderBarResizeEvents_();
 };
 
 

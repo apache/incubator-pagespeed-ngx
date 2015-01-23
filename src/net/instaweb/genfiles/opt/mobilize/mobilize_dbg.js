@@ -635,18 +635,6 @@ lightgreen:"#90ee90", lightgrey:"#d3d3d3", lightpink:"#ffb6c1", lightsalmon:"#ff
 mediumturquoise:"#48d1cc", mediumvioletred:"#c71585", midnightblue:"#191970", mintcream:"#f5fffa", mistyrose:"#ffe4e1", moccasin:"#ffe4b5", navajowhite:"#ffdead", navy:"#000080", oldlace:"#fdf5e6", olive:"#808000", olivedrab:"#6b8e23", orange:"#ffa500", orangered:"#ff4500", orchid:"#da70d6", palegoldenrod:"#eee8aa", palegreen:"#98fb98", paleturquoise:"#afeeee", palevioletred:"#db7093", papayawhip:"#ffefd5", peachpuff:"#ffdab9", peru:"#cd853f", pink:"#ffc0cb", plum:"#dda0dd", powderblue:"#b0e0e6", 
 purple:"#800080", red:"#ff0000", rosybrown:"#bc8f8f", royalblue:"#4169e1", saddlebrown:"#8b4513", salmon:"#fa8072", sandybrown:"#f4a460", seagreen:"#2e8b57", seashell:"#fff5ee", sienna:"#a0522d", silver:"#c0c0c0", skyblue:"#87ceeb", slateblue:"#6a5acd", slategray:"#708090", slategrey:"#708090", snow:"#fffafa", springgreen:"#00ff7f", steelblue:"#4682b4", tan:"#d2b48c", teal:"#008080", thistle:"#d8bfd8", tomato:"#ff6347", turquoise:"#40e0d0", violet:"#ee82ee", wheat:"#f5deb3", white:"#ffffff", whitesmoke:"#f5f5f5", 
 yellow:"#ffff00", yellowgreen:"#9acd32"};
-goog.debug = {};
-goog.debug.Error = function(a) {
-  if (Error.captureStackTrace) {
-    Error.captureStackTrace(this, goog.debug.Error);
-  } else {
-    var b = Error().stack;
-    b && (this.stack = b);
-  }
-  a && (this.message = String(a));
-};
-goog.inherits(goog.debug.Error, Error);
-goog.debug.Error.prototype.name = "CustomError";
 goog.object = {};
 goog.object.forEach = function(a, b, c) {
   for (var d in a) {
@@ -858,6 +846,24 @@ goog.object.createImmutableView = function(a) {
 goog.object.isImmutableView = function(a) {
   return!!Object.isFrozen && Object.isFrozen(a);
 };
+goog.dom = {};
+goog.dom.TagName = {A:"A", ABBR:"ABBR", ACRONYM:"ACRONYM", ADDRESS:"ADDRESS", APPLET:"APPLET", AREA:"AREA", ARTICLE:"ARTICLE", ASIDE:"ASIDE", AUDIO:"AUDIO", B:"B", BASE:"BASE", BASEFONT:"BASEFONT", BDI:"BDI", BDO:"BDO", BIG:"BIG", BLOCKQUOTE:"BLOCKQUOTE", BODY:"BODY", BR:"BR", BUTTON:"BUTTON", CANVAS:"CANVAS", CAPTION:"CAPTION", CENTER:"CENTER", CITE:"CITE", CODE:"CODE", COL:"COL", COLGROUP:"COLGROUP", COMMAND:"COMMAND", DATA:"DATA", DATALIST:"DATALIST", DD:"DD", DEL:"DEL", DETAILS:"DETAILS", DFN:"DFN", 
+DIALOG:"DIALOG", DIR:"DIR", DIV:"DIV", DL:"DL", DT:"DT", EM:"EM", EMBED:"EMBED", FIELDSET:"FIELDSET", FIGCAPTION:"FIGCAPTION", FIGURE:"FIGURE", FONT:"FONT", FOOTER:"FOOTER", FORM:"FORM", FRAME:"FRAME", FRAMESET:"FRAMESET", H1:"H1", H2:"H2", H3:"H3", H4:"H4", H5:"H5", H6:"H6", HEAD:"HEAD", HEADER:"HEADER", HGROUP:"HGROUP", HR:"HR", HTML:"HTML", I:"I", IFRAME:"IFRAME", IMG:"IMG", INPUT:"INPUT", INS:"INS", ISINDEX:"ISINDEX", KBD:"KBD", KEYGEN:"KEYGEN", LABEL:"LABEL", LEGEND:"LEGEND", LI:"LI", LINK:"LINK", 
+MAP:"MAP", MARK:"MARK", MATH:"MATH", MENU:"MENU", META:"META", METER:"METER", NAV:"NAV", NOFRAMES:"NOFRAMES", NOSCRIPT:"NOSCRIPT", OBJECT:"OBJECT", OL:"OL", OPTGROUP:"OPTGROUP", OPTION:"OPTION", OUTPUT:"OUTPUT", P:"P", PARAM:"PARAM", PRE:"PRE", PROGRESS:"PROGRESS", Q:"Q", RP:"RP", RT:"RT", RUBY:"RUBY", S:"S", SAMP:"SAMP", SCRIPT:"SCRIPT", SECTION:"SECTION", SELECT:"SELECT", SMALL:"SMALL", SOURCE:"SOURCE", SPAN:"SPAN", STRIKE:"STRIKE", STRONG:"STRONG", STYLE:"STYLE", SUB:"SUB", SUMMARY:"SUMMARY", 
+SUP:"SUP", SVG:"SVG", TABLE:"TABLE", TBODY:"TBODY", TD:"TD", TEXTAREA:"TEXTAREA", TFOOT:"TFOOT", TH:"TH", THEAD:"THEAD", TIME:"TIME", TITLE:"TITLE", TR:"TR", TRACK:"TRACK", TT:"TT", U:"U", UL:"UL", VAR:"VAR", VIDEO:"VIDEO", WBR:"WBR"};
+goog.dom.NodeType = {ELEMENT:1, ATTRIBUTE:2, TEXT:3, CDATA_SECTION:4, ENTITY_REFERENCE:5, ENTITY:6, PROCESSING_INSTRUCTION:7, COMMENT:8, DOCUMENT:9, DOCUMENT_TYPE:10, DOCUMENT_FRAGMENT:11, NOTATION:12};
+goog.debug = {};
+goog.debug.Error = function(a) {
+  if (Error.captureStackTrace) {
+    Error.captureStackTrace(this, goog.debug.Error);
+  } else {
+    var b = Error().stack;
+    b && (this.stack = b);
+  }
+  a && (this.message = String(a));
+};
+goog.inherits(goog.debug.Error, Error);
+goog.debug.Error.prototype.name = "CustomError";
 goog.string = {};
 goog.string.DETECT_DOUBLE_ESCAPING = !1;
 goog.string.Unicode = {NBSP:"\u00a0"};
@@ -1224,43 +1230,6 @@ goog.string.splitLimit = function(a, b, c) {
   a.length && d.push(a.join(b));
   return d;
 };
-goog.labs = {};
-goog.labs.userAgent = {};
-goog.labs.userAgent.util = {};
-goog.labs.userAgent.util.getNativeUserAgentString_ = function() {
-  var a = goog.labs.userAgent.util.getNavigator_();
-  return a && (a = a.userAgent) ? a : "";
-};
-goog.labs.userAgent.util.getNavigator_ = function() {
-  return goog.global.navigator;
-};
-goog.labs.userAgent.util.userAgent_ = goog.labs.userAgent.util.getNativeUserAgentString_();
-goog.labs.userAgent.util.setUserAgent = function(a) {
-  goog.labs.userAgent.util.userAgent_ = a || goog.labs.userAgent.util.getNativeUserAgentString_();
-};
-goog.labs.userAgent.util.getUserAgent = function() {
-  return goog.labs.userAgent.util.userAgent_;
-};
-goog.labs.userAgent.util.matchUserAgent = function(a) {
-  var b = goog.labs.userAgent.util.getUserAgent();
-  return goog.string.contains(b, a);
-};
-goog.labs.userAgent.util.matchUserAgentIgnoreCase = function(a) {
-  var b = goog.labs.userAgent.util.getUserAgent();
-  return goog.string.caseInsensitiveContains(b, a);
-};
-goog.labs.userAgent.util.extractVersionTuples = function(a) {
-  for (var b = RegExp("(\\w[\\w ]+)/([^\\s]+)\\s*(?:\\((.*?)\\))?", "g"), c = [], d;d = b.exec(a);) {
-    c.push([d[1], d[2], d[3] || void 0]);
-  }
-  return c;
-};
-goog.dom = {};
-goog.dom.TagName = {A:"A", ABBR:"ABBR", ACRONYM:"ACRONYM", ADDRESS:"ADDRESS", APPLET:"APPLET", AREA:"AREA", ARTICLE:"ARTICLE", ASIDE:"ASIDE", AUDIO:"AUDIO", B:"B", BASE:"BASE", BASEFONT:"BASEFONT", BDI:"BDI", BDO:"BDO", BIG:"BIG", BLOCKQUOTE:"BLOCKQUOTE", BODY:"BODY", BR:"BR", BUTTON:"BUTTON", CANVAS:"CANVAS", CAPTION:"CAPTION", CENTER:"CENTER", CITE:"CITE", CODE:"CODE", COL:"COL", COLGROUP:"COLGROUP", COMMAND:"COMMAND", DATA:"DATA", DATALIST:"DATALIST", DD:"DD", DEL:"DEL", DETAILS:"DETAILS", DFN:"DFN", 
-DIALOG:"DIALOG", DIR:"DIR", DIV:"DIV", DL:"DL", DT:"DT", EM:"EM", EMBED:"EMBED", FIELDSET:"FIELDSET", FIGCAPTION:"FIGCAPTION", FIGURE:"FIGURE", FONT:"FONT", FOOTER:"FOOTER", FORM:"FORM", FRAME:"FRAME", FRAMESET:"FRAMESET", H1:"H1", H2:"H2", H3:"H3", H4:"H4", H5:"H5", H6:"H6", HEAD:"HEAD", HEADER:"HEADER", HGROUP:"HGROUP", HR:"HR", HTML:"HTML", I:"I", IFRAME:"IFRAME", IMG:"IMG", INPUT:"INPUT", INS:"INS", ISINDEX:"ISINDEX", KBD:"KBD", KEYGEN:"KEYGEN", LABEL:"LABEL", LEGEND:"LEGEND", LI:"LI", LINK:"LINK", 
-MAP:"MAP", MARK:"MARK", MATH:"MATH", MENU:"MENU", META:"META", METER:"METER", NAV:"NAV", NOFRAMES:"NOFRAMES", NOSCRIPT:"NOSCRIPT", OBJECT:"OBJECT", OL:"OL", OPTGROUP:"OPTGROUP", OPTION:"OPTION", OUTPUT:"OUTPUT", P:"P", PARAM:"PARAM", PRE:"PRE", PROGRESS:"PROGRESS", Q:"Q", RP:"RP", RT:"RT", RUBY:"RUBY", S:"S", SAMP:"SAMP", SCRIPT:"SCRIPT", SECTION:"SECTION", SELECT:"SELECT", SMALL:"SMALL", SOURCE:"SOURCE", SPAN:"SPAN", STRIKE:"STRIKE", STRONG:"STRONG", STYLE:"STYLE", SUB:"SUB", SUMMARY:"SUMMARY", 
-SUP:"SUP", SVG:"SVG", TABLE:"TABLE", TBODY:"TBODY", TD:"TD", TEXTAREA:"TEXTAREA", TFOOT:"TFOOT", TH:"TH", THEAD:"THEAD", TIME:"TIME", TITLE:"TITLE", TR:"TR", TRACK:"TRACK", TT:"TT", U:"U", UL:"UL", VAR:"VAR", VIDEO:"VIDEO", WBR:"WBR"};
-goog.dom.NodeType = {ELEMENT:1, ATTRIBUTE:2, TEXT:3, CDATA_SECTION:4, ENTITY_REFERENCE:5, ENTITY:6, PROCESSING_INSTRUCTION:7, COMMENT:8, DOCUMENT:9, DOCUMENT_TYPE:10, DOCUMENT_FRAGMENT:11, NOTATION:12};
 goog.asserts = {};
 goog.asserts.ENABLE_ASSERTS = goog.DEBUG;
 goog.asserts.AssertionError = function(a, b) {
@@ -2261,6 +2230,140 @@ goog.color.yiqBrightnessDiff_ = function(a, b) {
 goog.color.colorDiff_ = function(a, b) {
   return Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2]);
 };
+goog.dom.classlist = {};
+goog.dom.classlist.ALWAYS_USE_DOM_TOKEN_LIST = !1;
+goog.dom.classlist.get = function(a) {
+  if (goog.dom.classlist.ALWAYS_USE_DOM_TOKEN_LIST || a.classList) {
+    return a.classList;
+  }
+  a = a.className;
+  return goog.isString(a) && a.match(/\S+/g) || [];
+};
+goog.dom.classlist.set = function(a, b) {
+  a.className = b;
+};
+goog.dom.classlist.contains = function(a, b) {
+  return goog.dom.classlist.ALWAYS_USE_DOM_TOKEN_LIST || a.classList ? a.classList.contains(b) : goog.array.contains(goog.dom.classlist.get(a), b);
+};
+goog.dom.classlist.add = function(a, b) {
+  goog.dom.classlist.ALWAYS_USE_DOM_TOKEN_LIST || a.classList ? a.classList.add(b) : goog.dom.classlist.contains(a, b) || (a.className += 0 < a.className.length ? " " + b : b);
+};
+goog.dom.classlist.addAll = function(a, b) {
+  if (goog.dom.classlist.ALWAYS_USE_DOM_TOKEN_LIST || a.classList) {
+    goog.array.forEach(b, function(b) {
+      goog.dom.classlist.add(a, b);
+    });
+  } else {
+    var c = {};
+    goog.array.forEach(goog.dom.classlist.get(a), function(a) {
+      c[a] = !0;
+    });
+    goog.array.forEach(b, function(a) {
+      c[a] = !0;
+    });
+    a.className = "";
+    for (var d in c) {
+      a.className += 0 < a.className.length ? " " + d : d;
+    }
+  }
+};
+goog.dom.classlist.remove = function(a, b) {
+  goog.dom.classlist.ALWAYS_USE_DOM_TOKEN_LIST || a.classList ? a.classList.remove(b) : goog.dom.classlist.contains(a, b) && (a.className = goog.array.filter(goog.dom.classlist.get(a), function(a) {
+    return a != b;
+  }).join(" "));
+};
+goog.dom.classlist.removeAll = function(a, b) {
+  goog.dom.classlist.ALWAYS_USE_DOM_TOKEN_LIST || a.classList ? goog.array.forEach(b, function(b) {
+    goog.dom.classlist.remove(a, b);
+  }) : a.className = goog.array.filter(goog.dom.classlist.get(a), function(a) {
+    return!goog.array.contains(b, a);
+  }).join(" ");
+};
+goog.dom.classlist.enable = function(a, b, c) {
+  c ? goog.dom.classlist.add(a, b) : goog.dom.classlist.remove(a, b);
+};
+goog.dom.classlist.enableAll = function(a, b, c) {
+  (c ? goog.dom.classlist.addAll : goog.dom.classlist.removeAll)(a, b);
+};
+goog.dom.classlist.swap = function(a, b, c) {
+  return goog.dom.classlist.contains(a, b) ? (goog.dom.classlist.remove(a, b), goog.dom.classlist.add(a, c), !0) : !1;
+};
+goog.dom.classlist.toggle = function(a, b) {
+  var c = !goog.dom.classlist.contains(a, b);
+  goog.dom.classlist.enable(a, b, c);
+  return c;
+};
+goog.dom.classlist.addRemove = function(a, b, c) {
+  goog.dom.classlist.remove(a, b);
+  goog.dom.classlist.add(a, c);
+};
+goog.labs = {};
+goog.labs.userAgent = {};
+goog.labs.userAgent.util = {};
+goog.labs.userAgent.util.getNativeUserAgentString_ = function() {
+  var a = goog.labs.userAgent.util.getNavigator_();
+  return a && (a = a.userAgent) ? a : "";
+};
+goog.labs.userAgent.util.getNavigator_ = function() {
+  return goog.global.navigator;
+};
+goog.labs.userAgent.util.userAgent_ = goog.labs.userAgent.util.getNativeUserAgentString_();
+goog.labs.userAgent.util.setUserAgent = function(a) {
+  goog.labs.userAgent.util.userAgent_ = a || goog.labs.userAgent.util.getNativeUserAgentString_();
+};
+goog.labs.userAgent.util.getUserAgent = function() {
+  return goog.labs.userAgent.util.userAgent_;
+};
+goog.labs.userAgent.util.matchUserAgent = function(a) {
+  var b = goog.labs.userAgent.util.getUserAgent();
+  return goog.string.contains(b, a);
+};
+goog.labs.userAgent.util.matchUserAgentIgnoreCase = function(a) {
+  var b = goog.labs.userAgent.util.getUserAgent();
+  return goog.string.caseInsensitiveContains(b, a);
+};
+goog.labs.userAgent.util.extractVersionTuples = function(a) {
+  for (var b = RegExp("(\\w[\\w ]+)/([^\\s]+)\\s*(?:\\((.*?)\\))?", "g"), c = [], d;d = b.exec(a);) {
+    c.push([d[1], d[2], d[3] || void 0]);
+  }
+  return c;
+};
+goog.labs.userAgent.engine = {};
+goog.labs.userAgent.engine.isPresto = function() {
+  return goog.labs.userAgent.util.matchUserAgent("Presto");
+};
+goog.labs.userAgent.engine.isTrident = function() {
+  return goog.labs.userAgent.util.matchUserAgent("Trident") || goog.labs.userAgent.util.matchUserAgent("MSIE");
+};
+goog.labs.userAgent.engine.isWebKit = function() {
+  return goog.labs.userAgent.util.matchUserAgentIgnoreCase("WebKit");
+};
+goog.labs.userAgent.engine.isGecko = function() {
+  return goog.labs.userAgent.util.matchUserAgent("Gecko") && !goog.labs.userAgent.engine.isWebKit() && !goog.labs.userAgent.engine.isTrident();
+};
+goog.labs.userAgent.engine.getVersion = function() {
+  var a = goog.labs.userAgent.util.getUserAgent();
+  if (a) {
+    var a = goog.labs.userAgent.util.extractVersionTuples(a), b = a[1];
+    if (b) {
+      return "Gecko" == b[0] ? goog.labs.userAgent.engine.getVersionForKey_(a, "Firefox") : b[1];
+    }
+    var a = a[0], c;
+    if (a && (c = a[2]) && (c = /Trident\/([^\s;]+)/.exec(c))) {
+      return c[1];
+    }
+  }
+  return "";
+};
+goog.labs.userAgent.engine.isVersionOrHigher = function(a) {
+  return 0 <= goog.string.compareVersions(goog.labs.userAgent.engine.getVersion(), a);
+};
+goog.labs.userAgent.engine.getVersionForKey_ = function(a, b) {
+  var c = goog.array.find(a, function(a) {
+    return b == a[0];
+  });
+  return c && c[1] || "";
+};
 goog.labs.userAgent.browser = {};
 goog.labs.userAgent.browser.matchOpera_ = function() {
   return goog.labs.userAgent.util.matchUserAgent("Opera") || goog.labs.userAgent.util.matchUserAgent("OPR");
@@ -2346,42 +2449,6 @@ goog.labs.userAgent.browser.getIEVersion_ = function(a) {
     }
   }
   return b;
-};
-goog.labs.userAgent.engine = {};
-goog.labs.userAgent.engine.isPresto = function() {
-  return goog.labs.userAgent.util.matchUserAgent("Presto");
-};
-goog.labs.userAgent.engine.isTrident = function() {
-  return goog.labs.userAgent.util.matchUserAgent("Trident") || goog.labs.userAgent.util.matchUserAgent("MSIE");
-};
-goog.labs.userAgent.engine.isWebKit = function() {
-  return goog.labs.userAgent.util.matchUserAgentIgnoreCase("WebKit");
-};
-goog.labs.userAgent.engine.isGecko = function() {
-  return goog.labs.userAgent.util.matchUserAgent("Gecko") && !goog.labs.userAgent.engine.isWebKit() && !goog.labs.userAgent.engine.isTrident();
-};
-goog.labs.userAgent.engine.getVersion = function() {
-  var a = goog.labs.userAgent.util.getUserAgent();
-  if (a) {
-    var a = goog.labs.userAgent.util.extractVersionTuples(a), b = a[1];
-    if (b) {
-      return "Gecko" == b[0] ? goog.labs.userAgent.engine.getVersionForKey_(a, "Firefox") : b[1];
-    }
-    var a = a[0], c;
-    if (a && (c = a[2]) && (c = /Trident\/([^\s;]+)/.exec(c))) {
-      return c[1];
-    }
-  }
-  return "";
-};
-goog.labs.userAgent.engine.isVersionOrHigher = function(a) {
-  return 0 <= goog.string.compareVersions(goog.labs.userAgent.engine.getVersion(), a);
-};
-goog.labs.userAgent.engine.getVersionForKey_ = function(a, b) {
-  var c = goog.array.find(a, function(a) {
-    return b == a[0];
-  });
-  return c && c[1] || "";
 };
 goog.userAgent = {};
 goog.userAgent.ASSUME_IE = !1;
@@ -2690,73 +2757,6 @@ goog.uri.utils.makeUnique = function(a) {
 };
 goog.dom.BrowserFeature = {CAN_ADD_NAME_OR_TYPE_ATTRIBUTES:!goog.userAgent.IE || goog.userAgent.isDocumentModeOrHigher(9), CAN_USE_CHILDREN_ATTRIBUTE:!goog.userAgent.GECKO && !goog.userAgent.IE || goog.userAgent.IE && goog.userAgent.isDocumentModeOrHigher(9) || goog.userAgent.GECKO && goog.userAgent.isVersionOrHigher("1.9.1"), CAN_USE_INNER_TEXT:goog.userAgent.IE && !goog.userAgent.isVersionOrHigher("9"), CAN_USE_PARENT_ELEMENT_PROPERTY:goog.userAgent.IE || goog.userAgent.OPERA || goog.userAgent.WEBKIT, 
 INNER_HTML_NEEDS_SCOPED_ELEMENT:goog.userAgent.IE, LEGACY_IE_RANGES:goog.userAgent.IE && !goog.userAgent.isDocumentModeOrHigher(9)};
-goog.dom.classlist = {};
-goog.dom.classlist.ALWAYS_USE_DOM_TOKEN_LIST = !1;
-goog.dom.classlist.get = function(a) {
-  if (goog.dom.classlist.ALWAYS_USE_DOM_TOKEN_LIST || a.classList) {
-    return a.classList;
-  }
-  a = a.className;
-  return goog.isString(a) && a.match(/\S+/g) || [];
-};
-goog.dom.classlist.set = function(a, b) {
-  a.className = b;
-};
-goog.dom.classlist.contains = function(a, b) {
-  return goog.dom.classlist.ALWAYS_USE_DOM_TOKEN_LIST || a.classList ? a.classList.contains(b) : goog.array.contains(goog.dom.classlist.get(a), b);
-};
-goog.dom.classlist.add = function(a, b) {
-  goog.dom.classlist.ALWAYS_USE_DOM_TOKEN_LIST || a.classList ? a.classList.add(b) : goog.dom.classlist.contains(a, b) || (a.className += 0 < a.className.length ? " " + b : b);
-};
-goog.dom.classlist.addAll = function(a, b) {
-  if (goog.dom.classlist.ALWAYS_USE_DOM_TOKEN_LIST || a.classList) {
-    goog.array.forEach(b, function(b) {
-      goog.dom.classlist.add(a, b);
-    });
-  } else {
-    var c = {};
-    goog.array.forEach(goog.dom.classlist.get(a), function(a) {
-      c[a] = !0;
-    });
-    goog.array.forEach(b, function(a) {
-      c[a] = !0;
-    });
-    a.className = "";
-    for (var d in c) {
-      a.className += 0 < a.className.length ? " " + d : d;
-    }
-  }
-};
-goog.dom.classlist.remove = function(a, b) {
-  goog.dom.classlist.ALWAYS_USE_DOM_TOKEN_LIST || a.classList ? a.classList.remove(b) : goog.dom.classlist.contains(a, b) && (a.className = goog.array.filter(goog.dom.classlist.get(a), function(a) {
-    return a != b;
-  }).join(" "));
-};
-goog.dom.classlist.removeAll = function(a, b) {
-  goog.dom.classlist.ALWAYS_USE_DOM_TOKEN_LIST || a.classList ? goog.array.forEach(b, function(b) {
-    goog.dom.classlist.remove(a, b);
-  }) : a.className = goog.array.filter(goog.dom.classlist.get(a), function(a) {
-    return!goog.array.contains(b, a);
-  }).join(" ");
-};
-goog.dom.classlist.enable = function(a, b, c) {
-  c ? goog.dom.classlist.add(a, b) : goog.dom.classlist.remove(a, b);
-};
-goog.dom.classlist.enableAll = function(a, b, c) {
-  (c ? goog.dom.classlist.addAll : goog.dom.classlist.removeAll)(a, b);
-};
-goog.dom.classlist.swap = function(a, b, c) {
-  return goog.dom.classlist.contains(a, b) ? (goog.dom.classlist.remove(a, b), goog.dom.classlist.add(a, c), !0) : !1;
-};
-goog.dom.classlist.toggle = function(a, b) {
-  var c = !goog.dom.classlist.contains(a, b);
-  goog.dom.classlist.enable(a, b, c);
-  return c;
-};
-goog.dom.classlist.addRemove = function(a, b, c) {
-  goog.dom.classlist.remove(a, b);
-  goog.dom.classlist.add(a, c);
-};
 goog.dom.ASSUME_QUIRKS_MODE = !1;
 goog.dom.ASSUME_STANDARDS_MODE = !1;
 goog.dom.COMPAT_MODE_KNOWN_ = goog.dom.ASSUME_QUIRKS_MODE || goog.dom.ASSUME_STANDARDS_MODE;
@@ -4383,7 +4383,8 @@ goog.exportSymbol("pagespeed.MobLogo.prototype.run", pagespeed.MobLogo.prototype
 pagespeed.MobNav = function() {
   this.navSections_ = [];
   this.useDetectedThemeColor_ = !0;
-  this.navPanel_ = this.callButton_ = this.menuButton_ = this.logoSpan_ = this.spacerDiv_ = this.headerBar_ = null;
+  this.scrollTimer_ = this.navPanel_ = this.callButton_ = this.menuButton_ = this.logoSpan_ = this.spacerDiv_ = this.headerBar_ = null;
+  this.currentTouches_ = 0;
 };
 pagespeed.MobNav.HEADER_BAR_HEIGHT_ = 60;
 pagespeed.MobNav.prototype.ARROW_ICON_ = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJAAAACQCAQAAABNTyozAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAACYktHRAD/h4/MvwAAAAlwSFlzAAALEwAACxMBAJqcGAAAATdJREFUeNrt0klOBTEQREHfDI7FTEn/4M2GBULQo22wK+ICKT1lKQAAAAAAAAAAAAAAAAAA/Jm7rmv3o+W5laU8d1uLspQYLc/SLVF8rsVoefokii9rMVqe9oni21qMlqdtovhhLUbL0y5R/LIWo+VZylKeuuX5t4nW8tRPFBtrMV6gmolic+t9xA/VSjRonl6JBs7TI9HgeVonmiDPvkSPmfO0SjRRnhaJJstTO9GEeWom2s7zVgZVI9HEeWokmjzPvkQPmfNcSZQkz9lEifKcSZQsz9FECfMcSZQ0z95E23ley8S2E6XOcz3R9HmuJUqR53yiNHnOJUqV53iidHmOJUqZZ3+itHn2JXopyd3kOZ9IntVE8qwmkmc1kTyrieRZTSTPaiJ5AAAAAAAAAAAAAAAAAGjgA62rM0XB6dNxAAAAAElFTkSuQmCC";
@@ -4417,6 +4418,40 @@ pagespeed.MobNav.prototype.fixExistingElements_ = function() {
     999999 <= d.getPropertyValue("z-index") && (console.log("Element z-index exceeded 999999, setting to 999998."), c.style.zIndex = 999998);
   }
 };
+pagespeed.MobNav.prototype.redrawHeader_ = function() {
+  this.headerBar_.style.top = window.scrollY + "px";
+  this.headerBar_.style.left = window.scrollX + "px";
+  var a = "scale(" + window.innerWidth / document.documentElement.clientWidth + ")";
+  this.headerBar_.style["-webkit-transform"] = a;
+  this.headerBar_.style.transform = a;
+  goog.dom.classlist.remove(this.headerBar_, "hide");
+  a = this.headerBar_.offsetHeight;
+  this.menuButton_.style.width = a + "px";
+  this.menuButton_.style.height = a + "px";
+  this.callButton_.style.width = a + "px";
+  this.callButton_.style.height = a + "px";
+  this.spacerDiv_.style.height = a + "px";
+};
+pagespeed.MobNav.prototype.addHeaderBarResizeEvents_ = function() {
+  this.redrawHeader_();
+  window.addEventListener("scroll", goog.bind(function() {
+    null != this.scrollTimer_ && (window.clearTimeout(this.scrollTimer_), this.scrollTimer_ = null);
+    this.scrollTimer_ = window.setTimeout(goog.bind(function() {
+      0 == this.currentTouches_ && this.redrawHeader_();
+      this.scrollTimer_ = null;
+    }, this), 50);
+  }, this), !1);
+  window.addEventListener("touchstart", goog.bind(function(a) {
+    this.currentTouches_ = a.targetTouches.length;
+  }, this), !1);
+  window.addEventListener("touchmove", goog.bind(function() {
+    goog.dom.classlist.contains(document.body, "noscroll") || goog.dom.classlist.add(this.headerBar_, "hide");
+  }, this), !1);
+  window.addEventListener("touchend", goog.bind(function(a) {
+    this.currentTouches_ = a.targetTouches.length;
+    null == this.scrollTimer_ && 0 == this.currentTouches_ && this.redrawHeader_();
+  }, this), !1);
+};
 pagespeed.MobNav.prototype.addHeaderBar_ = function(a) {
   this.spacerDiv_ = document.createElement("div");
   document.body.insertBefore(this.spacerDiv_, document.body.childNodes[0]);
@@ -4438,6 +4473,7 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(a) {
     this.callButton_.appendChild(b);
     this.headerBar_.appendChild(this.callButton_);
   }
+  this.addHeaderBarResizeEvents_();
 };
 pagespeed.MobNav.prototype.addThemeColor_ = function(a) {
   var b = this.useDetectedThemeColor_ ? pagespeed.MobUtil.colorNumbersToString(a.menuBackColor) : "#3c78d8";
