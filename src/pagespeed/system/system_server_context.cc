@@ -111,6 +111,8 @@ void SystemServerContext::CheckLegacyGlobalCacheFlushFile() {
       }
       if (cache_flush_count_ == NULL) {
         cache_flush_count_ = statistics()->GetVariable(kCacheFlushCount);
+      }
+      if (cache_flush_timestamp_ms_ == NULL) {
         cache_flush_timestamp_ms_ = statistics()->GetUpDownCounter(
             kCacheFlushTimestampMs);
       }
