@@ -1192,7 +1192,8 @@ http {
     pagespeed LoadFromFile "http://headers.example.com/"
               "@@SERVER_ROOT@@/";
     location /mod_pagespeed_test/ {
-      more_set_headers "Server: overriden";
+      more_set_headers "Server: override";
+      more_set_headers -s '404' 'Cache-Control: override';
     }
   }
 
