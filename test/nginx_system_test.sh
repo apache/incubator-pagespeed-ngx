@@ -1143,6 +1143,16 @@ OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP -O /dev/null -S $URL 2>&1)
 MATCHES=$(echo "$OUT" | grep -c "Server: override") || true
 check [ $MATCHES -eq 1 ]
 
+start_test Conditional cache-control header override in resource flow.
+URL=http://headers.example.com/mod_pagespeed_test/
+URL+=A.doesnotexist.css.pagespeed.cf.0.css
+# The 404 response makes wget exit with an error code, which we ignore.
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP -O /dev/null -S $URL 2>&1) || true
+# We ignored the exit code, check if we got a 404 response.
+check_from "$OUT" fgrep -qi '404'
+MATCHES=$(echo "$OUT" | grep -c "Cache-Control: override") || true
+check [ $MATCHES -eq 1 ]
+
 if $USE_VALGRIND; then
     # It is possible that there are still ProxyFetches outstanding
     # at this point in time. Give them a few extra seconds to allow
