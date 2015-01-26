@@ -220,6 +220,12 @@ void ps_set_buffered(ngx_http_request_t* r, bool on) {
   }
 }
 
+namespace {
+
+void ps_release_base_fetch(ps_request_ctx_t* ctx);
+
+}  // namespace
+
 namespace ps_base_fetch {
 
 ngx_http_output_header_filter_pt ngx_http_next_header_filter;
@@ -236,16 +242,16 @@ ngx_int_t ps_base_fetch_filter(ngx_http_request_t* r, ngx_chain_t* in) {
                  "http pagespeed write filter \"%V\"", &r->uri);
 
   // send response body
-  if (in || ctx->write_pending) {
+  if (in || r->connection->buffered) {
     ngx_int_t rc = ngx_http_next_body_filter(r, in);
-    ctx->write_pending = (rc == NGX_AGAIN);
-    if (rc == NGX_OK && !ctx->fetch_done) {
-      return NGX_AGAIN;
+    // We can't indicate that we are done yet, because we have an active base
+    // fetch associated to this request.
+    if (rc != NGX_OK) {
+      return rc;
     }
-    return rc;
   }
 
-  return ctx->fetch_done ? NGX_OK : NGX_AGAIN;
+  return NGX_AGAIN;
 }
 
 // This runs on the nginx event loop in response to seeing the byte PageSpeed
@@ -300,8 +306,6 @@ ngx_int_t ps_base_fetch_handler(ngx_http_request_t* r) {
       return NGX_DONE;
     }
 
-    ctx->write_pending = (rc == NGX_AGAIN);
-
     ps_set_buffered(r, true);
   }
 
@@ -317,6 +321,7 @@ ngx_int_t ps_base_fetch_handler(ngx_http_request_t* r) {
 
   if (rc == NGX_ERROR) {
     ps_set_buffered(r, false);
+    ps_release_base_fetch(ctx);    
     return NGX_HTTP_INTERNAL_SERVER_ERROR;
   }
 
@@ -327,7 +332,7 @@ ngx_int_t ps_base_fetch_handler(ngx_http_request_t* r) {
 
   if (rc == NGX_OK) {
     ps_set_buffered(r, false);
-    ctx->fetch_done = true;
+    ps_release_base_fetch(ctx);    
   }
 
   return ps_base_fetch_filter(r, cl);
@@ -1209,17 +1214,12 @@ GoogleString ps_determine_url(ngx_http_request_t* r) {
                 host, port_string, str_to_string_piece(r->unparsed_uri));
 }
 
-void ps_release_base_fetch(ps_request_ctx_t* ctx);
-
 // we are still at pagespeed phase
 ngx_int_t ps_decline_request(ngx_http_request_t* r) {
   ps_request_ctx_t* ctx = ps_get_request_context(r);
   CHECK(ctx != NULL);
 
   // re init ctx
-  ctx->fetch_done = false;
-  ctx->write_pending = false;
-
   ps_set_buffered(r, false);
 
   r->count++;
@@ -1714,7 +1714,6 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
     ctx = new ps_request_ctx_t();
 
     ctx->r = r;
-    ctx->write_pending = false;
     ctx->html_rewrite = false;
     ctx->in_place = false;
     ctx->preserve_caching_headers = kDontPreserveHeaders;
