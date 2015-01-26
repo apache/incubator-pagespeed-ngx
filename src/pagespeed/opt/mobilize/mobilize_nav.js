@@ -23,6 +23,8 @@ goog.provide('pagespeed.MobNav');
 goog.require('goog.array');
 goog.require('goog.dom');
 goog.require('goog.dom.classlist');
+goog.require('goog.json');
+goog.require('goog.net.Jsonp');
 goog.require('pagespeed.MobUtil');
 
 
@@ -323,17 +325,171 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
   this.headerBar_.style.backgroundColor =
       pagespeed.MobUtil.colorNumbersToString(themeData.menuBackColor);
 
-  // Add call button.
-  if (window.psAddCallButton) {
-    this.callButton_ = document.createElement('button');
-    goog.dom.classlist.add(this.callButton_, 'psmob-call-button');
-    var callImage = document.createElement('img');
-    callImage.src = this.callButtonImage_(themeData.menuFrontColor);
-    this.callButton_.appendChild(callImage);
-    this.headerBar_.appendChild(this.callButton_);
+  // Add call button if a phone number is specified.
+  if (window.psPhoneNumber) {
+    this.addPhoneDialer_(themeData.menuFrontColor);
   }
 
   this.addHeaderBarResizeEvents_();
+};
+
+
+/**
+ * Adds a phone dialer icon to the header bar.
+ * @param {!goog.color.Rgb} color
+ * @private
+ */
+pagespeed.MobNav.prototype.addPhoneDialer_ = function(color) {
+  var callImage = document.createElement('img');
+  callImage.id = 'psmob-phone-image';
+  callImage.src = this.callButtonImage_(color);
+  this.callButton_ = document.createElement('a');
+  this.callButton_.id = 'psmob-phone-dialer';
+  var phone = this.getPhoneNumber_();
+  if (phone) {
+    this.callButton_.href = pagespeed.MobNav.createPhoneHref_(phone);
+  } else {
+    this.callButton_.href = 'javascript:psRequestDynamicPhoneNumberAndCall()';
+  }
+  this.callButton_.appendChild(callImage);
+  this.headerBar_.appendChild(this.callButton_);
+};
+
+
+/**
+ * Attempts to get a static phone number, either as a debug
+ * fallback or from a cookie, returning null if we don't have
+ * the right phone number available.
+ *
+ * @private
+ * @return {?string}
+ */
+pagespeed.MobNav.prototype.getPhoneNumber_ = function() {
+  // When debugging mobilization with static references
+  // to uncompiled JS files, the conversion-tracking flow does
+  // not seem to work, so just dial the configured phone directly.
+  //
+  // Naturally if there is no configured conversion label, we can't
+  // get a conversion-tracked phone-number either.
+  if (window.psStaticJs || !window.psConversionLabel) {
+    return window.psPhoneNumber;
+  }
+
+  // Check to see if the phone number we want was previously saved
+  // in a valid cookie, with matching fallback number and conversion label.
+  var match = document.cookie.match(/(^|;| )gwcm=([^;]+)/);
+  if (match) {
+    var gwcmCookie = match[2];
+    if (gwcmCookie) {
+      var cookieData = goog.json.parse(unescape(match[2]));
+      if ((cookieData['fallback'] == window.psPhoneNumber) &&
+          (cookieData['clabel'] == window.psConversionLabel)) {
+        return cookieData['mobile_number'];
+      }
+    }
+  }
+  return null;
+};
+
+
+/**
+ * Obtains a dynamic Google-Voice number to track conversions.  We only
+ * do this when user clicks the phone icon.
+ *
+ * This is declared as a raw function so it is
+ * accessible from as href='javascript:psRequestDynamicPhoneNumberAndCall()'.
+ * @export
+ */
+function psRequestDynamicPhoneNumberAndCall() {
+  if (window.psConversionLabel && window.psPhoneNumber) {
+    // No request from cookie.
+    var label = escape(window.psConversionLabel);
+    var url = 'https://www.googleadservices.com/pagead/conversion/' +
+        window.psConversionId + '/wcm?cl=' + label +
+        '&fb=' + escape(window.psPhoneNumber);
+    if (window.psDebugMode) {
+      alert('requesting dynamic phone number: ' + url);
+    }
+    var req = new goog.net.Jsonp(url, 'callback');
+    var errorCallback = function() {
+      if (window.psDebugMode) {
+        alert('error callback called');
+      }
+      if (window.psPhoneNumber) {
+        psDialPhone(window.psPhoneNumber);
+      }
+    };
+    req.send(null, pagespeed.MobNav.receivePhoneNumber_, errorCallback);
+  }
+}
+
+
+/**
+ * Creates an anchor href to dial a phone number.
+ *
+ * @private
+ * @param {string} phone
+ * @return {string}
+ */
+pagespeed.MobNav.createPhoneHref_ = function(phone) {
+  return 'javascript:psDialPhone("' + phone + '")';
+};
+
+
+/**
+ * Dials a phone number.  This is declared as a raw function so it is
+ * accessible from as href='javascript:psDialPhone(5551212)'.
+ * @param {string} phone
+ * @export
+ */
+function psDialPhone(phone) {
+  location.href = 'tel:' + phone;
+}
+
+
+/**
+ * Extracts a dynamic phone number from a jsonp response.  If successful, it
+ * calls the phone and saves the phone number in a cookie.  It also adjusts
+ * the dialer phone anchor-tag to directly dial the dynamic phone in case it
+ * is clicked again.
+ *
+ * @private
+ * @param {Object} json
+ */
+pagespeed.MobNav.receivePhoneNumber_ = function(json) {
+  var phone = null;
+  if (json && json['wcm']) {
+    var wcm = json['wcm'];
+    if (wcm) {
+      phone = wcm['mobile_number'];
+    }
+  }
+  if (phone) {
+    // Save the phone in a cookie to reduce server requests.
+    var cookieValue = {
+      'expires': wcm['expires'],
+      'formatted_number': wcm['formatted_number'],
+      'mobile_number': phone,
+      'clabel': window.psConversionLabel,
+      'fallback': window.psPhoneNumber
+    };
+    cookieValue = goog.json.serialize(cookieValue);
+    if (window.psDebugMode) {
+      alert('saving phone in cookie: ' + cookieValue);
+    }
+    document.cookie = 'gwcm=' + escape(cookieValue) + ';path=/;max-age=' +
+        (3600 * 24 * 90);
+    psDialPhone(phone);
+    var anchor = document.getElementById('psmob-phone-dialer');
+    anchor.href = pagespeed.MobNav.createPhoneHref_(phone);
+  } else if (window.psPhoneNumber) {
+    // No ad was clicked.  Call the configured phone number, which will not
+    // be conversion-tracked.
+    if (window.psDebugMode) {
+      alert('receivePhoneNumber: ' + goog.json.serialize(json));
+    }
+    psDialPhone(window.psPhoneNumber);
+  }
 };
 
 

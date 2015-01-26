@@ -18,11 +18,46 @@
  * @fileoverview Externs used by mobilization JS.
  */
 
+
+/** @type {string} */
 var pagespeedContentIds;       // From C++
+
+
+/** @type {Array<string>} */
 var pagespeedHeaderIds;        // From C++
+
+
+/** @type {Array<string>} */
 var pagespeedNavigationalIds;  // From C++
-var psAddCallButton;           // From C++
+
+
+/** @type {string} */
+var psConversionId;            // From C++
+
+
+/** @type {string} */
+var psConversionLabel;         // From C++
+
+
+/** @type {boolean} */
 var psDebugMode;               // From C++
+
+
+/** @type {boolean} */
 var psLayoutMode;              // From C++
+
+
+/** @type {Object} */
 var psMobStaticImageInfo;      // From C++
+
+
+/** @type {boolean} */
 var psNavMode;                 // From C++
+
+
+/** @type {?string} */
+var psPhoneNumber;             // From C++
+
+
+/** @type {boolean} */
+var psStaticJs;                // From C++

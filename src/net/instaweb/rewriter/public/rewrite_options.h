@@ -324,7 +324,9 @@ class RewriteOptions {
   static const char kMinCacheTtlMs[];
   static const char kMinImageSizeLowResolutionBytes[];
   static const char kMinResourceCacheTimeToRewriteMs[];
-  static const char kMobCallButton[];
+  static const char kMobPhoneNumber[];
+  static const char kMobConversionId[];
+  static const char kMobConversionLabel[];
   static const char kMobLayout[];
   static const char kMobNav[];
   static const char kMobStatic[];
@@ -2500,14 +2502,25 @@ class RewriteOptions {
   bool mob_always() const { return mob_always_.value(); }
   void set_mob_always(bool x) { set_option(x, &mob_always_); }
   bool mob_layout() const { return mob_layout_.value(); }
-  void set_mob_call_button(bool x) { set_option(x, &mob_call_button_); }
-  bool mob_call_button() const { return mob_call_button_.value(); }
+  void set_mob_phone_number(StringPiece x) {
+    set_option(x.as_string(), &mob_phone_number_);
+  }
+  const GoogleString& mob_phone_number() const {
+    return mob_phone_number_.value();
+  }
   void set_mob_layout(bool x) { set_option(x, &mob_layout_); }
   bool mob_nav() const { return mob_nav_.value(); }
   void set_mob_nav(bool x) { set_option(x, &mob_nav_); }
   bool mob_static() const { return mob_static_.value(); }
   void set_mob_static(bool x) { set_option(x, &mob_static_); }
-
+  int64 mob_conversion_id() const { return mob_conversion_id_.value(); }
+  void set_mob_conversion_id(int64 x) { set_option(x, &mob_conversion_id_); }
+  const GoogleString& mob_conversion_label() const {
+    return mob_conversion_label_.value();
+  }
+  void set_mob_conversion_label(StringPiece x) {
+    set_option(x.as_string(), &mob_conversion_label_);
+  }
 
   // Merge src into 'this'.  Generally, options that are explicitly
   // set in src will override those explicitly set in 'this' (except that
@@ -3958,10 +3971,13 @@ class RewriteOptions {
   Option<ResourceCategorySet> inline_unauthorized_resource_types_;
 
   Option<bool> mob_always_;
-  Option<bool> mob_call_button_;
   Option<bool> mob_layout_;
   Option<bool> mob_nav_;
   Option<bool> mob_static_;
+
+  Option<GoogleString> mob_phone_number_;
+  Option<int64> mob_conversion_id_;
+  Option<GoogleString> mob_conversion_label_;
 
   CopyOnWrite<JavascriptLibraryIdentification>
       javascript_library_identification_;

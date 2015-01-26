@@ -120,8 +120,14 @@ body {
   left: 0;
 }
 
-.psmob-call-button {
-  right: 0;
+#psmob-phone-dialer {
+  float: right;
+}
+
+#psmob-phone-image {
+  width: 70%;
+  height: 70%;
+  padding: 15% 15% 15% 15%;
 }
 
 #psmob-logo-span {

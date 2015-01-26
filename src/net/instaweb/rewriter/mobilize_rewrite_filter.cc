@@ -28,6 +28,7 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/escaping.h"
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -222,12 +223,22 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
       // enabled.  That is bundled into the same JS compile unit as the
       // layout, so we cannot do a 'undefined' check in JS to determine
       // whether it was enabled.
+      const RewriteOptions* options = driver()->options();
       GoogleString src = StrCat(
           "var psDebugMode=", (driver()->DebugMode() ? "true;" : "false;"),
           "var psNavMode=", (use_js_nav_ ? "true;" : "false;"),
           "var psLayoutMode=", (use_js_layout_ ? "true;" : "false;"),
-          "var psAddCallButton=",
-          (driver()->options()->mob_call_button() ? "true;" : "false;"));
+          "var psStaticJs=", (use_static_ ? "true;" : "false;"));
+      const GoogleString& phone = options->mob_phone_number();
+      if (!phone.empty()) {
+        GoogleString label, escaped_phone;
+        EscapeToJsStringLiteral(phone, false, &escaped_phone);
+        EscapeToJsStringLiteral(options->mob_conversion_label(), false, &label);
+        StrAppend(&src, "var psPhoneNumber='", escaped_phone, "';"
+                  "var psConversionId=",
+                  Integer64ToString(options->mob_conversion_id()),
+                  ";var psConversionLabel='", label, "';");
+      }
       driver()->InsertScriptAfterCurrent(src, false);
 
       // TODO(jmarantz): Consider waiting to see if we have a charset directive

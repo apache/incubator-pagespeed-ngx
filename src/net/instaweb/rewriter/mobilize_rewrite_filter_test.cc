@@ -42,6 +42,9 @@ namespace {
 const char kTestDataDir[] = "/net/instaweb/rewriter/testdata/";
 const char kOriginal[] = "mobilize_test.html";
 const char kRewritten[] = "mobilize_test_output.html";
+const char kPhoneNumber[] = "16175551212";
+const int64 kConversionId = 42;
+const char kConversionLabel[] = "HelloWorld";
 
 GoogleString Styles(bool layout_mode) {
   return StrCat(
@@ -55,11 +58,16 @@ GoogleString HeadAndViewport(bool layout_mode) {
   return StrCat(
       "<script>var psDebugMode=false;var psNavMode=true;var psLayoutMode=",
       layout_mode ? "true" : "false", ";"
-      "var psAddCallButton=true;</script>",
-      (layout_mode
-       ? ("<meta name='viewport' content='width=device-width'/>"
-          "<script src=\"/psajs/mobilize_xhr.0.js\"></script>")
-       : ""));
+      "var psStaticJs=false;"
+      "var psPhoneNumber='", kPhoneNumber, "';"
+      "var psConversionId=", Integer64ToString(kConversionId), ";",
+      StrCat(
+          "var psConversionLabel='", kConversionLabel, "';"
+          "</script>",
+          (layout_mode
+           ? ("<meta name='viewport' content='width=device-width'/>"
+              "<script src=\"/psajs/mobilize_xhr.0.js\"></script>")
+           : "")));
 }
 
 }  // namespace
@@ -79,7 +87,9 @@ class MobilizeRewriteFilterTest : public RewriteTestBase {
     RewriteTestBase::SetUp();
     options()->ClearSignatureForTesting();
     options()->set_mob_always(true);
-    options()->set_mob_call_button(true);
+    options()->set_mob_phone_number(kPhoneNumber);
+    options()->set_mob_conversion_id(kConversionId);
+    options()->set_mob_conversion_label(kConversionLabel);
     options()->set_mob_layout(LayoutMode());
     options()->set_mob_nav(true);
     server_context()->ComputeSignature(options());
@@ -443,7 +453,9 @@ class MobilizeRewriteEndToEndTest : public MobilizeRewriteFilterTest {
     RewriteTestBase::SetUp();
     SetHtmlMimetype();  // Don't wrap scripts in <![CDATA[ ]]>
     options()->ClearSignatureForTesting();
-    options()->set_mob_call_button(true);
+    options()->set_mob_phone_number(kPhoneNumber);
+    options()->set_mob_conversion_id(kConversionId);
+    options()->set_mob_conversion_label(kConversionLabel);
     options()->set_mob_layout(true);
     options()->set_mob_nav(true);
     AddFilter(RewriteOptions::kMobilize);

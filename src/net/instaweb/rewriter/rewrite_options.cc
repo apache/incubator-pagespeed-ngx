@@ -225,7 +225,9 @@ const char RewriteOptions::kMinImageSizeLowResolutionBytes[] =
     "MinImageSizeLowResolutionBytes";
 const char RewriteOptions::kMinResourceCacheTimeToRewriteMs[] =
     "MinResourceCacheTimeToRewriteMs";
-const char RewriteOptions::kMobCallButton[] = "MobCallButton";
+const char RewriteOptions::kMobPhoneNumber[] = "MobPhoneNumber";
+const char RewriteOptions::kMobConversionId[] = "MobConversionId";
+const char RewriteOptions::kMobConversionLabel[] = "MobConversionLabel";
 const char RewriteOptions::kMobLayout[] = "MobLayout";
 const char RewriteOptions::kMobNav[] = "MobNav";
 const char RewriteOptions::kMobStatic[] = "MobStatic";
@@ -2207,9 +2209,19 @@ void RewriteOptions::AddProperties() {
       "(experimental) Unconditionally mobilize page regardless of user-agent.",
       true);
   AddBaseProperty(
-      false, &RewriteOptions::mob_call_button_, "mcall", kMobCallButton,
+      "", &RewriteOptions::mob_phone_number_, "mphone", kMobPhoneNumber,
       kQueryScope,
-      "(experimental) whether to add call button when mobilizing", true);
+      "(experimental) phone number for click-to-call.  This should be in "
+      "a form suitable for sending to a dialer, and will not be exposed in "
+      "a web UI directly until call button is pressed", true);
+  AddBaseProperty(
+      0, &RewriteOptions::mob_conversion_id_, "mcnvid", kMobConversionId,
+      kQueryScope,
+      "(experimental) conversion ID", true);
+  AddBaseProperty(
+      "", &RewriteOptions::mob_conversion_label_, "mcnvl",
+      kMobConversionLabel, kQueryScope,
+      "(experimental) conversion Label", true);
   AddBaseProperty(
       false, &RewriteOptions::mob_layout_, "mlayout", kMobLayout,
       kQueryScope,

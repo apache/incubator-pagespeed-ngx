@@ -71,6 +71,35 @@ class StaticAssetManagerTest : public RewriteTestBase {
     DISALLOW_COPY_AND_ASSIGN(AddStaticJsBeforeBr);
   };
 
+  // Extracts the first comment sequences in a script that doesn't
+  // contain any whitelisted substrings.
+  //
+  // TODO(jmarantz): Note that this is not a proper lexer and will be
+  // fooled by comment sequences in strings, thus this might require
+  // refactoring to use our js tokenizer in the future, should this
+  // yield false positives.
+  StringPiece ExtractCommentSkippingWhitelist(StringPiece script) {
+    StringPieceVector v;
+    stringpiece_ssize_type pos = 0;
+    while (true) {
+      pos = script.find("/*", pos);
+      if (pos == StringPiece::npos) {
+        return "";
+      }
+      stringpiece_ssize_type endpos = 0;
+      endpos = script.find("*/", pos + 2);
+      if (endpos == StringPiece::npos) {
+        return "";
+      }
+      endpos += 2;
+      StringPiece comment = script.substr(pos, endpos - pos);
+      if (comment.find("MochiKit") == StringPiece::npos) {
+        return comment;
+      }
+      pos = endpos;
+    }
+  }
+
   scoped_ptr<StaticAssetManager> manager_;
 };
 
@@ -147,7 +176,7 @@ TEST_F(StaticAssetManagerTest, TestJsDebug) {
       GoogleString script(manager_->GetAsset(module, options_));
       // Debug code is also put through the closure compiler to resolve any uses
       // of goog.require. As part of this, comments also get stripped out.
-      EXPECT_EQ(GoogleString::npos, script.find("/*"))
+      EXPECT_STREQ("", ExtractCommentSkippingWhitelist(script))
           << "Comment found in debug version of asset " << module;
     }
   }
@@ -163,8 +192,8 @@ TEST_F(StaticAssetManagerTest, TestJsOpt) {
         module != StaticAssetEnum::MOBILIZE_CSS &&
         module != StaticAssetEnum::MOBILIZE_LAYOUT_CSS) {
       GoogleString script(manager_->GetAsset(module, options_));
-      EXPECT_EQ(GoogleString::npos, script.find("/*"))
-          << "Comment found in opt version of asset " << module;
+      EXPECT_STREQ("", ExtractCommentSkippingWhitelist(script))
+          << "Comment found in debug version of asset " << module;
     }
   }
 }
