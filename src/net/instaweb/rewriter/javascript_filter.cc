@@ -168,12 +168,19 @@ class JavascriptFilter::Context : public SingleRewriteContext {
     if (Options()->Enabled(RewriteOptions::kIncludeJsSourceMaps) &&
         // Source map will be empty if we can't construct it correctly.
         !code_block.SourceMappings().empty()) {
-      // Note: We append PageSpeed=off query parameter to make sure that
-      // the source URL doesn't get rewritten with IPRO.
       GoogleUrl original_gurl(input->url());
-      scoped_ptr<GoogleUrl> source_gurl(
-          original_gurl.CopyAndAddEscapedQueryParam(RewriteQuery::kPageSpeed,
-                                                    "off"));
+      scoped_ptr<GoogleUrl> source_gurl;
+      if (server_context->IsPagespeedResource(original_gurl)) {
+        // Do not append Pagespeed=off if input is already a pagespeed resource.
+        source_gurl.reset(new GoogleUrl);
+        source_gurl->Reset(original_gurl);
+      } else {
+        // Note: We append PageSpeed=off query parameter to make sure that
+        // the source URL doesn't get rewritten with IPRO.
+        source_gurl.reset(
+            original_gurl.CopyAndAddEscapedQueryParam(RewriteQuery::kPageSpeed,
+                                                      "off"));
+      }
 
       GoogleString source_map_text;
       // Note: We omit rewritten URL because of a chicken-and-egg problem.

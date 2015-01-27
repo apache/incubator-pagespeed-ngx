@@ -29,6 +29,7 @@
 #include "net/instaweb/rewriter/public/debug_filter.h"
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
 #include "net/instaweb/rewriter/public/javascript_library_identification.h"
+#include "net/instaweb/rewriter/public/js_outline_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
@@ -1239,6 +1240,57 @@ TEST_P(JavascriptFilterTest, SourceMapUnsanitaryUrl) {
       kJsMinData, "\n//# sourceMappingURL="
       "http://test.com/input.js,qevil=.pagespeed.sm.0.map\n");
   EXPECT_EQ(expected_output_js, output_js);
+}
+
+// For non-pagespeed input JS, we must add ?PageSpeed=off to the source URL
+// to avoid IPRO rewriting the source. However, we should not add ?PageSpeed=off
+// for .pagespeed. input files, because that doesn't make any sense.
+// https://code.google.com/p/modpagespeed/issues/detail?id=1043
+TEST_P(JavascriptFilterTest, ProperSourceMapForPagespeedInput) {
+  if (!options()->use_experimental_js_minifier()) return;
+
+  options()->EnableFilter(RewriteOptions::kIncludeJsSourceMaps);
+  options()->EnableFilter(RewriteOptions::kRewriteJavascriptExternal);
+  options()->EnableFilter(RewriteOptions::kOutlineJavascript);
+  options()->set_js_outline_min_bytes(0);  // Make sure everything is outlined.
+  UseMd5Hasher();  // We should use a real hasher for outlining.
+  rewrite_driver_->AddFilters();
+
+  const char input_js[] = "foo = 1;";
+  GoogleString outlined_js_tail =
+      Encode("", JsOutlineFilter::kFilterId,
+             hasher()->Hash(input_js), "_", "js");
+
+  const char expected_mapping_vlq[] = "AAAA,GAAI,CAAE";
+  // Note: No ?PageSpeed=off
+  GoogleString expected_source_map = StrCat(
+      ")]}'\n{\"mappings\":\"", expected_mapping_vlq, "\",\"names\":[],"
+      "\"sources\":[\"", kTestDomain, outlined_js_tail, "\"],"
+      "\"version\":3}\n");
+  GoogleString source_map_url =
+      Encode(kTestDomain, RewriteOptions::kJavascriptMinSourceMapId,
+             hasher()->Hash(expected_source_map), outlined_js_tail, "map");
+
+  const char rewritten_js[] = "foo=1;";
+  GoogleString expected_output_js =
+      StrCat(rewritten_js, "\n"
+             "//# sourceMappingURL=", source_map_url, "\n");
+  GoogleString rewritten_js_url =
+      Encode(kTestDomain, RewriteOptions::kJavascriptMinId,
+             hasher()->Hash(expected_output_js), outlined_js_tail, "js");
+
+  GoogleString input_html = StrCat("<script>", input_js, "</script>");
+  GoogleString expected_output_html =
+      StrCat("<script src=\"", rewritten_js_url, "\"></script>");
+  ValidateExpected("source_map_pagespeed", input_html, expected_output_html);
+
+  GoogleString output_js;
+  EXPECT_TRUE(FetchResourceUrl(rewritten_js_url, &output_js));
+  EXPECT_EQ(expected_output_js, output_js);
+
+  GoogleString source_map;
+  EXPECT_TRUE(FetchResourceUrl(source_map_url, &source_map));
+  EXPECT_EQ(expected_source_map, source_map);
 }
 
 TEST_P(JavascriptFilterTest, InlineAndNotExternal) {
