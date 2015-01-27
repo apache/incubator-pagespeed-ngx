@@ -23,8 +23,10 @@ goog.provide('pagespeed.MobNav');
 goog.require('goog.array');
 goog.require('goog.dom');
 goog.require('goog.dom.classlist');
+goog.require('goog.dom.NodeType');
 goog.require('goog.json');
 goog.require('goog.net.Jsonp');
+goog.require('goog.string');
 goog.require('pagespeed.MobUtil');
 
 
@@ -160,28 +162,141 @@ pagespeed.MobNav.prototype.callButtonImage_ = function(color) {
 
 
 /**
+ * Given a candidate node, see if it contains any IMG elements.
+ * visibilityMatters indicates those IMGs must be visible.
+ * @param {boolean} visibilityMatters
+ * @param {!Node} node to inspect for images
+ * @return {boolean}
+ * @private
+ */
+pagespeed.MobNav.prototype.hasImages_ = function(visibilityMatters, node) {
+  if (!goog.dom.isElement(node)) {
+    return false;
+  }
+  if (node.tagName === 'IMG') {
+    return (!visibilityMatters || node.offsetParent !== null);
+  }
+  var images = node.getElementsByTagName('IMG');
+  if (visibilityMatters) {
+    // Check in reverse; see
+    // http://stackoverflow.com/questions/8747086/
+    for (var i = images.length - 1; i >= 0; i--) {
+      if (images[i].offsetParent !== null) {
+        return true;
+      }
+    }
+    return false;
+  } else {
+    // Visibility doesn't matter.
+    return images.length > 0;
+  }
+};
+
+
+/**
+ * Given a candidate navigational DOM element, figure out if it should be
+ * widened to encompass its parent element as well.
+ * @param {!Element} element
+ * @return {boolean}
+ * @private
+ */
+pagespeed.MobNav.prototype.canEnlargeNav_ = function(element) {
+  var parent = element.parentNode;
+  if (!parent) {
+    return false;
+  }
+  if (parent.getElementsByTagName('SCRIPT').length > 0) {
+    // Never enlarge to encompass a script.
+    return false;
+  }
+  var elementIsVisible = element.offsetParent !== null;
+  var sawElement = false;
+  var preElementTextSize = 0;
+  for (var child = parent.firstChild; child; child = child.nextSibling) {
+    if (child == element) {
+      sawElement = true;
+    } else if (child.offsetParent === null && elementIsVisible) {
+      // Not visible when element is visible.  Skip.  Note that element may be
+      // invisible due to being in a menu (so it'll become visible on hover /
+      // touch but isn't visible now); in that case we want to ignore visibility
+      // of siblings when deciding whether to enlarge.
+    } else if (child.nodeType != goog.dom.NodeType.TEXT &&
+               child.nodeType != goog.dom.NodeType.ELEMENT) {
+      // Ignore comments, CDATA, deprecated nodes, etc.
+    } else if (this.hasImages_(elementIsVisible, child)) {
+      // Image in parent, don't enlarge.
+      return false;
+    } else {
+      var textSize = goog.string.trim(child.textContent).length;
+      if (textSize > 0) {
+        if (sawElement) {
+          // Text after element, don't enlarge.
+          return false;
+        }
+        preElementTextSize += textSize;
+        if (preElementTextSize > 60) {
+          // Too much pre-element text, don't enlarge.
+          return false;
+        }
+      }
+    }
+  }
+  return true;
+};
+
+
+/**
  * Find the nav sections on the page. If site-specific tweaks are needed to add
  * to the nav sections found by the machine learning, then add them here.
  * @private
  */
 pagespeed.MobNav.prototype.findNavSections_ = function() {
-  var elements;
+  var elements = [];
   if (window.pagespeedNavigationalIds) {
     var n = window.pagespeedNavigationalIds.length;
-    elements = Array(n);
+    var parents = {};
     for (var i = 0; i < n; i++) {
       var id = window.pagespeedNavigationalIds[i];
       // Attempt to use querySelector(...) if getElementById(...) fails.  This
       // handles the empty string (not retrieved by getElementById) gracefully,
       // and should deal with other corner cases as well.
-      elements[i] = (document.getElementById(id) ||
+      var element = (document.getElementById(id) ||
                      document.querySelector(
                          '[id=' +
                          pagespeed.MobUtil.toCssString1(id) +
                          ']'));
+      var parent = element.parentNode;
+      // Optionally replace an element by its parent.
+      // Make sure we do this at most once, and delete other children
+      // once we have done so.
+      if (parent) {
+        // We need a key to index parents so we can detect duplicates.
+        // We know that element has an id, so if the parent doesn't
+        // we create one based on element.id.
+        if (!parent.id) {
+          // Add id to parent based on element id.
+          if (element.id.match(/^PageSpeed-.*-[0-9]+$/)) {
+            // Truncate numeric path if element has PageSpeed id.
+            parent.id = element.id.replace(/-[0-9]+$/, '');
+          } else {
+            // Otherwise element has its own id; construct a parent id.
+            parent.id = 'PageSpeed-' + element.id + '-P';
+          }
+        }
+        if (!(parent.id in parents)) {
+          // Not yet seen the parent.
+          parents[parent.id] = this.canEnlargeNav_(element);
+          elements.push(parents[parent.id] ? parent : element);
+        } else if (!parents[parent.id]) {
+          // Parent seen, was not enlarged.
+          elements.push(element);
+        } else {
+          // parent is already in elements.
+        }
+      } else {
+        elements.push(element);
+      }
     }
-  } else {
-    elements = Array(0);
   }
   this.navSections_ = elements;
 };
