@@ -87,37 +87,6 @@ class ImageCombineFilter;
 
 namespace {
 
-class StyleAttributeSlot : public ResourceSlot {
- public:
-  StyleAttributeSlot(HtmlElement* element,
-                     HtmlElement::Attribute* attribute,
-                     const ResourcePtr& resource,
-                     StringPiece location)
-      : ResourceSlot(resource),
-        element_(element),
-        attribute_(attribute),
-        location_(location.data(), location.size()) {}
-  virtual ~StyleAttributeSlot() {}
-  virtual HtmlElement* element() const { return element_; }
-  virtual GoogleString LocationString() const { return location_; }
-
-  virtual void Render() {
-    if (!disable_rendering()) {
-      DCHECK(attribute_ != NULL);
-      if (attribute_ != NULL) {
-        attribute_->SetValue(resource()->contents());
-      }
-    }
-  }
-
- private:
-  HtmlElement* element_;
-  HtmlElement::Attribute* attribute_;
-  GoogleString location_;
-
-  DISALLOW_COPY_AND_ASSIGN(StyleAttributeSlot);
-};
-
 // A simple transformer that resolves URLs against a base. Unlike
 // RewriteDomainTransformer, does not do any mapping or trimming.
 class SimpleAbsolutifyTransformer : public CssTagScanner::Transformer {
@@ -1080,11 +1049,8 @@ void CssFilter::StartAttributeRewrite(HtmlElement* element,
                                       HtmlElement::Attribute* style,
                                       InlineCssKind inline_css_kind) {
   ResourcePtr input_resource(MakeInlineResource(style->DecodedValueOrNull()));
-  // TODO(sligocki): Create a new driver()->GetAttributeSlot() function to use
-  // here so that if we ever add another filter which manipulates attributes
-  // they work together properly.
-  ResourceSlotPtr slot(new StyleAttributeSlot(element, style, input_resource,
-                                              driver()->UrlLine()));
+  ResourceSlotPtr slot(
+      driver()->GetInlineAttributeSlot(input_resource, element, style));
 
   CssFilter::Context* rewriter = StartRewriting(slot);
   if (rewriter == NULL) {

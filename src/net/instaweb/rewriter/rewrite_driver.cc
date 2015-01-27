@@ -793,6 +793,7 @@ void RewriteDriver::FlushAsyncDone(int num_rewrites, Function* callback) {
 
     slots_.clear();
     inline_slots_.clear();
+    inline_attribute_slots_.clear();
   }
 
   // Notify all enabled pre-render filters that rendering is done.
@@ -2951,6 +2952,22 @@ InlineResourceSlotPtr RewriteDriver::GetInlineSlot(
     // The slot was already in the set.  Release the one we just
     // allocated and use the one already in.
     InlineResourceSlotSet::iterator iter = iter_inserted.first;
+    slot.reset(*iter);
+  }
+  return slot;
+}
+
+InlineAttributeSlotPtr RewriteDriver::GetInlineAttributeSlot(
+    const ResourcePtr& resource, HtmlElement* element,
+    HtmlElement::Attribute* attribute) {
+  InlineAttributeSlotPtr slot(
+      new InlineAttributeSlot(resource, element, attribute, UrlLine()));
+  std::pair<InlineAttributeSlotSet::iterator, bool> iter_inserted =
+      inline_attribute_slots_.insert(slot);
+  if (!iter_inserted.second) {
+    // The slot was already in the set.  Release the one we just
+    // allocated and use the one already in.
+    InlineAttributeSlotSet::iterator iter = iter_inserted.first;
     slot.reset(*iter);
   }
   return slot;

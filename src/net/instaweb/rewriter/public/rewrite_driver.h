@@ -33,6 +33,7 @@
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/downstream_cache_purger.h"
+#include "net/instaweb/rewriter/public/inline_attribute_slot.h"
 #include "net/instaweb/rewriter/public/inline_resource_slot.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
@@ -692,6 +693,14 @@ class RewriteDriver : public HtmlParse {
   // that rewrites are propagated between filters.
   InlineResourceSlotPtr GetInlineSlot(const ResourcePtr& resource,
                                       HtmlCharactersNode* char_node);
+
+  // Creates and registers an inline attribute resource slot for rewriting.
+  // If this is the first time called for this position, a new slot will be
+  // returned. On subsequent calls, the original slot will be returned so
+  // that rewrites are propagated between filters.
+  InlineAttributeSlotPtr GetInlineAttributeSlot(
+      const ResourcePtr& resource, HtmlElement* element,
+      HtmlElement::Attribute* attribute);
 
   // Method to start a resource rewrite.  This is called by a filter during
   // parsing, although the Rewrite might continue after deadlines expire
@@ -1627,6 +1636,7 @@ class RewriteDriver : public HtmlParse {
 
   HtmlResourceSlotSet slots_;
   InlineResourceSlotSet inline_slots_;
+  InlineAttributeSlotSet inline_attribute_slots_;
 
   scoped_ptr<RewriteOptions> options_;
 

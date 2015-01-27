@@ -1658,6 +1658,7 @@
         'rewriter/header_decision_tree.cc',
         'rewriter/image_rewrite_filter.cc',
         'rewriter/in_place_rewrite_context.cc',
+        'rewriter/inline_attribute_slot.cc',
         'rewriter/inline_resource_slot.cc',
         'rewriter/inline_rewrite_context.cc',
         'rewriter/insert_dns_prefetch_filter.cc',

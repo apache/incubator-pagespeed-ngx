@@ -157,9 +157,10 @@ bool HtmlResourceSlot::DirectSetUrl(const StringPiece& url) {
 }
 
 // TODO(jmarantz): test sanity of set maintenance using this comparator.
-bool HtmlResourceSlotComparator::operator()(const HtmlResourceSlotPtr& p,
-                                            const HtmlResourceSlotPtr& q)
-  const {
+bool HtmlResourceSlotComparator::operator()(
+    const HtmlResourceSlotPtr& p, const HtmlResourceSlotPtr& q) const {
+  // Note: The ordering depends on pointer comparison and so is arbitrary
+  // and non-deterministic.
   if (p->element() < q->element()) {
     return true;
   } else if (p->element() > q->element()) {
