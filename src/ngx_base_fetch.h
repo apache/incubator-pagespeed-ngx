@@ -116,6 +116,7 @@ class NgxBaseFetch : public AsyncFetch {
   bool detached() { return detached_; }
 
   ngx_http_request_t* request() { return request_; }
+  NgxBaseFetchType base_fetch_type() { return base_fetch_type_; }
 
  private:
   virtual bool HandleWrite(const StringPiece& sp, MessageHandler* handler);

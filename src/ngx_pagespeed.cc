@@ -266,6 +266,19 @@ ngx_int_t ps_base_fetch_handler(ngx_http_request_t* r) {
                  "ps fetch handler: %V", &r->uri);
 
   if (!r->header_sent) {
+    int status_code = ctx->base_fetch->response_headers()->status_code();
+    bool status_ok = (status_code != 0) && (status_code < 400);
+
+    // Pass on error handling for non-success status codes to nginx for
+    // responses where PSOL acts as a content generator (pagespeed resource,
+    // ipro hit, admin pages).
+    // This generates nginx's default error responses, but also allows header
+    // modules running after us to manipulate those responses.
+    if (!status_ok && (ctx->base_fetch->base_fetch_type() != kHtmlTransform
+                       && ctx->base_fetch->base_fetch_type() != kIproLookup)) {
+      return status_code;
+    }
+
     if (ctx->preserve_caching_headers != kDontPreserveHeaders) {
       ngx_table_elt_t* header;
       NgxListIterator it(&(r->headers_out.headers.part));
