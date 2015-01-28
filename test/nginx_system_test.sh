@@ -66,7 +66,7 @@ function keepalive_test() {
   NGX_LOG_FILE="$1.error.log"
   POST_DATA=$3
 
-  for ((i=0; i < 100; i++)); do
+  for ((i=0; i < 10; i++)); do
     for accept_encoding in "" "gzip"; do
       if [ -z "$POST_DATA" ]; then
         curl -m 2 -S -s -v -H "Accept-Encoding: $accept_encoding" \
@@ -1157,8 +1157,16 @@ if $USE_VALGRIND; then
     # It is possible that there are still ProxyFetches outstanding
     # at this point in time. Give them a few extra seconds to allow
     # them to finish, so they will not generate valgrind complaints
-    echo "Sleeping 30 seconds to allow outstanding ProxyFetches to finish."
-    sleep 30
+    # TODO(oschaaf): instead of sleeping, can't we look at the stats to check
+    # for outstanding work?
+    # Actually, should we sleep at all? Isn't that cheating?
+    # echo "Sleeping 30 seconds to allow outstanding ProxyFetches to finish."
+    #sleep 30
+    if hash ab 2>/dev/null; then
+        ab -n 10000 -c 100 -k http://127.0.0.1:8050/ &
+        sleep 1
+    fi
+
     kill -s quit $VALGRIND_PID
     wait
     # Clear the previously set trap, we don't need it anymore.
@@ -1166,6 +1174,22 @@ if $USE_VALGRIND; then
 
     start_test No Valgrind complaints.
     check_not [ -s "$TEST_TMP/valgrind.log" ]
+else
+    # Fire up some heavy load if ab is available to test a stressed shutdown
+    if hash ab 2>/dev/null; then
+        ab -n 10000 -c 100 -k http://127.0.0.1:8050/ &
+        sleep 1
+    fi
+    check_simple "$NGINX_EXECUTABLE" -s quit -c "$PAGESPEED_CONF"
+    wait
 fi
+
+start_test Logged output looks healthy.
+
+# TODO(oschaaf): This is pretty bare bones. We might want to also check all
+# warnings and errors, whitelisting those that are allowed.
+OUT=$(cat "$ERROR_LOG" | grep "\\[alert\\]" || true)
+check [ -z "$OUT" ]
+
 
 check_failures_and_exit
