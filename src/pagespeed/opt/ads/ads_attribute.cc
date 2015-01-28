@@ -35,6 +35,7 @@ const char kGoogleAdSlot[] = "google_ad_slot";
 const char kGoogleAdFormat[] = "google_ad_format";
 const char kGoogleAdWidth[] = "google_ad_width";
 const char kGoogleAdHeight[] = "google_ad_height";
+const char kGoogleAdOutput[] = "google_ad_output";
 
 GoogleString LookupAdsByGoogleAttributeName(
     StringPiece show_ads_attribute_name) {

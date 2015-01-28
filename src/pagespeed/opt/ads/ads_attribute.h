@@ -35,6 +35,7 @@ extern const char kGoogleAdSlot[];
 extern const char kGoogleAdFormat[];
 extern const char kGoogleAdWidth[];
 extern const char kGoogleAdHeight[];
+extern const char kGoogleAdOutput[];
 
 // Returns the name of the adsbygoogle attribute that corresponds to the showads
 // attribute name; returns an empty string if there is no such adsbygoogle

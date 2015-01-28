@@ -276,6 +276,26 @@ TEST_F(MakeShowAdsAsyncFilterTest, MultipleShowAds) {
   CheckStatForShowAds(2);
 }
 
+TEST_F(MakeShowAdsAsyncFilterTest, ShowsAdsHtmlGoogleAdOutput) {
+  // Hack the <ins> tag to have the data- field for google_ad_output.
+  GoogleString output_with_ad_output = kShowAdsDataContentFormat1Output;
+  GlobalReplaceSubstring("data-ad-slot",
+                         "data-ad-output=\"html\" data-ad-slot",
+                         &output_with_ad_output);
+  ValidateExpected(
+      test_info_->name(),
+      GetPage(StrCat(
+          GetShowAdsDataSnippetWithContent(
+              StringPrintf(kShowAdsDataContentFormat1,
+                           "google_ad_output='html';",
+                           "", "")),
+          kShowAdsApiCall)),
+      GetPage(StrCat(kAdsByGoogleJs,
+                     output_with_ad_output,
+                     kAdsByGoogleApiCall)));
+  CheckStatForShowAds(1);
+}
+
 // Test fixture for mixed ads.
 TEST_F(MakeShowAdsAsyncFilterTest, MixedAds) {
   ValidateExpected(
@@ -398,6 +418,16 @@ TEST_F(MakeShowAdsAsyncFilterTest, ShowAdsInvalidGoogleAdFormat) {
       test_info_->name(),
       GetPage(GetShowAdsDataSnippetWithContent(
           kShowAdsHtmlPageWithInvalidGoogleAdFormat)));
+}
+
+TEST_F(MakeShowAdsAsyncFilterTest, ShowsAdsJsGoogleAdOutput) {
+  ValidateNoChanges(
+      test_info_->name(),
+      GetPage(StrCat(
+          GetShowAdsDataSnippetWithContent(
+              StringPrintf(kShowAdsDataContentFormat1, "google_ad_output='js';",
+                           "", "")),
+          kShowAdsApiCall)));
 }
 
 TEST_F(MakeShowAdsAsyncFilterTest, FlushInTheMiddleOfShowAdsDataScript) {

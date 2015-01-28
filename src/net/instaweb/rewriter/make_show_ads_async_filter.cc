@@ -144,8 +144,7 @@ bool MakeShowAdsAsyncFilter::IsApplicableShowAds(
     return false;
   }
 
-  // TODO(morlovich): Check that google_ad_output is html here, double-check
-  // if we really need width/height.
+  // TODO(morlovich): Double-check if we really need width/height.
   int result;
   ShowAdsSnippetParser::AttributeMap::const_iterator iter =
       parsed_attributes->find(ads_attribute::kGoogleAdWidth);
@@ -161,6 +160,12 @@ bool MakeShowAdsAsyncFilter::IsApplicableShowAds(
     return false;
   }
   if (!StringToInt(iter->second, &result)) {
+    return false;
+  }
+
+  // adsbygoogle.js only understands the html format.
+  iter = parsed_attributes->find(ads_attribute::kGoogleAdOutput);
+  if (iter != parsed_attributes->end() && iter->second != "html") {
     return false;
   }
   return true;
