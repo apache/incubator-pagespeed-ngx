@@ -81,6 +81,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   run_test sticky_cookie_options
   run_test signed_urls
   run_test redirect_with_ps_params
+  run_test invalid_host_header
 fi
 
 run_test content_length

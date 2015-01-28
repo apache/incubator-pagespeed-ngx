@@ -14,7 +14,7 @@
       '<(chromium_root)/url/url_canon_filesystemurl.cc',
       '<(chromium_root)/url/url_canon_fileurl.cc',
       '<(chromium_root)/url/url_canon_host.cc',
-      '<(chromium_root)/url/url_canon_icu.cc',
+      './url_canon_icu.cc',
       '<(chromium_root)/url/url_canon_icu.h',
       '<(chromium_root)/url/url_canon_internal.cc',
       '<(chromium_root)/url/url_canon_internal.h',
