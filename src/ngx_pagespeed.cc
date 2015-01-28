@@ -882,9 +882,9 @@ void ps_cleanup_srv_conf(void* data) {
   // from being executed
 
   if (!factory_deleted && cfg_s->server_context != NULL) {
+    NgxBaseFetch::Terminate();
     delete cfg_s->server_context->factory();
     factory_deleted = true;
-    NgxBaseFetch::Terminate();
   }
   if (cfg_s->proxy_fetch_factory != NULL) {
     delete cfg_s->proxy_fetch_factory;
