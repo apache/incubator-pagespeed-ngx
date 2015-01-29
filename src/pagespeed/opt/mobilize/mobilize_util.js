@@ -798,3 +798,16 @@ pagespeed.MobUtil.toCssString1 = function(unescaped) {
   result = result.replace(/\r/g, '\\d ');
   return '"' + result + '"';
 };
+
+
+/**
+ * Logs a message to the console, if that functionality has not been
+ * disabled by the site.
+ * @param {string} message
+ */
+pagespeed.MobUtil.consoleLog = function(message) {
+  // TODO(jud): Consider using goog.log.
+  if (console && console.log) {
+    console.log(message);
+  }
+};

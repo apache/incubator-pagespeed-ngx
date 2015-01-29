@@ -62,7 +62,8 @@ pagespeed.MobLayout = function(psMob) {
    */
   this.maxWidth_ = this.computeMaxWidth_();
 
-  console.log('window.pagespeed.MobLayout.maxWidth=' + this.maxWidth_);
+  pagespeed.MobUtil.consoleLog('window.pagespeed.MobLayout.maxWidth=' +
+                               this.maxWidth_);
 };
 
 
@@ -572,9 +573,9 @@ pagespeed.MobLayout.prototype.resizeIfTooWide_ = function(element) {
       var shrinkage = width / this.maxWidth_;
       if (shrinkage > 1) {
         var newHeight = height / shrinkage;
-        console.log('Shrinking ' + type + ' ' + image + ' from ' +
-            width + 'x' + height + ' to ' +
-            this.maxWidth_ + 'x' + newHeight);
+        pagespeed.MobUtil.consoleLog(
+            'Shrinking ' + type + ' ' + image + ' from ' +
+            width + 'x' + height + ' to ' + this.maxWidth_ + 'x' + newHeight);
         if (tagName == 'IMG') {
           pagespeed.MobUtil.setPropertyImportant(
               element, 'width', '' + this.maxWidth_ + 'px');
@@ -601,7 +602,7 @@ pagespeed.MobLayout.prototype.resizeIfTooWide_ = function(element) {
             element, 'max-width', '100%');
         pagespeed.MobUtil.removeProperty(element, 'width');
       } else {
-        console.log('Punting on resize of ' + tagName +
+        pagespeed.MobUtil.consoleLog('Punting on resize of ' + tagName +
             ' which wants to be ' + element.offsetWidth +
             ' but this.maxWidth_=' +
             this.maxWidth_);
@@ -960,7 +961,7 @@ pagespeed.MobLayout.prototype.repairDistortedImages_ = function(element) {
         var widthShrinkage = width / requestedWidth;
         var heightShrinkage = height / requestedHeight;
         if (!pagespeed.MobUtil.aboutEqual(widthShrinkage, heightShrinkage)) {
-          console.log('aspect ratio problem for ' +
+          pagespeed.MobUtil.consoleLog('aspect ratio problem for ' +
               element.getAttribute('src'));
 
           if (pagespeed.MobUtil.isSinglePixel(element)) {
@@ -982,7 +983,8 @@ pagespeed.MobLayout.prototype.repairDistortedImages_ = function(element) {
           }
         }
         if (widthShrinkage < 0.25) {
-          console.log('overshrinkage for ' + element.getAttribute('src'));
+          pagespeed.MobUtil.consoleLog(
+              'overshrinkage for ' + element.getAttribute('src'));
           this.reallocateWidthToTableData_(element);
         }
       }

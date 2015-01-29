@@ -353,8 +353,8 @@ pagespeed.MobColor.prototype.synthesizeCallback_ = function() {
     }
   }
 
-  console.log('Theme color. Background: ' + backgroundColor +
-              ' foreground: ' + foregroundColor);
+  pagespeed.MobUtil.consoleLog('Theme color. Background: ' + backgroundColor +
+                               ' foreground: ' + foregroundColor);
 
   this.doneCallback_(this.logo_, backgroundColor, foregroundColor);
 };
@@ -417,16 +417,18 @@ pagespeed.MobColor.prototype.run = function(logo, doneCallback) {
       this.getImageDataAndSynthesize_('foreground', logo.foregroundImage,
                                       logo.foregroundRect);
       // TODO(huibao): Report progress in theme extraction in the progress bar.
-      console.log('Found logo. Theme color will be computed from logo.');
+      pagespeed.MobUtil.consoleLog(
+          'Found logo. Theme color will be computed from logo.');
       return;
     }
   }
 
   if (logo && logo.foregroundImage) {
-    console.log('Found logo but its origin is different that of HTML. ' +
-                'Use default color.');
+    pagespeed.MobUtil.consoleLog(
+        'Found logo but its origin is different that of HTML. ' +
+        'Use default color.');
   } else {
-    console.log('Could not find logo. Use default color.');
+    pagespeed.MobUtil.consoleLog('Could not find logo. Use default color.');
   }
   this.synthesizeCallback_();
 };

@@ -343,7 +343,8 @@ pagespeed.MobNav.prototype.fixExistingElements_ = function() {
     }
 
     if (style.getPropertyValue('z-index') >= 999999) {
-      console.log('Element z-index exceeded 999999, setting to 999998.');
+      pagespeed.MobUtil.consoleLog(
+          'Element z-index exceeded 999999, setting to 999998.');
       element.style.zIndex = 999998;
     }
   }
@@ -961,9 +962,7 @@ pagespeed.MobNav.prototype.addNavButtonEvents_ = function() {
  * @param {!pagespeed.MobUtil.ThemeData} themeData
  */
 pagespeed.MobNav.prototype.Run = function(themeData) {
-  // TODO(jud): Use a goog.log or the logging ability in mob.js instead of
-  // console.log.
-  console.log('Starting nav resynthesis.');
+  pagespeed.MobUtil.consoleLog('Starting nav resynthesis.');
   this.findNavSections_();
   this.fixExistingElements_();
   this.addHeaderBar_(themeData);

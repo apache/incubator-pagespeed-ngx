@@ -213,7 +213,7 @@ pagespeed.Mob.COST_PER_IMAGE_ = 1000;
  */
 pagespeed.Mob.prototype.mobilizeSite_ = function() {
   if (this.pendingImageLoadCount_ == 0) {
-    console.log('mobilizing site');
+    pagespeed.MobUtil.consoleLog('mobilizing site');
     // TODO(jmarantz): Remove this hack once we are compiling mob_logo.js in
     // the same module.
     if (window.psNavMode && !pagespeed.MobUtil.inFriendlyIframe()) {
@@ -511,7 +511,7 @@ pagespeed.Mob.prototype.updateProgressBar = function(unitsDone, currentOp) {
   }
   var elapsedMs = Date.now() - this.startTimeMs_;
   var msg = '' + percent + '% ' + elapsedMs + 'ms: ' + currentOp;
-  console.log(msg);
+  pagespeed.MobUtil.consoleLog(msg);
   var log = document.getElementById(pagespeed.Mob.PROGRESS_LOG_ID_);
   if (log) {
     log.textContent += msg + '\n';

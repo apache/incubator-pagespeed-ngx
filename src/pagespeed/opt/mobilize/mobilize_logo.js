@@ -206,7 +206,8 @@ pagespeed.MobLogo.prototype.findForeground_ = function(element, minArea,
           } else if (!rect.width || !rect.height) {
             // TODO(huibao): Instead of printing a message and punting,
             // continue processing when the image is loaded.
-            console.log('Image ' + element.src + ' may be the logo. ' +
+            pagespeed.MobUtil.consoleLog(
+                'Image ' + element.src + ' may be the logo. ' +
                 'It has not been loaded so may be missed.');
             returnLogo = false;
           }
