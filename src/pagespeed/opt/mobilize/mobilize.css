@@ -167,28 +167,39 @@ body {
 }
 
 .psmob-nav-panel {
-  position: fixed !important;
+  position: absolute !important;
+
+  /* Panel is hidden by default. */
+  visibility: hidden;
+
+  -webkit-transform-origin: 0 0;
+  transform-origin: 0 0;
 
   top: 0;
   bottom: 0;
   left: 0;
   right: 0;
   width: 250px !important;
-  height: auto;
 
   /* Wordpress sets a z-index of 99999 for its admin header bar, so set a larger
    * value so our nav bar ends up on top of it. */
   z-index: 999999;
 
-  margin: 60px 0 0px !important;
+  /* We don't set margin-top here because that gets set dynamically by the JS to
+   * compensate for zoom level. */
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  margin-bottom: 0 !important;
   padding: 0 !important;
 
   box-shadow: 5px 0px 6px -1px rgba(0, 0, 0, 0.4);
 
   overflow-y: auto;
 
-  -webkit-transition: -webkit-transform 0.3s ease-out;
-  transition: transform 0.3s ease-out;
+  /* Add a 0.3s delay to the visibility change so that the sliding animation
+   * finishes before hiding the panel. */
+  -webkit-transition: transform 0.3s ease-out, visibility 0s linear 0.3s;
+  transition: transform 0.3s ease-out, visibility 0s linear 0.3s;
   -webkit-transform: translate(-250px,0);
   transform: translate(-250px,0);
 }
@@ -196,6 +207,13 @@ body {
 .psmob-nav-panel.open {
   -webkit-transform: translate(0,0);
   transform: translate(0,0);
+  /* When sliding the tray out, don't use a transition-delay (set above) so that
+   * the panel is visible when the animation starts. */
+  transition-delay: 0s;
+
+  /* Panel is hidden by default. */
+  visibility: visible;
+  display: block;
 }
 
 .psmob-nav-panel ul {
@@ -283,7 +301,7 @@ body {
 }
 
 .psmob-header-spacer-div {
-  position: relative;
+  position: absolute;
   width: 100%;
 }
 

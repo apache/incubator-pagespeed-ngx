@@ -70,20 +70,10 @@ struct ElementSample {
 //     header, or footer.
 // We do this bottom-up, since we want to process children in a streaming
 // fashion before their parent's close tag.  We take the presence of html5 tags
-// as authoritative if UseTagNames is in LabelingMode; note that we've
+// as authoritative; note that we've
 // assumed that they're authoritative in training our classifiers.
 class MobilizeLabelFilter : public CommonFilter {
  public:
-  struct LabelingMode {
-    bool use_tag_names : 1;
-    bool use_classifier : 1;
-    bool propagate_to_parent : 1;
-  };
-
-  static const LabelingMode kDoNotLabel;
-  static const LabelingMode kUseTagNames;
-  static const LabelingMode kDefaultLabelingMode;
-
   // Monitoring variable names
   static const char kPagesLabeled[];  // Pages run through labeler.
   static const char kPagesRoleAdded[];
@@ -105,14 +95,6 @@ class MobilizeLabelFilter : public CommonFilter {
   virtual void EndElementImpl(HtmlElement* element);
   virtual void Characters(HtmlCharactersNode* characters);
   virtual void EndDocument();
-  // Set labeling mode to use during traversal.
-  // Intended for testing and debugging.
-  LabelingMode& mutable_labeling_mode() {
-    return labeling_mode_;
-  }
-  LabelingMode labeling_mode() const {
-    return labeling_mode_;
-  }
 
  private:
   void Init();
@@ -140,7 +122,6 @@ class MobilizeLabelFilter : public CommonFilter {
   int content_bytes_;
   int content_non_blank_bytes_;
   bool were_roles_added_;
-  LabelingMode labeling_mode_;
 
   std::vector<ElementSample*> samples_;  // in document order
   std::vector<ElementSample*> sample_stack_;

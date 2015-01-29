@@ -41,13 +41,6 @@
 
 namespace net_instaweb {
 
-const MobilizeLabelFilter::LabelingMode
-MobilizeLabelFilter::kDoNotLabel = { false, false, false };
-const MobilizeLabelFilter::LabelingMode
-MobilizeLabelFilter::kUseTagNames = { true, false, false };
-const MobilizeLabelFilter::LabelingMode
-MobilizeLabelFilter::kDefaultLabelingMode = { true, true, true };
-
 const char MobilizeLabelFilter::kPagesLabeled[] =
     "mobilization_pages_labeled";
 const char MobilizeLabelFilter::kPagesRoleAdded[] =
@@ -489,8 +482,7 @@ GoogleString ElementSample::ToString(bool readable, HtmlParse* parser) {
 }
 
 MobilizeLabelFilter::MobilizeLabelFilter(RewriteDriver* driver)
-    : CommonFilter(driver),
-      labeling_mode_(kDefaultLabelingMode) {
+    : CommonFilter(driver) {
   Init();
   Statistics* stats = driver->statistics();
   pages_labeled_ = stats->GetVariable(kPagesLabeled);
@@ -579,10 +571,7 @@ void MobilizeLabelFilter::StartElementImpl(HtmlElement* element) {
     }
     // Tag that we want to count (includes all the div-like tags).
     IncrementRelevantTagDepth();
-    MobileRole::Level mobile_role =
-        labeling_mode_.use_tag_names ?
-        tag_metadata->mobile_role :
-        MobileRole::kUnassigned;
+    MobileRole::Level mobile_role = tag_metadata->mobile_role;
     if (tag_metadata->is_div_like) {
       HandleDivLikeElement(element, mobile_role);
     }
@@ -968,16 +957,14 @@ void MobilizeLabelFilter::PropagateChildrenToParent(
 }
 
 void MobilizeLabelFilter::Label() {
+  bool log_samples = driver()->options()->log_mobilization_samples();
   DecisionTree navigational(kNavigationalTree, kNavigationalTreeSize);
   DecisionTree header(kHeaderTree, kHeaderTreeSize);
   DecisionTree content(kContentTree, kContentTreeSize);
   int n = samples_.size();
 
   // Default classification to carry down tree.
-  samples_[0]->role =
-      (labeling_mode_.propagate_to_parent |
-       labeling_mode_.use_classifier) ?
-      MobileRole::kUnassigned : MobileRole::kInvalid;
+  samples_[0]->role = MobileRole::kUnassigned;
   // Now classify in opening tag order (parents before children)
   for (int i = 1; i < n; ++i) {
     ElementSample* sample = samples_[i];
@@ -991,7 +978,13 @@ void MobilizeLabelFilter::Label() {
       // Hand-labeled or HTML5.
       continue;
     }
-    if (labeling_mode_.use_classifier) {
+    // The way navigation extraction currently works, we take the entire DOM
+    // rooted at the point marked navigational.  To reflect that fact, once our
+    // parent sample is navigational we fall through to parent->child
+    // propagation.  Similarly, when log_samples is on we are collecting
+    // training data and don't classify, we just propagate the information
+    // obtained from HTML5 tags in the DOM.
+    if (sample->parent->role != MobileRole::kNavigational && !log_samples) {
       double navigational_confidence = navigational.Predict(sample->features);
       bool is_navigational =
           navigational_confidence >= kNavigationalTreeThreshold;
@@ -1031,43 +1024,28 @@ void MobilizeLabelFilter::Label() {
       sample->role = sample->parent->role;
     }
   }
-  if (labeling_mode_.propagate_to_parent) {
-    // All unclassified nodes have been labeled with kUnassigned using parent
-    // propagation.
-    PropagateChildrenToParent(MobileRole::kNavigational);
-    PropagateChildrenToParent(MobileRole::kHeader);
-    PropagateChildrenToParent(MobileRole::kContent);
-    if (!labeling_mode_.use_classifier) {
-      // Do parent propagation of content explicitly marked as marginal.
-      PropagateChildrenToParent(MobileRole::kMarginal);
-    }
-  }
-  if (labeling_mode_.use_classifier) {
-    // We want to mark as kMarginal all the kUnassigned nodes whose children are
-    // also Marginal.  If a node is labeled kUnassigned and any child is
-    // non-Marginal we want to mark it kInvalid.  We work in bottom up DOM
-    // order, basically invalidating parents of non-marginal content.  This is
-    // unlike PropagateChildrenToParent because it labels nodes without children
-    // as Marginal.
-    for (int i = n - 1; i > 0; --i) {
-      // Reverse tag order, from the leaves to the root.
-      ElementSample* sample = samples_[i];
-      if (sample->role == MobileRole::kUnassigned) {
-        sample->role = MobileRole::kMarginal;
-      } else if (sample->role != MobileRole::kMarginal &&
-                 sample->parent->role == MobileRole::kUnassigned) {
-        // Non-marginal child with unassigned parent; parent is invalid.
-        sample->parent->role = MobileRole::kInvalid;
-      }
-    }
-  } else {
-    // Don't do marginal labeling, just turn all unassigned nodes into invalid.
-    samples_[0]->role = MobileRole::kInvalid;
-    for (int i = n - 1; i > 0; --i) {
-      ElementSample* sample = samples_[i];
-      if (sample->role == MobileRole::kUnassigned) {
-        sample->role = MobileRole::kInvalid;
-      }
+  // All unclassified nodes have been labeled with kUnassigned using parent
+  // propagation.
+  PropagateChildrenToParent(MobileRole::kNavigational);
+  PropagateChildrenToParent(MobileRole::kHeader);
+  PropagateChildrenToParent(MobileRole::kContent);
+  // Do parent propagation of content explicitly marked as marginal.
+  PropagateChildrenToParent(MobileRole::kMarginal);
+  // We want to mark as kMarginal all the kUnassigned nodes whose children are
+  // also Marginal.  If a node is labeled kUnassigned and any child is
+  // non-Marginal we want to mark it kInvalid.  We work in bottom up DOM order,
+  // basically invalidating parents of non-marginal content.  This is unlike
+  // PropagateChildrenToParent because it labels nodes without children as
+  // Marginal.
+  for (int i = n - 1; i > 0; --i) {
+    // Reverse tag order, from the leaves to the root.
+    ElementSample* sample = samples_[i];
+    if (sample->role == MobileRole::kUnassigned) {
+      sample->role = MobileRole::kMarginal;
+    } else if (sample->role != MobileRole::kMarginal &&
+               sample->parent->role == MobileRole::kUnassigned) {
+      // Non-marginal child with unassigned parent; parent is invalid.
+      sample->parent->role = MobileRole::kInvalid;
     }
   }
 }

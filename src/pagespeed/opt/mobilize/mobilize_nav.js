@@ -96,6 +96,19 @@ pagespeed.MobNav = function() {
    * @private {number}
    */
   this.currentTouches_ = 0;
+
+  /**
+   * The y coordinate of the previous move event, used to determine the
+   * direction of scrolling.
+   * @private {number}
+   */
+  this.lastScrollY_ = 0;
+
+  /**
+   * Bool to track state of the nav bar.
+   * @private {boolean}
+   */
+  this.isNavPanelOpen_ = false;
 };
 
 
@@ -106,6 +119,13 @@ pagespeed.MobNav = function() {
  * @private {number}
  */
 pagespeed.MobNav.HEADER_BAR_HEIGHT_ = 60;
+
+
+/**
+ * The unscaled width of the nav panel in pixels.
+ * @private {number}
+ */
+pagespeed.MobNav.NAV_PANEL_WIDTH_ = 250;
 
 
 /**
@@ -359,8 +379,35 @@ pagespeed.MobNav.prototype.redrawHeader_ = function() {
   this.callButton_.style.height = height + 'px';
 
   this.spacerDiv_.style.height = height + 'px';
+};
 
-  // Use a 200ms fade in effect to make the transition smoother.
+
+/**
+ * Redraw the nav panel based on current zoom level.
+ * @private
+ */
+pagespeed.MobNav.prototype.redrawNavPanel_ = function() {
+  if (!this.navPanel_) {
+    return;
+  }
+
+  this.navPanel_.style.top = window.scrollY + 'px';
+  this.navPanel_.style.left = window.scrollX + 'px';
+
+  var scale = window.innerWidth * .8 / pagespeed.MobNav.NAV_PANEL_WIDTH_;
+
+  var translateX =
+      goog.dom.classlist.contains(this.navPanel_, 'open') ?
+      0 : -pagespeed.MobNav.NAV_PANEL_WIDTH_ * scale;
+
+  var transform = 'scale(' + scale + ') translatex(' + translateX + 'px)';
+  this.navPanel_.style['-webkit-transform'] = transform;
+  this.navPanel_.style.transform = transform;
+
+  var headerBarBox = this.headerBar_.getBoundingClientRect();
+  this.navPanel_.style.marginTop = headerBarBox.height + 'px';
+  this.navPanel_.style.height =
+      ((window.innerHeight - headerBarBox.height) / scale) + 'px';
 };
 
 
@@ -371,21 +418,29 @@ pagespeed.MobNav.prototype.redrawHeader_ = function() {
 pagespeed.MobNav.prototype.addHeaderBarResizeEvents_ = function() {
   // Draw the header bar initially.
   this.redrawHeader_();
+  this.redrawNavPanel_();
 
   // Don't redraw the header bar unless there has not been a scroll event for 50
   // ms and there are no touches currently on the screen. This keeps the
   // redrawing from happening until scrolling is finished.
-  var scrollHandler = function() {
+  var scrollHandler = function(e) {
     if (this.scrollTimer_ != null) {
       window.clearTimeout(this.scrollTimer_);
       this.scrollTimer_ = null;
     }
     this.scrollTimer_ = window.setTimeout(goog.bind(function() {
       if (this.currentTouches_ == 0) {
+        this.redrawNavPanel_();
         this.redrawHeader_();
       }
       this.scrollTimer_ = null;
     }, this), 50);
+
+    if (goog.dom.classlist.contains(this.navPanel_, 'open') &&
+        !this.navPanel_.contains(/** @type {Node} */ (e.target))) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
   };
 
   window.addEventListener('scroll', goog.bind(scrollHandler, this), false);
@@ -394,17 +449,21 @@ pagespeed.MobNav.prototype.addHeaderBarResizeEvents_ = function() {
   // redraw until scrolling and zooming is finished.
   window.addEventListener('touchstart', goog.bind(function(e) {
     this.currentTouches_ = e.targetTouches.length;
+    this.lastScrollY_ = e.touches[0].clientY;
   }, this), false);
 
-  window.addEventListener('touchmove', goog.bind(function() {
-    if (!goog.dom.classlist.contains(document.body, 'noscroll')) {
+  window.addEventListener('touchmove', goog.bind(function(e) {
+    if (!this.isNavPanelOpen_) {
       goog.dom.classlist.add(this.headerBar_, 'hide');
+    } else {
+      e.preventDefault();
     }
   }, this), false);
 
   window.addEventListener('touchend', goog.bind(function(e) {
     this.currentTouches_ = e.targetTouches.length;
     if (this.scrollTimer_ == null && this.currentTouches_ == 0) {
+      this.redrawNavPanel_();
       this.redrawHeader_();
     }
   }, this), false);
@@ -792,6 +851,39 @@ pagespeed.MobNav.prototype.addNavPanel_ = function() {
 
   this.dedupNavMenuItems_();
   this.cleanupNavPanel_();
+
+  // Track touch move events just in the nav panel so that scrolling can be
+  // controlled. This is to work around overflow: hidden not working as we would
+  // want when zoomed in (it does not totally prevent scrolling).
+  this.navPanel_.addEventListener('touchmove', goog.bind(function(e) {
+    if (!this.isNavPanelOpen_) {
+      return;
+    }
+
+    var currentY = e.touches[0].clientY;
+    // If the event is not scrolling (pinch zoom for exaple), then prevent it
+    // while the nav panel is open.
+    if (e.targetTouches.length != 1) {
+      e.preventDefault();
+    } else {
+      // Check if we are scrolling up past the top or below the bottom. If so,
+      // stop the scroll event from happening since otherwise the body behind
+      // the nav panel will also scroll.
+      var scrollUp = currentY > this.lastScrollY_;
+      var navPanelAtTop = (this.navPanel_.scrollTop == 0);
+      // Add 1 pixel to account for rounding errors.
+      var navPanelAtBottom = (this.navPanel_.scrollTop >=
+          (this.navPanel_.scrollHeight - this.navPanel_.offsetHeight - 1));
+      if ((scrollUp && navPanelAtTop) ||
+          (!scrollUp && navPanelAtBottom)) {
+        e.preventDefault();
+      }
+      // Keep other touchmove events from happening.
+      e.stopImmediatePropagation();
+      this.lastScrollY_ = currentY;
+    }
+  }, this), false);
+  this.redrawNavPanel_();
 };
 
 
@@ -804,6 +896,8 @@ pagespeed.MobNav.prototype.toggleNavPanel_ = function() {
   goog.dom.classlist.toggle(this.headerBar_, 'open');
   goog.dom.classlist.toggle(this.navPanel_, 'open');
   goog.dom.classlist.toggle(document.body, 'noscroll');
+  this.isNavPanelOpen_ = !this.isNavPanelOpen_;
+  this.redrawNavPanel_();
 };
 
 
@@ -857,7 +951,7 @@ pagespeed.MobNav.prototype.addNavButtonEvents_ = function() {
       // Also toggle the expand icon, which will be the first child of the div.
       goog.dom.classlist.toggle(target.firstChild, 'open');
     }
-  });
+  }, false);
 };
 
 

@@ -139,19 +139,8 @@ TEST_F(MobilizeLabelFilterTest, AlreadyLabeled) {
   GoogleString html5_contents;
   ASSERT_TRUE(filesystem.ReadFile(
       html5_filename.c_str(), &html5_contents, message_handler()));
-  // Classify using only tag names.  Shouldn't add new mobile roles.
-  label_filter_->mutable_labeling_mode() = MobilizeLabelFilter::kUseTagNames;
-  Parse("already_labeled", html5_contents);
-  GlobalEraseBracketedSubstring(" id=\"PageSpeed-", "\"", &output_buffer_);
-  GlobalEraseBracketedSubstring(
-      "<script type=\"text/javascript\">", "</script>", &output_buffer_);
-  EXPECT_STREQ(AddHtmlBody(html5_contents), output_buffer_);
-  EXPECT_EQ(1, pages_labeled_->Get());
-  EXPECT_EQ(0, pages_role_added_->Get());
   // Classify fully, compare against gold labeling.
   // Note that changes are fairly minimal.
-  label_filter_->mutable_labeling_mode() =
-      MobilizeLabelFilter::kDefaultLabelingMode;
   GoogleString labeled_filename =
       StrCat(GTestSrcDir(), kTestDataDir, kOriginalHtml5Labeled);
   GoogleString labeled_contents;
@@ -159,18 +148,18 @@ TEST_F(MobilizeLabelFilterTest, AlreadyLabeled) {
       labeled_filename.c_str(), &labeled_contents, message_handler()));
   ValidateExpected("already_labeled_adding_labels",
                    html5_contents, labeled_contents);
-  EXPECT_EQ(2, pages_labeled_->Get());
+  EXPECT_EQ(1, pages_labeled_->Get());
   EXPECT_EQ(1, pages_role_added_->Get());
-  EXPECT_EQ(2, navigational_roles_->Get());
-  EXPECT_EQ(3, header_roles_->Get());
-  EXPECT_EQ(4, content_roles_->Get());
-  EXPECT_EQ(4, marginal_roles_->Get());
+  EXPECT_EQ(1, navigational_roles_->Get());
+  EXPECT_EQ(2, header_roles_->Get());
+  EXPECT_EQ(3, content_roles_->Get());
+  EXPECT_EQ(2, marginal_roles_->Get());
   EXPECT_EQ(0, ambiguous_role_labels_->Get());
-  EXPECT_EQ(23, divs_unlabeled_->Get());
+  EXPECT_EQ(10, divs_unlabeled_->Get());
 }
 
 TEST_F(MobilizeLabelFilterTest, Html5TagsInHead) {
-  EnableVerbose();
+  EnableDebug();
   const char kOutputHtml[] =
       "<head>\n"
       "<menu id=\"PageSpeed-0-0\">Should not be labeled</menu>\n"
@@ -185,7 +174,7 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInHead) {
 }
 
 TEST_F(MobilizeLabelFilterTest, TinyCount) {
-  EnableVerbose();
+  EnableDebug();
   const char kOutputHtml[] =
       "<div role='header' id=\"PageSpeed-0\" data-mobile-role=\"header\">"
       "  Hello there,"
@@ -224,7 +213,7 @@ TEST_F(MobilizeLabelFilterTest, TinyCount) {
 }
 
 TEST_F(MobilizeLabelFilterTest, TinyCountNbsp) {
-  EnableVerbose();
+  EnableDebug();
   const char kOutputHtml[] =
       "<div role='header' id=\"PageSpeed-0\" data-mobile-role=\"header\">"
       "  &nbsp;Hello&nbsp;there,&nbsp;&nbsp;  "
@@ -263,7 +252,7 @@ TEST_F(MobilizeLabelFilterTest, TinyCountNbsp) {
 }
 
 TEST_F(MobilizeLabelFilterTest, ImgInsideAndOutsideA) {
-  EnableVerbose();
+  EnableDebug();
   const char kOutputHtml[] =
       "<div role='content' id=\"PageSpeed-0\" data-mobile-role=\"header\">"
       " <img src='a.png'>"
@@ -490,30 +479,30 @@ TEST_F(MobilizeLabelFilterTest, MarginalPropagation) {
 }
 
 TEST_F(MobilizeLabelFilterTest, ParentPropagation) {
-  label_filter_->mutable_labeling_mode() = MobilizeLabelFilter::kUseTagNames;
-  label_filter_->mutable_labeling_mode().propagate_to_parent = true;
+  options()->set_log_mobilization_samples(true);
   // Make sure an element all of whose children are labeled inherits the label,
   // and an element whose children's labels conflict does not.
   const char kOutputHtml[] =
-      "<div>\n"  // One nav, one header -> no label.
-      " <div id=\"PageSpeed-0-0\">\n"  // Both children nav.
-      "  <div>\n"  // Only child is nav, so nav.
-      "   <nav></nav>\n"
-      "  </div>\n"
+      "<div>\n"  // One nav, one header, one content -> no label.
+      " <header id=\"PageSpeed-0-0\"></header>\n"
+      " <nav id=\"PageSpeed-0-1\"></nav>\n"
+      "</div>\n"
+      "<div id=\"PageSpeed-1\">\n"  // Both children nav.
+      " <div>\n"  // Only child is nav, so nav.
       "  <nav></nav>\n"
       " </div>\n"
-      " <header id=\"PageSpeed-0-1\"></header>\n"
+      " <nav></nav>\n"
       "</div>\n"
       "<script type=\"text/javascript\">"
-      "pagespeedHeaderIds=['PageSpeed-0-1'];\n"
-      "pagespeedNavigationalIds=['PageSpeed-0-0'];\n"
+      "pagespeedHeaderIds=['PageSpeed-0-0'];\n"
+      "pagespeedNavigationalIds=['PageSpeed-0-1','PageSpeed-1'];\n"
       "</script>";
   ValidateExpected("Parent propagation",
                    Unlabel(kOutputHtml), kOutputHtml);
 }
 
 TEST_F(MobilizeLabelFilterTest, SmallCountNav) {
-  EnableVerbose();
+  EnableDebug();
   const char kOutputHtml[] =
       "<head></head><body>\n"
       "<div class='container' id=\"PageSpeed-1\""
@@ -673,7 +662,7 @@ TEST_F(MobilizeLabelFilterTest, NoLabelInsideA) {
 TEST_F(MobilizeLabelFilterTest, NavInsideHeader) {
   // A common pattern in sites is to have a header area with a logo and some
   // navigational content.  We'd like to flag the navigational content!
-  EnableVerbose();
+  EnableDebug();
   const char kOutputHtml[] =
       "<head></head><body>\n"
       " <header id=\"PageSpeed-1\" data-mobile-role=\"header\">\n"
@@ -747,7 +736,7 @@ TEST_F(MobilizeLabelFilterTest, NavInsideHeader) {
 }
 
 TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
-  EnableVerbose();
+  EnableDebug();
   // Just for clarity we include the labeled HTML without the sample comments
   // emitted by debug.  The input HTML is this with the data-mobile-role
   // annotations stripped out.
@@ -980,15 +969,8 @@ TEST_F(MobilizeLabelFilterTest, LargeUnlabeled) {
   ASSERT_TRUE(filesystem.ReadFile(
       original_filename.c_str(), &original_contents, message_handler()));
   GoogleString unlabeled_contents = Unlabel(original_contents);
-  // Classify using only tag names.  Shouldn't change anything.
-  label_filter_->mutable_labeling_mode() = MobilizeLabelFilter::kUseTagNames;
-  ValidateNoChanges("unlabeled", unlabeled_contents);
-  EXPECT_EQ(1, pages_labeled_->Get());
-  EXPECT_EQ(0, pages_role_added_->Get());
   // Classify fully, compare against gold labeling.
   // Note that we don't necessarily match the labeling of the original!
-  label_filter_->mutable_labeling_mode() =
-      MobilizeLabelFilter::kDefaultLabelingMode;
   GoogleString labeled_filename =
       StrCat(GTestSrcDir(), kTestDataDir, kOriginalLabeled);
   GoogleString labeled_contents;
@@ -996,14 +978,14 @@ TEST_F(MobilizeLabelFilterTest, LargeUnlabeled) {
       labeled_filename.c_str(), &labeled_contents, message_handler()));
   ValidateExpected("unlabeled_adding_labels",
                    unlabeled_contents, labeled_contents);
-  EXPECT_EQ(2, pages_labeled_->Get());
+  EXPECT_EQ(1, pages_labeled_->Get());
   EXPECT_EQ(1, pages_role_added_->Get());
   EXPECT_EQ(2, navigational_roles_->Get());
   EXPECT_EQ(2, header_roles_->Get());
   EXPECT_EQ(2, content_roles_->Get());
   EXPECT_EQ(1, marginal_roles_->Get());
   EXPECT_EQ(0, ambiguous_role_labels_->Get());
-  EXPECT_EQ(31, divs_unlabeled_->Get());
+  EXPECT_EQ(12, divs_unlabeled_->Get());
 }
 
 }  // namespace
