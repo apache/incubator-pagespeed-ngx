@@ -22,8 +22,8 @@ goog.provide('pagespeed.MobNav');
 
 goog.require('goog.array');
 goog.require('goog.dom');
-goog.require('goog.dom.classlist');
 goog.require('goog.dom.NodeType');
+goog.require('goog.dom.classlist');
 goog.require('goog.json');
 goog.require('goog.net.Jsonp');
 goog.require('goog.string');
@@ -748,44 +748,46 @@ pagespeed.MobNav.prototype.addNavPanel_ = function() {
   goog.dom.classlist.add(navTopUl, 'open');
 
   for (var i = 0, nav; nav = this.navSections_[i]; i++) {
-    nav.setAttribute('data-mobilize-nav-section', i);
-    var navATags = this.labelNavDepth_(nav, 0);
+    if (nav.parentNode) {
+      nav.setAttribute('data-mobilize-nav-section', i);
+      var navATags = this.labelNavDepth_(nav, 0);
 
-    var navSubmenus = [];
-    navSubmenus.push(navTopUl);
+      var navSubmenus = [];
+      navSubmenus.push(navTopUl);
 
-    for (var j = 0, n = navATags.length; j < n; j++) {
-      var navLevel1 = navATags[j].getAttribute('data-mobilize-nav-level');
-      var navLevel2 = (j + 1 == n) ? navLevel1 : navATags[j + 1].getAttribute(
-          'data-mobilize-nav-level');
-      // Create a new submenu if the next item is nested under this one.
-      if (navLevel1 < navLevel2) {
-        var item = document.createElement('li');
-        var div = item.appendChild(document.createElement('div'));
-        var icon = document.createElement('img');
-        div.appendChild(document.createElement('img'));
-        icon.setAttribute('src', this.ARROW_ICON_);
-        goog.dom.classlist.add(icon, 'psmob-menu-expand-icon');
-        div.appendChild(document.createTextNode(
-            navATags[j].textContent || navATags[j].innerText));
-        navSubmenus[navSubmenus.length - 1].appendChild(item);
-        var submenu = document.createElement('ul');
-        item.appendChild(submenu);
-        navSubmenus.push(submenu);
-      } else {
-        // Otherwise, create a new LI.
-        var item = document.createElement('li');
-        navSubmenus[navSubmenus.length - 1].appendChild(item);
-        item.appendChild(navATags[j].cloneNode(true));
-        var popCnt = navLevel1 - navLevel2;
-        while ((popCnt > 0) && (navSubmenus.length > 1)) {
-          navSubmenus.pop();
-          popCnt--;
+      for (var j = 0, n = navATags.length; j < n; j++) {
+        var navLevel1 = navATags[j].getAttribute('data-mobilize-nav-level');
+        var navLevel2 = (j + 1 == n) ? navLevel1 : navATags[j + 1].getAttribute(
+            'data-mobilize-nav-level');
+        // Create a new submenu if the next item is nested under this one.
+        if (navLevel1 < navLevel2) {
+          var item = document.createElement('li');
+          var div = item.appendChild(document.createElement('div'));
+          var icon = document.createElement('img');
+          div.appendChild(document.createElement('img'));
+          icon.setAttribute('src', this.ARROW_ICON_);
+          goog.dom.classlist.add(icon, 'psmob-menu-expand-icon');
+          div.appendChild(document.createTextNode(
+              navATags[j].textContent || navATags[j].innerText));
+          navSubmenus[navSubmenus.length - 1].appendChild(item);
+          var submenu = document.createElement('ul');
+          item.appendChild(submenu);
+          navSubmenus.push(submenu);
+        } else {
+          // Otherwise, create a new LI.
+          var item = document.createElement('li');
+          navSubmenus[navSubmenus.length - 1].appendChild(item);
+          item.appendChild(navATags[j].cloneNode(true));
+          var popCnt = navLevel1 - navLevel2;
+          while ((popCnt > 0) && (navSubmenus.length > 1)) {
+            navSubmenus.pop();
+            popCnt--;
+          }
         }
       }
-    }
 
-    nav.parentNode.removeChild(nav);
+      nav.parentNode.removeChild(nav);
+    }
   }
 
   this.dedupNavMenuItems_();
