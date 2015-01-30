@@ -1816,7 +1816,10 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
   GoogleString url_string = ps_determine_url(r);
   GoogleUrl url(url_string);
 
-  CHECK(url.IsWebValid());
+  if (!url.IsWebValid()) {
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "invalid url");
+    return NGX_DECLINED;
+  }
 
   scoped_ptr<RequestHeaders> request_headers(new RequestHeaders);
   scoped_ptr<ResponseHeaders> response_headers(new ResponseHeaders);
