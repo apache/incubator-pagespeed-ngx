@@ -724,14 +724,13 @@ pagespeed.MobNav.prototype.labelNavDepth_ = function(node, currDepth) {
 
 
 /**
- * Traverse through the nav menu and generate an array of duplicate entries
- * (entries that have the same href and case-insensitive label. Because this is
- * recursive, it does not delete the items as it goes, instead it just populates
- * nodesToDelete. addNavPanel takes care of actually deleting the nodes.
+ * Traverse through the nav menu and remove duplicate entries, keeping the first
+ * occurance. Entries are considered duplicates if they have the same href and
+ * case-insensitive label.
  * @private
  */
 pagespeed.MobNav.prototype.dedupNavMenuItems_ = function() {
-  var aTags = document.querySelector('.psmob-nav-panel > ul a');
+  var aTags = this.navPanel_.getElementsByTagName('a');
 
   var menuItems = {};
   var nodesToDelete = [];
@@ -765,19 +764,29 @@ pagespeed.MobNav.prototype.dedupNavMenuItems_ = function() {
  * Remove style attributes from all the nodes moved into the nav menu, so that
  *     the styles set in mob_nav.css win.
  * If an A tag has no text, but has a title, use the title for the text.
+ * If an A tag has no href, remove it.
  * @private
  */
 pagespeed.MobNav.prototype.cleanupNavPanel_ = function() {
   var nodes = this.navPanel_.querySelectorAll('*');
+  var nodesToDelete = [];
   for (var i = 0, node; node = nodes[i]; i++) {
     node.removeAttribute('style');
     node.removeAttribute('width');
     node.removeAttribute('height');
 
-    if (node.tagName == 'A' && node.innerText == '' &&
-        node.hasAttribute('title')) {
-      node.appendChild(document.createTextNode(node.getAttribute('title')));
+    if (node.tagName == 'A') {
+      if (node.innerText == '' && node.hasAttribute('title')) {
+        node.appendChild(document.createTextNode(node.getAttribute('title')));
+      }
+      if (node.href == '') {
+        nodesToDelete.push(node);
+      }
     }
+  }
+
+  for (var i = 0, node; node = nodesToDelete[i]; i++) {
+    node.parentNode.removeChild(node);
   }
 
   var maxImageHeight = 40;
