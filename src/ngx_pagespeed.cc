@@ -882,7 +882,6 @@ void ps_cleanup_srv_conf(void* data) {
   // from being executed
 
   if (!factory_deleted && cfg_s->server_context != NULL) {
-    NgxBaseFetch::Terminate();
     delete cfg_s->server_context->factory();
     factory_deleted = true;
   }
@@ -2971,6 +2970,10 @@ ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
   return NGX_OK;
 }
 
+void ps_exit_child_process(ngx_cycle_t* cycle) {
+  NgxBaseFetch::Terminate();
+}
+
 // Called when nginx forks worker processes.  No threads should be started
 // before this.
 ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
@@ -3049,7 +3052,7 @@ ngx_module_t ngx_pagespeed = {
   net_instaweb::ps_init_child_process,
   NULL,
   NULL,
-  NULL,
+  net_instaweb::ps_exit_child_process,
   NULL,
   NGX_MODULE_V1_PADDING
 };
