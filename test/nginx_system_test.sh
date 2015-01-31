@@ -185,7 +185,7 @@ check_not_simple grep @@ $PAGESPEED_CONF
 
 # start nginx with new config
 if $USE_VALGRIND; then
-  (valgrind -q --leak-check=full --gen-suppressions=all \
+  (valgrind -q --leak-check=full --gen-suppressions=all --track-fds=yes \
             --show-possibly-lost=no --log-file=$TEST_TMP/valgrind.log \
             --suppressions="$this_dir/valgrind.sup" \
       $NGINX_EXECUTABLE -c $PAGESPEED_CONF) & VALGRIND_PID=$!
