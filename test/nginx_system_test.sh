@@ -185,7 +185,7 @@ check_not_simple grep @@ $PAGESPEED_CONF
 
 # start nginx with new config
 if $USE_VALGRIND; then
-  (valgrind -q --leak-check=full --gen-suppressions=all --track-fds=yes \
+  (valgrind -q --leak-check=full --gen-suppressions=all \
             --show-possibly-lost=no --log-file=$TEST_TMP/valgrind.log \
             --suppressions="$this_dir/valgrind.sup" \
       $NGINX_EXECUTABLE -c $PAGESPEED_CONF) & VALGRIND_PID=$!
@@ -1153,6 +1153,13 @@ check_from "$OUT" fgrep -qi '404'
 MATCHES=$(echo "$OUT" | grep -c "Cache-Control: override") || true
 check [ $MATCHES -eq 1 ]
 
+AB_PID="0"
+# Fire up some heavy load if ab is available to test a stressed shutdown
+if hash ab 2>/dev/null; then
+    ab -n 10000 -c 100 -k http://127.0.0.1:8050/ & AB_PID=$!
+    sleep 2
+fi
+
 if $USE_VALGRIND; then
     # It is possible that there are still ProxyFetches outstanding
     # at this point in time. Give them a few extra seconds to allow
@@ -1162,10 +1169,6 @@ if $USE_VALGRIND; then
     # Actually, should we sleep at all? Isn't that cheating?
     # echo "Sleeping 30 seconds to allow outstanding ProxyFetches to finish."
     #sleep 30
-    if hash ab 2>/dev/null; then
-        ab -n 10000 -c 100 -k http://127.0.0.1:8050/ &
-        sleep 1
-    fi
 
     kill -s quit $VALGRIND_PID
     wait
@@ -1175,13 +1178,13 @@ if $USE_VALGRIND; then
     start_test No Valgrind complaints.
     check_not [ -s "$TEST_TMP/valgrind.log" ]
 else
-    # Fire up some heavy load if ab is available to test a stressed shutdown
-    if hash ab 2>/dev/null; then
-        ab -n 10000 -c 100 -k http://127.0.0.1:8050/ &
-        sleep 1
-    fi
     check_simple "$NGINX_EXECUTABLE" -s quit -c "$PAGESPEED_CONF"
     wait
+fi
+
+if [ "$AB_PID" != "0" ]; then
+    echo "Kill ab"
+    kill -s term $AB_PID || true
 fi
 
 start_test Logged output looks healthy.
@@ -1189,6 +1192,7 @@ start_test Logged output looks healthy.
 # TODO(oschaaf): This is pretty bare bones. We might want to also check all
 # warnings and errors, whitelisting those that are allowed.
 OUT=$(cat "$ERROR_LOG" | grep "\\[alert\\]" || true)
+OUT=$(cat "$ERROR_LOG" | grep "\\[crit\\]" || true)
 check [ -z "$OUT" ]
 
 
