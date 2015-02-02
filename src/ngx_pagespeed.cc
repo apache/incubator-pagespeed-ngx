@@ -2974,17 +2974,18 @@ ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
     cfg_m->driver_factory->LoggingInit(cycle->log);
     cfg_m->driver_factory->RootInit();
   } else {
-    // TODO(oschaaf): check this.
     delete cfg_m->driver_factory;
     cfg_m->driver_factory = NULL;
-    if (active_driver_factory == cfg_m->driver_factory) {
-      active_driver_factory = NULL;
-    }
+    active_driver_factory = NULL;
   }
   return NGX_OK;
 }
 
 void ps_exit_child_process(ngx_cycle_t* cycle) {
+  ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
+      ngx_http_cycle_get_module_main_conf(cycle, ngx_pagespeed));
+  NgxBaseFetch::Terminate();
+  cfg_m->driver_factory->ShutDown();
   NgxBaseFetch::Terminate();
 }
 
@@ -3033,7 +3034,6 @@ ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
     return NGX_ERROR;
   }
   cfg_m->driver_factory->StartThreads();
-  // If we get here, we are a real worker proc.
   return NGX_OK;
 }
 

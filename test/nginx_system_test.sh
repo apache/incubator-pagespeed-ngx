@@ -1156,20 +1156,12 @@ check [ $MATCHES -eq 1 ]
 AB_PID="0"
 # Fire up some heavy load if ab is available to test a stressed shutdown
 if hash ab 2>/dev/null; then
-    ab -n 10000 -c 100 -k http://127.0.0.1:8050/ & AB_PID=$!
+    ab -n 10000 -c 100 -k http://127.0.0.1:8050/ &>/dev/null & AB_PID=$!
     sleep 2
+    echo "foo"
 fi
 
 if $USE_VALGRIND; then
-    # It is possible that there are still ProxyFetches outstanding
-    # at this point in time. Give them a few extra seconds to allow
-    # them to finish, so they will not generate valgrind complaints
-    # TODO(oschaaf): instead of sleeping, can't we look at the stats to check
-    # for outstanding work?
-    # Actually, should we sleep at all? Isn't that cheating?
-    # echo "Sleeping 30 seconds to allow outstanding ProxyFetches to finish."
-    #sleep 30
-
     kill -s quit $VALGRIND_PID
     wait
     # Clear the previously set trap, we don't need it anymore.
@@ -1183,17 +1175,54 @@ else
 fi
 
 if [ "$AB_PID" != "0" ]; then
-    echo "Kill ab"
-    kill -s term $AB_PID || true
+    echo "Kill ab (pid: $AB_PID)"
+    kill -s term $AB_PID &>/dev/null || true
 fi
 
 start_test Logged output looks healthy.
 
-# TODO(oschaaf): This is pretty bare bones. We might want to also check all
-# warnings and errors, whitelisting those that are allowed.
-OUT=$(cat "$ERROR_LOG" | grep "\\[alert\\]" || true)
-OUT=$(cat "$ERROR_LOG" | grep "\\[crit\\]" || true)
-check [ -z "$OUT" ]
+# TODO(oschaaf): check the warning about downstream caching and recv()/send().
+# Perhaps it makes sense to do a one time sanity check for all the 
+# warnings/errors here.
+OUT=$(cat "test/tmp/error.log" \
+    | grep "\\[" \
+    | grep -v "\\[debug\\]" \
+    | grep -v "\\[info\\]" \
+    | grep -v "\\[notice\\]" \
+    | grep -v "\\[warn\\].*Cache Flush.*" \
+    | grep -v "\\[warn\\].*doesnotexist.css.*" \
+    | grep -v "\\[warn\\].*Invalid filter name: bogus.*" \
+    | grep -v "\\[warn\\].*You seem to have downstream caching.*" \
+    | grep -v "\\[warn\\].*Warning_trigger*" \
+    | grep -v "\\[warn\\].*Rewrite http://www.google.com/mod_pagespeed_example/ failed*" \
+    | grep -v "\\[warn\\].*A.bad:0:Resource*" \
+    | grep -v "\\[warn\\].*W.bad.pagespeed.cf.hash.css*" \
+    | grep -v "\\[warn\\].*BadName*" \
+    | grep -v "\\[warn\\].*CSS parsing error*" \
+    | grep -v "\\[warn\\].*Fetch failed for resource*" \
+    | grep -v "\\[warn\\].*Rewrite.*example.pdf failed*" \
+    | grep -v "\\[warn\\].*Rewrite.*hello.js failed*" \
+    | grep -v "\\[warn\\].*Resource based on.*ngx_pagespeed_statistics.*" \
+    | grep -v "\\[warn\\].*Canceling 1 functions on sequence Shutdown.*" \
+    | grep -v "\\[error\\].*BadName*" \
+    | grep -v "\\[error\\].*/mod_pagespeed/bad*" \
+    | grep -v "\\[error\\].*doesnotexist.css.*" \
+    | grep -v "\\[error\\].*is forbidden.*" \
+    | grep -v "\\[error\\].*access forbidden by rule.*" \
+    | grep -v "\\[error\\].*forbidden.example.com*" \
+    | grep -v "\\[error\\].*custom-paths.example.com*" \
+    | grep -v "\\[error\\].*bogus_format*" \
+    | grep -v "\\[error\\].*src/install/foo*" \
+    | grep -v "\\[error\\].*recv() failed*" \
+    | grep -v "\\[error\\].*send() failed*" \
+    | grep -v "\\[error\\].*Invalid url requested: js_defer.js.*" \
+    | grep -v "\\[error\\].*/mod_pagespeed_example/styles/yellow.css+blue.css.pagespeed.cc..css.*" \
+    | grep -v "\\[error\\].*/mod_pagespeed_example/images/Puzzle.jpg.pagespeed.ce..jpg.*" \
+    | grep -v "\\[error\\].*/pagespeed_custom_static/js_defer.js.*" \
+    | grep -v "\\[error\\].*UH8L-zY4b4AAAAAAAAAA.*" \
+    | grep -v "\\[error\\].*UH8L-zY4b4.*" \
+    || true)
 
+check [ -z "$OUT" ]
 
 check_failures_and_exit

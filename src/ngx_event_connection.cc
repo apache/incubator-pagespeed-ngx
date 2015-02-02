@@ -160,8 +160,8 @@ bool NgxEventConnection::WriteEvent(char type, void* sender) {
 }
 
 void NgxEventConnection::Shutdown() {
-  close(pipe_write_fd_);
   // Drain the pipe, process final events, and shut down.
+  close(pipe_write_fd_);
   while (NgxEventConnection::ReadAndNotify(pipe_read_fd_));
   close(pipe_read_fd_);
 }
