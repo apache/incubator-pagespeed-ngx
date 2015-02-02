@@ -371,15 +371,11 @@ pagespeed.MobNav.prototype.redrawHeader_ = function() {
 
   // Get the new size of the header bar and rescale the containing elements to
   // fit inside.
-  var height = this.headerBar_.offsetHeight;
-
-  this.menuButton_.style.width = height + 'px';
-  this.menuButton_.style.height = height + 'px';
-
-  this.callButton_.style.width = height + 'px';
-  this.callButton_.style.height = height + 'px';
-
-  this.spacerDiv_.style.height = height + 'px';
+  var heightString = this.headerBar_.offsetHeight + 'px';
+  this.menuButton_.style.width = heightString;
+  this.callButton_.style.width = heightString;
+  this.logoSpan_.style.left = heightString;
+  this.logoSpan_.style.right = heightString;
 };
 
 
