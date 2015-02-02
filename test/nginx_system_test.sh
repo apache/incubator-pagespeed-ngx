@@ -1153,8 +1153,6 @@ check_from "$OUT" fgrep -qi '404'
 MATCHES=$(echo "$OUT" | grep -c "Cache-Control: override") || true
 check [ $MATCHES -eq 1 ]
 
-start_test Shutdown is sane.
-
 if $USE_VALGRIND; then
     # It is possible that there are still ProxyFetches outstanding
     # at this point in time. Give them a few extra seconds to allow
