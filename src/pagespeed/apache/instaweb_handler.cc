@@ -809,7 +809,8 @@ bool InstawebHandler::parse_body_from_post(const request_rec* request,
     *ret = HTTP_BAD_REQUEST;
     return false;
   }
-  if (!StringCaseEqual(mime_type, "application/x-www-form-urlencoded")) {
+  if (!StringCaseEqual(mime_type, "application/x-www-form-urlencoded") &&
+      !StringCaseEqual(mime_type, "multipart/form-data")) {
     *ret = HTTP_BAD_REQUEST;
     return false;
   }
