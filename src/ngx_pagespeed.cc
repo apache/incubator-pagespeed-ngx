@@ -606,7 +606,6 @@ ngx_int_t copy_response_headers_to_ngx(
 namespace {
 
 typedef struct {
-  NgxRewriteDriverFactory* driver_factory;
   MessageHandler* handler;
 } ps_main_conf_t;
 
@@ -682,6 +681,8 @@ ngx_command_t ps_commands[] = {
 
   ngx_null_command
 };
+
+NgxRewriteDriverFactory* driver_factory = NULL;
 
 void ps_ignore_sigpipe() {
   struct sigaction act;
@@ -812,15 +813,13 @@ char* ps_configure(ngx_conf_t* cf,
     // directive yet.  That happens below in ParseAndSetOptions().
   }
 
-  ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
-      ngx_http_cycle_get_module_main_conf(cf->cycle, ngx_pagespeed));
   if (*options == NULL) {
     *options = new NgxRewriteOptions(
-        cfg_m->driver_factory->thread_system());
+        driver_factory->thread_system());
   }
 
   bool process_script_variables = dynamic_cast<NgxRewriteDriverFactory*>(
-      cfg_m->driver_factory)->process_script_variables();
+      driver_factory)->process_script_variables();
 
   if (process_script_variables) {
     // To be able to use '$', we map '$ps_dollar' to '$' via a script variable.
@@ -836,7 +835,7 @@ char* ps_configure(ngx_conf_t* cf,
   }
 
   const char* status = (*options)->ParseAndSetOptions(
-      args, n_args, cf->pool, handler, cfg_m->driver_factory, option_scope, cf,
+      args, n_args, cf->pool, handler, driver_factory, option_scope, cf,
       process_script_variables);
 
   // nginx expects us to return a string literal but doesn't mark it const.
@@ -872,7 +871,6 @@ void ps_cleanup_loc_conf(void* data) {
   cfg_l->options = NULL;
 }
 
-bool factory_deleted = false;
 void ps_cleanup_srv_conf(void* data) {
   ps_srv_conf_t* cfg_s = static_cast<ps_srv_conf_t*>(data);
 
@@ -880,10 +878,9 @@ void ps_cleanup_srv_conf(void* data) {
   // to be shut down when we destroy any proxy_fetch_factories. This
   // will prevent any queued callbacks to destroyed proxy fetch factories
   // from being executed
-
-  if (!factory_deleted && cfg_s->server_context != NULL) {
-    delete cfg_s->server_context->factory();
-    factory_deleted = true;
+  if (driver_factory != NULL) {
+    delete driver_factory;
+    driver_factory = NULL;
   }
   if (cfg_s->proxy_fetch_factory != NULL) {
     delete cfg_s->proxy_fetch_factory;
@@ -901,11 +898,6 @@ void ps_cleanup_main_conf(void* data) {
   cfg_m->handler = NULL;
   NgxRewriteDriverFactory::Terminate();
   NgxRewriteOptions::Terminate();
-
-  // reset the factory deleted flag, so we will clean up properly next time,
-  // in case of a configuration reload.
-  // TODO(oschaaf): get rid of the factory_deleted flag
-  factory_deleted = false;
 }
 
 template <typename ConfT> ConfT* ps_create_conf(ngx_conf_t* cf) {
@@ -930,6 +922,11 @@ void ps_set_conf_cleanup_handler(
 }
 
 void terminate_process_context() {
+  if (driver_factory != NULL) {
+    delete driver_factory;
+    driver_factory = NULL;
+    NgxBaseFetch::Terminate();
+  }
   delete process_context;
   process_context = NULL;
 }
@@ -943,16 +940,16 @@ void* ps_create_main_conf(ngx_conf_t* cf) {
   if (cfg_m == NULL) {
     return NGX_CONF_ERROR;
   }
-  CHECK(!factory_deleted);
+  CHECK(driver_factory == NULL);
   NgxRewriteOptions::Initialize();
   NgxRewriteDriverFactory::Initialize();
 
-  cfg_m->driver_factory = new NgxRewriteDriverFactory(
+  driver_factory = new NgxRewriteDriverFactory(
       *process_context,
       new SystemThreadSystem(),
       "" /* hostname, not used */,
       -1 /* port, not used */);
-  cfg_m->driver_factory->Init();
+  driver_factory->Init();
   ps_set_conf_cleanup_handler(cf, ps_cleanup_main_conf, cfg_m);
   return cfg_m;
 }
@@ -1044,10 +1041,8 @@ char* ps_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
   // server block or change ServerContext not to ask for them.
   int dummy_port = -times_ps_merge_srv_conf_called;
 
-  ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
-      ngx_http_conf_get_module_main_conf(cf, ngx_pagespeed));
-  cfg_m->driver_factory->set_main_conf(parent_cfg_s->options);
-  cfg_s->server_context = cfg_m->driver_factory->MakeNgxServerContext(
+  driver_factory->set_main_conf(parent_cfg_s->options);
+  cfg_s->server_context = driver_factory->MakeNgxServerContext(
       "dummy_hostname", dummy_port);
   // The server context sets some options when we call global_options(). So
   // let it do that, then merge in options we got from the config file.
@@ -1066,7 +1061,7 @@ char* ps_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
         cfg_s->server_context->config()->file_cache_path().c_str();
     if (file_cache_path[0] == '\0') {
       return const_cast<char*>("FileCachePath must be set");
-    } else if (!cfg_m->driver_factory->file_system()->IsDir(
+    } else if (!driver_factory->file_system()->IsDir(
         file_cache_path, &handler).is_true()) {
       return const_cast<char*>(
           "FileCachePath must be an nginx-writeable directory");
@@ -2824,9 +2819,7 @@ ngx_int_t ps_preaccess_handler(ngx_http_request_t* r) {
 }
 
 ngx_int_t ps_etag_filter_init(ngx_conf_t* cf) {
-  ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
-      ngx_http_conf_get_module_main_conf(cf, ngx_pagespeed));
-  if (cfg_m->driver_factory != NULL) {
+  if (driver_factory != NULL) {
     ngx_http_ef_next_header_filter = ngx_http_top_header_filter;
     ngx_http_top_header_filter = ps_etag_header_filter;
   }
@@ -2848,15 +2841,13 @@ ngx_int_t ps_init(ngx_conf_t* cf) {
   // "pagespeed" directives we won't have any effect after nginx is done loading
   // its configuration.
 
-  ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
-      ngx_http_conf_get_module_main_conf(cf, ngx_pagespeed));
-
-  // The driver factory is on the main config and is non-NULL iff there is a
+  // TODO(oschaaf): reformat comment
+  // The driver factory is non-NULL iff there is a
   // pagespeed configuration option in the main config or a server block.  Note
   // that if any server block has pagespeed 'on' then our header filter, body
   // filter, and content handler will run in every server block.  This is ok,
   // because they will notice that the server context is NULL and do nothing.
-  if (cfg_m->driver_factory != NULL) {
+  if (driver_factory != NULL) {
     // The filter init order is important.
     ps_in_place_filter_init();
 
@@ -2927,7 +2918,7 @@ ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
   GoogleString error_message;
   int error_index = -1;
   Statistics* global_statistics = NULL;
-  cfg_m->driver_factory->PostConfig(
+  driver_factory->PostConfig(
       server_contexts, &error_message, &error_index, &global_statistics);
   if (error_index != -1) {
     server_contexts[error_index]->message_handler()->Message(
@@ -2945,27 +2936,28 @@ ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
     // If no shared-mem statistics are enabled, then init using the default
     // NullStatistics.
     if (global_statistics == NULL) {
-      NgxRewriteDriverFactory::InitStats(cfg_m->driver_factory->statistics());
+      NgxRewriteDriverFactory::InitStats(driver_factory->statistics());
     }
 
     ngx_http_core_loc_conf_t* clcf = static_cast<ngx_http_core_loc_conf_t*>(
         ngx_http_conf_get_module_loc_conf((*cscfp), ngx_http_core_module));
 
-    cfg_m->driver_factory->set_resolver(clcf->resolver);
-    cfg_m->driver_factory->set_resolver_timeout(clcf->resolver_timeout);
+    driver_factory->set_resolver(clcf->resolver);
+    driver_factory->set_resolver_timeout(clcf->resolver_timeout);
 
-    if (!cfg_m->driver_factory->CheckResolver()) {
+    if (!driver_factory->CheckResolver()) {
       cfg_m->handler->Message(
           kError,
           "UseNativeFetcher is on, please configure a resolver.");
       return NGX_ERROR;
     }
 
-    cfg_m->driver_factory->LoggingInit(cycle->log);
-    cfg_m->driver_factory->RootInit();
+    driver_factory->LoggingInit(cycle->log);
+    driver_factory->RootInit();
   } else {
-    delete cfg_m->driver_factory;
-    cfg_m->driver_factory = NULL;
+    delete driver_factory;
+    driver_factory = NULL;
+    NgxBaseFetch::Terminate();
   }
   return NGX_OK;
 }
@@ -2977,9 +2969,7 @@ void ps_exit_child_process(ngx_cycle_t* cycle) {
 // Called when nginx forks worker processes.  No threads should be started
 // before this.
 ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
-  ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
-      ngx_http_cycle_get_module_main_conf(cycle, ngx_pagespeed));
-  if (cfg_m->driver_factory == NULL) {
+  if (driver_factory == NULL) {
     return NGX_OK;
   }
 
@@ -2990,8 +2980,8 @@ ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
 
   // ChildInit() will initialise all ServerContexts, which we need to
   // create ProxyFetchFactories below
-  cfg_m->driver_factory->LoggingInit(cycle->log);
-  cfg_m->driver_factory->ChildInit();
+  driver_factory->LoggingInit(cycle->log);
+  driver_factory->ChildInit();
 
   ngx_http_core_main_conf_t* cmcf = static_cast<ngx_http_core_main_conf_t*>(
       ngx_http_cycle_get_module_main_conf(cycle, ngx_http_core_module));
@@ -3010,15 +3000,15 @@ ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
       cfg_s->proxy_fetch_factory = new ProxyFetchFactory(cfg_s->server_context);
       ngx_http_core_loc_conf_t* clcf = static_cast<ngx_http_core_loc_conf_t*>(
           cscfp[s]->ctx->loc_conf[ngx_http_core_module.ctx_index]);
-      cfg_m->driver_factory->SetServerContextMessageHandler(
+      driver_factory->SetServerContextMessageHandler(
           cfg_s->server_context, clcf->error_log);
     }
   }
 
-  if (!cfg_m->driver_factory->InitNgxUrlAsyncFetchers()) {
+  if (!driver_factory->InitNgxUrlAsyncFetchers()) {
     return NGX_ERROR;
   }
-  cfg_m->driver_factory->StartThreads();
+  driver_factory->StartThreads();
 
   return NGX_OK;
 }
