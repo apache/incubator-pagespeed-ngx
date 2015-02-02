@@ -373,7 +373,9 @@ pagespeed.MobNav.prototype.redrawHeader_ = function() {
   // fit inside.
   var heightString = this.headerBar_.offsetHeight + 'px';
   this.menuButton_.style.width = heightString;
-  this.callButton_.style.width = heightString;
+  if (this.callButton_) {
+    this.callButton_.style.width = heightString;
+  }
   this.logoSpan_.style.left = heightString;
   this.logoSpan_.style.right = heightString;
 };
