@@ -1208,6 +1208,7 @@ ngx_int_t ps_base_fetch_handler(ngx_http_request_t* r) {
           }
         }
       }
+      ngx_http_clear_content_length(r);
     } else {
       ngx_http_clean_header(r);
     }
