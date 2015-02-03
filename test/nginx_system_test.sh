@@ -66,7 +66,7 @@ function keepalive_test() {
   NGX_LOG_FILE="$1.error.log"
   POST_DATA=$3
 
-  for ((i=0; i < 100; i++)); do
+  for ((i=0; i < 10; i++)); do
     for accept_encoding in "" "gzip"; do
       if [ -z "$POST_DATA" ]; then
         curl -m 2 -S -s -v -H "Accept-Encoding: $accept_encoding" \
@@ -291,6 +291,7 @@ if $USE_VALGRIND; then
 ~IPRO flow uses cache as expected.~
 ~IPRO flow doesn't copy uncacheable resources multiple times.~
 ~inline_unauthorized_resources allows unauthorized css selectors~
+~Blocking rewrite enabled.~
 "
 fi
 
@@ -523,11 +524,24 @@ check test $(scrape_stat image_rewrite_total_original_bytes) -ge 10000
 # happens both before and after.
 start_test "Reload config"
 
+AB_PID="0"
+# Fire up some heavy load if ab is available to test a stressed shutdown
+if hash ab 2>/dev/null; then
+    ab -n 10000 -c 100 -k http://$PRIMARY_HOSTNAME/ &>/dev/null & AB_PID=$!
+    # Sleep to allow some queueing up of requests
+    sleep 2
+fi
+
 check wget $EXAMPLE_ROOT/styles/W.rewrite_css_images.css.pagespeed.cf.Hash.css \
   -O /dev/null
 check_simple "$NGINX_EXECUTABLE" -s reload -c "$PAGESPEED_CONF"
+
 check wget $EXAMPLE_ROOT/styles/W.rewrite_css_images.css.pagespeed.cf.Hash.css \
   -O /dev/null
+if [ "$AB_PID" != "0" ]; then
+    echo "Kill ab (pid: $AB_PID)"
+    kill -s term $AB_PID &>/dev/null || true
+fi
 
 # This is dependent upon having a beacon handler.
 test_filter add_instrumentation beacons load.
@@ -1153,12 +1167,15 @@ check_from "$OUT" fgrep -qi '404'
 MATCHES=$(echo "$OUT" | grep -c "Cache-Control: override") || true
 check [ $MATCHES -eq 1 ]
 
+AB_PID="0"
+# Fire up some heavy load if ab is available to test a stressed shutdown
+if hash ab 2>/dev/null; then
+    ab -n 10000 -c 100 -k http://$PRIMARY_HOSTNAME/ &>/dev/null & AB_PID=$!
+    # Sleep to allow some queueing up of requests
+    sleep 2
+fi
+
 if $USE_VALGRIND; then
-    # It is possible that there are still ProxyFetches outstanding
-    # at this point in time. Give them a few extra seconds to allow
-    # them to finish, so they will not generate valgrind complaints
-    echo "Sleeping 30 seconds to allow outstanding ProxyFetches to finish."
-    sleep 30
     kill -s quit $VALGRIND_PID
     wait
     # Clear the previously set trap, we don't need it anymore.
@@ -1166,6 +1183,60 @@ if $USE_VALGRIND; then
 
     start_test No Valgrind complaints.
     check_not [ -s "$TEST_TMP/valgrind.log" ]
+else
+    check_simple "$NGINX_EXECUTABLE" -s quit -c "$PAGESPEED_CONF"
+    wait
 fi
+
+if [ "$AB_PID" != "0" ]; then
+    echo "Kill ab (pid: $AB_PID)"
+    kill -s term $AB_PID &>/dev/null || true
+fi
+
+start_test Logged output looks healthy.
+
+# TODO(oschaaf): check the warning about downstream caching and recv()/send().
+# Perhaps it makes sense to do a one time sanity check for all the 
+# warnings/errors here.
+OUT=$(cat "test/tmp/error.log" \
+    | grep "\\[" \
+    | grep -v "\\[debug\\]" \
+    | grep -v "\\[info\\]" \
+    | grep -v "\\[notice\\]" \
+    | grep -v "\\[warn\\].*Cache Flush.*" \
+    | grep -v "\\[warn\\].*doesnotexist.css.*" \
+    | grep -v "\\[warn\\].*Invalid filter name: bogus.*" \
+    | grep -v "\\[warn\\].*You seem to have downstream caching.*" \
+    | grep -v "\\[warn\\].*Warning_trigger*" \
+    | grep -v "\\[warn\\].*Rewrite http://www.google.com/mod_pagespeed_example/ failed*" \
+    | grep -v "\\[warn\\].*A.bad:0:Resource*" \
+    | grep -v "\\[warn\\].*W.bad.pagespeed.cf.hash.css*" \
+    | grep -v "\\[warn\\].*BadName*" \
+    | grep -v "\\[warn\\].*CSS parsing error*" \
+    | grep -v "\\[warn\\].*Fetch failed for resource*" \
+    | grep -v "\\[warn\\].*Rewrite.*example.pdf failed*" \
+    | grep -v "\\[warn\\].*Rewrite.*hello.js failed*" \
+    | grep -v "\\[warn\\].*Resource based on.*ngx_pagespeed_statistics.*" \
+    | grep -v "\\[warn\\].*Canceling 1 functions on sequence Shutdown.*" \
+    | grep -v "\\[error\\].*BadName*" \
+    | grep -v "\\[error\\].*/mod_pagespeed/bad*" \
+    | grep -v "\\[error\\].*doesnotexist.css.*" \
+    | grep -v "\\[error\\].*is forbidden.*" \
+    | grep -v "\\[error\\].*access forbidden by rule.*" \
+    | grep -v "\\[error\\].*forbidden.example.com*" \
+    | grep -v "\\[error\\].*custom-paths.example.com*" \
+    | grep -v "\\[error\\].*bogus_format*" \
+    | grep -v "\\[error\\].*src/install/foo*" \
+    | grep -v "\\[error\\].*recv() failed*" \
+    | grep -v "\\[error\\].*send() failed*" \
+    | grep -v "\\[error\\].*Invalid url requested: js_defer.js.*" \
+    | grep -v "\\[error\\].*/mod_pagespeed_example/styles/yellow.css+blue.css.pagespeed.cc..css.*" \
+    | grep -v "\\[error\\].*/mod_pagespeed_example/images/Puzzle.jpg.pagespeed.ce..jpg.*" \
+    | grep -v "\\[error\\].*/pagespeed_custom_static/js_defer.js.*" \
+    | grep -v "\\[error\\].*UH8L-zY4b4AAAAAAAAAA.*" \
+    | grep -v "\\[error\\].*UH8L-zY4b4.*" \
+    || true)
+
+check [ -z "$OUT" ]
 
 check_failures_and_exit

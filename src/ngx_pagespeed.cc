@@ -85,6 +85,8 @@ extern ngx_module_t ngx_pagespeed;
 // Needed for SystemRewriteDriverFactory to use shared memory.
 #define PAGESPEED_SUPPORT_POSIX_SHARED_MEM
 
+net_instaweb::NgxRewriteDriverFactory* active_driver_factory = NULL;
+
 namespace net_instaweb {
 
 const char* kInternalEtagName = "@psol-etag";
@@ -880,11 +882,12 @@ void ps_cleanup_srv_conf(void* data) {
   // to be shut down when we destroy any proxy_fetch_factories. This
   // will prevent any queued callbacks to destroyed proxy fetch factories
   // from being executed
-
   if (!factory_deleted && cfg_s->server_context != NULL) {
+    if (active_driver_factory == cfg_s->server_context->factory()) {
+      active_driver_factory = NULL;
+    }
     delete cfg_s->server_context->factory();
     factory_deleted = true;
-    NgxBaseFetch::Terminate();
   }
   if (cfg_s->proxy_fetch_factory != NULL) {
     delete cfg_s->proxy_fetch_factory;
@@ -931,6 +934,11 @@ void ps_set_conf_cleanup_handler(
 }
 
 void terminate_process_context() {
+  if (active_driver_factory != NULL) {
+    delete active_driver_factory;
+    active_driver_factory = NULL;
+    NgxBaseFetch::Terminate();
+  }
   delete process_context;
   process_context = NULL;
 }
@@ -953,6 +961,7 @@ void* ps_create_main_conf(ngx_conf_t* cf) {
       new SystemThreadSystem(),
       "" /* hostname, not used */,
       -1 /* port, not used */);
+  active_driver_factory = cfg_m->driver_factory;
   cfg_m->driver_factory->Init();
   ps_set_conf_cleanup_handler(cf, ps_cleanup_main_conf, cfg_m);
   return cfg_m;
@@ -2967,8 +2976,16 @@ ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
   } else {
     delete cfg_m->driver_factory;
     cfg_m->driver_factory = NULL;
+    active_driver_factory = NULL;
   }
   return NGX_OK;
+}
+
+void ps_exit_child_process(ngx_cycle_t* cycle) {
+  ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
+      ngx_http_cycle_get_module_main_conf(cycle, ngx_pagespeed));
+  NgxBaseFetch::Terminate();
+  cfg_m->driver_factory->ShutDown();
 }
 
 // Called when nginx forks worker processes.  No threads should be started
@@ -3016,7 +3033,6 @@ ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
     return NGX_ERROR;
   }
   cfg_m->driver_factory->StartThreads();
-
   return NGX_OK;
 }
 
@@ -3049,7 +3065,7 @@ ngx_module_t ngx_pagespeed = {
   net_instaweb::ps_init_child_process,
   NULL,
   NULL,
-  NULL,
+  net_instaweb::ps_exit_child_process,
   NULL,
   NGX_MODULE_V1_PADDING
 };
