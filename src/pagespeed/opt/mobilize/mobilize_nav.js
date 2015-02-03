@@ -27,6 +27,8 @@ goog.require('goog.dom.classlist');
 goog.require('goog.json');
 goog.require('goog.net.Jsonp');
 goog.require('goog.string');
+// goog.style adds ~400 bytes when using getSize and getTransformedSize.
+goog.require('goog.style');
 goog.require('pagespeed.MobUtil');
 
 
@@ -109,6 +111,13 @@ pagespeed.MobNav = function() {
    * @private {boolean}
    */
   this.isNavPanelOpen_ = false;
+
+  /**
+   * Flag to ignore the next scroll event. Set when calling window.scrollBy to
+   * compensate the amount scrolled when resizing the spacer div.
+   * @private {boolean}
+   */
+  this.ignoreNextScrollEvent_ = false;
 };
 
 
@@ -356,10 +365,6 @@ pagespeed.MobNav.prototype.fixExistingElements_ = function() {
  * @private
  */
 pagespeed.MobNav.prototype.redrawHeader_ = function() {
-  // Redraw the bar to the top of page by offsetting by the amount scrolled.
-  this.headerBar_.style.top = window.scrollY + 'px';
-  this.headerBar_.style.left = window.scrollX + 'px';
-
   // Resize the bar by scaling to compensate for the amount zoomed.
   var scaleTransform =
       'scale(' + window.innerWidth / document.documentElement.clientWidth + ')';
@@ -378,6 +383,33 @@ pagespeed.MobNav.prototype.redrawHeader_ = function() {
   }
   this.logoSpan_.style.left = heightString;
   this.logoSpan_.style.right = heightString;
+
+  // Update the size of the spacer div to take into account the changed relative
+  // size of the header. Changing the size of the spacer div will also move the
+  // rest of the content on the page. For example, when zooming in, we shrink
+  // the size of the header bar, which causes the page to move up slightly. To
+  // compensate, we adjust the scroll amount by the difference between the old
+  // and new sizes of the spacer div.
+
+  // Use getTransformedSize to take into account the scale transformation.
+  var newHeight =
+      Math.round(goog.style.getTransformedSize(this.headerBar_).height);
+  var oldHeight = goog.style.getSize(this.spacerDiv_).height;
+  this.spacerDiv_.style.height = newHeight + 'px';
+  // Calling scrollBy will trigger a scroll event, but we've already updated
+  // the size of everything, so set a flag that we should ignore the next
+  // scroll event. Due to rounding errors from getTransformedSize returning a
+  // float, newHeight and oldHeight can differ by 1 pixel, which will cause this
+  // routine to get stuck firing in a loop as it tries and fails to compensate
+  // for the 1 pixel difference.
+  if (newHeight != oldHeight) {
+    this.ignoreNextScrollEvent_ = true;
+    window.scrollBy(0, newHeight - oldHeight);
+  }
+
+  // Redraw the bar to the top of page by offsetting by the amount scrolled.
+  this.headerBar_.style.top = window.scrollY + 'px';
+  this.headerBar_.style.left = window.scrollX + 'px';
 };
 
 
@@ -423,6 +455,10 @@ pagespeed.MobNav.prototype.addHeaderBarResizeEvents_ = function() {
   // ms and there are no touches currently on the screen. This keeps the
   // redrawing from happening until scrolling is finished.
   var scrollHandler = function(e) {
+    if (this.ignoreNextScrollEvent_) {
+      this.ignoreNextScrollEvent_ = false;
+      return;
+    }
     if (this.scrollTimer_ != null) {
       window.clearTimeout(this.scrollTimer_);
       this.scrollTimer_ = null;
@@ -681,10 +717,11 @@ pagespeed.MobNav.prototype.addThemeColor_ = function(themeData) {
       pagespeed.MobUtil.colorNumbersToString(themeData.menuFrontColor) :
       'white';
   var css = '.psmob-header-bar { background-color: ' + backgroundColor +
-            ' }\n' +
-            '.psmob-nav-panel { background-color: ' + color + ' }\n' +
-            '.psmob-nav-panel > ul li { color: ' + backgroundColor + ' }\n' +
-            '.psmob-nav-panel > ul li a { color: ' + backgroundColor + ' }\n';
+            '; }\n' +
+            '.psmob-nav-panel { background-color: ' + color + '; }\n' +
+            '.psmob-header-spacer-div { background-color: ' + color + '; }\n' +
+            '.psmob-nav-panel > ul li { color: ' + backgroundColor + '; }\n' +
+            '.psmob-nav-panel > ul li a { color: ' + backgroundColor + '; }\n';
   var styleTag = document.createElement('style');
   styleTag.type = 'text/css';
   styleTag.appendChild(document.createTextNode(css));
