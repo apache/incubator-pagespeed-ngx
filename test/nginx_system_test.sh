@@ -291,6 +291,7 @@ if $USE_VALGRIND; then
 ~IPRO flow uses cache as expected.~
 ~IPRO flow doesn't copy uncacheable resources multiple times.~
 ~inline_unauthorized_resources allows unauthorized css selectors~
+~Blocking rewrite enabled.~
 "
 fi
 
@@ -523,11 +524,24 @@ check test $(scrape_stat image_rewrite_total_original_bytes) -ge 10000
 # happens both before and after.
 start_test "Reload config"
 
+AB_PID="0"
+# Fire up some heavy load if ab is available to test a stressed shutdown
+if hash ab 2>/dev/null; then
+    ab -n 10000 -c 100 -k http://$PRIMARY_HOSTNAME/ &>/dev/null & AB_PID=$!
+    # Sleep to allow some queueing up of requests
+    sleep 2
+fi
+
 check wget $EXAMPLE_ROOT/styles/W.rewrite_css_images.css.pagespeed.cf.Hash.css \
   -O /dev/null
 check_simple "$NGINX_EXECUTABLE" -s reload -c "$PAGESPEED_CONF"
+
 check wget $EXAMPLE_ROOT/styles/W.rewrite_css_images.css.pagespeed.cf.Hash.css \
   -O /dev/null
+if [ "$AB_PID" != "0" ]; then
+    echo "Kill ab (pid: $AB_PID)"
+    kill -s term $AB_PID &>/dev/null || true
+fi
 
 # This is dependent upon having a beacon handler.
 test_filter add_instrumentation beacons load.
@@ -1156,9 +1170,9 @@ check [ $MATCHES -eq 1 ]
 AB_PID="0"
 # Fire up some heavy load if ab is available to test a stressed shutdown
 if hash ab 2>/dev/null; then
-    ab -n 10000 -c 100 -k http://127.0.0.1:8050/ &>/dev/null & AB_PID=$!
+    ab -n 10000 -c 100 -k http://$PRIMARY_HOSTNAME/ &>/dev/null & AB_PID=$!
+    # Sleep to allow some queueing up of requests
     sleep 2
-    echo "foo"
 fi
 
 if $USE_VALGRIND; then

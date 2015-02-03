@@ -78,11 +78,17 @@ class NgxBaseFetch : public AsyncFetch {
                PreserveCachingHeaders preserve_caching_headers,
                NgxBaseFetchType base_fetch_type);
   virtual ~NgxBaseFetch();
+
   // Statically initializes event_connection, require for PSOL and nginx to
   // communicate.
   static bool Initialize(ngx_cycle_t* cycle);
+
+  // Attempts to finish up request processing queued up in the named pipe and
+  // PSOL for a fixed amount of time. If time is up, a fast and rough shutdown
+  // is attempted.
   // Statically terminates and NULLS event_connection.
   static void Terminate();
+
   static void ReadCallback(const ps_event_data& data);
 
   // Puts a chain in link_ptr if we have any output data buffered.  Returns
@@ -145,6 +151,9 @@ class NgxBaseFetch : public AsyncFetch {
   int DecrefAndDeleteIfUnreferenced();
 
   static NgxEventConnection* event_connection;
+  
+  // Live count of NgxBaseFetch instances that are currently in use.
+  static int active_base_fetches;
 
   ngx_http_request_t* request_;
   GoogleString buffer_;

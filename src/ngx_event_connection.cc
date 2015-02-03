@@ -159,10 +159,13 @@ bool NgxEventConnection::WriteEvent(char type, void* sender) {
   return false;
 }
 
+// Reads and processes what is available in the pipe.
+void NgxEventConnection::Drain() {
+  NgxEventConnection::ReadAndNotify(pipe_read_fd_);
+}
+
 void NgxEventConnection::Shutdown() {
-  // Drain the pipe, process final events, and shut down.
   close(pipe_write_fd_);
-  while (NgxEventConnection::ReadAndNotify(pipe_read_fd_));
   close(pipe_read_fd_);
 }
 

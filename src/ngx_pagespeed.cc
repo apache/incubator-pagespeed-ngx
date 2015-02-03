@@ -2986,7 +2986,6 @@ void ps_exit_child_process(ngx_cycle_t* cycle) {
       ngx_http_cycle_get_module_main_conf(cycle, ngx_pagespeed));
   NgxBaseFetch::Terminate();
   cfg_m->driver_factory->ShutDown();
-  NgxBaseFetch::Terminate();
 }
 
 // Called when nginx forks worker processes.  No threads should be started

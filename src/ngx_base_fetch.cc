@@ -15,6 +15,7 @@
  */
 
 // Author: jefftk@google.com (Jeff Kaufman)
+#include <unistd.h> //for usleep
 
 #include "ngx_base_fetch.h"
 #include "ngx_event_connection.h"
@@ -34,6 +35,8 @@ const char kFlush = 'F';
 const char kDone = 'D';
 
 NgxEventConnection* NgxBaseFetch::event_connection = NULL;
+int NgxBaseFetch::active_base_fetches = 0;
+
 
 NgxBaseFetch::NgxBaseFetch(ngx_http_request_t* r,
                            NgxServerContext* server_context,
@@ -51,10 +54,12 @@ NgxBaseFetch::NgxBaseFetch(ngx_http_request_t* r,
       detached_(false),
       suppress_(false) {
   if (pthread_mutex_init(&mutex_, NULL)) CHECK(0);
+  __sync_add_and_fetch(&NgxBaseFetch::active_base_fetches, 1);
 }
 
 NgxBaseFetch::~NgxBaseFetch() {
   pthread_mutex_destroy(&mutex_);
+  __sync_add_and_fetch(&NgxBaseFetch::active_base_fetches, -1);
 }
 
 bool NgxBaseFetch::Initialize(ngx_cycle_t* cycle) {
@@ -65,6 +70,26 @@ bool NgxBaseFetch::Initialize(ngx_cycle_t* cycle) {
 
 void NgxBaseFetch::Terminate() {
   if (event_connection != NULL) {
+    static unsigned int sleep_microseconds = 1000;
+    int max_iterations = 10000;
+    GoogleMessageHandler handler;
+
+    if (NgxBaseFetch::active_base_fetches > 0) {
+      handler.Message(
+          kInfo,"NgxBaseFetch::Terminate called with %d active base fetches.",
+          NgxBaseFetch::active_base_fetches);
+    }
+
+    while (NgxBaseFetch::active_base_fetches > 0 && max_iterations > 0) {
+      event_connection->Drain();
+      usleep(sleep_microseconds);
+      --max_iterations;
+    }
+    if (max_iterations == 0) {
+      handler.Message(
+          kWarning,"NgxBaseFetch::Terminate timed out with %d active base fetches.",
+          NgxBaseFetch::active_base_fetches);
+    }
     event_connection->Shutdown();
     delete event_connection;
     event_connection = NULL;
