@@ -74,8 +74,6 @@ pagespeed.MobLogo.LogoRecord = function() {
   this.foregroundRect = null;
   /** @type {Element} */
   this.backgroundElement = null;
-  /** @type {?string} */
-  this.backgroundImage = null;
   /** @type {pagespeed.MobUtil.Rect} */
   this.backgroundRect = null;
   /** @type {Array.<number>} */
@@ -502,16 +500,6 @@ pagespeed.MobLogo.prototype.findLogoBackground_ = function(logo) {
   }
 
   var element = logo.foregroundElement;
-
-  // Check the current element.
-  var backgroundImage = null;
-  if (logo.foregroundSource == pagespeed.MobUtil.ImageSource.IMG ||
-      logo.foregroundSource == pagespeed.MobUtil.ImageSource.SVG) {
-    backgroundImage =
-        pagespeed.MobUtil.extractImage(
-        element, pagespeed.MobUtil.ImageSource.BACKGROUND);
-  }
-
   var backgroundColor = this.extractBackgroundColor_(element);
   var parentElement = null;
   if (element.parentNode) {
@@ -519,15 +507,8 @@ pagespeed.MobLogo.prototype.findLogoBackground_ = function(logo) {
   }
 
   // Check the ancestors.
-  while (parentElement && !backgroundImage && !backgroundColor) {
+  while (parentElement && !backgroundColor) {
     element = parentElement;
-    backgroundImage =
-        pagespeed.MobUtil.extractImage(
-            element, pagespeed.MobUtil.ImageSource.IMG) ||
-        pagespeed.MobUtil.extractImage(
-            element, pagespeed.MobUtil.ImageSource.SVG) ||
-        pagespeed.MobUtil.extractImage(
-            element, pagespeed.MobUtil.ImageSource.BACKGROUND);
     backgroundColor = this.extractBackgroundColor_(element);
 
     if (element.parentNode) {
@@ -538,7 +519,6 @@ pagespeed.MobLogo.prototype.findLogoBackground_ = function(logo) {
   }
 
   logo.backgroundElement = element;
-  logo.backgroundImage = backgroundImage;
   logo.backgroundColor = backgroundColor || [255, 255, 255];
   logo.backgroundRect = pagespeed.MobUtil.boundingRectAndSize(element);
   return logo;
