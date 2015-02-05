@@ -7497,7 +7497,7 @@ pagespeed.MobNav.prototype.dedupNavMenuItems_ = function() {
 };
 pagespeed.MobNav.prototype.cleanupNavPanel_ = function() {
   for (var a = this.navPanel_.querySelectorAll("*"), b = [], c = 0, d;d = a[c];c++) {
-    d.removeAttribute("style"), d.removeAttribute("width"), d.removeAttribute("height"), "A" == d.tagName && ("" == d.innerText && d.hasAttribute("title") && d.appendChild(document.createTextNode(d.getAttribute("title"))), "" == d.href && b.push(d));
+    d.removeAttribute("style"), d.removeAttribute("width"), d.removeAttribute("height"), "A" == d.tagName && ("" == d.textContent && d.hasAttribute("title") && d.appendChild(document.createTextNode(d.getAttribute("title"))), "" == d.href && b.push(d));
   }
   for (c = 0;d = b[c];c++) {
     d.parentNode.removeChild(d);

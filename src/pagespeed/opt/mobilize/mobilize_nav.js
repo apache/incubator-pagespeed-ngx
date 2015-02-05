@@ -833,7 +833,12 @@ pagespeed.MobNav.prototype.cleanupNavPanel_ = function() {
     node.removeAttribute('height');
 
     if (node.tagName == 'A') {
-      if (node.innerText == '' && node.hasAttribute('title')) {
+      // We use textContent instead of innerText to see if the node has content
+      // because innerText is aware of CSS styling and won't return the text of
+      // hidden elements. This is problematic because this function runs while
+      // the nav panel is hidden, and so innerText will return '' for these
+      // elements since they are hidden.
+      if (node.textContent == '' && node.hasAttribute('title')) {
         node.appendChild(document.createTextNode(node.getAttribute('title')));
       }
       if (node.href == '') {
