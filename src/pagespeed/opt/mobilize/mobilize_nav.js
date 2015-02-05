@@ -917,7 +917,9 @@ pagespeed.MobNav.prototype.addNavPanel_ = function() {
         }
       }
 
-      nav.parentNode.removeChild(nav);
+      if (window.psLayoutMode) {
+        nav.parentNode.removeChild(nav);
+      }
     }
   }
 

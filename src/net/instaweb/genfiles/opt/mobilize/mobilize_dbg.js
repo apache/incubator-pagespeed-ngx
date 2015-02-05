@@ -7537,7 +7537,7 @@ pagespeed.MobNav.prototype.addNavPanel_ = function() {
           }
         }
       }
-      c.parentNode.removeChild(c);
+      window.psLayoutMode && c.parentNode.removeChild(c);
     }
   }
   this.dedupNavMenuItems_();
