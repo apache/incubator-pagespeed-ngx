@@ -342,10 +342,17 @@ ngx_int_t copy_response_headers_to_ngx(
 
     ngx_str_t name, value;
 
+    // If the gzip module is not configured, we must not rename the header,
+    // because we will fail to inject the header filter that will rename the
+    // header back.
+    bool gzip_enabled = false;
+#if (NGX_HTTP_GZIP)
+    gzip_enabled = true;
+#endif
     // To prevent the gzip module from clearing weak etags, we output them
     // using a different name here. The etag header filter module runs behind
     // the gzip compressors header filter, and will rename it to 'ETag'
-    if (StringCaseEqual(name_gs, "etag")
+    if (gzip_enabled && StringCaseEqual(name_gs, "etag")
         && StringCaseStartsWith(value_gs, "W/")) {
       name.len = strlen(kInternalEtagName);
       name.data = reinterpret_cast<u_char*>(
@@ -354,6 +361,7 @@ ngx_int_t copy_response_headers_to_ngx(
       name.len = name_gs.length();
       name.data = reinterpret_cast<u_char*>(const_cast<char*>(name_gs.data()));
     }
+
     value.len = value_gs.length();
     value.data = reinterpret_cast<u_char*>(const_cast<char*>(value_gs.data()));
 
@@ -1808,7 +1816,10 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
   GoogleString url_string = ps_determine_url(r);
   GoogleUrl url(url_string);
 
-  CHECK(url.IsWebValid());
+  if (!url.IsWebValid()) {
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "invalid url");
+    return NGX_DECLINED;
+  }
 
   scoped_ptr<RequestHeaders> request_headers(new RequestHeaders);
   scoped_ptr<ResponseHeaders> response_headers(new ResponseHeaders);
