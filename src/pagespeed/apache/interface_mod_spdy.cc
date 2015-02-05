@@ -23,6 +23,12 @@
 #include "apr_optional.h"
 #include "util_filter.h"
 
+// Apache's httpd.h likes to #define strtoul, which conflicts with some headers
+// in clang's libc++.
+#if defined(strtoul)
+#undef strtoul
+#endif
+
 #include "base/logging.h"
 #include "third_party/mod_spdy/src/mod_spdy/mod_spdy.h"
 
