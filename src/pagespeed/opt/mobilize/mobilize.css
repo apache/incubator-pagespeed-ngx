@@ -304,6 +304,7 @@ body {
 .psmob-header-spacer-div {
   width: 100%;
   height: 100%;
+  opacity: 0;
 }
 
 /* Commmon patterns applied to a broad range of elements */

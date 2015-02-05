@@ -118,16 +118,22 @@ pagespeed.MobNav = function() {
    * @private {boolean}
    */
   this.ignoreNextScrollEvent_ = false;
+
+
+  /**
+   * Tracks the fixed position elements, which need to be adjusted after zooming
+   * to account for the offset of the spacer div.
+   * @private {!Array<!Element>}
+   */
+  this.fixedPosElements_ = [];
+
+  /**
+   * Tracks if the redrawNav function has been called yet or not, to enable
+   * slightly different behavior on first vs subsequent calls.
+   * @private {boolean}
+   */
+  this.redrawNavCalled_ = false;
 };
-
-
-/**
- * Size in pixels of the header bar.
- * TODO(jud): This should be in a higher-level file, like mob.js.
- * @const
- * @private {number}
- */
-pagespeed.MobNav.HEADER_BAR_HEIGHT_ = 60;
 
 
 /**
@@ -334,8 +340,8 @@ pagespeed.MobNav.prototype.findNavSections_ = function() {
 /**
  * Do a pre-pass over all the nodes on the page to prepare them for
  * mobilization.
- * 1) Find all the elements with position:fixed, and move them down by the
- *    height of the nav bar.
+ * 1) Find and save all the elements with position:fixed so they can be updated
+ *    later in redrawNav_()
  * 2) Find elements with z-index greater than the z-index we are trying to use
  *    for the nav panel, and clamp it down if it is.
  * TODO(jud): This belongs in mobilize.js instead of mobilize_nav.js.
@@ -345,10 +351,9 @@ pagespeed.MobNav.prototype.fixExistingElements_ = function() {
   var elements = document.getElementsByTagName('*');
   for (var i = 0, element; element = elements[i]; i++) {
     var style = window.getComputedStyle(element);
-    if (style.getPropertyValue('position') == 'fixed') {
-      var elTop = element.getBoundingClientRect().top;
-      element.style.top =
-          String(pagespeed.MobNav.HEADER_BAR_HEIGHT_ + elTop) + 'px';
+    if (style.getPropertyValue('position') == 'fixed' &&
+        element.id != 'ps-progress-scrim') {
+      this.fixedPosElements_.push(element);
     }
 
     if (style.getPropertyValue('z-index') >= 999999) {
@@ -396,13 +401,30 @@ pagespeed.MobNav.prototype.redrawHeader_ = function() {
       Math.round(goog.style.getTransformedSize(this.headerBar_).height);
   var oldHeight = goog.style.getSize(this.spacerDiv_).height;
   this.spacerDiv_.style.height = newHeight + 'px';
+
+  // Update the top offset of position: fixed elements. On the first run of this
+  // function, they are offset by the size of the spacer div. On subsequent
+  // runs, they are offset by the difference between the old and the new size of
+  // the spacer div.
+  for (var i = 0; i < this.fixedPosElements_.length; i++) {
+    var el = this.fixedPosElements_[i];
+    if (this.redrawNavCalled_) {
+      var oldTop = el.style.top;
+      oldTop = Number(el.style.top.split('px')[0]);
+      el.style.top = String(oldTop + (newHeight - oldHeight)) + 'px';
+    } else {
+      var elTop = pagespeed.MobUtil.boundingRect(el).top;
+      el.style.top = String(elTop + newHeight) + 'px';
+    }
+  }
+
   // Calling scrollBy will trigger a scroll event, but we've already updated
   // the size of everything, so set a flag that we should ignore the next
   // scroll event. Due to rounding errors from getTransformedSize returning a
   // float, newHeight and oldHeight can differ by 1 pixel, which will cause this
   // routine to get stuck firing in a loop as it tries and fails to compensate
   // for the 1 pixel difference.
-  if (newHeight != oldHeight) {
+  if (this.redrawNavCalled_ && newHeight != oldHeight) {
     this.ignoreNextScrollEvent_ = true;
     window.scrollBy(0, newHeight - oldHeight);
   }
@@ -410,6 +432,7 @@ pagespeed.MobNav.prototype.redrawHeader_ = function() {
   // Redraw the bar to the top of page by offsetting by the amount scrolled.
   this.headerBar_.style.top = window.scrollY + 'px';
   this.headerBar_.style.left = window.scrollX + 'px';
+  this.redrawNavCalled_ = true;
 };
 
 
@@ -719,7 +742,6 @@ pagespeed.MobNav.prototype.addThemeColor_ = function(themeData) {
   var css = '.psmob-header-bar { background-color: ' + backgroundColor +
             '; }\n' +
             '.psmob-nav-panel { background-color: ' + color + '; }\n' +
-            '.psmob-header-spacer-div { background-color: ' + color + '; }\n' +
             '.psmob-nav-panel > ul li { color: ' + backgroundColor + '; }\n' +
             '.psmob-nav-panel > ul li a { color: ' + backgroundColor + '; }\n';
   var styleTag = document.createElement('style');
