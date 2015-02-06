@@ -121,6 +121,10 @@ body {
   height: 100%;
 }
 
+#psmob-map-button {
+  float: right;
+}
+
 #psmob-phone-dialer {
   float: right;
 }
@@ -129,6 +133,12 @@ body {
   width: 40%;
   height: 40%;
   padding: 30% 30% 30% 30%;
+}
+
+#psmob-map-image {
+  width: 30%;
+  height: 30%;
+  padding: 30% 35% 40% 35%;
 }
 
 #psmob-logo-span {

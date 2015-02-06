@@ -79,6 +79,12 @@ pagespeed.MobNav = function() {
   this.callButton_ = null;
 
   /**
+   * Map button in the header bar.
+   * @private {Element}
+   */
+  this.mapButton_ = null;
+
+  /**
    * Side nav bar.
    * @private {Element}
    */
@@ -181,6 +187,37 @@ pagespeed.MobNav.prototype.CALL_BUTTON_ =
 
 
 /**
+ * PNG image of a map button, from a google images search for
+ * 'google map pin icon'
+ * @const
+ * @private
+ */
+pagespeed.MobNav.prototype.MAP_BUTTON_ =
+    'R0lGODlhKwBDAPcAAAAAAAAAMwAAZgAAmQAAzAAA/wArAAArMwArZgArmQArzAAr/wBVAABV' +
+    'MwBVZgBVmQBVzABV/wCAAACAMwCAZgCAmQCAzACA/wCqAACqMwCqZgCqmQCqzACq/wDVAADV' +
+    'MwDVZgDVmQDVzADV/wD/AAD/MwD/ZgD/mQD/zAD//zMAADMAMzMAZjMAmTMAzDMA/zMrADMr' +
+    'MzMrZjMrmTMrzDMr/zNVADNVMzNVZjNVmTNVzDNV/zOAADOAMzOAZjOAmTOAzDOA/zOqADOq' +
+    'MzOqZjOqmTOqzDOq/zPVADPVMzPVZjPVmTPVzDPV/zP/ADP/MzP/ZjP/mTP/zDP//2YAAGYA' +
+    'M2YAZmYAmWYAzGYA/2YrAGYrM2YrZmYrmWYrzGYr/2ZVAGZVM2ZVZmZVmWZVzGZV/2aAAGaA' +
+    'M2aAZmaAmWaAzGaA/2aqAGaqM2aqZmaqmWaqzGaq/2bVAGbVM2bVZmbVmWbVzGbV/2b/AGb/' +
+    'M2b/Zmb/mWb/zGb//5kAAJkAM5kAZpkAmZkAzJkA/5krAJkrM5krZpkrmZkrzJkr/5lVAJlV' +
+    'M5lVZplVmZlVzJlV/5mAAJmAM5mAZpmAmZmAzJmA/5mqAJmqM5mqZpmqmZmqzJmq/5nVAJnV' +
+    'M5nVZpnVmZnVzJnV/5n/AJn/M5n/Zpn/mZn/zJn//8wAAMwAM8wAZswAmcwAzMwA/8wrAMwr' +
+    'M8wrZswrmcwrzMwr/8xVAMxVM8xVZsxVmcxVzMxV/8yAAMyAM8yAZsyAmcyAzMyA/8yqAMyq' +
+    'M8yqZsyqmcyqzMyq/8zVAMzVM8zVZszVmczVzMzV/8z/AMz/M8z/Zsz/mcz/zMz///8AAP8A' +
+    'M/8AZv8Amf8AzP8A//8rAP8rM/8rZv8rmf8rzP8r//9VAP9VM/9VZv9Vmf9VzP9V//+AAP+A' +
+    'M/+AZv+Amf+AzP+A//+qAP+qM/+qZv+qmf+qzP+q///VAP/VM//VZv/Vmf/VzP/V////AP//' +
+    'M///Zv//mf//zP///wAAAAAAAAAAAAAAACH5BAEAAPwALAAAAAArAEMAAAj/APcJHEiwoMGD' +
+    'CBMqXMiwocOHEBcqy0Qxk7KIECfGAMCxI8cYky5iRKhMjMeTJ8VAG1kwE8qXJzOxFGgSpk2O' +
+    'YljeuMkTwA2MNXvezPnQpdCekxwqO3pU5MKgTIcyXMrzRkiNPVcqnHTzBjGDyjbaJJpQLEyF' +
+    'UhNShekU4c22BYnZTLoQjc2vCI2+hHtwLUqZeW06tAn4oF6Ug2HSNSyYYT3CCeXCLJzw8Em8' +
+    'fccyhHqSL8Gdirfa/KmQc8zAcyXyFKOs3sCSPD0XNDtajBjQN2M0tBz15WKFknvblG3QtHCc' +
+    'D7keR/mb4XKUWh3ifk76YfDnmJXSFh6DeEK7z9GMgLwuPDvE5wBm8j5KOWJY4Su8M5x+lCxL' +
+    '8kLbjxQ+k6By9v29FpV8Dxn3kn0BrveSfv0dFaBB/6X2IEF+sTVhQQYidyGFb21Y0E0etjRZ' +
+    'iBRuB0B3JBIEnkfipTjQYye55uJAUFU34z6HmTdjTTbeiCNHOt7IkY8GZdIckUgmeWNAADs=';
+
+
+/**
  * Return a call button image with the specified color.
  * @param {!goog.color.Rgb} color
  * @return {string}
@@ -191,6 +228,24 @@ pagespeed.MobNav.prototype.callButtonImage_ = function(color) {
   var imageData = imageTemplate.substring(0, 13) +
       String.fromCharCode(color[0], color[1], color[2]) +
       imageTemplate.substring(16, imageTemplate.length);
+  var imageUrl = 'data:image/gif;base64,' + window.btoa(imageData);
+  return imageUrl;
+};
+
+
+/**
+ * Return a map image with the specified color.
+ * @param {!goog.color.Rgb} color
+ * @return {string}
+ * @private
+ */
+pagespeed.MobNav.prototype.mapButtonImage_ = function(color) {
+  var imageTemplate = window.atob(this.MAP_BUTTON_);
+  var imageData = imageTemplate;
+  // TODO(huibao): hack the colorizing features for this GIF.
+  // imageTemplate.substring(0, 13) +
+  // String.fromCharCode(color[0], color[1], color[2]) +
+  // imageTemplate.substring(16, imageTemplate.length);
   var imageUrl = 'data:image/gif;base64,' + window.btoa(imageData);
   return imageUrl;
 };
@@ -383,11 +438,17 @@ pagespeed.MobNav.prototype.redrawHeader_ = function() {
   // fit inside.
   var heightString = this.headerBar_.offsetHeight + 'px';
   this.menuButton_.style.width = heightString;
+  var logoRight = 0;
   if (this.callButton_) {
     this.callButton_.style.width = heightString;
+    logoRight += this.headerBar_.offsetHeight;
+  }
+  if (this.mapButton_) {
+    this.mapButton_.style.width = heightString;
+    logoRight += this.headerBar_.offsetHeight;
   }
   this.logoSpan_.style.left = heightString;
-  this.logoSpan_.style.right = heightString;
+  this.logoSpan_.style.right = logoRight + 'px';
 
   // Update the size of the spacer div to take into account the changed relative
   // size of the header. Changing the size of the spacer div will also move the
@@ -562,6 +623,10 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
     this.addPhoneDialer_(themeData.menuFrontColor);
   }
 
+  if (window.psMapLocation) {
+    this.addMapNavigation_(themeData.menuFrontColor);
+  }
+
   this.addHeaderBarResizeEvents_();
 };
 
@@ -589,6 +654,30 @@ pagespeed.MobNav.prototype.addPhoneDialer_ = function(color) {
 
 
 /**
+ * Adds a map icon to the header bar.
+ * @param {!goog.color.Rgb} color
+ * @private
+ */
+pagespeed.MobNav.prototype.addMapNavigation_ = function(color) {
+  var mapImage = document.createElement('img');
+  mapImage.id = 'psmob-map-image';
+  mapImage.src = this.mapButtonImage_(color);
+  this.mapButton_ = document.createElement('a');
+  this.mapButton_.id = 'psmob-map-button';
+  // TODO(jmarantz): test/fix this in iOS safari/chrome with/without
+  // Google Maps installed.  Probably use 'http://maps.apple.com/?='
+  this.mapButton_.href = 'https://maps.google.com/maps?q=' +
+      window.psMapLocation;
+  this.mapButton_.appendChild(mapImage);
+  this.headerBar_.appendChild(this.mapButton_);
+
+  // TODO(jmarantz): add conversion-snapping JS to the maps click.
+  // if (window.psMapConversionLabel) {
+  // }
+};
+
+
+/**
  * Attempts to get a static phone number, either as a debug
  * fallback or from a cookie, returning null if we don't have
  * the right phone number available.
@@ -603,7 +692,7 @@ pagespeed.MobNav.prototype.getPhoneNumber_ = function() {
   //
   // Naturally if there is no configured conversion label, we can't
   // get a conversion-tracked phone-number either.
-  if (window.psStaticJs || !window.psConversionLabel) {
+  if (window.psStaticJs || !window.psPhoneConversionLabel) {
     return window.psPhoneNumber;
   }
 
@@ -615,7 +704,7 @@ pagespeed.MobNav.prototype.getPhoneNumber_ = function() {
     if (gwcmCookie) {
       var cookieData = goog.json.parse(unescape(match[2]));
       if ((cookieData['fallback'] == window.psPhoneNumber) &&
-          (cookieData['clabel'] == window.psConversionLabel)) {
+          (cookieData['clabel'] == window.psPhoneConversionLabel)) {
         return cookieData['mobile_number'];
       }
     }
@@ -633,9 +722,9 @@ pagespeed.MobNav.prototype.getPhoneNumber_ = function() {
  * @export
  */
 function psRequestDynamicPhoneNumberAndCall() {
-  if (window.psConversionLabel && window.psPhoneNumber) {
+  if (window.psPhoneConversionLabel && window.psPhoneNumber) {
     // No request from cookie.
-    var label = escape(window.psConversionLabel);
+    var label = escape(window.psPhoneConversionLabel);
     var url = 'https://www.googleadservices.com/pagead/conversion/' +
         window.psConversionId + '/wcm?cl=' + label +
         '&fb=' + escape(window.psPhoneNumber);
@@ -702,7 +791,7 @@ pagespeed.MobNav.receivePhoneNumber_ = function(json) {
       'expires': wcm['expires'],
       'formatted_number': wcm['formatted_number'],
       'mobile_number': phone,
-      'clabel': window.psConversionLabel,
+      'clabel': window.psPhoneConversionLabel,
       'fallback': window.psPhoneNumber
     };
     cookieValue = goog.json.serialize(cookieValue);

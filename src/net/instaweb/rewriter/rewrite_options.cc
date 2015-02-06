@@ -225,9 +225,13 @@ const char RewriteOptions::kMinImageSizeLowResolutionBytes[] =
     "MinImageSizeLowResolutionBytes";
 const char RewriteOptions::kMinResourceCacheTimeToRewriteMs[] =
     "MinResourceCacheTimeToRewriteMs";
+const char RewriteOptions::kMobMapLocation[] = "MobMapLocation";
 const char RewriteOptions::kMobPhoneNumber[] = "MobPhoneNumber";
 const char RewriteOptions::kMobConversionId[] = "MobConversionId";
-const char RewriteOptions::kMobConversionLabel[] = "MobConversionLabel";
+const char RewriteOptions::kMobMapConversionLabel[] =
+    "MobMapConversionLabel";
+const char RewriteOptions::kMobPhoneConversionLabel[] =
+    "MobPhoneConversionLabel";
 const char RewriteOptions::kMobLayout[] = "MobLayout";
 const char RewriteOptions::kMobNav[] = "MobNav";
 const char RewriteOptions::kMobStatic[] = "MobStatic";
@@ -2209,6 +2213,12 @@ void RewriteOptions::AddProperties() {
       "(experimental) Unconditionally mobilize page regardless of user-agent.",
       true);
   AddBaseProperty(
+      "", &RewriteOptions::mob_map_location_, "mlocation", kMobMapLocation,
+      kQueryScope,
+      "(experimental) map location for click-to-navigate.  This should be in "
+      "a form suitable for sending to a map query, and will not be exposed in "
+      "a web UI directly until map button is pressed", true);
+  AddBaseProperty(
       "", &RewriteOptions::mob_phone_number_, "mphone", kMobPhoneNumber,
       kQueryScope,
       "(experimental) phone number for click-to-call.  This should be in "
@@ -2219,9 +2229,13 @@ void RewriteOptions::AddProperties() {
       kQueryScope,
       "(experimental) conversion ID", true);
   AddBaseProperty(
-      "", &RewriteOptions::mob_conversion_label_, "mcnvl",
-      kMobConversionLabel, kQueryScope,
-      "(experimental) conversion Label", true);
+      "", &RewriteOptions::mob_map_conversion_label_, "mpcnvl",
+      kMobMapConversionLabel, kQueryScope,
+      "(experimental) phone conversion Label", true);
+  AddBaseProperty(
+      "", &RewriteOptions::mob_phone_conversion_label_, "mmcnvl",
+      kMobPhoneConversionLabel, kQueryScope,
+      "(experimental) map conversion Label", true);
   AddBaseProperty(
       false, &RewriteOptions::mob_layout_, "mlayout", kMobLayout,
       kQueryScope,

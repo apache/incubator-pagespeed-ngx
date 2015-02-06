@@ -230,14 +230,27 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
           "var psLayoutMode=", (use_js_layout_ ? "true;" : "false;"),
           "var psStaticJs=", (use_static_ ? "true;" : "false;"));
       const GoogleString& phone = options->mob_phone_number();
+      const GoogleString& map_location = options->mob_map_location();
+      if (!phone.empty() || !map_location.empty()) {
+        StrAppend(&src, "var psConversionId=",
+                  Integer64ToString(options->mob_conversion_id()),
+                  ";");
+      }
       if (!phone.empty()) {
         GoogleString label, escaped_phone;
         EscapeToJsStringLiteral(phone, false, &escaped_phone);
-        EscapeToJsStringLiteral(options->mob_conversion_label(), false, &label);
+        EscapeToJsStringLiteral(options->mob_phone_conversion_label(), false,
+                                &label);
         StrAppend(&src, "var psPhoneNumber='", escaped_phone, "';"
-                  "var psConversionId=",
-                  Integer64ToString(options->mob_conversion_id()),
-                  ";var psConversionLabel='", label, "';");
+                  "var psPhoneConversionLabel='", label, "';");
+      }
+      if (!map_location.empty()) {
+        GoogleString label, escaped_map_location;
+        EscapeToJsStringLiteral(map_location, false, &escaped_map_location);
+        EscapeToJsStringLiteral(options->mob_map_conversion_label(), false,
+                                &label);
+        StrAppend(&src, "var psMapLocation='", escaped_map_location, "';"
+                  "var psMapConversionLabel='", label, "';");
       }
       driver()->InsertScriptAfterCurrent(src, false);
 

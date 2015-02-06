@@ -15,49 +15,60 @@
  */
 
 /**
- * @fileoverview Externs used by mobilization JS.
+ * @fileoverview Externs used by mobilization JS.  These variables are all
+ * populated from the server in
+ * net/instaweb/rewriter/mobilize_rewrite_filter.cc by injecting the variable
+ * declarations in the DOM.
  */
 
 
 /** @type {string} */
-var pagespeedContentIds;       // From C++
+var pagespeedContentIds;
 
 
 /** @type {Array<string>} */
-var pagespeedHeaderIds;        // From C++
+var pagespeedHeaderIds;
 
 
 /** @type {Array<string>} */
-var pagespeedNavigationalIds;  // From C++
+var pagespeedNavigationalIds;
 
 
 /** @type {string} */
-var psConversionId;            // From C++
-
-
-/** @type {string} */
-var psConversionLabel;         // From C++
+var psConversionId;
 
 
 /** @type {boolean} */
-var psDebugMode;               // From C++
+var psDebugMode;
 
 
 /** @type {boolean} */
-var psLayoutMode;              // From C++
-
-
-/** @type {Object} */
-var psMobStaticImageInfo;      // From C++
-
-
-/** @type {boolean} */
-var psNavMode;                 // From C++
+var psLayoutMode;
 
 
 /** @type {?string} */
-var psPhoneNumber;             // From C++
+var psMapConversionLabel;
+
+
+/** @type {string} */
+var psMapLocation;
+
+
+/** @type {Object} */
+var psMobStaticImageInfo;
 
 
 /** @type {boolean} */
-var psStaticJs;                // From C++
+var psNavMode;
+
+
+/** @type {string} */
+var psPhoneConversionLabel;
+
+
+/** @type {?string} */
+var psPhoneNumber;
+
+
+/** @type {boolean} */
+var psStaticJs;

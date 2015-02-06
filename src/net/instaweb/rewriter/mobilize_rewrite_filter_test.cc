@@ -44,7 +44,7 @@ const char kOriginal[] = "mobilize_test.html";
 const char kRewritten[] = "mobilize_test_output.html";
 const char kPhoneNumber[] = "16175551212";
 const int64 kConversionId = 42;
-const char kConversionLabel[] = "HelloWorld";
+const char kPhoneConversionLabel[] = "HelloWorld";
 
 GoogleString Styles(bool layout_mode) {
   return StrCat(
@@ -59,10 +59,10 @@ GoogleString HeadAndViewport(bool layout_mode) {
       "<script>var psDebugMode=false;var psNavMode=true;var psLayoutMode=",
       layout_mode ? "true" : "false", ";"
       "var psStaticJs=false;"
-      "var psPhoneNumber='", kPhoneNumber, "';"
-      "var psConversionId=", Integer64ToString(kConversionId), ";",
+      "var psConversionId=", Integer64ToString(kConversionId), ";"
+      "var psPhoneNumber='", kPhoneNumber, "';",
       StrCat(
-          "var psConversionLabel='", kConversionLabel, "';"
+          "var psPhoneConversionLabel='", kPhoneConversionLabel, "';"
           "</script>",
           (layout_mode
            ? ("<meta name='viewport' content='width=device-width'/>"
@@ -89,7 +89,7 @@ class MobilizeRewriteFilterTest : public RewriteTestBase {
     options()->set_mob_always(true);
     options()->set_mob_phone_number(kPhoneNumber);
     options()->set_mob_conversion_id(kConversionId);
-    options()->set_mob_conversion_label(kConversionLabel);
+    options()->set_mob_phone_conversion_label(kPhoneConversionLabel);
     options()->set_mob_layout(LayoutMode());
     options()->set_mob_nav(true);
     server_context()->ComputeSignature(options());
@@ -455,7 +455,7 @@ class MobilizeRewriteEndToEndTest : public MobilizeRewriteFilterTest {
     options()->ClearSignatureForTesting();
     options()->set_mob_phone_number(kPhoneNumber);
     options()->set_mob_conversion_id(kConversionId);
-    options()->set_mob_conversion_label(kConversionLabel);
+    options()->set_mob_phone_conversion_label(kPhoneConversionLabel);
     options()->set_mob_layout(true);
     options()->set_mob_nav(true);
     AddFilter(RewriteOptions::kMobilize);
