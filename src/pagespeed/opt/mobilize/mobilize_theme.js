@@ -138,7 +138,9 @@ pagespeed.MobTheme.prototype.colorComplete_ = function(
   var themeData = pagespeed.MobTheme.synthesizeLogoSpan_(logo,
                                                          backgroundColor,
                                                          foregroundColor);
-  pagespeed.MobTheme.removeLogoImage_(logo);
+  if (window.psLayoutMode) {
+    pagespeed.MobTheme.removeLogoImage_(logo);
+  }
   this.doneCallback(themeData);
 };
 

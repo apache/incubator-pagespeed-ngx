@@ -7632,7 +7632,7 @@ pagespeed.MobTheme.removeLogoImage_ = function(a) {
 };
 pagespeed.MobTheme.prototype.colorComplete_ = function(a, b, c) {
   b = pagespeed.MobTheme.synthesizeLogoSpan_(a, b, c);
-  pagespeed.MobTheme.removeLogoImage_(a);
+  window.psLayoutMode && pagespeed.MobTheme.removeLogoImage_(a);
   this.doneCallback(b);
 };
 pagespeed.MobTheme.extractTheme = function(a, b) {
