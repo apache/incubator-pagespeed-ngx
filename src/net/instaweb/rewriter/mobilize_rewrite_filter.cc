@@ -62,6 +62,21 @@ const char MobilizeRewriteFilter::kMarginalBlocks[] =
 const char MobilizeRewriteFilter::kDeletedElements[] =
     "mobilization_elements_deleted";
 
+// JavaScript snippet to set the correct height for the spacer div.
+//
+// TODO(jmarantz): Move to this into its own JS bundle, so it is automatically
+// minified by Closure Compiler when debug is off.
+const char MobilizeRewriteFilter::kSetSpacerHeight[] =
+    "\n(function() {\n"        // Hide temps in a function scope
+    "  var spacer = document.getElementById('ps-spacer');\n"
+    "  var docElt = document.documentElement;\n"
+    "  var scale = window.innerWidth / docElt.clientWidth;\n"
+    // See mobilize.css, .psmob-header-bar sets height to 10%, so divide by 10.
+    "  var headerBarHeight = docElt.clientHeight / 10;\n"
+    "  var newHeight = Math.round(headerBarHeight * scale) + 'px';\n"
+    "  spacer.style.height = newHeight;\n"
+    "})();";
+
 namespace {
 
 // The 'book' says to use add ",user-scalable=no" but jmarantz hates
@@ -100,6 +115,7 @@ MobilizeRewriteFilter::MobilizeRewriteFilter(RewriteDriver* rewrite_driver)
       added_containers_(false),
       added_mob_js_(false),
       added_progress_(false),
+      added_spacer_(false),
       in_script_(false),
       use_js_layout_(rewrite_driver->options()->mob_layout()),
       use_js_nav_(rewrite_driver->options()->mob_nav()),
@@ -177,6 +193,7 @@ void MobilizeRewriteFilter::EndDocument() {
   added_containers_ = false;
   added_mob_js_ = false;
   added_progress_ = false;
+  added_spacer_ = false;
   in_script_ = false;
 }
 
@@ -297,9 +314,21 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
     }
   } else if (keyword == HtmlName::kBody) {
     ++body_element_depth_;
-    if (!added_progress_) {
+    if (!added_spacer_) {
+      added_spacer_ = true;
+
+      HtmlElement* spacer = driver()->NewElement(element, HtmlName::kDiv);
+      driver()->InsertNodeAfterCurrent(spacer);
+      driver()->AddAttribute(spacer, HtmlName::kId, "ps-spacer");
+      driver()->AddAttribute(spacer, HtmlName::kClass,
+                             "psmob-header-spacer-div");
+      driver()->InsertScriptAfterCurrent(kSetSpacerHeight, false);
+    }
+
+    if (use_js_layout_ && !added_progress_) {
       added_progress_ = true;
       HtmlElement* scrim = driver()->NewElement(element, HtmlName::kDiv);
+      scrim->set_style(HtmlElement::EXPLICIT_CLOSE);
       driver()->InsertNodeAfterCurrent(scrim);
       driver()->AddAttribute(scrim, HtmlName::kId, "ps-progress-scrim");
       driver()->AddAttribute(scrim, HtmlName::kClass, "psProgressScrim");
@@ -316,7 +345,7 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
         driver()->AppendAnchor(
             "javascript:psSetDebugMode();",
             "Show Debug Log In Progress Bar",
-          scrim);
+            scrim);
         driver()->AddAttribute(remove_bar, HtmlName::kId,
                                "ps-progress-show-log");
       }

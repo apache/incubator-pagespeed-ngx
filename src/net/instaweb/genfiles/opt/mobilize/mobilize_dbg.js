@@ -7415,7 +7415,7 @@ pagespeed.MobNav.prototype.addHeaderBarResizeEvents_ = function() {
   }, this), !1);
 };
 pagespeed.MobNav.prototype.addHeaderBar_ = function(a) {
-  this.spacerDiv_ = document.createElement("div");
+  this.spacerDiv_ = document.getElementById("ps-spacer");
   document.body.insertBefore(this.spacerDiv_, document.body.childNodes[0]);
   goog.dom.classlist.add(this.spacerDiv_, "psmob-header-spacer-div");
   this.headerBar_ = document.createElement("header");

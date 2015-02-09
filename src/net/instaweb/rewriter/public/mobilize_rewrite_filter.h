@@ -97,6 +97,7 @@ class MobilizeRewriteFilter : public CommonFilter {
   static const char kContentBlocks[];
   static const char kMarginalBlocks[];
   static const char kDeletedElements[];
+  static const char kSetSpacerHeight[];
 
   // Static list of tags we keep without traversing.  Public so
   // MobilizeLabelFilter knows which tags to ignore.
@@ -136,6 +137,7 @@ class MobilizeRewriteFilter : public CommonFilter {
   bool added_containers_;
   bool added_mob_js_;
   bool added_progress_;
+  bool added_spacer_;
   bool in_script_;
   bool use_js_layout_;
   bool use_js_nav_;

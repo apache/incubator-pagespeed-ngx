@@ -598,9 +598,10 @@ pagespeed.MobNav.prototype.addHeaderBarResizeEvents_ = function() {
  * @private
  */
 pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
-  // The header bar is position:fixed, so create an empty div at the top to move
-  // the rest of the elements down.
-  this.spacerDiv_ = document.createElement('div');
+  // The header bar is position:absolute, but in C++ we create an empty div
+  // at the top to move the rest of the elements down.  We need to access
+  // on zooming to adjust its size.
+  this.spacerDiv_ = document.getElementById('ps-spacer');
   document.body.insertBefore(this.spacerDiv_, document.body.childNodes[0]);
   goog.dom.classlist.add(this.spacerDiv_, 'psmob-header-spacer-div');
 

@@ -130,6 +130,12 @@ class MobilizeRewriteFilterTest : public RewriteTestBase {
     return "<script src=\"/psajs/mobilize.0.js\"></script>";
   }
 
+  GoogleString Spacer() const {
+    return StrCat(
+        "<div id=\"ps-spacer\" class=\"psmob-header-spacer-div\"></div>"
+        "<script>", MobilizeRewriteFilter::kSetSpacerHeight, "</script>");
+  }
+
   scoped_ptr<MobilizeRewriteFilter> filter_;
 
  private:
@@ -236,7 +242,8 @@ class MobilizeRewriteFunctionalTest : public MobilizeRewriteFilterTest {
     GoogleString original =
         StrCat("<body>", original_body, "</body>");
     GoogleString expected =
-        StrCat("<body>", expected_mid_body, ScriptsAtEndOfBody(), "</body>");
+        StrCat("<body>", Spacer(), expected_mid_body, ScriptsAtEndOfBody(),
+               "</body>");
     ValidateExpected(name, original, expected);
     CheckVariable(MobilizeRewriteFilter::kPagesMobilized, 1);
   }
@@ -260,8 +267,9 @@ class MobilizeRewriteFunctionalTest : public MobilizeRewriteFilterTest {
     GoogleString original =
         StrCat("<body>", first_body,
                "</body><body>", second_body, "</body>");
-    GoogleString expected = StrCat("<body>", first_body, ScriptsAtEndOfBody(),
-                                   "</body><body>", second_body, "</body>");
+    GoogleString expected = StrCat(
+        "<body>", Spacer(), first_body, ScriptsAtEndOfBody(),
+        "</body><body>", second_body, "</body>");
     ValidateExpected(name, original, expected);
     CheckVariable(MobilizeRewriteFilter::kPagesMobilized, 1);
   }
@@ -271,7 +279,8 @@ class MobilizeRewriteFunctionalTest : public MobilizeRewriteFilterTest {
   }
 
   GoogleString ExpectedBody() const {
-    return StrCat("<body>hello, world!", ScriptsAtEndOfBody(), "</body>");
+    return StrCat("<body>", Spacer(), "hello, world!", ScriptsAtEndOfBody(),
+                  "</body>");
   }
 
  private:
@@ -306,7 +315,8 @@ TEST_F(MobilizeRewriteFunctionalTest, HeadLinksUnmodified) {
 }
 
 TEST_F(MobilizeRewriteFunctionalTest, EmptyBody) {
-  GoogleString expected = StrCat("<body>", ScriptsAtEndOfBody(), "</body>");
+  GoogleString expected = StrCat("<body>", Spacer(), ScriptsAtEndOfBody(),
+                                 "</body>");
   ValidateExpected("empty_body",
                    "<body></body>", expected);
   CheckVariable(MobilizeRewriteFilter::kPagesMobilized, 1);
@@ -321,7 +331,8 @@ TEST_F(MobilizeRewriteFunctionalTest, EmptyBody) {
 TEST_F(MobilizeRewriteFunctionalTest, EmptyBodyWithProgress) {
   FilterSetAddedProgress(false);
   GoogleString expected = StrCat(
-      "<body>"
+      "<body>",
+      Spacer(),
       "<div id=\"ps-progress-scrim\" class=\"psProgressScrim\">"
       "<a href=\"javascript:psRemoveProgressBar();\" id=\"ps-progress-remove\""
       " id=\"ps-progress-show-log\">Remove Progress Bar"
@@ -483,6 +494,7 @@ TEST_F(MobilizeRewriteEndToEndTest, FullPage) {
       StrCat(GTestSrcDir(), kTestDataDir, kRewritten);
   ASSERT_TRUE(filesystem_.ReadFile(rewritten_filename.c_str(),
                                    &rewritten_buffer, message_handler()));
+  GlobalReplaceSubstring("@@SPACER@@", Spacer(), &rewritten_buffer);
   GlobalReplaceSubstring("@@HEAD_SCRIPT_LOAD@@", HeadAndViewport(true),
                          &rewritten_buffer);
   GlobalReplaceSubstring("@@HEAD_STYLES@@", Styles(true), &rewritten_buffer);

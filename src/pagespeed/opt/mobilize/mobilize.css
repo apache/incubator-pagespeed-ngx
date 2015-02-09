@@ -43,6 +43,13 @@ body {
   padding: 0px;
 
   width: 100%;
+
+  /*
+   * See net/instaweb/rewriter/mobilize_rewrite_filter.cc,
+   * MobilizeRewriteFilter::kSetSpacerHeight, which relies on this
+   * 10% setting to compute the correct initial size for the spacer.
+   * Do not change this without changing that.
+   */
   height: 10%;
 
   -webkit-transform-origin: 0 0;
