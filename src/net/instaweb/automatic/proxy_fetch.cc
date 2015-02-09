@@ -306,7 +306,7 @@ void ProxyFetchPropertyCallbackCollector::ExecuteDone(
     DCHECK(request_context_.get() != NULL);
     request_context_->mutable_timing_info()->PropertyCacheLookupFinished();
     PropertyPage* actual_page = ReleasePropertyPage(
-        ProxyFetchPropertyCallback::kPropertyCachePage);
+        PropertyPage::kPropertyCachePage);
     if (actual_page != NULL) {
       // TODO(jmarantz): Now that there is no more client property cache,
       // is it necessary to do this test?
@@ -314,10 +314,13 @@ void ProxyFetchPropertyCallbackCollector::ExecuteDone(
       // FallbackPropertyPage, so filters can use the fallback property in the
       // absence of the primary.
       PropertyPage* fallback_page = ReleasePropertyPage(
-          ProxyFetchPropertyCallback::kPropertyCacheFallbackPage);
+          PropertyPage::kPropertyCacheFallbackPage);
       fallback_property_page_.reset(
           new FallbackPropertyPage(actual_page, fallback_page));
     }
+
+    origin_property_page_.reset(
+        ReleasePropertyPage(PropertyPage::kPropertyCachePerOriginPage));
 
     done_ = true;
 
@@ -844,6 +847,8 @@ void ProxyFetch::PropertyCacheComplete(
     // Set the page property and device property objects in the driver.
     driver_->set_fallback_property_page(
         callback_collector->ReleaseFallbackPropertyPage());
+    driver_->set_origin_property_page(
+        callback_collector->ReleaseOriginPropertyPage());
     driver_->set_device_type(callback_collector->device_type());
   }
   // We have to set the callback to NULL to let ScheduleQueueExecutionIfNeeded
@@ -1295,6 +1300,9 @@ ProxyFetchPropertyCallbackCollector*
         AsyncFetch* async_fetch,
         const bool requires_blink_cohort,
         bool* added_page_property_callback) {
+  if (options == NULL) {
+    options = server_context->global_options();
+  }
   RequestContextPtr request_ctx = async_fetch->request_context();
   DCHECK(request_ctx.get() != NULL);
   if (request_ctx->root_trace_context() != NULL) {
@@ -1315,57 +1323,80 @@ ProxyFetchPropertyCallbackCollector*
 
   ProxyFetchPropertyCallback* property_callback = NULL;
   ProxyFetchPropertyCallback* fallback_property_callback = NULL;
+  ProxyFetchPropertyCallback* origin_property_callback = NULL;
   PropertyCache* page_property_cache = server_context->page_property_cache();
   if (!is_resource_fetch &&
       server_context->page_property_cache()->enabled() &&
-      UrlMightHavePropertyCacheEntry(request_url) &&
-      async_fetch->request_headers()->method() == RequestHeaders::kGet) {
+      UrlMightHavePropertyCacheEntry(request_url)) {
     GoogleString options_signature_hash;
     if (options != NULL) {
       server_context->ComputeSignature(options);
       options_signature_hash =
           server_context->GetRewriteOptionsSignatureHash(options);
     }
-    AbstractMutex* mutex = server_context->thread_system()->NewMutex();
-    property_callback = new ProxyFetchPropertyCallback(
-        ProxyFetchPropertyCallback::kPropertyCachePage,
-        page_property_cache,
-        request_url.Spec(),
-        options_signature_hash,
-        device_type,
-        callback_collector.get(),
-        mutex);
-    callback_collector->AddCallback(property_callback);
-    added_callback = true;
-    if (added_page_property_callback != NULL) {
-      *added_page_property_callback = true;
-    }
-    // Trigger property cache lookup for the requests which contains query param
-    // as cache key without query params. The result of this lookup will be used
-    // if actual property page does not contains property value.
-    if (options != NULL &&
-        options->use_fallback_property_cache_values()) {
-      GoogleString fallback_page_url;
-      if (request_url.PathAndLeaf() != "/" &&
-          !request_url.PathAndLeaf().empty()) {
-        // Don't bother looking up fallback properties for the root, "/", since
-        // there is nothing to fall back to.
-        fallback_page_url =
-            FallbackPropertyPage::GetFallbackPageUrl(request_url);
-      }
 
-      if (!fallback_page_url.empty()) {
-        fallback_property_callback =
-            new ProxyFetchPropertyCallback(
-                ProxyFetchPropertyCallback::kPropertyCacheFallbackPage,
-                page_property_cache,
-                fallback_page_url,
-                options_signature_hash,
-                device_type,
-                callback_collector.get(),
-                server_context->thread_system()->NewMutex());
-        callback_collector->AddCallback(fallback_property_callback);
+    // For most optimization properties, we limit ourselves to GET. POST is
+    // forms, which are generally way too dynamic, and other methods are
+    // likely to be some sort of RPC form rather than web browser traffic.
+    if (async_fetch->request_headers()->method() == RequestHeaders::kGet) {
+      AbstractMutex* mutex = server_context->thread_system()->NewMutex();
+      property_callback = new ProxyFetchPropertyCallback(
+          PropertyPage::kPropertyCachePage,
+          page_property_cache,
+          request_url.Spec(),
+          options_signature_hash,
+          device_type,
+          callback_collector.get(),
+          mutex);
+      callback_collector->AddCallback(property_callback);
+      added_callback = true;
+      if (added_page_property_callback != NULL) {
+        *added_page_property_callback = true;
       }
+      // Trigger property cache lookup for the requests which contains query
+      // param as cache key without query params. The result of this lookup will
+      // be used if actual property page does not contains property value.
+      if (options != NULL &&
+          options->use_fallback_property_cache_values()) {
+        GoogleString fallback_page_url;
+        if (request_url.PathAndLeaf() != "/" &&
+            !request_url.PathAndLeaf().empty()) {
+          // Don't bother looking up fallback properties for the root, "/",
+          // since there is nothing to fall back to.
+          fallback_page_url =
+              FallbackPropertyPage::GetFallbackPageUrl(request_url);
+        }
+
+        if (!fallback_page_url.empty()) {
+          fallback_property_callback =
+              new ProxyFetchPropertyCallback(
+                  PropertyPage::kPropertyCacheFallbackPage,
+                  page_property_cache,
+                  fallback_page_url,
+                  options_signature_hash,
+                  device_type,
+                  callback_collector.get(),
+                  server_context->thread_system()->NewMutex());
+          callback_collector->AddCallback(fallback_property_callback);
+        }
+      }
+    }
+
+    // For site-wide properties, we want to handle POSTs as well, so form
+    // results can use global info as well --- the globalness reducing
+    // concerns about dynamism of forms.
+    if (options != NULL && options->UsePerOriginPropertyCachePage() &&
+        (async_fetch->request_headers()->method() == RequestHeaders::kGet ||
+         async_fetch->request_headers()->method() == RequestHeaders::kPost)) {
+      origin_property_callback = new ProxyFetchPropertyCallback(
+          PropertyPage::kPropertyCachePerOriginPage,
+          page_property_cache,
+          request_url.Origin(),
+          options_signature_hash,
+          device_type,
+          callback_collector.get(),
+          server_context->thread_system()->NewMutex());
+      callback_collector->AddCallback(origin_property_callback);
     }
   }
 
@@ -1386,6 +1417,11 @@ ProxyFetchPropertyCallbackCollector*
     // no property in BlinkCohort which can used fallback values.
     page_property_cache->ReadWithCohorts(cohort_list_without_blink,
                                          fallback_property_callback);
+  }
+
+  if (origin_property_callback != NULL) {
+    page_property_cache->ReadWithCohorts(cohort_list_without_blink,
+                                         origin_property_callback);
   }
 
   if (added_callback) {

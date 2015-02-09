@@ -949,6 +949,7 @@ class RewriteDriver : public HtmlParse {
   // Returns the property page which contains the cached properties associated
   // with the current URL.
   PropertyPage* property_page() const;
+
   // Returns the property page which contains the cached properties associated
   // with the current URL and fallback URL (i.e. without query params). This
   // should be used where a property is interested in fallback values if
@@ -956,12 +957,19 @@ class RewriteDriver : public HtmlParse {
   FallbackPropertyPage* fallback_property_page() const {
     return fallback_property_page_;
   }
+
+  // Returns property page which contains cached properties associated with
+  // the current origin (host/port/protocol). May be NULL.
+  PropertyPage* origin_property_page() const;
+
   // Takes ownership of page.
   void set_property_page(PropertyPage* page);
   // Takes ownership of page.
   void set_fallback_property_page(FallbackPropertyPage* page);
   // Does not take the ownership of the page.
   void set_unowned_fallback_property_page(FallbackPropertyPage* page);
+  // Takes ownership of page.
+  void set_origin_property_page(PropertyPage* page);
 
   // Used by ImageRewriteFilter for identifying critical images.
   const CriticalLineInfo* critical_line_info() const;
@@ -1674,6 +1682,9 @@ class RewriteDriver : public HtmlParse {
 
   // Boolean value which tells whether property page is owned by driver or not.
   bool owns_property_page_;
+
+  // Per-origin property page, for things which are site-wide.
+  scoped_ptr<PropertyPage> origin_property_page_;
 
   // Device type for the current property page.
   UserAgentMatcher::DeviceType device_type_;

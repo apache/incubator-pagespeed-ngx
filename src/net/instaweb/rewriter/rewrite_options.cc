@@ -3475,6 +3475,10 @@ void RewriteOptions::DisableFiltersRequiringScriptExecution() {
   }
 }
 
+bool RewriteOptions::UsePerOriginPropertyCachePage() const {
+  return Enabled(kMobilize);
+}
+
 DomainLawyer* RewriteOptions::WriteableDomainLawyer() {
   Modify();
   return domain_lawyer_.MakeWriteable();

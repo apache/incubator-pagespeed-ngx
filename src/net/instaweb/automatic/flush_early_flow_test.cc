@@ -1812,7 +1812,10 @@ TEST_F(FlushEarlyPrioritizeCriticalCssTest,
       RequestContext::NewTestRequestContext(factory()->thread_system()));
 
   MockPropertyPage* page = NewMockPage(
-      url(), "" /* hash */, UserAgentMatcher::kDesktop);
+      url(),
+      server_context()->GetRewriteOptionsSignatureHash(
+          server_context()->global_options()),
+      UserAgentMatcher::kDesktop);
   rewrite_driver()->set_property_page(page);
   pcache->Read(page);
 

@@ -465,6 +465,7 @@ void RewriteDriver::Clear() NO_THREAD_SAFETY_ANALYSIS {
     delete fallback_property_page_;
   }
   fallback_property_page_ = NULL;
+  origin_property_page_.reset();
   owns_property_page_ = false;
   device_type_ = UserAgentMatcher::kDesktop;
   pagespeed_query_params_.clear();
@@ -3166,6 +3167,10 @@ PropertyPage* RewriteDriver::property_page() const {
       NULL : fallback_property_page_->actual_property_page();
 }
 
+PropertyPage* RewriteDriver::origin_property_page() const {
+  return origin_property_page_.get();
+}
+
 // This is in the .cc rather than the header to avoid the need to
 // include property_cache.h in the header.
 void RewriteDriver::set_property_page(PropertyPage* page) {
@@ -3192,6 +3197,10 @@ void RewriteDriver::set_unowned_fallback_property_page(
   }
   fallback_property_page_ = page;
   owns_property_page_ = false;
+}
+
+void RewriteDriver::set_origin_property_page(PropertyPage* page) {
+  origin_property_page_.reset(page);
 }
 
 bool RewriteDriver::CriticalSelectorsEnabled() const {

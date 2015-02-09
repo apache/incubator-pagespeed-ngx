@@ -229,6 +229,11 @@ class ProxyFetchPropertyCallbackCollector {
     return fallback_property_page_.release();
   }
 
+  // Releases the ownership of origin property page.
+  PropertyPage* ReleaseOriginPropertyPage() {
+    return origin_property_page_.release();
+  }
+
   // In our flow, property-page will be available via RewriteDriver only after
   // ProxyFetch is set. But there may be instances where the result may be
   // required even before proxy-fetch is created. Any task that depends on the
@@ -287,6 +292,7 @@ class ProxyFetchPropertyCallbackCollector {
   const RewriteOptions* options_;  // protected by mutex_;
   HttpStatus::Code status_code_;  // status_code_ of the response.
   scoped_ptr<FallbackPropertyPage> fallback_property_page_;
+  scoped_ptr<PropertyPage> origin_property_page_;
 
   DISALLOW_COPY_AND_ASSIGN(ProxyFetchPropertyCallbackCollector);
 };

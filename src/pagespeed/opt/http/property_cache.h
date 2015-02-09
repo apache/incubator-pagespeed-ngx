@@ -326,7 +326,7 @@ class PropertyPage : public AbstractPropertyPage {
   enum PageType {
     kPropertyCachePage,
     kPropertyCacheFallbackPage,
-    kDevicePropertyCachePage,
+    kPropertyCachePerOriginPage,
   };
 
   virtual ~PropertyPage();
@@ -421,6 +421,9 @@ class PropertyPage : public AbstractPropertyPage {
   // property is present in the cohort.
   bool EncodePropertyCacheValues(const PropertyCache::Cohort* cohort,
                                  PropertyCacheValues* values);
+
+  // Suffix for property cache keys for given page type.
+  static StringPiece PageTypeSuffix(PageType type);
 
  protected:
   // The Page takes ownership of the mutex.

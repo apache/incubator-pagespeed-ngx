@@ -185,8 +185,11 @@ class ProxyInterfaceTest : public ProxyInterfaceTestBase {
 
   int GetStatusCodeInPropertyCache(const GoogleString& url) {
     PropertyCache* pcache = page_property_cache();
-    scoped_ptr<MockPropertyPage> page(
-        NewMockPage(url, "", UserAgentMatcher::kDesktop));
+    scoped_ptr<MockPropertyPage> page(NewMockPage(
+        url,
+        server_context()->GetRewriteOptionsSignatureHash(
+            server_context()->global_options()),
+        UserAgentMatcher::kDesktop));
     const PropertyCache::Cohort* cohort = pcache->GetCohort(
         RewriteDriver::kDomCohort);
     PropertyValue* value;
@@ -3504,6 +3507,88 @@ TEST_F(ProxyInterfaceTest, WebpImageReconstruction) {
   response_headers.ComputeCaching();
   EXPECT_EQ(ServerContext::kGeneratedMaxAgeMs, response_headers.cache_ttl_ms());
   EXPECT_EQ(StringPrintf(kCssWithEmbeddedImage, kWebpUrl.c_str()), text);
+}
+
+class ProxyInterfaceOriginPropertyPageTest : public ProxyInterfaceTest {
+ protected:
+  class PerOriginPageReaderFilter : public EmptyHtmlFilter {
+   public:
+    explicit PerOriginPageReaderFilter(RewriteDriver* driver)
+        : driver_(driver) {}
+
+    virtual void StartDocument() {
+      // This keeps a little per-site visits counter in per-origin pcache
+      // and dumps it into a comment.
+      PropertyPage* sitewide_page = driver_->origin_property_page();
+      const PropertyCache::Cohort* dom_cohort =
+          driver_->server_context()->dom_cohort();
+      const char kVisits[] = "visits";
+      PropertyValue* val = sitewide_page->GetProperty(dom_cohort, kVisits);
+
+      int count = 0;
+      if (val->has_value()) {
+        EXPECT_TRUE(StringToInt(val->value(), &count));
+      }
+
+      driver_->InsertComment(StrCat("Site visit:", IntegerToString(count)));
+
+      // Update counter.
+      sitewide_page->UpdateValue(dom_cohort, kVisits,
+                                 IntegerToString(count + 1));
+      sitewide_page->WriteCohort(dom_cohort);
+    }
+
+    virtual void StartElement(HtmlElement* element) {}
+    virtual void EndDocument() {}
+    virtual const char* Name() const { return "PerOriginPageReaderFilter"; }
+
+   private:
+    RewriteDriver* driver_;
+    DISALLOW_COPY_AND_ASSIGN(PerOriginPageReaderFilter);
+  };
+
+  class PerOriginPageReaderFilterCreator
+      : public TestRewriteDriverFactory::CreateFilterCallback {
+   public:
+    PerOriginPageReaderFilterCreator() {}
+    virtual ~PerOriginPageReaderFilterCreator() {}
+
+    virtual HtmlFilter* Done(RewriteDriver* driver) {
+      return new PerOriginPageReaderFilter(driver);
+    }
+
+   private:
+    DISALLOW_COPY_AND_ASSIGN(PerOriginPageReaderFilterCreator);
+  };
+
+  virtual void SetUp() {
+    RewriteOptions* options = server_context()->global_options();
+    // mobilizer turns on the per-domain page.
+    options->ClearSignatureForTesting();
+    options->EnableFilter(RewriteOptions::kMobilize);
+    ProxyInterfaceTest::SetUp();
+  }
+};
+
+TEST_F(ProxyInterfaceOriginPropertyPageTest, Basic) {
+  PerOriginPageReaderFilterCreator filter_creator;
+  factory()->AddCreateFilterCallback(&filter_creator);
+
+  ResponseHeaders headers;
+  GoogleString body;
+  FetchFromProxy(kPageUrl, true, &body, &headers);
+  EXPECT_TRUE(HasPrefixString(body, "<!--Site visit:0-->")) << body;
+
+  FetchFromProxy(kPageUrl, true, &body, &headers);
+  EXPECT_TRUE(HasPrefixString(body, "<!--Site visit:1-->")) << body;
+
+  // Count increases on a different page, too.
+  GoogleString other_page = StrCat("totally/different/from/", kPageUrl);
+  SetResponseWithDefaultHeaders(other_page, kContentTypeHtml,
+                                "<div><p></p></div>", 0);
+
+  FetchFromProxy(other_page, true, &body, &headers);
+  EXPECT_TRUE(HasPrefixString(body, "<!--Site visit:2-->")) << body;
 }
 
 }  // namespace net_instaweb

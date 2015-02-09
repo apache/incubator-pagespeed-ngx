@@ -1207,6 +1207,10 @@ class RewriteOptions {
   // Disables all filters that depend on executing custom javascript.
   void DisableFiltersRequiringScriptExecution();
 
+  // Returns true if any filter benefits from per-origin property cache
+  // information.
+  bool UsePerOriginPropertyCachePage() const;
+
   // Adds pairs of (option, value) to the option set. The option names and
   // values are not checked for validity, just stored. If the string piece
   // was parsed correctly, this returns true. If there were parsing errors this

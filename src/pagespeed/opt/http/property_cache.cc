@@ -133,6 +133,18 @@ bool PropertyPage::EncodePropertyCacheValues(
   return ret;
 }
 
+StringPiece PropertyPage::PageTypeSuffix(PageType type) {
+  switch (type) {
+  case kPropertyCachePage:
+  case kPropertyCacheFallbackPage:
+    return "";
+  case kPropertyCachePerOriginPage:
+    return "@PerSite";
+  }
+  LOG(DFATAL) << "Weird property page type:" << type;
+  return "";
+}
+
 bool PropertyPage::HasPropertyValueDeleted(
     const PropertyCache::Cohort* cohort) {
   bool ret = false;
@@ -304,7 +316,8 @@ PropertyPage::PropertyPage(
     : mutex_(mutex),
       url_(url.as_string()),
       options_signature_hash_(options_signature_hash.as_string()),
-      cache_key_suffix_(cache_key_suffix.as_string()),
+      cache_key_suffix_(
+          StrCat(cache_key_suffix, PageTypeSuffix(page_type))),
       request_context_(request_context),
       was_read_(false),
       property_cache_(property_cache),
