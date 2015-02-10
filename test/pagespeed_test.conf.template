@@ -883,7 +883,10 @@ http {
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
     pagespeed RewriteLevel PassThrough;
     pagespeed on;
-    add_header PageSpeedFilters add_instrumentation;
+    location / {
+      proxy_pass http://localhost:@@SECONDARY_PORT@@;
+      proxy_set_header Host "enable-filter-header-origin.example.com";
+    }
   }
 
   server {
@@ -893,7 +896,24 @@ http {
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
     pagespeed EnableFilters add_instrumentation;
     pagespeed on;
-    add_header PageSpeed off;
+    location / {
+      proxy_pass http://localhost:@@SECONDARY_PORT@@;
+      proxy_set_header Host "pagespeed-off-header-origin.example.com";
+    }
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name headers.example.com;
+    pagespeed InPlaceRewriteDeadlineMs -1;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@";
+    pagespeed LoadFromFile "http://headers.example.com/"
+              "@@SERVER_ROOT@@/";
+    location /mod_pagespeed_test/ {
+      more_set_headers "Server: override";
+      more_set_headers -s '404' 'Cache-Control: override';
+    }
   }
 
   server {
@@ -976,7 +996,7 @@ http {
     listen [::]:@@SECONDARY_PORT@@;
     server_name date.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
-    add_header "Date" "Date: Fri, 16 Oct 2009 23:05:07 GMT";
+    add_header "Date" "Fri, 16 Oct 2009 23:05:07 GMT";
   }
 
   server {
@@ -1183,17 +1203,41 @@ http {
   server {
     listen @@SECONDARY_PORT@@;
     listen [::]:@@SECONDARY_PORT@@;
-    server_name headers.example.com;
+    server_name  cc-header-origin.example.com;
+    pagespeed InPlaceResourceOptimization off;
+    pagespeed off;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
     root "@@SERVER_ROOT@@";
-    pagespeed FileCachePath "@@FILE_CACHE@@_purge";
-    pagespeed RewriteLevel CoreFilters;
+    location /mod_pagespeed_test/nostore {
+      add_header "Cache-Control" "max-age=12345";
+      add_header "Cache-Control" "public, no-store";
+      add_header "Cache-Control" "max-age=14";
+    }
+  }
 
-    pagespeed InPlaceRewriteDeadlineMs -1;
-    pagespeed LoadFromFile "http://headers.example.com/"
-              "@@SERVER_ROOT@@/";
-    location /mod_pagespeed_test/ {
-      more_set_headers "Server: override";
-      more_set_headers -s '404' 'Cache-Control: override';
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name  enable-filter-header-origin.example.com;
+    pagespeed InPlaceResourceOptimization off;
+    pagespeed off;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+    root "@@SERVER_ROOT@@";
+    location / {
+      add_header "PageSpeedFilters" "add_instrumentation";
+    }
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name  pagespeed-off-header-origin.example.com;
+    pagespeed InPlaceResourceOptimization off;
+    pagespeed off;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+    root "@@SERVER_ROOT@@";
+    location / {
+      add_header "PageSpeed" "off";
     }
   }
 
@@ -1286,9 +1330,8 @@ http {
     pagespeed AvoidRenamingIntrospectiveJavascript off;
 
     location /mod_pagespeed_test/nostore {
-      add_header "Cache-Control" "max-age=12345";
-      add_header "Cache-Control" "public, no-store";
-      add_header "Cache-Control" "max-age=14";
+      proxy_pass http://localhost:@@SECONDARY_PORT@@;
+      proxy_set_header Host "cc-header-origin.example.com";
     }
 
     location /mod_pagespeed_test/forbid_all_disabled/disabled {
