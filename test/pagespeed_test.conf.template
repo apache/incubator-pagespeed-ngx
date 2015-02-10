@@ -1058,6 +1058,59 @@ http {
     pagespeed DisableFilters remove_comments,add_instrumentation;
   }
 
+  # Start remote config servers.
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name remote-config.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@";
+    pagespeed RemoteConfigurationUrl "http://localhost:8080/mod_pagespeed_test/remote_config/remote.cfg?PageSpeed=off";
+    #pagespeed RemoteConfigurationUrl "http://raxcity.com/remote.cfg";
+  }
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name remote-config-partially-invalid.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@";
+    pagespeed RemoteConfigurationUrl "http://127.0.0.1:8080/mod_pagespeed_test/remote_config/remote.cfg.partially.invalid";
+  }
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name remote-config-invalid.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@";
+    pagespeed RemoteConfigurationUrl "http://127.0.0.1:8080/mod_pagespeed_test/remote_config/remote.cfg.invalid";
+  }
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name remote-config-out-of-scope.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@";
+    pagespeed RemoteConfigurationUrl "http://127.0.0.1:8080/mod_pagespeed_test/remote_config/remote.cfg.out.of.scope";
+  }
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name remote-config-nc-host5.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@";
+    pagespeed RemoteConfigurationUrl "http://127.0.0.1:5555/remote.cfg";
+  }
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name remote-config-nc-host6.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@";
+    pagespeed RemoteConfigurationUrl "http://127.0.0.1:5556/remote.cfg";
+  }
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name remote-config-experiment.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@";
+    pagespeed RemoteConfigurationUrl "http://127.0.0.1:8080/mod_pagespeed_test/remote_config/remote.cfg.experiment";
+  }
+
+
   # Proxy + IPRO a gzip'd file for testing Issue 896.
   server {
     listen @@SECONDARY_PORT@@;
@@ -1207,6 +1260,12 @@ http {
       allow 127.0.0.1;
       allow ::1;
       deny all;
+    }
+
+    location /mod_pagespeed_test/remote_config/ {
+      add_header Cache-Control "public, max-age=100";
+      add_header Content-Type "text/plain";
+      pagespeed off;
     }
 
     location ~ "\.pagespeed\.([a-z]\.)?[a-z]{2}\.[^.]{10}\.[^.]+" {

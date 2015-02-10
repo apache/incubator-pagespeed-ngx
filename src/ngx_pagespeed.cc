@@ -1265,6 +1265,22 @@ ps_loc_conf_t* ps_get_loc_config(ngx_http_request_t* r) {
       ngx_http_get_module_loc_conf(r, ngx_pagespeed));
 }
 
+RewriteOptions* ps_determine_remote_options(ps_srv_conf_t* cfg_s) {
+  if (!cfg_s || !cfg_s->server_context ||
+      !cfg_s->server_context->global_options()) {
+    return NULL;
+  }
+  if (!cfg_s->server_context->global_options()
+          ->remote_configuration_url()
+          .empty()) {
+    RewriteOptions* remote_options =
+        cfg_s->server_context->global_options()->Clone();
+    cfg_s->server_context->GetRemoteOptions(remote_options);
+    return remote_options;
+  }
+  return NULL;
+}
+
 // Wrapper around GetQueryOptions()
 RewriteOptions* ps_determine_request_options(
     ngx_http_request_t* r,
@@ -1674,14 +1690,15 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
 
   RequestContextPtr request_context(
       cfg_s->server_context->NewRequestContext(r));
-  RewriteOptions* options = NULL;
   GoogleString pagespeed_query_params;
   GoogleString pagespeed_option_cookies;
 
+  RewriteOptions* options = ps_determine_remote_options(cfg_s);
+
   if (!ps_determine_options(r, request_headers.get(), response_headers.get(),
-                            &options, request_context, cfg_s, &url,
-                            &pagespeed_query_params, &pagespeed_option_cookies,
-                            html_rewrite)) {
+                            &options, request_context, cfg_s,
+                            &url, &pagespeed_query_params,
+                            &pagespeed_option_cookies, html_rewrite)) {
     return NGX_ERROR;
   }
 
