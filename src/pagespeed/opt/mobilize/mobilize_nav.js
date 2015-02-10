@@ -655,6 +655,61 @@ pagespeed.MobNav.prototype.addPhoneDialer_ = function(color) {
 
 
 /**
+ * Gets a map URL based on the location.
+ * @private
+ * @return {string}
+ */
+pagespeed.MobNav.getMapUrl_ = function() {
+  // TODO(jmarantz): test/fix this in iOS safari/chrome with/without
+  // Google Maps installed.  Probably use 'http://maps.apple.com/?='
+  //
+  // I don't know the best way to do this but I asked the question on
+  // Stack Overflow: http://goo.gl/0g8kEV
+  //
+  // Other links to explore:
+  // https://developer.apple.com/library/iad/featuredarticles/
+  // iPhoneURLScheme_Reference/MapLinks/MapLinks.html
+  // https://developers.google.com/maps/documentation/ios/urlscheme
+  // http://stackoverflow.com/questions/17915901/
+  // is-there-an-android-equivalent-to-google-maps-url-scheme-for-ios
+  var mapUrl = 'https://maps.google.com/maps?q=' +
+      window.psMapLocation;
+  return mapUrl;
+};
+
+
+/**
+ * Loads a tracking pixel that triggers a conversion event, and then navigates
+ * to a map.  Note that we navigate to the map whether the conversion succeeds
+ * or fails.
+ *
+ * @export
+ */
+function psOpenMap() {
+  // We will visit the map only after we get the onload/onerror for the
+  // tracking pixel.
+  var trackingPixel = new Image();
+  trackingPixel.onload = function() {
+    location.href = pagespeed.MobNav.getMapUrl_();
+  };
+
+  // The user comes first so he gets to the map even if we can't track it.
+  trackingPixel.onerror = trackingPixel.onload;
+
+  // With the handlers set up, we can load the magic pixel to track the
+  // conversion.
+  //
+  // TODO(jmarantz): Is there a better API to report a conversion?  Should
+  // we really use script=0, since this is obviously a script?  In any case
+  // we should use <a ping> when available.
+  trackingPixel.src = '//www.googleadservices.com/pagead/conversion/' +
+      window.psConversionId +
+      '/?label=' + window.psMapConversionLabel +
+      '&amp;guid=ON&amp;script=0';
+}
+
+
+/**
  * Adds a map icon to the header bar.
  * @param {!goog.color.Rgb} color
  * @private
@@ -665,16 +720,14 @@ pagespeed.MobNav.prototype.addMapNavigation_ = function(color) {
   mapImage.src = this.mapButtonImage_(color);
   this.mapButton_ = document.createElement('a');
   this.mapButton_.id = 'psmob-map-button';
-  // TODO(jmarantz): test/fix this in iOS safari/chrome with/without
-  // Google Maps installed.  Probably use 'http://maps.apple.com/?='
-  this.mapButton_.href = 'https://maps.google.com/maps?q=' +
-      window.psMapLocation;
+  if (window.psMapConversionLabel) {
+    this.mapButton_.href = 'javascript:psOpenMap()';
+  } else {
+    // No conversion label specified; go straight to the map.
+    this.mapButton_.href = pagespeed.MobNav.getMapUrl_();
+  }
   this.mapButton_.appendChild(mapImage);
   this.headerBar_.appendChild(this.mapButton_);
-
-  // TODO(jmarantz): add conversion-snapping JS to the maps click.
-  // if (window.psMapConversionLabel) {
-  // }
 };
 
 
