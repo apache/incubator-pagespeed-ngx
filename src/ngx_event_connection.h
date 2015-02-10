@@ -64,6 +64,8 @@ class NgxEventConnection {
   bool WriteEvent(char type, void* sender);
   // Convenience overload for clients that have a single event type.
   bool WriteEvent(void* sender);
+  // Reads and processes what is available in the named pipe's buffer.
+  void Drain();
  private:
   static bool CreateNgxConnection(ngx_cycle_t* cycle, ngx_fd_t pipe_fd);
   static void ReadEventHandler(ngx_event_t* e);

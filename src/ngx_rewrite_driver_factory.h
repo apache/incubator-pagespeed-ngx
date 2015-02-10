@@ -72,6 +72,7 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
   static void InitStats(Statistics* statistics);
   NgxServerContext* MakeNgxServerContext(StringPiece hostname, int port);
   virtual ServerContext* NewServerContext();
+  virtual void ShutDown();
 
   // Starts pagespeed threads if they've not been started already.  Must be
   // called after the caller has finished any forking it intends to do.
@@ -155,6 +156,7 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
   int port_;
   bool process_script_variables_;
   bool process_script_variables_set_;
+  bool shut_down_;
 
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteDriverFactory);
 };

@@ -1,7 +1,7 @@
 # nginx_system_test.sh makes a few substitutions to pagespeed_test.conf.template
 # file to generate @@TEST_TMP@@/pagespeed_test.conf
 
-# The cache flush test depends on worker_processes=1.
+# The cache flush test depends on worker_processes=1 for statistics.
 worker_processes  1;
 
 daemon @@DAEMON@@;
@@ -1057,6 +1057,57 @@ http {
     pagespeed EnableFilters collapse_whitespace,rewrite_images;
     pagespeed DisableFilters remove_comments,add_instrumentation;
   }
+
+  # Start remote config servers.
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name remote-config.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@";
+    pagespeed RemoteConfigurationUrl "http://127.0.0.1:9991/remote.cfg";
+    pagespeed RemoteConfigurationTimeoutMs 1500;
+  }
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name remote-config-partially-invalid.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@";
+    pagespeed RemoteConfigurationUrl "http://127.0.0.1:9992/remote.cfg";
+    pagespeed RemoteConfigurationTimeoutMs 1500;
+  }
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name remote-config-invalid.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@";
+    pagespeed RemoteConfigurationUrl "http://127.0.0.1:9993/remote.cfg";
+    pagespeed RemoteConfigurationTimeoutMs 1500;
+  }
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name remote-config-nc-host5.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@";
+    pagespeed RemoteConfigurationUrl "http://127.0.0.1:9995/remote.cfg";
+    pagespeed RemoteConfigurationTimeoutMs 1500;
+  }
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name remote-config-nc-host6.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@";
+    pagespeed RemoteConfigurationUrl "http://127.0.0.1:9996/remote.cfg";
+    pagespeed RemoteConfigurationTimeoutMs 1500;
+  }
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name remote-config-experiment.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@";
+    pagespeed RemoteConfigurationUrl "http://127.0.0.1:9997/remote.cfg";
+    pagespeed RemoteConfigurationTimeoutMs 1500;
+  }
+
 
   # Proxy + IPRO a gzip'd file for testing Issue 896.
   server {
