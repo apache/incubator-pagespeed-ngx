@@ -847,23 +847,28 @@ pagespeed.MobNav.prototype.addThemeColor_ = function(themeData) {
  * @param {Node} node The starting navigational node.
  * @param {number} currDepth The current depth in the hierarchy used when
  *     recursing. Must be 0 on first call.
+ * @param {boolean=} opt_inUl Track if we are currently in a UL. The labeling
+ *     depth is only increased when in a nested UL.
  * @return {!Array.<!Node>} The A tags labeled with depth.
  * @private
  */
-pagespeed.MobNav.prototype.labelNavDepth_ = function(node, currDepth) {
+pagespeed.MobNav.prototype.labelNavDepth_ = function(node, currDepth,
+                                                     opt_inUl) {
   var navATags = [];
+  var inUl = opt_inUl || false;
   for (var child = node.firstChild; child; child = child.nextSibling) {
     if (child.tagName == 'UL') {
       // If this is the first UL, then start labeling its nodes at depth 1.
-      navATags =
-          goog.array.join(navATags, this.labelNavDepth_(child, currDepth + 1));
+      var nextDepth = inUl ? currDepth + 1 : currDepth;
+      navATags = goog.array.join(navATags,
+                                 this.labelNavDepth_(child, nextDepth, true));
     } else {
       if (child.tagName == 'A') {
         child.setAttribute('data-mobilize-nav-level', currDepth);
         navATags.push(child);
       }
-      navATags =
-          goog.array.join(navATags, this.labelNavDepth_(child, currDepth));
+      navATags = goog.array.join(navATags,
+                                 this.labelNavDepth_(child, currDepth, inUl));
     }
   }
   return navATags;
@@ -985,7 +990,7 @@ pagespeed.MobNav.prototype.addNavPanel_ = function() {
           var item = document.createElement('li');
           var div = item.appendChild(document.createElement('div'));
           var icon = document.createElement('img');
-          div.appendChild(document.createElement('img'));
+          div.appendChild(icon);
           icon.setAttribute('src', this.ARROW_ICON_);
           goog.dom.classlist.add(icon, 'psmob-menu-expand-icon');
           div.appendChild(document.createTextNode(
