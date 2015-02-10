@@ -33,6 +33,7 @@
 : ${SECONDARY_PORT:?"Set SECONDARY_PORT"}
 : ${MOD_PAGESPEED_DIR:?"Set MOD_PAGESPEED_DIR"}
 : ${NGINX_EXECUTABLE:?"Set NGINX_EXECUTABLE"}
+POSITION_AUX="${POSITION_AUX:-unset}"
 
 PRIMARY_HOSTNAME="localhost:$PRIMARY_PORT"
 SECONDARY_HOSTNAME="localhost:$SECONDARY_PORT"
@@ -287,10 +288,14 @@ BEACON_HANDLER="ngx_pagespeed_beacon"
 STATISTICS_URL=http://$PRIMARY_HOSTNAME/ngx_pagespeed_statistics
 
 # An expected failure can be indicated like: "~In-place resource optimization~"
-PAGESPEED_EXPECTED_FAILURES="
-~Override server header in resource flow.~
-~Override server header in IPRO flow.~
+PAGESPEED_EXPECTED_FAILURES=""
+
+if [ "$POSITION_AUX" = "true" ] ; then
+  PAGESPEED_EXPECTED_FAILURES+="
+~server-side includes~
 "
+fi
+
 
 # Some tests are flakey under valgrind. For now, add them to the expected
 # failures when running under valgrind.
@@ -1155,18 +1160,20 @@ OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP -O /dev/null -S $URL 2>&1)
 MATCHES=$(echo "$OUT" | grep -c "Server: override") || true
 check [ $MATCHES -eq 1 ]
 
-start_test Override server header in resource flow.
-URL=http://headers.example.com/mod_pagespeed_test/
-URL+=A.proxy_pass.css.pagespeed.cf.0.css
-OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP -O /dev/null -S $URL 2>&1)
-MATCHES=$(echo "$OUT" | grep -c "Server: override") || true
-check [ $MATCHES -eq 1 ]
+if [ "$POSITION_AUX" = "true" ] ; then
+  start_test Override server header in resource flow.
+  URL=http://headers.example.com/mod_pagespeed_test/
+  URL+=A.proxy_pass.css.pagespeed.cf.0.css
+  OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP -O /dev/null -S $URL 2>&1)
+  MATCHES=$(echo "$OUT" | grep -c "Server: override") || true
+  check [ $MATCHES -eq 1 ]
 
-start_test Override server header in IPRO flow.
-URL=http://headers.example.com/mod_pagespeed_test/proxy_pass.css
-OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP -O /dev/null -S $URL 2>&1)
-MATCHES=$(echo "$OUT" | grep -c "Server: override") || true
-check [ $MATCHES -eq 1 ]
+  start_test Override server header in IPRO flow.
+  URL=http://headers.example.com/mod_pagespeed_test/proxy_pass.css
+  OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP -O /dev/null -S $URL 2>&1)
+  MATCHES=$(echo "$OUT" | grep -c "Server: override") || true
+  check [ $MATCHES -eq 1 ]
+fi
 
 start_test Conditional cache-control header override in resource flow.
 URL=http://headers.example.com/mod_pagespeed_test/
