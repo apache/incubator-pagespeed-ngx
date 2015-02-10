@@ -154,6 +154,7 @@ pagespeed.MobNav.NAV_PANEL_WIDTH_ = 250;
  * @const
  * @private {string}
  */
+// TODO(huibao): Optimize this image and apply theme color to it.
 pagespeed.MobNav.prototype.ARROW_ICON_ =
     'data:image/png;base64,iVBORw0KGgoA' +
     'AAANSUhEUgAAAJAAAACQCAQAAABNTyozAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA' +
@@ -173,7 +174,7 @@ pagespeed.MobNav.prototype.ARROW_ICON_ =
  * @const
  * @private {string}
  */
-pagespeed.MobNav.prototype.CALL_BUTTON_ =
+pagespeed.MobNav.CALL_BUTTON_ =
     'R0lGODlhgACAAPAAAAAAAAAAACH5BAEAAAEALAAAAACAAIAAAAL+jI+pCL0Po5y02vuaBrj7' +
     'D4bMtonmiXrkyqXuC7MsTNefLNv6nuE4D9z5fMFibEg0KkVI5PLZaTah1IlUWs0qrletl9v1' +
     'VsFcMZQMNivRZHWRnXbz4G25jY621/B1vYuf54cCyCZ4QlhoGIIYqKjC2Oh4AZkoaUEZaWmF' +
@@ -192,60 +193,35 @@ pagespeed.MobNav.prototype.CALL_BUTTON_ =
  * @const
  * @private
  */
-pagespeed.MobNav.prototype.MAP_BUTTON_ =
-    'R0lGODlhKwBDAPcAAAAAAAAAMwAAZgAAmQAAzAAA/wArAAArMwArZgArmQArzAAr/wBVAABV' +
-    'MwBVZgBVmQBVzABV/wCAAACAMwCAZgCAmQCAzACA/wCqAACqMwCqZgCqmQCqzACq/wDVAADV' +
-    'MwDVZgDVmQDVzADV/wD/AAD/MwD/ZgD/mQD/zAD//zMAADMAMzMAZjMAmTMAzDMA/zMrADMr' +
-    'MzMrZjMrmTMrzDMr/zNVADNVMzNVZjNVmTNVzDNV/zOAADOAMzOAZjOAmTOAzDOA/zOqADOq' +
-    'MzOqZjOqmTOqzDOq/zPVADPVMzPVZjPVmTPVzDPV/zP/ADP/MzP/ZjP/mTP/zDP//2YAAGYA' +
-    'M2YAZmYAmWYAzGYA/2YrAGYrM2YrZmYrmWYrzGYr/2ZVAGZVM2ZVZmZVmWZVzGZV/2aAAGaA' +
-    'M2aAZmaAmWaAzGaA/2aqAGaqM2aqZmaqmWaqzGaq/2bVAGbVM2bVZmbVmWbVzGbV/2b/AGb/' +
-    'M2b/Zmb/mWb/zGb//5kAAJkAM5kAZpkAmZkAzJkA/5krAJkrM5krZpkrmZkrzJkr/5lVAJlV' +
-    'M5lVZplVmZlVzJlV/5mAAJmAM5mAZpmAmZmAzJmA/5mqAJmqM5mqZpmqmZmqzJmq/5nVAJnV' +
-    'M5nVZpnVmZnVzJnV/5n/AJn/M5n/Zpn/mZn/zJn//8wAAMwAM8wAZswAmcwAzMwA/8wrAMwr' +
-    'M8wrZswrmcwrzMwr/8xVAMxVM8xVZsxVmcxVzMxV/8yAAMyAM8yAZsyAmcyAzMyA/8yqAMyq' +
-    'M8yqZsyqmcyqzMyq/8zVAMzVM8zVZszVmczVzMzV/8z/AMz/M8z/Zsz/mcz/zMz///8AAP8A' +
-    'M/8AZv8Amf8AzP8A//8rAP8rM/8rZv8rmf8rzP8r//9VAP9VM/9VZv9Vmf9VzP9V//+AAP+A' +
-    'M/+AZv+Amf+AzP+A//+qAP+qM/+qZv+qmf+qzP+q///VAP/VM//VZv/Vmf/VzP/V////AP//' +
-    'M///Zv//mf//zP///wAAAAAAAAAAAAAAACH5BAEAAPwALAAAAAArAEMAAAj/APcJHEiwoMGD' +
-    'CBMqXMiwocOHEBcqy0Qxk7KIECfGAMCxI8cYky5iRKhMjMeTJ8VAG1kwE8qXJzOxFGgSpk2O' +
-    'YljeuMkTwA2MNXvezPnQpdCekxwqO3pU5MKgTIcyXMrzRkiNPVcqnHTzBjGDyjbaJJpQLEyF' +
-    'UhNShekU4c22BYnZTLoQjc2vCI2+hHtwLUqZeW06tAn4oF6Ug2HSNSyYYT3CCeXCLJzw8Em8' +
-    'fccyhHqSL8Gdirfa/KmQc8zAcyXyFKOs3sCSPD0XNDtajBjQN2M0tBz15WKFknvblG3QtHCc' +
-    'D7keR/mb4XKUWh3ifk76YfDnmJXSFh6DeEK7z9GMgLwuPDvE5wBm8j5KOWJY4Su8M5x+lCxL' +
-    '8kLbjxQ+k6By9v29FpV8Dxn3kn0BrveSfv0dFaBB/6X2IEF+sTVhQQYidyGFb21Y0E0etjRZ' +
-    'iBRuB0B3JBIEnkfipTjQYye55uJAUFU34z6HmTdjTTbeiCNHOt7IkY8GZdIckUgmeWNAADs=';
+pagespeed.MobNav.MAP_BUTTON_ =
+    'R0lGODlhaQCkAPAAAAAAAAAAACH5BAEAAAEALAAAAABpAKQAAAL+jI+py+0Po5y02ouz3rz7' +
+    'D4biSJbmiabqyrbuC8fyA9T2jQOzmve+vRP9hsQgh4hEGi3JpnIJcUqf0MX0WqwesNyhNtAN' +
+    '+6rics9oTuN26jYw5o7rXnI5ve524e2rfb3vx3cS+IdCWFhyiEiiuBiCpwDJGEdDOZIXYfmo' +
+    'xsQplIbR9lm2AbopdmR2GuahCkL6ARvLusr1SnuL26GbazvrOwq82zVJ/HtlwlsqHIzcalyM' +
+    'dewcTT0snQh9bd081cv9LVXrfam9Df7MnKqejj2Nvmy+zh5PnyF7Dl9vX4H/7n7PXztlFEyN' +
+    'kyfB00GElVyVU9jQYDeJCByFa+SwGkb+gQs38svnkeHFkOQGkSQ48aQTHir1pWzphSXMlYBm' +
+    'UpFpM2bNnD/08Bzj82eOO0JvwCn6hihSGUjnHC06oykboUGgTv2JhucSrFttkvEKJaeWmV/I' +
+    'joX5BYzKtGpPsm3r8S3cjXLd1o0rd66ivAbw5qXLV2+gwH33EhYs6bBhxYQOb2nsuPCeyI8n' +
+    'U5ZskXFmzYIuI+YYeXNoTZ4xUyxNurRpVKoTiGrtOiPs1R8vn54NGnZu3SJx9/YNcHak4MJj' +
+    'uyx+HHnJ4g3EMY948zkDmtKbJ6kOvSd2B9G3D9fpfbr28NaBki+/5jz3M+rXG23vPil88TXm' +
+    'R7RfCb/+/fwN+/v/D2CAAg5IoAoFAAA7';
 
 
 /**
- * Return a call button image with the specified color.
+ * Synthesize an image using the specified color.
+ * @param {string} imageBase64
  * @param {!goog.color.Rgb} color
- * @return {string}
+ * @return {?string}
  * @private
  */
-pagespeed.MobNav.prototype.callButtonImage_ = function(color) {
-  var imageTemplate = window.atob(this.CALL_BUTTON_);
+pagespeed.MobNav.prototype.synthesizeImage_ = function(imageBase64, color) {
+  if (imageBase64.length <= 16) {
+    return null;
+  }
+  var imageTemplate = window.atob(imageBase64);
   var imageData = imageTemplate.substring(0, 13) +
       String.fromCharCode(color[0], color[1], color[2]) +
       imageTemplate.substring(16, imageTemplate.length);
-  var imageUrl = 'data:image/gif;base64,' + window.btoa(imageData);
-  return imageUrl;
-};
-
-
-/**
- * Return a map image with the specified color.
- * @param {!goog.color.Rgb} color
- * @return {string}
- * @private
- */
-pagespeed.MobNav.prototype.mapButtonImage_ = function(color) {
-  var imageTemplate = window.atob(this.MAP_BUTTON_);
-  var imageData = imageTemplate;
-  // TODO(huibao): hack the colorizing features for this GIF.
-  // imageTemplate.substring(0, 13) +
-  // String.fromCharCode(color[0], color[1], color[2]) +
-  // imageTemplate.substring(16, imageTemplate.length);
   var imageUrl = 'data:image/gif;base64,' + window.btoa(imageData);
   return imageUrl;
 };
@@ -640,7 +616,7 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
 pagespeed.MobNav.prototype.addPhoneDialer_ = function(color) {
   var callImage = document.createElement('img');
   callImage.id = 'psmob-phone-image';
-  callImage.src = this.callButtonImage_(color);
+  callImage.src = this.synthesizeImage_(pagespeed.MobNav.CALL_BUTTON_, color);
   this.callButton_ = document.createElement('a');
   this.callButton_.id = 'psmob-phone-dialer';
   var phone = this.getPhoneNumber_();
@@ -717,7 +693,7 @@ function psOpenMap() {
 pagespeed.MobNav.prototype.addMapNavigation_ = function(color) {
   var mapImage = document.createElement('img');
   mapImage.id = 'psmob-map-image';
-  mapImage.src = this.mapButtonImage_(color);
+  mapImage.src = this.synthesizeImage_(pagespeed.MobNav.MAP_BUTTON_, color);
   this.mapButton_ = document.createElement('a');
   this.mapButton_.id = 'psmob-map-button';
   if (window.psMapConversionLabel) {
