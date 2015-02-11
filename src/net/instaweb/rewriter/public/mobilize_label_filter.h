@@ -56,6 +56,7 @@ struct ElementSample {
   GoogleString id;               // id of *element, which might be flushed.
   ElementSample* parent;         // NULL for global count
   MobileRole::Level role;        // Mobile role (from parent where applicable)
+  MobileRole::Level propagated_role;  // Mobile role from children during label
   bool explicitly_labeled;       // Was this DOM element explicitly labeled?
   std::vector<double> features;  // feature vector, always of size kNumFeatures.
 };
@@ -70,8 +71,8 @@ struct ElementSample {
 //     header, or footer.
 // We do this bottom-up, since we want to process children in a streaming
 // fashion before their parent's close tag.  We take the presence of html5 tags
-// as authoritative; note that we've
-// assumed that they're authoritative in training our classifiers.
+// as authoritative; note that we've assumed that they're authoritative in
+// training our classifiers.
 class MobilizeLabelFilter : public CommonFilter {
  public:
   // Monitoring variable names
@@ -107,7 +108,6 @@ class MobilizeLabelFilter : public CommonFilter {
   void IncrementRelevantTagDepth();
   void SanityCheckEndOfDocumentState();
   void ComputeProportionalFeatures();
-  void PropagateChildrenToParent(MobileRole::Level level);
   void Label();
   void DebugLabel();
   void UnlabelledDiv(ElementSample* sample);

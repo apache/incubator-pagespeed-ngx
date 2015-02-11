@@ -307,6 +307,7 @@ ElementSample::ElementSample(int relevant_tag_depth, int tag_count,
     : element(NULL),
       parent(NULL),
       role(MobileRole::kUnassigned),
+      propagated_role(MobileRole::kUnassigned),
       explicitly_labeled(false),
       features(kNumFeatures, 0.0) {
   features[kElementTagDepth] = relevant_tag_depth;
@@ -904,58 +905,6 @@ void MobilizeLabelFilter::ComputeProportionalFeatures() {
   }
 }
 
-void MobilizeLabelFilter::PropagateChildrenToParent(
-    MobileRole::Level the_role) {
-  // Mark kUnassigned nodes all of whose children have the_role as role, as long
-  // as there's at least one.  We do this bottom up by changing role and parent
-  // role.  On entry, unclassified samples are labeled with kUnassigned, and
-  // kInvalid and kKeeper are unused; this should be true when we're done as
-  // well.
-  // During this loop at the start of an iteration the roles mean:
-  //     kUnassigned: We haven't looked at this node or its children yet.
-  //     kKeeper: We've looked at children, and they've all had the_role.
-  //     kInvalid: We've seen at least one child that doesn't have the_role.
-  //     All other roles: the node has been assigned that role, don't alter.
-  // So when we visit a sample, we update its role, then the parent's role:
-  for (int i = samples_.size() - 1; i > 0; --i) {
-    // Reverse tag order, from the leaves to the root.
-    ElementSample* sample = samples_[i];
-    ElementSample* parent = sample->parent;
-    // Update role of sample
-    switch (sample->role) {
-      case MobileRole::kKeeper:
-        // This means all children were assigned the_role.
-        // So we should have the_role as well.
-        sample->role = the_role;
-        break;
-      case MobileRole::kInvalid:
-        // One child had a different role.  Leave unassigned.
-        sample->role = MobileRole::kUnassigned;
-        break;
-      default:
-        // Otherwise, sample->role doesn't change.
-        break;
-    }
-    if (sample->role == the_role) {
-      if (parent->role == MobileRole::kUnassigned) {
-          // We're the first child of our parent.  Mark parent as a candidate
-          // for the_role.
-          parent->role = MobileRole::kKeeper;
-      }
-    } else {
-      // Don't have the_role, so make sure parent doesn't get assigned the_role.
-      switch (parent->role) {
-        case MobileRole::kUnassigned:
-        case MobileRole::kKeeper:
-          parent->role = MobileRole::kInvalid;
-          break;
-        default:
-          break;
-      }
-    }
-  }
-}
-
 void MobilizeLabelFilter::Label() {
   bool log_samples = driver()->options()->log_mobilization_samples();
   DecisionTree navigational(kNavigationalTree, kNavigationalTreeSize);
@@ -1025,29 +974,48 @@ void MobilizeLabelFilter::Label() {
     }
   }
   // All unclassified nodes have been labeled with kUnassigned using parent
-  // propagation.
-  PropagateChildrenToParent(MobileRole::kNavigational);
-  PropagateChildrenToParent(MobileRole::kHeader);
-  PropagateChildrenToParent(MobileRole::kContent);
-  // Do parent propagation of content explicitly marked as marginal.
-  PropagateChildrenToParent(MobileRole::kMarginal);
-  // We want to mark as kMarginal all the kUnassigned nodes whose children are
-  // also Marginal.  If a node is labeled kUnassigned and any child is
-  // non-Marginal we want to mark it kInvalid.  We work in bottom up DOM order,
-  // basically invalidating parents of non-marginal content.  This is unlike
-  // PropagateChildrenToParent because it labels nodes without children as
-  // Marginal.
+  // propagation.  Now do upward propagation from labeled nodes to their parent:
+  // if all the children of a node are unlabeled or share the same label, the
+  // parent gets that label.  If a leaf is unlabeled, it's marginal.
   for (int i = n - 1; i > 0; --i) {
-    // Reverse tag order, from the leaves to the root.
+    // Reverse tag order, from leaves to root.
     ElementSample* sample = samples_[i];
-    if (sample->role == MobileRole::kUnassigned) {
-      sample->role = MobileRole::kMarginal;
-    } else if (sample->role != MobileRole::kMarginal &&
-               sample->parent->role == MobileRole::kUnassigned) {
-      // Non-marginal child with unassigned parent; parent is invalid.
-      sample->parent->role = MobileRole::kInvalid;
+    ElementSample* parent = sample->parent;
+    // Meaning of sample->propagated_label at this point:
+    //   kInvalid if children have multiple labels from kHeader..kMarginal.
+    //   kHeader..kContent if at least one child had that label.
+    //   kMarginal if at least one child was *explicitly* labeled that.
+    //   kUnassigned if all children unassigned.
+    // Meaning of parent->propagated_label at this point is the same, but only
+    //   accounts for the children we've previously seen.
+    // At end of loop body, sample->label should reflect
+    //   sample->propagated_label if it started as kUnassigned
+    //   and parent->propagated_label should account for sample->label.
+    MobileRole::Level role_to_parent = sample->role;
+    // First decide label of sample based on what children
+    // have propagated to propagated_role.
+    if (role_to_parent == MobileRole::kUnassigned) {
+      role_to_parent = sample->propagated_role;
+      if (role_to_parent == MobileRole::kUnassigned) {
+        sample->role = MobileRole::kMarginal;
+      } else {
+        sample->role = role_to_parent;
+      }
+    }
+    if (role_to_parent != MobileRole::kUnassigned) {
+      if (parent->propagated_role == role_to_parent) {
+        // no change.
+      } else if (parent->propagated_role == MobileRole::kUnassigned) {
+        parent->propagated_role = role_to_parent;
+      } else {
+        // Conflict.
+        parent->propagated_role = MobileRole::kInvalid;
+      }
     }
   }
+  // For consistency, label the root as invalid so that no unassigned samples
+  // remain.
+  samples_[0]->role = MobileRole::kInvalid;
 }
 
 void MobilizeLabelFilter::DebugLabel() {
@@ -1123,10 +1091,10 @@ void MobilizeLabelFilter::InjectLabelJavascript() {
             sample->id, false /* no quotes */, &role_id_list_js[role]);
         StrAppend(&role_id_list_js[role], "','");
         any_roles_listed = true;
-        continue;
       }
+    } else {
+      UnlabelledDiv(sample);
     }
-    UnlabelledDiv(sample);
   }
   if (!any_roles_listed) {
     // Don't inject any code if there's nothing to do.
