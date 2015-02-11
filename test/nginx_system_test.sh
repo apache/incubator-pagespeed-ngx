@@ -252,7 +252,7 @@ fi
 
 # check_stat in system_test_helpers.sh needs to know whether statstistics are
 # enabled, which is always the case for ngx_pagespeed.
-statistics_enabled=1
+statistics_enabled=0
 CACHE_FLUSH_TEST="on"
 CACHE_PURGE_METHODS="PURGE GET"
 
