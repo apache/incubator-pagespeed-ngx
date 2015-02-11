@@ -127,11 +127,12 @@ pagespeed.MobNav = function() {
 
 
   /**
-   * Tracks the fixed position elements, which need to be adjusted after zooming
-   * to account for the offset of the spacer div.
+   * Tracks the elements which need to be adjusted after zooming to account for
+   * the offset of the spacer div. This includes fixed position elements, and
+   * absolute position elements rooted at the body.
    * @private {!Array<!Element>}
    */
-  this.fixedPosElements_ = [];
+  this.elementsToOffset_ = [];
 
   /**
    * Tracks if the redrawNav function has been called yet or not, to enable
@@ -150,26 +151,22 @@ pagespeed.MobNav.NAV_PANEL_WIDTH_ = 250;
 
 
 /**
- * PNG image of an arrow icon, used to indicate hierarchical menus.
+ * GIF image of an arrow icon, used to indicate hierarchical menus.
  * @const
  * @private {string}
  */
-// TODO(huibao): Optimize this image and apply theme color to it.
-pagespeed.MobNav.prototype.ARROW_ICON_ =
-    'data:image/png;base64,iVBORw0KGgoA' +
-    'AAANSUhEUgAAAJAAAACQCAQAAABNTyozAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA' +
-    '6mAAADqYAAAXcJy6UTwAAAACYktHRAD/h4/MvwAAAAlwSFlzAAALEwAACxMBAJqcGAAAATdJ' +
-    'REFUeNrt0klOBTEQREHfDI7FTEn/4M2GBULQo22wK+ICKT1lKQAAAAAAAAAAAAAAAAAA/Jm7' +
-    'rmv3o+W5laU8d1uLspQYLc/SLVF8rsVoefokii9rMVqe9oni21qMlqdtovhhLUbL0y5R/LIW' +
-    'o+VZylKeuuX5t4nW8tRPFBtrMV6gmolic+t9xA/VSjRonl6JBs7TI9HgeVonmiDPvkSPmfO0' +
-    'SjRRnhaJJstTO9GEeWom2s7zVgZVI9HEeWokmjzPvkQPmfNcSZQkz9lEifKcSZQsz9FECfMc' +
-    'SZQ0z95E23ley8S2E6XOcz3R9HmuJUqR53yiNHnOJUqV53iidHmOJUqZZ3+itHn2JXopyd3k' +
-    'OZ9IntVE8qwmkmc1kTyrieRZTSTPaiJ5AAAAAAAAAAAAAAAAAGjgA62rM0XB6dNxAAAAAElF' +
-    'TkSuQmCC';
+pagespeed.MobNav.ARROW_ICON_ =
+    'R0lGODlhkACQAPABAP///wAAACH5BAEAAAEALAAAAACQAJAAAAL+jI+py+0Po5y02ouz3rz7' +
+    'D4biSJbmiabqyrbuC8fyTNf2jef6zvf+DwwKh8Si8YhMKpfMpvMJjUqn1Kr1is1qt9yu9wsO' +
+    'i8fksvmMTqvX7Lb7DY/L5/S6/Y7P6/f8vh8EAJATKIhFWFhziEiluBjT6AgFGdkySclkeZmS' +
+    'qYnE2VnyCUokOhpSagqEmtqxytrjurnqFGtSSztLcvu0+9HLm+sbPPWbURx1XJGMPHyxLPXs' +
+    'EA3dLDFNXP1wzZjNsF01/W31LH6VXG6YjZ7Vu651674VG8/l2s1mL2qXn4nHD6nn3yE+Al+5' +
+    '+fcnQL6EBui1QcUwgb6IEvtRVGDporc/RhobKOooLRBIbSNLmjyJMqXKlSxbunwJM6bMmTRr' +
+    '2ryJM6fOnTx7+vwJNKjQoUSLGj2KNKnSpUybOn0KVUcBADs=';
 
 
 /**
- * PNG image of call button. To view this image, add prefix of
+ * GIF image of call button. To view this image, add prefix of
  * 'data:image/gif;base64,' to it.
  * @const
  * @private {string}
@@ -188,7 +185,7 @@ pagespeed.MobNav.CALL_BUTTON_ =
 
 
 /**
- * PNG image of a map button, from a google images search for
+ * GIF image of a map button, from a google images search for
  * 'google map pin icon'
  * @const
  * @private
@@ -379,12 +376,13 @@ pagespeed.MobNav.prototype.findNavSections_ = function() {
  * @private
  */
 pagespeed.MobNav.prototype.fixExistingElements_ = function() {
-  var elements = document.getElementsByTagName('*');
+  var elements = document.querySelectorAll('* :not(#ps-progress-scrim)');
   for (var i = 0, element; element = elements[i]; i++) {
     var style = window.getComputedStyle(element);
-    if (style.getPropertyValue('position') == 'fixed' &&
-        element.id != 'ps-progress-scrim') {
-      this.fixedPosElements_.push(element);
+    var position = style.getPropertyValue('position');
+    if (position == 'fixed' ||
+        (position == 'absolute' && element.parentNode == document.body)) {
+      this.elementsToOffset_.push(element);
     }
 
     if (style.getPropertyValue('z-index') >= 999999) {
@@ -443,8 +441,8 @@ pagespeed.MobNav.prototype.redrawHeader_ = function() {
   // function, they are offset by the size of the spacer div. On subsequent
   // runs, they are offset by the difference between the old and the new size of
   // the spacer div.
-  for (var i = 0; i < this.fixedPosElements_.length; i++) {
-    var el = this.fixedPosElements_[i];
+  for (var i = 0; i < this.elementsToOffset_.length; i++) {
+    var el = this.elementsToOffset_[i];
     if (this.redrawNavCalled_) {
       var oldTop = el.style.top;
       oldTop = Number(el.style.top.split('px')[0]);
@@ -531,7 +529,7 @@ pagespeed.MobNav.prototype.addHeaderBarResizeEvents_ = function() {
       this.scrollTimer_ = null;
     }, this), 50);
 
-    if (goog.dom.classlist.contains(this.navPanel_, 'open') &&
+    if (this.navPanel_ && goog.dom.classlist.contains(this.navPanel_, 'open') &&
         !this.navPanel_.contains(/** @type {Node} */ (e.target))) {
       e.stopPropagation();
       e.preventDefault();
@@ -988,9 +986,10 @@ pagespeed.MobNav.prototype.cleanupNavPanel_ = function() {
 
 /**
  * Add a nav panel.
+ * @param {!pagespeed.MobUtil.ThemeData} themeData
  * @private
  */
-pagespeed.MobNav.prototype.addNavPanel_ = function() {
+pagespeed.MobNav.prototype.addNavPanel_ = function(themeData) {
   // Create the nav panel element and insert immediatly after the header bar.
   this.navPanel_ = document.createElement('nav');
   document.body.insertBefore(this.navPanel_, this.headerBar_.nextSibling);
@@ -1001,6 +1000,8 @@ pagespeed.MobNav.prototype.addNavPanel_ = function() {
   // hierarchical menus collapsed by default. However, we want the top level
   // menu to always be displayed, so give it the open class.
   goog.dom.classlist.add(navTopUl, 'open');
+  var arrowIcon = this.synthesizeImage_(pagespeed.MobNav.ARROW_ICON_,
+                                        themeData.menuBackColor);
 
   for (var i = 0, nav; nav = this.navSections_[i]; i++) {
     if (nav.parentNode) {
@@ -1018,10 +1019,12 @@ pagespeed.MobNav.prototype.addNavPanel_ = function() {
         if (navLevel1 < navLevel2) {
           var item = document.createElement('li');
           var div = item.appendChild(document.createElement('div'));
-          var icon = document.createElement('img');
-          div.appendChild(icon);
-          icon.setAttribute('src', this.ARROW_ICON_);
-          goog.dom.classlist.add(icon, 'psmob-menu-expand-icon');
+          if (arrowIcon) {
+            var icon = document.createElement('img');
+            div.appendChild(icon);
+            icon.setAttribute('src', arrowIcon);
+            goog.dom.classlist.add(icon, 'psmob-menu-expand-icon');
+          }
           div.appendChild(document.createTextNode(
               navATags[j].textContent || navATags[j].innerText));
           navSubmenus[navSubmenus.length - 1].appendChild(item);
@@ -1171,7 +1174,7 @@ pagespeed.MobNav.prototype.Run = function(themeData) {
   // them to the top-level nav.
   if ((this.navSections_.length != 0) &&
       !pagespeed.MobUtil.inFriendlyIframe()) {
-    this.addNavPanel_();
+    this.addNavPanel_(themeData);
     this.addMenuButtonEvents_();
     this.addNavButtonEvents_();
   }
