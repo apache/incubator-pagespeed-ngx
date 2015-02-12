@@ -151,26 +151,22 @@ pagespeed.MobNav.NAV_PANEL_WIDTH_ = 250;
 
 
 /**
- * PNG image of an arrow icon, used to indicate hierarchical menus.
+ * GIF image of an arrow icon, used to indicate hierarchical menus.
  * @const
  * @private {string}
  */
-// TODO(huibao): Optimize this image and apply theme color to it.
-pagespeed.MobNav.prototype.ARROW_ICON_ =
-    'data:image/png;base64,iVBORw0KGgoA' +
-    'AAANSUhEUgAAAJAAAACQCAQAAABNTyozAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA' +
-    '6mAAADqYAAAXcJy6UTwAAAACYktHRAD/h4/MvwAAAAlwSFlzAAALEwAACxMBAJqcGAAAATdJ' +
-    'REFUeNrt0klOBTEQREHfDI7FTEn/4M2GBULQo22wK+ICKT1lKQAAAAAAAAAAAAAAAAAA/Jm7' +
-    'rmv3o+W5laU8d1uLspQYLc/SLVF8rsVoefokii9rMVqe9oni21qMlqdtovhhLUbL0y5R/LIW' +
-    'o+VZylKeuuX5t4nW8tRPFBtrMV6gmolic+t9xA/VSjRonl6JBs7TI9HgeVonmiDPvkSPmfO0' +
-    'SjRRnhaJJstTO9GEeWom2s7zVgZVI9HEeWokmjzPvkQPmfNcSZQkz9lEifKcSZQsz9FECfMc' +
-    'SZQ0z95E23ley8S2E6XOcz3R9HmuJUqR53yiNHnOJUqV53iidHmOJUqZZ3+itHn2JXopyd3k' +
-    'OZ9IntVE8qwmkmc1kTyrieRZTSTPaiJ5AAAAAAAAAAAAAAAAAGjgA62rM0XB6dNxAAAAAElF' +
-    'TkSuQmCC';
+pagespeed.MobNav.ARROW_ICON_ =
+    'R0lGODlhkACQAPABAP///wAAACH5BAEAAAEALAAAAACQAJAAAAL+jI+py+0Po5y02ouz3rz7' +
+    'D4biSJbmiabqyrbuC8fyTNf2jef6zvf+DwwKh8Si8YhMKpfMpvMJjUqn1Kr1is1qt9yu9wsO' +
+    'i8fksvmMTqvX7Lb7DY/L5/S6/Y7P6/f8vh8EAJATKIhFWFhziEiluBjT6AgFGdkySclkeZmS' +
+    'qYnE2VnyCUokOhpSagqEmtqxytrjurnqFGtSSztLcvu0+9HLm+sbPPWbURx1XJGMPHyxLPXs' +
+    'EA3dLDFNXP1wzZjNsF01/W31LH6VXG6YjZ7Vu651674VG8/l2s1mL2qXn4nHD6nn3yE+Al+5' +
+    '+fcnQL6EBui1QcUwgb6IEvtRVGDporc/RhobKOooLRBIbSNLmjyJMqXKlSxbunwJM6bMmTRr' +
+    '2ryJM6fOnTx7+vwJNKjQoUSLGj2KNKnSpUybOn0KVUcBADs=';
 
 
 /**
- * PNG image of call button. To view this image, add prefix of
+ * GIF image of call button. To view this image, add prefix of
  * 'data:image/gif;base64,' to it.
  * @const
  * @private {string}
@@ -189,7 +185,7 @@ pagespeed.MobNav.CALL_BUTTON_ =
 
 
 /**
- * PNG image of a map button, from a google images search for
+ * GIF image of a map button, from a google images search for
  * 'google map pin icon'
  * @const
  * @private
@@ -985,14 +981,35 @@ pagespeed.MobNav.prototype.cleanupNavPanel_ = function() {
     var height = Math.min(img.naturalHeight * 2, maxImageHeight);
     img.setAttribute('height', height);
   }
+
+  // The fast click jquery plugin (https://github.com/ftlabs/fastclick) causes
+  // issues when trying to scroll through the nav panel since it fires an
+  // onclick immediately and the page will navigate away when the user just
+  // wanted to scroll the menu. Adding this needsclick class restores the
+  // default mouse event handling for that element. We add it to both a tags and
+  // divs (for nested menus), since those are the elements that respond to
+  // clicks in the menu.
+  if (window['FastClick']) {
+    var i, el, els;
+    els = this.navPanel_.getElementsByTagName('a');
+    for (i = 0; el = els[i]; i++) {
+      goog.dom.classlist.add(el, 'needsclick');
+    }
+    els = this.navPanel_.getElementsByTagName('div');
+    for (i = 0; el = els[i]; i++) {
+      goog.dom.classlist.add(el, 'needsclick');
+    }
+  }
+
 };
 
 
 /**
  * Add a nav panel.
+ * @param {!pagespeed.MobUtil.ThemeData} themeData
  * @private
  */
-pagespeed.MobNav.prototype.addNavPanel_ = function() {
+pagespeed.MobNav.prototype.addNavPanel_ = function(themeData) {
   // Create the nav panel element and insert immediatly after the header bar.
   this.navPanel_ = document.createElement('nav');
   document.body.insertBefore(this.navPanel_, this.headerBar_.nextSibling);
@@ -1003,6 +1020,8 @@ pagespeed.MobNav.prototype.addNavPanel_ = function() {
   // hierarchical menus collapsed by default. However, we want the top level
   // menu to always be displayed, so give it the open class.
   goog.dom.classlist.add(navTopUl, 'open');
+  var arrowIcon = this.synthesizeImage_(pagespeed.MobNav.ARROW_ICON_,
+                                        themeData.menuBackColor);
 
   for (var i = 0, nav; nav = this.navSections_[i]; i++) {
     if (nav.parentNode) {
@@ -1020,10 +1039,12 @@ pagespeed.MobNav.prototype.addNavPanel_ = function() {
         if (navLevel1 < navLevel2) {
           var item = document.createElement('li');
           var div = item.appendChild(document.createElement('div'));
-          var icon = document.createElement('img');
-          div.appendChild(icon);
-          icon.setAttribute('src', this.ARROW_ICON_);
-          goog.dom.classlist.add(icon, 'psmob-menu-expand-icon');
+          if (arrowIcon) {
+            var icon = document.createElement('img');
+            div.appendChild(icon);
+            icon.setAttribute('src', arrowIcon);
+            goog.dom.classlist.add(icon, 'psmob-menu-expand-icon');
+          }
           div.appendChild(document.createTextNode(
               navATags[j].textContent || navATags[j].innerText));
           navSubmenus[navSubmenus.length - 1].appendChild(item);
@@ -1173,7 +1194,7 @@ pagespeed.MobNav.prototype.Run = function(themeData) {
   // them to the top-level nav.
   if ((this.navSections_.length != 0) &&
       !pagespeed.MobUtil.inFriendlyIframe()) {
-    this.addNavPanel_();
+    this.addNavPanel_(themeData);
     this.addMenuButtonEvents_();
     this.addNavButtonEvents_();
   }

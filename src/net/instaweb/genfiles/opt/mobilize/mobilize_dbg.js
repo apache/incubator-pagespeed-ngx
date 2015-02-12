@@ -7275,7 +7275,7 @@ pagespeed.MobNav = function() {
   this.redrawNavCalled_ = !1;
 };
 pagespeed.MobNav.NAV_PANEL_WIDTH_ = 250;
-pagespeed.MobNav.prototype.ARROW_ICON_ = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJAAAACQCAQAAABNTyozAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAACYktHRAD/h4/MvwAAAAlwSFlzAAALEwAACxMBAJqcGAAAATdJREFUeNrt0klOBTEQREHfDI7FTEn/4M2GBULQo22wK+ICKT1lKQAAAAAAAAAAAAAAAAAA/Jm7rmv3o+W5laU8d1uLspQYLc/SLVF8rsVoefokii9rMVqe9oni21qMlqdtovhhLUbL0y5R/LIWo+VZylKeuuX5t4nW8tRPFBtrMV6gmolic+t9xA/VSjRonl6JBs7TI9HgeVonmiDPvkSPmfO0SjRRnhaJJstTO9GEeWom2s7zVgZVI9HEeWokmjzPvkQPmfNcSZQkz9lEifKcSZQsz9FECfMcSZQ0z95E23ley8S2E6XOcz3R9HmuJUqR53yiNHnOJUqV53iidHmOJUqZZ3+itHn2JXopyd3kOZ9IntVE8qwmkmc1kTyrieRZTSTPaiJ5AAAAAAAAAAAAAAAAAGjgA62rM0XB6dNxAAAAAElFTkSuQmCC";
+pagespeed.MobNav.ARROW_ICON_ = "R0lGODlhkACQAPABAP///wAAACH5BAEAAAEALAAAAACQAJAAAAL+jI+py+0Po5y02ouz3rz7D4biSJbmiabqyrbuC8fyTNf2jef6zvf+DwwKh8Si8YhMKpfMpvMJjUqn1Kr1is1qt9yu9wsOi8fksvmMTqvX7Lb7DY/L5/S6/Y7P6/f8vh8EAJATKIhFWFhziEiluBjT6AgFGdkySclkeZmSqYnE2VnyCUokOhpSagqEmtqxytrjurnqFGtSSztLcvu0+9HLm+sbPPWbURx1XJGMPHyxLPXsEA3dLDFNXP1wzZjNsF01/W31LH6VXG6YjZ7Vu651674VG8/l2s1mL2qXn4nHD6nn3yE+Al+5+fcnQL6EBui1QcUwgb6IEvtRVGDporc/RhobKOooLRBIbSNLmjyJMqXKlSxbunwJM6bMmTRr2ryJM6fOnTx7+vwJNKjQoUSLGj2KNKnSpUybOn0KVUcBADs=";
 pagespeed.MobNav.CALL_BUTTON_ = "R0lGODlhgACAAPAAAAAAAAAAACH5BAEAAAEALAAAAACAAIAAAAL+jI+pCL0Po5y02vuaBrj7D4bMtonmiXrkyqXuC7MsTNefLNv6nuE4D9z5fMFibEg0KkVI5PLZaTah1IlUWs0qrletl9v1VsFcMZQMNivRZHWRnXbz4G25jY621/B1vYuf54cCyCZ4QlhoGIIYqKjC2Oh4AZkoaUEZaWmF2acpwZnpuQAaKjpCWmbag5qqmsAa53oK6yT7SjtkO4r7o7vLS+K7Cuwg/EtsDIGcrMzLHOH8DM0qvUlabY2JXaG9zc3ojYEYLk5IXs53Pgmovo7XfskOTyE//1lv3/yeP53Or0/nH8CAAo/BKTjsIMJb/hYewOcwAMSF5iIamEixYcTMihY5bsRY0GNGkP9Ejtx3poUbk0GCrSR5Z8VLmDRyqBnXMokYnEJq7WT5J8wXni86ZQF3JJYWpCkILiXKBOUYpouAGqEU1eobSCCwHvXqDmxKrmHFPuH07drUbv3UUgHVFtVXuFuijVVLrNjbvLTm8pW79q/bu4LZ7i2M1i9isoEXQz3smObVyBqHUlZ483Kpn5qxCOrs+TNonYZG27RkuoSo1HpXj7YFWtjlZJGlId72l9wy3bjmweI3OJ/hkFqBO7U4KzTyuDKXaykAADs=";
 pagespeed.MobNav.MAP_BUTTON_ = "R0lGODlhaQCkAPAAAAAAAAAAACH5BAEAAAEALAAAAABpAKQAAAL+jI+py+0Po5y02ouz3rz7D4biSJbmiabqyrbuC8fyA9T2jQOzmve+vRP9hsQgh4hEGi3JpnIJcUqf0MX0WqwesNyhNtAN+6rics9oTuN26jYw5o7rXnI5ve524e2rfb3vx3cS+IdCWFhyiEiiuBiCpwDJGEdDOZIXYfmoxsQplIbR9lm2AbopdmR2GuahCkL6ARvLusr1SnuL26GbazvrOwq82zVJ/HtlwlsqHIzcalyMdewcTT0snQh9bd081cv9LVXrfam9Df7MnKqejj2Nvmy+zh5PnyF7Dl9vX4H/7n7PXztlFEyNkyfB00GElVyVU9jQYDeJCByFa+SwGkb+gQs38svnkeHFkOQGkSQ48aQTHir1pWzphSXMlYBmUpFpM2bNnD/08Bzj82eOO0JvwCn6hihSGUjnHC06oykboUGgTv2JhucSrFttkvEKJaeWmV/IjoX5BYzKtGpPsm3r8S3cjXLd1o0rd66ivAbw5qXLV2+gwH33EhYs6bBhxYQOb2nsuPCeyI8nU5ZskXFmzYIuI+YYeXNoTZ4xUyxNurRpVKoTiGrtOiPs1R8vn54NGnZu3SJx9/YNcHak4MJjuyx+HHnJ4g3EMY948zkDmtKbJ6kOvSd2B9G3D9fpfbr28NaBki+/5jz3M+rXG23vPil88TXmR7RfCb/+/fwN+/v/D2CAAg5IoAoFAAA7";
 pagespeed.MobNav.prototype.synthesizeImage_ = function(a, b) {
@@ -7537,38 +7537,47 @@ pagespeed.MobNav.prototype.cleanupNavPanel_ = function() {
   for (c = 0;b = a[c];++c) {
     d = Math.min(2 * b.naturalHeight, 40), b.setAttribute("height", d);
   }
+  if (window.FastClick) {
+    b = this.navPanel_.getElementsByTagName("a");
+    for (c = 0;a = b[c];c++) {
+      goog.dom.classlist.add(a, "needsclick");
+    }
+    b = this.navPanel_.getElementsByTagName("div");
+    for (c = 0;a = b[c];c++) {
+      goog.dom.classlist.add(a, "needsclick");
+    }
+  }
 };
-pagespeed.MobNav.prototype.addNavPanel_ = function() {
+pagespeed.MobNav.prototype.addNavPanel_ = function(a) {
   this.navPanel_ = document.createElement("nav");
   document.body.insertBefore(this.navPanel_, this.headerBar_.nextSibling);
   goog.dom.classlist.add(this.navPanel_, "psmob-nav-panel");
-  var a = document.createElement("ul");
-  this.navPanel_.appendChild(a);
-  goog.dom.classlist.add(a, "open");
-  for (var b = 0, c;c = this.navSections_[b];b++) {
-    if (c.parentNode) {
-      c.setAttribute("data-mobilize-nav-section", b);
-      var d = this.labelNavDepth_(c, 0), e = [];
-      e.push(a);
-      for (var f = 0, g = d.length;f < g;f++) {
-        var h = d[f].getAttribute("data-mobilize-nav-level"), k = f + 1 == g ? h : d[f + 1].getAttribute("data-mobilize-nav-level");
-        if (h < k) {
-          var l = document.createElement("li"), h = l.appendChild(document.createElement("div")), k = document.createElement("img");
-          h.appendChild(k);
-          k.setAttribute("src", this.ARROW_ICON_);
-          goog.dom.classlist.add(k, "psmob-menu-expand-icon");
-          h.appendChild(document.createTextNode(d[f].textContent || d[f].innerText));
-          e[e.length - 1].appendChild(l);
-          h = document.createElement("ul");
-          l.appendChild(h);
-          e.push(h);
+  var b = document.createElement("ul");
+  this.navPanel_.appendChild(b);
+  goog.dom.classlist.add(b, "open");
+  a = this.synthesizeImage_(pagespeed.MobNav.ARROW_ICON_, a.menuBackColor);
+  for (var c = 0, d;d = this.navSections_[c];c++) {
+    if (d.parentNode) {
+      d.setAttribute("data-mobilize-nav-section", c);
+      var e = this.labelNavDepth_(d, 0), f = [];
+      f.push(b);
+      for (var g = 0, h = e.length;g < h;g++) {
+        var k = e[g].getAttribute("data-mobilize-nav-level"), l = g + 1 == h ? k : e[g + 1].getAttribute("data-mobilize-nav-level");
+        if (k < l) {
+          var m = document.createElement("li"), k = m.appendChild(document.createElement("div"));
+          a && (l = document.createElement("img"), k.appendChild(l), l.setAttribute("src", a), goog.dom.classlist.add(l, "psmob-menu-expand-icon"));
+          k.appendChild(document.createTextNode(e[g].textContent || e[g].innerText));
+          f[f.length - 1].appendChild(m);
+          k = document.createElement("ul");
+          m.appendChild(k);
+          f.push(k);
         } else {
-          for (l = document.createElement("li"), e[e.length - 1].appendChild(l), l.appendChild(d[f].cloneNode(!0)), l = h - k;0 < l && 1 < e.length;) {
-            e.pop(), l--;
+          for (m = document.createElement("li"), f[f.length - 1].appendChild(m), m.appendChild(e[g].cloneNode(!0)), m = k - l;0 < m && 1 < f.length;) {
+            f.pop(), m--;
           }
         }
       }
-      window.psLayoutMode && c.parentNode.removeChild(c);
+      window.psLayoutMode && d.parentNode.removeChild(d);
     }
   }
   this.dedupNavMenuItems_();
@@ -7612,7 +7621,7 @@ pagespeed.MobNav.prototype.Run = function(a) {
   this.fixExistingElements_();
   this.addHeaderBar_(a);
   this.addThemeColor_(a);
-  0 == this.navSections_.length || pagespeed.MobUtil.inFriendlyIframe() || (this.addNavPanel_(), this.addMenuButtonEvents_(), this.addNavButtonEvents_());
+  0 == this.navSections_.length || pagespeed.MobUtil.inFriendlyIframe() || (this.addNavPanel_(a), this.addMenuButtonEvents_(), this.addNavButtonEvents_());
 };
 pagespeed.MobTheme = function() {
   this.logo = null;
