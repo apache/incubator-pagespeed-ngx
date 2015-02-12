@@ -2,8 +2,7 @@
 # file to generate @@TEST_TMP@@/pagespeed_test.conf
 
 # The cache flush test depends on worker_processes=1 for statistics.
-# Statistics disabled as of 02.11.2015 for testing.
-worker_processes  2;
+worker_processes  1;
 
 daemon @@DAEMON@@;
 master_process on;
@@ -1065,29 +1064,28 @@ http {
     listen [::]:@@SECONDARY_PORT@@;
     server_name remote-config.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
-    pagespeed RemoteConfigurationUrl "http://localhost:@@PRIMARY_PORT@@/mod_pagespeed_test/remote_config/remote.cfg?PageSpeed=off";
-    #pagespeed RemoteConfigurationUrl "http://raxcity.com/remote.cfg";
+    pagespeed RemoteConfigurationUrl "http://127.0.0.1:5550/remote.cfg";
   }
   server {
     listen @@SECONDARY_PORT@@;
     listen [::]:@@SECONDARY_PORT@@;
     server_name remote-config-partially-invalid.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
-    pagespeed RemoteConfigurationUrl "http://localhost:@@PRIMARY_PORT@@/mod_pagespeed_test/remote_config/remote.cfg.partially.invalid";
+    pagespeed RemoteConfigurationUrl "http://127.0.0.1:5552/remote.cfg";
   }
   server {
     listen @@SECONDARY_PORT@@;
     listen [::]:@@SECONDARY_PORT@@;
     server_name remote-config-invalid.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
-    pagespeed RemoteConfigurationUrl "http://localhost:@@PRIMARY_PORT@@/mod_pagespeed_test/remote_config/remote.cfg.invalid";
+    pagespeed RemoteConfigurationUrl "http://127.0.0.1:5551/remote.cfg";
   }
   server {
     listen @@SECONDARY_PORT@@;
     listen [::]:@@SECONDARY_PORT@@;
     server_name remote-config-out-of-scope.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
-    pagespeed RemoteConfigurationUrl "http://localhost:@@PRIMARY_PORT@@/mod_pagespeed_test/remote_config/remote.cfg.out.of.scope";
+    pagespeed RemoteConfigurationUrl "http://127.0.0.1:5554/remote.cfg";
   }
   server {
     listen @@SECONDARY_PORT@@;
@@ -1108,7 +1106,7 @@ http {
     listen [::]:@@SECONDARY_PORT@@;
     server_name remote-config-experiment.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
-    pagespeed RemoteConfigurationUrl "http://localhost:@@PRIMARY_PORT@@/mod_pagespeed_test/remote_config/remote.cfg.experiment";
+    pagespeed RemoteConfigurationUrl "http://127.0.0.1:5557/remote.cfg";
   }
 
 
