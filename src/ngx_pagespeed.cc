@@ -1276,7 +1276,7 @@ RewriteOptions* ps_determine_remote_options(ps_srv_conf_t* cfg_s) {
     RewriteOptions* remote_options =
         cfg_s->server_context->global_options()->Clone();
     // This fetch is blocking for up to remote_configuration_timeout_ms ms.
-    cfg_s->server_context->GetRemoteOptions(remote_options);
+    cfg_s->server_context->GetRemoteOptions(remote_options, false);
     return remote_options;
   }
   return NULL;
