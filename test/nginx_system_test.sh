@@ -302,6 +302,9 @@ fi
 #
 # TODO(sligicki): When the prioritize critical css race condition is fixed, the
 # two prioritize_critical_css tests no longer need to be listed here.
+# TODO(oschaaf): Now that we wait after we send a SIGHUP for the new worker 
+# process to handle requests, check if we can remove more from the expected 
+# failures here under valgrind.
 if $USE_VALGRIND; then
     PAGESPEED_EXPECTED_FAILURES+="
 ~combine_css Maximum size of combined CSS.~
@@ -310,7 +313,6 @@ if $USE_VALGRIND; then
 ~IPRO flow uses cache as expected.~
 ~IPRO flow doesn't copy uncacheable resources multiple times.~
 ~inline_unauthorized_resources allows unauthorized css selectors~
-~Blocking rewrite enabled.~
 "
 fi
 
@@ -551,6 +553,14 @@ fire_ab_load
 check wget $EXAMPLE_ROOT/styles/W.rewrite_css_images.css.pagespeed.cf.Hash.css \
   -O /dev/null
 check_simple "$NGINX_EXECUTABLE" -s reload -c "$PAGESPEED_CONF"
+# Wait for the new worker process with the new configuration to get ready, or
+# else the sudden reset of the shared mem statistics/cache might catch upcoming
+# tests unaware.
+while [ $(scrape_stat image_rewrite_total_original_bytes) -gt 0 ]
+do
+    echo "Waiting for new worker to get ready..."
+    sleep .1
+done
 
 check wget $EXAMPLE_ROOT/styles/W.rewrite_css_images.css.pagespeed.cf.Hash.css \
   -O /dev/null
