@@ -1261,12 +1261,6 @@ http {
       deny all;
     }
 
-    location /mod_pagespeed_test/remote_config/ {
-      add_header Cache-Control "public, max-age=100";
-      add_header Content-Type "text/plain";
-      pagespeed off;
-    }
-
     location ~ "\.pagespeed\.([a-z]\.)?[a-z]{2}\.[^.]{10}\.[^.]+" {
       add_header "" "";
     }
