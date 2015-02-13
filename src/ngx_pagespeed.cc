@@ -267,6 +267,12 @@ ngx_int_t ps_base_fetch_handler(ngx_http_request_t* r) {
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                  "ps fetch handler: %V", &r->uri);
 
+  if (ngx_terminate || ngx_exiting) {
+    ps_set_buffered(r, false);
+    ps_release_base_fetch(ctx);
+    return NGX_ERROR;
+  }
+
   if (!r->header_sent) {
     int status_code = ctx->base_fetch->response_headers()->status_code();
     bool status_ok = (status_code != 0) && (status_code < 400);
@@ -304,6 +310,7 @@ ngx_int_t ps_base_fetch_handler(ngx_http_request_t* r) {
     // collect response headers from pagespeed
     rc = ctx->base_fetch->CollectHeaders(&r->headers_out);
     if (rc == NGX_ERROR) {
+      ps_release_base_fetch(ctx);
       return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
@@ -312,6 +319,7 @@ ngx_int_t ps_base_fetch_handler(ngx_http_request_t* r) {
 
     // standard nginx send header check see ngx_http_send_response
     if (rc == NGX_ERROR || rc > NGX_OK) {
+      ps_release_base_fetch(ctx);
       return ngx_http_filter_finalize_request(r, NULL, rc);
     }
 
@@ -1244,7 +1252,13 @@ ngx_int_t ps_decline_request(ngx_http_request_t* r) {
   ps_request_ctx_t* ctx = ps_get_request_context(r);
   CHECK(ctx != NULL);
 
+  ctx->driver->Cleanup();
+  ctx->driver = NULL;
+
   // re init ctx
+  ctx->html_rewrite = true;
+  ctx->in_place = false;
+  ps_release_base_fetch(ctx);
   ps_set_buffered(r, false);
 
   r->count++;
@@ -1313,7 +1327,7 @@ RewriteOptions* ps_determine_request_options(
     // Failed to parse query params or request headers.  Treat this as if there
     // were no query params given.
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                  "ps_route request: parsing headers or query params failed.");
+                  "ps_determine_request_options: parsing headers or query params failed.");
     return NULL;
   }
 
@@ -1593,8 +1607,7 @@ void ps_release_request_context(void* data) {
 
 // Set us up for processing a request.  Creates a request context and determines
 // which handler should deal with the request.
-RequestRouting::Response ps_route_request(ngx_http_request_t* r,
-                                          bool is_resource_fetch) {
+RequestRouting::Response ps_route_request(ngx_http_request_t* r) {
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
 
   if (!cfg_s->server_context->global_options()->enabled()) {
@@ -1602,6 +1615,9 @@ RequestRouting::Response ps_route_request(ngx_http_request_t* r,
     return RequestRouting::kPagespeedDisabled;
   }
 
+  if (ngx_terminate || ngx_exiting) {
+    return RequestRouting::kError;
+  }
   if (r->err_status != 0) {
     return RequestRouting::kErrorResponse;
   }
@@ -1763,9 +1779,7 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
       response_category == RequestRouting::kGlobalAdmin ||
       response_category == RequestRouting::kCachePurge;
 
-  if (html_rewrite) {
-    ps_release_base_fetch(ctx);
-  } else {
+  if (!html_rewrite) {
     // create request ctx
     CHECK(ctx == NULL);
     ctx = new ps_request_ctx_t();
@@ -2286,11 +2300,6 @@ ngx_int_t ps_in_place_check_header_filter(ngx_http_request_t* r) {
 
   // If our request was finalized during the IPRO lookup, we decline.
   if (r->connection->error) {
-    ctx->driver->Cleanup();
-    ctx->driver = NULL;
-    // enable html_rewrite
-    ctx->html_rewrite = true;
-    ctx->in_place = false;
     return ps_decline_request(r);
   }
 
@@ -2359,12 +2368,6 @@ ngx_int_t ps_in_place_check_header_filter(ngx_http_request_t* r) {
     message_handler->Message(
         kInfo, "Could not rewrite resource in-place: %s", url.c_str());
   }
-
-  ctx->driver->Cleanup();
-  ctx->driver = NULL;
-  // enable html_rewrite
-  ctx->html_rewrite = true;
-  ctx->in_place = false;
 
   return ps_decline_request(r);
 }
@@ -2739,7 +2742,7 @@ ngx_int_t ps_content_handler(ngx_http_request_t* r) {
                  "http pagespeed handler \"%V\"", &r->uri);
 
   RequestRouting::Response response_category =
-      ps_route_request(r, true /* is a resource fetch */);
+      ps_route_request(r);
   switch (response_category) {
     case RequestRouting::kError:
       return NGX_ERROR;
