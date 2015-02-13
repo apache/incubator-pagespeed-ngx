@@ -23,6 +23,7 @@ goog.provide('pagespeed.MobNav');
 goog.require('goog.array');
 goog.require('goog.dom');
 goog.require('goog.dom.NodeType');
+goog.require('goog.dom.TagName');
 goog.require('goog.dom.classlist');
 goog.require('goog.json');
 goog.require('goog.net.Jsonp');
@@ -236,10 +237,10 @@ pagespeed.MobNav.prototype.hasImages_ = function(visibilityMatters, node) {
   if (!goog.dom.isElement(node)) {
     return false;
   }
-  if (node.tagName === 'IMG') {
+  if (node.nodeName.toUpperCase() === goog.dom.TagName.IMG) {
     return (!visibilityMatters || node.offsetParent !== null);
   }
-  var images = node.getElementsByTagName('IMG');
+  var images = node.getElementsByTagName(goog.dom.TagName.IMG);
   if (visibilityMatters) {
     // Check in reverse; see
     // http://stackoverflow.com/questions/8747086/
@@ -884,13 +885,13 @@ pagespeed.MobNav.prototype.labelNavDepth_ = function(node, currDepth,
   var navATags = [];
   var inUl = opt_inUl || false;
   for (var child = node.firstChild; child; child = child.nextSibling) {
-    if (child.tagName == 'UL') {
+    if (child.nodeName.toUpperCase() == goog.dom.TagName.UL) {
       // If this is the first UL, then start labeling its nodes at depth 1.
       var nextDepth = inUl ? currDepth + 1 : currDepth;
       navATags = goog.array.join(navATags,
                                  this.labelNavDepth_(child, nextDepth, true));
     } else {
-      if (child.tagName == 'A') {
+      if (child.nodeName.toUpperCase() == goog.dom.TagName.A) {
         child.setAttribute('data-mobilize-nav-level', currDepth);
         navATags.push(child);
       }
@@ -925,7 +926,7 @@ pagespeed.MobNav.prototype.dedupNavMenuItems_ = function() {
       } else {
         // We already have this menu item, so queue up the containing parent
         // LI tag to be removed.
-        if (aTag.parentNode.tagName == 'LI') {
+        if (aTag.parentNode.nodeName.toUpperCase() == goog.dom.TagName.LI) {
           nodesToDelete.push(aTag.parentNode);
         }
       }
@@ -954,7 +955,7 @@ pagespeed.MobNav.prototype.cleanupNavPanel_ = function() {
     node.removeAttribute('width');
     node.removeAttribute('height');
 
-    if (node.tagName == 'A') {
+    if (node.nodeName.toUpperCase() == goog.dom.TagName.A) {
       // We use textContent instead of innerText to see if the node has content
       // because innerText is aware of CSS styling and won't return the text of
       // hidden elements. This is problematic because this function runs while
@@ -1165,7 +1166,7 @@ pagespeed.MobNav.prototype.addNavButtonEvents_ = function() {
             'psmob-menu-expand-icon') ?
                 e.target.parentNode :
                 e.target;
-    if (target.tagName == 'DIV') {
+    if (target.nodeName.toUpperCase() == goog.dom.TagName.DIV) {
       // A click was registered on the div that has the hierarchical menu text
       // and icon. Open up the UL, which should be the next element.
       goog.dom.classlist.toggle(target.nextSibling, 'open');

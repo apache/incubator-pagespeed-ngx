@@ -18,6 +18,7 @@
 
 goog.provide('pagespeed.MobTheme');
 
+goog.require('goog.dom.TagName');
 goog.require('goog.dom.classlist');
 goog.require('pagespeed.MobColor');
 goog.require('pagespeed.MobLogo');
@@ -82,7 +83,7 @@ pagespeed.MobTheme.synthesizeLogoSpan_ = function(logo, backgroundColor,
   logoSpan.id = 'psmob-logo-span';
 
   if (logo && logo.foregroundImage) {
-    var newImage = document.createElement('IMG');
+    var newImage = document.createElement(goog.dom.TagName.IMG);
     newImage.src = logo.foregroundImage;
     newImage.style.backgroundColor =
         pagespeed.MobUtil.colorNumbersToString(backgroundColor);

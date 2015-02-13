@@ -21,6 +21,7 @@ goog.provide('pagespeed.MobUtil');
 
 goog.require('goog.color');
 goog.require('goog.dom');
+goog.require('goog.dom.TagName');
 goog.require('goog.math.Box');
 goog.require('goog.string');
 goog.require('goog.uri.utils');
@@ -275,8 +276,9 @@ pagespeed.MobUtil.isSinglePixel = function(img) {
  */
 pagespeed.MobUtil.findBackgroundImage = function(element) {
   var image = null;
-  if ((element.tagName != 'SCRIPT') && (element.tagName != 'STYLE') &&
-      element.style) {
+  var nodeName = element.nodeName.toUpperCase();
+  if ((nodeName != goog.dom.TagName.SCRIPT) &&
+      (nodeName != goog.dom.TagName.STYLE) && element.style) {
     var computedStyle = window.getComputedStyle(element);
     if (computedStyle) {
       image = computedStyle.getPropertyValue('background-image');
@@ -425,7 +427,7 @@ pagespeed.MobUtil.castElement = function(node) {
 
 
 /**
- * Enum for image source. We consider images from 'IMG' tag, 'SVG' tag, and
+ * Enum for image source. We consider images from IMG tag, SVG tag, and
  * background.
  * @enum {string}
  * @export
@@ -713,13 +715,13 @@ pagespeed.MobUtil.extractImage = function(element, source) {
   var imageSrc = null;
   switch (source) {
     case pagespeed.MobUtil.ImageSource.IMG:
-      if (element.tagName == source) {
+      if (element.nodeName == source) {
         imageSrc = element.src;
       }
       break;
 
     case pagespeed.MobUtil.ImageSource.SVG:
-      if (element.tagName == source) {
+      if (element.nodeName == source) {
         var svgString = new XMLSerializer().serializeToString(element);
         var domUrl = self.URL || self.webkitURL || self;
         var svgBlob = new Blob([svgString],

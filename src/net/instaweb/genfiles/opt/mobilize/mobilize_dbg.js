@@ -6475,8 +6475,8 @@ pagespeed.MobUtil.isSinglePixel = function(a) {
   return 1 == a.naturalHeight && 1 == a.naturalWidth;
 };
 pagespeed.MobUtil.findBackgroundImage = function(a) {
-  var b = null;
-  return "SCRIPT" != a.tagName && "STYLE" != a.tagName && a.style && (a = window.getComputedStyle(a)) && (b = a.getPropertyValue("background-image"), "none" == b && (b = null), b && 5 < b.length && 0 == b.indexOf("url(") && ")" == b[b.length - 1]) ? b = b.substring(4, b.length - 1) : null;
+  var b = null, b = a.nodeName.toUpperCase();
+  return b != goog.dom.TagName.SCRIPT && b != goog.dom.TagName.STYLE && a.style && (a = window.getComputedStyle(a)) && (b = a.getPropertyValue("background-image"), "none" == b && (b = null), b && 5 < b.length && 0 == b.indexOf("url(") && ")" == b[b.length - 1]) ? b = b.substring(4, b.length - 1) : null;
 };
 pagespeed.MobUtil.inFriendlyIframe = function() {
   if (null != window.parent && window != window.parent) {
@@ -6628,10 +6628,10 @@ pagespeed.MobUtil.extractImage = function(a, b) {
   var c = null;
   switch(b) {
     case pagespeed.MobUtil.ImageSource.IMG:
-      a.tagName == b && (c = a.src);
+      a.nodeName == b && (c = a.src);
       break;
     case pagespeed.MobUtil.ImageSource.SVG:
-      if (a.tagName == b) {
+      if (a.nodeName == b) {
         var d = (new XMLSerializer).serializeToString(a), c = self.URL || self.webkitURL || self, d = new Blob([d], {type:"image/svg+xml;charset=utf-8"}), c = c.createObjectURL(d)
       }
       break;
@@ -6802,7 +6802,7 @@ pagespeed.MobLayout = function(a) {
   pagespeed.MobUtil.consoleLog("window.pagespeed.MobLayout.maxWidth=" + this.maxWidth_);
 };
 pagespeed.MobLayout.CLAMPED_STYLES_ = "padding-left padding-bottom padding-right padding-top margin-left margin-bottom margin-right margin-top border-left-width border-bottom-width border-right-width border-top-width left top".split(" ");
-pagespeed.MobLayout.FLEXIBLE_WIDTH_TAGS_ = {A:!0, DIV:!0, FORM:!0, H1:!0, H2:!0, H3:!0, H4:!0, P:!0, SPAN:!0, TBODY:!0, TD:!0, TFOOT:!0, TH:!0, THEAD:!0, TR:!0};
+pagespeed.MobLayout.FLEXIBLE_WIDTH_TAGS_ = goog.object.createSet(goog.dom.TagName.A, goog.dom.TagName.DIV, goog.dom.TagName.FORM, goog.dom.TagName.H1, goog.dom.TagName.H2, goog.dom.TagName.H3, goog.dom.TagName.H4, goog.dom.TagName.P, goog.dom.TagName.SPAN, goog.dom.TagName.TBODY, goog.dom.TagName.TD, goog.dom.TagName.TFOOT, goog.dom.TagName.TH, goog.dom.TagName.THEAD, goog.dom.TagName.TR);
 pagespeed.MobLayout.NO_PERCENT_ = ["left", "width"];
 pagespeed.MobLayout.NEGATIVE_BOTTOM_MARGIN_ATTR_ = "data-pagespeed-negative-bottom-margin";
 pagespeed.MobLayout.prototype.addDontTouchId = function(a) {
@@ -6824,8 +6824,8 @@ pagespeed.MobLayout.prototype.dontTouch_ = function(a) {
   if (!a) {
     return!0;
   }
-  var b = a.tagName.toUpperCase();
-  return "SCRIPT" == b || "STYLE" == b || "IFRAME" == b || a.id && this.dontTouchIds_[a.id] || a.classList.contains("psmob-nav-panel") || a.classList.contains("psmob-header-bar") || a.classList.contains("psmob-header-spacer-div") || a.classList.contains("psmob-logo-span");
+  var b = a.nodeName.toUpperCase();
+  return b == goog.dom.TagName.SCRIPT || b == goog.dom.TagName.STYLE || b == goog.dom.TagName.IFRAME || a.id && this.dontTouchIds_[a.id] || a.classList.contains("psmob-nav-panel") || a.classList.contains("psmob-header-bar") || a.classList.contains("psmob-header-spacer-div") || a.classList.contains("psmob-logo-span");
 };
 pagespeed.MobLayout.prototype.getMobilizeElement = function(a) {
   a = pagespeed.MobUtil.castElement(a);
@@ -6868,7 +6868,7 @@ pagespeed.MobLayout.prototype.shrinkWideElements_ = function(a) {
     }
     pagespeed.MobUtil.setPropertyImportant(a, "min-height", "" + c + "px");
   }
-  if ("PRE" == a.tagName.toUpperCase() || "pre" == b.getPropertyValue("white-space") && a.offsetWidth > this.maxWidth_) {
+  if (a.nodeName.toUpperCase() == goog.dom.TagName.PRE || "pre" == b.getPropertyValue("white-space") && a.offsetWidth > this.maxWidth_) {
     a.style.overflowX = "scroll";
   }
   this.forEachMobilizableChild_(a, this.shrinkWideElements_);
@@ -6924,8 +6924,8 @@ pagespeed.MobLayout.prototype.resizeVerticallyAndReturnBottom_ = function(a, b) 
   if ("fixed" == e.getPropertyValue("position") && g) {
     return null;
   }
-  e = a.tagName.toUpperCase();
-  "BODY" != e && (l = f - c + 1, g ? d != f && (h ? pagespeed.MobUtil.setPropertyImportant(a, "height", "" + (d - c + 1) + "px") : pagespeed.MobUtil.setPropertyImportant(a, "height", "auto")) : ("IMG" != e && 0 < l && "" == a.style.backgroundSize && (pagespeed.MobUtil.removeProperty(a, "height"), pagespeed.MobUtil.setPropertyImportant(a, "height", "auto"), a.offsetHeight && (f = c + a.offsetHeight)), d = f));
+  e = a.nodeName.toUpperCase();
+  e != goog.dom.TagName.BODY && (l = f - c + 1, g ? d != f && (h ? pagespeed.MobUtil.setPropertyImportant(a, "height", "" + (d - c + 1) + "px") : pagespeed.MobUtil.setPropertyImportant(a, "height", "auto")) : (e != goog.dom.TagName.IMG && 0 < l && "" == a.style.backgroundSize && (pagespeed.MobUtil.removeProperty(a, "height"), pagespeed.MobUtil.setPropertyImportant(a, "height", "auto"), a.offsetHeight && (f = c + a.offsetHeight)), d = f));
   return d;
 };
 pagespeed.MobLayout.prototype.resizeIfTooWide_ = function(a) {
@@ -6933,24 +6933,24 @@ pagespeed.MobLayout.prototype.resizeIfTooWide_ = function(a) {
     this.resizeIfTooWide_(b[c]);
   }
   if (!(a.offsetWidth <= this.maxWidth_)) {
-    if (b = a.tagName.toUpperCase(), "TABLE" == b) {
+    if (b = a.nodeName.toUpperCase(), b == goog.dom.TagName.TABLE) {
       this.isDataTable_(a) ? this.makeHorizontallyScrollable_(a) : pagespeed.MobUtil.possiblyInQuirksMode() ? this.reorganizeTableQuirksMode_(a, this.maxWidth_) : this.reorganizeTableNoQuirksMode_(a, this.maxWidth_);
     } else {
       var c = null, d = a.offsetWidth, e = a.offsetHeight, f = "img";
-      if ("IMG" == b) {
+      if (b == goog.dom.TagName.IMG) {
         c = a.getAttribute("src");
       } else {
         var f = "background-image", c = pagespeed.MobUtil.findBackgroundImage(a), g = null == c ? null : this.psMob_.findImageSize(c);
         g && (d = g.width, e = g.height);
       }
-      null != c ? (g = d / this.maxWidth_, 1 < g && (g = e / g, pagespeed.MobUtil.consoleLog("Shrinking " + f + " " + c + " from " + d + "x" + e + " to " + this.maxWidth_ + "x" + g), "IMG" == b ? (pagespeed.MobUtil.setPropertyImportant(a, "width", "" + this.maxWidth_ + "px"), pagespeed.MobUtil.setPropertyImportant(a, "height", "" + g + "px")) : pagespeed.MobUtil.setPropertyImportant(a, "background-size", "" + this.maxWidth_ + "px " + g + "px"))) : "CODE" == b || "PRE" == b || "UL" == b ? this.makeHorizontallyScrollable_(a) : 
-      pagespeed.MobLayout.FLEXIBLE_WIDTH_TAGS_[b] ? (pagespeed.MobUtil.setPropertyImportant(a, "max-width", "100%"), pagespeed.MobUtil.removeProperty(a, "width")) : pagespeed.MobUtil.consoleLog("Punting on resize of " + b + " which wants to be " + a.offsetWidth + " but this.maxWidth_=" + this.maxWidth_);
+      null != c ? (g = d / this.maxWidth_, 1 < g && (g = e / g, pagespeed.MobUtil.consoleLog("Shrinking " + f + " " + c + " from " + d + "x" + e + " to " + this.maxWidth_ + "x" + g), b == goog.dom.TagName.IMG ? (pagespeed.MobUtil.setPropertyImportant(a, "width", "" + this.maxWidth_ + "px"), pagespeed.MobUtil.setPropertyImportant(a, "height", "" + g + "px")) : pagespeed.MobUtil.setPropertyImportant(a, "background-size", "" + this.maxWidth_ + "px " + g + "px"))) : b == goog.dom.TagName.CODE || b == 
+      goog.dom.TagName.PRE || b == goog.dom.TagName.UL ? this.makeHorizontallyScrollable_(a) : pagespeed.MobLayout.FLEXIBLE_WIDTH_TAGS_[b] ? (pagespeed.MobUtil.setPropertyImportant(a, "max-width", "100%"), pagespeed.MobUtil.removeProperty(a, "width")) : pagespeed.MobUtil.consoleLog("Punting on resize of " + b + " which wants to be " + a.offsetWidth + " but this.maxWidth_=" + this.maxWidth_);
     }
   }
 };
 pagespeed.MobLayout.prototype.countContainers_ = function(a) {
-  var b = 0, c = a.tagName.toUpperCase();
-  "DIV" != c && "TABLE" != c && "UL" != c || ++b;
+  var b = 0, c = a.nodeName.toUpperCase();
+  c != goog.dom.TagName.DIV && c != goog.dom.TagName.TABLE && c != goog.dom.TagName.UL || ++b;
   for (a = a.firstChild;a;a = a.nextSibling) {
     c = pagespeed.MobUtil.castElement(a), null != c && (b += this.countContainers_(c));
   }
@@ -6959,12 +6959,12 @@ pagespeed.MobLayout.prototype.countContainers_ = function(a) {
 pagespeed.MobLayout.prototype.isDataTable_ = function(a) {
   for (var b = 0, c = a.firstChild;c;c = c.nextSibling) {
     for (var d = c.firstChild;d;d = d.nextSibling) {
-      var e = c.tagName.toUpperCase();
-      if ("THEAD" == e || "TFOOT" == e) {
+      var e = c.nodeName.toUpperCase();
+      if (e == goog.dom.TagName.THEAD || e == goog.dom.TagName.TFOOT) {
         return!0;
       }
       for (e = d.firstChild;e;e = e.nextSibling) {
-        if (e.tagName && "TH" == e.tagName.toUpperCase()) {
+        if (e.nodeName.toUpperCase() == goog.dom.TagName.TH) {
           return!0;
         }
         ++b;
@@ -6974,7 +6974,7 @@ pagespeed.MobLayout.prototype.isDataTable_ = function(a) {
   return 3 * this.countContainers_(a) > b ? !1 : !0;
 };
 pagespeed.MobLayout.prototype.reorganizeTableQuirksMode_ = function(a, b) {
-  var c, d, e, f, g, h, k, l = document.createElement("DIV");
+  var c, d, e, f, g, h, k, l = document.createElement(goog.dom.TagName.DIV);
   l.style.display = "inline-block";
   var m = this.childElements_(a);
   for (c = 0;c < m.length;++c) {
@@ -6986,7 +6986,7 @@ pagespeed.MobLayout.prototype.reorganizeTableQuirksMode_ = function(a, b) {
           g = h.childNodes[0], h.removeChild(g), l.appendChild(g);
         } else {
           if (1 < h.childNodes.length) {
-            k = document.createElement("DIV");
+            k = document.createElement(goog.dom.TagName.DIV);
             k.style.display = "inline-block";
             var q = this.childElements_(h);
             for (f = 0;f < q.length;++f) {
@@ -7007,9 +7007,9 @@ pagespeed.MobLayout.prototype.reorganizeTableNoQuirksMode_ = function(a, b) {
   for (c = a.firstChild;c;c = c.nextSibling) {
     if (d = pagespeed.MobUtil.castElement(c), null != d) {
       for (pagespeed.MobUtil.removeProperty(d, "width"), pagespeed.MobUtil.setPropertyImportant(d, "max-width", "100%"), d = d.firstChild;d;d = d.nextSibling) {
-        if (e = pagespeed.MobUtil.castElement(d), null != e && "TR" == e.tagName.toUpperCase()) {
+        if (e = pagespeed.MobUtil.castElement(d), null != e && e.nodeName.toUpperCase() == goog.dom.TagName.TR) {
           for (pagespeed.MobUtil.removeProperty(e, "width"), pagespeed.MobUtil.setPropertyImportant(e, "max-width", "100%"), e = e.firstChild;e;e = e.nextSibling) {
-            f = pagespeed.MobUtil.castElement(e), null != f && "TD" == f.tagName.toUpperCase() && (pagespeed.MobUtil.setPropertyImportant(f, "max-width", "100%"), pagespeed.MobUtil.setPropertyImportant(f, "display", "inline-block"));
+            f = pagespeed.MobUtil.castElement(e), null != f && f.nodeName.toUpperCase() == goog.dom.TagName.TD && (pagespeed.MobUtil.setPropertyImportant(f, "max-width", "100%"), pagespeed.MobUtil.setPropertyImportant(f, "display", "inline-block"));
           }
         }
       }
@@ -7030,8 +7030,8 @@ pagespeed.MobLayout.prototype.cleanupStylesHelper_ = function(a) {
   for (c = 0;c < pagespeed.MobLayout.NO_PERCENT_.length;++c) {
     d = pagespeed.MobLayout.NO_PERCENT_[c], (e = b.getPropertyValue(d)) && "100%" != e && "auto" != e && 0 < e.length && "%" == e[e.length - 1] && pagespeed.MobUtil.setPropertyImportant(a, d, "auto");
   }
-  c = a.tagName.toUpperCase();
-  var f = "UL" == c || "OL" == c, g = "BODY" == c, h = !1, k = "";
+  c = a.nodeName.toUpperCase();
+  var f = c == goog.dom.TagName.UL || c == goog.dom.TagName.OL, g = c == goog.dom.TagName.BODY, h = !1, k = "";
   for (c = 0;c < pagespeed.MobLayout.CLAMPED_STYLES_.length;++c) {
     d = pagespeed.MobLayout.CLAMPED_STYLES_[c], f && goog.string.endsWith(d, "-left") || g && goog.string.startsWith(d, "margin-") || (e = pagespeed.MobUtil.computedDimension(b, d), null != e && (4 < e ? k += d + ":4px !important;" : 0 > e && (h = !0, "margin-bottom" == d && (h = -30 < e), h ? k += d + ":0px !important;" : a.setAttribute(pagespeed.MobLayout.NEGATIVE_BOTTOM_MARGIN_ATTR_, "1"))));
   }
@@ -7039,7 +7039,7 @@ pagespeed.MobLayout.prototype.cleanupStylesHelper_ = function(a) {
 };
 pagespeed.MobLayout.prototype.repairDistortedImages_ = function(a) {
   this.forEachMobilizableChild_(a, this.repairDistortedImages_);
-  if ("IMG" == a.tagName.toUpperCase()) {
+  if (a.nodeName.toUpperCase() == goog.dom.TagName.IMG) {
     var b = window.getComputedStyle(a), c = pagespeed.MobUtil.findRequestedDimension(a, "width"), d = pagespeed.MobUtil.findRequestedDimension(a, "height");
     if (c && d && b) {
       var e = pagespeed.MobUtil.computedDimension(b, "width"), b = pagespeed.MobUtil.computedDimension(b, "height");
@@ -7049,7 +7049,7 @@ pagespeed.MobLayout.prototype.repairDistortedImages_ = function(a) {
   }
 };
 pagespeed.MobLayout.prototype.reallocateWidthToTableData_ = function(a) {
-  for (;a && a.tagName && "TD" != a.tagName.toUpperCase();) {
+  for (;a && a.nodeName.toUpperCase() != goog.dom.TagName.TD;) {
     a = a.parentNode;
   }
   if (a) {
@@ -7057,11 +7057,11 @@ pagespeed.MobLayout.prototype.reallocateWidthToTableData_ = function(a) {
     if (b) {
       var c = 0;
       for (a = b.firstChild;a;a = a.nextSibling) {
-        a.tagName && "TD" == a.tagName.toUpperCase() && ++c;
+        a.nodeName.toUpperCase() == goog.dom.TagName.TD && ++c;
       }
       if (1 < c) {
         for (c = "width:" + Math.round(100 / c) + "%;", b = b.firstChild;b;b = b.nextSibling) {
-          a = pagespeed.MobUtil.castElement(b), null != a && "TD" == a.tagName.toUpperCase() && pagespeed.MobUtil.addStyles(a, c);
+          a = pagespeed.MobUtil.castElement(b), null != a && a.nodeName.toUpperCase() == goog.dom.TagName.TD && pagespeed.MobUtil.addStyles(a, c);
         }
       }
     }
@@ -7109,9 +7109,9 @@ pagespeed.MobLayout.prototype.stripFloats_ = function(a) {
   return b;
 };
 pagespeed.MobLayout.prototype.removeWidthConstraint_ = function(a, b) {
-  var c = a.tagName.toUpperCase();
-  "INPUT" != c && "SELECT" != c && ("" == a.style.backgroundSize && "auto" != b.width && pagespeed.MobUtil.setPropertyImportant(a, "width", "auto"), "IMG" != c && a.removeAttribute("width"), pagespeed.MobUtil.removeProperty(a, "border-left"), pagespeed.MobUtil.removeProperty(a, "border-right"), pagespeed.MobUtil.removeProperty(a, "margin-left"), pagespeed.MobUtil.removeProperty(a, "margin-right"), pagespeed.MobUtil.removeProperty(a, "padding-left"), pagespeed.MobUtil.removeProperty(a, "padding-right"), 
-  a.className = "" != a.className ? a.className + " psSingleColumn" : "psSingleColumn");
+  var c = a.nodeName.toUpperCase();
+  c != goog.dom.TagName.INPUT && c != goog.dom.TagName.SELECT && ("" == a.style.backgroundSize && "auto" != b.width && pagespeed.MobUtil.setPropertyImportant(a, "width", "auto"), c != goog.dom.TagName.IMG && a.removeAttribute("width"), pagespeed.MobUtil.removeProperty(a, "border-left"), pagespeed.MobUtil.removeProperty(a, "border-right"), pagespeed.MobUtil.removeProperty(a, "margin-left"), pagespeed.MobUtil.removeProperty(a, "margin-right"), pagespeed.MobUtil.removeProperty(a, "padding-left"), pagespeed.MobUtil.removeProperty(a, 
+  "padding-right"), a.className = "" != a.className ? a.className + " psSingleColumn" : "psSingleColumn");
 };
 pagespeed.MobLayout.prototype.expandColumns_ = function(a) {
   if ("fixed" != window.getComputedStyle(a).getPropertyValue("position")) {
@@ -7289,10 +7289,10 @@ pagespeed.MobNav.prototype.hasImages_ = function(a, b) {
   if (!goog.dom.isElement(b)) {
     return!1;
   }
-  if ("IMG" === b.tagName) {
+  if (b.nodeName.toUpperCase() === goog.dom.TagName.IMG) {
     return!a || null !== b.offsetParent;
   }
-  var c = b.getElementsByTagName("IMG");
+  var c = b.getElementsByTagName(goog.dom.TagName.IMG);
   if (a) {
     for (var d = c.length - 1;0 <= d;d--) {
       if (null !== c[d].offsetParent) {
@@ -7509,7 +7509,7 @@ pagespeed.MobNav.prototype.labelNavDepth_ = function(a, b, c) {
   var d = [];
   c = c || !1;
   for (a = a.firstChild;a;a = a.nextSibling) {
-    "UL" == a.tagName ? d = goog.array.join(d, this.labelNavDepth_(a, c ? b + 1 : b, !0)) : ("A" == a.tagName && (a.setAttribute("data-mobilize-nav-level", b), d.push(a)), d = goog.array.join(d, this.labelNavDepth_(a, b, c)));
+    a.nodeName.toUpperCase() == goog.dom.TagName.UL ? d = goog.array.join(d, this.labelNavDepth_(a, c ? b + 1 : b, !0)) : (a.nodeName.toUpperCase() == goog.dom.TagName.A && (a.setAttribute("data-mobilize-nav-level", b), d.push(a)), d = goog.array.join(d, this.labelNavDepth_(a, b, c)));
   }
   return d;
 };
@@ -7517,7 +7517,7 @@ pagespeed.MobNav.prototype.dedupNavMenuItems_ = function() {
   for (var a = this.navPanel_.getElementsByTagName("a"), b = {}, c = [], d = 0, e;e = a[d];d++) {
     if (e.href in b) {
       var f = e.innerHTML.toLowerCase();
-      -1 == b[e.href].indexOf(f) ? b[e.href].push(f) : "LI" == e.parentNode.tagName && c.push(e.parentNode);
+      -1 == b[e.href].indexOf(f) ? b[e.href].push(f) : e.parentNode.nodeName.toUpperCase() == goog.dom.TagName.LI && c.push(e.parentNode);
     } else {
       b[e.href] = [], b[e.href].push(e.innerHTML.toLowerCase());
     }
@@ -7528,7 +7528,7 @@ pagespeed.MobNav.prototype.dedupNavMenuItems_ = function() {
 };
 pagespeed.MobNav.prototype.cleanupNavPanel_ = function() {
   for (var a = this.navPanel_.querySelectorAll("*"), b = [], c = 0, d;d = a[c];c++) {
-    d.removeAttribute("style"), d.removeAttribute("width"), d.removeAttribute("height"), "A" == d.tagName && ("" == d.textContent && d.hasAttribute("title") && d.appendChild(document.createTextNode(d.getAttribute("title"))), "" == d.href && b.push(d));
+    d.removeAttribute("style"), d.removeAttribute("width"), d.removeAttribute("height"), d.nodeName.toUpperCase() == goog.dom.TagName.A && ("" == d.textContent && d.hasAttribute("title") && d.appendChild(document.createTextNode(d.getAttribute("title"))), "" == d.href && b.push(d));
   }
   for (c = 0;d = b[c];c++) {
     d.parentNode.removeChild(d);
@@ -7612,7 +7612,7 @@ pagespeed.MobNav.prototype.addMenuButtonEvents_ = function() {
 pagespeed.MobNav.prototype.addNavButtonEvents_ = function() {
   document.querySelector("nav.psmob-nav-panel > ul").addEventListener("click", function(a) {
     a = goog.dom.isElement(a.target) && goog.dom.classlist.contains(a.target, "psmob-menu-expand-icon") ? a.target.parentNode : a.target;
-    "DIV" == a.tagName && (goog.dom.classlist.toggle(a.nextSibling, "open"), goog.dom.classlist.toggle(a.firstChild, "open"));
+    a.nodeName.toUpperCase() == goog.dom.TagName.DIV && (goog.dom.classlist.toggle(a.nextSibling, "open"), goog.dom.classlist.toggle(a.firstChild, "open"));
   }, !1);
 };
 pagespeed.MobNav.prototype.Run = function(a) {
@@ -7645,7 +7645,7 @@ pagespeed.MobTheme.synthesizeLogoSpan_ = function(a, b, c) {
   var d = document.createElement("span");
   d.id = "psmob-logo-span";
   if (a && a.foregroundImage) {
-    var e = document.createElement("IMG");
+    var e = document.createElement(goog.dom.TagName.IMG);
     e.src = a.foregroundImage;
     e.style.backgroundColor = pagespeed.MobUtil.colorNumbersToString(b);
     e.id = "psmob-logo-image";

@@ -19,6 +19,8 @@
 
 goog.provide('pagespeed.MobLayout');
 
+goog.require('goog.dom.TagName');
+goog.require('goog.object');
 goog.require('goog.string');
 goog.require('pagespeed.MobUtil');
 
@@ -97,23 +99,22 @@ pagespeed.MobLayout.CLAMPED_STYLES_ = [
  *
  * @private {Object.<string, boolean>}
  */
-pagespeed.MobLayout.FLEXIBLE_WIDTH_TAGS_ = {
-  'A': true,
-  'DIV': true,
-  'FORM': true,
-  'H1': true,
-  'H2': true,
-  'H3': true,
-  'H4': true,
-  'P': true,
-  'SPAN': true,
-  'TBODY': true,
-  'TD': true,
-  'TFOOT': true,
-  'TH': true,
-  'THEAD': true,
-  'TR': true
-};
+pagespeed.MobLayout.FLEXIBLE_WIDTH_TAGS_ = goog.object.createSet(
+    goog.dom.TagName.A,
+    goog.dom.TagName.DIV,
+    goog.dom.TagName.FORM,
+    goog.dom.TagName.H1,
+    goog.dom.TagName.H2,
+    goog.dom.TagName.H3,
+    goog.dom.TagName.H4,
+    goog.dom.TagName.P,
+    goog.dom.TagName.SPAN,
+    goog.dom.TagName.TBODY,
+    goog.dom.TagName.TD,
+    goog.dom.TagName.TFOOT,
+    goog.dom.TagName.TH,
+    goog.dom.TagName.THEAD,
+    goog.dom.TagName.TR);
 
 
 /**
@@ -177,10 +178,10 @@ pagespeed.MobLayout.prototype.dontTouch_ = function(element) {
   if (!element) {
     return true;
   }
-  var tagName = element.tagName.toUpperCase();
-  return ((tagName == 'SCRIPT') ||
-          (tagName == 'STYLE') ||
-          (tagName == 'IFRAME') ||
+  var tagName = element.nodeName.toUpperCase();
+  return ((tagName == goog.dom.TagName.SCRIPT) ||
+          (tagName == goog.dom.TagName.STYLE) ||
+          (tagName == goog.dom.TagName.IFRAME) ||
           (element.id && this.dontTouchIds_[element.id]) ||
           element.classList.contains('psmob-nav-panel') ||
           element.classList.contains('psmob-header-bar') ||
@@ -340,9 +341,9 @@ pagespeed.MobLayout.prototype.shrinkWideElements_ = function(element) {
 
   // TODO(jmarantz): there are a variety of other tagNames that we should
   // allow to scroll as well.
-  if ((element.tagName.toUpperCase() == 'PRE') ||
+  if ((element.nodeName.toUpperCase() == goog.dom.TagName.PRE) ||
       (computedStyle.getPropertyValue('white-space') == 'pre') &&
-      (element.offsetWidth > this.maxWidth_)) {
+          (element.offsetWidth > this.maxWidth_)) {
     element.style.overflowX = 'scroll';
   }
 
@@ -494,15 +495,15 @@ pagespeed.MobLayout.prototype.resizeVerticallyAndReturnBottom_ =
     }
   }
 
-  var tagName = element.tagName.toUpperCase();
-  if (tagName != 'BODY') {
+  var tagName = element.nodeName.toUpperCase();
+  if (tagName != goog.dom.TagName.BODY) {
     var height = elementBottom - top + 1;
 
     if (!hasChildrenWithSizing) {
       // Leaf node, such as text or an A tag.  The only time we should respect
       // the CSS sizing here is if it's a sized IMG tag.  Note that IFRAMes are
       // already excluded by this.getMobilizeElement above.
-      if ((tagName != 'IMG') && (height > 0) &&
+      if ((tagName != goog.dom.TagName.IMG) && (height > 0) &&
           (element.style.backgroundSize == '')) {
         pagespeed.MobUtil.removeProperty(element, 'height');
         pagespeed.MobUtil.setPropertyImportant(element, 'height', 'auto');
@@ -543,8 +544,8 @@ pagespeed.MobLayout.prototype.resizeIfTooWide_ = function(element) {
     return;
   }
 
-  var tagName = element.tagName.toUpperCase();
-  if (tagName == 'TABLE') {
+  var tagName = element.nodeName.toUpperCase();
+  if (tagName == goog.dom.TagName.TABLE) {
     if (this.isDataTable_(element)) {
       this.makeHorizontallyScrollable_(element);
     } else if (pagespeed.MobUtil.possiblyInQuirksMode()) {
@@ -557,7 +558,7 @@ pagespeed.MobLayout.prototype.resizeIfTooWide_ = function(element) {
     var width = element.offsetWidth;
     var height = element.offsetHeight;
     var type = 'img';
-    if (tagName == 'IMG') {
+    if (tagName == goog.dom.TagName.IMG) {
       image = element.getAttribute('src');
     } else {
       type = 'background-image';
@@ -576,7 +577,7 @@ pagespeed.MobLayout.prototype.resizeIfTooWide_ = function(element) {
         pagespeed.MobUtil.consoleLog(
             'Shrinking ' + type + ' ' + image + ' from ' +
             width + 'x' + height + ' to ' + this.maxWidth_ + 'x' + newHeight);
-        if (tagName == 'IMG') {
+        if (tagName == goog.dom.TagName.IMG) {
           pagespeed.MobUtil.setPropertyImportant(
               element, 'width', '' + this.maxWidth_ + 'px');
           pagespeed.MobUtil.setPropertyImportant(
@@ -593,9 +594,9 @@ pagespeed.MobLayout.prototype.resizeIfTooWide_ = function(element) {
         }
       }
     } else {
-      if ((tagName == 'CODE') ||
-          (tagName == 'PRE') ||
-          (tagName == 'UL')) {
+      if ((tagName == goog.dom.TagName.CODE) ||
+          (tagName == goog.dom.TagName.PRE) ||
+          (tagName == goog.dom.TagName.UL)) {
         this.makeHorizontallyScrollable_(element);
       } else if (pagespeed.MobLayout.FLEXIBLE_WIDTH_TAGS_[tagName]) {
         pagespeed.MobUtil.setPropertyImportant(
@@ -622,9 +623,9 @@ pagespeed.MobLayout.prototype.resizeIfTooWide_ = function(element) {
  */
 pagespeed.MobLayout.prototype.countContainers_ = function(element) {
   var ret = 0;
-  var tagName = element.tagName.toUpperCase();
-  if ((tagName == 'DIV') || (tagName == 'TABLE') ||
-      (tagName == 'UL')) {
+  var tagName = element.nodeName.toUpperCase();
+  if ((tagName == goog.dom.TagName.DIV) ||
+      (tagName == goog.dom.TagName.TABLE) || (tagName == goog.dom.TagName.UL)) {
     ++ret;
   }
   for (var child = element.firstChild; child; child = child.nextSibling) {
@@ -663,14 +664,15 @@ pagespeed.MobLayout.prototype.isDataTable_ = function(table) {
   // from this routine if it looks tabular.
   for (var tchild = table.firstChild; tchild; tchild = tchild.nextSibling) {
     for (var tr = tchild.firstChild; tr; tr = tr.nextSibling) {
-      var tagName = tchild.tagName.toUpperCase();
-      if ((tagName == 'THEAD') || (tagName == 'TFOOT')) {
+      var tagName = tchild.nodeName.toUpperCase();
+      if ((tagName == goog.dom.TagName.THEAD) ||
+          (tagName == goog.dom.TagName.TFOOT)) {
         // The presence of a non-empty thead or tfoot is a strong signal
         // that the structure matters.
         return true;
       }
       for (var td = tr.firstChild; td; td = td.nextSibling) {
-        if (td.tagName && (td.tagName.toUpperCase() == 'TH')) {
+        if (td.nodeName.toUpperCase() == goog.dom.TagName.TH) {
           return true;
         }
         ++numDataNodes;
@@ -732,7 +734,7 @@ pagespeed.MobLayout.prototype.reorganizeTableQuirksMode_ =
   // a table with 1+X columns (X small, 1-3 depending on widths), M rows,
   // and some kind of navigational element to choose which X of the original
   // rows data should be displayed.
-  var replacement = document.createElement('DIV');
+  var replacement = document.createElement(goog.dom.TagName.DIV);
   replacement.style.display = 'inline-block';
   var tableChildren = this.childElements_(table);
   for (i = 0; i < tableChildren.length; ++i) {
@@ -749,7 +751,7 @@ pagespeed.MobLayout.prototype.reorganizeTableQuirksMode_ =
           data.removeChild(element);
           replacement.appendChild(element);
         } else if (data.childNodes.length > 1) {
-          div = document.createElement('DIV');
+          div = document.createElement(goog.dom.TagName.DIV);
           div.style.display = 'inline-block';
           var dataChildren = this.childElements_(data);
           for (m = 0; m < dataChildren.length; ++m) {
@@ -804,12 +806,14 @@ pagespeed.MobLayout.prototype.reorganizeTableNoQuirksMode_ =
       pagespeed.MobUtil.setPropertyImportant(tchild, 'max-width', fullWidth);
       for (rnode = tchild.firstChild; rnode; rnode = rnode.nextSibling) {
         row = pagespeed.MobUtil.castElement(rnode);
-        if ((row != null) && (row.tagName.toUpperCase() == 'TR')) {
+        if ((row != null) &&
+            (row.nodeName.toUpperCase() == goog.dom.TagName.TR)) {
           pagespeed.MobUtil.removeProperty(row, 'width');
           pagespeed.MobUtil.setPropertyImportant(row, 'max-width', fullWidth);
           for (dnode = row.firstChild; dnode; dnode = dnode.nextSibling) {
             data = pagespeed.MobUtil.castElement(dnode);
-            if ((data != null) && (data.tagName.toUpperCase() == 'TD')) {
+            if ((data != null) &&
+                (data.nodeName.toUpperCase() == goog.dom.TagName.TD)) {
               pagespeed.MobUtil.setPropertyImportant(
                   data, 'max-width', fullWidth);
               pagespeed.MobUtil.setPropertyImportant(
@@ -885,9 +889,10 @@ pagespeed.MobLayout.prototype.cleanupStylesHelper_ = function(element) {
   //     http://www.w3schools.com/cssref/pr_list-style-position.asp
   //
   // Don't remove padding from body.
-  var tagName = element.tagName.toUpperCase();
-  var isList = (tagName == 'UL') || (tagName == 'OL');
-  var isBody = (tagName == 'BODY');
+  var tagName = element.nodeName.toUpperCase();
+  var isList =
+      (tagName == goog.dom.TagName.UL) || (tagName == goog.dom.TagName.OL);
+  var isBody = (tagName == goog.dom.TagName.BODY);
   var clampToZero = false;
 
   // Reduce excess padding on margins.  We don't want to eliminate
@@ -948,7 +953,7 @@ pagespeed.MobLayout.prototype.cleanupStylesHelper_ = function(element) {
  */
 pagespeed.MobLayout.prototype.repairDistortedImages_ = function(element) {
   this.forEachMobilizableChild_(element, this.repairDistortedImages_);
-  if (element.tagName.toUpperCase() == 'IMG') {
+  if (element.nodeName.toUpperCase() == goog.dom.TagName.IMG) {
     var computedStyle = window.getComputedStyle(element);
     var requestedWidth = pagespeed.MobUtil.findRequestedDimension(
         element, 'width');
@@ -1005,8 +1010,7 @@ pagespeed.MobLayout.prototype.repairDistortedImages_ = function(element) {
  */
 pagespeed.MobLayout.prototype.reallocateWidthToTableData_ = function(element) {
   var tdParent = element;
-  while (tdParent && tdParent.tagName &&
-         (tdParent.tagName.toUpperCase() != 'TD')) {
+  while (tdParent && (tdParent.nodeName.toUpperCase() != goog.dom.TagName.TD)) {
     tdParent = tdParent.parentNode;
   }
   if (tdParent) {
@@ -1014,7 +1018,7 @@ pagespeed.MobLayout.prototype.reallocateWidthToTableData_ = function(element) {
     if (tr) {
       var td, dnode, numTds = 0;
       for (td = tr.firstChild; td; td = td.nextSibling) {
-        if (td.tagName && td.tagName.toUpperCase() == 'TD') {
+        if (td.nodeName.toUpperCase() == goog.dom.TagName.TD) {
           ++numTds;
         }
       }
@@ -1022,7 +1026,8 @@ pagespeed.MobLayout.prototype.reallocateWidthToTableData_ = function(element) {
         var style = 'width:' + Math.round(100 / numTds) + '%;';
         for (dnode = tr.firstChild; dnode; dnode = dnode.nextSibling) {
           td = pagespeed.MobUtil.castElement(dnode);
-          if ((td != null) && (td.tagName.toUpperCase() == 'TD')) {
+          if ((td != null) &&
+              (td.nodeName.toUpperCase() == goog.dom.TagName.TD)) {
             pagespeed.MobUtil.addStyles(td, style);
           }
         }
@@ -1166,14 +1171,15 @@ pagespeed.MobLayout.prototype.removeWidthConstraint_ =
     function(element, computedStyle) {
   // Input fields are sometimes reasonably sized, and shouldn't
   // be auto-width.
-  var tagName = element.tagName.toUpperCase();
-  if ((tagName != 'INPUT') && (tagName != 'SELECT')) {
+  var tagName = element.nodeName.toUpperCase();
+  if ((tagName != goog.dom.TagName.INPUT) &&
+      (tagName != goog.dom.TagName.SELECT)) {
     // Determine whether this element has a width constraint.
     if ((element.style.backgroundSize == '') &&
         (computedStyle.width != 'auto')) {
       pagespeed.MobUtil.setPropertyImportant(element, 'width', 'auto');
     }
-    if (tagName != 'IMG') {
+    if (tagName != goog.dom.TagName.IMG) {
       // Various table elements with explicit widths can be cleaned up
       // to let the browser decide.
       element.removeAttribute('width');
