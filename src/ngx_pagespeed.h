@@ -52,7 +52,7 @@ class InPlaceResourceRecorder;
 // NGX_DECLINED immediately unless send_last_buf.
 ngx_int_t string_piece_to_buffer_chain(
     ngx_pool_t* pool, StringPiece sp,
-    ngx_chain_t** link_ptr, bool send_last_buf);
+    ngx_chain_t** link_ptr, bool send_last_buf, bool flush);
 
 StringPiece str_to_string_piece(ngx_str_t s);
 
@@ -103,6 +103,7 @@ typedef struct {
   // We need to remember the URL here as well since we may modify what NGX
   // gets by stripping our special query params and honoring X-Forwarded-Proto.
   GoogleString url_string;
+  bool follow_flushes;
 } ps_request_ctx_t;
 
 ps_request_ctx_t* ps_get_request_context(ngx_http_request_t* r);

@@ -508,11 +508,13 @@ bool NgxFetch::ParseUrl() {
   url_.url.len = str_url_.length();
   url_.url.data = static_cast<u_char*>(ngx_palloc(pool_, url_.url.len));
   if (url_.url.data == NULL) {
+    DCHECK(false) << "NgxFetch::ParseUrl() without data";
     return false;
   }
   str_url_.copy(reinterpret_cast<char*>(url_.url.data), str_url_.length(), 0);
-
-  return NgxUrlAsyncFetcher::ParseUrl(&url_, pool_);
+  bool r = NgxUrlAsyncFetcher::ParseUrl(&url_, pool_);
+  DCHECK(r) << "NgxUrlAsyncFetcher::ParseUrl(&url_, pool_) failed";
+  return r; 
 }
 
 // Issue a request after the resolver is done

@@ -118,11 +118,13 @@ class NgxBaseFetch : public AsyncFetch {
   // this to be able to handle events which nginx request context has been
   // released while the event was in-flight.
   void Detach() { detached_ = true; DecrementRefCount(); }
+  static void CheckShutdownEvent();
 
   bool detached() { return detached_; }
 
   ngx_http_request_t* request() { return request_; }
   NgxBaseFetchType base_fetch_type() { return base_fetch_type_; }
+  static int64 request_ctx_count;
 
  private:
   virtual bool HandleWrite(const StringPiece& sp, MessageHandler* handler);
@@ -149,11 +151,11 @@ class NgxBaseFetch : public AsyncFetch {
   // Called by Done() and Release().  Decrements our reference count, and if
   // it's zero we delete ourself.
   int DecrefAndDeleteIfUnreferenced();
-
   static NgxEventConnection* event_connection;
+  static ngx_event_t* shutdown_event;
   
   // Live count of NgxBaseFetch instances that are currently in use.
-  static int active_base_fetches;
+  static int64 active_base_fetches;
 
   ngx_http_request_t* request_;
   GoogleString buffer_;

@@ -6,6 +6,10 @@ worker_processes  1;
 
 daemon @@DAEMON@@;
 master_process on;
+child_terminate_timeout @@CHILD_TERMINATE_MAX_SECONDS@@s;
+
+worker_rlimit_core 1024M;
+working_directory "@@TEST_TMP@@/";
 
 error_log "@@ERROR_LOG@@" debug;
 pid "@@TEST_TMP@@/nginx.pid";
@@ -1208,6 +1212,48 @@ http {
     server_name proxy-post-origin.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
     root "@@SERVER_ROOT@@";
+  }
+
+  server {
+    pagespeed on;
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name flush.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+    pagespeed RewriteLevel PassThrough;
+    root "@@TEST_TMP@@/../www/";
+    pagespeed RewriteDeadlinePerFlushMs 1;
+    pagespeed FollowFlushes on;
+
+    location ~ \.php$ {
+      fastcgi_param SCRIPT_FILENAME $request_filename;
+      fastcgi_param QUERY_STRING $query_string;
+      fastcgi_param REQUEST_METHOD $request_method;
+      fastcgi_param CONTENT_TYPE $content_type;
+      fastcgi_param CONTENT_LENGTH $content_length;
+      fastcgi_pass 127.0.0.1:9000;
+      fastcgi_buffering off;
+    }
+  }
+  server {
+    pagespeed on;
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name noflush.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+    pagespeed RewriteLevel PassThrough;
+    root "@@TEST_TMP@@/../www/";
+    pagespeed FollowFlushes off;
+
+    location ~ \.php$ {
+      fastcgi_param SCRIPT_FILENAME $request_filename;
+      fastcgi_param QUERY_STRING $query_string;
+      fastcgi_param REQUEST_METHOD $request_method;
+      fastcgi_param CONTENT_TYPE $content_type;
+      fastcgi_param CONTENT_LENGTH $content_length;
+      fastcgi_pass 127.0.0.1:9000;
+      fastcgi_buffering off;
+    }
   }
 
   server {

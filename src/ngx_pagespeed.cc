@@ -87,6 +87,8 @@ extern ngx_module_t ngx_pagespeed;
 
 net_instaweb::NgxRewriteDriverFactory* active_driver_factory = NULL;
 
+std::vector<net_instaweb::ProxyFetchFactory*> fetch_factories;
+
 namespace net_instaweb {
 
 const char* kInternalEtagName = "@psol-etag";
@@ -124,7 +126,7 @@ char* string_piece_to_pool_string(ngx_pool_t* pool, StringPiece sp) {
 // (potentially) longer string to nginx and want it to take ownership.
 ngx_int_t string_piece_to_buffer_chain(
     ngx_pool_t* pool, StringPiece sp, ngx_chain_t** link_ptr,
-    bool send_last_buf) {
+    bool send_last_buf, bool send_flush) {
   // Below, *link_ptr will be NULL if we're starting the chain, and the head
   // chain link.
   *link_ptr = NULL;
@@ -198,6 +200,10 @@ ngx_int_t string_piece_to_buffer_chain(
 
 
   CHECK(tail_link != NULL);
+
+  if (send_flush) {
+    tail_link->buf->flush = true;
+  }
   if (send_last_buf) {
     tail_link->buf->last_buf = true;
   }
@@ -225,6 +231,7 @@ void ps_set_buffered(ngx_http_request_t* r, bool on) {
 namespace {
 
 void ps_release_base_fetch(ps_request_ctx_t* ctx);
+void ps_release_request_context(void* data);
 
 }  // namespace
 
@@ -236,24 +243,28 @@ ngx_http_output_body_filter_pt ngx_http_next_body_filter;
 ngx_int_t ps_base_fetch_filter(ngx_http_request_t* r, ngx_chain_t* in) {
   ps_request_ctx_t* ctx = ps_get_request_context(r);
 
-  if (ctx == NULL || ctx->base_fetch == NULL) {
+  if (ctx == NULL) {
     return ngx_http_next_body_filter(r, in);
   }
 
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                  "http pagespeed write filter \"%V\"", &r->uri);
 
-  // send response body
-  if (in || r->connection->buffered) {
-    ngx_int_t rc = ngx_http_next_body_filter(r, in);
-    // We can't indicate that we are done yet, because we have an active base
-    // fetch associated to this request.
-    if (rc != NGX_OK) {
-      return rc;
-    }
+  if (in == NULL && ctx->base_fetch != NULL) {
+    // ps_html_rewrite_body_filter and ps_base_fetch_handler() can call us
+    // with a NULL chain. No need to wake the downstream for that.
+    return NGX_AGAIN;
   }
 
-  return NGX_AGAIN;
+  // send response body
+  ngx_int_t rc = ngx_http_next_body_filter(r, in);
+
+  // When we still have ctx->base_fetch set, that means we are not done.
+  if (ctx->base_fetch && rc == NGX_OK) {
+    return NGX_AGAIN;
+  }
+
+  return rc;
 }
 
 // This runs on the nginx event loop in response to seeing the byte PageSpeed
@@ -267,9 +278,8 @@ ngx_int_t ps_base_fetch_handler(ngx_http_request_t* r) {
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                  "ps fetch handler: %V", &r->uri);
 
-  if (ngx_terminate || ngx_exiting) {
-    ps_set_buffered(r, false);
-    ps_release_base_fetch(ctx);
+  if (ngx_terminate) {
+    ps_release_request_context(ctx);
     return NGX_ERROR;
   }
 
@@ -346,16 +356,9 @@ ngx_int_t ps_base_fetch_handler(ngx_http_request_t* r) {
     ps_set_buffered(r, false);
     ps_release_base_fetch(ctx);
     return NGX_HTTP_INTERNAL_SERVER_ERROR;
-  }
-
-  if (rc == NGX_AGAIN && cl == NULL) {
-    // there is no body buffer to send now.
-    return NGX_AGAIN;
-  }
-
-  if (rc == NGX_OK) {
-    ps_set_buffered(r, false);
+  } else if (rc == NGX_OK) {
     ps_release_base_fetch(ctx);
+    ps_set_buffered(r, false);
   }
 
   return ps_base_fetch_filter(r, cl);
@@ -1561,9 +1564,9 @@ void ps_release_base_fetch(ps_request_ctx_t* ctx) {
 
 // TODO(chaizhenhua): merge into NgxBaseFetch ctor
 void ps_create_base_fetch(ps_request_ctx_t* ctx,
-                               RequestContextPtr request_context,
-                               RequestHeaders* request_headers,
-                               NgxBaseFetchType type) {
+                             RequestContextPtr request_context,
+                             RequestHeaders* request_headers,
+                             NgxBaseFetchType type) {
   CHECK(ctx->base_fetch == NULL) << "Pre-existing base fetch!";
 
   ngx_http_request_t* r = ctx->r;
@@ -1587,7 +1590,10 @@ void ps_release_request_context(void* data) {
   //
   // If this is a resource fetch then proxy_fetch was never initialized.
   if (ctx->proxy_fetch != NULL) {
-    ctx->proxy_fetch->Done(false /* failure */);
+    // When ngx_terminate is set, we'll have cleaned up earlier.
+    if (!ngx_terminate) {
+      ctx->proxy_fetch->Done(false /* failure */);
+    }
     ctx->proxy_fetch = NULL;
   }
 
@@ -1596,12 +1602,12 @@ void ps_release_request_context(void* data) {
     ctx->inflater_ = NULL;
   }
 
-  if (ctx->driver != NULL) {
+  if (ctx->driver != NULL && !ngx_terminate) {
     ctx->driver->Cleanup();
     ctx->driver = NULL;
   }
 
-  if (ctx->recorder != NULL) {
+  if (ctx->recorder != NULL && !ngx_terminate) {
     ctx->recorder->Fail();
     ctx->recorder->DoneAndSetHeaders(NULL);  // Deletes recorder.
     ctx->recorder = NULL;
@@ -1609,6 +1615,7 @@ void ps_release_request_context(void* data) {
 
   ps_release_base_fetch(ctx);
   delete ctx;
+  NgxBaseFetch::request_ctx_count--;
 }
 
 // Set us up for processing a request.  Creates a request context and determines
@@ -1619,10 +1626,6 @@ RequestRouting::Response ps_route_request(ngx_http_request_t* r) {
   if (!cfg_s->server_context->global_options()->enabled()) {
     // Not enabled for this server block.
     return RequestRouting::kPagespeedDisabled;
-  }
-
-  if (ngx_terminate || ngx_exiting) {
-    return RequestRouting::kError;
   }
   if (r->err_status != 0) {
     return RequestRouting::kErrorResponse;
@@ -1698,17 +1701,6 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
 
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
   ps_request_ctx_t* ctx = ps_get_request_context(r);
-
-  if (ngx_terminate || ngx_exiting) {
-    cfg_s->server_context->message_handler()->Message(
-        kInfo, "ps_resource_handler declining: nginx worker is shutting down");
-
-    if (ctx == NULL) {
-      return NGX_DECLINED;
-    }
-    ps_release_base_fetch(ctx);
-    return NGX_DECLINED;
-  }
 
   CHECK(!(html_rewrite && (ctx == NULL || ctx->html_rewrite == false)));
 
@@ -1787,10 +1779,11 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
     // create request ctx
     CHECK(ctx == NULL);
     ctx = new ps_request_ctx_t();
-
+    NgxBaseFetch::request_ctx_count++;
     ctx->r = r;
     ctx->html_rewrite = false;
     ctx->in_place = false;
+    ctx->follow_flushes = options->follow_flushes();
     ctx->preserve_caching_headers = kDontPreserveHeaders;
 
     // See build_context_for_request() in mod_instaweb.cc
@@ -1988,9 +1981,22 @@ void ps_send_to_pagespeed(ngx_http_request_t* r,
                           ngx_chain_t* in) {
   ngx_chain_t* cur;
   int last_buf = 0;
+
   for (cur = in; cur != NULL; cur = cur->next) {
     last_buf = cur->buf->last_buf;
 
+    if (cur->buf->flush && ctx->follow_flushes) {
+      // Calling ctx->proxy_fetch->Flush(cfg_s->handler) will be a no-op here,
+      // unless we have follow_flushes or flush_html enabled. Note that PSOL
+      // might aggregate multiple flushes into 1, and actually flush a little bit
+      // later due to html parser state and earlier scheduled operations.
+      // Also, unless we also set the flush flag on the nginx buffers we won't
+      // actually flush.
+      // Note that too many flushes could harm optimization over larger html
+      // fragments as PSOL gets less context to work with, e.g. it can't combine
+      // two css files if a flush happens in between.
+      ctx->proxy_fetch->Flush(cfg_s->handler);
+    }
     // Buffers are not really the last buffer until they've been through
     // pagespeed.
     cur->buf->last_buf = 0;
@@ -2023,9 +2029,6 @@ void ps_send_to_pagespeed(ngx_http_request_t* r,
   if (last_buf) {
     ctx->proxy_fetch->Done(true /* success */);
     ctx->proxy_fetch = NULL;  // ProxyFetch deletes itself on Done().
-  } else {
-    // TODO(jefftk): Decide whether Flush() is warranted here.
-    ctx->proxy_fetch->Flush(cfg_s->handler);
   }
 }
 
@@ -2235,13 +2238,12 @@ ngx_int_t ps_html_rewrite_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                  "http pagespeed html rewrite body filter \"%V\"", &r->uri);
 
-
   if (in != NULL) {
     // Send all input data to the proxy fetch.
     ps_send_to_pagespeed(r, ctx, cfg_s, in);
   }
 
-  return ngx_http_next_body_filter(r, NULL);
+  return NGX_AGAIN;
 }
 
 void ps_html_rewrite_filter_init() {
@@ -2441,7 +2443,7 @@ ngx_int_t send_out_headers_and_body(
   // Send the body.
   ngx_chain_t* out;
   rc = string_piece_to_buffer_chain(
-      r->pool, output, &out, true /* send_last_buf */);
+      r->pool, output, &out, true /* send_last_buf */, false /* flush */);
   if (rc == NGX_ERROR) {
     return NGX_ERROR;
   }
@@ -2741,6 +2743,9 @@ ngx_int_t ps_content_handler(ngx_http_request_t* r) {
 
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                  "http pagespeed handler \"%V\"", &r->uri);
+  if (ngx_terminate) {
+    return NGX_DECLINED;
+  }
 
   RequestRouting::Response response_category =
       ps_route_request(r);
@@ -3020,6 +3025,9 @@ ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
 void ps_exit_child_process(ngx_cycle_t* cycle) {
   ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
       ngx_http_cycle_get_module_main_conf(cycle, ngx_pagespeed));
+  for (size_t i = 0; i < fetch_factories.size(); i++) {
+    fetch_factories[i]->CancelOutstanding();
+  }
   NgxBaseFetch::Terminate();
   cfg_m->driver_factory->ShutDown();
 }
@@ -3057,6 +3065,7 @@ ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
     // not instantiate a ProxyFetchFactory.
     if (cfg_s->server_context != NULL) {
       cfg_s->proxy_fetch_factory = new ProxyFetchFactory(cfg_s->server_context);
+      fetch_factories.push_back(cfg_s->proxy_fetch_factory);
       ngx_http_core_loc_conf_t* clcf = static_cast<ngx_http_core_loc_conf_t*>(
           cscfp[s]->ctx->loc_conf[ngx_http_core_module.ctx_index]);
       cfg_m->driver_factory->SetServerContextMessageHandler(
