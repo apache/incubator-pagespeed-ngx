@@ -494,19 +494,21 @@ class ImageRewriteTest : public RewriteTestBase {
   void TestSingleRewrite(const StringPiece& name,
                          const ContentType& input_type,
                          const ContentType& output_type,
-                         const char* initial_dims, const char* final_dims,
-                         bool expect_rewritten, bool expect_inline) {
+                         const char* initial_attributes,
+                         const char* final_attributes,
+                         bool expect_rewritten,
+                         bool expect_inline) {
     GoogleString initial_url = StrCat(kTestDomain, name);
     TestSingleRewriteWithoutAbs(initial_url, name, input_type, output_type,
-        initial_dims, final_dims, expect_rewritten, expect_inline);
+        initial_attributes, final_attributes, expect_rewritten, expect_inline);
   }
 
   void TestSingleRewriteWithoutAbs(const GoogleString& initial_url,
                                    const StringPiece& name,
                                    const ContentType& input_type,
                                    const ContentType& output_type,
-                                   const char* initial_dims,
-                                   const char* final_dims,
+                                   const char* initial_attributes,
+                                   const char* final_attributes,
                                    bool expect_rewritten,
                                    bool expect_inline) {
     GoogleString page_url = StrCat(kTestDomain, "test.html");
@@ -514,7 +516,7 @@ class ImageRewriteTest : public RewriteTestBase {
 
     const char html_boilerplate[] = "<img src='%s'%s>";
     GoogleString html_input =
-        StringPrintf(html_boilerplate, initial_url.c_str(), initial_dims);
+        StringPrintf(html_boilerplate, initial_url.c_str(), initial_attributes);
 
     ParseUrl(page_url, html_input);
 
@@ -548,7 +550,7 @@ class ImageRewriteTest : public RewriteTestBase {
     }
 
     GoogleString html_expected_output =
-        StringPrintf(html_boilerplate, rewritten_url.c_str(), final_dims);
+        StringPrintf(html_boilerplate, rewritten_url.c_str(), final_attributes);
     EXPECT_EQ(AddHtmlBody(html_expected_output), output_buffer_);
   }
 
@@ -1502,13 +1504,25 @@ TEST_F(ImageRewriteTest, ImageRewriteInlinePreserveURLsExplicit) {
   EXPECT_EQ(0, static_cast<int>(lru_cache()->num_inserts()));
 }
 
-TEST_F(ImageRewriteTest, ImageRewriteNoTransformAttribute) {
+TEST_F(ImageRewriteTest, NoTransform) {
   // Make sure that the image stays the same and that the attribute is stripped.
   options()->EnableFilter(RewriteOptions::kRecompressPng);
   rewrite_driver()->AddFilters();
   TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypePng,
-                    "pagespeed_no_transform",       // initial attributes
+                    " pagespeed_no_transform",      // initial attributes
                     "",                             // final attributes
+                    false,   // expect_rewritten
+                    false);  // expect_inline
+}
+
+TEST_F(ImageRewriteTest, NoTransformWithDims) {
+  // Make sure that the image stays the same and that the attribute is stripped.
+  options()->EnableFilter(RewriteOptions::kRecompressPng);
+  rewrite_driver()->AddFilters();
+  TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypePng,
+                    // initial attributes
+                    " width=10 height=10 pagespeed_no_transform",
+                    " width=10 height=10",  // final attributes
                     false,   // expect_rewritten
                     false);  // expect_inline
 }
