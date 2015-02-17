@@ -295,7 +295,8 @@ void copy_response_headers_from_ngx(const ngx_http_request_t* r,
 
   // When we don't have a date header, set one with the current time.
   if (headers->Lookup1(HttpAttributes::kDate) == NULL) {
-    headers->SetDate(ngx_current_msec);
+    PosixTimer timer;
+    headers->SetDate(timer.NowMs());
   }
 
   // TODO(oschaaf): ComputeCaching should be called in setupforhtml()?
