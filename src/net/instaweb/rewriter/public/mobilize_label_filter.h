@@ -19,14 +19,17 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_MOBILIZE_LABEL_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_MOBILIZE_LABEL_FILTER_H_
 
+#include <set>
 #include <vector>
 
 #include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/mobilize_decision_trees.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/html_element.h"
 #include "pagespeed/kernel/html/html_node.h"
 #include "pagespeed/kernel/html/html_parse.h"
@@ -58,6 +61,7 @@ struct ElementSample {
   MobileRole::Level role;        // Mobile role (from parent where applicable)
   MobileRole::Level propagated_role;  // Mobile role from children during label
   bool explicitly_labeled;       // Was this DOM element explicitly labeled?
+  bool explicitly_non_nav;       // Element or transitive ancestor NOT nav?
   std::vector<double> features;  // feature vector, always of size kNumFeatures.
 };
 
@@ -99,8 +103,11 @@ class MobilizeLabelFilter : public CommonFilter {
 
  private:
   void Init();
+  void GetClassesFromOptions(const RewriteOptions* options);
+  void HandleElementWithMetadata(HtmlElement* element);
   void HandleDivLikeElement(HtmlElement* element, MobileRole::Level role);
-  void CheckAttributeStrings(HtmlElement* element);
+  void HandleExplicitlyConfiguredElement(HtmlElement* element);
+  void ExplicitlyConfigureRole(MobileRole::Level role, HtmlElement* element);
   ElementSample* MakeNewSample(HtmlElement* element);
   void PopSampleStack();
   void ComputeContained(ElementSample* sample);
@@ -125,6 +132,11 @@ class MobilizeLabelFilter : public CommonFilter {
 
   std::vector<ElementSample*> samples_;  // in document order
   std::vector<ElementSample*> sample_stack_;
+
+  // The following two vectors are parsed from
+  // RewriteOptions::mob_nav_elements(), which outlives them.
+  std::set<StringPiece> nav_classes_;
+  std::set<StringPiece> non_nav_classes_;
 
   Variable* pages_labeled_;
   Variable* pages_role_added_;

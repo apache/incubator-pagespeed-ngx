@@ -234,6 +234,7 @@ const char RewriteOptions::kMobPhoneConversionLabel[] =
     "MobPhoneConversionLabel";
 const char RewriteOptions::kMobLayout[] = "MobLayout";
 const char RewriteOptions::kMobNav[] = "MobNav";
+const char RewriteOptions::kMobNavClasses[] = "MobNavigationalClasses";
 const char RewriteOptions::kMobStatic[] = "MobStatic";
 const char RewriteOptions::kMobTheme[] = "MobTheme";
 const char RewriteOptions::kModifyCachingHeaders[] = "ModifyCachingHeaders";
@@ -2286,6 +2287,11 @@ void RewriteOptions::AddProperties() {
       kQueryScope,
       "(experimental) whether to run navigation resynthesis when mobilizing",
       true);
+  AddBaseProperty(
+      "", &RewriteOptions::mob_nav_classes_, "navcls", kMobNavClasses,
+      kQueryScope,
+      "Comma separated list of element classes or ids to treat as "
+      "navigational, or with leading - as non-navigational", true);
   AddBaseProperty(
       false, &RewriteOptions::mob_static_, "mstatic", kMobStatic,
       kQueryScope,

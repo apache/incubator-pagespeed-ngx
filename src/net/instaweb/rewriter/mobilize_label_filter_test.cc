@@ -659,6 +659,35 @@ TEST_F(MobilizeLabelFilterTest, NoLabelInsideA) {
   EXPECT_EQ(5, divs_unlabeled_->Get());
 }
 
+TEST_F(MobilizeLabelFilterTest, ConfiguredInclusionAndExclusion) {
+  // Here we use HTML5 tags to create a document that would normally classify a
+  // particular way, and use configuration to change the classification of those
+  // tags.
+  options()->set_mob_nav_classes("+ok,-no,yes");
+  const char kOutputHtml[] =
+      "<head></head><body>\n"
+      " <header class='maybe ok yup' id=\"PageSpeed-1\">\n"
+      "  <ul><li><a href='n1'>Actually navigational</a></ul>\n"
+      " </header>\n"
+      " <nav class='maybe ok yup' id='no'>\n"
+      "  <nav id='no-a'>Nested forced nav</nav>\n"
+      "  <header class='yes' id='no-b'>Overridden</header>\n"
+      "  <ul><li><a href='n2'>Inherited non-navigational</a></ul>\n"
+      " </nav>\n"
+      " <nav class='yes no ok' id=\"PageSpeed-3\">\n"
+      "  <ul><li><a href='n1'>Not navigational</a></ul>\n"
+      " </nav>\n"
+      " <em class='no' id='yes'>\n"
+      "  Navigational\n"
+      " </em>\n"
+      " <script type=\"text/javascript\">"
+      "pagespeedNavigationalIds=['PageSpeed-1','no-a','no-b','yes'];\n"
+      "pagespeedMarginalIds=['no','PageSpeed-3'];\n"
+      "</script>";
+  ValidateExpected("Configured inclusion and exclusion",
+                   Unlabel(kOutputHtml), kOutputHtml);
+}
+
 TEST_F(MobilizeLabelFilterTest, NavInsideHeader) {
   // A common pattern in sites is to have a header area with a logo and some
   // navigational content.  We'd like to flag the navigational content!

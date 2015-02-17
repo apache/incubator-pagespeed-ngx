@@ -20,10 +20,10 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_OPTIONS_H_
 
 #include <bitset>
-#include <cstddef>                      // for size_t
+#include <cstddef>
 #include <map>
 #include <set>
-#include <utility>                      // for pair
+#include <utility>
 #include <vector>
 
 #include "base/logging.h"
@@ -331,6 +331,7 @@ class RewriteOptions {
   static const char kMobPhoneConversionLabel[];
   static const char kMobLayout[];
   static const char kMobNav[];
+  static const char kMobNavClasses[];
   static const char kMobStatic[];
   static const char kMobTheme[];
   static const char kModifyCachingHeaders[];
@@ -466,7 +467,7 @@ class RewriteOptions {
   };
 
   struct NameValue {
-    NameValue(const StringPiece& name_in, const StringPiece& value_in) {
+    NameValue(StringPiece name_in, StringPiece value_in) {
       name_in.CopyToString(&name);
       value_in.CopyToString(&value);
     }
@@ -1161,7 +1162,7 @@ class RewriteOptions {
   // Adds a set of filter prefixes (ids) to the set of distributable filters.
   // The names are not verified and all prefixes will be added.
   void DistributeFiltersByCommaSeparatedList(const StringPiece& filter_ids,
-                                               MessageHandler* handler);
+                                             MessageHandler* handler);
   // Adds the filter to the list of distributable filters.
   // For experimentation, may be removed later.
   void DistributeFilter(const StringPiece& filter_id);
@@ -1865,7 +1866,7 @@ class RewriteOptions {
     return lazyload_images_after_onload_.value();
   }
 
-  void set_lazyload_images_blank_url(const StringPiece& p) {
+  void set_lazyload_images_blank_url(StringPiece p) {
     set_option(GoogleString(p.data(), p.size()), &lazyload_images_blank_url_);
   }
   const GoogleString& lazyload_images_blank_url() const {
@@ -1966,7 +1967,7 @@ class RewriteOptions {
   const GoogleString& downstream_cache_purge_method() const {
     return downstream_cache_purge_method_.value();
   }
-  void set_downstream_cache_purge_method(const StringPiece& p) {
+  void set_downstream_cache_purge_method(StringPiece p) {
     set_option(p.as_string(), &downstream_cache_purge_method_);
   }
 
@@ -1985,7 +1986,7 @@ class RewriteOptions {
     return !downstream_cache_purge_location_prefix().empty();
   }
 
-  void set_downstream_cache_rebeaconing_key(const StringPiece& p) {
+  void set_downstream_cache_rebeaconing_key(StringPiece p) {
       set_option(p.as_string(), &downstream_cache_rebeaconing_key_);
   }
   const GoogleString& downstream_cache_rebeaconing_key() const {
@@ -2230,17 +2231,17 @@ class RewriteOptions {
   const GoogleString& blocking_rewrite_key() const {
     return blocking_rewrite_key_.value();
   }
-  void set_blocking_rewrite_key(const StringPiece& p) {
+  void set_blocking_rewrite_key(StringPiece p) {
     set_option(p.as_string(), &blocking_rewrite_key_);
   }
 
   void EnableBlockingRewriteForRefererUrlPattern(
-      const StringPiece& url_pattern) {
+      StringPiece url_pattern) {
     Modify();
     blocking_rewrite_referer_urls_.MakeWriteable()->Allow(url_pattern);
   }
 
-  bool IsBlockingRewriteEnabledForReferer(const StringPiece& url) const {
+  bool IsBlockingRewriteEnabledForReferer(StringPiece url) const {
     return blocking_rewrite_referer_urls_->Match(url, false);
   }
 
@@ -2298,14 +2299,14 @@ class RewriteOptions {
     return load_from_file_cache_ttl_ms_.was_set();
   }
 
-  void set_x_header_value(const StringPiece& p) {
+  void set_x_header_value(StringPiece p) {
     set_option(p.as_string(), &x_header_value_);
   }
   const GoogleString& x_header_value() const {
     return x_header_value_.value();
   }
 
-  void set_distributed_rewrite_key(const StringPiece& p) {
+  void set_distributed_rewrite_key(StringPiece p) {
       set_option(p.as_string(), &distributed_rewrite_key_);
   }
   const GoogleString& distributed_rewrite_key() const {
@@ -2319,7 +2320,7 @@ class RewriteOptions {
     return distribute_fetches_.value();
   }
 
-  void set_distributed_rewrite_servers(const StringPiece& p) {
+  void set_distributed_rewrite_servers(StringPiece p) {
       set_option(p.as_string(), &distributed_rewrite_servers_);
   }
   const GoogleString& distributed_rewrite_servers() const {
@@ -2347,7 +2348,7 @@ class RewriteOptions {
     set_option(x, &blink_max_html_size_rewritable_);
   }
 
-  void set_critical_line_config(const StringPiece& p) {
+  void set_critical_line_config(StringPiece p) {
       set_option(GoogleString(p.data(), p.size()), &critical_line_config_);
   }
   const GoogleString& critical_line_config() const {
@@ -2409,7 +2410,7 @@ class RewriteOptions {
     return max_combined_js_bytes_.value();
   }
 
-  void set_pre_connect_url(const StringPiece& p) {
+  void set_pre_connect_url(StringPiece p) {
     set_option(GoogleString(p.data(), p.size()), &pre_connect_url_);
   }
   const GoogleString& pre_connect_url() const {
@@ -2450,7 +2451,7 @@ class RewriteOptions {
     return allow_options_to_be_set_by_cookies_.value();
   }
 
-  void set_non_cacheables_for_cache_partial_html(const StringPiece& p) {
+  void set_non_cacheables_for_cache_partial_html(StringPiece p) {
     set_option(p.as_string(), &non_cacheables_for_cache_partial_html_);
   }
   const GoogleString& non_cacheables_for_cache_partial_html() const {
@@ -2464,7 +2465,7 @@ class RewriteOptions {
     return no_transform_optimized_images_.value();
   }
 
-  void set_access_control_allow_origins(const StringPiece& p) {
+  void set_access_control_allow_origins(StringPiece p) {
     set_option(p.as_string(), &access_control_allow_origins_);
   }
   const GoogleString& access_control_allow_origins() const {
@@ -2499,7 +2500,7 @@ class RewriteOptions {
     return serve_rewritten_webp_urls_to_any_agent_.value();
   }
 
-  void set_cache_fragment(const StringPiece& p) {
+  void set_cache_fragment(StringPiece p) {
     set_option(p.as_string(), &cache_fragment_);
   }
   const GoogleString& cache_fragment() const {
@@ -2538,6 +2539,12 @@ class RewriteOptions {
   void set_mob_layout(bool x) { set_option(x, &mob_layout_); }
   bool mob_nav() const { return mob_nav_.value(); }
   void set_mob_nav(bool x) { set_option(x, &mob_nav_); }
+  const GoogleString& mob_nav_classes() const {
+    return mob_nav_classes_.value();
+  }
+  void set_mob_nav_classes(StringPiece p) {
+    set_option(p.as_string(), &mob_nav_classes_);
+  }
   bool mob_static() const { return mob_static_.value(); }
   void set_mob_static(bool x) { set_option(x, &mob_static_); }
   const MobTheme& mob_theme() const { return mob_theme_.value(); }
@@ -2576,20 +2583,20 @@ class RewriteOptions {
 
   // Registers a wildcard pattern for to be allowed, potentially overriding
   // previous Disallow wildcards.
-  void Allow(const StringPiece& wildcard_pattern) {
+  void Allow(StringPiece wildcard_pattern) {
     Modify();
     allow_resources_.MakeWriteable()->Allow(wildcard_pattern);
   }
 
   // Registers a wildcard pattern for to be disallowed, potentially overriding
   // previous Allow wildcards.
-  void Disallow(const StringPiece& wildcard_pattern) {
+  void Disallow(StringPiece wildcard_pattern) {
     Modify();
     allow_resources_.MakeWriteable()->Disallow(wildcard_pattern);
   }
 
   // Like Allow().  See IsAllowedWhenInlining().
-  void AllowWhenInlining(const StringPiece& wildcard_pattern) {
+  void AllowWhenInlining(StringPiece wildcard_pattern) {
     Modify();
     allow_when_inlining_resources_.MakeWriteable()->Allow(wildcard_pattern);
   }
@@ -2597,13 +2604,13 @@ class RewriteOptions {
   // Helper function to Disallow something except when inlining.  Useful for
   // resources that you expect to be on good CDNs but may still be worth
   // inlining if small enough.
-  void AllowOnlyWhenInlining(const StringPiece& wildcard_pattern) {
+  void AllowOnlyWhenInlining(StringPiece wildcard_pattern) {
     Disallow(wildcard_pattern);
     AllowWhenInlining(wildcard_pattern);
   }
 
   // Like Disallow().  See IsAllowedWhenInlining().
-  void DisallowWhenInlining(const StringPiece& wildcard_pattern) {
+  void DisallowWhenInlining(StringPiece wildcard_pattern) {
     Modify();
     allow_when_inlining_resources_.MakeWriteable()->Disallow(wildcard_pattern);
   }
@@ -2647,7 +2654,7 @@ class RewriteOptions {
 
   // Determines, based on the sequence of Allow/Disallow calls above, whether
   // a url is allowed.
-  bool IsAllowed(const StringPiece& url) const {
+  bool IsAllowed(StringPiece url) const {
     return allow_resources_->Match(url, true /* default allow */);
   }
 
@@ -2658,13 +2665,13 @@ class RewriteOptions {
   //
   // If it returns true, it's ok to fetch, rewrite, and inline this resource as
   // if IsAllowed() had returned true.
-  bool IsAllowedWhenInlining(const StringPiece& url) const {
+  bool IsAllowedWhenInlining(StringPiece url) const {
     return allow_when_inlining_resources_->Match(
         url, false /* default disallow */);
   }
 
   // Adds a new comment wildcard pattern to be retained.
-  void RetainComment(const StringPiece& comment) {
+  void RetainComment(StringPiece comment) {
     Modify();
     retain_comments_.MakeWriteable()->Allow(comment);
   }
@@ -2672,18 +2679,18 @@ class RewriteOptions {
   // If enabled, the 'remove_comments' filter will remove all HTML comments.
   // As discussed in Issue 237, some comments have semantic value and must
   // be retained.
-  bool IsRetainedComment(const StringPiece& comment) const {
+  bool IsRetainedComment(StringPiece comment) const {
     return retain_comments_->Match(comment, false);
   }
 
   // Adds a new class name for which lazyload should be disabled.
-  void DisableLazyloadForClassName(const StringPiece& class_name) {
+  void DisableLazyloadForClassName(StringPiece class_name) {
     Modify();
     lazyload_enabled_classes_.MakeWriteable()->Disallow(class_name);
   }
 
   // Checks if lazyload images is enabled for the specified class.
-  bool IsLazyloadEnabledForClassName(const StringPiece& class_name) const {
+  bool IsLazyloadEnabledForClassName(StringPiece class_name) const {
     return lazyload_enabled_classes_->Match(class_name, true);
   }
 
@@ -2696,13 +2703,13 @@ class RewriteOptions {
 
   // Overrides the cache ttl for all urls matching the wildcard with
   // override_caching_ttl_ms().
-  void AddOverrideCacheTtl(const StringPiece& wildcard) {
+  void AddOverrideCacheTtl(StringPiece wildcard) {
     Modify();
     override_caching_wildcard_.MakeWriteable()->Allow(wildcard);
   }
 
   // Is the cache TTL overridden for the given url?
-  bool IsCacheTtlOverridden(const StringPiece& url) const {
+  bool IsCacheTtlOverridden(StringPiece url) const {
     return override_caching_wildcard_->Match(url, false);
   }
 
@@ -2710,7 +2717,7 @@ class RewriteOptions {
     AddRejectedHeaderWildcard(kRejectedRequestUrlKeyName, wildcard);
   }
 
-  void AddRejectedHeaderWildcard(const StringPiece& header_name,
+  void AddRejectedHeaderWildcard(StringPiece header_name,
                                  const GoogleString& wildcard) {
     Modify();
     std::pair<FastWildcardGroupMap::iterator, bool> insert_result =
@@ -3044,7 +3051,7 @@ class RewriteOptions {
   //
   // TODO(jmarantz): Remove this method and make another one that operate
   // directly on the Property.
-  void set_default_x_header_value(const StringPiece& x_header_value) {
+  void set_default_x_header_value(StringPiece x_header_value) {
     x_header_value_.set_global_default(x_header_value.as_string());
   }
 
@@ -3223,8 +3230,8 @@ class RewriteOptions {
     return IsRejectedRequest(kRejectedRequestUrlKeyName, url);
   }
 
-  bool IsRejectedRequest(const StringPiece& header_name,
-                         const StringPiece& value) const {
+  bool IsRejectedRequest(StringPiece header_name,
+                         StringPiece value) const {
     FastWildcardGroupMap::const_iterator it = rejected_request_map_.find(
         header_name);
     if (it != rejected_request_map_.end()) {
@@ -4013,6 +4020,7 @@ class RewriteOptions {
   Option<bool> mob_always_;
   Option<bool> mob_layout_;
   Option<bool> mob_nav_;
+  Option<GoogleString> mob_nav_classes_;
   Option<bool> mob_static_;
 
   Option<GoogleString> mob_map_location_;

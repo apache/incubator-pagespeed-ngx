@@ -309,6 +309,7 @@ ElementSample::ElementSample(int relevant_tag_depth, int tag_count,
       role(MobileRole::kUnassigned),
       propagated_role(MobileRole::kUnassigned),
       explicitly_labeled(false),
+      explicitly_non_nav(false),
       features(kNumFeatures, 0.0) {
   features[kElementTagDepth] = relevant_tag_depth;
   features[kPreviousTagCount] = tag_count;
@@ -519,6 +520,8 @@ void MobilizeLabelFilter::Init() {
   content_bytes_ = 0;
   content_non_blank_bytes_ = 0;
   were_roles_added_ = false;
+  nav_classes_.clear();
+  non_nav_classes_.clear();
 }
 
 void MobilizeLabelFilter::InitStats(Statistics* statistics) {
@@ -532,8 +535,34 @@ void MobilizeLabelFilter::InitStats(Statistics* statistics) {
   statistics->AddVariable(kAmbiguousRoleLabels);
 }
 
+void MobilizeLabelFilter::GetClassesFromOptions(const RewriteOptions* options) {
+  const GoogleString& nav_classes = options->mob_nav_classes();
+  if (nav_classes.empty()) {
+    return;
+  }
+  StringPieceVector classes;
+  SplitStringPieceToVector(nav_classes, ",", &classes, true /* Skip empty */);
+  for (int i = 0, n = classes.size(); i < n; ++i) {
+    StringPiece& element = classes[i];
+    TrimWhitespace(&element);
+    if (element.empty()) {
+      continue;
+    }
+    if (element[0] == '-') {
+      element.remove_prefix(1);
+      non_nav_classes_.insert(element);
+    } else {
+      if (element[0] == '+') {
+        element.remove_prefix(1);
+      }
+      nav_classes_.insert(element);
+    }
+  }
+}
+
 void MobilizeLabelFilter::StartDocumentImpl() {
   Init();
+  GetClassesFromOptions(driver()->options());
   // Set up global sample so that upward aggregation of samples has a base case.
   // It's at virtual tag depth 0 (tags start at tag depth 1).
   MakeNewSample(NULL);
@@ -560,36 +589,44 @@ void MobilizeLabelFilter::StartElementImpl(HtmlElement* element) {
   }
   // We've dropped all the tags we don't even want to look inside.
   // Now decide how interesting the tag might be.
-  const RelevantTagMetadata* tag_metadata = FindTagMetadata(element->keyword());
-  if (tag_metadata != NULL) {
-    if (element->keyword() == HtmlName::kA) {
-      ++link_depth_;
-    } else if (element->keyword() == HtmlName::kImg) {
-      // Track whether this img is inside or outside an <a> tag.
-      FeatureName contained_a_img_feature =
-          link_depth_ > 0 ? kContainedAImgTag : kContainedNonAImgTag;
-      sample_stack_.back()->features[contained_a_img_feature]++;
-    }
-    // Tag that we want to count (includes all the div-like tags).
-    IncrementRelevantTagDepth();
-    MobileRole::Level mobile_role = tag_metadata->mobile_role;
-    if (tag_metadata->is_div_like) {
-      HandleDivLikeElement(element, mobile_role);
-    }
-    if (!IsRoleValid(mobile_role)) {
-      sample_stack_.back()->
-          features[kRelevantTagCount + tag_metadata->relevant_tag]++;
-    } else {
-      // Note that we do not count role tags (at the moment) because we're using
-      // their presence to select training data -- as a result we end up with
-      // classifiers that classify first based on the role tags and then fall
-      // back to the other criteria we'd like to use.  So instead we count all
-      // of these tags as <div>s.
-      sample_stack_.back()->
-          features[kRelevantTagCount + kDivTag]++;
-    }
+  HandleElementWithMetadata(element);
+  if (!nav_classes_.empty() || !non_nav_classes_.empty()) {
+    HandleExplicitlyConfiguredElement(element);
   }
   ++tag_count_;
+}
+
+void MobilizeLabelFilter::HandleElementWithMetadata(HtmlElement* element) {
+  const RelevantTagMetadata* tag_metadata = FindTagMetadata(element->keyword());
+  if (tag_metadata == NULL) {
+    return;
+  }
+  if (element->keyword() == HtmlName::kA) {
+    ++link_depth_;
+  } else if (element->keyword() == HtmlName::kImg) {
+    // Track whether this img is inside or outside an <a> tag.
+    FeatureName contained_a_img_feature =
+        link_depth_ > 0 ? kContainedAImgTag : kContainedNonAImgTag;
+    sample_stack_.back()->features[contained_a_img_feature]++;
+  }
+  // Tag that we want to count (includes all the div-like tags).
+  IncrementRelevantTagDepth();
+  MobileRole::Level mobile_role = tag_metadata->mobile_role;
+  if (tag_metadata->is_div_like) {
+    HandleDivLikeElement(element, mobile_role);
+  }
+  if (!IsRoleValid(mobile_role)) {
+    sample_stack_.back()->
+        features[kRelevantTagCount + tag_metadata->relevant_tag]++;
+  } else {
+    // Note that we do not count role tags (at the moment) because we're using
+    // their presence to select training data -- as a result we end up with
+    // classifiers that classify first based on the role tags and then fall back
+    // to the other criteria we'd like to use.  So instead we count all of these
+    // tags as <div>s.
+    sample_stack_.back()->
+        features[kRelevantTagCount + kDivTag]++;
+  }
 }
 
 void MobilizeLabelFilter::HandleDivLikeElement(HtmlElement* element,
@@ -628,6 +665,48 @@ void MobilizeLabelFilter::HandleDivLikeElement(HtmlElement* element,
       }
     }
   }
+}
+
+void MobilizeLabelFilter::HandleExplicitlyConfiguredElement(
+    HtmlElement* element) {
+  // User configuration can force us to label an element as navigational (or
+  // non-navigational) based on its id or class.
+  // id matches take precedence, and exclusions take precedence over inclusions.
+  StringPiece id(element->EscapedAttributeValue(HtmlName::kId));
+  if (!id.empty()) {
+    if (non_nav_classes_.count(id) != 0) {
+      ExplicitlyConfigureRole(MobileRole::kUnassigned, element);
+      return;
+    } else if (nav_classes_.count(id) != 0) {
+      ExplicitlyConfigureRole(MobileRole::kNavigational, element);
+      return;
+    }
+  }
+  StringPiece class_attr(element->EscapedAttributeValue(HtmlName::kClass));
+  if (!class_attr.empty()) {
+    StringPieceVector classes;
+    SplitStringPieceToVector(class_attr, " ", &classes, true /* Skip empty */);
+    for (int i = 0, n = classes.size(); i < n; ++i) {
+      if (non_nav_classes_.count(classes[i]) != 0) {
+        ExplicitlyConfigureRole(MobileRole::kUnassigned, element);
+        return;
+      } else if (nav_classes_.count(classes[i]) != 0) {
+        ExplicitlyConfigureRole(MobileRole::kNavigational, element);
+        // Keep checking for exclusions.
+      }
+    }
+  }
+}
+
+// Return a sample for *element, which will be the most recently created sample
+// or (if that's not a sample for *element) a fresh sample.
+void MobilizeLabelFilter::ExplicitlyConfigureRole(
+    MobileRole::Level role, HtmlElement* element) {
+  ElementSample* sample = (sample_stack_.back()->element == element) ?
+      sample_stack_.back() : MakeNewSample(element);
+  sample->explicitly_labeled = true;
+  sample->explicitly_non_nav = role != MobileRole::kNavigational;
+  sample->role = role;
 }
 
 void MobilizeLabelFilter::EndElementImpl(HtmlElement* element) {
@@ -841,7 +920,7 @@ void MobilizeLabelFilter::SanityCheckEndOfDocumentState() {
     CHECK(parent != NULL);
     CHECK_NE(MobileRole::kKeeper, sample->role);
     CHECK_NE(MobileRole::kUnassigned, sample->role);
-    CHECK_LT(parent->features[kElementTagDepth],
+    CHECK_LE(parent->features[kElementTagDepth],
              sample->features[kElementTagDepth]);
     CHECK_LT(parent->features[kPreviousTagCount],
              sample->features[kPreviousTagCount]);
@@ -927,6 +1006,9 @@ void MobilizeLabelFilter::Label() {
       // Hand-labeled or HTML5.
       continue;
     }
+    if (!sample->explicitly_non_nav) {
+      sample->explicitly_non_nav = sample->parent->explicitly_non_nav;
+    }
     // The way navigation extraction currently works, we take the entire DOM
     // rooted at the point marked navigational.  To reflect that fact, once our
     // parent sample is navigational we fall through to parent->child
@@ -942,7 +1024,7 @@ void MobilizeLabelFilter::Label() {
       double content_confidence = content.Predict(sample->features);
       bool is_content = content_confidence >= kContentTreeThreshold;
       // If exactly one classification is chosen, use that.
-      if (is_navigational) {
+      if (is_navigational && !sample->explicitly_non_nav) {
         if (!is_header && !is_content) {
           sample->role = MobileRole::kNavigational;
         } else {
@@ -994,9 +1076,11 @@ void MobilizeLabelFilter::Label() {
     MobileRole::Level role_to_parent = sample->role;
     // First decide label of sample based on what children
     // have propagated to propagated_role.
-    if (role_to_parent == MobileRole::kUnassigned) {
+    if (sample->role == MobileRole::kUnassigned) {
       role_to_parent = sample->propagated_role;
-      if (role_to_parent == MobileRole::kUnassigned) {
+      if (role_to_parent == MobileRole::kUnassigned ||
+          (sample->explicitly_non_nav &&
+           role_to_parent == MobileRole::kNavigational)) {
         sample->role = MobileRole::kMarginal;
       } else {
         sample->role = role_to_parent;
