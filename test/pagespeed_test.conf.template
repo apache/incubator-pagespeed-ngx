@@ -1064,49 +1064,48 @@ http {
     listen [::]:@@SECONDARY_PORT@@;
     server_name remote-config.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
-    pagespeed RemoteConfigurationUrl "http://127.0.0.1:5550/remote.cfg";
+    pagespeed RemoteConfigurationUrl "http://127.0.0.1:9991/remote.cfg";
+    pagespeed RemoteConfigurationTimeoutMs 1500;
   }
   server {
     listen @@SECONDARY_PORT@@;
     listen [::]:@@SECONDARY_PORT@@;
     server_name remote-config-partially-invalid.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
-    pagespeed RemoteConfigurationUrl "http://127.0.0.1:5552/remote.cfg";
+    pagespeed RemoteConfigurationUrl "http://127.0.0.1:9992/remote.cfg";
+    pagespeed RemoteConfigurationTimeoutMs 1500;
   }
   server {
     listen @@SECONDARY_PORT@@;
     listen [::]:@@SECONDARY_PORT@@;
     server_name remote-config-invalid.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
-    pagespeed RemoteConfigurationUrl "http://127.0.0.1:5551/remote.cfg";
-  }
-  server {
-    listen @@SECONDARY_PORT@@;
-    listen [::]:@@SECONDARY_PORT@@;
-    server_name remote-config-out-of-scope.example.com;
-    pagespeed FileCachePath "@@SECONDARY_CACHE@@";
-    pagespeed RemoteConfigurationUrl "http://127.0.0.1:5554/remote.cfg";
+    pagespeed RemoteConfigurationUrl "http://127.0.0.1:9993/remote.cfg";
+    pagespeed RemoteConfigurationTimeoutMs 1500;
   }
   server {
     listen @@SECONDARY_PORT@@;
     listen [::]:@@SECONDARY_PORT@@;
     server_name remote-config-nc-host5.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
-    pagespeed RemoteConfigurationUrl "http://127.0.0.1:5555/remote.cfg";
+    pagespeed RemoteConfigurationUrl "http://127.0.0.1:9995/remote.cfg";
+    pagespeed RemoteConfigurationTimeoutMs 1500;
   }
   server {
     listen @@SECONDARY_PORT@@;
     listen [::]:@@SECONDARY_PORT@@;
     server_name remote-config-nc-host6.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
-    pagespeed RemoteConfigurationUrl "http://127.0.0.1:5556/remote.cfg";
+    pagespeed RemoteConfigurationUrl "http://127.0.0.1:9996/remote.cfg";
+    pagespeed RemoteConfigurationTimeoutMs 1500;
   }
   server {
     listen @@SECONDARY_PORT@@;
     listen [::]:@@SECONDARY_PORT@@;
     server_name remote-config-experiment.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
-    pagespeed RemoteConfigurationUrl "http://127.0.0.1:5557/remote.cfg";
+    pagespeed RemoteConfigurationUrl "http://127.0.0.1:9997/remote.cfg";
+    pagespeed RemoteConfigurationTimeoutMs 1500;
   }
 
 
