@@ -357,7 +357,11 @@ pagespeed.Mob.prototype.initiateMobilization = function() {
       this.imageMap_[url] = new pagespeed.MobUtil.Dimensions(
           dims['w'], dims['h']);
     }
-    this.collectBackgroundImages_(document.body);
+    // Collect image information if we need it for relayout or theme detection.
+    if (!pagespeed.MobTheme.precomputedThemeAvailable() ||
+        window.psLayoutMode) {
+      this.collectBackgroundImages_(document.body);
+    }
   }
   this.totalWork_ += this.pendingImageLoadCount_ *
       pagespeed.Mob.COST_PER_IMAGE_;

@@ -99,6 +99,13 @@ void CheckKeywordsSorted(const HtmlName::Keyword* list, int len) {
 }
 #endif  // #ifndef NDEBUG
 
+GoogleString FormatColorForJs(const RewriteOptions::Color& color) {
+  return StrCat("[",
+                IntegerToString(color.r), ",",
+                IntegerToString(color.g), ",",
+                IntegerToString(color.b), "]");
+}
+
 }  // namespace
 
 const HtmlName::Keyword MobilizeRewriteFilter::kKeeperTags[] = {
@@ -268,6 +275,25 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
                                 &label);
         StrAppend(&src, "var psMapLocation='", escaped_map_location, "';"
                   "var psMapConversionLabel='", label, "';");
+      }
+      if (options->has_mob_theme()) {
+         StrAppend(&src, "var psMobBackgroundColor=",
+                   FormatColorForJs(options->mob_theme().background_color),
+                   ";");
+         StrAppend(&src, "var psMobForegroundColor=",
+                   FormatColorForJs(options->mob_theme().foreground_color),
+                   ";");
+        if (!options->mob_theme().logo_url.empty()) {
+          GoogleString escaped_logo_url;
+          EscapeToJsStringLiteral(options->mob_theme().logo_url, false,
+                                  &escaped_logo_url);
+          StrAppend(&src, "var psMobLogoUrl='", escaped_logo_url, "';");
+        } else {
+          StrAppend(&src, "var psMobLogoUrl=null;");
+        }
+      } else {
+        StrAppend(&src, "var psMobBackgroundColor=null;");
+        StrAppend(&src, "var psMobForegroundColor=null;");
       }
       driver()->InsertScriptAfterCurrent(src, false);
 

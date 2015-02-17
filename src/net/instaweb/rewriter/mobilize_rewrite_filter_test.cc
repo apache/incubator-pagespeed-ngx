@@ -54,7 +54,9 @@ GoogleString Styles(bool layout_mode) {
        : ""));
 }
 
-GoogleString HeadAndViewport(bool layout_mode) {
+GoogleString HeadAndViewportWithTheme(
+    bool layout_mode, StringPiece bg_color, StringPiece fg_color,
+    StringPiece logo_url) {
   return StrCat(
       "<script>var psDebugMode=false;var psNavMode=true;var psLayoutMode=",
       layout_mode ? "true" : "false", ";"
@@ -62,12 +64,19 @@ GoogleString HeadAndViewport(bool layout_mode) {
       "var psConversionId=", Integer64ToString(kConversionId), ";"
       "var psPhoneNumber='", kPhoneNumber, "';",
       StrCat(
-          "var psPhoneConversionLabel='", kPhoneConversionLabel, "';"
+          "var psPhoneConversionLabel='", kPhoneConversionLabel, "';",
+          StrCat("var psMobBackgroundColor=", bg_color, ";"),
+          StrCat("var psMobForegroundColor=", fg_color, ";"),
+          (logo_url.empty() ? "" : StrCat("var psMobLogoUrl=", logo_url, ";")),
           "</script>",
           (layout_mode
            ? ("<meta name='viewport' content='width=device-width'/>"
               "<script src=\"/psajs/mobilize_xhr.0.js\"></script>")
            : "")));
+}
+
+GoogleString HeadAndViewport(bool layout_mode) {
+  return HeadAndViewportWithTheme(layout_mode, "null", "null", "");
 }
 
 }  // namespace
@@ -453,6 +462,33 @@ TEST_F(MobilizeRewriteFunctionalTest, HeaderWithinHeader) {
   CheckVariable(MobilizeRewriteFilter::kContentBlocks, 0);
   CheckVariable(MobilizeRewriteFilter::kMarginalBlocks, 0);
   CheckVariable(MobilizeRewriteFilter::kDeletedElements, 0);
+}
+
+class MobilizeRewriteThemeTest : public MobilizeRewriteFunctionalTest {
+ protected:
+  virtual bool LayoutMode() const { return false; }
+};
+
+TEST_F(MobilizeRewriteThemeTest, ConfigureTheme) {
+  options()->ClearSignatureForTesting();
+  ASSERT_EQ(RewriteOptions::kOptionOk,
+            options()->SetOptionFromName(RewriteOptions::kMobTheme,
+                                         "#ff0000 #0000ff"));
+  GoogleString original = StrCat("<head></head>", Body());
+  GoogleString expected = StrCat(
+      "<head>", HeadAndViewportWithTheme(false, "[255,0,0]",
+                                         "[0,0,255]", "null"),
+      Styles(LayoutMode()), "</head>", ExpectedBody());
+  ValidateExpected("ConfigureTheme", original, expected);
+
+  ASSERT_EQ(RewriteOptions::kOptionOk,
+            options()->SetOptionFromName(RewriteOptions::kMobTheme,
+                                         "#ff0000 #0000ff http://logo.com"));
+  expected = StrCat(
+      "<head>", HeadAndViewportWithTheme(false, "[255,0,0]",
+                                         "[0,0,255]", "'http://logo.com'"),
+      Styles(LayoutMode()), "</head>", ExpectedBody());
+  ValidateExpected("ConfigureTheme2", original, expected);
 }
 
 // Check we are called correctly from the driver.

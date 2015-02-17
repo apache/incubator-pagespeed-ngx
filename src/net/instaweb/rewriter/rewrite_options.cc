@@ -235,6 +235,7 @@ const char RewriteOptions::kMobPhoneConversionLabel[] =
 const char RewriteOptions::kMobLayout[] = "MobLayout";
 const char RewriteOptions::kMobNav[] = "MobNav";
 const char RewriteOptions::kMobStatic[] = "MobStatic";
+const char RewriteOptions::kMobTheme[] = "MobTheme";
 const char RewriteOptions::kModifyCachingHeaders[] = "ModifyCachingHeaders";
 const char RewriteOptions::kNoTransformOptimizedImages[] =
     "NoTransformOptimizedImages";
@@ -1093,6 +1094,46 @@ bool RewriteOptions::ParseBeaconUrl(const StringPiece& in, BeaconUrl* out) {
   StripBeaconUrlQueryParam(&out->http, &out->http_in);
   StripBeaconUrlQueryParam(&out->https, &out->https_in);
 
+  return true;
+}
+
+bool RewriteOptions::ParseFromString(StringPiece in, Color* color) {
+  // We just handle #aabbcc syntax.
+  if (in.length() != 7 || in[0] != '#') {
+    return false;
+  }
+  for (int i = 1; i < 7; ++i) {
+    if (!IsHexDigit(in[i])) {
+      return false;
+    }
+  }
+  uint32 r = 0, g = 0, b = 0;
+  AccumulateHexValue(in[1], &r);
+  AccumulateHexValue(in[2], &r);
+  AccumulateHexValue(in[3], &g);
+  AccumulateHexValue(in[4], &g);
+  AccumulateHexValue(in[5], &b);
+  AccumulateHexValue(in[6], &b);
+  color->r = static_cast<unsigned char>(r);
+  color->g = static_cast<unsigned char>(g);
+  color->b = static_cast<unsigned char>(b);
+  return true;
+}
+
+bool RewriteOptions::ParseFromString(StringPiece in, MobTheme* theme) {
+  StringPieceVector args;
+  SplitStringPieceToVector(in, " ", &args, true);
+  if (args.size() != 2 && args.size() != 3) {
+    return false;
+  }
+
+  if (!ParseFromString(args[0], &theme->background_color) ||
+      !ParseFromString(args[1], &theme->foreground_color)) {
+    return false;
+  }
+  if (args.size() == 3) {
+    args[2].CopyToString(&theme->logo_url);
+  }
   return true;
 }
 
@@ -2249,6 +2290,11 @@ void RewriteOptions::AddProperties() {
       false, &RewriteOptions::mob_static_, "mstatic", kMobStatic,
       kQueryScope,
       "(experimental) whether to load discrete mobilization JS",
+      true);
+  AddBaseProperty(
+      MobTheme(), &RewriteOptions::mob_theme_, "mtheme", kMobTheme,
+      kServerScope,  // DO NOT MAKE THIS QueryScope --- that would XSS.
+      "(experimental) pre-computed theme for mobilization JS",
       true);
 
   // Test-only, so no enum.
@@ -3685,6 +3731,19 @@ GoogleString RewriteOptions::OptionSignature(const BeaconUrl& beacon_url,
   return hasher->Hash(ToString(beacon_url));
 }
 
+GoogleString RewriteOptions::OptionSignature(const MobTheme& theme,
+                                             const Hasher* hasher) {
+  GoogleString to_hash;
+  to_hash.push_back(theme.background_color.r);
+  to_hash.push_back(theme.background_color.g);
+  to_hash.push_back(theme.background_color.b);
+  to_hash.push_back(theme.foreground_color.r);
+  to_hash.push_back(theme.foreground_color.g);
+  to_hash.push_back(theme.foreground_color.b);
+  to_hash.append(theme.logo_url);
+  return hasher->Hash(to_hash);
+}
+
 // static
 GoogleString RewriteOptions::OptionSignature(
     const protobuf::MessageLite& proto,
@@ -3886,6 +3945,17 @@ GoogleString RewriteOptions::ToString(const BeaconUrl& beacon_url) {
     StrAppend(&result, " ", beacon_url.https);
   }
   return result;
+}
+
+GoogleString RewriteOptions::ToString(const MobTheme& theme) {
+  return StrCat(ToString(theme.background_color), " ",
+                ToString(theme.foreground_color), " ",
+                theme.logo_url);
+}
+
+GoogleString RewriteOptions::ToString(const Color& color) {
+  return StringPrintf("#%2x%2x%2x", static_cast<int>(color.r),
+                      static_cast<int>(color.g), static_cast<int>(color.b));
 }
 
 // static

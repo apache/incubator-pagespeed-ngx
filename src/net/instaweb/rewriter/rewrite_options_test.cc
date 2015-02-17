@@ -977,6 +977,7 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
     RewriteOptions::kMobNav,
     RewriteOptions::kMobPhoneNumber,
     RewriteOptions::kMobStatic,
+    RewriteOptions::kMobTheme,
     RewriteOptions::kModifyCachingHeaders,
     RewriteOptions::kNoTransformOptimizedImages,
     RewriteOptions::kNonCacheablesForCachePartialHtml,
@@ -2954,6 +2955,23 @@ TEST_F(RewriteOptionsTest, OptionsToString) {
       "Invalidation Timestamp: Mon, 05 Apr 2010 18:51:26 GMT "
       "(1270493486000)\n"),
                options_.OptionsToString());
+}
+
+TEST_F(RewriteOptionsTest, ColorUtilTest) {
+  RewriteOptions::Color out;
+  EXPECT_FALSE(RewriteOptions::ParseFromString("", &out));
+  EXPECT_FALSE(RewriteOptions::ParseFromString("!123456", &out));
+  EXPECT_FALSE(RewriteOptions::ParseFromString("#12345", &out));
+  EXPECT_TRUE(RewriteOptions::ParseFromString("#123456", &out));
+  EXPECT_EQ(0x12u, out.r);
+  EXPECT_EQ(0x34u, out.g);
+  EXPECT_EQ(0x56u, out.b);
+  EXPECT_TRUE(RewriteOptions::ParseFromString("#ABCDEF", &out));
+  EXPECT_EQ(0xabu, out.r);
+  EXPECT_EQ(0xcdu, out.g);
+  EXPECT_EQ(0xefu, out.b);
+
+  EXPECT_EQ("#abcdef", RewriteOptions::ToString(out));
 }
 
 }  // namespace net_instaweb

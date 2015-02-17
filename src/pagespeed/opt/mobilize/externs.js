@@ -72,3 +72,15 @@ var psPhoneNumber;
 
 /** @type {boolean} */
 var psStaticJs;
+
+
+/** @type {goog.color.Rgb} */
+var psMobBackgroundColor;
+
+
+/** @type {goog.color.Rgb} */
+var psMobForegroundColor;
+
+
+/** @type {string} */
+var psMobLogoUrl;

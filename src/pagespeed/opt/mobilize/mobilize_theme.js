@@ -111,6 +111,8 @@ pagespeed.MobTheme.synthesizeLogoSpan_ = function(logo, backgroundColor,
  * @private
  */
 pagespeed.MobTheme.removeLogoImage_ = function(logo) {
+  // TODO(huibao): When we pre-configure logo, foregroundElement and
+  // foregroundSource aren't set, only the URL is.
   if (logo && logo.foregroundElement && logo.foregroundSource) {
     var element = logo.foregroundElement;
     switch (logo.foregroundSource) {
@@ -147,6 +149,15 @@ pagespeed.MobTheme.prototype.colorComplete_ = function(
 
 
 /**
+ * Returns true if precomputed theme information is available.
+ * @return {boolean}
+ */
+pagespeed.MobTheme.precomputedThemeAvailable = function() {
+  return Boolean(psMobBackgroundColor && psMobForegroundColor);
+};
+
+
+/**
  * Extract theme of the page. This is the entry method.
  * @param {!pagespeed.Mob} psMob
  * @param {function(!pagespeed.MobUtil.ThemeData)} doneCallback
@@ -158,9 +169,21 @@ pagespeed.MobTheme.extractTheme = function(psMob, doneCallback) {
     alert('Not expecting to start onloads after the callback is called');
   }
 
-  var mobLogo = new pagespeed.MobTheme();
-  mobLogo.doneCallback = doneCallback;
-  mobLogo.logo = (new pagespeed.MobLogo(psMob)).run();
-  (new pagespeed.MobColor()).run(mobLogo.logo,
-                                 goog.bind(mobLogo.colorComplete_, mobLogo));
+  var mobTheme = new pagespeed.MobTheme();
+  mobTheme.doneCallback = doneCallback;
+
+  // See if there is a precomputed theme + logo.
+  if (psMobBackgroundColor && psMobForegroundColor) {
+    if (psMobLogoUrl) {
+      mobTheme.logo = new pagespeed.MobLogo.LogoRecord;
+      mobTheme.logo.foregroundImage = psMobLogoUrl;
+    }
+    mobTheme.colorComplete_(mobTheme.logo, psMobBackgroundColor,
+                            psMobForegroundColor);
+    return;
+  }
+
+  mobTheme.logo = (new pagespeed.MobLogo(psMob)).run();
+  (new pagespeed.MobColor()).run(mobTheme.logo,
+                                 goog.bind(mobTheme.colorComplete_, mobTheme));
 };

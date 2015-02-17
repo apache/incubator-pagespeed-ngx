@@ -332,6 +332,7 @@ class RewriteOptions {
   static const char kMobLayout[];
   static const char kMobNav[];
   static const char kMobStatic[];
+  static const char kMobTheme[];
   static const char kModifyCachingHeaders[];
   static const char kNoTransformOptimizedImages[];
   static const char kNonCacheablesForCachePartialHtml[];
@@ -450,6 +451,18 @@ class RewriteOptions {
     GoogleString https;
     GoogleString http_in;
     GoogleString https_in;
+  };
+
+  struct Color {
+    unsigned char r;
+    unsigned char g;
+    unsigned char b;
+  };
+
+  struct MobTheme {
+    Color background_color;
+    Color foreground_color;
+    GoogleString logo_url;
   };
 
   struct NameValue {
@@ -1292,6 +1305,8 @@ class RewriteOptions {
   static bool ParseFromString(StringPiece value_string, BeaconUrl* value) {
     return ParseBeaconUrl(value_string, value);
   }
+  static bool ParseFromString(StringPiece value_string, Color* color);
+  static bool ParseFromString(StringPiece value_string, MobTheme* theme);
   static bool ParseFromString(StringPiece value_string,
                               protobuf::MessageLite* proto);
 
@@ -2525,6 +2540,8 @@ class RewriteOptions {
   void set_mob_nav(bool x) { set_option(x, &mob_nav_); }
   bool mob_static() const { return mob_static_.value(); }
   void set_mob_static(bool x) { set_option(x, &mob_static_); }
+  const MobTheme& mob_theme() const { return mob_theme_.value(); }
+  bool has_mob_theme() const { return mob_theme_.was_set(); }
   int64 mob_conversion_id() const { return mob_conversion_id_.value(); }
   void set_mob_conversion_id(int64 x) { set_option(x, &mob_conversion_id_); }
   const GoogleString& mob_map_conversion_label() const {
@@ -3196,6 +3213,7 @@ class RewriteOptions {
 
   FRIEND_TEST(RewriteOptionsTest, ExperimentMergeTest);
   FRIEND_TEST(RewriteOptionsTest, LookupOptionByNameTest);
+  FRIEND_TEST(RewriteOptionsTest, ColorUtilTest);
 
   // Helper functions to check if given header need to be blocked.
   bool HasRejectedHeader(const StringPiece& header_name,
@@ -3376,6 +3394,8 @@ class RewriteOptions {
                                       const Hasher* hasher);
   static GoogleString OptionSignature(const BeaconUrl& beacon_url,
                                       const Hasher* hasher);
+  static GoogleString OptionSignature(const MobTheme& mob_theme,
+                                      const Hasher* hasher);
   static GoogleString OptionSignature(
       const protobuf::MessageLite& proto,
       const Hasher* hasher);
@@ -3397,6 +3417,8 @@ class RewriteOptions {
   static GoogleString ToString(RewriteLevel x);
   static GoogleString ToString(const ResourceCategorySet &x);
   static GoogleString ToString(const BeaconUrl& beacon_url);
+  static GoogleString ToString(const MobTheme& mob_theme);
+  static GoogleString ToString(const Color& color);
   static GoogleString ToString(const protobuf::MessageLite& proto);
 
   // Returns true if p1's option_name is less than p2's. Used to order
@@ -3998,6 +4020,7 @@ class RewriteOptions {
   Option<int64> mob_conversion_id_;
   Option<GoogleString> mob_map_conversion_label_;
   Option<GoogleString> mob_phone_conversion_label_;
+  Option<MobTheme> mob_theme_;
 
   CopyOnWrite<JavascriptLibraryIdentification>
       javascript_library_identification_;
