@@ -1264,6 +1264,8 @@ OUT=$(cat "test/tmp/error.log" \
     | grep -v "\\[error\\].*Could not create directories*" \
     | grep -v "\\[error\\].*opening temp file: No such file or directory.*" \
     | grep -v "\\[error\\].*unexpected response.*" \
+    | grep -v "\\[error\\].*remote\.cfg.*" \
+    | grep -v "\\[warn\\].*remote\.cfg.*" \
     || true)
 
 check [ -z "$OUT" ]

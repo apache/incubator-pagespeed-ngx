@@ -1439,9 +1439,15 @@ bool ps_determine_options(ngx_http_request_t* r,
 
   // Start with directory options if we have them, otherwise request options.
   if (directory_options != NULL) {
-    *options = directory_options->Clone();
+    if (*options != NULL) {
+      (*options)->Merge(*directory_options);
+    } else {
+      *options = directory_options->Clone();
+    }
   } else {
-    *options = global_options->Clone();
+    if (*options == NULL) {
+      *options = global_options->Clone();
+    }
   }
 
   NgxRewriteDriverFactory* ngx_factory = dynamic_cast<NgxRewriteDriverFactory*>(
