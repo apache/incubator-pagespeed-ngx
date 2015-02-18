@@ -17,6 +17,8 @@
 #   PSOL_BINARY: absolute path to pagespeed_automatic.a
 
 mod_pagespeed_dir="${MOD_PAGESPEED_DIR:-unset}"
+position_aux="${POSITION_AUX:-unset}"
+
 if [ "$mod_pagespeed_dir" = "unset" ] ; then
   mod_pagespeed_dir="$ngx_addon_dir/psol/include"
   build_from_source=false
@@ -195,9 +197,14 @@ if [ $ngx_found = yes ]; then
     $ps_src/ngx_server_context.cc \
     $ps_src/ngx_url_async_fetcher.cc"
 
-  # Make pagespeed run immediately before gzip.
-  HTTP_FILTER_MODULES=$(echo $HTTP_FILTER_MODULES |\
-    sed "s/$HTTP_GZIP_FILTER_MODULE/$HTTP_GZIP_FILTER_MODULE $ngx_addon_name/")
+  if [ "$position_aux" = "true" ] ; then
+     HTTP_AUX_FILTER_MODULES="$HTTP_AUX_FILTER_MODULES $ngx_addon_name"
+  else
+    # Make pagespeed run immediately before gzip.
+    HTTP_FILTER_MODULES=$(echo $HTTP_FILTER_MODULES |\
+      sed "s/$HTTP_GZIP_FILTER_MODULE/$HTTP_GZIP_FILTER_MODULE $ngx_addon_name/")
+  fi
+
   # Make the etag header filter run immediately after gzip.
   HTTP_FILTER_MODULES=$(echo $HTTP_FILTER_MODULES |\
     sed "s/$HTTP_GZIP_FILTER_MODULE/ngx_pagespeed_etag_filter $HTTP_GZIP_FILTER_MODULE/")

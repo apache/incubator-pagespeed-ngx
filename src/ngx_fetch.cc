@@ -464,9 +464,6 @@ void NgxFetch::CallbackDone(bool success) {
     connection_ = NULL;
   }
 
-  // TODO(oschaaf): see https://github.com/pagespeed/ngx_pagespeed/pull/755
-  async_fetch_->Done(success);
-
   if (fetcher_ != NULL) {
     if (fetcher_->track_original_content_length()
         && async_fetch_->response_headers()->Has(
@@ -476,7 +473,7 @@ void NgxFetch::CallbackDone(bool success) {
     }
     fetcher_->FetchComplete(this);
   }
-
+  async_fetch_->Done(success);
   async_fetch_ = NULL;
 }
 

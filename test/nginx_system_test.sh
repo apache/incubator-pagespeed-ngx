@@ -33,6 +33,7 @@
 : ${SECONDARY_PORT:?"Set SECONDARY_PORT"}
 : ${MOD_PAGESPEED_DIR:?"Set MOD_PAGESPEED_DIR"}
 : ${NGINX_EXECUTABLE:?"Set NGINX_EXECUTABLE"}
+POSITION_AUX="${POSITION_AUX:-unset}"
 
 PRIMARY_HOSTNAME="localhost:$PRIMARY_PORT"
 SECONDARY_HOSTNAME="localhost:$SECONDARY_PORT"
@@ -66,7 +67,7 @@ function keepalive_test() {
   NGX_LOG_FILE="$1.error.log"
   POST_DATA=$3
 
-  for ((i=0; i < 100; i++)); do
+  for ((i=0; i < 10; i++)); do
     for accept_encoding in "" "gzip"; do
       if [ -z "$POST_DATA" ]; then
         curl -m 2 -S -s -v -H "Accept-Encoding: $accept_encoding" \
@@ -116,11 +117,25 @@ function keepalive_test() {
   check [ -z "$OUT" ]
 }
 
+function fire_ab_load() {
+  AB_PID="0"
+  if hash ab 2>/dev/null; then
+    ab -n 10000 -k -c 100 http://$PRIMARY_HOSTNAME/ &>/dev/null & AB_PID=$!
+    # Sleep to allow some queueing up of requests
+  else
+    echo "ab is not available, not able to test stressed shutdown and reload."
+  fi
+  sleep 2
+ }
 
 this_dir="$( cd $(dirname "$0") && pwd)"
 
-# stop nginx
-killall nginx
+# stop nginx/valgrind
+killall -s KILL nginx
+# TODO(oschaaf): Fix waiting for valgrind on 32 bits systems.
+killall -s KILL memcheck-amd64-
+while pgrep nginx > /dev/null; do sleep 1; done
+while pgrep memcheck > /dev/null; do sleep 1; done
 
 TEST_TMP="$this_dir/tmp"
 rm -r "$TEST_TMP"
@@ -273,16 +288,23 @@ BEACON_HANDLER="ngx_pagespeed_beacon"
 STATISTICS_URL=http://$PRIMARY_HOSTNAME/ngx_pagespeed_statistics
 
 # An expected failure can be indicated like: "~In-place resource optimization~"
-PAGESPEED_EXPECTED_FAILURES="
-~Override server header in resource flow.~
-~Override server header in IPRO flow.~
+PAGESPEED_EXPECTED_FAILURES=""
+
+if [ "$POSITION_AUX" = "true" ] ; then
+  PAGESPEED_EXPECTED_FAILURES+="
+~server-side includes~
 "
+fi
+
 
 # Some tests are flakey under valgrind. For now, add them to the expected
 # failures when running under valgrind.
 #
 # TODO(sligicki): When the prioritize critical css race condition is fixed, the
 # two prioritize_critical_css tests no longer need to be listed here.
+# TODO(oschaaf): Now that we wait after we send a SIGHUP for the new worker 
+# process to handle requests, check if we can remove more from the expected 
+# failures here under valgrind.
 if $USE_VALGRIND; then
     PAGESPEED_EXPECTED_FAILURES+="
 ~combine_css Maximum size of combined CSS.~
@@ -523,11 +545,29 @@ check test $(scrape_stat image_rewrite_total_original_bytes) -ge 10000
 # happens both before and after.
 start_test "Reload config"
 
+# Fire up some heavy load if ab is available to test a stressed reload.
+# TODO(oschaaf): make sure we wait for the new worker to get ready to accept 
+# requests.
+fire_ab_load
+
 check wget $EXAMPLE_ROOT/styles/W.rewrite_css_images.css.pagespeed.cf.Hash.css \
   -O /dev/null
 check_simple "$NGINX_EXECUTABLE" -s reload -c "$PAGESPEED_CONF"
+# Wait for the new worker process with the new configuration to get ready, or
+# else the sudden reset of the shared mem statistics/cache might catch upcoming
+# tests unaware.
+while [ $(scrape_stat image_rewrite_total_original_bytes) -gt 0 ]
+do
+    echo "Waiting for new worker to get ready..."
+    sleep .1
+done
+
 check wget $EXAMPLE_ROOT/styles/W.rewrite_css_images.css.pagespeed.cf.Hash.css \
   -O /dev/null
+if [ "$AB_PID" != "0" ]; then
+    echo "Kill ab (pid: $AB_PID)"
+    kill -s KILL $AB_PID &>/dev/null || true
+fi
 
 # This is dependent upon having a beacon handler.
 test_filter add_instrumentation beacons load.
@@ -1096,7 +1136,7 @@ check_not_from "$OUT" fgrep -qi 'addInstrumentationInit'
 if [ "$NATIVE_FETCHER" != "on" ]; then
   start_test Test that we can rewrite an HTTPS resource.
   fetch_until $TEST_ROOT/https_fetch/https_fetch.html \
-    'grep -c /https_gstatic_dot_com/1.gif.pagespeed.ce' 1
+   'grep -c /https_gstatic_dot_com/1.gif.pagespeed.ce' 1
 fi
 
 start_test Base config has purging disabled.  Check error message syntax.
@@ -1130,18 +1170,20 @@ OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP -O /dev/null -S $URL 2>&1)
 MATCHES=$(echo "$OUT" | grep -c "Server: override") || true
 check [ $MATCHES -eq 1 ]
 
-start_test Override server header in resource flow.
-URL=http://headers.example.com/mod_pagespeed_test/
-URL+=A.proxy_pass.css.pagespeed.cf.0.css
-OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP -O /dev/null -S $URL 2>&1)
-MATCHES=$(echo "$OUT" | grep -c "Server: override") || true
-check [ $MATCHES -eq 1 ]
+if [ "$POSITION_AUX" = "true" ] ; then
+  start_test Override server header in resource flow.
+  URL=http://headers.example.com/mod_pagespeed_test/
+  URL+=A.proxy_pass.css.pagespeed.cf.0.css
+  OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP -O /dev/null -S $URL 2>&1)
+  MATCHES=$(echo "$OUT" | grep -c "Server: override") || true
+  check [ $MATCHES -eq 1 ]
 
-start_test Override server header in IPRO flow.
-URL=http://headers.example.com/mod_pagespeed_test/proxy_pass.css
-OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP -O /dev/null -S $URL 2>&1)
-MATCHES=$(echo "$OUT" | grep -c "Server: override") || true
-check [ $MATCHES -eq 1 ]
+  start_test Override server header in IPRO flow.
+  URL=http://headers.example.com/mod_pagespeed_test/proxy_pass.css
+  OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP -O /dev/null -S $URL 2>&1)
+  MATCHES=$(echo "$OUT" | grep -c "Server: override") || true
+  check [ $MATCHES -eq 1 ]
+fi
 
 start_test Conditional cache-control header override in resource flow.
 URL=http://headers.example.com/mod_pagespeed_test/
@@ -1153,19 +1195,77 @@ check_from "$OUT" fgrep -qi '404'
 MATCHES=$(echo "$OUT" | grep -c "Cache-Control: override") || true
 check [ $MATCHES -eq 1 ]
 
+start_test Shutting down.
+
+# Fire up some heavy load if ab is available to test a stressed shutdown
+fire_ab_load
+
 if $USE_VALGRIND; then
-    # It is possible that there are still ProxyFetches outstanding
-    # at this point in time. Give them a few extra seconds to allow
-    # them to finish, so they will not generate valgrind complaints
-    echo "Sleeping 30 seconds to allow outstanding ProxyFetches to finish."
-    sleep 30
     kill -s quit $VALGRIND_PID
-    wait
+    while pgrep memcheck > /dev/null; do sleep 1; done
     # Clear the previously set trap, we don't need it anymore.
     trap - EXIT
 
     start_test No Valgrind complaints.
     check_not [ -s "$TEST_TMP/valgrind.log" ]
+else
+    check_simple "$NGINX_EXECUTABLE" -s quit -c "$PAGESPEED_CONF"
+    while pgrep nginx > /dev/null; do sleep 1; done
 fi
+
+if [ "$AB_PID" != "0" ]; then
+    echo "Kill ab (pid: $AB_PID)"
+    killall -s KILL $AB_PID &>/dev/null || true
+fi
+
+start_test Logged output looks healthy.
+
+# TODO(oschaaf): Sanity check for all the warnings/errors here.
+OUT=$(cat "test/tmp/error.log" \
+    | grep "\\[" \
+    | grep -v "\\[debug\\]" \
+    | grep -v "\\[info\\]" \
+    | grep -v "\\[notice\\]" \
+    | grep -v "\\[warn\\].*Cache Flush.*" \
+    | grep -v "\\[warn\\].*doesnotexist.css.*" \
+    | grep -v "\\[warn\\].*Invalid filter name: bogus.*" \
+    | grep -v "\\[warn\\].*You seem to have downstream caching.*" \
+    | grep -v "\\[warn\\].*Warning_trigger*" \
+    | grep -v "\\[warn\\].*Rewrite http://www.google.com/mod_pagespeed_example/ failed*" \
+    | grep -v "\\[warn\\].*A.bad:0:Resource*" \
+    | grep -v "\\[warn\\].*W.bad.pagespeed.cf.hash.css*" \
+    | grep -v "\\[warn\\].*BadName*" \
+    | grep -v "\\[warn\\].*CSS parsing error*" \
+    | grep -v "\\[warn\\].*Fetch failed for resource*" \
+    | grep -v "\\[warn\\].*Rewrite.*example.pdf failed*" \
+    | grep -v "\\[warn\\].*Rewrite.*hello.js failed*" \
+    | grep -v "\\[warn\\].*Resource based on.*ngx_pagespeed_statistics.*" \
+    | grep -v "\\[warn\\].*Canceling 1 functions on sequence Shutdown.*" \
+    | grep -v "\\[warn\\].*using uninitialized.*" \
+    | grep -v "\\[error\\].*BadName*" \
+    | grep -v "\\[error\\].*/mod_pagespeed/bad*" \
+    | grep -v "\\[error\\].*doesnotexist.css.*" \
+    | grep -v "\\[error\\].*is forbidden.*" \
+    | grep -v "\\[error\\].*access forbidden by rule.*" \
+    | grep -v "\\[error\\].*forbidden.example.com*" \
+    | grep -v "\\[error\\].*custom-paths.example.com*" \
+    | grep -v "\\[error\\].*bogus_format*" \
+    | grep -v "\\[error\\].*src/install/foo*" \
+    | grep -v "\\[error\\].*recv() failed*" \
+    | grep -v "\\[error\\].*send() failed*" \
+    | grep -v "\\[error\\].*Invalid url requested: js_defer.js.*" \
+    | grep -v "\\[error\\].*/mod_pagespeed_example/styles/yellow.css+blue.css.pagespeed.cc..css.*" \
+    | grep -v "\\[error\\].*/mod_pagespeed_example/images/Puzzle.jpg.pagespeed.ce..jpg.*" \
+    | grep -v "\\[error\\].*/pagespeed_custom_static/js_defer.js.*" \
+    | grep -v "\\[error\\].*UH8L-zY4b4AAAAAAAAAA.*" \
+    | grep -v "\\[error\\].*UH8L-zY4b4.*" \
+    | grep -v "\\[error\\].*Serf status 111(Connection refused) polling.*" \
+    | grep -v "\\[error\\].*Failed to make directory*" \
+    | grep -v "\\[error\\].*Could not create directories*" \
+    | grep -v "\\[error\\].*opening temp file: No such file or directory.*" \
+    | grep -v "\\[error\\].*unexpected response.*" \
+    || true)
+
+check [ -z "$OUT" ]
 
 check_failures_and_exit

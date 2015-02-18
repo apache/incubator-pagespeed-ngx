@@ -84,7 +84,8 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(
       hostname_(hostname.as_string()),
       port_(port),
       process_script_variables_(false),
-      process_script_variables_set_(false) {
+      process_script_variables_set_(false),
+      shut_down_(false) {
   InitializeDefaultOptions();
   default_options()->set_beacon_url("/ngx_pagespeed_beacon");
   SystemRewriteOptions* system_options = dynamic_cast<SystemRewriteOptions*>(
@@ -186,6 +187,13 @@ ServerContext* NgxRewriteDriverFactory::NewDecodingServerContext() {
 ServerContext* NgxRewriteDriverFactory::NewServerContext() {
   LOG(DFATAL) << "MakeNgxServerContext should be used instead";
   return NULL;
+}
+
+void NgxRewriteDriverFactory::ShutDown() {
+  if (!shut_down_) {
+    shut_down_ = true;
+    SystemRewriteDriverFactory::ShutDown();
+  }
 }
 
 void NgxRewriteDriverFactory::ShutDownMessageHandlers() {

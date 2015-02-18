@@ -15,6 +15,7 @@
  */
 
 // Author: jefftk@google.com (Jeff Kaufman)
+#include <unistd.h> //for usleep
 
 #include "ngx_base_fetch.h"
 #include "ngx_event_connection.h"
@@ -25,6 +26,7 @@
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "pagespeed/kernel/base/google_message_handler.h"
 #include "pagespeed/kernel/base/message_handler.h"
+#include "pagespeed/kernel/base/posix_timer.h"
 #include "pagespeed/kernel/http/response_headers.h"
 
 namespace net_instaweb {
@@ -34,6 +36,7 @@ const char kFlush = 'F';
 const char kDone = 'D';
 
 NgxEventConnection* NgxBaseFetch::event_connection = NULL;
+int NgxBaseFetch::active_base_fetches = 0;
 
 NgxBaseFetch::NgxBaseFetch(ngx_http_request_t* r,
                            NgxServerContext* server_context,
@@ -51,10 +54,12 @@ NgxBaseFetch::NgxBaseFetch(ngx_http_request_t* r,
       detached_(false),
       suppress_(false) {
   if (pthread_mutex_init(&mutex_, NULL)) CHECK(0);
+  __sync_add_and_fetch(&NgxBaseFetch::active_base_fetches, 1);
 }
 
 NgxBaseFetch::~NgxBaseFetch() {
   pthread_mutex_destroy(&mutex_);
+  __sync_add_and_fetch(&NgxBaseFetch::active_base_fetches, -1);
 }
 
 bool NgxBaseFetch::Initialize(ngx_cycle_t* cycle) {
@@ -65,6 +70,31 @@ bool NgxBaseFetch::Initialize(ngx_cycle_t* cycle) {
 
 void NgxBaseFetch::Terminate() {
   if (event_connection != NULL) {
+    GoogleMessageHandler handler;
+    PosixTimer timer;
+    int64 timeout_us = Timer::kSecondUs * 30;
+    int64 end_us = timer.NowUs() + timeout_us;
+    static unsigned int sleep_microseconds = 100;
+
+    handler.Message(
+        kInfo,"NgxBaseFetch::Terminate rounding up %d active base fetches.",
+        NgxBaseFetch::active_base_fetches);
+
+    // Try to continue processing and get the active base fetch count to 0
+    // untill the timeout expires.
+    // TODO(oschaaf): This needs more work.
+    while (NgxBaseFetch::active_base_fetches > 0 && end_us > timer.NowUs()) {
+      event_connection->Drain();
+      usleep(sleep_microseconds);
+    }
+
+    if (NgxBaseFetch::active_base_fetches != 0) {
+      handler.Message(
+          kWarning,"NgxBaseFetch::Terminate timed out with %d active base fetches.",
+          NgxBaseFetch::active_base_fetches);
+    }
+
+    // Close down the named pipe.
     event_connection->Shutdown();
     delete event_connection;
     event_connection = NULL;

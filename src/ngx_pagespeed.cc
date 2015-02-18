@@ -85,6 +85,8 @@ extern ngx_module_t ngx_pagespeed;
 // Needed for SystemRewriteDriverFactory to use shared memory.
 #define PAGESPEED_SUPPORT_POSIX_SHARED_MEM
 
+net_instaweb::NgxRewriteDriverFactory* active_driver_factory = NULL;
+
 namespace net_instaweb {
 
 const char* kInternalEtagName = "@psol-etag";
@@ -265,6 +267,12 @@ ngx_int_t ps_base_fetch_handler(ngx_http_request_t* r) {
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                  "ps fetch handler: %V", &r->uri);
 
+  if (ngx_terminate || ngx_exiting) {
+    ps_set_buffered(r, false);
+    ps_release_base_fetch(ctx);
+    return NGX_ERROR;
+  }
+
   if (!r->header_sent) {
     int status_code = ctx->base_fetch->response_headers()->status_code();
     bool status_ok = (status_code != 0) && (status_code < 400);
@@ -302,6 +310,7 @@ ngx_int_t ps_base_fetch_handler(ngx_http_request_t* r) {
     // collect response headers from pagespeed
     rc = ctx->base_fetch->CollectHeaders(&r->headers_out);
     if (rc == NGX_ERROR) {
+      ps_release_base_fetch(ctx);
       return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
@@ -310,6 +319,7 @@ ngx_int_t ps_base_fetch_handler(ngx_http_request_t* r) {
 
     // standard nginx send header check see ngx_http_send_response
     if (rc == NGX_ERROR || rc > NGX_OK) {
+      ps_release_base_fetch(ctx);
       return ngx_http_filter_finalize_request(r, NULL, rc);
     }
 
@@ -880,11 +890,12 @@ void ps_cleanup_srv_conf(void* data) {
   // to be shut down when we destroy any proxy_fetch_factories. This
   // will prevent any queued callbacks to destroyed proxy fetch factories
   // from being executed
-
   if (!factory_deleted && cfg_s->server_context != NULL) {
+    if (active_driver_factory == cfg_s->server_context->factory()) {
+      active_driver_factory = NULL;
+    }
     delete cfg_s->server_context->factory();
     factory_deleted = true;
-    NgxBaseFetch::Terminate();
   }
   if (cfg_s->proxy_fetch_factory != NULL) {
     delete cfg_s->proxy_fetch_factory;
@@ -931,12 +942,20 @@ void ps_set_conf_cleanup_handler(
 }
 
 void terminate_process_context() {
+  if (active_driver_factory != NULL) {
+    // If we got here, that means we are in the cache loader/manager
+    // or did not get a chance to cleanup otherwise.
+    delete active_driver_factory;
+    active_driver_factory = NULL;
+    NgxBaseFetch::Terminate();
+  }
   delete process_context;
   process_context = NULL;
 }
 
 void* ps_create_main_conf(ngx_conf_t* cf) {
   if (!process_context_cleanup_hooked) {
+    SystemRewriteDriverFactory::InitApr();
     atexit(terminate_process_context);
     process_context_cleanup_hooked = true;
   }
@@ -953,6 +972,7 @@ void* ps_create_main_conf(ngx_conf_t* cf) {
       new SystemThreadSystem(),
       "" /* hostname, not used */,
       -1 /* port, not used */);
+  active_driver_factory = cfg_m->driver_factory;
   cfg_m->driver_factory->Init();
   ps_set_conf_cleanup_handler(cf, ps_cleanup_main_conf, cfg_m);
   return cfg_m;
@@ -1232,7 +1252,13 @@ ngx_int_t ps_decline_request(ngx_http_request_t* r) {
   ps_request_ctx_t* ctx = ps_get_request_context(r);
   CHECK(ctx != NULL);
 
+  ctx->driver->Cleanup();
+  ctx->driver = NULL;
+
   // re init ctx
+  ctx->html_rewrite = true;
+  ctx->in_place = false;
+  ps_release_base_fetch(ctx);
   ps_set_buffered(r, false);
 
   r->count++;
@@ -1301,7 +1327,7 @@ RewriteOptions* ps_determine_request_options(
     // Failed to parse query params or request headers.  Treat this as if there
     // were no query params given.
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                  "ps_route request: parsing headers or query params failed.");
+                  "ps_determine_request_options: parsing headers or query params failed.");
     return NULL;
   }
 
@@ -1581,8 +1607,7 @@ void ps_release_request_context(void* data) {
 
 // Set us up for processing a request.  Creates a request context and determines
 // which handler should deal with the request.
-RequestRouting::Response ps_route_request(ngx_http_request_t* r,
-                                          bool is_resource_fetch) {
+RequestRouting::Response ps_route_request(ngx_http_request_t* r) {
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
 
   if (!cfg_s->server_context->global_options()->enabled()) {
@@ -1590,6 +1615,9 @@ RequestRouting::Response ps_route_request(ngx_http_request_t* r,
     return RequestRouting::kPagespeedDisabled;
   }
 
+  if (ngx_terminate || ngx_exiting) {
+    return RequestRouting::kError;
+  }
   if (r->err_status != 0) {
     return RequestRouting::kErrorResponse;
   }
@@ -1665,6 +1693,17 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
   ps_request_ctx_t* ctx = ps_get_request_context(r);
 
+  if (ngx_terminate || ngx_exiting) {
+    cfg_s->server_context->message_handler()->Message(
+        kInfo, "ps_resource_handler declining: nginx worker is shutting down");
+
+    if (ctx == NULL) {
+      return NGX_DECLINED;
+    }
+    ps_release_base_fetch(ctx);
+    return NGX_DECLINED;
+  }
+  
   CHECK(!(html_rewrite && (ctx == NULL || ctx->html_rewrite == false)));
 
   if (!html_rewrite &&
@@ -1740,9 +1779,7 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
       response_category == RequestRouting::kGlobalAdmin ||
       response_category == RequestRouting::kCachePurge;
 
-  if (html_rewrite) {
-    ps_release_base_fetch(ctx);
-  } else {
+  if (!html_rewrite) {
     // create request ctx
     CHECK(ctx == NULL);
     ctx = new ps_request_ctx_t();
@@ -2263,11 +2300,6 @@ ngx_int_t ps_in_place_check_header_filter(ngx_http_request_t* r) {
 
   // If our request was finalized during the IPRO lookup, we decline.
   if (r->connection->error) {
-    ctx->driver->Cleanup();
-    ctx->driver = NULL;
-    // enable html_rewrite
-    ctx->html_rewrite = true;
-    ctx->in_place = false;
     return ps_decline_request(r);
   }
 
@@ -2336,12 +2368,6 @@ ngx_int_t ps_in_place_check_header_filter(ngx_http_request_t* r) {
     message_handler->Message(
         kInfo, "Could not rewrite resource in-place: %s", url.c_str());
   }
-
-  ctx->driver->Cleanup();
-  ctx->driver = NULL;
-  // enable html_rewrite
-  ctx->html_rewrite = true;
-  ctx->in_place = false;
 
   return ps_decline_request(r);
 }
@@ -2716,7 +2742,7 @@ ngx_int_t ps_content_handler(ngx_http_request_t* r) {
                  "http pagespeed handler \"%V\"", &r->uri);
 
   RequestRouting::Response response_category =
-      ps_route_request(r, true /* is a resource fetch */);
+      ps_route_request(r);
   switch (response_category) {
     case RequestRouting::kError:
       return NGX_ERROR;
@@ -2985,8 +3011,16 @@ ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
   } else {
     delete cfg_m->driver_factory;
     cfg_m->driver_factory = NULL;
+    active_driver_factory = NULL;
   }
   return NGX_OK;
+}
+
+void ps_exit_child_process(ngx_cycle_t* cycle) {
+  ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
+      ngx_http_cycle_get_module_main_conf(cycle, ngx_pagespeed));
+  NgxBaseFetch::Terminate();
+  cfg_m->driver_factory->ShutDown();
 }
 
 // Called when nginx forks worker processes.  No threads should be started
@@ -2998,7 +3032,6 @@ ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
     return NGX_OK;
   }
 
-  SystemRewriteDriverFactory::InitApr();
   if (!NgxBaseFetch::Initialize(cycle)) {
     return NGX_ERROR;
   }
@@ -3066,7 +3099,7 @@ ngx_module_t ngx_pagespeed = {
   net_instaweb::ps_init_child_process,
   NULL,
   NULL,
-  NULL,
+  net_instaweb::ps_exit_child_process,
   NULL,
   NGX_MODULE_V1_PADDING
 };
