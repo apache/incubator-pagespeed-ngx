@@ -1266,6 +1266,7 @@ OUT=$(cat "test/tmp/error.log" \
     | grep -v "\\[error\\].*unexpected response.*" \
     | grep -v "\\[error\\].*remote\.cfg.*" \
     | grep -v "\\[warn\\].*remote\.cfg.*" \
+    | grep -v "\\[warn\\].*end token not received.*" \
     || true)
 
 check [ -z "$OUT" ]
