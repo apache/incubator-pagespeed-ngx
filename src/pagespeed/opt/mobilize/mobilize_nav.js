@@ -25,6 +25,7 @@ goog.require('goog.dom');
 goog.require('goog.dom.NodeType');
 goog.require('goog.dom.TagName');
 goog.require('goog.dom.classlist');
+goog.require('goog.events.EventType');
 goog.require('goog.json');
 goog.require('goog.net.Jsonp');
 goog.require('goog.string');
@@ -401,6 +402,18 @@ pagespeed.MobNav.prototype.fixExistingElements_ = function() {
  */
 pagespeed.MobNav.prototype.redrawHeader_ = function() {
   // Resize the bar by scaling to compensate for the amount zoomed.
+  // innerWidth is the scaled size, while clientWidth does not vary with zoom
+  // level.
+  // Note, if you change this height, you should also change
+  // MobilizeRewriteFilter::kSetSpacerHeight to match.
+  // Using '10vmax' would be a lot better here, except this causes some
+  // flakiness when recomputing the size to use for the buttons, and there are
+  // issues on iOS 7.
+  var height = Math.round(Math.max(document.documentElement.clientHeight,
+                                   document.documentElement.clientWidth) *
+                          .1);
+  this.headerBar_.style.height = height + 'px';
+
   var scaleTransform =
       'scale(' + window.innerWidth / document.documentElement.clientWidth + ')';
   this.headerBar_.style['-webkit-transform'] = scaleTransform;
@@ -537,30 +550,40 @@ pagespeed.MobNav.prototype.addHeaderBarResizeEvents_ = function() {
     }
   };
 
-  window.addEventListener('scroll', goog.bind(scrollHandler, this), false);
+  window.addEventListener(goog.events.EventType.SCROLL,
+                          goog.bind(scrollHandler, this), false);
 
   // Keep track of number of touches currently on the screen so that we don't
   // redraw until scrolling and zooming is finished.
-  window.addEventListener('touchstart', goog.bind(function(e) {
-    this.currentTouches_ = e.targetTouches.length;
-    this.lastScrollY_ = e.touches[0].clientY;
-  }, this), false);
+  window.addEventListener(goog.events.EventType.TOUCHSTART,
+                          goog.bind(function(e) {
+                            this.currentTouches_ = e.targetTouches.length;
+                            this.lastScrollY_ = e.touches[0].clientY;
+                          }, this), false);
 
-  window.addEventListener('touchmove', goog.bind(function(e) {
-    if (!this.isNavPanelOpen_) {
-      goog.dom.classlist.add(this.headerBar_, 'hide');
-    } else {
-      e.preventDefault();
-    }
-  }, this), false);
+  window.addEventListener(goog.events.EventType.TOUCHMOVE,
+                          goog.bind(function(e) {
+                            if (!this.isNavPanelOpen_) {
+                              goog.dom.classlist.add(this.headerBar_, 'hide');
+                            } else {
+                              e.preventDefault();
+                            }
+                          }, this), false);
 
-  window.addEventListener('touchend', goog.bind(function(e) {
-    this.currentTouches_ = e.targetTouches.length;
-    if (this.scrollTimer_ == null && this.currentTouches_ == 0) {
-      this.redrawNavPanel_();
-      this.redrawHeader_();
-    }
-  }, this), false);
+  window.addEventListener(
+      goog.events.EventType.TOUCHEND, goog.bind(function(e) {
+        this.currentTouches_ = e.targetTouches.length;
+        if (this.scrollTimer_ == null && this.currentTouches_ == 0) {
+          this.redrawNavPanel_();
+          this.redrawHeader_();
+        }
+      }, this), false);
+
+  window.addEventListener(goog.events.EventType.ORIENTATIONCHANGE,
+                          goog.bind(function() {
+                            this.redrawNavPanel_();
+                            this.redrawHeader_();
+                          }, this), false);
 };
 
 
@@ -857,11 +880,12 @@ pagespeed.MobNav.prototype.addThemeColor_ = function(themeData) {
   var color = this.useDetectedThemeColor_ ?
       pagespeed.MobUtil.colorNumbersToString(themeData.menuFrontColor) :
       'white';
-  var css = '.psmob-header-bar { background-color: ' + backgroundColor +
-            '; }\n' +
-            '.psmob-nav-panel { background-color: ' + color + '; }\n' +
-            '.psmob-nav-panel > ul li { color: ' + backgroundColor + '; }\n' +
-            '.psmob-nav-panel > ul li a { color: ' + backgroundColor + '; }\n';
+  var css =
+      '.psmob-header-bar { background-color: ' + backgroundColor + '; }\n' +
+      '.psmob-nav-panel { background-color: ' + color + '; }\n' +
+      '.psmob-nav-panel > ul li { color: ' + backgroundColor + '; }\n' +
+      '.psmob-nav-panel > ul li a { color: ' + backgroundColor + '; }\n' +
+      '.psmob-nav-panel > ul li div { color: ' + backgroundColor + '; }\n';
   var styleTag = document.createElement('style');
   styleTag.type = 'text/css';
   styleTag.appendChild(document.createTextNode(css));
@@ -1011,6 +1035,8 @@ pagespeed.MobNav.prototype.cleanupNavPanel_ = function() {
  * @private
  */
 pagespeed.MobNav.prototype.addNavPanel_ = function(themeData) {
+  // TODO(jud): Make sure we have tests covering the redraw flow and the events
+  // called here.
   // Create the nav panel element and insert immediatly after the header bar.
   this.navPanel_ = document.createElement('nav');
   document.body.insertBefore(this.navPanel_, this.headerBar_.nextSibling);
@@ -1077,34 +1103,35 @@ pagespeed.MobNav.prototype.addNavPanel_ = function(themeData) {
   // Track touch move events just in the nav panel so that scrolling can be
   // controlled. This is to work around overflow: hidden not working as we would
   // want when zoomed in (it does not totally prevent scrolling).
-  this.navPanel_.addEventListener('touchmove', goog.bind(function(e) {
-    if (!this.isNavPanelOpen_) {
-      return;
-    }
+  this.navPanel_.addEventListener(
+      goog.events.EventType.TOUCHMOVE, goog.bind(function(e) {
+        if (!this.isNavPanelOpen_) {
+          return;
+        }
 
-    var currentY = e.touches[0].clientY;
-    // If the event is not scrolling (pinch zoom for exaple), then prevent it
-    // while the nav panel is open.
-    if (e.targetTouches.length != 1) {
-      e.preventDefault();
-    } else {
-      // Check if we are scrolling up past the top or below the bottom. If so,
-      // stop the scroll event from happening since otherwise the body behind
-      // the nav panel will also scroll.
-      var scrollUp = currentY > this.lastScrollY_;
-      var navPanelAtTop = (this.navPanel_.scrollTop == 0);
-      // Add 1 pixel to account for rounding errors.
-      var navPanelAtBottom = (this.navPanel_.scrollTop >=
-          (this.navPanel_.scrollHeight - this.navPanel_.offsetHeight - 1));
-      if ((scrollUp && navPanelAtTop) ||
-          (!scrollUp && navPanelAtBottom)) {
-        e.preventDefault();
-      }
-      // Keep other touchmove events from happening.
-      e.stopImmediatePropagation();
-      this.lastScrollY_ = currentY;
-    }
-  }, this), false);
+        var currentY = e.touches[0].clientY;
+        // If the event is not scrolling (pinch zoom for exaple), then prevent
+        // it while the nav panel is open.
+        if (e.targetTouches.length != 1) {
+          e.preventDefault();
+        } else {
+          // Check if we are scrolling up past the top or below the bottom. If
+          // so, stop the scroll event from happening since otherwise the body
+          // behind the nav panel will also scroll.
+          var scrollUp = currentY > this.lastScrollY_;
+          var navPanelAtTop = (this.navPanel_.scrollTop == 0);
+          // Add 1 pixel to account for rounding errors.
+          var navPanelAtBottom =
+              (this.navPanel_.scrollTop >=
+               (this.navPanel_.scrollHeight - this.navPanel_.offsetHeight - 1));
+          if ((scrollUp && navPanelAtTop) || (!scrollUp && navPanelAtBottom)) {
+            e.preventDefault();
+          }
+          // Keep other touchmove events from happening.
+          e.stopImmediatePropagation();
+          this.lastScrollY_ = currentY;
+        }
+      }, this), false);
   this.redrawNavPanel_();
 };
 
@@ -1129,7 +1156,7 @@ pagespeed.MobNav.prototype.toggleNavPanel_ = function() {
  * @private
  */
 pagespeed.MobNav.prototype.addMenuButtonEvents_ = function() {
-  document.body.addEventListener('click', function(e) {
+  document.body.addEventListener(goog.events.EventType.CLICK, function(e) {
     if (this.menuButton_.contains(/** @type {Node} */ (e.target))) {
       this.toggleNavPanel_();
       return;
@@ -1156,7 +1183,7 @@ pagespeed.MobNav.prototype.addMenuButtonEvents_ = function() {
  */
 pagespeed.MobNav.prototype.addNavButtonEvents_ = function() {
   var navUl = document.querySelector('nav.psmob-nav-panel > ul');
-  navUl.addEventListener('click', function(e) {
+  navUl.addEventListener(goog.events.EventType.CLICK, function(e) {
     // We want to handle clicks on the LI that contains a nested UL. So if
     // somebody clicks on the expand icon in the LI, make sure we handle that
     // by popping up to the parent node.

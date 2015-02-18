@@ -67,12 +67,13 @@ const char MobilizeRewriteFilter::kDeletedElements[] =
 // TODO(jmarantz): Move to this into its own JS bundle, so it is automatically
 // minified by Closure Compiler when debug is off.
 const char MobilizeRewriteFilter::kSetSpacerHeight[] =
-    "\n(function() {\n"        // Hide temps in a function scope
+    "\n(function() {\n"  // Hide temps in a function scope
     "  var spacer = document.getElementById('ps-spacer');\n"
     "  var docElt = document.documentElement;\n"
     "  var scale = window.innerWidth / docElt.clientWidth;\n"
     // See mobilize.css, .psmob-header-bar sets height to 10%, so divide by 10.
-    "  var headerBarHeight = docElt.clientHeight / 10;\n"
+    "  var headerBarHeight = \n"
+    "    Math.round(Math.max(docElt.clientHeight, docElt.clientWidth) * .1);\n"
     "  var newHeight = Math.round(headerBarHeight * scale) + 'px';\n"
     "  spacer.style.height = newHeight;\n"
     "})();";
