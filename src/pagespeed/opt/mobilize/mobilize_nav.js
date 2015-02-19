@@ -69,7 +69,8 @@ pagespeed.MobNav = function() {
   this.logoSpan_ = null;
 
   /**
-   * Menu button in the header bar.
+   * Menu button in the header bar. This element can be null after configuration
+   * if nav is specifically disabled for a site with navDisabledForSite();
    * @private {Element}
    */
   this.menuButton_ = null;
@@ -425,7 +426,9 @@ pagespeed.MobNav.prototype.redrawHeader_ = function() {
   // Get the new size of the header bar and rescale the containing elements to
   // fit inside.
   var heightString = this.headerBar_.offsetHeight + 'px';
-  this.menuButton_.style.width = heightString;
+  if (this.menuButton_) {
+    this.menuButton_.style.width = heightString;
+  }
   var logoRight = 0;
   if (this.callButton_) {
     this.callButton_.style.width = heightString;
@@ -606,9 +609,10 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
   this.headerBar_ = document.createElement('header');
   document.body.insertBefore(this.headerBar_, this.spacerDiv_);
   goog.dom.classlist.add(this.headerBar_, 'psmob-header-bar');
-  // TODO(jud): This is defined in mob_logo.js
-  this.menuButton_ = themeData.menuButton;
-  this.headerBar_.appendChild(this.menuButton_);
+  if (!this.navDisabledForSite_()) {
+    this.menuButton_ = themeData.menuButton;
+    this.headerBar_.appendChild(this.menuButton_);
+  }
   this.logoSpan_ = themeData.logoSpan;
   this.headerBar_.appendChild(this.logoSpan_);
   this.headerBar_.style.borderBottom =
@@ -1205,6 +1209,24 @@ pagespeed.MobNav.prototype.addNavButtonEvents_ = function() {
 
 
 /**
+ * Fallback function for quickly disabling nav on a specific site. Returns true
+ * if the nav menu should not be enabled on a site.
+ * TODO(jud): Add a real option to control inserting of the nav menu. That will
+ * require a PSS release however.
+ * @private
+ * @return {boolean}
+ */
+pagespeed.MobNav.prototype.navDisabledForSite_ = function() {
+  /*
+  if (document.URL.indexOf('worldclassdriving') != -1) {
+    return true;
+  }
+  */
+  return false;
+};
+
+
+/**
  * Main entry point of nav mobilization. Should be called when logo detection is
  * finished.
  * @param {!pagespeed.MobUtil.ThemeData} themeData
@@ -1216,11 +1238,11 @@ pagespeed.MobNav.prototype.Run = function(themeData) {
   this.addHeaderBar_(themeData);
   this.addThemeColor_(themeData);
 
-  // Don't insert nav stuff if there are no navigational sections on the page or
-  // if we are in an iFrame.
+  // Don't insert nav stuff if nav is disabled, there are no navigational
+  // sections on the page or if we are in an iFrame.
   // TODO(jud): If there are nav elements in the iframe, we should try to move
   // them to the top-level nav.
-  if ((this.navSections_.length != 0) &&
+  if (!this.navDisabledForSite_() && (this.navSections_.length != 0) &&
       !pagespeed.MobUtil.inFriendlyIframe()) {
     this.addNavPanel_(themeData);
     this.addMenuButtonEvents_();

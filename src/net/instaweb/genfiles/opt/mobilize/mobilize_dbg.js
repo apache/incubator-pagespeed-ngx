@@ -7369,7 +7369,7 @@ pagespeed.MobNav.prototype.redrawHeader_ = function() {
   this.headerBar_.style.transform = a;
   goog.dom.classlist.remove(this.headerBar_, "hide");
   a = this.headerBar_.offsetHeight + "px";
-  this.menuButton_.style.width = a;
+  this.menuButton_ && (this.menuButton_.style.width = a);
   var b = 0;
   this.callButton_ && (this.callButton_.style.width = a, b += this.headerBar_.offsetHeight);
   this.mapButton_ && (this.mapButton_.style.width = a, b += this.headerBar_.offsetHeight);
@@ -7436,8 +7436,7 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(a) {
   this.headerBar_ = document.createElement("header");
   document.body.insertBefore(this.headerBar_, this.spacerDiv_);
   goog.dom.classlist.add(this.headerBar_, "psmob-header-bar");
-  this.menuButton_ = a.menuButton;
-  this.headerBar_.appendChild(this.menuButton_);
+  this.navDisabledForSite_() || (this.menuButton_ = a.menuButton, this.headerBar_.appendChild(this.menuButton_));
   this.logoSpan_ = a.logoSpan;
   this.headerBar_.appendChild(this.logoSpan_);
   this.headerBar_.style.borderBottom = "thin solid " + pagespeed.MobUtil.colorNumbersToString(a.menuFrontColor);
@@ -7632,13 +7631,16 @@ pagespeed.MobNav.prototype.addNavButtonEvents_ = function() {
     a.nodeName.toUpperCase() == goog.dom.TagName.DIV && (goog.dom.classlist.toggle(a.nextSibling, "open"), goog.dom.classlist.toggle(a.firstChild, "open"));
   }, !1);
 };
+pagespeed.MobNav.prototype.navDisabledForSite_ = function() {
+  return!1;
+};
 pagespeed.MobNav.prototype.Run = function(a) {
   pagespeed.MobUtil.consoleLog("Starting nav resynthesis.");
   this.findNavSections_();
   this.fixExistingElements_();
   this.addHeaderBar_(a);
   this.addThemeColor_(a);
-  0 == this.navSections_.length || pagespeed.MobUtil.inFriendlyIframe() || (this.addNavPanel_(a), this.addMenuButtonEvents_(), this.addNavButtonEvents_());
+  this.navDisabledForSite_() || 0 == this.navSections_.length || pagespeed.MobUtil.inFriendlyIframe() || (this.addNavPanel_(a), this.addMenuButtonEvents_(), this.addNavButtonEvents_());
 };
 pagespeed.MobTheme = function() {
   this.logo = null;
