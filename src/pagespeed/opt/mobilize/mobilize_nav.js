@@ -497,16 +497,17 @@ pagespeed.MobNav.prototype.redrawNavPanel_ = function() {
     return;
   }
 
-  this.navPanel_.style.top = window.scrollY + 'px';
-  this.navPanel_.style.left = window.scrollX + 'px';
 
   var scale = window.innerWidth * .8 / pagespeed.MobNav.NAV_PANEL_WIDTH_;
 
-  var translateX =
+  var xOffset =
       goog.dom.classlist.contains(this.navPanel_, 'open') ?
       0 : -pagespeed.MobNav.NAV_PANEL_WIDTH_ * scale;
 
-  var transform = 'scale(' + scale + ') translatex(' + translateX + 'px)';
+  this.navPanel_.style.top = window.scrollY + 'px';
+  this.navPanel_.style.left = window.scrollX + xOffset + 'px';
+
+  var transform = 'scale(' + scale + ')';
   this.navPanel_.style['-webkit-transform'] = transform;
   this.navPanel_.style.transform = transform;
 
@@ -973,11 +974,18 @@ pagespeed.MobNav.prototype.dedupNavMenuItems_ = function() {
  *     the styles set in mob_nav.css win.
  * If an A tag has no text, but has a title, use the title for the text.
  * If an A tag has no href, remove it.
+ * If an IMG tag has the same src as the logo, remove it.
  * @private
  */
 pagespeed.MobNav.prototype.cleanupNavPanel_ = function() {
   var nodes = this.navPanel_.querySelectorAll('*');
   var nodesToDelete = [];
+
+  // Get the logo src so that we can remove duplicates of it that show up in the
+  // menu bar.
+  var logoImg = document.getElementById('psmob-logo-image');
+  var logoSrc = logoImg ? logoImg.src : '';
+
   for (var i = 0, node; node = nodes[i]; i++) {
     node.removeAttribute('style');
     node.removeAttribute('width');
@@ -995,10 +1003,21 @@ pagespeed.MobNav.prototype.cleanupNavPanel_ = function() {
       if (node.href == '') {
         nodesToDelete.push(node);
       }
+    } else if (node.nodeName.toUpperCase() == goog.dom.TagName.IMG) {
+      if (node.src == logoSrc) {
+        nodesToDelete.push(node);
+      }
     }
   }
 
+  // Now delete the marked node. We traverse the parents until we find the
+  // node's enclosing LI, since this is the node we actually want to remove.
+  // Note that every element added here (A and IMG tags) should be inside of an
+  // LI, since this is how the menus are constructed in addNavPanel_().
   for (var i = 0, node; node = nodesToDelete[i]; i++) {
+    while (node.nodeName.toUpperCase() != goog.dom.TagName.LI) {
+      node = node.parentNode;
+    }
     node.parentNode.removeChild(node);
   }
 

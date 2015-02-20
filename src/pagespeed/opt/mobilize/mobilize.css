@@ -66,6 +66,8 @@ body {
   opacity: 1;
   /* Use a 200ms fade in when redrawing the bar after scrolling. */
   -webkit-transition: opacity 0.2s;
+  -moz-transition: opacity 0.2s;
+  -o-transition: opacity 0.2s;
   transition: opacity 0.2s;
 }
 
@@ -75,6 +77,8 @@ body {
   opacity: 0;
   /* Make the bar disappear immediately when scrolling. */
   -webkit-transition: opacity 0s;
+  -moz-transition: opacity 0s;
+  -o-transition: opacity 0s;
   transition: opacity 0s;
 }
 
@@ -93,6 +97,8 @@ body {
   padding: 0;
 
   -webkit-transition: background-color 0.2s ease-out;
+  -moz-transition: background-color 0.2s ease-out;
+  -o-transition: background-color 0.2s ease-out;
   transition: background-color 0.2s ease-out;
 }
 
@@ -208,10 +214,10 @@ body {
 
   /* Add a 0.3s delay to the visibility change so that the sliding animation
    * finishes before hiding the panel. */
-  -webkit-transition: transform 0.3s ease-out, visibility 0s linear 0.3s;
-  transition: transform 0.3s ease-out, visibility 0s linear 0.3s;
-  -webkit-transform: translate(-250px,0);
-  transform: translate(-250px,0);
+  -webkit-transition: visibility 0s linear 0.3s, left 0.3s ease-out;
+  -o-transition: visibility 0s linear 0.3s, left 0.3s ease-out;
+  -moz-transition: visibility 0s linear 0.3s, left 0.3s ease-out;
+  transition: visibility 0s linear 0.3s, left 0.3s ease-out;
 }
 
 .psmob-nav-panel.open {
@@ -257,6 +263,8 @@ body {
   line-height: 60px !important;
   text-decoration: none;
 
+  -o-transition: background-color 0.2s ease-out;
+  -moz-transition: background-color 0.2s ease-out;
   -webkit-transition: background-color 0.2s ease-out;
   transition: background-color 0.2s ease-out;
 }
@@ -271,6 +279,8 @@ body {
   font-size: medium !important;
 
   -webkit-transition: background-color 0.2s ease-out;
+  -moz-transition: background-color 0.2s ease-out;
+  -o-transition: background-color 0.2s ease-out;
   transition: background-color 0.2s ease-out;
 }
 
