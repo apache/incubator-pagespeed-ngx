@@ -683,6 +683,7 @@ const RewriteOptions::Filter kDangerousFilterSet[] = {
   RewriteOptions::kExplicitCloseTags,
   RewriteOptions::kFixReflows,
   RewriteOptions::kMobilize,  // Prototype
+  RewriteOptions::kMobilizePrecompute,  // used for precomputation.
   RewriteOptions::kSplitHtml,  // internal, enabled conditionally
   RewriteOptions::kSplitHtmlHelper,  // internal, enabled conditionally
   RewriteOptions::kStripNonCacheable,  // internal, enabled conditionally
@@ -840,6 +841,8 @@ const RewriteOptions::FilterEnumToIdAndNameEntry
     "ga", "Make Google Analytics Async" },
   { RewriteOptions::kMobilize,
     "mob", "Mobilize Webpage" },
+  { RewriteOptions::kMobilizePrecompute,
+    "mob_precompute", "Precompute Some Info for Mobilizing Webpage" },
   { RewriteOptions::kMoveCssAboveScripts,
     "cj", "Move Css Above Scripts" },
   { RewriteOptions::kMoveCssToHead,

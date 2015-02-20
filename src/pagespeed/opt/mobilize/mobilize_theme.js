@@ -144,6 +144,14 @@ pagespeed.MobTheme.prototype.colorComplete_ = function(
   if (window.psLayoutMode) {
     pagespeed.MobTheme.removeLogoImage_(logo);
   }
+
+  // Export theme info if we are asked to.
+  if (window.psMobPrecompute) {
+    window.psMobBackgroundColor = backgroundColor;
+    window.psMobForegroundColor = foregroundColor;
+    window.psMobLogoUrl = logo ? logo.foregroundImage : null;
+  }
+
   this.doneCallback(themeData);
 };
 
@@ -153,7 +161,8 @@ pagespeed.MobTheme.prototype.colorComplete_ = function(
  * @return {boolean}
  */
 pagespeed.MobTheme.precomputedThemeAvailable = function() {
-  return Boolean(psMobBackgroundColor && psMobForegroundColor);
+  return Boolean(psMobBackgroundColor && psMobForegroundColor &&
+                 !window.psMobPrecompute);
 };
 
 
@@ -172,8 +181,9 @@ pagespeed.MobTheme.extractTheme = function(psMob, doneCallback) {
   var mobTheme = new pagespeed.MobTheme();
   mobTheme.doneCallback = doneCallback;
 
-  // See if there is a precomputed theme + logo.
-  if (psMobBackgroundColor && psMobForegroundColor) {
+  // See if there is a precomputed theme + logo (and we are not asked to do
+  // the computation ourselves).
+  if (psMobBackgroundColor && psMobForegroundColor && !window.psMobPrecompute) {
     if (psMobLogoUrl) {
       mobTheme.logo = new pagespeed.MobLogo.LogoRecord;
       mobTheme.logo.foregroundImage = psMobLogoUrl;

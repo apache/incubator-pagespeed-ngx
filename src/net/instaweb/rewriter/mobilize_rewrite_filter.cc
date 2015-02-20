@@ -296,6 +296,9 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
         StrAppend(&src, "var psMobBackgroundColor=null;");
         StrAppend(&src, "var psMobForegroundColor=null;");
       }
+      if (options->Enabled(RewriteOptions::kMobilizePrecompute)) {
+        StrAppend(&src, "var psMobPrecompute=true;");
+      }
       driver()->InsertScriptAfterCurrent(src, false);
 
       // TODO(jmarantz): Consider waiting to see if we have a charset directive

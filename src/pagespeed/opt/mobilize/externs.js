@@ -82,5 +82,9 @@ var psMobBackgroundColor;
 var psMobForegroundColor;
 
 
-/** @type {string} */
+/** @type {?string} */
 var psMobLogoUrl;
+
+
+/** @type {boolean} */
+var psMobPrecompute;

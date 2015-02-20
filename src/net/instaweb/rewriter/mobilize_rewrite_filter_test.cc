@@ -55,8 +55,8 @@ GoogleString Styles(bool layout_mode) {
 }
 
 GoogleString HeadAndViewportWithTheme(
-    bool layout_mode, StringPiece bg_color, StringPiece fg_color,
-    StringPiece logo_url) {
+    bool layout_mode, bool precompute_mode,
+    StringPiece bg_color, StringPiece fg_color, StringPiece logo_url) {
   return StrCat(
       "<script>var psDebugMode=false;var psNavMode=true;var psLayoutMode=",
       layout_mode ? "true" : "false", ";"
@@ -67,6 +67,7 @@ GoogleString HeadAndViewportWithTheme(
           "var psPhoneConversionLabel='", kPhoneConversionLabel, "';",
           StrCat("var psMobBackgroundColor=", bg_color, ";"),
           StrCat("var psMobForegroundColor=", fg_color, ";"),
+          precompute_mode ? "var psMobPrecompute=true;" : "",
           (logo_url.empty() ? "" : StrCat("var psMobLogoUrl=", logo_url, ";")),
           "</script>",
           (layout_mode
@@ -76,7 +77,8 @@ GoogleString HeadAndViewportWithTheme(
 }
 
 GoogleString HeadAndViewport(bool layout_mode) {
-  return HeadAndViewportWithTheme(layout_mode, "null", "null", "");
+  return HeadAndViewportWithTheme(layout_mode, false /* not precompute */,
+                                  "null", "null", "");
 }
 
 }  // namespace
@@ -476,7 +478,9 @@ TEST_F(MobilizeRewriteThemeTest, ConfigureTheme) {
                                          "#ff0000 #0000ff"));
   GoogleString original = StrCat("<head></head>", Body());
   GoogleString expected = StrCat(
-      "<head>", HeadAndViewportWithTheme(false, "[255,0,0]",
+      "<head>", HeadAndViewportWithTheme(false /* no layout */,
+                                         false /* no precompute*/,
+                                         "[255,0,0]",
                                          "[0,0,255]", "null"),
       Styles(LayoutMode()), "</head>", ExpectedBody());
   ValidateExpected("ConfigureTheme", original, expected);
@@ -485,10 +489,24 @@ TEST_F(MobilizeRewriteThemeTest, ConfigureTheme) {
             options()->SetOptionFromName(RewriteOptions::kMobTheme,
                                          "#ff0000 #0000ff http://logo.com"));
   expected = StrCat(
-      "<head>", HeadAndViewportWithTheme(false, "[255,0,0]",
+      "<head>", HeadAndViewportWithTheme(false /* no layout */,
+                                         false /* no precompute*/,
+                                         "[255,0,0]",
                                          "[0,0,255]", "'http://logo.com'"),
       Styles(LayoutMode()), "</head>", ExpectedBody());
   ValidateExpected("ConfigureTheme2", original, expected);
+}
+
+TEST_F(MobilizeRewriteThemeTest, PreComputeTheme) {
+  options()->ClearSignatureForTesting();
+  options()->EnableFilter(RewriteOptions::kMobilizePrecompute);
+  GoogleString original = StrCat("<head></head>", Body());
+  GoogleString expected = StrCat(
+      "<head>", HeadAndViewportWithTheme(false /* no layout */,
+                                         true /* precompute*/,
+                                         "null", "null", ""),
+      Styles(LayoutMode()), "</head>", ExpectedBody());
+  ValidateExpected("Precompute", original, expected);
 }
 
 // Check we are called correctly from the driver.
