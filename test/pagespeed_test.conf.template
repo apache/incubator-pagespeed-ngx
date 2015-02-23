@@ -1084,7 +1084,7 @@ http {
     listen [::]:@@SECONDARY_PORT@@;
     server_name remote-config.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
-    pagespeed RemoteConfigurationUrl "http://127.0.0.1:9991/remote.cfg";
+    pagespeed RemoteConfigurationUrl "http://127.0.0.1:@@RCPORT1@@/remote.cfg";
     pagespeed RemoteConfigurationTimeoutMs 1500;
   }
   server {
@@ -1092,7 +1092,7 @@ http {
     listen [::]:@@SECONDARY_PORT@@;
     server_name remote-config-partially-invalid.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
-    pagespeed RemoteConfigurationUrl "http://127.0.0.1:9992/remote.cfg";
+    pagespeed RemoteConfigurationUrl "http://127.0.0.1:@@RCPORT2@@/remote.cfg";
     pagespeed RemoteConfigurationTimeoutMs 1500;
   }
   server {
@@ -1100,7 +1100,7 @@ http {
     listen [::]:@@SECONDARY_PORT@@;
     server_name remote-config-invalid.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
-    pagespeed RemoteConfigurationUrl "http://127.0.0.1:9993/remote.cfg";
+    pagespeed RemoteConfigurationUrl "http://127.0.0.1:@@RCPORT3@@/remote.cfg";
     pagespeed RemoteConfigurationTimeoutMs 1500;
   }
   server {
@@ -1108,7 +1108,7 @@ http {
     listen [::]:@@SECONDARY_PORT@@;
     server_name remote-config-nc-host5.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
-    pagespeed RemoteConfigurationUrl "http://127.0.0.1:9995/remote.cfg";
+    pagespeed RemoteConfigurationUrl "http://127.0.0.1:@@RCPORT5@@/remote.cfg";
     pagespeed RemoteConfigurationTimeoutMs 1500;
   }
   server {
@@ -1116,7 +1116,7 @@ http {
     listen [::]:@@SECONDARY_PORT@@;
     server_name remote-config-nc-host6.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
-    pagespeed RemoteConfigurationUrl "http://127.0.0.1:9996/remote.cfg";
+    pagespeed RemoteConfigurationUrl "http://127.0.0.1:@@RCPORT6@@/remote.cfg";
     pagespeed RemoteConfigurationTimeoutMs 1500;
   }
   server {
@@ -1124,7 +1124,7 @@ http {
     listen [::]:@@SECONDARY_PORT@@;
     server_name remote-config-experiment.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
-    pagespeed RemoteConfigurationUrl "http://127.0.0.1:9997/remote.cfg";
+    pagespeed RemoteConfigurationUrl "http://127.0.0.1:@@RCPORT7@@/remote.cfg";
     pagespeed RemoteConfigurationTimeoutMs 1500;
   }
 
