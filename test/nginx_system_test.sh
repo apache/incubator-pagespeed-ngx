@@ -31,6 +31,13 @@
 : ${NATIVE_FETCHER:?"Set NATIVE_FETCHER to off or on"}
 : ${PRIMARY_PORT:?"Set PRIMARY_PORT"}
 : ${SECONDARY_PORT:?"Set SECONDARY_PORT"}
+: ${RCPORT1:?"Set RCPORT1"}
+: ${RCPORT2:?"Set RCPORT2"}
+: ${RCPORT2:?"Set RCPORT3"}
+: ${RCPORT4:?"Set RCPORT4"}
+: ${RCPORT5:?"Set RCPORT5"}
+: ${RCPORT6:?"Set RCPORT6"}
+: ${RCPORT7:?"Set RCPORT7"}
 : ${MOD_PAGESPEED_DIR:?"Set MOD_PAGESPEED_DIR"}
 : ${NGINX_EXECUTABLE:?"Set NGINX_EXECUTABLE"}
 POSITION_AUX="${POSITION_AUX:-unset}"
@@ -194,6 +201,13 @@ cat $PAGESPEED_CONF_TEMPLATE \
   | sed 's#@@SECONDARY_PORT@@#'"$SECONDARY_PORT"'#' \
   | sed 's#@@NATIVE_FETCHER@@#'"$NATIVE_FETCHER"'#' \
   | sed 's#@@RESOLVER@@#'"$RESOLVER"'#' \
+  | sed 's#@@RCPORT1@@#'"$RCPORT1"'#' \
+  | sed 's#@@RCPORT2@@#'"$RCPORT2"'#' \
+  | sed 's#@@RCPORT3@@#'"$RCPORT3"'#' \
+  | sed 's#@@RCPORT4@@#'"$RCPORT4"'#' \
+  | sed 's#@@RCPORT5@@#'"$RCPORT5"'#' \
+  | sed 's#@@RCPORT6@@#'"$RCPORT6"'#' \
+  | sed 's#@@RCPORT7@@#'"$RCPORT7"'#' \
   >> $PAGESPEED_CONF
 # make sure we substituted all the variables
 check_not_simple grep @@ $PAGESPEED_CONF
@@ -1264,6 +1278,9 @@ OUT=$(cat "test/tmp/error.log" \
     | grep -v "\\[error\\].*Could not create directories*" \
     | grep -v "\\[error\\].*opening temp file: No such file or directory.*" \
     | grep -v "\\[error\\].*unexpected response.*" \
+    | grep -v "\\[error\\].*remote\.cfg.*" \
+    | grep -v "\\[warn\\].*remote\.cfg.*" \
+    | grep -v "\\[warn\\].*end token not received.*" \
     || true)
 
 check [ -z "$OUT" ]
