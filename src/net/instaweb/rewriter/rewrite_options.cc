@@ -4171,8 +4171,14 @@ GoogleString RewriteOptions::ExperimentSpec::ToString() const {
        i != alternate_origin_domains_.end(); ++i) {
     const AlternateOriginDomainSpec& spec = *i;
 
+    StringVector quoted_serving_domains = spec.serving_domains;
+    for (StringVector::iterator i = quoted_serving_domains.begin();
+         i != quoted_serving_domains.end(); ++i) {
+      *i = QuoteHostPort(*i);
+    }
+
     StrAppend(&out, ";alternate_origin_domain=",
-              JoinCollection(spec.serving_domains, ","), ":",
+              JoinCollection(quoted_serving_domains, ","), ":",
               QuoteHostPort(spec.origin_domain));
 
     if (!spec.host_header.empty()) {
@@ -4490,9 +4496,30 @@ void RewriteOptions::ExperimentSpec::CombineQuotedHostPort(
   }
 }
 
-bool RewriteOptions::ExperimentSpec::LooksLikeValidHost(const StringPiece& s) {
-  // This will only return true if s is non-empty.
-  return s.find_first_not_of("1234567890") != GoogleString::npos;
+bool RewriteOptions::ExperimentSpec::LooksLikeValidHost(
+    const StringPiece& host_str) {
+  StringPieceVector host_components;
+  SplitStringPieceToVector(host_str, ":", &host_components, false);
+
+  if (host_components.empty() || host_components.size() > 2) {
+    return false;
+  }
+
+  // host_components[0] is the host component. Just check it contains
+  // a non-numeric, so we know it's not empty or a stray port number.
+  if (host_components[0].find_first_not_of("1234567890") == StringPiece::npos) {
+    return false;
+  }
+
+  // host_components[1] is the port, which may not be present. Check it is
+  // non-empty and contains only numbers.
+  if (host_components.size() > 1 && (host_components[1].empty() ||
+                                     host_components[1].find_first_not_of(
+                                         "1234567890") != GoogleString::npos)) {
+    return false;
+  }
+
+  return true;
 }
 
 bool RewriteOptions::ExperimentSpec::ParseAlternateOriginDomain(
@@ -4501,10 +4528,19 @@ bool RewriteOptions::ExperimentSpec::ParseAlternateOriginDomain(
   // Input format: serving_domain[,...]:alt_origin_domain[:host_header]
   // alt_origin_domain and host_header can include a port, in which case
   // they must be quoted:
-  // serving_domain:"alt_origin_domain:port":"host_header:port"
+  // serving_domain:"alt_origin_domain:port":"host_header:port".
+  // A *single* serving_domain may have a port added in the same fashion.
 
   StringPieceVector args_str;
   SplitStringPieceToVector(in, ":", &args_str, false);
+
+  // serving_domain can be a comma separated list, however this code that deals
+  // with unescaping only allows a single quoted host:port in that field. Fixing
+  // that properly is too much work for a feature only required by tests.
+  GoogleString serving_combined_container;
+  if (args_str.size() >= 2) {
+    CombineQuotedHostPort(&args_str, 0, &serving_combined_container);
+  }
 
   GoogleString ref_combined_container;
   if (args_str.size() >= 3) {

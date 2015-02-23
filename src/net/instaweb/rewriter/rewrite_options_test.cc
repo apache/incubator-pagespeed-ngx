@@ -2079,6 +2079,27 @@ TEST_F(RewriteOptionsTest, AlternateOriginDomainParseTest) {
                     "exh.com:42", false);
   }
   {
+    // Single domain with port and host header and port on both.
+    GoogleString spec_str(
+        "id=1;percent=15;"
+        "alternate_origin_domain="
+        "\"ex.com:63\":\"ref.ex.com:88\":\"exh.com:42\"");
+
+    RewriteOptions::ExperimentSpec spec(spec_str, &options_, &handler);
+
+    EXPECT_EQ(spec_str, spec.ToString());
+
+    DomainLawyer lawyer;
+    spec.ApplyAlternateOriginsToDomainLawyer(&lawyer, &handler);
+
+    VerifyMapOrigin(lawyer, "http://ex.com", "http://ex.com/",
+                    "ex.com", false);
+    VerifyMapOrigin(lawyer, "http://ex.com:63", "http://ref.ex.com:88/",
+                    "exh.com:42", false);
+    VerifyMapOrigin(lawyer, "https://ex.com:63", "https://ref.ex.com:88/",
+                    "exh.com:42", false);
+  }
+  {
     // Multiple domains with a host header
     GoogleString spec_str(
         "id=1;percent=15;"
@@ -2200,6 +2221,54 @@ TEST_F(RewriteOptionsTest, AlternateOriginDomainNegativeParseTest) {
                     false);
     VerifyMapOrigin(lawyer, "https://jim.com", "https://ref.com/", "jim.com",
                     false);
+  }
+  {
+    // Non numeric serving domain port.
+    GoogleString spec_str(
+        "id=1;percent=15;"
+        "alternate_origin_domain=\"jim.com:a\"");
+
+    RewriteOptions::ExperimentSpec spec(spec_str, &options_, &handler);
+
+    EXPECT_EQ("id=1;percent=15", spec.ToString());
+
+    DomainLawyer lawyer;
+    spec.ApplyAlternateOriginsToDomainLawyer(&lawyer, &handler);
+
+    VerifyNoMapOrigin(lawyer, "http://jim.com");
+    VerifyNoMapOrigin(lawyer, "https://jim.com");
+  }
+  {
+    // Non numeric reference domain port.
+    GoogleString spec_str(
+        "id=1;percent=15;"
+        "alternate_origin_domain=jim.com:\"jam.com:a\"");
+
+    RewriteOptions::ExperimentSpec spec(spec_str, &options_, &handler);
+
+    EXPECT_EQ("id=1;percent=15", spec.ToString());
+
+    DomainLawyer lawyer;
+    spec.ApplyAlternateOriginsToDomainLawyer(&lawyer, &handler);
+
+    VerifyNoMapOrigin(lawyer, "http://jim.com");
+    VerifyNoMapOrigin(lawyer, "https://jim.com");
+  }
+  {
+    // Non numeric host header port.
+    GoogleString spec_str(
+        "id=1;percent=15;"
+        "alternate_origin_domain=jim.com:jam.com:\"jom.com:g\"");
+
+    RewriteOptions::ExperimentSpec spec(spec_str, &options_, &handler);
+
+    EXPECT_EQ("id=1;percent=15", spec.ToString());
+
+    DomainLawyer lawyer;
+    spec.ApplyAlternateOriginsToDomainLawyer(&lawyer, &handler);
+
+    VerifyNoMapOrigin(lawyer, "http://jim.com");
+    VerifyNoMapOrigin(lawyer, "https://jim.com");
   }
 }
 
