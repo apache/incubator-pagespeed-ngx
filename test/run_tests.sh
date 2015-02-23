@@ -69,6 +69,13 @@ function run_test_checking_failure() {
     MOD_PAGESPEED_DIR="$MOD_PAGESPEED_DIR" \
     NGINX_EXECUTABLE="$NGINX_EXECUTABLE" \
     RUN_TESTS="$RUN_TESTS" \
+    RCPORT1="$RCPORT1" \
+    RCPORT2="$RCPORT2" \
+    RCPORT3="$RCPORT3" \
+    RCPORT4="$RCPORT4" \
+    RCPORT5="$RCPORT5" \
+    RCPORT6="$RCPORT6" \
+    RCPORT7="$RCPORT7" \
     bash "$this_dir/nginx_system_test.sh"
   STATUS=$?
   echo "With $@ setup."
