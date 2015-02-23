@@ -1,6 +1,5 @@
 #!/bin/bash
-#
-# Copyright 2013 Google Inc.
+# # Copyright 2013 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -53,6 +52,13 @@ PRIMARY_PORT="$1"
 SECONDARY_PORT="$2"
 MOD_PAGESPEED_DIR="$3"
 NGINX_EXECUTABLE="$4"
+RCPORT1=9991
+RCPORT2=9992
+RCPORT3=9993
+RCPORT4=9994
+RCPORT5=9995
+RCPORT6=9996
+RCPORT7=9997
 
 this_dir="$( cd $(dirname "$0") && pwd)"
 
@@ -63,6 +69,13 @@ function run_test_checking_failure() {
     MOD_PAGESPEED_DIR="$MOD_PAGESPEED_DIR" \
     NGINX_EXECUTABLE="$NGINX_EXECUTABLE" \
     RUN_TESTS="$RUN_TESTS" \
+    RCPORT1="$RCPORT1" \
+    RCPORT2="$RCPORT2" \
+    RCPORT3="$RCPORT3" \
+    RCPORT4="$RCPORT4" \
+    RCPORT5="$RCPORT5" \
+    RCPORT6="$RCPORT6" \
+    RCPORT7="$RCPORT7" \
     bash "$this_dir/nginx_system_test.sh"
   STATUS=$?
   echo "With $@ setup."
