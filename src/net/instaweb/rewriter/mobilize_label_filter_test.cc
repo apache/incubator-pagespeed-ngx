@@ -386,6 +386,24 @@ TEST_F(MobilizeLabelFilterTest, DontCrashWithFlushAndDebug) {
   EXPECT_STREQ(expected, output_buffer_);
 }
 
+TEST_F(MobilizeLabelFilterTest, DontCrashWithMarginalChildOfNav) {
+  const char kOutputHtml[] =
+      "<div id='a'>\n"
+      "  <ul id='b'>\n"
+      "    <li><a href='/'>Drive</a></li>\n"
+      "  </ul>\n"
+      "  <ul id='c'>\n"
+      "    <li><a href='R8'>R8</a></li>\n"
+      "  </ul>\n"
+      "</div>\n"
+      "<script type=\"text/javascript\">"
+      "pagespeedNavigationalIds=['a'];\n"
+      "pagespeedMarginalIds=['c'];\n"
+      "</script>";
+  ValidateExpected("DontCrashWithMarginalChild",
+                   Unlabel(kOutputHtml), kOutputHtml);
+}
+
 TEST_F(MobilizeLabelFilterTest, MarginalPropagation) {
   // Test that marginal content gets labeled as such, and the
   // labels get propagated up the DOM (but only as far as the

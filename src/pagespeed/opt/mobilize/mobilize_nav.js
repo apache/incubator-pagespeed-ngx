@@ -122,14 +122,6 @@ pagespeed.MobNav = function() {
   this.isNavPanelOpen_ = false;
 
   /**
-   * Flag to ignore the next scroll event. Set when calling window.scrollBy to
-   * compensate the amount scrolled when resizing the spacer div.
-   * @private {boolean}
-   */
-  this.ignoreNextScrollEvent_ = false;
-
-
-  /**
    * Tracks the elements which need to be adjusted after zooming to account for
    * the offset of the spacer div. This includes fixed position elements, and
    * absolute position elements rooted at the body.
@@ -405,16 +397,6 @@ pagespeed.MobNav.prototype.redrawHeader_ = function() {
   // Resize the bar by scaling to compensate for the amount zoomed.
   // innerWidth is the scaled size, while clientWidth does not vary with zoom
   // level.
-  // Note, if you change this height, you should also change
-  // MobilizeRewriteFilter::kSetSpacerHeight to match.
-  // Using '10vmax' would be a lot better here, except this causes some
-  // flakiness when recomputing the size to use for the buttons, and there are
-  // issues on iOS 7.
-  var height = Math.round(Math.max(document.documentElement.clientHeight,
-                                   document.documentElement.clientWidth) *
-                          .1);
-  this.headerBar_.style.height = height + 'px';
-
   var scaleTransform =
       'scale(' + window.innerWidth / document.documentElement.clientWidth + ')';
   this.headerBar_.style['-webkit-transform'] = scaleTransform;
@@ -477,7 +459,6 @@ pagespeed.MobNav.prototype.redrawHeader_ = function() {
   // routine to get stuck firing in a loop as it tries and fails to compensate
   // for the 1 pixel difference.
   if (this.redrawNavCalled_ && newHeight != oldHeight) {
-    this.ignoreNextScrollEvent_ = true;
     window.scrollBy(0, newHeight - oldHeight);
   }
 
@@ -519,7 +500,8 @@ pagespeed.MobNav.prototype.redrawNavPanel_ = function() {
 
 
 /**
- * Add events for capturing header bar resize.
+ * Add events for capturing header bar resize and calling the appropriate redraw
+ * events after scrolling and zooming.
  * @private
  */
 pagespeed.MobNav.prototype.addHeaderBarResizeEvents_ = function() {
@@ -527,14 +509,10 @@ pagespeed.MobNav.prototype.addHeaderBarResizeEvents_ = function() {
   this.redrawHeader_();
   this.redrawNavPanel_();
 
-  // Don't redraw the header bar unless there has not been a scroll event for 50
-  // ms and there are no touches currently on the screen. This keeps the
-  // redrawing from happening until scrolling is finished.
-  var scrollHandler = function(e) {
-    if (this.ignoreNextScrollEvent_) {
-      this.ignoreNextScrollEvent_ = false;
-      return;
-    }
+  // Setup a 200ms delay to redraw the header and nav panel. The timer gets
+  // reset upon each touchend and scroll event to ensure that the redraws happen
+  // after scrolling and zooming are finished.
+  var resetScrollTimer = function() {
     if (this.scrollTimer_ != null) {
       window.clearTimeout(this.scrollTimer_);
       this.scrollTimer_ = null;
@@ -545,9 +523,20 @@ pagespeed.MobNav.prototype.addHeaderBarResizeEvents_ = function() {
         this.redrawHeader_();
       }
       this.scrollTimer_ = null;
-    }, this), 50);
+    }, this), 200);
+  };
 
-    if (this.navPanel_ && goog.dom.classlist.contains(this.navPanel_, 'open') &&
+  // Don't redraw the header bar unless there has not been a scroll event for 50
+  // ms and there are no touches currently on the screen. This keeps the
+  // redrawing from happening until scrolling is finished.
+  var scrollHandler = function(e) {
+    if (!this.isNavPanelOpen_) {
+      goog.dom.classlist.add(this.headerBar_, 'hide');
+    }
+
+    resetScrollTimer.call(this);
+
+    if (this.navPanel_ && this.isNavPanelOpen_ &&
         !this.navPanel_.contains(/** @type {Node} */ (e.target))) {
       e.stopPropagation();
       e.preventDefault();
@@ -574,14 +563,15 @@ pagespeed.MobNav.prototype.addHeaderBarResizeEvents_ = function() {
                             }
                           }, this), false);
 
-  window.addEventListener(
-      goog.events.EventType.TOUCHEND, goog.bind(function(e) {
-        this.currentTouches_ = e.targetTouches.length;
-        if (this.scrollTimer_ == null && this.currentTouches_ == 0) {
-          this.redrawNavPanel_();
-          this.redrawHeader_();
-        }
-      }, this), false);
+  window.addEventListener(goog.events.EventType.TOUCHEND,
+                          goog.bind(function(e) {
+                            this.currentTouches_ = e.targetTouches.length;
+                            // Redraw the header bar if there are no more
+                            // current touches.
+                            if (this.currentTouches_ == 0) {
+                              resetScrollTimer.call(this);
+                            }
+                          }, this), false);
 
   window.addEventListener(goog.events.EventType.ORIENTATIONCHANGE,
                           goog.bind(function() {
@@ -610,6 +600,20 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
   this.headerBar_ = document.createElement('header');
   document.body.insertBefore(this.headerBar_, this.spacerDiv_);
   goog.dom.classlist.add(this.headerBar_, 'psmob-header-bar');
+  // Set the unscaled header bar height. We set it to 10% of the largest screen
+  // dimension. Note that docEl.clientHeight can change slightly depending on if
+  // the browser chrome is currently being shown or not, so we set the height
+  // here instead of redrawHeader_() so that it doesn't change when redrawing
+  // after the intial page view. Note, if you change this height, you should
+  // also change MobilizeRewriteFilter::kSetSpacerHeight to match.
+  // Using '10vmax' would be a lot better here, except this causes some
+  // flakiness when recomputing the size to use for the buttons, and there are
+  // issues on iOS 7.
+  this.headerBar_.style.height =
+      Math.round(Math.max(document.documentElement.clientHeight,
+                          document.documentElement.clientWidth) *
+                 .1) +
+      'px';
   if (!this.navDisabledForSite_()) {
     this.menuButton_ = themeData.menuButton;
     this.headerBar_.appendChild(this.menuButton_);

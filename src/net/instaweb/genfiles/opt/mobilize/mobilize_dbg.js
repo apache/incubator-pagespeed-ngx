@@ -7281,7 +7281,7 @@ pagespeed.MobNav = function() {
   this.useDetectedThemeColor_ = !0;
   this.scrollTimer_ = this.navPanel_ = this.mapButton_ = this.callButton_ = this.menuButton_ = this.logoSpan_ = this.spacerDiv_ = this.headerBar_ = null;
   this.lastScrollY_ = this.currentTouches_ = 0;
-  this.ignoreNextScrollEvent_ = this.isNavPanelOpen_ = !1;
+  this.isNavPanelOpen_ = !1;
   this.elementsToOffset_ = [];
   this.redrawNavCalled_ = !1;
 };
@@ -7362,9 +7362,7 @@ pagespeed.MobNav.prototype.fixExistingElements_ = function() {
   }
 };
 pagespeed.MobNav.prototype.redrawHeader_ = function() {
-  var a = Math.round(.1 * Math.max(document.documentElement.clientHeight, document.documentElement.clientWidth));
-  this.headerBar_.style.height = a + "px";
-  a = "scale(" + window.innerWidth / document.documentElement.clientWidth + ")";
+  var a = "scale(" + window.innerWidth / document.documentElement.clientWidth + ")";
   this.headerBar_.style["-webkit-transform"] = a;
   this.headerBar_.style.transform = a;
   goog.dom.classlist.remove(this.headerBar_, "hide");
@@ -7387,7 +7385,7 @@ pagespeed.MobNav.prototype.redrawHeader_ = function() {
       e = pagespeed.MobUtil.boundingRect(d).top, d.style.top = String(e + a) + "px";
     }
   }
-  this.redrawNavCalled_ && a != b && (this.ignoreNextScrollEvent_ = !0, window.scrollBy(0, a - b));
+  this.redrawNavCalled_ && a != b && window.scrollBy(0, a - b);
   this.headerBar_.style.top = window.scrollY + "px";
   this.headerBar_.style.left = window.scrollX + "px";
   this.redrawNavCalled_ = !0;
@@ -7408,11 +7406,17 @@ pagespeed.MobNav.prototype.redrawNavPanel_ = function() {
 pagespeed.MobNav.prototype.addHeaderBarResizeEvents_ = function() {
   this.redrawHeader_();
   this.redrawNavPanel_();
-  window.addEventListener(goog.events.EventType.SCROLL, goog.bind(function(a) {
-    this.ignoreNextScrollEvent_ ? this.ignoreNextScrollEvent_ = !1 : (null != this.scrollTimer_ && (window.clearTimeout(this.scrollTimer_), this.scrollTimer_ = null), this.scrollTimer_ = window.setTimeout(goog.bind(function() {
+  var a = function() {
+    null != this.scrollTimer_ && (window.clearTimeout(this.scrollTimer_), this.scrollTimer_ = null);
+    this.scrollTimer_ = window.setTimeout(goog.bind(function() {
       0 == this.currentTouches_ && (this.redrawNavPanel_(), this.redrawHeader_());
       this.scrollTimer_ = null;
-    }, this), 50), this.navPanel_ && goog.dom.classlist.contains(this.navPanel_, "open") && !this.navPanel_.contains(a.target) && (a.stopPropagation(), a.preventDefault()));
+    }, this), 200);
+  };
+  window.addEventListener(goog.events.EventType.SCROLL, goog.bind(function(b) {
+    this.isNavPanelOpen_ || goog.dom.classlist.add(this.headerBar_, "hide");
+    a.call(this);
+    this.navPanel_ && this.isNavPanelOpen_ && !this.navPanel_.contains(b.target) && (b.stopPropagation(), b.preventDefault());
   }, this), !1);
   window.addEventListener(goog.events.EventType.TOUCHSTART, goog.bind(function(a) {
     this.currentTouches_ = a.targetTouches.length;
@@ -7421,9 +7425,9 @@ pagespeed.MobNav.prototype.addHeaderBarResizeEvents_ = function() {
   window.addEventListener(goog.events.EventType.TOUCHMOVE, goog.bind(function(a) {
     this.isNavPanelOpen_ ? a.preventDefault() : goog.dom.classlist.add(this.headerBar_, "hide");
   }, this), !1);
-  window.addEventListener(goog.events.EventType.TOUCHEND, goog.bind(function(a) {
-    this.currentTouches_ = a.targetTouches.length;
-    null == this.scrollTimer_ && 0 == this.currentTouches_ && (this.redrawNavPanel_(), this.redrawHeader_());
+  window.addEventListener(goog.events.EventType.TOUCHEND, goog.bind(function(b) {
+    this.currentTouches_ = b.targetTouches.length;
+    0 == this.currentTouches_ && a.call(this);
   }, this), !1);
   window.addEventListener(goog.events.EventType.ORIENTATIONCHANGE, goog.bind(function() {
     this.redrawNavPanel_();
@@ -7437,6 +7441,7 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(a) {
   this.headerBar_ = document.createElement("header");
   document.body.insertBefore(this.headerBar_, this.spacerDiv_);
   goog.dom.classlist.add(this.headerBar_, "psmob-header-bar");
+  this.headerBar_.style.height = Math.round(.1 * Math.max(document.documentElement.clientHeight, document.documentElement.clientWidth)) + "px";
   this.navDisabledForSite_() || (this.menuButton_ = a.menuButton, this.headerBar_.appendChild(this.menuButton_));
   this.logoSpan_ = a.logoSpan;
   this.headerBar_.appendChild(this.logoSpan_);

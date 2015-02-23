@@ -953,12 +953,18 @@ void MobilizeLabelFilter::SanityCheckEndOfDocumentState() {
       if (sample->features[kParentRoleIs + role] != 0) {
         // Must have been propagated from parent.
         CHECK_EQ(role, parent->role)
-            << MobileRoleData::StringFromLevel(role);
+            << " " << sample->id
+            << " " << MobileRoleData::StringFromLevel(role)
+            << " " << MobileRoleData::StringFromLevel(parent->role);
       } else if (parent->role == role) {
         // parent->role must have been set by parent propagation,
-        // so our role must match.
-        CHECK_EQ(role, sample->role)
-            << MobileRoleData::StringFromLevel(role);
+        // so our role must match or be marginal.
+        if (sample->role != MobileRole::kMarginal) {
+          CHECK_EQ(role, sample->role)
+              << " " << sample->id
+              << " " << MobileRoleData::StringFromLevel(role)
+              << " " << MobileRoleData::StringFromLevel(sample->role);
+        }
       }
     }
   }
