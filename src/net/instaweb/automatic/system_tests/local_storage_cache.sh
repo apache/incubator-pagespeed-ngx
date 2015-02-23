@@ -55,10 +55,11 @@ check_not grep "src=.data:image/png;base64," $FETCHED
 check grep -q \
   "pagespeed.localStorageCache.inlineCss(.http://.*/styles/yellow.css.);" \
   $FETCHED
-check grep -q \
-  "pagespeed.localStorageCache.inlineImg(.http://.*/images/Cuppa.png.," \
-  ".alt=A cup of joe.," \
-  ".alt=A cup of joe.," \
-  ".alt=A cup of joe.s ..joe...," \
-  ".alt=A cup of joe.s ..joe...);" \
-  $FETCHED
+
+SEARCH_FOR="pagespeed.localStorageCache.inlineImg("
+SEARCH_FOR+=".http://.*/images/Cuppa.png., [^,]*, "
+SEARCH_FOR+=".alt=A cup of joe., "
+SEARCH_FOR+=".alt=A cup of joe., "
+SEARCH_FOR+=".alt=A cup of joe..s ..joe..., "
+SEARCH_FOR+=".alt=A cup of joe..s ..joe...);"
+check grep -q "$SEARCH_FOR" $FETCHED
