@@ -19,6 +19,7 @@
 
 goog.provide('pagespeed.Mob');
 
+goog.require('goog.events.EventType');
 goog.require('goog.string');
 goog.require('pagespeed.MobLayout');
 goog.require('pagespeed.MobNav');
@@ -216,10 +217,7 @@ pagespeed.Mob.prototype.mobilizeSite_ = function() {
     pagespeed.MobUtil.consoleLog('mobilizing site');
     // TODO(jmarantz): Remove this hack once we are compiling mob_logo.js in
     // the same module.
-    if (window.psNavMode && !pagespeed.MobUtil.inFriendlyIframe()) {
-      ++this.pendingCallbacks_;
-      pagespeed.MobTheme.extractTheme(this, this.logoComplete_.bind(this));
-    } else {
+    if (!window.psNavMode || pagespeed.MobUtil.inFriendlyIframe()) {
       this.maybeRunLayout();
     }
   } else {
@@ -229,11 +227,11 @@ pagespeed.Mob.prototype.mobilizeSite_ = function() {
 
 
 /**
- * Called after logo computation is complete.
+ * Called after theme computation is complete.
  * @param {!pagespeed.MobUtil.ThemeData} themeData
  * @private
  */
-pagespeed.Mob.prototype.logoComplete_ = function(themeData) {
+pagespeed.Mob.prototype.themeComplete_ = function(themeData) {
   --this.pendingCallbacks_;
   this.updateProgressBar(this.domElementCount_, 'extract theme');
   var mobNav = new pagespeed.MobNav();
@@ -540,9 +538,27 @@ pagespeed.Mob.prototype.removeProgressBar = function() {
 var psMob = new pagespeed.Mob();
 
 
-// Hide the body, then set a timer so we can start analyzing its geometry,
-// assuming it will be laid out.
-window.addEventListener('load', goog.bind(psMob.initiateMobilization, psMob));
+/**
+ * Extract theme. After that, execute themeComplete_().
+ * @private
+ */
+pagespeed.Mob.prototype.extractTheme_ = function() {
+  if (window.psNavMode && !pagespeed.MobUtil.inFriendlyIframe()) {
+    ++this.pendingCallbacks_;
+    pagespeed.MobTheme.extractTheme(this, this.themeComplete_.bind(this));
+  }
+};
+
+
+// Start theme extraction and navigation re-synthesis when the document content
+// is loaded.
+window.addEventListener(goog.events.EventType.DOMCONTENTLOADED,
+                        goog.bind(psMob.extractTheme_, psMob));
+
+
+// Start layout re-synthesis if it has been configured.
+window.addEventListener(goog.events.EventType.LOAD,
+                        goog.bind(psMob.initiateMobilization, psMob));
 
 
 /**

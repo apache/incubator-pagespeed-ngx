@@ -17,9 +17,29 @@
  */
 
 
+// Steps for detecting logo and computing theme color.
+// 1: Find out all elements which may be logo. An element is a logo candidate
+//    if it has the 'logo' string or the organization name in its attributes,
+//    or has HREF pointing to the landing URL.
+// 2: Find out all images which may be the foreground images of the logo. For
+//    each of the logo elements, we consider all images (IMG, SVG, and
+//    background image) in its descedants, and the background image in its
+//    nearest ancestor.
+//    Wait until all of these images loaded before doing the next steps.
+// 3. Remove the candidates which do not have images of proper size and
+//    position.
+// 4. Find out the best candidate element, considering image size, position, and
+//    the number of attributes with 'logo' or organization string.
+// 5. Find out the background color of the best candidate element. This is the
+//    non-transparent color of its nearest ancestor.
+// 6. Compute theme color based on the background color and foreground image.
+
 goog.provide('pagespeed.MobLogo');
 
+goog.require('goog.dom.TagName');
+goog.require('goog.events.EventType');
 goog.require('goog.string');
+goog.require('pagespeed.MobColor');
 goog.require('pagespeed.MobUtil');
 
 
@@ -27,9 +47,11 @@ goog.require('pagespeed.MobUtil');
 /**
  * Creates a context for Pagespeed logo detector.
  * @param {!pagespeed.Mob} psMob
+ * @param {function(pagespeed.MobLogo.LogoRecord, !goog.color.Rgb,
+ *                  !goog.color.Rgb)} doneCallback
  * @constructor
  */
-pagespeed.MobLogo = function(psMob) {
+pagespeed.MobLogo = function(psMob, doneCallback) {
   /**
    * Mobilization context.
    *
@@ -38,20 +60,38 @@ pagespeed.MobLogo = function(psMob) {
   this.psMob_ = psMob;
 
   /**
+   * Callback to invoke when this object finishes its work.
+   * @private {function(pagespeed.MobLogo.LogoRecord, !goog.color.Rgb,
+   *                    !goog.color.Rgb)} doneCallback
+   */
+  this.doneCallback_ = doneCallback;
+
+  /** @private {?string} */
+  this.organization_ = pagespeed.MobUtil.getSiteOrganization();
+
+  /** @private {string} */
+  this.landingUrl_ = window.location.origin + window.location.pathname;
+
+  /**
    * Array of logo candidates.
    * @private {!Array.<pagespeed.MobLogo.LogoRecord>}
    */
   this.candidates_ = [];
+
+  /** @private {number} */
+  this.pendingEventCount_ = 0;
 };
 
 
 
 /**
  * Creates an empty logo record.
+ * @param {number} metric
+ * @param {!Element} element
  * @constructor
  * @struct
  */
-pagespeed.MobLogo.LogoRecord = function() {
+pagespeed.MobLogo.LogoRecord = function(metric, element) {
   /**
    * Metric of being a logo element. Metric is computed for the elements with
    * size and position within certain ranges, and with an image in its sub-tree
@@ -61,21 +101,23 @@ pagespeed.MobLogo.LogoRecord = function() {
    *
    * @type {number}
    */
-  this.metric = -1;
+  this.metric = metric;
+  /** @type {!Element} */
+  this.logoElement = element;
+  /** @type {Array.<Element>} */
+  this.childrenElements = [];
+  /** @type {Array.<Element>} */
+  this.childrenImages = [];
   /** @type {Element} */
-  this.logoElement = null;
+  this.ancestorElement = null;
+  /** @type {Element} */
+  this.ancestorImage = null;
   /** @type {Element} */
   this.foregroundElement = null;
-  /** @type {string} */
-  this.foregroundImage = '';
-  /** @type {?pagespeed.MobUtil.ImageSource} */
-  this.foregroundSource = null;
-  /** @type {pagespeed.MobUtil.Rect} */
-  this.foregroundRect = null;
   /** @type {Element} */
-  this.backgroundElement = null;
+  this.foregroundImage = null;
   /** @type {pagespeed.MobUtil.Rect} */
-  this.backgroundRect = null;
+  this.rect = null;
   /** @type {Array.<number>} */
   this.backgroundColor = null;
 };
@@ -106,25 +148,8 @@ pagespeed.MobLogo.prototype.MAX_HEIGHT_ = 400;
 
 
 /**
- * Minimum number of pixels of an image to be considered as the logo.
- * @private {number}
- * @const
- */
-pagespeed.MobLogo.prototype.MIN_PIXELS_ = 400;
-
-
-/**
- * Maximum Y position of the top border for an element in the origin site to
- * be considered as the logo.
- * @private {number}
- * @const
- */
-pagespeed.MobLogo.prototype.MAX_TOP_ = 6000;
-
-
-/**
- * Minimum area of an element which is convered by an image. The area is
- * measured from the origin site.
+ * Minimum area of an element which must be covered by an image for that image
+ * to be considered a logo.
  * @private {number}
  * @const
  */
@@ -132,223 +157,62 @@ pagespeed.MobLogo.prototype.RATIO_AREA_ = 0.5;
 
 
 /**
- * Return 1 if 'logo' is a substring of the file name, with case ignored;
- * otherwise return 0. This method does more test than findLogoString, because
- * based on experiments, I found out that file name may contain false positives.
- * @param {string} str
- * @return {number}
- */
-pagespeed.MobLogo.findLogoInFileName = function(str) {
-  if (str) {
-    str = str.toLowerCase();
-    if (str.indexOf('logo') >= 0 &&
-        str.indexOf('logout') < 0 &&
-        str.indexOf('no_logo') < 0 &&
-        str.indexOf('no-logo') < 0) {
-      return 1;
-    }
-  }
-  return 0;
-};
-
-
-/**
- * Find foreground image of the logo. This happens after we identify an element
- * which is a potential logo. The foreground image can be inside the sub-tree
- * of the potential element (including the potential element), or can be in
- * an ancestor of the potential element. This method can be configured to
- * search down (in the subtree) or to search up (in the ancestors). This method
- * will not change the seach direction by itself.
- *
- * @param {!Element} element
- * @param {number} minArea
- * @param {boolean} searchDown
- * @return {pagespeed.MobLogo.LogoRecord}
- * @private
- */
-pagespeed.MobLogo.prototype.findForeground_ = function(element, minArea,
-                                                       searchDown) {
-  var rect = pagespeed.MobUtil.boundingRectAndSize(element);
-  var validVisibility = (this.psMob_.getVisibility(element) != 'hidden');
-  var area = rect.width * rect.height;
-  var validDisplay = rect.width > this.MIN_WIDTH_ &&
-      rect.height > this.MIN_HEIGHT_ &&
-      area > this.MIN_PIXELS_ &&
-      rect.top < this.MAX_TOP_ &&
-      rect.height < this.MAX_HEIGHT_;
-
-  if (validVisibility && validDisplay && area >= minArea) {
-    var source = null;
-    var image = null;
-    for (var id in pagespeed.MobUtil.ImageSource) {
-      image = pagespeed.MobUtil.extractImage(
-          element, pagespeed.MobUtil.ImageSource[id]);
-      if (image) {
-        source = pagespeed.MobUtil.ImageSource[id];
-
-        // If the foreground is IMG tag, and the image has been loaded,
-        // use the natural dimension.
-        var returnLogo = true;
-        if (source == pagespeed.MobUtil.ImageSource.IMG) {
-          var imageSize = this.psMob_.findImageSize(element.src);
-          if (imageSize) {
-            rect.width = imageSize.width;
-            rect.height = imageSize.height;
-          } else if (element.naturalWidth) {
-            // Take the image size from the IMG element, assuming it's
-            // been loaded.  Note that C++ will not necessarily load
-            // all the images.  However, the IMG tag might be populated
-            // correctly anyway.
-            rect.width = element.naturalWidth;
-            rect.height = element.naturalHeight;
-          } else if (!rect.width || !rect.height) {
-            // TODO(huibao): Instead of printing a message and punting,
-            // continue processing when the image is loaded.
-            pagespeed.MobUtil.consoleLog(
-                'Image ' + element.src + ' may be the logo. ' +
-                'It has not been loaded so may be missed.');
-            returnLogo = false;
-          }
-          if (returnLogo &&
-              (rect.width <= this.MIN_WIDTH_ ||
-               rect.height <= this.MIN_HEIGHT_ ||
-               rect.height >= this.MAX_HEIGHT_)) {
-            returnLogo = false;
-          }
-        }
-
-        if (returnLogo) {
-          var logoRecord = new pagespeed.MobLogo.LogoRecord();
-          logoRecord.foregroundImage = image;
-          logoRecord.foregroundElement = element;
-          logoRecord.foregroundSource = source;
-          logoRecord.foregroundRect = rect;
-          return logoRecord;
-        }
-      }
-    }
-  }
-
-  if (searchDown) {
-    for (var child = element.firstChild; child; child = child.nextSibling) {
-      var childElement = pagespeed.MobUtil.castElement(child);
-      if (childElement != null) {
-        var foreground = this.findForeground_(childElement, minArea,
-                                              searchDown);
-        if (foreground) {
-          return foreground;
-        }
-      }
-    }
-    return null;
-  } else if (element.parentNode) {
-    var parentElement = pagespeed.MobUtil.castElement(element.parentNode);
-    if (parentElement != null) {
-      return this.findForeground_(parentElement, minArea, searchDown);
-    }
-  }
-  return null;
-};
-
-
-/**
- * Find the element that is likely to be a logo. An element can be a logo if
- * it meets conditions (A) and (B).
- * (A) One or more of the following attributes contains 'logo' or the
- *     organization name: (1) title, (2) id, (3) class name, (4) alt,
- *     (5) file name.
- * (B) Has an image within the predefined size range and position range in
- *     its sub-tree or its ancestor. The image can be in <IMG> or <SVG> tag
- *     or as a background image.
- *
- * This method firstly tries to identify a potential element as the logo. If
- * it finds one, it searchs down the tree, starting from the potential element,
- * for the foregound image. If it couldn't find a foreground image from the
- * sub-tree, it searchs up, again starting from the potential element, for the
- * foreground image.
- *
- * @param {!Element} element
- * @param {number} inheritedMetric
+ * Find the element that is likely to be a logo.
+ * @param {!Element} element Element being tested whether has logo attributes
  * @return {?pagespeed.MobLogo.LogoRecord}
  * @private
  */
-pagespeed.MobLogo.prototype.findLogoNode_ = function(element, inheritedMetric) {
-  var rect = pagespeed.MobUtil.boundingRectAndSize(element);
-  var validVisibility = (this.psMob_.getVisibility(element) != 'hidden');
-  var validDisplay = rect.top < this.MAX_TOP_ &&
-      rect.height < this.MAX_HEIGHT_;
-
-  if (!(validDisplay && validVisibility)) {
+pagespeed.MobLogo.prototype.findLogoElement_ = function(element) {
+  if (this.psMob_.getVisibility(element) == 'hidden') {
     return null;
   }
 
-  var metricLogo = 0;
-  if (element.title) {
-    metricLogo += goog.string.caseInsensitiveContains(element.title, 'logo');
+  // Find URL of the image. Some sites use 'logo' or the organization name
+  // to name the logo image, so the file name is a signal for identifying the
+  // logo. However, such signal is not available for inlined images.
+  var imageSrc = null;
+  if (element.nodeName.toUpperCase() == goog.dom.TagName.IMG) {
+    imageSrc = element.src;
+  } else {
+    // IMG tag can also have background image, but it's ignored for now until
+    // we see actual use of it.
+    imageSrc = pagespeed.MobUtil.findBackgroundImage(element);
   }
-  if (element.id) {
-    metricLogo += goog.string.caseInsensitiveContains(element.id, 'logo');
-  }
-  if (element.className) {
-    metricLogo += goog.string.caseInsensitiveContains(element.className,
-                                                      'logo');
-  }
-  if (element.alt) {
-    metricLogo += goog.string.caseInsensitiveContains(element.alt, 'logo');
-  }
-
-  var org = pagespeed.MobUtil.getSiteOrganization();
-  var metricOrg = 0;
-  if (org) {
-    if (element.id) {
-      metricLogo += goog.string.caseInsensitiveContains(element.id, org);
-    }
-    if (element.className) {
-      metricLogo += goog.string.caseInsensitiveContains(element.className, org);
-    }
-    if (element.title) {
-      metricOrg += pagespeed.MobUtil.findPattern(element.title, org);
-    }
-    if (element.alt) {
-      metricOrg += pagespeed.MobUtil.findPattern(element.alt, org);
-    }
+  imageSrc = pagespeed.MobUtil.resourceFileName(imageSrc);
+  if (imageSrc.indexOf('data:image/') != -1) {
+    imageSrc = null;
   }
 
-  var area = rect.width * rect.height;
-  var minArea = area * this.RATIO_AREA_;
+  var signals =
+      [element.title, element.id, element.className, element.alt, imageSrc];
+
+  var metric = 0;
+  var i;
+  for (i = 0; i < signals.length; ++i) {
+    if (signals[i]) {
+      if (goog.string.caseInsensitiveContains(signals[i], 'logo')) {
+        ++metric;
+      }
+    }
+  }
+  if (this.organization_) {
+    for (i = 0; i < signals.length; ++i) {
+      if (signals[i] &&
+          pagespeed.MobUtil.findPattern(signals[i], this.organization_)) {
+        ++metric;
+      }
+    }
+  }
 
   // If the element has 'href' and it points to the landing page, the element
   // may be a logo candidate. Typical construct looks like
   //   <a href='...'><img src='...'></a>
-  var metricHref = 0;
-  if (element.href &&
-      element.href == window.location.origin + window.location.pathname) {
-    ++metricHref;
+  if (element.href == this.landingUrl_) {
+    ++metric;
   }
 
-  var searchDown = true;
-  // Try to seach down in the DOM tree for foreground image.
-  var logoRecord = this.findForeground_(element, minArea, searchDown);
-  if (!logoRecord) {
-    // Now try searching up in the DOM tree.
-    logoRecord = this.findForeground_(element, area, !searchDown);
-  }
-
-  if (logoRecord) {
-    var imageSrc = pagespeed.MobUtil.resourceFileName(
-        logoRecord.foregroundImage);
-
-    metricLogo += pagespeed.MobLogo.findLogoInFileName(imageSrc);
-    if (imageSrc && org) {
-      metricOrg += pagespeed.MobUtil.findPattern(imageSrc, org);
-    }
-
-    var metric = metricLogo + metricOrg + metricHref;
-    if (metric > 0) {
-      logoRecord.metric = metric;
-      logoRecord.logoElement = element;
-      return logoRecord;
-    }
+  if (metric > 0) {
+    return (new pagespeed.MobLogo.LogoRecord(metric, element));
   }
 
   return null;
@@ -358,22 +222,207 @@ pagespeed.MobLogo.prototype.findLogoNode_ = function(element, inheritedMetric) {
 /**
  * Find all of the logo candidates.
  * @param {!Element} element
- * @param {number} inheritedMetric
  * @private
  */
-pagespeed.MobLogo.prototype.findLogoCandidates_ = function(
-    element, inheritedMetric) {
-  var newCandidate = this.findLogoNode_(element, inheritedMetric);
+pagespeed.MobLogo.prototype.findLogoCandidates_ = function(element) {
+  var newCandidate = this.findLogoElement_(element);
   if (newCandidate) {
     this.candidates_.push(newCandidate);
-    ++inheritedMetric;
   }
 
-  for (var child = element.firstChild; child; child = child.nextSibling) {
-    var childElement = pagespeed.MobUtil.castElement(child);
-    if (childElement != null) {
-      this.findLogoCandidates_(childElement, inheritedMetric);
+  for (var childElement = element.firstElementChild; childElement;
+       childElement = childElement.nextElementSibling) {
+    this.findLogoCandidates_(childElement);
+  }
+};
+
+
+/**
+ * Add the image to the pending list. We will wait until all pending images
+ * have been loaded before finding the best logo.
+ * @param {!Element} img
+ * @private
+ */
+pagespeed.MobLogo.prototype.addImageToPendingList_ = function(img) {
+  ++this.pendingEventCount_;
+  img.addEventListener(goog.events.EventType.LOAD,
+                       goog.bind(this.eventDone_, this));
+  img.addEventListener(goog.events.EventType.ERROR,
+                       goog.bind(this.eventDone_, this));
+};
+
+
+/**
+ * Create a new IMG tag using the specified image source. This IMG tag will be
+ * monitored.
+ * @param {string} imageSrc
+ * @return {!Element}
+ * @private
+ */
+pagespeed.MobLogo.prototype.newImage_ = function(imageSrc) {
+  var img = document.createElement(goog.dom.TagName.IMG);
+  this.addImageToPendingList_(img);
+  img.src = imageSrc;
+  return img;
+};
+
+
+/**
+ * Collect all images in the element's descendants.
+ * @param {!Element} element
+ * @param {Array.<Element>} childrenElements
+ * @param {Array.<Element>} childrenImages
+ * @private
+ */
+pagespeed.MobLogo.prototype.collectChildrenImages_ = function(
+    element, childrenElements, childrenImages) {
+  var imageSrc = null;
+  for (var src in pagespeed.MobUtil.ImageSource) {
+    imageSrc = pagespeed.MobUtil.extractImage(
+        element, pagespeed.MobUtil.ImageSource[src]);
+    if (imageSrc) {
+      var img = null;
+      if (src == pagespeed.MobUtil.ImageSource.IMG) {
+        img = element;
+        if (!element.naturalWidth) {
+          this.addImageToPendingList_(img);
+        }
+      } else {
+        img = this.newImage_(imageSrc);
+      }
+      childrenElements.push(element);
+      childrenImages.push(img);
+      // Ignore background image of IMG and SVG tags.
+      break;
     }
+  }
+
+
+  for (var childElement = element.firstElementChild; childElement;
+       childElement = childElement.nextElementSibling) {
+    this.collectChildrenImages_(childElement, childrenElements, childrenImages);
+  }
+};
+
+
+/**
+ * Find all images which may be the foreground of the logo.
+ * @param {!Array.<pagespeed.MobLogo.LogoRecord>} logoCandidates
+ * @private
+ */
+pagespeed.MobLogo.prototype.findImagesAndWait_ = function(logoCandidates) {
+  for (var i = 0; i < logoCandidates.length; ++i) {
+    var logo = logoCandidates[i];
+    var element = logo.logoElement;
+    this.collectChildrenImages_(element, logo.childrenElements,
+                                logo.childrenImages);
+
+    // Find the background in the logo element's nearest ancestor.
+    if (element.parentNode) {
+      element = pagespeed.MobUtil.castElement(element.parentNode);
+    } else {
+      element = null;
+    }
+    while (element) {
+      var imageSrc = pagespeed.MobUtil.findBackgroundImage(element);
+      if (imageSrc) {
+        logo.ancestorElement = element;
+        logo.ancestorImage = this.newImage_(imageSrc);
+        break;
+      }
+      element = element.parentElement;
+    }
+  }
+
+  if (this.pendingEventCount_ == 0) {
+    this.findBestLogoAndColor_();
+  }
+};
+
+
+/**
+ * Remove the logo candidates which do not have image of proper size and
+ * position.
+ * @private
+ */
+pagespeed.MobLogo.prototype.pruneCandidateBySizePos_ = function() {
+  var logoCandidates = this.candidates_;
+  for (var i = 0; i < logoCandidates.length; ++i) {
+    var logo = logoCandidates[i];
+    var element = logo.logoElement;
+    var rect = pagespeed.MobUtil.boundingRectAndSize(element);
+    var area = rect.width * rect.height;
+
+    var minArea = area * this.RATIO_AREA_;
+    var bestIndex = -1;
+    var bestImageArea = 0;
+    for (var j = 0; j < logo.childrenElements.length; ++j) {
+      var img = logo.childrenElements[j];
+      if (!img) {
+        continue;
+      }
+      rect = pagespeed.MobUtil.boundingRectAndSize(img);
+      area = rect.width * rect.height;
+      if (area >= minArea && rect.width > this.MIN_WIDTH_ &&
+          rect.height > this.MIN_HEIGHT_ && rect.height < this.MAX_HEIGHT_) {
+        if (area > bestImageArea) {
+          bestImageArea = area;
+          bestIndex = j;
+        }
+      }
+    }
+
+    if (bestIndex >= 0) {
+      logo.foregroundElement = logo.childrenElements[bestIndex];
+      logo.foregroundImage = logo.childrenImages[bestIndex];
+      logo.rect = rect;
+    } else if (logo.ancestorElement) {
+      img = logo.ancestorElement;
+      rect = pagespeed.MobUtil.boundingRectAndSize(img);
+      area = rect.width * rect.height;
+      if (area >= minArea && rect.width > this.MIN_WIDTH_ &&
+          rect.height > this.MIN_HEIGHT_ && rect.height < this.MAX_HEIGHT_) {
+        logo.foregroundElement = logo.ancestorElement;
+        logo.foregroundImage = logo.ancestorImage;
+        logo.rect = rect;
+      } else {
+        logoCandidates[i] = null;
+      }
+    } else {
+      logoCandidates[i] = null;
+    }
+  }
+};
+
+
+/**
+ * Find the best logo and compute theme color.
+ * @private
+ */
+pagespeed.MobLogo.prototype.findBestLogoAndColor_ = function() {
+  this.pruneCandidateBySizePos_();
+  var logo = this.findBestLogo_();
+  var img = null;
+  var background = null;
+
+  if (logo) {
+    this.findLogoBackground_(logo);
+    img = logo.foregroundImage;
+    background = logo.backgroundColor;
+  }
+  var mobColor = new pagespeed.MobColor();
+  var themeColor = mobColor.run(img, background);
+  this.doneCallback_(logo, themeColor.background, themeColor.foreground);
+};
+
+
+/**
+ * @private
+ */
+pagespeed.MobLogo.prototype.eventDone_ = function() {
+  --this.pendingEventCount_;
+  if (this.pendingEventCount_ == 0) {
+    this.findBestLogoAndColor_();
   }
 };
 
@@ -396,29 +445,32 @@ pagespeed.MobLogo.prototype.findLogoCandidates_ = function(
  * @private
  */
 pagespeed.MobLogo.prototype.findBestLogo_ = function() {
-  var logo = null;
-  var logoCandidates = this.candidates_;
-  if (!logoCandidates || logoCandidates.length == 0) {
-    return null;
+  var logoCandidates = [];
+  var i;
+  for (i = 0; i < this.candidates_.length; ++i) {
+    if (this.candidates_[i]) {
+      logoCandidates.push(this.candidates_[i]);
+    }
   }
 
-  if (logoCandidates.length == 1) {
-    logo = logoCandidates[0];
-    return logo;
+  if (logoCandidates.length == 0) {
+    return null;
+  } else if (logoCandidates.length == 1) {
+    return logoCandidates[0];
   }
 
   // Use the position and size to update the metric.
   // TODO(huibao): Split the update into a method.
   var maxBot = 0;
   var minTop = Infinity;
-  var rect, i, candidate;
+  var rect, candidate;
   for (i = 0; candidate = logoCandidates[i]; ++i) {
-    rect = candidate.foregroundRect;
+    rect = candidate.rect;
     minTop = Math.min(minTop, rect.top);
     maxBot = Math.max(maxBot, rect.bottom);
   }
   for (i = 0; candidate = logoCandidates[i]; ++i) {
-    rect = candidate.foregroundRect;
+    rect = candidate.rect;
     // TODO(huibao): Investigate a better way for incorporating size and
     // position in the selection of the best logo, for example
     // Math.sqrt((maxBot - rect.bottom) / (maxBot - minTop)).
@@ -439,26 +491,24 @@ pagespeed.MobLogo.prototype.findBestLogo_ = function() {
   }
 
   if (bestCandidates.length == 1) {
-    logo = bestCandidates[0];
-    return logo;
+    return bestCandidates[0];
   }
 
   // There are multiple candiates with the same largest metric.
   minTop = Infinity;
   var bestLogo = bestCandidates[0];
-  var bestRect = bestLogo.foregroundRect;
+  var bestRect = bestLogo.rect;
   for (i = 1; candidate = bestCandidates[i]; ++i) {
-    rect = candidate.foregroundRect;
+    rect = candidate.rect;
     if (bestRect.top > rect.top ||
         (bestRect.top == rect.top && bestRect.left > rect.left) ||
         (bestRect.top == rect.top && bestRect.left == rect.left &&
          bestRect.width * bestRect.height > rect.width * rect.height)) {
       bestLogo = candidate;
-      bestRect = bestLogo.foregroundRect;
+      bestRect = bestLogo.rect;
     }
   }
-  logo = bestLogo;
-  return logo;
+  return bestLogo;
 };
 
 
@@ -489,53 +539,35 @@ pagespeed.MobLogo.prototype.extractBackgroundColor_ = function(element) {
 
 
 /**
- * Find the background image or color for the logo.
+ * Find the background color for the logo.
  * @param {pagespeed.MobLogo.LogoRecord} logo
- * @return {pagespeed.MobLogo.LogoRecord}
  * @private
  */
 pagespeed.MobLogo.prototype.findLogoBackground_ = function(logo) {
   if (!logo || !logo.foregroundElement) {
-    return null;
+    return;
   }
 
+  var backgroundColor = null;
   var element = logo.foregroundElement;
-  var backgroundColor = this.extractBackgroundColor_(element);
-  var parentElement = null;
-  if (element.parentNode) {
-    parentElement = pagespeed.MobUtil.castElement(element.parentNode);
-  }
-
-  // Check the ancestors.
-  while (parentElement && !backgroundColor) {
-    element = parentElement;
+  while (element && !backgroundColor) {
     backgroundColor = this.extractBackgroundColor_(element);
-
-    if (element.parentNode) {
-      parentElement = pagespeed.MobUtil.castElement(element.parentNode);
-    } else {
-      parentElement = null;
-    }
+    element = element.parentElement;
   }
 
-  logo.backgroundElement = element;
-  logo.backgroundColor = backgroundColor || [255, 255, 255];
-  logo.backgroundRect = pagespeed.MobUtil.boundingRectAndSize(element);
-  return logo;
+  logo.backgroundColor = backgroundColor;
 };
 
 
 /**
  * Extract theme of the page. This is the entry method.
- * @return {pagespeed.MobLogo.LogoRecord}
  * @export
  */
 pagespeed.MobLogo.prototype.run = function() {
   if (!document.body) {
-    return null;
+    return;
   }
 
-  this.findLogoCandidates_(document.body, /* initial metric */ 0);
-  var logo = this.findBestLogo_();
-  return this.findLogoBackground_(logo);
+  this.findLogoCandidates_(document.body);
+  this.findImagesAndWait_(this.candidates_);
 };

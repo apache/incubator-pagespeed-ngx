@@ -19,6 +19,7 @@
 goog.provide('pagespeed.MobColor');
 
 goog.require('goog.color');
+goog.require('goog.dom.TagName');
 goog.require('pagespeed.MobUtil');
 
 
@@ -28,30 +29,6 @@ goog.require('pagespeed.MobUtil');
  * @constructor
  */
 pagespeed.MobColor = function() {
-  /**
-   * Callback to invoke when this object finishes its work.
-   * @private {function(pagespeed.MobLogo.LogoRecord, !goog.color.Rgb,
-   *                    !goog.color.Rgb)}
-   */
-  this.doneCallback_;
-
-  /**
-   * Number of images which we need to load and analyze.
-   * @private {number}
-   */
-  this.numPendingImages_ = 0;
-
-  /**
-   * The logo, if there is any.
-   * @private {pagespeed.MobLogo.LogoRecord}
-   */
-  this.logo_ = null;
-
-  /**
-   * Data of the logo foreground image.
-   * @private {ImageData}
-   */
-  this.foregroundData_ = null;
 };
 
 
@@ -146,7 +123,6 @@ pagespeed.MobColor.prototype.rgbToGray_ = function(sRgb) {
  * @param {!pagespeed.MobColor.ThemeColors} themeColors
  * @private
  * @return {!pagespeed.MobColor.ThemeColors}
- * @this {pagespeed.MobColor}
  */
 pagespeed.MobColor.prototype.enhanceColors_ = function(themeColors) {
   var bk = themeColors.background;
@@ -223,7 +199,6 @@ pagespeed.MobColor.prototype.enhanceColors_ = function(themeColors) {
  * @param {number} height
  * @private
  * @return {!pagespeed.MobColor.ThemeColors}
- * @this {pagespeed.MobColor}
  */
 pagespeed.MobColor.prototype.computeColors_ = function(pixels, bkColor,
                                                        width, height) {
@@ -311,124 +286,61 @@ pagespeed.MobColor.prototype.computeColors_ = function(pixels, bkColor,
 
 
 /**
- * Callback to use for synthesizing the logo and hamburger menu icon, and for
- * invoking the latter processing. This method must be called at the end of this
- * object.
+ * Compute theme color from the logo image and background color.
+ * @param {!Element} imageElement
+ * @param {!goog.color.Rgb} backgroundColor
  * @private
- * @this {pagespeed.MobColor}
+ * @return {pagespeed.MobColor.ThemeColors}
  */
-pagespeed.MobColor.prototype.synthesizeCallback_ = function() {
-  --this.numPendingImages_;
-  if (this.numPendingImages_ > 0) {
-    return;
-  }
-
-  var backgroundColor = [255, 255, 255];
-  var foregroundColor = [0, 0, 0];
-  var logo = this.logo_;
-  if (this.foregroundData_ && this.foregroundData_.data &&
-      logo && logo.foregroundRect && logo.backgroundColor) {
-    // TODO(huibao): If foreground is transparent and there is an image
-    // behind it, use the image at the back for computing background color.
-    backgroundColor = logo.backgroundColor;
-
-    var colors = this.computeColors_(
-        /** @type {!Uint8ClampedArray} */ (this.foregroundData_.data),
-        logo.backgroundColor, logo.foregroundRect.width,
-        logo.foregroundRect.height);
-
-    backgroundColor = colors.background;
-    foregroundColor = colors.foreground;
-  } else {
-    if (logo && logo.backgroundColor) {
-      backgroundColor = logo.backgroundColor;
-      // If the background color is bright, set the foreground to black;
-      // otherwise, set to white.
-      var hsv = goog.color.rgbArrayToHsv(backgroundColor);
-      if (hsv[2] > 0.7 * 255) {
-        foregroundColor = [0, 0, 0];
-      } else {
-        foregroundColor = [255, 255, 255];
-      }
-    }
-  }
-
-  pagespeed.MobUtil.consoleLog('Theme color. Background: ' + backgroundColor +
-                               ' foreground: ' + foregroundColor);
-
-  this.doneCallback_(this.logo_, backgroundColor, foregroundColor);
+pagespeed.MobColor.prototype.computeThemeColor_ = function(imageElement,
+                                                           backgroundColor) {
+  var width = imageElement.naturalWidth;
+  var height = imageElement.naturalHeight;
+  var canvas = document.createElement(goog.dom.TagName.CANVAS);
+  canvas.width = width;
+  canvas.height = height;
+  var context = canvas.getContext('2d');
+  context.drawImage(imageElement, 0, 0);
+  var foregroundData = context.getImageData(0, 0, width, height);
+  var colors = this.computeColors_(
+      /** @type {!Uint8ClampedArray} */ (foregroundData.data), backgroundColor,
+      width, height);
+  return colors;
 };
 
 
 /**
- * Decode an image into pixels.
- * @param {string} mode
- * @param {string} src
- * @param {pagespeed.MobUtil.Rect} rect
- * @private
- * @this {pagespeed.MobColor}
+ * Compute theme color or return the default color.
+ * @param {Element} imageElement
+ * @param {goog.color.Rgb} backgroundColor
+ * @return {pagespeed.MobColor.ThemeColors}
  */
-pagespeed.MobColor.prototype.getImageDataAndSynthesize_ = function(mode, src,
-                                                                   rect) {
-  var imageElement = new Image();
-  imageElement.onload = goog.bind(function() {
-    var canvas = document.createElement('canvas');
-    var width = null;
-    var height = null;
-    if (rect && rect.width > 0 && rect.height > 0) {
-      width = rect.width;
-      height = rect.height;
+pagespeed.MobColor.prototype.run = function(imageElement, backgroundColor) {
+  if (imageElement) {
+    if (!pagespeed.MobUtil.isCrossOrigin(imageElement.src)) {
+      pagespeed.MobUtil.consoleLog('Found logo. Theme color will be computed ' +
+                                   'from logo.');
+      return this.computeThemeColor_(imageElement,
+                                     backgroundColor || [255, 255, 255]);
     } else {
-      width = imageElement.naturalWidth;
-      height = imageElement.naturalHeight;
+      pagespeed.MobUtil.consoleLog('Found logo but its origin is different ' +
+                                   'from that of HTML. Using default color.');
     }
-    canvas.width = width;
-    canvas.height = height;
-    var context = canvas.getContext('2d');
-    context.drawImage(imageElement, 0, 0);
-    if (mode == 'foreground') {
-      this.foregroundData_ = context.getImageData(0, 0, width, height);
-    }
-    this.synthesizeCallback_();
-  }, this);
-  imageElement.onerror = goog.bind(this.synthesizeCallback_, this);
-  imageElement.src = src;
-};
-
-
-/**
- * Compute color and synthesize logo span.
- * @param {pagespeed.MobLogo.LogoRecord} logo
- * @param {function(pagespeed.MobLogo.LogoRecord, !goog.color.Rgb,
- *                  !goog.color.Rgb)} doneCallback
- * @this {pagespeed.MobColor}
- */
-pagespeed.MobColor.prototype.run = function(logo, doneCallback) {
-  this.logo_ = logo;
-  if (this.doneCallback_) {
-    alert('A callback which was supposed to run after extracting theme color ' +
-          ' was not executed.');
-  }
-  this.doneCallback_ = doneCallback;
-  if (logo) {
-    if (logo.foregroundImage &&
-        !pagespeed.MobUtil.isCrossOrigin(logo.foregroundImage)) {
-      this.numPendingImages_ = 1;
-      this.getImageDataAndSynthesize_('foreground', logo.foregroundImage,
-                                      logo.foregroundRect);
-      // TODO(huibao): Report progress in theme extraction in the progress bar.
-      pagespeed.MobUtil.consoleLog(
-          'Found logo. Theme color will be computed from logo.');
-      return;
-    }
-  }
-
-  if (logo && logo.foregroundImage) {
-    pagespeed.MobUtil.consoleLog(
-        'Found logo but its origin is different that of HTML. ' +
-        'Use default color.');
   } else {
-    pagespeed.MobUtil.consoleLog('Could not find logo. Use default color.');
+    pagespeed.MobUtil.consoleLog('Did not find logo. Using default color.');
   }
-  this.synthesizeCallback_();
+
+  var foregroundColor = [0, 0, 0];
+  if (backgroundColor) {
+    // Use white foreground if the background is dark; or black foreground
+    // otherwise.
+    var hsv = goog.color.rgbArrayToHsv(backgroundColor);
+    if (hsv[2] <= 0.7 * 255) {
+      foregroundColor = [255, 255, 255];
+    }
+  } else {
+    backgroundColor = [255, 255, 255];
+  }
+
+  return (new pagespeed.MobColor.ThemeColors(backgroundColor, foregroundColor));
 };
