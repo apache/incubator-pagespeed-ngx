@@ -609,11 +609,10 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
   // Using '10vmax' would be a lot better here, except this causes some
   // flakiness when recomputing the size to use for the buttons, and there are
   // issues on iOS 7.
+
+  var viewportSize = goog.dom.getViewportSize();
   this.headerBar_.style.height =
-      Math.round(Math.max(document.documentElement.clientHeight,
-                          document.documentElement.clientWidth) *
-                 .1) +
-      'px';
+      Math.round(Math.max(viewportSize.height, viewportSize.width) * .1) + 'px';
   if (!this.navDisabledForSite_()) {
     this.menuButton_ = themeData.menuButton;
     this.headerBar_.appendChild(this.menuButton_);

@@ -7441,7 +7441,8 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(a) {
   this.headerBar_ = document.createElement("header");
   document.body.insertBefore(this.headerBar_, this.spacerDiv_);
   goog.dom.classlist.add(this.headerBar_, "psmob-header-bar");
-  this.headerBar_.style.height = Math.round(.1 * Math.max(document.documentElement.clientHeight, document.documentElement.clientWidth)) + "px";
+  var b = goog.dom.getViewportSize();
+  this.headerBar_.style.height = Math.round(.1 * Math.max(b.height, b.width)) + "px";
   this.navDisabledForSite_() || (this.menuButton_ = a.menuButton, this.headerBar_.appendChild(this.menuButton_));
   this.logoSpan_ = a.logoSpan;
   this.headerBar_.appendChild(this.logoSpan_);
