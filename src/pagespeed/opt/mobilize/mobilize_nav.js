@@ -27,6 +27,7 @@ goog.require('goog.dom.TagName');
 goog.require('goog.dom.classlist');
 goog.require('goog.events.EventType');
 goog.require('goog.json');
+goog.require('goog.labs.userAgent.browser');
 goog.require('goog.net.Jsonp');
 goog.require('goog.string');
 // goog.style adds ~400 bytes when using getSize and getTransformedSize.
@@ -135,6 +136,15 @@ pagespeed.MobNav = function() {
    * @private {boolean}
    */
   this.redrawNavCalled_ = false;
+
+
+  /**
+   * Tracks if we are on the stock android browser. Touch events are broken on
+   * old version of the android browser, so we have to provide some fallback
+   * functionality for them.
+   * @private {boolean}
+   */
+  this.isAndroidBrowser_ = goog.labs.userAgent.browser.isAndroidBrowser();
 };
 
 
@@ -518,7 +528,16 @@ pagespeed.MobNav.prototype.addHeaderBarResizeEvents_ = function() {
       this.scrollTimer_ = null;
     }
     this.scrollTimer_ = window.setTimeout(goog.bind(function() {
-      if (this.currentTouches_ == 0) {
+      // Stock android browser has a longstanding bug where touchend events are
+      // not fired unless preventDefault is called in touchstart. However, doing
+      // so prevents scrolling (which is the default behavior). Since those
+      // events aren't fired, currentTouches_ does not get updated correctly. To
+      // workaround, we fallback to the slightly jankier behavior of just
+      // redrawing after a scroll event, even if there are potentially touches
+      // still happening.
+      // https://code.google.com/p/android/issues/detail?id=19827 for details on
+      // the bug in question.
+      if (this.isAndroidBrowser_ || this.currentTouches_ == 0) {
         this.redrawNavPanel_();
         this.redrawHeader_();
       }

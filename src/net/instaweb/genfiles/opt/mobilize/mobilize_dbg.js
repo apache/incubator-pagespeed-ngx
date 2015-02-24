@@ -6682,8 +6682,6 @@ pagespeed.MobUtil.consoleLog = function(a) {
   console && console.log && console.log(a);
 };
 pagespeed.MobColor = function() {
-  this.numPendingImages_ = 0;
-  this.foregroundData_ = this.logo_ = null;
 };
 pagespeed.MobColor.prototype.EPSILON_ = 1E-10;
 pagespeed.MobColor.prototype.MIN_CONTRAST_ = 3;
@@ -6776,35 +6774,28 @@ pagespeed.MobColor.prototype.computeColors_ = function(a, b, c, d) {
   }
   return this.enhanceColors_(new pagespeed.MobColor.ThemeColors(k, n));
 };
-pagespeed.MobColor.prototype.synthesizeCallback_ = function() {
-  --this.numPendingImages_;
-  if (!(0 < this.numPendingImages_)) {
-    var a = [255, 255, 255], b = [0, 0, 0], c = this.logo_;
-    this.foregroundData_ && this.foregroundData_.data && c && c.foregroundRect && c.backgroundColor ? (b = this.computeColors_(this.foregroundData_.data, c.backgroundColor, c.foregroundRect.width, c.foregroundRect.height), a = b.background, b = b.foreground) : c && c.backgroundColor && (a = c.backgroundColor, b = 178.5 < goog.color.rgbArrayToHsv(a)[2] ? [0, 0, 0] : [255, 255, 255]);
-    pagespeed.MobUtil.consoleLog("Theme color. Background: " + a + " foreground: " + b);
-    this.doneCallback_(this.logo_, a, b);
-  }
-};
-pagespeed.MobColor.prototype.getImageDataAndSynthesize_ = function(a, b, c) {
-  var d = new Image;
-  d.onload = goog.bind(function() {
-    var b = document.createElement("canvas"), f = null, g = null;
-    c && 0 < c.width && 0 < c.height ? (f = c.width, g = c.height) : (f = d.naturalWidth, g = d.naturalHeight);
-    b.width = f;
-    b.height = g;
-    b = b.getContext("2d");
-    b.drawImage(d, 0, 0);
-    "foreground" == a && (this.foregroundData_ = b.getImageData(0, 0, f, g));
-    this.synthesizeCallback_();
-  }, this);
-  d.onerror = goog.bind(this.synthesizeCallback_, this);
-  d.src = b;
+pagespeed.MobColor.prototype.computeThemeColor_ = function(a, b) {
+  var c = a.naturalWidth, d = a.naturalHeight, e = document.createElement(goog.dom.TagName.CANVAS);
+  e.width = c;
+  e.height = d;
+  e = e.getContext("2d");
+  e.drawImage(a, 0, 0);
+  e = e.getImageData(0, 0, c, d);
+  return this.computeColors_(e.data, b, c, d);
 };
 pagespeed.MobColor.prototype.run = function(a, b) {
-  this.logo_ = a;
-  this.doneCallback_ && alert("A callback which was supposed to run after extracting theme color  was not executed.");
-  this.doneCallback_ = b;
-  a && a.foregroundImage && !pagespeed.MobUtil.isCrossOrigin(a.foregroundImage) ? (this.numPendingImages_ = 1, this.getImageDataAndSynthesize_("foreground", a.foregroundImage, a.foregroundRect), pagespeed.MobUtil.consoleLog("Found logo. Theme color will be computed from logo.")) : (a && a.foregroundImage ? pagespeed.MobUtil.consoleLog("Found logo but its origin is different that of HTML. Use default color.") : pagespeed.MobUtil.consoleLog("Could not find logo. Use default color."), this.synthesizeCallback_());
+  if (a) {
+    if (pagespeed.MobUtil.isCrossOrigin(a.src)) {
+      pagespeed.MobUtil.consoleLog("Found logo but its origin is different from that of HTML. Using default color.");
+    } else {
+      return pagespeed.MobUtil.consoleLog("Found logo. Theme color will be computed from logo."), this.computeThemeColor_(a, b || [255, 255, 255]);
+    }
+  } else {
+    pagespeed.MobUtil.consoleLog("Did not find logo. Using default color.");
+  }
+  var c = [0, 0, 0];
+  b ? 178.5 >= goog.color.rgbArrayToHsv(b)[2] && (c = [255, 255, 255]) : b = [255, 255, 255];
+  return new pagespeed.MobColor.ThemeColors(b, c);
 };
 pagespeed.MobLayout = function(a) {
   this.psMob_ = a;
@@ -7142,138 +7133,163 @@ pagespeed.MobLayout.prototype.expandColumns_ = function(a) {
   }
 };
 pagespeed.MobLayout.sequence_ = [pagespeed.MobLayout.prototype.shrinkWideElements_, "shrink wide elements", pagespeed.MobLayout.prototype.stripFloats_, "string floats", pagespeed.MobLayout.prototype.cleanupStyles_, "cleanup styles", pagespeed.MobLayout.prototype.repairDistortedImages_, "repair distored images", pagespeed.MobLayout.prototype.resizeIfTooWide_, "resize if too wide", pagespeed.MobLayout.prototype.expandColumns_, "expand columns", pagespeed.MobLayout.prototype.resizeVertically_, "resize vertically"];
-pagespeed.MobLogo = function(a) {
+pagespeed.MobLogo = function(a, b) {
   this.psMob_ = a;
+  this.doneCallback_ = b;
+  this.organization_ = pagespeed.MobUtil.getSiteOrganization();
+  this.landingUrl_ = window.location.origin + window.location.pathname;
   this.candidates_ = [];
+  this.pendingEventCount_ = 0;
 };
-pagespeed.MobLogo.LogoRecord = function() {
-  this.metric = -1;
-  this.foregroundElement = this.logoElement = null;
-  this.foregroundImage = "";
-  this.backgroundColor = this.backgroundRect = this.backgroundElement = this.foregroundRect = this.foregroundSource = null;
+pagespeed.MobLogo.LogoRecord = function(a, b) {
+  this.metric = a;
+  this.logoElement = b;
+  this.childrenElements = [];
+  this.childrenImages = [];
+  this.backgroundColor = this.rect = this.foregroundImage = this.foregroundElement = this.ancestorImage = this.ancestorElement = null;
 };
 pagespeed.MobLogo.prototype.MIN_WIDTH_ = 20;
 pagespeed.MobLogo.prototype.MIN_HEIGHT_ = 10;
 pagespeed.MobLogo.prototype.MAX_HEIGHT_ = 400;
-pagespeed.MobLogo.prototype.MIN_PIXELS_ = 400;
-pagespeed.MobLogo.prototype.MAX_TOP_ = 6E3;
 pagespeed.MobLogo.prototype.RATIO_AREA_ = .5;
-pagespeed.MobLogo.findLogoInFileName = function(a) {
-  return a && (a = a.toLowerCase(), 0 <= a.indexOf("logo") && 0 > a.indexOf("logout") && 0 > a.indexOf("no_logo") && 0 > a.indexOf("no-logo")) ? 1 : 0;
-};
-pagespeed.MobLogo.prototype.findForeground_ = function(a, b, c) {
-  var d = pagespeed.MobUtil.boundingRectAndSize(a), e = "hidden" != this.psMob_.getVisibility(a), f = d.width * d.height, g = d.width > this.MIN_WIDTH_ && d.height > this.MIN_HEIGHT_ && f > this.MIN_PIXELS_ && d.top < this.MAX_TOP_ && d.height < this.MAX_HEIGHT_;
-  if (e && g && f >= b) {
-    var f = e = null, h;
-    for (h in pagespeed.MobUtil.ImageSource) {
-      if (f = pagespeed.MobUtil.extractImage(a, pagespeed.MobUtil.ImageSource[h])) {
-        e = pagespeed.MobUtil.ImageSource[h];
-        g = !0;
-        if (e == pagespeed.MobUtil.ImageSource.IMG) {
-          var k = this.psMob_.findImageSize(a.src);
-          k ? (d.width = k.width, d.height = k.height) : a.naturalWidth ? (d.width = a.naturalWidth, d.height = a.naturalHeight) : d.width && d.height || (pagespeed.MobUtil.consoleLog("Image " + a.src + " may be the logo. It has not been loaded so may be missed."), g = !1);
-          g && (d.width <= this.MIN_WIDTH_ || d.height <= this.MIN_HEIGHT_ || d.height >= this.MAX_HEIGHT_) && (g = !1);
-        }
-        if (g) {
-          return b = new pagespeed.MobLogo.LogoRecord, b.foregroundImage = f, b.foregroundElement = a, b.foregroundSource = e, b.foregroundRect = d, b;
-        }
-      }
-    }
-  }
-  if (c) {
-    for (a = a.firstChild;a;a = a.nextSibling) {
-      if (d = pagespeed.MobUtil.castElement(a), null != d && (d = this.findForeground_(d, b, c))) {
-        return d;
-      }
-    }
-  } else {
-    if (a.parentNode && (a = pagespeed.MobUtil.castElement(a.parentNode), null != a)) {
-      return this.findForeground_(a, b, c);
-    }
-  }
-  return null;
-};
-pagespeed.MobLogo.prototype.findLogoNode_ = function(a, b) {
-  var c = pagespeed.MobUtil.boundingRectAndSize(a), d = "hidden" != this.psMob_.getVisibility(a);
-  if (!(c.top < this.MAX_TOP_ && c.height < this.MAX_HEIGHT_ && d)) {
+pagespeed.MobLogo.prototype.findLogoElement_ = function(a) {
+  if ("hidden" == this.psMob_.getVisibility(a)) {
     return null;
   }
-  d = 0;
-  a.title && (d += goog.string.caseInsensitiveContains(a.title, "logo"));
-  a.id && (d += goog.string.caseInsensitiveContains(a.id, "logo"));
-  a.className && (d += goog.string.caseInsensitiveContains(a.className, "logo"));
-  a.alt && (d += goog.string.caseInsensitiveContains(a.alt, "logo"));
-  var e = pagespeed.MobUtil.getSiteOrganization(), f = 0;
-  e && (a.id && (d += goog.string.caseInsensitiveContains(a.id, e)), a.className && (d += goog.string.caseInsensitiveContains(a.className, e)), a.title && (f += pagespeed.MobUtil.findPattern(a.title, e)), a.alt && (f += pagespeed.MobUtil.findPattern(a.alt, e)));
-  var g = c.width * c.height, h = g * this.RATIO_AREA_, c = 0;
-  a.href && a.href == window.location.origin + window.location.pathname && ++c;
-  (h = this.findForeground_(a, h, !0)) || (h = this.findForeground_(a, g, !1));
-  return h && (g = pagespeed.MobUtil.resourceFileName(h.foregroundImage), d += pagespeed.MobLogo.findLogoInFileName(g), g && e && (f += pagespeed.MobUtil.findPattern(g, e)), d = d + f + c, 0 < d) ? (h.metric = d, h.logoElement = a, h) : null;
-};
-pagespeed.MobLogo.prototype.findLogoCandidates_ = function(a, b) {
-  var c = this.findLogoNode_(a, b);
-  c && (this.candidates_.push(c), ++b);
-  for (c = a.firstChild;c;c = c.nextSibling) {
-    var d = pagespeed.MobUtil.castElement(c);
-    null != d && this.findLogoCandidates_(d, b);
+  var b = null, b = a.nodeName.toUpperCase() == goog.dom.TagName.IMG ? a.src : pagespeed.MobUtil.findBackgroundImage(a), b = pagespeed.MobUtil.resourceFileName(b);
+  -1 != b.indexOf("data:image/") && (b = null);
+  var b = [a.title, a.id, a.className, a.alt, b], c = 0, d;
+  for (d = 0;d < b.length;++d) {
+    b[d] && goog.string.caseInsensitiveContains(b[d], "logo") && ++c;
   }
+  if (this.organization_) {
+    for (d = 0;d < b.length;++d) {
+      b[d] && pagespeed.MobUtil.findPattern(b[d], this.organization_) && ++c;
+    }
+  }
+  a.href == this.landingUrl_ && ++c;
+  return 0 < c ? new pagespeed.MobLogo.LogoRecord(c, a) : null;
+};
+pagespeed.MobLogo.prototype.findLogoCandidates_ = function(a) {
+  var b = this.findLogoElement_(a);
+  b && this.candidates_.push(b);
+  for (a = a.firstElementChild;a;a = a.nextElementSibling) {
+    this.findLogoCandidates_(a);
+  }
+};
+pagespeed.MobLogo.prototype.addImageToPendingList_ = function(a) {
+  ++this.pendingEventCount_;
+  a.addEventListener(goog.events.EventType.LOAD, goog.bind(this.eventDone_, this));
+  a.addEventListener(goog.events.EventType.ERROR, goog.bind(this.eventDone_, this));
+};
+pagespeed.MobLogo.prototype.newImage_ = function(a) {
+  var b = document.createElement(goog.dom.TagName.IMG);
+  this.addImageToPendingList_(b);
+  b.src = a;
+  return b;
+};
+pagespeed.MobLogo.prototype.collectChildrenImages_ = function(a, b, c) {
+  var d = null, e;
+  for (e in pagespeed.MobUtil.ImageSource) {
+    if (d = pagespeed.MobUtil.extractImage(a, pagespeed.MobUtil.ImageSource[e])) {
+      var f = null;
+      e == pagespeed.MobUtil.ImageSource.IMG ? (f = a, a.naturalWidth || this.addImageToPendingList_(f)) : f = this.newImage_(d);
+      b.push(a);
+      c.push(f);
+      break;
+    }
+  }
+  for (a = a.firstElementChild;a;a = a.nextElementSibling) {
+    this.collectChildrenImages_(a, b, c);
+  }
+};
+pagespeed.MobLogo.prototype.findImagesAndWait_ = function(a) {
+  for (var b = 0;b < a.length;++b) {
+    var c = a[b], d = c.logoElement;
+    this.collectChildrenImages_(d, c.childrenElements, c.childrenImages);
+    for (d = d.parentNode ? pagespeed.MobUtil.castElement(d.parentNode) : null;d;) {
+      var e = pagespeed.MobUtil.findBackgroundImage(d);
+      if (e) {
+        c.ancestorElement = d;
+        c.ancestorImage = this.newImage_(e);
+        break;
+      }
+      d = d.parentElement;
+    }
+  }
+  0 == this.pendingEventCount_ && this.findBestLogoAndColor_();
+};
+pagespeed.MobLogo.prototype.pruneCandidateBySizePos_ = function() {
+  for (var a = this.candidates_, b = 0;b < a.length;++b) {
+    for (var c = a[b], d = pagespeed.MobUtil.boundingRectAndSize(c.logoElement), e = d.width * d.height, f = e * this.RATIO_AREA_, g = -1, h = 0, k = 0;k < c.childrenElements.length;++k) {
+      if (e = c.childrenElements[k]) {
+        d = pagespeed.MobUtil.boundingRectAndSize(e), e = d.width * d.height, e >= f && d.width > this.MIN_WIDTH_ && d.height > this.MIN_HEIGHT_ && d.height < this.MAX_HEIGHT_ && e > h && (h = e, g = k);
+      }
+    }
+    0 <= g ? (c.foregroundElement = c.childrenElements[g], c.foregroundImage = c.childrenImages[g], c.rect = d) : c.ancestorElement ? (e = c.ancestorElement, d = pagespeed.MobUtil.boundingRectAndSize(e), e = d.width * d.height, e >= f && d.width > this.MIN_WIDTH_ && d.height > this.MIN_HEIGHT_ && d.height < this.MAX_HEIGHT_ ? (c.foregroundElement = c.ancestorElement, c.foregroundImage = c.ancestorImage, c.rect = d) : a[b] = null) : a[b] = null;
+  }
+};
+pagespeed.MobLogo.prototype.findBestLogoAndColor_ = function() {
+  this.pruneCandidateBySizePos_();
+  var a = this.findBestLogo_(), b = null, c = null;
+  a && (this.findLogoBackground_(a), b = a.foregroundImage, c = a.backgroundColor);
+  b = (new pagespeed.MobColor).run(b, c);
+  this.doneCallback_(a, b.background, b.foreground);
+};
+pagespeed.MobLogo.prototype.eventDone_ = function() {
+  --this.pendingEventCount_;
+  0 == this.pendingEventCount_ && this.findBestLogoAndColor_();
 };
 pagespeed.MobLogo.prototype.findBestLogo_ = function() {
-  var a = null, b = this.candidates_;
-  if (!b || 0 == b.length) {
+  var a = [], b;
+  for (b = 0;b < this.candidates_.length;++b) {
+    this.candidates_[b] && a.push(this.candidates_[b]);
+  }
+  if (0 == a.length) {
     return null;
   }
-  if (1 == b.length) {
-    return a = b[0];
+  if (1 == a.length) {
+    return a[0];
   }
-  for (var c = 0, d = Infinity, e, f, a = 0;f = b[a];++a) {
-    e = f.foregroundRect, d = Math.min(d, e.top), c = Math.max(c, e.bottom);
+  var c = 0, d = Infinity, e, f;
+  for (b = 0;f = a[b];++b) {
+    e = f.rect, d = Math.min(d, e.top), c = Math.max(c, e.bottom);
   }
-  for (a = 0;f = b[a];++a) {
-    e = f.foregroundRect, e = Math.sqrt((c - e.top) / (c - d)), f.metric *= e;
+  for (b = 0;f = a[b];++b) {
+    e = f.rect, e = Math.sqrt((c - e.top) / (c - d)), f.metric *= e;
   }
-  for (a = e = 0;f = b[a];++a) {
+  for (b = e = 0;f = a[b];++b) {
     e = Math.max(e, f.metric);
   }
   c = [];
-  for (a = 0;f = b[a];++a) {
+  for (b = 0;f = a[b];++b) {
     f.metric == e && c.push(f);
   }
   if (1 == c.length) {
-    return a = c[0];
+    return c[0];
   }
-  b = c[0];
-  d = b.foregroundRect;
-  for (a = 1;f = c[a];++a) {
-    if (e = f.foregroundRect, d.top > e.top || d.top == e.top && d.left > e.left || d.top == e.top && d.left == e.left && d.width * d.height > e.width * e.height) {
-      b = f, d = b.foregroundRect;
+  a = c[0];
+  d = a.rect;
+  for (b = 1;f = c[b];++b) {
+    if (e = f.rect, d.top > e.top || d.top == e.top && d.left > e.left || d.top == e.top && d.left == e.left && d.width * d.height > e.width * e.height) {
+      a = f, d = a.rect;
     }
   }
-  return b;
+  return a;
 };
 pagespeed.MobLogo.prototype.extractBackgroundColor_ = function(a) {
   return(a = document.defaultView.getComputedStyle(a, null)) && (a = a.getPropertyValue("background-color")) && (a = pagespeed.MobUtil.colorStringToNumbers(a)) && (3 == a.length || 4 == a.length && 0 != a[3]) ? a : null;
 };
 pagespeed.MobLogo.prototype.findLogoBackground_ = function(a) {
-  if (!a || !a.foregroundElement) {
-    return null;
+  if (a && a.foregroundElement) {
+    for (var b = null, c = a.foregroundElement;c && !b;) {
+      b = this.extractBackgroundColor_(c), c = c.parentElement;
+    }
+    a.backgroundColor = b;
   }
-  var b = a.foregroundElement, c = this.extractBackgroundColor_(b), d = null;
-  for (b.parentNode && (d = pagespeed.MobUtil.castElement(b.parentNode));d && !c;) {
-    b = d, c = this.extractBackgroundColor_(b), d = b.parentNode ? pagespeed.MobUtil.castElement(b.parentNode) : null;
-  }
-  a.backgroundElement = b;
-  a.backgroundColor = c || [255, 255, 255];
-  a.backgroundRect = pagespeed.MobUtil.boundingRectAndSize(b);
-  return a;
 };
 pagespeed.MobLogo.prototype.run = function() {
-  if (!document.body) {
-    return null;
-  }
-  this.findLogoCandidates_(document.body, 0);
-  var a = this.findBestLogo_();
-  return this.findLogoBackground_(a);
+  document.body && (this.findLogoCandidates_(document.body), this.findImagesAndWait_(this.candidates_));
 };
 goog.exportSymbol("pagespeed.MobLogo.prototype.run", pagespeed.MobLogo.prototype.run);
 pagespeed.MobNav = function() {
@@ -7284,6 +7300,7 @@ pagespeed.MobNav = function() {
   this.isNavPanelOpen_ = !1;
   this.elementsToOffset_ = [];
   this.redrawNavCalled_ = !1;
+  this.isAndroidBrowser_ = goog.labs.userAgent.browser.isAndroidBrowser();
 };
 pagespeed.MobNav.NAV_PANEL_WIDTH_ = 250;
 pagespeed.MobNav.ARROW_ICON_ = "R0lGODlhkACQAPABAP///wAAACH5BAEAAAEALAAAAACQAJAAAAL+jI+py+0Po5y02ouz3rz7D4biSJbmiabqyrbuC8fyTNf2jef6zvf+DwwKh8Si8YhMKpfMpvMJjUqn1Kr1is1qt9yu9wsOi8fksvmMTqvX7Lb7DY/L5/S6/Y7P6/f8vh8EAJATKIhFWFhziEiluBjT6AgFGdkySclkeZmSqYnE2VnyCUokOhpSagqEmtqxytrjurnqFGtSSztLcvu0+9HLm+sbPPWbURx1XJGMPHyxLPXsEA3dLDFNXP1wzZjNsF01/W31LH6VXG6YjZ7Vu651674VG8/l2s1mL2qXn4nHD6nn3yE+Al+5+fcnQL6EBui1QcUwgb6IEvtRVGDporc/RhobKOooLRBIbSNLmjyJMqXKlSxbunwJM6bMmTRr2ryJM6fOnTx7+vwJNKjQoUSLGj2KNKnSpUybOn0KVUcBADs=";
@@ -7409,7 +7426,9 @@ pagespeed.MobNav.prototype.addHeaderBarResizeEvents_ = function() {
   var a = function() {
     null != this.scrollTimer_ && (window.clearTimeout(this.scrollTimer_), this.scrollTimer_ = null);
     this.scrollTimer_ = window.setTimeout(goog.bind(function() {
-      0 == this.currentTouches_ && (this.redrawNavPanel_(), this.redrawHeader_());
+      if (this.isAndroidBrowser_ || 0 == this.currentTouches_) {
+        this.redrawNavPanel_(), this.redrawHeader_();
+      }
       this.scrollTimer_ = null;
     }, this), 200);
   };
@@ -7652,8 +7671,8 @@ pagespeed.MobNav.prototype.Run = function(a) {
   this.addThemeColor_(a);
   this.navDisabledForSite_() || 0 == this.navSections_.length || pagespeed.MobUtil.inFriendlyIframe() || (this.addNavPanel_(a), this.addMenuButtonEvents_(), this.addNavButtonEvents_());
 };
-pagespeed.MobTheme = function() {
-  this.logo = null;
+pagespeed.MobTheme = function(a) {
+  this.doneCallback = a;
 };
 pagespeed.MobTheme.createMenuButton_ = function(a) {
   var b = document.createElement("button");
@@ -7674,10 +7693,9 @@ pagespeed.MobTheme.synthesizeLogoSpan_ = function(a, b, c) {
   var d = document.createElement("span");
   d.id = "psmob-logo-span";
   if (a && a.foregroundImage) {
-    var e = document.createElement(goog.dom.TagName.IMG);
-    e.src = a.foregroundImage;
-    e.style.backgroundColor = pagespeed.MobUtil.colorNumbersToString(b);
+    var e = null, e = a.foregroundElement == a.foregroundImage ? a.foregroundImage.cloneNode(!1) : a.foregroundImage;
     e.id = "psmob-logo-image";
+    e.style.backgroundColor = pagespeed.MobUtil.colorNumbersToString(b);
     d.appendChild(e);
   } else {
     d.textContent = window.location.host, d.style.color = pagespeed.MobUtil.colorNumbersToString(c);
@@ -7686,33 +7704,26 @@ pagespeed.MobTheme.synthesizeLogoSpan_ = function(a, b, c) {
   return new pagespeed.MobUtil.ThemeData(c, b, a, d);
 };
 pagespeed.MobTheme.removeLogoImage_ = function(a) {
-  if (a && a.foregroundElement && a.foregroundSource) {
-    var b = a.foregroundElement;
-    switch(a.foregroundSource) {
-      case pagespeed.MobUtil.ImageSource.IMG:
-      ;
-      case pagespeed.MobUtil.ImageSource.SVG:
-        b.parentNode.removeChild(b);
-        break;
-      case pagespeed.MobUtil.ImageSource.BACKGROUND:
-        b.style.backgroundImage = "none";
-    }
-  }
+  a && a.foregroundElement && (a = a.foregroundElement, a.parentNode.removeChild(a));
 };
 pagespeed.MobTheme.prototype.colorComplete_ = function(a, b, c) {
   var d = pagespeed.MobTheme.synthesizeLogoSpan_(a, b, c);
   window.psLayoutMode && pagespeed.MobTheme.removeLogoImage_(a);
-  window.psMobPrecompute && (window.psMobBackgroundColor = b, window.psMobForegroundColor = c, window.psMobLogoUrl = a ? a.foregroundImage : null);
+  window.psMobPrecompute && (window.psMobBackgroundColor = b, window.psMobForegroundColor = c, window.psMobLogoUrl = a ? a.foregroundImage.src : null);
   this.doneCallback(d);
 };
 pagespeed.MobTheme.precomputedThemeAvailable = function() {
   return Boolean(psMobBackgroundColor && psMobForegroundColor && !window.psMobPrecompute);
 };
 pagespeed.MobTheme.extractTheme = function(a, b) {
-  b || alert("Not expecting to start onloads after the callback is called");
-  var c = new pagespeed.MobTheme;
-  c.doneCallback = b;
-  psMobBackgroundColor && psMobForegroundColor && !window.psMobPrecompute ? (psMobLogoUrl && (c.logo = new pagespeed.MobLogo.LogoRecord, c.logo.foregroundImage = psMobLogoUrl), c.colorComplete_(c.logo, psMobBackgroundColor, psMobForegroundColor)) : (c.logo = (new pagespeed.MobLogo(a)).run(), (new pagespeed.MobColor).run(c.logo, goog.bind(c.colorComplete_, c)));
+  var c = new pagespeed.MobTheme(b);
+  if (psMobBackgroundColor && psMobForegroundColor && !window.psMobPrecompute) {
+    var d = null;
+    psMobLogoUrl && (d = document.createElement(goog.dom.TagName.IMG), d.src = psMobLogoUrl, d = new pagespeed.MobLogo.LogoRecord(1, d));
+    c.colorComplete_(d, psMobBackgroundColor, psMobForegroundColor);
+  } else {
+    (new pagespeed.MobLogo(a, goog.bind(c.colorComplete_, c))).run();
+  }
 };
 pagespeed.Mob = function() {
   this.activeRequestCount_ = 0;
@@ -7734,9 +7745,9 @@ pagespeed.Mob.PROGRESS_SHOW_LOG_ID_ = "ps-progress-show-log";
 pagespeed.Mob.IN_TRANSIT_ = new pagespeed.MobUtil.Dimensions(-1, -1);
 pagespeed.Mob.COST_PER_IMAGE_ = 1E3;
 pagespeed.Mob.prototype.mobilizeSite_ = function() {
-  0 == this.pendingImageLoadCount_ ? (pagespeed.MobUtil.consoleLog("mobilizing site"), window.psNavMode && !pagespeed.MobUtil.inFriendlyIframe() ? (++this.pendingCallbacks_, pagespeed.MobTheme.extractTheme(this, this.logoComplete_.bind(this))) : this.maybeRunLayout()) : this.mobilizeAfterImageLoad_ = !0;
+  0 == this.pendingImageLoadCount_ ? (pagespeed.MobUtil.consoleLog("mobilizing site"), window.psNavMode && !pagespeed.MobUtil.inFriendlyIframe() || this.maybeRunLayout()) : this.mobilizeAfterImageLoad_ = !0;
 };
-pagespeed.Mob.prototype.logoComplete_ = function(a) {
+pagespeed.Mob.prototype.themeComplete_ = function(a) {
   --this.pendingCallbacks_;
   this.updateProgressBar(this.domElementCount_, "extract theme");
   (new pagespeed.MobNav).Run(a);
@@ -7847,7 +7858,11 @@ pagespeed.Mob.prototype.removeProgressBar = function() {
   a && (a.style.display = "none", a.parentNode.removeChild(a));
 };
 var psMob = new pagespeed.Mob;
-window.addEventListener("load", goog.bind(psMob.initiateMobilization, psMob));
+pagespeed.Mob.prototype.extractTheme_ = function() {
+  window.psNavMode && !pagespeed.MobUtil.inFriendlyIframe() && (++this.pendingCallbacks_, pagespeed.MobTheme.extractTheme(this, this.themeComplete_.bind(this)));
+};
+window.addEventListener(goog.events.EventType.DOMCONTENTLOADED, goog.bind(psMob.extractTheme_, psMob));
+window.addEventListener(goog.events.EventType.LOAD, goog.bind(psMob.initiateMobilization, psMob));
 function psSetDebugMode() {
   psMob.setDebugMode(!0);
 }
