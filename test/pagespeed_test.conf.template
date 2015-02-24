@@ -1106,7 +1106,7 @@ http {
   server {
     listen @@SECONDARY_PORT@@;
     listen [::]:@@SECONDARY_PORT@@;
-    server_name remote-config-nc-host5.example.com;
+    server_name remote-config-failed-fetch.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
     pagespeed RemoteConfigurationUrl "http://127.0.0.1:@@RCPORT5@@/remote.cfg";
     pagespeed RemoteConfigurationTimeoutMs 1500;
@@ -1114,7 +1114,7 @@ http {
   server {
     listen @@SECONDARY_PORT@@;
     listen [::]:@@SECONDARY_PORT@@;
-    server_name remote-config-nc-host6.example.com;
+    server_name remote-config-slow-fetch.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
     pagespeed RemoteConfigurationUrl "http://127.0.0.1:@@RCPORT6@@/remote.cfg";
     pagespeed RemoteConfigurationTimeoutMs 1500;
