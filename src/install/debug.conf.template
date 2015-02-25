@@ -1536,6 +1536,7 @@ Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
   ServerName @@PAGESPEED-TEST-HOST@@.suffix.net
   ModPagespeedProxySuffix .suffix.net
   DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFetchProxy localhost:@@APACHE_SECONDARY_PORT@@
   ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@_proxysuffix"
   ModPagespeedRewriteLevel PassThrough
   ModPagespeedMobLayout on
