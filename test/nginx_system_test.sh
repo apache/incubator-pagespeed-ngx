@@ -1221,7 +1221,7 @@ fi
 start_test Logged output looks healthy.
 
 # TODO(oschaaf): Sanity check for all the warnings/errors here.
-OUT=$(cat "test/tmp/error.log" \
+OUT=$(cat "$ERROR_LOG" \
     | grep "\\[" \
     | grep -v "\\[debug\\]" \
     | grep -v "\\[info\\]" \
@@ -1263,7 +1263,7 @@ OUT=$(cat "test/tmp/error.log" \
     | grep -v "\\[error\\].*Failed to make directory*" \
     | grep -v "\\[error\\].*Could not create directories*" \
     | grep -v "\\[error\\].*opening temp file: No such file or directory.*" \
-    | grep -v "\\[error\\].*unexpected response.*" \
+    | grep -v "\\[warn\\].*failed to hook next event.*" \
     || true)
 
 check [ -z "$OUT" ]
