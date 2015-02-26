@@ -7146,7 +7146,9 @@ pagespeed.MobLogo.LogoRecord = function(a, b) {
   this.logoElement = b;
   this.childrenElements = [];
   this.childrenImages = [];
-  this.backgroundColor = this.rect = this.foregroundImage = this.foregroundElement = this.ancestorImage = this.ancestorElement = null;
+  this.foregroundElement = this.ancestorImage = this.ancestorElement = null;
+  this.foregroundImage = b;
+  this.backgroundColor = this.rect = null;
 };
 pagespeed.MobLogo.prototype.MIN_WIDTH_ = 20;
 pagespeed.MobLogo.prototype.MIN_HEIGHT_ = 10;

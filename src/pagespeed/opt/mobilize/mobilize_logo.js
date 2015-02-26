@@ -115,7 +115,7 @@ pagespeed.MobLogo.LogoRecord = function(metric, element) {
   /** @type {Element} */
   this.foregroundElement = null;
   /** @type {Element} */
-  this.foregroundImage = null;
+  this.foregroundImage = element;
   /** @type {pagespeed.MobUtil.Rect} */
   this.rect = null;
   /** @type {Array.<number>} */
