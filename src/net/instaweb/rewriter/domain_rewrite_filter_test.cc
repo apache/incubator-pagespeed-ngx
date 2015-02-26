@@ -368,6 +368,156 @@ TEST_F(DomainRewriteFilterTest, TestParseRefreshContent) {
   EXPECT_EQ("", after);
 }
 
+TEST_F(DomainRewriteFilterTest, TestParseSetCookieAttributes) {
+  DomainRewriteFilter::SetCookieAttributes attrs;
+  StringPiece cookie_string;
+
+  DomainRewriteFilter::ParseSetCookieAttributes("", &cookie_string, &attrs);
+  EXPECT_TRUE(attrs.empty());
+
+  DomainRewriteFilter::ParseSetCookieAttributes("a=b", &cookie_string, &attrs);
+  EXPECT_EQ("a=b", cookie_string);
+  EXPECT_TRUE(attrs.empty());
+
+  DomainRewriteFilter::ParseSetCookieAttributes("c=d;", &cookie_string, &attrs);
+  EXPECT_EQ("c=d", cookie_string);
+  EXPECT_TRUE(attrs.empty());
+
+  DomainRewriteFilter::ParseSetCookieAttributes("e=f; foo = bar",
+                                                &cookie_string, &attrs);
+  EXPECT_EQ("e=f", cookie_string);
+  ASSERT_EQ(1, attrs.size());
+  EXPECT_EQ("foo", attrs[0].first);
+  EXPECT_EQ("bar", attrs[0].second);
+
+  DomainRewriteFilter::ParseSetCookieAttributes("g=h; foo = bar; httponly  ",
+                                                &cookie_string, &attrs);
+  EXPECT_EQ("g=h", cookie_string);
+  ASSERT_EQ(2, attrs.size());
+  EXPECT_EQ("foo", attrs[0].first);
+  EXPECT_EQ("bar", attrs[0].second);
+  EXPECT_EQ("httponly", attrs[1].first);
+  EXPECT_EQ("", attrs[1].second);
+
+  // No name really shouldn't happen, but test our robustness on it.
+  DomainRewriteFilter::ParseSetCookieAttributes("i=j;  = bar; secure; a = b",
+                                                &cookie_string, &attrs);
+  EXPECT_EQ("i=j", cookie_string);
+  ASSERT_EQ(3, attrs.size());
+  EXPECT_EQ("", attrs[0].first);
+  EXPECT_EQ("bar", attrs[0].second);
+  EXPECT_EQ("secure", attrs[1].first);
+  EXPECT_EQ("", attrs[1].second);
+  EXPECT_EQ("a", attrs[2].first);
+  EXPECT_EQ("b", attrs[2].second);
+}
+
+TEST_F(DomainRewriteFilterTest, TestUpdateSetCookieHeader) {
+  GoogleString out;
+
+  options()->ClearSignatureForTesting();
+  options()->set_domain_rewrite_cookies(true);
+  DomainLawyer* domain_lawyer = options()->WriteableDomainLawyer();
+  domain_lawyer->Clear();
+  domain_lawyer->AddRewriteDomainMapping(
+      "http://someotherhost.com/after/", "www.example.com", &message_handler_);
+
+  // For a bunch of tests, we test with page coming from a different domain
+  // than the domain= lines. This will of course get rejected by the browser,
+  // but it helps see that we're picking up the domain from the right place
+  // when rewriting.
+  GoogleUrl gurl_unrelated("http://unrelated.com");
+  GoogleUrl gurl("http://www.example.com/page/");
+
+  // No attributes.
+  EXPECT_FALSE(
+      DomainRewriteFilter::UpdateSetCookieHeader(
+          gurl_unrelated, server_context(), options(), "foo = var", &out));
+
+  // Non-domain attributes
+  EXPECT_FALSE(
+      DomainRewriteFilter::UpdateSetCookieHeader(
+          gurl_unrelated, server_context(), options(),
+          "foo = var; Secure; HttpOnly", &out));
+
+  // Domain only.
+  EXPECT_TRUE(
+      DomainRewriteFilter::UpdateSetCookieHeader(
+          gurl_unrelated, server_context(), options(),
+          "foo = var; Domain=www.example.com", &out));
+  EXPECT_EQ("foo = var; Domain=someotherhost.com", out);
+
+  // Domain with the leading dot. Doesn't make any difference.
+  EXPECT_TRUE(
+      DomainRewriteFilter::UpdateSetCookieHeader(
+          gurl_unrelated, server_context(), options(),
+          "foo = var; Domain=.www.example.com", &out));
+  EXPECT_EQ("foo = var; Domain=someotherhost.com", out);
+
+  // Domain only + other stuff
+  EXPECT_TRUE(
+      DomainRewriteFilter::UpdateSetCookieHeader(
+          gurl_unrelated, server_context(), options(),
+          "foo = var; Domain=www.example.com;   HttpOnly", &out));
+  EXPECT_EQ("foo = var; Domain=someotherhost.com; HttpOnly", out);
+
+  // Multiple domain attributes. Last one wins, but we rewrite all.
+  EXPECT_TRUE(
+      DomainRewriteFilter::UpdateSetCookieHeader(
+          gurl_unrelated, server_context(), options(),
+          "foo = var; Domain=www.huh.com; Domain=www.example.com", &out));
+  EXPECT_EQ("foo = var; Domain=someotherhost.com; Domain=someotherhost.com",
+            out);
+
+  // Multiple domain attributes. Last one wins, but is unrelated, so we don't
+  // touch things.
+  EXPECT_FALSE(DomainRewriteFilter::UpdateSetCookieHeader(
+          gurl_unrelated, server_context(), options(),
+          "foo = var; Domain=www.example.com; Domain=www.huh.com", &out));
+
+  // Path only. We need a related URL here for mapping to apply.
+  EXPECT_TRUE(
+      DomainRewriteFilter::UpdateSetCookieHeader(
+          gurl, server_context(), options(), "foo = var; Path=/subdir",
+          &out));
+  EXPECT_EQ("foo = var; Path=/after/subdir", out);
+
+  // Path without starting slash --- ignored.
+  EXPECT_FALSE(
+      DomainRewriteFilter::UpdateSetCookieHeader(
+          gurl, server_context(), options(), "foo = var; Path=subdir", &out));
+
+  // Path + domain, related Domain=.
+  EXPECT_TRUE(
+      DomainRewriteFilter::UpdateSetCookieHeader(
+          gurl, server_context(), options(),
+          "foo = var; Domain=www.example.com; Path=/subdir/", &out));
+  EXPECT_EQ("foo = var; Domain=someotherhost.com; Path=/after/subdir/", out);
+
+  // Path + domain, unrelated Domain=.
+  EXPECT_FALSE(
+      DomainRewriteFilter::UpdateSetCookieHeader(
+          gurl, server_context(), options(),
+          "foo = var; Domain=unrelated.com; Path=/subdir/", &out));
+}
+
+TEST_F(DomainRewriteFilterTest, TestUpdateSetCookieHeaderDisabled) {
+  GoogleUrl gurl("http://www.example.com/page/");
+  // Make sure the off switch works.
+  GoogleString out;
+
+  options()->ClearSignatureForTesting();
+  options()->set_domain_rewrite_cookies(true);
+  DomainLawyer* domain_lawyer = options()->WriteableDomainLawyer();
+  domain_lawyer->Clear();
+  domain_lawyer->AddRewriteDomainMapping(
+      "http://someotherhost.com/after/", "www.example.com", &message_handler_);
+  EXPECT_FALSE(
+      DomainRewriteFilter::UpdateSetCookieHeader(
+          gurl, server_context(), options(),
+          "foo = var; Domain=unrelated.com; Path=/subdir/", &out));
+}
+
 TEST_F(DomainRewriteFilterTest, ProxySuffixRefresh) {
   options()->ClearSignatureForTesting();
   options()->set_domain_rewrite_hyperlinks(true);
@@ -408,6 +558,46 @@ TEST_F(DomainRewriteFilterTest, ProxySuffixRefresh) {
                                            options(), &headers);
   EXPECT_STREQ("10; \"http://someotherhost.com/%22Subdir%22/a.html\"",
                headers.Lookup1(HttpAttributes::kRefresh));
+}
+
+TEST_F(DomainRewriteFilterTest, ProxySuffixSetCookie) {
+options()->ClearSignatureForTesting();
+  options()->set_domain_rewrite_hyperlinks(true);
+  options()->set_domain_rewrite_cookies(true);
+  static const char kSuffix[] = ".suffix";
+  static const char kOriginalHost[] = "www.example.com";
+  GoogleString origin_no_suffix(StrCat("http://", kOriginalHost));
+  GoogleString origin_with_suffix(StrCat(origin_no_suffix, kSuffix));
+  GoogleString url(StrCat(origin_with_suffix, "/index.html"));
+  GoogleUrl gurl(url);
+  options()->WriteableDomainLawyer()->set_proxy_suffix(kSuffix);
+  EXPECT_TRUE(options()->domain_lawyer()->can_rewrite_domains());
+
+  add_html_tags_ = false;
+  ValidateExpectedUrl(url,
+                      StrCat("<meta http-equiv=set-cookie content=\"a=b; ",
+                             "domain= ", kOriginalHost, "\">"),
+                      StrCat("<meta http-equiv=set-cookie content=\"a=b; ",
+                             "domain=", kOriginalHost, kSuffix, "\">"));
+
+  // Now test with multiple HTTP headers, to make sure all are fixed.
+  ResponseHeaders headers;
+  headers.Add(HttpAttributes::kSetCookie,
+              StrCat("a=b; Domain=", kOriginalHost));
+  headers.Add(HttpAttributes::kSetCookie,
+              StrCat("c=d; Secure; Domain=", kOriginalHost));
+  DomainRewriteFilter::UpdateDomainHeaders(gurl, server_context(),
+                                           options(), &headers);
+  DomainRewriteFilter::UpdateDomainHeaders(gurl, server_context(),
+                                           options(), &headers);
+
+  ConstStringStarVector vals;
+  ASSERT_TRUE(headers.Lookup(HttpAttributes::kSetCookie, &vals));
+  ASSERT_EQ(2, vals.size());
+  EXPECT_EQ(StrCat("a=b; Domain=", kOriginalHost, kSuffix),
+            *vals[0]);
+  EXPECT_EQ(StrCat("c=d; Secure; Domain=", kOriginalHost, kSuffix),
+            *vals[1]);
 }
 
 }  // namespace net_instaweb

@@ -172,6 +172,12 @@ template<class Proto> const GoogleString& Headers<Proto>::Value(int i) const {
   return proto_->header(i).value();
 }
 
+template<class Proto> void Headers<Proto>::SetValue(int i, StringPiece value) {
+  value.CopyToString(proto_->mutable_header(i)->mutable_value());
+  map_.reset(NULL);
+  cookies_.reset(NULL);
+}
+
 template<class Proto> void Headers<Proto>::PopulateMap() const {
   if (map_.get() == NULL) {
     map_.reset(new StringMultiMapInsensitive);

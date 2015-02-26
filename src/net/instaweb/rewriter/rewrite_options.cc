@@ -96,6 +96,8 @@ const char RewriteOptions::kDistributedRewriteServers[] =
     "DistributedRewriteServers";
 const char RewriteOptions::kDistributedRewriteTimeoutMs[] =
     "DistributedRewriteTimeoutMs";
+const char RewriteOptions::kDomainRewriteCookies[] =
+    "kDomainRewriteCookies";
 const char RewriteOptions::kDomainRewriteHyperlinks[] =
     "DomainRewriteHyperlinks";
 const char RewriteOptions::kDomainShardCount[] = "DomainShardCount";
@@ -1747,6 +1749,11 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       "Specifies the resource types that can be inlined into HTML even if "
       "they do not belong to explicitly authorized domains.", true);
+  AddBaseProperty(
+      false, &RewriteOptions::domain_rewrite_cookies_, "drc",
+      kDomainRewriteCookies,
+      kDirectoryScope,
+      "Allow rewrite_domains to rewrite domains in Set-Cookie headers.", true);
   AddBaseProperty(
       false, &RewriteOptions::domain_rewrite_hyperlinks_, "drh",
       kDomainRewriteHyperlinks,

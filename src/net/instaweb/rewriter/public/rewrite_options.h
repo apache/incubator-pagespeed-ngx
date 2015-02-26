@@ -243,6 +243,7 @@ class RewriteOptions {
   static const char kDistributedRewriteKey[];
   static const char kDistributedRewriteServers[];
   static const char kDistributedRewriteTimeoutMs[];
+  static const char kDomainRewriteCookies[];
   static const char kDomainRewriteHyperlinks[];
   static const char kDomainShardCount[];
   static const char kDownstreamCachePurgeMethod[];
@@ -2103,6 +2104,13 @@ class RewriteOptions {
     set_option(x, &domain_rewrite_hyperlinks_);
   }
 
+  bool domain_rewrite_cookies() const {
+    return domain_rewrite_cookies_.value();
+  }
+  void set_domain_rewrite_cookies(bool x) {
+    set_option(x, &domain_rewrite_cookies_);
+  }
+
   bool client_domain_rewrite() const {
     return client_domain_rewrite_.value();
   }
@@ -3680,6 +3688,9 @@ class RewriteOptions {
   // Indicates whether the DomainRewriteFilter should also do client side
   // rewriting.
   Option<bool> client_domain_rewrite_;
+  // Indicates whether DomainRewriteFilter should rewrite domain information
+  // in Set-Cookie: headers.
+  Option<bool> domain_rewrite_cookies_;
   // Indicates whether the DomainRewriteFilter should rewrite all tags,
   // including <a href> and <form action>.
   Option<bool> domain_rewrite_hyperlinks_;

@@ -886,6 +886,7 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
     RewriteOptions::kDistributedRewriteKey,
     RewriteOptions::kDistributedRewriteServers,
     RewriteOptions::kDistributedRewriteTimeoutMs,
+    RewriteOptions::kDomainRewriteCookies,
     RewriteOptions::kDomainRewriteHyperlinks,
     RewriteOptions::kDomainShardCount,
     RewriteOptions::kDownstreamCachePurgeMethod,

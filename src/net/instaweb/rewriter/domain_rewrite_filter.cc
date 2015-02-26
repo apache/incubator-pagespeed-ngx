@@ -43,6 +43,10 @@ namespace {
 // Names for Statistics variables.
 const char kDomainRewrites[] = "domain_rewrites";
 
+// Header attributes
+const char kDomain[] = "Domain";
+const char kPath[] = "Path";
+
 }  // namespace
 
 namespace net_instaweb {
@@ -74,6 +78,17 @@ void DomainRewriteFilter::UpdateDomainHeaders(
                                HttpAttributes::kLocation, headers);
   TryUpdateOneHttpDomainHeader(base_url, server_context, options,
                                HttpAttributes::kRefresh, headers);
+
+  // Set-Cookie requires a bit more care since there can be multiple ones.
+  for (int i = 0; i < headers->NumAttributes(); ++i) {
+    if (StringCaseEqual(headers->Name(i), HttpAttributes::kSetCookie)) {
+      GoogleString new_val;
+      if (UpdateSetCookieHeader(base_url, server_context, options,
+                                headers->Value(i), &new_val)) {
+        headers->SetValue(i, new_val);
+      }
+    }
+  }
 }
 
 void DomainRewriteFilter::TryUpdateOneHttpDomainHeader(
@@ -104,7 +119,7 @@ bool DomainRewriteFilter::UpdateOneDomainHeader(
   if (src == kHttp && StringCaseEqual(name, HttpAttributes::kLocation)) {
     DomainRewriteFilter::RewriteResult status = Rewrite(
         value_in, base_url, server_context, options,
-        false /* !apply_sharding */, true /* apply_domain_suffix*/,
+        false /* !apply_sharding */, true /* apply_domain_suffix */,
         out);
     return (status == kRewroteDomain);
   }
@@ -115,7 +130,7 @@ bool DomainRewriteFilter::UpdateOneDomainHeader(
       GoogleString rewritten_url;
       DomainRewriteFilter::RewriteResult status = Rewrite(
           url, base_url, server_context, options,
-          false /* !apply_sharding */, true /* apply_domain_suffix*/,
+          false /* !apply_sharding */, true /* apply_domain_suffix */,
           &rewritten_url);
       if (status == kRewroteDomain) {
         // We quote the URL with ". This is because the double-quote
@@ -131,8 +146,109 @@ bool DomainRewriteFilter::UpdateOneDomainHeader(
       }
     }
   }
-  // TODO(morlovich): Rewrite the domain for cookies.
+
+  if (StringCaseEqual(name, HttpAttributes::kSetCookie)) {
+    return UpdateSetCookieHeader(base_url, server_context, options,
+                                 value_in, out);
+  }
+
   return false;
+}
+
+bool DomainRewriteFilter::UpdateSetCookieHeader(
+    const GoogleUrl& base_url, const ServerContext* server_context,
+    const RewriteOptions* options, StringPiece value_in, GoogleString* out) {
+  if (!options->domain_rewrite_cookies()) {
+    return false;
+  }
+
+  if (!base_url.IsWebValid()) {
+    LOG(DFATAL) << "Weird base URL:" << base_url.UncheckedSpec();
+    return false;
+  }
+
+  StringPiece cookie_string;
+  SetCookieAttributes attributes;
+  ParseSetCookieAttributes(value_in, &cookie_string, &attributes);
+
+  // Find proper path and domain attrs. Note that if there is more than one,
+  // per spec the last one wins.
+  bool has_domain = false, has_path = false;
+  StringPiece domain, path;
+  for (int i = 0, n = attributes.size(); i < n; ++i) {
+    if (StringCaseEqual(attributes[i].first, kPath)) {
+      has_path = true;
+      path = attributes[i].second;
+    } else if (StringCaseEqual(attributes[i].first, kDomain)) {
+      has_domain = true;
+      domain = attributes[i].second;
+    }
+  }
+
+  // Path must start with / to be effective (RFC6265, 5.2.4)
+  if (has_path && !path.starts_with("/")) {
+    has_path = false;
+    path = "/";  // Actually effective path is based on page, but it doesn't
+                 // matter for our mapping, since we will not end up setting it
+                 // anyway.
+  }
+
+  // No path or domain attr -> nothing to do.
+  if (!has_path && !has_domain) {
+    return false;
+  }
+
+  // The set-cookie specifies some combination of domain and path, while our
+  // mapping machinery operates on URLs, so we have to make a URL that
+  // corresponds to the original domain + path. This has a chance for
+  // weirdness since the mapping rules are also scheme-aware.
+  GoogleString domain_and_scheme;
+  if (has_domain) {
+    // Leading . irrelevant per the spec.
+    if (domain.starts_with(".")) {
+      domain.remove_prefix(1);
+    }
+    domain_and_scheme = StrCat(base_url.Scheme(), "://", domain);
+  } else {
+    base_url.Origin().CopyToString(&domain_and_scheme);
+  }
+
+  GoogleString rewritten_url;
+  DomainRewriteFilter::RewriteResult status = Rewrite(
+      StrCat(domain_and_scheme, path), base_url, server_context, options,
+      false /* !apply_sharding */, true /* apply_domain_suffix*/,
+      &rewritten_url);
+
+  if (status != kRewroteDomain) {
+    return false;
+  }
+  GoogleUrl parsed_rewritten(rewritten_url);
+  StringPiece out_domain;
+  GoogleString out_path;
+  out_domain = parsed_rewritten.Host();
+  parsed_rewritten.PathSansQuery().CopyToString(&out_path);
+  GlobalReplaceSubstring(";", "%3b", &out_path);
+
+  // Now compose the new set-cookie line, updating domain & path as
+  // appropriate.
+  cookie_string.CopyToString(out);
+  for (int i = 0, n = attributes.size(); i < n; ++i) {
+    out->append("; ");
+    StringPiece key = attributes[i].first;
+    StringPiece val = attributes[i].second;
+    if (has_path && StringCaseEqual(key, kPath)) {
+      val = out_path;
+    } else if (has_domain && StringCaseEqual(key, kDomain)) {
+      val = out_domain;
+    }
+
+    if (val.empty()) {
+      StrAppend(out, key);
+    } else {
+      StrAppend(out, key, "=", val);
+    }
+  }
+  return true;
 }
 
 bool DomainRewriteFilter::ParseRefreshContent(StringPiece input,
@@ -207,6 +323,56 @@ bool DomainRewriteFilter::ParseRefreshContent(StringPiece input,
   TrimWhitespace(url);
 
   return !url->empty();
+}
+
+void DomainRewriteFilter::ParseSetCookieAttributes(
+    StringPiece input,
+    StringPiece* cookie_string,
+    SetCookieAttributes* attributes) {
+  StringPiece parse = input;
+  attributes->clear();
+
+  // RFC 6265, section 5.2 specifies this really well:
+  // http://tools.ietf.org/html/rfc6265#section-5.2
+  stringpiece_ssize_type pos = parse.find(";");
+  if (pos == StringPiece::npos) {
+    // No attribute string -> uninteresting for us, but produce a useful
+    // cookie_string to have saner API.
+    *cookie_string = parse;
+    TrimWhitespace(cookie_string);
+    return;
+  }
+
+  *cookie_string = parse.substr(0, pos);
+  TrimWhitespace(cookie_string);
+  parse.remove_prefix(pos + 1);
+
+  // Split off attributes from front one-by-one.
+  do {
+    StringPiece attr_string, key, val;
+    pos = parse.find(";");
+    if (pos == StringPiece::npos) {
+      // Last one.
+      attr_string = parse;
+    } else {
+      attr_string = parse.substr(0, pos);
+      parse.remove_prefix(pos + 1);
+    }
+
+    stringpiece_ssize_type equal_pos = attr_string.find("=");
+    if (equal_pos == StringPiece::npos) {
+      // No value.
+      key = attr_string;
+    } else {
+      key = attr_string.substr(0, equal_pos);
+      val = attr_string.substr(equal_pos + 1);
+      TrimWhitespace(&val);
+    }
+    TrimWhitespace(&key);
+    if (!key.empty() || !val.empty()) {
+      attributes->push_back(std::make_pair(key, val));
+    }
+  } while (pos != StringPiece::npos);
 }
 
 void DomainRewriteFilter::StartElementImpl(HtmlElement* element) {

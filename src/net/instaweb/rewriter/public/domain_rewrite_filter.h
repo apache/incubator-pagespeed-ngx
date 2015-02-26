@@ -39,6 +39,10 @@ class Variable;
 // otherwise rewritten.  For example, the user may want to
 // domain-shard adding a hash to their URL leaves, or domain shard
 // resources that are not cacheable.
+//
+// This will also rewrite hyperlinks and URL-related headers and metas
+// if domain_rewrite_hyperlinks() is on, and also to Set-Cookie headers if
+// domain_rewrite_cookies() is on.
 class DomainRewriteFilter : public CommonFilter {
  public:
   DomainRewriteFilter(RewriteDriver* rewrite_driver, Statistics* stats);
@@ -62,6 +66,8 @@ class DomainRewriteFilter : public CommonFilter {
     kMetaHttpEquiv
   };
 
+  typedef std::vector<std::pair<StringPiece, StringPiece> > SetCookieAttributes;
+
   // Rewrites the specified URL (which might be relative to the base tag)
   // into an absolute sharded url.
   //
@@ -80,8 +86,7 @@ class DomainRewriteFilter : public CommonFilter {
   // Update url and domains in headers as per the rewrite rules configured
   // for this domain.
   //
-  // For now this only fixes Location: and Refresh:
-  // TODO(morlovich): Also adjust Set-Cookie:
+  // For now this fixes Location:, Refresh:, and Set-Cookie:
   //
   // static since we may need to do it in Apache with no appropriate
   // RewriteDriver available.
@@ -100,15 +105,33 @@ class DomainRewriteFilter : public CommonFilter {
                                     StringPiece value_in,
                                     GoogleString* out);
 
+  // Like UpdateOneDomainHeader, but specifically for Set-Cookie.
+  static bool UpdateSetCookieHeader(const GoogleUrl& base_url,
+                                    const ServerContext* server_context,
+                                    const RewriteOptions* options,
+                                    StringPiece value_in,
+                                    GoogleString* out);
+
+
   // Tries to parse the content of a Refresh header, returning if successful.
   // *before gets anything before the URL or its opening quotes. *url gets the
   // portion of parse that's the URL itself, and *after gets everything after
   // the URL and its closing quote, if any. Note that this means that
   // reassembling the URL may require addition of new quotes and escaping.
-  static bool ParseRefreshContent(StringPiece parse,
+  static bool ParseRefreshContent(StringPiece input,
                                   StringPiece* before,
                                   StringPiece* url,
                                   StringPiece* after);
+
+
+  // Tries to parse the contents of a Set-Cookie header, specified as "input",
+  // extracting out the cookie string into *cookie_string and the attribute
+  // key value pairs into *attributes. This does not eliminate duplicate
+  // attributes; note that the spec requires using the last occurrences.
+  // *attributes and *cookie_string are overwritten, not appended to.
+  static void ParseSetCookieAttributes(StringPiece input,
+                                       StringPiece* cookie_string,
+                                       SetCookieAttributes* attributes);
 
  private:
   static void TryUpdateOneHttpDomainHeader(const GoogleUrl& base_url,

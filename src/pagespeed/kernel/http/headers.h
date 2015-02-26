@@ -57,6 +57,7 @@ template<class Proto> class Headers {
   int NumAttributes() const;
   const GoogleString& Name(int i) const;
   const GoogleString& Value(int i) const;
+  void SetValue(int i, StringPiece value);
 
   // Lookup attributes with provided name. Attribute values are stored in
   // values. Returns true iff there were any attributes with provided name.
