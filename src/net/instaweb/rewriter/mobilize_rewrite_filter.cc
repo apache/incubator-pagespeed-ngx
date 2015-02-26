@@ -110,7 +110,8 @@ GoogleString FormatColorForJs(const RewriteOptions::Color& color) {
 }  // namespace
 
 const HtmlName::Keyword MobilizeRewriteFilter::kKeeperTags[] = {
-  HtmlName::kArea, HtmlName::kMap, HtmlName::kScript, HtmlName::kStyle};
+  HtmlName::kArea, HtmlName::kLink, HtmlName::kMap, HtmlName::kMeta,
+  HtmlName::kScript, HtmlName::kStyle, HtmlName::kTitle};
 const int MobilizeRewriteFilter::kNumKeeperTags = arraysize(kKeeperTags);
 
 MobilizeRewriteFilter::MobilizeRewriteFilter(RewriteDriver* rewrite_driver)
@@ -404,7 +405,7 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
       driver()->AddAttribute(log, HtmlName::kClass, "psProgressLog");
       driver()->AppendChild(scrim, log);
     }
-  } else if (body_element_depth_ > 0) {
+  } else {
     MobileRole::Level element_role = GetMobileRole(element);
     if (element_role != MobileRole::kInvalid) {
       if (keeper_element_depth_ == 0) {

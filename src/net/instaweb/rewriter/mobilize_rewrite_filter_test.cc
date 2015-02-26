@@ -230,14 +230,14 @@ class MobilizeRewriteFunctionalTest : public MobilizeRewriteFilterTest {
 
   void HeadTest(const char* name,
                 StringPiece original_head, StringPiece expected_mid_head,
-                int deleted_elements) {
+                int deleted_elements, int keeper_blocks) {
     GoogleString original = StrCat("<head>", original_head, "</head>", Body());
     GoogleString expected =
         StrCat("<head>", HeadAndViewport(LayoutMode()), expected_mid_head,
                Styles(LayoutMode()), "</head>", ExpectedBody());
     ValidateExpected(name, original, expected);
     CheckVariable(MobilizeRewriteFilter::kPagesMobilized, 1);
-    CheckVariable(MobilizeRewriteFilter::kKeeperBlocks, 0);
+    CheckVariable(MobilizeRewriteFilter::kKeeperBlocks, keeper_blocks);
     CheckVariable(MobilizeRewriteFilter::kHeaderBlocks, 0);
     CheckVariable(MobilizeRewriteFilter::kNavigationalBlocks, 0);
     CheckVariable(MobilizeRewriteFilter::kContentBlocks, 0);
@@ -299,30 +299,30 @@ class MobilizeRewriteFunctionalTest : public MobilizeRewriteFilterTest {
 };
 
 TEST_F(MobilizeRewriteFunctionalTest, AddStyleAndViewport) {
-  HeadTest("add_style_and_viewport", "", "", 0);
+  HeadTest("add_style_and_viewport", "", "", 0, 0);
 }
 
 TEST_F(MobilizeRewriteFunctionalTest, RemoveExistingViewport) {
   HeadTest("remove_existing_viewport",
-           "<meta name='viewport' content='value' />", "", 1);
+           "<meta name='viewport' content='value' />", "", 1, 0);
 }
 
 TEST_F(MobilizeRewriteFunctionalTest, RemoveExistingViewportThatMatches) {
   HeadTest("remove_existing_viewport",
-           "<meta name='viewport' content='width=device-width'/>", "", 1);
+           "<meta name='viewport' content='width=device-width'/>", "", 1, 0);
 }
 
 TEST_F(MobilizeRewriteFunctionalTest, HeadUnmodified) {
   const char kHeadTags[] =
       "<meta name='keywords' content='cool,stuff'/>"
       "<style>abcd</style>";
-  HeadTest("head_unmodified", kHeadTags, kHeadTags, 0);
+  HeadTest("head_unmodified", kHeadTags, kHeadTags, 0, 1);
 }
 
 TEST_F(MobilizeRewriteFunctionalTest, HeadLinksUnmodified) {
   const char kLink[] =
       "<link rel='stylesheet' type='text/css' href='theme.css'>";
-  HeadTest("head_unmodified", kLink, kLink, 0);
+  HeadTest("head_unmodified", kLink, kLink, 0, 1);
 }
 
 TEST_F(MobilizeRewriteFunctionalTest, EmptyBody) {
@@ -577,7 +577,7 @@ class MobilizeRewriteFilterNoLayoutTest : public MobilizeRewriteFunctionalTest {
 };
 
 TEST_F(MobilizeRewriteFilterNoLayoutTest, AddStyleAndViewport) {
-  HeadTest("add_style_and_viewport", "", "", 0);
+  HeadTest("add_style_and_viewport", "", "", 0, 0);
 }
 
 }  // namespace

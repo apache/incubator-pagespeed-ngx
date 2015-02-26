@@ -119,6 +119,7 @@ const RelevantTagMetadata kRelevantTags[] = {
 // presence or absence just swings the tag counts around wildly.
 const HtmlName::Keyword kIgnoreTags[] = {
   HtmlName::kBody,
+  HtmlName::kHead,
   HtmlName::kHtml,
 };
 
@@ -350,6 +351,9 @@ GoogleString ElementSample::ToString(bool readable, HtmlParse* parser) {
   GoogleString sample_string;
   const char* k = readable ? "" : "'k";
   const char* q = readable ? "" : "'";
+  if (readable) {
+    StrAppend(&sample_string, "id: ", id, ", ");
+  }
   if (IsRoleValid(role) && (!readable || parent->role != role)) {
     StrAppend(
         &sample_string,
@@ -571,14 +575,6 @@ void MobilizeLabelFilter::StartDocumentImpl() {
 void MobilizeLabelFilter::StartElementImpl(HtmlElement* element) {
   if (active_no_traverse_element_ != NULL ||
       IsIgnoreTag(element->keyword())) {
-    return;
-  }
-  if (element->keyword() == HtmlName::kHead) {
-    // Ignore all content in document head.  Note: this is potentially unsafe,
-    // as browsers will sometimes display content included in HEAD if it looks
-    // like the page author included it there by mistake.  But we make the same
-    // assumption in the rewrite filter.
-    active_no_traverse_element_ = element;
     return;
   }
   if (IsKeeperTag(element->keyword())) {
@@ -1129,8 +1125,16 @@ void MobilizeLabelFilter::DebugLabel() {
             element, HtmlName::kDataMobileRole,
             MobileRoleData::StringFromLevel(sample->role));
       }
-      driver()->InsertDebugComment(
-          sample->ToString(true /* readable */, driver()), element);
+      GoogleString sample_string =
+          sample->ToString(true /* readable */, driver());
+      if (driver()->IsRewritable(element)) {
+        driver()->InsertDebugComment(sample_string, element);
+      } else {
+        // Above flush window, so just add information at the end of the
+        // document.
+        InsertNodeAtBodyEnd(
+            driver()->NewCommentNode(NULL, sample_string));
+      }
     }
     if (log_samples) {
       // TODO(jmaessen): This should really send samples to a separate file,
@@ -1188,6 +1192,10 @@ void MobilizeLabelFilter::InjectLabelJavascript() {
   }
   if (!any_roles_listed) {
     // Don't inject any code if there's nothing to do.
+    if (driver()->DebugMode()) {
+      InsertNodeAtBodyEnd(
+          driver()->NewCommentNode(NULL, "No nodes labeled for mobilization"));
+    }
     return;
   }
   // Now turn the resulting JS fragments into code.
