@@ -35,6 +35,7 @@
 // 6. Compute theme color based on the background color and foreground image.
 
 goog.provide('pagespeed.MobLogo');
+goog.provide('pagespeed.MobLogoCandidate');
 
 goog.require('goog.dom.TagName');
 goog.require('goog.events.EventType');
@@ -45,13 +46,33 @@ goog.require('pagespeed.MobUtil');
 
 
 /**
+ * @constructor
+ * @struct
+ * @param {pagespeed.MobLogo.LogoRecord} logoRecord
+ * @param {!goog.color.Rgb} background
+ * @param {!goog.color.Rgb} foreground
+ */
+pagespeed.MobLogoCandidate = function(logoRecord, background, foreground) {
+  /** {pagespeed.MobLogo.LogoRecord} */
+  this.logoRecord = logoRecord;
+
+  /** {!goog.color.Rgb} */
+  this.background = background;
+
+  /** {!goog.color.Rgb} */
+  this.foreground = foreground;
+};
+
+
+
+/**
  * Creates a context for Pagespeed logo detector.
  * @param {!pagespeed.Mob} psMob
- * @param {function(pagespeed.MobLogo.LogoRecord, !goog.color.Rgb,
- *                  !goog.color.Rgb)} doneCallback
+ * @param {function(!Array.<pagespeed.MobLogoCandidate>)} doneCallback
+ * @param {number} maxNumCandidates
  * @constructor
  */
-pagespeed.MobLogo = function(psMob, doneCallback) {
+pagespeed.MobLogo = function(psMob, doneCallback, maxNumCandidates) {
   /**
    * Mobilization context.
    *
@@ -61,8 +82,7 @@ pagespeed.MobLogo = function(psMob, doneCallback) {
 
   /**
    * Callback to invoke when this object finishes its work.
-   * @private {function(pagespeed.MobLogo.LogoRecord, !goog.color.Rgb,
-   *                    !goog.color.Rgb)} doneCallback
+   * @private {function(!Array.<pagespeed.MobLogoCandidate>)} doneCallback_
    */
   this.doneCallback_ = doneCallback;
 
@@ -74,12 +94,17 @@ pagespeed.MobLogo = function(psMob, doneCallback) {
 
   /**
    * Array of logo candidates.
-   * @private {!Array.<pagespeed.MobLogo.LogoRecord>}
+   * @private {!Array.<!pagespeed.MobLogo.LogoRecord>}
    */
   this.candidates_ = [];
 
   /** @private {number} */
   this.pendingEventCount_ = 0;
+
+  /**
+   * @private {number}
+   */
+  this.maxNumCandidates_ = maxNumCandidates;
 };
 
 
@@ -341,6 +366,20 @@ pagespeed.MobLogo.prototype.findImagesAndWait_ = function(logoCandidates) {
 
 
 /**
+ * @param {Array.<Object>} array
+ * @param {number} index
+ * @private
+ */
+pagespeed.MobLogo.fastRemoveArrayElement_ = function(array, index) {
+  var last = array.length - 1;
+  if (index < last) {
+    array[index] = array[last];
+  }
+  array.pop();
+};
+
+
+/**
  * Remove the logo candidates which do not have image of proper size and
  * position.
  * @private
@@ -386,10 +425,12 @@ pagespeed.MobLogo.prototype.pruneCandidateBySizePos_ = function() {
         logo.foregroundImage = logo.ancestorImage;
         logo.rect = rect;
       } else {
-        logoCandidates[i] = null;
+        pagespeed.MobLogo.fastRemoveArrayElement_(logoCandidates, i);
+        --i;
       }
     } else {
-      logoCandidates[i] = null;
+      pagespeed.MobLogo.fastRemoveArrayElement_(logoCandidates, i);
+      --i;
     }
   }
 };
@@ -401,18 +442,22 @@ pagespeed.MobLogo.prototype.pruneCandidateBySizePos_ = function() {
  */
 pagespeed.MobLogo.prototype.findBestLogoAndColor_ = function() {
   this.pruneCandidateBySizePos_();
-  var logo = this.findBestLogo_();
-  var img = null;
-  var background = null;
-
-  if (logo) {
+  var logos = this.findBestLogos_();
+  var candidates = [];
+  var numCandidates = Math.min(this.maxNumCandidates_, logos.length);
+  for (var i = 0; i < numCandidates; ++i) {
+    var img = null;
+    var background = null;
+    var logo = logos[i];
     this.findLogoBackground_(logo);
     img = logo.foregroundImage;
     background = logo.backgroundColor;
+    var mobColor = new pagespeed.MobColor();
+    var themeColor = mobColor.run(img, background);
+    candidates.push(new pagespeed.MobLogoCandidate(
+        logo, themeColor.background, themeColor.foreground));
   }
-  var mobColor = new pagespeed.MobColor();
-  var themeColor = mobColor.run(img, background);
-  this.doneCallback_(logo, themeColor.background, themeColor.foreground);
+  this.doneCallback_(candidates);
 };
 
 
@@ -428,7 +473,58 @@ pagespeed.MobLogo.prototype.eventDone_ = function() {
 
 
 /**
- * Find the best logo candidate, if there is any. The best candidate is the
+ * @private {Array.<Function.<pagespeed.MobUtil.Rect>>}
+ */
+pagespeed.MobLogo.rectAccessors_ = [
+  /**
+   * @return {number}
+   * @param {pagespeed.MobUtil.Rect} rect
+   */
+  function(rect) { return rect.top; },
+
+  /**
+   * @return {number}
+   * @param {pagespeed.MobUtil.Rect} rect
+   */
+  function(rect) { return rect.left; },
+
+  /**
+   * @return {number}
+   * @param {pagespeed.MobUtil.Rect} rect
+   */
+  function(rect) { return rect.width * rect.height; }
+];
+
+
+/**
+ * @param {!pagespeed.MobLogo.LogoRecord} a
+ * @param {!pagespeed.MobLogo.LogoRecord} b
+ * @return {number}
+ * @private
+ */
+pagespeed.MobLogo.compareLogos_ = function(a, b) {
+  if (a.metric > b.metric) {    // Higher is better.
+    return -1;
+  } else if (b.metric > a.metric) {
+    return 1;
+  }
+
+  for (var i = 0; i < pagespeed.MobLogo.rectAccessors_; ++i) {
+    var accessor = pagespeed.MobLogo.rectAccessors_[i];
+    var aval = accessor(a.rect);
+    var bval = accessor(b.rect);
+    if (aval < bval) {
+      return -1;
+    } else if (bval < aval) {
+      return 1;
+    }
+  }
+  return 0;                     // a tie!
+};
+
+
+/**
+ * Find up to 5 best logo candidates in rank order. The best candidate is the
  * one with the largest metric value. If there are more than one candiates
  * with the same largest metric, the follow rules are applied on them in order
  * for choosing the best one:
@@ -441,74 +537,46 @@ pagespeed.MobLogo.prototype.eventDone_ = function() {
  *
  * If there are no logo candidates then null is returned.
  *
- * @return {?pagespeed.MobLogo.LogoRecord}
+ * @return {Array.<!pagespeed.MobLogo.LogoRecord>}
  * @private
  */
-pagespeed.MobLogo.prototype.findBestLogo_ = function() {
-  var logoCandidates = [];
-  var i;
-  for (i = 0; i < this.candidates_.length; ++i) {
-    if (this.candidates_[i]) {
-      logoCandidates.push(this.candidates_[i]);
+pagespeed.MobLogo.prototype.findBestLogos_ = function() {
+  var logoCandidates = this.candidates_;
+  if (logoCandidates.length > 1) {
+    // Use the position and size to update the metric.
+    // TODO(huibao): Split the update into a method.
+    var maxBot = 0;
+    var minTop = Infinity;
+    var i, rect, candidate;
+    for (i = 0; candidate = logoCandidates[i]; ++i) {
+      rect = candidate.rect;
+      minTop = Math.min(minTop, rect.top);
+      maxBot = Math.max(maxBot, rect.bottom);
+    }
+    for (i = 0; candidate = logoCandidates[i]; ++i) {
+      rect = candidate.rect;
+      // TODO(huibao): Investigate a better way for incorporating size and
+      // position in the selection of the best logo, for example
+      // Math.sqrt((maxBot - rect.bottom) / (maxBot - minTop)).
+      var multTop = Math.sqrt((maxBot - rect.top) / (maxBot - minTop));
+      candidate.metric *= multTop;
+    }
+
+    if ((logoCandidates.length > 0) && (this.maxNumCandidates_ == 1)) {
+      // Just pick the best one, which is faster than sorting.
+      var bestLogo = logoCandidates[0];
+      for (i = 1; i < logoCandidates.length; ++i) {
+        candidate = logoCandidates[i];
+        if (pagespeed.MobLogo.compareLogos_(candidate, bestLogo) < 0) {
+          bestLogo = candidate;
+        }
+      }
+      logoCandidates[0] = bestLogo;
+    } else {
+      logoCandidates.sort(pagespeed.MobLogo.compareLogos_);
     }
   }
-
-  if (logoCandidates.length == 0) {
-    return null;
-  } else if (logoCandidates.length == 1) {
-    return logoCandidates[0];
-  }
-
-  // Use the position and size to update the metric.
-  // TODO(huibao): Split the update into a method.
-  var maxBot = 0;
-  var minTop = Infinity;
-  var rect, candidate;
-  for (i = 0; candidate = logoCandidates[i]; ++i) {
-    rect = candidate.rect;
-    minTop = Math.min(minTop, rect.top);
-    maxBot = Math.max(maxBot, rect.bottom);
-  }
-  for (i = 0; candidate = logoCandidates[i]; ++i) {
-    rect = candidate.rect;
-    // TODO(huibao): Investigate a better way for incorporating size and
-    // position in the selection of the best logo, for example
-    // Math.sqrt((maxBot - rect.bottom) / (maxBot - minTop)).
-    var multTop = Math.sqrt((maxBot - rect.top) / (maxBot - minTop));
-    candidate.metric *= multTop;
-  }
-
-  var maxMetric = 0;
-  for (i = 0; candidate = logoCandidates[i]; ++i) {
-    maxMetric = Math.max(maxMetric, candidate.metric);
-  }
-
-  var bestCandidates = [];
-  for (i = 0; candidate = logoCandidates[i]; ++i) {
-    if (candidate.metric == maxMetric) {
-      bestCandidates.push(candidate);
-    }
-  }
-
-  if (bestCandidates.length == 1) {
-    return bestCandidates[0];
-  }
-
-  // There are multiple candiates with the same largest metric.
-  minTop = Infinity;
-  var bestLogo = bestCandidates[0];
-  var bestRect = bestLogo.rect;
-  for (i = 1; candidate = bestCandidates[i]; ++i) {
-    rect = candidate.rect;
-    if (bestRect.top > rect.top ||
-        (bestRect.top == rect.top && bestRect.left > rect.left) ||
-        (bestRect.top == rect.top && bestRect.left == rect.left &&
-         bestRect.width * bestRect.height > rect.width * rect.height)) {
-      bestLogo = candidate;
-      bestRect = bestLogo.rect;
-    }
-  }
-  return bestLogo;
+  return logoCandidates;
 };
 
 

@@ -151,6 +151,19 @@ pagespeed.MobTheme.prototype.colorComplete_ = function(
 
 
 /**
+ * @param {Array.<pagespeed.MobLogoCandidate>} candidates
+ * @private
+ */
+pagespeed.MobTheme.prototype.logoComplete_ = function(candidates) {
+  if (candidates.length >= 1) {
+    var candidate = candidates[0];
+    this.colorComplete_(candidate.logoRecord, candidate.background,
+        candidate.foreground);
+  }
+};
+
+
+/**
  * Returns true if precomputed theme information is available.
  * @return {boolean}
  */
@@ -180,7 +193,8 @@ pagespeed.MobTheme.extractTheme = function(psMob, doneCallback) {
     mobTheme.colorComplete_(logo, psMobBackgroundColor, psMobForegroundColor);
   } else {
     var mobLogo = new pagespeed.MobLogo(
-        psMob, goog.bind(mobTheme.colorComplete_, mobTheme));
+        psMob, goog.bind(mobTheme.logoComplete_, mobTheme),
+        1 /* numCandidates */);
     mobLogo.run();
   }
 };
