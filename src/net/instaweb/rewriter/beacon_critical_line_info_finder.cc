@@ -48,8 +48,9 @@ void BeaconCriticalLineInfoFinder::WriteXPathsToPropertyCacheFromBeacon(
     const PropertyCache::Cohort* cohort, AbstractPropertyPage* page,
     MessageHandler* message_handler, Timer* timer) {
   WriteCriticalKeysToPropertyCache(xpaths_set, nonce, kDefaultSupportInterval,
-                                   false /* should_replace_prior_result */,
-                                   false /* require_prior_support */,
+                                   /* We merge prior result w/o requiring
+                                      prior support */
+                                   kNoRequirementsOnPriorResult,
                                    kBeaconCriticalLineInfoPropertyName, cache,
                                    cohort, page, message_handler, timer);
 }

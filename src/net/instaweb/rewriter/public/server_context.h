@@ -67,6 +67,7 @@ class FileSystem;
 class FlushEarlyInfoFinder;
 class GoogleUrl;
 class MessageHandler;
+class MobilizeCachedFinder;
 class NamedLock;
 class NamedLockManager;
 class PropertyStore;
@@ -285,6 +286,12 @@ class ServerContext {
     return flush_early_info_finder_.get();
   }
   void set_flush_early_info_finder(FlushEarlyInfoFinder* finder);
+
+  // May be NULL
+  MobilizeCachedFinder* mobilize_cached_finder() const  {
+    return mobilize_cached_finder_.get();
+  }
+  void set_mobilize_cached_finder(MobilizeCachedFinder* finder);
 
   UserAgentMatcher* user_agent_matcher() const {
     return user_agent_matcher_;
@@ -711,6 +718,7 @@ class ServerContext {
   scoped_ptr<CacheHtmlInfoFinder> cache_html_info_finder_;
   scoped_ptr<FlushEarlyInfoFinder> flush_early_info_finder_;
   scoped_ptr<CriticalLineInfoFinder> critical_line_info_finder_;
+  scoped_ptr<MobilizeCachedFinder> mobilize_cached_finder_;
 
   // hasher_ is often set to a mock within unit tests, but some parts of the
   // system will not work sensibly if the "hash algorithm" used always returns

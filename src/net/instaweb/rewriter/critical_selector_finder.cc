@@ -97,9 +97,15 @@ void CriticalSelectorFinder::WriteCriticalSelectorsToPropertyCacheStatic(
     bool should_replace_prior_result, const PropertyCache* cache,
     const PropertyCache::Cohort* cohort, AbstractPropertyPage* page,
     MessageHandler* message_handler, Timer* timer) {
+  CriticalKeysWriteFlags flags;
+  if (should_replace_prior_result) {
+    flags = kReplacePriorResult;
+  } else {
+    flags = kRequirePriorSupport;
+  }
+
   WriteCriticalKeysToPropertyCache(
-      selector_set, nonce, support_interval, should_replace_prior_result,
-      !should_replace_prior_result /* require_prior_support */,
+      selector_set, nonce, support_interval, flags,
       kCriticalSelectorsPropertyName, cache, cohort, page, message_handler,
       timer);
 }

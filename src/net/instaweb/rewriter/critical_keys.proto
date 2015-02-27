@@ -34,7 +34,7 @@ message CriticalKeys {
   // The KeyEvidence proto aggregates multiple beacons returns in a scalable
   // way; support is exponentially decayed over time.
   message KeyEvidence {
-    optional string key = 1;
+    optional bytes key = 1;
     optional int32 support = 2;
   }
 

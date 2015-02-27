@@ -260,7 +260,7 @@ void UpdateCriticalKeys(bool require_prior_support,
 
 void WriteCriticalKeysToPropertyCache(
     const StringSet& new_keys, StringPiece nonce, int support_interval,
-    bool should_replace_prior_result, bool require_prior_support,
+    CriticalKeysWriteFlags flags,
     StringPiece property_name, const PropertyCache* cache,
     const PropertyCache::Cohort* cohort, AbstractPropertyPage* page,
     MessageHandler* message_handler, Timer* timer) {
@@ -273,7 +273,7 @@ void WriteCriticalKeysToPropertyCache(
   // WriteCriticalSelectors refactoring that's ongoing.  Note that this may
   // break slamm's tests at the bottom of critical_selector_finder_test.cc
   // depending on how subclassing is done, so some care will be required.
-  if (should_replace_prior_result) {
+  if (flags & kReplacePriorResult) {
     critical_keys.reset(new CriticalKeys);
   } else {
     // We first need to read the current critical keys in the property cache,
@@ -303,11 +303,12 @@ void WriteCriticalKeysToPropertyCache(
         break;
     }
 
-    if (!ValidateAndExpireNonce(timer->NowMs(), nonce, critical_keys.get())) {
+    if (!(flags & kSkipNonceCheck) &&
+        !ValidateAndExpireNonce(timer->NowMs(), nonce, critical_keys.get())) {
       return;
     }
   }
-  UpdateCriticalKeys(require_prior_support, new_keys, support_interval,
+  UpdateCriticalKeys(flags & kRequirePriorSupport, new_keys, support_interval,
                      critical_keys.get());
 
   PropertyCacheUpdateResult result = UpdateInPropertyCache(

@@ -21,7 +21,9 @@
 #include <algorithm>
 
 #include "base/logging.h"
+#include "net/instaweb/rewriter/mobilize_cached.pb.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
+#include "net/instaweb/rewriter/public/mobilize_cached_finder.h"
 #include "net/instaweb/rewriter/public/request_properties.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -107,6 +109,13 @@ GoogleString FormatColorForJs(const RewriteOptions::Color& color) {
                 IntegerToString(color.b), "]");
 }
 
+void ConvertColor(const MobilizeCached::Color& color,
+                  RewriteOptions::Color* out) {
+  out->r = color.r();
+  out->g = color.g();
+  out->b = color.b();
+}
+
 }  // namespace
 
 const HtmlName::Keyword MobilizeRewriteFilter::kKeeperTags[] = {
@@ -172,7 +181,7 @@ void MobilizeRewriteFilter::InitStats(Statistics* statistics) {
   statistics->AddVariable(kDeletedElements);
 }
 
-void MobilizeRewriteFilter::DetermineEnabled(GoogleString* disabled_reason) {
+bool MobilizeRewriteFilter::IsApplicableFor(RewriteDriver* driver) {
   // Note: we may need to narrow the set of applicable user agents here, but for
   // now we (very) optimistically assume that our JS works on any mobile UA.
   // TODO(jmaessen): Some debate over whether to include tablet UAs here.  We
@@ -182,8 +191,12 @@ void MobilizeRewriteFilter::DetermineEnabled(GoogleString* disabled_reason) {
   // TODO(jmaessen): If we want to inject instrumentation on desktop pages to
   // beacon back data useful for mobile page views, this should change and we'll
   // want to check at code injection points instead.
-  if (!driver()->options()->mob_always() &&
-      !driver()->request_properties()->IsMobile()) {
+  return driver->options()->mob_always() ||
+         driver->request_properties()->IsMobile();
+}
+
+void MobilizeRewriteFilter::DetermineEnabled(GoogleString* disabled_reason) {
+  if (!IsApplicableFor(driver())) {
     disabled_reason->assign("Not a mobile User Agent.");
     set_is_enabled(false);
   }
@@ -278,17 +291,38 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
         StrAppend(&src, "var psMapLocation='", escaped_map_location, "';"
                   "var psMapConversionLabel='", label, "';");
       }
+
+      // See if we have a precomputed theme, either via options or pcache.
+      bool has_mob_theme = false;
+      RewriteOptions::Color background_color, foreground_color;
+      GoogleString logo_url;
       if (options->has_mob_theme()) {
+        has_mob_theme = true;
+        background_color = options->mob_theme().background_color;
+        foreground_color = options->mob_theme().foreground_color;
+        logo_url = options->mob_theme().logo_url;
+      } else {
+        MobilizeCachedFinder* finder =
+            driver()->server_context()->mobilize_cached_finder();
+        MobilizeCached out;
+        if (finder &&
+            finder->GetMobilizeCachedFromPropertyCache(driver(), &out)) {
+          has_mob_theme =
+              out.has_background_color() && out.has_foreground_color();
+          ConvertColor(out.background_color(), &background_color);
+          ConvertColor(out.foreground_color(), &foreground_color);
+          logo_url = out.foreground_image_url();
+        }
+      }
+
+      if (has_mob_theme) {
          StrAppend(&src, "var psMobBackgroundColor=",
-                   FormatColorForJs(options->mob_theme().background_color),
-                   ";");
+                   FormatColorForJs(background_color), ";");
          StrAppend(&src, "var psMobForegroundColor=",
-                   FormatColorForJs(options->mob_theme().foreground_color),
-                   ";");
-        if (!options->mob_theme().logo_url.empty()) {
+                   FormatColorForJs(foreground_color), ";");
+        if (!logo_url.empty()) {
           GoogleString escaped_logo_url;
-          EscapeToJsStringLiteral(options->mob_theme().logo_url, false,
-                                  &escaped_logo_url);
+          EscapeToJsStringLiteral(logo_url, false, &escaped_logo_url);
           StrAppend(&src, "var psMobLogoUrl='", escaped_logo_url, "';");
         } else {
           StrAppend(&src, "var psMobLogoUrl=null;");

@@ -22,18 +22,20 @@
 #include <set>
 #include <vector>
 
+#include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/null_statistics.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+
 
 namespace pagespeed { namespace js { struct JsTokenizerPatterns; } }
 
 namespace net_instaweb {
 
-class AbstractMutex;
 class CacheHtmlInfoFinder;
 class CriticalCssFinder;
 class CriticalImagesFinder;
@@ -44,6 +46,7 @@ class FlushEarlyInfoFinder;
 class ExperimentMatcher;
 class Hasher;
 class MessageHandler;
+class MobilizeCachedFinder;
 class NamedLockManager;
 class NonceGenerator;
 class ProcessContext;
@@ -57,7 +60,6 @@ class RewriteStats;
 class SHA1Signature;
 class Scheduler;
 class StaticAssetManager;
-class Statistics;
 class ThreadSystem;
 class Timer;
 class UrlAsyncFetcher;
@@ -358,6 +360,10 @@ class RewriteDriverFactory {
   virtual CriticalImagesFinder* DefaultCriticalImagesFinder(
       ServerContext* server_context);
   virtual CriticalSelectorFinder* DefaultCriticalSelectorFinder(
+      ServerContext* server_context);
+
+  // Note: this one may return NULL.
+  virtual MobilizeCachedFinder* DefaultMobilizeCachedFinder(
       ServerContext* server_context);
 
   // Default implementation returns NULL.

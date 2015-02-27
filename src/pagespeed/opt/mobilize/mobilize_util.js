@@ -684,7 +684,7 @@ pagespeed.MobUtil.proxyImageUrl = function(url, opt_origin) {
 
   var canProxy = false;
   if (originDomain == urlDomain) {
-    canProxy = true;
+    return url;
   } else if (originDomain.indexOf(urlDomain) >= 0) {
     var originDomainPieces = originDomain.split('.');
     var len = originDomainPieces.length;

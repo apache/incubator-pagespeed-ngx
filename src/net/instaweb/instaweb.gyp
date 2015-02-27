@@ -1199,6 +1199,22 @@
       ],
     },
     {
+      'target_name': 'instaweb_mobilize_cached_pb',
+      'variables': {
+        'instaweb_protoc_subdir': 'net/instaweb/rewriter',
+      },
+      'sources': [
+        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/mobilize_cached.pb.cc',
+        'rewriter/mobilize_cached.proto',
+      ],
+      'dependencies': [
+      ],
+      'includes': [
+        'protoc.gypi',
+      ],
+    },
+
+    {
       'target_name': 'instaweb_http',
       'type': '<(library)',
       'dependencies': [
@@ -1585,6 +1601,7 @@
         'instaweb_local_storage_cache_opt_data2c',
         'instaweb_messages_js_data2c',
         'instaweb_messages_js_opt_data2c',
+        'instaweb_mobilize_cached_pb',
         'instaweb_panel_loader_opt_data2c',
         'instaweb_rewriter_base',
         'instaweb_rewriter_css',
@@ -1673,6 +1690,7 @@
         'rewriter/local_storage_cache_filter.cc',
         'rewriter/make_show_ads_async_filter.cc',
         'rewriter/meta_tag_filter.cc',
+        'rewriter/mobilize_cached_finder.cc',
         'rewriter/mobilize_label_filter.cc',
         'rewriter/mobilize_rewrite_filter.cc',
         'rewriter/navigational_decision_tree.cc',

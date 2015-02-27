@@ -109,6 +109,8 @@ class MobilizeRewriteFilter : public CommonFilter {
 
   static void InitStats(Statistics* statistics);
 
+  // True if options or request UA suggest we will actually do mobilization.
+  static bool IsApplicableFor(RewriteDriver* driver);
   virtual void DetermineEnabled(GoogleString* disabled_reason);
   virtual void StartDocumentImpl();
   virtual void EndDocument();

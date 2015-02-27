@@ -110,6 +110,13 @@ void UpdateCriticalKeys(bool require_prior_support,
 
 bool ShouldBeacon(const CriticalKeys& proto, const RewriteDriver& driver);
 
+enum CriticalKeysWriteFlags {
+  kNoRequirementsOnPriorResult = 0,  // Nice name for lack of next two flags.
+  kReplacePriorResult = 1,
+  kRequirePriorSupport = 2,
+  kSkipNonceCheck = 4
+};
+
 // Update the property cache with a new set of keys. This will update the
 // support value for the new keys. If require_prior_support is set, any keys
 // that are not already present in the property cache will be ignored (to
@@ -119,7 +126,7 @@ bool ShouldBeacon(const CriticalKeys& proto, const RewriteDriver& driver);
 // !should_replace_prior_result and nonces must be checked.
 void WriteCriticalKeysToPropertyCache(
     const StringSet& new_keys, StringPiece nonce, int support_interval,
-    bool should_replace_prior_result, bool require_prior_support,
+    CriticalKeysWriteFlags flags,
     StringPiece property_name, const PropertyCache* cache,
     const PropertyCache::Cohort* cohort, AbstractPropertyPage* page,
     MessageHandler* message_handler, Timer* timer);

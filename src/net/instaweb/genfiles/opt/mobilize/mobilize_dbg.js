@@ -6626,12 +6626,11 @@ pagespeed.MobUtil.proxyImageUrl = function(a, b) {
   }
   var f = !1;
   if (d == e) {
-    f = !0;
-  } else {
-    if (0 <= d.indexOf(e)) {
-      var d = d.split("."), g = d.length;
-      3 <= g && (e == d.slice(0, g - 2).join(".") || "www" == d[0] && (e == d.slice(1, g - 2).join(".") || e == d.slice(1, g).join("."))) && (f = !0);
-    }
+    return a;
+  }
+  if (0 <= d.indexOf(e)) {
+    var d = d.split("."), g = d.length;
+    3 <= g && (e == d.slice(0, g - 2).join(".") || "www" == d[0] && (e == d.slice(1, g - 2).join(".") || e == d.slice(1, g).join("."))) && (f = !0);
   }
   return f ? (e = a.indexOf(e) + e.length, c + a.substring(e)) : a;
 };
