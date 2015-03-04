@@ -96,6 +96,7 @@
 #include "net/instaweb/rewriter/public/js_outline_filter.h"
 #include "net/instaweb/rewriter/public/lazyload_images_filter.h"
 #include "net/instaweb/rewriter/public/local_storage_cache_filter.h"
+#include "net/instaweb/rewriter/public/make_show_ads_async_filter.h"
 #include "net/instaweb/rewriter/public/meta_tag_filter.h"
 #include "net/instaweb/rewriter/public/mobilize_label_filter.h"
 #include "net/instaweb/rewriter/public/mobilize_rewrite_filter.h"
@@ -860,6 +861,7 @@ void RewriteDriver::InitStats(Statistics* statistics) {
   JsCombineFilter::InitStats(statistics);
   JsInlineFilter::InitStats(statistics);
   LocalStorageCacheFilter::InitStats(statistics);
+  MakeShowAdsAsyncFilter::InitStats(statistics);
   MetaTagFilter::InitStats(statistics);
   MobilizeLabelFilter::InitStats(statistics);
   MobilizeRewriteFilter::InitStats(statistics);
@@ -1032,6 +1034,10 @@ void RewriteDriver::AddPreRenderFilters() {
     // This filter should be enabled early, at least before image rewriting,
     // because it depends on seeing the original image URLs.
     AppendOwnedPreRenderFilter(new CriticalImagesBeaconFilter(this));
+  }
+  if (rewrite_options->Enabled(RewriteOptions::kMakeShowAdsAsync)) {
+    // We want this filter early in case we ever inline the loader JS.
+    AppendOwnedPreRenderFilter(new MakeShowAdsAsyncFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kSplitHtml) &&
       server_context()->factory()->UseBeaconResultsInFilters()) {

@@ -52,6 +52,7 @@ run_test image_quality_generic
 run_test image_quality_jpeg
 run_test image_quality_webp
 run_test broken_images
+run_test make_show_ads_async
 
 # These have to run after image_rewrite tests. Otherwise it causes some images
 # to be loaded into memory before they should be.

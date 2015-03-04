@@ -844,6 +844,8 @@ const RewriteOptions::FilterEnumToIdAndNameEntry
     RewriteOptions::kLocalStorageCacheId, "Local Storage Cache" },
   { RewriteOptions::kMakeGoogleAnalyticsAsync,
     "ga", "Make Google Analytics Async" },
+  { RewriteOptions::kMakeShowAdsAsync,
+    "gaa", "Convert showads.js use to async adsbygoogle.js" },
   { RewriteOptions::kMobilize,
     "mob", "Mobilize Webpage" },
   { RewriteOptions::kMobilizePrecompute,

@@ -82,6 +82,7 @@ struct FilterMap {
 "local_storage_cache",               RewriteOptions::kLocalStorageCache
 "left_trim_urls",                    RewriteOptions::kLeftTrimUrls
 "make_google_analytics_async",       RewriteOptions::kMakeGoogleAnalyticsAsync
+"make_show_ads_async",               RewriteOptions::kMakeShowAdsAsync
 "mobilize",                          RewriteOptions::kMobilize
 "mobilize_precompute",               RewriteOptions::kMobilizePrecompute
 "move_css_above_scripts",            RewriteOptions::kMoveCssAboveScripts
