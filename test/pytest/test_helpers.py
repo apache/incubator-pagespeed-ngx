@@ -71,13 +71,12 @@ def fetch(
         headers["User-Agent"] = config.DEFAULT_USER_AGENT
 
     if not url.startswith("http"):
-        if "Host" in headers:
-            url = "http://%s%s" % (headers["Host"], url)
-        else:
+        if not "Host" in headers:
             if proxy:
                 url = "%s%s" % (proxy, url)
             else:
                 url = "%s%s" % (config.PRIMARY_SERVER, url)
+
 
     # Helps cross referencing between this and server log
     headers["PSOL-Fetch-Id"] = mycount
@@ -125,4 +124,27 @@ def http_date(d):
 
 def absolutify_url(base_url, relative_url):
     return urljoin(base_url, relative_url)
+
+def internal_get_stat(url, stat):
+    stat = "%s:" % stat
+    result = fetch(url)
+    line = [l for l in result.body.split("\n") if l.startswith(stat)][0]
+    return int(line[len(stat):].replace(" ", ""))
+
+def assert_stat_equals(stat, val):
+    assert internal_get_stat(config.STATISTICS_URL, stat) == val
+
+def assert_wait_for_stat_to_equal(stat, expected_value):
+    timeout_seconds = time.time() + 5
+    last_stat_value = None
+    while time.time() < timeout_seconds:
+        last_stat_value = internal_get_stat(config.STATISTICS_URL, stat)
+        if last_stat_value == expected_value:
+            return
+        time.sleep(0.2)
+
+    log.debug("wait for stat [%s] timed out, last value: %s, expected: %s"
+        % (stat, last_stat_value, expected_value))
+
+    assert last_stat_value == expected_value
 

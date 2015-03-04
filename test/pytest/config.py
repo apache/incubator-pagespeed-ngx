@@ -29,8 +29,9 @@ REWRITTEN_TEST_ROOT = TEST_ROOT
 # Test will dump its log(s) here:
 LOG_ROOT=TEST_TMP_DIR
 DISABLE_FONT_API_TESTS = False
-
 FETCH_ON_START_AND_END = False
+STATISTICS_URL="%s/ngx_pagespeed_statistics" % PRIMARY_SERVER
+ACCESS_LOG = "%s/access.log" % TEST_TMP_DIR
 
 
 logging.basicConfig(
