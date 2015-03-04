@@ -218,6 +218,10 @@ body {
   -o-transition: visibility 0s linear 0.3s, left 0.3s ease-out;
   -moz-transition: visibility 0s linear 0.3s, left 0.3s ease-out;
   transition: visibility 0s linear 0.3s, left 0.3s ease-out;
+
+  /* Use momentum-based scrolling on iOS. Otherwise the nav panel scrolls too
+   * quickly. */
+  -webkit-overflow-scrolling: touch;
 }
 
 .psmob-nav-panel.open {

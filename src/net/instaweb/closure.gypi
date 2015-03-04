@@ -16,7 +16,9 @@
 # different modes, depending on how $BUILD_JS is set. If it's 1, the closure
 # compiler will be used, otherwise precompiled JS files checked in to
 # net/instaweb/genfiles are used. This allows most people building mod_pagespeed
-# to avoid a dependency on having java installed.
+# to avoid a dependency on having java installed. Note that this env var is
+# checked when gclient sync is run, not when compiling, so make sure to run
+# gclient sync to modify the compilation mode.
 
 # New JS files should be added to instaweb.gyp and should include the following
 # fields in a 'variables' sections.

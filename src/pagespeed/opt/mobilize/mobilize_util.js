@@ -674,7 +674,9 @@ pagespeed.MobUtil.resourceFileName = function(url) {
  * @return {string}
  */
 pagespeed.MobUtil.proxyImageUrl = function(url, opt_origin) {
-  var origin = opt_origin || document.location.origin;
+  // Note that we originally used document.location.origin here but it returns
+  // null on the galaxy s2 stock browser.
+  var origin = goog.uri.utils.getHost(opt_origin || document.location.href);
   var originDomain = goog.uri.utils.getDomain(origin);
   var urlDomain = goog.uri.utils.getDomain(url);
 

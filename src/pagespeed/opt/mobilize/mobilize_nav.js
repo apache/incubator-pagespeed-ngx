@@ -109,6 +109,7 @@ pagespeed.MobNav = function() {
    */
   this.currentTouches_ = 0;
 
+
   /**
    * The y coordinate of the previous move event, used to determine the
    * direction of scrolling.
@@ -150,6 +151,7 @@ pagespeed.MobNav = function() {
 
 /**
  * The unscaled width of the nav panel in pixels.
+ * @const
  * @private {number}
  */
 pagespeed.MobNav.NAV_PANEL_WIDTH_ = 250;
@@ -193,7 +195,7 @@ pagespeed.MobNav.CALL_BUTTON_ =
  * GIF image of a map button, from a google images search for
  * 'google map pin icon'
  * @const
- * @private
+ * @private {string}
  */
 pagespeed.MobNav.MAP_BUTTON_ =
     'R0lGODlhaQCkAPAAAAAAAAAAACH5BAEAAAEALAAAAABpAKQAAAL+jI+py+0Po5y02ouz3rz7' +
@@ -569,7 +571,7 @@ pagespeed.MobNav.prototype.addHeaderBarResizeEvents_ = function() {
   // redraw until scrolling and zooming is finished.
   window.addEventListener(goog.events.EventType.TOUCHSTART,
                           goog.bind(function(e) {
-                            this.currentTouches_ = e.targetTouches.length;
+                            this.currentTouches_ = e.touches.length;
                             this.lastScrollY_ = e.touches[0].clientY;
                           }, this), false);
 
@@ -584,7 +586,7 @@ pagespeed.MobNav.prototype.addHeaderBarResizeEvents_ = function() {
 
   window.addEventListener(goog.events.EventType.TOUCHEND,
                           goog.bind(function(e) {
-                            this.currentTouches_ = e.targetTouches.length;
+                            this.currentTouches_ = e.touches.length;
                             // Redraw the header bar if there are no more
                             // current touches.
                             if (this.currentTouches_ == 0) {
@@ -1157,23 +1159,28 @@ pagespeed.MobNav.prototype.addNavPanel_ = function(themeData) {
         var currentY = e.touches[0].clientY;
         // If the event is not scrolling (pinch zoom for exaple), then prevent
         // it while the nav panel is open.
-        if (e.targetTouches.length != 1) {
+        if (e.touches.length != 1) {
           e.preventDefault();
         } else {
-          // Check if we are scrolling up past the top or below the bottom. If
-          // so, stop the scroll event from happening since otherwise the body
-          // behind the nav panel will also scroll.
+          // Check if we are scrolling horizontally or scrolling up past the top
+          // or below the bottom. If so, stop the scroll event from happening
+          // since otherwise the body behind the nav panel will also scroll.
           var scrollUp = currentY > this.lastScrollY_;
           var navPanelAtTop = (this.navPanel_.scrollTop == 0);
           // Add 1 pixel to account for rounding errors.
           var navPanelAtBottom =
               (this.navPanel_.scrollTop >=
                (this.navPanel_.scrollHeight - this.navPanel_.offsetHeight - 1));
-          if ((scrollUp && navPanelAtTop) || (!scrollUp && navPanelAtBottom)) {
+
+          if (e.cancelable && ((scrollUp && navPanelAtTop) ||
+                               (!scrollUp && navPanelAtBottom))) {
             e.preventDefault();
           }
-          // Keep other touchmove events from happening.
-          e.stopImmediatePropagation();
+          // Keep other touchmove events from happening. This function is not
+          // supported on the android 2.3 stock browser.
+          if (e.stopImmediatePropagation) {
+            e.stopImmediatePropagation();
+          }
           this.lastScrollY_ = currentY;
         }
       }, this), false);

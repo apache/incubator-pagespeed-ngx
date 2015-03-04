@@ -20,6 +20,7 @@
 goog.provide('pagespeed.MobLayout');
 
 goog.require('goog.dom.TagName');
+goog.require('goog.dom.classlist');
 goog.require('goog.object');
 goog.require('goog.string');
 goog.require('pagespeed.MobUtil');
@@ -182,11 +183,11 @@ pagespeed.MobLayout.prototype.dontTouch_ = function(element) {
   return ((tagName == goog.dom.TagName.SCRIPT) ||
           (tagName == goog.dom.TagName.STYLE) ||
           (tagName == goog.dom.TagName.IFRAME) ||
-          (element.id && this.dontTouchIds_[element.id]) ||
-          element.classList.contains('psmob-nav-panel') ||
-          element.classList.contains('psmob-header-bar') ||
-          element.classList.contains('psmob-header-spacer-div') ||
-          element.classList.contains('psmob-logo-span'));
+          Boolean(element.id && this.dontTouchIds_[element.id]) ||
+          goog.dom.classlist.contains(element, 'psmob-nav-panel') ||
+          goog.dom.classlist.contains(element, 'psmob-header-bar') ||
+          goog.dom.classlist.contains(element, 'psmob-header-spacer-div') ||
+          goog.dom.classlist.contains(element, 'psmob-logo-span'));
 };
 
 
@@ -1044,7 +1045,7 @@ pagespeed.MobLayout.prototype.reallocateWidthToTableData_ = function(element) {
  * @private
  */
 pagespeed.MobLayout.prototype.isPossiblyASlideShow_ = function(element) {
-  if (element.classList.contains('nivoSlider')) {
+  if (goog.dom.classlist.contains(element, 'nivoSlider')) {
     return true;
   }
   return false;
