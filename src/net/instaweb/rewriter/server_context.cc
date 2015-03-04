@@ -1167,6 +1167,7 @@ const CacheInterface* ServerContext::pcache_cache_backend() {
 namespace {
 
 void FormatResponse(ServerContext::Format format,
+                    const GoogleString& html,
                     const GoogleString& text,
                     AsyncFetch* fetch,
                     MessageHandler* handler) {
@@ -1178,6 +1179,7 @@ void FormatResponse(ServerContext::Format format,
 
   if (format == ServerContext::kFormatAsHtml) {
     response_headers->Add(HttpAttributes::kContentType, "text/html");
+    fetch->Write(html, handler);
     HtmlKeywords::WritePre(text, "", fetch, handler);
   } else {
     response_headers->Add(
@@ -1201,11 +1203,17 @@ class MetadataCacheResultCallback
  public:
   // Will cleanup the driver
   MetadataCacheResultCallback(ServerContext::Format format,
+                              bool should_delete,
+                              StringPiece url,
+                              StringPiece ua,
                               ServerContext* server_context,
                               RewriteDriver* driver,
                               AsyncFetch* fetch,
                               MessageHandler* handler)
       : format_(format),
+        should_delete_(should_delete),
+        url_(url.as_string()),
+        ua_(ua.as_string()),
         server_context_(server_context),
         driver_(driver),
         fetch_(fetch),
@@ -1218,6 +1226,31 @@ class MetadataCacheResultCallback
                     RewriteContext::CacheLookupResult* in_result) {
     scoped_ptr<RewriteContext::CacheLookupResult> result(in_result);
     driver_->Cleanup();
+
+    if (should_delete_) {
+      server_context_->metadata_cache()->Delete(cache_key);
+    }
+
+    // Add a little form for delete button if OK. Careful: html is html,
+    // so quoting is our responsibility here.
+    GoogleString html;
+    if (result->cache_ok && !should_delete_) {
+      html = "<form><input type=hidden name=url value=\"";
+      GoogleString escaped_url;
+      HtmlKeywords::Escape(url_, &escaped_url);
+      StrAppend(&html, escaped_url);
+      StrAppend(&html, "\">");
+      if (!ua_.empty()) {
+        StrAppend(&html, "<input type=hidden name=user_agent value=\"");
+        GoogleString escaped_ua;
+        HtmlKeywords::Escape(ua_, &escaped_ua);
+        StrAppend(&html, escaped_ua);
+        StrAppend(&html, "\">");
+      }
+      StrAppend(&html, "<input type=submit name=Delete value=Delete>");
+    } else if (should_delete_) {
+      html = "<i>Delete request sent to cache.</i>";
+    }
 
     GoogleString cache_dump;
     StringWriter cache_writer(&cache_dump);
@@ -1243,12 +1276,15 @@ class MetadataCacheResultCallback
                                 result->revalidate[i]->DebugString(), "\n"),
                     handler_);
     }
-    FormatResponse(format_, cache_dump, fetch_, handler_);
+    FormatResponse(format_, html, cache_dump, fetch_, handler_);
     delete this;
   }
 
  private:
   ServerContext::Format format_;
+  bool should_delete_;
+  GoogleString url_;
+  GoogleString ua_;
   ServerContext* server_context_;
   RewriteDriver* driver_;
   AsyncFetch* fetch_;
@@ -1258,13 +1294,13 @@ class MetadataCacheResultCallback
 }  // namespace
 
 void ServerContext::ShowCacheHandler(
-    Format format,  StringPiece url, StringPiece ua, AsyncFetch* fetch,
-    RewriteOptions* options_arg) {
+    Format format,  StringPiece url, StringPiece ua, bool should_delete,
+    AsyncFetch* fetch, RewriteOptions* options_arg) {
   scoped_ptr<RewriteOptions> options(options_arg);
   if (url.empty()) {
-    FormatResponse(format, "Empty URL", fetch, message_handler_);
+    FormatResponse(format, "", "Empty URL", fetch, message_handler_);
   } else if (!GoogleUrl(url).IsWebValid()) {
-    FormatResponse(format, "Invalid URL", fetch, message_handler_);
+    FormatResponse(format, "", "Invalid URL", fetch, message_handler_);
   } else {
     RewriteDriver* driver = NewCustomRewriteDriver(
         options.release(), fetch->request_context());
@@ -1272,11 +1308,11 @@ void ServerContext::ShowCacheHandler(
 
     GoogleString error_out;
     MetadataCacheResultCallback* callback = new MetadataCacheResultCallback(
-        format, this, driver, fetch, message_handler_);
+        format, should_delete, url, ua, this, driver, fetch, message_handler_);
     if (!driver->LookupMetadataForOutputResource(url, &error_out, callback)) {
       driver->Cleanup();
       delete callback;
-      FormatResponse(format, error_out, fetch, message_handler_);
+      FormatResponse(format, "", error_out, fetch, message_handler_);
     }
   }
 }

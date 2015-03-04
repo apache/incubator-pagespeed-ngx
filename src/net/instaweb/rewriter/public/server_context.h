@@ -681,9 +681,10 @@ class ServerContext {
   };
 
   // Shows cached data related to a URL.  Ownership of options is transferred
-  // to this function.
+  // to this function. If should_delete is true, deletes the entry as well.
   void ShowCacheHandler(Format format, StringPiece url, StringPiece ua,
-                        AsyncFetch* fetch, RewriteOptions* options);
+                        bool should_delete, AsyncFetch* fetch,
+                        RewriteOptions* options);
 
   // Returns an HTML form for entering a URL for ShowCacheHandler.  If
   // the user_agent is non-null, then it's used to prepopulate the

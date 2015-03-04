@@ -500,7 +500,8 @@ void AdminSite::PrintCaches(bool is_global, AdminSource source,
     }
     GoogleString ua;
     query_params.Lookup1Unescaped("user_agent", &ua);
-    server_context->ShowCacheHandler(format, url, ua, fetch, options->Clone());
+    server_context->ShowCacheHandler(
+        format, url, ua,  query_params.Has("Delete"), fetch, options->Clone());
   } else if ((source == kPageSpeedAdmin) &&
              query_params.Lookup1Unescaped("new_set", &url)) {
     ResponseHeaders* response_headers = fetch->response_headers();
