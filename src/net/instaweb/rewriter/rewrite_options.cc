@@ -346,6 +346,9 @@ const char RewriteOptions::kMemcachedTimeoutUs[] = "MemcachedTimeoutUs";
 const char RewriteOptions::kProxySuffix[] = "ProxySuffix";
 const char RewriteOptions::kRateLimitBackgroundFetches[] =
     "RateLimitBackgroundFetches";
+const char RewriteOptions::kRemoteConfigurationUrl[] = "RemoteConfigurationUrl";
+const char RewriteOptions::kRemoteConfigurationTimeoutMs[] =
+    "RemoteConfigurationTimeoutMs";
 const char RewriteOptions::kRequestOptionOverride[] = "RequestOptionOverride";
 const char RewriteOptions::kServeWebpToAnyAgent[] =
     "ServeRewrittenWebpUrlsToAnyAgent";
@@ -1727,6 +1730,18 @@ void RewriteOptions::AddProperties() {
       kAcceptInvalidSignatures, kServerScope,
       "Accept resources with invalid signatures.", false);
   AddBaseProperty(
+      Timer::kSecondMs,
+      &RewriteOptions::remote_configuration_timeout_ms_, "rcfgt",
+      kRemoteConfigurationTimeoutMs, kServerScope,
+      "Timeout for fetch of remote configuration file.",
+      true);
+  AddBaseProperty(
+      "",
+      &RewriteOptions::remote_configuration_url_, "rcfgu",
+      kRemoteConfigurationUrl, kDirectoryScope,
+      "URL of site from which to pull remote configuration files",
+      true);
+  AddBaseProperty(
       "", &RewriteOptions::lazyload_images_blank_url_, "llbu",
       kLazyloadImagesBlankUrl,
       kDirectoryScope,
@@ -3063,25 +3078,33 @@ bool RewriteOptions::SetOptionsFromName(const OptionSet& option_set,
 
 RewriteOptions::OptionSettingResult RewriteOptions::SetOptionFromName(
     StringPiece name, StringPiece value, GoogleString* msg) {
-  GoogleString error_detail;
-  OptionSettingResult result =
-      SetOptionFromNameInternal(name, value, false /* from_query */,
-                                &error_detail);
-  return FormatSetOptionMessage(result, name, value, error_detail, msg);
+    GoogleString error_detail;
+    OptionSettingResult result = SetOptionFromNameInternal(
+        name, value, RewriteOptions::kProcessScopeStrict /* max_scope*/,
+        &error_detail);
+    return FormatSetOptionMessage(result, name, value, error_detail, msg);
 }
 
 RewriteOptions::OptionSettingResult RewriteOptions::SetOptionFromName(
     StringPiece name, StringPiece value) {
   GoogleString error_detail;
-  return SetOptionFromNameInternal(name, value, false /* from_query */,
-                                   &error_detail);
+  return SetOptionFromNameInternal(
+      name, value, RewriteOptions::kProcessScopeStrict /* max_scope */,
+      &error_detail);
 }
 
 RewriteOptions::OptionSettingResult RewriteOptions::SetOptionFromQuery(
     StringPiece name, StringPiece value) {
   GoogleString error_detail;
-  return SetOptionFromNameInternal(name, value, true /* from_query */,
-                                   &error_detail);
+  return SetOptionFromNameInternal(
+      name, value, RewriteOptions::kQueryScope /* max_scope */, &error_detail);
+}
+
+RewriteOptions::OptionSettingResult RewriteOptions::SetOptionFromRemoteConfig(
+    StringPiece name, StringPiece value) {
+  GoogleString error_detail;
+  return SetOptionFromNameInternal(
+      name, value, RewriteOptions::kDirectoryScope, &error_detail);
 }
 
 RewriteOptions::OptionSettingResult RewriteOptions::FormatSetOptionMessage(
@@ -3108,11 +3131,20 @@ RewriteOptions::OptionSettingResult RewriteOptions::FormatSetOptionMessage(
 }
 
 RewriteOptions::OptionSettingResult RewriteOptions::ParseAndSetOptionFromName1(
-    StringPiece name, StringPiece arg,
+    StringPiece name, StringPiece arg, GoogleString* msg,
+    MessageHandler* handler) {
+  // Parse and set with the equvalent of "query = false".
+  return ParseAndSetOptionFromNameWithScope(
+      name, arg, RewriteOptions::kProcessScopeStrict, msg, handler);
+}
+
+RewriteOptions::OptionSettingResult
+RewriteOptions::ParseAndSetOptionFromNameWithScope(
+    StringPiece name, StringPiece arg, RewriteOptions::OptionScope max_scope,
     GoogleString* msg, MessageHandler* handler) {
   GoogleString error_detail;
-  OptionSettingResult result = SetOptionFromNameInternal(
-      name, arg, false /* from_query */, &error_detail);
+  OptionSettingResult result =
+      SetOptionFromNameInternal(name, arg, max_scope, &error_detail);
   if (result != RewriteOptions::kOptionNameUnknown) {
     return FormatSetOptionMessage(result, name, arg, error_detail, msg);
   }
@@ -3292,22 +3324,24 @@ StringPiece RewriteOptions::GetEffectiveOptionName(StringPiece name) {
   return effective_name;
 }
 
-RewriteOptions::OptionSettingResult RewriteOptions::SetOptionFromNameInternal(
-    StringPiece name, StringPiece value, bool from_query,
+RewriteOptions::OptionSettingResult
+RewriteOptions::SetOptionFromNameInternal(
+    StringPiece name, StringPiece value, RewriteOptions::OptionScope max_scope,
     GoogleString* error_detail) {
   if (!IsValidOptionName(name)) {
     return kOptionNameUnknown;
   }
   StringPiece effective_name = GetEffectiveOptionName(name);
-  OptionBaseVector::iterator it = std::lower_bound(
-      all_options_.begin(), all_options_.end(), effective_name,
-      RewriteOptions::OptionNameLessThanArg);
+  OptionBaseVector::iterator it =
+      std::lower_bound(all_options_.begin(), all_options_.end(), effective_name,
+                       RewriteOptions::OptionNameLessThanArg);
   if (it != all_options_.end()) {
     OptionBase* option = *it;
     if (StringCaseEqual(effective_name, option->option_name())) {
-      if (from_query && (option->scope() != kQueryScope)) {
+      if (option->scope() > max_scope) {
         StrAppend(error_detail, "Option ", name,
-                  " cannot be set from a query param.");
+                  " cannot be set. Maximum allowed scope is ",
+                  ScopeEnumToString(max_scope));
         return kOptionNameUnknown;
       } else if (!option->SetFromString(value, error_detail)) {
         return kOptionValueInvalid;
@@ -4892,6 +4926,23 @@ bool RewriteOptions::CacheFragmentOption::SetFromString(
   }
   set(value.as_string());
   return true;
+}
+
+GoogleString RewriteOptions::ScopeEnumToString(OptionScope scope) {
+  switch (scope) {
+    case kQueryScope:
+      return "Query";
+    case kDirectoryScope:
+      return "Directory";
+    case kServerScope:
+      return "Server";
+    case kProcessScope:
+      return "Process";
+    case kProcessScopeStrict:
+      return "Process Strict";
+    default:
+      return "Unknown";
+  }
 }
 
 }  // namespace net_instaweb

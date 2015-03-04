@@ -995,6 +995,8 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
     RewriteOptions::kProgressiveJpegMinBytes,
     RewriteOptions::kRejectBlacklisted,
     RewriteOptions::kRejectBlacklistedStatusCode,
+    RewriteOptions::kRemoteConfigurationUrl,
+    RewriteOptions::kRemoteConfigurationTimeoutMs,
     RewriteOptions::kReportUnloadTime,
     RewriteOptions::kRequestOptionOverride,
     RewriteOptions::kRespectVary,
@@ -3043,6 +3045,29 @@ TEST_F(RewriteOptionsTest, ColorUtilTest) {
   EXPECT_EQ(0xefu, out.b);
 
   EXPECT_EQ("#abcdef", RewriteOptions::ToString(out));
+}
+
+TEST_F(RewriteOptionsTest, OptionsScopeApplications) {
+  NullMessageHandler handler;
+  GoogleString msg;
+  scoped_ptr<RewriteOptions> new_options(new RewriteOptions(&thread_system_));
+
+  // MaxHtmlParseBytes has RewriteOptions::kProcessScope.
+  // Setting this value should work.
+  RewriteOptions::OptionSettingResult result =
+      new_options->ParseAndSetOptionFromNameWithScope(
+          RewriteOptions::kMaxHtmlParseBytes, "44",
+          RewriteOptions::kProcessScope, &msg, &handler);
+  EXPECT_EQ("", msg);
+  EXPECT_EQ(result, RewriteOptions::kOptionOk);
+
+  // Setting the value with a max_scope of RewriteOptions::kQueryScope should
+  // not work.
+  result = new_options->ParseAndSetOptionFromNameWithScope(
+      RewriteOptions::kMaxHtmlParseBytes, "44", RewriteOptions::kQueryScope,
+      &msg, &handler);
+  EXPECT_EQ("", msg);
+  EXPECT_EQ(result, RewriteOptions::kOptionNameUnknown);
 }
 
 }  // namespace net_instaweb

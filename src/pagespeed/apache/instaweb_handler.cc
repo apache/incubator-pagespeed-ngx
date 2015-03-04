@@ -390,6 +390,20 @@ void InstawebHandler::ComputeCustomOptions() {
                                  response_headers_.get());
   num_response_attributes_ = response_headers_->NumAttributes();
 
+  // Get the remote configuration options before GetQueryOptions, as the query
+  // options should override the remote config.
+  if (!directory_aware_options->remote_configuration_url().empty()) {
+    scoped_ptr<RewriteOptions> remote_options(directory_aware_options->Clone());
+
+    server_context_->GetRemoteOptions(remote_options.get(), false);
+    if (custom_options_.get() == NULL) {
+      custom_options_.reset(
+          server_context_->apache_factory()->NewRewriteOptions());
+      custom_options_->Merge(*options_);
+    }
+    custom_options_->Merge(*remote_options);
+  }
+
   if (!server_context_->GetQueryOptions(request_context(),
                                         directory_aware_options,
                                         &stripped_gurl_, request_headers_.get(),

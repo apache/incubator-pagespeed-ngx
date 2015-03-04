@@ -194,6 +194,11 @@ ModPagespeedLoadFromFile "http://@@APACHE_DOMAIN@@/mod_pagespeed_test/ipro/insta
     Header set Cache-control "no-cache"
 </Directory>
 
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/remote_config/" >
+    # Files in this directory should be served uncacheable.
+    Header set Cache-control "max-age=7200, must-revalidate"
+</Directory>
+
 # Set jpeg Quality
 <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/jpeg_rewriting/" >
     ModPagespeedJpegRecompressionQuality 70
@@ -734,6 +739,69 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   ModPagespeedRewriteLevel PassThrough
   ModPagespeedEnableFilters collapse_whitespace
   ModPagespeedDisableFilters remove_comments,add_instrumentation
+</VirtualHost>
+
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName remote-config.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
+  ModPagespeedRemoteConfigurationUrl "http://127.0.0.1:@@RCPORT1@@/remote.cfg"
+  ModPagespeedRemoteConfigurationTimeoutMs 1500
+</VirtualHost>
+
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName remote-config-partially-invalid.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
+  ModPagespeedRemoteConfigurationUrl "http://127.0.0.1:@@RCPORT2@@/remote.cfg"
+  ModPagespeedRemoteConfigurationTimeoutMs 1500
+</VirtualHost>
+
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName remote-config-invalid.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
+  ModPagespeedRemoteConfigurationUrl "http://127.0.0.1:@@RCPORT3@@/remote.cfg"
+  ModPagespeedRemoteConfigurationTimeoutMs 1500
+</VirtualHost>
+
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName remote-config-out-of-scope.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
+  ModPagespeedRemoteConfigurationUrl "http://127.0.0.1:@@RCPORT4@@/remote.cfg"
+  ModPagespeedRemoteConfigurationTimeoutMs 1500
+</VirtualHost>
+
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName remote-config-failed-fetch.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
+  ModPagespeedRemoteConfigurationUrl "http://127.0.0.1:@@RCPORT5@@/remote.cfg"
+  ModPagespeedRemoteConfigurationTimeoutMs 1500
+</VirtualHost>
+
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName remote-config-slow-fetch.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
+  ModPagespeedRemoteConfigurationUrl "http://127.0.0.1:@@RCPORT6@@/remote.cfg"
+  ModPagespeedRemoteConfigurationTimeoutMs 1500
+</VirtualHost>
+
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName remote-config-with-htaccess.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
+  ModPagespeedRemoteConfigurationTimeoutMs 1500
+</VirtualHost>
+
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName remote-config-experiment.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
+  ModPagespeedRemoteConfigurationUrl "http://127.0.0.1:@@RCPORT7@@/remote.cfg"
+  ModPagespeedRemoteConfigurationTimeoutMs 1500
 </VirtualHost>
 
 # For testing ipro + load from file + unknown extensions.

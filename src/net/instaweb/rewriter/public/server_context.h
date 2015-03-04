@@ -408,6 +408,18 @@ class ServerContext {
                        ResponseHeaders* response_headers,
                        RewriteQuery* rewrite_query);
 
+  // Fetches the remote configuration from the url specified in the
+  // remote_configuration option, and applies the received options if cached. If
+  // not cached, the options will be cached, and applied on the next request.
+  // Query options should be applied after remote options, to be able to
+  // override any option set in the remote configuration for debugging purposes.
+  // This method calls a blocking fetch of the remote configuration file.
+  // Methods remote_configuration_url() and remote_configuration_timeout_ms()
+  // are called from *remote_options. If on_startup is true, the fetch is
+  // backgrounded and the result is ignored. Startup fetches are only used for
+  // populating the cache.
+  void GetRemoteOptions(RewriteOptions* remote_options, bool on_startup);
+
   // Checks the url for the split html ATF/BTF query param. If present, it
   // strips the param from the url, and sets a bit in the request context
   // indicating which chunk of the split response was requested.
@@ -698,6 +710,19 @@ class ServerContext {
 
   // Must be called with rewrite_drivers_mutex_ held.
   void ReleaseRewriteDriverImpl(RewriteDriver* rewrite_driver);
+
+  // Applies the remote configuration options, by feeding each line in the
+  // config to ApplyConfigLine.
+  void ApplyRemoteConfig(const GoogleString& config, RewriteOptions* options);
+  // Applies one line of configuration to the RewriteOptions.
+  void ApplyConfigLine(StringPiece linesp, RewriteOptions* options);
+  // Fetches the remote configuration file using CacheUrlAsyncFetcher, if the
+  // remote configuration is specified in config. This can block for a maximum
+  // of timeout_ms. If on_startup is true, the fetch is backgrounded and the
+  // result is ignored. Startup fetches are only used for populating the cache.
+  GoogleString FetchRemoteConfig(const GoogleString& url, int64 timeout_ms,
+                                 int64 implicit_cache_ttl_ms, bool on_startup,
+                                 RequestContextPtr request_ctx);
 
   // These are normally owned by the RewriteDriverFactory that made 'this'.
   ThreadSystem* thread_system_;

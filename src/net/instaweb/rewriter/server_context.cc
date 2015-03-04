@@ -26,6 +26,7 @@
 #include "net/instaweb/config/rewrite_options_manager.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/http_cache.h"
+#include "net/instaweb/http/public/sync_fetcher_adapter_callback.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
 #include "net/instaweb/rewriter/public/beacon_critical_line_info_finder.h"
@@ -903,6 +904,31 @@ RewriteOptions* ServerContext::NewOptions() {
   return factory_->NewRewriteOptions();
 }
 
+void ServerContext::GetRemoteOptions(RewriteOptions* remote_options,
+                                     bool on_startup) {
+  if (remote_options == NULL) {
+    return;
+  }
+  HttpOptions fetch_options;
+  fetch_options.implicit_cache_ttl_ms =
+      remote_options->implicit_cache_ttl_ms();
+  fetch_options.respect_vary = false;
+  // Minimum TTL for cachable resources, -1 for no minimum.
+  fetch_options.min_cache_ttl_ms = -1;
+  if (!remote_options->remote_configuration_url().empty()) {
+    RequestContextPtr request_ctx(new RequestContext(
+        fetch_options, thread_system()->NewMutex(), timer()));
+    GoogleString config =
+        FetchRemoteConfig(remote_options->remote_configuration_url(),
+                          remote_options->remote_configuration_timeout_ms(),
+                          remote_options->implicit_cache_ttl_ms(), on_startup,
+                          request_ctx);
+    if (!on_startup) {
+      ApplyRemoteConfig(config, remote_options);
+    }
+  }
+}
+
 bool ServerContext::GetQueryOptions(
     const RequestContextPtr& request_context,
     const RewriteOptions* domain_options, GoogleUrl* request_url,
@@ -1252,6 +1278,121 @@ void ServerContext::ShowCacheHandler(
       delete callback;
       FormatResponse(format, error_out, fetch, message_handler_);
     }
+  }
+}
+
+GoogleString ServerContext::FetchRemoteConfig(const GoogleString& url,
+                                              int64 timeout_ms,
+                                              int64 implicit_cache_ttl_ms,
+                                              bool on_startup,
+                                              RequestContextPtr request_ctx) {
+  CHECK(!url.empty());
+  HttpOptions fetch_options;
+  fetch_options.implicit_cache_ttl_ms = implicit_cache_ttl_ms;
+  fetch_options.respect_vary = false;
+  // Minimum TTL for cachable resources, -1 for no minimum.
+  fetch_options.min_cache_ttl_ms = -1;
+  // Set up the fetcher.
+  GoogleString out_str;
+  StringWriter out_writer(&out_str);
+  SyncFetcherAdapterCallback* remote_config_fetch =
+      new SyncFetcherAdapterCallback(thread_system_, &out_writer, request_ctx);
+  CacheUrlAsyncFetcher remote_config_fetcher(
+      hasher(), lock_manager(), http_cache(),
+      global_options()->cache_fragment(), NULL, DefaultSystemFetcher());
+  remote_config_fetcher.set_proactively_freshen_user_facing_request(true);
+  // Fetch to a string.
+  remote_config_fetcher.Fetch(url, message_handler_, remote_config_fetch);
+  if (on_startup) {
+    remote_config_fetch->Release();
+    return "";
+  }
+  // Now block waiting for the callback for up to timeout_ms milliseconds.
+  bool locked_ok = remote_config_fetch->LockIfNotReleased();
+  if (!locked_ok) {
+    message_handler_->Message(kWarning, "Failed to take fetch lock.");
+    remote_config_fetch->Release();
+    return "";
+  }
+  int64 now_ms = timer_->NowMs();
+  for (int64 end_ms = now_ms + timeout_ms;
+       !remote_config_fetch->IsDoneLockHeld() && (now_ms < end_ms);
+       now_ms = timer_->NowMs()) {
+    int64 remaining_ms = std::max(static_cast<int64>(0), end_ms - now_ms);
+    remote_config_fetch->TimedWait(remaining_ms);
+  }
+  remote_config_fetch->Unlock();
+
+  if (!remote_config_fetch->success()) {
+    message_handler_->Message(
+        kWarning, "Fetching remote configuration %s failed.", url.c_str());
+    remote_config_fetch->Release();
+    return "";
+  } else if (remote_config_fetch->response_headers()->status_code() !=
+             HttpStatus::kNotModified) {
+    message_handler_->Message(
+        kWarning,
+        "Fetching remote configuration %s. Configuration was not in cache.",
+        url.c_str());
+  }
+  remote_config_fetch->Release();
+  return out_str;
+}
+
+void ServerContext::ApplyConfigLine(StringPiece linesp,
+                                    RewriteOptions* options) {
+  // Strip whitespace from beginning and end of the line.
+  TrimWhitespace(&linesp);
+  // Ignore comments after stripping whitespace.
+  // Comments must be on their own line.
+  if (linesp.size() == 0 || linesp[0] == '#') {
+    return;
+  }
+  // Split on the first space.
+  StringPiece::size_type space = linesp.find(' ');
+  if (space != StringPiece::npos) {
+    StringPiece name = linesp.substr(0, space);
+    StringPiece value = linesp.substr(space + 1);
+    // Strip whitespace from the value.
+    TrimWhitespace(&value);
+    // Apply the options.
+    GoogleString msg;
+    RewriteOptions::OptionSettingResult result =
+        options->ParseAndSetOptionFromNameWithScope(
+            name, value, RewriteOptions::kDirectoryScope, &msg,
+            message_handler_);
+    if (result != RewriteOptions::kOptionOk) {
+      // Continue applying remaining options.
+      message_handler_->Message(
+          kWarning, "Setting option %s with value %s failed: %s",
+          name.as_string().c_str(), value.as_string().c_str(), msg.c_str());
+    }
+  }
+}
+
+void ServerContext::ApplyRemoteConfig(const GoogleString& config,
+                                      RewriteOptions* options) {
+  // Split the remote config file line by line, and apply each line with
+  // ServerContext::ApplyConfigLine
+  StringPieceVector str_values;
+  int cfg_complete = 0;
+  SplitStringPieceToVector(config, "\n", &str_values,
+                           true /*omit empty strings*/);
+  // If the configuration file does not contain "EndRemoteConfig", discard the
+  // entire configuration.
+  for (int i = 0, n = str_values.size(); i < n; ++i) {
+    if (str_values[i].starts_with("EndRemoteConfig")) {
+      cfg_complete = i;
+      break;
+    }
+  }
+  if (cfg_complete == 0) {
+    message_handler_->Message(kWarning,
+                              "Remote Configuration end token not received.");
+    return;
+  }
+  for (int i = 0, n = cfg_complete; i < n; ++i) {
+    ApplyConfigLine(str_values[i], options);
   }
 }
 

@@ -741,3 +741,11 @@ function generate_url {
   fi
   echo $RESULT
 }
+
+# Kills the process listening on port passed in.
+function kill_port {
+  PID="$(lsof -i:$1 -t)" || true
+  if [ $PID != "" ]; then
+    kill -9 $PID
+  fi
+}

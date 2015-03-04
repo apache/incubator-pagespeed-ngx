@@ -1842,7 +1842,6 @@ void* merge_server_config(apr_pool_t* pool, void* base_conf, void* new_conf) {
           new_non_spdy_overlay.release());
     }
   }
-
   return new_conf;
 }
 

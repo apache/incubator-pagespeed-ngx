@@ -557,6 +557,20 @@ void RewriteDriverFactory::InitServerContext(ServerContext* server_context) {
   // Make sure that all lazy state gets initialized, even if we don't copy it to
   // ServerContext
   user_agent_normalizers();
+  // Fetch the remote options so that they will be cached.
+  HttpOptions fetch_options;
+  fetch_options.implicit_cache_ttl_ms =
+      server_context->global_options()->implicit_cache_ttl_ms();
+  fetch_options.respect_vary = false;
+  // Minimum TTL for cachable resources, -1 for no minimum.
+  fetch_options.min_cache_ttl_ms = -1;
+  RequestContextPtr request_ctx(new RequestContext(
+      fetch_options, server_context->thread_system()->NewMutex(),
+      server_context->timer()));
+  scoped_ptr<RewriteOptions> remote_options(
+      server_context->global_options()->Clone());
+  server_context->GetRemoteOptions(remote_options.get(),
+                                   true /* startup fetch */);
 }
 
 void RewriteDriverFactory::RebuildDecodingDriverForTests(

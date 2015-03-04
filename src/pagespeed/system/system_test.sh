@@ -649,6 +649,123 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
         $EXP_DEVICES_EXTEND_CACHE?PageSpeedEnrollExperiment=1)
   check_from "$OUT" grep -q 'Set-Cookie: PageSpeedExperiment=1;'
 
+  # Tests for remote configuration files.
+  # The remote configuration location is stored in the debug.conf.template.
+  start_test Remote Configuration On: by default comments and whitespace removed
+  URL="$(generate_url remote-config.example.com \
+                      /mod_pagespeed_test/forbidden.html)"
+  while true; do
+    echo -e "HTTP/1.1 200 OK\nCache-Control: max-age=5\n\nEnableFilters remove_comments,collapse_whitespace\nEndRemoteConfig\n" | nc -l -p $RCPORT1 -q 1
+  done &
+  LOOPPID=$!
+  echo wget $URL
+  http_proxy=$SECONDARY_HOSTNAME fetch_until -save "$URL" \
+      'fgrep -c <!--' 0
+  kill $LOOPPID
+  kill_port $RCPORT1
+
+  start_test Remote Configuration On: File missing end token.
+  URL="$(generate_url remote-config-invalid.example.com \
+                      /mod_pagespeed_test/forbidden.html)"
+  while true; do
+    echo -e "HTTP/1.1 200 OK\nCache-Control: max-age=5\n\nEnableFilters remove_comments,collapse_whitespace\n" | nc -l -p $RCPORT3 -q 1
+  done &
+  LOOPPID=$!
+  echo wget $URL
+  # Fetch a few times to be satisfied that the configuration should be fetched.
+  OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --save-headers $URL)
+  check_from "$OUT" grep "<!--"
+  OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --save-headers $URL)
+  check_from "$OUT" grep "<!--"
+  OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --save-headers $URL)
+  check_from "$OUT" grep "<!--"
+  kill $LOOPPID
+  kill_port $RCPORT3
+
+  start_test Remote Configuration On: Some invalid options.
+  URL="$(generate_url remote-config-partially-invalid.example.com \
+                      /mod_pagespeed_test/forbidden.html)"
+  while true; do
+    echo -e "HTTP/1.1 200 OK\nCache-Control: max-age=5\n\nEnableFilters remove_comments,collapse_whitespace\nEndRemoteConfig\n" | nc  -l -p $RCPORT2 -q 1
+  done&
+  LOOPPID=$!
+  # Some options are invalid, check that they are skipped and the rest of the
+  # options get applied.
+  echo wget $URL
+  http_proxy=$SECONDARY_HOSTNAME fetch_until -save "$URL" \
+      'fgrep -c <!--' 0
+  kill $LOOPPID
+  kill_port $RCPORT2
+
+  start_test Remote Configuration On: overridden by query parameter.
+  URL="$(generate_url remote-config.example.com \
+                      /mod_pagespeed_test/forbidden.html)"
+  while true; do
+    echo -e "HTTP/1.1 200 OK\nCache-Control: max-age=5\n\nEnableFilters remove_comments,collapse_whitespace\nEndRemoteConfig\n" | nc -l -p $RCPORT1 -q 1
+  done &
+  LOOPPID=$!
+  # First check to see that the remote config is applied.
+  echo wget $URL
+  http_proxy=$SECONDARY_HOSTNAME fetch_until -save "$URL" \
+      'fgrep -c <!--' 0
+  # And now check to see that the query parameters override the remote config.
+  URL="$(generate_url remote-config.example.com \
+      /mod_pagespeed_test/forbidden.html?PageSpeedFilters=-remove_comments)"
+  echo wget $URL
+  http_proxy=$SECONDARY_HOSTNAME fetch_until -save "$URL" \
+      'fgrep -c <!--' 2
+  kill $LOOPPID
+  NCPID="$(lsof -i:$RCPORT1 -t)" || true
+  kill_port $RCPORT1
+
+  start_test second remote config fetch fails, cached value still applies.
+  while true; do
+    echo -e "HTTP/1.1 200 OK\nCache-Control: max-age=1\n\nEnableFilters remove_comments,collapse_whitespace\nEndRemoteConfig\n" | nc -l -p $RCPORT5 -q 1
+  done &
+  LOOPPID=$!
+  URL="$(generate_url remote-config-failed-fetch.example.com \
+                      /mod_pagespeed_test/forbidden.html)"
+  http_proxy=$SECONDARY_HOSTNAME fetch_until -save "$URL" \
+      'fgrep -c <!--' 0
+  http_proxy=$SECONDARY_HOSTNAME fetch_until -save "$URL" \
+      'fgrep -c <!--' 0
+  echo "Sleeping so that cache will expire"
+  sleep 2
+  http_proxy=$SECONDARY_HOSTNAME fetch_until -save "$URL" \
+      'fgrep -c <!--' 0
+  kill $LOOPPID
+  kill_port $RCPORT5
+
+  start_test config takes too long to fetch, is not applied.
+  URL="$(generate_url remote-config-slow-fetch.example.com \
+                      /mod_pagespeed_test/forbidden.html)"
+  while true; do
+    sleep 4; echo -e "HTTP/1.1 200 OK\nCache-Control: max-age=2\n\nEnableFilters remove_comments,collapse_whitespace\nEndRemoteConfig\n" | nc -l -p $RCPORT6 -q 4
+  done &
+  LOOPPID=$!
+  # Fetch a few times to be satisfied that the configuration should have been
+  # fetched.
+  OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --save-headers $URL)
+  check_from "$OUT" grep "<!--"
+  OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --save-headers $URL)
+  check_from "$OUT" grep "<!--"
+  kill $LOOPPID
+  kill_port $RCPORT6
+
+  start_test Remote Configuration specify an experiment.
+  URL="$(generate_url remote-config-experiment.example.com \
+                      /mod_pagespeed_test/forbidden.html)"
+  while true; do
+    echo -e "HTTP/1.1 200 OK\nCache-Control: max-age=5\n\nRunExperiment on\nAnalyticsID UA-MyExperimentID-1\nEndRemoteConfig\n" | nc -l -p $RCPORT7 -q 1
+  done &
+  LOOPPID=$!
+  # Some options are invalid, check that they are skipped and the rest of the
+  # options get applied.
+  http_proxy=$SECONDARY_HOSTNAME fetch_until -save "$URL" \
+      'fgrep -c MyExperimentID' 1
+  kill $LOOPPID
+  kill_port $RCPORT7
+
   start_test Downstream cache integration caching headers.
   URL="http://downstreamcacheresource.example.com/mod_pagespeed_example/images/"
   URL+="xCuppa.png.pagespeed.ic.0.png"

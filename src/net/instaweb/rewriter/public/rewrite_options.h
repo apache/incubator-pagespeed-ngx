@@ -351,6 +351,8 @@ class RewriteOptions {
   static const char kProgressiveJpegMinBytes[];
   static const char kRejectBlacklisted[];
   static const char kRejectBlacklistedStatusCode[];
+  static const char kRemoteConfigurationTimeoutMs[];
+  static const char kRemoteConfigurationUrl[];
   static const char kReportUnloadTime[];
   static const char kRequestOptionOverride[];
   static const char kRespectVary[];
@@ -1250,12 +1252,27 @@ class RewriteOptions {
   // where the scope() is not kQueryScope.
   OptionSettingResult SetOptionFromQuery(StringPiece name, StringPiece value);
 
+  // Same as SetOptionFromName, but only works with options that are valid
+  // to use as remote config, returning kOptionNameUnknown for properties
+  // where the scope() is not kQueryScope or kDirectoryScope.
+  OptionSettingResult SetOptionFromRemoteConfig(StringPiece name,
+                                                StringPiece value);
+
+  GoogleString ScopeEnumToString(OptionScope scope);
+
   // Advanced option parsing, that can understand non-scalar values
   // (unlike SetOptionFromName), and which is extensible by platforms.
   // Returns whether succeeded or the kind of failure, and writes the
   // diagnostic into *msg.
   virtual OptionSettingResult ParseAndSetOptionFromName1(
       StringPiece name, StringPiece arg,
+      GoogleString* msg, MessageHandler* handler);
+  // Parses and sets options like ParseAndSetOptionFromName1, but with a maximum
+  // scope specified.  ParseAndSetOptionFromName1 will apply options from any
+  // scope, whereas ParseAndSetOptionFromNameWithScope will only apply options
+  // within max_scope scope.
+  OptionSettingResult ParseAndSetOptionFromNameWithScope(
+      StringPiece name, StringPiece arg, OptionScope max_scope,
       GoogleString* msg, MessageHandler* handler);
 
   virtual OptionSettingResult ParseAndSetOptionFromName2(
@@ -1845,6 +1862,20 @@ class RewriteOptions {
   }
   bool accept_invalid_signatures() const {
     return accept_invalid_signatures_.value();
+  }
+
+  void set_remote_configuration_timeout_ms(int64 x) {
+    set_option(x, &remote_configuration_timeout_ms_);
+  }
+  int64 remote_configuration_timeout_ms() const {
+    return remote_configuration_timeout_ms_.value();
+  }
+
+  void set_remote_configuration_url(StringPiece p) {
+    set_option(GoogleString(p.data(), p.size()), &remote_configuration_url_);
+  }
+  const GoogleString& remote_configuration_url() const {
+    return remote_configuration_url_.value();
   }
 
   void set_request_option_override(StringPiece p) {
@@ -3385,10 +3416,10 @@ class RewriteOptions {
       OptionSettingResult result, StringPiece name, StringPiece value,
       StringPiece error_detail, GoogleString* msg);
 
-  // Backend to SetOptionFromName that doesn't do full message formatting.
-  // *error_detail may not be always set.
+  // Backend to SetOptionFromName that doesn't do full message
+  // formatting. *error_detail may not be always set.
   OptionSettingResult SetOptionFromNameInternal(
-      StringPiece name, StringPiece value, bool from_query,
+      StringPiece name, StringPiece value, OptionScope max_scope,
       GoogleString* error_detail);
 
   // These static methods enable us to generate signatures for all
@@ -3970,6 +4001,11 @@ class RewriteOptions {
   // b. low-res image is not small enough compared to the full-res version.
   Option<int64> max_low_res_image_size_bytes_;
   Option<int> max_low_res_to_full_res_image_size_percentage_;
+
+  // The URL from which to pull remote configurations.
+  Option<GoogleString> remote_configuration_url_;
+  // The timeout, in milliseconds for the remote configuration file fetch.
+  Option<int64> remote_configuration_timeout_ms_;
 
   // Pass this string in url to allow for pagespeed options.
   Option<GoogleString> request_option_override_;

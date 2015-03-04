@@ -48,6 +48,13 @@ APACHE_HTTPS_DOMAIN   = localhost
 APACHE_PORT           = 80
 APACHE_SECONDARY_PORT = 8084
 APACHE_TERTIARY_PORT  = 8085
+RCPORT1               = 9991
+RCPORT2               = 9992
+RCPORT3               = 9993
+RCPORT4               = 9994
+RCPORT5               = 9995
+RCPORT6               = 9996
+RCPORT7               = 9997
 SSL_CERT_DIR          = /etc/ssl/certs
 SSL_CERT_FILE_COMMAND =
 
@@ -375,6 +382,13 @@ $(STAGING_DIR)/pagespeed.conf : common/pagespeed.conf.template debug.conf.templa
 	    -e "s!@@PAGESPEED-TEST-HOST@@!$(PAGESPEED_TEST_HOST)!g" \
 	    -e "s!@@MOD_PAGESPEED_CACHE@@!$(MOD_PAGESPEED_CACHE)!g" \
 	    -e "s!@@MOD_PAGESPEED_LOG@@!$(MOD_PAGESPEED_LOG)!g" \
+	    -e "s!@@RCPORT1@@!$(RCPORT1)!g" \
+	    -e "s!@@RCPORT2@@!$(RCPORT2)!g" \
+	    -e "s!@@RCPORT3@@!$(RCPORT3)!g" \
+	    -e "s!@@RCPORT4@@!$(RCPORT4)!g" \
+	    -e "s!@@RCPORT5@@!$(RCPORT5)!g" \
+	    -e "s!@@RCPORT6@@!$(RCPORT6)!g" \
+	    -e "s!@@RCPORT7@@!$(RCPORT7)!g" \
 	    -e "s!@@SSL_CERT_DIR@@!$(SSL_CERT_DIR)!g" \
 	    -e "s!@@SSL_CERT_FILE_COMMAND@@!$(SSL_CERT_FILE_COMMAND)!g" \
 	    -e "s@# ModPagespeedSlurpDirectory ...@$(APACHE_SLURP_DIR_COMMAND)@g" \
