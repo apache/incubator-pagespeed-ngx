@@ -1277,7 +1277,6 @@ OUT=$(cat "$ERROR_LOG" \
     | grep -v "\\[error\\].*Failed to make directory*" \
     | grep -v "\\[error\\].*Could not create directories*" \
     | grep -v "\\[error\\].*opening temp file: No such file or directory.*" \
-    | grep -v "\\[error\\].*unexpected response.*" \
     | grep -v "\\[error\\].*remote\.cfg.*" \
     | grep -v "\\[warn\\].*remote\.cfg.*" \
     | grep -v "\\[warn\\].*end token not received.*" \
