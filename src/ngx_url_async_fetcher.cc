@@ -78,6 +78,12 @@ namespace net_instaweb {
     log_ = log;
     pool_ = NULL;
     resolver_ = resolver;
+    // If init fails, set shutdown_ so no fetches will be attempted.
+    if (!Init(const_cast<ngx_cycle_t*>(ngx_cycle))) {
+      shutdown_ = true;
+      message_handler_->Message(
+          kError, "NgxUrlAsyncFetcher failed to init, fetching disabled.");
+    }
   }
 
   NgxUrlAsyncFetcher::~NgxUrlAsyncFetcher() {
@@ -178,6 +184,11 @@ namespace net_instaweb {
   void NgxUrlAsyncFetcher::ShutDown() {
     shutdown_ = true;
     if (!pending_fetches_.empty()) {
+      for (Pool<NgxFetch>::iterator p = pending_fetches_.begin(),
+           e = pending_fetches_.end(); p != e; p++) {
+        NgxFetch* fetch = *p;
+        fetch->CallbackDone(false);
+      }
       pending_fetches_.DeleteAll();
     }
 
@@ -201,6 +212,12 @@ namespace net_instaweb {
   void NgxUrlAsyncFetcher::Fetch(const GoogleString& url,
                                  MessageHandler* message_handler,
                                  AsyncFetch* async_fetch) {
+    // Don't accept new fetches when shut down. This flow is also entered when
+    // we did not initialize properly in ::Init().
+    if (shutdown_) {
+      async_fetch->Done(false);
+      return;
+    }
     async_fetch = EnableInflation(async_fetch);
     NgxFetch* fetch = new NgxFetch(url, async_fetch,
           message_handler, log_);

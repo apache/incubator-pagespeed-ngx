@@ -62,7 +62,6 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
   // NgxRewriteOptions.
   virtual RewriteOptions* NewRewriteOptions();
   virtual ServerContext* NewDecodingServerContext();
-  bool InitNgxUrlAsyncFetchers();
   // Check resolver configured or not.
   bool CheckResolver();
 
