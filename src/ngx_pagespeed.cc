@@ -3067,9 +3067,6 @@ ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
     }
   }
 
-  if (!cfg_m->driver_factory->InitNgxUrlAsyncFetchers()) {
-    return NGX_ERROR;
-  }
   cfg_m->driver_factory->StartThreads();
   return NGX_OK;
 }

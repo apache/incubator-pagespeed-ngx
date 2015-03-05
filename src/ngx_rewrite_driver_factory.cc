@@ -152,18 +152,6 @@ RewriteOptions* NgxRewriteDriverFactory::NewRewriteOptions() {
   return options;
 }
 
-bool NgxRewriteDriverFactory::InitNgxUrlAsyncFetchers() {
-  log_ = ngx_cycle->log;
-  for (size_t i = 0; i < ngx_url_async_fetchers_.size(); ++i) {
-    // TODO(oschaaf): Can we pass the log from the server{} block here?
-    if (!ngx_url_async_fetchers_[i]->Init(
-      const_cast<ngx_cycle_t*>(ngx_cycle))) {
-      return false;
-    }
-  }
-  return true;
-}
-
 bool NgxRewriteDriverFactory::CheckResolver() {
   if (use_native_fetcher_ && resolver_ == NULL) {
     return false;
@@ -221,6 +209,7 @@ void NgxRewriteDriverFactory::StartThreads() {
 }
 
 void NgxRewriteDriverFactory::LoggingInit(ngx_log_t* log) {
+  log_ = log;
   net_instaweb::log_message_handler::Install(log);
   if (install_crash_handler()) {
     NgxMessageHandler::InstallCrashHandler(log);
