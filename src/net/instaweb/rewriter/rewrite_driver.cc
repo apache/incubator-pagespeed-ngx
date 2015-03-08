@@ -34,6 +34,7 @@
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
+#include "net/instaweb/http/public/iframe_fetcher.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/request_context.h"
@@ -1455,6 +1456,12 @@ CacheUrlAsyncFetcher* RewriteDriver::CreateCustomCacheFetcher(
 }
 
 CacheUrlAsyncFetcher* RewriteDriver::CreateCacheFetcher() {
+  if (options()->mob_iframe()) {
+    CacheUrlAsyncFetcher* cache_fetcher = CreateCustomCacheFetcher(
+        new IframeFetcher);
+    cache_fetcher->set_own_fetcher(true);
+    return cache_fetcher;
+  }
   return CreateCustomCacheFetcher(url_async_fetcher_);
 }
 

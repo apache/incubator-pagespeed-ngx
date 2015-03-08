@@ -332,6 +332,7 @@ class RewriteOptions {
   static const char kMobConversionId[];
   static const char kMobMapConversionLabel[];
   static const char kMobPhoneConversionLabel[];
+  static const char kMobIframe[];
   static const char kMobLayout[];
   static const char kMobNav[];
   static const char kMobNavClasses[];
@@ -2564,6 +2565,7 @@ class RewriteOptions {
 
   bool mob_always() const { return mob_always_.value(); }
   void set_mob_always(bool x) { set_option(x, &mob_always_); }
+  bool mob_iframe() const { return mob_iframe_.value(); }
   bool mob_layout() const { return mob_layout_.value(); }
   void set_mob_phone_number(StringPiece x) {
     set_option(x.as_string(), &mob_phone_number_);
@@ -2577,6 +2579,7 @@ class RewriteOptions {
   const GoogleString& mob_map_location() const {
     return mob_map_location_.value();
   }
+  void set_mob_iframe(bool x) { set_option(x, &mob_iframe_); }
   void set_mob_layout(bool x) { set_option(x, &mob_layout_); }
   bool mob_nav() const { return mob_nav_.value(); }
   void set_mob_nav(bool x) { set_option(x, &mob_nav_); }
@@ -4067,6 +4070,7 @@ class RewriteOptions {
   Option<ResourceCategorySet> inline_unauthorized_resource_types_;
 
   Option<bool> mob_always_;
+  Option<bool> mob_iframe_;
   Option<bool> mob_layout_;
   Option<bool> mob_nav_;
   Option<GoogleString> mob_nav_classes_;

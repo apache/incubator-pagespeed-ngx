@@ -92,6 +92,7 @@ class CacheUrlAsyncFetcher : public UrlAsyncFetcher {
         serve_stale_if_fetch_error_(false),
         default_cache_html_(false),
         proactively_freshen_user_facing_request_(false),
+        own_fetcher_(false),
         serve_stale_while_revalidate_threshold_sec_(0) {
   }
   virtual ~CacheUrlAsyncFetcher();
@@ -185,6 +186,8 @@ class CacheUrlAsyncFetcher : public UrlAsyncFetcher {
     return proactively_freshen_user_facing_request_;
   }
 
+  void set_own_fetcher(bool x) { own_fetcher_ = x; }
+
  private:
   // Not owned by CacheUrlAsyncFetcher.
   const Hasher* lock_hasher_;
@@ -205,6 +208,7 @@ class CacheUrlAsyncFetcher : public UrlAsyncFetcher {
   bool serve_stale_if_fetch_error_;
   bool default_cache_html_;
   bool proactively_freshen_user_facing_request_;
+  bool own_fetcher_;  // set true to transfer ownership of fetcher to this.
   int64 serve_stale_while_revalidate_threshold_sec_;
 
   DISALLOW_COPY_AND_ASSIGN(CacheUrlAsyncFetcher);

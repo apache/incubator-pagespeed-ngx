@@ -234,6 +234,7 @@ const char RewriteOptions::kMobMapConversionLabel[] =
     "MobMapConversionLabel";
 const char RewriteOptions::kMobPhoneConversionLabel[] =
     "MobPhoneConversionLabel";
+const char RewriteOptions::kMobIframe[] = "MobIframe";
 const char RewriteOptions::kMobLayout[] = "MobLayout";
 const char RewriteOptions::kMobNav[] = "MobNav";
 const char RewriteOptions::kMobNavClasses[] = "MobNavigationalClasses";
@@ -2305,6 +2306,10 @@ void RewriteOptions::AddProperties() {
       "", &RewriteOptions::mob_phone_conversion_label_, "mmcnvl",
       kMobPhoneConversionLabel, kQueryScope,
       "(experimental) map conversion Label", true);
+  AddBaseProperty(
+      false, &RewriteOptions::mob_iframe_, "miframe", kMobIframe,
+      kQueryScope,
+      "(experimental) whether to use an iframe rather than proxying", true);
   AddBaseProperty(
       false, &RewriteOptions::mob_layout_, "mlayout", kMobLayout,
       kQueryScope,

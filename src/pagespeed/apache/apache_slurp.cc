@@ -18,6 +18,7 @@
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_dump_url_fetcher.h"
+#include "net/instaweb/http/public/iframe_fetcher.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/public/global_constants.h"
@@ -182,6 +183,7 @@ bool InstawebHandler::ProxyUrl() {
   // Figure out if we should be using a slurp fetcher rather than the default
   // system fetcher.
   UrlAsyncFetcher* fetcher = server_context_->DefaultSystemFetcher();
+  scoped_ptr<UrlAsyncFetcher> fetcher_storage;
   scoped_ptr<UrlAsyncFetcher> slurp_fetcher;
 
   if (options()->test_proxy() && !options()->test_proxy_slurp().empty()) {
@@ -189,6 +191,9 @@ bool InstawebHandler::ProxyUrl() {
         options()->test_proxy_slurp(), server_context_->file_system(),
         server_context_->timer()));
     fetcher = slurp_fetcher.get();
+  } else if (!proxy_suffix.empty() && options()->mob_iframe()) {
+    fetcher_storage.reset(new IframeFetcher);
+    fetcher = fetcher_storage.get();
   } else if (!options()->slurping_enabled()) {
     // Passing the 'fetcher' explicitly here rather than calling
     // CreateCacheFetcher() avoids getting the driver's loopback

@@ -557,6 +557,10 @@ class CacheFindCallback : public HTTPCache::Callback {
 }  // namespace
 
 CacheUrlAsyncFetcher::~CacheUrlAsyncFetcher() {
+  if (own_fetcher_) {
+    delete fetcher_;
+    fetcher_ = NULL;
+  }
 }
 
 void CacheUrlAsyncFetcher::Fetch(

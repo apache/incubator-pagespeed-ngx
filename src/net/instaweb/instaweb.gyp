@@ -1295,6 +1295,7 @@
         'http/http_response_parser.cc',
         'http/http_value.cc',
         'http/http_value_writer.cc',
+        'http/iframe_fetcher.cc',
         'http/inflating_fetch.cc',
         'http/rate_controller.cc',
         'http/rate_controlling_url_async_fetcher.cc',
