@@ -35,20 +35,32 @@ void IframeFetcher::Fetch(const GoogleString& url,
                           AsyncFetch* fetch) {
   fetch->response_headers()->SetStatusAndReason(HttpStatus::kOK);
   fetch->response_headers()->Add(HttpAttributes::kContentType, "text/html");
+
+  // Avoid quirks-mode by specifying and HTML doctype.  This
+  // simplifies the code below that tries to get the screen dimensions
+  // via document.documentElement.
   fetch->Write("<!DOCTYPE html>", message_handler);
   fetch->Write("<html><head></head><body>", message_handler);
 
-  // TODO(jmarantz): setting width to 1000x2000 appears to work OK for one
-  // site and one screen, but we should probably synthesize this iframe in JS
-  // using the actual physical screen size (since we don't know the site size
-  // and cannot query it in JS even after onload due to same-origin policy).
-  fetch->Write("<iframe style=\"border-width:0px;\" "
-               "width=\"1000\" height=\"2000\" src=\"",
-               message_handler);
+  // We want to size the iframe to fit the physical screen, so we
+  // create the iframe in JS.  The code as I have it here seems to
+  // work reasonably well even with orientation changes.  Any attempts
+  // I've made to try to adjust the iframe size in response to
+  // orientation changes seem to make the behavior bad (e.g. cutting
+  // off half the screen).  So I'm inclined to leave it as is for now.
   GoogleString escaped_url;
   HtmlKeywords::Escape(url, &escaped_url);
-  fetch->Write(escaped_url, message_handler);
-  fetch->Write("\"></iframe>", message_handler);
+  GoogleString createIframe = StrCat(
+      "<script>\n"
+      "var docElt = document.documentElement;\n"
+      "var iframe = document.createElement('iframe');\n"
+      "iframe.style = \"border-width:0px;\";\n"
+      "iframe.src = \"", escaped_url, "\";\n"
+      "iframe.width = docElt.clientWidth;\n"
+      "iframe.height = docElt.clientHeight;\n"
+      "document.body.appendChild(iframe);\n"
+      "</script>");
+  fetch->Write(createIframe, message_handler);
   fetch->Write("</body></html>", message_handler);
   fetch->Done(true);
 }
