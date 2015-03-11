@@ -54,6 +54,8 @@ run_test image_quality_webp
 run_test broken_images
 run_test make_show_ads_async
 
+# TODO(sligocki): Add responsive_images system test
+
 # These have to run after image_rewrite tests. Otherwise it causes some images
 # to be loaded into memory before they should be.
 # TODO(jefftk): Is this actually a problem?

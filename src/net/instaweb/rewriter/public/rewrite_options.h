@@ -179,6 +179,8 @@ class RewriteOptions {
     kResizeImages,
     kResizeMobileImages,
     kResizeToRenderedImageDimensions,
+    kResponsiveImages,
+    kResponsiveImagesZoom,
     kRewriteCss,
     kRewriteDomains,
     kRewriteJavascriptExternal,

@@ -99,6 +99,8 @@ struct FilterMap {
 "resize_images",                     RewriteOptions::kResizeImages
 "resize_mobile_images",              RewriteOptions::kResizeMobileImages
 "resize_rendered_image_dimensions",  RewriteOptions::kResizeToRenderedImageDimensions
+"responsive_images",                 RewriteOptions::kResponsiveImages
+"responsive_images_zoom",            RewriteOptions::kResponsiveImagesZoom
 "rewrite_css",                       RewriteOptions::kRewriteCss
 "rewrite_domains",                   RewriteOptions::kRewriteDomains
 "rewrite_javascript_external",       RewriteOptions::kRewriteJavascriptExternal

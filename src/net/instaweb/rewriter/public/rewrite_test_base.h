@@ -25,11 +25,13 @@
 #include <vector>
 
 #include "net/instaweb/http/public/http_cache.h"
+#include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/logging_proto.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/rewriter/public/resource_namer.h"
 // We need to include rewrite_driver.h due to covariant return of html_parse()
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -39,21 +41,28 @@
 #include "net/instaweb/util/public/mock_property_page.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/hasher.h"
 #include "pagespeed/kernel/base/md5_hasher.h"
 #include "pagespeed/kernel/base/mem_file_system.h"
+#include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/mock_hasher.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
 // We need to include mock_timer.h to allow upcast to Timer*.
 #include "pagespeed/kernel/base/mock_timer.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/html/html_parse_test_base.h"
+#include "pagespeed/kernel/html/html_writer_filter.h"
 #include "pagespeed/kernel/http/content_type.h"
+#include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/response_headers.h"
 #include "pagespeed/kernel/http/user_agent_matcher.h"
 #include "pagespeed/kernel/util/url_segment_encoder.h"
+#include "pagespeed/opt/logging/request_timing_info.h"
+
 
 
 namespace net_instaweb {
@@ -61,19 +70,11 @@ namespace net_instaweb {
 class AbstractLogRecord;
 class CountingUrlAsyncFetcher;
 class DelayCache;
-class HTTPValue;
-class Hasher;
-class HtmlWriterFilter;
 class LRUCache;
-class MessageHandler;
 class MockLogRecord;
 class MockScheduler;
 class ProcessContext;
-class RequestHeaders;
-class RequestTimingInfo;
-class ResourceNamer;
 class RewriteFilter;
-class Statistics;
 class WaitUrlAsyncFetcher;
 
 class RewriteOptionsTestBase : public HtmlParseTestBaseNoAlloc {
@@ -364,6 +365,12 @@ class RewriteTestBase : public RewriteOptionsTestBase {
                               const StringPiece& hash,
                               const StringVector& name_vector,
                               const StringPiece& ext);
+
+  // Encode image with width and height. Use -1 for either width or height to
+  // omit it from the encoding.
+  GoogleString EncodeImage(int width, int height,
+                           StringPiece filename, StringPiece hash,
+                           StringPiece rewritten_ext);
 
   // Takes an already-encoded URL and adds options to to it.
   GoogleString AddOptionsToEncodedUrl(const StringPiece& url,

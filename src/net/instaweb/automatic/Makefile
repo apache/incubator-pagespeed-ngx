@@ -101,6 +101,8 @@ BASE_LIBS = \
   net/instaweb/libinstaweb_mobilize_cached_pb.a \
   net/instaweb/libinstaweb_panel_loader_opt_data2c.a \
   net/instaweb/libinstaweb_rendered_image_pb.a \
+  net/instaweb/libinstaweb_responsive_js_data2c.a \
+  net/instaweb/libinstaweb_responsive_js_opt_data2c.a \
   net/instaweb/libinstaweb_rewriter.a \
   net/instaweb/libinstaweb_rewriter_base.a \
   net/instaweb/libinstaweb_rewriter_css.a \

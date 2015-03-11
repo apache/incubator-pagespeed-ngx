@@ -1,0 +1,23 @@
+<html>
+  <head>
+    <title>responsive_images example</title>
+  </head>
+  <body>
+    <p>An 1023x766 image displayed in a 256x192 thumbnail. PageSpeed
+      will resize it, but also serve with a srcset for other sizes.</p>
+    <img src="images/Puzzle.jpg" width="256" height="192"/><br/>
+
+    <p>A small image. PageSpeed will inline it and not set a srcset.</p>
+    <img src="images/Cuppa.png" width="65" height="70"/><br/>
+
+    <p>A medium size image with no listed width nor height. PageSpeed
+      will losslessly re-encode it, but not resize it nor add a srcset
+      for other sizes.</p>
+    <img src="images/BikeCrashIcn.png"/><br/>
+
+    <p>A small image with pagespeed_no_transform. PageSpeed will not
+      transform this file.</p>
+    <img src="images/disclosure_open_plus.png" width="11" height="13"
+         pagespeed_no_transform/><br/>
+  </body>
+</html>

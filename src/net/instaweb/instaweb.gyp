@@ -335,6 +335,35 @@
     },
 
     {
+      'target_name': 'responsive_js_dbg',
+      'variables': {
+        'js_dir': 'rewriter',
+        'closure_build_type': 'dbg',
+        'extra_closure_flags': [
+          '--closure_entry_point=pagespeed.Responsive',
+          '--js', '<(instaweb_root)/third_party/closure_library',
+          '--only_closure_dependencies',
+        ],
+      },
+      'sources': [ 'rewriter/responsive.js', ],
+      'includes': [ 'closure.gypi', ],
+    },
+
+    {
+      'target_name': 'responsive_js_opt',
+      'variables': {
+        'js_dir': 'rewriter',
+        'extra_closure_flags': [
+          '--closure_entry_point=pagespeed.Responsive',
+          '--js', '<(instaweb_root)/third_party/closure_library',
+          '--only_closure_dependencies',
+        ],
+      },
+      'sources': [ 'rewriter/responsive.js', ],
+      'includes': [ 'closure.gypi', ],
+    },
+
+    {
       'target_name': 'split_html_beacon_js_dbg',
       'variables': {
         'js_dir': 'rewriter',
@@ -931,6 +960,34 @@
       },
       'sources': [
         '<(compiled_js_dir)/rewriter/local_storage_cache_opt.js',
+      ],
+      'includes': [
+        'data2c.gypi',
+      ]
+    },
+    {
+      'target_name': 'instaweb_responsive_js_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'net/instaweb/rewriter',
+        'instaweb_js_subdir': '<(compiled_js_dir)/rewriter',
+        'var_name': 'responsive_js',
+      },
+      'sources': [
+        '<(compiled_js_dir)/rewriter/responsive_dbg.js',
+      ],
+      'includes': [
+        'data2c.gypi',
+      ]
+    },
+    {
+      'target_name': 'instaweb_responsive_js_opt_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'net/instaweb/rewriter',
+        'instaweb_js_subdir': '<(compiled_js_dir)/rewriter',
+        'var_name': 'responsive_js_opt',
+      },
+      'sources': [
+        '<(compiled_js_dir)/rewriter/responsive_opt.js',
       ],
       'includes': [
         'data2c.gypi',
@@ -1604,6 +1661,8 @@
         'instaweb_messages_js_opt_data2c',
         'instaweb_mobilize_cached_pb',
         'instaweb_panel_loader_opt_data2c',
+        'instaweb_responsive_js_data2c',
+        'instaweb_responsive_js_opt_data2c',
         'instaweb_rewriter_base',
         'instaweb_rewriter_css',
         'instaweb_rewriter_image',
@@ -1656,6 +1715,7 @@
         'rewriter/decode_rewritten_urls_filter.cc',
         'rewriter/dedup_inlined_images_filter.cc',
         'rewriter/defer_iframe_filter.cc',
+        'rewriter/responsive_image_filter.cc',
         'rewriter/delay_images_filter.cc',
         'rewriter/deterministic_js_filter.cc',
         'rewriter/dom_stats_filter.cc',

@@ -110,6 +110,7 @@
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
+#include "net/instaweb/rewriter/public/responsive_image_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
@@ -996,6 +997,17 @@ void RewriteDriver::AddPreRenderFilters() {
   }
   if (rewrite_options->Enabled(RewriteOptions::kSplitHtmlHelper)) {
     AddOwnedEarlyPreRenderFilter(new SplitHtmlHelperFilter(this));
+  }
+
+  if (rewrite_options->Enabled(RewriteOptions::kResponsiveImages) &&
+      rewrite_options->Enabled(RewriteOptions::kResizeImages)) {
+    ResponsiveImageFirstFilter* resp_filter1 =
+        new ResponsiveImageFirstFilter(this);
+    AddOwnedEarlyPreRenderFilter(resp_filter1);
+
+    ResponsiveImageSecondFilter* resp_filter2 =
+        new ResponsiveImageSecondFilter(this, resp_filter1);
+    AddOwnedPostRenderFilter(resp_filter2);
   }
 
   // We disable combine_css and combine_javascript when flush_subresources is

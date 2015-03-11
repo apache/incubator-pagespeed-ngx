@@ -1382,10 +1382,9 @@ TEST_F(ImageRewriteTest, ImageRewritePreserveURLsExplicitResizeOn) {
                     true,    // expect_rewritten: explicit cache_extend_images
                     false);  // expect_inline
   ClearStats();
-  GoogleString out_png_url(Encode(kTestDomain, "ic", "0", kBikePngFile, "png"));
-  GlobalReplaceSubstring(StrCat("x", kBikePngFile),
-                         StrCat("10x10x", kBikePngFile),
-                         &out_png_url);
+  GoogleString out_png_url(StrCat(
+      kTestDomain, EncodeImage(10, 10, kBikePngFile, "0", "png")));
+
   GoogleString out_png;
   EXPECT_TRUE(FetchResourceUrl(out_png_url, &out_png));
   EXPECT_EQ(1, http_cache()->cache_hits()->Get());

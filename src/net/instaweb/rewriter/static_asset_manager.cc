@@ -72,6 +72,8 @@ extern const char* JS_mobilize_js_opt;
 extern const char* JS_mobilize_xhr_js;
 extern const char* JS_mobilize_xhr_js_opt;
 extern const char* JS_panel_loader_opt;
+extern const char* JS_responsive_js;
+extern const char* JS_responsive_js_opt;
 extern const char* JS_split_html_beacon;
 extern const char* JS_split_html_beacon_opt;
 
@@ -269,6 +271,7 @@ void StaticAssetManager::InitializeAssetStrings() {
   assets_[StaticAssetEnum::MOBILIZE_CSS]->file_name = "mobilize_css";
   assets_[StaticAssetEnum::MOBILIZE_LAYOUT_CSS]->file_name =
       "mobilize_layout_css";
+  assets_[StaticAssetEnum::RESPONSIVE_JS]->file_name = "responsive";
   assets_[StaticAssetEnum::SPLIT_HTML_BEACON_JS]->file_name =
       "split_html_beacon";
 
@@ -310,6 +313,7 @@ void StaticAssetManager::InitializeAssetStrings() {
   assets_[StaticAssetEnum::MOBILIZE_CSS]->js_optimized = CSS_mobilize_css;
   assets_[StaticAssetEnum::MOBILIZE_LAYOUT_CSS]->js_optimized =
       CSS_mobilize_layout_css;
+  assets_[StaticAssetEnum::RESPONSIVE_JS]->js_optimized = JS_responsive_js_opt;
   assets_[StaticAssetEnum::SPLIT_HTML_BEACON_JS]->js_optimized =
       JS_split_html_beacon_opt;
 
@@ -348,6 +352,7 @@ void StaticAssetManager::InitializeAssetStrings() {
   assets_[StaticAssetEnum::MOBILIZE_CSS]->js_debug = CSS_mobilize_css;
   assets_[StaticAssetEnum::MOBILIZE_LAYOUT_CSS]->js_debug =
       CSS_mobilize_layout_css;
+  assets_[StaticAssetEnum::RESPONSIVE_JS]->js_debug = JS_responsive_js;
   assets_[StaticAssetEnum::SPLIT_HTML_BEACON_JS]->js_debug =
       JS_split_html_beacon;
 

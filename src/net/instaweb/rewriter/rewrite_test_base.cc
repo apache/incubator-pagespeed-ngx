@@ -788,6 +788,35 @@ GoogleString RewriteTestBase::AddOptionsToEncodedUrl(
   return namer.Encode();
 }
 
+GoogleString RewriteTestBase::EncodeImage(
+    int width, int height,
+    StringPiece filename, StringPiece hash, StringPiece rewritten_ext) {
+  // filename starts as just the leaf filename, ex: foo.png
+  ResourceContext params;
+  // Use width, height < 0 to indicate none set.
+  if (width >= 0) {
+    params.mutable_desired_image_dims()->set_width(width);
+  }
+  if (height >= 0) {
+    params.mutable_desired_image_dims()->set_height(height);
+  }
+
+  // Encoder inserts image dimensions, ex: 10x20xfoo.png
+  ImageUrlEncoder encoder;
+  GoogleString encoded_name;
+  encoder.Encode(MultiUrl(filename), &params, &encoded_name);
+
+  // Namer encodes into .pagespeed. format,
+  // ex: 10x20xfoo.png.pagespeed.ic.0.png
+  ResourceNamer namer;
+  namer.set_id("ic");
+  namer.set_hash(hash);
+  namer.set_name(encoded_name);
+  namer.set_ext(rewritten_ext);
+
+  return namer.Encode();
+}
+
 // Helper function which instantiates an encoder, collects the
 // required arguments and calls the virtual Encode().
 GoogleString RewriteTestBase::EncodeCssName(const StringPiece& name,

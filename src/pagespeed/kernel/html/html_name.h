@@ -211,6 +211,7 @@ class HtmlName {
     kSource,
     kSpan,
     kSrc,
+    kSrcset,
     kStrong,
     kStyle,
     kSub,

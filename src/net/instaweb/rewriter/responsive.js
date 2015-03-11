@@ -1,0 +1,261 @@
+/*
+ * Copyright 2015 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ * Author: jmarantz@google.com (Joshua Marantz)
+ * Author: sligocki@google.com (Shawn Ligocki)
+ */
+
+// TODO(sligocki): Move to third_party/pagespeed/opt/responsive?
+
+goog.provide('pagespeed.Responsive');
+
+goog.require('goog.dom');
+goog.require('goog.dom.TagName');
+goog.require('goog.events.EventType');
+goog.require('goog.string');
+
+
+/**
+ * A single candidate image URL and target resolution (2x, 4x, etc.) from
+ * a responsive image srcset.
+ * @struct
+ * @constructor
+ * @param {number} resolution
+ * @param {string} url
+ */
+pagespeed.ResponsiveImageCandidate = function(resolution, url) {
+  /**
+   * What devicePixelRatio is this image intended for?
+   * @type {number}
+   */
+  this.resolution = resolution;
+
+  /**
+   * URL of image meant for this resolution.
+   * @type {string}
+   */
+  this.url = url;
+};
+
+
+/**
+ * Information about each responsive image.
+ * @constructor
+ * @param {!Element} img
+ */
+pagespeed.ResponsiveImage = function(img) {
+  /**
+   * @type {!Element}
+   */
+  this.img = img;
+
+  /**
+   * Current resolution level used as src.
+   * @type {number}
+   */
+  this.currentResolution = 0;
+
+  /**
+   * List of possible resolution levels (with corresponding URLs).
+   * It must be sorted from lowest to highest resolution level.
+   * @type {!Array<!pagespeed.ResponsiveImageCandidate>}
+   */
+  this.availableResolutions = [];
+};
+
+
+/**
+ * @constructor
+ */
+pagespeed.Responsive = function() {
+  /**
+   * List of all responsive images on page and the resolutions available for
+   * each one. These are all updated on zoom.
+   * @private {!Array<!pagespeed.ResponsiveImage>}
+   */
+  this.allImages_ = [];
+};
+
+
+/**
+ * Pre-load hi-res image in background, updating this image src once it's
+ * in cache.
+ * @param {!Element} img
+ * @param {string} url
+ */
+function updateImgSrc(img, url) {
+  var tempImg = new Image();
+  tempImg.onload = function() {
+    img.src = url;
+  };
+  tempImg.src = url;
+}
+
+
+/**
+ * Load this image at the appropriate resolution setting. Current algorithm is
+ * to load the smallest resolution >= devicePixelRatio.
+ *
+ * TODO(sligocki): Should we just load the highest resolution as soon as
+ * they zoom?
+ * TODO(sligocki): Is this the algorithm that browsers would use or do they
+ * do something more complicated to compensate for moires, etc.?
+ *
+ * @param {number} devicePixelRatio
+ */
+pagespeed.ResponsiveImage.prototype.responsiveResize = function(
+    devicePixelRatio) {
+  if (devicePixelRatio > this.currentResolution) {
+    var numResolutions = this.availableResolutions.length;
+    for (var i = 0; i < numResolutions; ++i) {
+      if (devicePixelRatio <= this.availableResolutions[i].resolution) {
+        this.currentResolution = this.availableResolutions[i].resolution;
+        updateImgSrc(this.img, this.availableResolutions[i].url);
+        break;
+      }
+    }
+  }
+};
+
+
+/**
+ * Return the actual number of device pixels per CSS pixel including zoom.
+ * Note that C-+ resizing on desktops seems to affect window.devicePixelRatio,
+ * but pinch zoom on mobile does not seem to affect this value.
+ *
+ * @return {number}
+ */
+pagespeed.Responsive.prototype.computeDevicePixelRatioWithZoom = function() {
+  var zoomRatio = document.documentElement.clientWidth / window.innerWidth;
+  return goog.dom.getPixelRatio() * zoomRatio;
+};
+
+
+/**
+ * Resize all images in response to a resize event.
+ */
+pagespeed.Responsive.prototype.responsiveResize = function() {
+  var devicePixelRatio = this.computeDevicePixelRatioWithZoom();
+  var numImages = this.allImages_.length;
+  for (var i = 0; i < numImages; ++i) {
+    this.allImages_[i].responsiveResize(devicePixelRatio);
+  }
+};
+
+
+/**
+ * Parse srcset attribute string into a ResponsiveImage object.
+ * @param {!Element} img
+ * @param {string} srcset
+ * @return {?pagespeed.ResponsiveImage}
+ */
+pagespeed.Responsive.prototype.parseSrcset = function(img, srcset) {
+  var respImage = new pagespeed.ResponsiveImage(img);
+
+  // Decompose srcset into each resolution
+  // TODO(sligocki): Fix this to deal with URLs containing commas.
+  // For example, all data URLs do! We either need to make sure that
+  // we parse this correctly, or make sure we're escaping URLs in the
+  // C++ code.
+  var candidates = srcset.split(',');
+
+  var numCandidates = candidates.length;
+  for (var i = 0; i < numCandidates; ++i) {
+    var candidateString = candidates[i];
+    // Split by whitespace.
+    var attributes = candidateString.trim().split(/\s+/);
+    if (attributes.length != 2) {
+      // Malformed srcset, abort the whole thing.
+      return null;
+    } else {
+      var candidateUrl = attributes[0];
+      var attribute = attributes[1];
+      if ((attribute.length > 1) &&
+          (attribute[attribute.length - 1] == 'x')) {
+        var resolution =
+            goog.string.toNumber(attribute.substr(0, attribute.length - 1));
+        if (isNaN(resolution)) {
+          return null;
+        }
+        respImage.availableResolutions.push(
+            new pagespeed.ResponsiveImageCandidate(
+                resolution,
+                candidateUrl));
+      } else {
+        // We cannot parse srcset with w (or other) conditions.
+        // Abort the whole thing.
+        // TODO(sligocki): Do we want to support srcset w conditions?
+        return null;
+      }
+    }
+  }
+
+  respImage.availableResolutions.sort(function(a, b) {
+    return a.resolution - b.resolution;
+  });
+
+  return respImage;
+};
+
+
+/**
+ * Collect all responsive images on site, add attributes and event listeners
+ * and actually evaluate responsive srcset (as a polyfil).
+ */
+pagespeed.Responsive.prototype.init = function() {
+  // Initialize responsive images.
+  var images = document.getElementsByTagName(goog.dom.TagName.IMG);
+  for (var i = 0, img; img = images[i]; ++i) {
+    var srcset = img.getAttribute('srcset');
+    if (srcset) {
+      var respImage = this.parseSrcset(img, srcset);
+      if (respImage != null) {
+        this.allImages_.push(respImage);
+      }
+    }
+  }
+
+  // Set event listeners to resize all images if any zoom event happens.
+
+  // Resize event is fired on desktop C-+/C--, but not mobile pinch zoom.
+  window.addEventListener(goog.events.EventType.RESIZE,
+                          goog.bind(this.responsiveResize, this));
+  // Heuristic for detecting pinch zoom.
+  // Detect touchmove with more than one touch.
+  // TODO(sligocki): Will touchmove event give us most zoomed view? Or do we
+  // need to attach to a touchend event for that?
+  // TODO(sligocki): Jud says this will fire continuously, test to see if this
+  // will cause too much load on a site with many images and rate limit if it
+  // does.
+  window.addEventListener(goog.events.EventType.TOUCHMOVE,
+                          goog.bind(function(event) {
+                            // Multiple fingers.
+                            if (event.touches.length > 1) {
+                              this.responsiveResize();
+                            }
+                          }, this));
+
+  // Polyfill (Apply responsive images for any browser which doesn't support
+  // srcset natively).
+  this.responsiveResize();
+};
+
+
+/**
+ * Singleton instance used for keeping track of all responsive image rewrites.
+ * @type {pagespeed.Responsive}
+ */
+pagespeed.responsiveInstance = new pagespeed.Responsive();
+pagespeed.responsiveInstance.init();

@@ -199,6 +199,7 @@ struct KeywordMap {const char* name; net_instaweb::HtmlName::Keyword keyword;};
 "source",                     HtmlName::kSource
 "span",                       HtmlName::kSpan
 "src",                        HtmlName::kSrc
+"srcset",                     HtmlName::kSrcset
 "strong",                     HtmlName::kStrong
 "style",                      HtmlName::kStyle
 "sub",                        HtmlName::kSub

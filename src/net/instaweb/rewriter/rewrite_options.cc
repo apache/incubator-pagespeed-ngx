@@ -672,6 +672,7 @@ const RewriteOptions::Filter kTestFilterSet[] = {
   RewriteOptions::kMakeGoogleAnalyticsAsync,
   RewriteOptions::kPrioritizeCriticalCss,
   RewriteOptions::kResizeToRenderedImageDimensions,
+  RewriteOptions::kResponsiveImages,
   RewriteOptions::kRewriteDomains,
   RewriteOptions::kSpriteImages,
 };
@@ -879,6 +880,10 @@ const RewriteOptions::FilterEnumToIdAndNameEntry
     "rm", "Resize Mobile Images" },
   { RewriteOptions::kResizeToRenderedImageDimensions,
     "ir", "Resize to Rendered Image Dimensions" },
+  { RewriteOptions::kResponsiveImages,
+    "rx", "Responsive Images" },
+  { RewriteOptions::kResponsiveImagesZoom,
+    "rz", "Responsive Images Zoom" },
   { RewriteOptions::kRewriteCss,
     RewriteOptions::kCssFilterId, "Rewrite Css" },
   { RewriteOptions::kRewriteDomains,
@@ -919,6 +924,7 @@ const RewriteOptions::Filter kImagePreserveUrlDisabledFilters[] = {
   RewriteOptions::kLazyloadImages,
   RewriteOptions::kResizeImages,
   RewriteOptions::kResizeToRenderedImageDimensions,
+  RewriteOptions::kResponsiveImages,
   RewriteOptions::kSpriteImages
 };
 
