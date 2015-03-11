@@ -201,8 +201,7 @@ class RewriteDriverCacheUrlAsyncFetcherAsyncOpHooks
     : public CacheUrlAsyncFetcher::AsyncOpHooks {
  public:
   explicit RewriteDriverCacheUrlAsyncFetcherAsyncOpHooks(
-      RewriteDriver* rewrite_driver)
-      : rewrite_driver_(rewrite_driver) {
+      RewriteDriver* rewrite_driver) : rewrite_driver_(rewrite_driver) {
   }
 
   virtual ~RewriteDriverCacheUrlAsyncFetcherAsyncOpHooks() {
@@ -210,15 +209,15 @@ class RewriteDriverCacheUrlAsyncFetcherAsyncOpHooks
 
   // TODO(pulkitg): Remove session fetchers, so that fetcher can live as long
   // server is alive and there is no need of
-  // {increment/decrement}_async_events_counts().
+  // {Increment/Decrement}AsyncEventsCount().
   virtual void StartAsyncOp() {
     // Increment async_events_counts so that driver will be alive as long as
     // background fetch happens in CacheUrlAsyncFetcher.
-    rewrite_driver_->increment_async_events_count();
+    rewrite_driver_->IncrementAsyncEventsCount();
   }
 
   virtual void FinishAsyncOp() {
-    rewrite_driver_->decrement_async_events_count();
+    rewrite_driver_->DecrementAsyncEventsCount();
   }
 
  private:
@@ -1890,7 +1889,7 @@ class DistributedFetchResourceFetch : public SharedAsyncFetch {
     } else {
       SharedAsyncFetch::HandleDone(success);
     }
-    driver_->decrement_async_events_count();
+    driver_->DecrementAsyncEventsCount();
     delete this;
   }
 
@@ -1917,7 +1916,7 @@ class DistributedFetchResourceFetch : public SharedAsyncFetch {
     RewriteOptionsManager* rewrite_options_manager =
         driver_->server_context()->rewrite_options_manager();
     GoogleString url = driver_->fetch_url().as_string();
-    driver_->increment_async_events_count();
+    driver_->IncrementAsyncEventsCount();
     rewrite_options_manager->PrepareRequest(
         driver_->options(), driver_->request_context(), &url, request_headers(),
         NewCallback(this, &DistributedFetchResourceFetch::StartFetch));
@@ -1931,7 +1930,7 @@ class DistributedFetchResourceFetch : public SharedAsyncFetch {
       // We failed. Try fetching again, but this time we won't distribute
       // because tried_to_distribute_fetch_ is true.
       driver_->FetchResource(driver_->fetch_url(), driver_fetch_);
-      driver_->decrement_async_events_count();
+      driver_->DecrementAsyncEventsCount();
       delete this;
     }
   }
@@ -3289,11 +3288,11 @@ void RewriteDriver::DropReference(RefCategory ref_cat) {
   }
 }
 
-void RewriteDriver::increment_async_events_count() {
+void RewriteDriver::IncrementAsyncEventsCount() {
   ref_counts_.AddRef(kRefAsyncEvents);
 }
 
-void RewriteDriver::decrement_async_events_count() {
+void RewriteDriver::DecrementAsyncEventsCount() {
   DropReference(kRefAsyncEvents);
 }
 

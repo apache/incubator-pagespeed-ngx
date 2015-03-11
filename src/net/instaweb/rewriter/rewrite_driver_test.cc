@@ -92,11 +92,11 @@ class RewriteDriverTest : public RewriteTestBase {
   }
 
   void IncrementAsyncEventsCount() {
-    rewrite_driver()->increment_async_events_count();
+    rewrite_driver()->IncrementAsyncEventsCount();
   }
 
   void DecrementAsyncEventsCount() {
-    rewrite_driver()->decrement_async_events_count();
+    rewrite_driver()->DecrementAsyncEventsCount();
   }
 
   void SetupResponsesForDownstreamCacheTesting() {
@@ -153,9 +153,9 @@ class RewriteDriverTest : public RewriteTestBase {
         server_context()->NewRewriteDriver(CreateRequestContext());
     other_driver->set_fully_rewrite_on_flush(blocking_rewrite);
     other_driver->set_fast_blocking_rewrite(fast_blocking_rewrite);
-    other_driver->increment_async_events_count();
+    other_driver->IncrementAsyncEventsCount();
     other_driver->Cleanup();
-    other_driver->decrement_async_events_count();
+    other_driver->DecrementAsyncEventsCount();
     EXPECT_EQ(0, server_context()->num_active_rewrite_drivers());
   }
 

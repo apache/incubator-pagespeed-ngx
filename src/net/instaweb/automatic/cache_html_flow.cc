@@ -194,7 +194,7 @@ class CacheHtmlComputationFetch : public AsyncFetch {
     // Makes rewrite_driver live longer as ProxyFetch may called Cleanup()
     // on the rewrite_driver even if ComputeCacheHtmlInfo() has not yet
     // been triggered.
-    rewrite_driver_->increment_async_events_count();
+    rewrite_driver_->IncrementAsyncEventsCount();
     Statistics* stats = server_context_->statistics();
     num_cache_html_misses_ = stats->GetTimedVariable(
         CacheHtmlFlow::kNumCacheHtmlMisses);
@@ -215,7 +215,7 @@ class CacheHtmlComputationFetch : public AsyncFetch {
     if (!cache_html_log_record_->WriteLog()) {
       LOG(WARNING) <<  "Cache html flow GWS Logging failed for " << url_;
     }
-    rewrite_driver_->decrement_async_events_count();
+    rewrite_driver_->DecrementAsyncEventsCount();
     ThreadSynchronizer* sync = server_context_->thread_synchronizer();
     sync->Signal(CacheHtmlFlow::kBackgroundComputationDone);
   }

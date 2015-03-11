@@ -323,7 +323,7 @@ class CacheableResourceBase::FreshenFetchCallback : public FetchCallbackBase {
       }
       callback_->Done(lock_failure, resource_ok);
     }
-    rewrite_driver_->decrement_async_events_count();
+    rewrite_driver_->DecrementAsyncEventsCount();
     // AsyncFetchWithLock::HandleDone (which calls this method)
     // will take care of deleting 'this'.
   }
@@ -601,7 +601,7 @@ class CacheableResourceBase::FreshenHttpCacheCallback
                            *response_headers(), *http_value(), callback_);
         callback_->Done(true, success);
       }
-      driver_->decrement_async_events_count();
+      driver_->DecrementAsyncEventsCount();
     }
     delete this;
   }
@@ -735,7 +735,7 @@ void CacheableResourceBase::Freshen(Resource::FreshenCallback* callback,
   // touch our value, but just the cache
   HTTPCache* http_cache = server_context()->http_cache();
   // Ensure that the rewrite driver is alive until the freshen is completed.
-  rewrite_driver_->increment_async_events_count();
+  rewrite_driver_->IncrementAsyncEventsCount();
 
   FreshenHttpCacheCallback* freshen_callback = new FreshenHttpCacheCallback(
       url(), cache_key(), server_context(), rewrite_driver_, rewrite_options(),

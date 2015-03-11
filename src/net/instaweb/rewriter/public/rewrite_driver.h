@@ -1057,10 +1057,10 @@ class RewriteDriver : public HtmlParse {
 
   // Increment reference count for misc. async ops that need the RewriteDriver
   // kept alive.
-  void increment_async_events_count();
+  void IncrementAsyncEventsCount();
 
-  // Decrements a reference count bumped up by increment_async_events_count()
-  void decrement_async_events_count();
+  // Decrements a reference count bumped up by IncrementAsyncEventsCount()
+  void DecrementAsyncEventsCount();
 
   // Determines whether the document's Content-Type has a mimetype indicating
   // that browsers should parse it as XHTML.

@@ -403,7 +403,7 @@ FlushEarlyFlow::FlushEarlyFlow(
       kNumFlushEarlyHttpStatusCodeDeemedUnstable);
   flush_early_rewrite_latency_ms_ = stats->GetHistogram(
       kFlushEarlyRewriteLatencyMs);
-  driver_->increment_async_events_count();
+  driver_->IncrementAsyncEventsCount();
   // If mobile, do not flush preconnects as it can potentially block useful
   // connections to resources. This is also used to determine whether to
   // flush early the lazy load js snippet.
@@ -411,7 +411,7 @@ FlushEarlyFlow::FlushEarlyFlow(
 }
 
 FlushEarlyFlow::~FlushEarlyFlow() {
-  driver_->decrement_async_events_count();
+  driver_->DecrementAsyncEventsCount();
 }
 
 void FlushEarlyFlow::FlushEarly() {
@@ -478,7 +478,7 @@ void FlushEarlyFlow::FlushEarly() {
         // Clone the RewriteDriver which is used rewrite the HTML that we are
         // trying to flush early.
         RewriteDriver* new_driver = driver_->Clone();
-        new_driver->increment_async_events_count();
+        new_driver->IncrementAsyncEventsCount();
         new_driver->set_response_headers_ptr(base_fetch_->response_headers());
         new_driver->SetRequestHeaders(*driver_->request_headers());
         new_driver->set_flushing_early(true);
@@ -584,7 +584,7 @@ void FlushEarlyFlow::FlushEarlyRewriteDone(int64 start_time_ms,
                                       url.c_str()), handler_);
     }
   }
-  flush_early_driver->decrement_async_events_count();
+  flush_early_driver->DecrementAsyncEventsCount();
   base_fetch_->Flush(handler_);
   flush_early_rewrite_latency_ms_->Add(
       server_context_->timer()->NowMs() - start_time_ms);

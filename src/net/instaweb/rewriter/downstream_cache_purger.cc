@@ -45,7 +45,7 @@ class StringAsyncFetchWithAsyncCountUpdates : public StringAsyncFetch {
                                         RewriteDriver* driver)
       : StringAsyncFetch(ctx),
         driver_(driver) {
-    driver_->increment_async_events_count();
+    driver_->IncrementAsyncEventsCount();
   }
 
   virtual ~StringAsyncFetchWithAsyncCountUpdates() { }
@@ -56,7 +56,7 @@ class StringAsyncFetchWithAsyncCountUpdates : public StringAsyncFetch {
           successful_downstream_cache_purges()->Add(1);
     }
     StringAsyncFetch::HandleDone(success);
-    driver_->decrement_async_events_count();
+    driver_->DecrementAsyncEventsCount();
     delete this;
   }
 
