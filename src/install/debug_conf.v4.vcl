@@ -52,8 +52,7 @@ sub generate_user_agent_based_key {
     # Cache-fragment 2: Desktop User-Agents that support lazyload_images (ll),
     # inline_images (ii), defer_javascript (dj), webp (jw) and lossless_webp
     # (ws).
-    if (req.http.User-Agent ~
-        "(?i)Chrome/[2][3-9]+\.|Chrome/[[3-9][0-9]+\.|Chrome/[0-9]{3,}\.") {
+    if (req.http.Accept ~ "webp") {
       set req.http.PS-CapabilityList = "ll,ii,dj,jw,ws:";
     }
     # Cache-fragment 3: This fragment contains (a) Desktop User-Agents that
