@@ -161,8 +161,8 @@ message PropertyCohortInfo {
   // different values map to.
   optional int32 device_type = 4;
   // The cache type for which this cohort was looked up.
-  // Refer to net/instaweb/automatic/public/proxy_fetch.h to see what the
-  // different values map to.
+  // Refer to third_party/pagespeed/automatic/public/proxy_fetch.h to see what
+  // the different values map to.
   optional int32 cache_type = 5;
   // Cache result defined as CacheInterface::KeyState in
   // net/instaweb/util/public/cache_interface.h.

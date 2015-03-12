@@ -6,8 +6,8 @@
 #
 # See automatic/system_test_helpers.sh for usage.
 #
-# Expects APACHE_DEBUG_PAGESPEED_CONF to point to our config file, APACHE_LOG to
-# the log file, and AUTOMATIC_SYSTEM_TEST to automatic/system_test.sh.
+# Expects APACHE_DEBUG_PAGESPEED_CONF to point to our config file, and
+# APACHE_LOG to the log file.
 #
 # CACHE_FLUSH_TEST=on can be passed to test our cache.flush behavior
 # NO_VHOST_MERGE=on can be passed to tell tests to assume

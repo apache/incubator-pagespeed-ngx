@@ -20,7 +20,6 @@
 #include <cstddef>
 
 #include "base/logging.h"
-#include "net/instaweb/automatic/public/proxy_fetch.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
 #include "net/instaweb/http/public/request_context.h"
@@ -44,6 +43,7 @@
 #include "pagespeed/apache/header_util.h"
 #include "pagespeed/apache/instaweb_context.h"
 #include "pagespeed/apache/mod_instaweb.h"
+#include "pagespeed/automatic/public/proxy_fetch.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/condvar.h"
 #include "pagespeed/kernel/base/escaping.h"

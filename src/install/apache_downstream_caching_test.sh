@@ -28,12 +28,12 @@
 # debug_conf.v3.vcl. By default, it is assumed to have the value 1.
 
 this_dir="$( dirname "${BASH_SOURCE[0]}" )"
-INSTAWEB_CODE_DIR="$this_dir/../../../net/instaweb"
-if [ ! -e "$INSTAWEB_CODE_DIR" ] ; then
-  INSTAWEB_CODE_DIR="$this_dir/../net/instaweb"
+PAGESPEED_CODE_DIR="$this_dir/../../../third_party/pagespeed"
+if [ ! -e "$PAGESPEED_CODE_DIR" ] ; then
+  PAGESPEED_CODE_DIR="$this_dir/../pagespeed"
 fi
 SERVER_NAME=apache
-source "$INSTAWEB_CODE_DIR/automatic/system_test_helpers.sh" || exit 1
+source "$PAGESPEED_CODE_DIR/automatic/system_test_helpers.sh" || exit 1
 
 DEFAULT_VCL="/etc/varnish/default.vcl"
 BACKUP_DEFAULT_VCL=$TESTTMP"/default.vcl.bak"

@@ -18,8 +18,8 @@
 #ifndef PAGESPEED_APACHE_INSTAWEB_CONTEXT_H_
 #define PAGESPEED_APACHE_INSTAWEB_CONTEXT_H_
 
-#include "net/instaweb/automatic/public/html_detector.h"
 #include "net/instaweb/http/public/request_context.h"
+#include "pagespeed/automatic/public/html_detector.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"

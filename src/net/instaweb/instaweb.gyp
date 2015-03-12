@@ -1814,11 +1814,11 @@
         '<(DEPTH)/pagespeed/kernel.gyp:jsminify',
       ],
       'sources': [
-        'automatic/cache_html_flow.cc',
-        'automatic/flush_early_flow.cc',
-        'automatic/html_detector.cc',
-        'automatic/proxy_fetch.cc',
-        'automatic/proxy_interface.cc',
+        '<(DEPTH)/pagespeed/automatic/cache_html_flow.cc',
+        '<(DEPTH)/pagespeed/automatic/flush_early_flow.cc',
+        '<(DEPTH)/pagespeed/automatic/html_detector.cc',
+        '<(DEPTH)/pagespeed/automatic/proxy_fetch.cc',
+        '<(DEPTH)/pagespeed/automatic/proxy_interface.cc',
       ],
     },
     {

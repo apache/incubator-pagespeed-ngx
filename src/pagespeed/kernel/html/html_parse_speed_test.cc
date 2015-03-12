@@ -49,7 +49,7 @@ namespace {
 // in Google because it's reachable from a static.
 //
 // TODO(jmarantz): this function was duplicated to
-// net/instaweb/automatic/rewriter_speed_test.cc and should possibly
+// third_party/pagespeed/automatic/rewriter_speed_test.cc and should possibly
 // be factored out.
 GoogleString* sHtmlText = NULL;
 const StringPiece GetHtmlText() {
