@@ -46,10 +46,10 @@
 #include "pagespeed/kernel/thread/pthread_shared_mem.h"
 #include "pagespeed/kernel/thread/scheduler_thread.h"
 #include "pagespeed/kernel/thread/slow_worker.h"
-#include "pagespeed/system/public/in_place_resource_recorder.h"
-#include "pagespeed/system/public/serf_url_async_fetcher.h"
-#include "pagespeed/system/public/system_caches.h"
-#include "pagespeed/system/public/system_rewrite_options.h"
+#include "pagespeed/system/in_place_resource_recorder.h"
+#include "pagespeed/system/serf_url_async_fetcher.h"
+#include "pagespeed/system/system_caches.h"
+#include "pagespeed/system/system_rewrite_options.h"
 
 namespace net_instaweb {
 

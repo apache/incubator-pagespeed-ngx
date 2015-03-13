@@ -33,7 +33,7 @@ extern "C" {
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/ref_counted_ptr.h"
 #include "pagespeed/kernel/base/stl_util.h"          // for STLDeleteElements
-#include "pagespeed/system/public/system_rewrite_options.h"
+#include "pagespeed/system/system_rewrite_options.h"
 
 #define NGX_PAGESPEED_MAX_ARGS 10
 

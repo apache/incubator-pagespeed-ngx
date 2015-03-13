@@ -68,12 +68,12 @@
 #include "pagespeed/kernel/thread/pthread_shared_mem.h"
 #include "pagespeed/kernel/util/gzip_inflater.h"
 #include "pagespeed/kernel/util/statistics_logger.h"
-#include "pagespeed/system/public/in_place_resource_recorder.h"
-#include "pagespeed/system/public/system_caches.h"
-#include "pagespeed/system/public/system_request_context.h"
-#include "pagespeed/system/public/system_rewrite_options.h"
-#include "pagespeed/system/public/system_server_context.h"
-#include "pagespeed/system/public/system_thread_system.h"
+#include "pagespeed/system/in_place_resource_recorder.h"
+#include "pagespeed/system/system_caches.h"
+#include "pagespeed/system/system_request_context.h"
+#include "pagespeed/system/system_rewrite_options.h"
+#include "pagespeed/system/system_server_context.h"
+#include "pagespeed/system/system_thread_system.h"
 
 extern ngx_module_t ngx_pagespeed;
 

@@ -27,9 +27,9 @@ extern "C" {
 #include "ngx_rewrite_driver_factory.h"
 #include "ngx_rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "pagespeed/system/public/add_headers_fetcher.h"
-#include "pagespeed/system/public/loopback_route_fetcher.h"
-#include "pagespeed/system/public/system_request_context.h"
+#include "pagespeed/system/add_headers_fetcher.h"
+#include "pagespeed/system/loopback_route_fetcher.h"
+#include "pagespeed/system/system_request_context.h"
 
 namespace net_instaweb {
 

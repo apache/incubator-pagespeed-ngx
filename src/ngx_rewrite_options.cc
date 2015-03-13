@@ -32,7 +32,7 @@ extern "C" {
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/timer.h"
-#include "pagespeed/system/public/system_caches.h"
+#include "pagespeed/system/system_caches.h"
 
 namespace net_instaweb {
 
