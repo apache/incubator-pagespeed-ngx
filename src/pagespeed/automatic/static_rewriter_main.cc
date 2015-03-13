@@ -20,7 +20,7 @@
 
 #include "net/instaweb/rewriter/public/process_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
-#include "pagespeed/automatic/public/static_rewriter.h"
+#include "pagespeed/automatic/static_rewriter.h"
 #include "pagespeed/kernel/base/file_system.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"

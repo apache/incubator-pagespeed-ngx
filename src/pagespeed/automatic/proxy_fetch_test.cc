@@ -18,7 +18,7 @@
 
 // Unit-tests for ProxyFetch and related classes
 
-#include "pagespeed/automatic/public/proxy_fetch.h"
+#include "pagespeed/automatic/proxy_fetch.h"
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/log_record.h"

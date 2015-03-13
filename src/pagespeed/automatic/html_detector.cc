@@ -20,7 +20,7 @@
 // This contains HtmlDetector, which tries to heuristically guess whether
 // content a server claims to be HTML actually is HTML (it sometimes isn't).
 
-#include "pagespeed/automatic/public/html_detector.h"
+#include "pagespeed/automatic/html_detector.h"
 
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"

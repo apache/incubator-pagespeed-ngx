@@ -18,7 +18,7 @@
 
 // Unit-tests for FlushEarlyFlow.
 
-#include "pagespeed/automatic/public/flush_early_flow.h"
+#include "pagespeed/automatic/flush_early_flow.h"
 
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/log_record.h"
@@ -45,7 +45,7 @@
 #include "net/instaweb/rewriter/static_asset_config.pb.h"
 #include "net/instaweb/util/public/mock_property_page.h"
 #include "net/instaweb/util/public/property_cache.h"
-#include "pagespeed/automatic/public/proxy_interface_test_base.h"
+#include "pagespeed/automatic/proxy_interface_test_base.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mock_timer.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"

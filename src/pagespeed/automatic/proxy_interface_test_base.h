@@ -16,15 +16,15 @@
 
 // Author: mmohabey@google.com (Megha Mohabey)
 
-#ifndef PAGESPEED_AUTOMATIC_PUBLIC_PROXY_INTERFACE_TEST_BASE_H_
-#define PAGESPEED_AUTOMATIC_PUBLIC_PROXY_INTERFACE_TEST_BASE_H_
+#ifndef PAGESPEED_AUTOMATIC_PROXY_INTERFACE_TEST_BASE_H_
+#define PAGESPEED_AUTOMATIC_PROXY_INTERFACE_TEST_BASE_H_
 
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
-#include "pagespeed/automatic/public/proxy_interface.h"
+#include "pagespeed/automatic/proxy_interface.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
@@ -243,4 +243,4 @@ class ProxyInterfaceTestBase : public RewriteTestBase {
 };
 
 }  // namespace net_instaweb
-#endif  // PAGESPEED_AUTOMATIC_PUBLIC_PROXY_INTERFACE_TEST_BASE_H_
+#endif  // PAGESPEED_AUTOMATIC_PROXY_INTERFACE_TEST_BASE_H_

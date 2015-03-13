@@ -20,8 +20,8 @@
 // changed extensively. Contact us at mod-pagespeed-discuss@googlegroups.com
 // if you are interested in using it.
 
-#ifndef PAGESPEED_AUTOMATIC_PUBLIC_PROXY_FETCH_H_
-#define PAGESPEED_AUTOMATIC_PUBLIC_PROXY_FETCH_H_
+#ifndef PAGESPEED_AUTOMATIC_PROXY_FETCH_H_
+#define PAGESPEED_AUTOMATIC_PROXY_FETCH_H_
 
 #include <map>
 #include <set>
@@ -31,7 +31,7 @@
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/util/public/fallback_property_page.h"
 #include "net/instaweb/util/public/property_cache.h"
-#include "pagespeed/automatic/public/html_detector.h"
+#include "pagespeed/automatic/html_detector.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/gtest_prod.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
@@ -520,4 +520,4 @@ class ProxyFetch : public SharedAsyncFetch {
 
 }  // namespace net_instaweb
 
-#endif  // PAGESPEED_AUTOMATIC_PUBLIC_PROXY_FETCH_H_
+#endif  // PAGESPEED_AUTOMATIC_PROXY_FETCH_H_

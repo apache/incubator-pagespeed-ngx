@@ -17,7 +17,7 @@
 // Authors: mmohabey@google.com (Megha Mohabey)
 //          pulkitg@google.com (Pulkit Goyal)
 
-#include "pagespeed/automatic/public/cache_html_flow.h"
+#include "pagespeed/automatic/cache_html_flow.h"
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/async_fetch.h"
@@ -45,8 +45,8 @@
 // removed.
 #include "net/instaweb/util/public/fallback_property_page.h"
 #include "net/instaweb/util/public/property_cache.h"
-#include "pagespeed/automatic/public/html_detector.h"
-#include "pagespeed/automatic/public/proxy_fetch.h"
+#include "pagespeed/automatic/html_detector.h"
+#include "pagespeed/automatic/proxy_fetch.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/function.h"

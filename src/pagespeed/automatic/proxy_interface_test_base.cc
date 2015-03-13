@@ -16,7 +16,7 @@
 
 // Author: mmohabey@google.com (Megha Mohabey)
 
-#include "pagespeed/automatic/public/proxy_interface_test_base.h"
+#include "pagespeed/automatic/proxy_interface_test_base.h"
 
 #include <cstddef>
 
@@ -31,8 +31,8 @@
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/cache_property_store.h"
 #include "net/instaweb/util/public/property_cache.h"
-#include "pagespeed/automatic/public/proxy_fetch.h"
-#include "pagespeed/automatic/public/proxy_interface.h"
+#include "pagespeed/automatic/proxy_fetch.h"
+#include "pagespeed/automatic/proxy_interface.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"

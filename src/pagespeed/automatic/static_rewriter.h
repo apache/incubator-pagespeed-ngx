@@ -16,8 +16,8 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#ifndef PAGESPEED_AUTOMATIC_PUBLIC_STATIC_REWRITER_H_
-#define PAGESPEED_AUTOMATIC_PUBLIC_STATIC_REWRITER_H_
+#ifndef PAGESPEED_AUTOMATIC_STATIC_REWRITER_H_
+#define PAGESPEED_AUTOMATIC_STATIC_REWRITER_H_
 
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_gflags.h"
@@ -95,4 +95,4 @@ class StaticRewriter {
 
 }  // namespace net_instaweb
 
-#endif  // PAGESPEED_AUTOMATIC_PUBLIC_STATIC_REWRITER_H_
+#endif  // PAGESPEED_AUTOMATIC_STATIC_REWRITER_H_

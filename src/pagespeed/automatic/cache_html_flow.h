@@ -17,8 +17,8 @@
 // Authors: mmohabey@google.com (Megha Mohabey)
 //          pulkitg@google.com (Pulkit Goyal)
 
-#ifndef PAGESPEED_AUTOMATIC_PUBLIC_CACHE_HTML_FLOW_H_
-#define PAGESPEED_AUTOMATIC_PUBLIC_CACHE_HTML_FLOW_H_
+#ifndef PAGESPEED_AUTOMATIC_CACHE_HTML_FLOW_H_
+#define PAGESPEED_AUTOMATIC_CACHE_HTML_FLOW_H_
 
 #include "net/instaweb/rewriter/cache_html_info.pb.h"
 #include "pagespeed/kernel/base/basictypes.h"
@@ -132,4 +132,4 @@ class CacheHtmlFlow {
 
 }  // namespace net_instaweb
 
-#endif  // PAGESPEED_AUTOMATIC_PUBLIC_CACHE_HTML_FLOW_H_
+#endif  // PAGESPEED_AUTOMATIC_CACHE_HTML_FLOW_H_

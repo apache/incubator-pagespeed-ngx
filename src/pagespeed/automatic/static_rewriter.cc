@@ -16,7 +16,7 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "pagespeed/automatic/public/static_rewriter.h"
+#include "pagespeed/automatic/static_rewriter.h"
 
 #include <cstdio>
 #include <cstdlib>  // for exit()

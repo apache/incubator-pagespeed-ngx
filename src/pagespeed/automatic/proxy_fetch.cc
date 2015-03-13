@@ -16,7 +16,7 @@
 
 // Author: sligocki@google.com (Shawn Ligocki)
 
-#include "pagespeed/automatic/public/proxy_fetch.h"
+#include "pagespeed/automatic/proxy_fetch.h"
 
 #include <algorithm>
 #include <cstddef>

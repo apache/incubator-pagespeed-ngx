@@ -24,8 +24,8 @@
 // (pagespeed resources will be computed, HTML pages will be proxied
 // and rewritten, and other resources will just be proxied).
 
-#ifndef PAGESPEED_AUTOMATIC_PUBLIC_PROXY_INTERFACE_H_
-#define PAGESPEED_AUTOMATIC_PUBLIC_PROXY_INTERFACE_H_
+#ifndef PAGESPEED_AUTOMATIC_PROXY_INTERFACE_H_
+#define PAGESPEED_AUTOMATIC_PROXY_INTERFACE_H_
 
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "pagespeed/kernel/base/basictypes.h"
@@ -128,4 +128,4 @@ class ProxyInterface : public UrlAsyncFetcher {
 
 }  // namespace net_instaweb
 
-#endif  // PAGESPEED_AUTOMATIC_PUBLIC_PROXY_INTERFACE_H_
+#endif  // PAGESPEED_AUTOMATIC_PROXY_INTERFACE_H_

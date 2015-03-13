@@ -16,8 +16,8 @@
 
 // Author: mmohabey@google.com (Megha Mohabey)
 
-#ifndef PAGESPEED_AUTOMATIC_PUBLIC_FLUSH_EARLY_FLOW_H_
-#define PAGESPEED_AUTOMATIC_PUBLIC_FLUSH_EARLY_FLOW_H_
+#ifndef PAGESPEED_AUTOMATIC_FLUSH_EARLY_FLOW_H_
+#define PAGESPEED_AUTOMATIC_FLUSH_EARLY_FLOW_H_
 
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
@@ -116,4 +116,4 @@ class FlushEarlyFlow {
 
 }  // namespace net_instaweb
 
-#endif  // PAGESPEED_AUTOMATIC_PUBLIC_FLUSH_EARLY_FLOW_H_
+#endif  // PAGESPEED_AUTOMATIC_FLUSH_EARLY_FLOW_H_

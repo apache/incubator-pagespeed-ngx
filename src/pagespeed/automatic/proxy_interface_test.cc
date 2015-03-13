@@ -18,7 +18,7 @@
 
 // Unit-tests for ProxyInterface.
 
-#include "pagespeed/automatic/public/proxy_interface.h"
+#include "pagespeed/automatic/proxy_interface.h"
 
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/http_cache.h"
@@ -39,8 +39,8 @@
 #include "net/instaweb/util/public/fallback_property_page.h"
 #include "net/instaweb/util/public/mock_property_page.h"
 #include "net/instaweb/util/public/property_cache.h"
-#include "pagespeed/automatic/public/proxy_fetch.h"
-#include "pagespeed/automatic/public/proxy_interface_test_base.h"
+#include "pagespeed/automatic/proxy_fetch.h"
+#include "pagespeed/automatic/proxy_interface_test_base.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/function.h"

@@ -16,7 +16,7 @@
 
 // Author: sligocki@google.com (Shawn Ligocki)
 
-#include "pagespeed/automatic/public/proxy_interface.h"
+#include "pagespeed/automatic/proxy_interface.h"
 
 #include "base/callback.h"
 #include "base/logging.h"
@@ -33,9 +33,9 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "pagespeed/automatic/public/cache_html_flow.h"
-#include "pagespeed/automatic/public/flush_early_flow.h"
-#include "pagespeed/automatic/public/proxy_fetch.h"
+#include "pagespeed/automatic/cache_html_flow.h"
+#include "pagespeed/automatic/flush_early_flow.h"
+#include "pagespeed/automatic/proxy_fetch.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/hasher.h"
 #include "pagespeed/kernel/base/hostname_util.h"

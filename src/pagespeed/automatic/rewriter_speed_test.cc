@@ -37,7 +37,7 @@
 
 #include "base/logging.h"
 #include "net/instaweb/rewriter/public/process_context.h"
-#include "pagespeed/automatic/public/static_rewriter.h"
+#include "pagespeed/automatic/static_rewriter.h"
 #include "pagespeed/kernel/base/benchmark.h"
 #include "pagespeed/kernel/base/google_message_handler.h"
 #include "pagespeed/kernel/base/null_writer.h"

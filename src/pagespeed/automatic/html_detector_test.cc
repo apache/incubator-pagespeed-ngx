@@ -18,7 +18,7 @@
 
 // Unit-tests for HtmlDetector
 
-#include "pagespeed/automatic/public/html_detector.h"
+#include "pagespeed/automatic/html_detector.h"
 
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/gtest.h"

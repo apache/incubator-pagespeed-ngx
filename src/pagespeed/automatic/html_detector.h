@@ -20,8 +20,8 @@
 // This contains HtmlDetector, which tries to heuristically detect whether
 // content a server claims to be HTML actually is HTML (it sometimes isn't).
 
-#ifndef PAGESPEED_AUTOMATIC_PUBLIC_HTML_DETECTOR_H_
-#define PAGESPEED_AUTOMATIC_PUBLIC_HTML_DETECTOR_H_
+#ifndef PAGESPEED_AUTOMATIC_HTML_DETECTOR_H_
+#define PAGESPEED_AUTOMATIC_HTML_DETECTOR_H_
 
 #include "base/logging.h"
 #include "pagespeed/kernel/base/basictypes.h"
@@ -97,4 +97,4 @@ class HtmlDetector {
 
 }  // namespace net_instaweb
 
-#endif  // PAGESPEED_AUTOMATIC_PUBLIC_HTML_DETECTOR_H_
+#endif  // PAGESPEED_AUTOMATIC_HTML_DETECTOR_H_

@@ -25,7 +25,7 @@
 #include "pagespeed/apache/apache_request_context.h"
 #include "pagespeed/apache/apache_rewrite_driver_factory.h"
 #include "pagespeed/apache/mod_spdy_fetcher.h"
-#include "pagespeed/automatic/public/proxy_fetch.h"
+#include "pagespeed/automatic/proxy_fetch.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/file_system.h"
 #include "pagespeed/kernel/base/message_handler.h"
