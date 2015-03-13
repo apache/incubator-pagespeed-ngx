@@ -289,7 +289,6 @@ SERVER_NAME=nginx
 
 # run generic system tests
 SYSTEM_TEST_FILE="$MOD_PAGESPEED_DIR/src/pagespeed/system/system_test.sh"
-AUTOMATIC_SYSTEM_TEST="$MOD_PAGESPEED_DIR/src/net/instaweb/automatic/system_test.sh"
 
 if [ ! -e "$SYSTEM_TEST_FILE" ] ; then
   echo "Not finding $SYSTEM_TEST_FILE -- is mod_pagespeed not in a parallel"
