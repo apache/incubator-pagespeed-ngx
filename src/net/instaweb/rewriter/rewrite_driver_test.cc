@@ -1937,6 +1937,31 @@ TEST_F(RewriteDriverTest, PendingAsyncEventsTest) {
   TestPendingEventsDriverCleanup(true, true);
 }
 
+TEST_F(RewriteDriverTest, PendingRenderBlockingAsyncEventsTest) {
+  RewriteDriver* driver = rewrite_driver();
+  driver->set_fully_rewrite_on_flush(false);
+
+  // Plain async event doesn't prevent completion.
+  driver->IncrementAsyncEventsCount();
+  EXPECT_TRUE(IsDone(RewriteDriver::kWaitForCompletion, false));
+  EXPECT_TRUE(IsDone(RewriteDriver::kWaitForCompletion, true));
+
+  // Render blocking one does, however.
+  driver->IncrementRenderBlockingAsyncEventsCount();
+  EXPECT_FALSE(IsDone(RewriteDriver::kWaitForCompletion, false));
+  EXPECT_FALSE(IsDone(RewriteDriver::kWaitForCompletion, true));
+
+  driver->DecrementAsyncEventsCount();
+  // Still does when regular async removed.
+  EXPECT_FALSE(IsDone(RewriteDriver::kWaitForCompletion, false));
+  EXPECT_FALSE(IsDone(RewriteDriver::kWaitForCompletion, true));
+
+  // Once all counts are gone it's now Done, though.
+  driver->DecrementRenderBlockingAsyncEventsCount();
+  EXPECT_TRUE(IsDone(RewriteDriver::kWaitForCompletion, false));
+  EXPECT_TRUE(IsDone(RewriteDriver::kWaitForCompletion, true));
+}
+
 TEST_F(RewriteDriverTest, ValidateCacheResponseRewrittenWebp) {
   const StringPiece kWebpMimeType = kContentTypeWebp.mime_type();
   RequestContextPtr request_context(new RequestContext(

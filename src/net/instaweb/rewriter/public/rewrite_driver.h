@@ -1062,6 +1062,14 @@ class RewriteDriver : public HtmlParse {
   // Decrements a reference count bumped up by IncrementAsyncEventsCount()
   void DecrementAsyncEventsCount();
 
+  // Increment reference count for misc async ops that should be waited for
+  // before doing rendering for current flush window.
+  void IncrementRenderBlockingAsyncEventsCount();
+
+  // Decrements a reference count bumped up by
+  // IncrementRenderBlockingAsyncEventsCount()
+  void DecrementRenderBlockingAsyncEventsCount();
+
   // Determines whether the document's Content-Type has a mimetype indicating
   // that browsers should parse it as XHTML.
   XhtmlStatus MimeTypeXhtmlStatus();
@@ -1468,6 +1476,10 @@ class RewriteDriver : public HtmlParse {
     // TODO(morlovich): Split between events people might want to wait for
     // and events which they don't in a follow up.
     kRefAsyncEvents,
+
+    // Async events we always wait for, even if fully_rewrite_on_flush isn't
+    // turned on.
+    kRefRenderBlockingAsyncEvents,
 
     kNumRefCategories
   };

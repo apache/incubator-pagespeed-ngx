@@ -589,6 +589,12 @@ bool RewriteDriver::IsDone(WaitMode wait_mode, bool deadline_reached) {
     return false;
   }
 
+  int render_blocking_async_events =
+      ref_counts_.QueryCountMutexHeld(kRefRenderBlockingAsyncEvents);
+  if (render_blocking_async_events > 0) {
+    return false;
+  }
+
   // Before deadline, we're happy only if we're 100% done.
   if (!deadline_reached) {
     bool have_background_fetch =
@@ -3255,6 +3261,8 @@ StringPiece RewriteDriver::RefCategoryName(RefCategory cat) {
       return "Background fetch rewrite";
     case kRefAsyncEvents:
       return "Misc async event";
+    case kRefRenderBlockingAsyncEvents:
+      return "Misc async event that's render-blocking";
     case kNumRefCategories:
       break;
   }
@@ -3294,6 +3302,14 @@ void RewriteDriver::IncrementAsyncEventsCount() {
 
 void RewriteDriver::DecrementAsyncEventsCount() {
   DropReference(kRefAsyncEvents);
+}
+
+void RewriteDriver::IncrementRenderBlockingAsyncEventsCount() {
+  ref_counts_.AddRef(kRefRenderBlockingAsyncEvents);
+}
+
+void RewriteDriver::DecrementRenderBlockingAsyncEventsCount() {
+  DropReference(kRefRenderBlockingAsyncEvents);
 }
 
 void RewriteDriver::EnableBlockingRewrite(RequestHeaders* request_headers) {
