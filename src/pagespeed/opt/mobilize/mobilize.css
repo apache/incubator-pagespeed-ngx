@@ -313,7 +313,7 @@ body {
 }
 
 .psmob-menu-expand-icon.open {
-  -ms-transofrm: rotate(180deg);
+  -ms-transform: rotate(180deg);
   -webkit-transform: rotate(180deg);
   transform: rotate(180deg);
 }
@@ -441,4 +441,23 @@ body {
     overflow-y: auto;
     height: 300px;
     width: 80%;
+}
+
+/* Setup the click detector div so that it is positioned over the entire
+ * viewport, but underneath menu bar and header. */
+#psmob-click-detector-div {
+  width: 100%;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  opacity: 0;
+  /* Click events are not sent to hidden visibility elements. */
+  visibility: hidden;
+  /* Set z-index so that it ends up above the rest of the elements on the page
+   * but below the nav panel and header bar. */
+  z-index: 999998;
+}
+
+#psmob-click-detector-div.open {
+  visibility: visible;
 }

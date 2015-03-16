@@ -96,6 +96,13 @@ pagespeed.MobNav = function() {
 
 
   /**
+   * Click detector div.
+   * @private {Element}
+   */
+  this.clickDetectorDiv_ = null;
+
+
+  /**
    * Tracks time since last scroll to figure out when scrolling is finished.
    * Will be null when not scrolling.
    * @private {?number}
@@ -392,10 +399,13 @@ pagespeed.MobNav.prototype.fixExistingElements_ = function() {
       this.elementsToOffset_.push(element);
     }
 
-    if (style.getPropertyValue('z-index') >= 999999) {
+    // Set to 999997 because the click detector div is set to 999998 and the
+    // menu bar and nav panel are set to 999999. This function runs before those
+    // elements are added, so it won't modify their z-index.
+    if (style.getPropertyValue('z-index') >= 999998) {
       pagespeed.MobUtil.consoleLog(
-          'Element z-index exceeded 999999, setting to 999998.');
-      element.style.zIndex = 999998;
+          'Element z-index exceeded 999998, setting to 999997.');
+      element.style.zIndex = 999997;
     }
   }
 };
@@ -1077,6 +1087,27 @@ pagespeed.MobNav.prototype.cleanupNavPanel_ = function() {
 
 
 /**
+ * Add a div for detecting clicks on the body in order to close the open nav
+ * panel. This is to workaround JS that sends click events, which can be
+ * difficult to differentiate from actual clicks from the user. In particular
+ * https://github.com/DevinWalker/jflow/ causes this issue.
+ * @private
+ */
+pagespeed.MobNav.prototype.addClickDetectorDiv_ = function() {
+  this.clickDetectorDiv_ = document.createElement(goog.dom.TagName.DIV);
+  this.clickDetectorDiv_.id = 'psmob-click-detector-div';
+  document.body.insertBefore(this.clickDetectorDiv_, this.navPanel_);
+
+  this.clickDetectorDiv_.addEventListener(
+      goog.events.EventType.CLICK, goog.bind(function(e) {
+        if (goog.dom.classlist.contains(this.navPanel_, 'open')) {
+          this.toggleNavPanel_();
+        }
+      }, this), false);
+};
+
+
+/**
  * Add a nav panel.
  * @param {!pagespeed.MobUtil.ThemeData} themeData
  * @private
@@ -1085,10 +1116,10 @@ pagespeed.MobNav.prototype.addNavPanel_ = function(themeData) {
   // TODO(jud): Make sure we have tests covering the redraw flow and the events
   // called here.
   // Create the nav panel element and insert immediatly after the header bar.
-  this.navPanel_ = document.createElement('nav');
+  this.navPanel_ = document.createElement(goog.dom.TagName.NAV);
   document.body.insertBefore(this.navPanel_, this.headerBar_.nextSibling);
   goog.dom.classlist.add(this.navPanel_, 'psmob-nav-panel');
-  var navTopUl = document.createElement('ul');
+  var navTopUl = document.createElement(goog.dom.TagName.UL);
   this.navPanel_.appendChild(navTopUl);
   // By default, UL elements in the nav panel have display:none, which makes
   // hierarchical menus collapsed by default. However, we want the top level
@@ -1147,6 +1178,8 @@ pagespeed.MobNav.prototype.addNavPanel_ = function(themeData) {
   this.dedupNavMenuItems_();
   this.cleanupNavPanel_();
 
+  this.addClickDetectorDiv_();
+
   // Track touch move events just in the nav panel so that scrolling can be
   // controlled. This is to work around overflow: hidden not working as we would
   // want when zoomed in (it does not totally prevent scrolling).
@@ -1196,6 +1229,7 @@ pagespeed.MobNav.prototype.addNavPanel_ = function(themeData) {
 pagespeed.MobNav.prototype.toggleNavPanel_ = function() {
   goog.dom.classlist.toggle(this.headerBar_, 'open');
   goog.dom.classlist.toggle(this.navPanel_, 'open');
+  goog.dom.classlist.toggle(this.clickDetectorDiv_, 'open');
   goog.dom.classlist.toggle(document.body, 'noscroll');
   this.isNavPanelOpen_ = !this.isNavPanelOpen_;
   this.redrawNavPanel_();
@@ -1208,24 +1242,9 @@ pagespeed.MobNav.prototype.toggleNavPanel_ = function() {
  * @private
  */
 pagespeed.MobNav.prototype.addMenuButtonEvents_ = function() {
-  document.body.addEventListener(goog.events.EventType.CLICK, function(e) {
-    if (this.menuButton_.contains(/** @type {Node} */ (e.target))) {
-      this.toggleNavPanel_();
-      return;
-    }
-
-    // If the panel is open, allow clicks outside of the panel to close it.
-    if (goog.dom.classlist.contains(this.navPanel_, 'open') &&
-        !this.navPanel_.contains(/** @type {Node} */ (e.target))) {
-      this.toggleNavPanel_();
-      // Make sure that the only action taken because of the click is closing
-      // the menu. We also make sure to set the useCapture param of
-      // addEventListener to true to make sure no other DOM elements' click
-      // handler is triggered.
-      e.stopPropagation();
-      e.preventDefault();
-    }
-  }.bind(this), /* useCapture */ true);
+  this.menuButton_.addEventListener(
+      goog.events.EventType.CLICK,
+      goog.bind(function(e) { this.toggleNavPanel_(); }, this), false);
 };
 
 
