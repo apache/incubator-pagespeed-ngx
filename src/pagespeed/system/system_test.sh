@@ -657,8 +657,9 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   start_test Remote Configuration On: by default comments and whitespace removed
   URL="$(generate_url remote-config.example.com \
                       /mod_pagespeed_test/forbidden.html)"
+  kill_port $RCPORT1
   while true; do
-    echo -e "HTTP/1.1 200 OK\nCache-Control: max-age=5\n\nEnableFilters remove_comments,collapse_whitespace\nEndRemoteConfig\n" | nc -l -p $RCPORT1 -q 1
+    echo -e "HTTP/1.1 200 OK\nCache-Control: max-age=5\n\nEnableFilters remove_comments,collapse_whitespace\nEndRemoteConfig\n" | nc -l $RCPORT1 -q 1
   done &
   LOOPPID=$!
   echo wget $URL
@@ -670,8 +671,9 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   start_test Remote Configuration On: File missing end token.
   URL="$(generate_url remote-config-invalid.example.com \
                       /mod_pagespeed_test/forbidden.html)"
+  kill_port $RCPORT3
   while true; do
-    echo -e "HTTP/1.1 200 OK\nCache-Control: max-age=5\n\nEnableFilters remove_comments,collapse_whitespace\n" | nc -l -p $RCPORT3 -q 1
+    echo -e "HTTP/1.1 200 OK\nCache-Control: max-age=5\n\nEnableFilters remove_comments,collapse_whitespace\n" | nc -l $RCPORT3 -q 1
   done &
   LOOPPID=$!
   echo wget $URL
@@ -688,8 +690,9 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   start_test Remote Configuration On: Some invalid options.
   URL="$(generate_url remote-config-partially-invalid.example.com \
                       /mod_pagespeed_test/forbidden.html)"
+  kill_port $RCPORT2
   while true; do
-    echo -e "HTTP/1.1 200 OK\nCache-Control: max-age=5\n\nEnableFilters remove_comments,collapse_whitespace\nEndRemoteConfig\n" | nc  -l -p $RCPORT2 -q 1
+    echo -e "HTTP/1.1 200 OK\nCache-Control: max-age=5\n\nEnableFilters remove_comments,collapse_whitespace\nEndRemoteConfig\n" | nc  -l $RCPORT2 -q 1
   done&
   LOOPPID=$!
   # Some options are invalid, check that they are skipped and the rest of the
@@ -703,8 +706,9 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   start_test Remote Configuration On: overridden by query parameter.
   URL="$(generate_url remote-config.example.com \
                       /mod_pagespeed_test/forbidden.html)"
+  kill_port $RCPORT1
   while true; do
-    echo -e "HTTP/1.1 200 OK\nCache-Control: max-age=5\n\nEnableFilters remove_comments,collapse_whitespace\nEndRemoteConfig\n" | nc -l -p $RCPORT1 -q 1
+    echo -e "HTTP/1.1 200 OK\nCache-Control: max-age=5\n\nEnableFilters remove_comments,collapse_whitespace\nEndRemoteConfig\n" | nc -l $RCPORT1 -q 1
   done &
   LOOPPID=$!
   # First check to see that the remote config is applied.
@@ -722,8 +726,9 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   kill_port $RCPORT1
 
   start_test second remote config fetch fails, cached value still applies.
+  kill_port $RCPORT5
   while true; do
-    echo -e "HTTP/1.1 200 OK\nCache-Control: max-age=1\n\nEnableFilters remove_comments,collapse_whitespace\nEndRemoteConfig\n" | nc -l -p $RCPORT5 -q 1
+    echo -e "HTTP/1.1 200 OK\nCache-Control: max-age=1\n\nEnableFilters remove_comments,collapse_whitespace\nEndRemoteConfig\n" | nc -l $RCPORT5 -q 1
   done &
   LOOPPID=$!
   URL="$(generate_url remote-config-failed-fetch.example.com \
@@ -740,10 +745,11 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   kill_port $RCPORT5
 
   start_test config takes too long to fetch, is not applied.
+  kill_port $RCPORT6
   URL="$(generate_url remote-config-slow-fetch.example.com \
                       /mod_pagespeed_test/forbidden.html)"
   while true; do
-    sleep 4; echo -e "HTTP/1.1 200 OK\nCache-Control: max-age=2\n\nEnableFilters remove_comments,collapse_whitespace\nEndRemoteConfig\n" | nc -l -p $RCPORT6 -q 4
+    sleep 4; echo -e "HTTP/1.1 200 OK\nCache-Control: max-age=2\n\nEnableFilters remove_comments,collapse_whitespace\nEndRemoteConfig\n" | nc -l $RCPORT6 -q 4
   done &
   LOOPPID=$!
   # Fetch a few times to be satisfied that the configuration should have been
@@ -756,10 +762,11 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   kill_port $RCPORT6
 
   start_test Remote Configuration specify an experiment.
+  kill_port $RCPORT7
   URL="$(generate_url remote-config-experiment.example.com \
                       /mod_pagespeed_test/forbidden.html)"
   while true; do
-    echo -e "HTTP/1.1 200 OK\nCache-Control: max-age=5\n\nRunExperiment on\nAnalyticsID UA-MyExperimentID-1\nEndRemoteConfig\n" | nc -l -p $RCPORT7 -q 1
+    echo -e "HTTP/1.1 200 OK\nCache-Control: max-age=5\n\nRunExperiment on\nAnalyticsID UA-MyExperimentID-1\nEndRemoteConfig\n" | nc -l $RCPORT7 -q 1
   done &
   LOOPPID=$!
   # Some options are invalid, check that they are skipped and the rest of the
