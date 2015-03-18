@@ -188,6 +188,7 @@
         'rewriter/pedantic_filter_test.cc',
         'rewriter/property_cache_util_test.cc',
         'rewriter/redirect_on_size_limit_filter_test.cc',
+        'rewriter/render_blocking_html_computation_test.cc',
         'rewriter/request_properties_test.cc',
         'rewriter/resource_combiner_test.cc',
         'rewriter/resource_fetch_test.cc',
