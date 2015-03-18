@@ -1074,7 +1074,6 @@ COMMENTING_BLOCK
 
 start_test remote config will not apply server scoped options.
 if ! [ -z ${RCPORT4+x} ] && [ $RCPORT4 -eq "9994" ]; then
-  kill_port $RCPORT4
   # These tests can only be done if the port is known ahead of time.
   # Check that server scoped options are ignored, but directory scoped options
   # are applied.
@@ -1082,7 +1081,7 @@ if ! [ -z ${RCPORT4+x} ] && [ $RCPORT4 -eq "9994" ]; then
     URL="$(generate_url remote-config-out-of-scope.example.com \
            /mod_pagespeed_test/forbidden.html)"
     while true; do
-      echo -e "HTTP/1.1 200 OK\nCache-Control: max-age=5\n\nUrlSigningKey secretkey\nRequestOptionOverride secretkey\nEndRemoteConfig\n" | nc -l $RCPORT4 -q 1
+      echo -e "HTTP/1.1 200 OK\nCache-Control: max-age=5\n\nUrlSigningKey secretkey\nRequestOptionOverride secretkey\nEndRemoteConfig\n" | nc -l -p $RCPORT4 -q 1
     done&
     LOOPPID=$!
     echo wget $URL $SECONDARY_HOSTNAME $WGET_DUMP

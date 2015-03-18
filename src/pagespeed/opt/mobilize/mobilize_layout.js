@@ -152,14 +152,18 @@ pagespeed.MobLayout.prototype.addDontTouchId = function(id) {
  * @private
  */
 pagespeed.MobLayout.prototype.computeMaxWidth_ = function() {
-  var width = document.documentElement.clientWidth;
+  var width = window.document.documentElement.clientWidth;
   if (width) {
-    var bodyStyle = window.getComputedStyle(document.body);
-    var extraWidth = ['padding-left', 'padding-right'];
-    for (var i = 0; i < extraWidth.length; ++i) {
-      var value = pagespeed.MobUtil.computedDimension(bodyStyle, extraWidth[i]);
-      if (value) {
-        width -= value;
+    var body = window.document.body;
+    if (body) {
+      var bodyStyle = window.getComputedStyle(body);
+      var extraWidth = ['padding-left', 'padding-right'];
+      for (var i = 0; i < extraWidth.length; ++i) {
+        var value = pagespeed.MobUtil.computedDimension(bodyStyle,
+                                                        extraWidth[i]);
+        if (value) {
+          width -= value;
+        }
       }
     }
   } else {

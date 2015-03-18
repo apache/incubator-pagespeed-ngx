@@ -587,8 +587,18 @@ pagespeed.MobNav.prototype.addHeaderBarResizeEvents_ = function() {
 
   window.addEventListener(goog.events.EventType.TOUCHMOVE,
                           goog.bind(function(e) {
+                            // The default android browser is unreliable about
+                            // firing touch events if preventDefault is not
+                            // called in touchstart (see note above). Therefore,
+                            // we don't hide the nav panel here on the android
+                            // browser, otherwise the bar is not redrawn if a
+                            // user tries to scroll up past the top of the page,
+                            // since neither a touchend event nor a scroll event
+                            // fires to redraw the header.
                             if (!this.isNavPanelOpen_) {
-                              goog.dom.classlist.add(this.headerBar_, 'hide');
+                              if (!this.isAndroidBrowser_) {
+                                goog.dom.classlist.add(this.headerBar_, 'hide');
+                              }
                             } else {
                               e.preventDefault();
                             }
