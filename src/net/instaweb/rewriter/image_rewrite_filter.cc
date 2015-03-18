@@ -1349,6 +1349,16 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
   // Note that in RewriteOptions::Merge we turn off image_preserve_urls
   // when merging into a configuration that has explicitly
   // enabled cache_extend_images.
+  //
+  // Consider a hosting provider that turns on "optimize for
+  // bandwidth" mode, and then a site enables resize_images
+  // explicitly.  That should override the image-url-preservation
+  // default that was set at root.  Note that explicitly turning on
+  // RecompressImages doesn't mean we'll want to override
+  // image_preserve_urls rewrite URLs here, since we can still get
+  // the benefit of recompression via IPRO.  But we make an
+  // exception for inlining and image-resizing directives since
+  // those can only be done via url-rewriting.
   if (options->image_preserve_urls() &&
       !options->Enabled(RewriteOptions::kResizeImages) &&
       !options->Enabled(RewriteOptions::kResizeToRenderedImageDimensions) &&
