@@ -15,14 +15,14 @@
     }
   }
   if (!d) {
-    return!1;
+    return !1;
   }
   var f = -1 == a.indexOf("?") ? "?" : "&";
   a = a + f + "url=" + encodeURIComponent(b);
   d.open("POST", a);
   d.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
   d.send(c);
-  return!0;
+  return !0;
 }, addHandler:function(a, b, c) {
   if (a.addEventListener) {
     a.addEventListener(b, c, !1);
@@ -41,9 +41,9 @@
   for (var b = a.offsetTop, c = a.offsetLeft;a.offsetParent;) {
     a = a.offsetParent, b += a.offsetTop, c += a.offsetLeft;
   }
-  return{top:b, left:c};
+  return {top:b, left:c};
 }, getWindowSize:function() {
-  return{height:window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight, width:window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth};
+  return {height:window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight, width:window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth};
 }, inViewport:function(a, b) {
   var c = pagespeedutils.getPosition(a);
   return pagespeedutils.positionInViewport(c, b);
@@ -75,7 +75,7 @@ pagespeed.LazyloadImages.prototype.viewport_ = function() {
   var a = 0;
   "number" == typeof window.pageYOffset ? a = window.pageYOffset : document.body && document.body.scrollTop ? a = document.body.scrollTop : document.documentElement && document.documentElement.scrollTop && (a = document.documentElement.scrollTop);
   var b = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
-  return{top:a, bottom:a + b, height:b};
+  return {top:a, bottom:a + b, height:b};
 };
 pagespeed.LazyloadImages.prototype.compute_top_ = function(a) {
   var b = a.getAttribute("pagespeed_lazy_position");
@@ -90,7 +90,7 @@ pagespeed.LazyloadImages.prototype.compute_top_ = function(a) {
 };
 pagespeed.LazyloadImages.prototype.offset_ = function(a) {
   var b = this.compute_top_(a);
-  return{top:b, bottom:b + a.offsetHeight};
+  return {top:b, bottom:b + a.offsetHeight};
 };
 pagespeed.LazyloadImages.prototype.getStyle_ = function(a, b) {
   if (a.currentStyle) {
@@ -106,10 +106,10 @@ pagespeed.LazyloadImages.prototype.getStyle_ = function(a, b) {
 };
 pagespeed.LazyloadImages.prototype.isVisible_ = function(a) {
   if (!this.onload_done_ && (0 == a.offsetHeight || 0 == a.offsetWidth)) {
-    return!1;
+    return !1;
   }
   if ("relative" == this.getStyle_(a, "position")) {
-    return!0;
+    return !0;
   }
   var b = this.viewport_(), c = a.getBoundingClientRect();
   c ? (a = c.top - b.height, b = c.bottom) : (c = this.offset_(a), a = c.top - b.bottom, b = c.bottom - b.top);

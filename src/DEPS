@@ -82,12 +82,9 @@ vars = {
   # TODO(jmarantz): create an easy way to choose this option from the
   # 'gclient' command, without having to edit the gyp & DEPS files.
   #
-  # BoringSSL chosen at 1.14.2015 commit.
-  # Pulls in fixes from OpenSSL 1.0.1k.
-  # We pull boringssl from the git, and the build system from Chromium svn.
+  # BoringSSL commit picked on Mar 19, 2015
   "boringssl_src": "https://boringssl.googlesource.com/boringssl.git",
-  "boringssl_git_revision": "@df109ab3d4416f1c498f7ef24481cab3d3d72f1e",
-  "boringssl_revision": "293638",
+  "boringssl_git_revision": "@078abceb29077f9204db3dfca16de646e94c9014",
 
 
   "domain_registry_provider_src":
@@ -219,9 +216,6 @@ deps = {
 
   # Comment to disable HTTPS fetching via serf.  See also the
   # references in src/third_party/serf/serf.gyp.
-  "src/third_party/boringssl":
-    Var("chromium_trunk") + "src/third_party/boringssl/@" +
-        Var("boringssl_revision"),
   "src/third_party/boringssl/src":
     Var("boringssl_src") + Var("boringssl_git_revision"),
 

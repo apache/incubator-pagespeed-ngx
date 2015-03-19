@@ -1,0 +1,20 @@
+Updating BoringSSL can sometimes be tricky!
+
+Because sometimes the gypi file can change drastically upstream, we will
+have to take the gypi file from chromium's trunk and modify the paths.
+
+The gypi can be found here
+https://chromium.googlesource.com/chromium/src.git/+/master/third_party/boringssl/
+(master, but choose the proper revision to match the version of boringssl
+we are upgrading to).
+
+The following `sed` commands can be used to transform the chromium gypi to a
+usable format for us.
+
+sed -i 's/src\//<(openssl_root)\//g' boringssl.gypi
+mv boringssl.gypi openssl.gypi
+
+And then take chromium's precreated err_data.c file, and the folders,
+linux-x86, linux-x86_64, mac-x86_64, mac-x86, win-x86, win-x86_64,
+linux-aarch64, linux-arm, which contain the assembly routines, and place them in
+this directory.

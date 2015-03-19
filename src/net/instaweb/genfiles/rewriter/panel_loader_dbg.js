@@ -186,7 +186,7 @@ function insertMissingStubUsingXpath(a, b) {
   }
 }
 function endsWith(a, b) {
-  return(new RegExp(b + "$")).test(a);
+  return (new RegExp(b + "$")).test(a);
 }
 function instantiateChildPanels(a, b, c) {
   for (var d in c) {
