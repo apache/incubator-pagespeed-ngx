@@ -22,7 +22,7 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/thread_system.h"
-#include "pagespeed/system/public/system_rewrite_options.h"
+#include "pagespeed/system/system_rewrite_options.h"
 
 namespace net_instaweb {
 

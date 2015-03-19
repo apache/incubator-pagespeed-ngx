@@ -16,7 +16,7 @@
 
 // Author: morlovich@google.com (Maksim Orlovich)
 
-#include "pagespeed/system/public/system_rewrite_options.h"
+#include "pagespeed/system/system_rewrite_options.h"
 
 #include "net/instaweb/rewriter/public/rewrite_options_test_base.h"
 #include "pagespeed/kernel/base/google_message_handler.h"

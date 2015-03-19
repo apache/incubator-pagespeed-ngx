@@ -15,8 +15,8 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 //         lsong@google.com (Libo Song)
 
-#ifndef PAGESPEED_SYSTEM_PUBLIC_SERF_URL_ASYNC_FETCHER_H_
-#define PAGESPEED_SYSTEM_PUBLIC_SERF_URL_ASYNC_FETCHER_H_
+#ifndef PAGESPEED_SYSTEM_SERF_URL_ASYNC_FETCHER_H_
+#define PAGESPEED_SYSTEM_SERF_URL_ASYNC_FETCHER_H_
 
 #include <vector>
 
@@ -268,4 +268,4 @@ class SerfUrlAsyncFetcher : public UrlAsyncFetcher {
 
 }  // namespace net_instaweb
 
-#endif  // PAGESPEED_SYSTEM_PUBLIC_SERF_URL_ASYNC_FETCHER_H_
+#endif  // PAGESPEED_SYSTEM_SERF_URL_ASYNC_FETCHER_H_

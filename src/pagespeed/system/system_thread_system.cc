@@ -16,7 +16,7 @@
 
 // Author: morlovich@google.com (Maksim Orlovich)
 
-#include "pagespeed/system/public/system_thread_system.h"
+#include "pagespeed/system/system_thread_system.h"
 
 #include "base/logging.h"
 

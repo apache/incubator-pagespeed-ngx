@@ -14,8 +14,8 @@
 //
 // Author: jefftk@google.com (Jeff Kaufman)
 
-#ifndef PAGESPEED_SYSTEM_PUBLIC_SYSTEM_REWRITE_DRIVER_FACTORY_H_
-#define PAGESPEED_SYSTEM_PUBLIC_SYSTEM_REWRITE_DRIVER_FACTORY_H_
+#ifndef PAGESPEED_SYSTEM_SYSTEM_REWRITE_DRIVER_FACTORY_H_
+#define PAGESPEED_SYSTEM_SYSTEM_REWRITE_DRIVER_FACTORY_H_
 
 #include <map>
 #include <set>
@@ -390,4 +390,4 @@ class SystemRewriteDriverFactory : public RewriteDriverFactory {
 
 }  // namespace net_instaweb
 
-#endif  // PAGESPEED_SYSTEM_PUBLIC_SYSTEM_REWRITE_DRIVER_FACTORY_H_
+#endif  // PAGESPEED_SYSTEM_SYSTEM_REWRITE_DRIVER_FACTORY_H_

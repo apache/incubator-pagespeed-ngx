@@ -18,7 +18,7 @@
 //
 // Unit tests for SystemMessageHandler
 
-#include "pagespeed/system/public/system_message_handler.h"
+#include "pagespeed/system/system_message_handler.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mock_timer.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"

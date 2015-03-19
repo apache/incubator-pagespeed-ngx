@@ -16,8 +16,8 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#ifndef PAGESPEED_SYSTEM_PUBLIC_APR_MEM_CACHE_H_
-#define PAGESPEED_SYSTEM_PUBLIC_APR_MEM_CACHE_H_
+#ifndef PAGESPEED_SYSTEM_APR_MEM_CACHE_H_
+#define PAGESPEED_SYSTEM_APR_MEM_CACHE_H_
 
 #include <cstddef>
 #include <vector>
@@ -171,4 +171,4 @@ class AprMemCache : public CacheInterface {
 
 }  // namespace net_instaweb
 
-#endif  // PAGESPEED_SYSTEM_PUBLIC_APR_MEM_CACHE_H_
+#endif  // PAGESPEED_SYSTEM_APR_MEM_CACHE_H_

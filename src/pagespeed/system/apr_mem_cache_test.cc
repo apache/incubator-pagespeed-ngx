@@ -18,7 +18,7 @@
 
 // Unit-test the memcache interface.
 
-#include "pagespeed/system/public/apr_mem_cache.h"
+#include "pagespeed/system/apr_mem_cache.h"
 
 #include <cstddef>
 

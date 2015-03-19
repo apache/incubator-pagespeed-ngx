@@ -25,7 +25,7 @@
 
 #include "base/logging.h"
 #include "pagespeed/kernel/base/basictypes.h"
-#include "pagespeed/system/public/system_request_context.h"
+#include "pagespeed/system/system_request_context.h"
 
 struct request_rec;
 struct spdy_slave_connection_factory;

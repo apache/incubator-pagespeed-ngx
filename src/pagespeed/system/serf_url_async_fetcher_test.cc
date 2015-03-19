@@ -15,7 +15,7 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 //         lsong@google.com (Libo Song)
 
-#include "pagespeed/system/public/serf_url_async_fetcher.h"
+#include "pagespeed/system/serf_url_async_fetcher.h"
 
 #include <unistd.h>
 #include <cstddef>

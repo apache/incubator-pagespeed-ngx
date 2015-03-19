@@ -14,7 +14,7 @@
 //
 // Author: jefftk@google.com (Jeff Kaufman)
 
-#include "pagespeed/system/public/add_headers_fetcher.h"
+#include "pagespeed/system/add_headers_fetcher.h"
 
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"

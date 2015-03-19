@@ -14,8 +14,8 @@
 //
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#ifndef PAGESPEED_SYSTEM_PUBLIC_SYSTEM_REWRITE_OPTIONS_H_
-#define PAGESPEED_SYSTEM_PUBLIC_SYSTEM_REWRITE_OPTIONS_H_
+#ifndef PAGESPEED_SYSTEM_SYSTEM_REWRITE_OPTIONS_H_
+#define PAGESPEED_SYSTEM_SYSTEM_REWRITE_OPTIONS_H_
 
 #include <set>
 
@@ -415,4 +415,4 @@ class SystemRewriteOptions : public RewriteOptions {
 
 }  // namespace net_instaweb
 
-#endif  // PAGESPEED_SYSTEM_PUBLIC_SYSTEM_REWRITE_OPTIONS_H_
+#endif  // PAGESPEED_SYSTEM_SYSTEM_REWRITE_OPTIONS_H_

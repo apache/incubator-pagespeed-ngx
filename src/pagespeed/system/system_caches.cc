@@ -15,7 +15,7 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 //         lsong@google.com (Libo Song)
 
-#include "pagespeed/system/public/system_caches.h"
+#include "pagespeed/system/system_caches.h"
 
 #include <cstddef>
 #include <cstdlib>
@@ -28,10 +28,10 @@
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "pagespeed/system/public/apr_mem_cache.h"
-#include "pagespeed/system/public/system_cache_path.h"
-#include "pagespeed/system/public/system_rewrite_options.h"
-#include "pagespeed/system/public/system_server_context.h"
+#include "pagespeed/system/apr_mem_cache.h"
+#include "pagespeed/system/system_cache_path.h"
+#include "pagespeed/system/system_rewrite_options.h"
+#include "pagespeed/system/system_server_context.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "pagespeed/kernel/base/abstract_shared_mem.h"
 #include "pagespeed/kernel/base/md5_hasher.h"

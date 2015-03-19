@@ -56,9 +56,9 @@
 #include "pagespeed/kernel/http/http_options.h"
 #include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/response_headers.h"
-#include "pagespeed/system/public/admin_site.h"
-#include "pagespeed/system/public/in_place_resource_recorder.h"
-#include "pagespeed/system/public/system_rewrite_options.h"
+#include "pagespeed/system/admin_site.h"
+#include "pagespeed/system/in_place_resource_recorder.h"
+#include "pagespeed/system/system_rewrite_options.h"
 
 #include "http_config.h"
 #include "http_core.h"

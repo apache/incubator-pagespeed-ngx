@@ -20,7 +20,7 @@
 // interest in a particular URL once the callback completed.  Alternatively,
 // this could be done in a level above the URL fetcher.
 
-#include "pagespeed/system/public/serf_url_async_fetcher.h"
+#include "pagespeed/system/serf_url_async_fetcher.h"
 
 #include <cstddef>
 #include <list>
@@ -34,7 +34,7 @@
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/public/version.h"
-#include "pagespeed/system/public/apr_thread_compatible_pool.h"
+#include "pagespeed/system/apr_thread_compatible_pool.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/condvar.h"

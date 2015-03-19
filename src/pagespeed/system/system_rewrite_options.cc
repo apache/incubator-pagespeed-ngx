@@ -14,10 +14,10 @@
 //
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "pagespeed/system/public/system_rewrite_options.h"
+#include "pagespeed/system/system_rewrite_options.h"
 
 #include "base/logging.h"
-#include "pagespeed/system/public/serf_url_async_fetcher.h"
+#include "pagespeed/system/serf_url_async_fetcher.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/timer.h"
 

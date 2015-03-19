@@ -18,8 +18,8 @@
 // requests based on settings in the rewrite options before passing them on to
 // the backend fetcher.
 
-#ifndef PAGESPEED_SYSTEM_PUBLIC_ADD_HEADERS_FETCHER_H_
-#define PAGESPEED_SYSTEM_PUBLIC_ADD_HEADERS_FETCHER_H_
+#ifndef PAGESPEED_SYSTEM_ADD_HEADERS_FETCHER_H_
+#define PAGESPEED_SYSTEM_ADD_HEADERS_FETCHER_H_
 
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "pagespeed/kernel/base/basictypes.h"
@@ -54,4 +54,4 @@ class AddHeadersFetcher : public UrlAsyncFetcher {
 
 }  // namespace net_instaweb
 
-#endif  // PAGESPEED_SYSTEM_PUBLIC_ADD_HEADERS_FETCHER_H_
+#endif  // PAGESPEED_SYSTEM_ADD_HEADERS_FETCHER_H_

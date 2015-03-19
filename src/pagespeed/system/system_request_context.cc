@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "pagespeed/system/public/system_request_context.h"
+#include "pagespeed/system/system_request_context.h"
 
 #include "base/logging.h"
 #include "pagespeed/kernel/http/domain_registry.h"

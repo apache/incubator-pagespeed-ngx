@@ -16,14 +16,14 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "pagespeed/system/public/apr_mem_cache.h"
+#include "pagespeed/system/apr_mem_cache.h"
 
 #include <memory>
 
 #include "apr_pools.h"  // NOLINT
 
 #include "base/logging.h"
-#include "pagespeed/system/public/apr_thread_compatible_pool.h"
+#include "pagespeed/system/apr_thread_compatible_pool.h"
 #include "pagespeed/kernel/base/hasher.h"
 #include "pagespeed/kernel/base/hostname_util.h"
 #include "pagespeed/kernel/base/message_handler.h"

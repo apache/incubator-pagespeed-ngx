@@ -15,8 +15,8 @@
 // Author: jefftk@google.com (Jeff Kaufman)
 // Author: xqyin@google.com (XiaoQian Yin)
 
-#ifndef PAGESPEED_SYSTEM_PUBLIC_ADMIN_SITE_H_
-#define PAGESPEED_SYSTEM_PUBLIC_ADMIN_SITE_H_
+#ifndef PAGESPEED_SYSTEM_ADMIN_SITE_H_
+#define PAGESPEED_SYSTEM_ADMIN_SITE_H_
 
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -172,4 +172,4 @@ class AdminSite {
 
 }  // namespace net_instaweb
 
-#endif  // PAGESPEED_SYSTEM_PUBLIC_ADMIN_SITE_H_
+#endif  // PAGESPEED_SYSTEM_ADMIN_SITE_H_

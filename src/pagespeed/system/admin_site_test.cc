@@ -17,7 +17,7 @@
 // Author: xqyin@google.com (XiaoQian Yin)
 // Unit tests for AdminSite.
 
-#include "pagespeed/system/public/admin_site.h"
+#include "pagespeed/system/admin_site.h"
 
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/rewriter/public/custom_rewrite_test_base.h"
@@ -25,8 +25,8 @@
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
-#include "pagespeed/system/public/system_rewrite_options.h"
-#include "pagespeed/system/public/system_server_context.h"
+#include "pagespeed/system/system_rewrite_options.h"
+#include "pagespeed/system/system_server_context.h"
 #include "pagespeed/kernel/base/gmock.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/message_handler.h"

@@ -56,10 +56,10 @@
 #include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/http/http_names.h"
 #include "pagespeed/kernel/http/response_headers.h"
-#include "pagespeed/system/public/in_place_resource_recorder.h"
-#include "pagespeed/system/public/loopback_route_fetcher.h"
-#include "pagespeed/system/public/system_rewrite_options.h"
-#include "pagespeed/system/public/system_server_context.h"
+#include "pagespeed/system/in_place_resource_recorder.h"
+#include "pagespeed/system/loopback_route_fetcher.h"
+#include "pagespeed/system/system_rewrite_options.h"
+#include "pagespeed/system/system_server_context.h"
 
 #include "util_filter.h"                                             // NOLINT
 // Note: a very useful reference is this file, which demos many Apache module

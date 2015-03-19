@@ -16,7 +16,7 @@
 
 // Author: xqyin@google.com (XiaoQian Yin)
 
-#include "pagespeed/system/public/system_message_handler.h"
+#include "pagespeed/system/system_message_handler.h"
 
 #include <unistd.h>
 

@@ -45,7 +45,7 @@
 #include "pagespeed/kernel/http/http_names.h"
 #include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/response_headers.h"
-#include "pagespeed/system/public/system_rewrite_options.h"
+#include "pagespeed/system/system_rewrite_options.h"
 
 // The Apache headers must be after instaweb headers.  Otherwise, the
 // compiler will complain

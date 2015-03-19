@@ -21,8 +21,8 @@
 // mutex, etc., creation requires pools which are generally thread unsafe,
 // introducing some additional risks.
 
-#ifndef PAGESPEED_SYSTEM_PUBLIC_SYSTEM_THREAD_SYSTEM_H_
-#define PAGESPEED_SYSTEM_PUBLIC_SYSTEM_THREAD_SYSTEM_H_
+#ifndef PAGESPEED_SYSTEM_SYSTEM_THREAD_SYSTEM_H_
+#define PAGESPEED_SYSTEM_SYSTEM_THREAD_SYSTEM_H_
 
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/thread/pthread_thread_system.h"
@@ -51,4 +51,4 @@ class SystemThreadSystem : public PthreadThreadSystem {
 
 }  // namespace net_instaweb
 
-#endif  // PAGESPEED_SYSTEM_PUBLIC_SYSTEM_THREAD_SYSTEM_H_
+#endif  // PAGESPEED_SYSTEM_SYSTEM_THREAD_SYSTEM_H_

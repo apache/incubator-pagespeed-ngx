@@ -17,7 +17,7 @@
 // Author: morlovich@google.com (Maksim Orlovich)
 // Unit tests for common cache configuration code.
 
-#include "pagespeed/system/public/system_caches.h"
+#include "pagespeed/system/system_caches.h"
 
 #include <cstdlib>
 #include <vector>
@@ -33,11 +33,11 @@
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
-#include "pagespeed/system/public/admin_site.h"
-#include "pagespeed/system/public/apr_mem_cache.h"
-#include "pagespeed/system/public/system_cache_path.h"
-#include "pagespeed/system/public/system_rewrite_options.h"
-#include "pagespeed/system/public/system_server_context.h"
+#include "pagespeed/system/admin_site.h"
+#include "pagespeed/system/apr_mem_cache.h"
+#include "pagespeed/system/system_cache_path.h"
+#include "pagespeed/system/system_rewrite_options.h"
+#include "pagespeed/system/system_server_context.h"
 #include "net/instaweb/util/public/cache_property_store.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/property_store.h"

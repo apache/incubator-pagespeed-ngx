@@ -14,8 +14,8 @@
 //
 // Author: sligocki@google.com (Shawn Ligocki)
 
-#ifndef PAGESPEED_SYSTEM_PUBLIC_IN_PLACE_RESOURCE_RECORDER_H_
-#define PAGESPEED_SYSTEM_PUBLIC_IN_PLACE_RESOURCE_RECORDER_H_
+#ifndef PAGESPEED_SYSTEM_IN_PLACE_RESOURCE_RECORDER_H_
+#define PAGESPEED_SYSTEM_IN_PLACE_RESOURCE_RECORDER_H_
 
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/http_value.h"
@@ -177,4 +177,4 @@ class InPlaceResourceRecorder : public Writer {
 
 }  // namespace net_instaweb
 
-#endif  // PAGESPEED_SYSTEM_PUBLIC_IN_PLACE_RESOURCE_RECORDER_H_
+#endif  // PAGESPEED_SYSTEM_IN_PLACE_RESOURCE_RECORDER_H_

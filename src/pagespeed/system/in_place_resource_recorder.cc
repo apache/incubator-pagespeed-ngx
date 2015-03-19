@@ -14,7 +14,7 @@
 //
 // Author: sligocki@google.com (Shawn Ligocki)
 
-#include "pagespeed/system/public/in_place_resource_recorder.h"
+#include "pagespeed/system/in_place_resource_recorder.h"
 
 #include <algorithm>
 

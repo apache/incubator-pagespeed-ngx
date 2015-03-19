@@ -19,8 +19,8 @@
 // Captures the request details in our request context, including
 // the port and ip (used for loopback fetches).
 
-#ifndef PAGESPEED_SYSTEM_PUBLIC_SYSTEM_REQUEST_CONTEXT_H_
-#define PAGESPEED_SYSTEM_PUBLIC_SYSTEM_REQUEST_CONTEXT_H_
+#ifndef PAGESPEED_SYSTEM_SYSTEM_REQUEST_CONTEXT_H_
+#define PAGESPEED_SYSTEM_SYSTEM_REQUEST_CONTEXT_H_
 
 #include "net/instaweb/http/public/request_context.h"
 #include "pagespeed/kernel/base/basictypes.h"
@@ -67,4 +67,4 @@ class SystemRequestContext : public RequestContext {
 
 }  // namespace net_instaweb
 
-#endif  // PAGESPEED_SYSTEM_PUBLIC_SYSTEM_REQUEST_CONTEXT_H_
+#endif  // PAGESPEED_SYSTEM_SYSTEM_REQUEST_CONTEXT_H_

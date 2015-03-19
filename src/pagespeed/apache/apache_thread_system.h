@@ -22,7 +22,7 @@
 #define PAGESPEED_APACHE_APACHE_THREAD_SYSTEM_H_
 
 #include "pagespeed/kernel/base/basictypes.h"
-#include "pagespeed/system/public/system_thread_system.h"
+#include "pagespeed/system/system_thread_system.h"
 
 namespace net_instaweb {
 

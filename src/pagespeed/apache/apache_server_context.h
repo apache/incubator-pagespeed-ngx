@@ -25,7 +25,7 @@
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
-#include "pagespeed/system/public/system_server_context.h"
+#include "pagespeed/system/system_server_context.h"
 
 struct request_rec;
 struct server_rec;

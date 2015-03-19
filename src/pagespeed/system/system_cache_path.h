@@ -14,8 +14,8 @@
 //
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#ifndef PAGESPEED_SYSTEM_PUBLIC_SYSTEM_CACHE_PATH_H_
-#define PAGESPEED_SYSTEM_PUBLIC_SYSTEM_CACHE_PATH_H_
+#ifndef PAGESPEED_SYSTEM_SYSTEM_CACHE_PATH_H_
+#define PAGESPEED_SYSTEM_SYSTEM_CACHE_PATH_H_
 
 #include <set>
 
@@ -152,4 +152,4 @@ class SystemCachePath {
 
 }  // namespace net_instaweb
 
-#endif  // PAGESPEED_SYSTEM_PUBLIC_SYSTEM_CACHE_PATH_H_
+#endif  // PAGESPEED_SYSTEM_SYSTEM_CACHE_PATH_H_

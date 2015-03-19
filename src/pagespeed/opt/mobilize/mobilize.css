@@ -102,12 +102,6 @@ body {
   transition: background-color 0.2s ease-out;
 }
 
-.psmob-header-bar button img {
-  padding: 0;
-  height: 50%;
-  width: 50%;
-}
-
 .psmob-header-bar button:hover {
   background-color: rgba(255, 255, 255, 0.1);
 }
@@ -138,12 +132,14 @@ body {
   width: 40%;
   height: 40%;
   padding: 30% 30% 30% 30%;
+  box-sizing: content-box;
 }
 
 #psmob-map-image {
   width: 30%;
   height: 30%;
   padding: 30% 35% 40% 35%;
+  box-sizing: content-box;
 }
 
 #psmob-logo-span {
@@ -165,6 +161,7 @@ body {
   left: 0;
   right: 0;
   vertical-align: middle;
+  box-sizing: content-box;
 }
 
 .psmob-hamburger-line {
@@ -180,6 +177,7 @@ body {
   padding-bottom: 27%;
   padding-left: 30%;
   padding-right: 30%;
+  box-sizing: content-box;
 }
 
 .psmob-nav-panel {

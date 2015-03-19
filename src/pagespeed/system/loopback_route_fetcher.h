@@ -18,8 +18,8 @@
 // the DomainLawyer towards our own IP, as extracted from the incoming
 // connection.
 
-#ifndef PAGESPEED_SYSTEM_PUBLIC_LOOPBACK_ROUTE_FETCHER_H_
-#define PAGESPEED_SYSTEM_PUBLIC_LOOPBACK_ROUTE_FETCHER_H_
+#ifndef PAGESPEED_SYSTEM_LOOPBACK_ROUTE_FETCHER_H_
+#define PAGESPEED_SYSTEM_LOOPBACK_ROUTE_FETCHER_H_
 
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "pagespeed/kernel/base/basictypes.h"
@@ -71,4 +71,4 @@ class LoopbackRouteFetcher : public UrlAsyncFetcher {
 
 }  // namespace net_instaweb
 
-#endif  // PAGESPEED_SYSTEM_PUBLIC_LOOPBACK_ROUTE_FETCHER_H_
+#endif  // PAGESPEED_SYSTEM_LOOPBACK_ROUTE_FETCHER_H_

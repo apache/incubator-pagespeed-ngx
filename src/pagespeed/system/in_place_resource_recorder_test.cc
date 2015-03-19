@@ -17,7 +17,7 @@
 // Author: morlovich@google.com (Maksim Orlovich)
 // Unit tests for InPlaceResourceRecorder.
 
-#include "pagespeed/system/public/in_place_resource_recorder.h"
+#include "pagespeed/system/in_place_resource_recorder.h"
 
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"

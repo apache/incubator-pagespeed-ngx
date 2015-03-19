@@ -14,13 +14,13 @@
 //
 // Author: jefftk@google.com (Jeff Kaufman)
 
-#ifndef PAGESPEED_SYSTEM_PUBLIC_SYSTEM_SERVER_CONTEXT_H_
-#define PAGESPEED_SYSTEM_PUBLIC_SYSTEM_SERVER_CONTEXT_H_
+#ifndef PAGESPEED_SYSTEM_SYSTEM_SERVER_CONTEXT_H_
+#define PAGESPEED_SYSTEM_SYSTEM_SERVER_CONTEXT_H_
 
 #include "net/instaweb/rewriter/public/server_context.h"
 
 #include "net/instaweb/http/public/request_context.h"
-#include "pagespeed/system/public/admin_site.h"
+#include "pagespeed/system/admin_site.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
@@ -272,4 +272,4 @@ class SystemServerContext : public ServerContext {
 
 }  // namespace net_instaweb
 
-#endif  // PAGESPEED_SYSTEM_PUBLIC_SYSTEM_SERVER_CONTEXT_H_
+#endif  // PAGESPEED_SYSTEM_SYSTEM_SERVER_CONTEXT_H_

@@ -14,7 +14,7 @@
 //
 // Author: jefftk@google.com (Jeff Kaufman)
 
-#include "pagespeed/system/public/system_rewrite_driver_factory.h"
+#include "pagespeed/system/system_rewrite_driver_factory.h"
 
 #include <algorithm>  // for min
 #include <cstdlib>
@@ -33,12 +33,12 @@
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
-#include "pagespeed/system/public/in_place_resource_recorder.h"
-#include "pagespeed/system/public/serf_url_async_fetcher.h"
-#include "pagespeed/system/public/system_caches.h"
-#include "pagespeed/system/public/system_rewrite_options.h"
-#include "pagespeed/system/public/system_server_context.h"
-#include "pagespeed/system/public/system_thread_system.h"
+#include "pagespeed/system/in_place_resource_recorder.h"
+#include "pagespeed/system/serf_url_async_fetcher.h"
+#include "pagespeed/system/system_caches.h"
+#include "pagespeed/system/system_rewrite_options.h"
+#include "pagespeed/system/system_server_context.h"
+#include "pagespeed/system/system_thread_system.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "pagespeed/kernel/base/abstract_shared_mem.h"
 #include "pagespeed/kernel/base/file_system.h"

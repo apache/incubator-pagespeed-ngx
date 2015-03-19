@@ -15,7 +15,7 @@
 // Author: jefftk@google.com (Jeff Kaufman)
 // Author: xqyin@google.com (XiaoQian Yin)
 
-#include "pagespeed/system/public/admin_site.h"
+#include "pagespeed/system/admin_site.h"
 
 #include <cstddef>
 #include <memory>
@@ -27,9 +27,9 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "pagespeed/system/public/system_cache_path.h"
-#include "pagespeed/system/public/system_caches.h"
-#include "pagespeed/system/public/system_rewrite_options.h"
+#include "pagespeed/system/system_cache_path.h"
+#include "pagespeed/system/system_caches.h"
+#include "pagespeed/system/system_rewrite_options.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/property_store.h"
 #include "pagespeed/kernel/base/cache_interface.h"

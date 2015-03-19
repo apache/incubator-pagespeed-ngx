@@ -15,7 +15,7 @@
 // Author: morlovich@google.com (Maksim Orlovich)
 //         jmarantz@google.com (Joshua Marantz)  (refactoring only)
 
-#include "pagespeed/system/public/apr_thread_compatible_pool.h"
+#include "pagespeed/system/apr_thread_compatible_pool.h"
 
 #include <cstddef>
 

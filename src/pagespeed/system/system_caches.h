@@ -15,8 +15,8 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 //         lsong@google.com (Libo Song)
 
-#ifndef PAGESPEED_SYSTEM_PUBLIC_SYSTEM_CACHES_H_
-#define PAGESPEED_SYSTEM_PUBLIC_SYSTEM_CACHES_H_
+#ifndef PAGESPEED_SYSTEM_SYSTEM_CACHES_H_
+#define PAGESPEED_SYSTEM_SYSTEM_CACHES_H_
 
 #include <map>
 #include <vector>
@@ -241,4 +241,4 @@ class SystemCaches {
 
 }  // namespace net_instaweb
 
-#endif  // PAGESPEED_SYSTEM_PUBLIC_SYSTEM_CACHES_H_
+#endif  // PAGESPEED_SYSTEM_SYSTEM_CACHES_H_

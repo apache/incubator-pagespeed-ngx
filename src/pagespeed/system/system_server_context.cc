@@ -14,7 +14,7 @@
 //
 // Author: jefftk@google.com (Jeff Kaufman)
 
-#include "pagespeed/system/public/system_server_context.h"
+#include "pagespeed/system/system_server_context.h"
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
@@ -23,13 +23,13 @@
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
-#include "pagespeed/system/public/add_headers_fetcher.h"
-#include "pagespeed/system/public/loopback_route_fetcher.h"
-#include "pagespeed/system/public/system_cache_path.h"
-#include "pagespeed/system/public/system_caches.h"
-#include "pagespeed/system/public/system_request_context.h"
-#include "pagespeed/system/public/system_rewrite_driver_factory.h"
-#include "pagespeed/system/public/system_rewrite_options.h"
+#include "pagespeed/system/add_headers_fetcher.h"
+#include "pagespeed/system/loopback_route_fetcher.h"
+#include "pagespeed/system/system_cache_path.h"
+#include "pagespeed/system/system_caches.h"
+#include "pagespeed/system/system_request_context.h"
+#include "pagespeed/system/system_rewrite_driver_factory.h"
+#include "pagespeed/system/system_rewrite_options.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/file_system.h"
 #include "pagespeed/kernel/base/message_handler.h"

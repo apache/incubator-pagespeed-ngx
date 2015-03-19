@@ -16,8 +16,8 @@
 
 // Author: xqyin@google.com (XiaoQian Yin)
 
-#ifndef PAGESPEED_SYSTEM_PUBLIC_SYSTEM_MESSAGE_HANDLER_H_
-#define PAGESPEED_SYSTEM_PUBLIC_SYSTEM_MESSAGE_HANDLER_H_
+#ifndef PAGESPEED_SYSTEM_SYSTEM_MESSAGE_HANDLER_H_
+#define PAGESPEED_SYSTEM_SYSTEM_MESSAGE_HANDLER_H_
 
 #include <cstdarg>
 
@@ -87,4 +87,4 @@ class SystemMessageHandler : public GoogleMessageHandler {
 
 }  // namespace net_instaweb
 
-#endif  // PAGESPEED_SYSTEM_PUBLIC_SYSTEM_MESSAGE_HANDLER_H_
+#endif  // PAGESPEED_SYSTEM_SYSTEM_MESSAGE_HANDLER_H_

@@ -21,7 +21,7 @@
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
-#include "pagespeed/system/public/system_message_handler.h"
+#include "pagespeed/system/system_message_handler.h"
 
 struct server_rec;
 

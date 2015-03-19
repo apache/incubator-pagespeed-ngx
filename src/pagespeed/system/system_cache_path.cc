@@ -14,13 +14,13 @@
 //
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "pagespeed/system/public/system_cache_path.h"
+#include "pagespeed/system/system_cache_path.h"
 
 #include "base/logging.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "pagespeed/system/public/system_rewrite_options.h"
-#include "pagespeed/system/public/system_server_context.h"
+#include "pagespeed/system/system_rewrite_options.h"
+#include "pagespeed/system/system_server_context.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/callback.h"

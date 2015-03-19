@@ -25,7 +25,7 @@
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
-#include "pagespeed/system/public/system_rewrite_driver_factory.h"
+#include "pagespeed/system/system_rewrite_driver_factory.h"
 
 struct apr_pool_t;
 struct server_rec;

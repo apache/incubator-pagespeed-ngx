@@ -18,7 +18,7 @@
 //
 // Unit tests for AddHeadersFetcher.
 //
-#include "pagespeed/system/public/add_headers_fetcher.h"
+#include "pagespeed/system/add_headers_fetcher.h"
 
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/reflecting_test_fetcher.h"
