@@ -22,7 +22,7 @@
 #define NGX_SERVER_CONTEXT_H_
 
 #include "ngx_message_handler.h"
-#include "pagespeed/system/public/system_server_context.h"
+#include "pagespeed/system/system_server_context.h"
 
 extern "C" {
 #include <ngx_http.h>

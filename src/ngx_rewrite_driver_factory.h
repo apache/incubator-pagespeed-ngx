@@ -30,7 +30,7 @@ extern "C" {
 
 #include "pagespeed/kernel/base/md5_hasher.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
-#include "pagespeed/system/public/system_rewrite_driver_factory.h"
+#include "pagespeed/system/system_rewrite_driver_factory.h"
 
 namespace net_instaweb {
 
