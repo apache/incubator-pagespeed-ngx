@@ -153,6 +153,9 @@ pagespeed.MobNav = function() {
    * @private {boolean}
    */
   this.isAndroidBrowser_ = goog.labs.userAgent.browser.isAndroidBrowser();
+
+  // From https://dev.opera.com/articles/opera-mini-and-javascript/
+  this.isOperaMini_ = (navigator.userAgent.indexOf('Opera Mini') > -1);
 };
 
 
@@ -500,7 +503,6 @@ pagespeed.MobNav.prototype.redrawNavPanel_ = function() {
     return;
   }
 
-
   var scale = window.innerWidth * .8 / pagespeed.MobNav.NAV_PANEL_WIDTH_;
 
   var xOffset =
@@ -516,8 +518,15 @@ pagespeed.MobNav.prototype.redrawNavPanel_ = function() {
 
   var headerBarBox = this.headerBar_.getBoundingClientRect();
   this.navPanel_.style.marginTop = headerBarBox.height + 'px';
-  this.navPanel_.style.height =
-      ((window.innerHeight - headerBarBox.height) / scale) + 'px';
+
+  // Opera mini does not support the css3 scale transformation nor the touch
+  // events that we use heavily here. As a workaround, we don't set the height
+  // here which allows the nav panel to fit the content. The user is then able
+  // to pinch zoom and see the whole menu, rather than scrolling the menu div.
+  if (!this.isOperaMini_) {
+    this.navPanel_.style.height =
+        ((window.innerHeight - headerBarBox.height) / scale) + 'px';
+  }
 };
 
 

@@ -282,7 +282,7 @@ pagespeed.Mob.prototype.collectBackgroundImages_ = function(node) {
     this.imageMap_[image] = pagespeed.Mob.IN_TRANSIT_;
     var img = new Image();
     ++this.pendingImageLoadCount_;
-    img.onload = this.backgroundImageLoaded_.bind(this, img);
+    img.onload = goog.bind(this.backgroundImageLoaded_, this, img);
     img.onerror = img.onload;
     img.src = image;
   }
@@ -545,7 +545,7 @@ var psMob = new pagespeed.Mob();
 pagespeed.Mob.prototype.extractTheme_ = function() {
   if (window.psNavMode && !pagespeed.MobUtil.inFriendlyIframe()) {
     ++this.pendingCallbacks_;
-    pagespeed.MobTheme.extractTheme(this, this.themeComplete_.bind(this));
+    pagespeed.MobTheme.extractTheme(this, goog.bind(this.themeComplete_, this));
   }
 };
 
