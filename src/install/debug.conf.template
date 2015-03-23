@@ -1335,6 +1335,7 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_noned_shmm"
 #COVERAGE
 #COVERAGE   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@-alt"
 #COVERAGE   ModPagespeedRewriteLevel PassThrough
+#COVERAGE   ModPagespeedInPlaceResourceOptimization off
 #COVERAGE
 #COVERAGE   # ModPagespeedSlurpDirectory ...
 #COVERAGE   # ModPagespeedSlurpReadOnly on
