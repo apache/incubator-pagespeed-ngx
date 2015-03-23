@@ -19,8 +19,12 @@
 
 goog.provide('pagespeed.Mob');
 
+goog.require('goog.color');
+goog.require('goog.dom.TagName');
 goog.require('goog.events.EventType');
+goog.require('goog.object');
 goog.require('goog.string');
+goog.require('goog.uri.utils');
 goog.require('pagespeed.MobLayout');
 goog.require('pagespeed.MobNav');
 goog.require('pagespeed.MobTheme');
@@ -136,6 +140,33 @@ pagespeed.Mob = function() {
   this.layout_ = new pagespeed.MobLayout(this);
 
   this.layout_.addDontTouchId(pagespeed.Mob.PROGRESS_SCRIM_ID_);
+
+  /**
+   * Number of URLs to process. This property is used only when the query
+   * parameters include 'PageSpeedSiteWideProcessing', which is defined in
+   * QUERY_SITE_WIDE_PROCESS_. It should be '-1' if site wide processing
+   * will not be used or has been completed.
+   * @private {number}
+   */
+  this.configNumUrlsToProcess_ = -1;
+
+  /**
+   * ID of the timer which monitors the processing for the current page.
+   * @private {?number}
+   */
+  this.configTimer_ = null;
+
+  /**
+   * List of URLs which shall be processed.
+   * @private {!Array.<string>}
+   */
+  this.configUrls_ = [];
+
+  /**
+   * Theme data which have been found.
+   * @private {!Array.<pagespeed.MobUtil.ThemeData>}
+   */
+  this.configThemes_ = [];
 };
 
 
@@ -182,6 +213,34 @@ pagespeed.Mob.PROGRESS_SHOW_LOG_ID_ = 'ps-progress-show-log';
 
 
 /**
+ * HTML ID of the hidden iframe which is used for site-wide processing.
+ * @private @const {string}
+ */
+pagespeed.Mob.CONFIG_IFRAME_ID_ = 'ps-hidden-iframe';
+
+
+/**
+ * Query parameter for site-wide theme extraction.
+ * @private @const {string}
+ */
+pagespeed.Mob.CONFIG_QUERY_SITE_WIDE_PROCESS_ = 'PageSpeedSiteWideProcessing';
+
+
+/**
+ * Maximum time for mobilizing a page.
+ * @private @const {number}
+ */
+pagespeed.Mob.CONFIG_MAX_TIME_MS_ = 10000;
+
+
+/**
+ * Maximum number of links for site-wide theme extraction.
+ * @private @const {number}
+ */
+pagespeed.Mob.CONFIG_MAX_NUM_LINKS_ = 100;
+
+
+/**
  * String used as a temporary imageMap_ value after an image has
  * started to load, but before it's done loading.
  * @private @const {!pagespeed.MobUtil.Dimensions}
@@ -223,6 +282,8 @@ pagespeed.Mob.prototype.mobilizeSite_ = function() {
  * @param {!pagespeed.MobUtil.ThemeData} themeData
  * @private
  */
+// TODO(huibao): Make themeComplete_ and site-wide theme extraction to return
+// multiple themes for one URL.
 pagespeed.Mob.prototype.themeComplete_ = function(themeData) {
   --this.pendingCallbacks_;
   this.updateProgressBar(this.domElementCount_, 'extract theme');
@@ -230,6 +291,20 @@ pagespeed.Mob.prototype.themeComplete_ = function(themeData) {
   mobNav.Run(themeData);
   this.updateProgressBar(this.domElementCount_, 'navigation');
   this.maybeRunLayout();
+
+  var masterPsMob = this.psMobForMasterWindow_();
+  if (masterPsMob && masterPsMob.configNumUrlsToProcess_ >= 0) {
+    if (this.inPsIframeWindow_()) {
+      pagespeed.MobTheme.updateHeaderBar(this.masterWindow_(), themeData);
+    } else {
+      var iframe = document.createElement(goog.dom.TagName.IFRAME);
+      iframe.id = pagespeed.Mob.CONFIG_IFRAME_ID_;
+      iframe.hidden = true;
+      document.body.appendChild(iframe);
+    }
+    masterPsMob.configThemes_.push(themeData);
+    this.mobilizeNextUrl_(true /* finish on time */);
+  }
 };
 
 
@@ -525,32 +600,56 @@ pagespeed.Mob.prototype.removeProgressBar = function() {
 };
 
 
-// We need a global 'psMob' object for now, for use in compatibility functions.
-// This should eventually disappear.
-var psMob = new pagespeed.Mob();
-
-
 /**
  * Extract theme. After that, execute themeComplete_().
  * @private
  */
 pagespeed.Mob.prototype.extractTheme_ = function() {
-  if (window.psNavMode && !pagespeed.MobUtil.inFriendlyIframe()) {
+  if (window.psNavMode) {
     ++this.pendingCallbacks_;
+    var paramName = pagespeed.Mob.CONFIG_QUERY_SITE_WIDE_PROCESS_;
+    if (!this.inPsIframeWindow_() && window.document.body &&
+        window.location.search.indexOf(paramName) != -1) {
+      var urls = this.collectUrls_();
+      this.psMobForMasterWindow_().configUrls_ = urls;
+      var numString = prompt(urls.length + ' links have been found in this ' +
+          'page. If you want to compute theme from them, enter the number of ' +
+          'links below and press "OK". It may take a while to process them. ' +
+          'Once processing completes, you will see another dialog.',
+          urls.length.toString());
+      if (numString) {  // numString is null if "Cancel" was chosen.
+        var num = goog.string.parseInt(numString);
+        if (num < 0) {
+          this.configNumUrlsToProcess_ = 0;
+        } else if (num > urls.length) {
+          this.configNumUrlsToProcess_ = urls.length;
+        } else {
+          this.configNumUrlsToProcess_ = num;
+        }
+      }
+    }
     pagespeed.MobTheme.extractTheme(this, goog.bind(this.themeComplete_, this));
   }
 };
 
 
+/**
+ * We need a global 'psMob' object for now, for use in compatibility
+ * functions. This should eventually disappear.
+ * @type {!pagespeed.Mob}
+ */
+window.psMob = new pagespeed.Mob();
+
+
 // Start theme extraction and navigation re-synthesis when the document content
 // is loaded.
 window.addEventListener(goog.events.EventType.DOMCONTENTLOADED,
-                        goog.bind(psMob.extractTheme_, psMob));
+                        goog.bind(window.psMob.extractTheme_, window.psMob));
 
 
 // Start layout re-synthesis if it has been configured.
 window.addEventListener(goog.events.EventType.LOAD,
-                        goog.bind(psMob.initiateMobilization, psMob));
+    goog.bind(window.psMob.initiateMobilization, window.psMob));
 
 
 /**
@@ -558,7 +657,7 @@ window.addEventListener(goog.events.EventType.LOAD,
  * @export
  */
 function psSetDebugMode() {
-  psMob.setDebugMode(true);
+  window.psMob.setDebugMode(true);
 }
 
 
@@ -567,5 +666,249 @@ function psSetDebugMode() {
  * @export
  */
 function psRemoveProgressBar() {
-  psMob.removeProgressBar();
+  window.psMob.removeProgressBar();
 }
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Code below is for configuration
+////////////////////////////////////////////////////////////////////////////////
+
+
+/**
+ * Returns true if the current window is the hidden iframe which we created.
+ * @private
+ * @return {boolean}
+ */
+pagespeed.Mob.prototype.inPsIframeWindow_ = function() {
+  return (pagespeed.MobUtil.inFriendlyIframe() &&
+          goog.isDefAndNotNull(window.frameElement) &&
+          window.frameElement.id == pagespeed.Mob.CONFIG_IFRAME_ID_);
+};
+
+
+/**
+ * Returns the window which initiated site-wide processing.
+ * @private
+ * @return {!Object}
+ */
+pagespeed.Mob.prototype.masterWindow_ = function() {
+  if (this.inPsIframeWindow_()) {
+    return window.parent;
+  } else {
+    return window;
+  }
+};
+
+
+/**
+ * Returns the psMob object which stores the information used for site-wide
+ * processing.
+ * @private
+ * @return {!pagespeed.Mob}
+ */
+pagespeed.Mob.prototype.psMobForMasterWindow_ = function() {
+  return this.masterWindow_().psMob;
+};
+
+
+/**
+ * Display the site-wide theme extraction results.
+ * @private
+ */
+pagespeed.Mob.prototype.showSiteWideThemes_ = function() {
+  var masterPsMob = this.psMobForMasterWindow_();
+  if (!masterPsMob || !masterPsMob.configThemes_ ||
+      masterPsMob.configThemes_.length == 0) {
+    return;
+  }
+
+  // Find out the number of occurrence of the logo image and theme color.
+  var map = {};
+  var themeData;
+  for (var i = 0; themeData = masterPsMob.configThemes_[i]; ++i) {
+    var logoImage = pagespeed.MobTheme.logoImageFromThemeData(themeData);
+    if (!logoImage) {
+      continue;
+    }
+
+    // Include theme colors in the key because for the same logo image, the
+    // background color in the HTML element may be different.
+    var key = logoImage +
+        pagespeed.MobUtil.colorNumbersToString(themeData.menuFrontColor) +
+        pagespeed.MobUtil.colorNumbersToString(themeData.menuBackColor);
+
+    if (!map[key]) {
+      map[key] = {themeData: themeData, count: 1};
+    } else {
+      ++map[key].count;
+    }
+  }
+
+  // Sort the logo images in descending order.
+  var list = goog.object.getValues(map);
+  list.sort(function(a, b) {
+    if (a.count < b.count) {
+      return 1;
+    }
+    if (a.count > b.count) {
+      return -1;
+    }
+    // Resolve a tie by comparing the logo URLs, so the order is stable.
+    var aImage = pagespeed.MobTheme.logoImageFromThemeData(a.themeData);
+    var bImage = pagespeed.MobTheme.logoImageFromThemeData(b.themeData);
+    if (aImage < bImage) {
+      return -1;
+    } else if (aImage > bImage) {
+      return 1;
+    }
+    return 0;
+  });
+
+  var message = '\nFinish site-wide theme extraction. ';
+  if (list.length > 0) {
+    message += 'Found ' + list.length +
+        ' logo images. Details are shown below:\n';
+    pagespeed.MobTheme.updateHeaderBar(this.masterWindow_(), list[0].themeData);
+
+    var i;
+    for (i in list) {
+      themeData = list[i].themeData;
+      message += '"' +
+          pagespeed.MobUtil.colorNumbersToString(themeData.menuBackColor) +
+          ' ' +
+          pagespeed.MobUtil.colorNumbersToString(themeData.menuFrontColor) +
+          ' ' +
+          pagespeed.MobTheme.logoImageFromThemeData(themeData) + '"' +
+          ' COUNT: ' + list[i].count + '\n';
+    }
+    message += '\n';
+
+    for (i in list) {
+      themeData = list[i].themeData;
+      message += 'ModPagespeedMobTheme "\n' +
+          '    ' + goog.color.rgbArrayToHex(themeData.menuBackColor) + '\n' +
+          '    ' + goog.color.rgbArrayToHex(themeData.menuFrontColor) + '\n' +
+          '    ' + pagespeed.MobTheme.logoImageFromThemeData(themeData) + '"\n';
+    }
+  } else {
+    message += 'No logo was found.';
+  }
+  message += '\n';
+  pagespeed.MobUtil.consoleLog(message);
+};
+
+
+/**
+ * Mobilize the next URL. Used for site-wide processing.
+ * @param {boolean} finishOnTime True if theme extraction finished within
+ *     CONFIG_CONFIG_MAX_TIME_MS_
+ * @private
+ */
+pagespeed.Mob.prototype.mobilizeNextUrl_ = function(finishOnTime) {
+  if (!finishOnTime) {
+    pagespeed.MobUtil.consoleLog('Time out.');
+  }
+
+  var masterPsMob = this.psMobForMasterWindow_();
+  var masterMobWindow = this.masterWindow_();
+  if (masterPsMob) {
+    masterMobWindow.clearTimeout(masterPsMob.configTimer_);
+    masterPsMob.configTimer_ = null;
+
+    var nextUrl = masterPsMob.configUrls_.pop();
+    if (masterPsMob.configNumUrlsToProcess_ > 0 && nextUrl) {
+      pagespeed.MobUtil.consoleLog('Next URL is ' + nextUrl + '. ' +
+                                   masterPsMob.configNumUrlsToProcess_ +
+                                   ' more to go.');
+      var iframe = masterMobWindow.document.getElementById(
+          pagespeed.Mob.CONFIG_IFRAME_ID_);
+      if (iframe) {
+        iframe.src = nextUrl;
+        masterPsMob.configTimer_ = masterMobWindow.setTimeout(
+            goog.bind(masterPsMob.mobilizeNextUrl_, masterPsMob),
+            pagespeed.Mob.CONFIG_MAX_TIME_MS_);
+      }
+      --masterPsMob.configNumUrlsToProcess_;
+    } else if (masterPsMob.configNumUrlsToProcess_ == 0) {
+      this.showSiteWideThemes_();
+      alert('All URLs have been processed. The header bar shows the ' +
+            'best result. Details can be found in console log.');
+      masterPsMob.configNumUrlsToProcess_ = -1;
+    }
+  }
+};
+
+
+/**
+ * Collect links from the same origin in the current DOM.
+ * @private
+ * @return {!Array.<string>} urls
+ */
+pagespeed.Mob.prototype.collectUrls_ = function() {
+  var urls = [];
+
+  // Check whether the landing URL has 'ModPagespeedMobIframe'. If it does,
+  // propagate this parameter to the collected URLs.
+  var indexMobIframe = window.location.search.indexOf('ModPagespeedMobIframe');
+  var mobIframeString = null;
+  if (indexMobIframe != -1) {
+    mobIframeString = window.location.search.substring(indexMobIframe);
+    mobIframeString = mobIframeString.split('#')[0].split('&')[0];
+    if (mobIframeString) {
+      mobIframeString = '?' + mobIframeString;
+    }
+  }
+
+  this.collectUrlsFromSubTree_(
+      mobIframeString, /** @type {!Element} */ (window.document.body), urls);
+  return urls;
+};
+
+
+/**
+ * Collect links from the same origin in a sub-tree.
+ * @private
+ * @param {?string} mobIframeString String for the ModPagespeedMobIframe
+ * @param {!Element} element Root element of the tree from which URLs will be
+ *     collected
+ * @param {!Array.<string>} urls
+ */
+pagespeed.Mob.prototype.collectUrlsFromSubTree_ = function(
+    mobIframeString, element, urls) {
+  if (urls.length >= pagespeed.Mob.CONFIG_MAX_NUM_LINKS_) {
+    return;
+  }
+
+  var tag = element.tagName.toUpperCase();
+  if (tag == goog.dom.TagName.A || tag == goog.dom.TagName.FORM) {
+    var href = element.href;
+
+    // Check if href is from the same origin but has a different path.
+    if (href && !pagespeed.MobUtil.isCrossOrigin(href) &&
+        goog.uri.utils.getPath(href).toLowerCase() !=
+        window.location.pathname.toLowerCase()) {
+      if (mobIframeString) {
+        var indexSearch = href.indexOf('?');
+        if (indexSearch == -1) {
+          // Append '?ModPagespeedMobIframe=...' to href.
+          href = href + mobIframeString;
+        } else {
+          // Replace '?' with '?ModPagespeedMobIframe=...&'.
+          href = href.substring(0, indexSearch) + mobIframeString + '&' +
+              href.substring(indexSearch + 1);
+        }
+      }
+
+      if (urls.indexOf(href) == -1) {
+        urls.push(href);
+      }
+    }
+  }
+
+  for (var childElement = element.firstElementChild;
+       childElement;
+       childElement = childElement.nextElementSibling) {
+    this.collectUrlsFromSubTree_(mobIframeString, childElement, urls);
+  }
+};

@@ -183,9 +183,9 @@ pagespeed.MobNav.ARROW_ICON_ =
 /**
  * GIF image of call button. To view this image, add prefix of
  * 'data:image/gif;base64,' to it.
- * @private @const {string}
+ * @const {string}
  */
-pagespeed.MobNav.CALL_BUTTON_ =
+pagespeed.MobNav.CALL_BUTTON =
     'R0lGODlhgACAAPAAAAAAAAAAACH5BAEAAAEALAAAAACAAIAAAAL+jI+pCL0Po5y02vuaBrj7' +
     'D4bMtonmiXrkyqXuC7MsTNefLNv6nuE4D9z5fMFibEg0KkVI5PLZaTah1IlUWs0qrletl9v1' +
     'VsFcMZQMNivRZHWRnXbz4G25jY621/B1vYuf54cCyCZ4QlhoGIIYqKjC2Oh4AZkoaUEZaWmF' +
@@ -201,9 +201,9 @@ pagespeed.MobNav.CALL_BUTTON_ =
 /**
  * GIF image of a map button, from a google images search for
  * 'google map pin icon'
- * @private @const {string}
+ * @const {string}
  */
-pagespeed.MobNav.MAP_BUTTON_ =
+pagespeed.MobNav.MAP_BUTTON =
     'R0lGODlhaQCkAPAAAAAAAAAAACH5BAEAAAEALAAAAABpAKQAAAL+jI+py+0Po5y02ouz3rz7' +
     'D4biSJbmiabqyrbuC8fyA9T2jQOzmve+vRP9hsQgh4hEGi3JpnIJcUqf0MX0WqwesNyhNtAN' +
     '+6rics9oTuN26jYw5o7rXnI5ve524e2rfb3vx3cS+IdCWFhyiEiiuBiCpwDJGEdDOZIXYfmo' +
@@ -222,9 +222,8 @@ pagespeed.MobNav.MAP_BUTTON_ =
  * @param {string} imageBase64
  * @param {!goog.color.Rgb} color
  * @return {?string}
- * @private
  */
-pagespeed.MobNav.prototype.synthesizeImage_ = function(imageBase64, color) {
+pagespeed.MobNav.prototype.synthesizeImage = function(imageBase64, color) {
   if (imageBase64.length <= 16) {
     return null;
   }
@@ -692,7 +691,7 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
 pagespeed.MobNav.prototype.addPhoneDialer_ = function(color) {
   var callImage = document.createElement('img');
   callImage.id = 'psmob-phone-image';
-  callImage.src = this.synthesizeImage_(pagespeed.MobNav.CALL_BUTTON_, color);
+  callImage.src = this.synthesizeImage(pagespeed.MobNav.CALL_BUTTON, color);
   this.callButton_ = document.createElement('a');
   this.callButton_.id = 'psmob-phone-dialer';
   var phone = this.getPhoneNumber_();
@@ -769,7 +768,7 @@ function psOpenMap() {
 pagespeed.MobNav.prototype.addMapNavigation_ = function(color) {
   var mapImage = document.createElement('img');
   mapImage.id = 'psmob-map-image';
-  mapImage.src = this.synthesizeImage_(pagespeed.MobNav.MAP_BUTTON_, color);
+  mapImage.src = this.synthesizeImage(pagespeed.MobNav.MAP_BUTTON, color);
   this.mapButton_ = document.createElement('a');
   this.mapButton_.id = 'psmob-map-button';
   if (window.psMapConversionLabel) {
@@ -1140,8 +1139,8 @@ pagespeed.MobNav.prototype.addNavPanel_ = function(themeData) {
   // hierarchical menus collapsed by default. However, we want the top level
   // menu to always be displayed, so give it the open class.
   goog.dom.classlist.add(navTopUl, 'open');
-  var arrowIcon = this.synthesizeImage_(pagespeed.MobNav.ARROW_ICON_,
-                                        themeData.menuBackColor);
+  var arrowIcon = this.synthesizeImage(pagespeed.MobNav.ARROW_ICON_,
+                                       themeData.menuBackColor);
 
   for (var i = 0, nav; nav = this.navSections_[i]; i++) {
     if (nav.parentNode) {

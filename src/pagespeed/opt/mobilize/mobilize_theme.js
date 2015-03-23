@@ -21,6 +21,7 @@ goog.provide('pagespeed.MobTheme');
 goog.require('goog.dom.TagName');
 goog.require('goog.dom.classlist');
 goog.require('pagespeed.MobLogo');
+goog.require('pagespeed.MobNav');
 goog.require('pagespeed.MobUtil');
 
 
@@ -87,13 +88,9 @@ pagespeed.MobTheme.synthesizeLogoSpan_ = function(logo, backgroundColor,
       img = logo.foregroundImage;
     }
     img.id = 'psmob-logo-image';
-    img.style.backgroundColor =
-        pagespeed.MobUtil.colorNumbersToString(backgroundColor);
     logoSpan.appendChild(img);
   } else {
     logoSpan.textContent = window.location.host;
-    logoSpan.style.color =
-        pagespeed.MobUtil.colorNumbersToString(foregroundColor);
   }
 
   var menuButton = pagespeed.MobTheme.createMenuButton_(foregroundColor);
@@ -196,5 +193,62 @@ pagespeed.MobTheme.extractTheme = function(psMob, doneCallback) {
         psMob, goog.bind(mobTheme.logoComplete_, mobTheme),
         1 /* numCandidates */);
     mobLogo.run();
+  }
+};
+
+
+/**
+ * Returns SRC of the logo image.
+ * @param {!pagespeed.MobUtil.ThemeData} themeData
+ * @return {?string}
+ */
+// TODO(huibao): Store image SRC in theme data and remove this method.
+pagespeed.MobTheme.logoImageFromThemeData = function(themeData) {
+  return (themeData && themeData.logoSpan &&
+          themeData.logoSpan.childNodes[0] &&
+          themeData.logoSpan.childNodes[0].src);
+};
+
+
+/**
+ * Updates header bar using the theme data.
+ * @param {!Object} mobWindow
+ * @param {!pagespeed.MobUtil.ThemeData} themeData
+ */
+pagespeed.MobTheme.updateHeaderBar = function(mobWindow, themeData) {
+  var logoImage = pagespeed.MobTheme.logoImageFromThemeData(themeData);
+  if (logoImage) {
+    var frontColor =
+        pagespeed.MobUtil.colorNumbersToString(themeData.menuFrontColor);
+    var backColor =
+        pagespeed.MobUtil.colorNumbersToString(themeData.menuBackColor);
+
+    var logoElement = mobWindow.document.getElementById('psmob-logo-image');
+    if (logoElement) {
+      logoElement.src = logoImage;
+      var headerBar = logoElement.parentElement.parentElement;
+      if (headerBar) {
+        headerBar.style.backgroundColor = backColor;
+      }
+    }
+
+    var mobNav = new pagespeed.MobNav();
+    var callButton = mobWindow.document.getElementById('psmob-phone-image');
+    if (callButton) {
+      callButton.src = mobNav.synthesizeImage(pagespeed.MobNav.CALL_BUTTON,
+                                              themeData.menuFrontColor);
+    }
+
+    var mapButton = mobWindow.document.getElementById('psmob-map-image');
+    if (mapButton) {
+      mapButton.src = mobNav.synthesizeImage(pagespeed.MobNav.MAP_BUTTON,
+                                             themeData.menuFrontColor);
+    }
+
+    var hamburgerLines =
+        mobWindow.document.getElementsByClassName('psmob-hamburger-line');
+    for (var i = 0, line; line = hamburgerLines[i]; ++i) {
+      line.style.backgroundColor = frontColor;
+    }
   }
 };
