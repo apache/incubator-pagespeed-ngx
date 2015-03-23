@@ -78,6 +78,7 @@ class HtmlName {
     kDataPagespeedFlushStyle,
     kDataPagespeedHref,
     kDataPagespeedPrioritize,
+    kDataPagespeedResponsiveTemp,
     kDataSrc,
     kDd,
     kDeclare,

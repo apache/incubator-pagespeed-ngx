@@ -19,7 +19,9 @@
 
 #include "net/instaweb/rewriter/public/responsive_image_filter.h"
 
-#include "net/instaweb/rewriter/public/request_properties.h"
+#include <memory>
+#include <utility>                      // for pair
+
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -28,13 +30,9 @@
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/html_element.h"
 #include "pagespeed/kernel/html/html_name.h"
-#include "pagespeed/kernel/html/html_node.h"
 #include "pagespeed/kernel/http/data_url.h"
 
 namespace net_instaweb {
-
-const char ResponsiveImageFirstFilter::kPagespeedResponsiveTemp[] =
-    "pagespeed_responsive_temp";
 
 ResponsiveImageFirstFilter::ResponsiveImageFirstFilter(RewriteDriver* driver)
     : CommonFilter(driver) {
@@ -44,7 +42,7 @@ ResponsiveImageFirstFilter::~ResponsiveImageFirstFilter() {
 }
 
 void ResponsiveImageFirstFilter::StartDocumentImpl() {
-  element_map_.clear();
+  candidate_map_.clear();
 }
 
 void ResponsiveImageFirstFilter::EndElementImpl(HtmlElement* element) {
@@ -52,7 +50,7 @@ void ResponsiveImageFirstFilter::EndElementImpl(HtmlElement* element) {
     return;
   }
 
-  if (element->FindAttribute(kPagespeedResponsiveTemp) == NULL &&
+  if (element->FindAttribute(HtmlName::kDataPagespeedResponsiveTemp) == NULL &&
       element->FindAttribute(HtmlName::kPagespeedNoTransform) == NULL &&
       element->FindAttribute(HtmlName::kSrcset) == NULL) {
     // On first run of this filter, split <img> element into multiple
@@ -81,36 +79,44 @@ void ResponsiveImageFirstFilter::AddHiResImages(HtmlElement* element) {
     return;
   }
 
-  int width, height;
-  if (StringToInt(width_str, &width) && StringToInt(height_str, &height)) {
-    if (width <= 1 || height <= 1) {
+  int orig_width, orig_height;
+  if (StringToInt(width_str, &orig_width) &&
+      StringToInt(height_str, &orig_height)) {
+    if (orig_width <= 1 || orig_height <= 1) {
       // Do not mess with tracking pixels.
       return;
     }
 
     // TODO(sligocki): Figure out what levels we should actually be using.
+    // For example, many android phones use 1.5x.
     // TODO(sligocki): Possibly use lower quality settings for 2x and 4x
     // because standard quality-85 are overkill for high density displays.
     // However, we might want high quality for zoom.
     // TODO(sligocki): Do not include images at higher than full resolution.
-    HtmlElement* x2 = AddHiResVersion(element, *src_attr,
-                                      2 * width, 2 * height);
-    HtmlElement* x4 = AddHiResVersion(element, *src_attr,
-                                      4 * width, 4 * height);
-    element_map_[element] = ElementPair(x2, x4);
+    ResponsiveImageCandidateVector candidate_list;
+    candidate_list.push_back(
+        AddHiResVersion(element, *src_attr, orig_width, orig_height, 2));
+    candidate_list.push_back(
+        AddHiResVersion(element, *src_attr, orig_width, orig_height, 4));
+    candidate_map_[element] = candidate_list;
   }
 }
 
-HtmlElement* ResponsiveImageFirstFilter::AddHiResVersion(
+ResponsiveImageCandidate ResponsiveImageFirstFilter::AddHiResVersion(
     HtmlElement* img, const HtmlElement::Attribute& src_attr,
-    int width, int height) {
+    int orig_width, int orig_height, double resolution) {
   HtmlElement* new_img = driver()->NewElement(img->parent(), HtmlName::kImg);
   new_img->AddAttribute(src_attr);
-  driver()->AddAttribute(new_img, kPagespeedResponsiveTemp, NULL);
-  driver()->AddAttribute(new_img, HtmlName::kWidth, IntegerToString(width));
-  driver()->AddAttribute(new_img, HtmlName::kHeight, IntegerToString(height));
+  driver()->AddAttribute(new_img, HtmlName::kDataPagespeedResponsiveTemp,
+                         StringPiece(NULL));
+  // Note: We truncate width and height to integers here.
+  driver()->AddAttribute(new_img, HtmlName::kWidth,
+                         IntegerToString(orig_width * resolution));
+  driver()->AddAttribute(new_img, HtmlName::kHeight,
+                         IntegerToString(orig_height * resolution));
   driver()->InsertNodeBeforeNode(img, new_img);
-  return new_img;
+  ResponsiveImageCandidate candidate(new_img, resolution);
+  return candidate;
 }
 
 ResponsiveImageSecondFilter::ResponsiveImageSecondFilter(
@@ -137,42 +143,62 @@ void ResponsiveImageSecondFilter::EndElementImpl(HtmlElement* element) {
     return;
   }
 
-  ResponsiveImageFirstFilter::ElementMap::const_iterator p =
-      first_filter_->element_map_.find(element);
-  if (p != first_filter_->element_map_.end()) {
+  ResponsiveImageCandidateMap::const_iterator p =
+      first_filter_->candidate_map_.find(element);
+  if (p != first_filter_->candidate_map_.end()) {
     // On second run of the filter, combine the elements back together.
-    CombineHiResImages(element, p->second.first, p->second.second);
+    const ResponsiveImageCandidateVector& candidates = p->second;
+    CombineHiResImages(element, candidates);
+    DeleteVirtualElements(candidates);
   }
 }
 
 // Combines information from dummy 2x and 4x images into the 1x srcset.
 // Deletes the dummy images.
 void ResponsiveImageSecondFilter::CombineHiResImages(
-    HtmlElement* x1, HtmlElement* x2, HtmlElement* x4) {
-  const char* x1_src = x1->AttributeValue(HtmlName::kSrc);
-  const char* x2_src = x2->AttributeValue(HtmlName::kSrc);
-  const char* x4_src = x4->AttributeValue(HtmlName::kSrc);
-  DCHECK((x1_src != NULL) && (x2_src != NULL) && (x4_src != NULL));
-  if ((x1_src != NULL) && (x2_src != NULL) && (x4_src != NULL)) {
-    if (IsDataUrl(x1_src) || IsDataUrl(x2_src) || IsDataUrl(x4_src)) {
+    HtmlElement* orig_element,
+    const ResponsiveImageCandidateVector& candidates) {
+  const char* x1_src = orig_element->AttributeValue(HtmlName::kSrc);
+
+  if (x1_src == NULL || IsDataUrl(x1_src)) {
+    // Fail early.
+    return;
+  }
+
+  GoogleString srcset_value = StrCat(x1_src, " 1x");
+
+  for (int i = 0, n = candidates.size(); i < n; ++i) {
+    const char* src = candidates[i].element->AttributeValue(HtmlName::kSrc);
+
+    if (src == NULL || IsDataUrl(src)) {
       // In case there are any data URLs, we should not add a srcset (which
       // would include many copies of the data URL).
       // TODO(sligocki): Should we change the src to the 4x version so that
       // the image still looks good up to 4x resolution?
-    } else {
-      // TODO(sligocki): Escape URLs appropriately? For example, we may need
-      // to escape commas.
-      // TODO(sligocki): Don't include different URLs if they point to the same
-      // actual image. For example, if all hashes are the same, no point in
-      // having a srcset at all.
-      GoogleString srcset_value = StrCat(
-          x1_src, " 1x,", x2_src, " 2x,", x4_src, " 4x");
-      driver()->AddAttribute(x1, HtmlName::kSrcset, srcset_value);
-      srcsets_added_ = true;
+      // Fail early.
+      return;
     }
+
+    GoogleString resolution_string =
+        StringPrintf("%.16g", candidates[i].resolution);
+    // TODO(sligocki): Escape URLs appropriately? For example, we may need
+    // to escape commas. Which are used in both Data URLs and Pagespeed
+    // rewritten URLs as escape characters.
+    // TODO(sligocki): Don't include different URLs if they point to the same
+    // actual image. For example, if all hashes are the same, no point in
+    // having a srcset at all.
+    StrAppend(&srcset_value, ",", src, " ", resolution_string, "x");
   }
-  driver()->DeleteNode(x2);
-  driver()->DeleteNode(x4);
+
+  driver()->AddAttribute(orig_element, HtmlName::kSrcset, srcset_value);
+  srcsets_added_ = true;
+}
+
+void ResponsiveImageSecondFilter::DeleteVirtualElements(
+    const ResponsiveImageCandidateVector& candidates) {
+  for (int i = 0, n = candidates.size(); i < n; ++i) {
+    driver()->DeleteNode(candidates[i].element);
+  }
 }
 
 void ResponsiveImageSecondFilter::EndDocument() {

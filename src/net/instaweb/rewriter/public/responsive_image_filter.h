@@ -21,7 +21,7 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_RESPONSIVE_IMAGE_FILTER_H_
 
 #include <map>
-#include <utility>                      // for pair
+#include <vector>
 
 #include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -30,6 +30,17 @@
 #include "pagespeed/kernel/html/html_element.h"
 
 namespace net_instaweb {
+
+struct ResponsiveImageCandidate {
+  ResponsiveImageCandidate(HtmlElement* element_arg, double resolution_arg)
+      : element(element_arg), resolution(resolution_arg) {}
+
+  HtmlElement* element;
+  double resolution;
+};
+typedef std::vector<ResponsiveImageCandidate> ResponsiveImageCandidateVector;
+typedef std::map<HtmlElement*, ResponsiveImageCandidateVector>
+        ResponsiveImageCandidateMap;
 
 // Filter which converts <img> tags into responsive srcset= counterparts by
 // rewriting the images at multiple resolutions.
@@ -49,20 +60,15 @@ class ResponsiveImageFirstFilter : public CommonFilter {
 
   virtual const char* Name() const { return "ResponsiveImageFirst"; }
 
-  static const char kPagespeedResponsiveTemp[];
-
  private:
   void AddHiResImages(HtmlElement* element);
-  HtmlElement* AddHiResVersion(HtmlElement* img,
-                               const HtmlElement::Attribute& src_attr,
-                               int width, int height);
+  ResponsiveImageCandidate AddHiResVersion(
+      HtmlElement* img, const HtmlElement::Attribute& src_attr,
+      int orig_width, int orig_height, double resolution);
 
-
-  typedef std::pair<HtmlElement*, HtmlElement*> ElementPair;
-  typedef std::map<HtmlElement*, ElementPair> ElementMap;
   friend class ResponsiveImageSecondFilter;
 
-  ElementMap element_map_;
+  ResponsiveImageCandidateMap candidate_map_;
 
   DISALLOW_COPY_AND_ASSIGN(ResponsiveImageFirstFilter);
 };
@@ -81,7 +87,9 @@ class ResponsiveImageSecondFilter : public CommonFilter {
   virtual const char* Name() const { return "ResponsiveImageSecond"; }
 
  private:
-  void CombineHiResImages(HtmlElement* x1, HtmlElement* x2, HtmlElement* x4);
+  void CombineHiResImages(HtmlElement* orig_element,
+                          const ResponsiveImageCandidateVector& candidates);
+  void DeleteVirtualElements(const ResponsiveImageCandidateVector& candidates);
 
   const GoogleString responsive_js_url_;
   const ResponsiveImageFirstFilter* first_filter_;
