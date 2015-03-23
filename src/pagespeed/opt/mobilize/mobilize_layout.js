@@ -60,8 +60,7 @@ pagespeed.MobLayout = function(psMob) {
    * document.documentElement.clientWidth, taking into account global padding
    * around the body.
    *
-   * @private {number}
-   * @const
+   * @private @const {number}
    */
   this.maxWidth_ = this.computeMaxWidth_();
 
@@ -70,10 +69,24 @@ pagespeed.MobLayout = function(psMob) {
 };
 
 
+
+/**
+ * Function and its description.
+ * @param {Function} functionObj
+ * @param {string} description
+ * @private @constructor @struct
+ */
+pagespeed.MobLayout.SequenceStep_ = function(functionObj, description) {
+  /** @type {Function} */
+  this.functionObj = functionObj;
+  /** @type {string} */
+  this.description = description;
+};
+
+
 /**
  * List of style attributes that we want to clamp to 4px max.
- * @private {Array.<string>}
- * @const
+ * @private @const {!Array.<string>}
  */
 pagespeed.MobLayout.CLAMPED_STYLES_ = [
   'padding-left',
@@ -98,7 +111,7 @@ pagespeed.MobLayout.CLAMPED_STYLES_ = [
  * width.  This means that if their css-width is specified as being
  * too wide for our screen, we'll override it to 'auto'.
  *
- * @private {Object.<string, boolean>}
+ * @private @const {!Object.<string, boolean>}
  */
 pagespeed.MobLayout.FLEXIBLE_WIDTH_TAGS_ = goog.object.createSet(
     goog.dom.TagName.A,
@@ -120,8 +133,7 @@ pagespeed.MobLayout.FLEXIBLE_WIDTH_TAGS_ = goog.object.createSet(
 
 /**
  * List of attributes for which we want to remove any percentage specs
- * @private {Array.<string>}
- * @const
+ * @private @const {!Array.<string>}
  */
 pagespeed.MobLayout.NO_PERCENT_ = [
   'left',
@@ -268,8 +280,7 @@ pagespeed.MobLayout.prototype.forEachMobilizableChild_ = function(element, fn) {
  * @return {number}
  */
 pagespeed.MobLayout.numberOfPasses = function() {
-  // sequence_.length will always be a multiple of 2.
-  return pagespeed.MobLayout.sequence_.length / 2;
+  return pagespeed.MobLayout.sequence_.length;
 };
 
 
@@ -362,10 +373,11 @@ pagespeed.MobLayout.prototype.shrinkWideElements_ = function(element) {
  */
 pagespeed.MobLayout.prototype.computeAllSizingAndResynthesize = function() {
   if (document.body != null) {
-    for (var i = 0; i < pagespeed.MobLayout.sequence_.length; ++i) {
-      pagespeed.MobLayout.sequence_[i].call(this, document.body);
-      ++i;
-      this.psMob_.layoutPassDone(pagespeed.MobLayout.sequence_[i]);
+    for (var i = 0, functionObject;
+         functionObject = pagespeed.MobLayout.sequence_[i];
+         ++i) {
+      functionObject.functionObj.call(this, document.body);
+      this.psMob_.layoutPassDone(functionObject.description);
     }
   }
 };
@@ -1274,16 +1286,23 @@ pagespeed.MobLayout.prototype.expandColumns_ = function(element) {
  * rather than as sequential code so that we can compute how many passes
  * there are for progress bar.
  *
- * @const
- * @private
+ * @private @const {!Array.<pagespeed.MobLayout.SequenceStep_>}
  */
 pagespeed.MobLayout.sequence_ = [
-  pagespeed.MobLayout.prototype.shrinkWideElements_, 'shrink wide elements',
-  pagespeed.MobLayout.prototype.stripFloats_, 'string floats',
-  pagespeed.MobLayout.prototype.cleanupStyles_, 'cleanup styles',
-  pagespeed.MobLayout.prototype.repairDistortedImages_,
-  'repair distored images',
-  pagespeed.MobLayout.prototype.resizeIfTooWide_, 'resize if too wide',
-  pagespeed.MobLayout.prototype.expandColumns_, 'expand columns',
-  pagespeed.MobLayout.prototype.resizeVertically_, 'resize vertically'
+  new pagespeed.MobLayout.SequenceStep_(
+      pagespeed.MobLayout.prototype.shrinkWideElements_,
+      'shrink wide elements'),
+  new pagespeed.MobLayout.SequenceStep_(
+      pagespeed.MobLayout.prototype.stripFloats_, 'string floats'),
+  new pagespeed.MobLayout.SequenceStep_(
+      pagespeed.MobLayout.prototype.cleanupStyles_, 'cleanup styles'),
+  new pagespeed.MobLayout.SequenceStep_(
+      pagespeed.MobLayout.prototype.repairDistortedImages_,
+      'repair distored images'),
+  new pagespeed.MobLayout.SequenceStep_(
+      pagespeed.MobLayout.prototype.resizeIfTooWide_, 'resize if too wide'),
+  new pagespeed.MobLayout.SequenceStep_(
+      pagespeed.MobLayout.prototype.expandColumns_, 'expand columns'),
+  new pagespeed.MobLayout.SequenceStep_(
+      pagespeed.MobLayout.prototype.resizeVertically_, 'resize vertically')
 ];

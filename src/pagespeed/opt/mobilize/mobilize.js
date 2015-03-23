@@ -141,48 +141,42 @@ pagespeed.Mob = function() {
 
 /**
  * HTML attribute to save the visibility state of the body.
- * @private {string}
- * @const
+ * @private @const {string}
  */
 pagespeed.Mob.PROGRESS_SAVE_VISIBLITY_ = 'ps-save-visibility';
 
 
 /**
  * HTML ID of the scrim element.
- * @private {string}
- * @const
+ * @private @const {string}
  */
 pagespeed.Mob.PROGRESS_SCRIM_ID_ = 'ps-progress-scrim';
 
 
 /**
  * HTML ID of the button to remove the progress bar.
- * @private {string}
- * @const
+ * @private @const {string}
  */
 pagespeed.Mob.PROGRESS_REMOVE_ID_ = 'ps-progress-remove';
 
 
 /**
  * HTML ID of the progress log div.
- * @private {string}
- * @const
+ * @private @const {string}
  */
 pagespeed.Mob.PROGRESS_LOG_ID_ = 'ps-progress-log';
 
 
 /**
  * HTML ID of the progress bar.
- * @private {string}
- * @const
+ * @private @const {string}
  */
 pagespeed.Mob.PROGRESS_SPAN_ID_ = 'ps-progress-span';
 
 
 /**
  * HTML ID of the button to show the mobilization error log.
- * @private {string}
- * @const
+ * @private @const {string}
  */
 pagespeed.Mob.PROGRESS_SHOW_LOG_ID_ = 'ps-progress-show-log';
 
@@ -190,8 +184,7 @@ pagespeed.Mob.PROGRESS_SHOW_LOG_ID_ = 'ps-progress-show-log';
 /**
  * String used as a temporary imageMap_ value after an image has
  * started to load, but before it's done loading.
- * @private {!pagespeed.MobUtil.Dimensions}
- * @const
+ * @private @const {!pagespeed.MobUtil.Dimensions}
  */
 pagespeed.Mob.IN_TRANSIT_ = new pagespeed.MobUtil.Dimensions(-1, -1);
 
@@ -202,8 +195,7 @@ pagespeed.Mob.IN_TRANSIT_ = new pagespeed.MobUtil.Dimensions(-1, -1);
  * delay.  Background images must be loaded from the server and we have no idea
  * how long this will take, but let's call it 100ms per image, and measure in
  * units of tenths of a millisecond.
- * @private {number}
- * @const
+ * @private @const {number}
  */
 pagespeed.Mob.COST_PER_IMAGE_ = 1000;
 

@@ -35,8 +35,7 @@ pagespeed.MobColor = function() {
 /**
  * Machine epsilon (EPSILON) used in this file. This is the minimum value to be
  * considered non-zero.
- * @private
- * @const
+ * @private @const
  */
 pagespeed.MobColor.prototype.EPSILON_ = 1e-10;
 
@@ -44,8 +43,7 @@ pagespeed.MobColor.prototype.EPSILON_ = 1e-10;
 /**
  * Minimum contrast of theme colors. For 2 colors, contrast is defined as the
  * ratio between the larger brightness and the smaller brightness.
- * @private
- * @const
+ * @private @const
  */
 pagespeed.MobColor.prototype.MIN_CONTRAST_ = 3;
 

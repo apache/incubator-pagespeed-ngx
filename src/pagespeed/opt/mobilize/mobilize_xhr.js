@@ -92,8 +92,7 @@ pagespeed.XhrHijack.listener_ = {};
 
 
 /**
- * @const
- * @private
+ * @const @private {string}
  */
 pagespeed.XhrHijack.SEND_EVENT_CHAR_ = 's';
 

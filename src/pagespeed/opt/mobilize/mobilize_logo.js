@@ -101,9 +101,7 @@ pagespeed.MobLogo = function(psMob, doneCallback, maxNumCandidates) {
   /** @private {number} */
   this.pendingEventCount_ = 0;
 
-  /**
-   * @private {number}
-   */
+  /** @private {number} */
   this.maxNumCandidates_ = maxNumCandidates;
 };
 
@@ -113,8 +111,7 @@ pagespeed.MobLogo = function(psMob, doneCallback, maxNumCandidates) {
  * Creates an empty logo record.
  * @param {number} metric
  * @param {!Element} element
- * @constructor
- * @struct
+ * @constructor @struct
  */
 pagespeed.MobLogo.LogoRecord = function(metric, element) {
   /**
@@ -150,24 +147,21 @@ pagespeed.MobLogo.LogoRecord = function(metric, element) {
 
 /**
  * Minimum width of an element in the origin site to be considered as the logo.
- * @private {number}
- * @const
+ * @private @const {number}
  */
 pagespeed.MobLogo.prototype.MIN_WIDTH_ = 20;
 
 
 /**
  * Minimum height of an element in the origin site to be considered as the logo.
- * @private {number}
- * @const
+ * @private @const {number}
  */
 pagespeed.MobLogo.prototype.MIN_HEIGHT_ = 10;
 
 
 /**
  * Maximum height of an element in the origin site to be considered as the logo.
- * @private {number}
- * @const
+ * @private @const {number}
  */
 pagespeed.MobLogo.prototype.MAX_HEIGHT_ = 400;
 
@@ -175,8 +169,7 @@ pagespeed.MobLogo.prototype.MAX_HEIGHT_ = 400;
 /**
  * Minimum area of an element which must be covered by an image for that image
  * to be considered a logo.
- * @private {number}
- * @const
+ * @private @const {number}
  */
 pagespeed.MobLogo.prototype.RATIO_AREA_ = 0.5;
 

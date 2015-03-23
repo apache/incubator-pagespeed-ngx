@@ -161,16 +161,14 @@ pagespeed.MobNav = function() {
 
 /**
  * The unscaled width of the nav panel in pixels.
- * @const
- * @private {number}
+ * @private @const {number}
  */
 pagespeed.MobNav.NAV_PANEL_WIDTH_ = 250;
 
 
 /**
  * GIF image of an arrow icon, used to indicate hierarchical menus.
- * @const
- * @private {string}
+ * @private @const {string}
  */
 pagespeed.MobNav.ARROW_ICON_ =
     'R0lGODlhkACQAPABAP///wAAACH5BAEAAAEALAAAAACQAJAAAAL+jI+py+0Po5y02ouz3rz7' +
@@ -185,8 +183,7 @@ pagespeed.MobNav.ARROW_ICON_ =
 /**
  * GIF image of call button. To view this image, add prefix of
  * 'data:image/gif;base64,' to it.
- * @const
- * @private {string}
+ * @private @const {string}
  */
 pagespeed.MobNav.CALL_BUTTON_ =
     'R0lGODlhgACAAPAAAAAAAAAAACH5BAEAAAEALAAAAACAAIAAAAL+jI+pCL0Po5y02vuaBrj7' +
@@ -204,8 +201,7 @@ pagespeed.MobNav.CALL_BUTTON_ =
 /**
  * GIF image of a map button, from a google images search for
  * 'google map pin icon'
- * @const
- * @private {string}
+ * @private @const {string}
  */
 pagespeed.MobNav.MAP_BUTTON_ =
     'R0lGODlhaQCkAPAAAAAAAAAAACH5BAEAAAEALAAAAABpAKQAAAL+jI+py+0Po5y02ouz3rz7' +
