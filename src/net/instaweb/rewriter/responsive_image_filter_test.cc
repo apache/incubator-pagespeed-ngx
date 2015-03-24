@@ -268,7 +268,7 @@ TEST_F(ResponsiveImageFilterTest, TrackingPixel) {
 }
 
 TEST_F(ResponsiveImageFilterTest, InputSrcSet) {
-    options()->EnableFilter(RewriteOptions::kResponsiveImages);
+  options()->EnableFilter(RewriteOptions::kResponsiveImages);
   options()->EnableFilter(RewriteOptions::kResizeImages);
   rewrite_driver()->AddFilters();
 
@@ -278,6 +278,83 @@ TEST_F(ResponsiveImageFilterTest, InputSrcSet) {
       "<img src=", EncodeImage(100, 100, "a.jpg", "0", "jpg"),
       " width=100 height=100 srcset='a.jpg 1x, b.png 2x'>");
   ValidateExpected("input_srcset", input_html, output_html);
+}
+
+TEST_F(ResponsiveImageFilterTest, Debug) {
+  options()->EnableFilter(RewriteOptions::kResponsiveImages);
+  options()->EnableFilter(RewriteOptions::kRecompressJpeg);
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  rewrite_driver()->AddFilters();
+  EnableDebug();
+
+  ValidateExpected(
+      "no_transform",
+      "<img src=a.jpg width=100 height=100 pagespeed_no_transform>",
+
+      "<img src=a.jpg width=100 height=100>"
+      "<!--ResponsiveImageFilter: Not adding srcset because of "
+      "pagespeed_no_transform attribute.-->");
+
+  ValidateExpected(
+      "with_srcset",
+      "<img src=a.jpg width=100 height=100 srcset='a.jpg 1x, b.png 2x'>",
+
+      StrCat("<img src=", EncodeImage(100, 100, "a.jpg", "0", "jpg"),
+             " width=100 height=100 srcset='a.jpg 1x, b.png 2x'>"
+             "<!--Resized image from 1023x766 to 100x100-->"
+             "<!--ResponsiveImageFilter: Not adding srcset because image "
+             "already has one.-->"));
+
+  ValidateExpected(
+      "no_dims",
+      "<img src=a.jpg>",
+
+      StrCat("<img src=", EncodeImage(-1, -1, "a.jpg", "0", "jpg"), ">"
+             "<!--Image does not appear to need resizing.-->"
+             "<!--ResponsiveImageFilter: Not adding srcset because image does "
+             "not have dimensions (or a src URL).-->"));
+
+  ValidateExpected(
+      "tracking_pixel",
+      "<img src=small_1x1.gif width=1 height=1>",
+
+      "<img src=small_1x1.gif width=1 height=1>"
+      "<!--Image does not appear to need resizing.-->"
+      "<!--ResponsiveImageFilter: Not adding srcset to tracking pixel.-->");
+
+  ValidateExpected(
+      "native_size",
+      "<img src=a.jpg width=1023 height=766>",
+
+      // These extra messages are for virtual images which have been deleted.
+      // TODO(sligocki): Maybe we should delete these debug messages too?
+      StrCat("<!--Image does not appear to need resizing.-->"
+             "<!--Image does not appear to need resizing.-->"
+             "<img src=", EncodeImage(1023, 766, "a.jpg", "0", "jpg"),
+             " width=1023 height=766>"
+             "<!--ResponsiveImageFilter: Not adding 4x candidate to srcset "
+             "because native image was not high enough resolution.-->"
+             "<!--ResponsiveImageFilter: Not adding 2x candidate to srcset "
+             "because native image was not high enough resolution.-->"
+             "<!--Image does not appear to need resizing.-->"));
+
+  ValidateExpected(
+      "same_src",
+      "<img src=http://other-domain.com/a.jpg width=100 height=100>",
+
+      // These extra messages are for virtual images which have been deleted.
+      // TODO(sligocki): Maybe we should delete these debug messages too?
+      StrCat("<!--The preceding resource was not rewritten because its domain "
+             "(other-domain.com) is not authorized-->"
+             "<!--The preceding resource was not rewritten because its domain "
+             "(other-domain.com) is not authorized-->"
+             "<img src=http://other-domain.com/a.jpg width=100 height=100>"
+             "<!--ResponsiveImageFilter: Not adding 4x candidate to srcset "
+             "because it is the same as previous candidate.-->"
+             "<!--ResponsiveImageFilter: Not adding 2x candidate to srcset "
+             "because it is the same as previous candidate.-->"
+             "<!--The preceding resource was not rewritten because its domain "
+             "(other-domain.com) is not authorized-->"));
 }
 
 }  // namespace

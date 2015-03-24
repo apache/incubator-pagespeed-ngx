@@ -22,6 +22,7 @@
 #include <memory>
 #include <utility>                      // for pair
 
+#include "base/logging.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -51,9 +52,16 @@ void ResponsiveImageFirstFilter::EndElementImpl(HtmlElement* element) {
     return;
   }
 
-  if (element->FindAttribute(HtmlName::kDataPagespeedResponsiveTemp) == NULL &&
-      element->FindAttribute(HtmlName::kPagespeedNoTransform) == NULL &&
-      element->FindAttribute(HtmlName::kSrcset) == NULL) {
+  if (element->FindAttribute(HtmlName::kPagespeedNoTransform) != NULL) {
+    driver()->InsertDebugComment(
+        "ResponsiveImageFilter: Not adding srcset because of "
+        "pagespeed_no_transform attribute.", element);
+  } else if (element->FindAttribute(HtmlName::kSrcset) != NULL) {
+    driver()->InsertDebugComment(
+        "ResponsiveImageFilter: Not adding srcset because image already "
+        "has one.", element);
+  } else if (element->FindAttribute(HtmlName::kDataPagespeedResponsiveTemp) ==
+             NULL) {
     // On first run of this filter, split <img> element into multiple
     // elements.
     AddHiResImages(element);
@@ -77,6 +85,9 @@ void ResponsiveImageFirstFilter::AddHiResImages(HtmlElement* element) {
   const char* width_str = element->AttributeValue(HtmlName::kWidth);
   const char* height_str = element->AttributeValue(HtmlName::kHeight);
   if ((src_attr == NULL) || (width_str == NULL) || (height_str == NULL)) {
+    driver()->InsertDebugComment(
+        "ResponsiveImageFilter: Not adding srcset because image does not "
+        "have dimensions (or a src URL).", element);
     return;
   }
 
@@ -84,7 +95,9 @@ void ResponsiveImageFirstFilter::AddHiResImages(HtmlElement* element) {
   if (StringToInt(width_str, &orig_width) &&
       StringToInt(height_str, &orig_height)) {
     if (orig_width <= 1 || orig_height <= 1) {
-      // Do not mess with tracking pixels.
+      driver()->InsertDebugComment(
+          "ResponsiveImageFilter: Not adding srcset to tracking pixel.",
+          element);
       return;
     }
 
@@ -189,8 +202,22 @@ void ResponsiveImageSecondFilter::CombineHiResImages(
     const ResponsiveImageCandidateVector& candidates) {
   const char* x1_src = orig_element->AttributeValue(HtmlName::kSrc);
 
-  if (x1_src == NULL || IsDataUrl(x1_src)) {
-    // Fail early.
+  if (x1_src == NULL) {
+    // Should not happen, we explicitly checked that <img> had a src= attribute
+    // in ResponsiveImageFirstFilter::AddHiResImages().
+    LOG(DFATAL) << "Original responsive image has no URL.";
+    driver()->InsertDebugComment(
+        "ResponsiveImageFilter: Not adding srcset because original image has "
+        "no src URL.", orig_element);
+    return;
+  } else if (IsDataUrl(x1_src)) {
+    // In case there are any data URLs, we should not add a srcset (which
+    // would include many copies of the data URL).
+    // TODO(sligocki): Should we change the src to the 4x version so that
+    // the image still looks good up to 4x resolution?
+    driver()->InsertDebugComment(
+        "ResponsiveImageFilter: Not adding srcset because original image was "
+        "inlined.", orig_element);
     return;
   }
 
@@ -207,29 +234,41 @@ void ResponsiveImageSecondFilter::CombineHiResImages(
   for (int i = 0, n = candidates.size(); i < n; ++i) {
     const char* src = candidates[i].element->AttributeValue(HtmlName::kSrc);
 
-    if (src == NULL || IsDataUrl(src)) {
+    if (src == NULL) {
+      // Should not happen, we explicitly created a src= attribute in
+      // ResponsiveImageFirstFilter::AddHiResVersion().
+      LOG(DFATAL) << "Virtual responsive image has no URL.";
+      driver()->InsertDebugComment(
+          "ResponsiveImageFilter: Not adding srcset because virtual image has "
+          "no src URL.", orig_element);
+      return;
+    } else if (IsDataUrl(src)) {
       // In case there are any data URLs, we should not add a srcset (which
       // would include many copies of the data URL).
       // TODO(sligocki): Should we change the src to the 4x version so that
       // the image still looks good up to 4x resolution?
-      // Fail early.
+      driver()->InsertDebugComment(
+          "ResponsiveImageFilter: Not adding srcset because virtual image was "
+          "inlined.", orig_element);
       return;
     }
 
     ImageDim dims = ActualDims(candidates[i].element);
-    if (dims.height() == last_dims.height() &&
-        dims.width() == last_dims.width()) {
+    if (src == last_src) {
       if (driver()->DebugMode()) {
         driver()->InsertDebugComment(StringPrintf(
-            "Not adding %.16gx candidate to srcset because native image was "
-            "not high enough resolution.", candidates[i].resolution),
+            "ResponsiveImageFilter: Not adding %.16gx candidate to srcset "
+            "because it is the same as previous candidate.",
+            candidates[i].resolution),
                                      orig_element);
       }
-    } else if (src == last_src) {
+    } else if (dims.height() == last_dims.height() &&
+               dims.width() == last_dims.width()) {
       if (driver()->DebugMode()) {
         driver()->InsertDebugComment(StringPrintf(
-            "Not adding %.16gx candidate to srcset because it is the same as "
-            "previous candidate.", candidates[i].resolution),
+            "ResponsiveImageFilter: Not adding %.16gx candidate to srcset "
+            "because native image was not high enough resolution.",
+            candidates[i].resolution),
                                      orig_element);
       }
     } else {
