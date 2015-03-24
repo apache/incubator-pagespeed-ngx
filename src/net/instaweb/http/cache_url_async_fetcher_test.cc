@@ -32,6 +32,7 @@
 #include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mem_file_system.h"
+#include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/mock_hasher.h"
 #include "pagespeed/kernel/base/mock_timer.h"
 #include "pagespeed/kernel/base/null_message_handler.h"
@@ -1395,7 +1396,7 @@ TEST_F(CacheUrlAsyncFetcherTest, Check304FresheningMinCacheTtl) {
 }
 
 TEST_F(CacheUrlAsyncFetcherTest, FetchFailedNoIgnore) {
-  cache_fetcher_->set_ignore_recent_fetch_failed(kBackendFetch);
+  cache_fetcher_->set_ignore_recent_fetch_failed(false);
 
   ClearStats();
   FetchAndValidate(bad_url_, empty_request_headers_, true,

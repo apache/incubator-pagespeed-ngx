@@ -184,17 +184,19 @@ bool InstawebHandler::ProxyUrl() {
   // system fetcher.
   UrlAsyncFetcher* fetcher = server_context_->DefaultSystemFetcher();
   scoped_ptr<UrlAsyncFetcher> fetcher_storage;
-  scoped_ptr<UrlAsyncFetcher> slurp_fetcher;
 
   if (options()->test_proxy() && !options()->test_proxy_slurp().empty()) {
-    slurp_fetcher.reset(new HttpDumpUrlFetcher(
+    fetcher_storage.reset(new HttpDumpUrlFetcher(
         options()->test_proxy_slurp(), server_context_->file_system(),
         server_context_->timer()));
-    fetcher = slurp_fetcher.get();
+    fetcher = fetcher_storage.get();
   } else if (!proxy_suffix.empty() && options()->mob_iframe()) {
     fetcher_storage.reset(new IframeFetcher);
     fetcher = fetcher_storage.get();
-  } else if (!options()->slurping_enabled()) {
+  } else if (!proxy_suffix.empty()) {
+    // Do some extra caching when using proxy_suffix (but we don't want it in
+    // other modes since they are used for things like loadtesting)
+
     // Passing the 'fetcher' explicitly here rather than calling
     // CreateCacheFetcher() avoids getting the driver's loopback
     // fetcher.  We don't want the loopback fetcher because we
@@ -205,9 +207,12 @@ bool InstawebHandler::ProxyUrl() {
         : options()->cache_fragment();
     // Note that the cache fetcher is aware of request methods, so it won't
     // cache POSTs improperly.
-    slurp_fetcher.reset(server_context_->CreateCustomCacheFetcher(
-        options(), fragment, NULL, fetcher));
-    fetcher = slurp_fetcher.get();
+    CacheUrlAsyncFetcher* cache_url_async_fetcher =
+        server_context_->CreateCustomCacheFetcher(options(), fragment,
+                                                  NULL, fetcher);
+    cache_url_async_fetcher->set_ignore_recent_fetch_failed(true);
+    fetcher_storage.reset(cache_url_async_fetcher);
+    fetcher = fetcher_storage.get();
   }
 
   MessageHandler* handler = server_context_->message_handler();
