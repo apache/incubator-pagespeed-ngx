@@ -1,6 +1,6 @@
 # Port map:
 # 8080 -- master configuration.
-# 8081 -- COVERAGE / PROXY / SLURP
+# 8081 -- LOADTEST / PROXY / SLURP
 # 8082 -- SLURP
 # @@APACHE_SECONDARY_PORT@@ -- secondary configuration (8083 debug, 8084 root)
 # 8085 --- loopback route testing
@@ -1234,118 +1234,118 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_noned_shmm"
 #
 # TODO(jmarantz): add a test-path where we set this in a VirtualHost and
 # make sure the right error message comes out.
-#COVERAGE # Don't want global slurp inheriting into :8080
-#COVERAGE ModPagespeedInheritVHostConfig off
-#COVERAGE ModPagespeedMessageBufferSize 100000
-#COVERAGE
-#COVERAGE # We want backtraces to be dumped during the load test, as
-#COVERAGE # one of its purposes is to discover crash bugs.
-#COVERAGE ModPagespeedInstallCrashHandler on
-#COVERAGE
-#COVERAGE # These lines are used for large-scale code coverage testing.
-#COVERAGE # We use 2 servers for it, one doing rewriting and fetching
-#COVERAGE # from the other one, which plays back slurps
-#COVERAGE Listen 8081
-#COVERAGE <VirtualHost *:8080>
-#COVERAGE   ModPagespeed on
-#COVERAGE   # Proxy using SERF
-#COVERAGE   ModPagespeedTestProxy on
-#COVERAGE   ModPagespeedFetchProxy "127.0.0.1:8081"
-#IPRO_PRESERVE_COVERAGE ModPagespeedInPlaceResourceOptimization on
-#IPRO_PRESERVE_COVERAGE ModPagespeedInPlaceWaitForOptimized on
-#IPRO_PRESERVE_COVERAGE ModPagespeedCssPreserveURLs on
-#IPRO_PRESERVE_COVERAGE ModPagespeedImagePreserveURLs on
-#IPRO_PRESERVE_COVERAGE ModPagespeedJsPreserveURLS on
-#COVERAGE
-#MEMCACHE_COVERAGE   ModPagespeedMemcachedServers localhost:@@MEMCACHED_PORT@@
-#PURGING_COVERAGE    ModPagespeedEnableCachePurge on
-#PURGING_COVERAGE    ModPagespeedCompressMetadataCache on
-#COVERAGE   ModPagespeedFileCachePath       "@@MOD_PAGESPEED_CACHE@@_load_test"
-#COVERAGE   ModPagespeedCompressMetadataCache true
-#COVERAGE   ModPagespeedRewriteLevel AllFilters
-#IPRO_PRESERVE_COVERAGE   ModPagespeedRewriteLevel OptimizeForBandwidth
-#IPRO_PRESERVE_COVERAGE   ModPagespeedDisableFilters add_instrumentation
-#IPRO_PRESERVE_COVERAGE   ModPagespeedDisableFilters local_storage_cache,debug
-#IPRO_PRESERVE_COVERAGE   ModPagespeedDisableFilters lazyload_images
-#IPRO_PRESERVE_COVERAGE   ModPagespeedDisableFilters add_base_tag
-#IPRO_PRESERVE_COVERAGE   ModPagespeedDisableFilters dedup_inlined_images
-#IPRO_PRESERVE_COVERAGE   ModPagespeedDisableFilters convert_jpeg_to_webp
-#IPRO_PRESERVE_COVERAGE   ModPagespeedInPlaceRewriteDeadlineMs 1000
-#IPRO_PRESERVE_COVERAGE
-#IPRO_PRESERVE_COVERAGE   # We turn preemptive rewriting off for bandwidth
-#IPRO_PRESERVE_COVERAGE   # tests driven by recursive wget, where the image
-#IPRO_PRESERVE_COVERAGE   # requests will come too quickly to allow any
-#IPRO_PRESERVE_COVERAGE   # image rewrites to finish.  Leaving preemptive
-#IPRO_PRESERVE_COVERAGE   # rewrites enabled causes redundant image rewrites
-#IPRO_PRESERVE_COVERAGE   # to occur.
-#IPRO_PRESERVE_COVERAGE   ModPagespeedInPlacePreemptiveRewriteImages off
-#IPRO_PRESERVE_COVERAGE   ModPagespeedInPlacePreemptiveRewriteCss off
-#IPRO_PRESERVE_COVERAGE   ModPagespeedInPlacePreemptiveRewriteCssImages off
-#IPRO_PRESERVE_COVERAGE   ModPagespeedInPlacePreemptiveRewriteJavascript off
-#COVERAGE
-#COVERAGE   # flush_subsresources doesn't work in MPS but disables
-#COVERAGE   # combine_css and combine_javascript, so we don't want to
-#COVERAGE   # load-test it.
-#COVERAGE   ModPagespeedDisableFilters flush_subresources
-#COVERAGE   ModPagespeedEnableFilters elide_attributes
-#DOMAIN_AUTH_COVERAGE   ModPagespeedDomain *
-#IUR_COVERAGE   ModPagespeedInlineUnauthorizedResourcesExperimental true
-#COVERAGE   ModPagespeedFileCacheSizeKb             1024000
-#COVERAGE   ModPagespeedFileCacheCleanIntervalMs     120000
-#COVERAGE   ModPagespeedLRUCacheKbPerProcess           1024
-#COVERAGE   ModPagespeedLRUCacheByteLimit             16384
-#COVERAGE   ModPagespeedCssFlattenMaxBytes           102400
-#COVERAGE   ModPagespeedCssInlineMaxBytes              2048
-#COVERAGE   ModPagespeedCssImageInlineMaxBytes            0
-#COVERAGE   ModPagespeedImageInlineMaxBytes            3072
-#COVERAGE   ModPagespeedMaxInlinedPreviewImagesIndex     -1
-#COVERAGE   ModPagespeedMinImageSizeLowResolutionBytes 3072
-#COVERAGE   ModPagespeedJsInlineMaxBytes               2048
-#COVERAGE   ModPagespeedCssOutlineMinBytes             3000
-#COVERAGE   ModPagespeedJsOutlineMinBytes              3000
-#COVERAGE   ModPagespeedImageMaxRewritesAtOnce            8
-#COVERAGE   ModPagespeedSlurpFlushLimit                8192
-#COVERAGE   ModPagespeedJpegRecompressionQuality         -1
-#COVERAGE   ModPagespeedImageLimitOptimizedPercent      100
-#COVERAGE   ModPagespeedImageLimitResizeAreaPercent     100
-#COVERAGE
-#COVERAGE   # Enabling beacons is not interesting in our current
-#COVERAGE   # load-test framework as the load-tester doesn't run JS
-#COVERAGE   # and thus can't send back any beacons.  This means we
-#COVERAGE   # won't be able to test inline images, since we don't know
-#COVERAGE   # which images are critical.  Better to turn it off.
-#COVERAGE   # TODO(jud): Load-test the critical images beacon in a
-#COVERAGE   # context that sends back beacons.
-#COVERAGE   ModPagespeedCriticalImagesBeaconEnabled false
-#COVERAGE
-#COVERAGE   <Location /mod_pagespeed_statistics>
-#COVERAGE       Order allow,deny
-#COVERAGE       Allow from localhost
-#COVERAGE       SetHandler mod_pagespeed_statistics
-#COVERAGE   </Location>
-#COVERAGE    <Location /mod_pagespeed_message>
-#COVERAGE        Allow from localhost
-#COVERAGE        Allow from 127.0.0.1
-#COVERAGE        SetHandler mod_pagespeed_message
-#COVERAGE    </Location>
-#COVERAGE </VirtualHost>
-#COVERAGE
-#COVERAGE <VirtualHost *:8081>
-#COVERAGE   ModPagespeed on
-#COVERAGE
-#COVERAGE   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@-alt"
-#COVERAGE   ModPagespeedRewriteLevel PassThrough
-#COVERAGE   ModPagespeedInPlaceResourceOptimization off
-#COVERAGE
-#COVERAGE   # ModPagespeedSlurpDirectory ...
-#COVERAGE   # ModPagespeedSlurpReadOnly on
-#COVERAGE
-#COVERAGE   <Location /mod_pagespeed_message>
-#COVERAGE        Allow from localhost
-#COVERAGE        Allow from 127.0.0.1
-#COVERAGE        SetHandler mod_pagespeed_message
-#COVERAGE   </Location>
-#COVERAGE </VirtualHost>
+#LOADTEST # Don't want global slurp inheriting into :8080
+#LOADTEST ModPagespeedInheritVHostConfig off
+#LOADTEST ModPagespeedMessageBufferSize 100000
+#LOADTEST
+#LOADTEST # We want backtraces to be dumped during the load test, as
+#LOADTEST # one of its purposes is to discover crash bugs.
+#LOADTEST ModPagespeedInstallCrashHandler on
+#LOADTEST
+#LOADTEST # These lines are used for large-scale code coverage testing.
+#LOADTEST # We use 2 servers for it, one doing rewriting and fetching
+#LOADTEST # from the other one, which plays back slurps
+#LOADTEST Listen 8081
+#LOADTEST <VirtualHost *:8080>
+#LOADTEST   ModPagespeed on
+#LOADTEST   # Proxy using SERF
+#LOADTEST   ModPagespeedTestProxy on
+#LOADTEST   ModPagespeedFetchProxy "127.0.0.1:8081"
+#IPRO_PRESERVE_LOADTEST ModPagespeedInPlaceResourceOptimization on
+#IPRO_PRESERVE_LOADTEST ModPagespeedInPlaceWaitForOptimized on
+#IPRO_PRESERVE_LOADTEST ModPagespeedCssPreserveURLs on
+#IPRO_PRESERVE_LOADTEST ModPagespeedImagePreserveURLs on
+#IPRO_PRESERVE_LOADTEST ModPagespeedJsPreserveURLS on
+#LOADTEST
+#MEMCACHE_LOADTEST   ModPagespeedMemcachedServers localhost:@@MEMCACHED_PORT@@
+#PURGING_LOADTEST    ModPagespeedEnableCachePurge on
+#PURGING_LOADTEST    ModPagespeedCompressMetadataCache on
+#LOADTEST   ModPagespeedFileCachePath       "@@MOD_PAGESPEED_CACHE@@_load_test"
+#LOADTEST   ModPagespeedCompressMetadataCache true
+#LOADTEST   ModPagespeedRewriteLevel AllFilters
+#IPRO_PRESERVE_LOADTEST   ModPagespeedRewriteLevel OptimizeForBandwidth
+#IPRO_PRESERVE_LOADTEST   ModPagespeedDisableFilters add_instrumentation
+#IPRO_PRESERVE_LOADTEST   ModPagespeedDisableFilters local_storage_cache,debug
+#IPRO_PRESERVE_LOADTEST   ModPagespeedDisableFilters lazyload_images
+#IPRO_PRESERVE_LOADTEST   ModPagespeedDisableFilters add_base_tag
+#IPRO_PRESERVE_LOADTEST   ModPagespeedDisableFilters dedup_inlined_images
+#IPRO_PRESERVE_LOADTEST   ModPagespeedDisableFilters convert_jpeg_to_webp
+#IPRO_PRESERVE_LOADTEST   ModPagespeedInPlaceRewriteDeadlineMs 1000
+#IPRO_PRESERVE_LOADTEST
+#IPRO_PRESERVE_LOADTEST   # We turn preemptive rewriting off for bandwidth
+#IPRO_PRESERVE_LOADTEST   # tests driven by recursive wget, where the image
+#IPRO_PRESERVE_LOADTEST   # requests will come too quickly to allow any
+#IPRO_PRESERVE_LOADTEST   # image rewrites to finish.  Leaving preemptive
+#IPRO_PRESERVE_LOADTEST   # rewrites enabled causes redundant image rewrites
+#IPRO_PRESERVE_LOADTEST   # to occur.
+#IPRO_PRESERVE_LOADTEST   ModPagespeedInPlacePreemptiveRewriteImages off
+#IPRO_PRESERVE_LOADTEST   ModPagespeedInPlacePreemptiveRewriteCss off
+#IPRO_PRESERVE_LOADTEST   ModPagespeedInPlacePreemptiveRewriteCssImages off
+#IPRO_PRESERVE_LOADTEST   ModPagespeedInPlacePreemptiveRewriteJavascript off
+#LOADTEST
+#LOADTEST   # flush_subsresources doesn't work in MPS but disables
+#LOADTEST   # combine_css and combine_javascript, so we don't want to
+#LOADTEST   # load-test it.
+#LOADTEST   ModPagespeedDisableFilters flush_subresources
+#LOADTEST   ModPagespeedEnableFilters elide_attributes
+#DOMAIN_AUTH_LOADTEST   ModPagespeedDomain *
+#IUR_LOADTEST ModPagespeedInlineResourcesWithoutExplicitAuthorization Script,Stylesheet
+#LOADTEST   ModPagespeedFileCacheSizeKb             1024000
+#LOADTEST   ModPagespeedFileCacheCleanIntervalMs     120000
+#LOADTEST   ModPagespeedLRUCacheKbPerProcess           1024
+#LOADTEST   ModPagespeedLRUCacheByteLimit             16384
+#LOADTEST   ModPagespeedCssFlattenMaxBytes           102400
+#LOADTEST   ModPagespeedCssInlineMaxBytes              2048
+#LOADTEST   ModPagespeedCssImageInlineMaxBytes            0
+#LOADTEST   ModPagespeedImageInlineMaxBytes            3072
+#LOADTEST   ModPagespeedMaxInlinedPreviewImagesIndex     -1
+#LOADTEST   ModPagespeedMinImageSizeLowResolutionBytes 3072
+#LOADTEST   ModPagespeedJsInlineMaxBytes               2048
+#LOADTEST   ModPagespeedCssOutlineMinBytes             3000
+#LOADTEST   ModPagespeedJsOutlineMinBytes              3000
+#LOADTEST   ModPagespeedImageMaxRewritesAtOnce            8
+#LOADTEST   ModPagespeedSlurpFlushLimit                8192
+#LOADTEST   ModPagespeedJpegRecompressionQuality         -1
+#LOADTEST   ModPagespeedImageLimitOptimizedPercent      100
+#LOADTEST   ModPagespeedImageLimitResizeAreaPercent     100
+#LOADTEST
+#LOADTEST   # Enabling beacons is not interesting in our current
+#LOADTEST   # load-test framework as the load-tester doesn't run JS
+#LOADTEST   # and thus can't send back any beacons.  This means we
+#LOADTEST   # won't be able to test inline images, since we don't know
+#LOADTEST   # which images are critical.  Better to turn it off.
+#LOADTEST   # TODO(jud): Load-test the critical images beacon in a
+#LOADTEST   # context that sends back beacons.
+#LOADTEST   ModPagespeedCriticalImagesBeaconEnabled false
+#LOADTEST
+#LOADTEST   <Location /mod_pagespeed_statistics>
+#LOADTEST       Order allow,deny
+#LOADTEST       Allow from localhost
+#LOADTEST       SetHandler mod_pagespeed_statistics
+#LOADTEST   </Location>
+#LOADTEST    <Location /mod_pagespeed_message>
+#LOADTEST        Allow from localhost
+#LOADTEST        Allow from 127.0.0.1
+#LOADTEST        SetHandler mod_pagespeed_message
+#LOADTEST    </Location>
+#LOADTEST </VirtualHost>
+#LOADTEST
+#LOADTEST <VirtualHost *:8081>
+#LOADTEST   ModPagespeed on
+#LOADTEST
+#LOADTEST   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@-alt"
+#LOADTEST   ModPagespeedRewriteLevel PassThrough
+#LOADTEST   ModPagespeedInPlaceResourceOptimization off
+#LOADTEST
+#LOADTEST   # ModPagespeedSlurpDirectory ...
+#LOADTEST   # ModPagespeedSlurpReadOnly on
+#LOADTEST
+#LOADTEST   <Location /mod_pagespeed_message>
+#LOADTEST        Allow from localhost
+#LOADTEST        Allow from 127.0.0.1
+#LOADTEST        SetHandler mod_pagespeed_message
+#LOADTEST   </Location>
+#LOADTEST </VirtualHost>
 
 
 #PROXY # This is used for ProxyPass testing.

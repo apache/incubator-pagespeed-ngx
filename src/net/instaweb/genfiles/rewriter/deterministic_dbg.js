@@ -15,11 +15,11 @@ Date = function() {
         return new orig_date(arguments[0], arguments[1], 3 <= arguments.length ? arguments[2] : 1, 4 <= arguments.length ? arguments[3] : 0, 5 <= arguments.length ? arguments[4] : 0, 6 <= arguments.length ? arguments[5] : 0, 7 <= arguments.length ? arguments[6] : 0);
     }
   }
-  return(new Date).toString();
+  return (new Date).toString();
 };
 Date.__proto__ = orig_date;
 Date.prototype.constructor = Date;
 orig_date.now = function() {
-  return(new Date).getTime();
+  return (new Date).getTime();
 };
 })();

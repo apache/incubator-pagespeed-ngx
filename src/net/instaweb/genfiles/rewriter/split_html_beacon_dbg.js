@@ -15,14 +15,14 @@
     }
   }
   if (!b) {
-    return!1;
+    return !1;
   }
   var g = -1 == a.indexOf("?") ? "?" : "&";
   a = a + g + "url=" + encodeURIComponent(c);
   b.open("POST", a);
   b.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
   b.send(d);
-  return!0;
+  return !0;
 }, addHandler:function(a, c, d) {
   if (a.addEventListener) {
     a.addEventListener(c, d, !1);
@@ -41,9 +41,9 @@
   for (var c = a.offsetTop, d = a.offsetLeft;a.offsetParent;) {
     a = a.offsetParent, c += a.offsetTop, d += a.offsetLeft;
   }
-  return{top:c, left:d};
+  return {top:c, left:d};
 }, getWindowSize:function() {
-  return{height:window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight, width:window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth};
+  return {height:window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight, width:window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth};
 }, inViewport:function(a, c) {
   var d = pagespeedutils.getPosition(a);
   return pagespeedutils.positionInViewport(d, c);
@@ -115,12 +115,12 @@ pagespeed.SplitHtmlBeacon.prototype.walkDom_ = function(a) {
     b.nodeType === Node.ELEMENT_NODE && "SCRIPT" != b.tagName && "NOSCRIPT" != b.tagName && "STYLE" != b.tagName && "LINK" != b.tagName && (this.walkDom_(b) ? d.push(b) : c = !1);
   }
   if (c && !pagespeedutils.inViewport(a, this.windowSize_)) {
-    return!0;
+    return !0;
   }
   for (a = 0;a < d.length;++a) {
     this.btfNodes_.push(pagespeedutils.generateXPath(d[a], window.document));
   }
-  return!1;
+  return !1;
 };
 pagespeed.SplitHtmlBeacon.prototype.checkSplitHtml_ = function() {
   this.walkDom_(document.body);
