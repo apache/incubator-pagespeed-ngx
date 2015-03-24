@@ -120,25 +120,15 @@ body {
   height: 100%;
 }
 
-#psmob-map-button {
+.psmob-header-bar a {
   float: right;
+  height: 100%;
 }
 
-#psmob-phone-dialer {
-  float: right;
-}
-
-#psmob-phone-image {
+.psmob-header-bar a img {
   width: 40%;
   height: 40%;
   padding: 30% 30% 30% 30%;
-  box-sizing: content-box;
-}
-
-#psmob-map-image {
-  width: 30%;
-  height: 30%;
-  padding: 30% 35% 40% 35%;
   box-sizing: content-box;
 }
 
