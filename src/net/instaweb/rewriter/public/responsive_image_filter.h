@@ -89,7 +89,8 @@ class ResponsiveImageSecondFilter : public CommonFilter {
  private:
   void CombineHiResImages(HtmlElement* orig_element,
                           const ResponsiveImageCandidateVector& candidates);
-  void DeleteVirtualElements(const ResponsiveImageCandidateVector& candidates);
+  void Cleanup(HtmlElement* orig_element,
+               const ResponsiveImageCandidateVector& candidates);
 
   const GoogleString responsive_js_url_;
   const ResponsiveImageFirstFilter* first_filter_;

@@ -74,6 +74,8 @@ class HtmlName {
     kControls,
     kData,
     kDatalist,
+    kDataActualHeight,
+    kDataActualWidth,
     kDataMobileRole,
     kDataPagespeedFlushStyle,
     kDataPagespeedHref,

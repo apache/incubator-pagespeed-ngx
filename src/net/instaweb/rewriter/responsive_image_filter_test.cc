@@ -146,12 +146,8 @@ TEST_F(ResponsiveImageFilterTest, NoResizeLarger) {
 
   // Note: This is the native size of a.jpg.
   const char input_html[] = "<img src=a.jpg width=1023 height=766>";
-  // TODO(sligocki): We should not include a srcset if it only has the same
-  // images for all resolutions.
-  GoogleString output_html = StrCat(
-      "<img src=a.jpg width=1023 height=766 "
-      "srcset=\"a.jpg 1x,a.jpg 2x,a.jpg 4x\">");
-  ValidateExpected("no_resize_larger", input_html, output_html);
+  // We do not add a srcset because this is already native size.
+  ValidateNoChanges("no_resize_larger", input_html);
 }
 
 TEST_F(ResponsiveImageFilterTest, RecompressLarger) {
@@ -162,14 +158,10 @@ TEST_F(ResponsiveImageFilterTest, RecompressLarger) {
 
   // Note: This is the native size of a.jpg.
   const char input_html[] = "<img src=a.jpg width=1023 height=766>";
-  // TODO(sligocki): We shouldn't be including the "higher resolution" versions
-  // when this is already full resolution.
   GoogleString output_html = StrCat(
       "<img src=", EncodeImage(1023, 766, "a.jpg", "0", "jpg"),
-      " width=1023 height=766 srcset=\"",
-      EncodeImage(1023,  766, "a.jpg", "0", "jpg"), " 1x,",
-      EncodeImage(2046, 1532, "a.jpg", "0", "jpg"), " 2x,",
-      EncodeImage(4092, 3064, "a.jpg", "0", "jpg"), " 4x\">");
+      " width=1023 height=766>");
+  // We do not add a srcset because this is already native size.
   ValidateExpected("recompress_larger", input_html, output_html);
 }
 
@@ -180,13 +172,13 @@ TEST_F(ResponsiveImageFilterTest, RecompressLarger2) {
   rewrite_driver()->AddFilters();
 
   // Note: This is half the native size of a.jpg.
-  const char input_html[] = "<img src=a.jpg width=511 height=383>";
+  const char input_html[] = "<img src=a.jpg width=512 height=383>";
   GoogleString output_html = StrCat(
-      "<img src=", EncodeImage(511, 383, "a.jpg", "0", "jpg"),
-      " width=511 height=383 srcset=\"",
-      EncodeImage( 511,  383, "a.jpg", "0", "jpg"), " 1x,",
-      EncodeImage(1022,  766, "a.jpg", "0", "jpg"), " 2x,",
-      EncodeImage(2044, 1532, "a.jpg", "0", "jpg"), " 4x\">");
+      "<img src=", EncodeImage(512, 383, "a.jpg", "0", "jpg"),
+      " width=512 height=383 srcset=\"",
+      EncodeImage(512, 383, "a.jpg", "0", "jpg"), " 1x,",
+      EncodeImage(1024, 766, "a.jpg", "0", "jpg"), " 2x\">");
+  // We do not add a 4x version because the 2x is already native size.
   ValidateExpected("recompress_larger2", input_html, output_html);
 }
 

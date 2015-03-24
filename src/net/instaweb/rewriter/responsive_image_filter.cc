@@ -22,6 +22,7 @@
 #include <memory>
 #include <utility>                      // for pair
 
+#include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -92,13 +93,17 @@ void ResponsiveImageFirstFilter::AddHiResImages(HtmlElement* element) {
     // TODO(sligocki): Possibly use lower quality settings for 2x and 4x
     // because standard quality-85 are overkill for high density displays.
     // However, we might want high quality for zoom.
-    // TODO(sligocki): Do not include images at higher than full resolution.
+    // Note: These must be listed in ascending order.
     ResponsiveImageCandidateVector candidate_list;
     candidate_list.push_back(
         AddHiResVersion(element, *src_attr, orig_width, orig_height, 2));
     candidate_list.push_back(
         AddHiResVersion(element, *src_attr, orig_width, orig_height, 4));
     candidate_map_[element] = candidate_list;
+    // Mark this element as responsive as well, so that ImageRewriteFilter will
+    // add actual final dimensions to the tag.
+    driver()->AddAttribute(element, HtmlName::kDataPagespeedResponsiveTemp,
+                           StringPiece(NULL));
   }
 }
 
@@ -149,9 +154,33 @@ void ResponsiveImageSecondFilter::EndElementImpl(HtmlElement* element) {
     // On second run of the filter, combine the elements back together.
     const ResponsiveImageCandidateVector& candidates = p->second;
     CombineHiResImages(element, candidates);
-    DeleteVirtualElements(candidates);
+    Cleanup(element, candidates);
   }
 }
+
+namespace {
+
+// Get actual dimensions. These are inserted by ImageRewriteFilter as
+// attributes on all images involved in the responsive flow.
+ImageDim ActualDims(const HtmlElement* element) {
+  ImageDim dims;
+
+  int height;
+  const char* height_str = element->AttributeValue(HtmlName::kDataActualHeight);
+  if (height_str != NULL && StringToInt(height_str, &height)) {
+    dims.set_height(height);
+  }
+
+  int width;
+  const char* width_str = element->AttributeValue(HtmlName::kDataActualWidth);
+  if (width_str != NULL && StringToInt(width_str, &width)) {
+    dims.set_width(width);
+  }
+
+  return dims;
+}
+
+}  // namespace
 
 // Combines information from dummy 2x and 4x images into the 1x srcset.
 // Deletes the dummy images.
@@ -167,6 +196,14 @@ void ResponsiveImageSecondFilter::CombineHiResImages(
 
   GoogleString srcset_value = StrCat(x1_src, " 1x");
 
+  // Keep track of last candidate's URL. If next candidate has same URL,
+  // don't include it in the srcset.
+  StringPiece last_src = x1_src;
+  // Keep track of actual final dimensions of last candidate. If next candidate
+  // has same actual dimensions, we don't include it in the srcset.
+  ImageDim last_dims = ActualDims(orig_element);
+  bool added_hi_res = false;
+
   for (int i = 0, n = candidates.size(); i < n; ++i) {
     const char* src = candidates[i].element->AttributeValue(HtmlName::kSrc);
 
@@ -179,26 +216,52 @@ void ResponsiveImageSecondFilter::CombineHiResImages(
       return;
     }
 
-    GoogleString resolution_string =
-        StringPrintf("%.16g", candidates[i].resolution);
-    // TODO(sligocki): Escape URLs appropriately? For example, we may need
-    // to escape commas. Which are used in both Data URLs and Pagespeed
-    // rewritten URLs as escape characters.
-    // TODO(sligocki): Don't include different URLs if they point to the same
-    // actual image. For example, if all hashes are the same, no point in
-    // having a srcset at all.
-    StrAppend(&srcset_value, ",", src, " ", resolution_string, "x");
+    ImageDim dims = ActualDims(candidates[i].element);
+    if (dims.height() == last_dims.height() &&
+        dims.width() == last_dims.width()) {
+      if (driver()->DebugMode()) {
+        driver()->InsertDebugComment(StringPrintf(
+            "Not adding %.16gx candidate to srcset because native image was "
+            "not high enough resolution.", candidates[i].resolution),
+                                     orig_element);
+      }
+    } else if (src == last_src) {
+      if (driver()->DebugMode()) {
+        driver()->InsertDebugComment(StringPrintf(
+            "Not adding %.16gx candidate to srcset because it is the same as "
+            "previous candidate.", candidates[i].resolution),
+                                     orig_element);
+      }
+    } else {
+      GoogleString resolution_string =
+          StringPrintf("%.16g", candidates[i].resolution);
+      // TODO(sligocki): Escape URLs appropriately? For example, we may need
+      // to escape commas. Which are used in both Data URLs and Pagespeed
+      // rewritten URLs as escape characters.
+      StrAppend(&srcset_value, ",", src, " ", resolution_string, "x");
+
+      last_src = src;
+      last_dims = dims;
+      added_hi_res = true;
+    }
   }
 
-  driver()->AddAttribute(orig_element, HtmlName::kSrcset, srcset_value);
-  srcsets_added_ = true;
+  if (added_hi_res) {
+    driver()->AddAttribute(orig_element, HtmlName::kSrcset, srcset_value);
+    srcsets_added_ = true;
+  }
 }
 
-void ResponsiveImageSecondFilter::DeleteVirtualElements(
+void ResponsiveImageSecondFilter::Cleanup(
+    HtmlElement* orig_element,
     const ResponsiveImageCandidateVector& candidates) {
   for (int i = 0, n = candidates.size(); i < n; ++i) {
     driver()->DeleteNode(candidates[i].element);
   }
+
+  orig_element->DeleteAttribute(HtmlName::kDataPagespeedResponsiveTemp);
+  orig_element->DeleteAttribute(HtmlName::kDataActualHeight);
+  orig_element->DeleteAttribute(HtmlName::kDataActualWidth);
 }
 
 void ResponsiveImageSecondFilter::EndDocument() {

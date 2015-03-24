@@ -1542,6 +1542,19 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
       driver()->AddAttribute(element, HtmlName::kWidth, file_dims.width());
       driver()->AddAttribute(element, HtmlName::kHeight, file_dims.height());
     }
+    if (element->FindAttribute(HtmlName::kDataPagespeedResponsiveTemp) != NULL
+        && cached->has_image_file_dims()
+        && ImageUrlEncoder::HasValidDimensions(cached->image_file_dims())) {
+      // If this is an image used by ResponsiveImageFilter, add information
+      // on actual final dimensions used. That way we can decide which to use
+      // in srcset and which to discard (because they are the same size as a
+      // lower density image).
+      const ImageDim& file_dims = cached->image_file_dims();
+      driver()->AddAttribute(element, HtmlName::kDataActualWidth,
+                             file_dims.width());
+      driver()->AddAttribute(element, HtmlName::kDataActualHeight,
+                             file_dims.height());
+    }
   }
 
   bool low_res_src_inserted = false;
