@@ -18,6 +18,7 @@ vars = {
   # all https URLs include the trailing slash, but it's unclear if SVN actually
   # respects this.
   "chromium_trunk": "https://src.chromium.org/svn/trunk/",
+  "chromium_git": "https://chromium.googlesource.com",
   # We don't include @ inside the revision here as is customary since
   # we want to pass this into a -D flag
   "chromium_revision_num": "256281",
@@ -31,8 +32,8 @@ vars = {
   "libwebp_src": "https://chromium.googlesource.com/webm/libwebp.git",
   "libwebp_revision": "@8af2771813632e2007988c8df6ad7e68b28ad121",
 
-  "modspdy_src": "https://mod-spdy.googlecode.com/svn/trunk/src/",
-  "modspdy_revision": "@387",
+  "modspdy_src": "https://svn.apache.org/repos/asf/httpd/mod_spdy/trunk",
+  "modspdy_revision": "@1661925",
 
   "serf_src": "https://serf.googlecode.com/svn/tags/1.1.0/",
   "serf_revision": "@head",
@@ -62,9 +63,8 @@ vars = {
   "jsoncpp_src": "https://github.com/open-source-parsers/jsoncpp.git",
   "jsoncpp_revision": "@7165f6ac4c482e68475c9e1dac086f9e12fff0d0",
 
-  "gflags_root":
-    "https://gflags.googlecode.com/svn/tags/gflags-1.5/src/",
-  "gflags_revision": "@head",
+  "gflags_src_revision": "@e7390f9185c75f8d902c05ed7d20bb94eb914d0c",
+  "gflags_revision": "@cc7e9a4b374ff7b6a1cae4d76161113ea985b624",
 
   "google_sparsehash_root":
     "https://sparsehash.googlecode.com/svn/tags/sparsehash-1.8.1/src/",
@@ -181,7 +181,12 @@ deps = {
   "src/third_party/closure_library":
     Var("closure_library") + Var("closure_library_revision"),
 
-  "src/third_party/gflags/src": Var("gflags_root") + Var("gflags_revision"),
+  "src/third_party/gflags":
+    Var('chromium_git') + '/external/webrtc/trunk/third_party/gflags' +
+    Var('gflags_revision'),
+  "src/third_party/gflags/src":
+    Var('chromium_git') + '/external/gflags/src' + Var("gflags_src_revision"),
+
   "src/third_party/google-sparsehash/src":
     Var("google_sparsehash_root") + Var("google_sparsehash_revision"),
 
