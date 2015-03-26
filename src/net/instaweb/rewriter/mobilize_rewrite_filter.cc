@@ -24,6 +24,7 @@
 #include "net/instaweb/rewriter/mobilize_cached.pb.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/mobilize_cached_finder.h"
+#include "net/instaweb/rewriter/public/mobilize_filter_base.h"
 #include "net/instaweb/rewriter/public/request_properties.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -39,15 +40,6 @@
 #include "pagespeed/kernel/http/google_url.h"
 
 namespace net_instaweb {
-
-const MobileRoleData MobileRoleData::kMobileRoles[MobileRole::kInvalid] = {
-  // This is the order that the HTML content will be rearranged.
-  MobileRoleData(MobileRole::kKeeper, "keeper"),
-  MobileRoleData(MobileRole::kHeader, "header"),
-  MobileRoleData(MobileRole::kNavigational, "navigational"),
-  MobileRoleData(MobileRole::kContent, "content"),
-  MobileRoleData(MobileRole::kMarginal, "marginal")
-};
 
 const char MobilizeRewriteFilter::kPagesMobilized[] =
     "mobilization_pages_rewritten";
@@ -118,11 +110,6 @@ void ConvertColor(const MobilizeCached::Color& color,
 
 }  // namespace
 
-const HtmlName::Keyword MobilizeRewriteFilter::kKeeperTags[] = {
-  HtmlName::kArea, HtmlName::kLink, HtmlName::kMap, HtmlName::kMeta,
-  HtmlName::kScript, HtmlName::kStyle, HtmlName::kTitle};
-const int MobilizeRewriteFilter::kNumKeeperTags = arraysize(kKeeperTags);
-
 MobilizeRewriteFilter::MobilizeRewriteFilter(RewriteDriver* rewrite_driver)
     : CommonFilter(rewrite_driver),
       body_element_depth_(0),
@@ -162,7 +149,6 @@ MobilizeRewriteFilter::MobilizeRewriteFilter(RewriteDriver* rewrite_driver)
   num_marginal_blocks_ = stats->GetVariable(kMarginalBlocks);
   num_elements_deleted_ = stats->GetVariable(kDeletedElements);
 #ifndef NDEBUG
-  CheckKeywordsSorted(kKeeperTags, kNumKeeperTags);
   CheckKeywordsSorted(kPreserveNavTags, arraysize(kPreserveNavTags));
   CheckKeywordsSorted(kTableTags, arraysize(kTableTags));
   CheckKeywordsSorted(kTableTagsToBr, arraysize(kTableTagsToBr));
@@ -557,26 +543,6 @@ void MobilizeRewriteFilter::AddStyle(HtmlElement* element) {
   }
 }
 
-const MobileRoleData*
-MobileRoleData::FromString(const StringPiece& mobile_role) {
-  for (int i = 0, n = arraysize(kMobileRoles); i < n; ++i) {
-    if (mobile_role == kMobileRoles[i].value) {
-      return &kMobileRoles[i];
-    }
-  }
-  return NULL;
-}
-
-MobileRole::Level
-MobileRoleData::LevelFromString(const StringPiece& mobile_role) {
-  const MobileRoleData* role = FromString(mobile_role);
-  if (role == NULL) {
-    return MobileRole::kInvalid;
-  } else {
-    return role->level;
-  }
-}
-
 MobileRole::Level MobilizeRewriteFilter::GetMobileRole(
     HtmlElement* element) {
   HtmlElement::Attribute* mobile_role_attribute =
@@ -585,8 +551,7 @@ MobileRole::Level MobilizeRewriteFilter::GetMobileRole(
     return MobileRoleData::LevelFromString(
         mobile_role_attribute->escaped_value());
   } else {
-    if (CheckForKeyword(kKeeperTags, kNumKeeperTags,
-                        element->keyword())) {
+    if (MobilizeFilterBase::IsKeeperTag(element->keyword())) {
       return MobileRole::kKeeper;
     }
     return MobileRole::kInvalid;

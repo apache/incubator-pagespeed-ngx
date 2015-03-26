@@ -22,8 +22,8 @@
 #include <set>
 #include <vector>
 
-#include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/mobilize_decision_trees.h"
+#include "net/instaweb/rewriter/public/mobilize_filter_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "pagespeed/kernel/base/basictypes.h"
@@ -77,7 +77,7 @@ struct ElementSample {
 // fashion before their parent's close tag.  We take the presence of html5 tags
 // as authoritative; note that we've assumed that they're authoritative in
 // training our classifiers.
-class MobilizeLabelFilter : public CommonFilter {
+class MobilizeLabelFilter : public MobilizeFilterBase {
  public:
   // Monitoring variable names
   static const char kPagesLabeled[];  // Pages run through labeler.
@@ -95,16 +95,18 @@ class MobilizeLabelFilter : public CommonFilter {
   static void InitStats(Statistics* statistics);
 
   virtual const char* Name() const { return "MobilizeLabel"; }
-  virtual void StartDocumentImpl();
-  virtual void StartElementImpl(HtmlElement* element);
-  virtual void EndElementImpl(HtmlElement* element);
-  virtual void Characters(HtmlCharactersNode* characters);
-  virtual void EndDocument();
 
  private:
   void Init();
+  virtual void StartDocumentImpl();
+  virtual void StartNonSkipElement(
+      MobileRole::Level role_attribute, HtmlElement* element);
+  virtual void EndNonSkipElement(HtmlElement* element);
+  virtual void Characters(HtmlCharactersNode* characters);
+  virtual void EndDocumentImpl();
   void GetClassesFromOptions(const RewriteOptions* options);
-  void HandleElementWithMetadata(HtmlElement* element);
+  void HandleElementWithMetadata(
+      MobileRole::Level role_attribute, HtmlElement* element);
   void HandleDivLikeElement(HtmlElement* element, MobileRole::Level role);
   void HandleExplicitlyConfiguredElement(HtmlElement* element);
   void ExplicitlyConfigureRole(MobileRole::Level role, HtmlElement* element);
@@ -121,7 +123,6 @@ class MobilizeLabelFilter : public CommonFilter {
   void InjectLabelJavascript();
   void NonMobileUnlabel();
 
-  HtmlElement* active_no_traverse_element_;
   int relevant_tag_depth_;
   int max_relevant_tag_depth_;
   int link_depth_;

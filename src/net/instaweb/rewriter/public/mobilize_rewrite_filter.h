@@ -33,24 +33,6 @@
 
 namespace net_instaweb {
 
-// A mobile role and its associated HTML attribute value.
-struct MobileRoleData {
-  static const MobileRoleData kMobileRoles[MobileRole::kInvalid];
-
-  MobileRoleData(MobileRole::Level level, const char* value)
-      : level(level),
-        value(value) { }
-
-  static const MobileRoleData* FromString(const StringPiece& mobile_role);
-  static MobileRole::Level LevelFromString(const StringPiece& mobile_role);
-  static const char* StringFromLevel(MobileRole::Level level) {
-    return (level < MobileRole::kInvalid) ? kMobileRoles[level].value : NULL;
-  }
-
-  const MobileRole::Level level;
-  const char* const value;  // Set to a static string in cc.
-};
-
 // Rewrite HTML to be mobile-friendly based on "data-mobile-role" attributes in
 // the HTML tags. To reorganize the DOM, the filter puts containers at the end
 // of the body into which we move tagged elements. The containers are later
@@ -98,11 +80,6 @@ class MobilizeRewriteFilter : public CommonFilter {
   static const char kMarginalBlocks[];
   static const char kDeletedElements[];
   static const char kSetSpacerHeight[];
-
-  // Static list of tags we keep without traversing.  Public so
-  // MobilizeLabelFilter knows which tags to ignore.
-  static const HtmlName::Keyword kKeeperTags[];
-  static const int kNumKeeperTags;
 
   explicit MobilizeRewriteFilter(RewriteDriver* rewrite_driver);
   virtual ~MobilizeRewriteFilter();

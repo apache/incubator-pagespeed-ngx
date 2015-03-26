@@ -1768,6 +1768,7 @@
         'rewriter/make_show_ads_async_filter.cc',
         'rewriter/meta_tag_filter.cc',
         'rewriter/mobilize_cached_finder.cc',
+        'rewriter/mobilize_filter_base.cc',
         'rewriter/mobilize_label_filter.cc',
         'rewriter/mobilize_rewrite_filter.cc',
         'rewriter/navigational_decision_tree.cc',

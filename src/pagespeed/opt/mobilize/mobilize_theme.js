@@ -47,15 +47,15 @@ pagespeed.MobTheme = function(doneCallback) {
  * @private
  */
 pagespeed.MobTheme.createMenuButton_ = function(color) {
-  var button = document.createElement('button');
+  var button = document.createElement(goog.dom.TagName.BUTTON);
   goog.dom.classlist.add(button, 'psmob-menu-button');
-  var hamburgerDiv = document.createElement('div');
+  var hamburgerDiv = document.createElement(goog.dom.TagName.DIV);
   goog.dom.classlist.add(hamburgerDiv, 'psmob-hamburger-div');
   button.appendChild(hamburgerDiv);
 
   var colorStr = pagespeed.MobUtil.colorNumbersToString(color);
   for (var i = 0; i < 3; ++i) {
-    var hamburgerLine = document.createElement('div');
+    var hamburgerLine = document.createElement(goog.dom.TagName.DIV);
     goog.dom.classlist.add(hamburgerLine, 'psmob-hamburger-line');
     hamburgerLine.style.backgroundColor = colorStr;
     hamburgerDiv.appendChild(hamburgerLine);
@@ -74,7 +74,7 @@ pagespeed.MobTheme.createMenuButton_ = function(color) {
  */
 pagespeed.MobTheme.synthesizeLogoSpan_ = function(logo, backgroundColor,
                                                   foregroundColor) {
-  var logoSpan = document.createElement('span');
+  var logoSpan = document.createElement(goog.dom.TagName.SPAN);
   logoSpan.id = 'psmob-logo-span';
 
   if (logo && logo.foregroundImage) {

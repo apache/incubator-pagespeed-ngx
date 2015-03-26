@@ -642,7 +642,7 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
   document.body.insertBefore(this.spacerDiv_, document.body.childNodes[0]);
   goog.dom.classlist.add(this.spacerDiv_, 'psmob-header-spacer-div');
 
-  this.headerBar_ = document.createElement('header');
+  this.headerBar_ = document.createElement(goog.dom.TagName.HEADER);
   document.body.insertBefore(this.headerBar_, this.spacerDiv_);
   goog.dom.classlist.add(this.headerBar_, 'psmob-header-bar');
   // Set the unscaled header bar height. We set it to 10% of the largest screen
@@ -689,10 +689,10 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
  * @private
  */
 pagespeed.MobNav.prototype.addPhoneDialer_ = function(color) {
-  var callImage = document.createElement('img');
+  var callImage = document.createElement(goog.dom.TagName.IMG);
   callImage.id = 'psmob-phone-image';
   callImage.src = this.synthesizeImage(pagespeed.MobNav.CALL_BUTTON, color);
-  this.callButton_ = document.createElement('a');
+  this.callButton_ = document.createElement(goog.dom.TagName.A);
   this.callButton_.id = 'psmob-phone-dialer';
   var phone = this.getPhoneNumber_();
   if (phone) {
@@ -766,10 +766,10 @@ function psOpenMap() {
  * @private
  */
 pagespeed.MobNav.prototype.addMapNavigation_ = function(color) {
-  var mapImage = document.createElement('img');
+  var mapImage = document.createElement(goog.dom.TagName.IMG);
   mapImage.id = 'psmob-map-image';
   mapImage.src = this.synthesizeImage(pagespeed.MobNav.MAP_BUTTON, color);
-  this.mapButton_ = document.createElement('a');
+  this.mapButton_ = document.createElement(goog.dom.TagName.A);
   this.mapButton_.id = 'psmob-map-button';
   if (window.psMapConversionLabel) {
     this.mapButton_.href = 'javascript:psOpenMap()';
@@ -939,7 +939,7 @@ pagespeed.MobNav.prototype.addThemeColor_ = function(themeData) {
       '.psmob-nav-panel > ul li { color: ' + backgroundColor + '; }\n' +
       '.psmob-nav-panel > ul li a { color: ' + backgroundColor + '; }\n' +
       '.psmob-nav-panel > ul li div { color: ' + backgroundColor + '; }\n';
-  var styleTag = document.createElement('style');
+  var styleTag = document.createElement(goog.dom.TagName.STYLE);
   styleTag.type = 'text/css';
   styleTag.appendChild(document.createTextNode(css));
   document.head.appendChild(styleTag);
@@ -1156,10 +1156,11 @@ pagespeed.MobNav.prototype.addNavPanel_ = function(themeData) {
             'data-mobilize-nav-level');
         // Create a new submenu if the next item is nested under this one.
         if (navLevel1 < navLevel2) {
-          var item = document.createElement('li');
-          var div = item.appendChild(document.createElement('div'));
+          var item = document.createElement(goog.dom.TagName.LI);
+          var div =
+              item.appendChild(document.createElement(goog.dom.TagName.DIV));
           if (arrowIcon) {
-            var icon = document.createElement('img');
+            var icon = document.createElement(goog.dom.TagName.IMG);
             div.appendChild(icon);
             icon.setAttribute('src', arrowIcon);
             goog.dom.classlist.add(icon, 'psmob-menu-expand-icon');
@@ -1167,12 +1168,12 @@ pagespeed.MobNav.prototype.addNavPanel_ = function(themeData) {
           div.appendChild(document.createTextNode(
               navATags[j].textContent || navATags[j].innerText));
           navSubmenus[navSubmenus.length - 1].appendChild(item);
-          var submenu = document.createElement('ul');
+          var submenu = document.createElement(goog.dom.TagName.UL);
           item.appendChild(submenu);
           navSubmenus.push(submenu);
         } else {
           // Otherwise, create a new LI.
-          var item = document.createElement('li');
+          var item = document.createElement(goog.dom.TagName.LI);
           navSubmenus[navSubmenus.length - 1].appendChild(item);
           item.appendChild(navATags[j].cloneNode(true));
           var popCnt = navLevel1 - navLevel2;

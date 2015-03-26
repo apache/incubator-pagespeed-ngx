@@ -25,7 +25,6 @@
 #include "net/instaweb/rewriter/public/add_ids_filter.h"
 #include "net/instaweb/rewriter/public/decision_tree.h"
 #include "net/instaweb/rewriter/public/mobilize_decision_trees.h"
-#include "net/instaweb/rewriter/public/mobilize_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/request_properties.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -224,13 +223,6 @@ const RelevantTagMetadata* FindTagMetadata(HtmlName::Keyword tag) {
   } else {
     return NULL;
   }
-}
-
-bool IsKeeperTag(HtmlName::Keyword tag) {
-  return std::binary_search(MobilizeRewriteFilter::kKeeperTags,
-                            MobilizeRewriteFilter::kKeeperTags +
-                            MobilizeRewriteFilter::kNumKeeperTags,
-                            tag);
 }
 
 bool IsIgnoreTag(HtmlName::Keyword tag) {
@@ -488,7 +480,7 @@ GoogleString ElementSample::ToString(bool readable, HtmlParse* parser) {
 }
 
 MobilizeLabelFilter::MobilizeLabelFilter(RewriteDriver* driver)
-    : CommonFilter(driver) {
+    : MobilizeFilterBase(driver) {
   Init();
   Statistics* stats = driver->statistics();
   pages_labeled_ = stats->GetVariable(kPagesLabeled);
@@ -516,7 +508,6 @@ MobilizeLabelFilter::~MobilizeLabelFilter() {
 }
 
 void MobilizeLabelFilter::Init() {
-  active_no_traverse_element_ = NULL;
   relevant_tag_depth_ = 0;
   max_relevant_tag_depth_ = 0;
   link_depth_ = 0;
@@ -572,27 +563,22 @@ void MobilizeLabelFilter::StartDocumentImpl() {
   MakeNewSample(NULL);
 }
 
-void MobilizeLabelFilter::StartElementImpl(HtmlElement* element) {
-  if (active_no_traverse_element_ != NULL ||
-      IsIgnoreTag(element->keyword())) {
-    return;
-  }
-  if (IsKeeperTag(element->keyword())) {
-    // Ignore content in things like <script> and <style> blocks that
-    // don't contain user-accessible content.
-    active_no_traverse_element_ = element;
+void MobilizeLabelFilter::StartNonSkipElement(
+    MobileRole::Level role_attribute, HtmlElement* element) {
+  if (IsIgnoreTag(element->keyword())) {
     return;
   }
   // We've dropped all the tags we don't even want to look inside.
   // Now decide how interesting the tag might be.
-  HandleElementWithMetadata(element);
+  HandleElementWithMetadata(role_attribute, element);
   if (!nav_classes_.empty() || !non_nav_classes_.empty()) {
     HandleExplicitlyConfiguredElement(element);
   }
   ++tag_count_;
 }
 
-void MobilizeLabelFilter::HandleElementWithMetadata(HtmlElement* element) {
+void MobilizeLabelFilter::HandleElementWithMetadata(
+    MobileRole::Level role_attribute, HtmlElement* element) {
   const RelevantTagMetadata* tag_metadata = FindTagMetadata(element->keyword());
   if (tag_metadata == NULL) {
     return;
@@ -607,11 +593,15 @@ void MobilizeLabelFilter::HandleElementWithMetadata(HtmlElement* element) {
   }
   // Tag that we want to count (includes all the div-like tags).
   IncrementRelevantTagDepth();
-  MobileRole::Level mobile_role = tag_metadata->mobile_role;
-  if (tag_metadata->is_div_like) {
-    HandleDivLikeElement(element, mobile_role);
+  // tag_role is based on the html tag (eg <nav> or <header>) and is overridden
+  // by the data_mobile_role attribute (role_attribute).
+  MobileRole::Level tag_role = tag_metadata->mobile_role;
+  if (IsRoleValid(role_attribute)) {
+    HandleDivLikeElement(element, role_attribute);
+  } else if (tag_metadata->is_div_like) {
+    HandleDivLikeElement(element, tag_role);
   }
-  if (!IsRoleValid(mobile_role)) {
+  if (!IsRoleValid(tag_role)) {
     sample_stack_.back()->
         features[kRelevantTagCount + tag_metadata->relevant_tag]++;
   } else {
@@ -629,19 +619,9 @@ void MobilizeLabelFilter::HandleDivLikeElement(HtmlElement* element,
                                                MobileRole::Level role) {
   ElementSample* sample = MakeNewSample(element);
   // Handle hand-annotated element.
-  HtmlElement::Attribute* mobile_role_attribute =
-      element->FindAttribute(HtmlName::kDataMobileRole);
-  if (mobile_role_attribute != NULL) {
-    sample->role =
-        MobileRoleData::LevelFromString(mobile_role_attribute->escaped_value());
-    sample->explicitly_labeled = true;
-  } else {
-    sample->role = role;
-    if (role != MobileRole::kUnassigned) {
-      // DOM element determined the label already.
-      sample->explicitly_labeled = true;
-    }
-  }
+  sample->role = role;
+  // DOM element determined the label already.
+  sample->explicitly_labeled = (role != MobileRole::kUnassigned);
   // Now search the attributes for any indicative strings.
   for (int i = 0; i < static_cast<int>(arraysize(kAttrsToSearch)); ++i) {
     HtmlName::Keyword attr = kAttrsToSearch[i];
@@ -705,13 +685,7 @@ void MobilizeLabelFilter::ExplicitlyConfigureRole(
   sample->role = role;
 }
 
-void MobilizeLabelFilter::EndElementImpl(HtmlElement* element) {
-  if (active_no_traverse_element_ != NULL) {
-    if (active_no_traverse_element_ == element) {
-      active_no_traverse_element_ = NULL;
-    }
-    return;
-  }
+void MobilizeLabelFilter::EndNonSkipElement(HtmlElement* element) {
   if (IsIgnoreTag(element->keyword())) {
     return;
   }
@@ -740,7 +714,7 @@ void MobilizeLabelFilter::EndElementImpl(HtmlElement* element) {
 }
 
 void MobilizeLabelFilter::Characters(HtmlCharactersNode* characters) {
-  if (active_no_traverse_element_ != NULL) {
+  if (AreInSkip()) {
     return;
   }
   // We ignore leading and trailing whitespace when accounting for characters,
@@ -760,7 +734,7 @@ void MobilizeLabelFilter::Characters(HtmlCharactersNode* characters) {
       (content_nbsp_count + content_size_adjustment);
 }
 
-void MobilizeLabelFilter::EndDocument() {
+void MobilizeLabelFilter::EndDocumentImpl() {
   // The horrifying static cast here avoids warnings under gcc, while allowing a
   // system-dependent return type for .size().
   DCHECK_EQ(static_cast<size_t>(1), sample_stack_.size());
