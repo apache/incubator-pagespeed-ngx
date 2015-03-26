@@ -689,18 +689,17 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
  * @private
  */
 pagespeed.MobNav.prototype.addPhoneDialer_ = function(color) {
-  var callImage = document.createElement(goog.dom.TagName.IMG);
-  callImage.id = 'psmob-phone-image';
-  callImage.src = this.synthesizeImage(pagespeed.MobNav.CALL_BUTTON, color);
-  this.callButton_ = document.createElement(goog.dom.TagName.A);
+  this.callButton_ = document.createElement(goog.dom.TagName.DIV);
   this.callButton_.id = 'psmob-phone-dialer';
+  this.callButton_.style.backgroundImage = 'url(' +
+      this.synthesizeImage(pagespeed.MobNav.CALL_BUTTON, color) + ')';
   var phone = this.getPhoneNumber_();
   if (phone) {
-    this.callButton_.href = pagespeed.MobNav.createPhoneHref_(phone);
+    window.psPhoneNumber = phone;
+    this.callButton_.onclick = pagespeed.MobNav.dialPhone_;
   } else {
-    this.callButton_.href = 'javascript:psRequestDynamicPhoneNumberAndCall()';
+    this.callButton_.onclick = pagespeed.MobNav.requestPhoneNumberAndCall_;
   }
-  this.callButton_.appendChild(callImage);
   this.headerBar_.appendChild(this.callButton_);
 };
 
@@ -821,12 +820,9 @@ pagespeed.MobNav.prototype.getPhoneNumber_ = function() {
 /**
  * Obtains a dynamic Google-Voice number to track conversions.  We only
  * do this when user clicks the phone icon.
- *
- * This is declared as a raw function so it is
- * accessible from as href='javascript:psRequestDynamicPhoneNumberAndCall()'.
- * @export
+ * @private
  */
-function psRequestDynamicPhoneNumberAndCall() {
+pagespeed.MobNav.requestPhoneNumberAndCall_ = function() {
   if (window.psPhoneConversionLabel && window.psPhoneNumber) {
     // No request from cookie.
     var label = escape(window.psPhoneConversionLabel);
@@ -841,43 +837,28 @@ function psRequestDynamicPhoneNumberAndCall() {
       if (window.psDebugMode) {
         alert('error callback called');
       }
-      if (window.psPhoneNumber) {
-        psDialPhone(window.psPhoneNumber);
-      }
+      pagespeed.MobNav.dialPhone_();
     };
     req.send(null, pagespeed.MobNav.receivePhoneNumber_, errorCallback);
   }
-}
-
-
-/**
- * Creates an anchor href to dial a phone number.
- *
- * @private
- * @param {string} phone
- * @return {string}
- */
-pagespeed.MobNav.createPhoneHref_ = function(phone) {
-  return 'javascript:psDialPhone("' + phone + '")';
 };
 
 
 /**
- * Dials a phone number.  This is declared as a raw function so it is
- * accessible from as href='javascript:psDialPhone(5551212)'.
- * @param {string} phone
- * @export
+ * Dials a phone number.
+ * @private
  */
-function psDialPhone(phone) {
-  location.href = 'tel:' + phone;
-}
+pagespeed.MobNav.dialPhone_ = function() {
+  if (window.psPhoneNumber) {
+    location.href = 'tel:' + window.psPhoneNumber;
+  }
+};
 
 
 /**
  * Extracts a dynamic phone number from a jsonp response.  If successful, it
- * calls the phone and saves the phone number in a cookie.  It also adjusts
- * the dialer phone anchor-tag to directly dial the dynamic phone in case it
- * is clicked again.
+ * calls the phone, and saves the phone number in a cookie and also in the
+ * window object.
  *
  * @private
  * @param {Object} json
@@ -890,6 +871,7 @@ pagespeed.MobNav.receivePhoneNumber_ = function(json) {
       phone = wcm['mobile_number'];
     }
   }
+
   if (phone) {
     // Save the phone in a cookie to reduce server requests.
     var cookieValue = {
@@ -905,17 +887,18 @@ pagespeed.MobNav.receivePhoneNumber_ = function(json) {
     }
     document.cookie = 'gwcm=' + escape(cookieValue) + ';path=/;max-age=' +
         (3600 * 24 * 90);
-    psDialPhone(phone);
-    var anchor = document.getElementById('psmob-phone-dialer');
-    anchor.href = pagespeed.MobNav.createPhoneHref_(phone);
+
+    // Save the phone number in the window object so it can be used in
+    // dialPhone_().
+    window.psPhoneNumber = phone;
   } else if (window.psPhoneNumber) {
     // No ad was clicked.  Call the configured phone number, which will not
     // be conversion-tracked.
     if (window.psDebugMode) {
       alert('receivePhoneNumber: ' + goog.json.serialize(json));
     }
-    psDialPhone(window.psPhoneNumber);
   }
+  pagespeed.MobNav.dialPhone_();
 };
 
 

@@ -125,7 +125,16 @@ body {
   height: 100%;
 }
 
-.psmob-header-bar a img {
+#psmob-phone-dialer {
+  height: 100%;
+  box-sizing: content-box;
+  background-repeat: no-repeat;
+  background-size: 40%;
+  background-position: center;
+  float: right;
+}
+
+#psmob-map-image {
   width: 40%;
   height: 40%;
   padding: 30% 30% 30% 30%;
