@@ -68,11 +68,9 @@ pagespeed.MobLogoCandidate = function(logoRecord, background, foreground) {
 /**
  * Creates a context for Pagespeed logo detector.
  * @param {!pagespeed.Mob} psMob
- * @param {function(!Array.<pagespeed.MobLogoCandidate>)} doneCallback
- * @param {number} maxNumCandidates
  * @constructor
  */
-pagespeed.MobLogo = function(psMob, doneCallback, maxNumCandidates) {
+pagespeed.MobLogo = function(psMob) {
   /**
    * Mobilization context.
    *
@@ -82,9 +80,9 @@ pagespeed.MobLogo = function(psMob, doneCallback, maxNumCandidates) {
 
   /**
    * Callback to invoke when this object finishes its work.
-   * @private {function(!Array.<pagespeed.MobLogoCandidate>)} doneCallback_
+   * @private {?function(!Array.<pagespeed.MobLogoCandidate>)} doneCallback_
    */
-  this.doneCallback_ = doneCallback;
+  this.doneCallback_ = null;
 
   /** @private {?string} */
   this.organization_ = pagespeed.MobUtil.getSiteOrganization();
@@ -102,7 +100,7 @@ pagespeed.MobLogo = function(psMob, doneCallback, maxNumCandidates) {
   this.pendingEventCount_ = 0;
 
   /** @private {number} */
-  this.maxNumCandidates_ = maxNumCandidates;
+  this.maxNumCandidates_ = 1;
 };
 
 
@@ -437,20 +435,23 @@ pagespeed.MobLogo.prototype.findBestLogoAndColor_ = function() {
   this.pruneCandidateBySizePos_();
   var logos = this.findBestLogos_();
   var candidates = [];
-  var numCandidates = Math.min(this.maxNumCandidates_, logos.length);
-  for (var i = 0; i < numCandidates; ++i) {
-    var img = null;
-    var background = null;
+  var candidateMap = {};  // Dedup duplicates from findBestLogos_.
+  for (var i = 0;
+      (candidates.length < this.maxNumCandidates_) && (i < logos.length);
+       ++i) {
     var logo = logos[i];
-    this.findLogoBackground_(logo);
-    img = logo.foregroundImage;
-    background = logo.backgroundColor;
-    var mobColor = new pagespeed.MobColor();
-    var themeColor = mobColor.run(img, background);
-    candidates.push(new pagespeed.MobLogoCandidate(
-        logo, themeColor.background, themeColor.foreground));
+    if (!candidateMap[logo.foregroundImage.src]) {
+      candidateMap[logo.foregroundImage.src] = true;
+      this.findLogoBackground_(logo);
+      var mobColor = new pagespeed.MobColor();
+      var themeColor = mobColor.run(logo.foregroundImage, logo.backgroundColor);
+      candidates.push(new pagespeed.MobLogoCandidate(
+          logo, themeColor.background, themeColor.foreground));
+    }
   }
-  this.doneCallback_(candidates);
+  var callback = this.doneCallback_;
+  this.doneCallback_ = null;
+  callback(candidates);
 };
 
 
@@ -512,7 +513,16 @@ pagespeed.MobLogo.compareLogos_ = function(a, b) {
       return 1;
     }
   }
-  return 0;                     // a tie!
+  // Resolve a tie by comparing the logo URLs, so the order is stable.
+  if (a.logoElement && a.logoElement.src &&
+      b.logoElement && b.logoElement.src) {
+    if (a.logoElement.src < b.logoElement.src) {
+      return -1;
+    } else if (a.logoElement.src > b.logoElement.src) {
+      return 1;
+    }
+  }
+  return 0;
 };
 
 
@@ -621,14 +631,29 @@ pagespeed.MobLogo.prototype.findLogoBackground_ = function(logo) {
 
 
 /**
- * Extract theme of the page. This is the entry method.
+ * Extract theme of the page. This is the entry method.  If the
+ * body is empty, or if there is a currently outstanding call to run(),
+ * then doneCallback will be called immediately with an empty array.
+ *
+ * @param {function(!Array.<pagespeed.MobLogoCandidate>)} doneCallback
+ * @param {number} maxNumCandidates
  * @export
  */
-pagespeed.MobLogo.prototype.run = function() {
-  if (!document.body) {
-    return;
+pagespeed.MobLogo.prototype.run = function(doneCallback, maxNumCandidates) {
+  if (this.doneCallback_ || !document.body) {
+    doneCallback([]);
+  } else {
+    this.doneCallback_ = doneCallback;
+    this.maxNumCandidates_ = maxNumCandidates;
+    this.findLogoCandidates_(document.body);
+    this.findImagesAndWait_(this.candidates_);
   }
+};
 
-  this.findLogoCandidates_(document.body);
-  this.findImagesAndWait_(this.candidates_);
+
+/**
+ * @return {pagespeed.Mob}
+ */
+pagespeed.MobLogo.prototype.psMob = function() {
+  return this.psMob_;
 };

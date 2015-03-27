@@ -15,14 +15,14 @@
     }
   }
   if (!d) {
-    return !1;
+    return!1;
   }
   var f = -1 == a.indexOf("?") ? "?" : "&";
   a = a + f + "url=" + encodeURIComponent(b);
   d.open("POST", a);
   d.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
   d.send(c);
-  return !0;
+  return!0;
 }, addHandler:function(a, b, c) {
   if (a.addEventListener) {
     a.addEventListener(b, c, !1);
@@ -41,9 +41,9 @@
   for (var b = a.offsetTop, c = a.offsetLeft;a.offsetParent;) {
     a = a.offsetParent, b += a.offsetTop, c += a.offsetLeft;
   }
-  return {top:b, left:c};
+  return{top:b, left:c};
 }, getWindowSize:function() {
-  return {height:window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight, width:window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth};
+  return{height:window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight, width:window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth};
 }, inViewport:function(a, b) {
   var c = pagespeedutils.getPosition(a);
   return pagespeedutils.positionInViewport(c, b);
@@ -280,10 +280,10 @@ deferJsNs.DeferJs.prototype.highPriorityFinalize = function() {
 deferJsNs.DeferJs.prototype.checkNodeInDom = function(a) {
   for (;a = a.parentNode;) {
     if (a == document) {
-      return !0;
+      return!0;
     }
   }
-  return !1;
+  return!1;
 };
 deferJsNs.DeferJs.prototype.getNumScriptsWithNoOnload = function(a) {
   for (var b = 0, c = a.length, d = 0;d < c;++d) {
@@ -294,7 +294,7 @@ deferJsNs.DeferJs.prototype.getNumScriptsWithNoOnload = function(a) {
 };
 deferJsNs.DeferJs.prototype.canCallOnComplete = function() {
   if (this.state_ != deferJsNs.DeferJs.STATES.SYNC_SCRIPTS_DONE) {
-    return !1;
+    return!1;
   }
   var a = 0;
   0 != this.dynamicInsertedScriptCount_ && (a = this.getNumScriptsWithNoOnload(this.dynamicInsertedScript_));
@@ -567,10 +567,10 @@ deferJsNs.addOnload = function(a, b) {
 };
 pagespeed.addOnload = deferJsNs.addOnload;
 deferJsNs.DeferJs.prototype.isFireFox = function() {
-  return -1 != navigator.userAgent.indexOf("Firefox");
+  return-1 != navigator.userAgent.indexOf("Firefox");
 };
 deferJsNs.DeferJs.prototype.isWebKit = function() {
-  return -1 != navigator.userAgent.indexOf("AppleWebKit");
+  return-1 != navigator.userAgent.indexOf("AppleWebKit");
 };
 deferJsNs.DeferJs.prototype.getIEVersion = function() {
   var a = /(?:MSIE.(\d+\.\d+))/.exec(navigator.userAgent);

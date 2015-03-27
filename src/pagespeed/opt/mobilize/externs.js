@@ -43,6 +43,10 @@ var psDebugMode;
 
 
 /** @type {boolean} */
+var psConfigMode;
+
+
+/** @type {boolean} */
 var psLayoutMode;
 
 

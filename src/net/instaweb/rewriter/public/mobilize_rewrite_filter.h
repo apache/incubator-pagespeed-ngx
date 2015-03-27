@@ -117,6 +117,7 @@ class MobilizeRewriteFilter : public CommonFilter {
   bool added_mob_js_;
   bool added_progress_;
   bool added_spacer_;
+  bool config_mode_;
   bool in_script_;
   bool use_js_layout_;
   bool use_js_nav_;

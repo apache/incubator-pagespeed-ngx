@@ -458,3 +458,79 @@ body {
 #psmob-click-detector-div.open {
   visibility: visible;
 }
+
+/*
+ * The logo chooser sizing is based on a font-size of 12px, and manually
+ * tweaked sizes for logos and colors based on that.  This is scaled in JS
+ * (pagespeed.MobNav.prototype.chooserDisplayPopup_) via a CSS transform to
+ * match the window size at the time it's instantiated.
+ *
+ * TODO(jmarantz): The CSS delivered to clients should not include the
+ * psmob-logo-chooser-* classes unless ?PageSpeedMobConfig=on is specified.
+ */
+.psmob-logo-chooser-choice {
+  margin-bottom: 10px;
+  border-width: 1px;
+  padding: 2px 2px 2px 2px;
+  overflow: hidden;
+}
+
+.psmob-logo-chooser-color {
+  height: 50px;  /* width is determined by table header. */
+  border-color: black;
+  border-width: 1px;
+  border-style: solid;
+}
+
+.psmob-logo-chooser-swap {
+  width: 30px;
+  height: 30px;
+}
+
+.psmob-logo-chooser-column-header {
+  font-family: sans-serif;
+  font-size: 12px;
+  font-weight: bold;
+  border-color: black;
+  border-width: 1px;
+  border-style: solid;
+}
+
+.psmob-logo-chooser-table {
+  z-index: 999999;
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  background-color: white;
+  border-style: solid;
+  border-width: 4px;
+
+  opacity: 1;
+  /* Use a 200ms fade in when redrawing the table after scrolling. */
+  -webkit-transition: opacity 0.2s;
+  -moz-transition: opacity 0.2s;
+  -o-transition: opacity 0.2s;
+  transition: opacity 0.2s;
+}
+
+.psmob-logo-chooser-image {
+  max-width: 200px;
+  max-height: 50px;
+  width: auto !important;
+  height: auto !important;
+}
+
+.psmob-logo-chooser-config-fragment {
+  width: 350px;
+  border-style: solid;
+  border-width: 4px;
+  border-color: black;
+  background-color: darkgreen;
+  color: white;
+  font-family: monospace;
+  font-size: 18px;
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 999999 !important;
+}

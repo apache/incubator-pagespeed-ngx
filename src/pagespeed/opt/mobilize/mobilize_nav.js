@@ -21,6 +21,7 @@
 goog.provide('pagespeed.MobNav');
 
 goog.require('goog.array');
+goog.require('goog.color');
 goog.require('goog.dom');
 goog.require('goog.dom.NodeType');
 goog.require('goog.dom.TagName');
@@ -32,6 +33,7 @@ goog.require('goog.net.Jsonp');
 goog.require('goog.string');
 // goog.style adds ~400 bytes when using getSize and getTransformedSize.
 goog.require('goog.style');
+goog.require('pagespeed.MobTheme');
 goog.require('pagespeed.MobUtil');
 
 
@@ -55,6 +57,12 @@ pagespeed.MobNav = function() {
    * @private {Element}
    */
   this.headerBar_ = null;
+
+  /**
+   * The style tag used to style the nav elements.
+   * @private {Element}
+   */
+  this.styleTag_ = null;
 
   /**
    * Spacer div element inserted at the top of the page to push the rest of the
@@ -156,6 +164,14 @@ pagespeed.MobNav = function() {
 
   // From https://dev.opera.com/articles/opera-mini-and-javascript/
   this.isOperaMini_ = (navigator.userAgent.indexOf('Opera Mini') > -1);
+
+  /**
+   * Popup dialog for logo choices.  This is actually 2 different things:
+   *   1. A table of logo choices and colors that can be clicked to change them.
+   *   2. A PRE tag showing the config snippet for the chosen logo/colors.
+   * @private {Element}
+   */
+  this.logoChoicePopup_ = null;
 };
 
 
@@ -215,6 +231,25 @@ pagespeed.MobNav.MAP_BUTTON =
     'U5ZskXFmzYIuI+YYeXNoTZ4xUyxNurRpVKoTiGrtOiPs1R8vn54NGnZu3SJx9/YNcHak4MJj' +
     'uyx+HHnJ4g3EMY948zkDmtKbJ6kOvSd2B9G3D9fpfbr28NaBki+/5jz3M+rXG23vPil88TXm' +
     'R7RfCb/+/fwN+/v/D2CAAg5IoAoFAAA7';
+
+
+/**
+ * PNG image of a swap icon (drawn by hand).
+ * TODO(huibao): optimize this image.
+ * @private @const {string}
+ */
+pagespeed.MobNav.SWAP_ICON_ =
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIYAAABaCAAAAABY7nEZAAAABG' +
+    'dBTUEAALGPC/xhBQAAAcpJREFUaN7t2ItxgkAQgOHtADvADkwH2oHpADrADlKCdoAdaAekA0' +
+    'qgBEowYIZRE7jbe+xjktsCnE/m54CFm4qBxEgMIkavgwHlVQUDYHVoNTCGWZ86DYxhdudeA2' +
+    'OYgExiMgIyicvwziQ6wy8TCoZHJkQM10zIGG6ZUDIcMiFmYDOhZ6AymWd8ogdwY8sEvP+j6x' +
+    'gz4WMYM2FlLGfCzBgzqTUwiov81djWvXgb+bFzvFO26MEasqqVPkWXguBlLAbByDAFwcWwBM' +
+    'HDsAbBwMAEQc1ABkHKwAdByHAJgorhGAQJI/8IWC5EYmRF2KolCmN/uYX+TDBjU0dYw4UyQo' +
+    'JI69n/wmhKeUZ3WAMIM/rT2/34EGWc36fjXI7RlKvHU0WIcQ8CZBlTEKKMRxByjJcghBg/g5' +
+    'BgzATBz5gNgpmxFAQnwxAEG8McBBPDFsTzAhY7rgxEED7jxMAFQctAB0HLqPeggTFcj+NGA2' +
+    'Oso8o1MMZ7pcg0MFwyabDjeZgjM2F4tGEy4XnQWzNhe+0xZ8L4EmjKhPeVeDET9g+E+UwkPp' +
+    'dmMpH5ePyVidin9GsmkouFp0yE1yxTJuJLp+9MNKzg2ipPC8nE+LuMLwqlrYBVqy8VAAAAAE' +
+    'lFTkSuQmCC';
 
 
 /**
@@ -662,8 +697,8 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
     this.menuButton_ = themeData.menuButton;
     this.headerBar_.appendChild(this.menuButton_);
   }
-  this.logoSpan_ = themeData.logoSpan;
-  this.headerBar_.appendChild(this.logoSpan_);
+  this.logoSpan_ = themeData.anchorOrSpan;
+  this.headerBar_.appendChild(themeData.anchorOrSpan);
   this.headerBar_.style.borderBottom =
       'thin solid ' +
       pagespeed.MobUtil.colorNumbersToString(themeData.menuFrontColor);
@@ -672,7 +707,7 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
 
   // Add call button if a phone number is specified.
   if (window.psPhoneNumber) {
-    this.addPhoneDialer_(themeData.menuFrontColor);
+    this.addPhoneDialer_();
   }
 
   if (window.psMapLocation) {
@@ -680,19 +715,17 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
   }
 
   this.addHeaderBarResizeEvents_();
+  this.addThemeColor_(themeData);
 };
 
 
 /**
  * Adds a phone dialer icon to the header bar.
- * @param {!goog.color.Rgb} color
  * @private
  */
-pagespeed.MobNav.prototype.addPhoneDialer_ = function(color) {
+pagespeed.MobNav.prototype.addPhoneDialer_ = function() {
   this.callButton_ = document.createElement(goog.dom.TagName.DIV);
   this.callButton_.id = 'psmob-phone-dialer';
-  this.callButton_.style.backgroundImage = 'url(' +
-      this.synthesizeImage(pagespeed.MobNav.CALL_BUTTON, color) + ')';
   var phone = this.getPhoneNumber_();
   if (phone) {
     window.psPhoneNumber = phone;
@@ -910,6 +943,18 @@ pagespeed.MobNav.receivePhoneNumber_ = function(json) {
  * @private
  */
 pagespeed.MobNav.prototype.addThemeColor_ = function(themeData) {
+  // Remove any prior style block.
+  if (this.styleTag_) {
+    this.styleTag_.parentNode.removeChild(this.styleTag_);
+  }
+
+
+  if (this.callButton_) {
+    this.callButton_.style.backgroundImage = 'url(' +
+        this.synthesizeImage(pagespeed.MobNav.CALL_BUTTON,
+                             themeData.menuFrontColor) + ')';
+  }
+
   var backgroundColor = this.useDetectedThemeColor_ ?
       pagespeed.MobUtil.colorNumbersToString(themeData.menuBackColor) :
       '#3c78d8';
@@ -922,10 +967,10 @@ pagespeed.MobNav.prototype.addThemeColor_ = function(themeData) {
       '.psmob-nav-panel > ul li { color: ' + backgroundColor + '; }\n' +
       '.psmob-nav-panel > ul li a { color: ' + backgroundColor + '; }\n' +
       '.psmob-nav-panel > ul li div { color: ' + backgroundColor + '; }\n';
-  var styleTag = document.createElement(goog.dom.TagName.STYLE);
-  styleTag.type = 'text/css';
-  styleTag.appendChild(document.createTextNode(css));
-  document.head.appendChild(styleTag);
+  this.styleTag_ = document.createElement(goog.dom.TagName.STYLE);
+  this.styleTag_.type = 'text/css';
+  this.styleTag_.appendChild(document.createTextNode(css));
+  document.head.appendChild(this.styleTag_);
 };
 
 
@@ -1301,7 +1346,6 @@ pagespeed.MobNav.prototype.Run = function(themeData) {
   this.findNavSections_();
   this.fixExistingElements_();
   this.addHeaderBar_(themeData);
-  this.addThemeColor_(themeData);
 
   // Don't insert nav stuff if nav is disabled, there are no navigational
   // sections on the page or if we are in an iFrame.
@@ -1312,5 +1356,218 @@ pagespeed.MobNav.prototype.Run = function(themeData) {
     this.addNavPanel_(themeData);
     this.addMenuButtonEvents_();
     this.addNavButtonEvents_();
+  }
+};
+
+
+/**
+ * Updates header bar using the theme data.
+ * @param {!Object} mobWindow
+ * @param {!pagespeed.MobUtil.ThemeData} themeData
+ */
+pagespeed.MobNav.prototype.updateHeaderBar = function(mobWindow, themeData) {
+  var logoImage = themeData.logoImage();
+  if (logoImage) {
+    var frontColor =
+        pagespeed.MobUtil.colorNumbersToString(themeData.menuFrontColor);
+    var backColor =
+        pagespeed.MobUtil.colorNumbersToString(themeData.menuBackColor);
+
+    var logoElement = mobWindow.document.getElementById('psmob-logo-image');
+    if (logoElement) {
+      logoElement.parentNode.replaceChild(themeData.logoElement, logoElement);
+      //logoElement.src = logoImage;
+      if (this.headerBar_) {
+        this.headerBar_.style.backgroundColor = backColor;
+      }
+      this.logoSpan_.style.backgroundColor = backColor;
+      //logoElement.style.backgroundColor = backColor;
+    }
+
+    var callButton = mobWindow.document.getElementById('psmob-phone-image');
+    if (callButton) {
+      callButton.src = this.synthesizeImage(pagespeed.MobNav.CALL_BUTTON,
+                                            themeData.menuFrontColor);
+    }
+
+    var mapButton = mobWindow.document.getElementById('psmob-map-image');
+    if (mapButton) {
+      mapButton.src = this.synthesizeImage(pagespeed.MobNav.MAP_BUTTON,
+                                           themeData.menuFrontColor);
+    }
+
+    var hamburgerLines =
+        mobWindow.document.getElementsByClassName('psmob-hamburger-line');
+    for (var i = 0, line; line = hamburgerLines[i]; ++i) {
+      line.style.backgroundColor = frontColor;
+    }
+  }
+};
+
+
+// TODO(jmarantz): All the .chooser* methods should be loaded only with
+// ?PageSpeedMobConfig=on, plus SWAP_ICON declared above.
+
+
+/**
+ * @param {!Array.<pagespeed.MobLogoCandidate>} candidates
+ */
+pagespeed.MobNav.prototype.chooserShowCandidates = function(candidates) {
+  if (this.logoChoicePopup_) {
+    this.chooserDismissLogoChoicePopup_();
+    return;
+  }
+
+  var table = document.createElement(goog.dom.TagName.TABLE);
+  table.className = 'psmob-logo-chooser-table';
+
+  var thead = document.createElement(goog.dom.TagName.THEAD);
+  table.appendChild(thead);
+  var trow = document.createElement(goog.dom.TagName.TR);
+  thead.appendChild(trow);
+  function addData() {
+    var td = document.createElement(goog.dom.TagName.TD);
+    trow.appendChild(td);
+    return td;
+  }
+  trow.className = 'psmob-logo-chooser-column-header';
+  addData().textContent = 'Logo';
+  addData().textContent = 'Foreground';
+  addData().textContent = '';
+  addData().textContent = 'Background';
+
+  var tbody = document.createElement(goog.dom.TagName.TBODY);
+  table.appendChild(tbody);
+  for (var i = 0; i < candidates.length; ++i) {
+    trow = document.createElement(goog.dom.TagName.TR);
+    trow.className = 'psmob-logo-chooser-choice';
+    tbody.appendChild(trow);
+    var candidate = candidates[i];
+    var themeData = pagespeed.MobTheme.synthesizeLogoSpan(
+        candidate.logoRecord, candidate.background, candidate.foreground);
+    addData().appendChild(themeData.anchorOrSpan);
+    var img = themeData.logoElement;
+    img.className = 'psmob-logo-chooser-image';
+    img.onclick = goog.bind(this.chooserSetLogo_, this, candidate);
+
+    var foreground = addData();
+    foreground.style.backgroundColor =
+        goog.color.rgbArrayToHex(candidate.foreground);
+    foreground.className = 'psmob-logo-chooser-color';
+
+    var swapTd = addData();
+    swapTd.className = 'psmob-logo-chooser-color';
+    var swapImg = document.createElement(goog.dom.TagName.IMG);
+    swapImg.className = 'psmob-logo-chooser-swap';
+    swapImg.src = pagespeed.MobNav.SWAP_ICON_;
+    swapTd.appendChild(swapImg);
+
+    var background = addData();
+    background.style.backgroundColor =
+        goog.color.rgbArrayToHex(candidate.background);
+    background.className = 'psmob-logo-chooser-color';
+
+    swapTd.onclick = goog.bind(this.chooserSwapColors_, this, candidate,
+        foreground, background);
+  }
+
+  this.chooserDisplayPopup_(table);
+};
+
+
+/**
+ * @param {!Element} popup
+ * @private
+ */
+pagespeed.MobNav.prototype.chooserDisplayPopup_ = function(popup) {
+  // The natural width of the table is about 350px, and we'll
+  // want it to occupy 2/3 of the screen.  We'll add it to the DOM
+  // hidden so we can get the width computed by the browser, and
+  // thereby know how to center it.
+  popup.style.visibility = 'hidden';
+  document.body.appendChild(popup);
+
+  var naturalWidth = popup.offsetWidth;
+  var fractionOfScreen = 2.0 / 3.0;
+  var scale = window.innerWidth * fractionOfScreen / naturalWidth;
+  var offset = Math.round(0.5 * (1 - fractionOfScreen) * window.innerWidth) +
+      'px';
+
+  var transform =
+      'scale(' + scale + ')' +
+      ' translate(' + offset + ',' + offset + ')';
+  popup.style['-webkit-transform'] = transform;
+  popup.style.transform = transform;
+
+  // Now that we have transformed it, make it show up.
+  popup.style.visibility = 'visible';
+
+  if (this.logoChoicePopup_ != null) {
+    this.logoChoicePopup_.parentNode.removeChild(this.logoChoicePopup_);
+  }
+  this.logoChoicePopup_ = popup;
+};
+
+
+/**
+ * Sets the logo in response to clicking on an image in the logo chooser
+ * popup.
+ * @param {!pagespeed.MobLogoCandidate} candidate
+ * @private
+ */
+pagespeed.MobNav.prototype.chooserSetLogo_ = function(candidate) {
+  var themeData = pagespeed.MobTheme.createThemeData(
+      candidate.logoRecord, candidate.background, candidate.foreground);
+  pagespeed.MobTheme.installLogo(themeData);
+  this.updateHeaderBar(window, themeData);
+  this.addThemeColor_(themeData);
+
+  var configSnippet = document.createElement(goog.dom.TagName.PRE);
+  configSnippet.className = 'psmob-logo-chooser-config-fragment';
+
+  // TODO(jmarantz): Generate nginx syntax as needed.
+  configSnippet.textContent =
+      'ModPagespeedMobTheme "\n' +
+      '    ' + goog.color.rgbArrayToHex(themeData.menuBackColor) + '\n' +
+      '    ' + goog.color.rgbArrayToHex(themeData.menuFrontColor) + '\n' +
+      '    ' + themeData.logoElement.src + '"';
+  this.chooserDisplayPopup_(configSnippet);
+
+  // TODO(jmarantz): consider adding a note to this popup that about how
+  // you can touch the logo to bring it up the chooser again.
+};
+
+
+/**
+ * Swaps the background and colors for a logo candidate.
+ * @param {!pagespeed.MobLogoCandidate} candidate
+ * @param {!Element} foregroundTd table data element (TD) for the foreground
+ * @param {!Element} backgroundTd table data element (TD) for the background
+ * @private
+ */
+pagespeed.MobNav.prototype.chooserSwapColors_ = function(
+    candidate, foregroundTd, backgroundTd) {
+  // TODO(jmarantz): we probably only want to swap the fg/bg for the menus,
+  // and not for the header bar.  The logo background computation is generally
+  // correct, as far as I can tell, and it's only a question of whether the
+  // menus would look better in reverse video.
+  var tmp = candidate.background;
+  candidate.background = candidate.foreground;
+  candidate.foreground = tmp;
+  tmp = foregroundTd.style['background-color'];
+  foregroundTd.style['background-color'] =
+      backgroundTd.style['background-color'];
+  backgroundTd.style['background-color'] = tmp;
+};
+
+
+/**
+ * Dismisses any logo-choice pop.
+ * @private
+ */
+pagespeed.MobNav.prototype.chooserDismissLogoChoicePopup_ = function() {
+  if (this.logoChoicePopup_) {
+    this.logoChoicePopup_.parentNode.removeChild(this.logoChoicePopup_);
+    this.logoChoicePopup_ = null;
   }
 };

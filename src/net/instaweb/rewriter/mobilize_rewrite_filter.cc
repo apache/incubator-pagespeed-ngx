@@ -121,6 +121,7 @@ MobilizeRewriteFilter::MobilizeRewriteFilter(RewriteDriver* rewrite_driver)
       added_mob_js_(false),
       added_progress_(false),
       added_spacer_(false),
+      config_mode_(rewrite_driver->options()->mob_config()),
       in_script_(false),
       use_js_layout_(rewrite_driver->options()->mob_layout()),
       use_js_nav_(rewrite_driver->options()->mob_nav()),
@@ -252,6 +253,9 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
       GoogleString src = StrCat(
           "var psDebugMode=", (driver()->DebugMode() ? "true;" : "false;"),
           "var psNavMode=", (use_js_nav_ ? "true;" : "false;"),
+          "var psConfigMode=", (config_mode_ ? "true;" : "false;"));
+      StrAppend(
+          &src,
           "var psLayoutMode=", (use_js_layout_ ? "true;" : "false;"),
           "var psStaticJs=", (use_static_ ? "true;" : "false;"));
       const GoogleString& phone = options->mob_phone_number();
@@ -469,9 +473,9 @@ void MobilizeRewriteFilter::EndElementImpl(HtmlElement* element) {
           AddStaticScript("mobilize_util.js");
           AddStaticScript("mobilize_color.js");
           AddStaticScript("mobilize_logo.js");
+          AddStaticScript("mobilize_theme.js");
           AddStaticScript("mobilize_layout.js");
           AddStaticScript("mobilize_nav.js");
-          AddStaticScript("mobilize_theme.js");
           AddStaticScript("mobilize.js");
         } else {
           StaticAssetManager* manager =

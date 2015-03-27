@@ -26,6 +26,7 @@ goog.require('goog.object');
 goog.require('goog.string');
 goog.require('goog.uri.utils');
 goog.require('pagespeed.MobLayout');
+goog.require('pagespeed.MobLogo');
 goog.require('pagespeed.MobNav');
 goog.require('pagespeed.MobTheme');
 goog.require('pagespeed.MobUtil');
@@ -167,6 +168,26 @@ pagespeed.Mob = function() {
    * @private {!Array.<pagespeed.MobUtil.ThemeData>}
    */
   this.configThemes_ = [];
+
+  /**
+   * Navigation context.  We keep his around around to enable interactive logo
+   * picking to back-annotate the alternate logo selection to the DOM.
+   * @private {pagespeed.MobNav}
+   */
+  this.mobNav_ = null;
+
+  /**
+   * Logo context.
+   * @private {!pagespeed.MobLogo}
+   */
+  this.mobLogo_ = new pagespeed.MobLogo(this);
+
+  /**
+   * Array of candidate logos, lazy-initilized when a user clicks the
+   * logo to configure it with ?PageSpeedMobConfig=on.
+   * @private {Array.<pagespeed.MobLogoCandidate>}
+   */
+  this.logoCandidates_ = null;
 };
 
 
@@ -287,15 +308,15 @@ pagespeed.Mob.prototype.mobilizeSite_ = function() {
 pagespeed.Mob.prototype.themeComplete_ = function(themeData) {
   --this.pendingCallbacks_;
   this.updateProgressBar(this.domElementCount_, 'extract theme');
-  var mobNav = new pagespeed.MobNav();
-  mobNav.Run(themeData);
+  this.mobNav_ = new pagespeed.MobNav();
+  this.mobNav_.Run(themeData);
   this.updateProgressBar(this.domElementCount_, 'navigation');
   this.maybeRunLayout();
 
   var masterPsMob = this.psMobForMasterWindow_();
   if (masterPsMob && masterPsMob.configNumUrlsToProcess_ >= 0) {
     if (this.inPsIframeWindow_()) {
-      pagespeed.MobTheme.updateHeaderBar(this.masterWindow_(), themeData);
+      this.mobNav_.updateHeaderBar(this.masterWindow_(), themeData);
     } else {
       var iframe = document.createElement(goog.dom.TagName.IFRAME);
       iframe.id = pagespeed.Mob.CONFIG_IFRAME_ID_;
@@ -628,7 +649,8 @@ pagespeed.Mob.prototype.extractTheme_ = function() {
         }
       }
     }
-    pagespeed.MobTheme.extractTheme(this, goog.bind(this.themeComplete_, this));
+    pagespeed.MobTheme.extractTheme(
+        this.mobLogo_, goog.bind(this.themeComplete_, this));
   }
 };
 
@@ -639,6 +661,31 @@ pagespeed.Mob.prototype.extractTheme_ = function() {
  * @type {!pagespeed.Mob}
  */
 window.psMob = new pagespeed.Mob();
+
+
+/**
+ * Scan the document for the top 5 logo candidates, computing their
+ * background and foreground colors.  When that's done, pop up a dialog
+ * letting the user choose a new logo & colors.
+ */
+pagespeed.Mob.prototype.showLogoCandidates = function() {
+  if ((this.logoCandidates_ != null) && (this.logoCandidates_.length > 0)) {
+    this.mobNav_.chooserShowCandidates(this.logoCandidates_);
+  }
+};
+
+
+/**
+ * Records the logo candidates for this page, popping up the logo
+ * chooser, and setting the top-ranked logo in the theme.
+ * @param {!pagespeed.MobTheme} theme
+ * @param {!Array.<pagespeed.MobLogoCandidate>} candidates
+ */
+pagespeed.Mob.prototype.setLogoCandidatesAndShow = function(theme, candidates) {
+  this.logoCandidates_ = candidates;
+  theme.logoComplete(candidates);
+  this.mobNav_.chooserShowCandidates(candidates);
+};
 
 
 // Start theme extraction and navigation re-synthesis when the document content
@@ -667,6 +714,15 @@ function psSetDebugMode() {
  */
 function psRemoveProgressBar() {
   window.psMob.removeProgressBar();
+}
+
+
+/**
+ * Called by anchor-tag.
+ * @export
+ */
+function psPickLogo() {
+  window.psMob.showLogoCandidates();
 }
 
 
@@ -727,7 +783,7 @@ pagespeed.Mob.prototype.showSiteWideThemes_ = function() {
   var map = {};
   var themeData;
   for (var i = 0; themeData = masterPsMob.configThemes_[i]; ++i) {
-    var logoImage = pagespeed.MobTheme.logoImageFromThemeData(themeData);
+    var logoImage = themeData.logoImage();
     if (!logoImage) {
       continue;
     }
@@ -755,8 +811,8 @@ pagespeed.Mob.prototype.showSiteWideThemes_ = function() {
       return -1;
     }
     // Resolve a tie by comparing the logo URLs, so the order is stable.
-    var aImage = pagespeed.MobTheme.logoImageFromThemeData(a.themeData);
-    var bImage = pagespeed.MobTheme.logoImageFromThemeData(b.themeData);
+    var aImage = a.themeData.logoImage();
+    var bImage = b.themeData.logoImage();
     if (aImage < bImage) {
       return -1;
     } else if (aImage > bImage) {
@@ -769,7 +825,7 @@ pagespeed.Mob.prototype.showSiteWideThemes_ = function() {
   if (list.length > 0) {
     message += 'Found ' + list.length +
         ' logo images. Details are shown below:\n';
-    pagespeed.MobTheme.updateHeaderBar(this.masterWindow_(), list[0].themeData);
+    this.mobNav_.updateHeaderBar(this.masterWindow_(), list[0].themeData);
 
     var i;
     for (i in list) {
@@ -779,7 +835,7 @@ pagespeed.Mob.prototype.showSiteWideThemes_ = function() {
           ' ' +
           pagespeed.MobUtil.colorNumbersToString(themeData.menuFrontColor) +
           ' ' +
-          pagespeed.MobTheme.logoImageFromThemeData(themeData) + '"' +
+          themeData.logoImage() + '"' +
           ' COUNT: ' + list[i].count + '\n';
     }
     message += '\n';
@@ -789,7 +845,7 @@ pagespeed.Mob.prototype.showSiteWideThemes_ = function() {
       message += 'ModPagespeedMobTheme "\n' +
           '    ' + goog.color.rgbArrayToHex(themeData.menuBackColor) + '\n' +
           '    ' + goog.color.rgbArrayToHex(themeData.menuFrontColor) + '\n' +
-          '    ' + pagespeed.MobTheme.logoImageFromThemeData(themeData) + '"\n';
+          '    ' + themeData.logoImage() + '"\n';
     }
   } else {
     message += 'No logo was found.';

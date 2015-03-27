@@ -972,6 +972,7 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
     RewriteOptions::kMinResourceCacheTimeToRewriteMs,
     RewriteOptions::kMobConversionId,
     RewriteOptions::kMobIframe,
+    RewriteOptions::kMobConfig,
     RewriteOptions::kMobLayout,
     RewriteOptions::kMobMapConversionLabel,
     RewriteOptions::kMobMapLocation,

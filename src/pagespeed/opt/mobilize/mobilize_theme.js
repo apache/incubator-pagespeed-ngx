@@ -21,7 +21,6 @@ goog.provide('pagespeed.MobTheme');
 goog.require('goog.dom.TagName');
 goog.require('goog.dom.classlist');
 goog.require('pagespeed.MobLogo');
-goog.require('pagespeed.MobNav');
 goog.require('pagespeed.MobUtil');
 
 
@@ -34,9 +33,9 @@ goog.require('pagespeed.MobUtil');
 pagespeed.MobTheme = function(doneCallback) {
   /**
    * Callback to invoke when this object finishes its work.
-   * @type {function(!pagespeed.MobUtil.ThemeData)}
+   * @private {?function(!pagespeed.MobUtil.ThemeData)}
    */
-  this.doneCallback = doneCallback;
+  this.doneCallback_ = doneCallback;
 };
 
 
@@ -66,38 +65,48 @@ pagespeed.MobTheme.createMenuButton_ = function(color) {
 
 /**
  * Add a logo span to window.document.
- * @param {pagespeed.MobLogo.LogoRecord} logo
+ * @param {pagespeed.MobLogo.LogoRecord} logo (can be null)
  * @param {!goog.color.Rgb} backgroundColor
  * @param {!goog.color.Rgb} foregroundColor
  * @return {!pagespeed.MobUtil.ThemeData}
- * @private
  */
-pagespeed.MobTheme.synthesizeLogoSpan_ = function(logo, backgroundColor,
-                                                  foregroundColor) {
-  var logoSpan = document.createElement(goog.dom.TagName.SPAN);
-  logoSpan.id = 'psmob-logo-span';
+pagespeed.MobTheme.synthesizeLogoSpan = function(
+    logo, backgroundColor, foregroundColor) {
+  // When in configuration-mode, touch the logo to bring up a logo picker.
+  // Actually the logo picker comes up in the first place, but you can
+  // then alter the logo iteratively by touching it.
+  //
+  // TODO(jmarantz): also consider having this element be an anchor
+  // in non-config mode, pointing either to the landing page or to
+  // the non-mobilized version.
+  var anchorOrSpan = document.createElement(
+      psConfigMode ? goog.dom.TagName.A : goog.dom.TagName.SPAN);
+  var logoElement;
 
   if (logo && logo.foregroundImage) {
     // If foregroundImage is a reference to foregroundElement, we clone it
     // for the logo span; otherwise, we move foregroundImage (which has not
     // been attached to DOM) to log span.
-    var img = null;
-    if (logo.foregroundElement == logo.foregroundImage) {
-      img = logo.foregroundImage.cloneNode(false);
+    if (window.psConfigMode ||
+        (logo.foregroundElement == logo.foregroundImage)) {
+      // Note that we always clone nodes in psConfigMode because we need
+      // to reference the logo in the popup as well as the menu bar.
+      logoElement = logo.foregroundImage.cloneNode(false);
     } else {
-      img = logo.foregroundImage;
+      logoElement = logo.foregroundImage;
     }
-    img.id = 'psmob-logo-image';
-    logoSpan.appendChild(img);
+    logoElement.removeAttribute('id');
   } else {
-    logoSpan.textContent = window.location.host;
+    logoElement = document.createElement('span');
+    logoElement.textContent = window.location.host;
+    logoElement.style.color =
+        pagespeed.MobUtil.colorNumbersToString(foregroundColor);
   }
+  anchorOrSpan.appendChild(logoElement);
 
   var menuButton = pagespeed.MobTheme.createMenuButton_(foregroundColor);
-  var themeData = new pagespeed.MobUtil.ThemeData(foregroundColor,
-                                                  backgroundColor,
-                                                  menuButton,
-                                                  logoSpan);
+  var themeData = new pagespeed.MobUtil.ThemeData(
+      foregroundColor, backgroundColor, menuButton, anchorOrSpan, logoElement);
   return themeData;
 };
 
@@ -121,17 +130,15 @@ pagespeed.MobTheme.removeLogoImage_ = function(logo) {
 
 /**
  * Compute color and synthesize logo span.
- * @param {pagespeed.MobLogo.LogoRecord} logo
+ * @param {pagespeed.MobLogo.LogoRecord} logo (can be null)
  * @param {!goog.color.Rgb} backgroundColor
  * @param {!goog.color.Rgb} foregroundColor
- * @this {pagespeed.MobTheme}
- * @private
+ * @return {!pagespeed.MobUtil.ThemeData}
  */
-pagespeed.MobTheme.prototype.colorComplete_ = function(
+pagespeed.MobTheme.createThemeData = function(
     logo, backgroundColor, foregroundColor) {
-  var themeData = pagespeed.MobTheme.synthesizeLogoSpan_(logo,
-                                                         backgroundColor,
-                                                         foregroundColor);
+  var themeData = pagespeed.MobTheme.synthesizeLogoSpan(
+      logo, backgroundColor, foregroundColor);
   if (window.psLayoutMode) {
     pagespeed.MobTheme.removeLogoImage_(logo);
   }
@@ -142,21 +149,43 @@ pagespeed.MobTheme.prototype.colorComplete_ = function(
     window.psMobForegroundColor = foregroundColor;
     window.psMobLogoUrl = logo ? logo.foregroundImage.src : null;
   }
-
-  this.doneCallback(themeData);
+  return themeData;
 };
 
 
 /**
- * @param {Array.<pagespeed.MobLogoCandidate>} candidates
- * @private
+ * @param {!Array.<pagespeed.MobLogoCandidate>} candidates
  */
-pagespeed.MobTheme.prototype.logoComplete_ = function(candidates) {
-  if (candidates.length >= 1) {
-    var candidate = candidates[0];
-    this.colorComplete_(candidate.logoRecord, candidate.background,
-        candidate.foreground);
+pagespeed.MobTheme.prototype.logoComplete = function(candidates) {
+  if (this.doneCallback_) {
+    var themeData;
+    if (candidates.length >= 1) {
+      var candidate = candidates[0];
+      themeData = pagespeed.MobTheme.createThemeData(
+          candidate.logoRecord, candidate.background, candidate.foreground);
+    } else {
+      themeData = pagespeed.MobTheme.createThemeData(
+          null, [255, 255, 255], [0, 0, 0]);
+    }
+    pagespeed.MobTheme.installLogo(themeData);
+    var doneCallback = this.doneCallback_;
+    this.doneCallback_ = null;
+    doneCallback(themeData);
   }
+};
+
+
+/**
+ * @param {pagespeed.MobUtil.ThemeData} themeData
+ */
+pagespeed.MobTheme.installLogo = function(themeData) {
+  if (window.psConfigMode) {
+    themeData.anchorOrSpan.href = 'javascript:psPickLogo()';
+  }
+  themeData.anchorOrSpan.id = 'psmob-logo-span';
+  themeData.logoElement.id = 'psmob-logo-image';
+  themeData.logoElement.style.backgroundColor =
+      pagespeed.MobUtil.colorNumbersToString(themeData.menuBackColor);
 };
 
 
@@ -172,83 +201,32 @@ pagespeed.MobTheme.precomputedThemeAvailable = function() {
 
 /**
  * Extract theme of the page. This is the entry method.
- * @param {!pagespeed.Mob} psMob
+ * @param {!pagespeed.MobLogo} mobLogo
  * @param {function(!pagespeed.MobUtil.ThemeData)} doneCallback
  */
-pagespeed.MobTheme.extractTheme = function(psMob, doneCallback) {
-  var mobTheme = new pagespeed.MobTheme(doneCallback);
-
+pagespeed.MobTheme.extractTheme = function(mobLogo, doneCallback) {
   // See if there is a precomputed theme + logo (and we are not asked to do
   // the computation ourselves).
-  if (psMobBackgroundColor && psMobForegroundColor && !window.psMobPrecompute) {
+  if (window.psConfigMode) {
+    var psMob = mobLogo.psMob();
+    var mobTheme = new pagespeed.MobTheme(doneCallback);
+    mobLogo.run(goog.bind(psMob.setLogoCandidatesAndShow, psMob, mobTheme),
+                5 /* numCandidates */);
+  } else if (psMobBackgroundColor && psMobForegroundColor &&
+             !window.psMobPrecompute) {
     var logo = null;
     if (psMobLogoUrl) {
       var img = document.createElement(goog.dom.TagName.IMG);
       img.src = psMobLogoUrl;
       logo = new pagespeed.MobLogo.LogoRecord(1 /* metric */, img);
     }
-    mobTheme.colorComplete_(logo, psMobBackgroundColor, psMobForegroundColor);
+    var themeData = pagespeed.MobTheme.createThemeData(
+        logo, psMobBackgroundColor, psMobForegroundColor);
+    pagespeed.MobTheme.installLogo(themeData);
+    doneCallback(themeData);
   } else {
-    var mobLogo = new pagespeed.MobLogo(
-        psMob, goog.bind(mobTheme.logoComplete_, mobTheme),
-        1 /* numCandidates */);
-    mobLogo.run();
-  }
-};
-
-
-/**
- * Returns SRC of the logo image.
- * @param {!pagespeed.MobUtil.ThemeData} themeData
- * @return {?string}
- */
-// TODO(huibao): Store image SRC in theme data and remove this method.
-pagespeed.MobTheme.logoImageFromThemeData = function(themeData) {
-  return (themeData && themeData.logoSpan &&
-          themeData.logoSpan.childNodes[0] &&
-          themeData.logoSpan.childNodes[0].src);
-};
-
-
-/**
- * Updates header bar using the theme data.
- * @param {!Object} mobWindow
- * @param {!pagespeed.MobUtil.ThemeData} themeData
- */
-pagespeed.MobTheme.updateHeaderBar = function(mobWindow, themeData) {
-  var logoImage = pagespeed.MobTheme.logoImageFromThemeData(themeData);
-  if (logoImage) {
-    var frontColor =
-        pagespeed.MobUtil.colorNumbersToString(themeData.menuFrontColor);
-    var backColor =
-        pagespeed.MobUtil.colorNumbersToString(themeData.menuBackColor);
-
-    var logoElement = mobWindow.document.getElementById('psmob-logo-image');
-    if (logoElement) {
-      logoElement.src = logoImage;
-      var headerBar = logoElement.parentElement.parentElement;
-      if (headerBar) {
-        headerBar.style.backgroundColor = backColor;
-      }
-    }
-
-    var mobNav = new pagespeed.MobNav();
-    var callButton = mobWindow.document.getElementById('psmob-phone-image');
-    if (callButton) {
-      callButton.src = mobNav.synthesizeImage(pagespeed.MobNav.CALL_BUTTON,
-                                              themeData.menuFrontColor);
-    }
-
-    var mapButton = mobWindow.document.getElementById('psmob-map-image');
-    if (mapButton) {
-      mapButton.src = mobNav.synthesizeImage(pagespeed.MobNav.MAP_BUTTON,
-                                             themeData.menuFrontColor);
-    }
-
-    var hamburgerLines =
-        mobWindow.document.getElementsByClassName('psmob-hamburger-line');
-    for (var i = 0, line; line = hamburgerLines[i]; ++i) {
-      line.style.backgroundColor = frontColor;
-    }
+    var mobTheme = new pagespeed.MobTheme(doneCallback);
+    mobLogo.run(goog.bind(mobTheme.logoComplete, mobTheme),
+                1 /* numCandidates */);
   }
 };

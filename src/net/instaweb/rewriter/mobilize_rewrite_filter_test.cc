@@ -58,8 +58,9 @@ GoogleString HeadAndViewportWithTheme(
     bool layout_mode, bool precompute_mode,
     StringPiece bg_color, StringPiece fg_color, StringPiece logo_url) {
   return StrCat(
-      "<script>var psDebugMode=false;var psNavMode=true;var psLayoutMode=",
-      layout_mode ? "true" : "false", ";"
+      "<script>var psDebugMode=false;var psNavMode=true;"
+      "var psConfigMode=false;"
+      "var psLayoutMode=", layout_mode ? "true" : "false", ";"
       "var psStaticJs=false;"
       "var psConversionId=", Integer64ToString(kConversionId), ";"
       "var psPhoneNumber='", kPhoneNumber, "';",

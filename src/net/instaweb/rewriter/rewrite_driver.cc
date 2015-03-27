@@ -1473,7 +1473,7 @@ CacheUrlAsyncFetcher* RewriteDriver::CreateCustomCacheFetcher(
 }
 
 CacheUrlAsyncFetcher* RewriteDriver::CreateCacheFetcher() {
-  if (options()->mob_iframe()) {
+  if (options()->mob_iframe() && !options()->mob_config()) {
     CacheUrlAsyncFetcher* cache_fetcher = CreateCustomCacheFetcher(
         new IframeFetcher);
     cache_fetcher->set_own_fetcher(true);

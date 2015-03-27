@@ -190,7 +190,8 @@ bool InstawebHandler::ProxyUrl() {
         options()->test_proxy_slurp(), server_context_->file_system(),
         server_context_->timer()));
     fetcher = fetcher_storage.get();
-  } else if (!proxy_suffix.empty() && options()->mob_iframe()) {
+  } else if (!proxy_suffix.empty() && options()->mob_iframe() &&
+             !options()->mob_config()) {
     fetcher_storage.reset(new IframeFetcher);
     fetcher = fetcher_storage.get();
   } else if (!proxy_suffix.empty()) {

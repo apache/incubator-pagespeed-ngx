@@ -446,11 +446,12 @@ pagespeed.MobUtil.ImageSource = {
  * @param {!goog.color.Rgb} frontColor
  * @param {!goog.color.Rgb} backColor
  * @param {!Element} menuButton
- * @param {!Element} logoSpan
+ * @param {!Element} anchorOrSpan
+ * @param {!Element} logoElement
  * @constructor
  */
 pagespeed.MobUtil.ThemeData = function(frontColor, backColor, menuButton,
-                                       logoSpan) {
+                                       anchorOrSpan, logoElement) {
 
   /** @type {!goog.color.Rgb} */
   this.menuFrontColor = frontColor;
@@ -459,7 +460,21 @@ pagespeed.MobUtil.ThemeData = function(frontColor, backColor, menuButton,
   /** @type {!Element} */
   this.menuButton = menuButton;
   /** @type {!Element} */
-  this.logoSpan = logoSpan;
+  this.logoElement = logoElement;
+  /** @type {!Element} */
+  this.anchorOrSpan = anchorOrSpan;
+};
+
+
+
+
+/**
+ * Returns SRC of the logo image.
+ * @return {?string}
+ */
+// TODO(huibao): Store image SRC in theme data and remove this method.
+pagespeed.MobUtil.ThemeData.prototype.logoImage = function() {
+  return this.logoElement.src;
 };
 
 
