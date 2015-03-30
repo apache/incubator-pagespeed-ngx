@@ -120,14 +120,16 @@ void NgxBaseFetch::ReadCallback(const ps_event_data& data) {
   NgxBaseFetch* base_fetch = reinterpret_cast<NgxBaseFetch*>(data.sender);
   ngx_http_request_t* r = base_fetch->request();
   bool detached = base_fetch->detached();
+#if (NGX_DEBUG)  // `type` is unused if NGX_DEBUG isn't set, needed for -Werror.
   const char* type = BaseFetchTypeToCStr(base_fetch->base_fetch_type_);
+#endif
   int refcount = base_fetch->DecrementRefCount();
 
-  #if (NGX_DEBUG)
+#if (NGX_DEBUG)
   ngx_log_error(NGX_LOG_DEBUG, ngx_cycle->log, 0,
      "pagespeed [%p] event: %c. bf:%p (%s) - refcnt:%d - det: %c", r,
      data.type, base_fetch, type, refcount, detached ? 'Y': 'N');
-  #endif
+#endif
 
   // If we ended up destructing the base fetch, or the request context is
   // detached, skip this event.
