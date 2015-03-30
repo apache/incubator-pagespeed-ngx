@@ -324,6 +324,10 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
       if (options->Enabled(RewriteOptions::kMobilizePrecompute)) {
         StrAppend(&src, "var psMobPrecompute=true;");
       }
+      GoogleString escaped_mob_beacon_url;
+      EscapeToJsStringLiteral(options->mob_beacon_url(), false /* add_quotes */,
+                              &escaped_mob_beacon_url);
+      StrAppend(&src, "var psMobBeaconUrl='", escaped_mob_beacon_url, "';");
       driver()->InsertScriptAfterCurrent(src, false);
 
       // TODO(jmarantz): Consider waiting to see if we have a charset directive

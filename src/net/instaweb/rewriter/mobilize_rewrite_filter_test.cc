@@ -45,6 +45,7 @@ const char kRewritten[] = "mobilize_test_output.html";
 const char kPhoneNumber[] = "16175551212";
 const int64 kConversionId = 42;
 const char kPhoneConversionLabel[] = "HelloWorld";
+const char kMobBeaconUrl[] = "/beacon";
 
 GoogleString Styles(bool layout_mode) {
   return StrCat(
@@ -60,21 +61,20 @@ GoogleString HeadAndViewportWithTheme(
   return StrCat(
       "<script>var psDebugMode=false;var psNavMode=true;"
       "var psConfigMode=false;"
-      "var psLayoutMode=", layout_mode ? "true" : "false", ";"
+      "var psLayoutMode=", BoolToString(layout_mode), ";"
       "var psStaticJs=false;"
       "var psConversionId=", Integer64ToString(kConversionId), ";"
-      "var psPhoneNumber='", kPhoneNumber, "';",
-      StrCat(
-          "var psPhoneConversionLabel='", kPhoneConversionLabel, "';",
-          StrCat("var psMobBackgroundColor=", bg_color, ";"),
-          StrCat("var psMobForegroundColor=", fg_color, ";"),
-          precompute_mode ? "var psMobPrecompute=true;" : "",
-          (logo_url.empty() ? "" : StrCat("var psMobLogoUrl=", logo_url, ";")),
-          "</script>",
-          (layout_mode
-           ? ("<meta name='viewport' content='width=device-width'/>"
-              "<script src=\"/psajs/mobilize_xhr.0.js\"></script>")
-           : "")));
+      "var psPhoneNumber='", kPhoneNumber, "';"
+      "var psPhoneConversionLabel='", kPhoneConversionLabel, "';"
+      "var psMobBackgroundColor=", bg_color, ";"
+      "var psMobForegroundColor=", fg_color, ";",
+      precompute_mode ? "var psMobPrecompute=true;" : "",
+      logo_url.empty() ? "" : StrCat("var psMobLogoUrl=", logo_url, ";"),
+      "var psMobBeaconUrl='", kMobBeaconUrl, "';"
+      "</script>",
+      (layout_mode ? ("<meta name='viewport' content='width=device-width'/>"
+                      "<script src=\"/psajs/mobilize_xhr.0.js\"></script>")
+                   : ""));
 }
 
 GoogleString HeadAndViewport(bool layout_mode) {
@@ -102,6 +102,7 @@ class MobilizeRewriteFilterTest : public RewriteTestBase {
     options()->set_mob_phone_number(kPhoneNumber);
     options()->set_mob_conversion_id(kConversionId);
     options()->set_mob_phone_conversion_label(kPhoneConversionLabel);
+    options()->set_mob_beacon_url(kMobBeaconUrl);
     options()->set_mob_layout(LayoutMode());
     options()->set_mob_nav(true);
     server_context()->ComputeSignature(options());
@@ -522,6 +523,7 @@ class MobilizeRewriteEndToEndTest : public MobilizeRewriteFilterTest {
     options()->set_mob_phone_number(kPhoneNumber);
     options()->set_mob_conversion_id(kConversionId);
     options()->set_mob_phone_conversion_label(kPhoneConversionLabel);
+    options()->set_mob_beacon_url(kMobBeaconUrl);
     options()->set_mob_layout(true);
     options()->set_mob_nav(true);
     AddFilter(RewriteOptions::kMobilize);

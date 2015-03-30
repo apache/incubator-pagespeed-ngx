@@ -227,6 +227,7 @@ const char RewriteOptions::kMinImageSizeLowResolutionBytes[] =
     "MinImageSizeLowResolutionBytes";
 const char RewriteOptions::kMinResourceCacheTimeToRewriteMs[] =
     "MinResourceCacheTimeToRewriteMs";
+const char RewriteOptions::kMobBeaconUrl[] = "MobBeaconUrl";
 const char RewriteOptions::kMobMapLocation[] = "MobMapLocation";
 const char RewriteOptions::kMobPhoneNumber[] = "MobPhoneNumber";
 const char RewriteOptions::kMobConversionId[] = "MobConversionId";
@@ -2288,6 +2289,11 @@ void RewriteOptions::AddProperties() {
       false, &RewriteOptions::mob_always_, "malways", kAlwaysMobilize,
       kQueryScope,
       "(experimental) Unconditionally mobilize page regardless of user-agent.",
+      true);
+  AddBaseProperty(
+      kDefaultBeaconUrl, &RewriteOptions::mob_beacon_url_, "mbeaconurl",
+      kMobBeaconUrl, kDirectoryScope,
+      "(experimental) URL for beacons sent from the mobilization filter.",
       true);
   AddBaseProperty(
       "", &RewriteOptions::mob_map_location_, "mlocation", kMobMapLocation,

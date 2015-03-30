@@ -726,12 +726,17 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
 pagespeed.MobNav.prototype.addPhoneDialer_ = function() {
   this.callButton_ = document.createElement(goog.dom.TagName.DIV);
   this.callButton_.id = 'psmob-phone-dialer';
+  this.callButton_.href = '#';
   var phone = this.getPhoneNumber_();
   if (phone) {
     window.psPhoneNumber = phone;
-    this.callButton_.onclick = pagespeed.MobNav.dialPhone_;
+    this.callButton_.onclick =
+        goog.partial(pagespeed.MobUtil.trackClick, 'psmob-phone-dialer',
+                     pagespeed.MobNav.dialPhone_);
   } else {
-    this.callButton_.onclick = pagespeed.MobNav.requestPhoneNumberAndCall_;
+    this.callButton_.onclick =
+        goog.partial(pagespeed.MobUtil.trackClick, 'psmob-phone-dialer',
+                     pagespeed.MobNav.requestPhoneNumberAndCall_);
   }
   this.headerBar_.appendChild(this.callButton_);
 };
@@ -762,18 +767,23 @@ pagespeed.MobNav.getMapUrl_ = function() {
 
 
 /**
- * Loads a tracking pixel that triggers a conversion event, and then navigates
- * to a map.  Note that we navigate to the map whether the conversion succeeds
- * or fails.
- *
- * @export
+ * Loads a tracking pixel that triggers a conversion event if the conversion
+ * label is set, and then navigates to a map.  Note that we navigate to the map
+ * whether the conversion succeeds or fails.
+ * @private
  */
-function psOpenMap() {
+pagespeed.MobNav.openMap_ = function() {
+  if (!window.psMapConversionLabel) {
+    // No conversion label specified; go straight to the map.
+    window.location = pagespeed.MobNav.getMapUrl_();
+    return;
+  }
+
   // We will visit the map only after we get the onload/onerror for the
   // tracking pixel.
   var trackingPixel = new Image();
   trackingPixel.onload = function() {
-    location.href = pagespeed.MobNav.getMapUrl_();
+    window.location = pagespeed.MobNav.getMapUrl_();
   };
 
   // The user comes first so he gets to the map even if we can't track it.
@@ -789,7 +799,7 @@ function psOpenMap() {
       window.psConversionId +
       '/?label=' + window.psMapConversionLabel +
       '&amp;guid=ON&amp;script=0';
-}
+};
 
 
 /**
@@ -803,12 +813,11 @@ pagespeed.MobNav.prototype.addMapNavigation_ = function(color) {
   mapImage.src = this.synthesizeImage(pagespeed.MobNav.MAP_BUTTON, color);
   this.mapButton_ = document.createElement(goog.dom.TagName.A);
   this.mapButton_.id = 'psmob-map-button';
-  if (window.psMapConversionLabel) {
-    this.mapButton_.href = 'javascript:psOpenMap()';
-  } else {
-    // No conversion label specified; go straight to the map.
-    this.mapButton_.href = pagespeed.MobNav.getMapUrl_();
-  }
+  this.mapButton_.href = '#';
+  this.mapButton_.addEventListener(goog.events.EventType.CLICK, function(e) {
+    e.preventDefault();
+    pagespeed.MobUtil.trackClick('psmob-map-button', pagespeed.MobNav.openMap_);
+  });
   this.mapButton_.appendChild(mapImage);
   this.headerBar_.appendChild(this.mapButton_);
 };
@@ -1270,6 +1279,9 @@ pagespeed.MobNav.prototype.addNavPanel_ = function(themeData) {
  * @private
  */
 pagespeed.MobNav.prototype.toggleNavPanel_ = function() {
+  pagespeed.MobUtil.trackClick(
+      'psmob-menu-button-' +
+      (goog.dom.classlist.contains(this.navPanel_, 'open') ? 'close' : 'open'));
   goog.dom.classlist.toggle(this.headerBar_, 'open');
   goog.dom.classlist.toggle(this.navPanel_, 'open');
   goog.dom.classlist.toggle(this.clickDetectorDiv_, 'open');

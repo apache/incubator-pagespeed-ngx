@@ -350,12 +350,11 @@ void PrepareForBeaconInsertionHelper(CriticalKeys* proto,
     return;
   }
 
-  if (driver->options()->IsDownstreamCacheIntegrationEnabled()) {
-    // We can only get here if downstream cache integration was enabled, but
-    // no downstream cache rebeaconing key was specified. So, put out a
-    // warning message. Note that we do not put out this message on a per
-    // request basis, because it will clutter up the logs. Instead we do it
-    // only once every beaconing interval.
+  if (driver->options()->IsDownstreamCacheIntegrationEnabled() &&
+      !driver->options()->IsDownstreamCacheRebeaconingKeyConfigured()) {
+    // Note that we do not put out this message on a per request basis, because
+    // it will clutter up the logs. Instead we do it only once every beaconing
+    // interval.
     driver->message_handler()->Message(
         kWarning,
         "You seem to have downstream caching configured on your server. "

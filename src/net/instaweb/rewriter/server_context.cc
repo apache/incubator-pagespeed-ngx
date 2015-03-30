@@ -20,6 +20,7 @@
 
 #include <algorithm>                   // for std::binary_search
 #include <cstddef>                     // for size_t
+#include <memory>
 #include <set>
 
 #include "base/logging.h"               // for operator<<, etc
@@ -27,6 +28,7 @@
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/sync_fetcher_adapter_callback.h"
+#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
 #include "net/instaweb/rewriter/public/beacon_critical_line_info_finder.h"
@@ -73,12 +75,15 @@
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/http/http_names.h"
+#include "pagespeed/kernel/http/http_options.h"
 #include "pagespeed/kernel/http/query_params.h"
 #include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/response_headers.h"
 #include "pagespeed/kernel/http/user_agent_matcher.h"
 #include "pagespeed/kernel/thread/thread_synchronizer.h"
 #include "pagespeed/opt/http/property_store.h"
+
+
 
 namespace net_instaweb {
 
@@ -581,6 +586,14 @@ bool ServerContext::HandleBeacon(StringPiece params,
   query_params.ParseFromUntrustedString(params);
   GoogleString query_param_str;
   GoogleUrl url_query_param;
+
+  // If the beacon was sent by the mobilization filter, then just return true.
+  // TODO(jud): Handle these beacons and add some statistics and tracking for
+  // them.
+  if (query_params.Lookup1Unescaped("id", &query_param_str) &&
+      (query_param_str == "psmob")) {
+    return true;
+  }
 
   if (query_params.Lookup1Unescaped(kBeaconUrlQueryParam, &query_param_str)) {
     url_query_param.Reset(query_param_str);

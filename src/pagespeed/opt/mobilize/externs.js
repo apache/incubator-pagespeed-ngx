@@ -92,3 +92,7 @@ var psMobLogoUrl;
 
 /** @type {boolean} */
 var psMobPrecompute;
+
+
+/** @type {string} */
+var psMobBeaconUrl;

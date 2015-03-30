@@ -7409,6 +7409,14 @@ pagespeed.MobUtil.toCssString1 = function(a) {
 pagespeed.MobUtil.consoleLog = function(a) {
   console && console.log && console.log(a);
 };
+pagespeed.MobUtil.trackClick = function(a, b) {
+  var c = window.psMobBeaconUrl + "?id=psmob&url=" + encodeURIComponent(document.URL) + "&el=" + a;
+  window.psmob_image_requests || (window.psmob_image_requests = []);
+  var d = document.createElement(goog.dom.TagName.IMG);
+  b && (d.addEventListener(goog.events.EventType.LOAD, b), d.addEventListener(goog.events.EventType.ERROR, b));
+  d.src = c;
+  window.psmob_image_requests.push(d);
+};
 pagespeed.MobColor = function() {
 };
 pagespeed.MobColor.prototype.EPSILON_ = 1E-10;
@@ -8317,29 +8325,37 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(a) {
 pagespeed.MobNav.prototype.addPhoneDialer_ = function() {
   this.callButton_ = document.createElement(goog.dom.TagName.DIV);
   this.callButton_.id = "psmob-phone-dialer";
+  this.callButton_.href = "#";
   var a = this.getPhoneNumber_();
-  a ? (window.psPhoneNumber = a, this.callButton_.onclick = pagespeed.MobNav.dialPhone_) : this.callButton_.onclick = pagespeed.MobNav.requestPhoneNumberAndCall_;
+  a ? (window.psPhoneNumber = a, this.callButton_.onclick = goog.partial(pagespeed.MobUtil.trackClick, "psmob-phone-dialer", pagespeed.MobNav.dialPhone_)) : this.callButton_.onclick = goog.partial(pagespeed.MobUtil.trackClick, "psmob-phone-dialer", pagespeed.MobNav.requestPhoneNumberAndCall_);
   this.headerBar_.appendChild(this.callButton_);
 };
 pagespeed.MobNav.getMapUrl_ = function() {
   return "https://maps.google.com/maps?q=" + window.psMapLocation;
 };
-function psOpenMap() {
-  var a = new Image;
-  a.onload = function() {
-    location.href = pagespeed.MobNav.getMapUrl_();
-  };
-  a.onerror = a.onload;
-  a.src = "//www.googleadservices.com/pagead/conversion/" + window.psConversionId + "/?label=" + window.psMapConversionLabel + "&amp;guid=ON&amp;script=0";
-}
-goog.exportSymbol("psOpenMap", psOpenMap);
+pagespeed.MobNav.openMap_ = function() {
+  if (window.psMapConversionLabel) {
+    var a = new Image;
+    a.onload = function() {
+      window.location = pagespeed.MobNav.getMapUrl_();
+    };
+    a.onerror = a.onload;
+    a.src = "//www.googleadservices.com/pagead/conversion/" + window.psConversionId + "/?label=" + window.psMapConversionLabel + "&amp;guid=ON&amp;script=0";
+  } else {
+    window.location = pagespeed.MobNav.getMapUrl_();
+  }
+};
 pagespeed.MobNav.prototype.addMapNavigation_ = function(a) {
   var b = document.createElement(goog.dom.TagName.IMG);
   b.id = "psmob-map-image";
   b.src = this.synthesizeImage(pagespeed.MobNav.MAP_BUTTON, a);
   this.mapButton_ = document.createElement(goog.dom.TagName.A);
   this.mapButton_.id = "psmob-map-button";
-  this.mapButton_.href = window.psMapConversionLabel ? "javascript:psOpenMap()" : pagespeed.MobNav.getMapUrl_();
+  this.mapButton_.href = "#";
+  this.mapButton_.addEventListener(goog.events.EventType.CLICK, function(a) {
+    a.preventDefault();
+    pagespeed.MobUtil.trackClick("psmob-map-button", pagespeed.MobNav.openMap_);
+  });
   this.mapButton_.appendChild(b);
   this.headerBar_.appendChild(this.mapButton_);
 };
@@ -8488,6 +8504,7 @@ pagespeed.MobNav.prototype.addNavPanel_ = function(a) {
   this.redrawNavPanel_();
 };
 pagespeed.MobNav.prototype.toggleNavPanel_ = function() {
+  pagespeed.MobUtil.trackClick("psmob-menu-button-" + (goog.dom.classlist.contains(this.navPanel_, "open") ? "close" : "open"));
   goog.dom.classlist.toggle(this.headerBar_, "open");
   goog.dom.classlist.toggle(this.navPanel_, "open");
   goog.dom.classlist.toggle(this.clickDetectorDiv_, "open");

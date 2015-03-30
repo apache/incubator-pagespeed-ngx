@@ -22,6 +22,7 @@ goog.provide('pagespeed.MobUtil');
 goog.require('goog.color');
 goog.require('goog.dom');
 goog.require('goog.dom.TagName');
+goog.require('goog.events.EventType');
 goog.require('goog.math.Box');
 goog.require('goog.string');
 goog.require('goog.uri.utils');
@@ -829,4 +830,29 @@ pagespeed.MobUtil.consoleLog = function(message) {
   if (console && console.log) {
     console.log(message);
   }
+};
+
+
+/**
+ * Track a click on a UI element by sending to the beacon handler specified via
+ * RewriteOption MobBeaconUrl. The resulting image gets attached to the window
+ * to make sure it doesn't go out of scope before the browser can send the
+ * request.
+ * @param {string} elName Identifier for the element being tracked.
+ * @param {Function=} opt_callback Optional callback to be run when the 204
+ *     finishes loading.
+ */
+pagespeed.MobUtil.trackClick = function(elName, opt_callback) {
+  var pingUrl = window.psMobBeaconUrl + '?id=psmob' +
+                '&url=' + encodeURIComponent(document.URL) + '&el=' + elName;
+  if (!window['psmob_image_requests']) {
+    window['psmob_image_requests'] = [];
+  }
+  var img = document.createElement(goog.dom.TagName.IMG);
+  if (opt_callback) {
+    img.addEventListener(goog.events.EventType.LOAD, opt_callback);
+    img.addEventListener(goog.events.EventType.ERROR, opt_callback);
+  }
+  img.src = pingUrl;
+  window['psmob_image_requests'].push(img);
 };
