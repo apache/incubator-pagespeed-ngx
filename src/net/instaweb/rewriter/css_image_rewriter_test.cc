@@ -279,14 +279,13 @@ TEST_F(CssImageRewriterTest, CacheExtendsImages) {
       "OHwAAAABJRU5ErkJggg==);"
       "  -proprietary-background-property: url(foo.png);\n"
       "}";
-  const GoogleString css_after = StrCat(StrCat(
+  const GoogleString css_after = StrCat(
       "body{background-image:url(", Encode("", "ce", "0", "foo.png", "png"),
-      ");"
-      "list-style-image:url(", Encode("", "ce", "0", "bar.png", "png"), ")}"
-      ".titlebar p.cfoo,#end p{"
-      "background:url(", Encode("", "ce", "0", "baz.png", "png"), ");"
-      "list-style:url(", Encode("", "ce", "0", "foo.png", "png")), ")}"
-      ".other{"  // data: URLs and unknown properties are not rewritten.
+      ");list-style-image:url(", Encode("", "ce", "0", "bar.png", "png"),
+      ")}.titlebar p.cfoo,#end p{background:url(",
+      Encode("", "ce", "0", "baz.png", "png"), ");list-style:url(",
+      Encode("", "ce", "0", "foo.png", "png"),
+      ")}.other{"  // data: URLs and unknown properties are not rewritten.
       "background-image:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAA"
       "AUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4"
       "OHwAAAABJRU5ErkJggg==);"

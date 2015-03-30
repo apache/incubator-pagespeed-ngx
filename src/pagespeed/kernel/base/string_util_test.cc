@@ -653,6 +653,61 @@ TEST_F(JoinCollectionTest, SingletonEmpty) {
   CheckAppendJoinCollection("", string_set, ", ");
 }
 
+TEST(StrCat, MaxArgs) {
+  GoogleString result;
+  // Test 10 up to 26 arguments, the current maximum
+  result = StrCat("1", "2", "3", "4", "5", "6", "7", "8", "9", "a");
+  EXPECT_EQ(result, "123456789a");
+  result = StrCat("1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b");
+  EXPECT_EQ(result, "123456789ab");
+  result = StrCat("1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c");
+  EXPECT_EQ(result, "123456789abc");
+  result =
+      StrCat("1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d");
+  EXPECT_EQ(result, "123456789abcd");
+  result = StrCat("1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c",
+                  "d", "e");
+  EXPECT_EQ(result, "123456789abcde");
+  result = StrCat("1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c",
+                  "d", "e", "f");
+  EXPECT_EQ(result, "123456789abcdef");
+  result = StrCat("1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c",
+                  "d", "e", "f", "g");
+  EXPECT_EQ(result, "123456789abcdefg");
+  result = StrCat("1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c",
+                  "d", "e", "f", "g", "h");
+  EXPECT_EQ(result, "123456789abcdefgh");
+  result = StrCat("1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c",
+                  "d", "e", "f", "g", "h", "i");
+  EXPECT_EQ(result, "123456789abcdefghi");
+  result = StrCat("1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c",
+                  "d", "e", "f", "g", "h", "i", "j");
+  EXPECT_EQ(result, "123456789abcdefghij");
+  result = StrCat("1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c",
+                  "d", "e", "f", "g", "h", "i", "j", "k");
+  EXPECT_EQ(result, "123456789abcdefghijk");
+  result = StrCat("1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c",
+                  "d", "e", "f", "g", "h", "i", "j", "k", "l");
+  EXPECT_EQ(result, "123456789abcdefghijkl");
+  result = StrCat("1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c",
+                  "d", "e", "f", "g", "h", "i", "j", "k", "l", "m");
+  EXPECT_EQ(result, "123456789abcdefghijklm");
+  result = StrCat("1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c",
+                  "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n");
+  EXPECT_EQ(result, "123456789abcdefghijklmn");
+  result = StrCat("1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c",
+                  "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o");
+  EXPECT_EQ(result, "123456789abcdefghijklmno");
+  result =
+      StrCat("1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d",
+             "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p");
+  EXPECT_EQ(result, "123456789abcdefghijklmnop");
+  result =
+      StrCat("1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d",
+             "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q");
+  EXPECT_EQ(result, "123456789abcdefghijklmnopq");
+}
+
 class TrimQuoteTest : public testing::Test {
  protected:
   static StringPiece RemoveQuote(StringPiece str) {

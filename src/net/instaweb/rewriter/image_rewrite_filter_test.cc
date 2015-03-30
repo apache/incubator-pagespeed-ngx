@@ -3679,7 +3679,7 @@ TEST_F(ImageRewriteTest, ReportDimensionsToJsPartial) {
       "\"", kTestDomain, out_png_url, "\":{w:100,h:100},"
       "\"", kTestDomain, out_jpeg_url, "\":{w:1023,h:766},"
       "}");
-  EXPECT_EQ(StrCat(StrCat("<img src=\"", out_png_url, "\">"),
+  EXPECT_EQ(StrCat("<img src=\"", out_png_url, "\">",
                    "<img src=\"b.jpeg\">",
                    "<script>", js1, "</script>"),
             output_buffer_);
@@ -3692,8 +3692,8 @@ TEST_F(ImageRewriteTest, ReportDimensionsToJsPartial) {
   rewrite_driver()->StartParse(StrCat(kTestDomain, "dims2.html"));
   rewrite_driver()->ParseText("<img src=\"a.png\"><img src=\"b.jpeg\">");
   rewrite_driver()->FinishParse();
-  EXPECT_EQ(StrCat(StrCat("<img src=\"", out_png_url, "\">"),
-                   StrCat("<img src=\"", out_jpeg_url, "\">"),
+  EXPECT_EQ(StrCat("<img src=\"", out_png_url, "\">",
+                   "<img src=\"", out_jpeg_url, "\">",
                    "<script>", js2, "</script>"),
             output_buffer_);
 }

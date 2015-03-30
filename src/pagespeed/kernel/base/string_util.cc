@@ -27,15 +27,14 @@
 
 namespace net_instaweb {
 
-GoogleString StrCat(const StringPiece& a, const StringPiece& b) {
+GoogleString StrCat(StringPiece a, StringPiece b) {
   GoogleString res;
   res.reserve(a.size() + b.size());
   a.AppendToString(&res);
   b.AppendToString(&res);
   return res;
 }
-GoogleString StrCat(const StringPiece& a, const StringPiece& b,
-                    const StringPiece& c) {
+GoogleString StrCat(StringPiece a, StringPiece b, StringPiece c) {
   GoogleString res;
   res.reserve(a.size() + b.size() + c.size());
   a.AppendToString(&res);
@@ -43,8 +42,8 @@ GoogleString StrCat(const StringPiece& a, const StringPiece& b,
   c.AppendToString(&res);
   return res;
 }
-GoogleString StrCat(const StringPiece& a, const StringPiece& b,
-                    const StringPiece& c, const StringPiece& d) {
+GoogleString StrCat(StringPiece a, StringPiece b, StringPiece c,
+                    StringPiece d) {
   GoogleString res;
   res.reserve(a.size() + b.size() + c.size() + d.size());
   a.AppendToString(&res);
@@ -53,9 +52,8 @@ GoogleString StrCat(const StringPiece& a, const StringPiece& b,
   d.AppendToString(&res);
   return res;
 }
-GoogleString StrCat(const StringPiece& a, const StringPiece& b,
-                    const StringPiece& c, const StringPiece& d,
-                    const StringPiece& e) {
+GoogleString StrCat(StringPiece a, StringPiece b, StringPiece c, StringPiece d,
+                    StringPiece e) {
   GoogleString res;
   res.reserve(a.size() + b.size() + c.size() + d.size() + e.size());
   a.AppendToString(&res);
@@ -65,12 +63,8 @@ GoogleString StrCat(const StringPiece& a, const StringPiece& b,
   e.AppendToString(&res);
   return res;
 }
-GoogleString StrCat(const StringPiece& a,
-                    const StringPiece& b,
-                    const StringPiece& c,
-                    const StringPiece& d,
-                    const StringPiece& e,
-                    const StringPiece& f) {
+GoogleString StrCat(StringPiece a, StringPiece b, StringPiece c, StringPiece d,
+                    StringPiece e, StringPiece f) {
   GoogleString res;
   res.reserve(a.size() + b.size() + c.size() + d.size() + e.size() + f.size());
   a.AppendToString(&res);
@@ -81,13 +75,8 @@ GoogleString StrCat(const StringPiece& a,
   f.AppendToString(&res);
   return res;
 }
-GoogleString StrCat(const StringPiece& a,
-                    const StringPiece& b,
-                    const StringPiece& c,
-                    const StringPiece& d,
-                    const StringPiece& e,
-                    const StringPiece& f,
-                    const StringPiece& g) {
+GoogleString StrCat(StringPiece a, StringPiece b, StringPiece c, StringPiece d,
+                    StringPiece e, StringPiece f, StringPiece g) {
   GoogleString res;
   res.reserve(a.size() + b.size() + c.size() + d.size() + e.size() + f.size() +
               g.size());
@@ -100,14 +89,9 @@ GoogleString StrCat(const StringPiece& a,
   g.AppendToString(&res);
   return res;
 }
-GoogleString StrCat(const StringPiece& a,
-                    const StringPiece& b,
-                    const StringPiece& c,
-                    const StringPiece& d,
-                    const StringPiece& e,
-                    const StringPiece& f,
-                    const StringPiece& g,
-                    const StringPiece& h) {
+GoogleString StrCat(StringPiece a, StringPiece b, StringPiece c, StringPiece d,
+                    StringPiece e, StringPiece f, StringPiece g,
+                    StringPiece h) {
   GoogleString res;
   res.reserve(a.size() + b.size() + c.size() + d.size() + e.size() + f.size() +
               g.size() + h.size());
@@ -121,53 +105,47 @@ GoogleString StrCat(const StringPiece& a,
   h.AppendToString(&res);
   return res;
 }
-GoogleString StrCat(const StringPiece& a,
-                    const StringPiece& b,
-                    const StringPiece& c,
-                    const StringPiece& d,
-                    const StringPiece& e,
-                    const StringPiece& f,
-                    const StringPiece& g,
-                    const StringPiece& h,
-                    const StringPiece& i) {
+
+namespace internal {
+
+GoogleString StrCatNineOrMore(const StringPiece* a, ...) {
   GoogleString res;
-  res.reserve(a.size() + b.size() + c.size() + d.size() + e.size() + f.size() +
-              g.size() + h.size() + i.size());
-  a.AppendToString(&res);
-  b.AppendToString(&res);
-  c.AppendToString(&res);
-  d.AppendToString(&res);
-  e.AppendToString(&res);
-  f.AppendToString(&res);
-  g.AppendToString(&res);
-  h.AppendToString(&res);
-  i.AppendToString(&res);
+
+  va_list args;
+  va_start(args, a);
+  size_t size = a->size();
+  while (const StringPiece* arg = va_arg(args, const StringPiece*)) {
+    size += arg->size();
+  }
+  res.reserve(size);
+  va_end(args);
+  va_start(args, a);
+  a->AppendToString(&res);
+  while (const StringPiece* arg = va_arg(args, const StringPiece*)) {
+    arg->AppendToString(&res);
+  }
+  va_end(args);
   return res;
 }
 
-void StrAppend(GoogleString* target,
-               const StringPiece& a,
-               const StringPiece& b) {
+}  // namespace internal
+
+void StrAppend(GoogleString* target, StringPiece a, StringPiece b) {
   target->reserve(target->size() +
                   a.size() + b.size());
   a.AppendToString(target);
   b.AppendToString(target);
 }
-void StrAppend(GoogleString* target,
-               const StringPiece& a,
-               const StringPiece& b,
-               const StringPiece& c) {
+void StrAppend(GoogleString* target, StringPiece a, StringPiece b,
+               StringPiece c) {
   target->reserve(target->size() +
                   a.size() + b.size() + c.size());
   a.AppendToString(target);
   b.AppendToString(target);
   c.AppendToString(target);
 }
-void StrAppend(GoogleString* target,
-               const StringPiece& a,
-               const StringPiece& b,
-               const StringPiece& c,
-               const StringPiece& d) {
+void StrAppend(GoogleString* target, StringPiece a, StringPiece b,
+               StringPiece c, StringPiece d) {
   target->reserve(target->size() +
                   a.size() + b.size() + c.size() + d.size());
   a.AppendToString(target);
@@ -175,12 +153,8 @@ void StrAppend(GoogleString* target,
   c.AppendToString(target);
   d.AppendToString(target);
 }
-void StrAppend(GoogleString* target,
-               const StringPiece& a,
-               const StringPiece& b,
-               const StringPiece& c,
-               const StringPiece& d,
-               const StringPiece& e) {
+void StrAppend(GoogleString* target, StringPiece a, StringPiece b,
+               StringPiece c, StringPiece d, StringPiece e) {
   target->reserve(target->size() +
                   a.size() + b.size() + c.size() + d.size() + e.size());
   a.AppendToString(target);
@@ -189,13 +163,8 @@ void StrAppend(GoogleString* target,
   d.AppendToString(target);
   e.AppendToString(target);
 }
-void StrAppend(GoogleString* target,
-               const StringPiece& a,
-               const StringPiece& b,
-               const StringPiece& c,
-               const StringPiece& d,
-               const StringPiece& e,
-               const StringPiece& f) {
+void StrAppend(GoogleString* target, StringPiece a, StringPiece b,
+               StringPiece c, StringPiece d, StringPiece e, StringPiece f) {
   target->reserve(target->size() +
                   a.size() + b.size() + c.size() + d.size() + e.size() +
                   f.size());
@@ -206,14 +175,9 @@ void StrAppend(GoogleString* target,
   e.AppendToString(target);
   f.AppendToString(target);
 }
-void StrAppend(GoogleString* target,
-               const StringPiece& a,
-               const StringPiece& b,
-               const StringPiece& c,
-               const StringPiece& d,
-               const StringPiece& e,
-               const StringPiece& f,
-               const StringPiece& g) {
+void StrAppend(GoogleString* target, StringPiece a, StringPiece b,
+               StringPiece c, StringPiece d, StringPiece e, StringPiece f,
+               StringPiece g) {
   target->reserve(target->size() +
                   a.size() + b.size() + c.size() + d.size() + e.size() +
                   f.size() + g.size());
@@ -225,15 +189,9 @@ void StrAppend(GoogleString* target,
   f.AppendToString(target);
   g.AppendToString(target);
 }
-void StrAppend(GoogleString* target,
-               const StringPiece& a,
-               const StringPiece& b,
-               const StringPiece& c,
-               const StringPiece& d,
-               const StringPiece& e,
-               const StringPiece& f,
-               const StringPiece& g,
-               const StringPiece& h) {
+void StrAppend(GoogleString* target, StringPiece a, StringPiece b,
+               StringPiece c, StringPiece d, StringPiece e, StringPiece f,
+               StringPiece g, StringPiece h) {
   target->reserve(target->size() +
                   a.size() + b.size() + c.size() + d.size() + e.size() +
                   f.size() + g.size() + h.size());
@@ -246,16 +204,9 @@ void StrAppend(GoogleString* target,
   g.AppendToString(target);
   h.AppendToString(target);
 }
-void StrAppend(GoogleString* target,
-               const StringPiece& a,
-               const StringPiece& b,
-               const StringPiece& c,
-               const StringPiece& d,
-               const StringPiece& e,
-               const StringPiece& f,
-               const StringPiece& g,
-               const StringPiece& h,
-               const StringPiece& i) {
+void StrAppend(GoogleString* target, StringPiece a, StringPiece b,
+               StringPiece c, StringPiece d, StringPiece e, StringPiece f,
+               StringPiece g, StringPiece h, StringPiece i) {
   target->reserve(target->size() +
                   a.size() + b.size() + c.size() + d.size() + e.size() +
                   f.size() + g.size() + h.size() + i.size());
@@ -270,8 +221,7 @@ void StrAppend(GoogleString* target,
   i.AppendToString(target);
 }
 
-void SplitStringPieceToVector(const StringPiece& sp,
-                              const StringPiece& separators,
+void SplitStringPieceToVector(StringPiece sp, StringPiece separators,
                               StringPieceVector* components,
                               bool omit_empty_strings) {
   size_t prev_pos = 0;
@@ -288,8 +238,7 @@ void SplitStringPieceToVector(const StringPiece& sp,
   }
 }
 
-void SplitStringUsingSubstr(const StringPiece& full,
-                            const StringPiece& substr,
+void SplitStringUsingSubstr(StringPiece full, StringPiece substr,
                             StringPieceVector* result) {
   StringPiece::size_type begin_index = 0;
   while (true) {
@@ -307,8 +256,7 @@ void SplitStringUsingSubstr(const StringPiece& full,
   }
 }
 
-void BackslashEscape(const StringPiece& src,
-                     const StringPiece& to_escape,
+void BackslashEscape(StringPiece src, StringPiece to_escape,
                      GoogleString* dest) {
   dest->reserve(dest->size() + src.size());
   for (const char *p = src.data(), *end = src.data() + src.size();
@@ -320,7 +268,7 @@ void BackslashEscape(const StringPiece& src,
   }
 }
 
-GoogleString CEscape(const StringPiece& src) {
+GoogleString CEscape(StringPiece src) {
   int len = src.length();
   const char* read = src.data();
   const char* end = read + len;
@@ -353,7 +301,7 @@ GoogleString CEscape(const StringPiece& src) {
 // From src/third_party/protobuf/src/google/protobuf/stubs/strutil.h
 // but we don't need any other aspect of protobufs so we don't want to
 // incur the link cost.
-bool HasPrefixString(const StringPiece& str, const StringPiece& prefix) {
+bool HasPrefixString(StringPiece str, StringPiece prefix) {
   return str.starts_with(prefix);
 }
 
@@ -381,8 +329,7 @@ void LowerString(GoogleString* s) {
 //
 //    NOTE: The string pieces must not overlap s.
 // ----------------------------------------------------------------------
-int GlobalReplaceSubstring(const StringPiece& substring,
-                           const StringPiece& replacement,
+int GlobalReplaceSubstring(StringPiece substring, StringPiece replacement,
                            GoogleString* s) {
   CHECK(s != NULL);
   if (s->empty())
@@ -440,7 +387,7 @@ int GlobalEraseBracketedSubstring(StringPiece left, StringPiece right,
 }
 
 GoogleString JoinStringStar(const ConstStringStarVector& vector,
-                            const StringPiece& delim) {
+                            StringPiece delim) {
   GoogleString result;
 
   if (vector.size() > 0) {
@@ -465,24 +412,23 @@ GoogleString JoinStringStar(const ConstStringStarVector& vector,
   return result;
 }
 
-bool StringCaseStartsWith(const StringPiece& str, const StringPiece& prefix) {
+bool StringCaseStartsWith(StringPiece str, StringPiece prefix) {
   return ((str.size() >= prefix.size()) &&
           (0 == StringCaseCompare(prefix, str.substr(0, prefix.size()))));
 }
 
-bool StringCaseEndsWith(const StringPiece& str, const StringPiece& suffix) {
+bool StringCaseEndsWith(StringPiece str, StringPiece suffix) {
   return ((str.size() >= suffix.size()) &&
           (0 == StringCaseCompare(suffix,
                                   str.substr(str.size() - suffix.size()))));
 }
 
-bool StringEqualConcat(const StringPiece& str, const StringPiece& first,
-                       const StringPiece& second) {
+bool StringEqualConcat(StringPiece str, StringPiece first, StringPiece second) {
   return (str.size() == first.size() + second.size()) &&
       str.starts_with(first) && str.ends_with(second);
 }
 
-StringPiece PieceAfterEquals(const StringPiece& piece) {
+StringPiece PieceAfterEquals(StringPiece piece) {
   size_t index = piece.find("=");
   if (index != piece.npos) {
     ++index;
@@ -504,7 +450,7 @@ int CountCharacterMismatches(StringPiece s1, StringPiece s2) {
   return mismatches + std::abs(s1_length - s2_length);
 }
 
-void ParseShellLikeString(const StringPiece& input,
+void ParseShellLikeString(StringPiece input,
                           std::vector<GoogleString>* output) {
   output->clear();
   for (size_t index = 0; index < input.size();) {
@@ -540,7 +486,7 @@ void ParseShellLikeString(const StringPiece& input,
   }
 }
 
-int CountSubstring(const StringPiece& text, const StringPiece& substring) {
+int CountSubstring(StringPiece text, StringPiece substring) {
   int number_of_occurrences = 0;
   size_t pos = 0;
   for (size_t match_pos = text.find(substring, pos);
@@ -646,7 +592,7 @@ void TrimUrlQuotes(StringPiece* str) {
 // TODO(jmarantz): This is a very slow implementation.  But strncasecmp
 // will fail test StringCaseTest.Locale.  If this shows up as a performance
 // bottleneck then an SSE implementation would be better.
-int StringCaseCompare(const StringPiece& s1, const StringPiece& s2) {
+int StringCaseCompare(StringPiece s1, StringPiece s2) {
   for (int i = 0, n = std::min(s1.size(), s2.size()); i < n; ++i) {
     unsigned char c1 = UpperChar(s1[i]);
     unsigned char c2 = UpperChar(s2[i]);
@@ -676,9 +622,8 @@ bool MemCaseEqual(const char* s1, size_t size1, const char* s2, size_t size2) {
   return true;
 }
 
-bool SplitStringPieceToIntegerVector(
-    const StringPiece& src, const StringPiece& separators,
-    std::vector<int>* ints) {
+bool SplitStringPieceToIntegerVector(StringPiece src, StringPiece separators,
+                                     std::vector<int>* ints) {
   StringPieceVector values;
   SplitStringPieceToVector(
       src, separators, &values, true /* omit_empty_strings */);

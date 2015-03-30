@@ -860,10 +860,9 @@ TEST_F(JsCombineFilterTest, TestCombineStats) {
   EXPECT_EQ(0, num_reduced->Get());
 
   // Now combine 3 files into one.
-  ParseUrl(kTestDomain,
-           StrCat(StrCat("<script src=", kJsUrl1, "></script>"),
-                  StrCat("<script src=", kJsUrl2, "></script>"),
-                  StrCat("<script src=", kJsUrl3, "></script>")));
+  ParseUrl(kTestDomain, StrCat("<script src=", kJsUrl1, "></script>",
+                               "<script src=", kJsUrl2, "></script>",
+                               "<script src=", kJsUrl3, "></script>"));
 
   EXPECT_STREQ("jc", AppliedRewriterStringFromLog());
   EXPECT_EQ(2, num_reduced->Get());

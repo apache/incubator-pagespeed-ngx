@@ -495,14 +495,14 @@ TEST_F(LocalStorageCacheTest, RepeatViewsOfSameImageAtDifferentSizes) {
   // resource could take longer than the rewriting timeout, and we want to
   // simulate that here. We redo it below with the rewriting completing in time.
   GoogleString external_imgs =
-      StrCat(StrCat("<img src='", kCuppaPngFilename, "'"
-                    " width=\"30\" height=\"30\""
-                    " pagespeed_lsc_url=""\"",
-                    kTestDomain, kCuppaPngFilename, "\">"),
-             StrCat("<img src='", kCuppaPngFilename, "'"
-                    " width=\"150\" height=\"150\""
-                    " pagespeed_lsc_url=\"",
-                    kTestDomain, kCuppaPngFilename, "\">"));
+      StrCat("<img src='", kCuppaPngFilename, "'"
+             " width=\"30\" height=\"30\""
+             " pagespeed_lsc_url=""\"",
+             kTestDomain, kCuppaPngFilename, "\">",
+             "<img src='", kCuppaPngFilename, "'"
+             " width=\"150\" height=\"150\""
+             " pagespeed_lsc_url=\"",
+             kTestDomain, kCuppaPngFilename, "\">");
 
   SetupWaitFetcher();
   TestLocalStorage("first_view", "", "",
@@ -511,21 +511,21 @@ TEST_F(LocalStorageCacheTest, RepeatViewsOfSameImageAtDifferentSizes) {
 
   // Second view will inline them and add an expiry.
   GoogleString inlined_imgs =
-      StrCat(StrCat("<img src='", kCuppaPng30sqInlineData, "'"
-                    // This is dropped; see below for why.
-                    // " width=\"30\" height=\"30\""
-                    " pagespeed_lsc_url=\"",
-                    kTestDomain, kCuppaPngFilename, "\""
-                    " pagespeed_lsc_hash=\"", kHash30x30, "\""
-                    " pagespeed_lsc_expiry="
-                    "\"Tue, 02 Feb 2010 18:53:06 GMT\">"),
-             StrCat("<img src='", kCuppaPng150sqInlineData, "'"
-                    " width=\"150\" height=\"150\""
-                    " pagespeed_lsc_url=\"",
-                    kTestDomain, kCuppaPngFilename, "\""
-                    " pagespeed_lsc_hash=\"", kHash150x150, "\""
-                    " pagespeed_lsc_expiry="
-                    "\"Tue, 02 Feb 2010 18:53:06 GMT\">"));
+      StrCat("<img src='", kCuppaPng30sqInlineData, "'"
+             // This is dropped; see below for why.
+             // " width=\"30\" height=\"30\""
+             " pagespeed_lsc_url=\"",
+             kTestDomain, kCuppaPngFilename, "\""
+             " pagespeed_lsc_hash=\"", kHash30x30, "\""
+             " pagespeed_lsc_expiry="
+             "\"Tue, 02 Feb 2010 18:53:06 GMT\">",
+             "<img src='", kCuppaPng150sqInlineData, "'"
+             " width=\"150\" height=\"150\""
+             " pagespeed_lsc_url=\"",
+             kTestDomain, kCuppaPngFilename, "\""
+             " pagespeed_lsc_hash=\"", kHash150x150, "\""
+             " pagespeed_lsc_expiry="
+             "\"Tue, 02 Feb 2010 18:53:06 GMT\">");
   // NOTE: Why are width=30 and height=30 dropped from the first img tag?
   // Because the image rewriter calls DeleteMatchingImageDimsAfterInline for
   // each inlined image, and at this point the cached version of Cuppa.png is
@@ -545,18 +545,18 @@ TEST_F(LocalStorageCacheTest, RepeatViewsOfSameImageAtDifferentSizes) {
   // Third view will not send the inlined data and will send scripts in place
   // of the link and img elements.
   GoogleString scripted_imgs =
-      StrCat(StrCat("<script pagespeed_no_defer>"
-                    "pagespeed.localStorageCache.inlineImg("
-                    "\"", kTestDomain, kCuppaPngFilename,
-                    "\", \"", kHash30x30, "\""
-                    ", \"width=30\", \"height=30\""
-                    ");</script>"),
-             StrCat("<script pagespeed_no_defer>"
-                    "pagespeed.localStorageCache.inlineImg("
-                    "\"", kTestDomain, kCuppaPngFilename,
-                    "\", \"", kHash150x150, "\""
-                    ", \"width=150\", \"height=150\""
-                    ");</script>"));
+      StrCat("<script pagespeed_no_defer>"
+             "pagespeed.localStorageCache.inlineImg("
+             "\"", kTestDomain, kCuppaPngFilename,
+             "\", \"", kHash30x30, "\""
+             ", \"width=30\", \"height=30\""
+             ");</script>",
+             "<script pagespeed_no_defer>"
+             "pagespeed.localStorageCache.inlineImg("
+             "\"", kTestDomain, kCuppaPngFilename,
+             "\", \"", kHash150x150, "\""
+             ", \"width=150\", \"height=150\""
+             ");</script>");
   TestLocalStorage("third_view", "", "",
                    imgs, InsertScriptBefore(scripted_imgs));
 }

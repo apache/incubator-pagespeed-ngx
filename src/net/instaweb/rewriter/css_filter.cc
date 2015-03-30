@@ -39,6 +39,7 @@
 #include "net/instaweb/rewriter/public/data_url_input_resource.h"
 #include "net/instaweb/rewriter/public/image_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/image_url_encoder.h"
+#include "net/instaweb/rewriter/public/inline_attribute_slot.h"
 #include "net/instaweb/rewriter/public/inline_output_resource.h"
 #include "net/instaweb/rewriter/public/inline_resource_slot.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
@@ -1152,14 +1153,11 @@ bool CssFilter::GetApplicableCharset(const HtmlElement* element,
     if (charset_attribute != NULL) {
       const char* elements_charset = charset_attribute->DecodedValueOrNull();
       if (our_charset != elements_charset) {
-        *failure_reason = StrCat(StrCat("The charset of the HTML (",
-                                        our_charset, ", ",
-                                        our_charset_source, ") "),
-                                 StrCat("is different from the charset "
-                                        "attribute on the preceding element (",
-                                        (elements_charset == NULL
-                                         ? "not set" : elements_charset),
-                                        ")"));
+        *failure_reason = StrCat(
+            "The charset of the HTML (", our_charset, ", ", our_charset_source,
+            ") is different from the charset attribute on the preceding "
+            "element (",
+            (elements_charset == NULL ? "not set" : elements_charset), ")");
         return false;  // early return!
       }
     }
