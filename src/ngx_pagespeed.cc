@@ -344,7 +344,7 @@ ngx_int_t ps_base_fetch_handler(ngx_http_request_t* r) {
 
   if (rc == NGX_ERROR) {
     ps_set_buffered(r, false);
-    ps_release_base_fetch(ctx);    
+    ps_release_base_fetch(ctx);
     return NGX_HTTP_INTERNAL_SERVER_ERROR;
   }
 
@@ -355,7 +355,7 @@ ngx_int_t ps_base_fetch_handler(ngx_http_request_t* r) {
 
   if (rc == NGX_OK) {
     ps_set_buffered(r, false);
-    ps_release_base_fetch(ctx);    
+    ps_release_base_fetch(ctx);
   }
 
   return ps_base_fetch_filter(r, cl);
@@ -1709,7 +1709,7 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
     ps_release_base_fetch(ctx);
     return NGX_DECLINED;
   }
-  
+
   CHECK(!(html_rewrite && (ctx == NULL || ctx->html_rewrite == false)));
 
   if (!html_rewrite &&
@@ -1913,7 +1913,6 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
     driver->set_pagespeed_option_cookies(pagespeed_option_cookies);
 
     // TODO(jefftk): FlushEarlyFlow would go here.
-    bool page_callback_added = false;
     ProxyFetchPropertyCallbackCollector* property_callback =
         ProxyFetchFactory::InitiatePropertyCacheLookup(
             !html_rewrite /* is_resource_fetch */,
@@ -1921,8 +1920,7 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
             cfg_s->server_context,
             options,
             ctx->base_fetch,
-            false /* requires_blink_cohort (no longer unused) */,
-            &page_callback_added);
+            false /* requires_blink_cohort (no longer unused) */);
 
     // Will call StartParse etc.  The rewrite driver will take care of deleting
     // itself if necessary.
