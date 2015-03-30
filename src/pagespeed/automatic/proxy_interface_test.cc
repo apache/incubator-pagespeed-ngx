@@ -3591,4 +3591,20 @@ TEST_F(ProxyInterfaceOriginPropertyPageTest, Basic) {
   EXPECT_TRUE(HasPrefixString(body, "<!--Site visit:2-->")) << body;
 }
 
+TEST_F(ProxyInterfaceOriginPropertyPageTest, PostWithDelayCache) {
+  // Test for not crashing.
+  PerOriginPageReaderFilterCreator filter_creator;
+  factory()->AddCreateFilterCallback(&filter_creator);
+
+  RequestHeaders request_headers;
+  ResponseHeaders headers;
+  request_headers.set_method(RequestHeaders::kPost);
+
+  SetCacheDelayUs(100);
+  FetchFromProxyNoWait(kPageUrl, request_headers, true /*expect_success*/,
+                       false /*log_flush*/, &headers);
+  mock_scheduler()->AdvanceTimeUs(200);
+  WaitForFetch(true);
+}
+
 }  // namespace net_instaweb

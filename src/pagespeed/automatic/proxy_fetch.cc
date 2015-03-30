@@ -1397,6 +1397,7 @@ ProxyFetchPropertyCallbackCollector*
           callback_collector.get(),
           server_context->thread_system()->NewMutex());
       callback_collector->AddCallback(origin_property_callback);
+      added_callback = true;
     }
   }
 
