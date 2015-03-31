@@ -291,10 +291,39 @@ void ResponsiveImageSecondFilter::CombineHiResImages(
   }
 }
 
+namespace {
+
+// Helper function which never returns NULL (and is thus safe to use directly
+// in printf, etc.).
+const char* AttributeValueOrEmpty(const HtmlElement* element,
+                                  const HtmlName::Keyword attr_name) {
+  const char* ret = element->AttributeValue(attr_name);
+  if (ret == NULL) {
+    return "";
+  } else {
+    return ret;
+  }
+}
+
+}  // namespace
+
 void ResponsiveImageSecondFilter::Cleanup(
     HtmlElement* orig_element,
     const ResponsiveImageCandidateVector& candidates) {
   for (int i = 0, n = candidates.size(); i < n; ++i) {
+    // Add placeholder comment for virtual node so that remnant debug comments
+    // make sense.
+    if (driver()->DebugMode()) {
+      driver()->InsertDebugComment(StringPrintf(
+          "ResponsiveImageFilter: Any debug messages after this refer to the "
+          "virtual %.16gx image with src=%s width=%s height=%s",
+          candidates[i].resolution,
+          AttributeValueOrEmpty(candidates[i].element, HtmlName::kSrc),
+          AttributeValueOrEmpty(candidates[i].element, HtmlName::kWidth),
+          AttributeValueOrEmpty(candidates[i].element, HtmlName::kHeight)),
+                                   candidates[i].element);
+    }
+
     driver()->DeleteNode(candidates[i].element);
   }
 

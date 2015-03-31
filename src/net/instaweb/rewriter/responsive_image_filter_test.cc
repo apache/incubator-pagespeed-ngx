@@ -324,12 +324,25 @@ TEST_F(ResponsiveImageFilterTest, Debug) {
 
   ValidateExpected(
       "native_size",
+      // Input
       "<img src=a.jpg width=1023 height=766>",
 
-      // These extra messages are for virtual images which have been deleted.
-      // TODO(sligocki): Maybe we should delete these debug messages too?
-      StrCat("<!--Image does not appear to need resizing.-->"
+      // Expected output
+      // First virtual image debug messages:
+      StrCat("<!--ResponsiveImageFilter: Any debug messages after this refer "
+             "to the virtual 2x image with src=",
+             EncodeImage(2046, 1532, "a.jpg", "0", "jpg"),
+             " width=2046 height=1532-->"
              "<!--Image does not appear to need resizing.-->"
+
+             // Second virtual image debug messages:
+             "<!--ResponsiveImageFilter: Any debug messages after this refer "
+             "to the virtual 4x image with src=",
+             EncodeImage(4092, 3064, "a.jpg", "0", "jpg"),
+             " width=4092 height=3064-->"
+             "<!--Image does not appear to need resizing.-->"
+
+             // Actual image + debug messages:
              "<img src=", EncodeImage(1023, 766, "a.jpg", "0", "jpg"),
              " width=1023 height=766>"
              "<!--ResponsiveImageFilter: Not adding 4x candidate to srcset "
@@ -340,21 +353,32 @@ TEST_F(ResponsiveImageFilterTest, Debug) {
 
   ValidateExpected(
       "same_src",
+      // Input
       "<img src=http://other-domain.com/a.jpg width=100 height=100>",
 
-      // These extra messages are for virtual images which have been deleted.
-      // TODO(sligocki): Maybe we should delete these debug messages too?
-      StrCat("<!--The preceding resource was not rewritten because its domain "
-             "(other-domain.com) is not authorized-->"
-             "<!--The preceding resource was not rewritten because its domain "
-             "(other-domain.com) is not authorized-->"
-             "<img src=http://other-domain.com/a.jpg width=100 height=100>"
-             "<!--ResponsiveImageFilter: Not adding 4x candidate to srcset "
-             "because it is the same as previous candidate.-->"
-             "<!--ResponsiveImageFilter: Not adding 2x candidate to srcset "
-             "because it is the same as previous candidate.-->"
-             "<!--The preceding resource was not rewritten because its domain "
-             "(other-domain.com) is not authorized-->"));
+      // Expected output
+      // First virtual image debug messages:
+      "<!--ResponsiveImageFilter: Any debug messages after this refer "
+      "to the virtual 2x image with "
+      "src=http://other-domain.com/a.jpg width=200 height=200-->"
+      "<!--The preceding resource was not rewritten because its domain "
+      "(other-domain.com) is not authorized-->"
+
+      // Second virtual image debug messages:
+      "<!--ResponsiveImageFilter: Any debug messages after this refer "
+      "to the virtual 4x image with "
+      "src=http://other-domain.com/a.jpg width=400 height=400-->"
+      "<!--The preceding resource was not rewritten because its domain "
+      "(other-domain.com) is not authorized-->"
+
+      // Actual image + debug messages:
+      "<img src=http://other-domain.com/a.jpg width=100 height=100>"
+      "<!--ResponsiveImageFilter: Not adding 4x candidate to srcset "
+      "because it is the same as previous candidate.-->"
+      "<!--ResponsiveImageFilter: Not adding 2x candidate to srcset "
+      "because it is the same as previous candidate.-->"
+      "<!--The preceding resource was not rewritten because its domain "
+      "(other-domain.com) is not authorized-->");
 }
 
 }  // namespace
