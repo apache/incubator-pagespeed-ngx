@@ -27,12 +27,11 @@ goog.require('goog.dom.NodeType');
 goog.require('goog.dom.TagName');
 goog.require('goog.dom.classlist');
 goog.require('goog.events.EventType');
-goog.require('goog.json');
 goog.require('goog.labs.userAgent.browser');
-goog.require('goog.net.Jsonp');
 goog.require('goog.string');
 // goog.style adds ~400 bytes when using getSize and getTransformedSize.
 goog.require('goog.style');
+goog.require('pagespeed.MobDialer');
 goog.require('pagespeed.MobTheme');
 goog.require('pagespeed.MobUtil');
 
@@ -85,10 +84,11 @@ pagespeed.MobNav = function() {
   this.menuButton_ = null;
 
   /**
-   * Call button in the header bar.
-   * @private {Element}
+   * @private {!pagespeed.MobDialer}
    */
-  this.callButton_ = null;
+  this.dialer_ = new pagespeed.MobDialer(
+      window.psPhoneNumber, window.psConversionId,
+      window.psPhoneConversionLabel);
 
   /**
    * Map button in the header bar.
@@ -197,24 +197,6 @@ pagespeed.MobNav.ARROW_ICON_ =
 
 
 /**
- * GIF image of call button. To view this image, add prefix of
- * 'data:image/gif;base64,' to it.
- * @const {string}
- */
-pagespeed.MobNav.CALL_BUTTON =
-    'R0lGODlhgACAAPAAAAAAAAAAACH5BAEAAAEALAAAAACAAIAAAAL+jI+pCL0Po5y02vuaBrj7' +
-    'D4bMtonmiXrkyqXuC7MsTNefLNv6nuE4D9z5fMFibEg0KkVI5PLZaTah1IlUWs0qrletl9v1' +
-    'VsFcMZQMNivRZHWRnXbz4G25jY621/B1vYuf54cCyCZ4QlhoGIIYqKjC2Oh4AZkoaUEZaWmF' +
-    '2acpwZnpuQAaKjpCWmbag5qqmsAa53oK6yT7SjtkO4r7o7vLS+K7Cuwg/EtsDIGcrMzLHOH8' +
-    'DM0qvUlabY2JXaG9zc3ojYEYLk5IXs53Pgmovo7XfskOTyE//1lv3/yeP53Or0/nH8CAAo/B' +
-    'KTjsIMJb/hYewOcwAMSF5iIamEixYcTMihY5bsRY0GNGkP9Ejtx3poUbk0GCrSR5Z8VLmDRy' +
-    'qBnXMokYnEJq7WT5J8wXni86ZQF3JJYWpCkILiXKBOUYpouAGqEU1eobSCCwHvXqDmxKrmHF' +
-    'PuH07drUbv3UUgHVFtVXuFuijVVLrNjbvLTm8pW79q/bu4LZ7i2M1i9isoEXQz3smObVyBqH' +
-    'UlZ483Kpn5qxCOrs+TNonYZG27RkuoSo1HpXj7YFWtjlZJGlId72l9wy3bjmweI3OJ/hkFqB' +
-    'O7U4KzTyuDKXaykAADs=';
-
-
-/**
  * GIF image of a map button, from a google images search for
  * 'google map pin icon'
  * @const {string}
@@ -250,25 +232,6 @@ pagespeed.MobNav.SWAP_ICON_ =
     'Oso8o1MMZ7pcg0MFwyabDjeZgjM2F4tGEy4XnQWzNhe+0xZ8L4EmjKhPeVeDET9g+E+UwkPp' +
     'dmMpH5ePyVidin9GsmkouFp0yE1yxTJuJLp+9MNKzg2ipPC8nE+LuMLwqlrYBVqy8VAAAAAE' +
     'lFTkSuQmCC';
-
-
-/**
- * Synthesize an image using the specified color.
- * @param {string} imageBase64
- * @param {!goog.color.Rgb} color
- * @return {?string}
- */
-pagespeed.MobNav.prototype.synthesizeImage = function(imageBase64, color) {
-  if (imageBase64.length <= 16) {
-    return null;
-  }
-  var imageTemplate = window.atob(imageBase64);
-  var imageData = imageTemplate.substring(0, 13) +
-      String.fromCharCode(color[0], color[1], color[2]) +
-      imageTemplate.substring(16, imageTemplate.length);
-  var imageUrl = 'data:image/gif;base64,' + window.btoa(imageData);
-  return imageUrl;
-};
 
 
 /**
@@ -466,11 +429,7 @@ pagespeed.MobNav.prototype.redrawHeader_ = function() {
   if (this.menuButton_) {
     this.menuButton_.style.width = heightString;
   }
-  var logoRight = 0;
-  if (this.callButton_) {
-    this.callButton_.style.width = heightString;
-    logoRight += this.headerBar_.offsetHeight;
-  }
+  var logoRight = this.dialer_.adjustHeight(heightString);
   if (this.mapButton_) {
     this.mapButton_.style.width = heightString;
     logoRight += this.headerBar_.offsetHeight;
@@ -706,8 +665,9 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
       pagespeed.MobUtil.colorNumbersToString(themeData.menuBackColor);
 
   // Add call button if a phone number is specified.
-  if (window.psPhoneNumber) {
-    this.addPhoneDialer_();
+  var dialButton = this.dialer_.createButton();
+  if (dialButton) {
+    this.headerBar_.appendChild(dialButton);
   }
 
   if (window.psMapLocation) {
@@ -716,29 +676,6 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
 
   this.addHeaderBarResizeEvents_();
   this.addThemeColor_(themeData);
-};
-
-
-/**
- * Adds a phone dialer icon to the header bar.
- * @private
- */
-pagespeed.MobNav.prototype.addPhoneDialer_ = function() {
-  this.callButton_ = document.createElement(goog.dom.TagName.DIV);
-  this.callButton_.id = 'psmob-phone-dialer';
-  this.callButton_.href = '#';
-  var phone = this.getPhoneNumber_();
-  if (phone) {
-    window.psPhoneNumber = phone;
-    this.callButton_.onclick =
-        goog.partial(pagespeed.MobUtil.trackClick, 'psmob-phone-dialer',
-                     pagespeed.MobNav.dialPhone_);
-  } else {
-    this.callButton_.onclick =
-        goog.partial(pagespeed.MobUtil.trackClick, 'psmob-phone-dialer',
-                     pagespeed.MobNav.requestPhoneNumberAndCall_);
-  }
-  this.headerBar_.appendChild(this.callButton_);
 };
 
 
@@ -810,7 +747,8 @@ pagespeed.MobNav.openMap_ = function() {
 pagespeed.MobNav.prototype.addMapNavigation_ = function(color) {
   var mapImage = document.createElement(goog.dom.TagName.IMG);
   mapImage.id = 'psmob-map-image';
-  mapImage.src = this.synthesizeImage(pagespeed.MobNav.MAP_BUTTON, color);
+  mapImage.src = pagespeed.MobUtil.synthesizeImage(
+      pagespeed.MobNav.MAP_BUTTON, color);
   this.mapButton_ = document.createElement(goog.dom.TagName.A);
   this.mapButton_.id = 'psmob-map-button';
   this.mapButton_.href = '#';
@@ -820,127 +758,6 @@ pagespeed.MobNav.prototype.addMapNavigation_ = function(color) {
   });
   this.mapButton_.appendChild(mapImage);
   this.headerBar_.appendChild(this.mapButton_);
-};
-
-
-/**
- * Attempts to get a static phone number, either as a debug
- * fallback or from a cookie, returning null if we don't have
- * the right phone number available.
- *
- * @private
- * @return {?string}
- */
-pagespeed.MobNav.prototype.getPhoneNumber_ = function() {
-  // When debugging mobilization with static references
-  // to uncompiled JS files, the conversion-tracking flow does
-  // not seem to work, so just dial the configured phone directly.
-  //
-  // Naturally if there is no configured conversion label, we can't
-  // get a conversion-tracked phone-number either.
-  if (window.psStaticJs || !window.psPhoneConversionLabel) {
-    return window.psPhoneNumber;
-  }
-
-  // Check to see if the phone number we want was previously saved
-  // in a valid cookie, with matching fallback number and conversion label.
-  var match = document.cookie.match(/(^|;| )gwcm=([^;]+)/);
-  if (match) {
-    var gwcmCookie = match[2];
-    if (gwcmCookie) {
-      var cookieData = goog.json.parse(unescape(match[2]));
-      if ((cookieData['fallback'] == window.psPhoneNumber) &&
-          (cookieData['clabel'] == window.psPhoneConversionLabel)) {
-        return cookieData['mobile_number'];
-      }
-    }
-  }
-  return null;
-};
-
-
-/**
- * Obtains a dynamic Google-Voice number to track conversions.  We only
- * do this when user clicks the phone icon.
- * @private
- */
-pagespeed.MobNav.requestPhoneNumberAndCall_ = function() {
-  if (window.psPhoneConversionLabel && window.psPhoneNumber) {
-    // No request from cookie.
-    var label = escape(window.psPhoneConversionLabel);
-    var url = 'https://www.googleadservices.com/pagead/conversion/' +
-        window.psConversionId + '/wcm?cl=' + label +
-        '&fb=' + escape(window.psPhoneNumber);
-    if (window.psDebugMode) {
-      alert('requesting dynamic phone number: ' + url);
-    }
-    var req = new goog.net.Jsonp(url, 'callback');
-    var errorCallback = function() {
-      if (window.psDebugMode) {
-        alert('error callback called');
-      }
-      pagespeed.MobNav.dialPhone_();
-    };
-    req.send(null, pagespeed.MobNav.receivePhoneNumber_, errorCallback);
-  }
-};
-
-
-/**
- * Dials a phone number.
- * @private
- */
-pagespeed.MobNav.dialPhone_ = function() {
-  if (window.psPhoneNumber) {
-    location.href = 'tel:' + window.psPhoneNumber;
-  }
-};
-
-
-/**
- * Extracts a dynamic phone number from a jsonp response.  If successful, it
- * calls the phone, and saves the phone number in a cookie and also in the
- * window object.
- *
- * @private
- * @param {Object} json
- */
-pagespeed.MobNav.receivePhoneNumber_ = function(json) {
-  var phone = null;
-  if (json && json['wcm']) {
-    var wcm = json['wcm'];
-    if (wcm) {
-      phone = wcm['mobile_number'];
-    }
-  }
-
-  if (phone) {
-    // Save the phone in a cookie to reduce server requests.
-    var cookieValue = {
-      'expires': wcm['expires'],
-      'formatted_number': wcm['formatted_number'],
-      'mobile_number': phone,
-      'clabel': window.psPhoneConversionLabel,
-      'fallback': window.psPhoneNumber
-    };
-    cookieValue = goog.json.serialize(cookieValue);
-    if (window.psDebugMode) {
-      alert('saving phone in cookie: ' + cookieValue);
-    }
-    document.cookie = 'gwcm=' + escape(cookieValue) + ';path=/;max-age=' +
-        (3600 * 24 * 90);
-
-    // Save the phone number in the window object so it can be used in
-    // dialPhone_().
-    window.psPhoneNumber = phone;
-  } else if (window.psPhoneNumber) {
-    // No ad was clicked.  Call the configured phone number, which will not
-    // be conversion-tracked.
-    if (window.psDebugMode) {
-      alert('receivePhoneNumber: ' + goog.json.serialize(json));
-    }
-  }
-  pagespeed.MobNav.dialPhone_();
 };
 
 
@@ -958,12 +775,7 @@ pagespeed.MobNav.prototype.addThemeColor_ = function(themeData) {
   }
 
 
-  if (this.callButton_) {
-    this.callButton_.style.backgroundImage = 'url(' +
-        this.synthesizeImage(pagespeed.MobNav.CALL_BUTTON,
-                             themeData.menuFrontColor) + ')';
-  }
-
+  this.dialer_.setColor(themeData.menuFrontColor);
   var backgroundColor = this.useDetectedThemeColor_ ?
       pagespeed.MobUtil.colorNumbersToString(themeData.menuBackColor) :
       '#3c78d8';
@@ -1176,8 +988,8 @@ pagespeed.MobNav.prototype.addNavPanel_ = function(themeData) {
   // hierarchical menus collapsed by default. However, we want the top level
   // menu to always be displayed, so give it the open class.
   goog.dom.classlist.add(navTopUl, 'open');
-  var arrowIcon = this.synthesizeImage(pagespeed.MobNav.ARROW_ICON_,
-                                       themeData.menuBackColor);
+  var arrowIcon = pagespeed.MobUtil.synthesizeImage(
+      pagespeed.MobNav.ARROW_ICON_, themeData.menuBackColor);
 
   for (var i = 0, nav; nav = this.navSections_[i]; i++) {
     if (nav.parentNode) {
@@ -1396,16 +1208,20 @@ pagespeed.MobNav.prototype.updateHeaderBar = function(mobWindow, themeData) {
       //logoElement.style.backgroundColor = backColor;
     }
 
-    var callButton = mobWindow.document.getElementById('psmob-phone-image');
-    if (callButton) {
-      callButton.src = this.synthesizeImage(pagespeed.MobNav.CALL_BUTTON,
-                                            themeData.menuFrontColor);
-    }
+    /*
+     * TODO(huibao): this code appears dead, because no one sets the
+     * an ID of psmob-phone-image.
+     * var callButton = mobWindow.document.getElementById('psmob-phone-image');
+     * if (callButton) {
+     *   callButton.src = this.synthesizeImage(pagespeed.MobNav.CALL_BUTTON,
+     *                                         themeData.menuFrontColor);
+     * }
+     */
 
     var mapButton = mobWindow.document.getElementById('psmob-map-image');
     if (mapButton) {
-      mapButton.src = this.synthesizeImage(pagespeed.MobNav.MAP_BUTTON,
-                                           themeData.menuFrontColor);
+      mapButton.src = pagespeed.MobUtil.synthesizeImage(
+          pagespeed.MobNav.MAP_BUTTON, themeData.menuFrontColor);
     }
 
     var hamburgerLines =

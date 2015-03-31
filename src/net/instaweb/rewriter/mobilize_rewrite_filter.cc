@@ -476,6 +476,7 @@ void MobilizeRewriteFilter::EndElementImpl(HtmlElement* element) {
 
           AddStaticScript("mobilize_util.js");
           AddStaticScript("mobilize_color.js");
+          AddStaticScript("mobilize_dialer.js");
           AddStaticScript("mobilize_logo.js");
           AddStaticScript("mobilize_theme.js");
           AddStaticScript("mobilize_layout.js");

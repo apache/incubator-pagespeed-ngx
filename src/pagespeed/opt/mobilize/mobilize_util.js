@@ -760,6 +760,25 @@ pagespeed.MobUtil.extractImage = function(element, source) {
 
 
 /**
+ * Synthesize an image using the specified color.
+ * @param {string} imageBase64
+ * @param {!goog.color.Rgb} color
+ * @return {?string}
+ */
+pagespeed.MobUtil.synthesizeImage = function(imageBase64, color) {
+  if (imageBase64.length <= 16) {
+    return null;
+  }
+  var imageTemplate = window.atob(imageBase64);
+  var imageData = imageTemplate.substring(0, 13) +
+      String.fromCharCode(color[0], color[1], color[2]) +
+      imageTemplate.substring(16, imageTemplate.length);
+  var imageUrl = 'data:image/gif;base64,' + window.btoa(imageData);
+  return imageUrl;
+};
+
+
+/**
  * Return whether the resource URL has an origin different from HTML.
  * @param {string} url
  * @return {boolean}

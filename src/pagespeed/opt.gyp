@@ -159,6 +159,7 @@
         ],
         'js_includes' : [
           'opt/mobilize/mobilize_color.js',
+          'opt/mobilize/mobilize_dialer.js',
           'opt/mobilize/mobilize_layout.js',
           'opt/mobilize/mobilize_logo.js',
           'opt/mobilize/mobilize_nav.js',
@@ -181,6 +182,7 @@
         ],
         'js_includes' : [
           'opt/mobilize/mobilize_color.js',
+          'opt/mobilize/mobilize_dialer.js',
           'opt/mobilize/mobilize_layout.js',
           'opt/mobilize/mobilize_logo.js',
           'opt/mobilize/mobilize_nav.js',
