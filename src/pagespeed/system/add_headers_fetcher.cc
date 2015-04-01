@@ -33,7 +33,7 @@ void AddHeadersFetcher::Fetch(const GoogleString& original_url,
                               MessageHandler* message_handler,
                               AsyncFetch* fetch) {
   RequestHeaders* request_headers = fetch->request_headers();
-  for (int i = 0, n = options_->num_custom_fetch_headers(); i < n; ++i) {
+  for (int i = 0; i < options_->num_custom_fetch_headers(); ++i) {
     const RewriteOptions::NameValue* nv = options_->custom_fetch_header(i);
     request_headers->Replace(nv->name, nv->value);
   }
@@ -41,3 +41,4 @@ void AddHeadersFetcher::Fetch(const GoogleString& original_url,
 }
 
 }  // namespace net_instaweb
+

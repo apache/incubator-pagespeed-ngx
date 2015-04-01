@@ -35,10 +35,35 @@ class FileLoadMapping : public ManuallyRefCounted {
 
   // If this mapping applies to this url, put the mapped path into filename and
   // return true.  Otherwise return false.
-  virtual bool Substitute(const StringPiece& url,
-                          GoogleString* filename) const = 0;
+  virtual bool Substitute(StringPiece url, GoogleString* filename) const = 0;
 };
 
+// A simple mapping from a prefix in url-space to a prefix in filesystem-space.
+// For example, if we had:
+//   FileLoadMappingLiteral("http://example.com/foo/bar/", "/foobar/")
+// that would mean http://example.com/foo/bar/baz would be found on the
+// filesystem at /foobar/baz.
+class FileLoadMappingLiteral : public FileLoadMapping {
+ public:
+  FileLoadMappingLiteral(const GoogleString& url_prefix,
+                         const GoogleString& filename_prefix)
+      : url_prefix_(url_prefix),
+        filename_prefix_(filename_prefix) {}
+
+  virtual bool Substitute(StringPiece url, GoogleString* filename) const;
+
+ private:
+  const GoogleString url_prefix_;
+  const GoogleString filename_prefix_;
+
+  DISALLOW_COPY_AND_ASSIGN(FileLoadMappingLiteral);
+};
+
+// If a mapping is too complicated to represent with a simple literal with
+// FileLoadMappingLiteral, you can use a regexp mapper.  For example, if we had:
+//   FileLoadMappingRegexp("http://example.com/([^/*])/bar/", "/var/bar/\\1/")
+// that would mean http://example.com/foo/bar/baz would be found on the
+// filesystem at /var/bar/foo/baz.
 class FileLoadMappingRegexp : public FileLoadMapping {
  public:
   FileLoadMappingRegexp(const GoogleString& url_regexp,
@@ -47,7 +72,7 @@ class FileLoadMappingRegexp : public FileLoadMapping {
         url_regexp_str_(url_regexp),
         filename_prefix_(filename_prefix) {}
 
-  virtual bool Substitute(const StringPiece& url, GoogleString* filename) const;
+  virtual bool Substitute(StringPiece url, GoogleString* filename) const;
 
  private:
   const RE2 url_regexp_;
@@ -58,22 +83,7 @@ class FileLoadMappingRegexp : public FileLoadMapping {
   DISALLOW_COPY_AND_ASSIGN(FileLoadMappingRegexp);
 };
 
-class FileLoadMappingLiteral : public FileLoadMapping {
- public:
-  FileLoadMappingLiteral(const GoogleString& url_prefix,
-                         const GoogleString& filename_prefix)
-      : url_prefix_(url_prefix),
-        filename_prefix_(filename_prefix) {}
-
-  virtual bool Substitute(const StringPiece& url, GoogleString* filename) const;
-
- private:
-  const GoogleString url_prefix_;
-  const GoogleString filename_prefix_;
-
-  DISALLOW_COPY_AND_ASSIGN(FileLoadMappingLiteral);
-};
-
 }  // namespace net_instaweb
 
 #endif  // NET_INSTAWEB_REWRITER_PUBLIC_FILE_LOAD_MAPPING_H_
+

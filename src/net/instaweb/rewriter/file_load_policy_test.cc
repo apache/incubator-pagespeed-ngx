@@ -29,27 +29,28 @@ class FileLoadPolicyTest : public ::testing::Test {
  protected:
   // Generally use this for URLs you don't expect to be loaded from files.
   // e.g. EXPECT_FALSE(TryLoadFromFile("http://www.example.com/"));
-  bool TryLoadFromFile(const StringPiece& url_string) {
+  bool TryLoadFromFile(StringPiece url_string) const {
     return TryLoadFromFile(url_string, &policy_);
   }
 
-  bool TryLoadFromFile(const StringPiece& url_string, FileLoadPolicy* policy) {
-    GoogleUrl url(url_string);
+  bool TryLoadFromFile(StringPiece url_string,
+                       const FileLoadPolicy* policy) const {
+    const GoogleUrl url(url_string);
     GoogleString filename;
     return policy->ShouldLoadFromFile(url, &filename);
   }
 
   // Generally use this for URLs you do expect to be loaded from files.
   // e.g. EXPECT_EQ("filename", LoadFromFile("url"));
-  GoogleString LoadFromFile(const StringPiece& url_string) {
+  GoogleString LoadFromFile(StringPiece url_string) const {
     return LoadFromFile(url_string, &policy_);
   }
 
-  GoogleString LoadFromFile(const StringPiece& url_string,
-                            FileLoadPolicy* policy) {
-    GoogleUrl url(url_string);
+  GoogleString LoadFromFile(StringPiece url_string,
+                            const FileLoadPolicy* policy) const {
+    const GoogleUrl url(url_string);
     GoogleString filename;
-    bool load = policy->ShouldLoadFromFile(url, &filename);
+    const bool load = policy->ShouldLoadFromFile(url, &filename);
     if (!load) {
       EXPECT_TRUE(filename.empty()) << url_string;
     }
@@ -321,3 +322,4 @@ TEST_F(FileLoadPolicyTest, OnlyStatic) {
 }
 
 }  // namespace net_instaweb
+

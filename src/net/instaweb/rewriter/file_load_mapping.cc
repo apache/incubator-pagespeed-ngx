@@ -30,22 +30,23 @@ namespace net_instaweb {
 
 FileLoadMapping::~FileLoadMapping() {}
 
-bool FileLoadMappingRegexp::Substitute(const StringPiece& url,
+bool FileLoadMappingRegexp::Substitute(StringPiece url,
                                        GoogleString* filename) const {
   GoogleString potential_filename;
   url.CopyToString(&potential_filename);
-  bool ok = RE2::Replace(&potential_filename, url_regexp_, filename_prefix_);
+  const bool ok =
+      RE2::Replace(&potential_filename, url_regexp_, filename_prefix_);
   if (ok) {
     filename->swap(potential_filename);  // Using swap() to avoid copying.
   }
   return ok;
 }
 
-bool FileLoadMappingLiteral::Substitute(const StringPiece& url,
+bool FileLoadMappingLiteral::Substitute(StringPiece url,
                                         GoogleString* filename) const {
   if (url.starts_with(url_prefix_)) {
     // Replace url_prefix_ with filename_prefix_.
-    StringPiece suffix = url.substr(url_prefix_.size());
+    const StringPiece suffix = url.substr(url_prefix_.size());
     *filename = StrCat(filename_prefix_, suffix);
     return true;
   }

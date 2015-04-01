@@ -55,8 +55,7 @@ class FileLoadPolicy {
   // Tests against youngest association first in case of overlapping prefixes.
   // Because we support regular expressions, checking for overlapping prefixes
   // isn't practical.
-  virtual void Associate(const StringPiece& url_prefix,
-                         const StringPiece& filename_prefix);
+  virtual void Associate(StringPiece url_prefix, StringPiece filename_prefix);
 
   // A version of Associate supporting RE2-format regular expressions.
   // Backreferences are supported, as in:
@@ -72,8 +71,8 @@ class FileLoadPolicy {
   //
   // If the regular expression and substitution validate, returns true.
   // Otherwise it writes a message to error and returns false.
-  virtual bool AssociateRegexp(const StringPiece& url_regexp,
-                               const StringPiece& filename_prefix,
+  virtual bool AssociateRegexp(StringPiece url_regexp,
+                               StringPiece filename_prefix,
                                GoogleString* error);
 
   // By default Associate permits directly loading anything under the specified
@@ -128,3 +127,4 @@ class FileLoadPolicy {
 }  // namespace net_instaweb
 
 #endif  // NET_INSTAWEB_REWRITER_PUBLIC_FILE_LOAD_POLICY_H_
+

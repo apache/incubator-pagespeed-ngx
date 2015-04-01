@@ -73,3 +73,4 @@ class ManuallyRefCounted {
 }  // namespace net_instaweb
 
 #endif  // PAGESPEED_KERNEL_BASE_MANUALLY_REF_COUNTED_H_
+

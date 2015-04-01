@@ -14,10 +14,6 @@
 //
 // Author: jefftk@google.com (Jeff Kaufman)
 
-// This class is a simple wrapper around another fetcher that adds headers to
-// requests based on settings in the rewrite options before passing them on to
-// the backend fetcher.
-
 #ifndef PAGESPEED_SYSTEM_ADD_HEADERS_FETCHER_H_
 #define PAGESPEED_SYSTEM_ADD_HEADERS_FETCHER_H_
 
@@ -31,8 +27,12 @@ class AsyncFetch;
 class RewriteOptions;
 class MessageHandler;
 
+// A simple wrapper around another fetcher that adds headers to requests based
+// on settings in the rewrite options before passing them on to the backend
+// fetcher.
 class AddHeadersFetcher : public UrlAsyncFetcher {
  public:
+  // Caller keeps ownership of backend_fetcher.
   AddHeadersFetcher(const RewriteOptions* options,
                     UrlAsyncFetcher* backend_fetcher);
   virtual ~AddHeadersFetcher();
@@ -55,3 +55,4 @@ class AddHeadersFetcher : public UrlAsyncFetcher {
 }  // namespace net_instaweb
 
 #endif  // PAGESPEED_SYSTEM_ADD_HEADERS_FETCHER_H_
+
