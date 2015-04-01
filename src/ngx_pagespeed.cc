@@ -2291,14 +2291,13 @@ ngx_int_t ps_html_rewrite_header_filter(ngx_http_request_t* r) {
     if (!ps_has_stacked_content_encoding(r)) {
       StringPiece content_encoding =
           str_to_string_piece(r->headers_out.content_encoding->value);
-      GzipInflater::InflateType inflate_type;
+      GzipInflater::InflateType inflate_type = GzipInflater::kGzip;
       bool is_encoded = false;
       if (StringCaseEqual(content_encoding, "deflate")) {
         is_encoded = true;
         inflate_type = GzipInflater::kDeflate;
       } else if (StringCaseEqual(content_encoding, "gzip")) {
         is_encoded = true;
-        inflate_type = GzipInflater::kGzip;
       }
 
       if (is_encoded) {
