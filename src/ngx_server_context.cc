@@ -48,7 +48,7 @@ SystemRequestContext* NgxServerContext::NewRequestContext(
     ngx_http_request_t* r) {
   // Based on ngx_http_variable_server_port.
   bool port_set = false;
-  int local_port;
+  int local_port = 0;
 #if (NGX_HAVE_INET6)
   if (r->connection->local_sockaddr->sa_family == AF_INET6) {
     local_port = ntohs(reinterpret_cast<struct sockaddr_in6*>(
