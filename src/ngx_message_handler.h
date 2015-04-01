@@ -18,6 +18,10 @@
 #define NGX_MESSAGE_HANDLER_H_
 
 extern "C" {
+  #include <ngx_auto_config.h>
+#if (NGX_THREADS)
+  #include <ngx_thread.h>
+#endif
   #include <ngx_core.h>
   #include <ngx_log.h>
 }
