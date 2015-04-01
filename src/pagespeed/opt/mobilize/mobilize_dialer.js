@@ -18,6 +18,7 @@ goog.provide('pagespeed.MobDialer');
 
 goog.require('goog.dom.TagName');
 goog.require('goog.json');
+goog.require('goog.net.Cookies');  // abstraction gzipped size cost: 336 bytes.
 goog.require('goog.net.Jsonp');
 goog.require('pagespeed.MobUtil');
 
@@ -56,6 +57,9 @@ pagespeed.MobDialer = function(phoneNumber, conversionId, conversionLabel) {
    * @private {?string}
    */
   this.conversionLabel_ = conversionLabel;
+
+  /** @private {goog.net.Cookies} */
+  this.cookies_ = new goog.net.Cookies(document);
 };
 
 
@@ -75,6 +79,14 @@ pagespeed.MobDialer.CALL_BUTTON =
     'PuH07drUbv3UUgHVFtVXuFuijVVLrNjbvLTm8pW79q/bu4LZ7i2M1i9isoEXQz3smObVyBqH' +
     'UlZ483Kpn5qxCOrs+TNonYZG27RkuoSo1HpXj7YFWtjlZJGlId72l9wy3bjmweI3OJ/hkFqB' +
     'O7U4KzTyuDKXaykAADs=';
+
+
+/**
+ * Cookie to use to store phone dialer information to reduce query volume
+ * to googleadservices.com.
+ * @const {string}
+ */
+pagespeed.MobDialer.WCM_COOKIE = 'psgwcm';
 
 
 /**
@@ -192,8 +204,8 @@ pagespeed.MobDialer.prototype.receivePhoneNumber_ = function(json) {
     if (window.psDebugMode) {
       alert('saving phone in cookie: ' + cookieValue);
     }
-    document.cookie = 'gwcm=' + escape(cookieValue) + ';path=/;max-age=' +
-        (3600 * 24 * 90);
+    this.cookies_.set(pagespeed.MobDialer.WCM_COOKIE,
+                      escape(cookieValue), 3600 * 24 * 90, '/');
 
     // Save the phone number in the window object so it can be used in
     // dialPhone_().
@@ -230,15 +242,12 @@ pagespeed.MobDialer.prototype.getPhoneNumberFromCookie_ = function() {
 
   // Check to see if the phone number we want was previously saved
   // in a valid cookie, with matching fallback number and conversion label.
-  var match = document.cookie.match(/(^|;| )gwcm=([^;]+)/);
-  if (match) {
-    var gwcmCookie = match[2];
-    if (gwcmCookie) {
-      var cookieData = goog.json.parse(unescape(match[2]));
-      if ((cookieData['fallback'] == this.phoneNumber_) &&
-          (cookieData['clabel'] == this.conversionLabel_)) {
-        return cookieData['mobile_number'];
-      }
+  var gwcmCookie = this.cookies_.get(pagespeed.MobDialer.WCM_COOKIE);
+  if (gwcmCookie) {
+    var cookieData = goog.json.parse(unescape(gwcmCookie));
+    if ((cookieData['fallback'] == this.phoneNumber_) &&
+        (cookieData['clabel'] == this.conversionLabel_)) {
+      return cookieData['mobile_number'];
     }
   }
   return null;

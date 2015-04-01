@@ -862,16 +862,20 @@ pagespeed.MobUtil.consoleLog = function(message) {
  *     finishes loading.
  */
 pagespeed.MobUtil.trackClick = function(elName, opt_callback) {
-  var pingUrl = window.psMobBeaconUrl + '?id=psmob' +
-                '&url=' + encodeURIComponent(document.URL) + '&el=' + elName;
-  if (!window['psmob_image_requests']) {
-    window['psmob_image_requests'] = [];
+  if (window.psMobBeaconUrl) {
+    var pingUrl = window.psMobBeaconUrl + '?id=psmob' +
+        '&url=' + encodeURIComponent(document.URL) + '&el=' + elName;
+    if (!window['psmob_image_requests']) {
+      window['psmob_image_requests'] = [];
+    }
+    var img = document.createElement(goog.dom.TagName.IMG);
+    if (opt_callback) {
+      img.addEventListener(goog.events.EventType.LOAD, opt_callback);
+      img.addEventListener(goog.events.EventType.ERROR, opt_callback);
+    }
+    img.src = pingUrl;
+    window['psmob_image_requests'].push(img);
+  } else if (opt_callback) {
+    opt_callback();
   }
-  var img = document.createElement(goog.dom.TagName.IMG);
-  if (opt_callback) {
-    img.addEventListener(goog.events.EventType.LOAD, opt_callback);
-    img.addEventListener(goog.events.EventType.ERROR, opt_callback);
-  }
-  img.src = pingUrl;
-  window['psmob_image_requests'].push(img);
 };
