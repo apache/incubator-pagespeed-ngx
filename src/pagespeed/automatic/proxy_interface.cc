@@ -213,11 +213,10 @@ ProxyFetchPropertyCallbackCollector*
     const GoogleUrl& request_url,
     RewriteOptions* options,
     AsyncFetch* async_fetch,
-    const bool requires_blink_cohort,
-    bool* added_page_property_callback) {
+    const bool requires_blink_cohort) {
   return ProxyFetchFactory::InitiatePropertyCacheLookup(
       is_resource_fetch, request_url, server_context_, options, async_fetch,
-      requires_blink_cohort, added_page_property_callback);
+      requires_blink_cohort);
 }
 
 void ProxyInterface::GetRewriteOptionsDone(RequestData* request_data,
@@ -329,7 +328,6 @@ void ProxyInterface::GetRewriteOptionsDone(RequestData* request_data,
     }
     const char* user_agent = async_fetch->request_headers()->Lookup1(
         HttpAttributes::kUserAgent);
-    bool page_callback_added = false;
 
     // Whether it's a cache html request should not change despite the fact
     // a new driver is created later on.
@@ -348,8 +346,7 @@ void ProxyInterface::GetRewriteOptionsDone(RequestData* request_data,
                                                       *request_url,
                                                       options,
                                                       async_fetch,
-                                                      is_cache_html_request,
-                                                      &page_callback_added);
+                                                      is_cache_html_request);
     }
 
     if (options != NULL) {

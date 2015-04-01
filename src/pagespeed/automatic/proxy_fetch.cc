@@ -1298,8 +1298,7 @@ ProxyFetchPropertyCallbackCollector*
         ServerContext* server_context,
         RewriteOptions* options,
         AsyncFetch* async_fetch,
-        const bool requires_blink_cohort,
-        bool* added_page_property_callback) {
+        const bool requires_blink_cohort) {
   if (options == NULL) {
     options = server_context->global_options();
   }
@@ -1350,9 +1349,6 @@ ProxyFetchPropertyCallbackCollector*
           mutex);
       callback_collector->AddCallback(property_callback);
       added_callback = true;
-      if (added_page_property_callback != NULL) {
-        *added_page_property_callback = true;
-      }
       // Trigger property cache lookup for the requests which contains query
       // param as cache key without query params. The result of this lookup will
       // be used if actual property page does not contains property value.

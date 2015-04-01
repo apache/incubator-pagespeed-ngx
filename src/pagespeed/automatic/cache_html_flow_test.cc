@@ -335,8 +335,7 @@ class ProxyInterfaceWithDelayCache : public ProxyInterface {
       const GoogleUrl& request_url,
       RewriteOptions* options,
       AsyncFetch* async_fetch,
-      const bool requires_blink_cohort,
-      bool* added_page_property_callback) {
+      const bool requires_blink_cohort) {
     GoogleString options_signature_hash;
     if (options != NULL) {
       manager_->ComputeSignature(options);
@@ -352,12 +351,9 @@ class ProxyInterfaceWithDelayCache : public ProxyInterface {
         UserAgentMatcher::DeviceTypeSuffix(UserAgentMatcher::kDesktop),
         cohort);
     delay_cache_->DelayKey(key_);
-    if (added_page_property_callback != NULL) {
-      *added_page_property_callback = true;
-    }
     return ProxyFetchFactory::InitiatePropertyCacheLookup(
         is_resource_fetch, request_url, server_context_, options, async_fetch,
-        requires_blink_cohort, added_page_property_callback);
+        requires_blink_cohort);
   }
 
   const GoogleString& key() const { return key_; }

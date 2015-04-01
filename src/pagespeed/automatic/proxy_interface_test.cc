@@ -242,7 +242,7 @@ class ProxyInterfaceTest : public ProxyInterfaceTestBase {
     callback.set_request_headers(&request_headers);
     scoped_ptr<ProxyFetchPropertyCallbackCollector> callback_collector(
         proxy_interface_->InitiatePropertyCacheLookup(
-            false, gurl, options(), &callback, false, NULL));
+            false, gurl, options(), &callback, false));
 
     FallbackPropertyPage* fallback_page =
         callback_collector->fallback_property_page();
@@ -252,7 +252,7 @@ class ProxyInterfaceTest : public ProxyInterfaceTestBase {
     // Read from fallback value.
     GoogleUrl new_gurl(fallback_url);
     callback_collector.reset(proxy_interface_->InitiatePropertyCacheLookup(
-        false, new_gurl, options(), &callback, false, NULL));
+        false, new_gurl, options(), &callback, false));
     fallback_page = callback_collector->fallback_property_page();
     EXPECT_FALSE(fallback_page->actual_property_page()->GetProperty(
         cohort, kPropertyName)->has_value());
@@ -264,7 +264,7 @@ class ProxyInterfaceTest : public ProxyInterfaceTestBase {
     options()->ClearSignatureForTesting();
     options()->set_use_fallback_property_cache_values(false);
     callback_collector.reset(proxy_interface_->InitiatePropertyCacheLookup(
-          false, new_gurl, options(), &callback, false, NULL));
+          false, new_gurl, options(), &callback, false));
     EXPECT_FALSE(callback_collector->fallback_property_page()->GetProperty(
         cohort, kPropertyName)->has_value());
   }
@@ -3340,7 +3340,7 @@ TEST_F(ProxyInterfaceTest, TestNoFallbackCallWithNoLeaf) {
   callback.set_request_headers(&request_headers);
   scoped_ptr<ProxyFetchPropertyCallbackCollector> callback_collector(
       proxy_interface_->InitiatePropertyCacheLookup(
-          false, gurl, options(), &callback, false, NULL));
+          false, gurl, options(), &callback, false));
 
   PropertyPage* fallback_page = callback_collector->fallback_property_page()
       ->property_page_with_fallback_values();
@@ -3356,7 +3356,7 @@ TEST_F(ProxyInterfaceTest, TestSkipBlinkCohortLookUp) {
   callback.set_request_headers(&request_headers);
   scoped_ptr<ProxyFetchPropertyCallbackCollector> callback_collector(
       proxy_interface_->InitiatePropertyCacheLookup(
-          false, gurl, options(), &callback, false, NULL));
+          false, gurl, options(), &callback, false));
 
   // Cache lookup only for dom cohort.
   EXPECT_EQ(0, lru_cache()->num_hits());
@@ -3372,7 +3372,7 @@ TEST_F(ProxyInterfaceTest, TestSkipBlinkCohortLookUpInFallbackPage) {
   callback.set_request_headers(&request_headers);
   scoped_ptr<ProxyFetchPropertyCallbackCollector> callback_collector(
       proxy_interface_->InitiatePropertyCacheLookup(
-          false, gurl, options(), &callback, true, NULL));
+          false, gurl, options(), &callback, true));
 
   // Cache lookup for:
   // dom and blink cohort for actual property page.

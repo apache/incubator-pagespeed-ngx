@@ -97,8 +97,7 @@ class ProxyFetchFactory {
       ServerContext* server_context,
       RewriteOptions* options,
       AsyncFetch* async_fetch,
-      const bool requires_blink_cohort,
-      bool* added_page_property_callback);
+      const bool requires_blink_cohort);
 
   MessageHandler* message_handler() const { return handler_; }
 
