@@ -1770,6 +1770,7 @@
         'rewriter/mobilize_cached_finder.cc',
         'rewriter/mobilize_filter_base.cc',
         'rewriter/mobilize_label_filter.cc',
+        'rewriter/mobilize_menu_filter.cc',
         'rewriter/mobilize_rewrite_filter.cc',
         'rewriter/navigational_decision_tree.cc',
         'rewriter/pedantic_filter.cc',

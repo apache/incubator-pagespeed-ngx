@@ -100,6 +100,7 @@
 #include "net/instaweb/rewriter/public/make_show_ads_async_filter.h"
 #include "net/instaweb/rewriter/public/meta_tag_filter.h"
 #include "net/instaweb/rewriter/public/mobilize_label_filter.h"
+#include "net/instaweb/rewriter/public/mobilize_menu_filter.h"
 #include "net/instaweb/rewriter/public/mobilize_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
@@ -871,6 +872,7 @@ void RewriteDriver::InitStats(Statistics* statistics) {
   MakeShowAdsAsyncFilter::InitStats(statistics);
   MetaTagFilter::InitStats(statistics);
   MobilizeLabelFilter::InitStats(statistics);
+  MobilizeMenuFilter::InitStats(statistics);
   MobilizeRewriteFilter::InitStats(statistics);
   SplitHtmlBeaconFilter::InitStats(statistics);
   RewriteContext::InitStats(statistics);

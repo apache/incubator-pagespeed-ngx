@@ -181,6 +181,7 @@
         'rewriter/make_show_ads_async_filter_test.cc',
         'rewriter/meta_tag_filter_test.cc',
         'rewriter/mobilize_label_filter_test.cc',
+        'rewriter/mobilize_menu_filter_test.cc',
         'rewriter/mobilize_rewrite_filter_test.cc',
         'rewriter/mock_critical_css_finder.cc',
         'rewriter/mock_critical_images_finder.cc',
