@@ -90,9 +90,7 @@ class ImageLibraryInterface {
 
   // Constructor for custom subclasses.  Prefer to use
   // ImageLibraryInterfaceFactory() if possible.
-  ImageLibraryInterface(Delegate* delegate)
-      : delegate_(delegate) {
-  }
+  explicit ImageLibraryInterface(Delegate* delegate) : delegate_(delegate) {}
 
   virtual ~ImageLibraryInterface() {}
 
