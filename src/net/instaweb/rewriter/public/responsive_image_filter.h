@@ -27,6 +27,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/html_element.h"
 
 namespace net_instaweb {
@@ -34,12 +35,25 @@ namespace net_instaweb {
 struct ResponsiveImageCandidate {
   ResponsiveImageCandidate(HtmlElement* element_arg, double resolution_arg)
       : element(element_arg), resolution(resolution_arg) {}
+  ResponsiveImageCandidate() : element(NULL), resolution(0) {}
 
   HtmlElement* element;
   double resolution;
 };
 typedef std::vector<ResponsiveImageCandidate> ResponsiveImageCandidateVector;
-typedef std::map<HtmlElement*, ResponsiveImageCandidateVector>
+
+// We insert several virtual <img> tags. This structure keeps track of all
+// the virtual <img> inserted for a single original <img>.
+struct ResponsiveVirtualImages {
+  // One non-inlinable virtual <img> for every resolution supported (2x, 4x).
+  // These will be used in the srcset (if inlinable_candidate is not actually
+  // inlined).
+  ResponsiveImageCandidateVector non_inlinable_candidates;
+  // And one inlinable virtual <img> for the highest resolution. If this is
+  // inlined, we use that as the only version. Otherwise we discard it.
+  ResponsiveImageCandidate inlinable_candidate;
+};
+typedef std::map<HtmlElement*, ResponsiveVirtualImages>
         ResponsiveImageCandidateMap;
 
 // Filter which converts <img> tags into responsive srcset= counterparts by
@@ -51,6 +65,11 @@ typedef std::map<HtmlElement*, ResponsiveImageCandidateVector>
 // It also adds JavaScript to polyfill and add zoom responsiveness to srcset.
 class ResponsiveImageFirstFilter : public CommonFilter {
  public:
+  // Labels for different images used by Responsive image filters.
+  static const char kOriginalImage[];
+  static const char kNonInlinableVirtualImage[];
+  static const char kInlinableVirtualImage[];
+
   explicit ResponsiveImageFirstFilter(RewriteDriver* driver);
   virtual ~ResponsiveImageFirstFilter();
 
@@ -64,7 +83,8 @@ class ResponsiveImageFirstFilter : public CommonFilter {
   void AddHiResImages(HtmlElement* element);
   ResponsiveImageCandidate AddHiResVersion(
       HtmlElement* img, const HtmlElement::Attribute& src_attr,
-      int orig_width, int orig_height, double resolution);
+      int orig_width, int orig_height, StringPiece responsive_attribute_value,
+      double resolution);
 
   friend class ResponsiveImageSecondFilter;
 
@@ -75,7 +95,7 @@ class ResponsiveImageFirstFilter : public CommonFilter {
 
 class ResponsiveImageSecondFilter : public CommonFilter {
  public:
-  explicit ResponsiveImageSecondFilter(
+  ResponsiveImageSecondFilter(
       RewriteDriver* driver, const ResponsiveImageFirstFilter* first_filter);
   virtual ~ResponsiveImageSecondFilter();
 
@@ -88,9 +108,11 @@ class ResponsiveImageSecondFilter : public CommonFilter {
 
  private:
   void CombineHiResImages(HtmlElement* orig_element,
-                          const ResponsiveImageCandidateVector& candidates);
+                          const ResponsiveVirtualImages& candidates);
   void Cleanup(HtmlElement* orig_element,
-               const ResponsiveImageCandidateVector& candidates);
+               const ResponsiveVirtualImages& candidates);
+  void InsertPlaceholderDebugComment(
+      const ResponsiveImageCandidate& candidate, const char* qualifier);
 
   const GoogleString responsive_js_url_;
   const ResponsiveImageFirstFilter* first_filter_;

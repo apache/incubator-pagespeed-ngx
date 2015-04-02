@@ -36,6 +36,12 @@
 
 namespace net_instaweb {
 
+const char ResponsiveImageFirstFilter::kOriginalImage[] = "original";
+const char ResponsiveImageFirstFilter::kNonInlinableVirtualImage[] =
+    "non-inlinable-virtual";
+const char ResponsiveImageFirstFilter::kInlinableVirtualImage[] =
+    "inlinable-virtual";
+
 ResponsiveImageFirstFilter::ResponsiveImageFirstFilter(RewriteDriver* driver)
     : CommonFilter(driver) {
 }
@@ -107,26 +113,33 @@ void ResponsiveImageFirstFilter::AddHiResImages(HtmlElement* element) {
     // because standard quality-85 are overkill for high density displays.
     // However, we might want high quality for zoom.
     // Note: These must be listed in ascending order.
-    ResponsiveImageCandidateVector candidate_list;
-    candidate_list.push_back(
-        AddHiResVersion(element, *src_attr, orig_width, orig_height, 2));
-    candidate_list.push_back(
-        AddHiResVersion(element, *src_attr, orig_width, orig_height, 4));
-    candidate_map_[element] = candidate_list;
+    ResponsiveVirtualImages virtual_images;
+    virtual_images.non_inlinable_candidates.push_back(
+        AddHiResVersion(element, *src_attr, orig_width, orig_height,
+                        kNonInlinableVirtualImage, 2));
+    virtual_images.non_inlinable_candidates.push_back(
+        AddHiResVersion(element, *src_attr, orig_width, orig_height,
+                        kNonInlinableVirtualImage, 4));
+    virtual_images.inlinable_candidate =
+        AddHiResVersion(element, *src_attr, orig_width, orig_height,
+                        kInlinableVirtualImage, 4);
+    candidate_map_[element] = virtual_images;
+
     // Mark this element as responsive as well, so that ImageRewriteFilter will
     // add actual final dimensions to the tag.
     driver()->AddAttribute(element, HtmlName::kDataPagespeedResponsiveTemp,
-                           StringPiece(NULL));
+                           kOriginalImage);
   }
 }
 
 ResponsiveImageCandidate ResponsiveImageFirstFilter::AddHiResVersion(
     HtmlElement* img, const HtmlElement::Attribute& src_attr,
-    int orig_width, int orig_height, double resolution) {
+    int orig_width, int orig_height, StringPiece responsive_attribute_value,
+    double resolution) {
   HtmlElement* new_img = driver()->NewElement(img->parent(), HtmlName::kImg);
   new_img->AddAttribute(src_attr);
   driver()->AddAttribute(new_img, HtmlName::kDataPagespeedResponsiveTemp,
-                         StringPiece(NULL));
+                         responsive_attribute_value);
   // Note: We truncate width and height to integers here.
   driver()->AddAttribute(new_img, HtmlName::kWidth,
                          IntegerToString(orig_width * resolution));
@@ -165,9 +178,9 @@ void ResponsiveImageSecondFilter::EndElementImpl(HtmlElement* element) {
       first_filter_->candidate_map_.find(element);
   if (p != first_filter_->candidate_map_.end()) {
     // On second run of the filter, combine the elements back together.
-    const ResponsiveImageCandidateVector& candidates = p->second;
-    CombineHiResImages(element, candidates);
-    Cleanup(element, candidates);
+    const ResponsiveVirtualImages& virtual_images = p->second;
+    CombineHiResImages(element, virtual_images);
+    Cleanup(element, virtual_images);
   }
 }
 
@@ -196,14 +209,29 @@ ImageDim ActualDims(const HtmlElement* element) {
 }  // namespace
 
 // Combines information from dummy 2x and 4x images into the 1x srcset.
-// Deletes the dummy images.
 void ResponsiveImageSecondFilter::CombineHiResImages(
     HtmlElement* orig_element,
-    const ResponsiveImageCandidateVector& candidates) {
+    const ResponsiveVirtualImages& virtual_images) {
+  // If the highest resolution image was inlinable, use that as the only
+  // version of the image (no srcset).
+  const char* inlinable_src =
+      virtual_images.inlinable_candidate.element->AttributeValue(
+          HtmlName::kSrc);
+  if (IsDataUrl(inlinable_src)) {
+    // Note: This throws away any Local Storage attributes associated with this
+    // inlined image. Maybe we should copy those over as well?
+    orig_element->DeleteAttribute(HtmlName::kSrc);
+    driver()->AddAttribute(orig_element, HtmlName::kSrc, inlinable_src);
+    return;
+  }
+
+  const ResponsiveImageCandidateVector& candidates =
+      virtual_images.non_inlinable_candidates;
+
   const char* x1_src = orig_element->AttributeValue(HtmlName::kSrc);
 
   if (x1_src == NULL) {
-    // Should not happen, we explicitly checked that <img> had a src= attribute
+    // Should not happen. We explicitly checked that <img> had a src= attribute
     // in ResponsiveImageFirstFilter::AddHiResImages().
     LOG(DFATAL) << "Original responsive image has no URL.";
     driver()->InsertDebugComment(
@@ -211,10 +239,9 @@ void ResponsiveImageSecondFilter::CombineHiResImages(
         "no src URL.", orig_element);
     return;
   } else if (IsDataUrl(x1_src)) {
-    // In case there are any data URLs, we should not add a srcset (which
-    // would include many copies of the data URL).
-    // TODO(sligocki): Should we change the src to the 4x version so that
-    // the image still looks good up to 4x resolution?
+    // Should not happen. ImageRewriteFilter should never inline the original
+    // image. Instead, if the image is small enough it will be inlined via the
+    // inlinable virtual image.
     driver()->InsertDebugComment(
         "ResponsiveImageFilter: Not adding srcset because original image was "
         "inlined.", orig_element);
@@ -235,7 +262,7 @@ void ResponsiveImageSecondFilter::CombineHiResImages(
     const char* src = candidates[i].element->AttributeValue(HtmlName::kSrc);
 
     if (src == NULL) {
-      // Should not happen, we explicitly created a src= attribute in
+      // Should not happen. We explicitly created a src= attribute in
       // ResponsiveImageFirstFilter::AddHiResVersion().
       LOG(DFATAL) << "Virtual responsive image has no URL.";
       driver()->InsertDebugComment(
@@ -243,13 +270,12 @@ void ResponsiveImageSecondFilter::CombineHiResImages(
           "no src URL.", orig_element);
       return;
     } else if (IsDataUrl(src)) {
-      // In case there are any data URLs, we should not add a srcset (which
-      // would include many copies of the data URL).
-      // TODO(sligocki): Should we change the src to the 4x version so that
-      // the image still looks good up to 4x resolution?
+      // Should not happen. ImageRewriteFilter should never inline these
+      // non-inlinable virtual images.
+      LOG(DFATAL) << "Non-inlinable image was inlined.";
       driver()->InsertDebugComment(
           "ResponsiveImageFilter: Not adding srcset because virtual image was "
-          "inlined.", orig_element);
+          "unexpectedly inlined.", orig_element);
       return;
     }
 
@@ -307,25 +333,33 @@ const char* AttributeValueOrEmpty(const HtmlElement* element,
 
 }  // namespace
 
+void ResponsiveImageSecondFilter::InsertPlaceholderDebugComment(
+    const ResponsiveImageCandidate& candidate, const char* qualifier) {
+  if (driver()->DebugMode()) {
+    driver()->InsertDebugComment(StringPrintf(
+        "ResponsiveImageFilter: Any debug messages after this refer to the "
+        "virtual%s %.16gx image with src=%s width=%s height=%s",
+        qualifier, candidate.resolution,
+        AttributeValueOrEmpty(candidate.element, HtmlName::kSrc),
+        AttributeValueOrEmpty(candidate.element, HtmlName::kWidth),
+        AttributeValueOrEmpty(candidate.element, HtmlName::kHeight)),
+                                 candidate.element);
+  }
+}
+
 void ResponsiveImageSecondFilter::Cleanup(
     HtmlElement* orig_element,
-    const ResponsiveImageCandidateVector& candidates) {
-  for (int i = 0, n = candidates.size(); i < n; ++i) {
-    // Add placeholder comment for virtual node so that remnant debug comments
-    // make sense.
-    if (driver()->DebugMode()) {
-      driver()->InsertDebugComment(StringPrintf(
-          "ResponsiveImageFilter: Any debug messages after this refer to the "
-          "virtual %.16gx image with src=%s width=%s height=%s",
-          candidates[i].resolution,
-          AttributeValueOrEmpty(candidates[i].element, HtmlName::kSrc),
-          AttributeValueOrEmpty(candidates[i].element, HtmlName::kWidth),
-          AttributeValueOrEmpty(candidates[i].element, HtmlName::kHeight)),
-                                   candidates[i].element);
-    }
-
-    driver()->DeleteNode(candidates[i].element);
+    const ResponsiveVirtualImages& virtual_images) {
+  for (int i = 0, n = virtual_images.non_inlinable_candidates.size();
+       i < n; ++i) {
+    InsertPlaceholderDebugComment(virtual_images.non_inlinable_candidates[i],
+                                  "");
+    driver()->DeleteNode(virtual_images.non_inlinable_candidates[i].element);
   }
+
+  InsertPlaceholderDebugComment(virtual_images.inlinable_candidate,
+                                " inlinable");
+  driver()->DeleteNode(virtual_images.inlinable_candidate.element);
 
   orig_element->DeleteAttribute(HtmlName::kDataPagespeedResponsiveTemp);
   orig_element->DeleteAttribute(HtmlName::kDataActualHeight);

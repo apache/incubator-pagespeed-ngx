@@ -57,6 +57,8 @@ enum InlineResult {
   INLINE_NO_DATA,
   INLINE_TOO_LARGE,
   INLINE_CACHE_SMALL_IMAGES_UNREWRITTEN,
+  // Image should not be inlined because it is part of a responsive image.
+  INLINE_RESPONSIVE,
   INLINE_INTERNAL_ERROR,
 };
 

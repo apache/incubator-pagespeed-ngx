@@ -46,6 +46,7 @@
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
+#include "net/instaweb/rewriter/public/responsive_image_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -332,6 +333,11 @@ const char* MessageForInlineResult(InlineResult inline_result) {
       message = "The image was not inlined because CacheSmallImagesUnrewritten "
         "has been set.";
       break;
+    case INLINE_RESPONSIVE:
+      // Don't add any debug message for virtual responsive images. This virtual
+      // image will be deleted before the user sees it, so message won't be
+      // useful.
+      break;
     case INLINE_INTERNAL_ERROR:
       message = "The image was not inlined because the internal data was "
         "corrupted.";
@@ -473,6 +479,12 @@ void ImageRewriteFilter::Context::Render() {
     if (Driver()->options()->Enabled(RewriteOptions::kInlineImages)) {
       // Show the debug message for inlining only when this option has been
       // enabled.
+      // Note: Although debug message is saved to the cached_result, it is
+      // *not* cached because the cached_result has already been stored in
+      // the cache previously. This is good because the exact debug message
+      // here depends upon factors that may not be in the cache key (such
+      // as whether this is a responsive image). So we should not be storing
+      // the result in the cache.
       filter_->SaveDebugMessageToCache(
           MessageForInlineResult(inline_result), this, result);
     }
@@ -1491,29 +1503,39 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
   bool image_inlined = false;
   const bool is_critical_image = IsHtmlCriticalImage(src_value);
 
-  // See if we have a data URL, and if so use it if the browser can handle it
-  // TODO(jmaessen): get rid of a string copy here. Tricky because ->SetValue()
-  // copies implicitly.
-  GoogleString data_url;
-  *inline_result = TryInline(true /*in html*/, is_critical_image,
-                             driver()->options()->ImageInlineMaxBytes(),
-                             cached, slot, &data_url);
+  // Don't inline images used by responsive filter (except for the ones
+  // explicitly marked as inlinable).
+  const char* responsive_attr =
+      element->AttributeValue(HtmlName::kDataPagespeedResponsiveTemp);
+  if (responsive_attr != NULL &&
+      StringPiece(responsive_attr) !=
+      ResponsiveImageFirstFilter::kInlinableVirtualImage) {
+    *inline_result = INLINE_RESPONSIVE;
+  } else {
+    // See if we have a data URL, and if so use it if the browser can handle it
+    // TODO(jmaessen): get rid of a string copy here. Tricky because
+    // src->SetValue() copies implicitly.
+    GoogleString data_url;
+    // TODO(sligocki): Use different threshold for responsive images?
+    *inline_result = TryInline(true /*in html*/, is_critical_image,
+                               options->ImageInlineMaxBytes(),
+                               cached, slot, &data_url);
 
-  if (*inline_result == INLINE_SUCCESS) {
-    const RewriteOptions* options = driver()->options();
-    DCHECK(!options->cache_small_images_unrewritten())
-        << "Modifying a URL slot despite "
-        << "image_inlining_identify_and_cache_without_rewriting set.";
-    src->SetValue(data_url);
-    // Note the use of the ORIGINAL url not the data url.
-    LocalStorageCacheFilter::AddLscAttributes(src_value, *cached,
-                                              driver(), element);
-    // AddLscAttributes uses the width and height attributes so must be called
-    // before we delete them with:
-    DeleteMatchingImageDimsAfterInline(cached, element);
-    image_inline_count_->Add(1);
-    rewrote_url = true;
-    image_inlined = true;
+    if (*inline_result == INLINE_SUCCESS) {
+      DCHECK(!options->cache_small_images_unrewritten())
+          << "Modifying a URL slot despite "
+          << "image_inlining_identify_and_cache_without_rewriting set.";
+      src->SetValue(data_url);
+      // Note the use of the ORIGINAL url not the data url.
+      LocalStorageCacheFilter::AddLscAttributes(src_value, *cached,
+                                                driver(), element);
+      // AddLscAttributes uses the width and height attributes so must be called
+      // before we delete them with:
+      DeleteMatchingImageDimsAfterInline(cached, element);
+      image_inline_count_->Add(1);
+      rewrote_url = true;
+      image_inlined = true;
+    }
   }
 
   // Rewrite URL in case this image was not inlined (and URL rewriting allowed).
@@ -1523,7 +1545,7 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
     if (cached->optimizable()) {
       // Rewritten HTTP url
       src->SetValue(ResourceSlot::RelativizeOrPassthrough(
-          driver()->options(), cached->url(), slot->url_relativity(),
+          options, cached->url(), slot->url_relativity(),
           driver()->base_url()));
       image_rewrite_uses_->Add(1);
       rewrote_url = true;
@@ -1565,8 +1587,7 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
       (element->keyword() == HtmlName::kImg ||
        element->keyword() == HtmlName::kInput)) {
     try_low_res_src_insertion = true;
-    int max_preview_image_index =
-        driver()->options()->max_inlined_preview_images_index();
+    int max_preview_image_index = options->max_inlined_preview_images_index();
     if (!image_inlined &&
         !slot->preserve_urls() &&
         is_critical_image &&

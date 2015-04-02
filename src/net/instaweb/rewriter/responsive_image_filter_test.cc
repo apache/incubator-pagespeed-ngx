@@ -18,8 +18,11 @@
 
 #include "net/instaweb/rewriter/public/responsive_image_filter.h"
 
+#include "net/instaweb/rewriter/public/local_storage_cache_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
+#include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/html_parse_test_base.h"
@@ -33,11 +36,15 @@ const char kPuzzleJpgFile[] = "Puzzle.jpg";        // 1023 x 766
 const char kCuppaPngFile[] = "Cuppa.png";          //   65 x  70
 const char kIronChefGifFile[] = "IronChef2.gif";   //  192 x 256
 const char k1x1GifFile[] = "another-blank.gif";    //    1 x   1
-const char k2x2GifFile[] = "small_2x2.gif";        //    2 x   2
+const char k16x16PngFile[] = "small_16x16.png";    //   16 x  16
 
-static const char* k2x2GifDataUrl =
-    "data:image/gif;base64,R0lGODlhAgACAPEAAP8AAP8AAP8AAP8AACH5BAAAAA"
-    "AALAAAAAACAAIAAAIDRDQFADs=";
+static const char* k16x16PngDataUrl =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQAQMAAAAlPW0iAAAA"
+    "BGdBTUEAALGPC/xhBQAAAAFzUkdCAK7OHOkAAAAgY0hSTQAAeiYAAICEAAD6AAAAgOgAAH"
+    "UwAADqYAAAOpgAABdwnLpRPAAAAAZQTFRFAAD/////e9yZLAAAAAFiS0dEAf8CLd4AAAAJ"
+    "cEhZcwAAAEgAAABIAEbJaz4AAAAMSURBVAjXY2AgDQAAADAAAceqhY4AAAAldEVYdGRhdG"
+    "U6Y3JlYXRlADIwMTUtMDMtMjVUMTg6MDA6MTctMDQ6MDCr+Rs2AAAAJXRFWHRkYXRlOm1v"
+    "ZGlmeQAyMDE1LTAzLTI1VDE4OjAwOjE3LTA0OjAw2qSjigAAAABJRU5ErkJggg==";
 
 class ResponsiveImageFilterTest : public RewriteTestBase {
  protected:
@@ -54,8 +61,8 @@ class ResponsiveImageFilterTest : public RewriteTestBase {
     AddFileToMockFetcher(StrCat(kTestDomain, "small_1x1.gif"), k1x1GifFile,
                          kContentTypeGif, 100);
 
-    AddFileToMockFetcher(StrCat(kTestDomain, "small_2x2.gif"), k2x2GifFile,
-                         kContentTypeGif, 100);
+    AddFileToMockFetcher(StrCat(kTestDomain, "small_16x16.png"), k16x16PngFile,
+                         kContentTypePng, 100);
   }
 
   virtual bool AddHtmlTags() const { return false; }
@@ -220,17 +227,110 @@ TEST_F(ResponsiveImageFilterTest, OneDim) {
   ValidateExpected("one_dim", input_html, output_html);
 }
 
-TEST_F(ResponsiveImageFilterTest, Inlining) {
+TEST_F(ResponsiveImageFilterTest, InlineNativeSize) {
   options()->EnableFilter(RewriteOptions::kResponsiveImages);
   options()->EnableFilter(RewriteOptions::kResizeImages);
   options()->EnableFilter(RewriteOptions::kInlineImages);
   rewrite_driver()->AddFilters();
 
-  // Don't add srcset if URL is inlined.
-  const char input_html[] = "<img src=small_2x2.gif width=100 height=100>";
+  // This image is displayed at native resolution, therefore we will not add
+  // a srcset to make it responsive. Instead we just inline it.
+  const char input_html[] = "<img src=small_16x16.png width=16 height=16>";
   GoogleString output_html =
-      StrCat("<img src=", k2x2GifDataUrl, " width=100 height=100>");
-  ValidateExpected("inline", input_html, output_html);
+      StrCat("<img width=16 height=16 src=\"", k16x16PngDataUrl, "\">");
+  ValidateExpected("inline_native", input_html, output_html);
+}
+
+TEST_F(ResponsiveImageFilterTest, InlineSmall) {
+  options()->EnableFilter(RewriteOptions::kResponsiveImages);
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  options()->EnableFilter(RewriteOptions::kInlineImages);
+  rewrite_driver()->AddFilters();
+
+  // This image is displayed at 1/4 native resolution, we could add a srcset
+  // to allow multiple resolutions, but instead we just inline the largest
+  // version because even the largest one is pretty small.
+  const char input_html[] = "<img src=small_16x16.png width=4 height=4>";
+  GoogleString output_html =
+      StrCat("<img width=4 height=4 src=\"", k16x16PngDataUrl, "\">");
+  ValidateExpected("inline_small", input_html, output_html);
+}
+
+TEST_F(ResponsiveImageFilterTest, InlineSmall2) {
+  options()->EnableFilter(RewriteOptions::kResponsiveImages);
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  options()->EnableFilter(RewriteOptions::kInlineImages);
+  rewrite_driver()->AddFilters();
+
+  // Like InlineSmall test, but with 1/2 native resolution instead of 1/4.
+  const char input_html[] = "<img src=small_16x16.png width=7 height=7>";
+  GoogleString output_html =
+      StrCat("<img width=7 height=7 src=\"", k16x16PngDataUrl, "\">");
+  ValidateExpected("inline_small2", input_html, output_html);
+}
+
+TEST_F(ResponsiveImageFilterTest, NoPartialInline) {
+  options()->EnableFilter(RewriteOptions::kResponsiveImages);
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  options()->EnableFilter(RewriteOptions::kInlineImages);
+  // Original image is 292 bytes, 4x4 resize is 83 bytes. So we choose a
+  // value between.
+  options()->set_image_inline_max_bytes(200);
+  rewrite_driver()->AddFilters();
+
+  const char input_html[] = "<img src=small_16x16.png width=4 height=4>";
+  GoogleString output_html = StrCat(
+      "<img src=", EncodeImage(4, 4, "small_16x16.png", "0", "png"),
+      " width=4 height=4 srcset=\"",
+      EncodeImage(4, 4, "small_16x16.png", "0", "png"), " 1x,",
+      EncodeImage(8, 8, "small_16x16.png", "0", "png"), " 2x,",
+      "small_16x16.png 4x\">");
+  ValidateExpected("no_partial_inline", input_html, output_html);
+}
+
+TEST_F(ResponsiveImageFilterTest, NoPartialInline2) {
+  options()->EnableFilter(RewriteOptions::kResponsiveImages);
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  options()->EnableFilter(RewriteOptions::kInlineImages);
+  // Original image is 292 bytes, 7x7 resize is 83 bytes. So we choose a
+  // value between.
+  options()->set_image_inline_max_bytes(200);
+  rewrite_driver()->AddFilters();
+
+  const char input_html[] = "<img src=small_16x16.png width=7 height=7>";
+  GoogleString output_html = StrCat(
+      "<img src=", EncodeImage(7, 7, "small_16x16.png", "0", "png"),
+      " width=7 height=7 srcset=\"",
+      EncodeImage(7, 7, "small_16x16.png", "0", "png"), " 1x,",
+      EncodeImage(14, 14, "small_16x16.png", "0", "png"), " 2x,"
+      "small_16x16.png 4x\">");
+  ValidateExpected("no_partial_inline2", input_html, output_html);
+}
+
+TEST_F(ResponsiveImageFilterTest, LocalStorageFilter) {
+  options()->EnableFilter(RewriteOptions::kResponsiveImages);
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  options()->EnableFilter(RewriteOptions::kInlineImages);
+  options()->EnableFilter(RewriteOptions::kLocalStorageCache);
+  rewrite_driver()->AddFilters();
+  SetHtmlMimetype();
+
+  GoogleString local_storage_cache_js =
+      StrCat("<script type=\"text/javascript\" pagespeed_no_defer>",
+             server_context()->static_asset_manager()->GetAsset(
+                 StaticAssetEnum::LOCAL_STORAGE_CACHE_JS, options()),
+             LocalStorageCacheFilter::kLscInitializer,
+             "</script>");
+
+  // Note: Currently images used by the responsive filter do not get
+  // local storage attributes and thus cannot be saved into local storage.
+  // If we figure out a way (and think it's worth the effort) to make these
+  // work together, we will need to update this test.
+  const char input_html[] = "<img src=small_16x16.png width=16 height=16>";
+  GoogleString output_html =
+      StrCat(local_storage_cache_js,
+             "<img width=16 height=16 src=\"", k16x16PngDataUrl, "\">");
+  ValidateExpected("local_storage", input_html, output_html);
 }
 
 TEST_F(ResponsiveImageFilterTest, DataUrl) {
@@ -239,7 +339,7 @@ TEST_F(ResponsiveImageFilterTest, DataUrl) {
   rewrite_driver()->AddFilters();
 
   // Don't mess with data URLs.
-  GoogleString input_html = StrCat("<img src=\"", k2x2GifDataUrl, "\">");
+  GoogleString input_html = StrCat("<img src=\"", k16x16PngDataUrl, "\">");
   ValidateNoChanges("data_url", input_html);
 }
 
@@ -342,6 +442,13 @@ TEST_F(ResponsiveImageFilterTest, Debug) {
              " width=4092 height=3064-->"
              "<!--Image does not appear to need resizing.-->"
 
+             // Third virtual image debug messages:
+             "<!--ResponsiveImageFilter: Any debug messages after this refer "
+             "to the virtual inlinable 4x image with src=",
+             EncodeImage(4092, 3064, "a.jpg", "0", "jpg"),
+             " width=4092 height=3064-->"
+             "<!--Image does not appear to need resizing.-->"
+
              // Actual image + debug messages:
              "<img src=", EncodeImage(1023, 766, "a.jpg", "0", "jpg"),
              " width=1023 height=766>"
@@ -367,6 +474,13 @@ TEST_F(ResponsiveImageFilterTest, Debug) {
       // Second virtual image debug messages:
       "<!--ResponsiveImageFilter: Any debug messages after this refer "
       "to the virtual 4x image with "
+      "src=http://other-domain.com/a.jpg width=400 height=400-->"
+      "<!--The preceding resource was not rewritten because its domain "
+      "(other-domain.com) is not authorized-->"
+
+      // Third virtual image debug messages:
+      "<!--ResponsiveImageFilter: Any debug messages after this refer "
+      "to the virtual inlinable 4x image with "
       "src=http://other-domain.com/a.jpg width=400 height=400-->"
       "<!--The preceding resource was not rewritten because its domain "
       "(other-domain.com) is not authorized-->"
