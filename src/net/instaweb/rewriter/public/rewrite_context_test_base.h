@@ -27,6 +27,8 @@
 #include <utility>
 #include <vector>
 
+#include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_combiner.h"
@@ -37,7 +39,9 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/simple_text_filter.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
+#include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -49,17 +53,12 @@
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/thread/worker_test_base.h"
 #include "pagespeed/kernel/util/url_multipart_encoder.h"
+#include "pagespeed/kernel/util/url_segment_encoder.h"
 
 
 namespace net_instaweb {
 
-class CachedResult;
-class MessageHandler;
 class MockScheduler;
-class OutputPartitions;
-class OutputResource;
-class TestRewriteDriverFactory;
-class UrlSegmentEncoder;
 
 // Simple test filter just trims whitespace from the input resource.
 class TrimWhitespaceRewriter : public SimpleTextFilter::Rewriter {
@@ -449,7 +448,7 @@ class RewriteContextTestBase : public RewriteTestBase {
         kOriginTtlMs / Timer::kSecondMs));
   }
 
-  RewriteContextTestBase(
+  explicit RewriteContextTestBase(
       std::pair<TestRewriteDriverFactory*, TestRewriteDriverFactory*> factories)
       : RewriteTestBase(factories) {}
   RewriteContextTestBase() {}
