@@ -55,10 +55,11 @@
 
 namespace net_instaweb {
 
-class HttpOptions;
 class MessageHandler;
 class PurgeSet;
 class RequestHeaders;
+
+struct HttpOptions;
 
 // Defines a set of customizations that can be applied to any Rewrite.  There
 // are multiple categories of customizations:
