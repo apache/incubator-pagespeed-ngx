@@ -853,18 +853,34 @@ pagespeed.MobUtil.consoleLog = function(message) {
 
 
 /**
- * Track a click on a UI element by sending to the beacon handler specified via
+ * Constants used for beacon events.
+ * @enum {string}
+ */
+pagespeed.MobUtil.BeaconEvents = {
+  LOAD_EVENT: 'load-event',
+  MAP_BUTTON: 'psmob-map-button',
+  MENU_BUTTON_CLOSE: 'psmob-menu-button-close',
+  MENU_BUTTON_OPEN: 'psmob-menu-button-open',
+  NAV_DONE: 'nav-done',
+  PHONE_DIALER: 'psmob-phone-dialer'
+};
+
+
+/**
+ * Track a mobilization event by sending to the beacon handler specified via
  * RewriteOption MobBeaconUrl. The resulting image gets attached to the window
  * to make sure it doesn't go out of scope before the browser can send the
  * request.
- * @param {string} elName Identifier for the element being tracked.
+ * @param {pagespeed.MobUtil.BeaconEvents} beaconEvent Identifier for the event
+ *     being tracked.
  * @param {Function=} opt_callback Optional callback to be run when the 204
  *     finishes loading.
  */
-pagespeed.MobUtil.trackClick = function(elName, opt_callback) {
+pagespeed.MobUtil.sendBeacon = function(beaconEvent, opt_callback) {
   if (window.psMobBeaconUrl) {
     var pingUrl = window.psMobBeaconUrl + '?id=psmob' +
-        '&url=' + encodeURIComponent(document.URL) + '&el=' + elName;
+                  '&url=' + encodeURIComponent(document.URL) + '&el=' +
+                  beaconEvent;
     if (!window['psmob_image_requests']) {
       window['psmob_image_requests'] = [];
     }

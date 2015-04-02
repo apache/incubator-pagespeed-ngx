@@ -29,6 +29,7 @@ goog.require('goog.dom.classlist');
 goog.require('goog.events.EventType');
 goog.require('goog.labs.userAgent.browser');
 goog.require('goog.string');
+goog.require('goog.structs.Set');
 // goog.style adds ~400 bytes when using getSize and getTransformedSize.
 goog.require('goog.style');
 goog.require('pagespeed.MobDialer');
@@ -142,9 +143,9 @@ pagespeed.MobNav = function() {
    * Tracks the elements which need to be adjusted after zooming to account for
    * the offset of the spacer div. This includes fixed position elements, and
    * absolute position elements rooted at the body.
-   * @private {!Array<!Element>}
+   * @private {!goog.structs.Set}
    */
-  this.elementsToOffset_ = [];
+  this.elementsToOffset_ = new goog.structs.Set();
 
   /**
    * Tracks if the redrawNav function has been called yet or not, to enable
@@ -376,25 +377,69 @@ pagespeed.MobNav.prototype.findNavSections_ = function() {
 
 
 /**
- * Do a pre-pass over all the nodes on the page to prepare them for
- * mobilization.
- * 1) Find and save all the elements with position:fixed so they can be updated
- *    later in redrawNav_()
- * 2) Find elements with z-index greater than the z-index we are trying to use
- *    for the nav panel, and clamp it down if it is.
+ * Do a pre-pass over all the elements on the page and find out those that
+ * need to add offset. The elements include
+ * (a) all elements with 'position' specified as 'fixed' and 'top' specified in
+ *     pixels.
+ * (b) all elements with 'position' specified as 'absolute' or 'relative',
+ *     and 'top' specified in pixels, with all ancestors up to document.body
+ *     have 'static' 'position'.
+ *
+ * @param {!Element} element
+ * @param {boolean} fixedPositionOnly
+ * @private
+ */
+pagespeed.MobNav.prototype.findElementsToOffsetHelper_ =
+    function(element, fixedPositionOnly) {
+  if (element.className != 'ps-progress-scrim' &&
+      !goog.string.startsWith(element.className, 'psmob-') &&
+      !goog.string.startsWith(element.id, 'psmob-')) {
+    var style = window.getComputedStyle(element);
+    var position = style.getPropertyValue('position');
+    if (position != 'static') {
+      var top = pagespeed.MobUtil.pixelValue(style.getPropertyValue('top'));
+      if (top != null &&
+          (position == 'fixed' ||
+           (!fixedPositionOnly &&
+            (position == 'absolute' || position == 'relative')))) {
+        this.elementsToOffset_.add(element);
+      }
+      fixedPositionOnly = true;
+    }
+
+    for (var childElement = element.firstElementChild; childElement;
+         childElement = childElement.nextElementSibling) {
+      this.findElementsToOffsetHelper_(childElement, fixedPositionOnly);
+    }
+  }
+};
+
+
+/**
+ * Do a pre-pass over all the elements on the page and find out those that
+ * need to add offset.
+ *
  * TODO(jud): This belongs in mobilize.js instead of mobilize_nav.js.
  * @private
  */
-pagespeed.MobNav.prototype.fixExistingElements_ = function() {
-  var elements = document.querySelectorAll('* :not(#ps-progress-scrim)');
+pagespeed.MobNav.prototype.findElementsToOffset_ = function() {
+  if (window.document.body) {
+    this.findElementsToOffsetHelper_(window.document.body,
+        false /* search for elements with all allowed positions */);
+  }
+};
+
+
+/**
+ * Do a pre-pass over all the nodes on the page and clamp their z-index to
+ * 999997.
+ * TODO(jud): This belongs in mobilize.js instead of mobilize_nav.js.
+ * @private
+ */
+pagespeed.MobNav.prototype.clampZIndex_ = function() {
+  var elements = document.querySelectorAll('*:not(#ps-progress-scrim)');
   for (var i = 0, element; element = elements[i]; i++) {
     var style = window.getComputedStyle(element);
-    var position = style.getPropertyValue('position');
-    if (position == 'fixed' ||
-        (position == 'absolute' && element.parentNode == document.body)) {
-      this.elementsToOffset_.push(element);
-    }
-
     // Set to 999997 because the click detector div is set to 999998 and the
     // menu bar and nav panel are set to 999999. This function runs before those
     // elements are added, so it won't modify their z-index.
@@ -450,19 +495,28 @@ pagespeed.MobNav.prototype.redrawHeader_ = function() {
   var oldHeight = goog.style.getSize(this.spacerDiv_).height;
   this.spacerDiv_.style.height = newHeight + 'px';
 
-  // Update the top offset of position: fixed elements. On the first run of this
+  // Add offset to the elements which need to be moved. On the first run of this
   // function, they are offset by the size of the spacer div. On subsequent
   // runs, they are offset by the difference between the old and the new size of
   // the spacer div.
-  for (var i = 0; i < this.elementsToOffset_.length; i++) {
-    var el = this.elementsToOffset_[i];
-    if (this.redrawNavCalled_) {
-      var oldTop = el.style.top;
-      oldTop = Number(el.style.top.split('px')[0]);
-      el.style.top = String(oldTop + (newHeight - oldHeight)) + 'px';
-    } else {
-      var elTop = pagespeed.MobUtil.boundingRect(el).top;
-      el.style.top = String(elTop + newHeight) + 'px';
+  var offsets = this.elementsToOffset_.getValues();
+  for (var i = 0; i < offsets.length; i++) {
+    var el = offsets[i];
+    var style = window.getComputedStyle(el);
+    var position = style.getPropertyValue('position');
+    var top = pagespeed.MobUtil.pixelValue(style.getPropertyValue('top'));
+
+    if (position != 'static' && top != null) {
+      if (this.redrawNavCalled_) {
+        var oldTop = el.style.top;
+        oldTop = pagespeed.MobUtil.pixelValue(el.style.top);
+        if (oldTop != null) {
+          el.style.top = String(oldTop + (newHeight - oldHeight)) + 'px';
+        }
+      } else {
+        var elTop = pagespeed.MobUtil.boundingRect(el).top;
+        el.style.top = String(elTop + newHeight) + 'px';
+      }
     }
   }
 
@@ -754,7 +808,8 @@ pagespeed.MobNav.prototype.addMapNavigation_ = function(color) {
   this.mapButton_.href = '#';
   this.mapButton_.addEventListener(goog.events.EventType.CLICK, function(e) {
     e.preventDefault();
-    pagespeed.MobUtil.trackClick('psmob-map-button', pagespeed.MobNav.openMap_);
+    pagespeed.MobUtil.sendBeacon(pagespeed.MobUtil.BeaconEvents.MAP_BUTTON,
+                                 pagespeed.MobNav.openMap_);
   });
   this.mapButton_.appendChild(mapImage);
   this.headerBar_.appendChild(this.mapButton_);
@@ -1091,9 +1146,10 @@ pagespeed.MobNav.prototype.addNavPanel_ = function(themeData) {
  * @private
  */
 pagespeed.MobNav.prototype.toggleNavPanel_ = function() {
-  pagespeed.MobUtil.trackClick(
-      'psmob-menu-button-' +
-      (goog.dom.classlist.contains(this.navPanel_, 'open') ? 'close' : 'open'));
+  pagespeed.MobUtil.sendBeacon(
+      (goog.dom.classlist.contains(this.navPanel_, 'open') ?
+           pagespeed.MobUtil.BeaconEvents.MENU_BUTTON_CLOSE :
+           pagespeed.MobUtil.BeaconEvents.MENU_BUTTON_OPEN));
   goog.dom.classlist.toggle(this.headerBar_, 'open');
   goog.dom.classlist.toggle(this.navPanel_, 'open');
   goog.dom.classlist.toggle(this.clickDetectorDiv_, 'open');
@@ -1166,9 +1222,9 @@ pagespeed.MobNav.prototype.navDisabledForSite_ = function() {
  * @param {!pagespeed.MobUtil.ThemeData} themeData
  */
 pagespeed.MobNav.prototype.Run = function(themeData) {
-  pagespeed.MobUtil.consoleLog('Starting nav resynthesis.');
   this.findNavSections_();
-  this.fixExistingElements_();
+  this.clampZIndex_();
+  this.findElementsToOffset_();
   this.addHeaderBar_(themeData);
 
   // Don't insert nav stuff if nav is disabled, there are no navigational
@@ -1181,6 +1237,8 @@ pagespeed.MobNav.prototype.Run = function(themeData) {
     this.addMenuButtonEvents_();
     this.addNavButtonEvents_();
   }
+
+  pagespeed.MobUtil.sendBeacon(pagespeed.MobUtil.BeaconEvents.NAV_DONE);
 };
 
 

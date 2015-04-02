@@ -417,6 +417,7 @@ pagespeed.Mob.prototype['xhrResponseHook'] = function(http_status_code) {
  * entry point to mobilization.
  */
 pagespeed.Mob.prototype.initiateMobilization = function() {
+  pagespeed.MobUtil.sendBeacon(pagespeed.MobUtil.BeaconEvents.LOAD_EVENT);
   this.setDebugMode(window.psDebugMode);  // psDebugMode set from C++
   this.domElementCount_ = pagespeed.MobUtil.countNodes(document.body);
 

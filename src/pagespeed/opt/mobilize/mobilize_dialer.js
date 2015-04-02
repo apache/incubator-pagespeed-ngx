@@ -106,8 +106,9 @@ pagespeed.MobDialer.prototype.createButton = function() {
     } else {
       dialFn = goog.bind(this.requestPhoneNumberAndCall_, this);
     }
-    this.callButton_.onclick = goog.partial(
-        pagespeed.MobUtil.trackClick, 'psmob-phone-dialer', dialFn);
+    this.callButton_.onclick =
+        goog.partial(pagespeed.MobUtil.sendBeacon,
+                     pagespeed.MobUtil.BeaconEvents.PHONE_DIALER, dialFn);
   }
   return this.callButton_;
 };
