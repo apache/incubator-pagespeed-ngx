@@ -465,6 +465,17 @@ pagespeed.MobNav.prototype.redrawHeader_ = function() {
   this.headerBar_.style['-webkit-transform'] = scaleTransform;
   this.headerBar_.style.transform = scaleTransform;
 
+  // Use getTransformedSize to take into account the scale transformation.
+  var newHeight =
+      Math.round(goog.style.getTransformedSize(this.headerBar_).height);
+  var oldHeight = goog.style.getSize(this.spacerDiv_).height;
+
+  // If the height doesn't change, except the first time, we don't need to
+  // redraw the header bar.
+  if (!this.redrawNavCalled_ && newHeight == oldHeight) {
+    return;
+  }
+
   // Restore visibility since the bar was hidden while scrolling and zooming.
   goog.dom.classlist.remove(this.headerBar_, 'hide');
 
@@ -488,11 +499,6 @@ pagespeed.MobNav.prototype.redrawHeader_ = function() {
   // the size of the header bar, which causes the page to move up slightly. To
   // compensate, we adjust the scroll amount by the difference between the old
   // and new sizes of the spacer div.
-
-  // Use getTransformedSize to take into account the scale transformation.
-  var newHeight =
-      Math.round(goog.style.getTransformedSize(this.headerBar_).height);
-  var oldHeight = goog.style.getSize(this.spacerDiv_).height;
   this.spacerDiv_.style.height = newHeight + 'px';
 
   // Add offset to the elements which need to be moved. On the first run of this
@@ -1239,6 +1245,9 @@ pagespeed.MobNav.prototype.Run = function(themeData) {
   }
 
   pagespeed.MobUtil.sendBeacon(pagespeed.MobUtil.BeaconEvents.NAV_DONE);
+
+  window.addEventListener(goog.events.EventType.LOAD,
+      goog.bind(this.redrawHeader_, this));
 };
 
 
