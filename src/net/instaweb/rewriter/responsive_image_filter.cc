@@ -248,8 +248,7 @@ void ResponsiveImageSecondFilter::CombineHiResImages(
     return;
   }
 
-  GoogleString srcset_value = StrCat(x1_src, " 1x");
-
+  GoogleString srcset_value;
   // Keep track of last candidate's URL. If next candidate has same URL,
   // don't include it in the srcset.
   StringPiece last_src = x1_src;
@@ -300,10 +299,13 @@ void ResponsiveImageSecondFilter::CombineHiResImages(
     } else {
       GoogleString resolution_string =
           StringPrintf("%.16g", candidates[i].resolution);
+      if (added_hi_res) {
+        StrAppend(&srcset_value, ",");
+      }
       // TODO(sligocki): Escape URLs appropriately? For example, we may need
       // to escape commas. Which are used in both Data URLs and Pagespeed
       // rewritten URLs as escape characters.
-      StrAppend(&srcset_value, ",", src, " ", resolution_string, "x");
+      StrAppend(&srcset_value, src, " ", resolution_string, "x");
 
       last_src = src;
       last_dims = dims;

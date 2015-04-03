@@ -79,7 +79,6 @@ class ResponsiveImageFilterTest : public RewriteTestBase {
         " width=", width_str, " height=", height_str);
     StrAppend(
         &output_html, " srcset=\"",
-        EncodeImage(width, height, filename, "0", final_ext), " 1x,",
         EncodeImage(2 * width, 2 * height, filename, "0", final_ext), " 2x,",
         EncodeImage(4 * width, 4 * height, filename, "0", final_ext), " 4x\">");
     if (include_zoom_script) {
@@ -183,7 +182,6 @@ TEST_F(ResponsiveImageFilterTest, RecompressLarger2) {
   GoogleString output_html = StrCat(
       "<img src=", EncodeImage(512, 383, "a.jpg", "0", "jpg"),
       " width=512 height=383 srcset=\"",
-      EncodeImage(512, 383, "a.jpg", "0", "jpg"), " 1x,",
       EncodeImage(1024, 766, "a.jpg", "0", "jpg"), " 2x\">");
   // We do not add a 4x version because the 2x is already native size.
   ValidateExpected("recompress_larger2", input_html, output_html);
@@ -282,7 +280,6 @@ TEST_F(ResponsiveImageFilterTest, NoPartialInline) {
   GoogleString output_html = StrCat(
       "<img src=", EncodeImage(4, 4, "small_16x16.png", "0", "png"),
       " width=4 height=4 srcset=\"",
-      EncodeImage(4, 4, "small_16x16.png", "0", "png"), " 1x,",
       EncodeImage(8, 8, "small_16x16.png", "0", "png"), " 2x,",
       "small_16x16.png 4x\">");
   ValidateExpected("no_partial_inline", input_html, output_html);
@@ -301,7 +298,6 @@ TEST_F(ResponsiveImageFilterTest, NoPartialInline2) {
   GoogleString output_html = StrCat(
       "<img src=", EncodeImage(7, 7, "small_16x16.png", "0", "png"),
       " width=7 height=7 srcset=\"",
-      EncodeImage(7, 7, "small_16x16.png", "0", "png"), " 1x,",
       EncodeImage(14, 14, "small_16x16.png", "0", "png"), " 2x,"
       "small_16x16.png 4x\">");
   ValidateExpected("no_partial_inline2", input_html, output_html);

@@ -20,11 +20,15 @@
 // TODO(sligocki): Move to third_party/pagespeed/opt/responsive?
 
 goog.provide('pagespeed.Responsive');
+goog.provide('pagespeed.ResponsiveImage');
+goog.provide('pagespeed.ResponsiveImageCandidate');
+goog.provide('pagespeed.responsiveInstance');
 
 goog.require('goog.dom');
 goog.require('goog.dom.TagName');
 goog.require('goog.events.EventType');
 goog.require('goog.string');
+
 
 
 /**
@@ -48,6 +52,7 @@ pagespeed.ResponsiveImageCandidate = function(resolution, url) {
    */
   this.url = url;
 };
+
 
 
 /**
@@ -74,6 +79,7 @@ pagespeed.ResponsiveImage = function(img) {
    */
   this.availableResolutions = [];
 };
+
 
 
 /**
@@ -158,11 +164,13 @@ pagespeed.Responsive.prototype.responsiveResize = function() {
 /**
  * Parse srcset attribute string into a ResponsiveImage object.
  * @param {!Element} img
+ * @param {string} src
  * @param {string} srcset
  * @return {?pagespeed.ResponsiveImage}
  */
-pagespeed.Responsive.prototype.parseSrcset = function(img, srcset) {
+pagespeed.Responsive.prototype.parseSrcset = function(img, src, srcset) {
   var respImage = new pagespeed.ResponsiveImage(img);
+  var has_1x = false;
 
   // Decompose srcset into each resolution
   // TODO(sligocki): Fix this to deal with URLs containing commas.
@@ -193,6 +201,9 @@ pagespeed.Responsive.prototype.parseSrcset = function(img, srcset) {
             new pagespeed.ResponsiveImageCandidate(
                 resolution,
                 candidateUrl));
+        if (resolution == 1) {
+          has_1x = true;
+        }
       } else {
         // We cannot parse srcset with w (or other) conditions.
         // Abort the whole thing.
@@ -200,6 +211,12 @@ pagespeed.Responsive.prototype.parseSrcset = function(img, srcset) {
         return null;
       }
     }
+  }
+
+  if (!has_1x && src) {
+    // Use src for 1x version if no 1x in srcset.
+    respImage.availableResolutions.push(
+        new pagespeed.ResponsiveImageCandidate(1, src));
   }
 
   respImage.availableResolutions.sort(function(a, b) {
@@ -218,9 +235,10 @@ pagespeed.Responsive.prototype.init = function() {
   // Initialize responsive images.
   var images = document.getElementsByTagName(goog.dom.TagName.IMG);
   for (var i = 0, img; img = images[i]; ++i) {
+    var src = img.getAttribute('src');
     var srcset = img.getAttribute('srcset');
     if (srcset) {
-      var respImage = this.parseSrcset(img, srcset);
+      var respImage = this.parseSrcset(img, src, srcset);
       if (respImage != null) {
         this.allImages_.push(respImage);
       }
