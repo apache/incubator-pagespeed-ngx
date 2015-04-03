@@ -316,15 +316,18 @@ TEST(CleanupTest, FullItemWithSubmenu) {
   // The name and url on the menu should be discarded and the submenu flattened.
   // This is really a fail safe, as this shouldn't happen in HTML.
   MobilizeMenuFilter::CleanupMenu(&result);
-  ASSERT_EQ(2, result.entries_size());
+  ASSERT_EQ(3, result.entries_size());
   EXPECT_EQ("b", result.entries(0).name());
   EXPECT_EQ("b.html", result.entries(0).url());
   EXPECT_FALSE(result.entries(0).has_submenu());
   EXPECT_EQ("c", result.entries(1).name());
   EXPECT_EQ("c.html", result.entries(1).url());
   EXPECT_FALSE(result.entries(1).has_submenu());
+  EXPECT_EQ("a", result.entries(2).name());
+  EXPECT_EQ("a.html", result.entries(2).url());
+  EXPECT_FALSE(result.entries(2).has_submenu());
   EXPECT_TRUE(MobilizeMenuFilter::IsMenuOk(result));
-  EXPECT_STREQ("(b, b.html) (c, c.html)", MenuToString(result));
+  EXPECT_STREQ("(b, b.html) (c, c.html) (a, a.html)", MenuToString(result));
 }
 
 TEST(CleanupTest, MultipleEntries) {
@@ -396,6 +399,9 @@ class MobilizeMenuFilterTest : public RewriteTestBase {
   }
 
   scoped_ptr<MobilizeMenuFilter> mobilize_menu_filter_;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(MobilizeMenuFilterTest);
 };
 
 TEST_F(MobilizeMenuFilterTest, NoNav) {
@@ -448,25 +454,27 @@ TEST_F(MobilizeMenuFilterTest, ActualMenu1) {
   // TODO(jmaessen): Extract hierarchical menu with url for Camel Camel Call and
   // Paperclip Paperclip Call.  Also deal with the repetition across elements
   // somehow.
-  EXPECT_STREQ("(, /) "
-               "( | (Camel Camel Call, /de/dec) "
-                   "( | (Dromedary, /a) "
+  EXPECT_STREQ("(, / | "
+                   "(Camel Camel Call, /de/dec | "
+                       "(Dromedary, /a) "
                        "(Dromedary Brown Camel, /b/de) "
                        "(Dromedary Flight Camel, /f/de)) "
-                   "(Paperclip Paperclip Call, /m/dm) "
-                   "( | (Dromedary Mark Call Waffle, /derc) "
+                   "(Paperclip Paperclip Call, /m/dm | "
+                       "(Dromedary Mark Call Waffle, /derc) "
                        "(Brown Waffle, /b/re) "
                        "(Flight Waffle, /f/re)) "
                    "(FAQ Question?, /faq) "
                    "(Question? Call Now 800-555-1212, /ph))", MenuString());
-  EXPECT_STREQ("(Camel Camel Call, /de/dec) "
-               "(Dromedary, /a) "
-               "(Dromedary Brown Camel, /b/de) "
-               "(Dromedary Flight Camel, /f/de) "
-               "(Paperclip Paperclip Call, /m/dm) "
-               "(Dromedary Mark Call Waffle, /derc) "
-               "(Brown Waffle, /b/re) "
-               "(Flight Waffle, /f/re) "
+  EXPECT_STREQ("(Camel Camel Call | "
+                   "(Dromedary, /a) "
+                   "(Dromedary Brown Camel, /b/de) "
+                   "(Dromedary Flight Camel, /f/de) "
+                   "(Camel Camel Call, /de/dec)) "
+               "(Paperclip Paperclip Call | "
+                   "(Dromedary Mark Call Waffle, /derc) "
+                   "(Brown Waffle, /b/re) "
+                   "(Flight Waffle, /f/re) "
+                   "(Paperclip Paperclip Call, /m/dm)) "
                "(FAQ Question?, /faq) "
                "(Question? Call Now 800-555-1212, /ph)", CleanupMenu());
 }
@@ -479,6 +487,9 @@ const char kActualMenu2[] =
     "&nbsp;|&nbsp;<a href='c'>Call</a>"
     "</nav>"
     "<div data-mobile-role=navigational><div><div>"
+    "<script>"
+    "  $(function () {$();});"
+    "</script>"
     "<ul>"
     "    <li><a href='h'>Homes</a></li>"
     "    <li><a href='a'>Dromedary</a></li>"
@@ -702,21 +713,27 @@ TEST_F(MobilizeMenuFilterTest, ActualMenu3) {
           "(Personal, /p) "
           "(Call & Save, /cs) "
           "(Packaging, /pmp)) "
-      "( | (, /p/) (Tour, /p/) "
-          "( | (Call Personal, /p/c/) "
+      "( | (, /p/) "
+          "(Tour, /p/ | "
+              "(Call Personal, /p/c/) "
               "(Virtuousity, /p/v/) "
               "(Call Personal, /p/c/)) "
           "(, /h/) "
-          "(Homes, /h/) "
-          "( | (Turf Homes, /h/w/) (Brown Homes, /h/b/) (Homes, /h/)) "
-          "(, /twr/) (Tortellini, /twr/) "
-          "( | (Broccoli, /bm/) (Chard, /pc/d/et/) (Abandonment, /pc/)) "
-          "(, /p/a/) (Personal Dromedary, /p/a/) "
-          "( | (Dromedary Homes, /p/h/) "
+          "(Homes, /h/ | "
+              "(Turf Homes, /h/w/) (Brown Homes, /h/b/) (Homes, /h/)) "
+          "(, /twr/) "
+          "(Tortellini, /twr/ | "
+              "(Broccoli, /bm/) "
+              "(Chard, /pc/d/et/) "
+              "(Abandonment, /pc/)) "
+          "(, /p/a/) "
+          "(Personal Dromedary, /p/a/ | "
+              "(Dromedary Homes, /p/h/) "
               "(Roads, /p/r/) "
               "(Electronica, /pc/mg/es/)) "
-          "(, /p/m/) (Mirrors, /p/m/) "
-          "( | (Save Personal, /p/s/) "
+          "(, /p/m/) "
+          "(Mirrors, /p/m/ | "
+              "(Save Personal, /p/s/) "
               "(Concave Personal, /p/c/lr/) "
               "(Call Personal, /p/c/))) "
       "(Termination Question A really long paragraph with lots of text. | "
@@ -735,8 +752,8 @@ TEST_F(MobilizeMenuFilterTest, ActualMenu3) {
           "(Apportionment, /pk8h) "
           "(Gorilla, /b6ah) "
           "(Cotton wool, /p/h/)) "
-      "(, /p/h/) "
-      "( | (Verdant plains, /p/c/)) "
+      "(, /p/h/ | "
+          "(Verdant plains, /p/c/)) "
       "( | (Verdant homes, /h/)) "
       "( | (Verdant mountains, /twr/)) "
       "( | (Verdant coast, /pc/))",
@@ -746,21 +763,28 @@ TEST_F(MobilizeMenuFilterTest, ActualMenu3) {
       "(Personal, /p) "
       "(Call & Save, /cs) "
       "(Packaging, /pmp) "
-      "(Tour, /p/) "
-      "(Call Personal, /p/c/) "
-      "(Virtuousity, /p/v/) "
-      "(Turf Homes, /h/w/) "
-      "(Brown Homes, /h/b/) "
-      "(Tortellini, /twr/) "
-      "(Broccoli, /bm/) "
-      "(Chard, /pc/d/et/) "
-      "(Abandonment, /pc/) "
-      "(Personal Dromedary, /p/a/) "
-      "(Roads, /p/r/) "
-      "(Electronica, /pc/mg/es/) "
-      "(Mirrors, /p/m/) "
-      "(Save Personal, /p/s/) "
-      "(Concave Personal, /p/c/lr/) "
+      "(Tour | "
+          "(Call Personal, /p/c/) "
+          "(Virtuousity, /p/v/) "
+          "(Tour, /p/)) "
+      "(Homes | "
+          "(Turf Homes, /h/w/) "
+          "(Brown Homes, /h/b/) "
+          "(Homes, /h/)) "
+      "(Tortellini | "
+          "(Broccoli, /bm/) "
+          "(Chard, /pc/d/et/) "
+          "(Abandonment, /pc/) "
+          "(Tortellini, /twr/)) "
+      "(Personal Dromedary | "
+          "(Dromedary Homes, /p/h/) "
+          "(Roads, /p/r/) "
+          "(Electronica, /pc/mg/es/) "
+          "(Personal Dromedary, /p/a/)) "
+      "(Mirrors | "
+          "(Save Personal, /p/s/) "
+          "(Concave Personal, /p/c/lr/) "
+          "(Mirrors, /p/m/)) "
       "(Termination Question A really long paragraph with lots of text. | "
           "(Short question?, /al) "
           "(Long question?, /d) "
@@ -768,13 +792,11 @@ TEST_F(MobilizeMenuFilterTest, ActualMenu3) {
       "(Termination Homes | "
           "(Buffering, /pvl) "
           "(Abandonment, /pc) "
-          "(Execution, /g9d) "
-          "(Headache remedies, /h/)) "
+          "(Execution, /g9d)) "
       "(Termination Dromedary Homes | "
           "(Global, /gsh) "
           "(Apportionment, /pk8h) "
-          "(Gorilla, /b6ah) "
-          "(Cotton wool, /p/h/))",
+          "(Gorilla, /b6ah))",
       CleanupMenu());
 }
 

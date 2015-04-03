@@ -123,7 +123,7 @@ void MobilizeMenuFilter::EndNonSkipElement(HtmlElement* element) {
 }
 
 void MobilizeMenuFilter::Characters(HtmlCharactersNode* characters) {
-  if (outer_nav_element_ == NULL) {
+  if (outer_nav_element_ == NULL || AreInSkip()) {
     return;
   }
   StringPiece contents(characters->contents());
@@ -149,8 +149,12 @@ void MobilizeMenuFilter::StartTopMenu() {
 }
 
 void MobilizeMenuFilter::StartDeepMenu() {
+  CHECK(!menu_stack_.empty());
   MobilizeMenuItem* entry = EnsureMenuItem();
   if (!menu_item_text_.empty()) {
+    if (entry->has_name() || entry->has_url()) {
+      entry = menu_stack_.back()->add_entries();
+    }
     entry->set_name(menu_item_text_);
   }
   menu_stack_.push_back(entry->mutable_submenu());
@@ -187,7 +191,6 @@ void MobilizeMenuFilter::EndDeepMenu() {
 }
 
 MobilizeMenuItem* MobilizeMenuFilter::EnsureMenuItem() {
-  CHECK(!menu_stack_.empty());
   MobilizeMenu* current_menu = menu_stack_.back();
   int sz = current_menu->entries_size();
   MobilizeMenuItem* entry;
@@ -195,7 +198,7 @@ MobilizeMenuItem* MobilizeMenuFilter::EnsureMenuItem() {
     entry = current_menu->add_entries();
   } else {
     entry = current_menu->mutable_entries(sz - 1);
-    if (entry->has_url() || entry->has_submenu() || entry->has_name()) {
+    if (entry->has_submenu()) {
       entry = current_menu->add_entries();
     }
   }
@@ -203,8 +206,12 @@ MobilizeMenuItem* MobilizeMenuFilter::EnsureMenuItem() {
 }
 
 void MobilizeMenuFilter::StartMenuItem(const char* href_or_null) {
+  CHECK(!menu_stack_.empty());
   ClearMenuText();
   MobilizeMenuItem* entry = EnsureMenuItem();
+  if (entry->has_url() || entry->has_submenu() || entry->has_name()) {
+    entry = menu_stack_.back()->add_entries();
+  }
   if (href_or_null != NULL && *href_or_null != '\0') {
     entry->set_url(href_or_null);
   }
@@ -279,8 +286,24 @@ void MobilizeMenuFilter::SweepNestedMenu(
         SweepNestedMenu(item.submenu(), &new_submenu);
         if (new_submenu.entries_size() > 0) {
           if (item.has_url()) {
-            LOG(INFO) << "Dropping link " << item.url() << " on submenu "
-                      << item.name();
+            // This is a common case on non-mobile friendly web sites: A link
+            // that on hover opens a menu, but on click opens a page with more
+            // general options.  There are various ways to deal with this case.
+            // * Right now, we add a new item to the end of the submenu
+            //   that has the same name and link as the parent menu.
+            // * We could add an item that had some special marker instead.
+            // * We could add the item to the beginning rather than the end,
+            //   but we'd want to handle de-duplication specially as the menu
+            //   sometimes already contains the link and we'd like to prefer
+            //   the one that was there.
+            // * We could drop the link.  The JS menu extraction does this.
+            // * We could just flatten the entire menu (we did this originally).
+            //   This causes long, scrolly top menus.  There's a serious
+            //   usability question here: what's easier, a long top menu or a
+            //   lot of hierarchy?
+            MobilizeMenuItem* nested_link = new_submenu.add_entries();
+            nested_link->set_name(item.name());
+            nested_link->set_url(item.url());
           }
           MobilizeMenuItem* new_item = new_menu->add_entries();
           if (new_submenu.entries_size() == 1) {
