@@ -16,8 +16,8 @@
 #
 # Author: morlovich@google.com (Maksim Orlovich)
 #
-# Determine last svn revision containing an actual change on a given branch
-# Usage: lastchange.sh svnpath [-d default_file] [-o out_file]
+# Determine last git revision containing an actual change on a given branch
+# Usage: lastchange.sh gitpath [-d default_file] [-o out_file]
 set -e
 set -u
 
@@ -40,7 +40,7 @@ while [ $# -ge 2 ]; do
     shift 2
     ;;
   *)
-    echo "Usage: lastchange.sh svnpath [-d default_file] [-o out_file]"
+    echo "Usage: lastchange.sh gitpath [-d default_file] [-o out_file]"
     exit 1
     ;;
   esac
@@ -48,8 +48,9 @@ done
 
 if [ -z $DEFAULT_FILE ]; then
   KEY='Last Changed Rev: '
-  REVISION=`svn info $SVN_PATH | grep "$KEY" | sed "s#$KEY##"`
+  REVISION=$(git rev-list --all --count)
   echo LASTCHANGE=$REVISION > $OUT_FILE
 else
   cat $DEFAULT_FILE > $OUT_FILE
 fi
+
