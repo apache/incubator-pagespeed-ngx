@@ -53,4 +53,3 @@ if [ -z $DEFAULT_FILE ]; then
 else
   cat $DEFAULT_FILE > $OUT_FILE
 fi
-
