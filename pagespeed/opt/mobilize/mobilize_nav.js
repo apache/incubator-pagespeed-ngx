@@ -326,7 +326,14 @@ pagespeed.MobNav.prototype.canEnlargeNav_ = function(element) {
  */
 pagespeed.MobNav.prototype.findNavSections_ = function() {
   var elements = [];
-  if (window.pagespeedNavigationalIds) {
+  var navPanels = document.getElementsByClassName('psmob-nav-panel');
+  if (navPanels.length > 0) {
+    this.navPanel_ = navPanels[0];
+    // Make sure the navPanel is in the body of the document; we've seen it
+    // moved elsewhere by JS on the page.
+    document.body.appendChild(this.navPanel_);
+  }
+  if (!this.navPanel_ && window.pagespeedNavigationalIds) {
     var n = window.pagespeedNavigationalIds.length;
     var parents = {};
     for (var i = 0; i < n; i++) {
@@ -398,10 +405,8 @@ pagespeed.MobNav.prototype.findElementsToOffsetHelper_ =
     var position = style.getPropertyValue('position');
     if (position != 'static') {
       var top = pagespeed.MobUtil.pixelValue(style.getPropertyValue('top'));
-      if (top != null &&
-          (position == 'fixed' ||
-           (!fixedPositionOnly &&
-            (position == 'absolute' || position == 'relative')))) {
+      if (top != null && (position == 'fixed' ||
+                          (!fixedPositionOnly && position == 'absolute'))) {
         this.elementsToOffset_.add(element);
       }
       fixedPositionOnly = true;
@@ -437,7 +442,8 @@ pagespeed.MobNav.prototype.findElementsToOffset_ = function() {
  * @private
  */
 pagespeed.MobNav.prototype.clampZIndex_ = function() {
-  var elements = document.querySelectorAll('*:not(#ps-progress-scrim)');
+  var elements = document.querySelectorAll(
+      '* :not(#ps-progress-scrim) :not(#ps-header) :not(.psmob-nav-panel)');
   for (var i = 0, element; element = elements[i]; i++) {
     var style = window.getComputedStyle(element);
     // Set to 999997 because the click detector div is set to 999998 and the
@@ -693,12 +699,11 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
   // at the top to move the rest of the elements down.  We need to access
   // on zooming to adjust its size.
   this.spacerDiv_ = document.getElementById('ps-spacer');
+  document.body.appendChild(this.spacerDiv_);
   document.body.insertBefore(this.spacerDiv_, document.body.childNodes[0]);
-  goog.dom.classlist.add(this.spacerDiv_, 'psmob-header-spacer-div');
-
-  this.headerBar_ = document.createElement(goog.dom.TagName.HEADER);
+  this.headerBar_ = document.getElementById('ps-header');
+  document.body.appendChild(this.headerBar_);
   document.body.insertBefore(this.headerBar_, this.spacerDiv_);
-  goog.dom.classlist.add(this.headerBar_, 'psmob-header-bar');
   // Set the unscaled header bar height. We set it to 10% of the largest screen
   // dimension. Note that docEl.clientHeight can change slightly depending on if
   // the browser chrome is currently being shown or not, so we set the height
@@ -1032,13 +1037,11 @@ pagespeed.MobNav.prototype.addClickDetectorDiv_ = function() {
 
 
 /**
- * Add a nav panel.
- * @param {!pagespeed.MobUtil.ThemeData} themeData
+ * Create the DOM for a nav panel from the navSections_ data.  Here so that we
+ * can fall back to JS menu generation from C++ if we need to.
  * @private
  */
-pagespeed.MobNav.prototype.addNavPanel_ = function(themeData) {
-  // TODO(jud): Make sure we have tests covering the redraw flow and the events
-  // called here.
+pagespeed.MobNav.prototype.constructNavPanel_ = function() {
   // Create the nav panel element and insert immediatly after the header bar.
   this.navPanel_ = document.createElement(goog.dom.TagName.NAV);
   document.body.insertBefore(this.navPanel_, this.headerBar_.nextSibling);
@@ -1049,9 +1052,6 @@ pagespeed.MobNav.prototype.addNavPanel_ = function(themeData) {
   // hierarchical menus collapsed by default. However, we want the top level
   // menu to always be displayed, so give it the open class.
   goog.dom.classlist.add(navTopUl, 'open');
-  var arrowIcon = pagespeed.MobUtil.synthesizeImage(
-      pagespeed.MobNav.ARROW_ICON_, themeData.menuBackColor);
-
   for (var i = 0, nav; nav = this.navSections_[i]; i++) {
     if (nav.parentNode) {
       nav.setAttribute('data-mobilize-nav-section', i);
@@ -1069,12 +1069,6 @@ pagespeed.MobNav.prototype.addNavPanel_ = function(themeData) {
           var item = document.createElement(goog.dom.TagName.LI);
           var div =
               item.appendChild(document.createElement(goog.dom.TagName.DIV));
-          if (arrowIcon) {
-            var icon = document.createElement(goog.dom.TagName.IMG);
-            div.appendChild(icon);
-            icon.setAttribute('src', arrowIcon);
-            goog.dom.classlist.add(icon, 'psmob-menu-expand-icon');
-          }
           div.appendChild(document.createTextNode(
               navATags[j].textContent || navATags[j].innerText));
           navSubmenus[navSubmenus.length - 1].appendChild(item);
@@ -1102,7 +1096,48 @@ pagespeed.MobNav.prototype.addNavPanel_ = function(themeData) {
 
   this.dedupNavMenuItems_();
   this.cleanupNavPanel_();
+};
 
+
+/**
+ * Add properly themed arrow icons to the submenus of the nav menu.
+ * @param {!pagespeed.MobUtil.ThemeData} themeData
+ * @private
+ */
+pagespeed.MobNav.prototype.addSubmenuArrows_ = function(themeData) {
+  var submenuTitleDivs =
+      this.navPanel_.getElementsByTagName(goog.dom.TagName.DIV);
+  var n = submenuTitleDivs.length;
+  if (n == 0) {
+    return;
+  }
+  var arrowIcon = pagespeed.MobUtil.synthesizeImage(
+      pagespeed.MobNav.ARROW_ICON_, themeData.menuBackColor);
+  if (!arrowIcon) {
+    return;
+  }
+  for (var i = 0; i < n; i++) {
+    var icon = document.createElement(goog.dom.TagName.IMG);
+    var submenu = submenuTitleDivs[i];
+    submenu.insertBefore(icon, submenu.firstChild);
+    icon.setAttribute('src', arrowIcon);
+    goog.dom.classlist.add(icon, 'psmob-menu-expand-icon');
+  }
+};
+
+
+/**
+ * Add a nav panel (if missing), style it, and register event handlers for it.
+ * @param {!pagespeed.MobUtil.ThemeData} themeData
+ * @private
+ */
+pagespeed.MobNav.prototype.addNavPanel_ = function(themeData) {
+  // TODO(jud): Make sure we have tests covering the redraw flow and the events
+  // called here.
+  if (!this.navPanel_) {
+    this.constructNavPanel_();
+  }
+  this.addSubmenuArrows_(themeData);
   this.addClickDetectorDiv_();
 
   // Track touch move events just in the nav panel so that scrolling can be
@@ -1237,7 +1272,8 @@ pagespeed.MobNav.prototype.Run = function(themeData) {
   // sections on the page or if we are in an iFrame.
   // TODO(jud): If there are nav elements in the iframe, we should try to move
   // them to the top-level nav.
-  if (!this.navDisabledForSite_() && (this.navSections_.length != 0) &&
+  if (!this.navDisabledForSite_() &&
+      (this.navPanel_ || this.navSections_.length != 0) &&
       !pagespeed.MobUtil.inFriendlyIframe()) {
     this.addNavPanel_(themeData);
     this.addMenuButtonEvents_();

@@ -9,15 +9,10 @@
 <link rel="stylesheet" href="http://test.com/not-a-valid-stylesheet.css" type="text/css" media="screen, projection"/>
 <!--[if lte IE 8]><link rel="stylesheet" href="http://test.com/another-stylesheet.css" type="text/css" media="screen, projection" /><![endif]-->
 <link rel="stylesheet" href="http://anothersite.com/style.css" type="text/css" media="screen, projection"/>
-<link rel="canonical" href="http://google.com/"/>
-<link rel="alternate" type="application/rss+xml" title="Mobilize RSS Feed" href="http://test.com/not-a-valid-rss-feed.rss"/>
-<link rel="shortcut icon" type="image/ico" href="http://google.com/favicon.ico">
 <script type='text/javascript' src='http://test.com/not-valid.js'></script>
-<script type='text/javascript' src='http://anothersite.com/not-valid.js'></script>
 <link media="screen, projection" type="text/css" href="http://content.site.com/not-valid.css" rel="stylesheet"/>
 <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
 <script type="text/javascript" src="http://test.com/custom.js"></script>
-<style type="text/css" id="syntaxhighlighteranchor"></style>
 @@HEAD_STYLES@@</head>
 <body class="custom">@@SPACER@@<div id="ps-progress-scrim" class="psProgressScrim"><a href="javascript:psRemoveProgressBar();" id="ps-progress-remove" id="ps-progress-show-log">Remove Progress Bar (doesn't stop mobilization)</a><br><a href="javascript:psSetDebugMode();">Show Debug Log In Progress Bar</a><div class="psProgressBar"><span id="ps-progress-span" class="psProgressSpan"></span></div><pre id="ps-progress-log" class="psProgressLog"/></div>
   <div id="nav_area" class="full_width" data-mobile-role="navigational">
@@ -38,14 +33,19 @@
     <div class="page">
       <div id="header">
         <p id="title"><a href="http://test.com/">Mobilize all the Things</a></p>
-        <div id="PageSpeed-header-1">
+        <div>
           <h1 id="author">Foobar</h1>
           <h2 id="date"></h2>
         </div>
       </div>
     </div>
-    <div class="navbar" data-mobile-role="navigational" id="PageSpeed-header_area-1">
+    <div class="navbar" data-mobile-role="navigational">
       <a href="http://test.com/way_cool">Way Cool</a>
+        <ul>
+          <li><a href="first">first</a>
+          <li><a href="second">second</a>
+          <li><a href="third">third</a>
+        </ul>
       <a href="http://test.com/mondo">Mondo</a>
       <a href="http://test.com/outrageous">Outrageous</a>
       <a href="http://test.com/funky">Funky</a>
@@ -56,15 +56,15 @@
     </script>
   </div>
   <div id="content_area" class="full_width">
-    <div class="aside" data-mobile-role="marginal" id="PageSpeed-content_area-0">
+    <div class="aside" data-mobile-role="marginal">
       <script>
         document.getElementById("stuff02").innerHTML = "";
         alert('02');
       </script>
-      <form action="http://test.com/form/" method="get" id="PageSpeed-content_area-0-1">
+      <form action="http://test.com/form/" method="get">
         <ul><li class="widget">
             <h3>Months</h3>
-            <select name="archive" onchange='document.location.href=this.options[this.selectedIndex].value;'>
+            <select name="archive">
               <option value="">Select Month</option>
               <option value='http://test.com/m=apr'>April</option>
               <option value='http://test.com/m=may'>May</option>
@@ -72,7 +72,7 @@
             </select>
           </li><li class="widget">
             <h3>Categories</h3>
-            <select name='cat' id='cat' onchange='document.location.href=this.options[this.selectedIndex].value;'>
+            <select name='cat' id='cat'>
               <option value="">Select Category</option>
               <option value='http://test.com/c=gnarly'>Gnarly</option>
               <option value='http://test.com/c=tubular'>Tubular</option>
@@ -84,7 +84,7 @@
     <div class="page" data-mobile-role="content">
       <div id="content" class="feed">
         <div class="post type-post status-publish">
-          <div class="headline_area" id="PageSpeed-content-0-0">
+          <div class="headline_area">
             <h1 class="entry-title">Isn't Mobilization Cool!?</h1>
             <p class="headline_author">
               <span class="author">Foobar</span><br/>
@@ -95,7 +95,7 @@
             <div class="empty"></div>
             <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur mi est, pulvinar id euismod non, aliquam non dui.<br/>
               Quisque vehicula luctus magna vitae lobortis. Suspendisse lacinia enim nisl. In id euismod augue, at consequat justo
-              <a href="http://google.com/" onclick="javascript:alert('');">vestibulum mollis</a> porta leo sed placerat. Aenean consectetur
+              <a href="http://google.com/">vestibulum mollis</a> porta leo sed placerat. Aenean consectetur
               tristique dolor vel interdum. Fusce blandit blandit dolor non dignissim.</p>
             <p>Vivamus vel odio gravida felis malesuada luctus. Quisque sit amet eros ipsum. Nunc id enim non justo lobortis gravida. Aenean
               hendrerit mollis velit, eget sollicitudin magna malesuada porttitor. Nam molestie lorem enim, sit amet imperdiet odio dapibus eu.
@@ -112,7 +112,7 @@ int main()
 }
             </pre>
             <p>Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae; Nunc eu turpis lorem.</p>
-            <p>Vestibulum ut justo nulla. Sed condimentum nunc ante, <a href="http://google.com/" onclick="javascript:alert('');">vestibulum mollis</a>
+            <p>Vestibulum ut justo nulla. Sed condimentum nunc ante, <a href="http://google.com/">vestibulum mollis</a>
               eget convallis nibh sodales eu. Praesent eget eleifend mi, ut ullamcorper justo.</p>
             <h3>Nunc eu turpis lorem</h3>
             <p>Nunc ut pulvinar turpis. In lacinia arcu eget augue lacinia, et consectetur quam interdum.</p>
@@ -123,12 +123,8 @@ int main()
     </div>
   </div>
   <p>Aenean nec lacus ac sapien ultrices placerat non ac sem. Quisque accumsan porta tortor semper egestas.</p>
-  <div class="footer" data-mobile-role="marginal" id="PageSpeed-6">
+  <div class="footer" data-mobile-role="marginal">
     Nulla ac elit sed urna molestie iaculis. Morbi posuere ac libero in fringilla.
     <br><a class="top"></a>
   </div>
-<script type="text/javascript">pagespeedHeaderIds=['header_area','PageSpeed-content-0-0'];
-pagespeedNavigationalIds=['nav_area','PageSpeed-header_area-1'];
-pagespeedContentIds=['PageSpeed-header-1','content_area','PageSpeed-content_area-0-1'];
-pagespeedMarginalIds=['PageSpeed-content_area-0','PageSpeed-6'];
-</script>@@TRAILING_SCRIPT_LOADS@@</body>
+@@TRAILING_SCRIPT_LOADS@@<nav class="psmob-nav-panel"><ul class="open"><li id="psmob-nav-0"><a href="http://test.com">Home</a></li><li id="psmob-nav-1"><a href="http://test.com/about">About</a></li><li id="psmob-nav-2"><a href="http://test.com/articles">Articles</a></li><li id="psmob-nav-3"><a href="http://test.com/rss">RSS</a></li><li id="psmob-nav-4"><div>Way Cool</div><ul><li id="psmob-nav-4-0"><a href="first">first</a></li><li id="psmob-nav-4-1"><a href="second">second</a></li><li id="psmob-nav-4-2"><a href="third">third</a></li><li id="psmob-nav-4-3"><a href="http://test.com/way_cool">Way Cool</a></li></ul></li><li id="psmob-nav-5"><a href="http://test.com/mondo">Mondo</a></li><li id="psmob-nav-6"><a href="http://test.com/outrageous">Outrageous</a></li><li id="psmob-nav-7"><a href="http://test.com/funky">Funky</a></li></ul></nav></body>

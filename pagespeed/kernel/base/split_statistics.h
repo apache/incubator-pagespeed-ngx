@@ -52,7 +52,7 @@ class SplitUpDownCounter : public UpDownCounter {
   virtual int64 SetReturningPreviousValue(int64 new_value);
   virtual int64 Get() const;
   virtual StringPiece GetName() const;
-  virtual int64 AddHelper(int delta);
+  virtual int64 AddHelper(int64 delta);
 
  private:
   UpDownCounter* rw_;
@@ -69,7 +69,7 @@ class SplitVariable : public Variable {
   virtual ~SplitVariable();
   virtual int64 Get() const;
   virtual StringPiece GetName() const;
-  virtual int64 AddHelper(int delta);
+  virtual int64 AddHelper(int64 delta);
   virtual void Clear();
 
  private:

@@ -32,7 +32,9 @@
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/html_element.h"
 #include "pagespeed/kernel/html/html_node.h"
+#include "pagespeed/kernel/html/html_parse_test_base.h"
 #include "pagespeed/kernel/html/html_writer_filter.h"
+#include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/user_agent_matcher_test_base.h"
 
 namespace net_instaweb {
@@ -105,6 +107,7 @@ class MobilizeRewriteFilterTest : public RewriteTestBase {
     options()->set_mob_beacon_url(kMobBeaconUrl);
     options()->set_mob_layout(LayoutMode());
     options()->set_mob_nav(true);
+    options()->set_mob_nav_server_side(ServerSide());
     server_context()->ComputeSignature(options());
     SetHtmlMimetype();  // Don't wrap scripts in <![CDATA[ ]]>
 
@@ -118,6 +121,7 @@ class MobilizeRewriteFilterTest : public RewriteTestBase {
   virtual bool LayoutMode() const { return true; }
   virtual bool AddBody() const { return false; }
   virtual bool AddHtmlTags() const { return false; }
+  virtual bool ServerSide() const { return true; }
 
   void CheckVariable(const char* name, int value) {
     Variable* var = rewrite_driver()->statistics()->FindVariable(name);
@@ -145,6 +149,7 @@ class MobilizeRewriteFilterTest : public RewriteTestBase {
 
   GoogleString Spacer() const {
     return StrCat(
+        "<header id=\"ps-header\" class=\"psmob-header-bar\"></header>"
         "<div id=\"ps-spacer\" class=\"psmob-header-spacer-div\"></div>"
         "<script>", MobilizeRewriteFilter::kSetSpacerHeight, "</script>");
   }
@@ -233,10 +238,11 @@ class MobilizeRewriteFunctionalTest : public MobilizeRewriteFilterTest {
   void HeadTest(const char* name,
                 StringPiece original_head, StringPiece expected_mid_head,
                 int deleted_elements, int keeper_blocks) {
-    GoogleString original = StrCat("<head>", original_head, "</head>", Body());
+    GoogleString original =
+        StrCat("<head>\n", original_head, "\n</head>", Body());
     GoogleString expected =
-        StrCat("<head>", HeadAndViewport(LayoutMode()), expected_mid_head,
-               Styles(LayoutMode()), "</head>", ExpectedBody());
+        StrCat("<head>", HeadAndViewport(LayoutMode()), "\n", expected_mid_head,
+               "\n", Styles(LayoutMode()), "</head>", ExpectedBody());
     ValidateExpected(name, original, expected);
     CheckVariable(MobilizeRewriteFilter::kPagesMobilized, 1);
     CheckVariable(MobilizeRewriteFilter::kKeeperBlocks, keeper_blocks);
@@ -253,10 +259,10 @@ class MobilizeRewriteFunctionalTest : public MobilizeRewriteFilterTest {
     // requiring AddHeadFilter to run.  We should also deal with the complete
     // absence of a body tag.
     GoogleString original =
-        StrCat("<body>", original_body, "</body>");
+        StrCat("\n<body>\n", original_body, "\n</body>\n");
     GoogleString expected =
-        StrCat("<body>", Spacer(), expected_mid_body, ScriptsAtEndOfBody(),
-               "</body>");
+        StrCat("\n<body>", Spacer(), "\n", expected_mid_body, "\n",
+               ScriptsAtEndOfBody(), "</body>\n");
     ValidateExpected(name, original, expected);
     CheckVariable(MobilizeRewriteFilter::kPagesMobilized, 1);
   }
@@ -278,22 +284,22 @@ class MobilizeRewriteFunctionalTest : public MobilizeRewriteFilterTest {
   void TwoBodysTest(const char* name,
                     StringPiece first_body, StringPiece second_body) {
     GoogleString original =
-        StrCat("<body>", first_body,
-               "</body><body>", second_body, "</body>");
+        StrCat("\n<body>\n", first_body,
+               "\n</body>\n<body>\n", second_body, "\n</body>\n");
     GoogleString expected = StrCat(
-        "<body>", Spacer(), first_body, ScriptsAtEndOfBody(),
-        "</body><body>", second_body, "</body>");
+        "\n<body>", Spacer(), "\n", first_body, "\n", ScriptsAtEndOfBody(),
+        "</body>\n<body>\n", second_body, "\n</body>\n");
     ValidateExpected(name, original, expected);
     CheckVariable(MobilizeRewriteFilter::kPagesMobilized, 1);
   }
 
   GoogleString Body() const {
-    return "<body>hello, world!</body>";
+    return "\n<body>\nhello, world!\n</body>\n";
   }
 
   GoogleString ExpectedBody() const {
-    return StrCat("<body>", Spacer(), "hello, world!", ScriptsAtEndOfBody(),
-                  "</body>");
+    return StrCat("\n<body>", Spacer(), "\nhello, world!\n",
+                  ScriptsAtEndOfBody(), "</body>\n");
   }
 
  private:
@@ -526,11 +532,22 @@ class MobilizeRewriteEndToEndTest : public MobilizeRewriteFilterTest {
     options()->set_mob_beacon_url(kMobBeaconUrl);
     options()->set_mob_layout(true);
     options()->set_mob_nav(true);
+    options()->set_mob_nav_server_side(true);
     AddFilter(RewriteOptions::kMobilize);
   }
 
   virtual bool AddBody() const { return false; }
   virtual bool AddHtmlTags() const { return false; }
+
+  void ValidateWithUA(StringPiece test_name, StringPiece user_agent,
+                      StringPiece input, StringPiece expected) {
+    rewrite_driver()->SetUserAgent(user_agent);
+    // We need to add the input to our fetcher so the
+    // menu extractor can see it.
+    GoogleString url = StrCat(kTestDomain, test_name, ".html");
+    SetResponseWithDefaultHeaders(url, kContentTypeHtml, input, 1000);
+    ValidateExpected(test_name, input, expected);
+  }
 
   StdioFileSystem filesystem_;
 
@@ -557,9 +574,9 @@ TEST_F(MobilizeRewriteEndToEndTest, FullPage) {
   GlobalReplaceSubstring("@@HEAD_STYLES@@", Styles(true), &rewritten_buffer);
   GlobalReplaceSubstring("@@TRAILING_SCRIPT_LOADS@@", ScriptsAtEndOfBody(),
                          &rewritten_buffer);
-  rewrite_driver()->SetUserAgent(
-      UserAgentMatcherTestBase::kAndroidChrome21UserAgent);
-  ValidateExpected("full_page", original_buffer, rewritten_buffer);
+  ValidateWithUA("EndToEndMobile",
+                 UserAgentMatcherTestBase::kAndroidChrome21UserAgent,
+                 original_buffer, rewritten_buffer);
 }
 
 TEST_F(MobilizeRewriteEndToEndTest, NonMobile) {
@@ -569,9 +586,9 @@ TEST_F(MobilizeRewriteEndToEndTest, NonMobile) {
       StrCat(GTestSrcDir(), kTestDataDir, kOriginal);
   ASSERT_TRUE(filesystem_.ReadFile(original_filename.c_str(), &original_buffer,
                                    message_handler()));
-  rewrite_driver()->SetUserAgent(
-      UserAgentMatcherTestBase::kChrome37UserAgent);
-  ValidateNoChanges("EndToEndNonMobile", original_buffer);
+  ValidateWithUA("EndToEndNonMobile",
+                 UserAgentMatcherTestBase::kChrome37UserAgent,
+                 original_buffer, original_buffer);
 }
 
 class MobilizeRewriteFilterNoLayoutTest : public MobilizeRewriteFunctionalTest {

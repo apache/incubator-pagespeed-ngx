@@ -1091,14 +1091,6 @@ void MobilizeLabelFilter::DebugLabel() {
     ElementSample* sample = samples_[i];
     HtmlElement* element = sample->element;
     if (debug_mode) {
-      if (sample->role != sample->parent->role &&
-          driver()->IsRewritable(element) &&
-          element->FindAttribute(HtmlName::kDataMobileRole) == NULL) {
-        // Add mobile role annotation in place where possible.
-        driver()->AddEscapedAttribute(
-            element, HtmlName::kDataMobileRole,
-            MobileRoleData::StringFromLevel(sample->role));
-      }
       GoogleString sample_string =
           sample->ToString(true /* readable */, driver());
       if (driver()->IsRewritable(element)) {
@@ -1143,6 +1135,10 @@ void MobilizeLabelFilter::InjectLabelJavascript() {
   GoogleString role_id_list_js[MobileRole::kInvalid];
   int n = samples_.size();
   bool any_roles_listed = false;
+  const RewriteOptions* options = driver()->options();
+  bool annotate_dom =
+      options->mob_nav_server_side() || options->mob_iframe() ||
+      driver()->DebugMode();
   for (int i = 1; i < n; ++i) {
     ElementSample* sample = samples_[i];
     MobileRole::Level role = sample->role;
@@ -1153,6 +1149,15 @@ void MobilizeLabelFilter::InjectLabelJavascript() {
       } else {
         if (!sample->explicitly_labeled) {
           were_roles_added_ = true;
+        }
+        HtmlElement* element = sample->element;
+        if (annotate_dom &&
+            driver()->IsRewritable(element) &&
+            element->FindAttribute(HtmlName::kDataMobileRole) == NULL) {
+          // Add mobile role annotation in place where possible.
+          driver()->AddEscapedAttribute(
+              element, HtmlName::kDataMobileRole,
+              MobileRoleData::StringFromLevel(sample->role));
         }
         role_variables_[role]->Add(1);
         EscapeToJsStringLiteral(

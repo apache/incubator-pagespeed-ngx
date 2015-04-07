@@ -12,6 +12,13 @@
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/util/platform.h"
 
+namespace {
+
+const int64 kOneMilion = 1000LL * 1000LL;
+const int64 kTenBillion = 10000LL * kOneMilion;
+
+}  // namespace
+
 namespace net_instaweb {
 
 class SimpleStatsTest : public testing::Test {
@@ -71,6 +78,21 @@ TEST_F(SimpleStatsTest, TestSetReturningPrevious) {
   EXPECT_EQ(5, var->SetReturningPreviousValue(-3));
   EXPECT_EQ(-3, var->SetReturningPreviousValue(10));
   EXPECT_EQ(10, var->Get());
+}
+
+TEST_F(SimpleStatsTest, CounterHugeValues) {
+  UpDownCounter* var = stats_.AddUpDownCounter("c0");
+  EXPECT_EQ(kTenBillion, var->Add(kTenBillion));
+  EXPECT_EQ(2*kTenBillion, var->Add(kTenBillion));
+  EXPECT_EQ(kTenBillion, var->Add(-kTenBillion));
+  EXPECT_EQ(0, var->Add(-kTenBillion));
+  EXPECT_EQ(-kTenBillion, var->Add(-kTenBillion));
+}
+
+TEST_F(SimpleStatsTest, VariableHugeValues) {
+  Variable* var = stats_.AddVariable("v0");
+  EXPECT_EQ(kTenBillion, var->Add(kTenBillion));
+  EXPECT_EQ(2*kTenBillion, var->Add(kTenBillion));
 }
 
 }  // namespace net_instaweb

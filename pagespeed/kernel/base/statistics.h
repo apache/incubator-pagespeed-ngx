@@ -50,8 +50,7 @@ class Variable {
   virtual StringPiece GetName() const = 0;
 
   // Adds 'delta' to the variable's value, returning the result.
-  // TODO(sligocki): s/int/int64/
-  int64 Add(int non_negative_delta) {
+  int64 Add(int64 non_negative_delta) {
     DCHECK_LE(0, non_negative_delta);
     return AddHelper(non_negative_delta);
   }
@@ -60,7 +59,7 @@ class Variable {
 
  protected:
   // This is virtual so that subclasses can add platform-specific atomicity.
-  virtual int64 AddHelper(int delta) = 0;
+  virtual int64 AddHelper(int64 delta) = 0;
 };
 
 // UpDownCounters are variables that can also be decreased (e.g. Add
@@ -92,11 +91,11 @@ class UpDownCounter {
 
   virtual void Set(int64 value) = 0;
   void Clear() { Set(0); }
-  int64 Add(int delta) { return AddHelper(delta); }
+  int64 Add(int64 delta) { return AddHelper(delta); }
 
  protected:
   // This is virtual so that subclasses can add platform-specific atomicity.
-  virtual int64 AddHelper(int delta) = 0;
+  virtual int64 AddHelper(int64 delta) = 0;
 };
 
 // Scalar value protected by a mutex. Mutex must fully protect access
@@ -119,7 +118,7 @@ class MutexedScalar {
   int64 Get() const;
   void Set(int64 value);
   int64 SetReturningPreviousValue(int64 value);
-  int64 AddHelper(int delta);
+  int64 AddHelper(int64 delta);
 
  protected:
   friend class StatisticsLogger;
@@ -133,7 +132,7 @@ class MutexedScalar {
   // These are implemented based on GetLockHeld() and
   // SetReturningPreviousLockHeld().
   void SetLockHeld(int64 value);
-  int64 AddLockHeld(int delta);
+  int64 AddLockHeld(int64 delta);
 };
 
 class Histogram {

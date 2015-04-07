@@ -306,7 +306,7 @@ template<class Var, class UpDown, class Hist,
 //      Impl(StringPiece name, Statistics* stats);
 //      int64 Get();
 //      StringPiece GetName();
-//      int64 AddHelper(int delta);
+//      int64 AddHelper(int64 delta);
 //      void Clear();
 // See ../util/simple_stats.h, class SimpleStatsVariable, for an example
 // of an Impl class.
@@ -316,7 +316,7 @@ template<class Impl> class VarTemplate : public Variable {
   virtual ~VarTemplate() {}
   virtual int64 Get() const { return impl_.Get(); }
   virtual StringPiece GetName() const { return impl_.GetName(); }
-  virtual int64 AddHelper(int delta) { return impl_.AddHelper(delta); }
+  virtual int64 AddHelper(int64 delta) { return impl_.AddHelper(delta); }
   virtual void Clear() { impl_.Set(0); }
 
   Impl* impl() { return &impl_; }
@@ -339,7 +339,7 @@ template<class Impl> class UpDownTemplate : public UpDownCounter {
   virtual int64 Get() const { return impl_.Get(); }
   virtual StringPiece GetName() const { return impl_.GetName(); }
   virtual void Set(int64 value) { impl_.Set(value); }
-  virtual int64 AddHelper(int delta) { return impl_.AddHelper(delta); }
+  virtual int64 AddHelper(int64 delta) { return impl_.AddHelper(delta); }
   virtual void Clear() { impl_.Set(0); }
 
   Impl* impl() { return &impl_; }

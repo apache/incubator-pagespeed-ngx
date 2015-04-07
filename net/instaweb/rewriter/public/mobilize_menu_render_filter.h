@@ -23,16 +23,21 @@
 #include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/html_element.h"
 
 namespace net_instaweb {
 
 class MobilizeMenuRenderFilter : public CommonFilter {
  public:
+  static const char kMenusAdded[];
   static const char kMobilizeMenuPropertyName[];
 
   explicit MobilizeMenuRenderFilter(RewriteDriver* driver);
+
+  static void InitStats(Statistics* statistics);
 
   virtual void StartDocumentImpl();
   virtual void StartElementImpl(HtmlElement* element) {}
@@ -46,9 +51,16 @@ class MobilizeMenuRenderFilter : public CommonFilter {
  private:
   class MenuComputation;
 
+  void ConstructMenu();
+  void ConstructMenuWithin(
+      int level, StringPiece id_prefix, const MobilizeMenu& menu,
+      HtmlElement* ul);
+
   bool saw_end_document_;
   bool menu_computed_;
   scoped_ptr<const MobilizeMenu> menu_;
+
+  Variable* num_menus_added_;
 };
 
 }  // namespace net_instaweb

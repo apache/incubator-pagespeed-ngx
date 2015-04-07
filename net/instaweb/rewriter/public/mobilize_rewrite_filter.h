@@ -97,7 +97,7 @@ class MobilizeRewriteFilter : public CommonFilter {
   virtual const char* Name() const { return "MobilizeRewrite"; }
 
  private:
-  void AppendStylesheet(const StringPiece& css_file_name,
+  void AppendStylesheet(StringPiece css_file_name,
                         StaticAssetEnum::StaticAsset asset,
                         HtmlElement* element);
   void AddStyle(HtmlElement* element);

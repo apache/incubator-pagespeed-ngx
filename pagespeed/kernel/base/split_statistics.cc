@@ -51,7 +51,7 @@ StringPiece SplitUpDownCounter::GetName() const {
   return rw_->GetName();
 }
 
-int64 SplitUpDownCounter::AddHelper(int delta) {
+int64 SplitUpDownCounter::AddHelper(int64 delta) {
   w_->Add(delta);
   return rw_->Add(delta);
 }
@@ -76,7 +76,7 @@ StringPiece SplitVariable::GetName() const {
   return rw_->GetName();
 }
 
-int64 SplitVariable::AddHelper(int delta) {
+int64 SplitVariable::AddHelper(int64 delta) {
   w_->Add(delta);
   return rw_->Add(delta);
 }

@@ -341,6 +341,7 @@ class RewriteOptions {
   static const char kMobLayout[];
   static const char kMobNav[];
   static const char kMobNavClasses[];
+  static const char kMobNavServerSide[];
   static const char kMobStatic[];
   static const char kMobTheme[];
   static const char kModifyCachingHeaders[];
@@ -2600,6 +2601,22 @@ class RewriteOptions {
   void set_mob_nav_classes(StringPiece p) {
     set_option(p.as_string(), &mob_nav_classes_);
   }
+  bool mob_nav_server_side() const { return mob_nav_server_side_.value(); }
+  void set_mob_nav_server_side(bool x) { set_option(x, &mob_nav_server_side_); }
+  // Should menu extraction be run?
+  bool MobRenderServerSideMenus() const {
+    return (Enabled(kMobilize) &&
+            (mob_nav_server_side() || mob_iframe()));
+  }
+  // Should labeling be run in the request flow?
+  bool MobUseLabelFilter() const {
+    // We use the label filter if we're doing mobilization extraction on the
+    // client OR we're running in debug mode (and want to see what the menu
+    // render filter saw).  But we don't run it in iframe mode, ever, because
+    // that doesn't see the page we'd be extracting mobilization data from.
+    return (Enabled(kMobilize) && !mob_iframe() &&
+            (!MobRenderServerSideMenus() || Enabled(kDebug)));
+  }
   bool mob_static() const { return mob_static_.value(); }
   void set_mob_static(bool x) { set_option(x, &mob_static_); }
   const MobTheme& mob_theme() const { return mob_theme_.value(); }
@@ -4086,6 +4103,7 @@ class RewriteOptions {
   Option<bool> mob_layout_;
   Option<bool> mob_nav_;
   Option<GoogleString> mob_nav_classes_;
+  Option<bool> mob_nav_server_side_;
   Option<bool> mob_static_;
 
   Option<GoogleString> mob_beacon_url_;

@@ -71,7 +71,9 @@ const HtmlName::Keyword kImplicitlyClosedHtmlTags[] = {
 const HtmlName::Keyword kNonBriefTerminatedTags[] = {
   HtmlName::kA,
   HtmlName::kDiv,
+  HtmlName::kHeader,  // TODO(jmaessen): All div-like tags?
   HtmlName::kIframe,
+  HtmlName::kNav,
   HtmlName::kScript,
   HtmlName::kSpan,
   HtmlName::kStyle,

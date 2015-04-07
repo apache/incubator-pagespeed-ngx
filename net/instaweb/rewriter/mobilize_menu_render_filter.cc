@@ -29,16 +29,25 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/html/html_name.h"
 #include "pagespeed/kernel/html/html_node.h"
 #include "pagespeed/opt/http/property_cache.h"
 
 namespace net_instaweb {
 
+const char MobilizeMenuRenderFilter::kMenusAdded[] =
+    "mobilization_menus_added";
+
 const char MobilizeMenuRenderFilter::kMobilizeMenuPropertyName[] =
     "mobilize_menu";
+
+void MobilizeMenuRenderFilter::InitStats(Statistics* statistics) {
+  statistics->AddVariable(kMenusAdded);
+}
 
 class MobilizeMenuRenderFilter::MenuComputation
     : public RenderBlockingHtmlComputation {
@@ -71,7 +80,10 @@ class MobilizeMenuRenderFilter::MenuComputation
 };
 
 MobilizeMenuRenderFilter::MobilizeMenuRenderFilter(RewriteDriver* driver)
-    : CommonFilter(driver), saw_end_document_(false), menu_computed_(false) {}
+    : CommonFilter(driver), saw_end_document_(false), menu_computed_(false) {
+  Statistics* stats = driver->statistics();
+  num_menus_added_ = stats->GetVariable(kMenusAdded);
+}
 
 void MobilizeMenuRenderFilter::StartDocumentImpl() {
   saw_end_document_ = false;
@@ -89,13 +101,12 @@ void MobilizeMenuRenderFilter::StartDocumentImpl() {
     if (result != kPropertyCacheDecodeOk) {
       menu_.reset(NULL);
     }
-
-    if (menu_.get() == NULL) {
-      // We don't have a menu, so compute it.
-      scoped_ptr<MenuComputation> compute_menu(
-          new MenuComputation(this, driver()));
-      compute_menu.release()->Compute(driver()->url());
-    }
+  }
+  if (menu_.get() == NULL) {
+    // We don't have a menu, so compute it.
+    scoped_ptr<MenuComputation> compute_menu(
+        new MenuComputation(this, driver()));
+    compute_menu.release()->Compute(driver()->url());
   }
 }
 
@@ -114,17 +125,18 @@ void MobilizeMenuRenderFilter::RenderDone() {
   // Note that despite the blocking background computation, the menu may still
   // be NULL, as it's possible that the fetch for the page has failed.
   if (menu_.get() != NULL) {
-    InsertNodeAtBodyEnd(driver()->NewCommentNode(
-        NULL, StrCat("Computed menu:" , menu_->DebugString())));
+    ConstructMenu();
 
     if (menu_computed_) {
       // Write to in-memory property cache. Will be committed later because we
       // set driver()->set_write_property_cache_dom_cohor();
       const PropertyCache::Cohort* cohort =
           driver()->server_context()->dom_cohort();
-      UpdateInPropertyCache(*menu_, driver(), cohort,
-                            kMobilizeMenuPropertyName,
-                            false /* don't commit immediately */);
+      if (cohort != NULL) {
+        UpdateInPropertyCache(*menu_, driver(), cohort,
+                              kMobilizeMenuPropertyName,
+                              false /* don't commit immediately */);
+      }
     }
   } else {
     InsertNodeAtBodyEnd(driver()->NewCommentNode(NULL, "No computed menu"));
@@ -136,6 +148,74 @@ void MobilizeMenuRenderFilter::DetermineEnabled(GoogleString* disabled_reason) {
   set_is_enabled(enabled);
   if (enabled) {
     driver()->set_write_property_cache_dom_cohort(true);
+  }
+}
+
+// Actually construct the menu as nested <ul> and <li> elements at the end of
+// the DOM.
+void MobilizeMenuRenderFilter::ConstructMenu() {
+  if (menu_ != NULL && menu_->entries_size() > 0) {
+    DCHECK(MobilizeMenuFilter::IsMenuOk(*menu_));
+    HtmlElement* nav = driver()->NewElement(NULL, HtmlName::kNav);
+    // TODO(jud): Make this an id rather than a class.
+    driver()->AddAttribute(nav, HtmlName::kClass, "psmob-nav-panel");
+    InsertNodeAtBodyEnd(nav);
+    HtmlElement* ul = driver()->NewElement(nav, HtmlName::kUl);
+    driver()->AddAttribute(ul, HtmlName::kClass, "open");
+    driver()->AppendChild(nav, ul);
+    ConstructMenuWithin(1, "psmob-nav", *menu_, ul);
+    num_menus_added_->Add(1);
+  } else {
+    driver()->message_handler()->Message(
+        kWarning, "No navigation found for %s", driver()->url());
+    if (driver()->DebugMode()) {
+      HtmlNode* comment_node =
+          driver()->NewCommentNode(NULL, "No navigation?!");
+      InsertNodeAtBodyEnd(comment_node);
+    }
+  }
+}
+
+// Construct a single level of menu structure and its submenus within the DOM
+// element ul.  Labels each <li> element with an id based on parent_id.
+void MobilizeMenuRenderFilter::ConstructMenuWithin(
+    int level, StringPiece parent_id, const MobilizeMenu& menu,
+    HtmlElement* ul) {
+  int n = menu.entries_size();
+  for (int i = 0; i < n; ++i) {
+    const MobilizeMenuItem& item = menu.entries(i);
+    if (driver()->DebugMode()) {
+      // Make the debug output readable by adding a newline and indent.
+      GoogleString indent = "\n";
+      indent.append(2 * level, ' ');
+      HtmlCharactersNode* indent_node =
+          driver()->NewCharactersNode(ul, indent);
+      driver()->AppendChild(ul, indent_node);
+    }
+    HtmlElement* li = driver()->NewElement(ul, HtmlName::kLi);
+    driver()->AppendChild(ul, li);
+    GoogleString id = StrCat(parent_id, "-", IntegerToString(i));
+    driver()->AddAttribute(li, HtmlName::kId, id);
+    if (item.has_submenu()) {
+      // TODO(jmaessen): Add arrow icon?  It's currently being added by JS,
+      // which can account for the theme data.  This also means we don't
+      // duplicate the data: url in the html.
+      HtmlElement* title_div = driver()->NewElement(li, HtmlName::kDiv);
+      driver()->AppendChild(li, title_div);
+      HtmlCharactersNode* submenu_title =
+          driver()->NewCharactersNode(title_div, item.name());
+      driver()->AppendChild(title_div, submenu_title);
+      HtmlElement* ul = driver()->NewElement(li, HtmlName::kUl);
+      driver()->AppendChild(li, ul);
+      ConstructMenuWithin(level + 1, id, item.submenu(), ul);
+    } else {
+      HtmlElement* a = driver()->NewElement(li, HtmlName::kA);
+      driver()->AddAttribute(a, HtmlName::kHref, item.url());
+      driver()->AppendChild(li, a);
+      HtmlCharactersNode* item_name =
+          driver()->NewCharactersNode(a, item.name());
+      driver()->AppendChild(a, item_name);
+    }
   }
 }
 

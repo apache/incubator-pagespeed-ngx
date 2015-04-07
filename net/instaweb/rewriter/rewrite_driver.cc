@@ -101,6 +101,7 @@
 #include "net/instaweb/rewriter/public/meta_tag_filter.h"
 #include "net/instaweb/rewriter/public/mobilize_label_filter.h"
 #include "net/instaweb/rewriter/public/mobilize_menu_filter.h"
+#include "net/instaweb/rewriter/public/mobilize_menu_render_filter.h"
 #include "net/instaweb/rewriter/public/mobilize_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
@@ -873,6 +874,7 @@ void RewriteDriver::InitStats(Statistics* statistics) {
   MetaTagFilter::InitStats(statistics);
   MobilizeLabelFilter::InitStats(statistics);
   MobilizeMenuFilter::InitStats(statistics);
+  MobilizeMenuRenderFilter::InitStats(statistics);
   MobilizeRewriteFilter::InitStats(statistics);
   SplitHtmlBeaconFilter::InitStats(statistics);
   RewriteContext::InitStats(statistics);
@@ -1043,7 +1045,7 @@ void RewriteDriver::AddPreRenderFilters() {
     AddOwnedEarlyPreRenderFilter(new BaseTagFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kAddIds) ||
-      rewrite_options->Enabled(RewriteOptions::kMobilize)) {
+      rewrite_options->MobUseLabelFilter()) {
     AddOwnedEarlyPreRenderFilter(new AddIdsFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kStripScripts)) {
@@ -1184,7 +1186,12 @@ void RewriteDriver::AddPreRenderFilters() {
   // source-maps for the compiled code.  However, we do want
   // the inliner to work on the small compiled mobilize_xhr.js.
   if (rewrite_options->Enabled(RewriteOptions::kMobilize)) {
-    AppendOwnedPreRenderFilter(new MobilizeLabelFilter(this));
+    if (rewrite_options->MobUseLabelFilter()) {
+      AppendOwnedPreRenderFilter(new MobilizeLabelFilter(this));
+    }
+    if (rewrite_options->MobRenderServerSideMenus()) {
+      AppendOwnedPreRenderFilter(new MobilizeMenuRenderFilter(this));
+    }
     AppendOwnedPreRenderFilter(new MobilizeRewriteFilter(this));
   }
 

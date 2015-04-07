@@ -63,6 +63,7 @@ const char MobilizeRewriteFilter::kDeletedElements[] =
 const char MobilizeRewriteFilter::kSetSpacerHeight[] =
     "\n(function() {\n"  // Hide temps in a function scope
     "  var spacer = document.getElementById('ps-spacer');\n"
+    "  var navbar = document.getElementById('ps-header');\n"
     "  var docElt = document.documentElement;\n"
     "  var scale = window.innerWidth / docElt.clientWidth;\n"
     // See mobilize.css, .psmob-header-bar sets height to 10%, so divide by 10.
@@ -70,6 +71,7 @@ const char MobilizeRewriteFilter::kSetSpacerHeight[] =
     "    Math.round(Math.max(docElt.clientHeight, docElt.clientWidth) * .1);\n"
     "  var newHeight = Math.round(headerBarHeight * scale) + 'px';\n"
     "  spacer.style.height = newHeight;\n"
+    "  navbar.style.height = newHeight;\n"
     "})();";
 
 namespace {
@@ -306,10 +308,10 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
       }
 
       if (has_mob_theme) {
-         StrAppend(&src, "var psMobBackgroundColor=",
-                   FormatColorForJs(background_color), ";");
-         StrAppend(&src, "var psMobForegroundColor=",
-                   FormatColorForJs(foreground_color), ";");
+        StrAppend(&src, "var psMobBackgroundColor=",
+                  FormatColorForJs(background_color), ";");
+        StrAppend(&src, "var psMobForegroundColor=",
+                  FormatColorForJs(foreground_color), ";");
         if (!logo_url.empty()) {
           GoogleString escaped_logo_url;
           EscapeToJsStringLiteral(logo_url, false, &escaped_logo_url);
@@ -376,6 +378,14 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
     if (!added_spacer_) {
       added_spacer_ = true;
 
+      // TODO(jmaessen): Right now we inject an unstyled, unsized header bar.
+      // This actually works OK in testing on current sites, because
+      // mobilize_nav.js styles and sizes it at onload.  We should
+      // style it using mob_theme_data when that's available.
+      HtmlElement* header = driver()->NewElement(element, HtmlName::kHeader);
+      driver()->InsertNodeAfterCurrent(header);
+      driver()->AddAttribute(header, HtmlName::kId, "ps-header");
+      driver()->AddAttribute(header, HtmlName::kClass, "psmob-header-bar");
       HtmlElement* spacer = driver()->NewElement(element, HtmlName::kDiv);
       driver()->InsertNodeAfterCurrent(spacer);
       driver()->AddAttribute(spacer, HtmlName::kId, "ps-spacer");
@@ -524,7 +534,7 @@ void MobilizeRewriteFilter::Characters(HtmlCharactersNode* characters) {
   }
 }
 
-void MobilizeRewriteFilter::AppendStylesheet(const StringPiece& css_file_name,
+void MobilizeRewriteFilter::AppendStylesheet(StringPiece css_file_name,
                                              StaticAssetEnum::StaticAsset asset,
                                              HtmlElement* element) {
   HtmlElement* link = driver()->NewElement(element, HtmlName::kLink);

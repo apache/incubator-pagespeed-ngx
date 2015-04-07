@@ -22,7 +22,6 @@
 
 #include "base/logging.h"
 #include "net/instaweb/rewriter/mobilize_menu.pb.h"
-#include "net/instaweb/rewriter/public/mobilize_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
@@ -33,12 +32,18 @@
 
 namespace net_instaweb {
 
+const char MobilizeMenuFilter::kMenusComputed[] =
+    "mobilization_menus_computed";
+
 // TODO(jmaessen): Store into pcache if we're not in a nested context.
 MobilizeMenuFilter::MobilizeMenuFilter(RewriteDriver* rewrite_driver)
     : MobilizeFilterBase(rewrite_driver),
       outer_nav_element_(NULL),
       menu_item_trailing_whitespace_(false),
-      cleanup_menu_(true) {}
+      cleanup_menu_(true) {
+  Statistics* stats = rewrite_driver->statistics();
+  num_menus_computed_ = stats->GetVariable(kMenusComputed);
+}
 
 MobilizeMenuFilter::~MobilizeMenuFilter() {
   DCHECK(outer_nav_element_ == NULL);
@@ -46,16 +51,7 @@ MobilizeMenuFilter::~MobilizeMenuFilter() {
 }
 
 void MobilizeMenuFilter::InitStats(Statistics* statistics) {
-  // TODO(jmaessen): Stats?
-}
-
-void MobilizeMenuFilter::DetermineEnabled(GoogleString* disabled_reason) {
-  if (!MobilizeRewriteFilter::IsApplicableFor(driver())) {
-    // Log redundantly with the rewrite filter in case we're
-    // currently in an iframe request where no rewriting happens.
-    disabled_reason->assign("Not a mobile User Agent.");
-    set_is_enabled(false);
-  }
+  statistics->AddVariable(kMenusComputed);
 }
 
 void MobilizeMenuFilter::StartDocumentImpl() {
@@ -66,6 +62,7 @@ void MobilizeMenuFilter::EndDocumentImpl() {
   if (cleanup_menu_) {
     CleanupMenu(menu_.get());
   }
+  num_menus_computed_->Add(1);
   DCHECK(outer_nav_element_ == NULL);
   DCHECK(menu_item_text_.empty());
   DCHECK(menu_stack_.empty());

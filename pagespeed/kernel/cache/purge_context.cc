@@ -95,7 +95,7 @@ class BackupUpDownCounter : public UpDownCounter {
     }
   }
 
-  virtual int64 AddHelper(int delta) {
+  virtual int64 AddHelper(int64 delta) {
     LOG(DFATAL) << "AddHelper is not used in PurgeContext";
     return 0;
   }

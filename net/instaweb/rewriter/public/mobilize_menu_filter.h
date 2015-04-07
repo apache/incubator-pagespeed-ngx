@@ -63,6 +63,8 @@ namespace net_instaweb {
 // as a resource and trust (as we already do) that its menus will match.
 class MobilizeMenuFilter : public MobilizeFilterBase {
  public:
+  static const char kMenusComputed[];
+
   explicit MobilizeMenuFilter(RewriteDriver* rewrite_driver);
   virtual ~MobilizeMenuFilter();
 
@@ -73,7 +75,6 @@ class MobilizeMenuFilter : public MobilizeFilterBase {
   // Check well-formedness of a cleaned-up menu for debug purposes.
   static bool IsMenuOk(const MobilizeMenu& menu);
 
-  virtual void DetermineEnabled(GoogleString* disabled_reason);
   virtual void StartDocumentImpl();
   virtual void EndDocumentImpl();
   virtual void StartNonSkipElement(
@@ -117,7 +118,11 @@ class MobilizeMenuFilter : public MobilizeFilterBase {
   // The following points to elements of menu_.
   std::vector<MobilizeMenu*> menu_stack_;
 
+  // Configuration data
   bool cleanup_menu_;
+
+  // Statistics
+  Variable* num_menus_computed_;
 
   DISALLOW_COPY_AND_ASSIGN(MobilizeMenuFilter);
 };

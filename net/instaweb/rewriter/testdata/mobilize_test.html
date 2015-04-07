@@ -9,15 +9,10 @@
 <link rel="stylesheet" href="http://test.com/not-a-valid-stylesheet.css" type="text/css" media="screen, projection"/>
 <!--[if lte IE 8]><link rel="stylesheet" href="http://test.com/another-stylesheet.css" type="text/css" media="screen, projection" /><![endif]-->
 <link rel="stylesheet" href="http://anothersite.com/style.css" type="text/css" media="screen, projection"/>
-<link rel="canonical" href="http://google.com/"/>
-<link rel="alternate" type="application/rss+xml" title="Mobilize RSS Feed" href="http://test.com/not-a-valid-rss-feed.rss"/>
-<link rel="shortcut icon" type="image/ico" href="http://google.com/favicon.ico">
 <script type='text/javascript' src='http://test.com/not-valid.js'></script>
-<script type='text/javascript' src='http://anothersite.com/not-valid.js'></script>
 <link media="screen, projection" type="text/css" href="http://content.site.com/not-valid.css" rel="stylesheet"/>
 <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
 <script type="text/javascript" src="http://test.com/custom.js"></script>
-<style type="text/css" id="syntaxhighlighteranchor"></style>
 </head>
 <body class="custom">
   <div id="nav_area" class="full_width" data-mobile-role="navigational">
@@ -46,6 +41,11 @@
     </div>
     <div class="navbar" data-mobile-role="navigational">
       <a href="http://test.com/way_cool">Way Cool</a>
+        <ul>
+          <li><a href="first">first</a>
+          <li><a href="second">second</a>
+          <li><a href="third">third</a>
+        </ul>
       <a href="http://test.com/mondo">Mondo</a>
       <a href="http://test.com/outrageous">Outrageous</a>
       <a href="http://test.com/funky">Funky</a>
@@ -64,7 +64,7 @@
       <form action="http://test.com/form/" method="get">
         <ul><li class="widget">
             <h3>Months</h3>
-            <select name="archive" onchange='document.location.href=this.options[this.selectedIndex].value;'>
+            <select name="archive">
               <option value="">Select Month</option>
               <option value='http://test.com/m=apr'>April</option>
               <option value='http://test.com/m=may'>May</option>
@@ -72,7 +72,7 @@
             </select>
           </li><li class="widget">
             <h3>Categories</h3>
-            <select name='cat' id='cat' onchange='document.location.href=this.options[this.selectedIndex].value;'>
+            <select name='cat' id='cat'>
               <option value="">Select Category</option>
               <option value='http://test.com/c=gnarly'>Gnarly</option>
               <option value='http://test.com/c=tubular'>Tubular</option>
@@ -95,7 +95,7 @@
             <div class="empty"></div>
             <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur mi est, pulvinar id euismod non, aliquam non dui.<br/>
               Quisque vehicula luctus magna vitae lobortis. Suspendisse lacinia enim nisl. In id euismod augue, at consequat justo
-              <a href="http://google.com/" onclick="javascript:alert('');">vestibulum mollis</a> porta leo sed placerat. Aenean consectetur
+              <a href="http://google.com/">vestibulum mollis</a> porta leo sed placerat. Aenean consectetur
               tristique dolor vel interdum. Fusce blandit blandit dolor non dignissim.</p>
             <p>Vivamus vel odio gravida felis malesuada luctus. Quisque sit amet eros ipsum. Nunc id enim non justo lobortis gravida. Aenean
               hendrerit mollis velit, eget sollicitudin magna malesuada porttitor. Nam molestie lorem enim, sit amet imperdiet odio dapibus eu.
@@ -112,7 +112,7 @@ int main()
 }
             </pre>
             <p>Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae; Nunc eu turpis lorem.</p>
-            <p>Vestibulum ut justo nulla. Sed condimentum nunc ante, <a href="http://google.com/" onclick="javascript:alert('');">vestibulum mollis</a>
+            <p>Vestibulum ut justo nulla. Sed condimentum nunc ante, <a href="http://google.com/">vestibulum mollis</a>
               eget convallis nibh sodales eu. Praesent eget eleifend mi, ut ullamcorper justo.</p>
             <h3>Nunc eu turpis lorem</h3>
             <p>Nunc ut pulvinar turpis. In lacinia arcu eget augue lacinia, et consectetur quam interdum.</p>

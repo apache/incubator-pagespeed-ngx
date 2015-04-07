@@ -83,7 +83,7 @@ int64 MutexedScalar::SetReturningPreviousValue(int64 new_value) {
   }
 }
 
-int64 MutexedScalar::AddHelper(int delta) {
+int64 MutexedScalar::AddHelper(int64 delta) {
   if (mutex() != NULL) {
     ScopedMutex hold_lock(mutex());
     return AddLockHeld(delta);
@@ -96,7 +96,7 @@ void MutexedScalar::SetLockHeld(int64 new_value) {
   SetReturningPreviousValueLockHeld(new_value);
 }
 
-int64 MutexedScalar::AddLockHeld(int delta) {
+int64 MutexedScalar::AddLockHeld(int64 delta) {
   int64 value = GetLockHeld() + delta;
   SetLockHeld(value);
   return value;
