@@ -354,12 +354,11 @@ pagespeed.Mob.prototype.backgroundImageLoaded_ = function(img) {
  * Makes a map of every background image in the DOM to a 'img' elements.
  * after onload, the dimensions will be available, which is useful for
  * checking background image sizes.
- * @param {!Node} node
+ * @param {!Element} element
  * @private
  */
-pagespeed.Mob.prototype.collectBackgroundImages_ = function(node) {
-  var element = this.layout_.getMobilizeElement(node);
-  if (element == null) {
+pagespeed.Mob.prototype.collectBackgroundImages_ = function(element) {
+  if (this.layout_.dontTouch(element)) {
     return;
   }
   var image = pagespeed.MobUtil.findBackgroundImage(element);
@@ -375,7 +374,8 @@ pagespeed.Mob.prototype.collectBackgroundImages_ = function(node) {
     img.src = image;
   }
 
-  for (var child = element.firstChild; child; child = child.nextSibling) {
+  for (var child = element.firstElementChild; child;
+       child = child.nextElementSibling) {
     this.collectBackgroundImages_(child);
   }
 };
@@ -968,4 +968,13 @@ pagespeed.Mob.prototype.collectUrlsFromSubTree_ = function(
        childElement = childElement.nextElementSibling) {
     this.collectUrlsFromSubTree_(mobIframeString, childElement, urls);
   }
+};
+
+
+/**
+ * Returns the layout engine.
+ * @return {pagespeed.MobLayout}
+ */
+pagespeed.Mob.prototype.layout = function() {
+  return this.layout_;
 };

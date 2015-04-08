@@ -189,9 +189,8 @@ pagespeed.MobLayout.prototype.computeMaxWidth_ = function() {
  * Determines whether this element should not be touched.
  * @param {Element} element
  * @return {boolean}
- * @private
  */
-pagespeed.MobLayout.prototype.dontTouch_ = function(element) {
+pagespeed.MobLayout.prototype.dontTouch = function(element) {
   if (!element) {
     return true;
   }
@@ -204,25 +203,6 @@ pagespeed.MobLayout.prototype.dontTouch_ = function(element) {
           goog.dom.classlist.contains(element, 'psmob-header-bar') ||
           goog.dom.classlist.contains(element, 'psmob-header-spacer-div') ||
           goog.dom.classlist.contains(element, 'psmob-logo-span'));
-};
-
-
-/**
- * Returns an Element if this node is (a) an element and (b) is mobilizable
- * -- this is -- does not have an id or class, or tag-name that we've
- * excluded from mobilization.
- *
- * Returns null for non-element nodes and for disqualified elements.
- *
- * @param {!Node} node
- * @return {?Element}
- */
-pagespeed.MobLayout.prototype.getMobilizeElement = function(node) {
-  var element = pagespeed.MobUtil.castElement(node);
-  if (this.dontTouch_(element)) {
-    return null;
-  }
-  return element;
 };
 
 
@@ -241,11 +221,9 @@ pagespeed.MobLayout.prototype.getMobilizeElement = function(node) {
  */
 pagespeed.MobLayout.prototype.childElements_ = function(element) {
   var children = [];
-  for (var child = element.firstChild; child; child = child.nextSibling) {
-    var childElement = pagespeed.MobUtil.castElement(child);
-    if (childElement != null) {
-      children.push(child);
-    }
+  for (var child = element.firstElementChild; child;
+       child = child.nextElementSibling) {
+    children.push(child);
   }
   return children;
 };
@@ -264,10 +242,10 @@ pagespeed.MobLayout.prototype.childElements_ = function(element) {
  * @private
  */
 pagespeed.MobLayout.prototype.forEachMobilizableChild_ = function(element, fn) {
-  for (var child = element.firstChild; child; child = child.nextSibling) {
-    var childElement = this.getMobilizeElement(child);
-    if (childElement != null) {
-      fn.call(this, child);
+  for (var childElement = element.firstElementChild; childElement;
+       childElement = childElement.nextElementSibling) {
+    if (!this.dontTouch(childElement)) {
+      fn.call(this, childElement);
     }
   }
 };
@@ -300,7 +278,7 @@ pagespeed.MobLayout.prototype.isProbablyASprite_ = function(computedStyle) {
   if (pos == 'none') {
     return false;
   }
-  // A precisely positioned pixel-position probaby indicates a sprite.
+  // A precisely positioned pixel-position probably indicates a sprite.
   var pieces = pos.split(' ');
   if ((pieces.length == 2) &&
       (pagespeed.MobUtil.pixelValue(pieces[0]) != null) &&
@@ -434,7 +412,7 @@ pagespeed.MobLayout.prototype.resizeVerticallyAndReturnBottom_ =
     bottom = top + element.offsetHeight - 1;
   }
 
-  if (this.dontTouch_(element)) {
+  if (this.dontTouch(element)) {
     return bottom;
   }
   bottom = top - 1;
@@ -455,43 +433,41 @@ pagespeed.MobLayout.prototype.resizeVerticallyAndReturnBottom_ =
   var hasAbsoluteChildren = false;
   var childBottom;
 
-  for (var child = element.firstChild; child; child = child.nextSibling) {
-    var childElement = pagespeed.MobUtil.castElement(child);
-    if (childElement) {
-      var childComputedStyle = window.getComputedStyle(childElement);
-      if (childComputedStyle) {
-        var position = childComputedStyle.position;
-        // For some reason, the iframe holding the tweets on
-        // stevesouders.com comes up as 'absolute', but does not
-        // appear to behave that way.  And it is loaded asynchronously
-        // (XHR response???) so that it has a height of 0 at the time
-        // that we are doing our vertical resizes.  So our attempts
-        // to compute the proper size here are futile -- we get the
-        // wrong answer, and our only hope is to leave the element
-        // height as 'auto'.
-        //
-        //
-        // Note also that when inspecting the element in chrome dev tools
-        // the iframe does not have absolute positioning, so maybe both
-        // that and the height get adjusted in response to an event.
-        //
-        // TODO(jmarantz): try to wake up on DOM mutations and fix
-        // the layout.  A problem here is that if the parent div
-        // is manually sized by the site developer to incorporate
-        // the eventual size of this absolute child, we will shrink
-        // it here.
-        if ((position == 'absolute') &&
-            !pagespeed.MobUtil.isOffScreen(childComputedStyle) &&
-            (childComputedStyle.getPropertyValue('height') != '0px') &&
-            (childComputedStyle.getPropertyValue('visibility') != 'hidden')) {
-          hasAbsoluteChildren = true;
-        }
+  for (var childElement = element.firstElementChild; childElement;
+       childElement = childElement.nextElementSibling) {
+    var childComputedStyle = window.getComputedStyle(childElement);
+    if (childComputedStyle) {
+      var position = childComputedStyle.position;
+      // For some reason, the iframe holding the tweets on
+      // stevesouders.com comes up as 'absolute', but does not
+      // appear to behave that way.  And it is loaded asynchronously
+      // (XHR response???) so that it has a height of 0 at the time
+      // that we are doing our vertical resizes.  So our attempts
+      // to compute the proper size here are futile -- we get the
+      // wrong answer, and our only hope is to leave the element
+      // height as 'auto'.
+      //
+      //
+      // Note also that when inspecting the element in chrome dev tools
+      // the iframe does not have absolute positioning, so maybe both
+      // that and the height get adjusted in response to an event.
+      //
+      // TODO(jmarantz): try to wake up on DOM mutations and fix
+      // the layout.  A problem here is that if the parent div
+      // is manually sized by the site developer to incorporate
+      // the eventual size of this absolute child, we will shrink
+      // it here.
+      if ((position == 'absolute') &&
+          !pagespeed.MobUtil.isOffScreen(childComputedStyle) &&
+          (childComputedStyle.getPropertyValue('height') != '0px') &&
+          (childComputedStyle.getPropertyValue('visibility') != 'hidden')) {
+        hasAbsoluteChildren = true;
       }
-      childBottom = this.resizeVerticallyAndReturnBottom_(childElement, top);
-      if (childBottom != null) {
-        hasChildrenWithSizing = true;
-        bottom = Math.max(bottom, childBottom);
-      }
+    }
+    childBottom = this.resizeVerticallyAndReturnBottom_(childElement, top);
+    if (childBottom != null) {
+      hasChildrenWithSizing = true;
+      bottom = Math.max(bottom, childBottom);
     }
   }
 
@@ -519,7 +495,7 @@ pagespeed.MobLayout.prototype.resizeVerticallyAndReturnBottom_ =
     if (!hasChildrenWithSizing) {
       // Leaf node, such as text or an A tag.  The only time we should respect
       // the CSS sizing here is if it's a sized IMG tag.  Note that IFRAMes are
-      // already excluded by this.getMobilizeElement above.
+      // already excluded by this.dontTouch above.
       if ((tagName != goog.dom.TagName.IMG) && (height > 0) &&
           (element.style.backgroundSize == '')) {
         pagespeed.MobUtil.removeProperty(element, 'height');
@@ -645,11 +621,9 @@ pagespeed.MobLayout.prototype.countContainers_ = function(element) {
       (tagName == goog.dom.TagName.TABLE) || (tagName == goog.dom.TagName.UL)) {
     ++ret;
   }
-  for (var child = element.firstChild; child; child = child.nextSibling) {
-    var childElement = pagespeed.MobUtil.castElement(child);
-    if (childElement != null) {
-      ret += this.countContainers_(childElement);
-    }
+  for (var child = element.firstElementChild; child;
+       child = child.nextElementSibling) {
+    ret += this.countContainers_(child);
   }
   return ret;
 };
@@ -679,8 +653,9 @@ pagespeed.MobLayout.prototype.isDataTable_ = function(table) {
   // If there is more than one row and more than one column, we'll assume
   // it's tabular as well (might be wrong about this.  We'll return 'false'
   // from this routine if it looks tabular.
-  for (var tchild = table.firstChild; tchild; tchild = tchild.nextSibling) {
-    for (var tr = tchild.firstChild; tr; tr = tr.nextSibling) {
+  for (var tchild = table.firstElementChild; tchild;
+       tchild = tchild.nextElementSibling) {
+    for (var tr = tchild.firstElementChild; tr; tr = tr.nextElementSibling) {
       var tagName = tchild.nodeName.toUpperCase();
       if ((tagName == goog.dom.TagName.THEAD) ||
           (tagName == goog.dom.TagName.TFOOT)) {
@@ -688,7 +663,7 @@ pagespeed.MobLayout.prototype.isDataTable_ = function(table) {
         // that the structure matters.
         return true;
       }
-      for (var td = tr.firstChild; td; td = td.nextSibling) {
+      for (var td = tr.firstElementChild; td; td = td.nextElementSibling) {
         if (td.nodeName.toUpperCase() == goog.dom.TagName.TH) {
           return true;
         }
@@ -796,7 +771,7 @@ pagespeed.MobLayout.prototype.reorganizeTableQuirksMode_ =
  */
 pagespeed.MobLayout.prototype.reorganizeTableNoQuirksMode_ =
     function(table, maxWidth) {
-  var tnode, tchild, rnode, row, dnode, data, div;
+  var tchild, row, data, div;
 
   // Tables have this hierarchy:
   // <table>
@@ -816,26 +791,21 @@ pagespeed.MobLayout.prototype.reorganizeTableNoQuirksMode_ =
   var fullWidth = '100%';  //'' + this.maxWidth_ + 'px';
   pagespeed.MobUtil.removeProperty(table, 'width');
   pagespeed.MobUtil.setPropertyImportant(table, 'max-width', fullWidth);
-  for (tnode = table.firstChild; tnode; tnode = tnode.nextSibling) {
-    tchild = pagespeed.MobUtil.castElement(tnode);
-    if (tchild != null) {
-      pagespeed.MobUtil.removeProperty(tchild, 'width');
-      pagespeed.MobUtil.setPropertyImportant(tchild, 'max-width', fullWidth);
-      for (rnode = tchild.firstChild; rnode; rnode = rnode.nextSibling) {
-        row = pagespeed.MobUtil.castElement(rnode);
-        if ((row != null) &&
-            (row.nodeName.toUpperCase() == goog.dom.TagName.TR)) {
-          pagespeed.MobUtil.removeProperty(row, 'width');
-          pagespeed.MobUtil.setPropertyImportant(row, 'max-width', fullWidth);
-          for (dnode = row.firstChild; dnode; dnode = dnode.nextSibling) {
-            data = pagespeed.MobUtil.castElement(dnode);
-            if ((data != null) &&
-                (data.nodeName.toUpperCase() == goog.dom.TagName.TD)) {
-              pagespeed.MobUtil.setPropertyImportant(
-                  data, 'max-width', fullWidth);
-              pagespeed.MobUtil.setPropertyImportant(
-                  data, 'display', 'inline-block');
-            }
+  for (tchild = table.firstElementChild; tchild;
+       tchild = tchild.nextElementSibling) {
+    pagespeed.MobUtil.removeProperty(tchild, 'width');
+    pagespeed.MobUtil.setPropertyImportant(tchild, 'max-width', fullWidth);
+    for (row = tchild.firstElementChild; row; row = row.nextElementSibling) {
+      if (row.nodeName.toUpperCase() == goog.dom.TagName.TR) {
+        pagespeed.MobUtil.removeProperty(row, 'width');
+        pagespeed.MobUtil.setPropertyImportant(row, 'max-width', fullWidth);
+        for (data = row.firstElementChild; data;
+             data = data.nextElementSibling) {
+          if (data.nodeName.toUpperCase() == goog.dom.TagName.TD) {
+            pagespeed.MobUtil.setPropertyImportant(
+                data, 'max-width', fullWidth);
+            pagespeed.MobUtil.setPropertyImportant(
+                data, 'display', 'inline-block');
           }
         }
       }
@@ -1033,18 +1003,16 @@ pagespeed.MobLayout.prototype.reallocateWidthToTableData_ = function(element) {
   if (tdParent) {
     var tr = tdParent.parentNode;
     if (tr) {
-      var td, dnode, numTds = 0;
-      for (td = tr.firstChild; td; td = td.nextSibling) {
+      var td, numTds = 0;
+      for (td = tr.firstElementChild; td; td = td.nextElementSibling) {
         if (td.nodeName.toUpperCase() == goog.dom.TagName.TD) {
           ++numTds;
         }
       }
       if (numTds > 1) {
         var style = 'width:' + Math.round(100 / numTds) + '%;';
-        for (dnode = tr.firstChild; dnode; dnode = dnode.nextSibling) {
-          td = pagespeed.MobUtil.castElement(dnode);
-          if ((td != null) &&
-              (td.nodeName.toUpperCase() == goog.dom.TagName.TD)) {
+        for (td = tr.firstElementChild; td; td = td.nextElementSibling) {
+          if (td.nodeName.toUpperCase() == goog.dom.TagName.TD) {
             pagespeed.MobUtil.addStyles(td, style);
           }
         }
@@ -1095,9 +1063,9 @@ pagespeed.MobLayout.prototype.stripFloats_ = function(element) {
   var displayOverride;
   var marginBottom, previousChildHasNegativeBottomMargin = false;
 
-  for (child = element.firstChild; child; child = child.nextSibling) {
-    childElement = this.getMobilizeElement(child);
-    if (childElement != null) {
+  for (childElement = element.firstElementChild; childElement;
+       childElement = childElement.nextElementSibling) {
+    if (!this.dontTouch(childElement)) {
       var childStyle = window.getComputedStyle(childElement);
 
       // Clean up the children first, because they might pick up 'float'
@@ -1107,7 +1075,7 @@ pagespeed.MobLayout.prototype.stripFloats_ = function(element) {
       childPosition = this.stripFloats_(childElement);
       if ((childPosition == 'fixed') ||
           (childStyle == null) ||
-          (this.getMobilizeElement(childElement) == null)) {
+          this.dontTouch(childElement)) {
         // do nothing
       } else {
         if ((childPosition == 'absolute') &&
@@ -1115,7 +1083,6 @@ pagespeed.MobLayout.prototype.stripFloats_ = function(element) {
           pagespeed.MobUtil.setPropertyImportant(
               childElement, 'position', 'relative');
         }
-
         floatStyle = childStyle.getPropertyValue('float');
         var floatRight = (floatStyle == 'right');
         displayOverride = 'inline-block';
@@ -1233,16 +1200,16 @@ pagespeed.MobLayout.prototype.expandColumns_ = function(element) {
   }
 
   // Make an array of all interesting children and their computed styles.
-  var next, child, childElement;
+  var next, childElement;
   var children = [];
   var childComputedStyles = [];
-  for (child = element.firstChild; child; child = child.nextSibling) {
-    childElement = this.getMobilizeElement(child);
-    if (childElement != null) {
+  for (childElement = element.firstElementChild; childElement;
+       childElement = childElement.nextElementSibling) {
+    if (!this.dontTouch(childElement)) {
       var computedStyle = window.getComputedStyle(childElement);
       var childPosition = computedStyle.getPropertyValue('position');
       if ((childPosition == 'fixed') ||
-          (childPosition == 'absolute') || (child.offsetWidth == 0)) {
+          (childPosition == 'absolute') || (childElement.offsetWidth == 0)) {
         // do nothing
       } else {
         children.push(childElement);

@@ -194,7 +194,7 @@ pagespeed.MobTheme.installLogo = function(themeData) {
  * @return {boolean}
  */
 pagespeed.MobTheme.precomputedThemeAvailable = function() {
-  return Boolean(psMobBackgroundColor && psMobForegroundColor &&
+  return Boolean(window.psMobBackgroundColor && window.psMobForegroundColor &&
                  !window.psMobPrecompute);
 };
 
@@ -212,7 +212,7 @@ pagespeed.MobTheme.extractTheme = function(mobLogo, doneCallback) {
     var mobTheme = new pagespeed.MobTheme(doneCallback);
     mobLogo.run(goog.bind(psMob.setLogoCandidatesAndShow, psMob, mobTheme),
                 5 /* numCandidates */);
-  } else if (psMobBackgroundColor && psMobForegroundColor &&
+  } else if (window.psMobBackgroundColor && window.psMobForegroundColor &&
              !window.psMobPrecompute) {
     var logo = null;
     if (psMobLogoUrl) {
@@ -221,7 +221,7 @@ pagespeed.MobTheme.extractTheme = function(mobLogo, doneCallback) {
       logo = new pagespeed.MobLogo.LogoRecord(1 /* metric */, img);
     }
     var themeData = pagespeed.MobTheme.createThemeData(
-        logo, psMobBackgroundColor, psMobForegroundColor);
+        logo, window.psMobBackgroundColor, window.psMobForegroundColor);
     pagespeed.MobTheme.installLogo(themeData);
     doneCallback(themeData);
   } else {
