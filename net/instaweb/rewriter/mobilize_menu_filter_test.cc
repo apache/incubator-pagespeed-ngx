@@ -481,7 +481,7 @@ TEST_F(MobilizeMenuFilterTest, ActualMenu1) {
 
 const char kActualMenu2[] =
     "<body>"
-    "<nav data=mobile-role=navigational>"
+    "<nav data-mobile-role=navigational>"
     "&nbsp;|&nbsp;<a href='l'>Llama</a>"
     "&nbsp;|&nbsp;<a href='a'>Dromedary</a>"
     "&nbsp;|&nbsp;<a href='c'>Call</a>"
@@ -541,7 +541,10 @@ const char kActualMenu2[] =
 TEST_F(MobilizeMenuFilterTest, ActualMenu2) {
   DoNotCleanup();
   ValidateNoChanges("Actual menu 2", kActualMenu2);
-  EXPECT_STREQ("( | (Homes, h) "
+  EXPECT_STREQ("(Llama, l) "
+               "(Dromedary, a) "
+               "(Call, c) "
+               "( | (Homes, h) "
                    "(Dromedary, a) "
                    "(Save, s) "
                    "(Flight, f) "
@@ -553,11 +556,12 @@ TEST_F(MobilizeMenuFilterTest, ActualMenu2) {
                "(Dromedaries | (Dromedary Saddle, m-10) (Brown, m-18)) "
                "(Enter | (Llama Dromedary®, c-4) (Salads®, c-1)) "
                "( | (Mark Your Dromedary, s-6))", MenuString());
-  EXPECT_STREQ("(Homes, h) "
+  EXPECT_STREQ("(Llama, l) "
                "(Dromedary, a) "
+               "(Call, c) "
+               "(Homes, h) "
                "(Save, s) "
                "(Flight, f) "
-               "(Call&nbsp;, c) "
                "(Giraffe Dromedary | "
                    "(Dromedary Saddle, s-1) "
                    "(Dromedaries Salads, s-4) "
@@ -752,8 +756,8 @@ TEST_F(MobilizeMenuFilterTest, ActualMenu3) {
           "(Apportionment, /pk8h) "
           "(Gorilla, /b6ah) "
           "(Cotton wool, /p/h/)) "
-      "(, /p/h/ | "
-          "(Verdant plains, /p/c/)) "
+      "(, /p/h/) "
+      "( | (Verdant plains, /p/c/)) "
       "( | (Verdant homes, /h/)) "
       "( | (Verdant mountains, /twr/)) "
       "( | (Verdant coast, /pc/))",

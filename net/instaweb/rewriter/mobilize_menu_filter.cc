@@ -40,6 +40,7 @@ MobilizeMenuFilter::MobilizeMenuFilter(RewriteDriver* rewrite_driver)
     : MobilizeFilterBase(rewrite_driver),
       outer_nav_element_(NULL),
       menu_item_trailing_whitespace_(false),
+      is_next_menu_item_new_(true),
       cleanup_menu_(true) {
   Statistics* stats = rewrite_driver->statistics();
   num_menus_computed_ = stats->GetVariable(kMenusComputed);
@@ -69,6 +70,7 @@ void MobilizeMenuFilter::EndDocumentImpl() {
   outer_nav_element_ = NULL;
   menu_item_text_.clear();
   menu_item_trailing_whitespace_ = false;
+  is_next_menu_item_new_ = true;
   menu_stack_.clear();
 }
 
@@ -86,6 +88,7 @@ void MobilizeMenuFilter::StartNonSkipElement(
       StartDeepMenu();
       break;
     case HtmlName::kLi:
+      is_next_menu_item_new_ = true;
       StartMenuItem(NULL);
       break;
     case HtmlName::kA: {
@@ -103,10 +106,12 @@ void MobilizeMenuFilter::EndNonSkipElement(HtmlElement* element) {
   }
   switch (element->keyword()) {
     case HtmlName::kLi:
-    case HtmlName::kA: {
+      is_next_menu_item_new_ = true;
       EndMenuItem();
       break;
-    }
+    case HtmlName::kA:
+      EndMenuItem();
+      break;
     case HtmlName::kUl:
       EndDeepMenu();
       break;
@@ -175,6 +180,7 @@ void MobilizeMenuFilter::EndMenuCommon() {
   CHECK(!menu_stack_.empty());
   menu_stack_.pop_back();
   ClearMenuText();
+  is_next_menu_item_new_ = true;
 }
 
 void MobilizeMenuFilter::EndTopMenu() {
@@ -191,7 +197,7 @@ MobilizeMenuItem* MobilizeMenuFilter::EnsureMenuItem() {
   MobilizeMenu* current_menu = menu_stack_.back();
   int sz = current_menu->entries_size();
   MobilizeMenuItem* entry;
-  if (sz == 0) {
+  if (is_next_menu_item_new_ || sz == 0) {
     entry = current_menu->add_entries();
   } else {
     entry = current_menu->mutable_entries(sz - 1);
@@ -199,6 +205,7 @@ MobilizeMenuItem* MobilizeMenuFilter::EnsureMenuItem() {
       entry = current_menu->add_entries();
     }
   }
+  is_next_menu_item_new_ = false;
   return entry;
 }
 

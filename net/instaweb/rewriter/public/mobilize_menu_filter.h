@@ -115,6 +115,7 @@ class MobilizeMenuFilter : public MobilizeFilterBase {
   scoped_ptr<MobilizeMenu> menu_;
   GoogleString menu_item_text_;
   bool menu_item_trailing_whitespace_;
+  bool is_next_menu_item_new_;
   // The following points to elements of menu_.
   std::vector<MobilizeMenu*> menu_stack_;
 
