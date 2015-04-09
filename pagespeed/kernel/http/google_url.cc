@@ -19,6 +19,7 @@
 
 #include "pagespeed/kernel/http/google_url.h"
 
+#include <algorithm>                    // for std::find
 #include <cstddef>
 #include <string>
 
@@ -616,12 +617,48 @@ GoogleString GoogleUrl::Escape(const StringPiece& unescaped) {
     char c = *p;
     if (IsAsciiAlphaNumeric(c) || (c == '.') || (c == '~') || (c == '_') ||
         (c == '-')) {
+      // Do not escape unreserved chars.
       escaped.push_back(c);
     } else if (c == ' ') {
+      // Space can be escaped as '+' in query params.
       escaped.push_back('+');
     } else {
+      // Escape both reserved chars (ex: '/') and uncategorized chars (ex: ' ').
       StrAppend(&escaped, StringPrintf(
           "%%%02x", static_cast<unsigned int>(static_cast<unsigned char>(c))));
+    }
+  }
+  return escaped;
+}
+
+// From RFC 3986 Section 2.3:
+//      reserved    = gen-delims / sub-delims
+//
+//      gen-delims  = ":" / "/" / "?" / "#" / "[" / "]" / "@"
+//
+//      sub-delims  = "!" / "$" / "&" / "'" / "(" / ")"
+//                  / "*" / "+" / "," / ";" / "="
+const char GoogleUrl::kReservedChars[] = ":/?#[]@!$&'()*+,;=";
+
+bool GoogleUrl::IsReservedChar(char c) {
+  const char* start = kReservedChars;
+  const char* end   = kReservedChars + STATIC_STRLEN(kReservedChars);
+  return (std::find(start, end, c) != end);
+}
+
+GoogleString GoogleUrl::Sanitize(StringPiece url) {
+  GoogleString escaped;
+  for (const char* p = url.data(), *e = p + url.size(); p < e; ++p) {
+    char c = *p;
+    if (IsAsciiAlphaNumeric(c) || (c == '.') || (c == '~') || (c == '_') ||
+        (c == '-') || (c == '%') || IsReservedChar(c)) {
+      // Do not escape unreserved nor reserved chars (ex: '/', ':', '#', '?')
+      // nor '%' (to avoid double escaping).
+      escaped.push_back(c);
+    } else {
+      // Escape uncategorized chars (ex: ' ', '^', '"')
+      StrAppend(&escaped, StringPrintf(
+          "%%%02X", static_cast<unsigned int>(static_cast<unsigned char>(c))));
     }
   }
   return escaped;

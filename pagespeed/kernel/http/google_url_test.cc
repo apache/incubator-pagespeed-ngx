@@ -21,9 +21,11 @@
 #include "pagespeed/kernel/http/google_url.h"
 
 #include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/null_mutex.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/util/simple_random.h"
 
 namespace {
 
@@ -604,6 +606,48 @@ TEST_F(GoogleUrlTest, Escape) {
   TestEscapeUnescape(kBadQueryString);
   // Ensure that we correctly re-encode/decode an already-encoded string.
   TestEscapeUnescape(GoogleUrl::Escape(kBadQueryString));
+}
+
+TEST_F(GoogleUrlTest, Sanitize) {
+  // Test URL-looking example.
+  EXPECT_STREQ(
+      "http://example.com/messy,file:name%20with%25lots%20of%22punctuation",
+      GoogleUrl::Sanitize(
+          "http://example.com/messy,file:name with%25lots%20of\"punctuation"));
+
+  // Note: We currently do not escape % -> %25. This is because the purpose of
+  // GoogleUrl::Sanitize() is to guarantee that the result does not contain
+  // certain chars (like ' ', '"', etc.) not to make sure that we have the
+  // canonical escaping.
+  EXPECT_STREQ("%", GoogleUrl::Sanitize("%"));
+
+  // Note: We do not unescape %67%64%62%67 -> gdbg even though these are
+  // unreserved chars, so we could. As noted above, the purpose of this
+  // function is to sanitize, not to produce a canonical version.
+  EXPECT_STREQ("%67%64%62%67", GoogleUrl::Sanitize("%67%64%62%67"));
+
+  // Test all special chars.
+  const char symbols[] = "~`!@#$%^&*()-_=+[{]}\\|;:'\",<.>/?";
+  const char escaped_symbols[] =
+      "~%60!@#$%%5E&*()-_=+[%7B]%7D%5C%7C;:'%22,%3C.%3E/?";
+  EXPECT_STREQ(escaped_symbols, GoogleUrl::Sanitize(symbols));
+  // Test that escaping is idempotent.
+  EXPECT_STREQ(escaped_symbols, GoogleUrl::Sanitize(escaped_symbols));
+
+  // Test idempotence for all chars.
+  for (int c = 0; c < 0x80; ++c) {
+    GoogleString s;
+    s.push_back(static_cast<char>(c));
+    GoogleString escaped_s = GoogleUrl::Sanitize(s);
+
+    EXPECT_STREQ(escaped_s, GoogleUrl::Sanitize(escaped_s));
+  }
+
+  // Test idempotence on a large random example.
+  SimpleRandom random_generator(new NullMutex);
+  GoogleString random = random_generator.GenerateHighEntropyString(1000);
+  GoogleString escaped_random = GoogleUrl::Sanitize(random);
+  EXPECT_STREQ(escaped_random, GoogleUrl::Sanitize(escaped_random));
 }
 
 }  // namespace net_instaweb

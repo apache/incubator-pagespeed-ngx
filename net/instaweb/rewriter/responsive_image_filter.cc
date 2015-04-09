@@ -33,6 +33,7 @@
 #include "pagespeed/kernel/html/html_element.h"
 #include "pagespeed/kernel/html/html_name.h"
 #include "pagespeed/kernel/http/data_url.h"
+#include "pagespeed/kernel/http/google_url.h"
 
 namespace net_instaweb {
 
@@ -251,7 +252,7 @@ void ResponsiveImageSecondFilter::CombineHiResImages(
   GoogleString srcset_value;
   // Keep track of last candidate's URL. If next candidate has same URL,
   // don't include it in the srcset.
-  StringPiece last_src = x1_src;
+  GoogleString last_src = x1_src;
   // Keep track of actual final dimensions of last candidate. If next candidate
   // has same actual dimensions, we don't include it in the srcset.
   ImageDim last_dims = ActualDims(orig_element);
@@ -297,15 +298,33 @@ void ResponsiveImageSecondFilter::CombineHiResImages(
                                      orig_element);
       }
     } else {
-      GoogleString resolution_string =
-          StringPrintf("%.16g", candidates[i].resolution);
       if (added_hi_res) {
         StrAppend(&srcset_value, ",");
       }
-      // TODO(sligocki): Escape URLs appropriately? For example, we may need
-      // to escape commas. Which are used in both Data URLs and Pagespeed
-      // rewritten URLs as escape characters.
-      StrAppend(&srcset_value, src, " ", resolution_string, "x");
+      // Note: Escaping and parsing rules for srcsets are very strange.
+      // Specifically, URLs in srcsets are not allowed to start nor end
+      // with a comma. Commas are allowed in the middle of a URL and do not
+      // need to be escaped. In fact, they are reserved chars in the URL spec
+      // (rfc 3986 2.2) and so escaping them as %2C would potentially change
+      // the meaning of the URL.
+      // See: http://www.w3.org/html/wg/drafts/html/master/semantics.html#attr-img-srcset
+      //
+      // Note: PageSpeed resized images will never begin nor end with a comma.
+      StringPiece src_sp(src);
+      if (src_sp.ends_with(",") || src_sp.starts_with(",")) {
+        driver()->InsertDebugComment(StrCat(
+            "ResponsiveImageFilter: Not adding srcset because one of the "
+            "candidate URLs starts or ends with a comma: ", src_sp),
+                                     orig_element);
+        return;
+      }
+      // However it appears that all spaces do need to be percent escaped.
+      // Otherwise srcset parsing would be ambiguous.
+      GoogleString src_escaped = GoogleUrl::Sanitize(src);
+
+      GoogleString resolution_string =
+          StringPrintf("%.16g", candidates[i].resolution);
+      StrAppend(&srcset_value, src_escaped, " ", resolution_string, "x");
 
       last_src = src;
       last_dims = dims;

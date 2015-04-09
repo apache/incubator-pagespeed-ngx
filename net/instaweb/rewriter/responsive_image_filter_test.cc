@@ -339,7 +339,56 @@ TEST_F(ResponsiveImageFilterTest, DataUrl) {
   ValidateNoChanges("data_url", input_html);
 }
 
-TEST_F(ResponsiveImageFilterTest, CommaInUrl) {  // + Spaces in URL.
+TEST_F(ResponsiveImageFilterTest, CommasInUrls) {
+  options()->EnableFilter(RewriteOptions::kResponsiveImages);
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  rewrite_driver()->AddFilters();
+
+  AddFileToMockFetcher(StrCat(kTestDomain, "comma,middle"), kPuzzleJpgFile,
+                       kContentTypeJpeg, 100);
+  AddFileToMockFetcher(StrCat(kTestDomain, "comma,end,"), kPuzzleJpgFile,
+                       kContentTypeJpeg, 100);
+  AddFileToMockFetcher(StrCat(kTestDomain, ",comma,begin"), kPuzzleJpgFile,
+                       kContentTypeJpeg, 100);
+
+  // srcset added. Commas are allowed in the middle of URLs in srcsets.
+  ValidateExpected(
+      "comma_middle",
+      "<img src='comma,middle' width=512 height=383>",
+      StrCat("<img src='", EncodeImage(512, 383, "comma,middle", "0", "jpg"),
+             "' width=512 height=383 srcset=\"comma,middle 2x\">"));
+
+  // No srcset added. Commas are not allowed at end of URLs in srcset.
+  ValidateExpected(
+      "comma_end",
+      "<img src='comma,end,' width=512 height=383>",
+      StrCat("<img src='", EncodeImage(512, 383, "comma,end,", "0", "jpg"),
+             "' width=512 height=383>"));
+
+  // No srcset added. Commas are not allowed at beginning of URLs in srcset.
+  ValidateExpected(
+      "comma_begin",
+      "<img src=',comma,begin' width=512 height=383>",
+      StrCat("<img src='", EncodeImage(512, 383, ",comma,begin", "0", "jpg"),
+             "' width=512 height=383>"));
+}
+
+TEST_F(ResponsiveImageFilterTest, SpacesInUrls) {
+  options()->EnableFilter(RewriteOptions::kResponsiveImages);
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  rewrite_driver()->AddFilters();
+
+  AddFileToMockFetcher(StrCat(kTestDomain, "space%20%20in%20%0C%20URL"),
+                       kPuzzleJpgFile, kContentTypeJpeg, 100);
+
+  // All whitespace chars should be escaped in srcset.
+  ValidateExpected(
+      "comma_middle",
+      "<img src='space \t in \n\r\f URL' width=512 height=383>",
+      StrCat("<img src='",
+             EncodeImage(512, 383, "space%20%20in%20%0C%20URL", "0", "jpg"),
+             "' width=512 height=383 "
+             "srcset=\"space%20%09%20in%20%0A%0D%0C%20URL 2x\">"));
 }
 
 TEST_F(ResponsiveImageFilterTest, NoTransform) {

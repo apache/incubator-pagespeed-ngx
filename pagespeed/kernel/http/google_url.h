@@ -220,13 +220,30 @@ class GoogleUrl {
     return UnescapeHelper(escaped_url, false);
   }
 
-  // Escapes a string according to the rules in
-  // http://en.wikipedia.org/wiki/Query_string#URL_encoding
-  static GoogleString Escape(const StringPiece& unescaped_url);
+  // Escapes a string for use in a URL query param.
+  //
+  // This function escapes reserved chars (ex: '/', ':', '?', '&', etc.).
+  //
+  // TODO(sligocki): Rename to EscapeQueryParam to clarify that this escaping
+  // is only valid for query params (Spaces cannot be escaped to '+' in other
+  // parts of a URL).
+  static GoogleString Escape(const StringPiece& unescaped);
+
+  // Produces a sanitary, escaped version of a URL. The URL may already have
+  // some mix of escaped and non-escaped sections. This function is idempotent
+  // and can safely be used on any URL without changing the meaning according
+  // to RFC 3986.
+  //
+  // Result will not contain: 0x00-0x1F SPC "<>\^`{|} 0x7F-0xFF
+  // Result may contain: a-z A-Z 0-9 -._~:/?#[]@!$&'()*+,;=%
+  static GoogleString Sanitize(StringPiece url);
 
  private:
   // Returned by *Position methods when that position is not well-defined.
   static const size_t npos;
+
+  static const char kReservedChars[];
+  static bool IsReservedChar(char c);
 
   explicit GoogleUrl(const GURL& gurl);
   void Init();
