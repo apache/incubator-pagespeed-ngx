@@ -969,12 +969,3 @@ pagespeed.Mob.prototype.collectUrlsFromSubTree_ = function(
     this.collectUrlsFromSubTree_(mobIframeString, childElement, urls);
   }
 };
-
-
-/**
- * Returns the layout engine.
- * @return {pagespeed.MobLayout}
- */
-pagespeed.Mob.prototype.layout = function() {
-  return this.layout_;
-};
