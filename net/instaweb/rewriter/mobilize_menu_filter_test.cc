@@ -451,9 +451,7 @@ const char kActualMenu1[] =
 TEST_F(MobilizeMenuFilterTest, ActualMenu1) {
   DoNotCleanup();
   ValidateNoChanges("Actual menu 1", kActualMenu1);
-  // TODO(jmaessen): Extract hierarchical menu with url for Camel Camel Call and
-  // Paperclip Paperclip Call.  Also deal with the repetition across elements
-  // somehow.
+  // TODO(jmaessen): Deal with the repetition across elements somehow.
   EXPECT_STREQ("(, / | "
                    "(Camel Camel Call, /de/dec | "
                        "(Dromedary, /a) "
@@ -640,11 +638,11 @@ const char kActualMenu3[] =
     "  </ul></li>"
     "</ul>"
     "</div>"
-    // This menu title ends up far too long because we retain all the text.
-    // If we kept only the initial span we'd be fine.
+    // This menu title ends up far too long if we retain all the text.
+    // We keep only the initial span.
     "<div data-mobile-role=navigational>"
     "    <span>Termination Question</span>"
-    "    <p>A really long paragraph with lots of text.</p>"
+    "    <p>A really long paragraph with <it>lots</it> of text.</p>"
     "  <ul>"
     "    <li><a href='/al'>Short question?</a></li>"
     // Note that we keep this link (2 deep) and discard the duplicate near the
@@ -740,7 +738,7 @@ TEST_F(MobilizeMenuFilterTest, ActualMenu3) {
               "(Save Personal, /p/s/) "
               "(Concave Personal, /p/c/lr/) "
               "(Call Personal, /p/c/))) "
-      "(Termination Question A really long paragraph with lots of text. | "
+      "(Termination Question | "
           "(Short question?, /al) "
           "(Long question?, /d) "
           "(Even longer question?, /f)) "
@@ -789,7 +787,7 @@ TEST_F(MobilizeMenuFilterTest, ActualMenu3) {
           "(Save Personal, /p/s/) "
           "(Concave Personal, /p/c/lr/) "
           "(Mirrors, /p/m/)) "
-      "(Termination Question A really long paragraph with lots of text. | "
+      "(Termination Question | "
           "(Short question?, /al) "
           "(Long question?, /d) "
           "(Even longer question?, /f)) "

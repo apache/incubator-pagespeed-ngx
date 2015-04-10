@@ -32,6 +32,12 @@
 
 namespace net_instaweb {
 
+namespace {
+
+const int kPreferredMaxEntrySize = 60;
+
+}  // namespace
+
 const char MobilizeMenuFilter::kMenusComputed[] =
     "mobilization_menus_computed";
 
@@ -40,6 +46,7 @@ MobilizeMenuFilter::MobilizeMenuFilter(RewriteDriver* rewrite_driver)
     : MobilizeFilterBase(rewrite_driver),
       outer_nav_element_(NULL),
       menu_item_trailing_whitespace_(false),
+      menu_item_initial_segment_length_(0),
       is_next_menu_item_new_(true),
       cleanup_menu_(true) {
   Statistics* stats = rewrite_driver->statistics();
@@ -70,6 +77,7 @@ void MobilizeMenuFilter::EndDocumentImpl() {
   outer_nav_element_ = NULL;
   menu_item_text_.clear();
   menu_item_trailing_whitespace_ = false;
+  menu_item_initial_segment_length_ = 0;
   is_next_menu_item_new_ = true;
   menu_stack_.clear();
 }
@@ -129,6 +137,7 @@ void MobilizeMenuFilter::Characters(HtmlCharactersNode* characters) {
     return;
   }
   StringPiece contents(characters->contents());
+
   // Insert a space before trimmed contents if:
   //   1) There is already menu_item_text_.
   //   2) That text ended with whitespace or this text starts with whitespace.
@@ -136,16 +145,47 @@ void MobilizeMenuFilter::Characters(HtmlCharactersNode* characters) {
   if (TrimLeadingWhitespace(&contents) && !menu_item_text_.empty()) {
     menu_item_trailing_whitespace_ = true;
   }
-  if (!contents.empty()) {
-    StringPiece lead(menu_item_trailing_whitespace_ ? " " : "");
-    menu_item_trailing_whitespace_ = TrimTrailingWhitespace(&contents);
-    StrAppend(&menu_item_text_, lead, contents);
+  if (contents.empty()) {
+    return;
   }
+  StringPiece lead(menu_item_trailing_whitespace_ ? " " : "");
+  if (menu_item_trailing_whitespace_ &&
+      menu_item_initial_segment_length_ == 0 &&
+      menu_item_text_.size() > 3) {
+    menu_item_initial_segment_length_ = menu_item_text_.size();
+  }
+  menu_item_trailing_whitespace_ = TrimTrailingWhitespace(&contents);
+  if (menu_item_text_.size() > kPreferredMaxEntrySize &&
+      menu_item_initial_segment_length_ > 0) {
+    // Drop the characters and any subsequent content to keep titles short.
+    return;
+  }
+  StrAppend(&menu_item_text_, lead, contents);
+}
+
+void MobilizeMenuFilter::SetEntryName(MobilizeMenuItem* entry) {
+  if (!menu_item_text_.empty()) {
+    if (menu_item_text_.size() > kPreferredMaxEntrySize &&
+        menu_item_initial_segment_length_ > 0) {
+      // If we got here, the menu text is awfully long.  There's an initial
+      // portion that was in a distinguished DOM element and is shorter
+      // (menu_item_initial_segment_length_).  Use that.
+      driver()->InfoHere("Dropping long menu text %s...",
+                         menu_item_text_.c_str() +
+                         menu_item_initial_segment_length_);
+      menu_item_text_.resize(menu_item_initial_segment_length_);
+    }
+    std::swap(*entry->mutable_name(), menu_item_text_);
+    menu_item_text_.clear();
+  }
+  menu_item_trailing_whitespace_ = false;
+  menu_item_initial_segment_length_ = 0;
 }
 
 void MobilizeMenuFilter::StartTopMenu() {
   DCHECK(menu_item_text_.empty());
   DCHECK(!menu_item_trailing_whitespace_);
+  DCHECK_EQ(0, menu_item_initial_segment_length_);
   DCHECK(menu_stack_.empty());
   menu_stack_.push_back(menu_.get());
 }
@@ -153,15 +193,12 @@ void MobilizeMenuFilter::StartTopMenu() {
 void MobilizeMenuFilter::StartDeepMenu() {
   CHECK(!menu_stack_.empty());
   MobilizeMenuItem* entry = EnsureMenuItem();
-  if (!menu_item_text_.empty()) {
-    if (entry->has_name() || entry->has_url()) {
-      entry = menu_stack_.back()->add_entries();
-    }
-    entry->set_name(menu_item_text_);
+  if (!menu_item_text_.empty() &&
+      (entry->has_name() || entry->has_url())) {
+    entry = menu_stack_.back()->add_entries();
   }
+  SetEntryName(entry);
   menu_stack_.push_back(entry->mutable_submenu());
-  menu_item_text_.clear();
-  menu_item_trailing_whitespace_ = false;
 }
 
 // Clear and discard the collected text in menu_item_text_, complaining if there
@@ -173,6 +210,7 @@ void MobilizeMenuFilter::ClearMenuText() {
   }
   menu_item_text_.clear();
   menu_item_trailing_whitespace_ = false;
+  menu_item_initial_segment_length_ = 0;
 }
 
 // Don't call this except from End[Top,Deep]Menu
@@ -227,16 +265,11 @@ void MobilizeMenuFilter::EndMenuItem() {
   CHECK_LT(0, current_menu->entries_size());
   MobilizeMenuItem* entry =
       current_menu->mutable_entries(current_menu->entries_size() - 1);
-  if (menu_item_text_.empty()) {
-    // Do nothing.  This happens often when we have <li><a> </a></li>.
-  } else if (entry->has_name()) {
-    driver()->InfoHere("Menu item %s with trailing text %s",
-                       entry->name().c_str(), menu_item_text_.c_str());
+  if (entry->has_name() && !menu_item_text_.empty()) {
+    ClearMenuText();
   } else {
-    entry->set_name(menu_item_text_);
+    SetEntryName(entry);
   }
-  menu_item_text_.clear();
-  menu_item_trailing_whitespace_ = false;
 }
 
 namespace {

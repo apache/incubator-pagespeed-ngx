@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_MOBILIZE_MENU_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_MOBILIZE_MENU_FILTER_H_
 
+#include <cstddef>
 #include <map>
 #include <vector>
 
@@ -101,6 +102,7 @@ class MobilizeMenuFilter : public MobilizeFilterBase {
   static void ClearDuplicateEntries(
       int level, MobilizeMenu* menu, UrlLevelMap* url_level);
 
+  void SetEntryName(MobilizeMenuItem* entry);
   void StartTopMenu();
   void StartDeepMenu();
   void ClearMenuText();
@@ -114,7 +116,12 @@ class MobilizeMenuFilter : public MobilizeFilterBase {
   HtmlElement* outer_nav_element_;
   scoped_ptr<MobilizeMenu> menu_;
   GoogleString menu_item_text_;
+  // Whether menu_item_text_ was followed by whitespace.
   bool menu_item_trailing_whitespace_;
+  // Length of the first chunk of menu_item_text_ found in the DOM, up to first
+  // whitespace between DOM elements.  This will be used as the menu_item_text_
+  // if the menu_item_text_ itself proves too long.
+  size_t menu_item_initial_segment_length_;
   bool is_next_menu_item_new_;
   // The following points to elements of menu_.
   std::vector<MobilizeMenu*> menu_stack_;
