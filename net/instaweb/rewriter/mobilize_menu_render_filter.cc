@@ -61,7 +61,7 @@ class MobilizeMenuRenderFilter::MenuComputation
   virtual void SetupFilters(RewriteDriver* child_driver) {
     child_driver->AppendOwnedPreRenderFilter(new AddIdsFilter(child_driver));
     child_driver->AppendOwnedPreRenderFilter(
-        new MobilizeLabelFilter(child_driver));
+        new MobilizeLabelFilter(true /* is_menu_subfetch */, child_driver));
     menu_filter_ = new MobilizeMenuFilter(child_driver);
     child_driver->AppendOwnedPreRenderFilter(menu_filter_);
   }
@@ -157,13 +157,12 @@ void MobilizeMenuRenderFilter::ConstructMenu() {
   if (menu_ != NULL && menu_->entries_size() > 0) {
     DCHECK(MobilizeMenuFilter::IsMenuOk(*menu_));
     HtmlElement* nav = driver()->NewElement(NULL, HtmlName::kNav);
-    // TODO(jud): Make this an id rather than a class.
-    driver()->AddAttribute(nav, HtmlName::kClass, "psmob-nav-panel");
+    driver()->AddAttribute(nav, HtmlName::kId, "psmob-nav-panel");
     InsertNodeAtBodyEnd(nav);
     HtmlElement* ul = driver()->NewElement(nav, HtmlName::kUl);
     driver()->AddAttribute(ul, HtmlName::kClass, "open");
     driver()->AppendChild(nav, ul);
-    ConstructMenuWithin(1, "psmob-nav", *menu_, ul);
+    ConstructMenuWithin(1, "psmob-nav-panel", *menu_, ul);
     num_menus_added_->Add(1);
   } else {
     driver()->message_handler()->Message(

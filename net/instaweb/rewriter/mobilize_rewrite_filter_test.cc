@@ -149,9 +149,23 @@ class MobilizeRewriteFilterTest : public RewriteTestBase {
 
   GoogleString Spacer() const {
     return StrCat(
-        "<header id=\"ps-header\" class=\"psmob-header-bar\"></header>"
-        "<div id=\"ps-spacer\" class=\"psmob-header-spacer-div\"></div>"
-        "<script>", MobilizeRewriteFilter::kSetSpacerHeight, "</script>");
+        "<header id=\"psmob-header-bar\"></header>"
+        "<div id=\"psmob-spacer\"></div>"
+        "<script>",
+        MobilizeRewriteFilter::kSetSpacerHeight, "</script>");
+  }
+
+  GoogleString Scrim() const {
+    return
+        "<div id=\"ps-progress-scrim\" class=\"psProgressScrim\">"
+        "<a href=\"javascript:psRemoveProgressBar();\""
+        " id=\"ps-progress-remove\" id=\"ps-progress-show-log\">"
+        "Remove Progress Bar (doesn't stop mobilization)</a><br>"
+        "<a href=\"javascript:psSetDebugMode();\">"
+        "Show Debug Log In Progress Bar</a>"
+        "<div class=\"psProgressBar\">"
+        "<span id=\"ps-progress-span\" class=\"psProgressSpan\"></span></div>"
+        "<pre id=\"ps-progress-log\" class=\"psProgressLog\"/></div>";
   }
 
   scoped_ptr<MobilizeRewriteFilter> filter_;
@@ -530,14 +544,18 @@ class MobilizeRewriteEndToEndTest : public MobilizeRewriteFilterTest {
     options()->set_mob_conversion_id(kConversionId);
     options()->set_mob_phone_conversion_label(kPhoneConversionLabel);
     options()->set_mob_beacon_url(kMobBeaconUrl);
-    options()->set_mob_layout(true);
+    options()->set_mob_layout(false);
     options()->set_mob_nav(true);
     options()->set_mob_nav_server_side(true);
-    AddFilter(RewriteOptions::kMobilize);
   }
 
   virtual bool AddBody() const { return false; }
   virtual bool AddHtmlTags() const { return false; }
+
+  void Layout(bool layout) {
+    options()->set_mob_layout(layout);
+    AddFilter(RewriteOptions::kMobilize);
+  }
 
   void ValidateWithUA(StringPiece test_name, StringPiece user_agent,
                       StringPiece input, StringPiece expected) {
@@ -555,9 +573,47 @@ class MobilizeRewriteEndToEndTest : public MobilizeRewriteFilterTest {
   DISALLOW_COPY_AND_ASSIGN(MobilizeRewriteEndToEndTest);
 };
 
-TEST_F(MobilizeRewriteEndToEndTest, FullPage) {
-  // This test will break when the CSS is changed. Update the expected output
+TEST_F(MobilizeRewriteEndToEndTest, FullPageLayout) {
+  // These tests will break when the CSS is changed. Update the expected output
   // accordingly.
+  Layout(true);
+  GoogleString original_buffer;
+  GoogleString original_filename =
+      StrCat(GTestSrcDir(), kTestDataDir, kOriginal);
+  ASSERT_TRUE(filesystem_.ReadFile(original_filename.c_str(), &original_buffer,
+                                   message_handler()));
+  GoogleString rewritten_buffer;
+  GoogleString rewritten_filename =
+      StrCat(GTestSrcDir(), kTestDataDir, kRewritten);
+  ASSERT_TRUE(filesystem_.ReadFile(rewritten_filename.c_str(),
+                                   &rewritten_buffer, message_handler()));
+  GlobalReplaceSubstring("@@SPACER@@",
+                         StrCat(Spacer(), Scrim()), &rewritten_buffer);
+  GlobalReplaceSubstring("@@HEAD_SCRIPT_LOAD@@", HeadAndViewport(true),
+                         &rewritten_buffer);
+  GlobalReplaceSubstring("@@HEAD_STYLES@@", Styles(true), &rewritten_buffer);
+  GlobalReplaceSubstring("@@TRAILING_SCRIPT_LOADS@@", ScriptsAtEndOfBody(),
+                         &rewritten_buffer);
+  ValidateWithUA("EndToEndMobileLayout",
+                 UserAgentMatcherTestBase::kAndroidChrome21UserAgent,
+                 original_buffer, rewritten_buffer);
+}
+
+TEST_F(MobilizeRewriteEndToEndTest, NonMobileLayout) {
+  // Don't mobilize on a non-mobile browser.
+  Layout(true);
+  GoogleString original_buffer;
+  GoogleString original_filename =
+      StrCat(GTestSrcDir(), kTestDataDir, kOriginal);
+  ASSERT_TRUE(filesystem_.ReadFile(original_filename.c_str(), &original_buffer,
+                                   message_handler()));
+  ValidateWithUA("EndToEndNonMobileLayout",
+                 UserAgentMatcherTestBase::kChrome37UserAgent,
+                 original_buffer, original_buffer);
+}
+
+TEST_F(MobilizeRewriteEndToEndTest, FullPage) {
+  Layout(false);
   GoogleString original_buffer;
   GoogleString original_filename =
       StrCat(GTestSrcDir(), kTestDataDir, kOriginal);
@@ -569,9 +625,9 @@ TEST_F(MobilizeRewriteEndToEndTest, FullPage) {
   ASSERT_TRUE(filesystem_.ReadFile(rewritten_filename.c_str(),
                                    &rewritten_buffer, message_handler()));
   GlobalReplaceSubstring("@@SPACER@@", Spacer(), &rewritten_buffer);
-  GlobalReplaceSubstring("@@HEAD_SCRIPT_LOAD@@", HeadAndViewport(true),
+  GlobalReplaceSubstring("@@HEAD_SCRIPT_LOAD@@", HeadAndViewport(false),
                          &rewritten_buffer);
-  GlobalReplaceSubstring("@@HEAD_STYLES@@", Styles(true), &rewritten_buffer);
+  GlobalReplaceSubstring("@@HEAD_STYLES@@", Styles(false), &rewritten_buffer);
   GlobalReplaceSubstring("@@TRAILING_SCRIPT_LOADS@@", ScriptsAtEndOfBody(),
                          &rewritten_buffer);
   ValidateWithUA("EndToEndMobile",
@@ -581,6 +637,7 @@ TEST_F(MobilizeRewriteEndToEndTest, FullPage) {
 
 TEST_F(MobilizeRewriteEndToEndTest, NonMobile) {
   // Don't mobilize on a non-mobile browser.
+  Layout(false);
   GoogleString original_buffer;
   GoogleString original_filename =
       StrCat(GTestSrcDir(), kTestDataDir, kOriginal);

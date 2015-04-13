@@ -25,7 +25,7 @@
 #include "net/instaweb/rewriter/public/add_ids_filter.h"
 #include "net/instaweb/rewriter/public/decision_tree.h"
 #include "net/instaweb/rewriter/public/mobilize_decision_trees.h"
-#include "net/instaweb/rewriter/public/request_properties.h"
+#include "net/instaweb/rewriter/public/mobilize_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "pagespeed/kernel/base/escaping.h"
@@ -479,8 +479,10 @@ GoogleString ElementSample::ToString(bool readable, HtmlParse* parser) {
   return sample_string;
 }
 
-MobilizeLabelFilter::MobilizeLabelFilter(RewriteDriver* driver)
-    : MobilizeFilterBase(driver) {
+MobilizeLabelFilter::MobilizeLabelFilter(
+    bool is_menu_subfetch, RewriteDriver* driver)
+    : MobilizeFilterBase(driver),
+      is_menu_subfetch_(is_menu_subfetch) {
   Init();
   Statistics* stats = driver->statistics();
   pages_labeled_ = stats->GetVariable(kPagesLabeled);
@@ -752,14 +754,15 @@ void MobilizeLabelFilter::EndDocumentImpl() {
     DebugLabel();
   }
   SanityCheckEndOfDocumentState();
-  if (driver()->options()->mob_always() ||
-      driver()->request_properties()->IsMobile() ||
-      driver()->DebugMode()) {
+  if (is_menu_subfetch_ ||
+      MobilizeRewriteFilter::IsApplicableFor(driver())) {
     InjectLabelJavascript();
   } else {
     // TODO(jmaessen): Consider disabling this filter *and* add_ids if we don't
     // need them.  But note that we are likely to want to instrument desktop
     // page views once we start to beacon back information for mobilizing pages.
+    // The goal here is to prime the pcache during desktop page views, but we're
+    // not there yet.
     NonMobileUnlabel();
   }
   if (were_roles_added_) {
@@ -1135,10 +1138,7 @@ void MobilizeLabelFilter::InjectLabelJavascript() {
   GoogleString role_id_list_js[MobileRole::kInvalid];
   int n = samples_.size();
   bool any_roles_listed = false;
-  const RewriteOptions* options = driver()->options();
-  bool annotate_dom =
-      options->mob_nav_server_side() || options->mob_iframe() ||
-      driver()->DebugMode();
+  bool annotate_dom = is_menu_subfetch_ || driver()->DebugMode();
   for (int i = 1; i < n; ++i) {
     ElementSample* sample = samples_[i];
     MobileRole::Level role = sample->role;

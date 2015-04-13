@@ -89,7 +89,7 @@ class MobilizeLabelFilter : public MobilizeFilterBase {
   static const char kDivsUnlabeled[];
   static const char kAmbiguousRoleLabels[];
 
-  explicit MobilizeLabelFilter(RewriteDriver* driver);
+  MobilizeLabelFilter(bool is_menu_subfetch, RewriteDriver* driver);
   virtual ~MobilizeLabelFilter();
 
   static void InitStats(Statistics* statistics);
@@ -122,6 +122,8 @@ class MobilizeLabelFilter : public MobilizeFilterBase {
   void UnlabelledDiv(ElementSample* sample);
   void InjectLabelJavascript();
   void NonMobileUnlabel();
+
+  bool is_menu_subfetch_;
 
   int relevant_tag_depth_;
   int max_relevant_tag_depth_;

@@ -1187,7 +1187,8 @@ void RewriteDriver::AddPreRenderFilters() {
   // the inliner to work on the small compiled mobilize_xhr.js.
   if (rewrite_options->Enabled(RewriteOptions::kMobilize)) {
     if (rewrite_options->MobUseLabelFilter()) {
-      AppendOwnedPreRenderFilter(new MobilizeLabelFilter(this));
+      AppendOwnedPreRenderFilter(
+          new MobilizeLabelFilter(false /* not menu request */, this));
     }
     if (rewrite_options->MobRenderServerSideMenus()) {
       AppendOwnedPreRenderFilter(new MobilizeMenuRenderFilter(this));

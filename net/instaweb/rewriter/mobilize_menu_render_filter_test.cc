@@ -106,19 +106,19 @@ class MobilizeMenuRenderFilterTest : public RewriteTestBase {
 
 TEST_F(MobilizeMenuRenderFilterTest, BasicOperation) {
   const char kMenu[] =
-    "<nav class=\"psmob-nav-panel\"><ul class=\"open\">\n"
-    "  <li id=\"psmob-nav-0\"><div>Submenu1</div><ul>\n"
-    "    <li id=\"psmob-nav-0-0\"><a href=\"/a\">A</a></li>\n"
-    "    <li id=\"psmob-nav-0-1\"><a href=\"/b\">B</a></li>\n"
-    "    <li id=\"psmob-nav-0-2\"><a href=\"/c\">C</a></li>\n"
-    "    <li id=\"psmob-nav-0-3\"><a href=\"/submenu1\">Submenu1</a>"
-        "</li></ul></li>\n"
-    "  <li id=\"psmob-nav-1\"><div>Submenu2</div><ul>\n"
-    "    <li id=\"psmob-nav-1-0\"><a href=\"/d\">D</a></li>\n"
-    "    <li id=\"psmob-nav-1-1\"><a href=\"/e\">E</a></li>\n"
-    "    <li id=\"psmob-nav-1-2\"><a href=\"/f\">F</a></li>\n"
-    "    <li id=\"psmob-nav-1-3\"><a href=\"/submenu2\">Submenu2</a>"
-        "</li></ul></li></ul></nav>";
+      "<nav id=\"psmob-nav-panel\"><ul class=\"open\">\n"
+      "  <li id=\"psmob-nav-panel-0\"><div>Submenu1</div><ul>\n"
+      "    <li id=\"psmob-nav-panel-0-0\"><a href=\"/a\">A</a></li>\n"
+      "    <li id=\"psmob-nav-panel-0-1\"><a href=\"/b\">B</a></li>\n"
+      "    <li id=\"psmob-nav-panel-0-2\"><a href=\"/c\">C</a></li>\n"
+      "    <li id=\"psmob-nav-panel-0-3\"><a href=\"/submenu1\">Submenu1</a>"
+      "</li></ul></li>\n"
+      "  <li id=\"psmob-nav-panel-1\"><div>Submenu2</div><ul>\n"
+      "    <li id=\"psmob-nav-panel-1-0\"><a href=\"/d\">D</a></li>\n"
+      "    <li id=\"psmob-nav-panel-1-1\"><a href=\"/e\">E</a></li>\n"
+      "    <li id=\"psmob-nav-panel-1-2\"><a href=\"/f\">F</a></li>\n"
+      "    <li id=\"psmob-nav-panel-1-3\"><a href=\"/submenu2\">Submenu2</a>"
+      "</li></ul></li></ul></nav>";
   // Computes the menu.
   ValidateExpected("page", kContent, StrCat(kContent, kMenu));
   EXPECT_EQ(1, menus_computed_->Get());

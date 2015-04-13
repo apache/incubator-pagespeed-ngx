@@ -2610,12 +2610,12 @@ class RewriteOptions {
   }
   // Should labeling be run in the request flow?
   bool MobUseLabelFilter() const {
-    // We use the label filter if we're doing mobilization extraction on the
-    // client OR we're running in debug mode (and want to see what the menu
-    // render filter saw).  But we don't run it in iframe mode, ever, because
-    // that doesn't see the page we'd be extracting mobilization data from.
-    return (Enabled(kMobilize) && !mob_iframe() &&
-            (!MobRenderServerSideMenus() || Enabled(kDebug)));
+    // We use the label filter if we're doing mobilization.  But we don't run
+    // it in iframe mode, ever, because that doesn't see the page we'd be
+    // extracting mobilization data from.  We used to not run it if we were
+    // doing nav server side, and should consider doing that again -- but if
+    // something goes wrong we can't then fall back to client-side navigation.
+    return (Enabled(kMobilize) && !mob_iframe());
   }
   bool mob_static() const { return mob_static_.value(); }
   void set_mob_static(bool x) { set_option(x, &mob_static_); }

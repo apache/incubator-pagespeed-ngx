@@ -62,11 +62,11 @@ const char MobilizeRewriteFilter::kDeletedElements[] =
 // minified by Closure Compiler when debug is off.
 const char MobilizeRewriteFilter::kSetSpacerHeight[] =
     "\n(function() {\n"  // Hide temps in a function scope
-    "  var spacer = document.getElementById('ps-spacer');\n"
-    "  var navbar = document.getElementById('ps-header');\n"
+    "  var spacer = document.getElementById('psmob-spacer');\n"
+    "  var navbar = document.getElementById('psmob-header-bar');\n"
     "  var docElt = document.documentElement;\n"
     "  var scale = window.innerWidth / docElt.clientWidth;\n"
-    // See mobilize.css, .psmob-header-bar sets height to 10%, so divide by 10.
+    // See mobilize.css, #psmob-header-bar sets height to 10%, so divide by 10.
     "  var headerBarHeight = \n"
     "    Math.round(Math.max(docElt.clientHeight, docElt.clientWidth) * .1);\n"
     "  var newHeight = Math.round(headerBarHeight * scale) + 'px';\n"
@@ -384,13 +384,10 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
       // style it using mob_theme_data when that's available.
       HtmlElement* header = driver()->NewElement(element, HtmlName::kHeader);
       driver()->InsertNodeAfterCurrent(header);
-      driver()->AddAttribute(header, HtmlName::kId, "ps-header");
-      driver()->AddAttribute(header, HtmlName::kClass, "psmob-header-bar");
+      driver()->AddAttribute(header, HtmlName::kId, "psmob-header-bar");
       HtmlElement* spacer = driver()->NewElement(element, HtmlName::kDiv);
       driver()->InsertNodeAfterCurrent(spacer);
-      driver()->AddAttribute(spacer, HtmlName::kId, "ps-spacer");
-      driver()->AddAttribute(spacer, HtmlName::kClass,
-                             "psmob-header-spacer-div");
+      driver()->AddAttribute(spacer, HtmlName::kId, "psmob-spacer");
       driver()->InsertScriptAfterCurrent(kSetSpacerHeight, false);
     }
 
