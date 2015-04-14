@@ -326,14 +326,13 @@ pagespeed.MobNav.prototype.canEnlargeNav_ = function(element) {
  */
 pagespeed.MobNav.prototype.findNavSections_ = function() {
   var elements = [];
-  var navPanels = document.getElementsByClassName('psmob-nav-panel');
-  if (navPanels.length > 0) {
-    this.navPanel_ = navPanels[0];
+  this.navPanel_ =
+      document.getElementById(pagespeed.MobUtil.ElementId.NAV_PANEL);
+  if (this.navPanel_) {
     // Make sure the navPanel is in the body of the document; we've seen it
     // moved elsewhere by JS on the page.
     document.body.appendChild(this.navPanel_);
-  }
-  if (!this.navPanel_ && window.pagespeedNavigationalIds) {
+  } else if (window.pagespeedNavigationalIds) {
     var n = window.pagespeedNavigationalIds.length;
     var parents = {};
     for (var i = 0; i < n; i++) {
@@ -396,9 +395,9 @@ pagespeed.MobNav.prototype.findNavSections_ = function() {
  * @param {boolean} fixedPositionOnly
  * @private
  */
-pagespeed.MobNav.prototype.findElementsToOffsetHelper_ =
-    function(element, fixedPositionOnly) {
-  if (element.className != 'ps-progress-scrim' &&
+pagespeed.MobNav.prototype.findElementsToOffsetHelper_ = function(
+    element, fixedPositionOnly) {
+  if (element.className != pagespeed.MobUtil.ElementId.PROGRESS_SCRIM &&
       !goog.string.startsWith(element.className, 'psmob-') &&
       !goog.string.startsWith(element.id, 'psmob-')) {
     var style = window.getComputedStyle(element);
@@ -442,9 +441,14 @@ pagespeed.MobNav.prototype.findElementsToOffset_ = function() {
  * @private
  */
 pagespeed.MobNav.prototype.clampZIndex_ = function() {
-  var elements = document.querySelectorAll(
-      '* :not(#ps-progress-scrim) :not(#ps-header) :not(.psmob-nav-panel)');
+  var elements = document.querySelectorAll('*');
   for (var i = 0, element; element = elements[i]; i++) {
+    var id = element.id;
+    if (id && (id == pagespeed.MobUtil.ElementId.PROGRESS_SCRIM ||
+               id == pagespeed.MobUtil.ElementId.HEADER_BAR ||
+               id == pagespeed.MobUtil.ElementId.NAV_PANEL)) {
+      continue;
+    }
     var style = window.getComputedStyle(element);
     // Set to 999997 because the click detector div is set to 999998 and the
     // menu bar and nav panel are set to 999999. This function runs before those
@@ -698,10 +702,11 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
   // The header bar is position:absolute, but in C++ we create an empty div
   // at the top to move the rest of the elements down.  We need to access
   // on zooming to adjust its size.
-  this.spacerDiv_ = document.getElementById('ps-spacer');
+  this.spacerDiv_ = document.getElementById(pagespeed.MobUtil.ElementId.SPACER);
   document.body.appendChild(this.spacerDiv_);
   document.body.insertBefore(this.spacerDiv_, document.body.childNodes[0]);
-  this.headerBar_ = document.getElementById('ps-header');
+  this.headerBar_ =
+      document.getElementById(pagespeed.MobUtil.ElementId.HEADER_BAR);
   document.body.appendChild(this.headerBar_);
   document.body.insertBefore(this.headerBar_, this.spacerDiv_);
   // Set the unscaled header bar height. We set it to 10% of the largest screen
@@ -811,11 +816,11 @@ pagespeed.MobNav.openMap_ = function() {
  */
 pagespeed.MobNav.prototype.addMapNavigation_ = function(color) {
   var mapImage = document.createElement(goog.dom.TagName.IMG);
-  mapImage.id = 'psmob-map-image';
+  mapImage.id = pagespeed.MobUtil.ElementId.MAP_IMAGE;
   mapImage.src = pagespeed.MobUtil.synthesizeImage(
       pagespeed.MobNav.MAP_BUTTON, color);
   this.mapButton_ = document.createElement(goog.dom.TagName.A);
-  this.mapButton_.id = 'psmob-map-button';
+  this.mapButton_.id = pagespeed.MobUtil.ElementId.MAP_BUTTON;
   this.mapButton_.href = '#';
   this.mapButton_.addEventListener(goog.events.EventType.CLICK, function(e) {
     e.preventDefault();
@@ -848,12 +853,16 @@ pagespeed.MobNav.prototype.addThemeColor_ = function(themeData) {
   var color = this.useDetectedThemeColor_ ?
       pagespeed.MobUtil.colorNumbersToString(themeData.menuFrontColor) :
       'white';
-  var css =
-      '.psmob-header-bar { background-color: ' + backgroundColor + '; }\n' +
-      '.psmob-nav-panel { background-color: ' + color + '; }\n' +
-      '.psmob-nav-panel > ul li { color: ' + backgroundColor + '; }\n' +
-      '.psmob-nav-panel > ul li a { color: ' + backgroundColor + '; }\n' +
-      '.psmob-nav-panel > ul li div { color: ' + backgroundColor + '; }\n';
+  var css = '#' + pagespeed.MobUtil.ElementId.HEADER_BAR +
+            ' { background-color: ' + backgroundColor + '; }\n' +
+            '#' + pagespeed.MobUtil.ElementId.NAV_PANEL +
+            ' { background-color: ' + color + '; }\n' +
+            '#' + pagespeed.MobUtil.ElementId.NAV_PANEL + ' li { color: ' +
+            backgroundColor + '; }\n' +
+            '#' + pagespeed.MobUtil.ElementId.NAV_PANEL + ' a { color: ' +
+            backgroundColor + '; }\n' +
+            '#' + pagespeed.MobUtil.ElementId.NAV_PANEL + ' div { color: ' +
+            backgroundColor + '; }\n';
   this.styleTag_ = document.createElement(goog.dom.TagName.STYLE);
   this.styleTag_.type = 'text/css';
   this.styleTag_.appendChild(document.createTextNode(css));
@@ -946,7 +955,7 @@ pagespeed.MobNav.prototype.cleanupNavPanel_ = function() {
 
   // Get the logo src so that we can remove duplicates of it that show up in the
   // menu bar.
-  var logoImg = document.getElementById('psmob-logo-image');
+  var logoImg = document.getElementById(pagespeed.MobUtil.ElementId.LOGO_IMAGE);
   var logoSrc = logoImg ? logoImg.src : '';
 
   for (var i = 0, node; node = nodes[i]; i++) {
@@ -985,8 +994,8 @@ pagespeed.MobNav.prototype.cleanupNavPanel_ = function() {
   }
 
   var maxImageHeight = 40;
-  var images =
-      this.navPanel_.querySelectorAll('img:not(.psmob-menu-expand-icon)');
+  var images = this.navPanel_.querySelectorAll(
+      'img:not(.' + pagespeed.MobUtil.ElementClass.MENU_EXPAND_ICON + ')');
   for (var i = 0, img; img = images[i]; ++i) {
     // Avoid blowing up an image over double it's natural height.
     var height = Math.min(img.naturalHeight * 2, maxImageHeight);
@@ -1024,7 +1033,7 @@ pagespeed.MobNav.prototype.cleanupNavPanel_ = function() {
  */
 pagespeed.MobNav.prototype.addClickDetectorDiv_ = function() {
   this.clickDetectorDiv_ = document.createElement(goog.dom.TagName.DIV);
-  this.clickDetectorDiv_.id = 'psmob-click-detector-div';
+  this.clickDetectorDiv_.id = pagespeed.MobUtil.ElementId.CLICK_DETECTOR_DIV;
   document.body.insertBefore(this.clickDetectorDiv_, this.navPanel_);
 
   this.clickDetectorDiv_.addEventListener(
@@ -1045,7 +1054,7 @@ pagespeed.MobNav.prototype.constructNavPanel_ = function() {
   // Create the nav panel element and insert immediatly after the header bar.
   this.navPanel_ = document.createElement(goog.dom.TagName.NAV);
   document.body.insertBefore(this.navPanel_, this.headerBar_.nextSibling);
-  goog.dom.classlist.add(this.navPanel_, 'psmob-nav-panel');
+  this.navPanel_.id = pagespeed.MobUtil.ElementId.NAV_PANEL;
   var navTopUl = document.createElement(goog.dom.TagName.UL);
   this.navPanel_.appendChild(navTopUl);
   // By default, UL elements in the nav panel have display:none, which makes
@@ -1121,7 +1130,8 @@ pagespeed.MobNav.prototype.addSubmenuArrows_ = function(themeData) {
     var submenu = submenuTitleDivs[i];
     submenu.insertBefore(icon, submenu.firstChild);
     icon.setAttribute('src', arrowIcon);
-    goog.dom.classlist.add(icon, 'psmob-menu-expand-icon');
+    goog.dom.classlist.add(icon,
+                           pagespeed.MobUtil.ElementClass.MENU_EXPAND_ICON);
   }
 };
 
@@ -1217,17 +1227,17 @@ pagespeed.MobNav.prototype.addMenuButtonEvents_ = function() {
  * @private
  */
 pagespeed.MobNav.prototype.addNavButtonEvents_ = function() {
-  var navUl = document.querySelector('nav.psmob-nav-panel > ul');
+  var navUl = this.navPanel_.firstChild;
   navUl.addEventListener(goog.events.EventType.CLICK, function(e) {
     // We want to handle clicks on the LI that contains a nested UL. So if
     // somebody clicks on the expand icon in the LI, make sure we handle that
     // by popping up to the parent node.
-    var target = goog.dom.isElement(e.target) &&
-        goog.dom.classlist.contains(
-            /** @type {Element} */ (e.target),
-            'psmob-menu-expand-icon') ?
-                e.target.parentNode :
-                e.target;
+    var target = (goog.dom.isElement(e.target) &&
+                  goog.dom.classlist.contains(
+                      /** @type {Element} */ (e.target),
+                      pagespeed.MobUtil.ElementClass.MENU_EXPAND_ICON)) ?
+                     e.target.parentNode :
+                     e.target;
     if (target.nodeName.toUpperCase() == goog.dom.TagName.DIV) {
       // A click was registered on the div that has the hierarchical menu text
       // and icon. Open up the UL, which should be the next element.
@@ -1300,7 +1310,8 @@ pagespeed.MobNav.prototype.updateHeaderBar = function(mobWindow, themeData) {
     var backColor =
         pagespeed.MobUtil.colorNumbersToString(themeData.menuBackColor);
 
-    var logoElement = mobWindow.document.getElementById('psmob-logo-image');
+    var logoElement = mobWindow.document.getElementById(
+        pagespeed.MobUtil.ElementId.LOGO_IMAGE);
     if (logoElement) {
       logoElement.parentNode.replaceChild(themeData.logoElement, logoElement);
       //logoElement.src = logoImage;
@@ -1311,24 +1322,15 @@ pagespeed.MobNav.prototype.updateHeaderBar = function(mobWindow, themeData) {
       //logoElement.style.backgroundColor = backColor;
     }
 
-    /*
-     * TODO(huibao): this code appears dead, because no one sets the
-     * an ID of psmob-phone-image.
-     * var callButton = mobWindow.document.getElementById('psmob-phone-image');
-     * if (callButton) {
-     *   callButton.src = this.synthesizeImage(pagespeed.MobNav.CALL_BUTTON,
-     *                                         themeData.menuFrontColor);
-     * }
-     */
-
-    var mapButton = mobWindow.document.getElementById('psmob-map-image');
+    var mapButton = mobWindow.document.getElementById(
+        pagespeed.MobUtil.ElementId.MAP_IMAGE);
     if (mapButton) {
       mapButton.src = pagespeed.MobUtil.synthesizeImage(
           pagespeed.MobNav.MAP_BUTTON, themeData.menuFrontColor);
     }
 
-    var hamburgerLines =
-        mobWindow.document.getElementsByClassName('psmob-hamburger-line');
+    var hamburgerLines = mobWindow.document.getElementsByClassName(
+        pagespeed.MobUtil.ElementClass.HAMBURGER_LINE);
     for (var i = 0, line; line = hamburgerLines[i]; ++i) {
       line.style.backgroundColor = frontColor;
     }
@@ -1350,7 +1352,7 @@ pagespeed.MobNav.prototype.chooserShowCandidates = function(candidates) {
   }
 
   var table = document.createElement(goog.dom.TagName.TABLE);
-  table.className = 'psmob-logo-chooser-table';
+  table.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_TABLE;
 
   var thead = document.createElement(goog.dom.TagName.THEAD);
   table.appendChild(thead);
@@ -1361,7 +1363,7 @@ pagespeed.MobNav.prototype.chooserShowCandidates = function(candidates) {
     trow.appendChild(td);
     return td;
   }
-  trow.className = 'psmob-logo-chooser-column-header';
+  trow.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_COLUMN_HEADER;
   addData().textContent = 'Logo';
   addData().textContent = 'Foreground';
   addData().textContent = '';
@@ -1371,32 +1373,32 @@ pagespeed.MobNav.prototype.chooserShowCandidates = function(candidates) {
   table.appendChild(tbody);
   for (var i = 0; i < candidates.length; ++i) {
     trow = document.createElement(goog.dom.TagName.TR);
-    trow.className = 'psmob-logo-chooser-choice';
+    trow.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_CHOICE;
     tbody.appendChild(trow);
     var candidate = candidates[i];
     var themeData = pagespeed.MobTheme.synthesizeLogoSpan(
         candidate.logoRecord, candidate.background, candidate.foreground);
     addData().appendChild(themeData.anchorOrSpan);
     var img = themeData.logoElement;
-    img.className = 'psmob-logo-chooser-image';
+    img.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_IMAGE;
     img.onclick = goog.bind(this.chooserSetLogo_, this, candidate);
 
     var foreground = addData();
     foreground.style.backgroundColor =
         goog.color.rgbArrayToHex(candidate.foreground);
-    foreground.className = 'psmob-logo-chooser-color';
+    foreground.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_COLOR;
 
     var swapTd = addData();
-    swapTd.className = 'psmob-logo-chooser-color';
+    swapTd.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_COLOR;
     var swapImg = document.createElement(goog.dom.TagName.IMG);
-    swapImg.className = 'psmob-logo-chooser-swap';
+    swapImg.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_SWAP;
     swapImg.src = pagespeed.MobNav.SWAP_ICON_;
     swapTd.appendChild(swapImg);
 
     var background = addData();
     background.style.backgroundColor =
         goog.color.rgbArrayToHex(candidate.background);
-    background.className = 'psmob-logo-chooser-color';
+    background.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_SWAP;
 
     swapTd.onclick = goog.bind(this.chooserSwapColors_, this, candidate,
         foreground, background);
@@ -1454,7 +1456,8 @@ pagespeed.MobNav.prototype.chooserSetLogo_ = function(candidate) {
   this.addThemeColor_(themeData);
 
   var configSnippet = document.createElement(goog.dom.TagName.PRE);
-  configSnippet.className = 'psmob-logo-chooser-config-fragment';
+  configSnippet.className =
+      pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_CONFIG_FRAGMENT;
 
   // TODO(jmarantz): Generate nginx syntax as needed.
   configSnippet.textContent =

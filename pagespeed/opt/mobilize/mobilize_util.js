@@ -35,6 +35,48 @@ goog.require('goog.uri.utils');
 
 
 /**
+ * The ids of elements used for mobilization.
+ * @enum {string}
+ */
+pagespeed.MobUtil.ElementId = {
+  CLICK_DETECTOR_DIV: 'psmob-click-detector-div',
+  CONFIG_IFRAME: 'ps-hidden-iframe',
+  NAV_PANEL: 'psmob-nav-panel',
+  HEADER_BAR: 'psmob-header-bar',
+  LOGO_SPAN: 'psmob-logo-span',
+  LOGO_IMAGE: 'psmob-logo-image',
+  MAP_BUTTON: 'psmob-map-button',
+  MAP_IMAGE: 'psmob-map-image',
+  MENU_BUTTON: 'psmob-menu-button',
+  PHONE_DIALER: 'psmob-phone-dialer',
+  PROGRESS_LOG: 'ps-progress-log',
+  PROGRESS_REMOVE: 'ps-progress-remove',
+  PROGRESS_SCRIM: 'ps-progress-scrim',
+  PROGRESS_SHOW_LOG: 'ps-progress-show-log',
+  PROGRESS_SPAN: 'ps-progress-span',
+  SPACER: 'psmob-spacer'
+};
+
+
+/**
+ * The classes of elements used for mobilization.
+ * @enum {string}
+ */
+pagespeed.MobUtil.ElementClass = {
+  HAMBURGER_DIV: 'psmob-hamburger-div',
+  HAMBURGER_LINE: 'psmob-hamburger-line',
+  LOGO_CHOOSER_CHOICE: 'psmob-logo-chooser-choice',
+  LOGO_CHOOSER_CONFIG_FRAGMENT: 'psmob-logo-chooser-config-fragment',
+  LOGO_CHOOSER_COLOR: 'psmob-logo-chooser-color',
+  LOGO_CHOOSER_SWAP: 'psmob-logo-chooser-swap',
+  LOGO_CHOOSER_COLUMN_HEADER: 'psmob-logo-chooser-column-header',
+  LOGO_CHOOSER_IMAGE: 'psmob-logo-chooser-image',
+  LOGO_CHOOSER_TABLE: 'psmob-logo-chooser-table',
+  MENU_EXPAND_ICON: 'psmob-menu-expand-icon'
+};
+
+
+/**
  * Ascii code for '0'
  * @private {number}
  */

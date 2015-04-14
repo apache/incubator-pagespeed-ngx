@@ -140,7 +140,7 @@ pagespeed.Mob = function() {
    */
   this.layout_ = new pagespeed.MobLayout(this);
 
-  this.layout_.addDontTouchId(pagespeed.Mob.PROGRESS_SCRIM_ID_);
+  this.layout_.addDontTouchId(pagespeed.MobUtil.ElementId.PROGRESS_SCRIM);
 
   /**
    * Number of URLs to process. This property is used only when the query
@@ -195,49 +195,7 @@ pagespeed.Mob = function() {
  * HTML attribute to save the visibility state of the body.
  * @private @const {string}
  */
-pagespeed.Mob.PROGRESS_SAVE_VISIBLITY_ = 'ps-save-visibility';
-
-
-/**
- * HTML ID of the scrim element.
- * @private @const {string}
- */
-pagespeed.Mob.PROGRESS_SCRIM_ID_ = 'ps-progress-scrim';
-
-
-/**
- * HTML ID of the button to remove the progress bar.
- * @private @const {string}
- */
-pagespeed.Mob.PROGRESS_REMOVE_ID_ = 'ps-progress-remove';
-
-
-/**
- * HTML ID of the progress log div.
- * @private @const {string}
- */
-pagespeed.Mob.PROGRESS_LOG_ID_ = 'ps-progress-log';
-
-
-/**
- * HTML ID of the progress bar.
- * @private @const {string}
- */
-pagespeed.Mob.PROGRESS_SPAN_ID_ = 'ps-progress-span';
-
-
-/**
- * HTML ID of the button to show the mobilization error log.
- * @private @const {string}
- */
-pagespeed.Mob.PROGRESS_SHOW_LOG_ID_ = 'ps-progress-show-log';
-
-
-/**
- * HTML ID of the hidden iframe which is used for site-wide processing.
- * @private @const {string}
- */
-pagespeed.Mob.CONFIG_IFRAME_ID_ = 'ps-hidden-iframe';
+pagespeed.Mob.PROGRESS_SAVE_VISIBLITY_ = 'data-ps-save-visibility';
 
 
 /**
@@ -319,7 +277,7 @@ pagespeed.Mob.prototype.themeComplete_ = function(themeData) {
       this.mobNav_.updateHeaderBar(this.masterWindow_(), themeData);
     } else {
       var iframe = document.createElement(goog.dom.TagName.IFRAME);
-      iframe.id = pagespeed.Mob.CONFIG_IFRAME_ID_;
+      iframe.id = pagespeed.MobUtil.ElementId.CONFIG_IFRAME;
       iframe.hidden = true;
       document.body.appendChild(iframe);
     }
@@ -481,8 +439,8 @@ pagespeed.Mob.prototype.maybeRunLayout = function() {
       this.layout_.computeAllSizingAndResynthesize();
     }
     if (this.debugMode_) {
-      var progressRemoveAnchor = document.getElementById(
-          pagespeed.Mob.PROGRESS_REMOVE_ID_);
+      var progressRemoveAnchor =
+          document.getElementById(pagespeed.MobUtil.ElementId.PROGRESS_REMOVE);
       if (progressRemoveAnchor) {
         progressRemoveAnchor.textContent =
             'Remove Progress Bar and show mobilized site';
@@ -538,13 +496,14 @@ pagespeed.Mob.prototype.addExtraWorkForDom = function() {
  */
 pagespeed.Mob.prototype.setDebugMode = function(debug) {
   this.debugMode_ = debug;
-  var log = document.getElementById(pagespeed.Mob.PROGRESS_LOG_ID_);
+  var log = document.getElementById(pagespeed.MobUtil.ElementId.PROGRESS_LOG);
   if (log) {
     log.style.color = debug ? '#333' : 'white';
   }
 
   if (debug) {
-    var show_log = document.getElementById(pagespeed.Mob.PROGRESS_SHOW_LOG_ID_);
+    var show_log =
+        document.getElementById(pagespeed.MobUtil.ElementId.PROGRESS_SHOW_LOG);
     if (show_log) {
       show_log.style.display = 'none';
     }
@@ -594,7 +553,8 @@ pagespeed.Mob.prototype.updateProgressBar = function(unitsDone, currentOp) {
     }
   }
   if (percent != this.prevPercentage_) {
-    var span = document.getElementById(pagespeed.Mob.PROGRESS_SPAN_ID_);
+    var span =
+        document.getElementById(pagespeed.MobUtil.ElementId.PROGRESS_SPAN);
     if (span) {
       span.style.width = percent + '%';
     }
@@ -603,7 +563,7 @@ pagespeed.Mob.prototype.updateProgressBar = function(unitsDone, currentOp) {
   var elapsedMs = Date.now() - this.startTimeMs_;
   var msg = '' + percent + '% ' + elapsedMs + 'ms: ' + currentOp;
   pagespeed.MobUtil.consoleLog(msg);
-  var log = document.getElementById(pagespeed.Mob.PROGRESS_LOG_ID_);
+  var log = document.getElementById(pagespeed.MobUtil.ElementId.PROGRESS_LOG);
   if (log) {
     log.textContent += msg + '\n';
   }
@@ -614,7 +574,8 @@ pagespeed.Mob.prototype.updateProgressBar = function(unitsDone, currentOp) {
  * Removes the progress bar from the screen, if it was present.
  */
 pagespeed.Mob.prototype.removeProgressBar = function() {
-  var progressBar = document.getElementById(pagespeed.Mob.PROGRESS_SCRIM_ID_);
+  var progressBar =
+      document.getElementById(pagespeed.MobUtil.ElementId.PROGRESS_SCRIM);
   if (progressBar) {
     progressBar.style.display = 'none';
     progressBar.parentNode.removeChild(progressBar);
@@ -740,7 +701,7 @@ function psPickLogo() {
 pagespeed.Mob.prototype.inPsIframeWindow_ = function() {
   return (pagespeed.MobUtil.inFriendlyIframe() &&
           goog.isDefAndNotNull(window.frameElement) &&
-          window.frameElement.id == pagespeed.Mob.CONFIG_IFRAME_ID_);
+          window.frameElement.id == pagespeed.MobUtil.ElementId.CONFIG_IFRAME);
 };
 
 
@@ -879,7 +840,7 @@ pagespeed.Mob.prototype.mobilizeNextUrl_ = function(finishOnTime) {
                                    masterPsMob.configNumUrlsToProcess_ +
                                    ' more to go.');
       var iframe = masterMobWindow.document.getElementById(
-          pagespeed.Mob.CONFIG_IFRAME_ID_);
+          pagespeed.MobUtil.ElementId.CONFIG_IFRAME);
       if (iframe) {
         iframe.src = nextUrl;
         masterPsMob.configTimer_ = masterMobWindow.setTimeout(

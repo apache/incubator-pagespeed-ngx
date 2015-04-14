@@ -34,7 +34,7 @@ body {
   overflow: hidden;
 }
 
-.psmob-header-bar {
+#psmob-header-bar {
   position: absolute !important;
   top: 0;
   left: 0;
@@ -71,7 +71,7 @@ body {
   transition: opacity 0.2s;
 }
 
-.psmob-header-bar.hide {
+#psmob-header-bar.hide {
   visibility: 'hidden';
   display: 'none';
   opacity: 0;
@@ -82,7 +82,7 @@ body {
   transition: opacity 0s;
 }
 
-.psmob-header-bar button {
+#psmob-header-bar button {
   margin: 0;
   padding: 0;
   position: absolute;
@@ -102,25 +102,25 @@ body {
   transition: background-color 0.2s ease-out;
 }
 
-.psmob-header-bar button:hover {
+#psmob-header-bar button:hover {
   background-color: rgba(255, 255, 255, 0.1);
 }
 
-.psmob-header-bar button:focus {
+#psmob-header-bar button:focus {
   background-color: rgba(255, 255, 255, 0.2);
   outline: 0;
 }
 
-.psmob-header-bar button:active {
+#psmob-header-bar button:active {
   background-color: rgba(255, 255, 255, 0.4);
 }
 
-.psmob-menu-button {
+#psmob-menu-button {
   left: 0;
   height: 100%;
 }
 
-.psmob-header-bar a {
+#psmob-header-bar a {
   float: right;
   height: 100%;
 }
@@ -179,7 +179,7 @@ body {
   box-sizing: content-box;
 }
 
-.psmob-nav-panel {
+#psmob-nav-panel {
   position: absolute !important;
 
   /* Panel is hidden by default. */
@@ -221,7 +221,7 @@ body {
   -webkit-overflow-scrolling: touch;
 }
 
-.psmob-nav-panel.open {
+#psmob-nav-panel.open {
   -webkit-transform: translate(0,0);
   transform: translate(0,0);
   /* When sliding the tray out, don't use a transition-delay (set above) so that
@@ -233,7 +233,7 @@ body {
   display: block;
 }
 
-.psmob-nav-panel ul {
+#psmob-nav-panel ul {
   width: 100%;
   padding: 0;
   margin: 0;
@@ -243,7 +243,7 @@ body {
 }
 
 /* TODO(jud): Consider using class labels instead of deeply nested rules. */
-.psmob-nav-panel ul li {
+#psmob-nav-panel ul li {
   border-bottom-style: solid;
   border-width: 1px;
   border-color: white;
@@ -270,7 +270,7 @@ body {
   transition: background-color 0.2s ease-out;
 }
 
-.psmob-nav-panel ul li a, .psmob-nav-panel ul li div {
+#psmob-nav-panel ul li a, #psmob-nav-panel ul li div {
   display: block;
   padding-right: 0;
   padding-top: 0;
@@ -285,20 +285,20 @@ body {
   transition: background-color 0.2s ease-out;
 }
 
-.psmob-nav-panel ul.open {
+#psmob-nav-panel ul.open {
   display: block;
 }
 
-.psmob-nav-panel ul li a:hover {
+#psmob-nav-panel ul li a:hover {
   background-color: rgba(255, 255, 255, 0.2);
 }
 
-.psmob-nav-panel ul li a:focus {
+#psmob-nav-panel ul li a:focus {
   background-color: rgba(255, 255, 255, 0.3);
   outline: 0;
 }
 
-.psmob-nav-panel ul li a:active {
+#psmob-nav-panel ul li a:active {
   background-color: rgba(255, 255, 255, 0.4);
 }
 
@@ -316,12 +316,12 @@ body {
 }
 
 /* TODO(jud): This is probably slow to match, so consider using a class. */
-.psmob-nav-panel img:not(.psmob-menu-expand-icon) {
+#psmob-nav-panel img:not(.psmob-menu-expand-icon) {
   display: inline-block;
   vertical-align: middle;
 }
 
-.psmob-header-spacer-div {
+#psmob-spacer {
   width: 100%;
   height: 100%;
   opacity: 0;

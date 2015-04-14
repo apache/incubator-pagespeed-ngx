@@ -97,7 +97,7 @@ pagespeed.MobDialer.WCM_COOKIE = 'psgwcm';
 pagespeed.MobDialer.prototype.createButton = function() {
   if (this.phoneNumber_) {
     this.callButton_ = document.createElement(goog.dom.TagName.DIV);
-    this.callButton_.id = 'psmob-phone-dialer';
+    this.callButton_.id = pagespeed.MobUtil.ElementId.PHONE_DIALER;
     var phone = this.getPhoneNumberFromCookie_();
     var dialFn;
     if (phone) {

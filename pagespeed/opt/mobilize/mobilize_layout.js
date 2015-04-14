@@ -199,10 +199,10 @@ pagespeed.MobLayout.prototype.dontTouch = function(element) {
           (tagName == goog.dom.TagName.STYLE) ||
           (tagName == goog.dom.TagName.IFRAME) ||
           Boolean(element.id && this.dontTouchIds_[element.id]) ||
-          goog.dom.classlist.contains(element, 'psmob-nav-panel') ||
-          goog.dom.classlist.contains(element, 'psmob-header-bar') ||
-          goog.dom.classlist.contains(element, 'psmob-header-spacer-div') ||
-          goog.dom.classlist.contains(element, 'psmob-logo-span'));
+          (element.id == pagespeed.MobUtil.ElementId.NAV_PANEL) ||
+          (element.id == pagespeed.MobUtil.ElementId.HEADER_BAR) ||
+          (element.id == pagespeed.MobUtil.ElementId.SPACER) ||
+          (element.id == pagespeed.MobUtil.ElementId.LOGO_SPAN));
 };
 
 

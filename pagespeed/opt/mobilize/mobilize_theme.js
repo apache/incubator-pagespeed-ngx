@@ -47,15 +47,17 @@ pagespeed.MobTheme = function(doneCallback) {
  */
 pagespeed.MobTheme.createMenuButton_ = function(color) {
   var button = document.createElement(goog.dom.TagName.BUTTON);
-  goog.dom.classlist.add(button, 'psmob-menu-button');
+  button.id = pagespeed.MobUtil.ElementId.MENU_BUTTON;
   var hamburgerDiv = document.createElement(goog.dom.TagName.DIV);
-  goog.dom.classlist.add(hamburgerDiv, 'psmob-hamburger-div');
+  goog.dom.classlist.add(hamburgerDiv,
+                         pagespeed.MobUtil.ElementClass.HAMBURGER_DIV);
   button.appendChild(hamburgerDiv);
 
   var colorStr = pagespeed.MobUtil.colorNumbersToString(color);
   for (var i = 0; i < 3; ++i) {
     var hamburgerLine = document.createElement(goog.dom.TagName.DIV);
-    goog.dom.classlist.add(hamburgerLine, 'psmob-hamburger-line');
+    goog.dom.classlist.add(hamburgerLine,
+                           pagespeed.MobUtil.ElementClass.HAMBURGER_LINE);
     hamburgerLine.style.backgroundColor = colorStr;
     hamburgerDiv.appendChild(hamburgerLine);
   }
@@ -182,8 +184,8 @@ pagespeed.MobTheme.installLogo = function(themeData) {
   if (window.psConfigMode) {
     themeData.anchorOrSpan.href = 'javascript:psPickLogo()';
   }
-  themeData.anchorOrSpan.id = 'psmob-logo-span';
-  themeData.logoElement.id = 'psmob-logo-image';
+  themeData.anchorOrSpan.id = pagespeed.MobUtil.ElementId.LOGO_SPAN;
+  themeData.logoElement.id = pagespeed.MobUtil.ElementId.LOGO_IMAGE;
   themeData.logoElement.style.backgroundColor =
       pagespeed.MobUtil.colorNumbersToString(themeData.menuBackColor);
 };
