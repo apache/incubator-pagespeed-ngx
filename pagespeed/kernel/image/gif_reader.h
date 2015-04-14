@@ -181,7 +181,13 @@ class GifFrameReader : public MultipleFrameReader {
   // special "index" value kNoTransparentIndex instead.
   static const int kNoTransparentIndex;
 
+
+  // Decodes a progressive image.
   ScanlineStatus DecodeProgressiveGif();
+
+  // Decodes a non-progressive image.
+  ScanlineStatus DecodeNonProgressiveGif();
+
   ScanlineStatus CreateColorMap();
 
   // Gets the image-scope meta-data (GIF screen size, global palette,
@@ -240,6 +246,24 @@ class GifFrameReader : public MultipleFrameReader {
   // initialized in Initialize() and is updated in
   // ReadNextScanlineWithStatus().
   scoped_ptr<ScopedGifStruct> gif_struct_;
+
+  // We need to know the palette size as we read each frame because,
+  // in rare cases, images contain pixels referring to out-of-range
+  // palette entries. In that case, in PrepareNextFrame() we make the
+  // frame's pixel format be RGBA_8888 and in ReadNextScanline() we
+  // replace the invalid pixels with transparent pixels.  Note that a
+  // uint8_t would be sufficient for this field, but giflib returns an
+  // int for the palette size.
+  int frame_palette_size_;
+
+  // For frames that are either progressive or NOT in RGBA_8888
+  // format, we set this flag in PrepareNextFrame() and then read the
+  // entire frame to see whether there are any pixels with
+  // out-of-range palette entries. If so, in PrepareNextFrame() we
+  // make the frame's pixel format be RGBA_8888 and in
+  // ReadNextScanline() we replace the invalid pixels with transparent
+  // pixels.
+  bool frame_eagerly_read_;
 
   DISALLOW_COPY_AND_ASSIGN(GifFrameReader);
 };

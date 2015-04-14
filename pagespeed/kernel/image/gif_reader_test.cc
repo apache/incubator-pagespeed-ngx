@@ -99,6 +99,7 @@ using pagespeed::image_compression::RGBA_8888;
 using pagespeed::image_compression::RGBA_ALPHA;
 using pagespeed::image_compression::RGBA_BLUE;
 using pagespeed::image_compression::RGBA_GREEN;
+using pagespeed::image_compression::RGBA_NUM_CHANNELS;
 using pagespeed::image_compression::RGBA_RED;
 using pagespeed::image_compression::ScanlineStatus;
 using pagespeed::image_compression::ScopedPngStruct;
@@ -147,6 +148,8 @@ const char kRedEmptyScreen[] = "red_empty_screen";
 const char kRedUnusedBackground[] = "red_unused_invalid_background";
 const char kTransparentGif[] = "transparent";
 const char kZeroSizeAnimatedGif[] = "zero_size_animation";
+const char kInvalidPixelLocalPaletteGif[] = "bad_pixel_local_palette";
+const char kInvalidPixelGlobalPaletteGif[] = "bad_pixel_global_palette";
 
 // Message to ignore.
 const char kMessagePatternMultipleFrameGif[] =
@@ -352,7 +355,7 @@ class GifScanlineReaderRawTest : public testing::Test {
 
   bool Initialize(const char* file_name) {
     if (!ReadTestFile(kGifTestDir, file_name, "gif", &input_image_)) {
-      PS_LOG_DFATAL((&message_handler_), "Failed to read file: %s", file_name);
+      PS_LOG_FATAL((&message_handler_), "Failed to read file: %s", file_name);
       return false;
     }
     return reader_.Initialize(input_image_.c_str(), input_image_.length());
@@ -1078,7 +1081,7 @@ class GifAnimationTest : public testing::Test {
 
   void ReadImage(const Image& image) {
     if (!ReadFile(filename_, &input_image_)) {
-      PS_LOG_DFATAL((&message_handler_),
+      PS_LOG_FATAL((&message_handler_),
                     "Failed to read file: %s", filename_.c_str());
       return;
     }
@@ -1643,4 +1646,82 @@ TEST_F(GifAnimationTest, ReadMultipleFrameTransparencyLoopThrice) {
 
   SynthesizeAndRead("multiple_frame_transparency_loop_thrice", image);
 }
+
+void CheckImageForOutOfBoundsPixel(const char* filename,
+                                   int first_invalid_frame) {
+  const PixelRgbaChannels kTransparentPixel = {0, 0, 0, kAlphaTransparent};
+
+  MockMessageHandler message_handler(new NullMutex);
+  scoped_ptr<MultipleFrameReader>
+      reader(new TestGifFrameReader(&message_handler));
+  GoogleString input_image;
+
+  if (!ReadTestFile(kGifTestDir, filename, "gif", &input_image)) {
+    PS_LOG_FATAL((&message_handler),
+                 "Failed to read file: %s", filename);
+    return;
+  }
+
+  EXPECT_TRUE(reader->Initialize(input_image.c_str(),
+                                 input_image.length()).Success());
+  ScanlineStatus status;
+  ImageSpec image_spec;
+  FrameSpec frame_spec;
+
+  EXPECT_TRUE(reader->GetImageSpec(&image_spec, &status));
+  EXPECT_GT(image_spec.num_frames, first_invalid_frame);
+
+  // Frames up to the first invalid frame should have format RGB_888.
+  for (size_px frame = 0; frame < first_invalid_frame; ++frame) {
+    EXPECT_TRUE(reader->HasMoreFrames());
+    EXPECT_TRUE(reader->PrepareNextFrame(&status));
+    EXPECT_TRUE(reader->GetFrameSpec(&frame_spec, &status));
+    EXPECT_EQ(RGB_888, frame_spec.pixel_format);
+  }
+
+  // The invalid frame should have format RGBA_8888, and all its
+  // pixels, which are out of palette bounds, should be reported
+  // as transparent.
+  EXPECT_TRUE(reader->HasMoreFrames());
+  EXPECT_TRUE(reader->PrepareNextFrame(&status));
+  EXPECT_TRUE(reader->GetFrameSpec(&frame_spec, &status));
+  EXPECT_EQ(RGBA_8888, frame_spec.pixel_format);
+  const uint8_t* scanline;
+  for (size_px row = 0; row < frame_spec.height; ++row) {
+    EXPECT_TRUE(reader->HasMoreScanlines());
+    EXPECT_TRUE(
+        reader->ReadNextScanline(
+            reinterpret_cast<const void **>(&scanline),
+            &status));
+    for (size_px col = 0; col < frame_spec.width; ++col) {
+      int cmp_result = memcmp(scanline + RGBA_NUM_CHANNELS * col,
+                              &kTransparentPixel,
+                              RGBA_NUM_CHANNELS * sizeof(uint8_t));
+      EXPECT_EQ(0, cmp_result);
+      if (cmp_result != 0) {
+        // Return eagerly to avoid excessive output in case of error.
+        return;
+      }
+    }
+  }
+  EXPECT_FALSE(reader->HasMoreScanlines());
+
+  // We don't check any additional frames
+}
+
+TEST(InvalidPixels, TestOutOfRangePixelValueInLocalPalette) {
+  // This image has a global palette as well as local palettes for all
+  // frames. For frame #3, the local palette is only four colors long
+  // but has pixels referring to color #4, which is out of range.
+  CheckImageForOutOfBoundsPixel(kInvalidPixelLocalPaletteGif, 3);
+}
+
+TEST(InvalidPixels, TestOutOfRangePixelValueInGlobalPalette) {
+  // This image has a four-color global palette as well as eight-color
+  // local palettes for frames 0-2. Frame #3 does not have a local
+  // palette (so it uses the global one) but has pixels referring to
+  // color #4, which is out of range.
+  CheckImageForOutOfBoundsPixel(kInvalidPixelGlobalPaletteGif, 3);
+}
+
 }  // namespace

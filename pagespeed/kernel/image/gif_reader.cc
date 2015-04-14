@@ -727,6 +727,9 @@ ScanlineStatus GifFrameReader::Reset() {
     gif_struct_->Reset(&status);
   }
 
+  frame_palette_size_ = 0;
+  frame_eagerly_read_ = false;
+
   return status;
 }
 
@@ -1219,25 +1222,39 @@ ScanlineStatus GifFrameReader::CreateColorMap() {
                             color_map->ColorCount);
   }
 
-  for (int i = 0; i < color_map->ColorCount; ++i) {
+  frame_palette_size_ = color_map->ColorCount;
+  for (int i = 0; i < frame_palette_size_; ++i) {
     gif_palette_[i].red_ = palette_in[i].Red;
     gif_palette_[i].green_ = palette_in[i].Green;
     gif_palette_[i].blue_ = palette_in[i].Blue;
     gif_palette_[i].alpha_ = kAlphaOpaque;
   }
+  // Set any out-of-range palette entries to be completely transparent
+  // in case any pixel references them.
+  memset(gif_palette_.get() + frame_palette_size_,
+         kAlphaTransparent,
+         (kGifPaletteSize - frame_palette_size_) * sizeof(PaletteRGBA));
 
-  // Process the transparency information. The output format will be RGBA
-  // if the transparent color has been specified, or RGB otherwise.
-  if ((frame_transparent_index_ >= 0) &&
-      (frame_transparent_index_ < color_map->ColorCount)) {
+  // Process the transparency information. The output format will be
+  // RGBA if the transparent color has been specified, or RGB
+  // otherwise. Note that we allow frame_transparent_index_ to be
+  // greater than frame_palette_size_, since the GIF spec does not
+  // explicitly say the index has to be in range (and in some images,
+  // it's not); this allows us to set RGBA_8888 immediately and thus
+  // skip the check for out-of-range pixels in PrepareNextFrame().
+  //
+  // Note, too, that frame_transparent_index_ either is
+  // kNoTransparentIndex or has a value in the range
+  // [0, kGifPaletteSize), since it is obtained from a single byte in
+  // the GIF file.
+  if (frame_transparent_index_ >= 0) {
     frame_spec_.pixel_format = RGBA_8888;
-    // Set the alpha channel of the transparent color to 0 (kAlphaTransparent).
-    // Since this pixel is fully transparent, for the purpose of better
-    // compression ratio, also set the other channels to 0.
-    gif_palette_[frame_transparent_index_].alpha_ = kAlphaTransparent;
-    gif_palette_[frame_transparent_index_].red_ = 0;
-    gif_palette_[frame_transparent_index_].green_ = 0;
-    gif_palette_[frame_transparent_index_].blue_ = 0;
+    if (frame_transparent_index_ < frame_palette_size_) {
+      // Set transparent index's color to be transparent.
+      memset(&(gif_palette_[frame_transparent_index_]),
+             kAlphaTransparent,
+             sizeof(PaletteRGBA));
+    }
   } else {
     frame_spec_.pixel_format = RGB_888;
   }
@@ -1245,9 +1262,8 @@ ScanlineStatus GifFrameReader::CreateColorMap() {
   return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
 }
 
-// Decode a progressive GIF. The deinterlace code is based on the algorithm
-// in giflib.
 ScanlineStatus GifFrameReader::DecodeProgressiveGif() {
+  // The deinterlace code is based on the algorithm in giflib.
   GifFileType* gif_file = gif_struct_->gif_file();
   for (int pass = 0; pass < kInterlaceNumPass; ++pass) {
     for (size_px y = kInterlaceOffsets[pass];
@@ -1256,13 +1272,42 @@ ScanlineStatus GifFrameReader::DecodeProgressiveGif() {
       GifPixelType* row_pointer = frame_index_.get() + y * frame_spec_.width;
       if (DGifGetLine(gif_file, row_pointer, frame_spec_.width) == GIF_ERROR) {
         return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler(),
-                                SCANLINE_STATUS_INTERNAL_ERROR,
-                                FRAME_GIFREADER,
+                                SCANLINE_STATUS_INTERNAL_ERROR, FRAME_GIFREADER,
                                 "DGifGetLine()");
       }
     }
   }
   return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
+}
+
+ScanlineStatus GifFrameReader::DecodeNonProgressiveGif() {
+  GifFileType* gif_file = gif_struct_->gif_file();
+  GifPixelType* row_pointer = frame_index_.get();
+  const GifPixelType* row_pointer_end =
+      frame_index_.get() + frame_spec_.height * frame_spec_.width;
+  for (; row_pointer < row_pointer_end; row_pointer += frame_spec_.width) {
+      if (DGifGetLine(gif_file, row_pointer, frame_spec_.width) == GIF_ERROR) {
+        return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler(),
+                                SCANLINE_STATUS_INTERNAL_ERROR, FRAME_GIFREADER,
+                                "DGifGetLine()");
+      }
+  }
+  return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
+}
+
+// Helper function for PrepareNextFrame(). This returns true if any of
+// the 'num_pixel' pixel entries starting at 'px' reference a palette
+// value greater than 'frame_palette_size'.
+inline bool FrameHasOutOfRangePixels(GifPixelType* px,
+                                     const size_px num_pixels,
+                                     const int frame_palette_size) {
+  const GifPixelType* end_px = px + num_pixels;
+  for (; px < end_px; ++px) {
+    if ((*px) >= frame_palette_size) {
+      return true;
+    }
+  }
+  return false;
 }
 
 ScanlineStatus GifFrameReader::PrepareNextFrame() {
@@ -1353,38 +1398,78 @@ ScanlineStatus GifFrameReader::PrepareNextFrame() {
   }
 
   status = CreateColorMap();
+
   if (!status.Success()) {
     Reset();
     return status;
   }
 
+  // For a progressive frame, we have to decode the entire frame
+  // before rendering any row. Moreover, for each frame in
+  // non-RGBA_8888 format, we need to check all the pixels and change
+  // frame_spec_.pixel_format to RGBA_8888 if any out-of-range entries
+  // are found (since they will be converted to transparent pixels in
+  // ReadNextScanline()).
   frame_spec_.hint_progressive = (gif_file->Image.Interlace != 0);
-  size_t bytes_per_row =
-      GetBytesPerPixel(frame_spec_.pixel_format) * frame_spec_.width;
+  const bool is_originally_rgba = (frame_spec_.pixel_format == RGBA_8888);
+  frame_eagerly_read_ = frame_spec_.hint_progressive || !is_originally_rgba;
 
-  // Allocate the memory we'll need to read the image data in
-  // ReadNextScanline().
-  frame_buffer_.reset(new GifPixelType[bytes_per_row]);
-  if (!frame_spec_.hint_progressive) {
+  if (!frame_eagerly_read_) {
     // We only read one row at a time.
     frame_index_.reset(new GifPixelType[frame_spec_.width]);
   } else {
-    // We need to read all the rows before we return from
-    // ReadNextScanline() the first time.
+    // We need to read all the rows before the first call to
+    // ReadNextScanline().
     frame_index_.reset(new GifPixelType[frame_spec_.width *
                                         frame_spec_.height]);
   }
-  if (frame_buffer_ == NULL || frame_index_ == NULL) {
+  if (frame_index_ == NULL) {
     Reset();
     return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler(),
                             SCANLINE_STATUS_MEMORY_ERROR,
                             FRAME_GIFREADER,
-                            "new GiPixelType[] for frame_buffer_ "
-                            "or frame_index_");
+                            "new GiPixelType[] for frame_index_");
   }
 
   next_row_ = 0;
   frame_initialized_ = true;
+
+  if (frame_eagerly_read_) {
+    ScanlineStatus status = (frame_spec_.hint_progressive ?
+                             DecodeProgressiveGif() :
+                             DecodeNonProgressiveGif());
+    if (!status.Success()) {
+      PS_LOG_INFO(message_handler(), "Failed to decode entire GIF frame.");
+      Reset();
+      return status;
+    }
+
+    if (!is_originally_rgba &&
+        FrameHasOutOfRangePixels(frame_index_.get(),
+                                 frame_spec_.width * frame_spec_.height,
+                                 frame_palette_size_)) {
+      frame_spec_.pixel_format = RGBA_8888;
+      PS_DLOG_INFO(
+          message_handler(),
+          "Found out-of-range pixel in frame %i. Switching frame to %s",
+          next_frame_ - 1,
+          GetPixelFormatString(frame_spec_.pixel_format));
+    }
+  }
+
+  // Now that we have the correct pixel_format, allocate the memory
+  // we'll need to read the image data in ReadNextScanline().
+  size_t bytes_per_row =
+      GetBytesPerPixel(frame_spec_.pixel_format) * frame_spec_.width;
+  frame_buffer_.reset(new GifPixelType[bytes_per_row]);
+  if (frame_buffer_ == NULL) {
+    Reset();
+    return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler(),
+                            SCANLINE_STATUS_MEMORY_ERROR,
+                            FRAME_GIFREADER,
+                            "new GiPixelType[] for frame_buffer_ ");
+  }
+
   return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
 }
 
@@ -1398,17 +1483,6 @@ ScanlineStatus GifFrameReader::ReadNextScanline(
                             "have more scanlines.");
   }
 
-  // For a progressive GIF, we have to decode the entire frame before
-  // rendering any row.
-  if (frame_spec_.hint_progressive && (next_row_ == 0)) {
-    ScanlineStatus status = DecodeProgressiveGif();
-    if (!status.Success()) {
-      PS_LOG_INFO(message_handler(), "Failed to progressively decode GIF.");
-      Reset();
-      return status;
-    }
-  }
-
   // Convert the color index to the actual color.
   GifPixelType* color_buffer = frame_buffer_.get();
   const size_t pixel_size = GetBytesPerPixel(frame_spec_.pixel_format);
@@ -1416,8 +1490,8 @@ ScanlineStatus GifFrameReader::ReadNextScanline(
   // Find out the color index for the requested row.
   GifPixelType* index_buffer = NULL;
   GifFileType* gif_file = gif_struct_->gif_file();
-  if (!frame_spec_.hint_progressive) {
-    // For a non-progressive GIF, we decode the image a row at a time.
+  if (!frame_eagerly_read_) {
+    // Decode the image a row at a time.
     index_buffer = frame_index_.get();
     if (DGifGetLine(gif_file, index_buffer, frame_spec_.width) == GIF_ERROR) {
       Reset();
@@ -1427,16 +1501,19 @@ ScanlineStatus GifFrameReader::ReadNextScanline(
                               "DGifGetLine()");
     }
   } else {
-    // For a progressive GIF, we simply point the output to the corresponding
-    // row, because the image has already been decoded.
+    // We simply point the output to the corresponding row because
+    // the image has already been decoded.
     index_buffer = frame_index_.get() + next_row_ * frame_spec_.width;
   }
 
   for (size_px pixel_index = 0;
        pixel_index < frame_spec_.width;
        ++pixel_index) {
-    // Convert the color index to the actual color.
-    int color_index = *(index_buffer++);
+    // Convert the color index to the actual color. Note that
+    // out-of-range pixel values get automatically converted to
+    // transparent pixels because the corresponding palette entries
+    // have been cleared in CreateColorMap().
+    GifPixelType color_index = *(index_buffer++);
     memcpy(color_buffer, gif_palette_.get() + color_index, pixel_size);
     color_buffer += pixel_size;
   }

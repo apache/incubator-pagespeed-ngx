@@ -99,8 +99,8 @@ void  FrameSpec::Reset() {
 GoogleString FrameSpec::ToString() const {
   return StringPrintf(
       "Frame: size %u x %u at (%u, %u) "
-      "pixel_format: %d, duration_ms: %lu, disposal: %d, progressive: %s",
-      width, height, top, left, pixel_format,
+      "pixel_format: %s, duration_ms: %lu, disposal: %d, progressive: %s",
+      width, height, top, left, GetPixelFormatString(pixel_format),
       static_cast<unsigned long>(duration_ms), disposal,
       (hint_progressive ? "yes" : "no"));
 }
