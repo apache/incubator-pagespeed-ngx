@@ -20,9 +20,11 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_MOBILIZE_MENU_FILTER_H_
 
 #include <cstddef>
+#include <set>
 #include <map>
 #include <vector>
 
+#include "net/instaweb/rewriter/mobilize_labeling.pb.h"
 #include "net/instaweb/rewriter/mobilize_menu.pb.h"
 #include "net/instaweb/rewriter/public/mobilize_decision_trees.h"
 #include "net/instaweb/rewriter/public/mobilize_filter_base.h"
@@ -31,6 +33,7 @@
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/html_element.h"
 #include "pagespeed/kernel/html/html_node.h"
 
@@ -66,7 +69,8 @@ class MobilizeMenuFilter : public MobilizeFilterBase {
  public:
   static const char kMenusComputed[];
 
-  explicit MobilizeMenuFilter(RewriteDriver* rewrite_driver);
+  MobilizeMenuFilter(RewriteDriver* rewrite_driver,
+                     const MobilizeLabeling* labeling);
   virtual ~MobilizeMenuFilter();
 
   static void InitStats(Statistics* statistics);
@@ -112,6 +116,10 @@ class MobilizeMenuFilter : public MobilizeFilterBase {
   MobilizeMenuItem* EnsureMenuItem();
   void StartMenuItem(const char* href_or_null);
   void EndMenuItem();
+
+  // Input data
+  const MobilizeLabeling* labeling_;  // owned by MobilizeLabelFilter
+  std::set<StringPiece> navigational_ids_;  // Refers to labeling_
 
   HtmlElement* outer_nav_element_;
   scoped_ptr<MobilizeMenu> menu_;

@@ -1271,6 +1271,21 @@
       ],
     },
     {
+      'target_name': 'instaweb_mobilize_labeling_pb',
+      'variables': {
+        'instaweb_protoc_subdir': 'net/instaweb/rewriter',
+      },
+      'sources': [
+        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/mobilize_labeling.pb.cc',
+        'rewriter/mobilize_labeling.proto',
+      ],
+      'dependencies': [
+      ],
+      'includes': [
+        'protoc.gypi',
+      ],
+    },
+    {
       'target_name': 'instaweb_mobilize_menu_pb',
       'variables': {
         'instaweb_protoc_subdir': 'net/instaweb/rewriter',
@@ -1675,6 +1690,7 @@
         'instaweb_messages_js_data2c',
         'instaweb_messages_js_opt_data2c',
         'instaweb_mobilize_cached_pb',
+        'instaweb_mobilize_labeling_pb',
         'instaweb_mobilize_menu_pb',
         'instaweb_panel_loader_opt_data2c',
         'instaweb_responsive_js_data2c',

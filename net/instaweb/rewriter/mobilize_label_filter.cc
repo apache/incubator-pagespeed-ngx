@@ -517,6 +517,7 @@ void MobilizeLabelFilter::Init() {
   content_bytes_ = 0;
   content_non_blank_bytes_ = 0;
   were_roles_added_ = false;
+  labeling_.Clear();
   nav_classes_.clear();
   non_nav_classes_.clear();
 }
@@ -530,6 +531,39 @@ void MobilizeLabelFilter::InitStats(Statistics* statistics) {
   statistics->AddVariable(kMarginalRoles);
   statistics->AddVariable(kDivsUnlabeled);
   statistics->AddVariable(kAmbiguousRoleLabels);
+}
+
+const MobilizeLabelFilter::MobilizationIds* MobilizeLabelFilter::IdsForRole(
+    const MobilizeLabeling& labeling, MobileRole::Level role) {
+  switch (role) {
+    case MobileRole::kContent:
+      return &labeling.content_ids();
+    case MobileRole::kHeader:
+      return &labeling.header_ids();
+    case MobileRole::kMarginal:
+      return &labeling.marginal_ids();
+    case MobileRole::kNavigational:
+      return &labeling.navigational_ids();
+    default:
+      return NULL;
+  }
+}
+
+MobilizeLabelFilter::MobilizationIds* MobilizeLabelFilter::MutableIdsForRole(
+    MobilizeLabeling* labeling, MobileRole::Level role) {
+  switch (role) {
+    case MobileRole::kContent:
+      return labeling->mutable_content_ids();
+    case MobileRole::kHeader:
+      return labeling->mutable_header_ids();
+    case MobileRole::kMarginal:
+      return labeling->mutable_marginal_ids();
+    case MobileRole::kNavigational:
+      return labeling->mutable_navigational_ids();
+    default:
+      LOG(FATAL) << "MutableIdsForRole of invalid role " << role;
+      return NULL;
+  }
 }
 
 void MobilizeLabelFilter::GetClassesFromOptions(const RewriteOptions* options) {
@@ -743,7 +777,6 @@ void MobilizeLabelFilter::EndDocumentImpl() {
   ElementSample* global = sample_stack_.back();
   sample_stack_.pop_back();
   ComputeContained(global);
-  pages_labeled_->Add(1);
   // Now that we have global information, compute sample that require
   // normalization (eg percent of links in page, percent of text, etc.).
   // Use this to label the DOM elements.
@@ -754,8 +787,10 @@ void MobilizeLabelFilter::EndDocumentImpl() {
     DebugLabel();
   }
   SanityCheckEndOfDocumentState();
+  CreateLabeling();
   if (is_menu_subfetch_ ||
       MobilizeRewriteFilter::IsApplicableFor(driver())) {
+    pages_labeled_->Add(1);
     InjectLabelJavascript();
   } else {
     // TODO(jmaessen): Consider disabling this filter *and* add_ids if we don't
@@ -1048,7 +1083,7 @@ void MobilizeLabelFilter::Label() {
     //   kMarginal if at least one child was *explicitly* labeled that.
     //   kUnassigned if all children unassigned.
     // Meaning of parent->propagated_label at this point is the same, but only
-    //   accounts for the children we've previously seen.
+    //   accounts for siblings later in the DOM than sample.
     // At end of loop body, sample->label should reflect
     //   sample->propagated_label if it started as kUnassigned
     //   and parent->propagated_label should account for sample->label.
@@ -1133,43 +1168,47 @@ void MobilizeLabelFilter::UnlabelledDiv(ElementSample* sample) {
   }
 }
 
-void MobilizeLabelFilter::InjectLabelJavascript() {
-  // Go through the nodes in DOM order and collect role transition points.
-  GoogleString role_id_list_js[MobileRole::kInvalid];
+void MobilizeLabelFilter::CreateLabeling() {
+  // Go through the sample nodes in DOM order and collect role transition points
+  // to create the labeling_ proto.
+  labeling_.Clear();
   int n = samples_.size();
-  bool any_roles_listed = false;
-  bool annotate_dom = is_menu_subfetch_ || driver()->DebugMode();
+  bool annotate_dom = (driver()->DebugMode() &&
+                       MobilizeRewriteFilter::IsApplicableFor(driver()));
   for (int i = 1; i < n; ++i) {
     ElementSample* sample = samples_[i];
     MobileRole::Level role = sample->role;
-    if (role != sample->parent->role) {
-      if (!IsRoleValid(role)) {
-        LOG(DFATAL) << "Invalid role " << role <<
-            " below valid one " << sample->parent->role;
-      } else {
-        if (!sample->explicitly_labeled) {
-          were_roles_added_ = true;
-        }
-        HtmlElement* element = sample->element;
-        if (annotate_dom &&
-            driver()->IsRewritable(element) &&
-            element->FindAttribute(HtmlName::kDataMobileRole) == NULL) {
-          // Add mobile role annotation in place where possible.
-          driver()->AddEscapedAttribute(
-              element, HtmlName::kDataMobileRole,
-              MobileRoleData::StringFromLevel(sample->role));
-        }
-        role_variables_[role]->Add(1);
-        EscapeToJsStringLiteral(
-            sample->id, false /* no quotes */, &role_id_list_js[role]);
-        StrAppend(&role_id_list_js[role], "','");
-        any_roles_listed = true;
-      }
-    } else {
+    if (role == sample->parent->role) {
       UnlabelledDiv(sample);
+      continue;
+    }
+    MobilizeLabelFilter::MobilizationIds* label_ids =
+        MutableIdsForRole(&labeling_, role);
+    if (label_ids == NULL) {
+      LOG(DFATAL) << "Invalid role " << role <<
+          " below valid one " << sample->parent->role;
+      continue;
+    }
+    were_roles_added_ |= !sample->explicitly_labeled;
+    HtmlElement* element = sample->element;
+    role_variables_[role]->Add(1);
+    std::swap(*label_ids->Add(), sample->id);
+    if (annotate_dom &&
+        driver()->IsRewritable(element) &&
+        element->FindAttribute(HtmlName::kDataMobileRole) == NULL) {
+      // Add mobile role annotation in place where possible.
+      driver()->AddEscapedAttribute(
+          element, HtmlName::kDataMobileRole,
+          MobileRoleData::StringFromLevel(sample->role));
     }
   }
-  if (!any_roles_listed) {
+}
+
+void MobilizeLabelFilter::InjectLabelJavascript() {
+  if (labeling_.content_ids_size() == 0 &&
+      labeling_.header_ids_size() == 0 &&
+      labeling_.marginal_ids_size() == 0 &&
+      labeling_.navigational_ids_size() == 0) {
     // Don't inject any code if there's nothing to do.
     if (driver()->DebugMode()) {
       InsertNodeAtBodyEnd(
@@ -1180,17 +1219,22 @@ void MobilizeLabelFilter::InjectLabelJavascript() {
   // Now turn the resulting JS fragments into code.
   GoogleString js;
   for (int i = 0; i < MobileRole::kInvalid; ++i) {
-    MobileRole::Level level = static_cast<MobileRole::Level>(i);
-    if (!role_id_list_js[level].empty()) {
-      StringPiece s(role_id_list_js[level]);
-      // Remove trailing ",'"
-      s.remove_suffix(2);
-      // Create identifier and bind it. Example:
-      // pageSpeedNavigationalIds=['id1','id2'];
-      StrAppend(&js, "pagespeed",
-                Capitalize(MobileRoleData::StringFromLevel(level)),
-                "Ids=['", s, "];\n");
+    MobileRole::Level role = static_cast<MobileRole::Level>(i);
+    const MobilizationIds* ids = IdsForRole(labeling_, role);
+    if (ids == NULL || ids->size() == 0) {
+      continue;
     }
+    StrAppend(&js, "pagespeed",
+              Capitalize(MobileRoleData::StringFromLevel(role)),
+              "Ids=['");
+    for (int i = 0, n = ids->size(); i < n; ++i) {
+      EscapeToJsStringLiteral(
+          ids->Get(i), false /* no quotes */, &js);
+      StrAppend(&js, "','");
+    }
+    // Trim final ",'"
+    js.resize(js.size() - 2);
+    StrAppend(&js, "];\n");
   }
   HtmlElement* script = driver()->NewElement(NULL, HtmlName::kScript);
   InsertNodeAtBodyEnd(script);
@@ -1203,11 +1247,12 @@ void MobilizeLabelFilter::NonMobileUnlabel() {
   // JS.
   int n = samples_.size();
   for (int i = 1; i < n; ++i) {
-    ElementSample* sample = samples_[i];
-    if (driver()->IsRewritable(sample->element) &&
-        StringPiece(sample->id).starts_with(AddIdsFilter::kClassPrefix)) {
+    HtmlElement* element = samples_[i]->element;
+    if (driver()->IsRewritable(element) &&
+        StringPiece(element->EscapedAttributeValue(HtmlName::kId))
+        .starts_with(AddIdsFilter::kClassPrefix)) {
       // Strip out id inserted by pagespeed.
-      sample->element->DeleteAttribute(HtmlName::kId);
+      element->DeleteAttribute(HtmlName::kId);
     }
   }
 }

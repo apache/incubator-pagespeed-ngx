@@ -65,8 +65,10 @@ class MobilizeMenuRenderFilterTest : public RewriteTestBase {
 
   virtual void SetUp() {
     RewriteTestBase::SetUp();
-    EnableDebug();  // Make menus readable
     filter_.reset(new MobilizeMenuRenderFilter(rewrite_driver()));
+    // Make menus readable without enabling debug mode, which
+    // adds mobile_role annotations in the labeler.
+    filter_->set_use_readable_menus(true);
     options()->ClearSignatureForTesting();
     options()->set_mob_always(true);
     server_context()->ComputeSignature(options());

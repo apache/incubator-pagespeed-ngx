@@ -22,11 +22,13 @@
 #include <set>
 #include <vector>
 
+#include "net/instaweb/rewriter/mobilize_labeling.pb.h"
 #include "net/instaweb/rewriter/public/mobilize_decision_trees.h"
 #include "net/instaweb/rewriter/public/mobilize_filter_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/proto_util.h"
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -79,6 +81,7 @@ struct ElementSample {
 // training our classifiers.
 class MobilizeLabelFilter : public MobilizeFilterBase {
  public:
+  typedef protobuf::RepeatedPtrField<GoogleString> MobilizationIds;
   // Monitoring variable names
   static const char kPagesLabeled[];  // Pages run through labeler.
   static const char kPagesRoleAdded[];
@@ -93,10 +96,18 @@ class MobilizeLabelFilter : public MobilizeFilterBase {
   virtual ~MobilizeLabelFilter();
 
   static void InitStats(Statistics* statistics);
+  static const MobilizationIds* IdsForRole(
+      const MobilizeLabeling& labeling, MobileRole::Level role);
+
+  // Get the computed labeling (which might have been fetched from the pcache).
+  // NULL if no labeling has been computed or nothing can be labeled.
+  const MobilizeLabeling* labeling() { return &labeling_; }
 
   virtual const char* Name() const { return "MobilizeLabel"; }
 
  private:
+  static MobilizationIds* MutableIdsForRole(
+      MobilizeLabeling* labeling, MobileRole::Level role);
   void Init();
   virtual void StartDocumentImpl();
   virtual void StartNonSkipElement(
@@ -118,6 +129,7 @@ class MobilizeLabelFilter : public MobilizeFilterBase {
   void SanityCheckEndOfDocumentState();
   void ComputeProportionalFeatures();
   void Label();
+  void CreateLabeling();
   void DebugLabel();
   void UnlabelledDiv(ElementSample* sample);
   void InjectLabelJavascript();
@@ -135,6 +147,8 @@ class MobilizeLabelFilter : public MobilizeFilterBase {
 
   std::vector<ElementSample*> samples_;  // in document order
   std::vector<ElementSample*> sample_stack_;
+
+  MobilizeLabeling labeling_;
 
   // The following two vectors are parsed from
   // RewriteOptions::mob_nav_elements(), which outlives them.

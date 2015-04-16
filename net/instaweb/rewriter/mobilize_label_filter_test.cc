@@ -1134,16 +1134,14 @@ TEST_F(MobilizeLabelFilterTest, LargeUnlabeledDesktop) {
   ValidateNoChanges("unlabeled_desktop", unlabeled_contents);
   // The stats here reflect the fact that we compute the labeling on desktop but
   // don't alter the page.
-  // TODO(jmaessen): The goal here is to prime the pcache during desktop page
-  // views, but we're not there yet.  Add re-fetch tests here and above then.
-  EXPECT_EQ(1, pages_labeled_->Get());
-  EXPECT_EQ(0, pages_role_added_->Get());
-  EXPECT_EQ(0, navigational_roles_->Get());
-  EXPECT_EQ(0, header_roles_->Get());
-  EXPECT_EQ(0, content_roles_->Get());
-  EXPECT_EQ(0, marginal_roles_->Get());
+  EXPECT_EQ(0, pages_labeled_->Get());
+  EXPECT_EQ(1, pages_role_added_->Get());
+  EXPECT_EQ(2, navigational_roles_->Get());
+  EXPECT_EQ(2, header_roles_->Get());
+  EXPECT_EQ(3, content_roles_->Get());
+  EXPECT_EQ(1, marginal_roles_->Get());
   EXPECT_EQ(1, ambiguous_role_labels_->Get());
-  EXPECT_EQ(0, divs_unlabeled_->Get());
+  EXPECT_EQ(12, divs_unlabeled_->Get());
 }
 
 }  // namespace

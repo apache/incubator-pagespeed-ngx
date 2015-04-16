@@ -60,9 +60,11 @@ class MobilizeMenuRenderFilter::MenuComputation
  protected:
   virtual void SetupFilters(RewriteDriver* child_driver) {
     child_driver->AppendOwnedPreRenderFilter(new AddIdsFilter(child_driver));
-    child_driver->AppendOwnedPreRenderFilter(
-        new MobilizeLabelFilter(true /* is_menu_subfetch */, child_driver));
-    menu_filter_ = new MobilizeMenuFilter(child_driver);
+    MobilizeLabelFilter* label_filter =
+        new MobilizeLabelFilter(true /* is_menu_subfetch */, child_driver);
+    child_driver->AppendOwnedPreRenderFilter(label_filter);
+    menu_filter_ =
+        new MobilizeMenuFilter(child_driver, label_filter->labeling());
     child_driver->AppendOwnedPreRenderFilter(menu_filter_);
   }
 
@@ -80,7 +82,10 @@ class MobilizeMenuRenderFilter::MenuComputation
 };
 
 MobilizeMenuRenderFilter::MobilizeMenuRenderFilter(RewriteDriver* driver)
-    : CommonFilter(driver), saw_end_document_(false), menu_computed_(false) {
+    : CommonFilter(driver),
+      use_readable_menus_(driver->DebugMode()),
+      saw_end_document_(false),
+      menu_computed_(false) {
   Statistics* stats = driver->statistics();
   num_menus_added_ = stats->GetVariable(kMenusAdded);
 }
@@ -167,7 +172,7 @@ void MobilizeMenuRenderFilter::ConstructMenu() {
   } else {
     driver()->message_handler()->Message(
         kWarning, "No navigation found for %s", driver()->url());
-    if (driver()->DebugMode()) {
+    if (use_readable_menus_) {
       HtmlNode* comment_node =
           driver()->NewCommentNode(NULL, "No navigation?!");
       InsertNodeAtBodyEnd(comment_node);
@@ -183,7 +188,7 @@ void MobilizeMenuRenderFilter::ConstructMenuWithin(
   int n = menu.entries_size();
   for (int i = 0; i < n; ++i) {
     const MobilizeMenuItem& item = menu.entries(i);
-    if (driver()->DebugMode()) {
+    if (use_readable_menus_) {
       // Make the debug output readable by adding a newline and indent.
       GoogleString indent = "\n";
       indent.append(2 * level, ' ');

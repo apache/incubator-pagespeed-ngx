@@ -48,6 +48,10 @@ class MobilizeMenuRenderFilter : public CommonFilter {
 
   virtual const char* Name() const { return "MobilizeMenuRenderFilter"; }
 
+  void set_use_readable_menus(bool readable) {
+    use_readable_menus_ = readable;
+  }
+
  private:
   class MenuComputation;
 
@@ -55,6 +59,11 @@ class MobilizeMenuRenderFilter : public CommonFilter {
   void ConstructMenuWithin(
       int level, StringPiece id_prefix, const MobilizeMenu& menu,
       HtmlElement* ul);
+
+  // If true (eg debug mode), add newlines and whitespace to menu DOM to make
+  // the results easy for humans to read.  By default we use a compact
+  // rendering.
+  bool use_readable_menus_;
 
   bool saw_end_document_;
   bool menu_computed_;

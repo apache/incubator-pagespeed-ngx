@@ -21,6 +21,7 @@
 #include <algorithm>
 
 #include "base/logging.h"
+#include "net/instaweb/rewriter/mobilize_labeling.pb.h"
 #include "net/instaweb/rewriter/mobilize_menu.pb.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "pagespeed/kernel/base/statistics.h"
@@ -42,8 +43,10 @@ const char MobilizeMenuFilter::kMenusComputed[] =
     "mobilization_menus_computed";
 
 // TODO(jmaessen): Store into pcache if we're not in a nested context.
-MobilizeMenuFilter::MobilizeMenuFilter(RewriteDriver* rewrite_driver)
+MobilizeMenuFilter::MobilizeMenuFilter(
+    RewriteDriver* rewrite_driver, const MobilizeLabeling* labeling)
     : MobilizeFilterBase(rewrite_driver),
+      labeling_(labeling),
       outer_nav_element_(NULL),
       menu_item_trailing_whitespace_(false),
       menu_item_initial_segment_length_(0),
@@ -64,6 +67,11 @@ void MobilizeMenuFilter::InitStats(Statistics* statistics) {
 
 void MobilizeMenuFilter::StartDocumentImpl() {
   menu_.reset(new MobilizeMenu);
+  // Initialize navigational_ids_ from the labeling.
+  navigational_ids_.clear();
+  for (int i = 0, n = labeling_->navigational_ids_size(); i < n; ++i) {
+    navigational_ids_.insert(labeling_->navigational_ids(i));
+  }
 }
 
 void MobilizeMenuFilter::EndDocumentImpl() {
@@ -85,7 +93,10 @@ void MobilizeMenuFilter::EndDocumentImpl() {
 void MobilizeMenuFilter::StartNonSkipElement(
     MobileRole::Level role_attribute, HtmlElement* element) {
   if (outer_nav_element_ == NULL) {
-    if (role_attribute != MobileRole::kNavigational) {
+    const HtmlElement::Attribute* id = element->FindAttribute(HtmlName::kId);
+    if (id == NULL ||
+        navigational_ids_.count(id->escaped_value()) == 0) {
+      CHECK_NE(MobileRole::kNavigational, role_attribute);
       return;
     }
     outer_nav_element_ = element;

@@ -368,25 +368,8 @@ TEST_F(RewriteDomainTransformerTest, StringLineCont) {
   // bar') stuff
   //  is interpretted the same as
   // url('foobar') stuff
-  const char kExpected[] = "url('http://old-base.com/foobar') stuff";
-  EXPECT_STREQ(kExpected, Transform("url('foo\\\nbar') stuff"));
-
-  // There are actually 4 possible new lines for this, per the spec:
-  // nl     \n|\r\n|\r|\f
-  // Test the other 3
-  EXPECT_STREQ(kExpected, Transform("url('foo\\\rbar') stuff"));
-  EXPECT_STREQ(kExpected, Transform("url('foo\\\r\nbar') stuff"));
-  EXPECT_STREQ(kExpected, Transform("url('foo\\\fbar') stuff"));
-}
-
-TEST_F(RewriteDomainTransformerTest, ContAndUnterminated) {
-  // We had a logic error in how we handled an unterminated string
-  // which also had line continuations after the break point.
-  // Note that what we parse here is foo as URL, which gets mapped,
-  // and the rest is preserved, including the newline, to get the original
-  // error recovery behavior.
-  EXPECT_STREQ("@import \"http://old-base.com/foo\nbar\\\nbaz",
-               Transform("@import \"foo\nbar\\\nbaz"));
+  EXPECT_STREQ("url('http://old-base.com/foobar') stuff",
+               Transform("url('foo\\\nbar') stuff"));
 }
 
 TEST_F(RewriteDomainTransformerTest, StringUnterminated) {
@@ -395,16 +378,12 @@ TEST_F(RewriteDomainTransformerTest, StringUnterminated) {
   // quote didn't get escaped.
   EXPECT_STREQ("@import 'http://old-base.com/foo\n\"bar stuff",
                Transform("@import 'foo\n\"bar stuff"));
-
-  // Try with a different newline separator, too.
-  EXPECT_STREQ("@import 'http://old-base.com/foo\f\"bar stuff",
-               Transform("@import 'foo\f\"bar stuff"));
 }
 
 TEST_F(RewriteDomainTransformerTest, StringMultineTerminated) {
-  // Multiline string. This testcase used to show that having a close
-  // quote matters, but it doesn't --- unescaped newline closes the string.
-  EXPECT_STREQ("@import 'http://old-base.com/foo\nbar' stuff",
+  // Multiline string, but terminated.
+  // TODO(morlovich): GoogleUrl seems to eat the \n.
+  EXPECT_STREQ("@import 'http://old-base.com/foobar' stuff",
                Transform("@import 'foo\nbar' stuff"));
 }
 
@@ -413,33 +392,6 @@ TEST_F(RewriteDomainTransformerTest, UrlProperClose) {
   // it'd be fine if it were missing.
   EXPECT_STREQ("url('http://old-base.com/foo\\).bar')",
                Transform("url('foo).bar')"));
-}
-
-TEST_F(RewriteDomainTransformerTest, UrlUnquoted) {
-  // Unquoted URLs can't have space in them, either.
-  // The important thing here is that transformed version doesn't get %20.
-  EXPECT_STREQ("url(http://old-base.com/foo bar)",
-               Transform("url(/foo bar)"));
-}
-
-TEST_F(RewriteDomainTransformerTest, LotsOfWhitespace) {
-  // Make sure we do sane thing with trailing whitespace in unquoted url()
-  EXPECT_STREQ("url(http://old-base.com/foo)",
-               Transform("url(/foo \t  \f     )"));
-
-  // Leading, too.
-  EXPECT_STREQ("url(http://old-base.com/foo)",
-               Transform("url(  \r\n  /foo \t  \f     )"));
-}
-
-TEST_F(RewriteDomainTransformerTest, DontUnescapeTooMuch) {
-  // Demonstrate that our escaping doesn't cause us to produce improperly
-  // closed URLs in output.
-  EXPECT_STREQ("url(http://old-base.com/\\)stuff)",
-               Transform("url(/\\)stuff)"));
-
-  EXPECT_STREQ("url(\"http://old-base.com/%22stuff\")",
-               Transform("url(\"/\\\"stuff\")"));
 }
 
 TEST_F(RewriteDomainTransformerTest, ImportUrl) {

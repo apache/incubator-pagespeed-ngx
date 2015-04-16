@@ -20,6 +20,8 @@
 
 #include "base/logging.h"
 #include "net/instaweb/rewriter/mobilize_menu.pb.h"
+#include "net/instaweb/rewriter/public/add_ids_filter.h"
+#include "net/instaweb/rewriter/public/mobilize_label_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
@@ -377,11 +379,22 @@ class MobilizeMenuFilterTest : public RewriteTestBase {
  protected:
   MobilizeMenuFilterTest() {}
 
-  virtual void SetUp() {
+  virtual bool AddHtmlTags() const { return false; }
+
+  void SetUp() {
     RewriteTestBase::SetUp();
     options()->set_mob_always(true);
-    mobilize_menu_filter_.reset(new MobilizeMenuFilter(rewrite_driver()));
+    add_ids_filter_.reset(new AddIdsFilter(rewrite_driver()));
+    mobilize_label_filter_.reset(
+        new MobilizeLabelFilter(false /* is_menu_subfetch */,
+                                rewrite_driver()));
+    mobilize_menu_filter_.reset(
+        new MobilizeMenuFilter(rewrite_driver(),
+                               mobilize_label_filter_->labeling()));
+    html_parse()->AddFilter(add_ids_filter_.get());
+    html_parse()->AddFilter(mobilize_label_filter_.get());
     html_parse()->AddFilter(mobilize_menu_filter_.get());
+    SetHtmlMimetype();
   }
 
   void DoNotCleanup() {
@@ -398,6 +411,18 @@ class MobilizeMenuFilterTest : public RewriteTestBase {
     return MenuToString(menu);
   }
 
+  void ValidateAddIdsAndScript(
+      StringPiece case_id, StringPiece html_input) {
+    Parse(case_id, html_input);
+    GoogleString result(output_buffer_);
+    GlobalEraseBracketedSubstring(" id=\"PageSpeed-", "\"", &result);
+    GlobalEraseBracketedSubstring("<script type=\"text/javascript\">",
+                                  "</script>", &result);
+    EXPECT_STREQ(html_input, result);
+  }
+
+  scoped_ptr<AddIdsFilter> add_ids_filter_;
+  scoped_ptr<MobilizeLabelFilter> mobilize_label_filter_;
   scoped_ptr<MobilizeMenuFilter> mobilize_menu_filter_;
 
  private:
@@ -408,10 +433,10 @@ TEST_F(MobilizeMenuFilterTest, NoNav) {
   DoNotCleanup();
   const char kHtml[] =
       "<body>\n"
-      "<nav>Not marked as navigational by labeler</nav>\n"
-      "<p>This page has no pagespeed-mobile-role annotations\n"
+      "<h1>Not marked as navigational by labeler</h1>\n"
+      "<p>This page has no navigational annotations\n"
       "</body>";
-  ValidateNoChanges("No nav", kHtml);
+  ValidateAddIdsAndScript("No nav", kHtml);
   EXPECT_STREQ("", MenuString());
 }
 
@@ -450,7 +475,7 @@ const char kActualMenu1[] =
 
 TEST_F(MobilizeMenuFilterTest, ActualMenu1) {
   DoNotCleanup();
-  ValidateNoChanges("Actual menu 1", kActualMenu1);
+  ValidateAddIdsAndScript("Actual menu 1", kActualMenu1);
   // TODO(jmaessen): Deal with the repetition across elements somehow.
   EXPECT_STREQ("(, / | "
                    "(Camel Camel Call, /de/dec | "
@@ -538,7 +563,7 @@ const char kActualMenu2[] =
 
 TEST_F(MobilizeMenuFilterTest, ActualMenu2) {
   DoNotCleanup();
-  ValidateNoChanges("Actual menu 2", kActualMenu2);
+  ValidateAddIdsAndScript("Actual menu 2", kActualMenu2);
   EXPECT_STREQ("(Llama, l) "
                "(Dromedary, a) "
                "(Call, c) "
@@ -578,9 +603,9 @@ TEST_F(MobilizeMenuFilterTest, ActualMenu2) {
 // if we select the version with text we don't lose any information.
 const char kActualMenu3[] =
     "<div data-mobile-role=navigational>"
-    "<div><p>You can save</p></div>"
+    "  <div><p>You can save</p></div>"
     "</div>"
-    "<div>"
+    "<div id data-mobile-role=navigational>"
     "  <ul>"
     "    <li><a href='/m/l/'>Llama</a></li>"
     "  </ul>"
@@ -708,8 +733,9 @@ const char kActualMenu3[] =
 
 TEST_F(MobilizeMenuFilterTest, ActualMenu3) {
   DoNotCleanup();
-  ValidateNoChanges("Actual menu 3", kActualMenu3);
+  ValidateAddIdsAndScript("Actual menu 3", kActualMenu3);
   EXPECT_STREQ(
+      "( | (Llama, /m/l/)) "
       "( | (Rental Cabin, /r) "
           "(Dinner, /d) "
           "(Personal, /p) "
@@ -761,6 +787,7 @@ TEST_F(MobilizeMenuFilterTest, ActualMenu3) {
       "( | (Verdant coast, /pc/))",
       MenuString());
   EXPECT_STREQ(
+      "(Llama, /m/l/) "
       "(Rental Cabin, /r) "
       "(Personal, /p) "
       "(Call & Save, /cs) "
