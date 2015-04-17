@@ -154,8 +154,7 @@ inline bool EatLiteral(const StringPiece& expected, StringPiece* in) {
 // given terminator (which will not be included in the output), handling simple
 // escapes along the way. in will be modified to skip over the bytes consumed,
 // regardless of whether successful or not (to avoid backtracking).
-// If is_string is true, will handle non-termination by truncating content
-// at end of line (which is the CSS behavior for unclosed strings).
+// If is_string is true, will also permit escaped line continuations.
 // Returns whether the content could be successfully extracted.
 bool CssExtractUntil(bool is_string, char term,
                      StringPiece* in, GoogleString* out, bool* found_term) {
@@ -169,7 +168,8 @@ bool CssExtractUntil(bool is_string, char term,
       *found_term = true;
       break;
     } else if (c == '\\') {
-      // See if it's an escape we recognize.
+      // See if it's an escape we recognize. We need to evaluate the
+      // escape since they will get escaped again on output.
       // TODO(morlovich): handle hex escapes here as well. For now we just match
       // the non-whitespace stuff we ourselves produce.
       char escape_val;
@@ -184,9 +184,15 @@ bool CssExtractUntil(bool is_string, char term,
             out->push_back(escape_val);
             break;
           case '\n':
+          case '\r':
+          case '\f':
             // \ before newline in strings simply disappears; for everything
             // else we fallthrough to below.
             if (is_string) {
+              if (escape_val == '\r') {
+                // CR+LF.
+                EatLiteral("\n", in);
+              }
               break;
             }
             FALLTHROUGH_INTENDED;
@@ -200,32 +206,45 @@ bool CssExtractUntil(bool is_string, char term,
         found_error = true;
       }
     } else {
-      out->push_back(c);
+      if (!is_string && IsHtmlSpace(c)) {
+        // Whitespace is not generally permitted in url() payload, but can
+        // come before closing ).
+        for (int i = 0, n = in->size(); i < n; ++i) {
+          char ahead = (*in)[i];
+
+          // IsHtmlSpace is, in a pleasant surprise, also appropriate for CSS.
+          // (Don't worry, JS has a totally different idea of what's whitespace
+          //  to keep things interesting).
+          if (IsHtmlSpace(ahead)) {
+            continue;
+          }
+          if (ahead == term) {
+            // Got closing character --- skip ahead to it, and accumulate
+            // whitespace.
+            StrAppend(out, in->substr(0, i));
+            in->remove_prefix(i);
+            break;
+          } else {
+            // Some other character. Bail out.
+            *in = StringPiece(in->data() - 1, in->size() + 1);
+            return !found_error;
+          }
+        }
+      } else if (c == '\n' || c == '\r' || c == '\f') {
+        // Strings tokens can't have unescaped newlines, so we are done here.
+        // We do need to pop-back the line terminator, though.
+        // (Newlines in URL tokens are handed in the case above, with other
+        //  whitespace).
+        *in = StringPiece(in->data() - 1, in->size() + 1);
+        break;
+      } else {
+        // Normal character.
+        out->push_back(c);
+      }
     }
   }
 
-  if (is_string && !*found_term) {
-    // Unclosed strings have a special rule -- they're terminated at first
-    // newline.
-    size_t pos = out->find('\n');
-    if (pos != GoogleString::npos) {
-      size_t full_len = out->size();
-
-      // Truncate stuff till before the new line
-      out->resize(pos);
-
-      // Rollback the position to point to the newline. While this does
-      // mean we will be re-scanning, it can't be too bad since there can't be
-      // another quote of this same type again.
-      const char* begin = in->data() - (full_len - out->size());
-      const char* end = in->data() + in->size();
-      *in = StringPiece(begin, end - begin);
-    }
-
-    return !found_error;
-  }
-
-  return *found_term && !found_error;
+  return !found_error;
 }
 
 
