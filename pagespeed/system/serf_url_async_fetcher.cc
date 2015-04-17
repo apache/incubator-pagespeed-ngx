@@ -135,6 +135,7 @@ class SerfFetch : public PoolElement<SerfFetch> {
         using_https_(false),
         ssl_context_(NULL),
         ssl_error_message_(NULL) {
+    memset(&url_, 0, sizeof(url_));
   }
 
   ~SerfFetch() {
