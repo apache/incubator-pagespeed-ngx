@@ -231,6 +231,10 @@ class UnicodeText {
     // which must be at least 4 bytes long. Return the number of
     // bytes written.
     int get_utf8(char* buf) const;
+    // Return the UTF-8 character that the iterator points to.
+    string get_utf8_string() const;
+    // Return the byte length of the UTF-8 character the iterator points to.
+    int utf8_length() const;
     // Return the iterator's pointer into the UTF-8 data.
     const char* utf8_data() const { return it_; }
 
@@ -259,6 +263,14 @@ class UnicodeText {
     int get_utf8(char* buf) const {
       const_iterator tmp_it = base();
       return (--tmp_it).get_utf8(buf);
+    }
+    string get_utf8_string() const {
+      const_iterator tmp_it = base();
+      return (--tmp_it).get_utf8_string();
+    }
+    int utf8_length() const {
+      const_iterator tmp_it = base();
+      return (--tmp_it).utf8_length();
     }
   };
   const_reverse_iterator rbegin() const {

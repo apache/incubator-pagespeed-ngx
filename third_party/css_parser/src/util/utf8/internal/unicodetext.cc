@@ -463,6 +463,21 @@ int UnicodeText::const_iterator::get_utf8(char* utf8_output) const {
   return 4;
 }
 
+string UnicodeText::const_iterator::get_utf8_string() const {
+  return string(utf8_data(), utf8_length());
+}
+
+int UnicodeText::const_iterator::utf8_length() const {
+  if (it_[0] < 0x80) {
+    return 1;
+  } else if (it_[0] < 0xE0) {
+    return 2;
+  } else if (it_[0] < 0xF0) {
+    return 3;
+  } else {
+    return 4;
+  }
+}
 
 UnicodeText::const_iterator UnicodeText::MakeIterator(const char* p) const {
   CHECK(p != NULL);
