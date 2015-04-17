@@ -122,8 +122,7 @@ class ScanlineToFrameReaderAdapter : public MultipleFrameReader {
   ScanlineToFrameReaderAdapter(ScanlineReaderInterface* scanline_reader,
                                MessageHandler* message_handler);
   virtual ScanlineStatus Reset();
-  virtual ScanlineStatus Initialize(const void* image_buffer,
-                                    size_t buffer_length);
+  virtual ScanlineStatus Initialize();
   virtual bool HasMoreFrames() const;
   virtual bool HasMoreScanlines() const;
   virtual ScanlineStatus PrepareNextFrame();

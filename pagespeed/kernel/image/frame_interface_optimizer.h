@@ -43,8 +43,7 @@ class MultipleFramePaddingReader : public MultipleFrameReader {
   virtual ~MultipleFramePaddingReader();
 
   virtual ScanlineStatus Reset();
-  virtual ScanlineStatus Initialize(const void* image_buffer,
-                                    size_t buffer_length);
+  virtual ScanlineStatus Initialize();
   virtual bool HasMoreFrames() const;
   virtual bool HasMoreScanlines() const;
   virtual ScanlineStatus PrepareNextFrame();

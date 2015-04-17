@@ -498,7 +498,7 @@ ScanlineStatus SkipOverGifExtensionSubblocks(GifFileType* gif_file,
                                              MessageHandler* message_handler) {
   while (extension != NULL) {
     if (DGifGetExtensionNext(gif_file, &extension) == GIF_ERROR) {
-      return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler,
+      return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler,
                               SCANLINE_STATUS_PARSE_ERROR,
                               FRAME_GIFREADER,
                               "Failed to read next extension.");
@@ -768,7 +768,7 @@ ScanlineStatus GifFrameReader::ProcessExtensionAffectingFrame() {
   if (ext_code == GRAPHICS_EXT_FUNC_CODE) {
     if (extension[kGifGceSizeIndex] != kGifGceExpectedSize) {
       return PS_LOGGED_STATUS(
-          PS_LOG_ERROR, message_handler(),
+          PS_LOG_INFO, message_handler(),
           SCANLINE_STATUS_PARSE_ERROR,
           FRAME_GIFREADER,
           "Received graphics extension with unexpected length.");
@@ -794,7 +794,7 @@ ScanlineStatus GifFrameReader::ProcessExtensionAffectingFrame() {
                     "Unrecognized disposal method %d.", dispose);
         frame_spec_.disposal = FrameSpec::DISPOSAL_NONE;
       } else {
-        return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler(),
+        return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler(),
                                 SCANLINE_STATUS_PARSE_ERROR,
                                 FRAME_GIFREADER,
                                 "Unrecognized disposal method %d.", dispose);
@@ -858,14 +858,14 @@ ScanlineStatus GifFrameReader::ProcessExtensionAffectingImage(
   if  (ext_code == APPLICATION_EXT_FUNC_CODE) {
     if (extension == NULL) {
       return PS_LOGGED_STATUS(
-          PS_LOG_ERROR, message_handler(),
+          PS_LOG_INFO, message_handler(),
           SCANLINE_STATUS_PARSE_ERROR,
           FRAME_GIFREADER,
           "NULL Application Extension Block.");
     }
     if (extension[kGifAeIdentifierLengthIndex] != kGifAeIdentifierLength) {
       return PS_LOGGED_STATUS(
-          PS_LOG_ERROR, message_handler(),
+          PS_LOG_INFO, message_handler(),
           SCANLINE_STATUS_PARSE_ERROR,
           FRAME_GIFREADER,
           "Application extension block size has unexpected size.");
@@ -874,7 +874,7 @@ ScanlineStatus GifFrameReader::ProcessExtensionAffectingImage(
       // Recognize and parse Netscape2.0 NAB extension for loop count.
       if (DGifGetExtensionNext(gif_file, &extension) == GIF_ERROR) {
         return PS_LOGGED_STATUS(
-            PS_LOG_ERROR, message_handler(),
+            PS_LOG_INFO, message_handler(),
             SCANLINE_STATUS_PARSE_ERROR,
             FRAME_GIFREADER,
             "DGifGetExtensionNext failed while trying to get loop count");
@@ -883,7 +883,7 @@ ScanlineStatus GifFrameReader::ProcessExtensionAffectingImage(
             kGifAeLoopCountExpectedLength) &&
            (extension[kGifAeLoopCountFixedConstIndex] !=
             kGifAeLoopCountExpectedFixedConst))) {
-        return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler(),
+        return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler(),
                                 SCANLINE_STATUS_PARSE_ERROR,
                                 FRAME_GIFREADER,
                                 "animation loop count: wrong size/marker");
@@ -910,8 +910,13 @@ ScanlineStatus GifFrameReader::ProcessExtensionAffectingImage(
   return SkipOverGifExtensionSubblocks(gif_file, extension, message_handler());
 }
 
-ScanlineStatus GifFrameReader::Initialize(const void* image_buffer,
-                                          size_t buffer_length) {
+ScanlineStatus GifFrameReader::Initialize() {
+  if (image_buffer_ == NULL) {
+    return PS_LOGGED_STATUS(PS_LOG_DFATAL, message_handler(),
+                            SCANLINE_STATUS_INVOCATION_ERROR,
+                            FRAME_GIFREADER,
+                            "null or empty image buffer.");
+  }
   if (image_initialized_) {
     // Reset the reader if it has been initialized before.
     Reset();
@@ -939,7 +944,7 @@ ScanlineStatus GifFrameReader::Initialize(const void* image_buffer,
   }
 
   ScanlineStatus status(SCANLINE_STATUS_SUCCESS);
-  if (gif_struct_->Initialize(image_buffer, buffer_length, &status)) {
+  if (gif_struct_->Initialize(image_buffer_, buffer_length_, &status)) {
     status = GetImageData();
   }
   if (!status.Success()) {

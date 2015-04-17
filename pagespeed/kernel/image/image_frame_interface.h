@@ -152,9 +152,19 @@ class MultipleFrameReader {
   virtual ScanlineStatus Reset() = 0;
 
   // Initializes MultipleFrameReader to read image data of length
-  // 'buffer_length' from 'image_buffer'.
-  virtual ScanlineStatus Initialize(const void* image_buffer,
-                                    size_t buffer_length) = 0;
+  // 'buffer_length_' from 'image_buffer_'. This function should take
+  // care of calling Reset() if necessary, so that the sequence
+  // "Reset(); Initialize();" is never needed.
+  virtual ScanlineStatus Initialize() = 0;
+
+  // Sets 'buffer_length_' and 'image_buffer_' and calls
+  // Initialize(). Do not override this function; override the no-arg
+  // overload instead.
+  ScanlineStatus Initialize(const void* image_buffer, size_t buffer_length) {
+    image_buffer_ = image_buffer;
+    buffer_length_ = buffer_length;
+    return Initialize();
+  }
 
   // Returns true iff the image being read has additional frames beyond
   // the current frame being read. For any well-formed image with at
@@ -215,6 +225,9 @@ class MultipleFrameReader {
                   ScanlineStatus* status) {
     IF_OK_RUN(status, Initialize(image_buffer, buffer_length));
   }
+  bool Initialize(ScanlineStatus* status) {
+    IF_OK_RUN(status, Initialize());
+  }
   bool PrepareNextFrame(ScanlineStatus* status) {
     IF_OK_RUN(status, PrepareNextFrame());
   }
@@ -235,6 +248,10 @@ class MultipleFrameReader {
                        ScanlineStatus* status) {
     IF_OK_RUN(status, set_quirks_mode(quirks_mode));
   }
+
+ protected:
+  const void* image_buffer_;
+  size_t buffer_length_;
 
  private:
   // Handles logging info, warning, and error messages.

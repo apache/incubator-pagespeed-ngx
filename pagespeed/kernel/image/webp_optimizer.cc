@@ -496,19 +496,22 @@ ScanlineStatus WebpFrameWriter::FinalizeWrite() {
   }
 
   WebPData webp_data = { NULL, 0 };
-  if (WebPMuxAssemble(webp_mux_, &webp_data) != WEBP_MUX_OK) {
+  WebPMuxError muxerr = WebPMuxAssemble(webp_mux_, &webp_data);
+  if (muxerr != WEBP_MUX_OK) {
     if (webp_image_->error_code == kWebPErrorTimeout) {
       return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler(),
                               SCANLINE_STATUS_TIMEOUT_ERROR,
                               FRAME_WEBPWRITER,
-                              "WebPMuxAssemble: %s",
-                              kWebPErrorMessages[webp_image_->error_code]);
+                              "WebPMuxAssemble: (%d) %d",
+                              webp_image_->error_code,
+                              muxerr);
     } else {
       return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler(),
                               SCANLINE_STATUS_INTERNAL_ERROR,
                               FRAME_WEBPWRITER,
-                              "WebPMuxAssemble: %s",
-                              kWebPErrorMessages[webp_image_->error_code]);
+                              "WebPMuxAssemble: (%d) %d",
+                              webp_image_->error_code,
+                              muxerr);
     }
   }
 

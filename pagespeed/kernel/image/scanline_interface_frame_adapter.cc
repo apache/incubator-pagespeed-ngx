@@ -180,11 +180,9 @@ ScanlineStatus ScanlineToFrameReaderAdapter::Reset() {
                            "Error in ScanlineReaderInterface::Reset()"));
 }
 
-ScanlineStatus ScanlineToFrameReaderAdapter::Initialize(
-    const void* const image_buffer,
-    const size_t buffer_length) {
-  ScanlineStatus status = impl_->InitializeWithStatus(image_buffer,
-                                                      buffer_length);
+ScanlineStatus ScanlineToFrameReaderAdapter::Initialize() {
+  ScanlineStatus status = impl_->InitializeWithStatus(image_buffer_,
+                                                      buffer_length_);
 
   if (status.Success()) {
     image_spec_.width = impl_->GetImageWidth();

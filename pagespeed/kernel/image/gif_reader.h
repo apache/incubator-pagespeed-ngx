@@ -103,8 +103,7 @@ class GifFrameReader : public MultipleFrameReader {
   // Initialize the reader with the given image stream. Note that
   // image_buffer must remain unchanged until the last call to
   // ReadNextScanlineWithStatus().
-  virtual ScanlineStatus Initialize(const void* image_buffer,
-                                    size_t buffer_length);
+  virtual ScanlineStatus Initialize();
 
   virtual bool HasMoreFrames() const {
     return (image_initialized_ && (next_frame_ < image_spec_.num_frames));

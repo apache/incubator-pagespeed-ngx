@@ -84,8 +84,7 @@ class FakeReader : public MultipleFrameReader {
     return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
   }
 
-  virtual ScanlineStatus Initialize(const void* image_buffer,
-                                    size_t buffer_length) {
+  virtual ScanlineStatus Initialize() {
     return Reset();
   }
 

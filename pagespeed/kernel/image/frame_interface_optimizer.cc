@@ -38,9 +38,8 @@ ScanlineStatus MultipleFramePaddingReader::Reset() {
   return impl_->Reset();
 }
 
-ScanlineStatus MultipleFramePaddingReader::Initialize(const void* image_buffer,
-                                                      size_t buffer_length) {
-  ScanlineStatus status = impl_->Initialize(image_buffer, buffer_length);
+ScanlineStatus MultipleFramePaddingReader::Initialize() {
+  ScanlineStatus status = impl_->Initialize(image_buffer_, buffer_length_);
   if (status.Success()) {
     status = impl_->GetImageSpec(&image_spec_);
   }
