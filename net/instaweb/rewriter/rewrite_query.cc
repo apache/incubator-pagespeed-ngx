@@ -258,9 +258,12 @@ RewriteQuery::Status RewriteQuery::Scan(
   //   significant percent-escaping (nearly everything except alphanumeric).
   //   This is done in ResponseHeaders::SetPageSpeedQueryParamsAsCookies().
   // [So now we're here, where we use the cookie values set by the above steps]
-  // * We GoogleUrl::Unescape the cookie value to reverse the previous step.
-  //   Note that GoogleUrl::Unescape(GoogleUrl::Escape(x)) is the identify
-  //   function, so we expect the value to be GoogleUrl minimally escaped.
+  // * We unescape the cookie value to reverse the previous step.
+  //   Note that GoogleUrl::UnescapeQueryParam(GoogleUrl::EscapeQueryParam(x))
+  //   is the identify function, so we expect the value to be GoogleUrl
+  //   minimally escaped.
+  // TODO(sligocki): GoogleUrl::UnescapeIgnorePlus(GoogleUrl::EscapeQueryParam)
+  //                 is not the identity function. Is this a problem?
   // * We sanitize the unescaped cookie value by dummying up a GoogleUrl with
   //   the value as a query parameter value, hence re-minimally escaping it.
   // * We then escape this sanitized value since that's the process that we
@@ -279,7 +282,7 @@ RewriteQuery::Status RewriteQuery::Scan(
       StringPiece cookie_value = it->second.first;
       GoogleString unescaped = GoogleUrl::UnescapeIgnorePlus(cookie_value);
       StringPiece sanitized = SanitizeValueAsQP(unescaped, &gurl);
-      GoogleString escaped = GoogleUrl::Escape(sanitized);
+      GoogleString escaped = GoogleUrl::EscapeQueryParam(sanitized);
       if (unescaped == sanitized && escaped == cookie_value) {
         RequestContextPtr null_request_context;
         if (ScanNameValue(cookie_name, unescaped, allow_options,

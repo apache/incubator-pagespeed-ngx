@@ -178,8 +178,8 @@ class JavascriptFilter::Context : public SingleRewriteContext {
         // Note: We append PageSpeed=off query parameter to make sure that
         // the source URL doesn't get rewritten with IPRO.
         source_gurl.reset(
-            original_gurl.CopyAndAddEscapedQueryParam(RewriteQuery::kPageSpeed,
-                                                      "off"));
+            original_gurl.CopyAndAddQueryParam(RewriteQuery::kPageSpeed,
+                                               "off"));
       }
 
       GoogleString source_map_text;

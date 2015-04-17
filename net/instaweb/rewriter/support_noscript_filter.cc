@@ -52,7 +52,7 @@ void SupportNoscriptFilter::DetermineEnabled(GoogleString* disabled_reason) {
 void SupportNoscriptFilter::StartElement(HtmlElement* element) {
   if (should_insert_noscript_ && element->keyword() == HtmlName::kBody) {
     scoped_ptr<GoogleUrl> url_with_psa_off(
-        rewrite_driver_->google_url().CopyAndAddEscapedQueryParam(
+        rewrite_driver_->google_url().CopyAndAddQueryParam(
             RewriteQuery::kPageSpeed, RewriteQuery::kNoscriptValue));
     GoogleString escaped_url;
     HtmlKeywords::Escape(url_with_psa_off->Spec(), &escaped_url);

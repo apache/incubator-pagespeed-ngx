@@ -47,7 +47,7 @@ GoogleUrl::GoogleUrl(const GoogleString& spec)
   Init();
 }
 
-GoogleUrl::GoogleUrl(const StringPiece& sp)
+GoogleUrl::GoogleUrl(StringPiece sp)
     : gurl_(sp.as_string()) {
   Init();
 }
@@ -63,7 +63,7 @@ GoogleUrl::GoogleUrl(const GoogleUrl& base, const GoogleString& str) {
   Reset(base, str);
 }
 
-GoogleUrl::GoogleUrl(const GoogleUrl& base, const StringPiece& sp) {
+GoogleUrl::GoogleUrl(const GoogleUrl& base, StringPiece sp) {
   Reset(base, sp);
 }
 
@@ -97,7 +97,7 @@ bool GoogleUrl::Reset(const GoogleUrl& base, const GoogleString& str) {
   return ResolveHelper(base.gurl_, str);
 }
 
-bool GoogleUrl::Reset(const GoogleUrl& base, const StringPiece& sp) {
+bool GoogleUrl::Reset(const GoogleUrl& base, StringPiece sp) {
   return ResolveHelper(base.gurl_, sp.as_string());
 }
 
@@ -105,7 +105,7 @@ bool GoogleUrl::Reset(const GoogleUrl& base, const char* str) {
   return ResolveHelper(base.gurl_, str);
 }
 
-bool GoogleUrl::Reset(const StringPiece& new_value) {
+bool GoogleUrl::Reset(StringPiece new_value) {
   gurl_ = GURL(new_value.as_string());
   Init();
   return gurl_.is_valid();
@@ -139,11 +139,21 @@ bool GoogleUrl::IsAnyValid() const {
   return gurl_.is_valid();
 }
 
+GoogleUrl* GoogleUrl::CopyAndAddQueryParam(
+    StringPiece unescaped_name, StringPiece unescaped_value) const {
+  if (unescaped_value.data() == NULL) {
+    return CopyAndAddEscapedQueryParam(EscapeQueryParam(unescaped_name), NULL);
+  } else {
+    return CopyAndAddEscapedQueryParam(EscapeQueryParam(unescaped_name),
+                                       EscapeQueryParam(unescaped_value));
+  }
+}
+
 GoogleUrl* GoogleUrl::CopyAndAddEscapedQueryParam(
-    const StringPiece& name, const StringPiece& escaped_value) const {
+    StringPiece escaped_name, StringPiece escaped_value) const {
   QueryParams query_params;
   query_params.ParseFromUrl(*this);
-  query_params.AddEscaped(name, escaped_value);
+  query_params.AddEscaped(escaped_name, escaped_value);
   GoogleString query_params_string = query_params.ToEscapedString();
   url_canon::Replacements<char> replace_query;
   url_parse::Component query;
@@ -552,15 +562,15 @@ int HexStringToInt(const GoogleString& value) {
 
 }  // namespace
 
-GoogleString GoogleUrl::UnescapeHelper(const StringPiece& escaped_url,
+GoogleString GoogleUrl::UnescapeHelper(StringPiece escaped,
                                        bool convert_plus_to_space) {
-  GoogleString unescaped_url, escape_text;
+  GoogleString unescaped, escape_text;
   unsigned char escape_value;
   UnescapeState state = NORMAL;
   int iter = 0;
-  int n = escaped_url.size();
+  int n = escaped.size();
   while (iter < n) {
-    char c = escaped_url[iter];
+    char c = escaped[iter];
     switch (state) {
       case NORMAL:
         if (c == '%') {
@@ -570,7 +580,7 @@ GoogleString GoogleUrl::UnescapeHelper(const StringPiece& escaped_url,
           if ((c == '+') && convert_plus_to_space) {
             c = ' ';
           }
-          unescaped_url.push_back(c);
+          unescaped.push_back(c);
         }
         ++iter;
         break;
@@ -581,7 +591,7 @@ GoogleString GoogleUrl::UnescapeHelper(const StringPiece& escaped_url,
           ++iter;
         } else {
           // Unexpected, % followed by non-hex chars, pass it through.
-          unescaped_url.push_back('%');
+          unescaped.push_back('%');
           state = NORMAL;
         }
         break;
@@ -589,13 +599,13 @@ GoogleString GoogleUrl::UnescapeHelper(const StringPiece& escaped_url,
         if (IsHexDigit(c)) {
           escape_text.push_back(c);
           escape_value = HexStringToInt(escape_text);
-          unescaped_url.push_back(escape_value);
+          unescaped.push_back(escape_value);
           state = NORMAL;
           ++iter;
         } else {
           // Unexpected, % followed by non-hex chars, pass it through.
-          unescaped_url.push_back('%');
-          unescaped_url.append(escape_text);
+          unescaped.push_back('%');
+          unescaped.append(escape_text);
           state = NORMAL;
         }
         break;
@@ -603,13 +613,13 @@ GoogleString GoogleUrl::UnescapeHelper(const StringPiece& escaped_url,
   }
   // Unexpected, % followed by end of string, pass it through.
   if (state == ESCAPE1 || state == ESCAPE2) {
-    unescaped_url.push_back('%');
-    unescaped_url.append(escape_text);
+    unescaped.push_back('%');
+    unescaped.append(escape_text);
   }
-  return unescaped_url;
+  return unescaped;
 }
 
-GoogleString GoogleUrl::Escape(const StringPiece& unescaped) {
+GoogleString GoogleUrl::EscapeQueryParam(StringPiece unescaped) {
   GoogleString escaped;
   for (const char* p = unescaped.data(), *e = p + unescaped.size();
        p < e; ++p) {

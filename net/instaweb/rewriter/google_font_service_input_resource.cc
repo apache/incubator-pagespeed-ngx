@@ -24,6 +24,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/http/http_names.h"
@@ -73,7 +74,7 @@ GoogleFontServiceInputResource* GoogleFontServiceInputResource::Make(
 
   StringPiece url_plus_ua_spec;
   scoped_ptr<GoogleUrl> url_plus_ua(
-      parsed_url.CopyAndAddEscapedQueryParam("X-PS-UA", GoogleUrl::Escape(ua)));
+      parsed_url.CopyAndAddQueryParam("X-PS-UA", ua));
   url_plus_ua_spec = url_plus_ua->Spec();
 
   GoogleString cache_key;

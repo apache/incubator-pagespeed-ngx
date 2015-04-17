@@ -46,25 +46,26 @@ class GoogleUrlTest : public testing::Test {
     gurl_with_port_(kUrlWithPort)
   {}
 
-  void TestCopyAndAddEscapedQueryParamCase(const char* before,
-                                           const char* after) {
+  void TestCopyAndAddQueryParam(const char* before,
+                                const char* key, const char* value,
+                                const char* after) {
     GoogleUrl before_url(before);
     StringPiece before_url_original(before_url.UncheckedSpec());
     scoped_ptr<GoogleUrl> after_url(
-        before_url.CopyAndAddEscapedQueryParam("r", "s"));
-    EXPECT_EQ(after_url->UncheckedSpec(), after);
+        before_url.CopyAndAddQueryParam(key, value));
+    EXPECT_STREQ(after, after_url->UncheckedSpec());
     EXPECT_TRUE(after_url->IsWebValid());
-    EXPECT_EQ(before_url_original, before_url.UncheckedSpec());
+    EXPECT_STREQ(before_url_original, before_url.UncheckedSpec());
   }
 
   void TestAllExceptQueryCase(const char* before, const char* after) {
     GoogleUrl before_url(before);
-    EXPECT_EQ(before_url.AllExceptQuery(), GoogleString(after));
+    EXPECT_STREQ(after, before_url.AllExceptQuery());
   }
 
   void TestAllAfterQueryCase(const char* before, const char* after) {
     GoogleUrl before_url(before);
-    EXPECT_EQ(before_url.AllAfterQuery(), GoogleString(after));
+    EXPECT_STREQ(after, before_url.AllAfterQuery());
   }
 
   // RunMostMethods and RunAllMethods parse a url and run methods to make
@@ -73,7 +74,7 @@ class GoogleUrlTest : public testing::Test {
   // None of these methods should CHECK-crash if a bad URL is passed in.
   // They will LOG(DFATAL)-crash in debug mode, though, so you should use
   // EXPECT_DFATAL(RunMostMethods("..."), "");
-  void RunMostMethods(const StringPiece& url_string) {
+  void RunMostMethods(StringPiece url_string) {
     GoogleUrl url(url_string);
     url.AllExceptQuery();
     url.AllAfterQuery();
@@ -95,7 +96,7 @@ class GoogleUrlTest : public testing::Test {
   }
 
   // Runs all methods, even ones that will CHECK-crash on invalid URLs.
-  void RunAllMethods(const StringPiece& url_string) {
+  void RunAllMethods(StringPiece url_string) {
     RunMostMethods(url_string);
 
     GoogleUrl url(url_string);
@@ -112,7 +113,9 @@ class GoogleUrlTest : public testing::Test {
   }
 
   void TestEscapeUnescape(StringPiece value) {
-    EXPECT_STREQ(value, GoogleUrl::Unescape(GoogleUrl::Escape(value)));
+    EXPECT_STREQ(value,
+                 GoogleUrl::UnescapeQueryParam(
+                     GoogleUrl::EscapeQueryParam(value)));
   }
 
   GoogleUrl gurl_;
@@ -208,21 +211,29 @@ TEST_F(GoogleUrlTest, TestDecode) {
   EXPECT_EQ("http://www.example.com/S-8%2525", url4.Spec());
 }
 
-TEST_F(GoogleUrlTest, TestCopyAndAddEscapedQueryParam) {
-  TestCopyAndAddEscapedQueryParamCase("http://a.com/b/c/d.ext",
-                                      "http://a.com/b/c/d.ext?r=s");
+TEST_F(GoogleUrlTest, TestCopyAndAddQueryParam) {
+  TestCopyAndAddQueryParam("http://a.com/b/c/d.ext", "r", "s",
+                           "http://a.com/b/c/d.ext?r=s");
 
-  TestCopyAndAddEscapedQueryParamCase("http://a.com/b/c/d.ext?p=q",
-                                      "http://a.com/b/c/d.ext?p=q&r=s");
+  TestCopyAndAddQueryParam("http://a.com/b/c/d.ext?p=q", "r", "s",
+                           "http://a.com/b/c/d.ext?p=q&r=s");
 
-  TestCopyAndAddEscapedQueryParamCase("http://a.com",
-                                      "http://a.com/?r=s");
+  TestCopyAndAddQueryParam("http://a.com", "r", "s",
+                           "http://a.com/?r=s");
 
-  TestCopyAndAddEscapedQueryParamCase("http://a.com?p=q",
-                                      "http://a.com/?p=q&r=s");
+  TestCopyAndAddQueryParam("http://a.com?p=q", "r", "s",
+                           "http://a.com/?p=q&r=s");
 
-  TestCopyAndAddEscapedQueryParamCase("http://a.com/b/c/d.ext?p=q#ref",
-                                      "http://a.com/b/c/d.ext?p=q&r=s#ref");
+  TestCopyAndAddQueryParam("http://a.com/b/c/d.ext?p=q#ref", "r", "s",
+                           "http://a.com/b/c/d.ext?p=q&r=s#ref");
+
+  // Escaping example
+  TestCopyAndAddQueryParam("http://a.com/", "key/?", "val %\t@ ue",
+                           "http://a.com/?key%2f%3f=val+%25%09%40+ue");
+
+  // NULL value
+  TestCopyAndAddQueryParam("http://a.com/", "key", NULL,
+                           "http://a.com/?key");
 }
 
 TEST_F(GoogleUrlTest, TestAllExceptQuery) {
@@ -527,7 +538,7 @@ TEST_F(GoogleUrlTest, Query) {
   ASSERT_TRUE(gurl.IsWebValid());
   EXPECT_STREQ("b=%3Cvalue%20requiring%20escapes%3E", gurl.Query());
   EXPECT_STREQ("b=<value requiring escapes>",
-               GoogleUrl::Unescape(gurl.Query()));
+               GoogleUrl::UnescapeQueryParam(gurl.Query()));
 }
 
 TEST_F(GoogleUrlTest, URLQuery) {
@@ -581,21 +592,23 @@ TEST_F(GoogleUrlTest, URLQuery) {
   }
 }
 
-TEST_F(GoogleUrlTest, Unescape) {
-  EXPECT_STREQ("", GoogleUrl::Unescape(""));
-  EXPECT_STREQ("noescaping", GoogleUrl::Unescape("noescaping"));
+TEST_F(GoogleUrlTest, UnescapeQueryParam) {
+  EXPECT_STREQ("", GoogleUrl::UnescapeQueryParam(""));
+  EXPECT_STREQ("noescaping", GoogleUrl::UnescapeQueryParam("noescaping"));
   EXPECT_STREQ("http://example.com:8080/src/example.html?a=b&a=c,d",
-               GoogleUrl::Unescape(
+               GoogleUrl::UnescapeQueryParam(
                    "http%3A%2f%2Fexample.com%3A8080%2Fsrc%2Fexample.html"
                    "%3Fa%3Db%26a%3dc%2Cd"));
-  EXPECT_STREQ("%:%1z%zZ%a%", GoogleUrl::Unescape("%%3a%1z%zZ%a%"));
+  EXPECT_STREQ("%:%1z%zZ%a%", GoogleUrl::UnescapeQueryParam("%%3a%1z%zZ%a%"));
 }
 
-TEST_F(GoogleUrlTest, Escape) {
-  EXPECT_STREQ("Hello1234-5678_910~", GoogleUrl::Escape("Hello1234-5678_910~"));
+TEST_F(GoogleUrlTest, EscapeQueryParam) {
+  EXPECT_STREQ("Hello1234-5678_910~",
+               GoogleUrl::EscapeQueryParam("Hello1234-5678_910~"));
 
   // Note, even commas are escaped :(.
-  EXPECT_STREQ("Hello%2c+World%21", GoogleUrl::Escape("Hello, World!"));
+  EXPECT_STREQ("Hello%2c+World%21",
+               GoogleUrl::EscapeQueryParam("Hello, World!"));
 
   TestEscapeUnescape("Hello, World!");
   TestEscapeUnescape("Hello1234-5678_910~");
@@ -605,7 +618,7 @@ TEST_F(GoogleUrlTest, Escape) {
   // Ensure that we encode/decode everything all characters.
   TestEscapeUnescape(kBadQueryString);
   // Ensure that we correctly re-encode/decode an already-encoded string.
-  TestEscapeUnescape(GoogleUrl::Escape(kBadQueryString));
+  TestEscapeUnescape(GoogleUrl::EscapeQueryParam(kBadQueryString));
 }
 
 TEST_F(GoogleUrlTest, Sanitize) {

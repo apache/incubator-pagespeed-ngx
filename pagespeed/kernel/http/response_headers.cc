@@ -1027,7 +1027,7 @@ bool ResponseHeaders::SetQueryParamsAsCookies(
       const GoogleString* value = params.EscapedValue(i);
       GoogleString escaped_value;
       if (value != NULL) {
-        escaped_value = StrCat("=", GoogleUrl::Escape(*value));
+        escaped_value = StrCat("=", GoogleUrl::EscapeQueryParam(*value));
       }
       GoogleString cookie = StrCat(
           name, escaped_value, "; Expires=", expires, "; Domain=", host,

@@ -309,7 +309,7 @@ void SplitHtmlFilter::ServeNonCriticalPanelContents(const Json::Value& json) {
     }
   } else {
     scoped_ptr<GoogleUrl> gurl(
-        driver()->google_url().CopyAndAddEscapedQueryParam(
+        driver()->google_url().CopyAndAddQueryParam(
             HttpAttributes::kXSplit, HttpAttributes::kXSplitBelowTheFold));
     GoogleString escaped_url;
     EscapeToJsStringLiteral(gurl->PathAndLeaf(), false, &escaped_url);

@@ -47,21 +47,21 @@ enum UrlRelativity {
 class GoogleUrl {
  public:
   explicit GoogleUrl(const GoogleString& spec);
-  explicit GoogleUrl(const StringPiece& sp);
+  explicit GoogleUrl(StringPiece sp);
   explicit GoogleUrl(const char* str);
   // The following three constructors create a new GoogleUrl by resolving the
   // String(Piece) against the base.
   GoogleUrl(const GoogleUrl& base, const GoogleString& relative);
-  GoogleUrl(const GoogleUrl& base, const StringPiece& relative);
+  GoogleUrl(const GoogleUrl& base, StringPiece relative);
   GoogleUrl(const GoogleUrl& base, const char* relative);
   GoogleUrl();
 
   void Swap(GoogleUrl* google_url);
 
-  bool Reset(const StringPiece& new_url);
+  bool Reset(StringPiece new_url);
   bool Reset(const GoogleUrl& new_url);
   bool Reset(const GoogleUrl& base, const GoogleString& relative);
-  bool Reset(const GoogleUrl& base, const StringPiece& relative);
+  bool Reset(const GoogleUrl& base, StringPiece relative);
   bool Reset(const GoogleUrl& base, const char* relative);
 
   // Resets this URL to be invalid.
@@ -76,12 +76,16 @@ class GoogleUrl {
   bool IsAnyValid() const;
 
   // Returns a new GoogleUrl that is identical to this one but with additional
-  // query param.  Name and value should both be legal and already encoded.
+  // query param.  Name and value should both be unescaped.
   // This is a factory method that returns a pointer, the caller is responsible
   // for the management of the new object's memory (the caller owns the
   // pointer).
+  GoogleUrl* CopyAndAddQueryParam(StringPiece unescaped_name,
+                                  StringPiece unescaped_value) const;
+  // Same as CopyAndAddQueryParam() but name and value must already be escaped.
+  // Most users should use CopyAndAddQueryParam() instead for safety.
   GoogleUrl* CopyAndAddEscapedQueryParam(
-      const StringPiece& name, const StringPiece& escaped_value) const;
+      StringPiece escaped_name, StringPiece escaped_value) const;
 
   // For "http://a.com/b/c/d?e=f/g#r" returns "http://a.com/b/c/d"
   // Returns a StringPiece, only valid for the lifetime of this object.
@@ -178,7 +182,7 @@ class GoogleUrl {
 
   // TODO(nforman): get GURL to take a StringPiece so we don't have to do
   // any copying.
-  bool SchemeIs(const StringPiece& lower_ascii_scheme) const {
+  bool SchemeIs(StringPiece lower_ascii_scheme) const {
     return gurl_.SchemeIs(lower_ascii_scheme.as_string().c_str());
   }
 
@@ -201,33 +205,28 @@ class GoogleUrl {
     return gurl_ != other.gurl_;
   }
 
-  // Unescape a url, converting all %XX to the the actual char 0xXX.
-  // For example, this will convert "foo%21bar" to "foo!bar".
+  // Unescape a query parameter, converting all %XX to the the actual char 0xXX.
+  // This also converts '+' to ' ' which is valid only in query parameters.
+  // For example, this will convert "foo%21bar+baz" to "foo!bar baz".
   //
   // This will work with strings that have embedded NULs and %00s.
   //
   // TODO(jmarantz): Change signature to return a bool so if the escaped
   // syntax was not valid, we can help the caller avoid relying on this value.
-  static GoogleString Unescape(const StringPiece& escaped_url) {
-    return UnescapeHelper(escaped_url, true);
+  static GoogleString UnescapeQueryParam(StringPiece escaped) {
+    return UnescapeHelper(escaped, true);
   }
 
-  // Unescape converts "+" to " ", but that is not ideal for
-  // unescaping filenames, where "+" is fine, and space needs to be
-  // escaped to ",20", so a special hook is provided for that
-  // use-case.
-  static GoogleString UnescapeIgnorePlus(const StringPiece& escaped_url) {
-    return UnescapeHelper(escaped_url, false);
+  // UnescapeQueryParam converts "+" to " ", but that is not correct for other
+  // parts of a URL.
+  static GoogleString UnescapeIgnorePlus(StringPiece escaped) {
+    return UnescapeHelper(escaped, false);
   }
 
   // Escapes a string for use in a URL query param.
   //
   // This function escapes reserved chars (ex: '/', ':', '?', '&', etc.).
-  //
-  // TODO(sligocki): Rename to EscapeQueryParam to clarify that this escaping
-  // is only valid for query params (Spaces cannot be escaped to '+' in other
-  // parts of a URL).
-  static GoogleString Escape(const StringPiece& unescaped);
+  static GoogleString EscapeQueryParam(StringPiece unescaped);
 
   // Produces a sanitary, escaped version of a URL. The URL may already have
   // some mix of escaped and non-escaped sections. This function is idempotent
@@ -254,7 +253,7 @@ class GoogleUrl {
   size_t LeafEndPosition() const;
   size_t LeafStartPosition() const;
   size_t PathStartPosition() const;
-  static GoogleString UnescapeHelper(const StringPiece& escaped_url,
+  static GoogleString UnescapeHelper(StringPiece escaped,
                                      bool convert_plus_to_space);
 
   // Resolves a URL against a base. Returns whether the resolution worked.

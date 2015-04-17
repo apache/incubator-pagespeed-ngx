@@ -41,8 +41,9 @@ bool QueryParams::UnescapedValue(int index, GoogleString* unescaped_val) const {
   if (val == NULL) {
     return false;
   }
-  // TODO(jmarantz): make GoogleUrl::Unescape check for invalid encodings.
-  *unescaped_val = GoogleUrl::Unescape(*val);
+  // TODO(jmarantz): make GoogleUrl::UnescapeQueryParam check for invalid
+  // encodings.
+  *unescaped_val = GoogleUrl::UnescapeQueryParam(*val);
   return true;
 }
 
@@ -52,8 +53,9 @@ bool QueryParams::Lookup1Unescaped(const StringPiece& name,
   if (val == NULL) {
     return false;
   }
-  // TODO(jmarantz): make GoogleUrl::Unescape check for invalid encodings.
-  *unescaped_val = GoogleUrl::Unescape(*val);
+  // TODO(jmarantz): make GoogleUrl::UnescapeQueryParam check for invalid
+  // encodings.
+  *unescaped_val = GoogleUrl::UnescapeQueryParam(*val);
   return true;
 }
 
