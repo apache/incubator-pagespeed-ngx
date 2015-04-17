@@ -79,8 +79,9 @@ class ResponsiveImageFilterTest : public RewriteTestBase {
         " width=", width_str, " height=", height_str);
     StrAppend(
         &output_html, " srcset=\"",
-        EncodeImage(2 * width, 2 * height, filename, "0", final_ext), " 2x,",
-        EncodeImage(4 * width, 4 * height, filename, "0", final_ext), " 4x\">");
+        EncodeImage(1.5 * width, 1.5 * height, filename, "0", final_ext),
+        " 1.5x,",
+        EncodeImage(2 * width, 2 * height, filename, "0", final_ext), " 2x\">");
     if (include_zoom_script) {
       StrAppend(&output_html,
                 "<script src=\"/psajs/responsive.0.js\"></script>");
@@ -177,13 +178,13 @@ TEST_F(ResponsiveImageFilterTest, RecompressLarger2) {
   options()->EnableFilter(RewriteOptions::kResizeImages);
   rewrite_driver()->AddFilters();
 
-  // Note: This is half the native size of a.jpg.
-  const char input_html[] = "<img src=a.jpg width=512 height=383>";
+  // Note: This is 2/3 the native size of a.jpg.
+  const char input_html[] = "<img src=a.jpg width=682 height=511>";
   GoogleString output_html = StrCat(
-      "<img src=", EncodeImage(512, 383, "a.jpg", "0", "jpg"),
-      " width=512 height=383 srcset=\"",
-      EncodeImage(1024, 766, "a.jpg", "0", "jpg"), " 2x\">");
-  // We do not add a 4x version because the 2x is already native size.
+      "<img src=", EncodeImage(682, 511, "a.jpg", "0", "jpg"),
+      " width=682 height=511 srcset=\"",
+      EncodeImage(1023, 766, "a.jpg", "0", "jpg"), " 1.5x\">");
+  // We do not add a 2x version because the 1.5x is already native size.
   ValidateExpected("recompress_larger2", input_html, output_html);
 }
 
@@ -245,12 +246,12 @@ TEST_F(ResponsiveImageFilterTest, InlineSmall) {
   options()->EnableFilter(RewriteOptions::kInlineImages);
   rewrite_driver()->AddFilters();
 
-  // This image is displayed at 1/4 native resolution, we could add a srcset
+  // This image is displayed at 1/2 native resolution, we could add a srcset
   // to allow multiple resolutions, but instead we just inline the largest
   // version because even the largest one is pretty small.
-  const char input_html[] = "<img src=small_16x16.png width=4 height=4>";
+  const char input_html[] = "<img src=small_16x16.png width=8 height=8>";
   GoogleString output_html =
-      StrCat("<img width=4 height=4 src=\"", k16x16PngDataUrl, "\">");
+      StrCat("<img width=8 height=8 src=\"", k16x16PngDataUrl, "\">");
   ValidateExpected("inline_small", input_html, output_html);
 }
 
@@ -260,10 +261,10 @@ TEST_F(ResponsiveImageFilterTest, InlineSmall2) {
   options()->EnableFilter(RewriteOptions::kInlineImages);
   rewrite_driver()->AddFilters();
 
-  // Like InlineSmall test, but with 1/2 native resolution instead of 1/4.
-  const char input_html[] = "<img src=small_16x16.png width=7 height=7>";
+  // Like InlineSmall test, but with at an odd resolution.
+  const char input_html[] = "<img src=small_16x16.png width=11 height=11>";
   GoogleString output_html =
-      StrCat("<img width=7 height=7 src=\"", k16x16PngDataUrl, "\">");
+      StrCat("<img width=11 height=11 src=\"", k16x16PngDataUrl, "\">");
   ValidateExpected("inline_small2", input_html, output_html);
 }
 
@@ -271,17 +272,17 @@ TEST_F(ResponsiveImageFilterTest, NoPartialInline) {
   options()->EnableFilter(RewriteOptions::kResponsiveImages);
   options()->EnableFilter(RewriteOptions::kResizeImages);
   options()->EnableFilter(RewriteOptions::kInlineImages);
-  // Original image is 292 bytes, 4x4 resize is 83 bytes. So we choose a
+  // Original image is 292 bytes, 8x8 resize is 83 bytes. So we choose a
   // value between.
   options()->set_image_inline_max_bytes(200);
   rewrite_driver()->AddFilters();
 
-  const char input_html[] = "<img src=small_16x16.png width=4 height=4>";
+  const char input_html[] = "<img src=small_16x16.png width=8 height=8>";
   GoogleString output_html = StrCat(
-      "<img src=", EncodeImage(4, 4, "small_16x16.png", "0", "png"),
-      " width=4 height=4 srcset=\"",
-      EncodeImage(8, 8, "small_16x16.png", "0", "png"), " 2x,",
-      "small_16x16.png 4x\">");
+      "<img src=", EncodeImage(8, 8, "small_16x16.png", "0", "png"),
+      " width=8 height=8 srcset=\"",
+      EncodeImage(12, 12, "small_16x16.png", "0", "png"), " 1.5x,"
+      "small_16x16.png 2x\">");
   ValidateExpected("no_partial_inline", input_html, output_html);
 }
 
@@ -289,17 +290,15 @@ TEST_F(ResponsiveImageFilterTest, NoPartialInline2) {
   options()->EnableFilter(RewriteOptions::kResponsiveImages);
   options()->EnableFilter(RewriteOptions::kResizeImages);
   options()->EnableFilter(RewriteOptions::kInlineImages);
-  // Original image is 292 bytes, 7x7 resize is 83 bytes. So we choose a
+  // Original image is 292 bytes, 11x11 resize is 83 bytes. So we choose a
   // value between.
   options()->set_image_inline_max_bytes(200);
   rewrite_driver()->AddFilters();
 
-  const char input_html[] = "<img src=small_16x16.png width=7 height=7>";
+  const char input_html[] = "<img src=small_16x16.png width=11 height=11>";
   GoogleString output_html = StrCat(
-      "<img src=", EncodeImage(7, 7, "small_16x16.png", "0", "png"),
-      " width=7 height=7 srcset=\"",
-      EncodeImage(14, 14, "small_16x16.png", "0", "png"), " 2x,"
-      "small_16x16.png 4x\">");
+      "<img src=", EncodeImage(11, 11, "small_16x16.png", "0", "png"),
+      " width=11 height=11 srcset=\"small_16x16.png 1.5x\">");
   ValidateExpected("no_partial_inline2", input_html, output_html);
 }
 
@@ -354,23 +353,23 @@ TEST_F(ResponsiveImageFilterTest, CommasInUrls) {
   // srcset added. Commas are allowed in the middle of URLs in srcsets.
   ValidateExpected(
       "comma_middle",
-      "<img src='comma,middle' width=512 height=383>",
-      StrCat("<img src='", EncodeImage(512, 383, "comma,middle", "0", "jpg"),
-             "' width=512 height=383 srcset=\"comma,middle 2x\">"));
+      "<img src='comma,middle' width=682 height=511>",
+      StrCat("<img src='", EncodeImage(682, 511, "comma,middle", "0", "jpg"),
+             "' width=682 height=511 srcset=\"comma,middle 1.5x\">"));
 
   // No srcset added. Commas are not allowed at end of URLs in srcset.
   ValidateExpected(
       "comma_end",
-      "<img src='comma,end,' width=512 height=383>",
-      StrCat("<img src='", EncodeImage(512, 383, "comma,end,", "0", "jpg"),
-             "' width=512 height=383>"));
+      "<img src='comma,end,' width=682 height=511>",
+      StrCat("<img src='", EncodeImage(682, 511, "comma,end,", "0", "jpg"),
+             "' width=682 height=511>"));
 
   // No srcset added. Commas are not allowed at beginning of URLs in srcset.
   ValidateExpected(
       "comma_begin",
-      "<img src=',comma,begin' width=512 height=383>",
-      StrCat("<img src='", EncodeImage(512, 383, ",comma,begin", "0", "jpg"),
-             "' width=512 height=383>"));
+      "<img src=',comma,begin' width=682 height=511>",
+      StrCat("<img src='", EncodeImage(682, 511, ",comma,begin", "0", "jpg"),
+             "' width=682 height=511>"));
 }
 
 TEST_F(ResponsiveImageFilterTest, SpacesInUrls) {
@@ -384,11 +383,11 @@ TEST_F(ResponsiveImageFilterTest, SpacesInUrls) {
   // All whitespace chars should be escaped in srcset.
   ValidateExpected(
       "comma_middle",
-      "<img src='space \t in \n\r\f URL' width=512 height=383>",
+      "<img src='space \t in \n\r\f URL' width=682 height=511>",
       StrCat("<img src='",
-             EncodeImage(512, 383, "space%20%20in%20%0C%20URL", "0", "jpg"),
-             "' width=512 height=383 "
-             "srcset=\"space%20%09%20in%20%0A%0D%0C%20URL 2x\">"));
+             EncodeImage(682, 511, "space%20%20in%20%0C%20URL", "0", "jpg"),
+             "' width=682 height=511 "
+             "srcset=\"space%20%09%20in%20%0A%0D%0C%20URL 1.5x\">"));
 }
 
 TEST_F(ResponsiveImageFilterTest, NoTransform) {
@@ -475,31 +474,31 @@ TEST_F(ResponsiveImageFilterTest, Debug) {
       // Expected output
       // First virtual image debug messages:
       StrCat("<!--ResponsiveImageFilter: Any debug messages after this refer "
+             "to the virtual 1.5x image with src=",
+             EncodeImage(1534, 1149, "a.jpg", "0", "jpg"),
+             " width=1534 height=1149-->"
+             "<!--Image does not appear to need resizing.-->"
+
+             // Second virtual image debug messages:
+             "<!--ResponsiveImageFilter: Any debug messages after this refer "
              "to the virtual 2x image with src=",
              EncodeImage(2046, 1532, "a.jpg", "0", "jpg"),
              " width=2046 height=1532-->"
              "<!--Image does not appear to need resizing.-->"
 
-             // Second virtual image debug messages:
-             "<!--ResponsiveImageFilter: Any debug messages after this refer "
-             "to the virtual 4x image with src=",
-             EncodeImage(4092, 3064, "a.jpg", "0", "jpg"),
-             " width=4092 height=3064-->"
-             "<!--Image does not appear to need resizing.-->"
-
              // Third virtual image debug messages:
              "<!--ResponsiveImageFilter: Any debug messages after this refer "
-             "to the virtual inlinable 4x image with src=",
-             EncodeImage(4092, 3064, "a.jpg", "0", "jpg"),
-             " width=4092 height=3064-->"
+             "to the virtual inlinable 2x image with src=",
+             EncodeImage(2046, 1532, "a.jpg", "0", "jpg"),
+             " width=2046 height=1532-->"
              "<!--Image does not appear to need resizing.-->"
 
              // Actual image + debug messages:
              "<img src=", EncodeImage(1023, 766, "a.jpg", "0", "jpg"),
              " width=1023 height=766>"
-             "<!--ResponsiveImageFilter: Not adding 4x candidate to srcset "
-             "because native image was not high enough resolution.-->"
              "<!--ResponsiveImageFilter: Not adding 2x candidate to srcset "
+             "because native image was not high enough resolution.-->"
+             "<!--ResponsiveImageFilter: Not adding 1.5x candidate to srcset "
              "because native image was not high enough resolution.-->"
              "<!--Image does not appear to need resizing.-->"));
 
@@ -511,30 +510,30 @@ TEST_F(ResponsiveImageFilterTest, Debug) {
       // Expected output
       // First virtual image debug messages:
       "<!--ResponsiveImageFilter: Any debug messages after this refer "
-      "to the virtual 2x image with "
-      "src=http://other-domain.com/a.jpg width=200 height=200-->"
+      "to the virtual 1.5x image with "
+      "src=http://other-domain.com/a.jpg width=150 height=150-->"
       "<!--The preceding resource was not rewritten because its domain "
       "(other-domain.com) is not authorized-->"
 
       // Second virtual image debug messages:
       "<!--ResponsiveImageFilter: Any debug messages after this refer "
-      "to the virtual 4x image with "
-      "src=http://other-domain.com/a.jpg width=400 height=400-->"
+      "to the virtual 2x image with "
+      "src=http://other-domain.com/a.jpg width=200 height=200-->"
       "<!--The preceding resource was not rewritten because its domain "
       "(other-domain.com) is not authorized-->"
 
       // Third virtual image debug messages:
       "<!--ResponsiveImageFilter: Any debug messages after this refer "
-      "to the virtual inlinable 4x image with "
-      "src=http://other-domain.com/a.jpg width=400 height=400-->"
+      "to the virtual inlinable 2x image with "
+      "src=http://other-domain.com/a.jpg width=200 height=200-->"
       "<!--The preceding resource was not rewritten because its domain "
       "(other-domain.com) is not authorized-->"
 
       // Actual image + debug messages:
       "<img src=http://other-domain.com/a.jpg width=100 height=100>"
-      "<!--ResponsiveImageFilter: Not adding 4x candidate to srcset "
-      "because it is the same as previous candidate.-->"
       "<!--ResponsiveImageFilter: Not adding 2x candidate to srcset "
+      "because it is the same as previous candidate.-->"
+      "<!--ResponsiveImageFilter: Not adding 1.5x candidate to srcset "
       "because it is the same as previous candidate.-->"
       "<!--The preceding resource was not rewritten because its domain "
       "(other-domain.com) is not authorized-->");

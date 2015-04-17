@@ -75,11 +75,11 @@ void ResponsiveImageFirstFilter::EndElementImpl(HtmlElement* element) {
   }
 }
 
-// Adds dummy images for 2x and 4x resolutions. Note: this converts:
+// Adds dummy images for 1.5x and 2x resolutions. Note: this converts:
 //   <img src=foo.jpg width=w height=h>
 // into:
+//   <img src=foo.jpg width=1.5w height=1.5h pagespeed_responsive_temp>
 //   <img src=foo.jpg width=2w height=2h pagespeed_responsive_temp>
-//   <img src=foo.jpg width=4w height=4h pagespeed_responsive_temp>
 //   <img src=foo.jpg width=w height=h>
 // The order of these images doesn't really matter, but adding them before
 // this image avoids some extra processing of the added dummy images by
@@ -108,22 +108,20 @@ void ResponsiveImageFirstFilter::AddHiResImages(HtmlElement* element) {
       return;
     }
 
-    // TODO(sligocki): Figure out what levels we should actually be using.
-    // For example, many android phones use 1.5x.
-    // TODO(sligocki): Possibly use lower quality settings for 2x and 4x
+    // TODO(sligocki): Possibly use lower quality settings for 1.5x and 2x
     // because standard quality-85 are overkill for high density displays.
     // However, we might want high quality for zoom.
     // Note: These must be listed in ascending order.
     ResponsiveVirtualImages virtual_images;
     virtual_images.non_inlinable_candidates.push_back(
         AddHiResVersion(element, *src_attr, orig_width, orig_height,
-                        kNonInlinableVirtualImage, 2));
+                        kNonInlinableVirtualImage, 1.5));
     virtual_images.non_inlinable_candidates.push_back(
         AddHiResVersion(element, *src_attr, orig_width, orig_height,
-                        kNonInlinableVirtualImage, 4));
+                        kNonInlinableVirtualImage, 2));
     virtual_images.inlinable_candidate =
         AddHiResVersion(element, *src_attr, orig_width, orig_height,
-                        kInlinableVirtualImage, 4);
+                        kInlinableVirtualImage, 2);
     candidate_map_[element] = virtual_images;
 
     // Mark this element as responsive as well, so that ImageRewriteFilter will
@@ -209,7 +207,7 @@ ImageDim ActualDims(const HtmlElement* element) {
 
 }  // namespace
 
-// Combines information from dummy 2x and 4x images into the 1x srcset.
+// Combines information from dummy 1.5x and 2x images into the 1x srcset.
 void ResponsiveImageSecondFilter::CombineHiResImages(
     HtmlElement* orig_element,
     const ResponsiveVirtualImages& virtual_images) {
