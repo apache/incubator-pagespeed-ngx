@@ -162,7 +162,7 @@ void SystemRewriteOptions::AddProperties() {
                     "cc", RewriteOptions::kCompressMetadataCache,
                     "Whether to compress cache entries before writing them to "
                     "memory or disk.", true);
-  AddSystemProperty("disable", &SystemRewriteOptions::https_options_, "fhs",
+  AddSystemProperty("enable", &SystemRewriteOptions::https_options_, "fhs",
                     kFetchHttps, "Controls direct fetching of HTTPS resources."
                     "  Value is comma-separated list of keywords: "
                     SERF_HTTPS_KEYWORDS, false);
