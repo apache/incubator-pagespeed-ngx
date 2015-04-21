@@ -905,8 +905,7 @@ bool HtmlParse::DeleteSavingChildren(HtmlElement* element) {
       // from anywhere else, it doesn't matter if we put them before or after
       // as we won't be moving events relative to the current_ pointer.
       bool at_end = (current_ == queue_.end());
-      HtmlEvent* cur_event = *current_;
-      if (!at_end && cur_event->GetElementIfStartEvent() == element) {
+      if (!at_end && (*current_)->GetElementIfStartEvent() == element) {
         queue_.splice(++element->end(), queue_, first, element->end());
       } else {
         queue_.splice(element->begin(), queue_, first, element->end());
