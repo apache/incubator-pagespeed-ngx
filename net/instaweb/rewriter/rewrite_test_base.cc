@@ -78,8 +78,6 @@
 
 namespace net_instaweb {
 
-class RequestTimingInfo;
-
 namespace {
 
 // Logging at the INFO level slows down tests, adds to the noise, and
@@ -103,7 +101,6 @@ class TestRewriteOptionsManager : public RewriteOptionsManager {
   void GetRewriteOptions(const GoogleUrl& url,
                          const RequestHeaders& headers,
                          OptionsCallback* done) {
-    LOG(ERROR) << "Run with options: " << options_;
     done->Run((options_ == NULL) ? NULL : options_->Clone());
   }
 
@@ -114,8 +111,6 @@ class TestRewriteOptionsManager : public RewriteOptionsManager {
 };
 
 }  // namespace
-
-class MessageHandler;
 
 const char RewriteTestBase::kTestData[] = "/net/instaweb/rewriter/testdata/";
 const char RewriteTestBase::kConfiguredBeaconingKey[] =
