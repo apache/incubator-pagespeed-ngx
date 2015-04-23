@@ -20,16 +20,25 @@
  */
 
 
-// Define externs used by the webkit headless extension JS.
-var extension;
-
 // Globals used by critical_line_xpath.js
+/** @type {boolean} */
 var is_mobile;
+
+
+/** @type {string} */
 var blocked_resource_url_pattern;
+
+
+/** @type {boolean} */
 var deferjs_enabled;
+
+
+/** @type {string} */
 var deferjs_url;
 
+
 // This is set by a script in the head inserted by add_instrumentaiton.
+/** @type {number} */
 window.mod_pagespeed_start;
 
 window.pagespeed;

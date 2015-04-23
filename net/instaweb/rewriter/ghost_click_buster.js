@@ -31,4 +31,4 @@ goog.require('wireless.events.clickbuster');
 // prevented.
 // We are passing 0,0 as params, since coordinate is compulsory. It doesn't
 // really matter.
-wireless.events.clickbuster.preventGhostClick(0, 0);
+wireless.events.clickbuster.preventGhostClickWithEvent(0, 0, null);
