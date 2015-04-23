@@ -526,6 +526,40 @@ TEST_F(ProxyInterfaceTest, RedirectRequestWhenDomainRewriterEnabled) {
                get_headers.ToString());
 }
 
+TEST_F(ProxyInterfaceTest, RewriteDomainForRedirectsAndCookiesWithEmptyBody) {
+  GoogleString url = "http://www.example.com/";
+  GoogleString get_text;
+  RequestHeaders request_headers;
+  ResponseHeaders set_headers, get_headers;
+  NullMessageHandler handler;
+
+  set_headers.Add(HttpAttributes::kContentType, kContentTypeHtml.mime_type());
+  set_headers.Add(HttpAttributes::kLocation, "http://m.example.com");
+  set_headers.Add(HttpAttributes::kSetCookie,
+                  "a=b; domain=m.example.com; HttpOnly");
+  set_headers.SetStatusAndReason(HttpStatus::kFound);
+  scoped_ptr<RewriteOptions> custom_options(
+      server_context()->global_options()->Clone());
+  custom_options->EnableFilter(RewriteOptions::kRewriteDomains);
+  custom_options->WriteableDomainLawyer()->AddTwoProtocolRewriteDomainMapping(
+      "www.example.com", "m.example.com", &handler);
+  custom_options->set_domain_rewrite_hyperlinks(true);
+  custom_options->set_domain_rewrite_cookies(true);
+  SetRewriteOptions(custom_options.get());
+  mock_url_fetcher_.SetResponse(url, set_headers, "");
+  FetchFromProxy(url, request_headers, true, &get_text, &get_headers);
+
+  // The ProxyFetch should change the Location of a redirect when
+  // domain_rewrite_hyperlinks is enabled.
+  const char* location = get_headers.Lookup1(HttpAttributes::kLocation);
+  EXPECT_STREQ("http://www.example.com/", location);
+
+  // The ProxyFetch should change the domain of a Cookie when
+  // domain_rewrite_cookies is enabled.
+  const char* cookie = get_headers.Lookup1(HttpAttributes::kSetCookie);
+  EXPECT_STREQ("a=b; domain=www.example.com; HttpOnly", cookie);
+}
+
 TEST_F(ProxyInterfaceTest, RedirectRequestRetainsQueryParams) {
   // "Location: http://www.example.com/b/?x=y&PageSpeedCssInlineMaxBytes=99" is
   // what we expect to see - note the PageSpeed query parameter IS copied over.

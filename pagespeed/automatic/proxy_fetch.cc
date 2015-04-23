@@ -29,6 +29,7 @@
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
+#include "net/instaweb/rewriter/public/domain_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/experiment_matcher.h"
 #include "net/instaweb/rewriter/public/experiment_util.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -606,6 +607,25 @@ const RewriteOptions* ProxyFetch::Options() {
 }
 
 void ProxyFetch::HandleHeadersComplete() {
+  const RewriteOptions* options = Options();
+  if ((response_headers() != NULL) &&
+      options->Enabled(RewriteOptions::kRewriteDomains) &&
+      (options->domain_rewrite_hyperlinks() ||
+       options->domain_rewrite_cookies())) {
+    GoogleUrl gurl(url_);
+
+    // We will need to update the Location: and set-cookie headers.
+    // We have to do it here rather than relying on normal rewriting
+    // via DomainRewriteFilter since that does not run for redirects
+    // when there is no content in the HTML.
+    //
+    // Similarly other non-200s may have cookies, so may also need patching.
+    // (200s will get handled by DomainRewriteFilter via normal rewriting).
+    DomainRewriteFilter::UpdateDomainHeaders(
+        gurl, server_context_, options, response_headers());
+    response_headers()->ComputeCaching();
+  }
+
   // If domain rewrite filter is enabled we need to also rewrite the location
   // headers when origin is serving redirects.
   // TODO(matterbury): Consider other 3xx responses.
