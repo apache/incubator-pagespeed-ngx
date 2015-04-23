@@ -19,7 +19,6 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_CSS_COMBINE_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_CSS_COMBINE_FILTER_H_
 
-#include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "pagespeed/kernel/base/basictypes.h"
@@ -74,7 +73,6 @@ class CssCombineFilter : public RewriteFilter {
   void NextCombination(StringPiece debug_help);
   Context* MakeContext();
 
-  CssTagScanner css_tag_scanner_;
   scoped_ptr<Context> context_;
   UrlMultipartEncoder multipart_encoder_;
   bool end_document_found_;

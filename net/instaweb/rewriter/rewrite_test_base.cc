@@ -640,14 +640,13 @@ class CssCollector : public EmptyHtmlFilter {
  public:
   CssCollector(HtmlParse* html_parse,
                RewriteTestBase::CssLink::Vector* css_links)
-      : css_links_(css_links),
-        css_tag_scanner_(html_parse) {
+      : css_links_(css_links) {
   }
 
   virtual void EndElement(HtmlElement* element) {
     HtmlElement::Attribute* href;
     const char* media;
-    if (css_tag_scanner_.ParseCssElement(element, &href, &media)) {
+    if (CssTagScanner::ParseCssElement(element, &href, &media)) {
       // TODO(jmarantz): collect content of the CSS files, before and
       // after combination, so we can diff.
       const char* content = "";
@@ -659,7 +658,6 @@ class CssCollector : public EmptyHtmlFilter {
 
  private:
   RewriteTestBase::CssLink::Vector* css_links_;
-  CssTagScanner css_tag_scanner_;
 
   DISALLOW_COPY_AND_ASSIGN(CssCollector);
 };

@@ -23,7 +23,6 @@
 
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/common_filter.h"
-#include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -92,7 +91,6 @@ class CssInlineFilter : public CommonFilter {
   size_t size_threshold_bytes_;
 
   GoogleString domain_;
-  CssTagScanner css_tag_scanner_;
 
   Variable* num_css_inlined_;
 

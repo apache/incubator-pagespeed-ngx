@@ -93,8 +93,7 @@ class CssInlineFilter::Context : public InlineRewriteContext {
 CssInlineFilter::CssInlineFilter(RewriteDriver* driver)
     : CommonFilter(driver),
       id_(RewriteOptions::kCssInlineId),
-      size_threshold_bytes_(driver->options()->css_inline_max_bytes()),
-      css_tag_scanner_(driver) {
+      size_threshold_bytes_(driver->options()->css_inline_max_bytes()) {
   Statistics* stats = server_context()->statistics();
   num_css_inlined_ = stats->GetVariable(kNumCssInlined);
 }
@@ -115,7 +114,7 @@ void CssInlineFilter::EndElementImpl(HtmlElement* element) {
   }
   HtmlElement::Attribute* href = NULL;
   const char* media = NULL;
-  if (css_tag_scanner_.ParseCssElement(element, &href, &media) &&
+  if (CssTagScanner::ParseCssElement(element, &href, &media) &&
       !driver()->HasChildrenInFlushWindow(element)) {
     // Only inline if the media type affects "screen".  We don't inline other
     // types since they're very unlikely to change the initial page view, and

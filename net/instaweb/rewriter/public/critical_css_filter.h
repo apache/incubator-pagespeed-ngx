@@ -81,7 +81,6 @@ class CriticalCssFilter : public CommonFilter {
   // TODO(gee): This probably belongs in an ancestor class.
   void LogRewrite(int status);
 
-  CssTagScanner css_tag_scanner_;
   CriticalCssFinder* finder_;
 
   CriticalCssResult* critical_css_result_;

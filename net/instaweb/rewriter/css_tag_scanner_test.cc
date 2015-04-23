@@ -48,7 +48,7 @@ const char kAlternateStylesheet[] = "alternate stylesheet";
 class CssTagScannerTest : public testing::Test {
  protected:
   CssTagScannerTest()
-      : html_parse_(&message_handler_), scanner_(&html_parse_),
+      : html_parse_(&message_handler_),
         link_(NULL), href_(NULL), media_(NULL) {
   }
 
@@ -70,7 +70,6 @@ class CssTagScannerTest : public testing::Test {
 
  protected:
   HtmlParse html_parse_;
-  CssTagScanner scanner_;
   HtmlElement* link_;
   HtmlElement::Attribute* href_;
   const char* media_;
@@ -101,8 +100,8 @@ TEST_F(CssTagScannerTest, TestGurl) {
 // seen.
 TEST_F(CssTagScannerTest, MinimalOK) {
   // We can parse css if it has only href= and rel=stylesheet attributes.
-  EXPECT_TRUE(scanner_.ParseCssElement(link_, &href_, &media_,
-                                       &nonstandard_attributes_));
+  EXPECT_TRUE(CssTagScanner::ParseCssElement(link_, &href_, &media_,
+                                             &nonstandard_attributes_));
   EXPECT_STREQ("", media_);
   EXPECT_STREQ(kUrl, href_->DecodedValueOrNull());
   EXPECT_EQ(0, nonstandard_attributes_.size());
@@ -111,8 +110,8 @@ TEST_F(CssTagScannerTest, MinimalOK) {
 TEST_F(CssTagScannerTest, NonstandardAttributeOK) {
   // Add a nonstandard attribute.
   html_parse_.AddAttribute(link_, HtmlName::kOther, "value");
-  EXPECT_TRUE(scanner_.ParseCssElement(link_, &href_, &media_,
-                                       &nonstandard_attributes_));
+  EXPECT_TRUE(CssTagScanner::ParseCssElement(link_, &href_, &media_,
+                                             &nonstandard_attributes_));
   EXPECT_STREQ("", media_);
   EXPECT_STREQ(kUrl, href_->DecodedValueOrNull());
   EXPECT_EQ(1, nonstandard_attributes_.size());
@@ -122,8 +121,8 @@ TEST_F(CssTagScannerTest, NonstandardAttributeOK) {
 TEST_F(CssTagScannerTest, WithTypeOK) {
   // Type=text/css works
   html_parse_.AddAttribute(link_, HtmlName::kType, "text/css");
-  EXPECT_TRUE(scanner_.ParseCssElement(link_, &href_, &media_,
-                                       &nonstandard_attributes_));
+  EXPECT_TRUE(CssTagScanner::ParseCssElement(link_, &href_, &media_,
+                                             &nonstandard_attributes_));
   EXPECT_STREQ("", media_);
   EXPECT_STREQ(kUrl, href_->DecodedValueOrNull());
   EXPECT_EQ(0, nonstandard_attributes_.size());
@@ -132,14 +131,14 @@ TEST_F(CssTagScannerTest, WithTypeOK) {
 TEST_F(CssTagScannerTest, BadTypeFail) {
   // Types other than text/css don't work.
   html_parse_.AddAttribute(link_, HtmlName::kType, "text/plain");
-  EXPECT_FALSE(scanner_.ParseCssElement(link_, &href_, &media_));
+  EXPECT_FALSE(CssTagScanner::ParseCssElement(link_, &href_, &media_));
 }
 
 TEST_F(CssTagScannerTest, WithMediaOK) {
   // Add a media attribute.  It should still pass, yielding media.
   html_parse_.AddAttribute(link_, HtmlName::kMedia, kPrint);
-  EXPECT_TRUE(scanner_.ParseCssElement(link_, &href_, &media_,
-                                       &nonstandard_attributes_));
+  EXPECT_TRUE(CssTagScanner::ParseCssElement(link_, &href_, &media_,
+                                             &nonstandard_attributes_));
   EXPECT_STREQ(kPrint, media_);
   EXPECT_FALSE(css_util::CanMediaAffectScreen(media_));
   EXPECT_STREQ(kUrl, href_->DecodedValueOrNull());
@@ -152,20 +151,20 @@ TEST_F(CssTagScannerTest, DoubledHrefFail) {
   // not worth the bother.
   HtmlElement::Attribute* attr = link_->FindAttribute(HtmlName::kHref);
   link_->AddAttribute(*attr);
-  EXPECT_FALSE(scanner_.ParseCssElement(link_, &href_, &media_));
+  EXPECT_FALSE(CssTagScanner::ParseCssElement(link_, &href_, &media_));
 }
 
 TEST_F(CssTagScannerTest, MissingRelFail) {
   // Removal of rel= attribute.
   link_->DeleteAttribute(HtmlName::kRel);
-  EXPECT_FALSE(scanner_.ParseCssElement(link_, &href_, &media_));
+  EXPECT_FALSE(CssTagScanner::ParseCssElement(link_, &href_, &media_));
 }
 
 TEST_F(CssTagScannerTest, AlternateRelFail) {
   // rel="alternate stylesheet" should fail.
   link_->DeleteAttribute(HtmlName::kRel);
   html_parse_.AddAttribute(link_, HtmlName::kRel, kAlternateStylesheet);
-  EXPECT_FALSE(scanner_.ParseCssElement(link_, &href_, &media_));
+  EXPECT_FALSE(CssTagScanner::ParseCssElement(link_, &href_, &media_));
 }
 
 TEST_F(CssTagScannerTest, MissingRelDoubledHrefFail) {
@@ -174,15 +173,15 @@ TEST_F(CssTagScannerTest, MissingRelDoubledHrefFail) {
   link_->DeleteAttribute(HtmlName::kRel);
   HtmlElement::Attribute* attr = link_->FindAttribute(HtmlName::kHref);
   link_->AddAttribute(*attr);
-  EXPECT_FALSE(scanner_.ParseCssElement(link_, &href_, &media_));
+  EXPECT_FALSE(CssTagScanner::ParseCssElement(link_, &href_, &media_));
 }
 
 TEST_F(CssTagScannerTest, DoubledRelOK) {
   // Double the rel="stylesheet" and everything is OK.
   HtmlElement::Attribute* attr = link_->FindAttribute(HtmlName::kRel);
   link_->AddAttribute(*attr);
-  EXPECT_TRUE(scanner_.ParseCssElement(link_, &href_, &media_,
-                                       &nonstandard_attributes_));
+  EXPECT_TRUE(CssTagScanner::ParseCssElement(link_, &href_, &media_,
+                                             &nonstandard_attributes_));
   EXPECT_STREQ("", media_);
   EXPECT_STREQ(kUrl, href_->DecodedValueOrNull());
   EXPECT_EQ(0, nonstandard_attributes_.size());
@@ -194,7 +193,7 @@ TEST_F(CssTagScannerTest, MissingHrefDoubledRelFailOK) {
   link_->DeleteAttribute(HtmlName::kHref);
   HtmlElement::Attribute* attr = link_->FindAttribute(HtmlName::kRel);
   link_->AddAttribute(*attr);
-  EXPECT_FALSE(scanner_.ParseCssElement(link_, &href_, &media_));
+  EXPECT_FALSE(CssTagScanner::ParseCssElement(link_, &href_, &media_));
 }
 
 TEST_F(CssTagScannerTest, RelCaseInsensitiveOK) {
@@ -202,8 +201,8 @@ TEST_F(CssTagScannerTest, RelCaseInsensitiveOK) {
   link_->DeleteAttribute(HtmlName::kRel);
   html_parse_.AddAttribute(link_, HtmlName::kRel, "StyleSheet");
 
-  EXPECT_TRUE(scanner_.ParseCssElement(link_, &href_, &media_,
-                                       &nonstandard_attributes_));
+  EXPECT_TRUE(CssTagScanner::ParseCssElement(link_, &href_, &media_,
+                                             &nonstandard_attributes_));
   EXPECT_STREQ("", media_);
   EXPECT_STREQ(kUrl, href_->DecodedValueOrNull());
   EXPECT_EQ(0, nonstandard_attributes_.size());

@@ -46,8 +46,7 @@ const char CssTagScanner::kStylesheet[] = "stylesheet";
 const char CssTagScanner::kAlternate[] = "alternate";
 const char CssTagScanner::kUriValue[] = "url(";
 
-// Finds CSS files and calls another filter.
-CssTagScanner::CssTagScanner(HtmlParse* html_parse) {
+CssTagScanner::CssTagScanner() {
 }
 
 bool CssTagScanner::ParseCssElement(

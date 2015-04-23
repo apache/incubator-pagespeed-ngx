@@ -20,7 +20,6 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_CSS_MOVE_TO_HEAD_FILTER_H_
 
 #include "net/instaweb/rewriter/public/common_filter.h"
-#include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
 
@@ -48,8 +47,6 @@ class CssMoveToHeadFilter : public CommonFilter {
   virtual void DetermineEnabled(GoogleString* disabled_reason);
 
  private:
-  CssTagScanner css_tag_scanner_;
-
   // Should we move CSS into head? If not, we just move it above scripts.
   bool move_css_to_head_;
   // Should we move CSS above scripts? If not, we just move CSS to the bottom

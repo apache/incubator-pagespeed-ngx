@@ -151,7 +151,6 @@ class CriticalCssFilter::CssStyleElement
 CriticalCssFilter::CriticalCssFilter(RewriteDriver* driver,
                                      CriticalCssFinder* finder)
     : CommonFilter(driver),
-      css_tag_scanner_(driver),
       finder_(finder),
       critical_css_result_(NULL),
       current_style_element_(NULL) {
@@ -317,7 +316,7 @@ void CriticalCssFilter::EndElementImpl(HtmlElement* element) {
 
   HtmlElement::Attribute* href;
   const char* media;
-  if (!css_tag_scanner_.ParseCssElement(element, &href, &media)) {
+  if (!CssTagScanner::ParseCssElement(element, &href, &media)) {
     // Not a css link element.
     return;
   }

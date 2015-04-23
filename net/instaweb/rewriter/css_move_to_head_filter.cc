@@ -36,7 +36,6 @@ namespace net_instaweb {
 
 CssMoveToHeadFilter::CssMoveToHeadFilter(RewriteDriver* driver)
     : CommonFilter(driver),
-      css_tag_scanner_(driver),
       move_css_to_head_(
           driver->options()->Enabled(RewriteOptions::kMoveCssToHead)),
       move_css_above_scripts_(
@@ -71,7 +70,7 @@ void CssMoveToHeadFilter::EndElementImpl(HtmlElement* element) {
       element_is_head_ = false;
     }
   } else if (element->keyword() == HtmlName::kStyle ||
-             css_tag_scanner_.ParseCssElement(element, &href, &media)) {
+             CssTagScanner::ParseCssElement(element, &href, &media)) {
     if (noscript_element() != NULL ||
         (element->keyword() == HtmlName::kStyle &&
          element->FindAttribute(HtmlName::kScoped) != NULL)) {

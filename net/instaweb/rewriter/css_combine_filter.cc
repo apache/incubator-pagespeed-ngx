@@ -353,7 +353,6 @@ class CssCombineFilter::Context : public RewriteContext {
 // make this convention consistent and fix all code.
 CssCombineFilter::CssCombineFilter(RewriteDriver* driver)
     : RewriteFilter(driver),
-      css_tag_scanner_(driver),
       end_document_found_(false),
       css_links_(0),
       css_combine_opportunities_(driver->statistics()->GetVariable(
@@ -394,8 +393,8 @@ void CssCombineFilter::StartElementImpl(HtmlElement* element) {
     // We can run outline_css first for now to make all <style>s into <link>s.
     NextCombination("inline style");
     return;
-  } else if (css_tag_scanner_.ParseCssElement(element, &href, &media,
-                                              &nonstandard_attributes)) {
+  } else if (CssTagScanner::ParseCssElement(element, &href, &media,
+                                            &nonstandard_attributes)) {
     ++css_links_;
     // Element is a <link rel="stylesheet" ...>.
     if (driver()->HasChildrenInFlushWindow(element)) {
