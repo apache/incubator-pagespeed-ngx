@@ -23,12 +23,12 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_parse.h"
+#include "pagespeed/kernel/http/google_url.h"
 
 namespace net_instaweb {
 
 class DomainRewriteFilter;
-class GoogleUrl;
-class HtmlParse;
 class MessageHandler;
 class RewriteDriver;
 class UrlLeftTrimFilter;
@@ -56,7 +56,11 @@ class CssTagScanner {
   static const char kAlternate[];
   static const char kUriValue[];
 
-  CssTagScanner();
+  // An instance of CssTagScanner should be created to use
+  // TransformUrlsStreaming; other APIs do not need this.
+  // *transformer will be used to to transform URLs in CSS, and *handler for
+  // logging.
+  CssTagScanner(Transformer* transformer, MessageHandler* handler);
 
   // Examines an HTML element to determine if it's a CSS link, extracting out
   // the href, the media type (if any) and any nonstandard attributes.  If it's
@@ -77,13 +81,33 @@ class CssTagScanner {
                            NULL /* nonstandard attributes */);
   }
 
+  // When parsing streaming input, we need to be told if the given input
+  // portion goes up to end-of-file (since it affects whether something
+  // may continue the last token of the input).
+  enum InputPortion {
+    kInputIncludesEnd,
+    kInputDoesNotIncludeEnd
+  };
+
   // Scans the contents of a CSS file, looking for the pattern url(xxx).
   // Performs an arbitrary mutation on all such URLs.
   // If xxx is quoted with single-quotes or double-quotes, those are
   // retained and the URL inside is transformed.
   static bool TransformUrls(
-      const StringPiece& contents, Writer* writer, Transformer* transformer,
+      StringPiece contents, Writer* writer, Transformer* transformer,
       MessageHandler* handler);
+
+  // Like above, but handles incomplete input. In such a case, all chunks
+  // other than the last one should be served with input_portion ==
+  // kInputDoesNotIncludeEnd. Note that this method store some state for
+  // reparsing, so you can't concurrently run two streams through the same
+  // CssTagScanner object.
+  bool TransformUrlsStreaming(
+      StringPiece contents, InputPortion input_portion, Writer* writer);
+
+  // Returns what was retained by TransformUrlsStreaming for reparsing.
+  // Meant for use in tests.
+  GoogleString RetainedForReparse() const { return reparse_; }
 
   // Does this CSS file contain @import? If so, it cannot be combined with
   // previous CSS files. This may give false-positives, but no false-negatives.
@@ -100,6 +124,21 @@ class CssTagScanner {
   static bool IsAlternateStylesheet(const StringPiece& attribute_value);
 
  private:
+  enum UrlKind {
+    kNone,
+    kImport,
+    kUrl
+  };
+
+  void SerializeUrlUse(UrlKind kind, const GoogleString& url,
+                       bool is_quoted, bool have_term_quote, char quote,
+                       bool have_term_paren,
+                       Writer* writer, bool* ok);
+
+  Transformer* transformer_;
+  MessageHandler* handler_;
+  GoogleString reparse_;
+
   DISALLOW_COPY_AND_ASSIGN(CssTagScanner);
 };
 

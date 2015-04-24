@@ -46,7 +46,9 @@ const char CssTagScanner::kStylesheet[] = "stylesheet";
 const char CssTagScanner::kAlternate[] = "alternate";
 const char CssTagScanner::kUriValue[] = "url(";
 
-CssTagScanner::CssTagScanner() {
+CssTagScanner::CssTagScanner(
+    Transformer* transformer, MessageHandler* handler)
+    : transformer_(transformer), handler_(handler) {
 }
 
 bool CssTagScanner::ParseCssElement(
@@ -139,33 +141,56 @@ inline bool PopFirst(StringPiece* in, char* c) {
   }
 }
 
-// If in starts with expected, returns true and consumes it.
-inline bool EatLiteral(const StringPiece& expected, StringPiece* in) {
+// Since we handle incomplete input, in some cases we may not have enough of it
+// available to accept or reject a construct --- in which case the routines
+// will return kLexInterrupted.
+enum LexResult {
+  kLexNo,
+  kLexYes,
+  kLexInterrupted
+};
+
+// If in starts with expected, returns kLexYes and consumes it.
+inline LexResult EatLiteral(CssTagScanner::InputPortion input_kind,
+                            StringPiece expected, StringPiece* in) {
   if (in->starts_with(expected)) {
     in->remove_prefix(expected.size());
-    return true;
-  } else {
-    return false;
+    return kLexYes;
   }
+
+  if (input_kind == CssTagScanner::kInputIncludesEnd) {
+    return kLexNo;
+  }
+
+  if (in->size() >= expected.size()) {
+    return kLexNo;
+  }
+
+  // This is conservative: we may already see a difference at this point.
+  return kLexInterrupted;
 }
 
 // Extract string- or identifier-like content from CSS until reaching the
 // given terminator (which will not be included in the output), handling simple
-// escapes along the way. in will be modified to skip over the bytes consumed,
-// regardless of whether successful or not (to avoid backtracking).
-// If is_string is true, will also permit escaped line continuations.
-// Returns whether the content could be successfully extracted.
-bool CssExtractUntil(bool is_string, char term,
-                     StringPiece* in, GoogleString* out, bool* found_term) {
-  bool found_error = false;
+// escapes along the way. If is_string is true, will also permit escaped line
+// continuations. Returns whether the content could be successfully extracted.
+//
+// *in is updated to have either the whole token or up to first clear error
+// consumed.
+LexResult CssExtractUntil(bool is_string,
+                          CssTagScanner::InputPortion input_kind,
+                          char term, StringPiece* in,
+                          GoogleString* out, bool* found_term) {
   *found_term = false;
+
+  StringPiece original_input = *in;
 
   char c;
   out->clear();
   while (PopFirst(in, &c)) {
     if (c == term) {
       *found_term = true;
-      break;
+      return kLexYes;
     } else if (c == '\\') {
       // See if it's an escape we recognize. We need to evaluate the
       // escape since they will get escaped again on output.
@@ -190,19 +215,29 @@ bool CssExtractUntil(bool is_string, char term,
             if (is_string) {
               if (escape_val == '\r') {
                 // CR+LF.
-                EatLiteral("\n", in);
+                EatLiteral(input_kind, "\n", in);
               }
               break;
             }
             FALLTHROUGH_INTENDED;
           default:
-            // We can't parse it but it's not clear that ignoring it is the
-            // safest thing, so we just pass it through unmodified
-            out->push_back(c);
-            out->push_back(escape_val);
+            // We are in more than a bit of trouble here: we can't accurately
+            // parse everything (we don't have good enough encoding handling
+            // here to represent unicode, at least), and we can't just pass it
+            // through since GoogleUrl will turn \ into /, so we fail to match.
+            return kLexNo;
         };
       } else {
-        found_error = true;
+        // We have \ but not what's afterwards.
+        if (input_kind == CssTagScanner::kInputIncludesEnd) {
+          // end of input -> this is messed up, not what we expect.
+          return kLexNo;
+        } else {
+          // \ may be continued on in next chunk. Will need to retry
+          // once it's available.
+          *in = original_input;
+          return kLexInterrupted;
+        }
       }
     } else {
       if (!is_string && IsHtmlSpace(c)) {
@@ -226,7 +261,7 @@ bool CssExtractUntil(bool is_string, char term,
           } else {
             // Some other character. Bail out.
             *in = StringPiece(in->data() - 1, in->size() + 1);
-            return !found_error;
+            return kLexYes;
           }
         }
       } else if (c == '\n' || c == '\r' || c == '\f') {
@@ -243,26 +278,41 @@ bool CssExtractUntil(bool is_string, char term,
     }
   }
 
-  return !found_error;
+  // We got to the end of *in without seeing a closing terminator.
+  if (input_kind == CssTagScanner::kInputDoesNotIncludeEnd) {
+    // This is a streaming parse and there may be more bytes coming in
+    // ==> one of them may be the closing terminator, so we don't know.
+    *in = original_input;
+    return kLexInterrupted;
+  }
+
+  // Lex as an unclosed literal, serialization will retain that, and we will
+  // let the browser's CSS parser's error recovery figure out what to do.
+  return kLexYes;
 }
 
-
 // Tries to extract a string from current position into out.
-// quote_out will contain its delimeter.
-bool CssExtractString(StringPiece* in, GoogleString* out, char* quote_out,
-                      bool* found_term) {
-  if (EatLiteral("\'", in)) {
-    if (CssExtractUntil(true, '\'', in, out, found_term)) {
-      *quote_out = '\'';
-      return true;
+// If successful, *quote_out will contain its delimeter, and *found_term
+// will say whether the trailing terminator was present.
+LexResult CssExtractString(
+    CssTagScanner::InputPortion input_kind,
+    StringPiece* in, GoogleString* out,
+    char* quote_out, bool* found_term) {
+  if (in->starts_with("'")) {
+    in->remove_prefix(1);
+    *quote_out = '\'';
+    return CssExtractUntil(true, input_kind, '\'', in, out, found_term);
+  } else if (in->starts_with("\"")) {
+    in->remove_prefix(1);
+    *quote_out = '\"';
+    return CssExtractUntil(true, input_kind, '"', in, out, found_term);
+  } else {
+    if (in->empty() && input_kind == CssTagScanner::kInputDoesNotIncludeEnd) {
+      // Empty chunk of streaming input -> can't tell if string or not?
+      return kLexInterrupted;
     }
-  } else if (EatLiteral("\"", in)) {
-    if (CssExtractUntil(true, '\"', in, out, found_term)) {
-      *quote_out = '\"';
-      return true;
-    }
+    return kLexNo;
   }
-  return false;
 }
 
 bool WriteRange(const char* out_begin, const char* out_end,
@@ -276,10 +326,44 @@ bool WriteRange(const char* out_begin, const char* out_end,
 
 }  // namespace
 
-bool CssTagScanner::TransformUrls(
-    const StringPiece& contents, Writer* writer, Transformer* transformer,
-    MessageHandler* handler) {
+
+void CssTagScanner::SerializeUrlUse(
+    UrlKind kind, const GoogleString& url,
+    bool is_quoted, bool have_term_quote, char quote,
+    bool have_term_paren,
+    Writer* writer, bool* ok) {
+  DCHECK(kind != kNone);
+
+  if (kind == kImport) {
+    *ok = *ok && writer->Write("@import ", handler_);
+  } else {
+    *ok = *ok && writer->Write("url(", handler_);
+  }
+
+  if (is_quoted) {
+    *ok = *ok && writer->Write(StringPiece(&quote, 1), handler_);
+  }
+  *ok = *ok && writer->Write(Css::EscapeUrl(url), handler_);
+  if (have_term_quote) {
+    *ok = *ok && writer->Write(StringPiece(&quote, 1), handler_);
+  }
+
+  if (have_term_paren) {
+    *ok = *ok && writer->Write(")", handler_);
+  }
+}
+
+bool CssTagScanner::TransformUrlsStreaming(
+    StringPiece contents, CssTagScanner::InputPortion input_portion,
+    Writer* writer) {
   bool ok = true;
+
+  GoogleString concat_buffer;
+  if (!reparse_.empty()) {
+    concat_buffer = StrCat(reparse_, contents);
+    contents = concat_buffer;
+    reparse_.clear();
+  }
 
   // Keeps track of which portion of input we should write out in
   // the next output batch. This an iterator-style interval, i.e.
@@ -289,9 +373,14 @@ bool CssTagScanner::TransformUrls(
 
   char c;
   GoogleString url;
+  // The difference between remaining and *reparse_out is that remaining is
+  // updated in the middle of processing, and is committed to *reparse_out only
+  // when an entire chunk has been understood. This means when we are streaming
+  // incrementally, unparsed can be retained until the next chunk.
   StringPiece remaining = contents;
+  StringPiece reparse_candidate = remaining;
   while (PopFirst(&remaining, &c)) {
-    enum { kNone, kImport, kUrl} have_url = kNone;
+    UrlKind have_url = kNone;
     bool is_quoted = false;
     bool have_term_quote = false;
     bool have_term_paren = false;
@@ -302,15 +391,29 @@ bool CssTagScanner::TransformUrls(
       // end point for batch write to exclude the @, so if we
       // write out with transformed URL, we should start with
       // @import.
-      if (EatLiteral("import", &remaining)) {
-        TrimLeadingWhitespace(&remaining);
-        // The code here handles @import "foo" and @import 'foo';
-        // for @import url(... we simply pass the @import through and let
-        // the code that handles url( below take care of it.
-        if (CssExtractString(&remaining, &url, &quote, &have_term_quote)) {
-          have_url = kImport;
-          is_quoted = true;
+      switch (EatLiteral(input_portion, "import", &remaining)) {
+        case kLexYes: {
+          TrimLeadingWhitespace(&remaining);
+          // The code here handles @import "foo" and @import 'foo';
+          // for @import url(... we simply pass the @import through and let
+          // the code that handles url( below take care of it.
+          LexResult url_argument =
+              CssExtractString(input_portion, &remaining, &url,
+                               &quote, &have_term_quote);
+          if (url_argument == kLexYes) {
+            have_url = kImport;
+            is_quoted = true;
+          } else if (url_argument == kLexInterrupted) {
+            reparse_candidate.CopyToString(&reparse_);
+            return ok && WriteRange(out_begin, out_end, writer, handler_);
+          }
+          break;
         }
+        case kLexInterrupted:
+          reparse_candidate.CopyToString(&reparse_);
+          return ok && WriteRange(out_begin, out_end, writer, handler_);
+        case kLexNo:
+          break;
       }
     } else if (c == 'u') {
       // See if we are at url(. Also provisionally set an
@@ -318,50 +421,66 @@ bool CssTagScanner::TransformUrls(
       // write out with transformed URL, we should start with
       // url(
       GoogleString wrapped_url;
-      if (EatLiteral("rl(", &remaining)) {
-        TrimLeadingWhitespace(&remaining);
-        // Note if we have a quoted URL inside url(), it needs to be
-        // parsed as such.
-        if (CssExtractString(&remaining, &url, &quote, &have_term_quote)) {
+      switch (EatLiteral(input_portion, "rl(", &remaining)) {
+        case kLexYes: {
           TrimLeadingWhitespace(&remaining);
-          if (EatLiteral(")", &remaining)) {
-            have_url = kUrl;
-            is_quoted = true;
-            have_term_paren = true;
+          // Note if we have a quoted URL inside url(), it needs to be
+          // parsed as such.
+          LexResult quoted_url_argument =
+              CssExtractString(input_portion, &remaining, &url,
+                               &quote, &have_term_quote);
+          if (quoted_url_argument == kLexYes) {
+            TrimLeadingWhitespace(&remaining);
+            switch (EatLiteral(input_portion, ")", &remaining)) {
+              case kLexYes:
+                have_url = kUrl;
+                is_quoted = true;
+                have_term_paren = true;
+                break;
+              case kLexInterrupted:
+                reparse_candidate.CopyToString(&reparse_);
+                return ok && WriteRange(out_begin, out_end, writer, handler_);
+              case kLexNo:
+                break;
+            }
+          } else if (quoted_url_argument == kLexInterrupted) {
+            reparse_candidate.CopyToString(&reparse_);
+            return ok && WriteRange(out_begin, out_end, writer, handler_);
+          } else {
+            // No quoted argument.
+            LexResult unquoted_url_argument =
+              CssExtractUntil(false, input_portion, ')', &remaining,
+                              &wrapped_url, &have_term_paren);
+            if (unquoted_url_argument == kLexYes) {
+              TrimWhitespace(wrapped_url, &url);
+              have_url = kUrl;
+            } else if (unquoted_url_argument == kLexInterrupted) {
+              reparse_candidate.CopyToString(&reparse_);
+              return ok && WriteRange(out_begin, out_end, writer, handler_);
+            }
           }
-        } else if (CssExtractUntil(false, ')', &remaining, &wrapped_url,
-                                   &have_term_paren)) {
-          TrimWhitespace(wrapped_url, &url);
-          have_url = kUrl;
+          break;
         }
+        case kLexInterrupted:
+          reparse_candidate.CopyToString(&reparse_);
+          return ok && WriteRange(out_begin, out_end, writer, handler_);
+        case kLexNo:
+          break;
       }
     }
 
     if (have_url != kNone) {
       // See if we actually have to do something. If the transformer
       // wants to leave the URL alone, we will just pass the bytes through.
-      switch (transformer->Transform(&url)) {
+      switch (transformer_->Transform(&url)) {
         case Transformer::kSuccess: {
           // Write out the buffered up part of input.
-          ok = ok && WriteRange(out_begin, out_end, writer, handler);
+          ok = ok && WriteRange(out_begin, out_end, writer, handler_);
 
-          if (have_url == kImport) {
-            ok = ok && writer->Write("@import ", handler);
-          } else {
-            ok = ok && writer->Write("url(", handler);
-          }
-
-          if (is_quoted) {
-            ok = ok && writer->Write(StringPiece(&quote, 1), handler);
-          }
-          ok = ok && writer->Write(Css::EscapeUrl(url), handler);
-          if (have_term_quote) {
-            ok = ok && writer->Write(StringPiece(&quote, 1), handler);
-          }
-
-          if (have_term_paren) {
-            ok = ok && writer->Write(")", handler);
-          }
+          SerializeUrlUse(have_url, url,
+                          is_quoted, have_term_quote, quote,
+                          have_term_paren,
+                          writer, &ok);
 
           // Begin accumulating input again starting from next byte.
           out_begin = remaining.data();
@@ -369,8 +488,8 @@ bool CssTagScanner::TransformUrls(
         }
         case Transformer::kFailure: {
           // We could not transform URL, fail fast.
-          handler->Message(kWarning,
-                           "Transform failed for url %s", url.c_str());
+          handler_->Message(kWarning,
+                            "Transform failed for url %s", url.c_str());
           return false;
         }
         case Transformer::kNoChange: {
@@ -382,12 +501,20 @@ bool CssTagScanner::TransformUrls(
     // remaining.data() points to the next byte to read, which is exactly
     // right after the last byte we want to output.
     out_end = remaining.data();
+    reparse_candidate = remaining;
   }
 
   // Write out whatever got buffered at the end.
-  ok = ok && WriteRange(out_begin, out_end, writer, handler);
+  ok = ok && WriteRange(out_begin, out_end, writer, handler_);
 
   return ok;
+}
+
+bool CssTagScanner::TransformUrls(
+    StringPiece contents, Writer* writer, Transformer* transformer,
+    MessageHandler* handler) {
+  CssTagScanner scanner(transformer, handler);
+  return scanner.TransformUrlsStreaming(contents, kInputIncludesEnd, writer);
 }
 
 bool CssTagScanner::HasImport(const StringPiece& contents,

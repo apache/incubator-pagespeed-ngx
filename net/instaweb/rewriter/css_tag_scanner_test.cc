@@ -293,10 +293,37 @@ class RewriteDomainTransformerTest : public RewriteTestBase {
     return output_buffer;
   }
 
- private:
+  // Test for rewriting CSS delivered in chunks --- the chunks are provided
+  // in the NULL-terminated array pieces, and the return value includes what was
+  // produced out and what was retained for reparse for each chunk.
+  GoogleString TransformStreaming(const char* pieces[]) {
+    RewriteDomainTransformer transformer(&old_base_url_, &new_base_url_,
+                                         rewrite_driver());
+    CssTagScanner scanner(&transformer, message_handler());
+    GoogleString result;
+
+    for (int c = 0; pieces[c]; ++c) {
+      const char* piece = pieces[c];
+      bool last_piece = (pieces[c + 1] == NULL);
+
+      GoogleString output_piece;
+      StringWriter output_writer(&output_piece);
+      EXPECT_TRUE(scanner.TransformUrlsStreaming(
+          piece,
+          last_piece ? CssTagScanner::kInputIncludesEnd :
+                       CssTagScanner::kInputDoesNotIncludeEnd,
+          &output_writer));
+      StrAppend(&result, "portion=", output_piece,
+                ", retain=", scanner.RetainedForReparse(), "|");
+    }
+    return result;
+  }
+
+ protected:
   GoogleUrl old_base_url_;
   GoogleUrl new_base_url_;
 
+ private:
   DISALLOW_COPY_AND_ASSIGN(RewriteDomainTransformerTest);
 };
 
@@ -476,6 +503,107 @@ TEST_F(RewriteDomainTransformerTest, ImportSQuoteDQuote) {
   EXPECT_STREQ(
       "a @import 'http://old-base.com/style.css'\"screen\";",
       Transform("a @import 'style.css'\"screen\";"));
+}
+
+TEST_F(RewriteDomainTransformerTest, BrokenEscape) {
+  // First one is unchanged due to our own limitations.
+  EXPECT_STREQ(
+      "@import 'foo/\\1234'; url(foo\\",
+      Transform("@import 'foo/\\1234'; url(foo\\"));
+}
+
+TEST_F(RewriteDomainTransformerTest, StreamingUrlInterrupt) {
+  const char* input[] = { "u",
+                          "rl(",
+                          "\"foo",
+                          ".png\"",
+                          ") bar u",
+                          "x",
+                          NULL };
+  EXPECT_EQ("portion=, retain=u|"
+            "portion=, retain=url(|"
+            "portion=, retain=url(\"foo|"
+            "portion=, retain=url(\"foo.png\"|"
+            "portion=url(\"http://old-base.com/foo.png\") bar , retain=u|"
+            "portion=ux, retain=|",
+            TransformStreaming(input));
+}
+
+TEST_F(RewriteDomainTransformerTest, StreamingOtherAtRule) {
+  // export has same length as import, so we can tell it's not import
+  // when seeing it.
+  const char* input[] = { "@export",
+                          " \"foo.png\";",
+                          NULL };
+  EXPECT_EQ("portion=@export, retain=|"
+            "portion= \"foo.png\";, retain=|",
+            TransformStreaming(input));
+}
+
+TEST_F(RewriteDomainTransformerTest, StreamingUrlArgInterrupt) {
+  const char* input[] = { "background-image:url(",
+                          "foo.png",
+                          ")",
+                          NULL };
+  EXPECT_EQ("portion=background-image:, retain=url(|"
+            "portion=, retain=url(foo.png|"
+            "portion=url(http://old-base.com/foo.png), retain=|",
+            TransformStreaming(input));
+}
+
+TEST_F(RewriteDomainTransformerTest, StreamingImportInterrupt) {
+  const char* input[] = { "@",
+                          "imp",
+                          "ort",
+                          " ",
+                          " \"foo.css",
+                          "\";",
+                          NULL };
+  EXPECT_EQ("portion=, retain=@|"
+            "portion=, retain=@imp|"
+            "portion=, retain=@import|"
+            "portion=, retain=@import |"
+            "portion=, retain=@import  \"foo.css|"
+            "portion=@import \"http://old-base.com/foo.css\";, retain=|",
+            TransformStreaming(input));
+}
+
+TEST_F(RewriteDomainTransformerTest, StreamingEscape) {
+  const char* input[] = { "background-image: url(\"foo\\",
+                          "\"bar\")",
+                          NULL };
+  EXPECT_EQ("portion=background-image: , retain=url(\"foo\\|"
+            "portion=url(\"http://old-base.com/foo%22bar\"), retain=|",
+            TransformStreaming(input));
+}
+
+TEST_F(RewriteDomainTransformerTest, StreamingCharByChar) {
+  // Just run through input char-by-char.
+  const char input[] = "@import \"other.css\"; "
+                      "ul { list-style-image:url(a.png); }";
+  RewriteDomainTransformer transformer(&old_base_url_, &new_base_url_,
+                                       rewrite_driver());
+  CssTagScanner scanner(&transformer, message_handler());
+  GoogleString result;
+
+  for (int i = 0; i < STATIC_STRLEN(input); ++i) {
+    char character = input[i];
+    bool last_piece = (i == (STATIC_STRLEN(input) - 1));
+
+    GoogleString output_piece;
+    StringWriter output_writer(&output_piece);
+    EXPECT_TRUE(scanner.TransformUrlsStreaming(
+        GoogleString(1, character),
+        last_piece ? CssTagScanner::kInputIncludesEnd :
+                     CssTagScanner::kInputDoesNotIncludeEnd,
+        &output_writer));
+    StrAppend(&result, output_piece, "|");
+  }
+
+  EXPECT_EQ("||||||||||||||||||@import \"http://old-base.com/other.css\"|;"
+            "| ||||ul {| |l|i|s|t|-|s|t|y|l|e|-|i|m|a|g|e|:"
+            "||||||||||url(http://old-base.com/a.png)|;| |}|",
+            result);
 }
 
 class FailTransformer : public CssTagScanner::Transformer {
