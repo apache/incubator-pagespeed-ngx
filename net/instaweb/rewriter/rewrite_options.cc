@@ -97,7 +97,7 @@ const char RewriteOptions::kDistributedRewriteServers[] =
 const char RewriteOptions::kDistributedRewriteTimeoutMs[] =
     "DistributedRewriteTimeoutMs";
 const char RewriteOptions::kDomainRewriteCookies[] =
-    "kDomainRewriteCookies";
+    "DomainRewriteCookies";
 const char RewriteOptions::kDomainRewriteHyperlinks[] =
     "DomainRewriteHyperlinks";
 const char RewriteOptions::kDomainShardCount[] = "DomainShardCount";
