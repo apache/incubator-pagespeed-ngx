@@ -16,8 +16,8 @@
 
 #include "net/instaweb/rewriter/public/inline_resource_slot.h"
 
-#include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "pagespeed/kernel/html/html_element.h"
+#include "base/logging.h"
+#include "pagespeed/kernel/http/response_headers.h"
 
 namespace net_instaweb {
 
@@ -38,6 +38,7 @@ void InlineResourceSlot::Render() {
     // Note: This should be an InlineOutputResource so it will be loaded by
     // default.
     DCHECK(resource()->loaded());
+    DCHECK(!resource()->response_headers()->cache_fields_dirty());
     if (char_node_ != NULL && resource()->loaded()) {
       resource()->contents().CopyToString(char_node_->mutable_contents());
     }

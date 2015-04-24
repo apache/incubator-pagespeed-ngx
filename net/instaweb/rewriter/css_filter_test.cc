@@ -1770,6 +1770,13 @@ TEST_F(CssFilterTest, RemoveComments) {
                   " /* This comment will be removed. */ ", "", kExpectSuccess);
 }
 
+TEST_F(CssFilterTest, InlineCssOptimizedFromCache) {
+  const char in_css[]  = "body {color:DECAFB}";
+  const char out_css[] = "body{color:DECAFB}";
+  ValidateRewrite("css_html", in_css, out_css, kExpectSuccess);
+  ValidateRewrite("css_html", in_css, out_css, kExpectSuccess | kNoStatCheck);
+}
+
 TEST_F(CssFilterTest, NoQuirksModeFixes) {
   const char in_css[]  = "body {color:DECAFB}";
   const char out_css[] = "body{color:DECAFB}";

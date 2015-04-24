@@ -2608,7 +2608,9 @@ bool RewriteContext::CreateOutputResourceForCachedOutput(
       ret = writer->Write(cached_result->inlined_data(), handler);
       (*output_resource)->EndWrite(handler);
       // Needed to indicate that this resource is loaded.
-      (*output_resource)->response_headers()->set_status_code(HttpStatus::kOK);
+      ResponseHeaders* headers = (*output_resource)->response_headers();
+      headers->set_status_code(HttpStatus::kOK);
+      headers->ComputeCaching();
     }
   } else {
     // External resource.

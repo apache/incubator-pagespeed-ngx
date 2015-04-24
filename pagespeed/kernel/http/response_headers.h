@@ -64,6 +64,11 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // dirty, or clean if it came in clean.
   void FixDateHeaders(int64 now_ms);
 
+  // Returns whether the computed cache fields have been dirtied by
+  // a mutation since ComputeCache was called.  This is exposed for
+  // debug assertions.
+  bool cache_fields_dirty() const { return cache_fields_dirty_; }
+
   virtual void Clear();
 
   void CopyFrom(const ResponseHeaders& other);

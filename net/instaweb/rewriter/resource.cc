@@ -174,6 +174,7 @@ void Resource::FillInPartitionInputInfo(HashHint include_content_hash,
                                         InputInfo* input) {
   CHECK(loaded());
   input->set_type(InputInfo::CACHED);
+  DCHECK(!response_headers_.cache_fields_dirty()) << UrlForDebug();
   FillInPartitionInputInfoFromResponseHeaders(response_headers_, input);
   if ((include_content_hash == kIncludeInputHash) && IsValidAndCacheable()) {
     input->set_input_content_hash(ContentsHash());
