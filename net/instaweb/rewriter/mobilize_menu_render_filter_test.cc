@@ -109,13 +109,15 @@ class MobilizeMenuRenderFilterTest : public RewriteTestBase {
 TEST_F(MobilizeMenuRenderFilterTest, BasicOperation) {
   const char kMenu[] =
       "<nav id=\"psmob-nav-panel\"><ul class=\"open\">\n"
-      "  <li id=\"psmob-nav-panel-0\"><div>Submenu1</div><ul>\n"
+      "  <li id=\"psmob-nav-panel-0\"><div>"
+      "<a href=\"#\">Submenu1</a></div><ul>\n"
       "    <li id=\"psmob-nav-panel-0-0\"><a href=\"/a\">A</a></li>\n"
       "    <li id=\"psmob-nav-panel-0-1\"><a href=\"/b\">B</a></li>\n"
       "    <li id=\"psmob-nav-panel-0-2\"><a href=\"/c\">C</a></li>\n"
       "    <li id=\"psmob-nav-panel-0-3\"><a href=\"/submenu1\">Submenu1</a>"
       "</li></ul></li>\n"
-      "  <li id=\"psmob-nav-panel-1\"><div>Submenu2</div><ul>\n"
+      "  <li id=\"psmob-nav-panel-1\"><div>"
+      "<a href=\"#\">Submenu2</a></div><ul>\n"
       "    <li id=\"psmob-nav-panel-1-0\"><a href=\"/d\">D</a></li>\n"
       "    <li id=\"psmob-nav-panel-1-1\"><a href=\"/e\">E</a></li>\n"
       "    <li id=\"psmob-nav-panel-1-2\"><a href=\"/f\">F</a></li>\n"

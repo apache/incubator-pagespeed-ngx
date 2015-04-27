@@ -54,33 +54,33 @@ pagespeed.MobNav = function() {
 
   /**
    * The header bar element inserted at the top of the page.
-   * @private {Element}
+   * @private {?Element}
    */
   this.headerBar_ = null;
 
   /**
    * The style tag used to style the nav elements.
-   * @private {Element}
+   * @private {?Element}
    */
   this.styleTag_ = null;
 
   /**
    * Spacer div element inserted at the top of the page to push the rest of the
    * content down.
-   * @private {Element}
+   * @private {?Element}
    */
   this.spacerDiv_ = null;
 
   /**
    * The span containing the logo.
-   * @private {Element}
+   * @private {?Element}
    */
   this.logoSpan_ = null;
 
   /**
    * Menu button in the header bar. This element can be null after configuration
    * if nav is specifically disabled for a site with navDisabledForSite();
-   * @private {Element}
+   * @private {?Element}
    */
   this.menuButton_ = null;
 
@@ -93,20 +93,20 @@ pagespeed.MobNav = function() {
 
   /**
    * Map button in the header bar.
-   * @private {Element}
+   * @private {?Element}
    */
   this.mapButton_ = null;
 
   /**
    * Side nav bar.
-   * @private {Element}
+   * @private {?Element}
    */
   this.navPanel_ = null;
 
 
   /**
    * Click detector div.
-   * @private {Element}
+   * @private {?Element}
    */
   this.clickDetectorDiv_ = null;
 
@@ -140,6 +140,13 @@ pagespeed.MobNav = function() {
   this.isNavPanelOpen_ = false;
 
   /**
+   * Track's the header bar height so we can tell if it changes between redraws.
+   * -1 indicates that it has not been calculated before.
+   * @private {number}
+   */
+  this.headerBarHeight_ = -1;
+
+  /**
    * Tracks the elements which need to be adjusted after zooming to account for
    * the offset of the spacer div. This includes fixed position elements, and
    * absolute position elements rooted at the body.
@@ -163,6 +170,7 @@ pagespeed.MobNav = function() {
    */
   this.isAndroidBrowser_ = goog.labs.userAgent.browser.isAndroidBrowser();
 
+
   // From https://dev.opera.com/articles/opera-mini-and-javascript/
   this.isOperaMini_ = (navigator.userAgent.indexOf('Opera Mini') > -1);
 
@@ -170,17 +178,10 @@ pagespeed.MobNav = function() {
    * Popup dialog for logo choices.  This is actually 2 different things:
    *   1. A table of logo choices and colors that can be clicked to change them.
    *   2. A PRE tag showing the config snippet for the chosen logo/colors.
-   * @private {Element}
+   * @private {?Element}
    */
   this.logoChoicePopup_ = null;
 };
-
-
-/**
- * The unscaled width of the nav panel in pixels.
- * @private @const {number}
- */
-pagespeed.MobNav.NAV_PANEL_WIDTH_ = 250;
 
 
 /**
@@ -467,24 +468,29 @@ pagespeed.MobNav.prototype.clampZIndex_ = function() {
  * @private
  */
 pagespeed.MobNav.prototype.redrawHeader_ = function() {
+  // We don't actually expect this to be called without headerBar_ being set,
+  // but getTransformedSize requires a non-null param, so this coerces the
+  // closure compiler into recognizing that.
+  if (!this.headerBar_) {
+    return;
+  }
+
+  // Use getTransformedSize to take into account the scale transformation.
+  var oldHeight =
+      this.headerBarHeight_ == -1 ?
+          Math.round(goog.style.getTransformedSize(this.headerBar_).height) :
+          this.headerBarHeight_;
+
   // Resize the bar by scaling to compensate for the amount zoomed.
   // innerWidth is the scaled size, while clientWidth does not vary with zoom
   // level.
   var scaleTransform =
-      'scale(' + window.innerWidth / document.documentElement.clientWidth + ')';
+      'scale(' + window.innerWidth / goog.dom.getViewportSize().width + ')';
   this.headerBar_.style['-webkit-transform'] = scaleTransform;
   this.headerBar_.style.transform = scaleTransform;
 
-  // Use getTransformedSize to take into account the scale transformation.
   var newHeight =
       Math.round(goog.style.getTransformedSize(this.headerBar_).height);
-  var oldHeight = goog.style.getSize(this.spacerDiv_).height;
-
-  // If the height doesn't change, except the first time, we don't need to
-  // redraw the header bar.
-  if (!this.redrawNavCalled_ && newHeight == oldHeight) {
-    return;
-  }
 
   // Restore visibility since the bar was hidden while scrolling and zooming.
   goog.dom.classlist.remove(this.headerBar_, 'hide');
@@ -492,12 +498,9 @@ pagespeed.MobNav.prototype.redrawHeader_ = function() {
   // Get the new size of the header bar and rescale the containing elements to
   // fit inside.
   var heightString = this.headerBar_.offsetHeight + 'px';
-  if (this.menuButton_) {
-    this.menuButton_.style.width = heightString;
-  }
+
   var logoRight = this.dialer_.adjustHeight(heightString);
   if (this.mapButton_) {
-    this.mapButton_.style.width = heightString;
     logoRight += this.headerBar_.offsetHeight;
   }
   this.logoSpan_.style.left = heightString;
@@ -510,6 +513,7 @@ pagespeed.MobNav.prototype.redrawHeader_ = function() {
   // compensate, we adjust the scroll amount by the difference between the old
   // and new sizes of the spacer div.
   this.spacerDiv_.style.height = newHeight + 'px';
+  this.headerBarHeight_ = newHeight;
 
   // Add offset to the elements which need to be moved. On the first run of this
   // function, they are offset by the size of the spacer div. On subsequent
@@ -543,7 +547,7 @@ pagespeed.MobNav.prototype.redrawHeader_ = function() {
   // routine to get stuck firing in a loop as it tries and fails to compensate
   // for the 1 pixel difference.
   if (this.redrawNavCalled_ && newHeight != oldHeight) {
-    window.scrollBy(0, newHeight - oldHeight);
+    window.scrollBy(0, (newHeight - oldHeight));
   }
 
   // Redraw the bar to the top of page by offsetting by the amount scrolled.
@@ -562,18 +566,19 @@ pagespeed.MobNav.prototype.redrawNavPanel_ = function() {
     return;
   }
 
-  var scale = window.innerWidth * .8 / pagespeed.MobNav.NAV_PANEL_WIDTH_;
-
-  var xOffset =
-      goog.dom.classlist.contains(this.navPanel_, 'open') ?
-      0 : -pagespeed.MobNav.NAV_PANEL_WIDTH_ * scale;
-
-  this.navPanel_.style.top = window.scrollY + 'px';
-  this.navPanel_.style.left = window.scrollX + xOffset + 'px';
+  var scale = window.innerWidth / goog.dom.getViewportSize().width;
 
   var transform = 'scale(' + scale + ')';
   this.navPanel_.style['-webkit-transform'] = transform;
   this.navPanel_.style.transform = transform;
+
+  var xOffset = goog.dom.classlist.contains(this.navPanel_, 'open') ?
+                    0 :
+                    (-goog.style.getTransformedSize(this.navPanel_).width);
+
+  this.navPanel_.style.top = window.scrollY + 'px';
+  this.navPanel_.style.left = window.scrollX + xOffset + 'px';
+
 
   var headerBarBox = this.headerBar_.getBoundingClientRect();
   this.navPanel_.style.marginTop = headerBarBox.height + 'px';
@@ -682,6 +687,9 @@ pagespeed.MobNav.prototype.addHeaderBarResizeEvents_ = function() {
                             }
                           }, this), false);
 
+  // TODO(jud): Note that we don't currently handle orientation change quite
+  // right, since the window height and width don't switch unless the page is
+  // reloaded on some browsers.
   window.addEventListener(goog.events.EventType.ORIENTATIONCHANGE,
                           goog.bind(function() {
                             this.redrawNavPanel_();
@@ -709,23 +717,12 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
       document.getElementById(pagespeed.MobUtil.ElementId.HEADER_BAR);
   document.body.appendChild(this.headerBar_);
   document.body.insertBefore(this.headerBar_, this.spacerDiv_);
-  // Set the unscaled header bar height. We set it to 10% of the largest screen
-  // dimension. Note that docEl.clientHeight can change slightly depending on if
-  // the browser chrome is currently being shown or not, so we set the height
-  // here instead of redrawHeader_() so that it doesn't change when redrawing
-  // after the intial page view. Note, if you change this height, you should
-  // also change MobilizeRewriteFilter::kSetSpacerHeight to match.
-  // Using '10vmax' would be a lot better here, except this causes some
-  // flakiness when recomputing the size to use for the buttons, and there are
-  // issues on iOS 7.
 
-  var viewportSize = goog.dom.getViewportSize();
-  this.headerBar_.style.height =
-      Math.round(Math.max(viewportSize.height, viewportSize.width) * .1) + 'px';
   if (!this.navDisabledForSite_()) {
     this.menuButton_ = themeData.menuButton;
     this.headerBar_.appendChild(this.menuButton_);
   }
+
   this.logoSpan_ = themeData.anchorOrSpan;
   this.headerBar_.appendChild(themeData.anchorOrSpan);
   this.headerBar_.style.borderBottom =
@@ -733,6 +730,12 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
       pagespeed.MobUtil.colorNumbersToString(themeData.menuFrontColor);
   this.headerBar_.style.backgroundColor =
       pagespeed.MobUtil.colorNumbersToString(themeData.menuBackColor);
+
+  if (psDeviceType == 'mobile' || psDeviceType == 'tablet') {
+    goog.dom.classlist.add(this.headerBar_, 'mobile');
+    goog.dom.classlist.add(this.spacerDiv_, 'mobile');
+    goog.dom.classlist.add(this.navPanel_, 'mobile');
+  }
 
   // Add call button if a phone number is specified.
   var dialButton = this.dialer_.createButton();
@@ -857,12 +860,11 @@ pagespeed.MobNav.prototype.addThemeColor_ = function(themeData) {
             ' { background-color: ' + backgroundColor + '; }\n' +
             '#' + pagespeed.MobUtil.ElementId.NAV_PANEL +
             ' { background-color: ' + color + '; }\n' +
-            '#' + pagespeed.MobUtil.ElementId.NAV_PANEL + ' li { color: ' +
-            backgroundColor + '; }\n' +
-            '#' + pagespeed.MobUtil.ElementId.NAV_PANEL + ' a { color: ' +
-            backgroundColor + '; }\n' +
-            '#' + pagespeed.MobUtil.ElementId.NAV_PANEL + ' div { color: ' +
-            backgroundColor + '; }\n';
+            '#' + pagespeed.MobUtil.ElementId.NAV_PANEL + ' li, ' +
+            '#' + pagespeed.MobUtil.ElementId.NAV_PANEL + ' a, ' +
+            '#' + pagespeed.MobUtil.ElementId.NAV_PANEL + ' div, ' +
+            '#' + pagespeed.MobUtil.ElementId.NAV_PANEL + ' p' +
+            ' { color: ' + backgroundColor + '; }\n';
   this.styleTag_ = document.createElement(goog.dom.TagName.STYLE);
   this.styleTag_.type = 'text/css';
   this.styleTag_.appendChild(document.createTextNode(css));
@@ -873,7 +875,7 @@ pagespeed.MobNav.prototype.addThemeColor_ = function(themeData) {
 /**
  * Traverse the nodes of the nav and label each A tag with its depth in the
  * hierarchy. Return an array of the A tags it labels.
- * @param {Node} node The starting navigational node.
+ * @param {!Node} node The starting navigational node.
  * @param {number} currDepth The current depth in the hierarchy used when
  *     recursing. Must be 0 on first call.
  * @param {boolean=} opt_inUl Track if we are currently in a UL. The labeling
@@ -1078,8 +1080,10 @@ pagespeed.MobNav.prototype.constructNavPanel_ = function() {
           var item = document.createElement(goog.dom.TagName.LI);
           var div =
               item.appendChild(document.createElement(goog.dom.TagName.DIV));
-          div.appendChild(document.createTextNode(
+          var a = div.appendChild(document.createElement(goog.dom.TagName.A));
+          a.appendChild(document.createTextNode(
               navATags[j].textContent || navATags[j].innerText));
+          a.href = '#';
           navSubmenus[navSubmenus.length - 1].appendChild(item);
           var submenu = document.createElement(goog.dom.TagName.UL);
           item.appendChild(submenu);
@@ -1114,9 +1118,9 @@ pagespeed.MobNav.prototype.constructNavPanel_ = function() {
  * @private
  */
 pagespeed.MobNav.prototype.addSubmenuArrows_ = function(themeData) {
-  var submenuTitleDivs =
-      this.navPanel_.getElementsByTagName(goog.dom.TagName.DIV);
-  var n = submenuTitleDivs.length;
+  var submenuTitleAs = this.navPanel_.querySelectorAll(
+      goog.dom.TagName.DIV + ' > ' + goog.dom.TagName.A);
+  var n = submenuTitleAs.length;
   if (n == 0) {
     return;
   }
@@ -1127,7 +1131,7 @@ pagespeed.MobNav.prototype.addSubmenuArrows_ = function(themeData) {
   }
   for (var i = 0; i < n; i++) {
     var icon = document.createElement(goog.dom.TagName.IMG);
-    var submenu = submenuTitleDivs[i];
+    var submenu = submenuTitleAs[i];
     submenu.insertBefore(icon, submenu.firstChild);
     icon.setAttribute('src', arrowIcon);
     goog.dom.classlist.add(icon,
@@ -1147,6 +1151,7 @@ pagespeed.MobNav.prototype.addNavPanel_ = function(themeData) {
   if (!this.navPanel_) {
     this.constructNavPanel_();
   }
+
   this.addSubmenuArrows_(themeData);
   this.addClickDetectorDiv_();
 
@@ -1227,25 +1232,22 @@ pagespeed.MobNav.prototype.addMenuButtonEvents_ = function() {
  * @private
  */
 pagespeed.MobNav.prototype.addNavButtonEvents_ = function() {
-  var navUl = this.navPanel_.firstChild;
-  navUl.addEventListener(goog.events.EventType.CLICK, function(e) {
-    // We want to handle clicks on the LI that contains a nested UL. So if
-    // somebody clicks on the expand icon in the LI, make sure we handle that
-    // by popping up to the parent node.
-    var target = (goog.dom.isElement(e.target) &&
-                  goog.dom.classlist.contains(
-                      /** @type {Element} */ (e.target),
-                      pagespeed.MobUtil.ElementClass.MENU_EXPAND_ICON)) ?
-                     e.target.parentNode :
-                     e.target;
-    if (target.nodeName.toUpperCase() == goog.dom.TagName.DIV) {
+  var navDivs = document.querySelectorAll(
+      '#' + pagespeed.MobUtil.ElementId.NAV_PANEL + ' div');
+  for (var i = 0, div; div = navDivs[i]; ++i) {
+    div.addEventListener(goog.events.EventType.CLICK, function(e) {
+      // These divs have href='#' (set by the server), so prevent default to
+      // keep it from changing the URL.
+      e.preventDefault();
+      var target = e.currentTarget;
       // A click was registered on the div that has the hierarchical menu text
       // and icon. Open up the UL, which should be the next element.
       goog.dom.classlist.toggle(target.nextSibling, 'open');
-      // Also toggle the expand icon, which will be the first child of the div.
-      goog.dom.classlist.toggle(target.firstChild, 'open');
-    }
-  }, false);
+      // Also toggle the expand icon, which will be the first child of the P
+      // tag, which is the first child of the target div.
+      goog.dom.classlist.toggle(target.firstChild.firstChild, 'open');
+    }, false);
+  }
 };
 
 

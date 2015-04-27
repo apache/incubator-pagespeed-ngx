@@ -42,6 +42,10 @@ var psConversionId;
 var psDebugMode;
 
 
+/** @type {string} */
+var psDeviceType;
+
+
 /** @type {boolean} */
 var psConfigMode;
 

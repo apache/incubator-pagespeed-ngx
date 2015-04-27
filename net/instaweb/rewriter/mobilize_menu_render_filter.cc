@@ -26,6 +26,7 @@
 #include "net/instaweb/rewriter/public/mobilize_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/property_cache_util.h"
 #include "net/instaweb/rewriter/public/render_blocking_html_computation.h"
+#include "net/instaweb/rewriter/public/request_properties.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -163,6 +164,13 @@ void MobilizeMenuRenderFilter::ConstructMenu() {
     DCHECK(MobilizeMenuFilter::IsMenuOk(*menu_));
     HtmlElement* nav = driver()->NewElement(NULL, HtmlName::kNav);
     driver()->AddAttribute(nav, HtmlName::kId, "psmob-nav-panel");
+    // For the purposes of the mobilization elements we inject in the page,
+    // tablets are considered mobile since they are touch devices with pixel
+    // densities to mobile devices.
+    if (driver()->request_properties()->IsMobile() ||
+        driver()->request_properties()->IsTablet()) {
+      driver()->AddAttribute(nav, HtmlName::kClass, "mobile");
+    }
     InsertNodeAtBodyEnd(nav);
     HtmlElement* ul = driver()->NewElement(nav, HtmlName::kUl);
     driver()->AddAttribute(ul, HtmlName::kClass, "open");
@@ -206,9 +214,14 @@ void MobilizeMenuRenderFilter::ConstructMenuWithin(
       // duplicate the data: url in the html.
       HtmlElement* title_div = driver()->NewElement(li, HtmlName::kDiv);
       driver()->AppendChild(li, title_div);
+      // Add an A tag so that the mouse pointer on desktop will indicate that
+      // the submenus can be clicked on.
+      HtmlElement* title_a = driver()->NewElement(title_div, HtmlName::kA);
+      driver()->AddAttribute(title_a, HtmlName::kHref, "#");
+      driver()->AppendChild(title_div, title_a);
       HtmlCharactersNode* submenu_title =
-          driver()->NewCharactersNode(title_div, item.name());
-      driver()->AppendChild(title_div, submenu_title);
+          driver()->NewCharactersNode(title_a, item.name());
+      driver()->AppendChild(title_a, submenu_title);
       HtmlElement* ul = driver()->NewElement(li, HtmlName::kUl);
       driver()->AppendChild(li, ul);
       ConstructMenuWithin(level + 1, id, item.submenu(), ul);

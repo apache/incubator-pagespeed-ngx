@@ -63,6 +63,9 @@ class DeviceProperties {
   bool IsMobile() const {
     return GetDeviceType() == UserAgentMatcher::kMobile;
   }
+  bool IsTablet() const {
+    return GetDeviceType() == UserAgentMatcher::kTablet;
+  }
 
   enum ImageQualityPreference {
     // Server uses its own default image quality.

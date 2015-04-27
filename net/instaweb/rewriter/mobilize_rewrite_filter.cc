@@ -38,6 +38,7 @@
 #include "pagespeed/kernel/html/html_element.h"
 #include "pagespeed/kernel/html/html_node.h"
 #include "pagespeed/kernel/http/google_url.h"
+#include "pagespeed/kernel/http/user_agent_matcher.h"
 
 namespace net_instaweb {
 
@@ -65,13 +66,9 @@ const char MobilizeRewriteFilter::kSetSpacerHeight[] =
     "  var spacer = document.getElementById('psmob-spacer');\n"
     "  var navbar = document.getElementById('psmob-header-bar');\n"
     "  var docElt = document.documentElement;\n"
-    "  var scale = window.innerWidth / docElt.clientWidth;\n"
-    // See mobilize.css, #psmob-header-bar sets height to 10%, so divide by 10.
-    "  var headerBarHeight = \n"
-    "    Math.round(Math.max(docElt.clientHeight, docElt.clientWidth) * .1);\n"
-    "  var newHeight = Math.round(headerBarHeight * scale) + 'px';\n"
-    "  spacer.style.height = newHeight;\n"
-    "  navbar.style.height = newHeight;\n"
+    "  var scale = 'scale(' + window.innerWidth / docElt.clientWidth + ')';\n"
+    "  navbar.style.transform = scale;\n"
+    "  spacer.style.height = navbar.getBoundingClientRect().height + 'px';\n"
     "})();";
 
 namespace {
@@ -253,13 +250,13 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
       // whether it was enabled.
       const RewriteOptions* options = driver()->options();
       GoogleString src = StrCat(
-          "var psDebugMode=", (driver()->DebugMode() ? "true;" : "false;"),
-          "var psNavMode=", (use_js_nav_ ? "true;" : "false;"),
-          "var psConfigMode=", (config_mode_ ? "true;" : "false;"));
-      StrAppend(
-          &src,
-          "var psLayoutMode=", (use_js_layout_ ? "true;" : "false;"),
-          "var psStaticJs=", (use_static_ ? "true;" : "false;"));
+          "var psDebugMode=", BoolToString(driver()->DebugMode()), ";"
+          "var psNavMode=", BoolToString(use_js_nav_), ";"
+          "var psConfigMode=", BoolToString(config_mode_), ";"
+          "var psLayoutMode=", BoolToString(use_js_layout_), ";"
+          "var psStaticJs=", BoolToString(use_static_), ";"
+          "var psDeviceType='", UserAgentMatcher::DeviceTypeString(
+              driver()->request_properties()->GetDeviceType()), "';");
       const GoogleString& phone = options->mob_phone_number();
       const GoogleString& map_location = options->mob_map_location();
       if (!phone.empty() || !map_location.empty()) {
@@ -389,6 +386,11 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
       driver()->InsertNodeAfterCurrent(spacer);
       driver()->AddAttribute(spacer, HtmlName::kId, "psmob-spacer");
       driver()->InsertScriptAfterCurrent(kSetSpacerHeight, false);
+      if (driver()->request_properties()->IsMobile() ||
+          driver()->request_properties()->IsTablet()) {
+        driver()->AddAttribute(header, HtmlName::kClass, "mobile");
+        driver()->AddAttribute(spacer, HtmlName::kClass, "mobile");
+      }
     }
 
     if (use_js_layout_ && !added_progress_) {

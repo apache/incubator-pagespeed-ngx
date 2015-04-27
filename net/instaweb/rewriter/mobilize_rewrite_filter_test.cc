@@ -57,14 +57,17 @@ GoogleString Styles(bool layout_mode) {
        : ""));
 }
 
-GoogleString HeadAndViewportWithTheme(
-    bool layout_mode, bool precompute_mode,
-    StringPiece bg_color, StringPiece fg_color, StringPiece logo_url) {
+GoogleString HeadAndViewportWithTheme(bool layout_mode, bool precompute_mode,
+                                      StringPiece bg_color,
+                                      StringPiece fg_color,
+                                      StringPiece logo_url,
+                                      StringPiece device_type) {
   return StrCat(
       "<script>var psDebugMode=false;var psNavMode=true;"
       "var psConfigMode=false;"
       "var psLayoutMode=", BoolToString(layout_mode), ";"
       "var psStaticJs=false;"
+      "var psDeviceType='", device_type, "';"
       "var psConversionId=", Integer64ToString(kConversionId), ";"
       "var psPhoneNumber='", kPhoneNumber, "';"
       "var psPhoneConversionLabel='", kPhoneConversionLabel, "';"
@@ -81,7 +84,7 @@ GoogleString HeadAndViewportWithTheme(
 
 GoogleString HeadAndViewport(bool layout_mode) {
   return HeadAndViewportWithTheme(layout_mode, false /* not precompute */,
-                                  "null", "null", "");
+                                  "null", "null", "", "mobile");
 }
 
 }  // namespace
@@ -149,8 +152,8 @@ class MobilizeRewriteFilterTest : public RewriteTestBase {
 
   GoogleString Spacer() const {
     return StrCat(
-        "<header id=\"psmob-header-bar\"></header>"
-        "<div id=\"psmob-spacer\"></div>"
+        "<header id=\"psmob-header-bar\" class=\"mobile\"></header>"
+        "<div id=\"psmob-spacer\" class=\"mobile\"></div>"
         "<script>",
         MobilizeRewriteFilter::kSetSpacerHeight, "</script>");
   }
@@ -247,6 +250,8 @@ class MobilizeRewriteFunctionalTest : public MobilizeRewriteFilterTest {
     // By default we *don't* add the progress bar scrim.  This explicitly gets
     // overridden in subclasses.
     FilterSetAddedProgress(true);
+    rewrite_driver()->SetUserAgent(
+        UserAgentMatcherTestBase::kAndroidChrome21UserAgent);
   }
 
   void HeadTest(const char* name,
@@ -500,10 +505,9 @@ TEST_F(MobilizeRewriteThemeTest, ConfigureTheme) {
                                          "#ff0000 #0000ff"));
   GoogleString original = StrCat("<head></head>", Body());
   GoogleString expected = StrCat(
-      "<head>", HeadAndViewportWithTheme(false /* no layout */,
-                                         false /* no precompute*/,
-                                         "[255,0,0]",
-                                         "[0,0,255]", "null"),
+      "<head>",
+      HeadAndViewportWithTheme(false /* no layout */, false /* no precompute*/,
+                               "[255,0,0]", "[0,0,255]", "null", "mobile"),
       Styles(LayoutMode()), "</head>", ExpectedBody());
   ValidateExpected("ConfigureTheme", original, expected);
 
@@ -511,10 +515,9 @@ TEST_F(MobilizeRewriteThemeTest, ConfigureTheme) {
             options()->SetOptionFromName(RewriteOptions::kMobTheme,
                                          "#ff0000 #0000ff http://logo.com"));
   expected = StrCat(
-      "<head>", HeadAndViewportWithTheme(false /* no layout */,
-                                         false /* no precompute*/,
-                                         "[255,0,0]",
-                                         "[0,0,255]", "'http://logo.com'"),
+      "<head>", HeadAndViewportWithTheme(
+                    false /* no layout */, false /* no precompute*/,
+                    "[255,0,0]", "[0,0,255]", "'http://logo.com'", "mobile"),
       Styles(LayoutMode()), "</head>", ExpectedBody());
   ValidateExpected("ConfigureTheme2", original, expected);
 }
@@ -524,9 +527,9 @@ TEST_F(MobilizeRewriteThemeTest, PreComputeTheme) {
   options()->EnableFilter(RewriteOptions::kMobilizePrecompute);
   GoogleString original = StrCat("<head></head>", Body());
   GoogleString expected = StrCat(
-      "<head>", HeadAndViewportWithTheme(false /* no layout */,
-                                         true /* precompute*/,
-                                         "null", "null", ""),
+      "<head>",
+      HeadAndViewportWithTheme(false /* no layout */, true /* precompute*/,
+                               "null", "null", "", "mobile"),
       Styles(LayoutMode()), "</head>", ExpectedBody());
   ValidateExpected("Precompute", original, expected);
 }

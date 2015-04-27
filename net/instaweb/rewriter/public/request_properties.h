@@ -42,7 +42,7 @@ class RequestProperties {
   virtual ~RequestProperties();
 
   // Sets the user agent string on the underlying DeviceProperties object.
-  void SetUserAgent(const StringPiece& user_agent_string);
+  void SetUserAgent(StringPiece user_agent_string);
   // Calls ParseCapabilityListFromRequestHeaders on the underlying
   // DownstreamCachingDirectives object.
   void ParseRequestHeaders(const RequestHeaders& request_headers);
@@ -65,6 +65,7 @@ class RequestProperties {
   bool GetScreenResolution(int* width, int* height) const;
   UserAgentMatcher::DeviceType GetDeviceType() const;
   bool IsMobile() const;
+  bool IsTablet() const;
   bool ForbidWebpInlining() const;
 
   // Does not own the vectors. Callers must ensure the lifetime of vectors

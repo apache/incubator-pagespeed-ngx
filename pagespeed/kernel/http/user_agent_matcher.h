@@ -101,6 +101,10 @@ class UserAgentMatcher {
       const StringPiece& user_agent,
       const RequestHeaders* request_headers) const;
 
+  // Returns a string representing the device_type ("desktop", "tablet", or
+  // "mobile").
+  static StringPiece DeviceTypeString(DeviceType device_type);
+
   // Returns the suffix for the given device_type.
   static StringPiece DeviceTypeSuffix(DeviceType device_type);
 

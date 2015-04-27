@@ -532,6 +532,24 @@ UserAgentMatcher::DeviceType UserAgentMatcher::GetDeviceTypeForUA(
   return kDesktop;
 }
 
+StringPiece UserAgentMatcher::DeviceTypeString(DeviceType device_type) {
+  StringPiece device_type_suffix = "";
+  switch (device_type) {
+    case kMobile:
+      device_type_suffix = "mobile";
+      break;
+    case kTablet:
+      device_type_suffix = "tablet";
+      break;
+    case kDesktop:
+    case kEndOfDeviceType:
+    default:
+      device_type_suffix = "desktop";
+      break;
+  }
+  return device_type_suffix;
+}
+
 StringPiece UserAgentMatcher::DeviceTypeSuffix(DeviceType device_type) {
   StringPiece device_type_suffix = "";
   switch (device_type) {
@@ -556,7 +574,7 @@ bool UserAgentMatcher::GetScreenResolution(
   DCHECK(height != NULL);
   GoogleString match;
   if (RE2::PartialMatch(
-      StringPieceToRe2(user_agent), *known_devices_pattern_.get(), &match)) {
+      StringPieceToRe2(user_agent), *known_devices_pattern_, &match)) {
     pair<int, int> dims = screen_dimensions_map_[match];
     *width = dims.first;
     *height = dims.second;

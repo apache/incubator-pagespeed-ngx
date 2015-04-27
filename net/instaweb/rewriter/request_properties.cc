@@ -39,7 +39,7 @@ RequestProperties::RequestProperties(UserAgentMatcher* matcher)
 RequestProperties::~RequestProperties() {
 }
 
-void RequestProperties::SetUserAgent(const StringPiece& user_agent_string) {
+void RequestProperties::SetUserAgent(StringPiece user_agent_string) {
   device_properties_->SetUserAgent(user_agent_string);
 }
 
@@ -144,6 +144,10 @@ bool RequestProperties::IsBot() const {
 
 bool RequestProperties::IsMobile() const {
   return device_properties_->IsMobile();
+}
+
+bool RequestProperties::IsTablet() const {
+  return device_properties_->IsTablet();
 }
 
 bool RequestProperties::SupportsSplitHtml(bool allow_mobile) const {

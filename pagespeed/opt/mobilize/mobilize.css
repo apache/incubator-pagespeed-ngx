@@ -43,6 +43,7 @@ body {
   padding: 0px;
 
   width: 100%;
+  height: 75px;
 
   -webkit-transform-origin: 0 0;
   transform-origin: 0 0;
@@ -69,6 +70,10 @@ body {
   -moz-transition: opacity 0.2s;
   -o-transition: opacity 0.2s;
   transition: opacity 0.2s;
+}
+
+#psmob-header-bar.mobile {
+  height: 150px;
 }
 
 #psmob-header-bar.hide {
@@ -117,7 +122,23 @@ body {
 
 #psmob-menu-button {
   left: 0;
-  height: 100%;
+  height: 75px;
+  width: 75px;
+}
+
+#psmob-header-bar.mobile #psmob-menu-button {
+  height: 150px;
+  width: 150px;
+}
+
+#psmob-map-button {
+  height: 75px;
+  width: 75px;
+}
+
+#psmob-header-bar.mobile #psmob-map-button {
+  height: 150px;
+  width: 150px;
 }
 
 #psmob-header-bar a {
@@ -192,11 +213,13 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
-  width: 250px !important;
+  width: 350px !important;
 
   /* Wordpress sets a z-index of 99999 for its admin header bar, so set a larger
    * value so our nav bar ends up on top of it. */
   z-index: 999999;
+
+  font-size: 20px;
 
   /* We don't set margin-top here because that gets set dynamically by the JS to
    * compensate for zoom level. */
@@ -219,6 +242,11 @@ body {
   /* Use momentum-based scrolling on iOS. Otherwise the nav panel scrolls too
    * quickly. */
   -webkit-overflow-scrolling: touch;
+}
+
+#psmob-nav-panel.mobile {
+  width: 700px !important;
+  font-size: 60px;
 }
 
 #psmob-nav-panel.open {
@@ -256,7 +284,8 @@ body {
 
   text-align: left;
 
-  font-size: medium !important;
+  position: relative;
+
 
   padding-right: 0;
   padding-top: 0;
@@ -271,18 +300,27 @@ body {
 }
 
 #psmob-nav-panel ul li a, #psmob-nav-panel ul li div {
+  min-height: 60px;
   display: block;
   padding-right: 0;
   padding-top: 0;
   padding-bottom: 0;
   line-height: 60px !important;
   text-decoration: none;
-  font-size: medium !important;
 
   -webkit-transition: background-color 0.2s ease-out;
   -moz-transition: background-color 0.2s ease-out;
   -o-transition: background-color 0.2s ease-out;
   transition: background-color 0.2s ease-out;
+}
+
+#psmob-nav-panel.mobile ul li a, #psmob-nav-panel.mobile ul li div {
+  min-height: 120px;
+  line-height: 120px !important;
+}
+
+#psmob-nav-panel ul li div {
+  position: relative;
 }
 
 #psmob-nav-panel ul.open {
@@ -323,7 +361,6 @@ body {
 
 #psmob-spacer {
   width: 100%;
-  height: 100%;
   opacity: 0;
 }
 
