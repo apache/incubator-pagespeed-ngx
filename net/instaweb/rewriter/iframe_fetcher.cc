@@ -16,15 +16,19 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/http/public/iframe_fetcher.h"
+#include "net/instaweb/rewriter/public/iframe_fetcher.h"
 
 #include "net/instaweb/http/public/async_fetch.h"
+#include "net/instaweb/rewriter/public/domain_lawyer.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/html_keywords.h"
 #include "pagespeed/kernel/http/http_names.h"
+#include "pagespeed/kernel/http/response_headers.h"
 
 namespace net_instaweb {
 
-IframeFetcher::IframeFetcher() {
+IframeFetcher::IframeFetcher() : options_(NULL) {
 }
 
 IframeFetcher::~IframeFetcher() {
@@ -33,6 +37,13 @@ IframeFetcher::~IframeFetcher() {
 void IframeFetcher::Fetch(const GoogleString& url,
                           MessageHandler* message_handler,
                           AsyncFetch* fetch) {
+  GoogleString mapped_url, host_header;
+  bool is_proxy;
+  if ((options_ == NULL) || !options_->domain_lawyer()->MapOrigin(
+          url, &mapped_url, &host_header, &is_proxy)) {
+    mapped_url = url;
+  }
+
   fetch->response_headers()->SetStatusAndReason(HttpStatus::kOK);
   fetch->response_headers()->Add(HttpAttributes::kContentType, "text/html");
 
@@ -49,7 +60,7 @@ void IframeFetcher::Fetch(const GoogleString& url,
   // orientation changes seem to make the behavior bad (e.g. cutting
   // off half the screen).  So I'm inclined to leave it as is for now.
   GoogleString escaped_url;
-  HtmlKeywords::Escape(url, &escaped_url);
+  HtmlKeywords::Escape(mapped_url, &escaped_url);
   GoogleString createIframe = StrCat(
       "<script>\n"
       "var docElt = document.documentElement;\n"

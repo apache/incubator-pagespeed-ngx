@@ -16,11 +16,11 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#ifndef NET_INSTAWEB_HTTP_PUBLIC_IFRAME_FETCHER_H_
-#define NET_INSTAWEB_HTTP_PUBLIC_IFRAME_FETCHER_H_
+#ifndef NET_INSTAWEB_REWRITER_PUBLIC_IFRAME_FETCHER_H_
+#define NET_INSTAWEB_REWRITER_PUBLIC_IFRAME_FETCHER_H_
 
 #include "net/instaweb/http/public/url_async_fetcher.h"
-#include "pagespeed/kernel/base/basictypes.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
@@ -33,12 +33,18 @@ class MessageHandler;
 class IframeFetcher : public UrlAsyncFetcher {
  public:
   IframeFetcher();
+
+  void set_options(const RewriteOptions* options) { options_ = options; }
+
   virtual ~IframeFetcher();
   virtual void Fetch(const GoogleString& url,
                      MessageHandler* message_handler,
                      AsyncFetch* fetch);
+
+ private:
+  const RewriteOptions* options_;
 };
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_HTTP_PUBLIC_IFRAME_FETCHER_H_
+#endif  // NET_INSTAWEB_REWRITER_PUBLIC_IFRAME_FETCHER_H_

@@ -34,7 +34,6 @@
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
-#include "net/instaweb/http/public/iframe_fetcher.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/request_context.h"
@@ -84,6 +83,7 @@
 #include "net/instaweb/rewriter/public/google_analytics_filter.h"
 #include "net/instaweb/rewriter/public/google_font_css_inline_filter.h"
 #include "net/instaweb/rewriter/public/handle_noscript_redirect_filter.h"
+#include "net/instaweb/rewriter/public/iframe_fetcher.h"
 #include "net/instaweb/rewriter/public/image_combine_filter.h"
 #include "net/instaweb/rewriter/public/image_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/in_place_rewrite_context.h"
@@ -1484,8 +1484,9 @@ CacheUrlAsyncFetcher* RewriteDriver::CreateCustomCacheFetcher(
 
 CacheUrlAsyncFetcher* RewriteDriver::CreateCacheFetcher() {
   if (options()->mob_iframe() && !options()->mob_config()) {
-    CacheUrlAsyncFetcher* cache_fetcher = CreateCustomCacheFetcher(
-        new IframeFetcher);
+    IframeFetcher* ifetcher = new IframeFetcher;
+    ifetcher->set_options(options());
+    CacheUrlAsyncFetcher* cache_fetcher = CreateCustomCacheFetcher(ifetcher);
     cache_fetcher->set_own_fetcher(true);
     return cache_fetcher;
   }
