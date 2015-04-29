@@ -287,7 +287,8 @@ class RewriteDomainTransformerTest : public RewriteTestBase {
     GoogleString output_buffer;
     StringWriter output_writer(&output_buffer);
     RewriteDomainTransformer transformer(&old_base_url_, &new_base_url_,
-                                         rewrite_driver());
+                                         server_context(), options(),
+                                         message_handler());
     EXPECT_TRUE(CssTagScanner::TransformUrls(
         input, &output_writer, &transformer, message_handler()));
     return output_buffer;
@@ -298,7 +299,8 @@ class RewriteDomainTransformerTest : public RewriteTestBase {
   // produced out and what was retained for reparse for each chunk.
   GoogleString TransformStreaming(const char* pieces[]) {
     RewriteDomainTransformer transformer(&old_base_url_, &new_base_url_,
-                                         rewrite_driver());
+                                         server_context(), options(),
+                                         message_handler());
     CssTagScanner scanner(&transformer, message_handler());
     GoogleString result;
 
@@ -582,7 +584,8 @@ TEST_F(RewriteDomainTransformerTest, StreamingCharByChar) {
   const char input[] = "@import \"other.css\"; "
                       "ul { list-style-image:url(a.png); }";
   RewriteDomainTransformer transformer(&old_base_url_, &new_base_url_,
-                                       rewrite_driver());
+                                       server_context(), options(),
+                                       message_handler());
   CssTagScanner scanner(&transformer, message_handler());
   GoogleString result;
 

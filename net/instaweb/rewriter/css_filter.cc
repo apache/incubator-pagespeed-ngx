@@ -519,11 +519,13 @@ bool CssFilter::Context::FallbackRewriteUrls(
     // Setup absolutifier used by fallback_transformer_. Only enable it if
     // we need to absolutify resources. Otherwise leave it as NULL.
     bool proxy_mode;
-    if (Driver()->ShouldAbsolutifyUrl(css_base_gurl, css_trim_gurl,
-                                      &proxy_mode)) {
+    RewriteDriver* driver = Driver();
+    if (driver->ShouldAbsolutifyUrl(css_base_gurl, css_trim_gurl,
+                                    &proxy_mode)) {
       absolutifier_.reset(new RewriteDomainTransformer(
           base_gurl_for_fallback_.get(), trim_gurl_for_fallback_.get(),
-          Driver()));
+          driver->server_context(), driver->options(),
+          driver->message_handler()));
       if (proxy_mode) {
         absolutifier_->set_trim_urls(false);
       }
@@ -534,8 +536,8 @@ bool CssFilter::Context::FallbackRewriteUrls(
     // into it. When they are rendered they will set the map used by
     // AssociationTransformer.
     fallback_transformer_.reset(new AssociationTransformer(
-        base_gurl_for_fallback_.get(), Driver()->options(), absolutifier_.get(),
-        Driver()->message_handler()));
+        base_gurl_for_fallback_.get(), driver->options(), absolutifier_.get(),
+        driver->message_handler()));
 
     const StringIntMap& url_counts = url_counter.url_counts();
     for (StringIntMap::const_iterator it = url_counts.begin();

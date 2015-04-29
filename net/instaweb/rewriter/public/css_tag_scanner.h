@@ -23,15 +23,13 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/html_element.h"
-#include "pagespeed/kernel/html/html_parse.h"
 #include "pagespeed/kernel/http/google_url.h"
 
 namespace net_instaweb {
 
-class DomainRewriteFilter;
 class MessageHandler;
-class RewriteDriver;
-class UrlLeftTrimFilter;
+class RewriteOptions;
+class ServerContext;
 class Writer;
 
 class CssTagScanner {
@@ -150,7 +148,9 @@ class RewriteDomainTransformer : public CssTagScanner::Transformer {
  public:
   RewriteDomainTransformer(const GoogleUrl* old_base_url,
                            const GoogleUrl* new_base_url,
-                           RewriteDriver* driver);
+                           const ServerContext* server_context,
+                           const RewriteOptions* options,
+                           MessageHandler* handler);
   virtual ~RewriteDomainTransformer();
 
   virtual TransformStatus Transform(GoogleString* str);
@@ -161,11 +161,11 @@ class RewriteDomainTransformer : public CssTagScanner::Transformer {
   const GoogleUrl* old_base_url_;
   const GoogleUrl* new_base_url_;
 
-  DomainRewriteFilter* domain_rewriter_;
-  UrlLeftTrimFilter* url_trim_filter_;
+  const ServerContext* server_context_;
+  const RewriteOptions* options_;
   MessageHandler* handler_;
+
   bool trim_urls_;
-  RewriteDriver* driver_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDomainTransformer);
 };

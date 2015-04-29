@@ -21,6 +21,7 @@
 #include <cstddef>
 #include <vector>
 
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/string_writer.h"
@@ -60,7 +61,9 @@ bool CssAbsolutify::AbsolutifyUrls(Css::Stylesheet* stylesheet,
                                    bool handle_unparseable_sections,
                                    RewriteDriver* driver,
                                    MessageHandler* handler) {
-  RewriteDomainTransformer transformer(&base, &base, driver);
+  RewriteDomainTransformer transformer(
+      &base, &base, driver->server_context(), driver->options(),
+      driver->message_handler());
   transformer.set_trim_urls(false);
   bool urls_modified = false;
 

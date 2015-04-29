@@ -3160,7 +3160,9 @@ RewriteDriver::CssResolutionStatus RewriteDriver::ResolveCssUrls(
   GoogleUrl output_base(output_css_base);
   bool proxy_mode;
   if (ShouldAbsolutifyUrl(input_css_base, output_base, &proxy_mode)) {
-    RewriteDomainTransformer transformer(&input_css_base, &output_base, this);
+    RewriteDomainTransformer transformer(&input_css_base, &output_base,
+                                         server_context(), options(),
+                                         message_handler());
     if (proxy_mode) {
       // If URLs are being rewritten to a proxy domain, then trimming
       // them based purely on the domain-lawyer mappings is going to

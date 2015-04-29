@@ -20,8 +20,10 @@
 
 #include <cstddef>
 
+#include "base/logging.h"
 #include "net/instaweb/rewriter/public/domain_rewrite_filter.h"
-#include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/url_left_trim_filter.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/string.h"
@@ -29,7 +31,6 @@
 #include "pagespeed/kernel/base/writer.h"
 #include "pagespeed/kernel/html/html_element.h"
 #include "pagespeed/kernel/html/html_name.h"
-#include "pagespeed/kernel/html/html_parse.h"
 #include "pagespeed/kernel/http/google_url.h"
 #include "webutil/css/tostring.h"
 
@@ -566,13 +567,11 @@ bool CssTagScanner::IsAlternateStylesheet(const StringPiece& attribute_value) {
 
 RewriteDomainTransformer::RewriteDomainTransformer(
     const GoogleUrl* old_base_url, const GoogleUrl* new_base_url,
-    RewriteDriver* driver)
+    const ServerContext* server_context, const RewriteOptions* options,
+    MessageHandler* handler)
     : old_base_url_(old_base_url), new_base_url_(new_base_url),
-      domain_rewriter_(driver->domain_rewriter()),
-      url_trim_filter_(driver->url_trim_filter()),
-      handler_(driver->message_handler()),
-      trim_urls_(true),
-      driver_(driver) {
+      server_context_(server_context), options_(options),
+      handler_(handler), trim_urls_(true) {
 }
 
 RewriteDomainTransformer::~RewriteDomainTransformer() {
@@ -582,11 +581,12 @@ CssTagScanner::Transformer::TransformStatus RewriteDomainTransformer::Transform(
     GoogleString* str) {
   GoogleString rewritten;  // Result of rewriting domain.
   GoogleString out;        // Result after trimming.
-  if (domain_rewriter_->Rewrite(*str, *old_base_url_, driver_->server_context(),
-                                driver_->options(),
-                                true, /* apply_sharding */
-                                true, /* apply_domain_suffix */
-                                &rewritten)
+  if (DomainRewriteFilter::Rewrite(
+          *str, *old_base_url_, server_context_,
+          options_,
+          true, /* apply_sharding */
+          true, /* apply_domain_suffix */
+          &rewritten)
       == DomainRewriteFilter::kFail) {
     return kFailure;
   }
@@ -599,7 +599,7 @@ CssTagScanner::Transformer::TransformStatus RewriteDomainTransformer::Transform(
   // Specifically, that final domain depends upon the precise text of that
   // we are altering here.
   if (!trim_urls_ ||
-      !url_trim_filter_->Trim(*new_base_url_, rewritten, &out, handler_)) {
+      !UrlLeftTrimFilter::Trim(*new_base_url_, rewritten, &out, handler_)) {
     // If we couldn't trim rewritten -> out, just copy it (swap is optimization)
     out.swap(rewritten);
   }

@@ -88,23 +88,26 @@ class CssFlattenImportsContext : public SingleRewriteContext {
     // going to do it (cache extend, css image rewriter, etc), but it's
     // hard to tell if that will happen so we transform URLs here regardless
     // and note that for CssHierarchy::css_resolution_base().
+    RewriteDriver* driver = Driver();
     RewriteDomainTransformer transformer(&hierarchy_->css_base_url(),
                                          &hierarchy_->css_trim_url(),
-                                         Driver());
+                                         driver->server_context(),
+                                         driver->options(),
+                                         driver->message_handler());
     // If we rewrite the input resource's contents we need somewhere to store
     // it; that's what the hierarchy's backing store is for.
     StringWriter writer(hierarchy_->input_contents_backing_store());
     // See RewriteDriver::ResolveCssUrls about why we disable trimming in
     // proxy mode. We also disable it if trimming is not enabled.
-    if ( Driver()->server_context()->url_namer()->ProxyMode() ||
-        !Driver()->options()->trim_urls_in_css() ||
-        !Driver()->options()->Enabled(RewriteOptions::kLeftTrimUrls)) {
+    if ( driver->server_context()->url_namer()->ProxyMode() ||
+        !driver->options()->trim_urls_in_css() ||
+        !driver->options()->Enabled(RewriteOptions::kLeftTrimUrls)) {
       transformer.set_trim_urls(false);
     }
     if (CssTagScanner::TransformUrls(input_resource_->contents(),
                                      &writer,
                                      &transformer,
-                                     Driver()->message_handler())) {
+                                     driver->message_handler())) {
       hierarchy_->set_input_contents_to_backing_store();
       hierarchy_->set_input_contents_resolved(true);
     } else {
