@@ -84,12 +84,8 @@ bool InlineRewriteContext::Partition(OutputPartitions* partitions,
 
   bool ok = false;
   GoogleString reason_for_failure;
-  if (!resource->IsSafeToRewrite(rewrite_uncacheable())) {
+  if (!resource->IsSafeToRewrite(rewrite_uncacheable(), &reason_for_failure)) {
     AddRecheckDependency();
-    // TODO(morlovich): Follow up by integrating with jmaessen's instrumentation
-    // of IsSafeToRewrite?
-    reason_for_failure =
-        "Can't inline since resource not fetchable or cacheable";
   } else {
     resource->AddInputInfoToPartition(Resource::kOmitInputHash, 0, partition);
     if (ShouldInline(resource, &reason_for_failure)) {
