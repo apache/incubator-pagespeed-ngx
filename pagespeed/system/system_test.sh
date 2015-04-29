@@ -474,9 +474,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   BEACON_URL="http://${HOSTNAME}${BEACON_PATH}?url=${ESCAPED_URL}"
   BEACON_DATA="oh=${OPTIONS_HASH}&n=${NONCE}&cs=.big,.blue,.bold,.foo"
 
-  # See the comments about 204 responses and --no-http-keep-alive above.
-  OUT=$(wget -q  --save-headers -O - --no-http-keep-alive \
-        --post-data "$BEACON_DATA" "$BEACON_URL")
+  OUT=$($CURL -sSi -d "$BEACON_DATA" "$BEACON_URL")
   check_from "$OUT" grep '^HTTP/1.1 204'
 
   # Now make sure we see the correct critical css rules.
@@ -1151,7 +1149,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   BEACON_URL+="image_rewriting%2Fimage_resize_using_rendered_dimensions.html"
   BEACON_DATA="oh=$OPTIONS_HASH&n=$NONCE&ci=1344500982&rd=%7B%221344500982%22%3A%7B%22rw%22%3A150%2C%22rh%22%3A100%2C%22ow%22%3A256%2C%22oh%22%3A192%7D%7D"
   OUT=$(env http_proxy=$SECONDARY_HOSTNAME \
-    $WGET_DUMP --no-http-keep-alive --post-data "$BEACON_DATA" "$BEACON_URL")
+    $CURL -sSi -d "$BEACON_DATA" "$BEACON_URL")
   check_from "$OUT" egrep -q "HTTP/1[.]. 204"
   http_proxy=$SECONDARY_HOSTNAME \
     fetch_until -save -recursive $URL \
@@ -1234,10 +1232,9 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   BEACON_URL+="?url=http%3A%2F%2Fimagebeacon.example.com%2Fmod_pagespeed_test%2F"
   BEACON_URL+="image_rewriting%2Frewrite_images.html"
   BEACON_DATA="oh=$OPTIONS_HASH&n=$NONCE&ci=2932493096"
-  # See the comments about 204 responses and --no-http-keep-alive above.
+
   OUT=$(env http_proxy=$SECONDARY_HOSTNAME \
-    wget -q --save-headers -O - --no-http-keep-alive \
-    --post-data "$BEACON_DATA" "$BEACON_URL")
+    $CURL -sSi -d  "$BEACON_DATA" "$BEACON_URL")
   check_from "$OUT" egrep -q "HTTP/1[.]. 204"
   # Now 2 of the images should be lazyloaded, Puzzle.jpg should not be.
   http_proxy=$SECONDARY_HOSTNAME \
@@ -1265,7 +1262,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   # params for the GET.
   BEACON_DATA+=",2644480723"
   OUT=$(env http_proxy=$SECONDARY_HOSTNAME \
-    $WGET_DUMP "$BEACON_URL&$BEACON_DATA")
+    $CURL -sSi "$BEACON_URL&$BEACON_DATA")
   check_from "$OUT" egrep -q "HTTP/1[.]. 204"
   # Now only BikeCrashIcn.png should be lazyloaded.
   http_proxy=$SECONDARY_HOSTNAME \
