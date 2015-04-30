@@ -260,6 +260,18 @@ TEST_F(DomainRewriteFilterTest, ProxySuffix) {
                       StrCat("<img src='http://", kOriginalHost, kSuffix,
                              "/image.png'>"));
 
+  ValidateExpectedUrl(url,
+                      StrCat("<link rel=stylesheet href='http://",
+                             kOriginalHost, "/style.css'>"),
+                      StrCat("<link rel=stylesheet href='http://",
+                             kOriginalHost, kSuffix, "/style.css'>"));
+
+  ValidateExpectedUrl(url,
+                      StrCat("<script src='http://", kOriginalHost,
+                             "/script.js'></script>"),
+                      StrCat("<script src='http://", kOriginalHost,
+                             kSuffix, "/script.js'></script>"));
+
   ValidateNoChanges(url, "<img src='http://other.example/image.png'>");
 
   // Also test that we can fix up location: headers.

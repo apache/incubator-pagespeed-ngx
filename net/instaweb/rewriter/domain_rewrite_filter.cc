@@ -397,10 +397,11 @@ void DomainRewriteFilter::StartElementImpl(HtmlElement* element) {
   for (int i = 0, n = attributes.size(); i < n; ++i) {
     // Only rewrite attributes that are resource-tags.  If hyperlinks
     // is on that's fine too.
-    if (options->domain_rewrite_hyperlinks() ||
-        attributes[i].category == semantic_type::kImage ||
-        attributes[i].category == semantic_type::kScript ||
-        attributes[i].category == semantic_type::kStylesheet) {
+    bool is_resource =
+        (attributes[i].category == semantic_type::kImage ||
+         attributes[i].category == semantic_type::kScript ||
+         attributes[i].category == semantic_type::kStylesheet);
+    if (options->domain_rewrite_hyperlinks() || is_resource) {
       StringPiece val(attributes[i].url->DecodedValueOrNull());
       if (!val.empty()) {
         GoogleString rewritten_val;
@@ -411,7 +412,7 @@ void DomainRewriteFilter::StartElementImpl(HtmlElement* element) {
             attributes[i].category != semantic_type::kPrefetch);
         bool apply_domain_suffix =
               (attributes[i].category == semantic_type::kHyperlink ||
-               attributes[i].category == semantic_type::kImage);
+               is_resource);
         const GoogleUrl& base_url = driver()->base_url();
         if (Rewrite(val, base_url, driver()->server_context(),
                     driver()->options(), apply_sharding, apply_domain_suffix,
