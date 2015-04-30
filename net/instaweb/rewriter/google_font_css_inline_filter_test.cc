@@ -68,6 +68,10 @@ class GoogleFontCssInlineFilterTestBase : public RewriteTestBase {
 
     SetFetchResponse(StrCat(kRoboto, "&UA=Safieri"),
                      response_headers, "font_safieri");
+
+    // If other filters will try to fetch this, they won't have a UA.
+    SetFetchResponse(StrCat(kRoboto, "&UA=unknown"),
+                     response_headers, "font_huh");
   }
 };
 
@@ -182,6 +186,8 @@ class GoogleFontCssInlineFilterAndWidePermissionsTest
     // Check that we don't rely solely on authorization to properly
     // dispatch the URL to us.
     options()->WriteableDomainLawyer()->AddDomain("*", message_handler());
+    rewrite_driver()->request_context()->AddSessionAuthorizedFetchOrigin(
+        "http://fonts.googleapis.com");
     options()->EnableFilter(RewriteOptions::kInlineCss);
     SetUpForFontFilterTest(RewriteOptions::kInlineGoogleFontCss);
   }
@@ -201,8 +207,12 @@ class NoGoogleFontCssInlineFilterAndWidePermissionsTest
   virtual void SetUp() {
     GoogleFontCssInlineFilterTestBase::SetUp();
     // Check that we don't rely solely on authorization to properly
-    // dispatch the URL to us.
+    // dispatch the URL to us. Note that we can't only use DomainLawyer here
+    // since UserAgentSensitiveTestFetcher is at http layer so is simply
+    // unaware of it.
     options()->WriteableDomainLawyer()->AddDomain("*", message_handler());
+    rewrite_driver()->request_context()->AddSessionAuthorizedFetchOrigin(
+        "http://fonts.googleapis.com");
     SetUpForFontFilterTest(RewriteOptions::kInlineCss);
   }
 };
@@ -212,11 +222,10 @@ TEST_F(NoGoogleFontCssInlineFilterAndWidePermissionsTest,
   // Since font inlining isn't on, the regular inliner complains. This isn't
   // ideal, but doing otherwise requires inline_css to know about
   // inline_google_font_css, which also seems suboptimal.
-  // TODO(morlovich): Figure out why this is 4xx.
   rewrite_driver()->SetUserAgent("Chromezilla");
   ValidateExpected("with_domain_*_without_font_filter", CssLinkHref(kRoboto),
                    StrCat(CssLinkHref(kRoboto),
-                          "<!--4xx status code, preventing rewriting of "
+                          "<!--Uncacheable content, preventing rewriting of "
                           "http://fonts.googleapis.com/css?family=Roboto-->"));
 }
 
