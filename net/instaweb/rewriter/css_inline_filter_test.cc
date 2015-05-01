@@ -44,14 +44,8 @@ namespace net_instaweb {
 namespace {
 
 class CssInlineFilterTest : public RewriteTestBase {
- public:
-  CssInlineFilterTest() : filters_added_(false) {}
-
  protected:
-  // TODO(matterbury): Delete this method as it should be redundant.
-  virtual void SetUp() {
-    RewriteTestBase::SetUp();
-  }
+  CssInlineFilterTest() : filters_added_(false) {}
 
   void TestInlineCssWithOutputUrl(
                      const GoogleString& html_url,
@@ -282,6 +276,17 @@ TEST_F(CssInlineFilterTest, DoInlineCssWithMediaQuery) {
   TestInlineCss("http://www.example.com/index.html",
                 "http://www.example.com/styles.css",
                 "media=\"only (color)\"", css, true, css);
+}
+
+TEST_F(CssInlineFilterTest, Empty) {
+  // Don't inline empty resources. This is defensive programming against
+  // issues like: https://github.com/pagespeed/mod_pagespeed/issues/1050
+  const GoogleString css = "";
+  TestNoInlineCss("http://www.example.com/index.html",
+                  "http://www.example.com/styles.css",
+                  "", css, "",
+                  "Resource is empty, preventing rewriting of "
+                  "http://www.example.com/styles.css");
 }
 
 TEST_F(CssInlineFilterTest, InlineCssWithInvalidMedia) {

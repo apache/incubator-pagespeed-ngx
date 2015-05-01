@@ -21,10 +21,12 @@
 #include "net/instaweb/http/public/http_cache.h"
 
 #include <cstddef>                     // for size_t
+
 #include "net/instaweb/http/public/http_value.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/google_message_handler.h"
 #include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/mock_hasher.h"
 #include "pagespeed/kernel/base/mock_timer.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
@@ -52,8 +54,6 @@ const char kFragment2[] = "www.other.com";
 }  // namespace
 
 namespace net_instaweb {
-
-class MessageHandler;
 
 class HTTPCacheTest : public testing::Test {
  protected:
@@ -481,6 +481,29 @@ TEST_F(HTTPCacheTest, RememberDropped) {
   // ... but not after 61.
   mock_timer_.AdvanceMs(50 * Timer::kSecondMs);
   EXPECT_EQ(HTTPCache::kNotFound,
+            Find(kUrl, kFragment, &value, &meta_data_out, &message_handler_));
+}
+
+// Remember empty resources.
+TEST_F(HTTPCacheTest, RememberEmpty) {
+  ResponseHeaders meta_data_out;
+  http_cache_->RememberEmpty(kUrl, kFragment, &message_handler_);
+  HTTPValue value;
+  EXPECT_EQ(HTTPCache::kRecentFetchEmpty,
+            Find(kUrl, kFragment, &value, &meta_data_out, &message_handler_));
+
+  // Now advance time 301 seconds; the cache should allow us to try fetching
+  // again.
+  mock_timer_.AdvanceMs(301 * 1000);
+  EXPECT_EQ(HTTPCache::kNotFound,
+            Find(kUrl, kFragment, &value, &meta_data_out, &message_handler_));
+
+  http_cache_->set_remember_empty_ttl_seconds(600);
+  http_cache_->RememberEmpty(kUrl, kFragment, &message_handler_);
+  // Now advance time 301 seconds; the cache should remember that the resource
+  // is empty.
+  mock_timer_.AdvanceMs(301 * 1000);
+  EXPECT_EQ(HTTPCache::kRecentFetchEmpty,
             Find(kUrl, kFragment, &value, &meta_data_out, &message_handler_));
 }
 

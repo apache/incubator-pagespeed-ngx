@@ -1543,15 +1543,18 @@ void RewriteContext::AddRecheckDependency() {
         ttl_ms = http_cache->remember_fetch_dropped_ttl_seconds() *
             Timer::kSecondMs;
         break;
-      case Resource::kFetchStatusNotSet:
-      case Resource::kFetchStatusOther:
-        break;
       case Resource::kFetchStatus4xxError:
         ttl_ms = Driver()->options()->metadata_input_errors_cache_ttl_ms();
         break;
       case Resource::kFetchStatusUncacheable:
-        ttl_ms = FindServerContext()->http_cache()->
-            remember_not_cacheable_ttl_seconds() * Timer::kSecondMs;
+        ttl_ms = http_cache->remember_not_cacheable_ttl_seconds() *
+            Timer::kSecondMs;
+        break;
+      case Resource::kFetchStatusEmpty:
+        ttl_ms = http_cache->remember_empty_ttl_seconds() * Timer::kSecondMs;
+        break;
+      case Resource::kFetchStatusNotSet:
+      case Resource::kFetchStatusOther:
         break;
     }
   }

@@ -123,8 +123,14 @@ class CachePutFetch : public SharedAsyncFetch {
 
   virtual void HandleDone(bool success) {
     DCHECK_EQ(request_headers()->method(), RequestHeaders::kGet);
+    // We do not cache empty 200 responses. (Empty 404, 500 are fine.)
+    // https://github.com/pagespeed/mod_pagespeed/issues/1050
+    const bool empty_200 =
+        (response_headers()->status_code() == HttpStatus::kOK &&
+         cache_value_.contents_size() == 0);
     const bool insert_into_cache = (success &&
                                     cacheable_ &&
+                                    !empty_200 &&
                                     cache_value_writer_.has_buffered());
 
     if (insert_into_cache) {
@@ -155,6 +161,10 @@ class CachePutFetch : public SharedAsyncFetch {
       cache_->Put(url_, fragment_, req_properties_, http_options_,
                   &cache_value_, handler_);
     }
+    // Note: We explicitly do not remember fetch failure, uncacheable nor
+    // empty resources here since we still want to proxy those through every
+    // time they are requested.
+    // TODO(sligocki): Maybe we should be remembering failures.
     delete this;
   }
 
@@ -329,7 +339,8 @@ class CacheFindCallback : public HTTPCache::Callback {
       // TODO(sligocki): Should we mark resources as such in this class?
       case HTTPCache::kRecentFetchFailed:
       case HTTPCache::kRecentFetchNotCacheable:
-        VLOG(1) << "RecentFetchFailedOrNotCacheable: "
+      case HTTPCache::kRecentFetchEmpty:
+        VLOG(1) << "RecentFetchFailed, NotCacheable or Empty: "
                 << url_ << " (" << fragment_ << ")";
         if (!ignore_recent_fetch_failed_) {
           base_fetch_->Done(false);

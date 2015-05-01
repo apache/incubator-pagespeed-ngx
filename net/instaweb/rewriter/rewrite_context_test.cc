@@ -1462,6 +1462,60 @@ TEST_F(RewriteContextTest, TestRewritesOnEmptyPrivateResources) {
   }
 }
 
+TEST_F(RewriteContextTest, EmptyInputResources) {
+  options()->EnableFilter(RewriteOptions::kRewriteCss);
+  rewrite_driver()->AddFilters();
+  EnableDebug();
+
+  const int kTtlMs = RewriteOptions::kDefaultImplicitCacheTtlMs;
+  const char kPath[] = "test.css";
+  const char kDataIn[] = "";
+
+  SetResponseWithDefaultHeaders(kPath, kContentTypeCss, kDataIn,
+                                kTtlMs / Timer::kSecondMs);
+  for (int i = 0; i < 2; i++) {
+    GoogleString content;
+    ResponseHeaders headers;
+
+    EXPECT_TRUE(FetchResource(
+        kTestDomain, "cf", "test.css", "css", &content, &headers));
+    // Loads empty result.
+    EXPECT_EQ("", content);
+
+    // But only with private 5min cache lifetime to avoid spreading unexpected
+    // empty resource.
+    ConstStringStarVector values;
+    EXPECT_TRUE(headers.Lookup(HttpAttributes::kCacheControl, &values));
+    EXPECT_EQ(2, values.size());
+    EXPECT_STREQ("max-age=300", *values[0]);
+    EXPECT_STREQ("private", *values[1]);
+  }
+}
+
+TEST_F(RewriteContextTest, EmptyOutputResources) {
+  options()->EnableFilter(RewriteOptions::kRewriteCss);
+  rewrite_driver()->AddFilters();
+  EnableDebug();
+
+  const int kTtlMs = RewriteOptions::kDefaultImplicitCacheTtlMs;
+  const char kPath[] = "test.css";
+  const char kDataIn[] = " ";
+
+  SetResponseWithDefaultHeaders(kPath, kContentTypeCss, kDataIn,
+                                kTtlMs / Timer::kSecondMs);
+  for (int i = 0; i < 2; i++) {
+    GoogleString content;
+    ResponseHeaders headers;
+
+    EXPECT_TRUE(FetchResource(
+        kTestDomain, "cf", "test.css", "css", &content, &headers));
+    EXPECT_EQ("", content);  // Result is empty. That's fine.
+    // And serves with full public 1year cache lifetime.
+    EXPECT_STREQ("max-age=31536000",
+                 headers.Lookup1(HttpAttributes::kCacheControl));
+  }
+}
+
 // Verifies that we preserve cache-control when rewriting a no-cache resource
 // with a non-on-the-fly filter
 TEST_F(RewriteContextTest, PrivateNotCached) {

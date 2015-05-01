@@ -62,6 +62,7 @@
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/cache/lru_cache.h"
+#include "pagespeed/kernel/html/html_element.h"
 #include "pagespeed/kernel/html/html_parse_test_base.h"
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/google_url.h"
@@ -85,8 +86,6 @@ const size_t kUrlPrefixLength = STATIC_STRLEN(kUrlPrefix);
 }  // namespace
 
 namespace net_instaweb {
-
-class HtmlElement;
 
 class VerifyContentsCallback : public Resource::AsyncCallback {
  public:
@@ -320,7 +319,7 @@ class ServerContextTest : public RewriteTestBase {
                    bool is_background_fetch) {
     GoogleString url = "test.jpg";
     rewrite_driver()->SetBaseUrlForFetch(kTestDomain);
-    SetCustomCachingResponse(url, 100, "");
+    SetCustomCachingResponse(url, 100, "foo");
     GoogleUrl gurl(AbsolutifyUrl(url));
     bool unused;
     ResourcePtr resource(rewrite_driver()->CreateInputResource(gurl, &unused));
@@ -839,7 +838,7 @@ TEST_F(ServerContextTest, TestInputResourceQuery) {
 }
 
 TEST_F(ServerContextTest, TestRemember404) {
-  // Make sure our resources remember that a page 404'd, but not too long.
+  // Make sure our resources remember that a page 404'd, for limited time.
   http_cache()->set_remember_not_cacheable_ttl_seconds(10000);
   http_cache()->set_remember_fetch_failed_ttl_seconds(100);
 
@@ -940,6 +939,56 @@ TEST_F(ServerContextTest, TestNonCacheableReadResultPolicy) {
   EXPECT_TRUE(callback2.success());
 }
 
+TEST_F(ServerContextTest, TestRememberEmpty) {
+  // Make sure our resources remember that a page is empty, for limited time.
+  http_cache()->set_remember_empty_ttl_seconds(100);
+
+  ResponseHeaders headers;
+  SetDefaultLongCacheHeaders(&kContentTypeHtml, &headers);
+  headers.SetStatusAndReason(HttpStatus::kOK);
+  static const char kUrl[] = "http://example.com/empty.html";
+  SetFetchResponse(kUrl, headers, "");
+
+  ResourcePtr resource(CreateInputResourceAndReadIfCached(kUrl));
+  EXPECT_EQ(NULL, resource.get());
+
+  HTTPValue value_out;
+  ResponseHeaders headers_out;
+  EXPECT_EQ(HTTPCache::kRecentFetchEmpty,
+            HttpBlockingFind(kUrl, http_cache(), &value_out, &headers_out));
+
+  AdvanceTimeMs(150 * Timer::kSecondMs);
+  EXPECT_EQ(HTTPCache::kNotFound,
+            HttpBlockingFind(kUrl, http_cache(), &value_out, &headers_out));
+}
+
+TEST_F(ServerContextTest, TestNotRememberEmptyRedirect) {
+  // Parallel to TestRememberEmpty for empty 301 redirect.
+  http_cache()->set_remember_empty_ttl_seconds(100);
+
+  ResponseHeaders headers;
+  SetDefaultLongCacheHeaders(&kContentTypeHtml, &headers);
+  headers.SetStatusAndReason(HttpStatus::kMovedPermanently);
+  headers.Add(HttpAttributes::kLocation, "http://example.com/destination.html");
+  static const char kUrl[] = "http://example.com/redirect.html";
+  SetFetchResponse(kUrl, headers, "");
+
+  ResourcePtr resource(CreateInputResourceAndReadIfCached(kUrl));
+  EXPECT_EQ(NULL, resource.get());
+
+  HTTPValue value_out;
+  ResponseHeaders headers_out;
+  // Currently we are remembering 301 as not cacheable, but in the future if
+  // that changes the important thing here is that we don't remember non-200
+  // as empty (and thus fail to use them.
+  EXPECT_NE(HTTPCache::kRecentFetchEmpty,
+            HttpBlockingFind(kUrl, http_cache(), &value_out, &headers_out));
+
+  AdvanceTimeMs(150 * Timer::kSecondMs);
+  EXPECT_NE(HTTPCache::kRecentFetchEmpty,
+            HttpBlockingFind(kUrl, http_cache(), &value_out, &headers_out));
+}
+
 TEST_F(ServerContextTest, TestVaryOption) {
   // Make sure that when we get non-cacheable resources
   // we mark the fetch as not-cacheable in the cache.
@@ -989,7 +1038,7 @@ TEST_F(ServerContextTest, TestOutlined) {
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
 
   rewrite_driver()->Write(
-      ResourceVector(), "", &kContentTypeCss, StringPiece(),
+      ResourceVector(), "foo", &kContentTypeCss, StringPiece(),
       output_resource.get());
   EXPECT_EQ(NULL, output_resource->cached_result());
   EXPECT_EQ(0, lru_cache()->num_hits());
@@ -1035,7 +1084,7 @@ TEST_F(ServerContextTest, TestOnTheFly) {
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
 
   rewrite_driver()->Write(
-      ResourceVector(), "", &kContentTypeCss, StringPiece(),
+      ResourceVector(), "foo", &kContentTypeCss, StringPiece(),
       output_resource.get());
   EXPECT_TRUE(output_resource->cached_result() != NULL);
   EXPECT_EQ(0, lru_cache()->num_hits());
@@ -1065,7 +1114,7 @@ TEST_F(ServerContextTest, TestNotGenerated) {
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
 
   rewrite_driver()->Write(
-      ResourceVector(), "", &kContentTypeCss, StringPiece(),
+      ResourceVector(), "foo", &kContentTypeCss, StringPiece(),
       output_resource.get());
   EXPECT_TRUE(output_resource->cached_result() != NULL);
   EXPECT_EQ(0, lru_cache()->num_hits());
@@ -1388,7 +1437,7 @@ TEST_F(ResourceFreshenTest, TestFreshenImminentlyExpiringResources) {
       RewriteOptions::kDefaultImplicitCacheTtlMs / Timer::kSecondMs;
   response_headers_.Add(HttpAttributes::kCacheControl,
                        StringPrintf("max-age=%d", max_age_sec));
-  SetFetchResponse(kResourceUrl, response_headers_, "");
+  SetFetchResponse(kResourceUrl, response_headers_, "foo");
 
   // The test here is not that the ReadIfCached will succeed, because
   // it's a fake url fetcher.
@@ -1426,7 +1475,7 @@ TEST_F(ResourceFreshenTest, NoFreshenOfForcedCachedResources) {
   FetcherUpdateDateHeaders();
 
   response_headers_.Add(HttpAttributes::kCacheControl, "max-age=0");
-  SetFetchResponse(kResourceUrl, response_headers_, "");
+  SetFetchResponse(kResourceUrl, response_headers_, "foo");
 
   // We should get just 1 fetch.  If we were aggressively freshening
   // we would get 2.
@@ -1455,7 +1504,7 @@ TEST_F(ResourceFreshenTest, NoFreshenOfShortLivedResources) {
       RewriteOptions::kDefaultImplicitCacheTtlMs / Timer::kSecondMs - 1;
   response_headers_.Add(HttpAttributes::kCacheControl,
                        StringPrintf("max-age=%d", max_age_sec));
-  SetFetchResponse(kResourceUrl, response_headers_, "");
+  SetFetchResponse(kResourceUrl, response_headers_, "foo");
 
   EXPECT_TRUE(ResourceIsCached());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
@@ -1658,7 +1707,7 @@ TEST_F(ServerContextTest, PartlyFailedFetch) {
   non_cacheable.SetDateAndCaching(start_time_ms() /* date */, 0 /* ttl */,
                                   "private, no-cache");
   non_cacheable.ComputeCaching();
-  SetFetchResponse(abs_url, non_cacheable, "");
+  SetFetchResponse(abs_url, non_cacheable, "foo");
 
   // We tell the fetcher to quash the zero-bytes writes, as that behavior
   // (which Serf has) made the bug more severe, with not only

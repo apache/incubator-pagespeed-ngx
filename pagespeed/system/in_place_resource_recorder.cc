@@ -184,7 +184,7 @@ void InPlaceResourceRecorder::ConsiderResponseHeaders(
         content_type->IsCss() ||
         content_type->IsJs())) {
     cache_->RememberNotCacheable(
-        url_, fragment_, status_code_ == 200, handler_);
+        url_, fragment_, status_code_ == HttpStatus::kOK, handler_);
     failure_ = true;
     return;
   }
@@ -194,7 +194,7 @@ void InPlaceResourceRecorder::ConsiderResponseHeaders(
       ResponseHeaders::kNoValidator);
   if (!is_cacheable) {
     cache_->RememberNotCacheable(
-        url_, fragment_, status_code_ == 200, handler_);
+        url_, fragment_, status_code_ == HttpStatus::kOK, handler_);
     num_not_cacheable_->Add(1);
     failure_ = true;
     return;
@@ -211,6 +211,13 @@ void InPlaceResourceRecorder::DoneAndSetHeaders(
     ResponseHeaders* response_headers) {
   if (!failure_ && !full_response_headers_considered_) {
     ConsiderResponseHeaders(kFullHeaders, response_headers);
+  }
+
+  if (status_code_ == HttpStatus::kOK && resource_value_.contents_size() == 0) {
+    // Ignore Empty 200 responses.
+    // https://github.com/pagespeed/mod_pagespeed/issues/1050
+    cache_->RememberEmpty(url_, fragment_, handler_);
+    failure_ = true;
   }
 
   if (failure_) {

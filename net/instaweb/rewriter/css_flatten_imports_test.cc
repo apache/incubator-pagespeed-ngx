@@ -605,19 +605,20 @@ TEST_F(CssFlattenImportsTest, DontFlattenOverTinyLimit) {
 }
 
 TEST_F(CssFlattenImportsTest, FlattenEmpty) {
+  // We intentionally do not inline any empty resources.
   const char kFilename[] = "empty.css";
   const char css_in[] = "@import url(http://test.com/empty.css);";
-  const char css_out[] = "";
+  const char empty_content[] = "";
 
-  SetResponseWithDefaultHeaders(kFilename, kContentTypeCss, css_out, 100);
+  SetResponseWithDefaultHeaders(kFilename, kContentTypeCss, empty_content, 100);
 
-  ValidateRewriteExternalCss("flatten_empty", css_in, css_out,
+  ValidateRewriteExternalCss("flatten_empty", css_in, css_in,
                              kExpectSuccess | kNoClearFetcher);
   // Check things work when data is already cached.
   // We do not specify kNoClearFetcher, so the fetcher is cleared. Thus,
   // content must be pulled from the cache. kNoOtherContexts because
   // other contexts won't have this value cached.
-  ValidateRewriteExternalCss("flatten_empty", css_in, css_out,
+  ValidateRewriteExternalCss("flatten_empty", css_in, css_in,
                              kExpectCached | kNoOtherContexts);
 }
 

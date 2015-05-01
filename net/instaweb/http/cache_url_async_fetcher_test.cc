@@ -1439,15 +1439,55 @@ TEST_F(CacheUrlAsyncFetcherTest, FetchFailedIgnore) {
   EXPECT_EQ(0, http_cache_->cache_inserts()->Get());
 }
 
+TEST_F(CacheUrlAsyncFetcherTest, NoCacheEmpty) {
+  const char url[] = "http://www.example.com/empty.html";
+  ResponseHeaders response_headers;
+  SetDefaultHeaders(kContentTypeHtml, &response_headers);
+  int ttl_ms = 5 * Timer::kMinuteMs;
+  response_headers.SetDateAndCaching(timer_.NowMs(), ttl_ms);
+
+  GoogleString empty_contents = "";
+  mock_fetcher_.SetResponse(url, response_headers, empty_contents);
+  FetchAndValidate(url, empty_request_headers_, true, HttpStatus::kOK,
+                   empty_contents, kBackendFetch, false);
+
+  GoogleString non_empty_contents = "foobar";
+  mock_fetcher_.SetResponse(url, response_headers, non_empty_contents);
+  // cache_url_fetcher did not remember the empty contents.
+  FetchAndValidate(url, empty_request_headers_, true, HttpStatus::kOK,
+                   non_empty_contents, kBackendFetch, true);
+}
+
+TEST_F(CacheUrlAsyncFetcherTest, CacheNonEmpty) {
+  // Companion test to NoCacheEmpty to make sure we are caching non-empty
+  // through the same flow.
+  const char url[] = "http://www.example.com/non_empty.html";
+  ResponseHeaders response_headers;
+  SetDefaultHeaders(kContentTypeHtml, &response_headers);
+  int ttl_ms = 5 * Timer::kMinuteMs;
+  response_headers.SetDateAndCaching(timer_.NowMs(), ttl_ms);
+
+  GoogleString original_contents = "foo";
+  mock_fetcher_.SetResponse(url, response_headers, original_contents);
+  FetchAndValidate(url, empty_request_headers_, true, HttpStatus::kOK,
+                   original_contents, kBackendFetch, true);
+
+  GoogleString new_contents = "foobar";
+  mock_fetcher_.SetResponse(url, response_headers, new_contents);
+  // cache_url_fetcher did remember the original content.
+  FetchAndValidate(url, empty_request_headers_, true, HttpStatus::kOK,
+                   original_contents, kBackendFetch, true);
+}
+
 TEST_F(CacheUrlAsyncFetcherTest, NoCacheHtmlOnEmptyHeader) {
   ResponseHeaders response_headers;
   SetDefaultHeaders(kContentTypeHtml, &response_headers);
   response_headers.SetDate(timer_.NowMs());
   response_headers.RemoveAll(HttpAttributes::kCacheControl);
   const char url[] = "http://www.example.com/foo.html";
-  mock_fetcher_.SetResponse(url, response_headers, "");
+  mock_fetcher_.SetResponse(url, response_headers, "foo");
 
-  ExpectNoCache(url, "");
+  ExpectNoCache(url, "foo");
 }
 
 TEST_F(CacheUrlAsyncFetcherTest, DoCacheHtmlOnEmptyHeader) {
@@ -1459,9 +1499,9 @@ TEST_F(CacheUrlAsyncFetcherTest, DoCacheHtmlOnEmptyHeader) {
   response_headers.SetDate(timer_.NowMs());
   response_headers.RemoveAll(HttpAttributes::kCacheControl);
   const char url[] = "http://www.example.com/foo.html";
-  mock_fetcher_.SetResponse(url, response_headers, "");
+  mock_fetcher_.SetResponse(url, response_headers, "foo");
 
-  ExpectCache(url, "");
+  ExpectCache(url, "foo");
 }
 
 // Even when set_default_cache_html(true), we still don't cache responses
@@ -1475,9 +1515,9 @@ TEST_F(CacheUrlAsyncFetcherTest, NoCacheSetCookie) {
   response_headers.RemoveAll(HttpAttributes::kCacheControl);
   response_headers.Add(HttpAttributes::kSetCookie, "foo=bar");
   const char url[] = "http://www.example.com/foo.html";
-  mock_fetcher_.SetResponse(url, response_headers, "");
+  mock_fetcher_.SetResponse(url, response_headers, "foo");
 
-  ExpectNoCache(url, "");
+  ExpectNoCache(url, "foo");
 }
 
 TEST_F(CacheUrlAsyncFetcherTest, CachePublicSansTtl) {
@@ -1489,9 +1529,9 @@ TEST_F(CacheUrlAsyncFetcherTest, CachePublicSansTtl) {
   response_headers.SetDate(timer_.NowMs());
   response_headers.Replace(HttpAttributes::kCacheControl, "public");
   const char url[] = "http://www.example.com/foo.html";
-  mock_fetcher_.SetResponse(url, response_headers, "");
+  mock_fetcher_.SetResponse(url, response_headers, "foo");
 
-  ExpectCache(url, "");
+  ExpectCache(url, "foo");
 }
 
 TEST_F(CacheUrlAsyncFetcherTest, CacheVaryForNonHtml) {

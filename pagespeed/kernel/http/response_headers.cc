@@ -538,6 +538,7 @@ class InstawebCacheComputer : public CachingHeaders {
       case HttpStatus::kRememberNotCacheableStatusCode:
       case HttpStatus::kRememberNotCacheableAnd200StatusCode:
       case HttpStatus::kRememberFetchFailedStatusCode:
+      case HttpStatus::kRememberEmptyStatusCode:
         return true;
       default:
         return false;

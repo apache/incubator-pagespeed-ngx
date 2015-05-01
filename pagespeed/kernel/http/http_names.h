@@ -243,6 +243,8 @@ enum Code {
   // Status code used when the actual status code of the response is unknown at
   // the time of ProxyFetchPropertyCallbackCollector::Detach().
   kUnknownStatusCode = 10004,
+  // We do not allow caching empty resources. Remember that.
+  kRememberEmptyStatusCode = 10005,
 };
 
 // Transform a status code into the equivalent reason phrase.

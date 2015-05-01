@@ -447,9 +447,15 @@ TEST_F(CssFilterTest, RewriteEmptyCssTest) {
   EXPECT_EQ(0, num_parse_failures_->Get());
 
   ValidateRewriteExternalCss("rewrite_empty_css-external", "", "",
-                             kExpectSuccess | kNoStatCheck);
+                             kExpectFailure | kNoStatCheck);
   EXPECT_EQ(0, total_bytes_saved_->Get());
   EXPECT_EQ(0, num_parse_failures_->Get());
+}
+
+// Make sure we allow rewriting to empty output (ex: input all commented out).
+TEST_F(CssFilterTest, EmptyOutput) {
+  ValidateRewrite("empty_output",
+                  "/* body { background: blue; } */\n", "", kExpectSuccess);
 }
 
 // Make sure we do not recompute external CSS when re-processing an already

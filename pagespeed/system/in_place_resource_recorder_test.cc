@@ -241,8 +241,23 @@ TEST_F(InPlaceResourceRecorderTest, Remember500AsFetchFailed) {
 
   HTTPValue value_out;
   ResponseHeaders headers_out;
-  // This should be not found, not one of the RememberNot... statuses
+  // For 500 we do remember fetch failed.
   EXPECT_EQ(HTTPCache::kRecentFetchFailed,
+            HttpBlockingFind(kTestUrl, http_cache(), &value_out, &headers_out));
+}
+
+TEST_F(InPlaceResourceRecorderTest, RememberEmpty) {
+  ResponseHeaders ok_headers;
+  SetDefaultLongCacheHeaders(&kContentTypeCss, &ok_headers);
+
+  scoped_ptr<InPlaceResourceRecorder> recorder(MakeRecorder(kTestUrl));
+  // No contents written.
+  recorder.release()->DoneAndSetHeaders(&ok_headers);
+
+  HTTPValue value_out;
+  ResponseHeaders headers_out;
+  // Remember recent empty.
+  EXPECT_EQ(HTTPCache::kRecentFetchEmpty,
             HttpBlockingFind(kTestUrl, http_cache(), &value_out, &headers_out));
 }
 

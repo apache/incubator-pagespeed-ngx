@@ -75,6 +75,7 @@ class HTTPCache {
     // codes or are not cacheable.
     kRecentFetchFailed,
     kRecentFetchNotCacheable,
+    kRecentFetchEmpty,  // We do not cache empty resources.
   };
 
   virtual void set_hasher(Hasher* hasher) { hasher_ = hasher; }
@@ -287,6 +288,14 @@ class HTTPCache {
                                     const GoogleString& fragment,
                                     MessageHandler* handler);
 
+  // Tell the HTTP Cache to remember that a particular URL shouldn't be cached
+  // because it was an empty resource. We defensively avoid caching empty input
+  // resources.
+  // https://github.com/pagespeed/mod_pagespeed/issues/1050
+  virtual void RememberEmpty(const GoogleString& key,
+                             const GoogleString& fragment,
+                             MessageHandler* handler);
+
   // Indicates if the response is within the cacheable size limit. Clients of
   // HTTPCache must check if they will be eventually able to cache their entries
   // before buffering them in memory. If the content length header is not found
@@ -353,6 +362,17 @@ class HTTPCache {
     }
   }
 
+  int64 remember_empty_ttl_seconds() {
+    return remember_empty_ttl_seconds_;
+  }
+
+  virtual void set_remember_empty_ttl_seconds(int64 value) {
+    DCHECK_LE(0, value);
+    if (value >= 0) {
+      remember_empty_ttl_seconds_ = value;
+    }
+  }
+
   int max_cacheable_response_content_length() {
     return max_cacheable_response_content_length_;
   }
@@ -391,7 +411,7 @@ class HTTPCache {
   void UpdateStats(const GoogleString& key, const GoogleString& fragment,
                    CacheInterface::KeyState backend_state, FindResult result,
                    bool has_fallback, bool is_expired, MessageHandler* handler);
-  void RememberFetchFailedorNotCacheableHelper(
+  void RememberFetchFailedOrNotCacheableHelper(
       const GoogleString& key, const GoogleString& fragment,
       MessageHandler* handler, HttpStatus::Code code, int64 ttl_sec);
 
@@ -422,6 +442,7 @@ class HTTPCache {
   int64 remember_not_cacheable_ttl_seconds_;
   int64 remember_fetch_failed_ttl_seconds_;
   int64 remember_fetch_dropped_ttl_seconds_;
+  int64 remember_empty_ttl_seconds_;
   int64 max_cacheable_response_content_length_;
   AtomicBool ignore_failure_puts_;
 

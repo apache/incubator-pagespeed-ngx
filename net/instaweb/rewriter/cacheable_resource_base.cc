@@ -214,28 +214,38 @@ class CacheableResourceBase::FetchCallbackBase : public AsyncFetchWithLock {
     headers->ComputeCaching();
     headers->FixDateHeaders(http_cache()->timer()->NowMs());
     if (success && !headers->IsErrorStatus()) {
-      if (rewrite_options_->IsCacheTtlOverridden(url())) {
-        headers->ForceCaching(rewrite_options_->override_caching_ttl_ms());
-      }
-      if (resource_->IsValidAndCacheableImpl(*headers)) {
-        HTTPValue* value = http_value();
-        value->SetHeaders(headers);
-
-        // Note that we could potentially store Vary:Cookie responses
-        // here, as we will have fetched the resource without cookies.
-        // But we must be careful in the mod_pagespeed ipro flow,
-        // where we must avoid storing any resource obtained with a
-        // Cookie.  For now we don't implement this.
-        http_cache()->Put(resource_->cache_key(), driver_->CacheFragment(),
-                          RequestHeaders::Properties(),
-                          request_context()->options(),
-                          value, message_handler_);
-        return true;
+      HTTPValue* value = http_value();
+      if (headers->status_code() == HttpStatus::kOK &&
+          value->contents_size() == 0) {
+        // Do not cache empty 200 responses, but remember that they were empty
+        // to avoid fetching too often.
+        // https://github.com/pagespeed/mod_pagespeed/issues/1050
+        http_cache()->RememberEmpty(resource_->cache_key(),
+                                    driver_->CacheFragment(),
+                                    message_handler_);
       } else {
-        http_cache()->RememberNotCacheable(
-            resource_->cache_key(), driver_->CacheFragment(),
-            headers->status_code() == HttpStatus::kOK,
-            message_handler_);
+        if (rewrite_options_->IsCacheTtlOverridden(url())) {
+          headers->ForceCaching(rewrite_options_->override_caching_ttl_ms());
+        }
+        if (resource_->IsValidAndCacheableImpl(*headers)) {
+          value->SetHeaders(headers);
+
+          // Note that we could potentially store Vary:Cookie responses
+          // here, as we will have fetched the resource without cookies.
+          // But we must be careful in the mod_pagespeed ipro flow,
+          // where we must avoid storing any resource obtained with a
+          // Cookie.  For now we don't implement this.
+          http_cache()->Put(resource_->cache_key(), driver_->CacheFragment(),
+                            RequestHeaders::Properties(),
+                            request_context()->options(),
+                            value, message_handler_);
+          return true;
+        } else {
+          http_cache()->RememberNotCacheable(
+              resource_->cache_key(), driver_->CacheFragment(),
+              headers->status_code() == HttpStatus::kOK,
+              message_handler_);
+        }
       }
     } else {
       if (headers->Has(HttpAttributes::kXPsaLoadShed)) {
@@ -395,6 +405,9 @@ class CacheableResourceBase::LoadFetchCallback
                                             respect_vary_,
                                             ResponseHeaders::kNoValidator)) {
         resource_->set_fetch_response_status(Resource::kFetchStatusUncacheable);
+      } else if (status_code == HttpStatus::kOK &&
+                 resource_->contents().empty()) {
+        resource_->set_fetch_response_status(Resource::kFetchStatusEmpty);
       } else {
         resource_->set_fetch_response_status(Resource::kFetchStatusOther);
       }
@@ -509,13 +522,16 @@ void CacheableResourceBase::LoadHttpCacheCallback::Done(
       resource_callback_->Done(false /* lock_failure */,
                                false /* resource_ok */);
       break;
+    case HTTPCache::kRecentFetchEmpty:
     case HTTPCache::kRecentFetchNotCacheable:
       switch (not_cacheable_policy_) {
         case Resource::kLoadEvenIfNotCacheable:
+          // TODO(sligocki): Do we want separate variables for Empty?
           resource_->recent_uncacheables_miss_->Add(1);
           LoadAndSaveToCache();
           break;
         case Resource::kReportFailureIfNotCacheable:
+          // TODO(sligocki): Do we want separate variables for Empty?
           resource_->recent_uncacheables_failure_->Add(1);
           resource_callback_->Done(false /* lock_failure */,
                                    false /* resource_ok */);

@@ -34,6 +34,7 @@
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/hasher.h"
+#include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -51,8 +52,6 @@
 #include "pagespeed/kernel/thread/worker_test_base.h"
 
 namespace net_instaweb {
-
-class MessageHandler;
 
 namespace {
 
