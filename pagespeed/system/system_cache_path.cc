@@ -205,11 +205,23 @@ void SystemCachePath::ChildInit(SlowWorker* cache_clean_worker) {
     // Implementations must ensure the file cache path is an absolute path.
     // mod_pagespeed checks in mod_instaweb.cc:pagespeed_post_config while
     // ngx_pagespeed checks in ngx_pagespeed.cc:ps_merge_srv_conf.
+    // There is at least one example where this check is violated in
+    // ngx_pagespeed. Example:
+    // server {
+    //   pagespeed off;
+    //   pagespeed FileCachePath "/tmp";
+    //   location / {
+    //     pagespeed on;
+    //   }
+    // }
+    //
+    // Fixing this would require knowing if pagespeed is ever switched on within
+    // a deeper level of the block. When this is parsed, we just have knowledge
+    // of the higher-level server block.
     StringPiece path(options_->file_cache_path());
-    DCHECK(path.starts_with("/"));
     cache_flush_filename = StrCat(
-        path,
-        path.ends_with("/") ? "" : "/",
+        path, (path.size() > 0 &&
+        path.ends_with("/")) ? "" : "/",
         cache_flush_filename);
   }
 
