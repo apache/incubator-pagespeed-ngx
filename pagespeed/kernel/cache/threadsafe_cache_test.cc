@@ -79,7 +79,7 @@ TEST_F(ThreadsafeCacheTest, SpamCacheNoEvictionsOrDeletions) {
   // By writing 10 inserts, with 5 bytes of value "valu%d" plus 5 bytes
   // of key, we should never evict anything.  In this test the
   // threads can each check that all their Gets succeed.
-  TestHelper(false, false, "valu%d");
+  TestHelper(false, false, "valu");
 }
 
 TEST_F(ThreadsafeCacheTest, SpamCacheWithEvictions) {
@@ -87,19 +87,19 @@ TEST_F(ThreadsafeCacheTest, SpamCacheWithEvictions) {
   // bytes of key, we may get evictions.  In this test the threads
   // ignores the return value from Get, but we ensure that the
   // eviction logic in the cache is tested in a multi-threaded context.
-  TestHelper(true, false, "value%d");
+  TestHelper(true, false, "value");
 }
 
 TEST_F(ThreadsafeCacheTest, SpamCacheWithDeletions) {
   // In this testcase, we expect no evictions, but we will be
   // doing some deletions, so we do not require Gets to succeed.
-  TestHelper(false, true, "valu%d");
+  TestHelper(false, true, "valu");
 }
 
 TEST_F(ThreadsafeCacheTest, SpamCacheWithDeletionsAndEvictions) {
   // In this testcase, we expect evictions, and we will also be
   // doing deletions.
-  TestHelper(true, true, "value%d");
+  TestHelper(true, true, "value");
 }
 
 TEST_F(ThreadsafeCacheTest, Backend) {

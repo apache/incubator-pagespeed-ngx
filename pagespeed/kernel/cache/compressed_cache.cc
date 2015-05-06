@@ -64,9 +64,9 @@ class CompressedCallback : public CacheInterface::Callback {
                                  CacheInterface::KeyState state) {
     validate_candidate_called_ = true;
     bool ret = false;
-    GoogleString uncompressed;
-    StringWriter writer(&uncompressed);
     if (state == CacheInterface::kAvailable) {
+      GoogleString uncompressed;
+      StringWriter writer(&uncompressed);
       StringPiece compressed = value()->Value();
       if (compressed.ends_with(StringPiece(kTrailer,
                                            STATIC_STRLEN(kTrailer))) &&

@@ -34,7 +34,7 @@ class CacheSpammer : public ThreadSystem::Thread {
  public:
   virtual ~CacheSpammer();
 
-  // value_pattern will be used as a format string, and must have a single %d.
+  // value_prefix will be suffixed with an integer when stored.
   // num_threads indicates how many threads will run in parallel.
   // num_iters indicates how many times each thread will run a big loop.
   // num_inserts sets the number of keys inserted and looked up in the loop.
@@ -42,9 +42,12 @@ class CacheSpammer : public ThreadSystem::Thread {
   // num_iters will be divided down by 100 when running on valgrind.
   static void RunTests(int num_threads, int num_iters, int num_inserts,
                        bool expecting_evictions, bool do_deletes,
-                       const char* value_pattern,
+                       const char* value_prefix,
                        CacheInterface* cache,
                        ThreadSystem* thread_runtime);
+
+  // Called when a Get completes.
+  void GetDone(bool found, StringPiece key);
 
  protected:
   virtual void Run();
@@ -55,7 +58,7 @@ class CacheSpammer : public ThreadSystem::Thread {
                CacheInterface* cache,
                bool expecting_evictions,
                bool do_deletes,
-               const char* value_pattern,
+               const char* value_prefix,
                int index,
                int num_iters,
                int num_inserts);
@@ -63,10 +66,13 @@ class CacheSpammer : public ThreadSystem::Thread {
   CacheInterface* cache_;
   bool expecting_evictions_;
   bool do_deletes_;
-  const char* value_pattern_;
+  const char* value_prefix_;
   int index_;
   int num_iters_;
   int num_inserts_;
+  scoped_ptr<ThreadSystem::CondvarCapableMutex> mutex_;
+  scoped_ptr<ThreadSystem::Condvar> condvar_;
+  int pending_gets_  GUARDED_BY(mutex_);
 
   DISALLOW_COPY_AND_ASSIGN(CacheSpammer);
 };

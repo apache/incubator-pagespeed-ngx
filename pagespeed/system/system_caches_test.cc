@@ -57,6 +57,7 @@
 #include "pagespeed/kernel/cache/async_cache.h"
 #include "pagespeed/kernel/cache/cache_batcher.h"
 #include "pagespeed/kernel/cache/cache_interface.h"
+#include "pagespeed/kernel/cache/cache_spammer.h"
 #include "pagespeed/kernel/cache/cache_stats.h"
 #include "pagespeed/kernel/cache/compressed_cache.h"
 #include "pagespeed/kernel/cache/fallback_cache.h"
@@ -72,6 +73,7 @@
 #include "pagespeed/kernel/thread/worker_test_base.h"
 #include "pagespeed/kernel/util/file_system_lock_manager.h"
 #include "pagespeed/kernel/util/platform.h"
+#include "pagespeed/kernel/util/simple_random.h"
 
 namespace net_instaweb {
 
@@ -100,6 +102,30 @@ class SystemCachesTest : public CustomRewriteTestBase<SystemRewriteOptions> {
   void PurgeDone(bool success) {
     purge_done_ = true;
     purge_success_ = success;
+  }
+
+  void MemCacheStressTestHelper(bool do_deletes) {
+    options_->set_file_cache_path(kCachePath);
+    options_->set_use_shared_mem_locking(false);
+    options_->set_lru_cache_kb_per_process(0);
+    options_->set_memcached_servers(MemCachedServerSpec());
+    options_->set_memcached_threads(1);
+    options_->set_default_shared_memory_cache_kb(0);
+    options_->set_compress_metadata_cache(false);
+    PrepareWithConfig(options_.get());
+    scoped_ptr<ServerContext> server_context(
+        SetupServerContext(options_.release()));
+    CacheInterface* cache = server_context->metadata_cache();
+    SimpleRandom random(new NullMutex);
+    GoogleString value = random.GenerateHighEntropyString(20000);
+    CacheSpammer::RunTests(4 /* num_threads */,
+                           200 /* iters */,
+                           200 /* inserts */,
+                           false /* expecting_evictions */,
+                           do_deletes,
+                           value.c_str(),
+                           cache,
+                           thread_system_.get());
   }
 
  protected:
@@ -1112,6 +1138,14 @@ TEST_F(SystemCachesTest, InvalidateWithPurgeDisabled) {
       options, kUrl1, server_context->http_cache(), &value, &headers));
   EXPECT_EQ(HTTPCache::kNotFound, HttpBlockingFindWithOptions(
       options, kUrl2, server_context->http_cache(), &value, &headers));
+}
+
+TEST_F(SystemCachesTest, StressTest) {
+  MemCacheStressTestHelper(false);
+}
+
+TEST_F(SystemCachesTest, StressTestWithDeletions) {
+  MemCacheStressTestHelper(true);
 }
 
 // Tests for how we fallback when SHM setup ops fail.

@@ -20,14 +20,15 @@
 #include <memory>
 #include <vector>
 
+#include "pagespeed/kernel/base/condvar.h"
 #include "pagespeed/kernel/base/dynamic_annotations.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/shared_string.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/thread.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/cache/cache_interface.h"
-#include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/cache/cache_test_base.h"
 
 namespace net_instaweb {
@@ -37,7 +38,7 @@ CacheSpammer::CacheSpammer(ThreadSystem* runtime,
                            CacheInterface* cache,
                            bool expecting_evictions,
                            bool do_deletes,
-                           const char* value_pattern,
+                           const char* value_prefix,
                            int index,
                            int num_iters,
                            int num_inserts)
@@ -45,20 +46,64 @@ CacheSpammer::CacheSpammer(ThreadSystem* runtime,
       cache_(cache),
       expecting_evictions_(expecting_evictions),
       do_deletes_(do_deletes),
-      value_pattern_(value_pattern),
+      value_prefix_(value_prefix),
       index_(index),
       num_iters_(num_iters),
-      num_inserts_(num_inserts) {
+      num_inserts_(num_inserts),
+      mutex_(runtime->NewMutex()),
+      condvar_(mutex_->NewCondvar()),
+      pending_gets_(0) {
 }
 
 CacheSpammer::~CacheSpammer() {
 }
 
+namespace {
+
+class SpammerCallback : public CacheInterface::Callback {
+ public:
+  SpammerCallback(CacheSpammer* spammer, StringPiece key, StringPiece expected)
+      : spammer_(spammer),
+        validate_candidate_called_(false),
+        key_(key.data(), key.size()),
+        expected_(expected.data(), expected.size()) {
+  }
+
+  virtual ~SpammerCallback() {
+  }
+
+  virtual void Done(CacheInterface::KeyState state) {
+    DCHECK(validate_candidate_called_);
+    bool found = (state == CacheInterface::kAvailable);
+    if (found) {
+      EXPECT_STREQ(expected_, value()->Value());
+    }
+    spammer_->GetDone(found, key_);
+    delete this;
+  }
+
+  virtual bool ValidateCandidate(const GoogleString& key,
+                                 CacheInterface::KeyState state) {
+    validate_candidate_called_ = true;
+    return true;
+  }
+
+ private:
+  CacheSpammer* spammer_;
+  bool validate_candidate_called_;
+  GoogleString key_;
+  GoogleString expected_;
+
+  DISALLOW_COPY_AND_ASSIGN(SpammerCallback);
+};
+
+}  // namespace
+
 void CacheSpammer::RunTests(int num_threads,
                             int num_iters,
                             int num_inserts,
                             bool expecting_evictions, bool do_deletes,
-                            const char* value_pattern,
+                            const char* value_prefix,
                             CacheInterface* cache,
                             ThreadSystem* thread_runtime) {
   std::vector<CacheSpammer*> spammers(num_threads);
@@ -68,7 +113,7 @@ void CacheSpammer::RunTests(int num_threads,
     spammers[i] = new CacheSpammer(
         thread_runtime, ThreadSystem::kJoinable,
         cache,  // lru_cache_.get() will make this fail.
-        expecting_evictions, do_deletes, value_pattern, i, num_iters,
+        expecting_evictions, do_deletes, value_prefix, i, num_iters,
         num_inserts);
   }
 
@@ -88,7 +133,7 @@ void CacheSpammer::Run() {
   const char name_pattern[] = "name%d";
   std::vector<SharedString> inserts(num_inserts_);
   for (int j = 0; j < num_inserts_; ++j) {
-    inserts[j].Assign(StringPrintf(value_pattern_, j));
+    inserts[j].Assign(StringPrintf("%s%d", value_prefix_, j));
   }
 
   int iter_limit = RunningOnValgrind() ? num_iters_ / 100 : num_iters_;
@@ -96,28 +141,41 @@ void CacheSpammer::Run() {
     for (int j = 0; j < num_inserts_; ++j) {
       cache_->Put(StringPrintf(name_pattern, j), &inserts[j]);
     }
+    {
+      ScopedMutex lock(mutex_.get());
+      pending_gets_ = num_inserts_;
+    }
     for (int j = 0; j < num_inserts_; ++j) {
       // Ignore the result.  Thread interactions will make it hard to
       // predict if the Get will succeed or not.
       GoogleString key = StringPrintf(name_pattern, j);
-      CacheTestBase::Callback callback;
-      cache_->Get(key, &callback);
-      bool found = (callback.called() &&
-                    (callback.state() == CacheInterface::kAvailable));
-
-      // We cannot assume that a Get succeeds if there are evictions
-      // or deletions going on.  But we are still verifying that the code
-      // will not crash, and that after the threads have all quiesced,
-      // that the cache is still sane.
-      EXPECT_TRUE(found || expecting_evictions_ || do_deletes_)
-          << "Failed on key " << key << " i=" << i << " j=" << j
-          << " thread=" << index_;
+      cache_->Get(key, new SpammerCallback(this, key, inserts[j].Value()));
+    }
+    {
+      ScopedMutex lock(mutex_.get());
+      while (pending_gets_ != 0) {
+        condvar_->Wait();
+      }
     }
     if (do_deletes_) {
       for (int j = 0; j < num_inserts_; ++j) {
         cache_->Delete(StringPrintf(name_pattern, j));
       }
     }
+  }
+}
+
+void CacheSpammer::GetDone(bool found, StringPiece key) {
+  ScopedMutex lock(mutex_.get());
+  --pending_gets_;
+  // We cannot assume that a Get succeeds if there are evictions
+  // or deletions going on.  But we are still verifying that the code
+  // will not crash, and that after the threads have all quiesced,
+  // that the cache is still sane.
+  EXPECT_TRUE(found || expecting_evictions_ || do_deletes_)
+      << "Failed on key " << key;
+  if (pending_gets_ == 0) {
+    condvar_->Signal();
   }
 }
 
