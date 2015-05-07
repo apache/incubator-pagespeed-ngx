@@ -44,9 +44,9 @@ const char MobilizeMenuFilter::kMenusComputed[] =
 
 // TODO(jmaessen): Store into pcache if we're not in a nested context.
 MobilizeMenuFilter::MobilizeMenuFilter(
-    RewriteDriver* rewrite_driver, const MobilizeLabeling* labeling)
+    RewriteDriver* rewrite_driver, const MobilizeLabelFilter* label_filter)
     : MobilizeFilterBase(rewrite_driver),
-      labeling_(labeling),
+      label_filter_(label_filter),
       outer_nav_element_(NULL),
       menu_item_trailing_whitespace_(false),
       menu_item_initial_segment_length_(0),
@@ -69,8 +69,11 @@ void MobilizeMenuFilter::StartDocumentImpl() {
   menu_.reset(new MobilizeMenu);
   // Initialize navigational_ids_ from the labeling.
   navigational_ids_.clear();
-  for (int i = 0, n = labeling_->navigational_ids_size(); i < n; ++i) {
-    navigational_ids_.insert(labeling_->navigational_ids(i));
+  const MobilizeLabeling* labeling = label_filter_->labeling();
+  if (labeling != NULL) {
+    for (int i = 0, n = labeling->navigational_ids_size(); i < n; ++i) {
+      navigational_ids_.insert(labeling->navigational_ids(i));
+    }
   }
 }
 

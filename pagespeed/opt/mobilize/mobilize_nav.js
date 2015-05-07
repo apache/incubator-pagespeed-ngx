@@ -499,7 +499,7 @@ pagespeed.MobNav.prototype.redrawHeader_ = function() {
   // fit inside.
   var heightString = this.headerBar_.offsetHeight + 'px';
 
-  var logoRight = this.dialer_.adjustHeight(heightString);
+  var logoRight = this.dialer_.getHeight();
   if (this.mapButton_) {
     logoRight += this.headerBar_.offsetHeight;
   }

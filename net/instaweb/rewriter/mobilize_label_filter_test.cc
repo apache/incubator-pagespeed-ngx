@@ -18,10 +18,12 @@
 
 #include "net/instaweb/rewriter/public/mobilize_label_filter.h"
 
+#include "base/logging.h"
 #include "net/instaweb/rewriter/public/add_ids_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
@@ -31,6 +33,8 @@
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/html_parse_test_base.h"
 #include "pagespeed/kernel/http/user_agent_matcher_test_base.h"
+#include "pagespeed/opt/http/mock_property_page.h"
+#include "pagespeed/opt/http/property_cache.h"
 
 namespace net_instaweb {
 
@@ -56,6 +60,10 @@ class MobilizeLabelFilterTest : public RewriteTestBase {
     options()->set_mob_nav_server_side(true);
     html_parse()->AddFilter(add_ids_filter_.get());
     html_parse()->AddFilter(label_filter_.get());
+    const PropertyCache::Cohort* dom_cohort =
+        SetupCohort(rewrite_driver()->server_context()->page_property_cache(),
+                    RewriteDriver::kDomCohort);
+    server_context()->set_dom_cohort(dom_cohort);
     SetHtmlMimetype();
     Statistics* stats = statistics();
     pages_labeled_ =
@@ -74,11 +82,6 @@ class MobilizeLabelFilterTest : public RewriteTestBase {
         stats->GetVariable(MobilizeLabelFilter::kDivsUnlabeled);
     ambiguous_role_labels_ =
         stats->GetVariable(MobilizeLabelFilter::kAmbiguousRoleLabels);
-  }
-
-  void EnableVerbose() {
-    options()->set_log_mobilization_samples(true);
-    EnableDebug();
   }
 
   // Remove data-mobile-role labeling from a labeled document
@@ -122,6 +125,54 @@ class MobilizeLabelFilterTest : public RewriteTestBase {
     GlobalReplaceSubstring(", -->", "-->", &output_buffer_);
   }
 
+  void ResetStats() {
+    pages_labeled_->Clear();
+    pages_role_added_->Clear();
+    navigational_roles_->Clear();
+    header_roles_->Clear();
+    content_roles_->Clear();
+    marginal_roles_->Clear();
+    divs_unlabeled_->Clear();
+    ambiguous_role_labels_->Clear();
+  }
+
+  void SetupPCache(StringPiece url) {
+    PropertyPage* page = NewMockPage(url);
+    rewrite_driver()->set_property_page(page);
+    rewrite_driver()->server_context()->page_property_cache()->Read(page);
+  }
+
+  bool ExpectTwoRuns(
+      StringPiece case_id, StringPiece html_input, StringPiece html_output) {
+    GoogleString url = StrCat(kTestDomain, case_id, ".html");
+    SetupPCache(url);
+    bool status1 = ValidateExpectedUrl(url, html_input, html_output);
+    int labeled = pages_labeled_->Get();
+    int role_added = pages_role_added_->Get();
+    int navigational = navigational_roles_->Get();
+    int header = header_roles_->Get();
+    int content = content_roles_->Get();
+    int marginal = marginal_roles_->Get();
+    int ambiguous = ambiguous_role_labels_->Get();
+    int unlabeled = divs_unlabeled_->Get();
+    int multiplier = 2;
+    if (rewrite_driver()->DebugMode()) {
+      multiplier = 1;
+      ResetStats();
+    }
+    LOG(INFO) << "Second go.  Multiplier " << multiplier;
+    bool status2 = ValidateExpectedUrl(url, html_input, html_output);
+    EXPECT_EQ(multiplier * labeled, pages_labeled_->Get());
+    EXPECT_EQ(role_added, pages_role_added_->Get());
+    EXPECT_EQ(navigational, navigational_roles_->Get());
+    EXPECT_EQ(header, header_roles_->Get());
+    EXPECT_EQ(content, content_roles_->Get());
+    EXPECT_EQ(marginal, marginal_roles_->Get());
+    EXPECT_EQ(ambiguous, ambiguous_role_labels_->Get());
+    EXPECT_EQ(unlabeled, divs_unlabeled_->Get());
+    return (status1 && status2);
+  }
+
   scoped_ptr<AddIdsFilter> add_ids_filter_;
   scoped_ptr<MobilizeLabelFilter> label_filter_;
   Variable* pages_labeled_;
@@ -151,9 +202,9 @@ TEST_F(MobilizeLabelFilterTest, AlreadyLabeled) {
   GoogleString labeled_contents;
   ASSERT_TRUE(filesystem.ReadFile(
       labeled_filename.c_str(), &labeled_contents, message_handler()));
-  ValidateExpected("already_labeled_adding_labels",
-                   html5_contents, labeled_contents);
-  EXPECT_EQ(1, pages_labeled_->Get());
+  ExpectTwoRuns("already_labeled_adding_labels",
+                html5_contents, labeled_contents);
+  EXPECT_EQ(2, pages_labeled_->Get());
   EXPECT_EQ(1, pages_role_added_->Get());
   EXPECT_EQ(2, navigational_roles_->Get());
   EXPECT_EQ(2, header_roles_->Get());
@@ -177,9 +228,9 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInHead) {
       "pagespeedContentIds=['PageSpeed-0-2'];\n"
       "pagespeedMarginalIds=['PageSpeed-0-3'];\n"
       "</script>";
-  ValidateExpected("html5_tags_in_head",
-                   Unlabel(kOutputHtml), kOutputHtml);
-  EXPECT_EQ(1, pages_labeled_->Get());
+  ExpectTwoRuns("html5_tags_in_head",
+                Unlabel(kOutputHtml), kOutputHtml);
+  EXPECT_EQ(2, pages_labeled_->Get());
   EXPECT_EQ(0, pages_role_added_->Get());
 }
 
@@ -191,8 +242,8 @@ TEST_F(MobilizeLabelFilterTest, NoLabelableContent) {
       "Nothing to label here!"
       "</p>\n"
       "<!--No nodes labeled for mobilization-->";
-  ValidateExpected("no_labelable_content",
-                   Unlabel(kOutputHtml), kOutputHtml);
+  ExpectTwoRuns("no_labelable_content",
+                Unlabel(kOutputHtml), kOutputHtml);
   EXPECT_EQ(1, pages_labeled_->Get());
   EXPECT_EQ(0, pages_role_added_->Get());
 }
@@ -225,8 +276,8 @@ TEST_F(MobilizeLabelFilterTest, TinyCount) {
       "<script type=\"text/javascript\">"
       "pagespeedHeaderIds=['PageSpeed-0'];\n"
       "</script>";
-  ValidateExpected("Small count nav",
-                   Unlabel(kOutputHtml), kOutputHtml);
+  ExpectTwoRuns("Small_count_nav",
+                Unlabel(kOutputHtml), kOutputHtml);
   EXPECT_EQ(1, pages_labeled_->Get());
   EXPECT_EQ(1, pages_role_added_->Get());
   EXPECT_EQ(0, navigational_roles_->Get());
@@ -265,8 +316,8 @@ TEST_F(MobilizeLabelFilterTest, TinyCountNbsp) {
       "<script type=\"text/javascript\">"
       "pagespeedHeaderIds=['PageSpeed-0'];\n"
       "</script>";
-  ValidateExpected("Small count nav",
-                   Unlabel(kOutputHtml), kOutputHtml);
+  ExpectTwoRuns("Small_count_nav_nbsp",
+                Unlabel(kOutputHtml), kOutputHtml);
   EXPECT_EQ(1, pages_labeled_->Get());
   EXPECT_EQ(1, pages_role_added_->Get());
   EXPECT_EQ(0, navigational_roles_->Get());
@@ -304,8 +355,8 @@ TEST_F(MobilizeLabelFilterTest, ImgInsideAndOutsideA) {
       "<script type=\"text/javascript\">"
       "pagespeedHeaderIds=['PageSpeed-0'];\n"
       "</script>";
-  ValidateExpected("Small count nav",
-                   Unlabel(kOutputHtml), kOutputHtml);
+  ExpectTwoRuns("Small count nav",
+                Unlabel(kOutputHtml), kOutputHtml);
   EXPECT_EQ(1, pages_labeled_->Get());
   EXPECT_EQ(1, pages_role_added_->Get());
   EXPECT_EQ(0, navigational_roles_->Get());
@@ -322,7 +373,7 @@ TEST_F(MobilizeLabelFilterTest, DontCrashWithUnicodeId) {
       "<script type=\"text/javascript\">"
       "pagespeedHeaderIds=['g\xc5\x82\xc3\xb3wna'];\n"
       "</script>";
-  ValidateExpected("Unicode id", Unlabel(kOutputHtml), kOutputHtml);
+  ExpectTwoRuns("Unicode id", Unlabel(kOutputHtml), kOutputHtml);
 }
 
 TEST_F(MobilizeLabelFilterTest, DontCrashWithEmptyId) {
@@ -331,7 +382,7 @@ TEST_F(MobilizeLabelFilterTest, DontCrashWithEmptyId) {
       "<script type=\"text/javascript\">"
       "pagespeedHeaderIds=[''];\n"
       "</script>";
-  ValidateExpected("Empty id", Unlabel(kOutputHtml), kOutputHtml);
+  ExpectTwoRuns("Empty id", Unlabel(kOutputHtml), kOutputHtml);
 }
 
 TEST_F(MobilizeLabelFilterTest, DontCrashWithBlankId) {
@@ -340,7 +391,7 @@ TEST_F(MobilizeLabelFilterTest, DontCrashWithBlankId) {
       "<script type=\"text/javascript\">"
       "pagespeedHeaderIds=[''];\n"
       "</script>";
-  ValidateExpected("Blank id", Unlabel(kOutputHtml), kOutputHtml);
+  ExpectTwoRuns("Blank id", Unlabel(kOutputHtml), kOutputHtml);
 }
 
 TEST_F(MobilizeLabelFilterTest, InternalQuotesAndSpacesInId) {
@@ -349,7 +400,7 @@ TEST_F(MobilizeLabelFilterTest, InternalQuotesAndSpacesInId) {
       "<script type=\"text/javascript\">"
       "pagespeedHeaderIds=['\\'Quotes\\'\\\\slashes'];\n"
       "</script>";
-  ValidateExpected("Quotes\\slashes in id", Unlabel(kOutputHtml), kOutputHtml);
+  ExpectTwoRuns("Quotes\\slashes in id", Unlabel(kOutputHtml), kOutputHtml);
 }
 
 TEST_F(MobilizeLabelFilterTest, CloseScriptInId) {
@@ -358,7 +409,7 @@ TEST_F(MobilizeLabelFilterTest, CloseScriptInId) {
       "<script type=\"text/javascript\">"
       "pagespeedHeaderIds=['<\\/script>'];\n"
       "</script>";
-  ValidateExpected("Close script in id", Unlabel(kOutputHtml), kOutputHtml);
+  ExpectTwoRuns("Close script in id", Unlabel(kOutputHtml), kOutputHtml);
 }
 
 TEST_F(MobilizeLabelFilterTest, DontCrashWithFlush) {
@@ -464,8 +515,8 @@ TEST_F(MobilizeLabelFilterTest, DontCrashWithMarginalChildOfNav) {
       "pagespeedNavigationalIds=['a'];\n"
       "pagespeedMarginalIds=['c'];\n"
       "</script>";
-  ValidateExpected("DontCrashWithMarginalChild",
-                   Unlabel(kOutputHtml), kOutputHtml);
+  ExpectTwoRuns("DontCrashWithMarginalChild",
+                Unlabel(kOutputHtml), kOutputHtml);
 }
 
 TEST_F(MobilizeLabelFilterTest, MarginalPropagation) {
@@ -548,9 +599,9 @@ TEST_F(MobilizeLabelFilterTest, MarginalPropagation) {
       "pagespeedContentIds=['PageSpeed-0-1'];\n"
       "pagespeedMarginalIds=['PageSpeed-0-2'];\n"
       "</script>";
-  ValidateExpected("Marginal propagation",
-                   Unlabel(kOutputHtml), kOutputHtml);
-  EXPECT_EQ(1, pages_labeled_->Get());
+  ExpectTwoRuns("Marginal propagation",
+                Unlabel(kOutputHtml), kOutputHtml);
+  EXPECT_EQ(2, pages_labeled_->Get());
   EXPECT_EQ(1, pages_role_added_->Get());
   EXPECT_EQ(0, navigational_roles_->Get());
   EXPECT_EQ(1, header_roles_->Get());
@@ -579,8 +630,8 @@ TEST_F(MobilizeLabelFilterTest, ParentPropagation) {
       "pagespeedHeaderIds=['PageSpeed-0-0'];\n"
       "pagespeedNavigationalIds=['PageSpeed-0-1','PageSpeed-1'];\n"
       "</script>";
-  ValidateExpected("Parent propagation",
-                   Unlabel(kOutputHtml), kOutputHtml);
+  ExpectTwoRuns("Parent propagation",
+                Unlabel(kOutputHtml), kOutputHtml);
 }
 
 TEST_F(MobilizeLabelFilterTest, SmallCountNav) {
@@ -675,8 +726,8 @@ TEST_F(MobilizeLabelFilterTest, SmallCountNav) {
       "<script type=\"text/javascript\">"
       "pagespeedNavigationalIds=['PageSpeed-1'];\n"
       "</script></body>";
-  ValidateExpected("Small count nav",
-                   Unlabel(kOutputHtml), kOutputHtml);
+  ExpectTwoRuns("Small count nav",
+                Unlabel(kOutputHtml), kOutputHtml);
   EXPECT_EQ(1, pages_labeled_->Get());
   EXPECT_EQ(1, pages_role_added_->Get());
   EXPECT_EQ(1, navigational_roles_->Get());
@@ -707,8 +758,16 @@ TEST_F(MobilizeLabelFilterTest, NoLabelInsideA) {
       "pagespeedHeaderIds=['PageSpeed-1'];\n"
       "pagespeedNavigationalIds=['PageSpeed-2'];\n"
       "</script></body>";
-  ValidateExpected("Label not inside <a>",
-                   Unlabel(kOutputHtmlNoA), kOutputHtmlNoA);
+  ExpectTwoRuns("Label not inside <a>",
+                Unlabel(kOutputHtmlNoA), kOutputHtmlNoA);
+  EXPECT_EQ(2, pages_labeled_->Get());
+  EXPECT_EQ(1, pages_role_added_->Get());
+  EXPECT_EQ(1, navigational_roles_->Get());
+  EXPECT_EQ(1, header_roles_->Get());
+  EXPECT_EQ(0, content_roles_->Get());
+  EXPECT_EQ(0, marginal_roles_->Get());
+  EXPECT_EQ(0, ambiguous_role_labels_->Get());
+  EXPECT_EQ(2, divs_unlabeled_->Get());
   // Now make sure that inside <a> we don't identify the header, but we do
   // identify the nav because it in turn contains nested links indicating that
   // the outer <a> was an error.
@@ -732,16 +791,17 @@ TEST_F(MobilizeLabelFilterTest, NoLabelInsideA) {
       "<script type=\"text/javascript\">"  // No header divs remain.
       "pagespeedNavigationalIds=['PageSpeed-2-0'];\n"
       "</script></body>";
-  ValidateExpected("No label inside <a>",
-                   Unlabel(kOutputHtmlWithA), kOutputHtmlWithA);
+  ResetStats();
+  ExpectTwoRuns("No label inside <a>",
+                Unlabel(kOutputHtmlWithA), kOutputHtmlWithA);
   EXPECT_EQ(2, pages_labeled_->Get());
-  EXPECT_EQ(2, pages_role_added_->Get());
-  EXPECT_EQ(2, navigational_roles_->Get());
-  EXPECT_EQ(1, header_roles_->Get());
+  EXPECT_EQ(1, pages_role_added_->Get());
+  EXPECT_EQ(1, navigational_roles_->Get());
+  EXPECT_EQ(0, header_roles_->Get());
   EXPECT_EQ(0, content_roles_->Get());
   EXPECT_EQ(0, marginal_roles_->Get());
   EXPECT_EQ(0, ambiguous_role_labels_->Get());
-  EXPECT_EQ(5, divs_unlabeled_->Get());
+  EXPECT_EQ(3, divs_unlabeled_->Get());
 }
 
 TEST_F(MobilizeLabelFilterTest, ConfiguredInclusionAndExclusion) {
@@ -769,8 +829,8 @@ TEST_F(MobilizeLabelFilterTest, ConfiguredInclusionAndExclusion) {
       "pagespeedNavigationalIds=['PageSpeed-1','no-a','no-b','yes'];\n"
       "pagespeedMarginalIds=['no','PageSpeed-3'];\n"
       "</script>";
-  ValidateExpected("Configured inclusion and exclusion",
-                   Unlabel(kOutputHtml), kOutputHtml);
+  ExpectTwoRuns("Configured inclusion and exclusion",
+                Unlabel(kOutputHtml), kOutputHtml);
 }
 
 TEST_F(MobilizeLabelFilterTest, NavInsideHeader) {
@@ -839,8 +899,8 @@ TEST_F(MobilizeLabelFilterTest, NavInsideHeader) {
       "pagespeedHeaderIds=['PageSpeed-1'];\n"
       "pagespeedNavigationalIds=['nav_menu'];\n"
       "</script></body>";
-  ValidateExpected("Nav inside header",
-                   Unlabel(kOutputHtml), kOutputHtml);
+  ExpectTwoRuns("Nav inside header",
+                Unlabel(kOutputHtml), kOutputHtml);
   EXPECT_EQ(1, pages_labeled_->Get());
   EXPECT_EQ(1, pages_role_added_->Get());
   EXPECT_EQ(1, navigational_roles_->Get());
@@ -1109,9 +1169,9 @@ TEST_F(MobilizeLabelFilterTest, LargeUnlabeled) {
   GoogleString labeled_contents;
   ASSERT_TRUE(filesystem.ReadFile(
       labeled_filename.c_str(), &labeled_contents, message_handler()));
-  ValidateExpected("unlabeled_mobile",
-                   unlabeled_contents, labeled_contents);
-  EXPECT_EQ(1, pages_labeled_->Get());
+  ExpectTwoRuns("unlabeled_mobile",
+                unlabeled_contents, labeled_contents);
+  EXPECT_EQ(2, pages_labeled_->Get());
   EXPECT_EQ(1, pages_role_added_->Get());
   EXPECT_EQ(2, navigational_roles_->Get());
   EXPECT_EQ(2, header_roles_->Get());
@@ -1131,6 +1191,7 @@ TEST_F(MobilizeLabelFilterTest, LargeUnlabeledDesktop) {
   ASSERT_TRUE(filesystem.ReadFile(
       original_filename.c_str(), &original_contents, message_handler()));
   GoogleString unlabeled_contents = Unlabel(original_contents);
+  SetupPCache(StrCat(kTestDomain, "unlabeled_desktop.html"));
   ValidateNoChanges("unlabeled_desktop", unlabeled_contents);
   // The stats here reflect the fact that we compute the labeling on desktop but
   // don't alter the page.
@@ -1142,6 +1203,17 @@ TEST_F(MobilizeLabelFilterTest, LargeUnlabeledDesktop) {
   EXPECT_EQ(1, marginal_roles_->Get());
   EXPECT_EQ(1, ambiguous_role_labels_->Get());
   EXPECT_EQ(12, divs_unlabeled_->Get());
+  ResetStats();
+  ValidateNoChanges("unlabeled_desktop", unlabeled_contents);
+  // And thereafter we should do no further computation for desktop.
+  EXPECT_EQ(0, pages_labeled_->Get());
+  EXPECT_EQ(0, pages_role_added_->Get());
+  EXPECT_EQ(0, navigational_roles_->Get());
+  EXPECT_EQ(0, header_roles_->Get());
+  EXPECT_EQ(0, content_roles_->Get());
+  EXPECT_EQ(0, marginal_roles_->Get());
+  EXPECT_EQ(0, ambiguous_role_labels_->Get());
+  EXPECT_EQ(0, divs_unlabeled_->Get());
 }
 
 }  // namespace

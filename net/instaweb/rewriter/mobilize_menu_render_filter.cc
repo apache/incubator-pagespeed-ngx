@@ -64,8 +64,7 @@ class MobilizeMenuRenderFilter::MenuComputation
     MobilizeLabelFilter* label_filter =
         new MobilizeLabelFilter(true /* is_menu_subfetch */, child_driver);
     child_driver->AppendOwnedPreRenderFilter(label_filter);
-    menu_filter_ =
-        new MobilizeMenuFilter(child_driver, label_filter->labeling());
+    menu_filter_ = new MobilizeMenuFilter(child_driver, label_filter);
     child_driver->AppendOwnedPreRenderFilter(menu_filter_);
   }
 

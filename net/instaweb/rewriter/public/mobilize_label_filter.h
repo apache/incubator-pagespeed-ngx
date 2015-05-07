@@ -29,6 +29,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/proto_util.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -67,9 +68,9 @@ struct ElementSample {
   std::vector<double> features;  // feature vector, always of size kNumFeatures.
 };
 
-// Classify DOM elements by adding data-mobile-role= attributes so that the
-// MoblizeRewriteFilter can rewrite them to be mobile-friendly.  The classes
-// are:
+// Classify DOM elements by adding data-mobile-role= attributes and / or adding
+// them to a labeling protobuf so that the MoblizeRewriteFilter can rewrite them
+// to be mobile-friendly.  The classes are:
 //   Navigational: things like nav and menu bars, mostly in the header
 //   Header: Page title, title image, logo associated with page, etc.
 //   Content: The content we think the user wants to see.
@@ -91,6 +92,8 @@ class MobilizeLabelFilter : public MobilizeFilterBase {
   static const char kMarginalRoles[];
   static const char kDivsUnlabeled[];
   static const char kAmbiguousRoleLabels[];
+  // Property cache tag
+  static const char kMobilizeLabeling[];
 
   MobilizeLabelFilter(bool is_menu_subfetch, RewriteDriver* driver);
   virtual ~MobilizeLabelFilter();
@@ -99,10 +102,10 @@ class MobilizeLabelFilter : public MobilizeFilterBase {
   static const MobilizationIds* IdsForRole(
       const MobilizeLabeling& labeling, MobileRole::Level role);
 
+  virtual void DetermineEnabled(GoogleString* disabled_reason);
   // Get the computed labeling (which might have been fetched from the pcache).
   // NULL if no labeling has been computed or nothing can be labeled.
-  const MobilizeLabeling* labeling() { return &labeling_; }
-
+  const MobilizeLabeling* labeling() const { return labeling_.get(); }
   virtual const char* Name() const { return "MobilizeLabel"; }
 
  private:
@@ -134,8 +137,11 @@ class MobilizeLabelFilter : public MobilizeFilterBase {
   void UnlabelledDiv(ElementSample* sample);
   void InjectLabelJavascript();
   void NonMobileUnlabel();
+  void DeletePagespeedId(HtmlElement* element);
 
   bool is_menu_subfetch_;
+  bool compute_signals_;
+  bool keep_label_ids_;
 
   int relevant_tag_depth_;
   int max_relevant_tag_depth_;
@@ -148,7 +154,8 @@ class MobilizeLabelFilter : public MobilizeFilterBase {
   std::vector<ElementSample*> samples_;  // in document order
   std::vector<ElementSample*> sample_stack_;
 
-  MobilizeLabeling labeling_;
+  scoped_ptr<MobilizeLabeling> labeling_;
+  std::set<StringPiece> label_ids_;  // refers to labeling_
 
   // The following two vectors are parsed from
   // RewriteOptions::mob_nav_elements(), which outlives them.

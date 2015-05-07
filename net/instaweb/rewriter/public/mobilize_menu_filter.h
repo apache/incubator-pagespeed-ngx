@@ -24,10 +24,10 @@
 #include <map>
 #include <vector>
 
-#include "net/instaweb/rewriter/mobilize_labeling.pb.h"
 #include "net/instaweb/rewriter/mobilize_menu.pb.h"
 #include "net/instaweb/rewriter/public/mobilize_decision_trees.h"
 #include "net/instaweb/rewriter/public/mobilize_filter_base.h"
+#include "net/instaweb/rewriter/public/mobilize_label_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
@@ -70,7 +70,7 @@ class MobilizeMenuFilter : public MobilizeFilterBase {
   static const char kMenusComputed[];
 
   MobilizeMenuFilter(RewriteDriver* rewrite_driver,
-                     const MobilizeLabeling* labeling);
+                     const MobilizeLabelFilter* labeling);
   virtual ~MobilizeMenuFilter();
 
   static void InitStats(Statistics* statistics);
@@ -118,7 +118,7 @@ class MobilizeMenuFilter : public MobilizeFilterBase {
   void EndMenuItem();
 
   // Input data
-  const MobilizeLabeling* labeling_;  // owned by MobilizeLabelFilter
+  const MobilizeLabelFilter* label_filter_;
   std::set<StringPiece> navigational_ids_;  // Refers to labeling_
 
   HtmlElement* outer_nav_element_;

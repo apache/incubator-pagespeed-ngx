@@ -34,7 +34,7 @@ goog.require('pagespeed.MobUtil');
 pagespeed.MobDialer = function(phoneNumber, conversionId, conversionLabel) {
   /**
    * Call button in the header bar.
-   * @private {Element}
+   * @private {?Element}
    */
   this.callButton_ = null;
 
@@ -115,15 +115,11 @@ pagespeed.MobDialer.prototype.createButton = function() {
 
 
 /**
- * @param {string} heightString
+ * Return the offsetHeight of the call button div.
  * @return {number}
  */
-pagespeed.MobDialer.prototype.adjustHeight = function(heightString) {
-  if (this.callButton_) {
-    this.callButton_.style.width = heightString;
-    return this.callButton_.parentNode.offsetHeight;
-  }
-  return 0;
+pagespeed.MobDialer.prototype.getHeight = function() {
+  return this.callButton_ ? this.callButton_.parentNode.offsetHeight : 0;
 };
 
 

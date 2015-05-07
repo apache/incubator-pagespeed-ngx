@@ -23,14 +23,12 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/opt/http/mock_property_page.h"
 #include "pagespeed/opt/http/property_cache.h"
-#include "pagespeed/opt/http/request_context.h"
 
 namespace net_instaweb {
 
@@ -61,7 +59,7 @@ const char kContent[] =
 
 class MobilizeMenuRenderFilterTest : public RewriteTestBase {
  protected:
-  MobilizeMenuRenderFilterTest() : pcache_(NULL), page_(NULL) {}
+  MobilizeMenuRenderFilterTest() {}
 
   virtual void SetUp() {
     RewriteTestBase::SetUp();
@@ -76,11 +74,11 @@ class MobilizeMenuRenderFilterTest : public RewriteTestBase {
 
     SetResponseWithDefaultHeaders(kPageUrl, kContentTypeHtml, kContent, 100);
 
-    pcache_ = rewrite_driver()->server_context()->page_property_cache();
-    const PropertyCache::Cohort* dom_cohort =
-        SetupCohort(pcache_, RewriteDriver::kDomCohort);
-    server_context()->set_dom_cohort(dom_cohort);
-    ClearDriverAndSetUpPCache();
+    PropertyCache* pcache =
+        rewrite_driver()->server_context()->page_property_cache();
+    PropertyPage* page = NewMockPage(kPageUrl);
+    rewrite_driver()->set_property_page(page);
+    pcache->Read(page);
     Statistics* stats = statistics();
     menus_computed_ =
         stats->GetVariable(MobilizeMenuFilter::kMenusComputed);
@@ -88,20 +86,9 @@ class MobilizeMenuRenderFilterTest : public RewriteTestBase {
         stats->GetVariable(MobilizeMenuRenderFilter::kMenusAdded);
   }
 
-  void ClearDriverAndSetUpPCache() {
-    rewrite_driver()->Clear();
-    rewrite_driver()->set_request_context(
-        RequestContext::NewTestRequestContext(factory()->thread_system()));
-    page_ = NewMockPage(kPageUrl);
-    rewrite_driver()->set_property_page(page_);
-    pcache_->Read(page_);
-  }
-
   virtual bool AddHtmlTags() const { return false; }
 
   scoped_ptr<MobilizeMenuRenderFilter> filter_;
-  PropertyCache* pcache_;
-  PropertyPage* page_;
   Variable* menus_computed_;
   Variable* menus_added_;
 };

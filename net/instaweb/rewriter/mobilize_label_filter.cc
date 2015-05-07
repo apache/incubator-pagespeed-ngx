@@ -26,8 +26,10 @@
 #include "net/instaweb/rewriter/public/decision_tree.h"
 #include "net/instaweb/rewriter/public/mobilize_decision_trees.h"
 #include "net/instaweb/rewriter/public/mobilize_rewrite_filter.h"
+#include "net/instaweb/rewriter/public/property_cache_util.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "pagespeed/kernel/base/escaping.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/statistics.h"
@@ -37,9 +39,11 @@
 #include "pagespeed/kernel/html/html_name.h"
 #include "pagespeed/kernel/html/html_node.h"
 #include "pagespeed/kernel/html/html_parse.h"
+#include "pagespeed/opt/http/property_cache.h"
 
 namespace net_instaweb {
 
+// Statistics names
 const char MobilizeLabelFilter::kPagesLabeled[] =
     "mobilization_pages_labeled";
 const char MobilizeLabelFilter::kPagesRoleAdded[] =
@@ -56,6 +60,10 @@ const char MobilizeLabelFilter::kDivsUnlabeled[] =
     "mobilization_divs_unlabeled";
 const char MobilizeLabelFilter::kAmbiguousRoleLabels[] =
     "mobilization_divs_with_ambiguous_role_label";
+
+// PCache key
+const char MobilizeLabelFilter::kMobilizeLabeling[] =
+    "mobilize_labeling";
 
 namespace {
 
@@ -510,6 +518,8 @@ MobilizeLabelFilter::~MobilizeLabelFilter() {
 }
 
 void MobilizeLabelFilter::Init() {
+  compute_signals_ = true;
+  keep_label_ids_ = MobilizeRewriteFilter::IsApplicableFor(driver());
   relevant_tag_depth_ = 0;
   max_relevant_tag_depth_ = 0;
   link_depth_ = 0;
@@ -517,7 +527,8 @@ void MobilizeLabelFilter::Init() {
   content_bytes_ = 0;
   content_non_blank_bytes_ = 0;
   were_roles_added_ = false;
-  labeling_.Clear();
+  labeling_.reset();
+  label_ids_.clear();
   nav_classes_.clear();
   non_nav_classes_.clear();
 }
@@ -573,7 +584,7 @@ void MobilizeLabelFilter::GetClassesFromOptions(const RewriteOptions* options) {
   }
   StringPieceVector classes;
   SplitStringPieceToVector(nav_classes, ",", &classes, true /* Skip empty */);
-  for (int i = 0, n = classes.size(); i < n; ++i) {
+  for (size_t i = 0, n = classes.size(); i < n; ++i) {
     StringPiece& element = classes[i];
     TrimWhitespace(&element);
     if (element.empty()) {
@@ -591,8 +602,44 @@ void MobilizeLabelFilter::GetClassesFromOptions(const RewriteOptions* options) {
   }
 }
 
-void MobilizeLabelFilter::StartDocumentImpl() {
+void MobilizeLabelFilter::DetermineEnabled(GoogleString* disabled_reason) {
   Init();
+  // Like MobilizeMenuRenderFilter, this reads per-URL.
+  const PropertyCache::Cohort* cohort =
+      driver()->server_context()->dom_cohort();
+  if (cohort != NULL) {
+    PropertyCacheDecodeResult result;
+    labeling_.reset(DecodeFromPropertyCache<MobilizeLabeling>(
+        driver(), cohort, kMobilizeLabeling,
+        driver()->options()->finder_properties_cache_expiration_time_ms(),
+        &result));
+    if (result != kPropertyCacheDecodeOk) {
+      labeling_.reset();
+    }
+  }
+  if (labeling_.get() == NULL || driver()->DebugMode()) {
+    // We don't have a labeling, so compute it, or we are debugging and want to
+    // see how labeling is obtained.
+    labeling_.reset(new MobilizeLabeling);
+  } else {
+    compute_signals_ = false;
+    for (int i = 0; i < MobileRole::kInvalid; ++i) {
+      MobileRole::Level role = static_cast<MobileRole::Level>(i);
+      const MobilizationIds* ids = IdsForRole(*labeling_, role);
+      if (ids == NULL || ids->size() == 0) {
+        continue;
+      }
+      for (size_t j = 0, n = ids->size(); j < n; ++j) {
+        label_ids_.insert(ids->Get(j));
+      }
+    }
+  }
+}
+
+void MobilizeLabelFilter::StartDocumentImpl() {
+  if (!compute_signals_) {
+    return;
+  }
   GetClassesFromOptions(driver()->options());
   // Set up global sample so that upward aggregation of samples has a base case.
   // It's at virtual tag depth 0 (tags start at tag depth 1).
@@ -601,7 +648,13 @@ void MobilizeLabelFilter::StartDocumentImpl() {
 
 void MobilizeLabelFilter::StartNonSkipElement(
     MobileRole::Level role_attribute, HtmlElement* element) {
-  if (IsIgnoreTag(element->keyword())) {
+  if (!compute_signals_ || IsIgnoreTag(element->keyword())) {
+    if (!keep_label_ids_ ||
+        label_ids_.count(element->EscapedAttributeValue(HtmlName::kId)) == 0) {
+      // Remove pagespeed labels from elements if we're not exposing them in
+      // mobilization.
+      DeletePagespeedId(element);
+    }
     return;
   }
   // We've dropped all the tags we don't even want to look inside.
@@ -698,7 +751,7 @@ void MobilizeLabelFilter::HandleExplicitlyConfiguredElement(
   if (!class_attr.empty()) {
     StringPieceVector classes;
     SplitStringPieceToVector(class_attr, " ", &classes, true /* Skip empty */);
-    for (int i = 0, n = classes.size(); i < n; ++i) {
+    for (size_t i = 0, n = classes.size(); i < n; ++i) {
       if (non_nav_classes_.count(classes[i]) != 0) {
         ExplicitlyConfigureRole(MobileRole::kUnassigned, element);
         return;
@@ -722,7 +775,7 @@ void MobilizeLabelFilter::ExplicitlyConfigureRole(
 }
 
 void MobilizeLabelFilter::EndNonSkipElement(HtmlElement* element) {
-  if (IsIgnoreTag(element->keyword())) {
+  if (!compute_signals_ || IsIgnoreTag(element->keyword())) {
     return;
   }
   if (element == sample_stack_.back()->element) {
@@ -750,7 +803,7 @@ void MobilizeLabelFilter::EndNonSkipElement(HtmlElement* element) {
 }
 
 void MobilizeLabelFilter::Characters(HtmlCharactersNode* characters) {
-  if (AreInSkip()) {
+  if (!compute_signals_ || AreInSkip()) {
     return;
   }
   // We ignore leading and trailing whitespace when accounting for characters,
@@ -771,25 +824,28 @@ void MobilizeLabelFilter::Characters(HtmlCharactersNode* characters) {
 }
 
 void MobilizeLabelFilter::EndDocumentImpl() {
-  // The horrifying static cast here avoids warnings under gcc, while allowing a
-  // system-dependent return type for .size().
-  DCHECK_EQ(static_cast<size_t>(1), sample_stack_.size());
-  ElementSample* global = sample_stack_.back();
-  sample_stack_.pop_back();
-  ComputeContained(global);
-  // Now that we have global information, compute sample that require
-  // normalization (eg percent of links in page, percent of text, etc.).
-  // Use this to label the DOM elements.
-  ComputeProportionalFeatures();
-  Label();
-  if (driver()->DebugMode() ||
-      driver()->options()->log_mobilization_samples()) {
-    DebugLabel();
+  if (compute_signals_) {
+    // The horrifying static cast here avoids warnings under gcc, while allowing
+    // a system-dependent return type for .size().
+    DCHECK_EQ(static_cast<size_t>(1), sample_stack_.size());
+    ElementSample* global = sample_stack_.back();
+    sample_stack_.pop_back();
+    ComputeContained(global);
+    // Now that we have global information, compute sample that require
+    // normalization (eg percent of links in page, percent of text, etc.).
+    // Use this to label the DOM elements.
+    ComputeProportionalFeatures();
+    Label();
+    if (driver()->DebugMode() ||
+        driver()->options()->log_mobilization_samples()) {
+      DebugLabel();
+    }
+    SanityCheckEndOfDocumentState();
+    CreateLabeling();
   }
-  SanityCheckEndOfDocumentState();
-  CreateLabeling();
-  if (is_menu_subfetch_ ||
-      MobilizeRewriteFilter::IsApplicableFor(driver())) {
+  if (is_menu_subfetch_) {
+    // Don't need to change the page; keep its labeling but don't add JS.
+  } else if (keep_label_ids_) {
     pages_labeled_->Add(1);
     InjectLabelJavascript();
   } else {
@@ -903,7 +959,7 @@ void MobilizeLabelFilter::SanityCheckEndOfDocumentState() {
   CHECK_EQ(0, relevant_tag_depth_);
   // The horrifying static cast here avoids warnings under gcc, while allowing a
   // system-dependent return type for .size().
-  CHECK_LE(1, static_cast<uint64>(samples_.size()));
+  CHECK_LE(static_cast<size_t>(1), samples_.size());
   ElementSample* global = samples_[0];
   CHECK_EQ(0, global->features[kElementTagDepth]);
   CHECK_EQ(0, global->features[kPreviousTagCount]);
@@ -920,7 +976,7 @@ void MobilizeLabelFilter::SanityCheckEndOfDocumentState() {
   // encloses all the actual content.
   global->features[kPreviousTagCount] = -1;
   global->features[kContainedTagCount]++;
-  for (int i = 1, n = samples_.size(); i < n; ++i) {
+  for (size_t i = 1, n = samples_.size(); i < n; ++i) {
     ElementSample* sample = samples_[i];
     CHECK(sample != NULL);
     ElementSample* parent = sample->parent;
@@ -991,7 +1047,7 @@ void MobilizeLabelFilter::ComputeProportionalFeatures() {
       normalized.features[i] = 0.0;
     }
   }
-  for (int i = 1, n = samples_.size(); i < n; ++i) {
+  for (size_t i = 1, n = samples_.size(); i < n; ++i) {
     CHECK_LT(0, global->features[kContainedTagCount]);
     ElementSample* sample = samples_[i];
     sample->ComputeProportionalFeatures(&normalized);
@@ -1003,12 +1059,12 @@ void MobilizeLabelFilter::Label() {
   DecisionTree navigational(kNavigationalTree, kNavigationalTreeSize);
   DecisionTree header(kHeaderTree, kHeaderTreeSize);
   DecisionTree content(kContentTree, kContentTreeSize);
-  int n = samples_.size();
+  size_t n = samples_.size();
 
   // Default classification to carry down tree.
   samples_[0]->role = MobileRole::kUnassigned;
   // Now classify in opening tag order (parents before children)
-  for (int i = 1; i < n; ++i) {
+  for (size_t i = 1; i < n; ++i) {
     ElementSample* sample = samples_[i];
     if (sample->parent->role < MobileRole::kMarginal) {
       // Set appropriate kParentRoleIs feature.  This must be done for all
@@ -1125,7 +1181,7 @@ void MobilizeLabelFilter::DebugLabel() {
   // Map relevant attr keywords back to the corresponding string.  Sadly
   // html_name doesn't give us an easy mechanism for accomplishing this
   // transformation.
-  for (int i = 1, n = samples_.size(); i < n; ++i) {
+  for (size_t i = 1, n = samples_.size(); i < n; ++i) {
     ElementSample* sample = samples_[i];
     HtmlElement* element = sample->element;
     if (debug_mode) {
@@ -1161,21 +1217,15 @@ void MobilizeLabelFilter::DebugLabel() {
 // its id if it was PageSpeed-inserted.
 void MobilizeLabelFilter::UnlabelledDiv(ElementSample* sample) {
   divs_unlabeled_->Add(1);
-  if (!driver()->DebugMode() && driver()->IsRewritable(sample->element) &&
-      StringPiece(sample->id).starts_with(AddIdsFilter::kClassPrefix)) {
-    // Strip out id if it was inserted by PageSpeed.
-    sample->element->DeleteAttribute(HtmlName::kId);
-  }
+  DeletePagespeedId(sample->element);
 }
 
 void MobilizeLabelFilter::CreateLabeling() {
   // Go through the sample nodes in DOM order and collect role transition points
   // to create the labeling_ proto.
-  labeling_.Clear();
-  int n = samples_.size();
-  bool annotate_dom = (driver()->DebugMode() &&
-                       MobilizeRewriteFilter::IsApplicableFor(driver()));
-  for (int i = 1; i < n; ++i) {
+  size_t n = samples_.size();
+  bool annotate_dom = driver()->DebugMode() && keep_label_ids_;
+  for (size_t i = 1; i < n; ++i) {
     ElementSample* sample = samples_[i];
     MobileRole::Level role = sample->role;
     if (role == sample->parent->role) {
@@ -1183,7 +1233,7 @@ void MobilizeLabelFilter::CreateLabeling() {
       continue;
     }
     MobilizeLabelFilter::MobilizationIds* label_ids =
-        MutableIdsForRole(&labeling_, role);
+        MutableIdsForRole(labeling_.get(), role);
     if (label_ids == NULL) {
       LOG(DFATAL) << "Invalid role " << role <<
           " below valid one " << sample->parent->role;
@@ -1202,13 +1252,21 @@ void MobilizeLabelFilter::CreateLabeling() {
           MobileRoleData::StringFromLevel(sample->role));
     }
   }
+  // Store the computed labeling into the property cache.
+  const PropertyCache::Cohort* cohort =
+      driver()->server_context()->dom_cohort();
+  if (cohort != NULL) {
+    UpdateInPropertyCache(
+        *labeling_, driver(), cohort, kMobilizeLabeling,
+        true /* commit immediately so nested render will see this. */);
+  }
 }
 
 void MobilizeLabelFilter::InjectLabelJavascript() {
-  if (labeling_.content_ids_size() == 0 &&
-      labeling_.header_ids_size() == 0 &&
-      labeling_.marginal_ids_size() == 0 &&
-      labeling_.navigational_ids_size() == 0) {
+  if (labeling_->content_ids_size() == 0 &&
+      labeling_->header_ids_size() == 0 &&
+      labeling_->marginal_ids_size() == 0 &&
+      labeling_->navigational_ids_size() == 0) {
     // Don't inject any code if there's nothing to do.
     if (driver()->DebugMode()) {
       InsertNodeAtBodyEnd(
@@ -1220,14 +1278,14 @@ void MobilizeLabelFilter::InjectLabelJavascript() {
   GoogleString js;
   for (int i = 0; i < MobileRole::kInvalid; ++i) {
     MobileRole::Level role = static_cast<MobileRole::Level>(i);
-    const MobilizationIds* ids = IdsForRole(labeling_, role);
+    const MobilizationIds* ids = IdsForRole(*labeling_, role);
     if (ids == NULL || ids->size() == 0) {
       continue;
     }
     StrAppend(&js, "pagespeed",
               Capitalize(MobileRoleData::StringFromLevel(role)),
               "Ids=['");
-    for (int i = 0, n = ids->size(); i < n; ++i) {
+    for (size_t i = 0, n = ids->size(); i < n; ++i) {
       EscapeToJsStringLiteral(
           ids->Get(i), false /* no quotes */, &js);
       StrAppend(&js, "','");
@@ -1245,15 +1303,17 @@ void MobilizeLabelFilter::NonMobileUnlabel() {
   // Computed labeling is not actually wanted in DOM, though we may still have
   // needed to log the labeled elements.  Strip the added ids and don't inject
   // JS.
-  int n = samples_.size();
-  for (int i = 1; i < n; ++i) {
-    HtmlElement* element = samples_[i]->element;
-    if (driver()->IsRewritable(element) &&
-        StringPiece(element->EscapedAttributeValue(HtmlName::kId))
-        .starts_with(AddIdsFilter::kClassPrefix)) {
-      // Strip out id inserted by pagespeed.
-      element->DeleteAttribute(HtmlName::kId);
-    }
+  for (size_t i = 1, n = samples_.size(); i < n; ++i) {
+    DeletePagespeedId(samples_[i]->element);
+  }
+}
+
+void MobilizeLabelFilter::DeletePagespeedId(HtmlElement* element) {
+  if (!driver()->DebugMode() && driver()->IsRewritable(element) &&
+      StringPiece(element->EscapedAttributeValue(HtmlName::kId))
+      .starts_with(AddIdsFilter::kClassPrefix)) {
+    // Strip out id if it was inserted by PageSpeed.
+    element->DeleteAttribute(HtmlName::kId);
   }
 }
 

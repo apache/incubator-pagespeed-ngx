@@ -389,8 +389,7 @@ class MobilizeMenuFilterTest : public RewriteTestBase {
         new MobilizeLabelFilter(false /* is_menu_subfetch */,
                                 rewrite_driver()));
     mobilize_menu_filter_.reset(
-        new MobilizeMenuFilter(rewrite_driver(),
-                               mobilize_label_filter_->labeling()));
+        new MobilizeMenuFilter(rewrite_driver(), mobilize_label_filter_.get()));
     html_parse()->AddFilter(add_ids_filter_.get());
     html_parse()->AddFilter(mobilize_label_filter_.get());
     html_parse()->AddFilter(mobilize_menu_filter_.get());
