@@ -100,14 +100,15 @@ pagespeed.Responsive = function() {
  * in cache.
  * @param {!Element} img
  * @param {string} url
+ * @private
  */
-function updateImgSrc(img, url) {
+pagespeed.Responsive.updateImgSrc_ = function(img, url) {
   var tempImg = new Image();
   tempImg.onload = function() {
     img.src = url;
   };
   tempImg.src = url;
-}
+};
 
 
 /**
@@ -128,7 +129,8 @@ pagespeed.ResponsiveImage.prototype.responsiveResize = function(
     for (var i = 0; i < numResolutions; ++i) {
       if (devicePixelRatio <= this.availableResolutions[i].resolution) {
         this.currentResolution = this.availableResolutions[i].resolution;
-        updateImgSrc(this.img, this.availableResolutions[i].url);
+        pagespeed.Responsive.updateImgSrc_(this.img,
+                                           this.availableResolutions[i].url);
         break;
       }
     }
@@ -162,6 +164,47 @@ pagespeed.Responsive.prototype.responsiveResize = function() {
 
 
 /**
+ * Find the index for the first char to match regular expression re in str.
+ * If no chars match re, returns str.length.
+ *
+ * @param {string} str String to search within.
+ * @param {!RegExp} re RegExp to search for.
+ * @return {number} Smallest index matching re (or str.length if none does).
+ * @private
+ */
+pagespeed.Responsive.search_ = function(str, re) {
+  var offset = str.search(re);
+  if (offset == -1) {
+    return str.length;
+  } else {
+    return offset;
+  }
+};
+
+
+/**
+ * From https://html.spec.whatwg.org/#space-character
+ * The space characters, for the purposes of this specification, are
+ * U+0020 SPACE, U+0009 CHARACTER TABULATION (tab), U+000A LINE FEED (LF),
+ * U+000C FORM FEED (FF), and U+000D CARRIAGE RETURN (CR).
+ * @private @const {!RegExp}
+ */
+var WHITESPACE = /[ \t\n\f\r]/;
+
+
+/** @private @const {!RegExp} */
+var NOT_WHITESPACE = /[^ \t\n\f\r]/;
+
+
+/** @private @const {!RegExp} */
+var WHITESPACE_OR_COMMA = /[ \t\n\f\r,]/;
+
+
+/** @private @const {!RegExp} */
+var NOT_WHITESPACE_OR_COMMA = /[^ \t\n\f\r,]/;
+
+
+/**
  * Parse srcset attribute string into a ResponsiveImage object.
  * @param {!Element} img
  * @param {string} src
@@ -171,46 +214,78 @@ pagespeed.Responsive.prototype.responsiveResize = function() {
 pagespeed.Responsive.prototype.parseSrcset = function(img, src, srcset) {
   var respImage = new pagespeed.ResponsiveImage(img);
   var has_1x = false;
+  var rest = srcset;
 
   // Decompose srcset into each resolution
-  // TODO(sligocki): Fix this to deal with URLs containing commas.
-  // For example, all data URLs do! We either need to make sure that
-  // we parse this correctly, or make sure we're escaping URLs in the
-  // C++ code.
-  var candidates = srcset.split(',');
+  // Mostly follows:
+  // https://html.spec.whatwg.org/multipage/embedded-content.html#parse-a-srcset-attribute
+  // with the main exception that we fail early for most situations where the
+  // srcset contains w descriptors (or other descriptors we don't understand).
 
-  var numCandidates = candidates.length;
-  for (var i = 0; i < numCandidates; ++i) {
-    var candidateString = candidates[i];
-    // Split by whitespace.
-    var attributes = candidateString.trim().split(/\s+/);
-    if (attributes.length != 2) {
-      // Malformed srcset, abort the whole thing.
+  // Skip whitespace before first candidate URL. Ignore spurious preceding
+  // commas too. Although preceding commas are considered parse errors, the
+  // spec says to skip them and continue parsing the rest of the srcset.
+  var pos = pagespeed.Responsive.search_(rest, NOT_WHITESPACE_OR_COMMA);
+  rest = rest.slice(pos);
+  while (rest.length > 0) {
+    // URL is terminated by either a white space or a comma followed by a space.
+    // Note: urlEnd is actually the index after the end of the URL.
+    pos = pagespeed.Responsive.search_(rest, WHITESPACE);
+    // Note rest[0] was not whitespace nor comma nor EOF, so url >0 length.
+    var url = rest.slice(0, pos);
+    rest = rest.slice(pos);
+
+    if (url[url.length - 1] == ',') {
+      // We cannot deal with srcset with no descriptors.
+      // Abort the whole thing.
       return null;
-    } else {
-      var candidateUrl = attributes[0];
-      var attribute = attributes[1];
-      if ((attribute.length > 1) &&
-          (attribute[attribute.length - 1] == 'x')) {
-        var resolution =
-            goog.string.toNumber(attribute.substr(0, attribute.length - 1));
-        if (isNaN(resolution)) {
-          return null;
-        }
-        respImage.availableResolutions.push(
-            new pagespeed.ResponsiveImageCandidate(
-                resolution,
-                candidateUrl));
-        if (resolution == 1) {
-          has_1x = true;
-        }
-      } else {
-        // We cannot parse srcset with w (or other) conditions.
-        // Abort the whole thing.
-        // TODO(sligocki): Do we want to support srcset w conditions?
+    }
+
+    // Skip whitespace
+    pos = pagespeed.Responsive.search_(rest, NOT_WHITESPACE);
+    rest = rest.slice(pos);
+    // Descriptor is terminated by either a comma or whitespace.
+    // Note: According to the spec, descriptor lexing rules are actually more
+    // complicated and involve skipping over paren sections, however any such
+    // strings (with parentheses) will fail to parse as a number and we will
+    // fail the entire parse.
+    // Note: descriptorEnd is the index after the end of the descriptor.
+    pos = pagespeed.Responsive.search_(rest, WHITESPACE_OR_COMMA);
+    var descriptor = rest.slice(0, pos);
+    rest = rest.slice(pos);
+    if ((descriptor.length > 1) &&
+        (descriptor[descriptor.length - 1] == 'x')) {
+      var resolution = goog.string.toNumber(descriptor.slice(0, -1));
+      if (isNaN(resolution)) {
         return null;
       }
+      respImage.availableResolutions.push(
+          new pagespeed.ResponsiveImageCandidate(resolution, url));
+      if (resolution == 1) {
+        has_1x = true;
+      }
+    } else {
+      // We cannot deal with srcset with w (or no) descriptors.
+      // Abort the whole thing.
+      // TODO(sligocki): Do we want to support srcset w descriptors? Or empty
+      // descriptors, spec seems to say empty descriptor -> 1x.
+      return null;
     }
+
+    // Skip over whitespace before comma.
+    pos = pagespeed.Responsive.search_(rest, NOT_WHITESPACE);
+    rest = rest.slice(pos);
+    if (rest.length > 0 && rest[0] != ',') {
+      // Invalid srcset, should only have one descriptor field before comma or
+      // end of string.
+      return null;
+    } else {
+      // Skip over comma.
+      rest = rest.slice(1);
+    }
+    // Skip whitespace after comma (before next candidate).
+    pos = pagespeed.Responsive.search_(rest, NOT_WHITESPACE_OR_COMMA);
+    rest = rest.slice(pos);
   }
 
   if (!has_1x && src) {
