@@ -75,8 +75,11 @@ const char* kImageInliningBlacklist[] = {
 // Exclude BlackBerry OS 5.0 and older. See
 // http://supportforums.blackberry.com/t5/Web-and-WebWorks-Development/How-to-detect-the-BlackBerry-Browser/ta-p/559862
 // for details on BlackBerry UAs.
+// Exclude all Opera Mini: see bug #1070.
+// https://github.com/pagespeed/mod_pagespeed/issues/1070
 const char* kLazyloadImagesBlacklist[] = {
   "BlackBerry*CLDC*",
+  "*Opera Mini*",
   kGooglePlusUserAgent
 };
 
