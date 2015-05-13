@@ -1935,35 +1935,17 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
     ngx_http_set_ctx(r, ctx, ngx_pagespeed);
   }
 
-  if (ps_create_base_fetch(ctx, request_context) != NGX_OK) {
-    // Do not need to release request context 'ctx'.
-    // http_pool_cleanup will call ps_release_request_context
-    return NGX_ERROR;
-  }
-
-  ctx->base_fetch->SetRequestHeadersTakingOwnership(request_headers.release());
-
-  bool page_callback_added = false;
-  scoped_ptr<ProxyFetchPropertyCallbackCollector>
-      property_callback(
-          ProxyFetchFactory::InitiatePropertyCacheLookup(
-              !html_rewrite /* is_resource_fetch */,
-              url,
-              cfg_s->server_context,
-              options,
-              ctx->base_fetch,
-              false /* requires_blink_cohort (no longer unused) */,
-              &page_callback_added));
-
   if (pagespeed_resource) {
     // TODO(jefftk): Set using_spdy appropriately.  See
     // ProxyInterface::ProxyRequestCallback
+    ps_create_base_fetch(ctx, request_context);
     ResourceFetch::Start(
         url,
         custom_options.release() /* null if there aren't custom options */,
         false /* using_spdy */, cfg_s->server_context, ctx->base_fetch);
     return ps_async_wait_response(r);
   } else if (is_an_admin_handler) {
+    ps_create_base_fetch(ctx, request_context);
     QueryParams query_params;
     query_params.ParseFromUrl(url);
 
@@ -2007,6 +1989,7 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
   }
 
   if (html_rewrite) {
+    ps_create_base_fetch(ctx, request_context);
     // Do not store driver in request_context, it's not safe.
     RewriteDriver* driver;
 
@@ -2033,12 +2016,22 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
     driver->set_pagespeed_option_cookies(pagespeed_option_cookies);
 
     // TODO(jefftk): FlushEarlyFlow would go here.
+    bool page_callback_added = false;
+    ProxyFetchPropertyCallbackCollector* property_callback =
+        ProxyFetchFactory::InitiatePropertyCacheLookup(
+            !html_rewrite /* is_resource_fetch */,
+            url,
+            cfg_s->server_context,
+            options,
+            ctx->base_fetch,
+            false /* requires_blink_cohort (no longer unused) */,
+            &page_callback_added);
 
     // Will call StartParse etc.  The rewrite driver will take care of deleting
     // itself if necessary.
     ctx->proxy_fetch = cfg_s->proxy_fetch_factory->CreateNewProxyFetch(
         url_string, ctx->base_fetch, driver,
-        property_callback.release(),
+        property_callback,
         NULL /* original_content_fetch */);
     return NGX_OK;
   }
@@ -2046,6 +2039,7 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
   if (options->in_place_rewriting_enabled() &&
       options->enabled() &&
       options->IsAllowed(url.Spec())) {
+    ps_create_base_fetch(ctx, request_context);
     // Do not store driver in request_context, it's not safe.
     RewriteDriver* driver;
     if (custom_options.get() == NULL) {
@@ -2085,8 +2079,7 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
                 "Passing on content handling for non-pagespeed resource '%s'",
                 url_string.c_str());
 
-  ctx->base_fetch->Done(false);
-  ps_release_base_fetch(ctx);
+  CHECK(ctx->base_fetch == NULL);
   // set html_rewrite flag.
   ctx->html_rewrite = true;
   return NGX_DECLINED;
