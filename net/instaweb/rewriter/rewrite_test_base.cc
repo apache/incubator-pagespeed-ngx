@@ -1253,7 +1253,7 @@ MockLogRecord* RewriteTestBase::mock_log_record() {
 
 GoogleString RewriteTestBase::GetLazyloadScriptHtml() {
   return StrCat(
-      "<script type=\"text/javascript\" pagespeed_no_defer=\"\">",
+      "<script type=\"text/javascript\" pagespeed_no_defer>",
       LazyloadImagesFilter::GetLazyloadJsSnippet(
           options(), server_context()->static_asset_manager()),
       "</script>");
@@ -1261,7 +1261,7 @@ GoogleString RewriteTestBase::GetLazyloadScriptHtml() {
 
 GoogleString RewriteTestBase::GetLazyloadPostscriptHtml() {
   return StrCat(
-      "<script type=\"text/javascript\" pagespeed_no_defer=\"\">",
+      "<script type=\"text/javascript\" pagespeed_no_defer>",
         LazyloadImagesFilter::kOverrideAttributeFunctions,
       "</script>");
 }

@@ -619,7 +619,6 @@ function fetch_until() {
   WGET_HERE="$WGET -q $FETCH_UNTIL_WGET_ARGS"
   echo -n "      Fetching $REQUESTURL $FETCH_UNTIL_WGET_ARGS"
   echo " until \$($COMMAND) $OP $EXPECTED_RESULT"
-  echo "$WGET_HERE $REQUESTURL and checking with $COMMAND"
   while test -t; do
     # Clean out WGET_DIR so that wget doesn't create .1 files.
     rm -rf $WGET_DIR

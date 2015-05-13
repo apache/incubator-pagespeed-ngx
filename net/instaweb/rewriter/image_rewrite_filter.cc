@@ -1561,8 +1561,10 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
       // that we DO attempt to include image dimensions even if we otherwise
       // choose not to optimize an image.
       const ImageDim& file_dims = cached->image_file_dims();
-      driver()->AddAttribute(element, HtmlName::kWidth, file_dims.width());
-      driver()->AddAttribute(element, HtmlName::kHeight, file_dims.height());
+      driver()->AddAttribute(element, HtmlName::kWidth,
+                             IntegerToString(file_dims.width()));
+      driver()->AddAttribute(element, HtmlName::kHeight,
+                             IntegerToString(file_dims.height()));
     }
     if (element->FindAttribute(HtmlName::kDataPagespeedResponsiveTemp) != NULL
         && cached->has_image_file_dims()
@@ -1573,9 +1575,9 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
       // lower density image).
       const ImageDim& file_dims = cached->image_file_dims();
       driver()->AddAttribute(element, HtmlName::kDataActualWidth,
-                             file_dims.width());
+                             IntegerToString(file_dims.width()));
       driver()->AddAttribute(element, HtmlName::kDataActualHeight,
-                             file_dims.height());
+                             IntegerToString(file_dims.height()));
     }
   }
 

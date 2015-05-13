@@ -103,7 +103,7 @@ class SplitHtmlHelperFilterTest : public RewriteTestBase {
 
   GoogleString GetLazyloadImageTag(const GoogleString& url, bool no_transform) {
     return StrCat("<img pagespeed_lazy_src='", url, "'",
-        no_transform ? " pagespeed_no_transform=" : "",
+        no_transform ? " pagespeed_no_transform" : "",
         " src=\"/psajs/1.0.gif\" "
         "onload=\"", LazyloadImagesFilter::kImageOnloadCode,
         "\" onerror=\"this.onerror=null;",
@@ -120,7 +120,7 @@ class SplitHtmlHelperFilterTest : public RewriteTestBase {
   }
 
   GoogleString GetImageOnloadScriptBlock() const {
-    return StrCat("<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
+    return StrCat("<script pagespeed_no_defer type=\"text/javascript\">",
                   DelayImagesFilter::kImageOnloadJsSnippet,
                   "</script>");
   }
@@ -163,8 +163,8 @@ TEST_F(SplitHtmlHelperFilterTest, AtfRequest) {
       "</body>",
       "<body>"
       "<div id='a'><img src='1.jpeg'></div>"
-      "<div id='b'><img src='2.jpeg' pagespeed_no_transform=></div>"
-      "<div id='c'><img src='3.jpeg' pagespeed_no_transform=></div>"
+      "<div id='b'><img src='2.jpeg' pagespeed_no_transform></div>"
+      "<div id='c'><img src='3.jpeg' pagespeed_no_transform></div>"
       "</body>");
   CheckNumCriticalImages(1);
   CheckCriticalImage("http://test.com/1.jpeg");
@@ -183,8 +183,8 @@ TEST_F(SplitHtmlHelperFilterTest, ExplicitAtfRequest) {
       "</body>",
       "<body>"
       "<div id='a'><img src='1.jpeg'></div>"
-      "<div id='b'><img src='2.jpeg' pagespeed_no_transform=></div>"
-      "<div id='c'><img src='3.jpeg' pagespeed_no_transform=></div>"
+      "<div id='b'><img src='2.jpeg' pagespeed_no_transform></div>"
+      "<div id='c'><img src='3.jpeg' pagespeed_no_transform></div>"
       "</body>");
   CheckNumCriticalImages(1);
   CheckCriticalImage("http://test.com/1.jpeg");
@@ -208,8 +208,8 @@ TEST_F(SplitHtmlHelperFilterTest, AtfRequestWithCriticalImages) {
       "</body>",
       "<body>"
       "<div id='a'><img src='1.jpeg'></div>"
-      "<div id='b'><img src='2.jpeg' pagespeed_no_transform=></div>"
-      "<div id='c'><img src='3.jpeg' pagespeed_no_transform=></div>"
+      "<div id='b'><img src='2.jpeg' pagespeed_no_transform></div>"
+      "<div id='c'><img src='3.jpeg' pagespeed_no_transform></div>"
       "</body>");
   CheckNumCriticalImages(1);
   CheckCriticalImage("http://test.com/1.jpeg");
@@ -228,8 +228,8 @@ TEST_F(SplitHtmlHelperFilterTest, AtfRequestWithNullCriticalImages) {
       "</body>",
       "<body>"
       "<div id='a'><img src='1.jpeg'></div>"
-      "<div id='b'><img src='2.jpeg' pagespeed_no_transform=></div>"
-      "<div id='c'><img src='3.jpeg' pagespeed_no_transform=></div>"
+      "<div id='b'><img src='2.jpeg' pagespeed_no_transform></div>"
+      "<div id='c'><img src='3.jpeg' pagespeed_no_transform></div>"
       "</body>");
   CheckNumCriticalImages(1);
   CheckCriticalImage("http://test.com/1.jpeg");
@@ -271,8 +271,8 @@ TEST_F(SplitHtmlHelperFilterTest, AtfRequestTwoXpaths) {
 
       "<body>"
       "<div id='a'><img src='1.jpeg'></div>"
-      "<div id='b'><img src='2.jpeg' pagespeed_no_transform=>"
-        "<div id='c'><img src='3.jpeg' pagespeed_no_transform=></div>"
+      "<div id='b'><img src='2.jpeg' pagespeed_no_transform>"
+        "<div id='c'><img src='3.jpeg' pagespeed_no_transform></div>"
       "</div>"
       "<div id='d'><img src='4.jpeg'></div>"
       "</body>");
@@ -298,8 +298,8 @@ TEST_F(SplitHtmlHelperFilterTest, AtfRequestXPathWithChildCount) {
 
       "<body>"
       "<div id='a'><img src='1.jpeg'></div>"
-      "<div id='b'><img src='2.jpeg' pagespeed_no_transform=></div>"
-      "<div id='c'><img src='3.jpeg' pagespeed_no_transform=></div>"
+      "<div id='b'><img src='2.jpeg' pagespeed_no_transform></div>"
+      "<div id='c'><img src='3.jpeg' pagespeed_no_transform></div>"
       "<div id='d'><img src='4.jpeg'></div>"
       "</body>");
   CheckNumCriticalImages(2);
@@ -317,10 +317,10 @@ TEST_F(SplitHtmlHelperFilterTest, AtfRequestNoDeferCases) {
       "split_helper_atf_nodefer_cases",
       "<body>"
       "<div id='a'><img src='1.jpeg'></div>"
-      "<script pagespeed_no_defer=\"\"></script>"
+      "<script pagespeed_no_defer></script>"
       "<div id='b'><img src='2.jpeg'>"
-        "<script pagespeed_no_defer=\"\"></script>"
-        "<div id='c' pagespeed_no_defer=\"\"></div>"
+        "<script pagespeed_no_defer></script>"
+        "<div id='c' pagespeed_no_defer></div>"
       "</div>"
       "<div id='d'><img src='3.jpeg'></div>"
       "<div id='e'><img src='4.jpeg'></div>"
@@ -328,12 +328,12 @@ TEST_F(SplitHtmlHelperFilterTest, AtfRequestNoDeferCases) {
 
       "<body>"
       "<div id='a'><img src='1.jpeg'></div>"
-      "<script pagespeed_no_defer=\"\"></script>"
-      "<div id='b'><img src='2.jpeg' pagespeed_no_transform=>"
-        "<script pagespeed_no_defer=\"\"></script>"
-        "<div id='c' pagespeed_no_defer=\"\"></div>"
+      "<script pagespeed_no_defer></script>"
+      "<div id='b'><img src='2.jpeg' pagespeed_no_transform>"
+        "<script pagespeed_no_defer></script>"
+        "<div id='c' pagespeed_no_defer></div>"
       "</div>"
-      "<div id='d'><img src='3.jpeg' pagespeed_no_transform=></div>"
+      "<div id='d'><img src='3.jpeg' pagespeed_no_transform></div>"
       "<div id='e'><img src='4.jpeg'></div>"
       "</body>");
   CheckNumCriticalImages(2);
@@ -365,8 +365,8 @@ TEST_F(SplitHtmlHelperFilterTest, AtfRequestNonCountedChildren) {
       "<script></script>"
       "<noscript></noscript>"
       "<style></style>"
-      "<div id='b'><img src='2.jpeg' pagespeed_no_transform=></div>"
-      "<div id='c'><img src='3.jpeg' pagespeed_no_transform=></div>"
+      "<div id='b'><img src='2.jpeg' pagespeed_no_transform></div>"
+      "<div id='c'><img src='3.jpeg' pagespeed_no_transform></div>"
       "</body>");
   CheckNumCriticalImages(1);
   CheckCriticalImage("http://test.com/1.jpeg");

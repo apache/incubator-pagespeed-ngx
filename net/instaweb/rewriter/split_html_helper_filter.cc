@@ -133,9 +133,7 @@ void SplitHtmlHelperFilter::StartElementImpl(HtmlElement* element) {
       if (!state_->current_panel_id().empty()) {
         // For a below-the-fold image, insert a pagespeed_no_transform attribute
         // to prevent inline-preview-images filter from doing any rewriting.
-        element->AddAttribute(
-            driver()->MakeName(HtmlName::kPagespeedNoTransform),
-            "", HtmlElement::NO_QUOTE);
+        driver()->AddAttribute(element, HtmlName::kPagespeedNoTransform, NULL);
       } else {
         // For an above-the-fold image, insert the url as a critical image.
         GoogleUrl image_gurl(driver()->base_url(),

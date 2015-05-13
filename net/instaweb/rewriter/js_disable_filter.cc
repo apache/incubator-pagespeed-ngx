@@ -93,7 +93,7 @@ void JsDisableFilter::InsertJsDeferExperimentalScript() {
       driver()->NewElement(NULL, HtmlName::kScript);
 
   driver()->AddAttribute(script_node, HtmlName::kType, "text/javascript");
-  driver()->AddAttribute(script_node, HtmlName::kPagespeedNoDefer, "");
+  driver()->AddAttribute(script_node, HtmlName::kPagespeedNoDefer, NULL);
   HtmlNode* script_code =
       driver()->NewCharactersNode(script_node, kEnableJsExperimental);
   InsertNodeAtBodyEnd(script_node);
@@ -143,7 +143,8 @@ void JsDisableFilter::StartElementImpl(HtmlElement* element) {
       // downloaded as Image.src().
       if (prefetch_mechanism_ == UserAgentMatcher::kPrefetchImageTag) {
         HtmlElement* script = driver()->NewElement(element, HtmlName::kScript);
-        driver()->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
+        driver()->AddAttribute(
+            script, HtmlName::kPagespeedNoDefer, NULL);
         GoogleString script_data = StrCat("(function(){", prefetch_js_elements_,
                                           "})()");
         driver()->PrependChild(element, script);

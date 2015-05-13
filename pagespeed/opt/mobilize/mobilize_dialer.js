@@ -115,15 +115,6 @@ pagespeed.MobDialer.prototype.createButton = function() {
 
 
 /**
- * Return the offsetHeight of the call button div.
- * @return {number}
- */
-pagespeed.MobDialer.prototype.getHeight = function() {
-  return this.callButton_ ? this.callButton_.parentNode.offsetHeight : 0;
-};
-
-
-/**
  * @param {!goog.color.Rgb} color
  */
 pagespeed.MobDialer.prototype.setColor = function(color) {

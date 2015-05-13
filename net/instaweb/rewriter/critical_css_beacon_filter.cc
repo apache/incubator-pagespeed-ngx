@@ -207,7 +207,7 @@ void CriticalCssBeaconFilter::SummariesDone() {
     AppendSelectorsInitJs(&script, selectors);
   }
   HtmlElement* script_element = driver()->NewElement(NULL, HtmlName::kScript);
-  driver()->AddAttribute(script_element, HtmlName::kPagespeedNoDefer, "");
+  driver()->AddAttribute(script_element, HtmlName::kPagespeedNoDefer, NULL);
   InsertNodeAtBodyEnd(script_element);
   AddJsToElement(script, script_element);
 

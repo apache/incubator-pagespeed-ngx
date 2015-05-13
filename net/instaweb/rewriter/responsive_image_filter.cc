@@ -42,6 +42,8 @@ const char ResponsiveImageFirstFilter::kNonInlinableVirtualImage[] =
     "non-inlinable-virtual";
 const char ResponsiveImageFirstFilter::kInlinableVirtualImage[] =
     "inlinable-virtual";
+const char ResponsiveImageFirstFilter::kFullsizedVirtualImage[] =
+    "fullsized-virtual";
 
 ResponsiveImageFirstFilter::ResponsiveImageFirstFilter(RewriteDriver* driver)
     : CommonFilter(driver) {
@@ -113,15 +115,24 @@ void ResponsiveImageFirstFilter::AddHiResImages(HtmlElement* element) {
     // However, we might want high quality for zoom.
     // Note: These must be listed in ascending order.
     ResponsiveVirtualImages virtual_images;
+    virtual_images.width = orig_width;
+    virtual_images.height = orig_height;
+
     virtual_images.non_inlinable_candidates.push_back(
         AddHiResVersion(element, *src_attr, orig_width, orig_height,
                         kNonInlinableVirtualImage, 1.5));
     virtual_images.non_inlinable_candidates.push_back(
         AddHiResVersion(element, *src_attr, orig_width, orig_height,
                         kNonInlinableVirtualImage, 2));
+
     virtual_images.inlinable_candidate =
         AddHiResVersion(element, *src_attr, orig_width, orig_height,
                         kInlinableVirtualImage, 2);
+
+    virtual_images.fullsized_candidate =
+        AddHiResVersion(element, *src_attr, orig_width, orig_height,
+                        kFullsizedVirtualImage, -1);
+
     candidate_map_[element] = virtual_images;
 
     // Mark this element as responsive as well, so that ImageRewriteFilter will
@@ -139,11 +150,13 @@ ResponsiveImageCandidate ResponsiveImageFirstFilter::AddHiResVersion(
   new_img->AddAttribute(src_attr);
   driver()->AddAttribute(new_img, HtmlName::kDataPagespeedResponsiveTemp,
                          responsive_attribute_value);
-  // Note: We truncate width and height to integers here.
-  driver()->AddAttribute(new_img, HtmlName::kWidth,
-                         IntegerToString(orig_width * resolution));
-  driver()->AddAttribute(new_img, HtmlName::kHeight,
-                         IntegerToString(orig_height * resolution));
+  if (resolution > 0) {
+    // Note: We truncate width and height to integers here.
+    driver()->AddAttribute(new_img, HtmlName::kWidth,
+                           IntegerToString(orig_width * resolution));
+    driver()->AddAttribute(new_img, HtmlName::kHeight,
+                           IntegerToString(orig_height * resolution));
+  }
   driver()->InsertNodeBeforeNode(img, new_img);
   ResponsiveImageCandidate candidate(new_img, resolution);
   return candidate;
@@ -205,6 +218,11 @@ ImageDim ActualDims(const HtmlElement* element) {
   return dims;
 }
 
+GoogleString ResolutionToString(double resolution) {
+  // Max 4 digits of precission.
+  return StringPrintf("%.4g", resolution);
+}
+
 }  // namespace
 
 // Combines information from dummy 1.5x and 2x images into the 1x srcset.
@@ -224,8 +242,17 @@ void ResponsiveImageSecondFilter::CombineHiResImages(
     return;
   }
 
-  const ResponsiveImageCandidateVector& candidates =
+  ResponsiveImageCandidateVector candidates =
       virtual_images.non_inlinable_candidates;
+
+  // Find out what resolution fullsize image is and add it to candidates list.
+  ResponsiveImageCandidate fullsized = virtual_images.fullsized_candidate;
+  ImageDim full_dims = ActualDims(fullsized.element);
+  if (full_dims.width() > 0) {
+    fullsized.resolution =
+        static_cast<double>(full_dims.width()) / virtual_images.width;
+    candidates.push_back(fullsized);
+  }
 
   const char* x1_src = orig_element->AttributeValue(HtmlName::kSrc);
 
@@ -280,19 +307,22 @@ void ResponsiveImageSecondFilter::CombineHiResImages(
     ImageDim dims = ActualDims(candidates[i].element);
     if (src == last_src) {
       if (driver()->DebugMode()) {
-        driver()->InsertDebugComment(StringPrintf(
-            "ResponsiveImageFilter: Not adding %.16gx candidate to srcset "
-            "because it is the same as previous candidate.",
-            candidates[i].resolution),
+        driver()->InsertDebugComment(StrCat(
+            "ResponsiveImageFilter: Not adding ",
+            ResolutionToString(candidates[i].resolution), "x candidate to "
+            "srcset because it is the same as previous candidate."),
                                      orig_element);
       }
+    // TODO(sligocki): Remove last candidate if dimensions are too close to
+    // this candidate. Ex: if 1.5x is 99x99 and 2x is 100x100, obviously we
+    // should remove 1.5x version.
     } else if (dims.height() == last_dims.height() &&
                dims.width() == last_dims.width()) {
       if (driver()->DebugMode()) {
-        driver()->InsertDebugComment(StringPrintf(
-            "ResponsiveImageFilter: Not adding %.16gx candidate to srcset "
-            "because native image was not high enough resolution.",
-            candidates[i].resolution),
+        driver()->InsertDebugComment(StrCat(
+            "ResponsiveImageFilter: Not adding ",
+            ResolutionToString(candidates[i].resolution), "x candidate to "
+            "srcset because native image was not high enough resolution."),
                                      orig_element);
       }
     } else {
@@ -321,7 +351,7 @@ void ResponsiveImageSecondFilter::CombineHiResImages(
       GoogleString src_escaped = GoogleUrl::Sanitize(src);
 
       GoogleString resolution_string =
-          StringPrintf("%.16g", candidates[i].resolution);
+          ResolutionToString(candidates[i].resolution);
       StrAppend(&srcset_value, src_escaped, " ", resolution_string, "x");
 
       last_src = src;
@@ -355,13 +385,18 @@ const char* AttributeValueOrEmpty(const HtmlElement* element,
 void ResponsiveImageSecondFilter::InsertPlaceholderDebugComment(
     const ResponsiveImageCandidate& candidate, const char* qualifier) {
   if (driver()->DebugMode()) {
-    driver()->InsertDebugComment(StringPrintf(
+    GoogleString resolution_str;
+    if (candidate.resolution > 0) {
+      resolution_str =
+          StrCat(" ", ResolutionToString(candidate.resolution), "x");
+    }
+    driver()->InsertDebugComment(StrCat(
         "ResponsiveImageFilter: Any debug messages after this refer to the "
-        "virtual%s %.16gx image with src=%s width=%s height=%s",
-        qualifier, candidate.resolution,
-        AttributeValueOrEmpty(candidate.element, HtmlName::kSrc),
-        AttributeValueOrEmpty(candidate.element, HtmlName::kWidth),
-        AttributeValueOrEmpty(candidate.element, HtmlName::kHeight)),
+        "virtual", qualifier, resolution_str, " image with "
+        "src=", AttributeValueOrEmpty(candidate.element, HtmlName::kSrc),
+        " width=", AttributeValueOrEmpty(candidate.element, HtmlName::kWidth),
+        " height=", AttributeValueOrEmpty(candidate.element,
+                                          HtmlName::kHeight)),
                                  candidate.element);
   }
 }
@@ -379,6 +414,10 @@ void ResponsiveImageSecondFilter::Cleanup(
   InsertPlaceholderDebugComment(virtual_images.inlinable_candidate,
                                 " inlinable");
   driver()->DeleteNode(virtual_images.inlinable_candidate.element);
+
+  InsertPlaceholderDebugComment(virtual_images.fullsized_candidate,
+                                " full-sized");
+  driver()->DeleteNode(virtual_images.fullsized_candidate.element);
 
   orig_element->DeleteAttribute(HtmlName::kDataPagespeedResponsiveTemp);
   orig_element->DeleteAttribute(HtmlName::kDataActualHeight);

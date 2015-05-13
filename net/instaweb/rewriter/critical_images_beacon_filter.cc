@@ -140,7 +140,7 @@ void CriticalImagesBeaconFilter::MaybeAddBeaconJavascript(
             resize_rendered_image_dimensions_enabled, ",'",
             beacon_metadata_.nonce, "');");
   HtmlElement* script = driver()->NewElement(NULL, HtmlName::kScript);
-  driver()->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
+  driver()->AddAttribute(script, HtmlName::kPagespeedNoDefer, NULL);
   // Always add the beacon js before the current node, because the current node
   // might be an img node that needs the beacon js for its
   // checkImageForCriticality onload handler.

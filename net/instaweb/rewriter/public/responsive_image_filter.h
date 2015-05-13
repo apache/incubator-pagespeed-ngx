@@ -45,13 +45,18 @@ typedef std::vector<ResponsiveImageCandidate> ResponsiveImageCandidateVector;
 // We insert several virtual <img> tags. This structure keeps track of all
 // the virtual <img> inserted for a single original <img>.
 struct ResponsiveVirtualImages {
+  int width;
+  int height;
   // One non-inlinable virtual <img> for every resolution supported (2x, 4x).
   // These will be used in the srcset (if inlinable_candidate is not actually
   // inlined).
   ResponsiveImageCandidateVector non_inlinable_candidates;
-  // And one inlinable virtual <img> for the highest resolution. If this is
+  // One inlinable virtual <img> for the highest resolution. If this is
   // inlined, we use that as the only version. Otherwise we discard it.
   ResponsiveImageCandidate inlinable_candidate;
+  // One fullsized image. This will be used at the top end of the srcset in
+  // case users zoom in far enough.
+  ResponsiveImageCandidate fullsized_candidate;
 };
 typedef std::map<HtmlElement*, ResponsiveVirtualImages>
         ResponsiveImageCandidateMap;
@@ -69,6 +74,7 @@ class ResponsiveImageFirstFilter : public CommonFilter {
   static const char kOriginalImage[];
   static const char kNonInlinableVirtualImage[];
   static const char kInlinableVirtualImage[];
+  static const char kFullsizedVirtualImage[];
 
   explicit ResponsiveImageFirstFilter(RewriteDriver* driver);
   virtual ~ResponsiveImageFirstFilter();

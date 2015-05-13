@@ -436,7 +436,7 @@ class CacheHtmlFlowTest : public ProxyInterfaceTestBase {
 
   GoogleString GetJsDisableScriptSnippet(RewriteOptions* options) {
     if (options->enable_defer_js_experimental()) {
-      return StrCat("<script type=\"text/javascript\" pagespeed_no_defer=\"\">",
+      return StrCat("<script type=\"text/javascript\" pagespeed_no_defer>",
                     JsDisableFilter::kEnableJsExperimental,
                     "</script>");
     } else {
@@ -882,7 +882,7 @@ class CacheHtmlFlowTest : public ProxyInterfaceTestBase {
   }
 
   GoogleString GetImageOnloadScriptBlock() const {
-    return StrCat("<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
+    return StrCat("<script pagespeed_no_defer type=\"text/javascript\">",
                   DelayImagesFilter::kImageOnloadJsSnippet,
                   "</script>");
   }
@@ -1661,7 +1661,7 @@ TEST_F(CacheHtmlPrioritizeCriticalCssTest, CacheHtmlWithCriticalCss) {
       "<link rel=\"stylesheet\" type=\"text/css\" href=\"a.css\">"
       "<link rel=\"stylesheet\" type=\"text/css\" href=\"b.css?x=1&y=2\">"
       "</noscript>"
-      "<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
+      "<script pagespeed_no_defer type=\"text/javascript\">",
       CriticalCssFilter::kAddStylesScript,
       "window['pagespeed'] = window['pagespeed'] || {};"
       "window['pagespeed']['criticalCss'] = {"
@@ -1737,7 +1737,7 @@ TEST_F(CacheHtmlPrioritizeCriticalCssTest, CacheHtmlWithCriticalSelectors) {
       // URLs are encoded because CSS rewrite is enabled with selectors filter.
       CssLinkEncodedHref("a.css"), CssLinkEncodedHref("b.css?x=1&y=2"),
       "</noscript>"
-      "<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
+      "<script pagespeed_no_defer type=\"text/javascript\">",
       rewrite_driver()->server_context()->static_asset_manager()->GetAsset(
           StaticAssetEnum::CRITICAL_CSS_LOADER_JS,
           rewrite_driver()->options()),

@@ -68,7 +68,8 @@ class ResponsiveImageFilterTest : public RewriteTestBase {
   virtual bool AddHtmlTags() const { return false; }
 
   void TestSimple(int width, int height, StringPiece filename,
-                  StringPiece final_ext, bool include_zoom_script) {
+                  StringPiece full_density, StringPiece final_ext,
+                  bool include_zoom_script) {
     GoogleString width_str = IntegerToString(width);
     GoogleString height_str = IntegerToString(height);
     GoogleString input_html = StrCat(
@@ -81,7 +82,9 @@ class ResponsiveImageFilterTest : public RewriteTestBase {
         &output_html, " srcset=\"",
         EncodeImage(1.5 * width, 1.5 * height, filename, "0", final_ext),
         " 1.5x,",
-        EncodeImage(2 * width, 2 * height, filename, "0", final_ext), " 2x\">");
+        EncodeImage(2 * width, 2 * height, filename, "0", final_ext), " 2x,",
+        EncodeImage(-1, -1, filename, "0", final_ext),
+        " ", full_density, "x\">");
     if (include_zoom_script) {
       StrAppend(&output_html,
                 "<script src=\"/psajs/responsive.0.js\"></script>");
@@ -93,9 +96,10 @@ class ResponsiveImageFilterTest : public RewriteTestBase {
 TEST_F(ResponsiveImageFilterTest, SimpleJpg) {
   options()->EnableFilter(RewriteOptions::kResponsiveImages);
   options()->EnableFilter(RewriteOptions::kResizeImages);
+  options()->EnableFilter(RewriteOptions::kRecompressJpeg);
   rewrite_driver()->AddFilters();
 
-  TestSimple(100, 100, "a.jpg", "jpg", false);
+  TestSimple(100, 100, "a.jpg", "10.23", "jpg", false);
 }
 
 TEST_F(ResponsiveImageFilterTest, SimplePng) {
@@ -104,7 +108,7 @@ TEST_F(ResponsiveImageFilterTest, SimplePng) {
   options()->EnableFilter(RewriteOptions::kRecompressPng);
   rewrite_driver()->AddFilters();
 
-  TestSimple(10, 10, "b.png", "png", false);
+  TestSimple(10, 10, "b.png", "6.5", "png", false);
 }
 
 TEST_F(ResponsiveImageFilterTest, SimpleGif) {
@@ -114,7 +118,7 @@ TEST_F(ResponsiveImageFilterTest, SimpleGif) {
   options()->EnableFilter(RewriteOptions::kConvertGifToPng);
   rewrite_driver()->AddFilters();
 
-  TestSimple(10, 10, "c.gif", "png", false);
+  TestSimple(10, 10, "c.gif", "19.2", "png", false);
 }
 
 TEST_F(ResponsiveImageFilterTest, SimpleWebp) {
@@ -124,17 +128,29 @@ TEST_F(ResponsiveImageFilterTest, SimpleWebp) {
   rewrite_driver()->AddFilters();
   rewrite_driver()->SetUserAgent("webp");
 
-  TestSimple(100, 100, "a.jpg", "webp", false);
+  TestSimple(100, 100, "a.jpg", "10.23", "webp", false);
 }
 
 TEST_F(ResponsiveImageFilterTest, Zoom) {
   options()->EnableFilter(RewriteOptions::kResponsiveImages);
   options()->EnableFilter(RewriteOptions::kResponsiveImagesZoom);
   options()->EnableFilter(RewriteOptions::kResizeImages);
+  options()->EnableFilter(RewriteOptions::kRecompressJpeg);
   rewrite_driver()->AddFilters();
 
   // Add zoom script.
-  TestSimple(100, 100, "a.jpg", "jpg", true);
+  TestSimple(100, 100, "a.jpg", "10.23", "jpg", true);
+}
+
+TEST_F(ResponsiveImageFilterTest, OddRatio) {
+  options()->EnableFilter(RewriteOptions::kResponsiveImages);
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
+  rewrite_driver()->AddFilters();
+  rewrite_driver()->SetUserAgent("webp");
+
+  // Important, only 2 digits after decimal.
+  TestSimple(99, 99, "a.jpg", "10.33", "webp", false);
 }
 
 // Nothing happens if we do not enable image resizing.
@@ -186,6 +202,25 @@ TEST_F(ResponsiveImageFilterTest, RecompressLarger2) {
       EncodeImage(1023, 766, "a.jpg", "0", "jpg"), " 1.5x\">");
   // We do not add a 2x version because the 1.5x is already native size.
   ValidateExpected("recompress_larger2", input_html, output_html);
+}
+
+TEST_F(ResponsiveImageFilterTest, RecompressLarger3) {
+  options()->EnableFilter(RewriteOptions::kResponsiveImages);
+  options()->EnableFilter(RewriteOptions::kRecompressJpeg);
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  rewrite_driver()->AddFilters();
+
+  // Note: This is slightly less than 2/3 the native size of a.jpg.
+  const char input_html[] = "<img src=a.jpg width=682 height=510>";
+  GoogleString output_html = StrCat(
+      "<img src=", EncodeImage(682, 510, "a.jpg", "0", "jpg"),
+      " width=682 height=510 srcset=\"",
+      EncodeImage(1023, 765, "a.jpg", "0", "jpg"), " 1.5x,",
+      // Note this 2x version is actually only 1023x766.
+      EncodeImage(1364, 1020, "a.jpg", "0", "jpg"), " 2x\">");
+  // TODO(sligocki): We shouldn't include the 1.5x version because it's so
+  // close to the 2x version. Update this test when that is fixed.
+  ValidateExpected("recompress_larger3", input_html, output_html);
 }
 
 // Do not do any responsive rewriting if there are no dimensions.
@@ -493,9 +528,18 @@ TEST_F(ResponsiveImageFilterTest, Debug) {
              " width=2046 height=1532-->"
              "<!--Image does not appear to need resizing.-->"
 
+             // Fourth virtual image debug messages:
+             "<!--ResponsiveImageFilter: Any debug messages after this refer "
+             "to the virtual full-sized image with src=",
+             EncodeImage(-1, -1, "a.jpg", "0", "jpg"),
+             " width= height=-->"
+             "<!--Image does not appear to need resizing.-->"
+
              // Actual image + debug messages:
              "<img src=", EncodeImage(1023, 766, "a.jpg", "0", "jpg"),
              " width=1023 height=766>"
+             "<!--ResponsiveImageFilter: Not adding 1x candidate to srcset "
+             "because native image was not high enough resolution.-->"
              "<!--ResponsiveImageFilter: Not adding 2x candidate to srcset "
              "because native image was not high enough resolution.-->"
              "<!--ResponsiveImageFilter: Not adding 1.5x candidate to srcset "
@@ -526,6 +570,13 @@ TEST_F(ResponsiveImageFilterTest, Debug) {
       "<!--ResponsiveImageFilter: Any debug messages after this refer "
       "to the virtual inlinable 2x image with "
       "src=http://other-domain.com/a.jpg width=200 height=200-->"
+      "<!--The preceding resource was not rewritten because its domain "
+      "(other-domain.com) is not authorized-->"
+
+      // Fourth virtual image debug messages:
+      "<!--ResponsiveImageFilter: Any debug messages after this refer "
+      "to the virtual full-sized image with "
+      "src=http://other-domain.com/a.jpg width= height=-->"
       "<!--The preceding resource was not rewritten because its domain "
       "(other-domain.com) is not authorized-->"
 

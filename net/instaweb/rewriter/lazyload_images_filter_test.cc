@@ -129,15 +129,15 @@ TEST_F(LazyloadImagesFilterTest, SingleHead) {
              GenerateRewrittenImageTag("img", "1.jpg", ""),
              "<img src=\"1.jpg\" pagespeed_no_defer />"
              "<img src=\"1.jpg\" data-src=\"2.jpg\"/>",
-             StrCat("<img src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhE\"/>",
-                    GenerateRewrittenImageTag("img", "2's.jpg",
-                                              "height=\"300\" width=\"123\" "),
-                    "<input src=\"12.jpg\" type=\"image\"/>"
-                    "<input src=\"12.jpg\"/>"
-                    "<img src=\"1.jpg\" onload=\"blah();\"/>"
-                    "<img src=\"1.jpg\" class=\"123 dfcg-metabox\"/>",
-                    GetLazyloadPostscriptHtml(),
-                    "</body>")));
+             "<img src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhE\"/>",
+             GenerateRewrittenImageTag("img", "2's.jpg",
+                                       "height=\"300\" width=\"123\" "),
+             "<input src=\"12.jpg\" type=\"image\"/>"
+             "<input src=\"12.jpg\"/>"
+             "<img src=\"1.jpg\" onload=\"blah();\"/>"
+             "<img src=\"1.jpg\" class=\"123 dfcg-metabox\"/>",
+             GetLazyloadPostscriptHtml(),
+             "</body>"));
   EXPECT_EQ(4, logging_info()->rewriter_info().size());
   ExpectLogRecord(
       0, RewriterApplication::APPLIED_OK /* img with src 1.jpg */,
@@ -157,7 +157,8 @@ TEST_F(LazyloadImagesFilterTest, Blacklist) {
   options()->Disallow("*blacklist*");
   InitLazyloadImagesFilter(false);
 
-  GoogleString input_html= "<head></head>"
+  GoogleString input_html =
+      "<head></head>"
       "<body>"
       "<img src=\"http://www.1.com/blacklist.jpg\"/>"
       "<img src=\"http://www.1.com/img1\"/>"
@@ -170,13 +171,12 @@ TEST_F(LazyloadImagesFilterTest, Blacklist) {
       StrCat("<head></head><body>"
              "<img src=\"http://www.1.com/blacklist.jpg\"/>",
              GetLazyloadScriptHtml(),
-             StrCat(
-                 GenerateRewrittenImageTag(
-                     "img", "http://www.1.com/img1", ""),
-                 GenerateRewrittenImageTag(
-                     "img", "img2", ""),
-                 GetLazyloadPostscriptHtml(),
-                 "</body>")));
+             GenerateRewrittenImageTag(
+                 "img", "http://www.1.com/img1", ""),
+             GenerateRewrittenImageTag(
+                 "img", "img2", ""),
+             GetLazyloadPostscriptHtml(),
+             "</body>"));
   EXPECT_EQ(3, logging_info()->rewriter_info().size());
   ExpectLogRecord(0, RewriterApplication::NOT_APPLIED, true, false);
   ExpectLogRecord(1, RewriterApplication::APPLIED_OK, false, false);
@@ -198,7 +198,7 @@ TEST_F(LazyloadImagesFilterTest, CriticalImages) {
   GoogleString rewritten_url = Encode(
       "http://test.com/", "ce", "HASH", "critical4.jpg", "jpg");
 
-  GoogleString input_html= StrCat(
+  GoogleString input_html = StrCat(
       "<head></head>"
       "<body>"
       "<img src=\"http://www.1.com/critical\"/>"
@@ -213,13 +213,12 @@ TEST_F(LazyloadImagesFilterTest, CriticalImages) {
       StrCat("<head></head><body>"
              "<img src=\"http://www.1.com/critical\"/>",
              GetLazyloadScriptHtml(),
-             StrCat(
-                 GenerateRewrittenImageTag(
-                     "img", "http://www.1.com/critical2", ""),
-                 "<img src=\"critical3\"/>"
-                 "<img src=\"", rewritten_url, "\"/>",
-                 GetLazyloadPostscriptHtml(),
-                 "</body>")));
+             GenerateRewrittenImageTag(
+                 "img", "http://www.1.com/critical2", ""),
+             "<img src=\"critical3\"/>"
+             "<img src=\"", rewritten_url, "\"/>",
+             GetLazyloadPostscriptHtml(),
+             "</body>"));
   EXPECT_EQ(4, logging_info()->rewriter_info().size());
   ExpectLogRecord(0, RewriterApplication::NOT_APPLIED, false, true);
   ExpectLogRecord(1, RewriterApplication::APPLIED_OK, false, false);
@@ -318,17 +317,15 @@ TEST_F(LazyloadImagesFilterTest, MultipleBodies) {
           GetLazyloadScriptHtml(),
           GenerateRewrittenImageTag("img", "1.jpg", ""),
           GetLazyloadPostscriptHtml(),
-          StrCat(
-              "</body><body></body><body>"
-              "<script></script>",
-              GenerateRewrittenImageTag("img", "2.jpg", ""),
-              GetLazyloadPostscriptHtml()),
-          StrCat(
-              "<script></script>",
-              GenerateRewrittenImageTag("img", "3.jpg", ""),
-              GetLazyloadPostscriptHtml(),
-              "<script></script>",
-              "</body>")));
+          "</body><body></body><body>"
+          "<script></script>",
+          GenerateRewrittenImageTag("img", "2.jpg", ""),
+          GetLazyloadPostscriptHtml(),
+          "<script></script>",
+          GenerateRewrittenImageTag("img", "3.jpg", ""),
+          GetLazyloadPostscriptHtml(),
+          "<script></script>",
+          "</body>"));
 }
 
 TEST_F(LazyloadImagesFilterTest, NoHeadTag) {

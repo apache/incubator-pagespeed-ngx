@@ -305,6 +305,11 @@ class HtmlParse {
   }
   HtmlElement* NewElement(HtmlElement* parent, const HtmlName& name);
 
+  // For both versions of AddAttribute
+  // Pass in NULL for value to add an attribute with no value at all
+  //   ex: <script pagespeed_no_transform>
+  // Pass in "" for value if you want the value to be the empty string
+  //   ex: <div style="">
   void AddAttribute(HtmlElement* element, HtmlName::Keyword keyword,
                     const StringPiece& value) {
     return element->AddAttribute(MakeName(keyword), value,
@@ -319,10 +324,6 @@ class HtmlParse {
                     const StringPiece& escaped_value) {
     return element->AddEscapedAttribute(MakeName(keyword), escaped_value,
                                         HtmlElement::DOUBLE_QUOTE);
-  }
-  void AddAttribute(HtmlElement* element, HtmlName::Keyword keyword,
-                    int value) {
-    return AddAttribute(element, keyword, IntegerToString(value));
   }
   void SetAttributeName(HtmlElement::Attribute* attribute,
                         HtmlName::Keyword keyword) {

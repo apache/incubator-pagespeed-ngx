@@ -30,7 +30,6 @@
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
-#include "net/instaweb/rewriter/static_asset_config.pb.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/gmock.h"
 #include "pagespeed/kernel/base/gtest.h"
@@ -58,7 +57,7 @@ const char kSamplePngData[] = "data:image/png;base64*";
 const char kHeadHtml[] = "<head></head>";
 
 const char kScriptTemplate[] =
-    "<script pagespeed_no_defer=\"\" type=\"text/javascript\">%s</script>";
+    "<script pagespeed_no_defer type=\"text/javascript\">%s</script>";
 
 }  // namespace
 
@@ -92,7 +91,7 @@ class DelayImagesFilterTest : public RewriteTestBase {
   }
 
   GoogleString GetImageOnloadScriptBlock() const {
-    return StrCat("<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
+    return StrCat("<script pagespeed_no_defer type=\"text/javascript\">",
                   DelayImagesFilter::kImageOnloadJsSnippet,
                   "</script>");
   }
@@ -199,7 +198,7 @@ TEST_F(DelayImagesFilterTest, DelayImagesAcrossDifferentFlushWindow) {
   GoogleString flush1 = "<head></head>"
       "<body>"
       "<img src=\"http://test.com/1.webp\" />";
-  GoogleString flush2="<img src=\"http://test.com/1.jpeg\" />"
+  GoogleString flush2 = "<img src=\"http://test.com/1.jpeg\" />"
       "</body>";
   SetMockLogRecord();
   MockLogRecord* log = mock_log_record();

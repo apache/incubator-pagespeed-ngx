@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 /**
  * @fileoverview Stylesheet injected into mobile pages to render a progress
  * bar, inject a header bar with a logo, and navigational menus.  See also
@@ -40,7 +41,7 @@ body {
   left: 0;
   z-index: 999999;
 
-  padding: 0px;
+  padding: 0;
 
   width: 100%;
   height: 50px;
@@ -48,21 +49,14 @@ body {
   -webkit-transform-origin: 0 0;
   transform-origin: 0 0;
 
-  box-shadow: 0px 5px 6px -1px rgba(0, 0, 0, 0.4);
+  border-bottom: thin solid;
 
-  /* Center the menu button in the bar. Consider using flexbox instead. */
-  line-height: 60px;
-  text-align: left;
+  box-shadow: 0 5px 6px -1px rgba(0, 0, 0, 0.4);
 
-  /*
+  display: -webkit-box;
   display: -ms-flexbox;
   display: -webkit-flex;
   display: flex;
-
-  -ms-flex-direction: row;
-  -webkit-flex-direction: row;
-  flex-direction: row;
-  */
 
   opacity: 1;
   /* Use a 200ms fade in when redrawing the bar after scrolling. */
@@ -86,7 +80,6 @@ body {
 #psmob-header-bar button {
   margin: 0;
   padding: 0;
-  position: absolute;
   top: 0;
   bottom: 0;
 
@@ -116,11 +109,6 @@ body {
   background-color: rgba(255, 255, 255, 0.4);
 }
 
-#psmob-menu-button {
-  left: 0;
-}
-
-
 #psmob-map-button,
 #psmob-menu-button,
 #psmob-phone-dialer {
@@ -128,46 +116,50 @@ body {
   width: 50px;
 }
 
-#psmob-header-bar a {
-  float: right;
-  height: 100%;
-}
-
 #psmob-phone-dialer {
-  height: 100%;
   box-sizing: content-box;
   background-repeat: no-repeat;
-  background-size: 40%;
+  background-size: 60%;
   background-position: center;
-  float: right;
+}
+
+#psmob-map-button {
+  /* Required for android browser. */
+  display: block;
 }
 
 #psmob-map-image {
-  width: 40%;
-  height: 40%;
-  padding: 30% 30% 30% 30%;
+  /* Center the image in the A tag. */
+  display: block;
+  margin: 0 auto;
+
+  max-width: 60%;
+  max-height: 60%;
+  padding: 20%;
   box-sizing: content-box;
 }
 
 #psmob-logo-span {
   height: 100%;
   padding: 0;
-  position: absolute;
-  top: 0;
-  bottom: 0;
+  -webkit-box-flex: 1;
+  width: 70%; /* For old browsers, otherwise collapses. */
+  -webkit-flex: 1;
+  -ms-flex: 1;
+  flex: 1;
 }
 
 #psmob-logo-image {
-  margin: auto;
-  min-height: 40%;
-  max-height: 60% !important;
+  /* 50px header bar height. */
+  height: 30px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+
+  /* Center the image in the logo span. */
+  display: block;
+  margin: 0 auto;
+
   max-width: 100% !important;
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  vertical-align: middle;
   box-sizing: content-box;
 }
 
@@ -184,6 +176,10 @@ body {
   padding-bottom: 27%;
   padding-left: 30%;
   padding-right: 30%;
+  box-sizing: content-box !important;
+}
+
+#psmob-header-bar .psmob-hamburger-div * {
   box-sizing: content-box;
 }
 
@@ -191,7 +187,7 @@ body {
  * width=device-width meta viewport tag is set, and over that size when no set,
  * but may need further tweaking based on testing of more devices.
  */
-@media (min-width: 700px) and (orientation: portrait) {
+@media all and (min-width: 700px) and (orientation: portrait) {
   #psmob-header-bar.mobile {
     height: 150px;
   }
@@ -202,6 +198,26 @@ body {
     height: 150px;
     width: 150px;
   }
+
+  #psmob-header-bar.mobile #psmob-logo-image {
+    /* 150px header bar height. */
+    height: 90px;
+    padding-top: 30px;
+    padding-bottom: 30px;
+  }
+
+  #psmob-nav-panel.mobile {
+    width: 700px !important;
+    font-size: 60px;
+  }
+
+  #psmob-nav-panel.mobile ul li a,
+  #psmob-nav-panel.mobile ul li div {
+    min-height: 120px;
+    line-height: 120px !important;
+  }
+
+
 }
 
 #psmob-nav-panel {
@@ -246,11 +262,6 @@ body {
   /* Use momentum-based scrolling on iOS. Otherwise the nav panel scrolls too
    * quickly. */
   -webkit-overflow-scrolling: touch;
-}
-
-#psmob-nav-panel.mobile {
-  width: 700px !important;
-  font-size: 60px;
 }
 
 #psmob-nav-panel.open {
@@ -316,11 +327,6 @@ body {
   -moz-transition: background-color 0.2s ease-out;
   -o-transition: background-color 0.2s ease-out;
   transition: background-color 0.2s ease-out;
-}
-
-#psmob-nav-panel.mobile ul li a, #psmob-nav-panel.mobile ul li div {
-  min-height: 120px;
-  line-height: 120px !important;
 }
 
 #psmob-nav-panel ul li div {

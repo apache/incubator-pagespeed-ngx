@@ -412,7 +412,7 @@ void CriticalSelectorFilter::RenderDone() {
     }
 
     HtmlElement* script = driver()->NewElement(NULL, HtmlName::kScript);
-    driver()->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
+    driver()->AddAttribute(script, HtmlName::kPagespeedNoDefer, NULL);
     InsertNodeAtBodyEnd(script);
     GoogleString js =
         driver()->server_context()->static_asset_manager()->GetAsset(
@@ -508,14 +508,14 @@ void CriticalSelectorFilter::ApplyCssFlushedEarly(
         driver()->NewElement(element->parent(), HtmlName::kScript);
     // TODO(slamm): Remove this attribute and update webdriver test as needed.
     driver()->AddAttribute(script, HtmlName::kId, kMoveScriptId);
-    driver()->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
+    driver()->AddAttribute(script, HtmlName::kPagespeedNoDefer, NULL);
     driver()->InsertNodeBeforeNode(element, script);
     AddJsToElement(kApplyFlushEarlyCss, script);
   }
 
   HtmlElement* script_element =
       driver()->NewElement(element->parent(), HtmlName::kScript);
-  driver()->AddAttribute(script_element, HtmlName::kPagespeedNoDefer, "");
+  driver()->AddAttribute(script_element, HtmlName::kPagespeedNoDefer, NULL);
   driver()->ReplaceNode(element, script_element);
 
   GoogleString js_data = StringPrintf(kInvokeFlushEarlyCssTemplate,

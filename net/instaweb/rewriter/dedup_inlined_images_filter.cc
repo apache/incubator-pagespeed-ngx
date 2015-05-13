@@ -146,8 +146,7 @@ void DedupInlinedImagesFilter::EndElementImpl(HtmlElement* element) {
       driver()->InsertElementAfterElement(element, script);
       AddJsToElement(snippet, script);
       driver()->AddAttribute(script, HtmlName::kId, script_id);
-      script->AddAttribute(driver()->MakeName(HtmlName::kPagespeedNoDefer),
-                           NULL, HtmlElement::NO_QUOTE);
+      driver()->AddAttribute(script, HtmlName::kPagespeedNoDefer, NULL);
       element->DeleteAttribute(HtmlName::kSrc);
     }
   }
@@ -182,8 +181,7 @@ void DedupInlinedImagesFilter::InsertOurScriptElement(HtmlElement* before) {
                                                      HtmlName::kScript);
   driver()->InsertElementBeforeElement(before, script_element);
   AddJsToElement(initialized_js, script_element);
-  script_element->AddAttribute(driver()->MakeName(HtmlName::kPagespeedNoDefer),
-                               NULL, HtmlElement::NO_QUOTE);
+  driver()->AddAttribute(script_element, HtmlName::kPagespeedNoDefer, NULL);
   script_inserted_ = true;
 }
 

@@ -170,7 +170,7 @@ TEST_F(JsDisableFilterTest, DisablesScriptWithExperimental) {
       kUnrelatedTags,
       "<script src=\"blah2\" random=\"false\""
       " type=\"text/psajs\" orig_index=\"1\">hi2</script>"
-      "<script type=\"text/javascript\" pagespeed_no_defer=\"\">",
+      "<script type=\"text/javascript\" pagespeed_no_defer>",
       JsDisableFilter::kEnableJsExperimental,
       "</script></body>");
 
@@ -210,13 +210,13 @@ TEST_F(JsDisableFilterTest, PrefetchScriptWithImageTemplate) {
       " orig_index=\"1\">hi1</script>"
       "<script src=\"blah2\" random=\"false\""
       " type=\"text/psajs\" orig_index=\"2\">hi2</script>"
-      "<script src=\"blah3\" pagespeed_no_defer=\"\"></script>"
+      "<script src=\"blah3\" pagespeed_no_defer></script>"
       "<script src=\"", src_url, "\" type=\"text/psajs\""
       " orig_index=\"3\">hi4</script>"
       "<script src=\"blah5\" type=\"text/psajs\""
       " orig_index=\"4\">Not a prefetch candidate</script>"
       "</head><body>"
-      "<script pagespeed_no_defer=\"\">(function(){"
+      "<script pagespeed_no_defer>(function(){"
       "new Image().src=\"blah1\";"
       "new Image().src=\"blah2\";"
       "new Image().src=\"", escaped_src, "\";})()"
@@ -231,7 +231,7 @@ TEST_F(JsDisableFilterTest, PrefetchScriptWithImageTemplate) {
   html_parse()->Flush();
   html_parse()->ParseText(StrCat("</script>"
       "<script src=\"blah2\" random=\"false\">hi2</script>"
-      "<script src=\"blah3\" pagespeed_no_defer=\"\"></script>"
+      "<script src=\"blah3\" pagespeed_no_defer></script>"
       "<script src=\"", src_url, "\">hi4</script>"
       "<script src=\"blah5\">Not a prefetch candidate</script>"
       "</head><body>"));
@@ -252,12 +252,12 @@ TEST_F(JsDisableFilterTest, PrefetchScriptInHeadNotInBody) {
       kUnrelatedTags,
       "<script src=\"blah2\" random=\"false\">hi2</script>"
       "</head><body>"
-      "<script src=\"blah3\" pagespeed_no_defer=\"\"></script>"
+      "<script src=\"blah3\" pagespeed_no_defer></script>"
       "<script src=\"blah4\">dont show up in prefetch script</script>"
       "</body>");
 
   const GoogleString prefetch_script =
-      "<script pagespeed_no_defer=\"\">(function(){"
+      "<script pagespeed_no_defer>(function(){"
       "new Image().src=\"blah1\";"
       "new Image().src=\"blah2\";})()"
       "</script>";
@@ -273,7 +273,7 @@ TEST_F(JsDisableFilterTest, PrefetchScriptInHeadNotInBody) {
       " type=\"text/psajs\" orig_index=\"2\">hi2</script>"
       "</head>"
       "<body>", prefetch_script,
-      "<script src=\"blah3\" pagespeed_no_defer=\"\"></script>"
+      "<script src=\"blah3\" pagespeed_no_defer></script>"
       "<script src=\"blah4\" type=\"text/psajs\""
       " orig_index=\"3\">dont show up in prefetch script</script>"
       "</body>"));
@@ -335,7 +335,7 @@ TEST_F(JsDisableFilterTest, DisablesScriptOnlyFromFirstSrc) {
       "hi2</script>"
       "<script src=\"1.js?a#12296;=en\" type=\"text/psajs\""
       " orig_index=\"2\"></script>"
-      "<script type=\"text/javascript\" pagespeed_no_defer=\"\">",
+      "<script type=\"text/javascript\" pagespeed_no_defer>",
       JsDisableFilter::kEnableJsExperimental,
       "</script></body>");
 

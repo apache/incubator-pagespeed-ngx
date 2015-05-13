@@ -431,7 +431,7 @@ TEST_F(SuppressPreheadFilterTest, FlushEarlyCookies) {
       "</head>"
       "<body></body></html>";
   const char html_with_cookie[] =
-      "<script type=\"text/javascript\" pagespeed_no_defer=\"\">"
+      "<script type=\"text/javascript\" pagespeed_no_defer>"
       "(function(){"
         "var data = [\"CG=US:CA:Mountain+View\",\"UA=chrome\",\"path=/\"];"
         "for (var i = 0; i < data.length; i++) {"
@@ -464,7 +464,7 @@ TEST_F(SuppressPreheadFilterTest, FlushEarlyCookies2) {
       "</head>"
       "<body></body></html>";
   const char html_with_cookie[] =
-      "<script type=\"text/javascript\" pagespeed_no_defer=\"\">"
+      "<script type=\"text/javascript\" pagespeed_no_defer>"
       "(function(){"
         "var data = [\"RMID=266b56483f6e50519316c48a; expires=Friday, "
         "13-Sep-2013 08:02:30 GMT; path=/; domain=.example.com\"];"

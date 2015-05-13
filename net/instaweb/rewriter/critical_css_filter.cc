@@ -35,6 +35,7 @@
 #include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/critical_css_finder.h"
 #include "net/instaweb/rewriter/public/critical_selector_filter.h"
+#include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -237,7 +238,7 @@ void CriticalCssFilter::EndDocument() {
     }
 
     HtmlElement* script = driver()->NewElement(NULL, HtmlName::kScript);
-    driver()->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
+    driver()->AddAttribute(script, HtmlName::kPagespeedNoDefer, NULL);
     InsertNodeAtBodyEnd(script);
 
     int num_unreplaced_links_ = num_links_ - num_replaced_links_;
@@ -362,9 +363,9 @@ void CriticalCssFilter::EndElementImpl(HtmlElement* element) {
       HtmlElement* script =
           driver()->NewElement(element->parent(), HtmlName::kScript);
       // TODO(slamm): Remove this attribute and update webdriver test as needed.
-      driver()->AddAttribute(script, HtmlName::kId,
-                             CriticalSelectorFilter::kMoveScriptId);
-      driver()->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
+      driver()->AddAttribute(
+          script, HtmlName::kId, CriticalSelectorFilter::kMoveScriptId);
+      driver()->AddAttribute(script, HtmlName::kPagespeedNoDefer, NULL);
       driver()->InsertNodeBeforeNode(element, script);
       AddJsToElement(
           CriticalSelectorFilter::kApplyFlushEarlyCss, script);
@@ -372,7 +373,7 @@ void CriticalCssFilter::EndElementImpl(HtmlElement* element) {
 
     HtmlElement* script_element =
         driver()->NewElement(element->parent(), HtmlName::kScript);
-    driver()->AddAttribute(script_element, HtmlName::kPagespeedNoDefer, "");
+    driver()->AddAttribute(script_element, HtmlName::kPagespeedNoDefer, NULL);
     if (!driver()->ReplaceNode(element, script_element)) {
       LogRewrite(RewriterApplication::REPLACE_FAILED);
       return;

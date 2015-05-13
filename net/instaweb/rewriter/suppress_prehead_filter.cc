@@ -35,6 +35,8 @@
 #include "pagespeed/kernel/html/html_name.h"
 #include "pagespeed/kernel/html/html_node.h"
 #include "pagespeed/kernel/http/http_names.h"
+#include "pagespeed/opt/logging/request_timing_info.h"
+
 
 namespace {
 
@@ -288,7 +290,7 @@ void SuppressPreheadFilter::SendCookies(HtmlElement* element) {
   if (response_headers->GetCookieString(&cookie_str)) {
     HtmlElement* script = driver_->NewElement(element, HtmlName::kScript);
     driver_->AddAttribute(script, HtmlName::kType, "text/javascript");
-    driver_->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
+    driver_->AddAttribute(script, HtmlName::kPagespeedNoDefer, NULL);
     HtmlCharactersNode* script_code = driver_->NewCharactersNode(script,
         StringPrintf(kCookieJs, cookie_str.c_str()));
     driver_->PrependChild(element, script);

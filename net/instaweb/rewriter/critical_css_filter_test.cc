@@ -221,7 +221,7 @@ TEST_F(CriticalCssFilterTest, InlineAndMove) {
       "<style type='text/css'>t {color: turquoise }</style>"
       "<link rel='stylesheet' href='c.css' type='text/css'>"
       "</noscript>"
-      "<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
+      "<script pagespeed_no_defer type=\"text/javascript\">",
       CriticalCssFilter::kAddStylesScript,
       "window['pagespeed'] = window['pagespeed'] || {};"
       "window['pagespeed']['criticalCss'] = {"
@@ -285,7 +285,7 @@ TEST_F(CriticalCssFilterTest, InlineAndDontFlushEarlyIfFlagDisabled) {
       "<style type='text/css'>t {color: turquoise }</style>"
       "<link rel='stylesheet' href='c.css' type='text/css'>"
       "</noscript>"
-      "<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
+      "<script pagespeed_no_defer type=\"text/javascript\">",
       CriticalCssFilter::kAddStylesScript,
       "window['pagespeed'] = window['pagespeed'] || {};"
       "window['pagespeed']['criticalCss'] = {"
@@ -434,15 +434,15 @@ TEST_F(CriticalCssFilterTest, InlineFlushEarly) {
       "</head>\n"
       "<body>\n"
       "  Hello,\n"
-      "  <script id=\"psa_flush_style_early\" pagespeed_no_defer=\"\""
+      "  <script id=\"psa_flush_style_early\" pagespeed_no_defer"
       " type=\"text/javascript\">",
       CriticalSelectorFilter::kApplyFlushEarlyCss,
       "</script>"
-      "<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
+      "<script pagespeed_no_defer type=\"text/javascript\">",
       StringPrintf(CriticalSelectorFilter::kInvokeFlushEarlyCssTemplate,
                    a_styleId.c_str(), "print"),
       "</script>"
-      "<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
+      "<script pagespeed_no_defer type=\"text/javascript\">",
       StringPrintf(CriticalSelectorFilter::kInvokeFlushEarlyCssTemplate,
                    b_styleId.c_str(), ""));
 
@@ -450,7 +450,7 @@ TEST_F(CriticalCssFilterTest, InlineFlushEarly) {
       "</script>"
       "\n  <style type='text/css'>t {color: turquoise }</style>\n"
       "  World!\n"
-      "  <script pagespeed_no_defer=\"\" type=\"text/javascript\">",
+      "  <script pagespeed_no_defer type=\"text/javascript\">",
       StringPrintf(CriticalSelectorFilter::kInvokeFlushEarlyCssTemplate,
                    c_styleId.c_str(), ""),
       "</script>\n"
@@ -460,7 +460,7 @@ TEST_F(CriticalCssFilterTest, InlineFlushEarly) {
       "<style type='text/css'>t {color: turquoise }</style>"
       "<link rel='stylesheet' href='c.css' type='text/css'>"
       "</noscript>"
-      "<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
+      "<script pagespeed_no_defer type=\"text/javascript\">",
       CriticalCssFilter::kAddStylesScript,
       "window['pagespeed'] = window['pagespeed'] || {};"
       "window['pagespeed']['criticalCss'] = {"
@@ -527,7 +527,7 @@ TEST_F(CriticalCssFilterTest, InvalidUrl) {
       "<link rel='stylesheet' href='"
       "http://test.com/I.a.css+b.css.pagespeed.cc.0.css' type='text/css'>"
       "</noscript>"
-      "<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
+      "<script pagespeed_no_defer type=\"text/javascript\">",
       CriticalCssFilter::kAddStylesScript,
       "window['pagespeed'] = window['pagespeed'] || {};"
       "window['pagespeed']['criticalCss'] = {"
@@ -593,7 +593,7 @@ TEST_F(CriticalCssFilterTest, NullAndEmptyCriticalRules) {
       "<style type='text/css'>t {color: turquoise }</style>"
       "<link rel='stylesheet' href='c.css' type='text/css'>"
       "</noscript>"
-      "<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
+      "<script pagespeed_no_defer type=\"text/javascript\">",
       CriticalCssFilter::kAddStylesScript,
       "window['pagespeed'] = window['pagespeed'] || {};"
       "window['pagespeed']['criticalCss'] = {"
@@ -674,7 +674,7 @@ TEST_F(CriticalCssFilterTest, DebugFilterAddsStats) {
       "<style type='text/css'>t {color: turquoise }</style>"
       "<link rel='stylesheet' href='c.css' type='text/css'>"
       "</noscript>"
-      "<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
+      "<script pagespeed_no_defer type=\"text/javascript\">",
       CriticalCssFilter::kAddStylesScript,
       "window['pagespeed'] = window['pagespeed'] || {};"
       "window['pagespeed']['criticalCss'] = {"

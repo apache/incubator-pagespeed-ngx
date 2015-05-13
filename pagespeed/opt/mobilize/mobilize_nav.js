@@ -484,8 +484,13 @@ pagespeed.MobNav.prototype.redrawHeader_ = function() {
   // Resize the bar by scaling to compensate for the amount zoomed.
   // innerWidth is the scaled size, while clientWidth does not vary with zoom
   // level.
-  var scaleTransform =
-      'scale(' + window.innerWidth / goog.dom.getViewportSize().width + ')';
+  var viewportWidth = goog.dom.getViewportSize().width;
+  // Default to 1 if viewport is 0 or some other invalid value.
+  var scale =
+      (viewportWidth == 0) ?
+          1 :
+          (window.innerWidth - goog.style.getScrollbarWidth()) / viewportWidth;
+  var scaleTransform = 'scale(' + scale.toString() + ')';
   this.headerBar_.style['-webkit-transform'] = scaleTransform;
   this.headerBar_.style.transform = scaleTransform;
 
@@ -494,17 +499,6 @@ pagespeed.MobNav.prototype.redrawHeader_ = function() {
 
   // Restore visibility since the bar was hidden while scrolling and zooming.
   goog.dom.classlist.remove(this.headerBar_, 'hide');
-
-  // Get the new size of the header bar and rescale the containing elements to
-  // fit inside.
-  var heightString = this.headerBar_.offsetHeight + 'px';
-
-  var logoRight = this.dialer_.getHeight();
-  if (this.mapButton_) {
-    logoRight += this.headerBar_.offsetHeight;
-  }
-  this.logoSpan_.style.left = heightString;
-  this.logoSpan_.style.right = logoRight + 'px';
 
   // Update the size of the spacer div to take into account the changed relative
   // size of the header. Changing the size of the spacer div will also move the
@@ -725,8 +719,7 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
 
   this.logoSpan_ = themeData.anchorOrSpan;
   this.headerBar_.appendChild(themeData.anchorOrSpan);
-  this.headerBar_.style.borderBottom =
-      'thin solid ' +
+  this.headerBar_.style.borderBottomColor =
       pagespeed.MobUtil.colorNumbersToString(themeData.menuFrontColor);
   this.headerBar_.style.backgroundColor =
       pagespeed.MobUtil.colorNumbersToString(themeData.menuBackColor);
