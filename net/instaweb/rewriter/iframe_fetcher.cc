@@ -51,7 +51,8 @@ void IframeFetcher::Fetch(const GoogleString& url,
   // simplifies the code below that tries to get the screen dimensions
   // via document.documentElement.
   fetch->Write("<!DOCTYPE html>", message_handler);
-  fetch->Write("<html><head></head><body>", message_handler);
+  fetch->Write("<html><head></head><body class=\"mob-iframe\">",
+               message_handler);
 
   // We want to size the iframe to fit the physical screen, so we
   // create the iframe in JS.  The code as I have it here seems to
@@ -65,10 +66,11 @@ void IframeFetcher::Fetch(const GoogleString& url,
       "<script>\n"
       "var docElt = document.documentElement;\n"
       "var iframe = document.createElement('iframe');\n"
-      "iframe.style = \"border-width:0px;\";\n"
-      "iframe.src = \"", escaped_url, "\";\n"
-      "iframe.width = docElt.clientWidth;\n"
-      "iframe.height = docElt.clientHeight;\n"
+      "iframe.id = 'psmob-iframe';\n"
+      "iframe.src = '", escaped_url, "';\n"
+      "iframe.frameborder = '0';\n"
+      "iframe.width = '100%';\n"
+      "iframe.height = '100%';\n"
       "document.body.appendChild(iframe);\n"
       "</script>");
   fetch->Write(createIframe, message_handler);

@@ -31,8 +31,23 @@ body {
   padding: 0px !important;
 }
 
+/* Used only in frame mode. */
+body.mob-iframe {
+  /* Only show scroll bars from the iframe, not the rest of the page. */
+  overflow: hidden;
+  margin: 0;
+}
+
 .noscroll {
   overflow: hidden;
+}
+
+#psmob-iframe {
+  border-width: 0;
+  position: fixed;
+  overflow: hidden;
+  height:100%;
+  width: 100%;
 }
 
 #psmob-header-bar {

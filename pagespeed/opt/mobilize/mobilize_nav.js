@@ -486,10 +486,19 @@ pagespeed.MobNav.prototype.redrawHeader_ = function() {
   // level.
   var viewportWidth = goog.dom.getViewportSize().width;
   // Default to 1 if viewport is 0 or some other invalid value.
-  var scale =
-      (viewportWidth == 0) ?
-          1 :
+  var scale = 1;
+  if (viewportWidth) {
+    // Subtract the width of the scrollbar from the viewport size only if the
+    // scrollbars are visible (goog.style.getScrollbarWidth still returns the
+    // scrollbar size if they are hidden).
+    if (window.getComputedStyle(document.body).getPropertyValue('overflow-y') ==
+        'hidden') {
+      scale = window.innerWidth / viewportWidth;
+    } else {
+      scale =
           (window.innerWidth - goog.style.getScrollbarWidth()) / viewportWidth;
+    }
+  }
   var scaleTransform = 'scale(' + scale.toString() + ')';
   this.headerBar_.style['-webkit-transform'] = scaleTransform;
   this.headerBar_.style.transform = scaleTransform;
