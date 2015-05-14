@@ -3478,13 +3478,8 @@ TEST_F(ImageRewriteTest, ResizeEmptyImageUsingRenderedDimensions) {
 
   finder->set_rendered_images(rendered_images);
 
-#ifdef NDEBUG
   TestSingleRewrite(kEmptyScreenGifFile, kContentTypeGif, kContentTypeGif,
                     "", "", false, false);
-#else
-  EXPECT_DEATH(TestSingleRewrite(kEmptyScreenGifFile, kContentTypeGif,
-                                 kContentTypeGif, "", "", false, false), "");
-#endif
 }
 
 TEST_F(ImageRewriteTest, PreserveUrlRelativity) {

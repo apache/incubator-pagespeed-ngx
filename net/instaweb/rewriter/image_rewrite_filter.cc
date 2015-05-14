@@ -804,10 +804,8 @@ bool ImageRewriteFilter::ResizeImageIfNecessary(
   ImageDim image_dim;
   image->Dimensions(&image_dim);
 
-  DCHECK(image_dim.width() > 0 && image_dim.height() > 0);
-  if (image_dim.width() == 0 || image_dim.height() == 0) {
-    cached->add_debug_message(
-        "Cannot resize: Image must have nonzero dimensions");
+  if (image_dim.width() <= 0 || image_dim.height() <= 0) {
+    cached->add_debug_message("Cannot resize: Image must be at least 1x1");
     return false;
   }
 
