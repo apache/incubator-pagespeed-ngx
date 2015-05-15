@@ -40,6 +40,11 @@ namespace net_instaweb {
 
 namespace {
 
+// Increment this value to flush HTTP cache.
+// Similar to RewriteOptions::kOptionVersion which can be used to flush the
+// metadata cache.
+const int kHttpCacheVersion = 2;
+
 // Remember that a Fetch failed for 5 minutes by default.
 //
 // TODO(jmarantz): We could handle cc-private a little differently:
@@ -101,6 +106,11 @@ HTTPCache::HTTPCache(CacheInterface* cache, Timer* timer, Hasher* hasher,
   remember_fetch_dropped_ttl_seconds_ = kRememberFetchDroppedTtlSec;
   remember_empty_ttl_seconds_ = kRememberEmptyTtlSec;
   max_cacheable_response_content_length_ = kCacheSizeUnlimited;
+  SetVersion(kHttpCacheVersion);
+}
+
+void HTTPCache::SetVersion(int version_number) {
+  version_prefix_ = StrCat("v", IntegerToString(version_number), "/");
 }
 
 HTTPCache::~HTTPCache() {}

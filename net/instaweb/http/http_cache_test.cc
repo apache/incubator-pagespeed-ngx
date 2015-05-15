@@ -759,4 +759,51 @@ TEST_F(HTTPCacheTest, FragmentsIndependent) {
             Find(kUrl, kFragment2, &value, &meta_data_out, &message_handler_));
 }
 
+TEST_F(HTTPCacheTest, UpdateVersion) {
+  HTTPValue value;
+  ResponseHeaders meta_data_in, meta_data_out;
+  InitHeaders(&meta_data_in, "max-age=300");
+  StringPiece contents;
+
+  // Equivalent to pre-versioned caching.
+  http_cache_->set_version_prefix("");
+  Put(kUrl, "", &meta_data_in, "v1: No fragment", &message_handler_);
+  Put(kUrl, kFragment, &meta_data_in, "v1: Fragment", &message_handler_);
+
+  EXPECT_EQ(HTTPCache::kFound,
+            Find(kUrl, "", &value, &meta_data_out, &message_handler_));
+  ASSERT_TRUE(value.ExtractContents(&contents));
+  EXPECT_STREQ("v1: No fragment", contents);
+  EXPECT_EQ(HTTPCache::kFound,
+            Find(kUrl, kFragment, &value, &meta_data_out, &message_handler_));
+  ASSERT_TRUE(value.ExtractContents(&contents));
+  EXPECT_STREQ("v1: Fragment", contents);
+
+  // Setting version invalidates old data.
+  http_cache_->SetVersion(2);
+  EXPECT_EQ(HTTPCache::kNotFound,
+            Find(kUrl, "", &value, &meta_data_out, &message_handler_));
+  EXPECT_EQ(HTTPCache::kNotFound,
+            Find(kUrl, kFragment, &value, &meta_data_out, &message_handler_));
+
+  Put(kUrl, "", &meta_data_in, "v2: No fragment", &message_handler_);
+  Put(kUrl, kFragment, &meta_data_in, "v2: Fragment", &message_handler_);
+
+  EXPECT_EQ(HTTPCache::kFound,
+            Find(kUrl, "", &value, &meta_data_out, &message_handler_));
+  ASSERT_TRUE(value.ExtractContents(&contents));
+  EXPECT_STREQ("v2: No fragment", contents);
+  EXPECT_EQ(HTTPCache::kFound,
+            Find(kUrl, kFragment, &value, &meta_data_out, &message_handler_));
+  ASSERT_TRUE(value.ExtractContents(&contents));
+  EXPECT_STREQ("v2: Fragment", contents);
+
+  // Updating version invalidates old data.
+  http_cache_->SetVersion(3);
+  EXPECT_EQ(HTTPCache::kNotFound,
+            Find(kUrl, "", &value, &meta_data_out, &message_handler_));
+  EXPECT_EQ(HTTPCache::kNotFound,
+            Find(kUrl, kFragment, &value, &meta_data_out, &message_handler_));
+}
+
 }  // namespace net_instaweb

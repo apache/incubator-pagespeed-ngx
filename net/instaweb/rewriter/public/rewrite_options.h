@@ -497,12 +497,13 @@ class RewriteOptions {
   // there is no need bump the option version when changing the filter enum.
   //
   // Updating this value will have the indirect effect of flushing the metadata
-  // cache.
+  // cache. The HTTPCache can be flushed by updating kHttpCacheVersion in
+  // http_cache.cc.
   //
   // This version number should be incremented if any default-values
   // are changed, either in an Add*Property() call or via
   // options->set_default.
-  static const int kOptionsVersion = 13;
+  static const int kOptionsVersion = 14;
 
   // Number of bytes used for signature hashing.
   static const int kHashBytes = 20;

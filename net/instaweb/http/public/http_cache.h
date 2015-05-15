@@ -24,6 +24,7 @@
 #include "net/instaweb/http/public/request_context.h"
 #include "pagespeed/kernel/base/atomic_bool.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/gtest_prod.h"  // for FRIEND_TEST
 #include "pagespeed/kernel/base/ref_counted_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -382,11 +383,12 @@ class HTTPCache {
   virtual GoogleString Name() const { return FormatName(cache_->Name()); }
   static GoogleString FormatName(StringPiece cache);
 
-  static GoogleString CompositeKey(StringPiece key, StringPiece fragment) {
+  GoogleString CompositeKey(StringPiece key, StringPiece fragment) const {
     DCHECK(fragment.find("/") == StringPiece::npos);
 
-    // Return "fragment/key" if there's a fragment, otherwise just return "key".
-    return StrCat(fragment, fragment.empty() ? "" : "/", key);
+    // Return "version/fragment/key" if there's a fragment, otherwise just
+    // return "version/key".
+    return StrCat(version_prefix_, fragment, fragment.empty() ? "" : "/", key);
   }
 
  protected:
@@ -399,6 +401,13 @@ class HTTPCache {
  private:
   friend class HTTPCacheCallback;
   friend class WriteThroughHTTPCache;
+  FRIEND_TEST(HTTPCacheTest, UpdateVersion);
+
+  // Used by constructor and tests.
+  void SetVersion(int version_number);
+  void set_version_prefix(StringPiece version_prefix) {
+    version_prefix.CopyToString(&version_prefix_);
+  }
 
   bool MayCacheUrl(const GoogleString& url, const ResponseHeaders& headers);
   // Requires either content or value to be non-NULL.
@@ -445,6 +454,8 @@ class HTTPCache {
   int64 remember_empty_ttl_seconds_;
   int64 max_cacheable_response_content_length_;
   AtomicBool ignore_failure_puts_;
+
+  GoogleString version_prefix_;
 
   DISALLOW_COPY_AND_ASSIGN(HTTPCache);
 };

@@ -761,7 +761,7 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   // When reaching into a cache that backs an HTTP cache you need a cache key
   // that includes the fragment.
   GoogleString HttpCacheKey(StringPiece url) {
-    return HTTPCache::CompositeKey(url, rewrite_driver_->CacheFragment());
+    return http_cache()->CompositeKey(url, rewrite_driver_->CacheFragment());
   }
 
   // Returns the value of a TimedVariable, specified by name.
