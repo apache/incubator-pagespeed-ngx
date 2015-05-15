@@ -109,10 +109,16 @@ class InPlaceResourceRecorder : public Writer {
   // Because of Apache's quirky filter order, we cannot get both the
   // uncompressed final contents and the complete headers at the same time.
   //
+  // Set entire_response_received to true if you know that the response data fed
+  // into Write() is complete.  For example, if the browser cancelled the
+  // download and so this is a partial response, set entire_response_received to
+  // false so we know not to cache it.
+  //
   // Does not take ownership of response_headers.
   //
   // Deletes itself. Do not use object after calling DoneAndSetHeaders().
-  void DoneAndSetHeaders(ResponseHeaders* response_headers);
+  void DoneAndSetHeaders(ResponseHeaders* response_headers,
+                         bool entire_response_received);
 
   const GoogleString& url() const { return url_; }
   MessageHandler* handler() { return handler_; }

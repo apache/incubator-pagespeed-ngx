@@ -208,7 +208,13 @@ void InPlaceResourceRecorder::DroppedDueToSize() {
 }
 
 void InPlaceResourceRecorder::DoneAndSetHeaders(
-    ResponseHeaders* response_headers) {
+    ResponseHeaders* response_headers, bool entire_response_received) {
+  if (!entire_response_received) {
+    // To record successfully, we must have a complete response.  Otherwise you
+    // get https://github.com/pagespeed/mod_pagespeed/issues/1081.
+    Fail();
+  }
+
   if (!failure_ && !full_response_headers_considered_) {
     ConsiderResponseHeaders(kFullHeaders, response_headers);
   }

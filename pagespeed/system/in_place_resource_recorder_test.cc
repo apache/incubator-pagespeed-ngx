@@ -97,7 +97,8 @@ class InPlaceResourceRecorderTest : public RewriteTestBase {
     StringPiece gzipped(reinterpret_cast<const char*>(&kGzippedData[0]),
                         STATIC_STRLEN(kGzippedData));
     recorder->Write(gzipped, message_handler());
-    recorder.release()->DoneAndSetHeaders(&final_headers);
+    recorder.release()->DoneAndSetHeaders(
+        &final_headers, true /* complete response */);
 
     HTTPValue value_out;
     ResponseHeaders headers_out;
@@ -160,7 +161,8 @@ TEST_F(InPlaceResourceRecorderTest, BasicOperation) {
       InPlaceResourceRecorder::kPreliminaryHeaders, &prelim_headers);
   recorder->Write(kHello, message_handler());
   recorder->Write(kBye, message_handler());
-  recorder.release()->DoneAndSetHeaders(&ok_headers);
+  recorder.release()->DoneAndSetHeaders(
+      &ok_headers, true /* complete response */);
 
   HTTPValue value_out;
   ResponseHeaders headers_out;
@@ -169,6 +171,26 @@ TEST_F(InPlaceResourceRecorderTest, BasicOperation) {
   StringPiece contents;
   EXPECT_TRUE(value_out.ExtractContents(&contents));
   EXPECT_EQ(StrCat(kHello, kBye), contents);
+}
+
+TEST_F(InPlaceResourceRecorderTest, IncompleteResponse) {
+  ResponseHeaders prelim_headers;
+  prelim_headers.set_status_code(HttpStatus::kOK);
+
+  ResponseHeaders ok_headers;
+  SetDefaultLongCacheHeaders(&kContentTypeCss, &ok_headers);
+
+  scoped_ptr<InPlaceResourceRecorder> recorder(MakeRecorder(kTestUrl));
+  recorder->ConsiderResponseHeaders(
+      InPlaceResourceRecorder::kPreliminaryHeaders, &prelim_headers);
+  recorder->Write(kHello, message_handler());
+  recorder.release()->DoneAndSetHeaders(
+      &ok_headers, false /* incomplete response */);
+
+  HTTPValue value_out;
+  ResponseHeaders headers_out;
+  EXPECT_EQ(HTTPCache::kNotFound,
+            HttpBlockingFind(kTestUrl, http_cache(), &value_out, &headers_out));
 }
 
 TEST_F(InPlaceResourceRecorderTest, CheckCacheableContentTypes) {
@@ -192,7 +214,8 @@ TEST_F(InPlaceResourceRecorderTest, BasicOperationFullHeaders) {
       InPlaceResourceRecorder::kFullHeaders, &ok_headers);
   recorder->Write(kHello, message_handler());
   recorder->Write(kBye, message_handler());
-  recorder.release()->DoneAndSetHeaders(&ok_headers);
+  recorder.release()->DoneAndSetHeaders(
+      &ok_headers, true /* complete response */);
 
   HTTPValue value_out;
   ResponseHeaders headers_out;
@@ -216,7 +239,8 @@ TEST_F(InPlaceResourceRecorderTest, DontRemember304) {
   scoped_ptr<InPlaceResourceRecorder> recorder(MakeRecorder(kTestUrl));
   recorder->ConsiderResponseHeaders(
       InPlaceResourceRecorder::kPreliminaryHeaders, &prelim_headers);
-  recorder.release()->DoneAndSetHeaders(&not_modified_headers);
+  recorder.release()->DoneAndSetHeaders(
+      &not_modified_headers, true /* complete response */);
 
   HTTPValue value_out;
   ResponseHeaders headers_out;
@@ -237,7 +261,8 @@ TEST_F(InPlaceResourceRecorderTest, Remember500AsFetchFailed) {
   scoped_ptr<InPlaceResourceRecorder> recorder(MakeRecorder(kTestUrl));
   recorder->ConsiderResponseHeaders(
       InPlaceResourceRecorder::kPreliminaryHeaders, &prelim_headers);
-  recorder.release()->DoneAndSetHeaders(&error_headers);
+  recorder.release()->DoneAndSetHeaders(
+      &error_headers, true /* complete response */);
 
   HTTPValue value_out;
   ResponseHeaders headers_out;
@@ -252,7 +277,8 @@ TEST_F(InPlaceResourceRecorderTest, RememberEmpty) {
 
   scoped_ptr<InPlaceResourceRecorder> recorder(MakeRecorder(kTestUrl));
   // No contents written.
-  recorder.release()->DoneAndSetHeaders(&ok_headers);
+  recorder.release()->DoneAndSetHeaders(
+      &ok_headers, true /* complete response */);
 
   HTTPValue value_out;
   ResponseHeaders headers_out;
