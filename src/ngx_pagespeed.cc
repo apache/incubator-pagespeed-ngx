@@ -1602,8 +1602,8 @@ void ps_release_request_context(void* data) {
   }
 
   if (ctx->recorder != NULL) {
-    ctx->recorder->Fail();
-    ctx->recorder->DoneAndSetHeaders(NULL);  // Deletes recorder.
+    // Deletes recorder.
+    ctx->recorder->DoneAndSetHeaders(NULL, false /* incomplete response */);
     ctx->recorder = NULL;
   }
 
@@ -2400,7 +2400,9 @@ ngx_int_t ps_in_place_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
     if (cl->buf->last_buf || recorder->failed()) {
       ResponseHeaders response_headers;
       copy_response_headers_from_ngx(r, &response_headers);
-      ctx->recorder->DoneAndSetHeaders(&response_headers);
+      ctx->recorder->DoneAndSetHeaders(
+          &response_headers,
+          cl->buf->last_buf /* response is complete if last_buf is set */);
       ctx->recorder = NULL;
       break;
     }
