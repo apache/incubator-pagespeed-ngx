@@ -27,6 +27,18 @@
 
 namespace net_instaweb {
 
+bool StringToDouble(const char* in, double* out) {
+  char* endptr;
+  *out = strtod(in, &endptr);
+  if (endptr != in) {
+    while (IsHtmlSpace(*endptr)) ++endptr;
+  }
+  // Ignore range errors from strtod.  The values it
+  // returns on underflow and overflow are the right
+  // fallback in a robust setting.
+  return *in != '\0' && *endptr == '\0';
+}
+
 GoogleString StrCat(StringPiece a, StringPiece b) {
   GoogleString res;
   res.reserve(a.size() + b.size());

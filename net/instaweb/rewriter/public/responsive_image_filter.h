@@ -94,6 +94,7 @@ class ResponsiveImageFirstFilter : public CommonFilter {
 
   friend class ResponsiveImageSecondFilter;
 
+  std::vector<double> densities_;
   ResponsiveImageCandidateMap candidate_map_;
 
   DISALLOW_COPY_AND_ASSIGN(ResponsiveImageFirstFilter);

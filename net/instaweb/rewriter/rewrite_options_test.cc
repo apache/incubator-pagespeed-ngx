@@ -955,13 +955,13 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
     RewriteOptions::kMaxCacheableResponseContentLength,
     RewriteOptions::kMaxCombinedCssBytes,
     RewriteOptions::kMaxCombinedJsBytes,
-    RewriteOptions::kMaxLowResImageSizeBytes,
-    RewriteOptions::kMaxLowResToHighResImageSizePercentage,
     RewriteOptions::kMaxHtmlCacheTimeMs,
     RewriteOptions::kMaxHtmlParseBytes,
     RewriteOptions::kMaxImageBytesForWebpInCss,
     RewriteOptions::kMaxImageSizeLowResolutionBytes,
     RewriteOptions::kMaxInlinedPreviewImagesIndex,
+    RewriteOptions::kMaxLowResImageSizeBytes,
+    RewriteOptions::kMaxLowResToHighResImageSizePercentage,
     RewriteOptions::kMaxPrefetchJsElements,
     RewriteOptions::kMaxRewriteInfoLogSize,
     RewriteOptions::kMaxUrlSegmentSize,
@@ -970,12 +970,12 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
     RewriteOptions::kMinCacheTtlMs,
     RewriteOptions::kMinImageSizeLowResolutionBytes,
     RewriteOptions::kMinResourceCacheTimeToRewriteMs,
+    RewriteOptions::kMobBeaconUrl,
+    RewriteOptions::kMobConfig,
     RewriteOptions::kMobConversionId,
     RewriteOptions::kMobIframe,
-    RewriteOptions::kMobConfig,
     RewriteOptions::kMobLayout,
     RewriteOptions::kMobMapConversionLabel,
-    RewriteOptions::kMobBeaconUrl,
     RewriteOptions::kMobMapLocation,
     RewriteOptions::kMobNav,
     RewriteOptions::kMobNavClasses,
@@ -993,18 +993,19 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
     RewriteOptions::kPersistBlinkBlacklist,
     RewriteOptions::kPreserveUrlRelativity,
     RewriteOptions::kPrivateNotVaryForIE,
-    RewriteOptions::kPubliclyCacheMismatchedHashesExperimental,
-    RewriteOptions::kProactivelyFreshenUserFacingRequest,
     RewriteOptions::kProactiveResourceFreshening,
+    RewriteOptions::kProactivelyFreshenUserFacingRequest,
     RewriteOptions::kProgressiveJpegMinBytes,
+    RewriteOptions::kPubliclyCacheMismatchedHashesExperimental,
     RewriteOptions::kRejectBlacklisted,
     RewriteOptions::kRejectBlacklistedStatusCode,
-    RewriteOptions::kRemoteConfigurationUrl,
     RewriteOptions::kRemoteConfigurationTimeoutMs,
+    RewriteOptions::kRemoteConfigurationUrl,
     RewriteOptions::kReportUnloadTime,
     RewriteOptions::kRequestOptionOverride,
     RewriteOptions::kRespectVary,
     RewriteOptions::kRespectXForwardedProto,
+    RewriteOptions::kResponsiveImageDensities,
     RewriteOptions::kRewriteDeadlineMs,
     RewriteOptions::kRewriteLevel,
     RewriteOptions::kRewriteRandomDropPercentage,
@@ -1013,9 +1014,9 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
     RewriteOptions::kServeGhostClickBusterWithSplitHtml,
     RewriteOptions::kServeSplitHtmlInTwoChunks,
     RewriteOptions::kServeStaleIfFetchError,
+    RewriteOptions::kServeStaleWhileRevalidateThresholdSec,
     RewriteOptions::kServeWebpToAnyAgent,
     RewriteOptions::kServeXhrAccessControlHeaders,
-    RewriteOptions::kServeStaleWhileRevalidateThresholdSec,
     RewriteOptions::kStickyQueryParameters,
     RewriteOptions::kSupportNoScriptEnabled,
     RewriteOptions::kTestOnlyPrioritizeCriticalCssDontApplyOriginalCss,
@@ -3072,6 +3073,39 @@ TEST_F(RewriteOptionsTest, OptionsScopeApplications) {
       &msg, &handler);
   EXPECT_EQ("", msg);
   EXPECT_EQ(result, RewriteOptions::kOptionNameUnknown);
+}
+
+TEST_F(RewriteOptionsTest, ParseFloats) {
+  RewriteOptions::ResponsiveDensities densities, expected_densities;
+
+  expected_densities.push_back(2);
+  expected_densities.push_back(2.8);
+  expected_densities.push_back(3.1);
+
+  EXPECT_TRUE(RewriteOptions::ParseFromString("2, 2.8, 3.1", &densities));
+  EXPECT_EQ(expected_densities, densities);
+  EXPECT_STREQ("2,2.8,3.1", RewriteOptions::ToString(densities));
+
+  EXPECT_TRUE(RewriteOptions::ParseFromString("2.8, 2, 3.1", &densities));
+  EXPECT_EQ(expected_densities, densities);
+  EXPECT_STREQ("2,2.8,3.1", RewriteOptions::ToString(densities));
+
+  EXPECT_TRUE(RewriteOptions::ParseFromString("3.1, 2.8, 2", &densities));
+  EXPECT_EQ(expected_densities, densities);
+  EXPECT_STREQ("2,2.8,3.1", RewriteOptions::ToString(densities));
+
+  EXPECT_TRUE(RewriteOptions::ParseFromString("13", &densities));
+  ASSERT_EQ(1, densities.size());
+  EXPECT_EQ(13, densities[0]);
+  EXPECT_STREQ("13", RewriteOptions::ToString(densities));
+
+  EXPECT_FALSE(RewriteOptions::ParseFromString("", &densities));
+  EXPECT_FALSE(RewriteOptions::ParseFromString("Hello", &densities));
+  EXPECT_FALSE(RewriteOptions::ParseFromString("1, 2; 3", &densities));
+  EXPECT_FALSE(RewriteOptions::ParseFromString("1, 2, 3f", &densities));
+  EXPECT_FALSE(RewriteOptions::ParseFromString("1, 2, -5", &densities));
+  EXPECT_FALSE(RewriteOptions::ParseFromString("1.2.3", &densities));
+  EXPECT_FALSE(RewriteOptions::ParseFromString("1 2 3", &densities));
 }
 
 }  // namespace net_instaweb

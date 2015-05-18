@@ -459,6 +459,27 @@ TEST_F(ResponsiveImageFilterTest, InputSrcSet) {
   ValidateExpected("input_srcset", input_html, output_html);
 }
 
+TEST_F(ResponsiveImageFilterTest, CustomDensities) {
+  RewriteOptions::ResponsiveDensities densities;
+  EXPECT_TRUE(RewriteOptions::ParseFromString("2, 4.7, 0.5", &densities));
+  options()->set_responsive_image_densities(densities);
+
+  options()->EnableFilter(RewriteOptions::kResponsiveImages);
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  rewrite_driver()->AddFilters();
+
+  const char input_html[] = "<img src=a.jpg width=100 height=100>";
+  GoogleString output_html = StrCat(
+      "<img src=", EncodeImage(100, 100, "a.jpg", "0", "jpg"),
+      " width=100 height=100 srcset=\"",
+      // Note: Resolutions are sorted.
+      EncodeImage(50, 50, "a.jpg", "0", "jpg"), " 0.5x,",
+      EncodeImage(200, 200, "a.jpg", "0", "jpg"), " 2x,",
+      EncodeImage(470, 470, "a.jpg", "0", "jpg"), " 4.7x,"
+      "a.jpg 10.23x\">");
+  ValidateExpected("custom_densities", input_html, output_html);
+}
+
 TEST_F(ResponsiveImageFilterTest, Debug) {
   options()->EnableFilter(RewriteOptions::kResponsiveImages);
   options()->EnableFilter(RewriteOptions::kRecompressJpeg);

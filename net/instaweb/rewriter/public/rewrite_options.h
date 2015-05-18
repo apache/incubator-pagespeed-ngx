@@ -353,18 +353,19 @@ class RewriteOptions {
   static const char kPersistBlinkBlacklist[];
   static const char kPreserveUrlRelativity[];
   static const char kPrivateNotVaryForIE[];
-  static const char kPubliclyCacheMismatchedHashesExperimental[];
-  static const char kProactivelyFreshenUserFacingRequest[];
   static const char kProactiveResourceFreshening[];
+  static const char kProactivelyFreshenUserFacingRequest[];
   static const char kProgressiveJpegMinBytes[];
-  static const char kRejectBlacklisted[];
+  static const char kPubliclyCacheMismatchedHashesExperimental[];
   static const char kRejectBlacklistedStatusCode[];
+  static const char kRejectBlacklisted[];
   static const char kRemoteConfigurationTimeoutMs[];
   static const char kRemoteConfigurationUrl[];
   static const char kReportUnloadTime[];
   static const char kRequestOptionOverride[];
   static const char kRespectVary[];
   static const char kRespectXForwardedProto[];
+  static const char kResponsiveImageDensities[];
   static const char kRewriteDeadlineMs[];
   static const char kRewriteLevel[];
   static const char kRewriteRandomDropPercentage[];
@@ -485,6 +486,11 @@ class RewriteOptions {
     }
     GoogleString name;
     GoogleString value;
+  };
+
+  // We only create this class so that we get the correct ParseFromString()
+  // version for parsing densities.
+  class ResponsiveDensities : public std::vector<double> {
   };
 
   // This version index serves as global signature key.  Much of the
@@ -689,6 +695,7 @@ class RewriteOptions {
   static const int kDefaultMaxPrefetchJsElements;
   static const int64 kDefaultOptionCookiesDurationMs;
   static const int64 kDefaultLoadFromFileCacheTtlMs;
+  static const double kDefaultResponsiveImageDensities[];
 
   // IE limits URL size overall to about 2k characters.  See
   // http://support.microsoft.com/kb/208427/EN-US
@@ -1320,6 +1327,9 @@ class RewriteOptions {
   static bool ParseFromString(StringPiece value_string, int64* value) {
     return StringToInt64(value_string, value);
   }
+  static bool ParseFromString(StringPiece value_string, double* value) {
+    return StringToDouble(value_string, value);
+  }
   static bool ParseFromString(StringPiece value_string, GoogleString* value) {
     value_string.CopyToString(value);
     return true;
@@ -1336,6 +1346,8 @@ class RewriteOptions {
   }
   static bool ParseFromString(StringPiece value_string, Color* color);
   static bool ParseFromString(StringPiece value_string, MobTheme* theme);
+  static bool ParseFromString(StringPiece value_string,
+                              ResponsiveDensities* value);
   static bool ParseFromString(StringPiece value_string,
                               protobuf::MessageLite* proto);
 
@@ -2570,6 +2582,13 @@ class RewriteOptions {
     return option_cookies_duration_ms_.value();
   }
 
+  void set_responsive_image_densities(const ResponsiveDensities& x) {
+    set_option(x, &responsive_image_densities_);
+  }
+  const ResponsiveDensities& responsive_image_densities() const {
+    return responsive_image_densities_.value();
+  }
+
   bool mob_always() const { return mob_always_.value(); }
   void set_mob_always(bool x) { set_option(x, &mob_always_); }
   bool mob_config() const { return mob_config_.value(); }
@@ -3294,6 +3313,7 @@ class RewriteOptions {
   FRIEND_TEST(RewriteOptionsTest, ExperimentMergeTest);
   FRIEND_TEST(RewriteOptionsTest, LookupOptionByNameTest);
   FRIEND_TEST(RewriteOptionsTest, ColorUtilTest);
+  FRIEND_TEST(RewriteOptionsTest, ParseFloats);
 
   // Helper functions to check if given header need to be blocked.
   bool HasRejectedHeader(const StringPiece& header_name,
@@ -3476,6 +3496,8 @@ class RewriteOptions {
                                       const Hasher* hasher);
   static GoogleString OptionSignature(const MobTheme& mob_theme,
                                       const Hasher* hasher);
+  static GoogleString OptionSignature(const ResponsiveDensities& densities,
+                                      const Hasher* hasher);
   static GoogleString OptionSignature(
       const protobuf::MessageLite& proto,
       const Hasher* hasher);
@@ -3499,6 +3521,7 @@ class RewriteOptions {
   static GoogleString ToString(const BeaconUrl& beacon_url);
   static GoogleString ToString(const MobTheme& mob_theme);
   static GoogleString ToString(const Color& color);
+  static GoogleString ToString(const ResponsiveDensities& densities);
   static GoogleString ToString(const protobuf::MessageLite& proto);
 
   // Returns true if p1's option_name is less than p2's. Used to order
@@ -4055,6 +4078,9 @@ class RewriteOptions {
   // option_cookies_duration_ms_ is how long the cookie will live for when set.
   Option<GoogleString> sticky_query_parameters_;
   Option<int64> option_cookies_duration_ms_;
+
+  // Comma separated list of densities to use for responsive images.
+  Option<ResponsiveDensities> responsive_image_densities_;
 
   // If set, how to fragment the http cache.  Otherwise the server's hostname,
   // from the Host header, is used.

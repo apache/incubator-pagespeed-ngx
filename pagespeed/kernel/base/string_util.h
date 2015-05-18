@@ -105,6 +105,24 @@ inline bool StringToInt64(const GoogleString& in, int64* out) {
 }
 
 
+// Parses valid floating point number and returns true if string contains only
+// that floating point number (ignoring leading/trailing whitespace).
+// Note: This also parses hex and exponential float notation.
+bool StringToDouble(const char* in, double* out);
+
+inline bool StringToDouble(GoogleString in, double* out) {
+  const char* in_c_str = in.c_str();
+  if (strlen(in_c_str) != in.size()) {
+    // If there are embedded nulls, always fail.
+    return false;
+  }
+  return StringToDouble(in_c_str, out);
+}
+
+inline bool StringToDouble(StringPiece in, double* out) {
+  return StringToDouble(in.as_string(), out);
+}
+
 // Returns the part of the piece after the first '=', trimming any
 // white space found at the beginning or end of the resulting piece.
 // Returns an empty string if '=' was not found.

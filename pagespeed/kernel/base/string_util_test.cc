@@ -181,6 +181,48 @@ TEST_F(IntegerToStringToIntTest, TestIntegerToStringToInt) {
   }
 }
 
+class StringToDoubleTest : public testing::Test {
+ protected:
+  void ValidateStringToDouble(StringPiece str, double expected) {
+    double actual;
+    EXPECT_TRUE(StringToDouble(str, &actual))
+        << "Couldn't parse string: " << str;
+    EXPECT_DOUBLE_EQ(expected, actual);
+  }
+
+  void InvalidStringToDouble(StringPiece str) {
+    double d;
+    EXPECT_FALSE(StringToDouble(str, &d)) << "Could parse string: " << str;
+  }
+};
+
+TEST_F(StringToDoubleTest, Parse) {
+  ValidateStringToDouble("0", 0.0);
+  ValidateStringToDouble("13", 13.0);
+  ValidateStringToDouble("3.14", 3.14);
+  ValidateStringToDouble("-8.13", -8.13);
+  ValidateStringToDouble("-.00002", -.00002);
+  ValidateStringToDouble("50e23", 50e23);
+  ValidateStringToDouble("7e-35", 7e-35);
+  ValidateStringToDouble("00", 0.0);
+  ValidateStringToDouble("013", 13.0);
+  ValidateStringToDouble("  13  ", 13.0);
+}
+
+TEST_F(StringToDoubleTest, NoParse) {
+  InvalidStringToDouble("");
+  InvalidStringToDouble("foo");
+  InvalidStringToDouble("27foo");
+  InvalidStringToDouble("27 foo");
+  InvalidStringToDouble("0.1.2");
+  InvalidStringToDouble("--13");
+  InvalidStringToDouble("- 13");
+
+  const char embedded_null[] = "27\0foo";
+  StringPiece embedded_null_sp(embedded_null, STATIC_STRLEN(embedded_null));
+  InvalidStringToDouble(embedded_null_sp);
+}
+
 class SplitStringTest : public testing::Test {
 };
 

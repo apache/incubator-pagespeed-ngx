@@ -269,6 +269,8 @@ const char RewriteOptions::kRejectBlacklistedStatusCode[] =
 const char RewriteOptions::kReportUnloadTime[] = "ReportUnloadTime";
 const char RewriteOptions::kRespectVary[] = "RespectVary";
 const char RewriteOptions::kRespectXForwardedProto[] = "RespectXForwardedProto";
+const char RewriteOptions::kResponsiveImageDensities[] =
+    "ResponsiveImageDensities";
 const char RewriteOptions::kRewriteDeadlineMs[] = "RewriteDeadlinePerFlushMs";
 const char RewriteOptions::kRewriteLevel[] = "RewriteLevel";
 const char RewriteOptions::kRewriteRandomDropPercentage[] =
@@ -576,6 +578,8 @@ const int64 RewriteOptions::kDefaultMaxLowResImageSizeBytes = -1;
 // By default, all images are inline-previewed, as long as the low-res size is
 // lesser than the full-res size.
 const int RewriteOptions::kDefaultMaxLowResToFullResImageSizePercentage = 100;
+
+const double RewriteOptions::kDefaultResponsiveImageDensities[] = { 1.5, 2.0 };
 
 const RewriteOptions::FilterEnumToIdAndNameEntry*
     RewriteOptions::filter_id_to_enum_array_[RewriteOptions::kEndOfFilters];
@@ -2286,6 +2290,16 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       "The max-age in ms of cookies that set PageSpeed options.", true);
 
+  ResponsiveDensities default_densities;
+  default_densities.assign(
+      kDefaultResponsiveImageDensities, kDefaultResponsiveImageDensities +
+      arraysize(kDefaultResponsiveImageDensities));
+  AddBaseProperty(
+      default_densities,  &RewriteOptions::responsive_image_densities_,
+      "rid", kResponsiveImageDensities, kDirectoryScope,
+      "Comma separated list of screen densities to target with "
+      "ResponsiveImageFilter srcsets.", true);
+
   AddBaseProperty(
       false, &RewriteOptions::mob_always_, "malways", kAlwaysMobilize,
       kQueryScope,
@@ -3448,10 +3462,39 @@ bool RewriteOptions::ParseFromString(StringPiece value_string,
   return true;
 }
 
-// static
-bool RewriteOptions::ParseFromString(
-    StringPiece value_string,
-    protobuf::MessageLite* proto) {
+bool RewriteOptions::ParseFromString(StringPiece value_string,
+                                     ResponsiveDensities* value) {
+  // Temp vector so that we don't return any densities if there's an error.
+  std::vector<double> ret;
+  StringPieceVector density_strs;
+  // Ignores empty strings.
+  SplitStringUsingSubstr(value_string, ",", &density_strs);
+  if (density_strs.size() == 0) {
+    // TODO(sligocki): Return error_message instead of directly logging message.
+    LOG(ERROR) << "ResponsiveImageDensities: Must not be empty list.";
+    return false;
+  }
+  for (size_t i = 0, n = density_strs.size(); i < n; ++i) {
+    double density;
+    if (!ParseFromString(density_strs[i], &density)) {
+      LOG(ERROR) << "ResponsiveImageDensities: Cannot parse number: "
+                 << density_strs[i];
+      return false;
+    } else if (density <= 0) {
+      LOG(ERROR) << "ResponsiveImageDensities: Must be > 0. Invalid number: "
+                 << density_strs[i];
+      return false;
+    } else {  // Valid
+      ret.push_back(density);
+    }
+  }
+  value->swap(ret);
+  std::sort(value->begin(), value->end());
+  return true;
+}
+
+bool RewriteOptions::ParseFromString(StringPiece value_string,
+                                     protobuf::MessageLite* proto) {
   return ParseProtoFromStringPiece(value_string, proto);
 }
 
@@ -3824,7 +3867,11 @@ GoogleString RewriteOptions::OptionSignature(const MobTheme& theme,
   return hasher->Hash(to_hash);
 }
 
-// static
+GoogleString RewriteOptions::OptionSignature(
+    const ResponsiveDensities& densities, const Hasher* hasher) {
+  return hasher->Hash(ToString(densities));
+}
+
 GoogleString RewriteOptions::OptionSignature(
     const protobuf::MessageLite& proto,
     const Hasher* hasher) {
@@ -4038,7 +4085,21 @@ GoogleString RewriteOptions::ToString(const Color& color) {
                       static_cast<int>(color.g), static_cast<int>(color.b));
 }
 
-// static
+GoogleString RewriteOptions::ToString(const ResponsiveDensities& densities) {
+  GoogleString result = "";
+  const char* delim = "";
+  for (ResponsiveDensities::const_iterator iter = densities.begin();
+       iter != densities.end(); ++iter) {
+    // 4 digits of precision seems like plenty. Note: hashing doubles is
+    // generally not a good idea. But in this case we are only parsing the
+    // doubles from config and never performing any arithmetic, so hashing
+    // should be alright.
+    StrAppend(&result, delim, StringPrintf("%.4g", *iter));
+    delim = ",";
+  }
+  return result;
+}
+
 GoogleString RewriteOptions::ToString(const protobuf::MessageLite& proto) {
   return proto.SerializeAsString();
 }

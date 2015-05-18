@@ -19,6 +19,7 @@
 
 #include "net/instaweb/rewriter/public/responsive_image_filter.h"
 
+#include <cstddef>                     // for size_t
 #include <memory>
 #include <utility>                      // for pair
 
@@ -46,7 +47,9 @@ const char ResponsiveImageFirstFilter::kFullsizedVirtualImage[] =
     "fullsized-virtual";
 
 ResponsiveImageFirstFilter::ResponsiveImageFirstFilter(RewriteDriver* driver)
-    : CommonFilter(driver) {
+    : CommonFilter(driver),
+      densities_(driver->options()->responsive_image_densities()) {
+  CHECK(!densities_.empty());
 }
 
 ResponsiveImageFirstFilter::~ResponsiveImageFirstFilter() {
@@ -113,21 +116,21 @@ void ResponsiveImageFirstFilter::AddHiResImages(HtmlElement* element) {
     // TODO(sligocki): Possibly use lower quality settings for 1.5x and 2x
     // because standard quality-85 are overkill for high density displays.
     // However, we might want high quality for zoom.
-    // Note: These must be listed in ascending order.
     ResponsiveVirtualImages virtual_images;
     virtual_images.width = orig_width;
     virtual_images.height = orig_height;
 
-    virtual_images.non_inlinable_candidates.push_back(
-        AddHiResVersion(element, *src_attr, orig_width, orig_height,
-                        kNonInlinableVirtualImage, 1.5));
-    virtual_images.non_inlinable_candidates.push_back(
-        AddHiResVersion(element, *src_attr, orig_width, orig_height,
-                        kNonInlinableVirtualImage, 2));
+    for (size_t i = 0, n = densities_.size(); i < n; ++i) {
+      virtual_images.non_inlinable_candidates.push_back(
+          AddHiResVersion(element, *src_attr, orig_width, orig_height,
+                          kNonInlinableVirtualImage, densities_[i]));
+    }
 
+    // Highest quality version.
     virtual_images.inlinable_candidate =
         AddHiResVersion(element, *src_attr, orig_width, orig_height,
-                        kInlinableVirtualImage, 2);
+                        kInlinableVirtualImage,
+                        densities_[densities_.size() - 1]);
 
     virtual_images.fullsized_candidate =
         AddHiResVersion(element, *src_attr, orig_width, orig_height,
