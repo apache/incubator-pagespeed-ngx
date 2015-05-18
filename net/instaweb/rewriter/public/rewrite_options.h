@@ -340,6 +340,7 @@ class RewriteOptions {
   static const char kMobIframe[];
   static const char kMobLayout[];
   static const char kMobNav[];
+  static const char kMobLabeledMode[];
   static const char kMobNavClasses[];
   static const char kMobNavServerSide[];
   static const char kMobStatic[];
@@ -2615,6 +2616,8 @@ class RewriteOptions {
   void set_mob_layout(bool x) { set_option(x, &mob_layout_); }
   bool mob_nav() const { return mob_nav_.value(); }
   void set_mob_nav(bool x) { set_option(x, &mob_nav_); }
+  bool mob_labeled_mode() const { return mob_labeled_mode_.value(); }
+  void set_mob_labeled_mode(bool x) { set_option(x, &mob_labeled_mode_); }
   const GoogleString& mob_nav_classes() const {
     return mob_nav_classes_.value();
   }
@@ -4129,6 +4132,7 @@ class RewriteOptions {
   Option<bool> mob_iframe_;
   Option<bool> mob_layout_;
   Option<bool> mob_nav_;
+  Option<bool> mob_labeled_mode_;
   Option<GoogleString> mob_nav_classes_;
   Option<bool> mob_nav_server_side_;
   Option<bool> mob_static_;

@@ -81,6 +81,11 @@ body.mob-iframe {
   transition: opacity 0.2s;
 }
 
+#psmob-header-bar.labeled {
+  -webkit-justify-content: space-around;
+  justify-content: space-around;
+}
+
 #psmob-header-bar.hide {
   visibility: 'hidden';
   display: 'none';
@@ -124,34 +129,45 @@ body.mob-iframe {
   background-color: rgba(255, 255, 255, 0.4);
 }
 
-#psmob-map-button,
+.psmob-button {
+  display: -webkit-flex;
+  display: flex;
+}
+
 #psmob-menu-button,
-#psmob-phone-dialer {
+.psmob-button-icon {
   height: 50px;
   width: 50px;
 }
 
-#psmob-phone-dialer {
+/* We don't show the logo or menu button in labeled mode. */
+#psmob-header-bar.labeled #psmob-menu-button,
+#psmob-header-bar.labeled #psmob-logo-span {
+  display: none;
+}
+
+.psmob-button-icon {
+  display: inline-block;
   box-sizing: content-box;
   background-repeat: no-repeat;
   background-size: 60%;
   background-position: center;
 }
 
-#psmob-map-button {
-  /* Required for android browser. */
-  display: block;
+.psmob-button-text {
+  /* Only display button text in labeled mode. */
+  display: none;
+
+  height: 100%;
+  font-family: arial, sans-serif;
+  font-size: 20px;
+  font-weight: bold;
+  line-height: 50px;
+  margin: 0;
 }
 
-#psmob-map-image {
-  /* Center the image in the A tag. */
-  display: block;
-  margin: 0 auto;
-
-  max-width: 60%;
-  max-height: 60%;
-  padding: 20%;
-  box-sizing: content-box;
+#psmob-header-bar.labeled .psmob-button-text {
+  display: inline-block;
 }
 
 #psmob-logo-span {
@@ -208,8 +224,7 @@ body.mob-iframe {
   }
 
   #psmob-header-bar.mobile #psmob-menu-button,
-  #psmob-header-bar.mobile #psmob-map-button,
-  #psmob-header-bar.mobile #psmob-phone-dialer {
+  #psmob-header-bar.mobile .psmob-button-icon {
     height: 150px;
     width: 150px;
   }
@@ -219,6 +234,11 @@ body.mob-iframe {
     height: 90px;
     padding-top: 30px;
     padding-bottom: 30px;
+  }
+
+  .psmob-button-text {
+    line-height: 150px;
+    font-size: 40px;
   }
 
   #psmob-nav-panel.mobile {
@@ -231,8 +251,6 @@ body.mob-iframe {
     min-height: 120px;
     line-height: 120px !important;
   }
-
-
 }
 
 #psmob-nav-panel {

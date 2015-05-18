@@ -45,10 +45,10 @@ pagespeed.MobUtil.ElementId = {
   HEADER_BAR: 'psmob-header-bar',
   LOGO_SPAN: 'psmob-logo-span',
   LOGO_IMAGE: 'psmob-logo-image',
-  MAP_BUTTON: 'psmob-map-button',
   MAP_IMAGE: 'psmob-map-image',
   MENU_BUTTON: 'psmob-menu-button',
-  PHONE_DIALER: 'psmob-phone-dialer',
+  PHONE_DIALER_ICON: 'psmob-phone-dialer-icon',
+  PHONE_DIALER_TEXT: 'psmob-phone-dialer-text',
   PROGRESS_LOG: 'ps-progress-log',
   PROGRESS_REMOVE: 'ps-progress-remove',
   PROGRESS_SCRIM: 'ps-progress-scrim',
@@ -59,18 +59,22 @@ pagespeed.MobUtil.ElementId = {
 
 
 /**
- * The classes of elements used for mobilization.
+ * Class names used for mobilization.
  * @enum {string}
  */
 pagespeed.MobUtil.ElementClass = {
+  BUTTON: 'psmob-button',
+  BUTTON_ICON: 'psmob-button-icon',
+  BUTTON_TEXT: 'psmob-button-text',
   HAMBURGER_DIV: 'psmob-hamburger-div',
   HAMBURGER_LINE: 'psmob-hamburger-line',
+  LABELED: 'labeled',
   LOGO_CHOOSER_CHOICE: 'psmob-logo-chooser-choice',
-  LOGO_CHOOSER_CONFIG_FRAGMENT: 'psmob-logo-chooser-config-fragment',
   LOGO_CHOOSER_COLOR: 'psmob-logo-chooser-color',
-  LOGO_CHOOSER_SWAP: 'psmob-logo-chooser-swap',
   LOGO_CHOOSER_COLUMN_HEADER: 'psmob-logo-chooser-column-header',
+  LOGO_CHOOSER_CONFIG_FRAGMENT: 'psmob-logo-chooser-config-fragment',
   LOGO_CHOOSER_IMAGE: 'psmob-logo-chooser-image',
+  LOGO_CHOOSER_SWAP: 'psmob-logo-chooser-swap',
   LOGO_CHOOSER_TABLE: 'psmob-logo-chooser-table',
   MENU_EXPAND_ICON: 'psmob-menu-expand-icon'
 };
@@ -882,13 +886,13 @@ pagespeed.MobUtil.toCssString1 = function(unescaped) {
 
 
 /**
- * Logs a message to the console, if that functionality has not been
- * disabled by the site.
+ * Logs a message to the console, only in debug mode, and if that functionality
+ * has not been disabled by the site.
  * @param {string} message
  */
 pagespeed.MobUtil.consoleLog = function(message) {
   // TODO(jud): Consider using goog.log.
-  if (console && console.log) {
+  if (window.psDebugMode && console && console.log) {
     console.log(message);
   }
 };
@@ -904,7 +908,7 @@ pagespeed.MobUtil.BeaconEvents = {
   MENU_BUTTON_CLOSE: 'psmob-menu-button-close',
   MENU_BUTTON_OPEN: 'psmob-menu-button-open',
   NAV_DONE: 'nav-done',
-  PHONE_DIALER: 'psmob-phone-dialer'
+  PHONE_BUTTON: 'psmob-phone-dialer'
 };
 
 

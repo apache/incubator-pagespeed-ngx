@@ -63,19 +63,20 @@ GoogleString HeadAndViewportWithTheme(bool layout_mode, bool precompute_mode,
                                       StringPiece logo_url,
                                       StringPiece device_type) {
   return StrCat(
-      "<script>var psDebugMode=false;var psNavMode=true;"
-      "var psConfigMode=false;"
-      "var psLayoutMode=", BoolToString(layout_mode), ";"
-      "var psStaticJs=false;"
-      "var psDeviceType='", device_type, "';"
-      "var psConversionId=", Integer64ToString(kConversionId), ";"
-      "var psPhoneNumber='", kPhoneNumber, "';"
-      "var psPhoneConversionLabel='", kPhoneConversionLabel, "';"
-      "var psMobBackgroundColor=", bg_color, ";"
-      "var psMobForegroundColor=", fg_color, ";",
-      precompute_mode ? "var psMobPrecompute=true;" : "",
-      logo_url.empty() ? "" : StrCat("var psMobLogoUrl=", logo_url, ";"),
-      "var psMobBeaconUrl='", kMobBeaconUrl, "';"
+      "<script>window.psDebugMode=false;window.psNavMode=true;"
+      "window.psLabeledMode=false;"
+      "window.psConfigMode=false;"
+      "window.psLayoutMode=", BoolToString(layout_mode), ";"
+      "window.psStaticJs=false;"
+      "window.psDeviceType='", device_type, "';"
+      "window.psConversionId=", Integer64ToString(kConversionId), ";"
+      "window.psPhoneNumber='", kPhoneNumber, "';"
+      "window.psPhoneConversionLabel='", kPhoneConversionLabel, "';"
+      "window.psMobBackgroundColor=", bg_color, ";"
+      "window.psMobForegroundColor=", fg_color, ";",
+      precompute_mode ? "window.psMobPrecompute=true;" : "",
+      logo_url.empty() ? "" : StrCat("window.psMobLogoUrl=", logo_url, ";"),
+      "window.psMobBeaconUrl='", kMobBeaconUrl, "';"
       "</script>",
       (layout_mode ? ("<meta name='viewport' content='width=device-width'/>"
                       "<script src=\"/psajs/mobilize_xhr.0.js\"></script>")

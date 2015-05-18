@@ -239,6 +239,7 @@ const char RewriteOptions::kMobConfig[] = "MobConfig";
 const char RewriteOptions::kMobIframe[] = "MobIframe";
 const char RewriteOptions::kMobLayout[] = "MobLayout";
 const char RewriteOptions::kMobNav[] = "MobNav";
+const char RewriteOptions::kMobLabeledMode[] = "MobLabeledMode";
 const char RewriteOptions::kMobNavClasses[] = "MobNavigationalClasses";
 const char RewriteOptions::kMobNavServerSide[] = "MobNavServerSide";
 const char RewriteOptions::kMobStatic[] = "MobStatic";
@@ -2350,6 +2351,14 @@ void RewriteOptions::AddProperties() {
       false, &RewriteOptions::mob_nav_, "mnav", kMobNav,
       kQueryScope,
       "(experimental) whether to run navigation resynthesis when mobilizing",
+      true);
+  // TODO(jud): Rename or remove this option once we've settled on a final
+  // design for the mobilization header bar.
+  AddBaseProperty(
+      false, &RewriteOptions::mob_labeled_mode_, "mlabeled", kMobLabeledMode,
+      kQueryScope,
+      "(experimental) whether to use text labels in the header bar. Also "
+      "disables the menu button and the logo.",
       true);
   AddBaseProperty(
       "", &RewriteOptions::mob_nav_classes_, "navcls", kMobNavClasses,

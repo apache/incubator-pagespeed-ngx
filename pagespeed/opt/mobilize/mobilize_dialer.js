@@ -17,6 +17,7 @@
 goog.provide('pagespeed.MobDialer');
 
 goog.require('goog.dom.TagName');
+goog.require('goog.dom.classlist');
 goog.require('goog.json');
 goog.require('goog.net.Cookies');  // abstraction gzipped size cost: 336 bytes.
 goog.require('goog.net.Jsonp');
@@ -26,6 +27,8 @@ goog.require('pagespeed.MobUtil');
 
 /**
  * Creates a phone dialer.
+ * TODO(jud): This button now behaves pretty much identically to the map button,
+ * so they should share this implementation.
  * @param {?string} phoneNumber
  * @param {?string} conversionId
  * @param {?string} conversionLabel
@@ -37,6 +40,13 @@ pagespeed.MobDialer = function(phoneNumber, conversionId, conversionLabel) {
    * @private {?Element}
    */
   this.callButton_ = null;
+
+
+  /**
+   * Call button icon.
+   * @private {?Element}
+   */
+  this.callButtonIcon_ = null;
 
   /**
    * Phone number to dial.  Note that this will initially be whatever was
@@ -82,6 +92,13 @@ pagespeed.MobDialer.CALL_BUTTON =
 
 
 /**
+ * The text to insert next to the call button.
+ * @private @const {string}
+ */
+pagespeed.MobDialer.CALL_TEXT_ = 'CALL US';
+
+
+/**
  * Cookie to use to store phone dialer information to reduce query volume
  * to googleadservices.com.
  * @const {string}
@@ -92,24 +109,37 @@ pagespeed.MobDialer.WCM_COOKIE = 'psgwcm';
 /**
  * Creates a phone-dialer button and returns it.  Returns null if there
  * is no fallback phone number passed into the constructor.
- * @return {Element}
+ * @return {?Element}
  */
 pagespeed.MobDialer.prototype.createButton = function() {
-  if (this.phoneNumber_) {
-    this.callButton_ = document.createElement(goog.dom.TagName.DIV);
-    this.callButton_.id = pagespeed.MobUtil.ElementId.PHONE_DIALER;
-    var phone = this.getPhoneNumberFromCookie_();
-    var dialFn;
-    if (phone) {
-      this.phoneNumber_ = phone;
-      dialFn = goog.bind(this.dialPhone_, this);
-    } else {
-      dialFn = goog.bind(this.requestPhoneNumberAndCall_, this);
-    }
-    this.callButton_.onclick =
-        goog.partial(pagespeed.MobUtil.sendBeacon,
-                     pagespeed.MobUtil.BeaconEvents.PHONE_DIALER, dialFn);
+  if (!this.phoneNumber_) {
+    return null;
   }
+  this.callButton_ = document.createElement(goog.dom.TagName.A);
+  goog.dom.classlist.add(this.callButton_,
+                         pagespeed.MobUtil.ElementClass.BUTTON);
+
+  this.callButtonIcon_ = document.createElement(goog.dom.TagName.DIV);
+  goog.dom.classlist.add(this.callButtonIcon_,
+                         pagespeed.MobUtil.ElementClass.BUTTON_ICON);
+  this.callButton_.appendChild(this.callButtonIcon_);
+
+  var callText = document.createElement(goog.dom.TagName.P);
+  this.callButton_.appendChild(callText);
+  goog.dom.classlist.add(callText, pagespeed.MobUtil.ElementClass.BUTTON_TEXT);
+  callText.appendChild(document.createTextNode(pagespeed.MobDialer.CALL_TEXT_));
+  var phone = this.getPhoneNumberFromCookie_();
+  var dialFn;
+  if (phone) {
+    this.phoneNumber_ = phone;
+    dialFn = goog.bind(this.dialPhone_, this);
+  } else {
+    dialFn = goog.bind(this.requestPhoneNumberAndCall_, this);
+  }
+  this.callButton_.onclick =
+      goog.partial(pagespeed.MobUtil.sendBeacon,
+                   pagespeed.MobUtil.BeaconEvents.PHONE_BUTTON, dialFn);
+
   return this.callButton_;
 };
 
@@ -118,8 +148,8 @@ pagespeed.MobDialer.prototype.createButton = function() {
  * @param {!goog.color.Rgb} color
  */
 pagespeed.MobDialer.prototype.setColor = function(color) {
-  if (this.callButton_) {
-    this.callButton_.style.backgroundImage = 'url(' +
+  if (this.callButtonIcon_) {
+    this.callButtonIcon_.style.backgroundImage = 'url(' +
         pagespeed.MobUtil.synthesizeImage(
             pagespeed.MobDialer.CALL_BUTTON, color) + ')';
   }

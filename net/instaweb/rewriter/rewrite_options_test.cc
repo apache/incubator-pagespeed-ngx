@@ -978,6 +978,7 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
     RewriteOptions::kMobMapConversionLabel,
     RewriteOptions::kMobMapLocation,
     RewriteOptions::kMobNav,
+    RewriteOptions::kMobLabeledMode,
     RewriteOptions::kMobNavClasses,
     RewriteOptions::kMobNavServerSide,
     RewriteOptions::kMobPhoneConversionLabel,

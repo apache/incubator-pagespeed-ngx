@@ -124,6 +124,7 @@ MobilizeRewriteFilter::MobilizeRewriteFilter(RewriteDriver* rewrite_driver)
       in_script_(false),
       use_js_layout_(rewrite_driver->options()->mob_layout()),
       use_js_nav_(rewrite_driver->options()->mob_nav()),
+      labeled_mode_(rewrite_driver->options()->mob_labeled_mode()),
       use_static_(rewrite_driver->options()->mob_static()),
       rewrite_js_(rewrite_driver->options()->Enabled(
           RewriteOptions::kRewriteJavascriptExternal)) {
@@ -250,17 +251,18 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
       // whether it was enabled.
       const RewriteOptions* options = driver()->options();
       GoogleString src = StrCat(
-          "var psDebugMode=", BoolToString(driver()->DebugMode()), ";"
-          "var psNavMode=", BoolToString(use_js_nav_), ";"
-          "var psConfigMode=", BoolToString(config_mode_), ";"
-          "var psLayoutMode=", BoolToString(use_js_layout_), ";"
-          "var psStaticJs=", BoolToString(use_static_), ";"
-          "var psDeviceType='", UserAgentMatcher::DeviceTypeString(
+          "window.psDebugMode=", BoolToString(driver()->DebugMode()), ";"
+          "window.psNavMode=", BoolToString(use_js_nav_), ";"
+          "window.psLabeledMode=", BoolToString(labeled_mode_), ";"
+          "window.psConfigMode=", BoolToString(config_mode_), ";"
+          "window.psLayoutMode=", BoolToString(use_js_layout_), ";"
+          "window.psStaticJs=", BoolToString(use_static_), ";"
+          "window.psDeviceType='", UserAgentMatcher::DeviceTypeString(
               driver()->request_properties()->GetDeviceType()), "';");
       const GoogleString& phone = options->mob_phone_number();
       const GoogleString& map_location = options->mob_map_location();
       if (!phone.empty() || !map_location.empty()) {
-        StrAppend(&src, "var psConversionId=",
+        StrAppend(&src, "window.psConversionId=",
                   Integer64ToString(options->mob_conversion_id()),
                   ";");
       }
@@ -269,16 +271,16 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
         EscapeToJsStringLiteral(phone, false, &escaped_phone);
         EscapeToJsStringLiteral(options->mob_phone_conversion_label(), false,
                                 &label);
-        StrAppend(&src, "var psPhoneNumber='", escaped_phone, "';"
-                  "var psPhoneConversionLabel='", label, "';");
+        StrAppend(&src, "window.psPhoneNumber='", escaped_phone, "';"
+                  "window.psPhoneConversionLabel='", label, "';");
       }
       if (!map_location.empty()) {
         GoogleString label, escaped_map_location;
         EscapeToJsStringLiteral(map_location, false, &escaped_map_location);
         EscapeToJsStringLiteral(options->mob_map_conversion_label(), false,
                                 &label);
-        StrAppend(&src, "var psMapLocation='", escaped_map_location, "';"
-                  "var psMapConversionLabel='", label, "';");
+        StrAppend(&src, "window.psMapLocation='", escaped_map_location, "';"
+                  "window.psMapConversionLabel='", label, "';");
       }
 
       // See if we have a precomputed theme, either via options or pcache.
@@ -305,28 +307,28 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
       }
 
       if (has_mob_theme) {
-        StrAppend(&src, "var psMobBackgroundColor=",
+        StrAppend(&src, "window.psMobBackgroundColor=",
                   FormatColorForJs(background_color), ";");
-        StrAppend(&src, "var psMobForegroundColor=",
+        StrAppend(&src, "window.psMobForegroundColor=",
                   FormatColorForJs(foreground_color), ";");
         if (!logo_url.empty()) {
           GoogleString escaped_logo_url;
           EscapeToJsStringLiteral(logo_url, false, &escaped_logo_url);
-          StrAppend(&src, "var psMobLogoUrl='", escaped_logo_url, "';");
+          StrAppend(&src, "window.psMobLogoUrl='", escaped_logo_url, "';");
         } else {
-          StrAppend(&src, "var psMobLogoUrl=null;");
+          StrAppend(&src, "window.psMobLogoUrl=null;");
         }
       } else {
-        StrAppend(&src, "var psMobBackgroundColor=null;");
-        StrAppend(&src, "var psMobForegroundColor=null;");
+        StrAppend(&src, "window.psMobBackgroundColor=null;");
+        StrAppend(&src, "window.psMobForegroundColor=null;");
       }
       if (options->Enabled(RewriteOptions::kMobilizePrecompute)) {
-        StrAppend(&src, "var psMobPrecompute=true;");
+        StrAppend(&src, "window.psMobPrecompute=true;");
       }
       GoogleString escaped_mob_beacon_url;
       EscapeToJsStringLiteral(options->mob_beacon_url(), false /* add_quotes */,
                               &escaped_mob_beacon_url);
-      StrAppend(&src, "var psMobBeaconUrl='", escaped_mob_beacon_url, "';");
+      StrAppend(&src, "window.psMobBeaconUrl='", escaped_mob_beacon_url, "';");
       driver()->InsertScriptAfterCurrent(src, false);
 
       // TODO(jmarantz): Consider waiting to see if we have a charset directive

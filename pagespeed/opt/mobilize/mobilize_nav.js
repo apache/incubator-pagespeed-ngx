@@ -46,17 +46,12 @@ pagespeed.MobNav = function() {
   this.navSections_ = [];
 
   /**
-   * Controls whether we use the color detected from mob_logo.js, or a
-   * predefined color.
-   * @private {boolean}
+   * The header bar element inserted at the top of the page. This is inserted by
+   * C++.
+   * @private {!Element}
    */
-  this.useDetectedThemeColor_ = true;
-
-  /**
-   * The header bar element inserted at the top of the page.
-   * @private {?Element}
-   */
-  this.headerBar_ = null;
+  this.headerBar_ =
+      goog.dom.getRequiredElement(pagespeed.MobUtil.ElementId.HEADER_BAR);
 
   /**
    * The style tag used to style the nav elements.
@@ -66,10 +61,11 @@ pagespeed.MobNav = function() {
 
   /**
    * Spacer div element inserted at the top of the page to push the rest of the
-   * content down.
-   * @private {?Element}
+   * content down. This is inserted in C++.
+   * @private {!Element}
    */
-  this.spacerDiv_ = null;
+  this.spacerDiv_ =
+      goog.dom.getRequiredElement(pagespeed.MobUtil.ElementId.SPACER);
 
   /**
    * The span containing the logo.
@@ -215,6 +211,13 @@ pagespeed.MobNav.MAP_BUTTON =
     'U5ZskXFmzYIuI+YYeXNoTZ4xUyxNurRpVKoTiGrtOiPs1R8vn54NGnZu3SJx9/YNcHak4MJj' +
     'uyx+HHnJ4g3EMY948zkDmtKbJ6kOvSd2B9G3D9fpfbr28NaBki+/5jz3M+rXG23vPil88TXm' +
     'R7RfCb/+/fwN+/v/D2CAAg5IoAoFAAA7';
+
+
+/**
+ * The text to insert next to the map button.
+ * @private @const {string}
+ */
+pagespeed.MobNav.MAP_BUTTON_TEXT_ = 'GET DIRECTIONS';
 
 
 /**
@@ -710,21 +713,17 @@ pagespeed.MobNav.prototype.addHeaderBarResizeEvents_ = function() {
  * @private
  */
 pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
-  // The header bar is position:absolute, but in C++ we create an empty div
-  // at the top to move the rest of the elements down.  We need to access
-  // on zooming to adjust its size.
-  this.spacerDiv_ = document.getElementById(pagespeed.MobUtil.ElementId.SPACER);
-  document.body.appendChild(this.spacerDiv_);
+  // Move the header bar and spacer div back to the top of the body, in case
+  // some other JS on the page inserted some elements.
   document.body.insertBefore(this.spacerDiv_, document.body.childNodes[0]);
-  this.headerBar_ =
-      document.getElementById(pagespeed.MobUtil.ElementId.HEADER_BAR);
-  document.body.appendChild(this.headerBar_);
   document.body.insertBefore(this.headerBar_, this.spacerDiv_);
-
-  if (!this.navDisabledForSite_()) {
-    this.menuButton_ = themeData.menuButton;
-    this.headerBar_.appendChild(this.menuButton_);
+  if (window.psLabeledMode) {
+    goog.dom.classlist.add(this.headerBar_,
+                           pagespeed.MobUtil.ElementClass.LABELED);
   }
+
+  this.menuButton_ = themeData.menuButton;
+  this.headerBar_.appendChild(this.menuButton_);
 
   this.logoSpan_ = themeData.anchorOrSpan;
   this.headerBar_.appendChild(themeData.anchorOrSpan);
@@ -820,20 +819,30 @@ pagespeed.MobNav.openMap_ = function() {
  * @private
  */
 pagespeed.MobNav.prototype.addMapNavigation_ = function(color) {
-  var mapImage = document.createElement(goog.dom.TagName.IMG);
-  mapImage.id = pagespeed.MobUtil.ElementId.MAP_IMAGE;
-  mapImage.src = pagespeed.MobUtil.synthesizeImage(
-      pagespeed.MobNav.MAP_BUTTON, color);
+
   this.mapButton_ = document.createElement(goog.dom.TagName.A);
-  this.mapButton_.id = pagespeed.MobUtil.ElementId.MAP_BUTTON;
-  this.mapButton_.href = '#';
+  goog.dom.classlist.add(this.mapButton_,
+                         pagespeed.MobUtil.ElementClass.BUTTON);
   this.mapButton_.addEventListener(goog.events.EventType.CLICK, function(e) {
     e.preventDefault();
     pagespeed.MobUtil.sendBeacon(pagespeed.MobUtil.BeaconEvents.MAP_BUTTON,
                                  pagespeed.MobNav.openMap_);
   });
-  this.mapButton_.appendChild(mapImage);
   this.headerBar_.appendChild(this.mapButton_);
+
+  var mapIcon = document.createElement(goog.dom.TagName.DIV);
+  goog.dom.classlist.add(mapIcon,
+                         pagespeed.MobUtil.ElementClass.BUTTON_ICON);
+  mapIcon.id = pagespeed.MobUtil.ElementId.MAP_IMAGE;
+  mapIcon.style.backgroundImage = 'url(' + pagespeed.MobUtil.synthesizeImage(
+      pagespeed.MobNav.MAP_BUTTON, color) + ')';
+  this.mapButton_.appendChild(mapIcon);
+
+  var mapText = document.createElement(goog.dom.TagName.P);
+  goog.dom.classlist.add(mapText, pagespeed.MobUtil.ElementClass.BUTTON_TEXT);
+  this.mapButton_.appendChild(mapText);
+  mapText.appendChild(
+      document.createTextNode(pagespeed.MobNav.MAP_BUTTON_TEXT_));
 };
 
 
@@ -852,20 +861,16 @@ pagespeed.MobNav.prototype.addThemeColor_ = function(themeData) {
 
 
   this.dialer_.setColor(themeData.menuFrontColor);
-  var backgroundColor = this.useDetectedThemeColor_ ?
-      pagespeed.MobUtil.colorNumbersToString(themeData.menuBackColor) :
-      '#3c78d8';
-  var color = this.useDetectedThemeColor_ ?
-      pagespeed.MobUtil.colorNumbersToString(themeData.menuFrontColor) :
-      'white';
+  var backgroundColor =
+      pagespeed.MobUtil.colorNumbersToString(themeData.menuBackColor);
+  var color = pagespeed.MobUtil.colorNumbersToString(themeData.menuFrontColor);
   var css = '#' + pagespeed.MobUtil.ElementId.HEADER_BAR +
             ' { background-color: ' + backgroundColor + '; }\n' +
+            '#' + pagespeed.MobUtil.ElementId.HEADER_BAR + ' * ' +
+            ' { color: ' + color + '; }\n' +
             '#' + pagespeed.MobUtil.ElementId.NAV_PANEL +
             ' { background-color: ' + color + '; }\n' +
-            '#' + pagespeed.MobUtil.ElementId.NAV_PANEL + ' li, ' +
-            '#' + pagespeed.MobUtil.ElementId.NAV_PANEL + ' a, ' +
-            '#' + pagespeed.MobUtil.ElementId.NAV_PANEL + ' div, ' +
-            '#' + pagespeed.MobUtil.ElementId.NAV_PANEL + ' p' +
+            '#' + pagespeed.MobUtil.ElementId.NAV_PANEL + ' * ' +
             ' { color: ' + backgroundColor + '; }\n';
   this.styleTag_ = document.createElement(goog.dom.TagName.STYLE);
   this.styleTag_.type = 'text/css';
@@ -1254,24 +1259,6 @@ pagespeed.MobNav.prototype.addNavButtonEvents_ = function() {
 
 
 /**
- * Fallback function for quickly disabling nav on a specific site. Returns true
- * if the nav menu should not be enabled on a site.
- * TODO(jud): Add a real option to control inserting of the nav menu. That will
- * require a PSS release however.
- * @private
- * @return {boolean}
- */
-pagespeed.MobNav.prototype.navDisabledForSite_ = function() {
-  /*
-  if (document.URL.indexOf('worldclassdriving') != -1) {
-    return true;
-  }
-  */
-  return false;
-};
-
-
-/**
  * Main entry point of nav mobilization. Should be called when logo detection is
  * finished.
  * @param {!pagespeed.MobUtil.ThemeData} themeData
@@ -1282,12 +1269,9 @@ pagespeed.MobNav.prototype.Run = function(themeData) {
   this.findElementsToOffset_();
   this.addHeaderBar_(themeData);
 
-  // Don't insert nav stuff if nav is disabled, there are no navigational
-  // sections on the page or if we are in an iFrame.
-  // TODO(jud): If there are nav elements in the iframe, we should try to move
-  // them to the top-level nav.
-  if (!this.navDisabledForSite_() &&
-      (this.navPanel_ || this.navSections_.length != 0) &&
+  // Don't insert nav stuff if there are no navigational sections on the page or
+  // if we are in an iFrame.
+  if ((this.navPanel_ || this.navSections_.length != 0) &&
       !pagespeed.MobUtil.inFriendlyIframe()) {
     this.addNavPanel_(themeData);
     this.addMenuButtonEvents_();
