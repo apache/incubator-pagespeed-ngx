@@ -21,12 +21,14 @@
 
 #include <map>
 
+#include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/callback.h"
 #include "pagespeed/kernel/base/file_system.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/thread_annotations.h"
 
 namespace net_instaweb {
 
@@ -89,7 +91,10 @@ class MemFileSystem : public FileSystem {
   virtual bool Unlock(const StringPiece& lock_name, MessageHandler* handler);
 
   // When atime is disabled, reading a file will not update its atime.
-  void set_atime_enabled(bool enabled) { atime_enabled_ = enabled; }
+  void set_atime_enabled(bool enabled) {
+    ScopedMutex lock(all_else_mutex_.get());
+    atime_enabled_ = enabled;
+  }
 
   // In order to test file-system 'atime' code, we need to move mock
   // time forward during tests by an entire second (aka 1000 ms).
@@ -141,42 +146,45 @@ class MemFileSystem : public FileSystem {
 
 
  private:
-  // all_else_mutex_ should be held when calling these.
-  inline void UpdateAtime(const StringPiece& path);
-  inline void UpdateMtime(const StringPiece& path);
+  inline void UpdateAtime(const StringPiece& path)
+      SHARED_LOCKS_REQUIRED(all_else_mutex_);
+  inline void UpdateMtime(const StringPiece& path)
+      SHARED_LOCKS_REQUIRED(all_else_mutex_);
 
   scoped_ptr<AbstractMutex> lock_map_mutex_;  // controls access to lock_map_
   scoped_ptr<AbstractMutex> all_else_mutex_;  // controls access to all else.
 
-  bool enabled_;  // When disabled, OpenInputFile returns NULL.
+  // When disabled, OpenInputFile returns NULL.
+  bool enabled_ GUARDED_BY(all_else_mutex_);
   // MemFileSystem::RemoveDir depends on string_map_ being sorted by key. If an
   // unsorted data structure is used (say a hash_map) this implementation will
   // need to be modified.
-  StringStringMap string_map_;
+  StringStringMap string_map_ GUARDED_BY(all_else_mutex_);
   Timer* timer_;
-  MockTimer* mock_timer_;  // used only for auto-advance functionality.
+  // Used only for auto-advance functionality.
+  MockTimer* mock_timer_ GUARDED_BY(all_else_mutex_);
 
   // atime_map_ holds times (in s) that files were last opened/modified.  Each
   // time we do such an operation, timer() advances by 1s (so all ATimes are
   // distinct).
   // ctime and mtime are updated only for moves and modifications.
-  std::map<GoogleString, int64> atime_map_;
-  std::map<GoogleString, int64> mtime_map_;
-  int temp_file_index_;
+  std::map<GoogleString, int64> atime_map_ GUARDED_BY(all_else_mutex_);
+  std::map<GoogleString, int64> mtime_map_ GUARDED_BY(all_else_mutex_);
+  int temp_file_index_ GUARDED_BY(all_else_mutex_);
   // lock_map_ holds times that locks were established (in ms).
   // locking and unlocking don't advance time.
-  std::map<GoogleString, int64> lock_map_;
-  bool atime_enabled_;
+  std::map<GoogleString, int64> lock_map_ GUARDED_BY(lock_map_mutex_);
+  bool atime_enabled_ GUARDED_BY(all_else_mutex_);
 
   // Indicates whether MemFileSystem will advance mock time whenever
   // a file is written.
-  bool advance_time_on_update_;
+  bool advance_time_on_update_ GUARDED_BY(all_else_mutex_);
 
   // Access statistics.
-  int num_input_file_opens_;
-  int num_input_file_stats_;
-  int num_output_file_opens_;
-  int num_temp_file_opens_;
+  int num_input_file_opens_ GUARDED_BY(all_else_mutex_);
+  int num_input_file_stats_ GUARDED_BY(all_else_mutex_);
+  int num_output_file_opens_ GUARDED_BY(all_else_mutex_);
+  int num_temp_file_opens_ GUARDED_BY(all_else_mutex_);
 
   // Hook to run after a file-write.
   scoped_ptr<FileCallback> write_callback_;

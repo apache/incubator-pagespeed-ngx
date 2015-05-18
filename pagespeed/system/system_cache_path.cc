@@ -76,9 +76,10 @@ SystemCachePath::SystemCachePath(const StringPiece& path,
       config->file_cache_clean_interval_ms(),
       config->file_cache_clean_size_kb() * 1024,
       config->file_cache_clean_inode_limit());
-  file_cache_backend_ = new FileCache(
-      config->file_cache_path(), factory->file_system(), NULL,
-      policy, factory->statistics(), factory->message_handler());
+  file_cache_backend_ =
+      new FileCache(config->file_cache_path(), factory->file_system(),
+                    factory->thread_system(), NULL, policy,
+                    factory->statistics(), factory->message_handler());
   factory->TakeOwnership(file_cache_backend_);
   file_cache_ = new CacheStats(kFileCache, file_cache_backend_,
                                factory->timer(), factory->statistics());

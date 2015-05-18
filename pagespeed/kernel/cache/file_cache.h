@@ -20,9 +20,10 @@
 #define PAGESPEED_KERNEL_CACHE_FILE_CACHE_H_
 
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/cache_interface.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
-#include "pagespeed/kernel/cache/cache_interface.h"
+#include "pagespeed/kernel/base/thread_system.h"
 
 namespace net_instaweb {
 
@@ -54,8 +55,8 @@ class FileCache : public CacheInterface {
   };
 
   FileCache(const GoogleString& path, FileSystem* file_system,
-            SlowWorker* worker, CachePolicy* policy, Statistics* stats,
-            MessageHandler* handler);
+            ThreadSystem* thread_system, SlowWorker* worker,
+            CachePolicy* policy, Statistics* stats, MessageHandler* handler);
   virtual ~FileCache();
 
   static void InitStats(Statistics* statistics);
@@ -99,19 +100,19 @@ class FileCache : public CacheInterface {
   // target_inode_count of 0 means no inode limit is applied.
   bool Clean(int64 target_size_bytes, int64 target_inode_count);
 
-  // Clean the cache, taking care of interprocess locking, as well as
-  // timestamp update. Returns true if the cache was actually cleaned.
-  bool CleanWithLocking(int64 next_clean_time_ms);
+  // Clean the cache, taking care of interprocess locking, as well as timestamp
+  // update.
+  void CleanWithLocking(int64 next_clean_time_ms) LOCKS_EXCLUDED(mutex_);
 
-  // Return true if we need to clean the cache, and outputs the next
-  // clean time to use should we follow its advice.
-  bool ShouldClean(int64* suggested_next_clean_time_ms);
+  // Return true if we need to clean the cache, and updates the next
+  // clean time if cleaning does not need to be run.
+  bool ShouldClean(int64* suggested_next_clean_time_ms) LOCKS_EXCLUDED(mutex_);
 
   // Check to see if it's time to clean the cache, and if so ask
   // worker_ to do it in a thread if it's not busy. Stores 'true' into
   // last_conditional_clean_result_ if it actually cleaned successfully,
   // false otherwise.
-  void CleanIfNeeded();
+  void CleanIfNeeded() LOCKS_EXCLUDED(mutex_);
 
   bool EncodeFilename(const GoogleString& key, GoogleString* filename);
 
@@ -120,12 +121,12 @@ class FileCache : public CacheInterface {
   SlowWorker* worker_;
   MessageHandler* message_handler_;
   const scoped_ptr<CachePolicy> cache_policy_;
-  int64 next_clean_ms_;
+  scoped_ptr<AbstractMutex> mutex_;
+  int64 next_clean_ms_ GUARDED_BY(mutex_);
   int path_length_limit_;  // Maximum total length of path file_system_ supports
   // The full paths to our cleanup timestamp and lock files.
   GoogleString clean_time_path_;
   GoogleString clean_lock_path_;
-  bool last_conditional_clean_result_;
 
   Variable* disk_checks_;
   Variable* cleanups_;

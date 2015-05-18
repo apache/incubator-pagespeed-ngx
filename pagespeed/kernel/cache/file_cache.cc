@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "base/logging.h"
+#include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/file_system.h"
 #include "pagespeed/kernel/base/function.h"
@@ -33,6 +34,7 @@
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/cache/cache_interface.h"
 #include "pagespeed/kernel/thread/slow_worker.h"
@@ -59,10 +61,7 @@ class FileCache::CacheCleanFunction : public Function {
       : cache_(cache),
         next_clean_time_ms_(next_clean_time_ms) {}
   virtual ~CacheCleanFunction() {}
-  virtual void Run() {
-    cache_->last_conditional_clean_result_ =
-        cache_->CleanWithLocking(next_clean_time_ms_);
-  }
+  virtual void Run() { cache_->CleanWithLocking(next_clean_time_ms_); }
 
  private:
   FileCache* cache_;
@@ -86,15 +85,15 @@ const char FileCache::kCleanLockName[] = "!clean!lock!";
 // TODO(abliss): remove policy from constructor; provide defaults here
 // and setters below.
 FileCache::FileCache(const GoogleString& path, FileSystem* file_system,
-                     SlowWorker* worker,
-                     CachePolicy* policy,
-                     Statistics* stats,
+                     ThreadSystem* thread_system, SlowWorker* worker,
+                     CachePolicy* policy, Statistics* stats,
                      MessageHandler* handler)
     : path_(path),
       file_system_(file_system),
       worker_(worker),
       message_handler_(handler),
       cache_policy_(policy),
+      mutex_(thread_system->NewMutex()),
       path_length_limit_(file_system_->MaxPathLength(path)),
       clean_time_path_(path),
       clean_lock_path_(path),
@@ -284,14 +283,15 @@ bool FileCache::Clean(int64 target_size_bytes, int64 target_inode_count) {
   return everything_ok;
 }
 
-bool FileCache::CleanWithLocking(int64 next_clean_time_ms) {
-  bool to_return = false;
-
+void FileCache::CleanWithLocking(int64 next_clean_time_ms) {
   if (file_system_->TryLockWithTimeout(
           clean_lock_path_, Timer::kHourMs, cache_policy_->timer,
           message_handler_).is_true()) {
-    // Update the timestamp file..
-    next_clean_ms_ = next_clean_time_ms;
+    // Update the timestamp file.
+    {
+      ScopedMutex lock(mutex_.get());
+      next_clean_ms_ = next_clean_time_ms;
+    }
     if (!file_system_->WriteFileAtomic(clean_time_path_,
                                        Integer64ToString(next_clean_time_ms),
                                        message_handler_)) {
@@ -299,19 +299,20 @@ bool FileCache::CleanWithLocking(int64 next_clean_time_ms) {
     }
 
     // Now actually clean.
-    to_return = Clean(cache_policy_->target_size_bytes,
-                      cache_policy_->target_inode_count);
+    Clean(cache_policy_->target_size_bytes, cache_policy_->target_inode_count);
     file_system_->Unlock(clean_lock_path_, message_handler_);
   }
-  return to_return;
 }
 
 bool FileCache::ShouldClean(int64* suggested_next_clean_time_ms) {
   bool to_return = false;
   const int64 now_ms = cache_policy_->timer->NowMs();
-  if (now_ms < next_clean_ms_) {
-    *suggested_next_clean_time_ms = next_clean_ms_;  // No change yet.
-    return false;
+  {
+    ScopedMutex lock(mutex_.get());
+    if (now_ms < next_clean_ms_) {
+      *suggested_next_clean_time_ms = next_clean_ms_;  // No change yet.
+      return false;
+    }
   }
 
   GoogleString clean_time_str;
@@ -327,8 +328,7 @@ bool FileCache::ShouldClean(int64* suggested_next_clean_time_ms) {
         " Doing an extra cache clean to be safe.", clean_time_path_.c_str());
   }
 
-  // If the "clean time" written in the file is older than now, we
-  // clean.
+  // If the "clean time" written in the file is older than now, we clean.
   if (clean_time_ms < now_ms) {
     message_handler_->Message(
         kInfo, "Need to check cache size against target %s",
@@ -347,6 +347,10 @@ bool FileCache::ShouldClean(int64* suggested_next_clean_time_ms) {
   }
 
   *suggested_next_clean_time_ms = new_clean_time_ms;
+  if (!to_return) {
+    ScopedMutex lock(mutex_.get());
+    next_clean_ms_ = new_clean_time_ms;
+  }
   return to_return;
 }
 
@@ -354,13 +358,10 @@ void FileCache::CleanIfNeeded() {
   DCHECK(worker_ != NULL);
   if (worker_ != NULL) {
     int64 suggested_next_clean_time_ms;
-    last_conditional_clean_result_ = false;
     if (ShouldClean(&suggested_next_clean_time_ms)) {
       worker_->Start();
       worker_->RunIfNotBusy(
           new CacheCleanFunction(this, suggested_next_clean_time_ms));
-    } else {
-      next_clean_ms_ = suggested_next_clean_time_ms;
     }
   }
 }

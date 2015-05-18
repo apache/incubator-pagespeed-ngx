@@ -53,12 +53,11 @@ class FileCacheTest : public CacheTestBase {
         kTargetInodeLimit(10),
         stats_(thread_system_.get()) {
     FileCache::InitStats(&stats_);
-    cache_.reset(new FileCache(GTestTempDir(), &file_system_, &worker_,
-                               new FileCache::CachePolicy(
-                                   &mock_timer_, &hasher_, kCleanIntervalMs,
+    cache_.reset(new FileCache(
+        GTestTempDir(), &file_system_, thread_system_.get(), &worker_,
+        new FileCache::CachePolicy(&mock_timer_, &hasher_, kCleanIntervalMs,
                                    kTargetSize, kTargetInodeLimit),
-                               &stats_,
-                               &message_handler_));
+        &stats_, &message_handler_));
     disk_checks_ = stats_.GetVariable(FileCache::kDiskChecks);
     cleanups_ = stats_.GetVariable(FileCache::kCleanups);
     evictions_ = stats_.GetVariable(FileCache::kEvictions);
@@ -92,12 +91,11 @@ class FileCacheTest : public CacheTestBase {
     return cache_->Clean(size, inode_count);
   }
 
-  bool CheckClean() {
+  void RunClean() {
     cache_->CleanIfNeeded();
     while (worker_.IsBusy()) {
       usleep(10);
     }
-    return cache_->last_conditional_clean_result_;
   }
 
  protected:
@@ -255,11 +253,11 @@ TEST_F(FileCacheTest, Clean) {
 TEST_F(FileCacheTest, CheckClean) {
   CheckPut("Name1", "Value");
   // Cache should not clean at first.
-  EXPECT_FALSE(CheckClean());
+  RunClean();
   mock_timer_.SleepMs(kCleanIntervalMs + 1);
   // Because there's no timestamp, the cache should be cleaned.
   int64 time_ms = mock_timer_.NowUs() / 1000;
-  EXPECT_TRUE(CheckClean());
+  RunClean();
   // .. but since we're under the desired size, nothing should be removed.
   CheckGet("Name1", "Value");
   // Check that the timestamp was written correctly.
@@ -269,13 +267,13 @@ TEST_F(FileCacheTest, CheckClean) {
   CheckPut("Name2", "Value2");
   CheckPut("Name3", "Value3");
   // Not enough time has elapsed.
-  EXPECT_FALSE(CheckClean());
+  RunClean();
   mock_timer_.SleepMs(kCleanIntervalMs + 1);
   // Now we should clean.  This should work even if atime doesn't work as we
   // expect.
   file_system_.set_atime_enabled(false);
   time_ms = mock_timer_.NowUs() / 1000;
-  EXPECT_TRUE(CheckClean());
+  RunClean();
   // And the timestamp should be updated.
   CheckCleanTimestamp(time_ms);
 }
