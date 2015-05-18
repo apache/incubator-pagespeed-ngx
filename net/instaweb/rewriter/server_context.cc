@@ -333,7 +333,7 @@ ServerContext::~ServerContext() {
   // We scan for "leaked_rewrite_drivers" in install/Makefile.tests
   if (!active_rewrite_drivers_.empty()) {
     message_handler_->Message(
-        kError, "ServerContext: %d leaked_rewrite_drivers on destruction",
+        kInfo, "ServerContext: %d leaked_rewrite_drivers on destruction",
         static_cast<int>(active_rewrite_drivers_.size()));
 #ifndef NDEBUG
     for (RewriteDriverSet::iterator p = active_rewrite_drivers_.begin(),
