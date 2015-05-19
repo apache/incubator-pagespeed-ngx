@@ -1243,11 +1243,31 @@ http {
     pagespeed EnableCachePurge on;
 
     pagespeed PurgeMethod PURGE;
-    root "@@SERVER_ROOT@@";
+    root "@@SERVER_ROOT@@/mod_pagespeed_test/purge";
     pagespeed FileCachePath "@@FILE_CACHE@@_purge";
     pagespeed DisableFilters add_instrumentation;
     pagespeed RewriteLevel PassThrough;
     pagespeed EnableFilters rewrite_css;
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name psoff-dir-on.example.com;
+
+    # Test purging individual URLs without flushing the entire metadata cache.
+    pagespeed EnableCachePurge on;
+
+    pagespeed PurgeMethod PURGE;
+    root "@@SERVER_ROOT@@/mod_pagespeed_test/purge";
+    pagespeed FileCachePath "@@FILE_CACHE@@_dir_on";
+    pagespeed DisableFilters add_instrumentation;
+    pagespeed RewriteLevel PassThrough;
+    pagespeed EnableFilters rewrite_css;
+    pagespeed off;
+    location / {
+      pagespeed on;
+    }
   }
 
   server {

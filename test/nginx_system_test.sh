@@ -301,7 +301,9 @@ BEACON_HANDLER="ngx_pagespeed_beacon"
 STATISTICS_URL=http://$PRIMARY_HOSTNAME/ngx_pagespeed_statistics
 
 # An expected failure can be indicated like: "~In-place resource optimization~"
-PAGESPEED_EXPECTED_FAILURES=""
+PAGESPEED_EXPECTED_FAILURES="
+~Cache purging with PageSpeed off in vhost, but on in directory.~
+"
 
 if [ "$POSITION_AUX" = "true" ] ; then
   PAGESPEED_EXPECTED_FAILURES+="
