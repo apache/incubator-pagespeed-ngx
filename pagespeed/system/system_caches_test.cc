@@ -1034,6 +1034,90 @@ TEST_F(SystemCachesTest, StatsStringMinimal) {
       &out);
 }
 
+TEST_F(SystemCachesTest, ShareIdenticalNoPurge) {
+  options_->set_file_cache_path(kCachePath);
+  SystemCachePath* path1 = system_caches_->GetCache(options_.get());
+  SystemRewriteOptions options2(thread_system_.get());
+  options2.set_file_cache_path(kCachePath);
+  SystemCachePath* path2 = system_caches_->GetCache(&options2);
+  EXPECT_EQ(path1, path2);
+}
+
+TEST_F(SystemCachesTest, ShareIdenticalPurge) {
+  options_->set_file_cache_path(kCachePath);
+  options_->set_enable_cache_purge(true);
+  SystemCachePath* path1 = system_caches_->GetCache(options_.get());
+  SystemRewriteOptions options2(thread_system_.get());
+  options2.set_file_cache_path(kCachePath);
+  options2.set_enable_cache_purge(true);
+  SystemCachePath* path2 = system_caches_->GetCache(&options2);
+  EXPECT_EQ(path1, path2);
+}
+
+TEST_F(SystemCachesTest, NoSharePurgeFlush) {
+  options_->set_file_cache_path(kCachePath);
+  options_->set_enable_cache_purge(true);
+  SystemCachePath* path1 = system_caches_->GetCache(options_.get());
+  SystemRewriteOptions options2(thread_system_.get());
+  options2.set_file_cache_path(kCachePath);
+  SystemCachePath* path2 = system_caches_->GetCache(&options2);
+  EXPECT_NE(path1, path2);
+}
+
+TEST_F(SystemCachesTest, ShareIdenticalPurgeCustomPath) {
+  options_->set_file_cache_path(kCachePath);
+  options_->set_cache_flush_filename("f1");
+  SystemCachePath* path1 = system_caches_->GetCache(options_.get());
+  SystemRewriteOptions options2(thread_system_.get());
+  options2.set_file_cache_path(kCachePath);
+  options2.set_cache_flush_filename("f1");
+  SystemCachePath* path2 = system_caches_->GetCache(&options2);
+  EXPECT_EQ(path1, path2);
+}
+
+TEST_F(SystemCachesTest, NoShareVaryingPurgeCustomPath) {
+  options_->set_file_cache_path(kCachePath);
+  options_->set_cache_flush_filename("f1");
+  SystemCachePath* path1 = system_caches_->GetCache(options_.get());
+  SystemRewriteOptions options2(thread_system_.get());
+  options2.set_file_cache_path(kCachePath);
+  options2.set_cache_flush_filename("f2");
+  SystemCachePath* path2 = system_caches_->GetCache(&options2);
+  EXPECT_NE(path1, path2);
+}
+
+TEST_F(SystemCachesTest, ShareOnOff) {
+  options_->set_file_cache_path(kCachePath);
+  SystemCachePath* path1 = system_caches_->GetCache(options_.get());
+  SystemRewriteOptions options2(thread_system_.get());
+  options2.set_file_cache_path(kCachePath);
+  options2.set_enabled(RewriteOptions::kEnabledOff);
+  SystemCachePath* path2 = system_caches_->GetCache(&options2);
+  EXPECT_EQ(path1, path2);
+}
+
+TEST_F(SystemCachesTest, NoShareOnUnplugged) {
+  options_->set_file_cache_path("/a");
+  options_->set_enabled(RewriteOptions::kEnabledUnplugged);
+  SystemCachePath* path1 = system_caches_->GetCache(options_.get());
+  SystemRewriteOptions options2(thread_system_.get());
+  options2.set_file_cache_path("/b");
+  options2.set_enabled(RewriteOptions::kEnabledUnplugged);
+  options2.set_cache_flush_filename("f2");
+  SystemCachePath* path2 = system_caches_->GetCache(&options2);
+  EXPECT_EQ(path1, path2);  // All 'unplugged' caches are the same.
+}
+
+TEST_F(SystemCachesTest, ShareUnpluggedWithOtherMismatches) {
+  options_->set_file_cache_path(kCachePath);
+  SystemCachePath* path1 = system_caches_->GetCache(options_.get());
+  SystemRewriteOptions options2(thread_system_.get());
+  options2.set_file_cache_path(kCachePath);
+  options2.set_enabled(RewriteOptions::kEnabledUnplugged);
+  SystemCachePath* path2 = system_caches_->GetCache(&options2);
+  EXPECT_NE(path1, path2);
+}
+
 TEST_F(SystemCachesTest, FileCacheNoConflictTwoPaths) {
   options_->set_file_cache_path(kCachePath);
   SystemCachePath* path1 = system_caches_->GetCache(options_.get());

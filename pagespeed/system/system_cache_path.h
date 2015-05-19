@@ -58,6 +58,10 @@ class SystemCachePath {
                   AbstractSharedMem* shm_runtime);
   ~SystemCachePath();
 
+  // Computes a key suitable for building a map to help share common cache
+  // objects between vhosts.
+  static GoogleString CacheKey(SystemRewriteOptions* config);
+
   // Per-process in-memory LRU, with any stats/thread safety wrappers, or NULL.
   CacheInterface* lru_cache() { return lru_cache_; }
 
@@ -134,10 +138,12 @@ class SystemCachePath {
   FileCache* file_cache_backend_;  // owned by file_cache_
   CacheInterface* lru_cache_;
   CacheInterface* file_cache_;
+  GoogleString cache_flush_filename_;
+  bool unplugged_;
+  bool enable_cache_purge_;
   bool clean_interval_explicitly_set_;
   bool clean_size_explicitly_set_;
   bool clean_inode_limit_explicitly_set_;
-  const SystemRewriteOptions* options_;
 
   scoped_ptr<PurgeContext> purge_context_;
 

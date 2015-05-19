@@ -120,9 +120,7 @@ void SystemCaches::ShutDown(MessageHandler* message_handler) {
 }
 
 SystemCachePath* SystemCaches::GetCache(SystemRewriteOptions* config) {
-  GoogleString key = config->unplugged()
-      ? "<unplugged>"
-      : config->file_cache_path();
+  GoogleString key = SystemCachePath::CacheKey(config);
   SystemCachePath* system_cache_path = NULL;
   std::pair<PathCacheMap::iterator, bool> result = path_cache_map_.insert(
       PathCacheMap::value_type(key, system_cache_path));

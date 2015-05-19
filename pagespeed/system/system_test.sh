@@ -1889,10 +1889,10 @@ check grep -qi "Cache-control: max-age=31536000" $OUTFILE  # Long cache
 check grep -q "script.js?PageSpeed=off" $OUTFILE  # Has source URL.
 check grep -q '"mappings":' $OUTFILE  # Has mappings.
 
-if [ "$CACHE_FLUSH_TEST" = "on" ]; then
+function cache_purge_test() {
   # Tests for individual URL purging, and for global cache purging via
   # GET pagespeed_admin/cache?purge=URL, and PURGE URL methods.
-  PURGE_ROOT="http://purge.example.com"
+  PURGE_ROOT="$1"
   PURGE_STATS_URL="$PURGE_ROOT/pagespeed_admin/statistics"
   function cache_purge() {
     local purge_method="$1"
@@ -1919,20 +1919,20 @@ if [ "$CACHE_FLUSH_TEST" = "on" ]; then
   # Checks to see whether a .pagespeed URL is present in the metadata cache.
   # A response including "cache_ok:true" or "cache_ok:false" is send to stdout.
   function read_metadata_cache() {
-    path="$PURGE_ROOT/mod_pagespeed_example/$1"
+    path="$PURGE_ROOT/$1"
     http_proxy=$SECONDARY_HOSTNAME $WGET -q -O - \
           "$PURGE_ROOT/pagespeed_admin/cache?url=$path"
   }
 
   # Find the full .pagespeed. URL of yellow.css
-  PURGE_COMBINE_CSS="$PURGE_ROOT/mod_pagespeed_example/combine_css.html"
+  PURGE_COMBINE_CSS="$PURGE_ROOT/combine_css.html"
   http_proxy=$SECONDARY_HOSTNAME fetch_until -save "$PURGE_COMBINE_CSS" \
       "grep -c pagespeed.cf" 4
   yellow_css=$(grep yellow.css $FETCH_UNTIL_OUTFILE | cut -d\" -f6)
   blue_css=$(grep blue.css $FETCH_UNTIL_OUTFILE | cut -d\" -f6)
 
   for method in $CACHE_PURGE_METHODS; do
-    start_test Individual URL Cache Purging with $method
+    echo Individual URL Cache Purging with $method
     check_from "$(read_metadata_cache $yellow_css)" fgrep -q cache_ok:true
     check_from "$(read_metadata_cache $blue_css)" fgrep -q cache_ok:true
     cache_purge $method "*"
@@ -1959,7 +1959,7 @@ if [ "$CACHE_FLUSH_TEST" = "on" ]; then
     # needs to be refetched after we get the combine_css file again.
     check_from "$(read_metadata_cache $yellow_css)" fgrep -q cache_ok:true
     check_from "$(read_metadata_cache $blue_css)" fgrep -q cache_ok:true
-    cache_purge $method mod_pagespeed_example/styles/yellow.css
+    cache_purge $method styles/yellow.css
     check_from "$(read_metadata_cache $yellow_css)" fgrep -q cache_ok:false
     check_from "$(read_metadata_cache $blue_css)" fgrep -q cache_ok:true
 
@@ -1969,4 +1969,20 @@ if [ "$CACHE_FLUSH_TEST" = "on" ]; then
     http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $PURGE_STATS_URL > $STATS.3
     check_stat $STATS.2 $STATS.3 num_resource_fetch_successes 1
   done
+}
+
+if [ "$CACHE_FLUSH_TEST" = "on" ]; then
+  start_test Cache purge test
+  cache_purge_test http://purge.example.com
+
+  # Run a simple cache_purge test but in a vhost with ModPagespeed off, and
+  # a subdirectory with htaccess file turning it back on, addressing
+  # https://github.com/pagespeed/mod_pagespeed/issues/1077
+  #
+  # TODO(jefftk): Uncomment this and delete uncomment the same test in
+  # apache/system_test.sh once nginx_system_test suppressions &/or
+  # "pagespeed off;" in server block allow location-overrides in ngx_pagespeed.
+  # See https://github.com/pagespeed/ngx_pagespeed/issues/968
+  # start_test Cache purging with PageSpeed off in vhost, but on in directory.
+  # cache_purge_test http://psoff-dir-on.example.com
 fi

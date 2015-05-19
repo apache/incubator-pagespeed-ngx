@@ -54,13 +54,46 @@ SystemCachePath::SystemCachePath(const StringPiece& path,
       file_cache_backend_(NULL),
       lru_cache_(NULL),
       file_cache_(NULL),
+      cache_flush_filename_(config->cache_flush_filename()),
+      unplugged_(config->unplugged()),
+      enable_cache_purge_(config->enable_cache_purge()),
       clean_interval_explicitly_set_(
           config->has_file_cache_clean_interval_ms()),
       clean_size_explicitly_set_(config->has_file_cache_clean_size_kb()),
       clean_inode_limit_explicitly_set_(
           config->has_file_cache_clean_inode_limit()),
-      options_(config),
       mutex_(factory->thread_system()->NewMutex()) {
+  if (cache_flush_filename_.empty()) {
+    if (enable_cache_purge_) {
+      cache_flush_filename_ = "cache.purge";
+    } else {
+      cache_flush_filename_ = "cache.flush";
+    }
+  }
+  if (cache_flush_filename_[0] != '/') {
+    // Implementations must ensure the file cache path is an absolute path.
+    // mod_pagespeed checks in mod_instaweb.cc:pagespeed_post_config while
+    // ngx_pagespeed checks in ngx_pagespeed.cc:ps_merge_srv_conf.
+    // There is at least one example where this check is violated in
+    // ngx_pagespeed. Example:
+    // server {
+    //   pagespeed off;
+    //   pagespeed FileCachePath "/tmp";
+    //   location / {
+    //     pagespeed on;
+    //   }
+    // }
+    //
+    // Fixing this would require knowing if pagespeed is ever switched on within
+    // a deeper level of the block. When this is parsed, we just have knowledge
+    // of the higher-level server block.
+    StringPiece path(config->file_cache_path());
+    cache_flush_filename_ = StrCat(
+        path, (path.size() > 0 &&
+        path.ends_with("/")) ? "" : "/",
+        cache_flush_filename_);
+  }
+
   if (config->use_shared_mem_locking()) {
     shared_mem_lock_manager_.reset(new SharedMemLockManager(
         shm_runtime, LockManagerSegmentName(),
@@ -108,6 +141,15 @@ SystemCachePath::SystemCachePath(const StringPiece& path,
 }
 
 SystemCachePath::~SystemCachePath() {
+}
+
+// static
+GoogleString SystemCachePath::CacheKey(SystemRewriteOptions* config) {
+  return (config->unplugged()
+          ? "<unplugged>"
+          : StrCat(config->file_cache_path(),
+                   config->enable_cache_purge() ? "\npurge\n" : "\nflush\n",
+                   config->cache_flush_filename()));
 }
 
 void SystemCachePath::MergeConfig(const SystemRewriteOptions* config) {
@@ -181,7 +223,7 @@ void SystemCachePath::RootInit() {
 }
 
 void SystemCachePath::ChildInit(SlowWorker* cache_clean_worker) {
-  if (options_->unplugged()) {
+  if (unplugged_) {
     return;
   }
   factory_->message_handler()->Message(
@@ -194,39 +236,7 @@ void SystemCachePath::ChildInit(SlowWorker* cache_clean_worker) {
     file_cache_backend_->set_worker(cache_clean_worker);
   }
 
-  GoogleString cache_flush_filename = options_->cache_flush_filename();
-  if (cache_flush_filename.empty()) {
-    if (options_->enable_cache_purge()) {
-      cache_flush_filename = "cache.purge";
-    } else {
-      cache_flush_filename = "cache.flush";
-    }
-  }
-  if (cache_flush_filename[0] != '/') {
-    // Implementations must ensure the file cache path is an absolute path.
-    // mod_pagespeed checks in mod_instaweb.cc:pagespeed_post_config while
-    // ngx_pagespeed checks in ngx_pagespeed.cc:ps_merge_srv_conf.
-    // There is at least one example where this check is violated in
-    // ngx_pagespeed. Example:
-    // server {
-    //   pagespeed off;
-    //   pagespeed FileCachePath "/tmp";
-    //   location / {
-    //     pagespeed on;
-    //   }
-    // }
-    //
-    // Fixing this would require knowing if pagespeed is ever switched on within
-    // a deeper level of the block. When this is parsed, we just have knowledge
-    // of the higher-level server block.
-    StringPiece path(options_->file_cache_path());
-    cache_flush_filename = StrCat(
-        path, (path.size() > 0 &&
-        path.ends_with("/")) ? "" : "/",
-        cache_flush_filename);
-  }
-
-  purge_context_.reset(new PurgeContext(cache_flush_filename,
+  purge_context_.reset(new PurgeContext(cache_flush_filename_,
                                         factory_->file_system(),
                                         factory_->timer(),
                                         RewriteOptions::kCachePurgeBytes,
@@ -235,7 +245,7 @@ void SystemCachePath::ChildInit(SlowWorker* cache_clean_worker) {
                                         factory_->scheduler(),
                                         factory_->statistics(),
                                         factory_->message_handler()));
-  purge_context_->set_enable_purge(options_->enable_cache_purge());
+  purge_context_->set_enable_purge(enable_cache_purge_);
   purge_context_->SetUpdateCallback(NewPermanentCallback(
       this, &SystemCachePath::UpdateCachePurgeSet));
 }
@@ -262,7 +272,7 @@ GoogleString SystemCachePath::LockManagerSegmentName() const {
 }
 
 void SystemCachePath::FlushCacheIfNecessary() {
-  if (options_->enabled()) {
+  if (!unplugged_) {
     purge_context_->PollFileSystem();
   }
 }
