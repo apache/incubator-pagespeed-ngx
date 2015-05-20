@@ -61,6 +61,10 @@ KeepAlive On
 KeepAliveTimeout 60
 LogFormat "%v %X %P %h %l %u %t \"%r\" %>s %b" common
 
+# Set logging level to 'info' to catch some informational messages which have
+# been downgraded from 'error'.
+LogLevel info
+
 ModPagespeedStaticAssetPrefix /mod_pagespeed_static/
 
 # We want to test some vhosts without a shared memory cache configured, and if
@@ -1198,11 +1202,45 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_noned_shmm"
   ModPagespeedEnableCachePurge on
 
   ModPagespeedPurgeMethod PURGE
-  DocumentRoot "@@APACHE_DOC_ROOT@@"
-  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@_purge"
+  DocumentRoot "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/purge"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@_purge"
   ModPagespeedDisableFilters add_instrumentation
   ModPagespeedRewriteLevel PassThrough
   ModPagespeedEnableFilters rewrite_css
+</VirtualHost>
+
+# For testing ModPagespeed off, but with a directory-scope turning it
+# back on.
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName psoff-dir-on.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/purge"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@_mpsoff_dir_on"
+  ModPagespeed off
+  ModPagespeedEnableCachePurge on
+  ModPagespeedPurgeMethod PURGE
+  ModPagespeedDisableFilters add_instrumentation
+  ModPagespeedRewriteLevel PassThrough
+  ModPagespeedEnableFilters rewrite_css
+  <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/purge">
+    ModPagespeed on
+  </Directory>
+</VirtualHost>
+
+# For testing ModPagespeed off, but with an htaccess turning it
+# back on.
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName psoff-htaccess-on.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/purge"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@_mpsoff_htaccess_on"
+  ModPagespeed off
+  ModPagespeedEnableCachePurge on
+  ModPagespeedPurgeMethod PURGE
+  ModPagespeedDisableFilters add_instrumentation
+  ModPagespeedRewriteLevel PassThrough
+  ModPagespeedEnableFilters rewrite_css
+  <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/purge">
+    AllowOverride All
+  </Directory>
 </VirtualHost>
 
 #STATS_LOGGING ModPagespeedStatistics on
