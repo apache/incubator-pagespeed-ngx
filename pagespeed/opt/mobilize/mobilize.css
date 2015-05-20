@@ -44,9 +44,12 @@ body.mob-iframe {
 
 #psmob-iframe {
   border-width: 0;
-  position: fixed;
+  /* Absolute positioning to make height: 100% mean viewport height not parent
+   * element width. Using position: fixed here results in scrolling being
+   * disabled on iOS. */
+  position: absolute;
   overflow: hidden;
-  height:100%;
+  height: 100%;
   width: 100%;
 }
 
