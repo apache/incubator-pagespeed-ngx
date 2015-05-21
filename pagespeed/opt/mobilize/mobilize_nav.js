@@ -401,9 +401,10 @@ pagespeed.MobNav.prototype.findNavSections_ = function() {
  */
 pagespeed.MobNav.prototype.findElementsToOffsetHelper_ = function(
     element, fixedPositionOnly) {
-  if (element.className != pagespeed.MobUtil.ElementId.PROGRESS_SCRIM &&
-      !goog.string.startsWith(element.className, 'psmob-') &&
-      !goog.string.startsWith(element.id, 'psmob-')) {
+  if (!element.className ||
+      (element.className != pagespeed.MobUtil.ElementId.PROGRESS_SCRIM &&
+       !goog.string.startsWith(element.className, 'psmob-') &&
+       !goog.string.startsWith(element.id, 'psmob-'))) {
     var style = window.getComputedStyle(element);
     var position = style.getPropertyValue('position');
     if (position != 'static') {

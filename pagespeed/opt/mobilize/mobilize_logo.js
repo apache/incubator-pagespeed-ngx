@@ -199,26 +199,24 @@ pagespeed.MobLogo.prototype.findLogoElement_ = function(element) {
     imageSrc = null;
   }
 
-  var signals =
-      [element.title, element.id, element.className, element.alt, imageSrc];
-
   var metric = 0;
-  var i;
-  for (i = 0; i < signals.length; ++i) {
-    if (signals[i]) {
-      if (goog.string.caseInsensitiveContains(signals[i], 'logo')) {
+  function accumulateMetric(signal) {
+    if (signal && (typeof(signal) == 'string')) {
+      if (goog.string.caseInsensitiveContains(signal, 'logo')) {
+        ++metric;
+      }
+      if (this.organization &&
+          pagespeed.MobUtil.findPattern(signal, this.organization_)) {
         ++metric;
       }
     }
   }
-  if (this.organization_) {
-    for (i = 0; i < signals.length; ++i) {
-      if (signals[i] &&
-          pagespeed.MobUtil.findPattern(signals[i], this.organization_)) {
-        ++metric;
-      }
-    }
-  }
+
+  accumulateMetric(element.title);
+  accumulateMetric(element.id);
+  accumulateMetric(element.className);
+  accumulateMetric(element.alt);
+  accumulateMetric(imageSrc);
 
   // If the element has 'href' and it points to the landing page, the element
   // may be a logo candidate. Typical construct looks like

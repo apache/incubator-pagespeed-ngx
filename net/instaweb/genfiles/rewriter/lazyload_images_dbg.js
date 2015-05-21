@@ -120,7 +120,7 @@ pagespeed.LazyloadImages.prototype.loadIfVisibleAndMaybeBeacon = function(a) {
   var b = this;
   window.setTimeout(function() {
     var c = a.getAttribute("pagespeed_lazy_src");
-    if (null != c) {
+    if (c) {
       if ((b.force_load_ || b.isVisible_(a)) && -1 != a.src.indexOf(b.blank_image_src_)) {
         var d = a.parentNode, e = a.nextSibling;
         d && d.removeChild(a);
@@ -133,6 +133,9 @@ pagespeed.LazyloadImages.prototype.loadIfVisibleAndMaybeBeacon = function(a) {
         a.removeAttribute("pagespeed_lazy_src");
         a.removeAttribute("pagespeed_lazy_replaced_functions");
         d && d.insertBefore(a, e);
+        if (d = a.getAttribute("pagespeed_lazy_srcset")) {
+          a.srcset = d, a.removeAttribute("pagespeed_lazy_srcset");
+        }
         a.src = c;
       } else {
         b.deferred_.push(a);
