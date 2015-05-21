@@ -68,6 +68,7 @@ body.mob-iframe {
   transform-origin: 0 0;
 
   border-bottom: thin solid;
+  box-sizing: content-box;
 
   box-shadow: 0 5px 6px -1px rgba(0, 0, 0, 0.4);
 
@@ -183,9 +184,14 @@ body.mob-iframe {
   flex: 1;
 }
 
+#psmob-logo-span {
+  width: auto;
+}
+
 #psmob-logo-image {
   /* 50px header bar height. */
   height: 30px;
+  width: auto;
   padding-top: 10px;
   padding-bottom: 10px;
 
