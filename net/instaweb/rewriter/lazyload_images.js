@@ -272,7 +272,7 @@ pagespeed.LazyloadImages.prototype.loadIfVisibleAndMaybeBeacon =
   var context = this;
   window.setTimeout(function() {
     var data_src = element.getAttribute('pagespeed_lazy_src');
-    if (data_src != null) {
+    if (data_src) {
       if ((context.force_load_ || context.isVisible_(element)) &&
           element.src.indexOf(context.blank_image_src_) != -1) {
         // Only replace the src if the old value is the one we set. Note that we
@@ -317,6 +317,14 @@ pagespeed.LazyloadImages.prototype.loadIfVisibleAndMaybeBeacon =
         if (parent_node) {
           parent_node.insertBefore(element, next_sibling);
         }
+
+        // Set srcset before src to avoid potentially loading 2 sizes.
+        var srcset = element.getAttribute('pagespeed_lazy_srcset');
+        if (srcset) {
+          element.srcset = srcset;
+          element.removeAttribute('pagespeed_lazy_srcset');
+        }
+
         // Set the src back to the original.
         element.src = data_src;
       } else {

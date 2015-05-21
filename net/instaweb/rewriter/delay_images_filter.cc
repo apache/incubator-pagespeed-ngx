@@ -60,6 +60,9 @@ const char DelayImagesFilter::kImageOnloadJsSnippet[] =
     "var pagespeed = window['pagespeed'];"
     "pagespeed.switchToHighResAndMaybeBeacon = function(elem) {"
     "setTimeout(function(){elem.onload = null;"
+    // Set srcset before src to avoid potentially loading 2 sizes.
+    "var srcset = elem.getAttribute('pagespeed_high_res_srcset');"
+    "if (srcset) {elem.srcset = srcset;}"
     "elem.src = elem.getAttribute('pagespeed_high_res_src');"
     "if (pagespeed.CriticalImages) {elem.onload = "
     "pagespeed.CriticalImages.checkImageForCriticality(elem);}"
@@ -140,9 +143,14 @@ void DelayImagesFilter::EndElementImpl(HtmlElement* element) {
       driver()->log_record()->SetRewriterLoggingStatus(
           RewriteOptions::FilterId(RewriteOptions::kDelayImages),
           RewriterApplication::APPLIED_OK);
-      // High res src is added and original img src attribute is removed
-      // from img tag.
+      // Rename src -> pagespeed_high_res_src
       driver()->SetAttributeName(src, HtmlName::kPagespeedHighResSrc);
+      // Rename srcset -> pagespeed_high_res_srcset
+      HtmlElement::Attribute* srcset =
+          element->FindAttribute(HtmlName::kSrcset);
+      if (srcset != NULL) {
+        driver()->SetAttributeName(srcset, HtmlName::kPagespeedHighResSrcset);
+      }
       if (insert_low_res_images_inplace_) {
         // Set the src as the low resolution image.
         driver()->AddAttribute(element, HtmlName::kSrc,

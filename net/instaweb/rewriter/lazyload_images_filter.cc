@@ -266,6 +266,12 @@ void LazyloadImagesFilter::EndElementImpl(HtmlElement* element) {
   }
   // Replace the src with pagespeed_lazy_src.
   driver()->SetAttributeName(src, HtmlName::kPagespeedLazySrc);
+  // Rename srcset -> pagespeed_high_res_srcset
+  HtmlElement::Attribute* srcset =
+      element->FindAttribute(HtmlName::kSrcset);
+  if (srcset != NULL) {
+    driver()->SetAttributeName(srcset, HtmlName::kPagespeedLazySrcset);
+  }
   driver()->AddAttribute(element, HtmlName::kSrc, blank_image_url_);
   log_record->LogLazyloadFilter(
       RewriteOptions::FilterId(RewriteOptions::kLazyloadImages),

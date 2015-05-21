@@ -18,6 +18,7 @@
 
 #include "net/instaweb/rewriter/public/responsive_image_filter.h"
 
+#include "net/instaweb/rewriter/public/delay_images_filter.h"
 #include "net/instaweb/rewriter/public/local_storage_cache_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
@@ -27,6 +28,7 @@
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/html_parse_test_base.h"
 #include "pagespeed/kernel/http/content_type.h"
+#include "pagespeed/kernel/http/user_agent_matcher_test_base.h"
 
 namespace net_instaweb {
 
@@ -609,6 +611,75 @@ TEST_F(ResponsiveImageFilterTest, Debug) {
       "because it is the same as previous candidate.-->"
       "<!--The preceding resource was not rewritten because its domain "
       "(other-domain.com) is not authorized-->");
+}
+
+TEST_F(ResponsiveImageFilterTest, InlinePreview) {
+  options()->EnableFilter(RewriteOptions::kResponsiveImages);
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  // inline_preview_images -> kDelayImages.
+  options()->EnableFilter(RewriteOptions::kDelayImages);
+  SetHtmlMimetype();  // Prevent insertion of CDATA tags to static JS.
+  rewrite_driver()->AddFilters();
+
+  const GoogleString kInlinePreviewScript = StrCat(
+      "<script pagespeed_no_defer type=\"text/javascript\">",
+      DelayImagesFilter::kImageOnloadJsSnippet, "</script>");
+  const char kLowResSource[] = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAA"
+      "AQABAAD/2wBDAFA3PEY8MlBGQUZaVVBfeMiCeG5uePWvuZHI////////////////////"
+      "////////////////////////////////2wBDAVVaWnhpeOuCguv/////////////////"
+      "////////////////////////////////////////////////////////wAARCABkAGQD"
+      "ASIAAhEBAxEB/8QAGQABAQEBAQEAAAAAAAAAAAAAAAECAwQF/8QAKRAAAgIBAwQABQUA"
+      "AAAAAAAAAAECEQMhMUEEElFhcYGRofAUI0LR4f/EABYBAQEBAAAAAAAAAAAAAAAAAAAB"
+      "Av/EABYRAQEBAAAAAAAAAAAAAAAAAAABEf/aAAwDAQACEQMRAD8A9oBLSVgUEKAAAAAg"
+      "FBwfURU3Fp0uTrGcZq4tMDQIZjkjNtRlbQGwABynkrRHCeRtVwJSM72Z1qR1xZe3R7Ho"
+      "TTVo8RuGSUNvuXSx6wefDmlPI4y8HoKy5ZpuELjued9RNrVr6DqcjeSk9EcQK23JkTad"
+      "p17M2RgdJZpyVOTozGTjJSi6aMgD6GPqISinJqL5QPngDvuVEQMtqAUCwl2yUvB3nkXZ"
+      "e2h5XLtklydOobUa8ljNeeUr1vcw9Q7RCoaotoWAJsUi3oq0YAHtw4scsad2AOJeSSfb"
+      "qE01a1Mtr4JKXZG+S2tzhOXfL0BE252z1dTN9sEktVex5Unex3yu8UH6o0y4Mhrfgy1q"
+      "EUiBQKmBHcbegKvr8waUJSVpfYAdckaRiGKcXxXtnqy429Uc6vVMlWMOHctWVYorg6KD"
+      "9lWOVf2RWFFJ6JGc8f2o6cnoWP2cupgli08lSvJ+asya/NjPJUC8EKtv9AI3jg5zUUbw"
+      "41PTVa736PVhwrEn5YG4RUIqK2QNACCl4BQIUAAZnBTjTNADiumx8pv4sj6XG/K+DO4A"
+      "8/6SPEmZfSX/AD+x6gBwxYHjknafyO4AAAAQoAAAAAAAAAAAAAAAAAH/2Q==";
+
+  const char input_html[] = "<img src=a.jpg width=100 height=100>";
+  GoogleString output_html = StrCat(
+      kInlinePreviewScript,
+      "<img pagespeed_high_res_src=",
+      EncodeImage(100, 100, "a.jpg", "0", "jpg"),
+      " width=100 height=100 pagespeed_high_res_srcset=\"",
+      EncodeImage(150, 150, "a.jpg", "0", "jpg"), " 1.5x,",
+      EncodeImage(200, 200, "a.jpg", "0", "jpg"), " 2x,"
+      "a.jpg 10.23x\" src=\"", kLowResSource,
+      "\" onload=\"pagespeed.switchToHighResAndMaybeBeacon(this);\" onerror=\""
+      "this.onerror=null;pagespeed.switchToHighResAndMaybeBeacon(this);\">");
+  ValidateExpected("inline_preview", input_html, output_html);
+}
+
+TEST_F(ResponsiveImageFilterTest, Lazyload) {
+  options()->EnableFilter(RewriteOptions::kResponsiveImages);
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  options()->EnableFilter(RewriteOptions::kLazyloadImages);
+  // Disable beaconing so that the image is automatically lazyloaded.
+  options()->set_critical_images_beacon_enabled(false);
+  // Set User-Agent so that Lazyload will work.
+  rewrite_driver()->SetUserAgent(
+      UserAgentMatcherTestBase::kChrome18UserAgent);
+  SetHtmlMimetype();  // Prevent insertion of CDATA tags to static JS.
+  rewrite_driver()->AddFilters();
+
+  const char input_html[] = "<img src=a.jpg width=100 height=100>";
+  GoogleString output_html = StrCat(
+      GetLazyloadScriptHtml(),
+      "<img pagespeed_lazy_src=",
+      EncodeImage(100, 100, "a.jpg", "0", "jpg"),
+      " width=100 height=100 pagespeed_lazy_srcset=\"",
+      EncodeImage(150, 150, "a.jpg", "0", "jpg"), " 1.5x,",
+      EncodeImage(200, 200, "a.jpg", "0", "jpg"), " 2x,"
+      "a.jpg 10.23x\" src=\"/psajs/1.0.gif\" "
+      "onload=\"pagespeed.lazyLoadImages.loadIfVisibleAndMaybeBeacon(this);\" "
+      "onerror=\"this.onerror=null;pagespeed.lazyLoadImages."
+      "loadIfVisibleAndMaybeBeacon(this);\">");
+  ValidateExpected("lazyload", input_html, output_html);
 }
 
 }  // namespace
