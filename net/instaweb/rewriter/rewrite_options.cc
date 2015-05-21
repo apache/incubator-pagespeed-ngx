@@ -699,6 +699,7 @@ const RewriteOptions::Filter kDangerousFilterSet[] = {
   RewriteOptions::kFixReflows,
   RewriteOptions::kMobilize,  // Prototype
   RewriteOptions::kMobilizePrecompute,  // used for precomputation.
+  RewriteOptions::kServeDeprecationNotice,  // internal.
   RewriteOptions::kSplitHtml,  // internal, enabled conditionally
   RewriteOptions::kSplitHtmlHelper,  // internal, enabled conditionally
   RewriteOptions::kStripNonCacheable,  // internal, enabled conditionally
@@ -904,6 +905,8 @@ const RewriteOptions::FilterEnumToIdAndNameEntry
     "cs", "Rewrite Style Attributes" },
   { RewriteOptions::kRewriteStyleAttributesWithUrl,
     "cu", "Rewrite Style Attributes With Url" },
+  { RewriteOptions::kServeDeprecationNotice,
+    "sd", "Serve Deprecation Notice" },
   { RewriteOptions::kSplitHtml,
     "sh", "Split Html" },
   { RewriteOptions::kSplitHtmlHelper,

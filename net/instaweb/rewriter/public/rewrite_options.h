@@ -188,6 +188,7 @@ class RewriteOptions {
     kRewriteJavascriptInline,
     kRewriteStyleAttributes,
     kRewriteStyleAttributesWithUrl,
+    kServeDeprecationNotice,
     kSplitHtml,
     kSplitHtmlHelper,
     kSpriteImages,
