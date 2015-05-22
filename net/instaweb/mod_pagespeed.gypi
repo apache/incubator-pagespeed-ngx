@@ -20,8 +20,8 @@
   'dependencies': [
     'instaweb_apr.gyp:instaweb_apr',
     '<(DEPTH)/base/base.gyp:base',
-    '<(DEPTH)/third_party/gflags/gflags.gyp:gflags',
     '<(DEPTH)/build/build_util.gyp:mod_pagespeed_version_header',
+    '<(DEPTH)/pagespeed/kernel.gyp:util_gflags',
   ],
   'include_dirs': [
     '<(SHARED_INTERMEDIATE_DIR)/protoc_out/instaweb',

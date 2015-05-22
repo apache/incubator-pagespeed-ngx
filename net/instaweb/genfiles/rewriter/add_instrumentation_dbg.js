@@ -26,6 +26,7 @@ pagespeed.AddInstrumentation.prototype.sendBeacon = function() {
     "load" == this.event_ && (window.mod_pagespeed_loaded = !0, (b = window.mod_pagespeed_num_resources_prefetched) && (a += "&nrp=" + b), (b = window.mod_pagespeed_prefetch_start) && (a += "&htmlAt=" + (c - b)));
     pagespeed.panelLoader && (c = pagespeed.panelLoader.getCsiTimingsString(), "" != c && (a += "&b_csi=" + c));
     pagespeed.criticalCss && (c = pagespeed.criticalCss, a += "&ccis=" + c.total_critical_inlined_size + "&cces=" + c.total_original_external_size + "&ccos=" + c.total_overhead_size + "&ccrl=" + c.num_replaced_links + "&ccul=" + c.num_unreplaced_links);
+    a += "&dpr=" + window.devicePixelRatio;
     "" != this.extraParams_ && (a += this.extraParams_);
     document.referrer && (a += "&ref=" + encodeURIComponent(document.referrer));
     a += "&url=" + encodeURIComponent(this.htmlUrl_);

@@ -12,8 +12,6 @@
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/util/gflags.h"
 
-using namespace google;  // NOLINT
-
 DEFINE_string(data_file, "/tmp/a.js", "Input data file");
 DEFINE_string(c_file, "/tmp/a.c", "Output C file");
 DEFINE_string(varname, "str", "Variable name.");
@@ -45,7 +43,7 @@ const char kOutputTemplate[] =
 namespace net_instaweb {
 
 bool DataToC(int argc, char* argv[]) {
-  ParseCommandLineFlags(&argc, &argv, true);
+  ParseGflags(argv[0], &argc, &argv);
   NullMessageHandler handler;
   StdioFileSystem file_system;
 

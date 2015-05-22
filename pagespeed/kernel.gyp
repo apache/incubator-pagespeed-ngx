@@ -407,6 +407,22 @@
       ],
     },
     {
+      'target_name': 'util_gflags',
+      'type': '<(library)',
+      'sources': [
+        'kernel/util/gflags.cc',
+      ],
+      'include_dirs': [
+        '<(DEPTH)',
+      ],
+      'dependencies': [
+        '<(DEPTH)/third_party/gflags/gflags.gyp:gflags',
+      ],
+      'export_dependent_settings': [
+        '<(DEPTH)/third_party/gflags/gflags.gyp:gflags',
+      ],
+    },
+    {
       'target_name': 'pagespeed_image_processing',
       'type': '<(library)',
       'dependencies': [
