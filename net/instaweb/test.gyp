@@ -435,7 +435,7 @@
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/build/build_util.gyp:mod_pagespeed_version_header',
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_base_test_infrastructure',
-        '<(DEPTH)/third_party/gflags/gflags.gyp:gflags',
+        '<(DEPTH)/pagespeed/kernel.gyp:util_gflags',
       ],
       'include_dirs': [
         '<(DEPTH)/third_party/protobuf/src',
@@ -515,8 +515,8 @@
         'instaweb.gyp:instaweb_util',
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/pagespeed/kernel.gyp:pthread_system',
+        '<(DEPTH)/pagespeed/kernel.gyp:util_gflags',
         '<(DEPTH)/third_party/css_parser/css_parser.gyp:css_parser',
-        '<(DEPTH)/third_party/gflags/gflags.gyp:gflags',
       ],
       'include_dirs': [
         '<(DEPTH)',

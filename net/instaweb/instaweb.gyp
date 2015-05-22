@@ -397,8 +397,8 @@
        ],
       'dependencies': [
         'instaweb_util',
-        '<(DEPTH)/third_party/gflags/gflags.gyp:gflags',
         '<(DEPTH)/base/base.gyp:base',
+        '<(DEPTH)/pagespeed/kernel.gyp:util_gflags',
       ],
       'include_dirs': [
         '<(instaweb_root)',
@@ -1542,9 +1542,9 @@
        ],
       'dependencies': [
         'instaweb_util',
-        '<(DEPTH)/third_party/gflags/gflags.gyp:gflags',
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/pagespeed/kernel.gyp:jsminify',
+        '<(DEPTH)/pagespeed/kernel.gyp:util_gflags',
       ],
       'include_dirs': [
         '<(instaweb_root)',
@@ -1893,7 +1893,7 @@
       'target_name': 'automatic_util',
       'type': '<(library)',
       'dependencies': [
-        '<(DEPTH)/third_party/gflags/gflags.gyp:gflags',
+        '<(DEPTH)/pagespeed/kernel.gyp:util_gflags',
         'instaweb_util',
        ],
       'sources': [
@@ -1905,9 +1905,9 @@
       'target_name': 'process_context',
       'type': '<(library)',
       'dependencies': [
-        '<(DEPTH)/third_party/gflags/gflags.gyp:gflags',
         'instaweb_rewriter',
         '<(DEPTH)/pagespeed/kernel.gyp:proto_util',
+        '<(DEPTH)/pagespeed/kernel.gyp:util_gflags',
        ],
       'sources': [
         'rewriter/process_context.cc',

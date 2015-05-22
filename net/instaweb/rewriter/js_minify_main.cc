@@ -114,6 +114,6 @@ bool JSMinifyMain(int argc, char** argv) {
 }  // namespace net_instaweb
 
 int main(int argc, char** argv) {
-  google::ParseCommandLineFlags(&argc, &argv, true);
+  net_instaweb::ParseGflags(argv[0], &argc, &argv);
   return net_instaweb::JSMinifyMain(argc, argv) ? EXIT_SUCCESS : EXIT_FAILURE;
 }

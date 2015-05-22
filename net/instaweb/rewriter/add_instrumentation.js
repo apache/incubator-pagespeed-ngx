@@ -141,6 +141,11 @@ pagespeed.AddInstrumentation.prototype.sendBeacon = function() {
            '&ccrl=' + cc['num_replaced_links'] +
            '&ccul=' + cc['num_unreplaced_links'];
   }
+
+  // Collect devicePixelRatios to find common values.
+  // Note: This may append =undefined for old browsers.
+  url += '&dpr=' + window.devicePixelRatio;
+
   if (this.extraParams_ != '') {
     url += this.extraParams_;
   }
