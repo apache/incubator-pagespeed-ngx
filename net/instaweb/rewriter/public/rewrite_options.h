@@ -618,6 +618,8 @@ class RewriteOptions {
   // Convenience name for a set of rewrite options.
   typedef std::vector<OptionBase*> OptionBaseVector;
 
+  // TODO(huibao): Use bitmask for the values of the enums, and make combination
+  // of rewrite levels possible.
   enum RewriteLevel {
     // Enable no filters. Parse HTML but do not perform any
     // transformations. This is the default value. Most users should
@@ -636,6 +638,10 @@ class RewriteOptions {
     // then optionally add or remove specific filters based on
     // specific needs.
     kCoreFilters,
+
+    // Enable the filters which are essential to make webpages designed for
+    // desktop computers look good on mobile devices.
+    kMobilizeFilters,
 
     // Enable all filters intended for core, but some of which might
     // need more testing. Good for if users are willing to test out
@@ -1985,8 +1991,15 @@ class RewriteOptions {
     return rewrite_random_drop_percentage_.value();
   }
 
+  // css_preserve_urls() is determined by the following rules in order:
+  // 1. Value set by the user, if the user has explicitly set it.
+  // 2. Default value (true) for OptimizeForBandwidth, if this is the rewrite
+  //    level.
+  // 3. Default value (true) for MobilizeFilters, if this is the rewrite level.
+  // 4. Default value (false) otherwise.
   bool css_preserve_urls() const {
-    return CheckBandwidthOption(css_preserve_urls_);
+    return (CheckBandwidthOption(css_preserve_urls_) ||
+            CheckMobilizeFiltersOption(css_preserve_urls_));
   }
   void set_css_preserve_urls(bool x) {
     set_option(x, &css_preserve_urls_);
@@ -2152,7 +2165,7 @@ class RewriteOptions {
   }
 
   bool domain_rewrite_hyperlinks() const {
-    return domain_rewrite_hyperlinks_.value();
+    return CheckMobilizeFiltersOption(domain_rewrite_hyperlinks_);
   }
   void set_domain_rewrite_hyperlinks(bool x) {
     set_option(x, &domain_rewrite_hyperlinks_);
@@ -2615,7 +2628,9 @@ class RewriteOptions {
   void set_mob_config(bool x) { set_option(x, &mob_config_); }
   void set_mob_iframe(bool x) { set_option(x, &mob_iframe_); }
   void set_mob_layout(bool x) { set_option(x, &mob_layout_); }
-  bool mob_nav() const { return mob_nav_.value(); }
+  bool mob_nav() const {
+    return CheckMobilizeFiltersOption(mob_nav_);
+  }
   void set_mob_nav(bool x) { set_option(x, &mob_nav_); }
   bool mob_labeled_mode() const { return mob_labeled_mode_.value(); }
   void set_mob_labeled_mode(bool x) { set_option(x, &mob_labeled_mode_); }
@@ -2625,7 +2640,10 @@ class RewriteOptions {
   void set_mob_nav_classes(StringPiece p) {
     set_option(p.as_string(), &mob_nav_classes_);
   }
-  bool mob_nav_server_side() const { return mob_nav_server_side_.value(); }
+  bool has_mob_nav_classes() const { return mob_nav_classes_.was_set(); }
+  bool mob_nav_server_side() const {
+    return CheckMobilizeFiltersOption(mob_nav_server_side_);
+  }
   void set_mob_nav_server_side(bool x) { set_option(x, &mob_nav_server_side_); }
   // Should menu extraction be run?
   bool MobRenderServerSideMenus() const {
@@ -2644,6 +2662,9 @@ class RewriteOptions {
   bool mob_static() const { return mob_static_.value(); }
   void set_mob_static(bool x) { set_option(x, &mob_static_); }
   const MobTheme& mob_theme() const { return mob_theme_.value(); }
+  void set_mob_theme(const MobTheme& x) {
+    set_option(x, &mob_theme_);
+  }
   bool has_mob_theme() const { return mob_theme_.was_set(); }
   int64 mob_conversion_id() const { return mob_conversion_id_.value(); }
   void set_mob_conversion_id(int64 x) { set_option(x, &mob_conversion_id_); }
@@ -3556,13 +3577,22 @@ class RewriteOptions {
   // will be returned; otherwise the name will be returned as is.
   static StringPiece GetEffectiveOptionName(StringPiece name);
 
+  // Returns value of this option if it has been set; otherwise, returns true
+  // if the rewrite level matches the argument. If nothing applies, returns
+  // false.
+  bool CheckLevelSpecificOption(RewriteLevel rewrite_level,
+                                const Option<bool>& option) const;
+
   // In OptimizeForBandwidth mode, this sets up certain default filters
   // and options, which take effect only if not explicitly overridden.
   bool CheckBandwidthOption(const Option<bool>& option) const {
-    if (option.was_set() || (level() != kOptimizeForBandwidth)) {
-      return option.value();
-    }
-    return true;
+    return CheckLevelSpecificOption(kOptimizeForBandwidth, option);
+  }
+
+  // In MobilizeFilters mode, this sets up certain default filters and options,
+  // which take effect only if not explicitly overridden.
+  bool CheckMobilizeFiltersOption(const Option<bool>& option) const {
+    return CheckLevelSpecificOption(kMobilizeFilters, option);
   }
 
   // Helps resolve the conflict between explicit extend_cache filters and

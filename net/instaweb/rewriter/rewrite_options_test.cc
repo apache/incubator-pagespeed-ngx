@@ -254,20 +254,29 @@ TEST_F(RewriteOptionsTest, ForceEnableFilter) {
   EXPECT_TRUE(options_.Enabled(RewriteOptions::kHtmlWriterFilter));
 }
 
-TEST_F(RewriteOptionsTest, CoreFilters) {
-  options_.SetRewriteLevel(RewriteOptions::kCoreFilters);
-  FilterSet s;
-  for (RewriteOptions::Filter f = RewriteOptions::kFirstFilter;
-       f < RewriteOptions::kEndOfFilters;
-       f = static_cast<RewriteOptions::Filter>(f + 1)) {
-    if (options_.Enabled(f)) {
-      s.Insert(f);
-    }
-  }
+TEST_F(RewriteOptionsTest, NumFilterInLevels) {
+  const RewriteOptions::RewriteLevel levels[] = {
+      RewriteOptions::kOptimizeForBandwidth,
+      RewriteOptions::kCoreFilters,
+      RewriteOptions::kMobilizeFilters,
+      RewriteOptions::kTestingCoreFilters,
+      RewriteOptions::kAllFilters
+  };
 
-  // Make sure that more than one filter is enabled in the core filter
-  // set.
-  ASSERT_GT(s.size(), 1);
+  for (int i = 0; i < arraysize(levels); ++i) {
+    options_.SetRewriteLevel(levels[i]);
+    FilterSet s;
+    for (RewriteOptions::Filter f = RewriteOptions::kFirstFilter;
+         f < RewriteOptions::kEndOfFilters;
+         f = static_cast<RewriteOptions::Filter>(f + 1)) {
+      if (options_.Enabled(f)) {
+        s.Insert(f);
+      }
+    }
+
+    // Make sure that more than one filter is enabled in the filter set.
+    ASSERT_GT(s.size(), 1);
+  }
 }
 
 TEST_F(RewriteOptionsTest, Enable) {
@@ -346,15 +355,18 @@ TEST_F(RewriteOptionsTest, CompoundFlagRecompressImages) {
 
 TEST_F(RewriteOptionsTest, ParseRewriteLevel) {
   RewriteOptions::RewriteLevel level;
-  ASSERT_TRUE(RewriteOptions::ParseRewriteLevel("PassThrough", &level));
-  ASSERT_EQ(RewriteOptions::kPassThrough, level);
+  EXPECT_TRUE(RewriteOptions::ParseRewriteLevel("PassThrough", &level));
+  EXPECT_EQ(RewriteOptions::kPassThrough, level);
 
-  ASSERT_TRUE(RewriteOptions::ParseRewriteLevel("CoreFilters", &level));
-  ASSERT_EQ(RewriteOptions::kCoreFilters, level);
+  EXPECT_TRUE(RewriteOptions::ParseRewriteLevel("CoreFilters", &level));
+  EXPECT_EQ(RewriteOptions::kCoreFilters, level);
 
-  ASSERT_FALSE(RewriteOptions::ParseRewriteLevel(NULL, &level));
-  ASSERT_FALSE(RewriteOptions::ParseRewriteLevel("", &level));
-  ASSERT_FALSE(RewriteOptions::ParseRewriteLevel("Garbage", &level));
+  EXPECT_TRUE(RewriteOptions::ParseRewriteLevel("MobilizeFilters", &level));
+  EXPECT_EQ(RewriteOptions::kMobilizeFilters, level);
+
+  EXPECT_FALSE(RewriteOptions::ParseRewriteLevel(NULL, &level));
+  EXPECT_FALSE(RewriteOptions::ParseRewriteLevel("", &level));
+  EXPECT_FALSE(RewriteOptions::ParseRewriteLevel("Garbage", &level));
 }
 
 TEST_F(RewriteOptionsTest, IsRequestDeclined) {
@@ -3107,6 +3119,20 @@ TEST_F(RewriteOptionsTest, ParseFloats) {
   EXPECT_FALSE(RewriteOptions::ParseFromString("1, 2, -5", &densities));
   EXPECT_FALSE(RewriteOptions::ParseFromString("1.2.3", &densities));
   EXPECT_FALSE(RewriteOptions::ParseFromString("1 2 3", &densities));
+}
+
+TEST_F(RewriteOptionsTest, MobilizeFiltersTest) {
+  options_.SetRewriteLevel(RewriteOptions::kMobilizeFilters);
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kMobilize));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kRewriteCss));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kRewriteDomains));
+
+  EXPECT_TRUE(options_.css_preserve_urls());
+  EXPECT_TRUE(options_.domain_rewrite_hyperlinks());
+  EXPECT_TRUE(options_.mob_nav());
+  EXPECT_TRUE(options_.mob_nav_server_side());
+  EXPECT_FALSE(options_.mob_always());
+  EXPECT_FALSE(options_.mob_layout());
 }
 
 }  // namespace net_instaweb

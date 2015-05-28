@@ -728,6 +728,21 @@ const RewriteOptions::Filter kRequiresScriptExecutionFilterSet[] = {
   // in a noscript block and the page will still load / function normally.
 };
 
+// List of filters which are essential for mobilizing webpages, i.e., for
+// making webpages designed for desktop computers look good on mobile devices.
+//
+// TODO(huibao): Once rewrite levels can be combined, move kRewriteCss and
+// kRewriteDomains (and kDomainRewriteHyperlinks Option) into a proxy mode.
+const RewriteOptions::Filter kMobilizeFilterSet[] = {
+  // TODO(huibao): When layout mode is enabled, uncomment kInlineJavascript
+  // to inline mobilize_xhr.js, a small JS file which we create, into HTML.
+  // RewriteOptions::kInlineJavascript,
+  RewriteOptions::kMobilize,
+  // Turn on rewrite_css in order to rewrite hyper-links in CSS.
+  RewriteOptions::kRewriteCss,
+  RewriteOptions::kRewriteDomains,
+};
+
 // Array of mappings from Filter enum to corresponding filter id and name,
 // used to map an enum value to id/name, and also used to initialize the
 // reverse map from id to enum. Although the filter_enum field is not strictly
@@ -973,6 +988,7 @@ void CheckFilterSetOrdering(const RewriteOptions::Filter* filters, int num) {
 struct FilterProperties {
   uint8 level_core : 1;
   uint8 level_optimize_for_bandwidth : 1;
+  uint8 level_mobilize : 1;
   uint8 level_test : 1;
   uint8 level_dangerous : 1;
   uint8 preserve_image_urls : 1;
@@ -1064,6 +1080,9 @@ bool RewriteOptions::ParseRewriteLevel(
       ret = true;
     } else if (StringCaseEqual(in, "OptimizeForBandwidth")) {
       *out = kOptimizeForBandwidth;
+      ret = true;
+    } else if (StringCaseEqual(in, "MobilizeFilters")) {
+      *out = kMobilizeFilters;
       ret = true;
     } else if (StringCaseEqual(in, "TestingCoreFilters")) {
       *out = kTestingCoreFilters;
@@ -2533,6 +2552,8 @@ bool RewriteOptions::Initialize() {
       property->level_optimize_for_bandwidth =
           IsInSet(kOptimizeForBandwidthFilterSet,
                   arraysize(kOptimizeForBandwidthFilterSet), filter);
+      property->level_mobilize =
+          IsInSet(kMobilizeFilterSet, arraysize(kMobilizeFilterSet), filter);
       property->level_test =
           IsInSet(kTestFilterSet, arraysize(kTestFilterSet), filter);
       property->level_dangerous =
@@ -3558,6 +3579,11 @@ bool RewriteOptions::Enabled(Filter filter) const {
         return true;
       }
       break;
+    case kMobilizeFilters:
+      if (properties.level_mobilize) {
+        return true;
+      }
+      break;
     case kAllFilters:
       if (!properties.level_dangerous) {
         return true;
@@ -3855,6 +3881,7 @@ GoogleString RewriteOptions::OptionSignature(RewriteLevel level,
     case kPassThrough: return "p";
     case kCoreFilters: return "c";
     case kOptimizeForBandwidth: return "b";
+    case kMobilizeFilters: return "m";
     case kTestingCoreFilters: return "t";
     case kAllFilters: return "a";
   }
@@ -4072,6 +4099,7 @@ GoogleString RewriteOptions::ToString(RewriteLevel level) {
     case kPassThrough:                 return "Pass Through";
     case kOptimizeForBandwidth:        return "Optimize For Bandwidth";
     case kCoreFilters:                 return "Core Filters";
+    case kMobilizeFilters:             return "Mobilize Filters";
     case kTestingCoreFilters:          return "Testing Core Filters";
     case kAllFilters:                  return "All Filters";
   }
@@ -5046,6 +5074,14 @@ GoogleString RewriteOptions::ScopeEnumToString(OptionScope scope) {
     default:
       return "Unknown";
   }
+}
+
+bool RewriteOptions::CheckLevelSpecificOption(
+    RewriteLevel rewrite_level, const Option<bool>& option) const {
+  if (option.was_set() || (level() != rewrite_level)) {
+    return option.value();
+  }
+  return true;
 }
 
 }  // namespace net_instaweb

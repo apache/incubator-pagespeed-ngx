@@ -12,6 +12,8 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ * Author: jmarantz@google.com (Joshua Marantz)
  */
 
 goog.provide('pagespeed.MobDialer');
@@ -27,8 +29,15 @@ goog.require('pagespeed.MobUtil');
 
 /**
  * Creates a phone dialer.
- * TODO(jud): This button now behaves pretty much identically to the map button,
- * so they should share this implementation.
+ *
+ * TODO(jud): This button has some common behavior with the map button,
+ * so they should share helper-methods or a base-class.
+ *
+ * This constructor has just one non-test call-site which is called with
+ * data populated from our C++ server via externs.  The phone information
+ * may not be present in the configuration for the site, in which case the
+ * variables will be null, but they will always be passed in.
+ *
  * @param {?string} phoneNumber
  * @param {?string} conversionId
  * @param {?string} conversionLabel
@@ -36,17 +45,17 @@ goog.require('pagespeed.MobUtil');
  */
 pagespeed.MobDialer = function(phoneNumber, conversionId, conversionLabel) {
   /**
-   * Call button in the header bar.
+   * Dial button in the header bar.
    * @private {?Element}
    */
-  this.callButton_ = null;
+  this.dialButton_ = null;
 
 
   /**
-   * Call button icon.
+   * Dial button icon.
    * @private {?Element}
    */
-  this.callButtonIcon_ = null;
+  this.dialButtonIcon_ = null;
 
   /**
    * Phone number to dial.  Note that this will initially be whatever was
@@ -74,11 +83,12 @@ pagespeed.MobDialer = function(phoneNumber, conversionId, conversionLabel) {
 
 
 /**
- * GIF image of call button. To view this image, add prefix of
+ * GIF image of dial button. To view this image, add prefix of
  * 'data:image/gif;base64,' to it.
  * @const {string}
+ * @private
  */
-pagespeed.MobDialer.CALL_BUTTON =
+pagespeed.MobDialer.DIAL_BUTTON_IMG_BASE64_ =
     'R0lGODlhgACAAPAAAAAAAAAAACH5BAEAAAEALAAAAACAAIAAAAL+jI+pCL0Po5y02vuaBrj7' +
     'D4bMtonmiXrkyqXuC7MsTNefLNv6nuE4D9z5fMFibEg0KkVI5PLZaTah1IlUWs0qrletl9v1' +
     'VsFcMZQMNivRZHWRnXbz4G25jY621/B1vYuf54cCyCZ4QlhoGIIYqKjC2Oh4AZkoaUEZaWmF' +
@@ -92,18 +102,34 @@ pagespeed.MobDialer.CALL_BUTTON =
 
 
 /**
- * The text to insert next to the call button.
+ * The text to insert next to the dial button.
  * @private @const {string}
  */
-pagespeed.MobDialer.CALL_TEXT_ = 'CALL US';
+pagespeed.MobDialer.DIAL_TEXT_ = 'CALL US';
 
 
 /**
  * Cookie to use to store phone dialer information to reduce query volume
  * to googleadservices.com.
- * @const {string}
+ * @private @const {string}
  */
-pagespeed.MobDialer.WCM_COOKIE = 'psgwcm';
+pagespeed.MobDialer.WCM_COOKIE_ = 'psgwcm';
+
+
+/**
+ * Cookie lifetime in seconds.
+ * @private @const {number}
+ */
+pagespeed.MobDialer.WCM_COOKIE_LIFETIME_SEC_ = 3600 * 24 * 90;
+
+
+/**
+ * Prefix for constructing URLs for generating Google Voice numbers used to
+ * help track durations of phone calls in responses to phone-dialer clicks.
+ * @private @const {string}
+ */
+pagespeed.MobDialer.CONVERSION_HANDLER_ =
+    'https://www.googleadservices.com/pagead/conversion/';
 
 
 /**
@@ -115,43 +141,51 @@ pagespeed.MobDialer.prototype.createButton = function() {
   if (!this.phoneNumber_) {
     return null;
   }
-  this.callButton_ = document.createElement(goog.dom.TagName.A);
-  goog.dom.classlist.add(this.callButton_,
+  this.dialButton_ = document.createElement(goog.dom.TagName.A);
+  goog.dom.classlist.add(this.dialButton_,
                          pagespeed.MobUtil.ElementClass.BUTTON);
 
-  this.callButtonIcon_ = document.createElement(goog.dom.TagName.DIV);
-  goog.dom.classlist.add(this.callButtonIcon_,
+  this.dialButtonIcon_ = document.createElement(goog.dom.TagName.DIV);
+  goog.dom.classlist.add(this.dialButtonIcon_,
                          pagespeed.MobUtil.ElementClass.BUTTON_ICON);
-  this.callButton_.appendChild(this.callButtonIcon_);
+  this.dialButton_.appendChild(this.dialButtonIcon_);
 
-  var callText = document.createElement(goog.dom.TagName.P);
-  this.callButton_.appendChild(callText);
-  goog.dom.classlist.add(callText, pagespeed.MobUtil.ElementClass.BUTTON_TEXT);
-  callText.appendChild(document.createTextNode(pagespeed.MobDialer.CALL_TEXT_));
-  var phone = this.getPhoneNumberFromCookie_();
+  var dialText = document.createElement(goog.dom.TagName.P);
+  this.dialButton_.appendChild(dialText);
+  goog.dom.classlist.add(dialText, pagespeed.MobUtil.ElementClass.BUTTON_TEXT);
+  dialText.appendChild(document.createTextNode(pagespeed.MobDialer.DIAL_TEXT_));
+  var phoneNumberFromCookie = this.getPhoneNumberFromCookie_();
   var dialFn;
-  if (phone) {
-    this.phoneNumber_ = phone;
+  if (phoneNumberFromCookie) {
+    this.phoneNumber_ = phoneNumberFromCookie;
     dialFn = goog.bind(this.dialPhone_, this);
   } else {
-    dialFn = goog.bind(this.requestPhoneNumberAndCall_, this);
+    dialFn = goog.bind(this.requestPhoneNumberAndDial_, this);
   }
-  this.callButton_.onclick =
+  // TODO(jmarantz): rename pagespeed.MobUtil.sendBeacon to sendPing or track,
+  // as not to confuse with specific implementation
+  // (https://developer.mozilla.org/en-US/docs/Web/API/Navigator/sendBeacon).
+  this.dialButton_.onclick =
       goog.partial(pagespeed.MobUtil.sendBeacon,
                    pagespeed.MobUtil.BeaconEvents.PHONE_BUTTON, dialFn);
 
-  return this.callButton_;
+  return this.dialButton_;
 };
 
 
 /**
+ * Rewrites the phone-dialer icon based on the passed-in color and sets
+ * the dialButton_ to that as a backgroundImage.  Note that we must use
+ * a backgroundImage here; if it's a foreground image then the dialing
+ * fails on a Samsung Galaxy Note 2.
+ *
  * @param {!goog.color.Rgb} color
  */
-pagespeed.MobDialer.prototype.setColor = function(color) {
-  if (this.callButtonIcon_) {
-    this.callButtonIcon_.style.backgroundImage = 'url(' +
+pagespeed.MobDialer.prototype.setIcon = function(color) {
+  if (this.dialButtonIcon_) {
+    this.dialButtonIcon_.style.backgroundImage = 'url(' +
         pagespeed.MobUtil.synthesizeImage(
-            pagespeed.MobDialer.CALL_BUTTON, color) + ')';
+            pagespeed.MobDialer.DIAL_BUTTON_IMG_BASE64_, color) + ')';
   }
 };
 
@@ -159,17 +193,18 @@ pagespeed.MobDialer.prototype.setColor = function(color) {
 /**
  * Obtains a dynamic Google-Voice number to track conversions.  We only
  * do this when user clicks the phone icon.
+ *
  * @private
  */
-pagespeed.MobDialer.prototype.requestPhoneNumberAndCall_ = function() {
-  if (this.conversionLabel_ && this.conversionId_ && this.phoneNumber_) {
-    // No request from cookie.
-    var label = escape(this.conversionLabel_);
-    var url = 'https://www.googleadservices.com/pagead/conversion/' +
-        this.conversionId_ + '/wcm?cl=' + label +
-        '&fb=' + escape(this.phoneNumber_);
+pagespeed.MobDialer.prototype.requestPhoneNumberAndDial_ = function() {
+  var url = this.constructRequestPhoneNumberUrl_();
+  if (url) {
     if (window.psDebugMode) {
-      alert('requesting dynamic phone number: ' + url);
+      // We debug with alert() here because it is hard to debug on the
+      // physical phone with console.log.  And while most of our code
+      // can be debugged on the chrome emulator, this code only works
+      // on actual phones.
+      window.alert('requesting dynamic phone number: ' + url);
     }
     var req = new goog.net.Jsonp(url, 'callback');
     req.send(null,
@@ -182,58 +217,73 @@ pagespeed.MobDialer.prototype.requestPhoneNumberAndCall_ = function() {
 
 
 /**
+ * Constructs a URL to request a Google Voice phone number to track
+ * call-conversions.  Returns null on failure.
+ *
+ * @return {?string}
+ * @private
+ */
+pagespeed.MobDialer.prototype.constructRequestPhoneNumberUrl_ = function() {
+  // The protocol for requesting the gvoice number from googleadservices
+  // requires that we pass the fallback phone number into the URL.  So
+  // to request a gvoice number we must have a default phoneNumber_ already.
+  if (this.conversionLabel_ && this.conversionId_ && this.phoneNumber_) {
+    var label = window.encodeURIComponent(this.conversionLabel_);
+    return pagespeed.MobDialer.CONVERSION_HANDLER_ +
+        window.encodeURIComponent(this.conversionId_) +
+        '/wcm?cl=' + label +
+        '&fb=' + window.encodeURIComponent(this.phoneNumber_);
+  }
+  return null;
+};
+
+
+/**
  * Dials a phone number.
+ *
  * @private
  */
 pagespeed.MobDialer.prototype.dialPhone_ = function() {
   if (this.phoneNumber_) {
-    location.href = 'tel:' + this.phoneNumber_;
+    window.location.href = 'tel:' + this.phoneNumber_;
   }
 };
 
 
 /**
  * Extracts a dynamic phone number from a jsonp response.  If successful, it
- * calls the phone, and saves the phone number in a cookie and also in the
- * window object.
+ * dials the phone, and saves the phone number in a cookie and also in this.
  *
  * @private
- * @param {Object} json
+ * @param {?Object} json
  */
 pagespeed.MobDialer.prototype.receivePhoneNumber_ = function(json) {
-  var phone = null;
-  if (json && json['wcm']) {
-    var wcm = json['wcm'];
-    if (wcm) {
-      phone = wcm['mobile_number'];
-    }
-  }
-
-  if (phone) {
-    // Save the phone in a cookie to reduce server requests.
+  var wcm = json && json['wcm'];
+  var phoneNumber = wcm && wcm['mobile_number'];
+  if (phoneNumber) {
+    // Save the phoneNumber in a cookie to reduce server requests.
     var cookieValue = {
       'expires': wcm['expires'],
       'formatted_number': wcm['formatted_number'],
-      'mobile_number': phone,
+      'mobile_number': phoneNumber,
       'clabel': this.conversionLabel_,
       'fallback': this.phoneNumber_
     };
     cookieValue = goog.json.serialize(cookieValue);
     if (window.psDebugMode) {
-      alert('saving phone in cookie: ' + cookieValue);
+      window.alert('saving phoneNumber in cookie: ' + cookieValue);
     }
-    this.cookies_.set(pagespeed.MobDialer.WCM_COOKIE,
-                      escape(cookieValue), 3600 * 24 * 90, '/');
+    this.cookies_.set(pagespeed.MobDialer.WCM_COOKIE_,
+                      window.encodeURIComponent(cookieValue),
+                      pagespeed.MobDialer.WCM_COOKIE_LIFETIME_SEC_, '/');
 
     // Save the phone number in the window object so it can be used in
     // dialPhone_().
-    this.phoneNumber_ = phone;
-  } else if (this.phoneNumber_) {
-    // No ad was clicked.  Call the configured phone number, which will not
+    this.phoneNumber_ = phoneNumber;
+  } else if (this.phoneNumber_ && window.psDebugMode) {
+    // No ad was clicked.  Dial the configured phone number, which will not
     // be conversion-tracked.
-    if (window.psDebugMode) {
-      alert('receivePhoneNumber: ' + goog.json.serialize(json));
-    }
+    window.alert('receivePhoneNumber: ' + goog.json.serialize(json));
   }
   this.dialPhone_();
 };
@@ -260,9 +310,9 @@ pagespeed.MobDialer.prototype.getPhoneNumberFromCookie_ = function() {
 
   // Check to see if the phone number we want was previously saved
   // in a valid cookie, with matching fallback number and conversion label.
-  var gwcmCookie = this.cookies_.get(pagespeed.MobDialer.WCM_COOKIE);
+  var gwcmCookie = this.cookies_.get(pagespeed.MobDialer.WCM_COOKIE_);
   if (gwcmCookie) {
-    var cookieData = goog.json.parse(unescape(gwcmCookie));
+    var cookieData = goog.json.parse(window.decodeURIComponent(gwcmCookie));
     if ((cookieData['fallback'] == this.phoneNumber_) &&
         (cookieData['clabel'] == this.conversionLabel_)) {
       return cookieData['mobile_number'];

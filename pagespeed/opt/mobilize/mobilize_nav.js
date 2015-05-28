@@ -861,7 +861,7 @@ pagespeed.MobNav.prototype.addThemeColor_ = function(themeData) {
   }
 
 
-  this.dialer_.setColor(themeData.menuFrontColor);
+  this.dialer_.setIcon(themeData.menuFrontColor);
   var backgroundColor =
       pagespeed.MobUtil.colorNumbersToString(themeData.menuBackColor);
   var color = pagespeed.MobUtil.colorNumbersToString(themeData.menuFrontColor);

@@ -7718,62 +7718,62 @@ pagespeed.MobColor.prototype.run = function(a, b) {
   return new pagespeed.MobColor.ThemeColors(b, c);
 };
 pagespeed.MobDialer = function(a, b, c) {
-  this.callButtonIcon_ = this.callButton_ = null;
+  this.dialButtonIcon_ = this.dialButton_ = null;
   this.phoneNumber_ = a;
   this.conversionId_ = b;
   this.conversionLabel_ = c;
   this.cookies_ = new goog.net.Cookies(document);
 };
-pagespeed.MobDialer.CALL_BUTTON = "R0lGODlhgACAAPAAAAAAAAAAACH5BAEAAAEALAAAAACAAIAAAAL+jI+pCL0Po5y02vuaBrj7D4bMtonmiXrkyqXuC7MsTNefLNv6nuE4D9z5fMFibEg0KkVI5PLZaTah1IlUWs0qrletl9v1VsFcMZQMNivRZHWRnXbz4G25jY621/B1vYuf54cCyCZ4QlhoGIIYqKjC2Oh4AZkoaUEZaWmF2acpwZnpuQAaKjpCWmbag5qqmsAa53oK6yT7SjtkO4r7o7vLS+K7Cuwg/EtsDIGcrMzLHOH8DM0qvUlabY2JXaG9zc3ojYEYLk5IXs53Pgmovo7XfskOTyE//1lv3/yeP53Or0/nH8CAAo/BKTjsIMJb/hYewOcwAMSF5iIamEixYcTMihY5bsRY0GNGkP9Ejtx3poUbk0GCrSR5Z8VLmDRyqBnXMokYnEJq7WT5J8wXni86ZQF3JJYWpCkILiXKBOUYpouAGqEU1eobSCCwHvXqDmxKrmHFPuH07drUbv3UUgHVFtVXuFuijVVLrNjbvLTm8pW79q/bu4LZ7i2M1i9isoEXQz3smObVyBqHUlZ483Kpn5qxCOrs+TNonYZG27RkuoSo1HpXj7YFWtjlZJGlId72l9wy3bjmweI3OJ/hkFqBO7U4KzTyuDKXaykAADs=";
-pagespeed.MobDialer.CALL_TEXT_ = "CALL US";
-pagespeed.MobDialer.WCM_COOKIE = "psgwcm";
+pagespeed.MobDialer.DIAL_BUTTON_IMG_BASE64_ = "R0lGODlhgACAAPAAAAAAAAAAACH5BAEAAAEALAAAAACAAIAAAAL+jI+pCL0Po5y02vuaBrj7D4bMtonmiXrkyqXuC7MsTNefLNv6nuE4D9z5fMFibEg0KkVI5PLZaTah1IlUWs0qrletl9v1VsFcMZQMNivRZHWRnXbz4G25jY621/B1vYuf54cCyCZ4QlhoGIIYqKjC2Oh4AZkoaUEZaWmF2acpwZnpuQAaKjpCWmbag5qqmsAa53oK6yT7SjtkO4r7o7vLS+K7Cuwg/EtsDIGcrMzLHOH8DM0qvUlabY2JXaG9zc3ojYEYLk5IXs53Pgmovo7XfskOTyE//1lv3/yeP53Or0/nH8CAAo/BKTjsIMJb/hYewOcwAMSF5iIamEixYcTMihY5bsRY0GNGkP9Ejtx3poUbk0GCrSR5Z8VLmDRyqBnXMokYnEJq7WT5J8wXni86ZQF3JJYWpCkILiXKBOUYpouAGqEU1eobSCCwHvXqDmxKrmHFPuH07drUbv3UUgHVFtVXuFuijVVLrNjbvLTm8pW79q/bu4LZ7i2M1i9isoEXQz3smObVyBqHUlZ483Kpn5qxCOrs+TNonYZG27RkuoSo1HpXj7YFWtjlZJGlId72l9wy3bjmweI3OJ/hkFqBO7U4KzTyuDKXaykAADs=";
+pagespeed.MobDialer.DIAL_TEXT_ = "CALL US";
+pagespeed.MobDialer.WCM_COOKIE_ = "psgwcm";
+pagespeed.MobDialer.WCM_COOKIE_LIFETIME_SEC_ = 7776E3;
+pagespeed.MobDialer.CONVERSION_HANDLER_ = "https://www.googleadservices.com/pagead/conversion/";
 pagespeed.MobDialer.prototype.createButton = function() {
   if (!this.phoneNumber_) {
     return null;
   }
-  this.callButton_ = document.createElement(goog.dom.TagName.A);
-  goog.dom.classlist.add(this.callButton_, pagespeed.MobUtil.ElementClass.BUTTON);
-  this.callButtonIcon_ = document.createElement(goog.dom.TagName.DIV);
-  goog.dom.classlist.add(this.callButtonIcon_, pagespeed.MobUtil.ElementClass.BUTTON_ICON);
-  this.callButton_.appendChild(this.callButtonIcon_);
+  this.dialButton_ = document.createElement(goog.dom.TagName.A);
+  goog.dom.classlist.add(this.dialButton_, pagespeed.MobUtil.ElementClass.BUTTON);
+  this.dialButtonIcon_ = document.createElement(goog.dom.TagName.DIV);
+  goog.dom.classlist.add(this.dialButtonIcon_, pagespeed.MobUtil.ElementClass.BUTTON_ICON);
+  this.dialButton_.appendChild(this.dialButtonIcon_);
   var a = document.createElement(goog.dom.TagName.P);
-  this.callButton_.appendChild(a);
+  this.dialButton_.appendChild(a);
   goog.dom.classlist.add(a, pagespeed.MobUtil.ElementClass.BUTTON_TEXT);
-  a.appendChild(document.createTextNode(pagespeed.MobDialer.CALL_TEXT_));
-  (a = this.getPhoneNumberFromCookie_()) ? (this.phoneNumber_ = a, a = goog.bind(this.dialPhone_, this)) : a = goog.bind(this.requestPhoneNumberAndCall_, this);
-  this.callButton_.onclick = goog.partial(pagespeed.MobUtil.sendBeacon, pagespeed.MobUtil.BeaconEvents.PHONE_BUTTON, a);
-  return this.callButton_;
+  a.appendChild(document.createTextNode(pagespeed.MobDialer.DIAL_TEXT_));
+  (a = this.getPhoneNumberFromCookie_()) ? (this.phoneNumber_ = a, a = goog.bind(this.dialPhone_, this)) : a = goog.bind(this.requestPhoneNumberAndDial_, this);
+  this.dialButton_.onclick = goog.partial(pagespeed.MobUtil.sendBeacon, pagespeed.MobUtil.BeaconEvents.PHONE_BUTTON, a);
+  return this.dialButton_;
 };
-pagespeed.MobDialer.prototype.setColor = function(a) {
-  this.callButtonIcon_ && (this.callButtonIcon_.style.backgroundImage = "url(" + pagespeed.MobUtil.synthesizeImage(pagespeed.MobDialer.CALL_BUTTON, a) + ")");
+pagespeed.MobDialer.prototype.setIcon = function(a) {
+  this.dialButtonIcon_ && (this.dialButtonIcon_.style.backgroundImage = "url(" + pagespeed.MobUtil.synthesizeImage(pagespeed.MobDialer.DIAL_BUTTON_IMG_BASE64_, a) + ")");
 };
-pagespeed.MobDialer.prototype.requestPhoneNumberAndCall_ = function() {
+pagespeed.MobDialer.prototype.requestPhoneNumberAndDial_ = function() {
+  var a = this.constructRequestPhoneNumberUrl_();
+  a ? (window.psDebugMode && window.alert("requesting dynamic phone number: " + a), (new goog.net.Jsonp(a, "callback")).send(null, goog.bind(this.receivePhoneNumber_, this), goog.bind(this.dialPhone_, this))) : this.dialPhone_();
+};
+pagespeed.MobDialer.prototype.constructRequestPhoneNumberUrl_ = function() {
   if (this.conversionLabel_ && this.conversionId_ && this.phoneNumber_) {
-    var a = escape(this.conversionLabel_), a = "https://www.googleadservices.com/pagead/conversion/" + this.conversionId_ + "/wcm?cl=" + a + "&fb=" + escape(this.phoneNumber_);
-    window.psDebugMode && alert("requesting dynamic phone number: " + a);
-    (new goog.net.Jsonp(a, "callback")).send(null, goog.bind(this.receivePhoneNumber_, this), goog.bind(this.dialPhone_, this));
-  } else {
-    this.dialPhone_();
+    var a = window.encodeURIComponent(this.conversionLabel_);
+    return pagespeed.MobDialer.CONVERSION_HANDLER_ + window.encodeURIComponent(this.conversionId_) + "/wcm?cl=" + a + "&fb=" + window.encodeURIComponent(this.phoneNumber_);
   }
+  return null;
 };
 pagespeed.MobDialer.prototype.dialPhone_ = function() {
-  this.phoneNumber_ && (location.href = "tel:" + this.phoneNumber_);
+  this.phoneNumber_ && (window.location.href = "tel:" + this.phoneNumber_);
 };
 pagespeed.MobDialer.prototype.receivePhoneNumber_ = function(a) {
-  var b = null;
-  if (a && a.wcm) {
-    var c = a.wcm;
-    c && (b = c.mobile_number);
-  }
-  b ? (a = {expires:c.expires, formatted_number:c.formatted_number, mobile_number:b, clabel:this.conversionLabel_, fallback:this.phoneNumber_}, a = goog.json.serialize(a), window.psDebugMode && alert("saving phone in cookie: " + a), this.cookies_.set(pagespeed.MobDialer.WCM_COOKIE, escape(a), 7776E3, "/"), this.phoneNumber_ = b) : this.phoneNumber_ && window.psDebugMode && alert("receivePhoneNumber: " + goog.json.serialize(a));
+  var b = a && a.wcm, c = b && b.mobile_number;
+  c ? (a = {expires:b.expires, formatted_number:b.formatted_number, mobile_number:c, clabel:this.conversionLabel_, fallback:this.phoneNumber_}, a = goog.json.serialize(a), window.psDebugMode && window.alert("saving phoneNumber in cookie: " + a), this.cookies_.set(pagespeed.MobDialer.WCM_COOKIE_, window.encodeURIComponent(a), pagespeed.MobDialer.WCM_COOKIE_LIFETIME_SEC_, "/"), this.phoneNumber_ = c) : this.phoneNumber_ && window.psDebugMode && window.alert("receivePhoneNumber: " + goog.json.serialize(a));
   this.dialPhone_();
 };
 pagespeed.MobDialer.prototype.getPhoneNumberFromCookie_ = function() {
   if (window.psStaticJs || !this.conversionLabel_) {
     return this.phoneNumber_;
   }
-  var a = this.cookies_.get(pagespeed.MobDialer.WCM_COOKIE);
-  return a && (a = goog.json.parse(unescape(a)), a.fallback == this.phoneNumber_ && a.clabel == this.conversionLabel_) ? a.mobile_number : null;
+  var a = this.cookies_.get(pagespeed.MobDialer.WCM_COOKIE_);
+  return a && (a = goog.json.parse(window.decodeURIComponent(a)), a.fallback == this.phoneNumber_ && a.clabel == this.conversionLabel_) ? a.mobile_number : null;
 };
 pagespeed.MobLayout = function(a) {
   this.psMob_ = a;
@@ -8593,7 +8593,7 @@ pagespeed.MobNav.prototype.addMapNavigation_ = function(a) {
 };
 pagespeed.MobNav.prototype.addThemeColor_ = function(a) {
   this.styleTag_ && this.styleTag_.parentNode.removeChild(this.styleTag_);
-  this.dialer_.setColor(a.menuFrontColor);
+  this.dialer_.setIcon(a.menuFrontColor);
   var b = pagespeed.MobUtil.colorNumbersToString(a.menuBackColor);
   a = pagespeed.MobUtil.colorNumbersToString(a.menuFrontColor);
   b = "#" + pagespeed.MobUtil.ElementId.HEADER_BAR + " { background-color: " + b + "; }\n#" + pagespeed.MobUtil.ElementId.HEADER_BAR + " *  { color: " + a + "; }\n#" + pagespeed.MobUtil.ElementId.NAV_PANEL + " { background-color: " + a + "; }\n#" + pagespeed.MobUtil.ElementId.NAV_PANEL + " *  { color: " + b + "; }\n";
