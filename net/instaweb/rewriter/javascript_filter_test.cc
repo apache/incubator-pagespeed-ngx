@@ -1293,6 +1293,35 @@ TEST_P(JavascriptFilterTest, ProperSourceMapForPagespeedInput) {
   EXPECT_EQ(expected_source_map, source_map);
 }
 
+TEST_P(JavascriptFilterTest, SourceMapOnDemandNotEnabled) {
+  options()->DisableFilter(RewriteOptions::kIncludeJsSourceMaps);
+  options()->EnableFilter(RewriteOptions::kRewriteJavascriptExternal);
+  rewrite_driver_->AddFilters();
+
+  // From SourceMapsSimple
+  const char input_js[] = "  foo  bar  ";
+  const char expected_vlq[] = "AAAE,IAAK";
+  GoogleString expected_map = StrCat(
+      ")]}'\n{\"mappings\":\"", expected_vlq, "\",\"names\":[],"
+      "\"sources\":[\"http://test.com/input.js?PageSpeed=off\"],"
+      "\"version\":3}\n");
+
+  SetResponseWithDefaultHeaders("input.js", kContentTypeJavascript,
+                                input_js, 100);
+
+  GoogleString source_map_url =
+      Encode(kTestDomain, RewriteOptions::kJavascriptMinSourceMapId,
+             "0", "input.js", "map");
+
+  GoogleString source_map;
+  EXPECT_TRUE(FetchResourceUrl(source_map_url, &source_map));
+  if (options()->use_experimental_js_minifier()) {
+    EXPECT_STREQ(expected_map, source_map);
+  }
+  // Note: !options()->use_experimental_js_minifier() also checks the
+  // code_block.SourceMappings().empty() case.
+}
+
 TEST_P(JavascriptFilterTest, InlineAndNotExternal) {
   options()->EnableFilter(RewriteOptions::kRewriteJavascriptInline);
   options()->DisableFilter(RewriteOptions::kRewriteJavascriptExternal);

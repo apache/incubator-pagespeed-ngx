@@ -163,11 +163,19 @@ class JavascriptFilter::Context : public SingleRewriteContext {
       return kRewriteFailed;
     }
 
-    // Write out source map first so that we can embed the source map URL
-    // into the rewritten version.
-    if (Options()->Enabled(RewriteOptions::kIncludeJsSourceMaps) &&
+    // Write out source map before rewritten JS so that we can embed the
+    // source map URL into the rewritten JS.
+    if (code_block.SourceMappings().empty()) {
+      if (output_source_map_) {
         // Source map will be empty if we can't construct it correctly.
-        !code_block.SourceMappings().empty()) {
+        // If this fetch is explicitly for a source map, we must fail.
+        return kRewriteFailed;
+      }
+      // If this is not a fetch for a source map, just skip over source map
+      // generation code.
+    } else if (Options()->Enabled(RewriteOptions::kIncludeJsSourceMaps) ||
+               output_source_map_) {
+      // We produce a source map if they are enabled or requested.
       GoogleUrl original_gurl(input->url());
       scoped_ptr<GoogleUrl> source_gurl;
       if (server_context->IsPagespeedResource(original_gurl)) {
