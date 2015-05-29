@@ -423,11 +423,12 @@ bool StdioFileSystem::Stat(const StringPiece& path, struct stat* statbuf,
   const char* path_str = path_string.c_str();
   if (stat(path_str, statbuf) == 0) {
     return true;
-  } else {
-    handler->Message(kError, "Failed to stat %s: %s",
-                     path_str, strerror(errno));
-    return false;
+  } else if (errno != ENOENT) {  // Not an error if file doesn't exist see #972.
+    // https://github.com/pagespeed/ngx_pagespeed/issues/972
+    handler->Message(kError, "Failed to stat %s: %s", path_str,
+                     strerror(errno));
   }
+  return false;
 }
 
 // TODO(abliss): there are some situations where this doesn't work
