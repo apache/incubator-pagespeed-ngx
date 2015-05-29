@@ -33,6 +33,7 @@
 #include "pagespeed/kernel/base/string_writer.h"
 #include "pagespeed/kernel/base/wildcard.h"
 #include "pagespeed/kernel/http/request_headers.h"
+#include "pagespeed/kernel/http/user_agent_matcher_test_base.h"
 #include "pagespeed/opt/logging/enums.pb.h"
 
 namespace net_instaweb {
@@ -397,6 +398,67 @@ TEST_F(FlushEarlyContentWriterFilterTest, TestDifferentBrowsers) {
 
   Parse("prefetch_link_script_tag", html_input);
   EXPECT_EQ(RewrittenOutputWithResources(html_output, 3, true), output_);
+
+  // Now test link rel=prefetch support. Images still get new Image()
+  // fetching, in hope of decoding them ASAP, too.
+  Clear();
+  rewrite_driver()->SetUserAgent(UserAgentMatcherTestBase::kChrome42UserAgent);
+  html_output = GetOutputWithHash(
+      "<script type=\"text/javascript\">(function(){new Image().src=\""
+      "http://www.test.com/e.jpg.pagespeed.ce.%s.jpg\";})()</script>"
+      "<link rel=\"dns-prefetch\" href=\"//test.com\">"
+      "<link rel=\"prefetch\" href=\"//test1.com\">"
+      "<link rel=\"prefetch\" href=\"d.css.pagespeed.cf.%s.css\"/>\n"
+      "<link rel=\"prefetch\" href=\""
+          "http://www.test.com/c.js.pagespeed.jm.%s.js\"/>\n"
+      "<link rel=\"prefetch\" href=\"d.js.pagespeed.ce.%s.js\"/>\n"
+      "<link rel=\"prefetch\" href=\"/psajs/js_defer.0.js\"/>\n");
+
+  Parse("prefetch_rel_prefetch_tag_escape", html_input);
+  EXPECT_EQ(RewrittenOutputWithResources(html_output, 5, false), output_);
+}
+
+TEST_F(FlushEarlyContentWriterFilterTest, EscapeParanoia) {
+  Clear();
+  GoogleString html_input =
+      GetOutputWithHash(
+          "<script src='foo\"bar.js.pagespeed.ce.%s.js'"
+          " pagespeed_size=\"1000\"></script>"
+          "<script src=\"b.js\" pagespeed_size=\"1000\"></script>");
+
+  rewrite_driver()->SetUserAgent("prefetch_image_tag");
+  Parse("prefetch_image_tag_escape", html_input);
+  EXPECT_NE(GoogleString::npos,
+            output_.find("new Image().src=\"foo\\\"bar.js"))
+      << output_;
+
+  Clear();
+  rewrite_driver()->SetUserAgent("prefetch_link_script_tag");
+  Parse("prefetch_link_script_tag_escape", html_input);
+  EXPECT_NE(GoogleString::npos,
+            output_.find("<script type=\"psa_prefetch\" "
+                         "src=\"foo&quot;bar.js."))
+      << output_;
+
+  Clear();
+  html_input = GetOutputWithHash(
+      "<link rel=stylesheet href='foo\"bar.css.pagespeed.ce.%s.css'"
+      " pagespeed_size=\"1000\">");
+  rewrite_driver()->SetUserAgent("prefetch_link_script_tag");
+  Parse("prefetch_link_tag_escape", html_input);
+  EXPECT_NE(GoogleString::npos,
+            output_.find("<link rel=\"stylesheet\" href=\"foo&quot;bar."))
+      << output_;
+
+  Clear();
+  html_input = GetOutputWithHash(
+      "<link rel=stylesheet href='foo\"bar.css.pagespeed.ce.%s.css'"
+      " pagespeed_size=\"1000\">");
+  rewrite_driver()->SetUserAgent(UserAgentMatcherTestBase::kChrome42UserAgent);
+  Parse("prefetch_rel_prefetch_tag_escape", html_input);
+  EXPECT_NE(GoogleString::npos,
+            output_.find("<link rel=\"prefetch\" href=\"foo&quot;bar."))
+      << output_;
 }
 
 TEST_F(FlushEarlyContentWriterFilterTest, NoResourcesToFlush) {

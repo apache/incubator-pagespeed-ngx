@@ -408,10 +408,10 @@ TEST_F(SplitHtmlHelperFilterTest, AtfRequestWithLazyload) {
       "</body>",
 
       StrCat(
+          GetLazyloadScriptHtml(),
           "<body>"
           "<div id='a'><img src='1.jpeg'></div>"
           "<div id='b'>",
-            GetLazyloadScriptHtml(),
             GetLazyloadImageTag("2.jpeg", true),
           "</div>",
           "<div id='c'>", GetLazyloadImageTag("3.jpeg", true), "</div>",
@@ -431,16 +431,15 @@ TEST_F(SplitHtmlHelperFilterTest, BtfRequestWithLazyload) {
   Init();
   SetBtfRequest();
   GoogleString expected_output_html = StrCat(
+      GetLazyloadScriptHtml(),
       "<body>"
       "<div id='a'>",
-        GetLazyloadScriptHtml(),
         GetLazyloadImageTag("1.jpeg", false),
-      "</div>");
-  StrAppend(&expected_output_html,
-          "<div id='b'>", GetLazyloadImageTag("2.jpeg", false), "</div>"
-          "<div id='c'>", GetLazyloadImageTag("3.jpeg", false), "</div>",
-          GetLazyloadPostscriptHtml(),
-          "</body>");
+      "</div>"
+      "<div id='b'>", GetLazyloadImageTag("2.jpeg", false), "</div>"
+      "<div id='c'>", GetLazyloadImageTag("3.jpeg", false), "</div>",
+      GetLazyloadPostscriptHtml(),
+      "</body>");
   ValidateExpected(
       "split_helper_btf_with_lazyload",
       "<body>"

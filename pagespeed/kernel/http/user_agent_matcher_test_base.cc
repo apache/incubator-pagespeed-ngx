@@ -74,6 +74,12 @@ const char UserAgentMatcherTestBase::kChrome9UserAgent[] =  // Not webp capable
 const char UserAgentMatcherTestBase::kChrome37UserAgent[] =
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_4) "
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/37.0.2062.122 Safari/537.36";
+const char UserAgentMatcherTestBase::kChrome41UserAgent[] =
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)"
+    " Chrome/41.0.2227.0 Safari/537.36";
+const char UserAgentMatcherTestBase::kChrome42UserAgent[] =
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)"
+    " Chrome/42.0.2302.4 Safari/537.36";
 const char UserAgentMatcherTestBase::kChromeUserAgent[] =
     "Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US) "
     "AppleWebKit/525.13 (KHTML, like Gecko) Chrome/0.A.B.C Safari/525.13";

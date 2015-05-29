@@ -68,6 +68,7 @@ class UserAgentMatcher {
     kPrefetchNotSupported,
     kPrefetchImageTag,
     kPrefetchLinkScriptTag,
+    kPrefetchLinkRelPrefetchTag,
   };
 
   UserAgentMatcher();

@@ -31,11 +31,13 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
+#include "pagespeed/kernel/base/escaping.h"
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/stl_util.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/writer.h"
 #include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_keywords.h"
 #include "pagespeed/kernel/html/html_name.h"
 #include "pagespeed/kernel/html/html_node.h"
 #include "pagespeed/kernel/http/google_url.h"
@@ -50,6 +52,8 @@ const char FlushEarlyContentWriterFilter::kPrefetchScriptTagHtml[] =
     "<script type=\"psa_prefetch\" src=\"%s\"></script>\n";
 const char FlushEarlyContentWriterFilter::kPrefetchLinkTagHtml[] =
     "<link rel=\"stylesheet\" href=\"%s\"/>\n";
+const char FlushEarlyContentWriterFilter::kLinkRelPrefetchTagHtml[] =
+    "<link rel=\"prefetch\" href=\"%s\"/>\n";
 
 const char FlushEarlyContentWriterFilter::kPrefetchStartTimeScript[] =
     "<script type='text/javascript'>"
@@ -358,6 +362,8 @@ void FlushEarlyContentWriterFilter::StartElement(HtmlElement* element) {
           FlushEarlyResourceInfo::ResourceType resource_type =
               GetResourceType(gurl, is_pagespeed_resource);
           if ((prefetch_mechanism_ == UserAgentMatcher::kPrefetchImageTag ||
+               prefetch_mechanism_ ==
+                   UserAgentMatcher::kPrefetchLinkRelPrefetchTag ||
                can_flush_js_for_prefetch_link_script_tag) &&
               IsFlushable(gurl, resource_type) && size > 0) {
             // TODO(pulkitg): Add size of private resources also.
@@ -402,7 +408,9 @@ void FlushEarlyContentWriterFilter::StartElement(HtmlElement* element) {
             bool is_prefetch_mechanism_ok =
                 (prefetch_mechanism_ == UserAgentMatcher::kPrefetchImageTag ||
                  prefetch_mechanism_ ==
-                 UserAgentMatcher::kPrefetchLinkScriptTag);
+                     UserAgentMatcher::kPrefetchLinkRelPrefetchTag ||
+                 prefetch_mechanism_ ==
+                     UserAgentMatcher::kPrefetchLinkScriptTag);
             bool is_bandwidth_available = (size > 0) &&
                 (max_available_time_ms_ > time_consumed_ms_ + time_to_download);
             call_flush_resources = is_prefetch_mechanism_ok &&
@@ -530,8 +538,18 @@ void FlushEarlyContentWriterFilter::FlushResourceAsImage(StringPiece url) {
                           "(function(){");
     insert_close_script_ = true;
   }
+  GoogleString escaped;
+  EscapeToJsStringLiteral(url, false, &escaped);
   WriteToOriginalWriter(
-      StringPrintf(kPrefetchImageTagHtml, url.as_string().c_str()));
+      StringPrintf(kPrefetchImageTagHtml, escaped.c_str()));
+}
+
+void FlushEarlyContentWriterFilter::FlushResourceWithHtmlTemplate(
+    const char* templ, StringPiece url) {
+  GoogleString esc_buf;
+  StringPiece escaped = HtmlKeywords::Escape(url, &esc_buf);
+  StrAppend(&flush_early_content_,
+            StringPrintf(templ, escaped.as_string().c_str()));
 }
 
 void FlushEarlyContentWriterFilter::FlushResources(
@@ -540,20 +558,26 @@ void FlushEarlyContentWriterFilter::FlushResources(
   UpdateStats(time_to_download, is_pagespeed_resource);
 
   // All resources using kPrefetchImageTagHtml are flushed together in a
-  // <script> tag. And this script tag is flushed before any otehr resource.
-  if (category == semantic_type::kStylesheet) {
-    StrAppend(&flush_early_content_,
-              StringPrintf(kPrefetchLinkTagHtml, url.as_string().c_str()));
-    stylesheets_flushed_ = true;
-  } else if (category == semantic_type::kImage) {
+  // <script> tag. And this script tag is flushed before any other resource.
+  // We also always prefetch images using it (new Image) in hope of also
+  // starting decoding.
+  // TODO(morlovich): Whether that's a good idea needs practical testing;
+  // we should discuss it with Chromies to see if it causes any poor
+  // prioritization.
+  if (category == semantic_type::kImage) {
     FlushResourceAsImage(url);
+  } else if (prefetch_mechanism_ ==
+                 UserAgentMatcher::kPrefetchLinkRelPrefetchTag) {
+    FlushResourceWithHtmlTemplate(kLinkRelPrefetchTagHtml, url);
+  } else if (category == semantic_type::kStylesheet) {
+    FlushResourceWithHtmlTemplate(kPrefetchLinkTagHtml, url);
+    stylesheets_flushed_ = true;
   } else if (prefetch_mechanism_ == UserAgentMatcher::kPrefetchImageTag) {
     FlushResourceAsImage(url);
   } else if (prefetch_mechanism_ ==
              UserAgentMatcher::kPrefetchLinkScriptTag) {
     if (category == semantic_type::kScript) {
-      StrAppend(&flush_early_content_,
-                StringPrintf(kPrefetchScriptTagHtml, url.as_string().c_str()));
+      FlushResourceWithHtmlTemplate(kPrefetchScriptTagHtml, url);
     }
   }
 }

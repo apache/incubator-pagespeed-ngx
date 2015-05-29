@@ -149,6 +149,13 @@ TEST_F(UserAgentMatcherTest, PrefetchMechanism) {
   EXPECT_EQ(UserAgentMatcher::kPrefetchImageTag,
             user_agent_matcher_->GetPrefetchMechanism(
                 kIPadUserAgent));
+  // Chrome >= 42 gets awesome link rel=prefetch
+  EXPECT_EQ(UserAgentMatcher::kPrefetchImageTag,
+            user_agent_matcher_->GetPrefetchMechanism(
+                kChrome41UserAgent));
+  EXPECT_EQ(UserAgentMatcher::kPrefetchLinkRelPrefetchTag,
+            user_agent_matcher_->GetPrefetchMechanism(
+                kChrome42UserAgent));
 }
 
 TEST_F(UserAgentMatcherTest, SupportsJsDefer) {

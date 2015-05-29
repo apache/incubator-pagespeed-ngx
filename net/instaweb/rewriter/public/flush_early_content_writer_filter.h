@@ -52,6 +52,7 @@ class FlushEarlyContentWriterFilter : public HtmlWriterFilter {
   static const char kPrefetchImageTagHtml[];
   static const char kPrefetchStartTimeScript[];
   static const char kNumResourcesFlushedEarly[];
+  static const char kLinkRelPrefetchTagHtml[];
   static const char kPrefetchScriptTagHtml[];
   static const char kPrefetchLinkTagHtml[];
   static const char kFlushEarlyStyleTemplate[];
@@ -79,6 +80,8 @@ class FlushEarlyContentWriterFilter : public HtmlWriterFilter {
 
   // Flush the resource using kPrefetchImageTagHtml.
   void FlushResourceAsImage(StringPiece url);
+
+  void FlushResourceWithHtmlTemplate(const char* templ, StringPiece url);
 
   // Flush the resource and update time_consumed_ms_ based on time_to_download.
   void FlushResources(

@@ -451,6 +451,14 @@ UserAgentMatcher::BlinkRequestType UserAgentMatcher::GetBlinkRequestType(
 
 UserAgentMatcher::PrefetchMechanism UserAgentMatcher::GetPrefetchMechanism(
     const StringPiece& user_agent) const {
+  // Chrome >= 42 has link rel=prefetch that's good at actually using the
+  // prefetch result, prioritize using that.
+  int major, minor, build, patch;
+  if (GetChromeBuildNumber(user_agent, &major, &minor, &build, &patch)
+      && major >= 42) {
+    return kPrefetchLinkRelPrefetchTag;
+  }
+
   if (supports_prefetch_image_tag_.Match(user_agent, false)) {
     return kPrefetchImageTag;
   } else if (supports_prefetch_link_script_tag_.Match(user_agent, false)) {
