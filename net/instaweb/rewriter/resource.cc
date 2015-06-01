@@ -111,8 +111,7 @@ bool Resource::IsSafeToRewrite(bool rewrite_uncacheable,
         StrAppend(reason, "Fetch failure, ");
         break;
       case kFetchStatusNotSet:
-        StrAppend(reason,
-                  "Fetch status not set when IsSafeToRewrite was called, ");
+        StrAppend(reason, "Resource headers are ");
         break;
       case kFetchStatusOK:
         LOG(WARNING) << "Fetch status OK but !HttpStatusOk in IsSafeToRewrite!";
