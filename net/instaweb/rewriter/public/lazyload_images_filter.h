@@ -20,14 +20,14 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_LAZYLOAD_IMAGES_FILTER_H_
 
 #include "net/instaweb/rewriter/public/common_filter.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/html/html_element.h"
 #include "pagespeed/opt/logging/enums.pb.h"
 
 namespace net_instaweb {
 
-class HtmlElement;
-class RewriteDriver;
-class RewriteOptions;
 class StaticAssetManager;
 class Statistics;
 
@@ -121,6 +121,8 @@ class LazyloadImagesFilter : public CommonFilter {
   // If non-NULL, we skip rewriting till we reach
   // LazyloadImagesFilter::EndElement(skip_rewrite_).
   HtmlElement* skip_rewrite_;
+  // Head element - preferred insertion point for scripts.
+  HtmlElement* head_element_;
   // Indicates if the main javascript has been inserted into the page.
   bool main_script_inserted_;
   // Indicates whether we should abort rewriting the page.

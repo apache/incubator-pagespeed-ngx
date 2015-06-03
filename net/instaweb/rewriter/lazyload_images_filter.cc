@@ -18,6 +18,7 @@
 
 #include "net/instaweb/rewriter/public/lazyload_images_filter.h"
 
+#include "base/logging.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/request_properties.h"
@@ -82,6 +83,8 @@ void LazyloadImagesFilter::StartDocumentImpl() {
 }
 
 void LazyloadImagesFilter::EndDocument() {
+  // TODO(jmaessen): Fix filter to insert this script
+  // conditionally.
   driver()->UpdatePropertyValueInDomCohort(
       driver()->fallback_property_page(),
       kIsLazyloadScriptInsertedPropertyName,
@@ -90,6 +93,7 @@ void LazyloadImagesFilter::EndDocument() {
 
 void LazyloadImagesFilter::Clear() {
   skip_rewrite_ = NULL;
+  head_element_ = NULL;
   main_script_inserted_ = false;
   abort_rewrite_ = false;
   abort_script_inserted_ = false;
@@ -124,6 +128,22 @@ RewriterHtmlApplication::Status LazyloadImagesFilter::ShouldApply(
 void LazyloadImagesFilter::StartElementImpl(HtmlElement* element) {
   if (noscript_element() != NULL) {
     return;
+  }
+  if (!main_script_inserted_ && head_element_ == NULL) {
+    switch (element->keyword()) {
+      case HtmlName::kHtml:
+      case HtmlName::kLink:
+      case HtmlName::kMeta:
+      case HtmlName::kScript:
+      case HtmlName::kStyle:
+        break;
+      case HtmlName::kHead:
+        head_element_ = element;
+        break;
+      default:
+        InsertLazyloadJsCode(element);
+        break;
+    }
   }
   if (skip_rewrite_ == NULL) {
     if (element->keyword() == HtmlName::kNoembed ||
@@ -171,8 +191,13 @@ void LazyloadImagesFilter::EndElementImpl(HtmlElement* element) {
     }
     return;
   }
+  if (head_element_ == element) {
+    InsertLazyloadJsCode(NULL);
+    head_element_ = NULL;
+  }
   if (abort_rewrite_) {
-    if (!abort_script_inserted_ && main_script_inserted_) {
+    if (!abort_script_inserted_ && main_script_inserted_ &&
+        num_images_lazily_loaded_ > 0) {
       // If we have already rewritten some elements on the page, insert a
       // script to load all previously rewritten images.
       HtmlElement* script = driver()->NewElement(element, HtmlName::kScript);
@@ -294,9 +319,22 @@ void LazyloadImagesFilter::EndElementImpl(HtmlElement* element) {
 }
 
 void LazyloadImagesFilter::InsertLazyloadJsCode(HtmlElement* element) {
-  if (!driver()->is_lazyload_script_flushed()) {
+  if (!driver()->is_lazyload_script_flushed() &&
+      (!abort_rewrite_ || num_images_lazily_loaded_ > 0)) {
     HtmlElement* script = driver()->NewElement(element, HtmlName::kScript);
-    driver()->InsertNodeBeforeNode(element, script);
+    if (element != NULL) {
+      driver()->InsertNodeBeforeNode(element, script);
+    } else if (driver()->CanAppendChild(head_element_)) {
+      // insert at end of head.
+      driver()->AppendChild(head_element_, script);
+    } else {
+      // Could not insert at end of head even though we just saw the end of head
+      // event!  Should not happen, but this will ensure that we insert the
+      // script before the next tag we see.
+      LOG(DFATAL) << "Can't append child to <head> at the </head> event!";
+      main_script_inserted_ = false;
+      return;
+    }
     StaticAssetManager* static_asset_manager =
         driver()->server_context()->static_asset_manager();
     GoogleString lazyload_js = GetLazyloadJsSnippet(
