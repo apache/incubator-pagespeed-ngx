@@ -749,6 +749,14 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
     this.addMapNavigation_(themeData.menuFrontColor);
   }
 
+  // If we are in labeled mode or only 1 button is configured, then show the
+  // text next to it.
+  if (window.psLabeledMode || (dialButton && !this.mapButton_) ||
+      (!dialButton && this.mapButton_)) {
+    goog.dom.classlist.add(this.headerBar_,
+                           pagespeed.MobUtil.ElementClass.SHOW_BUTTON_TEXT);
+  }
+
   this.addHeaderBarResizeEvents_();
   this.addThemeColor_(themeData);
 };
@@ -820,7 +828,6 @@ pagespeed.MobNav.openMap_ = function() {
  * @private
  */
 pagespeed.MobNav.prototype.addMapNavigation_ = function(color) {
-
   this.mapButton_ = document.createElement(goog.dom.TagName.A);
   goog.dom.classlist.add(this.mapButton_,
                          pagespeed.MobUtil.ElementClass.BUTTON);

@@ -60,15 +60,16 @@ body.mob-iframe {
   z-index: 999999;
 
   padding: 0;
+  padding-right: 15px;
 
   width: 100%;
-  height: 50px;
+  height: 51px;
 
   -webkit-transform-origin: 0 0;
   transform-origin: 0 0;
 
   border-bottom: thin solid;
-  box-sizing: content-box;
+  box-sizing: border-box;
 
   box-shadow: 0 5px 6px -1px rgba(0, 0, 0, 0.4);
 
@@ -89,6 +90,10 @@ body.mob-iframe {
   -webkit-box-pack: center;
   -webkit-justify-content: space-around;
   justify-content: space-around;
+}
+
+#psmob-header-bar.show-button-text {
+  padding-right: 15px;
 }
 
 #psmob-header-bar.hide {
@@ -139,6 +144,8 @@ body.mob-iframe {
   display: -moz-box;
   display: -webkit-flex;
   display: flex;
+
+  text-decoration: none;
 }
 
 #psmob-menu-button,
@@ -162,19 +169,19 @@ body.mob-iframe {
 }
 
 .psmob-button-text {
-  /* Only display button text in labeled mode. */
+  /* Only display button text in labeled mode or when there is only 1 button. */
   display: none;
 
   height: 50px;
   width: auto;
   font-family: arial, sans-serif;
-  font-size: 20px;
+  font-size: 22px;
   font-weight: bold;
   line-height: 50px;
   margin: 0;
 }
 
-#psmob-header-bar.labeled .psmob-button-text {
+#psmob-header-bar.show-button-text .psmob-button-text {
   display: block;
 }
 
@@ -233,7 +240,11 @@ body.mob-iframe {
  */
 @media all and (min-width: 700px) and (orientation: portrait) {
   #psmob-header-bar.mobile {
-    height: 150px;
+    height: 151px;
+  }
+
+  #psmob-header-bar.show-button-text.mobile {
+    padding-right: 45px;
   }
 
   #psmob-header-bar.mobile #psmob-menu-button,
@@ -252,7 +263,7 @@ body.mob-iframe {
   #psmob-header-bar.mobile .psmob-button-text {
     height: 150px;
     line-height: 150px;
-    font-size: 40px;
+    font-size: 44px;
   }
 
   #psmob-nav-panel.mobile {
@@ -286,7 +297,7 @@ body.mob-iframe {
    * value so our nav bar ends up on top of it. */
   z-index: 999999;
 
-  font-size: 20px;
+  font-size: 22px;
 
   /* We don't set margin-top here because that gets set dynamically by the JS to
    * compensate for zoom level. */

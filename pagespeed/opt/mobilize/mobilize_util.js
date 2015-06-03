@@ -76,7 +76,8 @@ pagespeed.MobUtil.ElementClass = {
   LOGO_CHOOSER_IMAGE: 'psmob-logo-chooser-image',
   LOGO_CHOOSER_SWAP: 'psmob-logo-chooser-swap',
   LOGO_CHOOSER_TABLE: 'psmob-logo-chooser-table',
-  MENU_EXPAND_ICON: 'psmob-menu-expand-icon'
+  MENU_EXPAND_ICON: 'psmob-menu-expand-icon',
+  SHOW_BUTTON_TEXT: 'show-button-text'
 };
 
 

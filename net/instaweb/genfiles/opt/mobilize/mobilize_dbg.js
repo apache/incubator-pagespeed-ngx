@@ -7320,7 +7320,7 @@ var pagespeed = {MobUtil:{}};
 pagespeed.MobUtil.ElementId = {CLICK_DETECTOR_DIV:"psmob-click-detector-div", CONFIG_IFRAME:"ps-hidden-iframe", NAV_PANEL:"psmob-nav-panel", HEADER_BAR:"psmob-header-bar", LOGO_SPAN:"psmob-logo-span", LOGO_IMAGE:"psmob-logo-image", MAP_IMAGE:"psmob-map-image", MENU_BUTTON:"psmob-menu-button", PHONE_DIALER_ICON:"psmob-phone-dialer-icon", PHONE_DIALER_TEXT:"psmob-phone-dialer-text", PROGRESS_LOG:"ps-progress-log", PROGRESS_REMOVE:"ps-progress-remove", PROGRESS_SCRIM:"ps-progress-scrim", PROGRESS_SHOW_LOG:"ps-progress-show-log", 
 PROGRESS_SPAN:"ps-progress-span", SPACER:"psmob-spacer"};
 pagespeed.MobUtil.ElementClass = {BUTTON:"psmob-button", BUTTON_ICON:"psmob-button-icon", BUTTON_TEXT:"psmob-button-text", HAMBURGER_DIV:"psmob-hamburger-div", HAMBURGER_LINE:"psmob-hamburger-line", LABELED:"labeled", LOGO_CHOOSER_CHOICE:"psmob-logo-chooser-choice", LOGO_CHOOSER_COLOR:"psmob-logo-chooser-color", LOGO_CHOOSER_COLUMN_HEADER:"psmob-logo-chooser-column-header", LOGO_CHOOSER_CONFIG_FRAGMENT:"psmob-logo-chooser-config-fragment", LOGO_CHOOSER_IMAGE:"psmob-logo-chooser-image", LOGO_CHOOSER_SWAP:"psmob-logo-chooser-swap", 
-LOGO_CHOOSER_TABLE:"psmob-logo-chooser-table", MENU_EXPAND_ICON:"psmob-menu-expand-icon"};
+LOGO_CHOOSER_TABLE:"psmob-logo-chooser-table", MENU_EXPAND_ICON:"psmob-menu-expand-icon", SHOW_BUTTON_TEXT:"show-button-text"};
 pagespeed.MobUtil.ASCII_0_ = 48;
 pagespeed.MobUtil.ASCII_9_ = 57;
 pagespeed.MobUtil.Rect = function() {
@@ -8555,6 +8555,7 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(a) {
   var b = this.dialer_.createButton();
   b && this.headerBar_.appendChild(b);
   window.psMapLocation && this.addMapNavigation_(a.menuFrontColor);
+  (window.psLabeledMode || b && !this.mapButton_ || !b && this.mapButton_) && goog.dom.classlist.add(this.headerBar_, pagespeed.MobUtil.ElementClass.SHOW_BUTTON_TEXT);
   this.addHeaderBarResizeEvents_();
   this.addThemeColor_(a);
 };
