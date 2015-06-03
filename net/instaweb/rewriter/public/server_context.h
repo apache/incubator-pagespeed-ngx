@@ -335,7 +335,7 @@ class ServerContext {
   NamedLock* MakeInputLock(const GoogleString& name);
 
   // Attempt to obtain a named lock without blocking.  Return true if we do so.
-  bool TryLockForCreation(NamedLock* creation_lock);
+  void TryLockForCreation(NamedLock* creation_lock, Function* callback);
 
   // Attempt to obtain a named lock. When the lock has been obtained, queue the
   // callback on the  given worker Sequence.  If the lock times out, cancel the

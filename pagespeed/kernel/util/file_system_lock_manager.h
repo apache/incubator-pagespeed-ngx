@@ -23,6 +23,7 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/named_lock_manager.h"
+#include "pagespeed/kernel/thread/scheduler_based_abstract_lock.h"
 
 namespace net_instaweb {
 
@@ -56,7 +57,7 @@ class FileSystemLockManager : public NamedLockManager {
   // remnants of dead locks.  A given NamedLock object should Lock and Unlock
   // in matched pairs; DO NOT use separate NamedLock objects created with the
   // same name to perform a Lock and the corresponding Unlock.
-  virtual NamedLock* CreateNamedLock(const StringPiece& name);
+  virtual SchedulerBasedAbstractLock* CreateNamedLock(const StringPiece& name);
 
   // Simple accessors for constructor arguments
   FileSystem* file_system() const { return file_system_; }

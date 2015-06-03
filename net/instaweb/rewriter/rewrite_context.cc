@@ -1646,13 +1646,18 @@ void RewriteContext::OutputCacheMiss() {
         "server_context->shutting_down(); leaking the context.");
   } else if (ShouldDistributeRewrite()) {
     DistributeRewrite();
-  } else if (server_context->TryLockForCreation(Lock())) {
-    FetchInputs();
   } else {
-    num_rewrites_abandoned_for_lock_contention_->Add(1);
-    MarkTooBusy();
-    Activate();
+    server_context->TryLockForCreation(Lock(), MakeFunction(
+        this,
+        &RewriteContext::FetchInputs,
+        &RewriteContext::LockFailed));
   }
+}
+
+void RewriteContext::LockFailed() {
+  num_rewrites_abandoned_for_lock_contention_->Add(1);
+  MarkTooBusy();
+  Activate();
 }
 
 bool RewriteContext::IsDistributedRewriteForHtml() const {

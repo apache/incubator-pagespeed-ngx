@@ -20,9 +20,9 @@
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/file_system.h"
 #include "pagespeed/kernel/thread/scheduler.h"
-#include "pagespeed/kernel/thread/scheduler_based_abstract_lock.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/thread/scheduler_based_abstract_lock.h"
 
 namespace net_instaweb {
 
@@ -59,7 +59,7 @@ class FileSystemLock : public SchedulerBasedAbstractLock {
     held_ = !manager_->file_system()->Unlock(name_, manager_->handler());
   }
 
-  virtual GoogleString name() {
+  virtual GoogleString name() const {
     return name_;
   }
 
@@ -103,7 +103,8 @@ FileSystemLockManager::FileSystemLockManager(
 
 FileSystemLockManager::~FileSystemLockManager() { }
 
-NamedLock* FileSystemLockManager::CreateNamedLock(const StringPiece& name) {
+SchedulerBasedAbstractLock* FileSystemLockManager::CreateNamedLock(
+    const StringPiece& name) {
   return new FileSystemLock(StrCat(base_path_, name), this);
 }
 

@@ -213,11 +213,10 @@ class CacheFindCallback : public HTTPCache::Callback {
       async_op_hooks_->FinishAsyncOp();
     }
 
-    virtual bool StartFetch(
+    virtual void StartFetch(
         UrlAsyncFetcher* fetcher, MessageHandler* handler) {
       AsyncFetch* fetch = callback_->WrapCachePutFetchAndConditionalFetch(this);
       fetcher->Fetch(url(), handler, fetch);
-      return true;
     }
 
     virtual bool ShouldYieldToRedundantFetchInProgress() {

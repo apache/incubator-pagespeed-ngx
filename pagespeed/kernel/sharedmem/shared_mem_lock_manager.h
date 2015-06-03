@@ -26,6 +26,7 @@
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/thread/scheduler_based_abstract_lock.h"
 
 namespace net_instaweb {
 
@@ -72,7 +73,7 @@ class SharedMemLockManager : public NamedLockManager {
   static void GlobalCleanup(AbstractSharedMem* shm, const GoogleString& path,
                             MessageHandler* message_handler);
 
-  virtual NamedLock* CreateNamedLock(const StringPiece& name);
+  virtual SchedulerBasedAbstractLock* CreateNamedLock(const StringPiece& name);
 
  private:
   friend class SharedMemLock;

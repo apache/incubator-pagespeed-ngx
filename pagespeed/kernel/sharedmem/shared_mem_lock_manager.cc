@@ -146,7 +146,7 @@ class SharedMemLock : public SchedulerBasedAbstractLock {
     acquisition_time_ = Data::kNotAcquired;
   }
 
-  virtual GoogleString name() {
+  virtual GoogleString name() const {
     return name_;
   }
 
@@ -326,7 +326,8 @@ void SharedMemLockManager::GlobalCleanup(
   shm->DestroySegment(path, handler);
 }
 
-NamedLock* SharedMemLockManager::CreateNamedLock(const StringPiece& name) {
+SchedulerBasedAbstractLock* SharedMemLockManager::CreateNamedLock(
+    const StringPiece& name) {
   return new SharedMemLock(this, name);
 }
 

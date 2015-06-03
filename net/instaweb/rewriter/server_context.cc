@@ -552,8 +552,10 @@ const int64 kBreakLockMs = 30 * Timer::kSecondMs;
 const int64 kBlockLockMs = 5 * Timer::kSecondMs;
 }  // namespace
 
-bool ServerContext::TryLockForCreation(NamedLock* creation_lock) {
-  return creation_lock->TryLockStealOld(kBreakLockMs);
+void ServerContext::TryLockForCreation(NamedLock* creation_lock,
+                                       Function* callback) {
+  return creation_lock->LockTimedWaitStealOld(
+      0 /* wait_ms */, kBreakLockMs, callback);
 }
 
 void ServerContext::LockForCreation(NamedLock* creation_lock,

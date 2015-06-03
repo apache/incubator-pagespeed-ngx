@@ -70,8 +70,8 @@ class AsyncFetchWithLock : public AsyncFetch {
 
   // This will first try to acquire lock and triggers fetch by calling
   // StartFetch() if successful.
-  // Returns false, if it fails to acquire lock and deletes this.
-  bool Start(UrlAsyncFetcher* fetcher);
+  // calls Finalize(true, false), if it fails to acquire lock, and deletes this.
+  void Start(UrlAsyncFetcher* fetcher);
 
   // Url to be fetched.
   const GoogleString& url() const { return url_; }
@@ -91,7 +91,7 @@ class AsyncFetchWithLock : public AsyncFetch {
 
   // StartFetch() will be called after the lock is acquired. The subclass
   // implements this function and is responsible for UrlAsyncFetcher::Fetch().
-  virtual bool StartFetch(
+  virtual void StartFetch(
      UrlAsyncFetcher* fetcher, MessageHandler* handler) = 0;
 
   // Releases the lock.
@@ -110,6 +110,9 @@ class AsyncFetchWithLock : public AsyncFetch {
  private:
   // Makes a lock used for fetching.
   NamedLock* MakeInputLock(const GoogleString& url);
+
+  void LockFailed(UrlAsyncFetcher* fetcher);
+  void LockAcquired(UrlAsyncFetcher* fetcher);
 
   NamedLockManager* lock_manager_;  // Owned by server_context.
   scoped_ptr<NamedLock> lock_;

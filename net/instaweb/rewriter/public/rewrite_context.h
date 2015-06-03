@@ -689,6 +689,9 @@ class RewriteContext {
   // avoid having multiple concurrent processes attempt the same rewrite.
   void FetchInputs();
 
+  // Called when we fail to acquire the lock for the output resource.
+  void LockFailed();
+
   // Callback to a distributed rewrite fetch. Queued to run in the high-priority
   // thread. Fetch path: If the fetch succeeded then the rest of the flow is
   // skipped and that result is used, otherwise the original resource is fetched

@@ -202,6 +202,14 @@ void SchedulerBasedAbstractLock::LockTimedWaitStealOld(
   if (TryLock()) {
     // Fast path.
     callback->CallRun();
+  } else if (wait_ms == 0) {
+    // Short circuit 0ms wait to just poll once, rather than calling
+    // the busy-loop, which runs it 100x (kBusySpinIterations).
+    if (TryLockStealOld(steal_ms)) {
+      callback->CallRun();
+    } else {
+      callback->CallCancel();
+    }
   } else {
     PollAndCallback(&SchedulerBasedAbstractLock::TryLockStealOld,
                     steal_ms, wait_ms, callback);

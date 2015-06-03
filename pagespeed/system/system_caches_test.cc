@@ -48,6 +48,7 @@
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/base/named_lock_manager.h"
+#include "pagespeed/kernel/base/named_lock_tester.h"
 #include "pagespeed/kernel/base/null_shared_mem.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/shared_string.h"
@@ -70,6 +71,7 @@
 #include "pagespeed/kernel/http/response_headers.h"
 #include "pagespeed/kernel/sharedmem/inprocess_shared_mem.h"
 #include "pagespeed/kernel/sharedmem/shared_mem_lock_manager.h"
+#include "pagespeed/kernel/thread/scheduler_based_abstract_lock.h"
 #include "pagespeed/kernel/thread/worker_test_base.h"
 #include "pagespeed/kernel/util/file_system_lock_manager.h"
 #include "pagespeed/kernel/util/platform.h"
@@ -788,11 +790,12 @@ TEST_F(SystemCachesTest, FileShare) {
       system_caches_->GetLockManager(configs[1])->CreateNamedLock("a"));
   scoped_ptr<NamedLock> lock2(
       system_caches_->GetLockManager(configs[2])->CreateNamedLock("a"));
-  EXPECT_TRUE(lock0->TryLock());
-  EXPECT_FALSE(lock1->TryLock());
-  EXPECT_TRUE(lock2->TryLock());
+  NamedLockTester tester(thread_system_.get());
+  EXPECT_TRUE(tester.TryLock(lock0.get()));
+  EXPECT_FALSE(tester.TryLock(lock1.get()));
+  EXPECT_TRUE(tester.TryLock(lock2.get()));
   lock0->Unlock();
-  EXPECT_TRUE(lock1->TryLock());
+  EXPECT_TRUE(tester.TryLock(lock1.get()));
 
   STLDeleteElements(&servers);
 }

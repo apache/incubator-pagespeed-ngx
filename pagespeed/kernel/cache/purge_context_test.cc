@@ -24,6 +24,7 @@
 #include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/base/mock_timer.h"
 #include "pagespeed/kernel/base/named_lock_manager.h"
+#include "pagespeed/kernel/base/named_lock_tester.h"
 #include "pagespeed/kernel/base/null_statistics.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/statistics.h"
@@ -55,7 +56,7 @@ class PurgeContextTest : public ::testing::Test,
     EXPECT_TRUE(file_system_.WriteFile(filename.c_str(), "bogus",
                                        &message_handler_));
     lock_->Unlock();
-    ASSERT_TRUE(lock_->LockTimedWaitStealOld(0, 0));
+    ASSERT_TRUE(lock_tester_.LockTimedWaitStealOld(0, 0, lock_.get()));
     purge_context1_->AddPurgeUrl("a", 500000, ExpectSuccess());
   }
 
@@ -82,7 +83,8 @@ class PurgeContextTest : public ::testing::Test,
         file_system_(thread_system_.get(), &timer_),
         scheduler_(thread_system_.get(), &timer_),
         lock_manager_(&file_system_, kBasePath, &scheduler_,
-                      &message_handler_) {
+                      &message_handler_),
+        lock_tester_(thread_system_.get()) {
     if (HasValidStats()) {
       statistics_.reset(new SimpleStats(thread_system_.get()));
     } else {
@@ -127,7 +129,7 @@ class PurgeContextTest : public ::testing::Test,
   int64 LockContentionStart(PurgeContext::PurgeCallback* callback) {
     scheduler_.AdvanceTimeMs(10 * Timer::kSecondMs);
     lock_.reset(lock_manager_.CreateNamedLock(LockName()));
-    EXPECT_TRUE(lock_->LockTimedWaitStealOld(0, 0));
+    EXPECT_TRUE(lock_tester_.LockTimedWaitStealOld(0, 0, lock_.get()));
     EXPECT_TRUE(lock_->Held());
     int64 now_ms = timer_.NowMs();
     purge_context1_->SetCachePurgeGlobalTimestampMs(now_ms, callback);
@@ -191,6 +193,7 @@ class PurgeContextTest : public ::testing::Test,
   CopyOnWrite<PurgeSet> purge_set1_;
   CopyOnWrite<PurgeSet> purge_set2_;
   scoped_ptr<NamedLock> lock_;
+  NamedLockTester lock_tester_;
 };
 
 TEST_P(PurgeContextTest, Empty) {
@@ -294,7 +297,7 @@ TEST_P(PurgeContextTest, LockContentionFailure) {
 
   // Release & retake the lock making it harder to steal by refreshing it.
   lock_->Unlock();
-  ASSERT_TRUE(lock_->LockTimedWaitStealOld(0, 0));
+  ASSERT_TRUE(lock_tester_.LockTimedWaitStealOld(0, 0, lock_.get()));
 
   // Get our ExpectFailure callback called and confirm that the invalidation
   // didn't have any effect.

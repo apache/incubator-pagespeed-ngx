@@ -147,7 +147,7 @@ class CacheableResourceBase::FetchCallbackBase : public AsyncFetchWithLock {
   }
 
   // Overridden from AsyncFetchWithLock.
-  virtual bool StartFetch(UrlAsyncFetcher* fetcher, MessageHandler* handler) {
+  virtual void StartFetch(UrlAsyncFetcher* fetcher, MessageHandler* handler) {
     fetch_url_ = url();
     fetcher_ = fetcher;
     if (!request_headers()->Has(HttpAttributes::kReferer)) {
@@ -170,7 +170,6 @@ class CacheableResourceBase::FetchCallbackBase : public AsyncFetchWithLock {
         &fetch_url_,
         request_headers(),
         NewCallback(this, &FetchCallbackBase::PrepareRequestDone));
-    return true;
   }
 
   void PrepareRequestDone(bool success) {

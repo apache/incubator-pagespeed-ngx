@@ -33,9 +33,14 @@ class Scheduler;
 // the time between the initial call to the lock routine attempt and the time
 // the lock is unlocked (ie we might wait for an extra amount of time equal to
 // half the time we were forced to wait).
+//
+// Note that the NamedLock API is strictly non-blocking, but this class
+// adds blocking APIs which should only be used by blocking implementations
+// and their tests.
 class SchedulerBasedAbstractLock : public NamedLock {
  public:
   virtual ~SchedulerBasedAbstractLock();
+
   virtual bool LockTimedWait(int64 wait_ms);
   virtual void LockTimedWait(int64 wait_ms, Function* callback);
 
@@ -44,6 +49,21 @@ class SchedulerBasedAbstractLock : public NamedLock {
       int64 wait_ms, int64 steal_ms, Function* callback);
 
  protected:
+  friend class SharedMemLockManagerTestBase;
+  friend class FileSystemLockManagerTest;
+
+  // If lock is held, return false, otherwise lock and return true.
+  // Non-blocking.  Note that implementations of this and other similar 'try'
+  // routines are permitted to return false conservatively.  TryLock must
+  // *eventually* succeed if called repeatedly on an unheld lock, however.
+  virtual bool TryLock() = 0;
+
+  // TryLockStealOld immediately attempts to lock the lock, succeeding and
+  // returning true if the lock is unlocked or the lock can be stolen from the
+  // current holder.  Otherwise return false.  cf TryLock() for other caveats.
+  // Non-blocking.
+  virtual bool TryLockStealOld(int64 steal_ms) = 0;
+
   virtual Scheduler* scheduler() const = 0;
 
  private:

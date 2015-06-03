@@ -25,6 +25,7 @@
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/sharedmem/shared_mem_lock_manager.h"
 #include "pagespeed/kernel/sharedmem/shared_mem_test_base.h"
+#include "pagespeed/kernel/thread/scheduler_based_abstract_lock.h"
 #include "pagespeed/kernel/util/platform.h"
 
 namespace net_instaweb {
@@ -77,10 +78,12 @@ SharedMemLockManager* SharedMemLockManagerTestBase::AttachDefault() {
 }
 
 void SharedMemLockManagerTestBase::TestBasic() {
-  scoped_ptr<SharedMemLockManager> lock_manager_(AttachDefault());
-  ASSERT_TRUE(lock_manager_.get() != NULL);
-  scoped_ptr<NamedLock> lock_a(lock_manager_->CreateNamedLock(kLockA));
-  scoped_ptr<NamedLock> lock_b(lock_manager_->CreateNamedLock(kLockB));
+  scoped_ptr<SharedMemLockManager> lock_manager(AttachDefault());
+  ASSERT_TRUE(lock_manager.get() != NULL);
+  scoped_ptr<SchedulerBasedAbstractLock> lock_a(
+      lock_manager->CreateNamedLock(kLockA));
+  scoped_ptr<SchedulerBasedAbstractLock> lock_b(
+      lock_manager->CreateNamedLock(kLockB));
 
   ASSERT_TRUE(lock_a.get() != NULL);
   ASSERT_TRUE(lock_b.get() != NULL);
@@ -117,9 +120,11 @@ void SharedMemLockManagerTestBase::TestBasic() {
 }
 
 void SharedMemLockManagerTestBase::TestBasicChild() {
-  scoped_ptr<SharedMemLockManager> lock_manager_(AttachDefault());
-  scoped_ptr<NamedLock> lock_a(lock_manager_->CreateNamedLock(kLockA));
-  scoped_ptr<NamedLock> lock_b(lock_manager_->CreateNamedLock(kLockB));
+  scoped_ptr<SharedMemLockManager> lock_manager(AttachDefault());
+  scoped_ptr<SchedulerBasedAbstractLock> lock_a(
+      lock_manager->CreateNamedLock(kLockA));
+  scoped_ptr<SchedulerBasedAbstractLock> lock_b(
+      lock_manager->CreateNamedLock(kLockB));
 
   if (lock_a.get() == NULL || lock_b.get() == NULL) {
     test_env_->ChildFailed();
@@ -141,24 +146,27 @@ void SharedMemLockManagerTestBase::TestBasicChild() {
 void SharedMemLockManagerTestBase::TestDestructorUnlock() {
   // Standalone test for destructors cleaning up. It is covered by the
   // above, but this does it single-threaded, without weird things.
-  scoped_ptr<SharedMemLockManager> lock_manager_(AttachDefault());
-  ASSERT_TRUE(lock_manager_.get() != NULL);
+  scoped_ptr<SharedMemLockManager> lock_manager(AttachDefault());
+  ASSERT_TRUE(lock_manager.get() != NULL);
 
   {
-    scoped_ptr<NamedLock> lock_a(lock_manager_->CreateNamedLock(kLockA));
+    scoped_ptr<SchedulerBasedAbstractLock> lock_a(
+        lock_manager->CreateNamedLock(kLockA));
     EXPECT_TRUE(lock_a->TryLock());
   }
 
   {
-    scoped_ptr<NamedLock> lock_a(lock_manager_->CreateNamedLock(kLockA));
+    scoped_ptr<SchedulerBasedAbstractLock> lock_a(
+        lock_manager->CreateNamedLock(kLockA));
     EXPECT_TRUE(lock_a->TryLock());
   }
 }
 
 void SharedMemLockManagerTestBase::TestSteal() {
-  scoped_ptr<SharedMemLockManager> lock_manager_(AttachDefault());
-  ASSERT_TRUE(lock_manager_.get() != NULL);
-  scoped_ptr<NamedLock> lock_a(lock_manager_->CreateNamedLock(kLockA));
+  scoped_ptr<SharedMemLockManager> lock_manager(AttachDefault());
+  ASSERT_TRUE(lock_manager.get() != NULL);
+  scoped_ptr<SchedulerBasedAbstractLock> lock_a(
+      lock_manager->CreateNamedLock(kLockA));
   EXPECT_TRUE(lock_a->TryLock());
   EXPECT_TRUE(lock_a->Held());
   CreateChild(&SharedMemLockManagerTestBase::TestStealChild);
@@ -168,9 +176,10 @@ void SharedMemLockManagerTestBase::TestSteal() {
 void SharedMemLockManagerTestBase::TestStealChild() {
   const int kStealTimeMs = 1000;
 
-  scoped_ptr<SharedMemLockManager> lock_manager_(AttachDefault());
-  ASSERT_TRUE(lock_manager_.get() != NULL);
-  scoped_ptr<NamedLock> lock_a(lock_manager_->CreateNamedLock(kLockA));
+  scoped_ptr<SharedMemLockManager> lock_manager(AttachDefault());
+  ASSERT_TRUE(lock_manager.get() != NULL);
+  scoped_ptr<SchedulerBasedAbstractLock> lock_a(
+      lock_manager->CreateNamedLock(kLockA));
 
   // First, attempting to steal should fail, as 'time' hasn't moved yet.
   if (lock_a->TryLockStealOld(kStealTimeMs) || lock_a->Held()) {

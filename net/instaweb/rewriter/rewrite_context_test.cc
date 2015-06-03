@@ -50,6 +50,7 @@
 #include "pagespeed/kernel/base/mem_file_system.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/base/named_lock_manager.h"
+#include "pagespeed/kernel/base/named_lock_tester.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/stl_util.h"
@@ -3333,7 +3334,8 @@ TEST_F(RewriteContextTest, TestFreshenForMultipleResourceRewrites) {
   // that flow from working.
   scoped_ptr<NamedLock> lock(server_context()->MakeInputLock(
       StrCat(kTestDomain, kPath2)));
-  ASSERT_TRUE(lock->TryLock());
+  NamedLockTester lock_tester(server_context()->thread_system());
+  ASSERT_TRUE(lock_tester.TryLock(lock.get()));
   ValidateExpected("freshen",
                    StrCat(CssLinkHref("first.css"), CssLinkHref("second.css")),
                    CssLinkHref(combined_url));

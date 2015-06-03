@@ -22,6 +22,7 @@
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/hasher.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/named_lock_manager.h"
@@ -58,11 +59,9 @@ AsyncFetchWithLock::~AsyncFetchWithLock() {
                         << "cache key: " << cache_key_ << "url: " << url_;
 }
 
-bool AsyncFetchWithLock::Start(UrlAsyncFetcher* fetcher) {
+void AsyncFetchWithLock::Start(UrlAsyncFetcher* fetcher) {
   lock_.reset(MakeInputLock(cache_key()));
 
-  // lock_name will be needed after lock might be deleted.
-  GoogleString lock_name(lock_->name());
   int64 lock_timeout = fetcher->timeout_ms();
   if (lock_timeout == UrlAsyncFetcher::kUnspecifiedTimeout) {
     // Even if the fetcher never explicitly times out requests, they probably
@@ -73,22 +72,34 @@ bool AsyncFetchWithLock::Start(UrlAsyncFetcher* fetcher) {
     lock_timeout += kLockTimeoutSlackMs;
   }
 
-  if (!lock_->TryLockStealOld(lock_timeout)) {
-    lock_.reset(NULL);
-    // TODO(abliss): a per-unit-time statistic would be useful here.
-    if (ShouldYieldToRedundantFetchInProgress()) {
-      message_handler_->Message(
-          kInfo, "%s is already being fetched (lock %s)",
-          cache_key().c_str(), lock_name.c_str());
-      Finalize(true /* lock_failure */, false /* success */);
-      delete this;
-      return false;
-    }
+  lock_->LockTimedWaitStealOld(0 /* wait_ms */, lock_timeout,
+                               MakeFunction(this,
+                                            &AsyncFetchWithLock::LockAcquired,
+                                            &AsyncFetchWithLock::LockFailed,
+                                            fetcher));
+}
+
+void AsyncFetchWithLock::LockFailed(UrlAsyncFetcher* fetcher) {
+  // lock_name will be needed after lock is deleted.
+  GoogleString lock_name(lock_->name());
+  lock_.reset(NULL);
+  // TODO(abliss): a per-unit-time statistic would be useful here.
+  if (ShouldYieldToRedundantFetchInProgress()) {
+    message_handler_->Message(
+        kInfo, "%s is already being fetched (lock %s)",
+        cache_key().c_str(), lock_name.c_str());
+    Finalize(true /* lock_failure */, false /* success */);
+    delete this;
+  } else {
     message_handler_->Message(
         kInfo, "%s is being re-fetched asynchronously "
         "(lock %s held elsewhere)", cache_key().c_str(), lock_name.c_str());
+    StartFetch(fetcher, message_handler_);
   }
-  return StartFetch(fetcher, message_handler_);
+}
+
+void AsyncFetchWithLock::LockAcquired(UrlAsyncFetcher* fetcher) {
+  StartFetch(fetcher, message_handler_);
 }
 
 void AsyncFetchWithLock::HandleDone(bool success) {
