@@ -298,6 +298,9 @@ fi
 
 PSA_JS_LIBRARY_URL_PREFIX="pagespeed_custom_static"
 BEACON_HANDLER="ngx_pagespeed_beacon"
+STATISTICS_HANDLER="ngx_pagespeed_statistics"
+GLOBAL_STATISTICS_HANDLER="ngx_pagespeed_global_statistics"
+MESSAGES_HANDLER="ngx_pagespeed_message"
 STATISTICS_URL=http://$PRIMARY_HOSTNAME/ngx_pagespeed_statistics
 
 # An expected failure can be indicated like: "~In-place resource optimization~"
