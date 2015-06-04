@@ -28,7 +28,7 @@
 /* TODO(jmarantz): make class names consistent */
 
 body {
-  padding: 0px !important;
+  padding: 0 !important;
 }
 
 /* Used only in frame mode. */
@@ -96,8 +96,11 @@ body.mob-iframe {
   padding-right: 15px;
 }
 
+
+/* Note, don't add visibility: none; here because then
+ * goog.style.getTransformedSize won't calculate the size correctly.
+ */
 #psmob-header-bar.hide {
-  visibility: 'hidden';
   display: 'none';
   opacity: 0;
   /* Make the bar disappear immediately when scrolling. */

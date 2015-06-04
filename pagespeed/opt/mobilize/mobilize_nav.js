@@ -507,11 +507,11 @@ pagespeed.MobNav.prototype.redrawHeader_ = function() {
   this.headerBar_.style['-webkit-transform'] = scaleTransform;
   this.headerBar_.style.transform = scaleTransform;
 
-  var newHeight =
-      Math.round(goog.style.getTransformedSize(this.headerBar_).height);
-
   // Restore visibility since the bar was hidden while scrolling and zooming.
   goog.dom.classlist.remove(this.headerBar_, 'hide');
+
+  var newHeight =
+      Math.round(goog.style.getTransformedSize(this.headerBar_).height);
 
   // Update the size of the spacer div to take into account the changed relative
   // size of the header. Changing the size of the spacer div will also move the
