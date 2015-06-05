@@ -20,10 +20,8 @@
 
 goog.provide('pagespeed.MobNav');
 
-goog.require('goog.array');
 goog.require('goog.color');
 goog.require('goog.dom');
-goog.require('goog.dom.NodeType');
 goog.require('goog.dom.TagName');
 goog.require('goog.dom.classlist');
 goog.require('goog.events.EventType');
@@ -43,8 +41,6 @@ goog.require('pagespeed.MobUtil');
  * @constructor
  */
 pagespeed.MobNav = function() {
-  this.navSections_ = [];
-
   /**
    * The header bar element inserted at the top of the page. This is inserted by
    * C++.
@@ -75,7 +71,7 @@ pagespeed.MobNav = function() {
 
   /**
    * Menu button in the header bar. This element can be null after configuration
-   * if nav is specifically disabled for a site with navDisabledForSite();
+   * if no nav section was inserted server side.
    * @private {?Element}
    */
   this.menuButton_ = null;
@@ -97,7 +93,8 @@ pagespeed.MobNav = function() {
    * Side nav bar.
    * @private {?Element}
    */
-  this.navPanel_ = null;
+  this.navPanel_ =
+      document.getElementById(pagespeed.MobUtil.ElementId.NAV_PANEL);
 
 
   /**
@@ -237,153 +234,6 @@ pagespeed.MobNav.SWAP_ICON_ =
     'Oso8o1MMZ7pcg0MFwyabDjeZgjM2F4tGEy4XnQWzNhe+0xZ8L4EmjKhPeVeDET9g+E+UwkPp' +
     'dmMpH5ePyVidin9GsmkouFp0yE1yxTJuJLp+9MNKzg2ipPC8nE+LuMLwqlrYBVqy8VAAAAAE' +
     'lFTkSuQmCC';
-
-
-/**
- * Given a candidate node, see if it contains any IMG elements.
- * visibilityMatters indicates those IMGs must be visible.
- * @param {boolean} visibilityMatters
- * @param {!Node} node to inspect for images
- * @return {boolean}
- * @private
- */
-pagespeed.MobNav.prototype.hasImages_ = function(visibilityMatters, node) {
-  if (!goog.dom.isElement(node)) {
-    return false;
-  }
-  if (node.nodeName.toUpperCase() === goog.dom.TagName.IMG) {
-    return (!visibilityMatters || node.offsetParent !== null);
-  }
-  var images = node.getElementsByTagName(goog.dom.TagName.IMG);
-  if (visibilityMatters) {
-    // Check in reverse; see
-    // http://stackoverflow.com/questions/8747086/
-    for (var i = images.length - 1; i >= 0; i--) {
-      if (images[i].offsetParent !== null) {
-        return true;
-      }
-    }
-    return false;
-  } else {
-    // Visibility doesn't matter.
-    return images.length > 0;
-  }
-};
-
-
-/**
- * Given a candidate navigational DOM element, figure out if it should be
- * widened to encompass its parent element as well.
- * @param {!Element} element
- * @return {boolean}
- * @private
- */
-pagespeed.MobNav.prototype.canEnlargeNav_ = function(element) {
-  var parent = element.parentNode;
-  if (!parent) {
-    return false;
-  }
-  if (parent.getElementsByTagName('SCRIPT').length > 0) {
-    // Never enlarge to encompass a script.
-    return false;
-  }
-  var elementIsVisible = element.offsetParent !== null;
-  var sawElement = false;
-  var preElementTextSize = 0;
-  for (var child = parent.firstChild; child; child = child.nextSibling) {
-    if (child == element) {
-      sawElement = true;
-    } else if (child.offsetParent === null && elementIsVisible) {
-      // Not visible when element is visible.  Skip.  Note that element may be
-      // invisible due to being in a menu (so it'll become visible on hover /
-      // touch but isn't visible now); in that case we want to ignore visibility
-      // of siblings when deciding whether to enlarge.
-    } else if (child.nodeType != goog.dom.NodeType.TEXT &&
-               child.nodeType != goog.dom.NodeType.ELEMENT) {
-      // Ignore comments, CDATA, deprecated nodes, etc.
-    } else if (this.hasImages_(elementIsVisible, child)) {
-      // Image in parent, don't enlarge.
-      return false;
-    } else {
-      var textSize = goog.string.trim(child.textContent).length;
-      if (textSize > 0) {
-        if (sawElement) {
-          // Text after element, don't enlarge.
-          return false;
-        }
-        preElementTextSize += textSize;
-        if (preElementTextSize > 60) {
-          // Too much pre-element text, don't enlarge.
-          return false;
-        }
-      }
-    }
-  }
-  return true;
-};
-
-
-/**
- * Find the nav sections on the page. If site-specific tweaks are needed to add
- * to the nav sections found by the machine learning, then add them here.
- * @private
- */
-pagespeed.MobNav.prototype.findNavSections_ = function() {
-  var elements = [];
-  this.navPanel_ =
-      document.getElementById(pagespeed.MobUtil.ElementId.NAV_PANEL);
-  if (this.navPanel_) {
-    // Make sure the navPanel is in the body of the document; we've seen it
-    // moved elsewhere by JS on the page.
-    document.body.appendChild(this.navPanel_);
-  } else if (window.pagespeedNavigationalIds) {
-    var n = window.pagespeedNavigationalIds.length;
-    var parents = {};
-    for (var i = 0; i < n; i++) {
-      var id = window.pagespeedNavigationalIds[i];
-      // Attempt to use querySelector(...) if getElementById(...) fails.  This
-      // handles the empty string (not retrieved by getElementById) gracefully,
-      // and should deal with other corner cases as well.
-      var element = (document.getElementById(id) ||
-                     document.querySelector(
-                         '[id=' +
-                         pagespeed.MobUtil.toCssString1(id) +
-                         ']'));
-      var parent = element.parentNode;
-      // Optionally replace an element by its parent.
-      // Make sure we do this at most once, and delete other children
-      // once we have done so.
-      if (parent) {
-        // We need a key to index parents so we can detect duplicates.
-        // We know that element has an id, so if the parent doesn't
-        // we create one based on element.id.
-        if (!parent.id) {
-          // Add id to parent based on element id.
-          if (element.id.match(/^PageSpeed-.*-[0-9]+$/)) {
-            // Truncate numeric path if element has PageSpeed id.
-            parent.id = element.id.replace(/-[0-9]+$/, '');
-          } else {
-            // Otherwise element has its own id; construct a parent id.
-            parent.id = 'PageSpeed-' + element.id + '-P';
-          }
-        }
-        if (!(parent.id in parents)) {
-          // Not yet seen the parent.
-          parents[parent.id] = this.canEnlargeNav_(element);
-          elements.push(parents[parent.id] ? parent : element);
-        } else if (!parents[parent.id]) {
-          // Parent seen, was not enlarged.
-          elements.push(element);
-        } else {
-          // parent is already in elements.
-        }
-      } else {
-        elements.push(element);
-      }
-    }
-  }
-  this.navSections_ = elements;
-};
 
 
 /**
@@ -723,8 +573,10 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
                            pagespeed.MobUtil.ElementClass.LABELED);
   }
 
-  this.menuButton_ = themeData.menuButton;
-  this.headerBar_.appendChild(this.menuButton_);
+  if (this.navPanel_) {
+    this.menuButton_ = themeData.menuButton;
+    this.headerBar_.appendChild(this.menuButton_);
+  }
 
   this.logoSpan_ = themeData.anchorOrSpan;
   this.headerBar_.appendChild(themeData.anchorOrSpan);
@@ -736,7 +588,9 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
   if (psDeviceType == 'mobile' || psDeviceType == 'tablet') {
     goog.dom.classlist.add(this.headerBar_, 'mobile');
     goog.dom.classlist.add(this.spacerDiv_, 'mobile');
-    goog.dom.classlist.add(this.navPanel_, 'mobile');
+    if (this.navPanel_) {
+      goog.dom.classlist.add(this.navPanel_, 'mobile');
+    }
   }
 
   // Add call button if a phone number is specified.
@@ -888,160 +742,6 @@ pagespeed.MobNav.prototype.addThemeColor_ = function(themeData) {
 
 
 /**
- * Traverse the nodes of the nav and label each A tag with its depth in the
- * hierarchy. Return an array of the A tags it labels.
- * @param {!Node} node The starting navigational node.
- * @param {number} currDepth The current depth in the hierarchy used when
- *     recursing. Must be 0 on first call.
- * @param {boolean=} opt_inUl Track if we are currently in a UL. The labeling
- *     depth is only increased when in a nested UL.
- * @return {!Array.<!Node>} The A tags labeled with depth.
- * @private
- */
-pagespeed.MobNav.prototype.labelNavDepth_ = function(node, currDepth,
-                                                     opt_inUl) {
-  var navATags = [];
-  var inUl = opt_inUl || false;
-  for (var child = node.firstChild; child; child = child.nextSibling) {
-    if (child.nodeName.toUpperCase() == goog.dom.TagName.UL) {
-      // If this is the first UL, then start labeling its nodes at depth 1.
-      var nextDepth = inUl ? currDepth + 1 : currDepth;
-      navATags = goog.array.join(navATags,
-                                 this.labelNavDepth_(child, nextDepth, true));
-    } else {
-      if (child.nodeName.toUpperCase() == goog.dom.TagName.A) {
-        child.setAttribute('data-mobilize-nav-level', currDepth);
-        navATags.push(child);
-      }
-      navATags = goog.array.join(navATags,
-                                 this.labelNavDepth_(child, currDepth, inUl));
-    }
-  }
-  return navATags;
-};
-
-
-/**
- * Traverse through the nav menu and remove duplicate entries, keeping the first
- * occurance. Entries are considered duplicates if they have the same href and
- * case-insensitive label.
- * @private
- */
-pagespeed.MobNav.prototype.dedupNavMenuItems_ = function() {
-  var aTags = this.navPanel_.getElementsByTagName('a');
-
-  var menuItems = {};
-  var nodesToDelete = [];
-
-  for (var i = 0, aTag; aTag = aTags[i]; i++) {
-    if (!(aTag.href in menuItems)) {
-      menuItems[aTag.href] = [];
-      menuItems[aTag.href].push(aTag.innerHTML.toLowerCase());
-    } else {
-      var label = aTag.innerHTML.toLowerCase();
-      if (menuItems[aTag.href].indexOf(label) == -1) {
-        menuItems[aTag.href].push(label);
-      } else {
-        // We already have this menu item, so queue up the containing parent
-        // LI tag to be removed.
-        if (aTag.parentNode.nodeName.toUpperCase() == goog.dom.TagName.LI) {
-          nodesToDelete.push(aTag.parentNode);
-        }
-      }
-    }
-  }
-
-  for (var i = 0, node; node = nodesToDelete[i]; i++) {
-    node.parentNode.removeChild(node);
-  }
-};
-
-
-/**
- * Perform some cleanup on the elements in nav panel after its been created.
- * Remove style attributes from all the nodes moved into the nav menu, so that
- *     the styles set in mob_nav.css win.
- * If an A tag has no text, but has a title, use the title for the text.
- * If an A tag has no href, remove it.
- * If an IMG tag has the same src as the logo, remove it.
- * @private
- */
-pagespeed.MobNav.prototype.cleanupNavPanel_ = function() {
-  var nodes = this.navPanel_.querySelectorAll('*');
-  var nodesToDelete = [];
-
-  // Get the logo src so that we can remove duplicates of it that show up in the
-  // menu bar.
-  var logoImg = document.getElementById(pagespeed.MobUtil.ElementId.LOGO_IMAGE);
-  var logoSrc = logoImg ? logoImg.src : '';
-
-  for (var i = 0, node; node = nodes[i]; i++) {
-    node.removeAttribute('style');
-    node.removeAttribute('width');
-    node.removeAttribute('height');
-
-    if (node.nodeName.toUpperCase() == goog.dom.TagName.A) {
-      // We use textContent instead of innerText to see if the node has content
-      // because innerText is aware of CSS styling and won't return the text of
-      // hidden elements. This is problematic because this function runs while
-      // the nav panel is hidden, and so innerText will return '' for these
-      // elements since they are hidden.
-      if (node.textContent == '' && node.hasAttribute('title')) {
-        node.appendChild(document.createTextNode(node.getAttribute('title')));
-      }
-      if (node.href == '') {
-        nodesToDelete.push(node);
-      }
-    } else if (node.nodeName.toUpperCase() == goog.dom.TagName.IMG) {
-      if (node.src == logoSrc) {
-        nodesToDelete.push(node);
-      }
-    }
-  }
-
-  // Now delete the marked node. We traverse the parents until we find the
-  // node's enclosing LI, since this is the node we actually want to remove.
-  // Note that every element added here (A and IMG tags) should be inside of an
-  // LI, since this is how the menus are constructed in addNavPanel_().
-  for (var i = 0, node; node = nodesToDelete[i]; i++) {
-    while (node.nodeName.toUpperCase() != goog.dom.TagName.LI) {
-      node = node.parentNode;
-    }
-    node.parentNode.removeChild(node);
-  }
-
-  var maxImageHeight = 40;
-  var images = this.navPanel_.querySelectorAll(
-      'img:not(.' + pagespeed.MobUtil.ElementClass.MENU_EXPAND_ICON + ')');
-  for (var i = 0, img; img = images[i]; ++i) {
-    // Avoid blowing up an image over double it's natural height.
-    var height = Math.min(img.naturalHeight * 2, maxImageHeight);
-    img.setAttribute('height', height);
-  }
-
-  // The fast click jquery plugin (https://github.com/ftlabs/fastclick) causes
-  // issues when trying to scroll through the nav panel since it fires an
-  // onclick immediately and the page will navigate away when the user just
-  // wanted to scroll the menu. Adding this needsclick class restores the
-  // default mouse event handling for that element. We add it to both a tags and
-  // divs (for nested menus), since those are the elements that respond to
-  // clicks in the menu.
-  if (window['FastClick']) {
-    var i, el, els;
-    els = this.navPanel_.getElementsByTagName('a');
-    for (i = 0; el = els[i]; i++) {
-      goog.dom.classlist.add(el, 'needsclick');
-    }
-    els = this.navPanel_.getElementsByTagName('div');
-    for (i = 0; el = els[i]; i++) {
-      goog.dom.classlist.add(el, 'needsclick');
-    }
-  }
-
-};
-
-
-/**
  * Add a div for detecting clicks on the body in order to close the open nav
  * panel. This is to workaround JS that sends click events, which can be
  * difficult to differentiate from actual clicks from the user. In particular
@@ -1059,71 +759,6 @@ pagespeed.MobNav.prototype.addClickDetectorDiv_ = function() {
           this.toggleNavPanel_();
         }
       }, this), false);
-};
-
-
-/**
- * Create the DOM for a nav panel from the navSections_ data.  Here so that we
- * can fall back to JS menu generation from C++ if we need to.
- * @private
- */
-pagespeed.MobNav.prototype.constructNavPanel_ = function() {
-  // Create the nav panel element and insert immediatly after the header bar.
-  this.navPanel_ = document.createElement(goog.dom.TagName.NAV);
-  document.body.insertBefore(this.navPanel_, this.headerBar_.nextSibling);
-  this.navPanel_.id = pagespeed.MobUtil.ElementId.NAV_PANEL;
-  var navTopUl = document.createElement(goog.dom.TagName.UL);
-  this.navPanel_.appendChild(navTopUl);
-  // By default, UL elements in the nav panel have display:none, which makes
-  // hierarchical menus collapsed by default. However, we want the top level
-  // menu to always be displayed, so give it the open class.
-  goog.dom.classlist.add(navTopUl, 'open');
-  for (var i = 0, nav; nav = this.navSections_[i]; i++) {
-    if (nav.parentNode) {
-      nav.setAttribute('data-mobilize-nav-section', i);
-      var navATags = this.labelNavDepth_(nav, 0);
-
-      var navSubmenus = [];
-      navSubmenus.push(navTopUl);
-
-      for (var j = 0, n = navATags.length; j < n; j++) {
-        var navLevel1 = navATags[j].getAttribute('data-mobilize-nav-level');
-        var navLevel2 = (j + 1 == n) ? navLevel1 : navATags[j + 1].getAttribute(
-            'data-mobilize-nav-level');
-        // Create a new submenu if the next item is nested under this one.
-        if (navLevel1 < navLevel2) {
-          var item = document.createElement(goog.dom.TagName.LI);
-          var div =
-              item.appendChild(document.createElement(goog.dom.TagName.DIV));
-          var a = div.appendChild(document.createElement(goog.dom.TagName.A));
-          a.appendChild(document.createTextNode(
-              navATags[j].textContent || navATags[j].innerText));
-          a.href = '#';
-          navSubmenus[navSubmenus.length - 1].appendChild(item);
-          var submenu = document.createElement(goog.dom.TagName.UL);
-          item.appendChild(submenu);
-          navSubmenus.push(submenu);
-        } else {
-          // Otherwise, create a new LI.
-          var item = document.createElement(goog.dom.TagName.LI);
-          navSubmenus[navSubmenus.length - 1].appendChild(item);
-          item.appendChild(navATags[j].cloneNode(true));
-          var popCnt = navLevel1 - navLevel2;
-          while ((popCnt > 0) && (navSubmenus.length > 1)) {
-            navSubmenus.pop();
-            popCnt--;
-          }
-        }
-      }
-
-      if (window.psLayoutMode) {
-        nav.parentNode.removeChild(nav);
-      }
-    }
-  }
-
-  this.dedupNavMenuItems_();
-  this.cleanupNavPanel_();
 };
 
 
@@ -1156,17 +791,14 @@ pagespeed.MobNav.prototype.addSubmenuArrows_ = function(themeData) {
 
 
 /**
- * Add a nav panel (if missing), style it, and register event handlers for it.
+ * Style the nav panel (which has been inserted server side), and register event
+ * handlers for it.
  * @param {!pagespeed.MobUtil.ThemeData} themeData
  * @private
  */
 pagespeed.MobNav.prototype.addNavPanel_ = function(themeData) {
   // TODO(jud): Make sure we have tests covering the redraw flow and the events
   // called here.
-  if (!this.navPanel_) {
-    this.constructNavPanel_();
-  }
-
   this.addSubmenuArrows_(themeData);
   this.addClickDetectorDiv_();
 
@@ -1272,15 +904,17 @@ pagespeed.MobNav.prototype.addNavButtonEvents_ = function() {
  * @param {!pagespeed.MobUtil.ThemeData} themeData
  */
 pagespeed.MobNav.prototype.Run = function(themeData) {
-  this.findNavSections_();
   this.clampZIndex_();
   this.findElementsToOffset_();
   this.addHeaderBar_(themeData);
 
   // Don't insert nav stuff if there are no navigational sections on the page or
   // if we are in an iFrame.
-  if ((this.navPanel_ || this.navSections_.length != 0) &&
-      !pagespeed.MobUtil.inFriendlyIframe()) {
+  if (this.navPanel_ && !pagespeed.MobUtil.inFriendlyIframe()) {
+    // Make sure the navPanel is in the body of the document; we've seen it
+    // moved elsewhere by JS on the page.
+    document.body.appendChild(this.navPanel_);
+
     this.addNavPanel_(themeData);
     this.addMenuButtonEvents_();
     this.addNavButtonEvents_();
