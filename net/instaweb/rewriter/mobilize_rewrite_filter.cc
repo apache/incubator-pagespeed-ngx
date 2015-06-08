@@ -490,6 +490,8 @@ void MobilizeRewriteFilter::EndElementImpl(HtmlElement* element) {
           AddStaticScript("mobilize_dialer.js");
           AddStaticScript("mobilize_logo.js");
           AddStaticScript("mobilize_theme.js");
+          AddStaticScript("mobilize_layout_constants.js");
+          AddStaticScript("mobilize_layout_util.js");
           AddStaticScript("mobilize_layout.js");
           AddStaticScript("mobilize_nav.js");
           AddStaticScript("mobilize.js");

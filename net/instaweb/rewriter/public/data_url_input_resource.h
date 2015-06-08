@@ -37,8 +37,6 @@ class InputInfo;
 class RewriteDriver;
 struct ContentType;
 
-enum Encoding;
-
 class DataUrlInputResource : public Resource {
  public:
   // We expose a factory; parse failure returns NULL.

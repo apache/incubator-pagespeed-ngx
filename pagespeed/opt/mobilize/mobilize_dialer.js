@@ -199,13 +199,7 @@ pagespeed.MobDialer.prototype.setIcon = function(color) {
 pagespeed.MobDialer.prototype.requestPhoneNumberAndDial_ = function() {
   var url = this.constructRequestPhoneNumberUrl_();
   if (url) {
-    if (window.psDebugMode) {
-      // We debug with alert() here because it is hard to debug on the
-      // physical phone with console.log.  And while most of our code
-      // can be debugged on the chrome emulator, this code only works
-      // on actual phones.
-      window.alert('requesting dynamic phone number: ' + url);
-    }
+    this.debugAlert_('requesting dynamic phone number: ' + url);
     var req = new goog.net.Jsonp(url, 'callback');
     req.send(null,
              goog.bind(this.receivePhoneNumber_, this),
@@ -270,9 +264,7 @@ pagespeed.MobDialer.prototype.receivePhoneNumber_ = function(json) {
       'fallback': this.phoneNumber_
     };
     cookieValue = goog.json.serialize(cookieValue);
-    if (window.psDebugMode) {
-      window.alert('saving phoneNumber in cookie: ' + cookieValue);
-    }
+    this.debugAlert_('saving phoneNumber in cookie: ' + cookieValue);
     this.cookies_.set(pagespeed.MobDialer.WCM_COOKIE_,
                       window.encodeURIComponent(cookieValue),
                       pagespeed.MobDialer.WCM_COOKIE_LIFETIME_SEC_, '/');
@@ -280,10 +272,10 @@ pagespeed.MobDialer.prototype.receivePhoneNumber_ = function(json) {
     // Save the phone number in the window object so it can be used in
     // dialPhone_().
     this.phoneNumber_ = phoneNumber;
-  } else if (this.phoneNumber_ && window.psDebugMode) {
+  } else if (this.phoneNumber_) {
     // No ad was clicked.  Dial the configured phone number, which will not
     // be conversion-tracked.
-    window.alert('receivePhoneNumber: ' + goog.json.serialize(json));
+    this.debugAlert_('receivePhoneNumber: ' + goog.json.serialize(json));
   }
   this.dialPhone_();
 };
@@ -319,4 +311,24 @@ pagespeed.MobDialer.prototype.getPhoneNumberFromCookie_ = function() {
     }
   }
   return null;
+};
+
+
+/**
+ * Pops up an alert if the page is viewed in debug mode by requesting it
+ * with ?PageSpeedFilters=+debug.
+ *
+ * We debug with alert() here because it is hard to debug on the
+ * physical phone with console.log.  And while most of our code
+ * can be debugged on the chrome emulator, this code only works
+ * on actual phones.
+ *
+ * @param {string} message
+ *
+ * @private
+ */
+pagespeed.MobDialer.prototype.debugAlert_ = function(message) {
+  if (window.psDebugMode) {
+    window.alert(message);
+  }
 };

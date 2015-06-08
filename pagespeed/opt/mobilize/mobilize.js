@@ -316,7 +316,7 @@ pagespeed.Mob.prototype.backgroundImageLoaded_ = function(img) {
  * @private
  */
 pagespeed.Mob.prototype.collectBackgroundImages_ = function(element) {
-  if (this.layout_.dontTouch(element)) {
+  if (this.layout_.isDontTouchElement(element)) {
     return;
   }
   var image = pagespeed.MobUtil.findBackgroundImage(element);
@@ -383,7 +383,7 @@ pagespeed.Mob.prototype.initiateMobilization = function() {
   // We'll layout at least once, but we will also run layout when we
   // complete an XHR request.
   this.workPerLayoutPass_ = this.domElementCount_ *
-      pagespeed.MobLayout.numberOfPasses();
+      this.layout_.getNumberOfPasses();
   this.addExtraWorkForDom();
 
   // We multiply the number of DOM elements by the number of passes.
