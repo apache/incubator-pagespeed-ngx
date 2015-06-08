@@ -178,10 +178,11 @@ body.mob-iframe {
   height: 50px;
   width: auto;
   font-family: arial, sans-serif;
-  font-size: 22px;
+  font-size: 22px !important;
   font-weight: bold;
   line-height: 50px;
   margin: 0;
+  padding: 0;
 }
 
 #psmob-header-bar.show-button-text .psmob-button-text {
@@ -266,7 +267,7 @@ body.mob-iframe {
   #psmob-header-bar.mobile .psmob-button-text {
     height: 150px;
     line-height: 150px;
-    font-size: 44px;
+    font-size: 44px !important;
   }
 
   #psmob-nav-panel.mobile {
