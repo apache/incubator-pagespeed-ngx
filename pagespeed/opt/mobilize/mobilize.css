@@ -60,7 +60,6 @@ body.mob-iframe {
   z-index: 999999;
 
   padding: 0;
-  padding-right: 15px;
 
   width: 100%;
   height: 51px;
@@ -91,11 +90,6 @@ body.mob-iframe {
   -webkit-justify-content: space-around;
   justify-content: space-around;
 }
-
-#psmob-header-bar.show-button-text {
-  padding-right: 15px;
-}
-
 
 /* Note, don't add visibility: none; here because then
  * goog.style.getTransformedSize won't calculate the size correctly.
@@ -151,10 +145,21 @@ body.mob-iframe {
   text-decoration: none;
 }
 
+#psmob-header-bar:not(.labeled) .psmob-button {
+  border: solid 1px;
+  border-radius: 9px;
+  margin: 5px;
+}
+
 #psmob-menu-button,
 .psmob-button-icon {
   height: 50px;
   width: 50px;
+}
+
+#psmob-header-bar:not(.labeled) .psmob-button-icon {
+  height: 40px;
+  width: 40px;
 }
 
 /* We don't show the logo or menu button in labeled mode. */
@@ -185,6 +190,12 @@ body.mob-iframe {
   padding: 0;
 }
 
+#psmob-header-bar:not(.labeled) .psmob-button-text {
+  height: 40px;
+  line-height: 40px;
+  margin-right: 5px;
+}
+
 #psmob-header-bar.show-button-text .psmob-button-text {
   display: block;
 }
@@ -195,7 +206,9 @@ body.mob-iframe {
   padding: 0;
   /* The element must be display:block for old browsers using -webkit-box-flex
    * to cause the element to grow */
-  display: block;
+  /* display: block; */
+  /* Disable the logo at the moment to see if it improves appearances. */
+  display: none;
   -webkit-box-flex: 1;
   width: 70%; /* For old browsers, otherwise collapses. */
   -webkit-flex: 1;
@@ -234,8 +247,25 @@ body.mob-iframe {
   box-sizing: content-box !important;
 }
 
+#psmob-header-bar:not(.labeled) .psmob-hamburger-div {
+    margin-left: 15%;
+    padding-left: 15%;
+    margin-top: 16%;
+    padding-top: 17%;
+    margin-right: 15%;
+    padding-right: 15%;
+    margin-bottom: 13%;
+    padding-bottom: 13%;
+    border: solid 1px;
+    border-radius: 9px;
+}
+
 #psmob-header-bar .psmob-hamburger-div * {
   box-sizing: content-box;
+}
+
+#psmob-header-bar:not(.labeled) #psmob-phone-dialer {
+  margin-left: auto !important;
 }
 
 /* 700px is chosen since most devices seem to fall under that size when a
@@ -247,14 +277,19 @@ body.mob-iframe {
     height: 151px;
   }
 
-  #psmob-header-bar.show-button-text.mobile {
-    padding-right: 45px;
-  }
-
   #psmob-header-bar.mobile #psmob-menu-button,
   #psmob-header-bar.mobile .psmob-button-icon {
     height: 150px;
     width: 150px;
+  }
+
+  #psmob-header-bar.mobile:not(.labeled) .psmob-button {
+    margin: 20px;
+  }
+
+  #psmob-header-bar.mobile:not(.labeled) .psmob-button-icon {
+    height: 110px;
+    width: 110px;
   }
 
   #psmob-header-bar.mobile #psmob-logo-image {
@@ -268,6 +303,12 @@ body.mob-iframe {
     height: 150px;
     line-height: 150px;
     font-size: 44px !important;
+  }
+
+  #psmob-header-bar.mobile:not(.labeled) .psmob-button-text {
+    height: 110px;
+    line-height: 110px;
+    margin-right: 10px;
   }
 
   #psmob-nav-panel.mobile {

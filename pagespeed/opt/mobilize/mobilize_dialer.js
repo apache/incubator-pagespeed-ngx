@@ -144,6 +144,7 @@ pagespeed.MobDialer.prototype.createButton = function() {
   this.dialButton_ = document.createElement(goog.dom.TagName.A);
   goog.dom.classlist.add(this.dialButton_,
                          pagespeed.MobUtil.ElementClass.BUTTON);
+  this.dialButton_.id = pagespeed.MobUtil.ElementId.PHONE_DIALER;
 
   this.dialButtonIcon_ = document.createElement(goog.dom.TagName.DIV);
   goog.dom.classlist.add(this.dialButtonIcon_,
