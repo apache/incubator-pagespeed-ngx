@@ -40,7 +40,7 @@ using namespace google::protobuf;  // NOLINT
 
 inline bool ParseProtoFromStringPiece(
     StringPiece sp, protobuf::MessageLite* proto) {
-  return proto->ParseFromString(sp.as_string());
+  return proto->ParseFromArray(sp.data(), sp.size());
 }
 
 }  // namespace net_instaweb
