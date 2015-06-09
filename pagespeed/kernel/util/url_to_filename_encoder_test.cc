@@ -30,16 +30,9 @@ namespace net_instaweb {
 
 namespace {
 
-#ifdef WIN32
-char kDirSeparator = '\\';
-#else
-char kDirSeparator = '/';
-#endif
-
 class UrlToFilenameEncoderTest : public ::testing::Test {
  protected:
-  UrlToFilenameEncoderTest() : escape_(1, UrlToFilenameEncoder::kEscapeChar),
-                               dir_sep_(1, kDirSeparator) {
+  UrlToFilenameEncoderTest() : escape_(1, UrlToFilenameEncoder::kEscapeChar) {
   }
 
   void CheckSegmentLength(const StringPiece& escaped_word) {
@@ -71,7 +64,7 @@ class UrlToFilenameEncoderTest : public ::testing::Test {
     EXPECT_EQ(gold_word, escaped_word);
     CheckSegmentLength(escaped_word);
     CheckValidChars(escaped_word);
-    Decode(escaped_word, &url);
+    UrlToFilenameEncoder::Decode(escaped_word, &url);
     EXPECT_EQ(in_word, url);
   }
 
@@ -80,7 +73,7 @@ class UrlToFilenameEncoderTest : public ::testing::Test {
     UrlToFilenameEncoder::EncodeSegment("", in_word, '/', &escaped_word);
     CheckSegmentLength(escaped_word);
     CheckValidChars(escaped_word);
-    EXPECT_TRUE(Decode(escaped_word, &url));
+    EXPECT_TRUE(UrlToFilenameEncoder::Decode(escaped_word, &url));
     EXPECT_STREQ(in_word, url);
   }
 
@@ -97,89 +90,7 @@ class UrlToFilenameEncoderTest : public ::testing::Test {
     Validate(GoogleString(1, ch), escaped);
   }
 
-  // Decodes a filename that was encoded with EncodeSegment,
-  // yielding back the original URL.
-  //
-  // Note: this decoder is not the exact inverse of the
-  // UrlToFilenameEncoder::EncodeSegment, because it does not take
-  // into account a prefix.
-  bool Decode(const StringPiece& encoded_filename,
-              GoogleString* decoded_url) {
-    const char kDirSeparator = '/';
-    enum State {
-      kStart,
-      kEscape,
-      kFirstDigit,
-      kTruncate,
-      kEscapeDot
-    };
-    State state = kStart;
-    char hex_buffer[3] = { '\0', '\0', '\0' };
-    for (int i = 0, n = encoded_filename.size(); i < n; ++i) {
-      char ch = encoded_filename[i];
-      switch (state) {
-        case kStart:
-          if (ch == UrlToFilenameEncoder::kEscapeChar) {
-            state = kEscape;
-          } else if (ch == kDirSeparator) {
-            decoded_url->push_back('/');  // URLs only use '/' not '\\'
-          } else {
-            decoded_url->push_back(ch);
-          }
-          break;
-        case kEscape:
-          if (IsHexDigit(ch)) {
-            hex_buffer[0] = ch;
-            state = kFirstDigit;
-          } else if (ch == UrlToFilenameEncoder::kTruncationChar) {
-            state = kTruncate;
-          } else if (ch == '.') {
-            decoded_url->push_back('.');
-            state = kEscapeDot;  // Look for at most one more dot.
-          } else if (ch == kDirSeparator) {
-            // Consider url "//x".  This was once encoded to "/,/x,".
-            // This code is what skips the first Escape.
-            decoded_url->push_back('/');  // URLs only use '/' not '\\'
-            state = kStart;
-          } else {
-            return false;
-          }
-          break;
-        case kFirstDigit:
-          if (IsHexDigit(ch)) {
-            hex_buffer[1] = ch;
-            uint32 hex_value = 0;
-            bool ok = AccumulateHexValue(hex_buffer[0], &hex_value);
-            ok = ok && AccumulateHexValue(hex_buffer[1], &hex_value);
-            DCHECK(ok) << "Should not have gotten here unless both were hex";
-            decoded_url->push_back(static_cast<char>(hex_value));
-            state = kStart;
-          } else {
-            return false;
-          }
-          break;
-        case kTruncate:
-          if (ch == kDirSeparator) {
-            // Skip this separator, it was only put in to break up long
-            // path segments, but is not part of the URL.
-            state = kStart;
-          } else {
-            return false;
-          }
-          break;
-        case kEscapeDot:
-          decoded_url->push_back(ch);
-          state = kStart;
-          break;
-      }
-    }
-
-    // All legal encoded filenames end in kEscapeChar.
-    return (state == kEscape);
-  }
-
   GoogleString escape_;
-  GoogleString dir_sep_;
 };
 
 TEST_F(UrlToFilenameEncoderTest, DoesNotEscape) {

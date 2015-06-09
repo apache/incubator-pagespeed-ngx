@@ -152,4 +152,79 @@ void UrlToFilenameEncoder::EncodeSegment(const StringPiece& filename_prefix,
   }
 }
 
+bool UrlToFilenameEncoder::Decode(const StringPiece& encoded_filename,
+                                  GoogleString* decoded_url) {
+  const char kDirSeparator = '/';
+  enum State {
+    kStart,
+    kEscape,
+    kFirstDigit,
+    kTruncate,
+    kEscapeDot
+  };
+  State state = kStart;
+  char hex_buffer[3] = { '\0', '\0', '\0' };
+  for (int i = 0, n = encoded_filename.size(); i < n; ++i) {
+    char ch = encoded_filename[i];
+    switch (state) {
+      case kStart:
+        if (ch == UrlToFilenameEncoder::kEscapeChar) {
+          state = kEscape;
+        } else if (ch == kDirSeparator) {
+          decoded_url->push_back('/');  // URLs only use '/' not '\\'
+        } else {
+          decoded_url->push_back(ch);
+        }
+        break;
+      case kEscape:
+        if (IsHexDigit(ch)) {
+          hex_buffer[0] = ch;
+          state = kFirstDigit;
+        } else if (ch == UrlToFilenameEncoder::kTruncationChar) {
+          state = kTruncate;
+        } else if (ch == '.') {
+          decoded_url->push_back('.');
+          state = kEscapeDot;  // Look for at most one more dot.
+        } else if (ch == kDirSeparator) {
+          // Consider url "//x".  This was once encoded to "/,/x,".
+          // This code is what skips the first Escape.
+          decoded_url->push_back('/');  // URLs only use '/' not '\\'
+          state = kStart;
+        } else {
+          return false;
+        }
+        break;
+      case kFirstDigit:
+        if (IsHexDigit(ch)) {
+          hex_buffer[1] = ch;
+          uint32 hex_value = 0;
+          bool ok = AccumulateHexValue(hex_buffer[0], &hex_value);
+          ok = ok && AccumulateHexValue(hex_buffer[1], &hex_value);
+          DCHECK(ok) << "Should not have gotten here unless both were hex";
+          decoded_url->push_back(static_cast<char>(hex_value));
+          state = kStart;
+        } else {
+          return false;
+        }
+        break;
+      case kTruncate:
+        if (ch == kDirSeparator) {
+          // Skip this separator, it was only put in to break up long
+          // path segments, but is not part of the URL.
+          state = kStart;
+        } else {
+          return false;
+        }
+        break;
+      case kEscapeDot:
+        decoded_url->push_back(ch);
+        state = kStart;
+        break;
+    }
+  }
+
+  // All legal encoded filenames end in kEscapeChar.
+  return (state == kEscape);
+}
+
 }  // namespace net_instaweb

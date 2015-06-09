@@ -93,6 +93,16 @@ class UrlToFilenameEncoder {
       char dir_separator,
       GoogleString* encoded_filename);
 
+  // Decodes a filename that was encoded with EncodeSegment with
+  // dir_separator = '/', yielding back the original URL.
+  //
+  // Note: this decoder is not the exact inverse of the
+  // UrlToFilenameEncoder::EncodeSegment, because it does not take
+  // into account a prefix.
+  static bool Decode(const StringPiece& encoded_filename,
+                     GoogleString* decoded_url);
+
+
   static const char kEscapeChar;
   static const char kTruncationChar;
   static const size_t kMaximumSubdirectoryLength;
