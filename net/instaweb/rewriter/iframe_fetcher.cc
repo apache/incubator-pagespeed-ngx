@@ -51,7 +51,9 @@ void IframeFetcher::Fetch(const GoogleString& url,
   // simplifies the code below that tries to get the screen dimensions
   // via document.documentElement.
   fetch->Write("<!DOCTYPE html>", message_handler);
-  fetch->Write("<html><head></head><body class=\"mob-iframe\">",
+  fetch->Write("<html><head>"
+               "<meta charset=\"utf-8\">"
+               "</head><body class=\"mob-iframe\">",
                message_handler);
 
   // We want to size the iframe to fit the physical screen, so we
