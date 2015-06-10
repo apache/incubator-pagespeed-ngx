@@ -313,13 +313,13 @@ body.mob-iframe {
 
   #psmob-nav-panel.mobile {
     width: 700px !important;
-    font-size: 60px;
   }
 
   #psmob-nav-panel.mobile ul li a,
   #psmob-nav-panel.mobile ul li div {
     min-height: 120px;
     line-height: 120px !important;
+    font-size: 60px !important;
   }
 }
 
@@ -342,7 +342,7 @@ body.mob-iframe {
    * value so our nav bar ends up on top of it. */
   z-index: 999999;
 
-  font-size: 22px;
+  font-family: arial, sans-serif;
 
   /* We don't set margin-top here because that gets set dynamically by the JS to
    * compensate for zoom level. */
@@ -417,7 +417,8 @@ body.mob-iframe {
   transition: background-color 0.2s ease-out;
 }
 
-#psmob-nav-panel ul li a, #psmob-nav-panel ul li div {
+#psmob-nav-panel ul li a,
+#psmob-nav-panel ul li div {
   min-height: 60px;
   display: block;
   padding-right: 0;
@@ -425,6 +426,7 @@ body.mob-iframe {
   padding-bottom: 0;
   line-height: 60px !important;
   text-decoration: none;
+  font-size: 22px !important;
 
   -webkit-transition: background-color 0.2s ease-out;
   -moz-transition: background-color 0.2s ease-out;
