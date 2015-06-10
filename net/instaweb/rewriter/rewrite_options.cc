@@ -580,7 +580,8 @@ const int64 RewriteOptions::kDefaultMaxLowResImageSizeBytes = -1;
 // lesser than the full-res size.
 const int RewriteOptions::kDefaultMaxLowResToFullResImageSizePercentage = 100;
 
-const double RewriteOptions::kDefaultResponsiveImageDensities[] = { 1.5, 2.0 };
+const double RewriteOptions::kDefaultResponsiveImageDensities[] =
+    { 1.5, 2.0, 3.0 };
 
 const RewriteOptions::FilterEnumToIdAndNameEntry*
     RewriteOptions::filter_id_to_enum_array_[RewriteOptions::kEndOfFilters];

@@ -85,7 +85,9 @@ class ResponsiveImageFilterTest : public RewriteTestBase {
         EncodeImage(1.5 * width, 1.5 * height, filename, "0", final_ext),
         " 1.5x,",
         EncodeImage(2 * width, 2 * height, filename, "0", final_ext), " 2x,",
-        EncodeImage(-1, -1, filename, "0", final_ext),
+        EncodeImage(3 * width, 3 * height, filename, "0", final_ext), " 3x,");
+    StrAppend(
+        &output_html, EncodeImage(-1, -1, filename, "0", final_ext),
         " ", full_density, "x\">");
     if (include_zoom_script) {
       StrAppend(&output_html,
@@ -530,28 +532,35 @@ TEST_F(ResponsiveImageFilterTest, Debug) {
       "<img src=a.jpg width=1023 height=766>",
 
       // Expected output
-      // First virtual image debug messages:
+      // 1.5x virtual image debug messages:
       StrCat("<!--ResponsiveImageFilter: Any debug messages after this refer "
              "to the virtual 1.5x image with src=",
              EncodeImage(1534, 1149, "a.jpg", "0", "jpg"),
              " width=1534 height=1149-->"
              "<!--Image does not appear to need resizing.-->"
 
-             // Second virtual image debug messages:
+             // 2x virtual image debug messages:
              "<!--ResponsiveImageFilter: Any debug messages after this refer "
              "to the virtual 2x image with src=",
              EncodeImage(2046, 1532, "a.jpg", "0", "jpg"),
              " width=2046 height=1532-->"
              "<!--Image does not appear to need resizing.-->"
 
-             // Third virtual image debug messages:
+             // 3x virtual image debug messages:
              "<!--ResponsiveImageFilter: Any debug messages after this refer "
-             "to the virtual inlinable 2x image with src=",
-             EncodeImage(2046, 1532, "a.jpg", "0", "jpg"),
-             " width=2046 height=1532-->"
+             "to the virtual 3x image with src=",
+             EncodeImage(3069, 2298, "a.jpg", "0", "jpg"),
+             " width=3069 height=2298-->"
              "<!--Image does not appear to need resizing.-->"
 
-             // Fourth virtual image debug messages:
+             // Inlinable virtual image debug messages:
+             "<!--ResponsiveImageFilter: Any debug messages after this refer "
+             "to the virtual inlinable 3x image with src=",
+             EncodeImage(3069, 2298, "a.jpg", "0", "jpg"),
+             " width=3069 height=2298-->"
+             "<!--Image does not appear to need resizing.-->"
+
+             // Full virtual image debug messages:
              "<!--ResponsiveImageFilter: Any debug messages after this refer "
              "to the virtual full-sized image with src=",
              EncodeImage(-1, -1, "a.jpg", "0", "jpg"),
@@ -562,6 +571,8 @@ TEST_F(ResponsiveImageFilterTest, Debug) {
              "<img src=", EncodeImage(1023, 766, "a.jpg", "0", "jpg"),
              " width=1023 height=766>"
              "<!--ResponsiveImageFilter: Not adding 1x candidate to srcset "
+             "because native image was not high enough resolution.-->"
+             "<!--ResponsiveImageFilter: Not adding 3x candidate to srcset "
              "because native image was not high enough resolution.-->"
              "<!--ResponsiveImageFilter: Not adding 2x candidate to srcset "
              "because native image was not high enough resolution.-->"
@@ -575,28 +586,35 @@ TEST_F(ResponsiveImageFilterTest, Debug) {
       "<img src=http://other-domain.com/a.jpg width=100 height=100>",
 
       // Expected output
-      // First virtual image debug messages:
+      // 1.5x virtual image debug messages:
       "<!--ResponsiveImageFilter: Any debug messages after this refer "
       "to the virtual 1.5x image with "
       "src=http://other-domain.com/a.jpg width=150 height=150-->"
       "<!--The preceding resource was not rewritten because its domain "
       "(other-domain.com) is not authorized-->"
 
-      // Second virtual image debug messages:
+      // 2x virtual image debug messages:
       "<!--ResponsiveImageFilter: Any debug messages after this refer "
       "to the virtual 2x image with "
       "src=http://other-domain.com/a.jpg width=200 height=200-->"
       "<!--The preceding resource was not rewritten because its domain "
       "(other-domain.com) is not authorized-->"
 
-      // Third virtual image debug messages:
+      // 3x virtual image debug messages:
       "<!--ResponsiveImageFilter: Any debug messages after this refer "
-      "to the virtual inlinable 2x image with "
-      "src=http://other-domain.com/a.jpg width=200 height=200-->"
+      "to the virtual 3x image with "
+      "src=http://other-domain.com/a.jpg width=300 height=300-->"
       "<!--The preceding resource was not rewritten because its domain "
       "(other-domain.com) is not authorized-->"
 
-      // Fourth virtual image debug messages:
+      // Inlinable virtual image debug messages:
+      "<!--ResponsiveImageFilter: Any debug messages after this refer "
+      "to the virtual inlinable 3x image with "
+      "src=http://other-domain.com/a.jpg width=300 height=300-->"
+      "<!--The preceding resource was not rewritten because its domain "
+      "(other-domain.com) is not authorized-->"
+
+      // Full virtual image debug messages:
       "<!--ResponsiveImageFilter: Any debug messages after this refer "
       "to the virtual full-sized image with "
       "src=http://other-domain.com/a.jpg width= height=-->"
@@ -605,6 +623,8 @@ TEST_F(ResponsiveImageFilterTest, Debug) {
 
       // Actual image + debug messages:
       "<img src=http://other-domain.com/a.jpg width=100 height=100>"
+      "<!--ResponsiveImageFilter: Not adding 3x candidate to srcset "
+      "because it is the same as previous candidate.-->"
       "<!--ResponsiveImageFilter: Not adding 2x candidate to srcset "
       "because it is the same as previous candidate.-->"
       "<!--ResponsiveImageFilter: Not adding 1.5x candidate to srcset "
@@ -648,7 +668,8 @@ TEST_F(ResponsiveImageFilterTest, InlinePreview) {
       EncodeImage(100, 100, "a.jpg", "0", "jpg"),
       " width=100 height=100 pagespeed_high_res_srcset=\"",
       EncodeImage(150, 150, "a.jpg", "0", "jpg"), " 1.5x,",
-      EncodeImage(200, 200, "a.jpg", "0", "jpg"), " 2x,"
+      EncodeImage(200, 200, "a.jpg", "0", "jpg"), " 2x,",
+      EncodeImage(300, 300, "a.jpg", "0", "jpg"), " 3x,"
       "a.jpg 10.23x\" src=\"", kLowResSource,
       "\" onload=\"pagespeed.switchToHighResAndMaybeBeacon(this);\" onerror=\""
       "this.onerror=null;pagespeed.switchToHighResAndMaybeBeacon(this);\">");
@@ -674,7 +695,8 @@ TEST_F(ResponsiveImageFilterTest, Lazyload) {
       EncodeImage(100, 100, "a.jpg", "0", "jpg"),
       " width=100 height=100 pagespeed_lazy_srcset=\"",
       EncodeImage(150, 150, "a.jpg", "0", "jpg"), " 1.5x,",
-      EncodeImage(200, 200, "a.jpg", "0", "jpg"), " 2x,"
+      EncodeImage(200, 200, "a.jpg", "0", "jpg"), " 2x,",
+      EncodeImage(300, 300, "a.jpg", "0", "jpg"), " 3x,"
       "a.jpg 10.23x\" src=\"/psajs/1.0.gif\" "
       "onload=\"pagespeed.lazyLoadImages.loadIfVisibleAndMaybeBeacon(this);\" "
       "onerror=\"this.onerror=null;pagespeed.lazyLoadImages."
