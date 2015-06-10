@@ -16,7 +16,6 @@
 #ifndef UTIL_GTL_DENSE_HASH_MAP_H_
 #define UTIL_GTL_DENSE_HASH_MAP_H_
 
-//#include "third_party/google-sparsehash/src/google/dense_hash_map"
 #include <google/dense_hash_map>
 
 using google::dense_hash_map;

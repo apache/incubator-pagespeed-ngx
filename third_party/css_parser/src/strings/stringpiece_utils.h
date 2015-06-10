@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-// Copyright 2003 and onwards Google Inc.
-//
 // Utility functions for operating on StringPieces
 // Collected here for convenience
 

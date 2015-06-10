@@ -26,13 +26,14 @@
 #include <vector>
 
 #include "base/logging.h"
-#include "base/css_macros.h"
+#include "base/macros.h"
 #include "base/scoped_ptr.h"
 #include "strings/strutil.h"
 #include "third_party/utf/utf.h"
 #include "util/gtl/stl_util.h"
 #include "util/utf8/public/unicodetext.h"
 #include "util/utf8/public/unilib.h"
+#include "webutil/css/fallthrough_intended.h"
 #include "webutil/css/string.h"
 #include "webutil/css/string_util.h"
 #include "webutil/css/util.h"
@@ -1127,7 +1128,7 @@ Values* Parser::ParseValues(Property::Prop prop) {
                         ParseAnyExpectingColor() :
                         ParseAny());
 
-if (v.get()) {
+    if (v.get()) {
       values->push_back(v.release());
     } else {
       return NULL;

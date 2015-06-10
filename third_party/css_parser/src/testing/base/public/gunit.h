@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef WEBUTIL_CSS_OPEN_SOURCE_TESTING_BASE_PUBLIC_GUNIT_H_
-#define WEBUTIL_CSS_OPEN_SOURCE_TESTING_BASE_PUBLIC_GUNIT_H_
+#ifndef TESTING_BASE_PUBLIC_GUNIT_H_
+#define TESTING_BASE_PUBLIC_GUNIT_H_
 
 #include "testing/gtest/include/gtest/gtest.h"
 
-#endif  // WEBUTIL_CSS_OPEN_SOURCE_TESTING_BASE_PUBLIC_GUNIT_H_
+#endif  // TESTING_BASE_PUBLIC_GUNIT_H_

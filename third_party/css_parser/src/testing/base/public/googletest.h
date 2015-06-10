@@ -13,3 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#ifndef TESTING_BASE_PUBLIC_GOOGLETEST_H_
+#define TESTING_BASE_PUBLIC_GOOGLETEST_H_
+
+#include "testing/gtest/include/gtest/gtest.h"
+
+#endif  // TESTING_BASE_PUBLIC_GOOGLETEST_H_

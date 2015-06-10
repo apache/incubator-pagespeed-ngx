@@ -16,7 +16,6 @@
 #ifndef BASE_COMMANDLINEFLAGS_H_
 #define BASE_COMMANDLINEFLAGS_H_
 
-//#include "third_party/gflags/src/gflags/gflags.h"
 #include "gflags/gflags.h"
 
 #endif  // BASE_COMMANDLINEFLAGS_H_

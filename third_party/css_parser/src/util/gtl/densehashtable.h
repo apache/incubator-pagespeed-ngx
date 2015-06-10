@@ -21,4 +21,3 @@
 using google::dense_hashtable;
 
 #endif  // UTIL_GTL_DENSEHASHTABLE_H_
-

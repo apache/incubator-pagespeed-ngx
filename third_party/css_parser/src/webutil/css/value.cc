@@ -23,6 +23,7 @@
 
 #include "base/logging.h"
 #include "strings/memutil.h"
+#include "webutil/css/fallthrough_intended.h"
 #include "webutil/html/htmlcolor.h"
 
 namespace Css {

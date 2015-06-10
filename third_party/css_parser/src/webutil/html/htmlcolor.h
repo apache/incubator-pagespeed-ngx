@@ -16,6 +16,7 @@
 
 // Copyright (C) 2000 and onwards Google, Inc.
 //
+// Author: Feng Hu
 //
 // .h for the HtmlColor class
 // HtmlColor provides 'IsSimilar' for comparing HTML colors

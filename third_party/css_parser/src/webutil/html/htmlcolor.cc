@@ -16,6 +16,7 @@
 
 // Copyright (C) 2000 and onwards Google, Inc.
 //
+// Author: Feng Hu
 //
 // .cc for the HtmlColor class
 

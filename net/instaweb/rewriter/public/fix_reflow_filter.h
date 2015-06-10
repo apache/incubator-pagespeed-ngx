@@ -23,7 +23,6 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/empty_html_filter.h"
-#include "util/hash/hash.h"
 
 namespace net_instaweb {
 

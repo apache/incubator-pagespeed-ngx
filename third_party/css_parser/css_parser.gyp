@@ -19,6 +19,7 @@
     # warnings/errors in order to catch programming mistakes.
     'chromium_code': 1,
     'css_parser_root': 'src',
+    'instaweb_root': '../..',
   },
 
   'targets': [
@@ -51,9 +52,6 @@
         '<(css_parser_root)/third_party/utf/runestrrchr.c',
         '<(css_parser_root)/third_party/utf/runestrstr.c',
         '<(css_parser_root)/third_party/utf/runetype.c',
-        # TODO(sligocki): What is the correct format for this?
-        # runetypebody.c should not be compiled by itself, only #included.
-        #'<(css_parser_root)/third_party/utf/runetypebody.c',
         '<(css_parser_root)/third_party/utf/utf.h',
         '<(css_parser_root)/third_party/utf/utfdef.h',
         '<(css_parser_root)/third_party/utf/utfecpy.c',
@@ -65,12 +63,36 @@
       ],
     },
     {
+      'target_name': 'css_parser_gperf',
+      'variables': {
+        'instaweb_gperf_subdir': 'third_party/css_parser/src/webutil/css',
+      },
+      'dependencies': [
+        '<(DEPTH)/base/base.gyp:base',
+        '<(DEPTH)/pagespeed/kernel.gyp:proto_util',
+        '<(DEPTH)/pagespeed/kernel.gyp:util',
+        '<(DEPTH)/third_party/google-sparsehash/google-sparsehash.gyp:include',
+      ],
+      'sources': [
+        '<(css_parser_root)/webutil/css/identifier.gperf',
+        '<(css_parser_root)/webutil/css/property.gperf',
+      ],
+      'include_dirs': [
+        '<(css_parser_root)',
+        '<(DEPTH)',
+      ],
+      'includes': [
+        '../../net/instaweb/gperf.gypi',
+      ],
+    },
+    {
       'target_name': 'css_parser',
       'type': '<(library)',
       'dependencies': [
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/third_party/gflags/gflags.gyp:gflags',
         '<(DEPTH)/third_party/google-sparsehash/google-sparsehash.gyp:include',
+        'css_parser_gperf',
         'utf',
       ],
       'export_dependent_settings': [
@@ -83,25 +105,13 @@
       'cflags': ['-funsigned-char', '-Wno-sign-compare', '-Wno-return-type'],
       'sources': [
         '<(css_parser_root)/string_using.h',
-        '<(css_parser_root)/webutil/css/identifier.cc',
-        '<(css_parser_root)/webutil/css/identifier.h',
         '<(css_parser_root)/webutil/css/media.cc',
-        '<(css_parser_root)/webutil/css/media.h',
         '<(css_parser_root)/webutil/css/parser.cc',
-        '<(css_parser_root)/webutil/css/parser.h',
-        '<(css_parser_root)/webutil/css/property.cc',
-        '<(css_parser_root)/webutil/css/property.h',
         '<(css_parser_root)/webutil/css/selector.cc',
-        '<(css_parser_root)/webutil/css/selector.h',
-        '<(css_parser_root)/webutil/css/string.h',
         '<(css_parser_root)/webutil/css/string_util.cc',
-        '<(css_parser_root)/webutil/css/string_util.h',
         '<(css_parser_root)/webutil/css/tostring.cc',
-        '<(css_parser_root)/webutil/css/tostring.h',
         '<(css_parser_root)/webutil/css/util.cc',
-        '<(css_parser_root)/webutil/css/util.h',
         '<(css_parser_root)/webutil/css/value.cc',
-        '<(css_parser_root)/webutil/css/value.h',
 
         #'<(css_parser_root)/webutil/css/parse_arg.cc',
         # Tests
@@ -113,42 +123,16 @@
         #'<(css_parser_root)/webutil/css/util_test.cc',
 
         '<(css_parser_root)/webutil/html/htmlcolor.cc',
-        '<(css_parser_root)/webutil/html/htmlcolor.h',
         '<(css_parser_root)/webutil/html/htmltagenum.cc',
-        '<(css_parser_root)/webutil/html/htmltagenum.h',
         '<(css_parser_root)/webutil/html/htmltagindex.cc',
-        '<(css_parser_root)/webutil/html/htmltagindex.h',
 
         # UnicodeText
         '<(css_parser_root)/util/utf8/internal/unicodetext.cc',
         '<(css_parser_root)/util/utf8/internal/unilib.cc',
-        '<(css_parser_root)/util/utf8/public/config.h',
-        '<(css_parser_root)/util/utf8/public/unicodetext.h',
-        '<(css_parser_root)/util/utf8/public/unilib.h',
 
         # Supporting interfaces.
-        '<(css_parser_root)/base/commandlineflags.h',
-        '<(css_parser_root)/base/googleinit.h',
-        '<(css_parser_root)/base/macros.h',
-        '<(css_parser_root)/base/paranoid.h',
-        '<(css_parser_root)/base/stringprintf.h',
-        '<(css_parser_root)/string_using.h',
         '<(css_parser_root)/strings/ascii_ctype.cc',
-        '<(css_parser_root)/strings/ascii_ctype.h',
-        '<(css_parser_root)/strings/escaping.h',
-        '<(css_parser_root)/strings/join.h',
-        '<(css_parser_root)/strings/memutil.h',
         '<(css_parser_root)/strings/stringpiece_utils.cc',
-        '<(css_parser_root)/strings/stringpiece_utils.h',
-        '<(css_parser_root)/strings/strutil.h',
-        #'<(css_parser_root)/testing/base/public/googletest.h',
-        #'<(css_parser_root)/testing/base/public/gunit.h',
-        '<(css_parser_root)/testing/production_stub/public/gunit_prod.h',
-        '<(css_parser_root)/util/gtl/dense_hash_map.h',
-        '<(css_parser_root)/util/gtl/map-util.h',
-        '<(css_parser_root)/util/gtl/singleton.h',
-        '<(css_parser_root)/util/gtl/stl_util.h',
-        '<(css_parser_root)/util/hash/hash.h',
       ],
     },
   ],

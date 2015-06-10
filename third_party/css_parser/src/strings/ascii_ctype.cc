@@ -13,8 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-// Copyright 2007 Google Inc. All Rights Reserved.
 // Author: dpeng@google.com (Daniel Peng)
 //
 // These are a little ugly.

@@ -23,6 +23,16 @@
 
 namespace Css {
 %}
+%compare-strncmp
+%define class-name IdentifierMapper
+%enum
+%global-table
+%ignore-case
+%language=C++
+%readonly-tables
+%struct-type
+%switch=1
+
 // This is the set of identifiers.
 struct idents {
     const char *name;

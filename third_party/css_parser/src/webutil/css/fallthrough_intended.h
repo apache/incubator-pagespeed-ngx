@@ -13,12 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef BASE_CSS_MACROS_H_
-#define BASE_CSS_MACROS_H_
-
-//#include "third_party/chromium/src/base/basictypes.h"
-#include "base/basictypes.h"
-// For DISALLOW_COPY_AND_ASSIGN.
+#ifndef WEBUTIL_CSS_FALLTHROUGH_INTENDED_H_
+#define WEBUTIL_CSS_FALLTHROUGH_INTENDED_H_
 
 // The FALLTHROUGH_INTENDED macro can be used to annotate implicit fall-through
 // between switch labels:
@@ -62,4 +58,4 @@
 #define FALLTHROUGH_INTENDED do { } while (0)
 #endif
 
-#endif  // BASE_CSS_MACROS_H_
+#endif  // WEBUTIL_CSS_FALLTHROUGH_INTENDED_H_

@@ -16,7 +16,7 @@
 #ifndef UTIL_GTL_MAP_UTIL_H_
 #define UTIL_GTL_MAP_UTIL_H_
 
-//#include "third_party/chromium/src/base/stl_util-inl.h"
 #include "base/stl_util-inl.h"
+// for ContainsKey
 
 #endif  // UTIL_GTL_MAP_UTIL_H_
