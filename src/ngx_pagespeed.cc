@@ -1639,7 +1639,8 @@ void ps_release_base_fetch(ps_request_ctx_t* ctx) {
 
 // TODO(chaizhenhua): merge into NgxBaseFetch ctor
 ngx_int_t ps_create_base_fetch(ps_request_ctx_t* ctx,
-                               RequestContextPtr request_context) {
+                               RequestContextPtr request_context,
+                               RequestHeaders* request_headers) {
   ngx_http_request_t* r = ctx->r;
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
   int file_descriptors[2];
@@ -1682,6 +1683,7 @@ ngx_int_t ps_create_base_fetch(ps_request_ctx_t* ctx,
   ctx->base_fetch = new NgxBaseFetch(
       r, file_descriptors[1], cfg_s->server_context,
       request_context, ctx->preserve_caching_headers);
+	ctx->base_fetch->SetRequestHeadersTakingOwnership(request_headers);
 
   return NGX_OK;
 }
@@ -1938,14 +1940,14 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
   if (pagespeed_resource) {
     // TODO(jefftk): Set using_spdy appropriately.  See
     // ProxyInterface::ProxyRequestCallback
-    ps_create_base_fetch(ctx, request_context);
+    ps_create_base_fetch(ctx, request_context, request_headers.release());
     ResourceFetch::Start(
         url,
         custom_options.release() /* null if there aren't custom options */,
         false /* using_spdy */, cfg_s->server_context, ctx->base_fetch);
     return ps_async_wait_response(r);
   } else if (is_an_admin_handler) {
-    ps_create_base_fetch(ctx, request_context);
+    ps_create_base_fetch(ctx, request_context, request_headers.release());
     QueryParams query_params;
     query_params.ParseFromUrl(url);
 
@@ -1989,7 +1991,7 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
   }
 
   if (html_rewrite) {
-    ps_create_base_fetch(ctx, request_context);
+    ps_create_base_fetch(ctx, request_context, request_headers.release());
     // Do not store driver in request_context, it's not safe.
     RewriteDriver* driver;
 
@@ -2039,7 +2041,7 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
   if (options->in_place_rewriting_enabled() &&
       options->enabled() &&
       options->IsAllowed(url.Spec())) {
-    ps_create_base_fetch(ctx, request_context);
+    ps_create_base_fetch(ctx, request_context, request_headers.release());
     // Do not store driver in request_context, it's not safe.
     RewriteDriver* driver;
     if (custom_options.get() == NULL) {
