@@ -1683,7 +1683,7 @@ ngx_int_t ps_create_base_fetch(ps_request_ctx_t* ctx,
   ctx->base_fetch = new NgxBaseFetch(
       r, file_descriptors[1], cfg_s->server_context,
       request_context, ctx->preserve_caching_headers);
-	ctx->base_fetch->SetRequestHeadersTakingOwnership(request_headers);
+  ctx->base_fetch->SetRequestHeadersTakingOwnership(request_headers);
 
   return NGX_OK;
 }
