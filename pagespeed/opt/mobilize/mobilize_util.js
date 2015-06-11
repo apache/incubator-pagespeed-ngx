@@ -76,7 +76,8 @@ pagespeed.MobUtil.ElementClass = {
   LOGO_CHOOSER_SWAP: 'psmob-logo-chooser-swap',
   LOGO_CHOOSER_TABLE: 'psmob-logo-chooser-table',
   MENU_EXPAND_ICON: 'psmob-menu-expand-icon',
-  SHOW_BUTTON_TEXT: 'show-button-text'
+  SHOW_BUTTON_TEXT: 'show-button-text',
+  SINGLE_COLUMN: 'psmob-single-column'
 };
 
 
@@ -185,7 +186,8 @@ pagespeed.MobUtil.pixelValue = function(value) {
  * Returns an integer pixel dimension or null.  Note that a null return
  * might mean the computed dimension is 'auto' or something.  This function
  * strips the literal "px" from the return value before parsing as an int.
- * @param {CSSStyleDeclaration} computedStyle The window.getComputedStyle of
+ *
+ * @param {?CSSStyleDeclaration} computedStyle The window.getComputedStyle of
  * an element.
  * @param {string} name The name of a CSS dimension.
  * @return {?number} the dimension value in pixels, or null if failure.

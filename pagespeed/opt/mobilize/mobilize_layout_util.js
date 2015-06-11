@@ -54,13 +54,6 @@ pagespeed.mobLayoutUtil.MAX_ALLOWED_NEGATIVE_MARGIN_PX_ = -30;
 
 
 /**
-  * CSS class name for single-column layouts.
-  * @private @const {string}
-  */
-pagespeed.mobLayoutUtil.singleColumnClassName_ = 'psSingleColumn';
-
-
-/**
  * Marker for elements with negative bottom margin.
  * @const {string}
  */
@@ -273,7 +266,7 @@ pagespeed.mobLayoutUtil.removeWidthConstraint =
         element,
         pagespeed.mobLayoutConstants.PROPERTIES_TO_REMOVE_FOR_SINGLE_COLUMN);
     element.className += element.className ? ' ' : '';
-    element.classname += pagespeed.mobLayoutUtil.singleColumnClassName_;
+    element.classname += pagespeed.MobUtil.ElementClass.SINGLE_COLUMN;
   }
 };
 

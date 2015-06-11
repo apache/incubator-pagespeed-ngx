@@ -480,7 +480,7 @@ body.mob-iframe {
 }
 
 /* Commmon patterns applied to a broad range of elements */
-.psSingleColumn {
+.psmob-single-column {
     border-left: 0px !important;
     border-right: 0px !important;
     margin-left: 0px !important;
