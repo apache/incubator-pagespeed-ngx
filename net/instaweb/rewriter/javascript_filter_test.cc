@@ -47,6 +47,8 @@
 #include "pagespeed/kernel/html/html_parse_test_base.h"
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/google_url.h"
+#include "pagespeed/kernel/http/http_names.h"
+#include "pagespeed/kernel/http/response_headers.h"
 #include "pagespeed/kernel/http/semantic_type.h"
 
 namespace {
@@ -1135,12 +1137,12 @@ void JavascriptFilterTest::SourceMapTest(StringPiece input_js,
   GoogleString output_js;
   EXPECT_TRUE(FetchResourceUrl(StrCat(kTestDomain, rewritten_js_name),
                                &output_js));
-  EXPECT_EQ(expected_output, output_js);
+  EXPECT_STREQ(expected_output, output_js);
 
   if (options()->use_experimental_js_minifier()) {
     GoogleString map;
     EXPECT_TRUE(FetchResourceUrl(source_map_url, &map));
-    EXPECT_EQ(expected_map, map);
+    EXPECT_STREQ(expected_map, map);
 
     // Test Resource flow without HTML flow.
     ServeResourceFromManyContexts(source_map_url, expected_map);
@@ -1149,11 +1151,13 @@ void JavascriptFilterTest::SourceMapTest(StringPiece input_js,
     GoogleString different_hash_url =
         Encode(kTestDomain, RewriteOptions::kJavascriptMinSourceMapId,
                "Different", "input.js", "map");
-    EXPECT_TRUE(FetchResourceUrl(different_hash_url, &map));
-    // TODO(sligocki): Get this working. Currently we do the standard resource
-    // reconstruction path, serving the same map even though the hash is diff.
-    // EXPECT_FALSE(FetchResourceUrl(different_hash_url, &map));
-    // EXPECT_EQ("", map);
+    ResponseHeaders map_headers;
+    // Test both the uncached and cached case.
+    for (int i = 0; i < 2; ++i) {
+      EXPECT_TRUE(FetchResourceUrl(different_hash_url, &map, &map_headers));
+      EXPECT_EQ(HttpStatus::kNotFound, map_headers.status_code());
+      EXPECT_STREQ(RewriteContext::kHashMismatchMessage, map);
+    }
   }
 }
 
@@ -1314,12 +1318,37 @@ TEST_P(JavascriptFilterTest, SourceMapOnDemandNotEnabled) {
              "0", "input.js", "map");
 
   GoogleString source_map;
-  EXPECT_TRUE(FetchResourceUrl(source_map_url, &source_map));
+  bool result = FetchResourceUrl(source_map_url, &source_map);
   if (options()->use_experimental_js_minifier()) {
+    EXPECT_TRUE(result);
     EXPECT_STREQ(expected_map, source_map);
   }
+
   // Note: !options()->use_experimental_js_minifier() also checks the
   // code_block.SourceMappings().empty() case.
+}
+
+// If JS isn't optimizable, do not fallback to serving js for source_map!
+TEST_P(JavascriptFilterTest, SourceMapNoOpt) {
+  if (!options()->use_experimental_js_minifier()) return;
+
+  options()->EnableFilter(RewriteOptions::kIncludeJsSourceMaps);
+  InitFilters();
+
+  // Empty contents (not optimizable).
+  SetResponseWithDefaultHeaders("input.js", kContentTypeJavascript, "", 100);
+
+  GoogleString source_map_url =
+      Encode(kTestDomain, RewriteOptions::kJavascriptMinSourceMapId,
+             "0", "input.js", "map");
+
+  // Test both the uncached and cached case.
+  for (int i = 0; i < 2; ++i) {
+    GoogleString map;
+    // Note: Right now we are failing the fetch in this case, but 404ing would
+    // also be reasonable. If we change that, update this test.
+    EXPECT_FALSE(FetchResourceUrl(source_map_url, &map));
+  }
 }
 
 TEST_P(JavascriptFilterTest, InlineAndNotExternal) {

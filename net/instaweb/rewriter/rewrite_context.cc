@@ -1031,12 +1031,14 @@ class RewriteContext::FetchContext {
         async_fetch_->set_content_length(contents.size());
         async_fetch_->HeadersComplete();
         ok = async_fetch_->Write(contents, handler_);
+      } else if (rewrite_context_->FailOnHashMismatch()) {
+        FailForHashMismatch();
+        return;
       } else {
         // Our rewrite produced a different hash than what was requested;
         // we better not give it an ultra-long TTL.
         FetchFallbackDone(output_resource_->contents(),
                           output_resource_->response_headers());
-
         return;
       }
     } else {
@@ -1078,13 +1080,22 @@ class RewriteContext::FetchContext {
       }
     }
 
-    if (!ok) {
+    if (!ok && !async_fetch_->headers_complete()) {
       async_fetch_->response_headers()->SetStatusAndReason(
           HttpStatus::kNotFound);
-      // TODO(sligocki): We could be calling this twice if Writes fail above.
       async_fetch_->HeadersComplete();
     }
     rewrite_context_->FetchCallbackDone(ok);
+  }
+
+  // Sends failure message because user requested resource with hash mismatch
+  // that was not allowed to be served for incorrect hash. Callers must check
+  // rewrite_context_->FailOnHashMismatch() before calling this.
+  void FailForHashMismatch() {
+    async_fetch_->response_headers()->SetStatusAndReason(HttpStatus::kNotFound);
+    async_fetch_->HeadersComplete();
+    async_fetch_->Write(kHashMismatchMessage, handler_);
+    rewrite_context_->FetchCallbackDone(true);
   }
 
   // This is used in case we used a metadata cache to find an alternative URL
@@ -1235,6 +1246,8 @@ const char RewriteContext::kNumDistributedMetadataFailures[] =
 // break.
 const char RewriteContext::kDistributedExt[] = "dist";
 const char RewriteContext::kDistributedHash[] = "0";
+const char RewriteContext::kHashMismatchMessage[] =
+    "Hash from URL does not match rewritten hash.";
 
 RewriteContext::RewriteContext(RewriteDriver* driver,
                                RewriteContext* parent,
@@ -2944,15 +2957,21 @@ void RewriteContext::FetchCacheDone(CacheLookupResult* cache_result) {
     OutputResourcePtr output_resource;
     if (result->optimizable() &&
         CreateOutputResourceForCachedOutput(result, &output_resource)) {
-      // TODO(jkarlin): Add a NamedLock::HadContention() function and then
-      // we would only need to do this second lookup if there was contention
-      // on the lock or if the hash is different.
+      if (FailOnHashMismatch() &&
+          output_resource->hash() != fetch_->requested_hash()) {
+        fetch_->FailForHashMismatch();
+        return;
+      } else {
+        // TODO(jkarlin): Add a NamedLock::HadContention() function and then
+        // we would only need to do this second lookup if there was contention
+        // on the lock or if the hash is different.
 
-      // Try to do a cache look up on the proper hash; if it's available,
-      // we can serve it.
-      FetchTryFallback(output_resource->HttpCacheKey(),
-                       output_resource->hash());
-      return;
+        // Try to do a cache look up on the proper hash; if it's available,
+        // we can serve it.
+        FetchTryFallback(output_resource->HttpCacheKey(),
+                         output_resource->hash());
+        return;
+      }
     } else if (CanFetchFallbackToOriginal(kFallbackDiscretional)) {
       // The result is not optimizable, and it makes sense to use
       // the original instead, so try to do that.
@@ -3005,6 +3024,12 @@ bool RewriteContext::CanFetchFallbackToOriginal(
   if (!OptimizationOnly() && (condition != kFallbackEmergency)) {
     // If the filter is non-discretionary we will run it unless it already
     // failed and we would rather serve -something-.
+    return false;
+  }
+  if (FailOnHashMismatch()) {
+    // Falling back to original is like hash-mismatch, you are serving a
+    // different resource than the user expected. Ex: we should not fallback
+    // to original JS for source maps!
     return false;
   }
   // We can serve the original (well, perhaps with some absolutification) in

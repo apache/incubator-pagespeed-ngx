@@ -289,6 +289,16 @@ class JavascriptFilter::Context : public SingleRewriteContext {
     }
   }
 
+  virtual bool FailOnHashMismatch() const {
+    if (output_source_map_) {
+      // We should never serve a source map that does not refer to the exact
+      // contents expected by the user. Such a map is non-sense.
+      return true;
+    } else {
+      return false;
+    }
+  }
+
  private:
   // Take script_out, which is derived from the script at script_url,
   // and write it to script_dest.

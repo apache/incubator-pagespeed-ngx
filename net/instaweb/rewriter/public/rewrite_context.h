@@ -153,6 +153,8 @@ class RewriteContext {
   static const char kDistributedExt[];
   // The hash value used for all distributed fetch URLs.
   static const char kDistributedHash[];
+  static const char kHashMismatchMessage[];
+
   // Used to pass the result of the metadata cache lookups. Recipient must
   // take ownership.
   struct CacheLookupResult {
@@ -605,7 +607,17 @@ class RewriteContext {
   virtual int64 GetRewriteDeadlineAlarmMs() const;
 
   // Should the context call LockForCreation before checking the cache?
+  // TODO(sligocki): mark const.
   virtual bool CreationLockBeforeStartFetch() { return true; }
+
+  // Should the context fail to serve the rewritten resource if the hash
+  // doesn't match user requested hash?
+  // By default, we do not fail and simply serve with limited Caching headers
+  // assuming that an out-of-date resource is better than none. But for
+  // resources like source maps, out-of-date versions are worse than nothing
+  // because they are complete non-sense if not associated with the exact
+  // expected contents.
+  virtual bool FailOnHashMismatch() const { return false; }
 
   // Backend to RewriteDriver::LookupMetadataForOutputResource, with
   // the RewriteContext of appropriate type and the OutputResource already

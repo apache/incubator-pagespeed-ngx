@@ -38,6 +38,7 @@
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_context_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
@@ -46,6 +47,7 @@
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/charset_util.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mem_file_system.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
@@ -5018,6 +5020,83 @@ TEST_F(RewriteContextTest, WaitForRedundantFetchInFetchAfterFetch) {
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(1, fake1->num_rewrites());
   EXPECT_EQ(0, fake2->num_rewrites());
+}
+
+class FailOnHashMismatchFilter : public RewriteFilter {
+ public:
+  static const char kFilterId[];
+
+  explicit FailOnHashMismatchFilter(RewriteDriver* driver)
+      : RewriteFilter(driver) {}
+
+  class Context : public SingleRewriteContext {
+   public:
+    explicit Context(RewriteDriver* driver)
+        : SingleRewriteContext(driver, NULL, NULL) {}
+
+    virtual bool FailOnHashMismatch() const { return true; }
+
+    virtual const char* id() const { return kFilterId; }
+    virtual OutputResourceKind kind() const { return kRewrittenResource; }
+    virtual void RewriteSingle(
+        const ResourcePtr& input, const OutputResourcePtr& output) {
+      // Do nothing.
+      Driver()->Write(ResourceVector(1, input), "output", &kContentTypeCss,
+                      kUtf8Charset, output.get());
+      RewriteDone(kRewriteOk, 0);
+    }
+  };
+
+  virtual RewriteContext* MakeRewriteContext() {
+    return new Context(driver());
+  }
+
+  virtual const char* id() const { return kFilterId; }
+  virtual const char* Name() const { return "FailOnHashMismatchFilter"; }
+  virtual void StartDocumentImpl() {}
+  virtual void StartElementImpl(HtmlElement* element) {}
+  virtual void EndElementImpl(HtmlElement* element) {}
+};
+
+const char FailOnHashMismatchFilter::kFilterId[] =
+    "fail_on_hash_mismatch_filter";
+
+TEST_F(RewriteContextTest, FailOnHashMismatch) {
+  SetResponseWithDefaultHeaders("foo.css", kContentTypeCss, "input", 100);
+
+  rewrite_driver()->AppendRewriteFilter(
+      new FailOnHashMismatchFilter(rewrite_driver()));
+  rewrite_driver()->AddFilters();
+
+  GoogleString bogus_resource =
+      Encode(kTestDomain, FailOnHashMismatchFilter::kFilterId, "Bogus-hash",
+             "foo.css", "css");
+
+  GoogleString correct_hash = "0";
+  GoogleString correct_resource =
+      Encode(kTestDomain, FailOnHashMismatchFilter::kFilterId, correct_hash,
+             "foo.css", "css");
+
+  // Run several times to cover different levels of caching.
+  for (int i = 0; i < 3; ++i) {
+    // Fail on hash mismatch.
+    GoogleString contents;
+    ResponseHeaders headers;
+    EXPECT_TRUE(FetchResourceUrl(bogus_resource, &contents, &headers));
+    EXPECT_EQ(HttpStatus::kNotFound, headers.status_code());
+    EXPECT_STREQ(RewriteContext::kHashMismatchMessage, contents);
+
+    // Don't fail on correct hash.
+    EXPECT_TRUE(FetchResourceUrl(correct_resource, &contents));
+    EXPECT_STREQ("output", contents);
+  }
+
+  // Correctly re-construct result when HTTP resource falls out of cache, but
+  // metadata is still in cache.
+  http_cache()->Delete(correct_resource, "");
+  GoogleString contents;
+  EXPECT_TRUE(FetchResourceUrl(correct_resource, &contents));
+  EXPECT_STREQ("output", contents);
 }
 
 }  // namespace net_instaweb

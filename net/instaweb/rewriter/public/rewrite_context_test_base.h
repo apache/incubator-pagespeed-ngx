@@ -240,11 +240,11 @@ class NestedFilter : public RewriteFilter {
     DISALLOW_COPY_AND_ASSIGN(Context);
   };
 
-  RewriteContext* MakeRewriteContext() {
+  virtual RewriteContext* MakeRewriteContext() {
     return new Context(driver(), this, chain_);
   }
 
-  void StartElementImpl(HtmlElement* element);
+  virtual void StartElementImpl(HtmlElement* element);
   SimpleTextFilter* upper_filter() { return upper_filter_; }
 
   virtual const char* id() const { return kFilterId; }
