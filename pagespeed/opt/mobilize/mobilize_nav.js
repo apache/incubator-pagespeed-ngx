@@ -30,7 +30,9 @@ goog.require('goog.string');
 goog.require('goog.structs.Set');
 // goog.style adds ~400 bytes when using getSize and getTransformedSize.
 goog.require('goog.style');
-goog.require('pagespeed.MobDialer');
+goog.require('mob.button.Dialer');
+goog.require('mob.button.Map');
+goog.require('mob.button.Menu');
 goog.require('pagespeed.MobTheme');
 goog.require('pagespeed.MobUtil');
 
@@ -70,22 +72,20 @@ pagespeed.MobNav = function() {
   this.logoSpan_ = null;
 
   /**
-   * Menu button in the header bar. This element can be null after configuration
-   * if no nav section was inserted server side.
-   * @private {?Element}
+   * Menu button in the header bar. This can be null after configuration if no
+   * nav section was inserted server side.
+   * @private {?mob.button.Menu}
    */
   this.menuButton_ = null;
 
   /**
-   * @private {!pagespeed.MobDialer}
+   * @private {?mob.button.Dialer}
    */
-  this.dialer_ = new pagespeed.MobDialer(
-      window.psPhoneNumber, window.psConversionId,
-      window.psPhoneConversionLabel);
+  this.dialer_ = null;
 
   /**
    * Map button in the header bar.
-   * @private {?Element}
+   * @private {?mob.button.Map}
    */
   this.mapButton_ = null;
 
@@ -189,32 +189,6 @@ pagespeed.MobNav.ARROW_ICON_ =
     'EA3dLDFNXP1wzZjNsF01/W31LH6VXG6YjZ7Vu651674VG8/l2s1mL2qXn4nHD6nn3yE+Al+5' +
     '+fcnQL6EBui1QcUwgb6IEvtRVGDporc/RhobKOooLRBIbSNLmjyJMqXKlSxbunwJM6bMmTRr' +
     '2ryJM6fOnTx7+vwJNKjQoUSLGj2KNKnSpUybOn0KVUcBADs=';
-
-
-/**
- * GIF image of a map button, from a google images search for
- * 'google map pin icon'
- * @const {string}
- */
-pagespeed.MobNav.MAP_BUTTON =
-    'R0lGODlhaQCkAPAAAAAAAAAAACH5BAEAAAEALAAAAABpAKQAAAL+jI+py+0Po5y02ouz3rz7' +
-    'D4biSJbmiabqyrbuC8fyA9T2jQOzmve+vRP9hsQgh4hEGi3JpnIJcUqf0MX0WqwesNyhNtAN' +
-    '+6rics9oTuN26jYw5o7rXnI5ve524e2rfb3vx3cS+IdCWFhyiEiiuBiCpwDJGEdDOZIXYfmo' +
-    'xsQplIbR9lm2AbopdmR2GuahCkL6ARvLusr1SnuL26GbazvrOwq82zVJ/HtlwlsqHIzcalyM' +
-    'dewcTT0snQh9bd081cv9LVXrfam9Df7MnKqejj2Nvmy+zh5PnyF7Dl9vX4H/7n7PXztlFEyN' +
-    'kyfB00GElVyVU9jQYDeJCByFa+SwGkb+gQs38svnkeHFkOQGkSQ48aQTHir1pWzphSXMlYBm' +
-    'UpFpM2bNnD/08Bzj82eOO0JvwCn6hihSGUjnHC06oykboUGgTv2JhucSrFttkvEKJaeWmV/I' +
-    'joX5BYzKtGpPsm3r8S3cjXLd1o0rd66ivAbw5qXLV2+gwH33EhYs6bBhxYQOb2nsuPCeyI8n' +
-    'U5ZskXFmzYIuI+YYeXNoTZ4xUyxNurRpVKoTiGrtOiPs1R8vn54NGnZu3SJx9/YNcHak4MJj' +
-    'uyx+HHnJ4g3EMY948zkDmtKbJ6kOvSd2B9G3D9fpfbr28NaBki+/5jz3M+rXG23vPil88TXm' +
-    'R7RfCb/+/fwN+/v/D2CAAg5IoAoFAAA7';
-
-
-/**
- * The text to insert next to the map button.
- * @private @const {string}
- */
-pagespeed.MobNav.MAP_BUTTON_TEXT_ = 'GET DIRECTIONS';
 
 
 /**
@@ -573,17 +547,36 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
                            pagespeed.MobUtil.ElementClass.LABELED);
   }
 
-  if (this.navPanel_) {
-    this.menuButton_ = themeData.menuButton;
-    this.headerBar_.appendChild(this.menuButton_);
+  // Add menu button.
+  if (this.navPanel_ && !window.psLabeledMode) {
+    this.menuButton_ = new mob.button.Menu(
+        themeData.menuFrontColor, goog.bind(this.toggleNavPanel_, this));
+    this.headerBar_.appendChild(this.menuButton_.el);
   }
 
+  // Add the logo.
   this.logoSpan_ = themeData.anchorOrSpan;
   this.headerBar_.appendChild(themeData.anchorOrSpan);
   this.headerBar_.style.borderBottomColor =
       pagespeed.MobUtil.colorNumbersToString(themeData.menuFrontColor);
   this.headerBar_.style.backgroundColor =
       pagespeed.MobUtil.colorNumbersToString(themeData.menuBackColor);
+
+  // Add call button.
+  if (window.psPhoneNumber) {
+    this.dialer_ = new mob.button.Dialer(
+        themeData.menuFrontColor, window.psPhoneNumber, window.psConversionId,
+        window.psPhoneConversionLabel);
+    this.headerBar_.appendChild(this.dialer_.el);
+  }
+
+  // Add the map button.
+  if (window.psMapLocation) {
+    this.mapButton_ =
+        new mob.button.Map(themeData.menuFrontColor, window.psMapLocation,
+                           window.psConversionId, window.psMapConversionLabel);
+    this.headerBar_.appendChild(this.mapButton_.el);
+  }
 
   if (psDeviceType == 'mobile' || psDeviceType == 'tablet') {
     goog.dom.classlist.add(this.headerBar_, 'mobile');
@@ -593,118 +586,16 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
     }
   }
 
-  // Add call button if a phone number is specified.
-  var dialButton = this.dialer_.createButton();
-  if (dialButton) {
-    this.headerBar_.appendChild(dialButton);
-  }
-
-  if (window.psMapLocation) {
-    this.addMapNavigation_(themeData.menuFrontColor);
-  }
-
   // If we are in labeled mode or only 1 button is configured, then show the
   // text next to it.
-  if (window.psLabeledMode || (dialButton && !this.mapButton_) ||
-      (!dialButton && this.mapButton_)) {
+  if (window.psLabeledMode || (this.dialer_ && !this.mapButton_) ||
+      (!this.dialer_ && this.mapButton_)) {
     goog.dom.classlist.add(this.headerBar_,
                            pagespeed.MobUtil.ElementClass.SHOW_BUTTON_TEXT);
   }
 
   this.addHeaderBarResizeEvents_();
   this.addThemeColor_(themeData);
-};
-
-
-/**
- * Gets a map URL based on the location.
- * @private
- * @return {string}
- */
-pagespeed.MobNav.getMapUrl_ = function() {
-  // TODO(jmarantz): test/fix this in iOS safari/chrome with/without
-  // Google Maps installed.  Probably use 'http://maps.apple.com/?='
-  //
-  // I don't know the best way to do this but I asked the question on
-  // Stack Overflow: http://goo.gl/0g8kEV
-  //
-  // Other links to explore:
-  // https://developer.apple.com/library/iad/featuredarticles/
-  // iPhoneURLScheme_Reference/MapLinks/MapLinks.html
-  // https://developers.google.com/maps/documentation/ios/urlscheme
-  // http://stackoverflow.com/questions/17915901/
-  // is-there-an-android-equivalent-to-google-maps-url-scheme-for-ios
-  var mapUrl = 'https://maps.google.com/maps?q=' +
-      window.psMapLocation;
-  return mapUrl;
-};
-
-
-/**
- * Loads a tracking pixel that triggers a conversion event if the conversion
- * label is set, and then navigates to a map.  Note that we navigate to the map
- * whether the conversion succeeds or fails.
- * @private
- */
-pagespeed.MobNav.openMap_ = function() {
-  if (!window.psMapConversionLabel) {
-    // No conversion label specified; go straight to the map.
-    window.location = pagespeed.MobNav.getMapUrl_();
-    return;
-  }
-
-  // We will visit the map only after we get the onload/onerror for the
-  // tracking pixel.
-  var trackingPixel = new Image();
-  trackingPixel.onload = function() {
-    window.location = pagespeed.MobNav.getMapUrl_();
-  };
-
-  // The user comes first so he gets to the map even if we can't track it.
-  trackingPixel.onerror = trackingPixel.onload;
-
-  // With the handlers set up, we can load the magic pixel to track the
-  // conversion.
-  //
-  // TODO(jmarantz): Is there a better API to report a conversion?  Should
-  // we really use script=0, since this is obviously a script?  In any case
-  // we should use <a ping> when available.
-  trackingPixel.src = '//www.googleadservices.com/pagead/conversion/' +
-      window.psConversionId +
-      '/?label=' + window.psMapConversionLabel +
-      '&amp;guid=ON&amp;script=0';
-};
-
-
-/**
- * Adds a map icon to the header bar.
- * @param {!goog.color.Rgb} color
- * @private
- */
-pagespeed.MobNav.prototype.addMapNavigation_ = function(color) {
-  this.mapButton_ = document.createElement(goog.dom.TagName.A);
-  goog.dom.classlist.add(this.mapButton_,
-                         pagespeed.MobUtil.ElementClass.BUTTON);
-  this.mapButton_.addEventListener(goog.events.EventType.CLICK, function(e) {
-    e.preventDefault();
-    pagespeed.MobUtil.sendBeacon(pagespeed.MobUtil.BeaconEvents.MAP_BUTTON,
-                                 pagespeed.MobNav.openMap_);
-  });
-  this.headerBar_.appendChild(this.mapButton_);
-
-  var mapIcon = document.createElement(goog.dom.TagName.DIV);
-  goog.dom.classlist.add(mapIcon,
-                         pagespeed.MobUtil.ElementClass.BUTTON_ICON);
-  mapIcon.id = pagespeed.MobUtil.ElementId.MAP_IMAGE;
-  mapIcon.style.backgroundImage = 'url(' + pagespeed.MobUtil.synthesizeImage(
-      pagespeed.MobNav.MAP_BUTTON, color) + ')';
-  this.mapButton_.appendChild(mapIcon);
-
-  var mapText = document.createElement(goog.dom.TagName.P);
-  goog.dom.classlist.add(mapText, pagespeed.MobUtil.ElementClass.BUTTON_TEXT);
-  this.mapButton_.appendChild(mapText);
-  mapText.appendChild(
-      document.createTextNode(pagespeed.MobNav.MAP_BUTTON_TEXT_));
 };
 
 
@@ -721,8 +612,6 @@ pagespeed.MobNav.prototype.addThemeColor_ = function(themeData) {
     this.styleTag_.parentNode.removeChild(this.styleTag_);
   }
 
-
-  this.dialer_.setIcon(themeData.menuFrontColor);
   var backgroundColor =
       pagespeed.MobUtil.colorNumbersToString(themeData.menuBackColor);
   var color = pagespeed.MobUtil.colorNumbersToString(themeData.menuFrontColor);
@@ -863,18 +752,6 @@ pagespeed.MobNav.prototype.toggleNavPanel_ = function() {
 
 
 /**
- * Add handlers to the hamburger button so that it expands the nav panel when
- * clicked. Also allow clicking outside of the nav menu to close the nav panel.
- * @private
- */
-pagespeed.MobNav.prototype.addMenuButtonEvents_ = function() {
-  this.menuButton_.addEventListener(
-      goog.events.EventType.CLICK,
-      goog.bind(function(e) { this.toggleNavPanel_(); }, this), false);
-};
-
-
-/**
  * Add events to the buttons in the nav panel.
  * @private
  */
@@ -904,19 +781,21 @@ pagespeed.MobNav.prototype.addNavButtonEvents_ = function() {
  * @param {!pagespeed.MobUtil.ThemeData} themeData
  */
 pagespeed.MobNav.prototype.Run = function(themeData) {
+  // Don't insert the header bar inside of an iframe.
+  if (pagespeed.MobUtil.inFriendlyIframe()) {
+    return;
+  }
   this.clampZIndex_();
   this.findElementsToOffset_();
   this.addHeaderBar_(themeData);
 
-  // Don't insert nav stuff if there are no navigational sections on the page or
-  // if we are in an iFrame.
-  if (this.navPanel_ && !pagespeed.MobUtil.inFriendlyIframe()) {
+  // Don't insert nav stuff if there are no navigational sections on the page.
+  if (this.navPanel_) {
     // Make sure the navPanel is in the body of the document; we've seen it
     // moved elsewhere by JS on the page.
     document.body.appendChild(this.navPanel_);
 
     this.addNavPanel_(themeData);
-    this.addMenuButtonEvents_();
     this.addNavButtonEvents_();
   }
 
@@ -950,13 +829,6 @@ pagespeed.MobNav.prototype.updateHeaderBar = function(mobWindow, themeData) {
       }
       this.logoSpan_.style.backgroundColor = backColor;
       //logoElement.style.backgroundColor = backColor;
-    }
-
-    var mapButton = mobWindow.document.getElementById(
-        pagespeed.MobUtil.ElementId.MAP_IMAGE);
-    if (mapButton) {
-      mapButton.src = pagespeed.MobUtil.synthesizeImage(
-          pagespeed.MobNav.MAP_BUTTON, themeData.menuFrontColor);
     }
 
     var hamburgerLines = mobWindow.document.getElementsByClassName(

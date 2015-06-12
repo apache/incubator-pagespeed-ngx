@@ -151,7 +151,6 @@ body.mob-iframe {
   margin: 5px;
 }
 
-#psmob-menu-button,
 .psmob-button-icon {
   height: 50px;
   width: 50px;
@@ -231,12 +230,6 @@ body.mob-iframe {
   box-sizing: content-box;
 }
 
-.psmob-hamburger-line {
-  width: 100%;
-  height: 15%;
-  margin-bottom: 15%;
-}
-
 .psmob-hamburger-div {
   width: 40%;
   height: 40%;
@@ -264,7 +257,7 @@ body.mob-iframe {
   box-sizing: content-box;
 }
 
-#psmob-header-bar:not(.labeled) #psmob-phone-dialer {
+#psmob-header-bar:not(.labeled) #psmob-dialer-button {
   margin-left: auto !important;
 }
 
@@ -277,7 +270,6 @@ body.mob-iframe {
     height: 151px;
   }
 
-  #psmob-header-bar.mobile #psmob-menu-button,
   #psmob-header-bar.mobile .psmob-button-icon {
     height: 150px;
     width: 150px;

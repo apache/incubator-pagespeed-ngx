@@ -41,13 +41,13 @@ goog.require('goog.uri.utils');
 pagespeed.MobUtil.ElementId = {
   CLICK_DETECTOR_DIV: 'psmob-click-detector-div',
   CONFIG_IFRAME: 'ps-hidden-iframe',
-  NAV_PANEL: 'psmob-nav-panel',
+  DIALER_BUTTON: 'psmob-dialer-button',
   HEADER_BAR: 'psmob-header-bar',
-  LOGO_SPAN: 'psmob-logo-span',
   LOGO_IMAGE: 'psmob-logo-image',
-  MAP_IMAGE: 'psmob-map-image',
+  LOGO_SPAN: 'psmob-logo-span',
+  MAP_BUTTON: 'psmob-map-button',
   MENU_BUTTON: 'psmob-menu-button',
-  PHONE_DIALER: 'psmob-phone-dialer',
+  NAV_PANEL: 'psmob-nav-panel',
   PROGRESS_LOG: 'ps-progress-log',
   PROGRESS_REMOVE: 'ps-progress-remove',
   PROGRESS_SCRIM: 'ps-progress-scrim',
@@ -494,26 +494,22 @@ pagespeed.MobUtil.ImageSource = {
  * Theme data.
  * @param {!goog.color.Rgb} frontColor
  * @param {!goog.color.Rgb} backColor
- * @param {!Element} menuButton
  * @param {!Element} anchorOrSpan
  * @param {!Element} logoElement
  * @constructor
  */
-pagespeed.MobUtil.ThemeData = function(frontColor, backColor, menuButton,
-                                       anchorOrSpan, logoElement) {
+pagespeed.MobUtil.ThemeData = function(frontColor, backColor, anchorOrSpan,
+                                       logoElement) {
 
   /** @type {!goog.color.Rgb} */
   this.menuFrontColor = frontColor;
   /** @type {!goog.color.Rgb} */
   this.menuBackColor = backColor;
   /** @type {!Element} */
-  this.menuButton = menuButton;
-  /** @type {!Element} */
   this.logoElement = logoElement;
   /** @type {!Element} */
   this.anchorOrSpan = anchorOrSpan;
 };
-
 
 
 
@@ -919,6 +915,9 @@ pagespeed.MobUtil.BeaconEvents = {
  * RewriteOption MobBeaconUrl. The resulting image gets attached to the window
  * to make sure it doesn't go out of scope before the browser can send the
  * request.
+ * TODO(jmarantz): rename pagespeed.MobUtil.sendBeacon to sendPing or track, as
+ * not to confuse with specific implementation
+  (https://developer.mozilla.org/en-US/docs/Web/API/Navigator/sendBeacon).
  * @param {pagespeed.MobUtil.BeaconEvents} beaconEvent Identifier for the event
  *     being tracked.
  * @param {Function=} opt_callback Optional callback to be run when the 204

@@ -158,8 +158,8 @@
           '--externs=opt/mobilize/externs.js',
         ],
         'js_includes' : [
+          'opt/mobilize/button.js',
           'opt/mobilize/mobilize_color.js',
-          'opt/mobilize/mobilize_dialer.js',
           'opt/mobilize/mobilize_layout.js',
           'opt/mobilize/mobilize_layout_constants.js',
           'opt/mobilize/mobilize_layout_util.js',
@@ -183,8 +183,8 @@
           '--externs=opt/mobilize/externs.js',
         ],
         'js_includes' : [
+          'opt/mobilize/button.js',
           'opt/mobilize/mobilize_color.js',
-          'opt/mobilize/mobilize_dialer.js',
           'opt/mobilize/mobilize_layout.js',
           'opt/mobilize/mobilize_layout_constants.js',
           'opt/mobilize/mobilize_layout_util.js',

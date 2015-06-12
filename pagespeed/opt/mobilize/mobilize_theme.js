@@ -19,7 +19,6 @@
 goog.provide('pagespeed.MobTheme');
 
 goog.require('goog.dom.TagName');
-goog.require('goog.dom.classlist');
 goog.require('pagespeed.MobLogo');
 goog.require('pagespeed.MobUtil');
 
@@ -36,32 +35,6 @@ pagespeed.MobTheme = function(doneCallback) {
    * @private {?function(!pagespeed.MobUtil.ThemeData)}
    */
   this.doneCallback_ = doneCallback;
-};
-
-
-/**
- * Create an element for the menu button.
- * @param {!goog.color.Rgb} color
- * @return {!Element}
- * @private
- */
-pagespeed.MobTheme.createMenuButton_ = function(color) {
-  var button = document.createElement(goog.dom.TagName.BUTTON);
-  button.id = pagespeed.MobUtil.ElementId.MENU_BUTTON;
-  var hamburgerDiv = document.createElement(goog.dom.TagName.DIV);
-  goog.dom.classlist.add(hamburgerDiv,
-                         pagespeed.MobUtil.ElementClass.HAMBURGER_DIV);
-  button.appendChild(hamburgerDiv);
-
-  var colorStr = pagespeed.MobUtil.colorNumbersToString(color);
-  for (var i = 0; i < 3; ++i) {
-    var hamburgerLine = document.createElement(goog.dom.TagName.DIV);
-    goog.dom.classlist.add(hamburgerLine,
-                           pagespeed.MobUtil.ElementClass.HAMBURGER_LINE);
-    hamburgerLine.style.backgroundColor = colorStr;
-    hamburgerDiv.appendChild(hamburgerLine);
-  }
-  return button;
 };
 
 
@@ -106,9 +79,8 @@ pagespeed.MobTheme.synthesizeLogoSpan = function(
   }
   anchorOrSpan.appendChild(logoElement);
 
-  var menuButton = pagespeed.MobTheme.createMenuButton_(foregroundColor);
   var themeData = new pagespeed.MobUtil.ThemeData(
-      foregroundColor, backgroundColor, menuButton, anchorOrSpan, logoElement);
+      foregroundColor, backgroundColor, anchorOrSpan, logoElement);
   return themeData;
 };
 

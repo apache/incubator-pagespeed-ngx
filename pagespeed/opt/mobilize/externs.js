@@ -58,7 +58,7 @@ var psLayoutMode;
 var psMapConversionLabel;
 
 
-/** @type {string} */
+/** @type {?string} */
 var psMapLocation;
 
 
