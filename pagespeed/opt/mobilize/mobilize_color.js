@@ -288,7 +288,7 @@ pagespeed.MobColor.prototype.computeColors_ = function(pixels, bkColor,
  * @param {!Element} imageElement
  * @param {!goog.color.Rgb} backgroundColor
  * @private
- * @return {pagespeed.MobColor.ThemeColors}
+ * @return {!pagespeed.MobColor.ThemeColors}
  */
 pagespeed.MobColor.prototype.computeThemeColor_ = function(imageElement,
                                                            backgroundColor) {
@@ -309,9 +309,9 @@ pagespeed.MobColor.prototype.computeThemeColor_ = function(imageElement,
 
 /**
  * Compute theme color or return the default color.
- * @param {Element} imageElement
- * @param {goog.color.Rgb} backgroundColor
- * @return {pagespeed.MobColor.ThemeColors}
+ * @param {?Element} imageElement
+ * @param {?goog.color.Rgb} backgroundColor
+ * @return {!pagespeed.MobColor.ThemeColors}
  */
 pagespeed.MobColor.prototype.run = function(imageElement, backgroundColor) {
   if (imageElement) {

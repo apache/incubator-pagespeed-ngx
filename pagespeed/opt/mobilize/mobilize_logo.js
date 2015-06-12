@@ -48,12 +48,12 @@ goog.require('pagespeed.MobUtil');
 /**
  * @constructor
  * @struct
- * @param {pagespeed.MobLogo.LogoRecord} logoRecord
+ * @param {!pagespeed.MobLogo.LogoRecord} logoRecord
  * @param {!goog.color.Rgb} background
  * @param {!goog.color.Rgb} foreground
  */
 pagespeed.MobLogoCandidate = function(logoRecord, background, foreground) {
-  /** {pagespeed.MobLogo.LogoRecord} */
+  /** {!pagespeed.MobLogo.LogoRecord} */
   this.logoRecord = logoRecord;
 
   /** {!goog.color.Rgb} */
@@ -80,7 +80,7 @@ pagespeed.MobLogo = function(psMob) {
 
   /**
    * Callback to invoke when this object finishes its work.
-   * @private {?function(!Array.<pagespeed.MobLogoCandidate>)} doneCallback_
+   * @private {?function(!Array.<!pagespeed.MobLogoCandidate>)} doneCallback_
    */
   this.doneCallback_ = null;
 
@@ -124,21 +124,21 @@ pagespeed.MobLogo.LogoRecord = function(metric, element) {
   this.metric = metric;
   /** @type {!Element} */
   this.logoElement = element;
-  /** @type {Array.<Element>} */
+  /** @type {!Array.<!Element>} */
   this.childrenElements = [];
-  /** @type {Array.<Element>} */
+  /** @type {!Array.<!Element>} */
   this.childrenImages = [];
-  /** @type {Element} */
+  /** @type {?Element} */
   this.ancestorElement = null;
-  /** @type {Element} */
+  /** @type {?Element} */
   this.ancestorImage = null;
-  /** @type {Element} */
+  /** @type {?Element} */
   this.foregroundElement = null;
-  /** @type {Element} */
+  /** @type {?Element} */
   this.foregroundImage = element;
-  /** @type {pagespeed.MobUtil.Rect} */
+  /** @type {?pagespeed.MobUtil.Rect} */
   this.rect = null;
-  /** @type {Array.<number>} */
+  /** @type {?Array.<number>} */
   this.backgroundColor = null;
 };
 
@@ -284,8 +284,8 @@ pagespeed.MobLogo.prototype.newImage_ = function(imageSrc) {
 /**
  * Collect all images in the element's descendants.
  * @param {!Element} element
- * @param {Array.<Element>} childrenElements
- * @param {Array.<Element>} childrenImages
+ * @param {!Array.<!Element>} childrenElements
+ * @param {!Array.<!Element>} childrenImages
  * @private
  */
 pagespeed.MobLogo.prototype.collectChildrenImages_ = function(
@@ -321,7 +321,7 @@ pagespeed.MobLogo.prototype.collectChildrenImages_ = function(
 
 /**
  * Find all images which may be the foreground of the logo.
- * @param {!Array.<pagespeed.MobLogo.LogoRecord>} logoCandidates
+ * @param {!Array.<!pagespeed.MobLogo.LogoRecord>} logoCandidates
  * @private
  */
 pagespeed.MobLogo.prototype.findImagesAndWait_ = function(logoCandidates) {
@@ -332,11 +332,7 @@ pagespeed.MobLogo.prototype.findImagesAndWait_ = function(logoCandidates) {
                                 logo.childrenImages);
 
     // Find the background in the logo element's nearest ancestor.
-    if (element.parentNode) {
-      element = pagespeed.MobUtil.castElement(element.parentNode);
-    } else {
-      element = null;
-    }
+    element = element.parentElement;
     while (element) {
       var imageSrc = pagespeed.MobUtil.findBackgroundImage(element);
       if (imageSrc) {
@@ -355,7 +351,7 @@ pagespeed.MobLogo.prototype.findImagesAndWait_ = function(logoCandidates) {
 
 
 /**
- * @param {Array.<Object>} array
+ * @param {!Array.<!Object>} array
  * @param {number} index
  * @private
  */
@@ -465,24 +461,24 @@ pagespeed.MobLogo.prototype.eventDone_ = function() {
 
 
 /**
- * @private {Array.<Function.<pagespeed.MobUtil.Rect>>}
+ * @private {!Array.<!Function.<!pagespeed.MobUtil.Rect>>}
  */
 pagespeed.MobLogo.rectAccessors_ = [
   /**
+   * @param {!pagespeed.MobUtil.Rect} rect
    * @return {number}
-   * @param {pagespeed.MobUtil.Rect} rect
    */
   function(rect) { return rect.top; },
 
   /**
+   * @param {!pagespeed.MobUtil.Rect} rect
    * @return {number}
-   * @param {pagespeed.MobUtil.Rect} rect
    */
   function(rect) { return rect.left; },
 
   /**
+   * @param {!pagespeed.MobUtil.Rect} rect
    * @return {number}
-   * @param {pagespeed.MobUtil.Rect} rect
    */
   function(rect) { return rect.width * rect.height; }
 ];
@@ -501,7 +497,7 @@ pagespeed.MobLogo.compareLogos_ = function(a, b) {
     return 1;
   }
 
-  for (var i = 0; i < pagespeed.MobLogo.rectAccessors_; ++i) {
+  for (var i = 0; i < pagespeed.MobLogo.rectAccessors_.length; ++i) {
     var accessor = pagespeed.MobLogo.rectAccessors_[i];
     var aval = accessor(a.rect);
     var bval = accessor(b.rect);
@@ -538,7 +534,7 @@ pagespeed.MobLogo.compareLogos_ = function(a, b) {
  *
  * If there are no logo candidates then null is returned.
  *
- * @return {Array.<!pagespeed.MobLogo.LogoRecord>}
+ * @return {!Array.<!pagespeed.MobLogo.LogoRecord>}
  * @private
  */
 pagespeed.MobLogo.prototype.findBestLogos_ = function() {
@@ -584,7 +580,7 @@ pagespeed.MobLogo.prototype.findBestLogos_ = function() {
 /**
  * Extract background color.
  * @param {!Element} element
- * @return {Array.<number>}
+ * @return {?Array.<number>}
  * @private
  */
 pagespeed.MobLogo.prototype.extractBackgroundColor_ = function(element) {
@@ -609,7 +605,7 @@ pagespeed.MobLogo.prototype.extractBackgroundColor_ = function(element) {
 
 /**
  * Find the background color for the logo.
- * @param {pagespeed.MobLogo.LogoRecord} logo
+ * @param {?pagespeed.MobLogo.LogoRecord} logo
  * @private
  */
 pagespeed.MobLogo.prototype.findLogoBackground_ = function(logo) {
@@ -633,7 +629,7 @@ pagespeed.MobLogo.prototype.findLogoBackground_ = function(logo) {
  * body is empty, or if there is a currently outstanding call to run(),
  * then doneCallback will be called immediately with an empty array.
  *
- * @param {function(!Array.<pagespeed.MobLogoCandidate>)} doneCallback
+ * @param {?function(!Array.<!pagespeed.MobLogoCandidate>)} doneCallback
  * @param {number} maxNumCandidates
  * @export
  */
@@ -650,7 +646,7 @@ pagespeed.MobLogo.prototype.run = function(doneCallback, maxNumCandidates) {
 
 
 /**
- * @return {pagespeed.Mob}
+ * @return {!pagespeed.Mob}
  */
 pagespeed.MobLogo.prototype.psMob = function() {
   return this.psMob_;

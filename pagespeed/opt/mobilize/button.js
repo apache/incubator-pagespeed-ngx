@@ -113,7 +113,7 @@ mob.button.Base_.prototype.clickHandler = goog.abstractMethod;
 /**
  * Menu button.
  * @param {!goog.color.Rgb} color
- * @param {Function} clickHandlerFn
+ * @param {!Function} clickHandlerFn
  * @constructor
  * @extends {mob.button.Base_}
  */
@@ -316,7 +316,7 @@ mob.button.Dialer = function(color, phoneNumber, conversionId,
   /** @private {function()} */
   this.dialFn_ = this.requestPhoneNumberAndDial_;
 
-  /** @private {goog.net.Cookies} */
+  /** @private {!goog.net.Cookies} */
   this.cookies_ = new goog.net.Cookies(document);
 
   mob.button.Dialer.base(

@@ -310,7 +310,7 @@ pagespeed.MobUtil.boundingRect = function(node) {
 
 
 /**
- * @param {Node} img
+ * @param {!Node} img
  * @return {boolean}
  */
 pagespeed.MobUtil.isSinglePixel = function(img) {
@@ -406,7 +406,7 @@ pagespeed.MobUtil.hasIntersectingRects = function(rects) {
 /**
  * Creates an XPath for a node.
  * http://stackoverflow.com/questions/2661818/javascript-get-xpath-of-a-node
- * @param {Node} node
+ * @param {?Node} node
  * @return {?string}
  */
 pagespeed.MobUtil.createXPathFromNode = function(node) {
@@ -446,10 +446,13 @@ pagespeed.MobUtil.createXPathFromNode = function(node) {
 
 /**
  * Returns a counts of the number of nodes in a DOM subtree.
- * @param {Node} node
+ * @param {?Node} node
  * @return {number}
  */
 pagespeed.MobUtil.countNodes = function(node) {
+  if (!node) {
+    return 0;
+  }
   // TODO(jmarantz): microbenchmark this recursive implementation against
   // document.querySelectorAll('*').length
   var count = 1;
@@ -457,21 +460,6 @@ pagespeed.MobUtil.countNodes = function(node) {
     count += pagespeed.MobUtil.countNodes(child);
   }
   return count;
-};
-
-
-/**
- * If a node is actually an element, returns it as an element.  Otherwise,
- * returns null.
- *
- * @param {!Node} node
- * @return {?Element} element
- */
-pagespeed.MobUtil.castElement = function(node) {
-  if (goog.dom.isElement(node)) {
-    return /** @type {Element} */ (node);
-  }
-  return null;
 };
 
 
@@ -546,7 +534,7 @@ pagespeed.MobUtil.textBetweenBrackets = function(str) {
  * in getComputedStyle output, not all formats that can be used by CSS.
  * See: http://dev.w3.org/csswg/cssom/#serialize-a-css-component-value
  * @param {string} str
- * @return {Array.<number>}
+ * @return {?Array.<number>}
  */
 pagespeed.MobUtil.colorStringToNumbers = function(str) {
   var subStr = pagespeed.MobUtil.textBetweenBrackets(str);
@@ -920,7 +908,7 @@ pagespeed.MobUtil.BeaconEvents = {
   (https://developer.mozilla.org/en-US/docs/Web/API/Navigator/sendBeacon).
  * @param {pagespeed.MobUtil.BeaconEvents} beaconEvent Identifier for the event
  *     being tracked.
- * @param {Function=} opt_callback Optional callback to be run when the 204
+ * @param {!Function=} opt_callback Optional callback to be run when the 204
  *     finishes loading.
  */
 pagespeed.MobUtil.sendBeacon = function(beaconEvent, opt_callback) {

@@ -62,13 +62,12 @@ body.mob-iframe {
   padding: 0;
 
   width: 100%;
-  height: 51px;
+  height: 57px;
 
   -webkit-transform-origin: 0 0;
   transform-origin: 0 0;
 
   border-bottom: thin solid;
-  box-sizing: border-box;
 
   box-shadow: 0 5px 6px -1px rgba(0, 0, 0, 0.4);
 
@@ -83,6 +82,14 @@ body.mob-iframe {
   -moz-transition: opacity 0.2s;
   -o-transition: opacity 0.2s;
   transition: opacity 0.2s;
+}
+
+#psmob-header-bar, #psmob-nav-panel {
+  box-sizing: border-box !important;
+}
+
+#psmob-header-bar *, #psmob-nav-panel * {
+  box-sizing: inherit !important;
 }
 
 #psmob-header-bar.labeled {
@@ -143,22 +150,21 @@ body.mob-iframe {
   display: flex;
 
   text-decoration: none;
+
+  height: 48px;
+  margin: 4px 0px;
 }
 
 #psmob-header-bar:not(.labeled) .psmob-button {
   border: solid 1px;
   border-radius: 9px;
-  margin: 5px;
+  margin: 4px 2px;
 }
+
 
 .psmob-button-icon {
-  height: 50px;
-  width: 50px;
-}
-
-#psmob-header-bar:not(.labeled) .psmob-button-icon {
-  height: 40px;
-  width: 40px;
+  height: 48px;
+  width: 48px;
 }
 
 /* We don't show the logo or menu button in labeled mode. */
@@ -169,7 +175,6 @@ body.mob-iframe {
 
 .psmob-button-icon {
   display: inline-block;
-  box-sizing: content-box;
   background-repeat: no-repeat;
   background-size: 60%;
   background-position: center;
@@ -179,14 +184,15 @@ body.mob-iframe {
   /* Only display button text in labeled mode or when there is only 1 button. */
   display: none;
 
-  height: 50px;
+  height: 36px;
   width: auto;
   font-family: arial, sans-serif;
-  font-size: 22px !important;
+  font-size: 20px !important;
   font-weight: bold;
-  line-height: 50px;
+  line-height: 36px;
   margin: 0;
-  padding: 0;
+  padding: 6px 0;
+  white-space: nowrap;
 }
 
 #psmob-header-bar:not(.labeled) .psmob-button-text {
@@ -216,7 +222,7 @@ body.mob-iframe {
 }
 
 #psmob-logo-image {
-  /* 50px header bar height. */
+  /* 56px header bar height. */
   height: 30px;
   width: auto;
   padding-top: 10px;
@@ -227,7 +233,6 @@ body.mob-iframe {
   margin: 0 auto;
 
   max-width: 100% !important;
-  box-sizing: content-box;
 }
 
 .psmob-hamburger-div {
@@ -237,7 +242,6 @@ body.mob-iframe {
   padding-bottom: 27%;
   padding-left: 30%;
   padding-right: 30%;
-  box-sizing: content-box !important;
 }
 
 #psmob-header-bar:not(.labeled) .psmob-hamburger-div {
@@ -253,10 +257,6 @@ body.mob-iframe {
     border-radius: 9px;
 }
 
-#psmob-header-bar .psmob-hamburger-div * {
-  box-sizing: content-box;
-}
-
 #psmob-header-bar:not(.labeled) #psmob-dialer-button {
   margin-left: auto !important;
 }
@@ -266,43 +266,6 @@ body.mob-iframe {
  * but may need further tweaking based on testing of more devices.
  */
 @media all and (min-width: 700px) and (orientation: portrait) {
-  #psmob-header-bar.mobile {
-    height: 151px;
-  }
-
-  #psmob-header-bar.mobile .psmob-button-icon {
-    height: 150px;
-    width: 150px;
-  }
-
-  #psmob-header-bar.mobile:not(.labeled) .psmob-button {
-    margin: 20px;
-  }
-
-  #psmob-header-bar.mobile:not(.labeled) .psmob-button-icon {
-    height: 110px;
-    width: 110px;
-  }
-
-  #psmob-header-bar.mobile #psmob-logo-image {
-    /* 150px header bar height. */
-    height: 90px;
-    padding-top: 30px;
-    padding-bottom: 30px;
-  }
-
-  #psmob-header-bar.mobile .psmob-button-text {
-    height: 150px;
-    line-height: 150px;
-    font-size: 44px !important;
-  }
-
-  #psmob-header-bar.mobile:not(.labeled) .psmob-button-text {
-    height: 110px;
-    line-height: 110px;
-    margin-right: 10px;
-  }
-
   #psmob-nav-panel.mobile {
     width: 700px !important;
   }
@@ -387,10 +350,6 @@ body.mob-iframe {
   border-color: white;
 
   background: none;
-
-  -webkit-box-sizing: border-box;
-  -moz-box-sizing: border-box;
-  box-sizing: border-box;
 
   text-align: left;
 
@@ -495,7 +454,7 @@ body.mob-iframe {
 }
 
 .psProgressBar {
-    margin-top: 50px !important;
+    margin-top: 56px !important;
     margin-left: 20% !important;
     height: 20px;  /* Can be anything */
     width: 60%;
@@ -620,7 +579,7 @@ body.mob-iframe {
 }
 
 .psmob-logo-chooser-color {
-  height: 50px;  /* width is determined by table header. */
+  height: 56px;  /* width is determined by table header. */
   border-color: black;
   border-width: 1px;
   border-style: solid;
@@ -659,7 +618,7 @@ body.mob-iframe {
 
 .psmob-logo-chooser-image {
   max-width: 200px;
-  max-height: 50px;
+  max-height: 56px;
   width: auto !important;
   height: auto !important;
 }

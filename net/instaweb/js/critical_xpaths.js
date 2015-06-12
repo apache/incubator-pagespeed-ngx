@@ -90,7 +90,7 @@ pagespeedutils.CriticalXPaths.prototype.addXPathPair_ = function(startXpath,
 /**
  * Identifies all nodes which are not in viewport and populates the start and
  * end xpath of non-critical panels into xpathPairs_.
- * @param  {Node} node Dom node.
+ * @param  {!Node} node Dom node.
  * @return {boolean} true iff node in viewport or any of node's
  * descendants is critical.
  * @private

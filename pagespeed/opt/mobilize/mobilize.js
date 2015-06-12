@@ -64,7 +64,7 @@ pagespeed.Mob = function() {
    * redundant fetches for the same image, we will initiatially populate
    * the map with the sential Dimensions pagespeed.Mob.IN_TRANSIT_.
    *
-   * @private {Object.<string, pagespeed.MobUtil.Dimensions>}
+   * @private {!Object.<string, !pagespeed.MobUtil.Dimensions>}
    */
   this.imageMap_ = {};
 
@@ -136,7 +136,7 @@ pagespeed.Mob = function() {
   /**
    * MobLayout context.  This is not needed until we are ready to run the
    * layout engine.
-   * @private {pagespeed.MobLayout}
+   * @private {!pagespeed.MobLayout}
    */
   this.layout_ = new pagespeed.MobLayout(this);
 
@@ -165,14 +165,14 @@ pagespeed.Mob = function() {
 
   /**
    * Theme data which have been found.
-   * @private {!Array.<pagespeed.MobUtil.ThemeData>}
+   * @private {!Array.<!pagespeed.MobUtil.ThemeData>}
    */
   this.configThemes_ = [];
 
   /**
    * Navigation context.  We keep his around around to enable interactive logo
    * picking to back-annotate the alternate logo selection to the DOM.
-   * @private {pagespeed.MobNav}
+   * @private {?pagespeed.MobNav}
    */
   this.mobNav_ = null;
 
@@ -185,7 +185,7 @@ pagespeed.Mob = function() {
   /**
    * Array of candidate logos, lazy-initilized when a user clicks the
    * logo to configure it with ?PageSpeedMobConfig=on.
-   * @private {Array.<pagespeed.MobLogoCandidate>}
+   * @private {?Array.<!pagespeed.MobLogoCandidate>}
    */
   this.logoCandidates_ = null;
 };
@@ -641,7 +641,7 @@ pagespeed.Mob.prototype.showLogoCandidates = function() {
  * Records the logo candidates for this page, popping up the logo
  * chooser, and setting the top-ranked logo in the theme.
  * @param {!pagespeed.MobTheme} theme
- * @param {!Array.<pagespeed.MobLogoCandidate>} candidates
+ * @param {!Array.<!pagespeed.MobLogoCandidate>} candidates
  */
 pagespeed.Mob.prototype.setLogoCandidatesAndShow = function(theme, candidates) {
   this.logoCandidates_ = candidates;

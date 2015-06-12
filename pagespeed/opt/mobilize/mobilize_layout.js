@@ -70,7 +70,7 @@ pagespeed.MobLayout = function(psMob) {
 
   /**
    * Contains a sequence of operations for mobilizing site layout.
-   * @private @const {!Array.<pagespeed.MobLayout.SequenceStep_>}
+   * @private @const {!Array.<!pagespeed.MobLayout.SequenceStep_>}
    */
   this.sequence_ = pagespeed.MobLayout.constructSequence_();
 
@@ -657,7 +657,7 @@ pagespeed.MobLayout.prototype.findLayoutChildren_ = function(element) {
  * many passes there are for progress bar.
  *
  * @private
- * @return {!Array.<pagespeed.MobLayout.SequenceStep_>}
+ * @return {!Array.<!pagespeed.MobLayout.SequenceStep_>}
  */
 pagespeed.MobLayout.constructSequence_ = function() {
   return [

@@ -40,7 +40,7 @@ pagespeed.MobTheme = function(doneCallback) {
 
 /**
  * Add a logo span to window.document.
- * @param {pagespeed.MobLogo.LogoRecord} logo (can be null)
+ * @param {?pagespeed.MobLogo.LogoRecord} logo
  * @param {!goog.color.Rgb} backgroundColor
  * @param {!goog.color.Rgb} foregroundColor
  * @return {!pagespeed.MobUtil.ThemeData}
@@ -87,7 +87,7 @@ pagespeed.MobTheme.synthesizeLogoSpan = function(
 
 /**
  * Remove foreground image for the logo from document.
- * @param {pagespeed.MobLogo.LogoRecord} logo
+ * @param {?pagespeed.MobLogo.LogoRecord} logo
  * @private
  */
 pagespeed.MobTheme.removeLogoImage_ = function(logo) {
@@ -104,7 +104,7 @@ pagespeed.MobTheme.removeLogoImage_ = function(logo) {
 
 /**
  * Compute color and synthesize logo span.
- * @param {pagespeed.MobLogo.LogoRecord} logo (can be null)
+ * @param {?pagespeed.MobLogo.LogoRecord} logo
  * @param {!goog.color.Rgb} backgroundColor
  * @param {!goog.color.Rgb} foregroundColor
  * @return {!pagespeed.MobUtil.ThemeData}
@@ -128,7 +128,7 @@ pagespeed.MobTheme.createThemeData = function(
 
 
 /**
- * @param {!Array.<pagespeed.MobLogoCandidate>} candidates
+ * @param {!Array.<!pagespeed.MobLogoCandidate>} candidates
  */
 pagespeed.MobTheme.prototype.logoComplete = function(candidates) {
   if (this.doneCallback_) {
@@ -150,7 +150,7 @@ pagespeed.MobTheme.prototype.logoComplete = function(candidates) {
 
 
 /**
- * @param {pagespeed.MobUtil.ThemeData} themeData
+ * @param {?pagespeed.MobUtil.ThemeData} themeData
  */
 pagespeed.MobTheme.installLogo = function(themeData) {
   if (window.psConfigMode) {

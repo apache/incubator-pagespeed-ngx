@@ -50,7 +50,7 @@ goog.provide('pagespeed.XhrHijack');
 /**
  * Object to hijack XHR XMLHttpRequests.  We use this for tracking active
  * XHR requests.
- * @param {XMLHttpRequest} xhr The XHR request.
+ * @param {?XMLHttpRequest} xhr The XHR request.
  * @constructor
  *
  * TODO(jmarantz): considering creating a subclass of goog.net.XhrLike (see
@@ -220,16 +220,17 @@ pagespeed.XhrHijack.prototype['open'] = function(a, b, c, d, e) {
 
 /**
  * Hijacked send call, helping us track outstanding XHRs.
- * @param {ArrayBuffer|ArrayBufferView|Blob|Document|FormData|null|string} x
+ * @param {!ArrayBuffer|!ArrayBufferView|!Blob|!Document|!FormData|string=}
+ *     opt_x
  * @this {pagespeed.XhrHijack}
  *
  * Note: this usage of at-this is deployed in lieu of at-export because of
  * much smaller output file sizes for this module, which is loaded blocking
  * in head.
  */
-pagespeed.XhrHijack.prototype['send'] = function(x) {
+pagespeed.XhrHijack.prototype['send'] = function(opt_x) {
   pagespeed.XhrHijack.listener_['xhrSendHook']();
-  this.xhr.send(x);
+  this.xhr.send(opt_x);
 };
 
 

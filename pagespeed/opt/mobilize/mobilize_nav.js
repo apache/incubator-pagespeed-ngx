@@ -309,27 +309,35 @@ pagespeed.MobNav.prototype.redrawHeader_ = function() {
           Math.round(goog.style.getTransformedSize(this.headerBar_).height) :
           this.headerBarHeight_;
 
-  // Resize the bar by scaling to compensate for the amount zoomed.
-  // innerWidth is the scaled size, while clientWidth does not vary with zoom
-  // level.
-  var viewportWidth = goog.dom.getViewportSize().width;
-  // Default to 1 if viewport is 0 or some other invalid value.
   var scale = 1;
-  if (viewportWidth) {
-    // Subtract the width of the scrollbar from the viewport size only if the
-    // scrollbars are visible (goog.style.getScrollbarWidth still returns the
-    // scrollbar size if they are hidden).
-    if (window.getComputedStyle(document.body).getPropertyValue('overflow-y') ==
-        'hidden') {
-      scale = window.innerWidth / viewportWidth;
+  if (window.psDeviceType != 'desktop') {
+    // screen.width does not update on rotation on ios, but it does on android,
+    // so compensate for that here.
+    if ((Math.abs(window.orientation) == 90) &&
+        (screen.height > screen.width)) {
+      scale = (window.innerHeight / screen.width);
     } else {
-      scale =
-          (window.innerWidth - goog.style.getScrollbarWidth()) / viewportWidth;
+      scale = window.innerWidth / screen.width;
     }
+  }
+  // Android browser does not seem to take the pixel ratio into account in the
+  // values it returns for screen.width and screen.height.
+  if (this.isAndroidBrowser_) {
+    scale *= goog.dom.getPixelRatio();
   }
   var scaleTransform = 'scale(' + scale.toString() + ')';
   this.headerBar_.style['-webkit-transform'] = scaleTransform;
   this.headerBar_.style.transform = scaleTransform;
+
+  var width = window.innerWidth;
+  if (window.getComputedStyle(document.body).getPropertyValue('overflow-y') !=
+      'hidden') {
+    // Subtract the width of the scrollbar from the viewport size only if the
+    // scrollbars are visible (goog.style.getScrollbarWidth still returns the
+    // scrollbar size if they are hidden).
+    width -= goog.style.getScrollbarWidth();
+  }
+  this.headerBar_.style.width = (width / scale) + 'px';
 
   // Restore visibility since the bar was hidden while scrolling and zooming.
   goog.dom.classlist.remove(this.headerBar_, 'hide');
@@ -472,7 +480,7 @@ pagespeed.MobNav.prototype.addHeaderBarResizeEvents_ = function() {
     resetScrollTimer.call(this);
 
     if (this.navPanel_ && this.isNavPanelOpen_ &&
-        !this.navPanel_.contains(/** @type {Node} */ (e.target))) {
+        !this.navPanel_.contains(/** @type {?Node} */ (e.target))) {
       e.stopPropagation();
       e.preventDefault();
     }
@@ -578,7 +586,7 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
     this.headerBar_.appendChild(this.mapButton_.el);
   }
 
-  if (psDeviceType == 'mobile' || psDeviceType == 'tablet') {
+  if (window.psDeviceType == 'mobile' || window.psDeviceType == 'tablet') {
     goog.dom.classlist.add(this.headerBar_, 'mobile');
     goog.dom.classlist.add(this.spacerDiv_, 'mobile');
     if (this.navPanel_) {
@@ -845,7 +853,7 @@ pagespeed.MobNav.prototype.updateHeaderBar = function(mobWindow, themeData) {
 
 
 /**
- * @param {!Array.<pagespeed.MobLogoCandidate>} candidates
+ * @param {!Array.<!pagespeed.MobLogoCandidate>} candidates
  */
 pagespeed.MobNav.prototype.chooserShowCandidates = function(candidates) {
   if (this.logoChoicePopup_) {
