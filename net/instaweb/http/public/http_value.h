@@ -20,8 +20,10 @@
 #define NET_INSTAWEB_HTTP_PUBLIC_HTTP_VALUE_H_
 
 #include <cstddef>                     // for size_t
+
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/shared_string.h"
+#include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/writer.h"
 
@@ -94,6 +96,14 @@ class HTTPValue : public Writer {
 
   size_t size() const { return storage_.size(); }
   int64 contents_size() { return contents_size_; }
+
+  // Useful functions for debugging. See http_value_explorer.
+  // Convert from HTTPValue format to raw HTTP stream.
+  static bool Decode(StringPiece encoded_value, GoogleString* http_string,
+                     MessageHandler* handler);
+  // Convert from raw HTTP stream  to HTTPValue format.
+  static bool Encode(StringPiece http_string, GoogleString* encoded_value,
+                     MessageHandler* handler);
 
  private:
   friend class HTTPValueTest;
