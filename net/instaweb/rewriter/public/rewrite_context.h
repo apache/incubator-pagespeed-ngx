@@ -607,8 +607,7 @@ class RewriteContext {
   virtual int64 GetRewriteDeadlineAlarmMs() const;
 
   // Should the context call LockForCreation before checking the cache?
-  // TODO(sligocki): mark const.
-  virtual bool CreationLockBeforeStartFetch() { return true; }
+  virtual bool CreationLockBeforeStartFetch() const { return true; }
 
   // Should the context fail to serve the rewritten resource if the hash
   // doesn't match user requested hash?

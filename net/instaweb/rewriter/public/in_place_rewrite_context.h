@@ -112,7 +112,7 @@ class InPlaceRewriteContext : public SingleRewriteContext {
 
   // We don't lock for IPRO because IPRO would rather stream back the original
   // resource than wait for the optimization.
-  virtual bool CreationLockBeforeStartFetch() { return false; }
+  virtual bool CreationLockBeforeStartFetch() const { return false; }
 
  private:
   friend class RecordingFetch;
