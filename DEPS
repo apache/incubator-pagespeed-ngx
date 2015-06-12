@@ -88,8 +88,9 @@ vars = {
 
 
   "domain_registry_provider_src":
-     "https://domain-registry-provider.googlecode.com/svn/trunk/",
-  "domain_registry_provider_revision": "@37",
+     "https://github.com/pagespeed/domain-registry-provider.git",
+  "domain_registry_provider_revision":
+     "@2f66434916a913a58aea345268a513d3ecc071b8",
 }
 
 deps = {
