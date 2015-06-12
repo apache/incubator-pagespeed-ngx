@@ -1687,6 +1687,7 @@ fetch_until -save $EXAMPLE_ROOT/rewrite_images.html?$options \
 URL_TAIL=$(grep Puzzle $FETCH_UNTIL_OUTFILE | cut -d \" -f 2)
 SHOW_CACHE_URL=$EXAMPLE_ROOT/$URL_TAIL
 SHOW_CACHE_QUERY=$ADMIN_CACHE?url=$SHOW_CACHE_URL\&$options
+echo "$WGET_DUMP $SHOW_CACHE_QUERY"
 OUT=$($WGET_DUMP $SHOW_CACHE_QUERY)
 
 # TODO(jmarantz): I have seen this test fail in the 'apache_debug_leak_test'

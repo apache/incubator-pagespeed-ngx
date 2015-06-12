@@ -2635,7 +2635,7 @@ void AppendBool(GoogleString* out, const char* name, bool val) {
 
 }  // namespace
 
-GoogleString RewriteDriver::ToString(bool show_detached_contexts) {
+GoogleString RewriteDriver::ToString(bool show_detached_contexts) const {
   GoogleString out;
   {
     ScopedMutex lock(rewrite_mutex());

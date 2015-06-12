@@ -54,9 +54,12 @@ class SystemRewriteOptions;
 
 // Links an apache request_rec* to an AsyncFetch, adding the ability to
 // block based on a condition variable.
-class ApacheFetch : public AsyncFetchUsingWriter {
+class ApacheFetch : public AsyncFetch {
  public:
+  enum WaitResult {kWaitSuccess, kAbandonedAndDeclined, kAbandonedAndHandled};
+
   ApacheFetch(const GoogleString& mapped_url,
+              StringPiece debug_info,
               ServerContext* server_context,
               request_rec* request,
               const RequestContextPtr& request_context,
@@ -74,39 +77,64 @@ class ApacheFetch : public AsyncFetchUsingWriter {
   // a reverse-proxy.
   void set_handle_error(bool x) { handle_error_ = x; }
 
-  virtual void HandleHeadersComplete();
-  virtual void HandleDone(bool success);
-
-  // Blocks indefinitely waiting for the proxy fetch to complete.
-  // Every 'blocking_fetch_timeout_ms', log a message so that if
-  // we get stuck there's noise in the logs, but we don't expect this
-  // to happen because underlying fetch/cache timeouts should fire.
+  // Blocks waiting for the fetch to complete, then returns kWaitSuccess.  Every
+  // 'blocking_fetch_timeout_ms', log a message so that if we get stuck there's
+  // noise in the logs, but we don't expect this to happen because underlying
+  // fetch/cache timeouts should fire.
   //
-  // Note that enforcing a timeout in this function makes debugging
-  // difficult.
-  void Wait();
+  // In some cases, however, we've seen a bug where underlying timeouts take a
+  // very long time to fire or may not ever fire.  Instead of tying up an Apache
+  // thread indefinitely, after kMaxWaitMs (2 minutes by default) of waiting we
+  // give up and transition to the abandoned state.  This doesn't fix the
+  // underlying issue of the delay, but it makes it far less destructive.  Even
+  // after this bug is resolved, however, it would be good to keep this timeout
+  // behavior because it's good defensive programming that protects us from
+  // future similar bugs.  See github.com/pagespeed/mod_pagespeed/issues/1048
+  //
+  // TODO(jefftk): find the underlying issue in the code we're waiting for.
+  WaitResult Wait(const RewriteDriver& rewrite_driver) LOCKS_EXCLUDED(mutex_);
 
   bool status_ok() const { return status_ok_; }
 
-  virtual bool IsCachedResultValid(const ResponseHeaders& headers);
+  virtual bool IsCachedResultValid(
+      const ResponseHeaders& headers) LOCKS_EXCLUDED(mutex_);
 
   // By default ApacheFetch is not intended for proxying third party content.
   // When it is to be used for proxying third party content, we must avoid
   // sending a 'nosniff' header.
   void set_is_proxy(bool x) { is_proxy_ = x; }
 
+ protected:
+  virtual void HandleHeadersComplete() LOCKS_EXCLUDED(mutex_);
+  virtual void HandleDone(bool success) LOCKS_EXCLUDED(mutex_);
+  virtual bool HandleFlush(MessageHandler* handler) LOCKS_EXCLUDED(mutex_);
+  virtual bool HandleWrite(const StringPiece& sp,
+                           MessageHandler* handler) LOCKS_EXCLUDED(mutex_);
+
  private:
   GoogleString mapped_url_;
-  ApacheWriter apache_writer_;
+
+  // All uses of apache_writer_ and options_ must be protected with a check
+  // under mutex_ that we've not been abandoned.  They reference memory that may
+  // be freed on abandonment.
+  ApacheWriter apache_writer_ GUARDED_BY(mutex_);
+  const RewriteOptions* options_ GUARDED_BY(mutex_);
+
   ServerContext* server_context_;
   scoped_ptr<ThreadSystem::CondvarCapableMutex> mutex_;
   scoped_ptr<ThreadSystem::Condvar> condvar_;
-  bool done_;
+
+  // If we're abandoned we ignore all writes and delete ourself when Done() is
+  // called.  All fetches start with abandoned_ = false and then if Wait() times
+  // out they transition into abandoned_ = true.
+  bool abandoned_ GUARDED_BY(mutex_);
+  bool done_ GUARDED_BY(mutex_);
+  bool headers_sent_ GUARDED_BY(mutex_);
   bool handle_error_;
   bool status_ok_;
   bool is_proxy_;
-  const RewriteOptions* options_;    // Not valid after a driver is destroyed.
   int64 blocking_fetch_timeout_ms_;  // Need in Wait()
+  GoogleString debug_info_;
 
   DISALLOW_COPY_AND_ASSIGN(ApacheFetch);
 };
@@ -149,12 +177,15 @@ class InstawebHandler {
   RewriteDriver* MakeDriver();
 
   // Allocates a Fetch object associated with the current request and
-  // the specified URL.
-  ApacheFetch* MakeFetch(const GoogleString& url);
+  // the specified URL.  Include in debug_info anything that's cheap to create
+  // and would be informative if something went wrong with the fetch.
+  ApacheFetch* MakeFetch(const GoogleString& url, StringPiece debug_info);
 
   // Allocates a Fetch object associated with the current request and its
   // URL.
-  ApacheFetch* MakeFetch() { return MakeFetch(original_url_); }
+  ApacheFetch* MakeFetch(StringPiece debug_info) {
+    return MakeFetch(original_url_, debug_info);
+  }
 
   // Attempts to handle this as a proxied resource (see
   // MapProxyDomain). Returns false if the proxy handling didn't
@@ -170,8 +201,14 @@ class InstawebHandler {
   // whether the result is success or failure.
   void HandleAsPagespeedResource();
 
-  // Waits for an outstanding fetch (obtained by MakeFetch) to complete.
-  void WaitForFetch();
+  // Waits for an outstanding fetch (obtained by MakeFetch) to complete or time
+  // out.  Returns kWaitSuccess on success, on timeout it needs to indicate
+  // whether the request should be declined or counted as handled.  If we didn't
+  // send out headers then it's safe to decline this request and another Apache
+  // content handler can look into it, so we'll return AbandonedAndDeclined.
+  // Returning AbandonedAndHandled means we got at least as far as sending out
+  // headers, and there's nothing else it's safe to do with this request.
+  ApacheFetch::WaitResult WaitForFetch();
 
   // Loads the URL based on the fetchers and other infrastructure in the
   // factory, returning true if the request was handled.  This is used
@@ -313,7 +350,7 @@ class InstawebHandler {
   RewriteDriver* rewrite_driver_;
   int num_response_attributes_;
   RewriteQuery rewrite_query_;
-  scoped_ptr<ApacheFetch> fetch_;
+  ApacheFetch* fetch_;
 
   DISALLOW_COPY_AND_ASSIGN(InstawebHandler);
 };

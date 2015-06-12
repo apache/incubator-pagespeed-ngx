@@ -740,7 +740,7 @@ class RewriteDriver : public HtmlParse {
   void AddUserReference();
 
   // Debugging routines to print out data about the driver.
-  GoogleString ToString(bool show_detached_contexts);
+  GoogleString ToString(bool show_detached_contexts) const;
   void PrintState(bool show_detached_contexts);            // For debugging.
   void PrintStateToErrorLog(bool show_detached_contexts);  // For logs.
 
