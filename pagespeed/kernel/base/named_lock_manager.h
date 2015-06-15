@@ -33,20 +33,27 @@ class NamedLock {
   // Destructors of extending classes must unlock the lock if held on destruct.
   virtual ~NamedLock();
 
-  // Return immediately.  Wait wait_ms to take lock, invoke callback with lock
-  // held.  On timeout, cancel callback.
+  // Attempts to take a lock.  callback->Run() is called if the lock was
+  // granted, and callback->Cancel() is called if the lock could not be
+  // obtained within wait_ms.  Note that the callback may be called directly
+  // from this method, or from another thread.
+  //
+  // The caller is responsible for making sure that callback does not block.
   //
   // TODO(jmarantz): consider removing this method as it has no callers in
   // production code, though it does have callers in tests.
   virtual void LockTimedWait(int64 wait_ms, Function* callback) = 0;
 
-  // LockTimedWaitStealOld with a callback returns immediately.  The
-  // callback is Run if the lock can be obtained within wait_ms.  If
-  // the current lock holder has locked it for more than steal_ms,
-  // the lock is "stolen" (re-locked by the caller and the callback is
-  // called) and again the callback is Run.  If wait_ms passes without
-  // the lock being unlocked or stolen, the callback's Cancel method
+  // Attempts to take a lock, calling callback->Run() when it is granted.
+  // If the current lock holder has locked it for more than steal_ms, the
+  // lock is "stolen".  If the lock cannot be obtained within wait_ms from
+  // when this method was called, the lock is denied, and callback->Cancel()
   // is called.
+  //
+  // Note that the callback may be called directly from this method, or from
+  // another thread.
+  //
+  // The caller is responsible for making sure that callback does not block.
   //
   // Note that even if wait_ms > steal_ms, callback->Cancel() may be
   // called if there are multiple concurrent attempts to take the
@@ -54,10 +61,15 @@ class NamedLock {
   virtual void LockTimedWaitStealOld(int64 wait_ms, int64 steal_ms,
                                      Function* callback) = 0;
 
-  // Relinquish lock.  Non-blocking.
+  // Relinquish lock.  Non-blocking, however note when this lock is relinquished
+  // another lock may be granted, resulting in its callback->Run() method
+  // being called from Unlock.
   virtual void Unlock() = 0;
 
   // Returns true if this lock is held by this particular lock object.
+  //
+  // Note: in some implementations Held() may remain true until Unlock
+  // regardless if another lock steals.
   virtual bool Held() = 0;
 
   // The name the lock was created with, for debugging/logging purposes.

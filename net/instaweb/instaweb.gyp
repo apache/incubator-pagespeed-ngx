@@ -1406,6 +1406,22 @@
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_http',
       ],
     },
+    { 'target_name': 'http_value_explorer',
+      'type': 'executable',
+      'sources': [
+        'http/http_value_explorer.cc'
+      ],
+      'dependencies': [
+        ':instaweb_util',
+        '<(DEPTH)/base/base.gyp:base',
+        '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_base_core',
+        '<(DEPTH)/pagespeed/kernel.gyp:util_gflags',
+      ],
+      'include_dirs': [
+        '<(instaweb_root)',
+        '<(DEPTH)',
+      ],
+    },
     {
       'target_name': 'instaweb_htmlparse',
       'type': '<(library)',
