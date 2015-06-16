@@ -2172,7 +2172,7 @@ class RewriteOptions {
   }
 
   bool domain_rewrite_cookies() const {
-    return domain_rewrite_cookies_.value();
+    return CheckMobilizeFiltersOption(domain_rewrite_cookies_);
   }
   void set_domain_rewrite_cookies(bool x) {
     set_option(x, &domain_rewrite_cookies_);
