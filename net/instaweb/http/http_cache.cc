@@ -91,6 +91,7 @@ HTTPCache::HTTPCache(CacheInterface* cache, Timer* timer, Hasher* hasher,
       hasher_(hasher),
       force_caching_(false),
       disable_html_caching_on_https_(false),
+      cache_levels_(1),
       cache_time_us_(stats->GetVariable(kCacheTimeUs)),
       cache_hits_(stats->GetVariable(kCacheHits)),
       cache_misses_(stats->GetVariable(kCacheMisses)),
@@ -148,14 +149,16 @@ class HTTPCacheCallback : public CacheInterface::Callback {
         fragment_(fragment),
         handler_(handler),
         callback_(callback),
-        http_cache_(http_cache) {
+        http_cache_(http_cache),
+        result_(HTTPCache::kNotFound),
+        cache_level_(0) {
     start_us_ = http_cache_->timer()->NowUs();
     start_ms_ = start_us_ / 1000;
   }
 
-  virtual void Done(CacheInterface::KeyState backend_state) {
-    HTTPCache::FindResult result = HTTPCache::kNotFound;
-
+  virtual bool ValidateCandidate(const GoogleString& key,
+                                 CacheInterface::KeyState backend_state) {
+    ++cache_level_;
     int64 now_us = http_cache_->timer()->NowUs();
     int64 now_ms = now_us / 1000;
     ResponseHeaders* headers = callback_->response_headers();
@@ -222,15 +225,15 @@ class HTTPCacheCallback : public CacheInterface::Callback {
               http_status ==
                   HttpStatus::kRememberNotCacheableAnd200StatusCode) {
             status = "not-cacheable";
-            result = HTTPCache::kRecentFetchNotCacheable;
+            result_ = HTTPCache::kRecentFetchNotCacheable;
           } else if (http_status ==
                      HttpStatus::kRememberFetchFailedStatusCode) {
             status = "not-found";
-            result = HTTPCache::kRecentFetchFailed;
+            result_ = HTTPCache::kRecentFetchFailed;
           } else {
             DCHECK(http_status == HttpStatus::kRememberEmptyStatusCode);
             status = "empty";
-            result = HTTPCache::kRecentFetchEmpty;
+            result_ = HTTPCache::kRecentFetchEmpty;
           }
           if (handler_ != NULL) {
             handler_->Message(kInfo,
@@ -243,7 +246,8 @@ class HTTPCacheCallback : public CacheInterface::Callback {
         }
       } else {
         if (is_valid_and_fresh) {
-          result = HTTPCache::kFound;
+          result_ = HTTPCache::kFound;
+          callback_->fallback_http_value()->Clear();
           if (headers->UpdateCacheHeadersIfForceCached()) {
             // If the cache headers were updated as a result of it being force
             // cached, we need to reconstruct the HTTPValue with the new
@@ -269,17 +273,26 @@ class HTTPCacheCallback : public CacheInterface::Callback {
     int64 elapsed_us = std::max(static_cast<int64>(0), now_us - start_us_);
     http_cache_->cache_time_us()->Add(elapsed_us);
     callback_->ReportLatencyMs(elapsed_us/1000);
-    if (callback_->update_stats_on_failure() ||
-        (result == HTTPCache::kFound)) {
-      http_cache_->UpdateStats(key_, fragment_, backend_state, result,
+    if ((callback_->update_stats_on_failure() &&
+         cache_level_ == http_cache_->cache_levels())||
+        (result_ == HTTPCache::kFound)) {
+      http_cache_->UpdateStats(key_, fragment_, backend_state, result_,
                                !callback_->fallback_http_value()->Empty(),
                                is_expired, handler_);
     }
-    if (result != HTTPCache::kFound) {
+
+    if (result_ != HTTPCache::kFound) {
       headers->Clear();
       callback_->http_value()->Clear();
     }
-    callback_->Done(result);
+
+    start_ms_ = now_ms;
+    start_us_ = now_us;
+    return result_ == HTTPCache::kFound;
+  }
+
+  virtual void Done(CacheInterface::KeyState backend_state) {
+    callback_->Done(result_);
     delete this;
   }
 
@@ -290,8 +303,10 @@ class HTTPCacheCallback : public CacheInterface::Callback {
   MessageHandler* handler_;
   HTTPCache::Callback* callback_;
   HTTPCache* http_cache_;
+  HTTPCache::FindResult result_;
   int64 start_us_;
   int64 start_ms_;
+  int cache_level_;
 
   DISALLOW_COPY_AND_ASSIGN(HTTPCacheCallback);
 };
@@ -580,7 +595,13 @@ void HTTPCache::Callback::ReportLatencyMs(int64 latency_ms) {
 }
 
 void HTTPCache::Callback::ReportLatencyMsImpl(int64 latency_ms) {
-  request_context()->mutable_timing_info()->SetHTTPCacheLatencyMs(latency_ms);
+  ++cache_level_;
+  if (cache_level_ == 1) {
+    request_context()->mutable_timing_info()->SetHTTPCacheLatencyMs(latency_ms);
+  } else if (cache_level_ == 2) {
+    request_context()->mutable_timing_info()->SetL2HTTPCacheLatencyMs(
+        latency_ms);
+  }
 }
 
 }  // namespace net_instaweb

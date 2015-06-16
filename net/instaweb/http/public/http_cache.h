@@ -99,6 +99,7 @@ class HTTPCache {
         : response_headers_(NULL),
           owns_response_headers_(false),
           request_ctx_(request_ctx),
+          cache_level_(0),
           is_background_(false),
           update_stats_on_failure_(true) {
     }
@@ -111,6 +112,7 @@ class HTTPCache {
           req_properties_(req_properties),
           owns_response_headers_(false),
           request_ctx_(request_ctx),
+          cache_level_(0),
           is_background_(false),
           update_stats_on_failure_(true) {
     }
@@ -149,7 +151,7 @@ class HTTPCache {
     // the HTTPCache code with the latency in milliseconds.  Will invoke
     // ReportLatencyMsImpl for non-background fetches in order for system
     // implementations, like RequestTimingInfo, to record the cache
-    // latency.
+    // latency. Can be called multiple times for various levels of cache.
     void ReportLatencyMs(int64 latency_ms);
 
     // Determines whether this Get request was made in the context where
@@ -196,6 +198,7 @@ class HTTPCache {
 
     // Indicates whether the HTTP Cache stats be updated when the lookup fails.
     // Normally we would, except In the case of an L1 of a write-through cache.
+    // TODO(morlovich): Remove this with WriteThroughHTTPCache.
     bool update_stats_on_failure() const { return update_stats_on_failure_; }
     void set_update_stats_on_failure(bool x) { update_stats_on_failure_ = x; }
 
@@ -213,6 +216,7 @@ class HTTPCache {
     RequestHeaders::Properties req_properties_;
     bool owns_response_headers_;
     RequestContextPtr request_ctx_;
+    int cache_level_;
     bool is_background_;
     bool update_stats_on_failure_;
 
@@ -380,6 +384,11 @@ class HTTPCache {
 
   virtual void set_max_cacheable_response_content_length(int64 value);
 
+  // Sets how many levels the cache has. Affects reporting of statistics ---
+  // we don't want them for lower levels of multi-level setups.
+  void set_cache_levels(int levels) { cache_levels_ = levels; }
+  int cache_levels() const { return cache_levels_; }
+
   virtual GoogleString Name() const { return FormatName(cache_->Name()); }
   static GoogleString FormatName(StringPiece cache);
 
@@ -430,6 +439,8 @@ class HTTPCache {
   bool force_caching_;
   // Whether to disable caching of HTML content fetched via https.
   bool disable_html_caching_on_https_;
+
+  int cache_levels_;
 
   // Total cumulative time spent accessing backend cache.
   Variable* cache_time_us_;
