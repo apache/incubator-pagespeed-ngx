@@ -407,6 +407,22 @@
       ],
     },
     {
+      'target_name': 'mem_lock',
+      'type': '<(library)',
+      'sources': [
+        'kernel/util/mem_lock.cc',
+        'kernel/util/mem_lock_manager.cc',
+        'kernel/util/mem_lock_state.cc',
+      ],
+      'include_dirs': [
+        '<(DEPTH)',
+      ],
+      'dependencies': [
+        'pagespeed_base',
+        'pagespeed_thread',
+      ],
+    },
+    {
       'target_name': 'util_gflags',
       'type': '<(library)',
       'sources': [
