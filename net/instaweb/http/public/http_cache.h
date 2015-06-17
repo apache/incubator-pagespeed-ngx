@@ -66,7 +66,7 @@ class HTTPCache {
   // Does not take ownership of any inputs.
   HTTPCache(CacheInterface* cache, Timer* timer, Hasher* hasher,
             Statistics* stats);
-  virtual ~HTTPCache();
+  ~HTTPCache();
 
   // When a lookup is done in the HTTP Cache, it returns one of these values.
   enum FindResult {
@@ -79,7 +79,7 @@ class HTTPCache {
     kRecentFetchEmpty,  // We do not cache empty resources.
   };
 
-  virtual void set_hasher(Hasher* hasher) { hasher_ = hasher; }
+  void set_hasher(Hasher* hasher) { hasher_ = hasher; }
 
   // Class to handle an asynchronous cache lookup response.
   //
@@ -100,8 +100,7 @@ class HTTPCache {
           owns_response_headers_(false),
           request_ctx_(request_ctx),
           cache_level_(0),
-          is_background_(false),
-          update_stats_on_failure_(true) {
+          is_background_(false) {
     }
 
     // The 2-arg constructor can be used in situations where we are confident
@@ -113,8 +112,7 @@ class HTTPCache {
           owns_response_headers_(false),
           request_ctx_(request_ctx),
           cache_level_(0),
-          is_background_(false),
-          update_stats_on_failure_(true) {
+          is_background_(false) {
     }
 
     virtual ~Callback();
@@ -196,17 +194,6 @@ class HTTPCache {
       return req_properties_;
     }
 
-    // Indicates whether the HTTP Cache stats be updated when the lookup fails.
-    // Normally we would, except In the case of an L1 of a write-through cache.
-    // TODO(morlovich): Remove this with WriteThroughHTTPCache.
-    bool update_stats_on_failure() const { return update_stats_on_failure_; }
-    void set_update_stats_on_failure(bool x) { update_stats_on_failure_ = x; }
-
-   protected:
-    // Virtual implementation for subclasses to override.  Default
-    // implementation calls RequestTimingInfo::SetHTTPCacheLatencyMs.
-    virtual void ReportLatencyMsImpl(int64 latency_ms);
-
    private:
     HTTPValue http_value_;
     // Stale value that can be used in case a fetch fails. Note that Find()
@@ -218,17 +205,16 @@ class HTTPCache {
     RequestContextPtr request_ctx_;
     int cache_level_;
     bool is_background_;
-    bool update_stats_on_failure_;
 
     DISALLOW_COPY_AND_ASSIGN(Callback);
   };
 
   // Makes the cache ignore put requests that do not record successes.
-  virtual void SetIgnoreFailurePuts();
+  void SetIgnoreFailurePuts();
 
   // Non-blocking Find.  Calls callback when done.  'handler' must all
   // stay valid until callback->Done() is called.
-  virtual void Find(const GoogleString& key,
+  void Find(const GoogleString& key,
                     const GoogleString& fragment,
                     MessageHandler* handler,
                     Callback* callback);
@@ -255,11 +241,11 @@ class HTTPCache {
            const StringPiece& content, MessageHandler* handler);
 
   // Deletes an element in the cache.
-  virtual void Delete(const GoogleString& key, const GoogleString& fragment);
+  void Delete(const GoogleString& key, const GoogleString& fragment);
 
-  virtual void set_force_caching(bool force) { force_caching_ = force; }
+  void set_force_caching(bool force) { force_caching_ = force; }
   bool force_caching() const { return force_caching_; }
-  virtual void set_disable_html_caching_on_https(bool x) {
+  void set_disable_html_caching_on_https(bool x) {
     disable_html_caching_on_https_ = x;
   }
   Timer* timer() const { return timer_; }
@@ -273,34 +259,34 @@ class HTTPCache {
   // remember_not_cacheable_ttl_seconds_.
   // Note that we remember whether the response was originally a "200 OK" so
   // that we can check if the cache TTL can be overridden.
-  virtual void RememberNotCacheable(const GoogleString& key,
-                                    const GoogleString& fragment,
-                                    bool is_200_status_code,
-                                    MessageHandler* handler);
+  void RememberNotCacheable(const GoogleString& key,
+                            const GoogleString& fragment,
+                            bool is_200_status_code,
+                            MessageHandler* handler);
 
   // Tell the HTTP Cache to remember that a particular key is not cacheable
   // because the associated URL failing Fetch.
   //
   // The not-cacheable setting will be 'remembered' for
   // remember_fetch_failed_ttl_seconds_.
-  virtual void RememberFetchFailed(const GoogleString& key,
-                                   const GoogleString& fragment,
-                                   MessageHandler* handler);
+  void RememberFetchFailed(const GoogleString& key,
+                           const GoogleString& fragment,
+                           MessageHandler* handler);
 
   // Tell the HTTP Cache to remember that we had to give up on doing a
   // background fetch due to load. This will remember it for
   // remember_fetch_load_shed_ttl_seconds_.
-  virtual void RememberFetchDropped(const GoogleString& key,
-                                    const GoogleString& fragment,
-                                    MessageHandler* handler);
+  void RememberFetchDropped(const GoogleString& key,
+                            const GoogleString& fragment,
+                            MessageHandler* handler);
 
   // Tell the HTTP Cache to remember that a particular URL shouldn't be cached
   // because it was an empty resource. We defensively avoid caching empty input
   // resources.
   // https://github.com/pagespeed/mod_pagespeed/issues/1050
-  virtual void RememberEmpty(const GoogleString& key,
-                             const GoogleString& fragment,
-                             MessageHandler* handler);
+  void RememberEmpty(const GoogleString& key,
+                     const GoogleString& fragment,
+                     MessageHandler* handler);
 
   // Indicates if the response is within the cacheable size limit. Clients of
   // HTTPCache must check if they will be eventually able to cache their entries
@@ -339,7 +325,7 @@ class HTTPCache {
     return remember_not_cacheable_ttl_seconds_;
   }
 
-  virtual void set_remember_not_cacheable_ttl_seconds(int64 value) {
+  void set_remember_not_cacheable_ttl_seconds(int64 value) {
     DCHECK_LE(0, value);
     if (value >= 0) {
       remember_not_cacheable_ttl_seconds_ = value;
@@ -350,7 +336,7 @@ class HTTPCache {
     return remember_fetch_failed_ttl_seconds_;
   }
 
-  virtual void set_remember_fetch_failed_ttl_seconds(int64 value) {
+  void set_remember_fetch_failed_ttl_seconds(int64 value) {
     DCHECK_LE(0, value);
     if (value >= 0) {
       remember_fetch_failed_ttl_seconds_ = value;
@@ -361,7 +347,7 @@ class HTTPCache {
     return remember_fetch_dropped_ttl_seconds_;
   }
 
-  virtual void set_remember_fetch_dropped_ttl_seconds(int64 value) {
+  void set_remember_fetch_dropped_ttl_seconds(int64 value) {
     DCHECK_LE(0, value);
     if (value >= 0) {
       remember_fetch_dropped_ttl_seconds_ = value;
@@ -372,7 +358,7 @@ class HTTPCache {
     return remember_empty_ttl_seconds_;
   }
 
-  virtual void set_remember_empty_ttl_seconds(int64 value) {
+  void set_remember_empty_ttl_seconds(int64 value) {
     DCHECK_LE(0, value);
     if (value >= 0) {
       remember_empty_ttl_seconds_ = value;
@@ -383,14 +369,14 @@ class HTTPCache {
     return max_cacheable_response_content_length_;
   }
 
-  virtual void set_max_cacheable_response_content_length(int64 value);
+  void set_max_cacheable_response_content_length(int64 value);
 
   // Sets how many levels the cache has. Affects reporting of statistics ---
   // we don't want them for lower levels of multi-level setups.
   void set_cache_levels(int levels) { cache_levels_ = levels; }
   int cache_levels() const { return cache_levels_; }
 
-  virtual GoogleString Name() const { return FormatName(cache_->Name()); }
+  GoogleString Name() const { return FormatName(cache_->Name()); }
   static GoogleString FormatName(StringPiece cache);
 
   GoogleString CompositeKey(StringPiece key, StringPiece fragment) const {
@@ -401,17 +387,15 @@ class HTTPCache {
     return StrCat(version_prefix_, fragment, fragment.empty() ? "" : "/", key);
   }
 
- protected:
-  virtual void PutInternal(const GoogleString& key,
-                           const GoogleString& fragment,
-                           int64 start_us,
-                           HTTPValue* value);
-  virtual void DeleteInternal(const GoogleString& key_fragment);
-
  private:
   friend class HTTPCacheCallback;
-  friend class WriteThroughHTTPCache;
   FRIEND_TEST(HTTPCacheTest, UpdateVersion);
+
+  void PutInternal(const GoogleString& key,
+                   const GoogleString& fragment,
+                   int64 start_us,
+                   HTTPValue* value);
+  void DeleteInternal(const GoogleString& key_fragment);
 
   // Used by constructor and tests.
   void SetVersion(int version_number);

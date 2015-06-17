@@ -273,9 +273,8 @@ class HTTPCacheCallback : public CacheInterface::Callback {
     int64 elapsed_us = std::max(static_cast<int64>(0), now_us - start_us_);
     http_cache_->cache_time_us()->Add(elapsed_us);
     callback_->ReportLatencyMs(elapsed_us/1000);
-    if ((callback_->update_stats_on_failure() &&
-         cache_level_ == http_cache_->cache_levels())||
-        (result_ == HTTPCache::kFound)) {
+    if (cache_level_ == http_cache_->cache_levels() ||
+        result_ == HTTPCache::kFound) {
       http_cache_->UpdateStats(key_, fragment_, backend_state, result_,
                                !callback_->fallback_http_value()->Empty(),
                                is_expired, handler_);
@@ -591,10 +590,6 @@ void HTTPCache::Callback::ReportLatencyMs(int64 latency_ms) {
     return;
   }
 
-  ReportLatencyMsImpl(latency_ms);
-}
-
-void HTTPCache::Callback::ReportLatencyMsImpl(int64 latency_ms) {
   ++cache_level_;
   if (cache_level_ == 1) {
     request_context()->mutable_timing_info()->SetHTTPCacheLatencyMs(latency_ms);
