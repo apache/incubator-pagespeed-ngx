@@ -27,7 +27,6 @@
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/request_context.h"
-#include "net/instaweb/http/public/write_through_http_cache.h"
 #include "net/instaweb/rewriter/public/custom_rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
@@ -377,10 +376,6 @@ class SystemCachesTest : public CustomRewriteTestBase<SystemRewriteOptions> {
     return WriteThroughCache::FormatName(l1, l2);
   }
 
-  GoogleString WriteThroughHTTP(StringPiece l1, StringPiece l2) {
-    return WriteThroughHTTPCache::FormatName(l1, l2);
-  }
-
   GoogleString HttpCache(StringPiece cache) {
     return HTTPCache::FormatName(cache);
   }
@@ -485,9 +480,10 @@ TEST_F(SystemCachesTest, BasicFileAndLruCache) {
                                        FileCacheWithStats())),
                server_context->metadata_cache()->Name());
   EXPECT_STREQ(
-      WriteThroughHTTP(
-          HttpCache(Stats("lru_cache", ThreadsafeLRU())),
-          HttpCache(FileCacheWithStats())),
+      HttpCache(
+          WriteThrough(
+              Stats("lru_cache", ThreadsafeLRU()),
+              FileCacheWithStats())),
       server_context->http_cache()->Name());
   EXPECT_TRUE(server_context->filesystem_metadata_cache() == NULL);
 }
@@ -528,9 +524,9 @@ TEST_F(SystemCachesTest, UnusableShmAndLru) {
                                        FileCacheWithStats())),
                server_context->metadata_cache()->Name());
   EXPECT_STREQ(
-      WriteThroughHTTP(
-          HttpCache(Stats("lru_cache", ThreadsafeLRU())),
-          HttpCache(FileCacheWithStats())),
+      HttpCache(WriteThrough(
+          Stats("lru_cache", ThreadsafeLRU()),
+          FileCacheWithStats())),
       server_context->http_cache()->Name());
   EXPECT_TRUE(server_context->filesystem_metadata_cache() == NULL);
 }
@@ -553,8 +549,8 @@ TEST_F(SystemCachesTest, BasicShmAndLru) {
                server_context->metadata_cache()->Name());
   // HTTP cache is unaffected.
   EXPECT_STREQ(
-      WriteThroughHTTP(HttpCache(Stats("lru_cache", ThreadsafeLRU())),
-                       HttpCache(FileCacheWithStats())),
+      HttpCache(WriteThrough(Stats("lru_cache", ThreadsafeLRU()),
+                             FileCacheWithStats())),
       server_context->http_cache()->Name());
   EXPECT_TRUE(server_context->filesystem_metadata_cache() == NULL);
 }
@@ -608,9 +604,9 @@ TEST_F(SystemCachesTest, DoubleShmCreate) {
                server_context->metadata_cache()->Name());
   // HTTP cache is unaffected.
   EXPECT_STREQ(
-      WriteThroughHTTP(
-          HttpCache(Stats("lru_cache", ThreadsafeLRU())),
-          HttpCache(FileCacheWithStats())),
+      HttpCache(WriteThrough(
+          Stats("lru_cache", ThreadsafeLRU()),
+          FileCacheWithStats())),
       server_context->http_cache()->Name());
   EXPECT_TRUE(server_context->filesystem_metadata_cache() == NULL);
 }
@@ -635,10 +631,10 @@ TEST_F(SystemCachesTest, BasicMemCachedAndLru) {
                             FileCacheWithStats()))),
                server_context->metadata_cache()->Name());
   EXPECT_STREQ(
-      WriteThroughHTTP(
-          HttpCache(Stats("lru_cache", ThreadsafeLRU())),
-          HttpCache(Fallback(Batcher(AsyncMemCacheWithStats(), 1, 1000),
-                             FileCacheWithStats()))),
+      HttpCache(WriteThrough(
+          Stats("lru_cache", ThreadsafeLRU()),
+          Fallback(Batcher(AsyncMemCacheWithStats(), 1, 1000),
+                           FileCacheWithStats()))),
       server_context->http_cache()->Name());
   ASSERT_TRUE(server_context->filesystem_metadata_cache() != NULL);
   EXPECT_TRUE(server_context->filesystem_metadata_cache()->IsBlocking());
@@ -684,9 +680,9 @@ TEST_F(SystemCachesTest, BasicMemCachedLruShm) {
                    FileCacheWithStats()))),
       server_context->metadata_cache()->Name());
   EXPECT_STREQ(
-      WriteThroughHTTP(
-          HttpCache(Stats("lru_cache", ThreadsafeLRU())),
-          HttpCache(Fallback(Batcher(AsyncMemCacheWithStats(), 1, 1000),
+      HttpCache(WriteThrough(
+          Stats("lru_cache", ThreadsafeLRU()),
+          Fallback(Batcher(AsyncMemCacheWithStats(), 1, 1000),
                              FileCacheWithStats()))),
       server_context->http_cache()->Name());
 }
@@ -1002,9 +998,9 @@ TEST_F(SystemCachesTest, LruCacheSettings) {
   ASSERT_TRUE(lru_cache != NULL);
   EXPECT_EQ(1024*1024, lru_cache->max_bytes_in_cache());
 
-  // Also on the HTTP cache (which has a separate write through class.
-  WriteThroughHTTPCache* http_write_through =
-      dynamic_cast<WriteThroughHTTPCache*>(server_context->http_cache());
+  // Also on the HTTP cache
+  WriteThroughCache* http_write_through =
+      dynamic_cast<WriteThroughCache*>(server_context->http_cache()->cache());
   ASSERT_TRUE(http_write_through != NULL);
   EXPECT_EQ(500, http_write_through->cache1_limit());
 }
@@ -1274,9 +1270,9 @@ TEST_F(BrokenShmSystemCachesTest, FallbackShmAndLru) {
                server_context->metadata_cache()->Name());
   // HTTP cache is unaffected.
   EXPECT_STREQ(
-      WriteThroughHTTP(
-          HttpCache(Stats("lru_cache", ThreadsafeLRU())),
-          HttpCache(FileCacheWithStats())),
+      HttpCache(WriteThrough(
+          Stats("lru_cache", ThreadsafeLRU()),
+          FileCacheWithStats())),
       server_context->http_cache()->Name());
 }
 
@@ -1326,10 +1322,10 @@ TEST_F(BrokenShmSystemCachesTest, FallbackMemCachedLruShm) {
                        FileCacheWithStats()))),
       server_context->metadata_cache()->Name());
   EXPECT_STREQ(
-      WriteThroughHTTP(
-          HttpCache(Stats("lru_cache", ThreadsafeLRU())),
-          HttpCache(Fallback(Batcher(AsyncMemCacheWithStats(), 1, 1000),
-                             FileCacheWithStats()))),
+      HttpCache(WriteThrough(
+          Stats("lru_cache", ThreadsafeLRU()),
+          Fallback(Batcher(AsyncMemCacheWithStats(), 1, 1000),
+                   FileCacheWithStats()))),
       server_context->http_cache()->Name());
   EXPECT_STREQ(Pcache(Compressed(Fallback(BlockingMemCacheWithStats(),
                                           FileCacheWithStats()))),

@@ -263,6 +263,7 @@ class HTTPCache {
     disable_html_caching_on_https_ = x;
   }
   Timer* timer() const { return timer_; }
+  CacheInterface* cache() { return cache_; }
 
   // Tell the HTTP Cache to remember that a particular key is not cacheable
   // because the URL was marked with Cache-Control 'nocache' or Cache-Control

@@ -28,7 +28,6 @@
 #include "net/instaweb/http/public/rate_controller.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/wait_url_async_fetcher.h"
-#include "net/instaweb/http/public/write_through_http_cache.h"
 #include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/fake_filter.h"
@@ -60,6 +59,7 @@
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/cache/lru_cache.h"
+#include "pagespeed/kernel/cache/write_through_cache.h"
 #include "pagespeed/kernel/html/html_element.h"
 #include "pagespeed/kernel/html/html_name.h"
 #include "pagespeed/kernel/html/html_parse_test_base.h"
@@ -3516,10 +3516,12 @@ TEST_F(RewriteContextTest, TestFreshenWithTwoLevelCache) {
   const char kPath[] = "test.css";
   const char kDataIn[] = "   data  ";
 
-  // Set up a WriteThroughHTTPCache.
+  // Set up a 2-level cache
   LRUCache l2_cache(1000);
-  WriteThroughHTTPCache* two_level_cache = new WriteThroughHTTPCache(
-      lru_cache(), &l2_cache, timer(), hasher(), statistics());
+  WriteThroughCache write_through(lru_cache(), &l2_cache);
+  HTTPCache* two_level_cache = new HTTPCache(
+      &write_through, timer(), hasher(), statistics());
+  two_level_cache->set_cache_levels(2);
   server_context()->set_http_cache(two_level_cache);
 
   // Start with non-zero time, and init our resource.

@@ -1390,7 +1390,6 @@
         'http/url_async_fetcher_stats.cc',
         'http/wait_url_async_fetcher.cc',
         'http/wget_url_fetcher.cc',
-        'http/write_through_http_cache.cc',
       ],
       'include_dirs': [
         '<(instaweb_root)',

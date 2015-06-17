@@ -23,7 +23,6 @@
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/http_cache.h"
-#include "net/instaweb/http/public/write_through_http_cache.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -398,10 +397,13 @@ void SystemCaches::SetupCaches(ServerContext* server_context,
                                factory_->hasher(), stats);
   } else {
     // L1 is LRU, with the L2 as computed above.
-    WriteThroughHTTPCache* write_through_http_cache = new WriteThroughHTTPCache(
-        lru_cache, http_l2, factory_->timer(), factory_->hasher(), stats);
+    WriteThroughCache* write_through_http_cache = new WriteThroughCache(
+        lru_cache, http_l2);
+    server_context->DeleteCacheOnDestruction(write_through_http_cache);
     write_through_http_cache->set_cache1_limit(config->lru_cache_byte_limit());
-    http_cache = write_through_http_cache;
+    http_cache = new HTTPCache(write_through_http_cache, factory_->timer(),
+                               factory_->hasher(), stats);
+    http_cache->set_cache_levels(2);
   }
 
   http_cache->set_max_cacheable_response_content_length(max_content_length);
