@@ -21,21 +21,15 @@
 
 #include <cstddef>
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/image/image_util.h"
 #include "pagespeed/kernel/image/scanline_interface.h"
 #include "pagespeed/kernel/image/scanline_status.h"
 
-namespace net_instaweb {
-class MessageHandler;
-}
-
 namespace pagespeed {
 
 namespace image_compression {
-
-using net_instaweb::MessageHandler;
-
 // PixelFormatOptimizer removes an unused channel from the image. This
 // corresponds to changing the pixel format to a more compact one.
 // Currently it only removes opaque alpha channel and changes RGBA_8888
@@ -51,7 +45,7 @@ using net_instaweb::MessageHandler;
 // happens often, implement the conversion of RGBA_8888/RGB_888 to GRAY_8.
 class PixelFormatOptimizer : public ScanlineReaderInterface {
  public:
-  explicit PixelFormatOptimizer(MessageHandler* handler);
+  explicit PixelFormatOptimizer(net_instaweb::MessageHandler* handler);
   virtual ~PixelFormatOptimizer();
 
   // PixelFormatOptimizer acquires ownership of reader, even in case of failure.
@@ -59,7 +53,7 @@ class PixelFormatOptimizer : public ScanlineReaderInterface {
 
   virtual ScanlineStatus ReadNextScanlineWithStatus(void** out_scanline_bytes);
 
-  // Reset the resizer to its initial state. Always returns true.
+  // Resets the resizer to its initial state. Always returns true.
   virtual bool Reset();
 
   // Returns number of bytes required to store a scanline.
@@ -93,14 +87,10 @@ class PixelFormatOptimizer : public ScanlineReaderInterface {
     return reader_->IsProgressive();
   }
 
-  // This is a no-op and should not be called.
+  // This method should not be called. If it does get called, in DEBUG mode it
+  // will throw a FATAL error and in RELEASE mode it does nothing.
   virtual ScanlineStatus InitializeWithStatus(const void* image_buffer,
                                               size_t buffer_length);
-
-  // Returns whether the image is potentially optimizable.
-  bool IsOptimizable() {
-    return !was_initialized_ || strip_alpha_;
-  }
 
  private:
   scoped_ptr<ScanlineReaderInterface> reader_;
@@ -112,12 +102,14 @@ class PixelFormatOptimizer : public ScanlineReaderInterface {
 
   // Buffer for storing decoded scanlines.
   net_instaweb::scoped_array<uint8_t> input_lines_;
+
+  // Number of rows which have been examined and buffered.
   size_t input_row_;
 
   // Buffer for storing a single converted scanline.
   net_instaweb::scoped_array<uint8_t> output_line_;
 
-  MessageHandler* message_handler_;
+  net_instaweb::MessageHandler* message_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(PixelFormatOptimizer);
 };

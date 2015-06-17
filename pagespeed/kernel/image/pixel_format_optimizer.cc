@@ -24,16 +24,12 @@
 
 namespace pagespeed {
 
-namespace {
-
-using net_instaweb::MessageHandler;
-const uint8_t OPAQUE_ALPHA = 0xFF;
-
-}  // namespace
-
 namespace image_compression {
 
-PixelFormatOptimizer::PixelFormatOptimizer(MessageHandler* handler) :
+static const uint8_t OPAQUE_ALPHA = 0xFF;
+
+PixelFormatOptimizer::PixelFormatOptimizer(
+    net_instaweb::MessageHandler* handler) :
     message_handler_(handler) {
   Reset();
 }
@@ -41,7 +37,6 @@ PixelFormatOptimizer::PixelFormatOptimizer(MessageHandler* handler) :
 PixelFormatOptimizer::~PixelFormatOptimizer() {
 }
 
-// Reset the scanline reader to its initial state.
 bool PixelFormatOptimizer::Reset() {
   bytes_per_row_ = 0;
   pixel_format_ = UNSUPPORTED;
@@ -63,10 +58,11 @@ ScanlineStatus PixelFormatOptimizer::InitializeWithStatus(
                           "Unexpected call to InitializeWithStatus()");
 }
 
+// Initializes the object and determines whether the alpha channel should be
+// removed (i.e., the image has a fully opaque alpha channel).
 ScanlineStatus PixelFormatOptimizer::Initialize(
     ScanlineReaderInterface* reader) {
   Reset();
-  reader_.reset(reader);
 
   if (reader == NULL ||
       reader->GetPixelFormat() == UNSUPPORTED ||
@@ -78,7 +74,8 @@ ScanlineStatus PixelFormatOptimizer::Initialize(
                             "Invalid input image.");
   }
 
-  pixel_format_ = reader->GetPixelFormat();
+  reader_.reset(reader);
+  pixel_format_ = reader_->GetPixelFormat();
   bytes_per_row_ = reader_->GetBytesPerScanline();
 
   // Only strip alpha for RGBA_8888 format.
@@ -136,7 +133,11 @@ ScanlineStatus PixelFormatOptimizer::Initialize(
   return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
 }
 
-// Reads the next available scanline.
+// Reads a scanline if that's available; or returns an error otherwise. This
+// method is called after Initialize(), which already determined whether the
+// alpha channel should be stripped. If it does, the returned scanline will
+// have alpha removed; otherwise, the scanline will be copied without
+// modification.
 ScanlineStatus PixelFormatOptimizer::ReadNextScanlineWithStatus(
     void** out_scanline_bytes) {
   if (!was_initialized_) {
@@ -153,12 +154,12 @@ ScanlineStatus PixelFormatOptimizer::ReadNextScanlineWithStatus(
                             "No more scanlines");
   }
 
-  const int bytes_per_in_pixel = GetNumChannelsFromPixelFormat(RGBA_8888,
-      message_handler_);
-  const int bytes_per_out_pixel = GetNumChannelsFromPixelFormat(RGB_888,
-      message_handler_);
-
   if (strip_alpha_) {
+    const int bytes_per_in_pixel = GetNumChannelsFromPixelFormat(RGBA_8888,
+        message_handler_);
+    const int bytes_per_out_pixel = GetNumChannelsFromPixelFormat(RGB_888,
+        message_handler_);
+
     // If we have decided to strip the alpha channel, the entire input image
     // should have already been copied to 'input_lines_'. We will grab the
     // corresponding line in 'input_lines_', filter the alpha, and store the

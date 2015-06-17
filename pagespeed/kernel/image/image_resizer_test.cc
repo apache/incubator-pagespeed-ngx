@@ -61,25 +61,28 @@ const size_t kPreserveAspectRatio =
 // Three testing images: GRAY_8, RGB_888, and RGBA_8888.
 // Size of these images is 32-by-32 pixels.
 const char* kValidImages[] = {
-  "basi0g04",
-  "basi3p02",
-  "basn6a16",
+    "basi0g04",
+    "basi3p02",
+    "basn6a16",
 };
 
+// Image of RGBA_8888 format. Size is 128-by-128 pixels.
 const char kImagePagespeed[] = "pagespeed-128";
+// Same content as pagespeed-128, but resized to 33-by-34 pixels.
+const char kImagePageSpeed33x34[] = "pagespeed-33x34";
 
 // Size of the output image [width, height]. The size of the input image
 // is 32-by-32. We would like to test resizing ratios of both integers
 // and non-integers.
 const size_t kOutputSize[][2] = {
-  {16, kPreserveAspectRatio},   // Shrink image by 2 times in both directions.
-  {kPreserveAspectRatio, 8},    // Shrink image by 4 times in both directions.
-  {3, 3},    // Shrink image by 32/3 times in both directions.
-  {16, 25},  // Shrink image by [2, 32/25] times.
-  {32, 5},   // Shrink image by [1, 32/5] times.
-  {3, 32},   // Shrink image by [32/3, 1] times.
-  {31, 31},  // Shrink image by [32/31, 32/31] times.
-  {32, 32},  // Although the image did not shrink, the algorithm is exercised.
+    {16, kPreserveAspectRatio},   // Shrink image by 2 times in both directions.
+    {kPreserveAspectRatio, 8},    // Shrink image by 4 times in both directions.
+    {3, 3},    // Shrink image by 32/3 times in both directions.
+    {16, 25},  // Shrink image by [2, 32/25] times.
+    {32, 5},   // Shrink image by [1, 32/5] times.
+    {3, 32},   // Shrink image by [32/3, 1] times.
+    {31, 31},  // Shrink image by [32/31, 32/31] times.
+    {32, 32},  // Although the image did not shrink, the algorithm is exercised.
 };
 
 const size_t kValidImageCount = arraysize(kValidImages);
@@ -98,9 +101,11 @@ class ScanlineResizerTest : public testing::Test {
   void InitializeReader(const char* file_name) {
     ASSERT_TRUE(ReadTestFile(kPngSuiteTestDir, file_name, "png",
                              &input_image_));
-    ASSERT_TRUE(reader_.Initialize(input_image_.data(),
-                                   input_image_.length()));
+    ASSERT_TRUE(reader_.Initialize(input_image_.data(), input_image_.length()));
   }
+
+  void ResizeAndValidateImage(const char* file_name, const GoogleString& image);
+
 
   MockMessageHandler message_handler_;
   PngScanlineReaderRaw reader_;
@@ -154,53 +159,59 @@ ScanlineWriterInterface* CreateWriter(PixelFormat pixel_format,
 // values, match the gold data. The gold data has the image size coded in the
 // file name. For example, an image resized to 16-by-16 is
 // third_party/pagespeed/kernel/image/testdata/resized/basi0g04_w16_h16.png
-TEST_F(ScanlineResizerTest, Accuracy) {
+void ScanlineResizerTest::ResizeAndValidateImage(const char* file_name,
+                                                 const GoogleString& image) {
   PngScanlineReaderRaw gold_reader(&message_handler_);
+  for (size_t index_size = 0; index_size < KOutputSizeCount; ++index_size) {
+    size_t width = kOutputSize[index_size][0];
+    size_t height = kOutputSize[index_size][1];
+    ASSERT_TRUE(reader_.Initialize(image.data(), image.length()));
+    ASSERT_TRUE(resizer_.Initialize(&reader_, width, height));
 
-  for (size_t index_image = 0;
-       index_image < kValidImageCount;
-       ++index_image) {
+    if (width == 0) width = height;
+    if (height == 0) height = width;
+    GoogleString gold_image;
+    ASSERT_TRUE(ReadGoldImageToString(file_name, width, height, &gold_image));
+    ASSERT_TRUE(gold_reader.Initialize(gold_image.data(), gold_image.length()));
+
+    // Make sure the images sizes and the pixel formats are the same.
+    ASSERT_EQ(gold_reader.GetImageWidth(), resizer_.GetImageWidth());
+    ASSERT_EQ(gold_reader.GetImageHeight(), resizer_.GetImageHeight());
+    ASSERT_EQ(gold_reader.GetPixelFormat(), resizer_.GetPixelFormat());
+
+    while (resizer_.HasMoreScanLines() && gold_reader.HasMoreScanLines()) {
+      uint8* resized_scanline = NULL;
+      uint8* gold_scanline = NULL;
+      ASSERT_TRUE(resizer_.ReadNextScanline(
+          reinterpret_cast<void**>(&resized_scanline)));
+      ASSERT_TRUE(gold_reader.ReadNextScanline(
+          reinterpret_cast<void**>(&gold_scanline)));
+
+      for (size_t i = 0; i < resizer_.GetBytesPerScanline(); ++i) {
+        ASSERT_EQ(gold_scanline[i], resized_scanline[i]);
+      }
+    }
+
+    // Make sure both the resizer and the reader have exhausted scanlines.
+    ASSERT_FALSE(resizer_.HasMoreScanLines());
+    ASSERT_FALSE(gold_reader.HasMoreScanLines());
+  }
+}
+
+TEST_F(ScanlineResizerTest, Accuracy) {
+  // Test accuracy of resizing for some images in PNG Suite. All images in this
+  // suite have 32-by-32 pixels.
+  for (size_t index_image = 0; index_image < kValidImageCount; ++index_image) {
     const char* file_name = kValidImages[index_image];
     ASSERT_TRUE(ReadTestFile(kPngSuiteTestDir, file_name, "png",
                              &input_image_));
-
-    for (size_t index_size = 0; index_size < KOutputSizeCount; ++index_size) {
-      size_t width = kOutputSize[index_size][0];
-      size_t height = kOutputSize[index_size][1];
-      ASSERT_TRUE(reader_.Initialize(input_image_.data(),
-                                     input_image_.length()));
-      ASSERT_TRUE(resizer_.Initialize(&reader_, width, height));
-
-      if (width == 0) width = height;
-      if (height == 0) height = width;
-      GoogleString gold_image;
-      ASSERT_TRUE(ReadGoldImageToString(file_name, width, height, &gold_image));
-      ASSERT_TRUE(gold_reader.Initialize(gold_image.data(),
-                                         gold_image.length()));
-
-      // Make sure the images sizes and the pixel formats are the same.
-      ASSERT_EQ(gold_reader.GetImageWidth(), resizer_.GetImageWidth());
-      ASSERT_EQ(gold_reader.GetImageHeight(), resizer_.GetImageHeight());
-      ASSERT_EQ(gold_reader.GetPixelFormat(), resizer_.GetPixelFormat());
-
-      while (resizer_.HasMoreScanLines() && gold_reader.HasMoreScanLines()) {
-        uint8* resized_scanline = NULL;
-        uint8* gold_scanline = NULL;
-        ASSERT_TRUE(resizer_.ReadNextScanline(
-            reinterpret_cast<void**>(&resized_scanline)));
-        ASSERT_TRUE(gold_reader.ReadNextScanline(
-            reinterpret_cast<void**>(&gold_scanline)));
-
-        for (size_t i = 0; i < resizer_.GetBytesPerScanline(); ++i) {
-          ASSERT_EQ(gold_scanline[i], resized_scanline[i]);
-        }
-      }
-
-      // Make sure both the resizer and the reader have exhausted scanlines.
-      ASSERT_FALSE(resizer_.HasMoreScanLines());
-      ASSERT_FALSE(gold_reader.HasMoreScanLines());
-    }
+    ResizeAndValidateImage(file_name, input_image_);
   }
+
+  // Test accuracy of resizing for an image with 33-by-34 pixels.
+  ASSERT_TRUE(ReadTestFile(kPngTestDir, kImagePageSpeed33x34, "png",
+                           &input_image_));
+  ResizeAndValidateImage(kImagePageSpeed33x34, input_image_);
 }
 
 // Resize the image and write the result to a JPEG or a WebP image.
@@ -328,11 +339,9 @@ TEST_F(ScanlineResizerTest, PartialRead) {
 TEST_F(ScanlineResizerTest, ResizeFractionalRatio) {
   const int new_width = 11;
   const int new_height = 19;
-  ASSERT_TRUE(ReadTestFile(kPngTestDir, kImagePagespeed, "png",
-                           &input_image_));
+  ASSERT_TRUE(ReadTestFile(kPngTestDir, kImagePagespeed, "png", &input_image_));
 
-  ASSERT_TRUE(reader_.Initialize(input_image_.data(),
-                                 input_image_.length()));
+  ASSERT_TRUE(reader_.Initialize(input_image_.data(), input_image_.length()));
   ASSERT_TRUE(resizer_.Initialize(&reader_, new_width, new_height));
 
   int num_rows = 0;

@@ -40,10 +40,10 @@ const char kOpaqueAlphaImage[] = "completely_opaque_32x20.png";
 const char kNoAlphaImage[] = "opaque_32x20.png";
 
 const char* kUnoptimizableImages[] = {
-  "pagespeed_32x32_gray.png",    // no alpha, gray scale
-  "opaque_32x20.png",            // no alpha, RGB
-  "alpha_32x32.png",             // alpha, first few pixels are transparent
-  "partially_opaque_32x20.png",  // alpha, only last pixel is transparent
+    "pagespeed_32x32_gray.png",    // no alpha, gray scale
+    "opaque_32x20.png",            // no alpha, RGB
+    "alpha_32x32.png",             // alpha, first few pixels are transparent
+    "partially_opaque_32x20.png",  // alpha, only last pixel is transparent
 };
 const size_t kUnoptimizableImageCount = arraysize(kUnoptimizableImages);
 
@@ -67,8 +67,7 @@ class PixelFormatOptimizerTest : public testing::Test {
     scoped_ptr<PngScanlineReaderRaw> input_reader(
         new PngScanlineReaderRaw(&message_handler_));
 
-    if (!input_reader->Initialize(input_image_.data(),
-                                  input_image_.length())) {
+    if (!input_reader->Initialize(input_image_.data(), input_image_.length())) {
       return false;
     }
     return optimizer_.Initialize(input_reader.release()).Success();
@@ -157,8 +156,7 @@ TEST_F(PixelFormatOptimizerTest, TruncatedImage) {
 
   scoped_ptr<PngScanlineReaderRaw> input_reader(
       new PngScanlineReaderRaw(&message_handler_));
-  ASSERT_TRUE(input_reader->Initialize(input_image_.data(),
-                                       truncated_length));
+  ASSERT_TRUE(input_reader->Initialize(input_image_.data(), truncated_length));
   ASSERT_FALSE(optimizer_.Initialize(input_reader.release()).Success());
 }
 
