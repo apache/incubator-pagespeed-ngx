@@ -294,12 +294,19 @@ mob.button.Map.prototype.openMap_ = function() {
 mob.button.Dialer = function(color, phoneNumber, conversionId,
                              conversionLabel) {
   /**
-   * Phone number to dial.  Note that this will initially be whatever was
-   * passed into the constructor, but a dynamic Google-Voice number can be
-   * requested from Adwords.
+   * The fallback phone number to be used if no google voice number from adwords
+   * is generated.
    * @private {string}
    */
-  this.phoneNumber_ = phoneNumber;
+  this.fallbackPhoneNumber_ = phoneNumber;
+
+
+  /**
+   * The google voice number either requested from adwords, or set in a cookie
+   * from a previous request.
+   * @private {?string}
+   */
+  this.googleVoicePhoneNumber_ = null;
 
   /**
    * Adwords conversion ID.
@@ -313,11 +320,14 @@ mob.button.Dialer = function(color, phoneNumber, conversionId,
    */
   this.conversionLabel_ = conversionLabel;
 
-  /** @private {function()} */
-  this.dialFn_ = this.requestPhoneNumberAndDial_;
-
   /** @private {!goog.net.Cookies} */
   this.cookies_ = new goog.net.Cookies(document);
+
+  /**
+   * Track how long the request to get the conversion number takes.
+   * @private {?number}
+   */
+  this.jsonpTime_ = null;
 
   mob.button.Dialer.base(
       this, 'constructor', pagespeed.MobUtil.ElementId.DIALER_BUTTON,
@@ -379,18 +389,23 @@ mob.button.Dialer.CONVERSION_HANDLER_ =
 /** @override */
 mob.button.Dialer.prototype.createButton = function() {
   mob.button.Dialer.base(this, 'createButton');
-  var phoneNumberFromCookie = this.getPhoneNumberFromCookie_();
-  if (phoneNumberFromCookie) {
-    this.phoneNumber_ = phoneNumberFromCookie;
-    this.dialFn_ = this.dialPhone_;
-  }
+  this.googleVoicePhoneNumber_ = this.getPhoneNumberFromCookie_();
 };
 
 
 /** @override */
 mob.button.Dialer.prototype.clickHandler = function(e) {
-  pagespeed.MobUtil.sendBeacon(pagespeed.MobUtil.BeaconEvents.PHONE_BUTTON,
-                               goog.bind(this.dialFn_, this));
+  if (this.googleVoicePhoneNumber_) {
+    pagespeed.MobUtil.sendBeacon(pagespeed.MobUtil.BeaconEvents.PHONE_BUTTON,
+                                 goog.bind(this.dialPhone_, this));
+  } else {
+    // We are going to need to request the phone number from google voice, so
+    // make the 204 beacon request alongside the jsonp request for the phone
+    // number.
+    pagespeed.MobUtil.sendBeacon(pagespeed.MobUtil.BeaconEvents.PHONE_BUTTON);
+    this.requestPhoneNumberAndDial_();
+  }
+
 };
 
 
@@ -401,13 +416,14 @@ mob.button.Dialer.prototype.clickHandler = function(e) {
  * @private
  */
 mob.button.Dialer.prototype.requestPhoneNumberAndDial_ = function() {
+  debugger;
   var url = this.constructRequestPhoneNumberUrl_();
   if (url) {
     this.debugAlert_('requesting dynamic phone number: ' + url);
-    var req = new goog.net.Jsonp(url, 'callback');
-    req.send(null,
-             goog.bind(this.receivePhoneNumber_, this),
-             goog.bind(this.dialPhone_, this));
+    var req = new goog.net.Jsonp(url);
+    this.jsonpTime_ = Date.now();
+    req.send(null, goog.bind(this.receivePhoneNumber_, this),
+             goog.bind(this.receivePhoneNumber_, this));
   } else {
     this.dialPhone_();
   }
@@ -424,12 +440,12 @@ mob.button.Dialer.prototype.requestPhoneNumberAndDial_ = function() {
 mob.button.Dialer.prototype.constructRequestPhoneNumberUrl_ = function() {
   // The protocol for requesting the gvoice number from googleadservices
   // requires that we pass the fallback phone number into the URL.  So
-  // to request a gvoice number we must have a default phoneNumber_ already.
-  if (this.conversionLabel_ && this.conversionId_ && this.phoneNumber_) {
+  // to request a gvoice number we must have a fallback phone number already.
+  if (this.conversionLabel_ && this.conversionId_) {
     var label = window.encodeURIComponent(this.conversionLabel_);
     return mob.button.Dialer.CONVERSION_HANDLER_ +
            window.encodeURIComponent(this.conversionId_) + '/wcm?cl=' + label +
-           '&fb=' + window.encodeURIComponent(this.phoneNumber_);
+           '&fb=' + window.encodeURIComponent(this.fallbackPhoneNumber_);
   }
   return null;
 };
@@ -441,20 +457,27 @@ mob.button.Dialer.prototype.constructRequestPhoneNumberUrl_ = function() {
  * @private
  */
 mob.button.Dialer.prototype.dialPhone_ = function() {
-  if (this.phoneNumber_) {
-    window.location.href = 'tel:' + this.phoneNumber_;
-  }
+  // Always prefer the google voice number if it is available, otherwise use the
+  // fallback number.
+  var phoneNumber = this.googleVoicePhoneNumber_ || this.fallbackPhoneNumber_;
+  goog.global.location = 'tel:' + phoneNumber;
 };
 
 
 /**
  * Extracts a dynamic phone number from a jsonp response.  If successful, it
- * dials the phone, and saves the phone number in a cookie and also in this.
+ * dials the phone, and saves the phone number in a cookie and also in
+ * this.googleVoicePhoneNumber_.
  *
  * @private
  * @param {?Object} json
  */
 mob.button.Dialer.prototype.receivePhoneNumber_ = function(json) {
+  debugger;
+  var responseTime = Date.now() - this.jsonpTime_;
+  pagespeed.MobUtil.sendBeacon(
+      pagespeed.MobUtil.BeaconEvents.CALL_CONVERSION_RESPONSE, null,
+      '&t=' + responseTime);
   var wcm = json && json['wcm'];
   var phoneNumber = wcm && wcm['mobile_number'];
   if (phoneNumber) {
@@ -464,7 +487,7 @@ mob.button.Dialer.prototype.receivePhoneNumber_ = function(json) {
       'formatted_number': wcm['formatted_number'],
       'mobile_number': phoneNumber,
       'clabel': this.conversionLabel_,
-      'fallback': this.phoneNumber_
+      'fallback': this.fallbackPhoneNumber_
     };
     cookieValue = goog.json.serialize(cookieValue);
     this.debugAlert_('saving phoneNumber in cookie: ' + cookieValue);
@@ -472,13 +495,7 @@ mob.button.Dialer.prototype.receivePhoneNumber_ = function(json) {
                       window.encodeURIComponent(cookieValue),
                       mob.button.Dialer.WCM_COOKIE_LIFETIME_SEC_, '/');
 
-    // Save the phone number in the window object so it can be used in
-    // dialPhone_().
-    this.phoneNumber_ = phoneNumber;
-  } else if (this.phoneNumber_) {
-    // No ad was clicked.  Dial the configured phone number, which will not
-    // be conversion-tracked.
-    this.debugAlert_('receivePhoneNumber: ' + goog.json.serialize(json));
+    this.googleVoicePhoneNumber_ = phoneNumber;
   }
   this.dialPhone_();
 };
@@ -493,14 +510,10 @@ mob.button.Dialer.prototype.receivePhoneNumber_ = function(json) {
  * @return {?string}
  */
 mob.button.Dialer.prototype.getPhoneNumberFromCookie_ = function() {
-  // When debugging mobilization with static references
-  // to uncompiled JS files, the conversion-tracking flow does
-  // not seem to work, so just dial the configured phone directly.
-  //
   // Naturally if there is no configured conversion label, we can't
   // get a conversion-tracked phone-number either.
-  if (window.psStaticJs || !this.conversionLabel_) {
-    return this.phoneNumber_;
+  if (!this.conversionLabel_) {
+    return this.fallbackPhoneNumber_;
   }
 
   // Check to see if the phone number we want was previously saved
@@ -508,7 +521,7 @@ mob.button.Dialer.prototype.getPhoneNumberFromCookie_ = function() {
   var gwcmCookie = this.cookies_.get(mob.button.Dialer.WCM_COOKIE_);
   if (gwcmCookie) {
     var cookieData = goog.json.parse(window.decodeURIComponent(gwcmCookie));
-    if ((cookieData['fallback'] == this.phoneNumber_) &&
+    if ((cookieData['fallback'] == this.fallbackPhoneNumber_) &&
         (cookieData['clabel'] == this.conversionLabel_)) {
       return cookieData['mobile_number'];
     }

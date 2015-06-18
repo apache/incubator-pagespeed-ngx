@@ -889,6 +889,7 @@ pagespeed.MobUtil.consoleLog = function(message) {
  * @enum {string}
  */
 pagespeed.MobUtil.BeaconEvents = {
+  CALL_CONVERSION_RESPONSE: 'call-conversion-response',
   LOAD_EVENT: 'load-event',
   MAP_BUTTON: 'psmob-map-button',
   MENU_BUTTON_CLOSE: 'psmob-menu-button-close',
@@ -908,14 +909,20 @@ pagespeed.MobUtil.BeaconEvents = {
   (https://developer.mozilla.org/en-US/docs/Web/API/Navigator/sendBeacon).
  * @param {pagespeed.MobUtil.BeaconEvents} beaconEvent Identifier for the event
  *     being tracked.
- * @param {!Function=} opt_callback Optional callback to be run when the 204
+ * @param {?Function=} opt_callback Optional callback to be run when the 204
  *     finishes loading.
+ * @param {string=} opt_additionalParams An additional string to be added to the
+ * end of the request.
  */
-pagespeed.MobUtil.sendBeacon = function(beaconEvent, opt_callback) {
+pagespeed.MobUtil.sendBeacon = function(beaconEvent, opt_callback,
+                                        opt_additionalParams) {
   if (window.psMobBeaconUrl) {
     var pingUrl = window.psMobBeaconUrl + '?id=psmob' +
                   '&url=' + encodeURIComponent(document.URL) + '&el=' +
                   beaconEvent;
+    if (opt_additionalParams) {
+      pingUrl += opt_additionalParams;
+    }
     if (!window['psmob_image_requests']) {
       window['psmob_image_requests'] = [];
     }
