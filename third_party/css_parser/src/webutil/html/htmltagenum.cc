@@ -80,7 +80,7 @@ const char* HtmlTagName(HtmlTagEnum tag) {
 }
 
 string HtmlTagNameOrUnknown(int i) {
-  if (i < kHtmlTagBuiltinMax) {
+  if (i >= 0 && i < kHtmlTagBuiltinMax) {
     return HtmlTagEnumNames[i];
   } else {
     return StringPrintf("UNKNOWN%d", i);
