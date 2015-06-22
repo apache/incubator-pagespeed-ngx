@@ -77,7 +77,8 @@ pagespeed.MobUtil.ElementClass = {
   LOGO_CHOOSER_TABLE: 'psmob-logo-chooser-table',
   MENU_EXPAND_ICON: 'psmob-menu-expand-icon',
   SHOW_BUTTON_TEXT: 'show-button-text',
-  SINGLE_COLUMN: 'psmob-single-column'
+  SINGLE_COLUMN: 'psmob-single-column',
+  THEME_CONFIG: 'psmob-theme-config'
 };
 
 
@@ -480,34 +481,19 @@ pagespeed.MobUtil.ImageSource = {
 
 /**
  * Theme data.
+ * @param {?string} logoUrl Url for the logo.
  * @param {!goog.color.Rgb} frontColor
  * @param {!goog.color.Rgb} backColor
- * @param {!Element} anchorOrSpan
- * @param {!Element} logoElement
  * @constructor
+ * @struct
  */
-pagespeed.MobUtil.ThemeData = function(frontColor, backColor, anchorOrSpan,
-                                       logoElement) {
-
+pagespeed.MobUtil.ThemeData = function(logoUrl, frontColor, backColor) {
+  /** @type {?string} */
+  this.logoUrl = logoUrl;
   /** @type {!goog.color.Rgb} */
   this.menuFrontColor = frontColor;
   /** @type {!goog.color.Rgb} */
   this.menuBackColor = backColor;
-  /** @type {!Element} */
-  this.logoElement = logoElement;
-  /** @type {!Element} */
-  this.anchorOrSpan = anchorOrSpan;
-};
-
-
-
-/**
- * Returns SRC of the logo image.
- * @return {?string}
- */
-// TODO(huibao): Store image SRC in theme data and remove this method.
-pagespeed.MobUtil.ThemeData.prototype.logoImage = function() {
-  return this.logoElement.src;
 };
 
 

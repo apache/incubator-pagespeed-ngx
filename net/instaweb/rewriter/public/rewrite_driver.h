@@ -289,6 +289,8 @@ class RewriteDriver : public HtmlParse {
   void PrependOwnedPreRenderFilter(HtmlFilter* filter);
   // Adds a filter to the end of the pre-render chain, taking ownership.
   void AppendOwnedPreRenderFilter(HtmlFilter* filter);
+  // Same, without taking ownership.
+  void AppendUnownedPreRenderFilter(HtmlFilter* filter);
 
   // Adds a filter to the end of the post-render chain, taking ownership.
   void AddOwnedPostRenderFilter(HtmlFilter* filter);

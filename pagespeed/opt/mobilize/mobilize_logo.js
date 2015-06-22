@@ -67,17 +67,9 @@ pagespeed.MobLogoCandidate = function(logoRecord, background, foreground) {
 
 /**
  * Creates a context for Pagespeed logo detector.
- * @param {!pagespeed.Mob} psMob
  * @constructor
  */
-pagespeed.MobLogo = function(psMob) {
-  /**
-   * Mobilization context.
-   *
-   * @private {!pagespeed.Mob}
-   */
-  this.psMob_ = psMob;
-
+pagespeed.MobLogo = function() {
   /**
    * Callback to invoke when this object finishes its work.
    * @private {?function(!Array.<!pagespeed.MobLogoCandidate>)} doneCallback_
@@ -179,7 +171,8 @@ pagespeed.MobLogo.prototype.RATIO_AREA_ = 0.5;
  * @private
  */
 pagespeed.MobLogo.prototype.findLogoElement_ = function(element) {
-  if (this.psMob_.getVisibility(element) == 'hidden') {
+  var style = window.getComputedStyle(element);
+  if (style.getPropertyValue('visibility') == 'hidden') {
     return null;
   }
 
@@ -642,12 +635,4 @@ pagespeed.MobLogo.prototype.run = function(doneCallback, maxNumCandidates) {
     this.findLogoCandidates_(document.body);
     this.findImagesAndWait_(this.candidates_);
   }
-};
-
-
-/**
- * @return {!pagespeed.Mob}
- */
-pagespeed.MobLogo.prototype.psMob = function() {
-  return this.psMob_;
 };

@@ -416,7 +416,6 @@ mob.button.Dialer.prototype.clickHandler = function(e) {
  * @private
  */
 mob.button.Dialer.prototype.requestPhoneNumberAndDial_ = function() {
-  debugger;
   var url = this.constructRequestPhoneNumberUrl_();
   if (url) {
     this.debugAlert_('requesting dynamic phone number: ' + url);
@@ -473,7 +472,6 @@ mob.button.Dialer.prototype.dialPhone_ = function() {
  * @param {?Object} json
  */
 mob.button.Dialer.prototype.receivePhoneNumber_ = function(json) {
-  debugger;
   var responseTime = Date.now() - this.jsonpTime_;
   pagespeed.MobUtil.sendBeacon(
       pagespeed.MobUtil.BeaconEvents.CALL_CONVERSION_RESPONSE, null,

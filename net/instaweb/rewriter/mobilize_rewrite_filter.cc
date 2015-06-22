@@ -117,11 +117,11 @@ MobilizeRewriteFilter::MobilizeRewriteFilter(RewriteDriver* rewrite_driver)
       added_viewport_(false),
       added_style_(false),
       added_containers_(false),
-      added_mob_js_(false),
       added_progress_(false),
       added_spacer_(false),
       config_mode_(rewrite_driver->options()->mob_config()),
       in_script_(false),
+      saw_end_document_(false),
       use_js_layout_(rewrite_driver->options()->mob_layout()),
       use_js_nav_(rewrite_driver->options()->mob_nav()),
       labeled_mode_(rewrite_driver->options()->mob_labeled_mode()),
@@ -189,10 +189,10 @@ void MobilizeRewriteFilter::DetermineEnabled(GoogleString* disabled_reason) {
   }
 }
 
-void MobilizeRewriteFilter::StartDocumentImpl() {
-}
+void MobilizeRewriteFilter::StartDocumentImpl() { saw_end_document_ = false; }
 
 void MobilizeRewriteFilter::EndDocument() {
+  saw_end_document_ = true;
   num_pages_mobilized_->Add(1);
   body_element_depth_ = 0;
   keeper_element_depth_ = 0;
@@ -200,10 +200,34 @@ void MobilizeRewriteFilter::EndDocument() {
   added_viewport_ = false;
   added_style_ = false;
   added_containers_ = false;
-  added_mob_js_ = false;
   added_progress_ = false;
   added_spacer_ = false;
   in_script_ = false;
+}
+
+void MobilizeRewriteFilter::RenderDone() {
+  // We insert the JS using RenderDone() because it needs to be inserted after
+  // MobilizeMenuRenderFilter finishes inserting the nav panel element, and this
+  // is how the nav panel is inserted.
+  if (!saw_end_document_) {
+    return;
+  }
+  if (!use_static_) {
+    StaticAssetManager* manager =
+        driver()->server_context()->static_asset_manager();
+    // TODO(jud): This file is rather large, we should add a prefetch tag in the
+    // head to start downloading it earlier.
+    StringPiece js =
+        manager->GetAssetUrl(StaticAssetEnum::MOBILIZE_JS, driver()->options());
+    HtmlElement* script_element = driver()->NewElement(NULL, HtmlName::kScript);
+    InsertNodeAtBodyEnd(script_element);
+    driver()->AddAttribute(script_element, HtmlName::kSrc, js);
+  }
+  HtmlElement* script = driver()->NewElement(NULL, HtmlName::kScript);
+  InsertNodeAtBodyEnd(script);
+  HtmlNode* text_node =
+      driver()->NewCharactersNode(script, "pagespeed.Mob.start();");
+  driver()->AppendChild(script, text_node);
 }
 
 void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
@@ -352,12 +376,18 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
         driver()->InsertNodeAfterCurrent(added_viewport_element);
       }
 
+      if (use_static_) {
+        // Include the base closure file to allow goog.provide etc to work.
+        driver()->InsertScriptAfterCurrent(
+            StrCat(static_file_prefix_, "goog/base.js"), true);
+        driver()->InsertScriptAfterCurrent(
+            StrCat(static_file_prefix_, "deps.js"), true);
+        driver()->InsertScriptAfterCurrent("goog.require('pagespeed.Mob');",
+                                           false);
+      }
+
       if (use_js_layout_) {
         if (use_static_) {
-          // Include the base closure file to allow goog.provide etc to work.
-          driver()->InsertScriptAfterCurrent(
-              StrCat(static_file_prefix_, "goog/base.js"), true);
-
           // Hijack XHR early so that we don't miss mobilizing any responses.
           // TODO(jmarantz): Move this block to inject before the first script.
           GoogleString script_path = StrCat(
@@ -457,13 +487,6 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
   }
 }
 
-void MobilizeRewriteFilter::AddStaticScript(StringPiece script) {
-  // TODO(jmarantz): Consider using CommonFilter::InsertNodeAtBodyEnd.
-  // TODO(jmarantz): Integrate with StaticAssetManager.
-  GoogleString script_path = StrCat(static_file_prefix_, script);
-  driver()->InsertScriptBeforeCurrent(script_path, true);
-}
-
 void MobilizeRewriteFilter::EndElementImpl(HtmlElement* element) {
   HtmlName::Keyword keyword = element->keyword();
 
@@ -474,48 +497,12 @@ void MobilizeRewriteFilter::EndElementImpl(HtmlElement* element) {
   if (keyword == HtmlName::kBody) {
     --body_element_depth_;
     if (body_element_depth_ == 0) {
-      if (!added_mob_js_) {
-        added_mob_js_ = true;
-        if (use_static_) {
-          // If we had layout enabled we would have added base.js earlier
-          // before hijacking XHR.  But we'll still need base.js event if
-          // we are not doing layout -- but we don't need it blocking in
-          // the head.
-          if (!use_js_layout_) {
-            AddStaticScript("goog/base.js");
-          }
-
-          AddStaticScript("mobilize_util.js");
-          AddStaticScript("mobilize_color.js");
-          AddStaticScript("button.js");
-          AddStaticScript("mobilize_logo.js");
-          AddStaticScript("mobilize_theme.js");
-          AddStaticScript("mobilize_layout_constants.js");
-          AddStaticScript("mobilize_layout_util.js");
-          AddStaticScript("mobilize_layout.js");
-          AddStaticScript("mobilize_nav.js");
-          AddStaticScript("mobilize.js");
-        } else {
-          StaticAssetManager* manager =
-              driver()->server_context()->static_asset_manager();
-          StringPiece js = manager->GetAssetUrl(
-              StaticAssetEnum::MOBILIZE_JS, driver()->options());
-          driver()->InsertScriptBeforeCurrent(js, true);
-        }
-      }
       reached_reorder_containers_ = false;
     }
   } else if (body_element_depth_ == 0 && keyword == HtmlName::kHead) {
     // TODO(jmarantz): this uses AppendChild, but probably should use
     // InsertBeforeCurrent to make it work with flush windows.
     AddStyle(element);
-
-    // TODO(jmarantz): if we want to debug with Closure constructs, uncomment:
-    // HtmlElement* script_element =
-    //     driver()->NewElement(element, HtmlName::kScript);
-    // driver()->AppendChild(element, script_element);
-    // driver()->AddAttribute(script_element, HtmlName::kSrc,
-    //                        StrCat(static_file_prefix_, "closure/base.js"));
   } else if (keeper_element_depth_ > 0) {
     MobileRole::Level element_role = GetMobileRole(element);
     if (element_role == MobileRole::kKeeper) {

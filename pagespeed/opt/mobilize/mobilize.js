@@ -25,6 +25,7 @@ goog.require('goog.events.EventType');
 goog.require('goog.object');
 goog.require('goog.string');
 goog.require('goog.uri.utils');
+goog.require('mob.ThemePicker');
 goog.require('pagespeed.MobLayout');
 goog.require('pagespeed.MobLogo');
 goog.require('pagespeed.MobNav');
@@ -170,8 +171,7 @@ pagespeed.Mob = function() {
   this.configThemes_ = [];
 
   /**
-   * Navigation context.  We keep his around around to enable interactive logo
-   * picking to back-annotate the alternate logo selection to the DOM.
+   * Navigation context.
    * @private {?pagespeed.MobNav}
    */
   this.mobNav_ = null;
@@ -180,22 +180,8 @@ pagespeed.Mob = function() {
    * Logo context.
    * @private {!pagespeed.MobLogo}
    */
-  this.mobLogo_ = new pagespeed.MobLogo(this);
-
-  /**
-   * Array of candidate logos, lazy-initilized when a user clicks the
-   * logo to configure it with ?PageSpeedMobConfig=on.
-   * @private {?Array.<!pagespeed.MobLogoCandidate>}
-   */
-  this.logoCandidates_ = null;
+  this.mobLogo_ = new pagespeed.MobLogo();
 };
-
-
-/**
- * HTML attribute to save the visibility state of the body.
- * @private @const {string}
- */
-pagespeed.Mob.PROGRESS_SAVE_VISIBLITY_ = 'data-ps-save-visibility';
 
 
 /**
@@ -239,6 +225,41 @@ pagespeed.Mob.COST_PER_IMAGE_ = 1000;
 
 
 /**
+ * Initialize mobilization.
+ */
+pagespeed.Mob.prototype.initialize = function() {
+  // TODO(jud): This should be provided as a separate JS file, rather than being
+  // compiled into this module.
+  if (window.psConfigMode) {
+    var themePicker = new mob.ThemePicker();
+    themePicker.run();
+    return;
+  }
+
+  // If the theme is already defined, then we can just jump into creating the
+  // nav panel.
+  if (window.psMobBackgroundColor && window.psMobForegroundColor) {
+    var themeData = new pagespeed.MobUtil.ThemeData(
+        window.psMobLogoUrl, window.psMobForegroundColor,
+        window.psMobBackgroundColor);
+    this.mobNav_ = new pagespeed.MobNav();
+    this.mobNav_.run(themeData);
+  } else {
+    // Start theme extraction and navigation re-synthesis when the document
+    // content is loaded.
+    window.addEventListener(goog.events.EventType.DOMCONTENTLOADED,
+                            goog.bind(this.extractTheme_, this));
+  }
+
+  // Start layout re-synthesis if it has been configured.
+  if (window.psLayoutMode) {
+    window.addEventListener(goog.events.EventType.LOAD,
+                            goog.bind(this.initiateMobilization, this));
+  }
+};
+
+
+/**
  * Mobilizes the current web page.
  * @private
  */
@@ -267,14 +288,14 @@ pagespeed.Mob.prototype.themeComplete_ = function(themeData) {
   --this.pendingCallbacks_;
   this.updateProgressBar(this.domElementCount_, 'extract theme');
   this.mobNav_ = new pagespeed.MobNav();
-  this.mobNav_.Run(themeData);
+  this.mobNav_.run(themeData);
   this.updateProgressBar(this.domElementCount_, 'navigation');
   this.maybeRunLayout();
 
   var masterPsMob = this.psMobForMasterWindow_();
   if (masterPsMob && masterPsMob.configNumUrlsToProcess_ >= 0) {
     if (this.inPsIframeWindow_()) {
-      this.mobNav_.updateHeaderBar(this.masterWindow_(), themeData);
+      this.mobNav_.updateTheme(themeData);
     } else {
       var iframe = document.createElement(goog.dom.TagName.IFRAME);
       iframe.id = pagespeed.MobUtil.ElementId.CONFIG_IFRAME;
@@ -512,28 +533,6 @@ pagespeed.Mob.prototype.setDebugMode = function(debug) {
 
 
 /**
- * Determines the visibility of an element, as if the progress bar was not
- * present.
- *
- * @param {!Element} element
- * @return {string}
- */
-pagespeed.Mob.prototype.getVisibility = function(element) {
-  var visibility = element.getAttribute(pagespeed.Mob.PROGRESS_SAVE_VISIBLITY_);
-  if (!visibility) {
-    var computedStyle = window.getComputedStyle(element);
-    if (computedStyle) {
-      visibility = computedStyle.getPropertyValue('visibility');
-    }
-    if (!visibility) {
-      visibility = 'visible';
-    }
-  }
-  return visibility;
-};
-
-
-/**
  * Record that a certain amount of work got done toward mobilization.  Updates
  * a progres-bar showing how far along we are in mobilization, and logs the
  * specific operation (currentOp) that was completed.  This goes both to the
@@ -626,42 +625,6 @@ window.psMob = new pagespeed.Mob();
 
 
 /**
- * Scan the document for the top 5 logo candidates, computing their
- * background and foreground colors.  When that's done, pop up a dialog
- * letting the user choose a new logo & colors.
- */
-pagespeed.Mob.prototype.showLogoCandidates = function() {
-  if ((this.logoCandidates_ != null) && (this.logoCandidates_.length > 0)) {
-    this.mobNav_.chooserShowCandidates(this.logoCandidates_);
-  }
-};
-
-
-/**
- * Records the logo candidates for this page, popping up the logo
- * chooser, and setting the top-ranked logo in the theme.
- * @param {!pagespeed.MobTheme} theme
- * @param {!Array.<!pagespeed.MobLogoCandidate>} candidates
- */
-pagespeed.Mob.prototype.setLogoCandidatesAndShow = function(theme, candidates) {
-  this.logoCandidates_ = candidates;
-  theme.logoComplete(candidates);
-  this.mobNav_.chooserShowCandidates(candidates);
-};
-
-
-// Start theme extraction and navigation re-synthesis when the document content
-// is loaded.
-window.addEventListener(goog.events.EventType.DOMCONTENTLOADED,
-                        goog.bind(window.psMob.extractTheme_, window.psMob));
-
-
-// Start layout re-synthesis if it has been configured.
-window.addEventListener(goog.events.EventType.LOAD,
-    goog.bind(window.psMob.initiateMobilization, window.psMob));
-
-
-/**
  * Called by C++-created JavaScript.
  * @export
  */
@@ -676,15 +639,6 @@ function psSetDebugMode() {
  */
 function psRemoveProgressBar() {
   window.psMob.removeProgressBar();
-}
-
-
-/**
- * Called by anchor-tag.
- * @export
- */
-function psPickLogo() {
-  window.psMob.showLogoCandidates();
 }
 
 
@@ -745,16 +699,16 @@ pagespeed.Mob.prototype.showSiteWideThemes_ = function() {
   var map = {};
   var themeData;
   for (var i = 0; themeData = masterPsMob.configThemes_[i]; ++i) {
-    var logoImage = themeData.logoImage();
-    if (!logoImage) {
+    var logoUrl = themeData.logoUrl;
+    if (!logoUrl) {
       continue;
     }
 
     // Include theme colors in the key because for the same logo image, the
     // background color in the HTML element may be different.
-    var key = logoImage +
-        pagespeed.MobUtil.colorNumbersToString(themeData.menuFrontColor) +
-        pagespeed.MobUtil.colorNumbersToString(themeData.menuBackColor);
+    var key = logoUrl +
+              pagespeed.MobUtil.colorNumbersToString(themeData.menuFrontColor) +
+              pagespeed.MobUtil.colorNumbersToString(themeData.menuBackColor);
 
     if (!map[key]) {
       map[key] = {themeData: themeData, count: 1};
@@ -773,8 +727,8 @@ pagespeed.Mob.prototype.showSiteWideThemes_ = function() {
       return -1;
     }
     // Resolve a tie by comparing the logo URLs, so the order is stable.
-    var aImage = a.themeData.logoImage();
-    var bImage = b.themeData.logoImage();
+    var aImage = a.themeData.logoUrl;
+    var bImage = b.themeData.logoUrl;
     if (aImage < bImage) {
       return -1;
     } else if (aImage > bImage) {
@@ -787,27 +741,28 @@ pagespeed.Mob.prototype.showSiteWideThemes_ = function() {
   if (list.length > 0) {
     message += 'Found ' + list.length +
         ' logo images. Details are shown below:\n';
-    this.mobNav_.updateHeaderBar(this.masterWindow_(), list[0].themeData);
+    this.mobNav_.updateTheme(list[0].themeData);
 
     var i;
     for (i in list) {
       themeData = list[i].themeData;
-      message += '"' +
+      message +=
+          '"' +
           pagespeed.MobUtil.colorNumbersToString(themeData.menuBackColor) +
           ' ' +
           pagespeed.MobUtil.colorNumbersToString(themeData.menuFrontColor) +
-          ' ' +
-          themeData.logoImage() + '"' +
+          ' ' + themeData.logoUrl + '"' +
           ' COUNT: ' + list[i].count + '\n';
     }
     message += '\n';
 
     for (i in list) {
       themeData = list[i].themeData;
-      message += 'ModPagespeedMobTheme "\n' +
+      message +=
+          'ModPagespeedMobTheme "\n' +
           '    ' + goog.color.rgbArrayToHex(themeData.menuBackColor) + '\n' +
           '    ' + goog.color.rgbArrayToHex(themeData.menuFrontColor) + '\n' +
-          '    ' + themeData.logoImage() + '"\n';
+          '    ' + themeData.logoUrl + '"\n';
     }
   } else {
     message += 'No logo was found.';
@@ -892,8 +847,8 @@ pagespeed.Mob.prototype.collectUrls_ = function() {
  *     collected
  * @param {!Array.<string>} urls
  */
-pagespeed.Mob.prototype.collectUrlsFromSubTree_ = function(
-    mobIframeString, element, urls) {
+pagespeed.Mob.prototype.collectUrlsFromSubTree_ = function(mobIframeString,
+                                                           element, urls) {
   if (urls.length >= pagespeed.Mob.CONFIG_MAX_NUM_LINKS_) {
     return;
   }
@@ -929,4 +884,14 @@ pagespeed.Mob.prototype.collectUrlsFromSubTree_ = function(
        childElement = childElement.nextElementSibling) {
     this.collectUrlsFromSubTree_(mobIframeString, childElement, urls);
   }
+};
+
+
+/**
+ * Main entry point to mobilization.
+ * @export
+ */
+pagespeed.Mob.start = function() {
+  var mob = new pagespeed.Mob();
+  mob.initialize();
 };

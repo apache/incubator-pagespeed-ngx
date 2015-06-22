@@ -20,7 +20,6 @@
 
 goog.provide('pagespeed.MobNav');
 
-goog.require('goog.color');
 goog.require('goog.dom');
 goog.require('goog.dom.TagName');
 goog.require('goog.dom.classlist');
@@ -33,7 +32,6 @@ goog.require('goog.style');
 goog.require('mob.button.Dialer');
 goog.require('mob.button.Map');
 goog.require('mob.button.Menu');
-goog.require('pagespeed.MobTheme');
 goog.require('pagespeed.MobUtil');
 
 
@@ -166,14 +164,6 @@ pagespeed.MobNav = function() {
 
   // From https://dev.opera.com/articles/opera-mini-and-javascript/
   this.isOperaMini_ = (navigator.userAgent.indexOf('Opera Mini') > -1);
-
-  /**
-   * Popup dialog for logo choices.  This is actually 2 different things:
-   *   1. A table of logo choices and colors that can be clicked to change them.
-   *   2. A PRE tag showing the config snippet for the chosen logo/colors.
-   * @private {?Element}
-   */
-  this.logoChoicePopup_ = null;
 };
 
 
@@ -189,25 +179,6 @@ pagespeed.MobNav.ARROW_ICON_ =
     'EA3dLDFNXP1wzZjNsF01/W31LH6VXG6YjZ7Vu651674VG8/l2s1mL2qXn4nHD6nn3yE+Al+5' +
     '+fcnQL6EBui1QcUwgb6IEvtRVGDporc/RhobKOooLRBIbSNLmjyJMqXKlSxbunwJM6bMmTRr' +
     '2ryJM6fOnTx7+vwJNKjQoUSLGj2KNKnSpUybOn0KVUcBADs=';
-
-
-/**
- * PNG image of a swap icon (drawn by hand).
- * TODO(huibao): optimize this image.
- * @private @const {string}
- */
-pagespeed.MobNav.SWAP_ICON_ =
-    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIYAAABaCAAAAABY7nEZAAAABG' +
-    'dBTUEAALGPC/xhBQAAAcpJREFUaN7t2ItxgkAQgOHtADvADkwH2oHpADrADlKCdoAdaAekA0' +
-    'qgBEowYIZRE7jbe+xjktsCnE/m54CFm4qBxEgMIkavgwHlVQUDYHVoNTCGWZ86DYxhdudeA2' +
-    'OYgExiMgIyicvwziQ6wy8TCoZHJkQM10zIGG6ZUDIcMiFmYDOhZ6AymWd8ogdwY8sEvP+j6x' +
-    'gz4WMYM2FlLGfCzBgzqTUwiov81djWvXgb+bFzvFO26MEasqqVPkWXguBlLAbByDAFwcWwBM' +
-    'HDsAbBwMAEQc1ABkHKwAdByHAJgorhGAQJI/8IWC5EYmRF2KolCmN/uYX+TDBjU0dYw4UyQo' +
-    'JI69n/wmhKeUZ3WAMIM/rT2/34EGWc36fjXI7RlKvHU0WIcQ8CZBlTEKKMRxByjJcghBg/g5' +
-    'BgzATBz5gNgpmxFAQnwxAEG8McBBPDFsTzAhY7rgxEED7jxMAFQctAB0HLqPeggTFcj+NGA2' +
-    'Oso8o1MMZ7pcg0MFwyabDjeZgjM2F4tGEy4XnQWzNhe+0xZ8L4EmjKhPeVeDET9g+E+UwkPp' +
-    'dmMpH5ePyVidin9GsmkouFp0yE1yxTJuJLp+9MNKzg2ipPC8nE+LuMLwqlrYBVqy8VAAAAAE' +
-    'lFTkSuQmCC';
 
 
 /**
@@ -555,6 +526,11 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
                            pagespeed.MobUtil.ElementClass.LABELED);
   }
 
+  if (window.psConfigMode) {
+    goog.dom.classlist.add(this.headerBar_,
+                           pagespeed.MobUtil.ElementClass.THEME_CONFIG);
+  }
+
   // Add menu button.
   if (this.navPanel_ && !window.psLabeledMode) {
     this.menuButton_ = new mob.button.Menu(
@@ -563,8 +539,19 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
   }
 
   // Add the logo.
-  this.logoSpan_ = themeData.anchorOrSpan;
-  this.headerBar_.appendChild(themeData.anchorOrSpan);
+  // TODO(jmarantz): also consider having this element be an anchor
+  // in non-config mode, pointing either to the landing page or to
+  // the non-mobilized version.
+  if (themeData.logoUrl) {
+    this.logoSpan_ = document.createElement(goog.dom.TagName.SPAN);
+    this.logoSpan_.id = pagespeed.MobUtil.ElementId.LOGO_SPAN;
+    var logoImg = document.createElement(goog.dom.TagName.IMG);
+    logoImg.src = themeData.logoUrl;
+    logoImg.id = pagespeed.MobUtil.ElementId.LOGO_IMAGE;
+    this.logoSpan_.appendChild(logoImg);
+    this.headerBar_.appendChild(this.logoSpan_);
+  }
+
   this.headerBar_.style.borderBottomColor =
       pagespeed.MobUtil.colorNumbersToString(themeData.menuFrontColor);
   this.headerBar_.style.backgroundColor =
@@ -788,7 +775,7 @@ pagespeed.MobNav.prototype.addNavButtonEvents_ = function() {
  * finished.
  * @param {!pagespeed.MobUtil.ThemeData} themeData
  */
-pagespeed.MobNav.prototype.Run = function(themeData) {
+pagespeed.MobNav.prototype.run = function(themeData) {
   // Don't insert the header bar inside of an iframe.
   if (pagespeed.MobUtil.inFriendlyIframe()) {
     return;
@@ -816,202 +803,19 @@ pagespeed.MobNav.prototype.Run = function(themeData) {
 
 /**
  * Updates header bar using the theme data.
- * @param {!Object} mobWindow
  * @param {!pagespeed.MobUtil.ThemeData} themeData
  */
-pagespeed.MobNav.prototype.updateHeaderBar = function(mobWindow, themeData) {
-  var logoImage = themeData.logoImage();
-  if (logoImage) {
-    var frontColor =
-        pagespeed.MobUtil.colorNumbersToString(themeData.menuFrontColor);
-    var backColor =
-        pagespeed.MobUtil.colorNumbersToString(themeData.menuBackColor);
+pagespeed.MobNav.prototype.updateTheme = function(themeData) {
+  // For now we just remove the existing header bar and spacer div and recreate
+  // them. This could be done more efficiently by updating just the style block
+  // and logo image but since this is only used for debug and config it should
+  // suffice for the time being.
+  this.headerBar_.remove();
+  this.spacerDiv_.remove();
+  this.spacerDiv_ = document.createElement(goog.dom.TagName.DIV);
+  this.spacerDiv_.id = pagespeed.MobUtil.ElementId.SPACER;
 
-    var logoElement = mobWindow.document.getElementById(
-        pagespeed.MobUtil.ElementId.LOGO_IMAGE);
-    if (logoElement) {
-      logoElement.parentNode.replaceChild(themeData.logoElement, logoElement);
-      //logoElement.src = logoImage;
-      if (this.headerBar_) {
-        this.headerBar_.style.backgroundColor = backColor;
-      }
-      this.logoSpan_.style.backgroundColor = backColor;
-      //logoElement.style.backgroundColor = backColor;
-    }
-
-    var hamburgerLines = mobWindow.document.getElementsByClassName(
-        pagespeed.MobUtil.ElementClass.HAMBURGER_LINE);
-    for (var i = 0, line; line = hamburgerLines[i]; ++i) {
-      line.style.backgroundColor = frontColor;
-    }
-  }
-};
-
-
-// TODO(jmarantz): All the .chooser* methods should be loaded only with
-// ?PageSpeedMobConfig=on, plus SWAP_ICON declared above.
-
-
-/**
- * @param {!Array.<!pagespeed.MobLogoCandidate>} candidates
- */
-pagespeed.MobNav.prototype.chooserShowCandidates = function(candidates) {
-  if (this.logoChoicePopup_) {
-    this.chooserDismissLogoChoicePopup_();
-    return;
-  }
-
-  var table = document.createElement(goog.dom.TagName.TABLE);
-  table.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_TABLE;
-
-  var thead = document.createElement(goog.dom.TagName.THEAD);
-  table.appendChild(thead);
-  var trow = document.createElement(goog.dom.TagName.TR);
-  thead.appendChild(trow);
-  function addData() {
-    var td = document.createElement(goog.dom.TagName.TD);
-    trow.appendChild(td);
-    return td;
-  }
-  trow.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_COLUMN_HEADER;
-  addData().textContent = 'Logo';
-  addData().textContent = 'Foreground';
-  addData().textContent = '';
-  addData().textContent = 'Background';
-
-  var tbody = document.createElement(goog.dom.TagName.TBODY);
-  table.appendChild(tbody);
-  for (var i = 0; i < candidates.length; ++i) {
-    trow = document.createElement(goog.dom.TagName.TR);
-    trow.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_CHOICE;
-    tbody.appendChild(trow);
-    var candidate = candidates[i];
-    var themeData = pagespeed.MobTheme.synthesizeLogoSpan(
-        candidate.logoRecord, candidate.background, candidate.foreground);
-    addData().appendChild(themeData.anchorOrSpan);
-    var img = themeData.logoElement;
-    img.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_IMAGE;
-    img.onclick = goog.bind(this.chooserSetLogo_, this, candidate);
-
-    var foreground = addData();
-    foreground.style.backgroundColor =
-        goog.color.rgbArrayToHex(candidate.foreground);
-    foreground.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_COLOR;
-
-    var swapTd = addData();
-    swapTd.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_COLOR;
-    var swapImg = document.createElement(goog.dom.TagName.IMG);
-    swapImg.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_SWAP;
-    swapImg.src = pagespeed.MobNav.SWAP_ICON_;
-    swapTd.appendChild(swapImg);
-
-    var background = addData();
-    background.style.backgroundColor =
-        goog.color.rgbArrayToHex(candidate.background);
-    background.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_SWAP;
-
-    swapTd.onclick = goog.bind(this.chooserSwapColors_, this, candidate,
-        foreground, background);
-  }
-
-  this.chooserDisplayPopup_(table);
-};
-
-
-/**
- * @param {!Element} popup
- * @private
- */
-pagespeed.MobNav.prototype.chooserDisplayPopup_ = function(popup) {
-  // The natural width of the table is about 350px, and we'll
-  // want it to occupy 2/3 of the screen.  We'll add it to the DOM
-  // hidden so we can get the width computed by the browser, and
-  // thereby know how to center it.
-  popup.style.visibility = 'hidden';
-  document.body.appendChild(popup);
-
-  var naturalWidth = popup.offsetWidth;
-  var fractionOfScreen = 2.0 / 3.0;
-  var scale = window.innerWidth * fractionOfScreen / naturalWidth;
-  var offset = Math.round(0.5 * (1 - fractionOfScreen) * window.innerWidth) +
-      'px';
-
-  var transform =
-      'scale(' + scale + ')' +
-      ' translate(' + offset + ',' + offset + ')';
-  popup.style['-webkit-transform'] = transform;
-  popup.style.transform = transform;
-
-  // Now that we have transformed it, make it show up.
-  popup.style.visibility = 'visible';
-
-  if (this.logoChoicePopup_ != null) {
-    this.logoChoicePopup_.parentNode.removeChild(this.logoChoicePopup_);
-  }
-  this.logoChoicePopup_ = popup;
-};
-
-
-/**
- * Sets the logo in response to clicking on an image in the logo chooser
- * popup.
- * @param {!pagespeed.MobLogoCandidate} candidate
- * @private
- */
-pagespeed.MobNav.prototype.chooserSetLogo_ = function(candidate) {
-  var themeData = pagespeed.MobTheme.createThemeData(
-      candidate.logoRecord, candidate.background, candidate.foreground);
-  pagespeed.MobTheme.installLogo(themeData);
-  this.updateHeaderBar(window, themeData);
-  this.addThemeColor_(themeData);
-
-  var configSnippet = document.createElement(goog.dom.TagName.PRE);
-  configSnippet.className =
-      pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_CONFIG_FRAGMENT;
-
-  // TODO(jmarantz): Generate nginx syntax as needed.
-  configSnippet.textContent =
-      'ModPagespeedMobTheme "\n' +
-      '    ' + goog.color.rgbArrayToHex(themeData.menuBackColor) + '\n' +
-      '    ' + goog.color.rgbArrayToHex(themeData.menuFrontColor) + '\n' +
-      '    ' + themeData.logoElement.src + '"';
-  this.chooserDisplayPopup_(configSnippet);
-
-  // TODO(jmarantz): consider adding a note to this popup that about how
-  // you can touch the logo to bring it up the chooser again.
-};
-
-
-/**
- * Swaps the background and colors for a logo candidate.
- * @param {!pagespeed.MobLogoCandidate} candidate
- * @param {!Element} foregroundTd table data element (TD) for the foreground
- * @param {!Element} backgroundTd table data element (TD) for the background
- * @private
- */
-pagespeed.MobNav.prototype.chooserSwapColors_ = function(
-    candidate, foregroundTd, backgroundTd) {
-  // TODO(jmarantz): we probably only want to swap the fg/bg for the menus,
-  // and not for the header bar.  The logo background computation is generally
-  // correct, as far as I can tell, and it's only a question of whether the
-  // menus would look better in reverse video.
-  var tmp = candidate.background;
-  candidate.background = candidate.foreground;
-  candidate.foreground = tmp;
-  tmp = foregroundTd.style['background-color'];
-  foregroundTd.style['background-color'] =
-      backgroundTd.style['background-color'];
-  backgroundTd.style['background-color'] = tmp;
-};
-
-
-/**
- * Dismisses any logo-choice pop.
- * @private
- */
-pagespeed.MobNav.prototype.chooserDismissLogoChoicePopup_ = function() {
-  if (this.logoChoicePopup_) {
-    this.logoChoicePopup_.parentNode.removeChild(this.logoChoicePopup_);
-    this.logoChoicePopup_ = null;
-  }
+  this.headerBar_ = document.createElement(goog.dom.TagName.HEADER);
+  this.headerBar_.id = pagespeed.MobUtil.ElementId.HEADER_BAR;
+  this.addHeaderBar_(themeData);
 };

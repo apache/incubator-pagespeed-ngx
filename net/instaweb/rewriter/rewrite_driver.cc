@@ -1397,6 +1397,10 @@ void RewriteDriver::AppendOwnedPreRenderFilter(HtmlFilter* filter) {
   pre_render_filters_.push_back(filter);
 }
 
+void RewriteDriver::AppendUnownedPreRenderFilter(HtmlFilter* filter) {
+  pre_render_filters_.push_back(filter);
+}
+
 void RewriteDriver::AddOwnedPostRenderFilter(HtmlFilter* filter) {
   filters_to_delete_.push_back(filter);
   AddUnownedPostRenderFilter(filter);

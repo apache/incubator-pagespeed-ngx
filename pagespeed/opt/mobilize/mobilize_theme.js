@@ -18,8 +18,6 @@
 
 goog.provide('pagespeed.MobTheme');
 
-goog.require('goog.dom.TagName');
-goog.require('pagespeed.MobLogo');
 goog.require('pagespeed.MobUtil');
 
 
@@ -39,89 +37,22 @@ pagespeed.MobTheme = function(doneCallback) {
 
 
 /**
- * Add a logo span to window.document.
- * @param {?pagespeed.MobLogo.LogoRecord} logo
- * @param {!goog.color.Rgb} backgroundColor
- * @param {!goog.color.Rgb} foregroundColor
- * @return {!pagespeed.MobUtil.ThemeData}
- */
-pagespeed.MobTheme.synthesizeLogoSpan = function(
-    logo, backgroundColor, foregroundColor) {
-  // When in configuration-mode, touch the logo to bring up a logo picker.
-  // Actually the logo picker comes up in the first place, but you can
-  // then alter the logo iteratively by touching it.
-  //
-  // TODO(jmarantz): also consider having this element be an anchor
-  // in non-config mode, pointing either to the landing page or to
-  // the non-mobilized version.
-  var anchorOrSpan = document.createElement(
-      psConfigMode ? goog.dom.TagName.A : goog.dom.TagName.SPAN);
-  var logoElement;
-
-  if (logo && logo.foregroundImage) {
-    // If foregroundImage is a reference to foregroundElement, we clone it
-    // for the logo span; otherwise, we move foregroundImage (which has not
-    // been attached to DOM) to log span.
-    if (window.psConfigMode ||
-        (logo.foregroundElement == logo.foregroundImage)) {
-      // Note that we always clone nodes in psConfigMode because we need
-      // to reference the logo in the popup as well as the menu bar.
-      logoElement = logo.foregroundImage.cloneNode(false);
-    } else {
-      logoElement = logo.foregroundImage;
-    }
-    logoElement.removeAttribute('id');
-  } else {
-    logoElement = document.createElement('span');
-    logoElement.textContent = window.location.host;
-    logoElement.style.color =
-        pagespeed.MobUtil.colorNumbersToString(foregroundColor);
-  }
-  anchorOrSpan.appendChild(logoElement);
-
-  var themeData = new pagespeed.MobUtil.ThemeData(
-      foregroundColor, backgroundColor, anchorOrSpan, logoElement);
-  return themeData;
-};
-
-
-/**
- * Remove foreground image for the logo from document.
- * @param {?pagespeed.MobLogo.LogoRecord} logo
- * @private
- */
-pagespeed.MobTheme.removeLogoImage_ = function(logo) {
-  // TODO(huibao): When we pre-configure logo, foregroundElement and
-  // foregroundSource aren't set, only the URL is. Redesign this method since
-  // we have to figure out which element contains the image and how to handle,
-  // if there are multiple elements containing this image.
-  if (logo && logo.foregroundElement) {
-    var element = logo.foregroundElement;
-    element.parentNode.removeChild(element);
-  }
-};
-
-
-/**
  * Compute color and synthesize logo span.
- * @param {?pagespeed.MobLogo.LogoRecord} logo
+ * @param {?string} logoUrl
  * @param {!goog.color.Rgb} backgroundColor
  * @param {!goog.color.Rgb} foregroundColor
  * @return {!pagespeed.MobUtil.ThemeData}
  */
-pagespeed.MobTheme.createThemeData = function(
-    logo, backgroundColor, foregroundColor) {
-  var themeData = pagespeed.MobTheme.synthesizeLogoSpan(
-      logo, backgroundColor, foregroundColor);
-  if (window.psLayoutMode) {
-    pagespeed.MobTheme.removeLogoImage_(logo);
-  }
+pagespeed.MobTheme.createThemeData = function(logoUrl, backgroundColor,
+                                              foregroundColor) {
+  var themeData = new pagespeed.MobUtil.ThemeData(logoUrl, backgroundColor,
+                                                  foregroundColor);
 
   // Export theme info if we are asked to.
   if (window.psMobPrecompute) {
+    window.psMobLogoUrl = logoUrl;
     window.psMobBackgroundColor = backgroundColor;
     window.psMobForegroundColor = foregroundColor;
-    window.psMobLogoUrl = logo ? logo.foregroundImage.src : null;
   }
   return themeData;
 };
@@ -136,30 +67,16 @@ pagespeed.MobTheme.prototype.logoComplete = function(candidates) {
     if (candidates.length >= 1) {
       var candidate = candidates[0];
       themeData = pagespeed.MobTheme.createThemeData(
-          candidate.logoRecord, candidate.background, candidate.foreground);
+          candidate.logoRecord.logoElement.src, candidate.background,
+          candidate.foreground);
     } else {
       themeData = pagespeed.MobTheme.createThemeData(
           null, [255, 255, 255], [0, 0, 0]);
     }
-    pagespeed.MobTheme.installLogo(themeData);
     var doneCallback = this.doneCallback_;
     this.doneCallback_ = null;
     doneCallback(themeData);
   }
-};
-
-
-/**
- * @param {?pagespeed.MobUtil.ThemeData} themeData
- */
-pagespeed.MobTheme.installLogo = function(themeData) {
-  if (window.psConfigMode) {
-    themeData.anchorOrSpan.href = 'javascript:psPickLogo()';
-  }
-  themeData.anchorOrSpan.id = pagespeed.MobUtil.ElementId.LOGO_SPAN;
-  themeData.logoElement.id = pagespeed.MobUtil.ElementId.LOGO_IMAGE;
-  themeData.logoElement.style.backgroundColor =
-      pagespeed.MobUtil.colorNumbersToString(themeData.menuBackColor);
 };
 
 
@@ -181,22 +98,11 @@ pagespeed.MobTheme.precomputedThemeAvailable = function() {
 pagespeed.MobTheme.extractTheme = function(mobLogo, doneCallback) {
   // See if there is a precomputed theme + logo (and we are not asked to do
   // the computation ourselves).
-  if (window.psConfigMode) {
-    var psMob = mobLogo.psMob();
-    var mobTheme = new pagespeed.MobTheme(doneCallback);
-    mobLogo.run(goog.bind(psMob.setLogoCandidatesAndShow, psMob, mobTheme),
-                5 /* numCandidates */);
-  } else if (window.psMobBackgroundColor && window.psMobForegroundColor &&
-             !window.psMobPrecompute) {
-    var logo = null;
-    if (psMobLogoUrl) {
-      var img = document.createElement(goog.dom.TagName.IMG);
-      img.src = psMobLogoUrl;
-      logo = new pagespeed.MobLogo.LogoRecord(1 /* metric */, img);
-    }
+  if (window.psMobBackgroundColor && window.psMobForegroundColor &&
+      !window.psMobPrecompute) {
     var themeData = pagespeed.MobTheme.createThemeData(
-        logo, window.psMobBackgroundColor, window.psMobForegroundColor);
-    pagespeed.MobTheme.installLogo(themeData);
+        window.psMobLogoUrl, window.psMobBackgroundColor,
+        window.psMobForegroundColor);
     doneCallback(themeData);
   } else {
     var mobTheme = new pagespeed.MobTheme(doneCallback);

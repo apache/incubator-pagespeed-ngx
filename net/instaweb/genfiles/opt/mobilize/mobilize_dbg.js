@@ -7328,7 +7328,7 @@ pagespeed.MobUtil = {};
 pagespeed.MobUtil.ElementId = {CLICK_DETECTOR_DIV:"psmob-click-detector-div", CONFIG_IFRAME:"ps-hidden-iframe", DIALER_BUTTON:"psmob-dialer-button", HEADER_BAR:"psmob-header-bar", LOGO_IMAGE:"psmob-logo-image", LOGO_SPAN:"psmob-logo-span", MAP_BUTTON:"psmob-map-button", MENU_BUTTON:"psmob-menu-button", NAV_PANEL:"psmob-nav-panel", PROGRESS_LOG:"ps-progress-log", PROGRESS_REMOVE:"ps-progress-remove", PROGRESS_SCRIM:"ps-progress-scrim", PROGRESS_SHOW_LOG:"ps-progress-show-log", PROGRESS_SPAN:"ps-progress-span", 
 SPACER:"psmob-spacer"};
 pagespeed.MobUtil.ElementClass = {BUTTON:"psmob-button", BUTTON_ICON:"psmob-button-icon", BUTTON_TEXT:"psmob-button-text", HAMBURGER_DIV:"psmob-hamburger-div", HAMBURGER_LINE:"psmob-hamburger-line", LABELED:"labeled", LOGO_CHOOSER_CHOICE:"psmob-logo-chooser-choice", LOGO_CHOOSER_COLOR:"psmob-logo-chooser-color", LOGO_CHOOSER_COLUMN_HEADER:"psmob-logo-chooser-column-header", LOGO_CHOOSER_CONFIG_FRAGMENT:"psmob-logo-chooser-config-fragment", LOGO_CHOOSER_IMAGE:"psmob-logo-chooser-image", LOGO_CHOOSER_SWAP:"psmob-logo-chooser-swap", 
-LOGO_CHOOSER_TABLE:"psmob-logo-chooser-table", MENU_EXPAND_ICON:"psmob-menu-expand-icon", SHOW_BUTTON_TEXT:"show-button-text", SINGLE_COLUMN:"psmob-single-column"};
+LOGO_CHOOSER_TABLE:"psmob-logo-chooser-table", MENU_EXPAND_ICON:"psmob-menu-expand-icon", SHOW_BUTTON_TEXT:"show-button-text", SINGLE_COLUMN:"psmob-single-column", THEME_CONFIG:"psmob-theme-config"};
 pagespeed.MobUtil.ASCII_0_ = 48;
 pagespeed.MobUtil.ASCII_9_ = 57;
 pagespeed.MobUtil.Rect = function() {
@@ -7454,14 +7454,10 @@ pagespeed.MobUtil.countNodes = function(a) {
 };
 pagespeed.MobUtil.ImageSource = {IMG:"IMG", SVG:"SVG", BACKGROUND:"background-image"};
 goog.exportSymbol("pagespeed.MobUtil.ImageSource", pagespeed.MobUtil.ImageSource);
-pagespeed.MobUtil.ThemeData = function(a, b, c, d) {
-  this.menuFrontColor = a;
-  this.menuBackColor = b;
-  this.logoElement = d;
-  this.anchorOrSpan = c;
-};
-pagespeed.MobUtil.ThemeData.prototype.logoImage = function() {
-  return this.logoElement.src;
+pagespeed.MobUtil.ThemeData = function(a, b, c) {
+  this.logoUrl = a;
+  this.menuFrontColor = b;
+  this.menuBackColor = c;
 };
 pagespeed.MobUtil.textBetweenBrackets = function(a) {
   var b = a.indexOf("("), c = a.lastIndexOf(")");
@@ -7677,7 +7673,6 @@ mob.button.Dialer.prototype.clickHandler = function(a) {
   this.googleVoicePhoneNumber_ ? pagespeed.MobUtil.sendBeacon(pagespeed.MobUtil.BeaconEvents.PHONE_BUTTON, goog.bind(this.dialPhone_, this)) : (pagespeed.MobUtil.sendBeacon(pagespeed.MobUtil.BeaconEvents.PHONE_BUTTON), this.requestPhoneNumberAndDial_());
 };
 mob.button.Dialer.prototype.requestPhoneNumberAndDial_ = function() {
-  debugger;
   var a = this.constructRequestPhoneNumberUrl_();
   a ? (this.debugAlert_("requesting dynamic phone number: " + a), a = new goog.net.Jsonp(a), this.jsonpTime_ = Date.now(), a.send(null, goog.bind(this.receivePhoneNumber_, this), goog.bind(this.receivePhoneNumber_, this))) : this.dialPhone_();
 };
@@ -7692,7 +7687,6 @@ mob.button.Dialer.prototype.dialPhone_ = function() {
   goog.global.location = "tel:" + (this.googleVoicePhoneNumber_ || this.fallbackPhoneNumber_);
 };
 mob.button.Dialer.prototype.receivePhoneNumber_ = function(a) {
-  debugger;
   var b = Date.now() - this.jsonpTime_;
   pagespeed.MobUtil.sendBeacon(pagespeed.MobUtil.BeaconEvents.CALL_CONVERSION_RESPONSE, null, "&t=" + b);
   if (a = (b = a && a.wcm) && b.mobile_number) {
@@ -8194,8 +8188,7 @@ pagespeed.MobLogoCandidate = function(a, b, c) {
   this.background = b;
   this.foreground = c;
 };
-pagespeed.MobLogo = function(a) {
-  this.psMob_ = a;
+pagespeed.MobLogo = function() {
   this.doneCallback_ = null;
   this.organization_ = pagespeed.MobUtil.getSiteOrganization();
   this.landingUrl_ = window.location.origin + window.location.pathname;
@@ -8220,7 +8213,7 @@ pagespeed.MobLogo.prototype.findLogoElement_ = function(a) {
   function b(a) {
     a && "string" == typeof a && (goog.string.caseInsensitiveContains(a, "logo") && ++d, this.organization && pagespeed.MobUtil.findPattern(a, this.organization_) && ++d);
   }
-  if ("hidden" == this.psMob_.getVisibility(a)) {
+  if ("hidden" == window.getComputedStyle(a).getPropertyValue("visibility")) {
     return null;
   }
   var c = null, c = a.nodeName.toUpperCase() == goog.dom.TagName.IMG ? a.src : pagespeed.MobUtil.findBackgroundImage(a), c = pagespeed.MobUtil.resourceFileName(c);
@@ -8388,53 +8381,6 @@ pagespeed.MobLogo.prototype.run = function(a, b) {
   this.doneCallback_ || !document.body ? a([]) : (this.doneCallback_ = a, this.maxNumCandidates_ = b, this.findLogoCandidates_(document.body), this.findImagesAndWait_(this.candidates_));
 };
 goog.exportProperty(pagespeed.MobLogo.prototype, "run", pagespeed.MobLogo.prototype.run);
-pagespeed.MobLogo.prototype.psMob = function() {
-  return this.psMob_;
-};
-pagespeed.MobTheme = function(a) {
-  this.doneCallback_ = a;
-};
-pagespeed.MobTheme.synthesizeLogoSpan = function(a, b, c) {
-  var d = document.createElement(psConfigMode ? goog.dom.TagName.A : goog.dom.TagName.SPAN);
-  a && a.foregroundImage ? (a = window.psConfigMode || a.foregroundElement == a.foregroundImage ? a.foregroundImage.cloneNode(!1) : a.foregroundImage, a.removeAttribute("id")) : (a = document.createElement("span"), a.textContent = window.location.host, a.style.color = pagespeed.MobUtil.colorNumbersToString(c));
-  d.appendChild(a);
-  return new pagespeed.MobUtil.ThemeData(c, b, d, a);
-};
-pagespeed.MobTheme.removeLogoImage_ = function(a) {
-  a && a.foregroundElement && (a = a.foregroundElement, a.parentNode.removeChild(a));
-};
-pagespeed.MobTheme.createThemeData = function(a, b, c) {
-  var d = pagespeed.MobTheme.synthesizeLogoSpan(a, b, c);
-  window.psLayoutMode && pagespeed.MobTheme.removeLogoImage_(a);
-  window.psMobPrecompute && (window.psMobBackgroundColor = b, window.psMobForegroundColor = c, window.psMobLogoUrl = a ? a.foregroundImage.src : null);
-  return d;
-};
-pagespeed.MobTheme.prototype.logoComplete = function(a) {
-  if (this.doneCallback_) {
-    1 <= a.length ? (a = a[0], a = pagespeed.MobTheme.createThemeData(a.logoRecord, a.background, a.foreground)) : a = pagespeed.MobTheme.createThemeData(null, [255, 255, 255], [0, 0, 0]);
-    pagespeed.MobTheme.installLogo(a);
-    var b = this.doneCallback_;
-    this.doneCallback_ = null;
-    b(a);
-  }
-};
-pagespeed.MobTheme.installLogo = function(a) {
-  window.psConfigMode && (a.anchorOrSpan.href = "javascript:psPickLogo()");
-  a.anchorOrSpan.id = pagespeed.MobUtil.ElementId.LOGO_SPAN;
-  a.logoElement.id = pagespeed.MobUtil.ElementId.LOGO_IMAGE;
-  a.logoElement.style.backgroundColor = pagespeed.MobUtil.colorNumbersToString(a.menuBackColor);
-};
-pagespeed.MobTheme.precomputedThemeAvailable = function() {
-  return Boolean(window.psMobBackgroundColor && window.psMobForegroundColor && !window.psMobPrecompute);
-};
-pagespeed.MobTheme.extractTheme = function(a, b) {
-  if (window.psConfigMode) {
-    var c = a.psMob(), d = new pagespeed.MobTheme(b);
-    a.run(goog.bind(c.setLogoCandidatesAndShow, c, d), 5);
-  } else {
-    window.psMobBackgroundColor && window.psMobForegroundColor && !window.psMobPrecompute ? (c = null, psMobLogoUrl && (c = document.createElement(goog.dom.TagName.IMG), c.src = psMobLogoUrl, c = new pagespeed.MobLogo.LogoRecord(1, c)), c = pagespeed.MobTheme.createThemeData(c, window.psMobBackgroundColor, window.psMobForegroundColor), pagespeed.MobTheme.installLogo(c), b(c)) : (d = new pagespeed.MobTheme(b), a.run(goog.bind(d.logoComplete, d), 1));
-  }
-};
 pagespeed.MobNav = function() {
   this.headerBar_ = goog.dom.getRequiredElement(pagespeed.MobUtil.ElementId.HEADER_BAR);
   this.styleTag_ = null;
@@ -8449,10 +8395,8 @@ pagespeed.MobNav = function() {
   this.redrawNavCalled_ = !1;
   this.isAndroidBrowser_ = goog.labs.userAgent.browser.isAndroidBrowser();
   this.isOperaMini_ = -1 < navigator.userAgent.indexOf("Opera Mini");
-  this.logoChoicePopup_ = null;
 };
 pagespeed.MobNav.ARROW_ICON_ = "R0lGODlhkACQAPABAP///wAAACH5BAEAAAEALAAAAACQAJAAAAL+jI+py+0Po5y02ouz3rz7D4biSJbmiabqyrbuC8fyTNf2jef6zvf+DwwKh8Si8YhMKpfMpvMJjUqn1Kr1is1qt9yu9wsOi8fksvmMTqvX7Lb7DY/L5/S6/Y7P6/f8vh8EAJATKIhFWFhziEiluBjT6AgFGdkySclkeZmSqYnE2VnyCUokOhpSagqEmtqxytrjurnqFGtSSztLcvu0+9HLm+sbPPWbURx1XJGMPHyxLPXsEA3dLDFNXP1wzZjNsF01/W31LH6VXG6YjZ7Vu651674VG8/l2s1mL2qXn4nHD6nn3yE+Al+5+fcnQL6EBui1QcUwgb6IEvtRVGDporc/RhobKOooLRBIbSNLmjyJMqXKlSxbunwJM6bMmTRr2ryJM6fOnTx7+vwJNKjQoUSLGj2KNKnSpUybOn0KVUcBADs=";
-pagespeed.MobNav.SWAP_ICON_ = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIYAAABaCAAAAABY7nEZAAAABGdBTUEAALGPC/xhBQAAAcpJREFUaN7t2ItxgkAQgOHtADvADkwH2oHpADrADlKCdoAdaAekA0qgBEowYIZRE7jbe+xjktsCnE/m54CFm4qBxEgMIkavgwHlVQUDYHVoNTCGWZ86DYxhdudeA2OYgExiMgIyicvwziQ6wy8TCoZHJkQM10zIGG6ZUDIcMiFmYDOhZ6AymWd8ogdwY8sEvP+j6xgz4WMYM2FlLGfCzBgzqTUwiov81djWvXgb+bFzvFO26MEasqqVPkWXguBlLAbByDAFwcWwBMHDsAbBwMAEQc1ABkHKwAdByHAJgorhGAQJI/8IWC5EYmRF2KolCmN/uYX+TDBjU0dYw4UyQoJI69n/wmhKeUZ3WAMIM/rT2/34EGWc36fjXI7RlKvHU0WIcQ8CZBlTEKKMRxByjJcghBg/g5BgzATBz5gNgpmxFAQnwxAEG8McBBPDFsTzAhY7rgxEED7jxMAFQctAB0HLqPeggTFcj+NGA2Oso8o1MMZ7pcg0MFwyabDjeZgjM2F4tGEy4XnQWzNhe+0xZ8L4EmjKhPeVeDET9g+E+UwkPpdmMpH5ePyVidin9GsmkouFp0yE1yxTJuJLp+9MNKzg2ipPC8nE+LuMLwqlrYBVqy8VAAAAAElFTkSuQmCC";
 pagespeed.MobNav.prototype.findElementsToOffsetHelper_ = function(a, b) {
   if (!a.className || a.className != pagespeed.MobUtil.ElementId.PROGRESS_SCRIM && !goog.string.startsWith(a.className, "psmob-") && !goog.string.startsWith(a.id, "psmob-")) {
     var c = window.getComputedStyle(a), d = c.getPropertyValue("position");
@@ -8546,9 +8490,17 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(a) {
   document.body.insertBefore(this.spacerDiv_, document.body.childNodes[0]);
   document.body.insertBefore(this.headerBar_, this.spacerDiv_);
   window.psLabeledMode && goog.dom.classlist.add(this.headerBar_, pagespeed.MobUtil.ElementClass.LABELED);
+  window.psConfigMode && goog.dom.classlist.add(this.headerBar_, pagespeed.MobUtil.ElementClass.THEME_CONFIG);
   this.navPanel_ && !window.psLabeledMode && (this.menuButton_ = new mob.button.Menu(a.menuFrontColor, goog.bind(this.toggleNavPanel_, this)), this.headerBar_.appendChild(this.menuButton_.el));
-  this.logoSpan_ = a.anchorOrSpan;
-  this.headerBar_.appendChild(a.anchorOrSpan);
+  if (a.logoUrl) {
+    this.logoSpan_ = document.createElement(goog.dom.TagName.SPAN);
+    this.logoSpan_.id = pagespeed.MobUtil.ElementId.LOGO_SPAN;
+    var b = document.createElement(goog.dom.TagName.IMG);
+    b.src = a.logoUrl;
+    b.id = pagespeed.MobUtil.ElementId.LOGO_IMAGE;
+    this.logoSpan_.appendChild(b);
+    this.headerBar_.appendChild(this.logoSpan_);
+  }
   this.headerBar_.style.borderBottomColor = pagespeed.MobUtil.colorNumbersToString(a.menuFrontColor);
   this.headerBar_.style.backgroundColor = pagespeed.MobUtil.colorNumbersToString(a.menuBackColor);
   window.psPhoneNumber && (this.dialer_ = new mob.button.Dialer(a.menuFrontColor, window.psPhoneNumber, window.psConversionId, window.psPhoneConversionLabel), this.headerBar_.appendChild(this.dialer_.el));
@@ -8626,67 +8578,110 @@ pagespeed.MobNav.prototype.addNavButtonEvents_ = function() {
     }, !1);
   }
 };
-pagespeed.MobNav.prototype.Run = function(a) {
+pagespeed.MobNav.prototype.run = function(a) {
   pagespeed.MobUtil.inFriendlyIframe() || (this.clampZIndex_(), this.findElementsToOffset_(), this.addHeaderBar_(a), this.navPanel_ && (document.body.appendChild(this.navPanel_), this.addNavPanel_(a), this.addNavButtonEvents_()), pagespeed.MobUtil.sendBeacon(pagespeed.MobUtil.BeaconEvents.NAV_DONE), window.addEventListener(goog.events.EventType.LOAD, goog.bind(this.redrawHeader_, this)));
 };
-pagespeed.MobNav.prototype.updateHeaderBar = function(a, b) {
-  if (b.logoImage()) {
-    var c = pagespeed.MobUtil.colorNumbersToString(b.menuFrontColor), d = pagespeed.MobUtil.colorNumbersToString(b.menuBackColor), e = a.document.getElementById(pagespeed.MobUtil.ElementId.LOGO_IMAGE);
-    e && (e.parentNode.replaceChild(b.logoElement, e), this.headerBar_ && (this.headerBar_.style.backgroundColor = d), this.logoSpan_.style.backgroundColor = d);
-    for (var d = a.document.getElementsByClassName(pagespeed.MobUtil.ElementClass.HAMBURGER_LINE), e = 0, f;f = d[e];++e) {
-      f.style.backgroundColor = c;
-    }
+pagespeed.MobNav.prototype.updateTheme = function(a) {
+  this.headerBar_.remove();
+  this.spacerDiv_.remove();
+  this.spacerDiv_ = document.createElement(goog.dom.TagName.DIV);
+  this.spacerDiv_.id = pagespeed.MobUtil.ElementId.SPACER;
+  this.headerBar_ = document.createElement(goog.dom.TagName.HEADER);
+  this.headerBar_.id = pagespeed.MobUtil.ElementId.HEADER_BAR;
+  this.addHeaderBar_(a);
+};
+pagespeed.MobTheme = function(a) {
+  this.doneCallback_ = a;
+};
+pagespeed.MobTheme.createThemeData = function(a, b, c) {
+  var d = new pagespeed.MobUtil.ThemeData(a, b, c);
+  window.psMobPrecompute && (window.psMobLogoUrl = a, window.psMobBackgroundColor = b, window.psMobForegroundColor = c);
+  return d;
+};
+pagespeed.MobTheme.prototype.logoComplete = function(a) {
+  if (this.doneCallback_) {
+    1 <= a.length ? (a = a[0], a = pagespeed.MobTheme.createThemeData(a.logoRecord.logoElement.src, a.background, a.foreground)) : a = pagespeed.MobTheme.createThemeData(null, [255, 255, 255], [0, 0, 0]);
+    var b = this.doneCallback_;
+    this.doneCallback_ = null;
+    b(a);
   }
 };
-pagespeed.MobNav.prototype.chooserShowCandidates = function(a) {
-  function b() {
+pagespeed.MobTheme.precomputedThemeAvailable = function() {
+  return Boolean(window.psMobBackgroundColor && window.psMobForegroundColor && !window.psMobPrecompute);
+};
+pagespeed.MobTheme.extractTheme = function(a, b) {
+  if (window.psMobBackgroundColor && window.psMobForegroundColor && !window.psMobPrecompute) {
+    var c = pagespeed.MobTheme.createThemeData(window.psMobLogoUrl, window.psMobBackgroundColor, window.psMobForegroundColor);
+    b(c);
+  } else {
+    c = new pagespeed.MobTheme(b), a.run(goog.bind(c.logoComplete, c), 1);
+  }
+};
+mob.ThemePicker = function() {
+  this.logoChoicePopup_ = null;
+  this.mobNav_ = new pagespeed.MobNav;
+  this.logoCandidates_ = null;
+};
+mob.ThemePicker.SWAP_ICON_ = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIYAAABaCAAAAABY7nEZAAAABGdBTUEAALGPC/xhBQAAAcpJREFUaN7t2ItxgkAQgOHtADvADkwH2oHpADrADlKCdoAdaAekA0qgBEowYIZRE7jbe+xjktsCnE/m54CFm4qBxEgMIkavgwHlVQUDYHVoNTCGWZ86DYxhdudeA2OYgExiMgIyicvwziQ6wy8TCoZHJkQM10zIGG6ZUDIcMiFmYDOhZ6AymWd8ogdwY8sEvP+j6xgz4WMYM2FlLGfCzBgzqTUwiov81djWvXgb+bFzvFO26MEasqqVPkWXguBlLAbByDAFwcWwBMHDsAbBwMAEQc1ABkHKwAdByHAJgorhGAQJI/8IWC5EYmRF2KolCmN/uYX+TDBjU0dYw4UyQoJI69n/wmhKeUZ3WAMIM/rT2/34EGWc36fjXI7RlKvHU0WIcQ8CZBlTEKKMRxByjJcghBg/g5BgzATBz5gNgpmxFAQnwxAEG8McBBPDFsTzAhY7rgxEED7jxMAFQctAB0HLqPeggTFcj+NGA2Oso8o1MMZ7pcg0MFwyabDjeZgjM2F4tGEy4XnQWzNhe+0xZ8L4EmjKhPeVeDET9g+E+UwkPpdmMpH5ePyVidin9GsmkouFp0yE1yxTJuJLp+9MNKzg2ipPC8nE+LuMLwqlrYBVqy8VAAAAAElFTkSuQmCC";
+mob.ThemePicker.prototype.run = function() {
+  window.addEventListener(goog.events.EventType.DOMCONTENTLOADED, goog.bind(this.extractThemes_, this));
+};
+mob.ThemePicker.prototype.extractThemes_ = function() {
+  (new pagespeed.MobLogo).run(goog.bind(this.logoDone_, this), 5);
+};
+mob.ThemePicker.prototype.logoDone_ = function(a) {
+  this.logoCandidates_ = a;
+  0 == this.logoCandidates_.length ? console.log("No logos detected.") : (a = this.logoCandidates_[0], a = new pagespeed.MobUtil.ThemeData(a.logoRecord.foregroundImage.src, a.background, a.foreground), this.mobNav_.run(a), this.chooserShowCandidates_());
+};
+mob.ThemePicker.prototype.chooserShowCandidates_ = function() {
+  function a() {
     var a = document.createElement(goog.dom.TagName.TD);
-    e.appendChild(a);
+    d.appendChild(a);
     return a;
   }
   if (this.logoChoicePopup_) {
     this.chooserDismissLogoChoicePopup_();
   } else {
-    var c = document.createElement(goog.dom.TagName.TABLE);
-    c.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_TABLE;
-    var d = document.createElement(goog.dom.TagName.THEAD);
+    var b = document.createElement(goog.dom.TagName.TABLE);
+    b.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_TABLE;
+    var c = document.createElement(goog.dom.TagName.THEAD);
+    b.appendChild(c);
+    var d = document.createElement(goog.dom.TagName.TR);
     c.appendChild(d);
-    var e = document.createElement(goog.dom.TagName.TR);
-    d.appendChild(e);
-    e.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_COLUMN_HEADER;
-    b().textContent = "Logo";
-    b().textContent = "Foreground";
-    b().textContent = "";
-    b().textContent = "Background";
-    d = document.createElement(goog.dom.TagName.TBODY);
-    c.appendChild(d);
-    for (var f = 0;f < a.length;++f) {
-      e = document.createElement(goog.dom.TagName.TR);
-      e.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_CHOICE;
-      d.appendChild(e);
-      var g = a[f], h = pagespeed.MobTheme.synthesizeLogoSpan(g.logoRecord, g.background, g.foreground);
-      b().appendChild(h.anchorOrSpan);
-      h = h.logoElement;
-      h.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_IMAGE;
-      h.onclick = goog.bind(this.chooserSetLogo_, this, g);
-      h = b();
-      h.style.backgroundColor = goog.color.rgbArrayToHex(g.foreground);
+    d.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_COLUMN_HEADER;
+    a().textContent = "Logo";
+    a().textContent = "Foreground";
+    a().textContent = "";
+    a().textContent = "Background";
+    c = document.createElement(goog.dom.TagName.TBODY);
+    b.appendChild(c);
+    for (var e = 0;e < this.logoCandidates_.length;++e) {
+      d = document.createElement(goog.dom.TagName.TR);
+      d.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_CHOICE;
+      c.appendChild(d);
+      var f = this.logoCandidates_[e], g = document.createElement(goog.dom.TagName.IMG);
+      g.src = f.logoRecord.foregroundImage.src;
+      a().appendChild(g);
+      g.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_IMAGE;
+      g.onclick = goog.bind(this.chooserSetLogo_, this, f);
+      g = a();
+      g.style.backgroundColor = goog.color.rgbArrayToHex(f.foreground);
+      g.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_COLOR;
+      var h = a();
       h.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_COLOR;
-      var k = b();
-      k.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_COLOR;
-      var l = document.createElement(goog.dom.TagName.IMG);
-      l.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_SWAP;
-      l.src = pagespeed.MobNav.SWAP_ICON_;
-      k.appendChild(l);
-      l = b();
-      l.style.backgroundColor = goog.color.rgbArrayToHex(g.background);
-      l.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_SWAP;
-      k.onclick = goog.bind(this.chooserSwapColors_, this, g, h, l);
+      var k = document.createElement(goog.dom.TagName.IMG);
+      k.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_SWAP;
+      k.src = mob.ThemePicker.SWAP_ICON_;
+      h.appendChild(k);
+      k = a();
+      k.style.backgroundColor = goog.color.rgbArrayToHex(f.background);
+      k.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_SWAP;
+      h.onclick = goog.bind(this.chooserSwapColors_, this, f, g, k);
     }
-    this.chooserDisplayPopup_(c);
+    this.chooserDisplayPopup_(b);
   }
 };
-pagespeed.MobNav.prototype.chooserDisplayPopup_ = function(a) {
+mob.ThemePicker.prototype.chooserDisplayPopup_ = function(a) {
   a.style.visibility = "hidden";
   document.body.appendChild(a);
   var b = 2 / 3, c = window.innerWidth * b / a.offsetWidth, b = Math.round(.5 * (1 - b) * window.innerWidth) + "px", c = "scale(" + c + ") translate(" + b + "," + b + ")";
@@ -8696,17 +8691,16 @@ pagespeed.MobNav.prototype.chooserDisplayPopup_ = function(a) {
   null != this.logoChoicePopup_ && this.logoChoicePopup_.parentNode.removeChild(this.logoChoicePopup_);
   this.logoChoicePopup_ = a;
 };
-pagespeed.MobNav.prototype.chooserSetLogo_ = function(a) {
-  a = pagespeed.MobTheme.createThemeData(a.logoRecord, a.background, a.foreground);
-  pagespeed.MobTheme.installLogo(a);
-  this.updateHeaderBar(window, a);
-  this.addThemeColor_(a);
+mob.ThemePicker.prototype.chooserSetLogo_ = function(a) {
+  a = new pagespeed.MobUtil.ThemeData(a.logoRecord.foregroundImage.src, a.background, a.foreground);
+  this.mobNav_.updateTheme(a);
+  document.getElementById(pagespeed.MobUtil.ElementId.LOGO_SPAN).addEventListener(goog.events.EventType.CLICK, goog.bind(this.chooserShowCandidates_, this));
   var b = document.createElement(goog.dom.TagName.PRE);
   b.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_CONFIG_FRAGMENT;
-  b.textContent = 'ModPagespeedMobTheme "\n    ' + goog.color.rgbArrayToHex(a.menuBackColor) + "\n    " + goog.color.rgbArrayToHex(a.menuFrontColor) + "\n    " + a.logoElement.src + '"';
+  b.textContent = 'ModPagespeedMobTheme "\n    ' + goog.color.rgbArrayToHex(a.menuBackColor) + "\n    " + goog.color.rgbArrayToHex(a.menuFrontColor) + "\n    " + a.logoUrl + '"';
   this.chooserDisplayPopup_(b);
 };
-pagespeed.MobNav.prototype.chooserSwapColors_ = function(a, b, c) {
+mob.ThemePicker.prototype.chooserSwapColors_ = function(a, b, c) {
   var d = a.background;
   a.background = a.foreground;
   a.foreground = d;
@@ -8714,7 +8708,7 @@ pagespeed.MobNav.prototype.chooserSwapColors_ = function(a, b, c) {
   b.style["background-color"] = c.style["background-color"];
   c.style["background-color"] = d;
 };
-pagespeed.MobNav.prototype.chooserDismissLogoChoicePopup_ = function() {
+mob.ThemePicker.prototype.chooserDismissLogoChoicePopup_ = function() {
   this.logoChoicePopup_ && (this.logoChoicePopup_.parentNode.removeChild(this.logoChoicePopup_), this.logoChoicePopup_ = null);
 };
 pagespeed.Mob = function() {
@@ -8732,15 +8726,27 @@ pagespeed.Mob = function() {
   this.configUrls_ = [];
   this.configThemes_ = [];
   this.mobNav_ = null;
-  this.mobLogo_ = new pagespeed.MobLogo(this);
-  this.logoCandidates_ = null;
+  this.mobLogo_ = new pagespeed.MobLogo;
 };
-pagespeed.Mob.PROGRESS_SAVE_VISIBLITY_ = "data-ps-save-visibility";
 pagespeed.Mob.CONFIG_QUERY_SITE_WIDE_PROCESS_ = "PageSpeedSiteWideProcessing";
 pagespeed.Mob.CONFIG_MAX_TIME_MS_ = 1E4;
 pagespeed.Mob.CONFIG_MAX_NUM_LINKS_ = 100;
 pagespeed.Mob.IN_TRANSIT_ = new pagespeed.MobUtil.Dimensions(-1, -1);
 pagespeed.Mob.COST_PER_IMAGE_ = 1E3;
+pagespeed.Mob.prototype.initialize = function() {
+  if (window.psConfigMode) {
+    (new mob.ThemePicker).run();
+  } else {
+    if (window.psMobBackgroundColor && window.psMobForegroundColor) {
+      var a = new pagespeed.MobUtil.ThemeData(window.psMobLogoUrl, window.psMobForegroundColor, window.psMobBackgroundColor);
+      this.mobNav_ = new pagespeed.MobNav;
+      this.mobNav_.run(a);
+    } else {
+      window.addEventListener(goog.events.EventType.DOMCONTENTLOADED, goog.bind(this.extractTheme_, this));
+    }
+    window.psLayoutMode && window.addEventListener(goog.events.EventType.LOAD, goog.bind(this.initiateMobilization, this));
+  }
+};
 pagespeed.Mob.prototype.mobilizeSite_ = function() {
   0 == this.pendingImageLoadCount_ ? (pagespeed.MobUtil.consoleLog("mobilizing site"), window.psNavMode && !pagespeed.MobUtil.inFriendlyIframe() || this.maybeRunLayout()) : this.mobilizeAfterImageLoad_ = !0;
 };
@@ -8748,13 +8754,13 @@ pagespeed.Mob.prototype.themeComplete_ = function(a) {
   --this.pendingCallbacks_;
   this.updateProgressBar(this.domElementCount_, "extract theme");
   this.mobNav_ = new pagespeed.MobNav;
-  this.mobNav_.Run(a);
+  this.mobNav_.run(a);
   this.updateProgressBar(this.domElementCount_, "navigation");
   this.maybeRunLayout();
   var b = this.psMobForMasterWindow_();
   if (b && 0 <= b.configNumUrlsToProcess_) {
     if (this.inPsIframeWindow_()) {
-      this.mobNav_.updateHeaderBar(this.masterWindow_(), a);
+      this.mobNav_.updateTheme(a);
     } else {
       var c = document.createElement(goog.dom.TagName.IFRAME);
       c.id = pagespeed.MobUtil.ElementId.CONFIG_IFRAME;
@@ -8843,11 +8849,6 @@ pagespeed.Mob.prototype.setDebugMode = function(a) {
   b && (b.style.color = a ? "#333" : "white");
   a && (a = document.getElementById(pagespeed.MobUtil.ElementId.PROGRESS_SHOW_LOG)) && (a.style.display = "none");
 };
-pagespeed.Mob.prototype.getVisibility = function(a) {
-  var b = a.getAttribute(pagespeed.Mob.PROGRESS_SAVE_VISIBLITY_);
-  b || ((a = window.getComputedStyle(a)) && (b = a.getPropertyValue("visibility")), b || (b = "visible"));
-  return b;
-};
 pagespeed.Mob.prototype.updateProgressBar = function(a, b) {
   this.workDone_ += a;
   var c = 100;
@@ -8882,16 +8883,6 @@ pagespeed.Mob.prototype.extractTheme_ = function() {
   }
 };
 window.psMob = new pagespeed.Mob;
-pagespeed.Mob.prototype.showLogoCandidates = function() {
-  null != this.logoCandidates_ && 0 < this.logoCandidates_.length && this.mobNav_.chooserShowCandidates(this.logoCandidates_);
-};
-pagespeed.Mob.prototype.setLogoCandidatesAndShow = function(a, b) {
-  this.logoCandidates_ = b;
-  a.logoComplete(b);
-  this.mobNav_.chooserShowCandidates(b);
-};
-window.addEventListener(goog.events.EventType.DOMCONTENTLOADED, goog.bind(window.psMob.extractTheme_, window.psMob));
-window.addEventListener(goog.events.EventType.LOAD, goog.bind(window.psMob.initiateMobilization, window.psMob));
 function psSetDebugMode() {
   window.psMob.setDebugMode(!0);
 }
@@ -8900,10 +8891,6 @@ function psRemoveProgressBar() {
   window.psMob.removeProgressBar();
 }
 goog.exportSymbol("psRemoveProgressBar", psRemoveProgressBar);
-function psPickLogo() {
-  window.psMob.showLogoCandidates();
-}
-goog.exportSymbol("psPickLogo", psPickLogo);
 pagespeed.Mob.prototype.inPsIframeWindow_ = function() {
   return pagespeed.MobUtil.inFriendlyIframe() && goog.isDefAndNotNull(window.frameElement) && window.frameElement.id == pagespeed.MobUtil.ElementId.CONFIG_IFRAME;
 };
@@ -8917,7 +8904,7 @@ pagespeed.Mob.prototype.showSiteWideThemes_ = function() {
   var a = this.psMobForMasterWindow_();
   if (a && a.configThemes_ && 0 != a.configThemes_.length) {
     for (var b = {}, c, d = 0;c = a.configThemes_[d];++d) {
-      var e = c.logoImage();
+      var e = c.logoUrl;
       e && (e = e + pagespeed.MobUtil.colorNumbersToString(c.menuFrontColor) + pagespeed.MobUtil.colorNumbersToString(c.menuBackColor), b[e] ? ++b[e].count : b[e] = {themeData:c, count:1});
     }
     a = goog.object.getValues(b);
@@ -8928,19 +8915,19 @@ pagespeed.Mob.prototype.showSiteWideThemes_ = function() {
       if (a.count > b.count) {
         return -1;
       }
-      var c = a.themeData.logoImage(), d = b.themeData.logoImage();
+      var c = a.themeData.logoUrl, d = b.themeData.logoUrl;
       return c < d ? -1 : c > d ? 1 : 0;
     });
     b = "\nFinish site-wide theme extraction. ";
     if (0 < a.length) {
       b += "Found " + a.length + " logo images. Details are shown below:\n";
-      this.mobNav_.updateHeaderBar(this.masterWindow_(), a[0].themeData);
+      this.mobNav_.updateTheme(a[0].themeData);
       for (d in a) {
-        c = a[d].themeData, b += '"' + pagespeed.MobUtil.colorNumbersToString(c.menuBackColor) + " " + pagespeed.MobUtil.colorNumbersToString(c.menuFrontColor) + " " + c.logoImage() + '" COUNT: ' + a[d].count + "\n";
+        c = a[d].themeData, b += '"' + pagespeed.MobUtil.colorNumbersToString(c.menuBackColor) + " " + pagespeed.MobUtil.colorNumbersToString(c.menuFrontColor) + " " + c.logoUrl + '" COUNT: ' + a[d].count + "\n";
       }
       b += "\n";
       for (d in a) {
-        c = a[d].themeData, b += 'ModPagespeedMobTheme "\n    ' + goog.color.rgbArrayToHex(c.menuBackColor) + "\n    " + goog.color.rgbArrayToHex(c.menuFrontColor) + "\n    " + c.logoImage() + '"\n';
+        c = a[d].themeData, b += 'ModPagespeedMobTheme "\n    ' + goog.color.rgbArrayToHex(c.menuBackColor) + "\n    " + goog.color.rgbArrayToHex(c.menuFrontColor) + "\n    " + c.logoUrl + '"\n';
       }
     } else {
       b += "No logo was found.";
@@ -8986,4 +8973,8 @@ pagespeed.Mob.prototype.collectUrlsFromSubTree_ = function(a, b, c) {
     }
   }
 };
+pagespeed.Mob.start = function() {
+  (new pagespeed.Mob).initialize();
+};
+goog.exportSymbol("pagespeed.Mob.start", pagespeed.Mob.start);
 })();

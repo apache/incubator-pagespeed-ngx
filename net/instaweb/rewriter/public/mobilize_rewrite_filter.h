@@ -91,6 +91,7 @@ class MobilizeRewriteFilter : public CommonFilter {
   virtual void DetermineEnabled(GoogleString* disabled_reason);
   virtual void StartDocumentImpl();
   virtual void EndDocument();
+  virtual void RenderDone();
   virtual void StartElementImpl(HtmlElement* element);
   virtual void EndElementImpl(HtmlElement* element);
   virtual void Characters(HtmlCharactersNode* characters);
@@ -102,7 +103,6 @@ class MobilizeRewriteFilter : public CommonFilter {
                         HtmlElement* element);
   void AddStyle(HtmlElement* element);
   MobileRole::Level GetMobileRole(HtmlElement* element);
-  void AddStaticScript(StringPiece script);
 
   bool CheckForKeyword(
       const HtmlName::Keyword* sorted_list, int len, HtmlName::Keyword keyword);
@@ -114,11 +114,11 @@ class MobilizeRewriteFilter : public CommonFilter {
   bool added_viewport_;
   bool added_style_;
   bool added_containers_;
-  bool added_mob_js_;
   bool added_progress_;
   bool added_spacer_;
   bool config_mode_;
   bool in_script_;
+  bool saw_end_document_;
   bool use_js_layout_;
   bool use_js_nav_;
   bool labeled_mode_;

@@ -221,9 +221,12 @@ body.mob-iframe {
   flex: 1;
 }
 
+#psmob-header-bar.psmob-theme-config #psmob-logo-span {
+  display: block;
+}
+
 #psmob-logo-image {
-  /* 56px header bar height. */
-  height: 30px;
+  height: 100%;
   width: auto;
   padding-top: 10px;
   padding-bottom: 10px;

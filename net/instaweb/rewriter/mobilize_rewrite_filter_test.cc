@@ -148,7 +148,8 @@ class MobilizeRewriteFilterTest : public RewriteTestBase {
   }
 
   GoogleString ScriptsAtEndOfBody() const {
-    return "<script src=\"/psajs/mobilize.0.js\"></script>";
+    return "<script src=\"/psajs/mobilize.0.js\"></script>"
+           "<script>pagespeed.Mob.start();</script>";
   }
 
   GoogleString Spacer() const {
@@ -247,7 +248,7 @@ class MobilizeRewriteFunctionalTest : public MobilizeRewriteFilterTest {
 
   virtual void SetUp() {
     MobilizeRewriteFilterTest::SetUp();
-    html_parse()->AddFilter(filter_.get());
+    rewrite_driver()->AppendUnownedPreRenderFilter(filter_.get());
     // By default we *don't* add the progress bar scrim.  This explicitly gets
     // overridden in subclasses.
     FilterSetAddedProgress(true);
@@ -306,9 +307,9 @@ class MobilizeRewriteFunctionalTest : public MobilizeRewriteFilterTest {
     GoogleString original =
         StrCat("\n<body>\n", first_body,
                "\n</body>\n<body>\n", second_body, "\n</body>\n");
-    GoogleString expected = StrCat(
-        "\n<body>", Spacer(), "\n", first_body, "\n", ScriptsAtEndOfBody(),
-        "</body>\n<body>\n", second_body, "\n</body>\n");
+    GoogleString expected =
+        StrCat("\n<body>", Spacer(), "\n", first_body, "\n</body>\n<body>\n",
+               second_body, "\n", ScriptsAtEndOfBody(), "</body>\n");
     ValidateExpected(name, original, expected);
     CheckVariable(MobilizeRewriteFilter::kPagesMobilized, 1);
   }
@@ -428,9 +429,9 @@ TEST_F(MobilizeRewriteFunctionalTest, MultipleHeads) {
   // Check we only add the style and viewport tag once.
   const char kRestOfHeads[] = "</head><head></head>";
   GoogleString original = StrCat("<head>", kRestOfHeads);
-  GoogleString expected = StrCat(
-      "<head>", HeadAndViewport(LayoutMode()), Styles(LayoutMode()),
-      kRestOfHeads);
+  GoogleString expected =
+      StrCat("<head>", HeadAndViewport(LayoutMode()), Styles(LayoutMode()),
+             kRestOfHeads, ScriptsAtEndOfBody());
   ValidateExpected("multiple_heads", original, expected);
   CheckVariable(MobilizeRewriteFilter::kPagesMobilized, 1);
   CheckVariable(MobilizeRewriteFilter::kKeeperBlocks, 0);
