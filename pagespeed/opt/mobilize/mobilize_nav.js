@@ -733,7 +733,7 @@ pagespeed.MobNav.prototype.addNavPanel_ = function(themeData) {
  * @private
  */
 pagespeed.MobNav.prototype.toggleNavPanel_ = function() {
-  pagespeed.MobUtil.sendBeacon(
+  pagespeed.MobUtil.sendBeaconEvent(
       (goog.dom.classlist.contains(this.navPanel_, 'open') ?
            pagespeed.MobUtil.BeaconEvents.MENU_BUTTON_CLOSE :
            pagespeed.MobUtil.BeaconEvents.MENU_BUTTON_OPEN));
@@ -794,7 +794,7 @@ pagespeed.MobNav.prototype.run = function(themeData) {
     this.addNavButtonEvents_();
   }
 
-  pagespeed.MobUtil.sendBeacon(pagespeed.MobUtil.BeaconEvents.NAV_DONE);
+  pagespeed.MobUtil.sendBeaconEvent(pagespeed.MobUtil.BeaconEvents.NAV_DONE);
 
   window.addEventListener(goog.events.EventType.LOAD,
       goog.bind(this.redrawHeader_, this));

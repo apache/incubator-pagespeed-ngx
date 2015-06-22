@@ -212,8 +212,8 @@ mob.button.Map.LABEL_ = 'GET DIRECTIONS';
 
 /** @override */
 mob.button.Map.prototype.clickHandler = function() {
-  pagespeed.MobUtil.sendBeacon(pagespeed.MobUtil.BeaconEvents.MAP_BUTTON,
-                               goog.bind(this.openMap_, this));
+  pagespeed.MobUtil.sendBeaconEvent(pagespeed.MobUtil.BeaconEvents.MAP_BUTTON,
+                                    goog.bind(this.openMap_, this));
 };
 
 
@@ -396,16 +396,17 @@ mob.button.Dialer.prototype.createButton = function() {
 /** @override */
 mob.button.Dialer.prototype.clickHandler = function(e) {
   if (this.googleVoicePhoneNumber_) {
-    pagespeed.MobUtil.sendBeacon(pagespeed.MobUtil.BeaconEvents.PHONE_BUTTON,
-                                 goog.bind(this.dialPhone_, this));
+    pagespeed.MobUtil.sendBeaconEvent(
+        pagespeed.MobUtil.BeaconEvents.PHONE_BUTTON,
+        goog.bind(this.dialPhone_, this));
   } else {
     // We are going to need to request the phone number from google voice, so
     // make the 204 beacon request alongside the jsonp request for the phone
     // number.
-    pagespeed.MobUtil.sendBeacon(pagespeed.MobUtil.BeaconEvents.PHONE_BUTTON);
+    pagespeed.MobUtil.sendBeaconEvent(
+        pagespeed.MobUtil.BeaconEvents.PHONE_BUTTON);
     this.requestPhoneNumberAndDial_();
   }
-
 };
 
 
@@ -473,7 +474,7 @@ mob.button.Dialer.prototype.dialPhone_ = function() {
  */
 mob.button.Dialer.prototype.receivePhoneNumber_ = function(json) {
   var responseTime = Date.now() - this.jsonpTime_;
-  pagespeed.MobUtil.sendBeacon(
+  pagespeed.MobUtil.sendBeaconEvent(
       pagespeed.MobUtil.BeaconEvents.CALL_CONVERSION_RESPONSE, null,
       '&t=' + responseTime);
   var wcm = json && json['wcm'];

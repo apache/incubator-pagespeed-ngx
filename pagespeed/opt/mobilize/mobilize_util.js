@@ -887,39 +887,57 @@ pagespeed.MobUtil.BeaconEvents = {
 
 /**
  * Track a mobilization event by sending to the beacon handler specified via
- * RewriteOption MobBeaconUrl. The resulting image gets attached to the window
- * to make sure it doesn't go out of scope before the browser can send the
- * request.
- * TODO(jmarantz): rename pagespeed.MobUtil.sendBeacon to sendPing or track, as
- * not to confuse with specific implementation
-  (https://developer.mozilla.org/en-US/docs/Web/API/Navigator/sendBeacon).
+ * RewriteOption MobBeaconUrl. This will wait at most 500ms before calling
+ * opt_callback to balance giving the browser enough time to send the event, but
+ * not blocking the event on slow network requests.
  * @param {pagespeed.MobUtil.BeaconEvents} beaconEvent Identifier for the event
  *     being tracked.
  * @param {?Function=} opt_callback Optional callback to be run when the 204
- *     finishes loading.
+ *     finishes loading, or 500ms have elapsed, whichever happens first.
  * @param {string=} opt_additionalParams An additional string to be added to the
  * end of the request.
  */
-pagespeed.MobUtil.sendBeacon = function(beaconEvent, opt_callback,
-                                        opt_additionalParams) {
-  if (window.psMobBeaconUrl) {
-    var pingUrl = window.psMobBeaconUrl + '?id=psmob' +
-                  '&url=' + encodeURIComponent(document.URL) + '&el=' +
-                  beaconEvent;
-    if (opt_additionalParams) {
-      pingUrl += opt_additionalParams;
-    }
-    if (!window['psmob_image_requests']) {
-      window['psmob_image_requests'] = [];
-    }
-    var img = document.createElement(goog.dom.TagName.IMG);
+pagespeed.MobUtil.sendBeaconEvent = function(beaconEvent, opt_callback,
+                                             opt_additionalParams) {
+  if (!window.psMobBeaconUrl) {
     if (opt_callback) {
-      img.addEventListener(goog.events.EventType.LOAD, opt_callback);
-      img.addEventListener(goog.events.EventType.ERROR, opt_callback);
+      opt_callback();
+      return;
     }
-    img.src = pingUrl;
-    window['psmob_image_requests'].push(img);
-  } else if (opt_callback) {
-    opt_callback();
   }
+
+  var pingUrl = window.psMobBeaconUrl + '?id=psmob' +
+                '&url=' + encodeURIComponent(document.URL) + '&el=' +
+                beaconEvent;
+  if (opt_additionalParams) {
+    pingUrl += opt_additionalParams;
+  }
+  var img = document.createElement(goog.dom.TagName.IMG);
+  img.src = pingUrl;
+
+  // Ensure that the callback is only called once, even though it can be called
+  // from either the beacon being loaded or from a 500ms timeout.
+  if (opt_callback) {
+    var callbackRunner = pagespeed.MobUtil.runCallbackOnce_(opt_callback);
+    img.addEventListener(goog.events.EventType.LOAD, callbackRunner);
+    img.addEventListener(goog.events.EventType.ERROR, callbackRunner);
+    window.setTimeout(callbackRunner, 500);
+  }
+};
+
+
+/**
+ * Ensure that the provided callback only gets run once.
+ * @param {!Function} callback
+ * @return {!function()}
+ * @private
+ */
+pagespeed.MobUtil.runCallbackOnce_ = function(callback) {
+  var callbackCalled = false;
+  return function() {
+    if (!callbackCalled) {
+      callbackCalled = true;
+      callback();
+    }
+  };
 };
