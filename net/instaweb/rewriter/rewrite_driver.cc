@@ -1488,8 +1488,8 @@ CacheUrlAsyncFetcher* RewriteDriver::CreateCustomCacheFetcher(
 
 CacheUrlAsyncFetcher* RewriteDriver::CreateCacheFetcher() {
   if (options()->mob_iframe() && !options()->mob_config()) {
-    IframeFetcher* ifetcher = new IframeFetcher;
-    ifetcher->set_options(options());
+    IframeFetcher* ifetcher = new IframeFetcher(
+        options(), server_context_->user_agent_matcher());
     CacheUrlAsyncFetcher* cache_fetcher = CreateCustomCacheFetcher(ifetcher);
     cache_fetcher->set_own_fetcher(true);
     return cache_fetcher;

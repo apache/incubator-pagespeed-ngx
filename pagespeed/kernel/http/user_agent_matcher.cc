@@ -250,6 +250,42 @@ const char* kMobileUserAgentBlacklist[] = {
   "*Mozilla*Android*Kindle Fire*Mobile*"
 };
 
+// Whitelist used for mobilization.
+const char* kMobilizationUserAgentWhitelist[] = {
+  "*Android*",
+  "*Chrome/*",
+  "*Firefox/*",
+  "*iPad*",
+  "*iPhone*",
+  "*iPod*",
+  "*Opera*",
+  "*Safari*",
+  "*Wget*",
+  "*CriOS/*",                  // Chrome for iOS.
+  "*Android *",                // Native Android browser (see blacklist below).
+  "*iPhone*",
+};
+
+// Blacklist used for doing the mobilization UA check.
+const char* kMobilizationUserAgentBlacklist[] = {
+  "*Android 0.*",
+  "*Android 1.*",
+  "*Android 2.*",
+  "*BlackBerry*",
+  "*Mozilla*Android*Silk*Mobile*",
+  "*Mozilla*Android*Kindle Fire*Mobile*"
+  "*Opera Mobi*",
+  "*Opera Mini*",
+  "*SymbianOS*",
+  "*UP.Browser*",
+  "*J-PHONE*",
+  "*Profile/MIDP*",
+  "*profile/MIDP*",
+  "*portalmmm*",
+  "*DoCoMo*",
+  "*Obigo*"
+};
+
 // TODO(mmohabey): Tune this to include more browsers.
 const char* kSupportsPrefetchImageTag[] = {
   "*Chrome/*",
@@ -389,6 +425,14 @@ UserAgentMatcher::UserAgentMatcher()
   }
   for (int i = 0, n = arraysize(kTabletUserAgentWhitelist); i < n; ++i) {
     tablet_user_agents_.Allow(kTabletUserAgentWhitelist[i]);
+  }
+  for (int i = 0, n = arraysize(kMobilizationUserAgentWhitelist); i < n;
+       ++i) {
+    mobilization_user_agents_.Allow(kMobilizationUserAgentWhitelist[i]);
+  }
+  for (int i = 0, n = arraysize(kMobilizationUserAgentBlacklist); i < n;
+       ++i) {
+    mobilization_user_agents_.Disallow(kMobilizationUserAgentBlacklist[i]);
   }
   for (int i = 0, n = arraysize(kIeUserAgents); i < n; ++i) {
     ie_user_agents_.Allow(kIeUserAgents[i]);
@@ -638,4 +682,10 @@ bool UserAgentMatcher::UserAgentExceedsChromeBuildAndPatch(
 
   return true;
 }
+
+bool UserAgentMatcher::SupportsMobilization(
+    StringPiece user_agent) const {
+  return mobilization_user_agents_.Match(user_agent, false);
+}
+
 }  // namespace net_instaweb

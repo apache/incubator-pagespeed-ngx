@@ -159,6 +159,7 @@
         'rewriter/google_font_css_inline_filter_test.cc',
         'rewriter/google_font_service_input_resource_test.cc',
         'rewriter/handle_noscript_redirect_filter_test.cc',
+        'rewriter/iframe_fetcher_test.cc',
         'rewriter/image_combine_filter_test.cc',
         'rewriter/image_endian_test.cc',
         'rewriter/image_rewrite_filter_test.cc',

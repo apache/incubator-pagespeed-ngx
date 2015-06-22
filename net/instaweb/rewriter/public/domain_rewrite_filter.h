@@ -19,6 +19,9 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_DOMAIN_REWRITE_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_DOMAIN_REWRITE_FILTER_H_
 
+#include <utility>
+#include <vector>
+
 #include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -45,6 +48,8 @@ class Variable;
 // domain_rewrite_cookies() is on.
 class DomainRewriteFilter : public CommonFilter {
  public:
+  static const char kStickyRedirectHeader[];
+
   DomainRewriteFilter(RewriteDriver* rewrite_driver, Statistics* stats);
   ~DomainRewriteFilter();
   static void InitStats(Statistics* statistics);

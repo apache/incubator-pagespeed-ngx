@@ -157,6 +157,8 @@ class UserAgentMatcher {
       const StringPiece& user_agent, int required_build,
       int required_patch) const;
 
+  bool SupportsMobilization(StringPiece user_agent) const;
+
  private:
   FastWildcardGroup supports_image_inlining_;
   FastWildcardGroup supports_lazyload_images_;
@@ -173,6 +175,7 @@ class UserAgentMatcher {
   FastWildcardGroup mobile_user_agents_;
   FastWildcardGroup tablet_user_agents_;
   FastWildcardGroup ie_user_agents_;
+  FastWildcardGroup mobilization_user_agents_;
 
   const RE2 chrome_version_pattern_;
   scoped_ptr<RE2> known_devices_pattern_;

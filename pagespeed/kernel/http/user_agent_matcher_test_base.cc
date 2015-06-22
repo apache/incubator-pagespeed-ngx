@@ -95,6 +95,8 @@ const char UserAgentMatcherTestBase::kFirefox3UserAgent[] =
     "Gecko/20100922 Ubuntu/10.10 (maverick) Firefox/3.6.10";
 const char UserAgentMatcherTestBase::kFirefox5UserAgent[] =
     "Mozilla/5.0 (X11; U; Linux i586; de; rv:5.0) Gecko/20100101 Firefox/5.0";
+const char UserAgentMatcherTestBase::kFirefoxMobileUserAgent[] =
+    "Mozilla/5.0 (Android; Mobile; rv:38.0) Gecko/38.0 Firefox/38.0";
 const char UserAgentMatcherTestBase::kFirefoxNokiaN800[] =
     // This is a tablet.
     "Mozilla/5.0 (X11; U; Linux armv6l; en-US; rv:1.9a6pre) Gecko/20070810 "

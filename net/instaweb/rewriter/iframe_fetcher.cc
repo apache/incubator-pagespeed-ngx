@@ -20,15 +20,22 @@
 
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
+#include "net/instaweb/rewriter/public/domain_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/html_keywords.h"
+#include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/http/http_names.h"
+#include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/response_headers.h"
+#include "pagespeed/kernel/http/user_agent_matcher.h"
 
 namespace net_instaweb {
 
-IframeFetcher::IframeFetcher() : options_(NULL) {
+IframeFetcher::IframeFetcher(const RewriteOptions* options,
+                             const UserAgentMatcher* matcher)
+    : options_(options),
+      user_agent_matcher_(matcher) {
 }
 
 IframeFetcher::~IframeFetcher() {
@@ -38,16 +45,52 @@ void IframeFetcher::Fetch(const GoogleString& url,
                           MessageHandler* message_handler,
                           AsyncFetch* fetch) {
   GoogleString mapped_url, host_header;
-  bool is_proxy;
-  if ((options_ == NULL) || !options_->domain_lawyer()->MapOrigin(
-          url, &mapped_url, &host_header, &is_proxy)) {
-    mapped_url = url;
+  const DomainLawyer* lawyer = options_->domain_lawyer();
+  bool mapped_to_self = false;
+  if (lawyer->proxy_suffix().empty()) {
+    bool is_proxy;
+    if (!options_->domain_lawyer()->MapOrigin(
+            url, &mapped_url, &host_header, &is_proxy)) {
+      mapped_to_self = true;
+    }
+  } else {
+    GoogleUrl gurl(url);
+    GoogleString origin_host;
+    if (!gurl.IsWebValid() ||
+        !lawyer->StripProxySuffix(gurl, &mapped_url, &origin_host)) {
+      mapped_to_self = true;
+    }
   }
 
-  fetch->response_headers()->SetStatusAndReason(HttpStatus::kOK);
+  GoogleString escaped_url;
+  HtmlKeywords::Escape(mapped_url, &escaped_url);
+
   fetch->response_headers()->Add(HttpAttributes::kContentType, "text/html");
 
-  // Avoid quirks-mode by specifying and HTML doctype.  This
+  if (mapped_to_self || (mapped_url == url)) {
+    // We would cause a redirect loop or an iframe-loop if we allow this to
+    // happen, so just fail.
+    RespondWithError(escaped_url, fetch, message_handler);
+  } else if (SupportedDevice(fetch->request_headers()->Lookup1(
+      HttpAttributes::kUserAgent))) {
+    RespondWithIframe(escaped_url, fetch, message_handler);
+  } else {
+    RespondWithRedirect(mapped_url, escaped_url, fetch, message_handler);
+  }
+  fetch->Done(true);
+}
+
+bool IframeFetcher::SupportedDevice(const char* user_agent) const {
+  return ((user_agent != NULL) &&
+          user_agent_matcher_->SupportsMobilization(user_agent));
+}
+
+void IframeFetcher::RespondWithIframe(const GoogleString& escaped_url,
+                                      AsyncFetch* fetch,
+                                      MessageHandler* message_handler) {
+  fetch->response_headers()->SetStatusAndReason(HttpStatus::kOK);
+
+  // Avoid quirks-mode by specifying an HTML doctype.  This
   // simplifies the code below that tries to get the screen dimensions
   // via document.documentElement.
   fetch->Write("<!DOCTYPE html>", message_handler);
@@ -62,8 +105,6 @@ void IframeFetcher::Fetch(const GoogleString& url,
   // I've made to try to adjust the iframe size in response to
   // orientation changes seem to make the behavior bad (e.g. cutting
   // off half the screen).  So I'm inclined to leave it as is for now.
-  GoogleString escaped_url;
-  HtmlKeywords::Escape(mapped_url, &escaped_url);
   GoogleString createIframe = StrCat(
       "<script>\n"
       "var docElt = document.documentElement;\n"
@@ -77,7 +118,30 @@ void IframeFetcher::Fetch(const GoogleString& url,
       "</script>");
   fetch->Write(createIframe, message_handler);
   fetch->Write("</body></html>", message_handler);
-  fetch->Done(true);
+}
+
+void IframeFetcher::RespondWithRedirect(const GoogleString& url,
+                                        const GoogleString& escaped_url,
+                                        AsyncFetch* fetch,
+                                        MessageHandler* message_handler) {
+  ResponseHeaders* response = fetch->response_headers();
+  response->SetStatusAndReason(HttpStatus::kTemporaryRedirect);
+  response->Add(HttpAttributes::kLocation, url);
+  response->Add(DomainRewriteFilter::kStickyRedirectHeader, "on");
+  response->Add(HttpAttributes::kCacheControl, "private, max-age=0");
+
+  fetch->Write(StrCat("<html><body>Redirecting to ", escaped_url,
+                      "</body></html>"), message_handler);
+}
+
+void IframeFetcher::RespondWithError(const GoogleString& escaped_url,
+                                     AsyncFetch* fetch,
+                                     MessageHandler* message_handler) {
+  ResponseHeaders* response = fetch->response_headers();
+  response->SetStatusAndReason(HttpStatus::kNotImplemented);
+  fetch->Write(StrCat("<html><body>Error: redirecting to ", escaped_url,
+                      " would cause a recirect loop.</body></html>"),
+               message_handler);
 }
 
 }  // namespace net_instaweb

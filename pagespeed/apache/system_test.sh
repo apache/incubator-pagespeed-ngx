@@ -894,9 +894,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
     "pagespeed_static/mobilize_xhr_debug$MOB_SUFFIX_RE"
   check_not_from "$OUT" egrep -q "pagespeed_static/mobilize_debug$MOB_SUFFIX_RE"
   check_from "$OUT" fgrep -q mobilize_xhr.js
-  check_from "$OUT" fgrep -q mobilize_layout.js
-  check_from "$OUT" fgrep -q mobilize_util.js
-  check_from "$OUT" fgrep -q mobilize_nav.js
+  check_from "$OUT" fgrep -q deps.js
 
   start_test mobilizer with debug on
   OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \

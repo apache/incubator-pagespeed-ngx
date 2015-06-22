@@ -583,4 +583,25 @@ TEST_F(UserAgentMatcherTest, IE11BlinkFailure) {
   }
 }
 
+TEST_F(UserAgentMatcherTest, Mobilization) {
+  EXPECT_TRUE(user_agent_matcher_->SupportsMobilization(
+      kAndroidChrome18UserAgent));
+  EXPECT_TRUE(user_agent_matcher_->SupportsMobilization(
+      kAndroidHCUserAgent));
+  EXPECT_TRUE(user_agent_matcher_->SupportsMobilization(
+      kIPhone4Safari));
+  EXPECT_TRUE(user_agent_matcher_->SupportsMobilization(
+      kIPhoneChrome21UserAgent));;
+  EXPECT_FALSE(user_agent_matcher_->SupportsMobilization(
+      kBlackBerryOS6UserAgent));
+  EXPECT_TRUE(user_agent_matcher_->SupportsMobilization(
+      kFirefoxUserAgent));
+  EXPECT_TRUE(user_agent_matcher_->SupportsMobilization(
+      kFirefoxMobileUserAgent));
+  EXPECT_TRUE(user_agent_matcher_->SupportsMobilization(
+      kChrome42UserAgent));
+  EXPECT_FALSE(user_agent_matcher_->SupportsMobilization(
+      kOperaMiniMobileUserAgent));
+}
+
 }  // namespace net_instaweb

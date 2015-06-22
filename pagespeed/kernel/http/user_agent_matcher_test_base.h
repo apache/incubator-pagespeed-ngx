@@ -56,6 +56,7 @@ class UserAgentMatcherTestBase : public testing::Test {
   static const char kFirefox1UserAgent[];
   static const char kFirefox3UserAgent[];
   static const char kFirefox5UserAgent[];
+  static const char kFirefoxMobileUserAgent[];
   static const char kFirefoxNokiaN800[];
   static const char kFirefoxUserAgent[];
   static const char kFLYUserAgent[];

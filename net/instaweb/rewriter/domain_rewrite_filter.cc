@@ -20,6 +20,7 @@
 
 #include <memory>
 
+#include "base/logging.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -51,6 +52,9 @@ const char kPath[] = "Path";
 
 namespace net_instaweb {
 
+const char DomainRewriteFilter::kStickyRedirectHeader[] =
+    "X-PSA-Sticky-Redirect";
+
 DomainRewriteFilter::DomainRewriteFilter(RewriteDriver* rewrite_driver,
                                          Statistics *stats)
     : CommonFilter(rewrite_driver),
@@ -71,9 +75,12 @@ void DomainRewriteFilter::InitStats(Statistics* statistics) {
 void DomainRewriteFilter::UpdateDomainHeaders(
     const GoogleUrl& base_url, const ServerContext* server_context,
     const RewriteOptions* options, ResponseHeaders* headers) {
-  if (headers == NULL) {
+  // IframeFetcher panics when it sees a UA that can't do iframes well,
+  // and throws a redirect.  This filter needs to respect that.
+  if ((headers == NULL) || headers->Has(kStickyRedirectHeader)) {
     return;
   }
+
   TryUpdateOneHttpDomainHeader(base_url, server_context, options,
                                HttpAttributes::kLocation, headers);
   TryUpdateOneHttpDomainHeader(base_url, server_context, options,

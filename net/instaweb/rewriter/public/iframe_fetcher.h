@@ -22,6 +22,7 @@
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/http/user_agent_matcher.h"
 
 namespace net_instaweb {
 
@@ -32,9 +33,7 @@ class MessageHandler;
 // and a body that consists solely of the URL as an iframe src.
 class IframeFetcher : public UrlAsyncFetcher {
  public:
-  IframeFetcher();
-
-  void set_options(const RewriteOptions* options) { options_ = options; }
+  IframeFetcher(const RewriteOptions* options, const UserAgentMatcher* matcher);
 
   virtual ~IframeFetcher();
   virtual void Fetch(const GoogleString& url,
@@ -42,7 +41,20 @@ class IframeFetcher : public UrlAsyncFetcher {
                      AsyncFetch* fetch);
 
  private:
+  bool SupportedDevice(const char* user_agent) const;
+  void RespondWithIframe(const GoogleString& escaped_url,
+                         AsyncFetch* fetch,
+                         MessageHandler* message_handler);
+  void RespondWithRedirect(const GoogleString& url,
+                           const GoogleString& escaped_url,
+                           AsyncFetch* fetch,
+                           MessageHandler* message_handler);
+  void RespondWithError(const GoogleString& escaped_url,
+                        AsyncFetch* fetch,
+                        MessageHandler* message_handler);
+
   const RewriteOptions* options_;
+  const UserAgentMatcher* user_agent_matcher_;
 };
 
 }  // namespace net_instaweb
