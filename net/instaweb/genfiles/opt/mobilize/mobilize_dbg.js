@@ -7324,9 +7324,10 @@ pagespeed.mobLayoutConstants.FLEXIBLE_WIDTH_TAGS = goog.object.createSet(goog.do
 pagespeed.mobLayoutConstants.DONT_TOUCH_TAGS = goog.object.createSet(goog.dom.TagName.SCRIPT, goog.dom.TagName.STYLE, goog.dom.TagName.IFRAME);
 pagespeed.mobLayoutConstants.NO_PERCENT = ["left", "width"];
 pagespeed.mobLayoutConstants.LAYOUT_CRITICAL = [goog.dom.TagName.CODE, goog.dom.TagName.PRE, goog.dom.TagName.UL];
+var mob = {util:{}};
 pagespeed.MobUtil = {};
-pagespeed.MobUtil.ElementId = {CLICK_DETECTOR_DIV:"psmob-click-detector-div", CONFIG_IFRAME:"ps-hidden-iframe", DIALER_BUTTON:"psmob-dialer-button", HEADER_BAR:"psmob-header-bar", LOGO_IMAGE:"psmob-logo-image", LOGO_SPAN:"psmob-logo-span", MAP_BUTTON:"psmob-map-button", MENU_BUTTON:"psmob-menu-button", NAV_PANEL:"psmob-nav-panel", PROGRESS_LOG:"ps-progress-log", PROGRESS_REMOVE:"ps-progress-remove", PROGRESS_SCRIM:"ps-progress-scrim", PROGRESS_SHOW_LOG:"ps-progress-show-log", PROGRESS_SPAN:"ps-progress-span", 
-SPACER:"psmob-spacer"};
+pagespeed.MobUtil.ElementId = {CLICK_DETECTOR_DIV:"psmob-click-detector-div", CONFIG_IFRAME:"ps-hidden-iframe", DIALER_BUTTON:"psmob-dialer-button", HEADER_BAR:"psmob-header-bar", IFRAME:"psmob-iframe", LOGO_IMAGE:"psmob-logo-image", LOGO_SPAN:"psmob-logo-span", MAP_BUTTON:"psmob-map-button", MENU_BUTTON:"psmob-menu-button", NAV_PANEL:"psmob-nav-panel", PROGRESS_LOG:"ps-progress-log", PROGRESS_REMOVE:"ps-progress-remove", PROGRESS_SCRIM:"ps-progress-scrim", PROGRESS_SHOW_LOG:"ps-progress-show-log", 
+PROGRESS_SPAN:"ps-progress-span", SPACER:"psmob-spacer"};
 pagespeed.MobUtil.ElementClass = {BUTTON:"psmob-button", BUTTON_ICON:"psmob-button-icon", BUTTON_TEXT:"psmob-button-text", HAMBURGER_DIV:"psmob-hamburger-div", HAMBURGER_LINE:"psmob-hamburger-line", LABELED:"labeled", LOGO_CHOOSER_CHOICE:"psmob-logo-chooser-choice", LOGO_CHOOSER_COLOR:"psmob-logo-chooser-color", LOGO_CHOOSER_COLUMN_HEADER:"psmob-logo-chooser-column-header", LOGO_CHOOSER_CONFIG_FRAGMENT:"psmob-logo-chooser-config-fragment", LOGO_CHOOSER_IMAGE:"psmob-logo-chooser-image", LOGO_CHOOSER_SWAP:"psmob-logo-chooser-swap", 
 LOGO_CHOOSER_TABLE:"psmob-logo-chooser-table", MENU_EXPAND_ICON:"psmob-menu-expand-icon", SHOW_BUTTON_TEXT:"show-button-text", SINGLE_COLUMN:"psmob-single-column", THEME_CONFIG:"psmob-theme-config"};
 pagespeed.MobUtil.ASCII_0_ = 48;
@@ -7555,9 +7556,7 @@ pagespeed.MobUtil.extractImage = function(a, b) {
   return c ? pagespeed.MobUtil.proxyImageUrl(c) : null;
 };
 pagespeed.MobUtil.synthesizeImage = function(a, b) {
-  if (16 >= a.length) {
-    return null;
-  }
+  goog.asserts.assert(16 < a.length);
   var c = window.atob(a), c = c.substring(0, 13) + String.fromCharCode(b[0], b[1], b[2]) + c.substring(16, c.length);
   return "data:image/gif;base64," + window.btoa(c);
 };
@@ -7601,7 +7600,13 @@ pagespeed.MobUtil.runCallbackOnce_ = function(a) {
     b || (b = !0, a());
   };
 };
-var mob = {button:{}};
+mob.util.getScaleTransform = function() {
+  var a = 1;
+  "desktop" != window.psDeviceType && (a = 90 == Math.abs(window.orientation) && screen.height > screen.width ? window.innerHeight / screen.width : window.innerWidth / screen.width);
+  goog.labs.userAgent.browser.isAndroidBrowser() && (a *= goog.dom.getPixelRatio());
+  return a;
+};
+mob.button = {};
 mob.button.Base_ = function(a, b, c, d) {
   this.el = document.createElement(goog.dom.TagName.A);
   this.id_ = a;
@@ -8387,215 +8392,6 @@ pagespeed.MobLogo.prototype.run = function(a, b) {
   this.doneCallback_ || !document.body ? a([]) : (this.doneCallback_ = a, this.maxNumCandidates_ = b, this.findLogoCandidates_(document.body), this.findImagesAndWait_(this.candidates_));
 };
 goog.exportProperty(pagespeed.MobLogo.prototype, "run", pagespeed.MobLogo.prototype.run);
-pagespeed.MobNav = function() {
-  this.headerBar_ = goog.dom.getRequiredElement(pagespeed.MobUtil.ElementId.HEADER_BAR);
-  this.styleTag_ = null;
-  this.spacerDiv_ = goog.dom.getRequiredElement(pagespeed.MobUtil.ElementId.SPACER);
-  this.mapButton_ = this.dialer_ = this.menuButton_ = this.logoSpan_ = null;
-  this.navPanel_ = document.getElementById(pagespeed.MobUtil.ElementId.NAV_PANEL);
-  this.scrollTimer_ = this.clickDetectorDiv_ = null;
-  this.lastScrollY_ = this.currentTouches_ = 0;
-  this.isNavPanelOpen_ = !1;
-  this.headerBarHeight_ = -1;
-  this.elementsToOffset_ = new goog.structs.Set;
-  this.redrawNavCalled_ = !1;
-  this.isAndroidBrowser_ = goog.labs.userAgent.browser.isAndroidBrowser();
-  this.isOperaMini_ = -1 < navigator.userAgent.indexOf("Opera Mini");
-};
-pagespeed.MobNav.ARROW_ICON_ = "R0lGODlhkACQAPABAP///wAAACH5BAEAAAEALAAAAACQAJAAAAL+jI+py+0Po5y02ouz3rz7D4biSJbmiabqyrbuC8fyTNf2jef6zvf+DwwKh8Si8YhMKpfMpvMJjUqn1Kr1is1qt9yu9wsOi8fksvmMTqvX7Lb7DY/L5/S6/Y7P6/f8vh8EAJATKIhFWFhziEiluBjT6AgFGdkySclkeZmSqYnE2VnyCUokOhpSagqEmtqxytrjurnqFGtSSztLcvu0+9HLm+sbPPWbURx1XJGMPHyxLPXsEA3dLDFNXP1wzZjNsF01/W31LH6VXG6YjZ7Vu651674VG8/l2s1mL2qXn4nHD6nn3yE+Al+5+fcnQL6EBui1QcUwgb6IEvtRVGDporc/RhobKOooLRBIbSNLmjyJMqXKlSxbunwJM6bMmTRr2ryJM6fOnTx7+vwJNKjQoUSLGj2KNKnSpUybOn0KVUcBADs=";
-pagespeed.MobNav.prototype.findElementsToOffsetHelper_ = function(a, b) {
-  if (!a.className || a.className != pagespeed.MobUtil.ElementId.PROGRESS_SCRIM && !goog.string.startsWith(a.className, "psmob-") && !goog.string.startsWith(a.id, "psmob-")) {
-    var c = window.getComputedStyle(a), d = c.getPropertyValue("position");
-    "static" != d && (null == pagespeed.MobUtil.pixelValue(c.getPropertyValue("top")) || "fixed" != d && (b || "absolute" != d) || this.elementsToOffset_.add(a), b = !0);
-    for (c = a.firstElementChild;c;c = c.nextElementSibling) {
-      this.findElementsToOffsetHelper_(c, b);
-    }
-  }
-};
-pagespeed.MobNav.prototype.findElementsToOffset_ = function() {
-  window.document.body && this.findElementsToOffsetHelper_(window.document.body, !1);
-};
-pagespeed.MobNav.prototype.clampZIndex_ = function() {
-  for (var a = document.querySelectorAll("*"), b = 0, c;c = a[b];b++) {
-    var d = c.id;
-    (!d || d != pagespeed.MobUtil.ElementId.PROGRESS_SCRIM && d != pagespeed.MobUtil.ElementId.HEADER_BAR && d != pagespeed.MobUtil.ElementId.NAV_PANEL) && 999998 <= window.getComputedStyle(c).getPropertyValue("z-index") && (pagespeed.MobUtil.consoleLog("Element z-index exceeded 999998, setting to 999997."), c.style.zIndex = 999997);
-  }
-};
-pagespeed.MobNav.prototype.redrawHeader_ = function() {
-  if (this.headerBar_) {
-    var a = -1 == this.headerBarHeight_ ? Math.round(goog.style.getTransformedSize(this.headerBar_).height) : this.headerBarHeight_, b = 1;
-    "desktop" != window.psDeviceType && (b = 90 == Math.abs(window.orientation) && screen.height > screen.width ? window.innerHeight / screen.width : window.innerWidth / screen.width);
-    this.isAndroidBrowser_ && (b *= goog.dom.getPixelRatio());
-    var c = "scale(" + b.toString() + ")";
-    this.headerBar_.style["-webkit-transform"] = c;
-    this.headerBar_.style.transform = c;
-    c = window.innerWidth;
-    "hidden" != window.getComputedStyle(document.body).getPropertyValue("overflow-y") && (c -= goog.style.getScrollbarWidth());
-    this.headerBar_.style.width = c / b + "px";
-    goog.dom.classlist.remove(this.headerBar_, "hide");
-    b = Math.round(goog.style.getTransformedSize(this.headerBar_).height);
-    this.spacerDiv_.style.height = b + "px";
-    this.headerBarHeight_ = b;
-    for (var c = this.elementsToOffset_.getValues(), d = 0;d < c.length;d++) {
-      var e = c[d], f = window.getComputedStyle(e), g = f.getPropertyValue("position"), f = pagespeed.MobUtil.pixelValue(f.getPropertyValue("top"));
-      "static" != g && null != f && (this.redrawNavCalled_ ? (g = e.style.top, g = pagespeed.MobUtil.pixelValue(e.style.top), null != g && (e.style.top = String(g + (b - a)) + "px")) : (g = pagespeed.MobUtil.boundingRect(e).top, e.style.top = String(g + b) + "px"));
-    }
-    this.redrawNavCalled_ && b != a && window.scrollBy(0, b - a);
-    this.headerBar_.style.top = window.scrollY + "px";
-    this.headerBar_.style.left = window.scrollX + "px";
-    this.redrawNavCalled_ = !0;
-  }
-};
-pagespeed.MobNav.prototype.redrawNavPanel_ = function() {
-  if (this.navPanel_) {
-    var a = window.innerWidth / goog.dom.getViewportSize().width, b = "scale(" + a + ")";
-    this.navPanel_.style["-webkit-transform"] = b;
-    this.navPanel_.style.transform = b;
-    b = goog.dom.classlist.contains(this.navPanel_, "open") ? 0 : -goog.style.getTransformedSize(this.navPanel_).width;
-    this.navPanel_.style.top = window.scrollY + "px";
-    this.navPanel_.style.left = window.scrollX + b + "px";
-    b = this.headerBar_.getBoundingClientRect();
-    this.navPanel_.style.marginTop = b.height + "px";
-    this.isOperaMini_ || (this.navPanel_.style.height = (window.innerHeight - b.height) / a + "px");
-  }
-};
-pagespeed.MobNav.prototype.addHeaderBarResizeEvents_ = function() {
-  this.redrawHeader_();
-  this.redrawNavPanel_();
-  var a = function() {
-    null != this.scrollTimer_ && (window.clearTimeout(this.scrollTimer_), this.scrollTimer_ = null);
-    this.scrollTimer_ = window.setTimeout(goog.bind(function() {
-      if (this.isAndroidBrowser_ || 0 == this.currentTouches_) {
-        this.redrawNavPanel_(), this.redrawHeader_();
-      }
-      this.scrollTimer_ = null;
-    }, this), 200);
-  };
-  window.addEventListener(goog.events.EventType.SCROLL, goog.bind(function(b) {
-    this.isNavPanelOpen_ || goog.dom.classlist.add(this.headerBar_, "hide");
-    a.call(this);
-    this.navPanel_ && this.isNavPanelOpen_ && !this.navPanel_.contains(b.target) && (b.stopPropagation(), b.preventDefault());
-  }, this), !1);
-  window.addEventListener(goog.events.EventType.TOUCHSTART, goog.bind(function(a) {
-    this.currentTouches_ = a.touches.length;
-    this.lastScrollY_ = a.touches[0].clientY;
-  }, this), !1);
-  window.addEventListener(goog.events.EventType.TOUCHMOVE, goog.bind(function(a) {
-    this.isNavPanelOpen_ ? a.preventDefault() : this.isAndroidBrowser_ || goog.dom.classlist.add(this.headerBar_, "hide");
-  }, this), !1);
-  window.addEventListener(goog.events.EventType.TOUCHEND, goog.bind(function(b) {
-    this.currentTouches_ = b.touches.length;
-    0 == this.currentTouches_ && a.call(this);
-  }, this), !1);
-  window.addEventListener(goog.events.EventType.ORIENTATIONCHANGE, goog.bind(function() {
-    this.redrawNavPanel_();
-    this.redrawHeader_();
-  }, this), !1);
-};
-pagespeed.MobNav.prototype.addHeaderBar_ = function(a) {
-  document.body.insertBefore(this.spacerDiv_, document.body.childNodes[0]);
-  document.body.insertBefore(this.headerBar_, this.spacerDiv_);
-  window.psLabeledMode && goog.dom.classlist.add(this.headerBar_, pagespeed.MobUtil.ElementClass.LABELED);
-  window.psConfigMode && goog.dom.classlist.add(this.headerBar_, pagespeed.MobUtil.ElementClass.THEME_CONFIG);
-  this.navPanel_ && !window.psLabeledMode && (this.menuButton_ = new mob.button.Menu(a.menuFrontColor, goog.bind(this.toggleNavPanel_, this)), this.headerBar_.appendChild(this.menuButton_.el));
-  if (a.logoUrl) {
-    this.logoSpan_ = document.createElement(goog.dom.TagName.SPAN);
-    this.logoSpan_.id = pagespeed.MobUtil.ElementId.LOGO_SPAN;
-    var b = document.createElement(goog.dom.TagName.IMG);
-    b.src = a.logoUrl;
-    b.id = pagespeed.MobUtil.ElementId.LOGO_IMAGE;
-    this.logoSpan_.appendChild(b);
-    this.headerBar_.appendChild(this.logoSpan_);
-  }
-  this.headerBar_.style.borderBottomColor = pagespeed.MobUtil.colorNumbersToString(a.menuFrontColor);
-  this.headerBar_.style.backgroundColor = pagespeed.MobUtil.colorNumbersToString(a.menuBackColor);
-  window.psPhoneNumber && (this.dialer_ = new mob.button.Dialer(a.menuFrontColor, window.psPhoneNumber, window.psConversionId, window.psPhoneConversionLabel), this.headerBar_.appendChild(this.dialer_.el));
-  window.psMapLocation && (this.mapButton_ = new mob.button.Map(a.menuFrontColor, window.psMapLocation, window.psConversionId, window.psMapConversionLabel), this.headerBar_.appendChild(this.mapButton_.el));
-  if ("mobile" == window.psDeviceType || "tablet" == window.psDeviceType) {
-    goog.dom.classlist.add(this.headerBar_, "mobile"), goog.dom.classlist.add(this.spacerDiv_, "mobile"), this.navPanel_ && goog.dom.classlist.add(this.navPanel_, "mobile");
-  }
-  (window.psLabeledMode || this.dialer_ && !this.mapButton_ || !this.dialer_ && this.mapButton_) && goog.dom.classlist.add(this.headerBar_, pagespeed.MobUtil.ElementClass.SHOW_BUTTON_TEXT);
-  this.addHeaderBarResizeEvents_();
-  this.addThemeColor_(a);
-};
-pagespeed.MobNav.prototype.addThemeColor_ = function(a) {
-  this.styleTag_ && this.styleTag_.parentNode.removeChild(this.styleTag_);
-  var b = pagespeed.MobUtil.colorNumbersToString(a.menuBackColor);
-  a = pagespeed.MobUtil.colorNumbersToString(a.menuFrontColor);
-  b = "#" + pagespeed.MobUtil.ElementId.HEADER_BAR + " { background-color: " + b + "; }\n#" + pagespeed.MobUtil.ElementId.HEADER_BAR + " *  { color: " + a + "; }\n#" + pagespeed.MobUtil.ElementId.NAV_PANEL + " { background-color: " + a + "; }\n#" + pagespeed.MobUtil.ElementId.NAV_PANEL + " *  { color: " + b + "; }\n";
-  this.styleTag_ = document.createElement(goog.dom.TagName.STYLE);
-  this.styleTag_.type = "text/css";
-  this.styleTag_.appendChild(document.createTextNode(b));
-  document.head.appendChild(this.styleTag_);
-};
-pagespeed.MobNav.prototype.addClickDetectorDiv_ = function() {
-  this.clickDetectorDiv_ = document.createElement(goog.dom.TagName.DIV);
-  this.clickDetectorDiv_.id = pagespeed.MobUtil.ElementId.CLICK_DETECTOR_DIV;
-  document.body.insertBefore(this.clickDetectorDiv_, this.navPanel_);
-  this.clickDetectorDiv_.addEventListener(goog.events.EventType.CLICK, goog.bind(function(a) {
-    goog.dom.classlist.contains(this.navPanel_, "open") && this.toggleNavPanel_();
-  }, this), !1);
-};
-pagespeed.MobNav.prototype.addSubmenuArrows_ = function(a) {
-  var b = this.navPanel_.querySelectorAll(goog.dom.TagName.DIV + " > " + goog.dom.TagName.A), c = b.length;
-  if (0 != c && (a = pagespeed.MobUtil.synthesizeImage(pagespeed.MobNav.ARROW_ICON_, a.menuBackColor))) {
-    for (var d = 0;d < c;d++) {
-      var e = document.createElement(goog.dom.TagName.IMG), f = b[d];
-      f.insertBefore(e, f.firstChild);
-      e.setAttribute("src", a);
-      goog.dom.classlist.add(e, pagespeed.MobUtil.ElementClass.MENU_EXPAND_ICON);
-    }
-  }
-};
-pagespeed.MobNav.prototype.addNavPanel_ = function(a) {
-  this.addSubmenuArrows_(a);
-  this.addClickDetectorDiv_();
-  this.navPanel_.addEventListener(goog.events.EventType.TOUCHMOVE, goog.bind(function(a) {
-    if (this.isNavPanelOpen_) {
-      var c = a.touches[0].clientY;
-      if (1 != a.touches.length) {
-        a.preventDefault();
-      } else {
-        var d = c > this.lastScrollY_, e = 0 == this.navPanel_.scrollTop, f = this.navPanel_.scrollTop >= this.navPanel_.scrollHeight - this.navPanel_.offsetHeight - 1;
-        a.cancelable && (d && e || !d && f) && a.preventDefault();
-        a.stopImmediatePropagation && a.stopImmediatePropagation();
-        this.lastScrollY_ = c;
-      }
-    }
-  }, this), !1);
-  this.redrawNavPanel_();
-};
-pagespeed.MobNav.prototype.toggleNavPanel_ = function() {
-  pagespeed.MobUtil.sendBeaconEvent(goog.dom.classlist.contains(this.navPanel_, "open") ? pagespeed.MobUtil.BeaconEvents.MENU_BUTTON_CLOSE : pagespeed.MobUtil.BeaconEvents.MENU_BUTTON_OPEN);
-  goog.dom.classlist.toggle(this.headerBar_, "open");
-  goog.dom.classlist.toggle(this.navPanel_, "open");
-  goog.dom.classlist.toggle(this.clickDetectorDiv_, "open");
-  goog.dom.classlist.toggle(document.body, "noscroll");
-  this.isNavPanelOpen_ = !this.isNavPanelOpen_;
-  this.redrawNavPanel_();
-};
-pagespeed.MobNav.prototype.addNavButtonEvents_ = function() {
-  for (var a = document.querySelectorAll("#" + pagespeed.MobUtil.ElementId.NAV_PANEL + " div"), b = 0, c;c = a[b];++b) {
-    c.addEventListener(goog.events.EventType.CLICK, function(a) {
-      a.preventDefault();
-      a = a.currentTarget;
-      goog.dom.classlist.toggle(a.nextSibling, "open");
-      goog.dom.classlist.toggle(a.firstChild.firstChild, "open");
-    }, !1);
-  }
-};
-pagespeed.MobNav.prototype.run = function(a) {
-  pagespeed.MobUtil.inFriendlyIframe() || (this.clampZIndex_(), this.findElementsToOffset_(), this.addHeaderBar_(a), this.navPanel_ && (document.body.appendChild(this.navPanel_), this.addNavPanel_(a), this.addNavButtonEvents_()), pagespeed.MobUtil.sendBeaconEvent(pagespeed.MobUtil.BeaconEvents.NAV_DONE), window.addEventListener(goog.events.EventType.LOAD, goog.bind(this.redrawHeader_, this)));
-};
-pagespeed.MobNav.prototype.updateTheme = function(a) {
-  this.headerBar_.remove();
-  this.spacerDiv_.remove();
-  this.spacerDiv_ = document.createElement(goog.dom.TagName.DIV);
-  this.spacerDiv_.id = pagespeed.MobUtil.ElementId.SPACER;
-  this.headerBar_ = document.createElement(goog.dom.TagName.HEADER);
-  this.headerBar_.id = pagespeed.MobUtil.ElementId.HEADER_BAR;
-  this.addHeaderBar_(a);
-};
 pagespeed.MobTheme = function(a) {
   this.doneCallback_ = a;
 };
@@ -8622,6 +8418,219 @@ pagespeed.MobTheme.extractTheme = function(a, b) {
   } else {
     c = new pagespeed.MobTheme(b), a.run(goog.bind(c.logoComplete, c), 1);
   }
+};
+mob.NavPanel = function(a, b) {
+  this.el = a;
+  this.backgroundColor_ = b;
+  this.clickDetectorDiv_ = null;
+  this.lastScrollY_ = 0;
+  this.initialize_();
+};
+mob.NavPanel.ARROW_ICON_ = "R0lGODlhkACQAPABAP///wAAACH5BAEAAAEALAAAAACQAJAAAAL+jI+py+0Po5y02ouz3rz7D4biSJbmiabqyrbuC8fyTNf2jef6zvf+DwwKh8Si8YhMKpfMpvMJjUqn1Kr1is1qt9yu9wsOi8fksvmMTqvX7Lb7DY/L5/S6/Y7P6/f8vh8EAJATKIhFWFhziEiluBjT6AgFGdkySclkeZmSqYnE2VnyCUokOhpSagqEmtqxytrjurnqFGtSSztLcvu0+9HLm+sbPPWbURx1XJGMPHyxLPXsEA3dLDFNXP1wzZjNsF01/W31LH6VXG6YjZ7Vu651674VG8/l2s1mL2qXn4nHD6nn3yE+Al+5+fcnQL6EBui1QcUwgb6IEvtRVGDporc/RhobKOooLRBIbSNLmjyJMqXKlSxbunwJM6bMmTRr2ryJM6fOnTx7+vwJNKjQoUSLGj2KNKnSpUybOn0KVUcBADs=";
+mob.NavPanel.prototype.initialize_ = function() {
+  document.body.appendChild(this.el);
+  this.addSubmenuArrows_();
+  this.addClickDetectorDiv_();
+  this.addButtonEvents_();
+  this.el.addEventListener(goog.events.EventType.TOUCHMOVE, goog.bind(function(a) {
+    if (this.isOpen()) {
+      var b = a.touches[0].clientY;
+      if (1 != a.touches.length) {
+        a.preventDefault();
+      } else {
+        var c = b > this.lastScrollY_, d = 0 == this.el.scrollTop, e = this.el.scrollTop >= this.el.scrollHeight - this.el.offsetHeight - 1;
+        a.cancelable && (c && d || !c && e) && a.preventDefault();
+        a.stopImmediatePropagation && a.stopImmediatePropagation();
+        this.lastScrollY_ = b;
+      }
+    }
+  }, this), !1);
+  window.addEventListener(goog.events.EventType.SCROLL, goog.bind(function(a) {
+    this.isOpen() && !this.el.contains(a.target) && (a.stopPropagation(), a.preventDefault());
+  }, this));
+  window.addEventListener(goog.events.EventType.TOUCHSTART, goog.bind(function(a) {
+    this.lastScrollY_ = a.touches[0].clientY;
+  }, this), !1);
+};
+mob.NavPanel.prototype.redraw = function(a) {
+  var b = mob.util.getScaleTransform(), c = "scale(" + b + ")";
+  this.el.style.webkitTransform = c;
+  this.el.style.transform = c;
+  c = goog.dom.classlist.contains(this.el, "open") ? 0 : -goog.style.getTransformedSize(this.el).width;
+  this.el.style.top = window.scrollY + "px";
+  this.el.style.left = window.scrollX + c + "px";
+  a && (this.el.style.marginTop = a + "px", this.el.style.height = (window.innerHeight - a) / b + "px");
+};
+mob.NavPanel.prototype.addClickDetectorDiv_ = function() {
+  this.clickDetectorDiv_ = document.createElement(goog.dom.TagName.DIV);
+  this.clickDetectorDiv_.id = pagespeed.MobUtil.ElementId.CLICK_DETECTOR_DIV;
+  document.body.insertBefore(this.clickDetectorDiv_, this.el);
+  this.clickDetectorDiv_.addEventListener(goog.events.EventType.CLICK, goog.bind(function(a) {
+    goog.dom.classlist.contains(this.el, "open") && this.toggle();
+  }, this), !1);
+};
+mob.NavPanel.prototype.addSubmenuArrows_ = function() {
+  var a = this.el.querySelectorAll(goog.dom.TagName.DIV + " > " + goog.dom.TagName.A), b = a.length;
+  if (0 != b) {
+    for (var c = pagespeed.MobUtil.synthesizeImage(mob.NavPanel.ARROW_ICON_, this.backgroundColor_), d = 0;d < b;d++) {
+      var e = document.createElement(goog.dom.TagName.IMG), f = a[d];
+      f.insertBefore(e, f.firstChild);
+      e.setAttribute("src", c);
+      goog.dom.classlist.add(e, pagespeed.MobUtil.ElementClass.MENU_EXPAND_ICON);
+    }
+  }
+};
+mob.NavPanel.prototype.toggle = function() {
+  pagespeed.MobUtil.sendBeaconEvent(this.isOpen() ? pagespeed.MobUtil.BeaconEvents.MENU_BUTTON_CLOSE : pagespeed.MobUtil.BeaconEvents.MENU_BUTTON_OPEN);
+  goog.dom.classlist.toggle(this.el, "open");
+  goog.dom.classlist.toggle(this.clickDetectorDiv_, "open");
+  goog.dom.classlist.toggle(document.body, "noscroll");
+  this.redraw();
+};
+mob.NavPanel.prototype.addButtonEvents_ = function() {
+  for (var a = this.el.querySelectorAll(goog.dom.TagName.DIV), b = 0, c;c = a[b];++b) {
+    c.addEventListener(goog.events.EventType.CLICK, function(a) {
+      a.preventDefault();
+      a = a.currentTarget;
+      goog.dom.classlist.toggle(a.nextSibling, "open");
+      goog.dom.classlist.toggle(a.firstChild.firstChild, "open");
+    }, !1);
+  }
+  if (document.getElementById(pagespeed.MobUtil.ElementId.IFRAME)) {
+    for (a = this.el.querySelectorAll(goog.dom.TagName.LI + " > " + goog.dom.TagName.A), b = 0;c = a[b];b++) {
+      c.addEventListener(goog.events.EventType.CLICK, goog.bind(function(a) {
+        this.toggle();
+        a.preventDefault();
+        document.getElementById(pagespeed.MobUtil.ElementId.IFRAME).src = a.currentTarget.href;
+      }, this));
+    }
+  }
+};
+mob.NavPanel.prototype.isOpen = function() {
+  return goog.dom.classlist.contains(this.el, "open");
+};
+pagespeed.MobNav = function() {
+  this.headerBar_ = goog.dom.getRequiredElement(pagespeed.MobUtil.ElementId.HEADER_BAR);
+  this.styleTag_ = null;
+  this.spacerDiv_ = goog.dom.getRequiredElement(pagespeed.MobUtil.ElementId.SPACER);
+  this.scrollTimer_ = this.navPanel_ = this.mapButton_ = this.dialer_ = this.menuButton_ = this.logoSpan_ = null;
+  this.currentTouches_ = 0;
+  this.headerBarHeight_ = -1;
+  this.elementsToOffset_ = new goog.structs.Set;
+  this.redrawNavCalled_ = !1;
+  this.isAndroidBrowser_ = goog.labs.userAgent.browser.isAndroidBrowser();
+};
+pagespeed.MobNav.prototype.findElementsToOffsetHelper_ = function(a, b) {
+  if (!a.className || a.className != pagespeed.MobUtil.ElementId.PROGRESS_SCRIM && !goog.string.startsWith(a.className, "psmob-") && !goog.string.startsWith(a.id, "psmob-")) {
+    var c = window.getComputedStyle(a), d = c.getPropertyValue("position");
+    "static" != d && (null == pagespeed.MobUtil.pixelValue(c.getPropertyValue("top")) || "fixed" != d && (b || "absolute" != d) || this.elementsToOffset_.add(a), b = !0);
+    for (c = a.firstElementChild;c;c = c.nextElementSibling) {
+      this.findElementsToOffsetHelper_(c, b);
+    }
+  }
+};
+pagespeed.MobNav.prototype.findElementsToOffset_ = function() {
+  window.document.body && this.findElementsToOffsetHelper_(window.document.body, !1);
+};
+pagespeed.MobNav.prototype.clampZIndex_ = function() {
+  for (var a = document.querySelectorAll("*"), b = 0, c;c = a[b];b++) {
+    var d = c.id;
+    (!d || d != pagespeed.MobUtil.ElementId.PROGRESS_SCRIM && d != pagespeed.MobUtil.ElementId.HEADER_BAR && d != pagespeed.MobUtil.ElementId.NAV_PANEL) && 999998 <= window.getComputedStyle(c).getPropertyValue("z-index") && (pagespeed.MobUtil.consoleLog("Element z-index exceeded 999998, setting to 999997."), c.style.zIndex = 999997);
+  }
+};
+pagespeed.MobNav.prototype.redraw_ = function() {
+  this.redrawHeader_();
+  this.navPanel_ && this.navPanel_.redraw(this.headerBar_.getBoundingClientRect().height);
+};
+pagespeed.MobNav.prototype.redrawHeader_ = function() {
+  if (this.headerBar_) {
+    var a = -1 == this.headerBarHeight_ ? Math.round(goog.style.getTransformedSize(this.headerBar_).height) : this.headerBarHeight_, b = mob.util.getScaleTransform(), c = "scale(" + b.toString() + ")";
+    this.headerBar_.style.webkitTransform = c;
+    this.headerBar_.style.transform = c;
+    c = window.innerWidth;
+    "hidden" != window.getComputedStyle(document.body).getPropertyValue("overflow-y") && (c -= goog.style.getScrollbarWidth());
+    this.headerBar_.style.width = c / b + "px";
+    goog.dom.classlist.remove(this.headerBar_, "hide");
+    b = Math.round(goog.style.getTransformedSize(this.headerBar_).height);
+    this.spacerDiv_.style.height = b + "px";
+    this.headerBarHeight_ = b;
+    for (var c = this.elementsToOffset_.getValues(), d = 0;d < c.length;d++) {
+      var e = c[d], f = window.getComputedStyle(e), g = f.getPropertyValue("position"), f = pagespeed.MobUtil.pixelValue(f.getPropertyValue("top"));
+      "static" != g && null != f && (this.redrawNavCalled_ ? (g = e.style.top, g = pagespeed.MobUtil.pixelValue(e.style.top), null != g && (e.style.top = String(g + (b - a)) + "px")) : (g = pagespeed.MobUtil.boundingRect(e).top, e.style.top = String(g + b) + "px"));
+    }
+    this.redrawNavCalled_ && b != a && window.scrollBy(0, b - a);
+    this.headerBar_.style.top = window.scrollY + "px";
+    this.headerBar_.style.left = window.scrollX + "px";
+    this.redrawNavCalled_ = !0;
+  }
+};
+pagespeed.MobNav.prototype.addHeaderBarResizeEvents_ = function() {
+  this.redraw_();
+  var a = function() {
+    null != this.scrollTimer_ && (window.clearTimeout(this.scrollTimer_), this.scrollTimer_ = null);
+    this.scrollTimer_ = window.setTimeout(goog.bind(function() {
+      (this.isAndroidBrowser_ || 0 == this.currentTouches_) && this.redraw_();
+      this.scrollTimer_ = null;
+    }, this), 200);
+  };
+  window.addEventListener(goog.events.EventType.SCROLL, goog.bind(function(b) {
+    a.call(this);
+    this.navPanel_ && this.navPanel_.isOpen() || goog.dom.classlist.add(this.headerBar_, "hide");
+  }, this), !1);
+  window.addEventListener(goog.events.EventType.TOUCHSTART, goog.bind(function(a) {
+    this.currentTouches_ = a.touches.length;
+  }, this), !1);
+  window.addEventListener(goog.events.EventType.TOUCHMOVE, goog.bind(function(a) {
+    this.navPanel_ && this.navPanel_.isOpen() ? a.preventDefault() : this.isAndroidBrowser_ || goog.dom.classlist.add(this.headerBar_, "hide");
+  }, this), !1);
+  window.addEventListener(goog.events.EventType.TOUCHEND, goog.bind(function(b) {
+    this.currentTouches_ = b.touches.length;
+    0 == this.currentTouches_ && a.call(this);
+  }, this), !1);
+  window.addEventListener(goog.events.EventType.ORIENTATIONCHANGE, goog.bind(function() {
+    this.redraw_();
+  }, this), !1);
+};
+pagespeed.MobNav.prototype.addHeaderBar_ = function(a) {
+  document.body.insertBefore(this.spacerDiv_, document.body.childNodes[0]);
+  document.body.insertBefore(this.headerBar_, this.spacerDiv_);
+  window.psLabeledMode && goog.dom.classlist.add(this.headerBar_, pagespeed.MobUtil.ElementClass.LABELED);
+  window.psConfigMode && goog.dom.classlist.add(this.headerBar_, pagespeed.MobUtil.ElementClass.THEME_CONFIG);
+  var b = document.getElementById(pagespeed.MobUtil.ElementId.NAV_PANEL);
+  !window.psLabeledMode && b && (this.navPanel_ = new mob.NavPanel(b, a.menuBackColor), this.menuButton_ = new mob.button.Menu(a.menuFrontColor, goog.bind(this.navPanel_.toggle, this.navPanel_)), this.headerBar_.appendChild(this.menuButton_.el));
+  a.logoUrl && (this.logoSpan_ = document.createElement(goog.dom.TagName.SPAN), this.logoSpan_.id = pagespeed.MobUtil.ElementId.LOGO_SPAN, b = document.createElement(goog.dom.TagName.IMG), b.src = a.logoUrl, b.id = pagespeed.MobUtil.ElementId.LOGO_IMAGE, this.logoSpan_.appendChild(b), this.headerBar_.appendChild(this.logoSpan_));
+  this.headerBar_.style.borderBottomColor = pagespeed.MobUtil.colorNumbersToString(a.menuFrontColor);
+  this.headerBar_.style.backgroundColor = pagespeed.MobUtil.colorNumbersToString(a.menuBackColor);
+  window.psPhoneNumber && (this.dialer_ = new mob.button.Dialer(a.menuFrontColor, window.psPhoneNumber, window.psConversionId, window.psPhoneConversionLabel), this.headerBar_.appendChild(this.dialer_.el));
+  window.psMapLocation && (this.mapButton_ = new mob.button.Map(a.menuFrontColor, window.psMapLocation, window.psConversionId, window.psMapConversionLabel), this.headerBar_.appendChild(this.mapButton_.el));
+  if ("mobile" == window.psDeviceType || "tablet" == window.psDeviceType) {
+    goog.dom.classlist.add(this.headerBar_, "mobile"), goog.dom.classlist.add(this.spacerDiv_, "mobile"), this.navPanel_ && goog.dom.classlist.add(this.navPanel_.el, "mobile");
+  }
+  (window.psLabeledMode || this.dialer_ && !this.mapButton_ || !this.dialer_ && this.mapButton_) && goog.dom.classlist.add(this.headerBar_, pagespeed.MobUtil.ElementClass.SHOW_BUTTON_TEXT);
+  this.addHeaderBarResizeEvents_();
+  this.addThemeColor_(a);
+};
+pagespeed.MobNav.prototype.addThemeColor_ = function(a) {
+  this.styleTag_ && this.styleTag_.parentNode.removeChild(this.styleTag_);
+  var b = pagespeed.MobUtil.colorNumbersToString(a.menuBackColor);
+  a = pagespeed.MobUtil.colorNumbersToString(a.menuFrontColor);
+  b = "#" + pagespeed.MobUtil.ElementId.HEADER_BAR + " { background-color: " + b + "; }\n#" + pagespeed.MobUtil.ElementId.HEADER_BAR + " *  { color: " + a + "; }\n#" + pagespeed.MobUtil.ElementId.NAV_PANEL + " { background-color: " + a + "; }\n#" + pagespeed.MobUtil.ElementId.NAV_PANEL + " *  { color: " + b + "; }\n";
+  this.styleTag_ = document.createElement(goog.dom.TagName.STYLE);
+  this.styleTag_.type = "text/css";
+  this.styleTag_.appendChild(document.createTextNode(b));
+  document.head.appendChild(this.styleTag_);
+};
+pagespeed.MobNav.prototype.run = function(a) {
+  pagespeed.MobUtil.inFriendlyIframe() || (this.clampZIndex_(), this.findElementsToOffset_(), this.addHeaderBar_(a), pagespeed.MobUtil.sendBeaconEvent(pagespeed.MobUtil.BeaconEvents.NAV_DONE), window.addEventListener(goog.events.EventType.LOAD, goog.bind(this.redraw_, this)));
+};
+pagespeed.MobNav.prototype.updateTheme = function(a) {
+  this.headerBar_.remove();
+  this.spacerDiv_.remove();
+  this.spacerDiv_ = document.createElement(goog.dom.TagName.DIV);
+  this.spacerDiv_.id = pagespeed.MobUtil.ElementId.SPACER;
+  this.headerBar_ = document.createElement(goog.dom.TagName.HEADER);
+  this.headerBar_.id = pagespeed.MobUtil.ElementId.HEADER_BAR;
+  this.addHeaderBar_(a);
 };
 mob.ThemePicker = function() {
   this.logoChoicePopup_ = null;

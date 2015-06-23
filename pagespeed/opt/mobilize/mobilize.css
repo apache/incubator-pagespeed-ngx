@@ -264,23 +264,6 @@ body.mob-iframe {
   margin-left: auto !important;
 }
 
-/* 700px is chosen since most devices seem to fall under that size when a
- * width=device-width meta viewport tag is set, and over that size when no set,
- * but may need further tweaking based on testing of more devices.
- */
-@media all and (min-width: 700px) and (orientation: portrait) {
-  #psmob-nav-panel.mobile {
-    width: 700px !important;
-  }
-
-  #psmob-nav-panel.mobile ul li a,
-  #psmob-nav-panel.mobile ul li div {
-    min-height: 120px;
-    line-height: 120px !important;
-    font-size: 60px !important;
-  }
-}
-
 #psmob-nav-panel {
   position: absolute !important;
 

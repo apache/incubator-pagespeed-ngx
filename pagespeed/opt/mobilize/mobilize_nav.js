@@ -29,9 +29,11 @@ goog.require('goog.string');
 goog.require('goog.structs.Set');
 // goog.style adds ~400 bytes when using getSize and getTransformedSize.
 goog.require('goog.style');
+goog.require('mob.NavPanel');
 goog.require('mob.button.Dialer');
 goog.require('mob.button.Map');
 goog.require('mob.button.Menu');
+goog.require('mob.util');
 goog.require('pagespeed.MobUtil');
 
 
@@ -88,19 +90,10 @@ pagespeed.MobNav = function() {
   this.mapButton_ = null;
 
   /**
-   * Side nav bar.
-   * @private {?Element}
+   * Side nav panel. Only initialized if inserted by C++.
+   * @private {?mob.NavPanel}
    */
-  this.navPanel_ =
-      document.getElementById(pagespeed.MobUtil.ElementId.NAV_PANEL);
-
-
-  /**
-   * Click detector div.
-   * @private {?Element}
-   */
-  this.clickDetectorDiv_ = null;
-
+  this.navPanel_ = null;
 
   /**
    * Tracks time since last scroll to figure out when scrolling is finished.
@@ -116,19 +109,6 @@ pagespeed.MobNav = function() {
    */
   this.currentTouches_ = 0;
 
-
-  /**
-   * The y coordinate of the previous move event, used to determine the
-   * direction of scrolling.
-   * @private {number}
-   */
-  this.lastScrollY_ = 0;
-
-  /**
-   * Bool to track state of the nav bar.
-   * @private {boolean}
-   */
-  this.isNavPanelOpen_ = false;
 
   /**
    * Track's the header bar height so we can tell if it changes between redraws.
@@ -160,25 +140,7 @@ pagespeed.MobNav = function() {
    * @private {boolean}
    */
   this.isAndroidBrowser_ = goog.labs.userAgent.browser.isAndroidBrowser();
-
-
-  // From https://dev.opera.com/articles/opera-mini-and-javascript/
-  this.isOperaMini_ = (navigator.userAgent.indexOf('Opera Mini') > -1);
 };
-
-
-/**
- * GIF image of an arrow icon, used to indicate hierarchical menus.
- * @private @const {string}
- */
-pagespeed.MobNav.ARROW_ICON_ =
-    'R0lGODlhkACQAPABAP///wAAACH5BAEAAAEALAAAAACQAJAAAAL+jI+py+0Po5y02ouz3rz7' +
-    'D4biSJbmiabqyrbuC8fyTNf2jef6zvf+DwwKh8Si8YhMKpfMpvMJjUqn1Kr1is1qt9yu9wsO' +
-    'i8fksvmMTqvX7Lb7DY/L5/S6/Y7P6/f8vh8EAJATKIhFWFhziEiluBjT6AgFGdkySclkeZmS' +
-    'qYnE2VnyCUokOhpSagqEmtqxytrjurnqFGtSSztLcvu0+9HLm+sbPPWbURx1XJGMPHyxLPXs' +
-    'EA3dLDFNXP1wzZjNsF01/W31LH6VXG6YjZ7Vu651674VG8/l2s1mL2qXn4nHD6nn3yE+Al+5' +
-    '+fcnQL6EBui1QcUwgb6IEvtRVGDporc/RhobKOooLRBIbSNLmjyJMqXKlSxbunwJM6bMmTRr' +
-    '2ryJM6fOnTx7+vwJNKjQoUSLGj2KNKnSpUybOn0KVUcBADs=';
 
 
 /**
@@ -263,6 +225,17 @@ pagespeed.MobNav.prototype.clampZIndex_ = function() {
 
 
 /**
+ * @private
+ */
+pagespeed.MobNav.prototype.redraw_ = function() {
+  this.redrawHeader_();
+  if (this.navPanel_) {
+    this.navPanel_.redraw(this.headerBar_.getBoundingClientRect().height);
+  }
+};
+
+
+/**
  * Redraw the header after scrolling or zooming finishes.
  * @private
  */
@@ -280,24 +253,9 @@ pagespeed.MobNav.prototype.redrawHeader_ = function() {
           Math.round(goog.style.getTransformedSize(this.headerBar_).height) :
           this.headerBarHeight_;
 
-  var scale = 1;
-  if (window.psDeviceType != 'desktop') {
-    // screen.width does not update on rotation on ios, but it does on android,
-    // so compensate for that here.
-    if ((Math.abs(window.orientation) == 90) &&
-        (screen.height > screen.width)) {
-      scale = (window.innerHeight / screen.width);
-    } else {
-      scale = window.innerWidth / screen.width;
-    }
-  }
-  // Android browser does not seem to take the pixel ratio into account in the
-  // values it returns for screen.width and screen.height.
-  if (this.isAndroidBrowser_) {
-    scale *= goog.dom.getPixelRatio();
-  }
+  var scale = mob.util.getScaleTransform();
   var scaleTransform = 'scale(' + scale.toString() + ')';
-  this.headerBar_.style['-webkit-transform'] = scaleTransform;
+  this.headerBar_.style.webkitTransform = scaleTransform;
   this.headerBar_.style.transform = scaleTransform;
 
   var width = window.innerWidth;
@@ -368,51 +326,13 @@ pagespeed.MobNav.prototype.redrawHeader_ = function() {
 
 
 /**
- * Redraw the nav panel based on current zoom level.
- * @private
- */
-pagespeed.MobNav.prototype.redrawNavPanel_ = function() {
-  if (!this.navPanel_) {
-    return;
-  }
-
-  var scale = window.innerWidth / goog.dom.getViewportSize().width;
-
-  var transform = 'scale(' + scale + ')';
-  this.navPanel_.style['-webkit-transform'] = transform;
-  this.navPanel_.style.transform = transform;
-
-  var xOffset = goog.dom.classlist.contains(this.navPanel_, 'open') ?
-                    0 :
-                    (-goog.style.getTransformedSize(this.navPanel_).width);
-
-  this.navPanel_.style.top = window.scrollY + 'px';
-  this.navPanel_.style.left = window.scrollX + xOffset + 'px';
-
-
-  var headerBarBox = this.headerBar_.getBoundingClientRect();
-  this.navPanel_.style.marginTop = headerBarBox.height + 'px';
-
-  // Opera mini does not support the css3 scale transformation nor the touch
-  // events that we use heavily here. As a workaround, we don't set the height
-  // here which allows the nav panel to fit the content. The user is then able
-  // to pinch zoom and see the whole menu, rather than scrolling the menu div.
-  if (!this.isOperaMini_) {
-    this.navPanel_.style.height =
-        ((window.innerHeight - headerBarBox.height) / scale) + 'px';
-  }
-};
-
-
-/**
  * Add events for capturing header bar resize and calling the appropriate redraw
  * events after scrolling and zooming.
  * @private
  */
 pagespeed.MobNav.prototype.addHeaderBarResizeEvents_ = function() {
   // Draw the header bar initially.
-  this.redrawHeader_();
-  this.redrawNavPanel_();
+  this.redraw_();
 
   // Setup a 200ms delay to redraw the header and nav panel. The timer gets
   // reset upon each touchend and scroll event to ensure that the redraws happen
@@ -433,8 +353,7 @@ pagespeed.MobNav.prototype.addHeaderBarResizeEvents_ = function() {
       // https://code.google.com/p/android/issues/detail?id=19827 for details on
       // the bug in question.
       if (this.isAndroidBrowser_ || this.currentTouches_ == 0) {
-        this.redrawNavPanel_();
-        this.redrawHeader_();
+        this.redraw_();
       }
       this.scrollTimer_ = null;
     }, this), 200);
@@ -444,16 +363,9 @@ pagespeed.MobNav.prototype.addHeaderBarResizeEvents_ = function() {
   // ms and there are no touches currently on the screen. This keeps the
   // redrawing from happening until scrolling is finished.
   var scrollHandler = function(e) {
-    if (!this.isNavPanelOpen_) {
-      goog.dom.classlist.add(this.headerBar_, 'hide');
-    }
-
     resetScrollTimer.call(this);
-
-    if (this.navPanel_ && this.isNavPanelOpen_ &&
-        !this.navPanel_.contains(/** @type {?Node} */ (e.target))) {
-      e.stopPropagation();
-      e.preventDefault();
+    if (!this.navPanel_ || !this.navPanel_.isOpen()) {
+      goog.dom.classlist.add(this.headerBar_, 'hide');
     }
   };
 
@@ -465,7 +377,6 @@ pagespeed.MobNav.prototype.addHeaderBarResizeEvents_ = function() {
   window.addEventListener(goog.events.EventType.TOUCHSTART,
                           goog.bind(function(e) {
                             this.currentTouches_ = e.touches.length;
-                            this.lastScrollY_ = e.touches[0].clientY;
                           }, this), false);
 
   window.addEventListener(goog.events.EventType.TOUCHMOVE,
@@ -478,7 +389,7 @@ pagespeed.MobNav.prototype.addHeaderBarResizeEvents_ = function() {
                             // user tries to scroll up past the top of the page,
                             // since neither a touchend event nor a scroll event
                             // fires to redraw the header.
-                            if (!this.isNavPanelOpen_) {
+                            if (!this.navPanel_ || !this.navPanel_.isOpen()) {
                               if (!this.isAndroidBrowser_) {
                                 goog.dom.classlist.add(this.headerBar_, 'hide');
                               }
@@ -501,10 +412,8 @@ pagespeed.MobNav.prototype.addHeaderBarResizeEvents_ = function() {
   // right, since the window height and width don't switch unless the page is
   // reloaded on some browsers.
   window.addEventListener(goog.events.EventType.ORIENTATIONCHANGE,
-                          goog.bind(function() {
-                            this.redrawNavPanel_();
-                            this.redrawHeader_();
-                          }, this), false);
+                          goog.bind(function() { this.redraw_(); }, this),
+                          false);
 };
 
 
@@ -531,10 +440,15 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
                            pagespeed.MobUtil.ElementClass.THEME_CONFIG);
   }
 
-  // Add menu button.
-  if (this.navPanel_ && !window.psLabeledMode) {
-    this.menuButton_ = new mob.button.Menu(
-        themeData.menuFrontColor, goog.bind(this.toggleNavPanel_, this));
+  var navPanelEl =
+      document.getElementById(pagespeed.MobUtil.ElementId.NAV_PANEL);
+  // Add menu button and nav panel.
+  if (!window.psLabeledMode && navPanelEl) {
+    this.navPanel_ = new mob.NavPanel(navPanelEl, themeData.menuBackColor);
+
+    this.menuButton_ =
+        new mob.button.Menu(themeData.menuFrontColor,
+                            goog.bind(this.navPanel_.toggle, this.navPanel_));
     this.headerBar_.appendChild(this.menuButton_.el);
   }
 
@@ -577,7 +491,7 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
     goog.dom.classlist.add(this.headerBar_, 'mobile');
     goog.dom.classlist.add(this.spacerDiv_, 'mobile');
     if (this.navPanel_) {
-      goog.dom.classlist.add(this.navPanel_, 'mobile');
+      goog.dom.classlist.add(this.navPanel_.el, 'mobile');
     }
   }
 
@@ -626,151 +540,6 @@ pagespeed.MobNav.prototype.addThemeColor_ = function(themeData) {
 
 
 /**
- * Add a div for detecting clicks on the body in order to close the open nav
- * panel. This is to workaround JS that sends click events, which can be
- * difficult to differentiate from actual clicks from the user. In particular
- * https://github.com/DevinWalker/jflow/ causes this issue.
- * @private
- */
-pagespeed.MobNav.prototype.addClickDetectorDiv_ = function() {
-  this.clickDetectorDiv_ = document.createElement(goog.dom.TagName.DIV);
-  this.clickDetectorDiv_.id = pagespeed.MobUtil.ElementId.CLICK_DETECTOR_DIV;
-  document.body.insertBefore(this.clickDetectorDiv_, this.navPanel_);
-
-  this.clickDetectorDiv_.addEventListener(
-      goog.events.EventType.CLICK, goog.bind(function(e) {
-        if (goog.dom.classlist.contains(this.navPanel_, 'open')) {
-          this.toggleNavPanel_();
-        }
-      }, this), false);
-};
-
-
-/**
- * Add properly themed arrow icons to the submenus of the nav menu.
- * @param {!pagespeed.MobUtil.ThemeData} themeData
- * @private
- */
-pagespeed.MobNav.prototype.addSubmenuArrows_ = function(themeData) {
-  var submenuTitleAs = this.navPanel_.querySelectorAll(
-      goog.dom.TagName.DIV + ' > ' + goog.dom.TagName.A);
-  var n = submenuTitleAs.length;
-  if (n == 0) {
-    return;
-  }
-  var arrowIcon = pagespeed.MobUtil.synthesizeImage(
-      pagespeed.MobNav.ARROW_ICON_, themeData.menuBackColor);
-  if (!arrowIcon) {
-    return;
-  }
-  for (var i = 0; i < n; i++) {
-    var icon = document.createElement(goog.dom.TagName.IMG);
-    var submenu = submenuTitleAs[i];
-    submenu.insertBefore(icon, submenu.firstChild);
-    icon.setAttribute('src', arrowIcon);
-    goog.dom.classlist.add(icon,
-                           pagespeed.MobUtil.ElementClass.MENU_EXPAND_ICON);
-  }
-};
-
-
-/**
- * Style the nav panel (which has been inserted server side), and register event
- * handlers for it.
- * @param {!pagespeed.MobUtil.ThemeData} themeData
- * @private
- */
-pagespeed.MobNav.prototype.addNavPanel_ = function(themeData) {
-  // TODO(jud): Make sure we have tests covering the redraw flow and the events
-  // called here.
-  this.addSubmenuArrows_(themeData);
-  this.addClickDetectorDiv_();
-
-  // Track touch move events just in the nav panel so that scrolling can be
-  // controlled. This is to work around overflow: hidden not working as we would
-  // want when zoomed in (it does not totally prevent scrolling).
-  this.navPanel_.addEventListener(
-      goog.events.EventType.TOUCHMOVE, goog.bind(function(e) {
-        if (!this.isNavPanelOpen_) {
-          return;
-        }
-
-        var currentY = e.touches[0].clientY;
-        // If the event is not scrolling (pinch zoom for exaple), then prevent
-        // it while the nav panel is open.
-        if (e.touches.length != 1) {
-          e.preventDefault();
-        } else {
-          // Check if we are scrolling horizontally or scrolling up past the top
-          // or below the bottom. If so, stop the scroll event from happening
-          // since otherwise the body behind the nav panel will also scroll.
-          var scrollUp = currentY > this.lastScrollY_;
-          var navPanelAtTop = (this.navPanel_.scrollTop == 0);
-          // Add 1 pixel to account for rounding errors.
-          var navPanelAtBottom =
-              (this.navPanel_.scrollTop >=
-               (this.navPanel_.scrollHeight - this.navPanel_.offsetHeight - 1));
-
-          if (e.cancelable && ((scrollUp && navPanelAtTop) ||
-                               (!scrollUp && navPanelAtBottom))) {
-            e.preventDefault();
-          }
-          // Keep other touchmove events from happening. This function is not
-          // supported on the android 2.3 stock browser.
-          if (e.stopImmediatePropagation) {
-            e.stopImmediatePropagation();
-          }
-          this.lastScrollY_ = currentY;
-        }
-      }, this), false);
-  this.redrawNavPanel_();
-};
-
-
-/**
- * Event handler for clicks on the hamburger menu. Toggles the state of the nav
- * panel so that is opens/closes.
- * @private
- */
-pagespeed.MobNav.prototype.toggleNavPanel_ = function() {
-  pagespeed.MobUtil.sendBeaconEvent(
-      (goog.dom.classlist.contains(this.navPanel_, 'open') ?
-           pagespeed.MobUtil.BeaconEvents.MENU_BUTTON_CLOSE :
-           pagespeed.MobUtil.BeaconEvents.MENU_BUTTON_OPEN));
-  goog.dom.classlist.toggle(this.headerBar_, 'open');
-  goog.dom.classlist.toggle(this.navPanel_, 'open');
-  goog.dom.classlist.toggle(this.clickDetectorDiv_, 'open');
-  goog.dom.classlist.toggle(document.body, 'noscroll');
-  this.isNavPanelOpen_ = !this.isNavPanelOpen_;
-  this.redrawNavPanel_();
-};
-
-
-/**
- * Add events to the buttons in the nav panel.
- * @private
- */
-pagespeed.MobNav.prototype.addNavButtonEvents_ = function() {
-  var navDivs = document.querySelectorAll(
-      '#' + pagespeed.MobUtil.ElementId.NAV_PANEL + ' div');
-  for (var i = 0, div; div = navDivs[i]; ++i) {
-    div.addEventListener(goog.events.EventType.CLICK, function(e) {
-      // These divs have href='#' (set by the server), so prevent default to
-      // keep it from changing the URL.
-      e.preventDefault();
-      var target = e.currentTarget;
-      // A click was registered on the div that has the hierarchical menu text
-      // and icon. Open up the UL, which should be the next element.
-      goog.dom.classlist.toggle(target.nextSibling, 'open');
-      // Also toggle the expand icon, which will be the first child of the P
-      // tag, which is the first child of the target div.
-      goog.dom.classlist.toggle(target.firstChild.firstChild, 'open');
-    }, false);
-  }
-};
-
-
-/**
  * Main entry point of nav mobilization. Should be called when logo detection is
  * finished.
  * @param {!pagespeed.MobUtil.ThemeData} themeData
@@ -784,20 +553,10 @@ pagespeed.MobNav.prototype.run = function(themeData) {
   this.findElementsToOffset_();
   this.addHeaderBar_(themeData);
 
-  // Don't insert nav stuff if there are no navigational sections on the page.
-  if (this.navPanel_) {
-    // Make sure the navPanel is in the body of the document; we've seen it
-    // moved elsewhere by JS on the page.
-    document.body.appendChild(this.navPanel_);
-
-    this.addNavPanel_(themeData);
-    this.addNavButtonEvents_();
-  }
-
   pagespeed.MobUtil.sendBeaconEvent(pagespeed.MobUtil.BeaconEvents.NAV_DONE);
 
   window.addEventListener(goog.events.EventType.LOAD,
-      goog.bind(this.redrawHeader_, this));
+                          goog.bind(this.redraw_, this));
 };
 
 

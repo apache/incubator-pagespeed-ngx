@@ -16,13 +16,16 @@
  * Author: jmarantz@google.com (Joshua Marantz)
  */
 
-
+goog.provide('mob.util');
+// TODO(jud): Rename the functions in this namespace to mob.util.
 goog.provide('pagespeed.MobUtil');
 
+goog.require('goog.asserts');
 goog.require('goog.color');
 goog.require('goog.dom');
 goog.require('goog.dom.TagName');
 goog.require('goog.events.EventType');
+goog.require('goog.labs.userAgent.browser');
 goog.require('goog.math.Box');
 goog.require('goog.string');
 goog.require('goog.uri.utils');
@@ -43,6 +46,7 @@ pagespeed.MobUtil.ElementId = {
   CONFIG_IFRAME: 'ps-hidden-iframe',
   DIALER_BUTTON: 'psmob-dialer-button',
   HEADER_BAR: 'psmob-header-bar',
+  IFRAME: 'psmob-iframe',
   LOGO_IMAGE: 'psmob-logo-image',
   LOGO_SPAN: 'psmob-logo-span',
   MAP_BUTTON: 'psmob-map-button',
@@ -781,12 +785,10 @@ pagespeed.MobUtil.extractImage = function(element, source) {
  * Synthesize an image using the specified color.
  * @param {string} imageBase64
  * @param {!goog.color.Rgb} color
- * @return {?string}
+ * @return {string}
  */
 pagespeed.MobUtil.synthesizeImage = function(imageBase64, color) {
-  if (imageBase64.length <= 16) {
-    return null;
-  }
+  goog.asserts.assert(imageBase64.length > 16);
   var imageTemplate = window.atob(imageBase64);
   var imageData = imageTemplate.substring(0, 13) +
       String.fromCharCode(color[0], color[1], color[2]) +
@@ -940,4 +942,29 @@ pagespeed.MobUtil.runCallbackOnce_ = function(callback) {
       callback();
     }
   };
+};
+
+
+/**
+ * Get the scale transform to use for the header bar and nav panel.
+ * @return {number}
+ */
+mob.util.getScaleTransform = function() {
+  var scale = 1;
+  if (window.psDeviceType != 'desktop') {
+    // screen.width does not update on rotation on ios, but it does on android,
+    // so compensate for that here.
+    if ((Math.abs(window.orientation) == 90) &&
+        (screen.height > screen.width)) {
+      scale = (window.innerHeight / screen.width);
+    } else {
+      scale = window.innerWidth / screen.width;
+    }
+  }
+  // Android browser does not seem to take the pixel ratio into account in the
+  // values it returns for screen.width and screen.height.
+  if (goog.labs.userAgent.browser.isAndroidBrowser()) {
+    scale *= goog.dom.getPixelRatio();
+  }
+  return scale;
 };
