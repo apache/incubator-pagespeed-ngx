@@ -52,20 +52,32 @@ class Writer;
 // TODO(nikhilmadan): Move to pagespeed/kernel/css/.
 class CssMinify {
  public:
-  // Write minified Stylesheet.
+  CssMinify(Writer* writer, MessageHandler* handler);
+  ~CssMinify();
+
+  // Parses a CSS stylesheet, writing the minified result to the
+  // writer supplied to the consructor.  Optionally, parsed URLs can
+  // be added to the string-vector passed to set_url_collector.
+  bool ParseStylesheet(StringPiece stylesheet_text);
+
+  // Writes minified Stylesheet from already-parsed stylesheet object.
   static bool Stylesheet(const Css::Stylesheet& stylesheet,
                          Writer* writer,
                          MessageHandler* handler);
 
-  // Write minified Declarations (style attribute contents).
+  // Writes minified Declarations (style attribute contents).
   static bool Declarations(const Css::Declarations& declarations,
                            Writer* writer,
                            MessageHandler* handler);
 
- private:
-  CssMinify(Writer* writer, MessageHandler* handler);
-  ~CssMinify();
+  // Establishes a string-vector to collect all parsed URLs.
+  void set_url_collector(StringVector* urls) { url_collector_ = urls; }
 
+  // Sets a writer to receive a stream of error messages.  The default is
+  // that all error messages are eaten.
+  void set_error_writer(Writer* writer) { error_writer_ = NULL; }
+
+ private:
   void Write(const StringPiece& str);
   void WriteURL(const UnicodeText& url);
 
@@ -112,8 +124,11 @@ class CssMinify {
               const Css::MediaExpression& b) const;
 
   Writer* writer_;
+  Writer* error_writer_;
   MessageHandler* handler_;
   bool ok_;
+
+  StringVector* url_collector_;
 
   DISALLOW_COPY_AND_ASSIGN(CssMinify);
 };

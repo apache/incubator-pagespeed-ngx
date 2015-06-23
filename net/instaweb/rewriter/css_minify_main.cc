@@ -18,18 +18,15 @@
 
 #include <cstdio>
 #include <cstdlib>
-#include <vector>
 
 #include "net/instaweb/rewriter/public/css_minify.h"
 #include "pagespeed/kernel/base/file_message_handler.h"
 #include "pagespeed/kernel/base/file_system.h"
 #include "pagespeed/kernel/base/file_writer.h"
-#include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/stdio_file_system.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/util/gflags.h"
-#include "webutil/css/parser.h"
 
 namespace net_instaweb {
 
@@ -55,39 +52,11 @@ bool MinifyCss_main(int argc, char** argv) {
     return false;
   }
 
-  // Parse CSS.
-  Css::Parser parser(in_text);
-  parser.set_preservation_mode(true);
-  parser.set_quirks_mode(false);
-  scoped_ptr<Css::Stylesheet> stylesheet(parser.ParseRawStylesheet());
-
-  // Report error summary.
-  if (parser.errors_seen_mask() != Css::Parser::kNoError) {
-    error_file->Write(StringPrintf(
-        "CSS parsing error mask %s\n",
-        Integer64ToString(parser.errors_seen_mask()).c_str()), &handler);
-  }
-  if (parser.unparseable_sections_seen_mask() != Css::Parser::kNoError) {
-    error_file->Write(StringPrintf(
-        "CSS unparseable sections mask %s\n",
-        Integer64ToString(parser.unparseable_sections_seen_mask()).c_str()),
-                      &handler);
-  }
-  // Report individual errors.
-  for (int i = 0, n = parser.errors_seen().size(); i < n; ++i) {
-      Css::Parser::ErrorInfo error = parser.errors_seen()[i];
-      error_file->Write(error.message, &handler);
-      error_file->Write("\n", &handler);
-  }
-
-  // Re-serialize.
-  FileSystem::OutputFile* outfile = file_system.Stdout();
-  FileWriter writer(outfile);
-  bool written = CssMinify::Stylesheet(*stylesheet, &writer, &handler);
-  file_system.Close(outfile, &handler);
-  file_system.Close(error_file, &handler);
-
-  return written && (parser.errors_seen_mask() == Css::Parser::kNoError);
+  FileWriter writer(file_system.Stdout());
+  FileWriter error_writer(error_file);
+  CssMinify minify(&writer, &handler);
+  minify.set_error_writer(&error_writer);
+  return minify.ParseStylesheet(in_text);
 }
 
 }  // namespace net_instaweb

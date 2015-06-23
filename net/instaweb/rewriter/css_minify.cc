@@ -22,6 +22,7 @@
 
 #include "base/logging.h"
 #include "pagespeed/kernel/base/message_handler.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/writer.h"
 #include "util/utf8/public/unicodetext.h"
@@ -45,6 +46,38 @@ bool CssMinify::Stylesheet(const Css::Stylesheet& stylesheet,
   return minifier.ok_;
 }
 
+bool CssMinify::ParseStylesheet(StringPiece stylesheet_text) {
+  ok_ = true;
+  Css::Parser parser(stylesheet_text);
+  parser.set_preservation_mode(true);  // Leave in unparseable regions.
+  parser.set_quirks_mode(false);  // Don't fix badly formatted colors.
+  scoped_ptr<Css::Stylesheet> stylesheet(parser.ParseRawStylesheet());
+
+  // Report error summary.
+  if (error_writer_ != NULL) {
+    if (parser.errors_seen_mask() != Css::Parser::kNoError) {
+      error_writer_->Write(StringPrintf(
+          "CSS parsing error mask %s\n",
+          Integer64ToString(parser.errors_seen_mask()).c_str()), handler_);
+    }
+    if (parser.unparseable_sections_seen_mask() != Css::Parser::kNoError) {
+      error_writer_->Write(StringPrintf(
+          "CSS unparseable sections mask %s\n",
+          Integer64ToString(parser.unparseable_sections_seen_mask()).c_str()),
+                        handler_);
+    }
+    // Report individual errors.
+    for (int i = 0, n = parser.errors_seen().size(); i < n; ++i) {
+      Css::Parser::ErrorInfo error = parser.errors_seen()[i];
+      error_writer_->Write(error.message, handler_);
+      error_writer_->Write("\n", handler_);
+    }
+  }
+
+  Minify(*stylesheet);
+  return ok_ && (parser.errors_seen_mask() == Css::Parser::kNoError);
+}
+
 bool CssMinify::Declarations(const Css::Declarations& declarations,
                              Writer* writer,
                              MessageHandler* handler) {
@@ -55,7 +88,8 @@ bool CssMinify::Declarations(const Css::Declarations& declarations,
 }
 
 CssMinify::CssMinify(Writer* writer, MessageHandler* handler)
-    : writer_(writer), handler_(handler), ok_(true) {
+    : writer_(writer), error_writer_(NULL), handler_(handler), ok_(true),
+      url_collector_(NULL) {
 }
 
 CssMinify::~CssMinify() {
@@ -70,6 +104,9 @@ void CssMinify::Write(const StringPiece& str) {
 
 void CssMinify::WriteURL(const UnicodeText& url) {
   StringPiece string_url(url.utf8_data(), url.utf8_length());
+  if (url_collector_ != NULL) {
+    string_url.CopyToString(StringVectorAdd(url_collector_));
+  }
   Write(Css::EscapeUrl(string_url));
 }
 
