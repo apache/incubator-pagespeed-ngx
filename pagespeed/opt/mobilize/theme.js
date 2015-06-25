@@ -67,7 +67,7 @@ pagespeed.MobTheme.prototype.logoComplete = function(candidates) {
     if (candidates.length >= 1) {
       var candidate = candidates[0];
       themeData = pagespeed.MobTheme.createThemeData(
-          candidate.logoRecord.logoElement.src, candidate.background,
+          candidate.logoRecord.foregroundImage.src, candidate.background,
           candidate.foreground);
     } else {
       themeData = pagespeed.MobTheme.createThemeData(

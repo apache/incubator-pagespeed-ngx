@@ -166,7 +166,7 @@ pagespeed.mobLayoutUtil.isPossiblyASlideShow = function(element) {
  * https://developer.mozilla.org/en-US/docs/Web/Guide/CSS/Using_multiple_backgrounds
  * for the full details of what these can be.
  *
- * TODO(jmarantz): move this to mobilize_util.js and replace
+ * TODO(jmarantz): move this to util.js and replace
  * pagespeed.MobUtil.findBackgroundImage_ there.
  *
  * @param {!Element} element
