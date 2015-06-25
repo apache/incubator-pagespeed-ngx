@@ -155,8 +155,8 @@ GoogleUrl* GoogleUrl::CopyAndAddEscapedQueryParam(
   query_params.ParseFromUrl(*this);
   query_params.AddEscaped(escaped_name, escaped_value);
   GoogleString query_params_string = query_params.ToEscapedString();
-  url_canon::Replacements<char> replace_query;
-  url_parse::Component query;
+  url::Replacements<char> replace_query;
+  url::Component query;
   query.len = query_params_string.size();
   replace_query.SetQuery(query_params_string.c_str(), query);
   GoogleUrl* result = new GoogleUrl(gurl_.ReplaceComponents(replace_query));
@@ -164,7 +164,7 @@ GoogleUrl* GoogleUrl::CopyAndAddEscapedQueryParam(
 }
 
 size_t GoogleUrl::LeafEndPosition(const GURL& gurl) {
-  url_parse::Parsed parsed = gurl.parsed_for_possibly_invalid_spec();
+  url::Parsed parsed = gurl.parsed_for_possibly_invalid_spec();
   if (parsed.path.is_valid()) {
     return parsed.path.end();
   }
@@ -193,7 +193,7 @@ size_t GoogleUrl::LeafEndPosition() const {
 }
 
 size_t GoogleUrl::LeafStartPosition(const GURL& gurl) {
-  url_parse::Parsed parsed = gurl.parsed_for_possibly_invalid_spec();
+  url::Parsed parsed = gurl.parsed_for_possibly_invalid_spec();
   size_t start_reverse_search_from = npos;
   if (parsed.query.is_valid() && (parsed.query.begin > 0)) {
     // query includes '?', so start the search from the character
@@ -211,7 +211,7 @@ size_t GoogleUrl::LeafStartPosition() const {
 
 size_t GoogleUrl::PathStartPosition(const GURL& gurl) {
   const std::string& spec = gurl.spec();
-  url_parse::Parsed parsed = gurl.parsed_for_possibly_invalid_spec();
+  url::Parsed parsed = gurl.parsed_for_possibly_invalid_spec();
   size_t origin_size = parsed.path.begin;
   if (!parsed.path.is_valid()) {
     origin_size = spec.size();
@@ -248,7 +248,7 @@ StringPiece GoogleUrl::AllAfterQuery() const {
   }
 
   const std::string& spec = gurl_.possibly_invalid_spec();
-  url_parse::Parsed parsed = gurl_.parsed_for_possibly_invalid_spec();
+  url::Parsed parsed = gurl_.parsed_for_possibly_invalid_spec();
   size_t query_end;
   if (gurl_.has_query()) {
     query_end = parsed.query.end();
@@ -317,7 +317,7 @@ StringPiece GoogleUrl::LeafSansQuery() const {
   if (!gurl_.has_query()) {
     return StringPiece(spec.data() + after_last_slash, leaf_length);
   }
-  url_parse::Parsed parsed = gurl_.parsed_for_possibly_invalid_spec();
+  url::Parsed parsed = gurl_.parsed_for_possibly_invalid_spec();
   if (!parsed.query.is_valid()) {
     return StringPiece();
   } else {
@@ -388,7 +388,7 @@ StringPiece GoogleUrl::NetPath() const {
     return Spec();
   }
   const std::string& spec = gurl_.possibly_invalid_spec();
-  url_parse::Parsed parsed = gurl_.parsed_for_possibly_invalid_spec();
+  url::Parsed parsed = gurl_.parsed_for_possibly_invalid_spec();
   // Just remove scheme and : from beginning of URL.
   return StringPiece(spec.data() + parsed.scheme.end() + 1,
                      spec.size() - parsed.scheme.end() - 1);
@@ -414,7 +414,7 @@ StringPiece GoogleUrl::Host() const {
   if (!gurl_.has_host()) {
     return StringPiece();
   }
-  url_parse::Parsed parsed = gurl_.parsed_for_possibly_invalid_spec();
+  url::Parsed parsed = gurl_.parsed_for_possibly_invalid_spec();
   // Just remove scheme and : from beginning of URL.
   return StringPiece(gurl_.spec().data() + parsed.host.begin,
                      parsed.host.len);
@@ -429,7 +429,7 @@ StringPiece GoogleUrl::HostAndPort() const {
   if (!gurl_.has_host()) {
     return StringPiece();
   }
-  url_parse::Parsed parsed = gurl_.parsed_for_possibly_invalid_spec();
+  url::Parsed parsed = gurl_.parsed_for_possibly_invalid_spec();
   return StringPiece(gurl_.spec().data() + parsed.host.begin,
                      parsed.host.len + parsed.port.len + 1);  // Yes, it works.
 }
@@ -440,7 +440,7 @@ StringPiece GoogleUrl::PathSansQuery() const {
     return StringPiece();
   }
 
-  url_parse::Parsed parsed = gurl_.parsed_for_possibly_invalid_spec();
+  url::Parsed parsed = gurl_.parsed_for_possibly_invalid_spec();
   size_t path_start = PathStartPosition();
   if (path_start == npos || !parsed.path.is_valid()) {
     return StringPiece();
@@ -458,7 +458,7 @@ StringPiece GoogleUrl::Query() const {
   if (!gurl_.has_query()) {
     return StringPiece();
   }
-  url_parse::Parsed parsed = gurl_.parsed_for_possibly_invalid_spec();
+  url::Parsed parsed = gurl_.parsed_for_possibly_invalid_spec();
   return StringPiece(gurl_.spec().data() + parsed.query.begin,
                      parsed.query.len);
 }
@@ -472,7 +472,7 @@ StringPiece GoogleUrl::Scheme() const {
   if (!gurl_.has_scheme()) {
     return StringPiece();
   }
-  url_parse::Parsed parsed = gurl_.parsed_for_possibly_invalid_spec();
+  url::Parsed parsed = gurl_.parsed_for_possibly_invalid_spec();
   return StringPiece(gurl_.spec().data() + parsed.scheme.begin,
                      parsed.scheme.len);
 }

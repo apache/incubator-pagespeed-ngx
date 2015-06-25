@@ -27,15 +27,26 @@
 #include "pagespeed/kernel/base/string_util.h"
 
 
-#if !defined(CHROMIUM_REVISION) || CHROMIUM_REVISION >= 193439
-#  include "third_party/chromium/src/url/gurl.h"
-#  include "third_party/chromium/src/url/url_parse.h"
-#else
-#  include "googleurl/src/gurl.h"
-#  include "googleurl/src/url_parse.h"
-#endif  // !defined(CHROMIUM_REVISION) || CHROMIUM_REVISION >= 193439
+#include "third_party/chromium/src/url/gurl.h"
+#include "third_party/chromium/src/url/url_parse.h"
+#include "third_party/chromium/src/url/url_util.h"
 
 namespace net_instaweb {
+
+// Prepare for flattening of the namespaces in newer Chromiums.
+
+namespace url {
+
+using url_canon::Replacements;
+using url_parse::PORT_UNSPECIFIED;
+using url_parse::PORT_INVALID;
+using url_parse::Component;
+using url_parse::Parsed;
+using url_util::Initialize;
+using url_util::Shutdown;
+
+};  // namespace url
+
 
 enum UrlRelativity {
   kAbsoluteUrl,   // http://example.com/foo/bar/file.ext?k=v#f

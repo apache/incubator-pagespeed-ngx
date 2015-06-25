@@ -17,13 +17,13 @@
 #include "net/instaweb/rewriter/public/process_context.h"
 
 #include "base/logging.h"
+#include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/html/html_keywords.h"
 #include "pagespeed/kernel/http/domain_registry.h"
 #include "pagespeed/kernel/js/js_tokenizer.h"
 #include "pagespeed/kernel/util/gflags.h"
 
 #include "third_party/protobuf/src/google/protobuf/stubs/common.h"
-#include "url/url_util.h"
 using namespace google;  // NOLINT
 
 namespace {
@@ -50,7 +50,7 @@ ProcessContext::ProcessContext()
   // url/url_util.cc lazily initializes its "standard_schemes" table in a
   // thread-unsafe way and so it must be explicitly initialized prior to thread
   // creation, and explicitly terminated after thread quiescence.
-  url_util::Initialize();
+  url::Initialize();
 }
 
 ProcessContext::~ProcessContext() {
@@ -67,7 +67,7 @@ ProcessContext::~ProcessContext() {
   // function InitShutdownFunctionsOnce.
   google::protobuf::ShutdownProtobufLibrary();
 
-  url_util::Shutdown();
+  url::Shutdown();
   HtmlKeywords::ShutDown();
 }
 

@@ -250,14 +250,14 @@ struct PortTest {
 TEST_F(UrlInputResourceTest, IntPort) {
   const PortTest port_tests[] = {
     // http
-    {"http://www.google.com/", 80, url_parse::PORT_UNSPECIFIED},
-    {"http://www.google.com:80/", 80, url_parse::PORT_UNSPECIFIED},
+    {"http://www.google.com/", 80, url::PORT_UNSPECIFIED},
+    {"http://www.google.com:80/", 80, url::PORT_UNSPECIFIED},
     {"http://www.google.com:443/", 443, 443},
     {"http://www.google.com:1234/", 1234, 1234},
 
     // https
-    {"https://www.google.com/", 443, url_parse::PORT_UNSPECIFIED},
-    {"https://www.google.com:443/", 443, url_parse::PORT_UNSPECIFIED},
+    {"https://www.google.com/", 443, url::PORT_UNSPECIFIED},
+    {"https://www.google.com:443/", 443, url::PORT_UNSPECIFIED},
     {"https://www.google.com:80/", 80, 80},
     {"https://www.google.com:1234/", 1234, 1234},
   };
