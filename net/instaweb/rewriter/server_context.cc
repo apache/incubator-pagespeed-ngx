@@ -83,8 +83,6 @@
 #include "pagespeed/kernel/thread/thread_synchronizer.h"
 #include "pagespeed/opt/http/property_store.h"
 
-
-
 namespace net_instaweb {
 
 class RewriteFilter;
@@ -1019,23 +1017,6 @@ RewriteOptions* ServerContext::GetCustomOptions(RequestHeaders* request_headers,
     if (!custom_options->enroll_experiment()) {
       custom_options->set_running_experiment(false);
     }
-  }
-
-  if (request_headers->IsXmlHttpRequest()) {
-    // For XmlHttpRequests, disable filters that insert js. Otherwise, there
-    // will be two copies of the same scripts in the html dom -- one from main
-    // html page and another from html content fetched from ajax and this
-    // will corrupt global variable state.
-    // Sometimes, js present in the ajax request does not get executed.
-    // TODO(sriharis): Set a flag in RewriteOptions indicating that we are
-    // working with Ajax and thus should not assume the base URL is correct.
-    // Note that there is no guarantee that the header will be set on an ajax
-    // request and so the option will not be set for all ajax requests.
-    if (custom_options == NULL) {
-      custom_options.reset(options->Clone());
-    }
-    custom_options->DisableFiltersRequiringScriptExecution();
-    custom_options->DisableFilter(RewriteOptions::kPrioritizeCriticalCss);
   }
 
   url_namer()->ConfigureCustomOptions(*request_headers, custom_options.get());

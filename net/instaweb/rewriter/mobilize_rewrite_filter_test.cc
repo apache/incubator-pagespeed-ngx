@@ -19,6 +19,7 @@
 #include "net/instaweb/rewriter/public/mobilize_rewrite_filter.h"
 
 #include "base/logging.h"
+#include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
@@ -572,6 +573,12 @@ class MobilizeRewriteEndToEndTest : public MobilizeRewriteFilterTest {
     ValidateExpected(test_name, input, expected);
   }
 
+  GoogleString NoScriptRedirect(StringPiece test_name) const {
+    GoogleString url = StrCat(kTestDomain, test_name,
+                              ".html?PageSpeed=noscript");
+    return StringPrintf(kNoScriptRedirectFormatter, url.c_str(), url.c_str());
+  }
+
   StdioFileSystem filesystem_;
 
  private:
@@ -592,8 +599,10 @@ TEST_F(MobilizeRewriteEndToEndTest, FullPageLayout) {
       StrCat(GTestSrcDir(), kTestDataDir, kRewritten);
   ASSERT_TRUE(filesystem_.ReadFile(rewritten_filename.c_str(),
                                    &rewritten_buffer, message_handler()));
-  GlobalReplaceSubstring("@@SPACER@@",
-                         StrCat(Spacer(), Scrim()), &rewritten_buffer);
+  GlobalReplaceSubstring(
+      "@@SPACER@@",
+      StrCat(NoScriptRedirect("EndToEndMobileLayout"), Spacer(), Scrim()),
+      &rewritten_buffer);
   GlobalReplaceSubstring("@@HEAD_SCRIPT_LOAD@@", HeadAndViewport(true),
                          &rewritten_buffer);
   GlobalReplaceSubstring("@@HEAD_STYLES@@", Styles(true), &rewritten_buffer);
@@ -629,7 +638,10 @@ TEST_F(MobilizeRewriteEndToEndTest, FullPage) {
       StrCat(GTestSrcDir(), kTestDataDir, kRewritten);
   ASSERT_TRUE(filesystem_.ReadFile(rewritten_filename.c_str(),
                                    &rewritten_buffer, message_handler()));
-  GlobalReplaceSubstring("@@SPACER@@", Spacer(), &rewritten_buffer);
+
+  GlobalReplaceSubstring("@@SPACER@@",
+                         StrCat(NoScriptRedirect("EndToEndMobile"), Spacer()),
+                         &rewritten_buffer);
   GlobalReplaceSubstring("@@HEAD_SCRIPT_LOAD@@", HeadAndViewport(false),
                          &rewritten_buffer);
   GlobalReplaceSubstring("@@HEAD_STYLES@@", Styles(false), &rewritten_buffer);

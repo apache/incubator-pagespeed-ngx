@@ -18,6 +18,7 @@
 #include "net/instaweb/rewriter/public/support_noscript_filter.h"
 
 #include "net/instaweb/public/global_constants.h"
+#include "net/instaweb/rewriter/public/mobilize_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/request_properties.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -99,6 +100,10 @@ bool SupportNoscriptFilter::IsAnyFilterRequiringScriptExecutionEnabled() const {
         break;
       case RewriteOptions::kCachePartialHtml:
         filter_enabled = rewrite_driver_->flushing_cached_html();
+        break;
+      case RewriteOptions::kMobilize:
+        filter_enabled =
+            MobilizeRewriteFilter::IsApplicableFor(rewrite_driver_);
         break;
       default:
         break;

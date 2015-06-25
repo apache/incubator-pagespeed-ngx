@@ -207,6 +207,25 @@ RewriteQuery::Status RewriteQuery::Scan(
       ? request_headers->GetAllCookies()
       : no_cookies);
 
+  // For XmlHttpRequests, disable filters that insert js. Otherwise, there
+  // will be two copies of the same scripts in the html dom -- one from main
+  // html page and another from html content fetched from ajax --- which will
+  // generally confuse the heck out of it. The code for this is a little
+  // special since unlike a PageSpeedFoo= header we should not take it as an
+  // invitation to turn stuff on.
+  //
+  // TODO(sriharis): Set a flag in RewriteOptions indicating that we are
+  // working with Ajax and thus should not assume the base URL is correct.
+  // Note that there is no guarantee that the header will be set on an ajax
+  // request and so the option will not be set for all ajax requests.
+  if (request_headers != NULL && request_headers->IsXmlHttpRequest()) {
+    if (options_.get() == NULL) {
+      options_.reset(factory->NewRewriteOptionsForQuery());
+    }
+    options_->DisableFiltersRequiringScriptExecution();
+    options_->DisableFilter(RewriteOptions::kPrioritizeCriticalCss);
+  }
+
   // See if anything looks even remotely like one of our options before doing
   // any more work.  Note that when options are correctly embedded in the URL,
   // we will have a success-status here.  But we still allow a hand-added
@@ -326,7 +345,7 @@ RewriteQuery::Status RewriteQuery::Scan(
           // If it is a PageSpeed-related query parameter, also save it so we
           // can add it back if we receive a redirection response to our fetch.
           pagespeed_query_params_.AddEscaped(query_params_.name(i),
-                                            *query_params_.EscapedValue(i));
+                                             *query_params_.EscapedValue(i));
           status = kSuccess;
           break;
         case kInvalid:

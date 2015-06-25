@@ -1077,6 +1077,30 @@ TEST_F(RewriteQueryTest, CacheControlNoTransform) {
   EXPECT_TRUE(request_headers.Lookup1(HttpAttributes::kCacheControl) != NULL);
 }
 
+TEST_F(RewriteQueryTest, DisableScriptsWithXHR) {
+  RequestHeaders request_headers;
+  request_headers.Replace(HttpAttributes::kXRequestedWith,
+                          HttpAttributes::kXmlHttpRequest);
+
+  ResponseHeaders response_headers;
+  GoogleString in_query, out_query, out_req_string, out_resp_string;
+
+  scoped_ptr<RewriteOptions> options(ParseAndScan(
+      kHtmlUrl, in_query, NULL, &request_headers,
+      &response_headers, &out_query,
+      &out_req_string, &out_resp_string)->Clone());
+  // Convert disabled -> forbidden for easier testing.
+  options->set_forbid_all_disabled_filters(true);
+
+  // defer_js, mobilize generaly require JS.
+  EXPECT_TRUE(options->Forbidden(RewriteOptions::kDeferJavascript));
+  EXPECT_TRUE(options->Forbidden(RewriteOptions::kMobilize));
+
+  // rewrite_css doesn't, and shouldn't be defaulted on, either.
+  EXPECT_FALSE(options->Forbidden(RewriteOptions::kRewriteCss));
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kRewriteCss));
+}
+
 TEST_F(RewriteQueryTest, CacheControlPrivateNoTransformResponse) {
   RequestHeaders request_headers;
 

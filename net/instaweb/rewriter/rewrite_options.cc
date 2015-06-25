@@ -720,6 +720,7 @@ const RewriteOptions::Filter kRequiresScriptExecutionFilterSet[] = {
   RewriteOptions::kFlushSubresources,
   RewriteOptions::kLazyloadImages,
   RewriteOptions::kLocalStorageCache,
+  RewriteOptions::kMobilize,
   RewriteOptions::kSplitHtml,
   // We do not include kPrioritizeVisibleContent since we do not want to attach
   // SupportNoscriptFilter in the case of blink pcache miss pass-through, since
