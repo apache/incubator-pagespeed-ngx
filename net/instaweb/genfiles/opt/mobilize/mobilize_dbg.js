@@ -8402,7 +8402,7 @@ pagespeed.MobTheme.createThemeData = function(a, b, c) {
 };
 pagespeed.MobTheme.prototype.logoComplete = function(a) {
   if (this.doneCallback_) {
-    1 <= a.length ? (a = a[0], a = pagespeed.MobTheme.createThemeData(a.logoRecord.logoElement.src, a.background, a.foreground)) : a = pagespeed.MobTheme.createThemeData(null, [255, 255, 255], [0, 0, 0]);
+    1 <= a.length ? (a = a[0], a = pagespeed.MobTheme.createThemeData(a.logoRecord.foregroundImage.src, a.background, a.foreground)) : a = pagespeed.MobTheme.createThemeData(null, [255, 255, 255], [0, 0, 0]);
     var b = this.doneCallback_;
     this.doneCallback_ = null;
     b(a);

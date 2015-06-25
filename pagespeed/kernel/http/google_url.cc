@@ -415,6 +415,7 @@ StringPiece GoogleUrl::Host() const {
     return StringPiece();
   }
   url_parse::Parsed parsed = gurl_.parsed_for_possibly_invalid_spec();
+  // Just remove scheme and : from beginning of URL.
   return StringPiece(gurl_.spec().data() + parsed.host.begin,
                      parsed.host.len);
 }

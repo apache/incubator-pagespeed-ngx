@@ -17,8 +17,7 @@
 /**
  * @fileoverview Stylesheet injected into mobile pages to render a progress
  * bar, inject a header bar with a logo, and navigational menus.  See also
- * mobilize_layout.css, which transforms desktop pages to a mobile-friendly
- * format.
+ * layout.css, which transforms desktop pages to a mobile-friendly format.
  *
  * @author jud@google.com (Jud Porter)
  *         jmarantz@google.com (Joshua Marantz)

@@ -391,7 +391,7 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
           // Hijack XHR early so that we don't miss mobilizing any responses.
           // TODO(jmarantz): Move this block to inject before the first script.
           GoogleString script_path = StrCat(
-              static_file_prefix_, "mobilize_xhr.js");
+              static_file_prefix_, "xhr.js");
           driver()->InsertScriptAfterCurrent(script_path, true);
         } else {
           StaticAssetManager* manager =
@@ -408,9 +408,9 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
       added_spacer_ = true;
 
       // TODO(jmaessen): Right now we inject an unstyled, unsized header bar.
-      // This actually works OK in testing on current sites, because
-      // mobilize_nav.js styles and sizes it at onload.  We should
-      // style it using mob_theme_data when that's available.
+      // This actually works OK in testing on current sites, because nav.js
+      // styles and sizes it at onload.  We should style it using mob_theme_data
+      // when that's available.
       HtmlElement* header = driver()->NewElement(element, HtmlName::kHeader);
       driver()->InsertNodeAfterCurrent(header);
       driver()->AddAttribute(header, HtmlName::kId, "psmob-header-bar");
@@ -546,7 +546,7 @@ void MobilizeRewriteFilter::AddStyle(HtmlElement* element) {
     added_style_ = true;
     AppendStylesheet("mobilize.css", StaticAssetEnum::MOBILIZE_CSS, element);
     if (use_js_layout_) {
-      AppendStylesheet("mobilize_layout.css",
+      AppendStylesheet("layout.css",
                        StaticAssetEnum::MOBILIZE_LAYOUT_CSS, element);
     }
   }

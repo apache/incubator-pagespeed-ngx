@@ -555,9 +555,9 @@ TEST_F(GoogleUrlTest, URLQuery) {
   // The code that does all this is:
   // * ParsePath in url_parse.cc extracts the query part, starting at the
   //   first '?' and ending at e.o.string or the first '#'.
-  // * url_canon::RemoveURLWhitespace strips tabs, newlines, & carriage returns
-  //   per the url_canon::IsRemovableURLWhitespace method.
-  // * url_canon::IsQueryChar results in the encoding of control characters,
+  // * url::RemoveURLWhitespace strips tabs, newlines, & carriage returns
+  //   per the url::IsRemovableURLWhitespace method.
+  // * url::IsQueryChar results in the encoding of control characters,
   //   the characters in [ "#<>], & DEL (& "'" in open source), however since
   //   '#' terminates the query part it cannot be in the result.
   GoogleString good_query_param1(kBadQueryString);

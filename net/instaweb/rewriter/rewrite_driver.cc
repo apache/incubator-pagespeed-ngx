@@ -1184,7 +1184,7 @@ void RewriteDriver::AddPreRenderFilters() {
   // do much good (b) it would rename the URL to something we won't
   // find on /mod_pagespeed_static and (c) we certainly don't want
   // source-maps for the compiled code.  However, we do want
-  // the inliner to work on the small compiled mobilize_xhr.js.
+  // the inliner to work on the small compiled xhr.js.
   if (rewrite_options->Enabled(RewriteOptions::kMobilize)) {
     if (rewrite_options->MobUseLabelFilter()) {
       AppendOwnedPreRenderFilter(

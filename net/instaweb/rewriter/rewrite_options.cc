@@ -736,7 +736,7 @@ const RewriteOptions::Filter kRequiresScriptExecutionFilterSet[] = {
 // kRewriteDomains (and kDomainRewriteHyperlinks Option) into a proxy mode.
 const RewriteOptions::Filter kMobilizeFilterSet[] = {
   // TODO(huibao): When layout mode is enabled, uncomment kInlineJavascript
-  // to inline mobilize_xhr.js, a small JS file which we create, into HTML.
+  // to inline xhr.js, a small JS file which we create, into HTML.
   // RewriteOptions::kInlineJavascript,
   RewriteOptions::kMobilize,
   // Turn on rewrite_css in order to rewrite hyper-links in CSS.

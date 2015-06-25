@@ -882,10 +882,10 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   OUT=$(grep script $FETCH_UNTIL_OUTFILE)
   check_from "$OUT" egrep -q "pagespeed_static/mobilize$MOB_SUFFIX_RE"
   check_not_from "$OUT" egrep -q "pagespeed_static/mobilize_xhr_opt$MOB_SUFFIX_RE"
-  check_not_from "$OUT" fgrep -q mobilize_xhr.js
-  check_not_from "$OUT" fgrep -q mobilize_layout.js
-  check_not_from "$OUT" fgrep -q mobilize_util.js
-  check_not_from "$OUT" fgrep -q mobilize_nav.js
+  check_not_from "$OUT" fgrep -q xhr.js
+  check_not_from "$OUT" fgrep -q layout.js
+  check_not_from "$OUT" fgrep -q util.js
+  check_not_from "$OUT" fgrep -q nav.js
 
   start_test mobilizer with MobStatic on
   OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \
@@ -893,7 +893,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   check_not_from "$OUT" egrep -q \
     "pagespeed_static/mobilize_xhr_debug$MOB_SUFFIX_RE"
   check_not_from "$OUT" egrep -q "pagespeed_static/mobilize_debug$MOB_SUFFIX_RE"
-  check_from "$OUT" fgrep -q mobilize_xhr.js
+  check_from "$OUT" fgrep -q xhr.js
   check_from "$OUT" fgrep -q deps.js
 
   start_test mobilizer with debug on
@@ -902,10 +902,10 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   # We don't inline the XHR js in debug mode because it will be too large.
   check_from "$OUT" egrep -q "pagespeed_static/mobilize_xhr_debug$MOB_SUFFIX_RE"
   check_from "$OUT" egrep -q "pagespeed_static/mobilize_debug$MOB_SUFFIX_RE"
-  check_not_from "$OUT" fgrep -q mobilize_xhr.js
-  check_not_from "$OUT" fgrep -q mobilize_layout.js
-  check_not_from "$OUT" fgrep -q mobilize_util.js
-  check_not_from "$OUT" fgrep -q mobilize_nav.js
+  check_not_from "$OUT" fgrep -q xhr.js
+  check_not_from "$OUT" fgrep -q layout.js
+  check_not_from "$OUT" fgrep -q util.js
+  check_not_from "$OUT" fgrep -q nav.js
 
   start_test no mobilization files if we turn mobilization off
   OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \
@@ -914,10 +914,10 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   check_not_from "$OUT" fgrep -q window.XMLHttpRequest
   check_not_from "$OUT" egrep -q "pagespeed_static/mobilize$MOB_SUFFIX_RE"
   check_not_from "$OUT" egrep -q "pagespeed_static/mobilize_xhr_opt$MOB_SUFFIX_RE"
-  check_not_from "$OUT" fgrep -q mobilize_xhr.js
-  check_not_from "$OUT" fgrep -q mobilize_layout.js
-  check_not_from "$OUT" fgrep -q mobilize_util.js
-  check_not_from "$OUT" fgrep -q mobilize_nav.js
+  check_not_from "$OUT" fgrep -q xhr.js
+  check_not_from "$OUT" fgrep -q layout.js
+  check_not_from "$OUT" fgrep -q util.js
+  check_not_from "$OUT" fgrep -q nav.js
 
 fi
 
