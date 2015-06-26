@@ -117,7 +117,11 @@ const RelevantTagMetadata kRelevantTags[] = {
   { HtmlName::kSection,  kSectionTag,  true,     MobileRole::kUnassigned },
   { HtmlName::kSelect,   kSelectTag,   false,    MobileRole::kUnassigned },  //
   { HtmlName::kSpan,     kSpanTag,     false,    MobileRole::kUnassigned },
+  { HtmlName::kTable,    kTableTag,    true,     MobileRole::kUnassigned },
+  { HtmlName::kTd,       kTd,          false,    MobileRole::kUnassigned },
   { HtmlName::kTextarea, kTextareaTag, false,    MobileRole::kUnassigned },
+  { HtmlName::kTh,       kTh,          false,    MobileRole::kUnassigned },
+  { HtmlName::kTr,       kTr,          true,     MobileRole::kUnassigned },
   { HtmlName::kUl,       kUlTag,       true,     MobileRole::kUnassigned },
 };
 

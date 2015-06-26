@@ -87,7 +87,11 @@ enum MobileRelevantTag {
   kSectionTag,
   kSelectTag,    // Useless?
   kSpanTag,
+  kTableTag,
+  kTd,
   kTextareaTag,
+  kTh,
+  kTr,
   kUlTag,
   kNumRelevantTags
 };

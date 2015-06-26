@@ -46,6 +46,8 @@ const HtmlName::Keyword kDivLikeTags[] = {
   HtmlName::kMenu,
   HtmlName::kNav,
   HtmlName::kSection,
+  HtmlName::kTable,
+  HtmlName::kTr,
   HtmlName::kUl
 };
 

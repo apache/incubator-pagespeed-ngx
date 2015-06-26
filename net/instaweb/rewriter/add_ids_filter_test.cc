@@ -203,6 +203,34 @@ TEST_F(AddIdsFilterTest, MidTagFlushTest) {
   EXPECT_EQ(StrCat(kExpected1, kExpected2), output_buffer_);
 }
 
+TEST_F(AddIdsFilterTest, TableIds) {
+  // For tables, id assignment still reflects DOM order; this may differ from
+  // semantic order if the table footer is above the body (as here) or if the
+  // head is below the body.
+  static const char kExpected[] =
+      "<table id=\"PageSpeed-0\">\n"
+      "  <thead>\n"
+      "    <tr id=\"PageSpeed-0-0-0\">\n"
+      "      <th>Header content 1</th>\n"
+      "      <th>Header content 2</th>\n"
+      "    </tr>\n"
+      "  </thead>\n"
+      "  <tfoot>\n"
+      "    <tr id=\"PageSpeed-0-1-0\">\n"
+      "      <td>Footer content 1</td>\n"
+      "      <td>Footer content 2</td>\n"
+      "    </tr>\n"
+      "  </tfoot>\n"
+      "  <tbody>\n"
+      "    <tr id=\"PageSpeed-0-2-0\">\n"
+      "      <td>Body content 1</td>\n"
+      "      <td>Body content 2</td>\n"
+      "    </tr>\n"
+      "  </tbody>\n"
+      "</table>";
+  ValidateExpected("table_ids", Unlabel(kExpected), kExpected);
+}
+
 TEST_F(AddIdsFilterTest, UnicodeInIdTest) {
   // If there's already an id, don't add another one -- even if the existing id
   // uses characters we don't like!

@@ -738,6 +738,114 @@ TEST_F(MobilizeLabelFilterTest, SmallCountNav) {
   EXPECT_EQ(2, divs_unlabeled_->Get());
 }
 
+TEST_F(MobilizeLabelFilterTest, SmallCountTabularNav) {
+  EnableDebug();
+  const char kOutputHtml[] =
+      "<head></head><body>\n"
+      "<div class='container' id=\"PageSpeed-1\""
+      " data-mobile-role=\"navigational\">\n"
+      " <a href='a'>a</a>\n"
+      " <table class='menu' id='hdr' role='nav'>\n"
+      "  <tr id=\"PageSpeed-hdr-0\">\n"
+      "   <td><a href='n1'>nav 1</a></td>\n"
+      "   <td><a href='n2'>nav 2</a></td>\n"
+      "   <td><a href='n3'>nav 3</a></td>\n"
+      "  </tr>"
+      "<!--id: PageSpeed-hdr-0,"
+      " ElementTagDepth: 3,"
+      " PreviousTagCount: 3,"
+      " PreviousTagPercent: 30.00,"
+      " PreviousContentBytes: 1,"
+      " PreviousContentPercent: 6.25,"
+      " PreviousNonBlankBytes: 1,"
+      " PreviousNonBlankPercent: 7.69,"
+      " ContainedTagDepth: 5,"
+      " ContainedTagRelativeDepth: 2,"
+      " ContainedTagCount: 7,"
+      " ContainedTagPercent: 70.00,"
+      " ContainedContentBytes: 15,"
+      " ContainedContentPercent: 93.75,"
+      " ContainedNonBlankBytes: 12,"
+      " ContainedNonBlankPercent: 92.31,"
+      " ContainedAContentBytes: 15,"
+      " ContainedAContentLocalPercent: 100.00,"
+      " a count: 3,"
+      " a percent: 75.00,"
+      " td count: 3,"
+      " td percent: 100.00,"
+      " tr count: 1,"
+      " tr percent: 100.00,"
+      " parent role is navigational-->\n"
+      " </table>"
+      "<!--id: hdr,"
+      " ElementTagDepth: 2,"
+      " PreviousTagCount: 2,"
+      " PreviousTagPercent: 20.00,"
+      " PreviousContentBytes: 1,"
+      " PreviousContentPercent: 6.25,"
+      " PreviousNonBlankBytes: 1,"
+      " PreviousNonBlankPercent: 7.69,"
+      " ContainedTagDepth: 5,"
+      " ContainedTagRelativeDepth: 3,"
+      " ContainedTagCount: 8,"
+      " ContainedTagPercent: 80.00,"
+      " ContainedContentBytes: 15,"
+      " ContainedContentPercent: 93.75,"
+      " ContainedNonBlankBytes: 12,"
+      " ContainedNonBlankPercent: 92.31,"
+      " ContainedAContentBytes: 15,"
+      " ContainedAContentLocalPercent: 100.00,"
+      " hdr: 1,"
+      " menu: 1,"
+      " nav: 1,"
+      " a count: 3,"
+      " a percent: 75.00,"
+      " table count: 1,"
+      " table percent: 100.00,"
+      " td count: 3,"
+      " td percent: 100.00,"
+      " tr count: 1,"
+      " tr percent: 100.00,"
+      " parent role is navigational-->\n"
+      "</div>"
+      "<!--id: PageSpeed-1,"
+      " role: navigational,"
+      " ElementTagDepth: 1,"
+      " ContainedTagDepth: 5,"
+      " ContainedTagRelativeDepth: 4,"
+      " ContainedTagCount: 10,"
+      " ContainedTagPercent: 100.00,"
+      " ContainedContentBytes: 16,"
+      " ContainedContentPercent: 100.00,"
+      " ContainedNonBlankBytes: 13,"
+      " ContainedNonBlankPercent: 100.00,"
+      " ContainedAContentBytes: 16,"
+      " ContainedAContentLocalPercent: 100.00,"
+      " a count: 4,"
+      " a percent: 100.00,"
+      " div count: 1,"
+      " div percent: 100.00,"
+      " table count: 1,"
+      " table percent: 100.00,"
+      " td count: 3,"
+      " td percent: 100.00,"
+      " tr count: 1,"
+      " tr percent: 100.00-->\n"
+      "<script type=\"text/javascript\">"
+      "pagespeedNavigationalIds=['PageSpeed-1'];\n"
+      "</script></body>";
+  ExpectTwoRuns("Small tabular nav",
+                Unlabel(kOutputHtml), kOutputHtml);
+  EXPECT_EQ(1, pages_labeled_->Get());
+  EXPECT_EQ(1, pages_role_added_->Get());
+  EXPECT_EQ(1, navigational_roles_->Get());
+  EXPECT_EQ(0, header_roles_->Get());
+  EXPECT_EQ(0, content_roles_->Get());
+  EXPECT_EQ(0, marginal_roles_->Get());
+  EXPECT_EQ(0, ambiguous_role_labels_->Get());
+  EXPECT_EQ(2, divs_unlabeled_->Get());
+}
+
 TEST_F(MobilizeLabelFilterTest, NoLabelInsideA) {
   // First, make sure we identify things correctly without <a>
   const char kOutputHtmlNoA[] =
