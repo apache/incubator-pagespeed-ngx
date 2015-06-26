@@ -21,6 +21,7 @@
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/domain_rewrite_filter.h"
+#include "net/instaweb/rewriter/public/mobilize_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/html_keywords.h"
@@ -66,13 +67,17 @@ void IframeFetcher::Fetch(const GoogleString& url,
   HtmlKeywords::Escape(mapped_url, &escaped_url);
 
   fetch->response_headers()->Add(HttpAttributes::kContentType, "text/html");
+  const char* user_agent = fetch->request_headers()->Lookup1(
+      HttpAttributes::kUserAgent);
 
   if (mapped_to_self || (mapped_url == url)) {
     // We would cause a redirect loop or an iframe-loop if we allow this to
     // happen, so just fail.
     RespondWithError(escaped_url, fetch, message_handler);
-  } else if (SupportedDevice(fetch->request_headers()->Lookup1(
-      HttpAttributes::kUserAgent))) {
+  } else if ((user_agent != NULL) &&
+             SupportedDevice(user_agent) &&
+             MobilizeRewriteFilter::IsApplicableFor(options_, user_agent,
+                                                    user_agent_matcher_)) {
     RespondWithIframe(escaped_url, fetch, message_handler);
   } else {
     RespondWithRedirect(mapped_url, escaped_url, fetch, message_handler);
@@ -81,8 +86,7 @@ void IframeFetcher::Fetch(const GoogleString& url,
 }
 
 bool IframeFetcher::SupportedDevice(const char* user_agent) const {
-  return ((user_agent != NULL) &&
-          user_agent_matcher_->SupportsMobilization(user_agent));
+  return user_agent_matcher_->SupportsMobilization(user_agent);
 }
 
 void IframeFetcher::RespondWithIframe(const GoogleString& escaped_url,

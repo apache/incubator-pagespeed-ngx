@@ -43,6 +43,9 @@ const char kUrl[] = "http://www.example.com/";
 // Tests the AsyncFetch class and some of its derivations.
 class IframeFetcherTest : public RewriteOptionsTestBase<RewriteOptions> {
  protected:
+  enum SuffixMode {kProxySuffix, kMapOrigin};
+  enum AlwaysMobilize {kOnAllDevices, kOnlyOnMobile};
+
   IframeFetcherTest()
       : request_context_(new RequestContext(
             kDefaultHttpOptionsForTests, new NullMutex, NULL)),
@@ -51,10 +54,12 @@ class IframeFetcherTest : public RewriteOptionsTestBase<RewriteOptions> {
         options_(thread_system_.get()) {
   }
 
-  void InitTest(StringPiece user_agent, bool suffix_mode) {
+  void InitTest(StringPiece user_agent, SuffixMode suffix_mode,
+                AlwaysMobilize always_mobilize) {
     fetch_.request_headers()->Add(HttpAttributes::kUserAgent, user_agent);
+    options_.set_mob_always(always_mobilize == kOnAllDevices);
     DomainLawyer* lawyer = options_.WriteableDomainLawyer();
-    if (suffix_mode) {
+    if (suffix_mode == kProxySuffix) {
       lawyer->set_proxy_suffix(".suffix");
     } else {
       lawyer->AddOriginDomainMapping("example.com", "example.us",
@@ -73,7 +78,8 @@ class IframeFetcherTest : public RewriteOptionsTestBase<RewriteOptions> {
 };
 
 TEST_F(IframeFetcherTest, IframeOnMobileProxySuffix) {
-  InitTest(UserAgentMatcherTestBase::kAndroidChrome21UserAgent, true);
+  InitTest(UserAgentMatcherTestBase::kAndroidChrome21UserAgent,
+           kProxySuffix, kOnlyOnMobile);
   fetcher_->Fetch("http://example.com.suffix/foo?bar", &handler_, &fetch_);
   ResponseHeaders* response = fetch_.response_headers();
   EXPECT_EQ(HttpStatus::kOK, response->status_code());
@@ -81,8 +87,9 @@ TEST_F(IframeFetcherTest, IframeOnMobileProxySuffix) {
       "iframe.src = 'http://example.com/foo?bar'"));
 }
 
-TEST_F(IframeFetcherTest, RedirectOnDesktopProxySuffix) {
-  InitTest(UserAgentMatcherTestBase::kOperaMiniMobileUserAgent, true);
+TEST_F(IframeFetcherTest, RedirectOnOperaMiniProxySuffix) {
+  InitTest(UserAgentMatcherTestBase::kOperaMiniMobileUserAgent,
+           kProxySuffix, kOnlyOnMobile);
   fetcher_->Fetch("http://example.com.suffix/foo?bar", &handler_, &fetch_);
   ResponseHeaders* response = fetch_.response_headers();
   EXPECT_EQ(HttpStatus::kTemporaryRedirect, response->status_code());
@@ -90,17 +97,39 @@ TEST_F(IframeFetcherTest, RedirectOnDesktopProxySuffix) {
                response->Lookup1(HttpAttributes::kLocation));
 }
 
+TEST_F(IframeFetcherTest, RedirectOnDesktopProxySuffix) {
+  InitTest(UserAgentMatcherTestBase::kChrome42UserAgent,
+           kProxySuffix, kOnlyOnMobile);
+  fetcher_->Fetch("http://example.com.suffix/foo?bar", &handler_, &fetch_);
+  ResponseHeaders* response = fetch_.response_headers();
+  EXPECT_EQ(HttpStatus::kTemporaryRedirect, response->status_code());
+  EXPECT_STREQ("http://example.com/foo?bar",
+               response->Lookup1(HttpAttributes::kLocation));
+}
+
+TEST_F(IframeFetcherTest, IframeOnDesktopProxySuffixWithAlwaysMobilize) {
+  InitTest(UserAgentMatcherTestBase::kChrome42UserAgent,
+           kProxySuffix, kOnAllDevices);
+  fetcher_->Fetch("http://example.com.suffix/foo?bar", &handler_, &fetch_);
+  ResponseHeaders* response = fetch_.response_headers();
+  EXPECT_EQ(HttpStatus::kOK, response->status_code());
+  EXPECT_THAT(fetch_.buffer(), ::testing::HasSubstr(
+      "iframe.src = 'http://example.com/foo?bar'"));
+}
+
 TEST_F(IframeFetcherTest, ErrorProxySuffix) {
   // Report an error for a configuration problem that results in the
   // domain being unmapped.
-  InitTest(UserAgentMatcherTestBase::kOperaMiniMobileUserAgent, true);
+  InitTest(UserAgentMatcherTestBase::kOperaMiniMobileUserAgent,
+           kProxySuffix, kOnlyOnMobile);
   fetcher_->Fetch("http://example.com/foo?bar", &handler_, &fetch_);
   ResponseHeaders* response = fetch_.response_headers();
   EXPECT_EQ(HttpStatus::kNotImplemented, response->status_code());
 }
 
 TEST_F(IframeFetcherTest, IframeOnMobileMapOrigin) {
-  InitTest(UserAgentMatcherTestBase::kAndroidChrome21UserAgent, false);
+  InitTest(UserAgentMatcherTestBase::kAndroidChrome21UserAgent,
+           kMapOrigin, kOnlyOnMobile);
   fetcher_->Fetch("http://example.us/foo?bar", &handler_, &fetch_);
   ResponseHeaders* response = fetch_.response_headers();
   EXPECT_EQ(HttpStatus::kOK, response->status_code());
@@ -108,8 +137,9 @@ TEST_F(IframeFetcherTest, IframeOnMobileMapOrigin) {
       "iframe.src = 'http://example.com/foo?bar'"));
 }
 
-TEST_F(IframeFetcherTest, RedirectOnDesktopMapOrigin) {
-  InitTest(UserAgentMatcherTestBase::kOperaMiniMobileUserAgent, false);
+TEST_F(IframeFetcherTest, RedirectOnOperaMiniMapOrigin) {
+  InitTest(UserAgentMatcherTestBase::kOperaMiniMobileUserAgent,
+           kMapOrigin, kOnlyOnMobile);
   fetcher_->Fetch("http://example.us/foo?bar", &handler_, &fetch_);
   ResponseHeaders* response = fetch_.response_headers();
   EXPECT_EQ(HttpStatus::kTemporaryRedirect, response->status_code());
@@ -117,10 +147,31 @@ TEST_F(IframeFetcherTest, RedirectOnDesktopMapOrigin) {
                response->Lookup1(HttpAttributes::kLocation));
 }
 
+TEST_F(IframeFetcherTest, RedirectOnDesktopMapOrigin) {
+  InitTest(UserAgentMatcherTestBase::kChrome42UserAgent,
+           kMapOrigin, kOnlyOnMobile);
+  fetcher_->Fetch("http://example.us/foo?bar", &handler_, &fetch_);
+  ResponseHeaders* response = fetch_.response_headers();
+  EXPECT_EQ(HttpStatus::kTemporaryRedirect, response->status_code());
+  EXPECT_STREQ("http://example.com/foo?bar",
+               response->Lookup1(HttpAttributes::kLocation));
+}
+
+TEST_F(IframeFetcherTest, IframeOnDesktopMapOriginWithAlwaysMobilize) {
+  InitTest(UserAgentMatcherTestBase::kChrome42UserAgent,
+           kMapOrigin, kOnAllDevices);
+  fetcher_->Fetch("http://example.us/foo?bar", &handler_, &fetch_);
+  ResponseHeaders* response = fetch_.response_headers();
+  EXPECT_EQ(HttpStatus::kOK, response->status_code());
+  EXPECT_THAT(fetch_.buffer(), ::testing::HasSubstr(
+      "iframe.src = 'http://example.com/foo?bar'"));
+}
+
 TEST_F(IframeFetcherTest, ErrorMapOrigin) {
   // Report an error for a configuration problem that results in the
   // domain being unmapped.
-  InitTest(UserAgentMatcherTestBase::kOperaMiniMobileUserAgent, false);
+  InitTest(UserAgentMatcherTestBase::kOperaMiniMobileUserAgent,
+           kMapOrigin, kOnlyOnMobile);
   fetcher_->Fetch("http://example.com/foo?bar", &handler_, &fetch_);
   ResponseHeaders* response = fetch_.response_headers();
   EXPECT_EQ(HttpStatus::kNotImplemented, response->status_code());

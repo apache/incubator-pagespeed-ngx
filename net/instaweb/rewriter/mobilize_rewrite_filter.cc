@@ -169,6 +169,13 @@ void MobilizeRewriteFilter::InitStats(Statistics* statistics) {
 }
 
 bool MobilizeRewriteFilter::IsApplicableFor(RewriteDriver* driver) {
+  return IsApplicableFor(driver->options(), driver->user_agent().c_str(),
+                         driver->server_context()->user_agent_matcher());
+}
+
+bool MobilizeRewriteFilter::IsApplicableFor(const RewriteOptions* options,
+                                            const char* user_agent,
+                                            const UserAgentMatcher* matcher) {
   // Note: we may need to narrow the set of applicable user agents here, but for
   // now we (very) optimistically assume that our JS works on any mobile UA.
   // TODO(jmaessen): Some debate over whether to include tablet UAs here.  We
@@ -178,8 +185,8 @@ bool MobilizeRewriteFilter::IsApplicableFor(RewriteDriver* driver) {
   // TODO(jmaessen): If we want to inject instrumentation on desktop pages to
   // beacon back data useful for mobile page views, this should change and we'll
   // want to check at code injection points instead.
-  return driver->options()->mob_always() ||
-         driver->request_properties()->IsMobile();
+  return options->mob_always() ||
+      (matcher->GetDeviceTypeForUA(user_agent) == UserAgentMatcher::kMobile);
 }
 
 void MobilizeRewriteFilter::DetermineEnabled(GoogleString* disabled_reason) {

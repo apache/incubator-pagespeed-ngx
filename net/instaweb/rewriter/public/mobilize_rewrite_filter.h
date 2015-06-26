@@ -22,6 +22,7 @@
 #include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/mobilize_decision_trees.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/statistics.h"
@@ -30,6 +31,7 @@
 #include "pagespeed/kernel/html/html_element.h"
 #include "pagespeed/kernel/html/html_name.h"
 #include "pagespeed/kernel/html/html_node.h"
+#include "pagespeed/kernel/http/user_agent_matcher.h"
 
 namespace net_instaweb {
 
@@ -88,6 +90,9 @@ class MobilizeRewriteFilter : public CommonFilter {
 
   // True if options or request UA suggest we will actually do mobilization.
   static bool IsApplicableFor(RewriteDriver* driver);
+  static bool IsApplicableFor(const RewriteOptions* options,
+                              const char* user_agent,
+                              const UserAgentMatcher* matcher);
   virtual void DetermineEnabled(GoogleString* disabled_reason);
   virtual void StartDocumentImpl();
   virtual void EndDocument();
