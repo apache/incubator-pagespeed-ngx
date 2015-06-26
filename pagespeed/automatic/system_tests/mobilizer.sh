@@ -17,4 +17,10 @@ start_test mobilize does work on normal request
 OUT=$($WGET_DUMP $URL)
 check_from     "$OUT" fgrep -q 'pagespeed.Mob.start'
 
+start_test mobilize get disabled by noscript mode
+# Page got instrumented.
+URL=$EXAMPLE_ROOT/rewrite_css.html?PageSpeedFilters=mobilize\&PageSpeed=noscript
+OUT=$($WGET_DUMP $URL)
+check_not_from "$OUT" fgrep -q 'pagespeed.Mob.start'
+
 export WGETRC=$WGETRC_OLD

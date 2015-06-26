@@ -58,6 +58,7 @@ class IframeFetcherTest : public RewriteOptionsTestBase<RewriteOptions> {
                 AlwaysMobilize always_mobilize) {
     fetch_.request_headers()->Add(HttpAttributes::kUserAgent, user_agent);
     options_.set_mob_always(always_mobilize == kOnAllDevices);
+    options_.EnableFilter(RewriteOptions::kMobilize);
     DomainLawyer* lawyer = options_.WriteableDomainLawyer();
     if (suffix_mode == kProxySuffix) {
       lawyer->set_proxy_suffix(".suffix");
@@ -165,6 +166,17 @@ TEST_F(IframeFetcherTest, IframeOnDesktopMapOriginWithAlwaysMobilize) {
   EXPECT_EQ(HttpStatus::kOK, response->status_code());
   EXPECT_THAT(fetch_.buffer(), ::testing::HasSubstr(
       "iframe.src = 'http://example.com/foo?bar'"));
+}
+
+TEST_F(IframeFetcherTest, RedirectOnNoScript) {
+  InitTest(UserAgentMatcherTestBase::kAndroidChrome21UserAgent,
+           kMapOrigin, kOnlyOnMobile);
+  options_.DisableFiltersRequiringScriptExecution();
+  fetcher_->Fetch("http://example.us/foo?bar", &handler_, &fetch_);
+  ResponseHeaders* response = fetch_.response_headers();
+  EXPECT_EQ(HttpStatus::kTemporaryRedirect, response->status_code());
+  EXPECT_STREQ("http://example.com/foo?bar",
+               response->Lookup1(HttpAttributes::kLocation));
 }
 
 TEST_F(IframeFetcherTest, ErrorMapOrigin) {

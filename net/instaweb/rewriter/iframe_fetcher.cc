@@ -77,7 +77,13 @@ void IframeFetcher::Fetch(const GoogleString& url,
   } else if ((user_agent != NULL) &&
              SupportedDevice(user_agent) &&
              MobilizeRewriteFilter::IsApplicableFor(options_, user_agent,
-                                                    user_agent_matcher_)) {
+                                                    user_agent_matcher_) &&
+             /* Note: we will turn off mobilize in noscript mode, where we
+                want to redirect, too, since the iframe relies on a script
+                TODO(morlovich): May be cleaner to have a "in noscript mode"
+                    predicate instead.
+                */
+             options_->Enabled(RewriteOptions::kMobilize)) {
     RespondWithIframe(escaped_url, fetch, message_handler);
   } else {
     RespondWithRedirect(mapped_url, escaped_url, fetch, message_handler);
