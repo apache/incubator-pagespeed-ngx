@@ -116,7 +116,8 @@ class MemLockState {
   }
 
  private:
-  friend MemLockManager;  // To allow the manager to construct MemLockStates.
+  friend class MemLockManager;  // To allow the manager to construct
+                                // MemLockStates.
 
   // constructor and destructor are private as they should only be called
   // by MemLockManager.

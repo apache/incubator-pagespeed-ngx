@@ -65,7 +65,7 @@ class MemLock : public NamedLock {
   int StableCompare(const MemLock* that) const;
 
  private:
-  friend MemLockState;
+  friend class MemLockState;
 
   // Only MemLockState can construct MemLocks.
   MemLock(int64 sequence, MemLockState* lock_state);
