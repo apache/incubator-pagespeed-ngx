@@ -339,6 +339,7 @@ class RewriteOptions {
   static const char kMobPhoneConversionLabel[];
   static const char kMobConfig[];
   static const char kMobIframe[];
+  static const char kMobIframeViewport[];
   static const char kMobLayout[];
   static const char kMobNav[];
   static const char kMobLabeledMode[];
@@ -2608,6 +2609,9 @@ class RewriteOptions {
   void set_mob_always(bool x) { set_option(x, &mob_always_); }
   bool mob_config() const { return mob_config_.value(); }
   bool mob_iframe() const { return mob_iframe_.value(); }
+  const GoogleString& mob_iframe_viewport() const {
+    return mob_iframe_viewport_.value();
+  }
   bool mob_layout() const { return mob_layout_.value(); }
   void set_mob_beacon_url(StringPiece x) {
     set_option(x.as_string(), &mob_beacon_url_);
@@ -2627,6 +2631,9 @@ class RewriteOptions {
   }
   void set_mob_config(bool x) { set_option(x, &mob_config_); }
   void set_mob_iframe(bool x) { set_option(x, &mob_iframe_); }
+  void set_mob_iframe_viewport(StringPiece x) {
+    set_option(x.as_string(), &mob_iframe_viewport_);
+  }
   void set_mob_layout(bool x) { set_option(x, &mob_layout_); }
   bool mob_nav() const {
     return CheckMobilizeFiltersOption(mob_nav_);
@@ -2648,7 +2655,8 @@ class RewriteOptions {
   // Should menu extraction be run?
   bool MobRenderServerSideMenus() const {
     return (Enabled(kMobilize) &&
-            (mob_nav_server_side() || mob_iframe()));
+            (mob_nav_server_side() || mob_iframe()) &&
+            !mob_labeled_mode());
   }
   // Should labeling be run in the request flow?
   bool MobUseLabelFilter() const {
@@ -2657,7 +2665,7 @@ class RewriteOptions {
     // extracting mobilization data from.  We used to not run it if we were
     // doing nav server side, and should consider doing that again -- but if
     // something goes wrong we can't then fall back to client-side navigation.
-    return (Enabled(kMobilize) && !mob_iframe());
+    return (Enabled(kMobilize) && !mob_iframe() && !mob_labeled_mode());
   }
   bool mob_static() const { return mob_static_.value(); }
   void set_mob_static(bool x) { set_option(x, &mob_static_); }
@@ -4161,6 +4169,7 @@ class RewriteOptions {
   Option<bool> mob_always_;
   Option<bool> mob_config_;
   Option<bool> mob_iframe_;
+  Option<GoogleString> mob_iframe_viewport_;
   Option<bool> mob_layout_;
   Option<bool> mob_nav_;
   Option<bool> mob_labeled_mode_;

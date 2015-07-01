@@ -100,33 +100,25 @@ void IframeFetcher::RespondWithIframe(const GoogleString& escaped_url,
                                       MessageHandler* message_handler) {
   fetch->response_headers()->SetStatusAndReason(HttpStatus::kOK);
 
-  // Avoid quirks-mode by specifying an HTML doctype.  This
-  // simplifies the code below that tries to get the screen dimensions
-  // via document.documentElement.
-  fetch->Write("<!DOCTYPE html>", message_handler);
-  fetch->Write("<html><head>"
-               "<meta charset=\"utf-8\">"
-               "</head><body class=\"mob-iframe\">",
+  // The viewport should be configured to match the viewport of the page being
+  // iframed.
+  GoogleString viewport;
+  if (options_->mob_iframe_viewport() == "none") {
+    viewport = StrCat("<meta name=\"viewport\" content=\"",
+                      options_->mob_iframe_viewport(), "\">");
+  }
+  // Avoid quirks-mode by specifying an HTML doctype.
+  fetch->Write(StrCat("<!DOCTYPE html><html><head>"
+                      "<meta charset=\"utf-8\">",
+                      viewport,
+                      "</head><body class=\"mob-iframe\">"
+                      "<iframe id=\"psmob-iframe\" "
+                      "src=\"",
+                      escaped_url,
+                      "\""
+                      "></iframe>"),
                message_handler);
 
-  // We want to size the iframe to fit the physical screen, so we
-  // create the iframe in JS.  The code as I have it here seems to
-  // work reasonably well even with orientation changes.  Any attempts
-  // I've made to try to adjust the iframe size in response to
-  // orientation changes seem to make the behavior bad (e.g. cutting
-  // off half the screen).  So I'm inclined to leave it as is for now.
-  GoogleString createIframe = StrCat(
-      "<script>\n"
-      "var docElt = document.documentElement;\n"
-      "var iframe = document.createElement('iframe');\n"
-      "iframe.id = 'psmob-iframe';\n"
-      "iframe.src = '", escaped_url, "';\n"
-      "iframe.frameborder = '0';\n"
-      "iframe.width = '100%';\n"
-      "iframe.height = '100%';\n"
-      "document.body.appendChild(iframe);\n"
-      "</script>");
-  fetch->Write(createIframe, message_handler);
   fetch->Write("</body></html>", message_handler);
 }
 

@@ -599,6 +599,7 @@ TEST_F(MobilizeRewriteEndToEndTest, FullPageLayout) {
       StrCat(GTestSrcDir(), kTestDataDir, kRewritten);
   ASSERT_TRUE(filesystem_.ReadFile(rewritten_filename.c_str(),
                                    &rewritten_buffer, message_handler()));
+  GlobalReplaceSubstring("@@VIEWPORT@@", "", &rewritten_buffer);
   GlobalReplaceSubstring(
       "@@SPACER@@",
       StrCat(NoScriptRedirect("EndToEndMobileLayout"), Spacer(), Scrim()),
@@ -639,6 +640,9 @@ TEST_F(MobilizeRewriteEndToEndTest, FullPage) {
   ASSERT_TRUE(filesystem_.ReadFile(rewritten_filename.c_str(),
                                    &rewritten_buffer, message_handler()));
 
+  GlobalReplaceSubstring("@@VIEWPORT@@",
+                         "<meta name=\"viewport\" content=\"width=100px;\"/>",
+                         &rewritten_buffer);
   GlobalReplaceSubstring("@@SPACER@@",
                          StrCat(NoScriptRedirect("EndToEndMobile"), Spacer()),
                          &rewritten_buffer);

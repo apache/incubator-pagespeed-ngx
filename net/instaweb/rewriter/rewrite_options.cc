@@ -237,6 +237,7 @@ const char RewriteOptions::kMobPhoneConversionLabel[] =
     "MobPhoneConversionLabel";
 const char RewriteOptions::kMobConfig[] = "MobConfig";
 const char RewriteOptions::kMobIframe[] = "MobIframe";
+const char RewriteOptions::kMobIframeViewport[] = "MobIframeViewport";
 const char RewriteOptions::kMobLayout[] = "MobLayout";
 const char RewriteOptions::kMobNav[] = "MobNav";
 const char RewriteOptions::kMobLabeledMode[] = "MobLabeledMode";
@@ -2367,6 +2368,16 @@ void RewriteOptions::AddProperties() {
       false, &RewriteOptions::mob_iframe_, "miframe", kMobIframe,
       kQueryScope,
       "(experimental) whether to use an iframe rather than proxying", true);
+  // Note that setting this option to "none" turns off inserting an iframe. We
+  // use this because it's otherwise difficult to set the option to a blank
+  // string to override the default.
+  AddBaseProperty(
+      "width=device-width,initial-scale=1",
+      &RewriteOptions::mob_iframe_viewport_, "miframev", kMobIframeViewport,
+      kQueryScope,
+      "(experimental) the content of the viewport tag to insert "
+      "when in iframe mode. Set to \"none\" to avoid adding a viewport tag.",
+      true);
   AddBaseProperty(
       false, &RewriteOptions::mob_layout_, "mlayout", kMobLayout,
       kQueryScope,

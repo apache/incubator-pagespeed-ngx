@@ -160,6 +160,7 @@
         'js_includes' : [
           'opt/mobilize/button.js',
           'opt/mobilize/color.js',
+          'opt/mobilize/iframe.js',
           'opt/mobilize/layout.js',
           'opt/mobilize/layout_constants.js',
           'opt/mobilize/layout_util.js',
@@ -187,6 +188,7 @@
         'js_includes' : [
           'opt/mobilize/button.js',
           'opt/mobilize/color.js',
+          'opt/mobilize/iframe.js',
           'opt/mobilize/layout.js',
           'opt/mobilize/layout_constants.js',
           'opt/mobilize/layout_util.js',

@@ -29,6 +29,7 @@ goog.require('goog.string');
 goog.require('goog.structs.Set');
 // goog.style adds ~400 bytes when using getSize and getTransformedSize.
 goog.require('goog.style');
+goog.require('mob.Iframe');
 goog.require('mob.NavPanel');
 goog.require('mob.button.Dialer');
 goog.require('mob.button.Map');
@@ -160,6 +161,7 @@ pagespeed.MobNav.prototype.findElementsToOffsetHelper_ = function(
     element, fixedPositionOnly) {
   if (!element.className ||
       (element.className != pagespeed.MobUtil.ElementId.PROGRESS_SCRIM &&
+       goog.isString(element.className) &&
        !goog.string.startsWith(element.className, 'psmob-') &&
        !goog.string.startsWith(element.id, 'psmob-'))) {
     var style = window.getComputedStyle(element);
@@ -557,6 +559,11 @@ pagespeed.MobNav.prototype.run = function(themeData) {
 
   window.addEventListener(goog.events.EventType.LOAD,
                           goog.bind(this.redraw_, this));
+
+  if (document.getElementById(pagespeed.MobUtil.ElementId.IFRAME)) {
+    var iframe = new mob.Iframe();
+    iframe.run();
+  }
 };
 
 

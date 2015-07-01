@@ -264,7 +264,7 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
     // Remove any existing viewport tags, other than the one we created
     // at start of head.
     StringPiece name(element->EscapedAttributeValue(HtmlName::kName));
-    if (name == "viewport") {
+    if (use_js_layout_ && name == "viewport") {
       driver()->DeleteNode(element);
       num_elements_deleted_->Add(1);
     }

@@ -47,6 +47,7 @@ pagespeed.MobUtil.ElementId = {
   DIALER_BUTTON: 'psmob-dialer-button',
   HEADER_BAR: 'psmob-header-bar',
   IFRAME: 'psmob-iframe',
+  IFRAME_CONTAINER: 'psmob-iframe-container',
   LOGO_IMAGE: 'psmob-logo-image',
   LOGO_SPAN: 'psmob-logo-span',
   MAP_BUTTON: 'psmob-map-button',

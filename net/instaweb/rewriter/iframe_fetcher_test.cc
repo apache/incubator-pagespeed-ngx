@@ -84,8 +84,10 @@ TEST_F(IframeFetcherTest, IframeOnMobileProxySuffix) {
   fetcher_->Fetch("http://example.com.suffix/foo?bar", &handler_, &fetch_);
   ResponseHeaders* response = fetch_.response_headers();
   EXPECT_EQ(HttpStatus::kOK, response->status_code());
-  EXPECT_THAT(fetch_.buffer(), ::testing::HasSubstr(
-      "iframe.src = 'http://example.com/foo?bar'"));
+  EXPECT_THAT(
+      fetch_.buffer(),
+      ::testing::HasSubstr(
+          "<iframe id=\"psmob-iframe\" src=\"http://example.com/foo?bar\">"));
 }
 
 TEST_F(IframeFetcherTest, RedirectOnOperaMiniProxySuffix) {
@@ -114,8 +116,10 @@ TEST_F(IframeFetcherTest, IframeOnDesktopProxySuffixWithAlwaysMobilize) {
   fetcher_->Fetch("http://example.com.suffix/foo?bar", &handler_, &fetch_);
   ResponseHeaders* response = fetch_.response_headers();
   EXPECT_EQ(HttpStatus::kOK, response->status_code());
-  EXPECT_THAT(fetch_.buffer(), ::testing::HasSubstr(
-      "iframe.src = 'http://example.com/foo?bar'"));
+  EXPECT_THAT(
+      fetch_.buffer(),
+      ::testing::HasSubstr(
+          "<iframe id=\"psmob-iframe\" src=\"http://example.com/foo?bar\">"));
 }
 
 TEST_F(IframeFetcherTest, ErrorProxySuffix) {
@@ -134,8 +138,10 @@ TEST_F(IframeFetcherTest, IframeOnMobileMapOrigin) {
   fetcher_->Fetch("http://example.us/foo?bar", &handler_, &fetch_);
   ResponseHeaders* response = fetch_.response_headers();
   EXPECT_EQ(HttpStatus::kOK, response->status_code());
-  EXPECT_THAT(fetch_.buffer(), ::testing::HasSubstr(
-      "iframe.src = 'http://example.com/foo?bar'"));
+  EXPECT_THAT(
+      fetch_.buffer(),
+      ::testing::HasSubstr(
+          "<iframe id=\"psmob-iframe\" src=\"http://example.com/foo?bar\">"));
 }
 
 TEST_F(IframeFetcherTest, RedirectOnOperaMiniMapOrigin) {
@@ -164,8 +170,10 @@ TEST_F(IframeFetcherTest, IframeOnDesktopMapOriginWithAlwaysMobilize) {
   fetcher_->Fetch("http://example.us/foo?bar", &handler_, &fetch_);
   ResponseHeaders* response = fetch_.response_headers();
   EXPECT_EQ(HttpStatus::kOK, response->status_code());
-  EXPECT_THAT(fetch_.buffer(), ::testing::HasSubstr(
-      "iframe.src = 'http://example.com/foo?bar'"));
+  EXPECT_THAT(
+      fetch_.buffer(),
+      ::testing::HasSubstr(
+          "<iframe id=\"psmob-iframe\" src=\"http://example.com/foo?bar\">"));
 }
 
 TEST_F(IframeFetcherTest, RedirectOnNoScript) {
