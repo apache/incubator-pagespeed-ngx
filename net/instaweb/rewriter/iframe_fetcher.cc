@@ -103,7 +103,7 @@ void IframeFetcher::RespondWithIframe(const GoogleString& escaped_url,
   // The viewport should be configured to match the viewport of the page being
   // iframed.
   GoogleString viewport;
-  if (options_->mob_iframe_viewport() == "none") {
+  if (options_->mob_iframe_viewport() != "none") {
     viewport = StrCat("<meta name=\"viewport\" content=\"",
                       options_->mob_iframe_viewport(), "\">");
   }
