@@ -197,6 +197,42 @@ TEST_F(IframeFetcherTest, ErrorMapOrigin) {
   EXPECT_EQ(HttpStatus::kNotImplemented, response->status_code());
 }
 
+TEST_F(IframeFetcherTest, Viewport) {
+  // Verify default viewport
+  InitTest(UserAgentMatcherTestBase::kAndroidChrome21UserAgent,
+           kMapOrigin, kOnlyOnMobile);
+  fetcher_->Fetch("http://example.us/foo?bar", &handler_, &fetch_);
+  ResponseHeaders* response = fetch_.response_headers();
+  EXPECT_EQ(HttpStatus::kOK, response->status_code());
+  EXPECT_THAT(
+      fetch_.buffer(),
+      ::testing::HasSubstr("<meta name=\"viewport\" "
+                           "content=\"width=device-width,initial-scale=1\">"));
+}
+
+TEST_F(IframeFetcherTest, ViewportNone) {
+  options_.set_mob_iframe_viewport("none");
+  InitTest(UserAgentMatcherTestBase::kAndroidChrome21UserAgent,
+           kMapOrigin, kOnlyOnMobile);
+  fetcher_->Fetch("http://example.us/foo?bar", &handler_, &fetch_);
+  ResponseHeaders* response = fetch_.response_headers();
+  EXPECT_EQ(HttpStatus::kOK, response->status_code());
+  EXPECT_THAT(fetch_.buffer(),
+              ::testing::Not(::testing::HasSubstr("<meta name=\"viewport\"")));
+}
+
+TEST_F(IframeFetcherTest, ViewportEscaped) {
+  options_.set_mob_iframe_viewport("\">");
+  InitTest(UserAgentMatcherTestBase::kAndroidChrome21UserAgent,
+           kMapOrigin, kOnlyOnMobile);
+  fetcher_->Fetch("http://example.us/foo?bar", &handler_, &fetch_);
+  ResponseHeaders* response = fetch_.response_headers();
+  EXPECT_EQ(HttpStatus::kOK, response->status_code());
+  EXPECT_THAT(
+      fetch_.buffer(),
+      ::testing::HasSubstr("<meta name=\"viewport\" content=\"&quot;&gt;\">"));
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

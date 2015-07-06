@@ -37,6 +37,9 @@ IframeFetcher::IframeFetcher(const RewriteOptions* options,
                              const UserAgentMatcher* matcher)
     : options_(options),
       user_agent_matcher_(matcher) {
+  // This normally gets called in the HtmlParse constructor, but since
+  // that doesn't get called here we need to initialize it ourselves.
+  HtmlKeywords::Init();
 }
 
 IframeFetcher::~IframeFetcher() {
@@ -104,8 +107,11 @@ void IframeFetcher::RespondWithIframe(const GoogleString& escaped_url,
   // iframed.
   GoogleString viewport;
   if (options_->mob_iframe_viewport() != "none") {
+    GoogleString escaped_viewport_content;
+    HtmlKeywords::Escape(options_->mob_iframe_viewport(),
+                         &escaped_viewport_content);
     viewport = StrCat("<meta name=\"viewport\" content=\"",
-                      options_->mob_iframe_viewport(), "\">");
+                      escaped_viewport_content, "\">");
   }
   // Avoid quirks-mode by specifying an HTML doctype.
   fetch->Write(StrCat("<!DOCTYPE html><html><head>"
