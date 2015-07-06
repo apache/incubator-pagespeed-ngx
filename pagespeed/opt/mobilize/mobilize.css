@@ -26,6 +26,12 @@
 
 /* TODO(jmarantz): make class names consistent */
 
+/* Note: All non-zero pixel sizes for the nav bar and panel are 10x larger than
+ * their intended size. This is to workaround an iOS issue where items are
+ * blurry after applying the CSS scale transform. See
+ * http://stackoverflow.com/a/8038694 for more details.
+ */
+
 body {
   padding: 0 !important;
 }
@@ -70,14 +76,14 @@ body.mob-iframe {
   padding: 0;
 
   width: 100%;
-  height: 57px;
+  height: 570px;
 
   -webkit-transform-origin: 0 0;
   transform-origin: 0 0;
 
   border-bottom: thin solid;
 
-  box-shadow: 0 5px 6px -1px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 50px 60px -10px rgba(0, 0, 0, 0.4);
 
   display: -webkit-box;
   display: -ms-flexbox;
@@ -159,20 +165,20 @@ body.mob-iframe {
 
   text-decoration: none;
 
-  height: 48px;
-  margin: 4px 0px;
+  height: 480px;
+  margin: 40px 0;
 }
 
 #psmob-header-bar:not(.labeled) .psmob-button {
-  border: solid 1px;
-  border-radius: 9px;
-  margin: 4px 2px;
+  border: solid 10px;
+  border-radius: 90px;
+  margin: 40px 20px;
 }
 
 
 .psmob-button-icon {
-  height: 48px;
-  width: 48px;
+  height: 480px;
+  width: 480px;
 }
 
 /* We don't show the logo or menu button in labeled mode. */
@@ -192,21 +198,21 @@ body.mob-iframe {
   /* Only display button text in labeled mode or when there is only 1 button. */
   display: none;
 
-  height: 36px;
+  height: 360px;
   width: auto;
   font-family: arial, sans-serif;
-  font-size: 20px !important;
+  font-size: 200px !important;
   font-weight: bold;
-  line-height: 36px;
+  line-height: 360px;
   margin: 0;
-  padding: 6px 0;
+  padding: 60px 0;
   white-space: nowrap;
 }
 
 #psmob-header-bar:not(.labeled) .psmob-button-text {
-  height: 40px;
-  line-height: 40px;
-  margin-right: 5px;
+  height: 400px;
+  line-height: 400px;
+  margin-right: 50px;
 }
 
 #psmob-header-bar.show-button-text .psmob-button-text {
@@ -236,36 +242,14 @@ body.mob-iframe {
 #psmob-logo-image {
   height: 100%;
   width: auto;
-  padding-top: 10px;
-  padding-bottom: 10px;
+  padding-top: 100px;
+  padding-bottom: 100px;
 
   /* Center the image in the logo span. */
   display: block;
   margin: 0 auto;
 
   max-width: 100% !important;
-}
-
-.psmob-hamburger-div {
-  width: 40%;
-  height: 40%;
-  padding-top: 33%;
-  padding-bottom: 27%;
-  padding-left: 30%;
-  padding-right: 30%;
-}
-
-#psmob-header-bar:not(.labeled) .psmob-hamburger-div {
-    margin-left: 15%;
-    padding-left: 15%;
-    margin-top: 16%;
-    padding-top: 17%;
-    margin-right: 15%;
-    padding-right: 15%;
-    margin-bottom: 13%;
-    padding-bottom: 13%;
-    border: solid 1px;
-    border-radius: 9px;
 }
 
 #psmob-header-bar:not(.labeled) #psmob-dialer-button {
@@ -285,7 +269,7 @@ body.mob-iframe {
   bottom: 0;
   left: 0;
   right: 0;
-  width: 350px !important;
+  width: 3500px !important;
 
   /* Wordpress sets a z-index of 99999 for its admin header bar, so set a larger
    * value so our nav bar ends up on top of it. */
@@ -300,7 +284,7 @@ body.mob-iframe {
   margin-bottom: 0 !important;
   padding: 0 !important;
 
-  box-shadow: 5px 0px 6px -1px rgba(0, 0, 0, 0.4);
+  box-shadow: 50px 0 60px -10px rgba(0, 0, 0, 0.4);
 
   overflow-y: auto;
 
@@ -340,7 +324,7 @@ body.mob-iframe {
 /* TODO(jud): Consider using class labels instead of deeply nested rules. */
 #psmob-nav-panel ul li {
   border-bottom-style: solid;
-  border-width: 1px;
+  border-width: 10px;
   border-color: white;
 
   background: none;
@@ -353,7 +337,7 @@ body.mob-iframe {
   padding-right: 0;
   padding-top: 0;
   padding-bottom: 0;
-  line-height: 60px !important;
+  line-height: 600px !important;
   text-decoration: none;
 
   -o-transition: background-color 0.2s ease-out;
@@ -364,14 +348,14 @@ body.mob-iframe {
 
 #psmob-nav-panel ul li a,
 #psmob-nav-panel ul li div {
-  min-height: 60px;
+  min-height: 600px;
   display: block;
   padding-right: 0;
   padding-top: 0;
   padding-bottom: 0;
-  line-height: 60px !important;
+  line-height: 600px !important;
   text-decoration: none;
-  font-size: 22px !important;
+  font-size: 220px !important;
 
   -webkit-transition: background-color 0.2s ease-out;
   -moz-transition: background-color 0.2s ease-out;
@@ -403,8 +387,8 @@ body.mob-iframe {
 .psmob-menu-expand-icon {
   display: inline-block;
   vertical-align: middle;
-  width: 20px;
-  height: 20px;
+  width: 200px;
+  height: 200px;
 }
 
 .psmob-menu-expand-icon.open {
@@ -426,23 +410,23 @@ body.mob-iframe {
 
 /* Commmon patterns applied to a broad range of elements */
 .psmob-single-column {
-    border-left: 0px !important;
-    border-right: 0px !important;
-    margin-left: 0px !important;
-    margin-right: 0px !important;
-    padding-left: 0px !important;
-    padding-right: 0px !important;
+    border-left: 0 !important;
+    border-right: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
 }
 
 /* Progess Bar elements */
 .psProgressScrim {
     z-index: 100000 !important;
     position: fixed;
-    top: 0px !important;
-    margin: 0px !important;
+    top: 0 !important;
+    margin: 0 !important;
     padding-top: 100px !important;
     background: white;
-    border: 0px;
+    border: 0;
     width: 100%;
     height: 100%;
 }
@@ -452,7 +436,7 @@ body.mob-iframe {
     margin-left: 20% !important;
     height: 20px;  /* Can be anything */
     width: 60%;
-    margin: 0px;
+    margin: 0;
     background: #555;
     -moz-border-radius: 25px;
     -webkit-border-radius: 25px;
@@ -466,7 +450,7 @@ body.mob-iframe {
      * Simplified Meyer Reset
      * http://meyerweb.com/eric/tools/css/reset/
      */
-    border: 0px;
+    border: 0;
     font-size: 100%;
     font: inherit;
     vertical-align: baseline;
@@ -477,7 +461,7 @@ body.mob-iframe {
     content: '';
     content: none;
     border-collapse: collapse;
-    border-spacing: 0px;
+    border-spacing: 0;
 }
 
 .psProgressSpan {
@@ -596,8 +580,8 @@ body.mob-iframe {
 .psmob-logo-chooser-table {
   z-index: 999999;
   position: absolute;
-  left: 0px;
-  top: 0px;
+  left: 0;
+  top: 0;
   background-color: white;
   border-style: solid;
   border-width: 4px;

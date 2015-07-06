@@ -410,12 +410,13 @@ pagespeed.MobNav.prototype.addHeaderBarResizeEvents_ = function() {
                             }
                           }, this), false);
 
-  // TODO(jud): Note that we don't currently handle orientation change quite
-  // right, since the window height and width don't switch unless the page is
-  // reloaded on some browsers.
   window.addEventListener(goog.events.EventType.ORIENTATIONCHANGE,
                           goog.bind(function() { this.redraw_(); }, this),
                           false);
+
+  window.addEventListener(goog.events.EventType.RESIZE, goog.bind(function() {
+    this.redraw_();
+  }, this), false);
 };
 
 

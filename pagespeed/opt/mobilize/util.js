@@ -70,8 +70,6 @@ pagespeed.MobUtil.ElementClass = {
   BUTTON: 'psmob-button',
   BUTTON_ICON: 'psmob-button-icon',
   BUTTON_TEXT: 'psmob-button-text',
-  HAMBURGER_DIV: 'psmob-hamburger-div',
-  HAMBURGER_LINE: 'psmob-hamburger-line',
   LABELED: 'labeled',
   LOGO_CHOOSER_CHOICE: 'psmob-logo-chooser-choice',
   LOGO_CHOOSER_COLOR: 'psmob-logo-chooser-color',
@@ -951,15 +949,18 @@ pagespeed.MobUtil.runCallbackOnce_ = function(callback) {
  * @return {number}
  */
 mob.util.getScaleTransform = function() {
-  var scale = 1;
+  // To prevent blurring, we make everything 10x larger in CSS, and then shrink
+  // it down here. This works around an iOS bug with the transform.
+  // http://stackoverflow.com/a/8038694
+  var scale = 0.1;
   if (window.psDeviceType != 'desktop') {
     // screen.width does not update on rotation on ios, but it does on android,
     // so compensate for that here.
     if ((Math.abs(window.orientation) == 90) &&
         (screen.height > screen.width)) {
-      scale = (window.innerHeight / screen.width);
+      scale *= (window.innerHeight / screen.width);
     } else {
-      scale = window.innerWidth / screen.width;
+      scale *= window.innerWidth / screen.width;
     }
   }
   // Android browser does not seem to take the pixel ratio into account in the
