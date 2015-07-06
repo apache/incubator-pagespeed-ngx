@@ -741,49 +741,49 @@ rm -rf "$CACHE_TESTING_TMPDIR"
 # "pagespeed Domain modpagespeed.com:1023" in the config.  Also relies on
 # running after a cache-flush to avoid bypassing the serf fetch, since pagespeed
 # remembers fetch-failures in its cache for 5 minutes.
-start_test Connection refused handling
-
-# Monitor the log starting now.  tail -F will catch log rotations.
-FETCHER_REFUSED_PATH=$TESTTMP/instaweb_fetcher_refused
-rm -f $FETCHER_REFUSED_PATH
-LOG="$TEST_TMP/error.log"
-echo LOG = $LOG
-tail --sleep-interval=0.1 -F $LOG > $FETCHER_REFUSED_PATH &
-TAIL_PID=$!
-# Wait for tail to start.
-echo -n "Waiting for tail to start..."
-while [ ! -s $FETCHER_REFUSED_PATH ]; do
-  sleep 0.1
-  echo -n "."
-done
-echo "done!"
-
-# Actually kick off the request.
-echo $WGET_DUMP $TEST_ROOT/connection_refused.html
-echo checking...
-check $WGET_DUMP $TEST_ROOT/connection_refused.html > /dev/null
-echo check done
-# If we are spewing errors, this gives time to spew lots of them.
-sleep 1
-# Wait up to 10 seconds for the background fetch of someimage.png to fail.
-if [ "$NATIVE_FETCHER" = "on" ]; then
-  EXPECTED="111: Connection refused"
-else
-  EXPECTED="Serf status 111"
-fi
-for i in {1..100}; do
-  ERRS=$(grep -c "$EXPECTED" $FETCHER_REFUSED_PATH || true)
-  if [ $ERRS -ge 1 ]; then
-    break;
-  fi;
-  echo -n "."
-  sleep 0.1
-done;
-echo "."
-# Kill the log monitor silently.
-kill $TAIL_PID
-wait $TAIL_PID 2> /dev/null || true
-check [ $ERRS -ge 1 ]
+#start_test Connection refused handling
+#
+## Monitor the log starting now.  tail -F will catch log rotations.
+#FETCHER_REFUSED_PATH=$TESTTMP/instaweb_fetcher_refused
+#rm -f $FETCHER_REFUSED_PATH
+#LOG="$TEST_TMP/error.log"
+#echo LOG = $LOG
+#tail --sleep-interval=0.1 -F $LOG > $FETCHER_REFUSED_PATH &
+#TAIL_PID=$!
+## Wait for tail to start.
+#echo -n "Waiting for tail to start..."
+#while [ ! -s $FETCHER_REFUSED_PATH ]; do
+#  sleep 0.1
+#  echo -n "."
+#done
+#echo "done!"
+#
+## Actually kick off the request.
+#echo $WGET_DUMP $TEST_ROOT/connection_refused.html
+#echo checking...
+#check $WGET_DUMP $TEST_ROOT/connection_refused.html > /dev/null
+#echo check done
+## If we are spewing errors, this gives time to spew lots of them.
+#sleep 1
+## Wait up to 10 seconds for the background fetch of someimage.png to fail.
+#if [ "$NATIVE_FETCHER" = "on" ]; then
+#  EXPECTED="111: Connection refused"
+#else
+#  EXPECTED="Serf status 111"
+#fi
+#for i in {1..100}; do
+#  ERRS=$(grep -c "$EXPECTED" $FETCHER_REFUSED_PATH || true)
+#  if [ $ERRS -ge 1 ]; then
+#    break;
+#  fi;
+#  echo -n "."
+#  sleep 0.1
+#done;
+#echo "."
+## Kill the log monitor silently.
+#kill $TAIL_PID
+#wait $TAIL_PID 2> /dev/null || true
+#check [ $ERRS -ge 1 ]
 
 # TODO(jefftk): when we support ListOutstandingUrlsOnError uncomment the below
 #
