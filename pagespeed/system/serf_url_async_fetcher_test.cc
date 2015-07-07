@@ -184,7 +184,8 @@ class SerfUrlAsyncFetcherTest : public ::testing::Test {
     AddTestUrl(StrCat("http:", favicon_domain_and_path), favicon_head_);
     AddTestUrl(StrCat("http:", fetch_test_domain, "/do_not_modify/"
                       "logo.e80d1c59a673f560785784fb1ac10959.gif"), "GIF");
-    AddTestUrl("http://modpagespeed.com/do_not_modify/cgi/slow_js.cgi",
+    AddTestUrl(StrCat("http:", fetch_test_domain,
+                      "/do_not_modify/cgi/slow_js.cgi"),
                "alert('hello world');");
     AddTestUrl(StrCat("http:", fetch_test_domain,
                       "/mod_pagespeed_beacon?ets=42"), "");
