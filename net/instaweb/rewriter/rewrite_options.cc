@@ -242,7 +242,6 @@ const char RewriteOptions::kMobLayout[] = "MobLayout";
 const char RewriteOptions::kMobNav[] = "MobNav";
 const char RewriteOptions::kMobLabeledMode[] = "MobLabeledMode";
 const char RewriteOptions::kMobNavClasses[] = "MobNavigationalClasses";
-const char RewriteOptions::kMobNavServerSide[] = "MobNavServerSide";
 const char RewriteOptions::kMobStatic[] = "MobStatic";
 const char RewriteOptions::kMobTheme[] = "MobTheme";
 const char RewriteOptions::kModifyCachingHeaders[] = "ModifyCachingHeaders";
@@ -2400,11 +2399,6 @@ void RewriteOptions::AddProperties() {
       kQueryScope,
       "Comma separated list of element classes or ids to treat as "
       "navigational, or with leading - as non-navigational", true);
-  AddBaseProperty(
-      false, &RewriteOptions::mob_nav_server_side_, "navss", kMobNavServerSide,
-      kQueryScope,
-      "(experimental) extract navigational menus on server side",
-      true);
   AddBaseProperty(
       false, &RewriteOptions::mob_static_, "mstatic", kMobStatic,
       kQueryScope,

@@ -112,7 +112,6 @@ class MobilizeRewriteFilterTest : public RewriteTestBase {
     options()->set_mob_beacon_url(kMobBeaconUrl);
     options()->set_mob_layout(LayoutMode());
     options()->set_mob_nav(true);
-    options()->set_mob_nav_server_side(ServerSide());
     server_context()->ComputeSignature(options());
     SetHtmlMimetype();  // Don't wrap scripts in <![CDATA[ ]]>
 
@@ -126,7 +125,6 @@ class MobilizeRewriteFilterTest : public RewriteTestBase {
   virtual bool LayoutMode() const { return true; }
   virtual bool AddBody() const { return false; }
   virtual bool AddHtmlTags() const { return false; }
-  virtual bool ServerSide() const { return true; }
 
   void CheckVariable(const char* name, int value) {
     Variable* var = rewrite_driver()->statistics()->FindVariable(name);
@@ -552,7 +550,6 @@ class MobilizeRewriteEndToEndTest : public MobilizeRewriteFilterTest {
     options()->set_mob_beacon_url(kMobBeaconUrl);
     options()->set_mob_layout(false);
     options()->set_mob_nav(true);
-    options()->set_mob_nav_server_side(true);
   }
 
   virtual bool AddBody() const { return false; }

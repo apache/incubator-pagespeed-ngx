@@ -21,7 +21,24 @@ body {
 }
 
 .menu {
-    padding-right: 1em;
+    background-color:#EBEFF9;
+    width: 100%;
+    list-style: none;
+    height: 37px;
+    padding-left: 3px;
+    padding-top: 2px;
+    margin: 0;
+}
+
+.menu li {
+    display: inline-block;
+    vertical-align: middle;
+    padding-left: 0;
+}
+
+.menu a {
+    display: block;
+    padding-left: 1em;
 }
 
 td.before, td.after {

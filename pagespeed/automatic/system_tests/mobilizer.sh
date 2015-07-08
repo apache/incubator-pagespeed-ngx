@@ -6,7 +6,7 @@ user_agent =Mozilla/5.0 (Linux; Android 5.1.1; Nexus 4 Build/LMY47V) AppleWebKit
 EOF
 
 start_test mobilize off when XHR
-URL=$EXAMPLE_ROOT/rewrite_css.html?PageSpeedFilters=mobilize
+URL=$EXAMPLE_ROOT/index.html?PageSpeedFilters=mobilize
 # Pretend to be XHR.
 OUT=$($WGET_DUMP --header=X-Requested-With:XMLHttpRequest $URL)
 # Shouldn't get instrumented.
@@ -19,7 +19,7 @@ check_from     "$OUT" fgrep -q 'pagespeed.Mob.start'
 
 start_test mobilize get disabled by noscript mode
 # Page got instrumented.
-URL=$EXAMPLE_ROOT/rewrite_css.html?PageSpeedFilters=mobilize\&PageSpeed=noscript
+URL=$EXAMPLE_ROOT/index.html?PageSpeedFilters=mobilize\&PageSpeed=noscript
 OUT=$($WGET_DUMP $URL)
 check_not_from "$OUT" fgrep -q 'pagespeed.Mob.start'
 

@@ -344,7 +344,6 @@ class RewriteOptions {
   static const char kMobNav[];
   static const char kMobLabeledMode[];
   static const char kMobNavClasses[];
-  static const char kMobNavServerSide[];
   static const char kMobStatic[];
   static const char kMobTheme[];
   static const char kModifyCachingHeaders[];
@@ -2648,15 +2647,9 @@ class RewriteOptions {
     set_option(p.as_string(), &mob_nav_classes_);
   }
   bool has_mob_nav_classes() const { return mob_nav_classes_.was_set(); }
-  bool mob_nav_server_side() const {
-    return CheckMobilizeFiltersOption(mob_nav_server_side_);
-  }
-  void set_mob_nav_server_side(bool x) { set_option(x, &mob_nav_server_side_); }
   // Should menu extraction be run?
   bool MobRenderServerSideMenus() const {
-    return (Enabled(kMobilize) &&
-            (mob_nav_server_side() || mob_iframe()) &&
-            !mob_labeled_mode());
+    return (Enabled(kMobilize) && !mob_labeled_mode());
   }
   // Should labeling be run in the request flow?
   bool MobUseLabelFilter() const {
@@ -4174,7 +4167,6 @@ class RewriteOptions {
   Option<bool> mob_nav_;
   Option<bool> mob_labeled_mode_;
   Option<GoogleString> mob_nav_classes_;
-  Option<bool> mob_nav_server_side_;
   Option<bool> mob_static_;
 
   Option<GoogleString> mob_beacon_url_;

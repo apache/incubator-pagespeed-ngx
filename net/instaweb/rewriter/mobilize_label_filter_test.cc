@@ -57,7 +57,6 @@ class MobilizeLabelFilterTest : public RewriteTestBase {
         new MobilizeLabelFilter(false /* is_menu_subfetch */,
                                 rewrite_driver()));
     options()->set_mob_always(true);
-    options()->set_mob_nav_server_side(true);
     html_parse()->AddFilter(add_ids_filter_.get());
     html_parse()->AddFilter(label_filter_.get());
     const PropertyCache::Cohort* dom_cohort =
