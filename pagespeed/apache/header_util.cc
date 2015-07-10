@@ -153,6 +153,27 @@ void PrintHeaders(request_rec* request) {
   fflush(stdout);
 }
 
+int StringAttributeCallback(void* rec, const char* key, const char* value) {
+  GoogleString* out = static_cast<GoogleString*>(rec);
+  out->append(key);
+  out->append(": ");
+  out->append(value);
+  out->append("\n");
+  return 1;
+}
+
+GoogleString HeadersOutToString(request_rec* request) {
+  GoogleString out;
+  apr_table_do(StringAttributeCallback, &out, request->headers_out, NULL);
+  return out;
+}
+
+GoogleString SubprocessEnvToString(request_rec* request) {
+  GoogleString out;
+  apr_table_do(StringAttributeCallback, &out, request->subprocess_env, NULL);
+  return out;
+}
+
 class ApacheCachingHeaders : public CachingHeaders {
  public:
   explicit ApacheCachingHeaders(request_rec* request)

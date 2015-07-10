@@ -80,6 +80,12 @@ void DisableDownstreamHeaderFilters(request_rec* request);
 // Debug utility for printing Apache headers to stdout
 void PrintHeaders(request_rec* request);
 
+// Get request->headers_out as a string, intended for tests.
+GoogleString HeadersOutToString(request_rec* request);
+
+// Get request->subprocess_env as a string, intended for tests.
+GoogleString SubprocessEnvToString(request_rec* request);
+
 // Updates headers related to caching (but not Cache-Control).
 void DisableCachingRelatedHeaders(request_rec* request);
 

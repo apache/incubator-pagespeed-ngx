@@ -28,24 +28,6 @@ namespace {
 
 const int64 kMockThreadId = 6765;
 
-// Mock condvar-capable mutex.  Note that this does no actual locking,
-// and will check-fail if you attempt to create a condvar.
-class NullCondvarCapableMutex : public ThreadSystem::CondvarCapableMutex {
- public:
-  NullCondvarCapableMutex() {}
-  virtual ~NullCondvarCapableMutex();
-  virtual bool TryLock() { return true; }
-  virtual void Lock() {}
-  virtual void Unlock() {}
-  virtual ThreadSystem::Condvar* NewCondvar() {
-    LOG(FATAL) << "Creating condvars in null thread system not supported";
-    return NULL;
-  }
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(NullCondvarCapableMutex);
-};
-
 // Mock read-write-lock.  This does no locking.
 class NullRWLock : public ThreadSystem::RWLock {
  public:
@@ -97,8 +79,8 @@ NullRWLock::~NullRWLock() {
 NullThreadSystem::~NullThreadSystem() {
 }
 
-ThreadSystem::CondvarCapableMutex* NullThreadSystem::NewMutex() {
-  return new NullCondvarCapableMutex;
+NullCondvarCapableMutex* NullThreadSystem::NewMutex() {
+  return new NullCondvarCapableMutex();
 }
 
 ThreadSystem::RWLock* NullThreadSystem::NewRWLock() {
@@ -119,6 +101,34 @@ ThreadSystem::ThreadImpl* NullThreadSystem::NewThreadImpl(Thread* wrapper,
                                                           ThreadFlags flags) {
   LOG(FATAL) << "Creating threads in null thread system not supported";
   return NULL;
+}
+
+NullCondvar::~NullCondvar() {
+  // All actions should have been examined by the caller.
+  if (!actions_.empty()) {
+    LOG(FATAL) << "actions_ not empty: " << JoinCollection(actions_, " ");
+  }
+  // If caller set a callback for TimedWait() then they should also have
+  // called TimedWait().
+  CHECK(timed_wait_callback_ == NULL);
+}
+
+void NullCondvar::TimedWait(int64 timeout_ms) {
+  actions_.push_back(StrCat("TimedWait(", IntegerToString(timeout_ms), ")"));
+  if (timed_wait_callback_ != NULL) {
+    timed_wait_callback_->Call();
+    timed_wait_callback_ = NULL;
+  }
+}
+
+GoogleString NullCondvar::ActionsSinceLastCall() {
+  GoogleString response = JoinCollection(actions_, " ");
+  actions_.clear();
+  return response;
+}
+
+NullCondvar* NullCondvarCapableMutex::NewCondvar() {
+  return new NullCondvar(this);
 }
 
 }  // namespace net_instaweb

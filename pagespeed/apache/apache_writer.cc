@@ -23,7 +23,6 @@
 #include "pagespeed/kernel/http/response_headers.h"
 
 #include "apr_strings.h"  // for apr_pstrdup    // NOLINT
-#include "httpd.h"                              // NOLINT
 #include "http_protocol.h"                      // NOLINT
 
 namespace net_instaweb {
@@ -87,6 +86,12 @@ void ApacheWriter::OutputHeaders(ResponseHeaders* response_headers) {
   if (disable_downstream_header_filters_) {
     DisableDownstreamHeaderFilters(request_);
   }
+
+  // TODO(jefftk): Sanitize strips cookies and a lot of other headers.  It's
+  // being run after ResponseHeadersToApacheRequest(), however, which means it's
+  // not actually doing anything.  This code is not doing what it says it does,
+  // and should be fixed, but it's possible some users like the mobilizing proxy
+  // are depending on the current behavior.
   if (strip_cookies_ && response_headers->Sanitize()) {
     response_headers->ComputeCaching();
   }
