@@ -1254,7 +1254,8 @@ void RewriteDriver::AddPreRenderFilters() {
 void RewriteDriver::AddPostRenderFilters() {
   const RewriteOptions* rewrite_options = options();
   if (rewrite_options->domain_lawyer()->can_rewrite_domains() &&
-      rewrite_options->Enabled(RewriteOptions::kRewriteDomains)) {
+      (rewrite_options->Enabled(RewriteOptions::kRewriteDomains) ||
+       rewrite_options->mob_iframe())) {
     // Rewrite mapped domains and shard any resources not otherwise rewritten.
     // We want do do this after all the content-changing rewrites, because they
     // will map & shard as part of their execution.

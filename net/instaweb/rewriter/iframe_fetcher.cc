@@ -33,6 +33,8 @@
 
 namespace net_instaweb {
 
+const char IframeFetcher::kIframeId[] = "psmob-iframe";
+
 IframeFetcher::IframeFetcher(const RewriteOptions* options,
                              const UserAgentMatcher* matcher)
     : options_(options),
@@ -118,7 +120,7 @@ void IframeFetcher::RespondWithIframe(const GoogleString& escaped_url,
                       "<meta charset=\"utf-8\">",
                       viewport,
                       "</head><body class=\"mob-iframe\">"
-                      "<iframe id=\"psmob-iframe\" "
+                      "<iframe id=\"", kIframeId, "\" "
                       "src=\"",
                       escaped_url,
                       "\""

@@ -18,7 +18,10 @@
 
 #include "net/instaweb/rewriter/public/domain_rewrite_filter.h"
 
+#include <memory>
+
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
+#include "net/instaweb/rewriter/public/iframe_fetcher.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
@@ -67,14 +70,14 @@ class DomainRewriteFilterTest : public RewriteTestBase {
     add_html_tags_ = true;
   }
 
-  void ExpectNoChange(const char* tag, const StringPiece& url) {
+  void ExpectNoChange(const char* tag, StringPiece url) {
     GoogleString orig = StrCat("<link rel=stylesheet href=", url, ">");
     ValidateNoChanges(tag, orig);
     EXPECT_EQ(0, DeltaRewrites());
   }
 
-  void ExpectChange(const char* tag, const StringPiece& url,
-                    const StringPiece& expected) {
+  void ExpectChange(const char* tag, StringPiece url,
+                    StringPiece expected) {
     GoogleString orig = StrCat("<link rel=stylesheet href=", url, ">");
     GoogleString hacked = StrCat("<link rel=stylesheet href=", expected, ">");
     ValidateExpected(tag, orig, hacked);
@@ -151,16 +154,41 @@ TEST_F(DomainRewriteFilterTest, DontTouchIfAlreadyRewritten) {
 TEST_F(DomainRewriteFilterTest, RewriteHyperlinks) {
   options()->ClearSignatureForTesting();
   options()->set_domain_rewrite_hyperlinks(true);
+  options()->set_mob_iframe(false);
   ValidateExpected(
       "forms and a tags",
       StrCat("<a href=\"", kFrom1Domain, "link.html\"/>"
              "<form action=\"", kFrom1Domain, "blank\"/>"
              "<a href=\"https://from1.test.com/1.html\"/>"
-             "<area href=\"", kFrom1Domain, "2.html\"/>"),
-      "<a href=\"http://to1.test.com/link.html\"/>"
-      "<form action=\"http://to1.test.com/blank\"/>"
-      "<a href=\"https://from1.test.com/1.html\"/>"
-      "<area href=\"http://to1.test.com/2.html\"/>");
+             "<area href=\"", kFrom1Domain, "2.html\"/>"
+             "<iframe src=\"", kFrom1Domain, "iframe.html\"/>"
+             "<iframe id=\"", IframeFetcher::kIframeId, "\""
+             " src=\"", kFrom1Domain, "iframe.html\"/>"),
+      StrCat("<a href=\"http://to1.test.com/link.html\"/>"
+             "<form action=\"http://to1.test.com/blank\"/>"
+             "<a href=\"https://from1.test.com/1.html\"/>"
+             "<area href=\"http://to1.test.com/2.html\"/>"
+             "<iframe src=\"http://to1.test.com/iframe.html\"/>"
+             "<iframe id=\"", IframeFetcher::kIframeId, "\""
+             " src=\"http://to1.test.com/iframe.html\"/>"));
+}
+
+TEST_F(DomainRewriteFilterTest, RewriteHyperlinksIframe) {
+  options()->ClearSignatureForTesting();
+  options()->set_domain_rewrite_hyperlinks(true);
+  options()->set_mob_iframe(true);
+  ValidateExpected(
+      "forms and a tags in iframe mode",
+      StrCat("<a id=\"", IframeFetcher::kIframeId, "\""
+             " href=\"", kFrom1Domain, "link.html\"/>"
+             "<iframe src=\"", kFrom1Domain, "iframe.html\"/>"
+             "<iframe id=\"", IframeFetcher::kIframeId, "\""
+             " src=\"", kFrom1Domain, "iframe.html\"/>"),
+      StrCat("<a id=\"", IframeFetcher::kIframeId, "\""
+             " href=\"http://to1.test.com/link.html\"/>"
+             "<iframe src=\"http://to1.test.com/iframe.html\"/>"
+             "<iframe id=\"", IframeFetcher::kIframeId, "\""
+             " src=\"", kFrom1Domain, "iframe.html\"/>"));
 }
 
 TEST_F(DomainRewriteFilterTest, RewriteButDoNotShardHyperlinks) {
@@ -274,6 +302,11 @@ TEST_F(DomainRewriteFilterTest, ProxySuffix) {
 
   ValidateNoChanges(url, "<img src='http://other.example/image.png'>");
 
+  // An iframe does not get relocated.
+  ValidateNoChanges(url,
+                    StrCat("<iframe src='http://", kOriginalHost,
+                           "/frame.html'></iframe>"));
+
   // Also test that we can fix up location: headers.
   ResponseHeaders headers;
   headers.Add(HttpAttributes::kLocation, "https://sub.example.com/a.html");
@@ -291,7 +324,6 @@ TEST_F(DomainRewriteFilterTest, ProxyBaseUrl) {
   GoogleString origin_no_suffix(StrCat("http://", kOriginalHost));
   GoogleString origin_with_suffix(StrCat(origin_no_suffix, kSuffix));
   GoogleString url(StrCat(origin_with_suffix, "/index.html"));
-  GoogleUrl gurl(url);
   options()->WriteableDomainLawyer()->set_proxy_suffix(kSuffix);
   EXPECT_TRUE(options()->domain_lawyer()->can_rewrite_domains());
 

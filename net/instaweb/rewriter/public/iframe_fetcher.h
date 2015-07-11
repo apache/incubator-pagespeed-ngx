@@ -33,6 +33,9 @@ class MessageHandler;
 // and a body that consists solely of the URL as an iframe src.
 class IframeFetcher : public UrlAsyncFetcher {
  public:
+  // Id of iframe element inserted by fetcher.
+  static const char kIframeId[];
+
   IframeFetcher(const RewriteOptions* options, const UserAgentMatcher* matcher);
 
   virtual ~IframeFetcher();

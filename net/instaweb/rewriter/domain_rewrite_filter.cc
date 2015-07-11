@@ -22,6 +22,7 @@
 
 #include "base/logging.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
+#include "net/instaweb/rewriter/public/iframe_fetcher.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -394,8 +395,17 @@ void DomainRewriteFilter::StartElementImpl(HtmlElement* element) {
     // base tag applies for that set of elements.
     return;
   }
-  resource_tag_scanner::UrlCategoryVector attributes;
+  // Make sure domain rewriting of this element has not been forbidden.  Right
+  // now we must not rewrite the src url of the iframe created by the
+  // iframe_fetcher.
   const RewriteOptions* options = driver()->options();
+  if (options->mob_iframe() &&
+      (StringPiece(element->EscapedAttributeValue(HtmlName::kId)) ==
+       IframeFetcher::kIframeId) &&
+      element->keyword() == HtmlName::kIframe) {
+    return;
+  }
+  resource_tag_scanner::UrlCategoryVector attributes;
   resource_tag_scanner::ScanElement(element, options, &attributes);
   bool element_is_embed_or_frame_or_iframe = (
       element->keyword() == HtmlName::kEmbed ||
@@ -417,12 +427,14 @@ void DomainRewriteFilter::StartElementImpl(HtmlElement* element) {
             !element_is_embed_or_frame_or_iframe &&
             attributes[i].category != semantic_type::kHyperlink &&
             attributes[i].category != semantic_type::kPrefetch);
+        // TODO(jmarantz): Shouldn't we apply the domain suffix in exactly the
+        // same circumstances as we apply any other domain rewrite?
         bool apply_domain_suffix =
               (attributes[i].category == semantic_type::kHyperlink ||
                is_resource);
         const GoogleUrl& base_url = driver()->base_url();
         if (Rewrite(val, base_url, driver()->server_context(),
-                    driver()->options(), apply_sharding, apply_domain_suffix,
+                    options, apply_sharding, apply_domain_suffix,
                     &rewritten_val) == kRewroteDomain) {
           attributes[i].url->SetValue(rewritten_val);
           rewrite_count_->Add(1);
@@ -443,7 +455,7 @@ void DomainRewriteFilter::StartElementImpl(HtmlElement* element) {
         UpdateOneDomainHeader(kMetaHttpEquiv,
                               driver()->base_url(),
                               driver()->server_context(),
-                              driver()->options(),
+                              options,
                               equiv,
                               content,
                               &out)) {
