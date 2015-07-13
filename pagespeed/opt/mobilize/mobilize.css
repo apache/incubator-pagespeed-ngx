@@ -209,6 +209,15 @@ body.mob-iframe {
   white-space: nowrap;
 }
 
+/* Use a smaller font size on smaller devices, otherwise the text will overflow
+ * the div it is in. This specifically happens on iphone 4 and 5.
+ */
+@media (max-device-width: 360px) {
+  .psmob-button-text {
+    font-size: 160px !important;
+  }
+}
+
 #psmob-header-bar:not(.labeled) .psmob-button-text {
   height: 400px;
   line-height: 400px;
