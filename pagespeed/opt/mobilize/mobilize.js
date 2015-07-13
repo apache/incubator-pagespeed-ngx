@@ -305,6 +305,32 @@ pagespeed.Mob.prototype.themeComplete_ = function(themeData) {
     masterPsMob.configThemes_.push(themeData);
     this.mobilizeNextUrl_(true /* finish on time */);
   }
+
+  // Post the theme to the parent if this is in an iframe. This is used for
+  // multiple site theme extraction.
+  //
+  // TODO(huibao): Remove this piece of code once theme extraction is done
+  // by Webkit Headless.
+  if (window.parent != window) {
+    var message = 'Theme:  ' +  // 2 space
+        pagespeed.MobUtil.colorNumbersToString(themeData.menuBackColor) + ' ' +
+        pagespeed.MobUtil.colorNumbersToString(themeData.menuFrontColor);
+    if (themeData.logoUrl) {
+      message += ' ' + themeData.logoUrl;
+    }
+
+    var originPieces = document.location.origin.split('.');
+    var num = originPieces.length;
+    if (num >= 2) {
+      // For http://some.sites.mobilizer.com, parentOrign will be
+      // http://mobilizer.com
+      var parentOrigin = 'http://' + originPieces[num - 2] + '.' +
+          originPieces[num - 1];
+      window.parent.postMessage(message, parentOrigin);
+      pagespeed.MobUtil.consoleLog('Post message (' + message + ') to ' +
+          parentOrigin);
+    }
+  }
 };
 
 
