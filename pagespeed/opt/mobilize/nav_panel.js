@@ -16,6 +16,7 @@
 
 goog.provide('mob.NavPanel');
 
+goog.require('goog.Uri');
 goog.require('goog.dom.TagName');
 goog.require('goog.dom.classlist');
 goog.require('goog.events.EventType');
@@ -232,6 +233,33 @@ mob.NavPanel.prototype.toggle = function() {
 
 
 /**
+ * Return destination url for onclick event handler for the given url if it
+ * needs one, or null if it does not.  If the url points to
+ * e.g. example-com.pagespeedmobilizer.com/foo (document.domain), we want to
+ * navigate the iframe to example.com/foo (destDomain) instead.  Why not have
+ * the link just point to example.com/foo ?  Because then if the JS doesn't run
+ * for some reason the navigation that occurs is wrong (we'd want to have the
+ * whole document navigate to the mobilized page).  Nonetheless, we try to deal
+ * with that case gracefully.
+ * Exposed for testability.
+ * @param {string} href url of <a> href destination.
+ * @param {string} destDomain destination domain for iframe links that point to
+ *     document.domain.
+ * @return {?string} destination url, or null if no event handler is required.
+ */
+mob.NavPanel.prototype.getMenuClickHandlerUrl = function(href, destDomain) {
+  var dest = new goog.Uri(href);
+  if (dest.getDomain() == document.domain ||
+      dest.getDomain() == destDomain) {
+    dest.setDomain(destDomain);
+    return dest.toString();
+  } else {
+    return null;
+  }
+};
+
+
+/**
  * Add events to the buttons in the nav panel.
  * @private
  */
@@ -254,17 +282,22 @@ mob.NavPanel.prototype.addButtonEvents_ = function() {
 
   // Setup the buttons in the nav panel so that they navigate the iframe instead
   // of the top level page.
-  if (document.getElementById(pagespeed.MobUtil.ElementId.IFRAME)) {
+  var iframe = document.getElementById(pagespeed.MobUtil.ElementId.IFRAME);
+  if (iframe) {
+    var destDomain = (new goog.Uri(iframe.src)).getDomain();
     var aTags = this.el.querySelectorAll(goog.dom.TagName.LI + ' > ' +
                                          goog.dom.TagName.A);
     for (var i = 0, aTag; aTag = aTags[i]; i++) {
-      aTag.addEventListener(goog.events.EventType.CLICK, goog.bind(function(e) {
-        this.toggle();
-        e.preventDefault();
-        var iframe =
-            document.getElementById(pagespeed.MobUtil.ElementId.IFRAME);
-        iframe.src = e.currentTarget.href;
-      }, this));
+      var url = this.getMenuClickHandlerUrl(aTag.href, destDomain);
+      if (url) {
+        aTag.addEventListener(
+            goog.events.EventType.CLICK,
+            goog.bind(function(iframe, url, event) {
+              this.toggle();
+              event.preventDefault();
+              iframe.src = url;
+            }, this, iframe, url));
+      }
     }
   }
 };

@@ -4,7 +4,7 @@
 echo Content-type: text/html
 echo
 FORM_DATA=$(cat /dev/stdin)
-if [ "$FORM_DATA" == "a=b&c=d" ]; then
+if [ "$FORM_DATA" = "a=b&c=d" ]; then
     echo "PASS"
 else
     echo "FAIL"
