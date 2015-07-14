@@ -2527,7 +2527,6 @@ ngx_int_t ps_simple_handler(ngx_http_request_t* r,
 
   int64 now_ms = factory->timer()->NowMs();
   response_headers.SetDate(now_ms);
-  response_headers.SetLastModified(now_ms);
   response_headers.Add(HttpAttributes::kCacheControl, cache_control);
 
   char* cache_control_s = string_piece_to_pool_string(r->pool, cache_control);

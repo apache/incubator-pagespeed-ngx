@@ -1068,8 +1068,6 @@ check_from "$JS_HEADERS" fgrep -qi 'Content-Encoding: gzip'
 check_from "$JS_HEADERS" fgrep -qi 'Vary: Accept-Encoding'
 # Nginx's gzip module clears etags, which we don't want. Make sure we have it.
 check_from "$JS_HEADERS" egrep -qi 'Etag: W/"0"'
-check_from "$JS_HEADERS" fgrep -qi 'Last-Modified:'
-
 
 start_test PageSpeedFilters response headers is interpreted
 URL=$SECONDARY_HOSTNAME/mod_pagespeed_example/
