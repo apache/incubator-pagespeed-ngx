@@ -38,7 +38,9 @@
 namespace net_instaweb {
 namespace {
 
-const char kUrl[] = "http://www.example.com/";
+const char kExpectedUrl[] = "http://example.com/foo?bar";
+const char kExpectedIframe[] =
+    "<iframe id=\"psmob-iframe\" src=\"http://example.com/foo?bar\">";
 
 // Tests the AsyncFetch class and some of its derivations.
 class IframeFetcherTest : public RewriteOptionsTestBase<RewriteOptions> {
@@ -69,6 +71,12 @@ class IframeFetcherTest : public RewriteOptionsTestBase<RewriteOptions> {
     fetcher_.reset(new IframeFetcher(&options_, &matcher_));
   }
 
+  ResponseHeaders* FetchPage(StringPiece domain) {
+    fetched_url_ = StrCat("http://", domain, "/foo?bar");
+    fetcher_->Fetch(fetched_url_, &handler_, &fetch_);
+    return fetch_.response_headers();
+  }
+
  protected:
   UserAgentMatcher matcher_;
   RequestContextPtr request_context_;
@@ -76,50 +84,45 @@ class IframeFetcherTest : public RewriteOptionsTestBase<RewriteOptions> {
   MockMessageHandler handler_;
   RewriteOptions options_;
   scoped_ptr<IframeFetcher> fetcher_;
+  GoogleString fetched_url_;
 };
 
 TEST_F(IframeFetcherTest, IframeOnMobileProxySuffix) {
   InitTest(UserAgentMatcherTestBase::kAndroidChrome21UserAgent,
            kProxySuffix, kOnlyOnMobile);
-  fetcher_->Fetch("http://example.com.suffix/foo?bar", &handler_, &fetch_);
-  ResponseHeaders* response = fetch_.response_headers();
+  ResponseHeaders* response = FetchPage("example.com.suffix");
   EXPECT_EQ(HttpStatus::kOK, response->status_code());
   EXPECT_THAT(
       fetch_.buffer(),
-      ::testing::HasSubstr(
-          "<iframe id=\"psmob-iframe\" src=\"http://example.com/foo?bar\">"));
+      ::testing::HasSubstr(kExpectedIframe));
 }
 
 TEST_F(IframeFetcherTest, RedirectOnOperaMiniProxySuffix) {
   InitTest(UserAgentMatcherTestBase::kOperaMiniMobileUserAgent,
            kProxySuffix, kOnlyOnMobile);
-  fetcher_->Fetch("http://example.com.suffix/foo?bar", &handler_, &fetch_);
-  ResponseHeaders* response = fetch_.response_headers();
+  ResponseHeaders* response = FetchPage("example.com.suffix");
   EXPECT_EQ(HttpStatus::kTemporaryRedirect, response->status_code());
-  EXPECT_STREQ("http://example.com/foo?bar",
+  EXPECT_STREQ(kExpectedUrl,
                response->Lookup1(HttpAttributes::kLocation));
 }
 
 TEST_F(IframeFetcherTest, RedirectOnDesktopProxySuffix) {
   InitTest(UserAgentMatcherTestBase::kChrome42UserAgent,
            kProxySuffix, kOnlyOnMobile);
-  fetcher_->Fetch("http://example.com.suffix/foo?bar", &handler_, &fetch_);
-  ResponseHeaders* response = fetch_.response_headers();
+  ResponseHeaders* response = FetchPage("example.com.suffix");
   EXPECT_EQ(HttpStatus::kTemporaryRedirect, response->status_code());
-  EXPECT_STREQ("http://example.com/foo?bar",
+  EXPECT_STREQ(kExpectedUrl,
                response->Lookup1(HttpAttributes::kLocation));
 }
 
 TEST_F(IframeFetcherTest, IframeOnDesktopProxySuffixWithAlwaysMobilize) {
   InitTest(UserAgentMatcherTestBase::kChrome42UserAgent,
            kProxySuffix, kOnAllDevices);
-  fetcher_->Fetch("http://example.com.suffix/foo?bar", &handler_, &fetch_);
-  ResponseHeaders* response = fetch_.response_headers();
+  ResponseHeaders* response = FetchPage("example.com.suffix");
   EXPECT_EQ(HttpStatus::kOK, response->status_code());
   EXPECT_THAT(
       fetch_.buffer(),
-      ::testing::HasSubstr(
-          "<iframe id=\"psmob-iframe\" src=\"http://example.com/foo?bar\">"));
+      ::testing::HasSubstr(kExpectedIframe));
 }
 
 TEST_F(IframeFetcherTest, ErrorProxySuffix) {
@@ -127,63 +130,65 @@ TEST_F(IframeFetcherTest, ErrorProxySuffix) {
   // domain being unmapped.
   InitTest(UserAgentMatcherTestBase::kOperaMiniMobileUserAgent,
            kProxySuffix, kOnlyOnMobile);
-  fetcher_->Fetch("http://example.com/foo?bar", &handler_, &fetch_);
-  ResponseHeaders* response = fetch_.response_headers();
+  ResponseHeaders* response = FetchPage("example.com");
   EXPECT_EQ(HttpStatus::kNotImplemented, response->status_code());
+}
+
+TEST_F(IframeFetcherTest, RedirectWhenDisabledProxySuffix) {
+  options_.set_mob_iframe_disable(true);
+  InitTest(UserAgentMatcherTestBase::kAndroidChrome21UserAgent,
+           kProxySuffix, kOnlyOnMobile);
+  ResponseHeaders* response = FetchPage("example.com.suffix");
+  EXPECT_EQ(HttpStatus::kTemporaryRedirect, response->status_code());
+  EXPECT_STREQ(kExpectedUrl,
+               response->Lookup1(HttpAttributes::kLocation));
 }
 
 TEST_F(IframeFetcherTest, IframeOnMobileMapOrigin) {
   InitTest(UserAgentMatcherTestBase::kAndroidChrome21UserAgent,
            kMapOrigin, kOnlyOnMobile);
-  fetcher_->Fetch("http://example.us/foo?bar", &handler_, &fetch_);
-  ResponseHeaders* response = fetch_.response_headers();
+  ResponseHeaders* response = FetchPage("example.us");
   EXPECT_EQ(HttpStatus::kOK, response->status_code());
   EXPECT_THAT(
       fetch_.buffer(),
-      ::testing::HasSubstr(
-          "<iframe id=\"psmob-iframe\" src=\"http://example.com/foo?bar\">"));
+      ::testing::HasSubstr(kExpectedIframe));
 }
 
 TEST_F(IframeFetcherTest, RedirectOnOperaMiniMapOrigin) {
   InitTest(UserAgentMatcherTestBase::kOperaMiniMobileUserAgent,
            kMapOrigin, kOnlyOnMobile);
-  fetcher_->Fetch("http://example.us/foo?bar", &handler_, &fetch_);
-  ResponseHeaders* response = fetch_.response_headers();
+  ResponseHeaders* response = FetchPage("example.us");
   EXPECT_EQ(HttpStatus::kTemporaryRedirect, response->status_code());
-  EXPECT_STREQ("http://example.com/foo?bar",
+  EXPECT_STREQ(kExpectedUrl,
                response->Lookup1(HttpAttributes::kLocation));
 }
 
 TEST_F(IframeFetcherTest, RedirectOnDesktopMapOrigin) {
   InitTest(UserAgentMatcherTestBase::kChrome42UserAgent,
            kMapOrigin, kOnlyOnMobile);
-  fetcher_->Fetch("http://example.us/foo?bar", &handler_, &fetch_);
-  ResponseHeaders* response = fetch_.response_headers();
+  ResponseHeaders* response = FetchPage("example.us");
   EXPECT_EQ(HttpStatus::kTemporaryRedirect, response->status_code());
-  EXPECT_STREQ("http://example.com/foo?bar",
+  EXPECT_STREQ(kExpectedUrl,
                response->Lookup1(HttpAttributes::kLocation));
 }
 
 TEST_F(IframeFetcherTest, IframeOnDesktopMapOriginWithAlwaysMobilize) {
   InitTest(UserAgentMatcherTestBase::kChrome42UserAgent,
            kMapOrigin, kOnAllDevices);
-  fetcher_->Fetch("http://example.us/foo?bar", &handler_, &fetch_);
-  ResponseHeaders* response = fetch_.response_headers();
+  ResponseHeaders* response = FetchPage("example.us");
   EXPECT_EQ(HttpStatus::kOK, response->status_code());
   EXPECT_THAT(
       fetch_.buffer(),
-      ::testing::HasSubstr(
-          "<iframe id=\"psmob-iframe\" src=\"http://example.com/foo?bar\">"));
+      ::testing::HasSubstr(kExpectedIframe));
 }
 
 TEST_F(IframeFetcherTest, RedirectOnNoScript) {
   InitTest(UserAgentMatcherTestBase::kAndroidChrome21UserAgent,
            kMapOrigin, kOnlyOnMobile);
   options_.DisableFiltersRequiringScriptExecution();
-  fetcher_->Fetch("http://example.us/foo?bar", &handler_, &fetch_);
-  ResponseHeaders* response = fetch_.response_headers();
+  ResponseHeaders* response = FetchPage("example.us");
   EXPECT_EQ(HttpStatus::kTemporaryRedirect, response->status_code());
-  EXPECT_STREQ("http://example.com/foo?bar",
+  EXPECT_STREQ(kExpectedUrl,
                response->Lookup1(HttpAttributes::kLocation));
 }
 
@@ -192,17 +197,25 @@ TEST_F(IframeFetcherTest, ErrorMapOrigin) {
   // domain being unmapped.
   InitTest(UserAgentMatcherTestBase::kOperaMiniMobileUserAgent,
            kMapOrigin, kOnlyOnMobile);
-  fetcher_->Fetch("http://example.com/foo?bar", &handler_, &fetch_);
-  ResponseHeaders* response = fetch_.response_headers();
+  ResponseHeaders* response = FetchPage("example.com");
   EXPECT_EQ(HttpStatus::kNotImplemented, response->status_code());
+}
+
+TEST_F(IframeFetcherTest, RedirectWhenDisabledMapOrigin) {
+  options_.set_mob_iframe_disable(true);
+  InitTest(UserAgentMatcherTestBase::kAndroidChrome21UserAgent,
+           kMapOrigin, kOnlyOnMobile);
+  ResponseHeaders* response = FetchPage("example.us");
+  EXPECT_EQ(HttpStatus::kTemporaryRedirect, response->status_code());
+  EXPECT_STREQ(kExpectedUrl,
+               response->Lookup1(HttpAttributes::kLocation));
 }
 
 TEST_F(IframeFetcherTest, Viewport) {
   // Verify default viewport
   InitTest(UserAgentMatcherTestBase::kAndroidChrome21UserAgent,
            kMapOrigin, kOnlyOnMobile);
-  fetcher_->Fetch("http://example.us/foo?bar", &handler_, &fetch_);
-  ResponseHeaders* response = fetch_.response_headers();
+  ResponseHeaders* response = FetchPage("example.us");
   EXPECT_EQ(HttpStatus::kOK, response->status_code());
   EXPECT_THAT(
       fetch_.buffer(),
@@ -214,8 +227,7 @@ TEST_F(IframeFetcherTest, ViewportNone) {
   options_.set_mob_iframe_viewport("none");
   InitTest(UserAgentMatcherTestBase::kAndroidChrome21UserAgent,
            kMapOrigin, kOnlyOnMobile);
-  fetcher_->Fetch("http://example.us/foo?bar", &handler_, &fetch_);
-  ResponseHeaders* response = fetch_.response_headers();
+  ResponseHeaders* response = FetchPage("example.us");
   EXPECT_EQ(HttpStatus::kOK, response->status_code());
   EXPECT_THAT(fetch_.buffer(),
               ::testing::Not(::testing::HasSubstr("<meta name=\"viewport\"")));
@@ -225,8 +237,7 @@ TEST_F(IframeFetcherTest, ViewportEscaped) {
   options_.set_mob_iframe_viewport("\">");
   InitTest(UserAgentMatcherTestBase::kAndroidChrome21UserAgent,
            kMapOrigin, kOnlyOnMobile);
-  fetcher_->Fetch("http://example.us/foo?bar", &handler_, &fetch_);
-  ResponseHeaders* response = fetch_.response_headers();
+  ResponseHeaders* response = FetchPage("example.us");
   EXPECT_EQ(HttpStatus::kOK, response->status_code());
   EXPECT_THAT(
       fetch_.buffer(),

@@ -986,6 +986,7 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
     RewriteOptions::kMobConfig,
     RewriteOptions::kMobConversionId,
     RewriteOptions::kMobIframe,
+    RewriteOptions::kMobIframeDisable,
     RewriteOptions::kMobIframeViewport,
     RewriteOptions::kMobLayout,
     RewriteOptions::kMobMapConversionLabel,

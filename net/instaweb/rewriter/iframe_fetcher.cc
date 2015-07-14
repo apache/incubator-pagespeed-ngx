@@ -79,7 +79,8 @@ void IframeFetcher::Fetch(const GoogleString& url,
     // We would cause a redirect loop or an iframe-loop if we allow this to
     // happen, so just fail.
     RespondWithError(escaped_url, fetch, message_handler);
-  } else if ((user_agent != NULL) &&
+  } else if (!options_->mob_iframe_disable() &&
+             (user_agent != NULL) &&
              SupportedDevice(user_agent) &&
              MobilizeRewriteFilter::IsApplicableFor(options_, user_agent,
                                                     user_agent_matcher_) &&

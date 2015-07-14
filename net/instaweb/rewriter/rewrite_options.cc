@@ -237,6 +237,7 @@ const char RewriteOptions::kMobPhoneConversionLabel[] =
     "MobPhoneConversionLabel";
 const char RewriteOptions::kMobConfig[] = "MobConfig";
 const char RewriteOptions::kMobIframe[] = "MobIframe";
+const char RewriteOptions::kMobIframeDisable[] = "MobIframeDisable";
 const char RewriteOptions::kMobIframeViewport[] = "MobIframeViewport";
 const char RewriteOptions::kMobLayout[] = "MobLayout";
 const char RewriteOptions::kMobNav[] = "MobNav";
@@ -2367,6 +2368,13 @@ void RewriteOptions::AddProperties() {
       false, &RewriteOptions::mob_iframe_, "miframe", kMobIframe,
       kQueryScope,
       "(experimental) whether to use an iframe rather than proxying", true);
+  AddBaseProperty(
+      false, &RewriteOptions::mob_iframe_disable_, "miframedis",
+      kMobIframeDisable, kDirectoryScope,
+      "(experimental) serves a redirect to the original page for every request "
+      "for which MobIFrame is enabled.  Intended as a safety valve when an "
+      "iframed site is sending us traffic and we don't want to actually "
+      "mobilize it.", true);
   // Note that setting this option to "none" turns off inserting an iframe. We
   // use this because it's otherwise difficult to set the option to a blank
   // string to override the default.
