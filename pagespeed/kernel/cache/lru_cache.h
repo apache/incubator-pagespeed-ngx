@@ -57,6 +57,10 @@ class LRUCache : public CacheInterface {
   virtual void Put(const GoogleString& key, SharedString* new_value);
   virtual void Delete(const GoogleString& key);
 
+  // Deletes all objects whose key starts with prefix.
+  // Not part of cache interface. Exported for testing only.
+  void DeleteWithPrefixForTesting(StringPiece prefix);
+
   // Total size in bytes of keys and values stored.
   size_t size_bytes() const { return base_.size_bytes(); }
 

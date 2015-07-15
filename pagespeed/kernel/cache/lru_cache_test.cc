@@ -69,6 +69,33 @@ TEST_F(LRUCacheTest, PutGetDelete) {
   EXPECT_EQ(static_cast<size_t>(0), cache_.num_elements());
 }
 
+TEST_F(LRUCacheTest, DeleteWithPrefix) {
+  CheckPut("N1", "Value1");
+  CheckPut("N2", "Value2");
+  CheckPut("M3", "Value3");
+  CheckPut("M4", "Value4");
+
+  // 4*(strlen("N1") + strlen("Value1")) = 4*(2 + 6) = 32
+  EXPECT_EQ(static_cast<size_t>(32), cache_.size_bytes());
+  EXPECT_EQ(static_cast<size_t>(4), cache_.num_elements());
+
+  cache_.DeleteWithPrefixForTesting("N");
+  EXPECT_EQ(static_cast<size_t>(16), cache_.size_bytes());
+  EXPECT_EQ(static_cast<size_t>(2), cache_.num_elements());
+  CheckNotFound("N1");
+  CheckNotFound("N2");
+  CheckGet("M3", "Value3");
+  CheckGet("M4", "Value4");
+
+  cache_.DeleteWithPrefixForTesting("M");
+  EXPECT_EQ(static_cast<size_t>(0), cache_.size_bytes());
+  EXPECT_EQ(static_cast<size_t>(0), cache_.num_elements());
+  CheckNotFound("N1");
+  CheckNotFound("N2");
+  CheckNotFound("M3");
+  CheckNotFound("M4");
+}
+
 // Test eviction.  We happen to know that the cache does not account for
 // STL overhead -- it's just counting key/value size.  Exploit that to
 // understand when objects fall off the end.

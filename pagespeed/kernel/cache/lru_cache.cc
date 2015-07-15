@@ -65,4 +65,12 @@ void LRUCache::Delete(const GoogleString& key) {
   base_.Delete(key);
 }
 
+void LRUCache::DeleteWithPrefixForTesting(StringPiece prefix) {
+  if (!is_healthy_) {
+    return;
+  }
+
+  base_.DeleteWithPrefixForTesting(prefix);
+}
+
 }  // namespace net_instaweb

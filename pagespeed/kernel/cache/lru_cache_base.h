@@ -207,16 +207,26 @@ class LRUCacheBase {
   void Delete(const GoogleString& key) {
     typename Map::iterator p = map_.find(key);
     if (p != map_.end()) {
-      ListNode cell = p->second;
-      KeyValuePair* key_value = *cell;
-      lru_ordered_list_.erase(cell);
-      CHECK_GE(current_bytes_in_cache_, EntrySize(key_value));
-      current_bytes_in_cache_ -= EntrySize(key_value);
-      map_.erase(p);
-      delete key_value;
-      ++num_deletes_;
+      DeleteAt(p);
     } else {
       // TODO(jmarantz): count number of misses on a 'delete' request?
+    }
+  }
+
+  // Deletes all objects whose key starts with prefix.
+  // Note: this takes time proportional to the size of the map, and is only
+  // meant for test use.
+  void DeleteWithPrefixForTesting(StringPiece prefix) {
+    typename Map::iterator p = map_.begin();
+    while (p != map_.end()) {
+      if (HasPrefixString(p->first, prefix)) {
+        typename Map::iterator next = p;
+        ++next;
+        DeleteAt(p);
+        p = next;
+      } else {
+        ++p;
+      }
     }
   }
 
@@ -318,6 +328,17 @@ class LRUCacheBase {
     }
 
     return lru_ordered_list_.begin();
+  }
+
+  void DeleteAt(typename Map::iterator p) {
+    ListNode cell = p->second;
+    KeyValuePair* key_value = *cell;
+    lru_ordered_list_.erase(cell);
+    CHECK_GE(current_bytes_in_cache_, EntrySize(key_value));
+    current_bytes_in_cache_ -= EntrySize(key_value);
+    map_.erase(p);
+    delete key_value;
+    ++num_deletes_;
   }
 
   bool EvictIfNecessary(size_t bytes_needed) {
