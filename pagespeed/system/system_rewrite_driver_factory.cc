@@ -369,10 +369,14 @@ SystemRewriteDriverFactory::ParseAndSetOption1(StringPiece option,
     return parsed_as_bool;
   }
 
-  // Others take a positive integer.
+  // Others take an integer >= 0.
+  //
+  // Values of 0 have special meanings:
+  //   Num(Expensive)RewriteThreads: autodetect (see AutoDetectThreadCounts())
+  //   MessageBufferSize: disable the message buffer
   int int_value = 0;
   RewriteOptions::OptionSettingResult parsed_as_int =
-      (RewriteOptions::ParseFromString(arg, &int_value) && int_value > 0) ?
+      RewriteOptions::ParseFromString(arg, &int_value) ?
       RewriteOptions::kOptionOk : RewriteOptions::kOptionValueInvalid;
   if (StringCaseEqual(option, kNumRewriteThreads)) {
     set_num_rewrite_threads(int_value);
