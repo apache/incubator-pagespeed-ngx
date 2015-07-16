@@ -33,6 +33,14 @@ goog.require('pagespeed.MobTheme');
 goog.require('pagespeed.MobUtil');
 
 
+// Setup some initial beacons to track page loading.
+pagespeed.MobUtil.sendBeaconEvent(pagespeed.MobUtil.BeaconEvents.INITIAL_EVENT);
+
+window.addEventListener(goog.events.EventType.LOAD, function() {
+  pagespeed.MobUtil.sendBeaconEvent(pagespeed.MobUtil.BeaconEvents.LOAD_EVENT);
+});
+
+
 
 /**
  * Creates a context for PageSpeed mobilization, serving to orchestrate
@@ -422,7 +430,6 @@ pagespeed.Mob.prototype['xhrResponseHook'] = function(http_status_code) {
  * entry point to mobilization.
  */
 pagespeed.Mob.prototype.initiateMobilization = function() {
-  pagespeed.MobUtil.sendBeaconEvent(pagespeed.MobUtil.BeaconEvents.LOAD_EVENT);
   this.setDebugMode(window.psDebugMode);  // psDebugMode set from C++
   this.domElementCount_ = pagespeed.MobUtil.countNodes(document.body);
 

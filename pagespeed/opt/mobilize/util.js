@@ -877,6 +877,9 @@ pagespeed.MobUtil.consoleLog = function(message) {
  */
 pagespeed.MobUtil.BeaconEvents = {
   CALL_CONVERSION_RESPONSE: 'call-conversion-response',
+  CALL_FALLBACK_NUMBER: 'call-fallback-number',
+  CALL_GV_NUMBER: 'call-gv-number',
+  INITIAL_EVENT: 'initial-event',
   LOAD_EVENT: 'load-event',
   MAP_BUTTON: 'psmob-map-button',
   MENU_BUTTON_CLOSE: 'psmob-menu-button-close',

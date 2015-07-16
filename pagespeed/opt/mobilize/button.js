@@ -395,16 +395,11 @@ mob.button.Dialer.prototype.createButton = function() {
 
 /** @override */
 mob.button.Dialer.prototype.clickHandler = function(e) {
+  pagespeed.MobUtil.sendBeaconEvent(
+      pagespeed.MobUtil.BeaconEvents.PHONE_BUTTON);
   if (this.googleVoicePhoneNumber_) {
-    pagespeed.MobUtil.sendBeaconEvent(
-        pagespeed.MobUtil.BeaconEvents.PHONE_BUTTON,
-        goog.bind(this.dialPhone_, this));
+    this.dialPhone_();
   } else {
-    // We are going to need to request the phone number from google voice, so
-    // make the 204 beacon request alongside the jsonp request for the phone
-    // number.
-    pagespeed.MobUtil.sendBeaconEvent(
-        pagespeed.MobUtil.BeaconEvents.PHONE_BUTTON);
     this.requestPhoneNumberAndDial_();
   }
 };
@@ -422,8 +417,8 @@ mob.button.Dialer.prototype.requestPhoneNumberAndDial_ = function() {
     this.debugAlert_('requesting dynamic phone number: ' + url);
     var req = new goog.net.Jsonp(url);
     this.jsonpTime_ = Date.now();
-    req.send(null, goog.bind(this.receivePhoneNumber_, this),
-             goog.bind(this.receivePhoneNumber_, this));
+    req.send(null, goog.bind(this.receivePhoneNumber_, this, true),
+             goog.bind(this.receivePhoneNumber_, this, false));
   } else {
     this.dialPhone_();
   }
@@ -457,10 +452,20 @@ mob.button.Dialer.prototype.constructRequestPhoneNumberUrl_ = function() {
  * @private
  */
 mob.button.Dialer.prototype.dialPhone_ = function() {
+  var phoneNumber;
+  var ev;
   // Always prefer the google voice number if it is available, otherwise use the
   // fallback number.
-  var phoneNumber = this.googleVoicePhoneNumber_ || this.fallbackPhoneNumber_;
-  goog.global.location = 'tel:' + phoneNumber;
+  if (this.googleVoicePhoneNumber_) {
+    phoneNumber = this.googleVoicePhoneNumber_;
+    ev = pagespeed.MobUtil.BeaconEvents.CALL_GV_NUMBER;
+  } else {
+    phoneNumber = this.fallbackPhoneNumber_;
+    ev = pagespeed.MobUtil.BeaconEvents.CALL_FALLBACK_NUMBER;
+  }
+  pagespeed.MobUtil.sendBeaconEvent(ev, function() {
+    goog.global.location = 'tel:' + phoneNumber;
+  });
 };
 
 
@@ -470,17 +475,19 @@ mob.button.Dialer.prototype.dialPhone_ = function() {
  * this.googleVoicePhoneNumber_.
  *
  * @private
+ * @param {boolean} success True if the jsonp request succeeded.
  * @param {?Object} json
  */
-mob.button.Dialer.prototype.receivePhoneNumber_ = function(json) {
+mob.button.Dialer.prototype.receivePhoneNumber_ = function(success, json) {
   var responseTime = Date.now() - this.jsonpTime_;
   pagespeed.MobUtil.sendBeaconEvent(
       pagespeed.MobUtil.BeaconEvents.CALL_CONVERSION_RESPONSE, null,
-      '&t=' + responseTime);
+      '&s=' + success.toString() + '&t=' + responseTime);
   var wcm = json && json['wcm'];
   var phoneNumber = wcm && wcm['mobile_number'];
   if (phoneNumber) {
     // Save the phoneNumber in a cookie to reduce server requests.
+    // TODO(jud): Use localstorage instead of a cookie.
     var cookieValue = {
       'expires': wcm['expires'],
       'formatted_number': wcm['formatted_number'],
@@ -509,12 +516,6 @@ mob.button.Dialer.prototype.receivePhoneNumber_ = function(json) {
  * @return {?string}
  */
 mob.button.Dialer.prototype.getPhoneNumberFromCookie_ = function() {
-  // Naturally if there is no configured conversion label, we can't
-  // get a conversion-tracked phone-number either.
-  if (!this.conversionLabel_) {
-    return this.fallbackPhoneNumber_;
-  }
-
   // Check to see if the phone number we want was previously saved
   // in a valid cookie, with matching fallback number and conversion label.
   var gwcmCookie = this.cookies_.get(mob.button.Dialer.WCM_COOKIE_);
