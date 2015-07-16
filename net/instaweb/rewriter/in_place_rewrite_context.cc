@@ -389,6 +389,7 @@ void InPlaceRewriteContext::FixFetchFallbackHeaders(
       headers->Replace(HttpAttributes::kEtag, HTTPCache::FormatEtag(StrCat(
                                                   id(), "-", rewritten_hash_)));
     }
+    headers->RemoveAll(HttpAttributes::kLastModified);
     headers->set_implicit_cache_ttl_ms(Options()->implicit_cache_ttl_ms());
     headers->set_min_cache_ttl_ms(Options()->min_cache_ttl_ms());
     headers->ComputeCaching();

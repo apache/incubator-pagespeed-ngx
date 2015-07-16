@@ -80,7 +80,6 @@ void ApacheWriter::OutputHeaders(ResponseHeaders* response_headers) {
   if (content_length_ != AsyncFetch::kContentLengthUnknown) {
     ap_set_content_length(request_, content_length_);
   }
-
   ResponseHeadersToApacheRequest(*response_headers, request_);
   request_->status = response_headers->status_code();
   if (disable_downstream_header_filters_) {

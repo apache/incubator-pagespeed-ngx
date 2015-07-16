@@ -213,7 +213,6 @@ TEST_F(ApacheFetchTest, Success) {
             "Set-Cookie: tasty=cookie\n"
             "Set-Cookie2: obselete\n"
             "Date: Thu, 01 Jan 1970 00:00:00 GMT\n"
-            "Last-Modified: Thu, 01 Jan 1970 00:00:00 GMT\n"
             "X-Content-Type-Options: nosniff\n"
             "Cache-Control: max-age=0, no-cache\n",
             HeadersOutToString(&request_));
@@ -239,7 +238,6 @@ TEST_F(ApacheFetchTest, NotFound404) {
             "Set-Cookie: tasty=cookie\n"
             "Set-Cookie2: obselete\n"
             "Date: Thu, 01 Jan 1970 00:00:00 GMT\n"
-            "Last-Modified: Thu, 01 Jan 1970 00:00:00 GMT\n"
             "X-Content-Type-Options: nosniff\n"
             "Cache-Control: max-age=0, no-cache\n",
             HeadersOutToString(&request_));
@@ -264,7 +262,6 @@ TEST_F(ApacheFetchTest, NoContentType200) {
             "Set-Cookie2: obselete\n"
             "Content-Type: text/html\n"
             "Date: Thu, 01 Jan 1970 00:00:00 GMT\n"
-            "Last-Modified: Thu, 01 Jan 1970 00:00:00 GMT\n"
             "X-Content-Type-Options: nosniff\n"
             "Cache-Control: max-age=0, no-cache\n",
             HeadersOutToString(&request_));
@@ -290,7 +287,6 @@ TEST_F(ApacheFetchTest, NoContentType301) {
             "Location: elsewhere\n"
             "Content-Type: text/html\n"
             "Date: Thu, 01 Jan 1970 00:00:00 GMT\n"
-            "Last-Modified: Thu, 01 Jan 1970 00:00:00 GMT\n"
             "X-Content-Type-Options: nosniff\n"
             "Cache-Control: max-age=0, no-cache\n",
             HeadersOutToString(&request_));
@@ -313,7 +309,6 @@ TEST_F(ApacheFetchTest, NoContentType304) {
             "Set-Cookie: tasty=cookie\n"
             "Set-Cookie2: obselete\n"
             "Date: Thu, 01 Jan 1970 00:00:00 GMT\n"
-            "Last-Modified: Thu, 01 Jan 1970 00:00:00 GMT\n"
             "X-Content-Type-Options: nosniff\n"
             "Cache-Control: max-age=0, no-cache\n",
             HeadersOutToString(&request_));
@@ -334,7 +329,6 @@ TEST_F(ApacheFetchTest, NoContentType204) {
             "Set-Cookie: tasty=cookie\n"
             "Set-Cookie2: obselete\n"
             "Date: Thu, 01 Jan 1970 00:00:00 GMT\n"
-            "Last-Modified: Thu, 01 Jan 1970 00:00:00 GMT\n"
             "X-Content-Type-Options: nosniff\n"
             "Cache-Control: max-age=0, no-cache\n",
             HeadersOutToString(&request_));
@@ -361,7 +355,6 @@ TEST_F(ApacheFetchTest, AbandonedAndHandled) {
             "Set-Cookie: tasty=cookie\n"
             "Set-Cookie2: obselete\n"
             "Date: Thu, 01 Jan 1970 00:00:00 GMT\n"
-            "Last-Modified: Thu, 01 Jan 1970 00:00:00 GMT\n"
             "X-Content-Type-Options: nosniff\n"
             "Cache-Control: max-age=0, no-cache\n",
             HeadersOutToString(&request_));

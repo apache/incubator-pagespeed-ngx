@@ -87,7 +87,6 @@ void ApacheFetch::HandleHeadersComplete() {
 
     int64 now_ms = timer_->NowMs();
     response_headers()->SetDate(now_ms);
-    response_headers()->SetLastModified(now_ms);
 
     // http://msdn.microsoft.com/en-us/library/ie/gg622941(v=vs.85).aspx
     // Script and styleSheet elements will reject responses with
