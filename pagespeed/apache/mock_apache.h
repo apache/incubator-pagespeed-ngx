@@ -33,7 +33,7 @@ namespace MockApache {
 // If you link mock_apache.cc to supply any of these function mocks you must
 // call Initialize() before any ap_* calls and Terminate() after them.  To
 // verify that higher level calls led to the correct lower level actions, call
-// actions_since_last_call() to get a text representation of past actions.
+// ActionsSinceLastCall() to get a text representation of past actions.
 //
 // Most of these calls need a properly initialized request_rec.  Use
 // PrepareRequest/CleanupRequest for that.
@@ -46,7 +46,7 @@ namespace MockApache {
 //    SomethingThatCallsApRWrite("foo", &r)
 //    SomethingThatCallsApRFlush(&r)
 //    EXPECT_EQ("ap_rwrite(foo) ap_rflush()",
-//              MockApache::actions_since_last_call());
+//              MockApache::ActionsSinceLastCall());
 //    MockApache::CleanupRequest(&r);
 //    MockApache::Terminate();
 
@@ -64,7 +64,7 @@ void CleanupRequest(request_rec* request);
 // Call to verify that the correct underlying apache calls were made.  Returns a
 // space separated string of the calls along with serialized arguments when
 // appropriate.
-GoogleString actions_since_last_call();
+GoogleString ActionsSinceLastCall();
 
 }  // namespace MockApache
 

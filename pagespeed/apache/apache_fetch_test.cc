@@ -110,7 +110,7 @@ class ApacheFetchTest : public testing::Test {
     apache_fetch_->set_max_wait_ms(-1);  // Never actually wait in tests.
 
     // None of these should have been passed through to the apache_writer.
-    EXPECT_EQ("", MockApache::actions_since_last_call());
+    EXPECT_EQ("", MockApache::ActionsSinceLastCall());
   }
 
   virtual ~ApacheFetchTest() {
@@ -148,7 +148,7 @@ class ApacheFetchTest : public testing::Test {
 
     EXPECT_FALSE(apache_fetch_->Write("abandoned", &message_handler_));
     // Write dropped.
-    EXPECT_EQ("", MockApache::actions_since_last_call());
+    EXPECT_EQ("", MockApache::ActionsSinceLastCall());
 
     EXPECT_EQ("TimedWait(5000)",  // Note no Signal().
               condvar_->ActionsSinceLastCall());
@@ -204,7 +204,7 @@ TEST_F(ApacheFetchTest, Success) {
       "ap_remove_output_filter(FIXUP_HEADERS_OUT) "
       "ap_set_content_type(text/plain) "
       "ap_rwrite(hello )",
-      MockApache::actions_since_last_call());
+      MockApache::ActionsSinceLastCall());
 
   // TODO(jefftk): Cookies are present here even though we asked ApacheWriter to
   // remove them because of an ApacheWriter bug.
@@ -218,13 +218,13 @@ TEST_F(ApacheFetchTest, Success) {
             HeadersOutToString(&request_));
 
   EXPECT_TRUE(apache_fetch_->Write("world", &message_handler_));
-  EXPECT_EQ("ap_rwrite(world)", MockApache::actions_since_last_call());
+  EXPECT_EQ("ap_rwrite(world)", MockApache::ActionsSinceLastCall());
   EXPECT_TRUE(apache_fetch_->Flush(&message_handler_));
-  EXPECT_EQ("ap_rflush()", MockApache::actions_since_last_call());
+  EXPECT_EQ("ap_rflush()", MockApache::ActionsSinceLastCall());
   EXPECT_TRUE(apache_fetch_->Write(".", &message_handler_));
-  EXPECT_EQ("ap_rwrite(.)", MockApache::actions_since_last_call());
+  EXPECT_EQ("ap_rwrite(.)", MockApache::ActionsSinceLastCall());
   EXPECT_TRUE(apache_fetch_->Flush(&message_handler_));
-  EXPECT_EQ("ap_rflush()", MockApache::actions_since_last_call());
+  EXPECT_EQ("ap_rflush()", MockApache::ActionsSinceLastCall());
 
   WaitExpectSuccess();
 }
@@ -247,7 +247,7 @@ TEST_F(ApacheFetchTest, NotFound404) {
       "ap_remove_output_filter(FIXUP_HEADERS_OUT) "
       "ap_set_content_type(text/plain) "
       "ap_rwrite(Couldn't find it.)",
-      MockApache::actions_since_last_call());
+      MockApache::ActionsSinceLastCall());
   WaitExpectSuccess();
 }
 
@@ -271,7 +271,7 @@ TEST_F(ApacheFetchTest, NoContentType200) {
       "ap_remove_output_filter(FIXUP_HEADERS_OUT) "
       "ap_set_content_type(text/html) "
       "ap_rwrite(Missing Content-Type required for proxied resource)",
-      MockApache::actions_since_last_call());
+      MockApache::ActionsSinceLastCall());
   WaitExpectSuccess();
 }
 
@@ -296,7 +296,7 @@ TEST_F(ApacheFetchTest, NoContentType301) {
       "ap_remove_output_filter(FIXUP_HEADERS_OUT) "
       "ap_set_content_type(text/html) "
       "ap_rwrite(Missing Content-Type required for proxied resource)",
-      MockApache::actions_since_last_call());
+      MockApache::ActionsSinceLastCall());
   WaitExpectSuccess();
 }
 
@@ -316,7 +316,7 @@ TEST_F(ApacheFetchTest, NoContentType304) {
       "ap_remove_output_filter(MOD_EXPIRES) "
       "ap_remove_output_filter(FIXUP_HEADERS_OUT) "
       "ap_rwrite(not modified)",
-      MockApache::actions_since_last_call());
+      MockApache::ActionsSinceLastCall());
   WaitExpectSuccess();
 }
 
@@ -334,7 +334,7 @@ TEST_F(ApacheFetchTest, NoContentType204) {
             HeadersOutToString(&request_));
   EXPECT_EQ("ap_remove_output_filter(MOD_EXPIRES) "
             "ap_remove_output_filter(FIXUP_HEADERS_OUT)",
-            MockApache::actions_since_last_call());
+            MockApache::ActionsSinceLastCall());
 
   WaitExpectSuccess();
 }
@@ -348,7 +348,7 @@ TEST_F(ApacheFetchTest, AbandonedAndHandled) {
       "ap_remove_output_filter(FIXUP_HEADERS_OUT) "
       "ap_set_content_type(text/plain) "
       "ap_rwrite(hello )",
-      MockApache::actions_since_last_call());
+      MockApache::ActionsSinceLastCall());
 
   EXPECT_EQ("Content-Type: text/plain\n"
             "Set-Cookie: test=cookie\n"
@@ -364,7 +364,7 @@ TEST_F(ApacheFetchTest, AbandonedAndHandled) {
 
   EXPECT_FALSE(apache_fetch_->Flush(&message_handler_));
   // Flush dropped.
-  EXPECT_EQ("", MockApache::actions_since_last_call());
+  EXPECT_EQ("", MockApache::ActionsSinceLastCall());
 
   PostAbandonmentHelper(false /* expect_headers_complete */);
 }

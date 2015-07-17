@@ -70,16 +70,16 @@ TEST_F(ApacheWriterTest, SimpleUsage) {
       "ap_set_content_type(text/plain) "
       "ap_set_content_type(text/plain) "
       "ap_rwrite(hello world)",
-      MockApache::actions_since_last_call());
+      MockApache::ActionsSinceLastCall());
   EXPECT_EQ("Content-Type: text/plain\n"
             "Set-Cookie: test=cookie\n",
             HeadersOutToString(&request_));
 
   EXPECT_TRUE(apache_writer_->Flush(&message_handler_));
-  EXPECT_EQ("ap_rflush()", MockApache::actions_since_last_call());
+  EXPECT_EQ("ap_rflush()", MockApache::ActionsSinceLastCall());
 
   EXPECT_TRUE(apache_writer_->Write(".", &message_handler_));
-  EXPECT_EQ("ap_rwrite(.)", MockApache::actions_since_last_call());
+  EXPECT_EQ("ap_rwrite(.)", MockApache::ActionsSinceLastCall());
 }
 
 TEST_F(ApacheWriterTest, HTTP10) {
@@ -93,7 +93,7 @@ TEST_F(ApacheWriterTest, HTTP10) {
       "ap_set_content_type(text/plain) "
       "ap_set_content_type(text/plain) "
       "ap_rwrite(hello world)",
-      MockApache::actions_since_last_call());
+      MockApache::ActionsSinceLastCall());
   EXPECT_EQ("Content-Type: text/plain\n"
             "Set-Cookie: test=cookie\n",
             HeadersOutToString(&request_));
@@ -110,7 +110,7 @@ TEST_F(ApacheWriterTest, ErrorStatusCode) {
       "ap_set_content_type(text/plain) "
       "ap_set_content_type(text/plain) "
       "ap_rwrite(hello world)",
-      MockApache::actions_since_last_call());
+      MockApache::ActionsSinceLastCall());
   EXPECT_EQ("Content-Type: text/plain\n"
             "Set-Cookie: test=cookie\n",
             HeadersOutToString(&request_));
@@ -127,7 +127,7 @@ TEST_F(ApacheWriterTest, DisableDownstream) {
       "ap_remove_output_filter(FIXUP_HEADERS_OUT) "
       "ap_set_content_type(text/plain) "
       "ap_rwrite(hello world)",
-      MockApache::actions_since_last_call());
+      MockApache::ActionsSinceLastCall());
   EXPECT_EQ("Content-Type: text/plain\n"
             "Set-Cookie: test=cookie\n",
             HeadersOutToString(&request_));
@@ -143,7 +143,7 @@ TEST_F(ApacheWriterTest, DisableDownstreamNoneToDisable) {
       "ap_set_content_type(text/plain) "
       "ap_set_content_type(text/plain) "
       "ap_rwrite(hello world)",
-      MockApache::actions_since_last_call());
+      MockApache::ActionsSinceLastCall());
   EXPECT_EQ("Content-Type: text/plain\n"
             "Set-Cookie: test=cookie\n",
             HeadersOutToString(&request_));
@@ -158,7 +158,7 @@ TEST_F(ApacheWriterTest, StripCookies) {
       "ap_set_content_type(text/plain) "
       "ap_set_content_type(text/plain) "
       "ap_rwrite(hello world)",
-      MockApache::actions_since_last_call());
+      MockApache::ActionsSinceLastCall());
   // TODO(jefftk): actually strip cookies.
   EXPECT_EQ("Content-Type: text/plain\n"
             "Set-Cookie: test=cookie\n",

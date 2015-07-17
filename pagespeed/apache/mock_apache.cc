@@ -29,7 +29,7 @@ void MockApache::Terminate() {
   CHECK(recorded_actions != NULL);
   if (!recorded_actions->empty()) {
     LOG(FATAL) << "MockApache: unprocessed actions: "
-               << actions_since_last_call();
+               << ActionsSinceLastCall();
   }
   delete recorded_actions;
   recorded_actions = NULL;
@@ -75,7 +75,7 @@ void MockApache::CleanupRequest(request_rec* request) {
   apr_pool_destroy(request->pool);
 }
 
-GoogleString MockApache::actions_since_last_call() {
+GoogleString MockApache::ActionsSinceLastCall() {
   CHECK(recorded_actions != NULL) <<
       "Must call MockApache::Initialize() first";
   GoogleString response = JoinCollection(*recorded_actions, " ");
