@@ -26,7 +26,11 @@
     'data2c_out_dir': '<(SHARED_INTERMEDIATE_DIR)/data2c_out/instaweb',
     'data2c_exe':
         '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)instaweb_data2c<(EXECUTABLE_SUFFIX)',
-
+    # See comment in instaweb.gyp.
+    'include_closure_library':
+        '<!(echo --only_closure_dependencies'
+        '    $(find <(instaweb_root)/third_party/closure_library -name "*.js"'
+        '           | sort | sed "s/^/--js /"))',
   },
   'targets': [
     {
@@ -153,8 +157,7 @@
         'closure_build_type': 'dbg',
         'extra_closure_flags': [
           '--closure_entry_point=pagespeed.Mob',
-          '--js', '<(instaweb_root)/third_party/closure_library',
-          '--only_closure_dependencies',
+          '<@(include_closure_library)',
           '--externs=opt/mobilize/externs.js',
         ],
         'js_includes' : [
@@ -181,8 +184,7 @@
         'js_dir': 'opt/mobilize',
         'extra_closure_flags': [
           '--closure_entry_point=pagespeed.Mob',
-          '--js', '<(instaweb_root)/third_party/closure_library',
-          '--only_closure_dependencies',
+          '<@(include_closure_library)',
           '--externs=opt/mobilize/externs.js',
         ],
         'js_includes' : [
@@ -239,8 +241,7 @@
         'closure_build_type': 'dbg',
         'extra_closure_flags': [
           '--closure_entry_point=pagespeed.XhrHijack',
-          '--js', '<(instaweb_root)/third_party/closure_library',
-          '--only_closure_dependencies',
+          '<@(include_closure_library)',
           '--externs=opt/mobilize/externs.js',
         ],
       },
@@ -253,8 +254,7 @@
         'js_dir': 'opt/mobilize',
         'extra_closure_flags': [
           '--closure_entry_point=pagespeed.XhrHijack',
-          '--js', '<(instaweb_root)/third_party/closure_library',
-          '--only_closure_dependencies',
+          '<@(include_closure_library)',
           '--externs=opt/mobilize/externs.js',
         ],
       },

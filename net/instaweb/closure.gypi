@@ -20,23 +20,8 @@
 # checked when gclient sync is run, not when compiling, so make sure to run
 # gclient sync to modify the compilation mode.
 
-# New JS files should be added to instaweb.gyp and should include the following
-# fields in a 'variables' sections.
-#   js_dir - The directory (rooted at net/instaweb) that the js files is in.
-#   closure_build_type - dbg or opt to specify the level of compilation desired
-#       Defaults to opt if omitted.
-#   js_includes - Array of other files to include. Typically will just be
-#       [ 'js/js_utils.js' ]
-#   extra_closure_flags - Array of other flags to include when using closure
-#       dependencies. A typical example:
-#           'extra_closure_flags': [
-#             # Define path to the open-source closure checkout.
-#             '--js', '<(instaweb_root)/third_party/closure_library',
-#             # The namespace goog.provide'd by the file under compilation.
-#             '--closure_entry_point', 'pagespeed.Caches',
-#             # Remove unused dependencies.
-#             '--only_closure_dependencies',
-#           ],
+# New JS files should be added to instaweb.gyp, following the instructions
+# there.
 
 {
   'type': '<(library)',

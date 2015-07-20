@@ -25,9 +25,9 @@
 #   dependencies (see the panel_loader targets for an example).
 # * If you made it this far, you have a closure dependency. Add a pair of new
 #   targets (opt and dbg) and specify the required extra_closure_flags
-#   (--closure_entry_point, --js <(instaweb_root)/third_party/closure_library,
-#   and --only_closure_dependencies. Also add js_includes if you need it (needed
-#   if your file uses js_utils.js). See critical_images_beacon for an example.
+#   (--closure_entry_point and '<@(include_closure_library)'). Also add
+#   js_includes if you need it (needed if your file uses js_utils.js). See
+#   critical_images_beacon for an example.
 # Then add data2c targets for the dbg and opt builds. No trickery here, these
 # are just boilerplate.
 
@@ -43,6 +43,19 @@
         '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)instaweb_data2c<(EXECUTABLE_SUFFIX)',
     'js_minify':
         '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)js_minify<(EXECUTABLE_SUFFIX)',
+    # The logical way to include the closure library would be to pass
+    #   '--js', '<(instaweb_root)/third_party/closure_library',
+    # to the closure compiler, but unfortunately this leads the compiler to
+    # concatenate dependencies in an order that varies by machine.  This doesn't
+    # cause functional problems, but it means git thinks the file has changed
+    # when it hasn't actually.  To get deterministic behavior you can use the
+    # Java API, which lets you setDependencySorting(true), but with the command
+    # line client the best you can do is find all the js files that make up the
+    # closure library and pass them to the compiler in a deterministic order.
+    'include_closure_library':
+        '<!(echo --only_closure_dependencies'
+        '    $(find <(instaweb_root)/third_party/closure_library -name "*.js"'
+        '           | sort | sed "s/^/--js /"))',
     # Setting chromium_code to 1 turns on extra warnings. Also, if the compiler
     # is whitelisted in our common.gypi, those warnings will get treated as
     # errors.
@@ -110,9 +123,8 @@
         'js_dir': 'system',
         'closure_build_type': 'dbg',
         'extra_closure_flags': [
-          '--js', '<(instaweb_root)/third_party/closure_library',
           '--closure_entry_point', 'pagespeed.Caches',
-          '--only_closure_dependencies',
+          '<@(include_closure_library)',
         ],
       },
       'sources': [ '<(DEPTH)/pagespeed/system/caches.js' ],
@@ -123,9 +135,8 @@
       'variables': {
         'js_dir': 'system',
         'extra_closure_flags': [
-          '--js', '<(instaweb_root)/third_party/closure_library',
           '--closure_entry_point', 'pagespeed.Caches',
-          '--only_closure_dependencies',
+          '<@(include_closure_library)',
         ],
       },
       'sources': [ '<(DEPTH)/pagespeed/system/caches.js' ],
@@ -140,10 +151,9 @@
         'extra_closure_flags': [
           '--externs=<(DEPTH)/pagespeed/system/js_externs.js',
           '--externs=<(DEPTH)/third_party/closure/externs/google_visualization_api.js',
-          '--js', '<(instaweb_root)/third_party/closure_library',
           '--closure_entry_point', 'pagespeed.Console',
           '--closure_entry_point', 'pagespeed.statistics',
-          '--only_closure_dependencies',
+          '<@(include_closure_library)',
         ],
       },
       'sources': [ '<(DEPTH)/pagespeed/system/console.js' ],
@@ -157,10 +167,9 @@
         'extra_closure_flags': [
           '--externs=<(DEPTH)/pagespeed/system/js_externs.js',
           '--externs=<(DEPTH)/third_party/closure/externs/google_visualization_api.js',
-          '--js', '<(instaweb_root)/third_party/closure_library',
           '--closure_entry_point', 'pagespeed.Console',
           '--closure_entry_point', 'pagespeed.statistics',
-          '--only_closure_dependencies',
+          '<@(include_closure_library)',
         ],
       },
       'sources': [ '<(DEPTH)/pagespeed/system/console.js' ],
@@ -175,8 +184,7 @@
         'closure_build_type': 'dbg',
         'extra_closure_flags': [
           '--closure_entry_point=pagespeed.CriticalCssLoader',
-          '--js', '<(instaweb_root)/third_party/closure_library',
-          '--only_closure_dependencies',
+          '<@(include_closure_library)',
         ],
         'js_includes': [ 'js/js_utils.js' ],
       },
@@ -189,8 +197,7 @@
         'js_dir': 'rewriter',
         'extra_closure_flags': [
           '--closure_entry_point=pagespeed.CriticalCssLoader',
-          '--js', '<(instaweb_root)/third_party/closure_library',
-          '--only_closure_dependencies',
+          '<@(include_closure_library)',
         ],
         'js_includes': [ 'js/js_utils.js' ],
       },
@@ -205,8 +212,7 @@
         'closure_build_type': 'dbg',
         'extra_closure_flags': [
           '--closure_entry_point=pagespeed.CriticalImages',
-          '--js', '<(instaweb_root)/third_party/closure_library',
-          '--only_closure_dependencies',
+          '<@(include_closure_library)',
         ],
         'js_includes': [ 'js/js_utils.js' ],
       },
@@ -219,8 +225,7 @@
         'js_dir': 'rewriter',
         'extra_closure_flags': [
           '--closure_entry_point=pagespeed.CriticalImages',
-          '--js', '<(instaweb_root)/third_party/closure_library',
-          '--only_closure_dependencies',
+          '<@(include_closure_library)',
         ],
         'js_includes': [ 'js/js_utils.js' ],
       },
@@ -236,8 +241,7 @@
         'extra_closure_flags': [
           '--externs=<(DEPTH)/third_party/closure/externs/google_visualization_api.js',
           '--closure_entry_point=pagespeed.Graphs',
-          '--js', '<(instaweb_root)/third_party/closure_library',
-          '--only_closure_dependencies',
+          '<@(include_closure_library)',
         ],
       },
       'sources': [ '<(DEPTH)/pagespeed/system/graphs.js' ],
@@ -250,8 +254,7 @@
         'extra_closure_flags': [
           '--externs=<(DEPTH)/third_party/closure/externs/google_visualization_api.js',
           '--closure_entry_point=pagespeed.Graphs',
-          '--js', '<(instaweb_root)/third_party/closure_library',
-          '--only_closure_dependencies',
+          '<@(include_closure_library)',
         ],
       },
       'sources': [ '<(DEPTH)/pagespeed/system/graphs.js' ],
@@ -265,8 +268,7 @@
         'closure_build_type': 'dbg',
         'extra_closure_flags': [
           '--closure_entry_point=pagespeed.Messages',
-          '--js', '<(instaweb_root)/third_party/closure_library',
-          '--only_closure_dependencies',
+          '<@(include_closure_library)',
         ],
       },
       'sources': [ '<(DEPTH)/pagespeed/system/messages.js' ],
@@ -278,8 +280,7 @@
         'js_dir': 'system',
         'extra_closure_flags': [
           '--closure_entry_point=pagespeed.Messages',
-          '--js', '<(instaweb_root)/third_party/closure_library',
-          '--only_closure_dependencies',
+          '<@(include_closure_library)',
         ],
       },
       'sources': [ '<(DEPTH)/pagespeed/system/messages.js' ],
@@ -293,8 +294,7 @@
         'closure_build_type': 'dbg',
         'extra_closure_flags': [
           '--closure_entry_point=pagespeed.Statistics',
-          '--js', '<(instaweb_root)/third_party/closure_library',
-          '--only_closure_dependencies',
+          '<@(include_closure_library)',
         ],
       },
       'sources': [ '<(DEPTH)/pagespeed/system/statistics.js' ],
@@ -306,8 +306,7 @@
         'js_dir': 'system',
         'extra_closure_flags': [
           '--closure_entry_point=pagespeed.Statistics',
-          '--js', '<(instaweb_root)/third_party/closure_library',
-          '--only_closure_dependencies',
+          '<@(include_closure_library)',
         ],
       },
       'sources': [ '<(DEPTH)/pagespeed/system/statistics.js' ],
@@ -341,8 +340,7 @@
         'closure_build_type': 'dbg',
         'extra_closure_flags': [
           '--closure_entry_point=pagespeed.Responsive',
-          '--js', '<(instaweb_root)/third_party/closure_library',
-          '--only_closure_dependencies',
+          '<@(include_closure_library)',
         ],
       },
       'sources': [ 'rewriter/responsive.js', ],
@@ -355,8 +353,7 @@
         'js_dir': 'rewriter',
         'extra_closure_flags': [
           '--closure_entry_point=pagespeed.Responsive',
-          '--js', '<(instaweb_root)/third_party/closure_library',
-          '--only_closure_dependencies',
+          '<@(include_closure_library)',
         ],
       },
       'sources': [ 'rewriter/responsive.js', ],
