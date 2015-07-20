@@ -105,6 +105,7 @@ class FunctionAlarm : public Scheduler::Alarm {
   virtual void CancelAlarm() {
     DropMutexActAndCleanup(&Function::CallCancel);
   }
+
  private:
   typedef void (Function::*FunctionAction)();
   void DropMutexActAndCleanup(FunctionAction act) NO_THREAD_SAFETY_ANALYSIS {
@@ -229,7 +230,7 @@ void Scheduler::BlockingTimedWaitUs(int64 timeout_us) {
   bool timed_out = false;
   // Schedule a timeout alarm.
   CondVarTimeout* alarm = new CondVarTimeout(&timed_out, this);
-  AddAlarmMutexHeldUs(wakeup_time_us, alarm);
+  InsertAlarmAtUsMutexHeld(wakeup_time_us, true, alarm);
   waiting_alarms_.insert(alarm);
   int64 next_wakeup_us = RunAlarms(NULL);
   while (signal_count_ == original_signal_count && !timed_out &&
@@ -251,7 +252,7 @@ void Scheduler::TimedWaitMs(int64 timeout_ms, Function* callback) {
   // the alarm with the signal queue, where the callback will be run on
   // cancellation.
   CondVarCallbackTimeout* alarm = new CondVarCallbackTimeout(callback, this);
-  AddAlarmMutexHeldUs(completion_time_us, alarm);
+  InsertAlarmAtUsMutexHeld(completion_time_us, true, alarm);
   waiting_alarms_.insert(alarm);
   RunAlarms(NULL);
 }
@@ -301,19 +302,21 @@ void Scheduler::Signal() {
 }
 
 // Add alarm while holding mutex.  Don't run any alarms or otherwise drop mutex.
-void Scheduler::AddAlarmMutexHeldUs(int64 wakeup_time_us, Alarm* alarm) {
+void Scheduler::InsertAlarmAtUsMutexHeld(int64 wakeup_time_us,
+                                         bool broadcast_on_wakeup_change,
+                                         Alarm* alarm) {
   mutex_->DCheckLocked();
   alarm->wakeup_time_us_ = wakeup_time_us;
   alarm->index_ = ++index_;
-  // Someone may care about changes in wait time.  Broadcast if any occurred.
-  if (!outstanding_alarms_.empty()) {
-    Alarm* first_alarm = *outstanding_alarms_.begin();
-    if (wakeup_time_us < first_alarm->wakeup_time_us_) {
+
+  if (broadcast_on_wakeup_change) {
+    bool wakeup_time_changed = outstanding_alarms_.empty() ||
+        (wakeup_time_us < (*outstanding_alarms_.begin())->wakeup_time_us_);
+    if (wakeup_time_changed) {
       condvar_->Broadcast();
     }
-  } else {
-    condvar_->Broadcast();
   }
+
   outstanding_alarms_.insert(alarm);
 }
 
@@ -321,8 +324,15 @@ Scheduler::Alarm* Scheduler::AddAlarmAtUs(int64 wakeup_time_us,
                                           Function* callback) {
   Alarm* result = new FunctionAlarm(callback, this);
   ScopedMutex lock(mutex_.get());
-  AddAlarmMutexHeldUs(wakeup_time_us, result);
+  InsertAlarmAtUsMutexHeld(wakeup_time_us, true, result);
   RunAlarms(NULL);
+  return result;
+}
+
+Scheduler::Alarm* Scheduler::AddAlarmAtUsMutexHeld(int64 wakeup_time_us,
+                                                   Function* callback) {
+  Alarm* result = new FunctionAlarm(callback, this);
+  InsertAlarmAtUsMutexHeld(wakeup_time_us, false, result);
   return result;
 }
 
@@ -374,7 +384,7 @@ void Scheduler::AwaitWakeupUntilUs(int64 wakeup_time_us) {
   }
 }
 
-void Scheduler::ProcessAlarmsOrWaitUs(int64 timeout_us) {
+bool Scheduler::ProcessAlarmsOrWaitUs(int64 timeout_us) {
   mutex_->DCheckLocked();
   bool ran_alarms = false;
   int64 finish_us = timer_->NowUs() + timeout_us;
@@ -387,8 +397,9 @@ void Scheduler::ProcessAlarmsOrWaitUs(int64 timeout_us) {
     }
     AwaitWakeupUntilUs(next_wakeup_us);
 
-    RunAlarms(&ran_alarms);
+    next_wakeup_us = RunAlarms(NULL);
   }
+  return !outstanding_alarms_.empty();
 }
 
 // For testing purposes, let a tester know when the scheduler has quiesced.

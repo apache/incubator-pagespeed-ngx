@@ -48,12 +48,18 @@ void MemLockManager::RemoveLockState(MemLockState* name_state) {
 }
 
 NamedLock* MemLockManager::CreateNamedLock(const StringPiece& name) {
-  MemLockState* name_state = lock_state_map_[name];
-  if (name_state == NULL) {
-    name_state = new MemLockState(name, this);
-    lock_state_map_[name_state->name()] = name_state;
+  MemLockStateMap::iterator p = lock_state_map_.find(name);
+  MemLockState* mem_lock_state;
+  if (p != lock_state_map_.end()) {
+    mem_lock_state = p->second;
+  } else {
+    // Make sure that the StringPiece held as the map key points to
+    // the MemLockState, and not the possibly temporary char* passed
+    // in as name.data().
+    mem_lock_state = new MemLockState(name, this);
+    lock_state_map_[mem_lock_state->name()] = mem_lock_state;
   }
-  return name_state->CreateLock(++sequence_);
+  return mem_lock_state->CreateLock(++sequence_);
 }
 
 void MemLockManager::AddPendingLock(MemLock* lock) {

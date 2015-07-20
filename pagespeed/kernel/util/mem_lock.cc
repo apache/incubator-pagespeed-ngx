@@ -98,9 +98,13 @@ void MemLock::CalculateWakeupTime(int64 held_lock_grant_time_ms) {
 }
 
 void MemLock::Unlock() {
-  CHECK(Held());
-  lock_state_->Unlock();
-  Clear();
+  // Locks can be stolen from the holder without notifying the owner,
+  // so it is not considered an error to try to unlock a NamedLock that
+  // is not held.
+  if (Held()) {
+    lock_state_->Unlock();
+    Clear();
+  }
 }
 
 void MemLock::Grant(int64 grant_time_ms) {

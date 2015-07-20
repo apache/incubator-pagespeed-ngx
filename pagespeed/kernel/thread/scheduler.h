@@ -103,7 +103,21 @@ class Scheduler {
   // itself and the callback when it is run or cancelled.  NOTE in particular
   // that calls to CancelAlarm must ensure the callback has not been invoked
   // yet.  This is why the scheduler mutex must be held for CancelAlarm.
-  Alarm* AddAlarmAtUs(int64 wakeup_time_us, Function* callback);
+  //
+  // Will wakeup the scheduler if the time of the first alarm changed.
+  // It will also run any outstanding alarms.  Both of these
+  // operations will result in temporrary dropping the lock.  See also
+  // AddAlarmMutexHelp.
+  //
+  // TODO(jmaessen): Get rid of AddAlarmAtUs, or rename to
+  // AddAlarmAtUsAndRunOutstanding or similar.
+  Alarm* AddAlarmAtUs(int64 wakeup_time_us, Function* callback)
+      LOCKS_EXCLUDED(mutex());
+
+  // Adds a new alarm.  Does not run any alarms, broadcast, or drop locks.
+  // See doc for AddAlarmAtUs.
+  Alarm* AddAlarmAtUsMutexHeld(int64 wakeup_time_us, Function* callback)
+      EXCLUSIVE_LOCKS_REQUIRED(mutex());
 
   // Cancels an alarm, calling the Cancel() method and deleting the alarm
   // object.  Scheduler mutex must be held before call to ensure that alarm is
@@ -125,7 +139,10 @@ class Scheduler {
   // until the next wakeup and handle alarms then before relinquishing control.
   // Idle no longer than timeout_us.  Passing in timeout_us=0 will run without
   // blocking.
-  void ProcessAlarmsOrWaitUs(int64 timeout_us)
+  //
+  // Returns true if the scheduler has pending activities remaining, either
+  // runnable now or in the future.
+  bool ProcessAlarmsOrWaitUs(int64 timeout_us)
       EXCLUSIVE_LOCKS_REQUIRED(mutex());
 
   // Obtain the timer that the scheduler is using internally.  Important if you
@@ -168,7 +185,11 @@ class Scheduler {
 
   typedef std::set<Alarm*, CompareAlarms> AlarmSet;
 
-  void AddAlarmMutexHeldUs(int64 wakeup_time_us, Alarm* alarm);
+  // Inserts an alarm, optionally broadcasting if the wakeup time has
+  // changed.
+  void InsertAlarmAtUsMutexHeld(int64 wakeup_time_us,
+                                bool broadcast_on_wakeup_change,
+                                Alarm* alarm);
   void CancelWaiting(Alarm* alarm);
   bool NoPendingAlarms();
 

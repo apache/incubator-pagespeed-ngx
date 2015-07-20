@@ -167,7 +167,9 @@
         'kernel/sharedmem/shared_mem_test_base.cc',
         'kernel/thread/thread_system_test_base.cc',
         'kernel/thread/worker_test_base.cc',
+        'kernel/util/lock_manager_spammer.cc',
         'kernel/util/mock_nonce_generator.cc',
+        'kernel/util/threadsafe_lock_manager.cc',
       ],
       'all_dependent_settings': {
         'include_dirs': [
@@ -180,6 +182,7 @@
       ],
       'dependencies': [
         '<(DEPTH)/testing/gtest.gyp:gtest_main',
+        'mem_lock',
         'pagespeed_sharedmem',
         'util',
       ],
