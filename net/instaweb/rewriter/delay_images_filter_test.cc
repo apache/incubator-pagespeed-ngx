@@ -49,7 +49,7 @@ const char kLargeJpgFile[] = "Puzzle.jpg";
 const char kSmallPngFile[] = "BikeCrashIcn.png";
 
 // Generated html is matched approximately because different versions of
-// libjpeg are yeilding different low_res_image_data.
+// libjpeg are yielding different low_res_image_data.
 const char kSampleJpegData[] = "data:image/jpeg;base64*";
 const char kSampleWebpData[] = "data:image/webp;base64*";
 const char kSamplePngData[] = "data:image/png;base64*";
