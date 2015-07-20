@@ -117,6 +117,7 @@ ProxyFetch* ProxyFetchFactory::CreateNewProxyFetch(
         // the proxied portion.
         url_to_fetch = &decoded_resource;
         cross_domain = true;
+        namer->PrepForCrossDomain(async_fetch);
       } else {
         async_fetch->response_headers()->SetStatusAndReason(
             HttpStatus::kForbidden);

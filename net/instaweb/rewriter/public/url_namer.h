@@ -24,6 +24,7 @@
 
 namespace net_instaweb {
 
+class AsyncFetch;
 class GoogleUrl;
 class OutputResource;
 class RequestHeaders;
@@ -86,6 +87,9 @@ class UrlNamer {
   // Determines whether the specified URL has been mapped to that central
   // proxy domain.
   virtual bool IsProxyEncoded(const GoogleUrl& url) const { return false; }
+
+  // Prepare Fetch for cross-domain request.
+  virtual void PrepForCrossDomain(AsyncFetch*) const { }
 
   const GoogleString& proxy_domain() const { return proxy_domain_; }
 
