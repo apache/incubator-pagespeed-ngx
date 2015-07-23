@@ -280,7 +280,11 @@ const char* NgxRewriteOptions::ParseAndSetOptions(
   // as browsers might be able to manipulate its natural use-case: $http_host.
   if (!StringCaseStartsWith(directive, "LoadFromFile") &&
       !StringCaseEqual(directive, "EnableFilters") &&
-      !StringCaseEqual(directive, "DisableFilters")) {
+      !StringCaseEqual(directive, "DisableFilters") &&
+      !StringCaseEqual(directive, "DownstreamCachePurgeLocationPrefix") &&
+      !StringCaseEqual(directive, "DownstreamCachePurgeMethod") &&
+      !StringCaseEqual(directive,
+                       "DownstreamCacheRewrittenPercentageThreshold")) {
     compile_scripts = false;
   }
 
