@@ -117,6 +117,8 @@ const char HttpAttributes::kXSplitBelowTheFold[] = "btf";
 const char HttpAttributes::kXRequestedWith[] = "X-Requested-With";
 const char HttpAttributes::kXUACompatible[] = "X-UA-Compatible";
 const char HttpAttributes::kXPsaSplitConfig[] = "X-PSA-Split-Config";
+const char HttpAttributes::kXSendfile[] = "X-Sendfile";
+const char HttpAttributes::kXAccelRedirect[] = "X-Accel-Redirect";
 
 const char* HttpStatus::GetReasonPhrase(HttpStatus::Code rc) {
   switch (rc) {

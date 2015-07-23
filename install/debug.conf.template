@@ -808,6 +808,32 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   ModPagespeedRemoteConfigurationTimeoutMs 1500
 </VirtualHost>
 
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName uses-sendfile.example.com
+  ModPagespeedBlockingRewriteKey psatest
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
+  ModPagespeedEnableFilters rewrite_javascript
+  Header always set X-Sendfile blablabla
+</VirtualHost>
+
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName uses-xaccelredirect.example.com
+  ModPagespeedBlockingRewriteKey psatest
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
+  ModPagespeedEnableFilters rewrite_javascript
+  Header always set X-Accel-Redirect blablabla
+</VirtualHost>
+
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName doesnt-sendfile.example.com
+  ModPagespeedBlockingRewriteKey psatest
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
+  ModPagespeedEnableFilters rewrite_javascript
+</VirtualHost>
+
 # For testing ipro + load from file + unknown extensions.
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
   ServerName lff-ipro.example.com

@@ -150,6 +150,10 @@ struct HttpAttributes {
   // The config to be used fo the split html xpath.
   static const char kXPsaSplitConfig[];
 
+  // Sendfile type responses.
+  static const char kXSendfile[];
+  static const char kXAccelRedirect[];
+
   // Gets a sorted StringPieceVector containing all the hop-by-hop headers,
   // plus Set-Cookie and Set-Cookie2, per
   //

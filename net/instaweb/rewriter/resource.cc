@@ -128,6 +128,9 @@ bool Resource::IsSafeToRewrite(bool rewrite_uncacheable,
              response_headers_.HasValue(HttpAttributes::kCacheControl,
                                         "no-transform")) {
     StrAppend(reason, "Cache-control: no-transform, ");
+  } else if (response_headers_.Lookup1(HttpAttributes::kXSendfile) ||
+             response_headers_.Lookup1(HttpAttributes::kXAccelRedirect)) {
+    StrAppend(reason, "Sendfile in header, unsafe to rewrite! ");
   } else if (contents().empty()) {
     // https://github.com/pagespeed/mod_pagespeed/issues/1050
     StrAppend(reason, "Resource is empty, ");
