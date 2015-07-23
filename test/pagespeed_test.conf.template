@@ -1044,6 +1044,31 @@ http {
     pagespeed DisableFilters remove_comments,add_instrumentation;
   }
 
+  # Test that pagespeed is disabled when sendfile headers are present.
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name uses-sendfile.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@";
+    pagespeed EnableFilters inline_javascript,rewrite_javascript;
+    add_header 'X-Sendfile' 'blablabla';
+  }
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name doesnt-sendfile.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@";
+    pagespeed EnableFilters inline_javascript,rewrite_javascript;
+  }
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name uses-xaccelredirect.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@";
+    pagespeed EnableFilters inline_javascript,rewrite_javascript;
+    add_header 'X-Accel-Redirect' 'blablabla';
+  }
+
   # Proxy + IPRO a gzip'd file for testing Issue 896.
   server {
     listen @@SECONDARY_PORT@@;
