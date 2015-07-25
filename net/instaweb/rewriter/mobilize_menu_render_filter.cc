@@ -172,7 +172,7 @@ void MobilizeMenuRenderFilter::ConstructMenu() {
     }
     InsertNodeAtBodyEnd(nav);
     HtmlElement* ul = driver()->NewElement(nav, HtmlName::kUl);
-    driver()->AddAttribute(ul, HtmlName::kClass, "open");
+    driver()->AddAttribute(ul, HtmlName::kClass, "psmob-open");
     driver()->AppendChild(nav, ul);
     ConstructMenuWithin(1, "psmob-nav-panel", *menu_, ul);
     num_menus_added_->Add(1);

@@ -283,7 +283,10 @@ const char* kMobilizationUserAgentBlacklist[] = {
   "*profile/MIDP*",
   "*portalmmm*",
   "*DoCoMo*",
-  "*Obigo*"
+  "*Obigo*",
+  // TODO(jmaessen): Remove when there's a fix for scroll misbehavior on CriOS.
+  "*CriOS/*",                  // Chrome for iOS.
+  "*GSA*Safari*"               // Google Search Application for iOS.
 };
 
 // TODO(mmohabey): Tune this to include more browsers.

@@ -590,7 +590,7 @@ TEST_F(UserAgentMatcherTest, Mobilization) {
       kAndroidHCUserAgent));
   EXPECT_TRUE(user_agent_matcher_->SupportsMobilization(
       kIPhone4Safari));
-  EXPECT_TRUE(user_agent_matcher_->SupportsMobilization(
+  EXPECT_FALSE(user_agent_matcher_->SupportsMobilization(
       kIPhoneChrome21UserAgent));;
   EXPECT_FALSE(user_agent_matcher_->SupportsMobilization(
       kBlackBerryOS6UserAgent));

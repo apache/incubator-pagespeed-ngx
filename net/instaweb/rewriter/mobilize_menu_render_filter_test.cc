@@ -95,7 +95,7 @@ class MobilizeMenuRenderFilterTest : public RewriteTestBase {
 
 TEST_F(MobilizeMenuRenderFilterTest, BasicOperation) {
   const char kMenu[] =
-      "<nav id=\"psmob-nav-panel\"><ul class=\"open\">\n"
+      "<nav id=\"psmob-nav-panel\"><ul class=\"psmob-open\">\n"
       "  <li id=\"psmob-nav-panel-0\"><div>"
       "<a href=\"#\">Submenu1</a></div><ul>\n"
       "    <li id=\"psmob-nav-panel-0-0\"><a href=\"/a\">A</a></li>\n"

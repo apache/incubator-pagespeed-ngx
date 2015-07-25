@@ -7328,8 +7328,8 @@ var mob = {util:{}};
 pagespeed.MobUtil = {};
 pagespeed.MobUtil.ElementId = {CLICK_DETECTOR_DIV:"psmob-click-detector-div", CONFIG_IFRAME:"ps-hidden-iframe", DIALER_BUTTON:"psmob-dialer-button", HEADER_BAR:"psmob-header-bar", IFRAME:"psmob-iframe", IFRAME_CONTAINER:"psmob-iframe-container", LOGO_IMAGE:"psmob-logo-image", LOGO_SPAN:"psmob-logo-span", MAP_BUTTON:"psmob-map-button", MENU_BUTTON:"psmob-menu-button", NAV_PANEL:"psmob-nav-panel", PROGRESS_LOG:"ps-progress-log", PROGRESS_REMOVE:"ps-progress-remove", PROGRESS_SCRIM:"ps-progress-scrim", 
 PROGRESS_SHOW_LOG:"ps-progress-show-log", PROGRESS_SPAN:"ps-progress-span", SPACER:"psmob-spacer"};
-pagespeed.MobUtil.ElementClass = {BUTTON:"psmob-button", BUTTON_ICON:"psmob-button-icon", BUTTON_TEXT:"psmob-button-text", LABELED:"labeled", LOGO_CHOOSER_CHOICE:"psmob-logo-chooser-choice", LOGO_CHOOSER_COLOR:"psmob-logo-chooser-color", LOGO_CHOOSER_COLUMN_HEADER:"psmob-logo-chooser-column-header", LOGO_CHOOSER_CONFIG_FRAGMENT:"psmob-logo-chooser-config-fragment", LOGO_CHOOSER_IMAGE:"psmob-logo-chooser-image", LOGO_CHOOSER_SWAP:"psmob-logo-chooser-swap", LOGO_CHOOSER_TABLE:"psmob-logo-chooser-table", 
-MENU_EXPAND_ICON:"psmob-menu-expand-icon", SHOW_BUTTON_TEXT:"show-button-text", SINGLE_COLUMN:"psmob-single-column", THEME_CONFIG:"psmob-theme-config"};
+pagespeed.MobUtil.ElementClass = {BUTTON:"psmob-button", BUTTON_ICON:"psmob-button-icon", BUTTON_TEXT:"psmob-button-text", LABELED:"psmob-labeled", LOGO_CHOOSER_CHOICE:"psmob-logo-chooser-choice", LOGO_CHOOSER_COLOR:"psmob-logo-chooser-color", LOGO_CHOOSER_COLUMN_HEADER:"psmob-logo-chooser-column-header", LOGO_CHOOSER_CONFIG_FRAGMENT:"psmob-logo-chooser-config-fragment", LOGO_CHOOSER_IMAGE:"psmob-logo-chooser-image", LOGO_CHOOSER_SWAP:"psmob-logo-chooser-swap", LOGO_CHOOSER_TABLE:"psmob-logo-chooser-table", 
+MENU_EXPAND_ICON:"psmob-menu-expand-icon", OPEN:"psmob-open", SHOW_BUTTON_TEXT:"psmob-show-button-text", SINGLE_COLUMN:"psmob-single-column", THEME_CONFIG:"psmob-theme-config"};
 pagespeed.MobUtil.ASCII_0_ = 48;
 pagespeed.MobUtil.ASCII_9_ = 57;
 pagespeed.MobUtil.Rect = function() {
@@ -7601,7 +7601,7 @@ pagespeed.MobUtil.runCallbackOnce_ = function(a) {
   };
 };
 mob.util.getScaleTransform = function() {
-  var a = .1;
+  var a = 1;
   "desktop" != window.psDeviceType && (a = 90 == Math.abs(window.orientation) && screen.height > screen.width ? window.innerHeight / screen.width * a : window.innerWidth / screen.width * a);
   goog.labs.userAgent.browser.isAndroidBrowser() && (a *= goog.dom.getPixelRatio());
   return a;
@@ -8443,6 +8443,9 @@ mob.NavPanel = function(a, b) {
 mob.NavPanel.ARROW_ICON_ = "R0lGODlhkACQAPABAP///wAAACH5BAEAAAEALAAAAACQAJAAAAL+jI+py+0Po5y02ouz3rz7D4biSJbmiabqyrbuC8fyTNf2jef6zvf+DwwKh8Si8YhMKpfMpvMJjUqn1Kr1is1qt9yu9wsOi8fksvmMTqvX7Lb7DY/L5/S6/Y7P6/f8vh8EAJATKIhFWFhziEiluBjT6AgFGdkySclkeZmSqYnE2VnyCUokOhpSagqEmtqxytrjurnqFGtSSztLcvu0+9HLm+sbPPWbURx1XJGMPHyxLPXsEA3dLDFNXP1wzZjNsF01/W31LH6VXG6YjZ7Vu651674VG8/l2s1mL2qXn4nHD6nn3yE+Al+5+fcnQL6EBui1QcUwgb6IEvtRVGDporc/RhobKOooLRBIbSNLmjyJMqXKlSxbunwJM6bMmTRr2ryJM6fOnTx7+vwJNKjQoUSLGj2KNKnSpUybOn0KVUcBADs=";
 mob.NavPanel.prototype.initialize_ = function() {
   document.body.appendChild(this.el);
+  for (var a = this.el.getElementsByClassName("open"), b = 0, c = a.length;b < c;b++) {
+    goog.dom.classlist.addRemove(a[b], "open", pagespeed.MobUtil.ElementClass.OPEN);
+  }
   this.addSubmenuArrows_();
   this.addClickDetectorDiv_();
   this.addButtonEvents_();
@@ -8452,8 +8455,8 @@ mob.NavPanel.prototype.initialize_ = function() {
       if (1 != a.touches.length) {
         a.preventDefault();
       } else {
-        var c = b > this.lastScrollY_, d = 0 == this.el.scrollTop, e = this.el.scrollTop >= this.el.scrollHeight - this.el.offsetHeight - 1;
-        a.cancelable && (c && d || !c && e) && a.preventDefault();
+        var c = b > this.lastScrollY_, g = 0 == this.el.scrollTop, h = this.el.scrollTop >= this.el.scrollHeight - this.el.offsetHeight - 1;
+        a.cancelable && (c && g || !c && h) && a.preventDefault();
         a.stopImmediatePropagation && a.stopImmediatePropagation();
         this.lastScrollY_ = b;
       }
@@ -8470,7 +8473,7 @@ mob.NavPanel.prototype.redraw = function(a) {
   var b = mob.util.getScaleTransform(), c = "scale(" + b + ")";
   this.el.style.webkitTransform = c;
   this.el.style.transform = c;
-  c = goog.dom.classlist.contains(this.el, "open") ? 0 : -goog.style.getTransformedSize(this.el).width;
+  c = this.isOpen() ? 0 : -goog.style.getTransformedSize(this.el).width;
   this.el.style.top = window.scrollY + "px";
   this.el.style.left = window.scrollX + c + "px";
   a && (this.el.style.marginTop = a + "px", this.el.style.height = (window.innerHeight - a) / b + "px");
@@ -8480,7 +8483,7 @@ mob.NavPanel.prototype.addClickDetectorDiv_ = function() {
   this.clickDetectorDiv_.id = pagespeed.MobUtil.ElementId.CLICK_DETECTOR_DIV;
   document.body.insertBefore(this.clickDetectorDiv_, this.el);
   this.clickDetectorDiv_.addEventListener(goog.events.EventType.CLICK, goog.bind(function(a) {
-    goog.dom.classlist.contains(this.el, "open") && this.toggle();
+    this.isOpen() && this.toggle();
   }, this), !1);
 };
 mob.NavPanel.prototype.addSubmenuArrows_ = function() {
@@ -8496,8 +8499,8 @@ mob.NavPanel.prototype.addSubmenuArrows_ = function() {
 };
 mob.NavPanel.prototype.toggle = function() {
   pagespeed.MobUtil.sendBeaconEvent(this.isOpen() ? pagespeed.MobUtil.BeaconEvents.MENU_BUTTON_CLOSE : pagespeed.MobUtil.BeaconEvents.MENU_BUTTON_OPEN);
-  goog.dom.classlist.toggle(this.el, "open");
-  goog.dom.classlist.toggle(this.clickDetectorDiv_, "open");
+  goog.dom.classlist.toggle(this.el, pagespeed.MobUtil.ElementClass.OPEN);
+  goog.dom.classlist.toggle(this.clickDetectorDiv_, pagespeed.MobUtil.ElementClass.OPEN);
   goog.dom.classlist.toggle(document.body, "noscroll");
   this.redraw();
 };
@@ -8510,8 +8513,8 @@ mob.NavPanel.prototype.addButtonEvents_ = function() {
     c.addEventListener(goog.events.EventType.CLICK, function(a) {
       a.preventDefault();
       a = a.currentTarget;
-      goog.dom.classlist.toggle(a.nextSibling, "open");
-      goog.dom.classlist.toggle(a.firstChild.firstChild, "open");
+      goog.dom.classlist.toggle(a.nextSibling, pagespeed.MobUtil.ElementClass.OPEN);
+      goog.dom.classlist.toggle(a.firstChild.firstChild, pagespeed.MobUtil.ElementClass.OPEN);
     }, !1);
   }
   if (a = document.getElementById(pagespeed.MobUtil.ElementId.IFRAME)) {
@@ -8527,7 +8530,7 @@ mob.NavPanel.prototype.addButtonEvents_ = function() {
   }
 };
 mob.NavPanel.prototype.isOpen = function() {
-  return goog.dom.classlist.contains(this.el, "open");
+  return goog.dom.classlist.contains(this.el, pagespeed.MobUtil.ElementClass.OPEN);
 };
 pagespeed.MobNav = function() {
   this.headerBar_ = goog.dom.getRequiredElement(pagespeed.MobUtil.ElementId.HEADER_BAR);

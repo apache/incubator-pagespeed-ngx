@@ -86,6 +86,17 @@ mob.NavPanel.prototype.initialize_ = function() {
   // moved elsewhere by JS on the page.
   document.body.appendChild(this.el);
 
+  // If the navpanel's outer ul has the class 'open', replace it with
+  // pagespeed.MobUtil.ElementClass.OPEN (for compatibility with older releases
+  // of the filter).
+  // TODO(jmaessen): Remove after older releases are no longer running, should
+  // be doable by early August.
+  var opens = this.el.getElementsByClassName('open');
+  for (var i = 0, n = opens.length; i < n; i++) {
+    goog.dom.classlist.addRemove(
+        opens[i], 'open', pagespeed.MobUtil.ElementClass.OPEN);
+  }
+
   this.addSubmenuArrows_();
   this.addClickDetectorDiv_();
   this.addButtonEvents_();
@@ -153,7 +164,7 @@ mob.NavPanel.prototype.redraw = function(opt_marginTopHeight) {
   this.el.style.webkitTransform = scaleTransform;
   this.el.style.transform = scaleTransform;
 
-  var xOffset = goog.dom.classlist.contains(this.el, 'open') ?
+  var xOffset = this.isOpen() ?
                     0 :
                     (-goog.style.getTransformedSize(this.el).width);
 
@@ -184,7 +195,7 @@ mob.NavPanel.prototype.addClickDetectorDiv_ = function() {
 
   this.clickDetectorDiv_.addEventListener(
       goog.events.EventType.CLICK, goog.bind(function(e) {
-        if (goog.dom.classlist.contains(this.el, 'open')) {
+        if (this.isOpen()) {
           this.toggle();
         }
       }, this), false);
@@ -225,8 +236,9 @@ mob.NavPanel.prototype.toggle = function() {
   pagespeed.MobUtil.sendBeaconEvent(
       (this.isOpen() ? pagespeed.MobUtil.BeaconEvents.MENU_BUTTON_CLOSE :
       pagespeed.MobUtil.BeaconEvents.MENU_BUTTON_OPEN));
-  goog.dom.classlist.toggle(this.el, 'open');
-  goog.dom.classlist.toggle(this.clickDetectorDiv_, 'open');
+  goog.dom.classlist.toggle(this.el, pagespeed.MobUtil.ElementClass.OPEN);
+  goog.dom.classlist.toggle(
+      this.clickDetectorDiv_, pagespeed.MobUtil.ElementClass.OPEN);
   goog.dom.classlist.toggle(document.body, 'noscroll');
   this.redraw();
 };
@@ -273,10 +285,12 @@ mob.NavPanel.prototype.addButtonEvents_ = function() {
       var target = e.currentTarget;
       // A click was registered on the div that has the hierarchical menu text
       // and icon. Open up the UL, which should be the next element.
-      goog.dom.classlist.toggle(target.nextSibling, 'open');
+      goog.dom.classlist.toggle(
+          target.nextSibling, pagespeed.MobUtil.ElementClass.OPEN);
       // Also toggle the expand icon, which will be the first child of the P
       // tag, which is the first child of the target div.
-      goog.dom.classlist.toggle(target.firstChild.firstChild, 'open');
+      goog.dom.classlist.toggle(
+          target.firstChild.firstChild, pagespeed.MobUtil.ElementClass.OPEN);
     }, false);
   }
 
@@ -308,5 +322,6 @@ mob.NavPanel.prototype.addButtonEvents_ = function() {
  * @return {boolean}
  */
 mob.NavPanel.prototype.isOpen = function() {
-  return goog.dom.classlist.contains(this.el, 'open');
+  return goog.dom.classlist.contains(
+      this.el, pagespeed.MobUtil.ElementClass.OPEN);
 };

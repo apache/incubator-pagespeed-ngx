@@ -70,7 +70,7 @@ pagespeed.MobUtil.ElementClass = {
   BUTTON: 'psmob-button',
   BUTTON_ICON: 'psmob-button-icon',
   BUTTON_TEXT: 'psmob-button-text',
-  LABELED: 'labeled',
+  LABELED: 'psmob-labeled',
   LOGO_CHOOSER_CHOICE: 'psmob-logo-chooser-choice',
   LOGO_CHOOSER_COLOR: 'psmob-logo-chooser-color',
   LOGO_CHOOSER_COLUMN_HEADER: 'psmob-logo-chooser-column-header',
@@ -79,7 +79,8 @@ pagespeed.MobUtil.ElementClass = {
   LOGO_CHOOSER_SWAP: 'psmob-logo-chooser-swap',
   LOGO_CHOOSER_TABLE: 'psmob-logo-chooser-table',
   MENU_EXPAND_ICON: 'psmob-menu-expand-icon',
-  SHOW_BUTTON_TEXT: 'show-button-text',
+  OPEN: 'psmob-open',
+  SHOW_BUTTON_TEXT: 'psmob-show-button-text',
   SINGLE_COLUMN: 'psmob-single-column',
   THEME_CONFIG: 'psmob-theme-config'
 };
@@ -952,10 +953,7 @@ pagespeed.MobUtil.runCallbackOnce_ = function(callback) {
  * @return {number}
  */
 mob.util.getScaleTransform = function() {
-  // To prevent blurring, we make everything 10x larger in CSS, and then shrink
-  // it down here. This works around an iOS bug with the transform.
-  // http://stackoverflow.com/a/8038694
-  var scale = 0.1;
+  var scale = 1;
   if (window.psDeviceType != 'desktop') {
     // screen.width does not update on rotation on ios, but it does on android,
     // so compensate for that here.
