@@ -268,7 +268,7 @@
 +        request, method, uri, body, allocator, NULL);
 +}
 --- serf/src/buckets/ssl_buckets.c      2012-08-29 13:29:42.000000000 -0400
-+++ src/third_party/serf/instaweb_ssl_buckets.c 2014-10-29 14:24:16.000000000 -0400
++++ src/third_party/serf/instaweb_ssl_buckets.c 2015-07-27 10:56:12.000000000 -0400
 @@ -34,6 +34,11 @@
   * Originally developed by Aaron Bannert and Justin Erenkrantz, eBuilt.
   */
@@ -291,16 +291,21 @@
          ERR_load_crypto_strings();
          SSL_load_error_strings();
          SSL_library_init();
-@@ -972,7 +979,7 @@
+@@ -971,8 +978,13 @@
+         else {
              int err = ERR_get_error();
              ERR_clear_error();
++#ifndef OPENSSL_IS_BORINGSSL
              if (ERR_GET_LIB(err) == ERR_LIB_PKCS12 &&
--                ERR_GET_REASON(err) == PKCS12_R_MAC_VERIFY_FAILURE) {
-+                ERR_GET_REASON(err) == 113 /*PKCS12_R_MAC_VERIFY_FAILURE*/) {
+                 ERR_GET_REASON(err) == PKCS12_R_MAC_VERIFY_FAILURE) {
++#else
++            if (ERR_GET_LIB(err) == ERR_LIB_PKCS8 &&
++                ERR_GET_REASON(err) == PKCS8_R_INCORRECT_PASSWORD) {
++#endif
                  if (ctx->cert_pw_callback) {
                      const char *password;
  
-@@ -1102,6 +1109,8 @@
+@@ -1102,6 +1114,8 @@
      ssl_ctx->allocator = allocator;
  
      ssl_ctx->ctx = SSL_CTX_new(SSLv23_client_method());
@@ -309,7 +314,7 @@
  
      SSL_CTX_set_client_cert_cb(ssl_ctx->ctx, ssl_need_client_cert);
      ssl_ctx->cached_cert = 0;
-@@ -1160,7 +1169,9 @@
+@@ -1160,7 +1174,9 @@
  
      /* SSL_free implicitly frees the underlying BIO. */
      SSL_free(ssl_ctx->ssl);
@@ -319,7 +324,18 @@
  
      p = ssl_ctx->pool;
  
-@@ -1209,6 +1220,28 @@
+@@ -1193,7 +1209,9 @@
+                                    const char * hostname)
+ {
+ #ifdef SSL_set_tlsext_host_name
+-    if (SSL_set_tlsext_host_name(context->ssl, hostname) != 1) {
++    if (!context->ssl) {
++      return APR_EGENERAL;
++    } else if (SSL_set_tlsext_host_name(context->ssl, hostname) != 1) {
+         ERR_clear_error();
+     }
+ #endif
+@@ -1209,6 +1227,28 @@
      return result ? APR_SUCCESS : APR_EGENERAL;
  }
  
@@ -348,7 +364,7 @@
  apr_status_t serf_ssl_load_cert_file(
      serf_ssl_certificate_t **cert,
      const char *file_path,
-@@ -1527,6 +1560,7 @@
+@@ -1527,6 +1567,7 @@
  
      if (!--ctx->ssl_ctx->refcount) {
          ssl_free_context(ctx->ssl_ctx);

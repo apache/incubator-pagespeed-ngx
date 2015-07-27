@@ -1209,7 +1209,9 @@ apr_status_t serf_ssl_set_hostname(serf_ssl_context_t *context,
                                    const char * hostname)
 {
 #ifdef SSL_set_tlsext_host_name
-    if (SSL_set_tlsext_host_name(context->ssl, hostname) != 1) {
+    if (!context->ssl) {
+      return APR_EGENERAL;
+    } else if (SSL_set_tlsext_host_name(context->ssl, hostname) != 1) {
         ERR_clear_error();
     }
 #endif

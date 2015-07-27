@@ -331,7 +331,12 @@ class SerfFetch : public PoolElement<SerfFetch> {
                                               SSLCertError, SSLCertChainError,
                                               fetch);
 
-      serf_ssl_set_hostname(fetch->ssl_context_, fetch->sni_host_);
+      status = serf_ssl_set_hostname(fetch->ssl_context_, fetch->sni_host_);
+      if (status != APR_SUCCESS) {
+        LOG(INFO) << "Unable to set hostname from serf fetcher. Connection "
+                     "setup failed";
+        return status;
+      }
       *write_bkt = serf_bucket_ssl_encrypt_create(*write_bkt,
                                                   fetch->ssl_context_,
                                                   fetch->bucket_alloc_);
