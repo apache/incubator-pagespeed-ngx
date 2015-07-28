@@ -269,6 +269,8 @@ PSA_JS_LIBRARY_URL_PREFIX="pagespeed_custom_static"
 
 # An expected failure can be indicated like: "~In-place resource optimization~"
 PAGESPEED_EXPECTED_FAILURES="
+~Override server header in resource flow.~
+~Override server header in IPRO flow.~
 "
 
 # Some tests are flakey under valgrind. For now, add them to the expected failures
@@ -2747,6 +2749,46 @@ fi
 start_test Base config has purging disabled.  Check error message syntax.
 OUT=$($WGET_DUMP "$HOSTNAME/pagespeed_admin/cache?purge=*")
 check_from "$OUT" fgrep -q "pagespeed EnableCachePurge on;"
+
+start_test Default server header in html flow.
+URL=http://headers.example.com/mod_pagespeed_example/
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP -O /dev/null -S $URL 2>&1)
+# '|| true' in the line below supresses the exit code from grep when there is no
+# match in its input (1).
+MATCHES=$(echo "$OUT" | grep -c "Server: nginx/") || true
+check [ $MATCHES -eq 1 ]
+
+start_test Default server header in resource flow.
+URL=http://headers.example.com/mod_pagespeed_example/
+URL+=combine_javascript2.js+combine_javascript1.js.pagespeed.jc.0.js
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP -O /dev/null -S $URL 2>&1)
+MATCHES=$(echo "$OUT" | grep -c "Server: nginx/") || true
+check [ $MATCHES -eq 1 ]
+
+start_test Default server header in IPRO flow.
+URL=http://headers.example.com//mod_pagespeed_example/combine_javascript2.js
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP -O /dev/null -S $URL 2>&1)
+MATCHES=$(echo "$OUT" | grep -c "Server: nginx/") || true
+check [ $MATCHES -eq 1 ]
+
+start_test Override server header in html flow.
+URL=http://headers.example.com/mod_pagespeed_test/whitespace.html
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP -O /dev/null -S $URL 2>&1)
+MATCHES=$(echo "$OUT" | grep -c "Server: override") || true
+check [ $MATCHES -eq 1 ]
+
+start_test Override server header in resource flow.
+URL=http://headers.example.com/mod_pagespeed_test/
+URL+=A.proxy_pass.css.pagespeed.cf.0.css
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP -O /dev/null -S $URL 2>&1)
+MATCHES=$(echo "$OUT" | grep -c "Server: override") || true
+check [ $MATCHES -eq 1 ]
+
+start_test Override server header in IPRO flow.
+URL=http://headers.example.com/mod_pagespeed_test/proxy_pass.css
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP -O /dev/null -S $URL 2>&1)
+MATCHES=$(echo "$OUT" | grep -c "Server: override") || true
+check [ $MATCHES -eq 1 ]
 
 if $USE_VALGRIND; then
     # It is possible that there are still ProxyFetches outstanding
