@@ -194,27 +194,16 @@ bool ApacheFetch::HandleFlush(MessageHandler* handler) {
 
 ApacheFetch::WaitResult ApacheFetch::Wait(const RewriteDriver* rewrite_driver) {
   int64 start_ms = timer_->NowMs();
-  WaitResult result = kWaitSuccess;
   mutex_->Lock();
-  while (!done_ && (result == kWaitSuccess)) {
+  while (!done_) {
     condvar_->TimedWait(blocking_fetch_timeout_ms_);
     if (!done_) {
       int64 elapsed_ms = timer_->NowMs() - start_ms;
-      if (elapsed_ms > max_wait_ms_) {
-        abandoned_ = true;
-        // Now that we're abandoned the instaweb context needs to drop its
-        // pointer to us and not free us.  We tell it to do this by returning
-        // kAbandonedAndHandled / kAbandonedAndDeclined.
-        //
-        // If we never sent headers out then it's safe to DECLINE this request
-        // and pass it to a different content handler.  Otherwise some data was
-        // sent out and we have to accept this as it is.
-        result = headers_sent_ ? kAbandonedAndHandled : kAbandonedAndDeclined;
-      }
+      bool should_abandon = elapsed_ms > max_wait_ms_;
 
       // Unlock briefly so we can write messages without holding the lock.
       mutex_->Unlock();
-      if (result != kWaitSuccess) {
+      if (should_abandon) {
         message_handler_->Message(
             kWarning, "Abandoned URL %s after %g sec (debug=%s, driver=%s).",
             mapped_url_.c_str(), elapsed_ms / 1000.0, debug_info_.c_str(),
@@ -228,10 +217,29 @@ ApacheFetch::WaitResult ApacheFetch::Wait(const RewriteDriver* rewrite_driver) {
             mapped_url_.c_str(), elapsed_ms / 1000.0);
       }
       mutex_->Lock();
+
+      if (should_abandon) {
+        abandoned_ = true;
+
+        // Now that we're abandoned the instaweb context needs to drop its
+        // pointer to us and not free us.  We tell it to do this by returning
+        // kAbandonedAndHandled / kAbandonedAndDeclined.
+        //
+        // If we never sent headers out then it's safe to DECLINE this request
+        // and pass it to a different content handler.  Otherwise some data was
+        // sent out and we have to accept this as it is.
+        WaitResult result =
+            headers_sent_ ? kAbandonedAndHandled : kAbandonedAndDeclined;
+
+        // Once we've abandoned and unlocked, we could be deleted at any moment
+        // by a call to Done().  So make no member accesses after unlocking.
+        mutex_->Unlock();
+        return result;
+      }
     }
   }
   mutex_->Unlock();
-  return result;
+  return kWaitSuccess;
 }
 
 bool ApacheFetch::IsCachedResultValid(const ResponseHeaders& headers) {
