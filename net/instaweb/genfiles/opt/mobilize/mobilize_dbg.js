@@ -7328,7 +7328,7 @@ var mob = {util:{}};
 pagespeed.MobUtil = {};
 pagespeed.MobUtil.ElementId = {CLICK_DETECTOR_DIV:"psmob-click-detector-div", CONFIG_IFRAME:"ps-hidden-iframe", DIALER_BUTTON:"psmob-dialer-button", HEADER_BAR:"psmob-header-bar", IFRAME:"psmob-iframe", IFRAME_CONTAINER:"psmob-iframe-container", LOGO_IMAGE:"psmob-logo-image", LOGO_SPAN:"psmob-logo-span", MAP_BUTTON:"psmob-map-button", MENU_BUTTON:"psmob-menu-button", NAV_PANEL:"psmob-nav-panel", PROGRESS_LOG:"ps-progress-log", PROGRESS_REMOVE:"ps-progress-remove", PROGRESS_SCRIM:"ps-progress-scrim", 
 PROGRESS_SHOW_LOG:"ps-progress-show-log", PROGRESS_SPAN:"ps-progress-span", SPACER:"psmob-spacer"};
-pagespeed.MobUtil.ElementClass = {BUTTON:"psmob-button", BUTTON_ICON:"psmob-button-icon", BUTTON_TEXT:"psmob-button-text", LABELED:"psmob-labeled", LOGO_CHOOSER_CHOICE:"psmob-logo-chooser-choice", LOGO_CHOOSER_COLOR:"psmob-logo-chooser-color", LOGO_CHOOSER_COLUMN_HEADER:"psmob-logo-chooser-column-header", LOGO_CHOOSER_CONFIG_FRAGMENT:"psmob-logo-chooser-config-fragment", LOGO_CHOOSER_IMAGE:"psmob-logo-chooser-image", LOGO_CHOOSER_SWAP:"psmob-logo-chooser-swap", LOGO_CHOOSER_TABLE:"psmob-logo-chooser-table", 
+pagespeed.MobUtil.ElementClass = {BUTTON:"psmob-button", BUTTON_ICON:"psmob-button-icon", BUTTON_TEXT:"psmob-button-text", HIDE:"psmob-hide", LABELED:"psmob-labeled", LOGO_CHOOSER_CHOICE:"psmob-logo-chooser-choice", LOGO_CHOOSER_COLOR:"psmob-logo-chooser-color", LOGO_CHOOSER_COLUMN_HEADER:"psmob-logo-chooser-column-header", LOGO_CHOOSER_CONFIG_FRAGMENT:"psmob-logo-chooser-config-fragment", LOGO_CHOOSER_IMAGE:"psmob-logo-chooser-image", LOGO_CHOOSER_SWAP:"psmob-logo-chooser-swap", LOGO_CHOOSER_TABLE:"psmob-logo-chooser-table", 
 MENU_EXPAND_ICON:"psmob-menu-expand-icon", OPEN:"psmob-open", SHOW_BUTTON_TEXT:"psmob-show-button-text", SINGLE_COLUMN:"psmob-single-column", THEME_CONFIG:"psmob-theme-config"};
 pagespeed.MobUtil.ASCII_0_ = 48;
 pagespeed.MobUtil.ASCII_9_ = 57;
@@ -8573,7 +8573,7 @@ pagespeed.MobNav.prototype.redrawHeader_ = function() {
     c = window.innerWidth;
     "hidden" != window.getComputedStyle(document.body).getPropertyValue("overflow-y") && (c -= goog.style.getScrollbarWidth());
     this.headerBar_.style.width = c / b + "px";
-    goog.dom.classlist.remove(this.headerBar_, "hide");
+    goog.dom.classlist.remove(this.headerBar_, pagespeed.MobUtil.ElementClass.HIDE);
     b = Math.round(goog.style.getTransformedSize(this.headerBar_).height);
     this.spacerDiv_.style.height = b + "px";
     this.headerBarHeight_ = b;
@@ -8598,13 +8598,13 @@ pagespeed.MobNav.prototype.addHeaderBarResizeEvents_ = function() {
   };
   window.addEventListener(goog.events.EventType.SCROLL, goog.bind(function(b) {
     a.call(this);
-    this.navPanel_ && this.navPanel_.isOpen() || goog.dom.classlist.add(this.headerBar_, "hide");
+    this.navPanel_ && this.navPanel_.isOpen() || goog.dom.classlist.add(this.headerBar_, pagespeed.MobUtil.ElementClass.HIDE);
   }, this), !1);
   window.addEventListener(goog.events.EventType.TOUCHSTART, goog.bind(function(a) {
     this.currentTouches_ = a.touches.length;
   }, this), !1);
   window.addEventListener(goog.events.EventType.TOUCHMOVE, goog.bind(function(a) {
-    this.navPanel_ && this.navPanel_.isOpen() ? a.preventDefault() : this.isAndroidBrowser_ || goog.dom.classlist.add(this.headerBar_, "hide");
+    this.navPanel_ && this.navPanel_.isOpen() ? a.preventDefault() : this.isAndroidBrowser_ || goog.dom.classlist.add(this.headerBar_, pagespeed.MobUtil.ElementClass.HIDE);
   }, this), !1);
   window.addEventListener(goog.events.EventType.TOUCHEND, goog.bind(function(b) {
     this.currentTouches_ = b.touches.length;
@@ -8629,9 +8629,6 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(a) {
   this.headerBar_.style.backgroundColor = pagespeed.MobUtil.colorNumbersToString(a.menuBackColor);
   window.psPhoneNumber && (this.dialer_ = new mob.button.Dialer(a.menuFrontColor, window.psPhoneNumber, window.psConversionId, window.psPhoneConversionLabel), this.headerBar_.appendChild(this.dialer_.el));
   window.psMapLocation && (this.mapButton_ = new mob.button.Map(a.menuFrontColor, window.psMapLocation, window.psConversionId, window.psMapConversionLabel), this.headerBar_.appendChild(this.mapButton_.el));
-  if ("mobile" == window.psDeviceType || "tablet" == window.psDeviceType) {
-    goog.dom.classlist.add(this.headerBar_, "mobile"), goog.dom.classlist.add(this.spacerDiv_, "mobile"), this.navPanel_ && goog.dom.classlist.add(this.navPanel_.el, "mobile");
-  }
   (window.psLabeledMode || this.dialer_ && !this.mapButton_ || !this.dialer_ && this.mapButton_) && goog.dom.classlist.add(this.headerBar_, pagespeed.MobUtil.ElementClass.SHOW_BUTTON_TEXT);
   this.addHeaderBarResizeEvents_();
   this.addThemeColor_(a);

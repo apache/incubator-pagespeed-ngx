@@ -153,8 +153,8 @@ class MobilizeRewriteFilterTest : public RewriteTestBase {
 
   GoogleString Spacer() const {
     return StrCat(
-        "<header id=\"psmob-header-bar\" class=\"mobile\"></header>"
-        "<div id=\"psmob-spacer\" class=\"mobile\"></div>"
+        "<header id=\"psmob-header-bar\"></header>"
+        "<div id=\"psmob-spacer\"></div>"
         "<script>",
         MobilizeRewriteFilter::kSetSpacerHeight, "</script>");
   }

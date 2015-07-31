@@ -70,6 +70,7 @@ pagespeed.MobUtil.ElementClass = {
   BUTTON: 'psmob-button',
   BUTTON_ICON: 'psmob-button-icon',
   BUTTON_TEXT: 'psmob-button-text',
+  HIDE: 'psmob-hide',
   LABELED: 'psmob-labeled',
   LOGO_CHOOSER_CHOICE: 'psmob-logo-chooser-choice',
   LOGO_CHOOSER_COLOR: 'psmob-logo-chooser-color',

@@ -425,11 +425,6 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
       driver()->InsertNodeAfterCurrent(spacer);
       driver()->AddAttribute(spacer, HtmlName::kId, "psmob-spacer");
       driver()->InsertScriptAfterCurrent(kSetSpacerHeight, false);
-      if (driver()->request_properties()->IsMobile() ||
-          driver()->request_properties()->IsTablet()) {
-        driver()->AddAttribute(header, HtmlName::kClass, "mobile");
-        driver()->AddAttribute(spacer, HtmlName::kClass, "mobile");
-      }
     }
 
     if (use_js_layout_ && !added_progress_) {

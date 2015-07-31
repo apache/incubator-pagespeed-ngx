@@ -271,7 +271,8 @@ pagespeed.MobNav.prototype.redrawHeader_ = function() {
   this.headerBar_.style.width = (width / scale) + 'px';
 
   // Restore visibility since the bar was hidden while scrolling and zooming.
-  goog.dom.classlist.remove(this.headerBar_, 'hide');
+  goog.dom.classlist.remove(this.headerBar_,
+                            pagespeed.MobUtil.ElementClass.HIDE);
 
   var newHeight =
       Math.round(goog.style.getTransformedSize(this.headerBar_).height);
@@ -367,7 +368,8 @@ pagespeed.MobNav.prototype.addHeaderBarResizeEvents_ = function() {
   var scrollHandler = function(e) {
     resetScrollTimer.call(this);
     if (!this.navPanel_ || !this.navPanel_.isOpen()) {
-      goog.dom.classlist.add(this.headerBar_, 'hide');
+      goog.dom.classlist.add(this.headerBar_,
+                             pagespeed.MobUtil.ElementClass.HIDE);
     }
   };
 
@@ -393,7 +395,9 @@ pagespeed.MobNav.prototype.addHeaderBarResizeEvents_ = function() {
                             // fires to redraw the header.
                             if (!this.navPanel_ || !this.navPanel_.isOpen()) {
                               if (!this.isAndroidBrowser_) {
-                                goog.dom.classlist.add(this.headerBar_, 'hide');
+                                goog.dom.classlist.add(
+                                    this.headerBar_,
+                                    pagespeed.MobUtil.ElementClass.HIDE);
                               }
                             } else {
                               e.preventDefault();
@@ -488,14 +492,6 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
         new mob.button.Map(themeData.menuFrontColor, window.psMapLocation,
                            window.psConversionId, window.psMapConversionLabel);
     this.headerBar_.appendChild(this.mapButton_.el);
-  }
-
-  if (window.psDeviceType == 'mobile' || window.psDeviceType == 'tablet') {
-    goog.dom.classlist.add(this.headerBar_, 'mobile');
-    goog.dom.classlist.add(this.spacerDiv_, 'mobile');
-    if (this.navPanel_) {
-      goog.dom.classlist.add(this.navPanel_.el, 'mobile');
-    }
   }
 
   // If we are in labeled mode or only 1 button is configured, then show the

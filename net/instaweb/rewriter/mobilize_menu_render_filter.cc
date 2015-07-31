@@ -163,13 +163,6 @@ void MobilizeMenuRenderFilter::ConstructMenu() {
     DCHECK(MobilizeMenuFilter::IsMenuOk(*menu_));
     HtmlElement* nav = driver()->NewElement(NULL, HtmlName::kNav);
     driver()->AddAttribute(nav, HtmlName::kId, "psmob-nav-panel");
-    // For the purposes of the mobilization elements we inject in the page,
-    // tablets are considered mobile since they are touch devices with pixel
-    // densities to mobile devices.
-    if (driver()->request_properties()->IsMobile() ||
-        driver()->request_properties()->IsTablet()) {
-      driver()->AddAttribute(nav, HtmlName::kClass, "mobile");
-    }
     InsertNodeAtBodyEnd(nav);
     HtmlElement* ul = driver()->NewElement(nav, HtmlName::kUl);
     driver()->AddAttribute(ul, HtmlName::kClass, "psmob-open");
