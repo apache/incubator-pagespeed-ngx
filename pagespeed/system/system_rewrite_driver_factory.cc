@@ -188,6 +188,7 @@ void SystemRewriteDriverFactory::InitStats(Statistics* statistics) {
 
   // Init System-specific stats.
   SerfUrlAsyncFetcher::InitStats(statistics);
+  StdioFileSystem::InitStats(statistics);
   SystemCaches::InitStats(statistics);
   PropertyCache::InitCohortStats(RewriteDriver::kBeaconCohort, statistics);
   PropertyCache::InitCohortStats(RewriteDriver::kDomCohort, statistics);
@@ -254,6 +255,18 @@ void SystemRewriteDriverFactory::RootInit() {
 }
 
 void SystemRewriteDriverFactory::ChildInit() {
+  const SystemRewriteOptions* conf =
+      SystemRewriteOptions::DynamicCast(default_options());
+  CHECK(conf != NULL);
+
+  StdioFileSystem* fs = dynamic_cast<StdioFileSystem*>(file_system());
+  DCHECK(fs != NULL) << "Expected StdioFileSystem so we can call TrackTiming";
+  if (fs != NULL) {
+    fs->TrackTiming(conf->slow_file_latency_threshold_us(),
+                    timer(), statistics(),
+                    message_handler());
+  }
+
   is_root_process_ = false;
   system_thread_system_->PermitThreadStarting();
 
@@ -268,9 +281,6 @@ void SystemRewriteDriverFactory::ChildInit() {
   caches_->ChildInit();
 
   // Static asset config is process-global.
-  const SystemRewriteOptions* conf =
-      SystemRewriteOptions::DynamicCast(default_options());
-  CHECK(conf != NULL);
   if (conf->has_static_assets_to_cdn()) {
     StaticAssetConfig out_conf;
     conf->FillInStaticAssetCDNConf(&out_conf);

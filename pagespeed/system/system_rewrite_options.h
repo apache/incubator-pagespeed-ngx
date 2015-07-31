@@ -153,6 +153,15 @@ class SystemRewriteOptions : public RewriteOptions {
   void set_memcached_timeout_us(int x) {
     set_option(x, &memcached_timeout_us_);
   }
+  int64 slow_file_latency_threshold_us() const {
+    return slow_file_latency_threshold_us_.value();
+  }
+  bool has_slow_file_latency_threshold_us() const {
+    return slow_file_latency_threshold_us_.was_set();
+  }
+  void set_slow_file_latency_threshold_us(int64 x) {
+    set_option(x, &slow_file_latency_threshold_us_);
+  }
   const GoogleString& fetcher_proxy() const {
     return fetcher_proxy_.value();
   }
@@ -392,6 +401,7 @@ class SystemRewriteOptions : public RewriteOptions {
   Option<int> memcached_threads_;
   Option<int> memcached_timeout_us_;
 
+  Option<int64> slow_file_latency_threshold_us_;
   Option<int64> file_cache_clean_inode_limit_;
   Option<int64> file_cache_clean_interval_ms_;
   Option<int64> file_cache_clean_size_kb_;

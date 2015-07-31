@@ -92,6 +92,11 @@ void SystemRewriteOptions::AddProperties() {
                     RewriteOptions::kMemcachedTimeoutUs,
                     "Maximum time in microseconds to allow for memcached "
                         "transactions", true);
+  AddSystemProperty(50 * Timer::kMsUs,  // 50 ms
+                    &SystemRewriteOptions::slow_file_latency_threshold_us_,
+                    "asflt", "SlowFileLatencyUs",
+                    "Maximum time in microseconds to allow for file operations "
+                        "before logging and bumping a stat", true);
   AddSystemProperty(true, &SystemRewriteOptions::statistics_enabled_, "ase",
                     RewriteOptions::kStatisticsEnabled,
                     "Whether to collect cross-process statistics.", true);

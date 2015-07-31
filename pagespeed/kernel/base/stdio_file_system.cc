@@ -52,6 +52,11 @@ namespace {
 // for the files. (While POSIX doesn't specify this, it's the proper value on
 // at least Linux, FreeBSD, and OS X).
 const int kBlockSize = 512;
+
+static const char kOutstandingOps[] = "stdio_fs_outstanding_ops";
+static const char kSlowOps[] = "stdio_fs_slow_ops";
+static const char kTotalOps[] = "stdio_fs_total_ops";
+
 }  // namespace
 
 namespace net_instaweb {
@@ -60,9 +65,11 @@ namespace net_instaweb {
 // Output files, in lieu of multiple inheritance.
 class StdioFileHelper {
  public:
-  StdioFileHelper(FILE* f, const StringPiece& filename)
+  StdioFileHelper(FILE* f, const StringPiece& filename, StdioFileSystem* fs)
       : file_(f),
-        line_(1) {
+        line_(1),
+        file_system_(fs),
+        start_us_(0) {
     filename.CopyToString(&filename_);
   }
 
@@ -92,9 +99,20 @@ class StdioFileHelper {
     return ret;
   }
 
+  void StartTimer() {
+    start_us_ = file_system_->StartTimer();
+  }
+
+  void EndTimer(const char* operation) {
+    file_system_->EndTimer(filename_.c_str(), operation, start_us_);
+  }
+
+
   FILE* file_;
   GoogleString filename_;
   int line_;
+  StdioFileSystem* file_system_;
+  int64 start_us_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(StdioFileHelper);
@@ -102,16 +120,18 @@ class StdioFileHelper {
 
 class StdioInputFile : public FileSystem::InputFile {
  public:
-  StdioInputFile(FILE* f, const StringPiece& filename)
-      : file_helper_(f, filename) {
+  StdioInputFile(FILE* f, const StringPiece& filename, StdioFileSystem* fs)
+      : file_helper_(f, filename, fs) {
   }
 
   virtual int Read(char* buf, int size, MessageHandler* message_handler) {
+    file_helper_.StartTimer();
     int ret = fread(buf, 1, size, file_helper_.file_);
     file_helper_.CountNewlines(buf, ret);
     if ((ret == 0) && (ferror(file_helper_.file_) != 0)) {
       file_helper_.ReportError(message_handler, "reading file: %s");
     }
+    file_helper_.EndTimer("read");
     return ret;
   }
 
@@ -129,11 +149,12 @@ class StdioInputFile : public FileSystem::InputFile {
 
 class StdioOutputFile : public FileSystem::OutputFile {
  public:
-  StdioOutputFile(FILE* f, const StringPiece& filename)
-      : file_helper_(f, filename) {
+  StdioOutputFile(FILE* f, const StringPiece& filename, StdioFileSystem* fs)
+      : file_helper_(f, filename, fs) {
   }
 
   virtual bool Write(const StringPiece& buf, MessageHandler* handler) {
+    file_helper_.StartTimer();
     size_t bytes_written =
         fwrite(buf.data(), 1, buf.size(), file_helper_.file_);
     file_helper_.CountNewlines(buf.data(), bytes_written);
@@ -141,6 +162,7 @@ class StdioOutputFile : public FileSystem::OutputFile {
     if (!ret) {
       file_helper_.ReportError(handler, "writing file: %s");
     }
+    file_helper_.EndTimer("write");
     return ret;
   }
 
@@ -180,7 +202,67 @@ class StdioOutputFile : public FileSystem::OutputFile {
   DISALLOW_COPY_AND_ASSIGN(StdioOutputFile);
 };
 
+StdioFileSystem::StdioFileSystem()
+    : slow_file_latency_threshold_us_(0),
+      timer_(NULL),
+      statistics_(NULL),
+      outstanding_ops_(NULL),
+      slow_ops_(NULL),
+      total_ops_(NULL) {
+}
+
 StdioFileSystem::~StdioFileSystem() {
+}
+
+void StdioFileSystem::InitStats(Statistics* stats) {
+  stats->AddUpDownCounter(kOutstandingOps);
+  stats->AddVariable(kSlowOps);
+  stats->AddVariable(kTotalOps);
+}
+
+void StdioFileSystem::TrackTiming(int64 slow_file_latency_threshold_us,
+                                  Timer* timer, Statistics* stats,
+                                  MessageHandler* handler) {
+  slow_file_latency_threshold_us_ = slow_file_latency_threshold_us;
+  timer_ = timer;
+  statistics_ = stats;
+  outstanding_ops_ = stats->GetUpDownCounter(kOutstandingOps);
+  slow_ops_ = stats->GetVariable(kSlowOps);
+  total_ops_ = stats->GetVariable(kTotalOps);
+  message_handler_ = handler;
+}
+
+int64 StdioFileSystem::StartTimer() {
+  if (timer_ == NULL) {
+    return 0;
+  }
+  if (outstanding_ops_ != NULL) {
+    outstanding_ops_->Add(1);
+  }
+  if (total_ops_ != NULL) {
+    total_ops_->Add(1);
+  }
+  return timer_->NowUs();
+}
+
+void StdioFileSystem::EndTimer(const char* filename, const char* operation,
+                               int64 start_us) {
+  if (outstanding_ops_ != NULL) {
+    outstanding_ops_->Add(-1);
+  }
+  if (timer_ != NULL) {
+    int64 end_us = timer_->NowUs();
+    int64 latency_us = end_us - start_us;
+    if (latency_us > slow_file_latency_threshold_us_) {
+      if (slow_ops_ != NULL) {
+        slow_ops_->Add(1);
+      }
+      message_handler_->Message(
+          kError, "Slow %s operation on file %s: %gms; "
+          "configure SlowFileLatencyUs to change threshold\n",
+          operation, filename, latency_us / 1000.0);
+    }
+  }
 }
 
 int StdioFileSystem::MaxPathLength(const StringPiece& base) const {
@@ -210,7 +292,7 @@ FileSystem::InputFile* StdioFileSystem::OpenInputFile(
     message_handler->Error(filename, 0, "opening input file: %s",
                            strerror(errno));
   } else {
-    input_file = new StdioInputFile(f, filename);
+    input_file = new StdioInputFile(f, filename, this);
   }
   return input_file;
 }
@@ -220,7 +302,7 @@ FileSystem::OutputFile* StdioFileSystem::OpenOutputFileHelper(
     const char* filename, bool append, MessageHandler* message_handler) {
   FileSystem::OutputFile* output_file = NULL;
   if (strcmp(filename, "-") == 0) {
-    output_file = new StdioOutputFile(stdout, "<stdout>");
+    output_file = new StdioOutputFile(stdout, "<stdout>", this);
   } else {
     const char* mode = append ? "a" : "w";
     FILE* f = fopen(filename, mode);
@@ -228,7 +310,7 @@ FileSystem::OutputFile* StdioFileSystem::OpenOutputFileHelper(
       message_handler->Error(filename, 0,
                              "opening output file: %s", strerror(errno));
     } else {
-      output_file = new StdioOutputFile(f, filename);
+      output_file = new StdioOutputFile(f, filename, this);
     }
   }
   return output_file;
@@ -274,7 +356,7 @@ FileSystem::OutputFile* StdioFileSystem::OpenTempFileHelper(
       NullMessageHandler null_message_handler;
       RemoveFile(template_name, &null_message_handler);
     } else {
-      output_file = new StdioOutputFile(f, template_name);
+      output_file = new StdioOutputFile(f, template_name, this);
     }
   }
 
@@ -561,15 +643,15 @@ bool StdioFileSystem::Unlock(const StringPiece& lock_name,
 }
 
 FileSystem::InputFile* StdioFileSystem::Stdin() {
-  return new StdioInputFile(stdin, "stdin");
+  return new StdioInputFile(stdin, "stdin", this);
 }
 
 FileSystem::OutputFile* StdioFileSystem::Stdout() {
-  return new StdioOutputFile(stdout, "stdout");
+  return new StdioOutputFile(stdout, "stdout", this);
 }
 
 FileSystem::OutputFile* StdioFileSystem::Stderr() {
-  return new StdioOutputFile(stderr, "stderr");
+  return new StdioOutputFile(stderr, "stderr", this);
 }
 
 }  // namespace net_instaweb

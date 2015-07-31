@@ -21,6 +21,7 @@
 
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/file_system.h"
+#include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string_util.h"
 
 struct stat;
@@ -32,7 +33,7 @@ class Timer;
 
 class StdioFileSystem : public FileSystem {
  public:
-  StdioFileSystem() {}
+  StdioFileSystem();
   virtual ~StdioFileSystem();
 
   virtual int MaxPathLength(const StringPiece& base) const;
@@ -78,10 +79,25 @@ class StdioFileSystem : public FileSystem {
   OutputFile* Stdout();
   OutputFile* Stderr();
 
+  static void InitStats(Statistics* stats);
+  void TrackTiming(int64 slow_file_latency_threshold_us, Timer* timer,
+                   Statistics* stats, MessageHandler* handler);
+
+  int64 StartTimer();
+  void EndTimer(const char* filename, const char* operation, int64 start_us);
+
  private:
   // Used by *time and Size methods to get file info.
   bool Stat(const StringPiece& path, struct stat* statbuf,
             MessageHandler* handler);
+
+  int64 slow_file_latency_threshold_us_;
+  Timer* timer_;
+  Statistics* statistics_;
+  UpDownCounter* outstanding_ops_;
+  Variable* slow_ops_;
+  Variable* total_ops_;
+  MessageHandler* message_handler_;  // Only set by TrackTiming, not by ctor.
 
   DISALLOW_COPY_AND_ASSIGN(StdioFileSystem);
 };
