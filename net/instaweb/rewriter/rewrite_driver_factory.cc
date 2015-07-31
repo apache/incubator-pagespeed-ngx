@@ -59,6 +59,7 @@
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/cache/cache_batcher.h"
+#include "pagespeed/kernel/http/http_options.h"
 #include "pagespeed/kernel/http/user_agent_matcher.h"
 #include "pagespeed/kernel/http/user_agent_normalizer.h"
 #include "pagespeed/kernel/thread/queued_worker_pool.h"
@@ -155,6 +156,9 @@ RewriteDriverFactory::~RewriteDriverFactory() {
   for (int i = 0, n = deferred_cleanups_.size(); i < n; ++i) {
     deferred_cleanups_[i]->CallRun();
   }
+
+  // Delete the lock-manager before we delete the scheduler.
+  lock_manager_.reset(NULL);
 }
 
 void RewriteDriverFactory::set_html_parse_message_handler(

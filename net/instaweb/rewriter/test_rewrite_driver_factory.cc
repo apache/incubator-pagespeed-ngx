@@ -16,7 +16,6 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include <cstdlib>                     // for getenv
 #include <vector>
 
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
@@ -27,6 +26,7 @@
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/rate_controller.h"
 #include "net/instaweb/http/public/rate_controlling_url_async_fetcher.h"
+#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/wait_url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
@@ -34,14 +34,20 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/test_distributed_fetcher.h"
 #include "net/instaweb/rewriter/public/test_url_namer.h"
+#include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/cache_property_store.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "pagespeed/kernel/base/basictypes.h"        // for int64
+#include "pagespeed/kernel/base/file_system.h"
+#include "pagespeed/kernel/base/hasher.h"
 #include "pagespeed/kernel/base/mem_file_system.h"
+#include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/mock_hasher.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/base/mock_timer.h"
+#include "pagespeed/kernel/base/named_lock_manager.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"            // for scoped_ptr
+#include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"  // for StrCat, etc
 #include "pagespeed/kernel/base/thread_system.h"
@@ -50,23 +56,19 @@
 #include "pagespeed/kernel/cache/lru_cache.h"
 #include "pagespeed/kernel/cache/mock_time_cache.h"
 #include "pagespeed/kernel/cache/threadsafe_cache.h"
+#include "pagespeed/kernel/html/html_filter.h"
 #include "pagespeed/kernel/thread/mock_scheduler.h"
+#include "pagespeed/kernel/thread/scheduler.h"
 #include "pagespeed/kernel/util/mock_nonce_generator.h"
+#include "pagespeed/kernel/util/nonce_generator.h"
 #include "pagespeed/kernel/util/platform.h"
+#include "pagespeed/kernel/util/threadsafe_lock_manager.h"
+
 
 namespace net_instaweb {
 
-class FileSystem;
-class Hasher;
-class HtmlFilter;
-class MessageHandler;
-class NonceGenerator;
 class ProcessContext;
 class RewriteFilter;
-class Scheduler;
-class Statistics;
-class UrlAsyncFetcher;
-class UrlNamer;
 
 namespace {
 
@@ -321,6 +323,10 @@ TestRewriteDriverFactory::CreateRewriterCallback::~CreateRewriterCallback() {
 
 TestRewriteDriverFactory::PlatformSpecificConfigurationCallback::
     ~PlatformSpecificConfigurationCallback() {
+}
+
+NamedLockManager* TestRewriteDriverFactory::DefaultLockManager() {
+  return new ThreadSafeLockManager(scheduler());
 }
 
 }  // namespace net_instaweb
