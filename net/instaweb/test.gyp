@@ -411,7 +411,6 @@
         '<(DEPTH)',
       ],
       'sources': [
-        '<(DEPTH)/pagespeed/apache/apr_file_system_test.cc',
         '<(DEPTH)/pagespeed/apache/apache_config_test.cc',
         '<(DEPTH)/pagespeed/apache/apache_fetch_test.cc',
         '<(DEPTH)/pagespeed/apache/apache_writer.cc',

@@ -48,7 +48,6 @@
         '<(DEPTH)/pagespeed/apache/apache_config.cc',
         '<(DEPTH)/pagespeed/apache/apache_fetch.cc',
         '<(DEPTH)/pagespeed/apache/apache_thread_system.cc',
-        '<(DEPTH)/pagespeed/apache/apr_file_system.cc',
         '<(DEPTH)/pagespeed/apache/apr_timer.cc',
         '<(DEPTH)/pagespeed/system/add_headers_fetcher.cc',
         '<(DEPTH)/pagespeed/system/loopback_route_fetcher.cc',
