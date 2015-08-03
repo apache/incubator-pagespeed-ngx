@@ -374,7 +374,7 @@ mob.button.Dialer.WCM_COOKIE_ = 'psgwcm';
  * Cookie lifetime in seconds.
  * @private @const {number}
  */
-mob.button.Dialer.WCM_COOKIE_LIFETIME_SEC_ = 3600 * 24 * 90;
+mob.button.Dialer.MAX_WCM_COOKIE_LIFETIME_SEC_ = 3600 * 24 * 90;
 
 
 /**
@@ -470,6 +470,27 @@ mob.button.Dialer.prototype.dialPhone_ = function() {
 
 
 /**
+ * Produce error description from wcm response.
+ *
+ * @private
+ * @param {?number} backoff backoff value from wcm call.
+ * @return {?string} description of error.
+ **/
+mob.button.Dialer.prototype.backoffErrorCode_ = function(backoff) {
+  if (backoff) {
+    switch (backoff) {
+      case 300: return 'temporary-error';
+      case 86400: return 'no-ad-click';
+      case 86402: return 'not-tracked';
+    }
+    // Other cases are unknown errors.
+    return 'error' + backoff;
+  }
+  return null;
+};
+
+
+/**
  * Extracts a dynamic phone number from a jsonp response.  If successful, it
  * dials the phone, and saves the phone number in a cookie and also in
  * this.googleVoicePhoneNumber_.
@@ -480,12 +501,16 @@ mob.button.Dialer.prototype.dialPhone_ = function() {
  */
 mob.button.Dialer.prototype.receivePhoneNumber_ = function(success, json) {
   var responseTime = Date.now() - this.jsonpTime_;
-  pagespeed.MobUtil.sendBeaconEvent(
-      pagespeed.MobUtil.BeaconEvents.CALL_CONVERSION_RESPONSE, null,
-      '&s=' + success.toString() + '&t=' + responseTime);
   var wcm = json && json['wcm'];
   var phoneNumber = wcm && wcm['mobile_number'];
-  if (phoneNumber) {
+  var err = this.backoffErrorCode_(wcm && wcm['backoff']);
+  var is_gv = !!(phoneNumber && phoneNumber != this.fallbackPhoneNumber_);
+  pagespeed.MobUtil.sendBeaconEvent(
+      pagespeed.MobUtil.BeaconEvents.CALL_CONVERSION_RESPONSE, null,
+      '&s=' + success.toString() + '&t=' + responseTime +
+      '&gv=' + is_gv.toString() +
+      (err ? '&err=' + err : ''));
+  if (phoneNumber && phoneNumber != this.fallbackPhoneNumber_) {
     // Save the phoneNumber in a cookie to reduce server requests.
     // TODO(jud): Use localstorage instead of a cookie.
     var cookieValue = {
@@ -497,11 +522,22 @@ mob.button.Dialer.prototype.receivePhoneNumber_ = function(success, json) {
     };
     cookieValue = goog.json.serialize(cookieValue);
     this.debugAlert_('saving phoneNumber in cookie: ' + cookieValue);
+    var expires = parseInt(wcm['expires'], 10);
+    if (expires) {
+      expires -= Math.floor(Date.now() / 1000);
+      expires = Math.min(expires,
+                         mob.button.Dialer.MAX_WCM_COOKIE_LIFETIME_SEC_);
+    } else {
+      expires = mob.button.Dialer.MAX_WCM_COOKIE_LIFETIME_SEC_;
+    }
     this.cookies_.set(mob.button.Dialer.WCM_COOKIE_,
                       window.encodeURIComponent(cookieValue),
-                      mob.button.Dialer.WCM_COOKIE_LIFETIME_SEC_, '/');
+                      expires, '/');
 
     this.googleVoicePhoneNumber_ = phoneNumber;
+  }
+  if (err) {
+    this.debugAlert_('WCM request: ' + err);
   }
   this.dialPhone_();
 };
