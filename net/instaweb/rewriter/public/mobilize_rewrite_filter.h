@@ -81,7 +81,6 @@ class MobilizeRewriteFilter : public CommonFilter {
   static const char kContentBlocks[];
   static const char kMarginalBlocks[];
   static const char kDeletedElements[];
-  static const char kSetSpacerHeight[];
 
   explicit MobilizeRewriteFilter(RewriteDriver* rewrite_driver);
   virtual ~MobilizeRewriteFilter();

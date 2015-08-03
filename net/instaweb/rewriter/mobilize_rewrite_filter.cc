@@ -57,20 +57,6 @@ const char MobilizeRewriteFilter::kMarginalBlocks[] =
 const char MobilizeRewriteFilter::kDeletedElements[] =
     "mobilization_elements_deleted";
 
-// JavaScript snippet to set the correct height for the spacer div.
-//
-// TODO(jmarantz): Move to this into its own JS bundle, so it is automatically
-// minified by Closure Compiler when debug is off.
-const char MobilizeRewriteFilter::kSetSpacerHeight[] =
-    "\n(function() {\n"  // Hide temps in a function scope
-    "  var spacer = document.getElementById('psmob-spacer');\n"
-    "  var navbar = document.getElementById('psmob-header-bar');\n"
-    "  var docElt = document.documentElement;\n"
-    "  var scale = 'scale(' + window.innerWidth / docElt.clientWidth + ')';\n"
-    "  navbar.style.transform = scale;\n"
-    "  spacer.style.height = navbar.getBoundingClientRect().height + 'px';\n"
-    "})();";
-
 namespace {
 
 // The 'book' says to use add ",user-scalable=no" but jmarantz hates
@@ -424,7 +410,6 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
       HtmlElement* spacer = driver()->NewElement(element, HtmlName::kDiv);
       driver()->InsertNodeAfterCurrent(spacer);
       driver()->AddAttribute(spacer, HtmlName::kId, "psmob-spacer");
-      driver()->InsertScriptAfterCurrent(kSetSpacerHeight, false);
     }
 
     if (use_js_layout_ && !added_progress_) {
