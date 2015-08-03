@@ -71,6 +71,7 @@ pagespeed.MobUtil.ElementClass = {
   BUTTON_ICON: 'psmob-button-icon',
   BUTTON_TEXT: 'psmob-button-text',
   HIDE: 'psmob-hide',
+  IOS_WEBVIEW: 'ios-webview',
   LABELED: 'psmob-labeled',
   LOGO_CHOOSER_CHOICE: 'psmob-logo-chooser-choice',
   LOGO_CHOOSER_COLOR: 'psmob-logo-chooser-color',

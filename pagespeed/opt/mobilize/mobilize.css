@@ -103,6 +103,10 @@ body.mob-iframe {
   transition: opacity 0.2s;
 }
 
+#psmob-header-bar.ios-webview {
+  position: fixed !important;
+}
+
 #psmob-header-bar, #psmob-nav-panel {
   box-sizing: border-box !important;
 }

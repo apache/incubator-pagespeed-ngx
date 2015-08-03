@@ -141,6 +141,14 @@ pagespeed.MobNav = function() {
    * @private {boolean}
    */
   this.isAndroidBrowser_ = goog.labs.userAgent.browser.isAndroidBrowser();
+
+  /**
+   * Use position fixed on browsers that have broken scroll event behavior.
+   * @private {boolean}
+   */
+  this.isIosWebview_ = ((window.navigator.userAgent.indexOf('CriOS') > -1) ||
+                        (window.navigator.userAgent.indexOf('GSA') > -1) ||
+                        goog.labs.userAgent.browser.isIosWebview());
 };
 
 
@@ -322,8 +330,10 @@ pagespeed.MobNav.prototype.redrawHeader_ = function() {
   }
 
   // Redraw the bar to the top of page by offsetting by the amount scrolled.
-  this.headerBar_.style.top = window.scrollY + 'px';
-  this.headerBar_.style.left = window.scrollX + 'px';
+  if (!this.isIosWebview_) {
+    this.headerBar_.style.top = window.scrollY + 'px';
+    this.headerBar_.style.left = window.scrollX + 'px';
+  }
   this.redrawNavCalled_ = true;
 };
 
@@ -445,6 +455,11 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
   if (window.psConfigMode) {
     goog.dom.classlist.add(this.headerBar_,
                            pagespeed.MobUtil.ElementClass.THEME_CONFIG);
+  }
+
+  if (this.isIosWebview_) {
+    goog.dom.classlist.add(this.headerBar_,
+                           pagespeed.MobUtil.ElementClass.IOS_WEBVIEW);
   }
 
   var navPanelEl =
