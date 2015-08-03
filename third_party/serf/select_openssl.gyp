@@ -42,15 +42,15 @@
           'type': 'none',
           'direct_dependent_settings': {
             'cflags': [
-              '<!@(pkg-config --cflags libssl)',
+              '<!@(pkg-config --cflags openssl)',
             ],
           },
           'link_settings': {
             'ldflags': [
-              '<!@(pkg-config --libs-only-L --libs-only-other libssl)',
+              '<!@(pkg-config --libs-only-L --libs-only-other openssl)',
             ],
             'libraries': [
-              '<!@(pkg-config --libs-only-l libssl)',
+              '<!@(pkg-config --libs-only-l openssl)',
             ],
           },
         },
