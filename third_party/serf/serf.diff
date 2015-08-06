@@ -268,7 +268,7 @@
 +        request, method, uri, body, allocator, NULL);
 +}
 --- serf/src/buckets/ssl_buckets.c      2012-08-29 13:29:42.000000000 -0400
-+++ src/third_party/serf/instaweb_ssl_buckets.c 2015-07-27 10:56:12.000000000 -0400
++++ src/third_party/serf/instaweb_ssl_buckets.c 2015-08-05 17:03:31.000000000 -0400
 @@ -34,6 +34,11 @@
   * Originally developed by Aaron Bannert and Justin Erenkrantz, eBuilt.
   */
@@ -281,7 +281,32 @@
  #include <apr_pools.h>
  #include <apr_network_io.h>
  #include <apr_portable.h>
-@@ -873,7 +878,9 @@
+@@ -339,21 +344,9 @@
+ 
+ static long bio_bucket_ctrl(BIO *bio, int cmd, long num, void *ptr)
+ {
+-    long ret = 1;
+-
+-    switch (cmd) {
+-    default:
+-        /* abort(); */
+-        break;
+-    case BIO_CTRL_FLUSH:
+-        /* At this point we can't force a flush. */
+-        break;
+-    case BIO_CTRL_PUSH:
+-    case BIO_CTRL_POP:
+-        ret = 0;
+-        break;
+-    }
+-    return ret;
++    /* Note that this is probably wrong for e.g. BIO_CTRL_PENDING, where we
++     * should return 0. */
++    return 1;
+ }
+ 
+ static BIO_METHOD bio_bucket_method = {
+@@ -873,7 +866,9 @@
  #if APR_HAS_THREADS
          int i, numlocks;
  #endif
@@ -291,7 +316,7 @@
          ERR_load_crypto_strings();
          SSL_load_error_strings();
          SSL_library_init();
-@@ -971,8 +978,13 @@
+@@ -971,8 +966,13 @@
          else {
              int err = ERR_get_error();
              ERR_clear_error();
@@ -305,7 +330,7 @@
                  if (ctx->cert_pw_callback) {
                      const char *password;
  
-@@ -1102,6 +1114,8 @@
+@@ -1102,6 +1102,8 @@
      ssl_ctx->allocator = allocator;
  
      ssl_ctx->ctx = SSL_CTX_new(SSLv23_client_method());
@@ -314,7 +339,7 @@
  
      SSL_CTX_set_client_cert_cb(ssl_ctx->ctx, ssl_need_client_cert);
      ssl_ctx->cached_cert = 0;
-@@ -1160,7 +1174,9 @@
+@@ -1160,7 +1162,9 @@
  
      /* SSL_free implicitly frees the underlying BIO. */
      SSL_free(ssl_ctx->ssl);
@@ -324,7 +349,7 @@
  
      p = ssl_ctx->pool;
  
-@@ -1193,7 +1209,9 @@
+@@ -1193,7 +1197,9 @@
                                     const char * hostname)
  {
  #ifdef SSL_set_tlsext_host_name
@@ -335,7 +360,7 @@
          ERR_clear_error();
      }
  #endif
-@@ -1209,6 +1227,28 @@
+@@ -1209,6 +1215,28 @@
      return result ? APR_SUCCESS : APR_EGENERAL;
  }
  
@@ -364,7 +389,7 @@
  apr_status_t serf_ssl_load_cert_file(
      serf_ssl_certificate_t **cert,
      const char *file_path,
-@@ -1527,6 +1567,7 @@
+@@ -1527,6 +1555,7 @@
  
      if (!--ctx->ssl_ctx->refcount) {
          ssl_free_context(ctx->ssl_ctx);
@@ -372,4 +397,3 @@
      }
  
      serf_default_destroy_and_data(bucket);
-
