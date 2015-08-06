@@ -24,9 +24,9 @@ vars = {
   "chromium_revision_num": "256281",
   "chromium_deps_root": "src/third_party/chromium_deps",
 
-  "libpagespeed_svn_root": "https://page-speed.googlecode.com/svn/",
-  "libpagespeed_trunk": "https://page-speed.googlecode.com/svn/lib/trunk/",
-  "libpagespeed_revision": "@2439",
+  "libpagespeed_svn_root": "https://github.com/pagespeed/page-speed/trunk/",
+  "libpagespeed_trunk": "https://github.com/pagespeed/page-speed/trunk/lib/trunk/",
+  "libpagespeed_revision": "@2579",
 
   # Import libwebp 0.4.1 from the official repo.
   "libwebp_src": "https://chromium.googlesource.com/webm/libwebp.git",
