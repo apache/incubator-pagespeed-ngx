@@ -90,7 +90,7 @@ vars = {
   "domain_registry_provider_src":
      "https://github.com/pagespeed/domain-registry-provider.git",
   "domain_registry_provider_revision":
-     "@2f66434916a913a58aea345268a513d3ecc071b8",
+     "@b41c63dc46725dc2b5e6edf53f6127ea2d89859e",
 }
 
 deps = {
