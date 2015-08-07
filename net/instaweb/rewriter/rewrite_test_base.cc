@@ -25,6 +25,7 @@
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_cache.h"
+#include "net/instaweb/http/public/http_cache_failure.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/log_record_test_helper.h"
@@ -119,7 +120,9 @@ const char RewriteTestBase::kWrongBeaconingKey[] = "wrong_beaconing_key";
 const char kMessagePatternShrinkImage[] = "*Shrinking image*";
 
 RewriteTestBase::RewriteTestBase()
-    : test_distributed_fetcher_(this),
+    : kFoundResult(HTTPCache::kFound, kFetchStatusOK),
+      kNotFoundResult(HTTPCache::kNotFound, kFetchStatusNotSet),
+      test_distributed_fetcher_(this),
       factory_(new TestRewriteDriverFactory(rewrite_test_base_process_context,
                                             GTestTempDir(),
                                             &mock_url_fetcher_,
@@ -140,7 +143,9 @@ RewriteTestBase::RewriteTestBase()
 
 // Takes ownership of the statistics.
 RewriteTestBase::RewriteTestBase(Statistics* statistics)
-    : test_distributed_fetcher_(this),
+    : kFoundResult(HTTPCache::kFound, kFetchStatusOK),
+      kNotFoundResult(HTTPCache::kNotFound, kFetchStatusNotSet),
+      test_distributed_fetcher_(this),
       statistics_(statistics),
       factory_(new TestRewriteDriverFactory(rewrite_test_base_process_context,
                                             GTestTempDir(),
@@ -160,7 +165,9 @@ RewriteTestBase::RewriteTestBase(Statistics* statistics)
 
 RewriteTestBase::RewriteTestBase(
     std::pair<TestRewriteDriverFactory*, TestRewriteDriverFactory*> factories)
-    : test_distributed_fetcher_(this),
+    : kFoundResult(HTTPCache::kFound, kFetchStatusOK),
+      kNotFoundResult(HTTPCache::kNotFound, kFetchStatusNotSet),
+      test_distributed_fetcher_(this),
       factory_(factories.first),
       other_factory_(factories.second),
       use_managed_rewrite_drivers_(false),
@@ -383,7 +390,7 @@ void RewriteTestBase::ServeResourceFromNewContext(
   // Check that we don't already have it in cache.
   HTTPValue value;
   ResponseHeaders response_headers;
-  EXPECT_EQ(HTTPCache::kNotFound, HttpBlockingFind(
+  EXPECT_EQ(kNotFoundResult, HttpBlockingFind(
       resource_url, new_server_context->http_cache(), &value,
       &response_headers));
   // Initiate fetch.
@@ -582,7 +589,7 @@ void RewriteTestBase::TestServeFiles(
   if (!filter->ComputeOnTheFly() && lru_cache()->IsHealthy()) {
     HTTPValue value;
     ResponseHeaders response_headers;
-    EXPECT_EQ(HTTPCache::kFound, HttpBlockingFind(
+    EXPECT_EQ(kFoundResult, HttpBlockingFind(
         expected_rewritten_path, http_cache, &value, &response_headers));
   }
 }
@@ -1006,7 +1013,6 @@ class HttpCallback : public HTTPCache::Callback {
   explicit HttpCallback(const RequestContextPtr& request_context)
       : HTTPCache::Callback(request_context, RequestHeaders::Properties()),
         done_(false),
-        result_(HTTPCache::kNotFound),
         options_(NULL) {
   }
   virtual ~HttpCallback() {}

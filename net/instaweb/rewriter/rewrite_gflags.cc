@@ -486,10 +486,12 @@ DEFINE_int64(max_html_parse_bytes,
              "The maximum number of bytes in a html that we parse before "
              "redirecting to a page with no rewriting.");
 
+// We now have a single policy for caching through all levels. See
+// http_cache_failure.h for details.
 DEFINE_int64(
     metadata_input_errors_cache_ttl_ms,
     RewriteOptions::kDefaultMetadataInputErrorsCacheTtlMs,
-    "The metadata cache ttl for input resources which are 4xx errors.");
+    "Deprecated. Doesn't do anything.");
 
 DEFINE_bool(enable_aggressive_rewriters_for_mobile, false,
             "If true then aggressive rewriters will be turned on for "
@@ -631,10 +633,6 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   }
   if (WasExplicitlySet("max_html_cache_time_ms")) {
     options->set_max_html_cache_time_ms(FLAGS_max_html_cache_time_ms);
-  }
-  if (WasExplicitlySet("metadata_input_errors_cache_ttl_ms")) {
-    options->set_metadata_input_errors_cache_ttl_ms(
-        FLAGS_metadata_input_errors_cache_ttl_ms);
   }
   if (WasExplicitlySet("min_resource_cache_time_to_rewrite_ms")) {
     options->set_min_resource_cache_time_to_rewrite_ms(

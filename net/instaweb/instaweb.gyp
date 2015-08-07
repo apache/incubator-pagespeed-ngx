@@ -1374,6 +1374,7 @@
         'http/cache_url_async_fetcher.cc',
         'http/external_url_fetcher.cc',
         'http/http_cache.cc',
+        'http/http_cache_failure.cc',
         'http/http_dump_url_async_writer.cc',
         'http/http_dump_url_fetcher.cc',
         'http/http_response_parser.cc',

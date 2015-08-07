@@ -144,7 +144,7 @@ class HTTPCacheStringCallback : public OptionsAwareHTTPCacheCallback {
 
   virtual void Done(HTTPCache::FindResult find_result) {
     StringPiece contents;
-    if ((find_result == HTTPCache::kFound) &&
+    if ((find_result.status == HTTPCache::kFound) &&
         http_value()->ExtractContents(&contents)) {
       found_ = true;
       contents.CopyToString(body_out_);

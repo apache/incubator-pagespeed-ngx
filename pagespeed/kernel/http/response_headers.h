@@ -236,19 +236,19 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   static bool ParseTime(const char* time_str, int64* time_ms);
 
   // Returns true if our status denotes the request failing.
-  inline bool IsErrorStatus() {
+  inline bool IsErrorStatus() const {
     int status = status_code();
     return status >= 400 && status <= 599;
   }
 
   // Returns true if our status denotes a server side error.
-  inline bool IsServerErrorStatus() {
+  inline bool IsServerErrorStatus() const {
     int status = status_code();
     return status >= 500 && status <= 599;
   }
 
   // Returns true if our status denotes a redirect.
-  bool IsRedirectStatus() {
+  bool IsRedirectStatus() const {
     int status = status_code();
     return status >= 300 && status <= 399 && status != 304;
   }

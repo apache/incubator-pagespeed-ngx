@@ -277,7 +277,7 @@ class CacheFindCallback : public HTTPCache::Callback {
   virtual ~CacheFindCallback() {}
 
   virtual void Done(HTTPCache::FindResult find_result) {
-    switch (find_result) {
+    switch (find_result.status) {
       case HTTPCache::kFound: {
         VLOG(1) << "Found in cache: " << url_ << " (" << fragment_ << ")";
         http_value()->ExtractHeaders(response_headers(), handler_);
@@ -336,9 +336,7 @@ class CacheFindCallback : public HTTPCache::Callback {
       // Note: currently no resources fetched through CacheUrlAsyncFetcher
       // will be marked RememberFetchFailedOrNotCacheable.
       // TODO(sligocki): Should we mark resources as such in this class?
-      case HTTPCache::kRecentFetchFailed:
-      case HTTPCache::kRecentFetchNotCacheable:
-      case HTTPCache::kRecentFetchEmpty:
+      case HTTPCache::kRecentFailure:
         VLOG(1) << "RecentFetchFailed, NotCacheable or Empty: "
                 << url_ << " (" << fragment_ << ")";
         if (!ignore_recent_fetch_failed_) {

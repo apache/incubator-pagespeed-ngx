@@ -1658,7 +1658,7 @@ TEST_F(RewriteDriverTest, CachePollutionWithWrongEncodingCharacter) {
   int cold_num_inserts = lru_cache()->num_inserts();
   EXPECT_EQ(3, cold_num_inserts);
 
-  EXPECT_EQ(HTTPCache::kFound,
+  EXPECT_EQ(kFoundResult,
             HttpBlockingFindStatus(StrCat(kTestDomain, correct_url),
                                    http_cache()));
 
@@ -1690,7 +1690,7 @@ TEST_F(RewriteDriverTest, CachePollutionWithLowerCasedncodingCharacter) {
   int cold_num_inserts = lru_cache()->num_inserts();
   EXPECT_EQ(3, cold_num_inserts);
 
-  EXPECT_EQ(HTTPCache::kFound,
+  EXPECT_EQ(kFoundResult,
             HttpBlockingFindStatus(StrCat(kTestDomain, correct_url),
                                    http_cache()));
 
@@ -1722,7 +1722,7 @@ TEST_F(RewriteDriverTest, CachePollutionWithExperimentId) {
   int cold_num_inserts = lru_cache()->num_inserts();
   EXPECT_EQ(3, cold_num_inserts);
 
-  EXPECT_EQ(HTTPCache::kFound,
+  EXPECT_EQ(kFoundResult,
             HttpBlockingFindStatus(StrCat(kTestDomain, correct_url),
                                    http_cache()));
 
@@ -1754,7 +1754,7 @@ TEST_F(RewriteDriverTest, CachePollutionWithQueryParams) {
   int cold_num_inserts = lru_cache()->num_inserts();
   EXPECT_EQ(3, cold_num_inserts);
 
-  EXPECT_EQ(HTTPCache::kFound,
+  EXPECT_EQ(kFoundResult,
             HttpBlockingFindStatus(StrCat(kTestDomain, correct_url),
                                    http_cache()));
 

@@ -1800,7 +1800,7 @@ class CacheCallback : public OptionsAwareHTTPCacheCallback {
   virtual void Done(HTTPCache::FindResult find_result) {
     StringPiece content;
     ResponseHeaders* response_headers = async_fetch_->response_headers();
-    if (find_result == HTTPCache::kFound) {
+    if (find_result.status == HTTPCache::kFound) {
       RewriteStats* stats = driver_->server_context()->rewrite_stats();
       stats->cached_resource_fetches()->Add(1);
 
