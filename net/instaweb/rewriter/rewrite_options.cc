@@ -4136,7 +4136,7 @@ GoogleString RewriteOptions::ToString(const MobTheme& theme) {
 }
 
 GoogleString RewriteOptions::ToString(const Color& color) {
-  return StringPrintf("#%2x%2x%2x", static_cast<int>(color.r),
+  return StringPrintf("#%02x%02x%02x", static_cast<int>(color.r),
                       static_cast<int>(color.g), static_cast<int>(color.b));
 }
 
