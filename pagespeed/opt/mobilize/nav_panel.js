@@ -233,13 +233,19 @@ mob.NavPanel.prototype.addSubmenuArrows_ = function() {
  * panel so that is opens/closes.
  */
 mob.NavPanel.prototype.toggle = function() {
-  pagespeed.MobUtil.sendBeaconEvent(
-      (this.isOpen() ? pagespeed.MobUtil.BeaconEvents.MENU_BUTTON_CLOSE :
-      pagespeed.MobUtil.BeaconEvents.MENU_BUTTON_OPEN));
-  goog.dom.classlist.toggle(this.el, pagespeed.MobUtil.ElementClass.OPEN);
-  goog.dom.classlist.toggle(
-      this.clickDetectorDiv_, pagespeed.MobUtil.ElementClass.OPEN);
-  goog.dom.classlist.toggle(document.body, 'noscroll');
+  // We used to make a bunch of toggle calls here, but we
+  // now use isOpen() as the source of truth and adjust the CSS
+  // based upon it.
+  var event = (this.isOpen() ?
+      pagespeed.MobUtil.BeaconEvents.MENU_BUTTON_CLOSE :
+      pagespeed.MobUtil.BeaconEvents.MENU_BUTTON_OPEN);
+  var action = (this.isOpen() ?
+      goog.dom.classlist.remove :
+      goog.dom.classlist.add);
+  pagespeed.MobUtil.sendBeaconEvent(event);
+  action(this.el, pagespeed.MobUtil.ElementClass.OPEN);
+  action(this.clickDetectorDiv_, pagespeed.MobUtil.ElementClass.OPEN);
+  action(document.body, pagespeed.MobUtil.ElementClass.NOSCROLL);
   this.redraw();
 };
 
@@ -272,6 +278,20 @@ mob.NavPanel.prototype.getMenuClickHandlerUrl = function(href, destDomain) {
 
 
 /**
+ * Close all submenus of the main navigation menu.
+ * @private
+ */
+mob.NavPanel.prototype.closeAllSubmenus_ = function() {
+  var openSubmenus = this.el.querySelectorAll(
+      goog.dom.TagName.LI + ' .' + pagespeed.MobUtil.ElementClass.OPEN);
+  for (var i = 0, element; element = openSubmenus[i]; ++i) {
+    goog.dom.classlist.remove(
+        element, pagespeed.MobUtil.ElementClass.OPEN);
+  }
+};
+
+
+/**
  * Add events to the buttons in the nav panel.
  * @private
  */
@@ -284,13 +304,22 @@ mob.NavPanel.prototype.addButtonEvents_ = function() {
       e.preventDefault();
       var target = e.currentTarget;
       // A click was registered on the div that has the hierarchical menu text
-      // and icon. Open up the UL, which should be the next element.
-      goog.dom.classlist.toggle(
-          target.nextSibling, pagespeed.MobUtil.ElementClass.OPEN);
+      // and icon. Open up the UL, which should be the next element.  Here we
+      // use the open state of target.nextSibling as a source of truth.
+      var isSubmenuOpen =
+          goog.dom.classlist.contains(
+              target.nextSibling, pagespeed.MobUtil.ElementClass.OPEN);
+      var event = (isSubmenuOpen ?
+          pagespeed.MobUtil.BeaconEvents.SUBMENU_CLOSE :
+          pagespeed.MobUtil.BeaconEvents.SUBMENU_OPEN);
+      var action = (isSubmenuOpen ?
+          goog.dom.classlist.remove :
+          goog.dom.classlist.add);
+      pagespeed.MobUtil.sendBeaconEvent(event);
+      action(target.nextSibling, pagespeed.MobUtil.ElementClass.OPEN);
       // Also toggle the expand icon, which will be the first child of the P
       // tag, which is the first child of the target div.
-      goog.dom.classlist.toggle(
-          target.firstChild.firstChild, pagespeed.MobUtil.ElementClass.OPEN);
+      action(target.firstChild.firstChild, pagespeed.MobUtil.ElementClass.OPEN);
     }, false);
   }
 
@@ -307,10 +336,20 @@ mob.NavPanel.prototype.addButtonEvents_ = function() {
         aTag.addEventListener(
             goog.events.EventType.CLICK,
             goog.bind(function(iframe, url, event) {
-              this.toggle();
+              pagespeed.MobUtil.sendBeaconEvent(
+                  pagespeed.MobUtil.BeaconEvents.MENU_NAV_CLICK);
               event.preventDefault();
               iframe.src = url;
+              this.toggle();
+              this.closeAllSubmenus_();
             }, this, iframe, url));
+      } else {
+        aTag.addEventListener(
+            goog.events.EventType.CLICK,
+            function() {
+              pagespeed.MobUtil.sendBeaconEvent(
+                  pagespeed.MobUtil.BeaconEvents.MENU_NAV_CLICK);
+            });
       }
     }
   }

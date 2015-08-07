@@ -7329,7 +7329,7 @@ pagespeed.MobUtil = {};
 pagespeed.MobUtil.ElementId = {CLICK_DETECTOR_DIV:"psmob-click-detector-div", CONFIG_IFRAME:"ps-hidden-iframe", DIALER_BUTTON:"psmob-dialer-button", HEADER_BAR:"psmob-header-bar", IFRAME:"psmob-iframe", IFRAME_CONTAINER:"psmob-iframe-container", LOGO_IMAGE:"psmob-logo-image", LOGO_SPAN:"psmob-logo-span", MAP_BUTTON:"psmob-map-button", MENU_BUTTON:"psmob-menu-button", NAV_PANEL:"psmob-nav-panel", PROGRESS_LOG:"ps-progress-log", PROGRESS_REMOVE:"ps-progress-remove", PROGRESS_SCRIM:"ps-progress-scrim", 
 PROGRESS_SHOW_LOG:"ps-progress-show-log", PROGRESS_SPAN:"ps-progress-span", SPACER:"psmob-spacer"};
 pagespeed.MobUtil.ElementClass = {BUTTON:"psmob-button", BUTTON_ICON:"psmob-button-icon", BUTTON_TEXT:"psmob-button-text", HIDE:"psmob-hide", IOS_WEBVIEW:"ios-webview", LABELED:"psmob-labeled", LOGO_CHOOSER_CHOICE:"psmob-logo-chooser-choice", LOGO_CHOOSER_COLOR:"psmob-logo-chooser-color", LOGO_CHOOSER_COLUMN_HEADER:"psmob-logo-chooser-column-header", LOGO_CHOOSER_CONFIG_FRAGMENT:"psmob-logo-chooser-config-fragment", LOGO_CHOOSER_IMAGE:"psmob-logo-chooser-image", LOGO_CHOOSER_SWAP:"psmob-logo-chooser-swap", 
-LOGO_CHOOSER_TABLE:"psmob-logo-chooser-table", MENU_EXPAND_ICON:"psmob-menu-expand-icon", OPEN:"psmob-open", SHOW_BUTTON_TEXT:"psmob-show-button-text", SINGLE_COLUMN:"psmob-single-column", THEME_CONFIG:"psmob-theme-config"};
+LOGO_CHOOSER_TABLE:"psmob-logo-chooser-table", MENU_EXPAND_ICON:"psmob-menu-expand-icon", NOSCROLL:"psmob-noscroll", OPEN:"psmob-open", SHOW_BUTTON_TEXT:"psmob-show-button-text", SINGLE_COLUMN:"psmob-single-column", THEME_CONFIG:"psmob-theme-config"};
 pagespeed.MobUtil.ASCII_0_ = 48;
 pagespeed.MobUtil.ASCII_9_ = 57;
 pagespeed.MobUtil.Rect = function() {
@@ -7590,7 +7590,7 @@ pagespeed.MobUtil.toCssString1 = function(a) {
 pagespeed.MobUtil.consoleLog = function(a) {
   window.psDebugMode && console && console.log && console.log(a);
 };
-pagespeed.MobUtil.BeaconEvents = {CALL_CONVERSION_RESPONSE:"call-conversion-response", CALL_FALLBACK_NUMBER:"call-fallback-number", CALL_GV_NUMBER:"call-gv-number", INITIAL_EVENT:"initial-event", LOAD_EVENT:"load-event", MAP_BUTTON:"psmob-map-button", MENU_BUTTON_CLOSE:"psmob-menu-button-close", MENU_BUTTON_OPEN:"psmob-menu-button-open", NAV_DONE:"nav-done", PHONE_BUTTON:"psmob-phone-dialer"};
+pagespeed.MobUtil.BeaconEvents = {CALL_CONVERSION_RESPONSE:"call-conversion-response", CALL_FALLBACK_NUMBER:"call-fallback-number", CALL_GV_NUMBER:"call-gv-number", INITIAL_EVENT:"initial-event", LOAD_EVENT:"load-event", MAP_BUTTON:"psmob-map-button", MENU_BUTTON_CLOSE:"psmob-menu-button-close", MENU_BUTTON_OPEN:"psmob-menu-button-open", SUBMENU_CLOSE:"psmob-submenu-close", SUBMENU_OPEN:"psmob-submenu-open", MENU_NAV_CLICK:"psmob-menu-nav-click", NAV_DONE:"nav-done", PHONE_BUTTON:"psmob-phone-dialer"};
 pagespeed.MobUtil.sendBeaconEvent = function(a, b, c) {
   !window.psMobBeaconUrl && b ? b() : (a = window.psMobBeaconUrl + "?id=psmob&url=" + encodeURIComponent(document.URL) + "&el=" + a, c && (a += c), c = document.createElement(goog.dom.TagName.IMG), c.src = a, b && (b = pagespeed.MobUtil.runCallbackOnce_(b), c.addEventListener(goog.events.EventType.LOAD, b), c.addEventListener(goog.events.EventType.ERROR, b), window.setTimeout(b, 500)));
 };
@@ -8511,34 +8511,46 @@ mob.NavPanel.prototype.addSubmenuArrows_ = function() {
   }
 };
 mob.NavPanel.prototype.toggle = function() {
-  pagespeed.MobUtil.sendBeaconEvent(this.isOpen() ? pagespeed.MobUtil.BeaconEvents.MENU_BUTTON_CLOSE : pagespeed.MobUtil.BeaconEvents.MENU_BUTTON_OPEN);
-  goog.dom.classlist.toggle(this.el, pagespeed.MobUtil.ElementClass.OPEN);
-  goog.dom.classlist.toggle(this.clickDetectorDiv_, pagespeed.MobUtil.ElementClass.OPEN);
-  goog.dom.classlist.toggle(document.body, "noscroll");
+  var a = this.isOpen() ? pagespeed.MobUtil.BeaconEvents.MENU_BUTTON_CLOSE : pagespeed.MobUtil.BeaconEvents.MENU_BUTTON_OPEN, b = this.isOpen() ? goog.dom.classlist.remove : goog.dom.classlist.add;
+  pagespeed.MobUtil.sendBeaconEvent(a);
+  b(this.el, pagespeed.MobUtil.ElementClass.OPEN);
+  b(this.clickDetectorDiv_, pagespeed.MobUtil.ElementClass.OPEN);
+  b(document.body, pagespeed.MobUtil.ElementClass.NOSCROLL);
   this.redraw();
 };
 mob.NavPanel.prototype.getMenuClickHandlerUrl = function(a, b) {
   var c = new goog.Uri(a);
   return c.getDomain() == document.domain || c.getDomain() == b ? (c.setDomain(b), c.toString()) : null;
 };
+mob.NavPanel.prototype.closeAllSubmenus_ = function() {
+  for (var a = this.el.querySelectorAll(goog.dom.TagName.LI + " ." + pagespeed.MobUtil.ElementClass.OPEN), b = 0, c;c = a[b];++b) {
+    goog.dom.classlist.remove(c, pagespeed.MobUtil.ElementClass.OPEN);
+  }
+};
 mob.NavPanel.prototype.addButtonEvents_ = function() {
   for (var a = this.el.querySelectorAll(goog.dom.TagName.DIV), b = 0, c;c = a[b];++b) {
     c.addEventListener(goog.events.EventType.CLICK, function(a) {
       a.preventDefault();
       a = a.currentTarget;
-      goog.dom.classlist.toggle(a.nextSibling, pagespeed.MobUtil.ElementClass.OPEN);
-      goog.dom.classlist.toggle(a.firstChild.firstChild, pagespeed.MobUtil.ElementClass.OPEN);
+      var b = goog.dom.classlist.contains(a.nextSibling, pagespeed.MobUtil.ElementClass.OPEN), c = b ? goog.dom.classlist.remove : goog.dom.classlist.add;
+      pagespeed.MobUtil.sendBeaconEvent(b ? pagespeed.MobUtil.BeaconEvents.SUBMENU_CLOSE : pagespeed.MobUtil.BeaconEvents.SUBMENU_OPEN);
+      c(a.nextSibling, pagespeed.MobUtil.ElementClass.OPEN);
+      c(a.firstChild.firstChild, pagespeed.MobUtil.ElementClass.OPEN);
     }, !1);
   }
   if (a = document.getElementById(pagespeed.MobUtil.ElementId.IFRAME)) {
     c = (new goog.Uri(a.src)).getDomain();
     for (var d = this.el.querySelectorAll(goog.dom.TagName.LI + " > " + goog.dom.TagName.A), b = 0, e;e = d[b];b++) {
       var f = this.getMenuClickHandlerUrl(e.href, c);
-      f && e.addEventListener(goog.events.EventType.CLICK, goog.bind(function(a, b, c) {
-        this.toggle();
+      f ? e.addEventListener(goog.events.EventType.CLICK, goog.bind(function(a, b, c) {
+        pagespeed.MobUtil.sendBeaconEvent(pagespeed.MobUtil.BeaconEvents.MENU_NAV_CLICK);
         c.preventDefault();
         a.src = b;
-      }, this, a, f));
+        this.toggle();
+        this.closeAllSubmenus_();
+      }, this, a, f)) : e.addEventListener(goog.events.EventType.CLICK, function() {
+        pagespeed.MobUtil.sendBeaconEvent(pagespeed.MobUtil.BeaconEvents.MENU_NAV_CLICK);
+      });
     }
   }
 };

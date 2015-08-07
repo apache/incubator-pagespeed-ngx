@@ -81,6 +81,7 @@ pagespeed.MobUtil.ElementClass = {
   LOGO_CHOOSER_SWAP: 'psmob-logo-chooser-swap',
   LOGO_CHOOSER_TABLE: 'psmob-logo-chooser-table',
   MENU_EXPAND_ICON: 'psmob-menu-expand-icon',
+  NOSCROLL: 'psmob-noscroll',
   OPEN: 'psmob-open',
   SHOW_BUTTON_TEXT: 'psmob-show-button-text',
   SINGLE_COLUMN: 'psmob-single-column',
@@ -887,6 +888,9 @@ pagespeed.MobUtil.BeaconEvents = {
   MAP_BUTTON: 'psmob-map-button',
   MENU_BUTTON_CLOSE: 'psmob-menu-button-close',
   MENU_BUTTON_OPEN: 'psmob-menu-button-open',
+  SUBMENU_CLOSE: 'psmob-submenu-close',
+  SUBMENU_OPEN: 'psmob-submenu-open',
+  MENU_NAV_CLICK: 'psmob-menu-nav-click',
   NAV_DONE: 'nav-done',
   PHONE_BUTTON: 'psmob-phone-dialer'
 };

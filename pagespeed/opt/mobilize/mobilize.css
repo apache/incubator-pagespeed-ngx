@@ -48,7 +48,7 @@ body.mob-iframe {
   margin: 0;
 }
 
-.noscroll {
+.psmob-noscroll {
   overflow: hidden;
 }
 
@@ -408,12 +408,15 @@ body.mob-iframe {
   vertical-align: middle;
   width: 20px;
   height: 20px;
+  -ms-transform: rotate(270deg);
+  -webkit-transform: rotate(270deg);
+  transform: rotate(270deg);
 }
 
 .psmob-menu-expand-icon.psmob-open {
-  -ms-transform: rotate(180deg);
-  -webkit-transform: rotate(180deg);
-  transform: rotate(180deg);
+  -ms-transform: rotate(0deg);
+  -webkit-transform: rotate(0deg);
+  transform: rotate(0deg);
 }
 
 /* TODO(jud): This is probably slow to match, so consider using a class. */
