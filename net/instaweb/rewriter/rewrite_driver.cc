@@ -1033,6 +1033,7 @@ void RewriteDriver::AddPreRenderFilters() {
       rewrite_options->Enabled(RewriteOptions::kDeterministicJs) ||
       rewrite_options->Enabled(RewriteOptions::kHandleNoscriptRedirect) ||
       rewrite_options->Enabled(RewriteOptions::kMakeGoogleAnalyticsAsync) ||
+      rewrite_options->Enabled(RewriteOptions::kMobilize) ||
       rewrite_options->Enabled(RewriteOptions::kMoveCssAboveScripts) ||
       rewrite_options->Enabled(RewriteOptions::kMoveCssToHead) ||
       flush_subresources_enabled) {

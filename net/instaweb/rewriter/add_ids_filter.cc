@@ -75,9 +75,9 @@ bool IsIgnored(HtmlName::Keyword tag) {
 
 }  // namespace
 
-// We don't want this to conflict with another class name, and length
+// We don't want this to conflict with another id name, and length
 // also matters (shorter is better).
-const char AddIdsFilter::kClassPrefix[] = "PageSpeed";
+const char AddIdsFilter::kIdPrefix[] = "PageSpeed";
 
 const int AddIdsFilter::kIsId = -1;
 
@@ -133,7 +133,8 @@ void AddIdsFilter::StartElement(HtmlElement* element) {
   } else if (IsIgnored(tag)) {
     // Don't touch stack in this case.
     return;
-  } else if (NeedsExplicitId(tag)) {
+  } else if (NeedsExplicitId(tag) ||
+             element->FindAttribute(HtmlName::kClass) != NULL) {
     driver_->AddAttribute(element, HtmlName::kId, GetDivCountStackEncoding());
   }
   div_count_stack_.push_back(0);
@@ -169,7 +170,7 @@ void AddIdsFilter::EndElement(HtmlElement* element) {
 GoogleString AddIdsFilter::GetDivCountStackEncoding() {
   DCHECK(!div_count_stack_.empty());
   DCHECK_NE(kIsId, div_count_stack_.back());
-  GoogleString result(kClassPrefix);
+  GoogleString result(kIdPrefix);
   if (!id_stack_.empty()) {
     // Note: we make use of StringPiece(NULL) -> "" in this call.
     StrAppend(&result, "-", id_stack_.back()->escaped_value());

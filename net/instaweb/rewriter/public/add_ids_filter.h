@@ -41,7 +41,7 @@ namespace net_instaweb {
 // PageSpeed-content-11: The 11th child of the node with id='content'.
 class AddIdsFilter : public EmptyHtmlFilter {
  public:
-  static const char kClassPrefix[];
+  static const char kIdPrefix[];
 
   explicit AddIdsFilter(RewriteDriver* driver);
   virtual ~AddIdsFilter();

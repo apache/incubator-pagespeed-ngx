@@ -723,7 +723,7 @@ void MobilizeLabelFilter::HandleDivLikeElement(HtmlElement* element,
       continue;
     }
     if (attr == HtmlName::kId &&
-        value.starts_with(AddIdsFilter::kClassPrefix)) {
+        value.starts_with(AddIdsFilter::kIdPrefix)) {
       // Ignore PageSpeed-inserted ids.
       continue;
     }
@@ -797,6 +797,8 @@ void MobilizeLabelFilter::EndNonSkipElement(HtmlElement* element) {
     }
     PopSampleStack();
     delete sample_to_delete;
+  } else {
+    DeletePagespeedId(element);
   }
   if (FindTagMetadata(element->keyword()) != NULL) {
     --relevant_tag_depth_;
@@ -880,8 +882,8 @@ ElementSample* MobilizeLabelFilter::MakeNewSample(HtmlElement* element) {
     result->role = result->parent->role;
     const HtmlElement::Attribute* id = element->FindAttribute(HtmlName::kId);
     if (id == NULL) {
-      driver()->InfoAt(NULL, "%s element lacks an id!",
-                       element->name_str().as_string().c_str());
+      driver()->ErrorHere("%s element lacks an id!",
+                          element->name_str().as_string().c_str());
       LOG(DFATAL) << "Element lacks an id!";
     } else {
       const char* value = id->escaped_value();
@@ -1315,7 +1317,7 @@ void MobilizeLabelFilter::NonMobileUnlabel() {
 void MobilizeLabelFilter::DeletePagespeedId(HtmlElement* element) {
   if (!driver()->DebugMode() && driver()->IsRewritable(element) &&
       StringPiece(element->EscapedAttributeValue(HtmlName::kId))
-      .starts_with(AddIdsFilter::kClassPrefix)) {
+      .starts_with(AddIdsFilter::kIdPrefix)) {
     // Strip out id if it was inserted by PageSpeed.
     element->DeleteAttribute(HtmlName::kId);
   }

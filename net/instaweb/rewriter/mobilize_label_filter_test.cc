@@ -932,9 +932,12 @@ TEST_F(MobilizeLabelFilterTest, ConfiguredInclusionAndExclusion) {
       " <em class='no' id='yes'>\n"
       "  Navigational\n"
       " </em>\n"
+      " <span class='no' id=\"PageSpeed-5\">\n"
+      "  Non-navigational\n"
+      " </span>\n"
       " <script type=\"text/javascript\">"
       "pagespeedNavigationalIds=['PageSpeed-1','no-a','no-b','yes'];\n"
-      "pagespeedMarginalIds=['no','PageSpeed-3'];\n"
+      "pagespeedMarginalIds=['no','PageSpeed-3','PageSpeed-5'];\n"
       "</script>";
   ExpectTwoRuns("Configured inclusion and exclusion",
                 Unlabel(kOutputHtml), kOutputHtml);
