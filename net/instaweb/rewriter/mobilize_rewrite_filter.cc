@@ -346,6 +346,15 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
       EscapeToJsStringLiteral(options->mob_beacon_url(), false /* add_quotes */,
                               &escaped_mob_beacon_url);
       StrAppend(&src, "window.psMobBeaconUrl='", escaped_mob_beacon_url, "';");
+
+      if (!options->mob_beacon_category().empty()) {
+        GoogleString escaped_mob_beacon_cat;
+        EscapeToJsStringLiteral(options->mob_beacon_category(),
+                                false, /* add_quotes */
+                                &escaped_mob_beacon_cat);
+        StrAppend(&src, "window.psMobBeaconCategory='",
+                  escaped_mob_beacon_cat, "';");
+      }
       driver()->InsertScriptAfterCurrent(src, false);
 
       // TODO(jmarantz): Consider waiting to see if we have a charset directive

@@ -331,6 +331,7 @@ class RewriteOptions {
   static const char kMinCacheTtlMs[];
   static const char kMinImageSizeLowResolutionBytes[];
   static const char kMinResourceCacheTimeToRewriteMs[];
+  static const char kMobBeaconCategory[];
   static const char kMobBeaconUrl[];
   static const char kMobMapLocation[];
   static const char kMobPhoneNumber[];
@@ -2611,6 +2612,12 @@ class RewriteOptions {
     set_option(x.as_string(), &mob_beacon_url_);
   }
   const GoogleString& mob_beacon_url() const { return mob_beacon_url_.value(); }
+  void set_mob_beacon_category(StringPiece x) {
+    set_option(x.as_string(), &mob_beacon_category_);
+  }
+  const GoogleString& mob_beacon_category() const {
+    return mob_beacon_category_.value();
+  }
   void set_mob_phone_number(StringPiece x) {
     set_option(x.as_string(), &mob_phone_number_);
   }
@@ -4167,6 +4174,7 @@ class RewriteOptions {
   Option<bool> mob_static_;
 
   Option<GoogleString> mob_beacon_url_;
+  Option<GoogleString> mob_beacon_category_;
   Option<GoogleString> mob_map_location_;
   Option<GoogleString> mob_phone_number_;
   Option<int64> mob_conversion_id_;

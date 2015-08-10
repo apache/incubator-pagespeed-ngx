@@ -672,6 +672,16 @@ TEST_F(MobilizeRewriteFilterNoLayoutTest, AddStyleAndViewport) {
   HeadTest("add_style_and_viewport", "", "", 0, 0);
 }
 
+TEST_F(MobilizeRewriteFilterNoLayoutTest, BeaconCat) {
+  options()->ClearSignatureForTesting();
+  options()->set_mob_beacon_category("'experiment2'");
+  server_context()->ComputeSignature(options());
+  Parse("beacon_cat", "<head>");
+  EXPECT_NE(GoogleString::npos, output_buffer_.find(
+            ";window.psMobBeaconCategory=\'\\'experiment2\\'\';"))
+      << output_buffer_;
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

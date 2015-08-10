@@ -7592,7 +7592,7 @@ pagespeed.MobUtil.consoleLog = function(a) {
 };
 pagespeed.MobUtil.BeaconEvents = {CALL_CONVERSION_RESPONSE:"call-conversion-response", CALL_FALLBACK_NUMBER:"call-fallback-number", CALL_GV_NUMBER:"call-gv-number", INITIAL_EVENT:"initial-event", LOAD_EVENT:"load-event", MAP_BUTTON:"psmob-map-button", MENU_BUTTON_CLOSE:"psmob-menu-button-close", MENU_BUTTON_OPEN:"psmob-menu-button-open", SUBMENU_CLOSE:"psmob-submenu-close", SUBMENU_OPEN:"psmob-submenu-open", MENU_NAV_CLICK:"psmob-menu-nav-click", NAV_DONE:"nav-done", PHONE_BUTTON:"psmob-phone-dialer"};
 pagespeed.MobUtil.sendBeaconEvent = function(a, b, c) {
-  !window.psMobBeaconUrl && b ? b() : (a = window.psMobBeaconUrl + "?id=psmob&url=" + encodeURIComponent(document.URL) + "&el=" + a, c && (a += c), c = document.createElement(goog.dom.TagName.IMG), c.src = a, b && (b = pagespeed.MobUtil.runCallbackOnce_(b), c.addEventListener(goog.events.EventType.LOAD, b), c.addEventListener(goog.events.EventType.ERROR, b), window.setTimeout(b, 500)));
+  !window.psMobBeaconUrl && b ? b() : (a = window.psMobBeaconUrl + "?id=psmob&url=" + encodeURIComponent(document.URL) + "&el=" + a, window.psMobBeaconCategory && (a += "&category=" + window.psMobBeaconCategory), c && (a += c), c = document.createElement(goog.dom.TagName.IMG), c.src = a, b && (b = pagespeed.MobUtil.runCallbackOnce_(b), c.addEventListener(goog.events.EventType.LOAD, b), c.addEventListener(goog.events.EventType.ERROR, b), window.setTimeout(b, 500)));
 };
 pagespeed.MobUtil.runCallbackOnce_ = function(a) {
   var b = !1;

@@ -920,6 +920,9 @@ pagespeed.MobUtil.sendBeaconEvent = function(beaconEvent, opt_callback,
   var pingUrl = window.psMobBeaconUrl + '?id=psmob' +
                 '&url=' + encodeURIComponent(document.URL) + '&el=' +
                 beaconEvent;
+  if (window.psMobBeaconCategory) {
+    pingUrl += '&category=' + window.psMobBeaconCategory;
+  }
   if (opt_additionalParams) {
     pingUrl += opt_additionalParams;
   }

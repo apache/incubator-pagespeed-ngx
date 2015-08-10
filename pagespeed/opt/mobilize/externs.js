@@ -107,3 +107,7 @@ var psMobPrecompute;
 
 /** @type {string} */
 var psMobBeaconUrl;
+
+
+/** @type {?string} */
+var psMobBeaconCategory;
