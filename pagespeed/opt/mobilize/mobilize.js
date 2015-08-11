@@ -81,7 +81,7 @@ pagespeed.Mob = function() {
    * Time in milliseconds since epoch when mobilization started.
    * @private {number}
    */
-  this.startTimeMs_ = Date.now();
+  this.startTimeMs_ = goog.now();
 
   /**
    * Determines whether the mobilization is in debug mode.  This
@@ -592,7 +592,7 @@ pagespeed.Mob.prototype.updateProgressBar = function(unitsDone, currentOp) {
     }
     this.prevPercentage_ = percent;
   }
-  var elapsedMs = Date.now() - this.startTimeMs_;
+  var elapsedMs = goog.now() - this.startTimeMs_;
   var msg = '' + percent + '% ' + elapsedMs + 'ms: ' + currentOp;
   pagespeed.MobUtil.consoleLog(msg);
   var log = document.getElementById(pagespeed.MobUtil.ElementId.PROGRESS_LOG);

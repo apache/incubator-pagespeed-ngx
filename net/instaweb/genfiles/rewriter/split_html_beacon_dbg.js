@@ -52,6 +52,9 @@
 }, getRequestAnimationFrame:function() {
   return window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || window.oRequestAnimationFrame || window.msRequestAnimationFrame || null;
 }};
+pagespeedutils.now = Date.now || function() {
+  return +new Date;
+};
 pagespeedutils.CriticalXPaths = function(a, c, d) {
   this.windowSize_ = {height:c, width:a};
   this.xpathPairs_ = [];

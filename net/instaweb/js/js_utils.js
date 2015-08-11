@@ -172,3 +172,15 @@ pagespeedutils.getRequestAnimationFrame = function() {
       window.msRequestAnimationFrame ||
       null;
 };
+
+/**
+ * @return {number} An integer value representing the number of milliseconds
+ *     between midnight, January 1, 1970 and the current time.
+ */
+pagespeedutils.now = Date.now || (function() {
+  // TODO(jud) : replace with goog.now when cleaned up.
+  // Unary plus operator converts its operand to a number which in the case of
+  // a date is done by calling getTime().
+  return +new Date();
+});
+

@@ -47,7 +47,7 @@ pagespeed.LocalStorageCache = function() {
  */
 pagespeed.LocalStorageCache.prototype.hasExpired = function(obj) {
   var expiry = parseInt(obj.substring(0, obj.indexOf(' ')), 10);
-  return (!isNaN(expiry) && expiry <= Date.now());
+  return (!isNaN(expiry) && expiry <= pagespeedutils.now());
 };
 
 pagespeed.LocalStorageCache.prototype['hasExpired'] =
@@ -197,7 +197,7 @@ pagespeed.LocalStorageCache.prototype.generateCookie_ = function() {
     var deadUns = [];
     var goodUns = [];
     var minExpiry = 0;
-    var currentTime = Date.now();
+    var currentTime = pagespeedutils.now();
     // Process every local storage object of ours.
     for (var i = 0, n = window.localStorage.length; i < n; ++i) {
       var key = window.localStorage.key(i);

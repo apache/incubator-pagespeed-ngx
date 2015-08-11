@@ -7686,7 +7686,7 @@ mob.button.Dialer.prototype.clickHandler = function(a) {
 };
 mob.button.Dialer.prototype.requestPhoneNumberAndDial_ = function() {
   var a = this.constructRequestPhoneNumberUrl_();
-  a ? (this.debugAlert_("requesting dynamic phone number: " + a), a = new goog.net.Jsonp(a), this.jsonpTime_ = Date.now(), a.send(null, goog.bind(this.receivePhoneNumber_, this, !0), goog.bind(this.receivePhoneNumber_, this, !1))) : this.dialPhone_();
+  a ? (this.debugAlert_("requesting dynamic phone number: " + a), a = new goog.net.Jsonp(a), this.jsonpTime_ = goog.now(), a.send(null, goog.bind(this.receivePhoneNumber_, this, !0), goog.bind(this.receivePhoneNumber_, this, !1))) : this.dialPhone_();
 };
 mob.button.Dialer.prototype.constructRequestPhoneNumberUrl_ = function() {
   if (this.conversionLabel_ && this.conversionId_) {
@@ -7717,9 +7717,9 @@ mob.button.Dialer.prototype.backoffErrorCode_ = function(a) {
   return null;
 };
 mob.button.Dialer.prototype.receivePhoneNumber_ = function(a, b) {
-  var c = Date.now() - this.jsonpTime_, d = b && b.wcm, e = d && d.mobile_number, f = this.backoffErrorCode_(d && d.backoff);
+  var c = goog.now() - this.jsonpTime_, d = b && b.wcm, e = d && d.mobile_number, f = this.backoffErrorCode_(d && d.backoff);
   pagespeed.MobUtil.sendBeaconEvent(pagespeed.MobUtil.BeaconEvents.CALL_CONVERSION_RESPONSE, null, "&s=" + a.toString() + "&t=" + c + "&gv=" + (!(!e || e == this.fallbackPhoneNumber_)).toString() + (f ? "&err=" + f : ""));
-  e && e != this.fallbackPhoneNumber_ && (c = {expires:d.expires, formatted_number:d.formatted_number, mobile_number:e, clabel:this.conversionLabel_, fallback:this.fallbackPhoneNumber_}, c = goog.json.serialize(c), this.debugAlert_("saving phoneNumber in cookie: " + c), (d = parseInt(d.expires, 10)) ? (d -= Math.floor(Date.now() / 1E3), d = Math.min(d, mob.button.Dialer.MAX_WCM_COOKIE_LIFETIME_SEC_)) : d = mob.button.Dialer.MAX_WCM_COOKIE_LIFETIME_SEC_, this.cookies_.set(mob.button.Dialer.WCM_COOKIE_, 
+  e && e != this.fallbackPhoneNumber_ && (c = {expires:d.expires, formatted_number:d.formatted_number, mobile_number:e, clabel:this.conversionLabel_, fallback:this.fallbackPhoneNumber_}, c = goog.json.serialize(c), this.debugAlert_("saving phoneNumber in cookie: " + c), (d = parseInt(d.expires, 10)) ? (d -= Math.floor(goog.now() / 1E3), d = Math.min(d, mob.button.Dialer.MAX_WCM_COOKIE_LIFETIME_SEC_)) : d = mob.button.Dialer.MAX_WCM_COOKIE_LIFETIME_SEC_, this.cookies_.set(mob.button.Dialer.WCM_COOKIE_, 
   window.encodeURIComponent(c), d, "/"), this.googleVoicePhoneNumber_ = e);
   f && this.debugAlert_("WCM request: " + f);
   this.dialPhone_();
@@ -8782,7 +8782,7 @@ window.addEventListener(goog.events.EventType.LOAD, function() {
 pagespeed.Mob = function() {
   this.activeRequestCount_ = 0;
   this.imageMap_ = {};
-  this.startTimeMs_ = Date.now();
+  this.startTimeMs_ = goog.now();
   this.debugMode_ = !1;
   this.pendingImageLoadCount_ = this.workDone_ = this.prevPercentage_ = this.totalWork_ = this.domElementCount_ = 0;
   this.mobilizeAfterImageLoad_ = !1;
@@ -8926,7 +8926,7 @@ pagespeed.Mob.prototype.updateProgressBar = function(a, b) {
     d && (d.style.width = c + "%");
     this.prevPercentage_ = c;
   }
-  d = Date.now() - this.startTimeMs_;
+  d = goog.now() - this.startTimeMs_;
   c = "" + c + "% " + d + "ms: " + b;
   pagespeed.MobUtil.consoleLog(c);
   if (d = document.getElementById(pagespeed.MobUtil.ElementId.PROGRESS_LOG)) {

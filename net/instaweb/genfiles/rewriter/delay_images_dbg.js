@@ -52,6 +52,9 @@
 }, getRequestAnimationFrame:function() {
   return window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || window.oRequestAnimationFrame || window.msRequestAnimationFrame || null;
 }};
+pagespeedutils.now = Date.now || function() {
+  return +new Date;
+};
 window.pagespeed = window.pagespeed || {};
 var pagespeed = window.pagespeed;
 pagespeed.DelayImages = function() {
@@ -71,9 +74,9 @@ pagespeed.DelayImages.prototype.registerLazyLoadHighRes = function() {
     var a = document.body, b, c = 0, d = this;
     this.highResReplaced = !1;
     "ontouchstart" in a ? (pagespeedutils.addHandler(a, "touchstart", function(a) {
-      b = Date.now();
+      b = pagespeedutils.now();
     }), pagespeedutils.addHandler(a, "touchend", function(a) {
-      c = Date.now();
+      c = pagespeedutils.now();
       (null != a.changedTouches && 2 == a.changedTouches.length || null != a.touches && 2 == a.touches.length || 500 > c - b) && d.loadHighRes();
     })) : pagespeedutils.addHandler(window, "click", function(a) {
       d.loadHighRes();

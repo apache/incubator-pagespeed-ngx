@@ -657,6 +657,9 @@ var pagespeedutils = {MAX_POST_SIZE:131072, sendBeacon:function(a, b, c) {
 }, getRequestAnimationFrame:function() {
   return window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || window.oRequestAnimationFrame || window.msRequestAnimationFrame || null;
 }};
+pagespeedutils.now = Date.now || function() {
+  return +new Date;
+};
 var pagespeed = {CriticalCssLoader:{}};
 pagespeed.CriticalCssLoader.stylesAdded_ = !1;
 pagespeed.CriticalCssLoader.addAllStyles = function() {

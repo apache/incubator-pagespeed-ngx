@@ -52,6 +52,9 @@
 }, getRequestAnimationFrame:function() {
   return window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || window.oRequestAnimationFrame || window.msRequestAnimationFrame || null;
 }};
+pagespeedutils.now = Date.now || function() {
+  return +new Date;
+};
 window.pagespeed = window.pagespeed || {};
 var pagespeed = window.pagespeed;
 pagespeed.LazyloadImages = function(a) {

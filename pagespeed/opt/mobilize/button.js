@@ -416,7 +416,7 @@ mob.button.Dialer.prototype.requestPhoneNumberAndDial_ = function() {
   if (url) {
     this.debugAlert_('requesting dynamic phone number: ' + url);
     var req = new goog.net.Jsonp(url);
-    this.jsonpTime_ = Date.now();
+    this.jsonpTime_ = goog.now();
     req.send(null, goog.bind(this.receivePhoneNumber_, this, true),
              goog.bind(this.receivePhoneNumber_, this, false));
   } else {
@@ -500,7 +500,7 @@ mob.button.Dialer.prototype.backoffErrorCode_ = function(backoff) {
  * @param {?Object} json
  */
 mob.button.Dialer.prototype.receivePhoneNumber_ = function(success, json) {
-  var responseTime = Date.now() - this.jsonpTime_;
+  var responseTime = goog.now() - this.jsonpTime_;
   var wcm = json && json['wcm'];
   var phoneNumber = wcm && wcm['mobile_number'];
   var err = this.backoffErrorCode_(wcm && wcm['backoff']);
@@ -524,7 +524,7 @@ mob.button.Dialer.prototype.receivePhoneNumber_ = function(success, json) {
     this.debugAlert_('saving phoneNumber in cookie: ' + cookieValue);
     var expires = parseInt(wcm['expires'], 10);
     if (expires) {
-      expires -= Math.floor(Date.now() / 1000);
+      expires -= Math.floor(goog.now() / 1000);
       expires = Math.min(expires,
                          mob.button.Dialer.MAX_WCM_COOKIE_LIFETIME_SEC_);
     } else {

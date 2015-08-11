@@ -52,6 +52,9 @@
 }, getRequestAnimationFrame:function() {
   return window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || window.oRequestAnimationFrame || window.msRequestAnimationFrame || null;
 }};
+pagespeedutils.now = Date.now || function() {
+  return +new Date;
+};
 window.pagespeed = window.pagespeed || {};
 var pagespeed = window.pagespeed;
 pagespeed.LocalStorageCache = function() {
@@ -59,7 +62,7 @@ pagespeed.LocalStorageCache = function() {
 };
 pagespeed.LocalStorageCache.prototype.hasExpired = function(a) {
   a = parseInt(a.substring(0, a.indexOf(" ")), 10);
-  return !isNaN(a) && a <= Date.now();
+  return !isNaN(a) && a <= pagespeedutils.now();
 };
 pagespeed.LocalStorageCache.prototype.hasExpired = pagespeed.LocalStorageCache.prototype.hasExpired;
 pagespeed.LocalStorageCache.prototype.getData = function(a) {
@@ -114,7 +117,7 @@ pagespeed.LocalStorageCache.prototype.saveInlinedData_ = function() {
 };
 pagespeed.LocalStorageCache.prototype.generateCookie_ = function() {
   if (this.regenerate_cookie_) {
-    for (var a = [], b = [], c = 0, d = Date.now(), g = 0, e = window.localStorage.length;g < e;++g) {
+    for (var a = [], b = [], c = 0, d = pagespeedutils.now(), g = 0, e = window.localStorage.length;g < e;++g) {
       var h = window.localStorage.key(g);
       if (!h.indexOf("pagespeed_lsc_url:")) {
         var f = window.localStorage.getItem(h), k = f.indexOf(" "), l = parseInt(f.substring(0, k), 10);

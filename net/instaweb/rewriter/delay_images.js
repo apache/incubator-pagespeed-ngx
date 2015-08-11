@@ -85,11 +85,11 @@ pagespeed.DelayImages.prototype.registerLazyLoadHighRes = function() {
   this.highResReplaced = false;
   if ('ontouchstart' in elem) {
     pagespeedutils.addHandler(elem, 'touchstart', function(e) {
-      tapStart = Date.now();
+      tapStart = pagespeedutils.now();
     });
 
     pagespeedutils.addHandler(elem, 'touchend', function(e) {
-      tapEnd = Date.now();
+      tapEnd = pagespeedutils.now();
       // Load the high res images if there is a multi-touch or if the tap
       // duration is less than 500ms i.e single click. The timer catches the
       // click event sooner than the click handler on most phones.
