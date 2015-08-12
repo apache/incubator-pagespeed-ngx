@@ -3528,8 +3528,26 @@ bool RewriteDriver::Write(const ResourceVector& inputs,
   output->SetType(type);
   output->set_charset(charset);
   ResponseHeaders* meta_data = output->response_headers();
+  bool clear_last_modified = false;
+
+  // Transfer Last-Modified from the input for single-input on-the-fly
+  // resources.
+  if ((inputs.size() == 1) && (output->kind() == kOnTheFlyResource)) {
+    const ResponseHeaders* input_headers = inputs[0]->response_headers();
+    const char* last_modified = input_headers->Lookup1(
+        HttpAttributes::kLastModified);
+    if (last_modified == NULL) {
+      clear_last_modified = true;
+    } else {
+      meta_data->Add(HttpAttributes::kLastModified, last_modified);
+    }
+  }
+
   server_context_->SetDefaultLongCacheHeaders(
       type, charset, output->cache_control_suffix(), meta_data);
+  if (clear_last_modified) {
+    meta_data->RemoveAll(HttpAttributes::kLastModified);
+  }
   meta_data->SetStatusAndReason(HttpStatus::kOK);
   server_context_->ApplyInputCacheControl(inputs, meta_data);
   server_context_->AddOriginalContentLengthHeader(inputs, meta_data);

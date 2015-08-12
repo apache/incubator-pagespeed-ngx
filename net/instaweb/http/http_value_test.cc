@@ -277,7 +277,7 @@ TEST_F(HTTPValueEncodeTest, EncodeDecodeGold) {
       ".blue {color: blue;}\n";
 
   const char header_first_golden_value_buf[] =
-      "ho\x1\0\0\b\xC8\x1\x12\x2OK\x18\x1 \x1(\xC0\xD8\xBA\xCC\xD5)0\x80\x89"
+      "hv\x1\0\0\b\xC8\x1\x12\x2OK\x18\x1 \x1(\xC0\xD8\xBA\xCC\xD5)0\x80\x89"
       "\x96\xCC\xD5)8\x1@\x1JR\n\x6"
       "Server\x12HApache/2.2.29 (Unix) mod_ssl/2.2.29 OpenSSL/1.0.1j DAV/2"
       " mod_fcgid/2.3.9J.\n\r"
@@ -288,8 +288,9 @@ TEST_F(HTTPValueEncodeTest, EncodeDecodeGold) {
       "Cache-Control\x12\x13public, max-age=600J\x18\n\f"
       "Content-Type\x12\btext/cssJ\x1A\n\x4"
       "Etag\x12\x12W/\"PSA-35DPOkCBal\"J%\n\x4"
-      "Date\x12\x1D" "Fri, 15 May 2015 21:40:32 GMTX\xC0\xCF$h\0p\0"
-      ".blue {color: blue;}\n";
+      "Date\x12\x1D" "Fri, 15 May 2015 21:40:32 GMTP"
+      "\xE0\xC8\xBA\xC1\xBA)X\xC0\xCF$h\0p\0."
+      "blue {color: blue;}\n";
   StringPiece header_first_golden_value(
       header_first_golden_value_buf,
       STATIC_STRLEN(header_first_golden_value_buf));

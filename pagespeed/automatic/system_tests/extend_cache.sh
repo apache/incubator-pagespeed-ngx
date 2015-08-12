@@ -15,6 +15,21 @@ DATE=$(date -R)
 check_not run_wget_with_args --header "If-Modified-Since: $DATE" $URL
 check fgrep "304 Not Modified" $WGET_OUTPUT
 
+start_test Cache-extended last-modified date should match origin
+URL=$REWRITTEN_ROOT/images/Puzzle.jpg.pagespeed.ce.91_WewrLtP.jpg
+ORIGIN_URL=$REWRITTEN_ROOT/images/Puzzle.jpg\?PageSpeed=off
+rm -f $WGET_OUTPUT
+$WGET_DUMP $ORIGIN_URL > $WGET_OUTPUT
+echo $WGET_DUMP $ORIGIN_URL '>' $WGET_OUTPUT
+origin_last_modified=$(extract_headers $WGET_OUTPUT | \
+  scrape_header Last-Modified)
+check [ "$origin_last_modified" != '' ];
+rm -f $WGET_OUTPUT
+$WGET_DUMP $URL > $WGET_OUTPUT
+extended_last_modified=$(extract_headers $WGET_OUTPUT | \
+  scrape_header Last-Modified)
+check [ "$origin_last_modified" = "$extended_last_modified" ]
+
 start_test Legacy format URLs should still work.
 URL=$REWRITTEN_ROOT/images/ce.0123456789abcdef0123456789abcdef.Puzzle,j.jpg
 # Note: Wget request is HTTP/1.0, so some servers respond back with

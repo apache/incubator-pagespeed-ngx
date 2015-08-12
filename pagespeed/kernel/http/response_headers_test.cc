@@ -1610,6 +1610,16 @@ TEST_F(ResponseHeadersTest, FixupMissingDate) {
   EXPECT_TRUE(response_headers_.Lookup1(HttpAttributes::kExpires) == NULL);
 }
 
+TEST_F(ResponseHeadersTest, LastModifiedAsInt64) {
+  response_headers_.Clear();
+  response_headers_.SetLastModified(MockTimer::kApr_5_2010_ms);
+  response_headers_.ComputeCaching();
+  EXPECT_STREQ("Mon, 05 Apr 2010 18:51:26 GMT", response_headers_.Lookup1(
+      HttpAttributes::kLastModified));
+  EXPECT_EQ(MockTimer::kApr_5_2010_ms,
+            response_headers_.last_modified_time_ms());
+}
+
 TEST_F(ResponseHeadersTest, DoNotCorrectValidDate) {
   const GoogleString headers = StrCat(
       "HTTP/1.1 200 OK\r\n"

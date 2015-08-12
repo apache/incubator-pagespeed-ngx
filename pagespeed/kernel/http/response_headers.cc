@@ -596,11 +596,20 @@ void ResponseHeaders::ComputeCaching() {
   HttpResponseHeaders* proto = mutable_proto();
 
   ConstStringStarVector values;
-  int64 date;
-  bool has_date = ParseDateHeader(HttpAttributes::kDate, &date);
+  int64 date_ms, last_modified_ms;
+  bool has_date = ParseDateHeader(HttpAttributes::kDate, &date_ms);
   // Compute the timestamp if we can find it
   if (has_date) {
-    proto->set_date_ms(date);
+    proto->set_date_ms(date_ms);
+  }
+
+  bool has_last_modified = ParseDateHeader(HttpAttributes::kLastModified,
+                                           &last_modified_ms);
+  // Compute the timestamp if we can find it
+  if (has_last_modified) {
+    proto->set_last_modified_time_ms(last_modified_ms);
+  } else {
+    proto->clear_last_modified_time_ms();
   }
 
   // Computes caching info.
@@ -683,11 +692,13 @@ void ResponseHeaders::ComputeCaching() {
         DCHECK(has_date);
         DCHECK(cache_ttl_ms == http_options_.implicit_cache_ttl_ms);
         proto->set_is_implicitly_cacheable(true);
-        SetDateAndCaching(date, cache_ttl_ms, CacheControlValuesToPreserve());
+        SetDateAndCaching(date_ms, cache_ttl_ms,
+                          CacheControlValuesToPreserve());
       } else if (min_cache_ttl_applied_) {
         DCHECK(has_date);
         DCHECK(cache_ttl_ms == http_options_.min_cache_ttl_ms);
-        SetDateAndCaching(date, cache_ttl_ms, CacheControlValuesToPreserve());
+        SetDateAndCaching(date_ms, cache_ttl_ms,
+                          CacheControlValuesToPreserve());
       }
     }
   } else {

@@ -42,6 +42,7 @@
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/cache/lru_cache.h"
 #include "pagespeed/kernel/html/html_parse_test_base.h"
 #include "pagespeed/kernel/http/content_type.h"
@@ -88,7 +89,8 @@ class CacheExtenderTest : public RewriteTestBase {
 
   CacheExtenderTest()
       : kCssData(CssData("")),
-        kCssPath(StrCat(kTestDomain, kCssSubdir)) {
+        kCssPath(StrCat(kTestDomain, kCssSubdir)),
+        last_modified_on_origin_(true) {
     num_cache_extended_ = statistics()->GetVariable(
         CacheExtender::kCacheExtensions);
   }
@@ -103,13 +105,32 @@ class CacheExtenderTest : public RewriteTestBase {
     InitTestWithoutFilters(ttl);
   }
 
+  // Initializes a resource for mock fetching.  Similar to
+  // RewriteTestBase::SetResponseWithDefaultHeaders(), but
+  // retains Last-Modified header as that will propagate to the output.
+  void InitResource(
+      StringPiece resource_name,
+      const ContentType& content_type,
+      StringPiece content,
+      int64 ttl_sec) {
+    if (last_modified_on_origin_) {
+      GoogleString url = AbsolutifyUrl(resource_name);
+      ResponseHeaders response_headers;
+      DefaultResponseHeaders(content_type, ttl_sec, &response_headers);
+      SetFetchResponse(url, response_headers, content);
+    } else {
+      SetResponseWithDefaultHeaders(resource_name, content_type, content,
+                                    ttl_sec);
+    }
+  }
+
   void InitTestWithoutFilters(int64 ttl) {
     rewrite_driver()->AddFilters();
-    SetResponseWithDefaultHeaders(kCssFile, kContentTypeCss, kCssData, ttl);
-    SetResponseWithDefaultHeaders("b.jpg", kContentTypeJpeg, kImageData, ttl);
-    SetResponseWithDefaultHeaders("c.js", kContentTypeJavascript, kJsData, ttl);
-    SetResponseWithDefaultHeaders("introspective.js", kContentTypeJavascript,
-                                  kJsDataIntrospective, ttl);
+    InitResource(kCssFile, kContentTypeCss, kCssData, ttl);
+    InitResource("b.jpg", kContentTypeJpeg, kImageData, ttl);
+    InitResource("c.js", kContentTypeJavascript, kJsData, ttl);
+    InitResource("introspective.js", kContentTypeJavascript,
+                 kJsDataIntrospective, ttl);
     // Reset stats.
     num_cache_extended_->Clear();
   }
@@ -157,7 +178,7 @@ class CacheExtenderTest : public RewriteTestBase {
                      GenerateHtml(a_ext, b_ext, c_ext, kOutput));
   }
 
-  static GoogleString CssData(const StringPiece& url) {
+  static GoogleString CssData(StringPiece url) {
     return StringPrintf(kCssDataFormat, url.as_string().c_str());
   }
 
@@ -198,16 +219,43 @@ class CacheExtenderTest : public RewriteTestBase {
     GoogleString content;
 
     InitTest(kShortTtlSec);
+    int64 expected_last_modified_time_ms = last_modified_on_origin_
+        ? timer()->NowMs() : 0;
+
     // To ensure there's no absolutification (below) of embedded.png's URL in
     // the served CSS file, we have to serve it from test.com and not from
     // cdn.com which TestUrlNamer does when it's being used.
+    ResponseHeaders headers;
+    AdvanceTimeMs(10 * Timer::kSecondMs);
     ASSERT_TRUE(FetchResourceUrl(
-        EncodeNormal(kCssPath, kFilterId, "0", kCssTail, "css"), &content));
+        EncodeNormal(kCssPath, kFilterId, "0", kCssTail, "css"), &content,
+        &headers));
+    int64 fetch1_time_ms = timer()->NowMs();
+    EXPECT_EQ(expected_last_modified_time_ms, headers.last_modified_time_ms());
+    EXPECT_EQ(last_modified_on_origin_,
+              headers.Has(HttpAttributes::kLastModified));
+    EXPECT_GT(fetch1_time_ms, expected_last_modified_time_ms);
+
+    AdvanceTimeMs(10 * Timer::kSecondMs);
+
     EXPECT_EQ(kCssData, content);  // no absolutification
+    headers.Clear();
     ASSERT_TRUE(FetchResource(kTestDomain, kFilterId, "b.jpg", "jpg",
-                              &content));
+                              &content, &headers));
+    int64 fetch2_time_ms = timer()->NowMs();
+    EXPECT_GT(fetch2_time_ms, fetch1_time_ms);
+    EXPECT_EQ(expected_last_modified_time_ms, headers.last_modified_time_ms());
+    EXPECT_EQ(last_modified_on_origin_,
+              headers.Has(HttpAttributes::kLastModified));
+    headers.Clear();
     EXPECT_EQ(GoogleString(kImageData), content);
-    ASSERT_TRUE(FetchResource(kTestDomain, kFilterId, "c.js", "js", &content));
+    ASSERT_TRUE(FetchResource(kTestDomain, kFilterId, "c.js", "js", &content,
+                              &headers));
+    EXPECT_EQ(expected_last_modified_time_ms, headers.last_modified_time_ms());
+    EXPECT_EQ(last_modified_on_origin_,
+              headers.Has(HttpAttributes::kLastModified));
+    headers.Clear();
+
     EXPECT_EQ(GoogleString(kJsData), content);
   }
 
@@ -238,6 +286,7 @@ class CacheExtenderTest : public RewriteTestBase {
   Variable* num_cache_extended_;
   const GoogleString kCssData;
   const GoogleString kCssPath;
+  bool last_modified_on_origin_;
 };
 
 TEST_F(CacheExtenderTest, DoExtend) {
@@ -656,6 +705,12 @@ TEST_F(CacheExtenderTest, NoExtendOriginUncacheable) {
 }
 
 TEST_F(CacheExtenderTest, ServeFiles) {
+  last_modified_on_origin_ = true;
+  TestServeFiles();
+}
+
+TEST_F(CacheExtenderTest, ServeFilesNoLastModifiedOnOrigin) {
+  last_modified_on_origin_ = false;
   TestServeFiles();
 }
 
