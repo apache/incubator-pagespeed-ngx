@@ -1,6 +1,7 @@
 The following files in this directory were copied from chromium's repository at
 revision 256281 (https://src.chromium.org/svn/trunk/src/build/?p=256281).
 
+compiler_version.py (with local bugfix decribed at the top)
 filename_rules.gypi
 get_landmines.py
 grit_action.gypi

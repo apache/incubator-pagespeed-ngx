@@ -1,24 +1,61 @@
-#!/usr/bin/python
+#!/usr/bin/env python
+# Copyright (c) 2012 The Chromium Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# This version contains a bugfix for the compiler returning a single digit
+# version number, as is the case for gcc 5.
 
-# Copyright 2010 Google Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+"""Compiler version checking tool for gcc
 
-# This script is wrapper for the Chromium version of compiler_version.py.
+Print gcc version as XY if you are running gcc X.Y.*.
+This is used to tweak build flags for gcc 4.4.
+"""
 
 import os
+import re
+import subprocess
+import sys
 
-script_dir = os.path.dirname(__file__)
-chrome_src = os.path.normpath(os.path.join(script_dir, os.pardir, 'third_party', 'chromium', 'src'))
+def GetVersion(compiler):
+  try:
+    # Note that compiler could be something tricky like "distcc g++".
+    compiler = compiler + " -dumpversion"
+    pipe = subprocess.Popen(compiler, shell=True,
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    gcc_output, gcc_error = pipe.communicate()
+    if pipe.returncode:
+      raise subprocess.CalledProcessError(pipe.returncode, compiler)
 
-execfile(os.path.join(chrome_src, 'build', 'compiler_version.py'))
+    result = re.match(r"(\d+)\.?(\d+)?", gcc_output)
+    minor_version = result.group(2)
+    if minor_version is None:
+      minor_version = "0"
+    return result.group(1) + minor_version
+  except Exception, e:
+    if gcc_error:
+      sys.stderr.write(gcc_error)
+    print >> sys.stderr, "compiler_version.py failed to execute:", compiler
+    print >> sys.stderr, e
+    return ""
+
+def main():
+  # Check if CXX environment variable exists and
+  # if it does use that compiler.
+  cxx = os.getenv("CXX", None)
+  if cxx:
+    cxxversion = GetVersion(cxx)
+    if cxxversion != "":
+      print cxxversion
+      return 0
+  else:
+    # Otherwise we check the g++ version.
+    gccversion = GetVersion("g++")
+    if gccversion != "":
+      print gccversion
+      return 0
+
+  return 1
+
+if __name__ == "__main__":
+  sys.exit(main())
