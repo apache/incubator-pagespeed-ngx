@@ -691,10 +691,6 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   static const ProcessContext& process_context();
 
  protected:
-  // Common values for HttpBlockingFind* result.
-  const HTTPCache::FindResult kFoundResult;
-  const HTTPCache::FindResult kNotFoundResult;
-
   void Init();
 
   // Override this if the test fixture needs to use a different RequestContext

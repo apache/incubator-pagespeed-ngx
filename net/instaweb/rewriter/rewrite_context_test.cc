@@ -23,7 +23,6 @@
 
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
-#include "net/instaweb/http/public/http_cache_failure.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/rate_controller.h"
@@ -1490,7 +1489,7 @@ TEST_F(RewriteContextTest, EmptyInputResources) {
     // empty resource.
     ConstStringStarVector values;
     EXPECT_TRUE(headers.Lookup(HttpAttributes::kCacheControl, &values));
-    ASSERT_EQ(2, values.size());
+    EXPECT_EQ(2, values.size());
     EXPECT_STREQ("max-age=300", *values[0]);
     EXPECT_STREQ("private", *values[1]);
   }
@@ -2187,6 +2186,7 @@ TEST_F(RewriteContextTest, NestedRewriteWith404) {
                    "a.css\n404.css\n");
   SetFetchResponse404("404.css");
   options()->set_implicit_cache_ttl_ms(kOriginTtlMs / 4);
+  options()->set_metadata_input_errors_cache_ttl_ms(kOriginTtlMs / 2);
 
   const GoogleString kRewrittenUrl = Encode(
       "", NestedFilter::kFilterId, "0", "x.css", "css");
@@ -4807,9 +4807,8 @@ TEST_F(RewriteContextTest, DropFetchesAndRecover) {
   // rewritten.  But we can't grow the dropped-request list unbounded.
   // The important thing is that we can recover in a limited amount of
   // time, say, 10.001 seconds.
-  int64 remember_sec = server_context()->http_cache()->failure_caching_ttl_sec(
-                           kFetchStatusDropped);
-  AdvanceTimeMs(remember_sec * Timer::kSecondMs + 1);
+  AdvanceTimeMs(http_cache()->remember_fetch_dropped_ttl_seconds() *
+                Timer::kSecondMs + 1);
 
   // OK now all is well.  Note that if we had a lot more fetches beyond our
   // max queue size, we might have to wait another 10 seconds for another

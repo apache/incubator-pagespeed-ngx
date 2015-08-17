@@ -1801,7 +1801,7 @@ class CacheCallback : public OptionsAwareHTTPCacheCallback {
   virtual void Done(HTTPCache::FindResult find_result) {
     StringPiece content;
     ResponseHeaders* response_headers = async_fetch_->response_headers();
-    if (find_result.status == HTTPCache::kFound) {
+    if (find_result == HTTPCache::kFound) {
       RewriteStats* stats = driver_->server_context()->rewrite_stats();
       stats->cached_resource_fetches()->Add(1);
 
@@ -2651,6 +2651,7 @@ GoogleString RewriteDriver::ToString(bool show_detached_contexts) const {
     StrAppend(&out, "containing_charset: ", containing_charset_, "\n");
     AppendBool(&out, "filters_added", filters_added_);
     AppendBool(&out, "externally_managed", externally_managed_);
+    AppendBool(&out, "parsing", parsing_);
     switch (waiting_) {
       case kNoWait:
         StrAppend(&out, "waiting: kNoWait\n");

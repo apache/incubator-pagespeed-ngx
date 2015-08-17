@@ -164,7 +164,8 @@ class SystemCachesTest : public CustomRewriteTestBase<SystemRewriteOptions> {
    public:
     explicit HTTPBlockingCallback(ThreadSystem* threads)
         : Callback(RequestContext::NewTestRequestContext(threads)),
-          sync_(threads) {}
+          sync_(threads),
+          result_(HTTPCache::kNotFound) {}
 
     HTTPCache::FindResult result() const { return result_; }
     GoogleString value() const { return value_; }
@@ -181,7 +182,7 @@ class SystemCachesTest : public CustomRewriteTestBase<SystemRewriteOptions> {
    protected:
     virtual void Done(HTTPCache::FindResult state) {
       result_ = state;
-      if (state.status == HTTPCache::kFound) {
+      if (state == HTTPCache::kFound) {
         StringPiece contents;
         http_value()->ExtractContents(&contents);
         contents.CopyToString(&value_);
@@ -255,7 +256,7 @@ class SystemCachesTest : public CustomRewriteTestBase<SystemRewriteOptions> {
     TestHttpPut(server_context->http_cache(), "http://www.example.com",
                 "fragment", "a");
     TestHttpGet(server_context->http_cache(), "http://www.example.com",
-                "fragment", kFoundResult, "a");
+                "fragment", HTTPCache::kFound, "a");
     return server_context.release();
   }
 
@@ -446,9 +447,9 @@ class SystemCachesTest : public CustomRewriteTestBase<SystemRewriteOptions> {
     HTTPValue value;
 
     // As expected, both kUrl1 and kUrl2 are valid after Put.
-    EXPECT_EQ(kFoundResult, HttpBlockingFindWithOptions(
+    EXPECT_EQ(HTTPCache::kFound, HttpBlockingFindWithOptions(
         options, kUrl1, http_cache, &value, &headers));
-    EXPECT_EQ(kFoundResult, HttpBlockingFindWithOptions(
+    EXPECT_EQ(HTTPCache::kFound, HttpBlockingFindWithOptions(
         options, kUrl2, http_cache, &value, &headers));
     AdvanceTimeMs(1000);
     return system_server_context_.get();
@@ -772,11 +773,11 @@ TEST_F(SystemCachesTest, FileShare) {
 
   TestHttpPut(servers[0]->http_cache(), "http://b.org", "fragment", "value");
   TestHttpGet(servers[0]->http_cache(), "http://b.org", "fragment",
-              kFoundResult, "value");
+              HTTPCache::kFound, "value");
   TestHttpGet(servers[1]->http_cache(), "http://b.org", "fragment",
-              kFoundResult, "value");
+              HTTPCache::kFound, "value");
   TestHttpGet(servers[2]->http_cache(), "http://b.org", "fragment",
-              kNotFoundResult, "");
+              HTTPCache::kNotFound, "");
 
   // Lock managers have similar sharing semantics
   scoped_ptr<NamedLock> lock0(
@@ -937,11 +938,11 @@ TEST_F(SystemCachesTest, MemCachedShare) {
 
   TestHttpPut(servers[0]->http_cache(), "http://b.org", "fragment", "value");
   TestHttpGet(servers[0]->http_cache(), "http://b.org", "fragment",
-              kFoundResult, "value");
+              HTTPCache::kFound, "value");
   TestHttpGet(servers[1]->http_cache(), "http://b.org", "fragment",
-              kFoundResult, "value");
+              HTTPCache::kFound, "value");
   TestHttpGet(servers[2]->http_cache(), "http://b.org", "fragment",
-              kFoundResult, "value");
+              HTTPCache::kFound, "value");
 
   STLDeleteElements(&servers);
 }
@@ -1184,9 +1185,9 @@ TEST_F(SystemCachesTest, PurgeUrl) {
   // Make sure we can no longer fetch kUrl1, but we can still fetch kUrl2.
   ResponseHeaders headers;
   HTTPValue value;
-  EXPECT_EQ(kNotFoundResult, HttpBlockingFindWithOptions(
+  EXPECT_EQ(HTTPCache::kNotFound, HttpBlockingFindWithOptions(
       options, kUrl1, server_context->http_cache(), &value, &headers));
-  EXPECT_EQ(kFoundResult, HttpBlockingFindWithOptions(
+  EXPECT_EQ(HTTPCache::kFound, HttpBlockingFindWithOptions(
       options, kUrl2, server_context->http_cache(), &value, &headers));
 
   // Now set the global invalidation timestamp, and kUrl2 will now be invalid
@@ -1197,7 +1198,7 @@ TEST_F(SystemCachesTest, PurgeUrl) {
                            &fetch);
   server_context->FlushCacheIfNecessary();
   AdvanceTimeMs(1);
-  EXPECT_EQ(kNotFoundResult, HttpBlockingFindWithOptions(
+  EXPECT_EQ(HTTPCache::kNotFound, HttpBlockingFindWithOptions(
       options, kUrl2, server_context->http_cache(), &value, &headers));
 }
 
@@ -1216,9 +1217,9 @@ TEST_F(SystemCachesTest, InvalidateWithPurgeDisabled) {
   // Make sure both kUrl1 and kUrl2 are invalidated from touching the file.
   ResponseHeaders headers;
   HTTPValue value;
-  EXPECT_EQ(kNotFoundResult, HttpBlockingFindWithOptions(
+  EXPECT_EQ(HTTPCache::kNotFound, HttpBlockingFindWithOptions(
       options, kUrl1, server_context->http_cache(), &value, &headers));
-  EXPECT_EQ(kNotFoundResult, HttpBlockingFindWithOptions(
+  EXPECT_EQ(HTTPCache::kNotFound, HttpBlockingFindWithOptions(
       options, kUrl2, server_context->http_cache(), &value, &headers));
 }
 

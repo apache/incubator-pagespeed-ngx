@@ -2179,7 +2179,7 @@ void RewriteOptions::AddProperties() {
       "if more rewriting is possible now", true);
   AddRequestProperty(
       kDefaultMetadataInputErrorsCacheTtlMs,
-      &RewriteOptions::deprecated_metadata_input_errors_cache_ttl_ms_,
+      &RewriteOptions::metadata_input_errors_cache_ttl_ms_,
       "mect", true);
   AddRequestProperty(
       true, &RewriteOptions::enable_blink_debug_dashboard_, "ebdd", false);

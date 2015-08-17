@@ -160,11 +160,7 @@ void InPlaceResourceRecorder::ConsiderResponseHeaders(
   // For 4xx and 5xx we can't IPRO, but we can also cache the failure so we
   // don't retry recording for a bit.
   if (response_headers->IsErrorStatus()) {
-    FetchResponseStatus failure_kind = kFetchStatusOtherError;
-    if (status_code_ >= 400 && status_code_ < 500) {
-      failure_kind = kFetchStatus4xxError;
-    }
-    cache_->RememberFailure(url_, fragment_, failure_kind, handler_);
+    cache_->RememberFetchFailed(url_, fragment_, handler_);
     failure_ = true;
     return;
   }
@@ -187,9 +183,9 @@ void InPlaceResourceRecorder::ConsiderResponseHeaders(
       !(content_type->IsImage() ||
         content_type->IsCss() ||
         content_type->IsJs())) {
-    // We remember wrong mimetypes as uncacheable. This is slightly goofy,
-    // and is inconsistent with how they are treated on normal rewrite path...
-    DroppedAsUncacheable();
+    cache_->RememberNotCacheable(
+        url_, fragment_, status_code_ == HttpStatus::kOK, handler_);
+    failure_ = true;
     return;
   }
   bool is_cacheable = response_headers->IsProxyCacheable(
@@ -197,24 +193,17 @@ void InPlaceResourceRecorder::ConsiderResponseHeaders(
       ResponseHeaders::GetVaryOption(http_options_.respect_vary),
       ResponseHeaders::kNoValidator);
   if (!is_cacheable) {
-    DroppedAsUncacheable();
+    cache_->RememberNotCacheable(
+        url_, fragment_, status_code_ == HttpStatus::kOK, handler_);
     num_not_cacheable_->Add(1);
+    failure_ = true;
     return;
   }
 }
 
 void InPlaceResourceRecorder::DroppedDueToSize() {
+  cache_->RememberNotCacheable(url_, fragment_, status_code_ == 200, handler_);
   num_dropped_due_to_size_->Add(1);
-  // Too big == too big to cache.
-  DroppedAsUncacheable();
-}
-
-void InPlaceResourceRecorder::DroppedAsUncacheable() {
-  cache_->RememberFailure(
-      url_, fragment_,
-      status_code_ == 200 ? kFetchStatusUncacheable200
-                          : kFetchStatusUncacheableError,
-      handler_);
   failure_ = true;
 }
 
@@ -233,7 +222,7 @@ void InPlaceResourceRecorder::DoneAndSetHeaders(
   if (status_code_ == HttpStatus::kOK && resource_value_.contents_size() == 0) {
     // Ignore Empty 200 responses.
     // https://github.com/pagespeed/mod_pagespeed/issues/1050
-    cache_->RememberFailure(url_, fragment_, kFetchStatusEmpty, handler_);
+    cache_->RememberEmpty(url_, fragment_, handler_);
     failure_ = true;
   }
 

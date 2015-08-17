@@ -2028,6 +2028,13 @@ class RewriteOptions {
     return metadata_cache_staleness_threshold_ms_.value();
   }
 
+  void set_metadata_input_errors_cache_ttl_ms(int64 x) {
+    set_option(x, &metadata_input_errors_cache_ttl_ms_);
+  }
+  int64 metadata_input_errors_cache_ttl_ms() const {
+    return metadata_input_errors_cache_ttl_ms_.value();
+  }
+
   const GoogleString& downstream_cache_purge_method() const {
     return downstream_cache_purge_method_.value();
   }
@@ -3935,8 +3942,8 @@ class RewriteOptions {
   // used.
   Option<int64> metadata_cache_staleness_threshold_ms_;
 
-  // Doesn't do anything any more.
-  Option<int64> deprecated_metadata_input_errors_cache_ttl_ms_;
+  // The metadata cache ttl for input resources which are 4xx errors.
+  Option<int64> metadata_input_errors_cache_ttl_ms_;
 
   // The HTTP method to use ("PURGE", "GET" etc.) for purge requests sent to
   // downstream caches (e.g. proxy_cache, Varnish).

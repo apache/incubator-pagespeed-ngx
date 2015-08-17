@@ -29,7 +29,6 @@
 #include <vector>
 
 #include "base/logging.h"
-#include "net/instaweb/http/public/http_cache_failure.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "pagespeed/kernel/base/basictypes.h"
@@ -70,6 +69,16 @@ class Resource : public RefCounted<Resource> {
     kReportFailureIfNotCacheable,
   };
 
+  // This enumerates different states of the fetched response.
+  enum FetchResponseStatus {
+    kFetchStatusNotSet,
+    kFetchStatusOK,
+    kFetchStatusUncacheable,
+    kFetchStatus4xxError,
+    kFetchStatusDropped,
+    kFetchStatusEmpty,
+    kFetchStatusOther,
+  };
 
   Resource(const RewriteDriver* driver, const ContentType* type);
 

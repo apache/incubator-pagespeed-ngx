@@ -23,7 +23,6 @@
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_cache.h"
-#include "net/instaweb/http/public/http_cache_failure.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
@@ -192,7 +191,7 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
     }
     Callback* Reset() {
       called_ = false;
-      result_ = HTTPCache::FindResult();
+      result_ = HTTPCache::kNotFound;
       cache_valid_ = true;
       fresh_ = true;
       return this;
@@ -354,7 +353,7 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
       MessageHandler* handler, Callback* callback) {
     http_cache_->Find(key, fragment_, handler, callback);
     EXPECT_TRUE(callback->called_);
-    if (callback->result_.status == HTTPCache::kFound) {
+    if (callback->result_ == HTTPCache::kFound) {
       value->Link(callback->http_value());
     }
     headers->CopyFrom(*callback->response_headers());
@@ -1247,7 +1246,7 @@ TEST_F(CacheUrlAsyncFetcherTest, Check304FresheningModifiedImplicitCacheTtl) {
   // max-age values are as expected.
   HTTPCache::FindResult found = Find(implicit_cache_url_, &value,
                                      &response_headers, &message_handler);
-  EXPECT_EQ(HTTPCache::FindResult(HTTPCache::kFound, kFetchStatusOK), found);
+  EXPECT_EQ(HTTPCache::kFound, found);
   EXPECT_TRUE(response_headers.headers_complete());
   EXPECT_TRUE(value.ExtractContents(&contents));
   EXPECT_TRUE(response_headers.Lookup(HttpAttributes::kCacheControl, &values));
@@ -1275,7 +1274,7 @@ TEST_F(CacheUrlAsyncFetcherTest, Check304FresheningModifiedImplicitCacheTtl) {
   // values have not changed.
   found = Find(implicit_cache_url_, &value, &response_headers,
                &message_handler);
-  EXPECT_EQ(HTTPCache::FindResult(HTTPCache::kFound, kFetchStatusOK), found);
+  EXPECT_EQ(HTTPCache::kFound, found);
   EXPECT_TRUE(response_headers.headers_complete());
   EXPECT_TRUE(value.ExtractContents(&contents));
   EXPECT_TRUE(response_headers.Lookup(HttpAttributes::kCacheControl, &values));
@@ -1302,7 +1301,7 @@ TEST_F(CacheUrlAsyncFetcherTest, Check304FresheningModifiedImplicitCacheTtl) {
 
   found = Find(implicit_cache_url_, &value, &response_headers,
                &message_handler);
-  EXPECT_EQ(HTTPCache::FindResult(HTTPCache::kFound, kFetchStatusOK), found);
+  EXPECT_EQ(HTTPCache::kFound, found);
   EXPECT_TRUE(response_headers.headers_complete());
   EXPECT_TRUE(value.ExtractContents(&contents));
   EXPECT_TRUE(response_headers.Lookup(HttpAttributes::kCacheControl, &values));
@@ -1336,7 +1335,7 @@ TEST_F(CacheUrlAsyncFetcherTest, Check304FresheningMinCacheTtl) {
   // max-age values are as expected.
   HTTPCache::FindResult found = Find(conditional_last_modified_url_, &value,
                                      &response_headers, &message_handler);
-  EXPECT_EQ(HTTPCache::FindResult(HTTPCache::kFound, kFetchStatusOK), found);
+  EXPECT_EQ(HTTPCache::kFound, found);
   EXPECT_TRUE(response_headers.headers_complete());
   EXPECT_TRUE(value.ExtractContents(&contents));
   EXPECT_TRUE(response_headers.Lookup(HttpAttributes::kCacheControl, &values));
@@ -1362,7 +1361,7 @@ TEST_F(CacheUrlAsyncFetcherTest, Check304FresheningMinCacheTtl) {
   // values have not changed.
   found = Find(conditional_last_modified_url_, &value, &response_headers,
                &message_handler);
-  EXPECT_EQ(HTTPCache::FindResult(HTTPCache::kFound, kFetchStatusOK), found);
+  EXPECT_EQ(HTTPCache::kFound, found);
   EXPECT_TRUE(response_headers.headers_complete());
   EXPECT_TRUE(value.ExtractContents(&contents));
   EXPECT_TRUE(response_headers.Lookup(HttpAttributes::kCacheControl, &values));
@@ -1387,7 +1386,7 @@ TEST_F(CacheUrlAsyncFetcherTest, Check304FresheningMinCacheTtl) {
 
   found = Find(conditional_last_modified_url_, &value, &response_headers,
                &message_handler);
-  EXPECT_EQ(HTTPCache::FindResult(HTTPCache::kFound, kFetchStatusOK), found);
+  EXPECT_EQ(HTTPCache::kFound, found);
   EXPECT_TRUE(response_headers.headers_complete());
   EXPECT_TRUE(value.ExtractContents(&contents));
   EXPECT_TRUE(response_headers.Lookup(HttpAttributes::kCacheControl, &values));
@@ -1407,8 +1406,7 @@ TEST_F(CacheUrlAsyncFetcherTest, FetchFailedNoIgnore) {
   EXPECT_EQ(1, counting_fetcher_.fetch_count());
   EXPECT_EQ(0, http_cache_->cache_inserts()->Get());
 
-  http_cache_->RememberFailure(bad_url_, fragment_, kFetchStatusOtherError,
-                               &handler_);
+  http_cache_->RememberFetchFailed(bad_url_, fragment_, &handler_);
   EXPECT_EQ(1, http_cache_->cache_inserts()->Get());
 
   // bad_url_, is not fetched the second time.
@@ -1430,8 +1428,7 @@ TEST_F(CacheUrlAsyncFetcherTest, FetchFailedIgnore) {
   EXPECT_EQ(1, counting_fetcher_.fetch_count());
   EXPECT_EQ(0, http_cache_->cache_inserts()->Get());
 
-  http_cache_->RememberFailure(bad_url_, fragment_, kFetchStatusOtherError,
-                               &handler_);
+  http_cache_->RememberFetchFailed(bad_url_, fragment_, &handler_);
   EXPECT_EQ(1, http_cache_->cache_inserts()->Get());
 
   // bad_url_, is fetched again the second time.

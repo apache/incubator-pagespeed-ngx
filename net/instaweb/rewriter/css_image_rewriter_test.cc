@@ -112,7 +112,7 @@ class CssImageRewriterTest : public CssRewriteTestBase {
     StringPiece out_image;
     HTTPValue value_out;
     ResponseHeaders headers_out;
-    EXPECT_EQ(kFoundResult,
+    EXPECT_EQ(HTTPCache::kFound,
               HttpBlockingFind(StrCat(kTestDomain, image_url), http_cache(),
                                &value_out, &headers_out));
     value_out.ExtractContents(&out_image);

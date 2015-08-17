@@ -102,7 +102,7 @@ class InPlaceResourceRecorderTest : public RewriteTestBase {
 
     HTTPValue value_out;
     ResponseHeaders headers_out;
-    EXPECT_EQ(kFoundResult,
+    EXPECT_EQ(HTTPCache::kFound,
               HttpBlockingFind(kTestUrl, http_cache(),
                                &value_out, &headers_out));
     StringPiece contents;
@@ -130,7 +130,7 @@ class InPlaceResourceRecorderTest : public RewriteTestBase {
     HTTPValue value_out;
     ResponseHeaders headers_out;
     EXPECT_EQ(
-        kNotFoundResult,  // Check it wasn't cached as 'not cacheable'.
+        HTTPCache::kNotFound,  // Check it wasn't cached as 'not cacheable'.
         HttpBlockingFind(kTestUrl, http_cache(), &value_out, &headers_out));
   }
 
@@ -144,8 +144,7 @@ class InPlaceResourceRecorderTest : public RewriteTestBase {
     HTTPValue value_out;
     ResponseHeaders headers_out;
     EXPECT_EQ(
-        HTTPCache::FindResult(HTTPCache::kRecentFailure,
-                              kFetchStatusUncacheable200),
+        HTTPCache::kRecentFetchNotCacheable,
         HttpBlockingFind(kTestUrl, http_cache(), &value_out, &headers_out));
   }
 };
@@ -167,7 +166,7 @@ TEST_F(InPlaceResourceRecorderTest, BasicOperation) {
 
   HTTPValue value_out;
   ResponseHeaders headers_out;
-  EXPECT_EQ(kFoundResult,
+  EXPECT_EQ(HTTPCache::kFound,
             HttpBlockingFind(kTestUrl, http_cache(), &value_out, &headers_out));
   StringPiece contents;
   EXPECT_TRUE(value_out.ExtractContents(&contents));
@@ -190,7 +189,7 @@ TEST_F(InPlaceResourceRecorderTest, IncompleteResponse) {
 
   HTTPValue value_out;
   ResponseHeaders headers_out;
-  EXPECT_EQ(kNotFoundResult,
+  EXPECT_EQ(HTTPCache::kNotFound,
             HttpBlockingFind(kTestUrl, http_cache(), &value_out, &headers_out));
 }
 
@@ -220,7 +219,7 @@ TEST_F(InPlaceResourceRecorderTest, BasicOperationFullHeaders) {
 
   HTTPValue value_out;
   ResponseHeaders headers_out;
-  EXPECT_EQ(kFoundResult,
+  EXPECT_EQ(HTTPCache::kFound,
             HttpBlockingFind(kTestUrl, http_cache(), &value_out, &headers_out));
   StringPiece contents;
   EXPECT_TRUE(value_out.ExtractContents(&contents));
@@ -246,7 +245,7 @@ TEST_F(InPlaceResourceRecorderTest, DontRemember304) {
   HTTPValue value_out;
   ResponseHeaders headers_out;
   // This should be not found, not one of the RememberNot... statuses
-  EXPECT_EQ(kNotFoundResult,
+  EXPECT_EQ(HTTPCache::kNotFound,
             HttpBlockingFind(kTestUrl, http_cache(), &value_out, &headers_out));
 }
 
@@ -268,8 +267,7 @@ TEST_F(InPlaceResourceRecorderTest, Remember500AsFetchFailed) {
   HTTPValue value_out;
   ResponseHeaders headers_out;
   // For 500 we do remember fetch failed.
-  EXPECT_EQ(HTTPCache::FindResult(HTTPCache::kRecentFailure,
-                                  kFetchStatusOtherError),
+  EXPECT_EQ(HTTPCache::kRecentFetchFailed,
             HttpBlockingFind(kTestUrl, http_cache(), &value_out, &headers_out));
 }
 
@@ -285,8 +283,7 @@ TEST_F(InPlaceResourceRecorderTest, RememberEmpty) {
   HTTPValue value_out;
   ResponseHeaders headers_out;
   // Remember recent empty.
-  EXPECT_EQ(HTTPCache::FindResult(HTTPCache::kRecentFailure,
-                                  kFetchStatusEmpty),
+  EXPECT_EQ(HTTPCache::kRecentFetchEmpty,
             HttpBlockingFind(kTestUrl, http_cache(), &value_out, &headers_out));
 }
 

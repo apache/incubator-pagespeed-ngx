@@ -23,7 +23,6 @@
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/async_fetch_with_lock.h"
 #include "net/instaweb/http/public/http_cache.h"
-#include "net/instaweb/http/public/http_cache_failure.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/http_value_writer.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
@@ -109,14 +108,6 @@ class CacheableResourceBase::FetchCallbackBase : public AsyncFetchWithLock {
     bool cached = false;
     // Do not store the response in cache if we are using the fallback.
     if (fallback_fetch_ != NULL && fallback_fetch_->serving_fallback()) {
-      // Normally AddToCache would classify the failure, but we don't
-      // use that in case of fallback, so make sure to compute it here.
-      ResponseHeaders* headers = response_headers();
-      resource_->set_fetch_response_status(HttpCacheFailure::ClassifyFailure(
-          *headers,
-          resource_->contents(),
-          true, /* pretend physical fetch succeeded */
-          true /* pretend cacheable */));
       success = true;
     } else {
       cached = AddToCache(success && http_value_writer()->has_buffered());
@@ -136,8 +127,6 @@ class CacheableResourceBase::FetchCallbackBase : public AsyncFetchWithLock {
       // HTTPValue so that we can successfully extract empty content from it.
       http_value()->Write("", message_handler_);
     }
-
-    // This will also invoke Finalize() on the subclasses.
     AsyncFetchWithLock::HandleDone(success);
   }
 
@@ -218,43 +207,57 @@ class CacheableResourceBase::FetchCallbackBase : public AsyncFetchWithLock {
   // Returns true if the result was successfully cached.
   bool AddToCache(bool success) {
     ResponseHeaders* headers = response_headers();
-    HTTPValue* value = http_value();
-
     // Merge in any extra response headers.
     headers->UpdateFrom(*extra_response_headers());
     resource_->PrepareResponseHeaders(headers);
     headers->ComputeCaching();
     headers->FixDateHeaders(http_cache()->timer()->NowMs());
-    if (rewrite_options_->IsCacheTtlOverridden(url())) {
-      headers->ForceCaching(rewrite_options_->override_caching_ttl_ms());
-    }
-    bool cacheable = resource_->IsValidAndCacheableImpl(*headers);
-    StringPiece contents;
-    if (!value->ExtractContents(&contents)) {
-      contents.clear();
-    }
-    FetchResponseStatus fetch_status = HttpCacheFailure::ClassifyFailure(
-        *headers, contents, success, cacheable);
-    resource_->set_fetch_response_status(fetch_status);
-    if (fetch_status == kFetchStatusOK) {
-      value->SetHeaders(headers);
-      // Note that we could potentially store Vary:Cookie responses
-      // here, as we will have fetched the resource without cookies.
-      // But we must be careful in the mod_pagespeed ipro flow,
-      // where we must avoid storing any resource obtained with a
-      // Cookie.  For now we don't implement this.
-      http_cache()->Put(resource_->cache_key(), driver_->CacheFragment(),
-                        RequestHeaders::Properties(),
-                        request_context()->options(),
-                        value, message_handler_);
-      return true;
-    } else {
-      http_cache()->RememberFailure(resource_->cache_key(),
+    if (success && !headers->IsErrorStatus()) {
+      HTTPValue* value = http_value();
+      if (headers->status_code() == HttpStatus::kOK &&
+          value->contents_size() == 0) {
+        // Do not cache empty 200 responses, but remember that they were empty
+        // to avoid fetching too often.
+        // https://github.com/pagespeed/mod_pagespeed/issues/1050
+        http_cache()->RememberEmpty(resource_->cache_key(),
                                     driver_->CacheFragment(),
-                                    fetch_status,
                                     message_handler_);
-      return false;
+      } else {
+        if (rewrite_options_->IsCacheTtlOverridden(url())) {
+          headers->ForceCaching(rewrite_options_->override_caching_ttl_ms());
+        }
+        if (resource_->IsValidAndCacheableImpl(*headers)) {
+          value->SetHeaders(headers);
+
+          // Note that we could potentially store Vary:Cookie responses
+          // here, as we will have fetched the resource without cookies.
+          // But we must be careful in the mod_pagespeed ipro flow,
+          // where we must avoid storing any resource obtained with a
+          // Cookie.  For now we don't implement this.
+          http_cache()->Put(resource_->cache_key(), driver_->CacheFragment(),
+                            RequestHeaders::Properties(),
+                            request_context()->options(),
+                            value, message_handler_);
+          return true;
+        } else {
+          http_cache()->RememberNotCacheable(
+              resource_->cache_key(), driver_->CacheFragment(),
+              headers->status_code() == HttpStatus::kOK,
+              message_handler_);
+        }
+      }
+    } else {
+      if (headers->Has(HttpAttributes::kXPsaLoadShed)) {
+        http_cache()->RememberFetchDropped(resource_->cache_key(),
+                                           driver_->CacheFragment(),
+                                           message_handler_);
+      } else {
+        http_cache()->RememberFetchFailed(resource_->cache_key(),
+                                          driver_->CacheFragment(),
+                                          message_handler_);
+      }
     }
+    return false;
   }
 
   CacheableResourceBase* resource_;  // owned by the callback.
@@ -382,19 +385,39 @@ class CacheableResourceBase::LoadFetchCallback
 
   virtual void Finalize(bool lock_failure, bool resource_ok) {
     if (!lock_failure && resource_ok) {
+      resource_->set_fetch_response_status(Resource::kFetchStatusOK);
       // Because we've authorized the Fetcher to directly populate the
       // ResponseHeaders in resource_->response_headers_, we must explicitly
       // propagate the content-type to the resource_->type_.
       resource_->DetermineContentType();
     } else {
-      DCHECK_NE(kFetchStatusNotSet,  resource_->fetch_response_status());
+      // Record the type of the fetched response before clearing the response
+      // headers.
+      ResponseHeaders* headers = response_headers();
+      int status_code = headers->status_code();
+      if (headers->Has(HttpAttributes::kXPsaLoadShed)) {
+        resource_->set_fetch_response_status(Resource::kFetchStatusDropped);
+      } else if (status_code >= 400 && status_code < 500) {
+        resource_->set_fetch_response_status(Resource::kFetchStatus4xxError);
+      } else if (status_code == HttpStatus::kOK &&
+                 !headers->IsProxyCacheable(RequestHeaders::Properties(),
+                                            respect_vary_,
+                                            ResponseHeaders::kNoValidator)) {
+        resource_->set_fetch_response_status(Resource::kFetchStatusUncacheable);
+      } else if (status_code == HttpStatus::kOK &&
+                 resource_->contents().empty()) {
+        resource_->set_fetch_response_status(Resource::kFetchStatusEmpty);
+      } else {
+        resource_->set_fetch_response_status(Resource::kFetchStatusOther);
+      }
+
       // It's possible that the fetcher has read some of the headers into
       // our response_headers (perhaps even a 200) before it called Done(false)
       // or before we decided inside AddToCache() that we don't want to deal
       // with this particular resource. In that case, make sure to clear the
       // response_headers() so the various validity bits in Resource are
       // accurate.
-      response_headers()->Clear();
+      headers->Clear();
     }
 
     Statistics* stats = resource_->server_context()->statistics();
@@ -473,20 +496,18 @@ void CacheableResourceBase::LoadHttpCacheCallback::Done(
   // the lock failed, because they will delete expired cache metadata
   // if they have the lock, or if the lock was not needed, but they
   // should not delete it if they fail to lock.
-  switch (find_result.status) {
+  switch (find_result) {
     case HTTPCache::kFound:
       resource_->hits_->Add(1);
       resource_->Link(http_value(), handler);
       resource_->response_headers()->CopyFrom(*response_headers());
       resource_->DetermineContentType();
       resource_->RefreshIfImminentlyExpiring();
-      resource_->set_fetch_response_status(
-          response_headers()->status_code() == HttpStatus::kOK ?
-              kFetchStatusOK : kFetchStatusOtherError);
       resource_callback_->Done(false /* lock_failure */,
                                true /* resource_ok */);
       break;
-    case HTTPCache::kRecentFailure:
+    case HTTPCache::kRecentFetchFailed:
+      resource_->recent_fetch_failures_->Add(1);
       // TODO(jmarantz): in this path, should we try to fetch again
       // sooner than 5 minutes, especially if this is not a background
       // fetch, but rather one for serving the user? This could get
@@ -497,22 +518,28 @@ void CacheableResourceBase::LoadHttpCacheCallback::Done(
       // The "good" news is that if the admin is willing to crank up
       // logging to 'info' then http_cache.cc will log the
       // 'remembered' failure.
-      if (not_cacheable_policy_ == Resource::kLoadEvenIfNotCacheable &&
-          (find_result.failure_details == kFetchStatusUncacheable200 ||
-           find_result.failure_details == kFetchStatusUncacheableError ||
-           find_result.failure_details == kFetchStatusEmpty)) {
-        resource_->recent_uncacheables_miss_->Add(1);
-        LoadAndSaveToCache();
-      } else {
-        if (find_result.failure_details == kFetchStatusUncacheable200 ||
-            find_result.failure_details == kFetchStatusUncacheableError) {
+      resource_callback_->Done(false /* lock_failure */,
+                               false /* resource_ok */);
+      break;
+    case HTTPCache::kRecentFetchEmpty:
+    case HTTPCache::kRecentFetchNotCacheable:
+      switch (not_cacheable_policy_) {
+        case Resource::kLoadEvenIfNotCacheable:
+          // TODO(sligocki): Do we want separate variables for Empty?
+          resource_->recent_uncacheables_miss_->Add(1);
+          LoadAndSaveToCache();
+          break;
+        case Resource::kReportFailureIfNotCacheable:
+          // TODO(sligocki): Do we want separate variables for Empty?
           resource_->recent_uncacheables_failure_->Add(1);
-        } else {
-          resource_->recent_fetch_failures_->Add(1);
-        }
-        resource_->set_fetch_response_status(find_result.failure_details);
-        resource_callback_->Done(false /* lock_failure */,
-                                 false /* resource_ok */);
+          resource_callback_->Done(false /* lock_failure */,
+                                   false /* resource_ok */);
+          break;
+        default:
+          LOG(DFATAL) << "Unexpected not_cacheable_policy_!";
+          resource_callback_->Done(false /* lock_failure */,
+                                   false /* resource_ok */);
+          break;
       }
       break;
     case HTTPCache::kNotFound:
@@ -575,7 +602,7 @@ class CacheableResourceBase::FreshenHttpCacheCallback
   virtual ~FreshenHttpCacheCallback() {}
 
   virtual void Done(HTTPCache::FindResult find_result) {
-    if (find_result.status == HTTPCache::kNotFound &&
+    if (find_result == HTTPCache::kNotFound &&
         !resource_->ShouldSkipBackgroundFetch()) {
       // Not found in cache. Invoke the fetcher.
       FreshenFetchCallback* cb = new FreshenFetchCallback(
@@ -584,7 +611,7 @@ class CacheableResourceBase::FreshenHttpCacheCallback
       cb->Start(driver_->async_fetcher());
     } else {
       if (callback_ != NULL) {
-        bool success = (find_result.status == HTTPCache::kFound) &&
+        bool success = (find_result == HTTPCache::kFound) &&
                        resource_->UpdateInputInfoForFreshen(
                            *response_headers(), *http_value(), callback_);
         callback_->Done(true, success);

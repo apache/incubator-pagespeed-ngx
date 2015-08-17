@@ -20,14 +20,12 @@
 
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_cache.h"
-#include "net/instaweb/http/public/http_cache_failure.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/mock_resource_callback.h"
 #include "net/instaweb/rewriter/public/resource.h"  // for Resource, etc
-#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
@@ -308,8 +306,8 @@ TEST_F(CacheableResourceBaseTest, FetchFailure) {
   CheckStats(resource_.get(), 0, 1, 0, 0, 1);
 
   // Now advance time, should force a refetch.
-  int64 remember_sec = server_context()->http_cache()->failure_caching_ttl_sec(
-                           kFetchStatusOtherError);
+  int64 remember_sec =
+      server_context()->http_cache()->remember_fetch_failed_ttl_seconds();
   AdvanceTimeMs(2 * remember_sec * Timer::kSecondMs);
   resource_->Reset();
   MockResourceCallback callback3(ResourcePtr(resource_.get()),

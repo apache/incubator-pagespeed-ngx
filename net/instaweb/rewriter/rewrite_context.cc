@@ -34,7 +34,6 @@
 #include "base/logging.h"
 #include "net/instaweb/config/rewrite_options_manager.h"
 #include "net/instaweb/http/public/async_fetch.h"
-#include "net/instaweb/http/public/http_cache_failure.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
@@ -1549,11 +1548,27 @@ void RewriteContext::AddRecheckDependency() {
   if (num_slots() == 1) {
     ResourcePtr resource(slot(0)->resource());
     HTTPCache* http_cache = FindServerContext()->http_cache();
-    if (resource->fetch_response_status() == kFetchStatusOK) {
-      ttl_ms = std::max(ttl_ms, (resource->CacheExpirationTimeMs() - now_ms));
-    } else {
-      ttl_ms = http_cache->failure_caching_ttl_sec(
-                   resource->fetch_response_status()) * Timer::kSecondMs;
+    switch (resource->fetch_response_status()) {
+      case Resource::kFetchStatusOK:
+        ttl_ms = std::max(ttl_ms, (resource->CacheExpirationTimeMs() - now_ms));
+        break;
+      case Resource::kFetchStatusDropped:
+        ttl_ms = http_cache->remember_fetch_dropped_ttl_seconds() *
+            Timer::kSecondMs;
+        break;
+      case Resource::kFetchStatus4xxError:
+        ttl_ms = Driver()->options()->metadata_input_errors_cache_ttl_ms();
+        break;
+      case Resource::kFetchStatusUncacheable:
+        ttl_ms = http_cache->remember_not_cacheable_ttl_seconds() *
+            Timer::kSecondMs;
+        break;
+      case Resource::kFetchStatusEmpty:
+        ttl_ms = http_cache->remember_empty_ttl_seconds() * Timer::kSecondMs;
+        break;
+      case Resource::kFetchStatusNotSet:
+      case Resource::kFetchStatusOther:
+        break;
     }
   }
   InputInfo* force_recheck = partitions_->add_other_dependency();
@@ -2985,7 +3000,7 @@ void RewriteContext::FetchFallbackCacheDone(HTTPCache::FindResult result,
   scoped_ptr<HTTPCache::Callback> cleanup_callback(data);
 
   StringPiece contents;
-  if ((result.status == HTTPCache::kFound) &&
+  if ((result == HTTPCache::kFound) &&
       data->http_value()->ExtractContents(&contents) &&
       (data->response_headers()->status_code() == HttpStatus::kOK)) {
     // We want to serve the found result, with short cache lifetime.

@@ -26,7 +26,6 @@
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_cache.h"
-#include "net/instaweb/http/public/http_cache_failure.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
@@ -840,9 +839,8 @@ TEST_F(ServerContextTest, TestInputResourceQuery) {
 
 TEST_F(ServerContextTest, TestRemember404) {
   // Make sure our resources remember that a page 404'd, for limited time.
-  http_cache()->set_failure_caching_ttl_sec(
-      kFetchStatusUncacheableError, 10000);
-  http_cache()->set_failure_caching_ttl_sec(kFetchStatus4xxError, 100);
+  http_cache()->set_remember_not_cacheable_ttl_seconds(10000);
+  http_cache()->set_remember_fetch_failed_ttl_seconds(100);
 
   ResponseHeaders not_found;
   SetDefaultLongCacheHeaders(&kContentTypeHtml, &not_found);
@@ -855,13 +853,11 @@ TEST_F(ServerContextTest, TestRemember404) {
 
   HTTPValue value_out;
   ResponseHeaders headers_out;
-  EXPECT_EQ(
-      HTTPCache::FindResult(HTTPCache::kRecentFailure, kFetchStatus4xxError),
-      HttpBlockingFind(
-          "http://example.com/404", http_cache(), &value_out, &headers_out));
+  EXPECT_EQ(HTTPCache::kRecentFetchFailed, HttpBlockingFind(
+      "http://example.com/404", http_cache(), &value_out, &headers_out));
   AdvanceTimeMs(150 * Timer::kSecondMs);
 
-  EXPECT_EQ(kNotFoundResult, HttpBlockingFind(
+  EXPECT_EQ(HTTPCache::kNotFound, HttpBlockingFind(
       "http://example.com/404", http_cache(), &value_out, &headers_out));
 }
 
@@ -880,13 +876,11 @@ TEST_F(ServerContextTest, TestRememberDropped) {
 
   HTTPValue value_out;
   ResponseHeaders headers_out;
-  EXPECT_EQ(
-      HTTPCache::FindResult(HTTPCache::kRecentFailure, kFetchStatusDropped),
-      HttpBlockingFind(
-          "http://example.com/404", http_cache(), &value_out, &headers_out));
+  EXPECT_EQ(HTTPCache::kRecentFetchFailed, HttpBlockingFind(
+      "http://example.com/404", http_cache(), &value_out, &headers_out));
 
   AdvanceTimeMs(11 * Timer::kSecondMs);
-  EXPECT_EQ(kNotFoundResult, HttpBlockingFind(
+  EXPECT_EQ(HTTPCache::kNotFound, HttpBlockingFind(
       "http://example.com/404", http_cache(), &value_out, &headers_out));
 }
 
@@ -912,11 +906,8 @@ TEST_F(ServerContextTest, TestNonCacheable) {
 
   HTTPValue value_out;
   ResponseHeaders headers_out;
-  EXPECT_EQ(
-      HTTPCache::FindResult(HTTPCache::kRecentFailure,
-                            kFetchStatusUncacheable200),
-      HttpBlockingFind(
-          "http://example.com/", http_cache(), &value_out, &headers_out));
+  EXPECT_EQ(HTTPCache::kRecentFetchNotCacheable, HttpBlockingFind(
+      "http://example.com/", http_cache(), &value_out, &headers_out));
 }
 
 TEST_F(ServerContextTest, TestNonCacheableReadResultPolicy) {
@@ -950,7 +941,7 @@ TEST_F(ServerContextTest, TestNonCacheableReadResultPolicy) {
 
 TEST_F(ServerContextTest, TestRememberEmpty) {
   // Make sure our resources remember that a page is empty, for limited time.
-  http_cache()->set_failure_caching_ttl_sec(kFetchStatusEmpty, 100);
+  http_cache()->set_remember_empty_ttl_seconds(100);
 
   ResponseHeaders headers;
   SetDefaultLongCacheHeaders(&kContentTypeHtml, &headers);
@@ -963,18 +954,17 @@ TEST_F(ServerContextTest, TestRememberEmpty) {
 
   HTTPValue value_out;
   ResponseHeaders headers_out;
-  EXPECT_EQ(HTTPCache::FindResult(HTTPCache::kRecentFailure,
-                                  kFetchStatusEmpty),
+  EXPECT_EQ(HTTPCache::kRecentFetchEmpty,
             HttpBlockingFind(kUrl, http_cache(), &value_out, &headers_out));
 
   AdvanceTimeMs(150 * Timer::kSecondMs);
-  EXPECT_EQ(kNotFoundResult,
+  EXPECT_EQ(HTTPCache::kNotFound,
             HttpBlockingFind(kUrl, http_cache(), &value_out, &headers_out));
 }
 
 TEST_F(ServerContextTest, TestNotRememberEmptyRedirect) {
   // Parallel to TestRememberEmpty for empty 301 redirect.
-  http_cache()->set_failure_caching_ttl_sec(kFetchStatusEmpty, 100);
+  http_cache()->set_remember_empty_ttl_seconds(100);
 
   ResponseHeaders headers;
   SetDefaultLongCacheHeaders(&kContentTypeHtml, &headers);
@@ -991,13 +981,11 @@ TEST_F(ServerContextTest, TestNotRememberEmptyRedirect) {
   // Currently we are remembering 301 as not cacheable, but in the future if
   // that changes the important thing here is that we don't remember non-200
   // as empty (and thus fail to use them.
-  EXPECT_NE(HTTPCache::FindResult(HTTPCache::kRecentFailure,
-                                  kFetchStatusEmpty),
+  EXPECT_NE(HTTPCache::kRecentFetchEmpty,
             HttpBlockingFind(kUrl, http_cache(), &value_out, &headers_out));
 
   AdvanceTimeMs(150 * Timer::kSecondMs);
-  EXPECT_NE(HTTPCache::FindResult(HTTPCache::kRecentFailure,
-                                  kFetchStatusEmpty),
+  EXPECT_NE(HTTPCache::kRecentFetchEmpty,
             HttpBlockingFind(kUrl, http_cache(), &value_out, &headers_out));
 }
 
@@ -1025,11 +1013,8 @@ TEST_F(ServerContextTest, TestVaryOption) {
 
   HTTPValue valueOut;
   ResponseHeaders headersOut;
-  EXPECT_EQ(
-      HTTPCache::FindResult(HTTPCache::kRecentFailure,
-                            kFetchStatusUncacheable200),
-      HttpBlockingFind(
-          "http://example.com/", http_cache(), &valueOut, &headersOut));
+  EXPECT_EQ(HTTPCache::kRecentFetchNotCacheable, HttpBlockingFind(
+      "http://example.com/", http_cache(), &valueOut, &headersOut));
 }
 
 TEST_F(ServerContextTest, TestOutlined) {

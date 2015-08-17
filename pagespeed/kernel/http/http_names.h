@@ -237,38 +237,18 @@ enum Code {
 
   // Instaweb-specific response codes: these are intentionally chosen to be
   // outside the normal HTTP range, but we consider these response codes
-  // to be 'cacheable' in our own cache. These particular ones correspond
-  // to values of the FetchResponseStatus enum (non-numerically).
-  kRememberFailureRangeStart = 10001,
-
-  // Corresponds to kFetchStatusOtherError
+  // to be 'cacheable' in our own cache.
   kRememberFetchFailedStatusCode = 10001,
-
   // Note that this includes all non-200 status code responses that are not
-  // cacheable. Corresponds to kFetchStatusUncacheableError.
+  // cacheable.
   kRememberNotCacheableStatusCode = 10002,
-
   // This includes all 200 status code responses that are not cacheable.
-  // Corresponds to kFetchStatusUncacheable200.
   kRememberNotCacheableAnd200StatusCode = 10003,
-
-  // Corresponds to kFetchStatus4xxError.
-  kRememberFetchFailed4xxCode = 10004,
-
-  // We do not allow caching empty resources. Remember that.
-  // Corresponds to kFetchStatusEmpty.
-  kRememberEmptyStatusCode = 10005,
-
-  // For remembering that we load-shed an attempt to fetch this recently.
-  // Corresponds to kFetchStatusDropped.
-  kRememberDroppedStatusCode = 10006,
-
-  // End point of failure caching range, in the usual [a, b) meaning.
-  kRememberFailureRangeEnd,
-
   // Status code used when the actual status code of the response is unknown at
   // the time of ProxyFetchPropertyCallbackCollector::Detach().
-  kUnknownStatusCode = 10020,
+  kUnknownStatusCode = 10004,
+  // We do not allow caching empty resources. Remember that.
+  kRememberEmptyStatusCode = 10005,
 };
 
 // Transform a status code into the equivalent reason phrase.

@@ -20,7 +20,6 @@
 #define NET_INSTAWEB_HTTP_PUBLIC_HTTP_CACHE_H_
 
 #include "base/logging.h"
-#include "net/instaweb/http/public/http_cache_failure.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "pagespeed/kernel/base/atomic_bool.h"
@@ -69,38 +68,15 @@ class HTTPCache {
             Statistics* stats);
   ~HTTPCache();
 
-  enum FindResultClassification {
+  // When a lookup is done in the HTTP Cache, it returns one of these values.
+  enum FindResult {
     kFound,
     kNotFound,
-    kRecentFailure,
-  };
-
-  // When a lookup is done in the HTTP Cache, it returns one of these values.
-  struct FindResult {
-    FindResult()
-        : status(kNotFound), failure_details(kFetchStatusNotSet) {}
-
-    FindResult(FindResultClassification in_status,
-               FetchResponseStatus in_failure_details)
-        : status(in_status), failure_details(in_failure_details) {}
-
-    bool operator==(const FindResult& other) const {
-      return status == other.status &&
-             failure_details == other.failure_details;
-    }
-
-    bool operator!=(const FindResult& other) const {
-      return !(*this == other);
-    }
-
-    FindResultClassification status;
-
-    // This should be kFetchStatusNotSet if status is kNotFound.
-    // This should be OK if status is kFound.
-    // This should be one of the other values of FetchResponseStatus if
-    // status is kRecentFailure, describing exactly the kind of failure that
-    // got remembered.
-    FetchResponseStatus failure_details;
+    // Helps avoid frequent refetching of resources which have error status
+    // codes or are not cacheable.
+    kRecentFetchFailed,
+    kRecentFetchNotCacheable,
+    kRecentFetchEmpty,  // We do not cache empty resources.
   };
 
   void set_hasher(Hasher* hasher) { hasher_ = hasher; }
@@ -275,14 +251,42 @@ class HTTPCache {
   Timer* timer() const { return timer_; }
   CacheInterface* cache() { return cache_; }
 
-  // Tell the HTTP Cache to remember that a fetch for particular key
-  // failed for some reason (such an error, or being uncacheable, or
-  // load shedding, etc). This will be cached according to
-  // remember_failure_policy(). This can save work for our backends and us.
-  void RememberFailure(const GoogleString& key,
-                       const GoogleString& fragment,
-                       FetchResponseStatus the_failure,
-                       MessageHandler* handler);
+  // Tell the HTTP Cache to remember that a particular key is not cacheable
+  // because the URL was marked with Cache-Control 'nocache' or Cache-Control
+  // 'private'. We would like to avoid DOSing the origin server or spinning our
+  // own wheels trying to re-fetch this resource.
+  // The not-cacheable setting will be 'remembered' for
+  // remember_not_cacheable_ttl_seconds_.
+  // Note that we remember whether the response was originally a "200 OK" so
+  // that we can check if the cache TTL can be overridden.
+  void RememberNotCacheable(const GoogleString& key,
+                            const GoogleString& fragment,
+                            bool is_200_status_code,
+                            MessageHandler* handler);
+
+  // Tell the HTTP Cache to remember that a particular key is not cacheable
+  // because the associated URL failing Fetch.
+  //
+  // The not-cacheable setting will be 'remembered' for
+  // remember_fetch_failed_ttl_seconds_.
+  void RememberFetchFailed(const GoogleString& key,
+                           const GoogleString& fragment,
+                           MessageHandler* handler);
+
+  // Tell the HTTP Cache to remember that we had to give up on doing a
+  // background fetch due to load. This will remember it for
+  // remember_fetch_load_shed_ttl_seconds_.
+  void RememberFetchDropped(const GoogleString& key,
+                            const GoogleString& fragment,
+                            MessageHandler* handler);
+
+  // Tell the HTTP Cache to remember that a particular URL shouldn't be cached
+  // because it was an empty resource. We defensively avoid caching empty input
+  // resources.
+  // https://github.com/pagespeed/mod_pagespeed/issues/1050
+  void RememberEmpty(const GoogleString& key,
+                     const GoogleString& fragment,
+                     MessageHandler* handler);
 
   // Indicates if the response is within the cacheable size limit. Clients of
   // HTTPCache must check if they will be eventually able to cache their entries
@@ -317,12 +321,48 @@ class HTTPCache {
   Variable* cache_inserts()     { return cache_inserts_; }
   Variable* cache_deletes()     { return cache_deletes_; }
 
-  int failure_caching_ttl_sec(FetchResponseStatus kind) const {
-    return remember_failure_policy_.ttl_sec_for_status[kind];
+  int64 remember_not_cacheable_ttl_seconds() {
+    return remember_not_cacheable_ttl_seconds_;
   }
 
-  void set_failure_caching_ttl_sec(FetchResponseStatus kind, int ttl_sec) {
-    remember_failure_policy_.ttl_sec_for_status[kind] = ttl_sec;
+  void set_remember_not_cacheable_ttl_seconds(int64 value) {
+    DCHECK_LE(0, value);
+    if (value >= 0) {
+      remember_not_cacheable_ttl_seconds_ = value;
+    }
+  }
+
+  int64 remember_fetch_failed_ttl_seconds() {
+    return remember_fetch_failed_ttl_seconds_;
+  }
+
+  void set_remember_fetch_failed_ttl_seconds(int64 value) {
+    DCHECK_LE(0, value);
+    if (value >= 0) {
+      remember_fetch_failed_ttl_seconds_ = value;
+    }
+  }
+
+  int64 remember_fetch_dropped_ttl_seconds() {
+    return remember_fetch_dropped_ttl_seconds_;
+  }
+
+  void set_remember_fetch_dropped_ttl_seconds(int64 value) {
+    DCHECK_LE(0, value);
+    if (value >= 0) {
+      remember_fetch_dropped_ttl_seconds_ = value;
+    }
+  }
+
+  int64 remember_empty_ttl_seconds() {
+    return remember_empty_ttl_seconds_;
+  }
+
+  void set_remember_empty_ttl_seconds(int64 value) {
+    DCHECK_LE(0, value);
+    if (value >= 0) {
+      remember_empty_ttl_seconds_ = value;
+    }
   }
 
   int max_cacheable_response_content_length() {
@@ -404,7 +444,10 @@ class HTTPCache {
   Variable* cache_deletes_;
 
   GoogleString name_;
-  HttpCacheFailurePolicy remember_failure_policy_;
+  int64 remember_not_cacheable_ttl_seconds_;
+  int64 remember_fetch_failed_ttl_seconds_;
+  int64 remember_fetch_dropped_ttl_seconds_;
+  int64 remember_empty_ttl_seconds_;
   int64 max_cacheable_response_content_length_;
   AtomicBool ignore_failure_puts_;
 
