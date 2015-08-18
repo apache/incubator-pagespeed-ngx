@@ -64,11 +64,7 @@ class HtmlColor {
   }
 
  public:
-  enum TolerateLevel {
-    EXACTLY_SAME = 0,
-    HIGHLY_SIMILAR = 5,
-    SIMILAR = 10
-  };
+  enum TolerateLevel { EXACTLY_SAME = 0, HIGHLY_SIMILAR = 5, SIMILAR = 10 };
 
   // These methods also accept a CSS shorthand string "#xyz" for convenience.
   // "#xyz" is expanded to "#xxyyzz" before processing.
@@ -76,18 +72,14 @@ class HtmlColor {
   HtmlColor(const char* colorstr, int colorstrlen);
   HtmlColor(unsigned char r, unsigned char g, unsigned char b);
 
-  bool IsDefined() const {
-    return is_bad_value_ == 0;
-  }
+  bool IsDefined() const { return is_bad_value_ == 0; }
 
-  bool IsSimilar(const HtmlColor &color, int level) const {
-    if (!IsDefined() || !color.IsDefined())
-      return false;
+  bool IsSimilar(const HtmlColor& color, int level) const {
+    if (!IsDefined() || !color.IsDefined()) return false;
 
-    if ( (abs(static_cast<int>(r_) - static_cast<int>(color.r_)) <= level) &&
-         (abs(static_cast<int>(g_) - static_cast<int>(color.g_)) <= level) &&
-         (abs(static_cast<int>(b_) - static_cast<int>(color.b_)) <= level)
-       )
+    if ((abs(static_cast<int>(r_) - static_cast<int>(color.r_)) <= level) &&
+        (abs(static_cast<int>(g_) - static_cast<int>(color.g_)) <= level) &&
+        (abs(static_cast<int>(b_) - static_cast<int>(color.b_)) <= level))
       return true;
     return false;
   }
@@ -99,7 +91,7 @@ class HtmlColor {
   // WARNING: this is more expensive than IsSimilar() as it involves float
   // arithmetic and cosine operations.
   // TODO(yian): may need to disintegrate it into a separate HSL class.
-  bool IsSimilarInHSL(const HtmlColor &color, double level) const;
+  bool IsSimilarInHSL(const HtmlColor& color, double level) const;
 
   // return the luminance (0-255) of the color.
   // this corresponds to a human's perception of the color's brightness
@@ -130,8 +122,7 @@ class HtmlColor {
   void SetValueFromStr(StringPiece str);
 
   // Set the html color object from rgb values
-  void SetValueFromRGB(unsigned char r, unsigned char g,
-                       unsigned char b);
+  void SetValueFromRGB(unsigned char r, unsigned char g, unsigned char b);
 
   // must be a color name. It can be one of 147 colors defined in CSS3 color
   // module or SVG 1.0, which is supported by all major browsers. A reference
