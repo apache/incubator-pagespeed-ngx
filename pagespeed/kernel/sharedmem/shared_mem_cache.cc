@@ -653,6 +653,13 @@ template<size_t kBlockSize>
 void SharedMemCache<kBlockSize>::DeleteEntry(Sector<kBlockSize>* sector,
                                              EntryNum entry_num) {
   CacheEntry* entry = sector->EntryAt(entry_num);
+  if (entry->creating) {
+    // A multiple writers (Put or Delete) race. Let the other one proceed,
+    // drop this one. (Call to EnsureReadyForWriting below will deal with any
+    // outstanding readers).
+    sector->mutex()->Unlock();
+    return;
+  }
   EnsureReadyForWriting(sector, entry);
   BlockVector blocks;
   sector->BlockListForEntry(entry, &blocks);
