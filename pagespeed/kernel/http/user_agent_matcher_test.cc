@@ -586,7 +586,7 @@ TEST_F(UserAgentMatcherTest, IE11BlinkFailure) {
 TEST_F(UserAgentMatcherTest, Mobilization) {
   EXPECT_TRUE(user_agent_matcher_->SupportsMobilization(
       kAndroidChrome18UserAgent));
-  EXPECT_TRUE(user_agent_matcher_->SupportsMobilization(
+  EXPECT_FALSE(user_agent_matcher_->SupportsMobilization(
       kAndroidHCUserAgent));
   EXPECT_TRUE(user_agent_matcher_->SupportsMobilization(
       kIPhone4Safari));

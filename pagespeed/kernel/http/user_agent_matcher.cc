@@ -286,7 +286,11 @@ const char* kMobilizationUserAgentBlacklist[] = {
   "*Obigo*",
   // TODO(jmaessen): Remove when there's a fix for scroll misbehavior on CriOS.
   "*CriOS/*",                  // Chrome for iOS.
-  "*GSA*Safari*"               // Google Search Application for iOS.
+  "*GSA*Safari*",              // Google Search Application for iOS.
+  // TODO(jmaessen): Remove when there's a fix for page geometry on the native
+  // Android browser (the old WebKit browser).
+  "*U; Android 3.*",
+  "*U; Android 4.*"
 };
 
 // TODO(mmohabey): Tune this to include more browsers.
