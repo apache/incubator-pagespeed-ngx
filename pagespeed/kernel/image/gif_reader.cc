@@ -368,7 +368,7 @@ bool ReadGifToPng(GifFileType* gif_file,
   // PNG in png_ptr and info_ptr. If expand_colormap is false, we just
   // read the color-indexed GIF file directly into png_ptr and
   // info_ptr.
-  scoped_ptr<ScopedPngStruct> paletted_png;
+  net_instaweb::scoped_ptr<ScopedPngStruct> paletted_png;
   png_structp paletted_png_ptr = NULL;
   png_infop paletted_info_ptr = NULL;
 

@@ -104,9 +104,9 @@ class ScanlineResizer : public ScanlineReaderInterface {
  private:
   ScanlineReaderInterface* reader_;
   // Horizontal resizer.
-  scoped_ptr<ResizeRow> resizer_x_;
+  net_instaweb::scoped_ptr<ResizeRow> resizer_x_;
   // Vertical resizer.
-  scoped_ptr<ResizeCol> resizer_y_;
+  net_instaweb::scoped_ptr<ResizeCol> resizer_y_;
 
   net_instaweb::scoped_array<uint8> output_;
   int width_;

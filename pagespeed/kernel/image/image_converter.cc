@@ -446,7 +446,7 @@ bool GenerateBlankImage(size_t width, size_t height, bool has_transparency,
   PngCompressParams config(PNG_FILTER_NONE, Z_NO_COMPRESSION);
   PixelFormat pixel_format = (has_transparency ? RGBA_8888 : RGB_888);
 
-  scoped_ptr<ScanlineWriterInterface> png_writer(
+  net_instaweb::scoped_ptr<ScanlineWriterInterface> png_writer(
       CreateScanlineWriter(IMAGE_PNG, pixel_format, width, height, &config,
                            output, handler));
   if (png_writer == NULL) {

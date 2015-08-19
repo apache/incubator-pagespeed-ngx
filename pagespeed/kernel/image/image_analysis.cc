@@ -267,8 +267,8 @@ bool AnalyzeImage(ImageFormat image_type,
                   int* quality,
                   ScanlineReaderInterface** reader,
                   MessageHandler* handler) {
-  scoped_ptr<ScanlineReaderInterface> sf_reader;
-  scoped_ptr<PixelFormatOptimizer> optimizer;
+  net_instaweb::scoped_ptr<ScanlineReaderInterface> sf_reader;
+  net_instaweb::scoped_ptr<PixelFormatOptimizer> optimizer;
   bool image_is_animated = false;
   int image_width = 0;
   int image_height = 0;
@@ -290,7 +290,7 @@ bool AnalyzeImage(ImageFormat image_type,
     // frames, we can only get its width and height; if not, we can convert
     // it to a scanline reader and find out whether it is a photo and/or
     // transparent.
-    scoped_ptr<MultipleFrameReader> mf_reader(
+    net_instaweb::scoped_ptr<MultipleFrameReader> mf_reader(
         CreateImageFrameReader(image_type, image_buffer, buffer_length,
                                handler, &status));
     if (mf_reader == NULL) {

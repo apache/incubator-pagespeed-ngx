@@ -26,6 +26,7 @@
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/base/null_mutex.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/image/gif_reader.h"
@@ -171,7 +172,7 @@ class GifReaderTest : public testing::Test {
 
  protected:
   MockMessageHandler message_handler_;
-  scoped_ptr<PngReaderInterface> gif_reader_;
+  net_instaweb::scoped_ptr<PngReaderInterface> gif_reader_;
   ScopedPngStruct read_;
 
  private:
@@ -1199,7 +1200,7 @@ class GifAnimationTest : public testing::Test {
   void* scanline_;
   MockMessageHandler message_handler_;
   GifSquare gif_;
-  scoped_ptr<MultipleFrameReader> reader_;
+  net_instaweb::scoped_ptr<MultipleFrameReader> reader_;
   bool read_all_scanlines_;
   GoogleString filename_;
   GoogleString input_image_;
@@ -1652,7 +1653,7 @@ void CheckImageForOutOfBoundsPixel(const char* filename,
   const PixelRgbaChannels kTransparentPixel = {0, 0, 0, kAlphaTransparent};
 
   MockMessageHandler message_handler(new NullMutex);
-  scoped_ptr<MultipleFrameReader>
+  net_instaweb::scoped_ptr<MultipleFrameReader>
       reader(new TestGifFrameReader(&message_handler));
   GoogleString input_image;
 

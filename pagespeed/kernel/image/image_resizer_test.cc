@@ -20,6 +20,7 @@
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/base/null_mutex.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/image/image_resizer.h"
@@ -233,7 +234,7 @@ TEST_F(ScanlineResizerTest, ResizeAndWrite) {
 
       GoogleString output_image;
       GoogleString file_ext;
-      scoped_ptr<ScanlineWriterInterface> writer(
+      net_instaweb::scoped_ptr<ScanlineWriterInterface> writer(
          CreateWriter(resizer_.GetPixelFormat(),
                       resizer_.GetImageWidth(),
                       resizer_.GetImageHeight(),

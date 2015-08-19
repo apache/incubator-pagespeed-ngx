@@ -25,29 +25,24 @@
 // base/memory, just with the compatibility alias still available.
 #include "base/memory/scoped_ptr.h"
 
-// Note that this expression is carefully crafted so that someone compiling
-// against PSOL libraries will compile using the Chromium version of
-// scoped_array.  This ifdef enables PageSpeed Insights to incrementally
-// upgrade to a new version of Chromium that does not have scoped_array,
-// but does have an array specialization for scoped_ptr.
-#if defined(CHROMIUM_REVISION) && CHROMIUM_REVISION <= 194649
-#define INSTAWEB_HAVE_SCOPED_ARRAY
-#endif
+namespace net_instaweb {
+
+template<typename T> class scoped_ptr : public ::scoped_ptr<T> {
+ public:
+  scoped_ptr() {}
+  explicit scoped_ptr(T* ptr) : ::scoped_ptr<T>(ptr) {}
+};
+
+template<class C> class scoped_ptr<C[]> : public ::scoped_ptr<C[]> {
+ public:
+  scoped_ptr() {}
+  explicit scoped_ptr(C* array) : ::scoped_ptr<C[]>(array) {}
+};
+
+}  // namespace net_instaweb
 
 
 namespace net_instaweb {
-
-#ifdef INSTAWEB_HAVE_SCOPED_ARRAY
-
-// TODO(jmarantz): Remove this once we update Chromium to a version
-// greater than 194649, which will support specialization of arrays.
-template<typename T> class scoped_array : public ::scoped_array<T> {
- public:
-  scoped_array() : ::scoped_array<T>() {}
-  explicit scoped_array(T* t) : ::scoped_array<T>(t) {}
-};
-
-#else
 
 template<typename T> class scoped_array : public scoped_ptr<T[]> {
  public:
@@ -55,8 +50,6 @@ template<typename T> class scoped_array : public scoped_ptr<T[]> {
   explicit scoped_array(T* t) : scoped_ptr<T[]>(t) {}
 };
 
-#endif  // INSTAWEB_HAVE_SCOPED_ARRAY
+}
 
-}  // namespace net_instaweb
-
-#endif  // PAGESPEED_KERNEL_BASE_SCOPED_PTR_H_
+#endif

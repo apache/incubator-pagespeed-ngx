@@ -20,6 +20,7 @@
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/base/null_mutex.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/image/pixel_format_optimizer.h"
 #include "pagespeed/kernel/image/png_optimizer.h"
@@ -64,7 +65,7 @@ class PixelFormatOptimizerTest : public testing::Test {
       return false;
     }
 
-    scoped_ptr<PngScanlineReaderRaw> input_reader(
+    net_instaweb::scoped_ptr<PngScanlineReaderRaw> input_reader(
         new PngScanlineReaderRaw(&message_handler_));
 
     if (!input_reader->Initialize(input_image_.data(), input_image_.length())) {
@@ -154,7 +155,7 @@ TEST_F(PixelFormatOptimizerTest, TruncatedImage) {
                                   &input_image_));
   int truncated_length = input_image_.length() * 0.8;
 
-  scoped_ptr<PngScanlineReaderRaw> input_reader(
+  net_instaweb::scoped_ptr<PngScanlineReaderRaw> input_reader(
       new PngScanlineReaderRaw(&message_handler_));
   ASSERT_TRUE(input_reader->Initialize(input_image_.data(), truncated_length));
   ASSERT_FALSE(optimizer_.Initialize(input_reader.release()).Success());

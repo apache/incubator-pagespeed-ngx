@@ -569,7 +569,7 @@ class PngOptimizerTest : public testing::Test {
 
  protected:
   MockMessageHandler message_handler_;
-  scoped_ptr<PngReaderInterface> reader_;
+  net_instaweb::scoped_ptr<PngReaderInterface> reader_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(PngOptimizerTest);
@@ -605,7 +605,7 @@ class PngScanlineWriterTest : public testing::Test {
   void TestRewritePng(bool best_compression, int* total_bytes);
 
  protected:
-  scoped_ptr<ScanlineWriterInterface> writer_;
+  net_instaweb::scoped_ptr<ScanlineWriterInterface> writer_;
   GoogleString output_;
   PngCompressParams params_;
   unsigned char scanline_[3];
@@ -1265,7 +1265,7 @@ void PngScanlineWriterTest::TestRewritePng(bool best_compression,
     const int num_z = Z_FIXED - Z_DEFAULT_STRATEGY + 1;
     int compression_strategy = Z_DEFAULT_STRATEGY + (i % num_z);
     int filter_level = png_filter_list[(i / num_z) % 5];
-    scoped_ptr<PngCompressParams> params;
+    net_instaweb::scoped_ptr<PngCompressParams> params;
     if (best_compression) {
       params.reset(new PngCompressParams(true /*best compression*/,
                                          true /*progressive*/));
