@@ -1503,10 +1503,6 @@ class RewriteDriver : public HtmlParse {
   // above RefCategory for how this should be used.
   bool release_driver_;
 
-  // Indicates that the rewrite driver is currently parsing the HTML,
-  // and thus should not be recycled under FinishParse() is called.
-  bool parsing_ GUARDED_BY(rewrite_mutex());
-
   // If not kNoWait, indicates that WaitForCompletion or similar method
   // have been called, and an another thread is waiting for us to notify it of
   // everything having been finished in a given mode.

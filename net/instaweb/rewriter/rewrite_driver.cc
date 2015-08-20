@@ -2651,7 +2651,6 @@ GoogleString RewriteDriver::ToString(bool show_detached_contexts) const {
     StrAppend(&out, "containing_charset: ", containing_charset_, "\n");
     AppendBool(&out, "filters_added", filters_added_);
     AppendBool(&out, "externally_managed", externally_managed_);
-    AppendBool(&out, "parsing", parsing_);
     switch (waiting_) {
       case kNoWait:
         StrAppend(&out, "waiting: kNoWait\n");
