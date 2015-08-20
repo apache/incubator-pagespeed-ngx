@@ -1808,3 +1808,5 @@ Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedXHeaderValue "test"
 #ALL_DIRECTIVES ModPagespeedWebpRecompressionQuality 85
 #ALL_DIRECTIVES ModPagespeedWebpRecompressionQualityForSmallScreens 85
+#ALL_DIRECTIVES ModPagespeedImageJpegNumProgressiveScans 3
+#ALL_DIRECTIVES ModPagespeedImageJpegNumProgressiveScansForSmallScreens 2
