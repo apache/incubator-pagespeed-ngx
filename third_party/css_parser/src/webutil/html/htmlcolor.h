@@ -124,6 +124,17 @@ class HtmlColor {
   // Set the html color object from rgb values
   void SetValueFromRGB(unsigned char r, unsigned char g, unsigned char b);
 
+  // Set the html color object from hsl values, hue must be in [0, 1),
+  // saturation and lightness in [0, 1] otherwise IsDefined will return false.;
+  // WARNING: This is more expensive than SetValueFromRGB.
+  void SetValueFromHSL(double hue, double saturation, double lightness);
+
+  // Converts a valid number to HSL color space. hue is in [0, 1), saturation
+  // and lightness in [0, 1].
+  // When IsDefined is false this method does not modify the value of hue,
+  // saturation and lightness and returns false.
+  bool GetValueInHSL(double* hue, double* saturation, double* lightness) const;
+
   // must be a color name. It can be one of 147 colors defined in CSS3 color
   // module or SVG 1.0, which is supported by all major browsers. A reference
   // can be found at:

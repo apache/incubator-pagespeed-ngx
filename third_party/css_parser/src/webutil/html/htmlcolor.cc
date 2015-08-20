@@ -40,7 +40,8 @@ typedef struct RgbValue {
 // when making change to known_color_values, please
 // also change the GetKnownColorValue function because
 // entire table is hardcoded into the function for efficiency
-static const RgbValue known_color_values[] = {  // clang-format off
+// clang-format off
+static const RgbValue known_color_values[] = {
 /* 49 aliceblue */{240, 248, 255},
 /* 50 antiquewhite */{250, 235, 215},
 /* 51 aqua */{  0, 255, 255},
@@ -814,6 +815,63 @@ void HtmlColor::SetValueFromRGB(unsigned char r, unsigned char g,
   is_bad_value_ = kGoodColorValue;
 }
 
+static bool HSLtoRGB(double hue, double saturation, double lightness,
+                     unsigned char* red, unsigned char* green,
+                     unsigned char* blue) {
+  // Imlementation follows wikipedia:
+  // https://en.wikipedia.org/wiki/HSL_and_HSV#From_HSL
+  // The difference being that hue is in [0, 1) instead of [0, 360).
+
+  if (hue < 0.0 || hue >= 1.0 || saturation < 0.0 || saturation > 1.0 ||
+      lightness < 0.0 || lightness > 1.0) {
+    return false;
+  }
+  const double C = (1.0 - fabs(2.0 * lightness - 1.0)) * saturation;
+  const double m = lightness - (C / 2.0);
+  const double hue6 = hue * 6.0;
+  const double X = C * (1.0 - fabs(fmod(hue6, 2.0) - 1.0));
+
+  // Add m already to C and X before rounding.
+  const unsigned char Cbyte =
+      static_cast<unsigned char>(floor((C + m) * 255.0 + 0.5));
+  const unsigned char Xbyte =
+      static_cast<unsigned char>(floor((X + m) * 255.0 + 0.5));
+  const unsigned char Mbyte = static_cast<unsigned char>(floor(m * 255 + 0.5));
+  if (hue6 < 1.0) {
+    *red = Cbyte;
+    *green = Xbyte;
+    *blue = Mbyte;
+  } else if (hue6 < 2.0) {
+    *red = Xbyte;
+    *green = Cbyte;
+    *blue = Mbyte;
+  } else if (hue6 < 3.0) {
+    *red = Mbyte;
+    *green = Cbyte;
+    *blue = Xbyte;
+  } else if (hue6 < 4.0) {
+    *red = Mbyte;
+    *green = Xbyte;
+    *blue = Cbyte;
+  } else if (hue6 < 5.0) {
+    *red = Xbyte;
+    *green = Mbyte;
+    *blue = Cbyte;
+  } else {  // hue6 < 6.0
+    *red = Cbyte;
+    *green = Mbyte;
+    *blue = Xbyte;
+  }
+  return true;
+}
+
+void HtmlColor::SetValueFromHSL(double hue, double saturation,
+                                double lightness) {
+  if (!HSLtoRGB(hue, saturation, lightness, &r_, &g_, &b_)) {
+    SetBadHexValue();
+  }
+}
+
 HtmlColor::HtmlColor(unsigned char r, unsigned char g, unsigned char b) {
   SetValueFromRGB(r, g, b);
 }
@@ -894,6 +952,14 @@ bool HtmlColor::IsSimilarInHSL(const HtmlColor& color, double level) const {
   RGBtoHSL(*this, &h1, &s1, &l1);
   RGBtoHSL(color, &h2, &s2, &l2);
   return HSLDistance(h1, s1, l1, h2, s2, l2) <= level;
+}
+
+bool HtmlColor::GetValueInHSL(double* hue, double* saturation,
+                              double* lightness) const {
+  if (!IsDefined()) return false;
+
+  RGBtoHSL(*this, hue, saturation, lightness);
+  return true;
 }
 
 // Calculate the luminance of the color
