@@ -255,7 +255,6 @@ const char RewriteOptions::kObliviousPagespeedUrls[] = "ObliviousPagespeedUrls";
 const char RewriteOptions::kOptionCookiesDurationMs[] =
     "OptionCookiesDurationMs";
 const char RewriteOptions::kOverrideCachingTtlMs[] = "OverrideCachingTtlMs";
-const char RewriteOptions::kPersistBlinkBlacklist[] = "PersistBlinkBlacklist";
 const char RewriteOptions::kPreserveUrlRelativity[] = "PreserveUrlRelativity";
 const char RewriteOptions::kPrivateNotVaryForIE[] = "PrivateNotVaryForIE";
 const char RewriteOptions::kPubliclyCacheMismatchedHashesExperimental[] =
@@ -2232,12 +2231,6 @@ void RewriteOptions::AddProperties() {
 
   AddRequestProperty(
       -1, &RewriteOptions::blink_blacklist_end_timestamp_ms_, "bbet", false);
-  AddBaseProperty(
-      false,
-      &RewriteOptions::persist_blink_blacklist_,
-      "pbb", kPersistBlinkBlacklist,
-      kDirectoryScope,
-      NULL, false);  // Not applicable for mod_pagespeed.
 
   AddBaseProperty(
       true, &RewriteOptions::preserve_url_relativity_, "pur",

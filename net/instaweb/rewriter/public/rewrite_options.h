@@ -354,7 +354,6 @@ class RewriteOptions {
   static const char kObliviousPagespeedUrls[];
   static const char kOptionCookiesDurationMs[];
   static const char kOverrideCachingTtlMs[];
-  static const char kPersistBlinkBlacklist[];
   static const char kPreserveUrlRelativity[];
   static const char kPrivateNotVaryForIE[];
   static const char kProactiveResourceFreshening[];
@@ -1488,13 +1487,6 @@ class RewriteOptions {
   }
   void set_blink_blacklist_end_timestamp_ms(int64 x) {
     set_option(x, &blink_blacklist_end_timestamp_ms_);
-  }
-
-  bool persist_blink_blacklist() const {
-    return persist_blink_blacklist_.value();
-  }
-  void set_persist_blink_blacklist(bool x) {
-    set_option(x, &persist_blink_blacklist_);
   }
 
   bool preserve_url_relativity() const {
@@ -3979,8 +3971,6 @@ class RewriteOptions {
 
   // The timestamp when blink blacklist expires.
   Option<int64> blink_blacklist_end_timestamp_ms_;
-  // Persist blink blacklist.
-  Option<bool> persist_blink_blacklist_;
 
   // Keep rewritten URLs as relative as the original resource URL was.
   // TODO(sligocki): Remove this option once we know it's always safe.

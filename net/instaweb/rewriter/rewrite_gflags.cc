@@ -466,9 +466,6 @@ DEFINE_bool(use_smart_diff_in_blink, false,
             "If enabled use smart diff to detect publisher changes in html "
             "in blink");
 
-DEFINE_bool(persist_blink_blacklist, false,
-            "Persist the blink blacklist by writing to kansas.");
-
 DEFINE_bool(enable_prioritizing_scripts, false,
     "If it is set to true, defer javascript will prioritize scripts with"
     "data-pagespeed-prioritize attibute.");
@@ -880,10 +877,6 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("max_image_bytes_for_webp_in_css")) {
     options->set_max_image_bytes_for_webp_in_css(
         FLAGS_max_image_bytes_for_webp_in_css);
-  }
-  if (WasExplicitlySet("persist_blink_blacklist")) {
-    options->set_persist_blink_blacklist(
-        FLAGS_persist_blink_blacklist);
   }
   if (WasExplicitlySet("enable_prioritizing_scripts")) {
     options->set_enable_prioritizing_scripts(
