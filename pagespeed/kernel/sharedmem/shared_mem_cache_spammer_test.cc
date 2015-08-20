@@ -122,10 +122,10 @@ TEST_F(SharedMemCacheSpammerTest, SpamCacheEvictionsNoDeletions) {
   // of key, we should never evict anything.  In this test the
   // threads can each check that all their Gets succeed.
   //
-  // TODO(morlovich): we have expect_evictions set here to true so the
-  // test won't fail.  But we are inserting just 10 small key/value pairs
-  // and it is not fitting in a 100kb cache.  Something is not right, and
-  // this needs to be fixed.
+  // We have expect_evictions set here to true. This is not actually because
+  // we expect evictions --- we are inserting just 10 small key/value pairs;
+  // but because SharedMemCache::Get happening concurrently to an in-progress
+  // Put to the same key will miss.
   TestHelper(true, false, "valu");
 }
 
