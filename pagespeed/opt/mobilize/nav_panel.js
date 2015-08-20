@@ -63,6 +63,15 @@ mob.NavPanel = function(navPanelEl, backgroundColor) {
 
 
 /**
+ * The width of the nav panel in CSS pixels. Must match the value in
+ * mobilize.css.
+ * @private {number}
+ * @const
+ */
+mob.NavPanel.WIDTH_ = 350;
+
+
+/**
  * GIF image of an arrow icon, used to indicate hierarchical menus.
  * @private @const {string}
  */
@@ -160,6 +169,14 @@ mob.NavPanel.prototype.initialize_ = function() {
  */
 mob.NavPanel.prototype.redraw = function(opt_marginTopHeight) {
   var scale = mob.util.getScaleTransform();
+
+  // Make sure that the nav panel does not overflow the window on small screen
+  // devices by capping the maximum scale transform.
+  var bodyWidth = pagespeed.MobUtil.pixelValue(
+      window.getComputedStyle(document.body).width);
+  if (bodyWidth) {
+    scale = Math.min(scale, bodyWidth / mob.NavPanel.WIDTH_);
+  }
   var scaleTransform = 'scale(' + scale + ')';
   this.el.style.webkitTransform = scaleTransform;
   this.el.style.transform = scaleTransform;

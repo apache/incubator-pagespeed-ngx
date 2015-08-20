@@ -288,6 +288,7 @@ body.mob-iframe {
   bottom: 0;
   left: 0;
   right: 0;
+  /* The width specified here must match mob.NavPanel.WIDTH_ in nav_panel.js. */
   width: 350px !important;
 
   /* Wordpress sets a z-index of 99999 for its admin header bar, so set a larger

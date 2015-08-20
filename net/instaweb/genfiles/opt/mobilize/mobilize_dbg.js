@@ -8453,6 +8453,7 @@ mob.NavPanel = function(a, b) {
   this.lastScrollY_ = 0;
   this.initialize_();
 };
+mob.NavPanel.WIDTH_ = 350;
 mob.NavPanel.ARROW_ICON_ = "R0lGODlhkACQAPABAP///wAAACH5BAEAAAEALAAAAACQAJAAAAL+jI+py+0Po5y02ouz3rz7D4biSJbmiabqyrbuC8fyTNf2jef6zvf+DwwKh8Si8YhMKpfMpvMJjUqn1Kr1is1qt9yu9wsOi8fksvmMTqvX7Lb7DY/L5/S6/Y7P6/f8vh8EAJATKIhFWFhziEiluBjT6AgFGdkySclkeZmSqYnE2VnyCUokOhpSagqEmtqxytrjurnqFGtSSztLcvu0+9HLm+sbPPWbURx1XJGMPHyxLPXsEA3dLDFNXP1wzZjNsF01/W31LH6VXG6YjZ7Vu651674VG8/l2s1mL2qXn4nHD6nn3yE+Al+5+fcnQL6EBui1QcUwgb6IEvtRVGDporc/RhobKOooLRBIbSNLmjyJMqXKlSxbunwJM6bMmTRr2ryJM6fOnTx7+vwJNKjQoUSLGj2KNKnSpUybOn0KVUcBADs=";
 mob.NavPanel.prototype.initialize_ = function() {
   document.body.appendChild(this.el);
@@ -8483,7 +8484,9 @@ mob.NavPanel.prototype.initialize_ = function() {
   }, this), !1);
 };
 mob.NavPanel.prototype.redraw = function(a) {
-  var b = mob.util.getScaleTransform(), c = "scale(" + b + ")";
+  var b = mob.util.getScaleTransform(), c = pagespeed.MobUtil.pixelValue(window.getComputedStyle(document.body).width);
+  c && (b = Math.min(b, c / mob.NavPanel.WIDTH_));
+  c = "scale(" + b + ")";
   this.el.style.webkitTransform = c;
   this.el.style.transform = c;
   c = this.isOpen() ? 0 : -goog.style.getTransformedSize(this.el).width;
