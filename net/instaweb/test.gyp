@@ -327,6 +327,7 @@
         '<(DEPTH)/pagespeed/kernel/js/js_minify_test.cc',
         '<(DEPTH)/pagespeed/kernel/js/js_tokenizer_test.cc',
         '<(DEPTH)/pagespeed/kernel/sharedmem/inprocess_shared_mem_test.cc',
+        '<(DEPTH)/pagespeed/kernel/sharedmem/shared_mem_cache_spammer_test.cc',
         '<(DEPTH)/pagespeed/kernel/thread/mock_scheduler_test.cc',
         '<(DEPTH)/pagespeed/kernel/thread/pthread_condvar_test.cc',
         '<(DEPTH)/pagespeed/kernel/thread/pthread_thread_system_test.cc',
