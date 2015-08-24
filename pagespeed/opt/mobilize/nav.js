@@ -263,10 +263,8 @@ pagespeed.MobNav.prototype.redrawHeader_ = function() {
           Math.round(goog.style.getTransformedSize(this.headerBar_).height) :
           this.headerBarHeight_;
 
-  var scale = mob.util.getScaleTransform();
-  var scaleTransform = 'scale(' + scale.toString() + ')';
-  this.headerBar_.style.webkitTransform = scaleTransform;
-  this.headerBar_.style.transform = scaleTransform;
+  var fontSize = mob.util.getZoomLevel();
+  this.headerBar_.style.fontSize = fontSize + 'px';
 
   var width = window.innerWidth;
   if (window.getComputedStyle(document.body).getPropertyValue('overflow-y') !=
@@ -276,7 +274,7 @@ pagespeed.MobNav.prototype.redrawHeader_ = function() {
     // scrollbar size if they are hidden).
     width -= goog.style.getScrollbarWidth();
   }
-  this.headerBar_.style.width = (width / scale) + 'px';
+  this.headerBar_.style.width = (width / fontSize) + 'em';
 
   // Restore visibility since the bar was hidden while scrolling and zooming.
   goog.dom.classlist.remove(this.headerBar_,

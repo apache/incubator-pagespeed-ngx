@@ -7600,14 +7600,14 @@ pagespeed.MobUtil.runCallbackOnce_ = function(a) {
     b || (b = !0, a());
   };
 };
-mob.util.getScaleTransform = function() {
+mob.util.getZoomLevel = function() {
   var a = 1;
   "desktop" != window.psDeviceType && (a = 90 == Math.abs(window.orientation) && screen.height > screen.width ? window.innerHeight / screen.width * a : window.innerWidth / screen.width * a);
   goog.labs.userAgent.browser.isAndroidBrowser() && (a *= goog.dom.getPixelRatio());
   return a;
 };
 mob.button = {};
-mob.button.Base_ = function(a, b, c, d) {
+mob.button.AbstractButton = function(a, b, c, d) {
   this.el = document.createElement(goog.dom.TagName.A);
   this.id_ = a;
   this.iconImage_ = b;
@@ -7615,7 +7615,7 @@ mob.button.Base_ = function(a, b, c, d) {
   this.labelText_ = d;
   this.createButton();
 };
-mob.button.Base_.prototype.createButton = function() {
+mob.button.AbstractButton.prototype.createButton = function() {
   this.el.id = this.id_;
   goog.dom.classlist.add(this.el, pagespeed.MobUtil.ElementClass.BUTTON);
   this.el.onclick = goog.bind(this.clickHandler, this);
@@ -7625,42 +7625,6 @@ mob.button.Base_.prototype.createButton = function() {
   this.el.appendChild(a);
   this.labelText_ && (a = document.createElement(goog.dom.TagName.P), goog.dom.classlist.add(a, pagespeed.MobUtil.ElementClass.BUTTON_TEXT), this.el.appendChild(a), a.appendChild(document.createTextNode(this.labelText_)));
 };
-mob.button.Menu = function(a, b) {
-  this.clickHandlerFn_ = b;
-  mob.button.Base_.call(this, pagespeed.MobUtil.ElementId.MENU_BUTTON, mob.button.Menu.ICON_, a, null);
-};
-goog.inherits(mob.button.Menu, mob.button.Base_);
-mob.button.Menu.ICON_ = "R0lGODlhYABgAPAAAAAAAAAAACH5BAEAAAEALAAAAABgAGAAAAK6jI+py+0Po5y02ouz3rz7D4biSJbmiabqyrbuC8fyTNf2jef6zvf+DwwKh8Si8agCKJfMpvMJjUqnTg71is1qldat97vtgsfkp7iMJp/T7PCmDXdr4vQr8o7P6/f8vv8PGCg4SHhTdxi1hriouHjY6EgHGQk3SclmeYmWqalW+AkaKjpKWmp6ipqqatH5+NYq+QpbKTuLWWu7iZvrOcebxvlrt0pcbHyMnKy8zNzs/AwdLT1NXW19TVoAADs=";
-mob.button.Menu.prototype.clickHandler = function() {
-  this.clickHandlerFn_();
-};
-mob.button.Map = function(a, b, c, d) {
-  this.mapLocation_ = b;
-  this.conversionId_ = c;
-  this.conversionLabel_ = d;
-  mob.button.Base_.call(this, pagespeed.MobUtil.ElementId.MAP_BUTTON, mob.button.Map.ICON_, a, mob.button.Map.LABEL_);
-};
-goog.inherits(mob.button.Map, mob.button.Base_);
-mob.button.Map.ICON_ = "R0lGODlhYABgAPAAAAAAAAAAACH5BAEAAAEAIf8LSW1hZ2VNYWdpY2sHZ2FtbWE9MQAsAAAAAGAAYAAAAv6Mj6nL7Q+jnLTai7PevPsPhuJIluaJpuo6Au4Ls3IA1/Y7l/fO5x8P7Pk0weJteDEqj0jJ8llrQqBUnJRRzQKuCq2We/B6wWIxtzyWos3IdbntTufi7zldLmMj9Cx895tX5SQYCEVB2Ed1qJhoWIGYAjnoqMJoYRlJ+aiJgrn41LiE4XlCOim6YhqhSiK5ytoCiyUr4upgW0q7pxuSdQpaiGvgV0nMF3rHW5vs68OsHPuM6iw9TV0dpIadrb3N1O0ddRYeQ0ZuZU4OFna+zu7t/r4dLy9NX/98j3+nv8vc7y8ZwIBxBhJ0Y/BgnYT7ADFs2OwhRE4SaRyrOMwhRjeF1jZOBOJxFrCQf0aSTGDyJEojKm9xa9kAJEyXO2Y+qGnzpricOl3wHPQzqNChRIsaPYo0acUCADs=";
-mob.button.Map.LABEL_ = "GET DIRECTIONS";
-mob.button.Map.prototype.clickHandler = function() {
-  pagespeed.MobUtil.sendBeaconEvent(pagespeed.MobUtil.BeaconEvents.MAP_BUTTON, goog.bind(this.openMap_, this));
-};
-mob.button.Map.prototype.getMapUrl_ = function() {
-  return "https://maps.google.com/maps?q=" + encodeURIComponent(this.mapLocation_);
-};
-mob.button.Map.prototype.openMap_ = function() {
-  if (this.conversionId_ && this.conversionLabel_) {
-    var a = new Image;
-    a.onload = goog.bind(function() {
-      goog.global.location = this.getMapUrl_();
-    }, this);
-    a.onerror = a.onload;
-    a.src = "//www.googleadservices.com/pagead/conversion/" + this.conversionId_ + "/?label=" + this.conversionLabel_ + "&amp;guid=ON&amp;script=0";
-  } else {
-    goog.global.location = this.getMapUrl_();
-  }
-};
 mob.button.Dialer = function(a, b, c, d) {
   this.fallbackPhoneNumber_ = b;
   this.googleVoicePhoneNumber_ = null;
@@ -7668,9 +7632,9 @@ mob.button.Dialer = function(a, b, c, d) {
   this.conversionLabel_ = d;
   this.cookies_ = new goog.net.Cookies(document);
   this.jsonpTime_ = null;
-  mob.button.Base_.call(this, pagespeed.MobUtil.ElementId.DIALER_BUTTON, mob.button.Dialer.ICON_, a, mob.button.Dialer.LABEL_);
+  mob.button.AbstractButton.call(this, pagespeed.MobUtil.ElementId.DIALER_BUTTON, mob.button.Dialer.ICON_, a, mob.button.Dialer.LABEL_);
 };
-goog.inherits(mob.button.Dialer, mob.button.Base_);
+goog.inherits(mob.button.Dialer, mob.button.AbstractButton);
 mob.button.Dialer.ICON_ = "R0lGODlhYABgAPAAAAAAAAAAACH5BAEAAAEAIf8LSW1hZ2VNYWdpY2sHZ2FtbWE9MQAsAAAAAGAAYAAAAv6Mj6nL7Q+jnLTai7PevPsPhuJIluaJpurKtu4Lx/KsAvaN5zcd6r7P8/yGuSCHiAQYN0niUtMcPjPR3xRTBV4tWd2W28V9K2HxeFI2nyNp21rSVr4h8Tm9bX/E5fnFvt9QB+iHN6ggaIiAmHiQxngY9giZJTkZVUnYhJmJtMmQ5PnpFMrpRSqqdWpZpFqq1tpoBZsgNRsraxtQmzvKu2v7O9sLHAw7bHzc2ulbrLpM3IzGegV6UW10Le0Ik3232KLp/cfdvfoNHm5+7pJ+u7dDc2nwbhpPv81zX/akT8nf324JwGdTBkbDZnDamITw3jDsY9BQP0b3MK171IVZqhBcHDt6/AgypMiRJEuaDFUAADs=";
 mob.button.Dialer.LABEL_ = "CALL US";
 mob.button.Dialer.WCM_COOKIE_ = "psgwcm";
@@ -7686,7 +7650,7 @@ mob.button.Dialer.prototype.clickHandler = function(a) {
 };
 mob.button.Dialer.prototype.requestPhoneNumberAndDial_ = function() {
   var a = this.constructRequestPhoneNumberUrl_();
-  a ? (this.debugAlert_("requesting dynamic phone number: " + a), a = new goog.net.Jsonp(a), this.jsonpTime_ = goog.now(), a.send(null, goog.bind(this.receivePhoneNumber_, this, !0), goog.bind(this.receivePhoneNumber_, this, !1))) : this.dialPhone_();
+  a ? (this.debugAlert_("requesting dynamic phone number: " + a), a = new goog.net.Jsonp(a), a.setRequestTimeout(2E3), this.jsonpTime_ = goog.now(), a.send(null, goog.bind(this.receivePhoneNumber_, this, !0), goog.bind(this.receivePhoneNumber_, this, !1))) : this.dialPhone_();
 };
 mob.button.Dialer.prototype.constructRequestPhoneNumberUrl_ = function() {
   if (this.conversionLabel_ && this.conversionId_) {
@@ -7730,6 +7694,42 @@ mob.button.Dialer.prototype.getPhoneNumberFromCookie_ = function() {
 };
 mob.button.Dialer.prototype.debugAlert_ = function(a) {
   window.psDebugMode && window.alert(a);
+};
+mob.button.Map = function(a, b, c, d) {
+  this.mapLocation_ = b;
+  this.conversionId_ = c;
+  this.conversionLabel_ = d;
+  mob.button.AbstractButton.call(this, pagespeed.MobUtil.ElementId.MAP_BUTTON, mob.button.Map.ICON_, a, mob.button.Map.LABEL_);
+};
+goog.inherits(mob.button.Map, mob.button.AbstractButton);
+mob.button.Map.ICON_ = "R0lGODlhYABgAPAAAAAAAAAAACH5BAEAAAEAIf8LSW1hZ2VNYWdpY2sHZ2FtbWE9MQAsAAAAAGAAYAAAAv6Mj6nL7Q+jnLTai7PevPsPhuJIluaJpuo6Au4Ls3IA1/Y7l/fO5x8P7Pk0weJteDEqj0jJ8llrQqBUnJRRzQKuCq2We/B6wWIxtzyWos3IdbntTufi7zldLmMj9Cx895tX5SQYCEVB2Ed1qJhoWIGYAjnoqMJoYRlJ+aiJgrn41LiE4XlCOim6YhqhSiK5ytoCiyUr4upgW0q7pxuSdQpaiGvgV0nMF3rHW5vs68OsHPuM6iw9TV0dpIadrb3N1O0ddRYeQ0ZuZU4OFna+zu7t/r4dLy9NX/98j3+nv8vc7y8ZwIBxBhJ0Y/BgnYT7ADFs2OwhRE4SaRyrOMwhRjeF1jZOBOJxFrCQf0aSTGDyJEojKm9xa9kAJEyXO2Y+qGnzpricOl3wHPQzqNChRIsaPYo0acUCADs=";
+mob.button.Map.LABEL_ = "GET DIRECTIONS";
+mob.button.Map.prototype.clickHandler = function() {
+  pagespeed.MobUtil.sendBeaconEvent(pagespeed.MobUtil.BeaconEvents.MAP_BUTTON, goog.bind(this.openMap_, this));
+};
+mob.button.Map.prototype.getMapUrl_ = function() {
+  return "https://maps.google.com/maps?q=" + encodeURIComponent(this.mapLocation_);
+};
+mob.button.Map.prototype.openMap_ = function() {
+  if (this.conversionId_ && this.conversionLabel_) {
+    var a = new Image;
+    a.onload = goog.bind(function() {
+      goog.global.location = this.getMapUrl_();
+    }, this);
+    a.onerror = a.onload;
+    a.src = "//www.googleadservices.com/pagead/conversion/" + this.conversionId_ + "/?label=" + this.conversionLabel_ + "&amp;guid=ON&amp;script=0";
+  } else {
+    goog.global.location = this.getMapUrl_();
+  }
+};
+mob.button.Menu = function(a, b) {
+  this.clickHandlerFn_ = b;
+  mob.button.AbstractButton.call(this, pagespeed.MobUtil.ElementId.MENU_BUTTON, mob.button.Menu.ICON_, a, null);
+};
+goog.inherits(mob.button.Menu, mob.button.AbstractButton);
+mob.button.Menu.ICON_ = "R0lGODlhYABgAPAAAAAAAAAAACH5BAEAAAEALAAAAABgAGAAAAK6jI+py+0Po5y02ouz3rz7D4biSJbmiabqyrbuC8fyTNf2jef6zvf+DwwKh8Si8agCKJfMpvMJjUqnTg71is1qldat97vtgsfkp7iMJp/T7PCmDXdr4vQr8o7P6/f8vv8PGCg4SHhTdxi1hriouHjY6EgHGQk3SclmeYmWqalW+AkaKjpKWmp6ipqqatH5+NYq+QpbKTuLWWu7iZvrOcebxvlrt0pcbHyMnKy8zNzs/AwdLT1NXW19TVoAADs=";
+mob.button.Menu.prototype.clickHandler = function() {
+  this.clickHandlerFn_();
 };
 pagespeed.MobColor = function() {
 };
@@ -8419,33 +8419,6 @@ pagespeed.MobLogo.prototype.run = function(a, b) {
   this.doneCallback_ || !document.body ? a([]) : (this.doneCallback_ = a, this.maxNumCandidates_ = b, this.findLogoCandidates_(document.body), this.findImagesAndWait_(this.candidates_));
 };
 goog.exportProperty(pagespeed.MobLogo.prototype, "run", pagespeed.MobLogo.prototype.run);
-pagespeed.MobTheme = function(a) {
-  this.doneCallback_ = a;
-};
-pagespeed.MobTheme.createThemeData = function(a, b, c) {
-  var d = new pagespeed.MobUtil.ThemeData(a, b, c);
-  window.psMobPrecompute && (window.psMobLogoUrl = a, window.psMobBackgroundColor = b, window.psMobForegroundColor = c);
-  return d;
-};
-pagespeed.MobTheme.prototype.logoComplete = function(a) {
-  if (this.doneCallback_) {
-    1 <= a.length ? (a = a[0], a = pagespeed.MobTheme.createThemeData(a.logoRecord.foregroundImage.src, a.background, a.foreground)) : a = pagespeed.MobTheme.createThemeData(null, [255, 255, 255], [0, 0, 0]);
-    var b = this.doneCallback_;
-    this.doneCallback_ = null;
-    b(a);
-  }
-};
-pagespeed.MobTheme.precomputedThemeAvailable = function() {
-  return Boolean(window.psMobBackgroundColor && window.psMobForegroundColor && !window.psMobPrecompute);
-};
-pagespeed.MobTheme.extractTheme = function(a, b) {
-  if (window.psMobBackgroundColor && window.psMobForegroundColor && !window.psMobPrecompute) {
-    var c = pagespeed.MobTheme.createThemeData(window.psMobLogoUrl, window.psMobBackgroundColor, window.psMobForegroundColor);
-    b(c);
-  } else {
-    c = new pagespeed.MobTheme(b), a.run(goog.bind(c.logoComplete, c), 1);
-  }
-};
 mob.NavPanel = function(a, b) {
   this.el = a;
   this.backgroundColor_ = b;
@@ -8484,15 +8457,13 @@ mob.NavPanel.prototype.initialize_ = function() {
   }, this), !1);
 };
 mob.NavPanel.prototype.redraw = function(a) {
-  var b = mob.util.getScaleTransform(), c = pagespeed.MobUtil.pixelValue(window.getComputedStyle(document.body).width);
+  var b = mob.util.getZoomLevel(), c = pagespeed.MobUtil.pixelValue(window.getComputedStyle(document.body).width);
   c && (b = Math.min(b, c / mob.NavPanel.WIDTH_));
-  c = "scale(" + b + ")";
-  this.el.style.webkitTransform = c;
-  this.el.style.transform = c;
+  this.el.style.fontSize = b + "px";
   c = this.isOpen() ? 0 : -goog.style.getTransformedSize(this.el).width;
   this.el.style.top = window.scrollY + "px";
   this.el.style.left = window.scrollX + c + "px";
-  a && (this.el.style.marginTop = a + "px", this.el.style.height = (window.innerHeight - a) / b + "px");
+  a && (this.el.style.marginTop = a + "px", this.el.style.height = (window.innerHeight - a) / b + "em");
 };
 mob.NavPanel.prototype.addClickDetectorDiv_ = function() {
   this.clickDetectorDiv_ = document.createElement(goog.dom.TagName.DIV);
@@ -8596,12 +8567,11 @@ pagespeed.MobNav.prototype.redraw_ = function() {
 };
 pagespeed.MobNav.prototype.redrawHeader_ = function() {
   if (this.headerBar_) {
-    var a = -1 == this.headerBarHeight_ ? Math.round(goog.style.getTransformedSize(this.headerBar_).height) : this.headerBarHeight_, b = mob.util.getScaleTransform(), c = "scale(" + b.toString() + ")";
-    this.headerBar_.style.webkitTransform = c;
-    this.headerBar_.style.transform = c;
-    c = window.innerWidth;
+    var a = -1 == this.headerBarHeight_ ? Math.round(goog.style.getTransformedSize(this.headerBar_).height) : this.headerBarHeight_, b = mob.util.getZoomLevel();
+    this.headerBar_.style.fontSize = b + "px";
+    var c = window.innerWidth;
     "hidden" != window.getComputedStyle(document.body).getPropertyValue("overflow-y") && (c -= goog.style.getScrollbarWidth());
-    this.headerBar_.style.width = c / b + "px";
+    this.headerBar_.style.width = c / b + "em";
     goog.dom.classlist.remove(this.headerBar_, pagespeed.MobUtil.ElementClass.HIDE);
     b = Math.round(goog.style.getTransformedSize(this.headerBar_).height);
     this.spacerDiv_.style.height = b + "px";
@@ -8683,6 +8653,33 @@ pagespeed.MobNav.prototype.updateTheme = function(a) {
   this.headerBar_ = document.createElement(goog.dom.TagName.HEADER);
   this.headerBar_.id = pagespeed.MobUtil.ElementId.HEADER_BAR;
   this.addHeaderBar_(a);
+};
+pagespeed.MobTheme = function(a) {
+  this.doneCallback_ = a;
+};
+pagespeed.MobTheme.createThemeData = function(a, b, c) {
+  var d = new pagespeed.MobUtil.ThemeData(a, b, c);
+  window.psMobPrecompute && (window.psMobLogoUrl = a, window.psMobBackgroundColor = b, window.psMobForegroundColor = c);
+  return d;
+};
+pagespeed.MobTheme.prototype.logoComplete = function(a) {
+  if (this.doneCallback_) {
+    1 <= a.length ? (a = a[0], a = pagespeed.MobTheme.createThemeData(a.logoRecord.foregroundImage.src, a.background, a.foreground)) : a = pagespeed.MobTheme.createThemeData(null, [255, 255, 255], [0, 0, 0]);
+    var b = this.doneCallback_;
+    this.doneCallback_ = null;
+    b(a);
+  }
+};
+pagespeed.MobTheme.precomputedThemeAvailable = function() {
+  return Boolean(window.psMobBackgroundColor && window.psMobForegroundColor && !window.psMobPrecompute);
+};
+pagespeed.MobTheme.extractTheme = function(a, b) {
+  if (window.psMobBackgroundColor && window.psMobForegroundColor && !window.psMobPrecompute) {
+    var c = pagespeed.MobTheme.createThemeData(window.psMobLogoUrl, window.psMobBackgroundColor, window.psMobForegroundColor);
+    b(c);
+  } else {
+    c = new pagespeed.MobTheme(b), a.run(goog.bind(c.logoComplete, c), 1);
+  }
 };
 mob.ThemePicker = function() {
   this.logoChoicePopup_ = null;

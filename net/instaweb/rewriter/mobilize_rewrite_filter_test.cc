@@ -152,7 +152,7 @@ class MobilizeRewriteFilterTest : public RewriteTestBase {
   }
 
   GoogleString Spacer() const {
-    return "<header id=\"psmob-header-bar\"></header>"
+    return "<header id=\"psmob-header-bar\" class=\"psmob-hide\"></header>"
            "<div id=\"psmob-spacer\"></div>";
   }
 

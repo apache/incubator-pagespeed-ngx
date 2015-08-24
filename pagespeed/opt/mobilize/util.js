@@ -958,25 +958,25 @@ pagespeed.MobUtil.runCallbackOnce_ = function(callback) {
 
 
 /**
- * Get the scale transform to use for the header bar and nav panel.
+ * Get the zoom level, used for scaling the header bar and nav panel.
  * @return {number}
  */
-mob.util.getScaleTransform = function() {
-  var scale = 1;
+mob.util.getZoomLevel = function() {
+  var zoom = 1;
   if (window.psDeviceType != 'desktop') {
     // screen.width does not update on rotation on ios, but it does on android,
     // so compensate for that here.
     if ((Math.abs(window.orientation) == 90) &&
         (screen.height > screen.width)) {
-      scale *= (window.innerHeight / screen.width);
+      zoom *= (window.innerHeight / screen.width);
     } else {
-      scale *= window.innerWidth / screen.width;
+      zoom *= window.innerWidth / screen.width;
     }
   }
   // Android browser does not seem to take the pixel ratio into account in the
   // values it returns for screen.width and screen.height.
   if (goog.labs.userAgent.browser.isAndroidBrowser()) {
-    scale *= goog.dom.getPixelRatio();
+    zoom *= goog.dom.getPixelRatio();
   }
-  return scale;
+  return zoom;
 };

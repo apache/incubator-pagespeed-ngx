@@ -168,18 +168,16 @@ mob.NavPanel.prototype.initialize_ = function() {
  * (normally the height of the header bar).
  */
 mob.NavPanel.prototype.redraw = function(opt_marginTopHeight) {
-  var scale = mob.util.getScaleTransform();
+  var fontSize = mob.util.getZoomLevel();
 
   // Make sure that the nav panel does not overflow the window on small screen
-  // devices by capping the maximum scale transform.
+  // devices by capping the maximum font size.
   var bodyWidth = pagespeed.MobUtil.pixelValue(
       window.getComputedStyle(document.body).width);
   if (bodyWidth) {
-    scale = Math.min(scale, bodyWidth / mob.NavPanel.WIDTH_);
+    fontSize = Math.min(fontSize, bodyWidth / mob.NavPanel.WIDTH_);
   }
-  var scaleTransform = 'scale(' + scale + ')';
-  this.el.style.webkitTransform = scaleTransform;
-  this.el.style.transform = scaleTransform;
+  this.el.style.fontSize = fontSize + 'px';
 
   var xOffset = this.isOpen() ?
                     0 :
@@ -192,7 +190,7 @@ mob.NavPanel.prototype.redraw = function(opt_marginTopHeight) {
     this.el.style.marginTop = opt_marginTopHeight + 'px';
 
     this.el.style.height =
-        ((window.innerHeight - opt_marginTopHeight) / scale) + 'px';
+        ((window.innerHeight - opt_marginTopHeight) / fontSize) + 'em';
   }
 
 };

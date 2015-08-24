@@ -416,6 +416,10 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
       HtmlElement* header = driver()->NewElement(element, HtmlName::kHeader);
       driver()->InsertNodeAfterCurrent(header);
       driver()->AddAttribute(header, HtmlName::kId, "psmob-header-bar");
+      // Make sure that the header bar is not displayed until the redraw
+      // function is called to set font-size. Otherwise the header bar will be
+      // too large, causing the iframe to be too small.
+      driver()->AddAttribute(header, HtmlName::kClass, "psmob-hide");
       HtmlElement* spacer = driver()->NewElement(element, HtmlName::kDiv);
       driver()->InsertNodeAfterCurrent(spacer);
       driver()->AddAttribute(spacer, HtmlName::kId, "psmob-spacer");

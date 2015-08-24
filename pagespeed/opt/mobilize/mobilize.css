@@ -24,17 +24,11 @@
  *         huibao@google.com (Huibao Lin)
  */
 
-/* TODO(jmarantz): make class names consistent */
-
-/* Note: All non-zero pixel sizes for the nav bar and panel are 10x larger than
- * their intended size. This is to workaround an iOS issue where items are
- * blurry after applying the CSS scale transform. See
- * http://stackoverflow.com/a/8038694 for more details.
+/* Note: Most of the elements here are specified in "em" units, meaning they are
+ * relative to the font-size. The font-size of the header bar is then set to
+ * offset the zoom level of the page so that the header bar and nav panel are
+ * always the same size.
  */
-
-/* Note: Pixel sizes have been changed from 10x to 1x in order to fix crashing
- * issue in iOS.
-*/
 
 
 body {
@@ -81,7 +75,7 @@ body.mob-iframe {
   padding: 0;
 
   width: 100%;
-  height: 57px;
+  height: 57em;
 
   -webkit-transform-origin: 0 0;
   transform-origin: 0 0;
@@ -175,20 +169,20 @@ body.mob-iframe {
 
   text-decoration: none;
 
-  height: 48px;
-  margin: 4px 0;
+  height: 48em;
+  margin: 4em 0;
 }
 
 #psmob-header-bar:not(.psmob-labeled) .psmob-button {
-  border: solid 1px;
-  border-radius: 9px;
-  margin: 4px 2px;
+  border: solid 1em;
+  border-radius: 9em;
+  margin: 4em 2em;
 }
 
 
 .psmob-button-icon {
-  height: 48px;
-  width: 48px;
+  height: 48em;
+  width: 48em;
 }
 
 /* We don't show the logo or menu button in labeled mode. */
@@ -208,15 +202,26 @@ body.mob-iframe {
   /* Only display button text in labeled mode or when there is only 1 button. */
   display: none;
 
-  height: 36px;
+  font-size: 20em !important;
+
+  height: 1.8em; /* 36/20 */
   width: auto;
   font-family: arial, sans-serif;
-  font-size: 20px !important;
   font-weight: bold;
-  line-height: 36px;
+  line-height: 1.8em; /* 36/20 */
   margin: 0;
-  padding: 6px 0;
+  padding: 0.3em 0; /* 6/20 */
   white-space: nowrap;
+}
+
+#psmob-header-bar:not(.psmob-labeled) .psmob-button-text {
+  height: 2em; /* 40/20 */
+  line-height: 2em; /* 40/20 */
+  margin-right: .4em; /* 5/20 */
+}
+
+#psmob-header-bar.psmob-show-button-text .psmob-button-text {
+  display: block;
 }
 
 /* Use a smaller font size on smaller devices, otherwise the text will overflow
@@ -224,19 +229,19 @@ body.mob-iframe {
  */
 @media (max-device-width: 360px) {
   .psmob-button-text {
-    font-size: 16px !important;
+    font-size: 16em !important;
+    height: 2.25em; /* 36/16 */
+    line-height: 2.25em; /* 36/16 */
+    padding: 0.375em 0;  /* 6/16 */
+  }
+
+  #psmob-header-bar:not(.psmob-labeled) .psmob-button-text {
+    height: 2.5em; /* 40/16 */
+    line-height: 2.5em; /* 40/16 */
+    margin-right: 0.3125em;  /* 5/16 */
   }
 }
 
-#psmob-header-bar:not(.psmob-labeled) .psmob-button-text {
-  height: 40px;
-  line-height: 40px;
-  margin-right: 5px;
-}
-
-#psmob-header-bar.psmob-show-button-text .psmob-button-text {
-  display: block;
-}
 
 #psmob-logo-span {
   height: 100%;
@@ -261,8 +266,8 @@ body.mob-iframe {
 #psmob-logo-image {
   height: 100%;
   width: auto;
-  padding-top: 10px;
-  padding-bottom: 10px;
+  padding-top: 10em;
+  padding-bottom: 10em;
 
   /* Center the image in the logo span. */
   display: block;
@@ -279,6 +284,7 @@ body.mob-iframe {
   position: absolute !important;
 
   /* Panel is hidden by default. */
+  display: none;
   visibility: hidden;
 
   -webkit-transform-origin: 0 0;
@@ -289,7 +295,7 @@ body.mob-iframe {
   left: 0;
   right: 0;
   /* The width specified here must match mob.NavPanel.WIDTH_ in nav_panel.js. */
-  width: 350px !important;
+  width: 350em !important;
 
   /* Wordpress sets a z-index of 99999 for its admin header bar, so set a larger
    * value so our nav bar ends up on top of it. */
@@ -341,6 +347,10 @@ body.mob-iframe {
   display: none;
 }
 
+#psmob-nav-panel > ul {
+  font-size: 22em !important;
+}
+
 /* TODO(jud): Consider using class labels instead of deeply nested rules. */
 #psmob-nav-panel ul li {
   border-bottom-style: solid;
@@ -357,7 +367,7 @@ body.mob-iframe {
   padding-right: 0;
   padding-top: 0;
   padding-bottom: 0;
-  line-height: 60px !important;
+  line-height: 60em !important;
   text-decoration: none;
 
   -o-transition: background-color 0.2s ease-out;
@@ -368,14 +378,13 @@ body.mob-iframe {
 
 #psmob-nav-panel ul li a,
 #psmob-nav-panel ul li div {
-  min-height: 60px;
+  min-height: 2.7273em;  /* 60/22 */
   display: block;
   padding-right: 0;
   padding-top: 0;
   padding-bottom: 0;
-  line-height: 60px !important;
+  line-height: 2.7273em !important;  /* 60/22 */
   text-decoration: none;
-  font-size: 22px !important;
 
   -webkit-transition: background-color 0.2s ease-out;
   -moz-transition: background-color 0.2s ease-out;
@@ -407,8 +416,8 @@ body.mob-iframe {
 .psmob-menu-expand-icon {
   display: inline-block;
   vertical-align: middle;
-  width: 20px;
-  height: 20px;
+  width: 0.9091em; /* 20/22 */
+  height: 0.9091em; /* 20/22 */
   -ms-transform: rotate(270deg);
   -webkit-transform: rotate(270deg);
   transform: rotate(270deg);
@@ -447,7 +456,7 @@ body.mob-iframe {
     position: fixed;
     top: 0 !important;
     margin: 0 !important;
-    padding-top: 100px !important;
+    padding-top: 100em !important;
     background: white;
     border: 0;
     width: 100%;
