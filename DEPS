@@ -67,14 +67,14 @@ vars = {
   "gflags_revision": "@cc7e9a4b374ff7b6a1cae4d76161113ea985b624",
 
   "google_sparsehash_root":
-    "https://sparsehash.googlecode.com/svn/tags/sparsehash-1.8.1/src/",
-  "google_sparsehash_revision": "@head",
+    "https://github.com/google/sparsehash.git",
+  "google_sparsehash_revision": "@68791a09811b9cec8a76bf2c697cd86e05627cea",
 
-  "gtest_src": "https://googletest.googlecode.com/svn/tags/release-1.7.0/",
-  "gtest_revision": "@head",
+  "gtest_src": "https://github.com/google/googletest.git",
+  "gtest_revision": "@c99458533a9b4c743ed51537e25989ea55944908",
 
-  "gmock_src": "https://googlemock.googlecode.com/svn/tags/release-1.7.0/",
-  "gmock_revision": "@head",
+  "gmock_src": "https://github.com/google/googlemock.git",
+  "gmock_revision": "@c440c8fafc6f60301197720617ce64028e09c79d",
 
   # Comment this out to disable HTTPS fetching via serf.  See also the
   # references in src/third_party/serf/serf.gyp.
