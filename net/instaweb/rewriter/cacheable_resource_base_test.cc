@@ -20,12 +20,14 @@
 
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_cache.h"
+#include "net/instaweb/http/public/http_cache_failure.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/mock_resource_callback.h"
 #include "net/instaweb/rewriter/public/resource.h"  // for Resource, etc
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
@@ -210,6 +212,59 @@ TEST_F(CacheableResourceBaseTest, BasicCached) {
   CheckStats(resource_.get(), 2, 0, 0, 0, 1);
 }
 
+TEST_F(CacheableResourceBaseTest, Fallback) {
+  options()->set_serve_stale_if_fetch_error(true);
+  mock_url_fetcher()->Disable();
+  mock_url_fetcher()->set_error_message("oww!");
+
+  ResponseHeaders ok_response_headers;
+  SetDefaultLongCacheHeaders(&kContentTypeText, &ok_response_headers);
+
+  HTTPValue fallback;
+  fallback.SetHeaders(&ok_response_headers);
+  EXPECT_TRUE(fallback.Write("fallback", server_context()->message_handler()));
+  EXPECT_TRUE(fallback.Flush(server_context()->message_handler()));
+  resource_->LinkFallbackValue(&fallback);
+
+  MockResourceCallback callback(ResourcePtr(resource_.get()),
+                                server_context()->thread_system());
+  resource_->LoadAsync(Resource::kReportFailureIfNotCacheable,
+                       RequestContext::NewTestRequestContext(
+                           server_context()->thread_system()),
+                       &callback);
+  EXPECT_TRUE(callback.done());
+  EXPECT_TRUE(callback.success());
+  EXPECT_STREQ("fallback", resource_->contents());
+  EXPECT_EQ(kFetchStatusOtherError, resource_->fetch_response_status());
+}
+
+TEST_F(CacheableResourceBaseTest, FallbackEmpty) {
+  // Regression test. This used to CHECK-fail in some intermediate revisions.
+  options()->set_serve_stale_if_fetch_error(true);
+  mock_url_fetcher()->Disable();
+  mock_url_fetcher()->set_error_message("oww!");
+
+  ResponseHeaders ok_response_headers;
+  SetDefaultLongCacheHeaders(&kContentTypeText, &ok_response_headers);
+
+  HTTPValue fallback;
+  fallback.SetHeaders(&ok_response_headers);
+  EXPECT_TRUE(fallback.Write("", server_context()->message_handler()));
+  EXPECT_TRUE(fallback.Flush(server_context()->message_handler()));
+  resource_->LinkFallbackValue(&fallback);
+
+  MockResourceCallback callback(ResourcePtr(resource_.get()),
+                                server_context()->thread_system());
+  resource_->LoadAsync(Resource::kReportFailureIfNotCacheable,
+                       RequestContext::NewTestRequestContext(
+                           server_context()->thread_system()),
+                       &callback);
+  EXPECT_TRUE(callback.done());
+  EXPECT_TRUE(callback.success());
+  EXPECT_STREQ("", resource_->contents());
+  EXPECT_EQ(kFetchStatusOtherError, resource_->fetch_response_status());
+}
+
 TEST_F(CacheableResourceBaseTest, Private) {
   ResponseHeaders response_headers;
   SetDefaultLongCacheHeaders(&kContentTypeText, &response_headers);
@@ -306,8 +361,8 @@ TEST_F(CacheableResourceBaseTest, FetchFailure) {
   CheckStats(resource_.get(), 0, 1, 0, 0, 1);
 
   // Now advance time, should force a refetch.
-  int64 remember_sec =
-      server_context()->http_cache()->remember_fetch_failed_ttl_seconds();
+  int64 remember_sec = server_context()->http_cache()->failure_caching_ttl_sec(
+                           kFetchStatusOtherError);
   AdvanceTimeMs(2 * remember_sec * Timer::kSecondMs);
   resource_->Reset();
   MockResourceCallback callback3(ResourcePtr(resource_.get()),

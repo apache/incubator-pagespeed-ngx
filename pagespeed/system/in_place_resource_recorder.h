@@ -140,6 +140,7 @@ class InPlaceResourceRecorder : public Writer {
   bool IsIproContentType(ResponseHeaders* response_headers);
 
   void DroppedDueToSize();
+  void DroppedAsUncacheable();
 
   const GoogleString url_;
   const GoogleString fragment_;

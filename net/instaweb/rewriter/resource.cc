@@ -100,14 +100,15 @@ bool Resource::IsSafeToRewrite(bool rewrite_uncacheable,
       case kFetchStatus4xxError:
         StrAppend(reason, "4xx status code, ");
         break;
-      case kFetchStatusUncacheable:
+      case kFetchStatusUncacheable200:
+      case kFetchStatusUncacheableError:
         StrAppend(reason, "Uncacheable content, ");
         break;
       case kFetchStatusEmpty:
         // https://github.com/pagespeed/mod_pagespeed/issues/1050
         StrAppend(reason, "Resource is empty, ");
         break;
-      case kFetchStatusOther:
+      case kFetchStatusOtherError:
         StrAppend(reason, "Fetch failure, ");
         break;
       case kFetchStatusNotSet:

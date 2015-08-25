@@ -533,15 +533,16 @@ class InstawebCacheComputer : public CachingHeaders {
       // Others like 203, 206 and 304 depend upon input headers and other state.
       case HttpStatus::kOK:
       case HttpStatus::kMovedPermanently:
-      // These dummy status codes indicate something about our system that we
-      // want to remember in the cache.
-      case HttpStatus::kRememberNotCacheableStatusCode:
-      case HttpStatus::kRememberNotCacheableAnd200StatusCode:
-      case HttpStatus::kRememberFetchFailedStatusCode:
-      case HttpStatus::kRememberEmptyStatusCode:
         return true;
       default:
-        return false;
+        // We have some additional internal status codes we use to remember
+        // failures, those are cacheable as their entire purpose is to record
+        // that failures happened in the cache.
+        // TODO(morlovich): This could be expressed as
+        // HttpCacheFailure::IsFailureCachingStatus --- but it's not in the
+        // right layer.
+        return (status_code() >= HttpStatus::kRememberFailureRangeStart &&
+                status_code() < HttpStatus::kRememberFailureRangeEnd);
     }
   }
 

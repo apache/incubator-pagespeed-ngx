@@ -465,11 +465,16 @@ TEST_F(CacheExtenderTest, Handle404) {
   rewrite_driver()->AddFilters();
   DebugWithMessage("<!--4xx status code, preventing rewriting of %url%-->");
   SetFetchResponse404("404.css");
+  static const char kLink[] = "<link rel=stylesheet href='404.css'>";
   for (int i = 0; i < 2; ++i) {
     // Validate twice to make sure caching doesn't break it.
-    const char kLink[] = "<link rel=stylesheet href='404.css'>";
     ValidateExpected("404", kLink, StrCat(kLink, DebugMessage("404.css")));
   }
+
+  // Check with metadata cache flushed but not http cache.
+  lru_cache()->DeleteWithPrefixForTesting(
+      ServerContext::kCacheKeyResourceNamePrefix);
+  ValidateExpected("404", kLink, StrCat(kLink, DebugMessage("404.css")));
 }
 
 TEST_F(CacheExtenderTest, Handle503) {
@@ -481,11 +486,16 @@ TEST_F(CacheExtenderTest, Handle503) {
   ResponseHeaders response_headers;
   response_headers.SetStatusAndReason(HttpStatus::kUnavailable);
   SetFetchResponse(url, response_headers, StringPiece());
+  static const char kLink[] = "<link rel=stylesheet href='503.css'>";
   for (int i = 0; i < 2; ++i) {
     // Validate twice to make sure caching doesn't break it.
-    const char kLink[] = "<link rel=stylesheet href='503.css'>";
     ValidateExpected("503", kLink, StrCat(kLink, DebugMessage(url)));
   }
+
+  // Check with metadata cache flushed but not http cache.
+  lru_cache()->DeleteWithPrefixForTesting(
+      ServerContext::kCacheKeyResourceNamePrefix);
+  ValidateExpected("503", kLink, StrCat(kLink, DebugMessage(url)));
 }
 
 TEST_F(CacheExtenderTest, UrlTooLong) {
