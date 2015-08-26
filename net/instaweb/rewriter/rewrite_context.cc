@@ -28,7 +28,6 @@
 #include <algorithm>
 #include <utility>                      // for pair
 #include <vector>
-#include <memory>
 #include <map>                          // for map<>::const_iterator
 
 #include "base/logging.h"
@@ -1652,9 +1651,17 @@ void RewriteContext::OutputCacheMiss() {
   } else {
     server_context->TryLockForCreation(Lock(), MakeFunction(
         this,
-        &RewriteContext::FetchInputs,
-        &RewriteContext::LockFailed));
+        &RewriteContext::CallFetchInputs,
+        &RewriteContext::CallLockFailed));
   }
+}
+
+void RewriteContext::CallFetchInputs() {
+  Driver()->AddRewriteTask(MakeFunction(this, &RewriteContext::FetchInputs));
+}
+
+void RewriteContext::CallLockFailed() {
+  Driver()->AddRewriteTask(MakeFunction(this, &RewriteContext::LockFailed));
 }
 
 void RewriteContext::LockFailed() {
@@ -2221,8 +2228,9 @@ void RewriteContext::StartNestedTasks() {
 
 void RewriteContext::StartNestedTasksImpl() {
   for (int i = 0, n = nested_.size(); i < n; ++i) {
-    if (!nested_[i]->chained()) {
-      nested_[i]->Start();
+    RewriteContext* nested = nested_[i];
+    if (!nested->chained()) {
+      nested->Start();
       DCHECK_EQ(n, static_cast<int>(nested_.size()))
           << "Cannot add new nested tasks once the nested tasks have started";
     }
@@ -3038,9 +3046,14 @@ void RewriteContext::StartFetch() {
     // its cached output.
     FindServerContext()->LockForCreation(
         Lock(), Driver()->rewrite_worker(),
-        MakeFunction(this, &RewriteContext::StartFetchImpl,
-                     &RewriteContext::StartFetchImpl));
+        MakeFunction(this,
+                     &RewriteContext::CallStartFetchImpl,
+                     &RewriteContext::CallStartFetchImpl));
   }
+}
+
+void RewriteContext::CallStartFetchImpl() {
+  Driver()->AddRewriteTask(MakeFunction(this, &RewriteContext::StartFetchImpl));
 }
 
 void RewriteContext::StartFetchImpl() {

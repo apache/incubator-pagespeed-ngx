@@ -229,6 +229,10 @@ class RewriteContext {
   // context will be nested inside the CSS context).
   void AddNestedContext(RewriteContext* context);
 
+  void CallFetchInputs();
+  void CallLockFailed();
+  void CallStartFetchImpl();
+
   // Starts a resource rewrite.  Once Inititated, the Rewrite object
   // should only be accessed from the Rewrite thread, until it
   // Completes, at which point top-level Contexts will call
