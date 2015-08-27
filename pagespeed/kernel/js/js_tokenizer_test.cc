@@ -101,7 +101,7 @@ class JsTokenizerTest : public testing::Test {
 
  private:
   JsTokenizerPatterns patterns_;
-  scoped_ptr<JsTokenizer> tokenizer_;
+  net_instaweb::scoped_ptr<JsTokenizer> tokenizer_;
 };
 
 TEST_F(JsTokenizerTest, EmptyInput) {
