@@ -19,7 +19,7 @@
 // Contains implementation of DelayImagesFilter, which delays all the high
 // quality images whose low quality inlined data url are available within their
 // respective image tag like
-// <img src="1.jpeg" pagespeed_low_res_src="data:base64...">.
+// <img src="1.jpeg" data-pagespeed-low-res-src="data:base64...">.
 //
 // This filter extracts such low res data urls and generates a map from them.
 // This map will be embedded inside HTML at the end of body tag with a script
@@ -38,13 +38,13 @@
 //  <head>
 //  </head>
 //  <body>
-//   <img src="1.jpeg" pagespeed_low_res_src="data:base64..." />
+//   <img src="1.jpeg" data-pagespeed-low-res-src="data:base64..." />
 //  </body>
 // </html>
 //
 // Above input html input looks like this because the image_rewrite_filter has
 // already replaced <img src="1.jpeg" /> with
-// <img src="1.jpeg" pagespeed_low_res_src="data:base64..." />.
+// <img src="1.jpeg" data-pagespeed-low-res-src="data:base64..." />.
 //
 // Output for the above html will be:
 // <html>
@@ -55,7 +55,7 @@
 //   </script>
 //  </head>
 //  <body>
-//   <img pagespeed_high_res_src="1.jpeg" />
+//   <img data-pagespeed-high-res-src="1.jpeg" />
 //   <script>
 //    This block contains a map from url to their respective data urls and
 //    script which put these inline_src to their respective img tags.

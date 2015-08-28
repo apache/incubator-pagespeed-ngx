@@ -21,11 +21,16 @@
  * @author pulkitg@google.com (Pulkit Goyal)
  */
 
+goog.provide('pagespeed');
+goog.provide('pagespeed.DelayImagesInline');
+
 // Exporting functions using quoted attributes to prevent js compiler from
 // renaming them.
 // See http://code.google.com/closure/compiler/docs/api-tutorial3.html#dangers
 window['pagespeed'] = window['pagespeed'] || {};
 var pagespeed = window['pagespeed'];
+
+
 
 /**
  * @constructor
@@ -39,6 +44,7 @@ pagespeed.DelayImagesInline = function() {
   this.inlineMap_ = {};
 };
 
+
 /**
  * Add low res images to inlineMap_.
  * @param {string} url of the image.
@@ -49,18 +55,19 @@ pagespeed.DelayImagesInline.prototype.addLowResImages =
   this.inlineMap_[url] = lowResImage;
 };
 pagespeed.DelayImagesInline.prototype['addLowResImages'] =
-  pagespeed.DelayImagesInline.prototype.addLowResImages;
+    pagespeed.DelayImagesInline.prototype.addLowResImages;
+
 
 /**
  * For given elements, replace src with low res data url by looking up
- * pagespeed_high_res_src attribute value in inlineMap_ (does nothing if the
- * latter attribute is absent).
+ * data-pagespeed-high-res-src attribute value in inlineMap_ (does nothing if
+ * the latter attribute is absent).
  * @param {NodeList.<Element>} elements list of DOM elements to check.
  */
 pagespeed.DelayImagesInline.prototype.replaceElementSrc =
     function(elements) {
   for (var i = 0; i < elements.length; ++i) {
-    var high_res_src = elements[i].getAttribute('pagespeed_high_res_src');
+    var high_res_src = elements[i].getAttribute('data-pagespeed-high-res-src');
     var src = elements[i].getAttribute('src');
     if (high_res_src && !src) {
       var low_res = this.inlineMap_[high_res_src];
@@ -71,7 +78,8 @@ pagespeed.DelayImagesInline.prototype.replaceElementSrc =
   }
 };
 pagespeed.DelayImagesInline.prototype['replaceElementSrc'] =
-  pagespeed.DelayImagesInline.prototype.replaceElementSrc;
+    pagespeed.DelayImagesInline.prototype.replaceElementSrc;
+
 
 /**
  * Replace images with the low resolution version if available.
@@ -81,7 +89,8 @@ pagespeed.DelayImagesInline.prototype.replaceWithLowRes = function() {
   this.replaceElementSrc(document.getElementsByTagName('input'));
 };
 pagespeed.DelayImagesInline.prototype['replaceWithLowRes'] =
-  pagespeed.DelayImagesInline.prototype.replaceWithLowRes;
+    pagespeed.DelayImagesInline.prototype.replaceWithLowRes;
+
 
 /**
  * Initializes the inline delay images module.

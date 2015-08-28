@@ -50,7 +50,7 @@ TEST_F(DeterministicJsFilterTest, DeterministicJsInjection) {
       server_context()->static_asset_manager()->GetAsset(
           StaticAssetEnum::DETERMINISTIC_JS, options());
   GoogleString expected_str = StrCat("<head><script type=\"text/javascript\" "
-                                     "pagespeed_no_defer>",
+                                     "data-pagespeed-no-defer>",
                                      deterministic_js_code,
                                      "</script></head><body></body>");
 
@@ -68,7 +68,7 @@ TEST_F(DeterministicJsFilterTest, DeterministicJsInjectionWithSomeHeadContent) {
       server_context()->static_asset_manager()->GetAsset(
           StaticAssetEnum::DETERMINISTIC_JS, options());
   GoogleString expected_str = StrCat("<head><script type=\"text/javascript\" "
-                                     "pagespeed_no_defer>",
+                                     "data-pagespeed-no-defer>",
                                      deterministic_js_code,
                                      "</script>"
                                      "<link rel=\"stylesheet\" href=\"a.css\">"

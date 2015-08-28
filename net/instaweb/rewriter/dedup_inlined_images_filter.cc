@@ -134,7 +134,7 @@ void DedupInlinedImagesFilter::EndElementImpl(HtmlElement* element) {
       // NOTE: If you change this you need to update kMinimumImageCutoff,
       // which is currently set to 185, slightly less than this snippet:
       //   <script type="text/javascript" id="pagespeed_script_1"
-      //    pagespeed_no_defer>
+      //    data-pagespeed-no-defer>
       //   pagespeed.dedupInlinedImages.inlineImg("pagespeed_img_12345678",
       //                                          "pagespeed_img_87654321",
       //                                          "pagespeed_script_1");
@@ -146,7 +146,7 @@ void DedupInlinedImagesFilter::EndElementImpl(HtmlElement* element) {
       driver()->InsertElementAfterElement(element, script);
       AddJsToElement(snippet, script);
       driver()->AddAttribute(script, HtmlName::kId, script_id);
-      driver()->AddAttribute(script, HtmlName::kPagespeedNoDefer, NULL);
+      driver()->AddAttribute(script, HtmlName::kDataPagespeedNoDefer, NULL);
       element->DeleteAttribute(HtmlName::kSrc);
     }
   }
@@ -181,7 +181,7 @@ void DedupInlinedImagesFilter::InsertOurScriptElement(HtmlElement* before) {
                                                      HtmlName::kScript);
   driver()->InsertElementBeforeElement(before, script_element);
   AddJsToElement(initialized_js, script_element);
-  driver()->AddAttribute(script_element, HtmlName::kPagespeedNoDefer, NULL);
+  driver()->AddAttribute(script_element, HtmlName::kDataPagespeedNoDefer, NULL);
   script_inserted_ = true;
 }
 

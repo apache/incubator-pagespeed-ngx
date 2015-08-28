@@ -141,7 +141,7 @@ class CriticalSelectorFilterTest : public RewriteTestBase {
 
   GoogleString JsLoader() {
     return StrCat(
-        "<script pagespeed_no_defer type=\"text/javascript\">",
+        "<script data-pagespeed-no-defer type=\"text/javascript\">",
         rewrite_driver()->server_context()->static_asset_manager()->GetAsset(
             StaticAssetEnum::CRITICAL_CSS_LOADER_JS,
             rewrite_driver()->options()),
@@ -601,15 +601,15 @@ TEST_F(CriticalSelectorFilterTest, InlineFlushEarly) {
       rewrite_driver()->server_context()->hasher()->Hash(b_url);
   GoogleString critical_css = StrCat(
       "<style>*{display:none}</style>"  // from the inline
-      "<script id=\"psa_flush_style_early\" pagespeed_no_defer"
+      "<script id=\"psa_flush_style_early\" data-pagespeed-no-defer"
       " type=\"text/javascript\">",
       CriticalSelectorFilter::kApplyFlushEarlyCss,
       "</script>"
-      "<script pagespeed_no_defer type=\"text/javascript\">",
+      "<script data-pagespeed-no-defer type=\"text/javascript\">",
       StringPrintf(CriticalSelectorFilter::kInvokeFlushEarlyCssTemplate,
                    a_style_id.c_str(), "" /* media */),
       "</script>"  // from a.css
-      "<script pagespeed_no_defer type=\"text/javascript\">",
+      "<script data-pagespeed-no-defer type=\"text/javascript\">",
       StringPrintf(CriticalSelectorFilter::kInvokeFlushEarlyCssTemplate,
                    b_style_id.c_str(), "screen" /* media */),
       "</script>"  // from b.css

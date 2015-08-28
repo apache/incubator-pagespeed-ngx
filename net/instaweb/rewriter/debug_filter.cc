@@ -186,7 +186,8 @@ void DebugFilter::EndElement(HtmlElement* element) {
     // Check if the lazyload filter has modified the original src attribute, and
     // if so, use the original src.
     HtmlElement::Attribute* src;
-    if ((src = element->FindAttribute(HtmlName::kPagespeedLazySrc)) != NULL ||
+    if ((src = element->FindAttribute(HtmlName::kDataPagespeedLazySrc)) !=
+            NULL ||
         (src = element->FindAttribute(HtmlName::kSrc)) != NULL) {
       GoogleUrl gurl(driver_->base_url(),
                      StringPiece(src->DecodedValueOrNull()));

@@ -18,7 +18,6 @@
 
 #include "net/instaweb/rewriter/public/split_html_filter.h"
 
-#include <memory>
 #include <utility>
 #include <vector>
 
@@ -127,7 +126,7 @@ const char SplitHtmlFilter::kLoadHiResImages[] =
     "function psa_replace_high_res_for_tag(str) {"
      "var images=document.getElementsByTagName(str);"
      "for (var i=0;i<images.length;++i) {"
-      "var high_res_src=images[i].getAttribute('pagespeed_high_res_src');"
+      "var high_res_src=images[i].getAttribute('data-pagespeed-high-res-src');"
       "var src=images[i].getAttribute('src');"
       "if (high_res_src && src != high_res_src && src.indexOf('data:') != -1){"
         "images[i].src=high_res_src;"
@@ -437,7 +436,8 @@ void SplitHtmlFilter::StartElement(HtmlElement* element) {
       }
     }
   }
-  if (element->FindAttribute(HtmlName::kPagespeedNoDefer) &&
+  if ((element->FindAttribute(HtmlName::kDataPagespeedNoDefer) ||
+       element->FindAttribute(HtmlName::kPagespeedNoDefer)) &&
       element_json_stack_.size() > 1 ) {
     HtmlElement::Attribute* src = NULL;
     if (script_tag_scanner_.ParseScriptElement(element, &src) ==
@@ -478,7 +478,7 @@ void SplitHtmlFilter::StartElement(HtmlElement* element) {
     if (element->keyword() == HtmlName::kImg ||
         element->keyword() == HtmlName::kInput) {
       HtmlElement::Attribute* pagespeed_high_res_src_attr =
-          element->FindAttribute(HtmlName::kPagespeedHighResSrc);
+          element->FindAttribute(HtmlName::kDataPagespeedHighResSrc);
       HtmlElement::Attribute* onload =
           element->FindAttribute(HtmlName::kOnload);
       if (pagespeed_high_res_src_attr != NULL &&

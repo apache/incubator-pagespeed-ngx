@@ -79,7 +79,7 @@ const char kCuppaPngWildcardData[] = "data:image/png;base64*";
 
 const char kInlinedScriptFormat[] =
     "<script type=\"text/javascript\""
-    " id=\"pagespeed_script_%d\" pagespeed_no_defer>"
+    " id=\"pagespeed_script_%d\" data-pagespeed-no-defer>"
     "pagespeed.dedupInlinedImages.inlineImg("
     "'pagespeed_img_0','pagespeed_img_0','pagespeed_script_%d'"
     ");</script>";
@@ -112,7 +112,7 @@ class DedupInlinedImagesTest : public RewriteTestBase,
     StaticAssetManager* static_asset_manager =
         server_context()->static_asset_manager();
     dedup_inlined_images_js_ =
-        StrCat("<script type=\"text/javascript\" pagespeed_no_defer>",
+        StrCat("<script type=\"text/javascript\" data-pagespeed-no-defer>",
                static_asset_manager->GetAsset(
                    StaticAssetEnum::DEDUP_INLINED_IMAGES_JS, options()),
                DedupInlinedImagesFilter::kDiiInitializer,
@@ -213,7 +213,7 @@ TEST_F(DedupInlinedImagesTest, DedupSecondSmallImageWithId) {
                              "<img id=\"pagespeed_img_0\">"
                              "<script type=\"text/javascript\""
                              " id=\"pagespeed_script_1\""
-                             " pagespeed_no_defer>"
+                             " data-pagespeed-no-defer>"
                              "pagespeed.dedupInlinedImages.inlineImg("
                              "'xyzzy',"
                              "'pagespeed_img_0',"
@@ -233,7 +233,7 @@ TEST_F(DedupInlinedImagesTest, DedupSecondSmallImageWithAttributes) {
                              "<img alt='xyzzy' id='plugh'>"
                              "<script type=\"text/javascript\""
                              " id=\"pagespeed_script_1\""
-                             " pagespeed_no_defer>"
+                             " data-pagespeed-no-defer>"
                              "pagespeed.dedupInlinedImages.inlineImg("
                              "'pagespeed_img_0',"
                              "'plugh',"
@@ -277,14 +277,14 @@ class DedupInlinePreviewImagesTest : public DedupInlinedImagesTest {
   }
 
   GoogleString GetImageOnloadScriptBlock() const {
-    return StrCat("<script pagespeed_no_defer type=\"text/javascript\">",
+    return StrCat("<script data-pagespeed-no-defer type=\"text/javascript\">",
                   DelayImagesFilter::kImageOnloadJsSnippet,
                   "</script>");
   }
 
   GoogleString GenerateRewrittenImageTag(const GoogleString& url,
                                          const GoogleString& low_res_src) {
-    return StrCat("<img pagespeed_high_res_src='", url, "'",
+    return StrCat("<img data-pagespeed-high-res-src='", url, "'",
                   " src='", low_res_src, "'"
                   " onload='", DelayImagesFilter::kImageOnloadCode, "'/>");
   }
@@ -294,14 +294,14 @@ TEST_F(DedupInlinePreviewImagesTest, DedupInlinePreviewImages) {
   GoogleString image_filename = StrCat(kTestDomain, kCuppaPngFilename);
   GoogleString input_img = StrCat("<img src='", image_filename, "'/>");
   GoogleString inlined_img =
-      StrCat("<img pagespeed_high_res_src='", image_filename,
+      StrCat("<img data-pagespeed-high-res-src='", image_filename,
              "' src=\"", kCuppaPngWildcardData,
              "\" onload=\"", DelayImagesFilter::kImageOnloadCode,
              "\" onerror=\"this.onerror=null;",
              DelayImagesFilter::kImageOnloadCode,
              "\" id=\"pagespeed_img_0\"/>");
   GoogleString scripted_img =
-      StrCat("<img pagespeed_high_res_src='", image_filename,
+      StrCat("<img data-pagespeed-high-res-src='", image_filename,
              "' onload=\"", DelayImagesFilter::kImageOnloadCode,
              "\" onerror=\"this.onerror=null;",
              DelayImagesFilter::kImageOnloadCode,

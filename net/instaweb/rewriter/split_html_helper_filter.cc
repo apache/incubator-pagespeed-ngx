@@ -22,7 +22,6 @@
 
 #include "net/instaweb/rewriter/public/split_html_helper_filter.h"
 
-#include <memory>
 #include <vector>
 
 #include "net/instaweb/http/public/log_record.h"
@@ -131,9 +130,11 @@ void SplitHtmlHelperFilter::StartElementImpl(HtmlElement* element) {
         (driver()->request_context()->split_request_type() !=
          RequestContext::SPLIT_BELOW_THE_FOLD)) {
       if (!state_->current_panel_id().empty()) {
-        // For a below-the-fold image, insert a pagespeed_no_transform attribute
-        // to prevent inline-preview-images filter from doing any rewriting.
-        driver()->AddAttribute(element, HtmlName::kPagespeedNoTransform, NULL);
+        // For a below-the-fold image, insert a data-pagespeed-no-transform
+        // attribute to prevent inline-preview-images filter from doing any
+        // rewriting.
+        driver()->AddAttribute(
+            element, HtmlName::kDataPagespeedNoTransform, NULL);
       } else {
         // For an above-the-fold image, insert the url as a critical image.
         GoogleUrl image_gurl(driver()->base_url(),

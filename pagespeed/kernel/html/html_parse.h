@@ -307,7 +307,7 @@ class HtmlParse {
 
   // For both versions of AddAttribute
   // Pass in NULL for value to add an attribute with no value at all
-  //   ex: <script pagespeed_no_transform>
+  //   ex: <script data-pagespeed-no-transform>
   // Pass in "" for value if you want the value to be the empty string
   //   ex: <div style="">
   void AddAttribute(HtmlElement* element, HtmlName::Keyword keyword,

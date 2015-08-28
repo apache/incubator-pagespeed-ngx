@@ -140,7 +140,7 @@ void CriticalImagesBeaconFilter::MaybeAddBeaconJavascript(
             resize_rendered_image_dimensions_enabled, ",'",
             beacon_metadata_.nonce, "');");
   HtmlElement* script = driver()->NewElement(NULL, HtmlName::kScript);
-  driver()->AddAttribute(script, HtmlName::kPagespeedNoDefer, NULL);
+  driver()->AddAttribute(script, HtmlName::kDataPagespeedNoDefer, NULL);
   // Always add the beacon js before the current node, because the current node
   // might be an img node that needs the beacon js for its
   // checkImageForCriticality onload handler.
@@ -165,7 +165,7 @@ void CriticalImagesBeaconFilter::EndElementImpl(HtmlElement* element) {
   // TODO(jud): Verify this logic works correctly with input tags, then remove
   // the check for img tag here.
   if (element->keyword() == HtmlName::kImg && driver()->IsRewritable(element)) {
-    // Add a pagespeed_url_hash attribute to the image with the hash of the
+    // Add a data-pagespeed-url-hash attribute to the image with the hash of the
     // original URL. This is what the beacon will send back as the identifier
     // for critical images.
     HtmlElement::Attribute* src = element->FindAttribute(HtmlName::kSrc);
@@ -179,7 +179,7 @@ void CriticalImagesBeaconFilter::EndElementImpl(HtmlElement* element) {
         image_url_hashes_.insert(hash_str);
         if (insert_beacon_js_) {
           driver()->AddAttribute(
-              element, HtmlName::kPagespeedUrlHash, hash_str);
+              element, HtmlName::kDataPagespeedUrlHash, hash_str);
           if (element->keyword() == HtmlName::kImg &&
               CanAddPagespeedOnloadToImage(*element)) {
             // Add an onload handler only if one is not already specified on the

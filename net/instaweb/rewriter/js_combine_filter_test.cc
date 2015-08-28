@@ -20,7 +20,6 @@
 
 #include "net/instaweb/rewriter/public/js_combine_filter.h"
 
-#include <memory>
 #include <vector>
 
 #include "net/instaweb/http/public/async_fetch.h"
@@ -1150,6 +1149,13 @@ TEST_F(JsCombineFilterTest, NoCombineNoDeferAttribute) {
   ValidateNoChanges(
       "pagespeed_no_defer",
       StrCat("<script src=", kJsUrl1, " pagespeed_no_defer></script>",
+             "<script src=", kJsUrl2, "></script>"));
+}
+
+TEST_F(JsCombineFilterTest, NoCombineDataNoDeferAttribute) {
+  ValidateNoChanges(
+      "data-pagespeed-no-defer",
+      StrCat("<script src=", kJsUrl1, " data-pagespeed-no-defer></script>",
              "<script src=", kJsUrl2, "></script>"));
 }
 

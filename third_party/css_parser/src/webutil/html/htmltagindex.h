@@ -28,6 +28,8 @@
 #define WEBUTIL_HTML_HTMLTAGINDEX_H__
 
 #include <string.h>
+#include <memory>
+#include "base/scoped_ptr.h"
 #include <string>
 #include "string_using.h"
 

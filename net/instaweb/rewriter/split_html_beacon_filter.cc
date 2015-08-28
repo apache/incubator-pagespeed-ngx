@@ -135,7 +135,7 @@ void SplitHtmlBeaconFilter::EndDocument() {
   HtmlElement* script = driver()->NewElement(NULL, HtmlName::kScript);
   InsertNodeAtBodyEnd(script);
   AddJsToElement(js, script);
-  driver()->AddAttribute(script, HtmlName::kPagespeedNoDefer, NULL);
+  driver()->AddAttribute(script, HtmlName::kDataPagespeedNoDefer, NULL);
   split_html_beacon_added_count_->Add(1);
 }
 

@@ -197,6 +197,10 @@ const char UserAgentMatcherTestBase::kNECUserAgent[] =
 const char UserAgentMatcherTestBase::kNexus10ChromeUserAgent[] =
     "Mozilla/5.0 (Linux; Android 4.2.2; Nexus 10 Build/JDQ39) AppleWebKit/"
     "537.31 (KHTML, like Gecko) Chrome/26.0.1408.0 Safari/537.31";
+const char UserAgentMatcherTestBase::kNexus6Chrome44UserAgent[] =
+    "Mozilla/5.0 (Linux; Android 5.1.1; Nexus 6 Build/LVY48E) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.133 Mobile "
+    "Safari/537.36";
 const char UserAgentMatcherTestBase::kNexus7ChromeUserAgent[] =
     "Mozilla/5.0 (Linux; Android 4.2; Nexus 7 Build/JOP32C) AppleWebKit/535.19"
     "(KHTML, like Gecko) Chrome/18.0.1025.166 Safari/535.19";

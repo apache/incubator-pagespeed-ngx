@@ -408,7 +408,7 @@ TEST_F(CssInlineFilterTest, InlineAndPrioritizeCss) {
 
   GoogleString html_input =
       StrCat("<link rel=stylesheet href=\"", kCssUrl, "\">");
-  GoogleString html_output= StrCat("<style>", kCss, "</style>");
+  GoogleString html_output = StrCat("<style>", kCss, "</style>");
 
   ValidateExpected("inline_prioritize", html_input, html_output);
 }
@@ -428,7 +428,7 @@ TEST_F(CssInlineFilterTest, InlineCombined) {
   GoogleString html_input =
       StrCat("<link rel=stylesheet href=\"", kCssUrl, "\">",
              "<link rel=stylesheet href=\"", kCssUrl, "\">");
-  GoogleString html_output= StrCat("<style>", kCss, kCss, "</style>");
+  GoogleString html_output = StrCat("<style>", kCss, kCss, "</style>");
 
   ValidateExpected("inline_combined", html_input, html_output);
   ValidateExpected("inline_combined", html_input, html_output);
@@ -642,6 +642,10 @@ TEST_F(CssInlineFilterTest, CarryAcrossOtherAttributes) {
       "NoTransform",
       "<link rel='stylesheet' href='foo.css' id='my-stylesheet' class='a b c' "
       "pagespeed_no_transform>");
+  ValidateNoChanges(
+      "NoTransform",
+      "<link rel='stylesheet' href='foo.css' id='my-stylesheet' class='a b c' "
+      "data-pagespeed-no-transform>");
 }
 
 TEST_F(CssInlineFilterTest, NoRel) {

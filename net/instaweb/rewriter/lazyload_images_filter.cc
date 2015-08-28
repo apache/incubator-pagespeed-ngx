@@ -228,14 +228,15 @@ void LazyloadImagesFilter::EndElementImpl(HtmlElement* element) {
 
   StringPiece url(src->DecodedValueOrNull());
   if (url.empty() || IsDataUrl(url) ||
+      element->FindAttribute(HtmlName::kDataPagespeedNoDefer) != NULL ||
       element->FindAttribute(HtmlName::kPagespeedNoDefer) != NULL) {
     // TODO(rahulbansal): Log separately for pagespeed_no_defer.
     return;
   }
   AbstractLogRecord* log_record = driver()->log_record();
   if (!CanAddPagespeedOnloadToImage(*element) ||
-      element->FindAttribute(HtmlName::kDataSrc) != NULL ||
-      element->FindAttribute(HtmlName::kPagespeedLazySrc) != NULL) {
+      element->FindAttribute(HtmlName::kDataPagespeedLazySrc) != NULL ||
+      element->FindAttribute(HtmlName::kDataSrc) != NULL) {
     log_record->LogLazyloadFilter(
         RewriteOptions::FilterId(RewriteOptions::kLazyloadImages),
         RewriterApplication::NOT_APPLIED, false, false);
@@ -289,13 +290,13 @@ void LazyloadImagesFilter::EndElementImpl(HtmlElement* element) {
   if (!main_script_inserted_) {
     InsertLazyloadJsCode(element);
   }
-  // Replace the src with pagespeed_lazy_src.
-  driver()->SetAttributeName(src, HtmlName::kPagespeedLazySrc);
-  // Rename srcset -> pagespeed_high_res_srcset
+  // Replace the src with data-pagespeed-lazy-src.
+  driver()->SetAttributeName(src, HtmlName::kDataPagespeedLazySrc);
+  // Rename srcset -> data-pagespeed-high-res-srcset
   HtmlElement::Attribute* srcset =
       element->FindAttribute(HtmlName::kSrcset);
   if (srcset != NULL) {
-    driver()->SetAttributeName(srcset, HtmlName::kPagespeedLazySrcset);
+    driver()->SetAttributeName(srcset, HtmlName::kDataPagespeedLazySrcset);
   }
   driver()->AddAttribute(element, HtmlName::kSrc, blank_image_url_);
   log_record->LogLazyloadFilter(
@@ -340,7 +341,7 @@ void LazyloadImagesFilter::InsertLazyloadJsCode(HtmlElement* element) {
     GoogleString lazyload_js = GetLazyloadJsSnippet(
         driver()->options(), static_asset_manager);
     AddJsToElement(lazyload_js, script);
-    driver()->AddAttribute(script, HtmlName::kPagespeedNoDefer, NULL);
+    driver()->AddAttribute(script, HtmlName::kDataPagespeedNoDefer, NULL);
   }
   main_script_inserted_ = true;
 }
@@ -350,7 +351,7 @@ void LazyloadImagesFilter::InsertOverrideAttributesScript(
   if (num_images_lazily_loaded_ > 0) {
     HtmlElement* script = driver()->NewElement(element, HtmlName::kScript);
     driver()->AddAttribute(script, HtmlName::kType, "text/javascript");
-    driver()->AddAttribute(script, HtmlName::kPagespeedNoDefer, NULL);
+    driver()->AddAttribute(script, HtmlName::kDataPagespeedNoDefer, NULL);
     HtmlNode* script_code = driver()->NewCharactersNode(
         script, kOverrideAttributeFunctions);
     if (is_before_script) {

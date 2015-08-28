@@ -94,6 +94,7 @@ class UserAgentMatcherTestBase : public testing::Test {
   static const char kMozillaUserAgent[];
   static const char kNECUserAgent[];
   static const char kNexus10ChromeUserAgent[];
+  static const char kNexus6Chrome44UserAgent[];
   static const char kNexus7ChromeUserAgent[];
   static const char kNokiaMobileUserAgent[];
   static const char kNokiaUserAgent[];

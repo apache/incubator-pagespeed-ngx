@@ -21,7 +21,6 @@
 #include <set>
 
 #include "base/logging.h"
-#include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
@@ -101,7 +100,7 @@ void LocalStorageCacheFilter::StartElementImpl(HtmlElement* element) {
   // the inlined resource, indicating that we have to insert our JS for them.
   if (element->keyword() == HtmlName::kImg ||
       element->keyword() == HtmlName::kLink) {
-    if (element->AttributeValue(HtmlName::kPagespeedLscUrl) != NULL) {
+    if (element->AttributeValue(HtmlName::kDataPagespeedLscUrl) != NULL) {
       // Note that we might end up not needing the inserted script because
       // the img/link might not be able to be inlined. So be it.
       script_needs_inserting_ = true;
@@ -115,7 +114,7 @@ void LocalStorageCacheFilter::StartElementImpl(HtmlElement* element) {
 }
 
 void LocalStorageCacheFilter::EndElementImpl(HtmlElement* element) {
-  // An <img> or <link> that has a pagespeed_lsc_url attribute, and whose
+  // An <img> or <link> that has a data-pagespeed-lsc-url attribute, and whose
   // URL's hash is in the LSC cookie, needs to be replaced by a JS snippet.
   bool is_img = false;
   bool is_link = false;
@@ -125,7 +124,7 @@ void LocalStorageCacheFilter::EndElementImpl(HtmlElement* element) {
     is_link = true;
   }
   if (is_img || is_link) {
-    const char* url = element->AttributeValue(HtmlName::kPagespeedLscUrl);
+    const char* url = element->AttributeValue(HtmlName::kDataPagespeedLscUrl);
     if (url != NULL) {
       num_local_storage_cache_candidates_found_->Add(1);
       GoogleString hash = GenerateHashFromUrlAndElement(driver(), url, element);
@@ -146,7 +145,7 @@ void LocalStorageCacheFilter::EndElementImpl(HtmlElement* element) {
         HtmlElement* script_element =
             driver()->NewElement(element->parent(), HtmlName::kScript);
         driver()->AddAttribute(
-            script_element, HtmlName::kPagespeedNoDefer, NULL);
+            script_element, HtmlName::kDataPagespeedNoDefer, NULL);
         if (driver()->ReplaceNode(element, script_element)) {
           driver()->AppendChild(script_element,
                                 driver()->NewCharactersNode(element, snippet));
@@ -168,8 +167,8 @@ void LocalStorageCacheFilter::InsertOurScriptElement(HtmlElement* before) {
                                                      HtmlName::kScript);
   driver()->InsertNodeBeforeNode(before, script_element);
   AddJsToElement(initialized_js, script_element);
-  script_element->AddAttribute(driver()->MakeName(HtmlName::kPagespeedNoDefer),
-                               NULL, HtmlElement::NO_QUOTE);
+  driver()->AddAttribute(
+        script_element, HtmlName::kDataPagespeedNoDefer, NULL);
   script_inserted_ = true;
 }
 
@@ -214,10 +213,10 @@ bool LocalStorageCacheFilter::AddStorableResource(const StringPiece& url,
     }
   }
 
-  // If necessary, set the pagespeed_lsc_url attribute in the element, which
-  // later triggers the LSC filter to replace element with JS.
+  // If necessary, set the data-pagespeed-lsc-url attribute in the element,
+  // which later triggers the LSC filter to replace element with JS.
   if (add_the_attr) {
-    driver->AddAttribute(element, HtmlName::kPagespeedLscUrl, state->url_);
+    driver->AddAttribute(element, HtmlName::kDataPagespeedLscUrl, state->url_);
   }
 
   return add_the_attr;
@@ -231,8 +230,8 @@ bool LocalStorageCacheFilter::AddLscAttributes(const StringPiece url,
     return false;
   }
 
-  // Don't add the other attributes if we don't have a pagespeed_lsc_url.
-  if (element->AttributeValue(HtmlName::kPagespeedLscUrl) == NULL) {
+  // Don't add the other attributes if we don't have a data-pagespeed-lsc-url.
+  if (element->AttributeValue(HtmlName::kDataPagespeedLscUrl) == NULL) {
     return false;
   }
 
@@ -248,13 +247,14 @@ bool LocalStorageCacheFilter::AddLscAttributes(const StringPiece url,
   GoogleUrl gurl(driver->base_url(), url);
   StringPiece lsc_url(gurl.IsWebValid() ? gurl.Spec() : url);
   GoogleString hash = GenerateHashFromUrlAndElement(driver, lsc_url, element);
-  driver->AddAttribute(element, HtmlName::kPagespeedLscHash, hash);
+  driver->AddAttribute(element, HtmlName::kDataPagespeedLscHash, hash);
   if (cached.input_size() > 0) {
     const InputInfo& input_info = cached.input(0);
     if (input_info.has_expiration_time_ms()) {
       GoogleString expiry;
       if (ConvertTimeToString(input_info.expiration_time_ms(), &expiry)) {
-        driver->AddAttribute(element, HtmlName::kPagespeedLscExpiry, expiry);
+        driver->AddAttribute(
+            element, HtmlName::kDataPagespeedLscExpiry, expiry);
       }
     }
   }
@@ -267,9 +267,9 @@ void LocalStorageCacheFilter::RemoveLscAttributes(HtmlElement* element,
   if (!driver->options()->Enabled(RewriteOptions::kLocalStorageCache)) {
     return;
   }
-  element->DeleteAttribute(HtmlName::kPagespeedLscUrl);
-  element->DeleteAttribute(HtmlName::kPagespeedLscHash);
-  element->DeleteAttribute(HtmlName::kPagespeedLscExpiry);
+  element->DeleteAttribute(HtmlName::kDataPagespeedLscUrl);
+  element->DeleteAttribute(HtmlName::kDataPagespeedLscHash);
+  element->DeleteAttribute(HtmlName::kDataPagespeedLscExpiry);
 
   RewriteFilter* filter =
       driver->FindFilter(RewriteOptions::kLocalStorageCacheId);
@@ -325,17 +325,18 @@ bool LocalStorageCacheFilter::IsHashInCookie(const RewriteDriver* driver,
 GoogleString LocalStorageCacheFilter::ExtractOtherImgAttributes(
     const HtmlElement* element) {
   // Copy over all the 'other' attributes from an img element except for
-  // pagespeed_lsc_url, pagespeed_lsc_hash, pagespeed_lsc_expiry,
-  // pagespeed_no_defer, and src.
+  // data-pagespeed-lsc-url, data-pagespeed-lsc-hash, data-pagespeed-lsc-expiry,
+  // data-pagespeed-no-defer, pagespeed_no_defer, and src.
   GoogleString result;
   const HtmlElement::AttributeList& attrs = element->attributes();
   for (HtmlElement::AttributeConstIterator i(attrs.begin());
        i != attrs.end(); ++i) {
     const HtmlElement::Attribute& attr = *i;
     HtmlName::Keyword keyword = attr.keyword();
-    if (keyword != HtmlName::kPagespeedLscUrl &&
-        keyword != HtmlName::kPagespeedLscHash &&
-        keyword != HtmlName::kPagespeedLscExpiry &&
+    if (keyword != HtmlName::kDataPagespeedLscUrl &&
+        keyword != HtmlName::kDataPagespeedLscHash &&
+        keyword != HtmlName::kDataPagespeedLscExpiry &&
+        keyword != HtmlName::kDataPagespeedNoDefer &&
         keyword != HtmlName::kPagespeedNoDefer &&
         keyword != HtmlName::kSrc) {
       GoogleString escaped_js;

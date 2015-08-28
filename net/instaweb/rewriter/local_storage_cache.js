@@ -21,6 +21,9 @@
  * @author matterbury@google.com (Matt Atterbury)
  */
 
+goog.provide('pagespeed');
+goog.provide('pagespeed.LocalStorageCache');
+
 goog.require('pagespeedutils');
 
 // Exporting functions using quoted attributes to prevent js compiler from
@@ -28,6 +31,8 @@ goog.require('pagespeedutils');
 // See http://code.google.com/closure/compiler/docs/api-tutorial3.html#dangers
 window['pagespeed'] = window['pagespeed'] || {};
 var pagespeed = window['pagespeed'];
+
+
 
 /**
  * @constructor
@@ -41,6 +46,7 @@ pagespeed.LocalStorageCache = function() {
   this.regenerate_cookie_ = true;
 };
 
+
 /**
  * @return {boolean} True if the given object has expired.
  * @param {*} obj is an object of the form '<expiry> <hash> <inline-data>'.
@@ -52,6 +58,7 @@ pagespeed.LocalStorageCache.prototype.hasExpired = function(obj) {
 
 pagespeed.LocalStorageCache.prototype['hasExpired'] =
     pagespeed.LocalStorageCache.prototype.hasExpired;
+
 
 /**
  * @return {string} The data part of the given object.
@@ -65,6 +72,7 @@ pagespeed.LocalStorageCache.prototype.getData = function(obj) {
 
 pagespeed.LocalStorageCache.prototype['getData'] =
     pagespeed.LocalStorageCache.prototype.getData;
+
 
 /**
  * Replaces the last script element in the DOM with the given element. The
@@ -82,6 +90,7 @@ pagespeed.LocalStorageCache.prototype.replaceLastScript = function(newElement) {
 
 pagespeed.LocalStorageCache.prototype['replaceLastScript'] =
     pagespeed.LocalStorageCache.prototype.replaceLastScript;
+
 
 /**
  * Inline the CSS with the given URL.
@@ -103,6 +112,7 @@ pagespeed.LocalStorageCache.prototype.inlineCss = function(url) {
 
 pagespeed.LocalStorageCache.prototype['inlineCss'] =
     pagespeed.LocalStorageCache.prototype.inlineCss;
+
 
 /**
  * Inline the IMG with the given URL.
@@ -131,11 +141,13 @@ pagespeed.LocalStorageCache.prototype.inlineImg = function(url, hash) {
 pagespeed.LocalStorageCache.prototype['inlineImg'] =
     pagespeed.LocalStorageCache.prototype.inlineImg;
 
+
 /**
- * For each element of the given tag name, check if it has pagespeed_lsc_url
- * and pagespeed_lsc_hash attributes and, if so, save the element's hash,
- * expiry, and data in local storage. regenerate_cookie_ is set to true if
- * any elements are saved, which later triggers regeneration of the cookie.
+ * For each element of the given tag name, check if it has
+ * data-pagespeed-lsc-url and data-pagespeed-lsc-hash attributes and, if so,
+ * save the element's hash, expiry, and data in local
+ * storage. regenerate_cookie_ is set to true if any elements are saved, which
+ * later triggers regeneration of the cookie.
  * @param {string} tagName Tag Name of elements to process.
  * @param {boolean} isHashInKey True iff the hash is part of the lookup key.
  * @param {(function ({Element})|function ({Image}))} dataFunc Function to get
@@ -148,14 +160,14 @@ pagespeed.LocalStorageCache.prototype.processTags_ = function(tagName,
   var elements = document.getElementsByTagName(tagName);
   for (var i = 0, n = elements.length; i < n; ++i) {
     var element = elements[i];
-    var hash = element.getAttribute('pagespeed_lsc_hash');
-    var url = element.getAttribute('pagespeed_lsc_url');
+    var hash = element.getAttribute('data-pagespeed-lsc-hash');
+    var url = element.getAttribute('data-pagespeed-lsc-url');
     if (hash && url) {
       var urlkey = 'pagespeed_lsc_url:' + url;
       if (isHashInKey) {
         urlkey += ' pagespeed_lsc_hash:' + hash;
       }
-      var expiry = element.getAttribute('pagespeed_lsc_expiry');
+      var expiry = element.getAttribute('data-pagespeed-lsc-expiry');
       var millis = (expiry ? (new Date(expiry)).getTime() : '');
       var data = dataFunc(element);
       if (!data) {
@@ -174,6 +186,7 @@ pagespeed.LocalStorageCache.prototype.processTags_ = function(tagName,
   }
 };
 
+
 /**
  * Save any inlined data to local storage.
  * @private
@@ -186,6 +199,7 @@ pagespeed.LocalStorageCache.prototype.saveInlinedData_ = function() {
                       return (e.firstChild ? e.firstChild.nodeValue : null);
                     });
 };
+
 
 /**
  * Regenerate the cookie from the hash's of unexpired objects in local storage
@@ -229,6 +243,7 @@ pagespeed.LocalStorageCache.prototype.generateCookie_ = function() {
   }
 };
 
+
 /**
  * Initializes the local storage cache module.
  */
@@ -238,13 +253,13 @@ pagespeed.localStorageCacheInit = function() {
     var temp = new pagespeed.LocalStorageCache();
     pagespeed['localStorageCache'] = temp;
     pagespeedutils.addHandler(window, 'load',
-                         function() {
-                           temp.saveInlinedData_();
-                         });
+        function() {
+          temp.saveInlinedData_();
+        });
     pagespeedutils.addHandler(window, 'load',
-                         function() {
-                           temp.generateCookie_();
-                         });
+        function() {
+          temp.generateCookie_();
+        });
   }
 };
 

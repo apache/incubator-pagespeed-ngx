@@ -1751,7 +1751,7 @@ class RewriteDriver : public HtmlParse {
   // used to prevent a second attempt in case the first errored out.
   bool tried_to_distribute_fetch_;
 
-  // If false, add pagespeed_no_defer attribute to the script inserted by
+  // If false, add data-pagespeed-no-defer attribute to the script inserted by
   // add_instrumentation filter.
   bool defer_instrumentation_script_;
 

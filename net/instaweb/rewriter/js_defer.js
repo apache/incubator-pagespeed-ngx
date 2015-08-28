@@ -22,6 +22,8 @@
  * @author ksimbili@google.com (Kishore Simbili)
  */
 
+goog.provide('pagespeed');
+
 goog.require('pagespeedutils');
 
 
@@ -157,12 +159,6 @@ deferJsNs.DeferJs = function() {
    * @private
    */
   this.origDocWrite_ = document.write;
-
-  /**
-   * Original document.writeln handler.
-   * @private
-   */
-  this.origDocWriteln_ = document.writeln;
 
   /**
    * Original document.open handler.
@@ -410,14 +406,14 @@ deferJsNs.DeferJs.PRIORITY_PSA_SCRIPT_TYPE = 'text/prioritypsajs';
  * Name of orig_type attribute in deferred script node.
  * @const {string}
  */
-deferJsNs.DeferJs.PSA_ORIG_TYPE = 'pagespeed_orig_type';
+deferJsNs.DeferJs.PSA_ORIG_TYPE = 'data-pagespeed-orig-type';
 
 
 /**
  * Name of orig_src attribute in deferred script node.
  * @const {string}
  */
-deferJsNs.DeferJs.PSA_ORIG_SRC = 'pagespeed_orig_src';
+deferJsNs.DeferJs.PSA_ORIG_SRC = 'data-pagespeed-orig-src';
 
 
 /**

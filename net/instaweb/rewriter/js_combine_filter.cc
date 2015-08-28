@@ -654,8 +654,9 @@ void JsCombineFilter::ConsiderJsForCombination(HtmlElement* element,
     return;
   }
 
-  // Don't combine scripts with the pagespeed_no_defer attribute.
-  if (element->FindAttribute(HtmlName::kPagespeedNoDefer) != NULL) {
+  // Don't combine scripts with the data-pagespeed-no-defer attribute.
+  if (element->FindAttribute(HtmlName::kDataPagespeedNoDefer) != NULL ||
+      element->FindAttribute(HtmlName::kPagespeedNoDefer) != NULL) {
     NextCombination();
     return;
   }

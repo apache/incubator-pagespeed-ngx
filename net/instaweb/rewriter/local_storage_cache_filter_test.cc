@@ -132,7 +132,7 @@ class LocalStorageCacheTest : public RewriteTestBase,
     StaticAssetManager* static_asset_manager =
         server_context()->static_asset_manager();
     local_storage_cache_js_ =
-        StrCat("<script type=\"text/javascript\" pagespeed_no_defer>"
+        StrCat("<script type=\"text/javascript\" data-pagespeed-no-defer>"
                "//<![CDATA[\n",
                static_asset_manager->GetAsset(
                    StaticAssetEnum::LOCAL_STORAGE_CACHE_JS, options()),
@@ -196,17 +196,18 @@ TEST_F(LocalStorageCacheTest, Simple) {
 }
 
 TEST_F(LocalStorageCacheTest, Link) {
-  TestLocalStorage("link",
-                   "<link rel='stylesheet' href='styles.css'>",
-                   InsertScriptBefore(
-                       "<style "
-                       "pagespeed_lsc_url=\"http://test.com/styles.css\" "
-                       "pagespeed_lsc_hash=\"0\" "
-                       "pagespeed_lsc_expiry=\"Tue, 02 Feb 2010 18:53:06 GMT\">"
-                       ".background_cyan{background-color:#0ff}"
-                       ".foreground_pink{color:#ffc0cb}"
-                       "</style>"),
-                   "<div/>", "<div/>");
+  TestLocalStorage(
+      "link",
+      "<link rel='stylesheet' href='styles.css'>",
+      InsertScriptBefore(
+          "<style "
+          "data-pagespeed-lsc-url=\"http://test.com/styles.css\" "
+          "data-pagespeed-lsc-hash=\"0\" "
+          "data-pagespeed-lsc-expiry=\"Tue, 02 Feb 2010 18:53:06 GMT\">"
+          ".background_cyan{background-color:#0ff}"
+          ".foreground_pink{color:#ffc0cb}"
+          "</style>"),
+      "<div/>", "<div/>");
 }
 
 TEST_F(LocalStorageCacheTest, LinkRewriteContextNotExecuted) {
@@ -256,10 +257,10 @@ TEST_F(LocalStorageCacheTest, Img) {
                    StrCat("<img src='", kCuppaPngFilename, "'>"),
                    InsertScriptBefore(
                        StrCat("<img src='", kCuppaPngInlineData,
-                              "' pagespeed_lsc_url="
+                              "' data-pagespeed-lsc-url="
                               "\"", kTestDomain, kCuppaPngFilename, "\""
-                              " pagespeed_lsc_hash=\"0\""
-                              " pagespeed_lsc_expiry="
+                              " data-pagespeed-lsc-hash=\"0\""
+                              " data-pagespeed-lsc-expiry="
                               "\"Tue, 02 Feb 2010 18:53:06 GMT\""
                               ">")));
 }
@@ -295,16 +296,16 @@ TEST_F(LocalStorageCacheTest, CookieSet) {
                           kStylesCssFilename,
                           "'>"),
                    InsertScriptBefore(
-                       StrCat("<script pagespeed_no_defer>"
+                       StrCat("<script data-pagespeed-no-defer>"
                               "pagespeed.localStorageCache.inlineCss("
                               "\"", kTestDomain, kStylesCssFilename, "\""
                               ");</script>")),
                    StrCat("<img src='", kCuppaPngFilename, "'>"),
                    StrCat("<img src='", kCuppaPngInlineData,
-                          "' pagespeed_lsc_url="
+                          "' data-pagespeed-lsc-url="
                           "\"", kTestDomain, kCuppaPngFilename, "\""
-                          " pagespeed_lsc_hash=\"du_OhARrJl\""
-                          " pagespeed_lsc_expiry="
+                          " data-pagespeed-lsc-hash=\"du_OhARrJl\""
+                          " data-pagespeed-lsc-expiry="
                           "\"Tue, 02 Feb 2010 18:53:06 GMT\""
                           ">"));
 }
@@ -324,12 +325,12 @@ TEST_F(LocalStorageCacheTest, RepeatViews) {
   // simulate that here. We redo it below with the rewriting completing in time.
   GoogleString external_css = StrCat("<link rel='stylesheet' href="
                                      "'", kStylesCssFilename, "'"
-                                     " pagespeed_lsc_url="
+                                     " data-pagespeed-lsc-url="
                                      "\"", kTestDomain, kStylesCssFilename, "\""
                                      ">");
   GoogleString external_img = StrCat("<img src="
                                      "'", kCuppaPngFilename, "'"
-                                     " pagespeed_lsc_url="
+                                     " data-pagespeed-lsc-url="
                                      "\"", kTestDomain, kCuppaPngFilename, "\""
                                      ">");
   SetupWaitFetcher();
@@ -339,19 +340,19 @@ TEST_F(LocalStorageCacheTest, RepeatViews) {
   CallFetcherCallbacks();
 
   // Second view will inline them both and add an expiry to both.
-  GoogleString inlined_css = StrCat("<style pagespeed_lsc_url="
+  GoogleString inlined_css = StrCat("<style data-pagespeed-lsc-url="
                                     "\"", kTestDomain, kStylesCssFilename, "\""
-                                    " pagespeed_lsc_hash=\"Fe1SLPZ14c\""
-                                    " pagespeed_lsc_expiry="
+                                    " data-pagespeed-lsc-hash=\"Fe1SLPZ14c\""
+                                    " data-pagespeed-lsc-expiry="
                                     "\"Tue, 02 Feb 2010 18:53:06 GMT\""
                                     ">",
                                     kStylesCssContents,
                                     "</style>");
   GoogleString inlined_img = StrCat("<img src='", kCuppaPngInlineData,
-                                    "' pagespeed_lsc_url="
+                                    "' data-pagespeed-lsc-url="
                                     "\"", kTestDomain, kCuppaPngFilename, "\""
-                                    " pagespeed_lsc_hash=\"du_OhARrJl\""
-                                    " pagespeed_lsc_expiry="
+                                    " data-pagespeed-lsc-hash=\"du_OhARrJl\""
+                                    " data-pagespeed-lsc-expiry="
                                     "\"Tue, 02 Feb 2010 18:53:06 GMT\""
                                     ">");
   TestLocalStorage("second_view",
@@ -365,11 +366,11 @@ TEST_F(LocalStorageCacheTest, RepeatViews) {
 
   // Third view will not send the inlined data and will send scripts in place
   // of the link and img elements.
-  GoogleString scripted_css = StrCat("<script pagespeed_no_defer>"
+  GoogleString scripted_css = StrCat("<script data-pagespeed-no-defer>"
                                      "pagespeed.localStorageCache.inlineCss("
                                      "\"", kTestDomain, kStylesCssFilename, "\""
                                      ");</script>");
-  GoogleString scripted_img = StrCat("<script pagespeed_no_defer>"
+  GoogleString scripted_img = StrCat("<script data-pagespeed-no-defer>"
                                      "pagespeed.localStorageCache.inlineImg("
                                      "\"", kTestDomain, kCuppaPngFilename, "\""
                                      ", \"du_OhARrJl\");</script>");
@@ -397,7 +398,7 @@ TEST_F(LocalStorageCacheTest, RepeatViewsWithOtherAttributes) {
   // simulate that here. We redo it below with the rewriting completing in time.
   GoogleString external_css = StrCat("<link rel='stylesheet' href="
                                      "'", kStylesCssFilename, "'"
-                                     " pagespeed_lsc_url="
+                                     " data-pagespeed-lsc-url="
                                      "\"", kTestDomain, kStylesCssFilename, "\""
                                      ">");
   GoogleString external_img = StrCat("<img src="
@@ -406,7 +407,7 @@ TEST_F(LocalStorageCacheTest, RepeatViewsWithOtherAttributes) {
                                      " alt=\"A cup of joe\""
                                      " alt='A cup of joe&#39;s \"joe\"'"
                                      " alt=\"A cup of joe's &quot;joe&quot;\""
-                                     " pagespeed_lsc_url="
+                                     " data-pagespeed-lsc-url="
                                      "\"", kTestDomain, kCuppaPngFilename, "\""
                                      ">");
   SetupWaitFetcher();
@@ -417,10 +418,10 @@ TEST_F(LocalStorageCacheTest, RepeatViewsWithOtherAttributes) {
 
   // Second view will inline them both and add an expiry to both.
   GoogleString inlined_css = StrCat("<style"
-                                    " pagespeed_lsc_url="
+                                    " data-pagespeed-lsc-url="
                                     "\"", kTestDomain, kStylesCssFilename, "\""
-                                    " pagespeed_lsc_hash=\"Fe1SLPZ14c\""
-                                    " pagespeed_lsc_expiry="
+                                    " data-pagespeed-lsc-hash=\"Fe1SLPZ14c\""
+                                    " data-pagespeed-lsc-expiry="
                                     "\"Tue, 02 Feb 2010 18:53:06 GMT\""
                                     ">",
                                     kStylesCssContents,
@@ -430,10 +431,10 @@ TEST_F(LocalStorageCacheTest, RepeatViewsWithOtherAttributes) {
                                     " alt=\"A cup of joe\""
                                     " alt='A cup of joe&#39;s \"joe\"'"
                                     " alt=\"A cup of joe's &quot;joe&quot;\""
-                                    " pagespeed_lsc_url="
+                                    " data-pagespeed-lsc-url="
                                     "\"", kTestDomain, kCuppaPngFilename, "\""
-                                    " pagespeed_lsc_hash=\"du_OhARrJl\""
-                                    " pagespeed_lsc_expiry="
+                                    " data-pagespeed-lsc-hash=\"du_OhARrJl\""
+                                    " data-pagespeed-lsc-expiry="
                                     "\"Tue, 02 Feb 2010 18:53:06 GMT\""
                                     ">");
   TestLocalStorage("second_view",
@@ -447,11 +448,11 @@ TEST_F(LocalStorageCacheTest, RepeatViewsWithOtherAttributes) {
 
   // Third view will not send the inlined data and will send scripts in place
   // of the link and img elements.
-  GoogleString scripted_css = StrCat("<script pagespeed_no_defer>"
+  GoogleString scripted_css = StrCat("<script data-pagespeed-no-defer>"
                                      "pagespeed.localStorageCache.inlineCss("
                                      "\"", kTestDomain, kStylesCssFilename, "\""
                                      ");</script>");
-  GoogleString scripted_img = StrCat("<script pagespeed_no_defer>"
+  GoogleString scripted_img = StrCat("<script data-pagespeed-no-defer>"
                                      "pagespeed.localStorageCache.inlineImg("
                                      "\"", kTestDomain, kCuppaPngFilename, "\""
                                      ", \"du_OhARrJl\""
@@ -497,11 +498,11 @@ TEST_F(LocalStorageCacheTest, RepeatViewsOfSameImageAtDifferentSizes) {
   GoogleString external_imgs =
       StrCat("<img src='", kCuppaPngFilename, "'"
              " width=\"30\" height=\"30\""
-             " pagespeed_lsc_url=""\"",
+             " data-pagespeed-lsc-url=""\"",
              kTestDomain, kCuppaPngFilename, "\">",
              "<img src='", kCuppaPngFilename, "'"
              " width=\"150\" height=\"150\""
-             " pagespeed_lsc_url=\"",
+             " data-pagespeed-lsc-url=\"",
              kTestDomain, kCuppaPngFilename, "\">");
 
   SetupWaitFetcher();
@@ -514,17 +515,17 @@ TEST_F(LocalStorageCacheTest, RepeatViewsOfSameImageAtDifferentSizes) {
       StrCat("<img src='", kCuppaPng30sqInlineData, "'"
              // This is dropped; see below for why.
              // " width=\"30\" height=\"30\""
-             " pagespeed_lsc_url=\"",
+             " data-pagespeed-lsc-url=\"",
              kTestDomain, kCuppaPngFilename, "\""
-             " pagespeed_lsc_hash=\"", kHash30x30, "\""
-             " pagespeed_lsc_expiry="
+             " data-pagespeed-lsc-hash=\"", kHash30x30, "\""
+             " data-pagespeed-lsc-expiry="
              "\"Tue, 02 Feb 2010 18:53:06 GMT\">",
              "<img src='", kCuppaPng150sqInlineData, "'"
              " width=\"150\" height=\"150\""
-             " pagespeed_lsc_url=\"",
+             " data-pagespeed-lsc-url=\"",
              kTestDomain, kCuppaPngFilename, "\""
-             " pagespeed_lsc_hash=\"", kHash150x150, "\""
-             " pagespeed_lsc_expiry="
+             " data-pagespeed-lsc-hash=\"", kHash150x150, "\""
+             " data-pagespeed-lsc-expiry="
              "\"Tue, 02 Feb 2010 18:53:06 GMT\">");
   // NOTE: Why are width=30 and height=30 dropped from the first img tag?
   // Because the image rewriter calls DeleteMatchingImageDimsAfterInline for
@@ -545,13 +546,13 @@ TEST_F(LocalStorageCacheTest, RepeatViewsOfSameImageAtDifferentSizes) {
   // Third view will not send the inlined data and will send scripts in place
   // of the link and img elements.
   GoogleString scripted_imgs =
-      StrCat("<script pagespeed_no_defer>"
+      StrCat("<script data-pagespeed-no-defer>"
              "pagespeed.localStorageCache.inlineImg("
              "\"", kTestDomain, kCuppaPngFilename,
              "\", \"", kHash30x30, "\""
              ", \"width=30\", \"height=30\""
              ");</script>",
-             "<script pagespeed_no_defer>"
+             "<script data-pagespeed-no-defer>"
              "pagespeed.localStorageCache.inlineImg("
              "\"", kTestDomain, kCuppaPngFilename,
              "\", \"", kHash150x150, "\""

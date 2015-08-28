@@ -21,6 +21,9 @@
 
 #include <string>
 
+#include <memory>
+#include "base/scoped_ptr.h"
+
 #include "base/scoped_ptr.h"
 #include "base/stringprintf.h"
 #include "testing/base/public/googletest.h"

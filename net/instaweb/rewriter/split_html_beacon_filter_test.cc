@@ -111,7 +111,7 @@ class SplitHtmlBeaconFilterTest : public RewriteTestBase {
   // because then ExpectedNonce() will get out of sync.
   GoogleString BeaconScript() {
     GoogleString script =
-        StrCat("<script type=\"text/javascript\" pagespeed_no_defer>",
+        StrCat("<script type=\"text/javascript\" data-pagespeed-no-defer>",
                server_context()->static_asset_manager()->GetAsset(
                    StaticAssetEnum::SPLIT_HTML_BEACON_JS, options()));
     StrAppend(&script, "\npagespeed.splitHtmlBeaconInit('",

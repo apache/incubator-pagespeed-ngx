@@ -56,7 +56,7 @@ class MinifyExcerptFilter : public CssSummarizerBase {
   virtual const char* id() const { return "csr"; }
 
   virtual bool MustSummarize(HtmlElement* element) const {
-    return (!element->FindAttribute(HtmlName::kPagespeedNoDefer));
+    return (!element->FindAttribute(HtmlName::kDataPagespeedNoDefer));
   }
 
   virtual void Summarize(Css::Stylesheet* stylesheet,
@@ -375,15 +375,15 @@ TEST_F(CssSummarizerBaseTest, IgnoreNonSummarizable) {
   filter_->set_render_summaries_in_place(true);
   Parse("non-summarizable",
         "<style>* { background: blue; }</style>"
-        "<style pagespeed_no_defer>div {display:none;}</style>"
+        "<style data-pagespeed-no-defer>div {display:none;}</style>"
         "<style scoped>p {display:none;}</style>"
-        "<link rel=stylesheet href='b.css' pagespeed_no_defer>"
+        "<link rel=stylesheet href='b.css' data-pagespeed-no-defer>"
         "<link rel=stylesheet href='a.css'>");
   EXPECT_STREQ("<html>\n"
                "<style>*{backgrou</style>"
-               "<style pagespeed_no_defer>div {display:none;}</style>"
+               "<style data-pagespeed-no-defer>div {display:none;}</style>"
                "<style scoped>p {display:none;}</style>"
-               "<link rel=stylesheet href='b.css' pagespeed_no_defer>"
+               "<link rel=stylesheet href='b.css' data-pagespeed-no-defer>"
                "<style>div{displa</style>"
                "<!--OK/*{backgrou|OK/div{displa/rel=stylesheet|--></html>",
                output_buffer_);

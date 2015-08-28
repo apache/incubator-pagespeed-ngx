@@ -64,12 +64,12 @@ class LazyloadImagesFilterTest : public RewriteTestBase {
       const StringPiece& tag,
       const StringPiece& url,
       const StringPiece& additional_attributes) {
-    return StrCat("<", tag, " pagespeed_lazy_src=\"", url, "\" ",
+    return StrCat("<", tag, " data-pagespeed-lazy-src=\"", url, "\" ",
                   additional_attributes,
                   "src=\"", blank_image_src_,
-                  StrCat("\" onload=\"", LazyloadImagesFilter::kImageOnloadCode,
-                         "\" onerror=\"this.onerror=null;",
-                         LazyloadImagesFilter::kImageOnloadCode, "\"/>"));
+                  "\" onload=\"", LazyloadImagesFilter::kImageOnloadCode,
+                  "\" onerror=\"this.onerror=null;",
+                  LazyloadImagesFilter::kImageOnloadCode, "\"/>");
   }
 
   void ExpectLogRecord(int index, int status, bool is_blacklisted,
@@ -106,6 +106,7 @@ TEST_F(LazyloadImagesFilterTest, SingleHead) {
       "<img src=\"marquee.jpg\" />"
       "</marquee>"
       "<img src=\"1.jpg\" />"
+      "<img src=\"1.jpg\" data-pagespeed-no-defer/>"
       "<img src=\"1.jpg\" pagespeed_no_defer/>"
       "<img src=\"1.jpg\" data-src=\"2.jpg\"/>"
       "<img src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhE\"/>"
@@ -129,6 +130,7 @@ TEST_F(LazyloadImagesFilterTest, SingleHead) {
              "<img src=\"marquee.jpg\"/>"
              "</marquee>",
              GenerateRewrittenImageTag("img", "1.jpg", ""),
+             "<img src=\"1.jpg\" data-pagespeed-no-defer />"
              "<img src=\"1.jpg\" pagespeed_no_defer />"
              "<img src=\"1.jpg\" data-src=\"2.jpg\"/>",
              "<img src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhE\"/>",

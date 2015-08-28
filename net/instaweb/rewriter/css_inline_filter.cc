@@ -252,12 +252,12 @@ void CssInlineFilter::RenderInline(const ResourcePtr& resource,
       case HtmlName::kRel:
       case HtmlName::kType:
         break;
-      case HtmlName::kPagespeedLscHash:
+      case HtmlName::kDataPagespeedLscHash:
         // If we have a hash, we /must/ have an url as well, so the fallthrough
         // will be a no-op (so, the hash case must come before the url case).
         has_pagespeed_lsc_hash = true;
         FALLTHROUGH_INTENDED;
-      case HtmlName::kPagespeedLscUrl:
+      case HtmlName::kDataPagespeedLscUrl:
         has_pagespeed_lsc_url = true;
         FALLTHROUGH_INTENDED;
       default:
@@ -273,10 +273,10 @@ void CssInlineFilter::RenderInline(const ResourcePtr& resource,
     driver()->AddAttribute(style_element, HtmlName::kDataPagespeedHref,
                            resource_url.Spec());
   }
-  // If we don't already have a pagespeed_lsc_url then EndElementImpl must not
-  // have called AddStorableResource or LSC is disabled; in either case there
-  // is no point in trying to add the LSC attributes. OTOH, if have an url and
-  // a hash then we've already got all the attributes we need.
+  // If we don't already have a data-pagespeed-lsc-url then EndElementImpl must
+  // not have called AddStorableResource or LSC is disabled; in either case
+  // there is no point in trying to add the LSC attributes. OTOH, if have an url
+  // and a hash then we've already got all the attributes we need.
   if (has_pagespeed_lsc_url && !has_pagespeed_lsc_hash) {
     LocalStorageCacheFilter::AddLscAttributes(resource_url.Spec(), cached,
                                               driver(), style_element);

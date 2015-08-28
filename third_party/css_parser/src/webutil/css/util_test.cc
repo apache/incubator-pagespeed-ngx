@@ -19,6 +19,8 @@
 
 #include "webutil/css/util.h"
 
+#include <memory>
+#include "base/scoped_ptr.h"
 #include <string>
 
 #include "base/logging.h"

@@ -21,6 +21,9 @@
  * @author nikhilmadan@google.com (Nikhil Madan)
  */
 
+goog.provide('pagespeed');
+goog.provide('pagespeed.LazyloadImages');
+
 goog.require('pagespeedutils');
 
 // Exporting functions using quoted attributes to prevent js compiler from
@@ -28,6 +31,8 @@ goog.require('pagespeedutils');
 // See http://code.google.com/closure/compiler/docs/api-tutorial3.html#dangers
 window['pagespeed'] = window['pagespeed'] || {};
 var pagespeed = window['pagespeed'];
+
+
 
 /**
  * @constructor
@@ -105,6 +110,7 @@ pagespeed.LazyloadImages = function(blankImageSrc) {
   this.imgs_to_load_before_beaconing_ = 0;
 };
 
+
 /**
  * Count the number of total imgs that will be lazyloaded.
  * @return {number} The number of imgs deferred.
@@ -115,12 +121,13 @@ pagespeed.LazyloadImages.prototype.countDeferredImgs_ = function() {
   var imgs = document.getElementsByTagName('img');
   for (var i = 0, img; img = imgs[i]; i++) {
     if (img.src.indexOf(this.blank_image_src_) != -1 &&
-        this.hasAttribute_(img, 'pagespeed_lazy_src')) {
+        this.hasAttribute_(img, 'data-pagespeed-lazy-src')) {
       deferredImgCount++;
     }
   }
   return deferredImgCount;
 };
+
 
 /**
  * Returns a bounding box for the currently visible part of the window.
@@ -149,6 +156,7 @@ pagespeed.LazyloadImages.prototype.viewport_ = function() {
   };
 };
 
+
 /**
  * Returns the position of the top of the given element with respect to the top
  * of the page.
@@ -157,7 +165,7 @@ pagespeed.LazyloadImages.prototype.viewport_ = function() {
  * @private
  */
 pagespeed.LazyloadImages.prototype.compute_top_ = function(element) {
-  var position = element.getAttribute('pagespeed_lazy_position');
+  var position = element.getAttribute('data-pagespeed-lazy-position');
   if (position) {
     return parseInt(position, 0);
   }
@@ -168,9 +176,10 @@ pagespeed.LazyloadImages.prototype.compute_top_ = function(element) {
   }
   // Since position is absolute, it should always be >= 0.
   position = Math.max(position, 0);
-  element.setAttribute('pagespeed_lazy_position', position);
+  element.setAttribute('data-pagespeed-lazy-position', position);
   return position;
 };
+
 
 /**
  * Returns a bounding box for the given element.
@@ -188,6 +197,7 @@ pagespeed.LazyloadImages.prototype.offset_ = function(element) {
     bottom: top_position + element.offsetHeight
   };
 };
+
 
 /**
  * Returns the value of the given style property for the element.
@@ -215,6 +225,7 @@ pagespeed.LazyloadImages.prototype.getStyle_ = function(element, property) {
   // Fallback.
   return '';
 };
+
 
 /**
  * Returns true if an element is currently visible or within the buffer.
@@ -258,6 +269,7 @@ pagespeed.LazyloadImages.prototype.isVisible_ = function(element) {
           bottom_diff + this.buffer_ >= 0);
 };
 
+
 /**
  * Loads the given element if it is visible. Otherwise, adds it to the deferred
  * queue. Note that if force_load_ is true, the visibility check is skipped.
@@ -271,7 +283,7 @@ pagespeed.LazyloadImages.prototype.loadIfVisibleAndMaybeBeacon =
 
   var context = this;
   window.setTimeout(function() {
-    var data_src = element.getAttribute('pagespeed_lazy_src');
+    var data_src = element.getAttribute('data-pagespeed-lazy-src');
     if (data_src) {
       if ((context.force_load_ || context.isVisible_(element)) &&
           element.src.indexOf(context.blank_image_src_) != -1) {
@@ -301,28 +313,28 @@ pagespeed.LazyloadImages.prototype.loadIfVisibleAndMaybeBeacon =
           // would have removed this.
           if (pagespeed.CriticalImages) {
             pagespeedutils.addHandler(element, 'load', function(e) {
-               pagespeed.CriticalImages.checkImageForCriticality(this);
-               if (context.onload_done_) {
-                 context.imgs_to_load_before_beaconing_--;
-                 if (context.imgs_to_load_before_beaconing_ == 0) {
-                   pagespeed.CriticalImages.checkCriticalImages();
-                 }
-               }
+              pagespeed.CriticalImages.checkImageForCriticality(this);
+              if (context.onload_done_) {
+                context.imgs_to_load_before_beaconing_--;
+                if (context.imgs_to_load_before_beaconing_ == 0) {
+                  pagespeed.CriticalImages.checkCriticalImages();
+                }
+              }
             });
           }
         }
-        element.removeAttribute('pagespeed_lazy_src');
-        element.removeAttribute('pagespeed_lazy_replaced_functions');
+        element.removeAttribute('data-pagespeed-lazy-src');
+        element.removeAttribute('data-pagespeed-lazy-replaced-functions');
         // If there was a next sibling, insert element before it.
         if (parent_node) {
           parent_node.insertBefore(element, next_sibling);
         }
 
         // Set srcset before src to avoid potentially loading 2 sizes.
-        var srcset = element.getAttribute('pagespeed_lazy_srcset');
+        var srcset = element.getAttribute('data-pagespeed-lazy-srcset');
         if (srcset) {
           element.srcset = srcset;
-          element.removeAttribute('pagespeed_lazy_srcset');
+          element.removeAttribute('data-pagespeed-lazy-srcset');
         }
 
         // Set the src back to the original.
@@ -337,6 +349,7 @@ pagespeed.LazyloadImages.prototype.loadIfVisibleAndMaybeBeacon =
 pagespeed.LazyloadImages.prototype['loadIfVisibleAndMaybeBeacon'] =
     pagespeed.LazyloadImages.prototype.loadIfVisibleAndMaybeBeacon;
 
+
 /**
  * Loads all the images irrespective of whether or not they are in the
  * viewport.
@@ -348,6 +361,7 @@ pagespeed.LazyloadImages.prototype.loadAllImages = function() {
 
 pagespeed.LazyloadImages.prototype['loadAllImages'] =
     pagespeed.LazyloadImages.prototype.loadAllImages;
+
 
 /**
  * Loads the visible elements in the deferred queue. Also, removes the loaded
@@ -362,6 +376,7 @@ pagespeed.LazyloadImages.prototype.loadVisible_ = function() {
     this.loadIfVisibleAndMaybeBeacon(old_deferred[i]);
   }
 };
+
 
 /**
  * Returns true if the given element has an attribute with the given name.
@@ -378,6 +393,7 @@ pagespeed.LazyloadImages.prototype.hasAttribute_ =
   return element.getAttribute(attribute) != null;
 };
 
+
 /**
  * Overrides attribute functions for all lazily loaded images if they have not
  * already been overridden.
@@ -385,7 +401,7 @@ pagespeed.LazyloadImages.prototype.hasAttribute_ =
 pagespeed.LazyloadImages.prototype.overrideAttributeFunctions = function() {
   var images = document.getElementsByTagName('img');
   for (var i = 0, element; element = images[i]; i++) {
-    if (this.hasAttribute_(element, 'pagespeed_lazy_src')) {
+    if (this.hasAttribute_(element, 'data-pagespeed-lazy-src')) {
       this.overrideAttributeFunctionsInternal_(element);
     }
   }
@@ -393,6 +409,7 @@ pagespeed.LazyloadImages.prototype.overrideAttributeFunctions = function() {
 
 pagespeed.LazyloadImages.prototype['overrideAttributeFunctions'] =
     pagespeed.LazyloadImages.prototype.overrideAttributeFunctions;
+
 
 /**
  * Overrides attribute functions for the given image if they have not already
@@ -404,18 +421,19 @@ pagespeed.LazyloadImages.prototype['overrideAttributeFunctions'] =
 pagespeed.LazyloadImages.prototype.overrideAttributeFunctionsInternal_ =
     function(element) {
   var context = this;
-  if (!this.hasAttribute_(element, 'pagespeed_lazy_replaced_functions')) {
+  if (!this.hasAttribute_(element, 'data-pagespeed-lazy-replaced-functions')) {
     element._getAttribute = element.getAttribute;
     element.getAttribute = function(name) {
       if (name.toLowerCase() == 'src' &&
-          context.hasAttribute_(this, 'pagespeed_lazy_src')) {
-        name = 'pagespeed_lazy_src';
+          context.hasAttribute_(this, 'data-pagespeed-lazy-src')) {
+        name = 'data-pagespeed-lazy-src';
       }
       return this._getAttribute(name);
     };
-    element.setAttribute('pagespeed_lazy_replaced_functions', '1');
+    element.setAttribute('data-pagespeed-lazy-replaced-functions', '1');
   }
 };
+
 
 /**
  * Initializes the lazyload module.

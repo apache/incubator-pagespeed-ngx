@@ -20,6 +20,8 @@
 #ifndef WEBUTIL_CSS_PARSER_H__
 #define WEBUTIL_CSS_PARSER_H__
 
+#include <memory>
+#include "base/scoped_ptr.h"
 #include <string>
 #include <vector>
 #include "base/scoped_ptr.h"

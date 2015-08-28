@@ -233,8 +233,8 @@ TEST_F(CollectFlushEarlyContentFilterTest, ApplySrcAndDataSrc) {
   GoogleString output_html =
     "<head></head>"
     "<body>"
-      "<img src=\"1.jpg\" pagespeed_size=\"11\">"
-      "<img data-src=\"2.jpg\" pagespeed_size=\"7\">"
+      "<img src=\"1.jpg\" data-pagespeed-size=\"11\">"
+      "<img data-src=\"2.jpg\" data-pagespeed-size=\"7\">"
     "</body>";
   ValidateExpected("flushing_early", input_html, output_html);
   FlushEarlyInfo* flush_early_info = rewrite_driver()->flush_early_info();
@@ -260,7 +260,8 @@ TEST_F(CollectFlushEarlyContentFilterTest, ApplyToPosterAndNotSrcOnVideo) {
   GoogleString output_html =
     "<head></head>"
     "<body>"
-      "<video src=\"1.video\" poster=\"2.poster\" pagespeed_size=\"6\"></video>"
+      "<video src=\"1.video\" poster=\"2.poster\" data-pagespeed-size=\"6\">"
+      "</video>"
     "</body>";
   ValidateExpected("flushing_early", input_html, output_html);
   FlushEarlyInfo* flush_early_info = rewrite_driver()->flush_early_info();
@@ -283,7 +284,7 @@ TEST_F(CollectFlushEarlyContentFilterTest, ApplyIfFlushingEarlyAndOptionSet) {
   GoogleString output_html =
     "<head></head>"
     "<body>"
-      "<img src=\"1.jpg\" pagespeed_size=\"5\"/>"
+      "<img src=\"1.jpg\" data-pagespeed-size=\"5\"/>"
       "<img src=\"data:image/gif;base64,R0lGODlhAQABAIAAAP\"/>"
     "</body>";
   ValidateExpected("flushing_early", input_html, output_html);

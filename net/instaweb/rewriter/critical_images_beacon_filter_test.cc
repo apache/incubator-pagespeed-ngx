@@ -165,7 +165,7 @@ class CriticalImagesBeaconFilterTest : public RewriteTestBase {
   void VerifyWithNoImageRewrite() {
     const GoogleString hash_str = ImageUrlHash(kChefGifFile);
     EXPECT_THAT(output_buffer_,
-                HasSubstr(StrCat("pagespeed_url_hash=\"", hash_str)));
+                HasSubstr(StrCat("data-pagespeed-url-hash=\"", hash_str)));
   }
 
   void AssumeHttps() {

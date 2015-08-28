@@ -93,7 +93,7 @@ void JsDisableFilter::InsertJsDeferExperimentalScript() {
       driver()->NewElement(NULL, HtmlName::kScript);
 
   driver()->AddAttribute(script_node, HtmlName::kType, "text/javascript");
-  driver()->AddAttribute(script_node, HtmlName::kPagespeedNoDefer, NULL);
+  driver()->AddAttribute(script_node, HtmlName::kDataPagespeedNoDefer, NULL);
   HtmlNode* script_code =
       driver()->NewCharactersNode(script_node, kEnableJsExperimental);
   InsertNodeAtBodyEnd(script_node);
@@ -144,7 +144,7 @@ void JsDisableFilter::StartElementImpl(HtmlElement* element) {
       if (prefetch_mechanism_ == UserAgentMatcher::kPrefetchImageTag) {
         HtmlElement* script = driver()->NewElement(element, HtmlName::kScript);
         driver()->AddAttribute(
-            script, HtmlName::kPagespeedNoDefer, NULL);
+            script, HtmlName::kDataPagespeedNoDefer, NULL);
         GoogleString script_data = StrCat("(function(){", prefetch_js_elements_,
                                           "})()");
         driver()->PrependChild(element, script);
@@ -157,7 +157,8 @@ void JsDisableFilter::StartElementImpl(HtmlElement* element) {
     HtmlElement::Attribute* src;
     if (script_tag_scanner_.ParseScriptElement(element, &src) ==
         ScriptTagScanner::kJavaScript) {
-      if (element->FindAttribute(HtmlName::kPagespeedNoDefer)) {
+      if (element->FindAttribute(HtmlName::kDataPagespeedNoDefer) ||
+          element->FindAttribute(HtmlName::kPagespeedNoDefer)) {
         driver()->log_record()->LogJsDisableFilter(
             RewriteOptions::FilterId(RewriteOptions::kDisableJavascript), true);
         return;
@@ -185,7 +186,7 @@ void JsDisableFilter::StartElementImpl(HtmlElement* element) {
       }
       HtmlElement::Attribute* type = element->FindAttribute(HtmlName::kType);
       if (type != NULL) {
-        type->set_name(driver()->MakeName(HtmlName::kPagespeedOrigType));
+        type->set_name(driver()->MakeName(HtmlName::kDataPagespeedOrigType));
       }
       // Delete all type attributes if any. Some sites have more than one type
       // attribute(duplicate). Chrome and firefox picks up the first type

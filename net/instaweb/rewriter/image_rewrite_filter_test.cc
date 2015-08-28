@@ -18,8 +18,6 @@
 
 #include "net/instaweb/rewriter/public/image_rewrite_filter.h"
 
-#include <memory>
-
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_cache.h"
@@ -1514,13 +1512,24 @@ TEST_F(ImageRewriteTest, NoTransform) {
                     false);  // expect_inline
 }
 
+TEST_F(ImageRewriteTest, DataNoTransform) {
+  // Make sure that the image stays the same and that the attribute is stripped.
+  options()->EnableFilter(RewriteOptions::kRecompressPng);
+  rewrite_driver()->AddFilters();
+  TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypePng,
+                    " data-pagespeed-no-transform",  // initial attributes
+                    "",                              // final attributes
+                    false,   // expect_rewritten
+                    false);  // expect_inline
+}
+
 TEST_F(ImageRewriteTest, NoTransformWithDims) {
   // Make sure that the image stays the same and that the attribute is stripped.
   options()->EnableFilter(RewriteOptions::kRecompressPng);
   rewrite_driver()->AddFilters();
   TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypePng,
                     // initial attributes
-                    " width=10 height=10 pagespeed_no_transform",
+                    " width=10 height=10 data-pagespeed-no-transform",
                     " width=10 height=10",  // final attributes
                     false,   // expect_rewritten
                     false);  // expect_inline
@@ -2424,8 +2433,8 @@ TEST_F(ImageRewriteTest, HonorNoTransform) {
 }
 
 TEST_F(ImageRewriteTest, YesTransform) {
-  // Replicates above test but without no-transform to show that it works.
-  // We also verfiy that the pagespeed_no_defer attribute doesn't get removed
+  // Replicates above test but without no-transform to show that it works.  We
+  // also verify that the data-pagespeed-no-defer attribute doesn't get removed
   // when we rewrite images.
   options()->EnableFilter(RewriteOptions::kRecompressPng);
   rewrite_driver()->AddFilters();
@@ -2434,11 +2443,11 @@ TEST_F(ImageRewriteTest, YesTransform) {
   AddFileToMockFetcher(url, kBikePngFile,
                        kContentTypePng, 100);
   ValidateExpected("YesTransform",
-                   StrCat("<img src=", url, " pagespeed_no_defer>"),
+                   StrCat("<img src=", url, " data-pagespeed-no-defer>"),
                    StrCat("<img src=",
                           Encode("http://test.com/", "ic", "0",
                                  "notransform.png", "png"),
-                          " pagespeed_no_defer>"));
+                          " data-pagespeed-no-defer>"));
   // Validate twice in case changes in cache from the first request alter the
   // second.
   ValidateExpected("YesTransform", StrCat("<img src=", url, ">"),

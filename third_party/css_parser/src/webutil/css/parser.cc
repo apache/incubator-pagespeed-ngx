@@ -22,6 +22,8 @@
 #include <ctype.h>  // isascii
 
 #include <algorithm>  // std::min
+#include <memory>
+#include "base/scoped_ptr.h"
 #include <string>
 #include <vector>
 
@@ -816,7 +818,8 @@ FunctionParameters* Parser::ParseFunction(int max_function_depth) {
         in_++;
         break;
       default: {
-        scoped_ptr<Value> val(ParseAnyWithFunctionDepth(max_function_depth));
+        scoped_ptr<Value> val(
+            ParseAnyWithFunctionDepth(max_function_depth));
         if (!val.get()) {
           ReportParsingError(kFunctionError,
                              "Cannot parse parameter in function");
@@ -1124,9 +1127,8 @@ Values* Parser::ParseValues(Property::Prop prop) {
   // TODO(sligocki): According to the spec, if we cannot parse one of the
   // values, we must ignore the whole declaration.
   while (SkipToNextAny()) {
-    scoped_ptr<Value> v(expecting_color ?
-                        ParseAnyExpectingColor() :
-                        ParseAny());
+    scoped_ptr<Value> v(expecting_color ? ParseAnyExpectingColor()
+                                             : ParseAny());
 
     if (v.get()) {
       values->push_back(v.release());
@@ -1970,8 +1972,7 @@ SimpleSelectors* Parser::ParseSimpleSelectors(bool expecting_combinator) {
         break;
     }
 
-  scoped_ptr<SimpleSelectors> selectors(
-      new SimpleSelectors(combinator));
+  scoped_ptr<SimpleSelectors> selectors(new SimpleSelectors(combinator));
 
   SkipSpace();
   if (Done()) return NULL;

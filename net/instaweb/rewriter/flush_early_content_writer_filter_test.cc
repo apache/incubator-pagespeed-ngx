@@ -210,24 +210,24 @@ TEST_F(FlushEarlyContentWriterFilterTest, TestDifferentBrowsers) {
       "<html>"
       "<head>"
         "<link type=\"text/css\" rel=\"stylesheet\" href=\"a.css\" "
-        "pagespeed_size=\"1000\"/>"
-        "<script src=\"b.js\" pagespeed_size=\"1000\"></script>"
+        "data-pagespeed-size=\"1000\"/>"
+        "<script src=\"b.js\" data-pagespeed-size=\"1000\"></script>"
         "<script src=\"http://www.test.com/c.js.pagespeed.jm.%s.js\" "
-        "pagespeed_size=\"1000\"></script>"
+        "data-pagespeed-size=\"1000\"></script>"
         "<link type=\"text/css\" rel=\"stylesheet\" href="
-        "\"d.css.pagespeed.cf.%s.css\" pagespeed_size=\"1000\"/>"
+        "\"d.css.pagespeed.cf.%s.css\" data-pagespeed-size=\"1000\"/>"
         "<img src=\"http://www.test.com/e.jpg.pagespeed.ce.%s.jpg\" "
-        "pagespeed_size=\"1000\"/>"
+        "data-pagespeed-size=\"1000\"/>"
         "<img src=\"http://www.test.com/g.jpg.pagespeed.ce.%s.jpg\" "
-        "pagespeed_size=\"1000000\"/>"
+        "data-pagespeed-size=\"1000000\"/>"
         "<link rel=\"dns-prefetch\" href=\"//test.com\">"
         "<link rel=\"prefetch\" href=\"//test1.com\">"
       "</head>"
       "<body>"
       "<script src=\"d.js.pagespeed.ce.%s.js\" "
-      "pagespeed_size=\"1000\"></script>"
+      "data-pagespeed-size=\"1000\"></script>"
       "<script src=\"e.js.pagespeed.ce.%s.js\" "
-      "pagespeed_size=\"100000\"></script>"
+      "data-pagespeed-size=\"100000\"></script>"
       "</body></html>");
   GoogleString html_output;
 
@@ -423,8 +423,8 @@ TEST_F(FlushEarlyContentWriterFilterTest, EscapeParanoia) {
   GoogleString html_input =
       GetOutputWithHash(
           "<script src='foo\"bar.js.pagespeed.ce.%s.js'"
-          " pagespeed_size=\"1000\"></script>"
-          "<script src=\"b.js\" pagespeed_size=\"1000\"></script>");
+          " data-pagespeed-size=\"1000\"></script>"
+          "<script src=\"b.js\" data-pagespeed-size=\"1000\"></script>");
 
   rewrite_driver()->SetUserAgent("prefetch_image_tag");
   Parse("prefetch_image_tag_escape", html_input);
@@ -443,7 +443,7 @@ TEST_F(FlushEarlyContentWriterFilterTest, EscapeParanoia) {
   Clear();
   html_input = GetOutputWithHash(
       "<link rel=stylesheet href='foo\"bar.css.pagespeed.ce.%s.css'"
-      " pagespeed_size=\"1000\">");
+      " data-pagespeed-size=\"1000\">");
   rewrite_driver()->SetUserAgent("prefetch_link_script_tag");
   Parse("prefetch_link_tag_escape", html_input);
   EXPECT_NE(GoogleString::npos,
@@ -453,7 +453,7 @@ TEST_F(FlushEarlyContentWriterFilterTest, EscapeParanoia) {
   Clear();
   html_input = GetOutputWithHash(
       "<link rel=stylesheet href='foo\"bar.css.pagespeed.ce.%s.css'"
-      " pagespeed_size=\"1000\">");
+      " data-pagespeed-size=\"1000\">");
   rewrite_driver()->SetUserAgent(UserAgentMatcherTestBase::kChrome42UserAgent);
   Parse("prefetch_rel_prefetch_tag_escape", html_input);
   EXPECT_NE(GoogleString::npos,
@@ -783,7 +783,7 @@ TEST_F(FlushEarlyContentWriterFilterTest, FlushEarlyStyleAsScript) {
       "<style data-pagespeed-flush-style=\"123\">b_used {color: blue }"
       "</style>\n"
       "<link type=\"text/css\" rel=\"stylesheet\""
-      "href=\"d.css.pagespeed.cf.xxxx.css\" pagespeed_size=\"1000\"/>"
+      "href=\"d.css.pagespeed.cf.xxxx.css\" data-pagespeed-size=\"1000\"/>"
       "</head>"
       "<body>"
       "<style data-pagespeed-flush-style=\"345\">c_used {color: cyan }"

@@ -152,7 +152,7 @@ const char kHtmlInputWithMinifiableJs[] =
 const char kHtmlInputWithMinifiedJs[] =
     "<html>"
     "<head>"
-    "<script pagespeed_orig_type=\"text/javascript\" "
+    "<script data-pagespeed-orig-type=\"text/javascript\" "
     "type=\"text/psajs\" orig_index=\"0\">var a=\"hello\";</script>"
     "</head>"
     "<body>\n"
@@ -436,7 +436,7 @@ class CacheHtmlFlowTest : public ProxyInterfaceTestBase {
 
   GoogleString GetJsDisableScriptSnippet(RewriteOptions* options) {
     if (options->enable_defer_js_experimental()) {
-      return StrCat("<script type=\"text/javascript\" pagespeed_no_defer>",
+      return StrCat("<script type=\"text/javascript\" data-pagespeed-no-defer>",
                     JsDisableFilter::kEnableJsExperimental,
                     "</script>");
     } else {
@@ -882,7 +882,7 @@ class CacheHtmlFlowTest : public ProxyInterfaceTestBase {
   }
 
   GoogleString GetImageOnloadScriptBlock() const {
-    return StrCat("<script pagespeed_no_defer type=\"text/javascript\">",
+    return StrCat("<script data-pagespeed-no-defer type=\"text/javascript\">",
                   DelayImagesFilter::kImageOnloadJsSnippet,
                   "</script>");
   }
@@ -1098,7 +1098,7 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlCacheHitWithInlinePreviewImages) {
   GoogleString inlined_image_wildcard =
       StringPrintf(kBlinkOutputWithInlinePreviewImages, kTestUrl, kTestUrl,
                   GetImageOnloadScriptBlock().c_str(),
-                   "<img pagespeed_high_res_src=\"image1\" "
+                   "<img data-pagespeed-high-res-src=\"image1\" "
                    "src=\"data:image/jpeg;base64*",
                    GetJsDisableScriptSnippet(options_.get()).c_str(),
                    kCookieScript);
@@ -1661,7 +1661,7 @@ TEST_F(CacheHtmlPrioritizeCriticalCssTest, CacheHtmlWithCriticalCss) {
       "<link rel=\"stylesheet\" type=\"text/css\" href=\"a.css\">"
       "<link rel=\"stylesheet\" type=\"text/css\" href=\"b.css?x=1&y=2\">"
       "</noscript>"
-      "<script pagespeed_no_defer type=\"text/javascript\">",
+      "<script data-pagespeed-no-defer type=\"text/javascript\">",
       CriticalCssFilter::kAddStylesScript,
       "window['pagespeed'] = window['pagespeed'] || {};"
       "window['pagespeed']['criticalCss'] = {"
@@ -1737,7 +1737,7 @@ TEST_F(CacheHtmlPrioritizeCriticalCssTest, CacheHtmlWithCriticalSelectors) {
       // URLs are encoded because CSS rewrite is enabled with selectors filter.
       CssLinkEncodedHref("a.css"), CssLinkEncodedHref("b.css?x=1&y=2"),
       "</noscript>"
-      "<script pagespeed_no_defer type=\"text/javascript\">",
+      "<script data-pagespeed-no-defer type=\"text/javascript\">",
       rewrite_driver()->server_context()->static_asset_manager()->GetAsset(
           StaticAssetEnum::CRITICAL_CSS_LOADER_JS,
           rewrite_driver()->options()),

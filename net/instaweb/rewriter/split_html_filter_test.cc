@@ -59,9 +59,9 @@ const char kHtmlInputPart1[] =
     "<div id=\"container\" class>"
       "<h2 id=\"beforeItems\"> This is before Items </h2>"
       "<div id=\"item\">"
-         "<img src=\"image1\" pagespeed_high_res_src=\"image1_high_res\""
+         "<img src=\"image1\" data-pagespeed-high-res-src=\"image1_high_res\""
            " onload=\"func\">"
-         "<img src=\"image2\" pagespeed_high_res_src=\"image2_high_res\">"
+         "<img src=\"image2\" data-pagespeed-high-res-src=\"image2_high_res\">"
       "</div>"
       "<span id=\"between\"> This is in between </span>"
       "<div id=\"inspiration\">"
@@ -73,7 +73,7 @@ const char kHtmlInputPart2[] =
       "<h3 id=\"afterInspirations\"> This is after Inspirations </h3>"
     "</div>"
     "<img id=\"image\" src=\"image_panel.1\">"
-    "<script pagespeed_no_defer=\"\"></script>"
+    "<script data-pagespeed-no-defer></script>"
     "<h1 id=\"footer\" name style>"
       "This is the footer"
     "</h1>"
@@ -91,14 +91,14 @@ const char kSplitHtmlMiddle[] =
     "<div id=\"container\" class>"
       "<h2 id=\"beforeItems\"> This is before Items </h2>"
       "<div id=\"item\">"
-        "<img src=\"image1\" pagespeed_high_res_src=\"image1_high_res\">"
-        "<img src=\"image2\" pagespeed_high_res_src=\"image2_high_res\">"
+        "<img src=\"image1\" data-pagespeed-high-res-src=\"image1_high_res\">"
+        "<img src=\"image2\" data-pagespeed-high-res-src=\"image2_high_res\">"
       "</div>"
       "<span id=\"between\"> This is in between </span>"
       "<!--GooglePanel begin panel-id.0--><!--GooglePanel end panel-id.0-->"
     "</div>"
     "<!--GooglePanel begin panel-id.1--><!--GooglePanel end panel-id.1-->"
-    "<script pagespeed_no_defer=\"\"></script>"
+    "<script data-pagespeed-no-defer></script>"
     "<h1 id=\"footer\" name style>"
       "This is the footer"
     "</h1>"
@@ -111,8 +111,8 @@ const char kSplitHtmlMiddleWithoutPanelStubs[] =
     "<div id=\"container\" class>"
       "<h2 id=\"beforeItems\"> This is before Items </h2>"
       "<div id=\"item\">"
-         "<img src=\"image1\" pagespeed_high_res_src=\"image1_high_res\">"
-         "<img src=\"image2\" pagespeed_high_res_src=\"image2_high_res\">"
+         "<img src=\"image1\" data-pagespeed-high-res-src=\"image1_high_res\">"
+         "<img src=\"image2\" data-pagespeed-high-res-src=\"image2_high_res\">"
       "</div>"
       "<span id=\"between\"> This is in between </span>"
       "<div id=\"inspiration\">"
@@ -121,8 +121,13 @@ const char kSplitHtmlMiddleWithoutPanelStubs[] =
       "</div>";
 
 const char kSplitHtmlBelowTheFoldData[] =
-       "{\"panel-id.0\":[{\"instance_html\":\"<div id=\\\"inspiration\\\" panel-id=\\\"panel-id.0\\\"><script orig_index=3><\\/script><img src=\\\"image11\\\"></div><h3 id=\\\"afterInspirations\\\" panel-id=\\\"panel-id.0\\\"> This is after Inspirations </h3>\"}],"
-       "\"panel-id.1\":[{\"instance_html\":\"<img id=\\\"image\\\" src=\\\"image_panel.1\\\" panel-id=\\\"panel-id.1\\\">\"}]}";
+    "{\"panel-id.0\":[{\"instance_html\":\"<div id=\\\"inspiration\\\" "
+    "panel-id=\\\"panel-id.0\\\"><script orig_index=3>"
+    "<\\/script><img src=\\\"image11\\\"></div>"
+    "<h3 id=\\\"afterInspirations\\\" panel-id=\\\"panel-id.0\\\"> "
+    "This is after Inspirations </h3>\"}],"
+    "\"panel-id.1\":[{\"instance_html\":\"<img id=\\\"image\\\" "
+    "src=\\\"image_panel.1\\\" panel-id=\\\"panel-id.1\\\">\"}]}";
 
 const char kHtmlInputForLazyload[] = "<html><head></head><body></body></html>";
 
@@ -171,7 +176,8 @@ class SplitHtmlFilterTest : public RewriteTestBase {
         rewrite_driver()->server_context()->static_asset_manager();
     blink_js_url_ = static_asset_manager->GetAssetUrl(
         StaticAssetEnum::BLINK_JS, options_).c_str();
-    nodefer_str_ = HtmlKeywords::KeywordToString(HtmlName::kPagespeedNoDefer);
+    nodefer_str_ =
+        HtmlKeywords::KeywordToString(HtmlName::kDataPagespeedNoDefer);
   }
 
   // TODO(marq): This looks reusable enough to go into RewriteTestBase. Perhaps

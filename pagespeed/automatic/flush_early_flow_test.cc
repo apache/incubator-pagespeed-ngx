@@ -113,7 +113,7 @@ const char kFlushEarlyMoreResourcesInputHtml[] =
     "</html>";
 
 const char kCookieScript[] =
-    "<script type=\"text/javascript\" pagespeed_no_defer>"
+    "<script type=\"text/javascript\" data-pagespeed-no-defer>"
     "(function(){"
     "var data = [\"CG=US:CA:Mountain+View\",\"UA=chrome\",\"path=/\"];"
     "for (var i = 0; i < data.length; i++) {"
@@ -378,7 +378,7 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
 
   GoogleString GetJsDisableScriptSnippet() {
     if (options_->enable_defer_js_experimental()) {
-      return StrCat("<script type=\"text/javascript\" pagespeed_no_defer>",
+      return StrCat("<script type=\"text/javascript\" data-pagespeed-no-defer>",
                     JsDisableFilter::kEnableJsExperimental,
                     "</script>");
     } else {
@@ -456,12 +456,12 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
       if (lazyload_enabled) {
         rewritten_html = RewrittenHtmlWithDeferJs(
             split_html_enabled,
-            StrCat("<img pagespeed_lazy_src=\"", rewritten_img_url_1_,
+            StrCat("<img data-pagespeed-lazy-src=\"", rewritten_img_url_1_,
                    "\" src=\"/psajs/1.0.gif\" onload=\"",
                    LazyloadImagesFilter::kImageOnloadCode,
                    "\" onerror=\"this.onerror=null;",
                    LazyloadImagesFilter::kImageOnloadCode, "\"/>"
-                   "<script type=\"text/javascript\" pagespeed_no_defer>"
+                   "<script type=\"text/javascript\" data-pagespeed-no-defer>"
                    "pagespeed.lazyLoadImages.overrideAttributeFunctions();"
                    "</script>"),
             is_ie);
@@ -653,7 +653,7 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
                      redirect_url.c_str()),
         StringPrintf(
         "<link rel=\"stylesheet\" type=\"text/css\" href=\"%s\">"
-        "<img pagespeed_lazy_src=http://test.com/1.jpg.pagespeed.ce.%s.jpg"
+        "<img data-pagespeed-lazy-src=http://test.com/1.jpg.pagespeed.ce.%s.jpg"
         " src=\"/psajs/1.0.gif\""
         " onload=\"%s\" onerror=\"this.onerror=null;%s\"/>",
         rewritten_css_url_1_.c_str(), kMockHashValue,
@@ -685,7 +685,7 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
             "<link rel=\"stylesheet\" type=\"text/css\" href=\"%s\">",
             rewritten_css_url_1_.c_str()),
         StringPrintf(
-        "<img pagespeed_lazy_src=http://test.com/1.jpg.pagespeed.ce.%s.jpg"
+        "<img data-pagespeed-lazy-src=http://test.com/1.jpg.pagespeed.ce.%s.jpg"
         " src=\"/psajs/1.0.gif\""
         " onload=\"%s\" onerror=\"this.onerror=null;%s\"/>",
         kMockHashValue,
@@ -1510,11 +1510,11 @@ TEST_F(FlushEarlyFlowTest, InsertLazyloadJsOnlyIfResourceHtmlNotEmpty) {
       StringPrintf(kNoScriptRedirectFormatter, redirect_url.c_str(),
                    redirect_url.c_str()),
       StringPrintf(
-      "<img pagespeed_lazy_src=http://test.com/1.jpg.pagespeed.ce.%s.jpg"
+      "<img data-pagespeed-lazy-src=http://test.com/1.jpg.pagespeed.ce.%s.jpg"
       " src=\"/psajs/1.0.gif\""
       " onload=\"%s\" onerror=\"this.onerror=null;%s\"/>"
       "Hello, mod_pagespeed!"
-      "<script type=\"text/javascript\" pagespeed_no_defer>"
+      "<script type=\"text/javascript\" data-pagespeed-no-defer>"
       "pagespeed.lazyLoadImages.overrideAttributeFunctions();</script>"
       "</body></html>", kMockHashValue,
       LazyloadImagesFilter::kImageOnloadCode,
@@ -1739,14 +1739,14 @@ class FlushEarlyPrioritizeCriticalCssTest : public FlushEarlyFlowTest {
   GoogleString ApplyFlushEarlyScript() {
     return StrCat(
         "<script id=\"psa_flush_style_early\""
-        " pagespeed_no_defer type=\"text/javascript\">",
+        " data-pagespeed-no-defer type=\"text/javascript\">",
         CriticalSelectorFilter::kApplyFlushEarlyCss, "</script>");
   }
 
   GoogleString InvokeFlushEarlyScript() {
     // The test uses a fixed hash for all URLs.
     return StrCat(
-        "<script pagespeed_no_defer type=\"text/javascript\">"
+        "<script data-pagespeed-no-defer type=\"text/javascript\">"
         "applyFlushedCriticalCss(\"", kMockHashValue, "\", \"\");"
         "</script>");
   }
@@ -1797,7 +1797,7 @@ TEST_F(FlushEarlyPrioritizeCriticalCssTest,
       CssLinkEncodedHref("a.css"),
       CssLinkEncodedHref("b.css?x=1&y=2"),
       "</noscript>"
-      "<script pagespeed_no_defer type=\"text/javascript\">",
+      "<script data-pagespeed-no-defer type=\"text/javascript\">",
       CriticalCssFilter::kAddStylesScript,
       "window['pagespeed'] = window['pagespeed'] || {};"
       "window['pagespeed']['criticalCss'] = {"
@@ -1872,7 +1872,7 @@ TEST_F(FlushEarlyPrioritizeCriticalCssTest,
       "<noscript class=\"psa_add_styles\">", CssLinkEncodedHref("a.css"),
       CssLinkEncodedHref("b.css?x=1&y=2"),
       "</noscript>"
-      "<script pagespeed_no_defer type=\"text/javascript\">",
+      "<script data-pagespeed-no-defer type=\"text/javascript\">",
       rewrite_driver()->server_context()->static_asset_manager()->GetAsset(
           StaticAssetEnum::CRITICAL_CSS_LOADER_JS,
           rewrite_driver()->options()),

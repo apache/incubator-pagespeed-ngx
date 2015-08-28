@@ -106,11 +106,12 @@ bool CssTagScanner::ParseCssElement(
         break;
       }
       case HtmlName::kTitle:
+      case HtmlName::kDataPagespeedNoTransform:
       case HtmlName::kPagespeedNoTransform:
         // title= is here because it indicates a default stylesheet among
         // alternatives.  See:
         // http://www.w3.org/TR/REC-html40/present/styles.html#h-14.3.1
-        // We don't alter a link for which pagespeed_no_transform is set.
+        // We don't alter a link for which data-pagespeed-no-transform is set.
         return false;
       default:
         // Other tags are assumed to be harmless noise; if that is not the case
@@ -227,7 +228,7 @@ LexResult CssExtractUntil(bool is_string,
             // here to represent unicode, at least), and we can't just pass it
             // through since GoogleUrl will turn \ into /, so we fail to match.
             return kLexNo;
-        };
+        }
       } else {
         // We have \ but not what's afterwards.
         if (input_kind == CssTagScanner::kInputIncludesEnd) {

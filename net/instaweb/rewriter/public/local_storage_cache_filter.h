@@ -21,19 +21,17 @@
 
 #include <set>
 
+#include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/html/html_element.h"
 
 namespace net_instaweb {
-
-class CachedResult;
-class HtmlElement;
-class RewriteDriver;
-class Statistics;
-class Variable;
 
 /*
  * The Local Storage Cache rewriter reduces HTTP requests by inlining resources
@@ -113,8 +111,8 @@ class LocalStorageCacheFilter : public RewriteFilter {
                                   InlineState* state);
 
   // Tell the LSC to add its attributes to the given element:
-  // pagespeed_lsc_hash and, if the resource has an expiry time [in cached],
-  // pagespeed_lsc_expiry. This is a no-op if LSC is disabled.
+  // data-pagespeed-lsc-hash and, if the resource has an expiry time [in
+  // cached], data-pagespeed-lsc-expiry. This is a no-op if LSC is disabled.
   // url is the URL of the resource being rewritten.
   // cached is the result of the resource rewrite.
   // driver is the request's context.
@@ -148,7 +146,7 @@ class LocalStorageCacheFilter : public RewriteFilter {
   // into the rewrite driver's cookies() - that must not change underneath us.
   std::set<StringPiece> cookie_hashes_;
 
-  // # of times an img/link was found with a pagespeed_lsc_url attribute.
+  // # of times an img/link was found with a data-pagespeed-lsc-url attribute.
   Variable* num_local_storage_cache_candidates_found_;
   // # of times the hash of an img/link was found in the hash cookie.
   Variable* num_local_storage_cache_stored_total_;

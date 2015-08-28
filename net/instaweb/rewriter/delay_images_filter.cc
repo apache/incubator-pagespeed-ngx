@@ -61,9 +61,9 @@ const char DelayImagesFilter::kImageOnloadJsSnippet[] =
     "pagespeed.switchToHighResAndMaybeBeacon = function(elem) {"
     "setTimeout(function(){elem.onload = null;"
     // Set srcset before src to avoid potentially loading 2 sizes.
-    "var srcset = elem.getAttribute('pagespeed_high_res_srcset');"
+    "var srcset = elem.getAttribute('data-pagespeed-high-res-srcset');"
     "if (srcset) {elem.srcset = srcset;}"
-    "elem.src = elem.getAttribute('pagespeed_high_res_src');"
+    "elem.src = elem.getAttribute('data-pagespeed-high-res-src');"
     "if (pagespeed.CriticalImages) {elem.onload = "
     "pagespeed.CriticalImages.checkImageForCriticality(elem);}"
     "}, 0);"
@@ -98,7 +98,7 @@ void DelayImagesFilter::MaybeAddImageOnloadJsSnippet(HtmlElement* element) {
   }
   added_image_onload_js_ = true;
   HtmlElement* script = driver()->NewElement(NULL, HtmlName::kScript);
-  driver()->AddAttribute(script, HtmlName::kPagespeedNoDefer, NULL);
+  driver()->AddAttribute(script, HtmlName::kDataPagespeedNoDefer, NULL);
   // Always add the image-onload js before the current node, because the
   // current node might be an img node that needs the image-onload js for
   // setting its onload handler.
@@ -126,7 +126,7 @@ void DelayImagesFilter::EndElementImpl(HtmlElement* element) {
     // handle the large number of tags that we can identify in
     // resource_tag_scanner::ScanElement.
     HtmlElement::Attribute* low_res_src =
-        element->FindAttribute(HtmlName::kPagespeedLowResSrc);
+        element->FindAttribute(HtmlName::kDataPagespeedLowResSrc);
     if (low_res_src == NULL || low_res_src->DecodedValueOrNull() == NULL) {
       return;
     }
@@ -143,13 +143,14 @@ void DelayImagesFilter::EndElementImpl(HtmlElement* element) {
       driver()->log_record()->SetRewriterLoggingStatus(
           RewriteOptions::FilterId(RewriteOptions::kDelayImages),
           RewriterApplication::APPLIED_OK);
-      // Rename src -> pagespeed_high_res_src
-      driver()->SetAttributeName(src, HtmlName::kPagespeedHighResSrc);
-      // Rename srcset -> pagespeed_high_res_srcset
+      // Rename src -> data-pagespeed-high-res-src
+      driver()->SetAttributeName(src, HtmlName::kDataPagespeedHighResSrc);
+      // Rename srcset -> data-pagespeed-high-res-srcset
       HtmlElement::Attribute* srcset =
           element->FindAttribute(HtmlName::kSrcset);
       if (srcset != NULL) {
-        driver()->SetAttributeName(srcset, HtmlName::kPagespeedHighResSrcset);
+        driver()->SetAttributeName(
+            srcset, HtmlName::kDataPagespeedHighResSrcset);
       }
       if (insert_low_res_images_inplace_) {
         // Set the src as the low resolution image.
@@ -188,7 +189,7 @@ void DelayImagesFilter::EndElementImpl(HtmlElement* element) {
       }
     }
   }
-  element->DeleteAttribute(HtmlName::kPagespeedLowResSrc);
+  element->DeleteAttribute(HtmlName::kDataPagespeedLowResSrc);
 }
 
 void DelayImagesFilter::InsertLowResImagesAndJs(HtmlElement* element,
@@ -213,7 +214,8 @@ void DelayImagesFilter::InsertLowResImagesAndJs(HtmlElement* element,
         kDelayImagesSuffix);
     HtmlElement* script_element =
         driver()->NewElement(element, HtmlName::kScript);
-    driver()->AddAttribute(script_element, HtmlName::kPagespeedNoDefer, NULL);
+    driver()->AddAttribute(
+        script_element, HtmlName::kDataPagespeedNoDefer, NULL);
     if (insert_after_element) {
       DCHECK(element->keyword() == HtmlName::kImg ||
              element->keyword() == HtmlName::kInput);
@@ -240,7 +242,8 @@ void DelayImagesFilter::InsertLowResImagesAndJs(HtmlElement* element,
               "\npagespeed.delayImagesInline.replaceWithLowRes();\n");
     HtmlElement* low_res_element =
         driver()->NewElement(current_element, HtmlName::kScript);
-    driver()->AddAttribute(low_res_element, HtmlName::kPagespeedNoDefer, NULL);
+    driver()->AddAttribute(
+        low_res_element, HtmlName::kDataPagespeedNoDefer, NULL);
     if (insert_after_element) {
       driver()->InsertNodeAfterNode(current_element, low_res_element);
       current_element = low_res_element;
@@ -265,7 +268,7 @@ void DelayImagesFilter::InsertHighResJs(HtmlElement* body_element) {
               "\npagespeed.delayImages.replaceWithHighRes();\n");
   }
   HtmlElement* script = driver()->NewElement(body_element, HtmlName::kScript);
-  driver()->AddAttribute(script, HtmlName::kPagespeedNoDefer, NULL);
+  driver()->AddAttribute(script, HtmlName::kDataPagespeedNoDefer, NULL);
   driver()->AppendChild(body_element, script);
   AddJsToElement(js, script);
 }

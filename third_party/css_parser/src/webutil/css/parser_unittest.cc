@@ -19,6 +19,9 @@
 
 #include "webutil/css/parser.h"
 
+#include <memory>
+#include "base/scoped_ptr.h"
+
 #include "base/callback.h"
 #include "base/logging.h"
 #include "base/macros.h"
@@ -643,8 +646,8 @@ TEST_F(ParserTest, background) {
 }
 
 TEST_F(ParserTest, font_family) {
-  scoped_ptr<Parser> a(new Parser(
-      " Arial font, 'Sans', system, menu new "));
+  scoped_ptr<Parser> a(
+      new Parser(" Arial font, 'Sans', system, menu new "));
   scoped_ptr<Values> t(new Values);
 
   EXPECT_TRUE(a->ParseFontFamily(t.get()));
@@ -1028,10 +1031,10 @@ TEST_F(ParserTest, SkipMatching) {
 }
 
 TEST_F(ParserTest, declarations) {
-  scoped_ptr<Parser> a(new Parser(
-      "color: #333; line-height: 1.3;"
-      "text-align: justify; font-family: \"Gill Sans MT\","
-      "\"Gill Sans\", GillSans, Arial, Helvetica, sans-serif"));
+  scoped_ptr<Parser> a(
+      new Parser("color: #333; line-height: 1.3;"
+                 "text-align: justify; font-family: \"Gill Sans MT\","
+                 "\"Gill Sans\", GillSans, Arial, Helvetica, sans-serif"));
   scoped_ptr<Declarations> t(a->ParseDeclarations());
 
   // Declarations is a vector of Declaration, and we go through them:
@@ -1567,8 +1570,8 @@ TEST_F(ParserTest, rulesets) {
 }
 
 TEST_F(ParserTest, atrules) {
-  scoped_ptr<Parser> a(new Parser(
-      "@IMPORT url(assets/style.css) screen,printer;"));
+  scoped_ptr<Parser> a(
+      new Parser("@IMPORT url(assets/style.css) screen,printer;"));
   scoped_ptr<Stylesheet> t(new Stylesheet());
   a->ParseStatement(NULL, t.get());
 
@@ -1650,19 +1653,20 @@ TEST_F(ParserTest, atrules) {
 }
 
 TEST_F(ParserTest, stylesheets) {
-  scoped_ptr<Parser> a(new Parser("\n"
-    "\t@import \"mystyle.css\" all; "
-    "@import url(\"mystyle.css\" );\n"
-    "\tBODY {\n"
-    "color:black !important; \n"
-    "background: white !important; }\n"
-    "* {\n"
-    "\tcolor: inherit !important;\n"
-    "background: transparent;\n"
-    "}\n"
-    "\n"
-    "<!-- html comments * { font-size: 1 } -->\n"
-    "H1 + *[REL-up] {}"));
+  scoped_ptr<Parser> a(
+      new Parser("\n"
+                 "\t@import \"mystyle.css\" all; "
+                 "@import url(\"mystyle.css\" );\n"
+                 "\tBODY {\n"
+                 "color:black !important; \n"
+                 "background: white !important; }\n"
+                 "* {\n"
+                 "\tcolor: inherit !important;\n"
+                 "background: transparent;\n"
+                 "}\n"
+                 "\n"
+                 "<!-- html comments * { font-size: 1 } -->\n"
+                 "H1 + *[REL-up] {}"));
 
   scoped_ptr<Stylesheet> t(a->ParseStylesheet());
   EXPECT_EQ(Parser::kNoError, a->errors_seen_mask());
@@ -1812,8 +1816,8 @@ TEST_F(ParserTest, SelectorError) {
 }
 
 TEST_F(ParserTest, MediaError) {
-  scoped_ptr<Parser> p(new Parser(
-      "@media screen and (max-width^?`) { .a { color: red; } }"));
+  scoped_ptr<Parser> p(
+      new Parser("@media screen and (max-width^?`) { .a { color: red; } }"));
   scoped_ptr<Stylesheet> stylesheet(p->ParseStylesheet());
   EXPECT_TRUE(Parser::kMediaError & p->errors_seen_mask());
   // Note: User agents are to represent a media query as "not all" when one
@@ -2053,8 +2057,8 @@ TEST_F(ParserTest, Counter) {
 }
 
 TEST_F(ParserTest, ParseNextImport) {
-  scoped_ptr<Parser> parser(new Parser(
-      "@IMPORT url(assets/style.css) screen,printer;"));
+  scoped_ptr<Parser> parser(
+      new Parser("@IMPORT url(assets/style.css) screen,printer;"));
   scoped_ptr<Import> import(parser->ParseNextImport());
   EXPECT_TRUE(import.get() != NULL);
   EXPECT_TRUE(parser->Done());
@@ -2124,8 +2128,8 @@ TEST_F(ParserTest, ParseNextImport) {
 }
 
 TEST_F(ParserTest, ParseSingleImport) {
-  scoped_ptr<Parser> parser(new Parser(
-      "@IMPORT url(assets/style.css) screen,printer;"));
+  scoped_ptr<Parser> parser(
+      new Parser("@IMPORT url(assets/style.css) screen,printer;"));
   scoped_ptr<Import> import(parser->ParseAsSingleImport());
   EXPECT_TRUE(import.get() != NULL);
   if (import.get() != NULL) {
@@ -2661,9 +2665,10 @@ TEST_F(ParserTest, ParseMediaQueries) {
 }
 
 TEST_F(ParserTest, ImportInMiddle) {
-  scoped_ptr<Parser> p(new Parser(".a { color: red; }\n"
-                                  "@import url('foo.css');\n"
-                                  ".b { color: blue; }\n"));
+  scoped_ptr<Parser> p(
+      new Parser(".a { color: red; }\n"
+                 "@import url('foo.css');\n"
+                 ".b { color: blue; }\n"));
   scoped_ptr<Stylesheet> s(p->ParseStylesheet());
   EXPECT_EQ(0, s->imports().size());
   EXPECT_EQ(2, s->rulesets().size());

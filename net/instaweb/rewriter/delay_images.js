@@ -21,6 +21,9 @@
  * @author pulkitg@google.com (Pulkit Goyal)
  */
 
+goog.provide('pagespeed');
+goog.provide('pagespeed.DelayImages');
+
 goog.require('pagespeedutils');
 
 // Exporting functions using quoted attributes to prevent js compiler from
@@ -28,6 +31,8 @@ goog.require('pagespeedutils');
 // See http://code.google.com/closure/compiler/docs/api-tutorial3.html#dangers
 window['pagespeed'] = window['pagespeed'] || {};
 var pagespeed = window['pagespeed'];
+
+
 
 /**
  * @constructor
@@ -50,20 +55,22 @@ pagespeed.DelayImages = function() {
   this.highResReplaced_ = false;
 };
 
+
 /**
- * For given elements, replace src with pagespeed_high_res_src if present.
+ * For given elements, replace src with data-pagespeed-high-res-src if present.
  * @param {NodeList.<Element>} elements list of DOM elements to check.
  */
 pagespeed.DelayImages.prototype.replaceElementSrc = function(elements) {
   for (var i = 0; i < elements.length; ++i) {
-    var src = elements[i].getAttribute('pagespeed_high_res_src');
+    var src = elements[i].getAttribute('data-pagespeed-high-res-src');
     if (src) {
       elements[i].setAttribute('src', src);
     }
   }
 };
 pagespeed.DelayImages.prototype['replaceElementSrc'] =
-  pagespeed.DelayImages.prototype.replaceElementSrc;
+    pagespeed.DelayImages.prototype.replaceElementSrc;
+
 
 /**
  * Register the event handlers to lazy load the high res images. This is
@@ -111,7 +118,8 @@ pagespeed.DelayImages.prototype.registerLazyLoadHighRes = function() {
 };
 
 pagespeed.DelayImages.prototype['registerLazyLoadHighRes'] =
-  pagespeed.DelayImages.prototype.registerLazyLoadHighRes;
+    pagespeed.DelayImages.prototype.registerLazyLoadHighRes;
+
 
 /**
  * Triggered from event handlers that were previously registered. Replaces
@@ -124,6 +132,7 @@ pagespeed.DelayImages.prototype.loadHighRes = function() {
   }
 };
 
+
 /**
  * Replaces low resolution image with high resolution image.
  */
@@ -132,7 +141,8 @@ pagespeed.DelayImages.prototype.replaceWithHighRes = function() {
   this.replaceElementSrc(document.getElementsByTagName('input'));
 };
 pagespeed.DelayImages.prototype['replaceWithHighRes'] =
-  pagespeed.DelayImages.prototype.replaceWithHighRes;
+    pagespeed.DelayImages.prototype.replaceWithHighRes;
+
 
 /**
  * Initializes the delay images module.

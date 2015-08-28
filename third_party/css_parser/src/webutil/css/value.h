@@ -20,6 +20,8 @@
 #ifndef WEBUTIL_CSS_VALUE_H__
 #define WEBUTIL_CSS_VALUE_H__
 
+#include <memory>
+#include "base/scoped_ptr.h"
 #include <string>
 #include <vector>
 

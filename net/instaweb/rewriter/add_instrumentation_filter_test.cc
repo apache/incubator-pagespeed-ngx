@@ -229,7 +229,7 @@ TEST_F(AddInstrumentationFilterTest, TestNoDeferInstrumentationScript) {
           options()->beacon_url().http, "load", "")) !=
               GoogleString::npos);
   const StringPiece* nodefer =
-      HtmlKeywords::KeywordToString(HtmlName::kPagespeedNoDefer);
+      HtmlKeywords::KeywordToString(HtmlName::kDataPagespeedNoDefer);
   EXPECT_TRUE(output_buffer_.find(nodefer->as_string()) != GoogleString::npos);
 }
 
@@ -241,7 +241,7 @@ TEST_F(AddInstrumentationFilterTest, TestDeferInstrumentationScript) {
           options()->beacon_url().http, "load", "")) !=
               GoogleString::npos);
   const StringPiece* nodefer =
-      HtmlKeywords::KeywordToString(HtmlName::kPagespeedNoDefer);
+      HtmlKeywords::KeywordToString(HtmlName::kDataPagespeedNoDefer);
   EXPECT_TRUE(output_buffer_.find(nodefer->as_string()) == GoogleString::npos);
 }
 

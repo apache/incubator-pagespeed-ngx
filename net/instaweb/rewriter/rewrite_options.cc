@@ -4408,7 +4408,7 @@ void RewriteOptions::Modify() {
   modified_ = true;
 
   // The data in last_thread_id_ is currently only examined in DCHECKs so
-  // there's no need to pay the cost of populating it in produciton.
+  // there's no need to pay the cost of populating it in production.
 #ifndef NDEBUG
   if (thread_system_ != NULL) {
     if (last_thread_id_.get() == NULL) {

@@ -17,7 +17,7 @@ var CONTIGUOUS = 'contiguous';
 var XPATH = 'xpath';
 var DONT_BIND = 'dont_bind';
 var IMAGES = 'images';
-var BLINK_SRC = 'pagespeed_high_res_src';
+var BLINK_SRC = 'data-pagespeed-high-res-src';
 var PANEL_MARKER = 'psa_disabled';
 
 // TODO(ksimbili): Convert this to DCHECK using some flag
@@ -32,6 +32,7 @@ var getDocument = function() {
 function isInternetExplorer() {
   return navigator.appName == 'Microsoft Internet Explorer';
 }
+
 
 /**
  * Create an HTML dom element with tagName and innerHTML as specified and
@@ -67,6 +68,7 @@ function createInnerHtmlElements(tagName, innerHTML) {
   return docFragment;
 }
 
+
 /**
  * Returns ordered array of nodes which match the xpath in context of node.
  * @param {Node} node - node within whose context xpath is found.
@@ -81,6 +83,7 @@ function getMatchingXPathInDom(node, xpath) {
   for (var result; result = xpathResults.iterateNext(); results.push(result)) {}
   return results;
 }
+
 
 /**
  * Find all elements in the document which have tagName as tag and
@@ -101,6 +104,7 @@ function getElementsByTagAndAttribute(tagName, attributeName) {
   return elementsWithAttribute;
 }
 
+
 /**
  * Insert panel outerHTML above the panel Stub.
  * @param {Element} panelStub dom element indicating panel location.
@@ -108,13 +112,14 @@ function getElementsByTagAndAttribute(tagName, attributeName) {
  */
 function insertPanelContents(panelStub, panelInstanceHtml) {
   var panelHtmlNodes =
-    createInnerHtmlElements(panelStub.parentNode.tagName, panelInstanceHtml);
+      createInnerHtmlElements(panelStub.parentNode.tagName, panelInstanceHtml);
   panelStub.parentNode.insertBefore(panelHtmlNodes, panelStub);
 }
 
 function isComment(node) {
   return node.nodeType == 8; // node.COMMENT_NODE is not defined in IE8
 }
+
 
 /**
  * Finds and returns the panel stubs within the range of nodes between
@@ -141,6 +146,7 @@ function getPanelStubs(beginNode, endNode, panelId) {
   return panelStubs;
 }
 
+
 /**
  * Inserts stubs at the given childIndex in given parentNode.
  * @param {Element} parentNode - Stub is inserted as child of this node.
@@ -158,6 +164,7 @@ function insertStubAtIndex(parentNode, childIndex, panelId) {
   parentNode.insertBefore(endStub, childNode);
   return endStub;
 }
+
 
 /**
  * Inserts missing stubs at the position specified by the xpath.
@@ -193,6 +200,7 @@ function insertMissingStubUsingXpath(xpath, panelId) {
   }
 }
 
+
 /**
  * Checks id the string ends with the given suffix.
  * @param {string} str - string to be used for comparison.
@@ -203,6 +211,7 @@ function endsWith(str, suffix) {
   var re = new RegExp(suffix + '$');
   return re.test(str);
 }
+
 
 /**
  * Instantiate the child Panels for panelData in descendants of range of nodes
@@ -232,6 +241,8 @@ function instantiateChildPanels(beginNode, endNode, panelData) {
     }
   }
 }
+
+
 /**
  * Instantiate the panel node with its corresponding dictionary of data.
  * @param {Node} panelStub panel stub node.
@@ -262,6 +273,7 @@ function instantiatePanel(panelStub, panelData, panelId) {
   }
 }
 
+
 /**
  * Instantiates layout with pageData to create HTML page. The layout has
  * top level panel stubs.
@@ -278,6 +290,7 @@ function instantiatePanelsInPage(pageJsonDict) {
   var criticalImages = getElementsByTagAndAttribute('img', BLINK_SRC);
   return criticalImages;
 }
+
 
 /**
  * Find all pushed image elements and collect in a dictionary
@@ -306,12 +319,14 @@ function collectCriticalImages(criticalImages) {
 }
 
 
+
 /**
  * Page Manager for the layout
  * @constructor
  */
 function PageManager() {
 }
+
 
 /**
  * Instantiates the layout with the jsonData for the page.

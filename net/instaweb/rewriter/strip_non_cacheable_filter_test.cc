@@ -63,7 +63,7 @@ const char kHtmlInput[] =
 const char kBlinkUrlHandler[] = "/psajs/blink.js";
 const char kBlinkUrlGstatic[] = "http://www.gstatic.com/psa/static/1-blink.js";
 const char kPsaHeadScriptNodesStart[] =
-    "<script type=\"text/javascript\" pagespeed_no_defer=\"\" src=\"";
+    "<script type=\"text/javascript\" data-pagespeed-no-defer src=\"";
 
 const char kPsaHeadScriptNodesEnd[] =
     "\"></script>";

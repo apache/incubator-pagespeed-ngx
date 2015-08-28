@@ -18,25 +18,24 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_COLLECT_FLUSH_EARLY_CONTENT_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_COLLECT_FLUSH_EARLY_CONTENT_FILTER_H_
 
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/html/html_element.h"
 #include "pagespeed/kernel/html/html_name.h"
 #include "pagespeed/kernel/http/semantic_type.h"
 
 namespace net_instaweb {
-
-class HtmlElement;
-class RewriteDriver;
 
 // CollectFlushEarlyContentFilter extracts the html for non-inlined resources
 // that we want to flush early
 // and stores it in property cache to be used by FlushEarlyFlow. If a request is
 // flushed early then this HTML is used to make the client download resources
 // early.
-// pagespeed_size attribute is added to the html elements which are being
+// data-pagespeed-size attribute is added to the html elements which are being
 // flushed in the flush early flow. This information will be used by
 // FlushEarlyContentWriterFilter to flush more resources based on origin server
 // fetch latency.

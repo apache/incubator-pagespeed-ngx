@@ -2,11 +2,11 @@ test_filter rewrite_images inlines, compresses, and resizes.
 fetch_until $URL 'grep -c data:image/png' 1  # Images inlined.
 fetch_until $URL 'grep -c .pagespeed.ic' 2  # Images rewritten.
 
-# Verify with a blocking fetch that pagespeed_no_transform worked and was
+# Verify with a blocking fetch that data-pagespeed-no-transform worked and was
 # stripped.
 fetch_until $URL 'grep -c "images/disclosure_open_plus.png"' 1 \
   '--header=X-PSA-Blocking-Rewrite:psatest'
-fetch_until $URL 'grep -c "pagespeed_no_transform"' 0 \
+fetch_until $URL 'grep -c "data-pagespeed-no-transform"' 0 \
   '--header=X-PSA-Blocking-Rewrite:psatest'
 
 start_test size of rewritten image

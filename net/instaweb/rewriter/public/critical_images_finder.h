@@ -116,7 +116,7 @@ class CriticalImagesFinder {
   // HtmlElement* instead of GoogleStrings. This would move some complexity in
   // getting the correct URL from the caller into this function. For instance,
   // if an image has been modified by LazyloadImages then the actual src we want
-  // to check is in the pagespeed_lazyload_src attribute, not in src.
+  // to check is in the data-pagespeed-lazy-src attribute, not in src.
   bool IsHtmlCriticalImage(StringPiece image_url, RewriteDriver* driver);
 
   bool IsCssCriticalImage(StringPiece image_url, RewriteDriver* driver);

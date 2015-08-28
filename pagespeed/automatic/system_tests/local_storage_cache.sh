@@ -1,5 +1,5 @@
 # Checks that local_storage_cache injects optimized javascript from
-# local_storage_cache.js, adds the pagespeed_lsc_ attributes, inlines the data
+# local_storage_cache.js, adds the data-pagespeed-lsc- attributes, inlines the data
 # (if the cache were empty the inlining wouldn't make the timer cutoff but the
 # resources have been fetched above).
 test_filter local_storage_cache,inline_css,inline_images optimize mode
@@ -8,7 +8,7 @@ WGET_ARGS="${WGET_ARGS} --header=X-PSA-Blocking-Rewrite:psatest"
 echo run_wget_with_args "$URL"
 check run_wget_with_args "$URL"
 check grep -q "pagespeed.localStorageCacheInit()" $FETCHED
-check [ $(grep -c ' pagespeed_lsc_url=' $FETCHED) = 2 ]
+check [ $(grep -c ' data-pagespeed-lsc-url=' $FETCHED) = 2 ]
 check grep -q "yellow {background-color: yellow" $FETCHED
 check grep -q "<img src=\"data:image/png;base64" $FETCHED
 check grep -q "<img .* alt=\"A cup of joe\"" $FETCHED
@@ -16,7 +16,7 @@ check_not grep -q "/\*" $FETCHED
 check grep -q "PageSpeed=noscript" $FETCHED
 
 # Checks that local_storage_cache,debug injects debug javascript from
-# local_storage_cache.js, adds the pagespeed_lsc_ attributes, inlines the data
+# local_storage_cache.js, adds the data-pagespeed-lsc- attributes, inlines the data
 # (if the cache were empty the inlining wouldn't make the timer cutoff but the
 # resources have been fetched above).
 test_filter local_storage_cache,inline_css,inline_images,debug debug mode
@@ -25,7 +25,7 @@ WGET_ARGS="${WGET_ARGS} --header=X-PSA-Blocking-Rewrite:psatest"
 echo run_wget_with_args "$URL"
 check run_wget_with_args "$URL"
 check grep -q "pagespeed.localStorageCacheInit()" $FETCHED
-check [ $(grep -c ' pagespeed_lsc_url=' $FETCHED) = 2 ]
+check [ $(grep -c ' data-pagespeed-lsc-url=' $FETCHED) = 2 ]
 check grep -q "yellow {background-color: yellow" $FETCHED
 check grep -q "<img src=\"data:image/png;base64" $FETCHED
 check grep -q "<img .* alt=\"A cup of joe\"" $FETCHED
@@ -35,8 +35,8 @@ check grep -q "PageSpeed=noscript" $FETCHED
 
 # Checks that local_storage_cache doesn't send the inlined data for a resource
 # whose hash is in the magic cookie. First get the cookies from prior runs.
-HASHES=$(grep "pagespeed_lsc_hash=" $FETCHED |\
-         sed -e 's/^.*pagespeed_lsc_hash=.//' |\
+HASHES=$(grep "data-pagespeed-lsc-hash=" $FETCHED |\
+         sed -e 's/^.*data-pagespeed-lsc-hash=.//' |\
          sed -e 's/".*$//')
 HASHES=$(echo "$HASHES" | tr '\n' '!' | sed -e 's/!$//')
 check [ -n "$HASHES" ]

@@ -1172,7 +1172,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   HOST_NAME="http://renderedimagebeacon.example.com"
   URL="$HOST_NAME/mod_pagespeed_test/image_rewriting/image_resize_using_rendered_dimensions.html"
   http_proxy=$SECONDARY_HOSTNAME \
-      fetch_until -save -recursive $URL 'fgrep -c "pagespeed_url_hash"' 2 \
+      fetch_until -save -recursive $URL 'fgrep -c "data-pagespeed-url-hash"' 2 \
       '--header=X-PSA-Blocking-Rewrite:psatest'
   check [ $(grep -c "^pagespeed\.CriticalImages\.Run" \
     $WGET_DIR/image_resize_using_rendered_dimensions.html) = 1 ];
@@ -1259,7 +1259,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   http_proxy=$SECONDARY_HOSTNAME\
     fetch_until -save $URL \
     'fgrep -c "pagespeed.CriticalImages.Run"' 1
-  check [ $(grep -c "pagespeed_lazy_src=" $FETCH_FILE) = 0 ];
+  check [ $(grep -c "data-pagespeed-lazy-src=" $FETCH_FILE) = 0 ];
   # We need the options hash and nonce to send a critical image beacon, so
   # extract it from injected beacon JS.
   OPTIONS_HASH=$(
@@ -1278,7 +1278,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   check_from "$OUT" egrep -q "HTTP/1[.]. 204"
   # Now 2 of the images should be lazyloaded, Puzzle.jpg should not be.
   http_proxy=$SECONDARY_HOSTNAME \
-    fetch_until -save -recursive $URL 'fgrep -c pagespeed_lazy_src=' 2
+    fetch_until -save -recursive $URL 'fgrep -c data-pagespeed-lazy-src=' 2
 
   # Now test sending a beacon with a GET request, instead of POST. Indicate that
   # Puzzle.jpg and Cuppa.png are the critical images. In practice we expect only
@@ -1289,7 +1289,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   http_proxy=$SECONDARY_HOSTNAME\
     fetch_until -save $URL \
     'fgrep -c "pagespeed.CriticalImages.Run"' 1
-  check [ $(grep -c "pagespeed_lazy_src=" $FETCH_FILE) = 0 ];
+  check [ $(grep -c "data-pagespeed-lazy-src=" $FETCH_FILE) = 0 ];
   OPTIONS_HASH=$(
     awk -F\' '/^pagespeed\.CriticalImages\.Run/ {print $(NF-3)}' $FETCH_FILE)
   NONCE=$(
@@ -1306,7 +1306,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   check_from "$OUT" egrep -q "HTTP/1[.]. 204"
   # Now only BikeCrashIcn.png should be lazyloaded.
   http_proxy=$SECONDARY_HOSTNAME \
-    fetch_until -save -recursive $URL 'fgrep -c pagespeed_lazy_src=' 1
+    fetch_until -save -recursive $URL 'fgrep -c data-pagespeed-lazy-src=' 1
 
   test_filter prioritize_critical_css
 

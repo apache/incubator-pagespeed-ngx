@@ -57,7 +57,7 @@ const char kSamplePngData[] = "data:image/png;base64*";
 const char kHeadHtml[] = "<head></head>";
 
 const char kScriptTemplate[] =
-    "<script pagespeed_no_defer type=\"text/javascript\">%s</script>";
+    "<script data-pagespeed-no-defer type=\"text/javascript\">%s</script>";
 
 }  // namespace
 
@@ -91,7 +91,7 @@ class DelayImagesFilterTest : public RewriteTestBase {
   }
 
   GoogleString GetImageOnloadScriptBlock() const {
-    return StrCat("<script pagespeed_no_defer type=\"text/javascript\">",
+    return StrCat("<script data-pagespeed-no-defer type=\"text/javascript\">",
                   DelayImagesFilter::kImageOnloadJsSnippet,
                   "</script>");
   }
@@ -115,7 +115,7 @@ class DelayImagesFilterTest : public RewriteTestBase {
   GoogleString GenerateRewrittenImageTag(const GoogleString& url,
                                          const GoogleString& low_res_src) {
     return StrCat(
-        "<img pagespeed_high_res_src=\"", url, "\" src=\"", low_res_src,
+        "<img data-pagespeed-high-res-src=\"", url, "\" src=\"", low_res_src,
         "\" onload=\"", DelayImagesFilter::kImageOnloadCode,
         "\" onerror=\"this.onerror=null;",
         DelayImagesFilter::kImageOnloadCode, "\"/>");
@@ -391,7 +391,7 @@ TEST_F(DelayImagesFilterTest, DelayImageWithSrcAndUrlValuedAttribute) {
   GoogleString output_html = StrCat(
       "<head></head><body>", GetNoscript(),
       GetImageOnloadScriptBlock(),
-      "<img pagespeed_high_res_src=\"http://test.com/1.webp\" "
+      "<img data-pagespeed-high-res-src=\"http://test.com/1.webp\" "
       "data-src=\"http://test.com/2.jpeg\" src=\"", kSampleWebpData,
       StrCat("\" onload=\"", DelayImagesFilter::kImageOnloadCode,
              "\" onerror=\"this.onerror=null;",
@@ -494,7 +494,7 @@ TEST_F(DelayImagesFilterTest, DelayImageWithMobileAggressiveEnabled) {
   GoogleString output_html = StrCat(
       "<head></head><body>",
       GetNoscript(),
-      "<img pagespeed_high_res_src=\"http://test.com/1.jpeg\"/>",
+      "<img data-pagespeed-high-res-src=\"http://test.com/1.jpeg\"/>",
       StrCat(GetInlineScript(),
              GenerateAddLowResScript("http://test.com/1.jpeg", kSampleJpegData),
              GetHighResScript(), "</body>"));
@@ -534,7 +534,7 @@ TEST_F(DelayImagesFilterTest, DelayImageWithMobileLazyLoad) {
   GoogleString output_html = StrCat(
       "<head></head><body>",
       GetNoscript(),
-      "<img pagespeed_high_res_src=\"http://test.com/1.jpeg\"/>",
+      "<img data-pagespeed-high-res-src=\"http://test.com/1.jpeg\"/>",
       GetInlineScript(),
       GenerateAddLowResScript("http://test.com/1.jpeg", kSampleJpegData),
       GetLazyHighResScript(), "</body>");
@@ -555,7 +555,7 @@ TEST_F(DelayImagesFilterTest, DelayJpegImageOnInputElement) {
       "<head></head><body>",
       GetNoscript(),
       "<input type=\"image\""
-      " pagespeed_high_res_src=\"http://test.com/1.jpeg\"/>",
+      " data-pagespeed-high-res-src=\"http://test.com/1.jpeg\"/>",
       StrCat(GetInlineScript(),
              GenerateAddLowResScript("http://test.com/1.jpeg", kSampleJpegData),
              GetHighResScript(), "</body>"));
@@ -651,8 +651,8 @@ TEST_F(DelayImagesFilterTest, DelayMultipleSameImage) {
   GoogleString output_html = StrCat(
       "<head></head><body>",
       GetNoscript(),
-      "<img pagespeed_high_res_src=\"http://test.com/1.jpeg\"/>",
-      "<img pagespeed_high_res_src=\"http://test.com/1.jpeg\"/>",
+      "<img data-pagespeed-high-res-src=\"http://test.com/1.jpeg\"/>",
+      "<img data-pagespeed-high-res-src=\"http://test.com/1.jpeg\"/>",
       StrCat(GetInlineScript(),
              GenerateAddLowResScript("http://test.com/1.jpeg", kSampleJpegData),
              GetHighResScript(), "</body>"));
@@ -716,12 +716,12 @@ TEST_F(DelayImagesFilterTest, MultipleBodyTags) {
   GoogleString output_html = StrCat(
       "<head></head><body>",
       GetNoscript(),
-      "<img pagespeed_high_res_src=\"http://test.com/1.webp\"/>",
+      "<img data-pagespeed-high-res-src=\"http://test.com/1.webp\"/>",
       StrCat(GetInlineScript(),
              GenerateAddLowResScript("http://test.com/1.webp", kSampleWebpData),
              GetHighResScript(), "</body>"),
       "<body>",
-      "<img pagespeed_high_res_src=\"http://test.com/2.jpeg\"/>",
+      "<img data-pagespeed-high-res-src=\"http://test.com/2.jpeg\"/>",
       StrCat(GenerateAddLowResScript("http://test.com/2.jpeg", kSampleJpegData),
              GetHighResScript(), "</body>"));
   MatchOutputAndCountBytes(input_html, output_html);
@@ -747,11 +747,11 @@ TEST_F(DelayImagesFilterTest, MultipleFlushWindowsForExperimental) {
   GoogleString output_html = StrCat(
       "<head></head><body>",
       GetNoscript(),
-      "<img pagespeed_high_res_src=\"http://test.com/1.webp\"/>",
+      "<img data-pagespeed-high-res-src=\"http://test.com/1.webp\"/>",
       StrCat(GetInlineScript(),
              GenerateAddLowResScript("http://test.com/1.webp",
                                      kSampleWebpData)),
-      "<img pagespeed_high_res_src=\"http://test.com/2.jpeg\"/>",
+      "<img data-pagespeed-high-res-src=\"http://test.com/2.jpeg\"/>",
       StrCat(GenerateAddLowResScript("http://test.com/2.jpeg", kSampleJpegData),
              GetHighResScript(), "</body>"));
   EXPECT_TRUE(Wildcard(output_html).Match(output_buffer_));
@@ -773,7 +773,7 @@ TEST_F(DelayImagesFilterTest, ResizeForResolution) {
       "<body>",
       GetNoscript(),
       GetImageOnloadScriptBlock(),
-      "<img pagespeed_high_res_src=\"http://test.com/1.jpeg\" "
+      "<img data-pagespeed-high-res-src=\"http://test.com/1.jpeg\" "
       "src=\"", kSampleJpegData,
       StrCat("\" onload=\"", DelayImagesFilter::kImageOnloadCode,
              "\" onerror=\"this.onerror=null;",
@@ -840,7 +840,7 @@ TEST_F(DelayImagesFilterTest, ResizeForResolutionNegative) {
       "<body>",
       GetNoscript(),
       GetImageOnloadScriptBlock(),
-      "<img pagespeed_high_res_src=\"http://test.com/1.jpeg\" "
+      "<img data-pagespeed-high-res-src=\"http://test.com/1.jpeg\" "
       "src=\"", kSampleJpegData, "\"/></body>");
 
   // If kResizeMobileImages is not explicitly enabled, desktop and mobile

@@ -64,10 +64,11 @@ void ResponsiveImageFirstFilter::EndElementImpl(HtmlElement* element) {
     return;
   }
 
-  if (element->FindAttribute(HtmlName::kPagespeedNoTransform) != NULL) {
+  if (element->FindAttribute(HtmlName::kDataPagespeedNoTransform) != NULL ||
+      element->FindAttribute(HtmlName::kPagespeedNoTransform) != NULL) {
     driver()->InsertDebugComment(
         "ResponsiveImageFilter: Not adding srcset because of "
-        "pagespeed_no_transform attribute.", element);
+        "data-pagespeed-no-transform attribute.", element);
   } else if (element->FindAttribute(HtmlName::kSrcset) != NULL) {
     driver()->InsertDebugComment(
         "ResponsiveImageFilter: Not adding srcset because image already "

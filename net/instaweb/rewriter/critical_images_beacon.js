@@ -101,9 +101,9 @@ pagespeed.CriticalImages.Beacon_.prototype.isCritical_ = function(element) {
   // TODO(jud): We can perform a more efficient critical image check if lazyload
   // images is enabled, and this beacon code runs after the lazyload JS has
   // initially executed. Specifically, we know an image is not critical if it
-  // still has the 'pagespeed_lazy_src' attribute, meaning that the image was
-  // not visible in the viewport yet. This will save us potentially many calls
-  // to the expensive getBoundingClientRect().
+  // still has the 'data-pagespeed-lazy-src' attribute, meaning that the image
+  // was not visible in the viewport yet. This will save us potentially many
+  // calls to the expensive getBoundingClientRect().
 
   // Make sure the element is visible first before checking its position on the
   // page. Note, this check works correctly with the lazyload placeholder image,
@@ -137,7 +137,7 @@ pagespeed.CriticalImages.Beacon_.prototype.isCritical_ = function(element) {
  */
 pagespeed.CriticalImages.Beacon_.prototype.insertIfImageIsCritical_ =
     function(element) {
-  var key = element.getAttribute('pagespeed_url_hash');
+  var key = element.getAttribute('data-pagespeed-url-hash');
   if (key && !(key in this.criticalImagesKeys_) &&
       this.isCritical_(element)) {
     this.criticalImages_.push(key);
@@ -200,7 +200,7 @@ pagespeed.CriticalImages.Beacon_.prototype.checkCriticalImages_ = function() {
   // in case of slideshows, this can cause duplicate images to be detected, but
   // the correct first slideshow image would already have been detected at image
   // onload time.
-  this.imgLocations_ = {}
+  this.imgLocations_ = {};
   // Generate a list of the elements that can be considered critical.
   var tags = [goog.dom.TagName.IMG, goog.dom.TagName.INPUT];
   var elemsToCheck = [];
@@ -266,7 +266,7 @@ pagespeed.CriticalImages.Beacon_.prototype.checkCriticalImages_ = function() {
  *     rw: number,
  *     rh: number,
  *     ow: number,
- *     oh: number}>} Object mapping an image's pagespeed_url_hash to its
+ *     oh: number}>} Object mapping an image's data-pagespeed-url-hash to its
  *     original and rendered widths and heights.
  */
 pagespeed.CriticalImages.Beacon_.prototype.getImageRenderedMap = function() {
@@ -283,7 +283,7 @@ pagespeed.CriticalImages.Beacon_.prototype.getImageRenderedMap = function() {
   if (!('naturalWidth' in img) || !('naturalHeight' in img)) { return {}; }
 
   for (var i = 0; img = images[i]; ++i) {
-    var key = img.getAttribute('pagespeed_url_hash');
+    var key = img.getAttribute('data-pagespeed-url-hash');
     if (!key) { continue; }
     if ((!(key in renderedImageDimensions) &&
              img.width > 0 && img.height > 0 &&
@@ -306,8 +306,10 @@ pagespeed.CriticalImages.Beacon_.prototype.getImageRenderedMap = function() {
 /** @private string */
 pagespeed.CriticalImages.beaconData_ = '';
 
+
 /** @private Object Beacon object */
 pagespeed.CriticalImages.beaconObj_;
+
 
 /**
  * Gets the data sent in the beacon after pagespeed.CriticalImages.Run()

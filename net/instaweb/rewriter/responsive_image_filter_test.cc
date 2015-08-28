@@ -350,7 +350,7 @@ TEST_F(ResponsiveImageFilterTest, LocalStorageFilter) {
   SetHtmlMimetype();
 
   GoogleString local_storage_cache_js =
-      StrCat("<script type=\"text/javascript\" pagespeed_no_defer>",
+      StrCat("<script type=\"text/javascript\" data-pagespeed-no-defer>",
              server_context()->static_asset_manager()->GetAsset(
                  StaticAssetEnum::LOCAL_STORAGE_CACHE_JS, options()),
              LocalStorageCacheFilter::kLscInitializer,
@@ -440,6 +440,17 @@ TEST_F(ResponsiveImageFilterTest, NoTransform) {
   ValidateExpected("no_transform", input_html, output_html);
 }
 
+TEST_F(ResponsiveImageFilterTest, DataNoTransform) {
+  options()->EnableFilter(RewriteOptions::kResponsiveImages);
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  rewrite_driver()->AddFilters();
+
+  const char input_html[] =
+      "<img src=a.jpg width=100 height=100 data-pagespeed-no-transform>";
+  const char output_html[] = "<img src=a.jpg width=100 height=100>";
+  ValidateExpected("data-no-transform", input_html, output_html);
+}
+
 TEST_F(ResponsiveImageFilterTest, TrackingPixel) {
   options()->EnableFilter(RewriteOptions::kResponsiveImages);
   options()->EnableFilter(RewriteOptions::kResizeImages);
@@ -493,11 +504,11 @@ TEST_F(ResponsiveImageFilterTest, Debug) {
 
   ValidateExpected(
       "no_transform",
-      "<img src=a.jpg width=100 height=100 pagespeed_no_transform>",
+      "<img src=a.jpg width=100 height=100 data-pagespeed-no-transform>",
 
       "<img src=a.jpg width=100 height=100>"
       "<!--ResponsiveImageFilter: Not adding srcset because of "
-      "pagespeed_no_transform attribute.-->");
+      "data-pagespeed-no-transform attribute.-->");
 
   ValidateExpected(
       "with_srcset",
@@ -642,7 +653,7 @@ TEST_F(ResponsiveImageFilterTest, InlinePreview) {
   rewrite_driver()->AddFilters();
 
   const GoogleString kInlinePreviewScript = StrCat(
-      "<script pagespeed_no_defer type=\"text/javascript\">",
+      "<script data-pagespeed-no-defer type=\"text/javascript\">",
       DelayImagesFilter::kImageOnloadJsSnippet, "</script>");
   const char kLowResSource[] = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAA"
       "AQABAAD/2wBDAFA3PEY8MlBGQUZaVVBfeMiCeG5uePWvuZHI////////////////////"
@@ -664,9 +675,9 @@ TEST_F(ResponsiveImageFilterTest, InlinePreview) {
   const char input_html[] = "<img src=a.jpg width=100 height=100>";
   GoogleString output_html = StrCat(
       kInlinePreviewScript,
-      "<img pagespeed_high_res_src=",
+      "<img data-pagespeed-high-res-src=",
       EncodeImage(100, 100, "a.jpg", "0", "jpg"),
-      " width=100 height=100 pagespeed_high_res_srcset=\"",
+      " width=100 height=100 data-pagespeed-high-res-srcset=\"",
       EncodeImage(150, 150, "a.jpg", "0", "jpg"), " 1.5x,",
       EncodeImage(200, 200, "a.jpg", "0", "jpg"), " 2x,",
       EncodeImage(300, 300, "a.jpg", "0", "jpg"), " 3x,"
@@ -691,9 +702,9 @@ TEST_F(ResponsiveImageFilterTest, Lazyload) {
   const char input_html[] = "<img src=a.jpg width=100 height=100>";
   GoogleString output_html = StrCat(
       GetLazyloadScriptHtml(),
-      "<img pagespeed_lazy_src=",
+      "<img data-pagespeed-lazy-src=",
       EncodeImage(100, 100, "a.jpg", "0", "jpg"),
-      " width=100 height=100 pagespeed_lazy_srcset=\"",
+      " width=100 height=100 data-pagespeed-lazy-srcset=\"",
       EncodeImage(150, 150, "a.jpg", "0", "jpg"), " 1.5x,",
       EncodeImage(200, 200, "a.jpg", "0", "jpg"), " 2x,",
       EncodeImage(300, 300, "a.jpg", "0", "jpg"), " 3x,"

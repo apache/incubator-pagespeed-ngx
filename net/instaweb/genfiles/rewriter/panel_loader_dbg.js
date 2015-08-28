@@ -111,7 +111,7 @@ pagespeed.panelLoaderInit = function() {
   }
 };
 pagespeed.panelLoaderInit = pagespeed.panelLoaderInit;
-var PANEL_ID = "panel-id", PANEL_STUBSTART = "GooglePanel begin ", PANEL_STUBEND = "GooglePanel end ", INSTANCE_HTML = "instance_html", CONTIGUOUS = "contiguous", XPATH = "xpath", DONT_BIND = "dont_bind", IMAGES = "images", BLINK_SRC = "pagespeed_high_res_src", PANEL_MARKER = "psa_disabled";
+var PANEL_ID = "panel-id", PANEL_STUBSTART = "GooglePanel begin ", PANEL_STUBEND = "GooglePanel end ", INSTANCE_HTML = "instance_html", CONTIGUOUS = "contiguous", XPATH = "xpath", DONT_BIND = "dont_bind", IMAGES = "images", BLINK_SRC = "data-pagespeed-high-res-src", PANEL_MARKER = "psa_disabled";
 function CHECK(a) {
   if (!a) {
     throw "CHECK failed";

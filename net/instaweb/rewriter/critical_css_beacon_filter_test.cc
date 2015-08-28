@@ -134,7 +134,7 @@ class CriticalCssBeaconFilterTestBase : public RewriteTestBase {
   GoogleString BeaconHtml(StringPiece head, StringPiece selectors) {
     GoogleString html = StrCat(
         "<head>", head, "</head><body><p>content</p>"
-        "<script pagespeed_no_defer type=\"text/javascript\">",
+        "<script data-pagespeed-no-defer type=\"text/javascript\">",
         server_context()->static_asset_manager()->GetAsset(
             StaticAssetEnum::CRITICAL_CSS_BEACON_JS, options()),
         "pagespeed.selectors=[", selectors, "];");
@@ -149,7 +149,7 @@ class CriticalCssBeaconFilterTestBase : public RewriteTestBase {
   GoogleString SelectorsOnlyHtml(StringPiece head, StringPiece selectors) {
     return StrCat(
         "<head>", head, "</head><body><p>content</p>"
-        "<script pagespeed_no_defer type=\"text/javascript\">",
+        "<script data-pagespeed-no-defer type=\"text/javascript\">",
         CriticalCssBeaconFilter::kInitializePageSpeedJs,
         "pagespeed.selectors=[", selectors, "];"
         "</script></body>");

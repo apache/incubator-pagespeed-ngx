@@ -17,7 +17,6 @@
 
 #include "net/instaweb/rewriter/public/flush_early_content_writer_filter.h"
 
-#include <memory>
 #include <set>
 
 #include "base/logging.h"
@@ -323,7 +322,7 @@ void FlushEarlyContentWriterFilter::StartElement(HtmlElement* element) {
     // There will only ever be at most one size attribute and one resource here,
     // guaranteed by CollectFlushEarlyContentFilter.
     HtmlElement::Attribute* size_attr =
-        element->FindAttribute(HtmlName::kPagespeedSize);
+        element->FindAttribute(HtmlName::kDataPagespeedSize);
     int64 size = 0;
     if (size_attr != NULL) {
       const char* size_attr_value = size_attr->DecodedValueOrNull();

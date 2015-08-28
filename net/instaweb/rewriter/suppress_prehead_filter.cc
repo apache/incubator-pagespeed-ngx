@@ -17,8 +17,6 @@
 
 #include "net/instaweb/rewriter/public/suppress_prehead_filter.h"
 
-#include <memory>
-
 #include "base/logging.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
@@ -290,7 +288,7 @@ void SuppressPreheadFilter::SendCookies(HtmlElement* element) {
   if (response_headers->GetCookieString(&cookie_str)) {
     HtmlElement* script = driver_->NewElement(element, HtmlName::kScript);
     driver_->AddAttribute(script, HtmlName::kType, "text/javascript");
-    driver_->AddAttribute(script, HtmlName::kPagespeedNoDefer, NULL);
+    driver_->AddAttribute(script, HtmlName::kDataPagespeedNoDefer, NULL);
     HtmlCharactersNode* script_code = driver_->NewCharactersNode(script,
         StringPrintf(kCookieJs, cookie_str.c_str()));
     driver_->PrependChild(element, script);

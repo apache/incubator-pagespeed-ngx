@@ -1,9 +1,9 @@
 # This filter loads below the fold images lazily.
 test_filter lazyload_images
 check run_wget_with_args $URL
-# Check src gets swapped with pagespeed_lazy_src
-check fgrep -q "pagespeed_lazy_src=\"images/Puzzle2.jpg\"" $FETCHED
-check fgrep -q "pagespeed_lazy_srcset=\"images/Puzzle.jpg 2x\"" $FETCHED
+# Check src gets swapped with data-pagespeed-lazy-src
+check fgrep -q "data-pagespeed-lazy-src=\"images/Puzzle2.jpg\"" $FETCHED
+check fgrep -q "data-pagespeed-lazy-srcset=\"images/Puzzle.jpg 2x\"" $FETCHED
 check fgrep -q "pagespeed.lazyLoadInit" $FETCHED  # inline script injected
 
 # Checks that lazyload_images injects compiled javascript from

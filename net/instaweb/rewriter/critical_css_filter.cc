@@ -238,7 +238,7 @@ void CriticalCssFilter::EndDocument() {
     }
 
     HtmlElement* script = driver()->NewElement(NULL, HtmlName::kScript);
-    driver()->AddAttribute(script, HtmlName::kPagespeedNoDefer, NULL);
+    driver()->AddAttribute(script, HtmlName::kDataPagespeedNoDefer, NULL);
     InsertNodeAtBodyEnd(script);
 
     int num_unreplaced_links_ = num_links_ - num_replaced_links_;
@@ -365,7 +365,7 @@ void CriticalCssFilter::EndElementImpl(HtmlElement* element) {
       // TODO(slamm): Remove this attribute and update webdriver test as needed.
       driver()->AddAttribute(
           script, HtmlName::kId, CriticalSelectorFilter::kMoveScriptId);
-      driver()->AddAttribute(script, HtmlName::kPagespeedNoDefer, NULL);
+      driver()->AddAttribute(script, HtmlName::kDataPagespeedNoDefer, NULL);
       driver()->InsertNodeBeforeNode(element, script);
       AddJsToElement(
           CriticalSelectorFilter::kApplyFlushEarlyCss, script);
@@ -373,7 +373,8 @@ void CriticalCssFilter::EndElementImpl(HtmlElement* element) {
 
     HtmlElement* script_element =
         driver()->NewElement(element->parent(), HtmlName::kScript);
-    driver()->AddAttribute(script_element, HtmlName::kPagespeedNoDefer, NULL);
+    driver()->AddAttribute(
+        script_element, HtmlName::kDataPagespeedNoDefer, NULL);
     if (!driver()->ReplaceNode(element, script_element)) {
       LogRewrite(RewriterApplication::REPLACE_FAILED);
       return;

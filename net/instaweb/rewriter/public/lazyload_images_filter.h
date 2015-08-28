@@ -31,24 +31,24 @@ namespace net_instaweb {
 class StaticAssetManager;
 class Statistics;
 
-// Filter to lazyload images by replacing the src with a pagespeed_lazy_src
+// Filter to lazyload images by replacing the src with a data-pagespeed-lazy-src
 // attribute and injecting a javascript to detect which images are in the
 // user's viewport and swapping the src back.
 //
 // This filter only works if the document has a head. It adds some javascript to
 // the head that determines if an image is visible and adds a listener to the
 // window scroll event. If an image is visible, it replaces the src and the
-// pagespeed_lazy_src attributes.
+// data-pagespeed-lazy-src attributes.
 //
 // In order to immediately load images that are above the fold, we attach an
 // onload event to each image. This onload event determines if the image is
-// visible and immediately replaces the src with the pagespeed_lazy_src.
+// visible and immediately replaces the src with the data-pagespeed-lazy-src.
 // Otherwise, the image is added to the deferred queue. Since the onload event
 // is only fired if the image src is valid, we add a fixed inlined image to
 // each image node we are deferring.
 //
 // When the user scrolls, we scan through the deferred queue and determine which
-// images are now visible, and switch the src and pagespeed_lazy_src.
+// images are now visible, and switch the src and data-pagespeed-lazy-src.
 //
 // Given the following input html:
 // <html>
@@ -68,7 +68,7 @@ class Statistics;
 //   </script>
 //  </head>
 //  <body>
-//   <img pagespeed_lazy_src="1.jpeg" onload="kImageOnloadCode"
+//   <img data-pagespeed-lazy-src="1.jpeg" onload="kImageOnloadCode"
 //    src="kBlankImageSrc" />
 //  </body>
 //

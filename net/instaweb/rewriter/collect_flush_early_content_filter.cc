@@ -71,7 +71,7 @@ class CollectFlushEarlyContentFilter::Context : public SingleRewriteContext {
       if (Driver()->IsRewritable(element)) {
         // TODO(pulkitg): Can IsRewritable be false here (see comment to
         // Propagate in rewrite_context.h)?
-        Driver()->AddAttribute(element, HtmlName::kPagespeedSize,
+        Driver()->AddAttribute(element, HtmlName::kDataPagespeedSize,
                                Integer64ToString(output_partition(0)->size()));
       }
     }
@@ -130,8 +130,8 @@ void CollectFlushEarlyContentFilter::StartElementImpl(HtmlElement* element) {
   //
   // FlushEarlyContentWriterFilter depends on us not flushing multiple resources
   // for the same element for two reasons:
-  //  - The pagespeed_size attribute doesn't specify which url-valued attribute
-  //    it refers to.
+  //  - The data-pagespeed-size attribute doesn't specify which url-valued
+  //    attribute it refers to.
   //  - If there are multiple such attributes at least one is unlikely to be
   //    used and so not worth flushing.
   if (element == noscript_element()) {

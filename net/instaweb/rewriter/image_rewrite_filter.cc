@@ -24,7 +24,6 @@
 
 #include <algorithm>
 #include <cstdarg>
-#include <memory>
 #include <utility>
 #include <vector>
 
@@ -1609,7 +1608,7 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
         DataUrl(*content_type, BASE64, cached->low_resolution_inlined_data(),
                 &data_url);
         driver()->AddAttribute(
-            element, HtmlName::kPagespeedLowResSrc, data_url);
+            element, HtmlName::kDataPagespeedLowResSrc, data_url);
         driver()->increment_num_inline_preview_images();
         low_res_src_inserted = true;
       } else {
@@ -1903,7 +1902,13 @@ void ImageRewriteFilter::EndElementImpl(HtmlElement* element) {
   if (driver()->HasChildrenInFlushWindow(element)) {
     return;
   }
-  // Don't rewrite if there is a pagespeed_no_transform attribute.
+  // Don't rewrite if there is a pagespeed_no_transform or
+  // data-pagespeed-no-transform attribute.
+  if (element->FindAttribute(HtmlName::kDataPagespeedNoTransform)) {
+    // Remove the attribute
+    element->DeleteAttribute(HtmlName::kDataPagespeedNoTransform);
+    return;
+  }
   if (element->FindAttribute(HtmlName::kPagespeedNoTransform)) {
     // Remove the attribute
     element->DeleteAttribute(HtmlName::kPagespeedNoTransform);
