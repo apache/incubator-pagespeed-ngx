@@ -10,7 +10,7 @@ install:
   - svn co http://src.chromium.org/svn/trunk/tools/depot_tools 2>&1 > /dev/null
   - cd ~/build_directory
   - ~/bin/depot_tools/gclient config https://github.com/pagespeed/mod_pagespeed.git --unmanaged --name=src
-  - ~/bin/depot_tools/gclient sync --force
+  - ~/bin/depot_tools/gclient sync --force --jobs=1
   - cd src
   - make AR.host=`pwd`/build/wrappers/ar.sh AR.target=`pwd`/build/wrappers/ar.sh BUILDTYPE=Release
   - python build/gyp_chromium -Dchannel=beta
