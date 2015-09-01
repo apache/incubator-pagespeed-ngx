@@ -120,7 +120,7 @@ body.mob-iframe {
  * goog.style.getTransformedSize won't calculate the size correctly.
  */
 #psmob-header-bar.psmob-hide {
-  display: 'none';
+  display: none;
   opacity: 0;
   /* Make the bar disappear immediately when scrolling. */
   -webkit-transition: opacity 0s;
