@@ -1,0 +1,29 @@
+language: c++
+install:
+  - mkdir -p ~/build_directory
+  - mv $TRAVIS_BUILD_DIR ~/build_directory/src
+  - sudo apt-get update 2>&1 > /dev/null
+  - sudo apt-get install apache2 g++ python subversion gperf make devscripts fakeroot git curl netcat-traditional 2>&1 > /dev/null
+  - sudo mv /bin/nc.traditional /usr/bin/nc
+  - mkdir -p ~/bin
+  - cd ~/bin
+  - svn co http://src.chromium.org/svn/trunk/tools/depot_tools 2>&1 > /dev/null
+  - cd ~/build_directory
+  - ~/bin/depot_tools/gclient config https://github.com/pagespeed/mod_pagespeed.git --unmanaged --name=src
+  - ~/bin/depot_tools/gclient sync --force
+  - cd src
+  - make AR.host=`pwd`/build/wrappers/ar.sh AR.target=`pwd`/build/wrappers/ar.sh BUILDTYPE=Release
+  - python build/gyp_chromium -Dchannel=beta
+  - make BUILDTYPE=Release AR.host=`pwd`/build/wrappers/ar.sh AR.target=`pwd`/build/wrappers/ar.sh linux_package_deb
+  - sudo dpkg -i out/Release/mod-pagespeed*.deb
+script:
+  - cd ~/build_directory/src
+  - ./out/Release/mod_pagespeed_test
+  - ./out/Release/pagespeed_automatic_test
+  - find . -name "*.sh" | xargs chmod +x
+  - cd install
+  - sudo -E ./ubuntu.sh apache_debug_restart
+  - sudo -E ./ubuntu.sh apache_vm_system_tests
+sudo: required
+compiler:
+  - clang
