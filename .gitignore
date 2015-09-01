@@ -44,3 +44,5 @@ third_party/zlib/*
 tools/*
 third_party/domain_registry_provider
 third_party/domain_registry_provider/*
+third_party/google-sparsehash
+third_party/google-sparsehash/*
