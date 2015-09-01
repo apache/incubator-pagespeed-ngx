@@ -21,9 +21,6 @@
  * @author nikhilmadan@google.com (Nikhil Madan)
  */
 
-goog.provide('pagespeed');
-goog.provide('pagespeed.LazyloadImages');
-
 goog.require('pagespeedutils');
 
 // Exporting functions using quoted attributes to prevent js compiler from

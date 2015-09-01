@@ -22,8 +22,6 @@
  * @author ksimbili@google.com (Kishore Simbili)
  */
 
-goog.provide('pagespeed');
-
 goog.require('pagespeedutils');
 
 

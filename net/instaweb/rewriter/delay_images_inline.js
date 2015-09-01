@@ -21,9 +21,6 @@
  * @author pulkitg@google.com (Pulkit Goyal)
  */
 
-goog.provide('pagespeed');
-goog.provide('pagespeed.DelayImagesInline');
-
 // Exporting functions using quoted attributes to prevent js compiler from
 // renaming them.
 // See http://code.google.com/closure/compiler/docs/api-tutorial3.html#dangers

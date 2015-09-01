@@ -21,9 +21,6 @@
  * @author matterbury@google.com (Matt Atterbury)
  */
 
-goog.provide('pagespeed');
-goog.provide('pagespeed.LocalStorageCache');
-
 goog.require('pagespeedutils');
 
 // Exporting functions using quoted attributes to prevent js compiler from
