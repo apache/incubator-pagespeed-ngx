@@ -1029,8 +1029,7 @@ apr_status_t InstawebHandler::instaweb_handler(request_rec* request) {
 // is not documented anywhere.
 //
 // Another strategy is to return OK but leave request->filename NULL.
-// In that case, the server kernel generates an ominious 'info'
-// message:
+// In that case, the server kernel generates an ominous 'info' message:
 //
 //     [info] [client ::1] Module bug?  Request filename is missing for URI
 //     /mod_pagespeed_statistics
@@ -1049,7 +1048,7 @@ apr_status_t InstawebHandler::instaweb_handler(request_rec* request) {
 // away the original URL *before* mod_rewrite sees it in
 // kPagespeedOriginalUrl "mod_pagespeed_url" and use *that* rather than
 // request->unparsed_uri (which mod_rewrite might have mangled) when
-// procesing the request.
+// processing the request.
 //
 // Additionally we store whether or not this request is a pagespeed
 // resource or not in kResourceUrlNote.

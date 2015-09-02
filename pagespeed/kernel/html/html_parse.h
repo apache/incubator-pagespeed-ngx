@@ -479,7 +479,7 @@ class HtmlParse {
   //
   // If current node is an HtmlElement, this must be called on the
   // StartElement event, not the EndElement event.  When an element is
-  // defered, all its children are deferred as well.
+  // deferred, all its children are deferred as well.
   //
   // It is fine to restore a node after a Flush.  Note that while most
   // HtmlNode objects are freed after a Flush window, a deferred one will

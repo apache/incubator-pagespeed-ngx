@@ -164,7 +164,7 @@ ThreadSafeLockManager::LockHolder::ScopedLockRunningDelayedCallbacks {
     lock_holder_->UpdateAlarmMutexHeldAndRelease();
     // Now execute the calls we've transferred to our stack vector.
     // Note that the callbacks we are calling may wind up calling
-    // another lock function that recursviely instantiates another
+    // another lock function that recursively instantiates another
     // ScopedLockRunningDelayedCallbacks.  That's fine because we've
     // moved over the contents of delayed_calls_ and unlocked the
     // mutex.
@@ -245,7 +245,7 @@ class ThreadSafeLockManager::Lock : public NamedLock {
     return lock_->name();
   }
 
-  // Helper methods for self & for the maanger:
+  // Helper methods for self & for the manager:
 
   void ManagerDestroyed()
       EXCLUSIVE_LOCKS_REQUIRED(lock_holder_->mutex_) {

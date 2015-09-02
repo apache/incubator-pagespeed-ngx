@@ -44,7 +44,7 @@ typedef std::pair<HtmlElement*, Json::Value*> ElementJsonPair;
 // Writes bytes to top json of the stack.
 class JsonWriter : public Writer {
  public:
-  // It is assumed that the element_json_stack is avialable till the destruction
+  // It is assumed that the element_json_stack is available till the destruction
   // of the writer
   JsonWriter(Writer* writer,
              const std::vector<ElementJsonPair>* element_json_stack);

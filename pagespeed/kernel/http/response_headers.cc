@@ -553,7 +553,7 @@ class InstawebCacheComputer : public CachingHeaders {
     // For now it's identical to the default cacheable list.
     return IsCacheableResourceStatusCode();
 
-    // Note: We have made a consious decision not to allow caching
+    // Note: We have made a conscious decision not to allow caching
     // 302 Found or 307 Temporary Redirect even if they explicitly
     // ask to be cached because most webmasters use 301 Moved Permanently
     // for redirects they actually want cached.

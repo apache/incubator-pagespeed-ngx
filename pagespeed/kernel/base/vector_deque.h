@@ -135,7 +135,7 @@ template<class T> class VectorDeque {
 # endif
 # undef SPECIAL_CASE_POINTER_AT_0
 
-  // Expands the deque to accomodate pushing an element onto the front
+  // Expands the deque to accommodate pushing an element onto the front
   // or back.
   void ExpandIfNecessary() {
     // TODO(jmarantz): consider shrinking if the size goes way down.

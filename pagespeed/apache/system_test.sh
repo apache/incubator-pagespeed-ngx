@@ -639,7 +639,7 @@ if [ $statistics_logging_enabled = "1" ]; then
   done
   # Check a few arbitrary statistics to make sure logging is taking place.
   check [ $(grep "num_flushes: " $MOD_PAGESPEED_STATS_LOG | wc -l) -ge 1 ]
-  # We are not outputing histograms.
+  # We are not outputting histograms.
   check [ $(grep "histogram#" $MOD_PAGESPEED_STATS_LOG | wc -l) -eq 0 ]
   check [ $(grep "image_ongoing_rewrites: " $MOD_PAGESPEED_STATS_LOG | wc -l) \
     -ge 1 ]

@@ -152,7 +152,7 @@ class CachingHeaders {
 
   // Cache-control settings, read directly from the HTTP header.  The bools
   // all default to false & can be set true.  The max_age is left in !was_set
-  // state until successfulyl parsed.
+  // state until successfully parsed.
   bool public_;
   bool private_;
   bool no_transform_;

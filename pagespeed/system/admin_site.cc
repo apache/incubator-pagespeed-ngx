@@ -732,7 +732,7 @@ void AdminSite::AdminPage(
   // by adding a slash.
   //
   // If the user has mapped the pagespeed_admin handler to a path with
-  // an embbedded slash, say "pagespeed/myadmin", then it's hard to tell
+  // an embedded slash, say "pagespeed/myadmin", then it's hard to tell
   // whether we should redirect, because we don't know what the the
   // intended path is.  In this case, we'll fall through to a leaf
   // analysis on "myadmin", fail to find a match, and print a "Did You Mean"

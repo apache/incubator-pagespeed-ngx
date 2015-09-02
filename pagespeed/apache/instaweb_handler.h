@@ -15,7 +15,7 @@
 // Author: lsong@google.com (Libo Song)
 //         jmarantz@google.com (Joshua Marantz)
 //
-// The Apache handler for rewriten resources and a couple other Apache hooks.
+// The Apache handler for rewritten resources and a couple other Apache hooks.
 
 #ifndef PAGESPEED_APACHE_INSTAWEB_HANDLER_H_
 #define PAGESPEED_APACHE_INSTAWEB_HANDLER_H_

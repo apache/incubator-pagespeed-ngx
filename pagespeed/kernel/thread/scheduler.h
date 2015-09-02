@@ -106,7 +106,7 @@ class Scheduler {
   //
   // Will wakeup the scheduler if the time of the first alarm changed.
   // It will also run any outstanding alarms.  Both of these
-  // operations will result in temporrary dropping the lock.  See also
+  // operations will result in temporarily dropping the lock.  See also
   // AddAlarmMutexHelp.
   //
   // TODO(jmaessen): Get rid of AddAlarmAtUs, or rename to

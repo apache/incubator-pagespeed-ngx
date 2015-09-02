@@ -86,7 +86,7 @@ class AprMemCache : public CacheInterface {
   virtual void Delete(const GoogleString& key);
   virtual void MultiGet(MultiGetRequest* request);
 
-  // Connects to the server, returning whether the connnection was
+  // Connects to the server, returning whether the connection was
   // successful or not.
   bool Connect();
 

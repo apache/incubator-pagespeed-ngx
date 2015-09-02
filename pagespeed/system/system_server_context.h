@@ -171,7 +171,7 @@ class SystemServerContext : public ServerContext {
   // Returns true if it actually updated the timestamp, false if the existing
   // cache flush timestamp was newer or the same as the one provided.
   //
-  // Subclasses which add aditional configurations need to override this method
+  // Subclasses which add additional configurations need to override this method
   // to additionally update the cache flush timestamp in those other
   // configurations.  See ApacheServerContext::UpdateCacheFlushTimestampMs where
   // the separate SpdyConfig that mod_pagespeed uses when using SPDY also needs

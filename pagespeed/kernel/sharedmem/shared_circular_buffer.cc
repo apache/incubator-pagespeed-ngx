@@ -78,7 +78,7 @@ bool SharedCircularBuffer::InitSegment(bool parent,
       return false;
     }
   } else {
-    // In child process -> attach to exisiting segment.
+    // In child process -> attach to existing segment.
     segment_.reset(
         shm_runtime_->AttachToSegment(SegmentName(), total, handler));
     if (segment_.get() == NULL) {

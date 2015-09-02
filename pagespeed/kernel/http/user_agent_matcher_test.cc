@@ -265,7 +265,7 @@ TEST_F(UserAgentMatcherTest, DesktopBotSupportsJsDefer) {
   const char kGooglebotAdsBot[] = "Googlebot-AdsBot/1.0";
   EXPECT_TRUE(user_agent_matcher_->SupportsJsDefer(kGooglebotAdsBot, true));
 
-  // This UA was extrapoloated from the snippet when google-searching for
+  // This UA was extrapolated from the snippet when google-searching for
   // "what's my user agent" from Firefox.
   const char kGoogleBotFirefoxUA[] =
       "Mozilla/5.0 " GOOGLEBOT_DESKTOP " Mozilla/5.0 (Windows NT 6.1; WOW64; "

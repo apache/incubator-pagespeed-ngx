@@ -138,7 +138,7 @@ MultipleFrameWriter* CreateImageFrameWriter(
 //
 // If the input "pixels" is set to a null pointer, the function will finish
 // quicker because the pixel data will not be decoded. If "pixel" is set to
-// a non-null pointer, the function will return a buffer containning the pixel
+// a non-null pointer, the function will return a buffer containing the pixel
 // data. You are responsible for destroying the buffer using free().
 //
 // Arguments "width" and "height" indicate the number of pixels along the

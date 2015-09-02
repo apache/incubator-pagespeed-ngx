@@ -237,7 +237,7 @@ class HtmlElement : public HtmlNode {
   // Unconditionally add attribute, copying value.
   // For binary attributes (those without values) use value=NULL.
   // TODO(sligocki): StringPiece(NULL) seems fragile because what it is or
-  // how it's treated is not docutmented.
+  // how it's treated is not documented.
   //
   // Doesn't check for attribute duplication (which is illegal in html).
   //

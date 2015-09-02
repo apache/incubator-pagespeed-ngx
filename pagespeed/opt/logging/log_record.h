@@ -375,7 +375,7 @@ class LogRecord : public AbstractLogRecord {
 
 // TODO(gee): I'm pretty sure the functionality can be provided by the previous
 // ALR implementation, but for the time being leave this around to make the
-// refactoring as limited as possilble.
+// refactoring as limited as possible.
 // AbstractLogRecord that copies logging_info() when in WriteLog.  This should
 // be useful for testing any logging flow where an owned subordinate log record
 // is needed.

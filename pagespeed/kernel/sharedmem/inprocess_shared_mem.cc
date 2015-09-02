@@ -137,7 +137,7 @@ class InProcessSharedMem::Segment : public AbstractSharedMemSegment {
 
   ThreadSystem* thread_system_;
   char* storage_;
-  std::vector<AbstractMutex*> mutexes_;  // for memory ownership purpuses.
+  std::vector<AbstractMutex*> mutexes_;  // for memory ownership purposes.
 
   DISALLOW_COPY_AND_ASSIGN(Segment);
 };

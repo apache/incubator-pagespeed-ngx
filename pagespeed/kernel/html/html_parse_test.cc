@@ -814,7 +814,7 @@ TEST_F(HtmlAnnotationTest, PFont) {
   // TODO(jmarantz): The second <P> should force the close of
   // the first one, despite the intervening <font>.  In other words
   // we need to keep track of which formatting elements are active:
-  // <p> does not nest but I supose <font> likely does.
+  // <p> does not nest but I suppose <font> likely does.
   //
   // Chrome("data:text/html,<P><FONT>a<P>b</FONT>") yields
   // "<p><font>a</font</p><p><font><b></font></p>"
@@ -1175,7 +1175,7 @@ TEST_F(HtmlParseTest, MakeName) {
 // bug 2508140 : <noscript> in <head>
 TEST_F(HtmlParseTestNoBody, NoscriptInHead) {
   // Some real websites (ex: google.com) have <noscript> in the <head> even
-  // though this is technically illegal acording to the HTML4 spec.
+  // though this is technically illegal according to the HTML4 spec.
   // We should support the case in use.
   ValidateNoChanges("noscript_in_head",
       "<head><noscript><title>You don't have JS enabled :(</title>"
@@ -1518,7 +1518,7 @@ TEST_F(EventListManipulationTest, TestDeleteMiddle) {
   CheckExpected("13");
 }
 
-// Note that an unconditionaly sanity check runs after every
+// Note that an unconditionally sanity check runs after every
 // filter, verifying that all the parent-pointers are correct.
 // CheckExpected applies the HtmlWriterFilter, so it runs the
 // parent-pointer check.
@@ -1530,7 +1530,7 @@ TEST_F(EventListManipulationTest, TestAddParentToSequence) {
   EXPECT_TRUE(html_parse_.AddParentToSequence(node1_, node3_, div));
   CheckExpected("<div>123</div>");
 
-  // Now interpose a span between the div and the Characeters nodes.
+  // Now interpose a span between the div and the Characters nodes.
   HtmlElement* span = html_parse_.NewElement(div, HtmlName::kSpan);
   EXPECT_TRUE(html_parse_.AddParentToSequence(node1_, node2_, span));
   CheckExpected("<div><span>12</span>3</div>");

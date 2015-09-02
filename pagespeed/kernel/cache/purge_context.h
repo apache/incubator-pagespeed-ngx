@@ -45,7 +45,7 @@ class Variable;
 
 // Handles purging of URLs, atomically persisting them to disk, allowing
 // multiple concurrent threads/processes to handle purge requests and
-// propogate them to the other processes.
+// propagate them to the other processes.
 //
 // All public methods in this class are thread-safe.
 //

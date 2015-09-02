@@ -114,7 +114,7 @@ class AsyncCacheTest : public CacheTestBase {
   };
 
   // Tweak of LRU cache to block in Get on a sync-point.  Note that we don't
-  // use DelayCache because that doeesn't block; it only defers the Done
+  // use DelayCache because that doesn't block; it only defers the Done
   // callback.  In this case we want to mimic the behavior of a slow blocking
   // cache using a fast blocking cache, so we use a sync-point.
   class SyncedLRUCache : public ThreadsafeCache {

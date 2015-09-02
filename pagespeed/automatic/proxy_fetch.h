@@ -126,7 +126,7 @@ class ProxyFetchFactory {
 // domain-specific RewriteOptions and fetching the HTTP headers for the HTML.
 //
 // Request handling can proceed in parallel with the property-cache lookups,
-// including RewriteOptions lookup and initating the HTTP fetch. However,
+// including RewriteOptions lookup and initiating the HTTP fetch. However,
 // handling incoming bytes will be blocked waiting for property-cache lookups
 // to complete.
 class ProxyFetchPropertyCallback : public PropertyPage {

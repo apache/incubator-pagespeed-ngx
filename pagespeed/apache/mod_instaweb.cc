@@ -215,7 +215,7 @@ bool check_pagespeed_applicable(request_rec* request,
   // mod_pagespeed often creates requests while rewriting an HTML.  These
   // requests are only intended to fetch resources (images, css, javascript) but
   // in some circumstances they can end up fetching HTML.  This HTML, if
-  // rewrittten, could in turn spawn more requests which could cascade into a
+  // rewritten, could in turn spawn more requests which could cascade into a
   // bad situation.  To mod_pagespeed, any fetched HTML is an error condition,
   // so there's no reason to rewrite it anyway.
   if (InstawebHandler::is_pagespeed_subrequest(request)) {
