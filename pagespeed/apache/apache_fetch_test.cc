@@ -70,7 +70,7 @@ class ApacheFetchTest : public testing::Test {
         debug_info_("ignored"),
         thread_system_(),
         timer_(new NullMutex(), 0),
-        apache_writer_(new ApacheWriter(&request_)),
+        apache_writer_(new ApacheWriter(&request_, &thread_system_)),
         request_headers_(new RequestHeaders()),
         request_ctx_(RequestContext::NewTestRequestContextWithTimer(
             &thread_system_, &timer_)),
@@ -126,8 +126,7 @@ class ApacheFetchTest : public testing::Test {
     TimedWaitCallbackCallDone callback(apache_fetch_.get());
     condvar_->set_timed_wait_callback(&callback);
 
-    EXPECT_EQ(ApacheFetch::kWaitSuccess,
-              apache_fetch_->Wait(NULL /* rewrite_driver */));
+    EXPECT_EQ(true, apache_fetch_->Wait(NULL /* rewrite_driver */));
 
     EXPECT_EQ(0, message_handler_.TotalMessages());
 
@@ -140,9 +139,9 @@ class ApacheFetchTest : public testing::Test {
   }
 
   // After a request is set up and Wait returned that the fetch had been
-  // abandonded, finish the fetch and verify that we get the error messages we
+  // abandoned, finish the fetch and verify that we get the error messages we
   // expected.
-  void PostAbandonmentHelper(bool expect_headers_complete) {
+  void PostAbandonmentHelper() {
     // Should normally null apache_fetch_ here because Wait failed but we're
     // mocking multiple threads here and still have to call Done() on it.
 
@@ -166,10 +165,6 @@ class ApacheFetchTest : public testing::Test {
             "Abandoned URL http://www.example.com after 0 sec "
             "(debug=ignored,"
             " driver=null rewrite driver, should only be used in tests)."),
-        SynthesizeWarning(
-            StrCat((expect_headers_complete ? "HeadersComplete" : "Flush"),
-                   " for url http://www.example.com received "
-                   "after being abandoned for timing out.")),
         SynthesizeWarning(
             "Write of 9 bytes for url http://www.example.com received "
             "after being abandoned for timing out."),
@@ -195,7 +190,40 @@ class ApacheFetchTest : public testing::Test {
   NullCondvar* condvar_;  // owned by apache_fetch_
 };
 
-TEST_F(ApacheFetchTest, Success) {
+TEST_F(ApacheFetchTest, SuccessBuffered) {
+  EXPECT_TRUE(apache_fetch_->Write("hello ", &message_handler_));
+  EXPECT_TRUE(apache_fetch_->Write("world", &message_handler_));
+  EXPECT_TRUE(apache_fetch_->Flush(&message_handler_));
+  EXPECT_TRUE(apache_fetch_->Write(".", &message_handler_));
+  EXPECT_TRUE(apache_fetch_->Flush(&message_handler_));
+  // All flushes are dropped, all writed are buffered.
+  EXPECT_EQ("", MockApache::ActionsSinceLastCall());
+
+  WaitExpectSuccess();
+
+  EXPECT_EQ(200, request_.status);
+  EXPECT_EQ(
+      "ap_set_content_type(text/plain) "
+      "ap_remove_output_filter(MOD_EXPIRES) "
+      "ap_remove_output_filter(FIXUP_HEADERS_OUT) "
+      "ap_set_content_type(text/plain) "
+      "ap_rwrite(hello world.)",  /* note: writes combined into one call */
+      MockApache::ActionsSinceLastCall());
+
+  // TODO(jefftk): Cookies are present here even though we asked ApacheWriter to
+  // remove them because of an ApacheWriter bug.
+  EXPECT_EQ("Content-Type: text/plain\n"
+            "Set-Cookie: test=cookie\n"
+            "Set-Cookie: tasty=cookie\n"
+            "Set-Cookie2: obselete\n"
+            "Date: Thu, 01 Jan 1970 00:00:00 GMT\n"
+            "X-Content-Type-Options: nosniff\n"
+            "Cache-Control: max-age=0, no-cache\n",
+            HeadersOutToString(&request_));
+}
+
+TEST_F(ApacheFetchTest, SuccessUnbuffered) {
+  apache_fetch_->set_buffered(false);
   EXPECT_TRUE(apache_fetch_->Write("hello ", &message_handler_));
   EXPECT_EQ(200, request_.status);
   EXPECT_EQ(
@@ -226,10 +254,37 @@ TEST_F(ApacheFetchTest, Success) {
   EXPECT_TRUE(apache_fetch_->Flush(&message_handler_));
   EXPECT_EQ("ap_rflush()", MockApache::ActionsSinceLastCall());
 
-  WaitExpectSuccess();
+  apache_fetch_->Done(true);
 }
 
-TEST_F(ApacheFetchTest, NotFound404) {
+TEST_F(ApacheFetchTest, NotFound404Buffered) {
+  apache_fetch_->response_headers()->set_status_code(404);
+  EXPECT_TRUE(apache_fetch_->Write("Couldn't find it.", &message_handler_));
+  // Writes are buffered.
+  EXPECT_EQ("", MockApache::ActionsSinceLastCall());
+
+  WaitExpectSuccess();
+
+  EXPECT_EQ(404, request_.status);
+  EXPECT_EQ("Content-Type: text/plain\n"
+            "Set-Cookie: test=cookie\n"
+            "Set-Cookie: tasty=cookie\n"
+            "Set-Cookie2: obselete\n"
+            "Date: Thu, 01 Jan 1970 00:00:00 GMT\n"
+            "X-Content-Type-Options: nosniff\n"
+            "Cache-Control: max-age=0, no-cache\n",
+            HeadersOutToString(&request_));
+  EXPECT_EQ(
+      "ap_set_content_type(text/plain) "
+      "ap_remove_output_filter(MOD_EXPIRES) "
+      "ap_remove_output_filter(FIXUP_HEADERS_OUT) "
+      "ap_set_content_type(text/plain) "
+      "ap_rwrite(Couldn't find it.)",
+      MockApache::ActionsSinceLastCall());
+}
+
+TEST_F(ApacheFetchTest, NotFound404Unbuffered) {
+  apache_fetch_->set_buffered(false);
   apache_fetch_->response_headers()->set_status_code(404);
   EXPECT_TRUE(apache_fetch_->Write("Couldn't find it.", &message_handler_));
   EXPECT_EQ(404, request_.status);
@@ -248,10 +303,39 @@ TEST_F(ApacheFetchTest, NotFound404) {
       "ap_set_content_type(text/plain) "
       "ap_rwrite(Couldn't find it.)",
       MockApache::ActionsSinceLastCall());
-  WaitExpectSuccess();
+  apache_fetch_->Done(true);
 }
 
-TEST_F(ApacheFetchTest, NoContentType200) {
+TEST_F(ApacheFetchTest, NoContentType200Buffered) {
+  apache_fetch_->response_headers()->set_status_code(200);
+  EXPECT_TRUE(apache_fetch_->response_headers()->RemoveAll(
+      HttpAttributes::kContentType));
+  EXPECT_TRUE(apache_fetch_->Write("Example response.", &message_handler_));
+  // Writes are buffered.
+  EXPECT_EQ("", MockApache::ActionsSinceLastCall());
+
+  WaitExpectSuccess();
+
+  EXPECT_EQ(403, request_.status);
+  EXPECT_EQ("Set-Cookie: test=cookie\n"
+            "Set-Cookie: tasty=cookie\n"
+            "Set-Cookie2: obselete\n"
+            "Content-Type: text/html\n"
+            "Date: Thu, 01 Jan 1970 00:00:00 GMT\n"
+            "X-Content-Type-Options: nosniff\n"
+            "Cache-Control: max-age=0, no-cache\n",
+            HeadersOutToString(&request_));
+  EXPECT_EQ(
+      "ap_set_content_type(text/html) "
+      "ap_remove_output_filter(MOD_EXPIRES) "
+      "ap_remove_output_filter(FIXUP_HEADERS_OUT) "
+      "ap_set_content_type(text/html) "
+      "ap_rwrite(Missing Content-Type required for proxied resource)",
+      MockApache::ActionsSinceLastCall());
+}
+
+TEST_F(ApacheFetchTest, NoContentType200Unbuffered) {
+  apache_fetch_->set_buffered(false);
   apache_fetch_->response_headers()->set_status_code(200);
   EXPECT_TRUE(apache_fetch_->response_headers()->RemoveAll(
       HttpAttributes::kContentType));
@@ -272,10 +356,41 @@ TEST_F(ApacheFetchTest, NoContentType200) {
       "ap_set_content_type(text/html) "
       "ap_rwrite(Missing Content-Type required for proxied resource)",
       MockApache::ActionsSinceLastCall());
-  WaitExpectSuccess();
+  apache_fetch_->Done(true);
 }
 
-TEST_F(ApacheFetchTest, NoContentType301) {
+TEST_F(ApacheFetchTest, NoContentType301Buffered) {
+  apache_fetch_->response_headers()->set_status_code(301);
+  EXPECT_TRUE(apache_fetch_->response_headers()->RemoveAll("Content-Type"));
+  apache_fetch_->response_headers()->Add("Location", "elsewhere");
+
+  EXPECT_TRUE(apache_fetch_->Write("moved elsewhere", &message_handler_));
+  // Writes are buffered.
+  EXPECT_EQ("", MockApache::ActionsSinceLastCall());
+
+  WaitExpectSuccess();
+
+  EXPECT_EQ(403, request_.status);
+  EXPECT_EQ("Set-Cookie: test=cookie\n"
+            "Set-Cookie: tasty=cookie\n"
+            "Set-Cookie2: obselete\n"
+            "Location: elsewhere\n"
+            "Content-Type: text/html\n"
+            "Date: Thu, 01 Jan 1970 00:00:00 GMT\n"
+            "X-Content-Type-Options: nosniff\n"
+            "Cache-Control: max-age=0, no-cache\n",
+            HeadersOutToString(&request_));
+  EXPECT_EQ(
+      "ap_set_content_type(text/html) "
+      "ap_remove_output_filter(MOD_EXPIRES) "
+      "ap_remove_output_filter(FIXUP_HEADERS_OUT) "
+      "ap_set_content_type(text/html) "
+      "ap_rwrite(Missing Content-Type required for proxied resource)",
+      MockApache::ActionsSinceLastCall());
+}
+
+TEST_F(ApacheFetchTest, NoContentType301Unbuffered) {
+  apache_fetch_->set_buffered(false);
   apache_fetch_->response_headers()->set_status_code(301);
   EXPECT_TRUE(apache_fetch_->response_headers()->RemoveAll("Content-Type"));
   apache_fetch_->response_headers()->Add("Location", "elsewhere");
@@ -297,10 +412,36 @@ TEST_F(ApacheFetchTest, NoContentType301) {
       "ap_set_content_type(text/html) "
       "ap_rwrite(Missing Content-Type required for proxied resource)",
       MockApache::ActionsSinceLastCall());
-  WaitExpectSuccess();
+  apache_fetch_->Done(true);
 }
 
-TEST_F(ApacheFetchTest, NoContentType304) {
+TEST_F(ApacheFetchTest, NoContentType304Buffered) {
+  apache_fetch_->response_headers()->set_status_code(304);
+  EXPECT_TRUE(apache_fetch_->response_headers()->RemoveAll("Content-Type"));
+
+  EXPECT_TRUE(apache_fetch_->Write("not modified", &message_handler_));
+  // Writes are buffered.
+  EXPECT_EQ("", MockApache::ActionsSinceLastCall());
+
+  WaitExpectSuccess();
+
+  EXPECT_EQ(304, request_.status);
+  EXPECT_EQ("Set-Cookie: test=cookie\n"
+            "Set-Cookie: tasty=cookie\n"
+            "Set-Cookie2: obselete\n"
+            "Date: Thu, 01 Jan 1970 00:00:00 GMT\n"
+            "X-Content-Type-Options: nosniff\n"
+            "Cache-Control: max-age=0, no-cache\n",
+            HeadersOutToString(&request_));
+  EXPECT_EQ(
+      "ap_remove_output_filter(MOD_EXPIRES) "
+      "ap_remove_output_filter(FIXUP_HEADERS_OUT) "
+      "ap_rwrite(not modified)",
+      MockApache::ActionsSinceLastCall());
+}
+
+TEST_F(ApacheFetchTest, NoContentType304Unbuffered) {
+  apache_fetch_->set_buffered(false);
   apache_fetch_->response_headers()->set_status_code(304);
   EXPECT_TRUE(apache_fetch_->response_headers()->RemoveAll("Content-Type"));
   EXPECT_TRUE(apache_fetch_->Write("not modified", &message_handler_));
@@ -317,10 +458,33 @@ TEST_F(ApacheFetchTest, NoContentType304) {
       "ap_remove_output_filter(FIXUP_HEADERS_OUT) "
       "ap_rwrite(not modified)",
       MockApache::ActionsSinceLastCall());
-  WaitExpectSuccess();
+  apache_fetch_->Done(true);
 }
 
-TEST_F(ApacheFetchTest, NoContentType204) {
+TEST_F(ApacheFetchTest, NoContentType204Buffered) {
+  apache_fetch_->response_headers()->set_status_code(204);
+  EXPECT_TRUE(apache_fetch_->response_headers()->RemoveAll("Content-Type"));
+  apache_fetch_->HeadersComplete();
+  // Headers are buffered.
+  EXPECT_EQ("", MockApache::ActionsSinceLastCall());
+
+  WaitExpectSuccess();
+
+  EXPECT_EQ(204, request_.status);
+  EXPECT_EQ("Set-Cookie: test=cookie\n"
+            "Set-Cookie: tasty=cookie\n"
+            "Set-Cookie2: obselete\n"
+            "Date: Thu, 01 Jan 1970 00:00:00 GMT\n"
+            "X-Content-Type-Options: nosniff\n"
+            "Cache-Control: max-age=0, no-cache\n",
+            HeadersOutToString(&request_));
+  EXPECT_EQ("ap_remove_output_filter(MOD_EXPIRES) "
+            "ap_remove_output_filter(FIXUP_HEADERS_OUT)",
+            MockApache::ActionsSinceLastCall());
+}
+
+TEST_F(ApacheFetchTest, NoContentType204Unbuffered) {
+  apache_fetch_->set_buffered(false);
   apache_fetch_->response_headers()->set_status_code(204);
   EXPECT_TRUE(apache_fetch_->response_headers()->RemoveAll("Content-Type"));
   apache_fetch_->HeadersComplete();
@@ -335,45 +499,24 @@ TEST_F(ApacheFetchTest, NoContentType204) {
   EXPECT_EQ("ap_remove_output_filter(MOD_EXPIRES) "
             "ap_remove_output_filter(FIXUP_HEADERS_OUT)",
             MockApache::ActionsSinceLastCall());
-
-  WaitExpectSuccess();
+  apache_fetch_->Done(true);
 }
 
-TEST_F(ApacheFetchTest, AbandonedAndHandled) {
+TEST_F(ApacheFetchTest, AbandonedAfterWritingBuffered) {
+  // Write() will call HeadersComplete().
   EXPECT_TRUE(apache_fetch_->Write("hello ", &message_handler_));
-  EXPECT_EQ(200, request_.status);
-  EXPECT_EQ(
-      "ap_set_content_type(text/plain) "
-      "ap_remove_output_filter(MOD_EXPIRES) "
-      "ap_remove_output_filter(FIXUP_HEADERS_OUT) "
-      "ap_set_content_type(text/plain) "
-      "ap_rwrite(hello )",
-      MockApache::ActionsSinceLastCall());
-
-  EXPECT_EQ("Content-Type: text/plain\n"
-            "Set-Cookie: test=cookie\n"
-            "Set-Cookie: tasty=cookie\n"
-            "Set-Cookie2: obselete\n"
-            "Date: Thu, 01 Jan 1970 00:00:00 GMT\n"
-            "X-Content-Type-Options: nosniff\n"
-            "Cache-Control: max-age=0, no-cache\n",
-            HeadersOutToString(&request_));
-
-  EXPECT_EQ(ApacheFetch::kAbandonedAndHandled,
-            apache_fetch_->Wait(NULL /* rewrite_driver */));
-
-  EXPECT_FALSE(apache_fetch_->Flush(&message_handler_));
-  // Flush dropped.
   EXPECT_EQ("", MockApache::ActionsSinceLastCall());
 
-  PostAbandonmentHelper(false /* expect_headers_complete */);
+  EXPECT_EQ(false, apache_fetch_->Wait(NULL /* rewrite_driver */));
+  PostAbandonmentHelper();
 }
 
-TEST_F(ApacheFetchTest, AbandonedAndDeclined) {
-  EXPECT_EQ(ApacheFetch::kAbandonedAndDeclined,
-            apache_fetch_->Wait(NULL /* rewrite_driver */));
+TEST_F(ApacheFetchTest, AbandonedBeforeWritingBuffered) {
+  EXPECT_EQ(false, apache_fetch_->Wait(NULL /* rewrite_driver */));
 
-  PostAbandonmentHelper(true /* expect_headers_complete */);
+  PostAbandonmentHelper();
 }
+
+// Unbuffered fetches can't get abandoned, so not testing that case.
 
 }  // namespace net_instaweb

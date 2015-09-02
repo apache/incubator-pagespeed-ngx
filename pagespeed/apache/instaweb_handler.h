@@ -92,12 +92,16 @@ class InstawebHandler {
   // Allocates a Fetch object associated with the current request and
   // the specified URL.  Include in debug_info anything that's cheap to create
   // and would be informative if something went wrong with the fetch.
-  ApacheFetch* MakeFetch(const GoogleString& url, StringPiece debug_info);
+  // If any uses will be from other threads you must set buffered=true to keep
+  // your other thread from getting blocked if our output is being read by a
+  // slow reader.
+  ApacheFetch* MakeFetch(
+      const GoogleString& url, bool buffered, StringPiece debug_info);
 
-  // Allocates a Fetch object associated with the current request and its
-  // URL.
-  ApacheFetch* MakeFetch(StringPiece debug_info) {
-    return MakeFetch(original_url_, debug_info);
+  // Allocates a Fetch object associated with the current request and its URL.
+  // Please read the comment above before setting buffered=false.
+  ApacheFetch* MakeFetch(bool buffered, StringPiece debug_info) {
+    return MakeFetch(original_url_, buffered, debug_info);
   }
 
   // Attempts to handle this as a proxied resource (see
@@ -115,13 +119,11 @@ class InstawebHandler {
   void HandleAsPagespeedResource();
 
   // Waits for an outstanding fetch (obtained by MakeFetch) to complete or time
-  // out.  Returns kWaitSuccess on success, on timeout it needs to indicate
-  // whether the request should be declined or counted as handled.  If we didn't
-  // send out headers then it's safe to decline this request and another Apache
-  // content handler can look into it, so we'll return AbandonedAndDeclined.
-  // Returning AbandonedAndHandled means we got at least as far as sending out
-  // headers, and there's nothing else it's safe to do with this request.
-  ApacheFetch::WaitResult WaitForFetch();
+  // out.  Returns true if the fetch completes, false if we time out and abandon
+  // the request.  On failure we haven't sent out headers or any other content,
+  // so it's safe to decline this request and another Apache content handler can
+  // look into it.
+  bool WaitForFetch();
 
   // Loads the URL based on the fetchers and other infrastructure in the
   // factory, returning true if the request was handled.  This is used

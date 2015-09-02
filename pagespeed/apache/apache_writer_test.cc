@@ -21,6 +21,7 @@
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/null_message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/null_thread_system.h"
 #include "pagespeed/kernel/http/response_headers.h"
 
 #include "httpd.h"  // NOLINT
@@ -33,7 +34,7 @@ class ApacheWriterTest : public testing::Test {
     MockApache::Initialize();
     MockApache::PrepareRequest(&request_);
 
-    apache_writer_.reset(new ApacheWriter(&request_));
+    apache_writer_.reset(new ApacheWriter(&request_, &thread_system_));
     response_headers_.reset(new ResponseHeaders());
 
     // Standard response headers, some overridden in tests.
@@ -58,6 +59,7 @@ class ApacheWriterTest : public testing::Test {
   scoped_ptr<ApacheWriter> apache_writer_;
   scoped_ptr<ResponseHeaders> response_headers_;
   NullMessageHandler message_handler_;
+  NullThreadSystem thread_system_;
 };
 
 TEST_F(ApacheWriterTest, SimpleUsage) {

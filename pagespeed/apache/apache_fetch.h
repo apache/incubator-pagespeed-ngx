@@ -32,13 +32,15 @@ namespace net_instaweb {
 
 // Links an apache request_rec* to an AsyncFetch, adding the ability to
 // block based on a condition variable.
+//
+// If you need this to stream writes and flushes out to apache, call
+// set_buffered(false) and make sure all calls are on the request thread.
+// ApacheWriter will DCHECK-fail if it's called on another thread.
 class ApacheFetch : public AsyncFetch {
  public:
-  enum WaitResult { kWaitSuccess, kAbandonedAndDeclined, kAbandonedAndHandled };
-
   // Takes ownership of apache_writer, but the underlying request_rec needs to
-  // stay around until Wait returns kAbandonedAndDeclined/Handled or the caller
-  // deletes the ApacheFetch.
+  // stay around until Wait returns false or the caller finishes handling a true
+  // return and deletes the ApacheFetch.
   // Also takes ownership of request_headers.
   ApacheFetch(const GoogleString& mapped_url, StringPiece debug_info,
               ThreadSystem* thread_system, Timer* timer,
@@ -58,6 +60,12 @@ class ApacheFetch : public AsyncFetch {
   // a reverse-proxy.
   void set_handle_error(bool x) { handle_error_ = x; }
 
+  // If all calls to an ApacheFetch are on the apache request thread it is safe
+  // to set buffered to false.  All calls Write()/Flush() will be passed through
+  // to the underlying writer immediately.  Otherwise, leave it as true and they
+  // will be delayed until Wait().
+  void set_buffered(bool x) { buffered_ = x; }
+
   // Blocks waiting for the fetch to complete, then returns kWaitSuccess.  Every
   // 'blocking_fetch_timeout_ms', log a message so that if we get stuck there's
   // noise in the logs, but we don't expect this to happen because underlying
@@ -75,8 +83,10 @@ class ApacheFetch : public AsyncFetch {
   // If rewrite_driver is not NULL then on abandonment it's serialized and
   // logged for debugging.
   //
+  // Returns false if we abandon the request.
+  //
   // TODO(jefftk): find the underlying issue in the code we're waiting for.
-  WaitResult Wait(const RewriteDriver* rewrite_driver) LOCKS_EXCLUDED(mutex_);
+  bool Wait(const RewriteDriver* rewrite_driver) LOCKS_EXCLUDED(mutex_);
 
   bool status_ok() const { return status_ok_; }
 
@@ -100,6 +110,8 @@ class ApacheFetch : public AsyncFetch {
       LOCKS_EXCLUDED(mutex_);
 
  private:
+  void SendOutHeaders() EXCLUSIVE_LOCKS_REQUIRED(mutex_);
+
   GoogleString mapped_url_;
 
   // All uses of apache_writer_ and options_ must be protected with a check
@@ -119,13 +131,16 @@ class ApacheFetch : public AsyncFetch {
   // out they transition into abandoned_ = true.
   bool abandoned_ GUARDED_BY(mutex_);
   bool done_ GUARDED_BY(mutex_);
-  bool headers_sent_ GUARDED_BY(mutex_);
+  bool wait_called_;
   bool handle_error_;
+  bool squelch_output_;
   bool status_ok_;
   bool is_proxy_;
+  bool buffered_;
   int64 blocking_fetch_timeout_ms_;  // Need in Wait()
   int max_wait_ms_;                  // Need in Wait()
   GoogleString debug_info_;
+  GoogleString output_bytes_;
 
   DISALLOW_COPY_AND_ASSIGN(ApacheFetch);
 };

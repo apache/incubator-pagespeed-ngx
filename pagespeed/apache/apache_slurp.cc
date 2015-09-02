@@ -273,7 +273,7 @@ bool InstawebHandler::ProxyUrl() {
     // We always disable downstream header filters when sending out
     // slurped resources, since we've captured them from the origin
     // in the fetch we did to write the slurp.
-    ApacheWriter apache_writer(request_);
+    ApacheWriter apache_writer(request_, server_context_->thread_system());
 
     // TODO(jmarantz): This is a bit of a hack, but we need to be able to
     // tweak headers from pagespeed.conf while experimenting with mobilization.

@@ -42,10 +42,12 @@ ApacheFetch::ApacheFetch(const GoogleString& mapped_url, StringPiece debug_info,
       condvar_(mutex_->NewCondvar()),
       abandoned_(false),
       done_(false),
-      headers_sent_(false),
+      wait_called_(false),
       handle_error_(true),
+      squelch_output_(false),
       status_ok_(false),
       is_proxy_(false),
+      buffered_(true),
       blocking_fetch_timeout_ms_(options_->blocking_fetch_timeout_ms()),
       max_wait_ms_(kDefaultMaxWaitMs) {
   // We are proxying content, and the caching in the http configuration
@@ -65,15 +67,33 @@ ApacheFetch::ApacheFetch(const GoogleString& mapped_url, StringPiece debug_info,
 
 ApacheFetch::~ApacheFetch() { }
 
+// Called by other threads unless buffered=false.
 void ApacheFetch::HandleHeadersComplete() {
+  if (buffered_) {
+    // Do nothing on this thread right now.  When done waiting we'll deal with
+    // headers on the request thread.
+    return;
+  }
+  {
+    ScopedMutex lock(mutex_.get());
+    CHECK(!abandoned_);  // Can't be abandoned in unbuffered mode.
+    SendOutHeaders();
+  }
+}
+
+// Called on the request thread.
+void ApacheFetch::SendOutHeaders() {
   int status_code = response_headers()->status_code();
+
+  // Setting status_ok = true tells InstawebHandler that we've handled this
+  // request and sent out the response.  If we leave it as false InstawebHandler
+  // will DECLINE the request and another handler will deal with it.
   status_ok_ = (status_code != 0) && (status_code < 400);
 
   if (handle_error_ || status_ok_) {
-    bool inject_error_message = false;
-
-    // 304 and 204 responses aren't expected to have Content-Types.
-    // All other responses should.
+    StringPiece error_message = "";  // No error by default.
+    // 304 and 204 responses shouldn't have content lengths and aren't expected
+    // to have Content-Types.  All other responses should.
     if ((status_code != HttpStatus::kNotModified) &&
         (status_code != HttpStatus::kNoContent) &&
         !response_headers()->Has(HttpAttributes::kContentType)) {
@@ -82,7 +102,7 @@ void ApacheFetch::HandleHeadersComplete() {
       response_headers()->SetStatusAndReason(HttpStatus::kForbidden);
       response_headers()->Add(HttpAttributes::kContentType, "text/html");
       response_headers()->RemoveAll(HttpAttributes::kCacheControl);
-      inject_error_message = true;
+      error_message = "Missing Content-Type required for proxied resource";
     }
 
     int64 now_ms = timer_->NowMs();
@@ -106,34 +126,22 @@ void ApacheFetch::HandleHeadersComplete() {
     }
     response_headers()->ComputeCaching();
 
-    {
-      ScopedMutex lock(mutex_.get());
-      if (!abandoned_) {
-        if (content_length_known() && !inject_error_message) {
-          apache_writer_->set_content_length(content_length());
-        }
-
-        apache_writer_->OutputHeaders(response_headers());
-        headers_sent_ = true;
-
-        if (inject_error_message) {
-          apache_writer_->Write(
-              "Missing Content-Type required for proxied "
-              "resource",
-              message_handler_);
-          apache_writer_->set_squelch_output(true);
-        }
-        return;
-      }
+    if (content_length_known() && error_message.empty()) {
+      apache_writer_->set_content_length(content_length());
     }
-    message_handler_->Message(kWarning,
-                              "HeadersComplete for url %s received after "
-                              "being abandoned for timing out.",
-                              mapped_url_.c_str());
-    return;  // Don't do anything.
+    apache_writer_->OutputHeaders(response_headers());
+    if (!error_message.empty()) {
+      if (buffered_) {
+        error_message.CopyToString(&output_bytes_);
+      } else {
+        apache_writer_->Write(error_message, message_handler_);
+      }
+      squelch_output_ = true;
+    }
   }
 }
 
+// Called by other threads.
 void ApacheFetch::HandleDone(bool success) {
   {
     ScopedMutex lock(mutex_.get());
@@ -148,9 +156,13 @@ void ApacheFetch::HandleDone(bool success) {
             mapped_url_.c_str(), response_headers()->status_code(),
             response_headers()->reason_phrase());
       }
-      // We've not been abandoned; let our owner know we're done and they will
-      // delete us.
-      condvar_->Signal();
+
+      if (buffered_) {
+        // We've not been abandoned; let our owner on the apache request thread
+        // know we're done and they will send out anything that still needs
+        // sending and then delete us.
+        condvar_->Signal();
+      }
       return;
     }
     message_handler_->Message(
@@ -164,11 +176,19 @@ void ApacheFetch::HandleDone(bool success) {
   delete this;
 }
 
+// Called by other threads, unless buffered=false.
 bool ApacheFetch::HandleWrite(const StringPiece& sp, MessageHandler* handler) {
   {
     ScopedMutex lock(mutex_.get());
     if (!abandoned_) {
-      return apache_writer_->Write(sp, handler);
+      if (squelch_output_) {
+        return true;  // Suppressing further output after writing error message.
+      } else if (buffered_) {
+        sp.AppendToString(&output_bytes_);
+        return true;
+      } else {
+        return apache_writer_->Write(sp, handler);
+      }
     }
   }
   handler->Message(kWarning,
@@ -178,32 +198,43 @@ bool ApacheFetch::HandleWrite(const StringPiece& sp, MessageHandler* handler) {
   return false;  // Drop the write.
 }
 
+// Called by other threads, unless buffered=false.
 bool ApacheFetch::HandleFlush(MessageHandler* handler) {
+  if (buffered_) {
+    return true;  // Don't pass flushes through.
+  }
   {
     ScopedMutex lock(mutex_.get());
-    if (!abandoned_) {
-      return apache_writer_->Flush(handler);
-    }
+    CHECK(!abandoned_);  // Can't be abandoned in unbuffered mode.
+    return apache_writer_->Flush(handler);
   }
-  handler->Message(kWarning,
-                   "Flush for url %s received after "
-                   "being abandoned for timing out.",
-                   mapped_url_.c_str());
-  return false;  // Drop the flush.
 }
 
-ApacheFetch::WaitResult ApacheFetch::Wait(const RewriteDriver* rewrite_driver) {
+// Called on the apache request thread.
+bool ApacheFetch::Wait(const RewriteDriver* rewrite_driver) {
+  if (wait_called_) {
+    return true;  // Nothing to do.
+  }
+  if (!buffered_) {
+    // If we're not buffered Wait() is only being called on us because it's a
+    // code path shared with buffered code.  We should always be done at this
+    // point.
+    //
+    // It's also not a performance issue to take the lock, as there should never
+    // be contention.
+    ScopedMutex lock(mutex_.get());
+    CHECK(done_);
+    return true;
+  }
+  wait_called_ = true;
   int64 start_ms = timer_->NowMs();
   mutex_->Lock();
   while (!done_) {
     condvar_->TimedWait(blocking_fetch_timeout_ms_);
     if (!done_) {
       int64 elapsed_ms = timer_->NowMs() - start_ms;
-      bool should_abandon = elapsed_ms > max_wait_ms_;
-
-      // Unlock briefly so we can write messages without holding the lock.
-      mutex_->Unlock();
-      if (should_abandon) {
+      if (elapsed_ms > max_wait_ms_) {
+        abandoned_ = true;
         message_handler_->Message(
             kWarning, "Abandoned URL %s after %g sec (debug=%s, driver=%s).",
             mapped_url_.c_str(), elapsed_ms / 1000.0, debug_info_.c_str(),
@@ -211,35 +242,26 @@ ApacheFetch::WaitResult ApacheFetch::Wait(const RewriteDriver* rewrite_driver) {
                  ? "null rewrite driver, should only be used in tests"
                  : rewrite_driver->ToString(true /* show_detached_contexts */)
                        .c_str()));
-      } else {
-        message_handler_->Message(
-            kWarning, "Waiting for completion of URL %s for %g sec.",
-            mapped_url_.c_str(), elapsed_ms / 1000.0);
-      }
-      mutex_->Lock();
-
-      if (should_abandon) {
-        abandoned_ = true;
-
         // Now that we're abandoned the instaweb context needs to drop its
-        // pointer to us and not free us.  We tell it to do this by returning
-        // kAbandonedAndHandled / kAbandonedAndDeclined.
+        // pointer to us and not free us.
         //
-        // If we never sent headers out then it's safe to DECLINE this request
-        // and pass it to a different content handler.  Otherwise some data was
-        // sent out and we have to accept this as it is.
-        WaitResult result =
-            headers_sent_ ? kAbandonedAndHandled : kAbandonedAndDeclined;
-
         // Once we've abandoned and unlocked, we could be deleted at any moment
         // by a call to Done().  So make no member accesses after unlocking.
         mutex_->Unlock();
-        return result;
+        return false;  // Abandoned with nothing written (because we're a
+                       // buffered fetch), caller can DECLINE to handle request.
       }
+      message_handler_->Message(
+          kWarning, "Waiting for completion of URL %s for %g sec.",
+          mapped_url_.c_str(), elapsed_ms / 1000.0);
     }
   }
+  SendOutHeaders();
+  if (!output_bytes_.empty()) {
+    apache_writer_->Write(output_bytes_, message_handler_);
+  }
   mutex_->Unlock();
-  return kWaitSuccess;
+  return true;  // handled
 }
 
 bool ApacheFetch::IsCachedResultValid(const ResponseHeaders& headers) {

@@ -127,7 +127,7 @@ InstawebHandler::~InstawebHandler() {
   // If fetch_ is null we either never tried to fetch anything or it took
   // ownership of itself after timing out.
   if (fetch_ != NULL) {
-    if (WaitForFetch() == ApacheFetch::kWaitSuccess) {
+    if (WaitForFetch()) {
       delete fetch_;  // Fetch completed normally.
     } else {
       // Fetch took ownership of itself and will continue in the background.
@@ -136,19 +136,19 @@ InstawebHandler::~InstawebHandler() {
   }
 }
 
-ApacheFetch::WaitResult InstawebHandler::WaitForFetch() {
+bool InstawebHandler::WaitForFetch() {
   if (fetch_ == NULL) {
-    return ApacheFetch::kWaitSuccess;  // Nothing to wait for.
+    return true;  // Nothing to wait for.
   }
 
-  ApacheFetch::WaitResult wait_result = fetch_->Wait(rewrite_driver_);
-  if (wait_result != ApacheFetch::kWaitSuccess) {
+  bool ok = fetch_->Wait(rewrite_driver_);
+  if (!ok) {
     // Give up on waiting for the fetch so we stop tying up a thread.  Fetch has
     // taken ownership of itself, will discard any messages it receives if it's
     // abandoned, and will delete itself when Done() is called, if ever.
     fetch_ = NULL;
   }
-  return wait_result;
+  return ok;
 }
 
 void InstawebHandler::SetupSpdyConnectionIfNeeded() {
@@ -178,16 +178,19 @@ RewriteDriver* InstawebHandler::MakeDriver() {
 }
 
 ApacheFetch* InstawebHandler::MakeFetch(const GoogleString& url,
+                                        bool buffered,
                                         StringPiece debug_info) {
   DCHECK(fetch_ == NULL);
   // ApacheFetch takes ownership of request_headers.
   RequestHeaders* request_headers = new RequestHeaders();
   ApacheRequestToRequestHeaders(*request_, request_headers);
-  fetch_ = new ApacheFetch(url, debug_info, server_context_->thread_system(),
-                           server_context_->timer(),
-                           new ApacheWriter(request_),
-                           request_headers, request_context_, options_,
-                           server_context_->message_handler());
+  fetch_ = new ApacheFetch(
+      url, debug_info, server_context_->thread_system(),
+      server_context_->timer(),
+      new ApacheWriter(request_, server_context_->thread_system()),
+      request_headers, request_context_, options_,
+      server_context_->message_handler());
+  fetch_->set_buffered(buffered);
   return fetch_;
 }
 
@@ -454,13 +457,12 @@ bool InstawebHandler::HandleAsInPlace() {
        != NULL) || (request_->user != NULL));
 
   RewriteDriver* driver = MakeDriver();
-  MakeFetch(original_url_, "ipro");
+  MakeFetch(true /* buffered */, "ipro");
   fetch_->set_handle_error(false);
   driver->FetchInPlaceResource(stripped_gurl_, false /* proxy_mode */, fetch_);
-  ApacheFetch::WaitResult wait_result = WaitForFetch();
-  if (wait_result != ApacheFetch::kWaitSuccess) {
-    // Note: fetch_ has been released; no longer safe to look at;
-    handled = (wait_result == ApacheFetch::kAbandonedAndHandled);
+  bool ok = WaitForFetch();
+  if (!ok) {
+    // Nothing to do, fetch_ has been released, no longer safe to look at.
   } else if (fetch_->status_ok()) {
     server_context_->rewrite_stats()->ipro_served()->Add(1);
     handled = true;
@@ -517,12 +519,12 @@ bool InstawebHandler::HandleAsProxy() {
                                               &host_header, &is_proxy) &&
       is_proxy) {
     RewriteDriver* driver = MakeDriver();
-    MakeFetch(mapped_url, "proxy");
+    MakeFetch(mapped_url, true /* buffered */, "proxy");
     fetch_->set_is_proxy(true);
     driver->SetRequestHeaders(*fetch_->request_headers());
     server_context_->proxy_fetch_factory()->StartNewProxyFetch(
         mapped_url, fetch_, driver, NULL, NULL);
-    handled = WaitForFetch() != ApacheFetch::kAbandonedAndDeclined;
+    handled = WaitForFetch();
   }
 
   return handled;  // false == declined
@@ -881,39 +883,51 @@ apr_status_t InstawebHandler::instaweb_handler(request_rec* request) {
     server_context->StatisticsPage(is_global_statistics,
                                    instaweb_handler.query_params(),
                                    instaweb_handler.options(),
-                                   instaweb_handler.MakeFetch("statistics"));
+                                   instaweb_handler.MakeFetch(
+                                       false /* unbuffered */, "statistics"));
     return OK;
   } else if ((request_handler_str == kAdminHandler) ||
              (request_handler_str == kGlobalAdminHandler)) {
     InstawebHandler instaweb_handler(request);
+    // The fetch has to be buffered because if it's a cache lookup it could
+    // complete asynchrously via the rewrite thread.
     server_context->AdminPage((request_handler_str == kGlobalAdminHandler),
                               instaweb_handler.stripped_gurl(),
                               instaweb_handler.query_params(),
                               instaweb_handler.options(),
-                              instaweb_handler.MakeFetch("admin"));
+                              instaweb_handler.MakeFetch(
+                                  true /* buffered */, "admin"));
     ret = OK;
   } else if (global_config->enable_cache_purge() &&
              !global_config->purge_method().empty() &&
              (global_config->purge_method() == request->method)) {
     InstawebHandler instaweb_handler(request);
     AdminSite* admin_site = server_context->admin_site();
+    // I'm not convinced that the purge handler must complete synchronously.  It
+    // schedules work on the rewrite driver factory's scheduler, and while in my
+    // testing it processes everything on the calling thread I'm not sure this
+    // is part of the contract.  The response is just headers and a few bytes of
+    // body, so buffering is basically free.  To be on the safe side let's
+    // buffer this one too.
     admin_site->PurgeHandler(instaweb_handler.original_url_,
                              server_context->cache_path(),
-                             instaweb_handler.MakeFetch("purge"));
+                             instaweb_handler.MakeFetch(
+                                 true /* buffered */, "purge"));
     ret = OK;
   } else if (request_handler_str == kConsoleHandler) {
     InstawebHandler instaweb_handler(request);
     server_context->ConsoleHandler(*instaweb_handler.options(),
                                    AdminSite::kOther,
                                    instaweb_handler.query_params(),
-                                   instaweb_handler.MakeFetch("console"));
+                                   instaweb_handler.MakeFetch(
+                                       false /* unbuffered */, "console"));
     ret = OK;
   } else if (request_handler_str == kMessageHandler) {
     InstawebHandler instaweb_handler(request);
     server_context->MessageHistoryHandler(
         *instaweb_handler.options(),
         AdminSite::kOther,
-        instaweb_handler.MakeFetch("messages"));
+        instaweb_handler.MakeFetch(false /* unbuffered */, "messages"));
     ret = OK;
   } else if (request_handler_str == kLogRequestHeadersHandler) {
     // For testing CustomFetchHeader.

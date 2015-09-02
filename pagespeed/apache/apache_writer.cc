@@ -27,33 +27,35 @@
 
 namespace net_instaweb {
 
-ApacheWriter::ApacheWriter(request_rec* r)
+ApacheWriter::ApacheWriter(request_rec* r, ThreadSystem* thread_system)
     : request_(r),
       headers_out_(false),
       disable_downstream_header_filters_(false),
       strip_cookies_(false),
-      squelch_output_(false),
-      content_length_(AsyncFetch::kContentLengthUnknown) {
+      content_length_(AsyncFetch::kContentLengthUnknown),
+      thread_system_(thread_system) {
+  apache_request_thread_.reset(thread_system->GetThreadId());
 }
 
 ApacheWriter::~ApacheWriter() {
 }
 
 bool ApacheWriter::Write(const StringPiece& str, MessageHandler* handler) {
+  DCHECK(apache_request_thread_->IsCurrentThread());
   DCHECK(headers_out_);
-  if (!squelch_output_) {
-    ap_rwrite(str.data(), str.size(), request_);
-  }
+  ap_rwrite(str.data(), str.size(), request_);
   return true;
 }
 
 bool ApacheWriter::Flush(MessageHandler* handler) {
+  DCHECK(apache_request_thread_->IsCurrentThread());
   DCHECK(headers_out_);
   ap_rflush(request_);
   return true;
 }
 
 void ApacheWriter::OutputHeaders(ResponseHeaders* response_headers) {
+  DCHECK(apache_request_thread_->IsCurrentThread());
   DCHECK(!headers_out_);
   if (headers_out_) {
     return;

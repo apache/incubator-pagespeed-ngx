@@ -18,7 +18,9 @@
 #define PAGESPEED_APACHE_APACHE_WRITER_H_
 
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/base/writer.h"
 
 struct request_rec;
@@ -28,10 +30,12 @@ namespace net_instaweb {
 class MessageHandler;
 class ResponseHeaders;
 
-// Writer object that writes to an Apache Request stream.
+// Writer object that writes to an Apache Request stream.  Should only be used
+// from a single apache request thread, not from a rewrite thread or anything
+// else.
 class ApacheWriter : public Writer {
  public:
-  explicit ApacheWriter(request_rec* r);
+  ApacheWriter(request_rec* r, ThreadSystem* thread_system);
   virtual ~ApacheWriter();
 
   virtual bool Write(const StringPiece& str, MessageHandler* handler);
@@ -61,18 +65,14 @@ class ApacheWriter : public Writer {
     strip_cookies_ = x;
   }
 
-  // When proxying content we deem to be unsafe (e.g. lacking
-  // a Content-Type header) we must squelch the output.
-  void set_squelch_output(bool x) { squelch_output_ = true; }
-  bool squelch_output() const { return squelch_output_; }
-
  private:
   request_rec* request_;
   bool headers_out_;
   bool disable_downstream_header_filters_;
   bool strip_cookies_;
-  bool squelch_output_;
   int64 content_length_;
+  ThreadSystem* thread_system_;
+  scoped_ptr<ThreadSystem::ThreadId> apache_request_thread_;
 
   DISALLOW_COPY_AND_ASSIGN(ApacheWriter);
 };
