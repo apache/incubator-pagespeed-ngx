@@ -167,7 +167,7 @@ class SharedString {
     return ref_string_.get();
   }
 
-  // Determins whether this and that share the same storage.
+  // Determines whether this and that share the same storage.
   bool SharesStorage(const SharedString& that) const {
     return ref_string_.get() == that.ref_string_.get();
   }

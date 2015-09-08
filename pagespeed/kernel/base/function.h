@@ -68,7 +68,7 @@ class Function {
   }
 
   // Implementors of Function interfaces should call via these helper methods
-  // to initate Run and Cancel callbacks.  This helps centralize deletion of
+  // to initiate Run and Cancel callbacks.  This helps centralize deletion of
   // callbacks after they are called.
   void CallRun();
   void CallCancel();

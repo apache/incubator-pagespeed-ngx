@@ -153,7 +153,7 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
 
   // Note(sligocki): I think CacheExpirationTimeMs will return 0 if !IsCacheable
   // TODO(sligocki): Look through callsites and make sure this is being
-  // interpretted correctly.
+  // interpreted correctly.
   int64 CacheExpirationTimeMs() const;
 
   // Set Date, Cache-Control and Expires headers appropriately.

@@ -16,7 +16,7 @@
 
 // Author: pulkitg@google.com (Pulkit Goyal)
 //
-// Reads the properties stored in the CacheInterface and popluates them in
+// Reads the properties stored in the CacheInterface and populates them in
 // PropertyPage.
 // There is a CacheInterface object for every cohort which is stored in
 // CohortCacheMap and read/write for a cohort happens on its respective
@@ -59,7 +59,7 @@ class CachePropertyStore : public PropertyStore {
 
   // Cache lookup is initiated for the given cohort and results are populated
   // in PropertyPage if it is valid.
-  // callback paramter can be set to NULL if cohort_list is empty.
+  // callback parameter can be set to NULL if cohort_list is empty.
   virtual void Get(const GoogleString& url,
                    const GoogleString& options_signature_hash,
                    const GoogleString& cache_key_suffix,

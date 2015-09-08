@@ -59,7 +59,7 @@ template<class ValueType, class ValueHelper>
 class LRUCacheBase {
   typedef std::pair<GoogleString, ValueType> KeyValuePair;
   typedef std::list<KeyValuePair*> EntryList;
-  // STL guarantees lifetime of list itererators as long as the node is in list.
+  // STL guarantees lifetime of list iterators as long as the node is in list.
   typedef typename EntryList::iterator ListNode;
 
   typedef rde::hash_map<GoogleString, ListNode, CasePreserveStringHash> Map;
@@ -309,7 +309,7 @@ class LRUCacheBase {
     num_deletes_ = 0;
   }
 
-  // Iterators for walking cache entires from oldest to youngest.
+  // Iterators for walking cache entries from oldest to youngest.
   Iterator Begin() const { return Iterator(lru_ordered_list_.rbegin()); }
   Iterator End() const { return Iterator(lru_ordered_list_.rend()); }
 

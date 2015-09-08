@@ -158,7 +158,7 @@ class PurgeSet {
   // time-reversal cause false to be returned.
   //
   // Here several scenarios:
-  //   1. Time goes backward by a few mintues or less:
+  //   1. Time goes backward by a few minutes or less:
   //      a. On purge requests, force monotonically increasing time.
   //      b. IsValid: we may report false negatives, disabling PageSpeed
   //         for a few minutes.

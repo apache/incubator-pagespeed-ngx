@@ -83,7 +83,7 @@ inline float Round(float val) {
 // and the border of input pixel is small, we can ignore the difference.
 // Therefore we can save computation because one input pixel will only
 // be used to compute one output pixel. The numerical results shall
-// not have a noticable difference because we quantize the output to integers
+// not have a noticeable difference because we quantize the output to integers
 // of 0...255.
 inline bool IsCloseToFloat(float val, float int_val) {
   // Threshold for determining whether a floating-point value is close enough
@@ -720,7 +720,7 @@ ScanlineStatus ScanlineResizer::ReadNextScanlineWithStatus(
 // - If both ratio_x and ratio_y are integers, use integer for all computation;
 // - If ratio_x is an integer but ratio_y is not, use integer for the
 //   horizontal resizer and floating point for the vertical resizer;
-// - Otherwise, use floating point for all compuation.
+// - Otherwise, use floating point for all computation.
 bool ScanlineResizer::Initialize(ScanlineReaderInterface* reader,
                                  size_t request_width,
                                  size_t request_height) {

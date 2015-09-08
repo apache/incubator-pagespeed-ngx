@@ -14,7 +14,7 @@
 //
 // Author: morlovich@google.com (Maksim Orlovich)
 //
-// This contains a simple linked list that's optmized for memory usage,
+// This contains a simple linked list that's optimized for memory usage,
 // cheap appends and traversals (including removals). Links
 // are stored within elements rather than externally.
 

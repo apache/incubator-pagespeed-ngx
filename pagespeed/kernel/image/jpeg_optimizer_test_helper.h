@@ -34,7 +34,7 @@ bool GetJpegNumComponentsAndSamplingFactors(
 // Helper function to check present of given segment.
 bool IsJpegSegmentPresent(const GoogleString& data, int segment);
 
-// Helper function that returns num of progessive scans for the image.
+// Helper function that returns num of progressive scans for the image.
 int GetNumScansInJpeg(const GoogleString& data);
 
 // Helper function to return the color profile segment marker.

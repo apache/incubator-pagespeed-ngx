@@ -132,9 +132,8 @@ class ResponseHeadersTest : public testing::Test {
     return response_headers_.IsHtmlLike();
   }
 
-  // At the end of every test, check to make sure that clearing the
-  // meta-data produces an equivalent structure to a freshly initiliazed
-  // one.
+  // At the end of every test, check to make sure that clearing the meta-data
+  // produces an equivalent structure to a freshly initialized one.
   virtual void TearDown() {
     response_headers_.Clear();
     ResponseHeaders empty_response_headers;

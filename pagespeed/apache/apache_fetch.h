@@ -53,7 +53,7 @@ class ApacheFetch : public AsyncFetch {
   // disabled fetching resources that are not in cache, otherwise we may wind
   // up doing a loopback fetch to the same Apache server.  So the
   // CacheUrlAsyncFetcher will return a 501 or 404 but we do not want to
-  // send that to the client.  So for ipro we suppress resporting errors
+  // send that to the client.  So for ipro we suppress reporting errors
   // in this flow.
   //
   // TODO(jmarantz): consider allowing serf fetches in ipro when running as

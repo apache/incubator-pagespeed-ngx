@@ -50,10 +50,10 @@ static double ComputeQualityEntriesSum(JQUANT_TBL* quantization_table,
   //
   // Refer 'jpeg_add_quant_table (...)' in jcparam.c for more details.
   //
-  // Since we dont have access to the table used by encoder. But it is generally
-  // close to the standard table defined by JPEG. Hence, we apply inverse
-  // function of the above to using standard table and compute the input image
-  // jpeg quality.
+  // Since we don't have access to the table used by encoder. But it is
+  // generally close to the standard table defined by JPEG. Hence, we apply
+  // inverse function of the above to using standard table and compute the input
+  // image jpeg quality.
   for (int i = 0; i < DCTSIZE2; i++) {
     if (quantization_table->quantval[i] == 1) {
       // 1 is the minimum denominator allowed for any value in the quantization

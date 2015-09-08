@@ -105,7 +105,7 @@ void UrlToFilenameEncoder::EncodeSegment(const StringPiece& filename_prefix,
   for (; index < filename_ending.length(); ++index) {
     unsigned char ch = static_cast<unsigned char>(filename_ending[index]);
 
-    // Note: instead of outputing an empty segment, we let the second slash
+    // Note: instead of outputting an empty segment, we let the second slash
     // be escaped below.
     if ((ch == dir_separator) && !segment.empty()) {
       AppendSegment(&segment, encoded_filename);

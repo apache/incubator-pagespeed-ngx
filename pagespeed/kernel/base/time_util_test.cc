@@ -29,7 +29,7 @@ const char kApr5[] = "Mon, 05 Apr 2010 18:49:46 GMT";
 
 // The time-conversion functions are only accurate to the second,
 // and we will not be able to test for identity transforms if we
-// are not using a mulitple of 1000.
+// are not using a multiple of 1000.
 const int64 kTimestampMs = 718981 * 1000;
 
 }  // namespace

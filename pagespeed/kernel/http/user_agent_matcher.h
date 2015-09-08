@@ -37,7 +37,7 @@ class RequestHeaders;
 // are based on simple wildcard based white- and black-lists.
 //
 // TODO(sriharis):  Split the functionality here into two: a matcher that
-// pulls out all relevent information from UA strings (browser-family, version,
+// pulls out all relevant information from UA strings (browser-family, version,
 // mobile/tablet/desktop, etc.), and a query interface that can be used by
 // clients.
 class UserAgentMatcher {

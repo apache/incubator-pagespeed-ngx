@@ -277,7 +277,7 @@ TEST_F(AprMemCacheTest, HugeValue) {
 
   // Finally, delete the second value explicitly.  Note that value will be
   // in the fallback cache, but we will not be able to get to it because
-  // we've removed the sentinal from memcached.
+  // we've removed the sentinel from memcached.
   CheckGet(kKey2, kValue);
   cache_->Delete(kKey2);
   CheckNotFound(kKey2);

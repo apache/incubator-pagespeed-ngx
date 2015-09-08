@@ -227,7 +227,7 @@ pagespeed.MobLayout.prototype.resizeVertically_ = function(element) {
 
 /**
  * Computes the lowest bottom (highest number) of all the children,
- * and adjusts the height of the div to accomodate the children.
+ * and adjusts the height of the div to accommodate the children.
  * Returns the height.
  *
  * @param {!Element} element

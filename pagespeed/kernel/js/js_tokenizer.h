@@ -97,7 +97,7 @@ class JsTokenizer {
     kOpenBrace,
     kOpenBracket,
     kOpenParen,
-    kBlockKeyword,  // Keyword that preceeds "(...)", e.g. "if" or "for".
+    kBlockKeyword,  // Keyword that precedes "(...)", e.g. "if" or "for".
     kBlockHeader,   // Start of block, e.g. "if (...)", "for (...)", or "else".
     kReturnThrow,   // A return or throw keyword.
     kJumpKeyword,   // A break, continue, or debugger keyword.

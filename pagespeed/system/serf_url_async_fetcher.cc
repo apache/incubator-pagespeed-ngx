@@ -406,7 +406,7 @@ class SerfFetch : public PoolElement<SerfFetch> {
   // non-null for errors as a signal to ReadHeaders that we should not let
   // any output thorugh.
   //
-  // Interpretation of two of the error conditions is configuraable:
+  // Interpretation of two of the error conditions is configurable:
   // 'allow_unknown_certificate_authority' and 'allow_self_signed'.
   apr_status_t HandleSSLCertErrors(int errors, int failure_depth) {
     // TODO(jmarantz): is there value in logging the errors and failure_depth
@@ -415,7 +415,7 @@ class SerfFetch : public PoolElement<SerfFetch> {
     // Note that HandleSSLCertErrors can be called multiple times for
     // a single request.  As far as I can tell, there is value in
     // recording only one of these.  For now, I have set up the logic
-    // so only the last error will be printed lazilly, in ReadHeaders.
+    // so only the last error will be printed lazily, in ReadHeaders.
     if (((errors & SERF_SSL_CERT_SELF_SIGNED) != 0) &&
         !fetcher_->allow_self_signed()) {
       ssl_error_message_ = "SSL certificate is self-signed";
@@ -448,7 +448,7 @@ class SerfFetch : public PoolElement<SerfFetch> {
     // but change the status_code to 404, report an error, and suppress
     // the output.
     //
-    // TODO(jmarantz): consider aiding diagnosibility with by changing the
+    // TODO(jmarantz): consider aiding diagnosability with by changing the
     // 404 to a 401 (Unauthorized) or 418 (I'm a teapot), or 459 (nginx
     // internal cert error code).
 

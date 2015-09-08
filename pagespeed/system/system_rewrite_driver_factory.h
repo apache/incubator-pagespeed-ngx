@@ -55,10 +55,10 @@ class SystemRewriteDriverFactory : public RewriteDriverFactory {
  public:
   // Takes ownership of thread_system.
   //
-  // On Posix systems implementors should leave shared_mem_runtime NULL,
+  // On Posix systems implementers should leave shared_mem_runtime NULL,
   // otherwise they should implement AbstractSharedMem for their platform and
   // pass in an instance here.  The factory takes ownership of the shared memory
-  // runtime if one is passed in.  Implementors who don't want to support shared
+  // runtime if one is passed in.  Implementers who don't want to support shared
   // memory at all should set PAGESPEED_SUPPORT_POSIX_SHARED_MEM to false and
   // pass in NULL, and the factory will use a NullSharedMem.
   //

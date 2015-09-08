@@ -600,7 +600,7 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
     FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
     // Check total number of cache inserts.
     // 7 for 1.css, 2.css, 3.css, 1.js, 2.js, 1.jpg and private.js.
-    // 19 metadata cache enties - three for cf and jm, seven for ce and
+    // 19 metadata cache entries - three for cf and jm, seven for ce and
     //       six for fs.
     // 1 for DomCohort write in property cache.
     EXPECT_EQ(27, lru_cache()->num_inserts());

@@ -54,7 +54,7 @@
 //   "in".  A slash after this is a regex, and braces after this are an object
 //   literal.  (Note that postfix operators don't need a parse state, because a
 //   postfix operator must follow an expression, and an expression followed by
-//   a postfix operator is still just an expresion.)
+//   a postfix operator is still just an expression.)
 //
 // - kPeriod is for the "." operator (this parse state is *not* used for
 //   decimal points in numeric literals).  It is similar to other operators,
@@ -466,7 +466,7 @@ JsKeywords::Type JsTokenizer::ConsumeCloseBrace(StringPiece* token_out) {
     }
   }
   // If the open brace was preceeded by a BlockHeader, we can pop that off the
-  // stack at this point.  The presense of a BlockHeader means these braces
+  // stack at this point.  The presence of a BlockHeader means these braces
   // were a block (rather than an object literal), and usually after popping it
   // off we'll now be back at a start-of-statement (in which case we'll
   // correctly deduce below that this was a block).  The one exception is

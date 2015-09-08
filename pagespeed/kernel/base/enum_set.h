@@ -52,7 +52,7 @@ template<typename EnumType, size_t NumEnums> class EnumSet {
     return result;
   }
 
-  // Mergess src into this, returning whether this resulted in a change.
+  // Merges src into this, returning whether this resulted in a change.
   bool Merge(const EnumSet& src) {
     // We save the current version of the set in order to see whether
     // the merge resulted in a change.  Note that copying and comparing

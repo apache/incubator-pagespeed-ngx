@@ -295,7 +295,7 @@ class FileSystem {
   }
 
   // Attempts to release a lock previously obtained through TryLock.  If your
-  // thread did not prevously obtain the lock, the behavior is undefined.
+  // thread did not previously obtain the lock, the behavior is undefined.
   // Returns true if we successfully release the lock.  Returns false if we were
   // unable to release the lock (e.g. somebody came along and write-protected
   // the lockfile).  You might try again, or start using a different lock name.

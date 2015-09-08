@@ -41,7 +41,7 @@ namespace net_instaweb {
 
 namespace {
 
-// Note that some of the stastistics named below are really
+// Note that some of the statistics named below are really
 // UpDownCounters.  For now, we don't segregate them, but we just
 // figure out at initialization time which is which.
 

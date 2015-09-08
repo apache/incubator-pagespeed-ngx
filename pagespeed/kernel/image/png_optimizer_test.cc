@@ -247,7 +247,7 @@ void AssertPngEq(
 // If allow_expand_colors is set to false, both readers must have the same
 // color values, dimension, and pixel format. If it is set to true,
 // additionally reader1 can be GRAY_8 while reader2 can be RGB_888 and the
-// colors will be expanded prior to comparision.
+// colors will be expanded prior to comparison.
 void AssertReadersMatch(ScanlineReaderInterface* reader1,
                         ScanlineReaderInterface* reader2,
                         bool allow_expand_colors) {
@@ -1303,7 +1303,7 @@ void PngScanlineWriterTest::TestRewritePng(bool best_compression,
 
     // Now make sure that the original and rewritten images have the
     // same dimensions, types, and pixel values. When "best_compression"
-    // is true, the pixel format (i.e., number of color channles) may change,
+    // is true, the pixel format (i.e., number of color channels) may change,
     // so we allow expanding colors.
     AssertReadersMatch(&original_reader, &rewritten_reader,
                        best_compression /* allow expanding colors */);

@@ -588,7 +588,7 @@ void FlushEarlyFlow::FlushEarlyRewriteDone(int64 start_time_ms,
   base_fetch_->Flush(handler_);
   flush_early_rewrite_latency_ms_->Add(
       server_context_->timer()->NowMs() - start_time_ms);
-  // We delete FlushEarlyFlow first to prevent the race conditon where
+  // We delete FlushEarlyFlow first to prevent the race condition where
   // tests finish before the destructor of FlushEarlyFlow gets called
   // and hence decrement async events on the driver doesn't happen.
   FlushEarlyAsyncFetch* flush_early_fetch = flush_early_fetch_;

@@ -179,7 +179,7 @@ void InPlaceResourceRecorder::ConsiderResponseHeaders(
   }
 
   // First, check if IPRO applies considering the content type.
-  // Note: in a proxy setup it might be desireable to cache HTML and
+  // Note: in a proxy setup it might be desirable to cache HTML and
   // non-rewritable Content-Types to avoid re-fetching from the origin server.
   const ContentType* content_type =
       response_headers->DetermineContentType();

@@ -397,7 +397,7 @@ class PropertyPage : public AbstractPropertyPage {
   // Abort the reading of PropertyPage.
   void Abort();
 
-  // Called immediatly after the underlying cache lookup is done, from
+  // Called immediately after the underlying cache lookup is done, from
   // PropertyCache::CacheInterfaceCallback::Done().
   virtual bool IsCacheValid(int64 write_timestamp_ms) const { return true; }
 

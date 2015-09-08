@@ -123,7 +123,7 @@ bool GetMinifiedJsSize(const StringPiece& input, int* minimized_size);
 // Returns true if minification and collapsing string was successful, false
 // otherwise. This functin is a special use of js_minify. It minifies the JS
 // and removes all the string literals. Example:
-//   origial: var x = 'asd \' lse'
+//   before : var x = 'asd \' lse'
 //   after  : var x=''
 bool MinifyJsAndCollapseStrings(const StringPiece& input, GoogleString* output);
 bool GetMinifiedStringCollapsedJsSize(const StringPiece& input,

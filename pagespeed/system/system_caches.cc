@@ -426,7 +426,7 @@ void SystemCaches::SetupCaches(ServerContext* server_context,
       // we need a filesystem metadata cache to validate LoadFromFile
       // entries.  We default to using memcached for that, even though
       // the LoadFromFile metadata is usually local to the machine,
-      // unless the user specifes an NFS directory in LoadFromFile.
+      // unless the user specifies an NFS directory in LoadFromFile.
       // This is OK because it is keyed to the machine name.  But if
       // we have a shm cache, then use it instead for the metadata
       // cache.

@@ -105,7 +105,7 @@ TEST_F(CompressedCacheTest, LargeDataHighEntropy) {
   // The internals of the deflater work using kStackBufferSize, so we
   // want to make sure that we test with strings large enough to cover
   // the corner cases at the boundaries.  Note that in SizeTest above,
-  // the input spills over kStackBufferSize, but the output does't
+  // the input spills over kStackBufferSize, but the output doesn't
   // because that long string of 'a' compresses very well.
   GoogleString value = random_.GenerateHighEntropyString(5 * kStackBufferSize);
   CheckPut("Name", value);
