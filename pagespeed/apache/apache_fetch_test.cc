@@ -507,12 +507,12 @@ TEST_F(ApacheFetchTest, AbandonedAfterWritingBuffered) {
   EXPECT_TRUE(apache_fetch_->Write("hello ", &message_handler_));
   EXPECT_EQ("", MockApache::ActionsSinceLastCall());
 
-  EXPECT_EQ(false, apache_fetch_->Wait(NULL /* rewrite_driver */));
+  EXPECT_FALSE(apache_fetch_->Wait(NULL /* rewrite_driver */));
   PostAbandonmentHelper();
 }
 
 TEST_F(ApacheFetchTest, AbandonedBeforeWritingBuffered) {
-  EXPECT_EQ(false, apache_fetch_->Wait(NULL /* rewrite_driver */));
+  EXPECT_FALSE(apache_fetch_->Wait(NULL /* rewrite_driver */));
 
   PostAbandonmentHelper();
 }
