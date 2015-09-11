@@ -121,6 +121,9 @@ int64 GetPageHeight(const int64 page_width,
 
 void SetDesiredDimensionsIfRequired(ImageDim* desired_dim,
                                     const ImageDim& image_dim) {
+  if (!ImageUrlEncoder::HasValidDimension(*desired_dim)) {
+    return;
+  }
   int32 page_width = desired_dim->width();  // Rendered width.
   int32 page_height = desired_dim->height();  // Rendered height.
   const int64 image_width = image_dim.width();
@@ -823,6 +826,8 @@ bool ImageRewriteFilter::ResizeImageIfNecessary(
     } else {
       message = "Couldn't resize";
     }
+    DCHECK_LT(0, desired_dim->width());
+    DCHECK_LT(0, desired_dim->height());
     driver()->InfoAt(rewrite_context, "%s image `%s' from %dx%d to %dx%d",
                      message, url.c_str(),
                      image_dim.width(), image_dim.height(),
@@ -882,6 +887,8 @@ bool ImageRewriteFilter::ShouldResize(const ResourceContext& resource_context,
           static_cast<int64>(image_dim.width()) * image_dim.height();
       if (page_area * 100 <
           image_area * options->image_limit_resize_area_percent()) {
+        DCHECK_LT(0, desired_dim->width());
+        DCHECK_LT(0, desired_dim->height());
         return true;
       }
     }
