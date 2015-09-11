@@ -27,6 +27,20 @@ goog.require('pagespeed.MobUtil');
 
 
 /**
+ * Constants used for tracking the state of requesting a Google Voice number
+ * and dialing.  This is needed to delay the dialing of the phone until
+ * the GV request completes or times out.
+ * @enum {number}
+ * @private
+ */
+mob.button.DialerState_ = {
+  IDLE: 0,
+  REQUESTING: 1,
+  DIAL_WHEN_REQUEST_COMPLETES: 2
+};
+
+
+/**
  * Creates a phone dialer.
  *
  * This constructor has just one non-test call-site which is called with
@@ -79,10 +93,16 @@ mob.button.Dialer = function(color, phoneNumber, conversionId,
    */
   this.jsonpTime_ = null;
 
+  /**
+    * State whether we are currently requesting a google-voice number, so
+    * we should wait for that request to complete before dialing a phone.
+    * @private {!mob.button.DialerState_}
+    */
+  this.dialState_ = mob.button.DialerState_.IDLE;
+
   mob.button.Dialer.base(
       this, 'constructor', pagespeed.MobUtil.ElementId.DIALER_BUTTON,
       mob.button.Dialer.ICON_, color, mob.button.Dialer.LABEL_);
-
 };
 goog.inherits(mob.button.Dialer, mob.button.AbstractButton);
 
@@ -140,6 +160,9 @@ mob.button.Dialer.CONVERSION_HANDLER_ =
 mob.button.Dialer.prototype.createButton = function() {
   mob.button.Dialer.base(this, 'createButton');
   this.googleVoicePhoneNumber_ = this.getPhoneNumberFromCookie_();
+  if (!this.googleVoicePhoneNumber_) {
+    this.requestPhoneNumber_();
+  }
 };
 
 
@@ -147,31 +170,33 @@ mob.button.Dialer.prototype.createButton = function() {
 mob.button.Dialer.prototype.clickHandler = function(e) {
   pagespeed.MobUtil.sendBeaconEvent(
       pagespeed.MobUtil.BeaconEvents.PHONE_BUTTON);
-  if (this.googleVoicePhoneNumber_) {
+  if (this.dialState_ == mob.button.DialerState_.IDLE) {
     this.dialPhone_();
   } else {
-    this.requestPhoneNumberAndDial_();
+    this.dialState_ = mob.button.DialerState_.DIAL_WHEN_REQUEST_COMPLETES;
   }
 };
 
 
 /**
- * Obtains a dynamic Google-Voice number to track conversions.  We only
- * do this when user clicks the phone icon.
+ * Obtains a dynamic Google-Voice number to track conversions.  We do this
+ * when loading a page.
  *
  * @private
  */
-mob.button.Dialer.prototype.requestPhoneNumberAndDial_ = function() {
+mob.button.Dialer.prototype.requestPhoneNumber_ = function() {
+  if (this.dialState_ != mob.button.DialerState_.IDLE) {
+    return;
+  }
   var url = this.constructRequestPhoneNumberUrl_();
   if (url) {
     this.debugAlert_('requesting dynamic phone number: ' + url);
     var req = new goog.net.Jsonp(url);
     req.setRequestTimeout(2000 /* ms */);
     this.jsonpTime_ = goog.now();
+    this.dialState_ = mob.button.DialerState_.REQUESTING;
     req.send(null, goog.bind(this.receivePhoneNumber_, this, true),
              goog.bind(this.receivePhoneNumber_, this, false));
-  } else {
-    this.dialPhone_();
   }
 };
 
@@ -214,6 +239,7 @@ mob.button.Dialer.prototype.dialPhone_ = function() {
     phoneNumber = this.fallbackPhoneNumber_;
     ev = pagespeed.MobUtil.BeaconEvents.CALL_FALLBACK_NUMBER;
   }
+  this.debugAlert_('Dialing phone: ' + phoneNumber + '(' + ev + ')');
   pagespeed.MobUtil.sendBeaconEvent(
       ev, function() { goog.global.location = 'tel:' + phoneNumber; });
 };
@@ -244,9 +270,8 @@ mob.button.Dialer.prototype.backoffErrorCode_ = function(backoff) {
 
 
 /**
- * Extracts a dynamic phone number from a jsonp response.  If successful, it
- * dials the phone, and saves the phone number in a cookie and also in
- * this.googleVoicePhoneNumber_.
+ * Extracts a dynamic phone number from a jsonp response, storing the phone
+ * number in a cookie and in this.googleVoicePhoneNumber_.
  *
  * @private
  * @param {boolean} success True if the jsonp request succeeded.
@@ -290,7 +315,10 @@ mob.button.Dialer.prototype.receivePhoneNumber_ = function(success, json) {
   if (err) {
     this.debugAlert_('WCM request: ' + err);
   }
-  this.dialPhone_();
+  if (this.dialState_ == mob.button.DialerState_.DIAL_WHEN_REQUEST_COMPLETES) {
+    this.dialPhone_();
+  }
+  this.dialState_ = mob.button.DialerState_.IDLE;
 };
 
 
@@ -310,9 +338,12 @@ mob.button.Dialer.prototype.getPhoneNumberFromCookie_ = function() {
     var cookieData = goog.json.parse(window.decodeURIComponent(gwcmCookie));
     if ((cookieData['fallback'] == this.fallbackPhoneNumber_) &&
         (cookieData['clabel'] == this.conversionLabel_)) {
-      return cookieData['mobile_number'];
+      var phoneNumber = cookieData['mobile_number'];
+      this.debugAlert_('found phone number in cookie: ' + phoneNumber);
+      return phoneNumber;
     }
   }
+  this.debugAlert_('no phone number found in cookie');
   return null;
 };
 

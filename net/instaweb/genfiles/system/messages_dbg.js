@@ -3000,9 +3000,9 @@ goog.iter.forEach = function(a, b, c) {
       for (;;) {
         b.call(c, a.next(), void 0, a);
       }
-    } catch (e) {
-      if (e !== goog.iter.StopIteration) {
-        throw e;
+    } catch (d) {
+      if (d !== goog.iter.StopIteration) {
+        throw d;
       }
     }
   }
@@ -4811,7 +4811,7 @@ goog.debug.normalizeErrorObject = function(a) {
   }
   try {
     d = a.fileName || a.filename || a.sourceURL || goog.global.$googDebugFname || b;
-  } catch (g) {
+  } catch (f) {
     d = "Not available", e = !0;
   }
   return !e && a.lineNumber && a.fileName && a.stack && a.message && a.name ? a : {message:a.message || "Not available", name:a.name || "UnknownError", lineNumber:c, fileName:d, stack:a.stack || "Not available"};
@@ -6004,8 +6004,8 @@ goog.net.XhrIo.prototype.send = function(a, b, c, d) {
   try {
     this.cleanUpTimeoutTimer_(), 0 < this.timeoutInterval_ && (this.useXhr2Timeout_ = goog.net.XhrIo.shouldUseXhr2Timeout_(this.xhr_), goog.log.fine(this.logger_, this.formatMsg_("Will abort after " + this.timeoutInterval_ + "ms if incomplete, xhr2 " + this.useXhr2Timeout_)), this.useXhr2Timeout_ ? (this.xhr_[goog.net.XhrIo.XHR2_TIMEOUT_] = this.timeoutInterval_, this.xhr_[goog.net.XhrIo.XHR2_ON_TIMEOUT_] = goog.bind(this.timeout_, this)) : this.timeoutId_ = goog.Timer.callOnce(this.timeout_, this.timeoutInterval_, 
     this)), goog.log.fine(this.logger_, this.formatMsg_("Sending request")), this.inSend_ = !0, this.xhr_.send(a), this.inSend_ = !1;
-  } catch (g) {
-    goog.log.fine(this.logger_, this.formatMsg_("Send error: " + g.message)), this.error_(goog.net.ErrorCode.EXCEPTION, g);
+  } catch (e) {
+    goog.log.fine(this.logger_, this.formatMsg_("Send error: " + e.message)), this.error_(goog.net.ErrorCode.EXCEPTION, e);
   }
 };
 goog.net.XhrIo.shouldUseXhr2Timeout_ = function(a) {

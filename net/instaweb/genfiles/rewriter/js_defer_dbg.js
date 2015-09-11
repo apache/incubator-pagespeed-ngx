@@ -350,8 +350,8 @@ deferJsNs.DeferJs.prototype.setUp = function() {
       try {
         c = {configurable:!0, get:function() {
         }}, Object.defineProperty(document, "all", c);
-      } catch (g) {
-        this.log("Exception while overriding document.all.", g);
+      } catch (d) {
+        this.log("Exception while overriding document.all.", d);
       }
     }
   }

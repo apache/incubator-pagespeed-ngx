@@ -2003,9 +2003,9 @@ goog.iter.forEach = function(a, b, c) {
       for (;;) {
         b.call(c, a.next(), void 0, a);
       }
-    } catch (e) {
-      if (e !== goog.iter.StopIteration) {
-        throw e;
+    } catch (d) {
+      if (d !== goog.iter.StopIteration) {
+        throw d;
       }
     }
   }

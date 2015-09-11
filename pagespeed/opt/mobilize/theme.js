@@ -18,6 +18,7 @@
 
 goog.provide('pagespeed.MobTheme');
 
+goog.require('pagespeed.MobLogo');
 goog.require('pagespeed.MobUtil');
 
 
@@ -81,32 +82,12 @@ pagespeed.MobTheme.prototype.logoComplete = function(candidates) {
 
 
 /**
- * Returns true if precomputed theme information is available.
- * @return {boolean}
- */
-pagespeed.MobTheme.precomputedThemeAvailable = function() {
-  return Boolean(window.psMobBackgroundColor && window.psMobForegroundColor &&
-                 !window.psMobPrecompute);
-};
-
-
-/**
  * Extract theme of the page. This is the entry method.
- * @param {!pagespeed.MobLogo} mobLogo
  * @param {function(!pagespeed.MobUtil.ThemeData)} doneCallback
  */
-pagespeed.MobTheme.extractTheme = function(mobLogo, doneCallback) {
-  // See if there is a precomputed theme + logo (and we are not asked to do
-  // the computation ourselves).
-  if (window.psMobBackgroundColor && window.psMobForegroundColor &&
-      !window.psMobPrecompute) {
-    var themeData = pagespeed.MobTheme.createThemeData(
-        window.psMobLogoUrl, window.psMobBackgroundColor,
-        window.psMobForegroundColor);
-    doneCallback(themeData);
-  } else {
-    var mobTheme = new pagespeed.MobTheme(doneCallback);
-    mobLogo.run(goog.bind(mobTheme.logoComplete, mobTheme),
-                1 /* numCandidates */);
-  }
+pagespeed.MobTheme.extractTheme = function(doneCallback) {
+  var mobTheme = new pagespeed.MobTheme(doneCallback);
+  var mobLogo = new pagespeed.MobLogo();
+  mobLogo.run(goog.bind(mobTheme.logoComplete, mobTheme),
+              1 /* numCandidates */);
 };
