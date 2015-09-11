@@ -36,7 +36,8 @@ class IframeFetcher : public UrlAsyncFetcher {
   // Id of iframe element inserted by fetcher.
   static const char kIframeId[];
 
-  IframeFetcher(const RewriteOptions* options, const UserAgentMatcher* matcher);
+  IframeFetcher(const RewriteOptions* options, const UserAgentMatcher* matcher,
+                UrlAsyncFetcher* proxy_fetcher);
 
   virtual ~IframeFetcher();
   virtual void Fetch(const GoogleString& url,
@@ -58,6 +59,7 @@ class IframeFetcher : public UrlAsyncFetcher {
 
   const RewriteOptions* options_;
   const UserAgentMatcher* user_agent_matcher_;
+  UrlAsyncFetcher* proxy_fetcher_;
 };
 
 }  // namespace net_instaweb

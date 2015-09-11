@@ -197,7 +197,7 @@ bool InstawebHandler::ProxyUrl() {
     // cannot support iframe mobilization.
     stripped_url = stripped_gurl_.Spec().as_string();
     fetcher_storage.reset(new IframeFetcher(
-        options(), server_context_->user_agent_matcher()));
+        options(), server_context_->user_agent_matcher(), fetcher));
     fetcher = fetcher_storage.get();
   } else if (!proxy_suffix.empty()) {
     // Do some extra caching when using proxy_suffix (but we don't want it in

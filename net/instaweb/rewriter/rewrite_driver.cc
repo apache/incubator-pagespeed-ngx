@@ -23,7 +23,6 @@
 #include <cstdio>
 #include <list>
 #include <map>
-#include <memory>
 #include <set>
 #include <utility>  // for std::pair
 #include <vector>
@@ -1491,7 +1490,8 @@ CacheUrlAsyncFetcher* RewriteDriver::CreateCustomCacheFetcher(
 CacheUrlAsyncFetcher* RewriteDriver::CreateCacheFetcher() {
   if (options()->mob_iframe() && !options()->mob_config()) {
     IframeFetcher* ifetcher = new IframeFetcher(
-        options(), server_context_->user_agent_matcher());
+        options(), server_context_->user_agent_matcher(),
+        url_async_fetcher_);
     CacheUrlAsyncFetcher* cache_fetcher = CreateCustomCacheFetcher(ifetcher);
     cache_fetcher->set_own_fetcher(true);
     return cache_fetcher;

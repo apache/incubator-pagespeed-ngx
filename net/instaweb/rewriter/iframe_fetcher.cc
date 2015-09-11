@@ -35,10 +35,21 @@ namespace net_instaweb {
 
 const char IframeFetcher::kIframeId[] = "psmob-iframe";
 
+namespace {
+
+bool MustProxyFetch(const GoogleUrl& gurl) {
+  StringPiece path = gurl.PathSansQuery();
+  return ((path == "/favicon.ico") || (path == "/robots.txt"));
+}
+
+}  // namespace
+
 IframeFetcher::IframeFetcher(const RewriteOptions* options,
-                             const UserAgentMatcher* matcher)
+                             const UserAgentMatcher* matcher,
+                             UrlAsyncFetcher* proxy_fetcher)
     : options_(options),
-      user_agent_matcher_(matcher) {
+      user_agent_matcher_(matcher),
+      proxy_fetcher_(proxy_fetcher) {
   // This normally gets called in the HtmlParse constructor, but since
   // that doesn't get called here we need to initialize it ourselves.
   HtmlKeywords::Init();
@@ -50,6 +61,14 @@ IframeFetcher::~IframeFetcher() {
 void IframeFetcher::Fetch(const GoogleString& url,
                           MessageHandler* message_handler,
                           AsyncFetch* fetch) {
+  // It's bad to serve some resources as an HTML iframe response,
+  // so proxy them.
+  GoogleUrl gurl(url);
+  if (!gurl.IsWebValid() || MustProxyFetch(gurl)) {
+    proxy_fetcher_->Fetch(url, message_handler, fetch);
+    return;
+  }
+
   GoogleString mapped_url, host_header;
   const DomainLawyer* lawyer = options_->domain_lawyer();
   bool mapped_to_self = false;
@@ -60,10 +79,8 @@ void IframeFetcher::Fetch(const GoogleString& url,
       mapped_to_self = true;
     }
   } else {
-    GoogleUrl gurl(url);
     GoogleString origin_host;
-    if (!gurl.IsWebValid() ||
-        !lawyer->StripProxySuffix(gurl, &mapped_url, &origin_host)) {
+    if (!lawyer->StripProxySuffix(gurl, &mapped_url, &origin_host)) {
       mapped_to_self = true;
     }
   }
