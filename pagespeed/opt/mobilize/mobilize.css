@@ -83,7 +83,7 @@ body.mob-iframe {
 
   border-bottom: thin solid;
 
-  box-shadow: 0 5px 6px -1px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 5em 6em -1em rgba(0, 0, 0, 0.4);
 
   display: -webkit-box;
   display: -ms-flexbox;
