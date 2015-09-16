@@ -40,6 +40,7 @@ goog.provide('pagespeed.MobLogoCandidate');
 goog.require('goog.dom.TagName');
 goog.require('goog.events.EventType');
 goog.require('goog.string');
+goog.require('mob.util');
 goog.require('pagespeed.MobColor');
 goog.require('pagespeed.MobUtil');
 
@@ -80,7 +81,8 @@ pagespeed.MobLogo = function() {
   this.organization_ = pagespeed.MobUtil.getSiteOrganization();
 
   /** @private {string} */
-  this.landingUrl_ = window.location.origin + window.location.pathname;
+  this.landingUrl_ = mob.util.getWindow().location.origin +
+                     mob.util.getWindow().location.pathname;
 
   /**
    * Array of logo candidates.
@@ -171,7 +173,7 @@ pagespeed.MobLogo.prototype.RATIO_AREA_ = 0.5;
  * @private
  */
 pagespeed.MobLogo.prototype.findLogoElement_ = function(element) {
-  var style = window.getComputedStyle(element);
+  var style = mob.util.getWindow().getComputedStyle(element);
   if (style.getPropertyValue('visibility') == 'hidden') {
     return null;
   }
@@ -267,7 +269,7 @@ pagespeed.MobLogo.prototype.addImageToPendingList_ = function(img) {
  * @private
  */
 pagespeed.MobLogo.prototype.newImage_ = function(imageSrc) {
-  var img = document.createElement(goog.dom.TagName.IMG);
+  var img = mob.util.getWindow().document.createElement(goog.dom.TagName.IMG);
   this.addImageToPendingList_(img);
   img.src = imageSrc;
   return img;
@@ -303,7 +305,6 @@ pagespeed.MobLogo.prototype.collectChildrenImages_ = function(
       break;
     }
   }
-
 
   for (var childElement = element.firstElementChild; childElement;
        childElement = childElement.nextElementSibling) {
@@ -577,7 +578,8 @@ pagespeed.MobLogo.prototype.findBestLogos_ = function() {
  * @private
  */
 pagespeed.MobLogo.prototype.extractBackgroundColor_ = function(element) {
-  var computedStyle = document.defaultView.getComputedStyle(element, null);
+  var computedStyle =
+      mob.util.getWindow().document.defaultView.getComputedStyle(element, null);
   if (computedStyle) {
     var colorString = computedStyle.getPropertyValue('background-color');
     if (colorString) {
@@ -627,12 +629,20 @@ pagespeed.MobLogo.prototype.findLogoBackground_ = function(logo) {
  * @export
  */
 pagespeed.MobLogo.prototype.run = function(doneCallback, maxNumCandidates) {
-  if (this.doneCallback_ || !document.body) {
+  // If running in WKH, the event listeners attached to the images created by
+  // logo detection don't fire, so instead we check for loadComplete to mark
+  // when the image elements are finished loading.
+  if (typeof extension != 'undefined') {
+    extension.addEventListener('loadComplete', goog.bind(this.eventDone_, this),
+                               false);
+  }
+  var body = mob.util.getWindow().document.body;
+  if (this.doneCallback_ || !body) {
     doneCallback([]);
   } else {
     this.doneCallback_ = doneCallback;
     this.maxNumCandidates_ = maxNumCandidates;
-    this.findLogoCandidates_(document.body);
+    this.findLogoCandidates_(body);
     this.findImagesAndWait_(this.candidates_);
   }
 };

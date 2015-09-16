@@ -55,6 +55,7 @@ pagespeed.MobTheme.createThemeData = function(logoUrl, backgroundColor,
     window.psMobBackgroundColor = backgroundColor;
     window.psMobForegroundColor = foregroundColor;
   }
+
   return themeData;
 };
 

@@ -159,6 +159,7 @@
           '--closure_entry_point=pagespeed.Mob',
           '<@(include_closure_library)',
           '--externs=opt/mobilize/externs.js',
+          '--externs=opt/mobilize/externs_wkh.js',
         ],
         'js_includes' : [
           'opt/mobilize/button/abstractbutton.js',
@@ -188,6 +189,7 @@
           '--closure_entry_point=pagespeed.Mob',
           '<@(include_closure_library)',
           '--externs=opt/mobilize/externs.js',
+          '--externs=opt/mobilize/externs_wkh.js',
         ],
         'js_includes' : [
           'opt/mobilize/button/abstractbutton.js',

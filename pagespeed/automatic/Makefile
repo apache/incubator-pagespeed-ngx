@@ -219,7 +219,6 @@ endif
 INCLUDE_ARCH = arch/linux/x64
 LIBS = $(addprefix $(MOD_PAGESPEED_ROOT)/out/$(BUILDTYPE)/obj.target/, $(BASE_LIBS))
 SYSLIBS = -lpthread -lrt
-CXX = /usr/bin/g++
 TESTBENCH_LIB = $(MOD_PAGESPEED_ROOT)/out/$(BUILDTYPE)/obj.target/third_party/re2/libre2_bench_util.a
 
 build_libraries :

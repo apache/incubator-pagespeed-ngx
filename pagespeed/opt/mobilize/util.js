@@ -38,6 +38,25 @@ goog.require('goog.uri.utils');
 
 
 /**
+ * @private {!Window}
+ */
+mob.util.window_ =
+    (typeof extension != 'undefined' && extension.hasOwnProperty('target')) ?
+        extension.target :
+        window;
+
+
+/**
+ * The window object to use, to make functions work both in a normal browser and
+ * in WKH.
+ * @return {!Window}
+ */
+mob.util.getWindow = function() {
+  return mob.util.window_;
+};
+
+
+/**
  * The ids of elements used for mobilization.
  * @enum {string}
  */
@@ -300,15 +319,16 @@ pagespeed.MobUtil.addStyles = function(element, newStyles) {
 pagespeed.MobUtil.boundingRect = function(node) {
   var rect = node.getBoundingClientRect();
 
+  var win = mob.util.getWindow();
   // getBoundingClientRect() is w.r.t. the viewport. Add the amount scrolled to
   // calculate the absolute position of the element.
   // From https://developer.mozilla.org/en-US/docs/DOM/window.scrollX
-  var body = document.body;
-  var scrollElement = document.documentElement || body.parentNode || body;
-  var scrollX = 'pageXOffset' in window ? window.pageXOffset :
-      scrollElement.scrollLeft;
-  var scrollY = 'pageYOffset' in window ? window.pageYOffset :
-      scrollElement.scrollTop;
+  var body = win.document.body;
+  var scrollElement = win.document.documentElement || body.parentNode || body;
+  var scrollX =
+      'pageXOffset' in win ? win.pageXOffset : scrollElement.scrollLeft;
+  var scrollY =
+      'pageYOffset' in win ? win.pageYOffset : scrollElement.scrollTop;
 
   return new goog.math.Box(rect.top + scrollY,
                            rect.right + scrollX,
@@ -336,7 +356,7 @@ pagespeed.MobUtil.findBackgroundImage = function(element) {
   var nodeName = element.nodeName.toUpperCase();
   if ((nodeName != goog.dom.TagName.SCRIPT) &&
       (nodeName != goog.dom.TagName.STYLE) && element.style) {
-    var computedStyle = window.getComputedStyle(element);
+    var computedStyle = mob.util.getWindow().getComputedStyle(element);
     if (computedStyle) {
       image = computedStyle.getPropertyValue('background-image');
       if (image == 'none') {
@@ -372,9 +392,10 @@ pagespeed.MobUtil.findBackgroundImage = function(element) {
  * @return {boolean}
  */
 pagespeed.MobUtil.inFriendlyIframe = function() {
-  if ((window.parent != null) && (window != window.parent)) {
+  var win = mob.util.getWindow();
+  if ((win.parent != null) && (win != win.parent)) {
     try {
-      if (window.parent.document.domain == document.domain) {
+      if (win.parent.document.domain == win.document.domain) {
         return true;
       }
     } catch (err) {
@@ -389,7 +410,7 @@ pagespeed.MobUtil.inFriendlyIframe = function() {
  */
 pagespeed.MobUtil.possiblyInQuirksMode = function() {
   // http://stackoverflow.com/questions/627097/how-to-tell-if-a-browser-is-in-quirks-mode
-  return document.compatMode !== 'CSS1Compat';
+  return mob.util.getWindow().document.compatMode !== 'CSS1Compat';
 };
 
 
@@ -418,7 +439,7 @@ pagespeed.MobUtil.hasIntersectingRects = function(rects) {
  * @return {?string}
  */
 pagespeed.MobUtil.createXPathFromNode = function(node) {
-  var allNodes = document.getElementsByTagName('*');
+  var allNodes = mob.util.getWindow().document.getElementsByTagName('*');
   var i, segs = [], sib;
   for (; goog.dom.isElement(node); node = node.parentNode) {
     if (node.hasAttribute('id')) {
@@ -462,7 +483,7 @@ pagespeed.MobUtil.countNodes = function(node) {
     return 0;
   }
   // TODO(jmarantz): microbenchmark this recursive implementation against
-  // document.querySelectorAll('*').length
+  // window.document.querySelectorAll('*').length
   var count = 1;
   for (var child = node.firstChild; child; child = child.nextSibling) {
     count += pagespeed.MobUtil.countNodes(child);
@@ -653,7 +674,7 @@ pagespeed.MobUtil.getSiteOrganization = function() {
   // JS code as a variable. This can be done by using
   // DomainLawyer::StripProxySuffix to strip any proxy suffix and then using
   // DomainRegistry::MinimalPrivateSuffix.
-  var org = document.domain;
+  var org = mob.util.getWindow().document.domain;
   var segments = org.toLowerCase().split('.');
   var len = segments.length;
   if (len > 4 && segments[len - 3].length == 2) {
@@ -717,7 +738,8 @@ pagespeed.MobUtil.resourceFileName = function(url) {
 pagespeed.MobUtil.proxyImageUrl = function(url, opt_origin) {
   // Note that we originally used document.location.origin here but it returns
   // null on the galaxy s2 stock browser.
-  var origin = goog.uri.utils.getHost(opt_origin || document.location.href);
+  var origin = goog.uri.utils.getHost(
+      opt_origin || mob.util.getWindow().document.location.href);
   var originDomain = goog.uri.utils.getDomain(origin);
   var urlDomain = goog.uri.utils.getDomain(url);
 
@@ -778,7 +800,7 @@ pagespeed.MobUtil.extractImage = function(element, source) {
       break;
   }
   if (imageSrc) {
-    return pagespeed.MobUtil.proxyImageUrl(imageSrc);
+    return imageSrc;
   }
   return null;
 };
@@ -792,11 +814,12 @@ pagespeed.MobUtil.extractImage = function(element, source) {
  */
 pagespeed.MobUtil.synthesizeImage = function(imageBase64, color) {
   goog.asserts.assert(imageBase64.length > 16);
-  var imageTemplate = window.atob(imageBase64);
+  var imageTemplate = mob.util.getWindow().atob(imageBase64);
   var imageData = imageTemplate.substring(0, 13) +
-      String.fromCharCode(color[0], color[1], color[2]) +
-      imageTemplate.substring(16, imageTemplate.length);
-  var imageUrl = 'data:image/gif;base64,' + window.btoa(imageData);
+                  String.fromCharCode(color[0], color[1], color[2]) +
+                  imageTemplate.substring(16, imageTemplate.length);
+  var imageUrl =
+      'data:image/gif;base64,' + mob.util.getWindow().btoa(imageData);
   return imageUrl;
 };
 
@@ -807,7 +830,8 @@ pagespeed.MobUtil.synthesizeImage = function(imageBase64, color) {
  * @return {boolean}
  */
 pagespeed.MobUtil.isCrossOrigin = function(url) {
-  return (!goog.string.startsWith(url, document.location.origin + '/') &&
+  var origin = mob.util.getWindow().document.location.origin + '/';
+  return (!goog.string.startsWith(url, origin) &&
           !goog.string.startsWith(url, 'data:image/'));
 };
 
@@ -869,7 +893,7 @@ pagespeed.MobUtil.toCssString1 = function(unescaped) {
  */
 pagespeed.MobUtil.consoleLog = function(message) {
   // TODO(jud): Consider using goog.log.
-  if (window.psDebugMode && console && console.log) {
+  if (mob.util.getWindow().psDebugMode && console && console.log) {
     console.log(message);
   }
 };
@@ -910,23 +934,24 @@ pagespeed.MobUtil.BeaconEvents = {
  */
 pagespeed.MobUtil.sendBeaconEvent = function(beaconEvent, opt_callback,
                                              opt_additionalParams) {
-  if (!window.psMobBeaconUrl) {
+  var win = mob.util.getWindow();
+  if (!win.psMobBeaconUrl) {
     if (opt_callback) {
       opt_callback();
       return;
     }
   }
 
-  var pingUrl = window.psMobBeaconUrl + '?id=psmob' +
-                '&url=' + encodeURIComponent(document.URL) + '&el=' +
+  var pingUrl = win.psMobBeaconUrl + '?id=psmob' +
+                '&url=' + encodeURIComponent(win.document.URL) + '&el=' +
                 beaconEvent;
-  if (window.psMobBeaconCategory) {
-    pingUrl += '&category=' + window.psMobBeaconCategory;
+  if (win.psMobBeaconCategory) {
+    pingUrl += '&category=' + win.psMobBeaconCategory;
   }
   if (opt_additionalParams) {
     pingUrl += opt_additionalParams;
   }
-  var img = document.createElement(goog.dom.TagName.IMG);
+  var img = win.document.createElement(goog.dom.TagName.IMG);
   img.src = pingUrl;
 
   // Ensure that the callback is only called once, even though it can be called
@@ -935,7 +960,7 @@ pagespeed.MobUtil.sendBeaconEvent = function(beaconEvent, opt_callback,
     var callbackRunner = pagespeed.MobUtil.runCallbackOnce_(opt_callback);
     img.addEventListener(goog.events.EventType.LOAD, callbackRunner);
     img.addEventListener(goog.events.EventType.ERROR, callbackRunner);
-    window.setTimeout(callbackRunner, 500);
+    win.setTimeout(callbackRunner, 500);
   }
 };
 
@@ -962,15 +987,15 @@ pagespeed.MobUtil.runCallbackOnce_ = function(callback) {
  * @return {number}
  */
 mob.util.getZoomLevel = function() {
+  var win = mob.util.getWindow();
   var zoom = 1;
-  if (window.psDeviceType != 'desktop') {
+  if (win.psDeviceType != 'desktop') {
     // screen.width does not update on rotation on ios, but it does on android,
     // so compensate for that here.
-    if ((Math.abs(window.orientation) == 90) &&
-        (screen.height > screen.width)) {
-      zoom *= (window.innerHeight / screen.width);
+    if ((Math.abs(win.orientation) == 90) && (screen.height > screen.width)) {
+      zoom *= (win.innerHeight / screen.width);
     } else {
-      zoom *= window.innerWidth / screen.width;
+      zoom *= win.innerWidth / screen.width;
     }
   }
   // Android browser does not seem to take the pixel ratio into account in the

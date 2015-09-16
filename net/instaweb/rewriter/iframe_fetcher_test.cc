@@ -48,6 +48,10 @@ GoogleString ExpectedIframe(StringPiece url) {
   return StrCat("<iframe id=\"psmob-iframe\" src=\"", url, "\">");
 }
 
+GoogleString ExpectedCanonical(StringPiece url) {
+  return StrCat("<link rel=\"canonical\" href=\"", url, "\">");
+}
+
 // Tests the AsyncFetch class and some of its derivations.
 class IframeFetcherTest : public RewriteOptionsTestBase<RewriteOptions> {
  protected:
@@ -130,6 +134,9 @@ TEST_F(IframeFetcherTest, IframeOnMobileProxySuffix) {
   EXPECT_THAT(
       fetch_.buffer(),
       ::testing::HasSubstr(ExpectedIframe(kExpectedUrl)));
+  EXPECT_THAT(
+      fetch_.buffer(),
+      ::testing::HasSubstr(ExpectedCanonical(kExpectedUrl)));
 }
 
 TEST_F(IframeFetcherTest, RedirectOnOperaMiniProxySuffix) {
@@ -160,6 +167,9 @@ TEST_F(IframeFetcherTest, IframeOnDesktopProxySuffixWithAlwaysMobilize) {
   EXPECT_THAT(
       fetch_.buffer(),
       ::testing::HasSubstr(ExpectedIframe(kExpectedUrl)));
+  EXPECT_THAT(
+      fetch_.buffer(),
+      ::testing::HasSubstr(ExpectedCanonical(kExpectedUrl)));
 }
 
 TEST_F(IframeFetcherTest, ErrorProxySuffix) {
@@ -192,6 +202,9 @@ TEST_F(IframeFetcherTest, IframeOnMobileMapOrigin) {
   EXPECT_THAT(
       fetch_.buffer(),
       ::testing::HasSubstr(ExpectedIframe(kExpectedUrl)));
+  EXPECT_THAT(
+      fetch_.buffer(),
+      ::testing::HasSubstr(ExpectedCanonical(kExpectedUrl)));
 }
 
 TEST_F(IframeFetcherTest, RedirectOnOperaMiniMapOrigin) {
@@ -223,6 +236,9 @@ TEST_F(IframeFetcherTest, IframeOnDesktopMapOriginWithAlwaysMobilize) {
   EXPECT_THAT(
       fetch_.buffer(),
       ::testing::HasSubstr(ExpectedIframe(kExpectedUrl)));
+  EXPECT_THAT(
+      fetch_.buffer(),
+      ::testing::HasSubstr(ExpectedCanonical(kExpectedUrl)));
 }
 
 TEST_F(IframeFetcherTest, RedirectOnNoScript) {

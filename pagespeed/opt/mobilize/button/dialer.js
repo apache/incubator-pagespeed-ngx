@@ -25,7 +25,6 @@ goog.require('mob.button.AbstractButton');
 goog.require('pagespeed.MobUtil');
 
 
-
 /**
  * Constants used for tracking the state of requesting a Google Voice number
  * and dialing.  This is needed to delay the dialing of the phone until
@@ -38,6 +37,7 @@ mob.button.DialerState_ = {
   REQUESTING: 1,
   DIAL_WHEN_REQUEST_COMPLETES: 2
 };
+
 
 
 /**

@@ -7326,6 +7326,10 @@ pagespeed.mobLayoutConstants.NO_PERCENT = ["left", "width"];
 pagespeed.mobLayoutConstants.LAYOUT_CRITICAL = [goog.dom.TagName.CODE, goog.dom.TagName.PRE, goog.dom.TagName.UL];
 var mob = {util:{}};
 pagespeed.MobUtil = {};
+mob.util.window_ = "undefined" != typeof extension && extension.hasOwnProperty("target") ? extension.target : window;
+mob.util.getWindow = function() {
+  return mob.util.window_;
+};
 pagespeed.MobUtil.ElementId = {CLICK_DETECTOR_DIV:"psmob-click-detector-div", CONFIG_IFRAME:"ps-hidden-iframe", DIALER_BUTTON:"psmob-dialer-button", HEADER_BAR:"psmob-header-bar", IFRAME:"psmob-iframe", IFRAME_CONTAINER:"psmob-iframe-container", LOGO_IMAGE:"psmob-logo-image", LOGO_SPAN:"psmob-logo-span", MAP_BUTTON:"psmob-map-button", MENU_BUTTON:"psmob-menu-button", NAV_PANEL:"psmob-nav-panel", PROGRESS_LOG:"ps-progress-log", PROGRESS_REMOVE:"ps-progress-remove", PROGRESS_SCRIM:"ps-progress-scrim", 
 PROGRESS_SHOW_LOG:"ps-progress-show-log", PROGRESS_SPAN:"ps-progress-span", SPACER:"psmob-spacer"};
 pagespeed.MobUtil.ElementClass = {BUTTON:"psmob-button", BUTTON_ICON:"psmob-button-icon", BUTTON_TEXT:"psmob-button-text", HIDE:"psmob-hide", IOS_WEBVIEW:"ios-webview", LABELED:"psmob-labeled", LOGO_CHOOSER_CHOICE:"psmob-logo-chooser-choice", LOGO_CHOOSER_COLOR:"psmob-logo-chooser-color", LOGO_CHOOSER_COLUMN_HEADER:"psmob-logo-chooser-column-header", LOGO_CHOOSER_CONFIG_FRAGMENT:"psmob-logo-chooser-config-fragment", LOGO_CHOOSER_IMAGE:"psmob-logo-chooser-image", LOGO_CHOOSER_SWAP:"psmob-logo-chooser-swap", 
@@ -7385,29 +7389,30 @@ pagespeed.MobUtil.addStyles = function(a, b) {
 };
 pagespeed.MobUtil.boundingRect = function(a) {
   a = a.getBoundingClientRect();
-  var b = document.body, c = document.documentElement || b.parentNode || b, b = "pageXOffset" in window ? window.pageXOffset : c.scrollLeft, c = "pageYOffset" in window ? window.pageYOffset : c.scrollTop;
-  return new goog.math.Box(a.top + c, a.right + b, a.bottom + c, a.left + b);
+  var b = mob.util.getWindow(), c = b.document.body, d = b.document.documentElement || c.parentNode || c, c = "pageXOffset" in b ? b.pageXOffset : d.scrollLeft, b = "pageYOffset" in b ? b.pageYOffset : d.scrollTop;
+  return new goog.math.Box(a.top + b, a.right + c, a.bottom + b, a.left + c);
 };
 pagespeed.MobUtil.isSinglePixel = function(a) {
   return 1 == a.naturalHeight && 1 == a.naturalWidth;
 };
 pagespeed.MobUtil.findBackgroundImage = function(a) {
   var b = null, b = a.nodeName.toUpperCase();
-  return b != goog.dom.TagName.SCRIPT && b != goog.dom.TagName.STYLE && a.style && (a = window.getComputedStyle(a)) && (b = a.getPropertyValue("background-image"), "none" == b && (b = null), b && 5 < b.length && 0 == b.indexOf("url(") && ")" == b[b.length - 1]) ? b = b.substring(4, b.length - 1) : null;
+  return b != goog.dom.TagName.SCRIPT && b != goog.dom.TagName.STYLE && a.style && (a = mob.util.getWindow().getComputedStyle(a)) && (b = a.getPropertyValue("background-image"), "none" == b && (b = null), b && 5 < b.length && 0 == b.indexOf("url(") && ")" == b[b.length - 1]) ? b = b.substring(4, b.length - 1) : null;
 };
 pagespeed.MobUtil.inFriendlyIframe = function() {
-  if (null != window.parent && window != window.parent) {
+  var a = mob.util.getWindow();
+  if (null != a.parent && a != a.parent) {
     try {
-      if (window.parent.document.domain == document.domain) {
+      if (a.parent.document.domain == a.document.domain) {
         return !0;
       }
-    } catch (a) {
+    } catch (b) {
     }
   }
   return !1;
 };
 pagespeed.MobUtil.possiblyInQuirksMode = function() {
-  return "CSS1Compat" !== document.compatMode;
+  return "CSS1Compat" !== mob.util.getWindow().document.compatMode;
 };
 pagespeed.MobUtil.hasIntersectingRects = function(a) {
   for (var b = 0;b < a.length;++b) {
@@ -7420,7 +7425,7 @@ pagespeed.MobUtil.hasIntersectingRects = function(a) {
   return !1;
 };
 pagespeed.MobUtil.createXPathFromNode = function(a) {
-  for (var b = document.getElementsByTagName("*"), c, d = [], e;goog.dom.isElement(a);a = a.parentNode) {
+  for (var b = mob.util.getWindow().document.getElementsByTagName("*"), c, d = [], e;goog.dom.isElement(a);a = a.parentNode) {
     if (a.hasAttribute("id")) {
       for (e = c = 0;e < b.length && 1 >= c;++e) {
         b[e].hasAttribute("id") && b[e].id == a.id && ++c;
@@ -7511,7 +7516,7 @@ pagespeed.MobUtil.removeSuffixNTimes = function(a, b, c) {
   return 0 <= f ? a.substring(0, d) : a;
 };
 pagespeed.MobUtil.getSiteOrganization = function() {
-  var a = document.domain.toLowerCase().split("."), b = a.length;
+  var a = mob.util.getWindow().document.domain.toLowerCase().split("."), b = a.length;
   return 4 < b && 2 == a[b - 3].length ? a[b - 5] : 3 < b ? a[b - 4] : null;
 };
 pagespeed.MobUtil.resourceFileName = function(a) {
@@ -7525,7 +7530,7 @@ pagespeed.MobUtil.resourceFileName = function(a) {
   return a.substring(b, c);
 };
 pagespeed.MobUtil.proxyImageUrl = function(a, b) {
-  var c = goog.uri.utils.getHost(b || document.location.href), d = goog.uri.utils.getDomain(c), e = goog.uri.utils.getDomain(a);
+  var c = goog.uri.utils.getHost(b || mob.util.getWindow().document.location.href), d = goog.uri.utils.getDomain(c), e = goog.uri.utils.getDomain(a);
   if (null == d || null == e) {
     return a;
   }
@@ -7553,15 +7558,16 @@ pagespeed.MobUtil.extractImage = function(a, b) {
     case pagespeed.MobUtil.ImageSource.BACKGROUND:
       c = pagespeed.MobUtil.findBackgroundImage(a);
   }
-  return c ? pagespeed.MobUtil.proxyImageUrl(c) : null;
+  return c ? c : null;
 };
 pagespeed.MobUtil.synthesizeImage = function(a, b) {
   goog.asserts.assert(16 < a.length);
-  var c = window.atob(a), c = c.substring(0, 13) + String.fromCharCode(b[0], b[1], b[2]) + c.substring(16, c.length);
-  return "data:image/gif;base64," + window.btoa(c);
+  var c = mob.util.getWindow().atob(a), c = c.substring(0, 13) + String.fromCharCode(b[0], b[1], b[2]) + c.substring(16, c.length);
+  return "data:image/gif;base64," + mob.util.getWindow().btoa(c);
 };
 pagespeed.MobUtil.isCrossOrigin = function(a) {
-  return !goog.string.startsWith(a, document.location.origin + "/") && !goog.string.startsWith(a, "data:image/");
+  var b = mob.util.getWindow().document.location.origin + "/";
+  return !goog.string.startsWith(a, b) && !goog.string.startsWith(a, "data:image/");
 };
 pagespeed.MobUtil.boundingRectAndSize = function(a) {
   a = pagespeed.MobUtil.boundingRect(a);
@@ -7588,11 +7594,12 @@ pagespeed.MobUtil.toCssString1 = function(a) {
   return '"' + a + '"';
 };
 pagespeed.MobUtil.consoleLog = function(a) {
-  window.psDebugMode && console && console.log && console.log(a);
+  mob.util.getWindow().psDebugMode && console && console.log && console.log(a);
 };
 pagespeed.MobUtil.BeaconEvents = {CALL_CONVERSION_RESPONSE:"call-conversion-response", CALL_FALLBACK_NUMBER:"call-fallback-number", CALL_GV_NUMBER:"call-gv-number", INITIAL_EVENT:"initial-event", LOAD_EVENT:"load-event", MAP_BUTTON:"psmob-map-button", MENU_BUTTON_CLOSE:"psmob-menu-button-close", MENU_BUTTON_OPEN:"psmob-menu-button-open", SUBMENU_CLOSE:"psmob-submenu-close", SUBMENU_OPEN:"psmob-submenu-open", MENU_NAV_CLICK:"psmob-menu-nav-click", NAV_DONE:"nav-done", PHONE_BUTTON:"psmob-phone-dialer"};
 pagespeed.MobUtil.sendBeaconEvent = function(a, b, c) {
-  !window.psMobBeaconUrl && b ? b() : (a = window.psMobBeaconUrl + "?id=psmob&url=" + encodeURIComponent(document.URL) + "&el=" + a, window.psMobBeaconCategory && (a += "&category=" + window.psMobBeaconCategory), c && (a += c), c = document.createElement(goog.dom.TagName.IMG), c.src = a, b && (b = pagespeed.MobUtil.runCallbackOnce_(b), c.addEventListener(goog.events.EventType.LOAD, b), c.addEventListener(goog.events.EventType.ERROR, b), window.setTimeout(b, 500)));
+  var d = mob.util.getWindow();
+  !d.psMobBeaconUrl && b ? b() : (a = d.psMobBeaconUrl + "?id=psmob&url=" + encodeURIComponent(d.document.URL) + "&el=" + a, d.psMobBeaconCategory && (a += "&category=" + d.psMobBeaconCategory), c && (a += c), c = d.document.createElement(goog.dom.TagName.IMG), c.src = a, b && (b = pagespeed.MobUtil.runCallbackOnce_(b), c.addEventListener(goog.events.EventType.LOAD, b), c.addEventListener(goog.events.EventType.ERROR, b), d.setTimeout(b, 500)));
 };
 pagespeed.MobUtil.runCallbackOnce_ = function(a) {
   var b = !1;
@@ -7601,10 +7608,10 @@ pagespeed.MobUtil.runCallbackOnce_ = function(a) {
   };
 };
 mob.util.getZoomLevel = function() {
-  var a = 1;
-  "desktop" != window.psDeviceType && (a = 90 == Math.abs(window.orientation) && screen.height > screen.width ? window.innerHeight / screen.width * a : window.innerWidth / screen.width * a);
-  goog.labs.userAgent.browser.isAndroidBrowser() && (a *= goog.dom.getPixelRatio());
-  return a;
+  var a = mob.util.getWindow(), b = 1;
+  "desktop" != a.psDeviceType && (b = 90 == Math.abs(a.orientation) && screen.height > screen.width ? a.innerHeight / screen.width * b : a.innerWidth / screen.width * b);
+  goog.labs.userAgent.browser.isAndroidBrowser() && (b *= goog.dom.getPixelRatio());
+  return b;
 };
 mob.button = {};
 mob.button.AbstractButton = function(a, b, c, d) {
@@ -7625,6 +7632,7 @@ mob.button.AbstractButton.prototype.createButton = function() {
   this.el.appendChild(a);
   this.labelText_ && (a = document.createElement(goog.dom.TagName.P), goog.dom.classlist.add(a, pagespeed.MobUtil.ElementClass.BUTTON_TEXT), this.el.appendChild(a), a.appendChild(document.createTextNode(this.labelText_)));
 };
+mob.button.DialerState_ = {IDLE:0, REQUESTING:1, DIAL_WHEN_REQUEST_COMPLETES:2};
 mob.button.Dialer = function(a, b, c, d) {
   this.fallbackPhoneNumber_ = b;
   this.googleVoicePhoneNumber_ = null;
@@ -7632,6 +7640,7 @@ mob.button.Dialer = function(a, b, c, d) {
   this.conversionLabel_ = d;
   this.cookies_ = new goog.net.Cookies(document);
   this.jsonpTime_ = null;
+  this.dialState_ = mob.button.DialerState_.IDLE;
   mob.button.AbstractButton.call(this, pagespeed.MobUtil.ElementId.DIALER_BUTTON, mob.button.Dialer.ICON_, a, mob.button.Dialer.LABEL_);
 };
 goog.inherits(mob.button.Dialer, mob.button.AbstractButton);
@@ -7642,15 +7651,17 @@ mob.button.Dialer.MAX_WCM_COOKIE_LIFETIME_SEC_ = 7776E3;
 mob.button.Dialer.CONVERSION_HANDLER_ = "https://www.googleadservices.com/pagead/conversion/";
 mob.button.Dialer.prototype.createButton = function() {
   mob.button.Dialer.superClass_.createButton.call(this);
-  this.googleVoicePhoneNumber_ = this.getPhoneNumberFromCookie_();
+  (this.googleVoicePhoneNumber_ = this.getPhoneNumberFromCookie_()) || this.requestPhoneNumber_();
 };
 mob.button.Dialer.prototype.clickHandler = function(a) {
   pagespeed.MobUtil.sendBeaconEvent(pagespeed.MobUtil.BeaconEvents.PHONE_BUTTON);
-  this.googleVoicePhoneNumber_ ? this.dialPhone_() : this.requestPhoneNumberAndDial_();
+  this.dialState_ == mob.button.DialerState_.IDLE ? this.dialPhone_() : this.dialState_ = mob.button.DialerState_.DIAL_WHEN_REQUEST_COMPLETES;
 };
-mob.button.Dialer.prototype.requestPhoneNumberAndDial_ = function() {
-  var a = this.constructRequestPhoneNumberUrl_();
-  a ? (this.debugAlert_("requesting dynamic phone number: " + a), a = new goog.net.Jsonp(a), a.setRequestTimeout(2E3), this.jsonpTime_ = goog.now(), a.send(null, goog.bind(this.receivePhoneNumber_, this, !0), goog.bind(this.receivePhoneNumber_, this, !1))) : this.dialPhone_();
+mob.button.Dialer.prototype.requestPhoneNumber_ = function() {
+  if (this.dialState_ == mob.button.DialerState_.IDLE) {
+    var a = this.constructRequestPhoneNumberUrl_();
+    a && (this.debugAlert_("requesting dynamic phone number: " + a), a = new goog.net.Jsonp(a), a.setRequestTimeout(2E3), this.jsonpTime_ = goog.now(), this.dialState_ = mob.button.DialerState_.REQUESTING, a.send(null, goog.bind(this.receivePhoneNumber_, this, !0), goog.bind(this.receivePhoneNumber_, this, !1)));
+  }
 };
 mob.button.Dialer.prototype.constructRequestPhoneNumberUrl_ = function() {
   if (this.conversionLabel_ && this.conversionId_) {
@@ -7662,6 +7673,7 @@ mob.button.Dialer.prototype.constructRequestPhoneNumberUrl_ = function() {
 mob.button.Dialer.prototype.dialPhone_ = function() {
   var a, b;
   this.googleVoicePhoneNumber_ ? (a = this.googleVoicePhoneNumber_, b = pagespeed.MobUtil.BeaconEvents.CALL_GV_NUMBER) : (a = this.fallbackPhoneNumber_, b = pagespeed.MobUtil.BeaconEvents.CALL_FALLBACK_NUMBER);
+  this.debugAlert_("Dialing phone: " + a + "(" + b + ")");
   pagespeed.MobUtil.sendBeaconEvent(b, function() {
     goog.global.location = "tel:" + a;
   });
@@ -7686,11 +7698,16 @@ mob.button.Dialer.prototype.receivePhoneNumber_ = function(a, b) {
   e && e != this.fallbackPhoneNumber_ && (c = {expires:d.expires, formatted_number:d.formatted_number, mobile_number:e, clabel:this.conversionLabel_, fallback:this.fallbackPhoneNumber_}, c = goog.json.serialize(c), this.debugAlert_("saving phoneNumber in cookie: " + c), (d = parseInt(d.expires, 10)) ? (d -= Math.floor(goog.now() / 1E3), d = Math.min(d, mob.button.Dialer.MAX_WCM_COOKIE_LIFETIME_SEC_)) : d = mob.button.Dialer.MAX_WCM_COOKIE_LIFETIME_SEC_, this.cookies_.set(mob.button.Dialer.WCM_COOKIE_, 
   window.encodeURIComponent(c), d, "/"), this.googleVoicePhoneNumber_ = e);
   f && this.debugAlert_("WCM request: " + f);
-  this.dialPhone_();
+  this.dialState_ == mob.button.DialerState_.DIAL_WHEN_REQUEST_COMPLETES && this.dialPhone_();
+  this.dialState_ = mob.button.DialerState_.IDLE;
 };
 mob.button.Dialer.prototype.getPhoneNumberFromCookie_ = function() {
   var a = this.cookies_.get(mob.button.Dialer.WCM_COOKIE_);
-  return a && (a = goog.json.parse(window.decodeURIComponent(a)), a.fallback == this.fallbackPhoneNumber_ && a.clabel == this.conversionLabel_) ? a.mobile_number : null;
+  if (a && (a = goog.json.parse(window.decodeURIComponent(a)), a.fallback == this.fallbackPhoneNumber_ && a.clabel == this.conversionLabel_)) {
+    return a = a.mobile_number, this.debugAlert_("found phone number in cookie: " + a), a;
+  }
+  this.debugAlert_("no phone number found in cookie");
+  return null;
 };
 mob.button.Dialer.prototype.debugAlert_ = function(a) {
   window.psDebugMode && window.alert(a);
@@ -7825,7 +7842,7 @@ pagespeed.MobColor.prototype.computeColors_ = function(a, b, c, d) {
   return this.enhanceColors_(new pagespeed.MobColor.ThemeColors(k, m));
 };
 pagespeed.MobColor.prototype.computeThemeColor_ = function(a, b) {
-  var c = a.naturalWidth, d = a.naturalHeight, e = document.createElement(goog.dom.TagName.CANVAS);
+  var c = a.naturalWidth, d = a.naturalHeight, e = mob.util.getWindow().document.createElement(goog.dom.TagName.CANVAS);
   e.width = c;
   e.height = d;
   e = e.getContext("2d");
@@ -8229,7 +8246,7 @@ pagespeed.MobLogoCandidate = function(a, b, c) {
 pagespeed.MobLogo = function() {
   this.doneCallback_ = null;
   this.organization_ = pagespeed.MobUtil.getSiteOrganization();
-  this.landingUrl_ = window.location.origin + window.location.pathname;
+  this.landingUrl_ = mob.util.getWindow().location.origin + mob.util.getWindow().location.pathname;
   this.candidates_ = [];
   this.pendingEventCount_ = 0;
   this.maxNumCandidates_ = 1;
@@ -8251,7 +8268,7 @@ pagespeed.MobLogo.prototype.findLogoElement_ = function(a) {
   function b(a) {
     a && "string" == typeof a && (goog.string.caseInsensitiveContains(a, "logo") && ++d, this.organization && pagespeed.MobUtil.findPattern(a, this.organization_) && ++d);
   }
-  if ("hidden" == window.getComputedStyle(a).getPropertyValue("visibility")) {
+  if ("hidden" == mob.util.getWindow().getComputedStyle(a).getPropertyValue("visibility")) {
     return null;
   }
   var c = null, c = a.nodeName.toUpperCase() == goog.dom.TagName.IMG ? a.src : pagespeed.MobUtil.findBackgroundImage(a), c = pagespeed.MobUtil.resourceFileName(c);
@@ -8278,7 +8295,7 @@ pagespeed.MobLogo.prototype.addImageToPendingList_ = function(a) {
   a.addEventListener(goog.events.EventType.ERROR, goog.bind(this.eventDone_, this));
 };
 pagespeed.MobLogo.prototype.newImage_ = function(a) {
-  var b = document.createElement(goog.dom.TagName.IMG);
+  var b = mob.util.getWindow().document.createElement(goog.dom.TagName.IMG);
   this.addImageToPendingList_(b);
   b.src = a;
   return b;
@@ -8405,7 +8422,7 @@ pagespeed.MobLogo.prototype.findBestLogos_ = function() {
   return a;
 };
 pagespeed.MobLogo.prototype.extractBackgroundColor_ = function(a) {
-  return (a = document.defaultView.getComputedStyle(a, null)) && (a = a.getPropertyValue("background-color")) && (a = pagespeed.MobUtil.colorStringToNumbers(a)) && (3 == a.length || 4 == a.length && 0 != a[3]) ? a : null;
+  return (a = mob.util.getWindow().document.defaultView.getComputedStyle(a, null)) && (a = a.getPropertyValue("background-color")) && (a = pagespeed.MobUtil.colorStringToNumbers(a)) && (3 == a.length || 4 == a.length && 0 != a[3]) ? a : null;
 };
 pagespeed.MobLogo.prototype.findLogoBackground_ = function(a) {
   if (a && a.foregroundElement) {
@@ -8416,7 +8433,9 @@ pagespeed.MobLogo.prototype.findLogoBackground_ = function(a) {
   }
 };
 pagespeed.MobLogo.prototype.run = function(a, b) {
-  this.doneCallback_ || !document.body ? a([]) : (this.doneCallback_ = a, this.maxNumCandidates_ = b, this.findLogoCandidates_(document.body), this.findImagesAndWait_(this.candidates_));
+  "undefined" != typeof extension && extension.addEventListener("loadComplete", goog.bind(this.eventDone_, this), !1);
+  var c = mob.util.getWindow().document.body;
+  this.doneCallback_ || !c ? a([]) : (this.doneCallback_ = a, this.maxNumCandidates_ = b, this.findLogoCandidates_(c), this.findImagesAndWait_(this.candidates_));
 };
 goog.exportProperty(pagespeed.MobLogo.prototype, "run", pagespeed.MobLogo.prototype.run);
 mob.NavPanel = function(a, b) {
@@ -8654,33 +8673,6 @@ pagespeed.MobNav.prototype.updateTheme = function(a) {
   this.headerBar_.id = pagespeed.MobUtil.ElementId.HEADER_BAR;
   this.addHeaderBar_(a);
 };
-pagespeed.MobTheme = function(a) {
-  this.doneCallback_ = a;
-};
-pagespeed.MobTheme.createThemeData = function(a, b, c) {
-  var d = new pagespeed.MobUtil.ThemeData(a, b, c);
-  window.psMobPrecompute && (window.psMobLogoUrl = a, window.psMobBackgroundColor = b, window.psMobForegroundColor = c);
-  return d;
-};
-pagespeed.MobTheme.prototype.logoComplete = function(a) {
-  if (this.doneCallback_) {
-    1 <= a.length ? (a = a[0], a = pagespeed.MobTheme.createThemeData(a.logoRecord.foregroundImage.src, a.background, a.foreground)) : a = pagespeed.MobTheme.createThemeData(null, [255, 255, 255], [0, 0, 0]);
-    var b = this.doneCallback_;
-    this.doneCallback_ = null;
-    b(a);
-  }
-};
-pagespeed.MobTheme.precomputedThemeAvailable = function() {
-  return Boolean(window.psMobBackgroundColor && window.psMobForegroundColor && !window.psMobPrecompute);
-};
-pagespeed.MobTheme.extractTheme = function(a, b) {
-  if (window.psMobBackgroundColor && window.psMobForegroundColor && !window.psMobPrecompute) {
-    var c = pagespeed.MobTheme.createThemeData(window.psMobLogoUrl, window.psMobBackgroundColor, window.psMobForegroundColor);
-    b(c);
-  } else {
-    c = new pagespeed.MobTheme(b), a.run(goog.bind(c.logoComplete, c), 1);
-  }
-};
 mob.ThemePicker = function() {
   this.logoChoicePopup_ = null;
   this.mobNav_ = new pagespeed.MobNav;
@@ -8789,56 +8781,22 @@ pagespeed.Mob = function() {
   this.workPerLayoutPass_ = this.pendingCallbacks_ = 0;
   this.layout_ = new pagespeed.MobLayout(this);
   this.layout_.addDontTouchId(pagespeed.MobUtil.ElementId.PROGRESS_SCRIM);
-  this.configNumUrlsToProcess_ = -1;
-  this.configTimer_ = null;
-  this.configUrls_ = [];
-  this.configThemes_ = [];
   this.mobNav_ = null;
-  this.mobLogo_ = new pagespeed.MobLogo;
 };
-pagespeed.Mob.CONFIG_QUERY_SITE_WIDE_PROCESS_ = "PageSpeedSiteWideProcessing";
-pagespeed.Mob.CONFIG_MAX_TIME_MS_ = 1E4;
-pagespeed.Mob.CONFIG_MAX_NUM_LINKS_ = 100;
 pagespeed.Mob.IN_TRANSIT_ = new pagespeed.MobUtil.Dimensions(-1, -1);
 pagespeed.Mob.COST_PER_IMAGE_ = 1E3;
 pagespeed.Mob.prototype.initialize = function() {
   if (window.psConfigMode) {
     (new mob.ThemePicker).run();
   } else {
-    if (window.psMobBackgroundColor && window.psMobForegroundColor) {
-      var a = new pagespeed.MobUtil.ThemeData(window.psMobLogoUrl, window.psMobForegroundColor, window.psMobBackgroundColor);
-      this.mobNav_ = new pagespeed.MobNav;
-      this.mobNav_.run(a);
-    } else {
-      window.addEventListener(goog.events.EventType.DOMCONTENTLOADED, goog.bind(this.extractTheme_, this));
-    }
+    var a = new pagespeed.MobUtil.ThemeData(window.psMobLogoUrl || "", window.psMobForegroundColor || [255, 255, 255], window.psMobBackgroundColor || [0, 0, 0]);
+    this.mobNav_ = new pagespeed.MobNav;
+    this.mobNav_.run(a);
     window.psLayoutMode && window.addEventListener(goog.events.EventType.LOAD, goog.bind(this.initiateMobilization, this));
   }
 };
 pagespeed.Mob.prototype.mobilizeSite_ = function() {
   0 == this.pendingImageLoadCount_ ? (pagespeed.MobUtil.consoleLog("mobilizing site"), window.psNavMode && !pagespeed.MobUtil.inFriendlyIframe() || this.maybeRunLayout()) : this.mobilizeAfterImageLoad_ = !0;
-};
-pagespeed.Mob.prototype.themeComplete_ = function(a) {
-  --this.pendingCallbacks_;
-  this.updateProgressBar(this.domElementCount_, "extract theme");
-  this.mobNav_ = new pagespeed.MobNav;
-  this.mobNav_.run(a);
-  this.updateProgressBar(this.domElementCount_, "navigation");
-  this.maybeRunLayout();
-  var b = this.psMobForMasterWindow_();
-  if (b && 0 <= b.configNumUrlsToProcess_) {
-    if (this.inPsIframeWindow_()) {
-      this.mobNav_.updateTheme(a);
-    } else {
-      var c = document.createElement(goog.dom.TagName.IFRAME);
-      c.id = pagespeed.MobUtil.ElementId.CONFIG_IFRAME;
-      c.hidden = !0;
-      document.body.appendChild(c);
-    }
-    b.configThemes_.push(a);
-    this.mobilizeNextUrl_(!0);
-  }
-  window.parent != window && (b = "Theme:  " + pagespeed.MobUtil.colorNumbersToString(a.menuBackColor) + " " + pagespeed.MobUtil.colorNumbersToString(a.menuFrontColor), a.logoUrl && (b += " " + a.logoUrl), a = document.location.origin.split("."), c = a.length, 2 <= c && (a = "http://" + a[c - 2] + "." + a[c - 1], window.parent.postMessage(b, a), pagespeed.MobUtil.consoleLog("Post message (" + b + ") to " + a)));
 };
 pagespeed.Mob.prototype.backgroundImageLoaded_ = function(a) {
   this.imageMap_[a.src] = new pagespeed.MobUtil.Dimensions(a.width, a.height);
@@ -8881,7 +8839,6 @@ pagespeed.Mob.prototype.initiateMobilization = function() {
       var b = window.psMobStaticImageInfo[a];
       this.imageMap_[a] = new pagespeed.MobUtil.Dimensions(b.w, b.h);
     }
-    pagespeed.MobTheme.precomputedThemeAvailable() && !window.psLayoutMode || this.collectBackgroundImages_(document.body);
   }
   this.totalWork_ += this.pendingImageLoadCount_ * pagespeed.Mob.COST_PER_IMAGE_;
   window.psLayoutMode && window.pagespeedXhrHijackSetListener(this);
@@ -8937,19 +8894,6 @@ pagespeed.Mob.prototype.removeProgressBar = function() {
   var a = document.getElementById(pagespeed.MobUtil.ElementId.PROGRESS_SCRIM);
   a && (a.style.display = "none", a.parentNode.removeChild(a));
 };
-pagespeed.Mob.prototype.extractTheme_ = function() {
-  if (window.psNavMode) {
-    ++this.pendingCallbacks_;
-    var a = pagespeed.Mob.CONFIG_QUERY_SITE_WIDE_PROCESS_;
-    if (!this.inPsIframeWindow_() && window.document.body && -1 != window.location.search.indexOf(a)) {
-      a = this.collectUrls_();
-      this.psMobForMasterWindow_().configUrls_ = a;
-      var b = prompt(a.length + ' links have been found in this page. If you want to compute theme from them, enter the number of links below and press "OK". It may take a while to process them. Once processing completes, you will see another dialog.', a.length.toString());
-      b && (b = goog.string.parseInt(b), this.configNumUrlsToProcess_ = 0 > b ? 0 : b > a.length ? a.length : b);
-    }
-    pagespeed.MobTheme.extractTheme(this.mobLogo_, goog.bind(this.themeComplete_, this));
-  }
-};
 window.psMob = new pagespeed.Mob;
 function psSetDebugMode() {
   window.psMob.setDebugMode(!0);
@@ -8959,88 +8903,6 @@ function psRemoveProgressBar() {
   window.psMob.removeProgressBar();
 }
 goog.exportSymbol("psRemoveProgressBar", psRemoveProgressBar);
-pagespeed.Mob.prototype.inPsIframeWindow_ = function() {
-  return pagespeed.MobUtil.inFriendlyIframe() && goog.isDefAndNotNull(window.frameElement) && window.frameElement.id == pagespeed.MobUtil.ElementId.CONFIG_IFRAME;
-};
-pagespeed.Mob.prototype.masterWindow_ = function() {
-  return this.inPsIframeWindow_() ? window.parent : window;
-};
-pagespeed.Mob.prototype.psMobForMasterWindow_ = function() {
-  return this.masterWindow_().psMob;
-};
-pagespeed.Mob.prototype.showSiteWideThemes_ = function() {
-  var a = this.psMobForMasterWindow_();
-  if (a && a.configThemes_ && 0 != a.configThemes_.length) {
-    for (var b = {}, c, d = 0;c = a.configThemes_[d];++d) {
-      var e = c.logoUrl;
-      e && (e = e + pagespeed.MobUtil.colorNumbersToString(c.menuFrontColor) + pagespeed.MobUtil.colorNumbersToString(c.menuBackColor), b[e] ? ++b[e].count : b[e] = {themeData:c, count:1});
-    }
-    a = goog.object.getValues(b);
-    a.sort(function(a, b) {
-      if (a.count < b.count) {
-        return 1;
-      }
-      if (a.count > b.count) {
-        return -1;
-      }
-      var c = a.themeData.logoUrl, d = b.themeData.logoUrl;
-      return c < d ? -1 : c > d ? 1 : 0;
-    });
-    b = "\nFinish site-wide theme extraction. ";
-    if (0 < a.length) {
-      b += "Found " + a.length + " logo images. Details are shown below:\n";
-      this.mobNav_.updateTheme(a[0].themeData);
-      for (d in a) {
-        c = a[d].themeData, b += '"' + pagespeed.MobUtil.colorNumbersToString(c.menuBackColor) + " " + pagespeed.MobUtil.colorNumbersToString(c.menuFrontColor) + " " + c.logoUrl + '" COUNT: ' + a[d].count + "\n";
-      }
-      b += "\n";
-      for (d in a) {
-        c = a[d].themeData, b += 'ModPagespeedMobTheme "\n    ' + goog.color.rgbArrayToHex(c.menuBackColor) + "\n    " + goog.color.rgbArrayToHex(c.menuFrontColor) + "\n    " + c.logoUrl + '"\n';
-      }
-    } else {
-      b += "No logo was found.";
-    }
-    pagespeed.MobUtil.consoleLog(b + "\n");
-  }
-};
-pagespeed.Mob.prototype.mobilizeNextUrl_ = function(a) {
-  a || pagespeed.MobUtil.consoleLog("Time out.");
-  a = this.psMobForMasterWindow_();
-  var b = this.masterWindow_();
-  if (a) {
-    b.clearTimeout(a.configTimer_);
-    a.configTimer_ = null;
-    var c = a.configUrls_.pop();
-    if (0 < a.configNumUrlsToProcess_ && c) {
-      pagespeed.MobUtil.consoleLog("Next URL is " + c + ". " + a.configNumUrlsToProcess_ + " more to go.");
-      var d = b.document.getElementById(pagespeed.MobUtil.ElementId.CONFIG_IFRAME);
-      d && (d.src = c, a.configTimer_ = b.setTimeout(goog.bind(a.mobilizeNextUrl_, a), pagespeed.Mob.CONFIG_MAX_TIME_MS_));
-      --a.configNumUrlsToProcess_;
-    } else {
-      0 == a.configNumUrlsToProcess_ && (this.showSiteWideThemes_(), alert("All URLs have been processed. The header bar shows the best result. Details can be found in console log."), a.configNumUrlsToProcess_ = -1);
-    }
-  }
-};
-pagespeed.Mob.prototype.collectUrls_ = function() {
-  var a = [], b = window.location.search.indexOf("ModPagespeedMobIframe"), c = null;
-  -1 != b && (c = window.location.search.substring(b), (c = c.split("#")[0].split("&")[0]) && (c = "?" + c));
-  this.collectUrlsFromSubTree_(c, window.document.body, a);
-  return a;
-};
-pagespeed.Mob.prototype.collectUrlsFromSubTree_ = function(a, b, c) {
-  if (!(c.length >= pagespeed.Mob.CONFIG_MAX_NUM_LINKS_)) {
-    var d = b.tagName.toUpperCase();
-    if ((d == goog.dom.TagName.A || d == goog.dom.TagName.FORM) && (d = b.href) && !pagespeed.MobUtil.isCrossOrigin(d) && goog.uri.utils.getPath(d).toLowerCase() != window.location.pathname.toLowerCase()) {
-      if (a) {
-        var e = d.indexOf("?"), d = -1 == e ? d + a : d.substring(0, e) + a + "&" + d.substring(e + 1)
-      }
-      -1 == c.indexOf(d) && c.push(d);
-    }
-    for (b = b.firstElementChild;b;b = b.nextElementSibling) {
-      this.collectUrlsFromSubTree_(a, b, c);
-    }
-  }
-};
 pagespeed.Mob.start = function() {
   (new pagespeed.Mob).initialize();
 };

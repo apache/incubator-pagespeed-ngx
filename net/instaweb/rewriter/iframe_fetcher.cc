@@ -133,8 +133,13 @@ void IframeFetcher::RespondWithIframe(const GoogleString& escaped_url,
     viewport = StrCat("<meta name=\"viewport\" content=\"",
                       escaped_viewport_content, "\">");
   }
+
+  GoogleString canonical = StrCat(
+      "<link rel=\"canonical\" href=\"", escaped_url, "\">");
+
   // Avoid quirks-mode by specifying an HTML doctype.
-  fetch->Write(StrCat("<!DOCTYPE html><html><head>"
+  fetch->Write(StrCat("<!DOCTYPE html><html><head>",
+                      canonical,
                       "<meta charset=\"utf-8\">",
                       viewport,
                       "</head><body class=\"mob-iframe\">"
