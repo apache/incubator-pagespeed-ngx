@@ -38,28 +38,35 @@ class HtmlColor {
   unsigned char g_;
   unsigned char b_;
 
-  //  a colorstr is well defined if it is "#xxxxxx" ('x' is a hexdigit)
-  //  or it's a known color name such as "black".
+  //  a color is well defined if it is "#xxxxxx" ('x' is a hexdigit)
+  //  or it's a known color name such as "black"
+  //  or it was set from valid HSL values.
   //  0: the RGB value is good!
   //  1: bad (name) value, caused by bad color name
   //  2: bad (hex) value, caused by bad hex string value
   //  -- the browser (Netscape Communicator 4.75, linux-2.2.14,
   //     shows that the color displayed is sometimes 'black' under case '2'.
+  //  3: bad HSL values
   unsigned char is_bad_value_;
-  static const unsigned char kGoodColorValue = 0x00;
-  static const unsigned char kBadColorName = 0x01;
-  static const unsigned char kBadColorHex = 0x02;
+  static const unsigned char kGoodColorValue = 0;
+  static const unsigned char kBadColorName = 1;
+  static const unsigned char kBadColorHex = 2;
+  static const unsigned char kBadColorHSL = 3;
 
   void SetBadNameValue() {
-    r_ = g_ = b_ = 0x00;
+    r_ = g_ = b_ = 0;
     is_bad_value_ = kBadColorName;
   }
   void SetBadHexValue() {
-    r_ = g_ = b_ = 0x00;
+    r_ = g_ = b_ = 0;
     is_bad_value_ = kBadColorHex;
   }
+  void SetBadHslValue() {
+    r_ = g_ = b_ = 0;
+    is_bad_value_ = kBadColorHSL;
+  }
   void SetDefaultValue() {
-    r_ = g_ = b_ = 0x00;
+    r_ = g_ = b_ = 0;
     is_bad_value_ = kGoodColorValue;
   }
 

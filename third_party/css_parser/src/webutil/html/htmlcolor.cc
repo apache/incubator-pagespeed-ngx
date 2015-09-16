@@ -867,8 +867,10 @@ static bool HSLtoRGB(double hue, double saturation, double lightness,
 
 void HtmlColor::SetValueFromHSL(double hue, double saturation,
                                 double lightness) {
-  if (!HSLtoRGB(hue, saturation, lightness, &r_, &g_, &b_)) {
-    SetBadHexValue();
+  if (HSLtoRGB(hue, saturation, lightness, &r_, &g_, &b_)) {
+    is_bad_value_ = kGoodColorValue;
+  } else {
+    SetBadHslValue();
   }
 }
 
