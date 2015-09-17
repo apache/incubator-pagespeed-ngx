@@ -56,7 +56,7 @@ while [ "$(pgrep $httpd|wc -l|awk '{print $1}')" -gt 0 ]; do
     first=0
   else
     /bin/echo -n "."
-    iter=$[ $iter + 1 ]
+    iter=$(($iter + 1))
   fi
   if [ $iter -ge 30 ]; then # Run for 30 seconds, if not dead, just kill apache.
     killall -9 $httpd
