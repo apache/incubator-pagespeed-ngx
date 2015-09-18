@@ -7326,10 +7326,6 @@ pagespeed.mobLayoutConstants.NO_PERCENT = ["left", "width"];
 pagespeed.mobLayoutConstants.LAYOUT_CRITICAL = [goog.dom.TagName.CODE, goog.dom.TagName.PRE, goog.dom.TagName.UL];
 var mob = {util:{}};
 pagespeed.MobUtil = {};
-mob.util.window_ = "undefined" != typeof extension && extension.hasOwnProperty("target") ? extension.target : window;
-mob.util.getWindow = function() {
-  return mob.util.window_;
-};
 pagespeed.MobUtil.ElementId = {CLICK_DETECTOR_DIV:"psmob-click-detector-div", CONFIG_IFRAME:"ps-hidden-iframe", DIALER_BUTTON:"psmob-dialer-button", HEADER_BAR:"psmob-header-bar", IFRAME:"psmob-iframe", IFRAME_CONTAINER:"psmob-iframe-container", LOGO_IMAGE:"psmob-logo-image", LOGO_SPAN:"psmob-logo-span", MAP_BUTTON:"psmob-map-button", MENU_BUTTON:"psmob-menu-button", NAV_PANEL:"psmob-nav-panel", PROGRESS_LOG:"ps-progress-log", PROGRESS_REMOVE:"ps-progress-remove", PROGRESS_SCRIM:"ps-progress-scrim", 
 PROGRESS_SHOW_LOG:"ps-progress-show-log", PROGRESS_SPAN:"ps-progress-span", SPACER:"psmob-spacer"};
 pagespeed.MobUtil.ElementClass = {BUTTON:"psmob-button", BUTTON_ICON:"psmob-button-icon", BUTTON_TEXT:"psmob-button-text", HIDE:"psmob-hide", IOS_WEBVIEW:"ios-webview", LABELED:"psmob-labeled", LOGO_CHOOSER_CHOICE:"psmob-logo-chooser-choice", LOGO_CHOOSER_COLOR:"psmob-logo-chooser-color", LOGO_CHOOSER_COLUMN_HEADER:"psmob-logo-chooser-column-header", LOGO_CHOOSER_CONFIG_FRAGMENT:"psmob-logo-chooser-config-fragment", LOGO_CHOOSER_IMAGE:"psmob-logo-chooser-image", LOGO_CHOOSER_SWAP:"psmob-logo-chooser-swap", 
@@ -7389,30 +7385,29 @@ pagespeed.MobUtil.addStyles = function(a, b) {
 };
 pagespeed.MobUtil.boundingRect = function(a) {
   a = a.getBoundingClientRect();
-  var b = mob.util.getWindow(), c = b.document.body, d = b.document.documentElement || c.parentNode || c, c = "pageXOffset" in b ? b.pageXOffset : d.scrollLeft, b = "pageYOffset" in b ? b.pageYOffset : d.scrollTop;
-  return new goog.math.Box(a.top + b, a.right + c, a.bottom + b, a.left + c);
+  var b = document.body, c = document.documentElement || b.parentNode || b, b = "pageXOffset" in window ? window.pageXOffset : c.scrollLeft, c = "pageYOffset" in window ? window.pageYOffset : c.scrollTop;
+  return new goog.math.Box(a.top + c, a.right + b, a.bottom + c, a.left + b);
 };
 pagespeed.MobUtil.isSinglePixel = function(a) {
   return 1 == a.naturalHeight && 1 == a.naturalWidth;
 };
 pagespeed.MobUtil.findBackgroundImage = function(a) {
   var b = null, b = a.nodeName.toUpperCase();
-  return b != goog.dom.TagName.SCRIPT && b != goog.dom.TagName.STYLE && a.style && (a = mob.util.getWindow().getComputedStyle(a)) && (b = a.getPropertyValue("background-image"), "none" == b && (b = null), b && 5 < b.length && 0 == b.indexOf("url(") && ")" == b[b.length - 1]) ? b = b.substring(4, b.length - 1) : null;
+  return b != goog.dom.TagName.SCRIPT && b != goog.dom.TagName.STYLE && a.style && (a = window.getComputedStyle(a)) && (b = a.getPropertyValue("background-image"), "none" == b && (b = null), b && 5 < b.length && 0 == b.indexOf("url(") && ")" == b[b.length - 1]) ? b = b.substring(4, b.length - 1) : null;
 };
 pagespeed.MobUtil.inFriendlyIframe = function() {
-  var a = mob.util.getWindow();
-  if (null != a.parent && a != a.parent) {
+  if (null != window.parent && window != window.parent) {
     try {
-      if (a.parent.document.domain == a.document.domain) {
+      if (window.parent.document.domain == document.domain) {
         return !0;
       }
-    } catch (b) {
+    } catch (a) {
     }
   }
   return !1;
 };
 pagespeed.MobUtil.possiblyInQuirksMode = function() {
-  return "CSS1Compat" !== mob.util.getWindow().document.compatMode;
+  return "CSS1Compat" !== document.compatMode;
 };
 pagespeed.MobUtil.hasIntersectingRects = function(a) {
   for (var b = 0;b < a.length;++b) {
@@ -7425,7 +7420,7 @@ pagespeed.MobUtil.hasIntersectingRects = function(a) {
   return !1;
 };
 pagespeed.MobUtil.createXPathFromNode = function(a) {
-  for (var b = mob.util.getWindow().document.getElementsByTagName("*"), c, d = [], e;goog.dom.isElement(a);a = a.parentNode) {
+  for (var b = document.getElementsByTagName("*"), c, d = [], e;goog.dom.isElement(a);a = a.parentNode) {
     if (a.hasAttribute("id")) {
       for (e = c = 0;e < b.length && 1 >= c;++e) {
         b[e].hasAttribute("id") && b[e].id == a.id && ++c;
@@ -7516,7 +7511,7 @@ pagespeed.MobUtil.removeSuffixNTimes = function(a, b, c) {
   return 0 <= f ? a.substring(0, d) : a;
 };
 pagespeed.MobUtil.getSiteOrganization = function() {
-  var a = mob.util.getWindow().document.domain.toLowerCase().split("."), b = a.length;
+  var a = document.domain.toLowerCase().split("."), b = a.length;
   return 4 < b && 2 == a[b - 3].length ? a[b - 5] : 3 < b ? a[b - 4] : null;
 };
 pagespeed.MobUtil.resourceFileName = function(a) {
@@ -7530,7 +7525,7 @@ pagespeed.MobUtil.resourceFileName = function(a) {
   return a.substring(b, c);
 };
 pagespeed.MobUtil.proxyImageUrl = function(a, b) {
-  var c = goog.uri.utils.getHost(b || mob.util.getWindow().document.location.href), d = goog.uri.utils.getDomain(c), e = goog.uri.utils.getDomain(a);
+  var c = goog.uri.utils.getHost(b || document.location.href), d = goog.uri.utils.getDomain(c), e = goog.uri.utils.getDomain(a);
   if (null == d || null == e) {
     return a;
   }
@@ -7558,16 +7553,15 @@ pagespeed.MobUtil.extractImage = function(a, b) {
     case pagespeed.MobUtil.ImageSource.BACKGROUND:
       c = pagespeed.MobUtil.findBackgroundImage(a);
   }
-  return c ? c : null;
+  return c ? pagespeed.MobUtil.proxyImageUrl(c) : null;
 };
 pagespeed.MobUtil.synthesizeImage = function(a, b) {
   goog.asserts.assert(16 < a.length);
-  var c = mob.util.getWindow().atob(a), c = c.substring(0, 13) + String.fromCharCode(b[0], b[1], b[2]) + c.substring(16, c.length);
-  return "data:image/gif;base64," + mob.util.getWindow().btoa(c);
+  var c = window.atob(a), c = c.substring(0, 13) + String.fromCharCode(b[0], b[1], b[2]) + c.substring(16, c.length);
+  return "data:image/gif;base64," + window.btoa(c);
 };
 pagespeed.MobUtil.isCrossOrigin = function(a) {
-  var b = mob.util.getWindow().document.location.origin + "/";
-  return !goog.string.startsWith(a, b) && !goog.string.startsWith(a, "data:image/");
+  return !goog.string.startsWith(a, document.location.origin + "/") && !goog.string.startsWith(a, "data:image/");
 };
 pagespeed.MobUtil.boundingRectAndSize = function(a) {
   a = pagespeed.MobUtil.boundingRect(a);
@@ -7594,12 +7588,11 @@ pagespeed.MobUtil.toCssString1 = function(a) {
   return '"' + a + '"';
 };
 pagespeed.MobUtil.consoleLog = function(a) {
-  mob.util.getWindow().psDebugMode && console && console.log && console.log(a);
+  window.psDebugMode && console && console.log && console.log(a);
 };
 pagespeed.MobUtil.BeaconEvents = {CALL_CONVERSION_RESPONSE:"call-conversion-response", CALL_FALLBACK_NUMBER:"call-fallback-number", CALL_GV_NUMBER:"call-gv-number", INITIAL_EVENT:"initial-event", LOAD_EVENT:"load-event", MAP_BUTTON:"psmob-map-button", MENU_BUTTON_CLOSE:"psmob-menu-button-close", MENU_BUTTON_OPEN:"psmob-menu-button-open", SUBMENU_CLOSE:"psmob-submenu-close", SUBMENU_OPEN:"psmob-submenu-open", MENU_NAV_CLICK:"psmob-menu-nav-click", NAV_DONE:"nav-done", PHONE_BUTTON:"psmob-phone-dialer"};
 pagespeed.MobUtil.sendBeaconEvent = function(a, b, c) {
-  var d = mob.util.getWindow();
-  !d.psMobBeaconUrl && b ? b() : (a = d.psMobBeaconUrl + "?id=psmob&url=" + encodeURIComponent(d.document.URL) + "&el=" + a, d.psMobBeaconCategory && (a += "&category=" + d.psMobBeaconCategory), c && (a += c), c = d.document.createElement(goog.dom.TagName.IMG), c.src = a, b && (b = pagespeed.MobUtil.runCallbackOnce_(b), c.addEventListener(goog.events.EventType.LOAD, b), c.addEventListener(goog.events.EventType.ERROR, b), d.setTimeout(b, 500)));
+  !window.psMobBeaconUrl && b ? b() : (a = window.psMobBeaconUrl + "?id=psmob&url=" + encodeURIComponent(document.URL) + "&el=" + a, window.psMobBeaconCategory && (a += "&category=" + window.psMobBeaconCategory), c && (a += c), c = document.createElement(goog.dom.TagName.IMG), c.src = a, b && (b = pagespeed.MobUtil.runCallbackOnce_(b), c.addEventListener(goog.events.EventType.LOAD, b), c.addEventListener(goog.events.EventType.ERROR, b), window.setTimeout(b, 500)));
 };
 pagespeed.MobUtil.runCallbackOnce_ = function(a) {
   var b = !1;
@@ -7608,10 +7601,10 @@ pagespeed.MobUtil.runCallbackOnce_ = function(a) {
   };
 };
 mob.util.getZoomLevel = function() {
-  var a = mob.util.getWindow(), b = 1;
-  "desktop" != a.psDeviceType && (b = 90 == Math.abs(a.orientation) && screen.height > screen.width ? a.innerHeight / screen.width * b : a.innerWidth / screen.width * b);
-  goog.labs.userAgent.browser.isAndroidBrowser() && (b *= goog.dom.getPixelRatio());
-  return b;
+  var a = 1;
+  "desktop" != window.psDeviceType && (a = 90 == Math.abs(window.orientation) && screen.height > screen.width ? window.innerHeight / screen.width * a : window.innerWidth / screen.width * a);
+  goog.labs.userAgent.browser.isAndroidBrowser() && (a *= goog.dom.getPixelRatio());
+  return a;
 };
 mob.button = {};
 mob.button.AbstractButton = function(a, b, c, d) {
@@ -7842,7 +7835,7 @@ pagespeed.MobColor.prototype.computeColors_ = function(a, b, c, d) {
   return this.enhanceColors_(new pagespeed.MobColor.ThemeColors(k, m));
 };
 pagespeed.MobColor.prototype.computeThemeColor_ = function(a, b) {
-  var c = a.naturalWidth, d = a.naturalHeight, e = mob.util.getWindow().document.createElement(goog.dom.TagName.CANVAS);
+  var c = a.naturalWidth, d = a.naturalHeight, e = document.createElement(goog.dom.TagName.CANVAS);
   e.width = c;
   e.height = d;
   e = e.getContext("2d");
@@ -8246,7 +8239,7 @@ pagespeed.MobLogoCandidate = function(a, b, c) {
 pagespeed.MobLogo = function() {
   this.doneCallback_ = null;
   this.organization_ = pagespeed.MobUtil.getSiteOrganization();
-  this.landingUrl_ = mob.util.getWindow().location.origin + mob.util.getWindow().location.pathname;
+  this.landingUrl_ = window.location.origin + window.location.pathname;
   this.candidates_ = [];
   this.pendingEventCount_ = 0;
   this.maxNumCandidates_ = 1;
@@ -8268,7 +8261,7 @@ pagespeed.MobLogo.prototype.findLogoElement_ = function(a) {
   function b(a) {
     a && "string" == typeof a && (goog.string.caseInsensitiveContains(a, "logo") && ++d, this.organization && pagespeed.MobUtil.findPattern(a, this.organization_) && ++d);
   }
-  if ("hidden" == mob.util.getWindow().getComputedStyle(a).getPropertyValue("visibility")) {
+  if ("hidden" == window.getComputedStyle(a).getPropertyValue("visibility")) {
     return null;
   }
   var c = null, c = a.nodeName.toUpperCase() == goog.dom.TagName.IMG ? a.src : pagespeed.MobUtil.findBackgroundImage(a), c = pagespeed.MobUtil.resourceFileName(c);
@@ -8295,7 +8288,7 @@ pagespeed.MobLogo.prototype.addImageToPendingList_ = function(a) {
   a.addEventListener(goog.events.EventType.ERROR, goog.bind(this.eventDone_, this));
 };
 pagespeed.MobLogo.prototype.newImage_ = function(a) {
-  var b = mob.util.getWindow().document.createElement(goog.dom.TagName.IMG);
+  var b = document.createElement(goog.dom.TagName.IMG);
   this.addImageToPendingList_(b);
   b.src = a;
   return b;
@@ -8422,7 +8415,7 @@ pagespeed.MobLogo.prototype.findBestLogos_ = function() {
   return a;
 };
 pagespeed.MobLogo.prototype.extractBackgroundColor_ = function(a) {
-  return (a = mob.util.getWindow().document.defaultView.getComputedStyle(a, null)) && (a = a.getPropertyValue("background-color")) && (a = pagespeed.MobUtil.colorStringToNumbers(a)) && (3 == a.length || 4 == a.length && 0 != a[3]) ? a : null;
+  return (a = document.defaultView.getComputedStyle(a, null)) && (a = a.getPropertyValue("background-color")) && (a = pagespeed.MobUtil.colorStringToNumbers(a)) && (3 == a.length || 4 == a.length && 0 != a[3]) ? a : null;
 };
 pagespeed.MobLogo.prototype.findLogoBackground_ = function(a) {
   if (a && a.foregroundElement) {
@@ -8433,9 +8426,7 @@ pagespeed.MobLogo.prototype.findLogoBackground_ = function(a) {
   }
 };
 pagespeed.MobLogo.prototype.run = function(a, b) {
-  "undefined" != typeof extension && extension.addEventListener("loadComplete", goog.bind(this.eventDone_, this), !1);
-  var c = mob.util.getWindow().document.body;
-  this.doneCallback_ || !c ? a([]) : (this.doneCallback_ = a, this.maxNumCandidates_ = b, this.findLogoCandidates_(c), this.findImagesAndWait_(this.candidates_));
+  this.doneCallback_ || !document.body ? a([]) : (this.doneCallback_ = a, this.maxNumCandidates_ = b, this.findLogoCandidates_(document.body), this.findImagesAndWait_(this.candidates_));
 };
 goog.exportProperty(pagespeed.MobLogo.prototype, "run", pagespeed.MobLogo.prototype.run);
 mob.NavPanel = function(a, b) {
