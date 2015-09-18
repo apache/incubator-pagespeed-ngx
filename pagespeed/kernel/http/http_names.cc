@@ -54,6 +54,7 @@ const char HttpAttributes::kIfModifiedSince[] = "If-Modified-Since";
 const char HttpAttributes::kIfNoneMatch[] = "If-None-Match";
 const char HttpAttributes::kKeepAlive[] = "Keep-Alive";
 const char HttpAttributes::kLastModified[] = "Last-Modified";
+const char HttpAttributes::kLink[] = "Link";
 const char HttpAttributes::kLocation[] = "Location";
 const char HttpAttributes::kMaxAge[] = "max-age";
 const char HttpAttributes::kNoCache[] = "no-cache";

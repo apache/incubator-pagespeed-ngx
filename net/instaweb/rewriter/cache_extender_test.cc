@@ -235,6 +235,8 @@ class CacheExtenderTest : public RewriteTestBase {
     EXPECT_EQ(last_modified_on_origin_,
               headers.Has(HttpAttributes::kLastModified));
     EXPECT_GT(fetch1_time_ms, expected_last_modified_time_ms);
+    // No canonical on .css
+    EXPECT_FALSE(headers.Has(HttpAttributes::kLink));
 
     AdvanceTimeMs(10 * Timer::kSecondMs);
 
@@ -242,6 +244,10 @@ class CacheExtenderTest : public RewriteTestBase {
     headers.Clear();
     ASSERT_TRUE(FetchResource(kTestDomain, kFilterId, "b.jpg", "jpg",
                               &content, &headers));
+    const char* link = headers.Lookup1(HttpAttributes::kLink);
+    ASSERT_TRUE(link != NULL);
+    // .jpg should get a canonical link.
+    EXPECT_STREQ("<http://test.com/b.jpg>; rel=\"canonical\"", link);
     int64 fetch2_time_ms = timer()->NowMs();
     EXPECT_GT(fetch2_time_ms, fetch1_time_ms);
     EXPECT_EQ(expected_last_modified_time_ms, headers.last_modified_time_ms());
@@ -254,6 +260,8 @@ class CacheExtenderTest : public RewriteTestBase {
     EXPECT_EQ(expected_last_modified_time_ms, headers.last_modified_time_ms());
     EXPECT_EQ(last_modified_on_origin_,
               headers.Has(HttpAttributes::kLastModified));
+    // No canonical on .js
+    EXPECT_FALSE(headers.Has(HttpAttributes::kLink));
     headers.Clear();
 
     EXPECT_EQ(GoogleString(kJsData), content);
@@ -582,6 +590,36 @@ TEST_F(CacheExtenderTest, ExtendIfRewritten) {
   EXPECT_EQ(3, num_cache_extended_->Get())
       << "Number of cache extended resources is wrong";
   EXPECT_STREQ("ec,ei,es", AppliedRewriterStringFromLog());
+}
+
+TEST_F(CacheExtenderTest, NoLinkCanonicalIfDomainMapComplexity) {
+  InitTest(kShortTtlSec);
+  EXPECT_TRUE(AddRewriteDomainMapping("cdn.com", kTestDomain));
+  EXPECT_TRUE(AddOriginDomainMapping(kTestDomain, "http://cdn.com"));
+
+  ValidateExpected(
+      "extend_if_rewritten",
+      GenerateHtml(kCssFile, "b.jpg", "c.js", kInput),
+      GenerateHtml(
+          Encode("http://cdn.com/sub/", "ce", "0", kCssTail, "css"),
+          Encode("http://cdn.com/", "ce", "0", "b.jpg", "jpg"),
+          Encode("http://cdn.com/", "ce", "0", "c.js", "js"), kOutput));
+
+  // Make sure the resource doesn't get a link header, due to
+  // the rewrite mapping.
+  ResponseHeaders headers;
+  GoogleString content;
+  ASSERT_TRUE(FetchResourceUrl(
+      Encode(kTestDomain, "ce", "0", "b.jpg", "jpg"),
+      &content, &headers));
+  EXPECT_FALSE(headers.Has(HttpAttributes::kLink));
+
+  // Likewise for reconstruction.
+  lru_cache()->Clear();
+  ASSERT_TRUE(FetchResourceUrl(
+      Encode("http://cdn.com/", "ce", "0", "b.jpg", "jpg"),
+      &content, &headers));
+  EXPECT_FALSE(headers.Has(HttpAttributes::kLink));
 }
 
 TEST_F(CacheExtenderTest, ExtendIfShardedAndRewritten) {

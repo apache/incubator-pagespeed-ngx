@@ -436,6 +436,7 @@ void ImageRewriteFilter::Context::RewriteSingle(
     const OutputResourcePtr& output_resource) {
   bool is_ipro = IsNestedIn(RewriteOptions::kInPlaceRewriteId);
   AttachDependentRequestTrace(is_ipro ? "IproProcessImage" : "ProcessImage");
+  AddLinkRelCanonical(input_resource, output_resource);
   RewriteDone(
       filter_->RewriteLoadedResourceImpl(this, input_resource, output_resource),
       0);

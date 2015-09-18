@@ -324,6 +324,16 @@ void RewriteTestBase::AppendDefaultHeaders(
   headers.WriteAsHttp(&writer, message_handler());
 }
 
+void RewriteTestBase::AppendDefaultHeadersWithCanonical(
+    const ContentType& content_type, StringPiece canon, GoogleString* text) {
+  ResponseHeaders headers;
+  headers.Add(HttpAttributes::kLink,
+              StrCat("<", canon, ">; rel=\"canonical\""));
+  PopulateDefaultHeaders(content_type, 0, &headers);
+  StringWriter writer(text);
+  headers.WriteAsHttp(&writer, message_handler());
+}
+
 void RewriteTestBase::AppendDefaultHeaders(
     const ContentType& content_type, int64 original_content_length,
     GoogleString* text) {

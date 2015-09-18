@@ -203,6 +203,14 @@ bool CacheExtender::ComputeOnTheFly() const {
 void CacheExtender::Context::RewriteSingle(
     const ResourcePtr& input_resource,
     const OutputResourcePtr& output_resource) {
+  // We only add link: rel = canonical to images and PDF; people don't normally
+  // use search engines to look for .css and .js files, so adding it
+  // there would just be a waste of bytes.
+  if (input_resource->type() != NULL &&
+      (input_resource->type()->IsImage() ||
+       input_resource->type()->type() == ContentType::kPdf)) {
+    AddLinkRelCanonical(input_resource, output_resource);
+  }
   RewriteDone(
       extender_->RewriteLoadedResource(
           input_resource, output_resource, output_partition(0)), 0);

@@ -188,6 +188,11 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   void AppendDefaultHeaders(const ContentType& content_type,
                             GoogleString* text);
 
+  // Like above, but also include a Link: <..>; rel="canonical" header.
+  void AppendDefaultHeadersWithCanonical(const ContentType& content_type,
+                                         StringPiece canonical_url,
+                                         GoogleString* text);
+
   // Append default headers to the given string, including
   // X-Original-Content-Length for tests that depend on this.
   void AppendDefaultHeaders(const ContentType& content_type,

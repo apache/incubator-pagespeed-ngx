@@ -25,6 +25,8 @@
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/http/http_names.h"
+#include "pagespeed/kernel/http/google_url.h"
 
 namespace net_instaweb {
 
@@ -78,6 +80,31 @@ void SingleRewriteContext::Rewrite(int partition_index,
     DCHECK_EQ(output_resource->cached_result(), partition);
   }
   RewriteSingle(resource, output_resource);
+}
+
+void SingleRewriteContext::AddLinkRelCanonical(
+    const ResourcePtr& input, const OutputResourcePtr& output) {
+  // It's unclear what we should do in case of complex domain mapping
+  // configurations, so we simply avoid adding a header in that case.
+  //
+  // Also note that we may see both the original and rewritten URLs,
+  // depending on whether we're handling the HTML or the resource fetch.
+  const DomainLawyer* domain_lawyer = Options()->domain_lawyer();
+  GoogleUrl input_gurl(input->url());
+  if (domain_lawyer->WillDomainChange(input_gurl)) {
+    return;
+  }
+
+  ConstStringStarVector rewritten_to;
+  domain_lawyer->FindDomainsRewrittenTo(input_gurl, &rewritten_to);
+  if (!rewritten_to.empty()) {
+    return;
+  }
+
+  output->response_headers()->Add(
+      HttpAttributes::kLink,
+      StrCat("<", GoogleUrl::Sanitize(input->url()), ">; ",
+            "rel=\"canonical\""));
 }
 
 }  // namespace net_instaweb

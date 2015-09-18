@@ -53,6 +53,10 @@ class SingleRewriteContext : public RewriteContext {
                        CachedResult* partition,
                        const OutputResourcePtr& output);
 
+  // Adds a link: rel=canonical header pointing to the input URL as canonical.
+  void AddLinkRelCanonical(const ResourcePtr& input,
+                           const OutputResourcePtr& output);
+
  private:
   DISALLOW_COPY_AND_ASSIGN(SingleRewriteContext);
 };

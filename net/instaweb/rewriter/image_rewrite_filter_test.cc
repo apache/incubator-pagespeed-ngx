@@ -264,7 +264,9 @@ class ImageRewriteTest : public RewriteTestBase {
     // since the clock -after- rewrite is non-deterministic, but it must be
     // at the initial value at the time of the rewrite.
     GoogleString expect_headers;
-    AppendDefaultHeaders(content_type, &expect_headers);
+    AppendDefaultHeadersWithCanonical(content_type,
+                                      "http://rewrite_image.test/Puzzle.jpg",
+                                      &expect_headers);
 
     GoogleString src_string;
 
@@ -307,7 +309,9 @@ class ImageRewriteTest : public RewriteTestBase {
 
     // New time --- new timestamp.
     expect_headers.clear();
-    AppendDefaultHeaders(content_type, &expect_headers);
+    AppendDefaultHeadersWithCanonical(content_type,
+                                      "http://rewrite_image.test/Puzzle.jpg",
+                                      &expect_headers);
 
     EXPECT_TRUE(rewrite_driver()->FetchResource(img_gurl.Spec(),
                                                 &expect_callback));
