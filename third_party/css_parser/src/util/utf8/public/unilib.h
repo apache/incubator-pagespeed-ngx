@@ -34,44 +34,11 @@
 #include <string>
 #include "base/integral_types.h"
 
+// We export OneCharLen, IsValidCodepoint, and IsTrailByte from here,
+// but they are defined in unilib_utf8_utils.h.
+#include "util/utf8/public/unilib_utf8_utils.h"
+
 namespace UniLib {
-
-// Returns true unless a surrogate code point
-inline bool IsValidCodepoint(char32 c) {
-  // In the range [0, 0xD800) or [0xE000, 0x10FFFF]
-  return (static_cast<uint32>(c) < 0xD800)
-    || (c >= 0xE000 && c <= 0x10FFFF);
-}
-
-// Table of UTF-8 character lengths, based on first byte
-static const unsigned char kUTF8LenTbl[256] = {
-  1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,
-  1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,
-  1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,
-  1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,
-
-  1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,
-  1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,
-  2,2,2,2,2,2,2,2, 2,2,2,2,2,2,2,2, 2,2,2,2,2,2,2,2, 2,2,2,2,2,2,2,2,
-  3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3, 4,4,4,4,4,4,4,4, 4,4,4,4,4,4,4,4
-};
-
-// Return length of a single UTF-8 source character
-inline int OneCharLen(const char* src) {
-  return kUTF8LenTbl[*reinterpret_cast<const uint8*>(src)];
-}
-
-// Return length of a single UTF-8 source character
-inline int OneCharLen(const uint8* src) {
-  return kUTF8LenTbl[*src];
-}
-
-// Return true if this byte is a trailing UTF-8 byte (10xx xxxx)
-inline bool IsTrailByte(char x) {
-  // return (x & 0xC0) == 0x80;
-  // Since trail bytes are always in [0x80, 0xBF], we can optimize:
-  return static_cast<signed char>(x) < -0x40;
-}
 
 // Returns the length in bytes of the prefix of src that is all
 //  interchange valid UTF-8
