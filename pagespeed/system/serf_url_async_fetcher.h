@@ -27,6 +27,9 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/http/response_headers_parser.h"
+
+#include "third_party/serf/src/serf.h"
 
 // To enable HTTPS fetching with serf, we must link against OpenSSL,
 // which is a a large library with licensing restrictions not known to
@@ -264,6 +267,173 @@ class SerfUrlAsyncFetcher : public UrlAsyncFetcher {
   GoogleString ssl_certificates_file_;
 
   DISALLOW_COPY_AND_ASSIGN(SerfUrlAsyncFetcher);
+};
+
+// TODO(lsong): Move this to a separate file. Necessary?
+class SerfFetch : public PoolElement<SerfFetch> {
+ public:
+  // TODO(lsong): make use of request_headers.
+  SerfFetch(const GoogleString& url,
+            AsyncFetch* async_fetch,
+            MessageHandler* message_handler,
+            Timer* timer);
+  ~SerfFetch();
+
+  // Start the fetch. It returns immediately.  This can only be run when
+  // locked with fetcher->mutex_.
+  bool Start(SerfUrlAsyncFetcher* fetcher);
+
+  GoogleString DebugInfo();
+
+  // This must be called while holding SerfUrlAsyncFetcher's mutex_.
+  void Cancel();
+
+  // Calls the callback supplied by the user.  This needs to happen
+  // exactly once.  In some error cases it appears that Serf calls
+  // HandleResponse multiple times on the same object.
+  //
+  // This must be called while holding SerfUrlAsyncFetcher's mutex_.
+  //
+  // Note that when there are SSL error messages, we immediately call
+  // CallCallback, which is robust against duplicate calls in that case.
+  void CallCallback(bool success);
+  void CallbackDone(bool success);
+
+  // If last poll of this fetch's connection resulted in an error, clean it up.
+  // Must be called after serf_context_run, with fetcher's mutex_ held.
+  void CleanupIfError();
+
+  // For use only by unit tests.  Calls ParseUrl(), then makes things available
+  // for checking.
+  void ParseUrlForTesting(bool* status,
+                          apr_uri_t** url,
+                          const char** host_header,
+                          const char** sni_host);
+
+  void SetFetcherForTesting(SerfUrlAsyncFetcher* fetcher);
+
+  int64 TimeDuration() const;
+
+  int64 fetch_start_ms() const { return fetch_start_ms_; }
+
+  size_t bytes_received() const { return bytes_received_; }
+  MessageHandler* message_handler() { return message_handler_; }
+
+ private:
+  // Static functions used in callbacks.
+
+  // The code under SERF_HTTPS_FETCHING was contributed by Devin Anderson
+  // (surfacepatterns@gmail.com).
+  //
+  // Note this must be ifdef'd because calling serf_bucket_ssl_decrypt_create
+  // requires ssl_buckets.c in the link.  ssl_buckets.c requires openssl.
+#if SERF_HTTPS_FETCHING
+  static apr_status_t SSLCertError(void *data, int failures,
+                                   const serf_ssl_certificate_t *cert);
+
+  static apr_status_t SSLCertChainError(
+      void *data, int failures, int error_depth,
+      const serf_ssl_certificate_t * const *certs,
+      apr_size_t certs_count);
+#endif
+
+  static apr_status_t ConnectionSetup(
+      apr_socket_t* socket, serf_bucket_t **read_bkt, serf_bucket_t **write_bkt,
+      void* setup_baton, apr_pool_t* pool);
+  static void ClosedConnection(serf_connection_t* conn,
+                               void* closed_baton,
+                               apr_status_t why,
+                               apr_pool_t* pool);
+  static serf_bucket_t* AcceptResponse(serf_request_t* request,
+                                       serf_bucket_t* stream,
+                                       void* acceptor_baton,
+                                       apr_pool_t* pool);
+  static apr_status_t HandleResponse(serf_request_t* request,
+                                     serf_bucket_t* response,
+                                     void* handler_baton,
+                                     apr_pool_t* pool);
+  static bool MoreDataAvailable(apr_status_t status);
+  static bool IsStatusOk(apr_status_t status);
+
+#if SERF_HTTPS_FETCHING
+  // Called indicating whether SSL certificate errors have occurred detected.
+  // The function returns SUCCESS in all cases, but sets ssl_error_message_
+  // non-null for errors as a signal to ReadHeaders that we should not let
+  // any output thorugh.
+  //
+  // Interpretation of two of the error conditions is configuraable:
+  // 'allow_unknown_certificate_authority' and 'allow_self_signed'.
+  apr_status_t HandleSSLCertErrors(int errors, int failure_depth);
+#endif
+
+  apr_status_t HandleResponse(serf_bucket_t* response);
+
+  apr_status_t ReadStatusLine(serf_bucket_t* response);
+
+  // Know what's weird?  You have do a body-read to get access to the
+  // headers.  You need to read 1 byte of body to force an FSM inside
+  // Serf to parse the headers.  Then you can parse the headers and
+  // finally read the rest of the body.  I know, right?
+  //
+  // The simpler approach, and likely what the Serf designers intended,
+  // is that you read the entire body first, and then read the headers.
+  // But if you are trying to stream the data as its fetched through some
+  // kind of function that needs to know the content-type, then it's
+  // really a drag to have to wait till the end of the body to get the
+  // content type.
+  apr_status_t ReadOneByteFromBody(serf_bucket_t* response);
+
+  // Once that one byte is read from the body, we can go ahead and
+  // parse the headers.  The dynamics of this appear that for N
+  // headers we'll get 2N calls to serf_bucket_read: one each for
+  // attribute names & values.
+  apr_status_t ReadHeaders(serf_bucket_t* response);
+
+  // Once headers are complete we can get the body.  The dynamics of this
+  // are likely dependent on everything on the network between the client
+  // and server, but for a 10k buffer I seem to frequently get 8k chunks.
+  apr_status_t ReadBody(serf_bucket_t* response);
+
+  // Ensures that a user-agent string is included, and that the mod_pagespeed
+  // version is appended.
+  void FixUserAgent();
+  static apr_status_t SetupRequest(serf_request_t* request,
+                                   void* setup_baton,
+                                   serf_bucket_t** req_bkt,
+                                   serf_response_acceptor_t* acceptor,
+                                   void** acceptor_baton,
+                                   serf_response_handler_t* handler,
+                                   void** handler_baton,
+                                   apr_pool_t* pool);
+  bool ParseUrl();
+
+  SerfUrlAsyncFetcher* fetcher_;
+  Timer* timer_;
+  const GoogleString str_url_;
+  AsyncFetch* async_fetch_;
+  ResponseHeadersParser parser_;
+  bool status_line_read_;
+  bool one_byte_read_;
+  bool has_saved_byte_;
+  char saved_byte_;
+  MessageHandler* message_handler_;
+
+  apr_pool_t* pool_;
+  serf_bucket_alloc_t* bucket_alloc_;
+  apr_uri_t url_;
+  const char* host_header_;  // in pool_
+  const char* sni_host_;  // in pool_
+  serf_connection_t* connection_;
+  size_t bytes_received_;
+  int64 fetch_start_ms_;
+  int64 fetch_end_ms_;
+
+  // Variables used for HTTPS connection handling
+  bool using_https_;
+  serf_ssl_context_t* ssl_context_;
+  const char* ssl_error_message_;
+
+  DISALLOW_COPY_AND_ASSIGN(SerfFetch);
 };
 
 }  // namespace net_instaweb

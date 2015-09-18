@@ -50,8 +50,6 @@
 #include "pagespeed/kernel/http/http_names.h"
 #include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/response_headers.h"
-#include "pagespeed/kernel/http/response_headers_parser.h"
-#include "third_party/serf/src/serf.h"
 
 // This is an easy way to turn on lots of debug messages. Note that this
 // is somewhat verbose.
@@ -106,688 +104,612 @@ GoogleString GetAprErrorString(apr_status_t status) {
   return error_str;
 }
 
-// TODO(lsong): Move this to a separate file. Necessary?
-class SerfFetch : public PoolElement<SerfFetch> {
- public:
-  // TODO(lsong): make use of request_headers.
-  SerfFetch(const GoogleString& url,
-            AsyncFetch* async_fetch,
-            MessageHandler* message_handler,
-            Timer* timer)
-      : fetcher_(NULL),
-        timer_(timer),
-        str_url_(url),
-        async_fetch_(async_fetch),
-        parser_(async_fetch->response_headers()),
-        status_line_read_(false),
-        one_byte_read_(false),
-        has_saved_byte_(false),
-        saved_byte_('\0'),
-        message_handler_(message_handler),
-        pool_(NULL),  // filled in once assigned to a thread, to use its pool.
-        bucket_alloc_(NULL),
-        host_header_(NULL),
-        sni_host_(NULL),
-        connection_(NULL),
-        bytes_received_(0),
-        fetch_start_ms_(0),
-        fetch_end_ms_(0),
-        using_https_(false),
-        ssl_context_(NULL),
-        ssl_error_message_(NULL) {
-    memset(&url_, 0, sizeof(url_));
+SerfFetch::SerfFetch(const GoogleString& url,
+                     AsyncFetch* async_fetch,
+                     MessageHandler* message_handler,
+                     Timer* timer)
+    : fetcher_(NULL),
+      timer_(timer),
+      str_url_(url),
+      async_fetch_(async_fetch),
+      parser_(async_fetch->response_headers()),
+      status_line_read_(false),
+      one_byte_read_(false),
+      has_saved_byte_(false),
+      saved_byte_('\0'),
+      message_handler_(message_handler),
+      pool_(NULL),  // filled in once assigned to a thread, to use its pool.
+      bucket_alloc_(NULL),
+      host_header_(NULL),
+      sni_host_(NULL),
+      connection_(NULL),
+      bytes_received_(0),
+      fetch_start_ms_(0),
+      fetch_end_ms_(0),
+      using_https_(false),
+      ssl_context_(NULL),
+      ssl_error_message_(NULL) {
+  memset(&url_, 0, sizeof(url_));
+}
+
+SerfFetch::~SerfFetch() {
+  DCHECK(async_fetch_ == NULL);
+  if (connection_ != NULL) {
+    serf_connection_close(connection_);
   }
-
-  ~SerfFetch() {
-    DCHECK(async_fetch_ == NULL);
-    if (connection_ != NULL) {
-      serf_connection_close(connection_);
-    }
-    if (pool_ != NULL) {
-      apr_pool_destroy(pool_);
-    }
+  if (pool_ != NULL) {
+    apr_pool_destroy(pool_);
   }
+}
 
-  // Start the fetch. It returns immediately.  This can only be run when
-  // locked with fetcher->mutex_.
-  bool Start(SerfUrlAsyncFetcher* fetcher);
-
-  GoogleString DebugInfo() {
-    if (host_header_ != NULL &&
-        url_.scheme != NULL &&
-        url_.hostinfo != NULL) {
-      GoogleUrl base(StrCat(url_.scheme, "://", host_header_));
-      if (base.IsWebValid()) {
-        const char* url_path = apr_uri_unparse(pool_, &url_,
-                                               APR_URI_UNP_OMITSITEPART);
-        GoogleUrl abs_url(base, url_path);
-        if (abs_url.IsWebValid()) {
-          GoogleString debug_info;
-          abs_url.Spec().CopyToString(&debug_info);
-          if (StringPiece(url_.hostinfo) != host_header_) {
-            StrAppend(&debug_info, " (connecting to:", url_.hostinfo, ")");
-          }
-          return debug_info;
+GoogleString SerfFetch::DebugInfo() {
+  if (host_header_ != NULL &&
+      url_.scheme != NULL &&
+      url_.hostinfo != NULL) {
+    GoogleUrl base(StrCat(url_.scheme, "://", host_header_));
+    if (base.IsWebValid()) {
+      const char* url_path = apr_uri_unparse(pool_, &url_,
+                                             APR_URI_UNP_OMITSITEPART);
+      GoogleUrl abs_url(base, url_path);
+      if (abs_url.IsWebValid()) {
+        GoogleString debug_info;
+        abs_url.Spec().CopyToString(&debug_info);
+        if (StringPiece(url_.hostinfo) != host_header_) {
+          StrAppend(&debug_info, " (connecting to:", url_.hostinfo, ")");
         }
+        return debug_info;
       }
     }
-    return str_url_;
+  }
+  return str_url_;
+}
+
+void SerfFetch::Cancel() {
+  if (connection_ != NULL) {
+    // We can get here either because we're canceling the connection ourselves
+    // or because Serf detected an error.
+    //
+    // If we canceled/timed out, we want to close the serf connection so it
+    // doesn't call us back, as we will detach from the async_fetch_ shortly.
+    //
+    // If Serf detected an error we also want to clean up as otherwise it will
+    // keep re-detecting it, which will interfere with other jobs getting
+    // handled (until we finally cleanup the old fetch and close things in
+    // ~SerfFetch).
+    serf_connection_close(connection_);
+    connection_ = NULL;
   }
 
-  // This must be called while holding SerfUrlAsyncFetcher's mutex_.
-  void Cancel() {
-    if (connection_ != NULL) {
-      // We can get here either because we're canceling the connection ourselves
-      // or because Serf detected an error.
-      //
-      // If we canceled/timed out, we want to close the serf connection so it
-      // doesn't call us back, as we will detach from the async_fetch_ shortly.
-      //
-      // If Serf detected an error we also want to clean up as otherwise it will
-      // keep re-detecting it, which will interfere with other jobs getting
-      // handled (until we finally cleanup the old fetch and close things in
-      // ~SerfFetch).
-      serf_connection_close(connection_);
-      connection_ = NULL;
-    }
+  CallCallback(false);
+}
 
-    CallCallback(false);
+void SerfFetch::CallCallback(bool success) {
+  if (ssl_error_message_ != NULL) {
+    success = false;
   }
 
-  // Calls the callback supplied by the user.  This needs to happen
-  // exactly once.  In some error cases it appears that Serf calls
-  // HandleResponse multiple times on the same object.
-  //
-  // This must be called while holding SerfUrlAsyncFetcher's mutex_.
-  //
-  // Note that when there are SSL error messages, we immediately call
-  // CallCallback, which is robust against duplicate calls in that case.
-  void CallCallback(bool success) {
-    if (ssl_error_message_ != NULL) {
-      success = false;
-    }
+  if (async_fetch_ != NULL) {
+    fetch_end_ms_ = timer_->NowMs();
+    fetcher_->ReportCompletedFetchStats(this);
+    CallbackDone(success);
+    fetcher_->FetchComplete(this);
+  } else if (ssl_error_message_ == NULL) {
+    LOG(FATAL) << "BUG: Serf callback called more than once on same fetch "
+               << DebugInfo() << " (" << this << ").  Please report this "
+               << "at http://code.google.com/p/modpagespeed/issues/";
+  }
+}
 
-    if (async_fetch_ != NULL) {
-      fetch_end_ms_ = timer_->NowMs();
-      fetcher_->ReportCompletedFetchStats(this);
-      CallbackDone(success);
-      fetcher_->FetchComplete(this);
-    } else if (ssl_error_message_ == NULL) {
-      LOG(FATAL) << "BUG: Serf callback called more than once on same fetch "
-                 << DebugInfo() << " (" << this << ").  Please report this "
-                 << "at http://code.google.com/p/modpagespeed/issues/";
+void SerfFetch::CallbackDone(bool success) {
+  // fetcher_==NULL if Start is called during shutdown.
+  if (fetcher_ != NULL) {
+    if (!success) {
+      fetcher_->failure_count_->Add(1);
+    }
+    if (fetcher_->track_original_content_length() &&
+        !async_fetch_->response_headers()->Has(
+            HttpAttributes::kXOriginalContentLength)) {
+      async_fetch_->extra_response_headers()->SetOriginalContentLength(
+          bytes_received_);
     }
   }
+  async_fetch_->Done(success);
+  // We should always NULL the async_fetch_ out after calling otherwise we
+  // could get weird double calling errors.
+  async_fetch_ = NULL;
+}
 
-  void CallbackDone(bool success) {
-    // fetcher_==NULL if Start is called during shutdown.
-    if (fetcher_ != NULL) {
-      if (!success) {
-        fetcher_->failure_count_->Add(1);
-      }
-      if (fetcher_->track_original_content_length() &&
-          !async_fetch_->response_headers()->Has(
-              HttpAttributes::kXOriginalContentLength)) {
-        async_fetch_->extra_response_headers()->SetOriginalContentLength(
-            bytes_received_);
-      }
-    }
-    async_fetch_->Done(success);
-    // We should always NULL the async_fetch_ out after calling otherwise we
-    // could get weird double calling errors.
-    async_fetch_ = NULL;
+void SerfFetch::CleanupIfError() {
+  if ((connection_ != NULL) &&
+      serf_connection_is_in_error_state(connection_)) {
+    message_handler_->Message(
+        kInfo, "Serf cleanup for error'd fetch of: %s", DebugInfo().c_str());
+    Cancel();
   }
+}
 
-  // If last poll of this fetch's connection resulted in an error, clean it up.
-  // Must be called after serf_context_run, with fetcher's mutex_ held.
-  void CleanupIfError() {
-    if ((connection_ != NULL) &&
-        serf_connection_is_in_error_state(connection_)) {
-      message_handler_->Message(
-          kInfo, "Serf cleanup for error'd fetch of: %s", DebugInfo().c_str());
-      Cancel();
-    }
+int64 SerfFetch::TimeDuration() const {
+  if ((fetch_start_ms_ != 0) && (fetch_end_ms_ != 0)) {
+    return fetch_end_ms_ - fetch_start_ms_;
+  } else {
+    return 0;
   }
+}
 
-  int64 TimeDuration() const {
-    if ((fetch_start_ms_ != 0) && (fetch_end_ms_ != 0)) {
-      return fetch_end_ms_ - fetch_start_ms_;
-    } else {
-      return 0;
-    }
-  }
-  int64 fetch_start_ms() const { return fetch_start_ms_; }
-
-  size_t bytes_received() const { return bytes_received_; }
-  MessageHandler* message_handler() { return message_handler_; }
-
- private:
-  // Static functions used in callbacks.
-
-  // The code under SERF_HTTPS_FETCHING was contributed by Devin Anderson
-  // (surfacepatterns@gmail.com).
-  //
-  // Note this must be ifdef'd because calling serf_bucket_ssl_decrypt_create
-  // requires ssl_buckets.c in the link.  ssl_buckets.c requires openssl.
 #if SERF_HTTPS_FETCHING
-  static apr_status_t SSLCertError(void *data, int failures,
-                                   const serf_ssl_certificate_t *cert) {
-    return static_cast<SerfFetch*>(data)->HandleSSLCertErrors(failures, 0);
-  }
+// static
+apr_status_t SerfFetch::SSLCertError(void *data, int failures,
+                                     const serf_ssl_certificate_t *cert) {
+  return static_cast<SerfFetch*>(data)->HandleSSLCertErrors(failures, 0);
+}
 
-  static apr_status_t SSLCertChainError(
-      void *data, int failures, int error_depth,
-      const serf_ssl_certificate_t * const *certs,
-      apr_size_t certs_count) {
-    return static_cast<SerfFetch*>(data)->HandleSSLCertErrors(failures,
-                                                              error_depth);
-  }
+// static
+apr_status_t SerfFetch::SSLCertChainError(
+    void *data, int failures, int error_depth,
+    const serf_ssl_certificate_t * const *certs,
+    apr_size_t certs_count) {
+  return static_cast<SerfFetch*>(data)->HandleSSLCertErrors(failures,
+                                                            error_depth);
+}
 #endif
 
-  static apr_status_t ConnectionSetup(
-      apr_socket_t* socket, serf_bucket_t **read_bkt, serf_bucket_t **write_bkt,
-      void* setup_baton, apr_pool_t* pool) {
-    SerfFetch* fetch = static_cast<SerfFetch*>(setup_baton);
-    *read_bkt = serf_bucket_socket_create(socket, fetch->bucket_alloc_);
+// static
+apr_status_t SerfFetch::ConnectionSetup(
+    apr_socket_t* socket, serf_bucket_t **read_bkt, serf_bucket_t **write_bkt,
+    void* setup_baton, apr_pool_t* pool) {
+  SerfFetch* fetch = static_cast<SerfFetch*>(setup_baton);
+  *read_bkt = serf_bucket_socket_create(socket, fetch->bucket_alloc_);
 #if SERF_HTTPS_FETCHING
-    apr_status_t status = APR_SUCCESS;
-    if (fetch->using_https_) {
-      *read_bkt = serf_bucket_ssl_decrypt_create(*read_bkt,
-                                                 fetch->ssl_context_,
-                                                 fetch->bucket_alloc_);
+  apr_status_t status = APR_SUCCESS;
+  if (fetch->using_https_) {
+    *read_bkt = serf_bucket_ssl_decrypt_create(*read_bkt,
+                                               fetch->ssl_context_,
+                                               fetch->bucket_alloc_);
+    if (fetch->ssl_context_ == NULL) {
+      fetch->ssl_context_ = serf_bucket_ssl_decrypt_context_get(*read_bkt);
       if (fetch->ssl_context_ == NULL) {
-        fetch->ssl_context_ = serf_bucket_ssl_decrypt_context_get(*read_bkt);
-        if (fetch->ssl_context_ == NULL) {
-          status = APR_EGENERAL;
-        } else {
-          SerfUrlAsyncFetcher* fetcher = fetch->fetcher_;
-          const GoogleString& certs_dir = fetcher->ssl_certificates_dir();
-          const GoogleString& certs_file = fetcher->ssl_certificates_file();
+        status = APR_EGENERAL;
+      } else {
+        SerfUrlAsyncFetcher* fetcher = fetch->fetcher_;
+        const GoogleString& certs_dir = fetcher->ssl_certificates_dir();
+        const GoogleString& certs_file = fetcher->ssl_certificates_file();
 
-          if (!certs_file.empty()) {
-            status = serf_ssl_set_certificates_file(
-                fetch->ssl_context_, certs_file.c_str());
-          }
-          if ((status == APR_SUCCESS) && !certs_dir.empty()) {
-            status = serf_ssl_set_certificates_directory(fetch->ssl_context_,
-                                                         certs_dir.c_str());
-          }
-
-          // If no explicit file or directory is specified, then use the
-          // compiled-in default.
-          if (certs_dir.empty() && certs_file.empty()) {
-            status = serf_ssl_use_default_certificates(fetch->ssl_context_);
-          }
+        if (!certs_file.empty()) {
+          status = serf_ssl_set_certificates_file(
+              fetch->ssl_context_, certs_file.c_str());
         }
-        if (status != APR_SUCCESS) {
-          return status;
+        if ((status == APR_SUCCESS) && !certs_dir.empty()) {
+          status = serf_ssl_set_certificates_directory(fetch->ssl_context_,
+                                                       certs_dir.c_str());
+        }
+
+        // If no explicit file or directory is specified, then use the
+        // compiled-in default.
+        if (certs_dir.empty() && certs_file.empty()) {
+          status = serf_ssl_use_default_certificates(fetch->ssl_context_);
         }
       }
-
-      serf_ssl_server_cert_callback_set(fetch->ssl_context_, SSLCertError,
-                                        fetch);
-
-      serf_ssl_server_cert_chain_callback_set(fetch->ssl_context_,
-                                              SSLCertError, SSLCertChainError,
-                                              fetch);
-
-      status = serf_ssl_set_hostname(fetch->ssl_context_, fetch->sni_host_);
       if (status != APR_SUCCESS) {
-        LOG(INFO) << "Unable to set hostname from serf fetcher. Connection "
-                     "setup failed";
         return status;
       }
-      *write_bkt = serf_bucket_ssl_encrypt_create(*write_bkt,
-                                                  fetch->ssl_context_,
-                                                  fetch->bucket_alloc_);
     }
+
+    serf_ssl_server_cert_callback_set(fetch->ssl_context_, SSLCertError,
+                                      fetch);
+
+    serf_ssl_server_cert_chain_callback_set(fetch->ssl_context_,
+                                            SSLCertError, SSLCertChainError,
+                                            fetch);
+
+    status = serf_ssl_set_hostname(fetch->ssl_context_, fetch->sni_host_);
+    if (status != APR_SUCCESS) {
+      LOG(INFO) << "Unable to set hostname from serf fetcher. Connection "
+                   "setup failed";
+      return status;
+    }
+    *write_bkt = serf_bucket_ssl_encrypt_create(*write_bkt,
+                                                fetch->ssl_context_,
+                                                fetch->bucket_alloc_);
+  }
 #endif
-    return APR_SUCCESS;
-  }
+  return APR_SUCCESS;
+}
 
-  static void ClosedConnection(serf_connection_t* conn,
-                               void* closed_baton,
-                               apr_status_t why,
-                               apr_pool_t* pool) {
-    SerfFetch* fetch = static_cast<SerfFetch*>(closed_baton);
-    if (why != APR_SUCCESS) {
-      fetch->message_handler_->Warning(
-          fetch->DebugInfo().c_str(), 0, "Connection close (code=%d %s).",
-          why, GetAprErrorString(why).c_str());
-    }
-    // Connection is closed.
-    fetch->connection_ = NULL;
+// static
+void SerfFetch::ClosedConnection(serf_connection_t* conn,
+                                 void* closed_baton,
+                                 apr_status_t why,
+                                 apr_pool_t* pool) {
+  SerfFetch* fetch = static_cast<SerfFetch*>(closed_baton);
+  if (why != APR_SUCCESS) {
+    fetch->message_handler_->Warning(
+        fetch->DebugInfo().c_str(), 0, "Connection close (code=%d %s).",
+        why, GetAprErrorString(why).c_str());
   }
+  // Connection is closed.
+  fetch->connection_ = NULL;
+}
 
-  static serf_bucket_t* AcceptResponse(serf_request_t* request,
-                                       serf_bucket_t* stream,
-                                       void* acceptor_baton,
+// static
+serf_bucket_t* SerfFetch::AcceptResponse(serf_request_t* request,
+                                         serf_bucket_t* stream,
+                                         void* acceptor_baton,
+                                         apr_pool_t* pool) {
+  // Get the per-request bucket allocator.
+  serf_bucket_alloc_t* bucket_alloc = serf_request_get_alloc(request);
+  // Create a barrier so the response doesn't eat us!
+  // From the comment in Serf:
+  // ### the stream does not have a barrier, this callback should generally
+  // ### add a barrier around the stream before incorporating it into a
+  // ### response bucket stack.
+  // ... i.e. the passed bucket becomes owned rather than
+  // ### borrowed.
+  serf_bucket_t* bucket = serf_bucket_barrier_create(stream, bucket_alloc);
+  return serf_bucket_response_create(bucket, bucket_alloc);
+}
+
+
+// The handler MUST process data from the response bucket until the
+// bucket's read function states it would block (APR_STATUS_IS_EAGAIN).
+// The handler is invoked only when new data arrives. If no further data
+// arrives, and the handler does not process all available data, then the
+// system can result in a deadlock around the unprocessed, but read, data.
+//
+// static
+apr_status_t SerfFetch::HandleResponse(serf_request_t* request,
+                                       serf_bucket_t* response,
+                                       void* handler_baton,
                                        apr_pool_t* pool) {
-    // Get the per-request bucket allocator.
-    serf_bucket_alloc_t* bucket_alloc = serf_request_get_alloc(request);
-    // Create a barrier so the response doesn't eat us!
-    // From the comment in Serf:
-    // ### the stream does not have a barrier, this callback should generally
-    // ### add a barrier around the stream before incorporating it into a
-    // ### response bucket stack.
-    // ... i.e. the passed bucket becomes owned rather than
-    // ### borrowed.
-    serf_bucket_t* bucket = serf_bucket_barrier_create(stream, bucket_alloc);
-    return serf_bucket_response_create(bucket, bucket_alloc);
-  }
+  SerfFetch* fetch = static_cast<SerfFetch*>(handler_baton);
+  return fetch->HandleResponse(response);
+}
 
-  static apr_status_t HandleResponse(serf_request_t* request,
-                                     serf_bucket_t* response,
-                                     void* handler_baton,
-                                     apr_pool_t* pool) {
-    SerfFetch* fetch = static_cast<SerfFetch*>(handler_baton);
-    return fetch->HandleResponse(response);
+// static
+bool SerfFetch::MoreDataAvailable(apr_status_t status) {
+  // This OR is structured like this to make debugging easier, as it's
+  // not obvious when looking at the status mask which of these conditions
+  // is hit.
+  if (APR_STATUS_IS_EAGAIN(status)) {
+    return true;
   }
+  return APR_STATUS_IS_EINTR(status);
+}
 
-  static bool MoreDataAvailable(apr_status_t status) {
-    // This OR is structured like this to make debugging easier, as it's
-    // not obvious when looking at the status mask which of these conditions
-    // is hit.
-    if (APR_STATUS_IS_EAGAIN(status)) {
-      return true;
-    }
-    return APR_STATUS_IS_EINTR(status);
-  }
-
-  static bool IsStatusOk(apr_status_t status) {
-    return ((status == APR_SUCCESS) ||
-            APR_STATUS_IS_EOF(status) ||
-            MoreDataAvailable(status));
-  }
+// static
+bool SerfFetch::IsStatusOk(apr_status_t status) {
+  return ((status == APR_SUCCESS) ||
+          APR_STATUS_IS_EOF(status) ||
+          MoreDataAvailable(status));
+}
 
 #if SERF_HTTPS_FETCHING
-  // Called indicating whether SSL certificate errors have occurred detected.
-  // The function returns SUCCESS in all cases, but sets ssl_error_message_
-  // non-null for errors as a signal to ReadHeaders that we should not let
-  // any output thorugh.
-  //
-  // Interpretation of two of the error conditions is configurable:
-  // 'allow_unknown_certificate_authority' and 'allow_self_signed'.
-  apr_status_t HandleSSLCertErrors(int errors, int failure_depth) {
-    // TODO(jmarantz): is there value in logging the errors and failure_depth
-    // formals here?
+apr_status_t SerfFetch::HandleSSLCertErrors(int errors, int failure_depth) {
+  // TODO(jmarantz): is there value in logging the errors and failure_depth
+  // formals here?
 
-    // Note that HandleSSLCertErrors can be called multiple times for
-    // a single request.  As far as I can tell, there is value in
-    // recording only one of these.  For now, I have set up the logic
-    // so only the last error will be printed lazily, in ReadHeaders.
-    if (((errors & SERF_SSL_CERT_SELF_SIGNED) != 0) &&
-        !fetcher_->allow_self_signed()) {
-      ssl_error_message_ = "SSL certificate is self-signed";
-    } else if (((errors & SERF_SSL_CERT_UNKNOWNCA) != 0) &&
-               !fetcher_->allow_unknown_certificate_authority()) {
-      ssl_error_message_ =
-          "SSL certificate has an unknown certificate authority";
-    } else if (((errors & SERF_SSL_CERT_NOTYETVALID) != 0) &&
-               !fetcher_->allow_certificate_not_yet_valid()) {
-      ssl_error_message_ = "SSL certificate is not yet valid";
-    } else if (errors & SERF_SSL_CERT_EXPIRED) {
-      ssl_error_message_ = "SSL certificate is expired";
-    } else if (errors & SERF_SSL_CERT_UNKNOWN_FAILURE) {
-      ssl_error_message_ = "SSL certificate has an unknown error";
-    }
-
-    // Immediately call the fetch callback on a cert error.  Note that
-    // HandleSSLCertErrors is called multiple times when there is an error,
-    // so check async_fetch before CallCallback.
-    if ((ssl_error_message_ != NULL) && (async_fetch_ != NULL)) {
-      fetcher_->cert_errors_->Add(1);
-      CallCallback(false);  // sets async_fetch_ to null.
-    }
-
-    // TODO(jmarantz): I think the design of this system indicates
-    // that we should be returning APR_EGENERAL on failure.  However I
-    // have found that doesn't work properly, at least for
-    // SERF_SSL_CERT_SELF_SIGNED.  The request does not terminate
-    // quickly but instead times out.  Thus we return APR_SUCCESS
-    // but change the status_code to 404, report an error, and suppress
-    // the output.
-    //
-    // TODO(jmarantz): consider aiding diagnosability with by changing the
-    // 404 to a 401 (Unauthorized) or 418 (I'm a teapot), or 459 (nginx
-    // internal cert error code).
-
-    return APR_SUCCESS;
+  // Note that HandleSSLCertErrors can be called multiple times for
+  // a single request.  As far as I can tell, there is value in
+  // recording only one of these.  For now, I have set up the logic
+  // so only the last error will be printed lazilly, in ReadHeaders.
+  if (((errors & SERF_SSL_CERT_SELF_SIGNED) != 0) &&
+      !fetcher_->allow_self_signed()) {
+    ssl_error_message_ = "SSL certificate is self-signed";
+  } else if (((errors & SERF_SSL_CERT_UNKNOWNCA) != 0) &&
+             !fetcher_->allow_unknown_certificate_authority()) {
+    ssl_error_message_ =
+        "SSL certificate has an unknown certificate authority";
+  } else if (((errors & SERF_SSL_CERT_NOTYETVALID) != 0) &&
+             !fetcher_->allow_certificate_not_yet_valid()) {
+    ssl_error_message_ = "SSL certificate is not yet valid";
+  } else if (errors & SERF_SSL_CERT_EXPIRED) {
+    ssl_error_message_ = "SSL certificate is expired";
+  } else if (errors & SERF_SSL_CERT_UNKNOWN_FAILURE) {
+    ssl_error_message_ = "SSL certificate has an unknown error";
   }
+
+  // Immediately call the fetch callback on a cert error.  Note that
+  // HandleSSLCertErrors is called multiple times when there is an error,
+  // so check async_fetch before CallCallback.
+  if ((ssl_error_message_ != NULL) && (async_fetch_ != NULL)) {
+    fetcher_->cert_errors_->Add(1);
+    CallCallback(false);  // sets async_fetch_ to null.
+  }
+
+  // TODO(jmarantz): I think the design of this system indicates
+  // that we should be returning APR_EGENERAL on failure.  However I
+  // have found that doesn't work properly, at least for
+  // SERF_SSL_CERT_SELF_SIGNED.  The request does not terminate
+  // quickly but instead times out.  Thus we return APR_SUCCESS
+  // but change the status_code to 404, report an error, and suppress
+  // the output.
+  //
+  // TODO(jmarantz): consider aiding diagnosability with by changing the
+  // 404 to a 401 (Unauthorized) or 418 (I'm a teapot), or 459 (nginx
+  // internal cert error code).
+
+  return APR_SUCCESS;
+}
 #endif
 
-  // The handler MUST process data from the response bucket until the
-  // bucket's read function states it would block (APR_STATUS_IS_EAGAIN).
-  // The handler is invoked only when new data arrives. If no further data
-  // arrives, and the handler does not process all available data, then the
-  // system can result in a deadlock around the unprocessed, but read, data.
-  apr_status_t HandleResponse(serf_bucket_t* response) {
-    if (response == NULL) {
-      message_handler_->Message(
-          kInfo, "serf HandlerReponse called with NULL response for %s",
-          DebugInfo().c_str());
-      CallCallback(false);
-      return APR_EGENERAL;
-    }
-
-    // The response-handling code must be robust to packets coming in all at
-    // once, one byte at a time, or anything in between.  EAGAIN indicates
-    // that more data is available in the socket so another read should
-    // be issued before returning.
-    apr_status_t status = APR_EAGAIN;
-    while (MoreDataAvailable(status) && (async_fetch_ != NULL) &&
-            !parser_.headers_complete()) {
-      if (!status_line_read_) {
-        status = ReadStatusLine(response);
-      }
-
-      if (status_line_read_ && !one_byte_read_) {
-        status = ReadOneByteFromBody(response);
-      }
-
-      if (one_byte_read_ && !parser_.headers_complete()) {
-        status = ReadHeaders(response);
-      }
-    }
-
-    if (parser_.headers_complete()) {
-      status = ReadBody(response);
-    }
-
-    if ((async_fetch_ != NULL) &&
-        ((APR_STATUS_IS_EOF(status) && parser_.headers_complete()) ||
-         (status == APR_EGENERAL))) {
-      bool success = (IsStatusOk(status) && parser_.headers_complete());
-      if (!parser_.headers_complete() && (async_fetch_ != NULL)) {
-        // Be careful not to leave headers in inconsistent state in some error
-        // conditions.
-        async_fetch_->response_headers()->Clear();
-      }
-      CallCallback(success);
-    }
-    return status;
+apr_status_t SerfFetch::HandleResponse(serf_bucket_t* response) {
+  if (response == NULL) {
+    message_handler_->Message(
+        kInfo, "serf HandlerReponse called with NULL response for %s",
+        DebugInfo().c_str());
+    CallCallback(false);
+    return APR_EGENERAL;
   }
 
-  apr_status_t ReadStatusLine(serf_bucket_t* response) {
-    serf_status_line status_line;
-    apr_status_t status = serf_bucket_response_status(response, &status_line);
-    ResponseHeaders* response_headers = async_fetch_->response_headers();
-    if (status == APR_SUCCESS) {
-      response_headers->SetStatusAndReason(
-          static_cast<HttpStatus::Code>(status_line.code));
+  // The response-handling code must be robust to packets coming in all at
+  // once, one byte at a time, or anything in between.  EAGAIN indicates
+  // that more data is available in the socket so another read should
+  // be issued before returning.
+  apr_status_t status = APR_EAGAIN;
+  while (MoreDataAvailable(status) && (async_fetch_ != NULL) &&
+         !parser_.headers_complete()) {
+    if (!status_line_read_) {
+        status = ReadStatusLine(response);
+    }
+
+    if (status_line_read_ && !one_byte_read_) {
+      status = ReadOneByteFromBody(response);
+    }
+
+    if (one_byte_read_ && !parser_.headers_complete()) {
+      status = ReadHeaders(response);
+    }
+  }
+
+  if (parser_.headers_complete()) {
+    status = ReadBody(response);
+  }
+
+  if ((async_fetch_ != NULL) &&
+      ((APR_STATUS_IS_EOF(status) && parser_.headers_complete()) ||
+       (status == APR_EGENERAL))) {
+    bool success = (IsStatusOk(status) && parser_.headers_complete());
+    if (!parser_.headers_complete() && (async_fetch_ != NULL)) {
+      // Be careful not to leave headers in inconsistent state in some error
+      // conditions.
+      async_fetch_->response_headers()->Clear();
+    }
+    CallCallback(success);
+  }
+  return status;
+}
+
+apr_status_t SerfFetch::ReadStatusLine(serf_bucket_t* response) {
+  serf_status_line status_line;
+  apr_status_t status = serf_bucket_response_status(response, &status_line);
+  ResponseHeaders* response_headers = async_fetch_->response_headers();
+  if (status == APR_SUCCESS) {
+    response_headers->SetStatusAndReason(
+        static_cast<HttpStatus::Code>(status_line.code));
       response_headers->set_major_version(status_line.version / 1000);
       response_headers->set_minor_version(status_line.version % 1000);
       status_line_read_ = true;
-    }
-    return status;
   }
+  return status;
+}
 
-  // Know what's weird?  You have do a body-read to get access to the
-  // headers.  You need to read 1 byte of body to force an FSM inside
-  // Serf to parse the headers.  Then you can parse the headers and
-  // finally read the rest of the body.  I know, right?
-  //
-  // The simpler approach, and likely what the Serf designers intended,
-  // is that you read the entire body first, and then read the headers.
-  // But if you are trying to stream the data as its fetched through some
-  // kind of function that needs to know the content-type, then it's
-  // really a drag to have to wait till the end of the body to get the
-  // content type.
-  apr_status_t ReadOneByteFromBody(serf_bucket_t* response) {
-    apr_size_t len = 0;
-    const char* data = NULL;
-    apr_status_t status = serf_bucket_read(response, 1, &data, &len);
-    if (!APR_STATUS_IS_EINTR(status) && IsStatusOk(status)) {
-      one_byte_read_ = true;
-      if (len == 1) {
-        has_saved_byte_ = true;
-        saved_byte_ = data[0];
-      }
+apr_status_t SerfFetch::ReadOneByteFromBody(serf_bucket_t* response) {
+  apr_size_t len = 0;
+  const char* data = NULL;
+  apr_status_t status = serf_bucket_read(response, 1, &data, &len);
+  if (!APR_STATUS_IS_EINTR(status) && IsStatusOk(status)) {
+    one_byte_read_ = true;
+    if (len == 1) {
+      has_saved_byte_ = true;
+      saved_byte_ = data[0];
     }
-    return status;
   }
+  return status;
+}
 
-  // Once that one byte is read from the body, we can go ahead and
-  // parse the headers.  The dynamics of this appear that for N
-  // headers we'll get 2N calls to serf_bucket_read: one each for
-  // attribute names & values.
-  apr_status_t ReadHeaders(serf_bucket_t* response) {
-    serf_bucket_t* headers = serf_bucket_response_get_headers(response);
-    const char* data = NULL;
-    apr_size_t len = 0;
-    apr_status_t status = serf_bucket_read(headers, SERF_READ_ALL_AVAIL,
-                                           &data, &len);
+apr_status_t SerfFetch::ReadHeaders(serf_bucket_t* response) {
+  serf_bucket_t* headers = serf_bucket_response_get_headers(response);
+  const char* data = NULL;
+  apr_size_t len = 0;
+  apr_status_t status = serf_bucket_read(headers, SERF_READ_ALL_AVAIL,
+                                         &data, &len);
 
-    // Feed valid chunks to the header parser --- but skip empty ones,
-    // which can occur for value-less headers, since otherwise they'd
-    // look like parse errors.
-    if (IsStatusOk(status) && (len > 0)) {
-      if (parser_.ParseChunk(StringPiece(data, len), message_handler_)) {
-        if (parser_.headers_complete()) {
-          ResponseHeaders* response_headers = async_fetch_->response_headers();
-          if (ssl_error_message_ != NULL) {
-            response_headers->set_status_code(HttpStatus::kNotFound);
-            message_handler_->Message(kInfo, "%s: %s", DebugInfo().c_str(),
-                                      ssl_error_message_);
-            has_saved_byte_ = false;
-          }
+  // Feed valid chunks to the header parser --- but skip empty ones,
+  // which can occur for value-less headers, since otherwise they'd
+  // look like parse errors.
+  if (IsStatusOk(status) && (len > 0)) {
+    if (parser_.ParseChunk(StringPiece(data, len), message_handler_)) {
+      if (parser_.headers_complete()) {
+        ResponseHeaders* response_headers = async_fetch_->response_headers();
+        if (ssl_error_message_ != NULL) {
+          response_headers->set_status_code(HttpStatus::kNotFound);
+          message_handler_->Message(kInfo, "%s: %s", DebugInfo().c_str(),
+                                    ssl_error_message_);
+          has_saved_byte_ = false;
+        }
 
-          if (fetcher_->track_original_content_length()) {
-            // Set X-Original-Content-Length, if Content-Length is available.
-            int64 content_length;
-            if (response_headers->FindContentLength(&content_length)) {
-              response_headers->SetOriginalContentLength(content_length);
-            }
-          }
-          // Stream the one byte read from ReadOneByteFromBody to writer.
-          if (has_saved_byte_) {
-            ++bytes_received_;
-            if (!async_fetch_->Write(StringPiece(&saved_byte_, 1),
-                                     message_handler_)) {
-              status = APR_EGENERAL;
-            }
+        if (fetcher_->track_original_content_length()) {
+          // Set X-Original-Content-Length, if Content-Length is available.
+          int64 content_length;
+          if (response_headers->FindContentLength(&content_length)) {
+            response_headers->SetOriginalContentLength(content_length);
           }
         }
-      } else {
-        status = APR_EGENERAL;
+        // Stream the one byte read from ReadOneByteFromBody to writer.
+        if (has_saved_byte_) {
+          ++bytes_received_;
+          if (!async_fetch_->Write(StringPiece(&saved_byte_, 1),
+                                   message_handler_)) {
+            status = APR_EGENERAL;
+          }
+        }
       }
-    }
-    return status;
-  }
-
-  // Once headers are complete we can get the body.  The dynamics of this
-  // are likely dependent on everything on the network between the client
-  // and server, but for a 10k buffer I seem to frequently get 8k chunks.
-  apr_status_t ReadBody(serf_bucket_t* response) {
-    apr_status_t status = APR_EAGAIN;
-    const char* data = NULL;
-    apr_size_t len = 0;
-    apr_size_t bytes_to_flush = 0;
-    while (MoreDataAvailable(status) && (async_fetch_ != NULL)) {
-      status = serf_bucket_read(response, SERF_READ_ALL_AVAIL, &data, &len);
-      bytes_received_ += len;
-      bytes_to_flush += len;
-      if (IsStatusOk(status) && (len != 0) &&
-          !async_fetch_->Write(StringPiece(data, len), message_handler_)) {
-        status = APR_EGENERAL;
-      }
-    }
-    if ((bytes_to_flush != 0) && !async_fetch_->Flush(message_handler_)) {
+    } else {
       status = APR_EGENERAL;
     }
-    return status;
   }
+  return status;
+}
 
-  // Ensures that a user-agent string is included, and that the mod_pagespeed
-  // version is appended.
-  void FixUserAgent() {
-    // Supply a default user-agent if none is present, and in any case
-    // append on a 'serf' suffix.
-    GoogleString user_agent;
-    ConstStringStarVector v;
-    RequestHeaders* request_headers = async_fetch_->request_headers();
-    if (request_headers->Lookup(HttpAttributes::kUserAgent, &v)) {
-      for (int i = 0, n = v.size(); i < n; ++i) {
-        if (i != 0) {
-          user_agent += " ";
-        }
-        if (v[i] != NULL) {
-          user_agent += *(v[i]);
-        }
+apr_status_t SerfFetch::ReadBody(serf_bucket_t* response) {
+  apr_status_t status = APR_EAGAIN;
+  const char* data = NULL;
+  apr_size_t len = 0;
+  apr_size_t bytes_to_flush = 0;
+  while (MoreDataAvailable(status) && (async_fetch_ != NULL)) {
+    status = serf_bucket_read(response, SERF_READ_ALL_AVAIL, &data, &len);
+    bytes_received_ += len;
+    bytes_to_flush += len;
+    if (IsStatusOk(status) && (len != 0) &&
+        !async_fetch_->Write(StringPiece(data, len), message_handler_)) {
+      status = APR_EGENERAL;
+    }
+  }
+  if ((bytes_to_flush != 0) && !async_fetch_->Flush(message_handler_)) {
+    status = APR_EGENERAL;
+  }
+  return status;
+}
+
+void SerfFetch::FixUserAgent() {
+  // Supply a default user-agent if none is present, and in any case
+  // append on a 'serf' suffix.
+  GoogleString user_agent;
+  ConstStringStarVector v;
+  RequestHeaders* request_headers = async_fetch_->request_headers();
+  if (request_headers->Lookup(HttpAttributes::kUserAgent, &v)) {
+    for (int i = 0, n = v.size(); i < n; ++i) {
+      if (i != 0) {
+        user_agent += " ";
       }
-      request_headers->RemoveAll(HttpAttributes::kUserAgent);
-    }
-    if (user_agent.empty()) {
-      user_agent += "Serf/" SERF_VERSION_STRING;
-    }
-    GoogleString version = StrCat(
-        " ", kModPagespeedSubrequestUserAgent,
-        "/" MOD_PAGESPEED_VERSION_STRING "-" LASTCHANGE_STRING);
-    if (!StringPiece(user_agent).ends_with(version)) {
-      user_agent += version;
-    }
-    request_headers->Add(HttpAttributes::kUserAgent, user_agent);
-  }
-
-  static apr_status_t SetupRequest(serf_request_t* request,
-                                   void* setup_baton,
-                                   serf_bucket_t** req_bkt,
-                                   serf_response_acceptor_t* acceptor,
-                                   void** acceptor_baton,
-                                   serf_response_handler_t* handler,
-                                   void** handler_baton,
-                                   apr_pool_t* pool) {
-    SerfFetch* fetch = static_cast<SerfFetch*>(setup_baton);
-    const char* url_path = apr_uri_unparse(pool, &fetch->url_,
-                                           APR_URI_UNP_OMITSITEPART);
-
-    // If there is an explicit Host header, then override the
-    // host field in the Serf structure, as we will not be able
-    // to override it after it is created; only append to it.
-    //
-    // Serf automatically populates the Host field based on the
-    // URL, and provides no mechanism to override it, except
-    // by hacking source.  We hacked source.
-    //
-    // See src/third_party/serf/src/instaweb_context.c
-    fetch->FixUserAgent();
-    RequestHeaders* request_headers = fetch->async_fetch_->request_headers();
-
-    // Don't want to forward hop-by-hop stuff.
-    StringPieceVector names_to_sanitize =
-        HttpAttributes::SortedHopByHopHeaders();
-    request_headers->RemoveAllFromSortedArray(&names_to_sanitize[0],
-                                              names_to_sanitize.size());
-
-    // Also leave Content-Length to serf.
-    request_headers->RemoveAll(HttpAttributes::kContentLength);
-
-    serf_bucket_t* body_bkt = NULL;
-    const GoogleString& message_body = request_headers->message_body();
-    bool post_payload =
-        !message_body.empty() &&
-        (request_headers->method() == RequestHeaders::kPost);
-
-    if (post_payload) {
-      body_bkt = serf_bucket_simple_create(
-          message_body.data(), message_body.length(),
-          NULL /* no free function */, NULL /* no free baton*/,
-          serf_request_get_alloc(request));
-    }
-
-    *req_bkt = serf_request_bucket_request_create_for_host(
-        request, request_headers->method_string(),
-        url_path, body_bkt,
-        serf_request_get_alloc(request), fetch->host_header_);
-    serf_bucket_t* hdrs_bkt = serf_bucket_request_get_headers(*req_bkt);
-
-    // Add other headers from the caller's request.  Skip the "Host:" header
-    // because it's set above.
-    for (int i = 0; i < request_headers->NumAttributes(); ++i) {
-      const GoogleString& name = request_headers->Name(i);
-      const GoogleString& value = request_headers->Value(i);
-      if (!(StringCaseEqual(name, HttpAttributes::kHost))) {
-        // Note: *_setn() stores a pointer to name and value instead of a
-        // copy of those values. So name and value must have long lifetimes.
-        // In this case, we depend on request_headers being unchanged for
-        // the lifetime of hdrs_bkt, which is a documented requirement of
-        // the UrlAsyncFetcher interface.
-        serf_bucket_headers_setn(hdrs_bkt, name.c_str(), value.c_str());
+      if (v[i] != NULL) {
+        user_agent += *(v[i]);
       }
     }
+    request_headers->RemoveAll(HttpAttributes::kUserAgent);
+  }
+  if (user_agent.empty()) {
+    user_agent += "Serf/" SERF_VERSION_STRING;
+  }
+  GoogleString version = StrCat(
+      " ", kModPagespeedSubrequestUserAgent,
+      "/" MOD_PAGESPEED_VERSION_STRING "-" LASTCHANGE_STRING);
+  if (!StringPiece(user_agent).ends_with(version)) {
+    user_agent += version;
+  }
+  request_headers->Add(HttpAttributes::kUserAgent, user_agent);
+}
 
-    *acceptor = SerfFetch::AcceptResponse;
-    *acceptor_baton = fetch;
-    *handler = SerfFetch::HandleResponse;
-    *handler_baton = fetch;
-    return APR_SUCCESS;
+// static
+apr_status_t SerfFetch::SetupRequest(serf_request_t* request,
+                                     void* setup_baton,
+                                     serf_bucket_t** req_bkt,
+                                     serf_response_acceptor_t* acceptor,
+                                     void** acceptor_baton,
+                                     serf_response_handler_t* handler,
+                                     void** handler_baton,
+                                     apr_pool_t* pool) {
+  SerfFetch* fetch = static_cast<SerfFetch*>(setup_baton);
+  const char* url_path = apr_uri_unparse(pool, &fetch->url_,
+                                         APR_URI_UNP_OMITSITEPART);
+
+  // If there is an explicit Host header, then override the
+  // host field in the Serf structure, as we will not be able
+  // to override it after it is created; only append to it.
+  //
+  // Serf automatically populates the Host field based on the
+  // URL, and provides no mechanism to override it, except
+  // by hacking source.  We hacked source.
+  //
+  // See src/third_party/serf/src/instaweb_context.c
+  fetch->FixUserAgent();
+  RequestHeaders* request_headers = fetch->async_fetch_->request_headers();
+
+  // Don't want to forward hop-by-hop stuff.
+  StringPieceVector names_to_sanitize =
+      HttpAttributes::SortedHopByHopHeaders();
+  request_headers->RemoveAllFromSortedArray(&names_to_sanitize[0],
+                                            names_to_sanitize.size());
+
+  // Also leave Content-Length to serf.
+  request_headers->RemoveAll(HttpAttributes::kContentLength);
+
+  serf_bucket_t* body_bkt = NULL;
+  const GoogleString& message_body = request_headers->message_body();
+  bool post_payload =
+      !message_body.empty() &&
+      (request_headers->method() == RequestHeaders::kPost);
+
+  if (post_payload) {
+    body_bkt = serf_bucket_simple_create(
+        message_body.data(), message_body.length(),
+        NULL /* no free function */, NULL /* no free baton*/,
+        serf_request_get_alloc(request));
   }
 
-  bool ParseUrl() {
-    apr_status_t status = 0;
-    status = apr_uri_parse(pool_, str_url_.c_str(), &url_);
-    if (status != APR_SUCCESS || url_.scheme == NULL) {
-      return false;  // Failed to parse URL.
-    }
-    bool is_https = StringCaseEqual(url_.scheme, "https");
-    if (is_https && !fetcher_->allow_https()) {
-      return false;
-    }
-    if (!url_.port) {
-      url_.port = apr_uri_port_of_scheme(url_.scheme);
-    }
-    if (!url_.path) {
-      url_.path = apr_pstrdup(pool_, "/");
-    }
+  *req_bkt = serf_request_bucket_request_create_for_host(
+      request, request_headers->method_string(),
+      url_path, body_bkt,
+      serf_request_get_alloc(request), fetch->host_header_);
+  serf_bucket_t* hdrs_bkt = serf_bucket_request_get_headers(*req_bkt);
 
-    // Compute our host header. First see if there is an explicit specified
-    // Host: in the fetch object.
-    RequestHeaders* request_headers = async_fetch_->request_headers();
-    const char* host = request_headers->Lookup1(HttpAttributes::kHost);
-    if (host == NULL) {
-      host = SerfUrlAsyncFetcher::ExtractHostHeader(url_, pool_);
+  // Add other headers from the caller's request.  Skip the "Host:" header
+  // because it's set above.
+  for (int i = 0; i < request_headers->NumAttributes(); ++i) {
+    const GoogleString& name = request_headers->Name(i);
+    const GoogleString& value = request_headers->Value(i);
+    if (!(StringCaseEqual(name, HttpAttributes::kHost))) {
+      // Note: *_setn() stores a pointer to name and value instead of a
+      // copy of those values. So name and value must have long lifetimes.
+      // In this case, we depend on request_headers being unchanged for
+      // the lifetime of hdrs_bkt, which is a documented requirement of
+      // the UrlAsyncFetcher interface.
+      serf_bucket_headers_setn(hdrs_bkt, name.c_str(), value.c_str());
     }
-
-    host_header_ = apr_pstrdup(pool_, host);
-
-    if (is_https) {
-      // SNI hosts, unlike Host: do not have a port number.
-      GoogleString sni_host =
-          SerfUrlAsyncFetcher::RemovePortFromHostHeader(host_header_);
-      sni_host_ = apr_pstrdup(pool_, sni_host.c_str());
-    }
-
-    return true;
   }
 
-  SerfUrlAsyncFetcher* fetcher_;
-  Timer* timer_;
-  const GoogleString str_url_;
-  AsyncFetch* async_fetch_;
-  ResponseHeadersParser parser_;
-  bool status_line_read_;
-  bool one_byte_read_;
-  bool has_saved_byte_;
-  char saved_byte_;
-  MessageHandler* message_handler_;
+  *acceptor = SerfFetch::AcceptResponse;
+  *acceptor_baton = fetch;
+  *handler = SerfFetch::HandleResponse;
+  *handler_baton = fetch;
+  return APR_SUCCESS;
+}
 
-  apr_pool_t* pool_;
-  serf_bucket_alloc_t* bucket_alloc_;
-  apr_uri_t url_;
-  const char* host_header_;  // in pool_
-  const char* sni_host_;  // in pool_
-  serf_connection_t* connection_;
-  size_t bytes_received_;
-  int64 fetch_start_ms_;
-  int64 fetch_end_ms_;
+bool SerfFetch::ParseUrl() {
+  apr_status_t status = 0;
+  status = apr_uri_parse(pool_, str_url_.c_str(), &url_);
+  if (status != APR_SUCCESS || url_.scheme == NULL) {
+    return false;  // Failed to parse URL.
+  }
+  bool is_https = StringCaseEqual(url_.scheme, "https");
+  if (is_https && !fetcher_->allow_https()) {
+    return false;
+  }
+  if (!url_.port) {
+    url_.port = apr_uri_port_of_scheme(url_.scheme);
+  }
+  if (!url_.path) {
+    url_.path = apr_pstrdup(pool_, "/");
+  }
 
-  // Variables used for HTTPS connection handling
-  bool using_https_;
-  serf_ssl_context_t* ssl_context_;
-  const char* ssl_error_message_;
+  // Compute our host header. First see if there is an explicit specified
+  // Host: in the fetch object.
+  RequestHeaders* request_headers = async_fetch_->request_headers();
+  const char* host = request_headers->Lookup1(HttpAttributes::kHost);
+  if (host == NULL) {
+    host = SerfUrlAsyncFetcher::ExtractHostHeader(url_, pool_);
+  }
 
-  DISALLOW_COPY_AND_ASSIGN(SerfFetch);
-};
+  host_header_ = apr_pstrdup(pool_, host);
+
+  if (is_https) {
+    // SNI hosts, unlike Host: do not have a port number.
+    GoogleString sni_host =
+        SerfUrlAsyncFetcher::RemovePortFromHostHeader(host_header_);
+    sni_host_ = apr_pstrdup(pool_, sni_host.c_str());
+  }
+
+  return true;
+}
 
 class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
  public:
@@ -1069,6 +991,20 @@ bool SerfFetch::Start(SerfUrlAsyncFetcher* fetcher) {
   }
 }
 
+void SerfFetch::ParseUrlForTesting(bool* status,
+                                   apr_uri_t** url,
+                                   const char** host_header,
+                                   const char** sni_host) {
+  *status = ParseUrl();
+  *url = &url_;
+  *host_header = host_header_;
+  *sni_host = sni_host_;
+}
+
+void SerfFetch::SetFetcherForTesting(SerfUrlAsyncFetcher* fetcher) {
+  fetcher_ = fetcher;
+  apr_pool_create(&pool_, fetcher_->pool());
+}
 
 // Set up the proxy for all the connections in the context. The proxy is in the
 // format of hostname:port.

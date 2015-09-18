@@ -136,6 +136,7 @@ class SerfTestFetch : public AsyncFetch {
 class SerfUrlAsyncFetcherTest : public ::testing::Test {
  public:
   static void SetUpTestCase() {
+    // Run once, before all SerfUrlAsyncFetcherTest tests.
     apr_initialize();
     atexit(apr_terminate);
   }
@@ -819,6 +820,120 @@ TEST_F(SerfUrlAsyncFetcherTest, TestPost) {
   ASSERT_EQ(WaitTillDone(index, index), 1);
   ValidateFetches(index, index);
   EXPECT_EQ(HttpStatus::kOK, response_headers(index)->status_code());
+}
+
+class SerfFetchTest : public SerfUrlAsyncFetcherTest {
+ protected:
+  SerfFetchTest()
+      : async_fetch_(new StringAsyncFetch(
+            RequestContext::NewTestRequestContext(thread_system_.get()))) {
+  }
+
+  virtual void TearDown() {
+    async_fetch_->response_headers()->set_status_code(200);
+    serf_fetch_->CallbackDone(true /* success */);
+    // Fetch must be deleted before fetcher because it has a child pool.
+    serf_fetch_.reset(NULL);
+    SerfUrlAsyncFetcherTest::TearDown();
+  }
+
+  bool ParseUrl(const GoogleString& url) {
+    serf_fetch_.reset(new SerfFetch(
+        url, async_fetch_.get(), &message_handler_, timer_.get()));
+    serf_fetch_->SetFetcherForTesting(serf_url_async_fetcher_.get());
+
+    bool status;
+    serf_fetch_->ParseUrlForTesting(
+        &status, &parsed_url_, &host_header_, &sni_host_);
+
+    return status;
+  }
+
+  scoped_ptr<StringAsyncFetch> async_fetch_;
+  scoped_ptr<SerfFetch> serf_fetch_;
+  apr_uri_t* parsed_url_;
+  const char* host_header_;
+  const char* sni_host_;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(SerfFetchTest);
+};
+
+TEST_F(SerfFetchTest, TestParseUrl) {
+  ASSERT_TRUE(ParseUrl("http://www.example.com/foo/bar"));
+  EXPECT_EQ("www.example.com", StringPiece(host_header_));
+  EXPECT_EQ("www.example.com", StringPiece(parsed_url_->hostinfo));
+  EXPECT_EQ("", StringPiece(sni_host_));
+  EXPECT_EQ(80, parsed_url_->port);
+  EXPECT_EQ("http", StringPiece(parsed_url_->scheme));
+  EXPECT_EQ("/foo/bar", StringPiece(parsed_url_->path));
+}
+
+TEST_F(SerfFetchTest, TestParseUrlAlternatePort) {
+  ASSERT_TRUE(ParseUrl("http://www.example.com:8080/foo/bar"));
+  EXPECT_EQ("www.example.com:8080", StringPiece(host_header_));
+  EXPECT_EQ("www.example.com:8080", StringPiece(parsed_url_->hostinfo));
+  EXPECT_EQ("", StringPiece(sni_host_));
+  EXPECT_EQ(8080, parsed_url_->port);
+  EXPECT_EQ("http", StringPiece(parsed_url_->scheme));
+  EXPECT_EQ("/foo/bar", StringPiece(parsed_url_->path));
+}
+
+TEST_F(SerfFetchTest, TestParseUrlHttpsDisallowed) {
+  ASSERT_FALSE(ParseUrl("https://www.example.com/foo/bar"));
+}
+
+TEST_F(SerfFetchTest, TestParseUrlHttpsAllowed) {
+  serf_url_async_fetcher_->SetHttpsOptions("enable");
+  ASSERT_TRUE(ParseUrl("https://www.example.com/foo/bar"));
+  EXPECT_EQ("www.example.com", StringPiece(host_header_));
+  EXPECT_EQ("www.example.com", StringPiece(parsed_url_->hostinfo));
+  EXPECT_EQ("www.example.com", StringPiece(sni_host_));
+  EXPECT_EQ(443, parsed_url_->port);
+  EXPECT_EQ("https", StringPiece(parsed_url_->scheme));
+  EXPECT_EQ("/foo/bar", StringPiece(parsed_url_->path));
+}
+
+TEST_F(SerfFetchTest, TestParseUrlAlternatePortHttps) {
+  serf_url_async_fetcher_->SetHttpsOptions("enable");
+  ASSERT_TRUE(ParseUrl("https://www.example.com:8080/foo/bar"));
+  EXPECT_EQ("www.example.com:8080", StringPiece(host_header_));
+  EXPECT_EQ("www.example.com:8080", StringPiece(parsed_url_->hostinfo));
+  EXPECT_EQ("www.example.com", StringPiece(sni_host_));
+  EXPECT_EQ(8080, parsed_url_->port);
+  EXPECT_EQ("https", StringPiece(parsed_url_->scheme));
+  EXPECT_EQ("/foo/bar", StringPiece(parsed_url_->path));
+}
+
+TEST_F(SerfFetchTest, TestParseUrlDoubleSlash) {
+  ASSERT_TRUE(ParseUrl("http://www.example.com//foo/bar"));
+  EXPECT_EQ("www.example.com", StringPiece(host_header_));
+  EXPECT_EQ("www.example.com", StringPiece(parsed_url_->hostinfo));
+  EXPECT_EQ("", StringPiece(sni_host_));
+  EXPECT_EQ(80, parsed_url_->port);
+  EXPECT_EQ("http", StringPiece(parsed_url_->scheme));
+  EXPECT_EQ("//foo/bar", StringPiece(parsed_url_->path));
+}
+
+TEST_F(SerfFetchTest, TestParseUrlDoubleSlashEncodedSpace) {
+  ASSERT_TRUE(ParseUrl(
+      "http://www.example.com//foo/bar/baz/BDKL%20319652.JPG"));
+  EXPECT_EQ("www.example.com", StringPiece(host_header_));
+  EXPECT_EQ("www.example.com", StringPiece(parsed_url_->hostinfo));
+  EXPECT_EQ("", StringPiece(sni_host_));
+  EXPECT_EQ(80, parsed_url_->port);
+  EXPECT_EQ("http", StringPiece(parsed_url_->scheme));
+  EXPECT_EQ("//foo/bar/baz/BDKL%20319652.JPG", StringPiece(parsed_url_->path));
+}
+
+TEST_F(SerfFetchTest, TestParseUrlDoubleSlashRawSpace) {
+  ASSERT_TRUE(ParseUrl("http://www.example.com//foo/bar/baz/BDKL 319652.JPG"));
+  EXPECT_EQ("www.example.com", StringPiece(host_header_));
+  EXPECT_EQ("www.example.com", StringPiece(parsed_url_->hostinfo));
+  EXPECT_EQ("", StringPiece(sni_host_));
+  EXPECT_EQ(80, parsed_url_->port);
+  EXPECT_EQ("http", StringPiece(parsed_url_->scheme));
+  EXPECT_EQ("//foo/bar/baz/BDKL 319652.JPG", StringPiece(parsed_url_->path));
 }
 
 class SerfUrlAsyncFetcherTestWithProxy : public SerfUrlAsyncFetcherTest {
