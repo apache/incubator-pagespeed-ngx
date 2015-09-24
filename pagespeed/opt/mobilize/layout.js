@@ -17,14 +17,15 @@
  */
 
 
-goog.provide('pagespeed.MobLayout');
+goog.provide('mob.Layout');
 
 goog.require('goog.array');
 goog.require('goog.dom.TagName');
 goog.require('goog.object');
-goog.require('pagespeed.MobUtil');
-goog.require('pagespeed.mobLayoutConstants');
-goog.require('pagespeed.mobLayoutUtil');
+goog.require('mob.layoutConstants');
+goog.require('mob.layoutUtil');
+goog.require('mob.util');
+goog.require('mob.util.ElementId');
 
 
 
@@ -35,14 +36,14 @@ goog.require('pagespeed.mobLayoutUtil');
  * before running layout.  If new XHRs occur afterward, then we run the
  * layout algorithm again when they quiesce, to mobilize any new ajax content.
  *
- * @param {!pagespeed.Mob} psMob
+ * @param {!mob.Mob} psMob
  * @constructor
  */
-pagespeed.MobLayout = function(psMob) {
+mob.Layout = function(psMob) {
   /**
    * Mobilization context.
    *
-   * @private {!pagespeed.Mob}
+   * @private {!mob.Mob}
    */
   this.psMob_ = psMob;
 
@@ -54,10 +55,8 @@ pagespeed.MobLayout = function(psMob) {
    * @private {!Object.<string, boolean>}
    */
   this.dontTouchIds_ = goog.object.createSet(
-      pagespeed.MobUtil.ElementId.NAV_PANEL,
-      pagespeed.MobUtil.ElementId.HEADER_BAR,
-      pagespeed.MobUtil.ElementId.SPACER,
-      pagespeed.MobUtil.ElementId.LOGO_SPAN);
+      mob.util.ElementId.NAV_PANEL, mob.util.ElementId.HEADER_BAR,
+      mob.util.ElementId.SPACER, mob.util.ElementId.LOGO_SPAN);
 
   /**
    * Holds a target width in pixels for usable screen content,
@@ -66,16 +65,15 @@ pagespeed.MobLayout = function(psMob) {
    *
    * @private @const {number}
    */
-  this.maxWidth_ = pagespeed.mobLayoutUtil.computeMaxWidth();
+  this.maxWidth_ = mob.layoutUtil.computeMaxWidth();
 
   /**
    * Contains a sequence of operations for mobilizing site layout.
-   * @private @const {!Array.<!pagespeed.MobLayout.SequenceStep_>}
+   * @private @const {!Array.<!mob.Layout.SequenceStep_>}
    */
-  this.sequence_ = pagespeed.MobLayout.constructSequence_();
+  this.sequence_ = mob.Layout.constructSequence_();
 
-  pagespeed.MobUtil.consoleLog('window.pagespeed.MobLayout.maxWidth=' +
-                               this.maxWidth_);
+  mob.util.consoleLog('window.mob.Layout.maxWidth=' + this.maxWidth_);
 };
 
 
@@ -89,12 +87,12 @@ pagespeed.MobLayout = function(psMob) {
  * showing the timing of each phase.  This struct holds a single step in
  * the sequence.
  *
- * @param {function(this:pagespeed.MobLayout, !Element)} fn
+ * @param {function(this:mob.Layout, !Element)} fn
  * @param {string} description
  * @private @constructor @struct
  */
-pagespeed.MobLayout.SequenceStep_ = function(fn, description) {
-  /** @type {function(this:pagespeed.MobLayout, !Element)} */
+mob.Layout.SequenceStep_ = function(fn, description) {
+  /** @type {function(this:mob.Layout, !Element)} */
   this.functionObj = fn;
   /** @type {string} */
   this.description = description;
@@ -106,7 +104,7 @@ pagespeed.MobLayout.SequenceStep_ = function(fn, description) {
  *
  * @param {string} id
  */
-pagespeed.MobLayout.prototype.addDontTouchId = function(id) {
+mob.Layout.prototype.addDontTouchId = function(id) {
   this.dontTouchIds_[id] = true;
 };
 
@@ -115,7 +113,7 @@ pagespeed.MobLayout.prototype.addDontTouchId = function(id) {
  * Executes the multi-step mobile layout transfomation.  This should
  * be called only after all the background image data has been collected.
  */
-pagespeed.MobLayout.prototype.computeAllSizingAndResynthesize = function() {
+mob.Layout.prototype.computeAllSizingAndResynthesize = function() {
   if (!document.body) {
     return;
   }
@@ -133,7 +131,7 @@ pagespeed.MobLayout.prototype.computeAllSizingAndResynthesize = function() {
  *
  * @return {number}
  */
-pagespeed.MobLayout.prototype.getNumberOfPasses = function() {
+mob.Layout.prototype.getNumberOfPasses = function() {
   return this.sequence_.length;
 };
 
@@ -144,12 +142,12 @@ pagespeed.MobLayout.prototype.getNumberOfPasses = function() {
  * @param {?Element} element
  * @return {boolean}
  */
-pagespeed.MobLayout.prototype.isDontTouchElement = function(element) {
+mob.Layout.prototype.isDontTouchElement = function(element) {
   if (!element) {
     return true;
   }
   var tagName = element.tagName.toUpperCase();
-  return (pagespeed.mobLayoutConstants.DONT_TOUCH_TAGS[tagName] ||
+  return (mob.layoutConstants.DONT_TOUCH_TAGS[tagName] ||
           !!(element.id && this.dontTouchIds_[element.id]));
 };
 
@@ -161,7 +159,7 @@ pagespeed.MobLayout.prototype.isDontTouchElement = function(element) {
  * @param {function(!Element)} fn
  * @private
  */
-pagespeed.MobLayout.prototype.forEachMobilizableChild_ = function(element, fn) {
+mob.Layout.prototype.forEachMobilizableChild_ = function(element, fn) {
   for (var childElement = element.firstElementChild; childElement;
        childElement = childElement.nextElementSibling) {
     if (!this.isDontTouchElement(childElement)) {
@@ -180,12 +178,12 @@ pagespeed.MobLayout.prototype.forEachMobilizableChild_ = function(element, fn) {
  * @param {!Element} element
  * @private
  */
-pagespeed.MobLayout.prototype.scrollWidePreTags_ = function(element) {
+mob.Layout.prototype.scrollWidePreTags_ = function(element) {
   if ((element.tagName.toUpperCase() == goog.dom.TagName.PRE) ||
       ((element.offsetWidth > this.maxWidth_) &&
        (window.getComputedStyle(element).getPropertyValue('white-space') ==
-       'pre'))) {
-    pagespeed.mobLayoutUtil.makeHorizontallyScrollable(element);
+        'pre'))) {
+    mob.layoutUtil.makeHorizontallyScrollable(element);
   }
 
   this.forEachMobilizableChild_(element,
@@ -203,13 +201,13 @@ pagespeed.MobLayout.prototype.scrollWidePreTags_ = function(element) {
  * @param {!CSSStyleDeclaration} computedStyle
  * @private
  */
-pagespeed.MobLayout.prototype.resizeBackgroundImage_ =
-    function(element, image, computedStyle) {
+mob.Layout.prototype.resizeBackgroundImage_ = function(element, image,
+                                                       computedStyle) {
   var imageSize = this.psMob_.findImageSize(image);
   if (imageSize && imageSize.width && imageSize.height &&
-      !pagespeed.mobLayoutUtil.isProbablyASprite(computedStyle)) {
-    pagespeed.mobLayoutUtil.resizeBackgroundImage(
-        element, imageSize, computedStyle, this.maxWidth_);
+      !mob.layoutUtil.isProbablyASprite(computedStyle)) {
+    mob.layoutUtil.resizeBackgroundImage(element, imageSize, computedStyle,
+                                         this.maxWidth_);
   }
 };
 
@@ -220,7 +218,7 @@ pagespeed.MobLayout.prototype.resizeBackgroundImage_ =
  * @param {!Element} element
  * @private
  */
-pagespeed.MobLayout.prototype.resizeVertically_ = function(element) {
+mob.Layout.prototype.resizeVertically_ = function(element) {
   this.resizeVerticallyAndReturnBottom_(element, 0);
 };
 
@@ -236,11 +234,11 @@ pagespeed.MobLayout.prototype.resizeVertically_ = function(element) {
  *   or null if no resizing was done.
  * @private
  */
-pagespeed.MobLayout.prototype.resizeVerticallyAndReturnBottom_ =
-    function(element, parentTop) {
+mob.Layout.prototype.resizeVerticallyAndReturnBottom_ = function(element,
+                                                                 parentTop) {
   // Determine the top of the current element.  If element isn't a don't-touch
   // element, we will try to recalculate its bottom based on the subelements.
-  var topBottom = pagespeed.mobLayoutUtil.findTopAndBottom(element, parentTop);
+  var topBottom = mob.layoutUtil.findTopAndBottom(element, parentTop);
   if (!topBottom) {
     return null;
   }
@@ -259,8 +257,7 @@ pagespeed.MobLayout.prototype.resizeVerticallyAndReturnBottom_ =
   // Respect any min-height set on the element.  Note in particular that we will
   // set min-height in this.resizeBackgroundImage_, and we may not be able to
   // find the 'natural' height of the object based on its subelements.
-  var minHeight = pagespeed.MobUtil.computedDimension(
-      computedStyle, 'min-height');
+  var minHeight = mob.util.computedDimension(computedStyle, 'min-height');
   if (minHeight != null) {
     bottom += minHeight;
   }
@@ -275,11 +272,10 @@ pagespeed.MobLayout.prototype.resizeVerticallyAndReturnBottom_ =
   for (var childElement = element.firstElementChild; childElement;
        childElement = childElement.nextElementSibling) {
     var childComputedStyle = window.getComputedStyle(childElement);
-    if (childComputedStyle &&
-        (childComputedStyle.position == 'absolute') &&
-        !pagespeed.MobUtil.isOffScreen(childComputedStyle) &&
-        (pagespeed.MobUtil.pixelValue(childComputedStyle.getPropertyValue(
-            'height')) != 0) &&
+    if (childComputedStyle && (childComputedStyle.position == 'absolute') &&
+        !mob.util.isOffScreen(childComputedStyle) &&
+        (mob.util.pixelValue(childComputedStyle.getPropertyValue('height')) !=
+         0) &&
         (childComputedStyle.getPropertyValue('visibility') != 'hidden')) {
       // For some reason, the iframe holding the tweets on
       // stevesouders.com comes up as 'absolute', but does not
@@ -340,8 +336,8 @@ pagespeed.MobLayout.prototype.resizeVerticallyAndReturnBottom_ =
       // already excluded by this.isDontTouchElement above.
       if ((tagName != goog.dom.TagName.IMG) && (height > 0) &&
           !element.style.backgroundSize) {
-        pagespeed.MobUtil.removeProperty(element, 'height');
-        pagespeed.MobUtil.setPropertyImportant(element, 'height', 'auto');
+        mob.util.removeProperty(element, 'height');
+        mob.util.setPropertyImportant(element, 'height', 'auto');
         if (element.offsetHeight) {
           elementBottom = top + element.offsetHeight;
         }
@@ -350,10 +346,9 @@ pagespeed.MobLayout.prototype.resizeVerticallyAndReturnBottom_ =
     } else if (bottom != elementBottom) {
       if (hasAbsoluteChildren) {
         height = bottom - top + 1;
-        pagespeed.MobUtil.setPropertyImportant(
-            element, 'height', '' + height + 'px');
+        mob.util.setPropertyImportant(element, 'height', '' + height + 'px');
       } else {
-        pagespeed.MobUtil.setPropertyImportant(element, 'height', 'auto');
+        mob.util.setPropertyImportant(element, 'height', 'auto');
       }
     }
   }
@@ -368,7 +363,7 @@ pagespeed.MobLayout.prototype.resizeVerticallyAndReturnBottom_ =
  * @param {!Element} element
  * @private
  */
-pagespeed.MobLayout.prototype.resizeIfTooWide_ = function(element) {
+mob.Layout.prototype.resizeIfTooWide_ = function(element) {
   // Try to fix lower-level nested nodes that are simply too wide before
   // re-arranging higher-level nodes.
   this.forEachMobilizableChild_(
@@ -379,27 +374,25 @@ pagespeed.MobLayout.prototype.resizeIfTooWide_ = function(element) {
 
   var tagName = element.tagName.toUpperCase();
   if (tagName == goog.dom.TagName.TABLE) {
-    pagespeed.mobLayoutUtil.resizeWideTable(element, this.maxWidth_);
+    mob.layoutUtil.resizeWideTable(element, this.maxWidth_);
   } else if (tagName == goog.dom.TagName.IMG) {
-    pagespeed.mobLayoutUtil.resizeForegroundImage(element, this.maxWidth_);
+    mob.layoutUtil.resizeForegroundImage(element, this.maxWidth_);
   } else {
-    var images = pagespeed.mobLayoutUtil.findBackgroundImages(element);
+    var images = mob.layoutUtil.findBackgroundImages(element);
     var computedStyle = window.getComputedStyle(element);
     if (images && computedStyle && images.length == 1) {
       // TODO(jmarantz): handle case where there is more than one image.
       this.resizeBackgroundImage_(element, images[0], computedStyle);
-    } else if (goog.array.contains(pagespeed.mobLayoutConstants.LAYOUT_CRITICAL,
+    } else if (goog.array.contains(mob.layoutConstants.LAYOUT_CRITICAL,
                                    tagName)) {
-      pagespeed.mobLayoutUtil.makeHorizontallyScrollable(element);
-    } else if (pagespeed.mobLayoutConstants.FLEXIBLE_WIDTH_TAGS[tagName]) {
-      pagespeed.MobUtil.setPropertyImportant(
-          element, 'max-width', '100%');
-      pagespeed.MobUtil.removeProperty(element, 'width');
+      mob.layoutUtil.makeHorizontallyScrollable(element);
+    } else if (mob.layoutConstants.FLEXIBLE_WIDTH_TAGS[tagName]) {
+      mob.util.setPropertyImportant(element, 'max-width', '100%');
+      mob.util.removeProperty(element, 'width');
     } else {
-      pagespeed.MobUtil.consoleLog('Punting on resize of ' + tagName +
-          ' which wants to be ' + element.offsetWidth +
-          ' but this.maxWidth_=' +
-          this.maxWidth_);
+      mob.util.consoleLog('Punting on resize of ' + tagName +
+                          ' which wants to be ' + element.offsetWidth +
+                          ' but this.maxWidth_=' + this.maxWidth_);
     }
   }
 };
@@ -413,7 +406,7 @@ pagespeed.MobLayout.prototype.resizeIfTooWide_ = function(element) {
  * @param {!Element} element
  * @private
  */
-pagespeed.MobLayout.prototype.cleanupStyles_ = function(element) {
+mob.Layout.prototype.cleanupStyles_ = function(element) {
   // Temporarily hide the body to allow computed 'width' to reflect a
   // percentage, if it was expressed that way in CSS.  If we leave the
   // body visible, then the computed width comes out as a pixel value.
@@ -434,14 +427,14 @@ pagespeed.MobLayout.prototype.cleanupStyles_ = function(element) {
 
 
 /**
- * Helper method for pagespeed.MobLayout.prototype.cleanupStyles_ that
+ * Helper method for mob.Layout.prototype.cleanupStyles_ that
  * assumes that body-display has been set to 'none' before calling.
  *
  * @param {!Element} element
  * @private
  */
-pagespeed.MobLayout.prototype.cleanupStylesHelper_ = function(element) {
-  pagespeed.mobLayoutUtil.wrapTextOnWhitespace(element);
+mob.Layout.prototype.cleanupStylesHelper_ = function(element) {
+  mob.layoutUtil.wrapTextOnWhitespace(element);
 
   this.forEachMobilizableChild_(element, this.cleanupStylesHelper_);
 
@@ -450,8 +443,8 @@ pagespeed.MobLayout.prototype.cleanupStylesHelper_ = function(element) {
   var computedStyle = window.getComputedStyle(element);
 
   if (computedStyle) {
-    pagespeed.mobLayoutUtil.stripPercentDimensions(element, computedStyle);
-    pagespeed.mobLayoutUtil.trimPaddingAndMargins(element, computedStyle);
+    mob.layoutUtil.stripPercentDimensions(element, computedStyle);
+    mob.layoutUtil.trimPaddingAndMargins(element, computedStyle);
   }
 };
 
@@ -463,10 +456,10 @@ pagespeed.MobLayout.prototype.cleanupStylesHelper_ = function(element) {
  * @param {!Element} element
  * @private
  */
-pagespeed.MobLayout.prototype.repairDistortedImages_ = function(element) {
+mob.Layout.prototype.repairDistortedImages_ = function(element) {
   this.forEachMobilizableChild_(element, this.repairDistortedImages_);
   if (element.tagName.toUpperCase() == goog.dom.TagName.IMG) {
-    pagespeed.mobLayoutUtil.repairDistortedImages(element);
+    mob.layoutUtil.repairDistortedImages(element);
   }
 };
 
@@ -480,13 +473,13 @@ pagespeed.MobLayout.prototype.repairDistortedImages_ = function(element) {
  * @return {string} the position of the element (fixed, absolute, static...)
  * @private
  */
-pagespeed.MobLayout.prototype.stripFloats_ = function(element) {
+mob.Layout.prototype.stripFloats_ = function(element) {
   var elementStyle = window.getComputedStyle(element);
   var position = elementStyle.getPropertyValue('position');
   if (position == 'fixed') {
     return 'fixed';
   }
-  if (pagespeed.mobLayoutUtil.isPossiblyASlideShow(element)) {
+  if (mob.layoutUtil.isPossiblyASlideShow(element)) {
     return position;
   }
 
@@ -510,10 +503,8 @@ pagespeed.MobLayout.prototype.stripFloats_ = function(element) {
         this.isDontTouchElement(childElement)) {
       // do nothing
     } else {
-      if ((childPosition == 'absolute') &&
-          !pagespeed.MobUtil.isOffScreen(childStyle)) {
-        pagespeed.MobUtil.setPropertyImportant(
-            childElement, 'position', 'relative');
+      if ((childPosition == 'absolute') && !mob.util.isOffScreen(childStyle)) {
+        mob.util.setPropertyImportant(childElement, 'position', 'relative');
       }
       var floatStyle = childStyle.getPropertyValue('float');
       var floatRight = (floatStyle == 'right');
@@ -529,8 +520,7 @@ pagespeed.MobLayout.prototype.stripFloats_ = function(element) {
         floatRight = false;
         displayOverride = 'block';
         if (previousChild && previousChildHasNegativeBottomMargin) {
-          pagespeed.MobUtil.setPropertyImportant(
-              previousChild, 'margin-bottom', '0');
+          mob.util.setPropertyImportant(previousChild, 'margin-bottom', '0');
         }
       }
 
@@ -540,22 +530,22 @@ pagespeed.MobLayout.prototype.stripFloats_ = function(element) {
         // it's computed from CSS rules, but we can explicitly set it to
         // 'none' right on the object, which will override a value in
         // inherited from a class.
-        pagespeed.MobUtil.setPropertyImportant(childElement, 'float', 'none');
+        mob.util.setPropertyImportant(childElement, 'float', 'none');
         var display = childStyle.getPropertyValue('display');
         if (display != 'none') {
           // TODO(jmarantz): If we have an invisible block that's
           // got a 'float' attribute, then we don't want to make it
           // visible now; we just want to strip the 'float'.
-          pagespeed.MobUtil.setPropertyImportant(
-              childElement, 'display', displayOverride);
+          mob.util.setPropertyImportant(childElement, 'display',
+                                        displayOverride);
         }
       }
       if (floatRight) {
         reorderNodes.push(childElement);
       }
       previousChild = childElement;
-      var marginBottom = pagespeed.MobUtil.computedDimension(
-          childStyle, 'margin-bottom');
+      var marginBottom =
+          mob.util.computedDimension(childStyle, 'margin-bottom');
       previousChildHasNegativeBottomMargin =
           ((marginBottom != null) && (marginBottom < 0));
     }
@@ -586,7 +576,7 @@ pagespeed.MobLayout.prototype.stripFloats_ = function(element) {
  * @param {!Element} element
  * @private
  */
-pagespeed.MobLayout.prototype.expandColumns_ = function(element) {
+mob.Layout.prototype.expandColumns_ = function(element) {
   var children = this.findLayoutChildren_(element);
   // See if a child is positioned to the right or right of it's neighbor.  If
   // not, we can expand it and its children.
@@ -600,21 +590,19 @@ pagespeed.MobLayout.prototype.expandColumns_ = function(element) {
         ((next == null) || (next.offsetLeft < offsetRight))) {
       var style = window.getComputedStyle(childElement);
       if (style) {
-        pagespeed.mobLayoutUtil.removeWidthConstraint(childElement, style);
+        mob.layoutUtil.removeWidthConstraint(childElement, style);
         this.expandColumns_(childElement);
       }
     }
 
-    var attr = element.getAttribute(
-        pagespeed.mobLayoutUtil.NEGATIVE_BOTTOM_MARGIN_ATTR);
+    var attr = element.getAttribute(mob.layoutUtil.NEGATIVE_BOTTOM_MARGIN_ATTR);
     if (attr) {
-      element.removeAttribute(
-          pagespeed.mobLayoutUtil.NEGATIVE_BOTTOM_MARGIN_ATTR);
+      element.removeAttribute(mob.layoutUtil.NEGATIVE_BOTTOM_MARGIN_ATTR);
       var computedStyle = window.getComputedStyle(element);
-      var height = pagespeed.MobUtil.computedDimension(computedStyle, 'height');
+      var height = mob.util.computedDimension(computedStyle, 'height');
       if (height != null) {
-        pagespeed.MobUtil.setPropertyImportant(
-            element, 'margin-bottom', '' + -height + 'px');
+        mob.util.setPropertyImportant(element, 'margin-bottom',
+                                      '' + -height + 'px');
       }
     }
     prevOffsetRight = offsetRight;
@@ -629,7 +617,7 @@ pagespeed.MobLayout.prototype.expandColumns_ = function(element) {
  * @return {!Array.<!Element>} The interesting child elements of element.
  * @private
  */
-pagespeed.MobLayout.prototype.findLayoutChildren_ = function(element) {
+mob.Layout.prototype.findLayoutChildren_ = function(element) {
   var children = [];
   var elementStyle = window.getComputedStyle(element);
   var position = elementStyle.getPropertyValue('position');
@@ -657,25 +645,23 @@ pagespeed.MobLayout.prototype.findLayoutChildren_ = function(element) {
  * many passes there are for progress bar.
  *
  * @private
- * @return {!Array.<!pagespeed.MobLayout.SequenceStep_>}
+ * @return {!Array.<!mob.Layout.SequenceStep_>}
  */
-pagespeed.MobLayout.constructSequence_ = function() {
+mob.Layout.constructSequence_ = function() {
   return [
-    new pagespeed.MobLayout.SequenceStep_(
-        pagespeed.MobLayout.prototype.scrollWidePreTags_,
-        'scroll wide pre-tags'),
-    new pagespeed.MobLayout.SequenceStep_(
-        pagespeed.MobLayout.prototype.stripFloats_, 'string floats'),
-    new pagespeed.MobLayout.SequenceStep_(
-        pagespeed.MobLayout.prototype.cleanupStyles_, 'cleanup styles'),
-    new pagespeed.MobLayout.SequenceStep_(
-        pagespeed.MobLayout.prototype.repairDistortedImages_,
-        'repair distored images'),
-    new pagespeed.MobLayout.SequenceStep_(
-        pagespeed.MobLayout.prototype.resizeIfTooWide_, 'resize if too wide'),
-    new pagespeed.MobLayout.SequenceStep_(
-        pagespeed.MobLayout.prototype.expandColumns_, 'expand columns'),
-    new pagespeed.MobLayout.SequenceStep_(
-        pagespeed.MobLayout.prototype.resizeVertically_, 'resize vertically')
+    new mob.Layout.SequenceStep_(mob.Layout.prototype.scrollWidePreTags_,
+                                 'scroll wide pre-tags'),
+    new mob.Layout.SequenceStep_(mob.Layout.prototype.stripFloats_,
+                                 'string floats'),
+    new mob.Layout.SequenceStep_(mob.Layout.prototype.cleanupStyles_,
+                                 'cleanup styles'),
+    new mob.Layout.SequenceStep_(mob.Layout.prototype.repairDistortedImages_,
+                                 'repair distored images'),
+    new mob.Layout.SequenceStep_(mob.Layout.prototype.resizeIfTooWide_,
+                                 'resize if too wide'),
+    new mob.Layout.SequenceStep_(mob.Layout.prototype.expandColumns_,
+                                 'expand columns'),
+    new mob.Layout.SequenceStep_(mob.Layout.prototype.resizeVertically_,
+                                 'resize vertically')
   ];
 };

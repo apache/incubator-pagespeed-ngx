@@ -18,7 +18,7 @@
 // browsers. This uses a few modern web features, like css3 animations, that are
 // not supported on opera mini for example.
 
-goog.provide('pagespeed.MobNav');
+goog.provide('mob.Nav');
 
 goog.require('goog.dom');
 goog.require('goog.dom.TagName');
@@ -35,7 +35,9 @@ goog.require('mob.button.Dialer');
 goog.require('mob.button.Map');
 goog.require('mob.button.Menu');
 goog.require('mob.util');
-goog.require('pagespeed.MobUtil');
+goog.require('mob.util.BeaconEvents');
+goog.require('mob.util.ElementClass');
+goog.require('mob.util.ElementId');
 
 
 
@@ -43,14 +45,13 @@ goog.require('pagespeed.MobUtil');
  * Create mobile navigation menus.
  * @constructor
  */
-pagespeed.MobNav = function() {
+mob.Nav = function() {
   /**
    * The header bar element inserted at the top of the page. This is inserted by
    * C++.
    * @private {!Element}
    */
-  this.headerBar_ =
-      goog.dom.getRequiredElement(pagespeed.MobUtil.ElementId.HEADER_BAR);
+  this.headerBar_ = goog.dom.getRequiredElement(mob.util.ElementId.HEADER_BAR);
 
   /**
    * The style tag used to style the nav elements.
@@ -63,8 +64,7 @@ pagespeed.MobNav = function() {
    * content down. This is inserted in C++.
    * @private {!Element}
    */
-  this.spacerDiv_ =
-      goog.dom.getRequiredElement(pagespeed.MobUtil.ElementId.SPACER);
+  this.spacerDiv_ = goog.dom.getRequiredElement(mob.util.ElementId.SPACER);
 
   /**
    * The span containing the logo.
@@ -165,17 +165,17 @@ pagespeed.MobNav = function() {
  * @param {boolean} fixedPositionOnly
  * @private
  */
-pagespeed.MobNav.prototype.findElementsToOffsetHelper_ = function(
-    element, fixedPositionOnly) {
+mob.Nav.prototype.findElementsToOffsetHelper_ = function(element,
+                                                         fixedPositionOnly) {
   if (!element.className ||
-      (element.className != pagespeed.MobUtil.ElementId.PROGRESS_SCRIM &&
+      (element.className != mob.util.ElementId.PROGRESS_SCRIM &&
        goog.isString(element.className) &&
        !goog.string.startsWith(element.className, 'psmob-') &&
        !goog.string.startsWith(element.id, 'psmob-'))) {
     var style = window.getComputedStyle(element);
     var position = style.getPropertyValue('position');
     if (position != 'static') {
-      var top = pagespeed.MobUtil.pixelValue(style.getPropertyValue('top'));
+      var top = mob.util.pixelValue(style.getPropertyValue('top'));
       if (top != null && (position == 'fixed' ||
                           (!fixedPositionOnly && position == 'absolute'))) {
         this.elementsToOffset_.add(element);
@@ -198,7 +198,7 @@ pagespeed.MobNav.prototype.findElementsToOffsetHelper_ = function(
  * TODO(jud): This belongs in mobilize.js instead of mobilize_nav.js.
  * @private
  */
-pagespeed.MobNav.prototype.findElementsToOffset_ = function() {
+mob.Nav.prototype.findElementsToOffset_ = function() {
   if (window.document.body) {
     this.findElementsToOffsetHelper_(window.document.body,
         false /* search for elements with all allowed positions */);
@@ -212,13 +212,13 @@ pagespeed.MobNav.prototype.findElementsToOffset_ = function() {
  * TODO(jud): This belongs in mobilize.js instead of mobilize_nav.js.
  * @private
  */
-pagespeed.MobNav.prototype.clampZIndex_ = function() {
+mob.Nav.prototype.clampZIndex_ = function() {
   var elements = document.querySelectorAll('*');
   for (var i = 0, element; element = elements[i]; i++) {
     var id = element.id;
-    if (id && (id == pagespeed.MobUtil.ElementId.PROGRESS_SCRIM ||
-               id == pagespeed.MobUtil.ElementId.HEADER_BAR ||
-               id == pagespeed.MobUtil.ElementId.NAV_PANEL)) {
+    if (id && (id == mob.util.ElementId.PROGRESS_SCRIM ||
+               id == mob.util.ElementId.HEADER_BAR ||
+               id == mob.util.ElementId.NAV_PANEL)) {
       continue;
     }
     var style = window.getComputedStyle(element);
@@ -226,7 +226,7 @@ pagespeed.MobNav.prototype.clampZIndex_ = function() {
     // menu bar and nav panel are set to 999999. This function runs before those
     // elements are added, so it won't modify their z-index.
     if (style.getPropertyValue('z-index') >= 999998) {
-      pagespeed.MobUtil.consoleLog(
+      mob.util.consoleLog(
           'Element z-index exceeded 999998, setting to 999997.');
       element.style.zIndex = 999997;
     }
@@ -237,7 +237,7 @@ pagespeed.MobNav.prototype.clampZIndex_ = function() {
 /**
  * @private
  */
-pagespeed.MobNav.prototype.redraw_ = function() {
+mob.Nav.prototype.redraw_ = function() {
   this.redrawHeader_();
   if (this.navPanel_) {
     this.navPanel_.redraw(this.headerBar_.getBoundingClientRect().height);
@@ -249,7 +249,7 @@ pagespeed.MobNav.prototype.redraw_ = function() {
  * Redraw the header after scrolling or zooming finishes.
  * @private
  */
-pagespeed.MobNav.prototype.redrawHeader_ = function() {
+mob.Nav.prototype.redrawHeader_ = function() {
   // We don't actually expect this to be called without headerBar_ being set,
   // but getTransformedSize requires a non-null param, so this coerces the
   // closure compiler into recognizing that.
@@ -277,8 +277,7 @@ pagespeed.MobNav.prototype.redrawHeader_ = function() {
   this.headerBar_.style.width = (width / fontSize) + 'em';
 
   // Restore visibility since the bar was hidden while scrolling and zooming.
-  goog.dom.classlist.remove(this.headerBar_,
-                            pagespeed.MobUtil.ElementClass.HIDE);
+  goog.dom.classlist.remove(this.headerBar_, mob.util.ElementClass.HIDE);
 
   var newHeight =
       Math.round(goog.style.getTransformedSize(this.headerBar_).height);
@@ -301,17 +300,17 @@ pagespeed.MobNav.prototype.redrawHeader_ = function() {
     var el = offsets[i];
     var style = window.getComputedStyle(el);
     var position = style.getPropertyValue('position');
-    var top = pagespeed.MobUtil.pixelValue(style.getPropertyValue('top'));
+    var top = mob.util.pixelValue(style.getPropertyValue('top'));
 
     if (position != 'static' && top != null) {
       if (this.redrawNavCalled_) {
         var oldTop = el.style.top;
-        oldTop = pagespeed.MobUtil.pixelValue(el.style.top);
+        oldTop = mob.util.pixelValue(el.style.top);
         if (oldTop != null) {
           el.style.top = String(oldTop + (newHeight - oldHeight)) + 'px';
         }
       } else {
-        var elTop = pagespeed.MobUtil.boundingRect(el).top;
+        var elTop = mob.util.boundingRect(el).top;
         el.style.top = String(elTop + newHeight) + 'px';
       }
     }
@@ -341,7 +340,7 @@ pagespeed.MobNav.prototype.redrawHeader_ = function() {
  * events after scrolling and zooming.
  * @private
  */
-pagespeed.MobNav.prototype.addHeaderBarResizeEvents_ = function() {
+mob.Nav.prototype.addHeaderBarResizeEvents_ = function() {
   // Draw the header bar initially.
   this.redraw_();
 
@@ -376,8 +375,7 @@ pagespeed.MobNav.prototype.addHeaderBarResizeEvents_ = function() {
   var scrollHandler = function(e) {
     resetScrollTimer.call(this);
     if (!this.navPanel_ || !this.navPanel_.isOpen()) {
-      goog.dom.classlist.add(this.headerBar_,
-                             pagespeed.MobUtil.ElementClass.HIDE);
+      goog.dom.classlist.add(this.headerBar_, mob.util.ElementClass.HIDE);
     }
   };
 
@@ -405,7 +403,7 @@ pagespeed.MobNav.prototype.addHeaderBarResizeEvents_ = function() {
                               if (!this.isAndroidBrowser_) {
                                 goog.dom.classlist.add(
                                     this.headerBar_,
-                                    pagespeed.MobUtil.ElementClass.HIDE);
+                                    mob.util.ElementClass.HIDE);
                               }
                             } else {
                               e.preventDefault();
@@ -437,31 +435,27 @@ pagespeed.MobNav.prototype.addHeaderBarResizeEvents_ = function() {
  * insert an empty div so all contents, except those with fixed position,
  * are pushed down. Then we insert the header bar. The header bar may contain
  * a hamburger icon, a logo image, and a call button.
- * @param {!pagespeed.MobUtil.ThemeData} themeData
+ * @param {!mob.util.ThemeData} themeData
  * @private
  */
-pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
+mob.Nav.prototype.addHeaderBar_ = function(themeData) {
   // Move the header bar and spacer div back to the top of the body, in case
   // some other JS on the page inserted some elements.
   document.body.insertBefore(this.spacerDiv_, document.body.childNodes[0]);
   document.body.insertBefore(this.headerBar_, this.spacerDiv_);
   if (window.psLabeledMode) {
-    goog.dom.classlist.add(this.headerBar_,
-                           pagespeed.MobUtil.ElementClass.LABELED);
+    goog.dom.classlist.add(this.headerBar_, mob.util.ElementClass.LABELED);
   }
 
   if (window.psConfigMode) {
-    goog.dom.classlist.add(this.headerBar_,
-                           pagespeed.MobUtil.ElementClass.THEME_CONFIG);
+    goog.dom.classlist.add(this.headerBar_, mob.util.ElementClass.THEME_CONFIG);
   }
 
   if (this.isIosWebview_) {
-    goog.dom.classlist.add(this.headerBar_,
-                           pagespeed.MobUtil.ElementClass.IOS_WEBVIEW);
+    goog.dom.classlist.add(this.headerBar_, mob.util.ElementClass.IOS_WEBVIEW);
   }
 
-  var navPanelEl =
-      document.getElementById(pagespeed.MobUtil.ElementId.NAV_PANEL);
+  var navPanelEl = document.getElementById(mob.util.ElementId.NAV_PANEL);
   // Add menu button and nav panel.
   if (!window.psLabeledMode && navPanelEl) {
     this.navPanel_ = new mob.NavPanel(navPanelEl, themeData.menuBackColor);
@@ -478,18 +472,18 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
   // the non-mobilized version.
   if (themeData.logoUrl) {
     this.logoSpan_ = document.createElement(goog.dom.TagName.SPAN);
-    this.logoSpan_.id = pagespeed.MobUtil.ElementId.LOGO_SPAN;
+    this.logoSpan_.id = mob.util.ElementId.LOGO_SPAN;
     var logoImg = document.createElement(goog.dom.TagName.IMG);
     logoImg.src = themeData.logoUrl;
-    logoImg.id = pagespeed.MobUtil.ElementId.LOGO_IMAGE;
+    logoImg.id = mob.util.ElementId.LOGO_IMAGE;
     this.logoSpan_.appendChild(logoImg);
     this.headerBar_.appendChild(this.logoSpan_);
   }
 
   this.headerBar_.style.borderBottomColor =
-      pagespeed.MobUtil.colorNumbersToString(themeData.menuFrontColor);
+      mob.util.colorNumbersToString(themeData.menuFrontColor);
   this.headerBar_.style.backgroundColor =
-      pagespeed.MobUtil.colorNumbersToString(themeData.menuBackColor);
+      mob.util.colorNumbersToString(themeData.menuBackColor);
 
   // Add call button.
   if (window.psPhoneNumber) {
@@ -512,7 +506,7 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
   if (window.psLabeledMode || (this.dialer_ && !this.mapButton_) ||
       (!this.dialer_ && this.mapButton_)) {
     goog.dom.classlist.add(this.headerBar_,
-                           pagespeed.MobUtil.ElementClass.SHOW_BUTTON_TEXT);
+                           mob.util.ElementClass.SHOW_BUTTON_TEXT);
   }
 
   this.addHeaderBarResizeEvents_();
@@ -524,25 +518,24 @@ pagespeed.MobNav.prototype.addHeaderBar_ = function(themeData) {
  * Insert a style tag at the end of the head with the theme colors. The member
  * bool useDetectedThemeColor controls whether we use the color detected from
  * mob_logo.js, or a predefined color.
- * @param {!pagespeed.MobUtil.ThemeData} themeData
+ * @param {!mob.util.ThemeData} themeData
  * @private
  */
-pagespeed.MobNav.prototype.addThemeColor_ = function(themeData) {
+mob.Nav.prototype.addThemeColor_ = function(themeData) {
   // Remove any prior style block.
   if (this.styleTag_) {
     this.styleTag_.parentNode.removeChild(this.styleTag_);
   }
 
-  var backgroundColor =
-      pagespeed.MobUtil.colorNumbersToString(themeData.menuBackColor);
-  var color = pagespeed.MobUtil.colorNumbersToString(themeData.menuFrontColor);
-  var css = '#' + pagespeed.MobUtil.ElementId.HEADER_BAR +
-            ' { background-color: ' + backgroundColor + '; }\n' +
-            '#' + pagespeed.MobUtil.ElementId.HEADER_BAR + ' * ' +
+  var backgroundColor = mob.util.colorNumbersToString(themeData.menuBackColor);
+  var color = mob.util.colorNumbersToString(themeData.menuFrontColor);
+  var css = '#' + mob.util.ElementId.HEADER_BAR + ' { background-color: ' +
+            backgroundColor + '; }\n' +
+            '#' + mob.util.ElementId.HEADER_BAR + ' * ' +
             ' { color: ' + color + '; }\n' +
-            '#' + pagespeed.MobUtil.ElementId.NAV_PANEL +
-            ' { background-color: ' + color + '; }\n' +
-            '#' + pagespeed.MobUtil.ElementId.NAV_PANEL + ' * ' +
+            '#' + mob.util.ElementId.NAV_PANEL + ' { background-color: ' +
+            color + '; }\n' +
+            '#' + mob.util.ElementId.NAV_PANEL + ' * ' +
             ' { color: ' + backgroundColor + '; }\n';
   this.styleTag_ = document.createElement(goog.dom.TagName.STYLE);
   this.styleTag_.type = 'text/css';
@@ -554,23 +547,23 @@ pagespeed.MobNav.prototype.addThemeColor_ = function(themeData) {
 /**
  * Main entry point of nav mobilization. Should be called when logo detection is
  * finished.
- * @param {!pagespeed.MobUtil.ThemeData} themeData
+ * @param {!mob.util.ThemeData} themeData
  */
-pagespeed.MobNav.prototype.run = function(themeData) {
+mob.Nav.prototype.run = function(themeData) {
   // Don't insert the header bar inside of an iframe.
-  if (pagespeed.MobUtil.inFriendlyIframe()) {
+  if (mob.util.inFriendlyIframe()) {
     return;
   }
   this.clampZIndex_();
   this.findElementsToOffset_();
   this.addHeaderBar_(themeData);
 
-  pagespeed.MobUtil.sendBeaconEvent(pagespeed.MobUtil.BeaconEvents.NAV_DONE);
+  mob.util.sendBeaconEvent(mob.util.BeaconEvents.NAV_DONE);
 
   window.addEventListener(goog.events.EventType.LOAD,
                           goog.bind(this.redraw_, this));
 
-  if (document.getElementById(pagespeed.MobUtil.ElementId.IFRAME)) {
+  if (document.getElementById(mob.util.ElementId.IFRAME)) {
     var iframe = new mob.Iframe();
     iframe.run();
   }
@@ -579,9 +572,9 @@ pagespeed.MobNav.prototype.run = function(themeData) {
 
 /**
  * Updates header bar using the theme data.
- * @param {!pagespeed.MobUtil.ThemeData} themeData
+ * @param {!mob.util.ThemeData} themeData
  */
-pagespeed.MobNav.prototype.updateTheme = function(themeData) {
+mob.Nav.prototype.updateTheme = function(themeData) {
   // For now we just remove the existing header bar and spacer div and recreate
   // them. This could be done more efficiently by updating just the style block
   // and logo image but since this is only used for debug and config it should
@@ -589,9 +582,9 @@ pagespeed.MobNav.prototype.updateTheme = function(themeData) {
   this.headerBar_.remove();
   this.spacerDiv_.remove();
   this.spacerDiv_ = document.createElement(goog.dom.TagName.DIV);
-  this.spacerDiv_.id = pagespeed.MobUtil.ElementId.SPACER;
+  this.spacerDiv_.id = mob.util.ElementId.SPACER;
 
   this.headerBar_ = document.createElement(goog.dom.TagName.HEADER);
-  this.headerBar_.id = pagespeed.MobUtil.ElementId.HEADER_BAR;
+  this.headerBar_.id = mob.util.ElementId.HEADER_BAR;
   this.addHeaderBar_(themeData);
 };

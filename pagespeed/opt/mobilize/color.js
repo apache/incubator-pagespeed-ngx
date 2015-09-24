@@ -16,12 +16,11 @@
  * Author: huibao@google.com (Huibao Lin)
  */
 
-goog.provide('pagespeed.MobColor');
+goog.provide('mob.Color');
 
 goog.require('goog.color');
 goog.require('goog.dom.TagName');
 goog.require('mob.util');
-goog.require('pagespeed.MobUtil');
 
 
 
@@ -29,8 +28,7 @@ goog.require('pagespeed.MobUtil');
  * Creates a context for color analysis.
  * @constructor
  */
-pagespeed.MobColor = function() {
-};
+mob.Color = function() {};
 
 
 /**
@@ -38,7 +36,7 @@ pagespeed.MobColor = function() {
  * considered non-zero.
  * @private @const
  */
-pagespeed.MobColor.prototype.EPSILON_ = 1e-10;
+mob.Color.prototype.EPSILON_ = 1e-10;
 
 
 /**
@@ -46,7 +44,7 @@ pagespeed.MobColor.prototype.EPSILON_ = 1e-10;
  * ratio between the larger brightness and the smaller brightness.
  * @private @const
  */
-pagespeed.MobColor.prototype.MIN_CONTRAST_ = 3;
+mob.Color.prototype.MIN_CONTRAST_ = 3;
 
 
 
@@ -56,8 +54,9 @@ pagespeed.MobColor.prototype.MIN_CONTRAST_ = 3;
  * @param {!goog.color.Rgb} foreground
  * @struct
  * @constructor
+ * @private
  */
-pagespeed.MobColor.ThemeColors = function(background, foreground) {
+mob.Color.ThemeColors_ = function(background, foreground) {
   /** @type {!goog.color.Rgb} */
   this.background = background;
   /** @type {!goog.color.Rgb} */
@@ -72,7 +71,7 @@ pagespeed.MobColor.ThemeColors = function(background, foreground) {
  * @private
  * @return {number}
  */
-pagespeed.MobColor.prototype.distance_ = function(rgb1, rgb2) {
+mob.Color.prototype.distance_ = function(rgb1, rgb2) {
   if (rgb1.length != 3 || rgb2.length != 3) {
     return Infinity;
   }
@@ -91,7 +90,7 @@ pagespeed.MobColor.prototype.distance_ = function(rgb1, rgb2) {
  * @private
  * @return {number}
  */
-pagespeed.MobColor.prototype.srgbToRgb_ = function(v255) {
+mob.Color.prototype.srgbToRgb_ = function(v255) {
   var v = v255 / 255;
   if (v <= 0.03928) {
     v = v / 12.92;
@@ -108,10 +107,9 @@ pagespeed.MobColor.prototype.srgbToRgb_ = function(v255) {
  * @private
  * @return {number}
  */
-pagespeed.MobColor.prototype.rgbToGray_ = function(sRgb) {
+mob.Color.prototype.rgbToGray_ = function(sRgb) {
   var v = 0.2126 * this.srgbToRgb_(sRgb[0]) +
-      0.7152 * this.srgbToRgb_(sRgb[1]) +
-      0.0722 * this.srgbToRgb_(sRgb[2]);
+          0.7152 * this.srgbToRgb_(sRgb[1]) + 0.0722 * this.srgbToRgb_(sRgb[2]);
   return v;
 };
 
@@ -119,11 +117,11 @@ pagespeed.MobColor.prototype.rgbToGray_ = function(sRgb) {
 /**
  * Enhance colors if they don't have enough contrast. To enhance the contrast,
  * we increase the difference of luminance, but keep their colors.
- * @param {!pagespeed.MobColor.ThemeColors} themeColors
+ * @param {!mob.Color.ThemeColors_} themeColors
  * @private
- * @return {!pagespeed.MobColor.ThemeColors}
+ * @return {!mob.Color.ThemeColors_}
  */
-pagespeed.MobColor.prototype.enhanceColors_ = function(themeColors) {
+mob.Color.prototype.enhanceColors_ = function(themeColors) {
   var bk = themeColors.background;
   var fr = themeColors.foreground;
   var bkGray = this.rgbToGray_(bk);
@@ -181,7 +179,7 @@ pagespeed.MobColor.prototype.enhanceColors_ = function(themeColors) {
 
   bk = goog.color.hsvArrayToRgb(bkHsv);
   fr = goog.color.hsvArrayToRgb(frHsv);
-  return (new pagespeed.MobColor.ThemeColors(bk, fr));
+  return (new mob.Color.ThemeColors_(bk, fr));
 };
 
 
@@ -197,10 +195,9 @@ pagespeed.MobColor.prototype.enhanceColors_ = function(themeColors) {
  * @param {number} width
  * @param {number} height
  * @private
- * @return {!pagespeed.MobColor.ThemeColors}
+ * @return {!mob.Color.ThemeColors_}
  */
-pagespeed.MobColor.prototype.computeColors_ = function(pixels, bkColor,
-                                                       width, height) {
+mob.Color.prototype.computeColors_ = function(pixels, bkColor, width, height) {
   // Blend the background color into pixels.
   var rgb = [];
   var x, y, idx;
@@ -280,7 +277,7 @@ pagespeed.MobColor.prototype.computeColors_ = function(pixels, bkColor,
   }
 
   // Ehance the colors, if they don't have enough contrast.
-  return this.enhanceColors_(new pagespeed.MobColor.ThemeColors(bk, fr));
+  return this.enhanceColors_(new mob.Color.ThemeColors_(bk, fr));
 };
 
 
@@ -289,10 +286,10 @@ pagespeed.MobColor.prototype.computeColors_ = function(pixels, bkColor,
  * @param {!Element} imageElement
  * @param {!goog.color.Rgb} backgroundColor
  * @private
- * @return {!pagespeed.MobColor.ThemeColors}
+ * @return {!mob.Color.ThemeColors_}
  */
-pagespeed.MobColor.prototype.computeThemeColor_ = function(imageElement,
-                                                           backgroundColor) {
+mob.Color.prototype.computeThemeColor_ = function(imageElement,
+                                                  backgroundColor) {
   var width = imageElement.naturalWidth;
   var height = imageElement.naturalHeight;
   var canvas =
@@ -313,21 +310,21 @@ pagespeed.MobColor.prototype.computeThemeColor_ = function(imageElement,
  * Compute theme color or return the default color.
  * @param {?Element} imageElement
  * @param {?goog.color.Rgb} backgroundColor
- * @return {!pagespeed.MobColor.ThemeColors}
+ * @return {!mob.Color.ThemeColors_}
  */
-pagespeed.MobColor.prototype.run = function(imageElement, backgroundColor) {
+mob.Color.prototype.run = function(imageElement, backgroundColor) {
   if (imageElement) {
-    if (!pagespeed.MobUtil.isCrossOrigin(imageElement.src)) {
-      pagespeed.MobUtil.consoleLog('Found logo. Theme color will be computed ' +
-                                   'from logo.');
+    if (!mob.util.isCrossOrigin(imageElement.src)) {
+      mob.util.consoleLog('Found logo. Theme color will be computed ' +
+                          'from logo.');
       return this.computeThemeColor_(imageElement,
                                      backgroundColor || [255, 255, 255]);
     } else {
-      pagespeed.MobUtil.consoleLog('Found logo but its origin is different ' +
-                                   'from that of HTML. Using default color.');
+      mob.util.consoleLog('Found logo but its origin is different ' +
+                          'from that of HTML. Using default color.');
     }
   } else {
-    pagespeed.MobUtil.consoleLog('Did not find logo. Using default color.');
+    mob.util.consoleLog('Did not find logo. Using default color.');
   }
 
   var foregroundColor = [0, 0, 0];
@@ -342,5 +339,5 @@ pagespeed.MobColor.prototype.run = function(imageElement, backgroundColor) {
     backgroundColor = [255, 255, 255];
   }
 
-  return (new pagespeed.MobColor.ThemeColors(backgroundColor, foregroundColor));
+  return (new mob.Color.ThemeColors_(backgroundColor, foregroundColor));
 };

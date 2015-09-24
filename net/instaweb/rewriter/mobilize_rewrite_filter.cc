@@ -219,7 +219,7 @@ void MobilizeRewriteFilter::RenderDone() {
   HtmlElement* script = driver()->NewElement(NULL, HtmlName::kScript);
   InsertNodeAtBodyEnd(script);
   HtmlNode* text_node =
-      driver()->NewCharactersNode(script, "pagespeed.Mob.start();");
+      driver()->NewCharactersNode(script, "psStartMobilization();");
   driver()->AppendChild(script, text_node);
 }
 

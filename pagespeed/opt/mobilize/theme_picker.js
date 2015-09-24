@@ -19,9 +19,11 @@ goog.provide('mob.ThemePicker');
 goog.require('goog.color');
 goog.require('goog.dom.TagName');
 goog.require('goog.events.EventType');
-goog.require('pagespeed.MobLogo');
-goog.require('pagespeed.MobNav');
-goog.require('pagespeed.MobUtil');
+goog.require('mob.Logo');
+goog.require('mob.Nav');
+goog.require('mob.util.ElementClass');
+goog.require('mob.util.ElementId');
+goog.require('mob.util.ThemeData');
 
 
 
@@ -41,13 +43,13 @@ mob.ThemePicker = function() {
 
   /**
    * Navigation context.
-   * @private {!pagespeed.MobNav}
+   * @private {!mob.Nav}
    */
-  this.mobNav_ = new pagespeed.MobNav();
+  this.mobNav_ = new mob.Nav();
 
 
   /**
-   * @private {?Array.<!pagespeed.MobLogoCandidate>}
+   * @private {?Array.<!mob.LogoCandidate>}
    */
   this.logoCandidates_ = null;
 };
@@ -85,13 +87,13 @@ mob.ThemePicker.prototype.run = function() {
  * @private
  */
 mob.ThemePicker.prototype.extractThemes_ = function() {
-  var logo = new pagespeed.MobLogo();
+  var logo = new mob.Logo();
   logo.run(goog.bind(this.logoDone_, this), 5);
 };
 
 
 /**
- * @param {!Array.<!pagespeed.MobLogoCandidate>} logoCandidates
+ * @param {!Array.<!mob.LogoCandidate>} logoCandidates
  * @private
  */
 mob.ThemePicker.prototype.logoDone_ = function(logoCandidates) {
@@ -101,9 +103,9 @@ mob.ThemePicker.prototype.logoDone_ = function(logoCandidates) {
     return;
   }
   var candidate = this.logoCandidates_[0];
-  var theme = new pagespeed.MobUtil.ThemeData(
-      candidate.logoRecord.foregroundImage.src, candidate.background,
-      candidate.foreground);
+  var theme =
+      new mob.util.ThemeData(candidate.logoRecord.foregroundImage.src,
+                             candidate.background, candidate.foreground);
   this.mobNav_.run(theme);
   this.chooserShowCandidates_();
 };
@@ -119,7 +121,7 @@ mob.ThemePicker.prototype.chooserShowCandidates_ = function() {
   }
 
   var table = document.createElement(goog.dom.TagName.TABLE);
-  table.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_TABLE;
+  table.className = mob.util.ElementClass.LOGO_CHOOSER_TABLE;
 
   var thead = document.createElement(goog.dom.TagName.THEAD);
   table.appendChild(thead);
@@ -130,7 +132,7 @@ mob.ThemePicker.prototype.chooserShowCandidates_ = function() {
     trow.appendChild(td);
     return td;
   }
-  trow.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_COLUMN_HEADER;
+  trow.className = mob.util.ElementClass.LOGO_CHOOSER_COLUMN_HEADER;
   addData().textContent = 'Logo';
   addData().textContent = 'Foreground';
   addData().textContent = '';
@@ -140,7 +142,7 @@ mob.ThemePicker.prototype.chooserShowCandidates_ = function() {
   table.appendChild(tbody);
   for (var i = 0; i < this.logoCandidates_.length; ++i) {
     trow = document.createElement(goog.dom.TagName.TR);
-    trow.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_CHOICE;
+    trow.className = mob.util.ElementClass.LOGO_CHOOSER_CHOICE;
     tbody.appendChild(trow);
     var candidate = this.logoCandidates_[i];
 
@@ -148,25 +150,25 @@ mob.ThemePicker.prototype.chooserShowCandidates_ = function() {
     img.src = candidate.logoRecord.foregroundImage.src;
     addData().appendChild(img);
 
-    img.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_IMAGE;
+    img.className = mob.util.ElementClass.LOGO_CHOOSER_IMAGE;
     img.onclick = goog.bind(this.chooserSetLogo_, this, candidate);
 
     var foreground = addData();
     foreground.style.backgroundColor =
         goog.color.rgbArrayToHex(candidate.foreground);
-    foreground.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_COLOR;
+    foreground.className = mob.util.ElementClass.LOGO_CHOOSER_COLOR;
 
     var swapTd = addData();
-    swapTd.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_COLOR;
+    swapTd.className = mob.util.ElementClass.LOGO_CHOOSER_COLOR;
     var swapImg = document.createElement(goog.dom.TagName.IMG);
-    swapImg.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_SWAP;
+    swapImg.className = mob.util.ElementClass.LOGO_CHOOSER_SWAP;
     swapImg.src = mob.ThemePicker.SWAP_ICON_;
     swapTd.appendChild(swapImg);
 
     var background = addData();
     background.style.backgroundColor =
         goog.color.rgbArrayToHex(candidate.background);
-    background.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_SWAP;
+    background.className = mob.util.ElementClass.LOGO_CHOOSER_SWAP;
 
     swapTd.onclick = goog.bind(this.chooserSwapColors_, this, candidate,
         foreground, background);
@@ -213,23 +215,22 @@ mob.ThemePicker.prototype.chooserDisplayPopup_ = function(popup) {
 /**
  * Sets the logo in response to clicking on an image in the logo chooser
  * popup.
- * @param {!pagespeed.MobLogoCandidate} candidate
+ * @param {!mob.LogoCandidate} candidate
  * @private
  */
 mob.ThemePicker.prototype.chooserSetLogo_ = function(candidate) {
-  var themeData = new pagespeed.MobUtil.ThemeData(
-      candidate.logoRecord.foregroundImage.src, candidate.background,
-      candidate.foreground);
+  var themeData =
+      new mob.util.ThemeData(candidate.logoRecord.foregroundImage.src,
+                             candidate.background, candidate.foreground);
   this.mobNav_.updateTheme(themeData);
   // updateTheme currently just deletes and recreates the nav bar, so we have to
   // setup the listener again.
-  var logo = document.getElementById(pagespeed.MobUtil.ElementId.LOGO_SPAN);
+  var logo = document.getElementById(mob.util.ElementId.LOGO_SPAN);
   logo.addEventListener(goog.events.EventType.CLICK,
                         goog.bind(this.chooserShowCandidates_, this));
 
   var configSnippet = document.createElement(goog.dom.TagName.PRE);
-  configSnippet.className =
-      pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_CONFIG_FRAGMENT;
+  configSnippet.className = mob.util.ElementClass.LOGO_CHOOSER_CONFIG_FRAGMENT;
 
   // TODO(jmarantz): Generate nginx syntax as needed.
   configSnippet.textContent =
@@ -243,7 +244,7 @@ mob.ThemePicker.prototype.chooserSetLogo_ = function(candidate) {
 
 /**
  * Swaps the background and colors for a logo candidate.
- * @param {!pagespeed.MobLogoCandidate} candidate
+ * @param {!mob.LogoCandidate} candidate
  * @param {!Element} foregroundTd table data element (TD) for the foreground
  * @param {!Element} backgroundTd table data element (TD) for the background
  * @private

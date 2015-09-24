@@ -22,7 +22,9 @@ goog.require('goog.dom.classlist');
 goog.require('goog.events.EventType');
 goog.require('goog.style');
 goog.require('mob.util');
-goog.require('pagespeed.MobUtil');
+goog.require('mob.util.BeaconEvents');
+goog.require('mob.util.ElementClass');
+goog.require('mob.util.ElementId');
 
 
 
@@ -96,14 +98,13 @@ mob.NavPanel.prototype.initialize_ = function() {
   document.body.appendChild(this.el);
 
   // If the navpanel's outer ul has the class 'open', replace it with
-  // pagespeed.MobUtil.ElementClass.OPEN (for compatibility with older releases
+  // mob.util.ElementClass.OPEN (for compatibility with older releases
   // of the filter).
   // TODO(jmaessen): Remove after older releases are no longer running, should
   // be doable by early August.
   var opens = this.el.getElementsByClassName('open');
   for (var i = 0, n = opens.length; i < n; i++) {
-    goog.dom.classlist.addRemove(
-        opens[i], 'open', pagespeed.MobUtil.ElementClass.OPEN);
+    goog.dom.classlist.addRemove(opens[i], 'open', mob.util.ElementClass.OPEN);
   }
 
   this.addSubmenuArrows_();
@@ -172,8 +173,8 @@ mob.NavPanel.prototype.redraw = function(opt_marginTopHeight) {
 
   // Make sure that the nav panel does not overflow the window on small screen
   // devices by capping the maximum font size.
-  var bodyWidth = pagespeed.MobUtil.pixelValue(
-      window.getComputedStyle(document.body).width);
+  var bodyWidth =
+      mob.util.pixelValue(window.getComputedStyle(document.body).width);
   if (bodyWidth) {
     fontSize = Math.min(fontSize, bodyWidth / mob.NavPanel.WIDTH_);
   }
@@ -205,7 +206,7 @@ mob.NavPanel.prototype.redraw = function(opt_marginTopHeight) {
  */
 mob.NavPanel.prototype.addClickDetectorDiv_ = function() {
   this.clickDetectorDiv_ = document.createElement(goog.dom.TagName.DIV);
-  this.clickDetectorDiv_.id = pagespeed.MobUtil.ElementId.CLICK_DETECTOR_DIV;
+  this.clickDetectorDiv_.id = mob.util.ElementId.CLICK_DETECTOR_DIV;
   document.body.insertBefore(this.clickDetectorDiv_, this.el);
 
   this.clickDetectorDiv_.addEventListener(
@@ -229,16 +230,15 @@ mob.NavPanel.prototype.addSubmenuArrows_ = function() {
     return;
   }
 
-  var arrowIcon = pagespeed.MobUtil.synthesizeImage(mob.NavPanel.ARROW_ICON_,
-                                                    this.backgroundColor_);
+  var arrowIcon =
+      mob.util.synthesizeImage(mob.NavPanel.ARROW_ICON_, this.backgroundColor_);
 
   for (var i = 0; i < n; i++) {
     var icon = document.createElement(goog.dom.TagName.IMG);
     var submenu = submenuTitleAs[i];
     submenu.insertBefore(icon, submenu.firstChild);
     icon.setAttribute('src', arrowIcon);
-    goog.dom.classlist.add(icon,
-                           pagespeed.MobUtil.ElementClass.MENU_EXPAND_ICON);
+    goog.dom.classlist.add(icon, mob.util.ElementClass.MENU_EXPAND_ICON);
   }
 };
 
@@ -251,16 +251,14 @@ mob.NavPanel.prototype.toggle = function() {
   // We used to make a bunch of toggle calls here, but we
   // now use isOpen() as the source of truth and adjust the CSS
   // based upon it.
-  var event = (this.isOpen() ?
-      pagespeed.MobUtil.BeaconEvents.MENU_BUTTON_CLOSE :
-      pagespeed.MobUtil.BeaconEvents.MENU_BUTTON_OPEN);
-  var action = (this.isOpen() ?
-      goog.dom.classlist.remove :
-      goog.dom.classlist.add);
-  pagespeed.MobUtil.sendBeaconEvent(event);
-  action(this.el, pagespeed.MobUtil.ElementClass.OPEN);
-  action(this.clickDetectorDiv_, pagespeed.MobUtil.ElementClass.OPEN);
-  action(document.body, pagespeed.MobUtil.ElementClass.NOSCROLL);
+  var event = (this.isOpen() ? mob.util.BeaconEvents.MENU_BUTTON_CLOSE :
+                               mob.util.BeaconEvents.MENU_BUTTON_OPEN);
+  var action =
+      (this.isOpen() ? goog.dom.classlist.remove : goog.dom.classlist.add);
+  mob.util.sendBeaconEvent(event);
+  action(this.el, mob.util.ElementClass.OPEN);
+  action(this.clickDetectorDiv_, mob.util.ElementClass.OPEN);
+  action(document.body, mob.util.ElementClass.NOSCROLL);
   this.redraw();
 };
 
@@ -297,11 +295,10 @@ mob.NavPanel.prototype.getMenuClickHandlerUrl = function(href, destDomain) {
  * @private
  */
 mob.NavPanel.prototype.closeAllSubmenus_ = function() {
-  var openSubmenus = this.el.querySelectorAll(
-      goog.dom.TagName.LI + ' .' + pagespeed.MobUtil.ElementClass.OPEN);
+  var openSubmenus = this.el.querySelectorAll(goog.dom.TagName.LI + ' .' +
+                                              mob.util.ElementClass.OPEN);
   for (var i = 0, element; element = openSubmenus[i]; ++i) {
-    goog.dom.classlist.remove(
-        element, pagespeed.MobUtil.ElementClass.OPEN);
+    goog.dom.classlist.remove(element, mob.util.ElementClass.OPEN);
   }
 };
 
@@ -321,26 +318,23 @@ mob.NavPanel.prototype.addButtonEvents_ = function() {
       // A click was registered on the div that has the hierarchical menu text
       // and icon. Open up the UL, which should be the next element.  Here we
       // use the open state of target.nextSibling as a source of truth.
-      var isSubmenuOpen =
-          goog.dom.classlist.contains(
-              target.nextSibling, pagespeed.MobUtil.ElementClass.OPEN);
-      var event = (isSubmenuOpen ?
-          pagespeed.MobUtil.BeaconEvents.SUBMENU_CLOSE :
-          pagespeed.MobUtil.BeaconEvents.SUBMENU_OPEN);
-      var action = (isSubmenuOpen ?
-          goog.dom.classlist.remove :
-          goog.dom.classlist.add);
-      pagespeed.MobUtil.sendBeaconEvent(event);
-      action(target.nextSibling, pagespeed.MobUtil.ElementClass.OPEN);
+      var isSubmenuOpen = goog.dom.classlist.contains(
+          target.nextSibling, mob.util.ElementClass.OPEN);
+      var event = (isSubmenuOpen ? mob.util.BeaconEvents.SUBMENU_CLOSE :
+                                   mob.util.BeaconEvents.SUBMENU_OPEN);
+      var action =
+          (isSubmenuOpen ? goog.dom.classlist.remove : goog.dom.classlist.add);
+      mob.util.sendBeaconEvent(event);
+      action(target.nextSibling, mob.util.ElementClass.OPEN);
       // Also toggle the expand icon, which will be the first child of the P
       // tag, which is the first child of the target div.
-      action(target.firstChild.firstChild, pagespeed.MobUtil.ElementClass.OPEN);
+      action(target.firstChild.firstChild, mob.util.ElementClass.OPEN);
     }, false);
   }
 
   // Setup the buttons in the nav panel so that they navigate the iframe instead
   // of the top level page.
-  var iframe = document.getElementById(pagespeed.MobUtil.ElementId.IFRAME);
+  var iframe = document.getElementById(mob.util.ElementId.IFRAME);
   if (iframe) {
     var destDomain = (new goog.Uri(iframe.src)).getDomain();
     var aTags = this.el.querySelectorAll(goog.dom.TagName.LI + ' > ' +
@@ -351,20 +345,16 @@ mob.NavPanel.prototype.addButtonEvents_ = function() {
         aTag.addEventListener(
             goog.events.EventType.CLICK,
             goog.bind(function(iframe, url, event) {
-              pagespeed.MobUtil.sendBeaconEvent(
-                  pagespeed.MobUtil.BeaconEvents.MENU_NAV_CLICK);
+              mob.util.sendBeaconEvent(mob.util.BeaconEvents.MENU_NAV_CLICK);
               event.preventDefault();
               iframe.src = url;
               this.toggle();
               this.closeAllSubmenus_();
             }, this, iframe, url));
       } else {
-        aTag.addEventListener(
-            goog.events.EventType.CLICK,
-            function() {
-              pagespeed.MobUtil.sendBeaconEvent(
-                  pagespeed.MobUtil.BeaconEvents.MENU_NAV_CLICK);
-            });
+        aTag.addEventListener(goog.events.EventType.CLICK, function() {
+          mob.util.sendBeaconEvent(mob.util.BeaconEvents.MENU_NAV_CLICK);
+        });
       }
     }
   }
@@ -376,6 +366,5 @@ mob.NavPanel.prototype.addButtonEvents_ = function() {
  * @return {boolean}
  */
 mob.NavPanel.prototype.isOpen = function() {
-  return goog.dom.classlist.contains(
-      this.el, pagespeed.MobUtil.ElementClass.OPEN);
+  return goog.dom.classlist.contains(this.el, mob.util.ElementClass.OPEN);
 };

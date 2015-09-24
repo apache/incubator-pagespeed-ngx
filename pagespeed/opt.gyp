@@ -156,7 +156,7 @@
         'js_dir': 'opt/mobilize',
         'closure_build_type': 'dbg',
         'extra_closure_flags': [
-          '--closure_entry_point=pagespeed.Mob',
+          '--closure_entry_point=mob',
           '<@(include_closure_library)',
           '--externs=opt/mobilize/externs.js',
           '--externs=opt/mobilize/externs_wkh.js',
@@ -186,7 +186,7 @@
       'variables': {
         'js_dir': 'opt/mobilize',
         'extra_closure_flags': [
-          '--closure_entry_point=pagespeed.Mob',
+          '--closure_entry_point=mob',
           '<@(include_closure_library)',
           '--externs=opt/mobilize/externs.js',
           '--externs=opt/mobilize/externs_wkh.js',
@@ -246,7 +246,7 @@
         'js_dir': 'opt/mobilize',
         'closure_build_type': 'dbg',
         'extra_closure_flags': [
-          '--closure_entry_point=pagespeed.XhrHijack',
+          '--closure_entry_point=mob.XhrHijack',
           '<@(include_closure_library)',
           '--externs=opt/mobilize/externs.js',
         ],
@@ -259,7 +259,7 @@
       'variables': {
         'js_dir': 'opt/mobilize',
         'extra_closure_flags': [
-          '--closure_entry_point=pagespeed.XhrHijack',
+          '--closure_entry_point=mob.XhrHijack',
           '<@(include_closure_library)',
           '--externs=opt/mobilize/externs.js',
         ],

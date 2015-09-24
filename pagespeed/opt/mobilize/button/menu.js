@@ -19,7 +19,7 @@
 goog.provide('mob.button.Menu');
 
 goog.require('mob.button.AbstractButton');
-goog.require('pagespeed.MobUtil');
+goog.require('mob.util.ElementId');
 
 
 
@@ -33,8 +33,7 @@ goog.require('pagespeed.MobUtil');
 mob.button.Menu = function(color, clickHandlerFn) {
   this.clickHandlerFn_ = clickHandlerFn;
 
-  mob.button.Menu.base(this, 'constructor',
-                       pagespeed.MobUtil.ElementId.MENU_BUTTON,
+  mob.button.Menu.base(this, 'constructor', mob.util.ElementId.MENU_BUTTON,
                        mob.button.Menu.ICON_, color, null);
 };
 goog.inherits(mob.button.Menu, mob.button.AbstractButton);

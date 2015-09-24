@@ -17,15 +17,16 @@
  */
 
 
-goog.provide('pagespeed.mobLayoutUtil');
+goog.provide('mob.layoutUtil');
 
 goog.require('goog.array');
 goog.require('goog.dom');
 goog.require('goog.dom.TagName');
 goog.require('goog.dom.classlist');
 goog.require('goog.string');
-goog.require('pagespeed.MobUtil');
-goog.require('pagespeed.mobLayoutConstants');
+goog.require('mob.layoutConstants');
+goog.require('mob.util');
+goog.require('mob.util.ElementClass');
 
 
 /**
@@ -33,14 +34,14 @@ goog.require('pagespeed.mobLayoutConstants');
  * the system.
  * @private @const {number}
  */
-pagespeed.mobLayoutUtil.DEFAULT_MAX_WIDTH_ = 400;
+mob.layoutUtil.DEFAULT_MAX_WIDTH_ = 400;
 
 
 /**
  * Maximum allowed margin in pixels.
  * @private @const {number}
  */
-pagespeed.mobLayoutUtil.CLAMP_STYLE_LIMIT_PX_ = 4;
+mob.layoutUtil.CLAMP_STYLE_LIMIT_PX_ = 4;
 
 
 /**
@@ -50,14 +51,14 @@ pagespeed.mobLayoutUtil.CLAMP_STYLE_LIMIT_PX_ = 4;
  *
  * @private @const {number}
  */
-pagespeed.mobLayoutUtil.MAX_ALLOWED_NEGATIVE_MARGIN_PX_ = -30;
+mob.layoutUtil.MAX_ALLOWED_NEGATIVE_MARGIN_PX_ = -30;
 
 
 /**
  * Marker for elements with negative bottom margin.
  * @const {string}
  */
-pagespeed.mobLayoutUtil.NEGATIVE_BOTTOM_MARGIN_ATTR =
+mob.layoutUtil.NEGATIVE_BOTTOM_MARGIN_ATTR =
     'data-pagespeed-negative-bottom-margin';
 
 
@@ -66,10 +67,10 @@ pagespeed.mobLayoutUtil.NEGATIVE_BOTTOM_MARGIN_ATTR =
  *
  * @return {number}
  */
-pagespeed.mobLayoutUtil.computeMaxWidth = function() {
+mob.layoutUtil.computeMaxWidth = function() {
   var width = window.document.documentElement.clientWidth;
   if (!width) {
-    return pagespeed.mobLayoutUtil.DEFAULT_MAX_WIDTH_;
+    return mob.layoutUtil.DEFAULT_MAX_WIDTH_;
   }
 
   // If there is a body, then subtract off any body padding.
@@ -77,9 +78,8 @@ pagespeed.mobLayoutUtil.computeMaxWidth = function() {
   if (body) {
     var bodyStyle = window.getComputedStyle(body);
     goog.array.forEach(
-        pagespeed.mobLayoutConstants.HORIZONTAL_PADDING_PROPERTIES,
-        function(property) {
-          var value = pagespeed.MobUtil.computedDimension(bodyStyle, property);
+        mob.layoutConstants.HORIZONTAL_PADDING_PROPERTIES, function(property) {
+          var value = mob.util.computedDimension(bodyStyle, property);
           if (value) {
             width -= value;
           }
@@ -95,7 +95,7 @@ pagespeed.mobLayoutUtil.computeMaxWidth = function() {
  * @param {!CSSStyleDeclaration} computedStyle
  * @return {boolean}
  */
-pagespeed.mobLayoutUtil.isProbablyASprite = function(computedStyle) {
+mob.layoutUtil.isProbablyASprite = function(computedStyle) {
   var size = computedStyle.getPropertyValue('background-size');
   if (size == 'auto') {
     return false;
@@ -106,9 +106,8 @@ pagespeed.mobLayoutUtil.isProbablyASprite = function(computedStyle) {
   }
   // A precisely positioned pixel-position probably indicates a sprite.
   var pieces = pos.split(' ');
-  return !!((pieces.length == 2) &&
-            (pagespeed.MobUtil.pixelValue(pieces[0]) != null) &&
-            (pagespeed.MobUtil.pixelValue(pieces[1]) != null));
+  return !!((pieces.length == 2) && (mob.util.pixelValue(pieces[0]) != null) &&
+            (mob.util.pixelValue(pieces[1]) != null));
 };
 
 
@@ -117,10 +116,10 @@ pagespeed.mobLayoutUtil.isProbablyASprite = function(computedStyle) {
  *
  * @param {!Element} element
  */
-pagespeed.mobLayoutUtil.makeHorizontallyScrollable = function(element) {
-  pagespeed.MobUtil.setPropertyImportant(element, 'overflow-x', 'auto');
-  pagespeed.MobUtil.setPropertyImportant(element, 'width', 'auto');
-  pagespeed.MobUtil.setPropertyImportant(element, 'display', 'block');
+mob.layoutUtil.makeHorizontallyScrollable = function(element) {
+  mob.util.setPropertyImportant(element, 'overflow-x', 'auto');
+  mob.util.setPropertyImportant(element, 'width', 'auto');
+  mob.util.setPropertyImportant(element, 'display', 'block');
 };
 
 
@@ -131,7 +130,7 @@ pagespeed.mobLayoutUtil.makeHorizontallyScrollable = function(element) {
  * @param {!Element} element
  * @return {number}
  */
-pagespeed.mobLayoutUtil.countContainers = function(element) {
+mob.layoutUtil.countContainers = function(element) {
   var result = 0;
   var tagName = element.tagName.toUpperCase();
   if ((tagName == goog.dom.TagName.DIV) ||
@@ -140,7 +139,7 @@ pagespeed.mobLayoutUtil.countContainers = function(element) {
   }
   for (var child = element.firstElementChild; child;
        child = child.nextElementSibling) {
-    result += pagespeed.mobLayoutUtil.countContainers(child);
+    result += mob.layoutUtil.countContainers(child);
   }
   return result;
 };
@@ -152,7 +151,7 @@ pagespeed.mobLayoutUtil.countContainers = function(element) {
  * @param {!Element} element
  * @return {boolean}
  */
-pagespeed.mobLayoutUtil.isPossiblyASlideShow = function(element) {
+mob.layoutUtil.isPossiblyASlideShow = function(element) {
   return goog.dom.classlist.contains(element, 'nivoSlider');
 };
 
@@ -167,12 +166,12 @@ pagespeed.mobLayoutUtil.isPossiblyASlideShow = function(element) {
  * for the full details of what these can be.
  *
  * TODO(jmarantz): move this to util.js and replace
- * pagespeed.MobUtil.findBackgroundImage_ there.
+ * mob.util.findBackgroundImage_ there.
  *
  * @param {!Element} element
  * @return {?Array.<string>}
  */
-pagespeed.mobLayoutUtil.findBackgroundImages = function(element) {
+mob.layoutUtil.findBackgroundImages = function(element) {
   var images = [];
   var nodeName = element.tagName.toUpperCase();
   if ((nodeName == goog.dom.TagName.SCRIPT) ||
@@ -245,8 +244,7 @@ pagespeed.mobLayoutUtil.findBackgroundImages = function(element) {
  * @param {!Element} element
  * @param {!CSSStyleDeclaration} computedStyle
  */
-pagespeed.mobLayoutUtil.removeWidthConstraint =
-    function(element, computedStyle) {
+mob.layoutUtil.removeWidthConstraint = function(element, computedStyle) {
   // Input fields are sometimes reasonably sized, and shouldn't
   // be auto-width.
   var tagName = element.tagName.toUpperCase();
@@ -255,18 +253,17 @@ pagespeed.mobLayoutUtil.removeWidthConstraint =
     // Determine whether this element has a width constraint.
     if ((!element.style.backgroundSize) &&
         (computedStyle.width != 'auto')) {
-      pagespeed.MobUtil.setPropertyImportant(element, 'width', 'auto');
+      mob.util.setPropertyImportant(element, 'width', 'auto');
     }
     if (tagName != goog.dom.TagName.IMG) {
       // Various table elements with explicit widths can be cleaned up
       // to let the browser decide.
       element.removeAttribute('width');
     }
-    pagespeed.mobLayoutUtil.removeProperties_(
-        element,
-        pagespeed.mobLayoutConstants.PROPERTIES_TO_REMOVE_FOR_SINGLE_COLUMN);
+    mob.layoutUtil.removeProperties_(
+        element, mob.layoutConstants.PROPERTIES_TO_REMOVE_FOR_SINGLE_COLUMN);
     element.className += element.className ? ' ' : '';
-    element.classname += pagespeed.MobUtil.ElementClass.SINGLE_COLUMN;
+    element.classname += mob.util.ElementClass.SINGLE_COLUMN;
   }
 };
 
@@ -278,9 +275,9 @@ pagespeed.mobLayoutUtil.removeWidthConstraint =
  * @param {!Array.<string>} properties
  * @private
  */
-pagespeed.mobLayoutUtil.removeProperties_ = function(element, properties) {
+mob.layoutUtil.removeProperties_ = function(element, properties) {
   for (var i = 1; i < arguments.length; ++i) {
-    pagespeed.MobUtil.removeProperty(element, arguments[i]);
+    mob.util.removeProperty(element, arguments[i]);
   }
 };
 
@@ -293,7 +290,7 @@ pagespeed.mobLayoutUtil.removeProperties_ = function(element, properties) {
  * @param {!Element} table
  * @return {boolean}
  */
-pagespeed.mobLayoutUtil.isDataTable = function(table) {
+mob.layoutUtil.isDataTable = function(table) {
   var numDataNodes = 0;
 
   // Tables have this hierarchy:
@@ -337,7 +334,7 @@ pagespeed.mobLayoutUtil.isDataTable = function(table) {
   // couple of containers.  For now, many sites are happy with 3*containers as
   // the threshold, but I suspect we have not seen the last of this
   // heuristic.
-  var numContainers = pagespeed.mobLayoutUtil.countContainers(table);
+  var numContainers = mob.layoutUtil.countContainers(table);
   return ((3 * numContainers) <= numDataNodes);
 };
 
@@ -351,7 +348,7 @@ pagespeed.mobLayoutUtil.isDataTable = function(table) {
  *
  * @param {!Element} element
  */
-pagespeed.mobLayoutUtil.reallocateWidthToTableData = function(element) {
+mob.layoutUtil.reallocateWidthToTableData = function(element) {
   var tdParent = element;
   while (tdParent && (tdParent.tagName.toUpperCase() != goog.dom.TagName.TD)) {
     tdParent = tdParent.parentNode;
@@ -369,7 +366,7 @@ pagespeed.mobLayoutUtil.reallocateWidthToTableData = function(element) {
         var style = 'width:' + Math.round(100 / numTds) + '%;';
         for (td = tr.firstElementChild; td; td = td.nextElementSibling) {
           if (td.tagName.toUpperCase() == goog.dom.TagName.TD) {
-            pagespeed.MobUtil.addStyles(td, style);
+            mob.util.addStyles(td, style);
           }
         }
       }
@@ -384,13 +381,13 @@ pagespeed.mobLayoutUtil.reallocateWidthToTableData = function(element) {
  * @param {!Element} element
  * @param {number} maxWidth
  */
-pagespeed.mobLayoutUtil.resizeWideTable = function(element, maxWidth) {
-  if (pagespeed.mobLayoutUtil.isDataTable(element)) {
-    pagespeed.mobLayoutUtil.makeHorizontallyScrollable(element);
-  } else if (pagespeed.MobUtil.possiblyInQuirksMode()) {
-    pagespeed.mobLayoutUtil.reorganizeTableQuirksMode(element, maxWidth);
+mob.layoutUtil.resizeWideTable = function(element, maxWidth) {
+  if (mob.layoutUtil.isDataTable(element)) {
+    mob.layoutUtil.makeHorizontallyScrollable(element);
+  } else if (mob.util.possiblyInQuirksMode()) {
+    mob.layoutUtil.reorganizeTableQuirksMode(element, maxWidth);
   } else {
-    pagespeed.mobLayoutUtil.reorganizeTableNoQuirksMode(element, maxWidth);
+    mob.layoutUtil.reorganizeTableNoQuirksMode(element, maxWidth);
   }
 };
 
@@ -403,8 +400,7 @@ pagespeed.mobLayoutUtil.resizeWideTable = function(element, maxWidth) {
  * @param {!Element} table
  * @param {number} maxWidth
  */
-pagespeed.mobLayoutUtil.reorganizeTableNoQuirksMode =
-    function(table, maxWidth) {
+mob.layoutUtil.reorganizeTableNoQuirksMode = function(table, maxWidth) {
   var tchild, row, data, div;
 
   // Tables have this hierarchy:
@@ -423,23 +419,21 @@ pagespeed.mobLayoutUtil.reorganizeTableNoQuirksMode =
   // and some kind of navigational element to choose which X of the original
   // rows data should be displayed.
   var fullWidth = '100%';  //'' + this.maxWidth_ + 'px';
-  pagespeed.MobUtil.removeProperty(table, 'width');
-  pagespeed.MobUtil.setPropertyImportant(table, 'max-width', fullWidth);
+  mob.util.removeProperty(table, 'width');
+  mob.util.setPropertyImportant(table, 'max-width', fullWidth);
   for (tchild = table.firstElementChild; tchild;
        tchild = tchild.nextElementSibling) {
-    pagespeed.MobUtil.removeProperty(tchild, 'width');
-    pagespeed.MobUtil.setPropertyImportant(tchild, 'max-width', fullWidth);
+    mob.util.removeProperty(tchild, 'width');
+    mob.util.setPropertyImportant(tchild, 'max-width', fullWidth);
     for (row = tchild.firstElementChild; row; row = row.nextElementSibling) {
       if (row.tagName.toUpperCase() == goog.dom.TagName.TR) {
-        pagespeed.MobUtil.removeProperty(row, 'width');
-        pagespeed.MobUtil.setPropertyImportant(row, 'max-width', fullWidth);
+        mob.util.removeProperty(row, 'width');
+        mob.util.setPropertyImportant(row, 'max-width', fullWidth);
         for (data = row.firstElementChild; data;
              data = data.nextElementSibling) {
           if (data.tagName.toUpperCase() == goog.dom.TagName.TD) {
-            pagespeed.MobUtil.setPropertyImportant(
-                data, 'max-width', fullWidth);
-            pagespeed.MobUtil.setPropertyImportant(
-                data, 'display', 'inline-block');
+            mob.util.setPropertyImportant(data, 'max-width', fullWidth);
+            mob.util.setPropertyImportant(data, 'display', 'inline-block');
           }
         }
       }
@@ -465,10 +459,10 @@ pagespeed.mobLayoutUtil.reorganizeTableNoQuirksMode =
  * @param {!Element} table
  * @param {number} maxWidth
  */
-pagespeed.mobLayoutUtil.reorganizeTableQuirksMode = function(table, maxWidth) {
+mob.layoutUtil.reorganizeTableQuirksMode = function(table, maxWidth) {
   var i, j, k, m, element, data, div, new_element;
 
-  // pagespeed.MobUtil.createXPathFromNode(table));
+  // mob.util.createXPathFromNode(table));
 
   // Tables have this hierarchy:
   // <table>
@@ -526,44 +520,39 @@ pagespeed.mobLayoutUtil.reorganizeTableQuirksMode = function(table, maxWidth) {
  *
  * @param {!Element} element
  */
-pagespeed.mobLayoutUtil.repairDistortedImages = function(element) {
+mob.layoutUtil.repairDistortedImages = function(element) {
   var computedStyle = window.getComputedStyle(element);
-  var requestedWidth = pagespeed.MobUtil.findRequestedDimension(
-      element, 'width');
-  var requestedHeight = pagespeed.MobUtil.findRequestedDimension(
-      element, 'height');
+  var requestedWidth = mob.util.findRequestedDimension(element, 'width');
+  var requestedHeight = mob.util.findRequestedDimension(element, 'height');
   if (requestedWidth && requestedHeight && computedStyle) {
-    var width = pagespeed.MobUtil.computedDimension(computedStyle, 'width');
-    var height = pagespeed.MobUtil.computedDimension(computedStyle, 'height');
+    var width = mob.util.computedDimension(computedStyle, 'width');
+    var height = mob.util.computedDimension(computedStyle, 'height');
     if (width && height) {
       var widthShrinkage = width / requestedWidth;
       var heightShrinkage = height / requestedHeight;
-      if (!pagespeed.MobUtil.aboutEqual(widthShrinkage, heightShrinkage)) {
-        pagespeed.MobUtil.consoleLog('aspect ratio problem for ' +
-            element.getAttribute('src'));
+      if (!mob.util.aboutEqual(widthShrinkage, heightShrinkage)) {
+        mob.util.consoleLog('aspect ratio problem for ' +
+                            element.getAttribute('src'));
 
-        if (pagespeed.MobUtil.isSinglePixel(element)) {
+        if (mob.util.isSinglePixel(element)) {
           var shrinkage = Math.min(widthShrinkage, heightShrinkage);
-          pagespeed.mobLayoutUtil.removeProperties_(
-              element, ['width', 'height']);
+          mob.layoutUtil.removeProperties_(element, ['width', 'height']);
           element.style.width = requestedWidth * shrinkage;
           element.style.height = requestedHeight * shrinkage;
         } else if (widthShrinkage > heightShrinkage) {
-          pagespeed.MobUtil.removeProperty(element, 'height');
+          mob.util.removeProperty(element, 'height');
         } else {
           // If we let the width go free but set the height, the aspect ratio
           // might not be maintained.  A few ideas on how to fix are here
           //   http://stackoverflow.com/questions/21176336/css-image-to-have-fixed-height-max-width-and-maintain-aspect-ratio
           // Let's try changing the height attribute to max-height.
-          pagespeed.mobLayoutUtil.removeProperties_(
-              element, ['width', 'height']);
+          mob.layoutUtil.removeProperties_(element, ['width', 'height']);
           element.style.maxHeight = requestedHeight;
         }
       }
       if (widthShrinkage < 0.25) {
-        pagespeed.MobUtil.consoleLog(
-            'overshrinkage for ' + element.getAttribute('src'));
-        pagespeed.mobLayoutUtil.reallocateWidthToTableData(element);
+        mob.util.consoleLog('overshrinkage for ' + element.getAttribute('src'));
+        mob.layoutUtil.reallocateWidthToTableData(element);
       }
     }
   }
@@ -577,10 +566,10 @@ pagespeed.mobLayoutUtil.repairDistortedImages = function(element) {
   * @param {number} parentTop
   * @return {!Array.<number>} top and bottom positions.
   */
-pagespeed.mobLayoutUtil.findTopAndBottom = function(element, parentTop) {
+mob.layoutUtil.findTopAndBottom = function(element, parentTop) {
   var top;
   var bottom;
-  var boundingBox = pagespeed.MobUtil.boundingRect(element);
+  var boundingBox = mob.util.boundingRect(element);
   if (boundingBox) {
     top = boundingBox.top;
     bottom = boundingBox.bottom;
@@ -602,16 +591,14 @@ pagespeed.mobLayoutUtil.findTopAndBottom = function(element, parentTop) {
  * @param {!Element} element
  * @param {number} maxWidth
  */
-pagespeed.mobLayoutUtil.resizeForegroundImage = function(element, maxWidth) {
+mob.layoutUtil.resizeForegroundImage = function(element, maxWidth) {
   var width = element.offsetWidth;
   var height = element.offsetHeight;
   var shrinkage = width / maxWidth;
   if (shrinkage > 1) {
     var newHeight = height / shrinkage;
-    pagespeed.MobUtil.setPropertyImportant(
-        element, 'width', '' + maxWidth + 'px');
-    pagespeed.MobUtil.setPropertyImportant(
-        element, 'height', '' + newHeight + 'px');
+    mob.util.setPropertyImportant(element, 'width', '' + maxWidth + 'px');
+    mob.util.setPropertyImportant(element, 'height', '' + newHeight + 'px');
   }
 };
 
@@ -623,12 +610,12 @@ pagespeed.mobLayoutUtil.resizeForegroundImage = function(element, maxWidth) {
  * must be supplied by the caller.
  *
  * @param {!Element} element
- * @param {!pagespeed.MobUtil.Dimensions} imageSize
+ * @param {!mob.util.Dimensions} imageSize
  * @param {!CSSStyleDeclaration} computedStyle
  * @param {number} maxWidth
  */
-pagespeed.mobLayoutUtil.resizeBackgroundImage = function(
-    element, imageSize, computedStyle, maxWidth) {
+mob.layoutUtil.resizeBackgroundImage = function(element, imageSize,
+                                                computedStyle, maxWidth) {
   var width = imageSize.width;
   var height = imageSize.height;
 
@@ -641,20 +628,18 @@ pagespeed.mobLayoutUtil.resizeBackgroundImage = function(
 
     // If the element was previously sized exactly to the div, then resize
     // the height of the div to match the new height of the background.
-    var elementHeight = pagespeed.MobUtil.computedDimension(
-        computedStyle, 'height');
+    var elementHeight = mob.util.computedDimension(computedStyle, 'height');
     if (height == elementHeight) {
       styles += 'height:' + height + 'px;';
     }
-    pagespeed.MobUtil.addStyles(element, styles);
+    mob.util.addStyles(element, styles);
   }
   // Whether or not we are not width-constraining the background image, we
   // give it a height constraint for the benefit of auto-sizing parent
   // nodes.  Note that we look specifically for 'min-height' in
   // resizeVerticallyAndReturnBottom_, so this is both a signal to the
   // browser and to a later pass.
-  pagespeed.MobUtil.setPropertyImportant(
-      element, 'min-height', '' + height + 'px');
+  mob.util.setPropertyImportant(element, 'min-height', '' + height + 'px');
 };
 
 
@@ -663,14 +648,14 @@ pagespeed.mobLayoutUtil.resizeBackgroundImage = function(
  *
  * @param {!Element} element
  */
-pagespeed.mobLayoutUtil.wrapTextOnWhitespace = function(element) {
+mob.layoutUtil.wrapTextOnWhitespace = function(element) {
   // Fixes the top bar of sites that have white-space:nowrap so that all
   // elements on the original line are visible when the width is constrained.
   // Do this before recursing into children as this property inherits, and
   // we'll need less override markup if we do it at the top level.
   var computedStyle = window.getComputedStyle(element);
   if (computedStyle.getPropertyValue('white-space') == 'nowrap') {
-    pagespeed.MobUtil.setPropertyImportant(element, 'white-space', 'normal');
+    mob.util.setPropertyImportant(element, 'white-space', 'normal');
   }
 };
 
@@ -681,14 +666,13 @@ pagespeed.mobLayoutUtil.wrapTextOnWhitespace = function(element) {
  * @param {!Element} element
  * @param {!CSSStyleDeclaration} computedStyle
  */
-pagespeed.mobLayoutUtil.stripPercentDimensions = function(
-    element, computedStyle) {
-  for (var i = 0; i < pagespeed.mobLayoutConstants.NO_PERCENT.length; ++i) {
-    var name = pagespeed.mobLayoutConstants.NO_PERCENT[i];
+mob.layoutUtil.stripPercentDimensions = function(element, computedStyle) {
+  for (var i = 0; i < mob.layoutConstants.NO_PERCENT.length; ++i) {
+    var name = mob.layoutConstants.NO_PERCENT[i];
     var value = computedStyle.getPropertyValue(name);
     if (value && (value != '100%') && (value != 'auto') &&
         goog.string.endsWith(value, '%')) {
-      pagespeed.MobUtil.setPropertyImportant(element, name, 'auto');
+      mob.util.setPropertyImportant(element, name, 'auto');
     }
   }
 };
@@ -700,8 +684,7 @@ pagespeed.mobLayoutUtil.stripPercentDimensions = function(
  * @param {!Element} element
  * @param {!CSSStyleDeclaration} computedStyle
  */
-pagespeed.mobLayoutUtil.trimPaddingAndMargins = function(
-    element, computedStyle) {
+mob.layoutUtil.trimPaddingAndMargins = function(element, computedStyle) {
   // Don't remove the left-padding from lists; that makes the bullets
   // disappear at the bottom of some sites.  See
   //     http://www.w3schools.com/cssref/pr_list-style-position.asp
@@ -716,19 +699,19 @@ pagespeed.mobLayoutUtil.trimPaddingAndMargins = function(
   // Reduce excess padding on margins.  We don't want to eliminate
   // all padding as that looks terrible on many sites.
   var style = '';
-  for (var i = 0; i < pagespeed.mobLayoutConstants.CLAMPED_STYLES.length; ++i) {
-    var name = pagespeed.mobLayoutConstants.CLAMPED_STYLES[i];
+  for (var i = 0; i < mob.layoutConstants.CLAMPED_STYLES.length; ++i) {
+    var name = mob.layoutConstants.CLAMPED_STYLES[i];
     if ((!isList || !goog.string.endsWith(name, '-left')) &&
         (!isBody || !goog.string.startsWith(name, 'margin-'))) {
-      var value = pagespeed.MobUtil.computedDimension(computedStyle, name);
+      var value = mob.util.computedDimension(computedStyle, name);
       if (value == null) {
         continue;
       }
-      if (value > pagespeed.mobLayoutUtil.CLAMP_STYLE_LIMIT_PX_) {
+      if (value > mob.layoutUtil.CLAMP_STYLE_LIMIT_PX_) {
         // Without the 'important', juniper's 'register now' field
         // has uneven input fields.
-        style += name + ':' + pagespeed.mobLayoutUtil.CLAMP_STYLE_LIMIT_PX_ +
-            'px !important;';
+        style += name + ':' + mob.layoutUtil.CLAMP_STYLE_LIMIT_PX_ +
+                 'px !important;';
       } else if (value < 0) {
         clampToZero = true;
 
@@ -740,8 +723,8 @@ pagespeed.mobLayoutUtil.trimPaddingAndMargins = function(
           // TODO(jmarantz): A better heuristic is to make the determination
           // of whether the original margin-bottom matches the element height
           // before applying a viewport and max-width:100%.
-          clampToZero = (value >
-              pagespeed.mobLayoutUtil.MAX_ALLOWED_NEGATIVE_MARGIN_PX_);
+          clampToZero =
+              (value > mob.layoutUtil.MAX_ALLOWED_NEGATIVE_MARGIN_PX_);
         }
         if (clampToZero) {
           style += name + ':0px !important;';
@@ -753,12 +736,11 @@ pagespeed.mobLayoutUtil.trimPaddingAndMargins = function(
           // phase we don't adjust the margin-bottom, but just mark the
           // element with an attribute we can easily find later.
           // See http://goo.gl/gzWY6I [smashingmagazine.com]
-          element.setAttribute(
-              pagespeed.mobLayoutUtil.NEGATIVE_BOTTOM_MARGIN_ATTR, '1');
+          element.setAttribute(mob.layoutUtil.NEGATIVE_BOTTOM_MARGIN_ATTR, '1');
           // TODO(jmarantz): do this for margin-right as well.
         }
       }
     }
   }
-  pagespeed.MobUtil.addStyles(element, style);
+  mob.util.addStyles(element, style);
 };

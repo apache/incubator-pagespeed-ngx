@@ -34,27 +34,27 @@
 //    non-transparent color of its nearest ancestor.
 // 6. Compute theme color based on the background color and foreground image.
 
-goog.provide('pagespeed.MobLogo');
-goog.provide('pagespeed.MobLogoCandidate');
+goog.provide('mob.Logo');
+goog.provide('mob.LogoCandidate');
 
 goog.require('goog.dom.TagName');
 goog.require('goog.events.EventType');
 goog.require('goog.string');
+goog.require('mob.Color');
 goog.require('mob.util');
-goog.require('pagespeed.MobColor');
-goog.require('pagespeed.MobUtil');
+goog.require('mob.util.ImageSource');
 
 
 
 /**
  * @constructor
  * @struct
- * @param {!pagespeed.MobLogo.LogoRecord} logoRecord
+ * @param {!mob.Logo.LogoRecord} logoRecord
  * @param {!goog.color.Rgb} background
  * @param {!goog.color.Rgb} foreground
  */
-pagespeed.MobLogoCandidate = function(logoRecord, background, foreground) {
-  /** {!pagespeed.MobLogo.LogoRecord} */
+mob.LogoCandidate = function(logoRecord, background, foreground) {
+  /** {!mob.Logo.LogoRecord} */
   this.logoRecord = logoRecord;
 
   /** {!goog.color.Rgb} */
@@ -70,15 +70,15 @@ pagespeed.MobLogoCandidate = function(logoRecord, background, foreground) {
  * Creates a context for Pagespeed logo detector.
  * @constructor
  */
-pagespeed.MobLogo = function() {
+mob.Logo = function() {
   /**
    * Callback to invoke when this object finishes its work.
-   * @private {?function(!Array.<!pagespeed.MobLogoCandidate>)} doneCallback_
+   * @private {?function(!Array.<!mob.LogoCandidate>)} doneCallback_
    */
   this.doneCallback_ = null;
 
   /** @private {?string} */
-  this.organization_ = pagespeed.MobUtil.getSiteOrganization();
+  this.organization_ = mob.util.getSiteOrganization();
 
   /** @private {string} */
   this.landingUrl_ = mob.util.getWindow().location.origin +
@@ -86,7 +86,7 @@ pagespeed.MobLogo = function() {
 
   /**
    * Array of logo candidates.
-   * @private {!Array.<!pagespeed.MobLogo.LogoRecord>}
+   * @private {!Array.<!mob.Logo.LogoRecord>}
    */
   this.candidates_ = [];
 
@@ -105,7 +105,7 @@ pagespeed.MobLogo = function() {
  * @param {!Element} element
  * @constructor @struct
  */
-pagespeed.MobLogo.LogoRecord = function(metric, element) {
+mob.Logo.LogoRecord = function(metric, element) {
   /**
    * Metric of being a logo element. Metric is computed for the elements with
    * size and position within certain ranges, and with an image in its sub-tree
@@ -130,7 +130,7 @@ pagespeed.MobLogo.LogoRecord = function(metric, element) {
   this.foregroundElement = null;
   /** @type {?Element} */
   this.foregroundImage = element;
-  /** @type {?pagespeed.MobUtil.Rect} */
+  /** @type {?mob.util.Rect} */
   this.rect = null;
   /** @type {?Array.<number>} */
   this.backgroundColor = null;
@@ -141,21 +141,21 @@ pagespeed.MobLogo.LogoRecord = function(metric, element) {
  * Minimum width of an element in the origin site to be considered as the logo.
  * @private @const {number}
  */
-pagespeed.MobLogo.prototype.MIN_WIDTH_ = 20;
+mob.Logo.prototype.MIN_WIDTH_ = 20;
 
 
 /**
  * Minimum height of an element in the origin site to be considered as the logo.
  * @private @const {number}
  */
-pagespeed.MobLogo.prototype.MIN_HEIGHT_ = 10;
+mob.Logo.prototype.MIN_HEIGHT_ = 10;
 
 
 /**
  * Maximum height of an element in the origin site to be considered as the logo.
  * @private @const {number}
  */
-pagespeed.MobLogo.prototype.MAX_HEIGHT_ = 400;
+mob.Logo.prototype.MAX_HEIGHT_ = 400;
 
 
 /**
@@ -163,16 +163,16 @@ pagespeed.MobLogo.prototype.MAX_HEIGHT_ = 400;
  * to be considered a logo.
  * @private @const {number}
  */
-pagespeed.MobLogo.prototype.RATIO_AREA_ = 0.5;
+mob.Logo.prototype.RATIO_AREA_ = 0.5;
 
 
 /**
  * Find the element that is likely to be a logo.
  * @param {!Element} element Element being tested whether has logo attributes
- * @return {?pagespeed.MobLogo.LogoRecord}
+ * @return {?mob.Logo.LogoRecord}
  * @private
  */
-pagespeed.MobLogo.prototype.findLogoElement_ = function(element) {
+mob.Logo.prototype.findLogoElement_ = function(element) {
   var style = mob.util.getWindow().getComputedStyle(element);
   if (style.getPropertyValue('visibility') == 'hidden') {
     return null;
@@ -187,9 +187,9 @@ pagespeed.MobLogo.prototype.findLogoElement_ = function(element) {
   } else {
     // IMG tag can also have background image, but it's ignored for now until
     // we see actual use of it.
-    imageSrc = pagespeed.MobUtil.findBackgroundImage(element);
+    imageSrc = mob.util.findBackgroundImage(element);
   }
-  imageSrc = pagespeed.MobUtil.resourceFileName(imageSrc);
+  imageSrc = mob.util.resourceFileName(imageSrc);
   if (imageSrc.indexOf('data:image/') != -1) {
     imageSrc = null;
   }
@@ -201,7 +201,7 @@ pagespeed.MobLogo.prototype.findLogoElement_ = function(element) {
         ++metric;
       }
       if (this.organization &&
-          pagespeed.MobUtil.findPattern(signal, this.organization_)) {
+          mob.util.findPattern(signal, this.organization_)) {
         ++metric;
       }
     }
@@ -221,7 +221,7 @@ pagespeed.MobLogo.prototype.findLogoElement_ = function(element) {
   }
 
   if (metric > 0) {
-    return (new pagespeed.MobLogo.LogoRecord(metric, element));
+    return (new mob.Logo.LogoRecord(metric, element));
   }
 
   return null;
@@ -233,7 +233,7 @@ pagespeed.MobLogo.prototype.findLogoElement_ = function(element) {
  * @param {!Element} element
  * @private
  */
-pagespeed.MobLogo.prototype.findLogoCandidates_ = function(element) {
+mob.Logo.prototype.findLogoCandidates_ = function(element) {
   var newCandidate = this.findLogoElement_(element);
   if (newCandidate) {
     this.candidates_.push(newCandidate);
@@ -252,7 +252,7 @@ pagespeed.MobLogo.prototype.findLogoCandidates_ = function(element) {
  * @param {!Element} img
  * @private
  */
-pagespeed.MobLogo.prototype.addImageToPendingList_ = function(img) {
+mob.Logo.prototype.addImageToPendingList_ = function(img) {
   ++this.pendingEventCount_;
   img.addEventListener(goog.events.EventType.LOAD,
                        goog.bind(this.eventDone_, this));
@@ -268,7 +268,7 @@ pagespeed.MobLogo.prototype.addImageToPendingList_ = function(img) {
  * @return {!Element}
  * @private
  */
-pagespeed.MobLogo.prototype.newImage_ = function(imageSrc) {
+mob.Logo.prototype.newImage_ = function(imageSrc) {
   var img = mob.util.getWindow().document.createElement(goog.dom.TagName.IMG);
   this.addImageToPendingList_(img);
   img.src = imageSrc;
@@ -283,15 +283,14 @@ pagespeed.MobLogo.prototype.newImage_ = function(imageSrc) {
  * @param {!Array.<!Element>} childrenImages
  * @private
  */
-pagespeed.MobLogo.prototype.collectChildrenImages_ = function(
-    element, childrenElements, childrenImages) {
+mob.Logo.prototype.collectChildrenImages_ = function(element, childrenElements,
+                                                     childrenImages) {
   var imageSrc = null;
-  for (var src in pagespeed.MobUtil.ImageSource) {
-    imageSrc = pagespeed.MobUtil.extractImage(
-        element, pagespeed.MobUtil.ImageSource[src]);
+  for (var src in mob.util.ImageSource) {
+    imageSrc = mob.util.extractImage(element, mob.util.ImageSource[src]);
     if (imageSrc) {
       var img = null;
-      if (src == pagespeed.MobUtil.ImageSource.IMG) {
+      if (src == mob.util.ImageSource.IMG) {
         img = element;
         if (!element.naturalWidth) {
           this.addImageToPendingList_(img);
@@ -315,10 +314,10 @@ pagespeed.MobLogo.prototype.collectChildrenImages_ = function(
 
 /**
  * Find all images which may be the foreground of the logo.
- * @param {!Array.<!pagespeed.MobLogo.LogoRecord>} logoCandidates
+ * @param {!Array.<!mob.Logo.LogoRecord>} logoCandidates
  * @private
  */
-pagespeed.MobLogo.prototype.findImagesAndWait_ = function(logoCandidates) {
+mob.Logo.prototype.findImagesAndWait_ = function(logoCandidates) {
   for (var i = 0; i < logoCandidates.length; ++i) {
     var logo = logoCandidates[i];
     var element = logo.logoElement;
@@ -328,7 +327,7 @@ pagespeed.MobLogo.prototype.findImagesAndWait_ = function(logoCandidates) {
     // Find the background in the logo element's nearest ancestor.
     element = element.parentElement;
     while (element) {
-      var imageSrc = pagespeed.MobUtil.findBackgroundImage(element);
+      var imageSrc = mob.util.findBackgroundImage(element);
       if (imageSrc) {
         logo.ancestorElement = element;
         logo.ancestorImage = this.newImage_(imageSrc);
@@ -349,7 +348,7 @@ pagespeed.MobLogo.prototype.findImagesAndWait_ = function(logoCandidates) {
  * @param {number} index
  * @private
  */
-pagespeed.MobLogo.fastRemoveArrayElement_ = function(array, index) {
+mob.Logo.fastRemoveArrayElement_ = function(array, index) {
   var last = array.length - 1;
   if (index < last) {
     array[index] = array[last];
@@ -363,12 +362,12 @@ pagespeed.MobLogo.fastRemoveArrayElement_ = function(array, index) {
  * position.
  * @private
  */
-pagespeed.MobLogo.prototype.pruneCandidateBySizePos_ = function() {
+mob.Logo.prototype.pruneCandidateBySizePos_ = function() {
   var logoCandidates = this.candidates_;
   for (var i = 0; i < logoCandidates.length; ++i) {
     var logo = logoCandidates[i];
     var element = logo.logoElement;
-    var rect = pagespeed.MobUtil.boundingRectAndSize(element);
+    var rect = mob.util.boundingRectAndSize(element);
     var area = rect.width * rect.height;
 
     var minArea = area * this.RATIO_AREA_;
@@ -379,7 +378,7 @@ pagespeed.MobLogo.prototype.pruneCandidateBySizePos_ = function() {
       if (!img) {
         continue;
       }
-      rect = pagespeed.MobUtil.boundingRectAndSize(img);
+      rect = mob.util.boundingRectAndSize(img);
       area = rect.width * rect.height;
       if (area >= minArea && rect.width > this.MIN_WIDTH_ &&
           rect.height > this.MIN_HEIGHT_ && rect.height < this.MAX_HEIGHT_) {
@@ -396,7 +395,7 @@ pagespeed.MobLogo.prototype.pruneCandidateBySizePos_ = function() {
       logo.rect = rect;
     } else if (logo.ancestorElement) {
       img = logo.ancestorElement;
-      rect = pagespeed.MobUtil.boundingRectAndSize(img);
+      rect = mob.util.boundingRectAndSize(img);
       area = rect.width * rect.height;
       if (area >= minArea && rect.width > this.MIN_WIDTH_ &&
           rect.height > this.MIN_HEIGHT_ && rect.height < this.MAX_HEIGHT_) {
@@ -404,11 +403,11 @@ pagespeed.MobLogo.prototype.pruneCandidateBySizePos_ = function() {
         logo.foregroundImage = logo.ancestorImage;
         logo.rect = rect;
       } else {
-        pagespeed.MobLogo.fastRemoveArrayElement_(logoCandidates, i);
+        mob.Logo.fastRemoveArrayElement_(logoCandidates, i);
         --i;
       }
     } else {
-      pagespeed.MobLogo.fastRemoveArrayElement_(logoCandidates, i);
+      mob.Logo.fastRemoveArrayElement_(logoCandidates, i);
       --i;
     }
   }
@@ -419,7 +418,7 @@ pagespeed.MobLogo.prototype.pruneCandidateBySizePos_ = function() {
  * Find the best logo and compute theme color.
  * @private
  */
-pagespeed.MobLogo.prototype.findBestLogoAndColor_ = function() {
+mob.Logo.prototype.findBestLogoAndColor_ = function() {
   this.pruneCandidateBySizePos_();
   var logos = this.findBestLogos_();
   var candidates = [];
@@ -431,10 +430,10 @@ pagespeed.MobLogo.prototype.findBestLogoAndColor_ = function() {
     if (!candidateMap[logo.foregroundImage.src]) {
       candidateMap[logo.foregroundImage.src] = true;
       this.findLogoBackground_(logo);
-      var mobColor = new pagespeed.MobColor();
+      var mobColor = new mob.Color();
       var themeColor = mobColor.run(logo.foregroundImage, logo.backgroundColor);
-      candidates.push(new pagespeed.MobLogoCandidate(
-          logo, themeColor.background, themeColor.foreground));
+      candidates.push(new mob.LogoCandidate(logo, themeColor.background,
+                                            themeColor.foreground));
     }
   }
   var callback = this.doneCallback_;
@@ -446,7 +445,7 @@ pagespeed.MobLogo.prototype.findBestLogoAndColor_ = function() {
 /**
  * @private
  */
-pagespeed.MobLogo.prototype.eventDone_ = function() {
+mob.Logo.prototype.eventDone_ = function() {
   --this.pendingEventCount_;
   if (this.pendingEventCount_ == 0) {
     this.findBestLogoAndColor_();
@@ -455,23 +454,23 @@ pagespeed.MobLogo.prototype.eventDone_ = function() {
 
 
 /**
- * @private {!Array.<!Function.<!pagespeed.MobUtil.Rect>>}
+ * @private {!Array.<!Function.<!mob.util.Rect>>}
  */
-pagespeed.MobLogo.rectAccessors_ = [
+mob.Logo.rectAccessors_ = [
   /**
-   * @param {!pagespeed.MobUtil.Rect} rect
+   * @param {!mob.util.Rect} rect
    * @return {number}
    */
   function(rect) { return rect.top; },
 
   /**
-   * @param {!pagespeed.MobUtil.Rect} rect
+   * @param {!mob.util.Rect} rect
    * @return {number}
    */
   function(rect) { return rect.left; },
 
   /**
-   * @param {!pagespeed.MobUtil.Rect} rect
+   * @param {!mob.util.Rect} rect
    * @return {number}
    */
   function(rect) { return rect.width * rect.height; }
@@ -479,20 +478,20 @@ pagespeed.MobLogo.rectAccessors_ = [
 
 
 /**
- * @param {!pagespeed.MobLogo.LogoRecord} a
- * @param {!pagespeed.MobLogo.LogoRecord} b
+ * @param {!mob.Logo.LogoRecord} a
+ * @param {!mob.Logo.LogoRecord} b
  * @return {number}
  * @private
  */
-pagespeed.MobLogo.compareLogos_ = function(a, b) {
-  if (a.metric > b.metric) {    // Higher is better.
+mob.Logo.compareLogos_ = function(a, b) {
+  if (a.metric > b.metric) {  // Higher is better.
     return -1;
   } else if (b.metric > a.metric) {
     return 1;
   }
 
-  for (var i = 0; i < pagespeed.MobLogo.rectAccessors_.length; ++i) {
-    var accessor = pagespeed.MobLogo.rectAccessors_[i];
+  for (var i = 0; i < mob.Logo.rectAccessors_.length; ++i) {
+    var accessor = mob.Logo.rectAccessors_[i];
     var aval = accessor(a.rect);
     var bval = accessor(b.rect);
     if (aval < bval) {
@@ -528,10 +527,10 @@ pagespeed.MobLogo.compareLogos_ = function(a, b) {
  *
  * If there are no logo candidates then null is returned.
  *
- * @return {!Array.<!pagespeed.MobLogo.LogoRecord>}
+ * @return {!Array.<!mob.Logo.LogoRecord>}
  * @private
  */
-pagespeed.MobLogo.prototype.findBestLogos_ = function() {
+mob.Logo.prototype.findBestLogos_ = function() {
   var logoCandidates = this.candidates_;
   if (logoCandidates.length > 1) {
     // Use the position and size to update the metric.
@@ -558,13 +557,13 @@ pagespeed.MobLogo.prototype.findBestLogos_ = function() {
       var bestLogo = logoCandidates[0];
       for (i = 1; i < logoCandidates.length; ++i) {
         candidate = logoCandidates[i];
-        if (pagespeed.MobLogo.compareLogos_(candidate, bestLogo) < 0) {
+        if (mob.Logo.compareLogos_(candidate, bestLogo) < 0) {
           bestLogo = candidate;
         }
       }
       logoCandidates[0] = bestLogo;
     } else {
-      logoCandidates.sort(pagespeed.MobLogo.compareLogos_);
+      logoCandidates.sort(mob.Logo.compareLogos_);
     }
   }
   return logoCandidates;
@@ -577,16 +576,15 @@ pagespeed.MobLogo.prototype.findBestLogos_ = function() {
  * @return {?Array.<number>}
  * @private
  */
-pagespeed.MobLogo.prototype.extractBackgroundColor_ = function(element) {
+mob.Logo.prototype.extractBackgroundColor_ = function(element) {
   var computedStyle =
       mob.util.getWindow().document.defaultView.getComputedStyle(element, null);
   if (computedStyle) {
     var colorString = computedStyle.getPropertyValue('background-color');
     if (colorString) {
-      var colorValues = pagespeed.MobUtil.colorStringToNumbers(colorString);
-      if (colorValues &&
-          (colorValues.length == 3 ||
-           (colorValues.length == 4 && colorValues[3] != 0))) {
+      var colorValues = mob.util.colorStringToNumbers(colorString);
+      if (colorValues && (colorValues.length == 3 ||
+                          (colorValues.length == 4 && colorValues[3] != 0))) {
         // colorValue should be in RGB format (3 element-array) or RGBA format
         // (4 element-array). If it is in RGBA format and the last element is 0,
         // this color is fully transparent and should be ignored.
@@ -600,10 +598,10 @@ pagespeed.MobLogo.prototype.extractBackgroundColor_ = function(element) {
 
 /**
  * Find the background color for the logo.
- * @param {?pagespeed.MobLogo.LogoRecord} logo
+ * @param {?mob.Logo.LogoRecord} logo
  * @private
  */
-pagespeed.MobLogo.prototype.findLogoBackground_ = function(logo) {
+mob.Logo.prototype.findLogoBackground_ = function(logo) {
   if (!logo || !logo.foregroundElement) {
     return;
   }
@@ -624,11 +622,10 @@ pagespeed.MobLogo.prototype.findLogoBackground_ = function(logo) {
  * body is empty, or if there is a currently outstanding call to run(),
  * then doneCallback will be called immediately with an empty array.
  *
- * @param {?function(!Array.<!pagespeed.MobLogoCandidate>)} doneCallback
+ * @param {?function(!Array.<!mob.LogoCandidate>)} doneCallback
  * @param {number} maxNumCandidates
- * @export
  */
-pagespeed.MobLogo.prototype.run = function(doneCallback, maxNumCandidates) {
+mob.Logo.prototype.run = function(doneCallback, maxNumCandidates) {
   // If running in WKH, the event listeners attached to the images created by
   // logo detection don't fire, so instead we check for loadComplete to mark
   // when the image elements are finished loading.

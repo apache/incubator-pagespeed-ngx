@@ -22,7 +22,9 @@ goog.require('goog.json');
 goog.require('goog.net.Cookies');  // abstraction gzipped size cost: 336 bytes.
 goog.require('goog.net.Jsonp');
 goog.require('mob.button.AbstractButton');
-goog.require('pagespeed.MobUtil');
+goog.require('mob.util');
+goog.require('mob.util.BeaconEvents');
+goog.require('mob.util.ElementId');
 
 
 /**
@@ -100,9 +102,9 @@ mob.button.Dialer = function(color, phoneNumber, conversionId,
     */
   this.dialState_ = mob.button.DialerState_.IDLE;
 
-  mob.button.Dialer.base(
-      this, 'constructor', pagespeed.MobUtil.ElementId.DIALER_BUTTON,
-      mob.button.Dialer.ICON_, color, mob.button.Dialer.LABEL_);
+  mob.button.Dialer.base(this, 'constructor', mob.util.ElementId.DIALER_BUTTON,
+                         mob.button.Dialer.ICON_, color,
+                         mob.button.Dialer.LABEL_);
 };
 goog.inherits(mob.button.Dialer, mob.button.AbstractButton);
 
@@ -168,8 +170,7 @@ mob.button.Dialer.prototype.createButton = function() {
 
 /** @override */
 mob.button.Dialer.prototype.clickHandler = function(e) {
-  pagespeed.MobUtil.sendBeaconEvent(
-      pagespeed.MobUtil.BeaconEvents.PHONE_BUTTON);
+  mob.util.sendBeaconEvent(mob.util.BeaconEvents.PHONE_BUTTON);
   if (this.dialState_ == mob.button.DialerState_.IDLE) {
     this.dialPhone_();
   } else {
@@ -234,13 +235,13 @@ mob.button.Dialer.prototype.dialPhone_ = function() {
   // fallback number.
   if (this.googleVoicePhoneNumber_) {
     phoneNumber = this.googleVoicePhoneNumber_;
-    ev = pagespeed.MobUtil.BeaconEvents.CALL_GV_NUMBER;
+    ev = mob.util.BeaconEvents.CALL_GV_NUMBER;
   } else {
     phoneNumber = this.fallbackPhoneNumber_;
-    ev = pagespeed.MobUtil.BeaconEvents.CALL_FALLBACK_NUMBER;
+    ev = mob.util.BeaconEvents.CALL_FALLBACK_NUMBER;
   }
   this.debugAlert_('Dialing phone: ' + phoneNumber + '(' + ev + ')');
-  pagespeed.MobUtil.sendBeaconEvent(
+  mob.util.sendBeaconEvent(
       ev, function() { goog.global.location = 'tel:' + phoneNumber; });
 };
 
@@ -283,10 +284,10 @@ mob.button.Dialer.prototype.receivePhoneNumber_ = function(success, json) {
   var phoneNumber = wcm && wcm['mobile_number'];
   var err = this.backoffErrorCode_(wcm && wcm['backoff']);
   var is_gv = !!(phoneNumber && phoneNumber != this.fallbackPhoneNumber_);
-  pagespeed.MobUtil.sendBeaconEvent(
-      pagespeed.MobUtil.BeaconEvents.CALL_CONVERSION_RESPONSE, null,
-      '&s=' + success.toString() + '&t=' + responseTime + '&gv=' +
-          is_gv.toString() + (err ? '&err=' + err : ''));
+  mob.util.sendBeaconEvent(mob.util.BeaconEvents.CALL_CONVERSION_RESPONSE, null,
+                           '&s=' + success.toString() + '&t=' + responseTime +
+                               '&gv=' + is_gv.toString() +
+                               (err ? '&err=' + err : ''));
   if (phoneNumber && phoneNumber != this.fallbackPhoneNumber_) {
     // Save the phoneNumber in a cookie to reduce server requests.
     // TODO(jud): Use localstorage instead of a cookie.

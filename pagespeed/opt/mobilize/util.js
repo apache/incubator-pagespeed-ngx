@@ -17,8 +17,13 @@
  */
 
 goog.provide('mob.util');
-// TODO(jud): Rename the functions in this namespace to mob.util.
-goog.provide('pagespeed.MobUtil');
+goog.provide('mob.util.BeaconEvents');
+goog.provide('mob.util.Dimensions');
+goog.provide('mob.util.ElementClass');
+goog.provide('mob.util.ElementId');
+goog.provide('mob.util.ImageSource');
+goog.provide('mob.util.Rect');
+goog.provide('mob.util.ThemeData');
 
 goog.require('goog.asserts');
 goog.require('goog.color');
@@ -60,7 +65,7 @@ mob.util.getWindow = function() {
  * The ids of elements used for mobilization.
  * @enum {string}
  */
-pagespeed.MobUtil.ElementId = {
+mob.util.ElementId = {
   CLICK_DETECTOR_DIV: 'psmob-click-detector-div',
   CONFIG_IFRAME: 'ps-hidden-iframe',
   DIALER_BUTTON: 'psmob-dialer-button',
@@ -85,7 +90,7 @@ pagespeed.MobUtil.ElementId = {
  * Class names used for mobilization.
  * @enum {string}
  */
-pagespeed.MobUtil.ElementClass = {
+mob.util.ElementClass = {
   BUTTON: 'psmob-button',
   BUTTON_ICON: 'psmob-button-icon',
   BUTTON_TEXT: 'psmob-button-text',
@@ -112,14 +117,14 @@ pagespeed.MobUtil.ElementClass = {
  * Ascii code for '0'
  * @private {number}
  */
-pagespeed.MobUtil.ASCII_0_ = '0'.charCodeAt(0);
+mob.util.ASCII_0_ = '0'.charCodeAt(0);
 
 
 /**
  * Ascii code for '9'
  * @private {number}
  */
-pagespeed.MobUtil.ASCII_9_ = '9'.charCodeAt(0);
+mob.util.ASCII_9_ = '9'.charCodeAt(0);
 
 
 
@@ -128,7 +133,7 @@ pagespeed.MobUtil.ASCII_9_ = '9'.charCodeAt(0);
  * @struct
  * @constructor
  */
-pagespeed.MobUtil.Rect = function() {
+mob.util.Rect = function() {
   /** @type {number} Top of the bounding box */
   this.top = 0;
   /** @type {number} Left of the bounding box */
@@ -154,7 +159,7 @@ pagespeed.MobUtil.Rect = function() {
  * @param {number} height
  * @constructor
  */
-pagespeed.MobUtil.Dimensions = function(width, height) {
+mob.util.Dimensions = function(width, height) {
   /** @type {number} width */
   this.width = width;
   /** @type {number} height */
@@ -168,13 +173,12 @@ pagespeed.MobUtil.Dimensions = function(width, height) {
  * @param {number} index
  * @return {boolean}
  */
-pagespeed.MobUtil.isDigit = function(str, index) {
+mob.util.isDigit = function(str, index) {
   if (str.length <= index) {
     return false;
   }
   var ascii = str.charCodeAt(index);
-  return ((ascii >= pagespeed.MobUtil.ASCII_0_) &&
-          (ascii <= pagespeed.MobUtil.ASCII_9_));
+  return ((ascii >= mob.util.ASCII_0_) && (ascii <= mob.util.ASCII_9_));
 };
 
 
@@ -191,14 +195,14 @@ pagespeed.MobUtil.isDigit = function(str, index) {
  * @param {number|?string} value Attribute value.
  * @return {?number} integer value in pixels or null.
  */
-pagespeed.MobUtil.pixelValue = function(value) {
+mob.util.pixelValue = function(value) {
   var ret = null;
   if (value && (typeof value == 'string')) {
     var px = value.indexOf('px');
     if (px != -1) {
       value = value.substring(0, px);
     }
-    if (pagespeed.MobUtil.isDigit(value, value.length - 1)) {
+    if (mob.util.isDigit(value, value.length - 1)) {
       ret = parseInt(value, 10);
       if (isNaN(ret)) {
         ret = null;
@@ -219,10 +223,10 @@ pagespeed.MobUtil.pixelValue = function(value) {
  * @param {string} name The name of a CSS dimension.
  * @return {?number} the dimension value in pixels, or null if failure.
  */
-pagespeed.MobUtil.computedDimension = function(computedStyle, name) {
+mob.util.computedDimension = function(computedStyle, name) {
   var value = null;
   if (computedStyle) {
-    value = pagespeed.MobUtil.pixelValue(computedStyle.getPropertyValue(name));
+    value = mob.util.pixelValue(computedStyle.getPropertyValue(name));
   }
   return value;
 };
@@ -233,7 +237,7 @@ pagespeed.MobUtil.computedDimension = function(computedStyle, name) {
  * @param {!Element} element The HTML DOM element.
  * @param {string} property The property to remove.
  */
-pagespeed.MobUtil.removeProperty = function(element, property) {
+mob.util.removeProperty = function(element, property) {
   if (element.style) {
     element.style.removeProperty(property);
   }
@@ -250,16 +254,16 @@ pagespeed.MobUtil.removeProperty = function(element, property) {
  * @param {string} name The name of the dimension.
  * @return {?number} The pixel value as an integer, or null.
  */
-pagespeed.MobUtil.findRequestedDimension = function(element, name) {
+mob.util.findRequestedDimension = function(element, name) {
   // See if the value is specified in the style attribute.
   var value = null;
   if (element.style) {
-    value = pagespeed.MobUtil.pixelValue(element.style.getPropertyValue(name));
+    value = mob.util.pixelValue(element.style.getPropertyValue(name));
   }
 
   if (value == null) {
     // See if the width is specified directly on the element.
-    value = pagespeed.MobUtil.pixelValue(element.getAttribute(name));
+    value = mob.util.pixelValue(element.getAttribute(name));
   }
 
   return value;
@@ -274,7 +278,7 @@ pagespeed.MobUtil.findRequestedDimension = function(element, name) {
  * @param {string} name
  * @param {string} value
  */
-pagespeed.MobUtil.setPropertyImportant = function(element, name, value) {
+mob.util.setPropertyImportant = function(element, name, value) {
   element.style.setProperty(name, value, 'important');
 };
 
@@ -286,7 +290,7 @@ pagespeed.MobUtil.setPropertyImportant = function(element, name, value) {
  * @param {number} y
  * @return {boolean}
  */
-pagespeed.MobUtil.aboutEqual = function(x, y) {
+mob.util.aboutEqual = function(x, y) {
   var ratio = (x > y) ? (y / x) : (x / y);
   return (ratio > 0.95);
 };
@@ -298,7 +302,7 @@ pagespeed.MobUtil.aboutEqual = function(x, y) {
  * @param {!Element} element
  * @param {string} newStyles
  */
-pagespeed.MobUtil.addStyles = function(element, newStyles) {
+mob.util.addStyles = function(element, newStyles) {
   if (newStyles && (newStyles.length != 0)) {
     var style = element.getAttribute('style') || '';
     if ((style.length > 0) && (style[style.length - 1] != ';')) {
@@ -316,7 +320,7 @@ pagespeed.MobUtil.addStyles = function(element, newStyles) {
  * @param {!Element} node
  * @return {!goog.math.Box}
  */
-pagespeed.MobUtil.boundingRect = function(node) {
+mob.util.boundingRect = function(node) {
   var rect = node.getBoundingClientRect();
 
   var win = mob.util.getWindow();
@@ -341,7 +345,7 @@ pagespeed.MobUtil.boundingRect = function(node) {
  * @param {!Node} img
  * @return {boolean}
  */
-pagespeed.MobUtil.isSinglePixel = function(img) {
+mob.util.isSinglePixel = function(img) {
   return img.naturalHeight == 1 && img.naturalWidth == 1;
 };
 
@@ -351,7 +355,7 @@ pagespeed.MobUtil.isSinglePixel = function(img) {
  * @param {!Element} element
  * @return {?string}
  */
-pagespeed.MobUtil.findBackgroundImage = function(element) {
+mob.util.findBackgroundImage = function(element) {
   var image = null;
   var nodeName = element.nodeName.toUpperCase();
   if ((nodeName != goog.dom.TagName.SCRIPT) &&
@@ -391,7 +395,7 @@ pagespeed.MobUtil.findBackgroundImage = function(element) {
  * http://stackoverflow.com/questions/326069/how-to-identify-if-a-webpage-is-being-loaded-inside-an-iframe-or-directly-into-t
  * @return {boolean}
  */
-pagespeed.MobUtil.inFriendlyIframe = function() {
+mob.util.inFriendlyIframe = function() {
   var win = mob.util.getWindow();
   if ((win.parent != null) && (win != win.parent)) {
     try {
@@ -408,7 +412,7 @@ pagespeed.MobUtil.inFriendlyIframe = function() {
 /**
  * @return {boolean}
  */
-pagespeed.MobUtil.possiblyInQuirksMode = function() {
+mob.util.possiblyInQuirksMode = function() {
   // http://stackoverflow.com/questions/627097/how-to-tell-if-a-browser-is-in-quirks-mode
   return mob.util.getWindow().document.compatMode !== 'CSS1Compat';
 };
@@ -419,7 +423,7 @@ pagespeed.MobUtil.possiblyInQuirksMode = function() {
  * @param {!Array.<!goog.math.Box>} rects
  * @return {boolean}
  */
-pagespeed.MobUtil.hasIntersectingRects = function(rects) {
+mob.util.hasIntersectingRects = function(rects) {
   // N^2 loop to determine whether there are any intersections.
   for (var i = 0; i < rects.length; ++i) {
     for (var j = i + 1; j < rects.length; ++j) {
@@ -438,7 +442,7 @@ pagespeed.MobUtil.hasIntersectingRects = function(rects) {
  * @param {?Node} node
  * @return {?string}
  */
-pagespeed.MobUtil.createXPathFromNode = function(node) {
+mob.util.createXPathFromNode = function(node) {
   var allNodes = mob.util.getWindow().document.getElementsByTagName('*');
   var i, segs = [], sib;
   for (; goog.dom.isElement(node); node = node.parentNode) {
@@ -478,7 +482,7 @@ pagespeed.MobUtil.createXPathFromNode = function(node) {
  * @param {?Node} node
  * @return {number}
  */
-pagespeed.MobUtil.countNodes = function(node) {
+mob.util.countNodes = function(node) {
   if (!node) {
     return 0;
   }
@@ -486,7 +490,7 @@ pagespeed.MobUtil.countNodes = function(node) {
   // window.document.querySelectorAll('*').length
   var count = 1;
   for (var child = node.firstChild; child; child = child.nextSibling) {
-    count += pagespeed.MobUtil.countNodes(child);
+    count += mob.util.countNodes(child);
   }
   return count;
 };
@@ -496,9 +500,8 @@ pagespeed.MobUtil.countNodes = function(node) {
  * Enum for image source. We consider images from IMG tag, SVG tag, and
  * background.
  * @enum {string}
- * @export
  */
-pagespeed.MobUtil.ImageSource = {
+mob.util.ImageSource = {
   // TODO(huibao): Consider <INPUT> tag, which can also have image src.
   IMG: 'IMG',
   SVG: 'SVG',
@@ -515,7 +518,7 @@ pagespeed.MobUtil.ImageSource = {
  * @constructor
  * @struct
  */
-pagespeed.MobUtil.ThemeData = function(logoUrl, frontColor, backColor) {
+mob.util.ThemeData = function(logoUrl, frontColor, backColor) {
   /** @type {?string} */
   this.logoUrl = logoUrl;
   /** @type {!goog.color.Rgb} */
@@ -531,7 +534,7 @@ pagespeed.MobUtil.ThemeData = function(logoUrl, frontColor, backColor) {
  * @param {string} str
  * @return {?string}
  */
-pagespeed.MobUtil.textBetweenBrackets = function(str) {
+mob.util.textBetweenBrackets = function(str) {
   var left = str.indexOf('(');
   var right = str.lastIndexOf(')');
   if (left >= 0 && right > left) {
@@ -550,8 +553,8 @@ pagespeed.MobUtil.textBetweenBrackets = function(str) {
  * @param {string} str
  * @return {?Array.<number>}
  */
-pagespeed.MobUtil.colorStringToNumbers = function(str) {
-  var subStr = pagespeed.MobUtil.textBetweenBrackets(str);
+mob.util.colorStringToNumbers = function(str) {
+  var subStr = mob.util.textBetweenBrackets(str);
   if (!subStr) {
     // Mozilla likes to return 'transparent' for things with alpha == 0,
     // so handle that here.
@@ -592,7 +595,7 @@ pagespeed.MobUtil.colorStringToNumbers = function(str) {
  * @param {!Array.<number>} color
  * @return {string}
  */
-pagespeed.MobUtil.colorNumbersToString = function(color) {
+mob.util.colorNumbersToString = function(color) {
   for (var i = 0, len = color.length; i < len; ++i) {
     var val = Math.round(color[i]);
     if (val < 0) {
@@ -612,7 +615,7 @@ pagespeed.MobUtil.colorNumbersToString = function(color) {
  * @param {string} str
  * @return {string}
  */
-pagespeed.MobUtil.stripNonAlphaNumeric = function(str) {
+mob.util.stripNonAlphaNumeric = function(str) {
   str = str.toLowerCase();
   var newString = '';
   for (var i = 0, len = str.length; i < len; ++i) {
@@ -633,9 +636,10 @@ pagespeed.MobUtil.stripNonAlphaNumeric = function(str) {
  * @param {string} pattern
  * @return {number}
  */
-pagespeed.MobUtil.findPattern = function(str, pattern) {
-  return (pagespeed.MobUtil.stripNonAlphaNumeric(str).indexOf(
-      pagespeed.MobUtil.stripNonAlphaNumeric(pattern)) >= 0 ? 1 : 0);
+mob.util.findPattern = function(str, pattern) {
+  str = mob.util.stripNonAlphaNumeric(str);
+  pattern = mob.util.stripNonAlphaNumeric(pattern);
+  return (str.indexOf(pattern) >= 0 ? 1 : 0);
 };
 
 
@@ -646,7 +650,7 @@ pagespeed.MobUtil.findPattern = function(str, pattern) {
  * @param {number} num
  * @return {string}
  */
-pagespeed.MobUtil.removeSuffixNTimes = function(str, symbol, num) {
+mob.util.removeSuffixNTimes = function(str, symbol, num) {
   var len = str.length;
   for (var i = 0; i < num; ++i) {
     var pos = str.lastIndexOf(symbol, len - 1);
@@ -669,7 +673,7 @@ pagespeed.MobUtil.removeSuffixNTimes = function(str, symbol, num) {
  * this method will return 'organization'.
  * @return {?string}
  */
-pagespeed.MobUtil.getSiteOrganization = function() {
+mob.util.getSiteOrganization = function() {
   // TODO(huibao): Compute the organization name in C++ and export it to
   // JS code as a variable. This can be done by using
   // DomainLawyer::StripProxySuffix to strip any proxy suffix and then using
@@ -697,7 +701,7 @@ pagespeed.MobUtil.getSiteOrganization = function() {
  * @param {?string} url
  * @return {string}
  */
-pagespeed.MobUtil.resourceFileName = function(url) {
+mob.util.resourceFileName = function(url) {
   if (!url || url.indexOf('data:image/') >= 0) {
     return '';
   }
@@ -735,7 +739,7 @@ pagespeed.MobUtil.resourceFileName = function(url) {
  * @param {?string=} opt_origin Origin used for testing
  * @return {string}
  */
-pagespeed.MobUtil.proxyImageUrl = function(url, opt_origin) {
+mob.util.proxyImageUrl = function(url, opt_origin) {
   // Note that we originally used document.location.origin here but it returns
   // null on the galaxy s2 stock browser.
   var origin = goog.uri.utils.getHost(
@@ -773,19 +777,19 @@ pagespeed.MobUtil.proxyImageUrl = function(url, opt_origin) {
 /**
  * Extract the image from IMG and SVG tags, or from the background.
  * @param {!Element} element
- * @param {!pagespeed.MobUtil.ImageSource} source
+ * @param {!mob.util.ImageSource} source
  * @return {?string}
  */
-pagespeed.MobUtil.extractImage = function(element, source) {
+mob.util.extractImage = function(element, source) {
   var imageSrc = null;
   switch (source) {
-    case pagespeed.MobUtil.ImageSource.IMG:
+    case mob.util.ImageSource.IMG:
       if (element.nodeName == source) {
         imageSrc = element.src;
       }
       break;
 
-    case pagespeed.MobUtil.ImageSource.SVG:
+    case mob.util.ImageSource.SVG:
       if (element.nodeName == source) {
         var svgString = new XMLSerializer().serializeToString(element);
         var domUrl = self.URL || self.webkitURL || self;
@@ -795,8 +799,8 @@ pagespeed.MobUtil.extractImage = function(element, source) {
       }
       break;
 
-    case pagespeed.MobUtil.ImageSource.BACKGROUND:
-      imageSrc = pagespeed.MobUtil.findBackgroundImage(element);
+    case mob.util.ImageSource.BACKGROUND:
+      imageSrc = mob.util.findBackgroundImage(element);
       break;
   }
   if (imageSrc) {
@@ -812,7 +816,7 @@ pagespeed.MobUtil.extractImage = function(element, source) {
  * @param {!goog.color.Rgb} color
  * @return {string}
  */
-pagespeed.MobUtil.synthesizeImage = function(imageBase64, color) {
+mob.util.synthesizeImage = function(imageBase64, color) {
   goog.asserts.assert(imageBase64.length > 16);
   var imageTemplate = mob.util.getWindow().atob(imageBase64);
   var imageData = imageTemplate.substring(0, 13) +
@@ -829,7 +833,7 @@ pagespeed.MobUtil.synthesizeImage = function(imageBase64, color) {
  * @param {string} url
  * @return {boolean}
  */
-pagespeed.MobUtil.isCrossOrigin = function(url) {
+mob.util.isCrossOrigin = function(url) {
   var origin = mob.util.getWindow().document.location.origin + '/';
   return (!goog.string.startsWith(url, origin) &&
           !goog.string.startsWith(url, 'data:image/'));
@@ -839,11 +843,11 @@ pagespeed.MobUtil.isCrossOrigin = function(url) {
 /**
  * Return bounding box and size of the element.
  * @param {!Element} element
- * @return {!pagespeed.MobUtil.Rect}
+ * @return {!mob.util.Rect}
  */
-pagespeed.MobUtil.boundingRectAndSize = function(element) {
-  var rect = pagespeed.MobUtil.boundingRect(element);
-  var psRect = new pagespeed.MobUtil.Rect();
+mob.util.boundingRectAndSize = function(element) {
+  var rect = mob.util.boundingRect(element);
+  var psRect = new mob.util.Rect();
   psRect.top = rect.top;
   psRect.bottom = rect.bottom;
   psRect.left = rect.left;
@@ -859,11 +863,10 @@ pagespeed.MobUtil.boundingRectAndSize = function(element) {
  * @param {!CSSStyleDeclaration} style
  * @return {boolean}
  */
-pagespeed.MobUtil.isOffScreen = function(style) {
-  var top = pagespeed.MobUtil.pixelValue(style.top);
-  var left = pagespeed.MobUtil.pixelValue(style.left);
-  return (((top != null) && (top < -100)) ||
-          ((left != null) && (left < -100)));
+mob.util.isOffScreen = function(style) {
+  var top = mob.util.pixelValue(style.top);
+  var left = mob.util.pixelValue(style.left);
+  return (((top != null) && (top < -100)) || ((left != null) && (left < -100)));
 };
 
 
@@ -873,7 +876,7 @@ pagespeed.MobUtil.isOffScreen = function(style) {
  * @param {string} unescaped JS string
  * @return {string} escaped, quoted CSS string1
  */
-pagespeed.MobUtil.toCssString1 = function(unescaped) {
+mob.util.toCssString1 = function(unescaped) {
   // There are actually relatively few forbidden characters [^\r\n\f\\"], so
   // just replace each one of them by a safe escape.
   // All the escapes start with backslash, so escape existing backslashes first.
@@ -891,7 +894,7 @@ pagespeed.MobUtil.toCssString1 = function(unescaped) {
  * has not been disabled by the site.
  * @param {string} message
  */
-pagespeed.MobUtil.consoleLog = function(message) {
+mob.util.consoleLog = function(message) {
   // TODO(jud): Consider using goog.log.
   if (mob.util.getWindow().psDebugMode && console && console.log) {
     console.log(message);
@@ -903,7 +906,7 @@ pagespeed.MobUtil.consoleLog = function(message) {
  * Constants used for beacon events.
  * @enum {string}
  */
-pagespeed.MobUtil.BeaconEvents = {
+mob.util.BeaconEvents = {
   CALL_CONVERSION_RESPONSE: 'call-conversion-response',
   CALL_FALLBACK_NUMBER: 'call-fallback-number',
   CALL_GV_NUMBER: 'call-gv-number',
@@ -925,15 +928,15 @@ pagespeed.MobUtil.BeaconEvents = {
  * RewriteOption MobBeaconUrl. This will wait at most 500ms before calling
  * opt_callback to balance giving the browser enough time to send the event, but
  * not blocking the event on slow network requests.
- * @param {pagespeed.MobUtil.BeaconEvents} beaconEvent Identifier for the event
+ * @param {mob.util.BeaconEvents} beaconEvent Identifier for the event
  *     being tracked.
  * @param {?Function=} opt_callback Optional callback to be run when the 204
  *     finishes loading, or 500ms have elapsed, whichever happens first.
  * @param {string=} opt_additionalParams An additional string to be added to the
  * end of the request.
  */
-pagespeed.MobUtil.sendBeaconEvent = function(beaconEvent, opt_callback,
-                                             opt_additionalParams) {
+mob.util.sendBeaconEvent = function(beaconEvent, opt_callback,
+                                    opt_additionalParams) {
   var win = mob.util.getWindow();
   if (!win.psMobBeaconUrl) {
     if (opt_callback) {
@@ -957,7 +960,7 @@ pagespeed.MobUtil.sendBeaconEvent = function(beaconEvent, opt_callback,
   // Ensure that the callback is only called once, even though it can be called
   // from either the beacon being loaded or from a 500ms timeout.
   if (opt_callback) {
-    var callbackRunner = pagespeed.MobUtil.runCallbackOnce_(opt_callback);
+    var callbackRunner = mob.util.runCallbackOnce_(opt_callback);
     img.addEventListener(goog.events.EventType.LOAD, callbackRunner);
     img.addEventListener(goog.events.EventType.ERROR, callbackRunner);
     win.setTimeout(callbackRunner, 500);
@@ -971,7 +974,7 @@ pagespeed.MobUtil.sendBeaconEvent = function(beaconEvent, opt_callback,
  * @return {!function()}
  * @private
  */
-pagespeed.MobUtil.runCallbackOnce_ = function(callback) {
+mob.util.runCallbackOnce_ = function(callback) {
   var callbackCalled = false;
   return function() {
     if (!callbackCalled) {

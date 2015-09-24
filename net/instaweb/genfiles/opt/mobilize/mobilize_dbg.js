@@ -7316,100 +7316,104 @@ goog.net.Jsonp.addPayloadToUri_ = function(a, b) {
   }
   return b;
 };
-var pagespeed = {mobLayoutConstants:{}};
-pagespeed.mobLayoutConstants.CLAMPED_STYLES = "border-bottom-width border-left-width border-right-width border-top-width left margin-bottom margin-left margin-right margin-top padding-bottom padding-left padding-right padding-top top".split(" ");
-pagespeed.mobLayoutConstants.PROPERTIES_TO_REMOVE_FOR_SINGLE_COLUMN = "border-left border-right margin-left margin-right padding-left padding-right".split(" ");
-pagespeed.mobLayoutConstants.HORIZONTAL_PADDING_PROPERTIES = ["padding-left", "padding-right"];
-pagespeed.mobLayoutConstants.FLEXIBLE_WIDTH_TAGS = goog.object.createSet(goog.dom.TagName.A, goog.dom.TagName.DIV, goog.dom.TagName.FORM, goog.dom.TagName.H1, goog.dom.TagName.H2, goog.dom.TagName.H3, goog.dom.TagName.H4, goog.dom.TagName.P, goog.dom.TagName.SPAN, goog.dom.TagName.TBODY, goog.dom.TagName.TD, goog.dom.TagName.TFOOT, goog.dom.TagName.TH, goog.dom.TagName.THEAD, goog.dom.TagName.TR);
-pagespeed.mobLayoutConstants.DONT_TOUCH_TAGS = goog.object.createSet(goog.dom.TagName.SCRIPT, goog.dom.TagName.STYLE, goog.dom.TagName.IFRAME);
-pagespeed.mobLayoutConstants.NO_PERCENT = ["left", "width"];
-pagespeed.mobLayoutConstants.LAYOUT_CRITICAL = [goog.dom.TagName.CODE, goog.dom.TagName.PRE, goog.dom.TagName.UL];
-var mob = {util:{}};
-pagespeed.MobUtil = {};
-pagespeed.MobUtil.ElementId = {CLICK_DETECTOR_DIV:"psmob-click-detector-div", CONFIG_IFRAME:"ps-hidden-iframe", DIALER_BUTTON:"psmob-dialer-button", HEADER_BAR:"psmob-header-bar", IFRAME:"psmob-iframe", IFRAME_CONTAINER:"psmob-iframe-container", LOGO_IMAGE:"psmob-logo-image", LOGO_SPAN:"psmob-logo-span", MAP_BUTTON:"psmob-map-button", MENU_BUTTON:"psmob-menu-button", NAV_PANEL:"psmob-nav-panel", PROGRESS_LOG:"ps-progress-log", PROGRESS_REMOVE:"ps-progress-remove", PROGRESS_SCRIM:"ps-progress-scrim", 
-PROGRESS_SHOW_LOG:"ps-progress-show-log", PROGRESS_SPAN:"ps-progress-span", SPACER:"psmob-spacer"};
-pagespeed.MobUtil.ElementClass = {BUTTON:"psmob-button", BUTTON_ICON:"psmob-button-icon", BUTTON_TEXT:"psmob-button-text", HIDE:"psmob-hide", IOS_WEBVIEW:"ios-webview", LABELED:"psmob-labeled", LOGO_CHOOSER_CHOICE:"psmob-logo-chooser-choice", LOGO_CHOOSER_COLOR:"psmob-logo-chooser-color", LOGO_CHOOSER_COLUMN_HEADER:"psmob-logo-chooser-column-header", LOGO_CHOOSER_CONFIG_FRAGMENT:"psmob-logo-chooser-config-fragment", LOGO_CHOOSER_IMAGE:"psmob-logo-chooser-image", LOGO_CHOOSER_SWAP:"psmob-logo-chooser-swap", 
+var mob = {layoutConstants:{}};
+mob.layoutConstants.CLAMPED_STYLES = "border-bottom-width border-left-width border-right-width border-top-width left margin-bottom margin-left margin-right margin-top padding-bottom padding-left padding-right padding-top top".split(" ");
+mob.layoutConstants.PROPERTIES_TO_REMOVE_FOR_SINGLE_COLUMN = "border-left border-right margin-left margin-right padding-left padding-right".split(" ");
+mob.layoutConstants.HORIZONTAL_PADDING_PROPERTIES = ["padding-left", "padding-right"];
+mob.layoutConstants.FLEXIBLE_WIDTH_TAGS = goog.object.createSet(goog.dom.TagName.A, goog.dom.TagName.DIV, goog.dom.TagName.FORM, goog.dom.TagName.H1, goog.dom.TagName.H2, goog.dom.TagName.H3, goog.dom.TagName.H4, goog.dom.TagName.P, goog.dom.TagName.SPAN, goog.dom.TagName.TBODY, goog.dom.TagName.TD, goog.dom.TagName.TFOOT, goog.dom.TagName.TH, goog.dom.TagName.THEAD, goog.dom.TagName.TR);
+mob.layoutConstants.DONT_TOUCH_TAGS = goog.object.createSet(goog.dom.TagName.SCRIPT, goog.dom.TagName.STYLE, goog.dom.TagName.IFRAME);
+mob.layoutConstants.NO_PERCENT = ["left", "width"];
+mob.layoutConstants.LAYOUT_CRITICAL = [goog.dom.TagName.CODE, goog.dom.TagName.PRE, goog.dom.TagName.UL];
+mob.util = {};
+mob.util.window_ = "undefined" != typeof extension && extension.hasOwnProperty("target") ? extension.target : window;
+mob.util.getWindow = function() {
+  return mob.util.window_;
+};
+mob.util.ElementId = {CLICK_DETECTOR_DIV:"psmob-click-detector-div", CONFIG_IFRAME:"ps-hidden-iframe", DIALER_BUTTON:"psmob-dialer-button", HEADER_BAR:"psmob-header-bar", IFRAME:"psmob-iframe", IFRAME_CONTAINER:"psmob-iframe-container", LOGO_IMAGE:"psmob-logo-image", LOGO_SPAN:"psmob-logo-span", MAP_BUTTON:"psmob-map-button", MENU_BUTTON:"psmob-menu-button", NAV_PANEL:"psmob-nav-panel", PROGRESS_LOG:"ps-progress-log", PROGRESS_REMOVE:"ps-progress-remove", PROGRESS_SCRIM:"ps-progress-scrim", PROGRESS_SHOW_LOG:"ps-progress-show-log", 
+PROGRESS_SPAN:"ps-progress-span", SPACER:"psmob-spacer"};
+mob.util.ElementClass = {BUTTON:"psmob-button", BUTTON_ICON:"psmob-button-icon", BUTTON_TEXT:"psmob-button-text", HIDE:"psmob-hide", IOS_WEBVIEW:"ios-webview", LABELED:"psmob-labeled", LOGO_CHOOSER_CHOICE:"psmob-logo-chooser-choice", LOGO_CHOOSER_COLOR:"psmob-logo-chooser-color", LOGO_CHOOSER_COLUMN_HEADER:"psmob-logo-chooser-column-header", LOGO_CHOOSER_CONFIG_FRAGMENT:"psmob-logo-chooser-config-fragment", LOGO_CHOOSER_IMAGE:"psmob-logo-chooser-image", LOGO_CHOOSER_SWAP:"psmob-logo-chooser-swap", 
 LOGO_CHOOSER_TABLE:"psmob-logo-chooser-table", MENU_EXPAND_ICON:"psmob-menu-expand-icon", NOSCROLL:"psmob-noscroll", OPEN:"psmob-open", SHOW_BUTTON_TEXT:"psmob-show-button-text", SINGLE_COLUMN:"psmob-single-column", THEME_CONFIG:"psmob-theme-config"};
-pagespeed.MobUtil.ASCII_0_ = 48;
-pagespeed.MobUtil.ASCII_9_ = 57;
-pagespeed.MobUtil.Rect = function() {
+mob.util.ASCII_0_ = 48;
+mob.util.ASCII_9_ = 57;
+mob.util.Rect = function() {
   this.height = this.width = this.bottom = this.right = this.left = this.top = 0;
 };
-pagespeed.MobUtil.Dimensions = function(a, b) {
+mob.util.Dimensions = function(a, b) {
   this.width = a;
   this.height = b;
 };
-pagespeed.MobUtil.isDigit = function(a, b) {
+mob.util.isDigit = function(a, b) {
   if (a.length <= b) {
     return !1;
   }
   var c = a.charCodeAt(b);
-  return c >= pagespeed.MobUtil.ASCII_0_ && c <= pagespeed.MobUtil.ASCII_9_;
+  return c >= mob.util.ASCII_0_ && c <= mob.util.ASCII_9_;
 };
-pagespeed.MobUtil.pixelValue = function(a) {
+mob.util.pixelValue = function(a) {
   var b = null;
   if (a && "string" == typeof a) {
     var c = a.indexOf("px");
     -1 != c && (a = a.substring(0, c));
-    pagespeed.MobUtil.isDigit(a, a.length - 1) && (b = parseInt(a, 10), isNaN(b) && (b = null));
+    mob.util.isDigit(a, a.length - 1) && (b = parseInt(a, 10), isNaN(b) && (b = null));
   }
   return b;
 };
-pagespeed.MobUtil.computedDimension = function(a, b) {
+mob.util.computedDimension = function(a, b) {
   var c = null;
-  a && (c = pagespeed.MobUtil.pixelValue(a.getPropertyValue(b)));
+  a && (c = mob.util.pixelValue(a.getPropertyValue(b)));
   return c;
 };
-pagespeed.MobUtil.removeProperty = function(a, b) {
+mob.util.removeProperty = function(a, b) {
   a.style && a.style.removeProperty(b);
   a.removeAttribute(b);
 };
-pagespeed.MobUtil.findRequestedDimension = function(a, b) {
+mob.util.findRequestedDimension = function(a, b) {
   var c = null;
-  a.style && (c = pagespeed.MobUtil.pixelValue(a.style.getPropertyValue(b)));
-  null == c && (c = pagespeed.MobUtil.pixelValue(a.getAttribute(b)));
+  a.style && (c = mob.util.pixelValue(a.style.getPropertyValue(b)));
+  null == c && (c = mob.util.pixelValue(a.getAttribute(b)));
   return c;
 };
-pagespeed.MobUtil.setPropertyImportant = function(a, b, c) {
+mob.util.setPropertyImportant = function(a, b, c) {
   a.style.setProperty(b, c, "important");
 };
-pagespeed.MobUtil.aboutEqual = function(a, b) {
+mob.util.aboutEqual = function(a, b) {
   return .95 < (a > b ? b / a : a / b);
 };
-pagespeed.MobUtil.addStyles = function(a, b) {
+mob.util.addStyles = function(a, b) {
   if (b && 0 != b.length) {
     var c = a.getAttribute("style") || "";
     0 < c.length && ";" != c[c.length - 1] && (c += ";");
     a.setAttribute("style", c + b);
   }
 };
-pagespeed.MobUtil.boundingRect = function(a) {
+mob.util.boundingRect = function(a) {
   a = a.getBoundingClientRect();
-  var b = document.body, c = document.documentElement || b.parentNode || b, b = "pageXOffset" in window ? window.pageXOffset : c.scrollLeft, c = "pageYOffset" in window ? window.pageYOffset : c.scrollTop;
-  return new goog.math.Box(a.top + c, a.right + b, a.bottom + c, a.left + b);
+  var b = mob.util.getWindow(), c = b.document.body, d = b.document.documentElement || c.parentNode || c, c = "pageXOffset" in b ? b.pageXOffset : d.scrollLeft, b = "pageYOffset" in b ? b.pageYOffset : d.scrollTop;
+  return new goog.math.Box(a.top + b, a.right + c, a.bottom + b, a.left + c);
 };
-pagespeed.MobUtil.isSinglePixel = function(a) {
+mob.util.isSinglePixel = function(a) {
   return 1 == a.naturalHeight && 1 == a.naturalWidth;
 };
-pagespeed.MobUtil.findBackgroundImage = function(a) {
+mob.util.findBackgroundImage = function(a) {
   var b = null, b = a.nodeName.toUpperCase();
-  return b != goog.dom.TagName.SCRIPT && b != goog.dom.TagName.STYLE && a.style && (a = window.getComputedStyle(a)) && (b = a.getPropertyValue("background-image"), "none" == b && (b = null), b && 5 < b.length && 0 == b.indexOf("url(") && ")" == b[b.length - 1]) ? b = b.substring(4, b.length - 1) : null;
+  return b != goog.dom.TagName.SCRIPT && b != goog.dom.TagName.STYLE && a.style && (a = mob.util.getWindow().getComputedStyle(a)) && (b = a.getPropertyValue("background-image"), "none" == b && (b = null), b && 5 < b.length && 0 == b.indexOf("url(") && ")" == b[b.length - 1]) ? b = b.substring(4, b.length - 1) : null;
 };
-pagespeed.MobUtil.inFriendlyIframe = function() {
-  if (null != window.parent && window != window.parent) {
+mob.util.inFriendlyIframe = function() {
+  var a = mob.util.getWindow();
+  if (null != a.parent && a != a.parent) {
     try {
-      if (window.parent.document.domain == document.domain) {
+      if (a.parent.document.domain == a.document.domain) {
         return !0;
       }
-    } catch (a) {
+    } catch (b) {
     }
   }
   return !1;
 };
-pagespeed.MobUtil.possiblyInQuirksMode = function() {
-  return "CSS1Compat" !== document.compatMode;
+mob.util.possiblyInQuirksMode = function() {
+  return "CSS1Compat" !== mob.util.getWindow().document.compatMode;
 };
-pagespeed.MobUtil.hasIntersectingRects = function(a) {
+mob.util.hasIntersectingRects = function(a) {
   for (var b = 0;b < a.length;++b) {
     for (var c = b + 1;c < a.length;++c) {
       if (goog.math.Box.intersects(a[b], a[c])) {
@@ -7419,8 +7423,8 @@ pagespeed.MobUtil.hasIntersectingRects = function(a) {
   }
   return !1;
 };
-pagespeed.MobUtil.createXPathFromNode = function(a) {
-  for (var b = document.getElementsByTagName("*"), c, d = [], e;goog.dom.isElement(a);a = a.parentNode) {
+mob.util.createXPathFromNode = function(a) {
+  for (var b = mob.util.getWindow().document.getElementsByTagName("*"), c, d = [], e;goog.dom.isElement(a);a = a.parentNode) {
     if (a.hasAttribute("id")) {
       for (e = c = 0;e < b.length && 1 >= c;++e) {
         b[e].hasAttribute("id") && b[e].id == a.id && ++c;
@@ -7443,29 +7447,28 @@ pagespeed.MobUtil.createXPathFromNode = function(a) {
   }
   return d.length ? "/" + d.join("/") : null;
 };
-pagespeed.MobUtil.countNodes = function(a) {
+mob.util.countNodes = function(a) {
   if (!a) {
     return 0;
   }
   var b = 1;
   for (a = a.firstChild;a;a = a.nextSibling) {
-    b += pagespeed.MobUtil.countNodes(a);
+    b += mob.util.countNodes(a);
   }
   return b;
 };
-pagespeed.MobUtil.ImageSource = {IMG:"IMG", SVG:"SVG", BACKGROUND:"background-image"};
-goog.exportSymbol("pagespeed.MobUtil.ImageSource", pagespeed.MobUtil.ImageSource);
-pagespeed.MobUtil.ThemeData = function(a, b, c) {
+mob.util.ImageSource = {IMG:"IMG", SVG:"SVG", BACKGROUND:"background-image"};
+mob.util.ThemeData = function(a, b, c) {
   this.logoUrl = a;
   this.menuFrontColor = b;
   this.menuBackColor = c;
 };
-pagespeed.MobUtil.textBetweenBrackets = function(a) {
+mob.util.textBetweenBrackets = function(a) {
   var b = a.indexOf("("), c = a.lastIndexOf(")");
   return 0 <= b && c > b ? a.substring(b + 1, c) : null;
 };
-pagespeed.MobUtil.colorStringToNumbers = function(a) {
-  var b = pagespeed.MobUtil.textBetweenBrackets(a);
+mob.util.colorStringToNumbers = function(a) {
+  var b = mob.util.textBetweenBrackets(a);
   if (!b) {
     return "transparent" == a ? [0, 0, 0, 0] : null;
   }
@@ -7478,7 +7481,7 @@ pagespeed.MobUtil.colorStringToNumbers = function(a) {
   }
   return 3 == a.length || 4 == a.length ? a : null;
 };
-pagespeed.MobUtil.colorNumbersToString = function(a) {
+mob.util.colorNumbersToString = function(a) {
   for (var b = 0, c = a.length;b < c;++b) {
     var d = Math.round(a[b]);
     0 > d ? d = 0 : 255 < d && (d = 255);
@@ -7486,7 +7489,7 @@ pagespeed.MobUtil.colorNumbersToString = function(a) {
   }
   return goog.color.rgbArrayToHex(a);
 };
-pagespeed.MobUtil.stripNonAlphaNumeric = function(a) {
+mob.util.stripNonAlphaNumeric = function(a) {
   a = a.toLowerCase();
   for (var b = "", c = 0, d = a.length;c < d;++c) {
     var e = a.charAt(c);
@@ -7496,10 +7499,12 @@ pagespeed.MobUtil.stripNonAlphaNumeric = function(a) {
   }
   return b;
 };
-pagespeed.MobUtil.findPattern = function(a, b) {
-  return 0 <= pagespeed.MobUtil.stripNonAlphaNumeric(a).indexOf(pagespeed.MobUtil.stripNonAlphaNumeric(b)) ? 1 : 0;
+mob.util.findPattern = function(a, b) {
+  a = mob.util.stripNonAlphaNumeric(a);
+  b = mob.util.stripNonAlphaNumeric(b);
+  return 0 <= a.indexOf(b) ? 1 : 0;
 };
-pagespeed.MobUtil.removeSuffixNTimes = function(a, b, c) {
+mob.util.removeSuffixNTimes = function(a, b, c) {
   for (var d = a.length, e = 0;e < c;++e) {
     var f = a.lastIndexOf(b, d - 1);
     if (0 <= f) {
@@ -7510,11 +7515,11 @@ pagespeed.MobUtil.removeSuffixNTimes = function(a, b, c) {
   }
   return 0 <= f ? a.substring(0, d) : a;
 };
-pagespeed.MobUtil.getSiteOrganization = function() {
-  var a = document.domain.toLowerCase().split("."), b = a.length;
+mob.util.getSiteOrganization = function() {
+  var a = mob.util.getWindow().document.domain.toLowerCase().split("."), b = a.length;
   return 4 < b && 2 == a[b - 3].length ? a[b - 5] : 3 < b ? a[b - 4] : null;
 };
-pagespeed.MobUtil.resourceFileName = function(a) {
+mob.util.resourceFileName = function(a) {
   if (!a || 0 <= a.indexOf("data:image/")) {
     return "";
   }
@@ -7524,8 +7529,8 @@ pagespeed.MobUtil.resourceFileName = function(a) {
   0 > c && (c = a.length);
   return a.substring(b, c);
 };
-pagespeed.MobUtil.proxyImageUrl = function(a, b) {
-  var c = goog.uri.utils.getHost(b || document.location.href), d = goog.uri.utils.getDomain(c), e = goog.uri.utils.getDomain(a);
+mob.util.proxyImageUrl = function(a, b) {
+  var c = goog.uri.utils.getHost(b || mob.util.getWindow().document.location.href), d = goog.uri.utils.getDomain(c), e = goog.uri.utils.getDomain(a);
   if (null == d || null == e) {
     return a;
   }
@@ -7539,33 +7544,34 @@ pagespeed.MobUtil.proxyImageUrl = function(a, b) {
   }
   return f ? (e = a.indexOf(e) + e.length, c + a.substring(e)) : a;
 };
-pagespeed.MobUtil.extractImage = function(a, b) {
+mob.util.extractImage = function(a, b) {
   var c = null;
   switch(b) {
-    case pagespeed.MobUtil.ImageSource.IMG:
+    case mob.util.ImageSource.IMG:
       a.nodeName == b && (c = a.src);
       break;
-    case pagespeed.MobUtil.ImageSource.SVG:
+    case mob.util.ImageSource.SVG:
       if (a.nodeName == b) {
         var d = (new XMLSerializer).serializeToString(a), c = self.URL || self.webkitURL || self, d = new Blob([d], {type:"image/svg+xml;charset=utf-8"}), c = c.createObjectURL(d)
       }
       break;
-    case pagespeed.MobUtil.ImageSource.BACKGROUND:
-      c = pagespeed.MobUtil.findBackgroundImage(a);
+    case mob.util.ImageSource.BACKGROUND:
+      c = mob.util.findBackgroundImage(a);
   }
-  return c ? pagespeed.MobUtil.proxyImageUrl(c) : null;
+  return c ? c : null;
 };
-pagespeed.MobUtil.synthesizeImage = function(a, b) {
+mob.util.synthesizeImage = function(a, b) {
   goog.asserts.assert(16 < a.length);
-  var c = window.atob(a), c = c.substring(0, 13) + String.fromCharCode(b[0], b[1], b[2]) + c.substring(16, c.length);
-  return "data:image/gif;base64," + window.btoa(c);
+  var c = mob.util.getWindow().atob(a), c = c.substring(0, 13) + String.fromCharCode(b[0], b[1], b[2]) + c.substring(16, c.length);
+  return "data:image/gif;base64," + mob.util.getWindow().btoa(c);
 };
-pagespeed.MobUtil.isCrossOrigin = function(a) {
-  return !goog.string.startsWith(a, document.location.origin + "/") && !goog.string.startsWith(a, "data:image/");
+mob.util.isCrossOrigin = function(a) {
+  var b = mob.util.getWindow().document.location.origin + "/";
+  return !goog.string.startsWith(a, b) && !goog.string.startsWith(a, "data:image/");
 };
-pagespeed.MobUtil.boundingRectAndSize = function(a) {
-  a = pagespeed.MobUtil.boundingRect(a);
-  var b = new pagespeed.MobUtil.Rect;
+mob.util.boundingRectAndSize = function(a) {
+  a = mob.util.boundingRect(a);
+  var b = new mob.util.Rect;
   b.top = a.top;
   b.bottom = a.bottom;
   b.left = a.left;
@@ -7574,12 +7580,12 @@ pagespeed.MobUtil.boundingRectAndSize = function(a) {
   b.width = a.right - a.left;
   return b;
 };
-pagespeed.MobUtil.isOffScreen = function(a) {
-  var b = pagespeed.MobUtil.pixelValue(a.top);
-  a = pagespeed.MobUtil.pixelValue(a.left);
+mob.util.isOffScreen = function(a) {
+  var b = mob.util.pixelValue(a.top);
+  a = mob.util.pixelValue(a.left);
   return null != b && -100 > b || null != a && -100 > a;
 };
-pagespeed.MobUtil.toCssString1 = function(a) {
+mob.util.toCssString1 = function(a) {
   a = a.replace(/\\/g, "\\\\");
   a = a.replace(/"/g, '\\"');
   a = a.replace(/\n/g, "\\a ");
@@ -7587,24 +7593,25 @@ pagespeed.MobUtil.toCssString1 = function(a) {
   a = a.replace(/\r/g, "\\d ");
   return '"' + a + '"';
 };
-pagespeed.MobUtil.consoleLog = function(a) {
-  window.psDebugMode && console && console.log && console.log(a);
+mob.util.consoleLog = function(a) {
+  mob.util.getWindow().psDebugMode && console && console.log && console.log(a);
 };
-pagespeed.MobUtil.BeaconEvents = {CALL_CONVERSION_RESPONSE:"call-conversion-response", CALL_FALLBACK_NUMBER:"call-fallback-number", CALL_GV_NUMBER:"call-gv-number", INITIAL_EVENT:"initial-event", LOAD_EVENT:"load-event", MAP_BUTTON:"psmob-map-button", MENU_BUTTON_CLOSE:"psmob-menu-button-close", MENU_BUTTON_OPEN:"psmob-menu-button-open", SUBMENU_CLOSE:"psmob-submenu-close", SUBMENU_OPEN:"psmob-submenu-open", MENU_NAV_CLICK:"psmob-menu-nav-click", NAV_DONE:"nav-done", PHONE_BUTTON:"psmob-phone-dialer"};
-pagespeed.MobUtil.sendBeaconEvent = function(a, b, c) {
-  !window.psMobBeaconUrl && b ? b() : (a = window.psMobBeaconUrl + "?id=psmob&url=" + encodeURIComponent(document.URL) + "&el=" + a, window.psMobBeaconCategory && (a += "&category=" + window.psMobBeaconCategory), c && (a += c), c = document.createElement(goog.dom.TagName.IMG), c.src = a, b && (b = pagespeed.MobUtil.runCallbackOnce_(b), c.addEventListener(goog.events.EventType.LOAD, b), c.addEventListener(goog.events.EventType.ERROR, b), window.setTimeout(b, 500)));
+mob.util.BeaconEvents = {CALL_CONVERSION_RESPONSE:"call-conversion-response", CALL_FALLBACK_NUMBER:"call-fallback-number", CALL_GV_NUMBER:"call-gv-number", INITIAL_EVENT:"initial-event", LOAD_EVENT:"load-event", MAP_BUTTON:"psmob-map-button", MENU_BUTTON_CLOSE:"psmob-menu-button-close", MENU_BUTTON_OPEN:"psmob-menu-button-open", SUBMENU_CLOSE:"psmob-submenu-close", SUBMENU_OPEN:"psmob-submenu-open", MENU_NAV_CLICK:"psmob-menu-nav-click", NAV_DONE:"nav-done", PHONE_BUTTON:"psmob-phone-dialer"};
+mob.util.sendBeaconEvent = function(a, b, c) {
+  var d = mob.util.getWindow();
+  !d.psMobBeaconUrl && b ? b() : (a = d.psMobBeaconUrl + "?id=psmob&url=" + encodeURIComponent(d.document.URL) + "&el=" + a, d.psMobBeaconCategory && (a += "&category=" + d.psMobBeaconCategory), c && (a += c), c = d.document.createElement(goog.dom.TagName.IMG), c.src = a, b && (b = mob.util.runCallbackOnce_(b), c.addEventListener(goog.events.EventType.LOAD, b), c.addEventListener(goog.events.EventType.ERROR, b), d.setTimeout(b, 500)));
 };
-pagespeed.MobUtil.runCallbackOnce_ = function(a) {
+mob.util.runCallbackOnce_ = function(a) {
   var b = !1;
   return function() {
     b || (b = !0, a());
   };
 };
 mob.util.getZoomLevel = function() {
-  var a = 1;
-  "desktop" != window.psDeviceType && (a = 90 == Math.abs(window.orientation) && screen.height > screen.width ? window.innerHeight / screen.width * a : window.innerWidth / screen.width * a);
-  goog.labs.userAgent.browser.isAndroidBrowser() && (a *= goog.dom.getPixelRatio());
-  return a;
+  var a = mob.util.getWindow(), b = 1;
+  "desktop" != a.psDeviceType && (b = 90 == Math.abs(a.orientation) && screen.height > screen.width ? a.innerHeight / screen.width * b : a.innerWidth / screen.width * b);
+  goog.labs.userAgent.browser.isAndroidBrowser() && (b *= goog.dom.getPixelRatio());
+  return b;
 };
 mob.button = {};
 mob.button.AbstractButton = function(a, b, c, d) {
@@ -7617,13 +7624,13 @@ mob.button.AbstractButton = function(a, b, c, d) {
 };
 mob.button.AbstractButton.prototype.createButton = function() {
   this.el.id = this.id_;
-  goog.dom.classlist.add(this.el, pagespeed.MobUtil.ElementClass.BUTTON);
+  goog.dom.classlist.add(this.el, mob.util.ElementClass.BUTTON);
   this.el.onclick = goog.bind(this.clickHandler, this);
   var a = document.createElement(goog.dom.TagName.DIV);
-  goog.dom.classlist.add(a, pagespeed.MobUtil.ElementClass.BUTTON_ICON);
-  a.style.backgroundImage = "url(" + pagespeed.MobUtil.synthesizeImage(this.iconImage_, this.color_) + ")";
+  goog.dom.classlist.add(a, mob.util.ElementClass.BUTTON_ICON);
+  a.style.backgroundImage = "url(" + mob.util.synthesizeImage(this.iconImage_, this.color_) + ")";
   this.el.appendChild(a);
-  this.labelText_ && (a = document.createElement(goog.dom.TagName.P), goog.dom.classlist.add(a, pagespeed.MobUtil.ElementClass.BUTTON_TEXT), this.el.appendChild(a), a.appendChild(document.createTextNode(this.labelText_)));
+  this.labelText_ && (a = document.createElement(goog.dom.TagName.P), goog.dom.classlist.add(a, mob.util.ElementClass.BUTTON_TEXT), this.el.appendChild(a), a.appendChild(document.createTextNode(this.labelText_)));
 };
 mob.button.DialerState_ = {IDLE:0, REQUESTING:1, DIAL_WHEN_REQUEST_COMPLETES:2};
 mob.button.Dialer = function(a, b, c, d) {
@@ -7634,7 +7641,7 @@ mob.button.Dialer = function(a, b, c, d) {
   this.cookies_ = new goog.net.Cookies(document);
   this.jsonpTime_ = null;
   this.dialState_ = mob.button.DialerState_.IDLE;
-  mob.button.AbstractButton.call(this, pagespeed.MobUtil.ElementId.DIALER_BUTTON, mob.button.Dialer.ICON_, a, mob.button.Dialer.LABEL_);
+  mob.button.AbstractButton.call(this, mob.util.ElementId.DIALER_BUTTON, mob.button.Dialer.ICON_, a, mob.button.Dialer.LABEL_);
 };
 goog.inherits(mob.button.Dialer, mob.button.AbstractButton);
 mob.button.Dialer.ICON_ = "R0lGODlhYABgAPAAAAAAAAAAACH5BAEAAAEAIf8LSW1hZ2VNYWdpY2sHZ2FtbWE9MQAsAAAAAGAAYAAAAv6Mj6nL7Q+jnLTai7PevPsPhuJIluaJpurKtu4Lx/KsAvaN5zcd6r7P8/yGuSCHiAQYN0niUtMcPjPR3xRTBV4tWd2W28V9K2HxeFI2nyNp21rSVr4h8Tm9bX/E5fnFvt9QB+iHN6ggaIiAmHiQxngY9giZJTkZVUnYhJmJtMmQ5PnpFMrpRSqqdWpZpFqq1tpoBZsgNRsraxtQmzvKu2v7O9sLHAw7bHzc2ulbrLpM3IzGegV6UW10Le0Ik3232KLp/cfdvfoNHm5+7pJ+u7dDc2nwbhpPv81zX/akT8nf324JwGdTBkbDZnDamITw3jDsY9BQP0b3MK171IVZqhBcHDt6/AgypMiRJEuaDFUAADs=";
@@ -7647,7 +7654,7 @@ mob.button.Dialer.prototype.createButton = function() {
   (this.googleVoicePhoneNumber_ = this.getPhoneNumberFromCookie_()) || this.requestPhoneNumber_();
 };
 mob.button.Dialer.prototype.clickHandler = function(a) {
-  pagespeed.MobUtil.sendBeaconEvent(pagespeed.MobUtil.BeaconEvents.PHONE_BUTTON);
+  mob.util.sendBeaconEvent(mob.util.BeaconEvents.PHONE_BUTTON);
   this.dialState_ == mob.button.DialerState_.IDLE ? this.dialPhone_() : this.dialState_ = mob.button.DialerState_.DIAL_WHEN_REQUEST_COMPLETES;
 };
 mob.button.Dialer.prototype.requestPhoneNumber_ = function() {
@@ -7665,9 +7672,9 @@ mob.button.Dialer.prototype.constructRequestPhoneNumberUrl_ = function() {
 };
 mob.button.Dialer.prototype.dialPhone_ = function() {
   var a, b;
-  this.googleVoicePhoneNumber_ ? (a = this.googleVoicePhoneNumber_, b = pagespeed.MobUtil.BeaconEvents.CALL_GV_NUMBER) : (a = this.fallbackPhoneNumber_, b = pagespeed.MobUtil.BeaconEvents.CALL_FALLBACK_NUMBER);
+  this.googleVoicePhoneNumber_ ? (a = this.googleVoicePhoneNumber_, b = mob.util.BeaconEvents.CALL_GV_NUMBER) : (a = this.fallbackPhoneNumber_, b = mob.util.BeaconEvents.CALL_FALLBACK_NUMBER);
   this.debugAlert_("Dialing phone: " + a + "(" + b + ")");
-  pagespeed.MobUtil.sendBeaconEvent(b, function() {
+  mob.util.sendBeaconEvent(b, function() {
     goog.global.location = "tel:" + a;
   });
 };
@@ -7687,7 +7694,7 @@ mob.button.Dialer.prototype.backoffErrorCode_ = function(a) {
 };
 mob.button.Dialer.prototype.receivePhoneNumber_ = function(a, b) {
   var c = goog.now() - this.jsonpTime_, d = b && b.wcm, e = d && d.mobile_number, f = this.backoffErrorCode_(d && d.backoff);
-  pagespeed.MobUtil.sendBeaconEvent(pagespeed.MobUtil.BeaconEvents.CALL_CONVERSION_RESPONSE, null, "&s=" + a.toString() + "&t=" + c + "&gv=" + (!(!e || e == this.fallbackPhoneNumber_)).toString() + (f ? "&err=" + f : ""));
+  mob.util.sendBeaconEvent(mob.util.BeaconEvents.CALL_CONVERSION_RESPONSE, null, "&s=" + a.toString() + "&t=" + c + "&gv=" + (!(!e || e == this.fallbackPhoneNumber_)).toString() + (f ? "&err=" + f : ""));
   e && e != this.fallbackPhoneNumber_ && (c = {expires:d.expires, formatted_number:d.formatted_number, mobile_number:e, clabel:this.conversionLabel_, fallback:this.fallbackPhoneNumber_}, c = goog.json.serialize(c), this.debugAlert_("saving phoneNumber in cookie: " + c), (d = parseInt(d.expires, 10)) ? (d -= Math.floor(goog.now() / 1E3), d = Math.min(d, mob.button.Dialer.MAX_WCM_COOKIE_LIFETIME_SEC_)) : d = mob.button.Dialer.MAX_WCM_COOKIE_LIFETIME_SEC_, this.cookies_.set(mob.button.Dialer.WCM_COOKIE_, 
   window.encodeURIComponent(c), d, "/"), this.googleVoicePhoneNumber_ = e);
   f && this.debugAlert_("WCM request: " + f);
@@ -7709,13 +7716,13 @@ mob.button.Map = function(a, b, c, d) {
   this.mapLocation_ = b;
   this.conversionId_ = c;
   this.conversionLabel_ = d;
-  mob.button.AbstractButton.call(this, pagespeed.MobUtil.ElementId.MAP_BUTTON, mob.button.Map.ICON_, a, mob.button.Map.LABEL_);
+  mob.button.AbstractButton.call(this, mob.util.ElementId.MAP_BUTTON, mob.button.Map.ICON_, a, mob.button.Map.LABEL_);
 };
 goog.inherits(mob.button.Map, mob.button.AbstractButton);
 mob.button.Map.ICON_ = "R0lGODlhYABgAPAAAAAAAAAAACH5BAEAAAEAIf8LSW1hZ2VNYWdpY2sHZ2FtbWE9MQAsAAAAAGAAYAAAAv6Mj6nL7Q+jnLTai7PevPsPhuJIluaJpuo6Au4Ls3IA1/Y7l/fO5x8P7Pk0weJteDEqj0jJ8llrQqBUnJRRzQKuCq2We/B6wWIxtzyWos3IdbntTufi7zldLmMj9Cx895tX5SQYCEVB2Ed1qJhoWIGYAjnoqMJoYRlJ+aiJgrn41LiE4XlCOim6YhqhSiK5ytoCiyUr4upgW0q7pxuSdQpaiGvgV0nMF3rHW5vs68OsHPuM6iw9TV0dpIadrb3N1O0ddRYeQ0ZuZU4OFna+zu7t/r4dLy9NX/98j3+nv8vc7y8ZwIBxBhJ0Y/BgnYT7ADFs2OwhRE4SaRyrOMwhRjeF1jZOBOJxFrCQf0aSTGDyJEojKm9xa9kAJEyXO2Y+qGnzpricOl3wHPQzqNChRIsaPYo0acUCADs=";
 mob.button.Map.LABEL_ = "GET DIRECTIONS";
 mob.button.Map.prototype.clickHandler = function() {
-  pagespeed.MobUtil.sendBeaconEvent(pagespeed.MobUtil.BeaconEvents.MAP_BUTTON, goog.bind(this.openMap_, this));
+  mob.util.sendBeaconEvent(mob.util.BeaconEvents.MAP_BUTTON, goog.bind(this.openMap_, this));
 };
 mob.button.Map.prototype.getMapUrl_ = function() {
   return "https://maps.google.com/maps?q=" + encodeURIComponent(this.mapLocation_);
@@ -7734,36 +7741,36 @@ mob.button.Map.prototype.openMap_ = function() {
 };
 mob.button.Menu = function(a, b) {
   this.clickHandlerFn_ = b;
-  mob.button.AbstractButton.call(this, pagespeed.MobUtil.ElementId.MENU_BUTTON, mob.button.Menu.ICON_, a, null);
+  mob.button.AbstractButton.call(this, mob.util.ElementId.MENU_BUTTON, mob.button.Menu.ICON_, a, null);
 };
 goog.inherits(mob.button.Menu, mob.button.AbstractButton);
 mob.button.Menu.ICON_ = "R0lGODlhYABgAPAAAAAAAAAAACH5BAEAAAEALAAAAABgAGAAAAK6jI+py+0Po5y02ouz3rz7D4biSJbmiabqyrbuC8fyTNf2jef6zvf+DwwKh8Si8agCKJfMpvMJjUqnTg71is1qldat97vtgsfkp7iMJp/T7PCmDXdr4vQr8o7P6/f8vv8PGCg4SHhTdxi1hriouHjY6EgHGQk3SclmeYmWqalW+AkaKjpKWmp6ipqqatH5+NYq+QpbKTuLWWu7iZvrOcebxvlrt0pcbHyMnKy8zNzs/AwdLT1NXW19TVoAADs=";
 mob.button.Menu.prototype.clickHandler = function() {
   this.clickHandlerFn_();
 };
-pagespeed.MobColor = function() {
+mob.Color = function() {
 };
-pagespeed.MobColor.prototype.EPSILON_ = 1E-10;
-pagespeed.MobColor.prototype.MIN_CONTRAST_ = 3;
-pagespeed.MobColor.ThemeColors = function(a, b) {
+mob.Color.prototype.EPSILON_ = 1E-10;
+mob.Color.prototype.MIN_CONTRAST_ = 3;
+mob.Color.ThemeColors_ = function(a, b) {
   this.background = a;
   this.foreground = b;
 };
-pagespeed.MobColor.prototype.distance_ = function(a, b) {
+mob.Color.prototype.distance_ = function(a, b) {
   if (3 != a.length || 3 != b.length) {
     return Infinity;
   }
   var c = a[0] - b[0], d = a[1] - b[1], e = a[2] - b[2];
   return Math.sqrt(c * c + d * d + e * e);
 };
-pagespeed.MobColor.prototype.srgbToRgb_ = function(a) {
+mob.Color.prototype.srgbToRgb_ = function(a) {
   a /= 255;
   return a = .03928 >= a ? a / 12.92 : Math.pow((a + .055) / 1.055, 2.4);
 };
-pagespeed.MobColor.prototype.rgbToGray_ = function(a) {
+mob.Color.prototype.rgbToGray_ = function(a) {
   return .2126 * this.srgbToRgb_(a[0]) + .7152 * this.srgbToRgb_(a[1]) + .0722 * this.srgbToRgb_(a[2]);
 };
-pagespeed.MobColor.prototype.enhanceColors_ = function(a) {
+mob.Color.prototype.enhanceColors_ = function(a) {
   var b = a.background, c = a.foreground, d = this.rgbToGray_(b), e = this.rgbToGray_(c);
   if (d < this.EPSILON_ && e < this.EPSILON_) {
     return a;
@@ -7783,9 +7790,9 @@ pagespeed.MobColor.prototype.enhanceColors_ = function(a) {
   b[2] < c[2] ? (b[2] = a, c[2] = d) : (c[2] = a, b[2] = d);
   b = goog.color.hsvArrayToRgb(b);
   c = goog.color.hsvArrayToRgb(c);
-  return new pagespeed.MobColor.ThemeColors(b, c);
+  return new mob.Color.ThemeColors_(b, c);
 };
-pagespeed.MobColor.prototype.computeColors_ = function(a, b, c, d) {
+mob.Color.prototype.computeColors_ = function(a, b, c, d) {
   var e = [], f, g, h;
   for (g = 0;g < d;++g) {
     for (f = 0;f < c;++f) {
@@ -7832,10 +7839,10 @@ pagespeed.MobColor.prototype.computeColors_ = function(a, b, c, d) {
       m[f] = Math.floor(m[f] / n);
     }
   }
-  return this.enhanceColors_(new pagespeed.MobColor.ThemeColors(k, m));
+  return this.enhanceColors_(new mob.Color.ThemeColors_(k, m));
 };
-pagespeed.MobColor.prototype.computeThemeColor_ = function(a, b) {
-  var c = a.naturalWidth, d = a.naturalHeight, e = document.createElement(goog.dom.TagName.CANVAS);
+mob.Color.prototype.computeThemeColor_ = function(a, b) {
+  var c = a.naturalWidth, d = a.naturalHeight, e = mob.util.getWindow().document.createElement(goog.dom.TagName.CANVAS);
   e.width = c;
   e.height = d;
   e = e.getContext("2d");
@@ -7843,51 +7850,51 @@ pagespeed.MobColor.prototype.computeThemeColor_ = function(a, b) {
   e = e.getImageData(0, 0, c, d);
   return this.computeColors_(e.data, b, c, d);
 };
-pagespeed.MobColor.prototype.run = function(a, b) {
+mob.Color.prototype.run = function(a, b) {
   if (a) {
-    if (pagespeed.MobUtil.isCrossOrigin(a.src)) {
-      pagespeed.MobUtil.consoleLog("Found logo but its origin is different from that of HTML. Using default color.");
+    if (mob.util.isCrossOrigin(a.src)) {
+      mob.util.consoleLog("Found logo but its origin is different from that of HTML. Using default color.");
     } else {
-      return pagespeed.MobUtil.consoleLog("Found logo. Theme color will be computed from logo."), this.computeThemeColor_(a, b || [255, 255, 255]);
+      return mob.util.consoleLog("Found logo. Theme color will be computed from logo."), this.computeThemeColor_(a, b || [255, 255, 255]);
     }
   } else {
-    pagespeed.MobUtil.consoleLog("Did not find logo. Using default color.");
+    mob.util.consoleLog("Did not find logo. Using default color.");
   }
   var c = [0, 0, 0];
   b ? 178.5 >= goog.color.rgbArrayToHsv(b)[2] && (c = [255, 255, 255]) : b = [255, 255, 255];
-  return new pagespeed.MobColor.ThemeColors(b, c);
+  return new mob.Color.ThemeColors_(b, c);
 };
 mob.Iframe = function() {
 };
 mob.Iframe.prototype.run = function() {
   var a = document.createElement(goog.dom.TagName.DIV);
   document.body.appendChild(a);
-  a.id = pagespeed.MobUtil.ElementId.IFRAME_CONTAINER;
-  var b = goog.dom.getRequiredElement(pagespeed.MobUtil.ElementId.SPACER);
+  a.id = mob.util.ElementId.IFRAME_CONTAINER;
+  var b = goog.dom.getRequiredElement(mob.util.ElementId.SPACER);
   a.appendChild(b);
-  b = goog.dom.getRequiredElement(pagespeed.MobUtil.ElementId.IFRAME);
+  b = goog.dom.getRequiredElement(mob.util.ElementId.IFRAME);
   a.appendChild(b);
 };
-pagespeed.mobLayoutUtil = {};
-pagespeed.mobLayoutUtil.DEFAULT_MAX_WIDTH_ = 400;
-pagespeed.mobLayoutUtil.CLAMP_STYLE_LIMIT_PX_ = 4;
-pagespeed.mobLayoutUtil.MAX_ALLOWED_NEGATIVE_MARGIN_PX_ = -30;
-pagespeed.mobLayoutUtil.NEGATIVE_BOTTOM_MARGIN_ATTR = "data-pagespeed-negative-bottom-margin";
-pagespeed.mobLayoutUtil.computeMaxWidth = function() {
+mob.layoutUtil = {};
+mob.layoutUtil.DEFAULT_MAX_WIDTH_ = 400;
+mob.layoutUtil.CLAMP_STYLE_LIMIT_PX_ = 4;
+mob.layoutUtil.MAX_ALLOWED_NEGATIVE_MARGIN_PX_ = -30;
+mob.layoutUtil.NEGATIVE_BOTTOM_MARGIN_ATTR = "data-pagespeed-negative-bottom-margin";
+mob.layoutUtil.computeMaxWidth = function() {
   var a = window.document.documentElement.clientWidth;
   if (!a) {
-    return pagespeed.mobLayoutUtil.DEFAULT_MAX_WIDTH_;
+    return mob.layoutUtil.DEFAULT_MAX_WIDTH_;
   }
   var b = window.document.body;
   if (b) {
     var c = window.getComputedStyle(b);
-    goog.array.forEach(pagespeed.mobLayoutConstants.HORIZONTAL_PADDING_PROPERTIES, function(b) {
-      (b = pagespeed.MobUtil.computedDimension(c, b)) && (a -= b);
+    goog.array.forEach(mob.layoutConstants.HORIZONTAL_PADDING_PROPERTIES, function(b) {
+      (b = mob.util.computedDimension(c, b)) && (a -= b);
     });
   }
   return a;
 };
-pagespeed.mobLayoutUtil.isProbablyASprite = function(a) {
+mob.layoutUtil.isProbablyASprite = function(a) {
   if ("auto" == a.getPropertyValue("background-size")) {
     return !1;
   }
@@ -7896,25 +7903,25 @@ pagespeed.mobLayoutUtil.isProbablyASprite = function(a) {
     return !1;
   }
   a = a.split(" ");
-  return !(2 != a.length || null == pagespeed.MobUtil.pixelValue(a[0]) || null == pagespeed.MobUtil.pixelValue(a[1]));
+  return !(2 != a.length || null == mob.util.pixelValue(a[0]) || null == mob.util.pixelValue(a[1]));
 };
-pagespeed.mobLayoutUtil.makeHorizontallyScrollable = function(a) {
-  pagespeed.MobUtil.setPropertyImportant(a, "overflow-x", "auto");
-  pagespeed.MobUtil.setPropertyImportant(a, "width", "auto");
-  pagespeed.MobUtil.setPropertyImportant(a, "display", "block");
+mob.layoutUtil.makeHorizontallyScrollable = function(a) {
+  mob.util.setPropertyImportant(a, "overflow-x", "auto");
+  mob.util.setPropertyImportant(a, "width", "auto");
+  mob.util.setPropertyImportant(a, "display", "block");
 };
-pagespeed.mobLayoutUtil.countContainers = function(a) {
+mob.layoutUtil.countContainers = function(a) {
   var b = 0, c = a.tagName.toUpperCase();
   c != goog.dom.TagName.DIV && c != goog.dom.TagName.TABLE && c != goog.dom.TagName.UL || ++b;
   for (a = a.firstElementChild;a;a = a.nextElementSibling) {
-    b += pagespeed.mobLayoutUtil.countContainers(a);
+    b += mob.layoutUtil.countContainers(a);
   }
   return b;
 };
-pagespeed.mobLayoutUtil.isPossiblyASlideShow = function(a) {
+mob.layoutUtil.isPossiblyASlideShow = function(a) {
   return goog.dom.classlist.contains(a, "nivoSlider");
 };
-pagespeed.mobLayoutUtil.findBackgroundImages = function(a) {
+mob.layoutUtil.findBackgroundImages = function(a) {
   var b = [], c = a.tagName.toUpperCase();
   if (c == goog.dom.TagName.SCRIPT || c == goog.dom.TagName.STYLE || !a.style) {
     return b;
@@ -7942,16 +7949,16 @@ pagespeed.mobLayoutUtil.findBackgroundImages = function(a) {
   }
   return b;
 };
-pagespeed.mobLayoutUtil.removeWidthConstraint = function(a, b) {
+mob.layoutUtil.removeWidthConstraint = function(a, b) {
   var c = a.tagName.toUpperCase();
-  c != goog.dom.TagName.INPUT && c != goog.dom.TagName.SELECT && (a.style.backgroundSize || "auto" == b.width || pagespeed.MobUtil.setPropertyImportant(a, "width", "auto"), c != goog.dom.TagName.IMG && a.removeAttribute("width"), pagespeed.mobLayoutUtil.removeProperties_(a, pagespeed.mobLayoutConstants.PROPERTIES_TO_REMOVE_FOR_SINGLE_COLUMN), a.className += a.className ? " " : "", a.classname += pagespeed.MobUtil.ElementClass.SINGLE_COLUMN);
+  c != goog.dom.TagName.INPUT && c != goog.dom.TagName.SELECT && (a.style.backgroundSize || "auto" == b.width || mob.util.setPropertyImportant(a, "width", "auto"), c != goog.dom.TagName.IMG && a.removeAttribute("width"), mob.layoutUtil.removeProperties_(a, mob.layoutConstants.PROPERTIES_TO_REMOVE_FOR_SINGLE_COLUMN), a.className += a.className ? " " : "", a.classname += mob.util.ElementClass.SINGLE_COLUMN);
 };
-pagespeed.mobLayoutUtil.removeProperties_ = function(a, b) {
+mob.layoutUtil.removeProperties_ = function(a, b) {
   for (var c = 1;c < arguments.length;++c) {
-    pagespeed.MobUtil.removeProperty(a, arguments[c]);
+    mob.util.removeProperty(a, arguments[c]);
   }
 };
-pagespeed.mobLayoutUtil.isDataTable = function(a) {
+mob.layoutUtil.isDataTable = function(a) {
   for (var b = 0, c = a.firstElementChild;c;c = c.nextElementSibling) {
     for (var d = c.firstElementChild;d;d = d.nextElementSibling) {
       var e = c.tagName.toUpperCase();
@@ -7966,9 +7973,9 @@ pagespeed.mobLayoutUtil.isDataTable = function(a) {
       }
     }
   }
-  return 3 * pagespeed.mobLayoutUtil.countContainers(a) <= b;
+  return 3 * mob.layoutUtil.countContainers(a) <= b;
 };
-pagespeed.mobLayoutUtil.reallocateWidthToTableData = function(a) {
+mob.layoutUtil.reallocateWidthToTableData = function(a) {
   for (;a && a.tagName.toUpperCase() != goog.dom.TagName.TD;) {
     a = a.parentNode;
   }
@@ -7979,29 +7986,29 @@ pagespeed.mobLayoutUtil.reallocateWidthToTableData = function(a) {
     }
     if (1 < c) {
       for (c = "width:" + Math.round(100 / c) + "%;", b = a.firstElementChild;b;b = b.nextElementSibling) {
-        b.tagName.toUpperCase() == goog.dom.TagName.TD && pagespeed.MobUtil.addStyles(b, c);
+        b.tagName.toUpperCase() == goog.dom.TagName.TD && mob.util.addStyles(b, c);
       }
     }
   }
 };
-pagespeed.mobLayoutUtil.resizeWideTable = function(a, b) {
-  pagespeed.mobLayoutUtil.isDataTable(a) ? pagespeed.mobLayoutUtil.makeHorizontallyScrollable(a) : pagespeed.MobUtil.possiblyInQuirksMode() ? pagespeed.mobLayoutUtil.reorganizeTableQuirksMode(a, b) : pagespeed.mobLayoutUtil.reorganizeTableNoQuirksMode(a, b);
+mob.layoutUtil.resizeWideTable = function(a, b) {
+  mob.layoutUtil.isDataTable(a) ? mob.layoutUtil.makeHorizontallyScrollable(a) : mob.util.possiblyInQuirksMode() ? mob.layoutUtil.reorganizeTableQuirksMode(a, b) : mob.layoutUtil.reorganizeTableNoQuirksMode(a, b);
 };
-pagespeed.mobLayoutUtil.reorganizeTableNoQuirksMode = function(a, b) {
+mob.layoutUtil.reorganizeTableNoQuirksMode = function(a, b) {
   var c, d, e;
-  pagespeed.MobUtil.removeProperty(a, "width");
-  pagespeed.MobUtil.setPropertyImportant(a, "max-width", "100%");
+  mob.util.removeProperty(a, "width");
+  mob.util.setPropertyImportant(a, "max-width", "100%");
   for (c = a.firstElementChild;c;c = c.nextElementSibling) {
-    for (pagespeed.MobUtil.removeProperty(c, "width"), pagespeed.MobUtil.setPropertyImportant(c, "max-width", "100%"), d = c.firstElementChild;d;d = d.nextElementSibling) {
+    for (mob.util.removeProperty(c, "width"), mob.util.setPropertyImportant(c, "max-width", "100%"), d = c.firstElementChild;d;d = d.nextElementSibling) {
       if (d.tagName.toUpperCase() == goog.dom.TagName.TR) {
-        for (pagespeed.MobUtil.removeProperty(d, "width"), pagespeed.MobUtil.setPropertyImportant(d, "max-width", "100%"), e = d.firstElementChild;e;e = e.nextElementSibling) {
-          e.tagName.toUpperCase() == goog.dom.TagName.TD && (pagespeed.MobUtil.setPropertyImportant(e, "max-width", "100%"), pagespeed.MobUtil.setPropertyImportant(e, "display", "inline-block"));
+        for (mob.util.removeProperty(d, "width"), mob.util.setPropertyImportant(d, "max-width", "100%"), e = d.firstElementChild;e;e = e.nextElementSibling) {
+          e.tagName.toUpperCase() == goog.dom.TagName.TD && (mob.util.setPropertyImportant(e, "max-width", "100%"), mob.util.setPropertyImportant(e, "display", "inline-block"));
         }
       }
     }
   }
 };
-pagespeed.mobLayoutUtil.reorganizeTableQuirksMode = function(a, b) {
+mob.layoutUtil.reorganizeTableQuirksMode = function(a, b) {
   var c, d, e, f, g, h, k, l = document.createElement(goog.dom.TagName.DIV);
   l.style.display = "inline-block";
   var n = goog.dom.getChildren(a);
@@ -8028,63 +8035,63 @@ pagespeed.mobLayoutUtil.reorganizeTableQuirksMode = function(a, b) {
   }
   a.parentNode.replaceChild(l, a);
 };
-pagespeed.mobLayoutUtil.repairDistortedImages = function(a) {
-  var b = window.getComputedStyle(a), c = pagespeed.MobUtil.findRequestedDimension(a, "width"), d = pagespeed.MobUtil.findRequestedDimension(a, "height");
+mob.layoutUtil.repairDistortedImages = function(a) {
+  var b = window.getComputedStyle(a), c = mob.util.findRequestedDimension(a, "width"), d = mob.util.findRequestedDimension(a, "height");
   if (c && d && b) {
-    var e = pagespeed.MobUtil.computedDimension(b, "width"), b = pagespeed.MobUtil.computedDimension(b, "height");
-    e && b && (e /= c, b /= d, pagespeed.MobUtil.aboutEqual(e, b) || (pagespeed.MobUtil.consoleLog("aspect ratio problem for " + a.getAttribute("src")), pagespeed.MobUtil.isSinglePixel(a) ? (b = Math.min(e, b), pagespeed.mobLayoutUtil.removeProperties_(a, ["width", "height"]), a.style.width = c * b, a.style.height = d * b) : e > b ? pagespeed.MobUtil.removeProperty(a, "height") : (pagespeed.mobLayoutUtil.removeProperties_(a, ["width", "height"]), a.style.maxHeight = d)), .25 > e && (pagespeed.MobUtil.consoleLog("overshrinkage for " + 
-    a.getAttribute("src")), pagespeed.mobLayoutUtil.reallocateWidthToTableData(a)));
+    var e = mob.util.computedDimension(b, "width"), b = mob.util.computedDimension(b, "height");
+    e && b && (e /= c, b /= d, mob.util.aboutEqual(e, b) || (mob.util.consoleLog("aspect ratio problem for " + a.getAttribute("src")), mob.util.isSinglePixel(a) ? (b = Math.min(e, b), mob.layoutUtil.removeProperties_(a, ["width", "height"]), a.style.width = c * b, a.style.height = d * b) : e > b ? mob.util.removeProperty(a, "height") : (mob.layoutUtil.removeProperties_(a, ["width", "height"]), a.style.maxHeight = d)), .25 > e && (mob.util.consoleLog("overshrinkage for " + a.getAttribute("src")), 
+    mob.layoutUtil.reallocateWidthToTableData(a)));
   }
 };
-pagespeed.mobLayoutUtil.findTopAndBottom = function(a, b) {
+mob.layoutUtil.findTopAndBottom = function(a, b) {
   var c, d;
-  (d = pagespeed.MobUtil.boundingRect(a)) ? (c = d.top, d = d.bottom) : (c = b, a.offsetParent == a.parentNode && (c += a.offsetTop), d = c + a.offsetHeight - 1);
+  (d = mob.util.boundingRect(a)) ? (c = d.top, d = d.bottom) : (c = b, a.offsetParent == a.parentNode && (c += a.offsetTop), d = c + a.offsetHeight - 1);
   return [c, d];
 };
-pagespeed.mobLayoutUtil.resizeForegroundImage = function(a, b) {
+mob.layoutUtil.resizeForegroundImage = function(a, b) {
   var c = a.offsetHeight, d = a.offsetWidth / b;
-  1 < d && (c /= d, pagespeed.MobUtil.setPropertyImportant(a, "width", "" + b + "px"), pagespeed.MobUtil.setPropertyImportant(a, "height", "" + c + "px"));
+  1 < d && (c /= d, mob.util.setPropertyImportant(a, "width", "" + b + "px"), mob.util.setPropertyImportant(a, "height", "" + c + "px"));
 };
-pagespeed.mobLayoutUtil.resizeBackgroundImage = function(a, b, c, d) {
+mob.layoutUtil.resizeBackgroundImage = function(a, b, c, d) {
   var e = b.width;
   b = b.height;
-  e > d && (b = Math.round(d / e * b), d = "background-size:" + d + "px " + b + "px;background-repeat:no-repeat;", c = pagespeed.MobUtil.computedDimension(c, "height"), b == c && (d += "height:" + b + "px;"), pagespeed.MobUtil.addStyles(a, d));
-  pagespeed.MobUtil.setPropertyImportant(a, "min-height", "" + b + "px");
+  e > d && (b = Math.round(d / e * b), d = "background-size:" + d + "px " + b + "px;background-repeat:no-repeat;", c = mob.util.computedDimension(c, "height"), b == c && (d += "height:" + b + "px;"), mob.util.addStyles(a, d));
+  mob.util.setPropertyImportant(a, "min-height", "" + b + "px");
 };
-pagespeed.mobLayoutUtil.wrapTextOnWhitespace = function(a) {
-  "nowrap" == window.getComputedStyle(a).getPropertyValue("white-space") && pagespeed.MobUtil.setPropertyImportant(a, "white-space", "normal");
+mob.layoutUtil.wrapTextOnWhitespace = function(a) {
+  "nowrap" == window.getComputedStyle(a).getPropertyValue("white-space") && mob.util.setPropertyImportant(a, "white-space", "normal");
 };
-pagespeed.mobLayoutUtil.stripPercentDimensions = function(a, b) {
-  for (var c = 0;c < pagespeed.mobLayoutConstants.NO_PERCENT.length;++c) {
-    var d = pagespeed.mobLayoutConstants.NO_PERCENT[c], e = b.getPropertyValue(d);
-    e && "100%" != e && "auto" != e && goog.string.endsWith(e, "%") && pagespeed.MobUtil.setPropertyImportant(a, d, "auto");
+mob.layoutUtil.stripPercentDimensions = function(a, b) {
+  for (var c = 0;c < mob.layoutConstants.NO_PERCENT.length;++c) {
+    var d = mob.layoutConstants.NO_PERCENT[c], e = b.getPropertyValue(d);
+    e && "100%" != e && "auto" != e && goog.string.endsWith(e, "%") && mob.util.setPropertyImportant(a, d, "auto");
   }
 };
-pagespeed.mobLayoutUtil.trimPaddingAndMargins = function(a, b) {
-  for (var c = a.tagName.toUpperCase(), d = c == goog.dom.TagName.UL || c == goog.dom.TagName.OL, c = c == goog.dom.TagName.BODY, e = !1, f = "", g = 0;g < pagespeed.mobLayoutConstants.CLAMPED_STYLES.length;++g) {
-    var h = pagespeed.mobLayoutConstants.CLAMPED_STYLES[g];
+mob.layoutUtil.trimPaddingAndMargins = function(a, b) {
+  for (var c = a.tagName.toUpperCase(), d = c == goog.dom.TagName.UL || c == goog.dom.TagName.OL, c = c == goog.dom.TagName.BODY, e = !1, f = "", g = 0;g < mob.layoutConstants.CLAMPED_STYLES.length;++g) {
+    var h = mob.layoutConstants.CLAMPED_STYLES[g];
     if (!(d && goog.string.endsWith(h, "-left") || c && goog.string.startsWith(h, "margin-"))) {
-      var k = pagespeed.MobUtil.computedDimension(b, h);
-      null != k && (k > pagespeed.mobLayoutUtil.CLAMP_STYLE_LIMIT_PX_ ? f += h + ":" + pagespeed.mobLayoutUtil.CLAMP_STYLE_LIMIT_PX_ + "px !important;" : 0 > k && (e = !0, "margin-bottom" == h && (e = k > pagespeed.mobLayoutUtil.MAX_ALLOWED_NEGATIVE_MARGIN_PX_), e ? f += h + ":0px !important;" : a.setAttribute(pagespeed.mobLayoutUtil.NEGATIVE_BOTTOM_MARGIN_ATTR, "1")));
+      var k = mob.util.computedDimension(b, h);
+      null != k && (k > mob.layoutUtil.CLAMP_STYLE_LIMIT_PX_ ? f += h + ":" + mob.layoutUtil.CLAMP_STYLE_LIMIT_PX_ + "px !important;" : 0 > k && (e = !0, "margin-bottom" == h && (e = k > mob.layoutUtil.MAX_ALLOWED_NEGATIVE_MARGIN_PX_), e ? f += h + ":0px !important;" : a.setAttribute(mob.layoutUtil.NEGATIVE_BOTTOM_MARGIN_ATTR, "1")));
     }
   }
-  pagespeed.MobUtil.addStyles(a, f);
+  mob.util.addStyles(a, f);
 };
-pagespeed.MobLayout = function(a) {
+mob.Layout = function(a) {
   this.psMob_ = a;
-  this.dontTouchIds_ = goog.object.createSet(pagespeed.MobUtil.ElementId.NAV_PANEL, pagespeed.MobUtil.ElementId.HEADER_BAR, pagespeed.MobUtil.ElementId.SPACER, pagespeed.MobUtil.ElementId.LOGO_SPAN);
-  this.maxWidth_ = pagespeed.mobLayoutUtil.computeMaxWidth();
-  this.sequence_ = pagespeed.MobLayout.constructSequence_();
-  pagespeed.MobUtil.consoleLog("window.pagespeed.MobLayout.maxWidth=" + this.maxWidth_);
+  this.dontTouchIds_ = goog.object.createSet(mob.util.ElementId.NAV_PANEL, mob.util.ElementId.HEADER_BAR, mob.util.ElementId.SPACER, mob.util.ElementId.LOGO_SPAN);
+  this.maxWidth_ = mob.layoutUtil.computeMaxWidth();
+  this.sequence_ = mob.Layout.constructSequence_();
+  mob.util.consoleLog("window.mob.Layout.maxWidth=" + this.maxWidth_);
 };
-pagespeed.MobLayout.SequenceStep_ = function(a, b) {
+mob.Layout.SequenceStep_ = function(a, b) {
   this.functionObj = a;
   this.description = b;
 };
-pagespeed.MobLayout.prototype.addDontTouchId = function(a) {
+mob.Layout.prototype.addDontTouchId = function(a) {
   this.dontTouchIds_[a] = !0;
 };
-pagespeed.MobLayout.prototype.computeAllSizingAndResynthesize = function() {
+mob.Layout.prototype.computeAllSizingAndResynthesize = function() {
   if (document.body) {
     for (var a = 0;a < this.sequence_.length;++a) {
       var b = this.sequence_[a];
@@ -8093,33 +8100,33 @@ pagespeed.MobLayout.prototype.computeAllSizingAndResynthesize = function() {
     }
   }
 };
-pagespeed.MobLayout.prototype.getNumberOfPasses = function() {
+mob.Layout.prototype.getNumberOfPasses = function() {
   return this.sequence_.length;
 };
-pagespeed.MobLayout.prototype.isDontTouchElement = function(a) {
+mob.Layout.prototype.isDontTouchElement = function(a) {
   if (!a) {
     return !0;
   }
   var b = a.tagName.toUpperCase();
-  return pagespeed.mobLayoutConstants.DONT_TOUCH_TAGS[b] || !(!a.id || !this.dontTouchIds_[a.id]);
+  return mob.layoutConstants.DONT_TOUCH_TAGS[b] || !(!a.id || !this.dontTouchIds_[a.id]);
 };
-pagespeed.MobLayout.prototype.forEachMobilizableChild_ = function(a, b) {
+mob.Layout.prototype.forEachMobilizableChild_ = function(a, b) {
   for (var c = a.firstElementChild;c;c = c.nextElementSibling) {
     this.isDontTouchElement(c) || b.call(this, c);
   }
 };
-pagespeed.MobLayout.prototype.scrollWidePreTags_ = function(a) {
-  (a.tagName.toUpperCase() == goog.dom.TagName.PRE || a.offsetWidth > this.maxWidth_ && "pre" == window.getComputedStyle(a).getPropertyValue("white-space")) && pagespeed.mobLayoutUtil.makeHorizontallyScrollable(a);
+mob.Layout.prototype.scrollWidePreTags_ = function(a) {
+  (a.tagName.toUpperCase() == goog.dom.TagName.PRE || a.offsetWidth > this.maxWidth_ && "pre" == window.getComputedStyle(a).getPropertyValue("white-space")) && mob.layoutUtil.makeHorizontallyScrollable(a);
   this.forEachMobilizableChild_(a, goog.bind(this.scrollWidePreTags_, this));
 };
-pagespeed.MobLayout.prototype.resizeBackgroundImage_ = function(a, b, c) {
-  (b = this.psMob_.findImageSize(b)) && b.width && b.height && !pagespeed.mobLayoutUtil.isProbablyASprite(c) && pagespeed.mobLayoutUtil.resizeBackgroundImage(a, b, c, this.maxWidth_);
+mob.Layout.prototype.resizeBackgroundImage_ = function(a, b, c) {
+  (b = this.psMob_.findImageSize(b)) && b.width && b.height && !mob.layoutUtil.isProbablyASprite(c) && mob.layoutUtil.resizeBackgroundImage(a, b, c, this.maxWidth_);
 };
-pagespeed.MobLayout.prototype.resizeVertically_ = function(a) {
+mob.Layout.prototype.resizeVertically_ = function(a) {
   this.resizeVerticallyAndReturnBottom_(a, 0);
 };
-pagespeed.MobLayout.prototype.resizeVerticallyAndReturnBottom_ = function(a, b) {
-  var c = pagespeed.mobLayoutUtil.findTopAndBottom(a, b);
+mob.Layout.prototype.resizeVerticallyAndReturnBottom_ = function(a, b) {
+  var c = mob.layoutUtil.findTopAndBottom(a, b);
   if (!c) {
     return null;
   }
@@ -8131,71 +8138,71 @@ pagespeed.MobLayout.prototype.resizeVerticallyAndReturnBottom_ = function(a, b) 
   if (!e) {
     return null;
   }
-  var f = pagespeed.MobUtil.computedDimension(e, "min-height");
+  var f = mob.util.computedDimension(e, "min-height");
   null != f && (c += f);
   for (var f = d + a.offsetHeight - 1, g = !1, h = !1, k, l = a.firstElementChild;l;l = l.nextElementSibling) {
-    (k = window.getComputedStyle(l)) && "absolute" == k.position && !pagespeed.MobUtil.isOffScreen(k) && 0 != pagespeed.MobUtil.pixelValue(k.getPropertyValue("height")) && "hidden" != k.getPropertyValue("visibility") && (h = !0), k = this.resizeVerticallyAndReturnBottom_(l, d), null != k && (g = !0, c = Math.max(c, k));
+    (k = window.getComputedStyle(l)) && "absolute" == k.position && !mob.util.isOffScreen(k) && 0 != mob.util.pixelValue(k.getPropertyValue("height")) && "hidden" != k.getPropertyValue("visibility") && (h = !0), k = this.resizeVerticallyAndReturnBottom_(l, d), null != k && (g = !0, c = Math.max(c, k));
   }
   if (g && "fixed" == e.getPropertyValue("position")) {
     return null;
   }
   e = a.tagName.toUpperCase();
-  e != goog.dom.TagName.BODY && (l = f - d + 1, g ? c != f && (h ? pagespeed.MobUtil.setPropertyImportant(a, "height", "" + (c - d + 1) + "px") : pagespeed.MobUtil.setPropertyImportant(a, "height", "auto")) : (e != goog.dom.TagName.IMG && 0 < l && !a.style.backgroundSize && (pagespeed.MobUtil.removeProperty(a, "height"), pagespeed.MobUtil.setPropertyImportant(a, "height", "auto"), a.offsetHeight && (f = d + a.offsetHeight)), c = f));
+  e != goog.dom.TagName.BODY && (l = f - d + 1, g ? c != f && (h ? mob.util.setPropertyImportant(a, "height", "" + (c - d + 1) + "px") : mob.util.setPropertyImportant(a, "height", "auto")) : (e != goog.dom.TagName.IMG && 0 < l && !a.style.backgroundSize && (mob.util.removeProperty(a, "height"), mob.util.setPropertyImportant(a, "height", "auto"), a.offsetHeight && (f = d + a.offsetHeight)), c = f));
   return c;
 };
-pagespeed.MobLayout.prototype.resizeIfTooWide_ = function(a) {
+mob.Layout.prototype.resizeIfTooWide_ = function(a) {
   this.forEachMobilizableChild_(a, goog.bind(this.resizeIfTooWide_, this));
   if (!(a.offsetWidth <= this.maxWidth_)) {
     var b = a.tagName.toUpperCase();
     if (b == goog.dom.TagName.TABLE) {
-      pagespeed.mobLayoutUtil.resizeWideTable(a, this.maxWidth_);
+      mob.layoutUtil.resizeWideTable(a, this.maxWidth_);
     } else {
       if (b == goog.dom.TagName.IMG) {
-        pagespeed.mobLayoutUtil.resizeForegroundImage(a, this.maxWidth_);
+        mob.layoutUtil.resizeForegroundImage(a, this.maxWidth_);
       } else {
-        var c = pagespeed.mobLayoutUtil.findBackgroundImages(a), d = window.getComputedStyle(a);
-        c && d && 1 == c.length ? this.resizeBackgroundImage_(a, c[0], d) : goog.array.contains(pagespeed.mobLayoutConstants.LAYOUT_CRITICAL, b) ? pagespeed.mobLayoutUtil.makeHorizontallyScrollable(a) : pagespeed.mobLayoutConstants.FLEXIBLE_WIDTH_TAGS[b] ? (pagespeed.MobUtil.setPropertyImportant(a, "max-width", "100%"), pagespeed.MobUtil.removeProperty(a, "width")) : pagespeed.MobUtil.consoleLog("Punting on resize of " + b + " which wants to be " + a.offsetWidth + " but this.maxWidth_=" + this.maxWidth_);
+        var c = mob.layoutUtil.findBackgroundImages(a), d = window.getComputedStyle(a);
+        c && d && 1 == c.length ? this.resizeBackgroundImage_(a, c[0], d) : goog.array.contains(mob.layoutConstants.LAYOUT_CRITICAL, b) ? mob.layoutUtil.makeHorizontallyScrollable(a) : mob.layoutConstants.FLEXIBLE_WIDTH_TAGS[b] ? (mob.util.setPropertyImportant(a, "max-width", "100%"), mob.util.removeProperty(a, "width")) : mob.util.consoleLog("Punting on resize of " + b + " which wants to be " + a.offsetWidth + " but this.maxWidth_=" + this.maxWidth_);
       }
     }
   }
 };
-pagespeed.MobLayout.prototype.cleanupStyles_ = function(a) {
+mob.Layout.prototype.cleanupStyles_ = function(a) {
   var b = document.body.style.display;
   document.body.style.display = "none";
   this.cleanupStylesHelper_(a);
   document.body.style.display = b;
 };
-pagespeed.MobLayout.prototype.cleanupStylesHelper_ = function(a) {
-  pagespeed.mobLayoutUtil.wrapTextOnWhitespace(a);
+mob.Layout.prototype.cleanupStylesHelper_ = function(a) {
+  mob.layoutUtil.wrapTextOnWhitespace(a);
   this.forEachMobilizableChild_(a, this.cleanupStylesHelper_);
   var b = window.getComputedStyle(a);
-  b && (pagespeed.mobLayoutUtil.stripPercentDimensions(a, b), pagespeed.mobLayoutUtil.trimPaddingAndMargins(a, b));
+  b && (mob.layoutUtil.stripPercentDimensions(a, b), mob.layoutUtil.trimPaddingAndMargins(a, b));
 };
-pagespeed.MobLayout.prototype.repairDistortedImages_ = function(a) {
+mob.Layout.prototype.repairDistortedImages_ = function(a) {
   this.forEachMobilizableChild_(a, this.repairDistortedImages_);
-  a.tagName.toUpperCase() == goog.dom.TagName.IMG && pagespeed.mobLayoutUtil.repairDistortedImages(a);
+  a.tagName.toUpperCase() == goog.dom.TagName.IMG && mob.layoutUtil.repairDistortedImages(a);
 };
-pagespeed.MobLayout.prototype.stripFloats_ = function(a) {
+mob.Layout.prototype.stripFloats_ = function(a) {
   var b = window.getComputedStyle(a).getPropertyValue("position");
   if ("fixed" == b) {
     return "fixed";
   }
-  if (pagespeed.mobLayoutUtil.isPossiblyASlideShow(a)) {
+  if (mob.layoutUtil.isPossiblyASlideShow(a)) {
     return b;
   }
   var c = [], d = null, e = !1;
   this.forEachMobilizableChild_(a, function(a) {
     var b = window.getComputedStyle(a), f = this.stripFloats_(a);
     if ("fixed" != f && b && !this.isDontTouchElement(a)) {
-      "absolute" != f || pagespeed.MobUtil.isOffScreen(b) || pagespeed.MobUtil.setPropertyImportant(a, "position", "relative");
+      "absolute" != f || mob.util.isOffScreen(b) || mob.util.setPropertyImportant(a, "position", "relative");
       var f = b.getPropertyValue("float"), g = "right" == f, m = "inline-block";
-      g && "right" == b.getPropertyValue("clear") && (g = !1, m = "block", d && e && pagespeed.MobUtil.setPropertyImportant(d, "margin-bottom", "0"));
+      g && "right" == b.getPropertyValue("clear") && (g = !1, m = "block", d && e && mob.util.setPropertyImportant(d, "margin-bottom", "0"));
       if (g || "left" == f || "block" == m) {
-        pagespeed.MobUtil.setPropertyImportant(a, "float", "none"), "none" != b.getPropertyValue("display") && pagespeed.MobUtil.setPropertyImportant(a, "display", m);
+        mob.util.setPropertyImportant(a, "float", "none"), "none" != b.getPropertyValue("display") && mob.util.setPropertyImportant(a, "display", m);
       }
       g && c.push(a);
       d = a;
-      a = pagespeed.MobUtil.computedDimension(b, "margin-bottom");
+      a = mob.util.computedDimension(b, "margin-bottom");
       e = null != a && 0 > a;
     }
   }.bind(this));
@@ -8208,15 +8215,15 @@ pagespeed.MobLayout.prototype.stripFloats_ = function(a) {
   }
   return b;
 };
-pagespeed.MobLayout.prototype.expandColumns_ = function(a) {
+mob.Layout.prototype.expandColumns_ = function(a) {
   for (var b = this.findLayoutChildren_(a), c = null, d = 0;d < b.length;++d) {
     var e = b[d], f = d < b.length - 1 ? b[d + 1] : null, g = e.offsetLeft + e.offsetWidth;
-    (null == c || e.offsetLeft < c) && (null == f || f.offsetLeft < g) && (c = window.getComputedStyle(e)) && (pagespeed.mobLayoutUtil.removeWidthConstraint(e, c), this.expandColumns_(e));
-    a.getAttribute(pagespeed.mobLayoutUtil.NEGATIVE_BOTTOM_MARGIN_ATTR) && (a.removeAttribute(pagespeed.mobLayoutUtil.NEGATIVE_BOTTOM_MARGIN_ATTR), e = window.getComputedStyle(a), e = pagespeed.MobUtil.computedDimension(e, "height"), null != e && pagespeed.MobUtil.setPropertyImportant(a, "margin-bottom", "" + -e + "px"));
+    (null == c || e.offsetLeft < c) && (null == f || f.offsetLeft < g) && (c = window.getComputedStyle(e)) && (mob.layoutUtil.removeWidthConstraint(e, c), this.expandColumns_(e));
+    a.getAttribute(mob.layoutUtil.NEGATIVE_BOTTOM_MARGIN_ATTR) && (a.removeAttribute(mob.layoutUtil.NEGATIVE_BOTTOM_MARGIN_ATTR), e = window.getComputedStyle(a), e = mob.util.computedDimension(e, "height"), null != e && mob.util.setPropertyImportant(a, "margin-bottom", "" + -e + "px"));
     c = g;
   }
 };
-pagespeed.MobLayout.prototype.findLayoutChildren_ = function(a) {
+mob.Layout.prototype.findLayoutChildren_ = function(a) {
   var b = [];
   if ("fixed" == window.getComputedStyle(a).getPropertyValue("position")) {
     return b;
@@ -8227,24 +8234,24 @@ pagespeed.MobLayout.prototype.findLayoutChildren_ = function(a) {
   });
   return b;
 };
-pagespeed.MobLayout.constructSequence_ = function() {
-  return [new pagespeed.MobLayout.SequenceStep_(pagespeed.MobLayout.prototype.scrollWidePreTags_, "scroll wide pre-tags"), new pagespeed.MobLayout.SequenceStep_(pagespeed.MobLayout.prototype.stripFloats_, "string floats"), new pagespeed.MobLayout.SequenceStep_(pagespeed.MobLayout.prototype.cleanupStyles_, "cleanup styles"), new pagespeed.MobLayout.SequenceStep_(pagespeed.MobLayout.prototype.repairDistortedImages_, "repair distored images"), new pagespeed.MobLayout.SequenceStep_(pagespeed.MobLayout.prototype.resizeIfTooWide_, 
-  "resize if too wide"), new pagespeed.MobLayout.SequenceStep_(pagespeed.MobLayout.prototype.expandColumns_, "expand columns"), new pagespeed.MobLayout.SequenceStep_(pagespeed.MobLayout.prototype.resizeVertically_, "resize vertically")];
+mob.Layout.constructSequence_ = function() {
+  return [new mob.Layout.SequenceStep_(mob.Layout.prototype.scrollWidePreTags_, "scroll wide pre-tags"), new mob.Layout.SequenceStep_(mob.Layout.prototype.stripFloats_, "string floats"), new mob.Layout.SequenceStep_(mob.Layout.prototype.cleanupStyles_, "cleanup styles"), new mob.Layout.SequenceStep_(mob.Layout.prototype.repairDistortedImages_, "repair distored images"), new mob.Layout.SequenceStep_(mob.Layout.prototype.resizeIfTooWide_, "resize if too wide"), new mob.Layout.SequenceStep_(mob.Layout.prototype.expandColumns_, 
+  "expand columns"), new mob.Layout.SequenceStep_(mob.Layout.prototype.resizeVertically_, "resize vertically")];
 };
-pagespeed.MobLogoCandidate = function(a, b, c) {
+mob.LogoCandidate = function(a, b, c) {
   this.logoRecord = a;
   this.background = b;
   this.foreground = c;
 };
-pagespeed.MobLogo = function() {
+mob.Logo = function() {
   this.doneCallback_ = null;
-  this.organization_ = pagespeed.MobUtil.getSiteOrganization();
-  this.landingUrl_ = window.location.origin + window.location.pathname;
+  this.organization_ = mob.util.getSiteOrganization();
+  this.landingUrl_ = mob.util.getWindow().location.origin + mob.util.getWindow().location.pathname;
   this.candidates_ = [];
   this.pendingEventCount_ = 0;
   this.maxNumCandidates_ = 1;
 };
-pagespeed.MobLogo.LogoRecord = function(a, b) {
+mob.Logo.LogoRecord = function(a, b) {
   this.metric = a;
   this.logoElement = b;
   this.childrenElements = [];
@@ -8253,18 +8260,18 @@ pagespeed.MobLogo.LogoRecord = function(a, b) {
   this.foregroundImage = b;
   this.backgroundColor = this.rect = null;
 };
-pagespeed.MobLogo.prototype.MIN_WIDTH_ = 20;
-pagespeed.MobLogo.prototype.MIN_HEIGHT_ = 10;
-pagespeed.MobLogo.prototype.MAX_HEIGHT_ = 400;
-pagespeed.MobLogo.prototype.RATIO_AREA_ = .5;
-pagespeed.MobLogo.prototype.findLogoElement_ = function(a) {
+mob.Logo.prototype.MIN_WIDTH_ = 20;
+mob.Logo.prototype.MIN_HEIGHT_ = 10;
+mob.Logo.prototype.MAX_HEIGHT_ = 400;
+mob.Logo.prototype.RATIO_AREA_ = .5;
+mob.Logo.prototype.findLogoElement_ = function(a) {
   function b(a) {
-    a && "string" == typeof a && (goog.string.caseInsensitiveContains(a, "logo") && ++d, this.organization && pagespeed.MobUtil.findPattern(a, this.organization_) && ++d);
+    a && "string" == typeof a && (goog.string.caseInsensitiveContains(a, "logo") && ++d, this.organization && mob.util.findPattern(a, this.organization_) && ++d);
   }
-  if ("hidden" == window.getComputedStyle(a).getPropertyValue("visibility")) {
+  if ("hidden" == mob.util.getWindow().getComputedStyle(a).getPropertyValue("visibility")) {
     return null;
   }
-  var c = null, c = a.nodeName.toUpperCase() == goog.dom.TagName.IMG ? a.src : pagespeed.MobUtil.findBackgroundImage(a), c = pagespeed.MobUtil.resourceFileName(c);
+  var c = null, c = a.nodeName.toUpperCase() == goog.dom.TagName.IMG ? a.src : mob.util.findBackgroundImage(a), c = mob.util.resourceFileName(c);
   -1 != c.indexOf("data:image/") && (c = null);
   var d = 0;
   b(a.title);
@@ -8273,32 +8280,32 @@ pagespeed.MobLogo.prototype.findLogoElement_ = function(a) {
   b(a.alt);
   b(c);
   a.href == this.landingUrl_ && ++d;
-  return 0 < d ? new pagespeed.MobLogo.LogoRecord(d, a) : null;
+  return 0 < d ? new mob.Logo.LogoRecord(d, a) : null;
 };
-pagespeed.MobLogo.prototype.findLogoCandidates_ = function(a) {
+mob.Logo.prototype.findLogoCandidates_ = function(a) {
   var b = this.findLogoElement_(a);
   b && this.candidates_.push(b);
   for (a = a.firstElementChild;a;a = a.nextElementSibling) {
     this.findLogoCandidates_(a);
   }
 };
-pagespeed.MobLogo.prototype.addImageToPendingList_ = function(a) {
+mob.Logo.prototype.addImageToPendingList_ = function(a) {
   ++this.pendingEventCount_;
   a.addEventListener(goog.events.EventType.LOAD, goog.bind(this.eventDone_, this));
   a.addEventListener(goog.events.EventType.ERROR, goog.bind(this.eventDone_, this));
 };
-pagespeed.MobLogo.prototype.newImage_ = function(a) {
-  var b = document.createElement(goog.dom.TagName.IMG);
+mob.Logo.prototype.newImage_ = function(a) {
+  var b = mob.util.getWindow().document.createElement(goog.dom.TagName.IMG);
   this.addImageToPendingList_(b);
   b.src = a;
   return b;
 };
-pagespeed.MobLogo.prototype.collectChildrenImages_ = function(a, b, c) {
+mob.Logo.prototype.collectChildrenImages_ = function(a, b, c) {
   var d = null, e;
-  for (e in pagespeed.MobUtil.ImageSource) {
-    if (d = pagespeed.MobUtil.extractImage(a, pagespeed.MobUtil.ImageSource[e])) {
+  for (e in mob.util.ImageSource) {
+    if (d = mob.util.extractImage(a, mob.util.ImageSource[e])) {
       var f = null;
-      e == pagespeed.MobUtil.ImageSource.IMG ? (f = a, a.naturalWidth || this.addImageToPendingList_(f)) : f = this.newImage_(d);
+      e == mob.util.ImageSource.IMG ? (f = a, a.naturalWidth || this.addImageToPendingList_(f)) : f = this.newImage_(d);
       b.push(a);
       c.push(f);
       break;
@@ -8308,12 +8315,12 @@ pagespeed.MobLogo.prototype.collectChildrenImages_ = function(a, b, c) {
     this.collectChildrenImages_(a, b, c);
   }
 };
-pagespeed.MobLogo.prototype.findImagesAndWait_ = function(a) {
+mob.Logo.prototype.findImagesAndWait_ = function(a) {
   for (var b = 0;b < a.length;++b) {
     var c = a[b], d = c.logoElement;
     this.collectChildrenImages_(d, c.childrenElements, c.childrenImages);
     for (d = d.parentElement;d;) {
-      var e = pagespeed.MobUtil.findBackgroundImage(d);
+      var e = mob.util.findBackgroundImage(d);
       if (e) {
         c.ancestorElement = d;
         c.ancestorImage = this.newImage_(e);
@@ -8324,57 +8331,57 @@ pagespeed.MobLogo.prototype.findImagesAndWait_ = function(a) {
   }
   0 == this.pendingEventCount_ && this.findBestLogoAndColor_();
 };
-pagespeed.MobLogo.fastRemoveArrayElement_ = function(a, b) {
+mob.Logo.fastRemoveArrayElement_ = function(a, b) {
   var c = a.length - 1;
   b < c && (a[b] = a[c]);
   a.pop();
 };
-pagespeed.MobLogo.prototype.pruneCandidateBySizePos_ = function() {
+mob.Logo.prototype.pruneCandidateBySizePos_ = function() {
   for (var a = this.candidates_, b = 0;b < a.length;++b) {
-    for (var c = a[b], d = pagespeed.MobUtil.boundingRectAndSize(c.logoElement), e = d.width * d.height, f = e * this.RATIO_AREA_, g = -1, h = 0, k = 0;k < c.childrenElements.length;++k) {
+    for (var c = a[b], d = mob.util.boundingRectAndSize(c.logoElement), e = d.width * d.height, f = e * this.RATIO_AREA_, g = -1, h = 0, k = 0;k < c.childrenElements.length;++k) {
       if (e = c.childrenElements[k]) {
-        d = pagespeed.MobUtil.boundingRectAndSize(e), e = d.width * d.height, e >= f && d.width > this.MIN_WIDTH_ && d.height > this.MIN_HEIGHT_ && d.height < this.MAX_HEIGHT_ && e > h && (h = e, g = k);
+        d = mob.util.boundingRectAndSize(e), e = d.width * d.height, e >= f && d.width > this.MIN_WIDTH_ && d.height > this.MIN_HEIGHT_ && d.height < this.MAX_HEIGHT_ && e > h && (h = e, g = k);
       }
     }
-    0 <= g ? (c.foregroundElement = c.childrenElements[g], c.foregroundImage = c.childrenImages[g], c.rect = d) : c.ancestorElement ? (e = c.ancestorElement, d = pagespeed.MobUtil.boundingRectAndSize(e), e = d.width * d.height, e >= f && d.width > this.MIN_WIDTH_ && d.height > this.MIN_HEIGHT_ && d.height < this.MAX_HEIGHT_ ? (c.foregroundElement = c.ancestorElement, c.foregroundImage = c.ancestorImage, c.rect = d) : (pagespeed.MobLogo.fastRemoveArrayElement_(a, b), --b)) : (pagespeed.MobLogo.fastRemoveArrayElement_(a, 
-    b), --b);
+    0 <= g ? (c.foregroundElement = c.childrenElements[g], c.foregroundImage = c.childrenImages[g], c.rect = d) : c.ancestorElement ? (e = c.ancestorElement, d = mob.util.boundingRectAndSize(e), e = d.width * d.height, e >= f && d.width > this.MIN_WIDTH_ && d.height > this.MIN_HEIGHT_ && d.height < this.MAX_HEIGHT_ ? (c.foregroundElement = c.ancestorElement, c.foregroundImage = c.ancestorImage, c.rect = d) : (mob.Logo.fastRemoveArrayElement_(a, b), --b)) : (mob.Logo.fastRemoveArrayElement_(a, b), 
+    --b);
   }
 };
-pagespeed.MobLogo.prototype.findBestLogoAndColor_ = function() {
+mob.Logo.prototype.findBestLogoAndColor_ = function() {
   this.pruneCandidateBySizePos_();
   for (var a = this.findBestLogos_(), b = [], c = {}, d = 0;b.length < this.maxNumCandidates_ && d < a.length;++d) {
     var e = a[d];
     if (!c[e.foregroundImage.src]) {
       c[e.foregroundImage.src] = !0;
       this.findLogoBackground_(e);
-      var f = (new pagespeed.MobColor).run(e.foregroundImage, e.backgroundColor);
-      b.push(new pagespeed.MobLogoCandidate(e, f.background, f.foreground));
+      var f = (new mob.Color).run(e.foregroundImage, e.backgroundColor);
+      b.push(new mob.LogoCandidate(e, f.background, f.foreground));
     }
   }
   a = this.doneCallback_;
   this.doneCallback_ = null;
   a(b);
 };
-pagespeed.MobLogo.prototype.eventDone_ = function() {
+mob.Logo.prototype.eventDone_ = function() {
   --this.pendingEventCount_;
   0 == this.pendingEventCount_ && this.findBestLogoAndColor_();
 };
-pagespeed.MobLogo.rectAccessors_ = [function(a) {
+mob.Logo.rectAccessors_ = [function(a) {
   return a.top;
 }, function(a) {
   return a.left;
 }, function(a) {
   return a.width * a.height;
 }];
-pagespeed.MobLogo.compareLogos_ = function(a, b) {
+mob.Logo.compareLogos_ = function(a, b) {
   if (a.metric > b.metric) {
     return -1;
   }
   if (b.metric > a.metric) {
     return 1;
   }
-  for (var c = 0;c < pagespeed.MobLogo.rectAccessors_.length;++c) {
-    var d = pagespeed.MobLogo.rectAccessors_[c], e = d(a.rect), d = d(b.rect);
+  for (var c = 0;c < mob.Logo.rectAccessors_.length;++c) {
+    var d = mob.Logo.rectAccessors_[c], e = d(a.rect), d = d(b.rect);
     if (e < d) {
       return -1;
     }
@@ -8392,7 +8399,7 @@ pagespeed.MobLogo.compareLogos_ = function(a, b) {
   }
   return 0;
 };
-pagespeed.MobLogo.prototype.findBestLogos_ = function() {
+mob.Logo.prototype.findBestLogos_ = function() {
   var a = this.candidates_;
   if (1 < a.length) {
     var b = 0, c = Infinity, d, e, f;
@@ -8400,24 +8407,24 @@ pagespeed.MobLogo.prototype.findBestLogos_ = function() {
       e = f.rect, c = Math.min(c, e.top), b = Math.max(b, e.bottom);
     }
     for (d = 0;f = a[d];++d) {
-      e = f.rect, e = Math.sqrt((b - e.top) / (b - c)), f.metric *= e;
+      e = f.rect, f.metric *= Math.sqrt((b - e.top) / (b - c));
     }
     if (0 < a.length && 1 == this.maxNumCandidates_) {
       b = a[0];
       for (d = 1;d < a.length;++d) {
-        f = a[d], 0 > pagespeed.MobLogo.compareLogos_(f, b) && (b = f);
+        f = a[d], 0 > mob.Logo.compareLogos_(f, b) && (b = f);
       }
       a[0] = b;
     } else {
-      a.sort(pagespeed.MobLogo.compareLogos_);
+      a.sort(mob.Logo.compareLogos_);
     }
   }
   return a;
 };
-pagespeed.MobLogo.prototype.extractBackgroundColor_ = function(a) {
-  return (a = document.defaultView.getComputedStyle(a, null)) && (a = a.getPropertyValue("background-color")) && (a = pagespeed.MobUtil.colorStringToNumbers(a)) && (3 == a.length || 4 == a.length && 0 != a[3]) ? a : null;
+mob.Logo.prototype.extractBackgroundColor_ = function(a) {
+  return (a = mob.util.getWindow().document.defaultView.getComputedStyle(a, null)) && (a = a.getPropertyValue("background-color")) && (a = mob.util.colorStringToNumbers(a)) && (3 == a.length || 4 == a.length && 0 != a[3]) ? a : null;
 };
-pagespeed.MobLogo.prototype.findLogoBackground_ = function(a) {
+mob.Logo.prototype.findLogoBackground_ = function(a) {
   if (a && a.foregroundElement) {
     for (var b = null, c = a.foregroundElement;c && !b;) {
       b = this.extractBackgroundColor_(c), c = c.parentElement;
@@ -8425,10 +8432,11 @@ pagespeed.MobLogo.prototype.findLogoBackground_ = function(a) {
     a.backgroundColor = b;
   }
 };
-pagespeed.MobLogo.prototype.run = function(a, b) {
-  this.doneCallback_ || !document.body ? a([]) : (this.doneCallback_ = a, this.maxNumCandidates_ = b, this.findLogoCandidates_(document.body), this.findImagesAndWait_(this.candidates_));
+mob.Logo.prototype.run = function(a, b) {
+  "undefined" != typeof extension && extension.addEventListener("loadComplete", goog.bind(this.eventDone_, this), !1);
+  var c = mob.util.getWindow().document.body;
+  this.doneCallback_ || !c ? a([]) : (this.doneCallback_ = a, this.maxNumCandidates_ = b, this.findLogoCandidates_(c), this.findImagesAndWait_(this.candidates_));
 };
-goog.exportProperty(pagespeed.MobLogo.prototype, "run", pagespeed.MobLogo.prototype.run);
 mob.NavPanel = function(a, b) {
   this.el = a;
   this.backgroundColor_ = b;
@@ -8441,7 +8449,7 @@ mob.NavPanel.ARROW_ICON_ = "R0lGODlhkACQAPABAP///wAAACH5BAEAAAEALAAAAACQAJAAAAL+
 mob.NavPanel.prototype.initialize_ = function() {
   document.body.appendChild(this.el);
   for (var a = this.el.getElementsByClassName("open"), b = 0, c = a.length;b < c;b++) {
-    goog.dom.classlist.addRemove(a[b], "open", pagespeed.MobUtil.ElementClass.OPEN);
+    goog.dom.classlist.addRemove(a[b], "open", mob.util.ElementClass.OPEN);
   }
   this.addSubmenuArrows_();
   this.addClickDetectorDiv_();
@@ -8467,7 +8475,7 @@ mob.NavPanel.prototype.initialize_ = function() {
   }, this), !1);
 };
 mob.NavPanel.prototype.redraw = function(a) {
-  var b = mob.util.getZoomLevel(), c = pagespeed.MobUtil.pixelValue(window.getComputedStyle(document.body).width);
+  var b = mob.util.getZoomLevel(), c = mob.util.pixelValue(window.getComputedStyle(document.body).width);
   c && (b = Math.min(b, c / mob.NavPanel.WIDTH_));
   this.el.style.fontSize = b + "px";
   c = this.isOpen() ? 0 : -goog.style.getTransformedSize(this.el).width;
@@ -8477,7 +8485,7 @@ mob.NavPanel.prototype.redraw = function(a) {
 };
 mob.NavPanel.prototype.addClickDetectorDiv_ = function() {
   this.clickDetectorDiv_ = document.createElement(goog.dom.TagName.DIV);
-  this.clickDetectorDiv_.id = pagespeed.MobUtil.ElementId.CLICK_DETECTOR_DIV;
+  this.clickDetectorDiv_.id = mob.util.ElementId.CLICK_DETECTOR_DIV;
   document.body.insertBefore(this.clickDetectorDiv_, this.el);
   this.clickDetectorDiv_.addEventListener(goog.events.EventType.CLICK, goog.bind(function(a) {
     this.isOpen() && this.toggle();
@@ -8486,20 +8494,20 @@ mob.NavPanel.prototype.addClickDetectorDiv_ = function() {
 mob.NavPanel.prototype.addSubmenuArrows_ = function() {
   var a = this.el.querySelectorAll(goog.dom.TagName.DIV + " > " + goog.dom.TagName.A), b = a.length;
   if (0 != b) {
-    for (var c = pagespeed.MobUtil.synthesizeImage(mob.NavPanel.ARROW_ICON_, this.backgroundColor_), d = 0;d < b;d++) {
+    for (var c = mob.util.synthesizeImage(mob.NavPanel.ARROW_ICON_, this.backgroundColor_), d = 0;d < b;d++) {
       var e = document.createElement(goog.dom.TagName.IMG), f = a[d];
       f.insertBefore(e, f.firstChild);
       e.setAttribute("src", c);
-      goog.dom.classlist.add(e, pagespeed.MobUtil.ElementClass.MENU_EXPAND_ICON);
+      goog.dom.classlist.add(e, mob.util.ElementClass.MENU_EXPAND_ICON);
     }
   }
 };
 mob.NavPanel.prototype.toggle = function() {
-  var a = this.isOpen() ? pagespeed.MobUtil.BeaconEvents.MENU_BUTTON_CLOSE : pagespeed.MobUtil.BeaconEvents.MENU_BUTTON_OPEN, b = this.isOpen() ? goog.dom.classlist.remove : goog.dom.classlist.add;
-  pagespeed.MobUtil.sendBeaconEvent(a);
-  b(this.el, pagespeed.MobUtil.ElementClass.OPEN);
-  b(this.clickDetectorDiv_, pagespeed.MobUtil.ElementClass.OPEN);
-  b(document.body, pagespeed.MobUtil.ElementClass.NOSCROLL);
+  var a = this.isOpen() ? mob.util.BeaconEvents.MENU_BUTTON_CLOSE : mob.util.BeaconEvents.MENU_BUTTON_OPEN, b = this.isOpen() ? goog.dom.classlist.remove : goog.dom.classlist.add;
+  mob.util.sendBeaconEvent(a);
+  b(this.el, mob.util.ElementClass.OPEN);
+  b(this.clickDetectorDiv_, mob.util.ElementClass.OPEN);
+  b(document.body, mob.util.ElementClass.NOSCROLL);
   this.redraw();
 };
 mob.NavPanel.prototype.getMenuClickHandlerUrl = function(a, b) {
@@ -8507,8 +8515,8 @@ mob.NavPanel.prototype.getMenuClickHandlerUrl = function(a, b) {
   return c.getDomain() == document.domain || c.getDomain() == b ? (c.setDomain(b), c.toString()) : null;
 };
 mob.NavPanel.prototype.closeAllSubmenus_ = function() {
-  for (var a = this.el.querySelectorAll(goog.dom.TagName.LI + " ." + pagespeed.MobUtil.ElementClass.OPEN), b = 0, c;c = a[b];++b) {
-    goog.dom.classlist.remove(c, pagespeed.MobUtil.ElementClass.OPEN);
+  for (var a = this.el.querySelectorAll(goog.dom.TagName.LI + " ." + mob.util.ElementClass.OPEN), b = 0, c;c = a[b];++b) {
+    goog.dom.classlist.remove(c, mob.util.ElementClass.OPEN);
   }
 };
 mob.NavPanel.prototype.addButtonEvents_ = function() {
@@ -8516,35 +8524,35 @@ mob.NavPanel.prototype.addButtonEvents_ = function() {
     c.addEventListener(goog.events.EventType.CLICK, function(a) {
       a.preventDefault();
       a = a.currentTarget;
-      var b = goog.dom.classlist.contains(a.nextSibling, pagespeed.MobUtil.ElementClass.OPEN), c = b ? goog.dom.classlist.remove : goog.dom.classlist.add;
-      pagespeed.MobUtil.sendBeaconEvent(b ? pagespeed.MobUtil.BeaconEvents.SUBMENU_CLOSE : pagespeed.MobUtil.BeaconEvents.SUBMENU_OPEN);
-      c(a.nextSibling, pagespeed.MobUtil.ElementClass.OPEN);
-      c(a.firstChild.firstChild, pagespeed.MobUtil.ElementClass.OPEN);
+      var b = goog.dom.classlist.contains(a.nextSibling, mob.util.ElementClass.OPEN), c = b ? goog.dom.classlist.remove : goog.dom.classlist.add;
+      mob.util.sendBeaconEvent(b ? mob.util.BeaconEvents.SUBMENU_CLOSE : mob.util.BeaconEvents.SUBMENU_OPEN);
+      c(a.nextSibling, mob.util.ElementClass.OPEN);
+      c(a.firstChild.firstChild, mob.util.ElementClass.OPEN);
     }, !1);
   }
-  if (a = document.getElementById(pagespeed.MobUtil.ElementId.IFRAME)) {
+  if (a = document.getElementById(mob.util.ElementId.IFRAME)) {
     c = (new goog.Uri(a.src)).getDomain();
     for (var d = this.el.querySelectorAll(goog.dom.TagName.LI + " > " + goog.dom.TagName.A), b = 0, e;e = d[b];b++) {
       var f = this.getMenuClickHandlerUrl(e.href, c);
       f ? e.addEventListener(goog.events.EventType.CLICK, goog.bind(function(a, b, c) {
-        pagespeed.MobUtil.sendBeaconEvent(pagespeed.MobUtil.BeaconEvents.MENU_NAV_CLICK);
+        mob.util.sendBeaconEvent(mob.util.BeaconEvents.MENU_NAV_CLICK);
         c.preventDefault();
         a.src = b;
         this.toggle();
         this.closeAllSubmenus_();
       }, this, a, f)) : e.addEventListener(goog.events.EventType.CLICK, function() {
-        pagespeed.MobUtil.sendBeaconEvent(pagespeed.MobUtil.BeaconEvents.MENU_NAV_CLICK);
+        mob.util.sendBeaconEvent(mob.util.BeaconEvents.MENU_NAV_CLICK);
       });
     }
   }
 };
 mob.NavPanel.prototype.isOpen = function() {
-  return goog.dom.classlist.contains(this.el, pagespeed.MobUtil.ElementClass.OPEN);
+  return goog.dom.classlist.contains(this.el, mob.util.ElementClass.OPEN);
 };
-pagespeed.MobNav = function() {
-  this.headerBar_ = goog.dom.getRequiredElement(pagespeed.MobUtil.ElementId.HEADER_BAR);
+mob.Nav = function() {
+  this.headerBar_ = goog.dom.getRequiredElement(mob.util.ElementId.HEADER_BAR);
   this.styleTag_ = null;
-  this.spacerDiv_ = goog.dom.getRequiredElement(pagespeed.MobUtil.ElementId.SPACER);
+  this.spacerDiv_ = goog.dom.getRequiredElement(mob.util.ElementId.SPACER);
   this.scrollTimer_ = this.navPanel_ = this.mapButton_ = this.dialer_ = this.menuButton_ = this.logoSpan_ = null;
   this.currentTouches_ = 0;
   this.headerBarHeight_ = -1;
@@ -8553,49 +8561,49 @@ pagespeed.MobNav = function() {
   this.isAndroidBrowser_ = goog.labs.userAgent.browser.isAndroidBrowser();
   this.isIosWebview_ = -1 < window.navigator.userAgent.indexOf("CriOS") || -1 < window.navigator.userAgent.indexOf("GSA") || goog.labs.userAgent.browser.isIosWebview();
 };
-pagespeed.MobNav.prototype.findElementsToOffsetHelper_ = function(a, b) {
-  if (!a.className || a.className != pagespeed.MobUtil.ElementId.PROGRESS_SCRIM && goog.isString(a.className) && !goog.string.startsWith(a.className, "psmob-") && !goog.string.startsWith(a.id, "psmob-")) {
+mob.Nav.prototype.findElementsToOffsetHelper_ = function(a, b) {
+  if (!a.className || a.className != mob.util.ElementId.PROGRESS_SCRIM && goog.isString(a.className) && !goog.string.startsWith(a.className, "psmob-") && !goog.string.startsWith(a.id, "psmob-")) {
     var c = window.getComputedStyle(a), d = c.getPropertyValue("position");
-    "static" != d && (null == pagespeed.MobUtil.pixelValue(c.getPropertyValue("top")) || "fixed" != d && (b || "absolute" != d) || this.elementsToOffset_.add(a), b = !0);
+    "static" != d && (null == mob.util.pixelValue(c.getPropertyValue("top")) || "fixed" != d && (b || "absolute" != d) || this.elementsToOffset_.add(a), b = !0);
     for (c = a.firstElementChild;c;c = c.nextElementSibling) {
       this.findElementsToOffsetHelper_(c, b);
     }
   }
 };
-pagespeed.MobNav.prototype.findElementsToOffset_ = function() {
+mob.Nav.prototype.findElementsToOffset_ = function() {
   window.document.body && this.findElementsToOffsetHelper_(window.document.body, !1);
 };
-pagespeed.MobNav.prototype.clampZIndex_ = function() {
+mob.Nav.prototype.clampZIndex_ = function() {
   for (var a = document.querySelectorAll("*"), b = 0, c;c = a[b];b++) {
     var d = c.id;
-    (!d || d != pagespeed.MobUtil.ElementId.PROGRESS_SCRIM && d != pagespeed.MobUtil.ElementId.HEADER_BAR && d != pagespeed.MobUtil.ElementId.NAV_PANEL) && 999998 <= window.getComputedStyle(c).getPropertyValue("z-index") && (pagespeed.MobUtil.consoleLog("Element z-index exceeded 999998, setting to 999997."), c.style.zIndex = 999997);
+    (!d || d != mob.util.ElementId.PROGRESS_SCRIM && d != mob.util.ElementId.HEADER_BAR && d != mob.util.ElementId.NAV_PANEL) && 999998 <= window.getComputedStyle(c).getPropertyValue("z-index") && (mob.util.consoleLog("Element z-index exceeded 999998, setting to 999997."), c.style.zIndex = 999997);
   }
 };
-pagespeed.MobNav.prototype.redraw_ = function() {
+mob.Nav.prototype.redraw_ = function() {
   this.redrawHeader_();
   this.navPanel_ && this.navPanel_.redraw(this.headerBar_.getBoundingClientRect().height);
 };
-pagespeed.MobNav.prototype.redrawHeader_ = function() {
+mob.Nav.prototype.redrawHeader_ = function() {
   if (this.headerBar_) {
     var a = -1 == this.headerBarHeight_ ? Math.round(goog.style.getTransformedSize(this.headerBar_).height) : this.headerBarHeight_, b = mob.util.getZoomLevel();
     this.headerBar_.style.fontSize = b + "px";
     var c = window.innerWidth;
     "hidden" != window.getComputedStyle(document.body).getPropertyValue("overflow-y") && (c -= goog.style.getScrollbarWidth());
     this.headerBar_.style.width = c / b + "em";
-    goog.dom.classlist.remove(this.headerBar_, pagespeed.MobUtil.ElementClass.HIDE);
+    goog.dom.classlist.remove(this.headerBar_, mob.util.ElementClass.HIDE);
     b = Math.round(goog.style.getTransformedSize(this.headerBar_).height);
     this.spacerDiv_.style.height = b + "px";
     this.headerBarHeight_ = b;
     for (var c = this.elementsToOffset_.getValues(), d = 0;d < c.length;d++) {
-      var e = c[d], f = window.getComputedStyle(e), g = f.getPropertyValue("position"), f = pagespeed.MobUtil.pixelValue(f.getPropertyValue("top"));
-      "static" != g && null != f && (this.redrawNavCalled_ ? (g = e.style.top, g = pagespeed.MobUtil.pixelValue(e.style.top), null != g && (e.style.top = String(g + (b - a)) + "px")) : (g = pagespeed.MobUtil.boundingRect(e).top, e.style.top = String(g + b) + "px"));
+      var e = c[d], f = window.getComputedStyle(e), g = f.getPropertyValue("position"), f = mob.util.pixelValue(f.getPropertyValue("top"));
+      "static" != g && null != f && (this.redrawNavCalled_ ? (g = e.style.top, g = mob.util.pixelValue(e.style.top), null != g && (e.style.top = String(g + (b - a)) + "px")) : (g = mob.util.boundingRect(e).top, e.style.top = String(g + b) + "px"));
     }
     this.redrawNavCalled_ && b != a && window.scrollBy(0, b - a);
     this.isIosWebview_ || (this.headerBar_.style.top = window.scrollY + "px", this.headerBar_.style.left = window.scrollX + "px");
     this.redrawNavCalled_ = !0;
   }
 };
-pagespeed.MobNav.prototype.addHeaderBarResizeEvents_ = function() {
+mob.Nav.prototype.addHeaderBarResizeEvents_ = function() {
   this.redraw_();
   var a = function() {
     null != this.scrollTimer_ && (window.clearTimeout(this.scrollTimer_), this.scrollTimer_ = null);
@@ -8606,13 +8614,13 @@ pagespeed.MobNav.prototype.addHeaderBarResizeEvents_ = function() {
   };
   window.addEventListener(goog.events.EventType.SCROLL, goog.bind(function(b) {
     a.call(this);
-    this.navPanel_ && this.navPanel_.isOpen() || goog.dom.classlist.add(this.headerBar_, pagespeed.MobUtil.ElementClass.HIDE);
+    this.navPanel_ && this.navPanel_.isOpen() || goog.dom.classlist.add(this.headerBar_, mob.util.ElementClass.HIDE);
   }, this), !1);
   window.addEventListener(goog.events.EventType.TOUCHSTART, goog.bind(function(a) {
     this.currentTouches_ = a.touches.length;
   }, this), !1);
   window.addEventListener(goog.events.EventType.TOUCHMOVE, goog.bind(function(a) {
-    this.navPanel_ && this.navPanel_.isOpen() ? a.preventDefault() : this.isAndroidBrowser_ || goog.dom.classlist.add(this.headerBar_, pagespeed.MobUtil.ElementClass.HIDE);
+    this.navPanel_ && this.navPanel_.isOpen() ? a.preventDefault() : this.isAndroidBrowser_ || goog.dom.classlist.add(this.headerBar_, mob.util.ElementClass.HIDE);
   }, this), !1);
   window.addEventListener(goog.events.EventType.TOUCHEND, goog.bind(function(b) {
     this.currentTouches_ = b.touches.length;
@@ -8625,48 +8633,48 @@ pagespeed.MobNav.prototype.addHeaderBarResizeEvents_ = function() {
     this.redraw_();
   }, this), !1);
 };
-pagespeed.MobNav.prototype.addHeaderBar_ = function(a) {
+mob.Nav.prototype.addHeaderBar_ = function(a) {
   document.body.insertBefore(this.spacerDiv_, document.body.childNodes[0]);
   document.body.insertBefore(this.headerBar_, this.spacerDiv_);
-  window.psLabeledMode && goog.dom.classlist.add(this.headerBar_, pagespeed.MobUtil.ElementClass.LABELED);
-  window.psConfigMode && goog.dom.classlist.add(this.headerBar_, pagespeed.MobUtil.ElementClass.THEME_CONFIG);
-  this.isIosWebview_ && goog.dom.classlist.add(this.headerBar_, pagespeed.MobUtil.ElementClass.IOS_WEBVIEW);
-  var b = document.getElementById(pagespeed.MobUtil.ElementId.NAV_PANEL);
+  window.psLabeledMode && goog.dom.classlist.add(this.headerBar_, mob.util.ElementClass.LABELED);
+  window.psConfigMode && goog.dom.classlist.add(this.headerBar_, mob.util.ElementClass.THEME_CONFIG);
+  this.isIosWebview_ && goog.dom.classlist.add(this.headerBar_, mob.util.ElementClass.IOS_WEBVIEW);
+  var b = document.getElementById(mob.util.ElementId.NAV_PANEL);
   !window.psLabeledMode && b && (this.navPanel_ = new mob.NavPanel(b, a.menuBackColor), this.menuButton_ = new mob.button.Menu(a.menuFrontColor, goog.bind(this.navPanel_.toggle, this.navPanel_)), this.headerBar_.appendChild(this.menuButton_.el));
-  a.logoUrl && (this.logoSpan_ = document.createElement(goog.dom.TagName.SPAN), this.logoSpan_.id = pagespeed.MobUtil.ElementId.LOGO_SPAN, b = document.createElement(goog.dom.TagName.IMG), b.src = a.logoUrl, b.id = pagespeed.MobUtil.ElementId.LOGO_IMAGE, this.logoSpan_.appendChild(b), this.headerBar_.appendChild(this.logoSpan_));
-  this.headerBar_.style.borderBottomColor = pagespeed.MobUtil.colorNumbersToString(a.menuFrontColor);
-  this.headerBar_.style.backgroundColor = pagespeed.MobUtil.colorNumbersToString(a.menuBackColor);
+  a.logoUrl && (this.logoSpan_ = document.createElement(goog.dom.TagName.SPAN), this.logoSpan_.id = mob.util.ElementId.LOGO_SPAN, b = document.createElement(goog.dom.TagName.IMG), b.src = a.logoUrl, b.id = mob.util.ElementId.LOGO_IMAGE, this.logoSpan_.appendChild(b), this.headerBar_.appendChild(this.logoSpan_));
+  this.headerBar_.style.borderBottomColor = mob.util.colorNumbersToString(a.menuFrontColor);
+  this.headerBar_.style.backgroundColor = mob.util.colorNumbersToString(a.menuBackColor);
   window.psPhoneNumber && (this.dialer_ = new mob.button.Dialer(a.menuFrontColor, window.psPhoneNumber, window.psConversionId, window.psPhoneConversionLabel), this.headerBar_.appendChild(this.dialer_.el));
   window.psMapLocation && (this.mapButton_ = new mob.button.Map(a.menuFrontColor, window.psMapLocation, window.psConversionId, window.psMapConversionLabel), this.headerBar_.appendChild(this.mapButton_.el));
-  (window.psLabeledMode || this.dialer_ && !this.mapButton_ || !this.dialer_ && this.mapButton_) && goog.dom.classlist.add(this.headerBar_, pagespeed.MobUtil.ElementClass.SHOW_BUTTON_TEXT);
+  (window.psLabeledMode || this.dialer_ && !this.mapButton_ || !this.dialer_ && this.mapButton_) && goog.dom.classlist.add(this.headerBar_, mob.util.ElementClass.SHOW_BUTTON_TEXT);
   this.addHeaderBarResizeEvents_();
   this.addThemeColor_(a);
 };
-pagespeed.MobNav.prototype.addThemeColor_ = function(a) {
+mob.Nav.prototype.addThemeColor_ = function(a) {
   this.styleTag_ && this.styleTag_.parentNode.removeChild(this.styleTag_);
-  var b = pagespeed.MobUtil.colorNumbersToString(a.menuBackColor);
-  a = pagespeed.MobUtil.colorNumbersToString(a.menuFrontColor);
-  b = "#" + pagespeed.MobUtil.ElementId.HEADER_BAR + " { background-color: " + b + "; }\n#" + pagespeed.MobUtil.ElementId.HEADER_BAR + " *  { color: " + a + "; }\n#" + pagespeed.MobUtil.ElementId.NAV_PANEL + " { background-color: " + a + "; }\n#" + pagespeed.MobUtil.ElementId.NAV_PANEL + " *  { color: " + b + "; }\n";
+  var b = mob.util.colorNumbersToString(a.menuBackColor);
+  a = mob.util.colorNumbersToString(a.menuFrontColor);
+  b = "#" + mob.util.ElementId.HEADER_BAR + " { background-color: " + b + "; }\n#" + mob.util.ElementId.HEADER_BAR + " *  { color: " + a + "; }\n#" + mob.util.ElementId.NAV_PANEL + " { background-color: " + a + "; }\n#" + mob.util.ElementId.NAV_PANEL + " *  { color: " + b + "; }\n";
   this.styleTag_ = document.createElement(goog.dom.TagName.STYLE);
   this.styleTag_.type = "text/css";
   this.styleTag_.appendChild(document.createTextNode(b));
   document.head.appendChild(this.styleTag_);
 };
-pagespeed.MobNav.prototype.run = function(a) {
-  pagespeed.MobUtil.inFriendlyIframe() || (this.clampZIndex_(), this.findElementsToOffset_(), this.addHeaderBar_(a), pagespeed.MobUtil.sendBeaconEvent(pagespeed.MobUtil.BeaconEvents.NAV_DONE), window.addEventListener(goog.events.EventType.LOAD, goog.bind(this.redraw_, this)), document.getElementById(pagespeed.MobUtil.ElementId.IFRAME) && (new mob.Iframe).run());
+mob.Nav.prototype.run = function(a) {
+  mob.util.inFriendlyIframe() || (this.clampZIndex_(), this.findElementsToOffset_(), this.addHeaderBar_(a), mob.util.sendBeaconEvent(mob.util.BeaconEvents.NAV_DONE), window.addEventListener(goog.events.EventType.LOAD, goog.bind(this.redraw_, this)), document.getElementById(mob.util.ElementId.IFRAME) && (new mob.Iframe).run());
 };
-pagespeed.MobNav.prototype.updateTheme = function(a) {
+mob.Nav.prototype.updateTheme = function(a) {
   this.headerBar_.remove();
   this.spacerDiv_.remove();
   this.spacerDiv_ = document.createElement(goog.dom.TagName.DIV);
-  this.spacerDiv_.id = pagespeed.MobUtil.ElementId.SPACER;
+  this.spacerDiv_.id = mob.util.ElementId.SPACER;
   this.headerBar_ = document.createElement(goog.dom.TagName.HEADER);
-  this.headerBar_.id = pagespeed.MobUtil.ElementId.HEADER_BAR;
+  this.headerBar_.id = mob.util.ElementId.HEADER_BAR;
   this.addHeaderBar_(a);
 };
 mob.ThemePicker = function() {
   this.logoChoicePopup_ = null;
-  this.mobNav_ = new pagespeed.MobNav;
+  this.mobNav_ = new mob.Nav;
   this.logoCandidates_ = null;
 };
 mob.ThemePicker.SWAP_ICON_ = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIYAAABaCAAAAABY7nEZAAAABGdBTUEAALGPC/xhBQAAAcpJREFUaN7t2ItxgkAQgOHtADvADkwH2oHpADrADlKCdoAdaAekA0qgBEowYIZRE7jbe+xjktsCnE/m54CFm4qBxEgMIkavgwHlVQUDYHVoNTCGWZ86DYxhdudeA2OYgExiMgIyicvwziQ6wy8TCoZHJkQM10zIGG6ZUDIcMiFmYDOhZ6AymWd8ogdwY8sEvP+j6xgz4WMYM2FlLGfCzBgzqTUwiov81djWvXgb+bFzvFO26MEasqqVPkWXguBlLAbByDAFwcWwBMHDsAbBwMAEQc1ABkHKwAdByHAJgorhGAQJI/8IWC5EYmRF2KolCmN/uYX+TDBjU0dYw4UyQoJI69n/wmhKeUZ3WAMIM/rT2/34EGWc36fjXI7RlKvHU0WIcQ8CZBlTEKKMRxByjJcghBg/g5BgzATBz5gNgpmxFAQnwxAEG8McBBPDFsTzAhY7rgxEED7jxMAFQctAB0HLqPeggTFcj+NGA2Oso8o1MMZ7pcg0MFwyabDjeZgjM2F4tGEy4XnQWzNhe+0xZ8L4EmjKhPeVeDET9g+E+UwkPpdmMpH5ePyVidin9GsmkouFp0yE1yxTJuJLp+9MNKzg2ipPC8nE+LuMLwqlrYBVqy8VAAAAAElFTkSuQmCC";
@@ -8674,11 +8682,11 @@ mob.ThemePicker.prototype.run = function() {
   window.addEventListener(goog.events.EventType.DOMCONTENTLOADED, goog.bind(this.extractThemes_, this));
 };
 mob.ThemePicker.prototype.extractThemes_ = function() {
-  (new pagespeed.MobLogo).run(goog.bind(this.logoDone_, this), 5);
+  (new mob.Logo).run(goog.bind(this.logoDone_, this), 5);
 };
 mob.ThemePicker.prototype.logoDone_ = function(a) {
   this.logoCandidates_ = a;
-  0 == this.logoCandidates_.length ? console.log("No logos detected.") : (a = this.logoCandidates_[0], a = new pagespeed.MobUtil.ThemeData(a.logoRecord.foregroundImage.src, a.background, a.foreground), this.mobNav_.run(a), this.chooserShowCandidates_());
+  0 == this.logoCandidates_.length ? console.log("No logos detected.") : (a = this.logoCandidates_[0], a = new mob.util.ThemeData(a.logoRecord.foregroundImage.src, a.background, a.foreground), this.mobNav_.run(a), this.chooserShowCandidates_());
 };
 mob.ThemePicker.prototype.chooserShowCandidates_ = function() {
   function a() {
@@ -8690,12 +8698,12 @@ mob.ThemePicker.prototype.chooserShowCandidates_ = function() {
     this.chooserDismissLogoChoicePopup_();
   } else {
     var b = document.createElement(goog.dom.TagName.TABLE);
-    b.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_TABLE;
+    b.className = mob.util.ElementClass.LOGO_CHOOSER_TABLE;
     var c = document.createElement(goog.dom.TagName.THEAD);
     b.appendChild(c);
     var d = document.createElement(goog.dom.TagName.TR);
     c.appendChild(d);
-    d.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_COLUMN_HEADER;
+    d.className = mob.util.ElementClass.LOGO_CHOOSER_COLUMN_HEADER;
     a().textContent = "Logo";
     a().textContent = "Foreground";
     a().textContent = "";
@@ -8704,25 +8712,25 @@ mob.ThemePicker.prototype.chooserShowCandidates_ = function() {
     b.appendChild(c);
     for (var e = 0;e < this.logoCandidates_.length;++e) {
       d = document.createElement(goog.dom.TagName.TR);
-      d.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_CHOICE;
+      d.className = mob.util.ElementClass.LOGO_CHOOSER_CHOICE;
       c.appendChild(d);
       var f = this.logoCandidates_[e], g = document.createElement(goog.dom.TagName.IMG);
       g.src = f.logoRecord.foregroundImage.src;
       a().appendChild(g);
-      g.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_IMAGE;
+      g.className = mob.util.ElementClass.LOGO_CHOOSER_IMAGE;
       g.onclick = goog.bind(this.chooserSetLogo_, this, f);
       g = a();
       g.style.backgroundColor = goog.color.rgbArrayToHex(f.foreground);
-      g.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_COLOR;
+      g.className = mob.util.ElementClass.LOGO_CHOOSER_COLOR;
       var h = a();
-      h.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_COLOR;
+      h.className = mob.util.ElementClass.LOGO_CHOOSER_COLOR;
       var k = document.createElement(goog.dom.TagName.IMG);
-      k.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_SWAP;
+      k.className = mob.util.ElementClass.LOGO_CHOOSER_SWAP;
       k.src = mob.ThemePicker.SWAP_ICON_;
       h.appendChild(k);
       k = a();
       k.style.backgroundColor = goog.color.rgbArrayToHex(f.background);
-      k.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_SWAP;
+      k.className = mob.util.ElementClass.LOGO_CHOOSER_SWAP;
       h.onclick = goog.bind(this.chooserSwapColors_, this, f, g, k);
     }
     this.chooserDisplayPopup_(b);
@@ -8731,19 +8739,19 @@ mob.ThemePicker.prototype.chooserShowCandidates_ = function() {
 mob.ThemePicker.prototype.chooserDisplayPopup_ = function(a) {
   a.style.visibility = "hidden";
   document.body.appendChild(a);
-  var b = 2 / 3, c = window.innerWidth * b / a.offsetWidth, b = Math.round(.5 * (1 - b) * window.innerWidth) + "px", c = "scale(" + c + ") translate(" + b + "," + b + ")";
-  a.style["-webkit-transform"] = c;
-  a.style.transform = c;
+  var b = 2 / 3, c = Math.round(.5 * (1 - b) * window.innerWidth) + "px", b = "scale(" + window.innerWidth * b / a.offsetWidth + ") translate(" + c + "," + c + ")";
+  a.style["-webkit-transform"] = b;
+  a.style.transform = b;
   a.style.visibility = "visible";
   null != this.logoChoicePopup_ && this.logoChoicePopup_.parentNode.removeChild(this.logoChoicePopup_);
   this.logoChoicePopup_ = a;
 };
 mob.ThemePicker.prototype.chooserSetLogo_ = function(a) {
-  a = new pagespeed.MobUtil.ThemeData(a.logoRecord.foregroundImage.src, a.background, a.foreground);
+  a = new mob.util.ThemeData(a.logoRecord.foregroundImage.src, a.background, a.foreground);
   this.mobNav_.updateTheme(a);
-  document.getElementById(pagespeed.MobUtil.ElementId.LOGO_SPAN).addEventListener(goog.events.EventType.CLICK, goog.bind(this.chooserShowCandidates_, this));
+  document.getElementById(mob.util.ElementId.LOGO_SPAN).addEventListener(goog.events.EventType.CLICK, goog.bind(this.chooserShowCandidates_, this));
   var b = document.createElement(goog.dom.TagName.PRE);
-  b.className = pagespeed.MobUtil.ElementClass.LOGO_CHOOSER_CONFIG_FRAGMENT;
+  b.className = mob.util.ElementClass.LOGO_CHOOSER_CONFIG_FRAGMENT;
   b.textContent = 'ModPagespeedMobTheme "\n    ' + goog.color.rgbArrayToHex(a.menuBackColor) + "\n    " + goog.color.rgbArrayToHex(a.menuFrontColor) + "\n    " + a.logoUrl + '"';
   this.chooserDisplayPopup_(b);
 };
@@ -8758,11 +8766,11 @@ mob.ThemePicker.prototype.chooserSwapColors_ = function(a, b, c) {
 mob.ThemePicker.prototype.chooserDismissLogoChoicePopup_ = function() {
   this.logoChoicePopup_ && (this.logoChoicePopup_.parentNode.removeChild(this.logoChoicePopup_), this.logoChoicePopup_ = null);
 };
-pagespeed.MobUtil.sendBeaconEvent(pagespeed.MobUtil.BeaconEvents.INITIAL_EVENT);
+mob.util.sendBeaconEvent(mob.util.BeaconEvents.INITIAL_EVENT);
 window.addEventListener(goog.events.EventType.LOAD, function() {
-  pagespeed.MobUtil.sendBeaconEvent(pagespeed.MobUtil.BeaconEvents.LOAD_EVENT);
+  mob.util.sendBeaconEvent(mob.util.BeaconEvents.LOAD_EVENT);
 });
-pagespeed.Mob = function() {
+mob.Mob = function() {
   this.activeRequestCount_ = 0;
   this.imageMap_ = {};
   this.startTimeMs_ = goog.now();
@@ -8770,36 +8778,36 @@ pagespeed.Mob = function() {
   this.pendingImageLoadCount_ = this.workDone_ = this.prevPercentage_ = this.totalWork_ = this.domElementCount_ = 0;
   this.mobilizeAfterImageLoad_ = !1;
   this.workPerLayoutPass_ = this.pendingCallbacks_ = 0;
-  this.layout_ = new pagespeed.MobLayout(this);
-  this.layout_.addDontTouchId(pagespeed.MobUtil.ElementId.PROGRESS_SCRIM);
+  this.layout_ = new mob.Layout(this);
+  this.layout_.addDontTouchId(mob.util.ElementId.PROGRESS_SCRIM);
   this.mobNav_ = null;
 };
-pagespeed.Mob.IN_TRANSIT_ = new pagespeed.MobUtil.Dimensions(-1, -1);
-pagespeed.Mob.COST_PER_IMAGE_ = 1E3;
-pagespeed.Mob.prototype.initialize = function() {
+mob.Mob.IN_TRANSIT_ = new mob.util.Dimensions(-1, -1);
+mob.Mob.COST_PER_IMAGE_ = 1E3;
+mob.Mob.prototype.initialize = function() {
   if (window.psConfigMode) {
     (new mob.ThemePicker).run();
   } else {
-    var a = new pagespeed.MobUtil.ThemeData(window.psMobLogoUrl || "", window.psMobForegroundColor || [255, 255, 255], window.psMobBackgroundColor || [0, 0, 0]);
-    this.mobNav_ = new pagespeed.MobNav;
+    var a = new mob.util.ThemeData(window.psMobLogoUrl || "", window.psMobForegroundColor || [255, 255, 255], window.psMobBackgroundColor || [0, 0, 0]);
+    this.mobNav_ = new mob.Nav;
     this.mobNav_.run(a);
     window.psLayoutMode && window.addEventListener(goog.events.EventType.LOAD, goog.bind(this.initiateMobilization, this));
   }
 };
-pagespeed.Mob.prototype.mobilizeSite_ = function() {
-  0 == this.pendingImageLoadCount_ ? (pagespeed.MobUtil.consoleLog("mobilizing site"), window.psNavMode && !pagespeed.MobUtil.inFriendlyIframe() || this.maybeRunLayout()) : this.mobilizeAfterImageLoad_ = !0;
+mob.Mob.prototype.mobilizeSite_ = function() {
+  0 == this.pendingImageLoadCount_ ? (mob.util.consoleLog("mobilizing site"), window.psNavMode && !mob.util.inFriendlyIframe() || this.maybeRunLayout()) : this.mobilizeAfterImageLoad_ = !0;
 };
-pagespeed.Mob.prototype.backgroundImageLoaded_ = function(a) {
-  this.imageMap_[a.src] = new pagespeed.MobUtil.Dimensions(a.width, a.height);
+mob.Mob.prototype.backgroundImageLoaded_ = function(a) {
+  this.imageMap_[a.src] = new mob.util.Dimensions(a.width, a.height);
   --this.pendingImageLoadCount_;
-  this.updateProgressBar(pagespeed.Mob.COST_PER_IMAGE_, "background image");
+  this.updateProgressBar(mob.Mob.COST_PER_IMAGE_, "background image");
   0 == this.pendingImageLoadCount_ && this.mobilizeAfterImageLoad_ && (this.mobilizeSite_(), this.mobilizeAfterImageLoad_ = !1);
 };
-pagespeed.Mob.prototype.collectBackgroundImages_ = function(a) {
+mob.Mob.prototype.collectBackgroundImages_ = function(a) {
   if (!this.layout_.isDontTouchElement(a)) {
-    var b = pagespeed.MobUtil.findBackgroundImage(a);
+    var b = mob.util.findBackgroundImage(a);
     if (b && (goog.string.startsWith(b, "http://") || goog.string.startsWith(b, "https://")) && !this.imageMap_[b]) {
-      this.imageMap_[b] = pagespeed.Mob.IN_TRANSIT_;
+      this.imageMap_[b] = mob.Mob.IN_TRANSIT_;
       var c = new Image;
       ++this.pendingImageLoadCount_;
       c.onload = goog.bind(this.backgroundImageLoaded_, this, c);
@@ -8811,91 +8819,91 @@ pagespeed.Mob.prototype.collectBackgroundImages_ = function(a) {
     }
   }
 };
-pagespeed.Mob.prototype.xhrSendHook = function() {
+mob.Mob.prototype.xhrSendHook = function() {
   ++this.activeRequestCount_;
 };
-pagespeed.Mob.prototype.xhrResponseHook = function(a) {
+mob.Mob.prototype.xhrResponseHook = function(a) {
   --this.activeRequestCount_;
   this.addExtraWorkForDom();
   this.maybeRunLayout();
 };
-pagespeed.Mob.prototype.initiateMobilization = function() {
+mob.Mob.prototype.initiateMobilization = function() {
   this.setDebugMode(window.psDebugMode);
-  this.domElementCount_ = pagespeed.MobUtil.countNodes(document.body);
+  this.domElementCount_ = mob.util.countNodes(document.body);
   this.workPerLayoutPass_ = this.domElementCount_ * this.layout_.getNumberOfPasses();
   this.addExtraWorkForDom();
-  window.psNavMode && pagespeed.MobUtil.inFriendlyIframe() && (this.totalWork_ += this.domElementCount_, this.totalWork_ += this.domElementCount_);
+  window.psNavMode && mob.util.inFriendlyIframe() && (this.totalWork_ += this.domElementCount_, this.totalWork_ += this.domElementCount_);
   if (null != document.body) {
     for (var a in window.psMobStaticImageInfo) {
       var b = window.psMobStaticImageInfo[a];
-      this.imageMap_[a] = new pagespeed.MobUtil.Dimensions(b.w, b.h);
+      this.imageMap_[a] = new mob.util.Dimensions(b.w, b.h);
     }
   }
-  this.totalWork_ += this.pendingImageLoadCount_ * pagespeed.Mob.COST_PER_IMAGE_;
+  this.totalWork_ += this.pendingImageLoadCount_ * mob.Mob.COST_PER_IMAGE_;
   window.psLayoutMode && window.pagespeedXhrHijackSetListener(this);
   this.mobilizeSite_();
 };
-pagespeed.Mob.prototype.isReady = function() {
+mob.Mob.prototype.isReady = function() {
   return 0 == this.activeRequestCount_ && 0 == this.pendingCallbacks_ && 0 == this.pendingImageLoadCount_;
 };
-pagespeed.Mob.prototype.maybeRunLayout = function() {
+mob.Mob.prototype.maybeRunLayout = function() {
   if (this.isReady()) {
     if (window.psLayoutMode && this.layout_.computeAllSizingAndResynthesize(), this.debugMode_) {
-      var a = document.getElementById(pagespeed.MobUtil.ElementId.PROGRESS_REMOVE);
+      var a = document.getElementById(mob.util.ElementId.PROGRESS_REMOVE);
       a && (a.textContent = "Remove Progress Bar and show mobilized site");
     } else {
       this.removeProgressBar();
     }
   }
 };
-pagespeed.Mob.prototype.layoutPassDone = function(a) {
+mob.Mob.prototype.layoutPassDone = function(a) {
   this.updateProgressBar(this.domElementCount_, a);
 };
-pagespeed.Mob.prototype.findImageSize = function(a) {
+mob.Mob.prototype.findImageSize = function(a) {
   a = this.imageMap_[a];
-  a == pagespeed.Mob.IN_TRANSIT_ && (a = null);
+  a == mob.Mob.IN_TRANSIT_ && (a = null);
   return a;
 };
-pagespeed.Mob.prototype.addExtraWorkForDom = function() {
+mob.Mob.prototype.addExtraWorkForDom = function() {
   this.totalWork_ += this.workPerLayoutPass_;
 };
-pagespeed.Mob.prototype.setDebugMode = function(a) {
+mob.Mob.prototype.setDebugMode = function(a) {
   this.debugMode_ = a;
-  var b = document.getElementById(pagespeed.MobUtil.ElementId.PROGRESS_LOG);
+  var b = document.getElementById(mob.util.ElementId.PROGRESS_LOG);
   b && (b.style.color = a ? "#333" : "white");
-  a && (a = document.getElementById(pagespeed.MobUtil.ElementId.PROGRESS_SHOW_LOG)) && (a.style.display = "none");
+  a && (a = document.getElementById(mob.util.ElementId.PROGRESS_SHOW_LOG)) && (a.style.display = "none");
 };
-pagespeed.Mob.prototype.updateProgressBar = function(a, b) {
+mob.Mob.prototype.updateProgressBar = function(a, b) {
   this.workDone_ += a;
   var c = 100;
   0 < this.totalWork_ && (c = Math.round(100 * this.workDone_ / this.totalWork_), 100 < c && (c = 100));
   if (c != this.prevPercentage_) {
-    var d = document.getElementById(pagespeed.MobUtil.ElementId.PROGRESS_SPAN);
+    var d = document.getElementById(mob.util.ElementId.PROGRESS_SPAN);
     d && (d.style.width = c + "%");
     this.prevPercentage_ = c;
   }
   d = goog.now() - this.startTimeMs_;
   c = "" + c + "% " + d + "ms: " + b;
-  pagespeed.MobUtil.consoleLog(c);
-  if (d = document.getElementById(pagespeed.MobUtil.ElementId.PROGRESS_LOG)) {
+  mob.util.consoleLog(c);
+  if (d = document.getElementById(mob.util.ElementId.PROGRESS_LOG)) {
     d.textContent += c + "\n";
   }
 };
-pagespeed.Mob.prototype.removeProgressBar = function() {
-  var a = document.getElementById(pagespeed.MobUtil.ElementId.PROGRESS_SCRIM);
+mob.Mob.prototype.removeProgressBar = function() {
+  var a = document.getElementById(mob.util.ElementId.PROGRESS_SCRIM);
   a && (a.style.display = "none", a.parentNode.removeChild(a));
 };
-window.psMob = new pagespeed.Mob;
+var mobilizer_ = new mob.Mob;
 function psSetDebugMode() {
-  window.psMob.setDebugMode(!0);
+  mobilizer_.setDebugMode(!0);
 }
 goog.exportSymbol("psSetDebugMode", psSetDebugMode);
 function psRemoveProgressBar() {
-  window.psMob.removeProgressBar();
+  mobilizer_.removeProgressBar();
 }
 goog.exportSymbol("psRemoveProgressBar", psRemoveProgressBar);
-pagespeed.Mob.start = function() {
-  (new pagespeed.Mob).initialize();
+var psStartMobilization = function() {
+  mobilizer_.initialize();
 };
-goog.exportSymbol("pagespeed.Mob.start", pagespeed.Mob.start);
+goog.exportSymbol("psStartMobilization", psStartMobilization);
 })();

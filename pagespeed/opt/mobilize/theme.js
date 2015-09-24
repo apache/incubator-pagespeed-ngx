@@ -16,22 +16,23 @@
  * Author: huibao@google.com (Huibao Lin)
  */
 
-goog.provide('pagespeed.MobTheme');
+goog.provide('mob.Theme');
+goog.provide('mob.theme');
 
-goog.require('pagespeed.MobLogo');
-goog.require('pagespeed.MobUtil');
+goog.require('mob.Logo');
+goog.require('mob.util.ThemeData');
 
 
 
 /**
  * Creates a context for Pagespeed theme extraction.
- * @param {function(!pagespeed.MobUtil.ThemeData)} doneCallback
+ * @param {function(!mob.util.ThemeData)} doneCallback
  * @constructor
  */
-pagespeed.MobTheme = function(doneCallback) {
+mob.Theme = function(doneCallback) {
   /**
    * Callback to invoke when this object finishes its work.
-   * @private {?function(!pagespeed.MobUtil.ThemeData)}
+   * @private {?function(!mob.util.ThemeData)}
    */
   this.doneCallback_ = doneCallback;
 };
@@ -42,12 +43,12 @@ pagespeed.MobTheme = function(doneCallback) {
  * @param {?string} logoUrl
  * @param {!goog.color.Rgb} backgroundColor
  * @param {!goog.color.Rgb} foregroundColor
- * @return {!pagespeed.MobUtil.ThemeData}
+ * @return {!mob.util.ThemeData}
  */
-pagespeed.MobTheme.createThemeData = function(logoUrl, backgroundColor,
-                                              foregroundColor) {
-  var themeData = new pagespeed.MobUtil.ThemeData(logoUrl, backgroundColor,
-                                                  foregroundColor);
+mob.Theme.createThemeData = function(logoUrl, backgroundColor,
+                                     foregroundColor) {
+  var themeData =
+      new mob.util.ThemeData(logoUrl, backgroundColor, foregroundColor);
 
   // Export theme info if we are asked to.
   if (window.psMobPrecompute) {
@@ -61,19 +62,18 @@ pagespeed.MobTheme.createThemeData = function(logoUrl, backgroundColor,
 
 
 /**
- * @param {!Array.<!pagespeed.MobLogoCandidate>} candidates
+ * @param {!Array.<!mob.LogoCandidate>} candidates
  */
-pagespeed.MobTheme.prototype.logoComplete = function(candidates) {
+mob.Theme.prototype.logoComplete = function(candidates) {
   if (this.doneCallback_) {
     var themeData;
     if (candidates.length >= 1) {
       var candidate = candidates[0];
-      themeData = pagespeed.MobTheme.createThemeData(
-          candidate.logoRecord.foregroundImage.src, candidate.background,
-          candidate.foreground);
+      themeData =
+          mob.Theme.createThemeData(candidate.logoRecord.foregroundImage.src,
+                                    candidate.background, candidate.foreground);
     } else {
-      themeData = pagespeed.MobTheme.createThemeData(
-          null, [255, 255, 255], [0, 0, 0]);
+      themeData = mob.Theme.createThemeData(null, [255, 255, 255], [0, 0, 0]);
     }
     var doneCallback = this.doneCallback_;
     this.doneCallback_ = null;
@@ -84,11 +84,11 @@ pagespeed.MobTheme.prototype.logoComplete = function(candidates) {
 
 /**
  * Extract theme of the page. This is the entry method.
- * @param {function(!pagespeed.MobUtil.ThemeData)} doneCallback
+ * @param {function(!mob.util.ThemeData)} doneCallback
  */
-pagespeed.MobTheme.extractTheme = function(doneCallback) {
-  var mobTheme = new pagespeed.MobTheme(doneCallback);
-  var mobLogo = new pagespeed.MobLogo();
+mob.theme.extractTheme = function(doneCallback) {
+  var mobTheme = new mob.Theme(doneCallback);
+  var mobLogo = new mob.Logo();
   mobLogo.run(goog.bind(mobTheme.logoComplete, mobTheme),
               1 /* numCandidates */);
 };

@@ -18,7 +18,7 @@ goog.provide('mob.Iframe');
 
 goog.require('goog.dom');
 goog.require('goog.dom.TagName');
-goog.require('pagespeed.MobUtil');
+goog.require('mob.util.ElementId');
 
 
 
@@ -37,11 +37,11 @@ mob.Iframe = function() {};
 mob.Iframe.prototype.run = function() {
   var container = document.createElement(goog.dom.TagName.DIV);
   document.body.appendChild(container);
-  container.id = pagespeed.MobUtil.ElementId.IFRAME_CONTAINER;
+  container.id = mob.util.ElementId.IFRAME_CONTAINER;
 
-  var spacer = goog.dom.getRequiredElement(pagespeed.MobUtil.ElementId.SPACER);
+  var spacer = goog.dom.getRequiredElement(mob.util.ElementId.SPACER);
   container.appendChild(spacer);
 
-  var iframe = goog.dom.getRequiredElement(pagespeed.MobUtil.ElementId.IFRAME);
+  var iframe = goog.dom.getRequiredElement(mob.util.ElementId.IFRAME);
   container.appendChild(iframe);
 };

@@ -148,7 +148,7 @@ class MobilizeRewriteFilterTest : public RewriteTestBase {
 
   GoogleString ScriptsAtEndOfBody() const {
     return "<script src=\"/psajs/mobilize.0.js\"></script>"
-           "<script>pagespeed.Mob.start();</script>";
+           "<script>psStartMobilization();</script>";
   }
 
   GoogleString Spacer() const {

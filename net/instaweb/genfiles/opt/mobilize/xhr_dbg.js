@@ -603,7 +603,7 @@ goog.tagUnsealableClass = function(a) {
   !COMPILED && goog.defineClass.SEAL_CLASS_INSTANCES && (a.prototype[goog.UNSEALABLE_CONSTRUCTOR_PROPERTY_] = !0);
 };
 goog.UNSEALABLE_CONSTRUCTOR_PROPERTY_ = "goog_defineClass_legacy_unsealable";
-var pagespeed = {XhrHijack:function(a) {
+var mob = {XhrHijack:function(a) {
   this.xhr = a || new this.XMLHttpRequestConstructor_;
   this.onreadystatechange = null;
   this.readyState = 0;
@@ -611,32 +611,32 @@ var pagespeed = {XhrHijack:function(a) {
   this.xhr.onreadystatechange = this.readyCallback.bind(this);
   this.xhr.onload = this.onloadCallback.bind(this);
 }};
-pagespeed.XhrHijack.queuedEvents_ = [];
-pagespeed.XhrHijack.listener_ = {};
-pagespeed.XhrHijack.SEND_EVENT_CHAR_ = "s";
-pagespeed.XhrHijack.listener_.xhrSendHook = function() {
-  pagespeed.XhrHijack.queuedEvents_.push(pagespeed.XhrHijack.SEND_EVENT_CHAR_);
+mob.XhrHijack.queuedEvents_ = [];
+mob.XhrHijack.listener_ = {};
+mob.XhrHijack.SEND_EVENT_CHAR_ = "s";
+mob.XhrHijack.listener_.xhrSendHook = function() {
+  mob.XhrHijack.queuedEvents_.push(mob.XhrHijack.SEND_EVENT_CHAR_);
 };
-pagespeed.XhrHijack.listener_.xhrResponseHook = function(a) {
-  pagespeed.XhrHijack.queuedEvents_.push(a);
+mob.XhrHijack.listener_.xhrResponseHook = function(a) {
+  mob.XhrHijack.queuedEvents_.push(a);
 };
-pagespeed.XhrHijack.setListener = function(a) {
-  pagespeed.XhrHijack.listener_ = a;
-  for (a = 0;a < pagespeed.XhrHijack.queuedEvents_.length;++a) {
-    var b = pagespeed.XhrHijack.queuedEvents_[a];
-    b == pagespeed.XhrHijack.SEND_EVENT_CHAR_ ? pagespeed.XhrHijack.listener_.xhrSendHook() : pagespeed.XhrHijack.listener_.xhrResponseHook(b);
+mob.XhrHijack.setListener = function(a) {
+  mob.XhrHijack.listener_ = a;
+  for (a = 0;a < mob.XhrHijack.queuedEvents_.length;++a) {
+    var b = mob.XhrHijack.queuedEvents_[a];
+    b == mob.XhrHijack.SEND_EVENT_CHAR_ ? mob.XhrHijack.listener_.xhrSendHook() : mob.XhrHijack.listener_.xhrResponseHook(b);
   }
-  pagespeed.XhrHijack.queuedEvents_ = null;
+  mob.XhrHijack.queuedEvents_ = null;
 };
-window.pagespeedXhrHijackSetListener = pagespeed.XhrHijack.setListener;
-pagespeed.XhrHijack.prototype.XMLHttpRequestConstructor_ = XMLHttpRequest;
-pagespeed.XhrHijack.prototype.onloadCallback = function() {
+window.pagespeedXhrHijackSetListener = mob.XhrHijack.setListener;
+mob.XhrHijack.prototype.XMLHttpRequestConstructor_ = XMLHttpRequest;
+mob.XhrHijack.prototype.onloadCallback = function() {
   this.xhr.responseText && (this.responseText = this.xhr.responseText);
   if (this.onload) {
     this.onload();
   }
 };
-pagespeed.XhrHijack.prototype.readyCallback = function() {
+mob.XhrHijack.prototype.readyCallback = function() {
   this.readyState = this.xhr.readyState;
   this.status = this.xhr.status;
   this.responseText = this.xhr.responseText;
@@ -644,29 +644,29 @@ pagespeed.XhrHijack.prototype.readyCallback = function() {
   if (this.onreadystatechange) {
     this.onreadystatechange();
   }
-  4 == this.readyState && pagespeed.XhrHijack.listener_.xhrResponseHook(this.status);
+  4 == this.readyState && mob.XhrHijack.listener_.xhrResponseHook(this.status);
 };
-pagespeed.XhrHijack.prototype.abort = function() {
+mob.XhrHijack.prototype.abort = function() {
   this.xhr.abort();
 };
-pagespeed.XhrHijack.prototype.open = function(a, b, c, d, e) {
+mob.XhrHijack.prototype.open = function(a, b, c, d, e) {
   this.xhr.open(a, b, c, d, e);
 };
-pagespeed.XhrHijack.prototype.send = function(a) {
-  pagespeed.XhrHijack.listener_.xhrSendHook();
+mob.XhrHijack.prototype.send = function(a) {
+  mob.XhrHijack.listener_.xhrSendHook();
   this.xhr.send(a);
 };
-pagespeed.XhrHijack.prototype.overrideMimeType = function(a) {
+mob.XhrHijack.prototype.overrideMimeType = function(a) {
   this.xhr.overrideMimeType(a);
 };
-pagespeed.XhrHijack.prototype.setRequestHeader = function(a, b) {
+mob.XhrHijack.prototype.setRequestHeader = function(a, b) {
   this.xhr.setRequestHeader(a, b);
 };
-pagespeed.XhrHijack.prototype.getAllResponseHeaders = function() {
+mob.XhrHijack.prototype.getAllResponseHeaders = function() {
   return this.xhr.getAllResponseHeaders();
 };
-pagespeed.XhrHijack.prototype.getResponseHeader = function(a) {
+mob.XhrHijack.prototype.getResponseHeader = function(a) {
   return this.xhr.getResponseHeader(a);
 };
-window.XMLHttpRequest = pagespeed.XhrHijack;
+window.XMLHttpRequest = mob.XhrHijack;
 })();

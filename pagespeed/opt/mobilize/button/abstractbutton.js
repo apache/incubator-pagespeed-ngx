@@ -20,13 +20,14 @@ goog.provide('mob.button.AbstractButton');
 
 goog.require('goog.dom.TagName');
 goog.require('goog.dom.classlist');
-goog.require('pagespeed.MobUtil');
+goog.require('mob.util');
+goog.require('mob.util.ElementClass');
 
 
 
 /**
  * Base class for buttons.
- * @param {!pagespeed.MobUtil.ElementId} id
+ * @param {!mob.util.ElementId} id
  * @param {string} iconImage base64 encoded image.
  * @param {!goog.color.Rgb} color for the image icon.
  * @param {?string} labelText Optional text for label.
@@ -40,7 +41,7 @@ mob.button.AbstractButton = function(id, iconImage, color, labelText) {
   this.el = document.createElement(goog.dom.TagName.A);
 
   /**
-   * @private {!pagespeed.MobUtil.ElementId}
+   * @private {!mob.util.ElementId}
    */
   this.id_ = id;
 
@@ -74,21 +75,20 @@ mob.button.AbstractButton = function(id, iconImage, color, labelText) {
 mob.button.AbstractButton.prototype.createButton = function() {
   this.el.id = this.id_;
 
-  goog.dom.classlist.add(this.el, pagespeed.MobUtil.ElementClass.BUTTON);
+  goog.dom.classlist.add(this.el, mob.util.ElementClass.BUTTON);
   this.el.onclick = goog.bind(this.clickHandler, this);
 
   var icon = document.createElement(goog.dom.TagName.DIV);
-  goog.dom.classlist.add(icon, pagespeed.MobUtil.ElementClass.BUTTON_ICON);
+  goog.dom.classlist.add(icon, mob.util.ElementClass.BUTTON_ICON);
   // We set the image using backgroundImage because if it's a foreground image
   // then dialing fails on a Samsung Galaxy Note 2.
   icon.style.backgroundImage =
-      'url(' + pagespeed.MobUtil.synthesizeImage(this.iconImage_, this.color_) +
-      ')';
+      'url(' + mob.util.synthesizeImage(this.iconImage_, this.color_) + ')';
   this.el.appendChild(icon);
 
   if (this.labelText_) {
     var label = document.createElement(goog.dom.TagName.P);
-    goog.dom.classlist.add(label, pagespeed.MobUtil.ElementClass.BUTTON_TEXT);
+    goog.dom.classlist.add(label, mob.util.ElementClass.BUTTON_TEXT);
     this.el.appendChild(label);
     label.appendChild(document.createTextNode(this.labelText_));
   }

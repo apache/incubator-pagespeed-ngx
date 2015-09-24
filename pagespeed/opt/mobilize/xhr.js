@@ -17,7 +17,7 @@
  */
 
 
-goog.provide('pagespeed.XhrHijack');
+goog.provide('mob.XhrHijack');
 
 
 
@@ -58,7 +58,7 @@ goog.provide('pagespeed.XhrHijack');
  * http://docs.closure-library.googlecode.com/git/local_closure_goog_net_corsxmlhttpfactory.js.source.html
  * That will at least give us type annotations to copy.
  */
-pagespeed.XhrHijack = function(xhr) {
+mob.XhrHijack = function(xhr) {
   this.xhr = xhr || new this.XMLHttpRequestConstructor_();
   this.onreadystatechange = null;
   this.readyState = 0;
@@ -78,7 +78,7 @@ pagespeed.XhrHijack = function(xhr) {
  *
  * @private
  */
-pagespeed.XhrHijack.queuedEvents_ = [];
+mob.XhrHijack.queuedEvents_ = [];
 
 
 /**
@@ -88,20 +88,20 @@ pagespeed.XhrHijack.queuedEvents_ = [];
  *
  * @private
  */
-pagespeed.XhrHijack.listener_ = {};
+mob.XhrHijack.listener_ = {};
 
 
 /**
  * @const @private {string}
  */
-pagespeed.XhrHijack.SEND_EVENT_CHAR_ = 's';
+mob.XhrHijack.SEND_EVENT_CHAR_ = 's';
 
 
 /**
  * Default handler for xhrSendHook.
  */
-pagespeed.XhrHijack.listener_['xhrSendHook'] = function() {
-  pagespeed.XhrHijack.queuedEvents_.push(pagespeed.XhrHijack.SEND_EVENT_CHAR_);
+mob.XhrHijack.listener_['xhrSendHook'] = function() {
+  mob.XhrHijack.queuedEvents_.push(mob.XhrHijack.SEND_EVENT_CHAR_);
 };
 
 
@@ -109,8 +109,8 @@ pagespeed.XhrHijack.listener_['xhrSendHook'] = function() {
  * Default handler for xhrResponseHook.
  * @param {number} http_status
  */
-pagespeed.XhrHijack.listener_['xhrResponseHook'] = function(http_status) {
-  pagespeed.XhrHijack.queuedEvents_.push(http_status);
+mob.XhrHijack.listener_['xhrResponseHook'] = function(http_status) {
+  mob.XhrHijack.queuedEvents_.push(http_status);
 };
 
 
@@ -128,19 +128,19 @@ pagespeed.XhrHijack.listener_['xhrResponseHook'] = function(http_status) {
  * TODO(jmarantz): Use an at-interface with the above methods defined, and
  * then use the type annotation to ensure they are defined correctly.
  */
-pagespeed.XhrHijack.setListener = function(listener) {
-  pagespeed.XhrHijack.listener_ = listener;
-  for (var i = 0; i < pagespeed.XhrHijack.queuedEvents_.length; ++i) {
-    var event = pagespeed.XhrHijack.queuedEvents_[i];
-    if (event == pagespeed.XhrHijack.SEND_EVENT_CHAR_) {
-      pagespeed.XhrHijack.listener_['xhrSendHook']();
+mob.XhrHijack.setListener = function(listener) {
+  mob.XhrHijack.listener_ = listener;
+  for (var i = 0; i < mob.XhrHijack.queuedEvents_.length; ++i) {
+    var event = mob.XhrHijack.queuedEvents_[i];
+    if (event == mob.XhrHijack.SEND_EVENT_CHAR_) {
+      mob.XhrHijack.listener_['xhrSendHook']();
     } else {
-      pagespeed.XhrHijack.listener_['xhrResponseHook'](event);
+      mob.XhrHijack.listener_['xhrResponseHook'](event);
     }
   }
-  pagespeed.XhrHijack.queuedEvents_ = null;  // Will not be used again.
+  mob.XhrHijack.queuedEvents_ = null;  // Will not be used again.
 };
-window['pagespeedXhrHijackSetListener'] = pagespeed.XhrHijack.setListener;
+window['pagespeedXhrHijackSetListener'] = mob.XhrHijack.setListener;
 
 
 /**
@@ -148,14 +148,14 @@ window['pagespeedXhrHijackSetListener'] = pagespeed.XhrHijack.setListener;
  * our own hooks to run after the normal callback runs.
  * @private
  */
-pagespeed.XhrHijack.prototype.XMLHttpRequestConstructor_ = XMLHttpRequest;
+mob.XhrHijack.prototype.XMLHttpRequestConstructor_ = XMLHttpRequest;
 
 
 /**
  * Callback to run onload, transferring the responseText, and calling
  * client onload function.
  */
-pagespeed.XhrHijack.prototype.onloadCallback = function() {
+mob.XhrHijack.prototype.onloadCallback = function() {
   if (this.xhr.responseText) {
     this.responseText = this.xhr.responseText;
   }
@@ -168,7 +168,7 @@ pagespeed.XhrHijack.prototype.onloadCallback = function() {
 /**
  * Wrapped onreadystatechange callback.
  */
-pagespeed.XhrHijack.prototype.readyCallback = function() {
+mob.XhrHijack.prototype.readyCallback = function() {
   // hijack more: http://www.w3.org/TR/2006/WD-XMLHttpRequest-20060405/
   this.readyState = this.xhr.readyState;
   this.status = this.xhr.status;
@@ -180,20 +180,20 @@ pagespeed.XhrHijack.prototype.readyCallback = function() {
     this.onreadystatechange();
   }
   if (this.readyState == 4) {
-    pagespeed.XhrHijack.listener_['xhrResponseHook'](this.status);
+    mob.XhrHijack.listener_['xhrResponseHook'](this.status);
   }
 };
 
 
 /**
  * Wrapped abort callback.
- * @this {pagespeed.XhrHijack}
+ * @this {mob.XhrHijack}
  *
  * Note: this usage of at-this is deployed in lieu of at-export because of
  * much smaller output file sizes for this module, which is loaded blocking
  * in head.
  */
-pagespeed.XhrHijack.prototype['abort'] = function() {
+mob.XhrHijack.prototype['abort'] = function() {
   this.xhr.abort();
 };
 
@@ -207,13 +207,13 @@ pagespeed.XhrHijack.prototype['abort'] = function() {
  * @param {?boolean} c
  * @param {?string} d
  * @param {?string} e
- * @this {pagespeed.XhrHijack}
+ * @this {mob.XhrHijack}
  *
  * Note: this usage of at-this is deployed in lieu of at-export because of
  * much smaller output file sizes for this module, which is loaded blocking
  * in head.
  */
-pagespeed.XhrHijack.prototype['open'] = function(a, b, c, d, e) {
+mob.XhrHijack.prototype['open'] = function(a, b, c, d, e) {
   this.xhr.open(a, b, c, d, e);
 };
 
@@ -222,14 +222,14 @@ pagespeed.XhrHijack.prototype['open'] = function(a, b, c, d, e) {
  * Hijacked send call, helping us track outstanding XHRs.
  * @param {!ArrayBuffer|!ArrayBufferView|!Blob|!Document|!FormData|string=}
  *     opt_x
- * @this {pagespeed.XhrHijack}
+ * @this {mob.XhrHijack}
  *
  * Note: this usage of at-this is deployed in lieu of at-export because of
  * much smaller output file sizes for this module, which is loaded blocking
  * in head.
  */
-pagespeed.XhrHijack.prototype['send'] = function(opt_x) {
-  pagespeed.XhrHijack.listener_['xhrSendHook']();
+mob.XhrHijack.prototype['send'] = function(opt_x) {
+  mob.XhrHijack.listener_['xhrSendHook']();
   this.xhr.send(opt_x);
 };
 
@@ -237,13 +237,13 @@ pagespeed.XhrHijack.prototype['send'] = function(opt_x) {
 /**
  * Hijacked.
  * @param {string} x
- * @this {pagespeed.XhrHijack}
+ * @this {mob.XhrHijack}
  *
  * Note: this usage of at-this is deployed in lieu of at-export because of
  * much smaller output file sizes for this module, which is loaded blocking
  * in head.
  */
-pagespeed.XhrHijack.prototype['overrideMimeType'] = function(x) {
+mob.XhrHijack.prototype['overrideMimeType'] = function(x) {
   this.xhr.overrideMimeType(x);
 };
 
@@ -252,13 +252,13 @@ pagespeed.XhrHijack.prototype['overrideMimeType'] = function(x) {
  * Hijacked.
  * @param {string} name The name of the request header.
  * @param {string} value The value of the requets header.
- * @this {pagespeed.XhrHijack}
+ * @this {mob.XhrHijack}
  *
  * Note: this usage of at-this is deployed in lieu of at-export because of
  * much smaller output file sizes for this module, which is loaded blocking
  * in head.
  */
-pagespeed.XhrHijack.prototype['setRequestHeader'] = function(name, value) {
+mob.XhrHijack.prototype['setRequestHeader'] = function(name, value) {
   this.xhr.setRequestHeader(name, value);
 };
 
@@ -266,13 +266,13 @@ pagespeed.XhrHijack.prototype['setRequestHeader'] = function(name, value) {
 /**
  * Hijacked.
  * @return {string}
- * @this {pagespeed.XhrHijack}
+ * @this {mob.XhrHijack}
  *
  * Note: this usage of at-this is deployed in lieu of at-export because of
  * much smaller output file sizes for this module, which is loaded blocking
  * in head.
  */
-pagespeed.XhrHijack.prototype['getAllResponseHeaders'] = function() {
+mob.XhrHijack.prototype['getAllResponseHeaders'] = function() {
   return this.xhr.getAllResponseHeaders();
 };
 
@@ -281,19 +281,19 @@ pagespeed.XhrHijack.prototype['getAllResponseHeaders'] = function() {
  * Hijacked.
  * @param {string} name
  * @return {string}
- * @this {pagespeed.XhrHijack}
+ * @this {mob.XhrHijack}
  *
  * Note: this usage of at-this is deployed in lieu of at-export because of
  * much smaller output file sizes for this module, which is loaded blocking
  * in head.
  */
-pagespeed.XhrHijack.prototype['getResponseHeader'] = function(name) {
+mob.XhrHijack.prototype['getResponseHeader'] = function(name) {
   return this.xhr.getResponseHeader(name);
 };
 
 
 /**
- * Hijack XMLHttpRequest with pagespeed.XhrHijack.
+ * Hijack XMLHttpRequest with mob.XhrHijack.
  */
 window.XMLHttpRequest = /** @type {function (new:XMLHttpRequest)} */
-    (pagespeed.XhrHijack);
+    (mob.XhrHijack);

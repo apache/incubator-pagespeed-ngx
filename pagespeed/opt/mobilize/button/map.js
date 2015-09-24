@@ -19,7 +19,9 @@
 goog.provide('mob.button.Map');
 
 goog.require('mob.button.AbstractButton');
-goog.require('pagespeed.MobUtil');
+goog.require('mob.util');
+goog.require('mob.util.BeaconEvents');
+goog.require('mob.util.ElementId');
 
 
 
@@ -53,8 +55,7 @@ mob.button.Map = function(color, mapLocation, conversionId, conversionLabel) {
    */
   this.conversionLabel_ = conversionLabel;
 
-  mob.button.Map.base(this, 'constructor',
-                      pagespeed.MobUtil.ElementId.MAP_BUTTON,
+  mob.button.Map.base(this, 'constructor', mob.util.ElementId.MAP_BUTTON,
                       mob.button.Map.ICON_, color, mob.button.Map.LABEL_);
 };
 goog.inherits(mob.button.Map, mob.button.AbstractButton);
@@ -86,8 +87,8 @@ mob.button.Map.LABEL_ = 'GET DIRECTIONS';
 
 /** @override */
 mob.button.Map.prototype.clickHandler = function() {
-  pagespeed.MobUtil.sendBeaconEvent(pagespeed.MobUtil.BeaconEvents.MAP_BUTTON,
-                                    goog.bind(this.openMap_, this));
+  mob.util.sendBeaconEvent(mob.util.BeaconEvents.MAP_BUTTON,
+                           goog.bind(this.openMap_, this));
 };
 
 

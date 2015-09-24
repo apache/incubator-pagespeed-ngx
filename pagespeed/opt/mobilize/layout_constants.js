@@ -16,7 +16,8 @@
  * Author: jmarantz@google.com (Joshua Marantz)
  */
 
-goog.provide('pagespeed.mobLayoutConstants');
+goog.provide('mob.layoutConstants');
+
 goog.require('goog.dom.TagName');
 goog.require('goog.object');
 
@@ -25,7 +26,7 @@ goog.require('goog.object');
  * List of style attributes that we want to clamp to 4px max.
  * @const {!Array.<string>}
  */
-pagespeed.mobLayoutConstants.CLAMPED_STYLES = [
+mob.layoutConstants.CLAMPED_STYLES = [
   'border-bottom-width',
   'border-left-width',
   'border-right-width',
@@ -47,7 +48,7 @@ pagespeed.mobLayoutConstants.CLAMPED_STYLES = [
  * List of style attributes that we want to remove for single-column layouts.
  * @const {!Array.<string>}
  */
-pagespeed.mobLayoutConstants.PROPERTIES_TO_REMOVE_FOR_SINGLE_COLUMN = [
+mob.layoutConstants.PROPERTIES_TO_REMOVE_FOR_SINGLE_COLUMN = [
   'border-left',
   'border-right',
   'margin-left',
@@ -62,10 +63,8 @@ pagespeed.mobLayoutConstants.PROPERTIES_TO_REMOVE_FOR_SINGLE_COLUMN = [
  * computing the mobilization maximum width.
  * @const {!Array.<string>}
  */
-pagespeed.mobLayoutConstants.HORIZONTAL_PADDING_PROPERTIES = [
-  'padding-left',
-  'padding-right'
-];
+mob.layoutConstants.HORIZONTAL_PADDING_PROPERTIES =
+    ['padding-left', 'padding-right'];
 
 
 /**
@@ -75,22 +74,12 @@ pagespeed.mobLayoutConstants.HORIZONTAL_PADDING_PROPERTIES = [
  *
  * @const {!Object.<string, boolean>}
  */
-pagespeed.mobLayoutConstants.FLEXIBLE_WIDTH_TAGS = goog.object.createSet(
-    goog.dom.TagName.A,
-    goog.dom.TagName.DIV,
-    goog.dom.TagName.FORM,
-    goog.dom.TagName.H1,
-    goog.dom.TagName.H2,
-    goog.dom.TagName.H3,
-    goog.dom.TagName.H4,
-    goog.dom.TagName.P,
-    goog.dom.TagName.SPAN,
-    goog.dom.TagName.TBODY,
-    goog.dom.TagName.TD,
-    goog.dom.TagName.TFOOT,
-    goog.dom.TagName.TH,
-    goog.dom.TagName.THEAD,
-    goog.dom.TagName.TR);
+mob.layoutConstants.FLEXIBLE_WIDTH_TAGS = goog.object.createSet(
+    goog.dom.TagName.A, goog.dom.TagName.DIV, goog.dom.TagName.FORM,
+    goog.dom.TagName.H1, goog.dom.TagName.H2, goog.dom.TagName.H3,
+    goog.dom.TagName.H4, goog.dom.TagName.P, goog.dom.TagName.SPAN,
+    goog.dom.TagName.TBODY, goog.dom.TagName.TD, goog.dom.TagName.TFOOT,
+    goog.dom.TagName.TH, goog.dom.TagName.THEAD, goog.dom.TagName.TR);
 
 
 /**
@@ -98,20 +87,15 @@ pagespeed.mobLayoutConstants.FLEXIBLE_WIDTH_TAGS = goog.object.createSet(
  *
  * @const {!Object.<string, boolean>}
  */
-pagespeed.mobLayoutConstants.DONT_TOUCH_TAGS = goog.object.createSet(
-    goog.dom.TagName.SCRIPT,
-    goog.dom.TagName.STYLE,
-    goog.dom.TagName.IFRAME);
+mob.layoutConstants.DONT_TOUCH_TAGS = goog.object.createSet(
+    goog.dom.TagName.SCRIPT, goog.dom.TagName.STYLE, goog.dom.TagName.IFRAME);
 
 
 /**
  * List of attributes for which we want to remove any percentage specs.
  * @const {!Array.<string>}
  */
-pagespeed.mobLayoutConstants.NO_PERCENT = [
-  'left',
-  'width'
-];
+mob.layoutConstants.NO_PERCENT = ['left', 'width'];
 
 
 /**
@@ -120,8 +104,5 @@ pagespeed.mobLayoutConstants.NO_PERCENT = [
  *
  * @const {!Array.<string>}
  */
-pagespeed.mobLayoutConstants.LAYOUT_CRITICAL = [
-  goog.dom.TagName.CODE,
-  goog.dom.TagName.PRE,
-  goog.dom.TagName.UL
-];
+mob.layoutConstants.LAYOUT_CRITICAL =
+    [goog.dom.TagName.CODE, goog.dom.TagName.PRE, goog.dom.TagName.UL];

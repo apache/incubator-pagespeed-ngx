@@ -10,7 +10,7 @@ URL=$EXAMPLE_ROOT/index.html?PageSpeedFilters=mobilize
 # Pretend to be XHR.
 OUT=$($WGET_DUMP --header=X-Requested-With:XMLHttpRequest $URL)
 # Shouldn't get instrumented.
-check_not_from "$OUT" fgrep -q 'pagespeed.Mob.start'
+check_not_from "$OUT" fgrep -q 'psStartMobilization'
 check_not_from "$OUT" fgrep -q '<header id="psmob-header-bar"'
 check_not_from "$OUT" fgrep -q '<nav id="psmob-nav-panel"'
 check_not_from "$OUT" fgrep -q '<iframe id="psmob-iframe"'
@@ -18,7 +18,7 @@ check_not_from "$OUT" fgrep -q '<iframe id="psmob-iframe"'
 start_test mobilize does work on normal request
 # Page got instrumented.
 OUT=$($WGET_DUMP $URL)
-check_from "$OUT" fgrep -q 'pagespeed.Mob.start'
+check_from "$OUT" fgrep -q 'psStartMobilization'
 check_from "$OUT" fgrep -q '<header id="psmob-header-bar"'
 check_from "$OUT" fgrep -q '<nav id="psmob-nav-panel"'
 check_not_from "$OUT" fgrep -q '<iframe id="psmob-iframe"'
@@ -27,7 +27,7 @@ start_test mobilize get disabled by noscript mode
 # Page got instrumented.
 URL=$EXAMPLE_ROOT/index.html?PageSpeedFilters=mobilize\&PageSpeed=noscript
 OUT=$($WGET_DUMP $URL)
-check_not_from "$OUT" fgrep -q 'pagespeed.Mob.start'
+check_not_from "$OUT" fgrep -q 'psStartMobilization'
 check_not_from "$OUT" fgrep -q '<header id="psmob-header-bar"'
 check_not_from "$OUT" fgrep -q '<nav id="psmob-nav-panel"'
 check_not_from "$OUT" fgrep -q '<iframe id="psmob-iframe"'

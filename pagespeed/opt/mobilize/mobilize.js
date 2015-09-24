@@ -17,38 +17,37 @@
  */
 
 
-goog.provide('pagespeed.Mob');
+goog.provide('mob');
+goog.provide('mob.Mob');
 
 goog.require('goog.events.EventType');
 goog.require('goog.string');
+goog.require('mob.Layout');
+goog.require('mob.Nav');
 goog.require('mob.ThemePicker');
-goog.require('pagespeed.MobLayout');
-goog.require('pagespeed.MobNav');
-goog.require('pagespeed.MobUtil');
+goog.require('mob.util');
+goog.require('mob.util.BeaconEvents');
+goog.require('mob.util.Dimensions');
+goog.require('mob.util.ElementId');
+goog.require('mob.util.ThemeData');
 
 
 // Setup some initial beacons to track page loading.
-pagespeed.MobUtil.sendBeaconEvent(pagespeed.MobUtil.BeaconEvents.INITIAL_EVENT);
+mob.util.sendBeaconEvent(mob.util.BeaconEvents.INITIAL_EVENT);
 
 window.addEventListener(goog.events.EventType.LOAD, function() {
-  pagespeed.MobUtil.sendBeaconEvent(pagespeed.MobUtil.BeaconEvents.LOAD_EVENT);
+  mob.util.sendBeaconEvent(mob.util.BeaconEvents.LOAD_EVENT);
 });
 
 
 
 /**
  * Creates a context for PageSpeed mobilization, serving to orchestrate
- * the efforts of MobNav, MobLayout, and MobLogo.
- *
- * TODO(jmarantz): consider renaming above classes to pagespeed.Mob.Nav,
- * Mob.Layout, and pagespeed.Mob.Logo.  Simply doing that leads to compilation
- * errors with cyclic dependencies or to undefined variables.  One possible
- * resolution is to rename this class to pagespeed.Mob.Controller and have
- * pagespeed.Mob be strictly a namespace.
+ * the efforts of mob.Nav, mob.Layout, and mob.Logo.
  *
  * @constructor
  */
-pagespeed.Mob = function() {
+mob.Mob = function() {
   /**
    * Tracks the number of currently active XHR requests made.  We
    * delay mobilization until the active XHR request count goes to 0.
@@ -65,9 +64,9 @@ pagespeed.Mob = function() {
    * Any images that are not populated from C++ will be populated in the
    * same format from an new image onload callback.  To avoid initiating
    * redundant fetches for the same image, we will initiatially populate
-   * the map with the sential Dimensions pagespeed.Mob.IN_TRANSIT_.
+   * the map with the sential Dimensions mob.Mob.IN_TRANSIT_.
    *
-   * @private {!Object.<string, !pagespeed.MobUtil.Dimensions>}
+   * @private {!Object.<string, !mob.util.Dimensions>}
    */
   this.imageMap_ = {};
 
@@ -137,17 +136,17 @@ pagespeed.Mob = function() {
   this.workPerLayoutPass_ = 0;
 
   /**
-   * MobLayout context.  This is not needed until we are ready to run the
+   * Layout context.  This is not needed until we are ready to run the
    * layout engine.
-   * @private {!pagespeed.MobLayout}
+   * @private {!mob.Layout}
    */
-  this.layout_ = new pagespeed.MobLayout(this);
+  this.layout_ = new mob.Layout(this);
 
-  this.layout_.addDontTouchId(pagespeed.MobUtil.ElementId.PROGRESS_SCRIM);
+  this.layout_.addDontTouchId(mob.util.ElementId.PROGRESS_SCRIM);
 
   /**
    * Navigation context.
-   * @private {?pagespeed.MobNav}
+   * @private {?mob.Nav}
    */
   this.mobNav_ = null;
 };
@@ -156,9 +155,9 @@ pagespeed.Mob = function() {
 /**
  * String used as a temporary imageMap_ value after an image has
  * started to load, but before it's done loading.
- * @private @const {!pagespeed.MobUtil.Dimensions}
+ * @private @const {!mob.util.Dimensions}
  */
-pagespeed.Mob.IN_TRANSIT_ = new pagespeed.MobUtil.Dimensions(-1, -1);
+mob.Mob.IN_TRANSIT_ = new mob.util.Dimensions(-1, -1);
 
 
 /**
@@ -169,13 +168,13 @@ pagespeed.Mob.IN_TRANSIT_ = new pagespeed.MobUtil.Dimensions(-1, -1);
  * units of tenths of a millisecond.
  * @private @const {number}
  */
-pagespeed.Mob.COST_PER_IMAGE_ = 1000;
+mob.Mob.COST_PER_IMAGE_ = 1000;
 
 
 /**
  * Initialize mobilization.
  */
-pagespeed.Mob.prototype.initialize = function() {
+mob.Mob.prototype.initialize = function() {
   // TODO(jud): This should be provided as a separate JS file, rather than being
   // compiled into this module.
   if (window.psConfigMode) {
@@ -184,10 +183,10 @@ pagespeed.Mob.prototype.initialize = function() {
     return;
   }
 
-  var themeData = new pagespeed.MobUtil.ThemeData(
+  var themeData = new mob.util.ThemeData(
       window.psMobLogoUrl || '', window.psMobForegroundColor || [255, 255, 255],
       window.psMobBackgroundColor || [0, 0, 0]);
-  this.mobNav_ = new pagespeed.MobNav();
+  this.mobNav_ = new mob.Nav();
   this.mobNav_.run(themeData);
 
   // Start layout re-synthesis if it has been configured.
@@ -202,12 +201,12 @@ pagespeed.Mob.prototype.initialize = function() {
  * Mobilizes the current web page.
  * @private
  */
-pagespeed.Mob.prototype.mobilizeSite_ = function() {
+mob.Mob.prototype.mobilizeSite_ = function() {
   if (this.pendingImageLoadCount_ == 0) {
-    pagespeed.MobUtil.consoleLog('mobilizing site');
+    mob.util.consoleLog('mobilizing site');
     // TODO(jmarantz): Remove this hack once we are compiling mob_logo.js in
     // the same module.
-    if (!window.psNavMode || pagespeed.MobUtil.inFriendlyIframe()) {
+    if (!window.psNavMode || mob.util.inFriendlyIframe()) {
       this.maybeRunLayout();
     }
   } else {
@@ -221,11 +220,10 @@ pagespeed.Mob.prototype.mobilizeSite_ = function() {
  * @param {!Element} img
  * @private
  */
-pagespeed.Mob.prototype.backgroundImageLoaded_ = function(img) {
-  this.imageMap_[img.src] = new pagespeed.MobUtil.Dimensions(
-      img.width, img.height);
+mob.Mob.prototype.backgroundImageLoaded_ = function(img) {
+  this.imageMap_[img.src] = new mob.util.Dimensions(img.width, img.height);
   --this.pendingImageLoadCount_;
-  this.updateProgressBar(pagespeed.Mob.COST_PER_IMAGE_, 'background image');
+  this.updateProgressBar(mob.Mob.COST_PER_IMAGE_, 'background image');
   if (this.pendingImageLoadCount_ == 0) {
     if (this.mobilizeAfterImageLoad_) {
       this.mobilizeSite_();
@@ -244,16 +242,15 @@ pagespeed.Mob.prototype.backgroundImageLoaded_ = function(img) {
  * @param {!Element} element
  * @private
  */
-pagespeed.Mob.prototype.collectBackgroundImages_ = function(element) {
+mob.Mob.prototype.collectBackgroundImages_ = function(element) {
   if (this.layout_.isDontTouchElement(element)) {
     return;
   }
-  var image = pagespeed.MobUtil.findBackgroundImage(element);
-  if (image &&
-      (goog.string.startsWith(image, 'http://') ||
-      (goog.string.startsWith(image, 'https://'))) &&
+  var image = mob.util.findBackgroundImage(element);
+  if (image && (goog.string.startsWith(image, 'http://') ||
+                (goog.string.startsWith(image, 'https://'))) &&
       !this.imageMap_[image]) {
-    this.imageMap_[image] = pagespeed.Mob.IN_TRANSIT_;
+    this.imageMap_[image] = mob.Mob.IN_TRANSIT_;
     var img = new Image();
     ++this.pendingImageLoadCount_;
     img.onload = goog.bind(this.backgroundImageLoaded_, this, img);
@@ -274,9 +271,9 @@ pagespeed.Mob.prototype.collectBackgroundImages_ = function(element) {
  * This is set as a property on the prototype because it is called by name from
  * a separately the compiled XHR hijack module that is inlined in the head.
  *
- * @this {pagespeed.Mob}
+ * @this {mob.Mob}
  */
-pagespeed.Mob.prototype['xhrSendHook'] = function() {
+mob.Mob.prototype['xhrSendHook'] = function() {
   ++this.activeRequestCount_;
 };
 
@@ -288,9 +285,9 @@ pagespeed.Mob.prototype['xhrSendHook'] = function() {
  * a separately the compiled XHR hijack module that is inlined in the head.
  *
  * @param {number} http_status_code
- * @this {pagespeed.Mob}
+ * @this {mob.Mob}
  */
-pagespeed.Mob.prototype['xhrResponseHook'] = function(http_status_code) {
+mob.Mob.prototype['xhrResponseHook'] = function(http_status_code) {
   // if (http_status_code == 200)
   --this.activeRequestCount_;
   this.addExtraWorkForDom();
@@ -303,9 +300,9 @@ pagespeed.Mob.prototype['xhrResponseHook'] = function(http_status_code) {
  * all the mobilization JavaScript has loaded.  This is the only public
  * entry point to mobilization.
  */
-pagespeed.Mob.prototype.initiateMobilization = function() {
+mob.Mob.prototype.initiateMobilization = function() {
   this.setDebugMode(window.psDebugMode);  // psDebugMode set from C++
-  this.domElementCount_ = pagespeed.MobUtil.countNodes(document.body);
+  this.domElementCount_ = mob.util.countNodes(document.body);
 
   // Compute the amount of work needed every time we need to run layout.
   // We'll layout at least once, but we will also run layout when we
@@ -316,7 +313,7 @@ pagespeed.Mob.prototype.initiateMobilization = function() {
 
   // We multiply the number of DOM elements by the number of passes.
   // That includes all the layout passes, plus 2 for menus and navigation.
-  if (window.psNavMode && pagespeed.MobUtil.inFriendlyIframe()) {
+  if (window.psNavMode && mob.util.inFriendlyIframe()) {
     this.totalWork_ += this.domElementCount_;  // logo
     this.totalWork_ += this.domElementCount_;  // nav
   }
@@ -327,12 +324,10 @@ pagespeed.Mob.prototype.initiateMobilization = function() {
     // renaming of the JSON variables.
     for (var url in window.psMobStaticImageInfo) {
       var dims = window.psMobStaticImageInfo[url];
-      this.imageMap_[url] = new pagespeed.MobUtil.Dimensions(
-          dims['w'], dims['h']);
+      this.imageMap_[url] = new mob.util.Dimensions(dims['w'], dims['h']);
     }
   }
-  this.totalWork_ += this.pendingImageLoadCount_ *
-      pagespeed.Mob.COST_PER_IMAGE_;
+  this.totalWork_ += this.pendingImageLoadCount_ * mob.Mob.COST_PER_IMAGE_;
 
   // Instructs our XHR hijack to call this.xhrSendHook and this.xhrResponseHook
   // whenever XHRs are sent and responses are received.
@@ -346,9 +341,8 @@ pagespeed.Mob.prototype.initiateMobilization = function() {
 /**
  * @return {boolean}
  */
-pagespeed.Mob.prototype.isReady = function() {
-  return ((this.activeRequestCount_ == 0) &&
-          (this.pendingCallbacks_ == 0) &&
+mob.Mob.prototype.isReady = function() {
+  return ((this.activeRequestCount_ == 0) && (this.pendingCallbacks_ == 0) &&
           (this.pendingImageLoadCount_ == 0));
 };
 
@@ -356,14 +350,14 @@ pagespeed.Mob.prototype.isReady = function() {
 /**
  * Runs the layout engine if all known activity has quiesced.
  */
-pagespeed.Mob.prototype.maybeRunLayout = function() {
+mob.Mob.prototype.maybeRunLayout = function() {
   if (this.isReady()) {
     if (window.psLayoutMode) {
       this.layout_.computeAllSizingAndResynthesize();
     }
     if (this.debugMode_) {
       var progressRemoveAnchor =
-          document.getElementById(pagespeed.MobUtil.ElementId.PROGRESS_REMOVE);
+          document.getElementById(mob.util.ElementId.PROGRESS_REMOVE);
       if (progressRemoveAnchor) {
         progressRemoveAnchor.textContent =
             'Remove Progress Bar and show mobilized site';
@@ -379,7 +373,7 @@ pagespeed.Mob.prototype.maybeRunLayout = function() {
  * Updates the progress bar after a layout pass.
  * @param {string} name
  */
-pagespeed.Mob.prototype.layoutPassDone = function(name) {
+mob.Mob.prototype.layoutPassDone = function(name) {
   this.updateProgressBar(this.domElementCount_, name);
 };
 
@@ -391,11 +385,11 @@ pagespeed.Mob.prototype.layoutPassDone = function(name) {
  * Returns null if the image was not mapped.
  *
  * @param {string} url
- * @return {?pagespeed.MobUtil.Dimensions}
+ * @return {?mob.util.Dimensions}
  */
-pagespeed.Mob.prototype.findImageSize = function(url) {
+mob.Mob.prototype.findImageSize = function(url) {
   var values = this.imageMap_[url];
-  if (values == pagespeed.Mob.IN_TRANSIT_) {
+  if (values == mob.Mob.IN_TRANSIT_) {
     values = null;
   }
   return values;
@@ -406,7 +400,7 @@ pagespeed.Mob.prototype.findImageSize = function(url) {
  * Increases our estimate of the total work required for mobilization.
  * This is used for updating the progress bar.
  */
-pagespeed.Mob.prototype.addExtraWorkForDom = function() {
+mob.Mob.prototype.addExtraWorkForDom = function() {
   this.totalWork_ += this.workPerLayoutPass_;
 };
 
@@ -417,16 +411,16 @@ pagespeed.Mob.prototype.addExtraWorkForDom = function() {
  * disappear when mobilization finishes, but waits for a user to dismiss it.
  * @param {boolean} debug
  */
-pagespeed.Mob.prototype.setDebugMode = function(debug) {
+mob.Mob.prototype.setDebugMode = function(debug) {
   this.debugMode_ = debug;
-  var log = document.getElementById(pagespeed.MobUtil.ElementId.PROGRESS_LOG);
+  var log = document.getElementById(mob.util.ElementId.PROGRESS_LOG);
   if (log) {
     log.style.color = debug ? '#333' : 'white';
   }
 
   if (debug) {
     var show_log =
-        document.getElementById(pagespeed.MobUtil.ElementId.PROGRESS_SHOW_LOG);
+        document.getElementById(mob.util.ElementId.PROGRESS_SHOW_LOG);
     if (show_log) {
       show_log.style.display = 'none';
     }
@@ -444,7 +438,7 @@ pagespeed.Mob.prototype.setDebugMode = function(debug) {
  * @param {number} unitsDone
  * @param {string} currentOp
  */
-pagespeed.Mob.prototype.updateProgressBar = function(unitsDone, currentOp) {
+mob.Mob.prototype.updateProgressBar = function(unitsDone, currentOp) {
   this.workDone_ += unitsDone;
   var percent = 100;
   if (this.totalWork_ > 0) {
@@ -454,8 +448,7 @@ pagespeed.Mob.prototype.updateProgressBar = function(unitsDone, currentOp) {
     }
   }
   if (percent != this.prevPercentage_) {
-    var span =
-        document.getElementById(pagespeed.MobUtil.ElementId.PROGRESS_SPAN);
+    var span = document.getElementById(mob.util.ElementId.PROGRESS_SPAN);
     if (span) {
       span.style.width = percent + '%';
     }
@@ -463,8 +456,8 @@ pagespeed.Mob.prototype.updateProgressBar = function(unitsDone, currentOp) {
   }
   var elapsedMs = goog.now() - this.startTimeMs_;
   var msg = '' + percent + '% ' + elapsedMs + 'ms: ' + currentOp;
-  pagespeed.MobUtil.consoleLog(msg);
-  var log = document.getElementById(pagespeed.MobUtil.ElementId.PROGRESS_LOG);
+  mob.util.consoleLog(msg);
+  var log = document.getElementById(mob.util.ElementId.PROGRESS_LOG);
   if (log) {
     log.textContent += msg + '\n';
   }
@@ -474,9 +467,8 @@ pagespeed.Mob.prototype.updateProgressBar = function(unitsDone, currentOp) {
 /**
  * Removes the progress bar from the screen, if it was present.
  */
-pagespeed.Mob.prototype.removeProgressBar = function() {
-  var progressBar =
-      document.getElementById(pagespeed.MobUtil.ElementId.PROGRESS_SCRIM);
+mob.Mob.prototype.removeProgressBar = function() {
+  var progressBar = document.getElementById(mob.util.ElementId.PROGRESS_SCRIM);
   if (progressBar) {
     progressBar.style.display = 'none';
     progressBar.parentNode.removeChild(progressBar);
@@ -485,11 +477,10 @@ pagespeed.Mob.prototype.removeProgressBar = function() {
 
 
 /**
- * We need a global 'psMob' object for now, for use in compatibility
- * functions. This should eventually disappear.
- * @type {!pagespeed.Mob}
+ * Mob object to be used by the exported functions below.
+ * @private {!mob.Mob}
  */
-window.psMob = new pagespeed.Mob();
+var mobilizer_ = new mob.Mob();
 
 
 /**
@@ -497,7 +488,7 @@ window.psMob = new pagespeed.Mob();
  * @export
  */
 function psSetDebugMode() {
-  window.psMob.setDebugMode(true);
+  mobilizer_.setDebugMode(true);
 }
 
 
@@ -506,7 +497,7 @@ function psSetDebugMode() {
  * @export
  */
 function psRemoveProgressBar() {
-  window.psMob.removeProgressBar();
+  mobilizer_.removeProgressBar();
 }
 
 
@@ -514,7 +505,6 @@ function psRemoveProgressBar() {
  * Main entry point to mobilization.
  * @export
  */
-pagespeed.Mob.start = function() {
-  var mob = new pagespeed.Mob();
-  mob.initialize();
+var psStartMobilization = function() {
+  mobilizer_.initialize();
 };

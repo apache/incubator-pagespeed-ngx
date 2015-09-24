@@ -576,7 +576,7 @@ body.mob-iframe {
 /*
  * The logo chooser sizing is based on a font-size of 12px, and manually
  * tweaked sizes for logos and colors based on that.  This is scaled in JS
- * (pagespeed.MobNav.prototype.chooserDisplayPopup_) via a CSS transform to
+ * (mob.Nav.prototype.chooserDisplayPopup_) via a CSS transform to
  * match the window size at the time it's instantiated.
  *
  * TODO(jmarantz): The CSS delivered to clients should not include the
