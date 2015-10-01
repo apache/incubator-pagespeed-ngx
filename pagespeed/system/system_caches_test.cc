@@ -21,7 +21,12 @@
 
 #include <cstdlib>
 #include <vector>
+#include <sys/socket.h>
 
+#include "apr_poll.h"
+#include "apr_version.h"
+#include "apr_pools.h"
+#include "apr_thread_proc.h"
 #include "base/logging.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/http_cache.h"
@@ -51,6 +56,7 @@
 #include "pagespeed/kernel/base/null_shared_mem.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/shared_string.h"
+#include "pagespeed/kernel/base/stack_buffer.h"
 #include "pagespeed/kernel/base/stl_util.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/base/timer.h"
@@ -59,6 +65,7 @@
 #include "pagespeed/kernel/cache/cache_interface.h"
 #include "pagespeed/kernel/cache/cache_spammer.h"
 #include "pagespeed/kernel/cache/cache_stats.h"
+#include "pagespeed/kernel/cache/cache_test_base.h"
 #include "pagespeed/kernel/cache/compressed_cache.h"
 #include "pagespeed/kernel/cache/fallback_cache.h"
 #include "pagespeed/kernel/cache/file_cache.h"
@@ -129,9 +136,18 @@ class SystemCachesTest : public CustomRewriteTestBase<SystemRewriteOptions> {
                            thread_system_.get());
   }
 
+  apr_size_t get_fake_memcached_port() {
+    return fake_memcached_port_;
+  }
+
+  void set_fake_memcached_port(apr_size_t port) {
+    fake_memcached_port_ = port;
+  }
+
  protected:
   static const int kThreadLimit = 3;
   static const int kUsableMetadataCacheSize = 8 * 1024;
+  apr_size_t fake_memcached_port_;
 
   // Helper that blocks for async cache lookups.
   class BlockingCallback : public CacheInterface::Callback {
@@ -200,6 +216,72 @@ class SystemCachesTest : public CustomRewriteTestBase<SystemRewriteOptions> {
     GoogleString value_;
   };
 
+  class FakeMemcacheServerThread : public ThreadSystem::Thread {
+   public:
+    FakeMemcacheServerThread(SystemCachesTest* owner)
+        : Thread(owner->thread_system_.get(), "fake_memcache",
+                 ThreadSystem::kJoinable),
+          owner_(owner),
+          mutex_(owner->thread_system_->NewMutex()),
+          notify_port_(mutex_->NewCondvar()) {}
+    virtual void Run() {
+      static const char kMessage[] = "blah\n";
+      apr_size_t message_size = STATIC_STRLEN(kMessage);
+      char buf[kStackBufferSize];
+      apr_size_t size = sizeof(buf) - 1;
+      apr_socket_t* accepted_socket = NULL;
+      apr_status_t status = apr_pool_create(&pool_, NULL);
+      ASSERT_EQ(APR_SUCCESS, status);
+      CreateSocketHelper();
+      // Bind to an open port randomly.
+      // Blocks on connection from main thread.
+      apr_socket_bind(listening_socket_, sock_addr_);
+      apr_socket_listen(listening_socket_, SOMAXCONN);
+      apr_socket_accept(&accepted_socket, listening_socket_, pool_);
+      apr_socket_recv(accepted_socket, buf, &size);
+      apr_socket_send(accepted_socket, kMessage, &message_size);
+      apr_pool_destroy(pool_);
+    }
+
+    void WaitForReady() {
+      ScopedMutex hold_lock(mutex_.get());
+      while (owner_->get_fake_memcached_port() == 0) {
+        notify_port_->Wait();
+      }
+    }
+
+   private:
+    void CreateSocketHelper() {
+      ScopedMutex hold_lock(mutex_.get());
+      SimpleRandom simple_random(owner_->thread_system_.get()->NewMutex());
+      apr_size_t port_num;
+      const apr_int32_t kFamily = APR_INET;
+      sock_addr_ = NULL;
+      listening_socket_ = NULL;
+      apr_status_t status;
+      // Bind to an open port randomly.
+      do {
+        // Set port_num to 1024 - 65535
+        port_num = (simple_random.Next() % 64511) + 1024;
+        status =
+            apr_sockaddr_info_get(&sock_addr_, 0, kFamily, port_num, 0, pool_);
+        if (status == APR_SUCCESS) {
+          status = apr_socket_create(&listening_socket_, sock_addr_->family,
+                                      SOCK_STREAM, APR_PROTO_TCP, pool_);
+        }
+      } while (status != APR_SUCCESS);
+      owner_->set_fake_memcached_port(port_num);
+      notify_port_->Signal();
+    }
+
+    SystemCachesTest* owner_;
+    scoped_ptr<ThreadSystem::CondvarCapableMutex> mutex_;
+    scoped_ptr<ThreadSystem::Condvar> notify_port_;
+    apr_pool_t* pool_;
+    apr_sockaddr_t* sock_addr_;
+    apr_socket_t* listening_socket_;
+  };
+
   SystemCachesTest()
       : thread_system_(Platform::CreateThreadSystem()),
         options_(new SystemRewriteOptions(thread_system_.get())),
@@ -219,6 +301,10 @@ class SystemCachesTest : public CustomRewriteTestBase<SystemRewriteOptions> {
   }
 
   virtual void SetUp() {
+    // TODO(jcrowell) factor out apr_initialize/terminate to share in static
+    // constructor similar to rewrite_test_base.cc.
+    apr_initialize();
+    atexit(apr_terminate);
     system_caches_.reset(
         new SystemCaches(factory(), shared_mem_.get(), kThreadLimit));
     CustomRewriteTestBase<SystemRewriteOptions>::SetUp();
@@ -1002,6 +1088,55 @@ TEST_F(SystemCachesTest, LruCacheSettings) {
       dynamic_cast<WriteThroughCache*>(server_context->http_cache()->cache());
   ASSERT_TRUE(http_write_through != NULL);
   EXPECT_EQ(500, http_write_through->cache1_limit());
+}
+
+TEST_F(SystemCachesTest, HangingMultigetTest) {
+  // Test that we do not hang in the case of corrupted responses from memcached,
+  // as seen in bug report 1048
+  // https://github.com/pagespeed/mod_pagespeed/issues/1048
+  set_fake_memcached_port(0);
+  scoped_ptr<FakeMemcacheServerThread> thread(
+      new FakeMemcacheServerThread(this));
+  ASSERT_TRUE(thread->Start());
+  thread->WaitForReady();
+  ASSERT_NE(get_fake_memcached_port(), 0);
+  GoogleString apr_str =
+      StrCat("localhost:", Integer64ToString(get_fake_memcached_port()));
+  AprMemCache* cache = system_caches_->NewAprMemCache(apr_str);
+  static const char k1[] = "hello";
+  static const char k2[] = "hi";
+  BlockingCallback cb1(thread_system_.get());
+  BlockingCallback cb2(thread_system_.get());
+  CacheInterface::MultiGetRequest* request =
+      new CacheInterface::MultiGetRequest;
+  request->push_back(CacheInterface::KeyCallback(k1, &cb1));
+  request->push_back(CacheInterface::KeyCallback(k2, &cb2));
+  cache->Connect();
+  // Capture stderr, make sure we get the proper string.
+  // This test depends on a custom fprintf in apr_memcache2.
+  // TODO(jcrowell) do this more nicely, don't depend on the print from
+  // multiget, as the real test is that this should not hang.
+  int stderr_backup;
+  char buffer[4096];
+  fflush(stderr);
+  int err_pipe[2];
+  stderr_backup = dup(STDERR_FILENO);
+  ASSERT_NE(-1, stderr_backup);
+  ASSERT_EQ(0, pipe(err_pipe));
+  ASSERT_NE(-1, dup2(err_pipe[1], STDERR_FILENO));
+  close(err_pipe[1]);
+  // Make the multiget request.
+  cache->MultiGet(request);
+  thread->Join();
+  fflush(stderr);
+  read(err_pipe[0], buffer, sizeof(buffer));
+  // And give back stderr.
+  ASSERT_NE(-1, dup2(stderr_backup, STDERR_FILENO));
+  // Now check to make sure that we had the proper output.
+  GoogleString target = "Caught potential spin in apr_memcache multiget!";
+  GoogleString output(buffer);
+  output = output.substr(0, target.size());
+  EXPECT_STREQ(target.c_str(), output.c_str());
 }
 
 TEST_F(SystemCachesTest, StatsStringMinimal) {

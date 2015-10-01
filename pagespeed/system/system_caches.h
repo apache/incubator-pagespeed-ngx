@@ -135,6 +135,9 @@ class SystemCaches {
   //      administrator.
   SystemCachePath* GetCache(SystemRewriteOptions* config);
 
+  // Create a new AprMemCache from the given hostname[:port] specification.
+  AprMemCache* NewAprMemCache(const GoogleString& spec);
+
  private:
   typedef SharedMemCache<64> MetadataShmCache;
   struct MetadataShmCacheInfo {
@@ -155,9 +158,6 @@ class SystemCaches {
     CacheInterface* async;
     CacheInterface* blocking;
   };
-
-  // Create a new AprMemCache from the given hostname[:port] specification.
-  AprMemCache* NewAprMemCache(const GoogleString& spec);
 
   // Looks up and, if necessary, constructs memcached interfaces for a
   // configuration.  Both blocking and (potentially) non-blocking
