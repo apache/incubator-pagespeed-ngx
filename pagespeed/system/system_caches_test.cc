@@ -1129,14 +1129,14 @@ TEST_F(SystemCachesTest, HangingMultigetTest) {
   cache->MultiGet(request);
   thread->Join();
   fflush(stderr);
-  read(err_pipe[0], buffer, sizeof(buffer));
+  int bytes_read = read(err_pipe[0], buffer, sizeof(buffer));
+  ASSERT_NE(-1, bytes_read);
   // And give back stderr.
   ASSERT_NE(-1, dup2(stderr_backup, STDERR_FILENO));
   // Now check to make sure that we had the proper output.
-  GoogleString target = "Caught potential spin in apr_memcache multiget!";
-  GoogleString output(buffer);
-  output = output.substr(0, target.size());
-  EXPECT_STREQ(target.c_str(), output.c_str());
+  StringPiece output(buffer, bytes_read);
+  EXPECT_TRUE(
+      output.starts_with("Caught potential spin in apr_memcache multiget!"));
 }
 
 TEST_F(SystemCachesTest, StatsStringMinimal) {
