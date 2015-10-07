@@ -60,6 +60,9 @@
       'sources': [
         '<@(boringssl_lib_sources)',
       ],
+      'cflags': [
+        '-D_POSIX_C_SOURCE=200112L',
+      ],
       'defines': [ 'BORINGSSL_IMPLEMENTATION' ],
       'conditions': [
         ['component == "shared_library"', {
