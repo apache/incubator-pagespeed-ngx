@@ -203,6 +203,11 @@ class RewriteDriver : public HtmlParse {
 
   const GoogleString& user_agent() const { return user_agent_; }
 
+  // Directly overrides the user-agent setting in the driver.  This should not
+  // be called when handling normal requests as the UA will automatically be
+  // pulled from the request-headers.
+  // TODO(jmarantz): Eliminate this method entirely and change tests to use
+  // SetRequestHeaders.
   void SetUserAgent(const StringPiece& user_agent_string);
 
   const RequestProperties* request_properties() const {
@@ -261,8 +266,11 @@ class RewriteDriver : public HtmlParse {
   // Reinitializes request_headers_ (a scoped ptr) with a copy of the original
   // request headers. Note that the fetches associated with the driver could
   // be using a modified version of the original request headers.
-  // There MUST be at most 1 call to this method after a rewrite driver object
-  // has been constructed or recycled.
+  // There MUST be exactly 1 call to this method after a rewrite driver object
+  // has been constructed or recycled, before the RewriteDriver is used for
+  // request processing.
+  //
+  // This method also sets up the user-agent and device properties.
   void SetRequestHeaders(const RequestHeaders& headers);
 
   const RequestHeaders* request_headers() const {

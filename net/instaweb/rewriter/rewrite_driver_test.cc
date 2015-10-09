@@ -28,6 +28,7 @@
 #include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/rewriter/public/mock_resource_callback.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
+#include "net/instaweb/rewriter/public/request_properties.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -58,6 +59,7 @@
 #include "pagespeed/kernel/http/http_options.h"
 #include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/semantic_type.h"
+#include "pagespeed/kernel/http/user_agent_matcher_test_base.h"
 #include "pagespeed/kernel/thread/worker_test_base.h"
 
 namespace net_instaweb {
@@ -1539,6 +1541,7 @@ class InPlaceTest : public RewriteTestBase {
     WaitAsyncFetch async_fetch(CreateRequestContext(), content,
                                server_context()->thread_system());
     async_fetch.set_response_headers(response);
+    rewrite_driver_->SetRequestHeaders(*async_fetch.request_headers());
     rewrite_driver_->FetchInPlaceResource(gurl, proxy_mode,
                                           &async_fetch);
     async_fetch.Wait();
@@ -2016,6 +2019,31 @@ TEST_F(RewriteDriverTest, ValidateCacheResponseRewrittenWebp) {
   options()->set_serve_rewritten_webp_urls_to_any_agent(false);
   EXPECT_TRUE(OptionsAwareHTTPCacheCallback::IsCacheValid(
       kOriginUrl, *options(), request_context, response_headers));
+}
+
+TEST_F(RewriteDriverTest, SetRequestHeadersPopulatesWebpAccept) {
+  RequestHeaders headers;
+  headers.Add(HttpAttributes::kAccept, "image/webp");
+  headers.Add(HttpAttributes::kUserAgent,
+              UserAgentMatcherTestBase::kChrome42UserAgent);
+  rewrite_driver()->SetRequestHeaders(headers);
+  const RequestProperties* request_properties =
+      rewrite_driver()->request_properties();
+  EXPECT_TRUE(request_properties->SupportsWebpInPlace());
+  EXPECT_TRUE(request_properties->SupportsWebpRewrittenUrls());
+  EXPECT_TRUE(request_properties->SupportsWebpLosslessAlpha());
+}
+
+TEST_F(RewriteDriverTest, SetRequestHeadersPopulatesWebpNoAccept) {
+  RequestHeaders headers;
+  headers.Add(HttpAttributes::kUserAgent,
+              UserAgentMatcherTestBase::kAndroidICSUserAgent);
+  rewrite_driver()->SetRequestHeaders(headers);
+  const RequestProperties* request_properties =
+      rewrite_driver()->request_properties();
+  EXPECT_FALSE(request_properties->SupportsWebpInPlace());
+  EXPECT_TRUE(request_properties->SupportsWebpRewrittenUrls());
+  EXPECT_FALSE(request_properties->SupportsWebpLosslessAlpha());
 }
 
 // Test classes created for using a managed rewrite driver, so that downstream

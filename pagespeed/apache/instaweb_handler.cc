@@ -166,6 +166,9 @@ RewriteDriver* InstawebHandler::MakeDriver() {
   rewrite_driver_ = ResourceFetch::GetDriver(
       stripped_gurl_, custom_options_.release(), server_context_,
       request_context_);
+  if (fetch_ != NULL) {
+    rewrite_driver_->SetRequestHeaders(*fetch_->request_headers());
+  }
 
   // If there were custom options, the ownership of the memory has
   // now been transferred to the driver, but options_ still points
@@ -191,6 +194,9 @@ ApacheFetch* InstawebHandler::MakeFetch(const GoogleString& url,
       request_headers, request_context_, options_,
       server_context_->message_handler());
   fetch_->set_buffered(buffered);
+  if (rewrite_driver_ != NULL) {
+    rewrite_driver_->SetRequestHeaders(*fetch_->request_headers());
+  }
   return fetch_;
 }
 
@@ -521,7 +527,6 @@ bool InstawebHandler::HandleAsProxy() {
     RewriteDriver* driver = MakeDriver();
     MakeFetch(mapped_url, true /* buffered */, "proxy");
     fetch_->set_is_proxy(true);
-    driver->SetRequestHeaders(*fetch_->request_headers());
     server_context_->proxy_fetch_factory()->StartNewProxyFetch(
         mapped_url, fetch_, driver, NULL, NULL);
     handled = WaitForFetch();

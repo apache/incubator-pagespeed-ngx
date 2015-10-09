@@ -531,19 +531,6 @@ ProxyFetch::ProxyFetch(
   }
 
   DCHECK(driver_->request_headers() != NULL);
-
-  // Set the user agent in the rewrite driver if it is not set already.
-  if (driver_->user_agent().empty()) {
-    const char* user_agent = request_headers()->Lookup1(
-        HttpAttributes::kUserAgent);
-    if (user_agent != NULL) {
-      VLOG(1) << "Setting user-agent to " << user_agent;
-      driver_->SetUserAgent(user_agent);
-    } else {
-      VLOG(1) << "User-agent empty";
-    }
-  }
-
   driver_->EnableBlockingRewrite(request_headers());
 
   // Set the implicit cache ttl and the min cache ttl for the response headers

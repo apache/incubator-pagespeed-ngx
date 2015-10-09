@@ -982,6 +982,10 @@ OUT=$($CURL --include --silent $URL)
 check_from "$OUT" fgrep -q "200 OK"
 check_from "$OUT" fgrep -q "$CONTENTS"
 
+# TODO(jefftk): All these MapProxyDomain/ipro tests need to move to
+# system/system_test.sh once ngx_pagespeed supports that combination.
+# See https://github.com/pagespeed/ngx_pagespeed/issues/1015
+
 start_test proxying from external domain should optimize images in-place.
 # Keep fetching this until it's headers include the string "PSA-aj" which
 # means rewriting has finished.
@@ -1024,6 +1028,13 @@ start_test Fetching the HTML directly from the origin is fine including cookie.
 URL="http://$PAGESPEED_TEST_HOST/do_not_modify/evil.html"
 OUT=$($WGET_DUMP $URL)
 check_from "$OUT" fgrep -q -i 'Set-Cookie: test-cookie'
+
+start_test Ipro transcode to webp from MapProxyDomain
+URL="$PRIMARY_SERVER/modpagespeed_http/Puzzle.jpg"
+URL+="?PageSpeedFilters=+in_place_optimize_for_browser"
+WGET_ARGS="--user-agent webp --header Accept:image/webp"
+fetch_until "$URL" "grep -c image/webp" 1 --save-headers
+URL=""
 
 function scrape_secondary_stat {
   http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \

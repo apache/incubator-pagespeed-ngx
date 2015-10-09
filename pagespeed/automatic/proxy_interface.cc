@@ -373,15 +373,6 @@ void ProxyInterface::GetRewriteOptionsDone(RequestData* request_data,
     // here? It seems like it would be better to only set once, but that
     // involves a lot of complicated code changes.
     request_ctx->ResetOptions(driver->options()->ComputeHttpOptions());
-
-    // TODO(mmohabey): Remove duplicate setting of user agent and
-    // request headers for different flows.
-    if (user_agent != NULL) {
-      VLOG(1) << "Setting user-agent to " << user_agent;
-      driver->SetUserAgent(user_agent);
-    } else {
-      VLOG(1) << "User-agent empty";
-    }
     driver->SetRequestHeaders(*async_fetch->request_headers());
     // TODO(mmohabey): Factor out the below checks so that they are not
     // repeated in BlinkUtil::IsBlinkRequest().

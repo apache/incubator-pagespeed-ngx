@@ -157,13 +157,7 @@ ResourceFetch::ResourceFetch(const GoogleUrl& url,
       redirect_count_(0),
       cleanup_mode_(cleanup_mode) {
   resource_url_.Reset(url);
-
-  // Set the user agent in the rewrite driver.
-  const char* user_agent = request_headers()->Lookup1(
-      HttpAttributes::kUserAgent);
-  if (user_agent != NULL) {
-    driver_->SetUserAgent(user_agent);
-  }
+  DCHECK(driver_->request_headers() == NULL);
 }
 
 ResourceFetch::~ResourceFetch() {

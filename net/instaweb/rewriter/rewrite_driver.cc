@@ -320,6 +320,13 @@ void RewriteDriver::SetRequestHeaders(const RequestHeaders& headers) {
   new_request_headers->CopyFrom(headers);
   new_request_headers->PopulateLazyCaches();
   request_headers_.reset(new_request_headers);
+
+  const char* user_agent = request_headers_->Lookup1(
+      HttpAttributes::kUserAgent);
+  if (user_agent != NULL) {
+    SetUserAgent(user_agent);
+  }
+
   request_properties_->ParseRequestHeaders(*request_headers_);
   PopulateRequestContext();
 }
@@ -2060,23 +2067,7 @@ void RewriteDriver::FetchInPlaceResource(const GoogleUrl& gurl,
                                          bool proxy_mode,
                                          AsyncFetch* async_fetch) {
   CHECK(gurl.IsWebValid()) << "Invalid URL " << gurl.spec_c_str();
-  const char* user_agent =
-      async_fetch->request_headers()->Lookup1(HttpAttributes::kUserAgent);
-  if (user_agent != NULL) {
-    // Only set the user agent if we haven't already done
-    // so. Otherwise we trigger a race condition in
-    // FlushEarlyFlowTest.DontInsertLazyloadJsIfMobile where it will
-    // crash about 10% of the time in a debug build, probably due to
-    // calling FetchInPlaceResource twice on a driver.
-    //
-    // TODO(jmarantz): fix the FlushEarlyFlow to not call FetchInPlaceResource
-    // twice on the same driver, which seems risky.
-    if (user_agent_.empty()) {
-      SetUserAgent(user_agent);
-    } else {
-      DCHECK_EQ(user_agent_, user_agent);
-    }
-  }
+  CHECK(request_headers_.get() != NULL);
   gurl.Spec().CopyToString(&fetch_url_);
   StringPiece base = gurl.AllExceptLeaf();
   ResourceNamer namer;
@@ -3096,7 +3087,9 @@ void RewriteDriver::AddLowPriorityRewriteTask(Function* task) {
   low_priority_rewrite_worker_->Add(task);
 }
 
-// TODO(nikhilmadan): Merge this with SetRequestHeaders.
+// TODO(jmarantz): Make this a TestOnly method, and inline it entirely
+// into SetRequestHeaders.  This would entail a large number of test trivial
+// changes and a new helper method in RewriteTestBase.
 void RewriteDriver::SetUserAgent(const StringPiece& user_agent_string) {
   user_agent_string.CopyToString(&user_agent_);
   ClearRequestProperties();
