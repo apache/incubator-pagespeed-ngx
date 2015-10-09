@@ -126,28 +126,28 @@ void IframeFetcher::RespondWithIframe(const GoogleString& escaped_url,
   // The viewport should be configured to match the viewport of the page being
   // iframed.
   GoogleString viewport;
+  GoogleString scrolling_attribute;
   if (options_->mob_iframe_viewport() != "none") {
     GoogleString escaped_viewport_content;
     HtmlKeywords::Escape(options_->mob_iframe_viewport(),
                          &escaped_viewport_content);
     viewport = StrCat("<meta name=\"viewport\" content=\"",
                       escaped_viewport_content, "\">");
+    // Setting scrolling="no" on the iframe keeps the iframe from expanding to
+    // be too large on iOS devices.
+    scrolling_attribute = " scrolling=\"no\"";
   }
 
   GoogleString canonical = StrCat(
       "<link rel=\"canonical\" href=\"", escaped_url, "\">");
 
   // Avoid quirks-mode by specifying an HTML doctype.
-  fetch->Write(StrCat("<!DOCTYPE html><html><head>",
-                      canonical,
-                      "<meta charset=\"utf-8\">",
-                      viewport,
+  fetch->Write(StrCat("<!DOCTYPE html><html><head>", canonical,
+                      "<meta charset=\"utf-8\">", viewport,
                       "</head><body class=\"mob-iframe\">"
-                      "<iframe id=\"", kIframeId, "\" "
-                      "src=\"",
-                      escaped_url,
-                      "\""
-                      "></iframe>"),
+                      "<iframe id=\"",
+                      kIframeId, "\" src=\"", escaped_url, "\"",
+                      scrolling_attribute, "></iframe>"),
                message_handler);
 
   fetch->Write("</body></html>", message_handler);
