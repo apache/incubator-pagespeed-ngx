@@ -349,6 +349,7 @@ class RewriteOptions {
   static const char kMobStatic[];
   static const char kMobTheme[];
   static const char kModifyCachingHeaders[];
+  static const char kNoop[];
   static const char kNoTransformOptimizedImages[];
   static const char kNonCacheablesForCachePartialHtml[];
   static const char kObliviousPagespeedUrls[];
@@ -4178,6 +4179,8 @@ class RewriteOptions {
   Option<GoogleString> mob_map_conversion_label_;
   Option<GoogleString> mob_phone_conversion_label_;
   Option<MobTheme> mob_theme_;
+
+  Option<int64> noop_;
 
   CopyOnWrite<JavascriptLibraryIdentification>
       javascript_library_identification_;

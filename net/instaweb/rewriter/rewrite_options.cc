@@ -18,7 +18,6 @@
 
 #include <algorithm>
 #include <cstddef>
-#include <memory>
 #include <set>
 #include <utility>
 
@@ -247,6 +246,7 @@ const char RewriteOptions::kMobNavClasses[] = "MobNavigationalClasses";
 const char RewriteOptions::kMobStatic[] = "MobStatic";
 const char RewriteOptions::kMobTheme[] = "MobTheme";
 const char RewriteOptions::kModifyCachingHeaders[] = "ModifyCachingHeaders";
+const char RewriteOptions::kNoop[] = "Noop";
 const char RewriteOptions::kNoTransformOptimizedImages[] =
     "NoTransformOptimizedImages";
 const char RewriteOptions::kNonCacheablesForCachePartialHtml[] =
@@ -2423,6 +2423,14 @@ void RewriteOptions::AddProperties() {
                      "tifrwd", false);
   // We need to exclude this test-only option from signature, since we may need
   // to change it in the middle of tests.
+  properties_->property(properties_->size() - 1)
+      ->set_do_not_use_for_signature_computation(true);
+
+  AddBaseProperty(
+      0, &RewriteOptions::noop_, "noop", kNoop,
+      kQueryScope,
+      "Meaningless integer option for browser cache-busting in query-params",
+      true);
   properties_->property(properties_->size() - 1)
       ->set_do_not_use_for_signature_computation(true);
 

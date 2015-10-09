@@ -18,8 +18,6 @@
 
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 
-#include <memory>
-
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/experiment_util.h"
 #include "net/instaweb/rewriter/public/rewrite_options_test_base.h"
@@ -1000,6 +998,7 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
     RewriteOptions::kMobStatic,
     RewriteOptions::kMobTheme,
     RewriteOptions::kModifyCachingHeaders,
+    RewriteOptions::kNoop,
     RewriteOptions::kNoTransformOptimizedImages,
     RewriteOptions::kNonCacheablesForCachePartialHtml,
     RewriteOptions::kObliviousPagespeedUrls,
