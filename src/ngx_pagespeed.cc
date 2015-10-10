@@ -2542,8 +2542,8 @@ ngx_int_t send_out_headers_and_body(
 
   rc = ngx_http_send_header(r);
 
-  if (rc != NGX_OK) {
-    return NGX_ERROR;
+  if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
+    return rc;
   }
 
   // Send the body.
