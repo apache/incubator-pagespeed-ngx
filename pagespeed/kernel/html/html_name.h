@@ -147,6 +147,7 @@ class HtmlName {
     kIns,
     kInput,
     kIsmap,
+    kItemProp,
     kKbd,
     kKeygen,
     kKeytype,
