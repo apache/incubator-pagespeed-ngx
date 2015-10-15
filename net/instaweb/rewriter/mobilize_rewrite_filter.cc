@@ -258,22 +258,7 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
     // <meta name="viewport"... />
     if (!added_viewport_) {
       added_viewport_ = true;
-      const RewriteOptions* options = driver()->options();
-      const GoogleString& phone = options->mob_phone_number();
-      const GoogleString& map_location = options->mob_map_location();
-      if (!phone.empty()) {
-        // Insert <meta itemprop="telephone" content="+18005551212">
-        HtmlElement* telephone_meta_element = driver()->NewElement(
-            element, HtmlName::kMeta);
-        telephone_meta_element->set_style(HtmlElement::BRIEF_CLOSE);
-        telephone_meta_element->AddAttribute(
-            driver()->MakeName(HtmlName::kItemProp), "telephone",
-            HtmlElement::DOUBLE_QUOTE);
-        telephone_meta_element->AddAttribute(
-            driver()->MakeName(HtmlName::kContent), phone,
-            HtmlElement::DOUBLE_QUOTE);
-        driver()->InsertNodeAfterCurrent(telephone_meta_element);
-      }
+
       // Transmit to the mobilization scripts whether they are run in debug
       // mode or not by setting 'psDebugMode'.
       //
@@ -281,6 +266,7 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
       // enabled.  That is bundled into the same JS compile unit as the
       // layout, so we cannot do a 'undefined' check in JS to determine
       // whether it was enabled.
+      const RewriteOptions* options = driver()->options();
       GoogleString src = StrCat(
           "window.psDebugMode=", BoolToString(driver()->DebugMode()), ";"
           "window.psNavMode=", BoolToString(use_js_nav_), ";"
@@ -290,6 +276,8 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
           "window.psStaticJs=", BoolToString(use_static_), ";"
           "window.psDeviceType='", UserAgentMatcher::DeviceTypeString(
               driver()->request_properties()->GetDeviceType()), "';");
+      const GoogleString& phone = options->mob_phone_number();
+      const GoogleString& map_location = options->mob_map_location();
       if (!phone.empty() || !map_location.empty()) {
         StrAppend(&src, "window.psConversionId=",
                   Integer64ToString(options->mob_conversion_id()),

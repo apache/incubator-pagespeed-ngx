@@ -46,6 +46,7 @@ const char kTwoLevelsDownFile1[] = "assets/nested/nested1.css";
 const char kTwoLevelsDownFile2[] = "assets/nested/nested2.css";
 const char k404CssFile[] = "404.css";
 const char kSimpleCssFile[] = "simple.css";
+const char kComplexCssFile[] = "complex.css";
 
 // Contents of resource files. Already minimized. NOTE relative paths!
 static const char kTwoLevelsDownContents1[] =
@@ -66,6 +67,10 @@ static const char kTopCss[] =
 static const char kSimpleCss[] =
     ".background_red{background-color:red}"
     ".foreground_yellow{color:#ff0}";
+static const char kComplexCss[] =
+    "  @media screen and (min-width: 240px) {"
+    "  .background_red{background-color:red}"
+    "}";
 
 class CssFlattenImportsTest : public CssRewriteTestBase {
  protected:
@@ -107,6 +112,8 @@ class CssFlattenImportsTest : public CssRewriteTestBase {
                                   kTwoLevelsDownContents1, 100);
     SetResponseWithDefaultHeaders(kTwoLevelsDownFile2, kContentTypeCss,
                                   kTwoLevelsDownContents2, 100);
+    SetResponseWithDefaultHeaders(kComplexCssFile, kContentTypeCss,
+                                  kComplexCss, 100);
     SetFetchResponse404(k404CssFile);
   }
 
@@ -1156,6 +1163,23 @@ TEST_F(CssFlattenImportsTest, NoFlattenMediaQueriesChild) {
                              "@import url(child.css);",
                              kExpectSuccess | kNoClearFetcher |
                              kFlattenImportsComplexQueries);
+}
+
+// See https://github.com/pagespeed/mod_pagespeed/issues/1092
+TEST_F(CssFlattenImportsTest, FlattenTooComplexNested) {
+  GoogleString css_in = StrCat("@import url(http://test.com/",
+                               kComplexCssFile, ");");
+
+  // First time should load the CSS files into cache.
+  ValidateRewriteExternalCss("flatten_too_complex_nested", css_in,
+                             css_in, kExpectSuccess | kNoClearFetcher |
+                             kFlattenImportsComplexQueries);
+
+  // Re-optimize. The CSS output should equal the input (and especially not be
+  // an empty string).
+  ValidateRewriteExternalCss("flatten_too_complex_nested_repeat",
+                             css_in, css_in, kExpectSuccess |
+                             kFlattenImportsComplexQueries | kNoClearFetcher);
 }
 
 // Test that we correctly deal with @import media types with possibly complex

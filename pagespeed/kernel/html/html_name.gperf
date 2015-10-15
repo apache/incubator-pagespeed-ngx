@@ -135,7 +135,6 @@ struct KeywordMap {const char* name; net_instaweb::HtmlName::Keyword keyword;};
 "ins",                                HtmlName::kIns
 "input",                              HtmlName::kInput
 "ismap",                              HtmlName::kIsmap
-"itemprop",                           HtmlName::kItemProp
 "kbd",                                HtmlName::kKbd
 "keygen",                             HtmlName::kKeygen
 "keytype",                            HtmlName::kKeytype
