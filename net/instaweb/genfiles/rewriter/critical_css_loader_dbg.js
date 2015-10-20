@@ -611,10 +611,10 @@ var pagespeedutils = {MAX_POST_SIZE:131072, sendBeacon:function(a, b, c) {
     if (window.ActiveXObject) {
       try {
         d = new ActiveXObject("Msxml2.XMLHTTP");
-      } catch (f) {
+      } catch (e) {
         try {
           d = new ActiveXObject("Microsoft.XMLHTTP");
-        } catch (g) {
+        } catch (f) {
         }
       }
     }
@@ -622,8 +622,8 @@ var pagespeedutils = {MAX_POST_SIZE:131072, sendBeacon:function(a, b, c) {
   if (!d) {
     return !1;
   }
-  var e = -1 == a.indexOf("?") ? "?" : "&";
-  a = a + e + "url=" + encodeURIComponent(b);
+  var g = -1 == a.indexOf("?") ? "?" : "&";
+  a = a + g + "url=" + encodeURIComponent(b);
   d.open("POST", a);
   d.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
   d.send(c);

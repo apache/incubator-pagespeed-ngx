@@ -5983,20 +5983,20 @@ goog.net.XhrIo.prototype.send = function(a, b, c, d) {
   this.xhr_.onreadystatechange = goog.bind(this.onReadyStateChange_, this);
   try {
     goog.log.fine(this.logger_, this.formatMsg_("Opening Xhr")), this.inOpen_ = !0, this.xhr_.open(b, String(a), !0), this.inOpen_ = !1;
-  } catch (f) {
-    goog.log.fine(this.logger_, this.formatMsg_("Error opening Xhr: " + f.message));
-    this.error_(goog.net.ErrorCode.EXCEPTION, f);
+  } catch (e) {
+    goog.log.fine(this.logger_, this.formatMsg_("Error opening Xhr: " + e.message));
+    this.error_(goog.net.ErrorCode.EXCEPTION, e);
     return;
   }
   a = c || "";
-  var e = this.headers.clone();
+  var f = this.headers.clone();
   d && goog.structs.forEach(d, function(a, b) {
-    e.set(b, a);
+    f.set(b, a);
   });
-  d = goog.array.find(e.getKeys(), goog.net.XhrIo.isContentTypeHeader_);
+  d = goog.array.find(f.getKeys(), goog.net.XhrIo.isContentTypeHeader_);
   c = goog.global.FormData && a instanceof goog.global.FormData;
-  !goog.array.contains(goog.net.XhrIo.METHODS_WITH_FORM_DATA, b) || d || c || e.set(goog.net.XhrIo.CONTENT_TYPE_HEADER, goog.net.XhrIo.FORM_CONTENT_TYPE);
-  e.forEach(function(a, b) {
+  !goog.array.contains(goog.net.XhrIo.METHODS_WITH_FORM_DATA, b) || d || c || f.set(goog.net.XhrIo.CONTENT_TYPE_HEADER, goog.net.XhrIo.FORM_CONTENT_TYPE);
+  f.forEach(function(a, b) {
     this.xhr_.setRequestHeader(b, a);
   }, this);
   this.responseType_ && (this.xhr_.responseType = this.responseType_);
@@ -6004,8 +6004,8 @@ goog.net.XhrIo.prototype.send = function(a, b, c, d) {
   try {
     this.cleanUpTimeoutTimer_(), 0 < this.timeoutInterval_ && (this.useXhr2Timeout_ = goog.net.XhrIo.shouldUseXhr2Timeout_(this.xhr_), goog.log.fine(this.logger_, this.formatMsg_("Will abort after " + this.timeoutInterval_ + "ms if incomplete, xhr2 " + this.useXhr2Timeout_)), this.useXhr2Timeout_ ? (this.xhr_[goog.net.XhrIo.XHR2_TIMEOUT_] = this.timeoutInterval_, this.xhr_[goog.net.XhrIo.XHR2_ON_TIMEOUT_] = goog.bind(this.timeout_, this)) : this.timeoutId_ = goog.Timer.callOnce(this.timeout_, this.timeoutInterval_, 
     this)), goog.log.fine(this.logger_, this.formatMsg_("Sending request")), this.inSend_ = !0, this.xhr_.send(a), this.inSend_ = !1;
-  } catch (f) {
-    goog.log.fine(this.logger_, this.formatMsg_("Send error: " + f.message)), this.error_(goog.net.ErrorCode.EXCEPTION, f);
+  } catch (e) {
+    goog.log.fine(this.logger_, this.formatMsg_("Send error: " + e.message)), this.error_(goog.net.ErrorCode.EXCEPTION, e);
   }
 };
 goog.net.XhrIo.shouldUseXhr2Timeout_ = function(a) {
