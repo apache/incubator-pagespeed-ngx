@@ -128,7 +128,9 @@ const char* kWebpWhitelist[] = {
   // User agents used only for internal testing.
   "webp",
   "webp-la",  // webp with lossless and alpha encoding.
+  "webp-animated",
 };
+
 const char* kWebpBlacklist[] = {
   "*Android 0.*",
   "*Android 1.*",
@@ -172,6 +174,7 @@ const char* kWebpLosslessAlphaWhitelist[] = {
   "*CriOS/??.*",
   // User agent used only for internal testing.
   "webp-la",
+  "webp-animated",
 };
 
 const char* kWebpLosslessAlphaBlacklist[] = {
@@ -190,6 +193,30 @@ const char* kWebpLosslessAlphaBlacklist[] = {
   "*CriOS/26.*",
   "*CriOS/27.*",
   "*CriOS/28.*",
+};
+
+// Animated WebP is supported by browsers based on Chromium v32+, including
+// Chrome 32+ and Opera 19+. Because since version 15, Opera has been including
+// "Chrome/VERSION" in the user agent string [1], the test for Chrome 32+ will
+// also cover Opera 19+.
+// [1] https://dev.opera.com/blog/opera-user-agent-strings-opera-15-and-beyond/
+const char* kWebpAnimatedWhitelist[] = {
+  "*Chrome/??.*",
+  "*CriOS/??.*",
+  "webp-animated",  // User agent for internal testing.
+};
+
+const char* kWebpAnimatedBlacklist[] = {
+  "*Chrome/?.*",
+  "*Chrome/1?.*",
+  "*Chrome/2?.*",
+  "*Chrome/30.*",
+  "*Chrome/31.*",
+  "*CriOS/?.*",
+  "*CriOS/1?.*",
+  "*CriOS/2?.*",
+  "*CriOS/30.*",
+  "*CriOS/31.*",
 };
 
 // TODO(rahulbansal): We haven't added Safari here since it supports dns
@@ -405,6 +432,12 @@ UserAgentMatcher::UserAgentMatcher()
   for (int i = 0, n = arraysize(kWebpLosslessAlphaBlacklist); i < n; ++i) {
     supports_webp_lossless_alpha_.Disallow(kWebpLosslessAlphaBlacklist[i]);
   }
+  for (int i = 0, n = arraysize(kWebpAnimatedWhitelist); i < n; ++i) {
+    supports_webp_animated_.Allow(kWebpAnimatedWhitelist[i]);
+  }
+  for (int i = 0, n = arraysize(kWebpAnimatedBlacklist); i < n; ++i) {
+    supports_webp_animated_.Disallow(kWebpAnimatedBlacklist[i]);
+  }
   for (int i = 0, n = arraysize(kSupportsPrefetchImageTag); i < n; ++i) {
     supports_prefetch_image_tag_.Allow(kSupportsPrefetchImageTag[i]);
   }
@@ -541,6 +574,11 @@ bool UserAgentMatcher::SupportsWebp(const StringPiece& user_agent) const {
 bool UserAgentMatcher::SupportsWebpLosslessAlpha(
     const StringPiece& user_agent) const {
   return supports_webp_lossless_alpha_.Match(user_agent, false);
+}
+
+bool UserAgentMatcher::SupportsWebpAnimated(
+    const StringPiece& user_agent) const {
+  return supports_webp_animated_.Match(user_agent, false);
 }
 
 UserAgentMatcher::DeviceType UserAgentMatcher::GetDeviceTypeForUAAndHeaders(

@@ -46,12 +46,16 @@ class UserAgentMatcherTestBase : public testing::Test {
   static const char kChrome12UserAgent[];
   static const char kChrome15UserAgent[];
   static const char kChrome18UserAgent[];
+  static const char kChrome31UserAgent[];
+  static const char kChrome32UserAgent[];
   static const char kChrome37UserAgent[];
   static const char kChrome41UserAgent[];
   static const char kChrome42UserAgent[];
   static const char kChrome9UserAgent[];
   static const char kChromeUserAgent[];
   static const char kCompalUserAgent[];
+  static const char kCriOS31UserAgent[];
+  static const char kCriOS32UserAgent[];
   static const char kDoCoMoMobileUserAgent[];
   static const char kFirefox1UserAgent[];
   static const char kFirefox3UserAgent[];
@@ -100,6 +104,8 @@ class UserAgentMatcherTestBase : public testing::Test {
   static const char kNokiaUserAgent[];
   static const char kOpera1101UserAgent[];
   static const char kOpera1110UserAgent[];
+  static const char kOpera18UserAgent[];
+  static const char kOpera19UserAgent[];
   static const char kOpera5UserAgent[];
   static const char kOpera8UserAgent[];
   static const char kOperaMiniMobileUserAgent[];
@@ -137,6 +143,7 @@ class UserAgentMatcherTestBase : public testing::Test {
   static const char kZTEMobileUserAgent[];
   static const char XT907UserAgent[];
   static const char kTestingWebp[];
+  static const char kTestingWebpAnimated[];
   static const char kTestingWebpLosslessAlpha[];
 
   static const char* const kIe11UserAgents[];

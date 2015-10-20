@@ -110,8 +110,21 @@ class UserAgentMatcher {
   static StringPiece DeviceTypeSuffix(DeviceType device_type);
 
   bool SupportsJsDefer(const StringPiece& user_agent, bool allow_mobile) const;
+
+  // Returns true if the user agent includes a WebP lossy capable sub-string.
+  // If the browser does indeed support WebP, it also needs to send out an
+  // "accept: webp" header.
   bool SupportsWebp(const StringPiece& user_agent) const;
+
+  // Returns true if the user agent includes a string indicating WebP lossy
+  // or WebP alpha support. If the browser does indeed support WebP, it also
+  // needs to send out an "accept: webp" header.
   bool SupportsWebpLosslessAlpha(const StringPiece& user_agent) const;
+
+  // Returns true if the user agent includes an animated WebP capable
+  // sub-string. If the browser does indeed support WebP, it also needs to send
+  // out an "accept: webp" header.
+  bool SupportsWebpAnimated(const StringPiece& user_agent) const;
 
   // IE9 does not implement <link rel=dns-prefetch ...>. Instead it does DNS
   // preresolution when it sees <link rel=prefetch ...>. This method returns
@@ -168,6 +181,7 @@ class UserAgentMatcher {
   FastWildcardGroup blink_mobile_whitelist_;
   FastWildcardGroup supports_webp_;
   FastWildcardGroup supports_webp_lossless_alpha_;
+  FastWildcardGroup supports_webp_animated_;
   FastWildcardGroup supports_prefetch_link_rel_subresource_;
   FastWildcardGroup supports_prefetch_image_tag_;
   FastWildcardGroup supports_prefetch_link_script_tag_;

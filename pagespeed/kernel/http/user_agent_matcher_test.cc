@@ -604,4 +604,41 @@ TEST_F(UserAgentMatcherTest, Mobilization) {
       kOperaMiniMobileUserAgent));
 }
 
+TEST_F(UserAgentMatcherTest, SupportsAnimatedWebp) {
+  EXPECT_TRUE(user_agent_matcher_->SupportsWebpAnimated(
+      kTestingWebpAnimated));
+
+  EXPECT_TRUE(user_agent_matcher_->SupportsWebpAnimated(
+      kChrome32UserAgent));
+  EXPECT_TRUE(user_agent_matcher_->SupportsWebpAnimated(
+      kCriOS32UserAgent));
+  EXPECT_TRUE(user_agent_matcher_->SupportsWebpAnimated(
+      kOpera19UserAgent));
+  EXPECT_TRUE(user_agent_matcher_->SupportsWebpAnimated(
+      kChrome37UserAgent));
+}
+
+TEST_F(UserAgentMatcherTest, DoesntSupportAnimatedWebp) {
+  EXPECT_FALSE(user_agent_matcher_->SupportsWebpAnimated(
+      kChrome31UserAgent));
+  EXPECT_FALSE(user_agent_matcher_->SupportsWebpAnimated(
+      kCriOS31UserAgent));
+  EXPECT_FALSE(user_agent_matcher_->SupportsWebpAnimated(
+      kOpera18UserAgent));
+  EXPECT_FALSE(user_agent_matcher_->SupportsWebpAnimated(
+      kChrome18UserAgent));
+  EXPECT_FALSE(user_agent_matcher_->SupportsWebpAnimated(
+      kOpera1110UserAgent));
+  EXPECT_FALSE(user_agent_matcher_->SupportsWebpAnimated(
+      kAndroidICSUserAgent));
+  EXPECT_FALSE(user_agent_matcher_->SupportsWebpAnimated(
+      kFirefoxUserAgent));
+  EXPECT_FALSE(user_agent_matcher_->SupportsWebpAnimated(
+      kIe10UserAgent));
+  EXPECT_FALSE(user_agent_matcher_->SupportsWebpAnimated(
+      kIPhone4Safari));
+  EXPECT_FALSE(user_agent_matcher_->SupportsWebpAnimated(
+      kWindowsPhoneUserAgent));
+}
+
 }  // namespace net_instaweb

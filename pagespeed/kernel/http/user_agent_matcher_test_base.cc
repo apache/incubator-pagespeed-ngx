@@ -71,6 +71,12 @@ const char UserAgentMatcherTestBase::kChrome18UserAgent[] =  // webp capable
 const char UserAgentMatcherTestBase::kChrome9UserAgent[] =  // Not webp capable
     "Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US) "
     "AppleWebKit/534.13 (KHTML, like Gecko) Chrome/9.0.597.19 Safari/534.13";
+const char UserAgentMatcherTestBase::kChrome31UserAgent[] =  // No animated WebP
+    "Mozilla/5.0 (Windows NT 5.1) AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/31.0.1650.16 Safari/537.36";
+const char UserAgentMatcherTestBase::kChrome32UserAgent[] =  // Animated WebP
+    "Mozilla/5.0 (Windows NT 6.2; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/32.0.1667.0 Safari/537.36";
 const char UserAgentMatcherTestBase::kChrome37UserAgent[] =
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_4) "
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/37.0.2062.122 Safari/537.36";
@@ -85,6 +91,14 @@ const char UserAgentMatcherTestBase::kChromeUserAgent[] =
     "AppleWebKit/525.13 (KHTML, like Gecko) Chrome/0.A.B.C Safari/525.13";
 const char UserAgentMatcherTestBase::kCompalUserAgent[] =
     "Compal-A618";
+const char UserAgentMatcherTestBase::kCriOS31UserAgent[] =
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 7_0_3 like Mac OS X) "
+    "AppleWebKit/537.51.1 (KHTML, like Gecko) CriOS/31.0.1650.18 Mobile/11B511 "
+    "Safari/8536.25 (37014222-1F1D-4117-89B3-699D5C10628A)";
+const char UserAgentMatcherTestBase::kCriOS32UserAgent[] =
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 7_0_4 like Mac OS X) "
+    "AppleWebKit/537.51.1 (KHTML, like Gecko) CriOS/32.0.1700.21 "
+    "Mobile/11B554a Safari/9537.53 (A7BED55D-B09E-484F-B2FE-5E4952E9B87E)";
 const char UserAgentMatcherTestBase::kDoCoMoMobileUserAgent[] =
     "DoCoMo/1.0/D505iS/c20/TB/W20H10";
 const char UserAgentMatcherTestBase::kFirefox1UserAgent[] =
@@ -218,6 +232,12 @@ const char UserAgentMatcherTestBase::kOpera5UserAgent[] =
     "Opera/5.0 (SunOS 5.8 sun4u; U) [en]";
 const char UserAgentMatcherTestBase::kOpera8UserAgent[] =
     "Opera/8.01 (J2ME/MIDP; Opera Mini/1.1.2666/1724; en; U; ssr)";
+const char UserAgentMatcherTestBase::kOpera18UserAgent[] =
+    "Mozilla/5.0 (Windows NT 6.2; WOW64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/31.0.1650.63 Safari/537.36 OPR/18.0.1284.68";
+const char UserAgentMatcherTestBase::kOpera19UserAgent[] =
+    "Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/32.0.1700.76 Safari/537.36 OPR/19.0.1326.56";
 const char UserAgentMatcherTestBase::kOperaMiniMobileUserAgent[] =
     "Opera/8.01 (J2ME/MIDP; Opera Mini/1.1.4821/hifi/tmobile/uk; "
     "Motorola V3; en; U; ssr)";
@@ -307,6 +327,8 @@ const char UserAgentMatcherTestBase::kTestingWebp[] =
     "webp";
 const char UserAgentMatcherTestBase::kTestingWebpLosslessAlpha[] =
     "webp-la";
+const char UserAgentMatcherTestBase::kTestingWebpAnimated[] =
+    "webp-animated";
 
 // The user-agent strings for IE 11 seen below were all actual UA strings
 // observed in the real world.  Yes, the asterisks are actually in the UA.
