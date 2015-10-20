@@ -63,6 +63,25 @@ mob.layoutUtil.NEGATIVE_BOTTOM_MARGIN_ATTR =
 
 
 /**
+ * Returns an integer pixel dimension or null.  Note that a null return
+ * might mean the computed dimension is 'auto' or something.  This function
+ * strips the literal "px" from the return value before parsing as an int.
+ *
+ * @param {?CSSStyleDeclaration} computedStyle The window.getComputedStyle of
+ * an element.
+ * @param {string} name The name of a CSS dimension.
+ * @return {?number} the dimension value in pixels, or null if failure.
+ */
+mob.layoutUtil.computedDimension = function(computedStyle, name) {
+  var value = null;
+  if (computedStyle) {
+    value = mob.util.pixelValue(computedStyle.getPropertyValue(name));
+  }
+  return value;
+};
+
+
+/**
  * Calculates the maximum width we want for elements on the page.
  *
  * @return {number}
@@ -79,7 +98,7 @@ mob.layoutUtil.computeMaxWidth = function() {
     var bodyStyle = window.getComputedStyle(body);
     goog.array.forEach(
         mob.layoutConstants.HORIZONTAL_PADDING_PROPERTIES, function(property) {
-          var value = mob.util.computedDimension(bodyStyle, property);
+          var value = mob.layoutUtil.computedDimension(bodyStyle, property);
           if (value) {
             width -= value;
           }
@@ -112,14 +131,27 @@ mob.layoutUtil.isProbablyASprite = function(computedStyle) {
 
 
 /**
+ * Sets a property in the element's style with a new value.  The new value
+ * is written as '!important'.
+ *
+ * @param {!Element} element
+ * @param {string} name
+ * @param {string} value
+ */
+mob.layoutUtil.setPropertyImportant = function(element, name, value) {
+  element.style.setProperty(name, value, 'important');
+};
+
+
+/**
  * Makes an element be horizontally scrollable.
  *
  * @param {!Element} element
  */
 mob.layoutUtil.makeHorizontallyScrollable = function(element) {
-  mob.util.setPropertyImportant(element, 'overflow-x', 'auto');
-  mob.util.setPropertyImportant(element, 'width', 'auto');
-  mob.util.setPropertyImportant(element, 'display', 'block');
+  mob.layoutUtil.setPropertyImportant(element, 'overflow-x', 'auto');
+  mob.layoutUtil.setPropertyImportant(element, 'width', 'auto');
+  mob.layoutUtil.setPropertyImportant(element, 'display', 'block');
 };
 
 
@@ -253,7 +285,7 @@ mob.layoutUtil.removeWidthConstraint = function(element, computedStyle) {
     // Determine whether this element has a width constraint.
     if ((!element.style.backgroundSize) &&
         (computedStyle.width != 'auto')) {
-      mob.util.setPropertyImportant(element, 'width', 'auto');
+      mob.layoutUtil.setPropertyImportant(element, 'width', 'auto');
     }
     if (tagName != goog.dom.TagName.IMG) {
       // Various table elements with explicit widths can be cleaned up
@@ -269,6 +301,19 @@ mob.layoutUtil.removeWidthConstraint = function(element, computedStyle) {
 
 
 /**
+ * Removes a property from an HTML element.
+ * @param {!Element} element The HTML DOM element.
+ * @param {string} property The property to remove.
+ */
+mob.layoutUtil.removeProperty = function(element, property) {
+  if (element.style) {
+    element.style.removeProperty(property);
+  }
+  element.removeAttribute(property);
+};
+
+
+/**
  * Removes the specified list of proeprties from element.
  *
  * @param {!Element} element
@@ -277,7 +322,7 @@ mob.layoutUtil.removeWidthConstraint = function(element, computedStyle) {
  */
 mob.layoutUtil.removeProperties_ = function(element, properties) {
   for (var i = 1; i < arguments.length; ++i) {
-    mob.util.removeProperty(element, arguments[i]);
+    mob.layoutUtil.removeProperty(element, arguments[i]);
   }
 };
 
@@ -376,6 +421,15 @@ mob.layoutUtil.reallocateWidthToTableData = function(element) {
 
 
 /**
+ * @return {boolean}
+ */
+mob.layoutUtil.possiblyInQuirksMode = function() {
+  // http://stackoverflow.com/questions/627097/how-to-tell-if-a-browser-is-in-quirks-mode
+  return mob.util.getWindow().document.compatMode !== 'CSS1Compat';
+};
+
+
+/**
  * Resizes a table to meet a width constraint.
  *
  * @param {!Element} element
@@ -384,7 +438,7 @@ mob.layoutUtil.reallocateWidthToTableData = function(element) {
 mob.layoutUtil.resizeWideTable = function(element, maxWidth) {
   if (mob.layoutUtil.isDataTable(element)) {
     mob.layoutUtil.makeHorizontallyScrollable(element);
-  } else if (mob.util.possiblyInQuirksMode()) {
+  } else if (mob.layoutUtil.possiblyInQuirksMode()) {
     mob.layoutUtil.reorganizeTableQuirksMode(element, maxWidth);
   } else {
     mob.layoutUtil.reorganizeTableNoQuirksMode(element, maxWidth);
@@ -419,21 +473,22 @@ mob.layoutUtil.reorganizeTableNoQuirksMode = function(table, maxWidth) {
   // and some kind of navigational element to choose which X of the original
   // rows data should be displayed.
   var fullWidth = '100%';  //'' + this.maxWidth_ + 'px';
-  mob.util.removeProperty(table, 'width');
-  mob.util.setPropertyImportant(table, 'max-width', fullWidth);
+  mob.layoutUtil.removeProperty(table, 'width');
+  mob.layoutUtil.setPropertyImportant(table, 'max-width', fullWidth);
   for (tchild = table.firstElementChild; tchild;
        tchild = tchild.nextElementSibling) {
-    mob.util.removeProperty(tchild, 'width');
-    mob.util.setPropertyImportant(tchild, 'max-width', fullWidth);
+    mob.layoutUtil.removeProperty(tchild, 'width');
+    mob.layoutUtil.setPropertyImportant(tchild, 'max-width', fullWidth);
     for (row = tchild.firstElementChild; row; row = row.nextElementSibling) {
       if (row.tagName.toUpperCase() == goog.dom.TagName.TR) {
-        mob.util.removeProperty(row, 'width');
-        mob.util.setPropertyImportant(row, 'max-width', fullWidth);
+        mob.layoutUtil.removeProperty(row, 'width');
+        mob.layoutUtil.setPropertyImportant(row, 'max-width', fullWidth);
         for (data = row.firstElementChild; data;
              data = data.nextElementSibling) {
           if (data.tagName.toUpperCase() == goog.dom.TagName.TD) {
-            mob.util.setPropertyImportant(data, 'max-width', fullWidth);
-            mob.util.setPropertyImportant(data, 'display', 'inline-block');
+            mob.layoutUtil.setPropertyImportant(data, 'max-width', fullWidth);
+            mob.layoutUtil.setPropertyImportant(data, 'display',
+                                                'inline-block');
           }
         }
       }
@@ -515,6 +570,53 @@ mob.layoutUtil.reorganizeTableQuirksMode = function(table, maxWidth) {
 
 
 /**
+ * Determines whether two nonzero numbers are with 5% of one another.
+ *
+ * @param {number} x
+ * @param {number} y
+ * @return {boolean}
+ */
+mob.layoutUtil.aboutEqual = function(x, y) {
+  var ratio = (x > y) ? (y / x) : (x / y);
+  return (ratio > 0.95);
+};
+
+
+/**
+ * Finds the dimension as requested directly on the object or its
+ * immediate style.  Does not find dimensions on CSS classes, or
+ * dimensions specified in 'em', percentages, or other units.
+ *
+ * @param {!Element} element The HTML DOM element.
+ * @param {string} name The name of the dimension.
+ * @return {?number} The pixel value as an integer, or null.
+ */
+mob.layoutUtil.findRequestedDimension = function(element, name) {
+  // See if the value is specified in the style attribute.
+  var value = null;
+  if (element.style) {
+    value = mob.util.pixelValue(element.style.getPropertyValue(name));
+  }
+
+  if (value == null) {
+    // See if the width is specified directly on the element.
+    value = mob.util.pixelValue(element.getAttribute(name));
+  }
+
+  return value;
+};
+
+
+/**
+ * @param {!Node} img
+ * @return {boolean}
+ */
+mob.layoutUtil.isSinglePixel = function(img) {
+  return img.naturalHeight == 1 && img.naturalWidth == 1;
+};
+
+
+/**
  * Repairs the aspect-ratio damage done by the broser layout engine
  * due to our max-width:100% CSS directive.
  *
@@ -522,25 +624,26 @@ mob.layoutUtil.reorganizeTableQuirksMode = function(table, maxWidth) {
  */
 mob.layoutUtil.repairDistortedImages = function(element) {
   var computedStyle = window.getComputedStyle(element);
-  var requestedWidth = mob.util.findRequestedDimension(element, 'width');
-  var requestedHeight = mob.util.findRequestedDimension(element, 'height');
+  var requestedWidth = mob.layoutUtil.findRequestedDimension(element, 'width');
+  var requestedHeight =
+      mob.layoutUtil.findRequestedDimension(element, 'height');
   if (requestedWidth && requestedHeight && computedStyle) {
-    var width = mob.util.computedDimension(computedStyle, 'width');
-    var height = mob.util.computedDimension(computedStyle, 'height');
+    var width = mob.layoutUtil.computedDimension(computedStyle, 'width');
+    var height = mob.layoutUtil.computedDimension(computedStyle, 'height');
     if (width && height) {
       var widthShrinkage = width / requestedWidth;
       var heightShrinkage = height / requestedHeight;
-      if (!mob.util.aboutEqual(widthShrinkage, heightShrinkage)) {
+      if (!mob.layoutUtil.aboutEqual(widthShrinkage, heightShrinkage)) {
         mob.util.consoleLog('aspect ratio problem for ' +
                             element.getAttribute('src'));
 
-        if (mob.util.isSinglePixel(element)) {
+        if (mob.layoutUtil.isSinglePixel(element)) {
           var shrinkage = Math.min(widthShrinkage, heightShrinkage);
           mob.layoutUtil.removeProperties_(element, ['width', 'height']);
           element.style.width = requestedWidth * shrinkage;
           element.style.height = requestedHeight * shrinkage;
         } else if (widthShrinkage > heightShrinkage) {
-          mob.util.removeProperty(element, 'height');
+          mob.layoutUtil.removeProperty(element, 'height');
         } else {
           // If we let the width go free but set the height, the aspect ratio
           // might not be maintained.  A few ideas on how to fix are here
@@ -597,8 +700,9 @@ mob.layoutUtil.resizeForegroundImage = function(element, maxWidth) {
   var shrinkage = width / maxWidth;
   if (shrinkage > 1) {
     var newHeight = height / shrinkage;
-    mob.util.setPropertyImportant(element, 'width', '' + maxWidth + 'px');
-    mob.util.setPropertyImportant(element, 'height', '' + newHeight + 'px');
+    mob.layoutUtil.setPropertyImportant(element, 'width', '' + maxWidth + 'px');
+    mob.layoutUtil.setPropertyImportant(element, 'height',
+                                        '' + newHeight + 'px');
   }
 };
 
@@ -628,7 +732,8 @@ mob.layoutUtil.resizeBackgroundImage = function(element, imageSize,
 
     // If the element was previously sized exactly to the div, then resize
     // the height of the div to match the new height of the background.
-    var elementHeight = mob.util.computedDimension(computedStyle, 'height');
+    var elementHeight =
+        mob.layoutUtil.computedDimension(computedStyle, 'height');
     if (height == elementHeight) {
       styles += 'height:' + height + 'px;';
     }
@@ -639,7 +744,8 @@ mob.layoutUtil.resizeBackgroundImage = function(element, imageSize,
   // nodes.  Note that we look specifically for 'min-height' in
   // resizeVerticallyAndReturnBottom_, so this is both a signal to the
   // browser and to a later pass.
-  mob.util.setPropertyImportant(element, 'min-height', '' + height + 'px');
+  mob.layoutUtil.setPropertyImportant(element, 'min-height',
+                                      '' + height + 'px');
 };
 
 
@@ -655,7 +761,7 @@ mob.layoutUtil.wrapTextOnWhitespace = function(element) {
   // we'll need less override markup if we do it at the top level.
   var computedStyle = window.getComputedStyle(element);
   if (computedStyle.getPropertyValue('white-space') == 'nowrap') {
-    mob.util.setPropertyImportant(element, 'white-space', 'normal');
+    mob.layoutUtil.setPropertyImportant(element, 'white-space', 'normal');
   }
 };
 
@@ -672,7 +778,7 @@ mob.layoutUtil.stripPercentDimensions = function(element, computedStyle) {
     var value = computedStyle.getPropertyValue(name);
     if (value && (value != '100%') && (value != 'auto') &&
         goog.string.endsWith(value, '%')) {
-      mob.util.setPropertyImportant(element, name, 'auto');
+      mob.layoutUtil.setPropertyImportant(element, name, 'auto');
     }
   }
 };
@@ -703,7 +809,7 @@ mob.layoutUtil.trimPaddingAndMargins = function(element, computedStyle) {
     var name = mob.layoutConstants.CLAMPED_STYLES[i];
     if ((!isList || !goog.string.endsWith(name, '-left')) &&
         (!isBody || !goog.string.startsWith(name, 'margin-'))) {
-      var value = mob.util.computedDimension(computedStyle, name);
+      var value = mob.layoutUtil.computedDimension(computedStyle, name);
       if (value == null) {
         continue;
       }

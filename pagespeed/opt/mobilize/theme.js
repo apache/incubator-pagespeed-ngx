@@ -39,29 +39,6 @@ mob.Theme = function(doneCallback) {
 
 
 /**
- * Compute color and synthesize logo span.
- * @param {?string} logoUrl
- * @param {!goog.color.Rgb} backgroundColor
- * @param {!goog.color.Rgb} foregroundColor
- * @return {!mob.util.ThemeData}
- */
-mob.Theme.createThemeData = function(logoUrl, backgroundColor,
-                                     foregroundColor) {
-  var themeData =
-      new mob.util.ThemeData(logoUrl, backgroundColor, foregroundColor);
-
-  // Export theme info if we are asked to.
-  if (window.psMobPrecompute) {
-    window.psMobLogoUrl = logoUrl;
-    window.psMobBackgroundColor = backgroundColor;
-    window.psMobForegroundColor = foregroundColor;
-  }
-
-  return themeData;
-};
-
-
-/**
  * @param {!Array.<!mob.LogoCandidate>} candidates
  */
 mob.Theme.prototype.logoComplete = function(candidates) {
@@ -70,10 +47,10 @@ mob.Theme.prototype.logoComplete = function(candidates) {
     if (candidates.length >= 1) {
       var candidate = candidates[0];
       themeData =
-          mob.Theme.createThemeData(candidate.logoRecord.foregroundImage.src,
-                                    candidate.background, candidate.foreground);
+          new mob.util.ThemeData(candidate.logoRecord.foregroundImage.src,
+                                 candidate.background, candidate.foreground);
     } else {
-      themeData = mob.Theme.createThemeData(null, [255, 255, 255], [0, 0, 0]);
+      themeData = new mob.util.ThemeData(null, [255, 255, 255], [0, 0, 0]);
     }
     var doneCallback = this.doneCallback_;
     this.doneCallback_ = null;

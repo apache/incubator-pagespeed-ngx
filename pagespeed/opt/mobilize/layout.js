@@ -224,6 +224,18 @@ mob.Layout.prototype.resizeVertically_ = function(element) {
 
 
 /**
+ * Computes whether the element is positioned off the screen.
+ * @param {!CSSStyleDeclaration} style
+ * @return {boolean}
+ */
+mob.layoutUtil.isOffScreen = function(style) {
+  var top = mob.util.pixelValue(style.top);
+  var left = mob.util.pixelValue(style.left);
+  return (((top != null) && (top < -100)) || ((left != null) && (left < -100)));
+};
+
+
+/**
  * Computes the lowest bottom (highest number) of all the children,
  * and adjusts the height of the div to accommodate the children.
  * Returns the height.
@@ -257,7 +269,7 @@ mob.Layout.prototype.resizeVerticallyAndReturnBottom_ = function(element,
   // Respect any min-height set on the element.  Note in particular that we will
   // set min-height in this.resizeBackgroundImage_, and we may not be able to
   // find the 'natural' height of the object based on its subelements.
-  var minHeight = mob.util.computedDimension(computedStyle, 'min-height');
+  var minHeight = mob.layoutUtil.computedDimension(computedStyle, 'min-height');
   if (minHeight != null) {
     bottom += minHeight;
   }
@@ -273,7 +285,7 @@ mob.Layout.prototype.resizeVerticallyAndReturnBottom_ = function(element,
        childElement = childElement.nextElementSibling) {
     var childComputedStyle = window.getComputedStyle(childElement);
     if (childComputedStyle && (childComputedStyle.position == 'absolute') &&
-        !mob.util.isOffScreen(childComputedStyle) &&
+        !mob.layoutUtil.isOffScreen(childComputedStyle) &&
         (mob.util.pixelValue(childComputedStyle.getPropertyValue('height')) !=
          0) &&
         (childComputedStyle.getPropertyValue('visibility') != 'hidden')) {
@@ -336,8 +348,8 @@ mob.Layout.prototype.resizeVerticallyAndReturnBottom_ = function(element,
       // already excluded by this.isDontTouchElement above.
       if ((tagName != goog.dom.TagName.IMG) && (height > 0) &&
           !element.style.backgroundSize) {
-        mob.util.removeProperty(element, 'height');
-        mob.util.setPropertyImportant(element, 'height', 'auto');
+        mob.layoutUtil.removeProperty(element, 'height');
+        mob.layoutUtil.setPropertyImportant(element, 'height', 'auto');
         if (element.offsetHeight) {
           elementBottom = top + element.offsetHeight;
         }
@@ -346,9 +358,10 @@ mob.Layout.prototype.resizeVerticallyAndReturnBottom_ = function(element,
     } else if (bottom != elementBottom) {
       if (hasAbsoluteChildren) {
         height = bottom - top + 1;
-        mob.util.setPropertyImportant(element, 'height', '' + height + 'px');
+        mob.layoutUtil.setPropertyImportant(element, 'height',
+                                            '' + height + 'px');
       } else {
-        mob.util.setPropertyImportant(element, 'height', 'auto');
+        mob.layoutUtil.setPropertyImportant(element, 'height', 'auto');
       }
     }
   }
@@ -387,8 +400,8 @@ mob.Layout.prototype.resizeIfTooWide_ = function(element) {
                                    tagName)) {
       mob.layoutUtil.makeHorizontallyScrollable(element);
     } else if (mob.layoutConstants.FLEXIBLE_WIDTH_TAGS[tagName]) {
-      mob.util.setPropertyImportant(element, 'max-width', '100%');
-      mob.util.removeProperty(element, 'width');
+      mob.layoutUtil.setPropertyImportant(element, 'max-width', '100%');
+      mob.layoutUtil.removeProperty(element, 'width');
     } else {
       mob.util.consoleLog('Punting on resize of ' + tagName +
                           ' which wants to be ' + element.offsetWidth +
@@ -503,8 +516,10 @@ mob.Layout.prototype.stripFloats_ = function(element) {
         this.isDontTouchElement(childElement)) {
       // do nothing
     } else {
-      if ((childPosition == 'absolute') && !mob.util.isOffScreen(childStyle)) {
-        mob.util.setPropertyImportant(childElement, 'position', 'relative');
+      if ((childPosition == 'absolute') &&
+          !mob.layoutUtil.isOffScreen(childStyle)) {
+        mob.layoutUtil.setPropertyImportant(childElement, 'position',
+                                            'relative');
       }
       var floatStyle = childStyle.getPropertyValue('float');
       var floatRight = (floatStyle == 'right');
@@ -520,7 +535,8 @@ mob.Layout.prototype.stripFloats_ = function(element) {
         floatRight = false;
         displayOverride = 'block';
         if (previousChild && previousChildHasNegativeBottomMargin) {
-          mob.util.setPropertyImportant(previousChild, 'margin-bottom', '0');
+          mob.layoutUtil.setPropertyImportant(previousChild, 'margin-bottom',
+                                              '0');
         }
       }
 
@@ -530,14 +546,14 @@ mob.Layout.prototype.stripFloats_ = function(element) {
         // it's computed from CSS rules, but we can explicitly set it to
         // 'none' right on the object, which will override a value in
         // inherited from a class.
-        mob.util.setPropertyImportant(childElement, 'float', 'none');
+        mob.layoutUtil.setPropertyImportant(childElement, 'float', 'none');
         var display = childStyle.getPropertyValue('display');
         if (display != 'none') {
           // TODO(jmarantz): If we have an invisible block that's
           // got a 'float' attribute, then we don't want to make it
           // visible now; we just want to strip the 'float'.
-          mob.util.setPropertyImportant(childElement, 'display',
-                                        displayOverride);
+          mob.layoutUtil.setPropertyImportant(childElement, 'display',
+                                              displayOverride);
         }
       }
       if (floatRight) {
@@ -545,7 +561,7 @@ mob.Layout.prototype.stripFloats_ = function(element) {
       }
       previousChild = childElement;
       var marginBottom =
-          mob.util.computedDimension(childStyle, 'margin-bottom');
+          mob.layoutUtil.computedDimension(childStyle, 'margin-bottom');
       previousChildHasNegativeBottomMargin =
           ((marginBottom != null) && (marginBottom < 0));
     }
@@ -599,10 +615,10 @@ mob.Layout.prototype.expandColumns_ = function(element) {
     if (attr) {
       element.removeAttribute(mob.layoutUtil.NEGATIVE_BOTTOM_MARGIN_ATTR);
       var computedStyle = window.getComputedStyle(element);
-      var height = mob.util.computedDimension(computedStyle, 'height');
+      var height = mob.layoutUtil.computedDimension(computedStyle, 'height');
       if (height != null) {
-        mob.util.setPropertyImportant(element, 'margin-bottom',
-                                      '' + -height + 'px');
+        mob.layoutUtil.setPropertyImportant(element, 'margin-bottom',
+                                            '' + -height + 'px');
       }
     }
     prevOffsetRight = offsetRight;

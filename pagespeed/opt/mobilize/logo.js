@@ -189,19 +189,18 @@ mob.Logo.prototype.findLogoElement_ = function(element) {
     // we see actual use of it.
     imageSrc = mob.util.findBackgroundImage(element);
   }
+  // Note that resourceFileName returns '' for a 'data:image/' src, so we don't
+  // need another check for that here.
   imageSrc = mob.util.resourceFileName(imageSrc);
-  if (imageSrc.indexOf('data:image/') != -1) {
-    imageSrc = null;
-  }
 
   var metric = 0;
+  var organization = this.organization_;
   function accumulateMetric(signal) {
     if (signal && (typeof(signal) == 'string')) {
       if (goog.string.caseInsensitiveContains(signal, 'logo')) {
         ++metric;
       }
-      if (this.organization &&
-          mob.util.findPattern(signal, this.organization_)) {
+      if (organization && mob.util.findPattern(signal, organization)) {
         ++metric;
       }
     }
@@ -478,6 +477,7 @@ mob.Logo.rectAccessors_ = [
 
 
 /**
+ * Compare 2 LogoRecords, return -1 if a is better, and 1 if b is better.
  * @param {!mob.Logo.LogoRecord} a
  * @param {!mob.Logo.LogoRecord} b
  * @return {number}
@@ -514,10 +514,35 @@ mob.Logo.compareLogos_ = function(a, b) {
 
 
 /**
- * Find up to 5 best logo candidates in rank order. The best candidate is the
- * one with the largest metric value. If there are more than one candiates
- * with the same largest metric, the follow rules are applied on them in order
- * for choosing the best one:
+ * Use the position and size to update the metric of all elements in
+ * this.candidates_
+ * @private
+ */
+mob.Logo.prototype.updateCandidateMetricsWithRect_ = function() {
+  var maxBot = 0;
+  var minTop = Infinity;
+  var i, rect, candidate;
+  for (i = 0; candidate = this.candidates_[i]; ++i) {
+    rect = candidate.rect;
+    minTop = Math.min(minTop, rect.top);
+    maxBot = Math.max(maxBot, rect.bottom);
+  }
+  for (i = 0; candidate = this.candidates_[i]; ++i) {
+    rect = candidate.rect;
+    // TODO(huibao): Investigate a better way for incorporating size and
+    // position in the selection of the best logo, for example
+    // Math.sqrt((maxBot - rect.bottom) / (maxBot - minTop)).
+    var multTop = Math.sqrt((maxBot - rect.top) / (maxBot - minTop));
+    candidate.metric *= multTop;
+  }
+};
+
+
+/**
+ * Find and rank the best logo candidates. The best candidate is the one with
+ * the largest metric value. If there are more than one candiates with the same
+ * largest metric, the follow rules are applied on them in order for choosing
+ * the best one:
  *   - the candidate with the highest top border
  *   - the candidate with the smallest left border
  *   - the candidate with the largest size
@@ -531,40 +556,25 @@ mob.Logo.compareLogos_ = function(a, b) {
  * @private
  */
 mob.Logo.prototype.findBestLogos_ = function() {
-  var logoCandidates = this.candidates_;
-  if (logoCandidates.length > 1) {
-    // Use the position and size to update the metric.
-    // TODO(huibao): Split the update into a method.
-    var maxBot = 0;
-    var minTop = Infinity;
-    var i, rect, candidate;
-    for (i = 0; candidate = logoCandidates[i]; ++i) {
-      rect = candidate.rect;
-      minTop = Math.min(minTop, rect.top);
-      maxBot = Math.max(maxBot, rect.bottom);
-    }
-    for (i = 0; candidate = logoCandidates[i]; ++i) {
-      rect = candidate.rect;
-      // TODO(huibao): Investigate a better way for incorporating size and
-      // position in the selection of the best logo, for example
-      // Math.sqrt((maxBot - rect.bottom) / (maxBot - minTop)).
-      var multTop = Math.sqrt((maxBot - rect.top) / (maxBot - minTop));
-      candidate.metric *= multTop;
-    }
+  if (this.candidates_.length <= 1) {
+    return this.candidates_;
+  }
 
-    if ((logoCandidates.length > 0) && (this.maxNumCandidates_ == 1)) {
-      // Just pick the best one, which is faster than sorting.
-      var bestLogo = logoCandidates[0];
-      for (i = 1; i < logoCandidates.length; ++i) {
-        candidate = logoCandidates[i];
-        if (mob.Logo.compareLogos_(candidate, bestLogo) < 0) {
-          bestLogo = candidate;
-        }
+  this.updateCandidateMetricsWithRect_();
+  var logoCandidates = this.candidates_;
+
+  if ((logoCandidates.length > 0) && (this.maxNumCandidates_ == 1)) {
+    // Just pick the best one, which is faster than sorting.
+    var bestLogo = logoCandidates[0];
+    for (var i = 1; i < logoCandidates.length; ++i) {
+      var candidate = logoCandidates[i];
+      if (mob.Logo.compareLogos_(candidate, bestLogo) < 0) {
+        bestLogo = candidate;
       }
-      logoCandidates[0] = bestLogo;
-    } else {
-      logoCandidates.sort(mob.Logo.compareLogos_);
     }
+    logoCandidates[0] = bestLogo;
+  } else {
+    logoCandidates.sort(mob.Logo.compareLogos_);
   }
   return logoCandidates;
 };

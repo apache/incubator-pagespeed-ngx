@@ -214,89 +214,6 @@ mob.util.pixelValue = function(value) {
 
 
 /**
- * Returns an integer pixel dimension or null.  Note that a null return
- * might mean the computed dimension is 'auto' or something.  This function
- * strips the literal "px" from the return value before parsing as an int.
- *
- * @param {?CSSStyleDeclaration} computedStyle The window.getComputedStyle of
- * an element.
- * @param {string} name The name of a CSS dimension.
- * @return {?number} the dimension value in pixels, or null if failure.
- */
-mob.util.computedDimension = function(computedStyle, name) {
-  var value = null;
-  if (computedStyle) {
-    value = mob.util.pixelValue(computedStyle.getPropertyValue(name));
-  }
-  return value;
-};
-
-
-/**
- * Removes a property from an HTML element.
- * @param {!Element} element The HTML DOM element.
- * @param {string} property The property to remove.
- */
-mob.util.removeProperty = function(element, property) {
-  if (element.style) {
-    element.style.removeProperty(property);
-  }
-  element.removeAttribute(property);
-};
-
-
-/**
- * Finds the dimension as requested directly on the object or its
- * immediate style.  Does not find dimensions on CSS classes, or
- * dimensions specified in 'em', percentages, or other units.
- *
- * @param {!Element} element The HTML DOM element.
- * @param {string} name The name of the dimension.
- * @return {?number} The pixel value as an integer, or null.
- */
-mob.util.findRequestedDimension = function(element, name) {
-  // See if the value is specified in the style attribute.
-  var value = null;
-  if (element.style) {
-    value = mob.util.pixelValue(element.style.getPropertyValue(name));
-  }
-
-  if (value == null) {
-    // See if the width is specified directly on the element.
-    value = mob.util.pixelValue(element.getAttribute(name));
-  }
-
-  return value;
-};
-
-
-/**
- * Sets a property in the element's style with a new value.  The new value
- * is written as '!important'.
- *
- * @param {!Element} element
- * @param {string} name
- * @param {string} value
- */
-mob.util.setPropertyImportant = function(element, name, value) {
-  element.style.setProperty(name, value, 'important');
-};
-
-
-/**
- * Determines whether two nonzero numbers are with 5% of one another.
- *
- * @param {number} x
- * @param {number} y
- * @return {boolean}
- */
-mob.util.aboutEqual = function(x, y) {
-  var ratio = (x > y) ? (y / x) : (x / y);
-  return (ratio > 0.95);
-};
-
-
-/**
  * Adds new styles to an element.
  *
  * @param {!Element} element
@@ -338,15 +255,6 @@ mob.util.boundingRect = function(node) {
                            rect.right + scrollX,
                            rect.bottom + scrollY,
                            rect.left + scrollX);
-};
-
-
-/**
- * @param {!Node} img
- * @return {boolean}
- */
-mob.util.isSinglePixel = function(img) {
-  return img.naturalHeight == 1 && img.naturalWidth == 1;
 };
 
 
@@ -406,74 +314,6 @@ mob.util.inFriendlyIframe = function() {
     }
   }
   return false;
-};
-
-
-/**
- * @return {boolean}
- */
-mob.util.possiblyInQuirksMode = function() {
-  // http://stackoverflow.com/questions/627097/how-to-tell-if-a-browser-is-in-quirks-mode
-  return mob.util.getWindow().document.compatMode !== 'CSS1Compat';
-};
-
-
-/**
- * TODO(jmarantz): Think of faster algorithm.
- * @param {!Array.<!goog.math.Box>} rects
- * @return {boolean}
- */
-mob.util.hasIntersectingRects = function(rects) {
-  // N^2 loop to determine whether there are any intersections.
-  for (var i = 0; i < rects.length; ++i) {
-    for (var j = i + 1; j < rects.length; ++j) {
-      if (goog.math.Box.intersects(rects[i], rects[j])) {
-        return true;
-      }
-    }
-  }
-  return false;
-};
-
-
-/**
- * Creates an XPath for a node.
- * http://stackoverflow.com/questions/2661818/javascript-get-xpath-of-a-node
- * @param {?Node} node
- * @return {?string}
- */
-mob.util.createXPathFromNode = function(node) {
-  var allNodes = mob.util.getWindow().document.getElementsByTagName('*');
-  var i, segs = [], sib;
-  for (; goog.dom.isElement(node); node = node.parentNode) {
-    if (node.hasAttribute('id')) {
-      var uniqueIdCount = 0;
-      for (var n = 0; (n < allNodes.length) && (uniqueIdCount <= 1); ++n) {
-        if (allNodes[n].hasAttribute('id') && allNodes[n].id == node.id) {
-          ++uniqueIdCount;
-        }
-      }
-      if (uniqueIdCount == 1) {
-        segs.unshift('id("' + node.getAttribute('id') + '")');
-        return segs.join('/');
-      } else {
-        segs.unshift(node.localName.toLowerCase() + '[@id="' +
-                     node.getAttribute('id') + '"]');
-      }
-    } else if (node.hasAttribute('class')) {
-      segs.unshift(node.localName.toLowerCase() + '[@class="' +
-                   node.getAttribute('class') + '"]');
-    } else {
-      for (i = 1, sib = node.previousSibling; sib;
-           sib = sib.previousSibling) {
-        if (sib.localName == node.localName) {
-          i++;
-        }
-      }
-      segs.unshift(node.localName.toLowerCase() + '[' + i + ']');
-    }
-  }
-  return segs.length ? '/' + segs.join('/') : null;
 };
 
 
@@ -591,8 +431,8 @@ mob.util.colorStringToNumbers = function(str) {
 
 /**
  * Convert a color array to a string. For example, [0, 255, 255] will be
- * converted to '#00FFFF'.
- * @param {!Array.<number>} color
+ * converted to '#00ffff'.
+ * @param {!goog.color.Rgb} color
  * @return {string}
  */
 mob.util.colorNumbersToString = function(color) {
@@ -640,30 +480,6 @@ mob.util.findPattern = function(str, pattern) {
   str = mob.util.stripNonAlphaNumeric(str);
   pattern = mob.util.stripNonAlphaNumeric(pattern);
   return (str.indexOf(pattern) >= 0 ? 1 : 0);
-};
-
-
-/**
- * Remove the substring after 'symbol' multiple times from 'str'.
- * @param {string} str
- * @param {string} symbol
- * @param {number} num
- * @return {string}
- */
-mob.util.removeSuffixNTimes = function(str, symbol, num) {
-  var len = str.length;
-  for (var i = 0; i < num; ++i) {
-    var pos = str.lastIndexOf(symbol, len - 1);
-    if (pos >= 0) {
-      len = pos;
-    } else {
-      break;
-    }
-  }
-  if (pos >= 0) {
-    return str.substring(0, len);
-  }
-  return str;
 };
 
 
@@ -722,9 +538,9 @@ mob.util.resourceFileName = function(url) {
 
 
 /**
- * Add proxy suffix and/or 'www.' prefix to URL, if it makes the URL to have
- * the same orgin as the HTML; otherwise, return the original URL. This method
- * also replaces the scheme with that of the HTML when it modifies the URL.
+ * Add proxy suffix and/or 'www.' prefix to URL, if it makes the URL have the
+ * same orgin as the HTML; otherwise, return the original URL. This method also
+ * replaces the scheme with that of the HTML when it modifies the URL.
  *
  * For example, if the origin is 'http://sub.example.com.psproxy.net',
  * URL 'http://sub.example.com/image.jpg' will be converted to
@@ -734,6 +550,9 @@ mob.util.resourceFileName = function(url) {
  * URL 'http://example.com/image.jpg' and
  * URL 'http://example.com.psproxy.net/image.jpg' will be converted to
  * 'https://www.example.com.psproxy.net/image.jpg'.
+ *
+ * TODO(jud): Remove this function after verifying we no longer have a need for
+ * it. It is currently unused.
  *
  * @param {string} url
  * @param {?string=} opt_origin Origin used for testing
@@ -855,37 +674,6 @@ mob.util.boundingRectAndSize = function(element) {
   psRect.height = rect.bottom - rect.top;
   psRect.width = rect.right - rect.left;
   return psRect;
-};
-
-
-/**
- * Computes whether the element is positioned off the screen.
- * @param {!CSSStyleDeclaration} style
- * @return {boolean}
- */
-mob.util.isOffScreen = function(style) {
-  var top = mob.util.pixelValue(style.top);
-  var left = mob.util.pixelValue(style.left);
-  return (((top != null) && (top < -100)) || ((left != null) && (left < -100)));
-};
-
-
-/**
- * Take a JS string and escape it to obtain a CSS string1 (double quoted).
- * See http://www.w3.org/TR/css3-selectors/#w3cselgrammar
- * @param {string} unescaped JS string
- * @return {string} escaped, quoted CSS string1
- */
-mob.util.toCssString1 = function(unescaped) {
-  // There are actually relatively few forbidden characters [^\r\n\f\\"], so
-  // just replace each one of them by a safe escape.
-  // All the escapes start with backslash, so escape existing backslashes first.
-  var result = unescaped.replace(/\\/g, '\\\\');
-  result = result.replace(/"/g, '\\"');
-  result = result.replace(/\n/g, '\\a ');
-  result = result.replace(/\f/g, '\\c ');
-  result = result.replace(/\r/g, '\\d ');
-  return '"' + result + '"';
 };
 
 
