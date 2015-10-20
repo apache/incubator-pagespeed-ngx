@@ -133,9 +133,14 @@ void IframeFetcher::RespondWithIframe(const GoogleString& escaped_url,
                          &escaped_viewport_content);
     viewport = StrCat("<meta name=\"viewport\" content=\"",
                       escaped_viewport_content, "\">");
-    // Setting scrolling="no" on the iframe keeps the iframe from expanding to
-    // be too large on iOS devices.
-    scrolling_attribute = " scrolling=\"no\"";
+
+    const char* user_agent =
+        fetch->request_headers()->Lookup1(HttpAttributes::kUserAgent);
+    if (user_agent_matcher_->IsiOSUserAgent(user_agent)) {
+      // Setting scrolling="no" on the iframe keeps the iframe from expanding to
+      // be too large on iOS devices.
+      scrolling_attribute = " scrolling=\"no\"";
+    }
   }
 
   GoogleString canonical = StrCat(

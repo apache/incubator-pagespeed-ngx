@@ -44,9 +44,9 @@ const char kExpectedUrl[] = "http://example.com/foo?bar";
 const char kRobotsContent[] = "robots.txt content";
 const char kFaviconContent[] = "favicon content";
 
-GoogleString ExpectedIframe(StringPiece url, bool has_viewport_set) {
+GoogleString ExpectedIframe(StringPiece url, bool add_scrolling_attribute) {
   GoogleString scrolling_attribute =
-      has_viewport_set ? " scrolling=\"no\"" : "";
+      add_scrolling_attribute ? " scrolling=\"no\"" : "";
   return StrCat("<iframe id=\"psmob-iframe\" src=\"", url, "\"",
                 scrolling_attribute, ">");
 }
@@ -136,8 +136,9 @@ TEST_F(IframeFetcherTest, IframeOnMobileProxySuffix) {
   EXPECT_EQ(HttpStatus::kOK, response->status_code());
   // If not explictly configured, there is a default width=device-width
   // viewport.
-  EXPECT_THAT(fetch_.buffer(), ::testing::HasSubstr(ExpectedIframe(
-                                   kExpectedUrl, true /* has_viewport_set */)));
+  EXPECT_THAT(fetch_.buffer(),
+              ::testing::HasSubstr(ExpectedIframe(
+                  kExpectedUrl, false /* add_scrolling_attribute */)));
   EXPECT_THAT(
       fetch_.buffer(),
       ::testing::HasSubstr(ExpectedCanonical(kExpectedUrl)));
@@ -168,8 +169,9 @@ TEST_F(IframeFetcherTest, IframeOnDesktopProxySuffixWithAlwaysMobilize) {
   InitResources();
   ResponseHeaders* response = FetchPage("example.com.suffix");
   EXPECT_EQ(HttpStatus::kOK, response->status_code());
-  EXPECT_THAT(fetch_.buffer(), ::testing::HasSubstr(ExpectedIframe(
-                                   kExpectedUrl, true /* has_viewport_set */)));
+  EXPECT_THAT(fetch_.buffer(),
+              ::testing::HasSubstr(ExpectedIframe(
+                  kExpectedUrl, false /* add_scrolling_attribute */)));
   EXPECT_THAT(
       fetch_.buffer(),
       ::testing::HasSubstr(ExpectedCanonical(kExpectedUrl)));
@@ -202,8 +204,9 @@ TEST_F(IframeFetcherTest, IframeOnMobileMapOrigin) {
   InitResources();
   ResponseHeaders* response = FetchPage("example.us");
   EXPECT_EQ(HttpStatus::kOK, response->status_code());
-  EXPECT_THAT(fetch_.buffer(), ::testing::HasSubstr(ExpectedIframe(
-                                   kExpectedUrl, true /* has_viewport_set */)));
+  EXPECT_THAT(fetch_.buffer(),
+              ::testing::HasSubstr(ExpectedIframe(
+                  kExpectedUrl, false /* add_scrolling_attribute */)));
   EXPECT_THAT(
       fetch_.buffer(),
       ::testing::HasSubstr(ExpectedCanonical(kExpectedUrl)));
@@ -235,8 +238,9 @@ TEST_F(IframeFetcherTest, IframeOnDesktopMapOriginWithAlwaysMobilize) {
   InitResources();
   ResponseHeaders* response = FetchPage("example.us");
   EXPECT_EQ(HttpStatus::kOK, response->status_code());
-  EXPECT_THAT(fetch_.buffer(), ::testing::HasSubstr(ExpectedIframe(
-                                   kExpectedUrl, true /* has_viewport_set */)));
+  EXPECT_THAT(fetch_.buffer(),
+              ::testing::HasSubstr(ExpectedIframe(
+                  kExpectedUrl, false /* add_scrolling_attribute */)));
   EXPECT_THAT(
       fetch_.buffer(),
       ::testing::HasSubstr(ExpectedCanonical(kExpectedUrl)));
@@ -285,9 +289,11 @@ TEST_F(IframeFetcherTest, Viewport) {
       fetch_.buffer(),
       ::testing::HasSubstr("<meta name=\"viewport\" "
                            "content=\"width=device-width,initial-scale=1\">"));
-  // Verify that the scrolling attribute is set on the iframe.
-  EXPECT_THAT(fetch_.buffer(), ::testing::HasSubstr(ExpectedIframe(
-                                   kExpectedUrl, true /* has_viewport_set */)));
+  // Verify that the scrolling attribute is not set on the iframe, since this is
+  // an android user agent.
+  EXPECT_THAT(fetch_.buffer(),
+              ::testing::HasSubstr(ExpectedIframe(
+                  kExpectedUrl, false /* add_scrolling_attribute */)));
 }
 
 TEST_F(IframeFetcherTest, ViewportNone) {
@@ -314,7 +320,37 @@ TEST_F(IframeFetcherTest, ViewportEscaped) {
   EXPECT_THAT(
       fetch_.buffer(),
       ::testing::HasSubstr("<meta name=\"viewport\" content=\"&quot;&gt;\">"));
-  EXPECT_THAT(fetch_.buffer(), ::testing::HasSubstr("scrolling=\"no\""));
+  EXPECT_THAT(fetch_.buffer(),
+              ::testing::Not(::testing::HasSubstr("scrolling=\"no\"")));
+}
+
+TEST_F(IframeFetcherTest, ViewportIOsSafari) {
+  InitTest(UserAgentMatcherTestBase::kIPhone4Safari, kMapOrigin, kOnlyOnMobile);
+  InitResources();
+  ResponseHeaders* response = FetchPage("example.us");
+  EXPECT_EQ(HttpStatus::kOK, response->status_code());
+  EXPECT_THAT(
+      fetch_.buffer(),
+      ::testing::HasSubstr("<meta name=\"viewport\" "
+                           "content=\"width=device-width,initial-scale=1\">"));
+  // Verify that the scrolling attribute is set on the iframe.
+  EXPECT_THAT(fetch_.buffer(),
+              ::testing::HasSubstr(ExpectedIframe(
+                  kExpectedUrl, true /* add_scrolling_attribute */)));
+}
+
+TEST_F(IframeFetcherTest, ViewportNoneIOsSafari) {
+  options_.set_mob_iframe_viewport("none");
+  InitTest(UserAgentMatcherTestBase::kIPhone4Safari, kMapOrigin, kOnlyOnMobile);
+  InitResources();
+  ResponseHeaders* response = FetchPage("example.us");
+  EXPECT_EQ(HttpStatus::kOK, response->status_code());
+  EXPECT_THAT(fetch_.buffer(),
+              ::testing::Not(::testing::HasSubstr("<meta name=\"viewport\"")));
+  // Verify that the scrolling attribute is set on the iframe.
+  EXPECT_THAT(fetch_.buffer(),
+              ::testing::HasSubstr(ExpectedIframe(
+                  kExpectedUrl, false /* add_scrolling_attribute */)));
 }
 
 TEST_F(IframeFetcherTest, Robots) {
@@ -360,7 +396,7 @@ TEST_F(IframeFetcherTest, RobotsInSubdir) {
   EXPECT_EQ(HttpStatus::kOK, response->status_code());
   EXPECT_THAT(fetch_.buffer(), ::testing::HasSubstr(ExpectedIframe(
                                    "http://example.com/foo/robots.txt",
-                                   true /* has_viewport_set */)));
+                                   false /* add_scrolling_attribute */)));
   EXPECT_STREQ("text/html", response->Lookup1(HttpAttributes::kContentType));
 }
 
