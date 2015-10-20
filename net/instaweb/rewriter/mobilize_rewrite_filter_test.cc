@@ -64,6 +64,7 @@ GoogleString HeadAndViewportWithTheme(bool layout_mode, bool precompute_mode,
                                       StringPiece logo_url,
                                       StringPiece device_type) {
   return StrCat(
+      "<meta itemprop=\"telephone\" content=\"", kPhoneNumber, "\"/>"
       "<script>window.psDebugMode=false;window.psNavMode=true;"
       "window.psLabeledMode=false;"
       "window.psConfigMode=false;"
