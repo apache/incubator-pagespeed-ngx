@@ -127,10 +127,16 @@ void AsyncFetchWithLock::Finalize(bool lock_failure, bool success) {
 }
 
 NamedLock* AsyncFetchWithLock::MakeInputLock(const GoogleString& url) {
+  return MakeInputLock(url, lock_hasher_, lock_manager_);
+}
+
+NamedLock* AsyncFetchWithLock::MakeInputLock(const GoogleString& url,
+                                             const Hasher* hasher,
+                                             NamedLockManager* lock_manager) {
   const char kLockSuffix[] = ".lock";
 
-  GoogleString lock_name = StrCat(lock_hasher_->Hash(url), kLockSuffix);
-  return lock_manager_->CreateNamedLock(lock_name);
+  GoogleString lock_name = StrCat(hasher->Hash(url), kLockSuffix);
+  return lock_manager->CreateNamedLock(lock_name);
 }
 
 }  // namespace net_instaweb

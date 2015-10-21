@@ -536,13 +536,6 @@ NamedLock* ServerContext::MakeCreationLock(const GoogleString& name) {
   return lock_manager_->CreateNamedLock(lock_name);
 }
 
-NamedLock* ServerContext::MakeInputLock(const GoogleString& name) {
-  const char kLockSuffix[] = ".lock";
-
-  GoogleString lock_name = StrCat(lock_hasher_.Hash(name), kLockSuffix);
-  return lock_manager_->CreateNamedLock(lock_name);
-}
-
 namespace {
 // Constants governing resource lock timeouts.
 // TODO(jmaessen): Set more appropriately?

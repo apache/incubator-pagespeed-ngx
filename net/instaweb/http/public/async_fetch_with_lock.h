@@ -110,6 +110,10 @@ class AsyncFetchWithLock : public AsyncFetch {
  private:
   // Makes a lock used for fetching.
   NamedLock* MakeInputLock(const GoogleString& url);
+  // Used only for testing.
+  static NamedLock* MakeInputLock(const GoogleString& url,
+                                  const Hasher* hasher,
+                                  NamedLockManager* lock_manager);
 
   void LockFailed(UrlAsyncFetcher* fetcher);
   void LockAcquired(UrlAsyncFetcher* fetcher);
@@ -120,6 +124,8 @@ class AsyncFetchWithLock : public AsyncFetch {
   GoogleString url_;
   GoogleString cache_key_;
   MessageHandler* message_handler_;
+
+  friend class RewriteContextTest;
 
   DISALLOW_COPY_AND_ASSIGN(AsyncFetchWithLock);
 };

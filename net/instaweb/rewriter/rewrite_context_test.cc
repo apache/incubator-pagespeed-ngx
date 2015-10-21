@@ -22,6 +22,7 @@
 #include "net/instaweb/rewriter/public/rewrite_context.h"
 
 #include "net/instaweb/http/public/async_fetch.h"
+#include "net/instaweb/http/public/async_fetch_with_lock.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_cache_failure.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
@@ -82,6 +83,8 @@ namespace {
 // timeout's multiple (so one can easily tell its occurrences
 // from repetitions of the driver's timeout).
 const int64 kRewriteDelayMs = 47;
+
+}  // namespace
 
 class RewriteContextTest : public RewriteContextTestBase {
  protected:
@@ -178,11 +181,15 @@ class RewriteContextTest : public RewriteContextTestBase {
     return num_unrewritten_css;
   }
 
+  NamedLock* MakeInputLock(const GoogleString& name) {
+    return AsyncFetchWithLock::MakeInputLock(name,
+                                             server_context()->lock_hasher(),
+                                             server_context()->lock_manager());
+  }
+
   Variable* fetch_failures_;
   Variable* fetch_successes_;
 };
-
-}  // namespace
 
 TEST_F(RewriteContextTest, TrimOnTheFlyOptimizable) {
   GoogleString input_html, output_html;
@@ -3334,8 +3341,7 @@ TEST_F(RewriteContextTest, TestFreshenForMultipleResourceRewrites) {
 
   // Grab a lock for the resource that we are trying to freshen, preventing
   // that flow from working.
-  scoped_ptr<NamedLock> lock(server_context()->MakeInputLock(
-      StrCat(kTestDomain, kPath2)));
+  scoped_ptr<NamedLock> lock(MakeInputLock(StrCat(kTestDomain, kPath2)));
   NamedLockTester lock_tester(server_context()->thread_system());
   ASSERT_TRUE(lock_tester.TryLock(lock.get()));
   ValidateExpected("freshen",
