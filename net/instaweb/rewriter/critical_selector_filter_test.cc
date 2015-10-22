@@ -117,7 +117,6 @@ class CriticalSelectorFilterTest : public RewriteTestBase {
     rewrite_driver()->set_property_page(page_);
     pcache_->Read(page_);
     SetHtmlMimetype();  // Don't wrap scripts in <![CDATA[ ]]>
-    SetDummyRequestHeaders();
   }
 
   void WriteCriticalSelectorsToPropertyCache(const StringSet& selectors) {
@@ -312,7 +311,7 @@ TEST_F(CriticalSelectorFilterTest, EmptyBlock) {
 }
 
 TEST_F(CriticalSelectorFilterTest, DisabledForIE) {
-  rewrite_driver()->SetUserAgent(UserAgentMatcherTestBase::kIe7UserAgent);
+  SetCurrentUserAgent(UserAgentMatcherTestBase::kIe7UserAgent);
   GoogleString css = StrCat(
       "<style>*,p {display: none; } span {display: inline; }</style>",
       CssLinkHref("a.css"),

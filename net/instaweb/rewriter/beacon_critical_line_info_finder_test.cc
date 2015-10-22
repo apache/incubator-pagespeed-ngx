@@ -19,7 +19,6 @@
 
 #include <map>
 
-#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/critical_line_info.pb.h"
 #include "net/instaweb/rewriter/public/critical_finder_support_util.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -47,9 +46,7 @@ class BeaconCriticalLineInfoFinderTest : public RewriteTestBase {
   virtual ~BeaconCriticalLineInfoFinderTest() {}
 
   void ResetDriver() {
-    rewrite_driver()->Clear();
-    rewrite_driver()->set_request_context(
-        RequestContext::NewTestRequestContext(factory()->thread_system()));
+    ClearRewriteDriver();
     PropertyCache* pcache = server_context_->page_property_cache();
     MockPropertyPage* page = NewMockPage(kRequestUrl);
     rewrite_driver()->set_property_page(page);

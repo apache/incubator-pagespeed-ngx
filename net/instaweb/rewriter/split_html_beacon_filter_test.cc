@@ -70,7 +70,7 @@ class SplitHtmlBeaconFilterTest : public RewriteTestBase {
 
   void ResetDriver() {
     rewrite_driver()->Clear();
-    rewrite_driver()->SetUserAgent(
+    SetCurrentUserAgent(
         UserAgentMatcherTestBase::kChrome18UserAgent);
     SetHtmlMimetype();  // Don't wrap scripts in <![CDATA[ ]]>
     rewrite_driver()->set_request_context(
@@ -147,7 +147,7 @@ TEST_F(SplitHtmlBeaconFilterTest, DontRebeaconBeforeTimeout) {
 }
 
 TEST_F(SplitHtmlBeaconFilterTest, DisabledForBots) {
-  rewrite_driver()->SetUserAgent(UserAgentMatcherTestBase::kGooglebotUserAgent);
+  SetCurrentUserAgent(UserAgentMatcherTestBase::kGooglebotUserAgent);
   ValidateNoBeacon();
 }
 

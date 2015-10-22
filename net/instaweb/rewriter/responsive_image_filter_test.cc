@@ -130,7 +130,7 @@ TEST_F(ResponsiveImageFilterTest, SimpleWebp) {
   options()->EnableFilter(RewriteOptions::kResizeImages);
   options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
   rewrite_driver()->AddFilters();
-  rewrite_driver()->SetUserAgent("webp");
+  SetCurrentUserAgent("webp");
 
   TestSimple(100, 100, "a.jpg", "10.23", "webp", false);
 }
@@ -151,7 +151,7 @@ TEST_F(ResponsiveImageFilterTest, OddRatio) {
   options()->EnableFilter(RewriteOptions::kResizeImages);
   options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
   rewrite_driver()->AddFilters();
-  rewrite_driver()->SetUserAgent("webp");
+  SetCurrentUserAgent("webp");
 
   // Important, only 2 digits after decimal.
   TestSimple(99, 99, "a.jpg", "10.33", "webp", false);
@@ -694,7 +694,7 @@ TEST_F(ResponsiveImageFilterTest, Lazyload) {
   // Disable beaconing so that the image is automatically lazyloaded.
   options()->set_critical_images_beacon_enabled(false);
   // Set User-Agent so that Lazyload will work.
-  rewrite_driver()->SetUserAgent(
+  SetCurrentUserAgent(
       UserAgentMatcherTestBase::kChrome18UserAgent);
   SetHtmlMimetype();  // Prevent insertion of CDATA tags to static JS.
   rewrite_driver()->AddFilters();

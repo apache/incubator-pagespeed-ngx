@@ -48,9 +48,6 @@ class GoogleFontServiceInputResourceTest : public RewriteTestBase {
     RewriteTestBase::SetUp();
     GoogleFontServiceInputResource::InitStats(statistics());
 
-    rewrite_driver()->SetSessionFetcher(
-        new UserAgentSensitiveTestFetcher(rewrite_driver()->async_fetcher()));
-
     // Font loader CSS gets Cache-Control:private, max-age=86400
     ResponseHeaders response_headers;
     SetDefaultLongCacheHeaders(&kContentTypeCss, &response_headers);
@@ -75,10 +72,18 @@ class GoogleFontServiceInputResourceTest : public RewriteTestBase {
     SetFetchResponse(StrCat(kNonCss, "?UA=Chromezilla"),
                      non_css, "something weird");
   }
+
+  void ResetUserAgent(StringPiece user_agent) {
+    ClearRewriteDriver();
+    rewrite_driver()->SetSessionFetcher(
+        new UserAgentSensitiveTestFetcher(rewrite_driver()->async_fetcher()));
+    SetCurrentUserAgent(user_agent);
+    SetDriverRequestHeaders();
+  }
 };
 
 TEST_F(GoogleFontServiceInputResourceTest, Creation) {
-  rewrite_driver()->SetUserAgent("Chromezilla");
+  ResetUserAgent("Chromezilla");
 
   scoped_ptr<GoogleFontServiceInputResource> resource;
 
@@ -109,7 +114,7 @@ TEST_F(GoogleFontServiceInputResourceTest, Creation) {
 
 TEST_F(GoogleFontServiceInputResourceTest, Load) {
   GoogleUrl url(kRoboto);
-  rewrite_driver()->SetUserAgent("Chromezilla");
+  ResetUserAgent("Chromezilla");
 
   ResourcePtr resource(
       GoogleFontServiceInputResource::Make(url, rewrite_driver()));
@@ -139,7 +144,7 @@ TEST_F(GoogleFontServiceInputResourceTest, Load) {
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
 
   // But that different UA gets different string.
-  rewrite_driver()->SetUserAgent("Safieri");
+  ResetUserAgent("Safieri");
   ResourcePtr resource3(
       GoogleFontServiceInputResource::Make(url, rewrite_driver()));
   ASSERT_TRUE(resource3.get() != NULL);
@@ -169,7 +174,7 @@ TEST_F(GoogleFontServiceInputResourceTest, UANormalization) {
 
   // Try fetches with a couple of possible aliases. The one we uploaded it under
   // is first, since it's the only one the fetcher replies to.
-  rewrite_driver()->SetUserAgent(kIE7a);
+  ResetUserAgent(kIE7a);
 
   ResourcePtr resource(
       GoogleFontServiceInputResource::Make(url, rewrite_driver()));
@@ -188,7 +193,7 @@ TEST_F(GoogleFontServiceInputResourceTest, UANormalization) {
   const char kIE7b[] =
       "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; Trident/4.0; "
       ".NET CLR 2.0.50727; .NET4.0C; .NET4.0E)";
-  rewrite_driver()->SetUserAgent(kIE7b);
+  ResetUserAgent(kIE7b);
 
   ResourcePtr resource2(
       GoogleFontServiceInputResource::Make(url, rewrite_driver()));
@@ -208,7 +213,7 @@ TEST_F(GoogleFontServiceInputResourceTest, LoadParallel) {
   GoogleUrl url(kRoboto);
   SetupWaitFetcher();
 
-  rewrite_driver()->SetUserAgent("Chromezilla");
+  ResetUserAgent("Chromezilla");
   ResourcePtr resource(
       GoogleFontServiceInputResource::Make(url, rewrite_driver()));
   ASSERT_TRUE(resource.get() != NULL);
@@ -219,7 +224,7 @@ TEST_F(GoogleFontServiceInputResourceTest, LoadParallel) {
                       &callback);
   EXPECT_FALSE(callback.done());
 
-  rewrite_driver()->SetUserAgent("Safieri");
+  ResetUserAgent("Safieri");
   ResourcePtr resource2(
       GoogleFontServiceInputResource::Make(url, rewrite_driver()));
   ASSERT_TRUE(resource2.get() != NULL);
@@ -246,7 +251,7 @@ TEST_F(GoogleFontServiceInputResourceTest, FetchFailure) {
 
   // Regression test --- don't crash when fetch fails.
   // Bug discovered by accident due to a bug in a test.
-  rewrite_driver()->SetUserAgent("Huhzilla");
+  ResetUserAgent("Huhzilla");
   GoogleUrl url(kRoboto);
   ResourcePtr resource(
       GoogleFontServiceInputResource::Make(url, rewrite_driver()));
@@ -263,7 +268,7 @@ TEST_F(GoogleFontServiceInputResourceTest, FetchFailure) {
 }
 
 TEST_F(GoogleFontServiceInputResourceTest, DontLoadNonCss) {
-  rewrite_driver()->SetUserAgent("Chromezilla");
+  ResetUserAgent("Chromezilla");
 
   GoogleUrl non_css_url(kNonCss);
   ResourcePtr resource(

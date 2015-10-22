@@ -54,7 +54,7 @@ class SplitHtmlHelperFilterTest : public RewriteTestBase {
  protected:
   virtual void SetUp() {
     RewriteTestBase::SetUp();
-    rewrite_driver()->SetUserAgent(
+    SetCurrentUserAgent(
         UserAgentMatcherTestBase::kChrome18UserAgent);
     SetHtmlMimetype();  // Prevent insertion of CDATA tags to static JS.
   }
@@ -147,7 +147,7 @@ TEST_F(SplitHtmlHelperFilterTest, DisabledTest1) {
 TEST_F(SplitHtmlHelperFilterTest, DisabledTest2) {
   Init();
   EXPECT_TRUE(options()->Enabled(RewriteOptions::kSplitHtmlHelper));
-  rewrite_driver()->SetUserAgent("does_not_support_split");
+  SetCurrentUserAgent("does_not_support_split");
   ValidateNoChanges("split_helper_disabled2", "");
   CheckLoggingStatus(RewriterHtmlApplication::USER_AGENT_NOT_SUPPORTED);
 }

@@ -20,7 +20,6 @@
 
 #include <algorithm>                   // for std::binary_search
 #include <cstddef>                     // for size_t
-#include <memory>
 #include <set>
 
 #include "base/logging.h"               // for operator<<, etc
@@ -1293,7 +1292,8 @@ void ServerContext::ShowCacheHandler(
   } else {
     RewriteDriver* driver = NewCustomRewriteDriver(
         options.release(), fetch->request_context());
-    driver->SetUserAgent(ua);
+    fetch->request_headers()->Replace(HttpAttributes::kUserAgent, ua);
+    driver->SetRequestHeaders(*fetch->request_headers());
 
     GoogleString error_out;
     MetadataCacheResultCallback* callback = new MetadataCacheResultCallback(

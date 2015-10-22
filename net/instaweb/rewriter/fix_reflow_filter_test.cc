@@ -111,7 +111,7 @@ TEST_F(FixReflowFilterTest, Disabled) {
       "</body>";
   const GoogleString expected = input_html;
 
-  rewrite_driver_->SetUserAgent("junk");
+  SetCurrentUserAgent("junk");
   ValidateExpectedUrl(kRequestUrl, input_html, expected);
   rewrite_driver_->log_record()->WriteLog();
   CheckFilterStatus(RewriterHtmlApplication::DISABLED);

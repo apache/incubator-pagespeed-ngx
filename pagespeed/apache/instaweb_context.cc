@@ -148,10 +148,6 @@ InstawebContext::InstawebContext(request_rec* request,
     ResponseHeadersToApacheRequest(resp_headers, request);
   }
 
-  const char* user_agent = apr_table_get(request->headers_in,
-                                         HttpAttributes::kUserAgent);
-  rewrite_driver_->SetUserAgent(user_agent);
-
   BlockingPropertyCacheLookup();
   rewrite_driver_->EnableBlockingRewrite(request_headers);
 

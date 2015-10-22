@@ -48,8 +48,6 @@ class AddInstrumentationFilterTest : public RewriteTestBase {
     AddInstrumentationFilter::InitStats(statistics());
     options()->EnableFilter(RewriteOptions::kAddInstrumentation);
     RewriteTestBase::SetUp();
-    rewrite_driver()->SetUserAgent(
-        UserAgentMatcherTestBase::kChrome18UserAgent);
     report_unload_time_ = false;
     xhtml_mode_ = false;
     cdata_mode_ = false;
@@ -58,9 +56,19 @@ class AddInstrumentationFilterTest : public RewriteTestBase {
 
   virtual bool AddBody() const { return false; }
 
+  void AddFilters() {
+    AddFiltersWithUserAgent(UserAgentMatcherTestBase::kChrome18UserAgent);
+  }
+
+  void AddFiltersWithUserAgent(StringPiece user_agent) {
+    SetCurrentUserAgent(user_agent);
+    SetDriverRequestHeaders();
+    rewrite_driver()->AddFilters();
+  }
+
   void RunInjection() {
     options()->set_report_unload_time(report_unload_time_);
-    rewrite_driver()->AddFilters();
+    AddFilters();
     ParseUrl(GetTestUrl(),
              "<head></head><head></head><body></body><body></body>");
     EXPECT_EQ(1, statistics()->GetVariable(
@@ -193,7 +201,7 @@ TEST_F(AddInstrumentationFilterTest, TestHeadersFetchTimingReporting) {
 
 // Test that head script is inserted after title and meta tags.
 TEST_F(AddInstrumentationFilterTest, TestScriptAfterTitleAndMeta) {
-  rewrite_driver()->AddFilters();
+  AddFilters();
   ParseUrl(GetTestUrl(),
            "<head><meta name='abc' /><title></title></head><body></body>");
   EXPECT_TRUE(output_buffer_.find(
@@ -201,7 +209,7 @@ TEST_F(AddInstrumentationFilterTest, TestScriptAfterTitleAndMeta) {
 }
 
 TEST_F(AddInstrumentationFilterTest, TestNon200Response) {
-  rewrite_driver()->AddFilters();
+  AddFilters();
   response_headers_.set_status_code(HttpStatus::kForbidden);
   rewrite_driver()->set_response_headers_ptr(&response_headers_);
   ParseUrl(GetTestUrl(),
@@ -246,8 +254,7 @@ TEST_F(AddInstrumentationFilterTest, TestDeferInstrumentationScript) {
 }
 
 TEST_F(AddInstrumentationFilterTest, TestDisableForBots) {
-  rewrite_driver()->AddFilters();
-  rewrite_driver()->SetUserAgent(UserAgentMatcherTestBase::kGooglebotUserAgent);
+  AddFiltersWithUserAgent(UserAgentMatcherTestBase::kGooglebotUserAgent);
   ValidateNoChanges(GetTestUrl(),
                     "<head></head><head></head><body></body><body></body>");
 }

@@ -70,7 +70,6 @@
 #include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/http/http_names.h"
 #include "pagespeed/kernel/http/http_options.h"
-#include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/response_headers.h"
 #include "pagespeed/kernel/http/semantic_type.h"
 #include "pagespeed/kernel/http/user_agent_matcher_test_base.h"
@@ -334,24 +333,24 @@ class ImageRewriteTest : public RewriteTestBase {
   void TestInlining(bool convert_to_webp, const char* user_agent,
                     const StringPiece& file_name, const ContentType& input_type,
                     const ContentType& output_type, bool expect_inline) {
-    rewrite_driver()->SetUserAgent(user_agent);
+    ClearRewriteDriver();
+
+    SetCurrentUserAgent(user_agent);
+    if (convert_to_webp) {
+      options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
+      options()->EnableFilter(RewriteOptions::kConvertToWebpLossless);
+      AddRequestAttribute(HttpAttributes::kAccept, "image/webp");
+    }
+    SetDriverRequestHeaders();
+
     options()->set_image_inline_max_bytes(1000000);
     options()->EnableFilter(RewriteOptions::kInlineImages);
     options()->EnableFilter(RewriteOptions::kConvertGifToPng);
     options()->EnableFilter(RewriteOptions::kConvertPngToJpeg);
     options()->EnableFilter(RewriteOptions::kRecompressJpeg);
     options()->EnableFilter(RewriteOptions::kRecompressPng);
-
-    if (convert_to_webp) {
-      options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
-      options()->EnableFilter(RewriteOptions::kConvertToWebpLossless);
-
-      RequestHeaders request_headers;
-      request_headers.Add(HttpAttributes::kAccept, "image/webp");
-      rewrite_driver()->SetRequestHeaders(request_headers);
-    }
-
     rewrite_driver()->AddFilters();
+
     TestSingleRewrite(file_name, input_type, output_type, "", "",
                       true /*expect_rewritten*/, expect_inline);
   }
@@ -936,23 +935,23 @@ class ImageRewriteTest : public RewriteTestBase {
     content->clear();
     response->Clear();
     ClearStats();
-    rewrite_driver()->SetUserAgent(user_agent);
+    ResetUserAgent(user_agent);
     return FetchResourceUrl(url, content, response);
   }
 
   void IProFetchAndValidate(
       StringPiece url, StringPiece user_agent, StringPiece accept,
       ResponseHeaders* response) {
+    ClearRewriteDriver();
     if (!user_agent.empty()) {
-      rewrite_driver()->SetUserAgent(user_agent);
+      SetCurrentUserAgent(user_agent);
     }
-    RequestHeaders request;
     if (!accept.empty()) {
-      request.Add(HttpAttributes::kAccept, accept);
+      AddRequestAttribute(HttpAttributes::kAccept, accept);
     }
     GoogleString content_ignored;
     response->Clear();
-    EXPECT_TRUE(FetchResourceUrl(url, &request, &content_ignored, response));
+    EXPECT_TRUE(FetchResourceUrl(url, &content_ignored, response));
     const char* etag = response->Lookup1(HttpAttributes::kEtag);
     EXPECT_STREQ("W/\"PSA-aj-0\"", etag);
   }
@@ -960,7 +959,7 @@ class ImageRewriteTest : public RewriteTestBase {
   void TestResolutionLimit(int resolution, const char* image_file,
                            const ContentType& content_type, bool try_webp,
                            bool try_resize, bool expect_rewritten) {
-    rewrite_driver()->SetUserAgent("webp-la");
+    SetCurrentUserAgent("webp-la");
     options()->set_image_resolution_limit_bytes(resolution);
     options()->set_image_jpeg_recompress_quality(85);
     options()->EnableFilter(RewriteOptions::kRecompressPng);
@@ -1000,6 +999,12 @@ class ImageRewriteTest : public RewriteTestBase {
     }
   }
 
+  void ResetUserAgent(StringPiece user_agent) {
+    ClearRewriteDriver();
+    SetCurrentUserAgent(user_agent);
+    SetDriverRequestHeaders();
+  }
+
  private:
   LoggingInfo logging_info_;
   TestRequestContextPtr test_request_context_;
@@ -1023,7 +1028,7 @@ TEST_F(ImageRewriteTest, ImgTagWebp) {
   // We use the webp testing user agent; real webp-capable user agents are
   // tested as part of user_agent_matcher_test and are likely to remain in flux
   // over time.
-  rewrite_driver()->SetUserAgent("webp");
+  SetCurrentUserAgent("webp");
   RewriteImage("img", kContentTypeWebp);
 }
 
@@ -1034,7 +1039,7 @@ TEST_F(ImageRewriteTest, ImgTagWebpLa) {
   // We use the webp testing user agent; real webp-capable user agents are
   // tested as part of user_agent_matcher_test and are likely to remain in flux
   // over time.
-  rewrite_driver()->SetUserAgent("webp-la");
+  SetCurrentUserAgent("webp-la");
   options()->EnableFilter(RewriteOptions::kConvertToWebpLossless);
 
   RewriteImage("img", kContentTypeWebp);
@@ -1051,7 +1056,7 @@ TEST_F(ImageRewriteTest, InputTagWebp) {
   // We use the webp testing user agent; real webp-capable user agents are
   // tested as part of user_agent_matcher_test and are likely to remain in flux
   // over time.
-  rewrite_driver()->SetUserAgent("webp");
+  SetCurrentUserAgent("webp");
   RewriteImage("input type=\"image\"", kContentTypeWebp);
 }
 
@@ -1062,7 +1067,7 @@ TEST_F(ImageRewriteTest, InputTagWebpLa) {
   // We use the webp-la testing user agent; real webp-capable user agents are
   // tested as part of user_agent_matcher_test and are likely to remain in flux
   // over time.
-  rewrite_driver()->SetUserAgent("webp-la");
+  SetCurrentUserAgent("webp-la");
 
   // Note that, currently, images that are originally jpegs are
   // converted to webp lossy regardless of this filter below.
@@ -1145,7 +1150,7 @@ TEST_F(ImageRewriteTest, PngToWebpWithWebpUa) {
   options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
   options()->set_image_recompress_quality(85);
   rewrite_driver()->AddFilters();
-  rewrite_driver()->SetUserAgent("webp");
+  SetCurrentUserAgent("webp");
   TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypeWebp,
                     "", " width=\"100\" height=\"100\"", true, false);
   TestConversionVariables(0, 0, 0,   // gif
@@ -1165,7 +1170,7 @@ TEST_F(ImageRewriteTest, PngToWebpWithWebpLaUa) {
   options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
   options()->set_image_recompress_quality(85);
   rewrite_driver()->AddFilters();
-  rewrite_driver()->SetUserAgent("webp-la");
+  SetCurrentUserAgent("webp-la");
   TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypeWebp,
                     "", " width=\"100\" height=\"100\"", true, false);
   TestConversionVariables(0, 0, 0,   // gif
@@ -1189,7 +1194,7 @@ TEST_F(ImageRewriteTest, PngToWebpWithWebpLaUaAndFlag) {
   options()->set_image_recompress_quality(85);
   options()->set_log_background_rewrites(true);
   rewrite_driver()->AddFilters();
-  rewrite_driver()->SetUserAgent("webp-la");
+  SetCurrentUserAgent("webp-la");
 
   TestSingleRewrite(kRedbrushAlphaPngFile, kContentTypePng, kContentTypeWebp,
                     "", " width=\"512\" height=\"480\"", true, false);
@@ -1257,7 +1262,7 @@ TEST_F(ImageRewriteTest, PngToWebpWithWebpLaUaAndFlagTimesOut) {
   options()->set_image_recompress_quality(85);
   options()->set_image_webp_timeout_ms(0);
   rewrite_driver()->AddFilters();
-  rewrite_driver()->SetUserAgent("webp-la");
+  SetCurrentUserAgent("webp-la");
   TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypeJpeg,
                     "", " width=\"100\" height=\"100\"", true, false);
   TestConversionVariables(0, 0, 0,   // gif
@@ -1277,9 +1282,6 @@ TEST_F(ImageRewriteTest, DistributedImageRewrite) {
   other_options()->Merge(*options());
   rewrite_driver()->AddFilters();
   other_rewrite_driver()->AddFilters();
-  RequestHeaders request_headers;
-  // Set default request headers.
-  rewrite_driver()->SetRequestHeaders(request_headers);
   TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypePng,
                     " width=10 height=10",  // initial_dims,
                     " width=10 height=10",  // final_dims,
@@ -1303,9 +1305,6 @@ TEST_F(ImageRewriteTest, DistributedImageInline) {
   other_options()->Merge(*options());
   rewrite_driver()->AddFilters();
   other_rewrite_driver()->AddFilters();
-  RequestHeaders request_headers;
-  // Set default request headers.
-  rewrite_driver()->SetRequestHeaders(request_headers);
   TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypePng, "", "",
                     true,   // expect_rewritten
                     true);  // expect_inline
@@ -2647,7 +2646,7 @@ TEST_F(ImageRewriteTest, GifToWebpTestWithResizeWithOptimize) {
   options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
   options()->set_image_recompress_quality(85);
   rewrite_driver()->AddFilters();
-  rewrite_driver()->SetUserAgent("webp-la");
+  SetCurrentUserAgent("webp-la");
   const char kResizedDims[] = " width=48 height=64";
   // With resize and optimization
   TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeWebp,
@@ -2664,7 +2663,7 @@ TEST_F(ImageRewriteTest, GifToWebpTestWithoutResizeWithOptimize) {
   options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
   options()->set_image_recompress_quality(85);
   rewrite_driver()->AddFilters();
-  rewrite_driver()->SetUserAgent("webp-la");
+  SetCurrentUserAgent("webp-la");
   // Without resize and with optimization
   TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeWebp,
                     "", "", true, false);
@@ -2781,13 +2780,12 @@ TEST_F(ImageRewriteTest, SquashImagesForMobileScreen) {
   int screen_height;
   ImageUrlEncoder::GetNormalizedScreenResolution(
       100, 80, &screen_width, &screen_height);
-  rewrite_driver()->SetUserAgent(
-      UserAgentMatcherTestBase::kAndroidNexusSUserAgent);
+  ResetUserAgent(UserAgentMatcherTestBase::kAndroidNexusSUserAgent);
 
   TestSquashImagesForMobileScreen(
       rewrite_driver(), screen_width, screen_height);
 
-  rewrite_driver()->SetUserAgent(
+  ResetUserAgent(
       "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_6_8) AppleWebKit/537.13+ "
       "(KHTML, like Gecko) Version/5.1.7 Safari/534.57.2");
   rewrite_driver()->request_properties()->SetScreenResolution(
@@ -2804,13 +2802,13 @@ TEST_F(ImageRewriteTest, SquashImagesForMobileScreen) {
   EXPECT_FALSE(image_rewrite_filter.UpdateDesiredImageDimsIfNecessary(
       image_dim, context, &desired_dim));
 
-  rewrite_driver()->SetUserAgent("iPhone OS");
+  ResetUserAgent("iPhone OS");
   TestSquashImagesForMobileScreen(
       rewrite_driver(), screen_width, screen_height);
 }
 
 TEST_F(ImageRewriteTest, JpegQualityForSmallScreens) {
-  rewrite_driver()->SetUserAgent("Mozilla/5.0 (Linux; U; Android 4.0.1; en-us; "
+  ResetUserAgent("Mozilla/5.0 (Linux; U; Android 4.0.1; en-us; "
       "Galaxy Nexus Build/ICL27) AppleWebKit/534.30 (KHTML, like Gecko) "
       "Version/4.0 Mobile Safari/534.30");
   ImageRewriteFilter image_rewrite_filter(rewrite_driver());
@@ -2866,7 +2864,7 @@ TEST_F(ImageRewriteTest, JpegQualityForSmallScreens) {
   EXPECT_TRUE(ctx.has_use_small_screen_quality());
 
   // Base and for_small_screen options are set, but screen is not small.
-  rewrite_driver()->SetUserAgent("Mozilla/5.0 (Linux; U; Android 4.2; en-us; "
+  ResetUserAgent("Mozilla/5.0 (Linux; U; Android 4.2; en-us; "
       "Nexus 10 Build/JOP12D) AppleWebKit/534.30 (KHTML, like Gecko) "
       "Version/4.0 Safari/534.30");
   ctx.Clear();
@@ -2880,7 +2878,7 @@ TEST_F(ImageRewriteTest, JpegQualityForSmallScreens) {
   EXPECT_FALSE(ctx.has_use_small_screen_quality());
 
   // Small screen following big screen.
-  rewrite_driver()->SetUserAgent("Mozilla/5.0 (Linux; U; Android 4.0.1; en-us; "
+  ResetUserAgent("Mozilla/5.0 (Linux; U; Android 4.0.1; en-us; "
       "Galaxy Nexus Build/ICL27) AppleWebKit/534.30 (KHTML, like Gecko) "
       "Version/4.0 Mobile Safari/534.30");
   ctx.Clear();
@@ -2891,7 +2889,7 @@ TEST_F(ImageRewriteTest, JpegQualityForSmallScreens) {
   EXPECT_TRUE(ctx.has_use_small_screen_quality());
 
   // Big screen following small screen.
-  rewrite_driver()->SetUserAgent("Mozilla/5.0 (Linux; U; Android 4.2; en-us; "
+  ResetUserAgent("Mozilla/5.0 (Linux; U; Android 4.2; en-us; "
       "Nexus 10 Build/JOP12D) AppleWebKit/534.30 (KHTML, like Gecko) "
       "Version/4.0 Safari/534.30");
   ctx.Clear();
@@ -2902,7 +2900,7 @@ TEST_F(ImageRewriteTest, JpegQualityForSmallScreens) {
   EXPECT_FALSE(ctx.has_use_small_screen_quality());
 
   // Non-mobile UA.
-  rewrite_driver()->SetUserAgent("Mozilla/5.0 (Windows; U; Windows NT 5.1; "
+  ResetUserAgent("Mozilla/5.0 (Windows; U; Windows NT 5.1; "
       "en-US) AppleWebKit/525.13 (KHTML, like Gecko) Chrome/0.A.B.C "
       "Safari/525.13");
   ctx.Clear();
@@ -2913,7 +2911,7 @@ TEST_F(ImageRewriteTest, JpegQualityForSmallScreens) {
   EXPECT_FALSE(ctx.use_small_screen_quality());
 
   // Mobile UA
-  rewrite_driver()->SetUserAgent("iPhone OS Safari");
+  ResetUserAgent("iPhone OS Safari");
   options()->ClearSignatureForTesting();
   options()->set_image_jpeg_recompress_quality_for_small_screens(70);
   image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
@@ -2923,7 +2921,7 @@ TEST_F(ImageRewriteTest, JpegQualityForSmallScreens) {
   EXPECT_TRUE(ctx.use_small_screen_quality());
 
   // Min of small screen and desktop
-  rewrite_driver()->SetUserAgent("iPhone OS Safari");
+  ResetUserAgent("iPhone OS Safari");
   options()->ClearSignatureForTesting();
   options()->set_image_jpeg_recompress_quality_for_small_screens(70);
   options()->set_image_jpeg_recompress_quality(60);
@@ -2935,7 +2933,7 @@ TEST_F(ImageRewriteTest, JpegQualityForSmallScreens) {
 }
 
 TEST_F(ImageRewriteTest, WebPQualityForSmallScreens) {
-  rewrite_driver()->SetUserAgent("Mozilla/5.0 (Linux; U; Android 4.0.1; en-us; "
+  ResetUserAgent("Mozilla/5.0 (Linux; U; Android 4.0.1; en-us; "
       "Galaxy Nexus Build/ICL27) AppleWebKit/534.30 (KHTML, like Gecko) "
       "Version/4.0 Mobile Safari/534.30");
   ImageRewriteFilter image_rewrite_filter(rewrite_driver());
@@ -2984,7 +2982,7 @@ TEST_F(ImageRewriteTest, WebPQualityForSmallScreens) {
   EXPECT_TRUE(ctx.has_use_small_screen_quality());
 
   // Base and for_small_screen options are set, but screen is not small.
-  rewrite_driver()->SetUserAgent("Mozilla/5.0 (Linux; U; Android 4.2; en-us; "
+  ResetUserAgent("Mozilla/5.0 (Linux; U; Android 4.2; en-us; "
       "Nexus 10 Build/JOP12D) AppleWebKit/534.30 (KHTML, like Gecko) "
       "Version/4.0 Safari/534.30");
   ctx.Clear();
@@ -2998,7 +2996,7 @@ TEST_F(ImageRewriteTest, WebPQualityForSmallScreens) {
   EXPECT_FALSE(ctx.has_use_small_screen_quality());
 
   // Small screen following big screen.
-  rewrite_driver()->SetUserAgent("Mozilla/5.0 (Linux; U; Android 4.0.1; en-us; "
+  ResetUserAgent("Mozilla/5.0 (Linux; U; Android 4.0.1; en-us; "
       "Galaxy Nexus Build/ICL27) AppleWebKit/534.30 (KHTML, like Gecko) "
       "Version/4.0 Mobile Safari/534.30");
   ctx.Clear();
@@ -3009,7 +3007,7 @@ TEST_F(ImageRewriteTest, WebPQualityForSmallScreens) {
   EXPECT_TRUE(ctx.has_use_small_screen_quality());
 
   // Big screen following small screen.
-  rewrite_driver()->SetUserAgent("Mozilla/5.0 (Linux; U; Android 4.2; en-us; "
+  ResetUserAgent("Mozilla/5.0 (Linux; U; Android 4.2; en-us; "
       "Nexus 10 Build/JOP12D) AppleWebKit/534.30 (KHTML, like Gecko) "
       "Version/4.0 Safari/534.30");
   ctx.Clear();
@@ -3020,7 +3018,7 @@ TEST_F(ImageRewriteTest, WebPQualityForSmallScreens) {
   EXPECT_FALSE(ctx.has_use_small_screen_quality());
 
   // Non-mobile UA.
-  rewrite_driver()->SetUserAgent("Mozilla/5.0 (Windows; U; Windows NT 5.1; "
+  ResetUserAgent("Mozilla/5.0 (Windows; U; Windows NT 5.1; "
       "en-US) AppleWebKit/525.13 (KHTML, like Gecko) Chrome/0.A.B.C "
       "Safari/525.13");
   ctx.Clear();
@@ -3031,7 +3029,7 @@ TEST_F(ImageRewriteTest, WebPQualityForSmallScreens) {
   EXPECT_FALSE(ctx.use_small_screen_quality());
 
   // Mobile UA
-  rewrite_driver()->SetUserAgent("iPhone OS Safari");
+  ResetUserAgent("iPhone OS Safari");
   ctx.Clear();
   options()->ClearSignatureForTesting();
   options()->set_image_webp_recompress_quality_for_small_screens(70);
@@ -3042,7 +3040,7 @@ TEST_F(ImageRewriteTest, WebPQualityForSmallScreens) {
   EXPECT_TRUE(ctx.use_small_screen_quality());
 
   // Min of desktop and mobile quality
-  rewrite_driver()->SetUserAgent("iPhone OS Safari");
+  ResetUserAgent("iPhone OS Safari");
   ctx.Clear();
   options()->ClearSignatureForTesting();
   options()->set_image_webp_recompress_quality_for_small_screens(70);
@@ -3082,7 +3080,7 @@ void SetNumberOfScans(int num_scans, int num_scans_small_screen,
 
 TEST_F(ImageRewriteTest, JpegProgressiveScansForSmallScreens) {
   static const int DO_NOT_SET = -10;
-  rewrite_driver()->SetUserAgent("Mozilla/5.0 (Linux; U; Android 4.0.1; en-us; "
+  ResetUserAgent("Mozilla/5.0 (Linux; U; Android 4.0.1; en-us; "
       "Galaxy Nexus Build/ICL27) AppleWebKit/534.30 (KHTML, like Gecko) "
       "Version/4.0 Mobile Safari/534.30");
   ImageRewriteFilter image_rewrite_filter(rewrite_driver());
@@ -3118,7 +3116,7 @@ TEST_F(ImageRewriteTest, JpegProgressiveScansForSmallScreens) {
   EXPECT_TRUE(ctx.has_use_small_screen_quality());
 
   // Base and for_small_screen options are set, but screen is not small.
-  rewrite_driver()->SetUserAgent("Mozilla/5.0 (Linux; U; Android 4.2; en-us; "
+  ResetUserAgent("Mozilla/5.0 (Linux; U; Android 4.2; en-us; "
       "Nexus 10 Build/JOP12D) AppleWebKit/534.30 (KHTML, like Gecko) "
       "Version/4.0 Safari/534.30");
   SetNumberOfScans(8, 2, res_ptr, options(), rewrite_driver(),
@@ -3127,7 +3125,7 @@ TEST_F(ImageRewriteTest, JpegProgressiveScansForSmallScreens) {
   EXPECT_FALSE(ctx.has_use_small_screen_quality());
 
   // Small screen following big screen.
-  rewrite_driver()->SetUserAgent("Mozilla/5.0 (Linux; U; Android 4.0.1; en-us; "
+  ResetUserAgent("Mozilla/5.0 (Linux; U; Android 4.0.1; en-us; "
       "Galaxy Nexus Build/ICL27) AppleWebKit/534.30 (KHTML, like Gecko) "
       "Version/4.0 Mobile Safari/534.30");
   SetNumberOfScans(DO_NOT_SET, DO_NOT_SET, res_ptr, options(), rewrite_driver(),
@@ -3136,7 +3134,7 @@ TEST_F(ImageRewriteTest, JpegProgressiveScansForSmallScreens) {
   EXPECT_TRUE(ctx.has_use_small_screen_quality());
 
   // Big screen following small screen.
-  rewrite_driver()->SetUserAgent("Mozilla/5.0 (Linux; U; Android 4.2; en-us; "
+  ResetUserAgent("Mozilla/5.0 (Linux; U; Android 4.2; en-us; "
       "Nexus 10 Build/JOP12D) AppleWebKit/534.30 (KHTML, like Gecko) "
       "Version/4.0 Safari/534.30");
   SetNumberOfScans(DO_NOT_SET, DO_NOT_SET, res_ptr, options(), rewrite_driver(),
@@ -3145,7 +3143,7 @@ TEST_F(ImageRewriteTest, JpegProgressiveScansForSmallScreens) {
   EXPECT_FALSE(ctx.has_use_small_screen_quality());
 
   // Non-mobile UA.
-  rewrite_driver()->SetUserAgent("Mozilla/5.0 (Windows; U; Windows NT 5.1; "
+  ResetUserAgent("Mozilla/5.0 (Windows; U; Windows NT 5.1; "
       "en-US) AppleWebKit/525.13 (KHTML, like Gecko) Chrome/0.A.B.C "
       "Safari/525.13");
   SetNumberOfScans(DO_NOT_SET, DO_NOT_SET, res_ptr, options(), rewrite_driver(),
@@ -3154,14 +3152,14 @@ TEST_F(ImageRewriteTest, JpegProgressiveScansForSmallScreens) {
   EXPECT_FALSE(ctx.use_small_screen_quality());
 
   // Mobile UA
-  rewrite_driver()->SetUserAgent("iPhone OS Safari");
+  ResetUserAgent("iPhone OS Safari");
   SetNumberOfScans(DO_NOT_SET, 2, res_ptr, options(), rewrite_driver(),
                    &image_rewrite_filter, &ctx, &img_options);
   EXPECT_EQ(2, img_options->jpeg_num_progressive_scans);
   EXPECT_TRUE(ctx.use_small_screen_quality());
 
   // Mobile UA - use min of default and small screen values
-  rewrite_driver()->SetUserAgent("iPhone OS Safari");
+  ResetUserAgent("iPhone OS Safari");
   SetNumberOfScans(2, 8, res_ptr, options(), rewrite_driver(),
                    &image_rewrite_filter, &ctx, &img_options);
   EXPECT_EQ(2, img_options->jpeg_num_progressive_scans);
@@ -3217,7 +3215,7 @@ TEST_F(ImageRewriteTest, CacheControlHeaderCheckForNonWebpUA) {
   options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
   AddRecompressImageFilters();
   rewrite_driver()->AddFilters();
-  rewrite_driver()->SetUserAgent("webp");
+  ResetUserAgent("webp");
 
   GoogleString page_url = StrCat(kTestDomain, "test.html");
   // Store image contents into fetcher.
@@ -3242,7 +3240,7 @@ TEST_F(ImageRewriteTest, CacheControlHeaderCheckForNonWebpUA) {
   EXPECT_EQ(Timer::kYearMs,
             response_headers->CacheExpirationTimeMs() - start_time_ms);
   // Set a non-webp UA.
-  rewrite_driver()->SetUserAgent("");
+  ResetUserAgent("");
 
   GoogleString new_image_url =  StrCat(kTestDomain, kPuzzleJpgFile);
   page_url = StrCat(kTestDomain, "test.html");
@@ -3321,7 +3319,7 @@ TEST_F(ImageRewriteTest, ServeWebpFromColdCache) {
   options()->set_serve_rewritten_webp_urls_to_any_agent(true);
   options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
   GoogleString img_src;
-  rewrite_driver()->SetUserAgent("webp");
+  ResetUserAgent("webp");
   Variable* webp_rewrite_count = statistics()->GetVariable(
       ImageRewriteFilter::kImageWebpRewrites);
   RewriteImageFromHtml("img", kContentTypeWebp, &img_src);

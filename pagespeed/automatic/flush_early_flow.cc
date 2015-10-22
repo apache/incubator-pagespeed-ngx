@@ -483,7 +483,6 @@ void FlushEarlyFlow::FlushEarly() {
         new_driver->SetRequestHeaders(*driver_->request_headers());
         new_driver->set_flushing_early(true);
         new_driver->SetWriter(base_fetch_);
-        new_driver->SetUserAgent(driver_->user_agent());
         new_driver->StartParse(url_);
 
         new_driver->log_record()->SetRewriterLoggingStatus(

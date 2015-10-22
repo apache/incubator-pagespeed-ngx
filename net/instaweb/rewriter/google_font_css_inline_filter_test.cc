@@ -25,10 +25,12 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
+#include "pagespeed/kernel/base/ref_counted_ptr.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/response_headers.h"
+#include "pagespeed/opt/http/request_context.h"
 
 namespace net_instaweb {
 
@@ -50,7 +52,10 @@ class GoogleFontCssInlineFilterTestBase : public RewriteTestBase {
     options()->ClearSignatureForTesting();
     options()->EnableFilter(RewriteOptions::kDebug);
     server_context()->ComputeSignature(options());
+  }
 
+  void ResetUserAgent(StringPiece user_agent) {
+    ClearRewriteDriver();
     rewrite_driver()->SetSessionFetcher(
         new UserAgentSensitiveTestFetcher(rewrite_driver()->async_fetcher()));
 
@@ -72,6 +77,7 @@ class GoogleFontCssInlineFilterTestBase : public RewriteTestBase {
     // If other filters will try to fetch this, they won't have a UA.
     SetFetchResponse(StrCat(kRoboto, "&UA=unknown"),
                      response_headers, "font_huh");
+    SetCurrentUserAgent(user_agent);
   }
 };
 
@@ -84,20 +90,20 @@ class GoogleFontCssInlineFilterTest : public GoogleFontCssInlineFilterTestBase {
 };
 
 TEST_F(GoogleFontCssInlineFilterTest, BasicOperation) {
-  rewrite_driver()->SetUserAgent("Chromezilla");
+  ResetUserAgent("Chromezilla");
   ValidateExpected("simple",
                    CssLinkHref(kRoboto),
                    "<style>font_chromezilla</style>");
 
   // Different UAs get different cache entries
-  rewrite_driver()->SetUserAgent("Safieri");
+  ResetUserAgent("Safieri");
   ValidateExpected("simple2",
                    CssLinkHref(kRoboto),
                    "<style>font_safieri</style>");
 }
 
 TEST_F(GoogleFontCssInlineFilterTest, UsageRestrictions) {
-  rewrite_driver()->SetUserAgent("Chromezilla");
+  ResetUserAgent("Chromezilla");
 
   options()->ClearSignatureForTesting();
   options()->set_modify_caching_headers(false);
@@ -120,7 +126,7 @@ TEST_F(GoogleFontCssInlineFilterTest, UsageRestrictions) {
 }
 
 TEST_F(GoogleFontCssInlineFilterTest, ProtocolRelative) {
-  rewrite_driver()->SetUserAgent("Chromezilla");
+  ResetUserAgent("Chromezilla");
   ValidateExpected("proto_rel",
                    CssLinkHref("//fonts.googleapis.com/css?family=Roboto"),
                    "<style>font_chromezilla</style>");
@@ -141,14 +147,14 @@ class GoogleFontCssInlineFilterSizeLimitTest
 };
 
 TEST_F(GoogleFontCssInlineFilterSizeLimitTest, SizeLimit) {
-  rewrite_driver()->SetUserAgent("Chromezilla");
+  ResetUserAgent("Chromezilla");
   ValidateExpected(
       "slightly_long",
       CssLinkHref(kRoboto),
       StrCat(CssLinkHref(kRoboto),
              "<!--CSS not inlined since it&#39;s bigger than 12 bytes-->"));
 
-  rewrite_driver()->SetUserAgent("Safieri");
+  ResetUserAgent("Safieri");
   ValidateExpected("short",
                    CssLinkHref(kRoboto),
                    "<style>font_safieri</style>");
@@ -168,12 +174,12 @@ class GoogleFontCssInlineFilterAndImportTest
 TEST_F(GoogleFontCssInlineFilterAndImportTest, ViaInlineImport) {
   // Tests to make sure that if InlineImportToLink filter is on we
   // convert a <style>@import'ing </style> this as well.
-  rewrite_driver()->SetUserAgent("Chromezilla");
+  ResetUserAgent("Chromezilla");
   ValidateExpected("import",
                    StringPrintf("<style>@import \"%s\";</style>", kRoboto),
                    "<style>font_chromezilla</style>");
 
-  rewrite_driver()->SetUserAgent("Safieri");
+  ResetUserAgent("Safieri");
   ValidateExpected("import",
                    StringPrintf("<style>@import \"%s\";</style>", kRoboto),
                    "<style>font_safieri</style>");
@@ -194,7 +200,7 @@ class GoogleFontCssInlineFilterAndWidePermissionsTest
 };
 
 TEST_F(GoogleFontCssInlineFilterAndWidePermissionsTest, WithWideAuthorization) {
-  rewrite_driver()->SetUserAgent("Chromezilla");
+  ResetUserAgent("Chromezilla");
   ValidateExpected("with_domain_*",
                    CssLinkHref(kRoboto),
                    "<style>font_chromezilla</style>");
@@ -204,8 +210,8 @@ TEST_F(GoogleFontCssInlineFilterAndWidePermissionsTest, WithWideAuthorization) {
 // it's not inline_css doing stuff.
 class NoGoogleFontCssInlineFilterAndWidePermissionsTest
     : public GoogleFontCssInlineFilterTestBase {
-  virtual void SetUp() {
-    GoogleFontCssInlineFilterTestBase::SetUp();
+ protected:
+  void SetupForAuthorizedFetchOrigin() {
     // Check that we don't rely solely on authorization to properly
     // dispatch the URL to us. Note that we can't only use DomainLawyer here
     // since UserAgentSensitiveTestFetcher is at http layer so is simply
@@ -222,7 +228,8 @@ TEST_F(NoGoogleFontCssInlineFilterAndWidePermissionsTest,
   // Since font inlining isn't on, the regular inliner complains. This isn't
   // ideal, but doing otherwise requires inline_css to know about
   // inline_google_font_css, which also seems suboptimal.
-  rewrite_driver()->SetUserAgent("Chromezilla");
+  ResetUserAgent("Chromezilla");
+  SetupForAuthorizedFetchOrigin();
   ValidateExpected("with_domain_*_without_font_filter", CssLinkHref(kRoboto),
                    StrCat(CssLinkHref(kRoboto),
                           "<!--Uncacheable content, preventing rewriting of "

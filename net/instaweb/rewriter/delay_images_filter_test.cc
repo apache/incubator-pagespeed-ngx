@@ -153,8 +153,9 @@ class DelayImagesFilterTest : public RewriteTestBase {
 
   void SetupUserAgentTest(StringPiece user_agent) {
     ClearRewriteDriver();
-    rewrite_driver()->SetUserAgent(user_agent);
+    SetCurrentUserAgent(user_agent);
     SetHtmlMimetype();  // Prevent insertion of CDATA tags to static JS.
+    SetDriverRequestHeaders();
   }
 
   void ExpectLogRecord(int index, const RewriterInfo& expected_info) {
@@ -821,7 +822,7 @@ TEST_F(DelayImagesFilterTest, ResizeForResolutionWithSmallImage) {
 
   // No low quality data for an image smaller than kDelayImageWidthForMobile
   // (in image_rewrite_filter.cc).
-  rewrite_driver()->SetUserAgent(
+  SetCurrentUserAgent(
       UserAgentMatcherTestBase::kAndroidICSUserAgent);
   MatchOutputAndCountBytes(input_html, output_html);
 }

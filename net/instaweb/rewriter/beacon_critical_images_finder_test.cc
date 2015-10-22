@@ -58,7 +58,7 @@ class BeaconCriticalImagesFinderTest : public CriticalImagesFinderTestBase {
         beacon_cohort, factory()->nonce_generator(), statistics());
     server_context()->set_critical_images_finder(finder_);
     ResetDriver();
-    SetDummyRequestHeaders();
+    SetDriverRequestHeaders();
     // Set up default critical image sets to use for testing.
     html_images_.insert("x.jpg");
     html_images_.insert("y.png");
@@ -76,7 +76,7 @@ class BeaconCriticalImagesFinderTest : public CriticalImagesFinderTestBase {
   void WriteBackAndResetDriver() {
     WriteToPropertyCache();
     ResetDriver();
-    SetDummyRequestHeaders();
+    SetDriverRequestHeaders();
   }
 
   GoogleString CriticalImagesString() {
@@ -366,7 +366,7 @@ TEST_F(BeaconCriticalImagesFinderTest, RebeaconBeforeTimeoutWithHeader) {
   // are configured.
   ResetDriver();
   SetDownstreamCacheDirectives("", "localhost:80", kConfiguredBeaconingKey);
-  SetDummyRequestHeaders();
+  SetDriverRequestHeaders();
   VerifyNoBeaconing();
 
   // Beacon injection should not happen when the PS-ShouldBeacon header is

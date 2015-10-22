@@ -42,7 +42,6 @@
 #include "pagespeed/kernel/html/html_parse_test_base.h"
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/google_url.h"
-#include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/user_agent_matcher_test_base.h"
 #include "pagespeed/opt/logging/enums.pb.h"
 
@@ -94,13 +93,11 @@ class CriticalImagesBeaconFilterTest : public RewriteTestBase {
     GoogleUrl base(GetTestUrl());
     image_gurl_.Reset(base, kChefGifFile);
     ResetDriver();
-    SetDummyRequestHeaders();
   }
 
   void ResetDriver() {
     rewrite_driver()->Clear();
-    rewrite_driver()->SetUserAgent(
-        UserAgentMatcherTestBase::kChrome18UserAgent);
+    SetCurrentUserAgent(UserAgentMatcherTestBase::kChrome18UserAgent);
     rewrite_driver()->set_request_context(
         RequestContext::NewTestRequestContext(factory()->thread_system()));
     MockPropertyPage* page = NewMockPage(kRequestUrl);
@@ -287,7 +284,7 @@ TEST_F(CriticalImagesBeaconFilterTest, DontRebeaconBeforeTimeout) {
 
   // No beacon injection happens on the immediately succeeding request.
   ResetDriver();
-  SetDummyRequestHeaders();
+  SetDriverRequestHeaders();
   SetupAndProcessUrl();
   VerifyNoInjection(1);
 
@@ -296,7 +293,7 @@ TEST_F(CriticalImagesBeaconFilterTest, DontRebeaconBeforeTimeout) {
   factory()->mock_timer()->AdvanceMs(
       options()->beacon_reinstrument_time_sec() * 1000);
   ResetDriver();
-  SetDummyRequestHeaders();
+  SetDriverRequestHeaders();
   SetupAndProcessUrl();
   VerifyInjection(2);
 }
@@ -314,23 +311,22 @@ TEST_F(CriticalImagesBeaconFilterTest, BeaconReinstrumentationWithHeader) {
   // interval has not been exceeded.
   ResetDriver();
   SetDownstreamCacheDirectives("", "localhost:80", "random_rebeaconing_key");
-  RequestHeaders new_request_headers;
-  new_request_headers.Add(kPsaShouldBeacon, "random_rebeaconing_key");
-  rewrite_driver()->SetRequestHeaders(new_request_headers);
+  AddRequestAttribute(kPsaShouldBeacon, "random_rebeaconing_key");
+  SetDriverRequestHeaders();
   SetupAndProcessUrl();
   VerifyInjection(2);
 }
 
 TEST_F(CriticalImagesBeaconFilterTest, UnsupportedUserAgent) {
   // Test that the filter is not applied for unsupported user agents.
-  rewrite_driver()->SetUserAgent("Firefox/1.0");
+  SetCurrentUserAgent("Firefox/1.0");
   RunInjection();
   VerifyNoInjection(0);
 }
 
 TEST_F(CriticalImagesBeaconFilterTest, Googlebot) {
   // Verify that the filter is not applied for bots.
-  rewrite_driver()->SetUserAgent(UserAgentMatcherTestBase::kGooglebotUserAgent);
+  SetCurrentUserAgent(UserAgentMatcherTestBase::kGooglebotUserAgent);
   RunInjection();
   VerifyNoInjection(0);
 }

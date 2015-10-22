@@ -18,6 +18,7 @@
 
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 
+#include <cstddef>
 #include <vector>
 
 #include "base/logging.h"
@@ -267,9 +268,31 @@ void RewriteTestBase::SetBaseUrlForFetch(const StringPiece& url) {
   rewrite_driver_->SetBaseUrlForFetch(url);
 }
 
-void RewriteTestBase::SetDummyRequestHeaders() {
+void RewriteTestBase::ParseUrl(StringPiece url, StringPiece html_input) {
+  if (rewrite_driver_->request_headers() == NULL) {
+    SetDriverRequestHeaders();
+  }
+  HtmlParseTestBaseNoAlloc::ParseUrl(url, html_input);
+}
+
+void RewriteTestBase::PopulateRequestHeaders(RequestHeaders* request_headers) {
+  request_headers->Add(HttpAttributes::kUserAgent, current_user_agent_);
+  CHECK_EQ(request_attribute_names_.size(), request_attribute_values_.size());
+  for (size_t i = 0, n = request_attribute_names_.size(); i < n; ++i) {
+    request_headers->Add(request_attribute_names_[i],
+                         request_attribute_values_[i]);
+  }
+}
+
+void RewriteTestBase::SetDriverRequestHeaders() {
   RequestHeaders request_headers;
+  PopulateRequestHeaders(&request_headers);
   rewrite_driver()->SetRequestHeaders(request_headers);
+}
+
+void RewriteTestBase::AddRequestAttribute(StringPiece name, StringPiece value) {
+  request_attribute_names_.push_back(name.as_string());
+  request_attribute_values_.push_back(value.as_string());
 }
 
 void RewriteTestBase::SetDownstreamCacheDirectives(
@@ -286,9 +309,8 @@ void RewriteTestBase::SetDownstreamCacheDirectives(
 }
 
 void RewriteTestBase::SetShouldBeaconHeader(StringPiece rebeaconing_key) {
-  RequestHeaders request_headers;
-  request_headers.Add(kPsaShouldBeacon, rebeaconing_key);
-  rewrite_driver()->SetRequestHeaders(request_headers);
+  AddRequestAttribute(kPsaShouldBeacon, rebeaconing_key);
+  SetDriverRequestHeaders();
 }
 
 ResourcePtr RewriteTestBase::CreateResource(const StringPiece& base,
@@ -387,7 +409,9 @@ void RewriteTestBase::ServeResourceFromNewContext(
   server_context_->ComputeSignature(new_options);
   RewriteDriver* new_rewrite_driver = MakeDriver(new_server_context,
                                                  new_options);
-  new_rewrite_driver->SetUserAgent(current_user_agent_);
+  RequestHeaders request_headers;
+  PopulateRequestHeaders(&request_headers);
+  new_rewrite_driver->SetRequestHeaders(request_headers);
 
   new_factory->SetupWaitFetcher();
 
@@ -542,6 +566,8 @@ bool RewriteTestBase::FetchResourceUrl(const StringPiece& url,
   StringAsyncFetch async_fetch(rewrite_driver_->request_context(), content);
   if (request_headers != NULL) {
     async_fetch.set_request_headers(request_headers);
+  } else if (rewrite_driver_->request_headers() == NULL) {
+    SetDriverRequestHeaders();
   }
   async_fetch.set_response_headers(response_headers);
   bool fetched = rewrite_driver_->FetchResource(url, &async_fetch);
@@ -967,6 +993,8 @@ void RewriteTestBase::ClearStats() {
 }
 
 void RewriteTestBase::ClearRewriteDriver() {
+  request_attribute_names_.clear();
+  request_attribute_values_.clear();
   rewrite_driver()->Clear();
   rewrite_driver()->set_request_context(CreateRequestContext());
   other_rewrite_driver()->Clear();

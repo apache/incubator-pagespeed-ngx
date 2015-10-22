@@ -168,7 +168,7 @@ TEST_F(CriticalCssFilterTest, UnchangedWithNoCriticalRules) {
 
 TEST_F(CriticalCssFilterTest, DisabledForIE) {
   // Critical CSS is disabed in IE (awaiting conditional comment support).
-  rewrite_driver()->SetUserAgent(UserAgentMatcherTestBase::kIe7UserAgent);
+  SetCurrentUserAgent(UserAgentMatcherTestBase::kIe7UserAgent);
   static const char input_html[] =
       "<head>\n"
       "  <title>Example</title>\n"

@@ -131,7 +131,7 @@ TEST_F(JsDeferDisabledFilterTest, DeferScriptDebug) {
 
 TEST_F(JsDeferDisabledFilterTest, InvalidUserAgent) {
   InitJsDeferDisabledFilter(false);
-  rewrite_driver()->SetUserAgent("BlackListUserAgent");
+  SetCurrentUserAgent("BlackListUserAgent");
   const char script[] = "<head>"
       "<script type='text/psajs' "
       "src='http://www.google.com/javascript/ajax_apis.js'></script>"
@@ -144,7 +144,7 @@ TEST_F(JsDeferDisabledFilterTest, InvalidUserAgent) {
 
 TEST_F(JsDeferDisabledFilterTest, AllowMobileUserAgent) {
   InitJsDeferDisabledFilter(false);
-  rewrite_driver()->SetUserAgent(UserAgentMatcherTestBase::kIPhone4Safari);
+  SetCurrentUserAgent(UserAgentMatcherTestBase::kIPhone4Safari);
   const char script[] = "<head>"
       "<script type='text/psajs' "
       "src='http://www.google.com/javascript/ajax_apis.js'></script>"
@@ -168,7 +168,7 @@ TEST_F(JsDeferDisabledFilterTest, DisAllowMobileUserAgent) {
   InitJsDeferDisabledFilter(false);
   options_->ClearSignatureForTesting();
   options_->set_enable_aggressive_rewriters_for_mobile(false);
-  rewrite_driver()->SetUserAgent(UserAgentMatcherTestBase::kIPhone4Safari);
+  SetCurrentUserAgent(UserAgentMatcherTestBase::kIPhone4Safari);
   const char script[] = "<head>"
       "<script type='text/psajs' "
       "src='http://www.google.com/javascript/ajax_apis.js'></script>"

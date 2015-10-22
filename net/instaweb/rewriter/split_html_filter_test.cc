@@ -38,7 +38,6 @@
 #include "pagespeed/kernel/html/html_name.h"
 #include "pagespeed/kernel/html/html_writer_filter.h"
 #include "pagespeed/kernel/http/http_names.h"
-#include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/response_headers.h"
 #include "pagespeed/kernel/http/user_agent_matcher_test_base.h"
 
@@ -162,7 +161,7 @@ class SplitHtmlFilterTest : public RewriteTestBase {
     html_writer_filter_.reset(filter);
     html_writer_filter_->set_writer(&writer_);
     rewrite_driver()->AddFilter(html_writer_filter_.get());
-    rewrite_driver()->SetUserAgent(
+    SetCurrentUserAgent(
         UserAgentMatcherTestBase::kChrome18UserAgent);
 
     response_headers_.set_status_code(HttpStatus::kOK);
@@ -206,7 +205,6 @@ class SplitHtmlFilterTest : public RewriteTestBase {
   }
 
   GoogleString output_;
-  RequestHeaders request_headers_;
   const char* blink_js_url_;
   ResponseHeaders response_headers_;
   const StringPiece* nodefer_str_;
@@ -217,7 +215,6 @@ class SplitHtmlFilterTest : public RewriteTestBase {
 };
 
 TEST_F(SplitHtmlFilterTest, SplitHtmlWithDriverHavingCriticalLineInfo) {
-  rewrite_driver()->SetRequestHeaders(request_headers_);
   CriticalLineInfo* config = new CriticalLineInfo;
   Panel* panel = config->add_panels();
   panel->set_start_xpath("div[@id = \"container\"]/div[4]");
@@ -240,7 +237,6 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlWithDriverHavingCriticalLineInfo) {
 }
 
 TEST_F(SplitHtmlFilterTest, SplitHtmlAddMetaReferer) {
-  rewrite_driver()->SetRequestHeaders(request_headers_);
   options_->set_hide_referer_using_meta(true);
   CriticalLineInfo* config = new CriticalLineInfo;
   Panel* panel = config->add_panels();
@@ -268,7 +264,6 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlAddMetaReferer) {
 
 TEST_F(SplitHtmlFilterTest,
        SplitTwoChunksHtmlWithDriverHavingCriticalLineInfoATF) {
-  rewrite_driver()->SetRequestHeaders(request_headers_);
   options_->set_serve_split_html_in_two_chunks(true);
   SetAtfRequest();
   CriticalLineInfo* config = new CriticalLineInfo;
@@ -301,7 +296,6 @@ TEST_F(SplitHtmlFilterTest,
 
 TEST_F(SplitHtmlFilterTest,
        SplitTwoChunksHtmlWithDriverHavingCriticalLineInfoATFAndCacheTime) {
-  rewrite_driver()->SetRequestHeaders(request_headers_);
   options_->set_max_html_cache_time_ms(30000);
   options_->set_serve_split_html_in_two_chunks(true);
   SetAtfRequest();
@@ -415,8 +409,7 @@ TEST_F(SplitHtmlFilterTest, FlushBeforeParse) {
 }
 
 TEST_F(SplitHtmlFilterTest, ATFHeadersWithAllowAllOrigins) {
-  request_headers_.Add(HttpAttributes::kOrigin, "abc.com");
-  rewrite_driver()->SetRequestHeaders(request_headers_);
+  AddRequestAttribute(HttpAttributes::kOrigin, "abc.com");
   options_->set_serve_split_html_in_two_chunks(true);
   SetAtfRequest();
   options_->set_serve_xhr_access_control_headers(true);
@@ -442,8 +435,7 @@ TEST_F(SplitHtmlFilterTest, ATFHeadersWithAllowAllOrigins) {
 }
 
 TEST_F(SplitHtmlFilterTest, ATFHeadersCrossOriginAllowed) {
-  request_headers_.Add(HttpAttributes::kOrigin, "http://cross-domain.com");
-  rewrite_driver()->SetRequestHeaders(request_headers_);
+  AddRequestAttribute(HttpAttributes::kOrigin, "http://cross-domain.com");
   options_->set_serve_split_html_in_two_chunks(true);
   SetAtfRequest();
   options_->set_serve_xhr_access_control_headers(true);
@@ -470,8 +462,7 @@ TEST_F(SplitHtmlFilterTest, ATFHeadersCrossOriginAllowed) {
 }
 
 TEST_F(SplitHtmlFilterTest, ATFHeadersCrossOriginDisAllowed) {
-  request_headers_.Add(HttpAttributes::kOrigin, "disallowed-domain.com");
-  rewrite_driver()->SetRequestHeaders(request_headers_);
+  AddRequestAttribute(HttpAttributes::kOrigin, "disallowed-domain.com");
   options_->set_serve_split_html_in_two_chunks(true);
   SetAtfRequest();
   options_->set_serve_xhr_access_control_headers(true);
@@ -499,7 +490,6 @@ TEST_F(SplitHtmlFilterTest, ATFHeadersCrossOriginDisAllowed) {
 
 TEST_F(SplitHtmlFilterTest,
        SplitTwoChunksHtmlWithDriverHavingCriticalLineInfoBTF) {
-  rewrite_driver()->SetRequestHeaders(request_headers_);
   options_->set_serve_split_html_in_two_chunks(true);
   SetBtfRequest();
   CriticalLineInfo* config = new CriticalLineInfo;
@@ -519,10 +509,9 @@ TEST_F(SplitHtmlFilterTest,
   options_->set_serve_split_html_in_two_chunks(true);
   SetBtfRequest();
   rewrite_driver()->set_critical_line_info(NULL);
-  request_headers_.Add(
+  AddRequestAttribute(
       HttpAttributes::kXPsaSplitConfig,
       "div[@id = \"container\"]/div[4],img[3]:h1[@id = \"footer\"],");
-  rewrite_driver()->SetRequestHeaders(request_headers_);
   Parse("split_with_pcache", StrCat(kHtmlInputPart1, kHtmlInputPart2));
   EXPECT_EQ(kSplitHtmlBelowTheFoldData, output_);
 }
@@ -535,17 +524,15 @@ TEST_F(SplitHtmlFilterTest,
   Panel* panel = config->add_panels();
   panel->set_start_xpath("div[@id = \"blah\"]/div[5]");
   rewrite_driver()->set_critical_line_info(config);
-  request_headers_.Add(
+  AddRequestAttribute(
       HttpAttributes::kXPsaSplitConfig,
       "div[@id = \"container\"]/div[4],img[3]:h1[@id = \"footer\"],");
-  rewrite_driver()->SetRequestHeaders(request_headers_);
 
   Parse("split_with_pcache", StrCat(kHtmlInputPart1, kHtmlInputPart2));
   EXPECT_EQ("{}", output_);
 }
 
 TEST_F(SplitHtmlFilterTest, SplitHtmlWithFlushingCachedHtml) {
-  rewrite_driver()->SetRequestHeaders(request_headers_);
   CriticalLineInfo* config = new CriticalLineInfo;
   Panel* panel = config->add_panels();
   panel->set_start_xpath("div[@id = \"container\"]/div[4]");
@@ -569,7 +556,6 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlWithFlushingCachedHtml) {
 }
 
 TEST_F(SplitHtmlFilterTest, SplitHtmlWithOptions) {
-  rewrite_driver()->SetRequestHeaders(request_headers_);
   options_->set_critical_line_config(
       "div[@id = \"container\"]/div[4],"
       "img[3]:h1[@id = \"footer\"]");
@@ -587,7 +573,6 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlWithOptions) {
 }
 
 TEST_F(SplitHtmlFilterTest, SplitHtmlWithFlushes) {
-  rewrite_driver()->SetRequestHeaders(request_headers_);
   options_->set_critical_line_config(
       "div[@id = \"container\"]/div[4],"
       "img[3]:h1[@id = \"footer\"]");
@@ -609,7 +594,6 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlWithFlushes) {
 }
 
 TEST_F(SplitHtmlFilterTest, FlushEarlyHeadSuppress) {
-  rewrite_driver()->SetRequestHeaders(request_headers_);
   options_->ForceEnableFilter(
       RewriteOptions::RewriteOptions::kFlushSubresources);
   options_->set_critical_line_config(
@@ -652,7 +636,6 @@ TEST_F(SplitHtmlFilterTest, FlushEarlyHeadSuppress) {
 }
 
 TEST_F(SplitHtmlFilterTest, FlushEarlyDisabled) {
-  rewrite_driver()->SetRequestHeaders(request_headers_);
   options_->set_critical_line_config(
       "div[@id = \"container\"]/div[4],"
       "img[3]:h1[@id = \"footer\"]");
@@ -675,7 +658,6 @@ TEST_F(SplitHtmlFilterTest, FlushEarlyDisabled) {
 }
 
 TEST_F(SplitHtmlFilterTest, SplitHtmlNoXpaths) {
-  rewrite_driver()->SetRequestHeaders(request_headers_);
   CriticalLineInfo* info = new CriticalLineInfo;
   rewrite_driver()->set_critical_line_info(info);
   options_->set_critical_line_config("");
@@ -694,7 +676,6 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlNoXpaths) {
 }
 
 TEST_F(SplitHtmlFilterTest, SplitHtmlNoXpathsTwoChunksATF) {
-  rewrite_driver()->SetRequestHeaders(request_headers_);
   CriticalLineInfo* info = new CriticalLineInfo;
   rewrite_driver()->set_critical_line_info(info);
   options_->set_critical_line_config("");
@@ -716,7 +697,6 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlNoXpathsTwoChunksATF) {
 }
 
 TEST_F(SplitHtmlFilterTest, SplitHtmlNoXpathsTwoChunksBTF) {
-  rewrite_driver()->SetRequestHeaders(request_headers_);
   CriticalLineInfo* info = new CriticalLineInfo;
   rewrite_driver()->set_critical_line_info(info);
   options_->set_critical_line_config("");
@@ -729,7 +709,6 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlNoXpathsTwoChunksBTF) {
 }
 
 TEST_F(SplitHtmlFilterTest, SplitHtmlNoInfoTwoChunksATF) {
-  rewrite_driver()->SetRequestHeaders(request_headers_);
   rewrite_driver()->set_critical_line_info(NULL);
   options_->set_serve_split_html_in_two_chunks(true);
   const GoogleString html(StrCat(kHtmlInputPart1, kHtmlInputPart2));
@@ -740,7 +719,6 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlNoInfoTwoChunksATF) {
 }
 
 TEST_F(SplitHtmlFilterTest, SplitHtmlNoInfoTwoChunksBTF) {
-  rewrite_driver()->SetRequestHeaders(request_headers_);
   rewrite_driver()->set_critical_line_info(NULL);
   SetBtfRequest();
   options_->set_serve_split_html_in_two_chunks(true);
@@ -752,7 +730,6 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlNoInfoTwoChunksBTF) {
 }
 
 TEST_F(SplitHtmlFilterTest, SplitHtmlNoInfo) {
-  rewrite_driver()->SetRequestHeaders(request_headers_);
   rewrite_driver()->set_critical_line_info(NULL);
   const GoogleString html(StrCat(kHtmlInputPart1, kHtmlInputPart2));
   Parse("split_cache_miss", html);
@@ -770,11 +747,11 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlNoInfo) {
 }
 
 TEST_F(SplitHtmlFilterTest, SplitHtmlWithUnsupportedUserAgent) {
-  rewrite_driver()->SetRequestHeaders(request_headers_);
   options_->set_critical_line_config(
       "div[@id = \"container\"]/div[4],"
       "img[3]:h1[@id = \"footer\"]");
-  rewrite_driver()->SetUserAgent("BlackListUserAgent");
+  SetCurrentUserAgent("BlackListUserAgent");
+  SetDriverRequestHeaders();
   Parse("split_with_options", StrCat(kHtmlInputPart1, kHtmlInputPart2));
   EXPECT_EQ(StrCat(kHtmlInputPart1, kHtmlInputPart2), output_);
   VerifyAppliedRewriters("");
@@ -782,7 +759,6 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlWithUnsupportedUserAgent) {
 }
 
 TEST_F(SplitHtmlFilterTest, SplitHtmlIgnoreScriptNoscript1) {
-  rewrite_driver()->SetRequestHeaders(request_headers_);
   options_->set_critical_line_config("h1[2]");
   GoogleString expected_output_suffix(
       StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
@@ -800,7 +776,6 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlIgnoreScriptNoscript1) {
 }
 
 TEST_F(SplitHtmlFilterTest, SplitHtmlIgnoreScriptNoscript2) {
-  rewrite_driver()->SetRequestHeaders(request_headers_);
   options_->set_critical_line_config("h1[2]");
   GoogleString expected_output_suffix(
       StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
@@ -820,7 +795,6 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlIgnoreScriptNoscript2) {
 }
 
 TEST_F(SplitHtmlFilterTest, SplitHtmlIgnoreScriptNoscript3) {
-  rewrite_driver()->SetRequestHeaders(request_headers_);
   options_->set_critical_line_config("h1[2]");
   GoogleString expected_output_suffix(
       StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
@@ -841,7 +815,6 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlIgnoreScriptNoscript3) {
 }
 
 TEST_F(SplitHtmlFilterTest, SplitHtmlIgnoreScriptNoscript4) {
-  rewrite_driver()->SetRequestHeaders(request_headers_);
   options_->set_critical_line_config("h1[1]");
   GoogleString expected_output_suffix(
       StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
@@ -861,7 +834,6 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlIgnoreScriptNoscript4) {
 }
 
 TEST_F(SplitHtmlFilterTest, SplitHtmlIgnoreScriptNoscript5) {
-  rewrite_driver()->SetRequestHeaders(request_headers_);
   options_->set_critical_line_config("h1[1]");
   GoogleString expected_output_suffix(
       StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
@@ -885,7 +857,6 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlIgnoreScriptNoscript5) {
 }
 
 TEST_F(SplitHtmlFilterTest, SplitHtmlWithGhostClickBuster) {
-  rewrite_driver()->SetRequestHeaders(request_headers_);
   options_->ClearSignatureForTesting();
   options_->set_serve_ghost_click_buster_with_split_html(true);
   options_->set_critical_line_config("h1[2]");
@@ -912,7 +883,6 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlWithGhostClickBuster) {
 }
 
 TEST_F(SplitHtmlFilterTest, SplitHtmlWithNestedPanels) {
-  rewrite_driver()->SetRequestHeaders(request_headers_);
   GoogleString input_html =
       "<html><head></head><body>"
         "<div id=\"outer\">"
@@ -969,7 +939,7 @@ TEST_F(SplitHtmlFilterTest, Instrumentation1) {
 // When an ATF request is received but the useragent is unsupported, we don't
 // defer the instrumentation script.
 TEST_F(SplitHtmlFilterTest, Instrumentation2) {
-  rewrite_driver()->SetUserAgent("BlackListUserAgent");
+  SetCurrentUserAgent("BlackListUserAgent");
   options()->set_critical_line_config("div[@id=\"god\"]");
   options_->set_serve_split_html_in_two_chunks(true);
   SetAtfRequest();

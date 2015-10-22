@@ -324,7 +324,9 @@ void RewriteDriver::SetRequestHeaders(const RequestHeaders& headers) {
   const char* user_agent = request_headers_->Lookup1(
       HttpAttributes::kUserAgent);
   if (user_agent != NULL) {
-    SetUserAgent(user_agent);
+    user_agent_ = user_agent;
+    ClearRequestProperties();   // TODO(jmarantz): do this even if ua==null.
+    request_properties_->SetUserAgent(user_agent_);
   }
 
   request_properties_->ParseRequestHeaders(*request_headers_);
@@ -3085,15 +3087,6 @@ void RewriteDriver::AddRewriteTask(Function* task) {
 
 void RewriteDriver::AddLowPriorityRewriteTask(Function* task) {
   low_priority_rewrite_worker_->Add(task);
-}
-
-// TODO(jmarantz): Make this a TestOnly method, and inline it entirely
-// into SetRequestHeaders.  This would entail a large number of test trivial
-// changes and a new helper method in RewriteTestBase.
-void RewriteDriver::SetUserAgent(const StringPiece& user_agent_string) {
-  user_agent_string.CopyToString(&user_agent_);
-  ClearRequestProperties();
-  request_properties_->SetUserAgent(user_agent_string);
 }
 
 OptionsAwareHTTPCacheCallback::OptionsAwareHTTPCacheCallback(

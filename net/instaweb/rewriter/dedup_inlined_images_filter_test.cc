@@ -30,7 +30,6 @@
 #include "pagespeed/kernel/base/wildcard.h"
 #include "pagespeed/kernel/html/html_parse_test_base.h"
 #include "pagespeed/kernel/http/content_type.h"
-#include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/user_agent_matcher_test_base.h"
 
 namespace net_instaweb {
@@ -100,7 +99,7 @@ class DedupInlinedImagesTest : public RewriteTestBase,
     RewriteTestBase::SetUp();
     SetFiltersAndOptions();
     rewrite_driver()->AddFilters();
-    rewrite_driver()->SetUserAgent(
+    SetCurrentUserAgent(
         UserAgentMatcherTestBase::kChrome18UserAgent);
 
     AddFileToMockFetcher(StrCat(kTestDomain, kCuppaPngFilename),
@@ -140,9 +139,6 @@ class DedupInlinedImagesTest : public RewriteTestBase,
     GoogleString html_out(StringPrintf(
         kHtmlWrapperFormat, head_html_out.c_str(), body_out.c_str()));
 
-    // Set this for every test.
-    rewrite_driver()->SetRequestHeaders(request_headers_);
-
     Parse(case_id, html_in);
     GoogleString expected_out = doctype_string_ + AddHtmlBody(html_out);
 
@@ -154,7 +150,6 @@ class DedupInlinedImagesTest : public RewriteTestBase,
     return StrCat(dedup_inlined_images_js_, snippet);
   }
 
-  RequestHeaders request_headers_;
   GoogleString dedup_inlined_images_js_;
 };
 
@@ -243,7 +238,7 @@ TEST_F(DedupInlinedImagesTest, DedupSecondSmallImageWithAttributes) {
 
 TEST_F(DedupInlinedImagesTest, DisabledForOldBlackberry) {
   // This UA doesn't support LazyloadImages so nor does it support deduping.
-  rewrite_driver()->SetUserAgent(
+  SetCurrentUserAgent(
       UserAgentMatcherTestBase::kBlackBerryOS5UserAgent);
   GoogleString case_id("disabled_for_old_blackberry");
   GoogleString repeated_inlined_image = StrCat(
@@ -251,7 +246,6 @@ TEST_F(DedupInlinedImagesTest, DisabledForOldBlackberry) {
       "<img src='", kCuppaPngFilename, "'>");
   GoogleString html_in_out(StringPrintf(
       kHtmlWrapperFormat, "", repeated_inlined_image.c_str()));
-  rewrite_driver()->SetRequestHeaders(request_headers_);
   Parse(case_id, html_in_out);
   GoogleString expected_out = doctype_string_ + AddHtmlBody(html_in_out);
   EXPECT_EQ(expected_out, output_buffer_) << "Test id:" << case_id;

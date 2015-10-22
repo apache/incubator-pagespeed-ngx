@@ -87,7 +87,7 @@ class CssImageRewriterTest : public CssRewriteTestBase {
                          kContentTypeJpeg, 100);
     GoogleString in_css = StringPrintf(kCssTemplate, kPuzzleJpgFile);
     SetResponseWithDefaultHeaders(kCssFile, kContentTypeCss, in_css, 100);
-    rewrite_driver()->SetUserAgent(user_agent);
+    SetCurrentUserAgent(user_agent);
 
     // Using a "0" hash would result in the rewritten url having the same hash
     // for mobile and non-mobile UAs. Hence, using Md5 hasher.
@@ -107,7 +107,7 @@ class CssImageRewriterTest : public CssRewriteTestBase {
       return -1;
     }
     // FetchResourceUrl clears the rewrite driver. Add back the mobile UA.
-    rewrite_driver()->SetUserAgent(user_agent);
+    SetCurrentUserAgent(user_agent);
 
     StringPiece out_image;
     HTTPValue value_out;
@@ -1005,7 +1005,8 @@ class CssRecompressImagesInStyleAttributes : public RewriteTestBase {
         ImageRewriteFilter::kImageRewrites);
     int64 start_image_rewrites = image_rewrite_count->Get();
     output_buffer_.clear();
-    rewrite_driver()->SetUserAgent(user_agent);
+    ClearRewriteDriver();
+    SetCurrentUserAgent(user_agent);
     Parse(id, html_input);
     EXPECT_TRUE(output_buffer_.find(expected_substring) != GoogleString::npos)
         << expected_substring;
@@ -1053,7 +1054,7 @@ TEST_F(CssRecompressImagesInStyleAttributes, RecompressAndWebpAndStyleEnabled) {
   options()->EnableFilter(RewriteOptions::kRecompressJpeg);
   options()->EnableFilter(RewriteOptions::kRewriteStyleAttributesWithUrl);
   options()->set_image_jpeg_recompress_quality(85);
-  rewrite_driver()->SetUserAgent("webp");
+  SetCurrentUserAgent("webp");
   rewrite_driver()->AddFilters();
   ValidateExpected("webp",
       "<div style=\"background-image:url(foo.jpg)\"/>",
@@ -1072,7 +1073,7 @@ TEST_F(CssRecompressImagesInStyleAttributes,
   options()->EnableFilter(RewriteOptions::kRecompressJpeg);
   options()->EnableFilter(RewriteOptions::kRewriteStyleAttributesWithUrl);
   options()->set_image_jpeg_recompress_quality(85);
-  rewrite_driver()->SetUserAgent("webp-la");
+  SetCurrentUserAgent("webp-la");
   rewrite_driver()->AddFilters();
   ValidateExpected("webp-lossless",
       "<div style=\"background-image:url(foo.jpg)\"/>",
@@ -1088,7 +1089,7 @@ TEST_F(CssRecompressImagesInStyleAttributes,
   options()->EnableFilter(RewriteOptions::kRewriteStyleAttributesWithUrl);
   options()->set_image_jpeg_recompress_quality(85);
   options()->set_max_image_bytes_for_webp_in_css(1);
-  rewrite_driver()->SetUserAgent("webp");
+  SetCurrentUserAgent("webp");
   rewrite_driver()->AddFilters();
   ValidateExpected("webp",
       "<div style=\"background-image:url(foo.jpg)\"/>",
@@ -1104,7 +1105,7 @@ TEST_F(CssRecompressImagesInStyleAttributes,
   options()->EnableFilter(RewriteOptions::kRewriteStyleAttributesWithUrl);
   options()->set_image_jpeg_recompress_quality(85);
   options()->set_max_image_bytes_for_webp_in_css(1);
-  rewrite_driver()->SetUserAgent("webp-la");
+  SetCurrentUserAgent("webp-la");
   rewrite_driver()->AddFilters();
   ValidateExpected("webp-lossless",
       "<div style=\"background-image:url(foo.jpg)\"/>",

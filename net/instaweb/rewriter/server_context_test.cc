@@ -1202,7 +1202,7 @@ class BeaconTest : public ServerContextTest {
 
   void ResetDriver() {
     rewrite_driver()->Clear();
-    SetDummyRequestHeaders();
+    SetDriverRequestHeaders();
   }
 
   MockPropertyPage* MockPageForUA(StringPiece user_agent) {

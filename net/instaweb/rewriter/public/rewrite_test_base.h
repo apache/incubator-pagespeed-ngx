@@ -163,8 +163,10 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   // on the main rewrite driver.
   void SetBaseUrlForFetch(const StringPiece& url);
 
-  // Setup dummy empty RequestHeaders object for the driver.
-  void SetDummyRequestHeaders();
+  // Populates request-headers based on the current user-agent and
+  // the attributes added via AddRequestAttribute and installs them
+  // into rewrite_driver_.
+  void SetDriverRequestHeaders();
 
   // Enable downstream caching feature and set up the downstream cache
   // rebeaconing key.
@@ -486,6 +488,8 @@ class RewriteTestBase : public RewriteOptionsTestBase {
 
   // Calls Clear() on the rewrite driver and does any other necessary
   // clean-up so the driver is okay for a test to reuse.
+  //
+  // Removes pending request-header attributes added via AddRequestAttribute.
   void ClearRewriteDriver();
 
   MockUrlFetcher* mock_url_fetcher() {
@@ -765,6 +769,18 @@ class RewriteTestBase : public RewriteOptionsTestBase {
     current_user_agent_ = user_agent;
   }
 
+  // Adds an attribute to be populated later into a RequestHeaders* object,
+  // along with the user-agent.  Note that these attributes stay in the
+  // test-class until ClearRewriteDriver is called.
+  void AddRequestAttribute(StringPiece name, StringPiece value);
+
+  // Populates a RequestHeaders* object with al
+  void PopulateRequestHeaders(RequestHeaders* requset_headers);
+
+  // Override HtmlParseTestBaseNoAlloc::ParseUrl to populate the
+  // request-headers into rewrite_driver_ before running filters.
+  virtual void ParseUrl(StringPiece url, StringPiece html_input);
+
   GoogleString ExpectedNonce();
 
   // When reaching into a cache that backs an HTTP cache you need a cache key
@@ -797,6 +813,9 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   ActiveServerFlag active_server_;
   bool use_managed_rewrite_drivers_;
   StringPiece current_user_agent_;
+  StringVector request_attribute_names_;
+  StringVector request_attribute_values_;
+
   MD5Hasher md5_hasher_;
 
   RewriteOptions* options_;  // owned by rewrite_driver_.

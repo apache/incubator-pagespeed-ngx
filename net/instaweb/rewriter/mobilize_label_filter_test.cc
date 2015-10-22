@@ -1263,7 +1263,7 @@ TEST_F(MobilizeLabelFilterTest, Html5TagsInBody) {
 
 TEST_F(MobilizeLabelFilterTest, LargeUnlabeled) {
   options()->set_mob_always(false);
-  rewrite_driver()->SetUserAgent(
+  SetCurrentUserAgent(
       UserAgentMatcherTestBase::kAndroidChrome21UserAgent);
   StdioFileSystem filesystem;
   GoogleString original_filename =
@@ -1293,7 +1293,7 @@ TEST_F(MobilizeLabelFilterTest, LargeUnlabeled) {
 
 TEST_F(MobilizeLabelFilterTest, LargeUnlabeledDesktop) {
   options()->set_mob_always(false);
-  rewrite_driver()->SetUserAgent(UserAgentMatcherTestBase::kChrome37UserAgent);
+  SetCurrentUserAgent(UserAgentMatcherTestBase::kChrome37UserAgent);
   StdioFileSystem filesystem;
   GoogleString original_filename =
       StrCat(GTestSrcDir(), kTestDataDir, kOriginal);

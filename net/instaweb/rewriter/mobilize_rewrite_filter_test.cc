@@ -249,7 +249,7 @@ class MobilizeRewriteFunctionalTest : public MobilizeRewriteFilterTest {
     // By default we *don't* add the progress bar scrim.  This explicitly gets
     // overridden in subclasses.
     FilterSetAddedProgress(true);
-    rewrite_driver()->SetUserAgent(
+    SetCurrentUserAgent(
         UserAgentMatcherTestBase::kAndroidChrome21UserAgent);
   }
 
@@ -560,7 +560,7 @@ class MobilizeRewriteEndToEndTest : public MobilizeRewriteFilterTest {
 
   void ValidateWithUA(StringPiece test_name, StringPiece user_agent,
                       StringPiece input, StringPiece expected) {
-    rewrite_driver()->SetUserAgent(user_agent);
+    SetCurrentUserAgent(user_agent);
     // We need to add the input to our fetcher so the
     // menu extractor can see it.
     GoogleString url = StrCat(kTestDomain, test_name, ".html");

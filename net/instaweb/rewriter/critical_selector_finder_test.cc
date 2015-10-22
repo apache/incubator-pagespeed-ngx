@@ -17,7 +17,6 @@
 
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
 
-#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/critical_keys.pb.h"
 #include "net/instaweb/rewriter/public/critical_finder_support_util.h"
 #include "net/instaweb/rewriter/public/property_cache_util.h"
@@ -65,9 +64,7 @@ class CriticalSelectorFinderTest : public RewriteTestBase {
   }
 
   void ResetDriver() {
-    rewrite_driver()->Clear();
-    rewrite_driver()->set_request_context(
-        RequestContext::NewTestRequestContext(factory()->thread_system()));
+    ClearRewriteDriver();
     MockPropertyPage* page = NewMockPage(kRequestUrl);
     rewrite_driver()->set_property_page(page);
     PropertyCache* pcache = server_context_->page_property_cache();
@@ -82,7 +79,7 @@ class CriticalSelectorFinderTest : public RewriteTestBase {
   void WriteBackAndResetDriver() {
     WriteToPropertyCache();
     ResetDriver();
-    SetDummyRequestHeaders();
+    SetDriverRequestHeaders();
   }
 
   int TimedValue(StringPiece name) {
@@ -441,7 +438,7 @@ TEST_F(CriticalSelectorFinderTest, RebeaconBeforeTimeoutWithHeader) {
   // are configured.
   ResetDriver();
   SetDownstreamCacheDirectives("", "localhost:80", kConfiguredBeaconingKey);
-  SetDummyRequestHeaders();
+  SetDriverRequestHeaders();
   VerifyNoBeaconing();
 
   // Beacon injection should not happen when the PS-ShouldBeacon header is

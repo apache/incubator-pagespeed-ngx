@@ -203,13 +203,6 @@ class RewriteDriver : public HtmlParse {
 
   const GoogleString& user_agent() const { return user_agent_; }
 
-  // Directly overrides the user-agent setting in the driver.  This should not
-  // be called when handling normal requests as the UA will automatically be
-  // pulled from the request-headers.
-  // TODO(jmarantz): Eliminate this method entirely and change tests to use
-  // SetRequestHeaders.
-  void SetUserAgent(const StringPiece& user_agent_string);
-
   const RequestProperties* request_properties() const {
     return request_properties_.get();
   }

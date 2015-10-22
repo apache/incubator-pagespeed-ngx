@@ -343,7 +343,7 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
       response_headers.ComputeCaching();
       http_cache()->Put(
           url, rewrite_driver_->CacheFragment(),
-          request_headers_.GetProperties(),
+          RequestHeaders::Properties(),
           ResponseHeaders::GetVaryOption(options()->respect_vary()),
           &response_headers, body, message_handler());
     }
@@ -365,8 +365,13 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
     header->Replace(HttpAttributes::kContentType, content_type);
   }
 
+  void ResetUserAgent(StringPiece user_agent) {
+    ClearRewriteDriver();
+    SetCurrentUserAgent(user_agent);
+  }
+
   void SetAcceptWebp() {
-    request_headers_.Add(HttpAttributes::kAccept, "image/webp");
+    AddRequestAttribute(HttpAttributes::kAccept, "image/webp");
   }
 
   void FetchAndCheckResponse(const GoogleString& url,
@@ -387,14 +392,13 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
         server_context()->thread_system()));
     FakeFetch mock_fetch(request_context, options(), url, &sync,
                          &response_headers_);
-    mock_fetch.set_request_headers(&request_headers_);
-
-    ClearRewriteDriver();
-    if (!user_agent_.empty()) {
-      rewrite_driver()->SetUserAgent(user_agent_);
+    const RequestHeaders* driver_request_headers =
+        rewrite_driver()->request_headers();
+    if (driver_request_headers != NULL) {
+      mock_fetch.request_headers()->CopyFrom(*driver_request_headers);
     }
-    rewrite_driver()->SetRequestHeaders(request_headers_);
     rewrite_driver()->FetchResource(url, &mock_fetch);
+
     // If we're testing if the rewrite takes too long, we need to push
     // time forward here.
     if (exceed_deadline()) {
@@ -415,7 +419,6 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
   }
 
   void ResetHeadersAndStats() {
-    request_headers_.Clear();
     response_headers_.Clear();
     img_filter_->ClearStats();
     if (other_img_filter_ != NULL) {
@@ -424,6 +427,7 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
     js_filter_->ClearStats();
     css_filter_->ClearStats();
     RewriteTestBase::ClearStats();
+    ClearRewriteDriver();
   }
 
   void CheckWarmCache(StringPiece id) {
@@ -569,7 +573,6 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
   FakeFilter* js_filter_;
   FakeFilter* css_filter_;
 
-  RequestHeaders request_headers_;
   ResponseHeaders response_headers_;
 
   const GoogleString cache_html_url_;
@@ -600,8 +603,6 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
   const GoogleString nocache_body_;
   const GoogleString bad_body_;
   const GoogleString redirect_body_;
-
-  GoogleString user_agent_;
 
   const int ttl_ms_;
   const char* etag_;
@@ -1231,7 +1232,8 @@ TEST_F(InPlaceRewriteContextTest, CacheableJpgUrlRewritingSucceeds) {
   ResetHeadersAndStats();
   // We get a 304 if we send a request with an If-None-Match matching the hash
   // of the rewritten resource.
-  request_headers_.Add(HttpAttributes::kIfNoneMatch, etag_);
+  AddRequestAttribute(HttpAttributes::kIfNoneMatch, etag_);
+  SetDriverRequestHeaders();
   FetchAndCheckResponse(cache_jpg_url_, "", true, ttl_ms_/2, NULL, 0);
   EXPECT_EQ(HttpStatus::kNotModified, response_headers_.status_code());
   // We hit the metadata cache and find that the etag matches the hash of the
@@ -1249,7 +1251,8 @@ TEST_F(InPlaceRewriteContextTest, CacheableJpgUrlRewritingSucceeds) {
 
   ResetHeadersAndStats();
   // The etag doesn't match and hence we serve the full response.
-  request_headers_.Add(HttpAttributes::kIfNoneMatch, "no-match");
+  AddRequestAttribute(HttpAttributes::kIfNoneMatch, "no-match");
+  SetDriverRequestHeaders();
   FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_/2, etag_,
                         start_time_ms() + ttl_ms_/2);
   EXPECT_EQ(HttpStatus::kOK, response_headers_.status_code());
@@ -1857,8 +1860,9 @@ TEST_F(InPlaceRewriteContextTest, OptimizeForBrowserRewriting) {
   // First fetch with kTestUserAgentWebP. This will miss everything (metadata
   // lookup, original content, and rewritten content).
   // Vary: Accept header should be added.
-  user_agent_ = UserAgentMatcher::kTestUserAgentWebP;
+  ResetUserAgent(UserAgentMatcher::kTestUserAgentWebP);
   SetAcceptWebp();
+  SetDriverRequestHeaders();
   FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_, etag_,
                         start_time_ms());
 
@@ -1882,7 +1886,8 @@ TEST_F(InPlaceRewriteContextTest, OptimizeForBrowserRewriting) {
   // Vary: Accept header should be be added.
   ResetHeadersAndStats();
   SetTimeMs(start_time_ms() + ttl_ms_/2);
-  user_agent_ = UserAgentMatcher::kTestUserAgentNoWebP;
+  ResetUserAgent(UserAgentMatcher::kTestUserAgentNoWebP);
+  SetDriverRequestHeaders();
   FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_/2, etag_,
                         start_time_ms() + ttl_ms_/2);
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
@@ -1903,7 +1908,8 @@ TEST_F(InPlaceRewriteContextTest, OptimizeForBrowserRewriting) {
   // Cache-Control: private resource and no Vary header.
   ResetHeadersAndStats();
   SetTimeMs(start_time_ms() + ttl_ms_/2);
-  user_agent_ = UserAgentMatcherTestBase::kIe9UserAgent;
+  ResetUserAgent(UserAgentMatcherTestBase::kIe9UserAgent);
+  SetDriverRequestHeaders();
   FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_/2, etag_,
                         start_time_ms() + ttl_ms_/2);
   CheckWarmCache("no_webp_to_ie");
@@ -1919,7 +1925,8 @@ TEST_F(InPlaceRewriteContextTest, OptimizeForBrowserRewriting) {
   // Vary: Accept header should be be added.
   ResetHeadersAndStats();
   SetTimeMs(start_time_ms() + ttl_ms_/2);
-  user_agent_ = UserAgentMatcher::kTestUserAgentWebP;
+  ResetUserAgent(UserAgentMatcher::kTestUserAgentWebP);
+  SetDriverRequestHeaders();
   FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_/2, etag_,
                         start_time_ms() + ttl_ms_/2);
   CheckWarmCache("no_webp_without_accept");
@@ -1931,8 +1938,9 @@ TEST_F(InPlaceRewriteContextTest, OptimizeForBrowserRewriting) {
   // Vary: User-Agent header should be added.
   ResetHeadersAndStats();
   SetTimeMs((start_time_ms() + ttl_ms_/2));
-  user_agent_ = UserAgentMatcher::kTestUserAgentNoWebP;
+  ResetUserAgent(UserAgentMatcher::kTestUserAgentNoWebP);
   SetAcceptWebp();
+  SetDriverRequestHeaders();
   FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_/2, etag_,
                         start_time_ms() + ttl_ms_/2);
   CheckWarmCache("back_to_webp");
@@ -1951,8 +1959,9 @@ TEST_F(InPlaceRewriteContextTest, OptimizeForBrowserNoPrivateForIE) {
 
   // First fetch with kTestUserAgentWebP.
   // Vary: Accept header should be added.
-  user_agent_ = UserAgentMatcher::kTestUserAgentWebP;
+  ResetUserAgent(UserAgentMatcher::kTestUserAgentWebP);
   SetAcceptWebp();
+  SetDriverRequestHeaders();
   FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_, etag_,
                         start_time_ms());
   EXPECT_STREQ(HttpAttributes::kAccept,
@@ -1962,7 +1971,8 @@ TEST_F(InPlaceRewriteContextTest, OptimizeForBrowserNoPrivateForIE) {
   // Vary: Accept header should be be added.
   ResetHeadersAndStats();
   SetTimeMs(start_time_ms() + ttl_ms_/2);
-  user_agent_ = UserAgentMatcher::kTestUserAgentNoWebP;
+  ResetUserAgent(UserAgentMatcher::kTestUserAgentNoWebP);
+  SetDriverRequestHeaders();
   FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_/2, etag_,
                         start_time_ms() + ttl_ms_/2);
   EXPECT_STREQ(HttpAttributes::kAccept,
@@ -1972,7 +1982,8 @@ TEST_F(InPlaceRewriteContextTest, OptimizeForBrowserNoPrivateForIE) {
   // Vary: Accept header since private_not_vary_for_ie == false.
   ResetHeadersAndStats();
   SetTimeMs(start_time_ms() + ttl_ms_/2);
-  user_agent_ = UserAgentMatcherTestBase::kIe9UserAgent;
+  ResetUserAgent(UserAgentMatcherTestBase::kIe9UserAgent);
+  SetDriverRequestHeaders();
   FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_/2, etag_,
                         start_time_ms() + ttl_ms_/2);
   EXPECT_STREQ(HttpAttributes::kAccept,
@@ -1984,7 +1995,7 @@ TEST_F(InPlaceRewriteContextTest, AcceptHeaderMerging) {
   set_optimize_for_browser(true);
   Init();
   SetAcceptWebp();
-
+  SetDriverRequestHeaders();
   FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_, etag_,
                         start_time_ms());
   EXPECT_STREQ(HttpAttributes::kAccept,
@@ -2046,7 +2057,7 @@ TEST_F(InPlaceRewriteContextTest, OptimizeForBrowserNegative) {
   Init();
 
   // Vary: User-Agent header should not be added no matter the user-agent.
-  user_agent_ = UserAgentMatcher::kTestUserAgentWebP;
+  ResetUserAgent(UserAgentMatcher::kTestUserAgentWebP);
   SetAcceptWebp();
   FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_, etag_,
                         start_time_ms());
@@ -2054,7 +2065,7 @@ TEST_F(InPlaceRewriteContextTest, OptimizeForBrowserNegative) {
 
   ResetHeadersAndStats();
   SetTimeMs((start_time_ms() + ttl_ms_/2));
-  user_agent_ = UserAgentMatcher::kTestUserAgentNoWebP;
+  ResetUserAgent(UserAgentMatcher::kTestUserAgentNoWebP);
   FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_/2, etag_,
                         start_time_ms() + ttl_ms_/2);
   EXPECT_EQ(NULL, response_headers_.Lookup1(HttpAttributes::kVary));

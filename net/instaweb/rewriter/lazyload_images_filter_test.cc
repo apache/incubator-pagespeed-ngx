@@ -31,7 +31,6 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/http/http_names.h"
-#include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/user_agent_matcher_test_base.h"
 #include "pagespeed/opt/logging/enums.pb.h"
 
@@ -45,8 +44,7 @@ class LazyloadImagesFilterTest : public RewriteTestBase {
   // TODO(matterbury): Delete this method as it should be redundant.
   virtual void SetUp() {
     RewriteTestBase::SetUp();
-    rewrite_driver()->SetUserAgent(
-        UserAgentMatcherTestBase::kChrome18UserAgent);
+    SetCurrentUserAgent(UserAgentMatcherTestBase::kChrome18UserAgent);
     SetHtmlMimetype();  // Prevent insertion of CDATA tags to static JS.
   }
 
@@ -479,7 +477,7 @@ TEST_F(LazyloadImagesFilterTest, LazyloadDisabledWithJquerySliderAfterHead) {
 }
 
 TEST_F(LazyloadImagesFilterTest, LazyloadDisabledForOldBlackberry) {
-  rewrite_driver()->SetUserAgent(
+  SetCurrentUserAgent(
       UserAgentMatcherTestBase::kBlackBerryOS5UserAgent);
   InitLazyloadImagesFilter(false);
   GoogleString input_html = "<head>"
@@ -491,7 +489,7 @@ TEST_F(LazyloadImagesFilterTest, LazyloadDisabledForOldBlackberry) {
 }
 
 TEST_F(LazyloadImagesFilterTest, LazyloadDisabledForGooglebot) {
-  rewrite_driver()->SetUserAgent(UserAgentMatcherTestBase::kGooglebotUserAgent);
+  SetCurrentUserAgent(UserAgentMatcherTestBase::kGooglebotUserAgent);
   InitLazyloadImagesFilter(false);
   GoogleString input_html = "<head>"
       "</head>"
@@ -514,10 +512,8 @@ TEST_F(LazyloadImagesFilterTest, LazyloadDisabledForGooglebot) {
 
 TEST_F(LazyloadImagesFilterTest, LazyloadDisabledForXHR) {
   InitLazyloadImagesFilter(false);
-  RequestHeaders request_headers;
-  request_headers.Add(
+  AddRequestAttribute(
       HttpAttributes::kXRequestedWith, HttpAttributes::kXmlHttpRequest);
-  rewrite_driver_->SetRequestHeaders(request_headers);
   GoogleString input_html = "<head>"
       "</head>"
       "<body>"

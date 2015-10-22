@@ -62,7 +62,7 @@ class InsertDnsPrefetchFilterTest : public RewriteTestBase {
     RewriteTestBase::SetUp();
     rewrite_driver()->AddFilters();
     rewrite_driver()->SetWriter(&writer_);
-    rewrite_driver()->SetUserAgent(UserAgentMatcherTestBase::kChromeUserAgent);
+    SetCurrentUserAgent(UserAgentMatcherTestBase::kChromeUserAgent);
   }
 
   virtual void TearDown() {
@@ -209,7 +209,7 @@ TEST_F(InsertDnsPrefetchFilterTest, IgnoreCurrentDomain) {
 
 TEST_F(InsertDnsPrefetchFilterTest,
        DisableInsertDnsPrefetchForUserAgentsNotSupported) {
-  rewrite_driver()->SetUserAgent("");
+  SetCurrentUserAgent("");
   GoogleString html =
       "<head></head>"
       "<body>"

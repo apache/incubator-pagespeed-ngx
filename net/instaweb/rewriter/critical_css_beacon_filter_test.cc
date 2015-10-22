@@ -88,12 +88,11 @@ class CriticalCssBeaconFilterTestBase : public RewriteTestBase {
   // Set everything up except for filter configuration.
   virtual void SetUp() {
     RewriteTestBase::SetUp();
-    rewrite_driver()->SetUserAgent(
+    SetCurrentUserAgent(
         UserAgentMatcherTestBase::kChrome18UserAgent);
     SetHtmlMimetype();  // Don't wrap scripts in <![CDATA[ ]]>
     factory()->set_use_beacon_results_in_filters(true);
     rewrite_driver()->set_property_page(NewMockPage(kTestDomain));
-    SetDummyRequestHeaders();
     // Set up pcache for page.
     const PropertyCache::Cohort* cohort =
         SetupCohort(page_property_cache(), RewriteDriver::kBeaconCohort);
@@ -184,12 +183,12 @@ TEST_F(CriticalCssBeaconFilterTest, ExtractFromInlineStyle) {
 }
 
 TEST_F(CriticalCssBeaconFilterTest, DisabledForIE) {
-  rewrite_driver()->SetUserAgent(UserAgentMatcherTestBase::kIe7UserAgent);
+  SetCurrentUserAgent(UserAgentMatcherTestBase::kIe7UserAgent);
   ValidateNoChanges(kTestDomain, InputHtml(kInlineStyle));
 }
 
 TEST_F(CriticalCssBeaconFilterTest, DisabledForBots) {
-  rewrite_driver()->SetUserAgent(UserAgentMatcherTestBase::kGooglebotUserAgent);
+  SetCurrentUserAgent(UserAgentMatcherTestBase::kGooglebotUserAgent);
   ValidateNoChanges(kTestDomain, InputHtml(kInlineStyle));
 }
 

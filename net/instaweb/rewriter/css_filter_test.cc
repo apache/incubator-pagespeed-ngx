@@ -1971,7 +1971,7 @@ TEST_F(CssFilterTest, WebpRewriting) {
   options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
   options()->EnableFilter(RewriteOptions::kRewriteCss);
   options()->set_image_jpeg_recompress_quality(85);
-  rewrite_driver()->SetUserAgent(kUaWebp);
+  SetCurrentUserAgent(kUaWebp);
   server_context()->ComputeSignature(options());
 
   TestWebpRewriting(kPuzzleJpgFile, kContentTypeJpeg,
@@ -1988,7 +1988,7 @@ TEST_F(CssFilterTest, WebpLaRewriting) {
   options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
   options()->EnableFilter(RewriteOptions::kRewriteCss);
   options()->set_image_jpeg_recompress_quality(85);
-  rewrite_driver()->SetUserAgent(kUaWebpLossless);
+  SetCurrentUserAgent(kUaWebpLossless);
   server_context()->ComputeSignature(options());
 
   TestWebpRewriting(kPuzzleJpgFile, kContentTypeJpeg,
@@ -2006,7 +2006,7 @@ TEST_F(CssFilterTest, WebpLaWithFlagRewriting) {
   options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
   options()->EnableFilter(RewriteOptions::kRewriteCss);
   options()->set_image_jpeg_recompress_quality(85);
-  rewrite_driver()->SetUserAgent(kUaWebpLossless);
+  SetCurrentUserAgent(kUaWebpLossless);
   server_context()->ComputeSignature(options());
 
   TestWebpRewriting(kPuzzleJpgFile, kContentTypeJpeg,
@@ -2020,7 +2020,7 @@ TEST_F(CssFilterTest, NoWebpRewritingFromJpgIfDisabled) {
   options()->EnableFilter(RewriteOptions::kRecompressJpeg);
   options()->EnableFilter(RewriteOptions::kRewriteCss);
   options()->set_image_jpeg_recompress_quality(85);
-  rewrite_driver()->SetUserAgent(kUaWebp);
+  SetCurrentUserAgent(kUaWebp);
   server_context()->ComputeSignature(options());
 
   TestWebpRewriting(kPuzzleJpgFile, kContentTypeJpeg,
@@ -2039,7 +2039,7 @@ TEST_F(CssFilterTest, WebpRewritingFromJpgWithWebpFlagWebpLaUa) {
   options()->EnableFilter(RewriteOptions::kRewriteCss);
   options()->EnableFilter(RewriteOptions::kConvertToWebpLossless);
   options()->set_image_jpeg_recompress_quality(85);
-  rewrite_driver()->SetUserAgent(kUaWebpLossless);
+  SetCurrentUserAgent(kUaWebpLossless);
   server_context()->ComputeSignature(options());
 
   TestWebpRewriting(kPuzzleJpgFile, kContentTypeJpeg,
@@ -2058,7 +2058,7 @@ TEST_F(CssFilterTest, WebpRewritingFromJpgWithWebpFlagWebpUa) {
   options()->EnableFilter(RewriteOptions::kRewriteCss);
   options()->EnableFilter(RewriteOptions::kConvertToWebpLossless);
   options()->set_image_jpeg_recompress_quality(85);
-  rewrite_driver()->SetUserAgent(kUaWebp);
+  SetCurrentUserAgent(kUaWebp);
   server_context()->ComputeSignature(options());
 
   TestWebpRewriting(kPuzzleJpgFile, kContentTypeJpeg,
@@ -2072,7 +2072,7 @@ TEST_F(CssFilterTest, NoWebpLaRewritingFromJpgIfDisabled) {
   options()->EnableFilter(RewriteOptions::kRecompressJpeg);
   options()->EnableFilter(RewriteOptions::kRewriteCss);
   options()->set_image_jpeg_recompress_quality(85);
-  rewrite_driver()->SetUserAgent(kUaWebpLossless);
+  SetCurrentUserAgent(kUaWebpLossless);
   server_context()->ComputeSignature(options());
 
   TestWebpRewriting(kPuzzleJpgFile, kContentTypeJpeg,
@@ -2087,7 +2087,7 @@ TEST_F(CssFilterTest, NoWebpRewritingFromPngIfDisabled) {
   options()->EnableFilter(RewriteOptions::kRecompressPng);
   options()->EnableFilter(RewriteOptions::kRewriteCss);
   options()->set_image_jpeg_recompress_quality(85);
-  rewrite_driver()->SetUserAgent(kUaWebp);
+  SetCurrentUserAgent(kUaWebp);
   server_context()->ComputeSignature(options());
 
   TestWebpRewriting(kBikePngFile, kContentTypePng,
@@ -2103,7 +2103,7 @@ TEST_F(CssFilterTest, WebpRewritingFromPngWithWebpFlagWebpLaUa) {
   options()->EnableFilter(RewriteOptions::kRewriteCss);
   options()->EnableFilter(RewriteOptions::kConvertToWebpLossless);
   options()->set_image_recompress_quality(85);
-  rewrite_driver()->SetUserAgent(kUaWebpLossless);
+  SetCurrentUserAgent(kUaWebpLossless);
   server_context()->ComputeSignature(options());
 
   TestWebpRewriting(kBikePngFile, kContentTypePng,
@@ -2119,7 +2119,7 @@ TEST_F(CssFilterTest, WebpRewritingFromPngWithWebpFlagWebpUa) {
   options()->EnableFilter(RewriteOptions::kRewriteCss);
   options()->EnableFilter(RewriteOptions::kConvertToWebpLossless);
   options()->set_image_recompress_quality(85);
-  rewrite_driver()->SetUserAgent(kUaWebp);
+  SetCurrentUserAgent(kUaWebp);
   server_context()->ComputeSignature(options());
 
   TestWebpRewriting(kBikePngFile, kContentTypePng,
@@ -2134,7 +2134,7 @@ TEST_F(CssFilterTest, NoWebpLaRewritingFromPngIfDisabled) {
   options()->EnableFilter(RewriteOptions::kRecompressPng);
   options()->EnableFilter(RewriteOptions::kRewriteCss);
   options()->set_image_jpeg_recompress_quality(85);
-  rewrite_driver()->SetUserAgent(kUaWebpLossless);
+  SetCurrentUserAgent(kUaWebpLossless);
   server_context()->ComputeSignature(options());
 
   TestWebpRewriting(kBikePngFile, kContentTypePng,

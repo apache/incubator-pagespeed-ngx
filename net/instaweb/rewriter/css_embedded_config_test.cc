@@ -19,7 +19,6 @@
 #include <cstddef>
 
 #include "net/instaweb/rewriter/public/css_rewrite_test_base.h"
-#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "pagespeed/kernel/base/dynamic_annotations.h"  // RunningOnValgrind
 #include "pagespeed/kernel/base/gtest.h"
@@ -215,7 +214,6 @@ TEST_F(CssEmbeddedConfigTest, InlineImageToCssSmallTranscode) {
     return;
   }
   SetCurrentUserAgent("webp");
-  rewrite_driver()->SetUserAgent("webp");
   AddFileToMockFetcher(StrCat(kTestDomain, kPuzzleJpgFile), kPuzzleJpgFile,
                        kContentTypeJpeg, 100);
   GoogleString css_link = RewriteImageInCss(kPuzzleJpgFile);

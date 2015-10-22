@@ -17,10 +17,8 @@
 
 #include "net/instaweb/rewriter/public/critical_images_finder_test_base.h"
 
-#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/mock_property_page.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "pagespeed/kernel/base/gtest.h"
@@ -33,9 +31,7 @@ namespace net_instaweb {
 const char CriticalImagesFinderTestBase::kRequestUrl[] = "http://www.test.com";
 
 void CriticalImagesFinderTestBase::ResetDriver() {
-  rewrite_driver()->Clear();
-  rewrite_driver()->set_request_context(
-      RequestContext::NewTestRequestContext(factory()->thread_system()));
+  ClearRewriteDriver();
   PropertyCache* pcache = server_context_->page_property_cache();
   MockPropertyPage* page = NewMockPage(kRequestUrl);
   rewrite_driver()->set_property_page(page);

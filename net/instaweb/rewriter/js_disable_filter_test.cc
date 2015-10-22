@@ -126,7 +126,7 @@ TEST_F(JsDisableFilterTest, DisablesScript) {
 }
 
 TEST_F(JsDisableFilterTest, InvalidUserAgent) {
-  rewrite_driver()->SetUserAgent("BlackListUserAgent");
+  SetCurrentUserAgent("BlackListUserAgent");
   const char script[] = "<head>"
       "<script "
       "src='http://www.google.com/javascript/ajax_apis.js'></script>"
@@ -198,7 +198,8 @@ TEST_F(JsDisableFilterTest, DisablesScriptWithQueryParam) {
 }
 
 TEST_F(JsDisableFilterTest, PrefetchScriptWithImageTemplate) {
-  rewrite_driver()->SetUserAgent(UserAgentMatcherTestBase::kChrome15UserAgent);
+  SetCurrentUserAgent(UserAgentMatcherTestBase::kChrome15UserAgent);
+  SetDriverRequestHeaders();
   options()->set_max_prefetch_js_elements(3);
   const GoogleString src_url = "//abc.org/m/load.php?debug=false&amp;"
       "lang=en&amp;modules=startup&amp;only=scripts&amp;*";
@@ -245,7 +246,7 @@ TEST_F(JsDisableFilterTest, PrefetchScriptWithImageTemplate) {
 }
 
 TEST_F(JsDisableFilterTest, PrefetchScriptInHeadNotInBody) {
-  rewrite_driver()->SetUserAgent(UserAgentMatcherTestBase::kChrome15UserAgent);
+  SetCurrentUserAgent(UserAgentMatcherTestBase::kChrome15UserAgent);
   options()->set_max_prefetch_js_elements(3);
   const GoogleString input_html = StrCat(
       "<head>",
@@ -346,7 +347,7 @@ TEST_F(JsDisableFilterTest, DisablesScriptOnlyFromFirstSrc) {
 }
 
 TEST_F(JsDisableFilterTest, AddsMetaTagForIE) {
-  rewrite_driver()->SetUserAgent("Mozilla/5.0 ( MSIE 10.0; Trident/5.0)");
+  SetCurrentUserAgent("Mozilla/5.0 ( MSIE 10.0; Trident/5.0)");
   const GoogleString input_html = StrCat(
       "<body>",
       kUnrelatedNoscriptTags,

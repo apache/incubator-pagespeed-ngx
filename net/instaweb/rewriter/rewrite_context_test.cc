@@ -187,6 +187,12 @@ class RewriteContextTest : public RewriteContextTestBase {
                                              server_context()->lock_manager());
   }
 
+  void ResetUserAgent(StringPiece user_agent) {
+    ClearRewriteDriver();
+    SetCurrentUserAgent(user_agent);
+    SetDriverRequestHeaders();
+  }
+
   Variable* fetch_failures_;
   Variable* fetch_successes_;
 };
@@ -3055,7 +3061,7 @@ TEST_F(RewriteContextTest, TestDisableBackgroundRewritesForBots) {
   options()->ComputeSignature();
 
   // Bot user agent. No fetches triggered.
-  rewrite_driver()->SetUserAgent(UserAgentMatcherTestBase::kGooglebotUserAgent);
+  ResetUserAgent(UserAgentMatcherTestBase::kGooglebotUserAgent);
   ValidateNoChanges("initial", CssLinkHref("a.css"));
   EXPECT_EQ(0, trim_filter_->num_rewrites());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
@@ -3069,7 +3075,7 @@ TEST_F(RewriteContextTest, TestDisableBackgroundRewritesForBots) {
 
   ClearStats();
   // Non-bot user agent. Fetch and rewrite triggered.
-  rewrite_driver()->SetUserAgent("new");
+  ResetUserAgent("new");
   ValidateExpected(
       "initial",
       CssLinkHref("a.css"),
@@ -3086,7 +3092,7 @@ TEST_F(RewriteContextTest, TestDisableBackgroundRewritesForBots) {
 
   ClearStats();
   // Bot user agent. HTML is rewritten.
-  rewrite_driver()->SetUserAgent(UserAgentMatcherTestBase::kGooglebotUserAgent);
+  ResetUserAgent(UserAgentMatcherTestBase::kGooglebotUserAgent);
   ValidateExpected(
       "initial",
       CssLinkHref("a.css"),
@@ -3106,7 +3112,7 @@ TEST_F(RewriteContextTest, TestDisableBackgroundRewritesForBots) {
 
   ClearStats();
   // Bot user agent. HTML is rewritten, but no fetches are triggered.
-  rewrite_driver()->SetUserAgent(UserAgentMatcherTestBase::kGooglebotUserAgent);
+  ResetUserAgent(UserAgentMatcherTestBase::kGooglebotUserAgent);
   ValidateExpected(
       "initial",
       CssLinkHref("a.css"),
@@ -3123,7 +3129,7 @@ TEST_F(RewriteContextTest, TestDisableBackgroundRewritesForBots) {
 
   ClearStats();
   // Non-bot user agent. Freshen triggers a fetch.
-  rewrite_driver()->SetUserAgent("new");
+  ResetUserAgent("new");
   ValidateExpected(
       "initial",
       CssLinkHref("a.css"),
@@ -3143,7 +3149,7 @@ TEST_F(RewriteContextTest, TestDisableBackgroundRewritesForBots) {
 
   ClearStats();
   // Bot user agent. No fetches are triggered.
-  rewrite_driver()->SetUserAgent(UserAgentMatcherTestBase::kGooglebotUserAgent);
+  ResetUserAgent(UserAgentMatcherTestBase::kGooglebotUserAgent);
   ValidateNoChanges("initial", CssLinkHref("a.css"));
   EXPECT_EQ(0, trim_filter_->num_rewrites());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
