@@ -1903,11 +1903,6 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
           custom_options.release(), ctx->base_fetch->request_context());
     }
 
-    StringPiece user_agent = ctx->base_fetch->request_headers()->Lookup1(
-        HttpAttributes::kUserAgent);
-    if (!user_agent.empty()) {
-      driver->SetUserAgent(user_agent);
-    }
     driver->SetRequestHeaders(*ctx->base_fetch->request_headers());
     driver->set_pagespeed_query_params(pagespeed_query_params);
     driver->set_pagespeed_option_cookies(pagespeed_option_cookies);
@@ -1948,13 +1943,7 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
           custom_options.release(), ctx->base_fetch->request_context());
     }
 
-    StringPiece user_agent = ctx->base_fetch->request_headers()->Lookup1(
-        HttpAttributes::kUserAgent);
-    if (!user_agent.empty()) {
-      driver->SetUserAgent(user_agent);
-    }
     driver->SetRequestHeaders(*ctx->base_fetch->request_headers());
-
     ctx->driver = driver;
 
     cfg_s->server_context->message_handler()->Message(
