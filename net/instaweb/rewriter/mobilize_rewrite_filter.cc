@@ -396,8 +396,7 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
             StrCat(static_file_prefix_, "goog/base.js"), true);
         driver()->InsertScriptAfterCurrent(
             StrCat(static_file_prefix_, "deps.js"), true);
-        driver()->InsertScriptAfterCurrent("goog.require('pagespeed.Mob');",
-                                           false);
+        driver()->InsertScriptAfterCurrent("goog.require('mob.Mob');", false);
       }
 
       if (use_js_layout_) {

@@ -95,6 +95,10 @@ class RewriteDriverFactory {
   // their constructor.  It is safe to call this multiple times.
   void InitializeDefaultOptions();
 
+  // Static version of the above. If you are using that you may also need
+  // to call reset_default_options.
+  static void InitializeDefaultOptions(RewriteOptions* options);
+
   virtual ~RewriteDriverFactory();
 
   // The RewriteDriverFactory will create objects of default type through the
@@ -433,6 +437,8 @@ class RewriteDriverFactory {
 
   // For use in tests.
   void RebuildDecodingDriverForTests(ServerContext* server_context);
+
+  void reset_default_options(RewriteOptions* new_defaults);
 
  private:
   // Creates a StaticAssetManager instance. Default implementation creates an

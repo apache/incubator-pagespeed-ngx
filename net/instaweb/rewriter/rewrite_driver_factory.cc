@@ -115,15 +115,23 @@ void RewriteDriverFactory::Init() {
 }
 
 void RewriteDriverFactory::InitializeDefaultOptions() {
-  // We default to using the "core filters". Note that this is not
-  // the only place the default is applied --- for directories with .htaccess
-  // files it is given in create_dir_config in mod_instaweb.cc
   default_options_.reset(NewRewriteOptions());
-  default_options_->SetDefaultRewriteLevel(RewriteOptions::kCoreFilters);
-  default_options_->DisallowTroublesomeResources();
+  InitializeDefaultOptions(default_options_.get());
   // Note that we do not need to compute a signature on the default options.
   // We will never be serving requests with these options: they are just used
   // as a source for merging.
+}
+
+void RewriteDriverFactory::InitializeDefaultOptions(RewriteOptions* options) {
+  // We default to using the "core filters". Note that this is not
+  // the only place the default is applied --- for directories with .htaccess
+  // files it is given in create_dir_config in mod_instaweb.cc
+  options->SetDefaultRewriteLevel(RewriteOptions::kCoreFilters);
+  options->DisallowTroublesomeResources();
+}
+
+void RewriteDriverFactory::reset_default_options(RewriteOptions* new_defaults) {
+    default_options_.reset(new_defaults);
 }
 
 RewriteDriverFactory::~RewriteDriverFactory() {

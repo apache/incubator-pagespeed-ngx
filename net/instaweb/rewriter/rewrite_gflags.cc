@@ -583,12 +583,20 @@ RewriteGflags::RewriteGflags(const char* progname, int* argc, char*** argv) {
 
 bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
                                RewriteOptions* options) const {
-  bool ret = true;
+  SetupFactoryOnly(factory);
+  return SetupOptionsOnly(options, factory->message_handler());
+}
+
+void RewriteGflags::SetupFactoryOnly(RewriteDriverFactory* factory) const {
   factory->set_filename_prefix(FLAGS_filename_prefix);
   factory->set_force_caching(FLAGS_force_caching);
   // TODO(sligocki): Remove this (redundant with option setting below).
   factory->set_version_string(FLAGS_pagespeed_version);
+}
 
+bool RewriteGflags::SetupOptionsOnly(
+    RewriteOptions* options, MessageHandler* handler) const {
+  bool ret = true;
   if (WasExplicitlySet("css_outline_min_bytes")) {
     options->set_css_outline_min_bytes(FLAGS_css_outline_min_bytes);
   }
@@ -982,8 +990,6 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
     options->set_max_low_res_to_full_res_image_size_percentage(
         FLAGS_max_low_res_to_full_res_image_size_percentage);
   }
-
-  MessageHandler* handler = factory->message_handler();
 
   StringPieceVector domains;
   SplitStringPieceToVector(FLAGS_domains, ",", &domains, true);

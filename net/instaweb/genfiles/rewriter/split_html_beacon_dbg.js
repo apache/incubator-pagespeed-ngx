@@ -6,10 +6,10 @@
     if (window.ActiveXObject) {
       try {
         b = new ActiveXObject("Msxml2.XMLHTTP");
-      } catch (e) {
+      } catch (f) {
         try {
           b = new ActiveXObject("Microsoft.XMLHTTP");
-        } catch (f) {
+        } catch (g) {
         }
       }
     }
@@ -17,8 +17,8 @@
   if (!b) {
     return !1;
   }
-  var g = -1 == a.indexOf("?") ? "?" : "&";
-  a = a + g + "url=" + encodeURIComponent(c);
+  var e = -1 == a.indexOf("?") ? "?" : "&";
+  a = a + e + "url=" + encodeURIComponent(c);
   b.open("POST", a);
   b.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
   b.send(d);

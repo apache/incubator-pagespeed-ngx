@@ -43,6 +43,12 @@ class RewriteGflags {
   // defaults.
   bool SetOptions(RewriteDriverFactory* factory, RewriteOptions* options) const;
 
+  // Like above, but doesn't expect a RewriteDriverFactory.
+  bool SetupOptionsOnly(RewriteOptions* options, MessageHandler* handler) const;
+
+  // Like above, but only modifies the RewriteDriverFactory.
+  void SetupFactoryOnly(RewriteDriverFactory* factory) const;
+
   // LRU size is potentially needed at factory construction time so it
   // is exposed as a method.
   int64 lru_cache_size_bytes() const;

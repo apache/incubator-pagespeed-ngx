@@ -6,7 +6,10 @@
 #   C++-friendly than dense_hash_map and also performs significantly better
 #   at default settings.
 
-package(default_visibility = ["//visibility:public"])
+package(
+    default_copts = ["-DDISABLE_GOOGLE_GLOBAL_USING_DECLARATIONS"],
+    default_visibility = ["//visibility:public"],
+)
 
 licenses(["notice"])  # Apache 2.0
 

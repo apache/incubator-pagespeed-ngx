@@ -860,7 +860,6 @@ TEST_F(PngOptimizerTest, PartialAnimatedGif) {
     // Remove the last byte.
     in.erase(in.length() - 1);
 
-
     // Since we have only a partial file, optimization should fail.
     EXPECT_FALSE(PngOptimizer::OptimizePng(*reader_, in, &out,
         &message_handler_));
