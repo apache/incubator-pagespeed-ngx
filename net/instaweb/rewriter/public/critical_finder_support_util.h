@@ -108,7 +108,7 @@ void UpdateCriticalKeys(bool require_prior_support,
                         const StringSet& new_set, int support_value,
                         CriticalKeys* critical_keys);
 
-bool ShouldBeacon(const CriticalKeys& proto, const RewriteDriver& driver);
+bool ShouldBeacon(int64 next_beacon_timestamp_ms, const RewriteDriver& driver);
 
 enum CriticalKeysWriteFlags {
   kNoRequirementsOnPriorResult = 0,  // Nice name for lack of next two flags.

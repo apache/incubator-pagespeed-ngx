@@ -327,7 +327,7 @@ void WriteCriticalKeysToPropertyCache(
   }
 }
 
-bool ShouldBeacon(const CriticalKeys& proto, const RewriteDriver& driver) {
+bool ShouldBeacon(int64 next_beacon_timestamp_ms, const RewriteDriver& driver) {
   // When downstream cache integration is enabled, and there is a rebeaconing
   // key already specified in the config, we should only rebeacon when there
   // is a matching key in the beacon requesting header.
@@ -337,7 +337,7 @@ bool ShouldBeacon(const CriticalKeys& proto, const RewriteDriver& driver) {
         driver.request_headers()->Lookup1(kPsaShouldBeacon));
   }
   int64 now_ms = driver.timer()->NowMs();
-  return now_ms >= proto.next_beacon_timestamp_ms();
+  return now_ms >= next_beacon_timestamp_ms;
 }
 
 void PrepareForBeaconInsertionHelper(CriticalKeys* proto,
@@ -346,7 +346,8 @@ void PrepareForBeaconInsertionHelper(CriticalKeys* proto,
                                      bool using_candidate_key_detection,
                                      BeaconMetadata* result) {
   result->status = kDoNotBeacon;
-  if (!ShouldBeacon(*proto, *driver)) {
+  CHECK(proto);
+  if (!ShouldBeacon(proto->next_beacon_timestamp_ms(), *driver)) {
     return;
   }
 

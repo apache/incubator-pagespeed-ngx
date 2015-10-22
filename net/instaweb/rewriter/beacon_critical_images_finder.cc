@@ -19,6 +19,7 @@
 
 #include "base/logging.h"
 #include "net/instaweb/rewriter/critical_images.pb.h"
+#include "net/instaweb/rewriter/critical_keys.pb.h"
 #include "net/instaweb/rewriter/public/critical_finder_support_util.h"
 #include "net/instaweb/rewriter/public/property_cache_util.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -26,6 +27,8 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/fallback_property_page.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_hash.h"
 #include "pagespeed/kernel/base/timer.h"
@@ -87,9 +90,18 @@ CriticalImagesFinder::Availability BeaconCriticalImagesFinder::Available(
 
 bool BeaconCriticalImagesFinder::ShouldBeacon(RewriteDriver* driver) {
   UpdateCriticalImagesSetInDriver(driver);
-  return ::net_instaweb::ShouldBeacon(
-      driver->critical_images_info()->proto.html_critical_image_support(),
-      *driver);
+  int64 next_beacon_timestamp_ms = 0;
+  CriticalImagesInfo* critical_images = driver->critical_images_info();
+  DCHECK(critical_images != NULL)
+      << "UpdateCriticalImagesSetInDriver must be called before ShouldBeacon";
+  if (critical_images != NULL) {
+    const CriticalImages& proto = critical_images->proto;
+    if (proto.has_html_critical_image_support()) {
+      next_beacon_timestamp_ms =
+          proto.html_critical_image_support().next_beacon_timestamp_ms();
+    }
+  }
+  return net_instaweb::ShouldBeacon(next_beacon_timestamp_ms, *driver);
 }
 
 BeaconMetadata BeaconCriticalImagesFinder::PrepareForBeaconInsertion(
