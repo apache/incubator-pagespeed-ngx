@@ -91,6 +91,9 @@ vars = {
      "https://github.com/pagespeed/domain-registry-provider.git",
   "domain_registry_provider_revision":
      "@e9b72eaef413335eb054a5982277cb2e42eaead7",
+
+  "libpng_src": "git://git.code.sf.net/p/libpng/code",
+  "libpng_revision": "@libpng-1.2.52-signed",
 }
 
 deps = {
@@ -228,7 +231,9 @@ deps = {
   # Domain Registry Provider gives us the Public Suffix List.
   "src/third_party/domain_registry_provider":
     Var("domain_registry_provider_src") +
-        Var("domain_registry_provider_revision")
+        Var("domain_registry_provider_revision"),
+
+  "src/third_party/libpng/src": Var("libpng_src") + Var("libpng_revision")
 }
 
 

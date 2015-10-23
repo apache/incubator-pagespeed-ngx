@@ -30,7 +30,7 @@ extern "C" {
 #ifdef USE_SYSTEM_LIBPNG
 #include "png.h"                                               // NOLINT
 #else
-#include "third_party/libpng/png.h"
+#include "third_party/libpng/src/png.h"
 
   // gif_reader currently inspects "private" fields of the png_info
   // structure. Thus we need to include pnginfo.h. Eventually we should

@@ -35,7 +35,7 @@ extern "C" {
 #ifdef USE_SYSTEM_LIBPNG
 #include "png.h"                                               // NOLINT
 #else
-#include "third_party/libpng/png.h"
+#include "third_party/libpng/src/png.h"
 #endif
 }
 
