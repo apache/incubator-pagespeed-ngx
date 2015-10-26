@@ -320,12 +320,12 @@ void RewriteDriver::SetRequestHeaders(const RequestHeaders& headers) {
   new_request_headers->CopyFrom(headers);
   new_request_headers->PopulateLazyCaches();
   request_headers_.reset(new_request_headers);
+  ClearRequestProperties();
 
   const char* user_agent = request_headers_->Lookup1(
       HttpAttributes::kUserAgent);
   if (user_agent != NULL) {
     user_agent_ = user_agent;
-    ClearRequestProperties();   // TODO(jmarantz): do this even if ua==null.
     request_properties_->SetUserAgent(user_agent_);
   }
 
