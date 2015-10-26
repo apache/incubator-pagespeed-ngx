@@ -40,8 +40,9 @@ class NgxServerContext : public SystemServerContext {
       NgxRewriteDriverFactory* factory, StringPiece hostname, int port);
   virtual ~NgxServerContext();
 
-  // We expect to use ProxyFetch with HTML.
-  virtual bool ProxiesHtml() const { return true; }
+  // We don't allow ProxyFetch to fetch HTML via MapProxyDomain. We will call
+  // set_trusted_input() on any ProxyFetches we use to transform internal HTML.
+  virtual bool ProxiesHtml() const { return false; }
 
   // Call only when you need an NgxRewriteOptions.  If you don't need
   // nginx-specific behavior, call global_options() instead which doesn't
