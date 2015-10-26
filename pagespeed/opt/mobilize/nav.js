@@ -29,7 +29,6 @@ goog.require('goog.string');
 goog.require('goog.structs.Set');
 // goog.style adds ~400 bytes when using getSize and getTransformedSize.
 goog.require('goog.style');
-goog.require('mob.Iframe');
 goog.require('mob.NavPanel');
 goog.require('mob.button.Dialer');
 goog.require('mob.button.Map');
@@ -150,6 +149,17 @@ mob.Nav = function() {
                         (window.navigator.userAgent.indexOf('GSA') > -1) ||
                         goog.labs.userAgent.browser.isIosWebview());
 };
+
+
+/**
+ * The minimum font size required for the header bar to work. If the browser
+ * enforces a minimum font size larger than this then we don't display the
+ * header bar.
+ * TODO(jud): Set this to something higher and scale down the em values in
+ * mobilize.css
+ * @const @private {number}
+ */
+mob.Nav.MIN_FONT_SIZE_ = 1;
 
 
 /**
@@ -545,11 +555,33 @@ mob.Nav.prototype.addThemeColor_ = function(themeData) {
 
 
 /**
+ * Check if the browser has a minimum font size set. This can cause issues
+ * because font-size and em units are used to scale the header bar.
+ * @private
+ * @return {boolean}
+ */
+mob.Nav.prototype.isMinimumFontSizeSet_ = function() {
+  // TODO(jud): Insert this div in c++ to prevent forcing a style recalculation
+  // here.
+  var testDiv = document.createElement(goog.dom.TagName.DIV);
+  document.body.appendChild(testDiv);
+  testDiv.style.fontSize = '1px';
+  var fontSize = window.getComputedStyle(testDiv).getPropertyValue('font-size');
+  fontSize = mob.util.pixelValue(fontSize);
+  document.body.removeChild(testDiv);
+  return (!fontSize || fontSize > mob.Nav.MIN_FONT_SIZE_);
+};
+
+
+/**
  * Main entry point of nav mobilization. Should be called when logo detection is
  * finished.
  * @param {!mob.util.ThemeData} themeData
  */
 mob.Nav.prototype.run = function(themeData) {
+  if (this.isMinimumFontSizeSet_()) {
+    return;
+  }
   // Don't insert the header bar inside of an iframe.
   if (mob.util.inFriendlyIframe()) {
     return;
@@ -562,11 +594,6 @@ mob.Nav.prototype.run = function(themeData) {
 
   window.addEventListener(goog.events.EventType.LOAD,
                           goog.bind(this.redraw_, this));
-
-  if (document.getElementById(mob.util.ElementId.IFRAME)) {
-    var iframe = new mob.Iframe();
-    iframe.run();
-  }
 };
 
 

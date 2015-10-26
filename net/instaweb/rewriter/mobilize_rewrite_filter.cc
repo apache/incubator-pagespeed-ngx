@@ -281,6 +281,10 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
       // enabled.  That is bundled into the same JS compile unit as the
       // layout, so we cannot do a 'undefined' check in JS to determine
       // whether it was enabled.
+      // TODO(jud): Insert this JS at body end immediatly before the
+      // mobilization JS script tag. Currently in iframe mode this gets inserted
+      // before the meta charset tag, which is supposed to be in the first 1024
+      // bytes of the document.
       GoogleString src = StrCat(
           "window.psDebugMode=", BoolToString(driver()->DebugMode()), ";"
           "window.psNavMode=", BoolToString(use_js_nav_), ";"
@@ -431,9 +435,13 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
       // function is called to set font-size. Otherwise the header bar will be
       // too large, causing the iframe to be too small.
       driver()->AddAttribute(header, HtmlName::kClass, "psmob-hide");
-      HtmlElement* spacer = driver()->NewElement(element, HtmlName::kDiv);
-      driver()->InsertNodeAfterCurrent(spacer);
-      driver()->AddAttribute(spacer, HtmlName::kId, "psmob-spacer");
+
+      // The spacer is added by IframeFetcher when iframe mode is enabled.
+      if (!driver()->options()->mob_iframe_disable()) {
+        HtmlElement* spacer = driver()->NewElement(element, HtmlName::kDiv);
+        driver()->InsertNodeAfterCurrent(spacer);
+        driver()->AddAttribute(spacer, HtmlName::kId, "psmob-spacer");
+      }
     }
 
     if (use_js_layout_ && !added_progress_) {

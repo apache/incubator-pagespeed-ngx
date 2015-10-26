@@ -7779,17 +7779,6 @@ mob.Color.prototype.run = function(a, b) {
   b ? 178.5 >= goog.color.rgbArrayToHsv(b)[2] && (c = [255, 255, 255]) : b = [255, 255, 255];
   return new mob.Color.ThemeColors_(b, c);
 };
-mob.Iframe = function() {
-};
-mob.Iframe.prototype.run = function() {
-  var a = document.createElement(goog.dom.TagName.DIV);
-  document.body.appendChild(a);
-  a.id = mob.util.ElementId.IFRAME_CONTAINER;
-  var b = goog.dom.getRequiredElement(mob.util.ElementId.SPACER);
-  a.appendChild(b);
-  b = goog.dom.getRequiredElement(mob.util.ElementId.IFRAME);
-  a.appendChild(b);
-};
 mob.layoutUtil = {};
 mob.layoutUtil.DEFAULT_MAX_WIDTH_ = 400;
 mob.layoutUtil.CLAMP_STYLE_LIMIT_PX_ = 4;
@@ -8510,6 +8499,7 @@ mob.Nav = function() {
   this.isAndroidBrowser_ = goog.labs.userAgent.browser.isAndroidBrowser();
   this.isIosWebview_ = -1 < window.navigator.userAgent.indexOf("CriOS") || -1 < window.navigator.userAgent.indexOf("GSA") || goog.labs.userAgent.browser.isIosWebview();
 };
+mob.Nav.MIN_FONT_SIZE_ = 1;
 mob.Nav.prototype.findElementsToOffsetHelper_ = function(a, b) {
   if (!a.className || a.className != mob.util.ElementId.PROGRESS_SCRIM && goog.isString(a.className) && !goog.string.startsWith(a.className, "psmob-") && !goog.string.startsWith(a.id, "psmob-")) {
     var c = window.getComputedStyle(a), d = c.getPropertyValue("position");
@@ -8609,8 +8599,16 @@ mob.Nav.prototype.addThemeColor_ = function(a) {
   this.styleTag_.appendChild(document.createTextNode(b));
   document.head.appendChild(this.styleTag_);
 };
+mob.Nav.prototype.isMinimumFontSizeSet_ = function() {
+  var a = document.createElement(goog.dom.TagName.DIV);
+  document.body.appendChild(a);
+  a.style.fontSize = "1px";
+  var b = window.getComputedStyle(a).getPropertyValue("font-size"), b = mob.util.pixelValue(b);
+  document.body.removeChild(a);
+  return !b || b > mob.Nav.MIN_FONT_SIZE_;
+};
 mob.Nav.prototype.run = function(a) {
-  mob.util.inFriendlyIframe() || (this.clampZIndex_(), this.findElementsToOffset_(), this.addHeaderBar_(a), mob.util.sendBeaconEvent(mob.util.BeaconEvents.NAV_DONE), window.addEventListener(goog.events.EventType.LOAD, goog.bind(this.redraw_, this)), document.getElementById(mob.util.ElementId.IFRAME) && (new mob.Iframe).run());
+  this.isMinimumFontSizeSet_() || mob.util.inFriendlyIframe() || (this.clampZIndex_(), this.findElementsToOffset_(), this.addHeaderBar_(a), mob.util.sendBeaconEvent(mob.util.BeaconEvents.NAV_DONE), window.addEventListener(goog.events.EventType.LOAD, goog.bind(this.redraw_, this)));
 };
 mob.Nav.prototype.updateTheme = function(a) {
   this.headerBar_.remove();

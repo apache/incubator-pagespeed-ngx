@@ -143,19 +143,20 @@ void IframeFetcher::RespondWithIframe(const GoogleString& escaped_url,
     }
   }
 
-  GoogleString canonical = StrCat(
-      "<link rel=\"canonical\" href=\"", escaped_url, "\">");
+  GoogleString head =
+      StrCat("<head><link rel=\"canonical\" href=\"", escaped_url,
+             "\"><meta charset=\"utf-8\">", viewport, "</head>");
+  GoogleString body = StrCat(
+      "<body class=\"mob-iframe\">"
+      "<div id=\"psmob-iframe-container\">"
+      "<div id=\"psmob-spacer\"></div>"
+      "<iframe id=\"",
+      kIframeId, "\" src=\"", escaped_url, "\"", scrolling_attribute,
+      "></iframe></div></body>");
 
   // Avoid quirks-mode by specifying an HTML doctype.
-  fetch->Write(StrCat("<!DOCTYPE html><html><head>", canonical,
-                      "<meta charset=\"utf-8\">", viewport,
-                      "</head><body class=\"mob-iframe\">"
-                      "<iframe id=\"",
-                      kIframeId, "\" src=\"", escaped_url, "\"",
-                      scrolling_attribute, "></iframe>"),
+  fetch->Write(StrCat("<!DOCTYPE html><html>", head, body, "</html>"),
                message_handler);
-
-  fetch->Write("</body></html>", message_handler);
 }
 
 void IframeFetcher::RespondWithRedirect(const GoogleString& url,

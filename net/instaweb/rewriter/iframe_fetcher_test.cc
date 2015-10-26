@@ -44,11 +44,15 @@ const char kExpectedUrl[] = "http://example.com/foo?bar";
 const char kRobotsContent[] = "robots.txt content";
 const char kFaviconContent[] = "favicon content";
 
-GoogleString ExpectedIframe(StringPiece url, bool add_scrolling_attribute) {
+GoogleString ExpectedBody(StringPiece url, bool add_scrolling_attribute) {
   GoogleString scrolling_attribute =
       add_scrolling_attribute ? " scrolling=\"no\"" : "";
-  return StrCat("<iframe id=\"psmob-iframe\" src=\"", url, "\"",
-                scrolling_attribute, ">");
+  return StrCat(
+      "<body class=\"mob-iframe\">"
+      "<div id=\"psmob-iframe-container\">"
+      "<div id=\"psmob-spacer\"></div>"
+      "<iframe id=\"psmob-iframe\" src=\"",
+      url, "\"", scrolling_attribute, "></iframe></div></body>");
 }
 
 GoogleString ExpectedCanonical(StringPiece url) {
@@ -137,7 +141,7 @@ TEST_F(IframeFetcherTest, IframeOnMobileProxySuffix) {
   // If not explictly configured, there is a default width=device-width
   // viewport.
   EXPECT_THAT(fetch_.buffer(),
-              ::testing::HasSubstr(ExpectedIframe(
+              ::testing::HasSubstr(ExpectedBody(
                   kExpectedUrl, false /* add_scrolling_attribute */)));
   EXPECT_THAT(
       fetch_.buffer(),
@@ -170,7 +174,7 @@ TEST_F(IframeFetcherTest, IframeOnDesktopProxySuffixWithAlwaysMobilize) {
   ResponseHeaders* response = FetchPage("example.com.suffix");
   EXPECT_EQ(HttpStatus::kOK, response->status_code());
   EXPECT_THAT(fetch_.buffer(),
-              ::testing::HasSubstr(ExpectedIframe(
+              ::testing::HasSubstr(ExpectedBody(
                   kExpectedUrl, false /* add_scrolling_attribute */)));
   EXPECT_THAT(
       fetch_.buffer(),
@@ -205,7 +209,7 @@ TEST_F(IframeFetcherTest, IframeOnMobileMapOrigin) {
   ResponseHeaders* response = FetchPage("example.us");
   EXPECT_EQ(HttpStatus::kOK, response->status_code());
   EXPECT_THAT(fetch_.buffer(),
-              ::testing::HasSubstr(ExpectedIframe(
+              ::testing::HasSubstr(ExpectedBody(
                   kExpectedUrl, false /* add_scrolling_attribute */)));
   EXPECT_THAT(
       fetch_.buffer(),
@@ -239,7 +243,7 @@ TEST_F(IframeFetcherTest, IframeOnDesktopMapOriginWithAlwaysMobilize) {
   ResponseHeaders* response = FetchPage("example.us");
   EXPECT_EQ(HttpStatus::kOK, response->status_code());
   EXPECT_THAT(fetch_.buffer(),
-              ::testing::HasSubstr(ExpectedIframe(
+              ::testing::HasSubstr(ExpectedBody(
                   kExpectedUrl, false /* add_scrolling_attribute */)));
   EXPECT_THAT(
       fetch_.buffer(),
@@ -292,7 +296,7 @@ TEST_F(IframeFetcherTest, Viewport) {
   // Verify that the scrolling attribute is not set on the iframe, since this is
   // an android user agent.
   EXPECT_THAT(fetch_.buffer(),
-              ::testing::HasSubstr(ExpectedIframe(
+              ::testing::HasSubstr(ExpectedBody(
                   kExpectedUrl, false /* add_scrolling_attribute */)));
 }
 
@@ -335,7 +339,7 @@ TEST_F(IframeFetcherTest, ViewportIOsSafari) {
                            "content=\"width=device-width,initial-scale=1\">"));
   // Verify that the scrolling attribute is set on the iframe.
   EXPECT_THAT(fetch_.buffer(),
-              ::testing::HasSubstr(ExpectedIframe(
+              ::testing::HasSubstr(ExpectedBody(
                   kExpectedUrl, true /* add_scrolling_attribute */)));
 }
 
@@ -349,7 +353,7 @@ TEST_F(IframeFetcherTest, ViewportNoneIOsSafari) {
               ::testing::Not(::testing::HasSubstr("<meta name=\"viewport\"")));
   // Verify that the scrolling attribute is set on the iframe.
   EXPECT_THAT(fetch_.buffer(),
-              ::testing::HasSubstr(ExpectedIframe(
+              ::testing::HasSubstr(ExpectedBody(
                   kExpectedUrl, false /* add_scrolling_attribute */)));
 }
 
@@ -394,7 +398,7 @@ TEST_F(IframeFetcherTest, RobotsInSubdir) {
   InitResources();
   ResponseHeaders* response = FetchUrl("example.us", "/foo/robots.txt");
   EXPECT_EQ(HttpStatus::kOK, response->status_code());
-  EXPECT_THAT(fetch_.buffer(), ::testing::HasSubstr(ExpectedIframe(
+  EXPECT_THAT(fetch_.buffer(), ::testing::HasSubstr(ExpectedBody(
                                    "http://example.com/foo/robots.txt",
                                    false /* add_scrolling_attribute */)));
   EXPECT_STREQ("text/html", response->Lookup1(HttpAttributes::kContentType));
