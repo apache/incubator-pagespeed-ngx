@@ -32,6 +32,7 @@ third_party/icu/*
 third_party/jsoncpp/src/*
 third_party/libjpeg_turbo/src/*
 third_party/libjpeg_turbo/yasm/*
+third_party/libpng/src/*
 third_party/libwebp/*
 third_party/mod_spdy/*
 third_party/modp_b64/*
