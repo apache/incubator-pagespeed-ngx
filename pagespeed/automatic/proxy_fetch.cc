@@ -517,7 +517,8 @@ ProxyFetch::ProxyFetch(
       waiting_for_flush_to_finish_(false),
       idle_alarm_(NULL),
       factory_(factory),
-      distributed_fetch_(false) {
+      distributed_fetch_(false),
+      trusted_input_(false) {
   driver_->SetWriter(async_fetch);
   set_request_headers(async_fetch->request_headers());
   set_response_headers(async_fetch->response_headers());
@@ -645,7 +646,7 @@ void ProxyFetch::HandleHeadersComplete() {
 
   // Figure out semantic info from response_headers_
   claims_html_ = response_headers()->IsHtmlLike();
-  if (original_content_fetch_ != NULL) {
+  if (original_content_fetch_ != NULL && !trusted_input_) {
     ResponseHeaders* headers = original_content_fetch_->response_headers();
     headers->CopyFrom(*response_headers());
 
@@ -658,7 +659,7 @@ void ProxyFetch::HandleHeadersComplete() {
   }
 
   bool sanitize = cross_domain_;
-  if (claims_html_ && !server_context_->ProxiesHtml()) {
+  if (claims_html_ && !server_context_->ProxiesHtml() && !trusted_input_) {
     response_headers()->SetStatusAndReason(HttpStatus::kForbidden);
     sanitize = true;
   }
@@ -875,7 +876,7 @@ void ProxyFetch::PropertyCacheComplete(
 
 bool ProxyFetch::HandleWrite(const StringPiece& str,
                              MessageHandler* message_handler) {
-  if (claims_html_ && !server_context_->ProxiesHtml()) {
+  if (claims_html_ && !server_context_->ProxiesHtml() && !trusted_input_) {
     return true;
   }
 

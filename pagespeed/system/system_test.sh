@@ -295,6 +295,57 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   check_200_http_response "$OUT"
 fi
 
+start_test proxying from external domain should optimize images in-place.
+# Keep fetching this until it's headers include the string "PSA-aj" which
+# means rewriting has finished.
+URL="$PRIMARY_SERVER/modpagespeed_http/Puzzle.jpg"
+fetch_until -save $URL "grep -c PSA-aj" 1 "--save-headers"
+
+# We should see the origin etag in the wget output due to -save.  Note that
+# the cache-control will start at 5 minutes -- the default on modpagespeed.com,
+# and descend as time expires from when we strobed the image.  However, we
+# provide a non-trivial etag with the content hash, but we'll just match the
+# common prefix.
+check_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" fgrep -qi 'Etag: W/"PSA-aj-'
+
+# Ideally this response should not have a 'chunked' encoding, because
+# once we were able to optimize it, we know its length.
+check_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" fgrep -q 'Content-Length:'
+check_not_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" \
+    fgrep -q 'Transfer-Encoding: chunked'
+
+# Now add set jpeg compression to 75 and we expect 73238, but will test for 90k.
+# Note that wc -c will include the headers.
+start_test Proxying image from another domain, customizing image compression.
+URL+="?PageSpeedJpegRecompressionQuality=75"
+fetch_until -save $URL "wc -c" 90000 "--save-headers" "-lt"
+check_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" fgrep -qi 'Etag: W/"PSA-aj-'
+
+echo Ensure that rewritten images strip cookies present at origin
+check_not_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" fgrep -qi 'Set-Cookie'
+$WGET -O $FETCH_UNTIL_OUTFILE --save-headers \
+  http://$PAGESPEED_TEST_HOST/do_not_modify/Puzzle.jpg
+ORIGINAL_HEADERS=$(extract_headers $FETCH_UNTIL_OUTFILE)
+check_from "$ORIGINAL_HEADERS" fgrep -q -i 'Set-Cookie'
+
+start_test proxying HTML from external domain should not work
+URL="$PRIMARY_SERVER/modpagespeed_http/evil.html"
+echo $URL
+OUT=$(check_error_code 8 $WGET_DUMP $URL)
+check_not_from "$OUT" fgrep -q 'Set-Cookie:'
+
+start_test Fetching the HTML directly from the origin is fine including cookie.
+URL="http://$PAGESPEED_TEST_HOST/do_not_modify/evil.html"
+OUT=$($WGET_DUMP $URL)
+check_from "$OUT" fgrep -q -i 'Set-Cookie: test-cookie'
+
+start_test Ipro transcode to webp from MapProxyDomain
+URL="$PRIMARY_SERVER/modpagespeed_http/Puzzle.jpg"
+URL+="?PageSpeedFilters=+in_place_optimize_for_browser"
+WGET_ARGS="--user-agent webp --header Accept:image/webp"
+fetch_until "$URL" "grep -c image/webp" 1 --save-headers
+URL=""
+
 # Tests that we get instant ipro rewrites with LoadFromFile and
 # InPlaceWaitForOptimized get us first-pass rewrites.
 start_test instant ipro with InPlaceWaitForOptimized and LoadFromFile
