@@ -111,6 +111,8 @@ const char* BaseFetchTypeToCStr(NgxBaseFetchType type) {
       return "admin page";
     case kIproLookup:
       return "ipro lookup";
+    case kPageSpeedProxy:
+      return "pagespeed proxy";
   }
   CHECK(false);
   return "can't get here";

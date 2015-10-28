@@ -40,6 +40,7 @@
 : ${RCPORT7:?"Set RCPORT7"}
 : ${MOD_PAGESPEED_DIR:?"Set MOD_PAGESPEED_DIR"}
 : ${NGINX_EXECUTABLE:?"Set NGINX_EXECUTABLE"}
+: ${PAGESPEED_TEST_HOST:?"Set PAGESPEED_TEST_HOST"}
 POSITION_AUX="${POSITION_AUX:-unset}"
 
 PRIMARY_HOSTNAME="localhost:$PRIMARY_PORT"
@@ -208,6 +209,7 @@ cat $PAGESPEED_CONF_TEMPLATE \
   | sed 's#@@RCPORT5@@#'"$RCPORT5"'#' \
   | sed 's#@@RCPORT6@@#'"$RCPORT6"'#' \
   | sed 's#@@RCPORT7@@#'"$RCPORT7"'#' \
+  | sed 's#@@PAGESPEED_TEST_HOST@@#'"$PAGESPEED_TEST_HOST"'#' \
   >> $PAGESPEED_CONF
 # make sure we substituted all the variables
 check_not_simple grep @@ $PAGESPEED_CONF

@@ -68,7 +68,8 @@ enum NgxBaseFetchType {
   kIproLookup,
   kHtmlTransform,
   kPageSpeedResource,
-  kAdminPage
+  kAdminPage,
+  kPageSpeedProxy
 };
 
 class NgxBaseFetch : public AsyncFetch {

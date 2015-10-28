@@ -1882,6 +1882,35 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
     }
 
     return ps_async_wait_response(r);
+  } else if (!html_rewrite && response_category == RequestRouting::kResource) {
+    bool is_proxy = false;
+    GoogleString mapped_url;
+    GoogleString host_header;
+  
+    if (options->domain_lawyer()->MapOriginUrl(
+            url, &mapped_url, &host_header, &is_proxy) && is_proxy) {
+      ps_create_base_fetch(ctx, request_context, request_headers.release(),
+                          kPageSpeedProxy);
+                          
+      RewriteDriver* driver;
+      if (custom_options.get() == NULL) {
+        driver = cfg_s->server_context->NewRewriteDriver(
+            ctx->base_fetch->request_context());
+      } else {
+        driver = cfg_s->server_context->NewCustomRewriteDriver(
+            custom_options.release(), ctx->base_fetch->request_context());
+      }
+
+      driver->SetRequestHeaders(*ctx->base_fetch->request_headers());
+      driver->set_pagespeed_query_params(pagespeed_query_params);
+      driver->set_pagespeed_option_cookies(pagespeed_option_cookies);
+      cfg_s->proxy_fetch_factory->StartNewProxyFetch(
+          mapped_url, ctx->base_fetch, driver, NULL /*property_callback*/,
+          NULL /*original_content_fetch*/);
+
+      return ps_async_wait_response(r);
+    }
+      
   }
 
   if (html_rewrite) {
@@ -1923,6 +1952,7 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
         url_string, ctx->base_fetch, driver,
         property_callback,
         NULL /* original_content_fetch */);
+    ctx->proxy_fetch->set_trusted_input(true);
     return NGX_OK;
   }
 

@@ -23,9 +23,9 @@
 # Exits with status 2 if command line args are wrong.
 #
 # Usage:
-#   ./run_tests.sh primary_port secondary_port mod_pagespeed_dir
+#   ./run_tests.sh primary_port secondary_port mod_pagespeed_dir pagespeed_test_host
 # Example:
-#   ./run_tests.sh 8050 8051 /path/to/mod_pagespeed
+#   ./run_tests.sh 8050 8051 /path/to/mod_pagespeed www.modpagespeed.com
 #
 
 # Normally we test only with the native fetcher off.  Set
@@ -43,7 +43,7 @@ RUN_TESTS=${RUN_TESTS:-true}
 # true.
 USE_VALGRIND=${USE_VALGRIND:-false}
 
-if [ "$#" -ne 4 ] ; then
+if [ "$#" -ne 5 ] ; then
   echo "Usage: $0 primary_port secondary_port mod_pagespeed_dir"
   echo "  nginx_executable"
   exit 2
@@ -53,6 +53,7 @@ PRIMARY_PORT="$1"
 SECONDARY_PORT="$2"
 MOD_PAGESPEED_DIR="$3"
 NGINX_EXECUTABLE="$4"
+PAGESPEED_TEST_HOST="$5"
 RCPORT1=9991
 RCPORT2=9992
 RCPORT3=9993
@@ -69,6 +70,7 @@ function run_test_checking_failure() {
     SECONDARY_PORT="$SECONDARY_PORT" \
     MOD_PAGESPEED_DIR="$MOD_PAGESPEED_DIR" \
     NGINX_EXECUTABLE="$NGINX_EXECUTABLE" \
+    PAGESPEED_TEST_HOST="$PAGESPEED_TEST_HOST" \
     RUN_TESTS="$RUN_TESTS" \
     RCPORT1="$RCPORT1" \
     RCPORT2="$RCPORT2" \

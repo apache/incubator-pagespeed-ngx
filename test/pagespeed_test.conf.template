@@ -1401,6 +1401,14 @@ http {
       http://www.modpagespeed.com/rewrite_javascript.js;
     pagespeed RetainComment " google_ad_section*";
 
+    # Test proxying of non-.pagespeed. resources.
+    pagespeed MapProxyDomain http://localhost:@@PRIMARY_PORT@@/modpagespeed_http
+                           http://@@PAGESPEED_TEST_HOST@@/do_not_modify;
+    pagespeed MapProxyDomain http://localhost:@@PRIMARY_PORT@@/content_type_present
+                           http://@@PAGESPEED_TEST_HOST@@:8091;
+    pagespeed MapProxyDomain http://localhost:@@PRIMARY_PORT@@/content_type_absent
+                           http://@@PAGESPEED_TEST_HOST@@:8092;
+
     add_header X-Extra-Header 1;
 
     # Establish a proxy mapping where the current server proxies an image
