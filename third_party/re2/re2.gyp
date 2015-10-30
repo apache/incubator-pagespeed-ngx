@@ -59,7 +59,6 @@
         'src/util/stringpiece.cc',
         'src/util/stringprintf.cc',
         'src/util/strutil.cc',
-        'src/util/test.cc',
         'src/util/thread.cc',
         'src/util/valgrind.cc',
       ],
