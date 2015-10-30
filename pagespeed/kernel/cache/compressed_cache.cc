@@ -68,10 +68,11 @@ class CompressedCallback : public CacheInterface::Callback {
       GoogleString uncompressed;
       StringWriter writer(&uncompressed);
       StringPiece compressed = value()->Value();
-      if (compressed.ends_with(StringPiece(kTrailer,
-                                           STATIC_STRLEN(kTrailer))) &&
-          GzipInflater::Inflate(compressed.substr(
-              0, compressed.size() - STATIC_STRLEN(kTrailer)), &writer)) {
+      if (compressed.ends_with(
+              StringPiece(kTrailer, STATIC_STRLEN(kTrailer))) &&
+          GzipInflater::Inflate(
+              compressed.substr(0, compressed.size() - STATIC_STRLEN(kTrailer)),
+              GzipInflater::kDeflate, &writer)) {
         callback_->value()->SwapWithString(&uncompressed);
         ret = true;
       } else {
@@ -133,7 +134,7 @@ void CompressedCache::Put(const GoogleString& key, SharedString* value) {
   buf.reserve(old_size + STATIC_STRLEN(kTrailer));
   StringWriter writer(&buf);
   original_size_->Add(old_size);
-  if (GzipInflater::Deflate(value->Value(), &writer)) {
+  if (GzipInflater::Deflate(value->Value(), GzipInflater::kDeflate, &writer)) {
     buf.append(kTrailer, STATIC_STRLEN(kTrailer));
 #if INCLUDE_HISTOGRAMS
     compressed_cache_savings_->Add(

@@ -48,9 +48,11 @@ class GzipInflaterTest : public testing::Test {
   void TestInflateDeflate(StringPiece payload) {
     GoogleString deflated, inflated;
     StringWriter deflate_writer(&deflated);
-    EXPECT_TRUE(GzipInflater::Deflate(payload, &deflate_writer));
+    EXPECT_TRUE(GzipInflater::Deflate(payload, GzipInflater::kDeflate,
+                                      &deflate_writer));
     StringWriter inflate_writer(&inflated);
-    EXPECT_TRUE(GzipInflater::Inflate(deflated, &inflate_writer));
+    EXPECT_TRUE(GzipInflater::Inflate(deflated, GzipInflater::kDeflate,
+                                      &inflate_writer));
     EXPECT_STREQ(payload, inflated);
   }
 };
@@ -218,7 +220,8 @@ TEST_F(GzipInflaterTest, IncrementalInflateOfOneShotDeflate) {
   const char kPayload[] = "The quick brown fox jumps over the lazy dog";
   GoogleString deflated, inflated;
   StringWriter deflate_writer(&deflated);
-  EXPECT_TRUE(GzipInflater::Deflate(kPayload, &deflate_writer));
+  EXPECT_TRUE(
+      GzipInflater::Deflate(kPayload, GzipInflater::kDeflate, &deflate_writer));
 
   char buf[STATIC_STRLEN(kPayload) + 1];
   const char kDontTouchMarker = 0xf;
@@ -236,6 +239,34 @@ TEST_F(GzipInflaterTest, IncrementalInflateOfOneShotDeflate) {
   EXPECT_FALSE(inflater.error());
   inflater.ShutDown();
   EXPECT_STREQ(kPayload, StringPiece(buf, num_inflated_bytes));
+}
+
+TEST_F(GzipInflaterTest, TestUngzip) {
+  const char kHello[] = "hello";
+  // Generated with command line tool "gzip".
+  const char kHelloGzip[] =
+      "\x1f\x8b\x08\x08\x64\x7d\x33\x56\x00\x03\x68\x65\x6c\x6c\x6f\x00\xcb\x48"
+      "\xcd\xc9\xc9\x07\x00\x86\xa6\x10\x36\x05\x00\x00\x00";
+
+  GoogleString inflated;
+  StringWriter inflate_writer(&inflated);
+  StringPiece deflated(kHelloGzip, sizeof(kHelloGzip));
+  EXPECT_TRUE(
+      GzipInflater::Inflate(deflated, GzipInflater::kGzip, &inflate_writer));
+  EXPECT_STREQ(kHello, inflated);
+}
+
+TEST_F(GzipInflaterTest, TestGzipUnGzip) {
+  const int compression_level = 9;
+  StringPiece payload("hello");
+  GoogleString deflated, inflated;
+  StringWriter deflate_writer(&deflated);
+  EXPECT_TRUE(GzipInflater::Deflate(payload, GzipInflater::kGzip,
+                                    compression_level, &deflate_writer));
+  StringWriter inflate_writer(&inflated);
+  EXPECT_TRUE(
+      GzipInflater::Inflate(deflated, GzipInflater::kGzip, &inflate_writer));
+  EXPECT_STREQ(payload, inflated);
 }
 
 }  // namespace

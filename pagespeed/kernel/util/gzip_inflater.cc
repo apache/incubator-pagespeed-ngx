@@ -23,10 +23,13 @@
 #include "base/logging.h"
 #ifdef USE_SYSTEM_ZLIB
 #include "zlib.h"  // NOLINT
+#include "zconf.h"  // NOLINT
 #else
 #include "third_party/zlib/zlib.h"
+#include "third_party/zlib/zconf.h"
 #endif
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_writer.h"
 #include "pagespeed/kernel/base/stack_buffer.h"
 #include "pagespeed/kernel/base/writer.h"
 
@@ -311,15 +314,27 @@ void GzipInflater::ShutDown() {
 // a little simpler to use than the incremental InflateBytes flow.
 //
 // TODO(jmarantz): make an incremental interface to Deflate.
-bool GzipInflater::Deflate(StringPiece in, Writer* writer) {
+bool GzipInflater::Deflate(StringPiece in, InflateType format,
+                           int compression_level, Writer *writer) {
   z_stream strm;
   char out[kStackBufferSize];
+
+  // set compression level
+  if (compression_level < 0 || compression_level > 9) {
+    compression_level = Z_DEFAULT_COMPRESSION;
+  }
 
   // allocate deflate state
   strm.zalloc = Z_NULL;
   strm.zfree = Z_NULL;
   strm.opaque = Z_NULL;
-  int ret = deflateInit(&strm, Z_DEFAULT_COMPRESSION);
+  int ret;
+  if (format == kGzip) {
+    ret = deflateInit2(&strm, compression_level, Z_DEFLATED, 16 | 15, 8,
+                       Z_DEFAULT_STRATEGY);
+  } else {
+    ret = deflateInit(&strm, compression_level);
+  }
   if (ret != Z_OK) {
     return false;
   }
@@ -351,9 +366,13 @@ bool GzipInflater::Deflate(StringPiece in, Writer* writer) {
   return true;
 }
 
+bool GzipInflater::Deflate(StringPiece in, InflateType format, Writer* writer) {
+  return GzipInflater::Deflate(in, format, Z_DEFAULT_COMPRESSION, writer);
+}
+
 // TODO(jmarantz): Consider using the incremental interface to implement
 // Inflate.
-bool GzipInflater::Inflate(StringPiece in, Writer* writer) {
+bool GzipInflater::Inflate(StringPiece in, InflateType format, Writer* writer) {
   z_stream strm;
   char out[kStackBufferSize];
   const int kOutSize = sizeof(out);
@@ -364,8 +383,14 @@ bool GzipInflater::Inflate(StringPiece in, Writer* writer) {
   strm.opaque = Z_NULL;
   strm.avail_in = 0;
   strm.next_in = Z_NULL;
-  if (inflateInit(&strm) != Z_OK) {
-    return false;
+  if (format == kGzip) {
+    if (inflateInit2(&strm, (16 + MAX_WBITS)) != Z_OK) {
+      return false;
+    }
+  } else {
+    if (inflateInit(&strm) != Z_OK) {
+      return false;
+    }
   }
 
   strm.next_in = reinterpret_cast<Bytef*>(const_cast<char*>(in.data()));

@@ -68,11 +68,13 @@ class GzipInflater {
 
   // Deflates a stringpiece, writing output to Writer.  Returns false
   // if there was some kind of failure, though none are expected.
-  static bool Deflate(StringPiece in, Writer* writer);
+  static bool Deflate(StringPiece in, InflateType format, Writer* writer);
+  static bool Deflate(StringPiece in, InflateType format, int compression_level,
+                      Writer* writer);
 
   // Inflates a stringpiece, writing output to Writer.  Returns false
   // if there was some kind of failure, such as a corrupt input.
-  static bool Inflate(StringPiece in, Writer* writer);
+  static bool Inflate(StringPiece in, InflateType format, Writer* writer);
 
  private:
   friend class GzipInflaterTestPeer;
