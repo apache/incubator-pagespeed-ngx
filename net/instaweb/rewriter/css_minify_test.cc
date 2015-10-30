@@ -131,6 +131,21 @@ TEST_F(CssMinifyTest, DoNotFixBadColorsOrUnits) {
       minified);
 }
 
+TEST_F(CssMinifyTest, RemoveZeroLengthButNotTimeSuffix) {
+  const char kCss[] =
+      ".a {\n"
+      "  width: 0px;\n"
+      "  -moz-transition-delay: 0s, 0s;\n"
+      "}";
+  GoogleString minified;
+  StringWriter writer(&minified);
+  CssMinify minify(&writer, &handler_);
+  EXPECT_TRUE(minify.ParseStylesheet(kCss));
+  // TODO(jmarantz): this CSS is not well minified.  We should strip
+  // the spaces around the comma.
+  EXPECT_STREQ(".a{width:0;-moz-transition-delay:0s , 0s}", minified);
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

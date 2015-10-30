@@ -458,6 +458,15 @@ TEST_F(CssFilterTest, EmptyOutput) {
                   "/* body { background: blue; } */\n", "", kExpectSuccess);
 }
 
+TEST_F(CssFilterTest, TransitionTimeUnits) {
+  // TODO(jmarantz): the 'after' CSS is not well minified.  We should strip
+  // the spaces around the comma.
+  ValidateRewrite("transition_time",
+                  "foo {  -moz-transition-delay: 0s, 0s; }",
+                  "foo{-moz-transition-delay:0s , 0s}",
+                  kExpectSuccess);
+}
+
 // Make sure we do not recompute external CSS when re-processing an already
 // handled page.
 TEST_F(CssFilterTest, RewriteRepeated) {

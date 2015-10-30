@@ -18,6 +18,7 @@
 
 #include "net/instaweb/rewriter/public/css_minify.h"
 
+#include <algorithm>
 #include <vector>
 
 #include "base/logging.h"
@@ -322,6 +323,43 @@ bool IsValueNormalIdentifier(const Css::Value& value) {
           value.GetIdentifier().ident() == Css::Identifier::NORMAL);
 }
 
+// See http://www.w3.org/TR/css3-values/#lengths : Lengths refer to
+// distance measurements and are denoted by <length> in the property
+// definitions. A length is a dimension. However, for zero lengths the
+// unit identifier is optional (i.e. can be syntactically represented
+// as the <number> 0).
+//
+// http://www.w3.org/TR/css3-values/#relative-lengths
+// http://www.w3.org/TR/css3-values/#absolute-lengths
+const char* kLengths[] = {
+  "ch",
+  "cm",
+  "em",
+  "ex",
+  "in",
+  "mm",
+  "pc",
+  "pt",
+  "px",
+  "q",
+  "rem",
+  "vh",
+  "vmax",
+  "vmin",
+  "vw",
+};
+
+bool IsLength(const GoogleString& unit) {
+  return std::binary_search(kLengths, kLengths + arraysize(kLengths),
+                            unit);
+}
+
+bool UnitsRequiredForValueZero(const GoogleString& unit) {
+  // https://github.com/pagespeed/mod_pagespeed/issues/1164 : Chrome does not
+  // allow abbreviating 0s as 0.  It only allows that abbreviation for lengths.
+  return !IsLength(unit) && (unit != "%");
+}
+
 }  // namespace
 
 void CssMinify::MinifyFont(const Css::Values& font_values) {
@@ -418,8 +456,9 @@ void CssMinify::Minify(const Css::Value& value) {
       }
 
       // Optimization: Do not print units if value is 0.
-      if (value.GetFloatValue() != 0) {
-        GoogleString unit = value.GetDimensionUnitText();
+      GoogleString unit = value.GetDimensionUnitText();
+      if (!unit.empty() &&
+          ((value.GetFloatValue() != 0) || UnitsRequiredForValueZero(unit))) {
         // Unit can be either "%" or an identifier.
         if (unit != "%") {
           unit = Css::EscapeIdentifier(unit);
