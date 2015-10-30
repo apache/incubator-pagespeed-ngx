@@ -979,7 +979,8 @@ bool SerfFetch::Start(SerfUrlAsyncFetcher* fetcher) {
 
   // Start the fetch. It will connect to the remote host, send the request,
   // and accept the response, without blocking.
-  status = serf_context_run(fetcher_->serf_context(), 0, fetcher_->pool());
+  status = serf_context_run(
+      fetcher_->serf_context(), SERF_DURATION_NOBLOCK, fetcher_->pool());
 
   if (status == APR_SUCCESS || APR_STATUS_IS_TIMEUP(status)) {
     return true;
