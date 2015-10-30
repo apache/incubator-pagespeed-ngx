@@ -165,7 +165,7 @@ class RewriteOptions {
     kMakeGoogleAnalyticsAsync,
     kMakeShowAdsAsync,
     kMobilize,
-    kMobilizePrecompute,
+    kMobilizePrecompute,  // TODO(jud): This is unused, remove it.
     kMoveCssAboveScripts,
     kMoveCssToHead,
     kOutlineCss,

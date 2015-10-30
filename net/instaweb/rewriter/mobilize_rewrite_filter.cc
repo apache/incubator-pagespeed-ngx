@@ -198,6 +198,93 @@ void MobilizeRewriteFilter::EndDocument() {
   in_script_ = false;
 }
 
+GoogleString MobilizeRewriteFilter::GetMobJsInitScript() {
+  // Transmit to the mobilization scripts whether they are run in debug
+  // mode or not by setting 'psDebugMode'.
+  //
+  // Also, transmit to the mobilization scripts whether navigation is
+  // enabled.  That is bundled into the same JS compile unit as the
+  // layout, so we cannot do a 'undefined' check in JS to determine
+  // whether it was enabled.
+  GoogleString src = StrCat(
+      "window.psDebugMode=", BoolToString(driver()->DebugMode()),
+      ";window.psNavMode=", BoolToString(use_js_nav_), ";window.psLabeledMode=",
+      BoolToString(labeled_mode_), ";window.psConfigMode=",
+      BoolToString(config_mode_), ";window.psLayoutMode=",
+      BoolToString(use_js_layout_), ";window.psStaticJs=",
+      BoolToString(use_static_), ";window.psDeviceType='",
+      UserAgentMatcher::DeviceTypeString(
+          driver()->request_properties()->GetDeviceType()),
+      "';");
+  const RewriteOptions* options = driver()->options();
+  const GoogleString& phone = options->mob_phone_number();
+  const GoogleString& map_location = options->mob_map_location();
+  if (!phone.empty() || !map_location.empty()) {
+    StrAppend(&src, "window.psConversionId='",
+              Integer64ToString(options->mob_conversion_id()), "';");
+  }
+  if (!phone.empty()) {
+    GoogleString label, escaped_phone;
+    EscapeToJsStringLiteral(phone, false, &escaped_phone);
+    EscapeToJsStringLiteral(options->mob_phone_conversion_label(), false,
+                            &label);
+    StrAppend(&src, "window.psPhoneNumber='", escaped_phone,
+              "';window.psPhoneConversionLabel='", label, "';");
+  }
+  if (!map_location.empty()) {
+    GoogleString label, escaped_map_location;
+    EscapeToJsStringLiteral(map_location, false, &escaped_map_location);
+    EscapeToJsStringLiteral(options->mob_map_conversion_label(), false, &label);
+    StrAppend(&src, "window.psMapLocation='", escaped_map_location,
+              "';window.psMapConversionLabel='", label, "';");
+  }
+
+  // See if we have a precomputed theme, either via options or pcache.
+  bool has_mob_theme = false;
+  RewriteOptions::Color background_color, foreground_color;
+  GoogleString logo_url;
+  if (options->has_mob_theme()) {
+    has_mob_theme = true;
+    background_color = options->mob_theme().background_color;
+    foreground_color = options->mob_theme().foreground_color;
+    logo_url = options->mob_theme().logo_url;
+  } else {
+    MobilizeCachedFinder* finder =
+        driver()->server_context()->mobilize_cached_finder();
+    MobilizeCached out;
+    if (finder && finder->GetMobilizeCachedFromPropertyCache(driver(), &out)) {
+      has_mob_theme = out.has_background_color() && out.has_foreground_color();
+      ConvertColor(out.background_color(), &background_color);
+      ConvertColor(out.foreground_color(), &foreground_color);
+      logo_url = out.foreground_image_url();
+    }
+  }
+
+  if (has_mob_theme) {
+    StrAppend(&src, "window.psMobBackgroundColor=",
+              FormatColorForJs(background_color), ";");
+    StrAppend(&src, "window.psMobForegroundColor=",
+              FormatColorForJs(foreground_color), ";");
+  } else {
+    StrAppend(&src, "window.psMobBackgroundColor=null;");
+    StrAppend(&src, "window.psMobForegroundColor=null;");
+  }
+  GoogleString escaped_mob_beacon_url;
+  EscapeToJsStringLiteral(options->mob_beacon_url(), false /* add_quotes */,
+                          &escaped_mob_beacon_url);
+  StrAppend(&src, "window.psMobBeaconUrl='", escaped_mob_beacon_url, "';");
+
+  if (!options->mob_beacon_category().empty()) {
+    GoogleString escaped_mob_beacon_cat;
+    EscapeToJsStringLiteral(options->mob_beacon_category(),
+                            false, /* add_quotes */
+                            &escaped_mob_beacon_cat);
+    StrAppend(&src, "window.psMobBeaconCategory='", escaped_mob_beacon_cat,
+              "';");
+  }
+  return src;
+}
+
 void MobilizeRewriteFilter::RenderDone() {
   // We insert the JS using RenderDone() because it needs to be inserted after
   // MobilizeMenuRenderFilter finishes inserting the nav panel element, and this
@@ -205,6 +292,7 @@ void MobilizeRewriteFilter::RenderDone() {
   if (!saw_end_document_) {
     return;
   }
+
   if (!use_static_) {
     StaticAssetManager* manager =
         driver()->server_context()->static_asset_manager();
@@ -216,10 +304,13 @@ void MobilizeRewriteFilter::RenderDone() {
     InsertNodeAtBodyEnd(script_element);
     driver()->AddAttribute(script_element, HtmlName::kSrc, js);
   }
+
+  // Insert a script tag with the global config variable assignments, and the
+  // call to psStartMobilization.
   HtmlElement* script = driver()->NewElement(NULL, HtmlName::kScript);
   InsertNodeAtBodyEnd(script);
-  HtmlNode* text_node =
-      driver()->NewCharactersNode(script, "psStartMobilization();");
+  HtmlNode* text_node = driver()->NewCharactersNode(
+      script, StrCat(GetMobJsInitScript(), "psStartMobilization();"));
   driver()->AppendChild(script, text_node);
 }
 
@@ -260,7 +351,6 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
       added_viewport_ = true;
       const RewriteOptions* options = driver()->options();
       const GoogleString& phone = options->mob_phone_number();
-      const GoogleString& map_location = options->mob_map_location();
       if (!phone.empty()) {
         // Insert <meta itemprop="telephone" content="+18005551212">
         HtmlElement* telephone_meta_element = driver()->NewElement(
@@ -274,105 +364,6 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
             HtmlElement::DOUBLE_QUOTE);
         driver()->InsertNodeAfterCurrent(telephone_meta_element);
       }
-      // Transmit to the mobilization scripts whether they are run in debug
-      // mode or not by setting 'psDebugMode'.
-      //
-      // Also, transmit to the mobilization scripts whether navigation is
-      // enabled.  That is bundled into the same JS compile unit as the
-      // layout, so we cannot do a 'undefined' check in JS to determine
-      // whether it was enabled.
-      // TODO(jud): Insert this JS at body end immediatly before the
-      // mobilization JS script tag. Currently in iframe mode this gets inserted
-      // before the meta charset tag, which is supposed to be in the first 1024
-      // bytes of the document.
-      GoogleString src = StrCat(
-          "window.psDebugMode=", BoolToString(driver()->DebugMode()), ";"
-          "window.psNavMode=", BoolToString(use_js_nav_), ";"
-          "window.psLabeledMode=", BoolToString(labeled_mode_), ";"
-          "window.psConfigMode=", BoolToString(config_mode_), ";"
-          "window.psLayoutMode=", BoolToString(use_js_layout_), ";"
-          "window.psStaticJs=", BoolToString(use_static_), ";"
-          "window.psDeviceType='", UserAgentMatcher::DeviceTypeString(
-              driver()->request_properties()->GetDeviceType()), "';");
-      if (!phone.empty() || !map_location.empty()) {
-        StrAppend(&src, "window.psConversionId=",
-                  Integer64ToString(options->mob_conversion_id()),
-                  ";");
-      }
-      if (!phone.empty()) {
-        GoogleString label, escaped_phone;
-        EscapeToJsStringLiteral(phone, false, &escaped_phone);
-        EscapeToJsStringLiteral(options->mob_phone_conversion_label(), false,
-                                &label);
-        StrAppend(&src, "window.psPhoneNumber='", escaped_phone, "';"
-                  "window.psPhoneConversionLabel='", label, "';");
-      }
-      if (!map_location.empty()) {
-        GoogleString label, escaped_map_location;
-        EscapeToJsStringLiteral(map_location, false, &escaped_map_location);
-        EscapeToJsStringLiteral(options->mob_map_conversion_label(), false,
-                                &label);
-        StrAppend(&src, "window.psMapLocation='", escaped_map_location, "';"
-                  "window.psMapConversionLabel='", label, "';");
-      }
-
-      // See if we have a precomputed theme, either via options or pcache.
-      bool has_mob_theme = false;
-      RewriteOptions::Color background_color, foreground_color;
-      GoogleString logo_url;
-      if (options->has_mob_theme()) {
-        has_mob_theme = true;
-        background_color = options->mob_theme().background_color;
-        foreground_color = options->mob_theme().foreground_color;
-        logo_url = options->mob_theme().logo_url;
-      } else {
-        MobilizeCachedFinder* finder =
-            driver()->server_context()->mobilize_cached_finder();
-        MobilizeCached out;
-        if (finder &&
-            finder->GetMobilizeCachedFromPropertyCache(driver(), &out)) {
-          has_mob_theme =
-              out.has_background_color() && out.has_foreground_color();
-          ConvertColor(out.background_color(), &background_color);
-          ConvertColor(out.foreground_color(), &foreground_color);
-          logo_url = out.foreground_image_url();
-        }
-      }
-
-      if (has_mob_theme) {
-        StrAppend(&src, "window.psMobBackgroundColor=",
-                  FormatColorForJs(background_color), ";");
-        StrAppend(&src, "window.psMobForegroundColor=",
-                  FormatColorForJs(foreground_color), ";");
-        if (!logo_url.empty()) {
-          GoogleString escaped_logo_url;
-          EscapeToJsStringLiteral(logo_url, false, &escaped_logo_url);
-          StrAppend(&src, "window.psMobLogoUrl='", escaped_logo_url, "';");
-        } else {
-          StrAppend(&src, "window.psMobLogoUrl=null;");
-        }
-      } else {
-        StrAppend(&src, "window.psMobBackgroundColor=null;");
-        StrAppend(&src, "window.psMobForegroundColor=null;");
-      }
-      if (options->Enabled(RewriteOptions::kMobilizePrecompute)) {
-        StrAppend(&src, "window.psMobPrecompute=true;");
-      }
-      GoogleString escaped_mob_beacon_url;
-      EscapeToJsStringLiteral(options->mob_beacon_url(), false /* add_quotes */,
-                              &escaped_mob_beacon_url);
-      StrAppend(&src, "window.psMobBeaconUrl='", escaped_mob_beacon_url, "';");
-
-      if (!options->mob_beacon_category().empty()) {
-        GoogleString escaped_mob_beacon_cat;
-        EscapeToJsStringLiteral(options->mob_beacon_category(),
-                                false, /* add_quotes */
-                                &escaped_mob_beacon_cat);
-        StrAppend(&src, "window.psMobBeaconCategory='",
-                  escaped_mob_beacon_cat, "';");
-      }
-      driver()->InsertScriptAfterCurrent(src, false);
-
       // TODO(jmarantz): Consider waiting to see if we have a charset directive
       // and move this after that.  This requires some constraints on when
       // flushes occur.  As we sort out our 'flush' strategy we should ensure

@@ -58,36 +58,12 @@ GoogleString Styles(bool layout_mode) {
        : ""));
 }
 
-GoogleString HeadAndViewportWithTheme(bool layout_mode, bool precompute_mode,
-                                      StringPiece bg_color,
-                                      StringPiece fg_color,
-                                      StringPiece logo_url,
-                                      StringPiece device_type) {
+GoogleString HeadAndViewport(bool layout_mode) {
   return StrCat(
-      "<meta itemprop=\"telephone\" content=\"", kPhoneNumber, "\"/>"
-      "<script>window.psDebugMode=false;window.psNavMode=true;"
-      "window.psLabeledMode=false;"
-      "window.psConfigMode=false;"
-      "window.psLayoutMode=", BoolToString(layout_mode), ";"
-      "window.psStaticJs=false;"
-      "window.psDeviceType='", device_type, "';"
-      "window.psConversionId=", Integer64ToString(kConversionId), ";"
-      "window.psPhoneNumber='", kPhoneNumber, "';"
-      "window.psPhoneConversionLabel='", kPhoneConversionLabel, "';"
-      "window.psMobBackgroundColor=", bg_color, ";"
-      "window.psMobForegroundColor=", fg_color, ";",
-      precompute_mode ? "window.psMobPrecompute=true;" : "",
-      logo_url.empty() ? "" : StrCat("window.psMobLogoUrl=", logo_url, ";"),
-      "window.psMobBeaconUrl='", kMobBeaconUrl, "';"
-      "</script>",
+      "<meta itemprop=\"telephone\" content=\"", kPhoneNumber, "\"/>",
       (layout_mode ? ("<meta name='viewport' content='width=device-width'/>"
                       "<script src=\"/psajs/mobilize_xhr.0.js\"></script>")
                    : ""));
-}
-
-GoogleString HeadAndViewport(bool layout_mode) {
-  return HeadAndViewportWithTheme(layout_mode, false /* not precompute */,
-                                  "null", "null", "", "mobile");
 }
 
 }  // namespace
@@ -147,9 +123,25 @@ class MobilizeRewriteFilterTest : public RewriteTestBase {
     filter_->added_progress_ = added;
   }
 
+  GoogleString ScriptsAtEndOfBody(StringPiece bg_color,
+                                  StringPiece fg_color) const {
+    return StrCat(
+        "<script src=\"/psajs/mobilize.0.js\"></script>"
+        "<script>window.psDebugMode=false;window.psNavMode=true;"
+        "window.psLabeledMode=false;window.psConfigMode=false;"
+        "window.psLayoutMode=",
+        BoolToString(LayoutMode()),
+        ";window.psStaticJs=false;"
+        "window.psDeviceType='mobile';",
+        "window.psConversionId='", Integer64ToString(kConversionId),
+        "';window.psPhoneNumber='", kPhoneNumber,
+        "';window.psPhoneConversionLabel='", kPhoneConversionLabel,
+        "';window.psMobBackgroundColor=", bg_color,
+        ";window.psMobForegroundColor=", fg_color, ";window.psMobBeaconUrl='",
+        kMobBeaconUrl, "';psStartMobilization();</script>");
+  }
   GoogleString ScriptsAtEndOfBody() const {
-    return "<script src=\"/psajs/mobilize.0.js\"></script>"
-           "<script>psStartMobilization();</script>";
+    return ScriptsAtEndOfBody("null", "null");
   }
 
   GoogleString Spacer() const {
@@ -318,6 +310,11 @@ class MobilizeRewriteFunctionalTest : public MobilizeRewriteFilterTest {
   GoogleString ExpectedBody() const {
     return StrCat("\n<body>", Spacer(), "\nhello, world!\n",
                   ScriptsAtEndOfBody(), "</body>\n");
+  }
+
+  GoogleString ExpectedBody(StringPiece bg_color, StringPiece fg_color) const {
+    return StrCat("\n<body>", Spacer(), "\nhello, world!\n",
+                  ScriptsAtEndOfBody(bg_color, fg_color), "</body>\n");
   }
 
  private:
@@ -503,21 +500,18 @@ TEST_F(MobilizeRewriteThemeTest, ConfigureTheme) {
             options()->SetOptionFromName(RewriteOptions::kMobTheme,
                                          "#ff0000 #0000ff"));
   GoogleString original = StrCat("<head></head>", Body());
+
   GoogleString expected = StrCat(
-      "<head>",
-      HeadAndViewportWithTheme(false /* no layout */, false /* no precompute*/,
-                               "[255,0,0]", "[0,0,255]", "null", "mobile"),
-      Styles(LayoutMode()), "</head>", ExpectedBody());
+      "<head>", HeadAndViewport(false /* layout_mode */), Styles(LayoutMode()),
+      "</head>", ExpectedBody("[255,0,0]", "[0,0,255]"));
   ValidateExpected("ConfigureTheme", original, expected);
 
   ASSERT_EQ(RewriteOptions::kOptionOk,
             options()->SetOptionFromName(RewriteOptions::kMobTheme,
                                          "#ff0000 #0000ff http://logo.com"));
-  expected = StrCat(
-      "<head>", HeadAndViewportWithTheme(
-                    false /* no layout */, false /* no precompute*/,
-                    "[255,0,0]", "[0,0,255]", "'http://logo.com'", "mobile"),
-      Styles(LayoutMode()), "</head>", ExpectedBody());
+  expected = StrCat("<head>", HeadAndViewport(false /* layout_mode*/),
+                    Styles(LayoutMode()), "</head>",
+                    ExpectedBody("[255,0,0]", "[0,0,255]"));
   ValidateExpected("ConfigureTheme2", original, expected);
 }
 
@@ -525,11 +519,10 @@ TEST_F(MobilizeRewriteThemeTest, PreComputeTheme) {
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kMobilizePrecompute);
   GoogleString original = StrCat("<head></head>", Body());
-  GoogleString expected = StrCat(
-      "<head>",
-      HeadAndViewportWithTheme(false /* no layout */, true /* precompute*/,
-                               "null", "null", "", "mobile"),
-      Styles(LayoutMode()), "</head>", ExpectedBody());
+
+  GoogleString expected =
+      StrCat("<head>", HeadAndViewport(false /* layout_mode */),
+             Styles(LayoutMode()), "</head>", ExpectedBody());
   ValidateExpected("Precompute", original, expected);
 }
 
@@ -552,6 +545,7 @@ class MobilizeRewriteEndToEndTest : public MobilizeRewriteFilterTest {
 
   virtual bool AddBody() const { return false; }
   virtual bool AddHtmlTags() const { return false; }
+  virtual bool LayoutMode() const { return options()->mob_layout(); }
 
   void Layout(bool layout) {
     options()->set_mob_layout(layout);
@@ -599,7 +593,8 @@ TEST_F(MobilizeRewriteEndToEndTest, FullPageLayout) {
       "@@SPACER@@",
       StrCat(NoScriptRedirect("EndToEndMobileLayout"), Spacer(), Scrim()),
       &rewritten_buffer);
-  GlobalReplaceSubstring("@@HEAD_SCRIPT_LOAD@@", HeadAndViewport(true),
+  GlobalReplaceSubstring("@@HEAD_SCRIPT_LOAD@@",
+                         HeadAndViewport(true /* layout_mode */),
                          &rewritten_buffer);
   GlobalReplaceSubstring("@@HEAD_STYLES@@", Styles(true), &rewritten_buffer);
   GlobalReplaceSubstring("@@TRAILING_SCRIPT_LOADS@@", ScriptsAtEndOfBody(),
@@ -641,7 +636,8 @@ TEST_F(MobilizeRewriteEndToEndTest, FullPage) {
   GlobalReplaceSubstring("@@SPACER@@",
                          StrCat(NoScriptRedirect("EndToEndMobile"), Spacer()),
                          &rewritten_buffer);
-  GlobalReplaceSubstring("@@HEAD_SCRIPT_LOAD@@", HeadAndViewport(false),
+  GlobalReplaceSubstring("@@HEAD_SCRIPT_LOAD@@",
+                         HeadAndViewport(false /* layout_mode */),
                          &rewritten_buffer);
   GlobalReplaceSubstring("@@HEAD_STYLES@@", Styles(false), &rewritten_buffer);
   GlobalReplaceSubstring("@@TRAILING_SCRIPT_LOADS@@", ScriptsAtEndOfBody(),

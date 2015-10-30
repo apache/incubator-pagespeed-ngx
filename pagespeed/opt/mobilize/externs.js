@@ -89,20 +89,16 @@ var psPhoneNumber;
 var psStaticJs;
 
 
-/** @type {goog.color.Rgb} */
+/** @type {?goog.color.Rgb} */
 var psMobBackgroundColor;
 
 
-/** @type {goog.color.Rgb} */
+/** @type {?goog.color.Rgb} */
 var psMobForegroundColor;
 
 
 /** @type {?string} */
 var psMobLogoUrl;
-
-
-/** @type {boolean} */
-var psMobPrecompute;
 
 
 /** @type {string} */

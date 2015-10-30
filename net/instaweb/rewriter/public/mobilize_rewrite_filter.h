@@ -111,6 +111,7 @@ class MobilizeRewriteFilter : public CommonFilter {
   bool CheckForKeyword(
       const HtmlName::Keyword* sorted_list, int len, HtmlName::Keyword keyword);
   void LogEncounteredBlock(MobileRole::Level level);
+  GoogleString GetMobJsInitScript();
 
   int body_element_depth_;
   int keeper_element_depth_;
