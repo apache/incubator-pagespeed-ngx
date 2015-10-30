@@ -342,7 +342,9 @@ class ProxyFetch : public SharedAsyncFetch {
   //
   // This is used only for testing.
   static const int kTestSignalTimeoutMs = 200;
+
   void set_trusted_input(bool trusted_input) { trusted_input_ = trusted_input; }
+
  protected:
   // protected interface from AsyncFetch.
   virtual void HandleHeadersComplete();
@@ -513,7 +515,7 @@ class ProxyFetch : public SharedAsyncFetch {
 
   // Set to true if this proxy_fetch is the result of a distributed fetch.
   bool distributed_fetch_;
-  
+
   // Set to true if this proxy_fetch is actually operating on trusted
   // (non-proxied) content.
   bool trusted_input_;

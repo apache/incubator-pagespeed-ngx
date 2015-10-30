@@ -306,7 +306,8 @@ fetch_until -save $URL "grep -c PSA-aj" 1 "--save-headers"
 # and descend as time expires from when we strobed the image.  However, we
 # provide a non-trivial etag with the content hash, but we'll just match the
 # common prefix.
-check_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" fgrep -qi 'Etag: W/"PSA-aj-'
+check_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" \
+    fgrep -qi 'Etag: W/"PSA-aj-'
 
 # Ideally this response should not have a 'chunked' encoding, because
 # once we were able to optimize it, we know its length.
@@ -319,7 +320,8 @@ check_not_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" \
 start_test Proxying image from another domain, customizing image compression.
 URL+="?PageSpeedJpegRecompressionQuality=75"
 fetch_until -save $URL "wc -c" 90000 "--save-headers" "-lt"
-check_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" fgrep -qi 'Etag: W/"PSA-aj-'
+check_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" \
+    fgrep -qi 'Etag: W/"PSA-aj-'
 
 echo Ensure that rewritten images strip cookies present at origin
 check_not_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" fgrep -qi 'Set-Cookie'
@@ -330,7 +332,6 @@ check_from "$ORIGINAL_HEADERS" fgrep -q -i 'Set-Cookie'
 
 start_test proxying HTML from external domain should not work
 URL="$PRIMARY_SERVER/modpagespeed_http/evil.html"
-echo $URL
 OUT=$(check_error_code 8 $WGET_DUMP $URL)
 check_not_from "$OUT" fgrep -q 'Set-Cookie:'
 
