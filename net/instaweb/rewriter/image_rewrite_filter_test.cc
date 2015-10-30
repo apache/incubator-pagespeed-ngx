@@ -419,7 +419,7 @@ class ImageRewriteTest : public RewriteTestBase {
     ASSERT_TRUE(cuppa_resource.get() != NULL);
     EXPECT_TRUE(ReadIfCached(cuppa_resource));
     GoogleString cuppa_contents;
-    cuppa_resource->contents().CopyToString(&cuppa_contents);
+    cuppa_resource->ExtractUncompressedContents().CopyToString(&cuppa_contents);
     // Now make sure axing the original cuppa_string doesn't affect the
     // internals of the cuppa_resource.
     ResourcePtr other_resource(
@@ -429,7 +429,7 @@ class ImageRewriteTest : public RewriteTestBase {
     cuppa_string.clear();
     EXPECT_TRUE(ReadIfCached(other_resource));
     GoogleString other_contents;
-    cuppa_resource->contents().CopyToString(&other_contents);
+    cuppa_resource->ExtractUncompressedContents().CopyToString(&other_contents);
     ASSERT_EQ(cuppa_contents, other_contents);
   }
 

@@ -577,9 +577,9 @@ class Library : public spriter::ImageLibraryInterface {
     // TODO(nikhilmadan): Use appropriate progressive setting for spriting.
     image_options->progressive_jpeg = false;
 
-    scoped_ptr<net_instaweb::Image> image(NewImage(
-        resource->contents(), resource->url(), tmp_dir_, image_options,
-        timer_, handler_));
+    scoped_ptr<net_instaweb::Image> image(
+        NewImage(resource->ExtractUncompressedContents(), resource->url(),
+                 tmp_dir_, image_options, timer_, handler_));
 
     // We only handle PNGs and GIFs (which are converted to PNGs) for now.
     net_instaweb::ImageType image_type = image->image_type();

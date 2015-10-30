@@ -293,7 +293,7 @@ bool ResourceCombiner::WritePiece(int index,
                                   OutputResource* /*combination*/,
                                   Writer* writer,
                                   MessageHandler* handler) {
-  return writer->Write(input->contents(), handler);
+  return writer->Write(input->ExtractUncompressedContents(), handler);
 }
 
 void ResourceCombiner::Clear() {

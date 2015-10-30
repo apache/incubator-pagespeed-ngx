@@ -104,7 +104,7 @@ class VerifyContentsCallback : public Resource::AsyncCallback {
   }
   virtual void Done(bool lock_failure, bool resource_ok) {
     EXPECT_FALSE(lock_failure);
-    EXPECT_EQ(0, contents_.compare(resource()->contents().as_string()));
+    EXPECT_STREQ(contents_, resource()->ExtractUncompressedContents());
     called_ = true;
   }
   void AssertCalled() {
@@ -1748,7 +1748,8 @@ TEST_F(ServerContextTest, PartlyFailedFetch) {
   EXPECT_FALSE(resource->IsValidAndCacheable());
   EXPECT_FALSE(resource->loaded());
   EXPECT_FALSE(resource->HttpStatusOk())
-    << " Unexpectedly got access to resource contents:" << resource->contents();
+      << " Unexpectedly got access to resource contents:"
+      << resource->ExtractUncompressedContents();
 }
 
 TEST_F(ServerContextTest, LoadFromFileReadAsync) {

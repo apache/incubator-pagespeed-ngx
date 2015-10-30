@@ -116,7 +116,7 @@ bool JsInlineFilter::ShouldInline(const ResourcePtr& resource,
   // Don't inline if it's too big or looks like it's trying to get at its own
   // url.
 
-  StringPiece contents(resource->contents());
+  StringPiece contents(resource->ExtractUncompressedContents());
   if (contents.size() > size_threshold_bytes_) {
     *reason = StrCat("JS not inlined since it's bigger than ",
                      Integer64ToString(size_threshold_bytes_),

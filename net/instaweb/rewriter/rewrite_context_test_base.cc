@@ -97,7 +97,8 @@ void NestedFilter::Context::RewriteSingle(
   // Assume that this file just has nested CSS URLs one per line,
   // which we will rewrite.
   StringPieceVector pieces;
-  SplitStringPieceToVector(input->contents(), "\n", &pieces, true);
+  SplitStringPieceToVector(input->ExtractUncompressedContents(), "\n", &pieces,
+                           true);
 
   GoogleUrl base(input->url());
   if (base.IsWebValid()) {

@@ -58,7 +58,7 @@ class CollectFlushEarlyContentFilter::Context : public SingleRewriteContext {
       ResourceSlot* resource_slot = slot(0).get();
       ResourcePtr resource = resource_slot->resource();
       CachedResult* partition = output_partition(0);
-      partition->set_size(resource->contents().size());
+      partition->set_size(resource->UncompressedContentsSize());
     }
     RewriteDone(kRewriteFailed, 0);
   }

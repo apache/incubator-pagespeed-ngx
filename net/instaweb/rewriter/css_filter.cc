@@ -365,7 +365,7 @@ void CssFilter::Context::RewriteSingle(
   AttachDependentRequestTrace(is_ipro ? "IproProcessCSS" : "ProcessCSS");
   input_resource_ = input_resource;
   output_resource_ = output_resource;
-  StringPiece input_contents = input_resource_->contents();
+  StringPiece input_contents = input_resource_->ExtractUncompressedContents();
   in_text_size_ = input_contents.size();
   has_utf8_bom_ = StripUtf8Bom(&input_contents);
 
@@ -576,9 +576,9 @@ void CssFilter::Context::Harvest() {
     // If CSS was not successfully parsed.
     if (fallback_transformer_.get() != NULL) {
       StringWriter out(&out_text);
-      ok = CssTagScanner::TransformUrls(input_resource_->contents(), &out,
-                                        fallback_transformer_.get(),
-                                        Driver()->message_handler());
+      ok = CssTagScanner::TransformUrls(
+          input_resource_->ExtractUncompressedContents(), &out,
+          fallback_transformer_.get(), Driver()->message_handler());
     }
     if (ok) {
       filter_->num_fallback_rewrites_->Add(1);
@@ -810,8 +810,8 @@ GoogleString CssFilter::Context::CacheKeySuffix() const {
         SimpleAbsolutifyTransformer transformer(&Driver()->decoded_base_url());
         StringWriter writer(&absolutified_version);
         CssTagScanner::TransformUrls(
-            slot(0)->resource()->contents(), &writer, &transformer,
-            Driver()->message_handler());
+            slot(0)->resource()->ExtractUncompressedContents(), &writer,
+            &transformer, Driver()->message_handler());
 
         const Hasher* hasher = FindServerContext()->lock_hasher();
         StrAppend(&suffix, "_@", hasher->Hash(absolutified_version));

@@ -104,14 +104,14 @@ class CssFlattenImportsContext : public SingleRewriteContext {
         !driver->options()->Enabled(RewriteOptions::kLeftTrimUrls)) {
       transformer.set_trim_urls(false);
     }
-    if (CssTagScanner::TransformUrls(input_resource_->contents(),
-                                     &writer,
-                                     &transformer,
-                                     driver->message_handler())) {
+    if (CssTagScanner::TransformUrls(
+            input_resource_->ExtractUncompressedContents(), &writer,
+            &transformer, driver->message_handler())) {
       hierarchy_->set_input_contents_to_backing_store();
       hierarchy_->set_input_contents_resolved(true);
     } else {
-      hierarchy_->set_input_contents(input_resource_->contents());
+      hierarchy_->set_input_contents(
+          input_resource_->ExtractUncompressedContents());
     }
 
     bool ok = true;

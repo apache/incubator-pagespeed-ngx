@@ -89,7 +89,8 @@ bool InlineRewriteContext::Partition(OutputPartitions* partitions,
   } else {
     resource->AddInputInfoToPartition(Resource::kOmitInputHash, 0, partition);
     if (ShouldInline(resource, &reason_for_failure)) {
-      partition->set_inlined_data(resource->contents().as_string());
+      StringPiece contents = resource->ExtractUncompressedContents();
+      contents.CopyToString(partition->mutable_inlined_data());
       ok = true;
     }
   }

@@ -126,7 +126,7 @@ TEST_F(GoogleFontServiceInputResourceTest, Load) {
                       &callback);
   EXPECT_TRUE(callback.done());
   EXPECT_TRUE(callback.success());
-  EXPECT_EQ("font_chromezilla", resource->contents());
+  EXPECT_EQ("font_chromezilla", resource->ExtractUncompressedContents());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
 
   // Make sure it's cached.
@@ -140,7 +140,7 @@ TEST_F(GoogleFontServiceInputResourceTest, Load) {
                        &callback2);
   EXPECT_TRUE(callback2.done());
   EXPECT_TRUE(callback2.success());
-  EXPECT_EQ("font_chromezilla", resource2->contents());
+  EXPECT_EQ("font_chromezilla", resource2->ExtractUncompressedContents());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
 
   // But that different UA gets different string.
@@ -155,7 +155,7 @@ TEST_F(GoogleFontServiceInputResourceTest, Load) {
                        &callback3);
   EXPECT_TRUE(callback3.done());
   EXPECT_TRUE(callback3.success());
-  EXPECT_EQ("font_safieri", resource3->contents());
+  EXPECT_EQ("font_safieri", resource3->ExtractUncompressedContents());
   EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
 }
 
@@ -186,7 +186,7 @@ TEST_F(GoogleFontServiceInputResourceTest, UANormalization) {
                       &callback);
   EXPECT_TRUE(callback.done());
   EXPECT_TRUE(callback.success());
-  EXPECT_EQ("font_IE7", resource->contents());
+  EXPECT_EQ("font_IE7", resource->ExtractUncompressedContents());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
 
   // Different list of .NET versions.
@@ -205,7 +205,7 @@ TEST_F(GoogleFontServiceInputResourceTest, UANormalization) {
                        &callback2);
   EXPECT_TRUE(callback2.done());
   EXPECT_TRUE(callback2.success());
-  EXPECT_EQ("font_IE7", resource->contents());
+  EXPECT_EQ("font_IE7", resource->ExtractUncompressedContents());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
 }
 
@@ -239,11 +239,11 @@ TEST_F(GoogleFontServiceInputResourceTest, LoadParallel) {
 
   ASSERT_TRUE(callback.done());
   EXPECT_TRUE(callback.success());
-  EXPECT_EQ("font_chromezilla", resource->contents());
+  EXPECT_EQ("font_chromezilla", resource->ExtractUncompressedContents());
 
   ASSERT_TRUE(callback2.done());
   EXPECT_TRUE(callback2.success());
-  EXPECT_EQ("font_safieri", resource2->contents());
+  EXPECT_EQ("font_safieri", resource2->ExtractUncompressedContents());
 }
 
 TEST_F(GoogleFontServiceInputResourceTest, FetchFailure) {
@@ -263,7 +263,7 @@ TEST_F(GoogleFontServiceInputResourceTest, FetchFailure) {
                       &callback);
   EXPECT_TRUE(callback.done());
   EXPECT_FALSE(callback.success());
-  EXPECT_EQ("", resource->contents());
+  EXPECT_EQ("", resource->ExtractUncompressedContents());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
 }
 

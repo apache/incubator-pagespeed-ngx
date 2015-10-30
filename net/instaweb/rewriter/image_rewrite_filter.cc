@@ -740,7 +740,8 @@ Image::CompressionOptions* ImageRewriteFilter::ImageOptionsForLoadedResource(
     const ResourceContext& resource_context, const ResourcePtr& input_resource,
     bool is_css) {
   Image::CompressionOptions* image_options = new Image::CompressionOptions();
-  int64 input_size = static_cast<int64>(input_resource->contents().size());
+  int64 input_size =
+      static_cast<int64>(input_resource->UncompressedContentsSize());
   // Disable webp conversion for images in CSS if the original image size is
   // greater than max_image_bytes_in_css_for_webp. This is because webp does not
   // support progressive which causes a perceptible delay in the loading of
@@ -966,7 +967,7 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
       ImageOptionsForLoadedResource(resource_context, input_resource,
                                     rewrite_context->is_css_);
   scoped_ptr<Image> image(
-      NewImage(input_resource->contents(), input_resource->url(),
+      NewImage(input_resource->ExtractUncompressedContents(), input_resource->url(),
                server_context()->filename_prefix(), image_options,
                driver()->timer(), message_handler));
 
@@ -1100,7 +1101,7 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
 
     // Try inlining input image if output hasn't been inlined already.
     if (!cached->has_inlined_data()) {
-      SaveIfInlinable(input_resource->contents(), original_image_type, cached);
+      SaveIfInlinable(input_resource->ExtractUncompressedContents(), original_image_type, cached);
     }
 
     int64 image_size = static_cast<int64>(image->output_size());

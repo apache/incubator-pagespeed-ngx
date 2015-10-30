@@ -176,7 +176,7 @@ TEST_F(CacheableResourceBaseTest, BasicCached) {
                        &callback);
   EXPECT_TRUE(callback.done());
   EXPECT_TRUE(callback.success());
-  EXPECT_EQ(kContent, resource_->contents());
+  EXPECT_EQ(kContent, resource_->ExtractUncompressedContents());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   CheckStats(resource_.get(), 0, 0, 0, 0, 1);
 
@@ -190,7 +190,7 @@ TEST_F(CacheableResourceBaseTest, BasicCached) {
                        &callback2);
   EXPECT_TRUE(callback2.done());
   EXPECT_TRUE(callback2.success());
-  EXPECT_EQ(kContent, resource_->contents());
+  EXPECT_EQ(kContent, resource_->ExtractUncompressedContents());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   CheckStats(resource_.get(), 1, 0, 0, 0, 1);
 
@@ -206,7 +206,7 @@ TEST_F(CacheableResourceBaseTest, BasicCached) {
                        &callback3);
   EXPECT_TRUE(callback3.done());
   EXPECT_TRUE(callback3.success());
-  EXPECT_EQ(kContent, resource_->contents());
+  EXPECT_EQ(kContent, resource_->ExtractUncompressedContents());
   // Freshening resulted in an extra fetch
   EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
   CheckStats(resource_.get(), 2, 0, 0, 0, 1);
@@ -234,7 +234,7 @@ TEST_F(CacheableResourceBaseTest, Fallback) {
                        &callback);
   EXPECT_TRUE(callback.done());
   EXPECT_TRUE(callback.success());
-  EXPECT_STREQ("fallback", resource_->contents());
+  EXPECT_STREQ("fallback", resource_->ExtractUncompressedContents());
   EXPECT_EQ(kFetchStatusOtherError, resource_->fetch_response_status());
 }
 
@@ -261,7 +261,7 @@ TEST_F(CacheableResourceBaseTest, FallbackEmpty) {
                        &callback);
   EXPECT_TRUE(callback.done());
   EXPECT_TRUE(callback.success());
-  EXPECT_STREQ("", resource_->contents());
+  EXPECT_STREQ("", resource_->ExtractUncompressedContents());
   EXPECT_EQ(kFetchStatusOtherError, resource_->fetch_response_status());
 }
 
@@ -313,7 +313,7 @@ TEST_F(CacheableResourceBaseTest, PrivateForFetch) {
                        &callback);
   EXPECT_TRUE(callback.done());
   EXPECT_TRUE(callback.success());
-  EXPECT_EQ(kContent, resource_->contents());
+  EXPECT_EQ(kContent, resource_->ExtractUncompressedContents());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   CheckStats(resource_.get(), 0, 0, 0, 0, 1);
 
@@ -328,7 +328,7 @@ TEST_F(CacheableResourceBaseTest, PrivateForFetch) {
                        &callback2);
   EXPECT_TRUE(callback2.done());
   EXPECT_TRUE(callback2.success());
-  EXPECT_EQ(kContent, resource_->contents());
+  EXPECT_EQ(kContent, resource_->ExtractUncompressedContents());
   EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
   CheckStats(resource_.get(), 0, 0, 1, 0, 1);
 }
@@ -528,7 +528,7 @@ TEST_F(CacheableResourceBaseTest, PrepareHooks) {
                        request_context, &callback);
   EXPECT_TRUE(callback.done());
   EXPECT_TRUE(callback.success());
-  EXPECT_EQ(kContent, resource_->contents());
+  EXPECT_EQ(kContent, resource_->ExtractUncompressedContents());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
 
   // w/o the hook
@@ -547,7 +547,7 @@ TEST_F(CacheableResourceBaseTest, PrepareHooks) {
                        request_context2, &callback2);
   EXPECT_TRUE(callback2.done());
   EXPECT_TRUE(callback2.success());
-  EXPECT_EQ(kContent, resource_->contents());
+  EXPECT_EQ(kContent, resource_->ExtractUncompressedContents());
   EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
 
   // the PrepareRequest() hook should have changed the referrer.

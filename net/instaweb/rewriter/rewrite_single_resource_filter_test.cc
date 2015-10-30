@@ -128,7 +128,7 @@ class TestRewriter : public RewriteFilter {
     EXPECT_TRUE(output_resource.get() != NULL);
     EXPECT_TRUE(input_resource->HttpStatusOk());
 
-    StringPiece contents = input_resource->contents();
+    StringPiece contents = input_resource->ExtractUncompressedContents();
     if (contents == "bad") {
       return kRewriteFailed;
     }

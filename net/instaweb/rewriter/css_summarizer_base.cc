@@ -196,7 +196,7 @@ void CssSummarizerBase::Context::Cancel() {
 void CssSummarizerBase::Context::RewriteSingle(
     const ResourcePtr& input_resource,
     const OutputResourcePtr& output_resource) {
-  StringPiece input_contents = input_resource->contents();
+  StringPiece input_contents = input_resource->ExtractUncompressedContents();
 
   // TODO(morlovich): Should we keep track of this so it can be restored?
   StripUtf8Bom(&input_contents);

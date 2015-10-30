@@ -57,8 +57,9 @@ GoogleString InlineOutputResource::UrlForDebug() const {
 
 GoogleString InlineOutputResource::cache_key() const {
   CHECK(loaded());
+  ResponseHeaders headers;
   const Hasher* hasher = server_context()->contents_hasher();
-  return hasher->Hash(contents());
+  return hasher->Hash(ExtractUncompressedContents());
 }
 
 }  // namespace net_instaweb

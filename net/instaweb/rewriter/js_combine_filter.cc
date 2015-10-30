@@ -104,13 +104,14 @@ class JsCombineFilter::JsCombiner : public ResourceCombiner {
     // In strict mode of ES262-5 eval runs in a private variable scope,
     // (see 10.4.2 step 3 and 10.4.2.1), so our transformation is not safe.
     if (IsLikelyStrictMode(filter_->server_context()->js_tokenizer_patterns(),
-                           resource->contents())) {
+                           resource->ExtractUncompressedContents())) {
       *failure_reason = "Combining strict mode files unsupported";
       return false;
     }
     const RewriteOptions* options = rewrite_driver_->options();
     if (options->avoid_renaming_introspective_javascript() &&
-        JavascriptCodeBlock::UnsafeToRename(resource->contents())) {
+        JavascriptCodeBlock::UnsafeToRename(
+            resource->ExtractUncompressedContents())) {
       *failure_reason = "File seems to look for its URL";
       return false;
     }
@@ -142,7 +143,7 @@ class JsCombineFilter::JsCombiner : public ResourceCombiner {
   }
 
   virtual void AccumulateCombinedSize(const ResourcePtr& resource) {
-    combined_js_size_ += resource->contents().size();
+    combined_js_size_ += resource->UncompressedContentsSize();
   }
 
   virtual void Clear() {
@@ -452,7 +453,7 @@ bool JsCombineFilter::JsCombiner::WritePiece(
     int index, const Resource* input, OutputResource* combination,
     Writer* writer, MessageHandler* handler) {
   // Minify if needed.
-  StringPiece not_escaped = input->contents();
+  StringPiece not_escaped = input->ExtractUncompressedContents();
 
   // TODO(morlovich): And now we're not updating some stats instead.
   // Factor out that bit in JsFilter.
@@ -490,10 +491,9 @@ JavascriptCodeBlock* JsCombineFilter::JsCombiner::BlockForResource(
       config_.reset(JavascriptFilter::InitializeConfig(rewrite_driver_));
     }
 
-    scoped_ptr<JavascriptCodeBlock> new_block(
-        new JavascriptCodeBlock(
-                input->contents(), config_.get(), input->url(),
-                rewrite_driver_->message_handler()));
+    scoped_ptr<JavascriptCodeBlock> new_block(new JavascriptCodeBlock(
+        input->ExtractUncompressedContents(), config_.get(), input->url(),
+        rewrite_driver_->message_handler()));
     new_block->Rewrite();
     insert_result.first->second = new_block.release();
   }

@@ -56,8 +56,8 @@ void SimpleTextFilter::Context::RewriteSingle(const ResourcePtr& input,
   RewriteResult result = kRewriteFailed;
   GoogleString rewritten;
   ServerContext* server_context = FindServerContext();
-  if (rewriter_->RewriteText(input->url(), input->contents(), &rewritten,
-                             server_context))  {
+  if (rewriter_->RewriteText(input->url(), input->ExtractUncompressedContents(),
+                             &rewritten, server_context)) {
     const ContentType* output_type = input->type();
     if (output_type == NULL) {
       output_type = &kContentTypeText;

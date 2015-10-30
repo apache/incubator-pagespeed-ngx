@@ -63,7 +63,8 @@ void FakeFilter::Context::DoRewriteSingle(const ResourcePtr input,
     // TODO(jkarlin): Writing to the filter from a context is not thread
     // safe.
     filter_->IncRewrites();
-    StrAppend(&rewritten, input->contents(), ":", filter_->id());
+    StrAppend(&rewritten, input->ExtractUncompressedContents(), ":",
+              filter_->id());
 
     // Set the output type here to make sure that the CachedResult url
     // field has the correct extension for the type.

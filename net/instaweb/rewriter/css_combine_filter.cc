@@ -94,7 +94,7 @@ class CssCombineFilter::CssCombiner : public ResourceCombiner {
     // the rest of the files combined with this one. So we should not include
     // it in the combination.
     // TODO(sligocki): Just do the CSS parsing and rewriting here.
-    if (!CleanParse(resource->contents())) {
+    if (!CleanParse(resource->ExtractUncompressedContents())) {
       *failure_reason = "CSS parse error";
       // TODO(sligocki): All parse failures are repeated twice because we will
       // try to combine them in the normal combination, then we'll try again
@@ -107,7 +107,8 @@ class CssCombineFilter::CssCombiner : public ResourceCombiner {
     // TODO(sligocki): Do CSS parsing and rewriting here so that we can
     // git rid of this restriction.
     if ((num_urls() != 0) &&
-        CssTagScanner::HasImport(resource->contents(), handler)) {
+        CssTagScanner::HasImport(resource->ExtractUncompressedContents(),
+                                 handler)) {
       *failure_reason = "Can't have @import in middle of CSS";
       return false;
     }
@@ -143,7 +144,7 @@ class CssCombineFilter::CssCombiner : public ResourceCombiner {
   }
 
   virtual void AccumulateCombinedSize(const ResourcePtr& resource) {
-    combined_css_size_ += resource->contents().size();
+    combined_css_size_ += resource->UncompressedContentsSize();
   }
 
   virtual void Clear() {
@@ -491,7 +492,7 @@ void CssCombineFilter::Flush() {
 bool CssCombineFilter::CssCombiner::WritePiece(
     int index, const Resource* input, OutputResource* combination,
     Writer* writer, MessageHandler* handler) {
-  StringPiece contents = input->contents();
+  StringPiece contents = input->ExtractUncompressedContents();
   GoogleUrl input_url(input->url());
   // Strip the BOM off of the contents (if it's there) if this is not the
   // first resource.

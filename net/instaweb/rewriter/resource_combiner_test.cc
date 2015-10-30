@@ -106,7 +106,7 @@ class TestCombineFilter : public RewriteFilter {
                                     GoogleString* failure_reason,
                                     MessageHandler* /*handler*/) {
       EXPECT_TRUE(resource->HttpStatusOk());
-      if (resource->contents() == kVetoText) {
+      if (resource->ExtractUncompressedContents() == kVetoText) {
         *failure_reason = "Contents match veto text";
         return false;
       }

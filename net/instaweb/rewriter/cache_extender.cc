@@ -105,7 +105,8 @@ bool CacheExtender::ShouldRewriteResource(
   }
   if (input_resource_type->type() == ContentType::kJavascript &&
       driver()->options()->avoid_renaming_introspective_javascript() &&
-      JavascriptCodeBlock::UnsafeToRename(input_resource->contents())) {
+      JavascriptCodeBlock::UnsafeToRename(
+          input_resource->ExtractUncompressedContents())) {
     CHECK(result != NULL);
     result->add_debug_message(JavascriptCodeBlock::kIntrospectionComment);
     return false;
@@ -308,7 +309,7 @@ RewriteResult CacheExtender::RewriteLoadedResource(
     return kRewriteFailed;
   }
 
-  StringPiece contents(input_resource->contents());
+  StringPiece contents(input_resource->ExtractUncompressedContents());
   GoogleString transformed_contents;
   StringWriter writer(&transformed_contents);
   GoogleUrl input_resource_gurl(input_resource->url());

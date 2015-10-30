@@ -332,7 +332,7 @@ void InPlaceRewriteContext::Harvest() {
             *(nested_resource->response_headers()));
         Writer* writer = output_resource_->BeginWrite(
             Driver()->message_handler());
-        writer->Write(nested_resource->contents(),
+        writer->Write(nested_resource->ExtractUncompressedContents(),
                       Driver()->message_handler());
         output_resource_->EndWrite(Driver()->message_handler());
 
@@ -564,7 +564,8 @@ class NonHttpResourceCallback : public Resource::AsyncCallback {
     if (!lock_failure && resource_ok) {
       async_fetch_->response_headers()->CopyFrom(
           *resource()->response_headers());
-      async_fetch_->Write(resource()->contents(), message_handler_);
+      async_fetch_->Write(resource()->ExtractUncompressedContents(),
+                          message_handler_);
       async_fetch_->Done(true);
     } else {
       // TODO(jmarantz): If we're in proxy mode, we must always

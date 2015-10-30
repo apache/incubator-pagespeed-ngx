@@ -132,7 +132,7 @@ bool Resource::IsSafeToRewrite(bool rewrite_uncacheable,
   } else if (response_headers_.Lookup1(HttpAttributes::kXSendfile) ||
              response_headers_.Lookup1(HttpAttributes::kXAccelRedirect)) {
     StrAppend(reason, "Sendfile in header, unsafe to rewrite! ");
-  } else if (contents().empty()) {
+  } else if (IsContentsEmpty()) {
     // https://github.com/pagespeed/mod_pagespeed/issues/1050
     StrAppend(reason, "Resource is empty, ");
   } else {
@@ -168,7 +168,8 @@ void Resource::RefreshIfImminentlyExpiring() {
 
 GoogleString Resource::ContentsHash() const {
   DCHECK(IsValidAndCacheable());
-  return server_context_->contents_hasher()->Hash(contents());
+  return server_context_->contents_hasher()->Hash(
+      ExtractUncompressedContents());
 }
 
 void Resource::AddInputInfoToPartition(HashHint suggest_include_content_hash,
@@ -255,6 +256,10 @@ void Resource::LinkFallbackValue(HTTPValue* value) {
   if (!value->Empty()) {
     fallback_value_.Link(value);
   }
+}
+
+StringPiece Resource::ExtractUncompressedContents() const {
+  return raw_contents();
 }
 
 void Resource::Freshen(FreshenCallback* callback, MessageHandler* handler) {

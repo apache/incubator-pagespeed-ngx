@@ -70,7 +70,7 @@ class RenderBlockingHtmlComputation::ResourceCallback
                   << resource()->url();
       child_driver->Cleanup();
     } else {
-      child_driver->ParseText(resource()->contents());
+      child_driver->ParseText(resource()->ExtractUncompressedContents());
       child_driver->FinishParse();
       ok = true;
     }

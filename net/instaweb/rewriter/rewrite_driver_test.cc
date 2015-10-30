@@ -978,7 +978,7 @@ TEST_F(RewriteDriverTest, ResourceCharset) {
                         &mock_callback);
     EXPECT_TRUE(mock_callback.done());
     EXPECT_TRUE(mock_callback.success());
-    EXPECT_EQ(kContents, resource->contents());
+    EXPECT_EQ(kContents, resource->ExtractUncompressedContents());
     ASSERT_TRUE(resource->type() != NULL);
     EXPECT_EQ(ContentType::kCss, resource->type()->type());
     EXPECT_STREQ("koi8-r", resource->charset());
@@ -1018,7 +1018,7 @@ TEST_F(RewriteDriverTest, LoadResourcesFromTheWeb) {
                       &mock_callback);
   EXPECT_TRUE(mock_callback.done());
   EXPECT_TRUE(mock_callback.success());
-  EXPECT_EQ(kResourceContents1, resource->contents());
+  EXPECT_EQ(kResourceContents1, resource->ExtractUncompressedContents());
   // TODO(sligocki): Check it was cached.
 
   // Change the fetch value.
@@ -1034,7 +1034,7 @@ TEST_F(RewriteDriverTest, LoadResourcesFromTheWeb) {
                        &mock_callback2);
   EXPECT_TRUE(mock_callback2.done());
   EXPECT_TRUE(mock_callback2.success());
-  EXPECT_EQ(kResourceContents1, resource2->contents());
+  EXPECT_EQ(kResourceContents1, resource2->ExtractUncompressedContents());
 
   // Advance timer and check that the resource loads updated.
   AdvanceTimeMs(10 * Timer::kYearMs);
@@ -1049,7 +1049,7 @@ TEST_F(RewriteDriverTest, LoadResourcesFromTheWeb) {
                        rewrite_driver()->request_context(),
                        &mock_callback3);
   EXPECT_TRUE(mock_callback3.done());
-  EXPECT_EQ(kResourceContents2, resource3->contents());
+  EXPECT_EQ(kResourceContents2, resource3->ExtractUncompressedContents());
 }
 
 // Test that we successfully load specified resources from files and that
@@ -1085,7 +1085,7 @@ TEST_F(RewriteDriverTest, LoadResourcesFromFiles) {
                       &mock_callback);
   EXPECT_TRUE(mock_callback.done());
   EXPECT_TRUE(mock_callback.success());
-  EXPECT_EQ(kResourceContents1, resource->contents());
+  EXPECT_EQ(kResourceContents1, resource->ExtractUncompressedContents());
   // TODO(sligocki): Check it wasn't cached.
 
   // Change the file.
@@ -1102,7 +1102,7 @@ TEST_F(RewriteDriverTest, LoadResourcesFromFiles) {
                        &mock_callback2);
   EXPECT_TRUE(mock_callback2.done());
   EXPECT_TRUE(mock_callback2.success());
-  EXPECT_EQ(kResourceContents2, resource2->contents());
+  EXPECT_EQ(kResourceContents2, resource2->ExtractUncompressedContents());
 }
 
 // Make sure the content-type is set correctly, even for URLs with queries.

@@ -116,7 +116,7 @@ void OutputResource::DumpToDisk(MessageHandler* handler) {
   bool ok_headers = output_file->Write(headers, handler);
 
   // Serialize payload.
-  bool ok_body = output_file->Write(contents(), handler);
+  bool ok_body = output_file->Write(ExtractUncompressedContents(), handler);
 
   if (!ok_headers || !ok_body) {
     handler->Message(kWarning,
@@ -138,7 +138,7 @@ void OutputResource::EndWrite(MessageHandler* handler) {
   CHECK(!writing_complete_);
   value_.SetHeaders(&response_headers_);
   Hasher* hasher = server_context_->hasher();
-  full_name_.set_hash(hasher->Hash(contents()));
+  full_name_.set_hash(hasher->Hash(ExtractUncompressedContents()));
   full_name_.set_signature(ComputeSignature());
   computed_url_.clear();  // Since dependent on full_name_.
   writing_complete_ = true;

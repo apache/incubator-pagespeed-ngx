@@ -160,17 +160,34 @@ class Resource : public RefCounted<Resource> {
   // interpreted correctly.
   int64 CacheExpirationTimeMs() const;
 
-  StringPiece contents() const {
+  // Returns the uncompressed contents stored in value_. Although this is marked
+  // as const, it mutates the internal state of this object and is not thread
+  // safe.
+  StringPiece ExtractUncompressedContents() const;
+
+  // Returns the size of the the ExtractUncompressedContents(). Like
+  // ExtractUncompressedContents(), this method can mutate the internal state of
+  // the object and is not thread safe.
+  size_t UncompressedContentsSize() const {
+    StringPiece val = ExtractUncompressedContents();
+    return val.length();
+  }
+
+  StringPiece raw_contents() const {
     StringPiece val;
     bool got_contents = value_.ExtractContents(&val);
     CHECK(got_contents) << "Resource contents read before loading: "
                         << UrlForDebug();
     return val;
   }
+
   ResponseHeaders* response_headers() { return &response_headers_; }
   const ResponseHeaders* response_headers() const { return &response_headers_; }
   const ContentType* type() const { return type_; }
   virtual void SetType(const ContentType* type);
+  bool IsContentsEmpty() const {
+    return raw_contents().empty();
+  }
 
   // Note: this is empty if the header is not specified.
   StringPiece charset() const { return charset_; }

@@ -1833,7 +1833,7 @@ class CacheCallback : public OptionsAwareHTTPCacheCallback {
         // OutputResources can also be loaded while not in cache if
         // FetchOutputResource() somehow got called on an already written
         // resource object (while the cache somehow decided not to store it).
-        content = output_resource_->contents();
+        content = output_resource_->ExtractUncompressedContents();
         response_headers->CopyFrom(*output_resource_->response_headers());
         ServerContext* server_context = driver_->server_context();
         HTTPCache* http_cache = server_context->http_cache();

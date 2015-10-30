@@ -139,8 +139,8 @@ class JavascriptFilter::Context : public SingleRewriteContext {
 
     ServerContext* server_context = FindServerContext();
     MessageHandler* message_handler = server_context->message_handler();
-    JavascriptCodeBlock code_block(
-        input->contents(), config_, input->url(), message_handler);
+    JavascriptCodeBlock code_block(input->ExtractUncompressedContents(),
+                                   config_, input->url(), message_handler);
     code_block.Rewrite();
     // Check whether this code should, for various reasons, not be rewritten.
     if (PossiblyRewriteToLibrary(code_block, server_context, rewritten)) {

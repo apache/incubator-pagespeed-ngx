@@ -37,7 +37,7 @@ void InlineAttributeSlot::Render() {
   if (!disable_rendering()) {
     DCHECK(attribute_ != NULL);
     if (attribute_ != NULL) {
-      attribute_->SetValue(resource()->contents());
+      attribute_->SetValue(resource()->ExtractUncompressedContents());
     }
   }
 }

@@ -71,7 +71,8 @@ StringPiece RewriteFilter::GetCharsetForScript(
   }
 
   // 3. If the script has a BOM, use that.
-  StringPiece bom_charset = GetCharsetForBom(script->contents());
+  StringPiece bom_charset =
+      GetCharsetForBom(script->ExtractUncompressedContents());
   if (!bom_charset.empty()) {
     return bom_charset;
   }
@@ -95,7 +96,7 @@ GoogleString RewriteFilter::GetCharsetForStylesheet(
   }
 
   // 2. If the stylesheet has an initial @charset, use that.
-  StringPiece css(stylesheet->contents());
+  StringPiece css(stylesheet->ExtractUncompressedContents());
   StripUtf8Bom(&css);
   Css::Parser parser(css);
   UnicodeText css_charset = parser.ExtractCharset();
@@ -107,7 +108,8 @@ GoogleString RewriteFilter::GetCharsetForStylesheet(
   }
 
   // 3. If the stylesheet has a BOM, use that.
-  StringPiece bom_charset = GetCharsetForBom(stylesheet->contents());
+  StringPiece bom_charset =
+      GetCharsetForBom(stylesheet->ExtractUncompressedContents());
   if (!bom_charset.empty()) {
     return bom_charset.as_string();
   }
