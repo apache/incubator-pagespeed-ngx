@@ -1097,6 +1097,11 @@ void RewriteDriver::AddPreRenderFilters() {
     CHECK(server_context_ != NULL);
     AppendOwnedPreRenderFilter(new CssOutlineFilter(this));
   }
+  if (rewrite_options->Enabled(RewriteOptions::kInlineGoogleFontCss)) {
+    // Inline small Google Font Service CSS files.
+    // Do this before MoveCssToHead / MoveCssAboveScripts.
+    AppendOwnedPreRenderFilter(new GoogleFontCssInlineFilter(this));
+  }
   if (rewrite_options->Enabled(RewriteOptions::kMoveCssToHead) ||
       rewrite_options->Enabled(RewriteOptions::kMoveCssAboveScripts)) {
     // It's good to move CSS links to the head prior to running CSS combine,
@@ -1135,10 +1140,6 @@ void RewriteDriver::AddPreRenderFilters() {
     // run before we decide what counts as "small".
     CHECK(server_context_ != NULL);
     AppendOwnedPreRenderFilter(new CssInlineFilter(this));
-  }
-  if (rewrite_options->Enabled(RewriteOptions::kInlineGoogleFontCss)) {
-    // Inline small Google Font Service CSS files.
-    AppendOwnedPreRenderFilter(new GoogleFontCssInlineFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kOutlineJavascript)) {
     // Cut out inlined scripts and make them into external resources.
