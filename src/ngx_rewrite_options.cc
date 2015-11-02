@@ -284,7 +284,8 @@ const char* NgxRewriteOptions::ParseAndSetOptions(
       !StringCaseEqual(directive, "DownstreamCachePurgeLocationPrefix") &&
       !StringCaseEqual(directive, "DownstreamCachePurgeMethod") &&
       !StringCaseEqual(directive,
-                       "DownstreamCacheRewrittenPercentageThreshold")) {
+                       "DownstreamCacheRewrittenPercentageThreshold") &&
+      !StringCaseEqual(directive, "ShardDomain")){
     compile_scripts = false;
   }
 

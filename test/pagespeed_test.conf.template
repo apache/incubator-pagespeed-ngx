@@ -1252,11 +1252,15 @@ http {
     pagespeed FileCachePath "@@FILE_CACHE@@";
     root "@@SERVER_ROOT@@";
     set $filters "";
+    set $domain_shards "cdn1.example.com,cdn2.example.com";
     if ($http_X_Script) {
         set $filters "add_instrumentation";
+        set $domain_shards "";
     }
     pagespeed RewriteLevel PassThrough;
+    pagespeed EnableFilters rewrite_domains;
     pagespeed EnableFilters $filters;
+    pagespeed ShardDomain script-filters.example.com "$domain_shards";
   }
 
   server {
