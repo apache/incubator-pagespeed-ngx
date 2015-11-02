@@ -24,6 +24,9 @@ http {
                    '"$http_user_agent"';
   access_log "@@ACCESS_LOG@@" cache;
 
+  # Don't put entries in the error log for 403s and 404s.
+  log_not_found off;
+
   proxy_cache_path "@@PROXY_CACHE@@"  levels=1:2   keys_zone=htmlcache:60m inactive=90m  max_size=50m;
   proxy_temp_path "@@TMP_PROXY_CACHE@@";
 
@@ -816,6 +819,13 @@ http {
     pagespeed ConsolePath /custom_pagespeed_console;
     pagespeed MessagesPath /custom_pagespeed_message;
     pagespeed AdminPath /custom_pagespeed_admin;
+
+    pagespeed StatisticsDomains Allow *;
+    pagespeed GlobalStatisticsDomains Allow *;
+    pagespeed MessagesDomains Allow *;
+    pagespeed ConsoleDomains Allow *;
+    pagespeed AdminDomains Allow *;
+    pagespeed GlobalAdminDomains Allow *;
   }
 
   server {
@@ -823,6 +833,13 @@ http {
     listen [::]:@@SECONDARY_PORT@@;
     server_name inherit-paths.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    pagespeed StatisticsDomains Allow *;
+    pagespeed GlobalStatisticsDomains Allow *;
+    pagespeed MessagesDomains Allow *;
+    pagespeed ConsoleDomains Allow *;
+    pagespeed AdminDomains Allow *;
+    pagespeed GlobalAdminDomains Allow *;
   }
 
   server {
@@ -1334,6 +1351,79 @@ http {
     location / {
       add_header "PageSpeed" "off";
     }
+  }
+
+  pagespeed MessagesDomains Allow messages-allowed.example.com;
+  pagespeed MessagesDomains Allow cleared-inherited.example.com;
+  pagespeed MessagesDomains Allow cleared-inherited-reallowed.example.com;
+  pagespeed MessagesDomains Allow more-messages-allowed.example.com;
+  pagespeed MessagesDomains Allow anything-*-wildcard.example.com;
+  pagespeed MessagesDomains Allow localhost;
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name messages-allowed.example.com
+                messages-not-allowed.example.com
+                more-messages-allowed.example.com
+                anything-a-wildcard.example.com
+                anything-b-wildcard.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+  }
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name messages-still-not-allowed.example.com
+                but-this-message-allowed.example.com
+                and-this-one.example.com;
+    pagespeed MessagesDomains Allow but-this-message-allowed.example.com;
+    pagespeed MessagesDomains Allow and-this-one.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+  }
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name cleared-inherited.example.com
+                cleared-inherited-reallowed.example.com
+                messages-allowed-at-vhost.example.com
+                messages-not-allowed-at-vhost.example.com
+                anything-c-wildcard.example.com;
+    pagespeed MessagesDomains Disallow *;
+    pagespeed MessagesDomains Allow cleared-inherited-reallowed.example.com;
+    pagespeed MessagesDomains Allow messages-allowed-at-vhost.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+  }
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name cleared-inherited-unlisted.example.com;
+    pagespeed MessagesDomains Allow *;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+  }
+  server {
+    server_name nothing-allowed.example.com;
+    pagespeed MessagesDomains Disallow *;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+  }
+  server {
+    server_name nothing-explicitly-allowed.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+  }
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name everything-explicitly-allowed.example.com
+                everything-explicitly-allowed-but-aliased.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    pagespeed StatisticsDomains Allow everything-explicitly-allowed.example.com;
+    pagespeed GlobalStatisticsDomains
+      Allow everything-explicitly-allowed.example.com;
+    pagespeed MessagesDomains Allow everything-explicitly-allowed.example.com;
+    pagespeed ConsoleDomains Allow everything-explicitly-allowed.example.com;
+    pagespeed AdminDomains Allow everything-explicitly-allowed.example.com;
+    pagespeed GlobalAdminDomains
+     Allow everything-explicitly-allowed.example.com;
   }
 
   server {

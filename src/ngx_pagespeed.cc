@@ -1650,23 +1650,29 @@ RequestRouting::Response ps_route_request(ngx_http_request_t* r) {
   const NgxRewriteOptions* global_options = cfg_s->server_context->config();
 
   StringPiece path = url.PathSansQuery();
-  if (StringCaseEqual(path, global_options->statistics_path())) {
+  if (StringCaseEqual(path, global_options->statistics_path()) &&
+      global_options->StatisticsAccessAllowed(url)) {
     return RequestRouting::kStatistics;
-  } else if (StringCaseEqual(path, global_options->global_statistics_path())) {
+  } else if (StringCaseEqual(path, global_options->global_statistics_path()) &&
+             global_options->GlobalStatisticsAccessAllowed(url)) {
     return RequestRouting::kGlobalStatistics;
-  } else if (StringCaseEqual(path, global_options->console_path())) {
+  } else if (StringCaseEqual(path, global_options->console_path()) &&
+             global_options->ConsoleAccessAllowed(url)) {
     return RequestRouting::kConsole;
-  } else if (StringCaseEqual(path, global_options->messages_path())) {
+  } else if (StringCaseEqual(path, global_options->messages_path()) &&
+             global_options->MessagesAccessAllowed(url)) {
     return RequestRouting::kMessages;
   } else if (
       // The admin handlers get everything under a path (/path/*) while all the
       // other handlers only get exact matches (/path).  So match all paths
       // starting with the handler path.
       !global_options->admin_path().empty() &&
-      StringCaseStartsWith(path, global_options->admin_path())) {
+      StringCaseStartsWith(path, global_options->admin_path()) &&
+      global_options->AdminAccessAllowed(url)) {
     return RequestRouting::kAdmin;
   } else if (!global_options->global_admin_path().empty() &&
-             StringCaseStartsWith(path, global_options->global_admin_path())) {
+             StringCaseStartsWith(path, global_options->global_admin_path()) &&
+             global_options->GlobalAdminAccessAllowed(url)) {
     return RequestRouting::kGlobalAdmin;
   } else if (global_options->enable_cache_purge() &&
              !global_options->purge_method().empty() &&
