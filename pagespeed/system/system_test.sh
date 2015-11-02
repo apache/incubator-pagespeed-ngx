@@ -42,6 +42,11 @@ function run_post_cache_flush() {
 rm -rf $OUTDIR
 mkdir -p $OUTDIR
 
+# In Apache users can disable merging the global config into the vhost config.
+# If we're running that way then apache_system_test will have set
+# NO_VHOST_MERGE to "on".
+NO_VHOST_MERGE="${NO_VHOST_MERGE:-off}"
+
 start_test Check for correct default pagespeed header format.
 # This will be X-Page-Speed in nginx and X-ModPagespeed in apache.  Accept both.
 OUT=$($WGET_DUMP $EXAMPLE_ROOT/combine_css.html)
@@ -1755,6 +1760,99 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   CONNECTION=$(extract_headers $FETCH_UNTIL_OUTFILE | fgrep "Connection:")
   check_not_from "$CONNECTION" fgrep -qi "Keep-Alive, Keep-Alive"
   check_from "$CONNECTION" fgrep -qi "Keep-Alive"
+
+  start_test Handler access restrictions
+  function expect_handler() {
+    local host_prefix="$1"
+    local handler="$2"
+    local expectation="$3"
+
+    URL="$host_prefix.example.com/$handler"
+    echo "http_proxy=$SECONDARY_HOSTNAME curl $URL"
+    OUT=$(http_proxy=$SECONDARY_HOSTNAME \
+      $CURL -o/dev/null -sS --write-out '%{http_code}\n' "$URL")
+    if [ "$expectation" = "allow" ]; then
+      check [ "$OUT" = "200" ]
+    elif [ "$expectation" = "deny" ]; then
+      check [ "$OUT" = "403" -o "$OUT" = "404" ]
+    else
+      check false
+    fi
+  }
+  function expect_messages() {
+    expect_handler "$1" "$MESSAGES_HANDLER" "$2"
+  }
+
+  # Listed at top level.
+  expect_messages messages-allowed allow
+  # Listed at top level.
+  expect_messages more-messages-allowed allow
+  # Not listed at any level.
+  expect_messages messages-still-not-allowed deny
+  # Listed at VHost level.
+  expect_messages but-this-message-allowed allow
+  # Listed at VHost level.
+  expect_messages and-this-one allow
+  # Listed at top level, VHost level lists CLEAR_INHERITED.
+  expect_messages cleared-inherited deny
+  # Listed at top level, VHost level lists both this and CLEAR_INHERITED.
+  expect_messages cleared-inherited-reallowed allow
+  # Not listed at top level, VHost level lists both this and CLEAR_INHERITED.
+  expect_messages messages-allowed-at-vhost allow
+  # Not listed at any level, VHost level lists only CLEAR_INHERITED.
+  expect_messages cleared-inherited-unlisted allow
+  # Not listed at any level, VHost level lists CLEAR_INHERITED and some other
+  # domains.
+  expect_messages messages-not-allowed-at-vhost deny
+  # Listed at top level, via wildcard.
+  expect_messages anything-a-wildcard allow
+  # Listed at top level, via wildcard.
+  expect_messages anything-b-wildcard allow
+  # Listed at top level, via wildcard, VHost level lists CLEAR_INHERITED.
+  expect_messages anything-c-wildcard deny
+  # VHost lists deny *
+  expect_messages nothing-allowed deny
+
+  if [ "$NO_VHOST_MERGE" = "on" ]; then
+    # In Apache the global config may or may not be inherited into the vhost
+    # config.  This affects option merging here, so for some tests we need to
+    # sets of expectations.  If NO_VHOST_MERGE is set, that's equivalent here to
+    # CLEAR_INHERITED.
+
+    # Not listed at any level.
+    expect_messages messages-not-allowed allow
+  else
+    # Not listed at any level.
+    expect_messages messages-not-allowed deny
+    # Listed at top level, VHost level lists CLEAR_INHERITED.
+    expect_messages cleared-inherited deny
+  fi
+
+  # No <Handler>Domains listings for these, default is allow.
+  expect_handler nothing-explicitly-allowed $STATISTICS_HANDLER allow
+  expect_handler nothing-explicitly-allowed $GLOBAL_STATISTICS_HANDLER allow
+  expect_handler nothing-explicitly-allowed pagespeed_admin/ allow
+  expect_handler nothing-explicitly-allowed pagespeed_global_admin/ allow
+  expect_handler nothing-explicitly-allowed pagespeed_console allow
+
+  # Listed at VHost level as allowed.
+  expect_handler everything-explicitly-allowed $STATISTICS_HANDLER allow
+  expect_handler everything-explicitly-allowed $GLOBAL_STATISTICS_HANDLER allow
+  expect_handler everything-explicitly-allowed pagespeed_admin/ allow
+  expect_handler everything-explicitly-allowed pagespeed_global_admin/ allow
+  expect_handler everything-explicitly-allowed pagespeed_console allow
+
+  # Other domains listed at VHost level as allowed, none of these listed.
+  expect_handler everything-explicitly-allowed-but-aliased \
+    $STATISTICS_HANDLER deny
+  expect_handler everything-explicitly-allowed-but-aliased \
+    $GLOBAL_STATISTICS_HANDLER deny
+  expect_handler everything-explicitly-allowed-but-aliased \
+    pagespeed_admin/ deny
+  expect_handler everything-explicitly-allowed-but-aliased \
+    pagespeed_global_admin/ deny
+  expect_handler everything-explicitly-allowed-but-aliased \
+    pagespeed_console deny
 fi
 
 start_test ShowCache without URL gets a form, inputs, preloaded UA.

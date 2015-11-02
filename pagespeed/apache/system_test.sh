@@ -27,6 +27,9 @@ fi
 
 PSA_JS_LIBRARY_URL_PREFIX="mod_pagespeed_static"
 BEACON_HANDLER="mod_pagespeed_beacon"
+STATISTICS_HANDLER="mod_pagespeed_statistics"
+GLOBAL_STATISTICS_HANDLER="mod_pagespeed_global_statistics"
+MESSAGES_HANDLER="mod_pagespeed_message"
 HEADERS_FINALIZED=false
 
 CACHE_FLUSH_TEST=${CACHE_FLUSH_TEST:-off}

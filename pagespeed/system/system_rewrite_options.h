@@ -24,6 +24,8 @@
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/fast_wildcard_group.h"
+#include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/util/copy_on_write.h"
 
 namespace net_instaweb {
@@ -45,6 +47,14 @@ class SystemRewriteOptions : public RewriteOptions {
                        ThreadSystem* thread_system);
   explicit SystemRewriteOptions(ThreadSystem* thread_system);
   virtual ~SystemRewriteOptions();
+
+  virtual void Merge(const RewriteOptions& src);
+
+  virtual OptionSettingResult ParseAndSetOptionFromName2(
+      StringPiece name, StringPiece arg1, StringPiece arg2,
+      GoogleString* msg, MessageHandler* handler);
+
+  virtual GoogleString SubclassSignatureLockHeld();
 
   int64 file_cache_clean_interval_ms() const {
     return file_cache_clean_interval_ms_.value();
@@ -237,6 +247,30 @@ class SystemRewriteOptions : public RewriteOptions {
   }
   const GoogleString& purge_method() const { return purge_method_.value(); }
 
+  bool AllowDomain(const GoogleUrl& url,
+                   const FastWildcardGroup& wildcard_group) const;
+
+  // For each of these AccessAllowed() methods, the url needs to have been
+  // checked to make sure it is_valid().
+  bool StatisticsAccessAllowed(const GoogleUrl& url) const {
+    return AllowDomain(url, *statistics_domains_);
+  }
+  bool GlobalStatisticsAccessAllowed(const GoogleUrl& url) const {
+    return AllowDomain(url, *global_statistics_domains_);
+  }
+  bool MessagesAccessAllowed(const GoogleUrl& url) const {
+    return AllowDomain(url, *messages_domains_);
+  }
+  bool ConsoleAccessAllowed(const GoogleUrl& url) const {
+    return AllowDomain(url, *console_domains_);
+  }
+  bool AdminAccessAllowed(const GoogleUrl& url) const {
+    return AllowDomain(url, *admin_domains_);
+  }
+  bool GlobalAdminAccessAllowed(const GoogleUrl& url) const {
+    return AllowDomain(url, *global_admin_domains_);
+  }
+
   // If this is set to true, we'll turn on our fallback proxy-like behavior
   // on non-.pagespeed. URLs without changing the main fetcher from Serf
   // (the way the slurp options would).
@@ -419,6 +453,13 @@ class SystemRewriteOptions : public RewriteOptions {
   Option<GoogleString> purge_method_;
 
   StaticAssetCDNOptions static_assets_to_cdn_;
+
+  CopyOnWrite<FastWildcardGroup> statistics_domains_;
+  CopyOnWrite<FastWildcardGroup> global_statistics_domains_;
+  CopyOnWrite<FastWildcardGroup> messages_domains_;
+  CopyOnWrite<FastWildcardGroup> console_domains_;
+  CopyOnWrite<FastWildcardGroup> admin_domains_;
+  CopyOnWrite<FastWildcardGroup> global_admin_domains_;
 
   DISALLOW_COPY_AND_ASSIGN(SystemRewriteOptions);
 };

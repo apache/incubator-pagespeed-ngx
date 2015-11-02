@@ -82,9 +82,9 @@ struct HttpOptions;
 // RewriteOptions::Initialize.  Subclasses may also add new Properties
 // and so property-list-merging takes place at Initialization time.
 class RewriteOptions {
- private:
-  // These being private is against the style guide but necessary to keep
-  // them private while still being used by the Option class hierarchy.
+ protected:
+  // These being protected is against the style guide but necessary to keep
+  // them protected while still being used by the Option class hierarchy.
   // Note that iwyu.py incorrectly complains about the template classes but
   // scripts/iwyu manually removes the warning.
   class PropertyBase;
@@ -1290,6 +1290,9 @@ class RewriteOptions {
   // (unlike SetOptionFromName), and which is extensible by platforms.
   // Returns whether succeeded or the kind of failure, and writes the
   // diagnostic into *msg.
+  //
+  // If you extend any of these you also need to extend Merge() and
+  // SubclassSignatureLockHeld().
   virtual OptionSettingResult ParseAndSetOptionFromName1(
       StringPiece name, StringPiece arg,
       GoogleString* msg, MessageHandler* handler);
@@ -2879,6 +2882,10 @@ class RewriteOptions {
   void ComputeSignature() LOCKS_EXCLUDED(cache_purge_mutex_.get());
   void ComputeSignatureLockHeld() SHARED_LOCKS_REQUIRED(cache_purge_mutex_);
 
+  // If you subclass RewriteOptions and store any configuration data that's not
+  // an Option, use this hook to include the signature of your additional data.
+  virtual GoogleString SubclassSignatureLockHeld() { return ""; }
+
   // Freeze a RewriteOptions so we can't modify it anymore and thus
   // know that it's safe to read it from multiple threads, but don't
   // bother calculating its signature since we will only be using this
@@ -3195,22 +3202,7 @@ class RewriteOptions {
   // The value we put for the X-Mod-Pagespeed header. Default is our version.
   Option<GoogleString> x_header_value_;
 
- private:
-  // We need to check for valid settings with CacheFragment.
-  class CacheFragmentOption : public Option<GoogleString> {
-   public:
-    virtual bool SetFromString(StringPiece value_string,
-                               GoogleString* error_detail);
-  };
-
-  struct OptionIdCompare;
-
-  // Enum type used to record what action must be taken to resolve conflicts
-  // between "preserve URLs" and "extend cache" directives at different levels
-  // of the merge.  The lower priority wins.  These must be calculated before
-  // option/filter merging, and then performed after option/filter merging.
-  enum MergeOverride { kNoAction, kDisablePreserve, kDisableFilter };
-
+ protected:
   // The base class for a Property.  This class contains fields of
   // Properties that are independent of type.
   class PropertyBase {
@@ -3335,6 +3327,22 @@ class RewriteOptions {
 
     DISALLOW_COPY_AND_ASSIGN(PropertyLeaf);
   };
+
+ private:
+  // We need to check for valid settings with CacheFragment.
+  class CacheFragmentOption : public Option<GoogleString> {
+   public:
+    virtual bool SetFromString(StringPiece value_string,
+                               GoogleString* error_detail);
+  };
+
+  struct OptionIdCompare;
+
+  // Enum type used to record what action must be taken to resolve conflicts
+  // between "preserve URLs" and "extend cache" directives at different levels
+  // of the merge.  The lower priority wins.  These must be calculated before
+  // option/filter merging, and then performed after option/filter merging.
+  enum MergeOverride { kNoAction, kDisablePreserve, kDisableFilter };
 
   static Properties* properties_;          // from RewriteOptions only
   static Properties* all_properties_;      // includes subclass properties

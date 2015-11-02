@@ -882,26 +882,53 @@ apr_status_t InstawebHandler::instaweb_handler(request_rec* request) {
   ApacheMessageHandler* message_handler = factory->apache_message_handler();
   StringPiece request_handler_str = request->handler;
 
-  bool is_global_statistics = (request_handler_str == kGlobalStatisticsHandler);
-  if (request_handler_str == kStatisticsHandler || is_global_statistics) {
+  const char* url = InstawebContext::MakeRequestUrl(*global_config, request);
+  GoogleUrl gurl;
+  if (url == NULL || !gurl.Reset(url)) {
+    return DECLINED;  // URL not valid, let someone other module handle.
+  }
+
+  if (request_handler_str == kStatisticsHandler &&
+      global_config->StatisticsAccessAllowed(gurl)) {
     InstawebHandler instaweb_handler(request);
-    server_context->StatisticsPage(is_global_statistics,
+    server_context->StatisticsPage(false /* not global */,
                                    instaweb_handler.query_params(),
                                    instaweb_handler.options(),
                                    instaweb_handler.MakeFetch(
-                                       false /* unbuffered */, "statistics"));
+                                       false /* unbuffered */, "local-stats"));
     return OK;
-  } else if ((request_handler_str == kAdminHandler) ||
-             (request_handler_str == kGlobalAdminHandler)) {
+  } else if (request_handler_str == kGlobalStatisticsHandler &&
+             global_config->GlobalStatisticsAccessAllowed(gurl)) {
+    InstawebHandler instaweb_handler(request);
+    server_context->StatisticsPage(true /* global */,
+                                   instaweb_handler.query_params(),
+                                   instaweb_handler.options(),
+                                   instaweb_handler.MakeFetch(
+                                       false /* unbuffered */, "global-stats"));
+    return OK;
+  } else if (request_handler_str == kAdminHandler &&
+             global_config->AdminAccessAllowed(gurl)) {
     InstawebHandler instaweb_handler(request);
     // The fetch has to be buffered because if it's a cache lookup it could
     // complete asynchrously via the rewrite thread.
-    server_context->AdminPage((request_handler_str == kGlobalAdminHandler),
+    server_context->AdminPage(false /* not global */,
                               instaweb_handler.stripped_gurl(),
                               instaweb_handler.query_params(),
                               instaweb_handler.options(),
                               instaweb_handler.MakeFetch(
-                                  true /* buffered */, "admin"));
+                                  true /* buffered */, "local-admin"));
+    ret = OK;
+  } else if (request_handler_str == kGlobalAdminHandler &&
+             global_config->GlobalAdminAccessAllowed(gurl)) {
+    InstawebHandler instaweb_handler(request);
+    // The fetch has to be buffered because if it's a cache lookup it could
+    // complete asynchrously via the rewrite thread.
+    server_context->AdminPage(true /* global */,
+                              instaweb_handler.stripped_gurl(),
+                              instaweb_handler.query_params(),
+                              instaweb_handler.options(),
+                              instaweb_handler.MakeFetch(
+                                  true /* buffered */, "global-admin"));
     ret = OK;
   } else if (global_config->enable_cache_purge() &&
              !global_config->purge_method().empty() &&
@@ -919,7 +946,8 @@ apr_status_t InstawebHandler::instaweb_handler(request_rec* request) {
                              instaweb_handler.MakeFetch(
                                  true /* buffered */, "purge"));
     ret = OK;
-  } else if (request_handler_str == kConsoleHandler) {
+  } else if (request_handler_str == kConsoleHandler &&
+             global_config->ConsoleAccessAllowed(gurl)) {
     InstawebHandler instaweb_handler(request);
     server_context->ConsoleHandler(*instaweb_handler.options(),
                                    AdminSite::kOther,
@@ -927,7 +955,8 @@ apr_status_t InstawebHandler::instaweb_handler(request_rec* request) {
                                    instaweb_handler.MakeFetch(
                                        false /* unbuffered */, "console"));
     ret = OK;
-  } else if (request_handler_str == kMessageHandler) {
+  } else if (request_handler_str == kMessageHandler &&
+             global_config->MessagesAccessAllowed(gurl)) {
     InstawebHandler instaweb_handler(request);
     server_context->MessageHistoryHandler(
         *instaweb_handler.options(),

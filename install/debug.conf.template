@@ -1269,6 +1269,82 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_noned_shmm"
   </Directory>
 </VirtualHost>
 
+ModPagespeedMessagesDomains Allow messages-allowed.example.com
+ModPagespeedMessagesDomains Allow cleared-inherited.example.com
+ModPagespeedMessagesDomains Allow cleared-inherited-reallowed.example.com
+ModPagespeedMessagesDomains Allow more-messages-allowed.example.com
+ModPagespeedMessagesDomains Allow anything-*-wildcard.example.com
+ModPagespeedMessagesDomains Allow localhost
+
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName messages-allowed.example.com
+  ServerAlias messages-not-allowed.example.com
+  ServerAlias more-messages-allowed.example.com
+  ServerAlias anything-a-wildcard.example.com
+  ServerAlias anything-b-wildcard.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
+</VirtualHost>
+
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName messages-still-not-allowed.example.com
+  ServerAlias but-this-message-allowed.example.com
+  ServerAlias and-this-one.example.com
+  ModPagespeedMessagesDomains Allow but-this-message-allowed.example.com
+  ModPagespeedMessagesDomains Allow and-this-one.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
+</VirtualHost>
+
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName cleared-inherited.example.com
+  ServerAlias cleared-inherited-reallowed.example.com
+  ServerAlias messages-allowed-at-vhost.example.com
+  ServerAlias messages-not-allowed-at-vhost.example.com
+  ServerAlias anything-c-wildcard.example.com
+  ModPagespeedMessagesDomains Disallow *
+  ModPagespeedMessagesDomains Allow cleared-inherited-reallowed.example.com
+  ModPagespeedMessagesDomains Allow messages-allowed-at-vhost.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
+</VirtualHost>
+
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName cleared-inherited-unlisted.example.com
+
+  ModPagespeedMessagesDomains Allow *
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
+</VirtualHost>
+
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName nothing-allowed.example.com
+  ModPagespeedMessagesDomains Disallow *
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
+</VirtualHost>
+
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName nothing-explicitly-allowed.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
+</VirtualHost>
+
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName everything-explicitly-allowed.example.com
+  ServerAlias everything-explicitly-allowed-but-aliased.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
+
+  ModPagespeedStatisticsDomains Allow everything-explicitly-allowed.example.com
+  ModPagespeedGlobalStatisticsDomains \
+    Allow everything-explicitly-allowed.example.com
+  ModPagespeedMessagesDomains Allow everything-explicitly-allowed.example.com
+  ModPagespeedConsoleDomains Allow everything-explicitly-allowed.example.com
+  ModPagespeedAdminDomains Allow everything-explicitly-allowed.example.com
+  ModPagespeedGlobalAdminDomains Allow everything-explicitly-allowed.example.com
+</VirtualHost>
+
 #STATS_LOGGING ModPagespeedStatistics on
 #STATS_LOGGING ModPagespeedStatisticsLogging on
 #STATS_LOGGING ModPagespeedLogDir "@@MOD_PAGESPEED_LOG@@"

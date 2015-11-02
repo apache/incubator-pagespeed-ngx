@@ -113,9 +113,11 @@ enum VHostHandling {
 
 const char kModPagespeedIf[] = "<ModPagespeedIf";
 
+const char kModPagespeedAdminDomains[] = "ModPagespeedAdminDomains";
 const char kModPagespeedAllow[] = "ModPagespeedAllow";
 const char kModPagespeedBlockingRewriteRefererUrls[] =
     "ModPagespeedBlockingRewriteRefererUrls";
+const char kModPagespeedConsoleDomains[] = "ModPagespeedConsoleDomains";
 const char kModPagespeedCreateSharedMemoryMetadataCache[] =
     "ModPagespeedCreateSharedMemoryMetadataCache";
 const char kModPagespeedCustomFetchHeader[] = "ModPagespeedCustomFetchHeader";
@@ -135,6 +137,9 @@ const char kModPagespeedExperimentVariable[] = "ModPagespeedExperimentVariable";
 const char kModPagespeedExperimentSpec[] = "ModPagespeedExperimentSpec";
 const char kModPagespeedGeneratedFilePrefix[] =
     "ModPagespeedGeneratedFilePrefix";
+const char kModPagespeedGlobalAdminDomains[] = "ModPagespeedGlobalAdminDomains";
+const char kModPagespeedGlobalStatisticsDomains[] =
+    "ModPagespeedGlobalStatisticsDomains";
 const char kModPagespeedImageInlineMaxBytes[] =
     "ModPagespeedImageInlineMaxBytes";
 const char kModPagespeedImageMaxRewritesAtOnce[] =
@@ -155,6 +160,7 @@ const char kModPagespeedMapOriginDomain[] = "ModPagespeedMapOriginDomain";
 const char kModPagespeedMapProxyDomain[] = "ModPagespeedMapProxyDomain";
 const char kModPagespeedMapRewriteDomain[] = "ModPagespeedMapRewriteDomain";
 const char kModPagespeedMessageBufferSize[] = "ModPagespeedMessageBufferSize";
+const char kModPagespeedMessagesDomains[] = "ModPagespeedMessagesDomains";
 const char kModPagespeedNumExpensiveRewriteThreads[] =
     "ModPagespeedNumExpensiveRewriteThreads";
 const char kModPagespeedNumRewriteThreads[] = "ModPagespeedNumRewriteThreads";
@@ -165,6 +171,7 @@ const char kModPagespeedRunExperiment[] = "ModPagespeedRunExperiment";
 const char kModPagespeedShardDomain[] = "ModPagespeedShardDomain";
 const char kModPagespeedSpeedTracking[] = "ModPagespeedIncreaseSpeedTracking";
 const char kModPagespeedStaticAssetPrefix[] = "ModPagespeedStaticAssetPrefix";
+const char kModPagespeedStatisticsDomains[] = "ModPagespeedStatisticsDomains";
 const char kModPagespeedStatisticsLoggingFile[] =
     "ModPagespeedStatisticsLoggingFile";
 const char kModPagespeedTrackOriginalContentLength[] =
@@ -1740,6 +1747,18 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "<Allow|Disallow> filename_prefix"),
   APACHE_CONFIG_OPTION2(kModPagespeedLoadFromFileRuleMatch,
         "<Allow|Disallow> filename_regexp"),
+  APACHE_CONFIG_OPTION2(kModPagespeedStatisticsDomains,
+        "<Allow|Disallow> domain_wildcard"),
+  APACHE_CONFIG_OPTION2(kModPagespeedGlobalStatisticsDomains,
+        "<Allow|Disallow> domain_wildcard"),
+  APACHE_CONFIG_OPTION2(kModPagespeedMessagesDomains,
+        "<Allow|Disallow> domain_wildcard"),
+  APACHE_CONFIG_OPTION2(kModPagespeedConsoleDomains,
+        "<Allow|Disallow> domain_wildcard"),
+  APACHE_CONFIG_OPTION2(kModPagespeedAdminDomains,
+        "<Allow|Disallow> domain_wildcard"),
+  APACHE_CONFIG_OPTION2(kModPagespeedGlobalAdminDomains,
+        "<Allow|Disallow> domain_wildcard"),
 
   // All three parameter options that are allowed in <Directory> blocks.
   APACHE_CONFIG_DIR_OPTION3(kModPagespeedUrlValuedAttribute,

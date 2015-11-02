@@ -237,7 +237,7 @@ void SystemRewriteOptions::AddProperties() {
                     "authorized clients have access to this method.", false);
 
   AddSystemProperty("",
-                    &SystemRewriteOptions:: static_assets_to_cdn_,
+                    &SystemRewriteOptions::static_assets_to_cdn_,
                     "sacdn", kStaticAssetCDN, kProcessScopeStrict,
                     "Configures serving of helper scripts from external "
                     "URLs rather than from compiled-in versions via static "
@@ -370,6 +370,81 @@ void SystemRewriteOptions::FillInStaticAssetCDNConf(
     asset_out->set_debug_hash("dbg");
     asset_out->set_opt_hash("opt");
   }
+}
+
+void SystemRewriteOptions::Merge(const RewriteOptions& src) {
+  RewriteOptions::Merge(src);
+
+  const SystemRewriteOptions* ssrc = DynamicCast(&src);
+  CHECK(ssrc != NULL);
+
+  statistics_domains_.MergeOrShare(ssrc->statistics_domains_);
+  global_statistics_domains_.MergeOrShare(ssrc->global_statistics_domains_);
+  messages_domains_.MergeOrShare(ssrc->messages_domains_);
+  console_domains_.MergeOrShare(ssrc->console_domains_);
+  admin_domains_.MergeOrShare(ssrc->admin_domains_);
+  global_admin_domains_.MergeOrShare(ssrc->global_admin_domains_);
+}
+
+RewriteOptions::OptionSettingResult
+SystemRewriteOptions::ParseAndSetOptionFromName2(
+    StringPiece name, StringPiece arg1, StringPiece arg2,
+    GoogleString* msg, MessageHandler* handler) {
+
+  CopyOnWrite<FastWildcardGroup>* wildcard_group = NULL;
+  if (StringCaseEqual(name, "StatisticsDomains")) {
+    wildcard_group = &statistics_domains_;
+  } else if (StringCaseEqual(name, "GlobalStatisticsDomains")) {
+    wildcard_group = &global_statistics_domains_;
+  } else if (StringCaseEqual(name, "MessagesDomains")) {
+    wildcard_group = &messages_domains_;
+  } else if (StringCaseEqual(name, "ConsoleDomains")) {
+    wildcard_group = &console_domains_;
+  } else if (StringCaseEqual(name, "AdminDomains")) {
+    wildcard_group = &admin_domains_;
+  } else if (StringCaseEqual(name, "GlobalAdminDomains")) {
+    wildcard_group = &global_admin_domains_;
+  }
+  if (wildcard_group != NULL) {
+    FastWildcardGroup* mutable_wildcard_group = wildcard_group->MakeWriteable();
+    if (StringCaseEqual(arg1, "allow")) {
+      mutable_wildcard_group->Allow(arg2);
+    } else if (StringCaseEqual(arg1, "disallow")) {
+      mutable_wildcard_group->Disallow(arg2);
+    } else {
+      *msg = StrCat("expected 'allow' or 'disallow', got '", arg1, "'");
+      return RewriteOptions::kOptionValueInvalid;
+    }
+    return RewriteOptions::kOptionOk;
+  }
+
+  return RewriteOptions::ParseAndSetOptionFromName2(
+      name, arg1, arg2, msg, handler);
+}
+
+GoogleString SystemRewriteOptions::SubclassSignatureLockHeld() {
+  GoogleString out;
+  StrAppend(&out, "_", "SD:", statistics_domains_->Signature());
+  StrAppend(&out, "_", "GSD:", global_statistics_domains_->Signature());
+  StrAppend(&out, "_", "MD:", messages_domains_->Signature());
+  StrAppend(&out, "_", "CD:", console_domains_->Signature());
+  StrAppend(&out, "_", "AD:", admin_domains_->Signature());
+  StrAppend(&out, "_", "GAD:", global_admin_domains_->Signature());
+  return out;
+}
+
+bool SystemRewriteOptions::AllowDomain(
+    const GoogleUrl& url, const FastWildcardGroup& wildcard_group) const {
+  StringPiece host = url.Host();
+  if (host.empty()) {
+    DCHECK(false);
+    return false;
+  }
+  if (wildcard_group.empty()) {
+    return true;  // Allow unless they disallowed anything.
+  }
+  // Otherwise, allow only if this host is whitelisted.
+  return wildcard_group.Match(host.as_string(), false /* default deny */);
 }
 
 }  // namespace net_instaweb

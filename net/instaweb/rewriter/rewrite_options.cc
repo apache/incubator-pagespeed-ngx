@@ -4001,6 +4001,9 @@ void RewriteOptions::ComputeSignatureLockHeld() {
   // rejected_request_map_ is not added to rewrite options signature as this
   // should not affect rewriting and metadata or property cache lookups.
   StrAppend(&signature_, "OC:", override_caching_wildcard_->Signature(), "_");
+
+  StrAppend(&signature_, SubclassSignatureLockHeld());
+
   frozen_ = true;
 
   // TODO(jmarantz): Incorporate signature from file_load_policy.  However, the
