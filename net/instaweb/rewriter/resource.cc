@@ -32,11 +32,13 @@
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/string_writer.h"
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/http_names.h"  // for HttpAttributes, etc
 #include "pagespeed/kernel/http/http_options.h"
 #include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/response_headers.h"
+#include "pagespeed/kernel/util/gzip_inflater.h"
 
 namespace net_instaweb {
 
@@ -58,7 +60,8 @@ Resource::Resource(const RewriteDriver* driver, const ContentType* type)
       proactive_resource_freshening_(false),
       disable_rewrite_on_no_transform_(true),
       is_authorized_domain_(true),
-      respect_vary_(ResponseHeaders::kRespectVaryOnResources) {
+      respect_vary_(ResponseHeaders::kRespectVaryOnResources),
+      extracted_(false) {
 }
 
 Resource::Resource() : server_context_(NULL), type_(NULL),
@@ -69,7 +72,8 @@ Resource::Resource() : server_context_(NULL), type_(NULL),
                        proactive_resource_freshening_(false),
                        disable_rewrite_on_no_transform_(true),
                        is_authorized_domain_(true),
-                       respect_vary_(ResponseHeaders::kRespectVaryOnResources) {
+                       respect_vary_(ResponseHeaders::kRespectVaryOnResources),
+                       extracted_(false) {
 }
 
 Resource::~Resource() {
@@ -248,6 +252,9 @@ Resource::FreshenCallback::~FreshenCallback() {
 bool Resource::Link(HTTPValue* value, MessageHandler* handler) {
   DCHECK(UseHttpCache());
   SharedString* contents_and_headers = value->share();
+  // Invalidate extracted_contents_.
+  extracted_ = false;
+  extracted_contents_.clear();
   return value_.Link(contents_and_headers, &response_headers_, handler);
 }
 
@@ -259,7 +266,17 @@ void Resource::LinkFallbackValue(HTTPValue* value) {
 }
 
 StringPiece Resource::ExtractUncompressedContents() const {
-  return raw_contents();
+  ResponseHeaders headers;
+  if (!extracted_ && value_.ExtractHeaders(&headers, NULL)) {
+    if (headers.IsGzipped()) {
+      StringWriter inflate_writer(&extracted_contents_);
+      if (GzipInflater::Inflate(raw_contents(), GzipInflater::kGzip,
+                                &inflate_writer)) {
+        extracted_ = true;
+      }
+    }
+  }
+  return extracted_ ? extracted_contents_ : raw_contents();
 }
 
 void Resource::Freshen(FreshenCallback* callback, MessageHandler* handler) {

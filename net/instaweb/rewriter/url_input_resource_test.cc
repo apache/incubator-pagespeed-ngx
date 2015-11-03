@@ -55,6 +55,29 @@ class UrlInputResourceTest : public RewriteTestBase {
   // authorized domain or not. is_auth_domain_expected is only used when
   // is_authorized_domain is false, and it indicates whether the fetched URL's
   // domain is to be considered authorized after input resource creation or not.
+  void ResourceFetchHelper(const GoogleString& url,
+                           const GoogleString& fetch_url,
+                           const GoogleString& base_url,
+                           bool is_background_fetch,
+                           bool is_authorized_domain,
+                           bool is_auth_domain_expected,
+                           const ResourcePtr& resource,
+                           const GoogleString& expected_cache_key,
+                           const GoogleString& expected_referer,
+                           const RequestContextPtr& request_context) {
+    SetBaseUrlForFetch(base_url);
+    EXPECT_STREQ(url, resource->url());
+    EXPECT_STREQ(expected_cache_key, resource->cache_key());
+    resource->set_is_background_fetch(is_background_fetch);
+    MockResourceCallback cb(resource, factory()->thread_system());
+    resource->LoadAsync(Resource::kLoadEvenIfNotCacheable, request_context,
+                        &cb);
+    cb.Wait();
+    ASSERT_TRUE(cb.done());
+    ASSERT_TRUE(cb.success());
+    EXPECT_STREQ(expected_referer, mock_url_fetcher()->last_referer());
+  }
+
   void CheckResourceFetchHasReferer(const GoogleString& url,
                                     const GoogleString& fetch_url,
                                     const GoogleString& base_url,
@@ -64,21 +87,13 @@ class UrlInputResourceTest : public RewriteTestBase {
                                     const GoogleString& expected_cache_key,
                                     const GoogleString& expected_referer) {
     PrepareResourceFetch(fetch_url);
-    SetBaseUrlForFetch(base_url);
-    ResourcePtr resource(
-        new UrlInputResource(rewrite_driver(), &kContentTypeJpeg, url,
-                             is_authorized_domain));
-    EXPECT_STREQ(url, resource->url());
-    EXPECT_STREQ(expected_cache_key, resource->cache_key());
+    ResourcePtr resource(MakeUrlInputResource(url, is_authorized_domain));
     RequestContextPtr request_context(
         RequestContext::NewTestRequestContext(factory()->thread_system()));
-    resource->set_is_background_fetch(is_background_fetch);
-    MockResourceCallback cb(resource, factory()->thread_system());
-    resource->LoadAsync(Resource::kLoadEvenIfNotCacheable,
-                        request_context, &cb);
-    cb.Wait();
-    ASSERT_TRUE(cb.done());
-    ASSERT_TRUE(cb.success());
+    ResourceFetchHelper(url, fetch_url, base_url, is_background_fetch,
+                        is_authorized_domain, is_auth_domain_expected,
+                        resource, expected_cache_key, expected_referer,
+                        request_context);
     EXPECT_STREQ(expected_referer, mock_url_fetcher()->last_referer());
     if (!is_authorized_domain) {
       GoogleUrl tmp_url(fetch_url);
@@ -86,6 +101,30 @@ class UrlInputResourceTest : public RewriteTestBase {
                 request_context->IsSessionAuthorizedFetchOrigin(
                     tmp_url.Origin().as_string()));
     }
+  }
+
+  void CheckExtractedGzippedResource(const GoogleString& url,
+                                     const GoogleString& fetch_url,
+                                     const GoogleString& base_url,
+                                     bool is_background_fetch,
+                                     bool is_authorized_domain,
+                                     bool is_auth_domain_expected,
+                                     const GoogleString& expected_cache_key,
+                                     const GoogleString& expected_referer) {
+    const char kHello[] = "hello";
+    const char kHelloGzip[] =
+        "\x1f\x8b\x08\x08\x64\x7d\x33\x56\x00\x03\x68\x65\x6c\x6c\x6f\x00\xcb"
+        "\x48\xcd\xc9\xc9\x07\x00\x86\xa6\x10\x36\x05\x00\x00\x00";
+    StringPiece payload(kHelloGzip, sizeof(kHelloGzip));
+    PrepareGzippedResourceFetch(fetch_url, payload);
+    ResourcePtr resource(MakeUrlInputResource(url, is_authorized_domain));
+    RequestContextPtr request_context(
+        RequestContext::NewTestRequestContext(factory()->thread_system()));
+     ResourceFetchHelper(
+        url, fetch_url, base_url, is_background_fetch, is_authorized_domain,
+        is_auth_domain_expected, resource, expected_cache_key, expected_referer,
+        request_context);
+    EXPECT_STREQ(kHello, resource->ExtractUncompressedContents());
   }
 
   UrlInputResource* MakeUrlInputResource(const GoogleString& url,
@@ -100,7 +139,19 @@ class UrlInputResourceTest : public RewriteTestBase {
     DefaultResponseHeaders(kContentTypeJpeg, 100, &response_headers);
     SetFetchResponse(AbsolutifyUrl(resource_url), response_headers, "payload");
   }
+
+  void PrepareGzippedResourceFetch(const GoogleString& resource_url,
+                                   StringPiece payload) {
+    mock_url_fetcher()->set_verify_pagespeed_header_off(true);
+    ResponseHeaders response_headers;
+    DefaultResponseHeaders(kContentTypeJpeg, 100, &response_headers);
+    response_headers.Add(HttpAttributes::kContentEncoding,
+                         HttpAttributes::kGzip);
+    SetFetchResponse(AbsolutifyUrl(resource_url), response_headers, payload);
+  }
 };
+
+
 
 
 // Test of referer (BackgroundFetch): When the resource fetching request header
@@ -113,14 +164,23 @@ TEST_F(UrlInputResourceTest, TestBackgroundFetchRefererSameDomain) {
                                url, kTestDomain);
 }
 
+// Test extraction of gzipped resource.
+TEST_F(UrlInputResourceTest, TestExtractGzippedResource) {
+  GoogleString url = "http://other.com/1.txt";
+  CheckExtractedGzippedResource(
+      url, url, kTestDomain, true /* is_background_fetch */,
+      false /* is_authorized_domain */, true /* is_auth_domain_expected */,
+      "unauth://other.com/1.txt", kTestDomain);
+}
+
 // Test of referer (BackgroundFetch): When the resource fetching request header
 // misses referer, we set the referer for it. Base url and resource url are
 // different.
 TEST_F(UrlInputResourceTest, TestBackgroundFetchRefererDomain) {
   GoogleString url = "http://other.com/1.jpg";
-  CheckResourceFetchHasReferer(url, url, kTestDomain,
-                               true, true, kUnusedBoolArg,
-                               url, kTestDomain);
+  CheckResourceFetchHasReferer(url, url, kTestDomain, true, true,
+                               kUnusedBoolArg, url,
+                               kTestDomain);
 }
 
 // Test of referer (NonBackgroundFetch): When the resource fetching request

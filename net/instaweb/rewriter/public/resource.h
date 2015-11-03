@@ -344,6 +344,8 @@ class Resource : public RefCounted<Resource> {
   bool disable_rewrite_on_no_transform_;
   bool is_authorized_domain_;
   ResponseHeaders::VaryOption respect_vary_;
+  mutable GoogleString extracted_contents_;
+  mutable bool extracted_;
 
   DISALLOW_COPY_AND_ASSIGN(Resource);
 };
