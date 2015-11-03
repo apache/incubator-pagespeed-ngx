@@ -192,7 +192,7 @@ bool ApacheFetch::HandleWrite(const StringPiece& sp, MessageHandler* handler) {
     }
   }
   handler->Message(kWarning,
-                   "Write of %ld bytes for url %s received after "
+                   "Write of %zu bytes for url %s received after "
                    "being abandoned for timing out.",
                    sp.size(), mapped_url_.c_str());
   return false;  // Drop the write.
