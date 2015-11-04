@@ -157,7 +157,7 @@ class CssCombineFilter::CssCombiner : public ResourceCombiner {
     return &kContentTypeCss;
   }
 
-  virtual bool WritePiece(int index, const Resource* input,
+  virtual bool WritePiece(int index, int num_pieces, const Resource* input,
                           OutputResource* combination, Writer* writer,
                           MessageHandler* handler);
 
@@ -490,8 +490,8 @@ void CssCombineFilter::Flush() {
 }
 
 bool CssCombineFilter::CssCombiner::WritePiece(
-    int index, const Resource* input, OutputResource* combination,
-    Writer* writer, MessageHandler* handler) {
+    int index, int num_pieces, const Resource* input,
+    OutputResource* combination, Writer* writer, MessageHandler* handler) {
   StringPiece contents = input->ExtractUncompressedContents();
   GoogleUrl input_url(input->url());
   // Strip the BOM off of the contents (if it's there) if this is not the
@@ -504,6 +504,12 @@ bool CssCombineFilter::CssCombiner::WritePiece(
       input_url, combination->resolved_base(), contents, writer, handler)) {
     case RewriteDriver::kNoResolutionNeeded:
       ret = writer->Write(contents, handler);
+      if (ret && (index != (num_pieces - 1)) && !contents.ends_with("\n")) {
+        // Ensure that we add a new line at the end, to make sure that any
+        // unopened strings get closed in a predictable manner. (Not needed
+        // for last piece since it will be terminated by EOF).
+        ret = writer->Write("\n", handler);
+      }
       break;
     case RewriteDriver::kWriteFailed:
       break;
