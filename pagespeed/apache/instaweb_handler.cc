@@ -372,8 +372,10 @@ void InstawebHandler::RemoveStrippedResponseHeadersFromApacheRequest() {
       ResponseHeaders tmp_err_resp_headers(options_->ComputeHttpOptions());
       ResponseHeaders tmp_resp_headers(options_->ComputeHttpOptions());
       ThreadSystem* thread_system = server_context_->thread_system();
-      ApacheConfig unused_opts1("unused_options1", thread_system),
-          unused_opts2("unused_options2", thread_system);
+      scoped_ptr<ApacheConfig> unused_opts1(
+          new ApacheConfig("unused_options1", thread_system));
+      scoped_ptr<ApacheConfig> unused_opts2(
+          new ApacheConfig("unused_options2", thread_system));
 
       ApacheRequestToResponseHeaders(*request_, &tmp_resp_headers,
                                      &tmp_err_resp_headers);
@@ -387,14 +389,14 @@ void InstawebHandler::RemoveStrippedResponseHeadersFromApacheRequest() {
                                null_request_context,
                                &tmp_err_resp_headers,
                                NULL /* device_properties */,
-                               &unused_opts1,
+                               unused_opts1.get(),
                                server_context_->message_handler());
       RewriteQuery::ScanHeader(true /* enable options */,
                                "" /* request option override */,
                                null_request_context,
                                &tmp_resp_headers,
                                NULL /* device_properties */,
-                               &unused_opts2,
+                               unused_opts2.get(),
                                server_context_->message_handler());
 
       // Write the stripped headers back to the Apache record.
