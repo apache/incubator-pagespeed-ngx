@@ -295,12 +295,12 @@ class CombiningFilter : public RewriteFilter {
       return WriteCombination(in, out, rewrite_driver_->message_handler());
     }
 
-    virtual bool WritePiece(int index, const Resource* input,
+    virtual bool WritePiece(int index, int num_pieces, const Resource* input,
                             OutputResource* combination,
                             Writer* writer, MessageHandler* handler) {
       writer->Write(prefix_, handler);
       return ResourceCombiner::WritePiece(
-          index, input, combination, writer, handler);
+          index, num_pieces, input, combination, writer, handler);
     }
 
     void set_prefix(const GoogleString& prefix) { prefix_ = prefix; }

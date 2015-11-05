@@ -908,7 +908,7 @@ TEST_F(CssCombineFilterTest, StripBomReconstruct) {
              MultiUrl(kCssA, kCssB), "css");
   GoogleString css_out;
   EXPECT_TRUE(FetchResourceUrl(css_url, &css_out));
-  EXPECT_EQ(StrCat(kUtf8Bom, kCssText, kCssText), css_out);
+  EXPECT_EQ(StrCat(kUtf8Bom, kCssText, "\n", kCssText), css_out);
 }
 
 TEST_F(CssCombineFilterTest, CombineCssWithNoscriptBarrier) {
@@ -1348,7 +1348,7 @@ TEST_F(CssCombineFilterTest, CrossAcrossPathsExceedingUrlSize) {
   ResourceNamer namer;
   ASSERT_TRUE(rewrite_driver()->Decode(gurl.LeafWithQuery(), &namer));
   EXPECT_EQ("a.css+b.css", namer.name());
-  EXPECT_EQ(StrCat(kYellow, kBlue), actual_combination);
+  EXPECT_EQ(StrCat(kYellow, "\n", kBlue), actual_combination);
 }
 
 // Verifies that we don't allow path-crossing URLs if that option is turned off.
@@ -1382,7 +1382,7 @@ TEST_F(CssCombineFilterTest, CrossMappedDomain) {
   EXPECT_EQ(Encode("http://a.com/", RewriteOptions::kCssCombinerId, "0",
                    MultiUrl("1.css", "2.css"), "css"),
             css_out[0]->url_);
-  EXPECT_EQ(StrCat(kYellow, kBlue), actual_combination);
+  EXPECT_EQ(StrCat(kYellow, "\n", kBlue), actual_combination);
 }
 
 // Verifies that we cannot do the same cross-domain combo when we lack
@@ -1532,6 +1532,33 @@ TEST_F(CssCombineFilterTest, NoCombineParseErrorUnclosedImport) {
 
   ValidateNoChanges("bad_parse", StrCat(CssLinkHref("a.css"),
                                         CssLinkHref("b.css")));
+}
+
+TEST_F(CssCombineFilterTest, RobustnessUnclosedString) {
+  // Make sure we are robust against something with unterminated string.
+  SetResponseWithDefaultHeaders("a.css", kContentTypeCss,
+                                "q::before {padding: 0px; \"content: foo;}",
+                                100);
+  SetResponseWithDefaultHeaders("b.css", kContentTypeCss,
+                                "h2 { color: blue; }", 100);
+
+  // No combination would also be a valid outcome.
+  GoogleString combined_url =
+      Encode("", RewriteOptions::kCssCombinerId, "0",
+             MultiUrl("a.css", "b.css"), "css");
+
+  ValidateExpected("unterm_str",
+                   StrCat(CssLinkHref("a.css"), CssLinkHref("b.css")),
+                   StrCat("<link rel=stylesheet href=", combined_url,
+                          " />"));
+
+  GoogleString out;
+  EXPECT_TRUE(FetchResourceUrl(StrCat(kTestDomain, combined_url),  &out));
+  // The key thing here is the newline after first fragment, which means the
+  // " will get closed right there by error recovery, rather than extending
+  // into the next file.
+  EXPECT_EQ("q::before {padding: 0px; \"content: foo;}\nh2 { color: blue; }",
+            out);
 }
 
 // See: http://www.alistapart.com/articles/alternate/

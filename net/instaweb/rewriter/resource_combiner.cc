@@ -261,7 +261,8 @@ bool ResourceCombiner::WriteCombination(
   StringWriter writer(&combined_contents);
   for (int i = 0, n = combine_resources.size(); written && (i < n); ++i) {
     ResourcePtr input(combine_resources[i]);
-    written = WritePiece(i, input.get(), combination.get(), &writer, handler);
+    written = WritePiece(i, n, input.get(),
+                         combination.get(), &writer, handler);
   }
   if (written) {
     // Intersect the response headers from each input.
@@ -289,6 +290,7 @@ bool ResourceCombiner::WriteCombination(
 }
 
 bool ResourceCombiner::WritePiece(int index,
+                                  int num_pieces,
                                   const Resource* input,
                                   OutputResource* /*combination*/,
                                   Writer* writer,

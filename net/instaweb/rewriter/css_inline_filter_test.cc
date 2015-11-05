@@ -428,7 +428,7 @@ TEST_F(CssInlineFilterTest, InlineCombined) {
   GoogleString html_input =
       StrCat("<link rel=stylesheet href=\"", kCssUrl, "\">",
              "<link rel=stylesheet href=\"", kCssUrl, "\">");
-  GoogleString html_output = StrCat("<style>", kCss, kCss, "</style>");
+  GoogleString html_output = StrCat("<style>", kCss, "\n", kCss, "</style>");
 
   ValidateExpected("inline_combined", html_input, html_output);
   ValidateExpected("inline_combined", html_input, html_output);

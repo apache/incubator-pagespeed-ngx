@@ -183,7 +183,7 @@ class JsCombineFilter::JsCombiner : public ResourceCombiner {
     return &kContentTypeJavascript;
   }
 
-  virtual bool WritePiece(int index, const Resource* input,
+  virtual bool WritePiece(int index, int num_pieces, const Resource* input,
                           OutputResource* combination, Writer* writer,
                           MessageHandler* handler);
 
@@ -450,8 +450,8 @@ class JsCombineFilter::Context : public RewriteContext {
 };
 
 bool JsCombineFilter::JsCombiner::WritePiece(
-    int index, const Resource* input, OutputResource* combination,
-    Writer* writer, MessageHandler* handler) {
+    int index, int num_pieces, const Resource* input,
+    OutputResource* combination, Writer* writer, MessageHandler* handler) {
   // Minify if needed.
   StringPiece not_escaped = input->ExtractUncompressedContents();
 
