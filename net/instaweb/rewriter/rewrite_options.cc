@@ -3302,7 +3302,14 @@ RewriteOptions::OptionSettingResult RewriteOptions::ParseAndSetOptionFromName2(
   } else if (StringCaseEqual(name, kMapRewriteDomain)) {
     WriteableDomainLawyer()->AddRewriteDomainMapping(arg1, arg2, handler);
   } else if (StringCaseEqual(name, kShardDomain)) {
-    WriteableDomainLawyer()->AddShard(arg1, arg2, handler);
+    if (!arg2.empty()) {
+      // We allow people to put:
+      //   pagespeed ShardDomain domain_to_shard "";
+      // because we want people to be able to use script variables in nginx to
+      // disable domain sharding with spdy/http2.
+      // See pagespeed/module/https_support#h2_configuration_nginx
+      WriteableDomainLawyer()->AddShard(arg1, arg2, handler);
+    }
   } else {
     result = RewriteOptions::kOptionNameUnknown;
   }
