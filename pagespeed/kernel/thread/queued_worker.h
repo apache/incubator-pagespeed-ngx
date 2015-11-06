@@ -48,11 +48,6 @@ class QueuedWorker : public Worker {
   // Takes ownership of the closure.
   void RunInWorkThread(Function* closure);
 
-  // Issue a TimedWait on the specified condition variable.  In a mock-time
-  // world, this queues a time-advancement closure on the worker, and then
-  // blocks waiting for the work-queue to be drained.
-  void TimedWait(ThreadSystem::Condvar* condvar, int64 timeout_ms);
-
  private:
   virtual bool IsPermitted(Function* closure);
 
