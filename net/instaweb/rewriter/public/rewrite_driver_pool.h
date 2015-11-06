@@ -49,6 +49,11 @@ class RewriteDriverPool  {
  private:
   std::vector<RewriteDriver*> drivers_;
 
+  // Don't allow more than this many drivers in the pool. The pool is an
+  // optimisation to save the cost of constructing a RewriteDriver, but keeping
+  // a lot of them lying around winds up wasting a lot of memory instead.
+  static const int kMaxDriversInPool = 50;
+
   DISALLOW_COPY_AND_ASSIGN(RewriteDriverPool);
 };
 

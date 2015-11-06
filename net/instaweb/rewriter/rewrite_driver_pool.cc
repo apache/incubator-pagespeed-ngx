@@ -23,6 +23,8 @@
 
 namespace net_instaweb {
 
+const int RewriteDriverPool::kMaxDriversInPool;
+
 RewriteDriverPool::RewriteDriverPool() {}
 
 RewriteDriverPool::~RewriteDriverPool() {
@@ -39,8 +41,12 @@ RewriteDriver* RewriteDriverPool::PopDriver() {
 }
 
 void RewriteDriverPool::RecycleDriver(RewriteDriver* driver) {
-  drivers_.push_back(driver);
-  driver->Clear();
+  if (drivers_.size() < kMaxDriversInPool) {
+    drivers_.push_back(driver);
+    driver->Clear();
+  } else {
+    delete driver;
+  }
 }
 
 }  // namespace net_instaweb
