@@ -702,10 +702,12 @@ TEST_F(RewriteDriverTest, TestCacheUseOnTheFly) {
   int cold_num_inserts = lru_cache()->num_inserts();
   EXPECT_EQ(2, cold_num_inserts);
 
-  // Warm load. This one re-inserts in the rname entry, without changing it.
+  // Warm load. This one does a read-check to avoid a re-inserts in the
+  // rname entry.
   EXPECT_TRUE(TryFetchResource(cache_extended_url));
   EXPECT_EQ(cold_num_inserts, lru_cache()->num_inserts());
-  EXPECT_EQ(1, lru_cache()->num_identical_reinserts());
+  EXPECT_EQ(2, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
 }
 
 // Verifies that the computed rewrite delay agrees with expectations
@@ -766,10 +768,12 @@ TEST_F(RewriteDriverTest, TestCacheUseOnTheFlyWithInvalidation) {
   int cold_num_inserts = lru_cache()->num_inserts();
   EXPECT_EQ(2, cold_num_inserts);
 
-  // Warm load. This one re-inserts in the rname entry, without changing it.
+  // Warm load. This one does a read-check to avoid a re-inserts in the
+  // rname entry.
   EXPECT_TRUE(TryFetchResource(cache_extended_url));
   EXPECT_EQ(cold_num_inserts, lru_cache()->num_inserts());
-  EXPECT_EQ(1, lru_cache()->num_identical_reinserts());
+  EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
+  EXPECT_EQ(2, lru_cache()->num_hits());
 
   // Set cache invalidation timestamp (to now, so that response date header is
   // in the "past") and load.

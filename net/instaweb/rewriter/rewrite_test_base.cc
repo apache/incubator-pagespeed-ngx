@@ -607,8 +607,13 @@ void RewriteTestBase::TestServeFiles(
   EXPECT_EQ(0U, lru_cache()->num_hits());
   EXPECT_TRUE(FetchResource(kTestDomain, filter_id,
                             rewritten_name, rewritten_ext, &content));
+  RewriteFilter* filter = rewrite_driver_->FindFilter(filter_id);
   if (lru_cache()->IsHealthy()) {
-    EXPECT_EQ(1U, lru_cache()->num_hits());
+    if (filter->ComputeOnTheFly()) {
+      EXPECT_EQ(2U, lru_cache()->num_hits());
+    } else {
+      EXPECT_EQ(1U, lru_cache()->num_hits());
+    }
   }
   EXPECT_STREQ(rewritten_content, content);
 
@@ -621,7 +626,6 @@ void RewriteTestBase::TestServeFiles(
   EXPECT_EQ(rewritten_content, content);
 
   // Now we expect the cache entry to be there.
-  RewriteFilter* filter = rewrite_driver_->FindFilter(filter_id);
   if (!filter->ComputeOnTheFly() && lru_cache()->IsHealthy()) {
     HTTPValue value;
     ResponseHeaders response_headers;

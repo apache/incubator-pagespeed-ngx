@@ -986,8 +986,8 @@ TEST_F(RewriteContextTest, TrimFetchOnTheFly) {
                             "a.css", "css", &content));
   EXPECT_EQ("a", content);
   EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(1, lru_cache()->num_misses());   // 1 because output is not saved
-  EXPECT_EQ(2, lru_cache()->num_inserts());  // input, metadata
+  EXPECT_EQ(2, lru_cache()->num_misses());   // output + metadata.
+  EXPECT_EQ(2, lru_cache()->num_inserts());  // input + metadata.
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   ClearStats();
   content.clear();
@@ -997,7 +997,7 @@ TEST_F(RewriteContextTest, TrimFetchOnTheFly) {
       kTestDomain, TrimWhitespaceRewriter::kFilterId, "a.css", "css",
       &content));
   EXPECT_EQ("a", content);
-  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(2, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
@@ -1303,7 +1303,7 @@ TEST_F(RewriteContextTest, FetchUncacheableWithRewritesInLineOfServing) {
                             &content));
   EXPECT_EQ("a", content);
   EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(1, lru_cache()->num_misses());
+  EXPECT_EQ(2, lru_cache()->num_misses());
   EXPECT_EQ(2, lru_cache()->num_inserts());  // name mapping & uncacheable memo
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
 
@@ -1318,7 +1318,7 @@ TEST_F(RewriteContextTest, FetchUncacheableWithRewritesInLineOfServing) {
                               "css",
                               &content));
     EXPECT_EQ("a", content);
-    EXPECT_EQ(1, lru_cache()->num_hits());
+    EXPECT_EQ(2, lru_cache()->num_hits());
     EXPECT_EQ(0, lru_cache()->num_misses());
     EXPECT_EQ(0, lru_cache()->num_inserts());
     EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
@@ -1348,7 +1348,7 @@ TEST_F(RewriteContextTest, FetchUncacheableWithRewritesInLineOfServing) {
                               "css",
                               &content));
     EXPECT_EQ("b", content);
-    EXPECT_EQ(1, lru_cache()->num_hits());
+    EXPECT_EQ(2, lru_cache()->num_hits());
     EXPECT_EQ(0, lru_cache()->num_misses());
     EXPECT_EQ(0, lru_cache()->num_inserts());
     EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
@@ -1364,7 +1364,7 @@ TEST_F(RewriteContextTest, FetchUncacheableWithRewritesInLineOfServing) {
                             "css",
                             &content));
   EXPECT_EQ("b", content);
-  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(2, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(2, lru_cache()->num_inserts());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
@@ -1669,7 +1669,7 @@ TEST_F(RewriteContextTest, CacheControlWithMultipleInputResources) {
   EXPECT_EQ(" a b a ", content);
 
   EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(3, lru_cache()->num_misses());   // 3 inputs.
+  EXPECT_EQ(4, lru_cache()->num_misses());   // 3 inputs.
   EXPECT_EQ(4, lru_cache()->num_inserts()) <<
       "partition, 2 inputs, 1 non-cacheability note";
   EXPECT_EQ(3, counting_url_async_fetcher()->fetch_count());
@@ -1771,7 +1771,7 @@ TEST_F(RewriteContextTest, CacheControlWithMultipleInputResourcesAndNoStore) {
   EXPECT_EQ(" a b a  a ", content);
 
   EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(4, lru_cache()->num_misses());   // 4 inputs.
+  EXPECT_EQ(5, lru_cache()->num_misses());   // 4 inputs + metadata.
   EXPECT_EQ(5, lru_cache()->num_inserts())
       << "partition, 2 inputs, 2 non-cacheability notes";
   EXPECT_EQ(4, counting_url_async_fetcher()->fetch_count());
@@ -2057,8 +2057,9 @@ TEST_F(RewriteContextTest, FetchColdCacheOnTheFlyNotFound) {
   EXPECT_FALSE(FetchResource(kTestDomain, TrimWhitespaceRewriter::kFilterId,
                              "a.css", "css", &content));
   EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(1, lru_cache()->num_misses());
+  EXPECT_EQ(2, lru_cache()->num_misses());
   EXPECT_EQ(2, lru_cache()->num_inserts());  // fetch failure, metadata.
+  EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   ClearStats();
 
@@ -2066,9 +2067,10 @@ TEST_F(RewriteContextTest, FetchColdCacheOnTheFlyNotFound) {
   // that this resource is not fetchable.
   EXPECT_FALSE(FetchResource(kTestDomain, TrimWhitespaceRewriter::kFilterId,
                              "a.css", "css", &content));
-  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(2, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());  // We "remember" the fetch failure
+  EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
 }
 

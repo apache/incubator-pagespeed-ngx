@@ -571,6 +571,46 @@ class RewriteContext::OutputCacheCallback : public CacheInterface::Callback {
   scoped_ptr<CacheLookupResult> cache_result_;
 };
 
+// When serving on-the-fly resources, our system rewrites the metadata
+// cache entry on each request, which is necessary if during the
+// serving we've detected any expirations or cache mismatches.  To reduce
+// the number of cache-writes (which may write-through an L1 to a slower L2),
+// we first read the existing entry (possibly from L1) and compare it to what
+// we intend to write.
+//
+// This callback manages that flow.
+class RewriteContext::WriteIfChanged : public CacheInterface::Callback {
+ public:
+  // Reads value of key in cache, checking against *val.  If different,
+  // *val is put back into the cache.
+  //
+  // Note that *val will be cleared at the call-site (by swapping with an empty
+  // string) when this call is made.
+  static void ReadCheckAndWrite(const GoogleString& key, GoogleString* val,
+                                CacheInterface* cache) {
+    cache->Get(key, new WriteIfChanged(key, val, cache));
+  }
+
+  virtual void Done(CacheInterface::KeyState state) {
+    if ((state != CacheInterface::kAvailable) || (value()->Value() != value_)) {
+      cache_->PutSwappingString(key_, &value_);
+    }
+    delete this;
+  }
+
+ private:
+  WriteIfChanged(const GoogleString& key, GoogleString* value,
+                 CacheInterface* cache)
+      : key_(key),
+        cache_(cache) {
+    value_.swap(*value);
+  }
+
+  const GoogleString key_;
+  GoogleString value_;
+  CacheInterface* cache_;
+};
+
 // Like OutputCacheCallback but forwarding info to an external user rather
 // than to RewriteContext
 class RewriteContext::LookupMetadataForOutputResourceCallback
@@ -2162,7 +2202,16 @@ void RewriteContext::WritePartition() {
         StringOutputStream sstream(&buf);  // finalizes buf in destructor
         partitions_->SerializeToZeroCopyStream(&sstream);
       }
-      metadata_cache->PutSwappingString(partition_key_, &buf);
+
+      // Unchanged on-the-fly resources usually have their metadata
+      // rewritten needlessly on fetches, so in that case do a Read
+      // first and check whether the new bits are any different, as in
+      // most cases a read is cheaper than a write.
+      if (IsFetchRewrite() && (kind() == kOnTheFlyResource)) {
+        WriteIfChanged::ReadCheckAndWrite(partition_key_, &buf, metadata_cache);
+      } else {
+        metadata_cache->PutSwappingString(partition_key_, &buf);
+      }
     }
   } else {
     // TODO(jmarantz): if our rewrite failed due to lock contention or
@@ -3163,6 +3212,11 @@ MessageHandler* RewriteContext::fetch_message_handler() {
 
 int64 RewriteContext::GetRewriteDeadlineAlarmMs() const {
   return Driver()->rewrite_deadline_ms();
+}
+
+bool RewriteContext::CreationLockBeforeStartFetch() const {
+  // Don't take rewrite-locks for on-the-fly resources.
+  return (kind() != kOnTheFlyResource);
 }
 
 namespace {

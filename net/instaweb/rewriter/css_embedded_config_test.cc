@@ -102,7 +102,12 @@ class CssEmbeddedConfigTest : public CssRewriteTestBase {
     ResponseHeaders image_headers;
     GoogleString image;
     EXPECT_TRUE(FetchResourceUrl(image_url, &image, &image_headers));
-    EXPECT_EQ(1, lru_cache()->num_hits());
+    bool is_on_the_fly = image_url.find(".ce.") != StringPiece::npos;
+    if (is_on_the_fly) {
+      EXPECT_EQ(2, lru_cache()->num_hits());
+    } else {
+      EXPECT_EQ(1, lru_cache()->num_hits());
+    }
     EXPECT_EQ(0, lru_cache()->num_misses());
     return image;
   }

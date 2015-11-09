@@ -2476,7 +2476,7 @@ TEST_F(ProxyInterfaceTest, UncacheableResourcesNotCachedOnResourceFetch) {
   EXPECT_EQ("a", out_text);
   EXPECT_EQ(1, lru_cache()->num_hits());  // input uncacheable memo
   EXPECT_EQ(0, http_cache()->cache_hits()->Get());
-  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(1, lru_cache()->num_misses());
   EXPECT_EQ(1, http_cache()->cache_misses()->Get());  // input uncacheable memo
   EXPECT_EQ(1, lru_cache()->num_inserts());  // mapping
   EXPECT_EQ(1, lru_cache()->num_identical_reinserts());  // uncacheable memo
@@ -2492,13 +2492,12 @@ TEST_F(ProxyInterfaceTest, UncacheableResourcesNotCachedOnResourceFetch) {
                  false  /* proxy_fetch_property_callback_collector_created */);
   EXPECT_TRUE(out_headers.HasValue(HttpAttributes::kCacheControl, "private"));
   EXPECT_EQ("a", out_text);
-  EXPECT_EQ(1, lru_cache()->num_hits());  // uncacheable memo
+  EXPECT_EQ(2, lru_cache()->num_hits());  // uncacheable memo & modified check
   EXPECT_EQ(0, http_cache()->cache_hits()->Get());
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(1, http_cache()->cache_misses()->Get());  // uncacheable memo
   EXPECT_EQ(0, lru_cache()->num_inserts());
-  EXPECT_EQ(2, lru_cache()->num_identical_reinserts())
-      << "uncacheable memo, metadata";
+  EXPECT_EQ(1, lru_cache()->num_identical_reinserts()) << "uncacheable memo";
   EXPECT_EQ(1, http_cache()->cache_inserts()->Get());  // uncacheable memo
 
   // Since the original response is not cached, we should pick up changes in the
@@ -2514,14 +2513,13 @@ TEST_F(ProxyInterfaceTest, UncacheableResourcesNotCachedOnResourceFetch) {
                  false  /* proxy_fetch_property_callback_collector_created */);
   EXPECT_TRUE(out_headers.HasValue(HttpAttributes::kCacheControl, "private"));
   EXPECT_EQ("b", out_text);
-  EXPECT_EQ(1, lru_cache()->num_hits());  // uncacheable memo
+  EXPECT_EQ(2, lru_cache()->num_hits());  // uncacheable memo & modified-check
   EXPECT_EQ(0, http_cache()->cache_hits()->Get());
   EXPECT_EQ(0, lru_cache()->num_misses());
-  EXPECT_EQ(1, http_cache()->cache_misses()->Get());  // uncacheable memo
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get()) << "uncacheable memo";
   EXPECT_EQ(0, lru_cache()->num_inserts());
-  EXPECT_EQ(2, lru_cache()->num_identical_reinserts())
-      << "uncacheable memo, metadata";
-  EXPECT_EQ(1, http_cache()->cache_inserts()->Get());  // uncacheable memo
+  EXPECT_EQ(1, lru_cache()->num_identical_reinserts()) << "uncacheable memo";
+  EXPECT_EQ(1, http_cache()->cache_inserts()->Get()) << "uncacheable memo";
 }
 
 // No matter what options->respect_vary() is set to we will respect HTML Vary
