@@ -645,6 +645,9 @@ TEST_F(MobilizeRewriteEndToEndTest, FullPage) {
   ValidateWithUA("EndToEndMobile",
                  UserAgentMatcherTestBase::kAndroidChrome21UserAgent,
                  original_buffer, rewritten_buffer);
+  ValidateWithUA("EndToEndMobile",
+                 UserAgentMatcherTestBase::kGoogleAdsBotMobileUserAgent,
+                 original_buffer, rewritten_buffer);
 }
 
 TEST_F(MobilizeRewriteEndToEndTest, NonMobile) {
@@ -655,8 +658,11 @@ TEST_F(MobilizeRewriteEndToEndTest, NonMobile) {
       StrCat(GTestSrcDir(), kTestDataDir, kOriginal);
   ASSERT_TRUE(filesystem_.ReadFile(original_filename.c_str(), &original_buffer,
                                    message_handler()));
-  ValidateWithUA("EndToEndNonMobile",
+  ValidateWithUA("NonMobile",
                  UserAgentMatcherTestBase::kChrome37UserAgent,
+                 original_buffer, original_buffer);
+  ValidateWithUA("NonMobile",
+                 UserAgentMatcherTestBase::kGoogleAdsBotUserAgent,
                  original_buffer, original_buffer);
 }
 

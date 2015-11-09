@@ -66,6 +66,8 @@ class UserAgentMatcherTestBase : public testing::Test {
   static const char kFLYUserAgent[];
   static const char kGenericAndroidUserAgent[];
   static const char kGooglebotUserAgent[];
+  static const char kGoogleAdsBotUserAgent[];
+  static const char kGoogleAdsBotMobileUserAgent[];
   static const char kGooglePlusUserAgent[];
   static const char kIe6UserAgent[];
   static const char kIe7UserAgent[];
@@ -170,6 +172,7 @@ class UserAgentMatcherTestBase : public testing::Test {
   void VerifyGetDeviceTypeForUA();
   void VerifyImageInliningSupport();
   void VerifySplitHtmlSupport();
+  void VerifyMobilizationSupport();
 
  protected:
   scoped_ptr<UserAgentMatcher> user_agent_matcher_;

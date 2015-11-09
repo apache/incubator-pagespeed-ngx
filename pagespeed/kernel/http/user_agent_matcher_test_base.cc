@@ -124,6 +124,12 @@ const char UserAgentMatcherTestBase::kGenericAndroidUserAgent[] =
     "Android";
 const char UserAgentMatcherTestBase::kGooglebotUserAgent[] =
     "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)";
+// Google ads bot user agents, used to check ads policy compliance.
+// See https://support.google.com/adwords/answer/2404197?hl=en#exclude
+const char UserAgentMatcherTestBase::kGoogleAdsBotUserAgent[] =
+    "AdsBot-Google";
+const char UserAgentMatcherTestBase::kGoogleAdsBotMobileUserAgent[] =
+    "AdsBot-Google-Mobile";
 const char UserAgentMatcherTestBase::kGooglePlusUserAgent[] =
     "Mozilla/5.0 (Windows NT 6.1; rv:6.0) Gecko/20110814 Firefox/6.0 Google "
     "(+https://developers.google.com/+/web/snippet/)";
@@ -376,6 +382,7 @@ const char* const UserAgentMatcherTestBase::kMobileUserAgents[] = {
   UserAgentMatcherTestBase::kSoftBankMobileUserAgent,
   UserAgentMatcherTestBase::kVodafoneMobileUserAgent,
   UserAgentMatcherTestBase::kZTEMobileUserAgent,
+  UserAgentMatcherTestBase::kGoogleAdsBotMobileUserAgent
 };
 
 const char* const UserAgentMatcherTestBase::kDesktopUserAgents[] = {
@@ -404,6 +411,7 @@ const char* const UserAgentMatcherTestBase::kDesktopUserAgents[] = {
   UserAgentMatcherTestBase::kTIANYUUserAgent,
   UserAgentMatcherTestBase::kWinWAPUserAgent,
   UserAgentMatcherTestBase::kYourWapUserAgent,
+  UserAgentMatcherTestBase::kGoogleAdsBotUserAgent
 };
 
 const char* const UserAgentMatcherTestBase::kTabletUserAgents[] = {
@@ -432,6 +440,8 @@ UserAgentMatcherTestBase::kImageInliningSupportedUserAgents[] = {
   UserAgentMatcherTestBase::kIe11UserAgents[1],
   UserAgentMatcherTestBase::kIe11UserAgents[2],
   UserAgentMatcherTestBase::kIe11UserAgents[3],
+  UserAgentMatcherTestBase::kGoogleAdsBotUserAgent,
+  UserAgentMatcherTestBase::kGoogleAdsBotMobileUserAgent,
 };
 
 const char* const UserAgentMatcherTestBase::kSplitHtmlSupportedUserAgents[] = {
@@ -550,6 +560,31 @@ void UserAgentMatcherTestBase::VerifySplitHtmlSupport() {
         << "\"" << kSplitHtmlUnSupportedUserAgents[i]
         << "\" detected incorrectly as a user agent that supports split-html";
   }
+}
+
+void UserAgentMatcherTestBase::VerifyMobilizationSupport() {
+  EXPECT_TRUE(user_agent_matcher_->SupportsMobilization(
+      kAndroidChrome18UserAgent));
+  EXPECT_FALSE(user_agent_matcher_->SupportsMobilization(
+      kAndroidHCUserAgent));
+  EXPECT_TRUE(user_agent_matcher_->SupportsMobilization(
+      kIPhone4Safari));
+  EXPECT_FALSE(user_agent_matcher_->SupportsMobilization(
+      kIPhoneChrome21UserAgent));;
+  EXPECT_FALSE(user_agent_matcher_->SupportsMobilization(
+      kBlackBerryOS6UserAgent));
+  EXPECT_TRUE(user_agent_matcher_->SupportsMobilization(
+      kFirefoxUserAgent));
+  EXPECT_TRUE(user_agent_matcher_->SupportsMobilization(
+      kFirefoxMobileUserAgent));
+  EXPECT_TRUE(user_agent_matcher_->SupportsMobilization(
+      kChrome42UserAgent));
+  EXPECT_FALSE(user_agent_matcher_->SupportsMobilization(
+      kOperaMiniMobileUserAgent));
+  EXPECT_TRUE(user_agent_matcher_->SupportsMobilization(
+      kGoogleAdsBotUserAgent));
+  EXPECT_TRUE(user_agent_matcher_->SupportsMobilization(
+      kGoogleAdsBotMobileUserAgent));
 }
 
 }  // namespace net_instaweb

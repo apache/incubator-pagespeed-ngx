@@ -53,6 +53,8 @@ const char* kImageInliningWhitelist[] = {
   "*Opera*",
   "*Safari*",
   "*Wget*",
+  // Allow in ads policy checks to match usual UA behavior.
+  "AdsBot-Google*",
   // Plus IE, see use in the code.
   // The following user agents are used only for internal testing
   "google command line rewriter",
@@ -268,7 +270,8 @@ const char* kMobileUserAgentWhitelist[] = {
   "*profile/MIDP*",
   "*portalmmm*",
   "*DoCoMo*",
-  "*Obigo*"
+  "*Obigo*",
+  "AdsBot-Google-Mobile",
 };
 
 // Blacklist used for doing the mobile-user-agent check.
@@ -291,6 +294,7 @@ const char* kMobilizationUserAgentWhitelist[] = {
   "*CriOS/*",                  // Chrome for iOS.
   "*Android *",                // Native Android browser (see blacklist below).
   "*iPhone*",
+  "AdsBot-Google*"
 };
 
 // Blacklist used for doing the mobilization UA check.
