@@ -53,6 +53,7 @@ class JsDisableFilterTest : public RewriteTestBase {
   virtual void SetUp() {
     options_->EnableFilter(RewriteOptions::kDisableJavascript);
     options_->EnableFilter(RewriteOptions::kDeferJavascript);
+    options_->Disallow("*donotmove*");
     RewriteTestBase::SetUp();
     filter_.reset(new JsDisableFilter(rewrite_driver()));
     rewrite_driver()->AddFilter(filter_.get());
@@ -86,6 +87,7 @@ TEST_F(JsDisableFilterTest, DisablesScript) {
       "<script src=\"blah2\" random=\"false\">hi2</script>"
       "<script src=\"blah3\" data-pagespeed-no-defer=\"\"></script>"
       "<script src=\"blah4\" pagespeed_no_defer=\"\"></script>"
+      "<script src=\"something-donotmove\"></script>"
       "</body>");
   const GoogleString expected = StrCat(
       "<body>",
@@ -100,6 +102,7 @@ TEST_F(JsDisableFilterTest, DisablesScript) {
       " type=\"text/psajs\" orig_index=\"2\">hi2</script>"
       "<script src=\"blah3\" data-pagespeed-no-defer=\"\"></script>"
       "<script src=\"blah4\" pagespeed_no_defer=\"\"></script>"
+      "<script src=\"something-donotmove\"></script>"
       "</body>"));
 
   ValidateExpectedUrl("http://example.com/", input_html, expected);
@@ -108,6 +111,7 @@ TEST_F(JsDisableFilterTest, DisablesScript) {
   ExpectLogRecord(2, RewriterApplication::APPLIED_OK, false);
   ExpectLogRecord(3, RewriterApplication::APPLIED_OK, true);
   ExpectLogRecord(4, RewriterApplication::APPLIED_OK, true);
+  ExpectLogRecord(5, RewriterApplication::APPLIED_OK, true);
   rewrite_driver_->log_record()->WriteLog();
   for (int i = 0; i < logging_info()->rewriter_stats_size(); i++) {
     if (logging_info()->rewriter_stats(i).id() == "jd" &&
@@ -118,7 +122,7 @@ TEST_F(JsDisableFilterTest, DisablesScript) {
           logging_info()->rewriter_stats(i).status_counts(0);
       EXPECT_EQ(RewriterApplication::APPLIED_OK,
                 count_applied.application_status());
-      EXPECT_EQ(5, count_applied.count());
+      EXPECT_EQ(6, count_applied.count());
       return;
     }
   }
