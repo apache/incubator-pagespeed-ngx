@@ -164,6 +164,18 @@ void JsDisableFilter::StartElementImpl(HtmlElement* element) {
         return;
       }
 
+      // Honor disallow.
+      if (src != NULL && src->DecodedValueOrNull() != NULL) {
+        GoogleUrl abs_url(driver()->base_url(), src->DecodedValueOrNull());
+        if (abs_url.IsWebValid() &&
+            !driver()->options()->IsAllowed(abs_url.Spec())) {
+          driver()->log_record()->LogJsDisableFilter(
+              RewriteOptions::FilterId(RewriteOptions::kDisableJavascript),
+              true);
+          return;
+        }
+      }
+
       // TODO(rahulbansal): Add a separate bool to track the inline
       // scripts till first external script which aren't deferred.1
       driver()->log_record()->LogJsDisableFilter(
