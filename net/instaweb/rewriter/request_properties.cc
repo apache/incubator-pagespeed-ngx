@@ -33,7 +33,8 @@ RequestProperties::RequestProperties(UserAgentMatcher* matcher)
       supports_lazyload_images_(kNotSet),
       supports_webp_in_place_(kNotSet),
       supports_webp_rewritten_urls_(kNotSet),
-      supports_webp_lossless_alpha_(kNotSet) {
+      supports_webp_lossless_alpha_(kNotSet),
+      supports_webp_animated_(kNotSet) {
 }
 
 RequestProperties::~RequestProperties() {
@@ -136,6 +137,17 @@ bool RequestProperties::SupportsWebpLosslessAlpha() const {
         kFalse;
   }
   return (supports_webp_lossless_alpha_ == kTrue);
+}
+
+bool RequestProperties::SupportsWebpAnimated() const {
+  if (supports_webp_animated_ == kNotSet) {
+    supports_webp_animated_ =
+        (downstream_caching_directives_->SupportsWebpAnimated() &&
+         device_properties_->SupportsWebpAnimated()) ?
+        kTrue :
+        kFalse;
+  }
+  return (supports_webp_animated_ == kTrue);
 }
 
 bool RequestProperties::IsBot() const {

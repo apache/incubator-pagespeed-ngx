@@ -100,6 +100,9 @@ class ImageRewriteFilter : public RewriteFilter {
   static const char kImageWebpWithAlphaFailureMs[];
   static const char kImageWebpWithAlphaSuccessMs[];
   static const char kImageWebpWithAlphaTimeouts[];
+  static const char kImageWebpFromGifAnimatedFailureMs[];
+  static const char kImageWebpFromGifAnimatedSuccessMs[];
+  static const char kImageWebpFromGifAnimatedTimeouts[];
 
   // The property cache property name used to store URLs discovered when
   // image_inlining_identify_and_cache_without_rewriting() is set in the

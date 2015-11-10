@@ -259,17 +259,19 @@ void ImageUrlEncoder::SetLibWebpLevel(
   ResourceContext::LibWebpLevel libwebp_level = ResourceContext::LIBWEBP_NONE;
   // We do enabled checks before Setting the Webp Level, since it avoids writing
   // two metadata cache keys for same output if webp rewriting is disabled.
-  if (request_properties.SupportsWebpRewrittenUrls() &&
+  if (request_properties.SupportsWebpAnimated() &&
       (options.Enabled(RewriteOptions::kRecompressWebp) ||
-       options.Enabled(RewriteOptions::kConvertToWebpLossless) ||
-       options.Enabled(RewriteOptions::kConvertJpegToWebp))) {
-    if (request_properties.SupportsWebpLosslessAlpha() &&
-        (options.Enabled(RewriteOptions::kRecompressWebp) ||
-         options.Enabled(RewriteOptions::kConvertToWebpLossless))) {
-      libwebp_level = ResourceContext::LIBWEBP_LOSSY_LOSSLESS_ALPHA;
-    } else {
-      libwebp_level = ResourceContext::LIBWEBP_LOSSY_ONLY;
-    }
+       options.Enabled(RewriteOptions::kConvertToWebpAnimated))) {
+    libwebp_level = ResourceContext::LIBWEBP_ANIMATED;
+  } else if (request_properties.SupportsWebpLosslessAlpha() &&
+             (options.Enabled(RewriteOptions::kRecompressWebp) ||
+              options.Enabled(RewriteOptions::kConvertToWebpLossless))) {
+    libwebp_level = ResourceContext::LIBWEBP_LOSSY_LOSSLESS_ALPHA;
+  } else if (request_properties.SupportsWebpRewrittenUrls() &&
+             (options.Enabled(RewriteOptions::kRecompressWebp) ||
+              options.Enabled(RewriteOptions::kConvertToWebpLossless) ||
+              options.Enabled(RewriteOptions::kConvertJpegToWebp))) {
+    libwebp_level = ResourceContext::LIBWEBP_LOSSY_ONLY;
   }
   resource_context->set_libwebp_level(libwebp_level);
 }

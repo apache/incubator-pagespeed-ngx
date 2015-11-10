@@ -31,6 +31,7 @@ DownstreamCachingDirectives::DownstreamCachingDirectives()
       supports_lazyload_images_(kNotSet),
       supports_webp_(kNotSet),
       supports_webp_lossless_alpha_(kNotSet),
+      supports_webp_animated_(kNotSet),
       capabilities_to_be_supported_(kNoCapabilitiesSpecified) {
 }
 
@@ -49,6 +50,7 @@ void DownstreamCachingDirectives::ParseCapabilityListFromRequestHeaders(
   supports_lazyload_images_ = kNotSet;
   supports_webp_ = kNotSet;
   supports_webp_lossless_alpha_ = kNotSet;
+  supports_webp_animated_ = kNotSet;
 }
 
 bool DownstreamCachingDirectives::IsPropertySupported(
@@ -115,6 +117,13 @@ bool DownstreamCachingDirectives::SupportsWebpLosslessAlpha() const {
   return IsPropertySupported(
              &supports_webp_lossless_alpha_,
              RewriteOptions::FilterId(RewriteOptions::kConvertToWebpLossless),
+             capabilities_to_be_supported_);
+}
+
+bool DownstreamCachingDirectives::SupportsWebpAnimated() const {
+  return IsPropertySupported(
+             &supports_webp_animated_,
+             RewriteOptions::FilterId(RewriteOptions::kConvertToWebpAnimated),
              capabilities_to_be_supported_);
 }
 

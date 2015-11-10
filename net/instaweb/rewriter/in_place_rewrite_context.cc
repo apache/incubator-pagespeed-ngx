@@ -678,6 +678,7 @@ void InPlaceRewriteContext::AddVaryIfRequired(
     // so we must Vary: User-Agent.
     if (Options()->Enabled(RewriteOptions::kRewriteCss) &&
         (Options()->Enabled(RewriteOptions::kConvertJpegToWebp) ||
+         Options()->Enabled(RewriteOptions::kConvertToWebpAnimated) ||
          Options()->Enabled(RewriteOptions::kConvertToWebpLossless))) {
       new_vary = HttpAttributes::kUserAgent;
     }

@@ -93,6 +93,7 @@ size_t GetBytesPerPixel(PixelFormat pixel_format) {
   return 0;
 }
 
+// TODO(huibao): Detect animated WebP.
 ImageFormat ComputeImageFormat(const StringPiece& buf,
                                bool* is_webp_lossless_alpha) {
   // Image classification based on buffer contents gakked from leptonica,

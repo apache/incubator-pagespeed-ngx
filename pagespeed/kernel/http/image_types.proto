@@ -33,4 +33,5 @@ enum ImageType {
   IMAGE_GIF = 3;
   IMAGE_WEBP = 4;
   IMAGE_WEBP_LOSSLESS_OR_ALPHA = 5; // webp that is lossless or transparent.
+  IMAGE_WEBP_ANIMATED = 6;
 }

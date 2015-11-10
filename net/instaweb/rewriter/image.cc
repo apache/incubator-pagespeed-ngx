@@ -18,7 +18,6 @@
 
 #include "net/instaweb/rewriter/public/image.h"
 
-#include <stdbool.h>
 #include <algorithm>
 #include <cstddef>
 
@@ -38,6 +37,7 @@
 #include "pagespeed/kernel/image/gif_reader.h"
 #include "pagespeed/kernel/image/image_analysis.h"
 #include "pagespeed/kernel/image/image_converter.h"
+#include "pagespeed/kernel/image/image_frame_interface.h"
 #include "pagespeed/kernel/image/image_resizer.h"
 #include "pagespeed/kernel/image/image_util.h"
 #include "pagespeed/kernel/image/jpeg_optimizer.h"
@@ -45,6 +45,7 @@
 #include "pagespeed/kernel/image/png_optimizer.h"
 #include "pagespeed/kernel/image/read_image.h"
 #include "pagespeed/kernel/image/scanline_interface.h"
+#include "pagespeed/kernel/image/scanline_status.h"
 #include "pagespeed/kernel/image/scanline_utils.h"
 #include "pagespeed/kernel/image/webp_optimizer.h"
 
@@ -160,6 +161,7 @@ ImageFormat ImageTypeToImageFormat(ImageType type) {
       break;
     case IMAGE_WEBP:
     case IMAGE_WEBP_LOSSLESS_OR_ALPHA:
+    case IMAGE_WEBP_ANIMATED:
       format = pagespeed::image_compression::IMAGE_WEBP;
       break;
   }
@@ -230,7 +232,7 @@ class ImageImpl : public Image {
   virtual void ComputeImageType();
   virtual bool ComputeOutputContents();
 
-  bool ComputeOutputContentsFromPngReader(
+  bool ComputeOutputContentsFromGifOrPng(
       const GoogleString& string_for_image,
       const PngReaderInterface* png_reader,
       bool fall_back_to_png,
@@ -247,7 +249,6 @@ class ImageImpl : public Image {
   void FindPngSize();
   void FindGifSize();
   void FindWebpSize();
-  bool HasTransparency(const StringPiece& buf);
 
   // Convert the given options object to jpeg compression options.
   void ConvertToJpegOptions(const Image::CompressionOptions& options,
@@ -311,6 +312,8 @@ class ImageImpl : public Image {
   // Quality level for compressing the resized image.
   int EstimateQualityForResizedJpeg();
 
+  bool ConvertAnimatedGifToWebp(bool has_transparency);
+
   const GoogleString file_prefix_;
   scoped_ptr<MessageHandler> handler_;
   bool changed_;
@@ -335,6 +338,7 @@ void ImageImpl::SetTransformToLowRes() {
     options_->preferred_webp = WEBP_LOSSY;
   }
   options_->webp_quality = 10;
+  options_->webp_animated_quality = 10;
   options_->jpeg_quality = 10;
 }
 
@@ -573,6 +577,7 @@ const ContentType* Image::TypeToContentType(ImageType image_type) {
       break;
     case IMAGE_WEBP:
     case IMAGE_WEBP_LOSSLESS_OR_ALPHA:
+    case IMAGE_WEBP_ANIMATED:
       res = &kContentTypeWebp;
       break;
   }
@@ -614,32 +619,6 @@ bool ImageImpl::ComputePngTransparency(const StringPiece& buf) {
     }
   }
   return has_transparency;
-}
-
-// Returns true if the image has transparency (an alpha channel, or a
-// transparent color).  Note that certain ambiguously-formatted images might
-// yield false positive results here; we don't check whether alpha channels
-// contain non-opaque data, nor do we check if a distinguished transparent color
-// is actually used in an image.  We assume that if the image file contains
-// flags for transparency, it does so for a reason.
-bool ImageImpl::HasTransparency(const StringPiece& buf) {
-  bool result = false;
-  switch (image_type()) {
-    case IMAGE_PNG:
-      result = ComputePngTransparency(buf);
-      break;
-    case IMAGE_GIF:
-      // This means we didn't translate to png for whatever reason.
-      result = true;
-      break;
-    case IMAGE_JPEG:
-    case IMAGE_WEBP:
-    case IMAGE_WEBP_LOSSLESS_OR_ALPHA:
-    case IMAGE_UNKNOWN:
-      result = false;
-      break;
-  }
-  return result;
 }
 
 bool ImageImpl::EnsureLoaded(bool output_useful) {
@@ -870,6 +849,10 @@ bool ImageImpl::ComputeOutputContents() {
         // TODO(pulkitg): Convert a webp image to jpeg image if
         // web_preferred_ is false.
         break;
+      case IMAGE_WEBP_ANIMATED:
+        // TODO(huibao): Recompress animated WebP.
+        ok = false;
+        break;
       case IMAGE_JPEG:
         minimal_webp_support_ = ResourceContext::LIBWEBP_LOSSY_ONLY;
         if (MayConvert() &&
@@ -897,7 +880,7 @@ bool ImageImpl::ComputeOutputContents() {
         break;
       case IMAGE_PNG:
         png_reader.reset(new PngReader(handler_.get()));
-        ok = ComputeOutputContentsFromPngReader(
+        ok = ComputeOutputContentsFromGifOrPng(
             string_for_image,
             png_reader.get(),
             (resized || options_->recompress_png) /* fall_back_to_png */,
@@ -912,12 +895,13 @@ bool ImageImpl::ComputeOutputContents() {
           // converted to a PNG image.
           png_reader.reset(new PngReader(handler_.get()));
           current_image_type = IMAGE_PNG;
-        } else if (options_->convert_gif_to_png || low_quality_enabled_) {
+        } else if (options_->convert_gif_to_png || low_quality_enabled_ ||
+                   options_->allow_webp_animated) {
           png_reader.reset(new GifReader(handler_.get()));
         } else {
           break;
         }
-        ok = ComputeOutputContentsFromPngReader(
+        ok = ComputeOutputContentsFromGifOrPng(
             string_for_image,
             png_reader.get(),
             options_->convert_gif_to_png /* fall_back_to_png */,
@@ -955,7 +939,86 @@ inline bool ImageImpl::ConvertJpegToWebp(
   return ok;
 }
 
-inline bool ImageImpl::ComputeOutputContentsFromPngReader(
+bool ImageImpl::ConvertAnimatedGifToWebp(bool has_transparency) {
+  ConversionTimeoutHandler timeout_handler(
+      options_->webp_conversion_timeout_ms, timer_, handler_.get());
+  timeout_handler.Start(&output_contents_);
+
+  // Parameters controlling WebP compression.
+  WebpConfiguration webp_config;
+  webp_config.quality = options_->webp_animated_quality;
+  webp_config.progress_hook = ConversionTimeoutHandler::Continue;
+  webp_config.user_data = &timeout_handler;
+  // TODO(huibao): Evaluate the following parameters.
+  webp_config.method = 3;
+  webp_config.kmin = 3;
+  webp_config.kmax = 5;
+  webp_config.lossless = false;
+  webp_config.alpha_quality = 100;
+  webp_config.alpha_compression = 1;  // alpha plane compressed losslessly
+
+  pagespeed::image_compression::ScanlineStatus status;
+  scoped_ptr<pagespeed::image_compression::MultipleFrameReader> reader(
+      CreateImageFrameReader(
+          pagespeed::image_compression::IMAGE_GIF,
+          original_contents_.data(),
+          original_contents_.length(),
+          handler_.get(), &status));
+  if (!status.Success()) {
+    PS_LOG_ERROR(handler_, "Cannot read the animated GIF image.");
+    return false;
+  }
+
+  scoped_ptr<pagespeed::image_compression::MultipleFrameWriter> writer(
+      CreateImageFrameWriter(
+          pagespeed::image_compression::IMAGE_WEBP,
+          &webp_config,
+          &output_contents_,
+          handler_.get(), &status));
+  if (!status.Success()) {
+    PS_LOG_ERROR(handler_, "Cannot create an animated WebP image for output.");
+    return false;
+  }
+
+  // Copy all pixels in all frames from the reader to the writer. This will do
+  // format conversion and compression.
+  pagespeed::image_compression::ImageSpec image_spec;
+  pagespeed::image_compression::FrameSpec frame_spec;
+  const void* scan_row = NULL;
+  if (reader->GetImageSpec(&image_spec, &status) &&
+      writer->PrepareImage(&image_spec, &status)) {
+    while (reader->HasMoreFrames() &&
+           reader->PrepareNextFrame(&status) &&
+           reader->GetFrameSpec(&frame_spec, &status) &&
+           writer->PrepareNextFrame(&frame_spec, &status)) {
+      while (reader->HasMoreScanlines() &&
+             reader->ReadNextScanline(&scan_row, &status) &&
+             writer->WriteNextScanline(scan_row, &status)) {
+        // intentional empty loop body
+      }
+    }
+  }
+  writer->FinalizeWrite(&status);
+
+  timeout_handler.Stop();
+  bool was_timed_out = timeout_handler.was_timed_out();
+  int64 time_elapsed_ms = timeout_handler.time_elapsed_ms();
+  bool ok = status.Success();
+
+  UpdateWebpStats(ok, was_timed_out, time_elapsed_ms,
+                  Image::ConversionVariables::FROM_GIF_ANIMATED,
+                  options_->webp_conversion_variables);
+
+  UpdateWebpStats(ok, was_timed_out, time_elapsed_ms,
+                  (has_transparency ?
+                   Image::ConversionVariables::NONOPAQUE :
+                   Image::ConversionVariables::OPAQUE),
+                  options_->webp_conversion_variables);
+
+  return ok;
+}
+
+inline bool ImageImpl::ComputeOutputContentsFromGifOrPng(
     const GoogleString& string_for_image,
     const PngReaderInterface* png_reader,
     bool fall_back_to_png,
@@ -968,6 +1031,7 @@ inline bool ImageImpl::ComputeOutputContentsFromPngReader(
   }
 
   bool ok = false;
+  bool is_animated = false;
   bool has_transparency = false;
   bool is_photo = false;
   bool compress_color_losslessly = false;
@@ -976,20 +1040,28 @@ inline bool ImageImpl::ComputeOutputContentsFromPngReader(
   AnalyzeImage(ImageTypeToImageFormat(input_type),
                string_for_image.data(), string_for_image.length(),
                NULL /* width */, NULL /* height */, NULL /* is_progressive */,
-               NULL /* is_animated */, &has_transparency, &is_photo,
+               &is_animated, &has_transparency, &is_photo,
                NULL /* quality */, NULL /* reader */, handler_.get());
 
-  debug_message_ = StringPrintf("Image has%s transparent pixels"
-                                " and is%s sensitive to compression noise.",
+  debug_message_ = StringPrintf("Image has%s transparent pixels,"
+                                " is%s sensitive to compression noise, and"
+                                " has%s animation.",
                                 (has_transparency ? "" : " no"),
-                                (is_photo ? " not" : ""));
+                                (is_photo ? " not" : ""),
+                                (is_animated ? "" : " no"));
 
   // By default, a lossless image conversion is eligible for lossless webp
   // conversion.
-  minimal_webp_support_ = ResourceContext::LIBWEBP_LOSSY_LOSSLESS_ALPHA;
-  if (is_photo && options_->convert_png_to_jpeg &&
-      (input_type == IMAGE_PNG ||
-       (input_type == IMAGE_GIF && options_->convert_gif_to_png))) {
+  if (is_animated) {
+    if (options_->preferred_webp == Image::WEBP_ANIMATED &&
+        options_->webp_animated_quality > 0) {
+      output_type = IMAGE_WEBP_ANIMATED;
+      minimal_webp_support_ = ResourceContext::LIBWEBP_ANIMATED;
+    }
+    // else we can't recompress this image
+  } else if (is_photo && options_->convert_png_to_jpeg &&
+             (input_type == IMAGE_PNG ||
+              (input_type == IMAGE_GIF && options_->convert_gif_to_png))) {
     // Can be converted to lossy format.
     if (!has_transparency) {
       // No alpha; can be converted to WebP lossy or JPEG.
@@ -1012,47 +1084,57 @@ inline bool ImageImpl::ComputeOutputContentsFromPngReader(
     }
   } else {
     // Must be converted to lossless format.
-    if (options_->preferred_webp == Image::WEBP_LOSSLESS) {
+    if (options_->preferred_webp == Image::WEBP_ANIMATED ||
+        options_->preferred_webp == Image::WEBP_LOSSLESS) {
       compress_color_losslessly = true;
       output_type = IMAGE_WEBP_LOSSLESS_OR_ALPHA;
     }
   }
 
-  if (output_type == IMAGE_WEBP ||
-      output_type == IMAGE_WEBP_LOSSLESS_OR_ALPHA) {
-    ok = MayConvert() &&
-        ConvertPngToWebp(*png_reader, string_for_image,
-                         compress_color_losslessly, has_transparency, var_type);
-    // TODO(huibao): Re-evaluate why we need to try a different format, if the
-    // conversion to WebP failed.
+  if (output_type == IMAGE_WEBP_ANIMATED) {
+    ok = ConvertAnimatedGifToWebp(has_transparency);
     if (!ok) {
-      // We can't convert to webp at all, so register that fact.
       minimal_webp_support_ = ResourceContext::LIBWEBP_NONE;
-      // If the conversion to WebP failed, we will try converting the image to
-      // jpeg or png.
-      if (output_type == IMAGE_WEBP) {
-        output_type = IMAGE_JPEG;
-      } else {
-        fall_back_to_png = true;
+    }
+  } else {
+    if (output_type == IMAGE_WEBP ||
+        output_type == IMAGE_WEBP_LOSSLESS_OR_ALPHA) {
+      ok = MayConvert() &&
+          ConvertPngToWebp(*png_reader, string_for_image,
+                           compress_color_losslessly, has_transparency,
+                           var_type);
+      // TODO(huibao): Re-evaluate why we need to try a different format, if the
+      // conversion to WebP failed.
+      if (!ok) {
+        // We can't convert to webp at all, so register that fact.
+        minimal_webp_support_ = ResourceContext::LIBWEBP_NONE;
+        // If the conversion to WebP failed, we will try converting the image to
+        // jpeg or png.
+        if (output_type == IMAGE_WEBP) {
+          output_type = IMAGE_JPEG;
+        } else {
+          fall_back_to_png = true;
+        }
       }
     }
-  }
 
-  if (output_type == IMAGE_JPEG) {
-    JpegCompressionOptions jpeg_options;
-    ConvertToJpegOptions(*options_.get(), &jpeg_options);
-    ok = MayConvert() &&
-        ImageConverter::ConvertPngToJpeg(*png_reader, string_for_image,
-                                         jpeg_options, &output_contents_,
-                                         handler_.get());
-  }
+    if (output_type == IMAGE_JPEG) {
+      JpegCompressionOptions jpeg_options;
+      ConvertToJpegOptions(*options_.get(), &jpeg_options);
+      ok = MayConvert() &&
+          ImageConverter::ConvertPngToJpeg(*png_reader, string_for_image,
+                                           jpeg_options, &output_contents_,
+                                           handler_.get());
+    }
 
-  if (!ok && fall_back_to_png) {
-    ok = MayConvert() &&
-        PngOptimizer::OptimizePngBestCompression(*png_reader, string_for_image,
-                                                  &output_contents_,
-                                                  handler_.get());
-    output_type = IMAGE_PNG;
+    if (!ok && fall_back_to_png) {
+      ok = MayConvert() &&
+          PngOptimizer::OptimizePngBestCompression(*png_reader,
+                                                   string_for_image,
+                                                   &output_contents_,
+                                                   handler_.get());
+      output_type = IMAGE_PNG;
+    }
   }
 
   if (ok) {

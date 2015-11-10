@@ -51,8 +51,12 @@ class Image {
 
   enum PreferredWebp {
     WEBP_NONE = 0,
+    // Only lossy format is supported
     WEBP_LOSSY,
-    WEBP_LOSSLESS
+    // Prefer lossless format, but lossy is also allowed.
+    WEBP_LOSSLESS,
+    // Prefer animated format, but lossless and lossy are also allowed.
+    WEBP_ANIMATED
   };
 
   struct ConversionBySourceVariable {
@@ -74,6 +78,7 @@ class Image {
       FROM_JPEG,
       OPAQUE,
       NONOPAQUE,
+      FROM_GIF_ANIMATED,
       NUM_VARIABLE_TYPE
     };
     ConversionBySourceVariable* Get(VariableType var_type) {
@@ -91,7 +96,9 @@ class Image {
     CompressionOptions()
         : preferred_webp(WEBP_NONE),
           allow_webp_alpha(false),
+          allow_webp_animated(false),
           webp_quality(RewriteOptions::kDefaultImageRecompressQuality),
+          webp_animated_quality(RewriteOptions::kDefaultImageRecompressQuality),
           jpeg_quality(RewriteOptions::kDefaultImageRecompressQuality),
           progressive_jpeg_min_bytes(
               RewriteOptions::kDefaultProgressiveJpegMinBytes),
@@ -117,7 +124,9 @@ class Image {
     // conversion to perform:
     PreferredWebp preferred_webp;
     bool allow_webp_alpha;
+    bool allow_webp_animated;
     int64 webp_quality;
+    int64 webp_animated_quality;
     int64 jpeg_quality;
     int64 progressive_jpeg_min_bytes;
     bool progressive_jpeg;

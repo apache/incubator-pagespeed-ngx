@@ -182,6 +182,7 @@ const RewriteOptions::Filter ImageRewriteFilter::kRelatedFilters[] = {
   RewriteOptions::kConvertJpegToProgressive,
   RewriteOptions::kConvertJpegToWebp,
   RewriteOptions::kConvertPngToJpeg,
+  RewriteOptions::kConvertToWebpAnimated,
   RewriteOptions::kConvertToWebpLossless,
   RewriteOptions::kJpegSubsampling,
   RewriteOptions::kRecompressJpeg,
@@ -242,6 +243,8 @@ const char ImageRewriteFilter::kImageWebpFromPngTimeouts[] =
     "image_webp_conversion_png_timeouts";
 const char ImageRewriteFilter::kImageWebpFromJpegTimeouts[] =
     "image_webp_conversion_jpeg_timeouts";
+const char ImageRewriteFilter::kImageWebpFromGifAnimatedTimeouts[] =
+    "image_webp_conversion_gif_animated_timeouts";
 
 const char ImageRewriteFilter::kImageWebpFromGifSuccessMs[] =
     "image_webp_conversion_gif_success_ms";
@@ -249,6 +252,8 @@ const char ImageRewriteFilter::kImageWebpFromPngSuccessMs[] =
     "image_webp_conversion_png_success_ms";
 const char ImageRewriteFilter::kImageWebpFromJpegSuccessMs[] =
     "image_webp_conversion_jpeg_success_ms";
+const char ImageRewriteFilter::kImageWebpFromGifAnimatedSuccessMs[] =
+    "image_webp_conversion_gif_animated_success_ms";
 
 const char ImageRewriteFilter::kImageWebpFromGifFailureMs[] =
     "image_webp_conversion_gif_failure_ms";
@@ -256,6 +261,8 @@ const char ImageRewriteFilter::kImageWebpFromPngFailureMs[] =
     "image_webp_conversion_png_failure_ms";
 const char ImageRewriteFilter::kImageWebpFromJpegFailureMs[] =
     "image_webp_conversion_jpeg_failure_ms";
+const char ImageRewriteFilter::kImageWebpFromGifAnimatedFailureMs[] =
+    "image_webp_conversion_gif_animated_failure_ms";
 
 const char ImageRewriteFilter::kImageWebpWithAlphaTimeouts[] =
     "image_webp_alpha_timeouts";
@@ -408,11 +415,23 @@ void SetWebpCompressionOptions(
         image_options->allow_webp_alpha = false;
         VLOG(1) << "User agent is not webp capable";
         break;
+
       case ResourceContext::LIBWEBP_LOSSY_ONLY:
         image_options->preferred_webp = Image::WEBP_LOSSY;
         image_options->allow_webp_alpha = false;
         VLOG(1) << "User agent is webp lossy capable ";
         break;
+
+      case ResourceContext::LIBWEBP_ANIMATED:
+        if (options.Enabled(RewriteOptions::kConvertToWebpAnimated)) {
+          image_options->preferred_webp = Image::WEBP_ANIMATED;
+          image_options->allow_webp_animated = true;
+          image_options->allow_webp_alpha = true;
+          break;
+        }
+        VLOG(1) << "User agent is webp animated capable ";
+        FALLTHROUGH_INTENDED;
+
       case ResourceContext::LIBWEBP_LOSSY_LOSSLESS_ALPHA:
         image_options->allow_webp_alpha = true;
         if (options.Enabled(RewriteOptions::kConvertToWebpLossless)) {
@@ -563,6 +582,9 @@ ImageRewriteFilter::ImageRewriteFilter(RewriteDriver* driver)
   webp_conversion_variables_.Get(
       Image::ConversionVariables::FROM_JPEG)->timeout_count =
       stats->GetVariable(kImageWebpFromJpegTimeouts);
+  webp_conversion_variables_.Get(
+      Image::ConversionVariables::FROM_GIF_ANIMATED)->timeout_count =
+      stats->GetVariable(kImageWebpFromGifAnimatedTimeouts);
 
   webp_conversion_variables_.Get(
       Image::ConversionVariables::FROM_GIF)->success_ms =
@@ -573,6 +595,9 @@ ImageRewriteFilter::ImageRewriteFilter(RewriteDriver* driver)
   webp_conversion_variables_.Get(
       Image::ConversionVariables::FROM_JPEG)->success_ms =
       stats->GetHistogram(kImageWebpFromJpegSuccessMs);
+  webp_conversion_variables_.Get(
+      Image::ConversionVariables::FROM_GIF_ANIMATED)->success_ms =
+      stats->GetHistogram(kImageWebpFromGifAnimatedSuccessMs);
 
   webp_conversion_variables_.Get(
       Image::ConversionVariables::FROM_GIF)->failure_ms =
@@ -583,6 +608,9 @@ ImageRewriteFilter::ImageRewriteFilter(RewriteDriver* driver)
   webp_conversion_variables_.Get(
       Image::ConversionVariables::FROM_JPEG)->failure_ms =
       stats->GetHistogram(kImageWebpFromJpegFailureMs);
+  webp_conversion_variables_.Get(
+      Image::ConversionVariables::FROM_GIF_ANIMATED)->failure_ms =
+      stats->GetHistogram(kImageWebpFromGifAnimatedFailureMs);
 
   webp_conversion_variables_.Get(
       Image::ConversionVariables::NONOPAQUE)->timeout_count =
@@ -653,14 +681,17 @@ void ImageRewriteFilter::InitStats(Statistics* statistics) {
   statistics->AddVariable(kImageWebpFromGifTimeouts);
   statistics->AddVariable(kImageWebpFromPngTimeouts);
   statistics->AddVariable(kImageWebpFromJpegTimeouts);
+  statistics->AddVariable(kImageWebpFromGifAnimatedTimeouts);
 
   statistics->AddHistogram(kImageWebpFromGifSuccessMs);
   statistics->AddHistogram(kImageWebpFromPngSuccessMs);
   statistics->AddHistogram(kImageWebpFromJpegSuccessMs);
+  statistics->AddHistogram(kImageWebpFromGifAnimatedSuccessMs);
 
   statistics->AddHistogram(kImageWebpFromGifFailureMs);
   statistics->AddHistogram(kImageWebpFromPngFailureMs);
   statistics->AddHistogram(kImageWebpFromJpegFailureMs);
+  statistics->AddHistogram(kImageWebpFromGifAnimatedFailureMs);
 
   statistics->AddVariable(kImageWebpWithAlphaTimeouts);
   statistics->AddHistogram(kImageWebpWithAlphaSuccessMs);
@@ -765,6 +796,11 @@ Image::CompressionOptions* ImageRewriteFilter::ImageOptionsForLoadedResource(
           options->image_webp_recompress_quality(),
           options->image_webp_recompress_quality_for_small_screens(),
           resource_context.use_small_screen_quality());
+  image_options->webp_animated_quality = options->image_recompress_quality();
+  if (options->image_webp_animated_recompress_quality() != -1) {
+    image_options->webp_animated_quality =
+        options->image_webp_animated_recompress_quality();
+  }
   image_options->jpeg_num_progressive_scans =
       DetermineImageOptions(-1, options->image_jpeg_num_progressive_scans(),
           options->image_jpeg_num_progressive_scans_for_small_screens(),
@@ -967,9 +1003,9 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
       ImageOptionsForLoadedResource(resource_context, input_resource,
                                     rewrite_context->is_css_);
   scoped_ptr<Image> image(
-      NewImage(input_resource->ExtractUncompressedContents(), input_resource->url(),
-               server_context()->filename_prefix(), image_options,
-               driver()->timer(), message_handler));
+      NewImage(input_resource->ExtractUncompressedContents(),
+               input_resource->url(), server_context()->filename_prefix(),
+               image_options, driver()->timer(), message_handler));
 
   // Initialize logging data.
   ImageType original_image_type = image->image_type();
@@ -1101,7 +1137,8 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
 
     // Try inlining input image if output hasn't been inlined already.
     if (!cached->has_inlined_data()) {
-      SaveIfInlinable(input_resource->ExtractUncompressedContents(), original_image_type, cached);
+      SaveIfInlinable(input_resource->ExtractUncompressedContents(),
+                      original_image_type, cached);
     }
 
     int64 image_size = static_cast<int64>(image->output_size());
@@ -1126,6 +1163,12 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
       image_options->webp_quality = options->image_recompress_quality();
       if (options->image_webp_recompress_quality() != -1) {
         image_options->webp_quality = options->image_webp_recompress_quality();
+      }
+      image_options->webp_animated_quality =
+          options->image_recompress_quality();
+      if (options->image_webp_animated_recompress_quality() != -1) {
+        image_options->webp_animated_quality =
+            options->image_webp_animated_recompress_quality();
       }
       image_options->progressive_jpeg = false;
       image_options->convert_png_to_jpeg =
@@ -1233,6 +1276,11 @@ void ImageRewriteFilter::ResizeLowQualityImage(
     image_options->webp_quality = options->image_recompress_quality();
     if (options->image_webp_recompress_quality() != -1) {
       image_options->webp_quality = options->image_webp_recompress_quality();
+    }
+    image_options->webp_animated_quality = options->image_recompress_quality();
+    if (options->image_webp_animated_recompress_quality() != -1) {
+      image_options->webp_animated_quality =
+          options->image_webp_animated_recompress_quality();
     }
     image_options->progressive_jpeg = false;
     image_options->convert_png_to_jpeg =

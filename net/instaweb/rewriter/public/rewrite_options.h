@@ -124,6 +124,7 @@ class RewriteOptions {
     kConvertJpegToWebp,
     kConvertMetaTags,
     kConvertPngToJpeg,
+    kConvertToWebpAnimated,
     kConvertToWebpLossless,
     kDebug,
     kDecodeRewrittenUrls,
@@ -278,6 +279,8 @@ class RewriteOptions {
   static const char kHideRefererUsingMeta[];
   static const char kIdleFlushTimeMs[];
   static const char kImageInlineMaxBytes[];
+  // TODO(huibao): Unify terminology for image rewrites. For example,
+  // kImageJpeg*Quality might be renamed to kImageJpegQuality.
   static const char kImageJpegNumProgressiveScans[];
   static const char kImageJpegNumProgressiveScansForSmallScreens[];
   static const char kImageJpegRecompressionQuality[];
@@ -291,6 +294,7 @@ class RewriteOptions {
   static const char kImageResolutionLimitBytes[];
   static const char kImageWebpRecompressionQuality[];
   static const char kImageWebpRecompressionQualityForSmallScreens[];
+  static const char kImageWebpAnimatedRecompressionQuality[];
   static const char kImageWebpTimeoutMs[];
   static const char kImplicitCacheTtlMs[];
   static const char kIncreaseSpeedTracking[];
@@ -698,6 +702,7 @@ class RewriteOptions {
   static const int64 kDefaultImageResolutionLimitBytes;
   static const int64 kDefaultImageJpegNumProgressiveScans;
   static const int64 kDefaultImageWebpRecompressQuality;
+  static const int64 kDefaultImageWebpAnimatedRecompressQuality;
   static const int64 kDefaultImageWebpRecompressQualityForSmallScreens;
   static const int64 kDefaultImageWebpTimeoutMs;
   static const int kDefaultDomainShardCount;
@@ -2155,6 +2160,14 @@ class RewriteOptions {
   void set_image_webp_recompress_quality_for_small_screens(int64 x) {
     set_option(x, &image_webp_recompress_quality_for_small_screens_);
   }
+
+  int64 image_webp_animated_recompress_quality() const {
+    return image_webp_animated_recompress_quality_.value();
+  }
+  void set_image_webp_animated_recompress_quality(int64 x) {
+    set_option(x, &image_webp_animated_recompress_quality_);
+  }
+
   int64 image_webp_timeout_ms() const {
     return image_webp_timeout_ms_.value();
   }
@@ -3710,6 +3723,7 @@ class RewriteOptions {
   // Options related to webp compression.
   Option<int64> image_webp_recompress_quality_;
   Option<int64> image_webp_recompress_quality_for_small_screens_;
+  Option<int64> image_webp_animated_recompress_quality_;
   Option<int64> image_webp_timeout_ms_;
 
   Option<int> image_max_rewrites_at_once_;

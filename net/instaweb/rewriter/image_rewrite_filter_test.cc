@@ -78,6 +78,7 @@
 
 namespace net_instaweb {
 
+using net_instaweb::ImageRewriteFilter;
 using pagespeed::image_compression::kMessagePatternPixelFormat;
 using pagespeed::image_compression::kMessagePatternStats;
 using pagespeed::image_compression::kMessagePatternWritingToWebp;
@@ -88,6 +89,7 @@ namespace {
 // Filenames of resource files.
 const char kBikePngFile[] = "BikeCrashIcn.png";  // photo; no alpha
 const char kChefGifFile[] = "IronChef2.gif";     // photo; no alpha
+const char kCradleAnimation[] = "CradleAnimation.gif";
 const char kCuppaPngFile[] = "Cuppa.png";        // graphic; no alpha
 const char kCuppaOPngFile[] = "CuppaO.png";      // graphic; no alpha; no opt
 const char kCuppaTPngFile[] = "CuppaT.png";      // graphic; alpha; no opt
@@ -729,89 +731,109 @@ class ImageRewriteTest : public RewriteTestBase {
                                int jpeg_webp_success,
                                int jpeg_webp_failure,
 
+                               int gif_webp_animated_timeout,
+                               int gif_webp_animated_success,
+                               int gif_webp_animated_failure,
+
                                bool is_opaque) {
     EXPECT_EQ(
         gif_webp_timeout,
         statistics()->GetVariable(
-            net_instaweb::ImageRewriteFilter::kImageWebpFromGifTimeouts)->
+            ImageRewriteFilter::kImageWebpFromGifTimeouts)->
         Get());
     EXPECT_EQ(
         gif_webp_success,
         statistics()->GetHistogram(
-            net_instaweb::ImageRewriteFilter::kImageWebpFromGifSuccessMs)->
+            ImageRewriteFilter::kImageWebpFromGifSuccessMs)->
         Count());
     EXPECT_EQ(
         gif_webp_failure,
         statistics()->GetHistogram(
-            net_instaweb::ImageRewriteFilter::kImageWebpFromGifFailureMs)->
+            ImageRewriteFilter::kImageWebpFromGifFailureMs)->
         Count());
 
     EXPECT_EQ(
         png_webp_timeout,
         statistics()->GetVariable(
-            net_instaweb::ImageRewriteFilter::kImageWebpFromPngTimeouts)->
+            ImageRewriteFilter::kImageWebpFromPngTimeouts)->
         Get());
     EXPECT_EQ(
         png_webp_success,
         statistics()->GetHistogram(
-            net_instaweb::ImageRewriteFilter::kImageWebpFromPngSuccessMs)->
+            ImageRewriteFilter::kImageWebpFromPngSuccessMs)->
         Count());
     EXPECT_EQ(
         png_webp_failure,
         statistics()->GetHistogram(
-            net_instaweb::ImageRewriteFilter::kImageWebpFromPngFailureMs)->
+            ImageRewriteFilter::kImageWebpFromPngFailureMs)->
         Count());
 
     EXPECT_EQ(
         jpeg_webp_timeout,
         statistics()->GetVariable(
-            net_instaweb::ImageRewriteFilter::kImageWebpFromJpegTimeouts)->
+            ImageRewriteFilter::kImageWebpFromJpegTimeouts)->
         Get());
     EXPECT_EQ(
         jpeg_webp_success,
         statistics()->GetHistogram(
-            net_instaweb::ImageRewriteFilter::kImageWebpFromJpegSuccessMs)->
+            ImageRewriteFilter::kImageWebpFromJpegSuccessMs)->
         Count());
     EXPECT_EQ(
         jpeg_webp_failure,
         statistics()->GetHistogram(
-            net_instaweb::ImageRewriteFilter::kImageWebpFromJpegFailureMs)->
+            ImageRewriteFilter::kImageWebpFromJpegFailureMs)->
+        Count());
+
+    EXPECT_EQ(
+        gif_webp_animated_timeout,
+        statistics()->GetVariable(
+            ImageRewriteFilter::kImageWebpFromGifAnimatedTimeouts)->
+        Get());
+    EXPECT_EQ(
+        gif_webp_animated_success,
+        statistics()->GetHistogram(
+            ImageRewriteFilter::kImageWebpFromGifAnimatedSuccessMs)->
+        Count());
+    EXPECT_EQ(
+        gif_webp_animated_failure,
+        statistics()->GetHistogram(
+            ImageRewriteFilter::kImageWebpFromGifAnimatedFailureMs)->
         Count());
 
     int total_timeout =
         gif_webp_timeout +
         png_webp_timeout +
-        jpeg_webp_timeout;
+        jpeg_webp_timeout +
+        gif_webp_animated_timeout;
     int total_success =
         gif_webp_success +
         png_webp_success +
-        jpeg_webp_success;
+        jpeg_webp_success +
+        gif_webp_animated_success;
     int total_failure =
         gif_webp_failure +
         png_webp_failure +
-        jpeg_webp_failure;
+        jpeg_webp_failure +
+        gif_webp_animated_failure;
 
     EXPECT_EQ(
         total_timeout,
         statistics()->GetVariable(
             is_opaque ?
-            net_instaweb::ImageRewriteFilter::kImageWebpOpaqueTimeouts :
-            net_instaweb::ImageRewriteFilter::kImageWebpWithAlphaTimeouts)->
-        Get());
+            ImageRewriteFilter::kImageWebpOpaqueTimeouts :
+            ImageRewriteFilter::kImageWebpWithAlphaTimeouts)->Get());
     EXPECT_EQ(
         total_success,
         statistics()->GetHistogram(
             is_opaque ?
-            net_instaweb::ImageRewriteFilter::kImageWebpOpaqueSuccessMs :
-            net_instaweb::ImageRewriteFilter::kImageWebpWithAlphaSuccessMs)->
-        Count());
+            ImageRewriteFilter::kImageWebpOpaqueSuccessMs :
+            ImageRewriteFilter::kImageWebpWithAlphaSuccessMs)->Count());
     EXPECT_EQ(
         total_failure,
         statistics()->GetHistogram(
             is_opaque ?
-            net_instaweb::ImageRewriteFilter::kImageWebpOpaqueFailureMs :
-            net_instaweb::ImageRewriteFilter::kImageWebpWithAlphaFailureMs)->
-        Count());
+            ImageRewriteFilter::kImageWebpOpaqueFailureMs :
+            ImageRewriteFilter::kImageWebpWithAlphaFailureMs)->Count());
   }
 
   // Verify log for background image rewriting. To skip url, pass in an empty
@@ -1156,6 +1178,7 @@ TEST_F(ImageRewriteTest, PngToWebpWithWebpUa) {
   TestConversionVariables(0, 0, 0,   // gif
                           0, 1, 0,   // png
                           0, 0, 0,   // jpg
+                          0, 0, 0,   // gif animated
                           true);
 }
 
@@ -1176,6 +1199,7 @@ TEST_F(ImageRewriteTest, PngToWebpWithWebpLaUa) {
   TestConversionVariables(0, 0, 0,   // gif
                           0, 1, 0,   // png
                           0, 0, 0,   // jpg
+                          0, 0, 0,   // gif animated
                           true);
 }
 
@@ -1201,6 +1225,7 @@ TEST_F(ImageRewriteTest, PngToWebpWithWebpLaUaAndFlag) {
   TestConversionVariables(0, 0, 0,   // gif
                           0, 1, 0,   // png
                           0, 0, 0,   // jpg
+                          0, 0, 0,   // gif animated
                           false);
 
   // Imge is recompressed but not resized.
@@ -1246,6 +1271,7 @@ TEST_F(ImageRewriteTest, PngFallbackToPngLackOfWebpLaUa) {
   TestConversionVariables(0, 0, 0,   // gif
                           0, 0, 0,   // png
                           0, 0, 0,   // jpg
+                          0, 0, 0,   // gif animated
                           false);
 }
 
@@ -1268,6 +1294,7 @@ TEST_F(ImageRewriteTest, PngToWebpWithWebpLaUaAndFlagTimesOut) {
   TestConversionVariables(0, 0, 0,   // gif
                           1, 0, 0,   // png
                           0, 0, 0,   // jpg
+                          0, 0, 0,   // gif animated
                           true);
 }
 
@@ -1696,121 +1723,96 @@ TEST_F(ImageRewriteTest, ResizeHigherDimensionTest) {
   TestSingleRewrite(kLargePngFile, kContentTypePng, kContentTypePng,
                     kOriginalDims, kOriginalDims, false, false);
   Variable* no_rewrites = statistics()->GetVariable(
-      net_instaweb::ImageRewriteFilter::kImageNoRewritesHighResolution);
+      ImageRewriteFilter::kImageNoRewritesHighResolution);
   EXPECT_EQ(1, no_rewrites->Get());
 }
 
 TEST_F(ImageRewriteTest, DimensionParsingOK) {
   // First some tests that should succeed.
   int value = -34;
-  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute(
-      "5", &value));
+  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute("5", &value));
   EXPECT_EQ(value, 5);
   value = -34;
-  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute(
-      " 341  ", &value));
+  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute(" 341  ", &value));
   EXPECT_EQ(value, 341);
   value = -34;
-  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute(
-      " 000743  ", &value));
+  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute(" 000743  ", &value));
   EXPECT_EQ(value, 743);
   value = -34;
-  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute(
-      "\n\r\t \f62", &value));
+  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute("\n\r\t \f62",
+                                                          &value));
   EXPECT_EQ(value, 62);
   value = -34;
-  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute(
-      "+40", &value));
+  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute("+40", &value));
   EXPECT_EQ(value, 40);
   value = -34;
-  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute(
-      " +41", &value));
+  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute(" +41", &value));
   EXPECT_EQ(value, 41);
   value = -34;
-  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute(
-      "54px", &value));
+  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute("54px", &value));
   EXPECT_EQ(value, 54);
   value = -34;
-  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute(
-      "  70.", &value));
+  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute("  70.", &value));
   EXPECT_EQ(value, 70);
   value = -34;
-  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute(
-      "71.3", &value));
+  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute("71.3", &value));
   EXPECT_EQ(value, 71);
   value = -34;
-  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute(
-      "71.523", &value));
+  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute("71.523", &value));
   EXPECT_EQ(value, 72);
   value = -34;
   EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute(
       "73.4999990982589729048572938579287459874", &value));
   EXPECT_EQ(value, 73);
   value = -34;
-  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute(
-      "75.px", &value));
+  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute("75.px", &value));
   EXPECT_EQ(value, 75);
   value = -34;
-  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute(
-      "75.6 px", &value));
+  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute("75.6 px", &value));
   EXPECT_EQ(value, 76);
   value = -34;
-  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute(
-      "77.34px", &value));
+  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute("77.34px", &value));
   EXPECT_EQ(value, 77);
   value = -34;
-  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute(
-      "78px ", &value));
+  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute("78px ", &value));
   EXPECT_EQ(value, 78);
 }
 
 TEST_F(ImageRewriteTest, DimensionParsingFail) {
   int value = -34;
-  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
-      "", &value));
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute("", &value));
   EXPECT_EQ(-34, value);
-  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
-      "0", &value));
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute("0", &value));
   EXPECT_EQ(-34, value);
-  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
-      "+0", &value));
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute("+0", &value));
   EXPECT_EQ(-34, value);
   EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
       "+0.9", &value));  // Bizarrely not allowed!
   EXPECT_EQ(-34, value);
-  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
-      "  0  ", &value));
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute("  0  ", &value));
   EXPECT_EQ(-34, value);
-  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
-      "junk5", &value));
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute("junk5", &value));
   EXPECT_EQ(-34, value);
-  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
-      "  junk10", &value));
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute("  junk10", &value));
   EXPECT_EQ(-34, value);
-  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
-      "junk  50", &value));
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute("junk  50", &value));
   EXPECT_EQ(-34, value);
-  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
-      "-43", &value));
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute("-43", &value));
   EXPECT_EQ(-34, value);
-  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
-      "+ 43", &value));
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute("+ 43", &value));
   EXPECT_EQ(-34, value);
-  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
-      "21px%", &value));
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute("21px%", &value));
   EXPECT_EQ(-34, value);
-  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
-      "21px junk", &value));
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute("21px junk",
+                                                           &value));
   EXPECT_EQ(-34, value);
   EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
       "9123948572038209720561049018365037891046", &value));
   EXPECT_EQ(-34, value);
   // We don't handle percentages because we can't resize them.
-  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
-      "73%", &value));
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute("73%", &value));
   EXPECT_EQ(-34, value);
-  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
-      "43.2 %", &value));
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute("43.2 %", &value));
   EXPECT_EQ(-34, value);
   // Trailing junk OK according to spec, but older browsers flunk / treat
   // inconsistently
@@ -1826,11 +1828,9 @@ TEST_F(ImageRewriteTest, DimensionParsingFail) {
   EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
       "45 643", &value));  // 45 today
   EXPECT_EQ(-34, value);
-  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
-      "21%px", &value));
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute("21%px", &value));
   EXPECT_EQ(-34, value);
-  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
-      "59 .", &value));
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute("59 .", &value));
   EXPECT_EQ(-34, value);
   EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
       "60 . 9", &value));  // 60 today
@@ -1840,14 +1840,11 @@ TEST_F(ImageRewriteTest, DimensionParsingFail) {
   EXPECT_EQ(-34, value);
   // Some other units that some old browsers treat as px, but we just ignore
   // to avoid confusion / inconsistency.
-  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
-      "29in", &value));
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute("29in", &value));
   EXPECT_EQ(-34, value);
-  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
-      "30cm", &value));
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute("30cm", &value));
   EXPECT_EQ(-34, value);
-  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
-      "43pt", &value));
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute("43pt", &value));
   EXPECT_EQ(-34, value);
   EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
       "99em", &value));  // FF9 screws this up
@@ -2654,6 +2651,7 @@ TEST_F(ImageRewriteTest, GifToWebpTestWithResizeWithOptimize) {
   TestConversionVariables(0, 1, 0,   // gif
                           0, 0, 0,   // png
                           0, 0, 0,   // jpg
+                          0, 0, 0,   // gif animated
                           true);
 }
 
@@ -2670,6 +2668,7 @@ TEST_F(ImageRewriteTest, GifToWebpTestWithoutResizeWithOptimize) {
   TestConversionVariables(0, 1, 0,   // gif
                           0, 0, 0,   // png
                           0, 0, 0,   // jpg
+                          0, 0, 0,   // gif animated
                           true);
 }
 
@@ -2750,7 +2749,7 @@ TEST_F(ImageRewriteTest, RewritesDroppedDueToNoSavingNoResizeTest) {
   TestSingleRewrite(kCuppaOPngFile, kContentTypePng, kContentTypePng,
                     kOriginalDims, kOriginalDims, false, false);
   Variable* rewrites_drops = statistics()->GetVariable(
-      net_instaweb::ImageRewriteFilter::kImageRewritesDroppedNoSavingNoResize);
+      ImageRewriteFilter::kImageRewritesDroppedNoSavingNoResize);
   EXPECT_EQ(1, rewrites_drops->Get());
   EXPECT_EQ(0, rewrite_latency_ok->Count());
   EXPECT_EQ(1, rewrite_latency_failed->Count());
@@ -2763,7 +2762,7 @@ TEST_F(ImageRewriteTest, RewritesDroppedDueToMIMETypeUnknownTest) {
   TestSingleRewrite(kSmallDataFile, kContentTypePng, kContentTypePng,
                     kOriginalDims, kOriginalDims, false, false);
   Variable* rewrites_drops = statistics()->GetVariable(
-      net_instaweb::ImageRewriteFilter::kImageRewritesDroppedMIMETypeUnknown);
+      ImageRewriteFilter::kImageRewritesDroppedMIMETypeUnknown);
   EXPECT_EQ(1, rewrites_drops->Get());
 }
 
@@ -3707,25 +3706,31 @@ TEST_F(ImageRewriteTest, ReportDimensionsToJsPartial) {
 TEST_F(ImageRewriteTest, DebugMessageImageInfo) {
   options()->EnableFilter(RewriteOptions::kDebug);
   options()->EnableFilter(RewriteOptions::kConvertGifToPng);
+  options()->EnableFilter(RewriteOptions::kConvertToWebpAnimated);
   options()->EnableFilter(RewriteOptions::kRecompressPng);
   rewrite_driver()->AddFilters();
   AddFileToMockFetcher("photo_opaque.gif", kChefGifFile, kContentTypeGif,
                        100);
   AddFileToMockFetcher("graphic_transparent.png", kCuppaTPngFile,
                        kContentTypePng, 100);
+  AddFileToMockFetcher("animated.gif", kCradleAnimation, kContentTypeGif, 100);
 
-  Parse("single_attribute",
-        "<img src=photo_opaque.gif><img src=graphic_transparent.png>");
+  Parse("single_attribute", "<img src=photo_opaque.gif>"
+        "<img src=graphic_transparent.png><img src=animated.gif>");
 
   const GoogleString expected = StrCat(
       "<img src=", Encode("", "ic", "0", "photo_opaque.gif", "png"), ">"
       "<!--Image does not appear to need resizing.-->"
-      "<!--Image has no transparent pixels and is not sensitive "
-      "to compression noise.-->"
+      "<!--Image has no transparent pixels, is not sensitive to compression "
+      "noise, and has no animation.-->"
       "<img src=graphic_transparent.png>"
       "<!--Image does not appear to need resizing.-->"
-      "<!--Image has transparent pixels and is sensitive to "
-      "compression noise.-->");
+      "<!--Image has transparent pixels, is sensitive to compression noise, "
+      "and has no animation.-->"
+      "<img src=animated.gif>"
+      "<!--Image does not appear to need resizing.-->"
+      "<!--Image has no transparent pixels, is sensitive to compression noise, "
+      "and has animation.-->");
 
   EXPECT_THAT(output_buffer_, HasSubstr(expected));
 }
@@ -3769,8 +3774,8 @@ TEST_F(ImageRewriteTest, DebugMessageUnauthorized) {
       "<img src=", Encode(kTestDomain, "ic", "0", "photo_opaque.gif", "png"),
       ">"
       "<!--Image does not appear to need resizing.-->"
-      "<!--Image has no transparent pixels and is not sensitive "
-      "to compression noise.-->"
+      "<!--Image has no transparent pixels, is not sensitive to compression "
+      "noise, and has no animation.-->"
       "<img src=", kUnauthorizedPath, ">",
       "<!--",
       RewriteDriver::GenerateUnauthorizedDomainDebugComment(unauth_gurl),
@@ -3886,6 +3891,86 @@ TEST_F(ImageRewriteTest, JpegInResolutionLimitNoResizing) {
   TestResolutionLimit(kResolutionLimitBytes, kResolutionLimitJpegFile,
                       kContentTypeJpeg, true /*try_webp*/,
                       false /*try_resize*/, true /*expect_rewritten*/);
+}
+
+TEST_F(ImageRewriteTest, AnimatedGifToWebpWithWebpAnimatedUa) {
+  if (RunningOnValgrind()) {
+    return;
+  }
+
+  options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
+  options()->EnableFilter(RewriteOptions::kConvertToWebpAnimated);
+  options()->set_image_recompress_quality(85);
+  rewrite_driver()->AddFilters();
+  SetCurrentUserAgent("webp-animated");
+  TestSingleRewrite(kCradleAnimation, kContentTypeGif, kContentTypeWebp,
+                    "", " width=\"200\" height=\"150\"", true, false);
+
+  TestConversionVariables(0, 0, 0,   // gif
+                          0, 0, 0,   // png
+                          0, 0, 0,   // jpg
+                          0, 1, 0,   // gif animated
+                          true);
+}
+
+TEST_F(ImageRewriteTest, AnimatedGifToWebpWithWebpLaUa) {
+  if (RunningOnValgrind()) {
+    return;
+  }
+
+  options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
+  options()->EnableFilter(RewriteOptions::kConvertToWebpAnimated);
+  options()->set_image_recompress_quality(85);
+  rewrite_driver()->AddFilters();
+  SetCurrentUserAgent("webp-la");
+  TestSingleRewrite(kCradleAnimation, kContentTypeGif, kContentTypeGif,
+                    "", " width=\"200\" height=\"150\"", false, false);
+  TestConversionVariables(0, 0, 0,   // gif
+                          0, 0, 0,   // png
+                          0, 0, 0,   // jpg
+                          0, 0, 0,   // gif animated
+                          false);
+}
+
+TEST_F(ImageRewriteTest, AnimatedGifToWebpNotEnabled) {
+  if (RunningOnValgrind()) {
+    return;
+  }
+
+  options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
+  options()->EnableFilter(RewriteOptions::kConvertToWebpLossless);
+  options()->set_image_recompress_quality(85);
+  rewrite_driver()->AddFilters();
+  SetCurrentUserAgent("webp-animated");
+  TestSingleRewrite(kCradleAnimation, kContentTypeGif, kContentTypeGif,
+                    "", " width=\"200\" height=\"150\"", false, false);
+  TestConversionVariables(0, 0, 0,   // gif
+                          0, 0, 0,   // png
+                          0, 0, 0,   // jpg
+                          0, 0, 0,   // gif animated
+                          false);
+}
+
+TEST_F(ImageRewriteTest, GifToWebpLosslessWithWebpAnimatedUa) {
+  if (RunningOnValgrind()) {
+    return;
+  }
+
+  options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
+  options()->EnableFilter(RewriteOptions::kConvertGifToPng);
+  options()->EnableFilter(RewriteOptions::kConvertPngToJpeg);
+  options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
+  options()->EnableFilter(RewriteOptions::kConvertToWebpAnimated);
+  options()->set_image_recompress_quality(85);
+  rewrite_driver()->AddFilters();
+  SetCurrentUserAgent("webp-animated");
+  TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeWebp,
+                    "", " width=\"192\" height=\"256\"", true, false);
+  TestConversionVariables(0, 1, 0,   // gif
+                          0, 0, 0,   // png
+                          0, 0, 0,   // jpg
+                          0, 0, 0,   // gif animated
+                          true);
 }
 
 }  // namespace net_instaweb

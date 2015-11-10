@@ -245,6 +245,7 @@ message ResourceContext {
     LIBWEBP_NONE = 0;
     LIBWEBP_LOSSY_ONLY = 1;
     LIBWEBP_LOSSY_LOSSLESS_ALPHA = 2;
+    LIBWEBP_ANIMATED = 3;
   }
 
   optional LibWebpLevel libwebp_level = 5 [default = LIBWEBP_NONE];

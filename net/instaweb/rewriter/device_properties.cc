@@ -90,6 +90,7 @@ DeviceProperties::DeviceProperties(UserAgentMatcher* matcher)
       accepts_webp_(kNotSet),
       supports_webp_rewritten_urls_(kNotSet),
       supports_webp_lossless_alpha_(kNotSet),
+      supports_webp_animated_(kNotSet),
       is_bot_(kNotSet),
       is_mobile_user_agent_(kNotSet),
       supports_split_html_(kNotSet),
@@ -119,6 +120,7 @@ void DeviceProperties::SetUserAgent(const StringPiece& user_agent_string) {
   supports_lazyload_images_ = kNotSet;
   supports_webp_rewritten_urls_ = kNotSet;
   supports_webp_lossless_alpha_ = kNotSet;
+  supports_webp_animated_ = kNotSet;
   is_bot_ = kNotSet;
   is_mobile_user_agent_ = kNotSet;
   supports_split_html_ = kNotSet;
@@ -206,6 +208,12 @@ bool DeviceProperties::PossiblyMasqueradingAsChrome() const {
   return ua_matcher_->IsChromeLike(user_agent_) && (accepts_webp_ != kTrue);
 }
 
+// TODO(huibao): Only use "accept: image/webp" header to determine whether and
+// which format of WebP is supported. Currently there are some browsers which
+// have "accept: image/webp" but only support lossy/lossless format, and some
+// browsers which don't have "accept" header but support lossy format. Once
+// the market share of these browsers is small enough, we can simplify the logic
+// by only checking the "accept" header.
 bool DeviceProperties::SupportsWebpRewrittenUrls() const {
   if (supports_webp_rewritten_urls_ == kNotSet) {
     if (SupportsWebpInPlace() ||
@@ -229,6 +237,18 @@ bool DeviceProperties::SupportsWebpLosslessAlpha() const {
     }
   }
   return (supports_webp_lossless_alpha_ == kTrue);
+}
+
+bool DeviceProperties::SupportsWebpAnimated() const {
+  if (supports_webp_animated_ == kNotSet) {
+    if (ua_matcher_->SupportsWebpAnimated(user_agent_) &&
+        !PossiblyMasqueradingAsChrome()) {
+      supports_webp_animated_ = kTrue;
+    } else {
+      supports_webp_animated_ = kFalse;
+    }
+  }
+  return (supports_webp_animated_ == kTrue);
 }
 
 bool DeviceProperties::IsBot() const {

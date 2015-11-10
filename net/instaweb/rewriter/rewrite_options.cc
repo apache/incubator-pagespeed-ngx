@@ -168,6 +168,8 @@ const char RewriteOptions::kImageWebpRecompressionQuality[] =
     "WebpRecompressionQuality";
 const char RewriteOptions::kImageWebpRecompressionQualityForSmallScreens[] =
     "WebpRecompressionQualityForSmallScreens";
+const char RewriteOptions::kImageWebpAnimatedRecompressionQuality[] =
+    "WebpAnimatedRecompressionQuality";
 const char RewriteOptions::kImageWebpTimeoutMs[] = "WebpTimeoutMs";
 const char RewriteOptions::kImplicitCacheTtlMs[] = "ImplicitCacheTtlMs";
 const char RewriteOptions::kInPlaceResourceOptimization[] =
@@ -501,6 +503,7 @@ const int64 RewriteOptions::kDefaultImageResolutionLimitBytes = 32*1024*1024;
 const int64 RewriteOptions::kDefaultImageWebpRecompressQuality = 80;
 const int64
 RewriteOptions::kDefaultImageWebpRecompressQualityForSmallScreens = 70;
+const int64 RewriteOptions::kDefaultImageWebpAnimatedRecompressQuality = 70;
 
 // Timeout, in ms, for all WebP conversion attempts for each source
 // image. If negative, does not time out.
@@ -782,6 +785,8 @@ const RewriteOptions::FilterEnumToIdAndNameEntry
         {RewriteOptions::kConvertJpegToWebp, "jw", "Convert Jpeg To Webp"},
         {RewriteOptions::kConvertMetaTags, "mc", "Convert Meta Tags"},
         {RewriteOptions::kConvertPngToJpeg, "pj", "Convert Png to Jpeg"},
+        { RewriteOptions::kConvertToWebpAnimated, "wa",
+          "Convert animated images to WebP" },
         {RewriteOptions::kConvertToWebpLossless, "ws",
          "When converting images to WebP, prefer lossless conversions"},
         {RewriteOptions::kDebug, "db", "Debug"},
@@ -1136,6 +1141,7 @@ bool RewriteOptions::ImageOptimizationEnabled() const {
           this->Enabled(RewriteOptions::kConvertJpegToProgressive) ||
           this->Enabled(RewriteOptions::kConvertPngToJpeg) ||
           this->Enabled(RewriteOptions::kConvertJpegToWebp) ||
+          this->Enabled(RewriteOptions::kConvertToWebpAnimated) ||
           this->Enabled(RewriteOptions::kConvertToWebpLossless));
 }
 
@@ -1817,17 +1823,24 @@ void RewriteOptions::AddProperties() {
       &RewriteOptions::image_webp_recompress_quality_, "iw",
       kImageWebpRecompressionQuality,
       kQueryScope,
-      "Set quality parameter for recompressing webp images [-1,100], "
-      "100 refers to best quality, -1 uses ImageRecompressionQuality.", true);
+      "Quality for rewritten webp images [-1,100], 100 refers to best quality, "
+      "-1 uses ImageRecompressionQuality.", true);
   // Use kDefaultImageWebpRecompressQuality as default.
   AddBaseProperty(
       kDefaultImageWebpRecompressQualityForSmallScreens,
       &RewriteOptions::image_webp_recompress_quality_for_small_screens_, "iwss",
       kImageWebpRecompressionQualityForSmallScreens,
       kQueryScope,
-      "Set quality parameter for recompressing webp images for small "
-      "screens. [-1,100], 100 refers to best quality, -1 falls back to "
+      "Quality for rewritten webp images for small screens. [-1,100], "
+      "100 refers to best quality, -1 falls back to "
       "WebpRecompressionQuality.", true);
+  AddBaseProperty(
+      kDefaultImageWebpAnimatedRecompressQuality,
+      &RewriteOptions::image_webp_animated_recompress_quality_, "iwa",
+      kImageWebpAnimatedRecompressionQuality,
+      kQueryScope,
+      "Quality for rewritten animated webp images [-1,100], "
+      "100 refers to best quality, -1 uses ImageRecompressionQuality.", true);
   AddBaseProperty(
       kDefaultImageWebpTimeoutMs,
       &RewriteOptions::image_webp_timeout_ms_, "wt",

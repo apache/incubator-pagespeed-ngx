@@ -51,6 +51,7 @@ class DownstreamCachingDirectives {
   bool SupportsJsDefer() const;
   bool SupportsWebp() const;
   bool SupportsWebpLosslessAlpha() const;
+  bool SupportsWebpAnimated() const;
 
  private:
   // Helper method for figuring out support for a given capability based on
@@ -76,6 +77,7 @@ class DownstreamCachingDirectives {
   mutable LazyBool supports_lazyload_images_;
   mutable LazyBool supports_webp_;
   mutable LazyBool supports_webp_lossless_alpha_;
+  mutable LazyBool supports_webp_animated_;
 
   GoogleString capabilities_to_be_supported_;
 

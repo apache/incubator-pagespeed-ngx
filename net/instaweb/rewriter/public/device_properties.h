@@ -55,6 +55,7 @@ class DeviceProperties {
   // and thus restrict it to rewritten urls.
   bool SupportsWebpRewrittenUrls() const;
   bool SupportsWebpLosslessAlpha() const;
+  bool SupportsWebpAnimated() const;
   bool IsBot() const;
   bool SupportsSplitHtml(bool enable_mobile) const;
   bool CanPreloadResources() const;
@@ -115,6 +116,7 @@ class DeviceProperties {
   mutable LazyBool accepts_webp_;
   mutable LazyBool supports_webp_rewritten_urls_;
   mutable LazyBool supports_webp_lossless_alpha_;
+  mutable LazyBool supports_webp_animated_;
   mutable LazyBool is_bot_;
   mutable LazyBool is_mobile_user_agent_;
   mutable LazyBool supports_split_html_;

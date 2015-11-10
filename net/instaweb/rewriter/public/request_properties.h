@@ -59,6 +59,7 @@ class RequestProperties {
   bool SupportsWebpInPlace() const;
   bool SupportsWebpRewrittenUrls() const;
   bool SupportsWebpLosslessAlpha() const;
+  bool SupportsWebpAnimated() const;
   bool IsBot() const;
   bool SupportsSplitHtml(bool enable_mobile) const;
   bool CanPreloadResources() const;
@@ -97,6 +98,7 @@ class RequestProperties {
   mutable LazyBool supports_webp_in_place_;
   mutable LazyBool supports_webp_rewritten_urls_;
   mutable LazyBool supports_webp_lossless_alpha_;
+  mutable LazyBool supports_webp_animated_;
 
   DISALLOW_COPY_AND_ASSIGN(RequestProperties);
 };

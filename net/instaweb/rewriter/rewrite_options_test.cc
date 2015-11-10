@@ -939,6 +939,7 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
     RewriteOptions::kImageResolutionLimitBytes,
     RewriteOptions::kImageWebpRecompressionQuality,
     RewriteOptions::kImageWebpRecompressionQualityForSmallScreens,
+    RewriteOptions::kImageWebpAnimatedRecompressionQuality,
     RewriteOptions::kImageWebpTimeoutMs,
     RewriteOptions::kImplicitCacheTtlMs,
     RewriteOptions::kIncreaseSpeedTracking,
@@ -2428,6 +2429,11 @@ TEST_F(RewriteOptionsTest, ImageOptimizableCheck) {
   options_.EnableFilter(RewriteOptions::kConvertToWebpLossless);
   EXPECT_TRUE(options_.ImageOptimizationEnabled());
   options_.DisableFilter(RewriteOptions::kConvertToWebpLossless);
+  EXPECT_FALSE(options_.ImageOptimizationEnabled());
+
+  options_.EnableFilter(RewriteOptions::kConvertToWebpAnimated);
+  EXPECT_TRUE(options_.ImageOptimizationEnabled());
+  options_.DisableFilter(RewriteOptions::kConvertToWebpAnimated);
   EXPECT_FALSE(options_.ImageOptimizationEnabled());
 }
 

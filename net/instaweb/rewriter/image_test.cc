@@ -130,6 +130,16 @@ class ConversionVarChecker {
         Image::ConversionVariables::OPAQUE)->failure_ms =
         simple_stats_.AddHistogram("webp_opaque_failure");
 
+    webp_conversion_variables_.Get(
+        Image::ConversionVariables::FROM_GIF_ANIMATED)->timeout_count =
+        simple_stats_.AddVariable("gif_webp_animated_timeout");
+    webp_conversion_variables_.Get(
+        Image::ConversionVariables::FROM_GIF_ANIMATED)->success_ms =
+        simple_stats_.AddHistogram("gif_webp_animated_success");
+    webp_conversion_variables_.Get(
+        Image::ConversionVariables::FROM_GIF_ANIMATED)->failure_ms =
+        simple_stats_.AddHistogram("gif_webp_animated_failure");
+
     options->webp_conversion_variables = &webp_conversion_variables_;
   }
 
@@ -144,6 +154,10 @@ class ConversionVarChecker {
             int jpeg_webp_timeout,
             int jpeg_webp_success,
             int jpeg_webp_failure,
+
+            int gif_webp_animated_timeout,
+            int gif_webp_animated_success,
+            int gif_webp_animated_failure,
 
             bool opaque) {
     EXPECT_EQ(gif_webp_timeout,
@@ -185,18 +199,34 @@ class ConversionVarChecker {
                   Image::ConversionVariables::FROM_JPEG)->
               failure_ms->Count());
 
+    EXPECT_EQ(gif_webp_animated_timeout,
+              webp_conversion_variables_.Get(
+                  Image::ConversionVariables::FROM_GIF_ANIMATED)->
+              timeout_count->Get());
+    EXPECT_EQ(gif_webp_animated_success,
+              webp_conversion_variables_.Get(
+                  Image::ConversionVariables::FROM_GIF_ANIMATED)->
+              success_ms->Count());
+    EXPECT_EQ(gif_webp_animated_failure,
+              webp_conversion_variables_.Get(
+                  Image::ConversionVariables::FROM_GIF_ANIMATED)->
+              failure_ms->Count());
+
     int total_timeout =
         gif_webp_timeout +
         png_webp_timeout +
-        jpeg_webp_timeout;
+        jpeg_webp_timeout +
+        gif_webp_animated_timeout;
     int total_success =
         gif_webp_success +
         png_webp_success +
-        jpeg_webp_success;
+        jpeg_webp_success +
+        gif_webp_animated_success;
     int total_failure =
         gif_webp_failure +
         png_webp_failure +
-        jpeg_webp_failure;
+        jpeg_webp_failure +
+        gif_webp_animated_failure;
 
     Image::ConversionBySourceVariable* webp_transparency =
         webp_conversion_variables_.Get(
@@ -515,6 +545,7 @@ TEST_F(ImageTest, PngToWebpTest) {
   conversion_var_checker.Test(0, 0, 0,   // gif
                               0, 1, 0,   // png
                               0, 0, 0,   // jpeg
+                              0, 0, 0,   // gif animated
                               true);
 }
 
@@ -537,6 +568,7 @@ TEST_F(ImageTest, PngToWebpFailToJpegDueToPreferredTest) {
   conversion_var_checker.Test(0, 0, 0,   // gif
                               0, 0, 0,   // png
                               0, 0, 0,   // jpeg
+                              0, 0, 0,   // gif animated
                               true);
 }
 
@@ -556,6 +588,7 @@ TEST_F(ImageTest, PngToWebpLaTest) {
   conversion_var_checker.Test(0, 0, 0,   // gif
                               0, 1, 0,   // png
                               0, 0, 0,   // jpeg
+                              0, 0, 0,   // gif animated
                               true);
 }
 
@@ -586,6 +619,7 @@ TEST_F(ImageTest, PngAlphaFailToWebpLossyTest) {
   conversion_var_checker.Test(0, 0, 0,   // gif
                               0, 0, 0,   // png
                               0, 0, 0,   // jpeg
+                              0, 0, 0,   // gif animated
                               true);
 }
 
@@ -612,6 +646,7 @@ TEST_F(ImageTest, PngAlphaToWebpLaTest) {
   conversion_var_checker.Test(0, 0, 0,   // gif
                               0, 1, 0,   // png
                               0, 0, 0,   // jpeg
+                              0, 0, 0,   // gif animated
                               false);
 }
 
@@ -640,6 +675,7 @@ TEST_F(ImageTest, PngAlphaToWebpTestFailsBecauseTooManyTries) {
   conversion_var_checker.Test(0, 0, 0,   // gif
                               0, 0, 0,   // png
                               0, 0, 0,   // jpeg
+                              0, 0, 0,   // gif animated
                               false);
 }
 
@@ -668,6 +704,7 @@ TEST_F(ImageTest, PngLargeAlphaToWebpLaTest) {
   conversion_var_checker.Test(0, 0, 0,   // gif
                               0, 1, 0,   // png
                               0, 0, 0,   // jpeg
+                              0, 0, 0,   // gif animated
                               false);
   // TODO(vchudnov): Check that the pixels match.
 }
@@ -692,6 +729,7 @@ TEST_F(ImageTest, PngLargeAlphaToWebpTimesOutToPngTest) {
   conversion_var_checker.Test(0, 0, 0,   // gif
                               0, 0, 0,   // png
                               0, 0, 0,   // jpeg
+                              0, 0, 0,   // gif animated
                               false);
 
   GoogleString buffer;
@@ -705,6 +743,7 @@ TEST_F(ImageTest, PngLargeAlphaToWebpTimesOutToPngTest) {
   conversion_var_checker.Test(0, 0, 0,   // gif
                               1, 0, 0,   // png
                               0, 0, 0,   // jpeg
+                              0, 0, 0,   // gif animated
                               false);
 
   // One attempt for WebpP conversion, one attempt for the fall-back
@@ -732,6 +771,7 @@ TEST_F(ImageTest, PngLargeAlphaToWebpDoesNotTimeOutTest) {
   conversion_var_checker.Test(0, 0, 0,   // gif
                               0, 0, 0,   // png
                               0, 0, 0,   // jpeg
+                              0, 0, 0,   // gif animated
                               false);
 
   GoogleString buffer;
@@ -745,6 +785,7 @@ TEST_F(ImageTest, PngLargeAlphaToWebpDoesNotTimeOutTest) {
   conversion_var_checker.Test(0, 0, 0,   // gif
                               0, 1, 0,   // png
                               0, 0, 0,   // jpeg
+                              0, 0, 0,   // gif animated
                               false);
 
   // One attempt for WebpP conversion.
@@ -833,6 +874,7 @@ TEST_F(ImageTest, GifToWebpTest) {
   conversion_var_checker.Test(0, 1, 0,   // gif
                               0, 0, 0,   // png
                               0, 0, 0,   // jpeg
+                              0, 0, 0,   // gif animated
                               true);
 }
 
@@ -852,10 +894,11 @@ TEST_F(ImageTest, GifToWebpLaTest) {
   conversion_var_checker.Test(0, 1, 0,   // gif
                               0, 0, 0,   // png
                               0, 0, 0,   // jpeg
+                              0, 0, 0,   // gif animated
                               false);
 }
 
-TEST_F(ImageTest, AnimationTest) {
+TEST_F(ImageTest, AnimatedFilterNotEnabledTest) {
   CheckImageFromFile(
       kCradle, IMAGE_GIF, IMAGE_PNG,
       8,  // Min bytes to bother checking file type at all.
@@ -1051,6 +1094,7 @@ TEST_F(ImageTest, JpegToWebpTimesOutTest) {
   conversion_var_checker.Test(0, 0, 0,   // gif
                               0, 0, 0,   // png
                               0, 0, 0,   // jpeg
+                              0, 0, 0,   // gif animated
                               true);
 
   GoogleString buffer;
@@ -1062,6 +1106,7 @@ TEST_F(ImageTest, JpegToWebpTimesOutTest) {
   conversion_var_checker.Test(0, 0, 0,   // gif
                               0, 0, 0,   // png
                               1, 0, 0,   // jpeg
+                              0, 0, 0,   // gif animated
                               true);
 }
 
@@ -1085,6 +1130,7 @@ TEST_F(ImageTest, JpegToWebpDoesNotTimeOutTest) {
   conversion_var_checker.Test(0, 0, 0,   // gif
                               0, 0, 0,   // png
                               0, 0, 0,   // jpeg
+                              0, 0, 0,   // gif animated
                               true);
 
   GoogleString buffer;
@@ -1096,6 +1142,7 @@ TEST_F(ImageTest, JpegToWebpDoesNotTimeOutTest) {
   conversion_var_checker.Test(0, 0, 0,   // gif
                               0, 0, 0,   // png
                               0, 1, 0,   // jpeg
+                              0, 0, 0,   // gif animated
                               true);
 }
 
@@ -1117,6 +1164,7 @@ TEST_F(ImageTest, WebpNonLaFromJpgTest) {
   conversion_var_checker.Test(0, 0, 0,   // gif
                               0, 0, 0,   // png
                               0, 1, 0,   // jpeg
+                              0, 0, 0,   // gif animated
                               true);
 }
 
@@ -1295,6 +1343,7 @@ void SetBaseJpegOptions(Image::CompressionOptions* options) {
   options->convert_gif_to_png = true;
   options->convert_png_to_jpeg = true;
   options->webp_quality = 75;
+  options->webp_animated_quality = 75;
   options->jpeg_quality = 85;
 }
 
@@ -1397,6 +1446,28 @@ TEST_F(ImageTest, IgnoreTimeoutWhenFinishingWebp) {
   expected.append(webp_image->Contents().as_string());
   EXPECT_EQ(expected,
             almost_done_webp_image->Contents());
+}
+
+TEST_F(ImageTest, AnimatedGifToWebpTest) {
+  // FYI: This test will also probably take very long to run under Valgrind.
+  if (RunningOnValgrind()) {
+    return;
+  }
+  ConversionVarChecker conversion_var_checker(options_.get());
+  options_->webp_animated_quality = 25;
+  options_->allow_webp_animated = true;
+  options_->preferred_webp = Image::WEBP_ANIMATED;
+  CheckImageFromFile(
+      kCradle, IMAGE_GIF, IMAGE_WEBP_ANIMATED,
+      8,  // Min bytes to bother checking file type at all.
+      ImageHeaders::kGifDimStart + ImageHeaders::kGifIntSize * 2,
+      200, 150,
+      583374, true);
+  conversion_var_checker.Test(0, 0, 0,   // gif
+                              0, 0, 0,   // png
+                              0, 0, 0,   // jpeg
+                              0, 1, 0,   // gif animated
+                              true);
 }
 
 }  // namespace
