@@ -428,7 +428,7 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
       driver()->AddAttribute(header, HtmlName::kClass, "psmob-hide");
 
       // The spacer is added by IframeFetcher when iframe mode is enabled.
-      if (!driver()->options()->mob_iframe_disable()) {
+      if (!driver()->options()->mob_iframe()) {
         HtmlElement* spacer = driver()->NewElement(element, HtmlName::kDiv);
         driver()->InsertNodeAfterCurrent(spacer);
         driver()->AddAttribute(spacer, HtmlName::kId, "psmob-spacer");

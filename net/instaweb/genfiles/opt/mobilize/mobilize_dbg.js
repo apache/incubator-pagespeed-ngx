@@ -7853,8 +7853,7 @@ mob.Nav.prototype.addHeaderBarResizeEvents_ = function() {
   }, this), !1);
 };
 mob.Nav.prototype.addHeaderBar_ = function(a) {
-  document.body.insertBefore(this.spacerDiv_, document.body.childNodes[0]);
-  document.body.insertBefore(this.headerBar_, this.spacerDiv_);
+  document.getElementById(mob.util.ElementId.IFRAME) || (document.body.insertBefore(this.spacerDiv_, document.body.childNodes[0]), document.body.insertBefore(this.headerBar_, this.spacerDiv_));
   window.psLabeledMode && goog.dom.classlist.add(this.headerBar_, mob.util.ElementClass.LABELED);
   window.psConfigMode && goog.dom.classlist.add(this.headerBar_, mob.util.ElementClass.THEME_CONFIG);
   this.isIosWebview_ && goog.dom.classlist.add(this.headerBar_, mob.util.ElementClass.IOS_WEBVIEW);

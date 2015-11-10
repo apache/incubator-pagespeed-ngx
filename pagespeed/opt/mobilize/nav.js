@@ -451,8 +451,11 @@ mob.Nav.prototype.addHeaderBarResizeEvents_ = function() {
 mob.Nav.prototype.addHeaderBar_ = function(themeData) {
   // Move the header bar and spacer div back to the top of the body, in case
   // some other JS on the page inserted some elements.
-  document.body.insertBefore(this.spacerDiv_, document.body.childNodes[0]);
-  document.body.insertBefore(this.headerBar_, this.spacerDiv_);
+  if (!document.getElementById(mob.util.ElementId.IFRAME)) {
+    document.body.insertBefore(this.spacerDiv_, document.body.childNodes[0]);
+    document.body.insertBefore(this.headerBar_, this.spacerDiv_);
+  }
+
   if (window.psLabeledMode) {
     goog.dom.classlist.add(this.headerBar_, mob.util.ElementClass.LABELED);
   }
