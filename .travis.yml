@@ -1,5 +1,8 @@
 language: c++
 install:
+  - sudo sh -c 'echo "deb http://opensource.wandisco.com/ubuntu precise svn18" >> /etc/apt/sources.list.d/subversion18.list'
+  - sudo wget -q http://opensource.wandisco.com/wandisco-debian.gpg -O- | sudo apt-key add -
+  - sudo apt-get update
   - mkdir -p ~/build_directory
   - mv $TRAVIS_BUILD_DIR ~/build_directory/src
   - sudo apt-get update 2>&1 > /dev/null
