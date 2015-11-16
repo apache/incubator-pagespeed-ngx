@@ -49,6 +49,18 @@ class InflatingFetch : public SharedAsyncFetch {
   // or gzip was already in the request then this has no effect.
   void EnableGzipFromBackend();
 
+  // In-place inflate a GZipped HTTPValue if it has been gzipped-compressed,
+  // updating the headers to reflect the new state.
+  static void UnGzipValueIfCompressed(HTTPValue* http_value,
+                                      ResponseHeaders* headers,
+                                      MessageHandler* handler);
+  // GZip compress HTTPValue, updating the headers reflect the new
+  // state, output to compressed_value. Returns true if the value is
+  // successfully compressed.
+  static bool GzipValue(int compression_level, const HTTPValue* http_value,
+                        HTTPValue* compressed_value, ResponseHeaders* headers,
+                        MessageHandler* handler);
+
  protected:
   // If inflation is required, inflates and passes bytes to the linked fetch,
   // otherwise just passes bytes.

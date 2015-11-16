@@ -78,6 +78,10 @@ bool RequestProperties::SupportsCriticalCss() const {
   return device_properties_->SupportsCriticalCss();
 }
 
+bool RequestProperties::AcceptsGzip() const {
+  return device_properties_->AcceptsGzip();
+}
+
 bool RequestProperties::SupportsCriticalCssBeacon() const {
   // For bots, we don't allow instrumentation, but we do allow bots to use
   // previous instrumentation results collected by non-bots to enable the

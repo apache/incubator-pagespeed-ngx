@@ -164,6 +164,7 @@
 #include "pagespeed/kernel/http/http_names.h"
 #include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/thread/scheduler.h"
+#include "pagespeed/kernel/util/gzip_inflater.h"
 #include "pagespeed/kernel/util/statistics_logger.h"
 
 namespace net_instaweb {
@@ -311,6 +312,7 @@ void RewriteDriver::PopulateRequestContext() {
       (request_headers_ != NULL)) {
     request_context_->set_accepts_webp(
         request_properties_->SupportsWebpRewrittenUrls());
+    request_context_->set_accepts_gzip(request_properties_->AcceptsGzip());
   }
 }
 

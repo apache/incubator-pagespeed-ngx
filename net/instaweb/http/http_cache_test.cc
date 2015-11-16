@@ -23,6 +23,7 @@
 #include <cstddef>                     // for size_t
 
 #include "net/instaweb/http/public/http_value.h"
+#include "net/instaweb/http/public/inflating_fetch.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/google_message_handler.h"
 #include "pagespeed/kernel/base/gtest.h"
@@ -32,6 +33,7 @@
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/string_writer.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/cache/lru_cache.h"
@@ -39,6 +41,7 @@
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/http_names.h"
 #include "pagespeed/kernel/http/response_headers.h"
+#include "pagespeed/kernel/util/gzip_inflater.h"
 #include "pagespeed/kernel/util/platform.h"
 #include "pagespeed/kernel/util/simple_stats.h"
 #include "pagespeed/opt/logging/request_timing_info.h"
@@ -153,6 +156,15 @@ class HTTPCacheTest : public testing::Test {
         key, fragment, value, headers, handler, callback.get());
   }
 
+  HTTPCache::FindResult FindAcceptGzip(
+      const GoogleString& key, const GoogleString& fragment, HTTPValue* value,
+      ResponseHeaders* headers, MessageHandler* handler) {
+    scoped_ptr<Callback> callback(NewCallback());
+    callback->request_context()->set_accepts_gzip(true);
+    return FindWithCallback(
+        key, fragment, value, headers, handler, callback.get());
+  }
+
   HTTPCache::FindResult Find(
       const GoogleString& key, const GoogleString& fragment, HTTPValue* value,
       ResponseHeaders* headers, MessageHandler* handler, bool cache_valid) {
@@ -251,6 +263,111 @@ TEST_F(HTTPCacheTest, PutGet) {
   fallback_value = callback2->fallback_http_value();
   ASSERT_TRUE(fallback_value->Empty());
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheFallbacks));
+}
+
+TEST_F(HTTPCacheTest, PutGetCompressed) {
+  // Check to see that when compression is on, data put into the cache is
+  // properly compressed, and can be retrieved if the callback accepts gzipped
+  // data.
+  http_cache_->SetCompressionLevel(9); // Set cache to max compression.
+  simple_stats_.Clear();
+  ResponseHeaders meta_data_in, meta_data_out;
+  InitHeaders(&meta_data_in, "max-age=300");
+  meta_data_in.Replace(HttpAttributes::kContentType,
+                       kContentTypeCss.mime_type());
+  meta_data_in.ComputeCaching();
+  Put(kUrl, kFragment, &meta_data_in, "content", &message_handler_);
+  EXPECT_EQ(1, GetStat(HTTPCache::kCacheInserts));
+  EXPECT_EQ(0, GetStat(HTTPCache::kCacheHits));
+  HTTPValue value;
+  HTTPCache::FindResult found = FindAcceptGzip(
+      kUrl, kFragment, &value, &meta_data_out, &message_handler_);
+  ASSERT_EQ(kFoundResult, found);
+  ASSERT_TRUE(meta_data_out.headers_complete());
+  StringPiece contents;
+  ASSERT_TRUE(value.ExtractContents(&contents));
+  ConstStringStarVector values;
+  ASSERT_TRUE(meta_data_out.Lookup("name", &values));
+  ASSERT_EQ(static_cast<size_t>(1), values.size());
+  EXPECT_EQ(GoogleString("value"), *(values[0]));
+  EXPECT_NE("content", contents);
+  GoogleString inflated;
+  StringWriter inflate_writer(&inflated);
+  GzipInflater::Inflate(contents, GzipInflater::kGzip, &inflate_writer);
+  EXPECT_STREQ("content", inflated);
+  EXPECT_EQ(1, GetStat(HTTPCache::kCacheHits));
+  http_cache_->SetCompressionLevel(0); // Return cache to uncompressed.
+}
+
+TEST_F(HTTPCacheTest, StaticInflatingFetch) {
+  // Check to see that when compression is on, data put into the cache is
+  // properly compressed, and can be retrieved if the callback accepts gzipped
+  // data.
+  http_cache_->SetCompressionLevel(9); // Set cache to max compression.
+  simple_stats_.Clear();
+  ResponseHeaders meta_data_in, meta_data_out;
+  InitHeaders(&meta_data_in, "max-age=300");
+  meta_data_in.Replace(HttpAttributes::kContentType,
+                       kContentTypeCss.mime_type());
+  meta_data_in.ComputeCaching();
+  Put(kUrl, kFragment, &meta_data_in, "content", &message_handler_);
+  EXPECT_EQ(1, GetStat(HTTPCache::kCacheInserts));
+  EXPECT_EQ(0, GetStat(HTTPCache::kCacheHits));
+  HTTPValue value;
+  HTTPCache::FindResult found = FindAcceptGzip(
+      kUrl, kFragment, &value, &meta_data_out, &message_handler_);
+  ASSERT_EQ(kFoundResult, found);
+  ASSERT_TRUE(meta_data_out.headers_complete());
+  StringPiece contents;
+  ASSERT_TRUE(value.ExtractContents(&contents));
+  ConstStringStarVector values;
+  ASSERT_TRUE(meta_data_out.Lookup("name", &values));
+  ASSERT_EQ(static_cast<size_t>(1), values.size());
+  EXPECT_EQ(GoogleString("value"), *(values[0]));
+  EXPECT_NE("content", contents);
+  ResponseHeaders response_headers;
+  EXPECT_TRUE(value.ExtractHeaders(&response_headers, NULL));
+  // Check that the InflatingFetch gzip methods work properly when extracting
+  // data.
+  InflatingFetch::UnGzipValueIfCompressed(&value, &response_headers, NULL);
+  ASSERT_TRUE(value.ExtractContents(&contents));
+  ASSERT_TRUE(meta_data_out.Lookup("name", &values));
+  ASSERT_EQ(static_cast<size_t>(1), values.size());
+  EXPECT_EQ(GoogleString("value"), *(values[0]));
+  EXPECT_STREQ("content", contents);
+  EXPECT_EQ(1, GetStat(HTTPCache::kCacheHits));
+  http_cache_->SetCompressionLevel(0); // Return cache to uncompressed.
+}
+
+TEST_F(HTTPCacheTest, PutGetCompressedJpg) {
+  // Check to see that when compression is on, data put into the cache is
+  // properly compressed, and can be retrieved if the callback accepts gzipped
+  // data. Jpeg data should not be compressed, as gzip doesn't handle non-text
+  // data well.
+  http_cache_->SetCompressionLevel(9); // Set cache to max compression.
+  simple_stats_.Clear();
+  ResponseHeaders meta_data_in, meta_data_out;
+  InitHeaders(&meta_data_in, "max-age=300");
+  meta_data_in.Replace(HttpAttributes::kContentType,
+                       kContentTypeJpeg.mime_type());
+  meta_data_in.ComputeCaching();
+  Put(kUrl, kFragment, &meta_data_in, "content", &message_handler_);
+  EXPECT_EQ(1, GetStat(HTTPCache::kCacheInserts));
+  EXPECT_EQ(0, GetStat(HTTPCache::kCacheHits));
+  HTTPValue value;
+  HTTPCache::FindResult found = FindAcceptGzip(
+      kUrl, kFragment, &value, &meta_data_out, &message_handler_);
+  ASSERT_EQ(kFoundResult, found);
+  ASSERT_TRUE(meta_data_out.headers_complete());
+  StringPiece contents;
+  ASSERT_TRUE(value.ExtractContents(&contents));
+  ConstStringStarVector values;
+  ASSERT_TRUE(meta_data_out.Lookup("name", &values));
+  ASSERT_EQ(static_cast<size_t>(1), values.size());
+  EXPECT_EQ(GoogleString("value"), *(values[0]));
+  EXPECT_EQ("content", contents);
+  EXPECT_EQ(1, GetStat(HTTPCache::kCacheHits));
+  http_cache_->SetCompressionLevel(0); // Return cache to uncompressed.
 }
 
 TEST_F(HTTPCacheTest, PutGetForInvalidUrl) {

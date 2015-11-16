@@ -142,6 +142,8 @@ const char RewriteOptions::kForbidAllDisabledFilters[] =
 const char RewriteOptions::kGoogleFontCssInlineMaxBytes[] =
     "GoogleFontCssInlineMaxBytes";
 const char RewriteOptions::kHideRefererUsingMeta[] = "HideRefererUsingMeta";
+const char RewriteOptions::kHttpCacheCompressionLevel[] =
+    "HttpCacheCompressionLevel";
 const char RewriteOptions::kIdleFlushTimeMs[] = "IdleFlushTimeMs";
 const char RewriteOptions::kImageInlineMaxBytes[] = "ImageInlineMaxBytes";
 const char RewriteOptions::kImageJpegNumProgressiveScans[] =
@@ -1728,6 +1730,12 @@ void RewriteOptions::AddProperties() {
       &RewriteOptions::remote_configuration_url_, "rcfgu",
       kRemoteConfigurationUrl, kDirectoryScope,
       "URL of site from which to pull remote configuration files",
+      true);
+  AddBaseProperty(
+      9, &RewriteOptions::http_cache_compression_level_, "hccl",
+      kHttpCacheCompressionLevel, kServerScope,
+      "Compression level for HTTPCache. [-1-9] where 0 is off, 1 is minimum"
+      "compression, and 9 (the default) is maximum compression.",
       true);
   AddBaseProperty(
       "", &RewriteOptions::lazyload_images_blank_url_, "llbu",

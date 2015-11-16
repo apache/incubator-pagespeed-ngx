@@ -111,6 +111,8 @@ void FileRewriter::SetupCaches(ServerContext* server_context) {
   CacheInterface* cache = new ThreadsafeCache(lru_cache,
                                               thread_system()->NewMutex());
   HTTPCache* http_cache = new HTTPCache(cache, timer(), hasher(), statistics());
+  http_cache->SetCompressionLevel(
+      server_context->global_options()->http_cache_compression_level());
   server_context->set_http_cache(http_cache);
   server_context->set_metadata_cache(cache);
   server_context->MakePagePropertyCache(

@@ -1136,6 +1136,10 @@ if ! [ -z ${RCPORT4+x} ] && [ $RCPORT4 -eq "9994" ]; then
   fi
 fi
 
+start_test Fetch gzipped, make sure that we have cache compressed at gzip 9.
+URL="$PRIMARY_SERVER/mod_pagespeed_test/invalid.css"
+fetch_until -gzip $URL "wc -c" 27
+
 # Cleanup
 rm -rf $OUTDIR
 

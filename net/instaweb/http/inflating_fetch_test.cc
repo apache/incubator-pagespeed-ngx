@@ -21,6 +21,7 @@
 #include "net/instaweb/http/public/inflating_fetch.h"
 
 #include "net/instaweb/http/public/async_fetch.h"  // for StringAsyncFetch
+#include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/google_message_handler.h"
@@ -99,9 +100,6 @@ class InflatingFetchTest : public testing::Test {
   GoogleMessageHandler message_handler_;
   StringPiece gzipped_data_;
   scoped_ptr<ThreadSystem> thread_system_;
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(InflatingFetchTest);
 };
 
 // Tests that if we ask for clear text & get it, we pass through the data
@@ -306,6 +304,32 @@ TEST_F(InflatingFetchTest, TestEnableGzipFromBackendExpectingGzip) {
       HttpAttributes::kContentEncoding)) << "content-encoding not stripped.";
   EXPECT_TRUE(mock_fetch_->done());
   EXPECT_TRUE(mock_fetch_->success());
+}
+
+TEST(StaticInflatingFetchTest, CompressUncompressValue) {
+  static const char kHello[] = "hello";
+  GoogleMessageHandler handler;
+  HTTPValue value;
+  value.Write(kHello, &handler);
+  ResponseHeaders headers;
+  headers.Add(HttpAttributes::kContentType, "text/html");
+  value.SetHeaders(&headers);
+  HTTPValue compressed_value;
+  EXPECT_TRUE(InflatingFetch::GzipValue(9, &value, &compressed_value, &headers,
+                                        &handler));
+  StringPiece contents;
+  compressed_value.ExtractContents(&contents);
+  // Extract the compressed version, it shouldn't be the same as the initial
+  // text.
+  EXPECT_NE(kHello, contents);
+  EXPECT_STREQ(HttpAttributes::kGzip,
+               headers.Lookup1(HttpAttributes::kContentEncoding));
+  compressed_value.ExtractHeaders(&headers, &handler);
+  InflatingFetch::UnGzipValueIfCompressed(&compressed_value, &headers,
+                                          &handler);
+  compressed_value.ExtractContents(&contents);
+  // We've unzipped the compressed value, it should now say "hello".
+  EXPECT_EQ(kHello, contents);
 }
 
 // TODO(jmarantz): test 'deflate' without gzip

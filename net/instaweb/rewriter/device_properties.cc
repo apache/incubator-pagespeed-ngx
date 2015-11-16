@@ -137,6 +137,18 @@ void DeviceProperties::ParseRequestHeaders(
       request_headers.HasValue(HttpAttributes::kAccept,
                                kContentTypeWebp.mime_type()) ?
       kTrue : kFalse;
+  accepts_gzip_ =
+      request_headers.HasValue(HttpAttributes::kAcceptEncoding,
+                               HttpAttributes::kGzip) ?
+      kTrue : kFalse;
+}
+
+bool DeviceProperties::AcceptsGzip() const {
+  if (accepts_gzip_ == kNotSet) {
+    LOG(DFATAL) << "Check of AcceptsGzip before value is set.";
+    accepts_gzip_ = kFalse;
+  }
+  return (accepts_gzip_ == kTrue);
 }
 
 bool DeviceProperties::SupportsImageInlining() const {

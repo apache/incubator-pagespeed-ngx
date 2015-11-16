@@ -336,6 +336,18 @@ class HTTPCache {
   void set_cache_levels(int levels) { cache_levels_ = levels; }
   int cache_levels() const { return cache_levels_; }
 
+  // Sets the compression level of HTTP Cache. 9 being the most compression, -1
+  // being the gzip default (6), and 0 being off.
+  void SetCompressionLevel(int level) {
+    if (level >= -1 && level <= 9) {
+      compression_level_ = level;
+    } else {
+      LOG(INFO) << "Invalid compression level specified, defaulting to -1";
+      compression_level_ = -1;
+    }
+  }
+  int compression_level() const { return compression_level_; }
+
   GoogleString Name() const { return FormatName(cache_->Name()); }
   static GoogleString FormatName(StringPiece cache);
 
@@ -351,10 +363,14 @@ class HTTPCache {
   friend class HTTPCacheCallback;
   FRIEND_TEST(HTTPCacheTest, UpdateVersion);
 
+  // If headers is passed as NULL, the response headers will be extracted from
+  // the HTTPValue. Otherwise, the headers passed in will be used.
   void PutInternal(const GoogleString& key,
                    const GoogleString& fragment,
                    int64 start_us,
-                   HTTPValue* value);
+                   HTTPValue* value,
+                   ResponseHeaders* headers,
+                   MessageHandler* handler);
   void DeleteInternal(const GoogleString& key_fragment);
 
   // Used by constructor and tests.
@@ -386,6 +402,7 @@ class HTTPCache {
   bool disable_html_caching_on_https_;
 
   int cache_levels_;
+  int compression_level_;
 
   // Total cumulative time spent accessing backend cache.
   Variable* cache_time_us_;

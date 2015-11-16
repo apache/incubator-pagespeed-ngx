@@ -149,6 +149,11 @@ class RequestContext : public RefCounted<RequestContext> {
   void set_accepts_webp(bool x) { accepts_webp_ = x; }
   bool accepts_webp() const { return accepts_webp_; }
 
+  // Indicates whether the request-headers tell us that a browser can extract
+  // gzip compressed data.
+  void set_accepts_gzip(bool x) { accepts_gzip_ = x; }
+  bool accepts_gzip() const { return accepts_gzip_; }
+
   // Indicates the type of split html request.
   SplitRequestType split_request_type() const {
     return split_request_type_;
@@ -251,6 +256,7 @@ class RequestContext : public RefCounted<RequestContext> {
 
   bool using_spdy_;
   bool accepts_webp_;
+  bool accepts_gzip_;
   GoogleString minimal_private_suffix_;
 
   SplitRequestType split_request_type_;

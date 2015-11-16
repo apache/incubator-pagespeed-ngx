@@ -93,6 +93,9 @@ struct ContentType {
   // Heuristic to determine whether this should be treated as a static resource.
   bool IsLikelyStaticResource() const;
 
+  // Heuristic to determine whether compressing the resource is beneficial.
+  bool IsCompressible() const;
+
   // These fields should be private; we leave them public only so we can use
   // struct literals in content_type.cc.  Other code should use the above
   // accessor methods instead of accessing these fields directly.

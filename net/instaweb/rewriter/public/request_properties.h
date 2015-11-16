@@ -68,6 +68,7 @@ class RequestProperties {
   bool IsMobile() const;
   bool IsTablet() const;
   bool ForbidWebpInlining() const;
+  bool AcceptsGzip() const;
 
   // Does not own the vectors. Callers must ensure the lifetime of vectors
   // exceeds that of the RequestProperties.

@@ -52,6 +52,8 @@ const ContentType kTypes[] = {
   {"application/javascript",        ".map",  ContentType::kSourceMap},
   {"application/pdf",               ".pdf",  ContentType::kPdf},  // RFC 3778
   {"application/octet-stream",      ".bin",  ContentType::kOctetStream },
+  // SVG is XML.
+  {"image/svg+xml",                 ".svg",  ContentType::kXml},
 
   // Synonyms; Note that the canonical types above are referenced by index
   // in the named references declared below.  The synonyms below are not
@@ -286,6 +288,11 @@ void MimeTypeListToContentTypeSet(
       out->insert(ct);
     }
   }
+}
+
+bool ContentType::IsCompressible() const {
+  // TODO(jcrowell): Investigate images with exif data as compressible.
+  return IsXmlLike() || IsHtmlLike() || IsJs() || IsCss() || type_ == kText;
 }
 
 bool ContentType::IsLikelyStaticResource() const {

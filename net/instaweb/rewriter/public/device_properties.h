@@ -60,6 +60,7 @@ class DeviceProperties {
   bool SupportsSplitHtml(bool enable_mobile) const;
   bool CanPreloadResources() const;
   bool GetScreenResolution(int* width, int* height) const;
+  bool AcceptsGzip() const;
   UserAgentMatcher::DeviceType GetDeviceType() const;
   bool IsMobile() const {
     return GetDeviceType() == UserAgentMatcher::kMobile;
@@ -114,6 +115,7 @@ class DeviceProperties {
   mutable LazyBool supports_js_defer_;
   mutable LazyBool supports_lazyload_images_;
   mutable LazyBool accepts_webp_;
+  mutable LazyBool accepts_gzip_;
   mutable LazyBool supports_webp_rewritten_urls_;
   mutable LazyBool supports_webp_lossless_alpha_;
   mutable LazyBool supports_webp_animated_;

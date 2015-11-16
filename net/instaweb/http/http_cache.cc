@@ -23,6 +23,7 @@
 #include "base/logging.h"
 #include "net/instaweb/http/public/http_cache_failure.h"
 #include "net/instaweb/http/public/http_value.h"
+#include "net/instaweb/http/public/inflating_fetch.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/hasher.h"
 #include "pagespeed/kernel/base/message_handler.h"
@@ -30,6 +31,7 @@
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/string_writer.h"
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/cache/cache_interface.h"
 #include "pagespeed/kernel/http/google_url.h"
@@ -73,6 +75,7 @@ HTTPCache::HTTPCache(CacheInterface* cache, Timer* timer, Hasher* hasher,
       force_caching_(false),
       disable_html_caching_on_https_(false),
       cache_levels_(1),
+      compression_level_(0),
       cache_time_us_(stats->GetVariable(kCacheTimeUs)),
       cache_hits_(stats->GetVariable(kCacheHits)),
       cache_misses_(stats->GetVariable(kCacheMisses)),
@@ -247,7 +250,10 @@ class HTTPCacheCallback : public CacheInterface::Callback {
       headers->Clear();
       callback_->http_value()->Clear();
     }
-
+    if (!callback_->request_context()->accepts_gzip()) {
+      HTTPValue* http_value = callback_->http_value();
+      InflatingFetch::UnGzipValueIfCompressed(http_value, headers, handler_);
+    }
     start_ms_ = now_ms;
     start_us_ = now_us;
     return result_.status == HTTPCache::kFound;
@@ -374,9 +380,31 @@ HTTPValue* HTTPCache::ApplyHeaderChangesForPut(
   return value;
 }
 
-void HTTPCache::PutInternal(
-    const GoogleString& key, const GoogleString& fragment,
-    int64 start_us, HTTPValue* value) {
+void HTTPCache::PutInternal(const GoogleString& key,
+                            const GoogleString& fragment, int64 start_us,
+                            HTTPValue* value, ResponseHeaders* response_headers,
+                            MessageHandler* handler) {
+  HTTPValue compressed_value;
+  // Check to see if the HTTPValue is worth gzipping.
+  // TODO(jcrowell): investigate switching to mod_gzip from mod_deflate so that
+  // we can set some heuristic on minimum size where compressing the data no
+  // longer makes filesize smaller. For now, we pay the penalty of compression
+  // from mod_deflate if we don't precompress everything, so just compress
+  // everything.
+  if (!value->Empty() && compression_level_ != 0) {
+    const ContentType* type = response_headers->DetermineContentType();
+    if ((type != NULL) && type->IsCompressible() &&
+        !response_headers->IsGzipped() &&
+        InflatingFetch::GzipValue(compression_level_, value, &compressed_value,
+                                  response_headers, handler)) {
+      // The resource is text (js, css, html, svg, etc.), and not previously
+      // compressed, so we'll compress it and stick the new compressed version
+      // in the cache.
+      value = &compressed_value;
+    }
+  }
+  // TODO(jcrowell): prevent the unzip-rezip flow when sending compressed data
+  // directly to a client through InflatingFetch.
   cache_->Put(CompositeKey(key, fragment), value->share());
   if (cache_time_us_ != NULL) {
     int64 delta_us = timer_->NowUs() - start_us;
@@ -414,7 +442,7 @@ void HTTPCache::Put(const GoogleString& key, const GoogleString& fragment,
       start_us, NULL, &headers, value, handler);
   // Put into underlying cache.
   if (new_value != NULL) {
-    PutInternal(key, fragment, start_us, new_value);
+    PutInternal(key, fragment, start_us, new_value, &headers, handler);
     if (cache_inserts_ != NULL) {
       cache_inserts_->Add(1);
     }
@@ -439,18 +467,18 @@ void HTTPCache::Put(const GoogleString& key, const GoogleString& fragment,
   if ((IsExpired(*headers, now_ms) ||
        !headers->IsProxyCacheable(req_properties, respect_vary_on_resources,
                                   ResponseHeaders::kHasValidator) ||
-       !IsCacheableBodySize(content.size()))
-      && !force_caching_) {
+       !IsCacheableBodySize(content.size())) &&
+      !force_caching_) {
     return;
   }
   // Apply header changes.
   // Takes ownership of the returned HTTPValue, which is guaranteed to have been
   // allocated by ApplyHeaderChangesForPut.
-  scoped_ptr<HTTPValue> value(ApplyHeaderChangesForPut(
-      start_us, &content, headers, NULL, handler));
+  scoped_ptr<HTTPValue> value(
+      ApplyHeaderChangesForPut(start_us, &content, headers, NULL, handler));
   // Put into underlying cache.
   if (value.get() != NULL) {
-    PutInternal(key, fragment, start_us, value.get());
+    PutInternal(key, fragment, start_us, value.get(), headers, handler);
     if (cache_inserts_ != NULL) {
       cache_inserts_->Add(1);
     }

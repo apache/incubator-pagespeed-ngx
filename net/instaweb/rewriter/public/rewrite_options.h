@@ -277,6 +277,7 @@ class RewriteOptions {
   static const char kGoogleFontCssInlineMaxBytes[];
   static const char kForbidAllDisabledFilters[];
   static const char kHideRefererUsingMeta[];
+  static const char kHttpCacheCompressionLevel[];
   static const char kIdleFlushTimeMs[];
   static const char kImageInlineMaxBytes[];
   // TODO(huibao): Unify terminology for image rewrites. For example,
@@ -1908,6 +1909,13 @@ class RewriteOptions {
   }
   const GoogleString& remote_configuration_url() const {
     return remote_configuration_url_.value();
+  }
+
+  void set_http_cache_compression_level(int x) {
+    set_option(x, &http_cache_compression_level_);
+  }
+  int http_cache_compression_level() const {
+    return http_cache_compression_level_.value();
   }
 
   void set_request_option_override(StringPiece p) {
@@ -4120,6 +4128,9 @@ class RewriteOptions {
   Option<GoogleString> remote_configuration_url_;
   // The timeout, in milliseconds for the remote configuration file fetch.
   Option<int64> remote_configuration_timeout_ms_;
+
+  // The level to set the gzip compression of HTTPCache items.
+  Option<int> http_cache_compression_level_;
 
   // Pass this string in url to allow for pagespeed options.
   Option<GoogleString> request_option_override_;

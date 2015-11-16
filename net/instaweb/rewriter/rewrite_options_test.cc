@@ -924,6 +924,7 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
     RewriteOptions::kForbidAllDisabledFilters,
     RewriteOptions::kGoogleFontCssInlineMaxBytes,
     RewriteOptions::kHideRefererUsingMeta,
+    RewriteOptions::kHttpCacheCompressionLevel,
     RewriteOptions::kIdleFlushTimeMs,
     RewriteOptions::kImageInlineMaxBytes,
     RewriteOptions::kImageJpegNumProgressiveScans,

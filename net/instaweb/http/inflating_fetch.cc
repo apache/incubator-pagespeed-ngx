@@ -21,6 +21,7 @@
 #include "base/logging.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/stack_buffer.h"
+#include "pagespeed/kernel/base/string_writer.h"
 #include "pagespeed/kernel/http/http_names.h"
 #include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/response_headers.h"
@@ -100,6 +101,60 @@ bool InflatingFetch::HandleWrite(const StringPiece& sp,
     }
   }
   return status && !inflate_failure_;
+}
+
+// Inflate a HTTPValue, if it was gzip compressed, in place.
+void InflatingFetch::UnGzipValueIfCompressed(HTTPValue* http_value,
+                                             ResponseHeaders* headers,
+                                             MessageHandler* handler) {
+  if (!http_value->Empty() && headers->IsGzipped()) {
+    GoogleString inflated;
+    StringWriter inflate_writer(&inflated);
+    StringPiece content;
+    http_value->ExtractContents(&content);
+    if (GzipInflater::Inflate(content, GzipInflater::kGzip, &inflate_writer)) {
+      headers->RemoveAll(HttpAttributes::kTransferEncoding);
+      headers->Add(HttpAttributes::HttpAttributes::kVary,
+                   HttpAttributes::kAcceptEncoding);
+      headers->Remove(HttpAttributes::kContentEncoding, HttpAttributes::kGzip);
+      headers->Replace(HttpAttributes::kContentLength,
+                       Integer64ToString(inflated.length()));
+      content.set(inflated.c_str(), inflated.length());
+      http_value->Clear();
+      http_value->Write(content, handler);
+      http_value->SetHeaders(headers);
+    }
+  }
+}
+
+bool InflatingFetch::GzipValue(int compression_level,
+                               const HTTPValue* http_value,
+                               HTTPValue* compressed_value,
+                               ResponseHeaders* headers,
+                               MessageHandler* handler) {
+  StringPiece content;
+  GoogleString deflated;
+  int64 content_length;
+  http_value->ExtractContents(&content);
+  StringWriter deflate_writer(&deflated);
+  if (!headers->IsGzipped() &&
+      GzipInflater::Deflate(content, GzipInflater::kGzip, compression_level,
+                            &deflate_writer)) {
+    if (!headers->FindContentLength(&content_length)) {
+      content_length = content.size();
+    }
+    headers->RemoveAll(HttpAttributes::kTransferEncoding);
+    headers->SetOriginalContentLength(content_length);
+    headers->Add(HttpAttributes::kContentEncoding, HttpAttributes::kGzip);
+    headers->Replace(HttpAttributes::kContentLength,
+                     Integer64ToString(deflated.length()));
+    headers->Add(HttpAttributes::HttpAttributes::kVary,
+                 HttpAttributes::kAcceptEncoding);
+    compressed_value->SetHeaders(headers);
+    compressed_value->Write(deflated, NULL);
+    return true;
+  }
+  return false;
 }
 
 // If we did not request gzipped/deflated content but the site gave it

@@ -395,6 +395,7 @@ void SystemCaches::SetupCaches(ServerContext* server_context,
     // No L1, and so backend is just the L2.
     http_cache = new HTTPCache(http_l2, factory_->timer(),
                                factory_->hasher(), stats);
+    http_cache->SetCompressionLevel(config->http_cache_compression_level());
   } else {
     // L1 is LRU, with the L2 as computed above.
     WriteThroughCache* write_through_http_cache = new WriteThroughCache(
@@ -404,6 +405,7 @@ void SystemCaches::SetupCaches(ServerContext* server_context,
     http_cache = new HTTPCache(write_through_http_cache, factory_->timer(),
                                factory_->hasher(), stats);
     http_cache->set_cache_levels(2);
+    http_cache->SetCompressionLevel(config->http_cache_compression_level());
   }
 
   http_cache->set_max_cacheable_response_content_length(max_content_length);
