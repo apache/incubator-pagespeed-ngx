@@ -607,6 +607,16 @@ ngx_int_t copy_response_headers_to_ngx(
       CHECK(pagespeed_headers.FindContentLength(&len));
       headers_out->content_length_n = len;
       headers_out->content_length = header;
+    } else if (STR_EQ_LITERAL(name, "Content-Encoding")) {
+      headers_out->content_encoding = header;
+    } else if (STR_EQ_LITERAL(name, "Refresh")) {
+      headers_out->refresh = header;
+    } else if (STR_EQ_LITERAL(name, "Content-Range")) {
+      headers_out->content_range = header;
+    } else if (STR_EQ_LITERAL(name, "Accept-Ranges")) {
+      headers_out->accept_ranges = header;
+    } else if (STR_EQ_LITERAL(name, "WWW-Authenticate")) {
+      headers_out->www_authenticate = header;
     }
   }
 
