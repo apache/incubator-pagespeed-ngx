@@ -92,8 +92,8 @@ vars = {
   "domain_registry_provider_revision":
      "@e9b72eaef413335eb054a5982277cb2e42eaead7",
 
-  "libpng_src": "git://git.code.sf.net/p/libpng/code",
-  "libpng_revision": "@libpng-1.2.52-signed",
+  "libpng_src": "https://github.com/glennrp/libpng.git",
+  "libpng_revision": "@2d2fe5e9efbaba6339742807b93a2646aae88475",
 }
 
 deps = {
