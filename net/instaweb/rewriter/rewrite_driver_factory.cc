@@ -27,6 +27,7 @@
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
 #include "net/instaweb/rewriter/public/beacon_critical_line_info_finder.h"
+#include "net/instaweb/rewriter/public/central_controller_interface.h"
 #include "net/instaweb/rewriter/public/critical_css_finder.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/critical_line_info_finder.h"
@@ -813,6 +814,11 @@ RewriteStats* RewriteDriverFactory::rewrite_stats() {
                                           timer()));
   }
   return rewrite_stats_.get();
+}
+
+void RewriteDriverFactory::set_central_controller_interface(
+    CentralControllerInterface* interface) {
+  central_controller_interface_.reset(interface);
 }
 
 RewriteOptions* RewriteDriverFactory::NewRewriteOptions() {

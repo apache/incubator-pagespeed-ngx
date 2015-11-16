@@ -37,6 +37,7 @@ namespace pagespeed { namespace js { struct JsTokenizerPatterns; } }
 namespace net_instaweb {
 
 class CacheHtmlInfoFinder;
+class CentralControllerInterface;
 class CriticalCssFinder;
 class CriticalImagesFinder;
 class CriticalLineInfoFinder;
@@ -228,6 +229,13 @@ class RewriteDriverFactory {
   virtual void ApplyPlatformSpecificConfiguration(RewriteDriver* driver);
 
   ThreadSystem* thread_system() { return thread_system_.get(); }
+
+  // Return interface to various functions that workers need delegated
+  // to a central service. Depending on the implemenation, this may invoke
+  // RPCs.
+  CentralControllerInterface* central_controller_interface() {
+    return central_controller_interface_.get();
+  }
 
   // Returns the set of directories that we (our our subclasses) have created
   // thus far.
@@ -440,6 +448,9 @@ class RewriteDriverFactory {
 
   void reset_default_options(RewriteOptions* new_defaults);
 
+  // This should only be called during startup. Takes ownership of interface.
+  void set_central_controller_interface(CentralControllerInterface* interface);
+
  private:
   // Creates a StaticAssetManager instance. Default implementation creates an
   // instance that disables serving of filter javascript via gstatic
@@ -504,6 +515,8 @@ class RewriteDriverFactory {
   scoped_ptr<NamedLockManager> lock_manager_;
 
   scoped_ptr<ThreadSystem> thread_system_;
+
+  scoped_ptr<CentralControllerInterface> central_controller_interface_;
 
   // Default statistics implementation which can be overridden by children
   // by calling SetStatistics().
