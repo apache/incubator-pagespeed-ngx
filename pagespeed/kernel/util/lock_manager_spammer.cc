@@ -35,15 +35,19 @@
 
 namespace {
 
-const int kWaitMs = 2000;
-const int kStealMs = 1000;
+int WaitMs() { return RunningOnValgrind() ? 2000 : 200; }
+int StealMs() { return RunningOnValgrind() ? 1000 : 100; }
 
-// In our test, we contribute to set the lock wait timeout at 1000ms
-// and the steal time to 2000ms.  But we insert timing delays of
-// 1500ms so that we successfully steal a lock that is not released
-// in the second round of lock-requests.  But for the third round of
-// lock-requests, which occurs at 3000ms, the timeout will expire.
-const int kDelayMs = (kWaitMs + kStealMs) / 2;  // 1500ms
+// In our test, we set the lock wait timeout at 100ms and the steal
+// time to 200ms.  But we insert timing delays of 150ms so that we
+// successfully steal a lock that is not released in the second round
+// of lock-requests.  But for the third round of lock-requests, which
+// occurs at 300ms, the timeout will expire.
+//
+// All the times are multipled by 10 for valgrind, since these are real-time.
+// Leaving them as is results in a modest percentage of flakes in valgrind
+// tests.
+int DelayMs() { return (WaitMs() + StealMs()) / 2; }  // 1500ms or 150ms.
 
 }  // namespace
 
@@ -109,8 +113,7 @@ void LockManagerSpammer::RunTests(int num_threads,
                                   bool expecting_denials,
                                   bool delay_unlocks,
                                   ThreadSafeLockManager* lock_manager,
-                                  Scheduler* scheduler,
-                                  MockTimer* timer) {
+                                  Scheduler* scheduler) {
   std::vector<LockManagerSpammer*> spammers(num_threads);
   CountDown pending_threads(scheduler, num_threads);
 
@@ -155,7 +158,7 @@ void LockManagerSpammer::Run() {
       Function* callback = MakeFunction(
           this, &LockManagerSpammer::Granted, &LockManagerSpammer::Denied,
           lock);
-      lock->LockTimedWaitStealOld(kWaitMs, kStealMs, callback);
+      lock->LockTimedWaitStealOld(WaitMs(), StealMs(), callback);
       locks.push_back(lock);
     }
   }
@@ -189,7 +192,7 @@ void LockManagerSpammer::Granted(NamedLock* lock) {
     // Schedule the unlocking for some future point in time that's
     // beyond the steal-time but smaller than the wait time.
     int64 wakeup_time_us = scheduler_->timer()->NowUs() +
-        kDelayMs * Timer::kMsUs;
+        DelayMs() * Timer::kMsUs;
     Function* callback = MakeFunction(
         this, &LockManagerSpammer::UnlockAfterGrant, lock);
     scheduler_->AddAlarmAtUs(wakeup_time_us, callback);

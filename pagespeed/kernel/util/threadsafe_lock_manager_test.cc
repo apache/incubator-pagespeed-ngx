@@ -64,8 +64,6 @@ class ThreadsafeLockManagerTest : public testing::Test {
     tester_.set_quiesce(MakeFunction(this,
                                      &ThreadsafeLockManagerTest::Quiesce));
   }
-  virtual ~ThreadsafeLockManagerTest() {
-  }
 
   NamedLock* MakeLock(const StringPiece& name) {
     return lock_manager_->CreateNamedLock(name);
@@ -132,9 +130,6 @@ class ThreadsafeLockManagerTest : public testing::Test {
   scoped_ptr<ThreadSafeLockManager> lock_manager_;
   NamedLockTester tester_;
   GoogleString log_;
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(ThreadsafeLockManagerTest);
 };
 
 TEST_F(ThreadsafeLockManagerTest, LockUnlock) {
@@ -484,18 +479,38 @@ TEST_F(ThreadsafeLockManagerTest, RunStolenLockWithDeletedManager) {
   EXPECT_STREQ("a(grant) b(deny) ", log_);
 }
 
-TEST_F(ThreadsafeLockManagerTest, ThreadSpammerNoDelays) {
+// Use a separate class for the spammer test that uses a real-time timer
+// and scheduler, rather than MockTimer and MockScheduler.
+//
+// TODO(jmarantz): move this class and tests to lock_manager_spammer.cc,
+// and rename that to lock_manager_spammer_test.cc.  I have it structured
+// like this now for reviewability.
+class ThreadsafeLockManagerSpammerTest : public testing::Test {
+ protected:
+  virtual void SetUp() {
+    timer_.reset(Platform::CreateTimer());
+    thread_system_.reset(Platform::CreateThreadSystem());
+    scheduler_.reset(new Scheduler(thread_system_.get(), timer_.get()));
+    lock_manager_.reset(new ThreadSafeLockManager(scheduler_.get()));
+  }
+
+  scoped_ptr<Timer> timer_;
+  scoped_ptr<ThreadSystem> thread_system_;
+  scoped_ptr<Scheduler> scheduler_;
+  scoped_ptr<ThreadSafeLockManager> lock_manager_;
+};
+
+TEST_F(ThreadsafeLockManagerSpammerTest, NoDelays) {
   LockManagerSpammer::RunTests(10,                     // num threads
                                3,                      // num iters
                                100,                    // num names
                                false,                  // expecting_denials,
                                false,                  // delay_unlocks
                                lock_manager_.get(),
-                               scheduler_.get(),
-                               timer());
+                               scheduler_.get());
 }
 
-TEST_F(ThreadsafeLockManagerTest, ThreadSpammerWithDelaysNoDenials) {
+TEST_F(ThreadsafeLockManagerSpammerTest, DelaysNoDenials) {
   // By having only 2 threads contenting for locks, even though we are delaying
   // the unlocks, the locks will be stolen before they expire.
   LockManagerSpammer::RunTests(2,                      // num threads
@@ -504,11 +519,10 @@ TEST_F(ThreadsafeLockManagerTest, ThreadSpammerWithDelaysNoDenials) {
                                false,                  // expecting_denials,
                                true,                   // delay_unlocks
                                lock_manager_.get(),
-                               scheduler_.get(),
-                               timer());
+                               scheduler_.get());
 }
 
-TEST_F(ThreadsafeLockManagerTest, ThreadSpammerWithDelaysAndDenials) {
+TEST_F(ThreadsafeLockManagerSpammerTest, DelaysAndDenials) {
   // The cumulative delays on the lock-stealing will cause some of the later
   // thread lock requests to be denied.
   LockManagerSpammer::RunTests(10,                     // num threads
@@ -517,8 +531,7 @@ TEST_F(ThreadsafeLockManagerTest, ThreadSpammerWithDelaysAndDenials) {
                                true,                   // expecting_denials,
                                true,                   // delay_unlocks
                                lock_manager_.get(),
-                               scheduler_.get(),
-                               timer());
+                               scheduler_.get());
 }
 
 }  // namespace

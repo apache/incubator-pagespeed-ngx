@@ -23,11 +23,10 @@
 #include <vector>
 
 #include "pagespeed/kernel/base/basictypes.h"
-#include "pagespeed/kernel/base/mock_timer.h"
 #include "pagespeed/kernel/base/named_lock_manager.h"
 #include "pagespeed/kernel/base/thread.h"
 #include "pagespeed/kernel/base/thread_system.h"
-#include "pagespeed/kernel/thread/mock_scheduler.h"
+#include "pagespeed/kernel/thread/scheduler.h"
 
 namespace net_instaweb {
 
@@ -46,7 +45,7 @@ class LockManagerSpammer : public ThreadSystem::Thread {
   static void RunTests(int num_threads, int num_iters, int num_names,
                        bool expecting_denials, bool delay_unlocks,
                        ThreadSafeLockManager* lock_manager,
-                       Scheduler* scheduler, MockTimer* timer);
+                       Scheduler* scheduler);
 
   // Called when a lock is granted/denied.
   void Granted(NamedLock* lock);
