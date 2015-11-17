@@ -192,6 +192,7 @@ void DecodeAndCompareImages(
     pagespeed::image_compression::ImageFormat image_format2,
     const void* image_buffer2,
     size_t buffer_length2,
+    bool ignore_transparent_rgb,
     MessageHandler* message_handler);
 
 void DecodeAndCompareImagesByPSNR(
@@ -202,6 +203,7 @@ void DecodeAndCompareImagesByPSNR(
     const void* image_buffer2,
     size_t buffer_length2,
     double min_psnr,
+    bool ignore_transparent_rgb,
     MessageHandler* message_handler);
 
 // Check whether the readers decode to exactly the same pixels.

@@ -501,6 +501,7 @@ TEST_F(GifScanlineReaderRawTest, Interlaced) {
   ReadTestFile(kGifTestDir, kInterlacedImage, "gif", &gif_image);
   DecodeAndCompareImages(IMAGE_PNG, png_image.c_str(), png_image.length(),
                          IMAGE_GIF, gif_image.c_str(), gif_image.length(),
+                         false,  // ignore_transparent_rgb
                          &message_handler_);
 }
 
@@ -510,6 +511,7 @@ TEST_F(GifScanlineReaderRawTest, EmptyScreen) {
   ReadTestFile(kGifTestDir, kRedEmptyScreen, "gif", &gif_image);
   DecodeAndCompareImages(IMAGE_PNG, png_image.c_str(), png_image.length(),
                          IMAGE_GIF, gif_image.c_str(), gif_image.length(),
+                         false,  // ignore_transparent_rgb
                          &message_handler_);
 }
 
@@ -519,6 +521,7 @@ TEST_F(GifScanlineReaderRawTest, UnusedBackground) {
   ReadTestFile(kGifTestDir, kRedUnusedBackground, "gif", &gif_image);
   DecodeAndCompareImages(IMAGE_PNG, png_image.c_str(), png_image.length(),
                          IMAGE_GIF, gif_image.c_str(), gif_image.length(),
+                         false,  // ignore_transparent_rgb
                          &message_handler_);
 }
 

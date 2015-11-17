@@ -103,8 +103,8 @@ void FetcherTest::ValidateOutput(const GoogleString& content,
   EXPECT_EQ(GoogleString("P3P"),
             GoogleString(response_headers.Name(6)));
   EXPECT_STREQ(
-      "CP=\"This is not a P3P policy! See http://www.google.com/support/"
-      "accounts/bin/answer.py?hl=en&answer=151657 for more info.\"",
+      "CP=\"This is not a P3P policy! See https://www.google.com/support/"
+      "accounts/answer/151657?hl=en for more info.\"",
       response_headers.Value(6));
 
   // Verifies that after the headers, we see the content.  Note that this

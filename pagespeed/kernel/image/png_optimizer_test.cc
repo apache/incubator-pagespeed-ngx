@@ -1380,6 +1380,7 @@ TEST_F(PngScanlineWriterTest, DecodeGrayAlpha) {
   ASSERT_TRUE(ReadTestFile(kPngTestDir, kImageGA, "png", &ga_image));
   DecodeAndCompareImages(IMAGE_PNG, rgba_image.c_str(), rgba_image.length(),
                          IMAGE_PNG, ga_image.c_str(), ga_image.length(),
+                         false,  // ignore_transparent_rgb
                          &message_handler_);
 }
 

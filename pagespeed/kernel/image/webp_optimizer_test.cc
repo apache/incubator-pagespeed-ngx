@@ -174,7 +174,9 @@ TEST_F(WebpScanlineOptimizerTest, ConvertToAndReadLossyWebp) {
     DecodeAndCompareImagesByPSNR(IMAGE_PNG, gold_image.c_str(),
                                  gold_image.length(), IMAGE_WEBP,
                                  webp_image.c_str(), webp_image.length(),
-                                 kMinPSNR, &message_handler_);
+                                 kMinPSNR,
+                                 true,  // ignore_transparent_rgb
+                                 &message_handler_);
   }
 }
 
@@ -194,7 +196,9 @@ TEST_F(WebpScanlineOptimizerTest, ConvertToAndReadLosslessWebp) {
                  &gold_image);
     DecodeAndCompareImages(IMAGE_PNG, gold_image.c_str(), gold_image.length(),
                            IMAGE_WEBP, webp_image.c_str(),
-                           webp_image.length(), &message_handler_);
+                           webp_image.length(),
+                           true,  // ignore_transparent_rgb
+                           &message_handler_);
   }
 }
 
@@ -211,6 +215,7 @@ TEST_F(WebpScanlineOptimizerTest, CompareToWebpGolds) {
     DecodeAndCompareImagesByPSNR(IMAGE_PNG, png_image.c_str(),
                                  png_image.length(), IMAGE_WEBP,
                                  webp_image.c_str(), webp_image.length(), 55,
+                                 true,  // ignore_transparent_rgb
                                  &message_handler_);
   }
 }

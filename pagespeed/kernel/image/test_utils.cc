@@ -108,10 +108,12 @@ void DecodeAndCompareImages(
     pagespeed::image_compression::ImageFormat image_format2,
     const void* image_buffer2,
     size_t buffer_length2,
+    bool ignore_transparent_rgb,
     MessageHandler* message_handler) {
   DecodeAndCompareImagesByPSNR(image_format1, image_buffer1, buffer_length1,
                                image_format2, image_buffer2, buffer_length2,
-                               kMaxPSNR, message_handler);
+                               kMaxPSNR, ignore_transparent_rgb,
+                               message_handler);
 }
 
 void DecodeAndCompareImagesByPSNR(
@@ -122,6 +124,7 @@ void DecodeAndCompareImagesByPSNR(
     const void* image_buffer2,
     size_t buffer_length2,
     double min_psnr,
+    bool ignore_transparent_rgb,
     MessageHandler* message_handler) {
   uint8_t* pixels1 = NULL;
   uint8_t* pixels2 = NULL;
@@ -150,7 +153,13 @@ void DecodeAndCompareImagesByPSNR(
     // Verify that all of the pixels are exactly the same.
     for (size_t y = 0; y < height1; ++y) {
       for (size_t x = 0; x < width1; ++x) {
-        for (int ch = 0; ch < num_channels; ++ch) {
+        int ch = 0;
+        if (ignore_transparent_rgb && pixel_format1 == RGBA_8888
+            && pixels1[y * stride1 + (x * num_channels + 3) == 0]) {
+          // Skip checking RGB when alpha is 0, still test alpha itself.
+          ch = 3;  // Index of alpha channel in RGBA_8888.
+        }
+        for (; ch < num_channels; ++ch) {
           int index = y * stride1 + (x * num_channels + ch);
           EXPECT_EQ(pixels1[index], pixels2[index])
               << "  y: " << y

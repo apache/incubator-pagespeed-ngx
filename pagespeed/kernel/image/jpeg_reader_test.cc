@@ -68,6 +68,7 @@ TEST(JpegReaderTest, ValidJpegs) {
     ReadTestFile(kJpegTestDir, kValidJpegImages[i], "png", &png_image);
     DecodeAndCompareImages(IMAGE_PNG, png_image.c_str(), png_image.length(),
                            IMAGE_JPEG, jpeg_image.c_str(), jpeg_image.length(),
+                           false,  // ignore_transparent_rgb
                            &message_handler);
   }
 }
