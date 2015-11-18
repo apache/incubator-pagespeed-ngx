@@ -5,7 +5,6 @@ install:
   - sudo apt-get update
   - mkdir -p ~/build_directory
   - mv $TRAVIS_BUILD_DIR ~/build_directory/src
-  - sudo apt-get update 2>&1 > /dev/null
   - sudo apt-get install apache2 g++ python subversion gperf make devscripts fakeroot git curl netcat-traditional 2>&1 > /dev/null
   - sudo mv /bin/nc.traditional /usr/bin/nc
   - mkdir -p ~/bin
