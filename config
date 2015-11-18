@@ -200,14 +200,23 @@ if [ $ngx_found = yes ]; then
   if [ "$position_aux" = "true" ] ; then
      HTTP_AUX_FILTER_MODULES="$HTTP_AUX_FILTER_MODULES $ngx_addon_name"
   else
-    # Make pagespeed run immediately before gzip.
+    # Make pagespeed run immediately before gzip and Brotli.
+    if echo $HTTP_FILTER_MODULES | grep ngx_http_brotli_filter_module >/dev/null; then
+      module=ngx_http_brotli_filter_module
+    elif [ $HTTP_GZIP = YES ]; then
+      module=$HTTP_GZIP_FILTER_MODULE
+    else
+      module=$HTTP_RANGE_HEADER_FILTER_MODULE
+    fi
+
     HTTP_FILTER_MODULES=$(echo $HTTP_FILTER_MODULES |\
-      sed "s/$HTTP_GZIP_FILTER_MODULE/$HTTP_GZIP_FILTER_MODULE $ngx_addon_name/")
+      sed "s/$module/$module $ngx_addon_name/")
   fi
 
-  # Make the etag header filter run immediately after gzip.
+  # Make the etag header filter run immediately before range header filter.
   HTTP_FILTER_MODULES=$(echo $HTTP_FILTER_MODULES |\
-    sed "s/$HTTP_GZIP_FILTER_MODULE/ngx_pagespeed_etag_filter $HTTP_GZIP_FILTER_MODULE/")
+    sed "s/$HTTP_RANGE_HEADER_FILTER_MODULE/$HTTP_RANGE_HEADER_FILTER_MODULE ngx_pagespeed_etag_filter/")
+
   CORE_LIBS="$CORE_LIBS $pagespeed_libs"
   CORE_INCS="$CORE_INCS $pagespeed_include"
   echo "List of modules (in reverse order of applicability): "$HTTP_FILTER_MODULES
