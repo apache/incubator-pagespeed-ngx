@@ -1983,7 +1983,7 @@ TEST_F(RewriteDriverTest, ValidateCacheResponseRewrittenWebp) {
 
   // No vary:accept, accepts_webp false.  Note that we ignore the lack of
   // browser capability to display webp and send it anyway.
-  request_context->set_accepts_webp(false);
+  request_context->SetAcceptsWebp(false);
   options()->set_serve_rewritten_webp_urls_to_any_agent(true);
   EXPECT_TRUE(OptionsAwareHTTPCacheCallback::IsCacheValid(
       kOriginUrl, *options(), request_context, response_headers));
@@ -1992,7 +1992,7 @@ TEST_F(RewriteDriverTest, ValidateCacheResponseRewrittenWebp) {
       kOriginUrl, *options(), request_context, response_headers));
 
   // no vary:accept, accepts_webp true.
-  request_context->set_accepts_webp(true);
+  request_context->SetAcceptsWebp(true);
   options()->set_serve_rewritten_webp_urls_to_any_agent(true);
   EXPECT_TRUE(OptionsAwareHTTPCacheCallback::IsCacheValid(
       kOriginUrl, *options(), request_context, response_headers));
@@ -2005,7 +2005,7 @@ TEST_F(RewriteDriverTest, ValidateCacheResponseRewrittenWebp) {
   // browser capabilities.
   response_headers.Add(HttpAttributes::kVary, HttpAttributes::kAccept);
   response_headers.ComputeCaching();
-  request_context->set_accepts_webp(false);
+  request_context->SetAcceptsWebp(false);
 
   // vary:accept, accepts_webp false.
   options()->set_serve_rewritten_webp_urls_to_any_agent(true);
@@ -2016,7 +2016,7 @@ TEST_F(RewriteDriverTest, ValidateCacheResponseRewrittenWebp) {
       kOriginUrl, *options(), request_context, response_headers));
 
   // vary:accept, accepts_webp true.
-  request_context->set_accepts_webp(true);
+  request_context->SetAcceptsWebp(true);
   options()->set_serve_rewritten_webp_urls_to_any_agent(true);
   EXPECT_TRUE(OptionsAwareHTTPCacheCallback::IsCacheValid(
       kOriginUrl, *options(), request_context, response_headers));

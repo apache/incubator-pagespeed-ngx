@@ -160,7 +160,7 @@ class HTTPCacheTest : public testing::Test {
       const GoogleString& key, const GoogleString& fragment, HTTPValue* value,
       ResponseHeaders* headers, MessageHandler* handler) {
     scoped_ptr<Callback> callback(NewCallback());
-    callback->request_context()->set_accepts_gzip(true);
+    callback->request_context()->SetAcceptsGzip(true);
     return FindWithCallback(
         key, fragment, value, headers, handler, callback.get());
   }

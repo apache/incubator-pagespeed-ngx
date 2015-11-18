@@ -33,28 +33,24 @@ RequestContext::RequestContext(const HttpOptions& options,
     : log_record_(new LogRecord(logging_mutex)),
       // TODO(gee): Move ownership of mutex to TimingInfo.
       timing_info_(timer, logging_mutex),
-      using_spdy_(false),
-      accepts_webp_(false),
-      accepts_gzip_(false),
       split_request_type_(SPLIT_FULL),
       request_id_(0),
       options_set_(true),
       options_(options) {
+  Init();
 }
 
 RequestContext::RequestContext(AbstractMutex* logging_mutex, Timer* timer)
     : log_record_(new LogRecord(logging_mutex)),
       // TODO(gee): Move ownership of mutex to TimingInfo.
       timing_info_(timer, logging_mutex),
-      using_spdy_(false),
-      accepts_webp_(false),
-      accepts_gzip_(false),
       split_request_type_(SPLIT_FULL),
       request_id_(0),
       options_set_(false),
       // Note: We use default here, just in case, even though we expect
       // set_options to be called
       options_(kDeprecatedDefaultHttpOptions) {
+  Init();
 }
 
 RequestContext::RequestContext(const HttpOptions& options,
@@ -64,12 +60,17 @@ RequestContext::RequestContext(const HttpOptions& options,
     : log_record_(log_record),
       // TODO(gee): Move ownership of mutex to TimingInfo.
       timing_info_(timer, mutex),
-      using_spdy_(false),
-      accepts_webp_(false),
-      accepts_gzip_(false),
       split_request_type_(SPLIT_FULL),
       options_set_(true),
       options_(options) {
+  Init();
+}
+
+void RequestContext::Init() {
+  using_spdy_ = false;
+  accepts_webp_ = false;
+  accepts_gzip_ = false;
+  frozen_ = false;
 }
 
 RequestContext::~RequestContext() {
@@ -116,6 +117,17 @@ void RequestContext::WriteBackgroundRewriteLog() {
   if (background_rewrite_log_record_.get() != NULL) {
     background_rewrite_log_record_->WriteLog();
   }
+}
+
+void RequestContext::SetAcceptsGzip(bool x) {
+  if (x != accepts_gzip_) {
+    CHECK(!frozen_);
+    accepts_gzip_ = x;
+  }
+}
+
+void RequestContext::SetAcceptsWebp(bool x) {
+    accepts_webp_ = x;
 }
 
 AbstractLogRecord* RequestContext::GetBackgroundRewriteLog(

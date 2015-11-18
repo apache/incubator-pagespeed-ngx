@@ -146,12 +146,12 @@ class RequestContext : public RefCounted<RequestContext> {
 
   // Indicates whether the request-headers tell us that a browser can
   // render webp images.
-  void set_accepts_webp(bool x) { accepts_webp_ = x; }
+  void SetAcceptsWebp(bool x);
   bool accepts_webp() const { return accepts_webp_; }
 
   // Indicates whether the request-headers tell us that a browser can extract
   // gzip compressed data.
-  void set_accepts_gzip(bool x) { accepts_gzip_ = x; }
+  void SetAcceptsGzip(bool x);
   bool accepts_gzip() const { return accepts_gzip_; }
 
   // Indicates the type of split html request.
@@ -230,6 +230,9 @@ class RequestContext : public RefCounted<RequestContext> {
     return options_;
   }
 
+  void Freeze() { frozen_ = true; }
+  bool frozen() const { return frozen_; }
+
  protected:
   // TODO(gee): Fix this, it sucks.
   // The default constructor will not create a LogRecord. Subclass constructors
@@ -241,6 +244,9 @@ class RequestContext : public RefCounted<RequestContext> {
   REFCOUNT_FRIEND_DECLARATION(RequestContext);
 
  private:
+  // Set default values of accepts webp, accepts gzip, and uses spdy.
+  void Init();
+
   // Always non-NULL.
   scoped_ptr<AbstractLogRecord> log_record_;
 
@@ -257,6 +263,7 @@ class RequestContext : public RefCounted<RequestContext> {
   bool using_spdy_;
   bool accepts_webp_;
   bool accepts_gzip_;
+  bool frozen_;
   GoogleString minimal_private_suffix_;
 
   SplitRequestType split_request_type_;
