@@ -564,6 +564,32 @@ class CacheFindCallback : public HTTPCache::Callback {
 
 }  // namespace
 
+CacheUrlAsyncFetcher::CacheUrlAsyncFetcher(const Hasher* lock_hasher,
+                                           NamedLockManager* lock_manager,
+                                           HTTPCache* cache,
+                                           const GoogleString& fragment,
+                                           AsyncOpHooks* async_op_hooks,
+                                           UrlAsyncFetcher* fetcher)
+    : lock_hasher_(lock_hasher),
+      lock_manager_(lock_manager),
+      http_cache_(cache),
+      fragment_(fragment),
+      fetcher_(fetcher),
+      async_op_hooks_(async_op_hooks),
+      backend_first_byte_latency_(NULL),
+      fallback_responses_served_(NULL),
+      fallback_responses_served_while_revalidate_(NULL),
+      num_conditional_refreshes_(NULL),
+      num_proactively_freshen_user_facing_request_(NULL),
+      respect_vary_(false),
+      ignore_recent_fetch_failed_(false),
+      serve_stale_if_fetch_error_(false),
+      default_cache_html_(false),
+      proactively_freshen_user_facing_request_(false),
+      own_fetcher_(false),
+      serve_stale_while_revalidate_threshold_sec_(0) {
+}
+
 CacheUrlAsyncFetcher::~CacheUrlAsyncFetcher() {
   if (own_fetcher_) {
     delete fetcher_;
