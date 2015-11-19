@@ -440,10 +440,10 @@ apr_status_t SerfFetch::HandleResponse(serf_bucket_t* response) {
     return APR_EGENERAL;
   }
 
-  // The response-handling code must be robust to packets coming in all at once,
-  // one byte at a time, or anything in between.  If we get EAGAIN we need to
-  // return it to our caller so it can do more work and call us again.  See the
-  // serf example code in serf_get.c.
+  // The response-handling code must be robust to packets coming in all at
+  // once, one byte at a time, or anything in between.  EAGAIN indicates
+  // that more data is available in the socket so another read should
+  // be issued before returning.
   apr_status_t status = APR_EAGAIN;
   while (MoreDataAvailable(status) && (async_fetch_ != NULL) &&
          !parser_.headers_complete()) {
@@ -457,10 +457,6 @@ apr_status_t SerfFetch::HandleResponse(serf_bucket_t* response) {
 
     if (one_byte_read_ && !parser_.headers_complete()) {
       status = ReadHeaders(response);
-    }
-
-    if (APR_STATUS_IS_EAGAIN(status)) {
-      return status;
     }
   }
 
@@ -1174,14 +1170,13 @@ void SerfUrlAsyncFetcher::CancelActiveFetchesMutexHeld() {
 }
 
 bool SerfUrlAsyncFetcher::StartFetch(SerfFetch* fetch) {
-  active_fetches_.Add(fetch);
-  active_count_->Add(1);
   bool started = !shutdown_ && fetch->Start(this);
-  if (!started) {
+  if (started) {
+    active_fetches_.Add(fetch);
+    active_count_->Add(1);
+  } else {
     fetch->message_handler()->Message(kWarning, "Fetch failed to start: %s",
                                       fetch->DebugInfo().c_str());
-    active_fetches_.Remove(fetch);
-    active_count_->Add(-1);
     fetch->CallbackDone(false);
     delete fetch;
   }
