@@ -32,7 +32,6 @@
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/critical_line_info_finder.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
-#include "net/instaweb/rewriter/public/device_properties.h"
 #include "net/instaweb/rewriter/public/experiment_matcher.h"
 #include "net/instaweb/rewriter/public/mobilize_cached_finder.h"
 #include "net/instaweb/rewriter/public/process_context.h"
@@ -71,14 +70,6 @@
 
 namespace net_instaweb {
 
-namespace {
-
-// Default image qualities for client options.
-const int kWebpQualityArray[] = {20, 35, 50, 70, 85};
-const int kJpegQualityArray[] = {30, 50, 65, 80, 90};
-
-}  // namespace
-
 RewriteDriverFactory::RewriteDriverFactory(
     const ProcessContext& process_context, ThreadSystem* thread_system)
     : js_tokenizer_patterns_(process_context.js_tokenizer_patterns()) {
@@ -103,11 +94,6 @@ void RewriteDriverFactory::Init() {
   server_context_mutex_.reset(thread_system_->NewMutex());
   worker_pools_.assign(kNumWorkerPools, NULL);
   hostname_ = GetHostname();
-
-  preferred_webp_qualities_.assign(
-      kWebpQualityArray, kWebpQualityArray + arraysize(kWebpQualityArray));
-  preferred_jpeg_qualities_.assign(
-      kJpegQualityArray, kJpegQualityArray + arraysize(kJpegQualityArray));
 
   // Pre-initializes the default options.  IMPORTANT: subclasses overridding
   // NewRewriteOptions() should re-call this method from their constructor
@@ -831,22 +817,6 @@ RewriteOptions* RewriteDriverFactory::NewRewriteOptionsForQuery() {
 
 ExperimentMatcher* RewriteDriverFactory::NewExperimentMatcher() {
   return new ExperimentMatcher;
-}
-
-bool RewriteDriverFactory::SetPreferredWebpQualities(
-    const StringPiece& qualities) {
-  return SplitStringPieceToIntegerVector(
-      qualities, ",", &preferred_webp_qualities_) &&
-      (static_cast<int>(preferred_webp_qualities_.size()) ==
-          DeviceProperties::GetPreferredImageQualityCount());
-}
-
-bool RewriteDriverFactory::SetPreferredJpegQualities(
-    const StringPiece& qualities) {
-  return SplitStringPieceToIntegerVector(
-      qualities, ",", &preferred_jpeg_qualities_) &&
-      (static_cast<int>(preferred_jpeg_qualities_.size()) ==
-          DeviceProperties::GetPreferredImageQualityCount());
 }
 
 }  // namespace net_instaweb

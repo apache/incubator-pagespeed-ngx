@@ -1097,9 +1097,6 @@ void ServerContext::ApplySessionFetchers(const RequestContextPtr& req,
 RequestProperties* ServerContext::NewRequestProperties() {
   RequestProperties* request_properties =
       new RequestProperties(user_agent_matcher());
-  request_properties->SetPreferredImageQualities(
-      factory_->preferred_webp_qualities(),
-      factory_->preferred_jpeg_qualities());
   return request_properties;
 }
 

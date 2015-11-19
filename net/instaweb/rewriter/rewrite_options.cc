@@ -881,8 +881,6 @@ const RewriteOptions::FilterEnumToIdAndNameEntry
         {RewriteOptions::kSplitHtmlHelper, "se", "Split Html Helper"},
         {RewriteOptions::kSpriteImages, RewriteOptions::kImageCombineId,
          "Sprite Images"},
-        {RewriteOptions::kSquashImagesForMobileScreen, "sq",
-         "Squash Images for Mobile Screen"},
         {RewriteOptions::kStripImageColorProfile, "cp",
          "Strip Image Color Profiles"},
         {RewriteOptions::kStripImageMetaData, "md", "Strip Image Meta Data"},

@@ -15,8 +15,6 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_REQUEST_PROPERTIES_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_REQUEST_PROPERTIES_H_
 
-#include <vector>
-
 #include "net/instaweb/rewriter/public/device_properties.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/gtest_prod.h"
@@ -63,32 +61,17 @@ class RequestProperties {
   bool IsBot() const;
   bool SupportsSplitHtml(bool enable_mobile) const;
   bool CanPreloadResources() const;
-  bool GetScreenResolution(int* width, int* height) const;
   UserAgentMatcher::DeviceType GetDeviceType() const;
   bool IsMobile() const;
   bool IsTablet() const;
   bool ForbidWebpInlining() const;
   bool AcceptsGzip() const;
-
-  // Does not own the vectors. Callers must ensure the lifetime of vectors
-  // exceeds that of the RequestProperties.
-  void SetPreferredImageQualities(
-      const std::vector<int>* webp,  const std::vector<int>* jpeg);
-  // Returns true iff WebP and Jpeg image quality are set for the preference.
-  bool GetPreferredImageQualities(
-      DeviceProperties::ImageQualityPreference preference, int* webp, int* jpeg)
-      const;
-  static int GetPreferredImageQualityCount();
-
   void LogDeviceInfo(AbstractLogRecord* log_record,
                      bool enable_aggressive_rewriters_for_mobile);
 
  private:
   friend class ImageRewriteTest;
-  FRIEND_TEST(ImageRewriteTest, SquashImagesForMobileScreen);
   FRIEND_TEST(RequestPropertiesTest, GetScreenGroupIndex);
-
-  void SetScreenResolution(int width, int height) const;
 
   scoped_ptr<DeviceProperties> device_properties_;
   scoped_ptr<DownstreamCachingDirectives> downstream_caching_directives_;

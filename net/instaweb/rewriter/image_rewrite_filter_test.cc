@@ -34,7 +34,6 @@
 #include "net/instaweb/rewriter/public/dom_stats_filter.h"
 #include "net/instaweb/rewriter/public/image.h"
 #include "net/instaweb/rewriter/public/mock_critical_images_finder.h"
-#include "net/instaweb/rewriter/public/request_properties.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
@@ -617,106 +616,6 @@ class ImageRewriteTest : public RewriteTestBase {
     rewrite_driver()->AddFilters();
     TestSingleRewrite(kBikePngFile, kContentTypePng, expected_type,
                       "", width_height_tags, expect_rewritten, false);
-  }
-
-  void TestSquashImagesForMobileScreen(
-      RewriteDriver* driver, int screen_width, int screen_height) {
-    EXPECT_LT(1, screen_width);
-    EXPECT_LT(1, screen_height);
-    rewrite_driver()->request_properties()->SetScreenResolution(
-        screen_width, screen_height);
-    TimedVariable* rewrites_squashing = statistics()->GetTimedVariable(
-        ImageRewriteFilter::kImageRewritesSquashingForMobileScreen);
-    rewrites_squashing->Clear();
-
-    ImageDim desired_dim;
-    ImageDim image_dim;
-
-    // Both image dims are less than screen.
-    image_dim.set_width(screen_width - 1);
-    image_dim.set_height(screen_height - 1);
-
-    ResourceContext context;
-    ImageRewriteFilter image_rewrite_filter(rewrite_driver());
-    image_rewrite_filter.EncodeUserAgentIntoResourceContext(&context);
-
-    EXPECT_FALSE(image_rewrite_filter.UpdateDesiredImageDimsIfNecessary(
-        image_dim, context, &desired_dim));
-    EXPECT_EQ(0, rewrites_squashing->Get(TimedVariable::START));
-
-    // Image height is larger than screen height but image width is less than
-    // screen width.
-    image_dim.set_width(screen_width - 1);
-    image_dim.set_height(screen_height * 2);
-    EXPECT_TRUE(image_rewrite_filter.UpdateDesiredImageDimsIfNecessary(
-        image_dim, context, &desired_dim));
-    EXPECT_FALSE(desired_dim.has_width());
-    EXPECT_EQ(screen_height, desired_dim.height());
-    desired_dim.clear_height();
-    desired_dim.clear_width();
-    EXPECT_EQ(1, rewrites_squashing->Get(TimedVariable::START));
-    rewrites_squashing->Clear();
-
-    // Image height is less than screen height but image width is larger than
-    // screen width.
-    image_dim.set_width(screen_width * 2);
-    image_dim.set_height(screen_height - 1);
-    EXPECT_TRUE(image_rewrite_filter.UpdateDesiredImageDimsIfNecessary(
-        image_dim, context, &desired_dim));
-    EXPECT_EQ(screen_width, desired_dim.width());
-    EXPECT_FALSE(desired_dim.has_height());
-    desired_dim.clear_height();
-    desired_dim.clear_width();
-    EXPECT_EQ(1, rewrites_squashing->Get(TimedVariable::START));
-    rewrites_squashing->Clear();
-
-    // Both image dims are larger than screen and screen/image width ratio is
-    // is larger than height ratio.
-    image_dim.set_width(screen_width * 2);
-    image_dim.set_height(screen_height * 3);
-    EXPECT_TRUE(image_rewrite_filter.UpdateDesiredImageDimsIfNecessary(
-        image_dim, context, &desired_dim));
-    EXPECT_FALSE(desired_dim.has_width());
-    EXPECT_EQ(screen_height, desired_dim.height());
-    desired_dim.clear_height();
-    desired_dim.clear_width();
-    EXPECT_EQ(1, rewrites_squashing->Get(TimedVariable::START));
-    rewrites_squashing->Clear();
-
-    // Both image dims are larger than screen and screen/image height ratio is
-    // is larger than width ratio.
-    image_dim.set_width(screen_width * 3);
-    image_dim.set_height(screen_height * 2);
-    EXPECT_TRUE(image_rewrite_filter.UpdateDesiredImageDimsIfNecessary(
-        image_dim, context, &desired_dim));
-    EXPECT_EQ(screen_width, desired_dim.width());
-    EXPECT_FALSE(desired_dim.has_height());
-    EXPECT_EQ(1, rewrites_squashing->Get(TimedVariable::START));
-    rewrites_squashing->Clear();
-
-    // Keep image dims unchanged and larger than screen from now on and
-    // update desired_dim.
-    image_dim.set_width(screen_width * 3);
-    image_dim.set_height(screen_height * 2);
-
-    // If a desired dim is present, no squashing.
-    desired_dim.set_width(screen_width);
-    desired_dim.clear_height();
-    EXPECT_FALSE(image_rewrite_filter.UpdateDesiredImageDimsIfNecessary(
-        image_dim, context, &desired_dim));
-    EXPECT_EQ(0, rewrites_squashing->Get(TimedVariable::START));
-
-    desired_dim.clear_width();
-    desired_dim.set_height(screen_height);
-    EXPECT_FALSE(image_rewrite_filter.UpdateDesiredImageDimsIfNecessary(
-        image_dim, context, &desired_dim));
-    EXPECT_EQ(0, rewrites_squashing->Get(TimedVariable::START));
-
-    desired_dim.set_width(screen_width);
-    desired_dim.set_height(screen_height);
-    EXPECT_FALSE(image_rewrite_filter.UpdateDesiredImageDimsIfNecessary(
-        image_dim, context, &desired_dim));
-    EXPECT_EQ(0, rewrites_squashing->Get(TimedVariable::START));
   }
 
   void TestConversionVariables(int gif_webp_timeout,
@@ -2766,46 +2665,6 @@ TEST_F(ImageRewriteTest, RewritesDroppedDueToMIMETypeUnknownTest) {
   EXPECT_EQ(1, rewrites_drops->Get());
 }
 
-TEST_F(ImageRewriteTest, SquashImagesForMobileScreen) {
-  // Make sure squash_images_for_mobile_screen works for mobile user agent
-  // (we test Android and iPhone specifically here) and no-op for desktop user
-  // agent (using Safari as example).
-  options()->EnableFilter(RewriteOptions::kResizeImages);
-  options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
-  options()->EnableFilter(RewriteOptions::kSquashImagesForMobileScreen);
-  rewrite_driver()->AddFilters();
-
-  int screen_width;
-  int screen_height;
-  ImageUrlEncoder::GetNormalizedScreenResolution(
-      100, 80, &screen_width, &screen_height);
-  ResetUserAgent(UserAgentMatcherTestBase::kAndroidNexusSUserAgent);
-
-  TestSquashImagesForMobileScreen(
-      rewrite_driver(), screen_width, screen_height);
-
-  ResetUserAgent(
-      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_6_8) AppleWebKit/537.13+ "
-      "(KHTML, like Gecko) Version/5.1.7 Safari/534.57.2");
-  rewrite_driver()->request_properties()->SetScreenResolution(
-      screen_width, screen_height);
-
-  ImageDim desired_dim;
-  ImageDim image_dim;
-  // Both image dims are larger than screen but no update since not mobile.
-  image_dim.set_width(screen_width + 100);
-  image_dim.set_height(screen_height + 100);
-  ImageRewriteFilter image_rewrite_filter(rewrite_driver());
-  ResourceContext context;
-  image_rewrite_filter.EncodeUserAgentIntoResourceContext(&context);
-  EXPECT_FALSE(image_rewrite_filter.UpdateDesiredImageDimsIfNecessary(
-      image_dim, context, &desired_dim));
-
-  ResetUserAgent("iPhone OS");
-  TestSquashImagesForMobileScreen(
-      rewrite_driver(), screen_width, screen_height);
-}
-
 TEST_F(ImageRewriteTest, JpegQualityForSmallScreens) {
   ResetUserAgent("Mozilla/5.0 (Linux; U; Android 4.0.1; en-us; "
       "Galaxy Nexus Build/ICL27) AppleWebKit/534.30 (KHTML, like Gecko) "
@@ -2852,7 +2711,7 @@ TEST_F(ImageRewriteTest, JpegQualityForSmallScreens) {
   EXPECT_EQ(-1, img_options->jpeg_quality);
   EXPECT_TRUE(ctx.has_use_small_screen_quality());
 
-  // Base and for_small_screen options are set, and screen is small;
+  // Base and for_small_screen options are set; mobile
   options()->ClearSignatureForTesting();
   options()->set_image_jpeg_recompress_quality(85);
   options()->set_image_jpeg_recompress_quality_for_small_screens(20);
@@ -2861,42 +2720,6 @@ TEST_F(ImageRewriteTest, JpegQualityForSmallScreens) {
       image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
   EXPECT_EQ(20, img_options->jpeg_quality);
   EXPECT_TRUE(ctx.has_use_small_screen_quality());
-
-  // Base and for_small_screen options are set, but screen is not small.
-  ResetUserAgent("Mozilla/5.0 (Linux; U; Android 4.2; en-us; "
-      "Nexus 10 Build/JOP12D) AppleWebKit/534.30 (KHTML, like Gecko) "
-      "Version/4.0 Safari/534.30");
-  ctx.Clear();
-  options()->ClearSignatureForTesting();
-  options()->set_image_jpeg_recompress_quality(85);
-  options()->set_image_jpeg_recompress_quality_for_small_screens(20);
-  image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
-  img_options.reset(
-      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
-  EXPECT_EQ(85, img_options->jpeg_quality);
-  EXPECT_FALSE(ctx.has_use_small_screen_quality());
-
-  // Small screen following big screen.
-  ResetUserAgent("Mozilla/5.0 (Linux; U; Android 4.0.1; en-us; "
-      "Galaxy Nexus Build/ICL27) AppleWebKit/534.30 (KHTML, like Gecko) "
-      "Version/4.0 Mobile Safari/534.30");
-  ctx.Clear();
-  image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
-  img_options.reset(
-      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
-  EXPECT_EQ(20, img_options->jpeg_quality);
-  EXPECT_TRUE(ctx.has_use_small_screen_quality());
-
-  // Big screen following small screen.
-  ResetUserAgent("Mozilla/5.0 (Linux; U; Android 4.2; en-us; "
-      "Nexus 10 Build/JOP12D) AppleWebKit/534.30 (KHTML, like Gecko) "
-      "Version/4.0 Safari/534.30");
-  ctx.Clear();
-  image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
-  img_options.reset(
-      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
-  EXPECT_EQ(85, img_options->jpeg_quality);
-  EXPECT_FALSE(ctx.has_use_small_screen_quality());
 
   // Non-mobile UA.
   ResetUserAgent("Mozilla/5.0 (Windows; U; Windows NT 5.1; "
@@ -2970,7 +2793,7 @@ TEST_F(ImageRewriteTest, WebPQualityForSmallScreens) {
   EXPECT_EQ(20, img_options->webp_quality);
   EXPECT_TRUE(ctx.has_use_small_screen_quality());
 
-  // Base and for_small_screen options are set, and screen is small;
+  // Base and for_small_screen options are set; mobile
   options()->ClearSignatureForTesting();
   options()->set_image_webp_recompress_quality(85);
   options()->set_image_webp_recompress_quality_for_small_screens(20);
@@ -2979,42 +2802,6 @@ TEST_F(ImageRewriteTest, WebPQualityForSmallScreens) {
       image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
   EXPECT_EQ(20, img_options->webp_quality);
   EXPECT_TRUE(ctx.has_use_small_screen_quality());
-
-  // Base and for_small_screen options are set, but screen is not small.
-  ResetUserAgent("Mozilla/5.0 (Linux; U; Android 4.2; en-us; "
-      "Nexus 10 Build/JOP12D) AppleWebKit/534.30 (KHTML, like Gecko) "
-      "Version/4.0 Safari/534.30");
-  ctx.Clear();
-  options()->ClearSignatureForTesting();
-  options()->set_image_webp_recompress_quality(85);
-  options()->set_image_webp_recompress_quality_for_small_screens(20);
-  image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
-  img_options.reset(
-      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
-  EXPECT_EQ(85, img_options->webp_quality);
-  EXPECT_FALSE(ctx.has_use_small_screen_quality());
-
-  // Small screen following big screen.
-  ResetUserAgent("Mozilla/5.0 (Linux; U; Android 4.0.1; en-us; "
-      "Galaxy Nexus Build/ICL27) AppleWebKit/534.30 (KHTML, like Gecko) "
-      "Version/4.0 Mobile Safari/534.30");
-  ctx.Clear();
-  image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
-  img_options.reset(
-      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
-  EXPECT_EQ(20, img_options->webp_quality);
-  EXPECT_TRUE(ctx.has_use_small_screen_quality());
-
-  // Big screen following small screen.
-  ResetUserAgent("Mozilla/5.0 (Linux; U; Android 4.2; en-us; "
-      "Nexus 10 Build/JOP12D) AppleWebKit/534.30 (KHTML, like Gecko) "
-      "Version/4.0 Safari/534.30");
-  ctx.Clear();
-  image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
-  img_options.reset(
-      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
-  EXPECT_EQ(85, img_options->webp_quality);
-  EXPECT_FALSE(ctx.has_use_small_screen_quality());
 
   // Non-mobile UA.
   ResetUserAgent("Mozilla/5.0 (Windows; U; Windows NT 5.1; "
@@ -3108,38 +2895,11 @@ TEST_F(ImageRewriteTest, JpegProgressiveScansForSmallScreens) {
   EXPECT_EQ(2, img_options->jpeg_num_progressive_scans);
   EXPECT_TRUE(ctx.has_use_small_screen_quality());
 
-  // Base and for_small_screen options are set, and screen is small;
+  // Base and for_small_screen options are set; mobile.
   SetNumberOfScans(8, 2, res_ptr, options(), rewrite_driver(),
                    &image_rewrite_filter, &ctx, &img_options);
   EXPECT_EQ(2, img_options->jpeg_num_progressive_scans);
   EXPECT_TRUE(ctx.has_use_small_screen_quality());
-
-  // Base and for_small_screen options are set, but screen is not small.
-  ResetUserAgent("Mozilla/5.0 (Linux; U; Android 4.2; en-us; "
-      "Nexus 10 Build/JOP12D) AppleWebKit/534.30 (KHTML, like Gecko) "
-      "Version/4.0 Safari/534.30");
-  SetNumberOfScans(8, 2, res_ptr, options(), rewrite_driver(),
-                   &image_rewrite_filter, &ctx, &img_options);
-  EXPECT_EQ(8, img_options->jpeg_num_progressive_scans);
-  EXPECT_FALSE(ctx.has_use_small_screen_quality());
-
-  // Small screen following big screen.
-  ResetUserAgent("Mozilla/5.0 (Linux; U; Android 4.0.1; en-us; "
-      "Galaxy Nexus Build/ICL27) AppleWebKit/534.30 (KHTML, like Gecko) "
-      "Version/4.0 Mobile Safari/534.30");
-  SetNumberOfScans(DO_NOT_SET, DO_NOT_SET, res_ptr, options(), rewrite_driver(),
-                   &image_rewrite_filter, &ctx, &img_options);
-  EXPECT_EQ(2, img_options->jpeg_num_progressive_scans);
-  EXPECT_TRUE(ctx.has_use_small_screen_quality());
-
-  // Big screen following small screen.
-  ResetUserAgent("Mozilla/5.0 (Linux; U; Android 4.2; en-us; "
-      "Nexus 10 Build/JOP12D) AppleWebKit/534.30 (KHTML, like Gecko) "
-      "Version/4.0 Safari/534.30");
-  SetNumberOfScans(DO_NOT_SET, DO_NOT_SET, res_ptr, options(), rewrite_driver(),
-                   &image_rewrite_filter, &ctx, &img_options);
-  EXPECT_EQ(8, img_options->jpeg_num_progressive_scans);
-  EXPECT_FALSE(ctx.has_use_small_screen_quality());
 
   // Non-mobile UA.
   ResetUserAgent("Mozilla/5.0 (Windows; U; Windows NT 5.1; "

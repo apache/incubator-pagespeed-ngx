@@ -637,8 +637,7 @@ void InPlaceRewriteContext::StartFetchReconstructionParent() {
 
 bool InPlaceRewriteContext::InPlaceOptimizeForBrowserEnabled() const {
   return Options()->Enabled(RewriteOptions::kInPlaceOptimizeForBrowser) &&
-      (Options()->Enabled(RewriteOptions::kConvertJpegToWebp) ||
-       Options()->Enabled(RewriteOptions::kSquashImagesForMobileScreen));
+         Options()->Enabled(RewriteOptions::kConvertJpegToWebp);
 }
 
 // TODO(jmaessen): Sharpen this up.  Mark CSS vary:User-Agent because it doesn't
@@ -661,9 +660,7 @@ void InPlaceRewriteContext::AddVaryIfRequired(
     // If it's an image, conservatively assume we might convert to webp.
     // Fix this up if we discover that this can't happen.
     new_vary = HttpAttributes::kAccept;
-    if (Options()->Enabled(RewriteOptions::kSquashImagesForMobileScreen)) {
-      new_vary = HttpAttributes::kUserAgent;
-    } else if (!Options()->Enabled(RewriteOptions::kConvertJpegToWebp)) {
+    if (!Options()->Enabled(RewriteOptions::kConvertJpegToWebp)) {
       // Lossy webp conversion won't happen, so no need to vary.
       new_vary = NULL;
     } else if (cached_result.minimal_webp_support() !=
@@ -745,7 +742,7 @@ void InPlaceRewriteContext::EncodeUserAgentIntoResourceContext(
   }
   // TODO(jmaessen): filter->EncodeUserAgentIntoResourceContext(context)
   // actually calls the same method twice here.  In both cases we are also
-  // dealing with possible mobile user agents and SetUserAgentScreenResolution,
+  // dealing with possible mobile user agents,
   // which requires a different set of vary: headers.
   const ContentType* type = NameExtensionToContentType(url_);
   if (type == NULL) {

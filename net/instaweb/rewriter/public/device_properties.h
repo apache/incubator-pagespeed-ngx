@@ -59,7 +59,6 @@ class DeviceProperties {
   bool IsBot() const;
   bool SupportsSplitHtml(bool enable_mobile) const;
   bool CanPreloadResources() const;
-  bool GetScreenResolution(int* width, int* height) const;
   bool AcceptsGzip() const;
   UserAgentMatcher::DeviceType GetDeviceType() const;
   bool IsMobile() const {
@@ -81,29 +80,12 @@ class DeviceProperties {
   };
   static const int kMediumScreenWidthThreshold = 720;
   static const int kLargeScreenWidthThreshold = 1500;
-
-  // Does not own the vectors. Callers must ensure the lifetime of vectors
-  // exceeds that of the DeviceProperties.
-  void SetPreferredImageQualities(
-      const std::vector<int>* webp,  const std::vector<int>* jpeg);
-  // Returns true iff WebP and Jpeg image quality are set for the preference.
-  bool GetPreferredImageQualities(
-      ImageQualityPreference preference, int* webp, int* jpeg) const;
-  static int GetPreferredImageQualityCount();
   bool ForbidWebpInlining() const;
 
  private:
   friend class ImageRewriteTest;
   friend class RequestProperties;
-  FRIEND_TEST(ImageRewriteTest, SquashImagesForMobileScreen);
-  FRIEND_TEST(DevicePropertiesTest, GetScreenGroupIndex);
 
-  // Returns true if a valid screen_index is returned for the screen_width.
-  // The returned screen_index represents a small, medium or large screen group.
-  static bool GetScreenGroupIndex(int screen_width, int* screen_index);
-  void SetScreenResolution(int width, int height) const;
-  // Returns true if there are valid preferred image qualities.
-  bool HasPreferredImageQualities() const;
   bool PossiblyMasqueradingAsChrome() const;
 
   GoogleString user_agent_;
@@ -123,9 +105,6 @@ class DeviceProperties {
   mutable LazyBool is_mobile_user_agent_;
   mutable LazyBool supports_split_html_;
   mutable LazyBool supports_flush_early_;
-  mutable LazyBool screen_dimensions_set_;
-  mutable int screen_width_;
-  mutable int screen_height_;
   const std::vector<int>* preferred_webp_qualities_;
   const std::vector<int>* preferred_jpeg_qualities_;
   // Used to lazily set device_type_.

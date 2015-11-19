@@ -358,28 +358,6 @@ TEST_F(ImageUrlEncoderTest, HasHeightWebpLa) {
             EncodeUrlAndDimensions(origin_url, dim));
 }
 
-
-TEST_F(ImageUrlEncoderTest, UserAgentScreenResolution) {
-  const int screen_size = 100;
-  int width = 0;
-  int height = 0;
-  EXPECT_TRUE(ImageUrlEncoder::GetNormalizedScreenResolution(
-      screen_size, screen_size, &width, &height));
-  EXPECT_GT(width, screen_size);
-
-  ResourceContext context;
-  ImageDim *dims = context.mutable_user_agent_screen_resolution();
-  dims->set_width(width);
-  dims->set_height(height);
-
-  GoogleString cache_key =
-      ImageUrlEncoder::CacheKeyFromResourceContext(context);
-  GoogleString expected_key;
-  StrAppend(&expected_key, "sr", IntegerToString(width), "x",
-            IntegerToString(height));
-  EXPECT_EQ(expected_key, cache_key);
-}
-
 TEST_F(ImageUrlEncoderTest, SmallScreen) {
   ResourceContext context;
   context.set_use_small_screen_quality(true);

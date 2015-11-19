@@ -14,9 +14,6 @@
 
 #include "net/instaweb/rewriter/public/device_properties.h"
 
-#include <vector>
-
-#include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/http/http_names.h"
 #include "pagespeed/kernel/http/request_headers.h"
@@ -24,19 +21,6 @@
 #include "pagespeed/kernel/http/user_agent_matcher_test_base.h"
 
 namespace net_instaweb {
-
-namespace {
-
-const int kWebpArray[] = {11, 33, 55, 77, 99};
-const int kJpegArray[] = {22, 44, 66, 88, 110};
-
-const char* kSmallUserAgent = UserAgentMatcherTestBase::kAndroidNexusSUserAgent;
-const char* kMediumUserAgent =
-    UserAgentMatcherTestBase::kAndroidChrome21UserAgent;
-const char* kLargeUserAgent =
-    UserAgentMatcherTestBase::kNexus10ChromeUserAgent;
-
-}  // namespace
 
 class DevicePropertiesTest: public testing::Test {
  protected:
@@ -46,95 +30,6 @@ class DevicePropertiesTest: public testing::Test {
   UserAgentMatcher user_agent_matcher_;
   DeviceProperties device_properties_;
 };
-
-TEST_F(DevicePropertiesTest, GetScreenGroupIndex) {
-  int index = -1;
-
-  EXPECT_FALSE(DeviceProperties::GetScreenGroupIndex(-1, &index));
-  EXPECT_TRUE(DeviceProperties::GetScreenGroupIndex(0, &index));
-  EXPECT_EQ(0, index);
-  EXPECT_TRUE(DeviceProperties::GetScreenGroupIndex(1, &index));
-  EXPECT_EQ(0, index);
-
-  EXPECT_TRUE(DeviceProperties::GetScreenGroupIndex(
-      DeviceProperties::kMediumScreenWidthThreshold - 1, &index));
-  EXPECT_EQ(0, index);
-  EXPECT_TRUE(DeviceProperties::GetScreenGroupIndex(
-      DeviceProperties::kMediumScreenWidthThreshold, &index));
-  EXPECT_EQ(1, index);
-  EXPECT_TRUE(DeviceProperties::GetScreenGroupIndex(
-      DeviceProperties::kMediumScreenWidthThreshold + 1, &index));
-  EXPECT_EQ(1, index);
-
-  EXPECT_TRUE(DeviceProperties::GetScreenGroupIndex(
-          DeviceProperties::kLargeScreenWidthThreshold - 1, &index));
-  EXPECT_EQ(1, index);
-  EXPECT_TRUE(DeviceProperties::GetScreenGroupIndex(
-      DeviceProperties::kLargeScreenWidthThreshold, &index));
-  EXPECT_EQ(2, index);
-  EXPECT_TRUE(DeviceProperties::GetScreenGroupIndex(
-      DeviceProperties::kLargeScreenWidthThreshold + 1, &index));
-  EXPECT_EQ(2, index);
-}
-
-TEST_F(DevicePropertiesTest, GetPreferredImageQualitiesGood) {
-  std::vector<int> webp_vector(kWebpArray, kWebpArray + arraysize(kWebpArray));
-  std::vector<int> jpeg_vector(kJpegArray, kJpegArray + arraysize(kJpegArray));
-
-  device_properties_.SetPreferredImageQualities(&webp_vector, &jpeg_vector);
-
-  int webp, jpeg;
-  EXPECT_FALSE(device_properties_.GetPreferredImageQualities(
-      DeviceProperties::kImageQualityDefault, &webp, &jpeg));
-
-  device_properties_.SetUserAgent(kSmallUserAgent);
-  int offset = -1;
-  for (int i = 1; i <= DeviceProperties::kImageQualityHigh; ++i) {
-    EXPECT_TRUE(device_properties_.GetPreferredImageQualities(
-        static_cast<DeviceProperties::ImageQualityPreference>(i),
-        &webp, &jpeg));
-    EXPECT_EQ(webp, kWebpArray[i + offset]);
-    EXPECT_EQ(jpeg, kJpegArray[i + offset]);
-  }
-
-  device_properties_.SetUserAgent(kMediumUserAgent);
-  offset = 0;
-  for (int i = 1; i <= DeviceProperties::kImageQualityHigh; ++i) {
-    EXPECT_TRUE(device_properties_.GetPreferredImageQualities(
-        static_cast<DeviceProperties::ImageQualityPreference>(i),
-        &webp, &jpeg));
-    EXPECT_EQ(webp, kWebpArray[i + offset]);
-    EXPECT_EQ(jpeg, kJpegArray[i + offset]);
-  }
-
-  device_properties_.SetUserAgent(kLargeUserAgent);
-  offset = 1;
-  for (int i = 1; i <= DeviceProperties::kImageQualityHigh; ++i) {
-    EXPECT_TRUE(device_properties_.GetPreferredImageQualities(
-        static_cast<DeviceProperties::ImageQualityPreference>(i),
-        &webp, &jpeg));
-    EXPECT_EQ(webp, kWebpArray[i + offset]);
-    EXPECT_EQ(jpeg, kJpegArray[i + offset]);
-  }
-}
-
-TEST_F(DevicePropertiesTest, GetPreferredImageQualitiesBad) {
-  std::vector<int> webp_vector(kWebpArray,
-                               kWebpArray + arraysize(kWebpArray) - 1);
-  std::vector<int> jpeg_vector(kJpegArray,
-                               kJpegArray + arraysize(kJpegArray) - 1);
-
-  device_properties_.SetUserAgent(kMediumUserAgent);
-  device_properties_.SetPreferredImageQualities(&webp_vector, &jpeg_vector);
-
-  int webp, jpeg;
-  EXPECT_FALSE(device_properties_.GetPreferredImageQualities(
-      DeviceProperties::kImageQualityMedium, &webp, &jpeg));
-
-  device_properties_.SetPreferredImageQualities(NULL, NULL);
-  EXPECT_FALSE(device_properties_.GetPreferredImageQualities(
-      DeviceProperties::kImageQualityMedium, &webp, &jpeg));
-}
 
 TEST_F(DevicePropertiesTest, WebpUserAgentIdentificationNoAccept) {
   // NOTE: the purpose here is *not* to test user_agent_matcher's coverage of

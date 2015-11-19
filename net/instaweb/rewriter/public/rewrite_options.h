@@ -193,7 +193,6 @@ class RewriteOptions {
     kSplitHtml,
     kSplitHtmlHelper,
     kSpriteImages,
-    kSquashImagesForMobileScreen,
     kStripImageColorProfile,
     kStripImageMetaData,
     kStripNonCacheable,

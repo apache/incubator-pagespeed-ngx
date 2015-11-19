@@ -14,8 +14,6 @@
 
 #include "net/instaweb/rewriter/public/request_properties.h"
 
-#include <vector>
-
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/rewriter/public/device_properties.h"
 #include "net/instaweb/rewriter/public/downstream_caching_directives.h"
@@ -175,33 +173,8 @@ bool RequestProperties::CanPreloadResources() const {
   return device_properties_->CanPreloadResources();
 }
 
-bool RequestProperties::GetScreenResolution(int* width, int* height) const {
-  return device_properties_->GetScreenResolution(width, height);
-}
-
-void RequestProperties::SetScreenResolution(int width, int height) const {
-  device_properties_->SetScreenResolution(width, height);
-}
-
 UserAgentMatcher::DeviceType RequestProperties::GetDeviceType() const {
   return device_properties_->GetDeviceType();
-}
-
-void RequestProperties::SetPreferredImageQualities(
-    const std::vector<int>* webp, const std::vector<int>* jpeg) {
-  device_properties_->SetPreferredImageQualities(webp, jpeg);
-}
-
-
-bool RequestProperties::GetPreferredImageQualities(
-    DeviceProperties::ImageQualityPreference preference, int* webp, int* jpeg)
-    const {
-  return device_properties_->GetPreferredImageQualities(preference, webp, jpeg);
-}
-
-
-int RequestProperties::GetPreferredImageQualityCount() {
-  return DeviceProperties::GetPreferredImageQualityCount();
 }
 
 void RequestProperties::LogDeviceInfo(

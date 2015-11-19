@@ -282,8 +282,6 @@ class ImageRewriteFilter : public RewriteFilter {
   // true if a PropertyValue was written.
   bool StoreUrlInPropertyCache(const StringPiece& url);
 
-  bool SquashImagesForMobileScreenEnabled() const;
-
   void SaveDebugMessageToCache(const GoogleString& message,
                                Context* rewrite_context,
                                CachedResult* cached_result);

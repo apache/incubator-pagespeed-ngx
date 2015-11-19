@@ -154,10 +154,6 @@ class UserAgentMatcher {
   virtual bool SupportsSplitHtml(const StringPiece& user_agent,
                                  bool allow_mobile) const;
 
-  // Returns true and sets width and height if we know them for the UA.
-  virtual bool GetScreenResolution(
-        const StringPiece& user_agent, int* width, int* height);
-
   bool UserAgentExceedsChromeAndroidBuildAndPatch(
       const StringPiece& user_agent, int required_build,
       int required_patch) const;

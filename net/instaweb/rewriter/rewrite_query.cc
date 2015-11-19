@@ -738,24 +738,6 @@ bool RewriteQuery::ParseClientOptions(
   return false;
 }
 
-bool RewriteQuery::SetEffectiveImageQualities(
-    DeviceProperties::ImageQualityPreference quality_preference,
-    RequestProperties* request_properties,
-    RewriteOptions* options) {
-  if (quality_preference == DeviceProperties::kImageQualityDefault ||
-      request_properties == NULL) {
-    return false;
-  }
-  int webp = -1, jpeg = -1;
-  if (request_properties->GetPreferredImageQualities(
-      quality_preference, &webp, &jpeg)) {
-    options->set_image_webp_recompress_quality(webp);
-    options->set_image_jpeg_recompress_quality(jpeg);
-    return true;
-  }
-  return false;
-}
-
 bool RewriteQuery::UpdateRewriteOptionsWithClientOptions(
     StringPiece client_options, RequestProperties* request_properties,
     RewriteOptions* options) {
@@ -773,8 +755,7 @@ bool RewriteQuery::UpdateRewriteOptionsWithClientOptions(
     ImageRewriteFilter::DisableRelatedFilters(options);
     return true;
   } else if (proxy_mode == kProxyModeDefault) {
-    return SetEffectiveImageQualities(
-        quality_preference, request_properties, options);
+    return false;
   }
   DCHECK(false);
   return false;

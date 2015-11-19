@@ -61,11 +61,6 @@ class MessageHandler;
 //       Webp requested, for mobile user agent, page missing dimensions.
 class ImageUrlEncoder : public UrlSegmentEncoder {
  public:
-  // Area threshold that determines whether we use
-  // Image*RecompressionQualityForSmallScreens to set WebP/Jpeg quality.
-  // The intent is for phones and small tablets (e.g., Nexus 7) to be in.
-  static const int kSmallScreenSizeThresholdArea;
-
   ImageUrlEncoder() {}
   virtual ~ImageUrlEncoder();
 
@@ -102,10 +97,6 @@ class ImageUrlEncoder : public UrlSegmentEncoder {
   static void SetSmallScreen(const RewriteDriver& driver,
                              ResourceContext* context);
 
-  // Set context for screen resolution.
-  static void SetUserAgentScreenResolution(
-      RewriteDriver* driver, ResourceContext* context);
-
   // Helper function to generate Metadata cache key from ResourceContext.
   static GoogleString CacheKeyFromResourceContext(
       const ResourceContext& resource_context);
@@ -129,16 +120,6 @@ class ImageUrlEncoder : public UrlSegmentEncoder {
   }
 
  private:
-  FRIEND_TEST(ImageRewriteTest, SquashImagesForMobileScreen);
-  FRIEND_TEST(ImageUrlEncoderTest, UserAgentScreenResolution);
-
-  // Returns true if screen width and height are normalized according to a
-  // predefined list of screen resolutions (see implementation header document
-  // for more details).
-  static bool GetNormalizedScreenResolution(
-      int screen_width, int screen_height, int* normalized_width,
-      int* normalized_height);
-
   DISALLOW_COPY_AND_ASSIGN(ImageUrlEncoder);
 };
 

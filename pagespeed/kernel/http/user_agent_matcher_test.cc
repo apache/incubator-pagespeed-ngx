@@ -546,32 +546,6 @@ TEST_F(UserAgentMatcherTest, GetDeviceTypeForUA) {
   VerifyGetDeviceTypeForUA();
 }
 
-TEST_F(UserAgentMatcherTest, GetScreenResolution) {
-  int width, height;
-
-  // Unknown user agent.
-  EXPECT_FALSE(user_agent_matcher_->GetScreenResolution(
-      kIPhoneChrome21UserAgent, &width, &height));
-
-  // Galaxy Nexus, first in list
-  EXPECT_TRUE(user_agent_matcher_->GetScreenResolution(
-      kAndroidICSUserAgent, &width, &height));
-  EXPECT_EQ(720, width);
-  EXPECT_EQ(1280, height);
-
-  // Nexus S, middle of list.
-  EXPECT_TRUE(user_agent_matcher_->GetScreenResolution(
-      kAndroidNexusSUserAgent, &width, &height));
-  EXPECT_EQ(480, width);
-  EXPECT_EQ(800, height);
-
-  // XT907, last in list.
-  EXPECT_TRUE(user_agent_matcher_->GetScreenResolution(
-      XT907UserAgent, &width, &height));
-  EXPECT_EQ(540, width);
-  EXPECT_EQ(960, height);
-}
-
 TEST_F(UserAgentMatcherTest, IE11BlinkFailure) {
   RequestHeaders* not_used = NULL;
   for (int i = 0; i < kIe11UserAgentsArraySize; ++i) {

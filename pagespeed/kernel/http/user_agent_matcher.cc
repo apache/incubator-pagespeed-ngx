@@ -670,21 +670,6 @@ StringPiece UserAgentMatcher::DeviceTypeSuffix(DeviceType device_type) {
   return device_type_suffix;
 }
 
-bool UserAgentMatcher::GetScreenResolution(
-    const StringPiece& user_agent, int* width, int* height) {
-  DCHECK(width != NULL);
-  DCHECK(height != NULL);
-  GoogleString match;
-  if (RE2::PartialMatch(
-      StringPieceToRe2(user_agent), *known_devices_pattern_, &match)) {
-    pair<int, int> dims = screen_dimensions_map_[match];
-    *width = dims.first;
-    *height = dims.second;
-    return true;
-  }
-  return false;
-}
-
 bool UserAgentMatcher::UserAgentExceedsChromeiOSBuildAndPatch(
     const StringPiece& user_agent, int required_build,
     int required_patch) const {

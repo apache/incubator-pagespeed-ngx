@@ -43,7 +43,6 @@ const char kMissingDimension = 'N';
 const char kWebpLossyUserAgentKey[] = "w";
 const char kWebpLossyLossLessAlphaUserAgentKey[] = "v";
 const char kMobileUserAgentKey[] = "m";
-const char kUserAgentScreenResolutionKey[] = "sr";
 const char kSmallScreenKey[] = "ss";
 
 bool IsValidCode(char code) {
@@ -79,33 +78,7 @@ uint32 DecodeDimension(StringPiece* in, bool* ok, bool* has_dimension) {
   return result;
 }
 
-struct ScreenResolution {
-  int width;
-  int height;
-};
-
-// Used by kSquashImagesForMobileScreen as target screen resolution.
-// Keep the list small and in descending order of width.
-// We use normalized screen resolution to reduce cache fragmentation.
-static const ScreenResolution kNormalizedScreenResolutions[] = {
-    {1080, 1920},
-    {800, 1280},
-    {600, 1024},
-    {480, 800},
-};
-
-#ifndef NDEBUG
-void CheckScreenResolutionOrder() {
-  for (int i = 1, n = arraysize(kNormalizedScreenResolutions); i < n; ++i) {
-    DCHECK_LT(kNormalizedScreenResolutions[i].width,
-              kNormalizedScreenResolutions[i - 1].width);
-  }
-}
-#endif
-
 }  // namespace
-
-const int ImageUrlEncoder::kSmallScreenSizeThresholdArea = 1280 * 800;
 
 ImageUrlEncoder::~ImageUrlEncoder() { }
 
@@ -323,34 +296,10 @@ void ImageUrlEncoder::SetWebpAndMobileUserAgent(
 
 void ImageUrlEncoder::SetSmallScreen(const RewriteDriver& driver,
     ResourceContext* context) {
-  int width = 0, height = 0;
-  if (driver.request_properties()->GetScreenResolution(&width, &height)) {
-    if (width * height <= kSmallScreenSizeThresholdArea) {
-      context->set_use_small_screen_quality(true);
-    }
-  } else {
-    // If we did not find the screen resolution in kKnownScreenDimensions,
-    // default to the IsMobile() check to set the small screen quality.
-    context->set_use_small_screen_quality(
-        driver.request_properties()->IsMobile());
-  }
-}
-
-void ImageUrlEncoder::SetUserAgentScreenResolution(
-    RewriteDriver* driver, ResourceContext* context) {
-  if (context == NULL) {
-    return;
-  }
-  int screen_width = 0;
-  int screen_height = 0;
-  if (driver->request_properties()->GetScreenResolution(
-      &screen_width, &screen_height) &&
-      GetNormalizedScreenResolution(
-          screen_width, screen_height, &screen_width, &screen_height)) {
-    ImageDim *dims = context->mutable_user_agent_screen_resolution();
-    dims->set_width(screen_width);
-    dims->set_height(screen_height);
-  }
+  // We used to do checking based on screen resolution, but we actually care
+  // about is physically small screens even if they're high-density.
+  context->set_use_small_screen_quality(
+      driver.request_properties()->IsMobile());
 }
 
 GoogleString ImageUrlEncoder::CacheKeyFromResourceContext(
@@ -371,42 +320,7 @@ GoogleString ImageUrlEncoder::CacheKeyFromResourceContext(
       resource_context.use_small_screen_quality()) {
     StrAppend(&user_agent_cache_key, kSmallScreenKey);
   }
-  if (resource_context.has_user_agent_screen_resolution() &&
-      resource_context.user_agent_screen_resolution().has_width() &&
-      resource_context.user_agent_screen_resolution().has_height()) {
-    StrAppend(
-        &user_agent_cache_key,
-        kUserAgentScreenResolutionKey,
-        IntegerToString(
-            resource_context.user_agent_screen_resolution().width()),
-        StringPiece(&kCodeSeparator, 1),
-        IntegerToString(
-            resource_context.user_agent_screen_resolution().height()));
-  }
   return user_agent_cache_key;
-}
-
-// Returns true if screen_width is less than any width in
-// kNormalizedScreenResolutions, in which case the normalized resolution with
-// the smallest width that is not less than screen_width will be returned.
-bool ImageUrlEncoder::GetNormalizedScreenResolution(
-    int screen_width, int screen_height, int* normalized_width,
-    int* normalized_height) {
-#ifndef NDEBUG
-  CheckScreenResolutionOrder();
-#endif
-
-  bool normalized = false;
-  for (int i = 0, n = arraysize(kNormalizedScreenResolutions); i < n; ++i) {
-    if (kNormalizedScreenResolutions[i].width >= screen_width) {
-      *normalized_width = kNormalizedScreenResolutions[i].width;
-      *normalized_height = kNormalizedScreenResolutions[i].height;
-      normalized = true;
-    } else {
-      break;
-    }
-  }
-  return normalized;
 }
 
 }  // namespace net_instaweb
