@@ -55,7 +55,7 @@ pagespeed.DelayImages = function() {
 
 /**
  * For given elements, replace src with data-pagespeed-high-res-src if present.
- * @param {NodeList.<Element>} elements list of DOM elements to check.
+ * @param {!NodeList<!Element>} elements list of DOM elements to check.
  */
 pagespeed.DelayImages.prototype.replaceElementSrc = function(elements) {
   for (var i = 0; i < elements.length; ++i) {

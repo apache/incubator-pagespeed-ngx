@@ -60,14 +60,14 @@ var deferJsNs = pagespeed['deferJsNs'];
 deferJsNs.DeferJs = function() {
   /**
    * Queue of tasks that need to be executed in order.
-   * @type {!Array.<function()>}
+   * @type {!Array<function()>}
    * @private
    */
   this.queue_ = [];
 
   /**
    * Array of logs, for debugging.
-   * @type {Array.<string>}
+   * @type {Array<string>}
    */
   this.logs = [];
 
@@ -87,7 +87,7 @@ deferJsNs.DeferJs = function() {
 
   /**
    * Scripts dynamically inserted by other scripts.
-   * @type {Array.<Element>}
+   * @type {Array<Element>}
    * @private
    */
   this.dynamicInsertedScript_ = [];
@@ -244,7 +244,7 @@ deferJsNs.DeferJs = function() {
 
   /**
    * Async scripts created by no defer scripts.
-   * @type {Array.<Element>}
+   * @type {Array<Element>}
    * @private
    */
   this.noDeferAsyncScripts_ = [];
@@ -437,7 +437,7 @@ deferJsNs.DeferJs.prototype.log = function(line, opt_exception) {
   if (this.logs) {
     this.logs.push('' + line);
     if (opt_exception) {
-      this.logs.push(opt_exception);
+      this.logs.push(opt_exception.message);
       if (typeof(console) != 'undefined' &&
           typeof(console.log) != 'undefined') {
         console.log('PSA ERROR: ' + line + opt_exception.message);
@@ -929,7 +929,7 @@ deferJsNs.DeferJs.prototype.checkNodeInDom = function(node) {
  * Script onload is not triggered if src is empty because such scripts
  * are not async scripts as these scripts will be executed while parsing
  * the dom.
- * @param {Array.<Element>} dynamicInsertedScriptList is the list of dynamic
+ * @param {Array<Element>} dynamicInsertedScriptList is the list of dynamic
  *     inserted scripts.
  * @return {number} returns the number of scripts whose onload will not get
  *     triggered.
@@ -1021,7 +1021,7 @@ deferJsNs.DeferJs.prototype.runNext = function() {
 /**
  * Converts from NodeList to array of nodes.
  * @param {!NodeList} nodeList NodeList from a DOM node.
- * @return {!Array.<Node>} Array of nodes returned.
+ * @return {!Array<Node>} Array of nodes returned.
  */
 deferJsNs.DeferJs.prototype.nodeListToArray = function(nodeList) {
   var arr = [];
@@ -1268,7 +1268,7 @@ deferJsNs.DeferJs.prototype.isJSNode = function(node) {
  * Given the list of nodes, sets the not_processed attributes to all nodes and
  * generates list of script nodes.
  * @param {!Node} node starting node for DFS.
- * @param {!Array.<Element>} scriptNodes array of script elements (output).
+ * @param {!Array<!Element>} scriptNodes array of script elements (output).
  */
 deferJsNs.DeferJs.prototype.markNodesAndExtractScriptNodes = function(
     node, scriptNodes) {
@@ -1293,7 +1293,10 @@ deferJsNs.DeferJs.prototype.markNodesAndExtractScriptNodes = function(
     // TODO(pulkitg): Make both behaviour consistent.
     if (child.nodeName == 'SCRIPT') {
       if (this.isJSNode(child)) {
-        scriptNodes.push(child);
+        // TODO(jud): Rewrite this function to just iterate over children,
+        // instead of childNodes, and then we only have to operate over elements
+        // instead of nodes.
+        scriptNodes.push(/** @type {!Element} */ (child));
         child.setAttribute(deferJsNs.DeferJs.PSA_ORIG_TYPE, child.type);
         child.setAttribute('type', this.psaScriptType_);
         child.setAttribute(deferJsNs.DeferJs.PSA_ORIG_SRC, child.src);
@@ -1308,7 +1311,7 @@ deferJsNs.DeferJs.prototype.markNodesAndExtractScriptNodes = function(
 
 
 /**
- * @param {!Array.<Element>} scripts Array of script nodes to be deferred.
+ * @param {!Array<Element>} scripts Array of script nodes to be deferred.
  * @param {!number} pos position for script ordering.
  */
 deferJsNs.DeferJs.prototype.deferScripts = function(scripts, pos) {

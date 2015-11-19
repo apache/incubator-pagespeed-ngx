@@ -59,7 +59,7 @@ pagespeed.DelayImagesInline.prototype['addLowResImages'] =
  * For given elements, replace src with low res data url by looking up
  * data-pagespeed-high-res-src attribute value in inlineMap_ (does nothing if
  * the latter attribute is absent).
- * @param {NodeList.<Element>} elements list of DOM elements to check.
+ * @param {!NodeList<!Element>} elements list of DOM elements to check.
  */
 pagespeed.DelayImagesInline.prototype.replaceElementSrc =
     function(elements) {
