@@ -460,7 +460,6 @@ class RewriteDriverFactory {
   StaticAssetManager* DefaultStaticAssetManager();
 
   void SetupSlurpDirectories();
-  void Init();  // helper-method for constructors.
 
   void InitDecodingDriver(ServerContext* server_context);
 
@@ -494,6 +493,8 @@ class RewriteDriverFactory {
   bool slurp_read_only_;
   bool slurp_print_urls_;
 
+  scoped_ptr<ThreadSystem> thread_system_;
+
   // protected by server_context_mutex_;
   typedef std::set<ServerContext*> ServerContextSet;
   ServerContextSet server_contexts_;
@@ -515,8 +516,6 @@ class RewriteDriverFactory {
 
   // Manage locks for output resources.
   scoped_ptr<NamedLockManager> lock_manager_;
-
-  scoped_ptr<ThreadSystem> thread_system_;
 
   scoped_ptr<CentralControllerInterface> central_controller_interface_;
 

@@ -76,29 +76,24 @@ const char RewriteDriverFactory::kCurrentExpensiveOperations[] =
 
 RewriteDriverFactory::RewriteDriverFactory(
     const ProcessContext& process_context, ThreadSystem* thread_system)
-    : js_tokenizer_patterns_(process_context.js_tokenizer_patterns()) {
+    : url_async_fetcher_(NULL),
+      distributed_async_fetcher_(NULL),
+      js_tokenizer_patterns_(process_context.js_tokenizer_patterns()),
+      force_caching_(false),
+      slurp_read_only_(false),
+      slurp_print_urls_(false),
 #ifdef NDEBUG
-  // For release binaries, use the thread-system directly.
-  thread_system_.reset(thread_system);
+      // For release binaries, use the thread-system directly.
+      thread_system_(thread_system),
 #else
-  // When compiling for debug, interpose a layer that CHECKs for clean mutex
-  // semantics.
-  thread_system_.reset(new CheckingThreadSystem(thread_system));
+      // When compiling for debug, interpose a layer that CHECKs for clean mutex
+      // semantics.
+      thread_system_(new CheckingThreadSystem(thread_system)),
 #endif
-  Init();
-}
-
-void RewriteDriverFactory::Init() {
-  url_async_fetcher_ = NULL;
-  distributed_async_fetcher_ = NULL;
-  force_caching_ = false;
-  slurp_read_only_ = false;
-  slurp_print_urls_ = false;
-  SetStatistics(&null_statistics_);
-  server_context_mutex_.reset(thread_system_->NewMutex());
-  worker_pools_.assign(kNumWorkerPools, NULL);
-  hostname_ = GetHostname();
-
+      server_context_mutex_(thread_system_->NewMutex()),
+      statistics_(&null_statistics_),
+      worker_pools_(kNumWorkerPools, NULL),
+      hostname_(GetHostname()) {
   // Pre-initializes the default options.  IMPORTANT: subclasses overridding
   // NewRewriteOptions() should re-call this method from their constructor
   // so that the correct rewrite_options_ object gets reset.
