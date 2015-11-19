@@ -48,12 +48,14 @@
 #include "net/instaweb/rewriter/public/responsive_image_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/escaping.h"
+#include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/statistics.h"
@@ -68,8 +70,6 @@
 #include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/http/semantic_type.h"
 #include "pagespeed/kernel/util/simple_random.h"
-#include "pagespeed/kernel/util/statistics_work_bound.h"
-#include "pagespeed/kernel/util/work_bound.h"
 #include "pagespeed/opt/logging/enums.pb.h"
 
 namespace net_instaweb {
@@ -389,6 +389,8 @@ class ImageRewriteFilter::Context : public SingleRewriteContext {
       ResourceContext* context);
 
  private:
+  class InvokeRewriteFunction;
+
   friend class ImageRewriteFilter;
 
   int64 css_image_inline_max_bytes_;
@@ -398,6 +400,48 @@ class ImageRewriteFilter::Context : public SingleRewriteContext {
   bool in_noscript_element_;
   bool is_resized_using_rendered_dimensions_;
   DISALLOW_COPY_AND_ASSIGN(Context);
+};
+
+class ImageRewriteFilter::Context::InvokeRewriteFunction : public Function {
+ public:
+  InvokeRewriteFunction(ImageRewriteFilter::Context* context,
+                        ImageRewriteFilter* filter,
+                        const ResourcePtr& input_resource,
+                        const OutputResourcePtr& output_resource)
+      : context_(context),
+        filter_(filter),
+        input_resource_(input_resource),
+        output_resource_(output_resource) {}
+  virtual ~InvokeRewriteFunction() { }
+
+ protected:
+  virtual void Run() {
+    RewriteResult result = filter_->RewriteLoadedResourceImpl(
+        context_, input_resource_, output_resource_);
+    context_->FindServerContext()->factory()
+        ->NotifyExpensiveOperationComplete();
+    context_->RewriteDone(result, 0);
+  }
+  // TODO(cheesy): When this goes truly async, there are actually two different
+  // ways Cancel might be called; By the CentralController to signify "no slot
+  // available" or by the subsequent WorkQueue due to load shedding. In the
+  // WorkQueue case, it's important to call NotifyExpensiveOperationComplete.
+  // I think the right thing to do is implement a Function subclass that
+  // encapsulates all that, which InvokeRewriteFunction should inherit from.
+  virtual void Cancel() {
+    filter_->ReportDroppedRewrite();
+    filter_->InfoAndTrace(context_, "%s: Too busy to rewrite image.",
+                          input_resource_->url().c_str());
+    context_->RewriteDone(kTooBusy, 0);
+  }
+
+ private:
+  ImageRewriteFilter::Context* context_;
+  ImageRewriteFilter* filter_;
+  const ResourcePtr input_resource_;
+  const OutputResourcePtr output_resource_;
+
+  DISALLOW_COPY_AND_ASSIGN(InvokeRewriteFunction);
 };
 
 // TODO(huibao): Move the logic for determining output format to a centralized
@@ -452,12 +496,26 @@ void SetWebpCompressionOptions(
 void ImageRewriteFilter::Context::RewriteSingle(
     const ResourcePtr& input_resource,
     const OutputResourcePtr& output_resource) {
+  // If requested, drop random image rewrites. Eventually, frequently requested
+  // images will get optimized but the long tail won't be optimized much. We're
+  // not particularly concerned about the quality of the PRNG here as it's just
+  // deciding if we should optimize an image or not.
+  int drop_percentage = Options()->rewrite_random_drop_percentage();
+  if (drop_percentage > 0 && !IsNestedIn(RewriteOptions::kCssFilterId)) {
+    // Note that we don't randomly drop if this is a nested context of the CSS
+    // filter as we don't want to partially rewrite a CSS file.
+    SimpleRandom* simple_random = FindServerContext()->simple_random();
+    if (drop_percentage > static_cast<int>(simple_random->Next() % 100)) {
+      RewriteDone(kTooBusy, 0);
+      return;
+    }
+  }
   bool is_ipro = IsNestedIn(RewriteOptions::kInPlaceRewriteId);
   AttachDependentRequestTrace(is_ipro ? "IproProcessImage" : "ProcessImage");
   AddLinkRelCanonical(input_resource, output_resource);
-  RewriteDone(
-      filter_->RewriteLoadedResourceImpl(this, input_resource, output_resource),
-      0);
+  FindServerContext()->factory()->ScheduleExpensiveOperation(
+      new InvokeRewriteFunction(this, filter_, input_resource,
+                                output_resource));
 }
 
 void ImageRewriteFilter::Context::Render() {
@@ -635,11 +693,7 @@ ImageRewriteFilter::ImageRewriteFilter(RewriteDriver* driver)
   image_rewrite_latency_failed_ms_ =
       stats->GetHistogram(kImageRewriteLatencyFailedMs);
 
-  UpDownCounter* image_ongoing_rewrites =
-      stats->GetUpDownCounter(kImageOngoingRewrites);
-  work_bound_.reset(
-      new StatisticsWorkBound(image_ongoing_rewrites,
-                              driver->options()->image_max_rewrites_at_once()));
+  image_ongoing_rewrites_ = stats->GetUpDownCounter(kImageOngoingRewrites);
 }
 
 ImageRewriteFilter::~ImageRewriteFilter() {}
@@ -671,9 +725,7 @@ void ImageRewriteFilter::InitStats(Statistics* statistics) {
   statistics->AddVariable(kImageInline);
   statistics->AddVariable(kImageWebpRewrites);
   statistics->AddVariable(kImageRewriteLatencyTotalMs);
-  // We want image_ongoing_rewrites to be global even if we do per-vhost
-  // stats, as it's used for a StatisticsWorkBound.
-  statistics->AddGlobalUpDownCounter(kImageOngoingRewrites);
+  statistics->AddUpDownCounter(kImageOngoingRewrites);
   statistics->AddHistogram(kImageRewriteLatencyOkMs);
   statistics->AddHistogram(kImageRewriteLatencyFailedMs);
 
@@ -982,22 +1034,6 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
     return kRewriteFailed;
   }
 
-  // If requested, drop random image rewrites. Eventually, frequently requested
-  // images will get optimized but the long tail won't be optimized much. We're
-  // not particularly concerned about the quality of the PRNG here as it's just
-  // deciding if we should optimize an image or not.
-  int drop_percentage = options->rewrite_random_drop_percentage();
-  if (drop_percentage > 0 &&
-      !rewrite_context->IsNestedIn(RewriteOptions::kCssFilterId)) {
-    // Note that we don't randomly drop if this is a nested context of the CSS
-    // filter as we don't want to partially rewrite a CSS file.
-    SimpleRandom* simple_random =
-        rewrite_context->FindServerContext()->simple_random();
-    if (drop_percentage > static_cast<int>(simple_random->Next() % 100)) {
-      return kTooBusy;
-    }
-  }
-
   Image::CompressionOptions* image_options =
       ImageOptionsForLoadedResource(resource_context, input_resource,
                                     rewrite_context->is_css_);
@@ -1036,200 +1072,197 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
     image_norewrites_high_resolution_->Add(1);
     return kRewriteFailed;
   }
-  if (work_bound_->TryToWork()) {
-    rewrite_result = kRewriteFailed;
-    Timer* timer = server_context()->timer();
-    int64 rewrite_time_start_ms = GetCurrentCpuTimeMs(timer);
-    CachedResult* cached = result->EnsureCachedResultCreated();
-    is_resized = ResizeImageIfNecessary(
-        rewrite_context, input_resource->url(),
-        &resource_context, image.get(), cached);
 
-    // Now re-compress the (possibly resized) image, and decide if it's
-    // saved us anything.
-    if (is_resized || options->ImageOptimizationEnabled()) {
-      // Call output_size() before image_type(). When output_size() is called,
-      // the image will be recompressed and the image type may be changed
-      // in order to get the smallest output.
-      optimized_size = image->output_size();
-      optimized_image_type = image->image_type();
-      is_recompressed = true;
+  image_ongoing_rewrites_->Add(1);
 
-      // The image has been recompressed (and potentially resized). However,
-      // the recompressed image may not be used unless the file size is reduced.
-      if (image->output_size() * 100 <
-          image->input_size() * options->image_limit_optimized_percent()) {
-        // Here output image type could potentially be different from input
-        // type.
-        const ContentType* output_type =
-            ImageToContentType(input_resource->url(), image.get());
+  rewrite_result = kRewriteFailed;
+  Timer* timer = server_context()->timer();
+  int64 rewrite_time_start_ms = GetCurrentCpuTimeMs(timer);
+  CachedResult* cached = result->EnsureCachedResultCreated();
+  is_resized = ResizeImageIfNecessary(
+      rewrite_context, input_resource->url(),
+      &resource_context, image.get(), cached);
 
-        // Consider inlining output image (no need to check input, it's bigger)
-        // This needs to happen before Write to persist.
-        SaveIfInlinable(image->Contents(), image->image_type(), cached);
+  // Now re-compress the (possibly resized) image, and decide if it's
+  // saved us anything.
+  if (is_resized || options->ImageOptimizationEnabled()) {
+  // Call output_size() before image_type(). When output_size() is called,
+    // the image will be recompressed and the image type may be changed
+    // in order to get the smallest output.
+    optimized_size = image->output_size();
+    optimized_image_type = image->image_type();
+    is_recompressed = true;
 
-        server_context()->MergeNonCachingResponseHeaders(
-            input_resource, result);
-        if (options->no_transform_optimized_images()) {
-          result->set_cache_control_suffix(",no-transform");
-        }
-        if (driver()->Write(
-                ResourceVector(1, input_resource), image->Contents(),
-                output_type, StringPiece() /* no charset for images */,
-                result.get())) {
-          driver()->InfoAt(
-              rewrite_context,
-              "Shrinking image `%s' (%u bytes) to `%s' (%u bytes)",
-              input_resource->url().c_str(),
-              static_cast<unsigned>(image->input_size()),
-              result->url().c_str(),
-              static_cast<unsigned>(image->output_size()));
+    // The image has been recompressed (and potentially resized). However,
+    // the recompressed image may not be used unless the file size is reduced.
+    if (image->output_size() * 100 <
+        image->input_size() * options->image_limit_optimized_percent()) {
+      // Here output image type could potentially be different from input
+      // type.
+      const ContentType* output_type =
+          ImageToContentType(input_resource->url(), image.get());
 
-          // Update stats.
-          image_rewrites_->Add(1);
-          image_rewrite_total_bytes_saved_->Add(
-              image->input_size() - image->output_size());
-          image_rewrite_total_original_bytes_->Add(image->input_size());
-          if (result->type()->type() == ContentType::kWebp) {
-            image_webp_rewrites_->Add(1);
-          }
+      // Consider inlining output image (no need to check input, it's bigger)
+      // This needs to happen before Write to persist.
+      SaveIfInlinable(image->Contents(), image->image_type(), cached);
 
-          rewrite_result = kRewriteOk;
-        } else {
-          // Server fails to write merged files.
-          image_rewrites_dropped_server_write_fail_->Add(1);
-          InfoAndTrace(
-              rewrite_context,
-              "Server fails writing image content for `%s'; rewriting dropped.",
-              input_resource->url().c_str());
-        }
-      } else if (is_resized) {
-        // Eliminate any image dimensions from a resize operation that
-        // succeeded, but yielded overly-large output.
-        image_rewrites_dropped_nosaving_resize_->Add(1);
-        InfoAndTrace(
+      server_context()->MergeNonCachingResponseHeaders(
+          input_resource, result);
+      if (options->no_transform_optimized_images()) {
+        result->set_cache_control_suffix(",no-transform");
+      }
+      if (driver()->Write(
+              ResourceVector(1, input_resource), image->Contents(),
+              output_type, StringPiece() /* no charset for images */,
+              result.get())) {
+        driver()->InfoAt(
             rewrite_context,
-            "Shrink of image `%s' (%u -> %u bytes) doesn't save space; "
-            "dropped.",
+            "Shrinking image `%s' (%u bytes) to `%s' (%u bytes)",
             input_resource->url().c_str(),
             static_cast<unsigned>(image->input_size()),
+            result->url().c_str(),
             static_cast<unsigned>(image->output_size()));
-        ImageDim* dims = cached->mutable_image_file_dims();
-        dims->clear_width();
-        dims->clear_height();
-      } else if (options->ImageOptimizationEnabled()) {
-        // Fails due to overly-large output without resize.
-        image_rewrites_dropped_nosaving_noresize_->Add(1);
-        InfoAndTrace(
-            rewrite_context,
-            "Recompressing image `%s' (%u -> %u bytes) doesn't save space; "
-            "dropped.",
-            input_resource->url().c_str(),
-            static_cast<unsigned>(image->input_size()),
-            static_cast<unsigned>(image->output_size()));
-      }
-    }
-    cached->set_minimal_webp_support(image->MinimalWebpSupport());
-    cached->set_size(rewrite_result == kRewriteOk ? image->output_size() :
-                     image->input_size());
-    SaveDebugMessageToCache(image->debug_message(), rewrite_context, cached);
 
-    // Try inlining input image if output hasn't been inlined already.
-    if (!cached->has_inlined_data()) {
-      SaveIfInlinable(input_resource->ExtractUncompressedContents(),
-                      original_image_type, cached);
-    }
+        // Update stats.
+        image_rewrites_->Add(1);
+        image_rewrite_total_bytes_saved_->Add(
+            image->input_size() - image->output_size());
+        image_rewrite_total_original_bytes_->Add(image->input_size());
+        if (result->type()->type() == ContentType::kWebp) {
+          image_webp_rewrites_->Add(1);
+        }
 
-    int64 image_size = static_cast<int64>(image->output_size());
-    if (options->Enabled(RewriteOptions::kDelayImages) &&
-        !rewrite_context->in_noscript_element_ &&
-        !cached->has_low_resolution_inlined_data() &&
-        image_size >= options->min_image_size_low_resolution_bytes() &&
-        image_size <= options->max_image_size_low_resolution_bytes()) {
-      Image::CompressionOptions* image_options =
-          new Image::CompressionOptions();
-      SetWebpCompressionOptions(resource_context, *options,
-                                input_resource->url(),
-                                &webp_conversion_variables_,
-                                image_options);
-
-      image_options->jpeg_quality = options->image_recompress_quality();
-      if (options->image_jpeg_recompress_quality() != -1) {
-        // if jpeg quality is explicitly set, it takes precedence over
-        // generic image quality.
-        image_options->jpeg_quality = options->image_jpeg_recompress_quality();
-      }
-      image_options->webp_quality = options->image_recompress_quality();
-      if (options->image_webp_recompress_quality() != -1) {
-        image_options->webp_quality = options->image_webp_recompress_quality();
-      }
-      image_options->webp_animated_quality =
-          options->image_recompress_quality();
-      if (options->image_webp_animated_recompress_quality() != -1) {
-        image_options->webp_animated_quality =
-            options->image_webp_animated_recompress_quality();
-      }
-      image_options->progressive_jpeg = false;
-      image_options->convert_png_to_jpeg =
-          options->Enabled(RewriteOptions::kConvertPngToJpeg);
-
-      // Set to true since we optimize a gif to png before resize.
-      image_options->convert_gif_to_png = true;
-      image_options->recompress_jpeg = true;
-      image_options->recompress_png = true;
-      image_options->recompress_webp = true;
-
-      // Since these are replaced with their high res versions, stripping
-      // them off for low res images will further reduce bytes.
-      image_options->retain_color_profile = false;
-      image_options->retain_exif_data = false;
-      image_options->retain_color_sampling = false;
-      image_options->jpeg_num_progressive_scans =
-          options->image_jpeg_num_progressive_scans();
-
-      scoped_ptr<Image> low_image;
-      if (driver()->options()->use_blank_image_for_inline_preview()) {
-        image_options->use_transparent_for_blank_image = true;
-        low_image.reset(BlankImageWithOptions(image_width, image_height,
-            IMAGE_PNG, server_context()->filename_prefix(),
-            timer, message_handler, image_options));
-        low_image->EnsureLoaded(true);
+        rewrite_result = kRewriteOk;
       } else {
-        low_image.reset(NewImage(image->Contents(), input_resource->url(),
-            server_context()->filename_prefix(), image_options,
-            timer, message_handler));
+        // Server fails to write merged files.
+        image_rewrites_dropped_server_write_fail_->Add(1);
+        InfoAndTrace(
+            rewrite_context,
+            "Server fails writing image content for `%s'; rewriting dropped.",
+            input_resource->url().c_str());
       }
-      low_image->SetTransformToLowRes();
-      if (ShouldInlinePreview(low_image->Contents().size(),
-                              image->Contents().size(), options)) {
-        if (resource_context.mobile_user_agent()) {
-          ResizeLowQualityImage(low_image.get(), input_resource, cached);
-        } else {
-          cached->set_low_resolution_inlined_data(low_image->Contents().data(),
-                                                  low_image->Contents().size());
-        }
-        cached->set_low_resolution_inlined_image_type(
-            static_cast<int>(low_image->image_type()));
-      }
+    } else if (is_resized) {
+      // Eliminate any image dimensions from a resize operation that
+      // succeeded, but yielded overly-large output.
+      image_rewrites_dropped_nosaving_resize_->Add(1);
+      InfoAndTrace(
+          rewrite_context,
+          "Shrink of image `%s' (%u -> %u bytes) doesn't save space; "
+          "dropped.",
+          input_resource->url().c_str(),
+          static_cast<unsigned>(image->input_size()),
+          static_cast<unsigned>(image->output_size()));
+      ImageDim* dims = cached->mutable_image_file_dims();
+      dims->clear_width();
+      dims->clear_height();
+    } else if (options->ImageOptimizationEnabled()) {
+      // Fails due to overly-large output without resize.
+      image_rewrites_dropped_nosaving_noresize_->Add(1);
+      InfoAndTrace(
+          rewrite_context,
+          "Recompressing image `%s' (%u -> %u bytes) doesn't save space; "
+          "dropped.",
+          input_resource->url().c_str(),
+          static_cast<unsigned>(image->input_size()),
+          static_cast<unsigned>(image->output_size()));
     }
-    work_bound_->WorkComplete();
-    int64 latency_ms = GetCurrentCpuTimeMs(timer) - rewrite_time_start_ms;
-    if (rewrite_result == kRewriteOk) {
-      image_rewrite_latency_ok_ms_->Add(latency_ms);
-    } else {
-      image_rewrite_latency_failed_ms_->Add(latency_ms);
-    }
-
-    // We track the total latency (including failed & OK) in its own
-    // variable so it can be easily scraped with wget.  The ok/failed
-    // versions above are histograms and thus harder to scrape.
-    image_rewrite_latency_total_ms_->Add(latency_ms);
-  } else {
-    image_rewrites_dropped_due_to_load_->IncBy(1);
-    InfoAndTrace(rewrite_context,
-                 "%s: Too busy to rewrite image.",
-                 input_resource->url().c_str());
   }
+  cached->set_minimal_webp_support(image->MinimalWebpSupport());
+  cached->set_size(rewrite_result == kRewriteOk ? image->output_size() :
+                   image->input_size());
+  SaveDebugMessageToCache(image->debug_message(), rewrite_context, cached);
+
+  // Try inlining input image if output hasn't been inlined already.
+  if (!cached->has_inlined_data()) {
+    SaveIfInlinable(input_resource->ExtractUncompressedContents(),
+                    original_image_type, cached);
+  }
+
+  int64 image_size = static_cast<int64>(image->output_size());
+  if (options->Enabled(RewriteOptions::kDelayImages) &&
+      !rewrite_context->in_noscript_element_ &&
+      !cached->has_low_resolution_inlined_data() &&
+      image_size >= options->min_image_size_low_resolution_bytes() &&
+      image_size <= options->max_image_size_low_resolution_bytes()) {
+    Image::CompressionOptions* image_options =
+        new Image::CompressionOptions();
+    SetWebpCompressionOptions(resource_context, *options,
+                              input_resource->url(),
+                              &webp_conversion_variables_,
+                              image_options);
+
+    image_options->jpeg_quality = options->image_recompress_quality();
+    if (options->image_jpeg_recompress_quality() != -1) {
+      // if jpeg quality is explicitly set, it takes precedence over
+      // generic image quality.
+      image_options->jpeg_quality = options->image_jpeg_recompress_quality();
+    }
+    image_options->webp_quality = options->image_recompress_quality();
+    if (options->image_webp_recompress_quality() != -1) {
+      image_options->webp_quality = options->image_webp_recompress_quality();
+    }
+    image_options->webp_animated_quality =
+        options->image_recompress_quality();
+    if (options->image_webp_animated_recompress_quality() != -1) {
+      image_options->webp_animated_quality =
+          options->image_webp_animated_recompress_quality();
+    }
+    image_options->progressive_jpeg = false;
+    image_options->convert_png_to_jpeg =
+        options->Enabled(RewriteOptions::kConvertPngToJpeg);
+
+    // Set to true since we optimize a gif to png before resize.
+    image_options->convert_gif_to_png = true;
+    image_options->recompress_jpeg = true;
+    image_options->recompress_png = true;
+    image_options->recompress_webp = true;
+
+    // Since these are replaced with their high res versions, stripping
+    // them off for low res images will further reduce bytes.
+    image_options->retain_color_profile = false;
+    image_options->retain_exif_data = false;
+    image_options->retain_color_sampling = false;
+    image_options->jpeg_num_progressive_scans =
+        options->image_jpeg_num_progressive_scans();
+
+    scoped_ptr<Image> low_image;
+    if (driver()->options()->use_blank_image_for_inline_preview()) {
+      image_options->use_transparent_for_blank_image = true;
+      low_image.reset(BlankImageWithOptions(image_width, image_height,
+          IMAGE_PNG, server_context()->filename_prefix(),
+          timer, message_handler, image_options));
+      low_image->EnsureLoaded(true);
+    } else {
+      low_image.reset(NewImage(image->Contents(), input_resource->url(),
+          server_context()->filename_prefix(), image_options,
+          timer, message_handler));
+    }
+    low_image->SetTransformToLowRes();
+    if (ShouldInlinePreview(low_image->Contents().size(),
+                            image->Contents().size(), options)) {
+      if (resource_context.mobile_user_agent()) {
+        ResizeLowQualityImage(low_image.get(), input_resource, cached);
+      } else {
+        cached->set_low_resolution_inlined_data(low_image->Contents().data(),
+                                                low_image->Contents().size());
+      }
+      cached->set_low_resolution_inlined_image_type(
+          static_cast<int>(low_image->image_type()));
+    }
+  }
+  image_ongoing_rewrites_->Add(-1);
+
+  int64 latency_ms = GetCurrentCpuTimeMs(timer) - rewrite_time_start_ms;
+  if (rewrite_result == kRewriteOk) {
+    image_rewrite_latency_ok_ms_->Add(latency_ms);
+  } else {
+    image_rewrite_latency_failed_ms_->Add(latency_ms);
+  }
+
+  // We track the total latency (including failed & OK) in its own
+  // variable so it can be easily scraped with wget.  The ok/failed
+  // versions above are histograms and thus harder to scrape.
+  image_rewrite_latency_total_ms_->Add(latency_ms);
 
   // All other conditions were updated in other code paths above.
   if (rewrite_result == kRewriteFailed) {
@@ -2093,6 +2126,10 @@ void ImageRewriteFilter::RegisterImageInfo(
   }
 
   image_info_[image_info.url()] = image_info;
+}
+
+void ImageRewriteFilter::ReportDroppedRewrite() {
+  image_rewrites_dropped_due_to_load_->IncBy(1);
 }
 
 bool ImageRewriteFilter::ExtractAssociatedImageInfo(

@@ -66,9 +66,13 @@
 #include "pagespeed/kernel/thread/scheduler.h"
 #include "pagespeed/kernel/util/file_system_lock_manager.h"
 #include "pagespeed/kernel/util/nonce_generator.h"
+#include "pagespeed/kernel/util/statistics_work_bound.h"
 #include "pagespeed/opt/http/property_cache.h"
 
 namespace net_instaweb {
+
+const char RewriteDriverFactory::kCurrentExpensiveOperations[] =
+    "current-expensive-operations";
 
 RewriteDriverFactory::RewriteDriverFactory(
     const ProcessContext& process_context, ThreadSystem* thread_system)
@@ -504,6 +508,15 @@ ServerContext* RewriteDriverFactory::CreateServerContext() {
 void RewriteDriverFactory::InitServerContext(ServerContext* server_context) {
   ScopedMutex lock(server_context_mutex_.get());
 
+  // Init work_bound_. This is not strictly related to the ServerContext, but
+  // needs to happen before the ServerContext starts up.
+  if (work_bound_.get() == NULL) {
+    UpDownCounter* counter =
+        statistics()->GetUpDownCounter(kCurrentExpensiveOperations);
+    work_bound_.reset(new StatisticsWorkBound(
+        counter, default_options()->image_max_rewrites_at_once()));
+  }
+
   server_context->ComputeSignature(server_context->global_options());
   server_context->set_scheduler(scheduler());
   server_context->set_timer(timer());
@@ -779,6 +792,8 @@ void RewriteDriverFactory::InitStats(Statistics* statistics) {
   CriticalSelectorFinder::InitStats(statistics);
   MobilizeCachedFinder::InitStats(statistics);
   PropertyStoreGetCallback::InitStats(statistics);
+
+  statistics->AddGlobalUpDownCounter(kCurrentExpensiveOperations);
 }
 
 void RewriteDriverFactory::Initialize() {
@@ -817,6 +832,18 @@ RewriteOptions* RewriteDriverFactory::NewRewriteOptionsForQuery() {
 
 ExperimentMatcher* RewriteDriverFactory::NewExperimentMatcher() {
   return new ExperimentMatcher;
+}
+
+void RewriteDriverFactory::ScheduleExpensiveOperation(Function* callback) {
+  if (work_bound_->TryToWork()) {
+    callback->CallRun();
+  } else {
+    callback->CallCancel();
+  }
+}
+
+void RewriteDriverFactory::NotifyExpensiveOperationComplete() {
+  work_bound_->WorkComplete();
 }
 
 }  // namespace net_instaweb

@@ -39,6 +39,7 @@
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -924,6 +925,20 @@ class ImageRewriteTest : public RewriteTestBase {
     ClearRewriteDriver();
     SetCurrentUserAgent(user_agent);
     SetDriverRequestHeaders();
+  }
+
+  void MarkTooBusyToWork() {
+    // Set the current # of rewrites very high, so we stop doing more
+    // due to "load".
+    UpDownCounter* ongoing_rewrites = statistics()->GetUpDownCounter(
+        RewriteDriverFactory::kCurrentExpensiveOperations);
+    ongoing_rewrites->Set(100);
+  }
+
+  void UnMarkTooBusyToWork() {
+    UpDownCounter* ongoing_rewrites = statistics()->GetUpDownCounter(
+        RewriteDriverFactory::kCurrentExpensiveOperations);
+    ongoing_rewrites->Set(0);
   }
 
  private:
@@ -2457,11 +2472,7 @@ TEST_F(ImageRewriteTest, NestedConcurrentRewritesLimit) {
   GoogleString out_css_url = Encode("", "cf", "0", kCssFile, "css");
   GoogleString out_png_url = Encode("", "ic", "0", kPngFile, "png");
 
-  // Set the current # of rewrites very high, so we stop doing more
-  // due to "load".
-  UpDownCounter* ongoing_rewrites =
-      statistics()->GetUpDownCounter(ImageRewriteFilter::kImageOngoingRewrites);
-  ongoing_rewrites->Set(100);
+  MarkTooBusyToWork();
 
   // If the nested context is too busy, we don't want the parent to partially
   // optimize.
@@ -2477,7 +2488,7 @@ TEST_F(ImageRewriteTest, NestedConcurrentRewritesLimit) {
 
   // Now rewrite it again w/o any load. We should get the image link
   // changed.
-  ongoing_rewrites->Set(0);
+  UnMarkTooBusyToWork();
   ValidateExpected("img_in_css", CssLinkHref(kCssFile),
                    CssLinkHref(out_css_url));
   GoogleString expected_out_css =
@@ -3171,15 +3182,11 @@ TEST_F(ImageRewriteTest, TooBusyReturnsOriginalResource) {
   options()->set_image_max_rewrites_at_once(1);
   rewrite_driver()->AddFilters();
 
-  // Set the current # of rewrites very high, so we stop doing more rewrites
-  // due to "load".
-  UpDownCounter* ongoing_rewrites =
-      statistics()->GetUpDownCounter(ImageRewriteFilter::kImageOngoingRewrites);
-  ongoing_rewrites->Set(100);
-
+  MarkTooBusyToWork();
   TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypePng, "", "",
                     false, false);
-  ongoing_rewrites->Set(0);
+
+  UnMarkTooBusyToWork();
   TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypePng, "", "",
                     true, false);
 }

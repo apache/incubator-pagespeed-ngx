@@ -30,7 +30,7 @@
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
-
+#include "pagespeed/kernel/util/work_bound.h"
 
 namespace pagespeed { namespace js { struct JsTokenizerPatterns; } }
 
@@ -85,6 +85,8 @@ class RewriteDriverFactory {
     // Make sure to insert new values above this line.
     kNumWorkerPools
   };
+
+  static const char kCurrentExpensiveOperations[];
 
   // Takes ownership of thread_system.
   RewriteDriverFactory(const ProcessContext& process_context,
@@ -190,6 +192,10 @@ class RewriteDriverFactory {
   // server context except by deleting the entire factory.
   //
   // Implemented in terms of NewServerContext().
+  //
+  // Note that this is a convenience wrapper only. In particular,
+  // SystemServerContext creates ServerContexts by calling New and Init
+  // separately.
   ServerContext* CreateServerContext();
 
   // Initializes a ServerContext that has been new'd directly.  This
@@ -310,6 +316,18 @@ class RewriteDriverFactory {
   // Creates an ExperimentMatcher, which is used to match clients or sessions to
   // a specific experiment.
   virtual ExperimentMatcher* NewExperimentMatcher();
+
+  // Control the number of simultaneous expensive CPU operations going on at
+  // once. Invokes Run on your callback at a time when it is OK to do the
+  // expensive operation, or Cancel if you should not perform the operation.
+  // Depending on the implemation, may queue the callback for theoretically
+  // unbounded time.
+  void ScheduleExpensiveOperation(Function* callback);
+  // Invoke after performing your expensive CPU operation to relinquish the
+  // resource. You should only call this if ScheduleExpensiveOperation
+  // called Run on the callback above. Do not call this if the callback's
+  // Cancel method was invoked.
+  void NotifyExpensiveOperationComplete();
 
  protected:
   bool FetchersComputed() const;
@@ -525,6 +543,8 @@ class RewriteDriverFactory {
 
   // The hostname we're running on. Used to set the same field in ServerContext.
   GoogleString hostname_;
+
+  scoped_ptr<WorkBound> work_bound_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriverFactory);
 };

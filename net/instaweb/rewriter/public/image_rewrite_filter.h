@@ -34,7 +34,7 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/printf_format.h"
-#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/html_element.h"
@@ -43,12 +43,6 @@
 #include "pagespeed/kernel/util/url_segment_encoder.h"
 
 namespace net_instaweb {
-
-class Histogram;
-class Statistics;
-class TimedVariable;
-class Variable;
-class WorkBound;
 
 enum InlineResult {
   INLINE_SUCCESS,
@@ -216,6 +210,9 @@ class ImageRewriteFilter : public RewriteFilter {
   // Disable all filters listed in kRelatedFilters in options.
   static void DisableRelatedFilters(RewriteOptions* options);
 
+  // Update stats for a rewrite dropped due to load.
+  void ReportDroppedRewrite();
+
  protected:
   virtual const UrlSegmentEncoder* encoder() const;
 
@@ -286,8 +283,6 @@ class ImageRewriteFilter : public RewriteFilter {
                                Context* rewrite_context,
                                CachedResult* cached_result);
 
-  scoped_ptr<WorkBound> work_bound_;
-
   // Statistics
 
   // # of images rewritten successfully.
@@ -335,6 +330,8 @@ class ImageRewriteFilter : public RewriteFilter {
   Variable* image_inline_count_;
   // # of images rewritten into WebP format.
   Variable* image_webp_rewrites_;
+  // # of images being rewritten right now.
+  UpDownCounter* image_ongoing_rewrites_;
 
   // # total number of milliseconds spent rewriting images since server start
   Variable* image_rewrite_latency_total_ms_;
