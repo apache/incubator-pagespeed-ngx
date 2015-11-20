@@ -798,12 +798,11 @@ apr_status_t instaweb_in_place_check_headers_filter(ap_filter_t* filter,
   // This should always be set by handle_as_in_place() in instaweb_handler.cc.
   InPlaceResourceRecorder* recorder =
       static_cast<InPlaceResourceRecorder*>(filter->ctx);
-  CHECK(recorder != NULL);
 
   // Although headers come in first bucket, we do not want to call Done
   // until last bucket comes in, so iterate to EOS bucket.
   for (apr_bucket* bucket = APR_BRIGADE_FIRST(bb);
-       bucket != APR_BRIGADE_SENTINEL(bb);
+       (recorder != NULL) && (bucket != APR_BRIGADE_SENTINEL(bb));
        bucket = APR_BUCKET_NEXT(bucket)) {
     if (APR_BUCKET_IS_EOS(bucket)) {
       ResponseHeaders response_headers(recorder->http_options());
@@ -828,6 +827,14 @@ apr_status_t instaweb_in_place_check_headers_filter(ap_filter_t* filter,
       // Deletes recorder
       recorder->DoneAndSetHeaders(&response_headers,
                                   !request->connection->aborted);
+
+      // https://github.com/pagespeed/mod_pagespeed/issues/1191 identifies
+      // a case where there must have been two EOS markers passed into
+      // this function, either because there were two in the brigade
+      // or because this filter was called twice.  To defend against
+      // this, null the dead recorder pointer and the reference in filter->ctx.
+      recorder = NULL;
+      filter->ctx = NULL;
     }
   }
 
