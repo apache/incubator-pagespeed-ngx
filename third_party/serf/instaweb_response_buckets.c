@@ -19,7 +19,7 @@
 
 #include "serf.h"
 #include "serf_bucket_util.h"
-
+#include "serf_private.h"
 
 typedef struct {
     serf_bucket_t *stream;
@@ -43,6 +43,29 @@ typedef struct {
     int head_req;               /* Was this a HEAD request? */
 } response_context_t;
 
+/* Returns 1 if according to RFC2626 this response can have a body, 0 if it
+   must not have a body. */
+static int expect_body(response_context_t *ctx)
+{
+    if (ctx->head_req)
+        return 0;
+
+    /* 100 Continue and 101 Switching Protocols */
+    if (ctx->sl.code >= 100 && ctx->sl.code < 200)
+        return 0;
+
+    /* 204 No Content */
+    if (ctx->sl.code == 204)
+        return 0;
+
+    /* 205? */
+
+    /* 304 Not Modified */
+    if (ctx->sl.code == 304)
+        return 0;
+
+    return 1;
+}
 
 serf_bucket_t *serf_bucket_response_create(
     serf_bucket_t *stream,
@@ -238,65 +261,65 @@ static apr_status_t run_machine(serf_bucket_t *bkt, response_context_t *ctx)
             /* Advance the state. */
             ctx->state = STATE_BODY;
 
+            /* If this is a response to a HEAD request, or code == 1xx,204 or304
+               then we don't receive a real body. */
+            if (!expect_body(ctx)) {
+                ctx->body = serf_bucket_simple_create(NULL, 0, NULL, NULL,
+                                                      bkt->allocator);
+                ctx->state = STATE_BODY;
+                break;
+            }
+
             ctx->body =
                 serf_bucket_barrier_create(ctx->stream, bkt->allocator);
 
             /*
-             * Instaweb/mod_pagespeed change: This section is
-             * re-ordered from the original code from serf to Follow
-             * HTTP spec by checking "Transfer-Encoding: chunked",
-             * before "Content-Length".
+             * PageSpeed change: This section is re-ordered from the original
+             * code from serf to Follow HTTP spec by checking
+             * "Transfer-Encoding: chunked", before "Content-Length".
              */
 
             /* Are we C-L, chunked, or conn close? */
             v = serf_bucket_headers_get(ctx->headers, "Transfer-Encoding");
-
-            /* Need to handle multiple transfer-encoding. */
-            if (v && strcasecmp("chunked", v) == 0) {
-                ctx->chunked = 1;
-                ctx->body = serf_bucket_dechunk_create(ctx->body,
-                                                       bkt->allocator);
+            if (v) {
+                /* Need to handle multiple transfer-encoding. */
+                if (strcasecmp("chunked", v) == 0) {
+                    ctx->chunked = 1;
+                    ctx->body = serf_bucket_dechunk_create(ctx->body,
+                                                           bkt->allocator);
+                }
             }
             else {
-                v = serf_bucket_headers_get(ctx->headers, "Content-Length");
-                if (v) {
-                    apr_uint64_t length;
-                    length = apr_strtoi64(v, NULL, 10);
-                    if (errno == ERANGE) {
-                        return APR_FROM_OS_ERROR(ERANGE);
-                    }
-                    ctx->body = serf_bucket_limit_create(ctx->body, length,
-                                                         bkt->allocator);
-                }
-                else if ((ctx->sl.code == 204 || ctx->sl.code == 304)) {
-                    ctx->state = STATE_DONE;
-                }
+               v = serf_bucket_headers_get(ctx->headers, "Content-Length");
+               if (v) {
+                  apr_uint64_t length;
+                  length = apr_strtoi64(v, NULL, 10);
+                  if (errno == ERANGE) {
+                      return APR_FROM_OS_ERROR(ERANGE);
+                  }
+                  ctx->body = serf_bucket_response_body_create(
+                                 ctx->body, length, bkt->allocator);
+               }
             }
-
             /*
-             * Instaweb would prefer to receive gzipped output if that's what
+             * PageSpeed would prefer to receive gzipped output if that's what
              * was asked for.
              *
              * v = serf_bucket_headers_get(ctx->headers, "Content-Encoding");
              * if (v) {
-             *   * Need to handle multiple content-encoding. *
-             *  if (v && strcasecmp("gzip", v) == 0) {
-             *      ctx->body =
-             *          serf_bucket_deflate_create(ctx->body, bkt->allocator,
-             *                                     SERF_DEFLATE_GZIP);
-             *  }
-             *  else if (v && strcasecmp("deflate", v) == 0) {
-             *      ctx->body =
-             *          serf_bucket_deflate_create(ctx->body, bkt->allocator,
-             *                                     SERF_DEFLATE_DEFLATE);
-             *  }
+             *    * Need to handle multiple content-encoding. *
+             *    if (v && strcasecmp("gzip", v) == 0) {
+             *        ctx->body =
+             *            serf_bucket_deflate_create(ctx->body, bkt->allocator,
+             *                                       SERF_DEFLATE_GZIP);
+             *    }
+             *    else if (v && strcasecmp("deflate", v) == 0) {
+             *        ctx->body =
+             *            serf_bucket_deflate_create(ctx->body, bkt->allocator,
+             *                                       SERF_DEFLATE_DEFLATE);
+             *    }
              * }
              */
-
-            /* If we're a HEAD request, we don't receive a body. */
-            if (ctx->head_req) {
-                ctx->state = STATE_DONE;
-            }
         }
         break;
     case STATE_BODY:
@@ -398,13 +421,15 @@ static apr_status_t serf_response_read(serf_bucket_t *bucket,
     }
 
     rv = serf_bucket_read(ctx->body, requested, data, len);
+    if (SERF_BUCKET_READ_ERROR(rv))
+        return rv;
+
     if (APR_STATUS_IS_EOF(rv)) {
         if (ctx->chunked) {
             ctx->state = STATE_TRAILERS;
             /* Mask the result. */
             rv = APR_SUCCESS;
-        }
-        else {
+        } else {
             ctx->state = STATE_DONE;
         }
     }
@@ -425,6 +450,39 @@ static apr_status_t serf_response_readline(serf_bucket_t *bucket,
 
     /* Delegate to the stream bucket to do the readline. */
     return serf_bucket_readline(ctx->body, acceptable, found, data, len);
+}
+
+apr_status_t serf_response_full_become_aggregate(serf_bucket_t *bucket)
+{
+    response_context_t *ctx = bucket->data;
+    serf_bucket_t *bkt;
+    char buf[256];
+    int size;
+
+    serf_bucket_aggregate_become(bucket);
+
+    /* Add reconstructed status line. */
+    size = apr_snprintf(buf, 256, "HTTP/%d.%d %d ",
+                        SERF_HTTP_VERSION_MAJOR(ctx->sl.version),
+                        SERF_HTTP_VERSION_MINOR(ctx->sl.version),
+                        ctx->sl.code);
+    bkt = serf_bucket_simple_copy_create(buf, size,
+                                         bucket->allocator);
+    serf_bucket_aggregate_append(bucket, bkt);
+    bkt = serf_bucket_simple_copy_create(ctx->sl.reason, strlen(ctx->sl.reason),
+                                         bucket->allocator);
+    serf_bucket_aggregate_append(bucket, bkt);
+    bkt = SERF_BUCKET_SIMPLE_STRING_LEN("\r\n", 2,
+                                        bucket->allocator);
+    serf_bucket_aggregate_append(bucket, bkt);
+
+    /* Add headers and stream buckets in order. */
+    serf_bucket_aggregate_append(bucket, ctx->headers);
+    serf_bucket_aggregate_append(bucket, ctx->stream);
+
+    serf_bucket_mem_free(bucket->allocator, ctx);
+
+    return APR_SUCCESS;
 }
 
 /* ### need to implement */

@@ -1,95 +1,48 @@
---- serf/src/buckets/headers_buckets.c	2012-08-29 13:52:29.400953000 -0400
-+++ src/third_party/serf/instaweb_headers_buckets.c	2012-08-29 13:52:29.574913000 -0400
-@@ -163,11 +163,11 @@
-                    be comma-separated, that is clearly the correct behavior;
-                    for others, the correct behavior is undefined anyway. */
- 
--                /* The "+1" is for the comma; serf_bstrmemdup() will also add
--                   one slot for the terminating '\0'. */
-+                /* The "+1" is for the comma; the +1 in the alloc
-+                   call is for the terminating '\0' */
-                 apr_size_t new_size = found->value_size + value_size + 1;
-                 char *new_val = serf_bucket_mem_alloc(headers_bucket->allocator,
--                                                      new_size);
-+                                                      new_size + 1);
-                 memcpy(new_val, val, value_size);
-                 new_val[value_size] = ',';
-                 memcpy(new_val + value_size + 1, found->value,
-@@ -322,7 +322,7 @@
-                                       const char **data, apr_size_t *len)
- {
-     headers_context_t *ctx = bucket->data;
--    apr_size_t avail;
-+    apr_size_t avail = 0;
- 
-     select_value(ctx, data, &avail);
-     if (ctx->state == READ_DONE)
-@@ -382,9 +382,9 @@
-     *vecs_used = 0;
- 
-     for (i = 0; i < vecs_size; i++) {
--        const char *data;
--        apr_size_t len;
--        apr_status_t status;
-+        const char *data = NULL;
-+        apr_size_t len = 0;
-+        apr_status_t status = 0;
- 
-         /* Calling read() would not be a safe opt in the general case, but it
-          * is here for the header bucket as it only frees all of the header
---- serf/src/buckets/response_buckets.c	2012-08-29 13:52:29.426925000 -0400
-+++ src/third_party/serf/instaweb_response_buckets.c	2012-08-29 13:52:29.580912000 -0400
-@@ -241,45 +241,58 @@
+--- serf/src/buckets/bwtp_buckets.c	2015-10-28 16:00:12.009447506 -0400
++++ src/third_party/serf/instaweb_bwtp_buckets.c	2015-10-30 15:24:51.184163687 -0400
+@@ -228,7 +228,8 @@
+     req_len = apr_snprintf(ctx->req_line, sizeof(ctx->req_line),
+                            "%s %d " "%" APR_UINT64_T_HEX_FMT " %s%s\r\n",
+                            (ctx->type ? "BWM" : "BWH"),
+-                           ctx->channel, calc_header_size(ctx->headers),
++                           ctx->channel,
++                           (unsigned long long)calc_header_size(ctx->headers),
+                            (ctx->open ? "OPEN " : ""),
+                            ctx->phrase);
+     new_bucket = serf_bucket_simple_copy_create(ctx->req_line, req_len,
+--- serf/src/buckets/response_buckets.c	2015-10-28 16:06:48.986197051 -0400
++++ src/third_party/serf/instaweb_response_buckets.c	2015-10-30 08:17:56.883770217 -0400
+@@ -273,41 +273,53 @@
              ctx->body =
                  serf_bucket_barrier_create(ctx->stream, bkt->allocator);
  
 +            /*
-+             * Instaweb/mod_pagespeed change: This section is
-+             * re-ordered from the original code from serf to Follow
-+             * HTTP spec by checking "Transfer-Encoding: chunked",
-+             * before "Content-Length".
++             * PageSpeed change: This section is re-ordered from the original
++             * code from serf to Follow HTTP spec by checking
++             * "Transfer-Encoding: chunked", before "Content-Length".
 +             */
 +
              /* Are we C-L, chunked, or conn close? */
 -            v = serf_bucket_headers_get(ctx->headers, "Content-Length");
--            if (v) {
++            v = serf_bucket_headers_get(ctx->headers, "Transfer-Encoding");
+             if (v) {
 -                apr_uint64_t length;
 -                length = apr_strtoi64(v, NULL, 10);
 -                if (errno == ERANGE) {
 -                    return APR_FROM_OS_ERROR(ERANGE);
 -                }
--                ctx->body = serf_bucket_limit_create(ctx->body, length,
--                                                     bkt->allocator);
-+            v = serf_bucket_headers_get(ctx->headers, "Transfer-Encoding");
-+
-+            /* Need to handle multiple transfer-encoding. */
-+            if (v && strcasecmp("chunked", v) == 0) {
-+                ctx->chunked = 1;
-+                ctx->body = serf_bucket_dechunk_create(ctx->body,
-+                                                       bkt->allocator);
-             }
-             else {
+-                ctx->body = serf_bucket_response_body_create(
+-                              ctx->body, length, bkt->allocator);
+-            }
+-            else {
 -                v = serf_bucket_headers_get(ctx->headers, "Transfer-Encoding");
 -
--                /* Need to handle multiple transfer-encoding. */
+                 /* Need to handle multiple transfer-encoding. */
 -                if (v && strcasecmp("chunked", v) == 0) {
--                    ctx->chunked = 1;
--                    ctx->body = serf_bucket_dechunk_create(ctx->body,
--                                                           bkt->allocator);
-+                v = serf_bucket_headers_get(ctx->headers, "Content-Length");
-+                if (v) {
-+                    apr_uint64_t length;
-+                    length = apr_strtoi64(v, NULL, 10);
-+                    if (errno == ERANGE) {
-+                        return APR_FROM_OS_ERROR(ERANGE);
-+                    }
-+                    ctx->body = serf_bucket_limit_create(ctx->body, length,
-+                                                         bkt->allocator);
-                 }
--
--                if (!v && (ctx->sl.code == 204 || ctx->sl.code == 304)) {
-+                else if ((ctx->sl.code == 204 || ctx->sl.code == 304)) {
-                     ctx->state = STATE_DONE;
++                if (strcasecmp("chunked", v) == 0) {
+                     ctx->chunked = 1;
+                     ctx->body = serf_bucket_dechunk_create(ctx->body,
+                                                            bkt->allocator);
                  }
              }
 -            v = serf_bucket_headers_get(ctx->headers, "Content-Encoding");
@@ -105,43 +58,51 @@
 -                        serf_bucket_deflate_create(ctx->body, bkt->allocator,
 -                                                   SERF_DEFLATE_DEFLATE);
 -                }
--            }
-+
++            else {
++               v = serf_bucket_headers_get(ctx->headers, "Content-Length");
++               if (v) {
++                  apr_uint64_t length;
++                  length = apr_strtoi64(v, NULL, 10);
++                  if (errno == ERANGE) {
++                      return APR_FROM_OS_ERROR(ERANGE);
++                  }
++                  ctx->body = serf_bucket_response_body_create(
++                                 ctx->body, length, bkt->allocator);
++               }
+             }
 +            /*
-+             * Instaweb would prefer to receive gzipped output if that's what
++             * PageSpeed would prefer to receive gzipped output if that's what
 +             * was asked for.
 +             *
 +             * v = serf_bucket_headers_get(ctx->headers, "Content-Encoding");
 +             * if (v) {
-+             *   * Need to handle multiple content-encoding. *
-+             *  if (v && strcasecmp("gzip", v) == 0) {
-+             *      ctx->body =
-+             *          serf_bucket_deflate_create(ctx->body, bkt->allocator,
-+             *                                     SERF_DEFLATE_GZIP);
-+             *  }
-+             *  else if (v && strcasecmp("deflate", v) == 0) {
-+             *      ctx->body =
-+             *          serf_bucket_deflate_create(ctx->body, bkt->allocator,
-+             *                                     SERF_DEFLATE_DEFLATE);
-+             *  }
++             *    * Need to handle multiple content-encoding. *
++             *    if (v && strcasecmp("gzip", v) == 0) {
++             *        ctx->body =
++             *            serf_bucket_deflate_create(ctx->body, bkt->allocator,
++             *                                       SERF_DEFLATE_GZIP);
++             *    }
++             *    else if (v && strcasecmp("deflate", v) == 0) {
++             *        ctx->body =
++             *            serf_bucket_deflate_create(ctx->body, bkt->allocator,
++             *                                       SERF_DEFLATE_DEFLATE);
++             *    }
 +             * }
 +             */
-+
-             /* If we're a HEAD request, we don't receive a body. */
-             if (ctx->head_req) {
-                 ctx->state = STATE_DONE;
---- serf/src/outgoing.c	2012-08-29 13:52:29.333023000 -0400
-+++ src/third_party/serf/instaweb_outgoing.c	2012-08-29 13:52:29.577920000 -0400
-@@ -823,6 +823,8 @@
-      * This permits older Serf apps to still handle authentication
-      * themselves by not registering credential callbacks.
-      */
-+
+         }
+         break;
+     case STATE_BODY:
+--- serf/src/outgoing.c	2015-10-28 16:00:11.777444732 -0400
++++ src/third_party/serf/instaweb_outgoing.c	2015-10-29 13:45:26.627784271 -0400
+@@ -909,6 +909,7 @@
+     apr_status_t status = APR_SUCCESS;
+     int consumed_response = 0;
+ 
 +#if 0 /* This disables authentication support for now */
-     if (request->conn->ctx->cred_cb) {
-       status = serf__handle_auth_response(&consumed_response,
-                                           request,
-@@ -841,6 +843,7 @@
+     /* Only enable the new authentication framework if the program has
+      * registered an authentication credential callback.
+      *
+@@ -932,6 +933,7 @@
            return status;
        }
      }
@@ -149,55 +110,20 @@
  
      if (!consumed_response) {
          return (*request->handler)(request,
-@@ -1158,12 +1161,21 @@
-     serf_connection_t *c;
-     apr_sockaddr_t *host_address;
- 
--    /* Parse the url, store the address of the server. */
--    status = apr_sockaddr_info_get(&host_address,
--                                   host_info.hostname,
--                                   APR_UNSPEC, host_info.port, 0, pool);
--    if (status)
--        return status;
-+    /*
-+     * Instaweb/mod_pagespeed change: Do not lookup IP of destination host when
-+     * using a proxy.
-+     */
-+    if (ctx->proxy_address) {
-+        host_address = ctx->proxy_address;
-+        status = APR_SUCCESS;
-+    } else {
-+        /* Parse the url, store the address of the server. */
-+        status = apr_sockaddr_info_get(&host_address,
-+                                       host_info.hostname,
-+                                       APR_UNSPEC, host_info.port, 0, pool);
-+        if (status)
-+            return status;
-+    }
- 
-     c = serf_connection_create(ctx, host_address, setup, setup_baton,
-                                closed, closed_baton, pool);
-@@ -1213,6 +1225,19 @@
-                 conn->stream = NULL;
-             }
- 
-+            /*
-+             * Added for mod_pagespeed (aka instaweb):
-+             *
-+             * Destroy the ostream_head to eliminate memory leak in HTTPS
-+             * fetches, as found in mod_pagespeed's unit tests.  Note that
-+             * there is an ->ostream_tail as well, but destroying that causes
-+             * unit tests to abort in the allocator.
-+             */
-+            if (conn->ostream_head != NULL) {
-+                serf_bucket_destroy(conn->ostream_head);
-+                conn->ostream_head = NULL;
+@@ -1117,6 +1119,12 @@
+          * acceptor to get one created.
+          */
+         if (request->resp_bkt == NULL) {
++            if (request->acceptor == NULL) {
++                if ((status = setup_request(request)) != APR_SUCCESS) {
++                    goto error;
++                }
 +            }
 +
-             /* Remove the connection from the context. We don't want to
-              * deal with it any more.
-              */
-@@ -1235,6 +1260,19 @@
+             request->resp_bkt = (*request->acceptor)(request, conn->stream,
+                                                      request->acceptor_baton,
+                                                      tmppool);
+@@ -1479,6 +1487,18 @@
      return APR_NOTFOUND;
  }
  
@@ -213,19 +139,26 @@
 +{
 +  return ((conn->seen_in_pollset & (APR_POLLERR | APR_POLLHUP)) != 0);
 +}
-+
  
  void serf_connection_set_max_outstanding_requests(
      serf_connection_t *conn,
-@@ -1395,12 +1433,18 @@
+@@ -1524,6 +1544,8 @@
+     request->conn = conn;
+     request->setup = setup;
+     request->setup_baton = setup_baton;
++    request->acceptor = NULL;
++    request->acceptor_baton = NULL;
+     request->handler = NULL;
+     request->respool = NULL;
+     request->req_bkt = NULL;
+@@ -1671,12 +1693,17 @@
  }
  
  
 -serf_bucket_t *serf_request_bucket_request_create(
 +/*
-+ * Instaweb/mod_pagespeed customization: Add
-+ * serf_request_bucket_request_create_for_host which lets Host: be set
-+ * separately from the URL.
++ * PageSpeed customization: Add serf_request_bucket_request_create_for_host
++ * which lets Host: be set separately from the URL.
 + */
 +serf_bucket_t *serf_request_bucket_request_create_for_host(
      serf_request_t *request,
@@ -238,25 +171,24 @@
  {
      serf_bucket_t *req_bkt, *hdrs_bkt;
      serf_connection_t *conn = request->conn;
-@@ -1413,9 +1457,10 @@
-     if (ctx->proxy_address && conn->host_url)
+@@ -1697,9 +1724,10 @@
          serf_bucket_request_set_root(req_bkt, conn->host_url);
+     }
  
 -    if (conn->host_info.hostinfo)
 -        serf_bucket_headers_setn(hdrs_bkt, "Host",
 -                                 conn->host_info.hostinfo);
 +    if (host == NULL)
-+        host = request->conn->host_info.hostname;
++      host = request->conn->host_info.hostname;
 +    if (host)
 +        serf_bucket_headers_setn(hdrs_bkt, "Host", host);
  
-     /* Setup server authorization headers */
-     if (ctx->authn_info.scheme)
-@@ -1429,3 +1474,14 @@
- 
+     /* Setup server authorization headers, unless this is a CONNECT request. */
+     if (!request->ssltunnel) {
+@@ -1732,6 +1760,17 @@
      return req_bkt;
  }
-+
+ 
 +serf_bucket_t *serf_request_bucket_request_create(
 +    serf_request_t *request,
 +    const char *method,
@@ -264,24 +196,29 @@
 +    serf_bucket_t *body,
 +    serf_bucket_alloc_t *allocator)
 +{
-+    return serf_request_bucket_request_create_for_host(
-+        request, method, uri, body, allocator, NULL);
++  return serf_request_bucket_request_create_for_host(
++      request, method, uri, body, allocator, NULL);
 +}
---- serf/src/buckets/ssl_buckets.c      2012-08-29 13:29:42.000000000 -0400
-+++ src/third_party/serf/instaweb_ssl_buckets.c 2015-08-05 17:03:31.000000000 -0400
-@@ -34,6 +34,11 @@
++
+ apr_interval_time_t serf_connection_get_latency(serf_connection_t *conn)
+ {
+     if (conn->ctx->proxy_address) {
+--- serf/src/buckets/ssl_buckets.c	2015-10-28 16:00:11.993447315 -0400
++++ src/third_party/serf/instaweb_ssl_buckets.c	2015-10-30 08:12:24.619859806 -0400
+@@ -34,6 +34,12 @@
   * Originally developed by Aaron Bannert and Justin Erenkrantz, eBuilt.
   */
  
 +/*
 + * This file contains two new functions by jmarantz@google.com to expose
-+ * functions for setting SSL certificate directory & file.
++ * functions for setting SSL certificate directory & file.  It also has fixes
++ * so we compile against boringssl.
 + */
 +
  #include <apr_pools.h>
  #include <apr_network_io.h>
  #include <apr_portable.h>
-@@ -339,21 +344,9 @@
+@@ -382,21 +388,9 @@
  
  static long bio_bucket_ctrl(BIO *bio, int cmd, long num, void *ptr)
  {
@@ -306,17 +243,37 @@
  }
  
  static BIO_METHOD bio_bucket_method = {
-@@ -873,7 +866,9 @@
- #if APR_HAS_THREADS
-         int i, numlocks;
+@@ -462,7 +456,8 @@
+             switch (nm->type) {
+                 case GEN_DNS:
+                     if (copy_action == ErrorOnNul &&
+-                        strlen(nm->d.ia5->data) != nm->d.ia5->length)
++                        strlen((const char*)nm->d.ia5->data) !=
++                        nm->d.ia5->length)
+                         return SERF_ERROR_SSL_CERT_FAILED;
+                     if (san_arr && *san_arr)
+                         p = pstrdup_escape_nul_bytes((const char *)nm->d.ia5->data,
+@@ -1069,6 +1064,7 @@
  #endif
+ 
+ #ifdef SSL_VERBOSE
++#ifndef OPENSSL_IS_BORINGSSL
+         /* Warn when compile-time and run-time version of OpenSSL differ in
+            major/minor version number. */
+         long libver = SSLeay();
+@@ -1080,8 +1076,11 @@
+                       OPENSSL_VERSION_NUMBER, libver);
+         }
+ #endif
++#endif
+ 
 +#ifndef OPENSSL_IS_BORINGSSL
          CRYPTO_malloc_init();
 +#endif
          ERR_load_crypto_strings();
          SSL_load_error_strings();
          SSL_library_init();
-@@ -971,8 +966,13 @@
+@@ -1192,8 +1191,13 @@
          else {
              int err = ERR_get_error();
              ERR_clear_error();
@@ -330,42 +287,23 @@
                  if (ctx->cert_pw_callback) {
                      const char *password;
  
-@@ -1102,6 +1102,8 @@
-     ssl_ctx->allocator = allocator;
- 
-     ssl_ctx->ctx = SSL_CTX_new(SSLv23_client_method());
-+    /* Use the best possible protocol version, but disable the broken SSLv2/3 */
-+    SSL_CTX_set_options(ssl_ctx->ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3);
- 
-     SSL_CTX_set_client_cert_cb(ssl_ctx->ctx, ssl_need_client_cert);
-     ssl_ctx->cached_cert = 0;
-@@ -1160,7 +1162,9 @@
- 
-     /* SSL_free implicitly frees the underlying BIO. */
-     SSL_free(ssl_ctx->ssl);
-+    ssl_ctx->ssl = NULL;
-     SSL_CTX_free(ssl_ctx->ctx);
-+    ssl_ctx->ctx = NULL;
- 
-     p = ssl_ctx->pool;
- 
-@@ -1193,7 +1197,9 @@
+@@ -1413,7 +1417,9 @@
                                     const char * hostname)
  {
  #ifdef SSL_set_tlsext_host_name
 -    if (SSL_set_tlsext_host_name(context->ssl, hostname) != 1) {
 +    if (!context->ssl) {
-+      return APR_EGENERAL;
++        return APR_EGENERAL;
 +    } else if (SSL_set_tlsext_host_name(context->ssl, hostname) != 1) {
          ERR_clear_error();
      }
  #endif
-@@ -1209,6 +1215,28 @@
-     return result ? APR_SUCCESS : APR_EGENERAL;
+@@ -1429,6 +1435,28 @@
+     return result ? APR_SUCCESS : SERF_ERROR_SSL_CERT_FAILED;
  }
  
 +/*
-+ * mod_pagespeed addition to allow configuring SSL directory from a directive.
++ * PageSpeed addition to allow configuring SSL directory from a directive.
 + */
 +apr_status_t serf_ssl_set_certificates_directory(serf_ssl_context_t *ssl_ctx,
 +                                                 const char* path)
@@ -376,10 +314,10 @@
 +}
 +
 +/*
-+ * mod_pagespeed addition to allow configuring SSL directory from a directive.
++ * PageSpeed addition to allow configuring SSL directory from a directive.
 + */
 +apr_status_t serf_ssl_set_certificates_file(serf_ssl_context_t *ssl_ctx,
-+                                            const char* file)
++                                             const char* file)
 +{
 +    X509_STORE *store = SSL_CTX_get_cert_store(ssl_ctx->ctx);
 +    int result = X509_STORE_load_locations(store, file, NULL);
@@ -389,7 +327,7 @@
  apr_status_t serf_ssl_load_cert_file(
      serf_ssl_certificate_t **cert,
      const char *file_path,
-@@ -1527,6 +1555,7 @@
+@@ -1798,6 +1826,7 @@
  
      if (!--ctx->ssl_ctx->refcount) {
          ssl_free_context(ctx->ssl_ctx);

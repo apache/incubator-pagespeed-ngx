@@ -35,7 +35,7 @@ vars = {
   "modspdy_src": "https://svn.apache.org/repos/asf/httpd/mod_spdy/trunk",
   "modspdy_revision": "@1661925",
 
-  "serf_src": "https://svn.apache.org/repos/asf/serf/tags/1.1.0/",
+  "serf_src": "https://svn.apache.org/repos/asf/serf/tags/1.3.8/",
   "serf_revision": "@head",
 
   "apr_src": "https://svn.apache.org/repos/asf/apr/apr/tags/1.5.1/",
