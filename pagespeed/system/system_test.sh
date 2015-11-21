@@ -834,7 +834,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   URL="$(generate_url remote-config-experiment.example.com \
                       /mod_pagespeed_test/forbidden.html)"
   while true; do
-    echo -e "HTTP/1.1 200 OK\nCache-Control: max-age=5\n\nRunExperiment on\nAnalyticsID UA-MyExperimentID-1\nEndRemoteConfig\n" | nc -l -p $RCPORT7 -q 1
+    echo -e "HTTP/1.1 200 OK\nCache-Control: max-age=5\n\nRunExperiment on\nAnalyticsID UA-MyExperimentID-1\nUseAnalyticsJs false\nEndRemoteConfig\n" | nc -l -p $RCPORT7 -q 1
   done &
   LOOPPID=$!
   # Some options are invalid, check that they are skipped and the rest of the

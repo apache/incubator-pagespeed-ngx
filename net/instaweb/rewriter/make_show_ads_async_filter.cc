@@ -22,6 +22,7 @@
 
 #include "base/logging.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/html_element.h"
@@ -134,7 +135,9 @@ void MakeShowAdsAsyncFilter::Characters(HtmlCharactersNode* characters) {
 bool MakeShowAdsAsyncFilter::IsApplicableShowAds(
     const GoogleString& content,
     ShowAdsSnippetParser::AttributeMap* parsed_attributes) const {
-  if (!show_ads_snippet_parser_.ParseStrict(content, parsed_attributes)) {
+  if (!show_ads_snippet_parser_.ParseStrict(
+          content, server_context()->js_tokenizer_patterns(),
+          parsed_attributes)) {
     return false;
   }
 

@@ -40,14 +40,10 @@ class ShowAdsSnippetParser {
   // for each showads attribute. The data in 'parsed_attributes' is meaningful
   // only when this method returns true.
   bool ParseStrict(const GoogleString& snippet,
+                   const pagespeed::js::JsTokenizerPatterns* tokenizer_patterns,
                    AttributeMap* parsed_attributes) const;
 
  private:
-  // It is slightly expensive to construct a JsTokenizerPatterns because it
-  // compiles a few REs, so keep it as member variable, constructed once when
-  // this class is constructed.
-  pagespeed::js::JsTokenizerPatterns tokenizer_patterns_;
-
   DISALLOW_COPY_AND_ASSIGN(ShowAdsSnippetParser);
 };
 

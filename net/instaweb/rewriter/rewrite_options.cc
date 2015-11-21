@@ -76,6 +76,9 @@ const char RewriteOptions::kCacheSmallImagesUnrewritten[] =
 const char RewriteOptions::kClientDomainRewrite[] = "ClientDomainRewrite";
 const char RewriteOptions::kCombineAcrossPaths[] = "CombineAcrossPaths";
 const char RewriteOptions::kCompressMetadataCache[] = "CompressMetadataCache";
+const char RewriteOptions::kContentExperimentID[] = "ContentExperimentID";
+const char RewriteOptions::kContentExperimentVariantID[] =
+    "ContentExperimentVariantID";
 const char RewriteOptions::kCriticalImagesBeaconEnabled[] =
     "CriticalImagesBeaconEnabled";
 const char RewriteOptions::kCriticalLineConfig[] = "CriticalLineConfig";
@@ -383,6 +386,7 @@ const char RewriteOptions::kStatisticsLoggingMaxFileSizeKb[] =
 const char RewriteOptions::kTestProxy[] = "TestProxy";
 const char RewriteOptions::kTestProxySlurp[] = "TestProxySlurp";
 const char RewriteOptions::kUrlSigningKey[] = "UrlSigningKey";
+const char RewriteOptions::kUseAnalyticsJs[] = "UseAnalyticsJs";
 const char RewriteOptions::kUseSelectorsForCriticalCss[] =
     "UseSelectorsForCriticalCss";
 const char RewriteOptions::kUseSharedMemLocking[] = "SharedMemoryLocks";
@@ -1931,6 +1935,20 @@ void RewriteOptions::AddProperties() {
       "", &RewriteOptions::ga_id_, "ig", kAnalyticsID,
       kDirectoryScope,
       "Google Analytics ID to use on site.", true);
+  AddBaseProperty(
+      "", &RewriteOptions::content_experiment_id_, "cxid", kContentExperimentID,
+      kDirectoryScope,
+      "Which Google Analytics content experiment to log to.", true);
+  AddBaseProperty(
+      "", &RewriteOptions::content_experiment_variant_id_, "cxvid",
+      kContentExperimentVariantID,
+      kDirectoryScope,
+      "Which Google Analytics content experiment variant to log to.", true);
+  AddBaseProperty(
+      true, &RewriteOptions::use_analytics_js_, "uajs",
+      kUseAnalyticsJs,
+      kQueryScope,
+      "Log to analytics.js instead of ga.js with insert_ga.", true);
   AddBaseProperty(
       true, &RewriteOptions::increase_speed_tracking_, "st",
       kIncreaseSpeedTracking,
@@ -4462,6 +4480,7 @@ bool RewriteOptions::InsertExperimentSpecInVector(ExperimentSpec* spec) {
 
 // Always enable add_head, insert_ga, add_instrumentation, and HtmlWriter.  This
 // is considered a "no-filter" base for experiments.
+// Note: insert_ga no longer needs add_head, but add_instrumentation still does.
 bool RewriteOptions::SetupExperimentRewriters() {
   // Don't change anything if we're not in an experiment or have some
   // unset id.

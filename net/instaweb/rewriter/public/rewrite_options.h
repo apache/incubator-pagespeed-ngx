@@ -234,6 +234,8 @@ class RewriteOptions {
   static const char kCacheSmallImagesUnrewritten[];
   static const char kClientDomainRewrite[];
   static const char kCombineAcrossPaths[];
+  static const char kContentExperimentID[];
+  static const char kContentExperimentVariantID[];
   static const char kCriticalImagesBeaconEnabled[];
   static const char kCriticalLineConfig[];
   static const char kCssFlattenMaxBytes[];
@@ -388,6 +390,7 @@ class RewriteOptions {
   static const char kSupportNoScriptEnabled[];
   static const char kTestOnlyPrioritizeCriticalCssDontApplyOriginalCss[];
   static const char kUrlSigningKey[];
+  static const char kUseAnalyticsJs[];
   static const char kUseBlankImageForInlinePreview[];
   static const char kUseExperimentalJsMinifier[];
   static const char kUseFallbackPropertyCacheValues[];
@@ -800,7 +803,7 @@ class RewriteOptions {
     // Accessors.
     int id() const { return id_; }
     int percent() const { return percent_; }
-    GoogleString ga_id() const { return ga_id_; }
+    const GoogleString& ga_id() const { return ga_id_; }
     int slot() const { return ga_variable_slot_; }
     RewriteLevel rewrite_level() const { return rewrite_level_; }
     FilterSet enabled_filters() const { return enabled_filters_; }
@@ -1376,9 +1379,35 @@ class RewriteOptions {
     set_option(x, &css_outline_min_bytes_);
   }
 
-  GoogleString ga_id() const { return ga_id_.value(); }
-  void set_ga_id(GoogleString id) {
+  const GoogleString& ga_id() const { return ga_id_.value(); }
+  void set_ga_id(const GoogleString& id) {
     set_option(id, &ga_id_);
+  }
+
+  void set_content_experiment_id(const GoogleString& s) {
+    set_option(s, &content_experiment_id_);
+  }
+  const GoogleString& content_experiment_id() const {
+    return content_experiment_id_.value();
+  }
+
+  void set_content_experiment_variant_id(const GoogleString& s) {
+    set_option(s, &content_experiment_variant_id_);
+  }
+  const GoogleString& content_experiment_variant_id() const {
+    return content_experiment_variant_id_.value();
+  }
+
+  bool is_content_experiment() const {
+    return !content_experiment_id().empty() &&
+           !content_experiment_variant_id().empty();
+  }
+
+  bool use_analytics_js() const {
+    return use_analytics_js_.value();
+  }
+  void set_use_analytics_js(bool x) {
+    set_option(x, &use_analytics_js_);
   }
 
   bool increase_speed_tracking() const {
@@ -3857,6 +3886,14 @@ class RewriteOptions {
   // For testing purposes you can force users to be enrolled in a specific
   // experiment.  This makes most sense in a query param.
   Option<int> enroll_experiment_id_;
+
+  // When running a content experiment, which IDs should we use when logging to
+  // Google Analytics?
+  Option<GoogleString> content_experiment_id_;
+  Option<GoogleString> content_experiment_variant_id_;
+
+  // Log to analytics.js instead of ga.js.
+  Option<bool> use_analytics_js_;
 
   // Increase the percentage of hits to 10% (current max) that have
   // site speed tracking in Google Analytics.

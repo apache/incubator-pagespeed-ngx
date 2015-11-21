@@ -1581,6 +1581,7 @@ ModPagespeedMessagesDomains Allow localhost
 #EXPERIMENT_GA # This is used for testing the experiment framework.
 #EXPERIMENT_GA ModPagespeedRunExperiment on
 #EXPERIMENT_GA ModPagespeedAnalyticsID "123-45-6734"
+#EXPERIMENT_GA ModPagespeedUseAnalyticsJs false
 #EXPERIMENT_GA ModPagespeedExperimentVariable 2
 #EXPERIMENT_GA ModPagespeedExperimentSpec "id=7;enable=recompress_images,rewrite_javascript;disable=convert_jpeg_to_progressive;percent=50;options=AvoidRenamingIntrospectiveJavascript=off,JsInlineMaxBytes=4"
 #EXPERIMENT_GA ModPagespeedExperimentSpec "id=2;enable=recompress_images,rewrite_javascript;percent=50;options=AvoidRenamingIntrospectiveJavascript=on"
@@ -1606,6 +1607,7 @@ ModPagespeedMessagesDomains Allow localhost
   ModPagespeedRewriteLevel PassThrough
 
   ModPagespeedRunExperiment on
+  ModPagespeedUseAnalyticsJs false
   ModPagespeedExperimentSpec "id=1;percent=100;matches_device_type=mobile;enable=recompress_images"
 </VirtualHost>
 
@@ -1879,6 +1881,7 @@ Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedSupportNoScriptEnabled true
 #ALL_DIRECTIVES ModPagespeedTestProxy off
 #ALL_DIRECTIVES ModPagespeedUrlValuedAttribute span src Hyperlink
+#ALL_DIRECTIVES ModPagespeedUseAnalyticsJs false
 #ALL_DIRECTIVES ModPagespeedUseExperimentalJsMinifier on
 #ALL_DIRECTIVES ModPagespeedUsePerVHostStatistics on
 #ALL_DIRECTIVES ModPagespeedXHeaderValue "test"

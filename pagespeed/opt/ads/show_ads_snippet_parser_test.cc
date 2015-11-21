@@ -38,109 +38,107 @@ class ShowAdsSnippetParserTest : public ::testing::Test {
     EXPECT_EQ("90", parsed_attributes_["google_ad_height"]);
   }
 
+  bool ParseStrict(const GoogleString& snippet) {
+    return parser_.ParseStrict(
+        snippet, &tokenizer_patterns_, &parsed_attributes_);
+  }
+
   ShowAdsSnippetParser parser_;
+  pagespeed::js::JsTokenizerPatterns tokenizer_patterns_;
   std::map<GoogleString, GoogleString> parsed_attributes_;
 };
 
 TEST_F(ShowAdsSnippetParserTest, ParseStrictEmpty) {
-  EXPECT_TRUE(parser_.ParseStrict("", &parsed_attributes_));
+  EXPECT_TRUE(ParseStrict(""));
 
   EXPECT_EQ(0, parsed_attributes_.size());
 }
 
 TEST_F(ShowAdsSnippetParserTest, ParseStrictValid) {
-  EXPECT_TRUE(parser_.ParseStrict(
+  EXPECT_TRUE(ParseStrict(
       "google_ad_client = \"ca-pub-xxxxxxxxxxxxxx\";"
       "/* ad served */"
       "google_ad_slot = \"xxxxxxxxx\";"
       "google_ad_width = 728;"
-      "google_ad_height = 90;",
-      &parsed_attributes_));
+      "google_ad_height = 90;"));
   CheckParsedResults();
 }
 
 TEST_F(ShowAdsSnippetParserTest, ParseStrictValidSingleQuote) {
-  EXPECT_TRUE(parser_.ParseStrict(
+  EXPECT_TRUE(ParseStrict(
       "google_ad_client = 'ca-pub-xxxxxxxxxxxxxx';"
       "/* ad served */"
       "google_ad_slot = 'xxxxxxxxx';"
       "google_ad_width = 728;"
-      "google_ad_height = 90;",
-      &parsed_attributes_));
+      "google_ad_height = 90;"));
   CheckParsedResults();
 }
 
 TEST_F(ShowAdsSnippetParserTest, ParseStrictValidEmptyLines) {
-  EXPECT_TRUE(parser_.ParseStrict(
+  EXPECT_TRUE(ParseStrict(
       "\n\n\n\n\n"
       "google_ad_client = \"ca-pub-xxxxxxxxxxxxxx\";"
       "/* ad served */"
       "google_ad_slot = \"xxxxxxxxx\";\n\n\n\n"
       "google_ad_width = 728;"
-      "google_ad_height = 90;",
-      &parsed_attributes_));
+      "google_ad_height = 90;"));
   CheckParsedResults();
 }
 
 TEST_F(ShowAdsSnippetParserTest, ParseStrictValidEmptyStatement) {
-  EXPECT_TRUE(parser_.ParseStrict(
+  EXPECT_TRUE(ParseStrict(
       "\n\n\n\n\n"
       "google_ad_client = \"ca-pub-xxxxxxxxxxxxxx\";"
       "/* ad served */"
       "google_ad_slot = \"xxxxxxxxx\";;;;;"
       "google_ad_width = 728;"
-      "google_ad_height = 90;",
-      &parsed_attributes_));
+      "google_ad_height = 90;"));
   CheckParsedResults();
 }
 
 TEST_F(ShowAdsSnippetParserTest, ParseStrictValidWithoutSemicolon) {
-  EXPECT_TRUE(parser_.ParseStrict(
+  EXPECT_TRUE(ParseStrict(
       "google_ad_client = \"ca-pub-xxxxxxxxxxxxxx\"\n"
       "/* ad served */"
       "google_ad_slot = \"xxxxxxxxx\"\n"
       "google_ad_width = 728\n"
-      "google_ad_height = 90\n",
-      &parsed_attributes_));
+      "google_ad_height = 90\n"));
   CheckParsedResults();
 }
 
 TEST_F(ShowAdsSnippetParserTest, ParseStrictValidWithEnclosingCommentTag) {
-  EXPECT_TRUE(parser_.ParseStrict(
+  EXPECT_TRUE(ParseStrict(
       "<!--"
       "google_ad_client = \"ca-pub-xxxxxxxxxxxxxx\";"
       "/* ad served */"
       "google_ad_slot = \"xxxxxxxxx\";"
       "google_ad_width = 728;"
       "google_ad_height = 90;"
-      "//-->",
-      &parsed_attributes_));
+      "//-->"));
   CheckParsedResults();
 }
 
 TEST_F(ShowAdsSnippetParserTest,
        ParseStrictValidWithEnclosingCommentTagAndWhitespaces) {
-  EXPECT_TRUE(parser_.ParseStrict(
+  EXPECT_TRUE(ParseStrict(
       "    <!--"
       "google_ad_client = \"ca-pub-xxxxxxxxxxxxxx\";"
       "/* ad served */"
       "google_ad_slot = \"xxxxxxxxx\";"
       "google_ad_width = 728;"
       "google_ad_height = 90;"
-      "//-->    ",
-      &parsed_attributes_));
+      "//-->    "));
   CheckParsedResults();
 }
 
 TEST_F(ShowAdsSnippetParserTest, ParseStrictGoogleAdFormat) {
-  EXPECT_TRUE(parser_.ParseStrict(
+  EXPECT_TRUE(ParseStrict(
       "google_ad_client = \"ca-pub-xxxxxxxxxxxxxx\";"
       "/* ad served */"
       "google_ad_slot = \"xxxxxxxxx\";"
       "google_ad_format = \"728x90\";"
       "google_ad_width = 728;"
-      "google_ad_height = 90;",
-      &parsed_attributes_));
+      "google_ad_height = 90;"));
 
   EXPECT_EQ(5, parsed_attributes_.size());
   EXPECT_EQ("ca-pub-xxxxxxxxxxxxxx", parsed_attributes_["google_ad_client"]);
@@ -151,32 +149,29 @@ TEST_F(ShowAdsSnippetParserTest, ParseStrictGoogleAdFormat) {
 }
 
 TEST_F(ShowAdsSnippetParserTest, ParseWeirdGoogleAdFormat1) {
-  EXPECT_TRUE(parser_.ParseStrict(
-      "google_ad_format = \"728x90_as\";",
-      &parsed_attributes_));
+  EXPECT_TRUE(ParseStrict(
+      "google_ad_format = \"728x90_as\";"));
 
   EXPECT_EQ(1, parsed_attributes_.size());
   EXPECT_EQ("728x90_as", parsed_attributes_["google_ad_format"]);
 }
 
 TEST_F(ShowAdsSnippetParserTest, ParseWeirdGoogleAdFormat2) {
-  EXPECT_TRUE(parser_.ParseStrict(
-      "google_ad_format = \"180x90_0ads_al_s\";",
-      &parsed_attributes_));
+  EXPECT_TRUE(ParseStrict(
+      "google_ad_format = \"180x90_0ads_al_s\";"));
 
   EXPECT_EQ(1, parsed_attributes_.size());
   EXPECT_EQ("180x90_0ads_al_s", parsed_attributes_["google_ad_format"]);
 }
 
 TEST_F(ShowAdsSnippetParserTest, ParseStrictGoogleAdFormatWithWhiteSpaces) {
-  EXPECT_TRUE(parser_.ParseStrict(
+  EXPECT_TRUE(ParseStrict(
       "google_ad_client = \"ca-pub-xxxxxxxxxxxxxx\";"
       "/* ad served */"
       "google_ad_slot = \"xxxxxxxxx\";"
       "google_ad_format = \"  728x90  \";"
       "google_ad_width = 728;"
-      "google_ad_height = 90;",
-      &parsed_attributes_));
+      "google_ad_height = 90;"));
 
   EXPECT_EQ(5, parsed_attributes_.size());
   EXPECT_EQ("ca-pub-xxxxxxxxxxxxxx", parsed_attributes_["google_ad_client"]);
@@ -188,7 +183,7 @@ TEST_F(ShowAdsSnippetParserTest, ParseStrictGoogleAdFormatWithWhiteSpaces) {
 
 TEST_F(ShowAdsSnippetParserTest, ParseShortAttribute) {
   EXPECT_TRUE(
-      parser_.ParseStrict("google_language = \"de\"", &parsed_attributes_));
+      ParseStrict("google_language = \"de\""));
 
   EXPECT_EQ(1, parsed_attributes_.size());
   EXPECT_EQ("de", parsed_attributes_["google_language"]);
@@ -196,52 +191,48 @@ TEST_F(ShowAdsSnippetParserTest, ParseShortAttribute) {
 
 TEST_F(ShowAdsSnippetParserTest,
        ParseStrictGoogleAdFormatWithUnexpectedPrefix) {
-  EXPECT_FALSE(parser_.ParseStrict(
+  EXPECT_FALSE(ParseStrict(
       "google_ad_client = \"ca-pub-xxxxxxxxxxxxxx\";"
       "/* ad served */"
       "google_ad_slot = \"xxxxxxxxx\";"
       "google_ad_format = \"test_722x92\";"
       "google_ad_width = 728;"
-      "google_ad_height = 90;",
-      &parsed_attributes_));
+      "google_ad_height = 90;"));
 }
 
 TEST_F(ShowAdsSnippetParserTest, ParseStrictGoogleAdFormatWithUnexpectedEnds) {
-  EXPECT_FALSE(parser_.ParseStrict(
+  EXPECT_FALSE(ParseStrict(
       "google_ad_client = \"ca-pub-xxxxxxxxxxxxxx\";"
       "/* ad served */"
       "google_ad_slot = \"xxxxxxxxx\";"
       "google_ad_format = \"test_722x92_rimg\";"
       "google_ad_width = 728;"
-      "google_ad_height = 90;",
-      &parsed_attributes_));
+      "google_ad_height = 90;"));
 }
 
 TEST_F(ShowAdsSnippetParserTest,
        ParseStrictInvalidAttributeNameNotStartedWithGoogle) {
-  EXPECT_FALSE(parser_.ParseStrict(
+  EXPECT_FALSE(ParseStrict(
       "<!--"
       "dgoogle_ad_client = \"ca-pub-xxxxxxxxxxxxxx\";"  // Invalid.
       "/* ad served */"
       "google_ad_slot = \"xxxxxxxxx\";"
       "google_ad_width = 728;"
       "google_ad_height = 90;"
-      "//-->",
-      &parsed_attributes_));
+      "//-->"));
 }
 
 TEST_F(ShowAdsSnippetParserTest, ParseStrictInvalidAttributeNameIllegalChar) {
-  EXPECT_FALSE(parser_.ParseStrict(
+  EXPECT_FALSE(ParseStrict(
       "google_ad_invalid-name = \"ca-pub-xxxxxxxxxxxxxx\";"  // Invalid.
       "/* ad served */"
       "google_ad_slot = \"xxxxxxxxx\";"
       "google_ad_width = 728;"
-      "google_ad_height = 90;",
-      &parsed_attributes_));
+      "google_ad_height = 90;"));
 }
 
 TEST_F(ShowAdsSnippetParserTest, ParseStrictInvalidDuplicate) {
-  EXPECT_FALSE(parser_.ParseStrict(
+  EXPECT_FALSE(ParseStrict(
       "<!--"
       "google_ad_client = \"ca-pub-xxxxxxxxxxxxxx\";"
       "/* ad served */"
@@ -249,22 +240,20 @@ TEST_F(ShowAdsSnippetParserTest, ParseStrictInvalidDuplicate) {
       "google_ad_slot = \"xxxxxxxxy\";"  // Duplicate assignment
       "google_ad_width = 728;"
       "google_ad_height = 90;"
-      "//-->",
-      &parsed_attributes_));
+      "//-->"));
 }
 
 TEST_F(ShowAdsSnippetParserTest, ParseStrictInvalidMissingSemicolon) {
-  EXPECT_FALSE(parser_.ParseStrict(
+  EXPECT_FALSE(ParseStrict(
       "google_ad_client = \"ca-pub-xxxxxxxxxxxxxx\" "  // ; or \n is missing
       "/* ad served */"
       "google_ad_slot = \"xxxxxxxxx\"\n"
       "google_ad_width = 728\n"
-      "google_ad_height = 90\n",
-      &parsed_attributes_));
+      "google_ad_height = 90\n"));
 }
 
 TEST_F(ShowAdsSnippetParserTest, ParseStrictInvalidModified) {
-  EXPECT_FALSE(parser_.ParseStrict(
+  EXPECT_FALSE(ParseStrict(
       "<!--"
       "google_ad_client = \"ca-pub-xxxxxxxxxxxxxx\";"
       "if (test) google_ad_client = \"ca-pub-xxxxxxxxxxxxxy\";"  // Invalid
@@ -272,26 +261,23 @@ TEST_F(ShowAdsSnippetParserTest, ParseStrictInvalidModified) {
       "google_ad_slot = \"xxxxxxxxx\";"
       "google_ad_width = 728;"
       "google_ad_height = 90;"
-      "//-->",
-      &parsed_attributes_));
+      "//-->"));
 }
 
 TEST_F(ShowAdsSnippetParserTest, ParseStrictInvalidAssignment) {
-  EXPECT_FALSE(parser_.ParseStrict(
+  EXPECT_FALSE(ParseStrict(
       "google_ad_client = \"ca-pub-xxxxxxxxxxxxxx\";"
       "/* ad served */"
       "google_ad_slot = \"xxxxxxxxx\";"
       "google_ad_width = 728;"
-      "google_ad_height = google_ad_width;",
-      &parsed_attributes_));
+      "google_ad_height = google_ad_width;"));
 }
 
 TEST_F(ShowAdsSnippetParserTest, ParseColorArray) {
   // TODO(morlovich): This could in principle be handled, but it's unclear it's
   // common enough to be worth the effort.
-  EXPECT_FALSE(parser_.ParseStrict(
-      "google_color_border = [\"336699\",\"CC99CC\",\"578A24\",\"191933\"]",
-      &parsed_attributes_));
+  EXPECT_FALSE(ParseStrict(
+      "google_color_border = [\"336699\",\"CC99CC\",\"578A24\",\"191933\"]"));
 }
 
 }  // namespace

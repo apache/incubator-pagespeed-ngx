@@ -78,11 +78,13 @@ void AdvanceToNextNoneWhiteSpaceCommentToken(
 }  // namespace
 
 bool ShowAdsSnippetParser::ParseStrict(
-    const GoogleString& content, AttributeMap* parsed_attributes) const {
+    const GoogleString& content,
+    const pagespeed::js::JsTokenizerPatterns* tokenizer_patterns,
+    AttributeMap* parsed_attributes) const {
   StringPiece stripped_content(content);
   TrimWhitespace(&stripped_content);
   StringPiece snippet = StripAnyEnclosingCommentTag(stripped_content);
-  pagespeed::js::JsTokenizer tokenizer(&tokenizer_patterns_, snippet);
+  pagespeed::js::JsTokenizer tokenizer(tokenizer_patterns, snippet);
 
   StringPiece token;
   pagespeed::JsKeywords::Type type;
