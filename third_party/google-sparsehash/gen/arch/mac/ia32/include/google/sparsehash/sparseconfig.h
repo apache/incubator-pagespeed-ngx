@@ -4,6 +4,15 @@
 /* Namespace for Google classes */
 #define GOOGLE_NAMESPACE ::google
 
+#if __cplusplus >= 201103L
+
+#define HASH_FUN_H <functional>
+#define HASH_MAP_H <unordered_map>
+#define HASH_NAMESPACE std
+#define HASH_SET_H <unordered_set>
+
+#else
+
 /* the location of the header defining hash functions */
 #define HASH_FUN_H <tr1/functional>
 
@@ -15,6 +24,8 @@
 
 /* the location of <unordered_set> or <hash_set> */
 #define HASH_SET_H <tr1/unordered_set>
+
+#endif
 
 /* Define to 1 if you have the <google/malloc_extension.h> header file. */
 /* #undef HAVE_GOOGLE_MALLOC_EXTENSION_H */
