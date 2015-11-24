@@ -79,6 +79,12 @@ fi
 
 CFLAGS="$CFLAGS $FLAG_MARCH"
 
+# For now, standardize on gcc-4.x ABI --- if we don't set this, people building
+# with new gcc defaulting to gcc-5 C++11 ABI will have build trouble linking
+# to our libpsol.a
+# See https://gcc.gnu.org/onlinedocs/libstdc++/manual/using_dual_abi.html
+CFLAGS="$CFLAGS -D_GLIBCXX_USE_CXX11_ABI=0"
+
 case "$NGX_GCC_VER" in
   4.8*)
     # On GCC 4.8 and above, -Wall enables -Wunused-local-typedefs.  This breaks
