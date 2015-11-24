@@ -293,6 +293,8 @@ TEST_F(UserAgentMatcherTest, SupportsWebp) {
       kIPadChrome36UserAgent));
   EXPECT_TRUE(user_agent_matcher_->SupportsWebp(
       kIPhoneChrome36UserAgent));
+  EXPECT_TRUE(user_agent_matcher_->SupportsWebp(
+      kOperaWithFirefoxUserAgent));
 }
 
 TEST_F(UserAgentMatcherTest, DoesntSupportWebp) {
@@ -312,6 +314,8 @@ TEST_F(UserAgentMatcherTest, DoesntSupportWebp) {
       kFirefoxUserAgent));
   EXPECT_FALSE(user_agent_matcher_->SupportsWebp(
       kFirefox1UserAgent));
+  EXPECT_FALSE(user_agent_matcher_->SupportsWebp(
+      kFirefox42AndroidUserAgent));
   EXPECT_FALSE(user_agent_matcher_->SupportsWebp(
       kIe6UserAgent));
   EXPECT_FALSE(user_agent_matcher_->SupportsWebp(

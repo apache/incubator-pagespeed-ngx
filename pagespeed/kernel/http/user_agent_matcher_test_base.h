@@ -59,6 +59,7 @@ class UserAgentMatcherTestBase : public testing::Test {
   static const char kDoCoMoMobileUserAgent[];
   static const char kFirefox1UserAgent[];
   static const char kFirefox3UserAgent[];
+  static const char kFirefox42AndroidUserAgent[];
   static const char kFirefox5UserAgent[];
   static const char kFirefoxMobileUserAgent[];
   static const char kFirefoxNokiaN800[];
@@ -113,6 +114,7 @@ class UserAgentMatcherTestBase : public testing::Test {
   static const char kOperaMiniMobileUserAgent[];
   static const char kOperaMobi9[];
   static const char kOperaMobilMobileUserAgent[];
+  static const char kOperaWithFirefoxUserAgent[];
   static const char kPanasonicMobileUserAgent[];
   static const char kPGUserAgent[];
   static const char kPHILIPSUserAgent[];

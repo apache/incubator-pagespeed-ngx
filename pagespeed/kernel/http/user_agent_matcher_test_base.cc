@@ -107,6 +107,8 @@ const char UserAgentMatcherTestBase::kFirefox1UserAgent[] =
 const char UserAgentMatcherTestBase::kFirefox3UserAgent[] =
     "Mozilla/5.0 (X11; U; Linux x86_64; zh-CN; rv:1.9.2.10) "
     "Gecko/20100922 Ubuntu/10.10 (maverick) Firefox/3.6.10";
+const char UserAgentMatcherTestBase::kFirefox42AndroidUserAgent[] =
+    "Mozilla/5.0 (Android 5.0.1; Mobile; rv:42.0) Gecko/42.0 Firefox/42.0";
 const char UserAgentMatcherTestBase::kFirefox5UserAgent[] =
     "Mozilla/5.0 (X11; U; Linux i586; de; rv:5.0) Gecko/20100101 Firefox/5.0";
 const char UserAgentMatcherTestBase::kFirefoxMobileUserAgent[] =
@@ -252,6 +254,9 @@ const char UserAgentMatcherTestBase::kOperaMobi9[] =
 const char UserAgentMatcherTestBase::kOperaMobilMobileUserAgent[] =
     "Opera/9.80 (Android 4.0.4; Linux; Opera Mobi/ADR-1104201100; U; ru) "
     "Presto/2.7.81 Version/11.00";
+const char UserAgentMatcherTestBase::kOperaWithFirefoxUserAgent[] =
+    "Mozilla/5.0 (Windows NT 6.0; rv:2.0) Gecko/20100101 Firefox/4.0 Opera "
+    "12.14";
 const char UserAgentMatcherTestBase::kPanasonicMobileUserAgent[] =
     "Panasonic-G60/1.0 UP.Browser/6.1.0.6 "
     "MMP/1.0 UP.Browser/6.1.0.6 (GUI) MMP/1.0";

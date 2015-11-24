@@ -119,10 +119,24 @@ const char* kPanelSupportMobileWhitelist[] = {
   "*AppleWebKit/*",
 };
 // For webp rewriting, we whitelist Android, Chrome and Opera, but blacklist
-// older versions of the browsers that are not webp capable.  As other browsers
-// roll out webp support we will need to update this list to include them.
-const char* kWebpWhitelist[] = {
+// older versions of the browsers and Firefox that are not webp capable.
+// We do this in 2 stages in order to exclude the following category 1 but
+// include category 2.
+//  1. Firefox on Android does not support WebP, and it has "Android" and
+//     "Firefox" in the user agent.
+//  2. Recent Opera support WebP, and some Opera have both "Opera" and
+//     "Firefox" in the user agent.
+const char* kWebpWhitelistStage1[] = {
   "*Android *",
+};
+const char* kWebpBlacklistStage1[] = {
+  "*Android 0.*",
+  "*Android 1.*",
+  "*Android 2.*",
+  "*Android 3.*",
+  "*Firefox/*"
+};
+const char* kWebpWhitelistStage2[] = {
   "*Chrome/*",
   "*CriOS/??.*",
   "*Opera/9.80*Version/??.*",
@@ -132,12 +146,7 @@ const char* kWebpWhitelist[] = {
   "webp-la",  // webp with lossless and alpha encoding.
   "webp-animated",
 };
-
-const char* kWebpBlacklist[] = {
-  "*Android 0.*",
-  "*Android 1.*",
-  "*Android 2.*",
-  "*Android 3.*",
+const char* kWebpBlacklistStage2[] = {
   "*Chrome/0.*",
   "*Chrome/1.*",
   "*Chrome/2.*",
@@ -424,11 +433,17 @@ UserAgentMatcher::UserAgentMatcher()
   }
 
   // Do the same for webp support.
-  for (int i = 0, n = arraysize(kWebpWhitelist); i < n; ++i) {
-    supports_webp_.Allow(kWebpWhitelist[i]);
+  for (int i = 0, n = arraysize(kWebpWhitelistStage1); i < n; ++i) {
+    supports_webp_.Allow(kWebpWhitelistStage1[i]);
   }
-  for (int i = 0, n = arraysize(kWebpBlacklist); i < n; ++i) {
-    supports_webp_.Disallow(kWebpBlacklist[i]);
+  for (int i = 0, n = arraysize(kWebpBlacklistStage1); i < n; ++i) {
+    supports_webp_.Disallow(kWebpBlacklistStage1[i]);
+  }
+  for (int i = 0, n = arraysize(kWebpWhitelistStage2); i < n; ++i) {
+    supports_webp_.Allow(kWebpWhitelistStage2[i]);
+  }
+  for (int i = 0, n = arraysize(kWebpBlacklistStage2); i < n; ++i) {
+    supports_webp_.Disallow(kWebpBlacklistStage2[i]);
   }
   for (int i = 0, n = arraysize(kWebpLosslessAlphaWhitelist); i < n; ++i) {
     supports_webp_lossless_alpha_.Allow(kWebpLosslessAlphaWhitelist[i]);
