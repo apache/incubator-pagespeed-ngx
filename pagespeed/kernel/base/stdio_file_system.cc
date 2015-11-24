@@ -67,7 +67,6 @@ class StdioFileHelper {
  public:
   StdioFileHelper(FILE* f, const StringPiece& filename, StdioFileSystem* fs)
       : file_(f),
-        line_(1),
         file_system_(fs),
         start_us_(0) {
     filename.CopyToString(&filename_);
@@ -77,21 +76,16 @@ class StdioFileHelper {
     CHECK(file_ == NULL);
   }
 
-  void CountNewlines(const char* buf, int size) {
-    for (int i = 0; i < size; ++i, ++buf) {
-      line_ += (*buf == '\n');
-    }
-  }
-
-  void ReportError(MessageHandler* message_handler, const char* format) {
-    message_handler->Error(filename_.c_str(), line_, format, strerror(errno));
+  void ReportError(MessageHandler* message_handler, const char* context) {
+    message_handler->Message(kError, "%s: %s %d(%s)", filename_.c_str(),
+                             context, errno, strerror(errno));
   }
 
   bool Close(MessageHandler* message_handler) {
     bool ret = true;
     if (file_ != stdout && file_ != stderr && file_ != stdin) {
       if (fclose(file_) != 0) {
-        ReportError(message_handler, "closing file: %s");
+        ReportError(message_handler, "closing file");
         ret = false;
       }
     }
@@ -110,7 +104,6 @@ class StdioFileHelper {
 
   FILE* file_;
   GoogleString filename_;
-  int line_;
   StdioFileSystem* file_system_;
   int64 start_us_;
 
@@ -127,9 +120,8 @@ class StdioInputFile : public FileSystem::InputFile {
   virtual int Read(char* buf, int size, MessageHandler* message_handler) {
     file_helper_.StartTimer();
     int ret = fread(buf, 1, size, file_helper_.file_);
-    file_helper_.CountNewlines(buf, ret);
     if ((ret == 0) && (ferror(file_helper_.file_) != 0)) {
-      file_helper_.ReportError(message_handler, "reading file: %s");
+      file_helper_.ReportError(message_handler, "reading file");
     }
     file_helper_.EndTimer("read");
     return ret;
@@ -157,10 +149,9 @@ class StdioOutputFile : public FileSystem::OutputFile {
     file_helper_.StartTimer();
     size_t bytes_written =
         fwrite(buf.data(), 1, buf.size(), file_helper_.file_);
-    file_helper_.CountNewlines(buf.data(), bytes_written);
     bool ret = (bytes_written == buf.size());
     if (!ret) {
-      file_helper_.ReportError(handler, "writing file: %s");
+      file_helper_.ReportError(handler, "writing file");
     }
     file_helper_.EndTimer("write");
     return ret;
@@ -169,7 +160,7 @@ class StdioOutputFile : public FileSystem::OutputFile {
   virtual bool Flush(MessageHandler* message_handler) {
     bool ret = true;
     if (fflush(file_helper_.file_) != 0) {
-      file_helper_.ReportError(message_handler, "flushing file: %s");
+      file_helper_.ReportError(message_handler, "flushing file");
       ret = false;
     }
     return ret;
@@ -191,7 +182,7 @@ class StdioOutputFile : public FileSystem::OutputFile {
     ret = (fchmod(fd, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH) == 0);
 #endif  // WIN32
     if (!ret) {
-      file_helper_.ReportError(message_handler, "setting world-readable: %s");
+      file_helper_.ReportError(message_handler, "setting world-readable");
     }
     return ret;
   }
