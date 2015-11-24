@@ -222,7 +222,7 @@ SYSLIBS = -lpthread -lrt
 TESTBENCH_LIB = $(MOD_PAGESPEED_ROOT)/out/$(BUILDTYPE)/obj.target/third_party/re2/libre2_bench_util.a
 
 build_libraries :
-	cd $(MOD_PAGESPEED_ROOT) && make $(CXXFLAGS_ARG) BUILDTYPE=$(BUILDTYPE)
+	cd $(MOD_PAGESPEED_ROOT) && $(MAKE) $(CXXFLAGS_ARG) BUILDTYPE=$(BUILDTYPE)
 
 endif
 
