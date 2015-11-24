@@ -445,13 +445,17 @@ class RewriteDriverFactory {
   // it for decoding URLs, based on this object's values and some stubs.
   void InitStubDecodingServerContext(ServerContext* context);
 
+  // Init central_controller_ and associated deps.
+  void InitCentralController();
+  // Allow sub-classes to pick which CentralController they want to use.
+  virtual CentralControllerInterface* CreateCentralController();
+
   // For use in tests.
   void RebuildDecodingDriverForTests(ServerContext* server_context);
 
   void reset_default_options(RewriteOptions* new_defaults);
 
-  // This should only be called during startup. Takes ownership of interface.
-  void set_central_controller_interface(CentralControllerInterface* interface);
+  WorkBound* work_bound() { return work_bound_.get(); }
 
  private:
   // Creates a StaticAssetManager instance. Default implementation creates an
@@ -462,6 +466,9 @@ class RewriteDriverFactory {
   void SetupSlurpDirectories();
 
   void InitDecodingDriver(ServerContext* server_context);
+
+  // This should only be called during startup. Takes ownership of interface.
+  void set_central_controller_interface(CentralControllerInterface* interface);
 
   scoped_ptr<MessageHandler> html_parse_message_handler_;
   scoped_ptr<MessageHandler> message_handler_;

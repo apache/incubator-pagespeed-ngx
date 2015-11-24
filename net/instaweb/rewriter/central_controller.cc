@@ -18,6 +18,11 @@
 
 namespace net_instaweb {
 
-CentralController::CentralController() { }
+CentralController::CentralController(WorkBound* work_bound)
+    : CompatibleCentralController(work_bound) {
+}
+
+CentralController::~CentralController() {
+}
 
 }  // namespace net_instaweb

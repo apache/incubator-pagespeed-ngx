@@ -1741,6 +1741,7 @@
         'rewriter/central_controller.cc',
         'rewriter/collect_flush_early_content_filter.cc',
         'rewriter/common_filter.cc',
+        'rewriter/compatible_central_controller.cc',
         'rewriter/compute_visible_text_filter.cc',
         'rewriter/content_decision_tree.cc',
         'rewriter/critical_css_beacon_filter.cc',

@@ -18,6 +18,7 @@
 // Author: cheesy@google.com (Steve Hill)
 
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/function.h"
 
 namespace net_instaweb {
 
@@ -27,6 +28,17 @@ namespace net_instaweb {
 class CentralControllerInterface {
  public:
   virtual ~CentralControllerInterface() { }
+
+  // Runs callback at an indeterminate time in the future when it is safe
+  // to perform a CPU intensive operation. Or may Cancel the callback at some
+  // point if it is determined that the work cannot be performed.
+  virtual void ScheduleExpensiveOperation(Function* callback) = 0;
+
+  // Invoke after performing your expensive operation to relinquish the
+  // resource. You should only call this if ScheduleExpensiveOperation
+  // called Run on the callback above. Do not call this if the callback's
+  // Cancel method was invoked.
+  virtual void NotifyExpensiveOperationComplete() = 0;
 
  protected:
   CentralControllerInterface() { }

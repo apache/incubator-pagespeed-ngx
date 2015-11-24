@@ -28,6 +28,7 @@
 #include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
 #include "net/instaweb/rewriter/public/beacon_critical_line_info_finder.h"
 #include "net/instaweb/rewriter/public/central_controller_interface.h"
+#include "net/instaweb/rewriter/public/compatible_central_controller.h"
 #include "net/instaweb/rewriter/public/critical_css_finder.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/critical_line_info_finder.h"
@@ -503,14 +504,9 @@ ServerContext* RewriteDriverFactory::CreateServerContext() {
 void RewriteDriverFactory::InitServerContext(ServerContext* server_context) {
   ScopedMutex lock(server_context_mutex_.get());
 
-  // Init work_bound_. This is not strictly related to the ServerContext, but
-  // needs to happen before the ServerContext starts up.
-  if (work_bound_.get() == NULL) {
-    UpDownCounter* counter =
-        statistics()->GetUpDownCounter(kCurrentExpensiveOperations);
-    work_bound_.reset(new StatisticsWorkBound(
-        counter, default_options()->image_max_rewrites_at_once()));
-  }
+  // Init CentralController. This is not strictly related to the ServerContext,
+  // but needs to happen before the ServerContext starts up.
+  InitCentralController();
 
   server_context->ComputeSignature(server_context->global_options());
   server_context->set_scheduler(scheduler());
@@ -578,6 +574,22 @@ void RewriteDriverFactory::InitServerContext(ServerContext* server_context) {
       server_context->global_options()->Clone());
   server_context->GetRemoteOptions(remote_options.get(),
                                    true /* startup fetch */);
+}
+
+void RewriteDriverFactory::InitCentralController() {
+  // Init work_bound_. This is a pre-req for some CentralController
+  // implementations.
+  if (work_bound_.get() == NULL) {
+    UpDownCounter* counter =
+        statistics()->GetUpDownCounter(kCurrentExpensiveOperations);
+    work_bound_.reset(new StatisticsWorkBound(
+        counter, default_options()->image_max_rewrites_at_once()));
+  }
+  set_central_controller_interface(CreateCentralController());
+}
+
+CentralControllerInterface* RewriteDriverFactory::CreateCentralController() {
+  return new CompatibleCentralController(work_bound_.get());
 }
 
 void RewriteDriverFactory::RebuildDecodingDriverForTests(
@@ -830,15 +842,11 @@ ExperimentMatcher* RewriteDriverFactory::NewExperimentMatcher() {
 }
 
 void RewriteDriverFactory::ScheduleExpensiveOperation(Function* callback) {
-  if (work_bound_->TryToWork()) {
-    callback->CallRun();
-  } else {
-    callback->CallCancel();
-  }
+  central_controller_interface()->ScheduleExpensiveOperation(callback);
 }
 
 void RewriteDriverFactory::NotifyExpensiveOperationComplete() {
-  work_bound_->WorkComplete();
+  central_controller_interface()->NotifyExpensiveOperationComplete();
 }
 
 }  // namespace net_instaweb

@@ -1,6 +1,3 @@
-#ifndef NET_INSTAWEB_REWRITER_PUBLIC_CENTRAL_CONTROLLER_H_
-#define NET_INSTAWEB_REWRITER_PUBLIC_CENTRAL_CONTROLLER_H_
-
 // Copyright 2015 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,25 +15,27 @@
 // Author: cheesy@google.com (Steve Hill)
 
 #include "net/instaweb/rewriter/public/compatible_central_controller.h"
-#include "pagespeed/kernel/base/basictypes.h"
-#include "pagespeed/kernel/util/work_bound.h"
 
 namespace net_instaweb {
 
-// Concrete implementation of CentralControllerInterface, suitable for calling
-// directly by workers that run in the same process as the controller.
-// TODO(cheesy): Put some code in here, instead of just inheriting from
-// CompatibleCentralController.
+CompatibleCentralController::CompatibleCentralController(WorkBound* work_bound)
+    : work_bound_(work_bound) {
+}
 
-class CentralController : public CompatibleCentralController {
- public:
-  explicit CentralController(WorkBound* work_bound);
-  virtual ~CentralController();
+CompatibleCentralController::~CompatibleCentralController() {
+}
 
- private:
-  DISALLOW_COPY_AND_ASSIGN(CentralController);
-};
+void CompatibleCentralController::ScheduleExpensiveOperation(
+    Function* callback) {
+  if (work_bound_->TryToWork()) {
+    callback->CallRun();
+  } else {
+    callback->CallCancel();
+  }
+}
+
+void CompatibleCentralController::NotifyExpensiveOperationComplete() {
+  work_bound_->WorkComplete();
+}
 
 }  // namespace net_instaweb
-
-#endif  // NET_INSTAWEB_REWRITER_PUBLIC_CENTRAL_CONTROLLER_H_
