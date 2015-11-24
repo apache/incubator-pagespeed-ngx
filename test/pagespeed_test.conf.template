@@ -286,11 +286,30 @@ http {
 
     pagespeed RunExperiment on;
     pagespeed AnalyticsID "123-45-6734";
+    pagespeed UseAnalyticsJs false;
     pagespeed ExperimentVariable 2;
     pagespeed ExperimentSpec
       "id=7;enable=recompress_images;disable=convert_jpeg_to_progressive;percent=50";
     pagespeed ExperimentSpec "id=2;enable=recompress_images;percent=50";
     pagespeed ExperimentSpec "id=3;default;percent=0";
+  }
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name contentexperiment.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+    pagespeed InPlaceResourceOptimization off;
+
+    pagespeed RunExperiment on;
+    pagespeed AnalyticsID "123-45-6734";
+    pagespeed UseAnalyticsJs false;
+    pagespeed ExperimentVariable 2;
+    pagespeed ExperimentSpec
+      "id=7;enable=recompress_images;disable=convert_jpeg_to_progressive;percent=50;options=ContentExperimentID=ID:H1BpS2TCRFmJzZgjwyeBHQ,ContentExperimentVariantID=111";
+    pagespeed ExperimentSpec
+      "id=2;enable=recompress_images;percent=50;options=ContentExperimentID=ID:H1BpS2TCRFmJzZgjwyeBHQ,ContentExperimentVariantID=222";
+    pagespeed ExperimentSpec
+      "id=3;default;percent=0;options=ContentExperimentID=123,ContentExperimentVariantID=333";
   }
   server {
     listen @@SECONDARY_PORT@@;
