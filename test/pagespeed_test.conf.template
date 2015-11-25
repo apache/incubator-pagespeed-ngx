@@ -468,6 +468,13 @@ http {
     location /mod_pagespeed_test/optimize_for_bandwidth/core_filters {
       pagespeed RewriteLevel CoreFilters;
     }
+    location /mod_pagespeed_test/optimize_for_bandwidth/webp_urls {
+      pagespeed ImagePreserveURLs off;
+      pagespeed EnableFilters convert_to_webp_animated,convert_to_webp_lossless;
+    }
+    location /mod_pagespeed_test/optimize_for_bandwidth/preserve_urls {
+      pagespeed EnableFilters convert_to_webp_animated,convert_to_webp_lossless;
+    }
   }
 
   server {
