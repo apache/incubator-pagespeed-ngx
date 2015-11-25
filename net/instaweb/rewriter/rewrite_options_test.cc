@@ -310,6 +310,7 @@ TEST_F(RewriteOptionsTest, CompoundFlag) {
   s.Insert(RewriteOptions::kConvertJpegToProgressive);
   s.Insert(RewriteOptions::kConvertJpegToWebp);
   s.Insert(RewriteOptions::kConvertPngToJpeg);
+  s.Insert(RewriteOptions::kConvertToWebpLossless);
   s.Insert(RewriteOptions::kInlineImages);
   s.Insert(RewriteOptions::kJpegSubsampling);
   s.Insert(RewriteOptions::kRecompressJpeg);

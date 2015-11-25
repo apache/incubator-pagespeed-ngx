@@ -624,6 +624,7 @@ const RewriteOptions::Filter kCoreFilterSet[] = {
   RewriteOptions::kConvertJpegToWebp,              // rewrite_images
   RewriteOptions::kConvertMetaTags,
   RewriteOptions::kConvertPngToJpeg,               // rewrite_images
+  RewriteOptions::kConvertToWebpLossless,          // rewrite_images
   RewriteOptions::kExtendCacheCss,                 // extend_cache
   RewriteOptions::kExtendCacheImages,              // extend_cache
   RewriteOptions::kExtendCacheScripts,             // extend_cache
@@ -2994,6 +2995,7 @@ bool RewriteOptions::AddByNameToFilterSet(
       set->Insert(kConvertJpegToProgressive);
       set->Insert(kConvertJpegToWebp);
       set->Insert(kConvertPngToJpeg);
+      set->Insert(kConvertToWebpLossless);
       set->Insert(kInlineImages);
       set->Insert(kJpegSubsampling);
       set->Insert(kRecompressJpeg);
