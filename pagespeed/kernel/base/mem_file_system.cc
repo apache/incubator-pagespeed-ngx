@@ -59,6 +59,11 @@ class MemInputFile : public FileSystem::InputFile {
     return size;
   }
 
+  virtual bool ReadFile(GoogleString* buf, MessageHandler* message_handler) {
+    *buf = contents_;
+    return true;
+  }
+
  private:
   const GoogleString contents_;
   const GoogleString filename_;

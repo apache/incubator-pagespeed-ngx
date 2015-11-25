@@ -95,6 +95,9 @@ class FileSystem {
     // Note: This returns num bytes read, NOT a success bool.
     virtual int Read(char* buf, int size, MessageHandler* handler) = 0;
 
+    // Reads entire file into buf, returning true if successful.
+    virtual bool ReadFile(GoogleString* buf, MessageHandler* handler) = 0;
+
    protected:
     friend class FileSystem;
     virtual ~InputFile();

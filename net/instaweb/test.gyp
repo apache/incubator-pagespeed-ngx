@@ -502,6 +502,7 @@
         'rewriter/javascript_minify_speed_test.cc',
         'rewriter/rewrite_driver_speed_test.cc',
         '<(DEPTH)/pagespeed/kernel/base/fast_wildcard_group_speed_test.cc',
+        '<(DEPTH)/pagespeed/kernel/base/file_system_speed_test.cc',
         '<(DEPTH)/pagespeed/kernel/base/string_multi_map_speed_test.cc',
         '<(DEPTH)/pagespeed/kernel/base/wildcard_group.cc',
         '<(DEPTH)/pagespeed/kernel/cache/compressed_cache_speed_test.cc',

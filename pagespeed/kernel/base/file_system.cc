@@ -49,8 +49,8 @@ int FileSystem::MaxPathLength(const StringPiece& base) const {
 
 bool FileSystem::ReadFile(const char* filename, GoogleString* buffer,
                           MessageHandler* message_handler) {
-  StringWriter writer(buffer);
-  return ReadFile(filename, &writer, message_handler);
+  InputFile* input_file = OpenInputFile(filename, message_handler);
+  return ReadFile(input_file, buffer, message_handler);
 }
 
 bool FileSystem::ReadFile(const char* filename, Writer* writer,
@@ -61,8 +61,12 @@ bool FileSystem::ReadFile(const char* filename, Writer* writer,
 
 bool FileSystem::ReadFile(InputFile* input_file, GoogleString* buffer,
                           MessageHandler* message_handler) {
-  StringWriter writer(buffer);
-  return ReadFile(input_file, &writer, message_handler);
+  bool ret = false;
+  if (input_file != NULL) {
+    ret = input_file->ReadFile(buffer, message_handler);
+    ret &= Close(input_file, message_handler);
+  }
+  return ret;
 }
 
 bool FileSystem::ReadFile(InputFile* input_file, Writer* writer,

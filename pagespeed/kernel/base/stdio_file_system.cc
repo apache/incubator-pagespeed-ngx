@@ -117,6 +117,25 @@ class StdioInputFile : public FileSystem::InputFile {
       : file_helper_(f, filename, fs) {
   }
 
+  virtual bool ReadFile(GoogleString* buf, MessageHandler* message_handler) {
+    bool ret = false;
+    struct stat statbuf;
+    file_helper_.StartTimer();
+    if ((fstat(fileno(file_helper_.file_), &statbuf) < 0)) {
+      file_helper_.ReportError(message_handler, "stating file: %s");
+    } else {
+      buf->resize(statbuf.st_size);
+      int nread = fread(&(*buf)[0], 1, statbuf.st_size, file_helper_.file_);
+      if (nread != statbuf.st_size) {
+        file_helper_.ReportError(message_handler, "reading file: %s");
+      } else {
+        ret = true;
+      }
+    }
+    file_helper_.EndTimer("ReadFile");
+    return ret;
+  }
+
   virtual int Read(char* buf, int size, MessageHandler* message_handler) {
     file_helper_.StartTimer();
     int ret = fread(buf, 1, size, file_helper_.file_);
