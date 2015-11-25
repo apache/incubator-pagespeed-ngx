@@ -27,6 +27,7 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/http/image_types.pb.h"
+#include "pagespeed/kernel/image/image_util.h"
 
 namespace net_instaweb {
 class Histogram;
@@ -48,16 +49,6 @@ class Image {
   // In future we may need to plumb this to other data sources or change how
   // metadata is retrieved; the object is to do so locally in this class without
   // disrupting any of its clients.
-
-  enum PreferredWebp {
-    WEBP_NONE = 0,
-    // Only lossy format is supported
-    WEBP_LOSSY,
-    // Prefer lossless format, but lossy is also allowed.
-    WEBP_LOSSLESS,
-    // Prefer animated format, but lossless and lossy are also allowed.
-    WEBP_ANIMATED
-  };
 
   struct ConversionBySourceVariable {
     ConversionBySourceVariable()
@@ -94,7 +85,7 @@ class Image {
 
   struct CompressionOptions {
     CompressionOptions()
-        : preferred_webp(WEBP_NONE),
+        : preferred_webp(pagespeed::image_compression::WEBP_NONE),
           allow_webp_alpha(false),
           allow_webp_animated(false),
           webp_quality(RewriteOptions::kDefaultImageRecompressQuality),
@@ -122,7 +113,7 @@ class Image {
 
     // These options are set by the client to specify what type of
     // conversion to perform:
-    PreferredWebp preferred_webp;
+    pagespeed::image_compression::PreferredLibwebpLevel preferred_webp;
     bool allow_webp_alpha;
     bool allow_webp_animated;
     int64 webp_quality;

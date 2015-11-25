@@ -18,8 +18,11 @@
 
 #include "pagespeed/kernel/image/image_util.h"
 
+#include "third_party/libwebp/src/webp/decode.h"
+
 #include "pagespeed/kernel/base/countdown_timer.h"
 #include "pagespeed/kernel/base/message_handler.h"
+#include "pagespeed/kernel/http/image_types.pb.h"
 
 namespace pagespeed {
 
@@ -33,9 +36,6 @@ const char kPngHeader[] = "\x89PNG\r\n\x1a\n";
 const size_t kPngHeaderLength = arraysize(kPngHeader) - 1;
 const char kGifHeader[] = "GIF8";
 const size_t kGifHeaderLength = arraysize(kGifHeader) - 1;
-const char kWebpIffHeader[] = "IFF";
-const char kWebpWebpHeader[] = "WEBP";
-const char kWebpLosslessHeader[] = "VP8L";
 
 // char to int *without sign extension*.
 inline int CharToInt(char c) {
@@ -93,14 +93,12 @@ size_t GetBytesPerPixel(PixelFormat pixel_format) {
   return 0;
 }
 
-// TODO(huibao): Detect animated WebP.
-ImageFormat ComputeImageFormat(const StringPiece& buf,
-                               bool* is_webp_lossless_alpha) {
+net_instaweb::ImageType ComputeImageType(const StringPiece& buf) {
   // Image classification based on buffer contents gakked from leptonica,
   // but based on well-documented headers (see Wikipedia etc.).
   // Note that we can be fooled if we're passed random binary data;
   // we make the call based on as few as two bytes (JPEG).
-  ImageFormat image_format = IMAGE_UNKNOWN;
+  net_instaweb::ImageType image_type = net_instaweb::IMAGE_UNKNOWN;
   if (buf.size() >= 8) {
     // Note that gcc rightly complains about constant ranges with the
     // negative char constants unless we cast.
@@ -109,14 +107,14 @@ ImageFormat ComputeImageFormat(const StringPiece& buf,
         // Either jpeg or jpeg2
         // (the latter we don't handle yet, and don't bother looking for).
         if (CharToInt(buf[1]) == 0xd8) {
-          image_format = IMAGE_JPEG;
+          image_type = net_instaweb::IMAGE_JPEG;
         }
         break;
       case 0x89:
         // Possible png.
         if (StringPiece(buf.data(), kPngHeaderLength) ==
             StringPiece(kPngHeader, kPngHeaderLength)) {
-          image_format = IMAGE_PNG;
+          image_type = net_instaweb::IMAGE_PNG;
         }
         break;
       case 'G':
@@ -125,20 +123,23 @@ ImageFormat ComputeImageFormat(const StringPiece& buf,
              StringPiece(kGifHeader, kGifHeaderLength)) &&
             (buf[kGifHeaderLength] == '7' || buf[kGifHeaderLength] == '9') &&
             buf[kGifHeaderLength + 1] == 'a') {
-          image_format = IMAGE_GIF;
+          image_type = net_instaweb::IMAGE_GIF;
         }
         break;
       case 'R':
         // Possible Webp
         // Detailed explanation on parsing webp format is available at
         // http://code.google.com/speed/webp/docs/riff_container.html
-        if (buf.size() >= 20 && buf.substr(1, 3) == kWebpIffHeader &&
-            buf.substr(8, 4) == kWebpWebpHeader) {
-          image_format = IMAGE_WEBP;
-          if (buf.substr(12, 4) == kWebpLosslessHeader) {
-            *is_webp_lossless_alpha = true;
-          } else {
-            *is_webp_lossless_alpha = false;
+        WebPBitstreamFeatures features;
+        if (WebPGetFeatures(reinterpret_cast<const uint8*>(buf.data()),
+                            buf.length(), &features) ==
+            VP8_STATUS_OK) {
+          if (features.has_animation) {
+            image_type = net_instaweb::IMAGE_WEBP_ANIMATED;
+          } else if (features.format == 2 || features.has_alpha) {
+            image_type = net_instaweb::IMAGE_WEBP_LOSSLESS_OR_ALPHA;
+          } else if (features.format == 1) {
+            image_type = net_instaweb::IMAGE_WEBP;
           }
         }
         break;
@@ -146,7 +147,7 @@ ImageFormat ComputeImageFormat(const StringPiece& buf,
         break;
     }
   }
-  return image_format;
+  return image_type;
 }
 
 bool ConversionTimeoutHandler::Continue(int percent, void* user_data) {

@@ -445,6 +445,7 @@
       'target_name': 'pagespeed_image_processing',
       'type': '<(library)',
       'dependencies': [
+        ':pagespeed_image_types_pb',
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/build/libwebp.gyp:libwebp_enc',
         '<(DEPTH)/build/libwebp.gyp:libwebp_enc_mux',

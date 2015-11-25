@@ -25,6 +25,7 @@
 #include "pagespeed/kernel/base/countdown_timer.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/http/image_types.pb.h"
 
 namespace net_instaweb {
 class MessageHandler;
@@ -67,6 +68,13 @@ enum RgbaChannels {
   RGBA_ALPHA,
 
   RGBA_NUM_CHANNELS
+};
+
+enum PreferredLibwebpLevel {
+  WEBP_NONE = 0,
+  WEBP_LOSSY,
+  WEBP_LOSSLESS,
+  WEBP_ANIMATED
 };
 
 const uint8_t kAlphaOpaque = 255;
@@ -144,8 +152,7 @@ size_t GetBytesPerPixel(PixelFormat pixel_format);
 // random binary file happens to have the magic numbers, it will incorrectly
 // reports a format for the file. The problem will be corrected when the binary
 // file is decoded.
-ImageFormat ComputeImageFormat(const StringPiece& buf,
-                               bool* is_webp_lossless_alpha);
+net_instaweb::ImageType ComputeImageType(const StringPiece& buf);
 
 // Class for managing image conversion timeouts.
 class ConversionTimeoutHandler {

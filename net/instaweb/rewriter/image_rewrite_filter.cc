@@ -69,6 +69,7 @@
 #include "pagespeed/kernel/http/data_url.h"
 #include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/http/semantic_type.h"
+#include "pagespeed/kernel/image/image_util.h"
 #include "pagespeed/kernel/util/simple_random.h"
 #include "pagespeed/opt/logging/enums.pb.h"
 
@@ -454,20 +455,22 @@ void SetWebpCompressionOptions(
     Image::CompressionOptions* image_options) {
   switch (resource_context.libwebp_level()) {
       case ResourceContext::LIBWEBP_NONE:
-        image_options->preferred_webp = Image::WEBP_NONE;
+        image_options->preferred_webp = pagespeed::image_compression::WEBP_NONE;
         image_options->allow_webp_alpha = false;
         VLOG(1) << "User agent is not webp capable";
         break;
 
       case ResourceContext::LIBWEBP_LOSSY_ONLY:
-        image_options->preferred_webp = Image::WEBP_LOSSY;
+        image_options->preferred_webp =
+            pagespeed::image_compression::WEBP_LOSSY;
         image_options->allow_webp_alpha = false;
         VLOG(1) << "User agent is webp lossy capable ";
         break;
 
       case ResourceContext::LIBWEBP_ANIMATED:
         if (options.Enabled(RewriteOptions::kConvertToWebpAnimated)) {
-          image_options->preferred_webp = Image::WEBP_ANIMATED;
+          image_options->preferred_webp =
+              pagespeed::image_compression::WEBP_ANIMATED;
           image_options->allow_webp_animated = true;
           image_options->allow_webp_alpha = true;
           break;
@@ -478,11 +481,13 @@ void SetWebpCompressionOptions(
       case ResourceContext::LIBWEBP_LOSSY_LOSSLESS_ALPHA:
         image_options->allow_webp_alpha = true;
         if (options.Enabled(RewriteOptions::kConvertToWebpLossless)) {
-          image_options->preferred_webp = Image::WEBP_LOSSLESS;
+          image_options->preferred_webp =
+              pagespeed::image_compression::WEBP_LOSSLESS;
           VLOG(1) << "User agent is webp lossless+alpha capable "
                   << "and lossless images preferred";
         } else {
-          image_options->preferred_webp = Image::WEBP_LOSSY;
+          image_options->preferred_webp =
+              pagespeed::image_compression::WEBP_LOSSY;
           VLOG(1) << "User agent is webp lossless+alpha capable "
                   << "and lossy images preferred";
         }

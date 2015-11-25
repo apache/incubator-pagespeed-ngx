@@ -37,6 +37,7 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/http/image_types.pb.h"
+#include "pagespeed/kernel/image/image_util.h"
 
 namespace net_instaweb {
 
@@ -110,7 +111,7 @@ BENCHMARK(BM_ConvertJpegToJpeg);
 
 static void BM_ConvertJpegToWebp(int iters) {
   net_instaweb::Image::CompressionOptions options;
-  options.preferred_webp = net_instaweb::Image::WEBP_LOSSY;
+  options.preferred_webp = pagespeed::image_compression::WEBP_LOSSY;
   options.convert_jpeg_to_webp = true;
   options.webp_quality = kNewQuality;
 
@@ -136,7 +137,7 @@ BENCHMARK(BM_ConvertPngToPng);
 
 static void BM_ConvertPngToWebp(int iters) {
   net_instaweb::Image::CompressionOptions options;
-  options.preferred_webp = net_instaweb::Image::WEBP_LOSSLESS;
+  options.preferred_webp = pagespeed::image_compression::WEBP_LOSSLESS;
   options.allow_webp_alpha = true;
   options.preserve_lossless = true;
 
@@ -165,7 +166,7 @@ BENCHMARK(BM_ConvertGifToPng);
 // and then from PNG to WebpP.
 static void BM_ConvertGifToWebp(int iters) {
   net_instaweb::Image::CompressionOptions options;
-  options.preferred_webp = net_instaweb::Image::WEBP_LOSSLESS;
+  options.preferred_webp = pagespeed::image_compression::WEBP_LOSSLESS;
   options.allow_webp_alpha = true;
   options.preserve_lossless = true;
   options.convert_gif_to_png = true;
@@ -181,7 +182,7 @@ BENCHMARK(BM_ConvertGifToWebp);
 
 static void BM_ConvertWebpToWebp(int iters) {
   net_instaweb::Image::CompressionOptions options;
-  options.preferred_webp = net_instaweb::Image::WEBP_LOSSLESS;
+  options.preferred_webp = pagespeed::image_compression::WEBP_LOSSLESS;
   options.recompress_webp = true;
   options.webp_quality = kNewQuality;
 

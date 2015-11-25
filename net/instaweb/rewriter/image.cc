@@ -63,7 +63,6 @@ extern "C" {
 }
 
 using pagespeed::image_compression::AnalyzeImage;
-using pagespeed::image_compression::ComputeImageFormat;
 using pagespeed::image_compression::ConversionTimeoutHandler;
 using pagespeed::image_compression::CreateScanlineReader;
 using pagespeed::image_compression::CreateScanlineWriter;
@@ -82,6 +81,7 @@ using pagespeed::image_compression::PngOptimizer;
 using pagespeed::image_compression::PngReader;
 using pagespeed::image_compression::PngReaderInterface;
 using pagespeed::image_compression::PngScanlineWriter;
+using pagespeed::image_compression::PreferredLibwebpLevel;
 using pagespeed::image_compression::RETAIN;
 using pagespeed::image_compression::RGB_888;
 using pagespeed::image_compression::RGBA_8888;
@@ -89,6 +89,10 @@ using pagespeed::image_compression::ScanlineReaderInterface;
 using pagespeed::image_compression::ScanlineResizer;
 using pagespeed::image_compression::ScanlineWriterInterface;
 using pagespeed::image_compression::WebpConfiguration;
+using pagespeed::image_compression::WEBP_NONE;
+using pagespeed::image_compression::WEBP_LOSSY;
+using pagespeed::image_compression::WEBP_LOSSLESS;
+using pagespeed::image_compression::WEBP_ANIMATED;
 
 namespace net_instaweb {
 
@@ -531,32 +535,25 @@ void ImageImpl::FindWebpSize() {
 // Looks at image data in order to determine image type, and also fills in any
 // dimension information it can (setting image_type_ and dims_).
 void ImageImpl::ComputeImageType() {
-  bool is_webp_lossless_alpha = false;
-  ImageFormat image_format = ComputeImageFormat(original_contents_,
-                                                &is_webp_lossless_alpha);
-  switch (image_format) {
-    case pagespeed::image_compression::IMAGE_UNKNOWN:
-      image_type_ = IMAGE_UNKNOWN;
-      break;
-    case pagespeed::image_compression::IMAGE_JPEG:
-      image_type_ = IMAGE_JPEG;
+  image_type_ =
+      pagespeed::image_compression::ComputeImageType(original_contents_);
+
+  switch (image_type_) {
+    case IMAGE_JPEG:
       FindJpegSize();
       break;
-    case pagespeed::image_compression::IMAGE_PNG:
-      image_type_ = IMAGE_PNG;
+    case IMAGE_PNG:
       FindPngSize();
       break;
-    case pagespeed::image_compression::IMAGE_GIF:
-      image_type_ = IMAGE_GIF;
+    case IMAGE_GIF:
       FindGifSize();
       break;
-    case pagespeed::image_compression::IMAGE_WEBP:
-      if (is_webp_lossless_alpha) {
-        image_type_ = IMAGE_WEBP_LOSSLESS_OR_ALPHA;
-      } else {
-        image_type_ = IMAGE_WEBP;
-      }
+    case IMAGE_WEBP:
+    case IMAGE_WEBP_LOSSLESS_OR_ALPHA:
+    case IMAGE_WEBP_ANIMATED:
       FindWebpSize();
+      break;
+    case IMAGE_UNKNOWN:
       break;
   }
 }
@@ -1053,7 +1050,7 @@ inline bool ImageImpl::ComputeOutputContentsFromGifOrPng(
   // By default, a lossless image conversion is eligible for lossless webp
   // conversion.
   if (is_animated) {
-    if (options_->preferred_webp == Image::WEBP_ANIMATED &&
+    if (options_->preferred_webp == WEBP_ANIMATED &&
         options_->webp_animated_quality > 0) {
       output_type = IMAGE_WEBP_ANIMATED;
       minimal_webp_support_ = ResourceContext::LIBWEBP_ANIMATED;
@@ -1066,7 +1063,7 @@ inline bool ImageImpl::ComputeOutputContentsFromGifOrPng(
     if (!has_transparency) {
       // No alpha; can be converted to WebP lossy or JPEG.
       minimal_webp_support_ = ResourceContext::LIBWEBP_LOSSY_ONLY;
-      if (options_->preferred_webp != Image::WEBP_NONE &&
+      if (options_->preferred_webp != WEBP_NONE &&
           options_->convert_jpeg_to_webp &&
           options_->webp_quality > 0) {
         compress_color_losslessly = false;
@@ -1084,8 +1081,8 @@ inline bool ImageImpl::ComputeOutputContentsFromGifOrPng(
     }
   } else {
     // Must be converted to lossless format.
-    if (options_->preferred_webp == Image::WEBP_ANIMATED ||
-        options_->preferred_webp == Image::WEBP_LOSSLESS) {
+    if (options_->preferred_webp == WEBP_ANIMATED ||
+        options_->preferred_webp == WEBP_LOSSLESS) {
       compress_color_losslessly = true;
       output_type = IMAGE_WEBP_LOSSLESS_OR_ALPHA;
     }

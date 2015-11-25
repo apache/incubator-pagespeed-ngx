@@ -23,6 +23,7 @@
 #include "pagespeed/kernel/base/stdio_file_system.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/image/image_util.h"
 
 namespace net_instaweb {
 
@@ -51,11 +52,11 @@ Image* ImageTestBase::ImageFromString(
   net_instaweb::Image::CompressionOptions* image_options =
       new net_instaweb::Image::CompressionOptions();
   if (output_type == IMAGE_WEBP) {
-    image_options->preferred_webp = Image::WEBP_LOSSY;
+    image_options->preferred_webp = pagespeed::image_compression::WEBP_LOSSY;
   } else if (output_type == IMAGE_WEBP_LOSSLESS_OR_ALPHA) {
-    image_options->preferred_webp = Image::WEBP_LOSSLESS;
+    image_options->preferred_webp = pagespeed::image_compression::WEBP_LOSSLESS;
   } else {
-    image_options->preferred_webp = Image::WEBP_NONE;
+    image_options->preferred_webp = pagespeed::image_compression::WEBP_NONE;
   }
   image_options->jpeg_quality = -1;
   image_options->progressive_jpeg = progressive;

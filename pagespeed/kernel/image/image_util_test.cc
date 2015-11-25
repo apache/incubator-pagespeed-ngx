@@ -31,6 +31,10 @@ const char kPngImage[] = "this_is_a_test.png";
 const char kJpegImage[] = "sjpeg1.jpg";
 const char kWebpOpaqueImage[] = "opaque_32x20.webp";
 const char kWebpLosslessImage[] = "img3.webpla";
+const char kWebpAnimatedImage[] = "animated.webp";
+// icc_xmp_ex.webp contains only one lossily compressed image, but has "VP8X"
+// chunk because of XMP and ICC.
+const char kWebpIccXmpImage[] = "icc_xmp_ex.webp";
 
 // Enums
 using pagespeed::image_compression::ImageFormat;
@@ -49,13 +53,20 @@ using pagespeed::image_compression::RGB_888;
 using pagespeed::image_compression::RGBA_8888;
 using pagespeed::image_compression::GRAY_8;
 
+// WebP formats.
+using pagespeed::image_compression::WEBP_NONE;
+using pagespeed::image_compression::WEBP_LOSSY;
+using pagespeed::image_compression::WEBP_LOSSLESS;
+using pagespeed::image_compression::WEBP_ANIMATED;
+
 // Folders for testing images.
 using pagespeed::image_compression::kGifTestDir;
 using pagespeed::image_compression::kJpegTestDir;
 using pagespeed::image_compression::kPngTestDir;
 using pagespeed::image_compression::kWebpTestDir;
 
-using pagespeed::image_compression::ComputeImageFormat;
+using pagespeed::image_compression::ComputeImageType;
+using pagespeed::image_compression::PreferredLibwebpLevel;
 using pagespeed::image_compression::ReadTestFileWithExt;
 
 TEST(ImageUtilTest, ImageFormatToMimeTypeString) {
@@ -95,25 +106,29 @@ TEST(ImageUtilTest, GetBytesPerPixel) {
 
 TEST(ImageUtilTest, ImageFormat) {
   GoogleString buffer;
-  bool not_used;
-  bool is_webp_lossless_alpha = false;
 
   ASSERT_TRUE(ReadTestFileWithExt(kGifTestDir, kGifImage, &buffer));
-  EXPECT_EQ(IMAGE_GIF, ComputeImageFormat(buffer, &not_used));
+  EXPECT_EQ(net_instaweb::IMAGE_GIF, ComputeImageType(buffer));
 
   ASSERT_TRUE(ReadTestFileWithExt(kPngTestDir, kPngImage, &buffer));
-  EXPECT_EQ(IMAGE_PNG, ComputeImageFormat(buffer, &not_used));
+  EXPECT_EQ(net_instaweb::IMAGE_PNG, ComputeImageType(buffer));
 
   ASSERT_TRUE(ReadTestFileWithExt(kJpegTestDir, kJpegImage, &buffer));
-  EXPECT_EQ(IMAGE_JPEG, ComputeImageFormat(buffer, &not_used));
+  EXPECT_EQ(net_instaweb::IMAGE_JPEG, ComputeImageType(buffer));
 
   ASSERT_TRUE(ReadTestFileWithExt(kWebpTestDir, kWebpOpaqueImage, &buffer));
-  EXPECT_EQ(IMAGE_WEBP, ComputeImageFormat(buffer, &is_webp_lossless_alpha));
-  EXPECT_FALSE(is_webp_lossless_alpha);
+  EXPECT_EQ(net_instaweb::IMAGE_WEBP, ComputeImageType(buffer));
 
   ASSERT_TRUE(ReadTestFileWithExt(kWebpTestDir, kWebpLosslessImage, &buffer));
-  EXPECT_EQ(IMAGE_WEBP, ComputeImageFormat(buffer, &is_webp_lossless_alpha));
-  EXPECT_TRUE(is_webp_lossless_alpha);
+  EXPECT_EQ(net_instaweb::IMAGE_WEBP_LOSSLESS_OR_ALPHA,
+            ComputeImageType(buffer));
+
+  ASSERT_TRUE(ReadTestFileWithExt(kWebpTestDir, kWebpAnimatedImage, &buffer));
+  EXPECT_EQ(net_instaweb::IMAGE_WEBP_ANIMATED,
+            ComputeImageType(buffer));
+
+  ASSERT_TRUE(ReadTestFileWithExt(kWebpTestDir, kWebpIccXmpImage, &buffer));
+  EXPECT_EQ(net_instaweb::IMAGE_WEBP, ComputeImageType(buffer));
 }
 
 }  // namespace

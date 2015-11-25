@@ -62,6 +62,10 @@ using pagespeed::image_compression::kMessagePatternStats;
 using pagespeed::image_compression::kMessagePatternUnexpectedEOF;
 using pagespeed::image_compression::kMessagePatternWritingToWebp;
 using pagespeed::image_compression::PixelFormat;
+using pagespeed::image_compression::WEBP_NONE;
+using pagespeed::image_compression::WEBP_LOSSY;
+using pagespeed::image_compression::WEBP_LOSSLESS;
+using pagespeed::image_compression::WEBP_ANIMATED;
 
 namespace net_instaweb {
 namespace {
@@ -329,14 +333,16 @@ class ImageTest : public ImageTestBase {
                           int width, int height,
                           int size, bool optimizable) {
     return CheckImageFromFile(filename, input_type, output_type, output_type,
-                              min_bytes_to_type, min_bytes_to_dimensions,
-                              width, height, size, optimizable);
+                              input_type, min_bytes_to_type,
+                              min_bytes_to_dimensions, width, height, size,
+                              optimizable);
   }
 
   bool CheckImageFromFile(const char* filename,
                           ImageType input_type,
                           ImageType intended_output_type,
                           ImageType actual_output_type,
+                          ImageType type_for_truncated_image,
                           int min_bytes_to_type,
                           int min_bytes_to_dimensions,
                           int width, int height,
@@ -344,9 +350,9 @@ class ImageTest : public ImageTestBase {
     // Set options to convert to intended_output_type, but to allow for
     // negative tests, don't clear any other options.
     if (intended_output_type == IMAGE_WEBP) {
-      options_->preferred_webp = Image::WEBP_LOSSY;
+      options_->preferred_webp = WEBP_LOSSY;
     } else if (intended_output_type == IMAGE_WEBP_LOSSLESS_OR_ALPHA) {
-      options_->preferred_webp = Image::WEBP_LOSSLESS;
+      options_->preferred_webp = WEBP_LOSSLESS;
     }
     switch (intended_output_type) {
       case IMAGE_WEBP:
@@ -417,11 +423,11 @@ class ImageTest : public ImageTestBase {
     EXPECT_EQ(min_bytes_to_dimensions, dim_image->output_size());
 
     GoogleString no_dim_data(contents, 0, min_bytes_to_dimensions - 1);
-    CheckInvalid(filename, no_dim_data, input_type, intended_output_type,
-                 progressive);
+    CheckInvalid(filename, no_dim_data, type_for_truncated_image,
+                 intended_output_type, progressive);
     GoogleString type_data(contents, 0, min_bytes_to_type);
-    CheckInvalid(filename, type_data, input_type, intended_output_type,
-                 progressive);
+    CheckInvalid(filename, type_data, type_for_truncated_image,
+                 intended_output_type, progressive);
     GoogleString junk(contents, 0, min_bytes_to_type - 1);
     CheckInvalid(filename, junk, IMAGE_UNKNOWN, IMAGE_UNKNOWN,
                  progressive);
@@ -481,8 +487,8 @@ TEST_F(ImageTest, EmptyImageUnidentified) {
 
 TEST_F(ImageTest, InputWebpTest) {
   CheckImageFromFile(
-      kScenery, IMAGE_WEBP, IMAGE_WEBP,
-      20,  // Min bytes to bother checking file type at all.
+      kScenery, IMAGE_WEBP, IMAGE_WEBP, IMAGE_WEBP, IMAGE_UNKNOWN,
+      29,  // Min bytes to bother checking file type at all.
       30,
       550, 368,
       30320, false);
@@ -496,7 +502,7 @@ TEST_F(ImageTest, WebpLowResTest) {
   }
   Image::CompressionOptions* options = new Image::CompressionOptions();
   options->recompress_webp = true;
-  options->preferred_webp = Image::WEBP_LOSSY;
+  options->preferred_webp = WEBP_LOSSY;
   GoogleString contents;
   ImagePtr image(ReadFromFileWithOptions(kScenery, &contents, options));
   int filesize = 30320;
@@ -511,7 +517,7 @@ TEST_F(ImageTest, WebpLaLowResTest) {
   }
   Image::CompressionOptions* options = new Image::CompressionOptions();
   options->recompress_webp = true;
-  options->preferred_webp = Image::WEBP_LOSSLESS;
+  options->preferred_webp = WEBP_LOSSLESS;
   GoogleString contents;
   ImagePtr image(ReadFromFileWithOptions(kScenery, &contents, options));
   int filesize = 30320;
@@ -555,7 +561,7 @@ TEST_F(ImageTest, PngToWebpFailToJpegDueToPreferredTest) {
     return;
   }
   ConversionVarChecker conversion_var_checker(options_.get());
-  options_->preferred_webp = Image::WEBP_NONE;
+  options_->preferred_webp = WEBP_NONE;
   options_->webp_quality = 75;
   options_->jpeg_quality = 85;
   options_->convert_jpeg_to_webp = true;
@@ -599,7 +605,7 @@ TEST_F(ImageTest, PngAlphaFailToWebpLossyTest) {
   }
   Image::CompressionOptions* options = new Image::CompressionOptions;
   ConversionVarChecker conversion_var_checker(options);
-  options->preferred_webp = Image::WEBP_LOSSY;
+  options->preferred_webp = WEBP_LOSSY;
   options->allow_webp_alpha = false;
   options->webp_quality = 75;
   options->jpeg_quality = 85;
@@ -630,7 +636,7 @@ TEST_F(ImageTest, PngAlphaToWebpLaTest) {
   }
   Image::CompressionOptions* options = new Image::CompressionOptions;
   ConversionVarChecker conversion_var_checker(options);
-  options->preferred_webp = Image::WEBP_LOSSLESS;
+  options->preferred_webp = WEBP_LOSSLESS;
   options->allow_webp_alpha = true;
   options->convert_png_to_jpeg = true;
   options->convert_jpeg_to_webp = true;
@@ -657,7 +663,7 @@ TEST_F(ImageTest, PngAlphaToWebpTestFailsBecauseTooManyTries) {
   }
   Image::CompressionOptions* options = new Image::CompressionOptions;
   ConversionVarChecker conversion_var_checker(options);
-  options->preferred_webp = Image::WEBP_LOSSLESS;
+  options->preferred_webp = WEBP_LOSSLESS;
   options->allow_webp_alpha = true;
   options->convert_png_to_jpeg = true;
   options->convert_jpeg_to_webp = true;
@@ -688,7 +694,7 @@ TEST_F(ImageTest, PngLargeAlphaToWebpLaTest) {
   }
   Image::CompressionOptions* options = new Image::CompressionOptions;
   ConversionVarChecker conversion_var_checker(options);
-  options->preferred_webp = Image::WEBP_LOSSLESS;
+  options->preferred_webp = WEBP_LOSSLESS;
   options->allow_webp_alpha = true;
   options->convert_png_to_jpeg = true;
   options->convert_jpeg_to_webp = true;
@@ -718,7 +724,7 @@ TEST_F(ImageTest, PngLargeAlphaToWebpTimesOutToPngTest) {
   }
   Image::CompressionOptions* options = new Image::CompressionOptions;
   ConversionVarChecker conversion_var_checker(options);
-  options->preferred_webp = Image::WEBP_LOSSLESS;
+  options->preferred_webp = WEBP_LOSSLESS;
   options->allow_webp_alpha = true;
   options->convert_png_to_jpeg = true;
   options->convert_jpeg_to_webp = true;
@@ -760,7 +766,7 @@ TEST_F(ImageTest, PngLargeAlphaToWebpDoesNotTimeOutTest) {
   }
   Image::CompressionOptions* options = new Image::CompressionOptions;
   ConversionVarChecker conversion_var_checker(options);
-  options->preferred_webp = Image::WEBP_LOSSLESS;
+  options->preferred_webp = WEBP_LOSSLESS;
   options->allow_webp_alpha = true;
   options->convert_png_to_jpeg = true;
   options->convert_jpeg_to_webp = true;
@@ -1082,7 +1088,7 @@ TEST_F(ImageTest, JpegToWebpTimesOutTest) {
   ConversionVarChecker conversion_var_checker(options);
   options->recompress_jpeg = true;
   options->convert_jpeg_to_webp = true;
-  options->preferred_webp = Image::WEBP_LOSSY;
+  options->preferred_webp = WEBP_LOSSY;
   options->webp_quality = 75;
   options->webp_conversion_timeout_ms = 1;
   timer_.SetTimeDeltaUs(1);  // 1st increment of time, used for setting deadline
@@ -1119,7 +1125,7 @@ TEST_F(ImageTest, JpegToWebpDoesNotTimeOutTest) {
   ConversionVarChecker conversion_var_checker(options);
   options->recompress_jpeg = true;
   options->convert_jpeg_to_webp = true;
-  options->preferred_webp = Image::WEBP_LOSSY;
+  options->preferred_webp = WEBP_LOSSY;
   options->webp_quality = 75;
   options->webp_conversion_timeout_ms = 1;
   timer_.SetTimeDeltaUs(1);  // When setting deadline
@@ -1156,7 +1162,7 @@ TEST_F(ImageTest, WebpNonLaFromJpgTest) {
   // Note that jpeg->webp cannot return a lossless webp.
   CheckImageFromFile(
       kPuzzle, IMAGE_JPEG, IMAGE_WEBP_LOSSLESS_OR_ALPHA,
-      IMAGE_WEBP,
+      IMAGE_WEBP, IMAGE_JPEG,
       8,  // Min bytes to bother checking file type at all.
       6468,  // Specific to this test
       1023, 766,
@@ -1338,7 +1344,7 @@ TEST_F(ImageTest, CompressJpegUsingLossyOrLossless) {
 }
 
 void SetBaseJpegOptions(Image::CompressionOptions* options) {
-  options->preferred_webp = Image::WEBP_LOSSY;
+  options->preferred_webp = WEBP_LOSSY;
   options->allow_webp_alpha = true;
   options->convert_gif_to_png = true;
   options->convert_png_to_jpeg = true;
@@ -1456,7 +1462,7 @@ TEST_F(ImageTest, AnimatedGifToWebpTest) {
   ConversionVarChecker conversion_var_checker(options_.get());
   options_->webp_animated_quality = 25;
   options_->allow_webp_animated = true;
-  options_->preferred_webp = Image::WEBP_ANIMATED;
+  options_->preferred_webp = WEBP_ANIMATED;
   CheckImageFromFile(
       kCradle, IMAGE_GIF, IMAGE_WEBP_ANIMATED,
       8,  // Min bytes to bother checking file type at all.
