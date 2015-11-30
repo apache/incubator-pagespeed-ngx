@@ -61,9 +61,11 @@ class CssMinifyTest : public ::testing::Test {
 TEST_F(CssMinifyTest, RewriteCssIncompleteUnicode) {
   // Test that a css string with an incomplete unicode character doesn't hang.
   // This string should not get minified either due to the error in it.
-  char css_string[] = {64, 109, 101, 100, 105, 97,  32,  40,  106,
-                       97, 120, 45,  119, 105, 100, 116, 104, 58,
-                       32, 88,  200, 194, 143, 135, 41,  32, 0};
+  static const unsigned char kCssStringData[] = {
+      64, 109, 101, 100, 105, 97,  32,  40, 106,
+      97, 120, 45,  119, 105, 100, 116, 104, 58,
+      32, 88,  200, 194, 143, 135, 41,  32, 0};
+  const char* css_string(reinterpret_cast<const char*>(kCssStringData));
   // This string is `echo "QG1lZGlhIChqYXgtd2lkdGg6IFjIwo+HKSA=" |base64 -d`
   GoogleString rewritten;
   RewriteCss(css_string, &rewritten);
