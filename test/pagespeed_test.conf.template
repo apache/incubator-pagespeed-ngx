@@ -621,8 +621,23 @@ http {
     listen [::]:@@SECONDARY_PORT@@;
     server_name xfp.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
-
     pagespeed RespectXForwardedProto on;
+
+    location /redirecting_origin {
+      pagespeed off;
+      # Hack: we clear the response headers using headers_more.
+      # If we don't, nginx will add an extra empty Location: headers here.
+      # It is kind of hard to get nginx to generate a relative location header
+      # that starts with "/".
+      more_clear_headers 'Location';
+      add_header Location /mod_pagespeed_example;
+      return 301;
+    }
+    location /redirect {
+      proxy_method GET;
+      proxy_pass http://127.0.0.1:@@SECONDARY_PORT@@/redirecting_origin;
+      proxy_set_header "Host" "xfp.example.com";
+    }
   }
 
   server {

@@ -599,7 +599,10 @@ ngx_int_t copy_response_headers_to_ngx(
     } else if (STR_EQ_LITERAL(name, "Last-Modified")) {
       headers_out->last_modified = header;
     } else if (STR_EQ_LITERAL(name, "Location")) {
-      headers_out->location = header;
+      ps_request_ctx_t* ctx = ps_get_request_context(r);
+      if (ctx->location_field_set) {
+        headers_out->location = header;
+      }
     } else if (STR_EQ_LITERAL(name, "Server")) {
       headers_out->server = header;
     } else if (STR_EQ_LITERAL(name, "Content-Length")) {
@@ -1264,6 +1267,7 @@ ngx_int_t ps_decline_request(ngx_http_request_t* r) {
 
   ctx->driver->Cleanup();
   ctx->driver = NULL;
+  ctx->location_field_set = false;
 
   // re init ctx
   ctx->html_rewrite = true;
@@ -1833,6 +1837,7 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
 
     ctx->recorder = NULL;
     ctx->url_string = url_string;
+    ctx->location_field_set = false;
 
     // Set up a cleanup handler on the request.
     ngx_http_cleanup_t* cleanup = ngx_http_cleanup_add(r, 0);
@@ -1902,12 +1907,12 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
     bool is_proxy = false;
     GoogleString mapped_url;
     GoogleString host_header;
-  
+
     if (options->domain_lawyer()->MapOriginUrl(
             url, &mapped_url, &host_header, &is_proxy) && is_proxy) {
       ps_create_base_fetch(ctx, request_context, request_headers.release(),
                           kPageSpeedProxy);
-                          
+
       RewriteDriver* driver;
       if (custom_options.get() == NULL) {
         driver = cfg_s->server_context->NewRewriteDriver(
@@ -1926,7 +1931,7 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
 
       return ps_async_wait_response(r);
     }
-      
+
   }
 
   if (html_rewrite) {
@@ -2233,6 +2238,8 @@ ngx_int_t ps_html_rewrite_header_filter(ngx_http_request_t* r) {
   }
 
   ps_strip_html_headers(r);
+  // See https://github.com/pagespeed/ngx_pagespeed/issues/819
+  ctx->location_field_set = r->headers_out.location != NULL;
 
   // TODO(jefftk): is this thread safe?
   copy_response_headers_from_ngx(r, ctx->base_fetch->response_headers());

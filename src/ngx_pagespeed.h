@@ -103,6 +103,11 @@ typedef struct {
   // We need to remember the URL here as well since we may modify what NGX
   // gets by stripping our special query params and honoring X-Forwarded-Proto.
   GoogleString url_string;
+
+  // We need to remember if the upstream had headers_out->location set, because
+  // we should mirror that when we write it back. nginx may absolutify
+  // Location: headers that start with '/' without regarding X-Forwarded-Proto.
+  bool location_field_set;
 } ps_request_ctx_t;
 
 ps_request_ctx_t* ps_get_request_context(ngx_http_request_t* r);
