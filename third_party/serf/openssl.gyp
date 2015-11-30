@@ -58,12 +58,15 @@
         ],
       },
       'sources': [
-        '<@(boringssl_lib_sources)',
+        '<@(boringssl_crypto_sources)',
+        '<@(boringssl_ssl_sources)',
       ],
       'cflags': [
         '-D_POSIX_C_SOURCE=200112L',
       ],
-      'defines': [ 'BORINGSSL_IMPLEMENTATION' ],
+      'defines': [ 'BORINGSSL_IMPLEMENTATION',
+                   'BORINGSSL_NO_STATIC_INITIALIZER',
+      ],
       'conditions': [
         ['component == "shared_library"', {
           'defines': [
@@ -122,6 +125,9 @@
       'direct_dependent_settings': {
         'include_dirs': [
           '<(DEPTH)/third_party/boringssl/src/include',
+        ],
+        'defines' : [
+          'OPENSSL_SMALL',
         ],
         'conditions': [
           ['component == "shared_library"', {
