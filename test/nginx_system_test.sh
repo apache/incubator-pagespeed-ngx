@@ -322,8 +322,8 @@ fi
 #
 # TODO(sligicki): When the prioritize critical css race condition is fixed, the
 # two prioritize_critical_css tests no longer need to be listed here.
-# TODO(oschaaf): Now that we wait after we send a SIGHUP for the new worker 
-# process to handle requests, check if we can remove more from the expected 
+# TODO(oschaaf): Now that we wait after we send a SIGHUP for the new worker
+# process to handle requests, check if we can remove more from the expected
 # failures here under valgrind.
 if $USE_VALGRIND; then
     PAGESPEED_EXPECTED_FAILURES+="
@@ -514,6 +514,17 @@ check $WGET_DUMP -O $FETCHED $HEADERS $URL
 # When enabled, we respect X-Forwarded-Proto and thus list base as https.
 check fgrep -q '<base href="https://' $FETCHED
 
+start_test Relative redirects starting with a forward slash survive.
+URL=http://xfp.example.com/redirect
+# wget seems a bit hairy here, when it comes to handling (relative) redirects.
+# I could not get this test going with wget, and that is why curl is used here.
+# TODO(oschaaf): debug wget some more and swap out curl here.
+OUT=$(curl -v --proxy $SECONDARY_HOSTNAME $URL 2>&1)
+check_from "$OUT" egrep -q '301 Moved Permanently'
+# The important part is that we don't end up with an absolute location here.
+check_from "$OUT" grep -q 'Location: /mod_pagespeed_example'
+check_not_from "$OUT" grep -q 'Location: http'
+
 # Test that loopback route fetcher works with vhosts not listening on
 # 127.0.0.1
 start_test IP choice for loopback fetches.
@@ -566,7 +577,7 @@ check test $(scrape_stat image_rewrite_total_original_bytes) -ge 10000
 start_test "Reload config"
 
 # Fire up some heavy load if ab is available to test a stressed reload.
-# TODO(oschaaf): make sure we wait for the new worker to get ready to accept 
+# TODO(oschaaf): make sure we wait for the new worker to get ready to accept
 # requests.
 fire_ab_load
 
