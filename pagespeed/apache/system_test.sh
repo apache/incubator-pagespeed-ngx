@@ -949,7 +949,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   # Make sure the font CSS link tag is eliminated.
   fetch_until -save $URL 'grep -c link' 0
   # Check that we added fonts to the page.
-  check [ $(fgrep -c '@font-face' $FETCH_FILE) > 0 ];
+  check [ $(fgrep -c '@font-face' $FETCH_FILE) -gt 0 ]
   # Make sure last style line is before first script line.
   last_style=$(fgrep -n '<style>' $FETCH_FILE | tail -1 | grep -o '^[^:]*')
   first_script=$(\
