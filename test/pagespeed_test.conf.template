@@ -1655,6 +1655,30 @@ http {
       expires 5m;
     }
 
+    location /mod_pagespeed_test/ipro/wait/ {
+      # TODO(jmarantz): ModPagespeedInPlaceWaitForOptimized should be superfluous,
+      # or made equivalent to ModPagespeedInPlaceRewriteDeadlineMs -1, which waits
+      # forever.  Otherwise ModPagespeedInPlaceRewriteDeadlineMs should just have
+      # the specified deadline.
+      # # See https://github.com/pagespeed/mod_pagespeed/issues/1171 for more
+      # detailed discussion.
+      pagespeed InPlaceWaitForOptimized on;
+    }
+
+    location /mod_pagespeed_test/ipro/wait/long/ {
+      # Make the deadline long here for valgrind tests.  We could
+      # conditionalize this.
+      pagespeed InPlaceRewriteDeadlineMs 10000;
+    }
+
+    location /mod_pagespeed_test/ipro/wait/short/ {
+      pagespeed EnableFilters in_place_optimize_for_browser;
+
+      # Make the deadline short here as we expect to always miss it
+      # in tests.
+      pagespeed InPlaceRewriteDeadlineMs 1;
+    }
+
     location /mod_pagespeed_test/ipro/instant/wait/ {
       pagespeed InPlaceWaitForOptimized on;
 
