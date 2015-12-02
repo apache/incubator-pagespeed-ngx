@@ -122,12 +122,12 @@ class StdioInputFile : public FileSystem::InputFile {
     struct stat statbuf;
     file_helper_.StartTimer();
     if ((fstat(fileno(file_helper_.file_), &statbuf) < 0)) {
-      file_helper_.ReportError(message_handler, "stating file: %s");
+      file_helper_.ReportError(message_handler, "stating file");
     } else {
       buf->resize(statbuf.st_size);
       int nread = fread(&(*buf)[0], 1, statbuf.st_size, file_helper_.file_);
       if (nread != statbuf.st_size) {
-        file_helper_.ReportError(message_handler, "reading file: %s");
+        file_helper_.ReportError(message_handler, "reading file");
       } else {
         ret = true;
       }
