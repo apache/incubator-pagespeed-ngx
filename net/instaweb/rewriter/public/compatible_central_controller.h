@@ -1,6 +1,3 @@
-#ifndef NET_INSTAWEB_REWRITER_PUBLIC_COMPATIBLE_CENTRAL_CONTROLLER_H_
-#define NET_INSTAWEB_REWRITER_PUBLIC_COMPATIBLE_CENTRAL_CONTROLLER_H_
-
 // Copyright 2015 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,6 +14,9 @@
 //
 // Author: cheesy@google.com (Steve Hill)
 
+#ifndef NET_INSTAWEB_REWRITER_PUBLIC_COMPATIBLE_CENTRAL_CONTROLLER_H_
+#define NET_INSTAWEB_REWRITER_PUBLIC_COMPATIBLE_CENTRAL_CONTROLLER_H_
+
 #include "net/instaweb/rewriter/public/central_controller_interface.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/function.h"
@@ -24,9 +24,8 @@
 
 namespace net_instaweb {
 
-// Concrete implementation of CentralControllerInterface, delegates to
-// implementations that match pre-CentralControllerInterface code.
-
+// Implements CentralControllerInterface, delegating to implementations that
+// match pre-CentralControllerInterface code.
 class CompatibleCentralController : public CentralControllerInterface {
  public:
   explicit CompatibleCentralController(WorkBound* work_bound);

@@ -33,6 +33,7 @@
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/central_controller_interface_adapter.h"
 #include "net/instaweb/rewriter/public/critical_images_beacon_filter.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/css_url_encoder.h"
@@ -55,7 +56,6 @@
 #include "net/instaweb/util/public/property_cache.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/escaping.h"
-#include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/statistics.h"
@@ -403,33 +403,30 @@ class ImageRewriteFilter::Context : public SingleRewriteContext {
   DISALLOW_COPY_AND_ASSIGN(Context);
 };
 
-class ImageRewriteFilter::Context::InvokeRewriteFunction : public Function {
+class ImageRewriteFilter::Context::InvokeRewriteFunction
+    : public ExpensiveOperationCallback {
  public:
   InvokeRewriteFunction(ImageRewriteFilter::Context* context,
                         ImageRewriteFilter* filter,
                         const ResourcePtr& input_resource,
                         const OutputResourcePtr& output_resource)
-      : context_(context),
+      : ExpensiveOperationCallback(
+            context->Driver()->low_priority_rewrite_worker()),
+        context_(context),
         filter_(filter),
         input_resource_(input_resource),
         output_resource_(output_resource) {}
   virtual ~InvokeRewriteFunction() { }
 
  protected:
-  virtual void Run() {
+  virtual void RunImpl(scoped_ptr<ExpensiveOperationContext>* context) {
     RewriteResult result = filter_->RewriteLoadedResourceImpl(
         context_, input_resource_, output_resource_);
-    context_->FindServerContext()->factory()
-        ->NotifyExpensiveOperationComplete();
+    (*context)->Done();
     context_->RewriteDone(result, 0);
   }
-  // TODO(cheesy): When this goes truly async, there are actually two different
-  // ways Cancel might be called; By the CentralController to signify "no slot
-  // available" or by the subsequent WorkQueue due to load shedding. In the
-  // WorkQueue case, it's important to call NotifyExpensiveOperationComplete.
-  // I think the right thing to do is implement a Function subclass that
-  // encapsulates all that, which InvokeRewriteFunction should inherit from.
-  virtual void Cancel() {
+
+  virtual void CancelImpl() {
     filter_->ReportDroppedRewrite();
     filter_->InfoAndTrace(context_, "%s: Too busy to rewrite image.",
                           input_resource_->url().c_str());

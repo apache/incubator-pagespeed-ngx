@@ -27,7 +27,6 @@
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
 #include "net/instaweb/rewriter/public/beacon_critical_line_info_finder.h"
-#include "net/instaweb/rewriter/public/central_controller_interface.h"
 #include "net/instaweb/rewriter/public/compatible_central_controller.h"
 #include "net/instaweb/rewriter/public/critical_css_finder.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
@@ -826,7 +825,8 @@ RewriteStats* RewriteDriverFactory::rewrite_stats() {
 
 void RewriteDriverFactory::set_central_controller_interface(
     CentralControllerInterface* interface) {
-  central_controller_interface_.reset(interface);
+  central_controller_interface_.reset(
+      new CentralControllerInterfaceAdapter(interface));
 }
 
 RewriteOptions* RewriteDriverFactory::NewRewriteOptions() {
@@ -841,12 +841,9 @@ ExperimentMatcher* RewriteDriverFactory::NewExperimentMatcher() {
   return new ExperimentMatcher;
 }
 
-void RewriteDriverFactory::ScheduleExpensiveOperation(Function* callback) {
+void RewriteDriverFactory::ScheduleExpensiveOperation(
+    ExpensiveOperationCallback* callback) {
   central_controller_interface()->ScheduleExpensiveOperation(callback);
-}
-
-void RewriteDriverFactory::NotifyExpensiveOperationComplete() {
-  central_controller_interface()->NotifyExpensiveOperationComplete();
 }
 
 }  // namespace net_instaweb

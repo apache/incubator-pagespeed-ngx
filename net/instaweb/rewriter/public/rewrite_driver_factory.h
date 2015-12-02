@@ -22,6 +22,8 @@
 #include <set>
 #include <vector>
 
+#include "net/instaweb/rewriter/public/central_controller_interface.h"
+#include "net/instaweb/rewriter/public/central_controller_interface_adapter.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/function.h"
@@ -30,6 +32,8 @@
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/thread/queued_worker_pool.h"
 #include "pagespeed/kernel/util/work_bound.h"
 
 namespace pagespeed { namespace js { struct JsTokenizerPatterns; } }
@@ -37,7 +41,6 @@ namespace pagespeed { namespace js { struct JsTokenizerPatterns; } }
 namespace net_instaweb {
 
 class CacheHtmlInfoFinder;
-class CentralControllerInterface;
 class CriticalCssFinder;
 class CriticalImagesFinder;
 class CriticalLineInfoFinder;
@@ -52,7 +55,6 @@ class NamedLockManager;
 class NonceGenerator;
 class ProcessContext;
 class PropertyCache;
-class QueuedWorkerPool;
 class ServerContext;
 class RewriteDriver;
 class RewriteOptions;
@@ -61,7 +63,6 @@ class RewriteStats;
 class SHA1Signature;
 class Scheduler;
 class StaticAssetManager;
-class ThreadSystem;
 class Timer;
 class UrlAsyncFetcher;
 class UrlNamer;
@@ -239,7 +240,7 @@ class RewriteDriverFactory {
   // Return interface to various functions that workers need delegated
   // to a central service. Depending on the implemenation, this may invoke
   // RPCs.
-  CentralControllerInterface* central_controller_interface() {
+  CentralControllerInterfaceAdapter* central_controller_interface() {
     return central_controller_interface_.get();
   }
 
@@ -322,12 +323,7 @@ class RewriteDriverFactory {
   // expensive operation, or Cancel if you should not perform the operation.
   // Depending on the implemation, may queue the callback for theoretically
   // unbounded time.
-  void ScheduleExpensiveOperation(Function* callback);
-  // Invoke after performing your expensive CPU operation to relinquish the
-  // resource. You should only call this if ScheduleExpensiveOperation
-  // called Run on the callback above. Do not call this if the callback's
-  // Cancel method was invoked.
-  void NotifyExpensiveOperationComplete();
+  void ScheduleExpensiveOperation(ExpensiveOperationCallback* callback);
 
  protected:
   bool FetchersComputed() const;
@@ -524,7 +520,7 @@ class RewriteDriverFactory {
   // Manage locks for output resources.
   scoped_ptr<NamedLockManager> lock_manager_;
 
-  scoped_ptr<CentralControllerInterface> central_controller_interface_;
+  scoped_ptr<CentralControllerInterfaceAdapter> central_controller_interface_;
 
   // Default statistics implementation which can be overridden by children
   // by calling SetStatistics().

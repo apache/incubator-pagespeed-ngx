@@ -1,6 +1,3 @@
-#ifndef NET_INSTAWEB_REWRITER_PUBLIC_CENTRAL_CONTROLLER_CALLBACK_H_
-#define NET_INSTAWEB_REWRITER_PUBLIC_CENTRAL_CONTROLLER_CALLBACK_H_
-
 // Copyright 2015 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,6 +14,9 @@
 //
 // Author: cheesy@google.com (Steve Hill)
 
+#ifndef NET_INSTAWEB_REWRITER_PUBLIC_CENTRAL_CONTROLLER_CALLBACK_H_
+#define NET_INSTAWEB_REWRITER_PUBLIC_CENTRAL_CONTROLLER_CALLBACK_H_
+
 #include "base/logging.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/function.h"
@@ -30,7 +30,6 @@ namespace net_instaweb {
 // a call to the CentralController. Users are expected to interact with this via
 // a purpose-specific subclass. See CentralControllerInterfaceAdapter for
 // examples.
-// TODO(cheesy): CentralControllerInterfaceAdapter coming in a future CL.
 //
 // Calls to the CentralController are expected to go via an RPC interface.
 // Since the Run operation may be expensive, it is important to not block
@@ -68,6 +67,13 @@ class CentralControllerCallback : public Function {
  protected:
   explicit CentralControllerCallback(QueuedWorkerPool::Sequence* sequence);
 
+  // Function interface. These will be invoked on the RPC thread, so must be
+  // quick. They just enqueue calls on sequence_ to the actual implementations
+  // (RunAfterRequeue & CancelAfterRequeue).
+  virtual void Run();
+  virtual void Cancel();
+
+ private:
   // Subclasses should implement whatever functionality they need in these.
   // They are equivalent to the Run() and Cancel() methods on Function.
   virtual void RunImpl(scoped_ptr<TransactionContext>* context) = 0;
@@ -78,19 +84,13 @@ class CentralControllerCallback : public Function {
   virtual TransactionContext* CreateTransactionContext(
       CentralControllerInterface* interface) = 0;
 
-  // Function interface. These will be invoked on the RPC thread, so must be
-  // quick. They just enqueue calls on sequence_ to the actual implementations
-  // (RunAfterRequeue & CancelAfterRequeue).
-  virtual void Run();
-  virtual void Cancel();
-
   // This will be called by the CentralControllerInterfaceAdapter before
   // the Function is dispatched.
   void SetCentralControllerInterface(CentralControllerInterface* interface) {
+    CHECK(controller_interface_ == NULL || controller_interface_ == interface);
     controller_interface_ = interface;
   }
 
- private:
   // Invoked via sequence_ to do the typical Function operations.
   void RunAfterRequeue();
   void CancelAfterRequeue();
@@ -98,6 +98,8 @@ class CentralControllerCallback : public Function {
   QueuedWorkerPool::Sequence* sequence_;
   CentralControllerInterface* controller_interface_;
   scoped_ptr<TransactionContext> context_;
+
+  friend class CentralControllerInterfaceAdapter;
 
   DISALLOW_COPY_AND_ASSIGN(CentralControllerCallback);
 };

@@ -1739,6 +1739,7 @@
         'rewriter/cache_html_filter.cc',
         'rewriter/cacheable_resource_base.cc',
         'rewriter/central_controller.cc',
+        'rewriter/central_controller_interface_adapter.cc',
         'rewriter/collect_flush_early_content_filter.cc',
         'rewriter/common_filter.cc',
         'rewriter/compatible_central_controller.cc',

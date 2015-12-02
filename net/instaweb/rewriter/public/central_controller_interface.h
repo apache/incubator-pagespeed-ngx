@@ -1,6 +1,3 @@
-#ifndef NET_INSTAWEB_REWRITER_PUBLIC_CENTRAL_CONTROLLER_INTERFACE_H_
-#define NET_INSTAWEB_REWRITER_PUBLIC_CENTRAL_CONTROLLER_INTERFACE_H_
-
 // Copyright 2015 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,6 +13,9 @@
 // limitations under the License.
 //
 // Author: cheesy@google.com (Steve Hill)
+
+#ifndef NET_INSTAWEB_REWRITER_PUBLIC_CENTRAL_CONTROLLER_INTERFACE_H_
+#define NET_INSTAWEB_REWRITER_PUBLIC_CENTRAL_CONTROLLER_INTERFACE_H_
 
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/function.h"
