@@ -909,6 +909,34 @@ NameVirtualHost 127.0.0.1:@@APACHE_TERTIARY_PORT@@
 
 <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/ipro/instant/wait/" >
     ModPagespeedInPlaceWaitForOptimized on
+
+    # Make the deadline long here for valgrind tests.  We could
+    # conditionalize this.
+    ModPagespeedInPlaceRewriteDeadlineMs 10000
+</Directory>
+
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/ipro/wait/" >
+    # TODO(jmarantz): ModPagespeedInPlaceWaitForOptimized should be superfluous,
+    # or made equivalent to ModPagespeedInPlaceRewriteDeadlineMs -1, which waits
+    # forever.  Otherwise ModPagespeedInPlaceRewriteDeadlineMs should just have
+    # the specified deadline.
+    # # See https://github.com/pagespeed/mod_pagespeed/issues/1171 for more
+    # detailed discussion.
+    ModPagespeedInPlaceWaitForOptimized on
+</Directory>
+
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/ipro/wait/long/" >
+    # Make the deadline long here for valgrind tests.  We could
+    # conditionalize this.
+    ModPagespeedInPlaceRewriteDeadlineMs 10000
+</Directory>
+
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/ipro/wait/short/" >
+    ModPagespeedEnableFilters in_place_optimize_for_browser
+
+    # Make the deadline short here as we expect to always miss it
+    # in tests.
+    ModPagespeedInPlaceRewriteDeadlineMs 1
 </Directory>
 
 <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/ipro/instant/deadline/" >

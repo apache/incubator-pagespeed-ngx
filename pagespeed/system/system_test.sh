@@ -2221,3 +2221,31 @@ check_from "$(extract_headers $WGET_OUTPUT)" grep -q "image/webp"
 #check [ $NUM_REWRITES_URL2 = $NUM_REWRITES_URL1 ]
 check [ $NUM_FETCHES_URL2 = $NUM_FETCHES_URL1 ]
 URL=""
+
+if [ "$CACHE_FLUSH_TEST" = "on" ]; then
+  start_test 2-pass ipro with long ModPagespeedInPlaceRewriteDeadline
+  cmd="$WGET_DUMP $TEST_ROOT/ipro/wait/long/purple.css"
+  echo $cmd; OUT=$($cmd)
+  echo first pass: the fetch  must occur first regardless of the deadline.
+  check_from "$OUT" fgrep -q 'background: MediumPurple;'
+  echo second pass: a long deadline and an easy optimization
+  echo make an optimized result very likely on the second pass.
+  echo $cmd; OUT=$($cmd)
+  check_from "$OUT" fgrep -q 'body{background:#9370db}'
+
+  start_test 3-pass ipro with short ModPagespeedInPlaceRewriteDeadline
+  cmd="$WGET_DUMP $TEST_ROOT/ipro/wait/short/Puzzle.jpg "
+  echo $cmd; bytes=$($cmd | wc -c)
+  echo first pass: the fetch  must occur first regardless of the deadline.
+  check [ $bytes -gt 100000 ]
+  echo second pass: a short deadline and an image optimization
+  echo make an unoptimized result very likely on the second pass.
+  echo $cmd; bytes=$($cmd | wc -c)
+  # TODO(jmarantz): This is a bug.  Currently the ipro fetch path does
+  # not run the scheduler, so it does not get timeouts, so it will continue
+  # optimizating until it's done, even if it's past the deadline.
+  # See https://github.com/pagespeed/mod_pagespeed/issues/1171 for more
+  # detailed discussion.
+  # check [ $bytes -gt 100000 ]
+  check [ $bytes -lt 100000 ]
+fi
