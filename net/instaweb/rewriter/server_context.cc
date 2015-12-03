@@ -926,8 +926,7 @@ void ServerContext::GetRemoteOptions(RewriteOptions* remote_options,
     GoogleString config =
         FetchRemoteConfig(remote_options->remote_configuration_url(),
                           remote_options->remote_configuration_timeout_ms(),
-                          remote_options->implicit_cache_ttl_ms(), on_startup,
-                          request_ctx);
+                          on_startup, request_ctx);
     if (!on_startup) {
       ApplyRemoteConfig(config, remote_options);
     }
@@ -1305,15 +1304,9 @@ void ServerContext::ShowCacheHandler(
 
 GoogleString ServerContext::FetchRemoteConfig(const GoogleString& url,
                                               int64 timeout_ms,
-                                              int64 implicit_cache_ttl_ms,
                                               bool on_startup,
                                               RequestContextPtr request_ctx) {
   CHECK(!url.empty());
-  HttpOptions fetch_options;
-  fetch_options.implicit_cache_ttl_ms = implicit_cache_ttl_ms;
-  fetch_options.respect_vary = false;
-  // Minimum TTL for cachable resources, -1 for no minimum.
-  fetch_options.min_cache_ttl_ms = -1;
   // Set up the fetcher.
   GoogleString out_str;
   StringWriter out_writer(&out_str);

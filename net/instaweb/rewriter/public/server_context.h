@@ -719,7 +719,7 @@ class ServerContext {
   // of timeout_ms. If on_startup is true, the fetch is backgrounded and the
   // result is ignored. Startup fetches are only used for populating the cache.
   GoogleString FetchRemoteConfig(const GoogleString& url, int64 timeout_ms,
-                                 int64 implicit_cache_ttl_ms, bool on_startup,
+                                 bool on_startup,
                                  RequestContextPtr request_ctx);
 
   // These are normally owned by the RewriteDriverFactory that made 'this'.
