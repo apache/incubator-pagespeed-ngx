@@ -18,8 +18,9 @@
 
 namespace net_instaweb {
 
-CentralController::CentralController(WorkBound* work_bound)
-    : CompatibleCentralController(work_bound) {
+CentralController::CentralController(int max_expensive_operations,
+                                     Statistics* stats)
+    : CompatibleCentralController(max_expensive_operations, stats) {
 }
 
 CentralController::~CentralController() {

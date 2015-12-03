@@ -31,6 +31,7 @@
 #include "net/instaweb/http/public/wait_url_async_fetcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/image_testing_peer.h"
+#include "net/instaweb/rewriter/public/compatible_central_controller.h"
 #include "net/instaweb/rewriter/public/dom_stats_filter.h"
 #include "net/instaweb/rewriter/public/image.h"
 #include "net/instaweb/rewriter/public/mock_critical_images_finder.h"
@@ -39,7 +40,6 @@
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -931,13 +931,13 @@ class ImageRewriteTest : public RewriteTestBase {
     // Set the current # of rewrites very high, so we stop doing more
     // due to "load".
     UpDownCounter* ongoing_rewrites = statistics()->GetUpDownCounter(
-        RewriteDriverFactory::kCurrentExpensiveOperations);
+        CompatibleCentralController::kCurrentExpensiveOperations);
     ongoing_rewrites->Set(100);
   }
 
   void UnMarkTooBusyToWork() {
     UpDownCounter* ongoing_rewrites = statistics()->GetUpDownCounter(
-        RewriteDriverFactory::kCurrentExpensiveOperations);
+        CompatibleCentralController::kCurrentExpensiveOperations);
     ongoing_rewrites->Set(0);
   }
 

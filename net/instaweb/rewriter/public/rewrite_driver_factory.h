@@ -34,7 +34,6 @@
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/thread/queued_worker_pool.h"
-#include "pagespeed/kernel/util/work_bound.h"
 
 namespace pagespeed { namespace js { struct JsTokenizerPatterns; } }
 
@@ -86,8 +85,6 @@ class RewriteDriverFactory {
     // Make sure to insert new values above this line.
     kNumWorkerPools
   };
-
-  static const char kCurrentExpensiveOperations[];
 
   // Takes ownership of thread_system.
   RewriteDriverFactory(const ProcessContext& process_context,
@@ -441,8 +438,6 @@ class RewriteDriverFactory {
   // it for decoding URLs, based on this object's values and some stubs.
   void InitStubDecodingServerContext(ServerContext* context);
 
-  // Init central_controller_ and associated deps.
-  void InitCentralController();
   // Allow sub-classes to pick which CentralController they want to use.
   virtual CentralControllerInterface* CreateCentralController();
 
@@ -450,8 +445,6 @@ class RewriteDriverFactory {
   void RebuildDecodingDriverForTests(ServerContext* server_context);
 
   void reset_default_options(RewriteOptions* new_defaults);
-
-  WorkBound* work_bound() { return work_bound_.get(); }
 
  private:
   // Creates a StaticAssetManager instance. Default implementation creates an
@@ -545,8 +538,6 @@ class RewriteDriverFactory {
 
   // The hostname we're running on. Used to set the same field in ServerContext.
   GoogleString hostname_;
-
-  scoped_ptr<WorkBound> work_bound_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriverFactory);
 };

@@ -20,6 +20,8 @@
 #include "net/instaweb/rewriter/public/central_controller_interface.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/function.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/util/work_bound.h"
 
 namespace net_instaweb {
@@ -28,15 +30,19 @@ namespace net_instaweb {
 // match pre-CentralControllerInterface code.
 class CompatibleCentralController : public CentralControllerInterface {
  public:
-  explicit CompatibleCentralController(WorkBound* work_bound);
+  static const char kCurrentExpensiveOperations[];
+
+  CompatibleCentralController(int max_expensive_operations, Statistics* stats);
 
   virtual ~CompatibleCentralController();
+
+  static void InitStats(Statistics* stats);
 
   virtual void ScheduleExpensiveOperation(Function* callback);
   virtual void NotifyExpensiveOperationComplete();
 
  private:
-  WorkBound* work_bound_;  // Not owned.
+  scoped_ptr<WorkBound> work_bound_;
 
   DISALLOW_COPY_AND_ASSIGN(CompatibleCentralController);
 };

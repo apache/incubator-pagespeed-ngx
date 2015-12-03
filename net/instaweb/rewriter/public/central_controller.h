@@ -19,7 +19,7 @@
 
 #include "net/instaweb/rewriter/public/compatible_central_controller.h"
 #include "pagespeed/kernel/base/basictypes.h"
-#include "pagespeed/kernel/util/work_bound.h"
+#include "pagespeed/kernel/base/statistics.h"
 
 namespace net_instaweb {
 
@@ -30,7 +30,7 @@ namespace net_instaweb {
 
 class CentralController : public CompatibleCentralController {
  public:
-  explicit CentralController(WorkBound* work_bound);
+  CentralController(int max_expensive_operations, Statistics* statistics);
   virtual ~CentralController();
 
  private:

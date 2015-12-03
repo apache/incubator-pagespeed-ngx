@@ -16,13 +16,24 @@
 
 #include "net/instaweb/rewriter/public/compatible_central_controller.h"
 
+#include "pagespeed/kernel/util/statistics_work_bound.h"
+
 namespace net_instaweb {
 
-CompatibleCentralController::CompatibleCentralController(WorkBound* work_bound)
-    : work_bound_(work_bound) {
-}
+const char CompatibleCentralController::kCurrentExpensiveOperations[] =
+    "current-expensive-operations";
+
+CompatibleCentralController::CompatibleCentralController(
+    int max_expensive_operations, Statistics* statistics)
+    : work_bound_(new StatisticsWorkBound(
+          statistics->GetUpDownCounter(kCurrentExpensiveOperations),
+          max_expensive_operations)) {}
 
 CompatibleCentralController::~CompatibleCentralController() {
+}
+
+void CompatibleCentralController::InitStats(Statistics* statistics) {
+  statistics->AddGlobalUpDownCounter(kCurrentExpensiveOperations);
 }
 
 void CompatibleCentralController::ScheduleExpensiveOperation(

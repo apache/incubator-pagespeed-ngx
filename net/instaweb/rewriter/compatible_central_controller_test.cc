@@ -20,12 +20,9 @@
 
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
-#include "pagespeed/kernel/base/statistics.h"
-#include "pagespeed/kernel/base/statistics_template.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/util/platform.h"
 #include "pagespeed/kernel/util/simple_stats.h"
-#include "pagespeed/kernel/util/statistics_work_bound.h"
 
 namespace net_instaweb {
 
@@ -45,23 +42,18 @@ class TrackCallsFunction : public Function {
   bool cancel_called_;
 };
 
-const char kStatName[] = "expensive_ops";
-
 class CompatibleCentralControllerTest : public testing::Test {
  public:
   CompatibleCentralControllerTest() :
     thread_system_(Platform::CreateThreadSystem()),
-    stats_(thread_system_.get()),
-    counter_(stats_.AddUpDownCounter(kStatName)),
-    work_bound_(new StatisticsWorkBound(counter_, 1)),
-    central_controller_(new CompatibleCentralController(work_bound_.get())) {
+    stats_(thread_system_.get()) {
+    CompatibleCentralController::InitStats(&stats_);
+    central_controller_.reset(new CompatibleCentralController(1, &stats_));
   }
 
  protected:
   scoped_ptr<ThreadSystem> thread_system_;
   SimpleStats stats_;
-  UpDownCounter* counter_;
-  scoped_ptr<WorkBound> work_bound_;
   scoped_ptr<CompatibleCentralController> central_controller_;
 };
 
