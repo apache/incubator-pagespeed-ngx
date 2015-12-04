@@ -4775,8 +4775,8 @@ TEST_F(RewriteContextTest, DropFetchesAndRecover) {
   options()->ComputeSignature();
   rewrite_driver()->AddFilters();
 
-  // Build HTML content that has 33 more CSS links than we can queue up due
-  // to rate-limited fetching.
+  // Build HTML content that has more CSS links than we can fetch
+  // simultaneously.
   const int kExcessResources =
       TestRewriteDriverFactory::kFetchesPerHostOutgoingRequestThreshold / 3;
   const int kResourceCount =
@@ -4841,6 +4841,50 @@ TEST_F(RewriteContextTest, DropFetchesAndRecover) {
   rewrite_driver()->WaitForCompletion();
   num_unrewritten_css = RewriteAndCountUnrewrittenCss("10.001_release", html);
   EXPECT_EQ(0, num_unrewritten_css);
+}
+
+TEST_F(RewriteContextTest, DropFetchesAndRecoverFetchPath) {
+  // This is like DropFetchesAndRecover, but we test recovery on fetch,
+  // not HTML rewrite.
+
+  // Construct some HTML with more resources to fetch than our rate-limiting
+  // fetcher will allow.
+  InitUpperFilter(kRewrittenResource, rewrite_driver());
+  SetupWaitFetcher();
+  options()->ComputeSignature();
+  rewrite_driver()->AddFilters();
+
+  // Build HTML content that has more CSS links than we can fetch
+  // simultaneously.
+  const int kExcessResources =
+      TestRewriteDriverFactory::kFetchesPerHostOutgoingRequestThreshold / 3;
+  const int kResourceCount =
+      TestRewriteDriverFactory::kMaxFetchGlobalQueueSize +
+      TestRewriteDriverFactory::kFetchesPerHostOutgoingRequestThreshold +
+      kExcessResources;
+  GoogleString html;
+  for (int i = 0; i < kResourceCount; ++i) {
+    GoogleString url = StringPrintf("x%d.css", i);
+    GoogleString content = StringPrintf("a%d", i);  // Rewriter will upper-case.
+    SetResponseWithDefaultHeaders(url, kContentTypeCss, content, 100 /* sec */);
+    StrAppend(&html, CssLinkHref(url));
+  }
+
+  // Rewrite the HTML.  None of the fetches will be done before the deadline,
+  // so no changes will be made to the HTML.
+  ValidateNoChanges("no_changes_call_all_fetches_delayed", html);
+
+  // Now let the fetches all go -- the ones that weren't dropped, anyway.
+  factory()->wait_url_async_fetcher()->SetPassThroughMode(true);
+  rewrite_driver()->WaitForCompletion();
+
+  // Try fetching rewritten versions.
+  for (int i = 0; i < kResourceCount; ++i) {
+    GoogleString base_url = StringPrintf("x%d.css", i);
+    GoogleString out_url = Encode(
+        kTestDomain, UpperCaseRewriter::kFilterId, "0", base_url, "css");
+    EXPECT_TRUE(TryFetchResource(out_url));
+  }
 }
 
 TEST_F(RewriteContextTest, AbandonRedundantFetchInHTML) {

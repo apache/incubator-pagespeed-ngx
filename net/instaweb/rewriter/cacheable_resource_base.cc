@@ -486,20 +486,17 @@ void CacheableResourceBase::LoadHttpCacheCallback::Done(
                                true /* resource_ok */);
       break;
     case HTTPCache::kRecentFailure:
-      // TODO(jmarantz): in this path, should we try to fetch again
-      // sooner than 5 minutes, especially if this is not a background
-      // fetch, but rather one for serving the user? This could get
-      // frustrating, even if the software is functioning as intended,
-      // because a missing resource that is put in place by a site
-      // admin will not be checked again for 5 minutes.
-      //
-      // The "good" news is that if the admin is willing to crank up
-      // logging to 'info' then http_cache.cc will log the
-      // 'remembered' failure.
-      if (not_cacheable_policy_ == Resource::kLoadEvenIfNotCacheable &&
-          (find_result.failure_details == kFetchStatusUncacheable200 ||
-           find_result.failure_details == kFetchStatusUncacheableError ||
-           find_result.failure_details == kFetchStatusEmpty)) {
+      // We may need to retry even if we have a cached failure if:
+      // a) The user wants uncacheable resources, and that's the failure we
+      //    recorded.
+      // b) The fetch is user-facing and the "failure" is actually us
+      //    load-shedding in the past.
+      if ((not_cacheable_policy_ == Resource::kLoadEvenIfNotCacheable &&
+           (find_result.failure_details == kFetchStatusUncacheable200 ||
+            find_result.failure_details == kFetchStatusUncacheableError ||
+            find_result.failure_details == kFetchStatusEmpty)) ||
+          (!resource_->is_background_fetch() &&
+            find_result.failure_details == kFetchStatusDropped)) {
         resource_->recent_uncacheables_miss_->Add(1);
         LoadAndSaveToCache();
       } else {

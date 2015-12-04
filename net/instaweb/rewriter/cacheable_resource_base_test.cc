@@ -377,6 +377,57 @@ TEST_F(CacheableResourceBaseTest, FetchFailure) {
   CheckStats(resource_.get(), 0, 1, 0, 0, 2);
 }
 
+TEST_F(CacheableResourceBaseTest, DropHandling) {
+  // First have mock fetcher emulate a drop.
+  ResponseHeaders not_found;
+  SetDefaultLongCacheHeaders(&kContentTypeHtml, &not_found);
+  not_found.SetStatusAndReason(HttpStatus::kUnavailable);
+  not_found.Add(HttpAttributes::kXPsaLoadShed, "1");
+  SetFetchResponse("http://www.example.com/", not_found, "hmm");
+
+  MockResourceCallback callback(ResourcePtr(resource_.get()),
+                                server_context()->thread_system());
+
+  resource_->LoadAsync(Resource::kLoadEvenIfNotCacheable,
+                       RequestContext::NewTestRequestContext(
+                           server_context()->thread_system()),
+                       &callback);
+  EXPECT_TRUE(callback.done());
+  EXPECT_FALSE(resource_->IsValidAndCacheable());
+
+  resource_->Reset();
+
+  // Now have the fetch result in a 200.
+  ResponseHeaders found;
+  SetDefaultLongCacheHeaders(&kContentTypeCss, &found);
+  found.SetStatusAndReason(HttpStatus::kOK);
+  SetFetchResponse("http://www.example.com/", found, "* {display: stylish; }");
+
+  // Still cached since background fetch.
+  MockResourceCallback callback2(ResourcePtr(resource_.get()),
+                                 server_context()->thread_system());
+
+  resource_->LoadAsync(Resource::kLoadEvenIfNotCacheable,
+                       RequestContext::NewTestRequestContext(
+                           server_context()->thread_system()),
+                       &callback2);
+  EXPECT_TRUE(callback2.done());
+  EXPECT_FALSE(resource_->IsValidAndCacheable());
+  resource_->Reset();
+
+  // Marked as a non-background, will retry.
+  resource_->set_is_background_fetch(false);
+  MockResourceCallback callback3(ResourcePtr(resource_.get()),
+                                 server_context()->thread_system());
+
+  resource_->LoadAsync(Resource::kLoadEvenIfNotCacheable,
+                       RequestContext::NewTestRequestContext(
+                           server_context()->thread_system()),
+                       &callback3);
+  EXPECT_TRUE(callback3.done());
+  EXPECT_TRUE(resource_->IsValidAndCacheable());
+}
+
 TEST_F(CacheableResourceBaseTest, FreshenInfo) {
   SetResponseWithDefaultHeaders(kTestUrl, kContentTypeText,
                                 kContent, 1000);
