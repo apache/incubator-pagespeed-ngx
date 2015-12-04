@@ -98,6 +98,9 @@
           ['<(gcc_version) < 45', {
             'cflags!': ['-Wno-unused-result']
           }],
+          ['<(gcc_version) == 46', {
+            'cflags+': ['-Wno-sign-compare']
+          }],
         ],
         'cflags': [
           # Our dependency on OpenCV need us to turn on exceptions.
