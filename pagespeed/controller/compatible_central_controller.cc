@@ -14,7 +14,7 @@
 //
 // Author: cheesy@google.com (Steve Hill)
 
-#include "net/instaweb/rewriter/public/compatible_central_controller.h"
+#include "pagespeed/controller/compatible_central_controller.h"
 
 #include "pagespeed/kernel/util/statistics_work_bound.h"
 

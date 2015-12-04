@@ -14,15 +14,15 @@
 //
 // Author: cheesy@google.com (Steve Hill)
 
-#ifndef NET_INSTAWEB_REWRITER_PUBLIC_CENTRAL_CONTROLLER_CALLBACK_H_
-#define NET_INSTAWEB_REWRITER_PUBLIC_CENTRAL_CONTROLLER_CALLBACK_H_
+#ifndef PAGESPEED_CONTROLLER_CENTRAL_CONTROLLER_CALLBACK_H_
+#define PAGESPEED_CONTROLLER_CENTRAL_CONTROLLER_CALLBACK_H_
 
 #include "base/logging.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/thread/queued_worker_pool.h"
-#include "net/instaweb/rewriter/public/central_controller_interface.h"
+#include "pagespeed/controller/central_controller_interface.h"
 
 namespace net_instaweb {
 
@@ -151,4 +151,4 @@ void CentralControllerCallback<TransactionContext>::CancelAfterRequeue() {
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_REWRITER_PUBLIC_CENTRAL_CONTROLLER_CALLBACK_H_
+#endif  // PAGESPEED_CONTROLLER_CENTRAL_CONTROLLER_CALLBACK_H_

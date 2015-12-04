@@ -15,8 +15,8 @@
  */
 // Author: cheesy@google.com (Steve Hill)
 
-#include "net/instaweb/rewriter/public/central_controller_callback.h"
-#include "net/instaweb/rewriter/public/central_controller_interface.h"
+#include "pagespeed/controller/central_controller_callback.h"
+#include "pagespeed/controller/central_controller_interface.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/gtest.h"

@@ -14,7 +14,7 @@
 //
 // Author: cheesy@google.com (Steve Hill)
 
-#include "net/instaweb/rewriter/public/central_controller_interface_adapter.h"
+#include "pagespeed/controller/expensive_operation_callback.h"
 
 namespace net_instaweb {
 
@@ -45,20 +45,6 @@ ExpensiveOperationCallback::~ExpensiveOperationCallback() {
 ExpensiveOperationContext* ExpensiveOperationCallback::CreateTransactionContext(
     CentralControllerInterface* interface) {
   return new ExpensiveOperationContext(interface);
-}
-
-CentralControllerInterfaceAdapter::CentralControllerInterfaceAdapter(
-    CentralControllerInterface* central_controller)
-    : central_controller_(central_controller) {
-}
-
-CentralControllerInterfaceAdapter::~CentralControllerInterfaceAdapter() {
-}
-
-void CentralControllerInterfaceAdapter::ScheduleExpensiveOperation(
-    ExpensiveOperationCallback* callback) {
-  callback->SetCentralControllerInterface(central_controller_.get());
-  central_controller_->ScheduleExpensiveOperation(callback);
 }
 
 }  // namespace net_instaweb

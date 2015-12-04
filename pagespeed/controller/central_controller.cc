@@ -14,7 +14,7 @@
 //
 // Author: cheesy@google.com (Steve Hill)
 
-#include "net/instaweb/rewriter/public/central_controller.h"
+#include "pagespeed/controller/central_controller.h"
 
 namespace net_instaweb {
 

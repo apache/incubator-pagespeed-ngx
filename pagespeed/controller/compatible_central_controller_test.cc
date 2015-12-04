@@ -16,7 +16,7 @@
  * Author: cheesy@google.com (Steve Hill)
  */
 
-#include "net/instaweb/rewriter/public/compatible_central_controller.h"
+#include "pagespeed/controller/compatible_central_controller.h"
 
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"

@@ -14,10 +14,10 @@
 //
 // Author: cheesy@google.com (Steve Hill)
 
-#ifndef NET_INSTAWEB_REWRITER_PUBLIC_CENTRAL_CONTROLLER_H_
-#define NET_INSTAWEB_REWRITER_PUBLIC_CENTRAL_CONTROLLER_H_
+#ifndef PAGESPEED_CONTROLLER_CENTRAL_CONTROLLER_H_
+#define PAGESPEED_CONTROLLER_CENTRAL_CONTROLLER_H_
 
-#include "net/instaweb/rewriter/public/compatible_central_controller.h"
+#include "pagespeed/controller/compatible_central_controller.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/statistics.h"
 
@@ -39,4 +39,4 @@ class CentralController : public CompatibleCentralController {
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_REWRITER_PUBLIC_CENTRAL_CONTROLLER_H_
+#endif  // PAGESPEED_CONTROLLER_CENTRAL_CONTROLLER_H_

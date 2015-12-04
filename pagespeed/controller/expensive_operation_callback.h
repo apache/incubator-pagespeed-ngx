@@ -14,19 +14,21 @@
 //
 // Author: cheesy@google.com (Steve Hill)
 
-#ifndef NET_INSTAWEB_REWRITER_PUBLIC_CENTRAL_CONTROLLER_INTERFACE_ADAPTER_H_
-#define NET_INSTAWEB_REWRITER_PUBLIC_CENTRAL_CONTROLLER_INTERFACE_ADAPTER_H_
+#ifndef PAGESPEED_CONTROLLER_EXPENSIVE_OPERATION_CALLBACK_H_
+#define PAGESPEED_CONTROLLER_EXPENSIVE_OPERATION_CALLBACK_H_
 
-#include "net/instaweb/rewriter/public/central_controller_interface.h"
-#include "net/instaweb/rewriter/public/central_controller_callback.h"
+#include "pagespeed/controller/central_controller_interface.h"
+#include "pagespeed/controller/central_controller_callback.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/thread/queued_worker_pool.h"
 
+// Callback classes to support ExpensiveOperation features in
+// CentralControllerInterfaceAdapter.
+
 namespace net_instaweb {
 
-// Adapt CentralControllerInterface onto a more programmer-friendly API.
-
+// Passed to RunImpl for implementations of ExpensiveOperationCallback.
 class ExpensiveOperationContext {
  public:
   explicit ExpensiveOperationContext(CentralControllerInterface* interface);
@@ -40,6 +42,8 @@ class ExpensiveOperationContext {
   CentralControllerInterface* central_controller_;
 };
 
+// Implementor interface to ExpensiveOperation features in
+// ExpensiveOperationInterfaceAdapter.
 class ExpensiveOperationCallback
     : public CentralControllerCallback<ExpensiveOperationContext> {
  public:
@@ -55,24 +59,6 @@ class ExpensiveOperationCallback
   virtual void CancelImpl() = 0;
 };
 
-class CentralControllerInterfaceAdapter {
- public:
-  // Takes ownership of interface.
-  explicit CentralControllerInterfaceAdapter(
-      CentralControllerInterface* interface);
-  virtual ~CentralControllerInterfaceAdapter();
-
-  // Runs callback at an indeterminate time in the future when it is safe
-  // to perform a CPU intensive operation. Or may Cancel the callback at some
-  // point if it is determined that the work cannot be performed.
-  virtual void ScheduleExpensiveOperation(ExpensiveOperationCallback* callback);
-
- private:
-  scoped_ptr<CentralControllerInterface> central_controller_;
-
-  DISALLOW_COPY_AND_ASSIGN(CentralControllerInterfaceAdapter);
-};
-
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_REWRITER_PUBLIC_CENTRAL_CONTROLLER_INTERFACE_ADAPTER_H_
+#endif  // PAGESPEED_CONTROLLER_EXPENSIVE_OPERATION_CALLBACK_H_

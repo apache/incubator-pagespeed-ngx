@@ -14,8 +14,8 @@
 //
 // Author: cheesy@google.com (Steve Hill)
 
-#ifndef NET_INSTAWEB_REWRITER_PUBLIC_CENTRAL_CONTROLLER_INTERFACE_H_
-#define NET_INSTAWEB_REWRITER_PUBLIC_CENTRAL_CONTROLLER_INTERFACE_H_
+#ifndef PAGESPEED_CONTROLLER_CENTRAL_CONTROLLER_INTERFACE_H_
+#define PAGESPEED_CONTROLLER_CENTRAL_CONTROLLER_INTERFACE_H_
 
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/function.h"
@@ -49,4 +49,4 @@ class CentralControllerInterface {
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_REWRITER_PUBLIC_CENTRAL_CONTROLLER_INTERFACE_H_
+#endif  // PAGESPEED_CONTROLLER_CENTRAL_CONTROLLER_INTERFACE_H_

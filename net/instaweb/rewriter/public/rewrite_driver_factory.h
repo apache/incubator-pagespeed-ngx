@@ -22,8 +22,9 @@
 #include <set>
 #include <vector>
 
-#include "net/instaweb/rewriter/public/central_controller_interface.h"
-#include "net/instaweb/rewriter/public/central_controller_interface_adapter.h"
+#include "pagespeed/controller/central_controller_interface.h"
+#include "pagespeed/controller/central_controller_interface_adapter.h"
+#include "pagespeed/controller/expensive_operation_callback.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/function.h"
