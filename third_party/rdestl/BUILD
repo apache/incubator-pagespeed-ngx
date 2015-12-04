@@ -8,7 +8,12 @@
 
 package(
     default_copts = ["-DDISABLE_GOOGLE_GLOBAL_USING_DECLARATIONS"],
+    default_hdrs_check = "loose",
     default_visibility = ["//visibility:public"],
+    features = [
+        "-layering_check",
+        "-parse_headers",
+    ],
 )
 
 licenses(["notice"])  # Apache 2.0
