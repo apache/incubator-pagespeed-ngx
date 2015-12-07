@@ -1767,7 +1767,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
     local handler="$2"
     local expectation="$3"
 
-    URL="$host_prefix.example.com/$handler"
+    URL="http://$host_prefix.example.com/$handler"
     echo "http_proxy=$SECONDARY_HOSTNAME curl $URL"
     OUT=$(http_proxy=$SECONDARY_HOSTNAME \
       $CURL -o/dev/null -sS --write-out '%{http_code}\n' "$URL")
