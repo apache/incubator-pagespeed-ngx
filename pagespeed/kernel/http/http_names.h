@@ -32,6 +32,7 @@ namespace net_instaweb {
 struct HttpAttributes {
   static const char kAccept[];
   static const char kAcceptEncoding[];
+  static const char kAcceptRanges[];
   static const char kAccessControlAllowOrigin[];
   static const char kAccessControlAllowCredentials[];
   static const char kAge[];

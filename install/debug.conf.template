@@ -32,6 +32,11 @@ ModPagespeedBlockingRewriteKey psatest
 # enable image beaconing explicitly.
 ModPagespeedCriticalImagesBeaconEnabled false
 
+<Location ~ "\.pagespeed\.([a-z]\.)?[a-z]{2}\.[^.]{10}\.[^.]+">
+  # For testing that AddResourceHeader gets passed through
+  ModPagespeedAddResourceHeader "X-Foo" "Bar"
+</Location>
+
 # By default, resources will not be used for inlining without explicit
 # authorization. Supported values are off or a comma-separated list of strings
 # from {Script,Stylesheet}.
@@ -1793,6 +1798,7 @@ Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
 </VirtualHost>
 
 #ALL_DIRECTIVES # Invoke all ModPagespeed* directives to make sure they work:
+#ALL_DIRECTIVES ModPagespeedAddResourceHeader foo bar
 #ALL_DIRECTIVES ModPagespeedAllow foo
 #ALL_DIRECTIVES ModPagespeedAnalyticsID 1234
 #ALL_DIRECTIVES ModPagespeedAvoidRenamingIntrospectiveJavascript true
@@ -1813,6 +1819,7 @@ Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedCssInlineMaxBytes 2000
 #ALL_DIRECTIVES ModPagespeedCssOutlineMinBytes 2000
 #ALL_DIRECTIVES ModPagespeedCssPreserveURLs off
+#ALL_DIRECTIVES ModPagespeedCustomFetchHeader foo bar
 #ALL_DIRECTIVES ModPagespeedDefaultSharedMemoryCacheKB 1000
 #ALL_DIRECTIVES ModPagespeedDisableFilters strip_scripts
 #ALL_DIRECTIVES ModPagespeedDisallow bar

@@ -414,6 +414,7 @@ class RewriteOptions {
   static const char kInlineResourcesWithoutExplicitAuthorization[];
   static const char kRetainComment[];
   // 2-argument ones:
+  static const char kAddResourceHeader[];
   static const char kCustomFetchHeader[];
   static const char kLoadFromFile[];
   static const char kLoadFromFileMatch[];
@@ -1041,6 +1042,34 @@ class RewriteOptions {
   }
   void SetRewriteLevel(RewriteLevel level) {
     set_option(level, &level_);
+  }
+
+  // Returns true iff given name and value are valid to set as a http header.
+  // If false is returned, error_message will have a descriptive failure
+  // message set.
+  bool ValidateConfiguredHttpHeader(const GoogleString& name,
+                                    const GoogleString& value,
+                                    GoogleString* error_message);
+
+  // If false was returned, no changes are made, and error_message will be
+  // assigned a failure description. If true was returned, the name/value
+  // passed validation and have been appended to resource_headers_.
+  // Multiple calls to ValidateAndAddResourceHeader with the same name will
+  // result in multiple headers being appended with the same name.
+  bool ValidateAndAddResourceHeader(const StringPiece& name,
+                                    const StringPiece& value,
+                                    GoogleString* error_message);
+
+  // Unconditionally appends the given name / value to resource_headers_. Use
+  // ValidateAndAddResourceHeader if you need validation.
+  void AddResourceHeader(const StringPiece& name, const StringPiece& value);
+
+  const NameValue* resource_header(int i) const {
+    return resource_headers_[i];
+  }
+
+  int num_resource_headers() const {
+    return resource_headers_.size();
   }
 
   // Specify a header to insert when fetching subresources.
@@ -3547,6 +3576,9 @@ class RewriteOptions {
   static void InitFilterIdToEnumArray();
   static void InitOptionIdToPropertyArray();
   static void InitOptionNameToPropertyArray();
+  // Inits fixed_resource_headers_ to a sorted list of headers not allowed in
+  // AddResourceHeader.
+  static void InitFixedResourceHeaders();
 
   // Helper for converting the result of SetOptionFromNameInternal into
   // a status/message pair. The returned result may be adjusted from the passed
@@ -4220,6 +4252,11 @@ class RewriteOptions {
   int experiment_percent_;  // Total traffic going through experiments.
   std::vector<ExperimentSpec*> experiment_specs_;
 
+  // Headers to add resource responses.
+  // TODO(oschaaf): Wrap this and custom_fetch_headers_ in CopyOnWrite through
+  // a new class. Move header validations over there as well so we can share
+  // them.
+  std::vector<NameValue*> resource_headers_;
   // Headers to add to subresource requests.
   std::vector<NameValue*> custom_fetch_headers_;
 
