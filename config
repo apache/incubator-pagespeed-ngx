@@ -264,7 +264,7 @@ ngx_feature_test="
    // See https://gcc.gnu.org/onlinedocs/libstdc++/manual/abi.html#abi.versioning 
    // for a list of various values of __GLIBCXX__. Note that they're not monotonic
    // with respect to version numbers.
-   #if __GLIBCXX__ == 20120322  ||__GLIBCXX__ == 20120614
+   #if __GLIBCXX__ == 20120322  || __GLIBCXX__ == 20120614
       #error \"clang is using libstdc++ 4.7.0 or 4.7.1, which can cause binary incompatibility.\"
    #endif
 #endif
