@@ -236,7 +236,7 @@
         '<(DEPTH)/pagespeed/system/admin_site_test.cc',
         '<(DEPTH)/pagespeed/system/system_message_handler_test.cc',
         '<(DEPTH)/pagespeed/controller/central_controller_callback_test.cc',
-        '<(DEPTH)/pagespeed/controller/compatible_central_controller_test.cc',
+        '<(DEPTH)/pagespeed/controller/work_bound_expensive_operation_controller_test.cc',
         '<(DEPTH)/pagespeed/kernel/base/annotated_message_handler_test.cc',
         '<(DEPTH)/pagespeed/kernel/base/arena_test.cc',
         '<(DEPTH)/pagespeed/kernel/base/base64_test.cc',

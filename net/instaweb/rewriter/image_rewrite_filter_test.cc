@@ -46,7 +46,7 @@
 #include "net/instaweb/rewriter/rendered_image.pb.h"
 #include "net/instaweb/util/public/mock_property_page.h"
 #include "net/instaweb/util/public/property_cache.h"
-#include "pagespeed/controller/compatible_central_controller.h"
+#include "pagespeed/controller/work_bound_expensive_operation_controller.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/dynamic_annotations.h"  // RunningOnValgrind
@@ -931,13 +931,13 @@ class ImageRewriteTest : public RewriteTestBase {
     // Set the current # of rewrites very high, so we stop doing more
     // due to "load".
     UpDownCounter* ongoing_rewrites = statistics()->GetUpDownCounter(
-        CompatibleCentralController::kCurrentExpensiveOperations);
+        WorkBoundExpensiveOperationController::kCurrentExpensiveOperations);
     ongoing_rewrites->Set(100);
   }
 
   void UnMarkTooBusyToWork() {
     UpDownCounter* ongoing_rewrites = statistics()->GetUpDownCounter(
-        CompatibleCentralController::kCurrentExpensiveOperations);
+        WorkBoundExpensiveOperationController::kCurrentExpensiveOperations);
     ongoing_rewrites->Set(0);
   }
 

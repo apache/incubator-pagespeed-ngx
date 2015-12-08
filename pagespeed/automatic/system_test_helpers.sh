@@ -298,8 +298,26 @@ function wait_for_async_tests {
   BACKGROUND_TEST_PIDS=()
 }
 
+# Returns the unix system time in milliseconds.
+function now_ms() {
+  # Note: the '%N' probably won't work on FreeBSD, and another solution will be
+  # needed to the current time in milliseconds.
+  date +%s%N | cut -b1-13
+}
+
+# Prints the elapsed time since the last time update_elapsed_time was called.
+previous_time_ms=0
+function update_elapsed_time() {
+  current_time_ms=$(now_ms)
+  if [ "$previous_time_ms" != 0 ]; then
+    echo 'ELAPSED TIME:' $((current_time_ms - previous_time_ms))"ms"
+  fi
+  previous_time_ms="$current_time_ms"
+}
+
 CURRENT_TEST="pre tests"
 function start_test() {
+  update_elapsed_time
   WGET_ARGS=""
   CURRENT_TEST="$@"
   echo "TEST: $CURRENT_TEST"
@@ -366,6 +384,7 @@ function run_wget_with_args() {
 #   Status 1: fail
 #   Status 3: only expected failures
 function check_failures_and_exit() {
+  update_elapsed_time
   if [ -e $FAILURES ] ; then
     echo Expected Failing Tests:
     sed 's/^/  /' $FAILURES

@@ -17,36 +17,21 @@
 #include "pagespeed/controller/compatible_central_controller.h"
 
 #include "pagespeed/kernel/util/statistics_work_bound.h"
+#include "pagespeed/controller/work_bound_expensive_operation_controller.h"
 
 namespace net_instaweb {
 
-const char CompatibleCentralController::kCurrentExpensiveOperations[] =
-    "current-expensive-operations";
-
 CompatibleCentralController::CompatibleCentralController(
     int max_expensive_operations, Statistics* statistics)
-    : work_bound_(new StatisticsWorkBound(
-          statistics->GetUpDownCounter(kCurrentExpensiveOperations),
-          max_expensive_operations)) {}
+    : CentralController(new WorkBoundExpensiveOperationController(
+          max_expensive_operations, statistics)) {
+}
 
 CompatibleCentralController::~CompatibleCentralController() {
 }
 
 void CompatibleCentralController::InitStats(Statistics* statistics) {
-  statistics->AddGlobalUpDownCounter(kCurrentExpensiveOperations);
-}
-
-void CompatibleCentralController::ScheduleExpensiveOperation(
-    Function* callback) {
-  if (work_bound_->TryToWork()) {
-    callback->CallRun();
-  } else {
-    callback->CallCancel();
-  }
-}
-
-void CompatibleCentralController::NotifyExpensiveOperationComplete() {
-  work_bound_->WorkComplete();
+  WorkBoundExpensiveOperationController::InitStats(statistics);
 }
 
 }  // namespace net_instaweb

@@ -18,12 +18,20 @@
 
 namespace net_instaweb {
 
-CentralController::CentralController(int max_expensive_operations,
-                                     Statistics* stats)
-    : CompatibleCentralController(max_expensive_operations, stats) {
+CentralController::CentralController(
+    ExpensiveOperationController* expensive_operation_controller)
+    : expensive_operation_controller_(expensive_operation_controller) {
 }
 
 CentralController::~CentralController() {
+}
+
+void CentralController::ScheduleExpensiveOperation(Function* callback) {
+  expensive_operation_controller_->ScheduleExpensiveOperation(callback);
+}
+
+void CentralController::NotifyExpensiveOperationComplete() {
+  expensive_operation_controller_->NotifyExpensiveOperationComplete();
 }
 
 }  // namespace net_instaweb

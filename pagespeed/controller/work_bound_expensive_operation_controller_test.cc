@@ -16,7 +16,7 @@
  * Author: cheesy@google.com (Steve Hill)
  */
 
-#include "pagespeed/controller/compatible_central_controller.h"
+#include "pagespeed/controller/work_bound_expensive_operation_controller.h"
 
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
@@ -42,47 +42,48 @@ class TrackCallsFunction : public Function {
   bool cancel_called_;
 };
 
-class CompatibleCentralControllerTest : public testing::Test {
+class WorkBoundExpensiveOperationTest : public testing::Test {
  public:
-  CompatibleCentralControllerTest() :
+  WorkBoundExpensiveOperationTest() :
     thread_system_(Platform::CreateThreadSystem()),
     stats_(thread_system_.get()) {
-    CompatibleCentralController::InitStats(&stats_);
-    central_controller_.reset(new CompatibleCentralController(1, &stats_));
+    WorkBoundExpensiveOperationController::InitStats(&stats_);
+    controller_.reset(
+        new WorkBoundExpensiveOperationController(1, &stats_));
   }
 
  protected:
   scoped_ptr<ThreadSystem> thread_system_;
   SimpleStats stats_;
-  scoped_ptr<CompatibleCentralController> central_controller_;
+  scoped_ptr<WorkBoundExpensiveOperationController> controller_;
 };
 
-TEST_F(CompatibleCentralControllerTest, EmptyScheduleImmediately) {
+TEST_F(WorkBoundExpensiveOperationTest, EmptyScheduleImmediately) {
   TrackCallsFunction f;
   EXPECT_FALSE(f.run_called_);
   EXPECT_FALSE(f.cancel_called_);
-  central_controller_->ScheduleExpensiveOperation(&f);
+  controller_->ScheduleExpensiveOperation(&f);
   EXPECT_TRUE(f.run_called_);
   EXPECT_FALSE(f.cancel_called_);
 }
 
-TEST_F(CompatibleCentralControllerTest, ActuallyLimits) {
+TEST_F(WorkBoundExpensiveOperationTest, ActuallyLimits) {
   TrackCallsFunction f1;
   TrackCallsFunction f2;
-  central_controller_->ScheduleExpensiveOperation(&f1);
-  central_controller_->ScheduleExpensiveOperation(&f2);
+  controller_->ScheduleExpensiveOperation(&f1);
+  controller_->ScheduleExpensiveOperation(&f2);
   EXPECT_TRUE(f1.run_called_);
   EXPECT_FALSE(f1.cancel_called_);
   EXPECT_FALSE(f2.run_called_);
   EXPECT_TRUE(f2.cancel_called_);
 }
 
-TEST_F(CompatibleCentralControllerTest, NotifyDone) {
+TEST_F(WorkBoundExpensiveOperationTest, NotifyDone) {
   TrackCallsFunction f1;
   TrackCallsFunction f2;
-  central_controller_->ScheduleExpensiveOperation(&f1);
-  central_controller_->NotifyExpensiveOperationComplete();
-  central_controller_->ScheduleExpensiveOperation(&f2);
+  controller_->ScheduleExpensiveOperation(&f1);
+  controller_->NotifyExpensiveOperationComplete();
+  controller_->ScheduleExpensiveOperation(&f2);
   EXPECT_TRUE(f1.run_called_);
   EXPECT_FALSE(f1.cancel_called_);
   EXPECT_TRUE(f2.run_called_);

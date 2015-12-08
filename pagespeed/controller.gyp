@@ -31,6 +31,7 @@
         'controller/central_controller_interface_adapter.cc',
         'controller/compatible_central_controller.cc',
         'controller/expensive_operation_callback.cc',
+        'controller/work_bound_expensive_operation_controller.cc',
       ],
       'include_dirs': [
         '<(DEPTH)',

@@ -17,33 +17,24 @@
 #ifndef PAGESPEED_CONTROLLER_COMPATIBLE_CENTRAL_CONTROLLER_H_
 #define PAGESPEED_CONTROLLER_COMPATIBLE_CENTRAL_CONTROLLER_H_
 
-#include "pagespeed/controller/central_controller_interface.h"
+#include "pagespeed/controller/central_controller.h"
 #include "pagespeed/kernel/base/basictypes.h"
-#include "pagespeed/kernel/base/function.h"
-#include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/statistics.h"
-#include "pagespeed/kernel/util/work_bound.h"
 
 namespace net_instaweb {
 
 // Implements CentralControllerInterface, delegating to implementations that
-// match pre-CentralControllerInterface code.
-class CompatibleCentralController : public CentralControllerInterface {
+// match pre-CentralControllerInterface code. This is just a convenience
+// wrapper around CentralController with appropriate delegates.
+class CompatibleCentralController : public CentralController {
  public:
-  static const char kCurrentExpensiveOperations[];
-
   CompatibleCentralController(int max_expensive_operations, Statistics* stats);
 
   virtual ~CompatibleCentralController();
 
   static void InitStats(Statistics* stats);
 
-  virtual void ScheduleExpensiveOperation(Function* callback);
-  virtual void NotifyExpensiveOperationComplete();
-
  private:
-  scoped_ptr<WorkBound> work_bound_;
-
   DISALLOW_COPY_AND_ASSIGN(CompatibleCentralController);
 };
 
