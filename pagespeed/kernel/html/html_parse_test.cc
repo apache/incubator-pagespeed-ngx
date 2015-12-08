@@ -1244,6 +1244,8 @@ class HandlerCalledFilter : public HtmlFilter {
     set_is_enabled(enabled_value_);
   }
 
+  virtual bool CanModifyUrls() { return false; }
+
   void SetEnabled(bool enabled_value) {
     enabled_value_  = enabled_value;
   }

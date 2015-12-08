@@ -1830,6 +1830,7 @@
         'rewriter/split_html_helper_filter.cc',
         'rewriter/strip_non_cacheable_filter.cc',
         'rewriter/strip_scripts_filter.cc',
+        'rewriter/strip_subresource_hints_filter.cc',
         'rewriter/support_noscript_filter.cc',
         'rewriter/suppress_prehead_filter.cc',
         'rewriter/url_input_resource.cc',

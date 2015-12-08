@@ -507,6 +507,11 @@ class HtmlParse {
   // Note: you cannot restore during Flush().
   void RestoreDeferredNode(HtmlNode* deferred_node);
 
+  // Returns whether the filter pipeline can rewrite urls.
+  bool can_modify_urls() {
+    return can_modify_urls_;
+  }
+
  protected:
   typedef std::vector<HtmlFilter*> FilterVector;
   typedef std::list<HtmlFilter*> FilterList;
@@ -530,29 +535,33 @@ class HtmlParse {
 
   virtual void ParseTextInternal(const char* content, int size);
 
-  // Calls DetermineEnabledFiltersImpl in an idempotent way.
-  void DetermineEnabledFilters() {
-    if (!determine_enabled_filters_called_) {
-      determine_enabled_filters_called_ = true;
-      DetermineEnabledFiltersImpl();
+  // Calls DetermineFiltersBehaviorImpl in an idempotent way.
+  void DetermineFiltersBehavior() {
+    if (!determine_filter_behavior_called_) {
+      determine_filter_behavior_called_ = true;
+      can_modify_urls_ = false;
+      DetermineFiltersBehaviorImpl();
     }
   }
 
-  void DetermineEnabledFiltersInList(const FilterList& list) {
+  void DetermineFilterListBehavior(const FilterList& list) {
     for (FilterList::const_iterator i = list.begin(); i != list.end(); ++i) {
-      CheckFilterEnabled(*i);
+      CheckFilterBehavior(*i);
     }
   }
 
-  void CheckFilterEnabled(HtmlFilter* filter);
+  void CheckFilterBehavior(HtmlFilter* filter);
 
+  // Determine the behaviour of the configured filters.
   // Call DetermineEnabled() on each filter. Should be called after
   // the property cache lookup has finished since some filters depend on
   // pcache results in their DetermineEnabled implementation. If a subclass has
   // filters that the base HtmlParse doesn't know about, it should override this
   // function and call DetermineEnabled on each of its filters, along with
   // calling the base DetermineEnabledFiltersImpl.
-  virtual void DetermineEnabledFiltersImpl();
+  // For all enabled filters the CanModifyUrl() flag will be aggregated (or'ed)
+  // and can be queried on the can_modify_url function.
+  virtual void DetermineFiltersBehaviorImpl();
 
  private:
   void ApplyFilterHelper(HtmlFilter* filter);
@@ -611,7 +620,8 @@ class HtmlParse {
   GoogleString id_;  // Per-request identifier string used in error messages.
   int line_number_;
   bool skip_increment_;
-  bool determine_enabled_filters_called_;
+  bool determine_filter_behavior_called_;
+  bool can_modify_urls_;
   bool need_sanity_check_;
   bool coalesce_characters_;
   bool need_coalesce_characters_;

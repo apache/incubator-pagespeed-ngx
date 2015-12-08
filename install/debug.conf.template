@@ -238,6 +238,29 @@ ModPagespeedLoadFromFile "http://@@APACHE_DOMAIN@@/mod_pagespeed_test/ipro/insta
   Header append 'Cache-Control' 'no-transform'
 </Directory>
 
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/strip_subresource_hints/default" >
+  ModPagespeedRewriteLevel CoreFilters
+  ModPagespeedDisableFilters add_instrumentation
+  ModPagespeedDisallow *dontrewriteme*
+</Directory>
+
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/strip_subresource_hints/preserve_on/" >
+  ModPagespeedPreserveSubresourceHints on
+  ModPagespeedRewriteLevel CoreFilters
+  ModPagespeedDisableFilters add_instrumentation
+</Directory>
+
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/strip_subresource_hints/preserve_off/" >
+  ModPagespeedPreserveSubresourceHints off
+  ModPagespeedRewriteLevel CoreFilters
+  ModPagespeedDisableFilters add_instrumentation
+</Directory>
+
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/strip_subresource_hints/default_passthrough/" >
+  ModPagespeedRewriteLevel PassThrough
+  ModPagespeedDisableFilters add_instrumentation
+</Directory>
+
 # This Directory does not even exist, but by setting some options in that
 # scope we test to make sure the options we claim are really settable in
 # .htaccess.  Note that <Directory> and .htaccess are enforced the same way.
@@ -1861,6 +1884,7 @@ Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedNumExpensiveRewriteThreads 2
 #ALL_DIRECTIVES ModPagespeedNumRewriteThreads 4
 #ALL_DIRECTIVES ModPagespeedOptionCookiesDurationMs 12345
+#ALL_DIRECTIVES ModPagespeedPreserveSubresourceHints on
 #ALL_DIRECTIVES ModPagespeedPreserveUrlRelativity on
 #ALL_DIRECTIVES ModPagespeedProgressiveJpegMinBytes 1000
 #ALL_DIRECTIVES ModPagespeedRateLimitBackgroundFetches true

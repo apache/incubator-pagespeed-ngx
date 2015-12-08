@@ -103,6 +103,10 @@ class HtmlFilter {
   // Returns whether a filter is enabled.
   bool is_enabled() const { return is_enabled_; }
 
+  // Invoked by the rewrite driver to query whether this filter will
+  // rewrite any urls.
+  virtual bool CanModifyUrls() = 0;
+
   // The name of this filter -- used for logging and debugging.
   virtual const char* Name() const = 0;
 

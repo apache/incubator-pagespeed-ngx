@@ -1009,6 +1009,7 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
     RewriteOptions::kObliviousPagespeedUrls,
     RewriteOptions::kOptionCookiesDurationMs,
     RewriteOptions::kOverrideCachingTtlMs,
+    RewriteOptions::kPreserveSubresourceHints,
     RewriteOptions::kPreserveUrlRelativity,
     RewriteOptions::kPrivateNotVaryForIE,
     RewriteOptions::kProactiveResourceFreshening,

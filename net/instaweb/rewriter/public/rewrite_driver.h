@@ -1244,7 +1244,7 @@ class RewriteDriver : public HtmlParse {
   bool Decode(StringPiece leaf, ResourceNamer* resource_namer) const;
 
  protected:
-  virtual void DetermineEnabledFiltersImpl();
+  virtual void DetermineFiltersBehaviorImpl();
 
  private:
   friend class DistributedRewriteContextTest;
