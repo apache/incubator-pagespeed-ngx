@@ -137,7 +137,6 @@ class RewriteOptions {
     kDivStructure,
     kElideAttributes,
     kExperimentCollectMobImageInfo,
-    kExperimentSpdy,  // Temporary and will be removed soon.
     kExplicitCloseTags,
     kExtendCacheCss,
     kExtendCacheImages,

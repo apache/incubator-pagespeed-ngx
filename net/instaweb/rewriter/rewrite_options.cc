@@ -706,7 +706,6 @@ const RewriteOptions::Filter kDangerousFilterSet[] = {
     RewriteOptions::kDisableJavascript,
     RewriteOptions::kDivStructure,
     RewriteOptions::kExperimentCollectMobImageInfo,
-    RewriteOptions::kExperimentSpdy,
     RewriteOptions::kExplicitCloseTags,
     RewriteOptions::kFixReflows,
     RewriteOptions::kMobilize,                // Prototype
@@ -809,7 +808,6 @@ const RewriteOptions::FilterEnumToIdAndNameEntry
         {RewriteOptions::kElideAttributes, "ea", "Elide Attributes"},
         {RewriteOptions::kExperimentCollectMobImageInfo, "xi",
          "Experiment: collect image info to help mobilization"},
-        {RewriteOptions::kExperimentSpdy, "xs", "SPDY Resources Experiment"},
         {RewriteOptions::kExplicitCloseTags, "xc", "Explicit Close Tags"},
         {RewriteOptions::kExtendCacheCss, "ec", "Cache Extend Css"},
         {RewriteOptions::kExtendCacheImages, "ei", "Cache Extend Images"},
