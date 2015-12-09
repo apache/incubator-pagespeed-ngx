@@ -1477,6 +1477,14 @@ http {
     }
 
     location ~ "\.pagespeed\.([a-z]\.)?[a-z]{2}\.[^.]{10}\.[^.]+" {
+      # TODO(oschaaf): The following breaks nginx starting up, as the bad header
+      # value gets rejected during configuration parsing. However, we can't easily
+      # build a test for that right now.
+      # pagespeed AddResourceHeader "X-Fo\n\no" "Bar";
+      # pagespeed AddResourceHeader "X-Foo" "Ba\nr";
+
+      # For testing that AddResourceHeader gets passed through
+      pagespeed AddResourceHeader "X-Foo" "Bar";
       add_header "" "";
     }
 
