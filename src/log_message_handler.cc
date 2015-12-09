@@ -38,7 +38,7 @@
 
 namespace {
 
-ngx_log_t* log = NULL;
+ngx_log_t* ngx_log = NULL;
 
 ngx_uint_t GetNgxLogLevel(int severity) {
   switch (severity) {
@@ -78,7 +78,7 @@ bool LogMessageHandler(int severity, const char* file, int line,
     message.resize(last_msg_character_index);
   }
 
-  ngx_log_error(this_log_level, log, 0, "[ngx_pagespeed %s] %s",
+  ngx_log_error(this_log_level, ngx_log, 0, "[ngx_pagespeed %s] %s",
                 net_instaweb::kModPagespeedVersion,
                 message.c_str());
 
@@ -99,12 +99,12 @@ namespace log_message_handler {
 
 
 void Install(ngx_log_t* log_in) {
-  log = log_in;
+  ngx_log = log_in;
   logging::SetLogMessageHandler(&LogMessageHandler);
 
   // All VLOG(2) and higher will be displayed as DEBUG logs if the nginx log
   // level is DEBUG.
-  if (log->log_level >= NGX_LOG_DEBUG) {
+  if (ngx_log->log_level >= NGX_LOG_DEBUG) {
     logging::SetMinLogLevel(-2);
   }
 }

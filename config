@@ -71,6 +71,20 @@ else
   buildtype=Release
 fi
 
+# If the compiler is gcc, we want to use g++ to link, if at all possible,
+# so that -static-libstdc++ works.
+# Annoyingly, the feature test doesn't even use $LINK for linking, so that
+# needs an explicit -lstdc++
+pagespeed_libs=
+ps_maybe_gpp_base=`basename $CC| sed s/gcc/g++/`
+ps_maybe_gpp="`dirname $CC`/$ps_maybe_gpp_base"
+if [ -n "$NGX_GCC_VER" -a \( -x "$ps_maybe_gpp" \) ]; then
+  LINK=$ps_maybe_gpp
+  NGX_TEST_LD_OPT="$NGX_TEST_LD_OPT -lstdc++"
+else
+  pagespeed_libs="-lstdc++"
+fi
+
 # The compiler needs to know that __sync_add_and_fetch_4 is ok,
 # and this requires an instruction that didn't exist on i586 or i386.
 if [ "$uname_arch" = "i686" ]; then
@@ -147,9 +161,10 @@ pagespeed_include="\
   $mod_pagespeed_dir/third_party/aprutil/gen/arch/$os_name/$arch_name/include"
 ngx_feature_path="$pagespeed_include"
 
-pagespeed_libs="-lstdc++ $psol_binary -lrt -pthread -lm"
+pagespeed_libs="$pagespeed_libs $psol_binary -lrt -pthread -lm"
 ngx_feature_libs="$pagespeed_libs"
 ngx_feature_test="
+
   GoogleString output_buffer;
   net_instaweb::StringWriter write_to_string(&output_buffer);
 
@@ -202,6 +217,8 @@ if [ $ngx_found = yes ]; then
     $ps_src/ngx_rewrite_options.cc \
     $ps_src/ngx_server_context.cc \
     $ps_src/ngx_url_async_fetcher.cc"
+  # Save our sources in a separate var since we may need it in config.make
+  PS_NGX_SRCS="$NGX_ADDON_SRCS"
 
   if [ "$position_aux" = "true" ] ; then
      HTTP_AUX_FILTER_MODULES="$HTTP_AUX_FILTER_MODULES $ngx_addon_name"
@@ -230,6 +247,48 @@ else
   cat << END
 $0: error: module ngx_pagespeed requires the pagespeed optimization library.
 Look in obj/autoconf.err for more details.
+END
+  exit 1
+fi
+
+# Test whether the compiler is compatible
+ngx_feature="psol-compiler-compat"
+ngx_feature_name=""
+ngx_feature_run=no
+ngx_feature_incs=""
+ngx_feature_path=""
+ngx_feature_libs="-lstdc++"
+ngx_feature_test="
+
+#if defined(__clang__) && defined(__GLIBCXX__)
+   // See https://gcc.gnu.org/onlinedocs/libstdc++/manual/abi.html#abi.versioning 
+   // for a list of various values of __GLIBCXX__. Note that they're not monotonic
+   // with respect to version numbers.
+   #if __GLIBCXX__ == 20120322  || __GLIBCXX__ == 20120614
+      #error \"clang is using libstdc++ 4.7.0 or 4.7.1, which can cause binary incompatibility.\"
+   #endif
+#endif
+
+#if !defined(__clang__) && defined(__GNUC__)
+   #if __GNUC__ < 4 || (__GNUC__ == 4 && __GNUC_MINOR__ < 8)
+      #error \"GCC < 4.8 no longer supported. Please use gcc >= 4.8 or clang >= 3.3\"
+   #endif
+#endif
+
+#if defined(__clang__)
+   #if __clang_major__ < 3 || (__clang_major__ == 3 && __clang_minor__ < 3)
+      #error \"Please use gcc >= 4.8 or clang >= 3.3\"
+   #endif
+#endif
+"
+
+. "$ngx_addon_dir/cpp_feature"
+
+if [ $ngx_found = no ]; then
+  cat << END
+$0: error: module ngx_pagespeed requires gcc >= 4.8 or clang >= 3.3.
+See https://developers.google.com/speed/pagespeed/module/build_ngx_pagespeed_from_source for some recommendations.
+Look in objs/autoconf.err for more details.
 END
   exit 1
 fi
