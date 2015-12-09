@@ -35,7 +35,6 @@ namespace net_instaweb {
 class ApacheMessageHandler;
 class ApacheServerContext;
 class MessageHandler;
-class ModSpdyFetchController;
 class ProcessContext;
 class ServerContext;
 class SharedCircularBuffer;
@@ -57,8 +56,6 @@ class ApacheRewriteDriverFactory : public SystemRewriteDriverFactory {
   ApacheMessageHandler* apache_message_handler() {
     return apache_message_handler_;
   }
-
-  virtual void ChildInit();
 
   virtual void NonStaticInitStats(Statistics* statistics) {
     InitStats(statistics);
@@ -93,10 +90,6 @@ class ApacheRewriteDriverFactory : public SystemRewriteDriverFactory {
   static void Initialize();
   static void Terminate();
 
-  ModSpdyFetchController* mod_spdy_fetch_controller() {
-    return mod_spdy_fetch_controller_.get();
-  }
-
   // Needed by mod_instaweb.cc:ParseDirective().
   virtual void set_message_buffer_size(int x) {
     SystemRewriteDriverFactory::set_message_buffer_size(x);
@@ -120,13 +113,10 @@ class ApacheRewriteDriverFactory : public SystemRewriteDriverFactory {
 
   virtual void SetupMessageHandlers();
   virtual void ShutDownMessageHandlers();
-  virtual void ShutDownFetchers();
 
   virtual void SetCircularBuffer(SharedCircularBuffer* buffer);
 
   virtual ServerContext* NewDecodingServerContext();
-
-  virtual void AutoDetectThreadCounts();
 
  private:
 
@@ -154,12 +144,6 @@ class ApacheRewriteDriverFactory : public SystemRewriteDriverFactory {
 
   // Inherit configuration from global context into vhosts.
   bool inherit_vhost_config_;
-
-  // This is <= 0 if we should auto-detect.  See num_rewrite_threads_.
-  int max_mod_spdy_fetch_threads_;
-
-  // Helps coordinate direct-to-mod_spdy fetches.
-  scoped_ptr<ModSpdyFetchController> mod_spdy_fetch_controller_;
 
   DISALLOW_COPY_AND_ASSIGN(ApacheRewriteDriverFactory);
 };

@@ -178,10 +178,6 @@ class SystemServerContext : public ServerContext {
   // to have it's timestamp bumped.
   virtual bool UpdateCacheFlushTimestampMs(int64 timestamp_ms);
 
-  // Hook for implementations to support fetching directly from the spdy module.
-  virtual void MaybeApplySpdySessionFetcher(const RequestContextPtr& request,
-                                            RewriteDriver* driver) {}
-
   // Returns JSON used by the PageSpeed Console JavaScript.
   void ConsoleJsonHandler(const QueryParams& params, AsyncFetch* fetch);
 

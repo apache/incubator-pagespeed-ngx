@@ -114,10 +114,6 @@ class ApacheServerContext : public SystemServerContext {
 
   virtual RewriteDriverPool* SelectDriverPool(bool using_spdy);
 
-  // Hook for implementations to support fetching directly from the spdy module.
-  virtual void MaybeApplySpdySessionFetcher(const RequestContextPtr& request,
-                                            RewriteDriver* driver);
-
   ProxyFetchFactory* proxy_fetch_factory() {
     return proxy_fetch_factory_.get();
   }

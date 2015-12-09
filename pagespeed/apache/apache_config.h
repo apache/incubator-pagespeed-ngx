@@ -37,10 +37,6 @@ class ApacheConfig : public SystemRewriteOptions {
   explicit ApacheConfig(ThreadSystem* thread_system);
   virtual ~ApacheConfig();
 
-  bool fetch_from_mod_spdy() const {
-    return fetch_from_mod_spdy_.value();
-  }
-
   // Make an identical copy of these options and return it.
   virtual ApacheConfig* Clone() const;
 

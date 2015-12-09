@@ -151,10 +151,6 @@ bool InstawebHandler::WaitForFetch() {
   return ok;
 }
 
-void InstawebHandler::SetupSpdyConnectionIfNeeded() {
-  apache_request_context_->SetupSpdyConnectionIfNeeded(request_);
-}
-
 // Makes a driver from the request_context and options.  Note that
 // this can only be called once, as it potentially mutates the options
 // as it transfers ownership of custom_options.
@@ -549,7 +545,6 @@ bool InstawebHandler::handle_as_resource(ApacheServerContext* server_context,
   }
 
   InstawebHandler instaweb_handler(request);
-  instaweb_handler.SetupSpdyConnectionIfNeeded();
   scoped_ptr<RequestHeaders> request_headers(new RequestHeaders);
   const RewriteOptions* options = instaweb_handler.options();
 

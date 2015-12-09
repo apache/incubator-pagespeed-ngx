@@ -44,7 +44,6 @@
 #include "pagespeed/apache/instaweb_handler.h"
 #include "pagespeed/apache/interface_mod_spdy.h"
 #include "pagespeed/apache/mod_instaweb.h"
-#include "pagespeed/apache/mod_spdy_fetcher.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
@@ -380,7 +379,6 @@ InstawebContext* build_context_for_request(request_rec* request) {
 
   InstawebHandler instaweb_handler(request);
   const RewriteOptions* options = instaweb_handler.options();
-  instaweb_handler.SetupSpdyConnectionIfNeeded();
 
   if (request->unparsed_uri == NULL) {
     // TODO(jmarantz): consider adding Debug message if unparsed_uri is NULL,
@@ -1133,8 +1131,6 @@ void mod_pagespeed_register_hooks(apr_pool_t* pool) {
       NULL,                          // predecessors
       NULL,                          // successors
       APR_HOOK_MIDDLE);              // position
-
-  ModSpdyFetcher::Initialize();
 }
 
 apr_status_t pagespeed_child_exit(void* data) {

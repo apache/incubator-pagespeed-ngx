@@ -81,7 +81,6 @@ class InstawebHandler {
     return rewrite_query_.pagespeed_option_cookies();
   }
 
-  void SetupSpdyConnectionIfNeeded();
   void RemoveStrippedResponseHeadersFromApacheRequest();
 
   // Makes a driver from the request_context and options.  Note that

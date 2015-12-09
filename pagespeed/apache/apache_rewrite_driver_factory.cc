@@ -29,7 +29,6 @@
 #include "pagespeed/apache/apache_server_context.h"
 #include "pagespeed/apache/apache_thread_system.h"
 #include "pagespeed/apache/apr_timer.h"
-#include "pagespeed/apache/mod_spdy_fetch_controller.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "pagespeed/kernel/base/null_shared_mem.h"
@@ -137,36 +136,12 @@ int ApacheRewriteDriverFactory::LookupThreadLimit() {
   return thread_limit;
 }
 
-void ApacheRewriteDriverFactory::AutoDetectThreadCounts() {
-  if (thread_counts_finalized()) {
-    return;
-  }
-
-  // If using mod_spdy_fetcher we roughly want one thread for non-background
-  // fetches, one for background ones.
-  if (IsServerThreaded()) {
-    max_mod_spdy_fetch_threads_ = 8;  // TODO(morlovich): Base on MPM's count?
-  } else {
-    max_mod_spdy_fetch_threads_ = 2;
-  }
-
-  SystemRewriteDriverFactory::AutoDetectThreadCounts();
-}
-
 void ApacheRewriteDriverFactory::ParentOrChildInit() {
   if (install_crash_handler()) {
     ApacheMessageHandler::InstallCrashHandler(server_rec_);
   }
   SystemRewriteDriverFactory::ParentOrChildInit();
 }
-
-void ApacheRewriteDriverFactory::ChildInit() {
-  SystemRewriteDriverFactory::ChildInit();
-  mod_spdy_fetch_controller_.reset(
-      new ModSpdyFetchController(max_mod_spdy_fetch_threads_, thread_system(),
-                                 timer(), statistics()));
-}
-
 
 void ApacheRewriteDriverFactory::ShutDownMessageHandlers() {
   // Reset SharedCircularBuffer to NULL, so that any shutdown warnings
@@ -185,12 +160,6 @@ void ApacheRewriteDriverFactory::SetupMessageHandlers() {
   apache_message_handler_->SetPidString(static_cast<int64>(getpid()));
   apache_html_parse_message_handler_->SetPidString(
             static_cast<int64>(getpid()));
-}
-
-void ApacheRewriteDriverFactory::ShutDownFetchers() {
-  if (mod_spdy_fetch_controller_.get() != NULL) {
-    mod_spdy_fetch_controller_->ShutDown();
-  }
 }
 
 void ApacheRewriteDriverFactory::SetCircularBuffer(

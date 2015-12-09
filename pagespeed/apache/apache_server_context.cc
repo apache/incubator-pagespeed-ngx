@@ -24,7 +24,6 @@
 #include "pagespeed/apache/apache_config.h"
 #include "pagespeed/apache/apache_request_context.h"
 #include "pagespeed/apache/apache_rewrite_driver_factory.h"
-#include "pagespeed/apache/mod_spdy_fetcher.h"
 #include "pagespeed/automatic/proxy_fetch.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/file_system.h"
@@ -85,7 +84,6 @@ ApacheServerContext::~ApacheServerContext() {
 
 void ApacheServerContext::InitStats(Statistics* statistics) {
   SystemServerContext::InitStats(statistics);
-  ModSpdyFetcher::InitStats(statistics);
 }
 
 bool ApacheServerContext::InitPath(const GoogleString& path) {
@@ -175,24 +173,6 @@ RewriteDriverPool* ApacheServerContext::SelectDriverPool(bool using_spdy) {
     return spdy_driver_pool();
   }
   return standard_rewrite_driver_pool();
-}
-
-void ApacheServerContext::MaybeApplySpdySessionFetcher(
-    const RequestContextPtr& request, RewriteDriver* driver) {
-  const ApacheConfig* conf = ApacheConfig::DynamicCast(driver->options());
-  CHECK(conf != NULL);
-  ApacheRequestContext* apache_request = ApacheRequestContext::DynamicCast(
-      request.get());
-
-  // This should have already been caught by the caller.
-  CHECK(apache_request != NULL);
-
-  if (conf->fetch_from_mod_spdy() &&
-      apache_request->use_spdy_fetcher()) {
-    driver->SetSessionFetcher(new ModSpdyFetcher(
-        apache_factory_->mod_spdy_fetch_controller(), apache_request->url(),
-        driver, apache_request->spdy_connection_factory()));
-  }
 }
 
 void ApacheServerContext::InitProxyFetchFactory() {

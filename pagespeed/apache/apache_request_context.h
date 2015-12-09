@@ -17,8 +17,7 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 //
 // Captures the Apache request details in our request context, including
-// the port (used for loopback fetches) and (if enabled & serving spdy)
-// a factory for generating SPDY fetches.
+// the port (used for loopback fetches).
 
 #ifndef PAGESPEED_APACHE_APACHE_REQUEST_CONTEXT_H_
 #define PAGESPEED_APACHE_APACHE_REQUEST_CONTEXT_H_
@@ -28,7 +27,6 @@
 #include "pagespeed/system/system_request_context.h"
 
 struct request_rec;
-struct spdy_slave_connection_factory;
 
 namespace net_instaweb {
 
@@ -48,24 +46,10 @@ class ApacheRequestContext : public SystemRequestContext {
   // fails if it is not. Returns NULL if rc is NULL.
   static ApacheRequestContext* DynamicCast(RequestContext* rc);
 
-  // Creates the data structures needed to do SPDY loopback fetches, if
-  // required based on the current connection state.
-  void SetupSpdyConnectionIfNeeded(request_rec* req);
-
-  bool use_spdy_fetcher() const { return use_spdy_fetcher_; }
-  spdy_slave_connection_factory* spdy_connection_factory() {
-    DCHECK(!use_spdy_fetcher_ || (spdy_connection_factory_ != NULL))
-        << "Must call SetupSpdyConnectionIfNeeded before fetching";
-    return spdy_connection_factory_;
-  }
-
  protected:
   virtual ~ApacheRequestContext();
 
  private:
-  bool use_spdy_fetcher_;
-  spdy_slave_connection_factory* spdy_connection_factory_;
-
   DISALLOW_COPY_AND_ASSIGN(ApacheRequestContext);
 };
 

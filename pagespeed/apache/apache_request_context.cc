@@ -18,7 +18,6 @@
 
 #include "base/logging.h"
 #include "pagespeed/apache/interface_mod_spdy.h"
-#include "pagespeed/apache/mod_spdy_fetcher.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/http/http_names.h"
@@ -34,22 +33,14 @@ ApacheRequestContext::ApacheRequestContext(
           timer,
           req->hostname,
           req->connection->local_addr->port,
-          req->connection->local_ip),
-      use_spdy_fetcher_(ModSpdyFetcher::ShouldUseOn(req)),
-      spdy_connection_factory_(NULL) {
+          req->connection->local_ip) {
   // Note that at the time we create a RequestContext we have full
   // access to the Apache request_rec.  However, due to Cloning and (I
   // believe) Detaching, we can initiate fetches after the Apache
   // request_rec* has been retired.  So deep-copy the bits we need
   // from the request_rec at the time we create our RequestContext.
-  // This includes the local port (for loopback fetches) and the
-  // entire connection subobject, for backdoor mod_spdy fetches.  To
-  // avoid temptation we do not keep a pointer to the request_rec.
-
-  // Determines whether we should handle request as SPDY.
-  // This happens in two cases:
-  // 1) It's actually a SPDY request using mod_spdy
-  // 2) The header X-PSA-Optimize-For-SPDY is present, with any value.
+  // This includes the local port (for loopback fetches) and wether SPDY
+  // is on.
   if (mod_spdy_get_spdy_version(req->connection) != 0) {
     set_using_spdy(true);
   } else {
@@ -60,20 +51,6 @@ ApacheRequestContext::ApacheRequestContext(
 }
 
 ApacheRequestContext::~ApacheRequestContext() {
-  if (spdy_connection_factory_ != NULL) {
-    mod_spdy_destroy_slave_connection_factory(spdy_connection_factory_);
-  }
-}
-
-void ApacheRequestContext::SetupSpdyConnectionIfNeeded(request_rec* req) {
-  // Independent of whether we are serving a SPDY request, we will want
-  // to be able to do back door mod_spdy fetches if configured to do so.
-  if (use_spdy_fetcher_) {
-    // TODO(jmarantz): mdsteele indicates this is not overly expensive to
-    // do per-request.  Verify this with profiling.
-    spdy_connection_factory_ =
-        mod_spdy_create_slave_connection_factory(req->connection);
-  }
 }
 
 ApacheRequestContext* ApacheRequestContext::DynamicCast(RequestContext* rc) {

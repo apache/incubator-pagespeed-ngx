@@ -39,8 +39,6 @@
     '<(DEPTH)/pagespeed/apache/instaweb_handler.cc',
     '<(DEPTH)/pagespeed/apache/interface_mod_spdy.cc',
     '<(DEPTH)/pagespeed/apache/log_message_handler.cc',
-    '<(DEPTH)/pagespeed/apache/mod_spdy_fetch_controller.cc',
-    '<(DEPTH)/pagespeed/apache/mod_spdy_fetcher.cc',
     '<(DEPTH)/pagespeed/apache/mod_instaweb.cc',
     '<(DEPTH)/pagespeed/kernel/base/mem_debug.cc',
   ],

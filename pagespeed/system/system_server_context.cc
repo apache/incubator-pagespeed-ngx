@@ -306,16 +306,8 @@ void SystemServerContext::ApplySessionFetchers(
   // Note that these fetchers are applied in the opposite order of how they are
   // added: the last one added here is the first one applied and vice versa.
   //
-  // Currently, we want AddHeadersFetcher running first, then perhaps
-  // SpdyFetcher and then LoopbackRouteFetcher (and then Serf).
-  //
-  // We want AddHeadersFetcher to run before the SpdyFetcher since we
-  // want any headers it adds to be visible.
-  //
-  // We want SpdyFetcher to run before LoopbackRouteFetcher as it needs
-  // to know the request hostname, which LoopbackRouteFetcher could potentially
-  // rewrite to 127.0.0.1; and it's OK without the rewriting since it will
-  // always talk to the local machine anyway.
+  // Currently, we want AddHeadersFetcher running first, then
+  // LoopbackRouteFetcher (and then Serf).
   SystemRewriteOptions* options = global_system_rewrite_options();
   if (!options->disable_loopback_routing() &&
       !options->slurping_enabled() &&
@@ -326,10 +318,6 @@ void SystemServerContext::ApplySessionFetchers(
         driver->options(), system_request->local_ip(),
         system_request->local_port(), driver->async_fetcher()));
   }
-
-  // Apache has experimental support for direct fetching from mod_spdy.  Other
-  // implementations that support something similar would use this hook.
-  MaybeApplySpdySessionFetcher(request, driver);
 
   if (driver->options()->num_custom_fetch_headers() > 0) {
     driver->SetSessionFetcher(new AddHeadersFetcher(driver->options(),
