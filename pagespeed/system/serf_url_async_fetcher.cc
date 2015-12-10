@@ -485,8 +485,8 @@ apr_status_t SerfFetch::HandleResponse(serf_bucket_t* response) {
 apr_status_t SerfFetch::ReadStatusLine(serf_bucket_t* response) {
   serf_status_line status_line;
   apr_status_t status = serf_bucket_response_status(response, &status_line);
-  ResponseHeaders* response_headers = async_fetch_->response_headers();
   if (status == APR_SUCCESS) {
+    ResponseHeaders* response_headers = async_fetch_->response_headers();
     response_headers->SetStatusAndReason(
         static_cast<HttpStatus::Code>(status_line.code));
       response_headers->set_major_version(status_line.version / 1000);
