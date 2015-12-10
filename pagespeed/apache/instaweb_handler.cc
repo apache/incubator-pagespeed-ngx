@@ -510,7 +510,6 @@ bool InstawebHandler::HandleAsInPlace() {
 }
 
 bool InstawebHandler::HandleAsProxy() {
-  bool handled = false;
   // Consider Issue 609: proxying an external CSS file via MapProxyDomain, and
   // the CSS file makes reference to a font file, which mod_pagespeed does not
   // know anything about, and does not know how to absolutify.  We need to
@@ -527,10 +526,12 @@ bool InstawebHandler::HandleAsProxy() {
     fetch_->set_is_proxy(true);
     server_context_->proxy_fetch_factory()->StartNewProxyFetch(
         mapped_url, fetch_, driver, NULL, NULL);
-    handled = WaitForFetch();
+    if (!WaitForFetch()) {
+      server_context_->ReportResourceNotFound(mapped_url.c_str(), request_);
+    }
+    return true;  // handled
   }
-
-  return handled;  // false == declined
+  return false;  // declined
 }
 
 // Determines whether the url can be handled as a mod_pagespeed or in-place
