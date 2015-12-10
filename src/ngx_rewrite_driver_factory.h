@@ -115,7 +115,7 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
     return process_script_variables_;
   }
 
-  void LoggingInit(ngx_log_t* log);
+  void LoggingInit(ngx_log_t* log, bool may_install_crash_handler);
 
   virtual void ShutDownMessageHandlers();
 
