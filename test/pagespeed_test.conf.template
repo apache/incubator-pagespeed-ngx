@@ -1765,6 +1765,25 @@ http {
           https://www.gstatic.com/psa/static;
     }
 
+    location /mod_pagespeed_test/strip_subresource_hints/default/ {
+      pagespeed DisableFilters add_instrumentation;
+      pagespeed RewriteLevel CoreFilters;
+      pagespeed DisAllow *dontrewriteme*;
+    }
+    location /mod_pagespeed_test/strip_subresource_hints/default_passthrough/ {
+      pagespeed DisableFilters add_instrumentation;
+      pagespeed RewriteLevel PassThrough;
+    }
+    location /mod_pagespeed_test/strip_subresource_hints/preserve_on/ {
+      pagespeed DisableFilters add_instrumentation;
+      pagespeed PreserveSubresourceHints on;
+      pagespeed RewriteLevel CoreFilters;
+    }
+    location /mod_pagespeed_test/strip_subresource_hints/preserve_off/ {
+      pagespeed DisableFilters add_instrumentation;
+      pagespeed PreserveSubresourceHints off;
+      pagespeed RewriteLevel CoreFilters;
+    }
     # $host implicitly tests script variable support. I'd love to test it more
     # directly, but so far this is the best I've come up with and duplicating
     # the test doesn't seem to make sense.
