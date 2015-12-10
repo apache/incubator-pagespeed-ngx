@@ -26,6 +26,11 @@
 namespace net_instaweb {
 
 // Implements ExpensiveOperationController using a StatisticsWorkBound.
+// StatisticsWorkBound uses Statistics to communicate between multiple worker
+// processes so does not have have the cross-process constraints of
+// QueuedExpensiveOperationController. However, this implementation does not
+// queue requests, instead observing the count of in-progress operations and
+// canceling the request if that number is too great.
 class WorkBoundExpensiveOperationController
     : public ExpensiveOperationController {
  public:

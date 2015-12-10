@@ -19,7 +19,6 @@
 
 #include "pagespeed/controller/central_controller.h"
 #include "pagespeed/kernel/base/basictypes.h"
-#include "pagespeed/kernel/base/statistics.h"
 
 namespace net_instaweb {
 
@@ -31,8 +30,6 @@ class CompatibleCentralController : public CentralController {
   CompatibleCentralController(int max_expensive_operations, Statistics* stats);
 
   virtual ~CompatibleCentralController();
-
-  static void InitStats(Statistics* stats);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(CompatibleCentralController);

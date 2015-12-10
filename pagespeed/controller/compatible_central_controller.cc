@@ -30,8 +30,4 @@ CompatibleCentralController::CompatibleCentralController(
 CompatibleCentralController::~CompatibleCentralController() {
 }
 
-void CompatibleCentralController::InitStats(Statistics* statistics) {
-  WorkBoundExpensiveOperationController::InitStats(statistics);
-}
-
 }  // namespace net_instaweb

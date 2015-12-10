@@ -42,6 +42,7 @@
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/rewriter/public/usage_data_reporter.h"
 #include "net/instaweb/util/public/property_store.h"
+#include "pagespeed/controller/central_controller.h"
 #include "pagespeed/controller/compatible_central_controller.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/checking_thread_system.h"
@@ -778,7 +779,7 @@ void RewriteDriverFactory::InitStats(Statistics* statistics) {
   RewriteDriver::InitStats(statistics);
   RewriteStats::InitStats(statistics);
   CacheBatcher::InitStats(statistics);
-  CompatibleCentralController::InitStats(statistics);
+  CentralController::InitStats(statistics);
   CriticalImagesFinder::InitStats(statistics);
   CriticalCssFinder::InitStats(statistics);
   CriticalSelectorFinder::InitStats(statistics);

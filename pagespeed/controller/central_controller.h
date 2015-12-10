@@ -22,6 +22,7 @@
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/statistics.h"
 
 namespace net_instaweb {
 
@@ -44,6 +45,8 @@ class CentralController : public CentralControllerInterface {
 
   // TODO(cheesy): There will be a different delegate for the popularity
   // contest in here.
+
+  static void InitStats(Statistics* stats);
 
  private:
   scoped_ptr<ExpensiveOperationController> expensive_operation_controller_;
