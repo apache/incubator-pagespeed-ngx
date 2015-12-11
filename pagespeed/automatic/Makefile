@@ -24,7 +24,7 @@
 #
 # When running this Makefile from the 'automatic' directory then it will
 # be set automatically.
-MOD_PAGESPEED_ROOT = $(shell cd ../../..; pwd)
+MOD_PAGESPEED_ROOT = $(shell cd ../..; pwd)
 
 # OUTPUT_ROOT should be set to wherever you want to put output files.  Default
 # is to put them in the current directory.
