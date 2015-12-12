@@ -134,7 +134,7 @@ http {
     # inline_images (ii), defer_javascript (dj), webp (jw) and lossless_webp
     # (ws).
     if ($http_user_agent ~*
-        "Chrome/[2][3-9]+\.|Chrome/[[3-9][0-9]+\.|Chrome/[0-9]{3,}\.") {
+        "Chrome/[2][3-9]+\.|Chrome/[3-9][0-9]+\.|Chrome/[0-9]{3,}\.") {
       set $ps_capability_list "ll,ii,dj,jw,ws:";
     }
     # Cache-fragment 3: This fragment contains (a) Desktop User-Agents that
