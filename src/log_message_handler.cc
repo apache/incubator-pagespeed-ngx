@@ -99,7 +99,8 @@ namespace log_message_handler {
 
 
 void Install(ngx_log_t* log_in) {
-  log = log_in;
+  //auto log = log_in; //this is better than following, but c++11/14 needed
+  ngx_log_t* log = log_in;
   logging::SetLogMessageHandler(&LogMessageHandler);
 
   // All VLOG(2) and higher will be displayed as DEBUG logs if the nginx log
