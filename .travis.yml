@@ -33,3 +33,4 @@ compiler:
 notifications:
   email:
     - pagespeed-dev@googlegroups.com
+    - crowell@bu.edu
