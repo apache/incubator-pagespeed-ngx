@@ -242,6 +242,7 @@ bool GifSquare::AnimateAllImages(int delay_cs, int transparent_idx,
   // adding the Graphics Control Blocks manually.
   if (!manual_gcb_ && delay_cs >= 0) {
     for (int j = 0; j < num_images_; ++j) {
+#if GIFLIB_MAJOR >= 5
       GraphicsControlBlock gcb;
 
       gcb.DisposalMode = disposal_method;
@@ -249,7 +250,6 @@ bool GifSquare::AnimateAllImages(int delay_cs, int transparent_idx,
       gcb.DelayTime = delay_cs;
       gcb.TransparentColor = transparent_idx;
 
-#if GIFLIB_MAJOR >= 5
       if (!Log(EGifGCBToSavedExtension(&gcb, gif_file_, j), "GCB status")) {
         return false;
       }

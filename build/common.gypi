@@ -43,6 +43,12 @@
     # unfortunately not supported on some common systems.
     'support_posix_shared_mem%': 0,
 
+    # Detect clang being configured via CXX envvar, which is the easiest
+    # way for our users to change the compiler (since gclient gets in
+    # the way of tweaking gyp flags directly).
+    'clang_version':
+      '<!(python <(DEPTH)/build/clang_version.py)',
+
     'conditions': [
       # TODO(morlovich): AIX, Solaris, FreeBSD10?
       ['OS == "linux"', {
@@ -84,9 +90,9 @@
            '<(gcc_version) != <(gcc_devel_version2)', {
           'cflags!': ['-Werror']
           }],
-          ['<(gcc_version) < 48 and (clang == 0)', {
+          ['<(gcc_version) < 48 and (clang_version == 0)', {
             'cflags+': '<!(echo gcc \< 4.8 is too old and no longer supported; false)'
-          }],
+          }]
         ],
         'cflags': [
           # Our dependency on OpenCV need us to turn on exceptions.
@@ -96,8 +102,6 @@
           '-fasynchronous-unwind-tables',
           # We'd like to add '-Wtype-limits', but this does not work on
           # earlier versions of g++ on supported operating systems.
-
-          '-Wno-unused-but-set-variable',
         ],
         'cflags_cc!': [
           # Newer Chromium build adds -Wsign-compare which we have some
