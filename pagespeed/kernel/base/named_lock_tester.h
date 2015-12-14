@@ -74,6 +74,52 @@ class NamedLockTester {
     return Acquired();
   }
 
+  // Tests the specific case where the callback for new_lock deletes old_lock.
+  // The likely failure case is a SEGV, though you must verify a true return
+  // code or the test didn't run. Frees both locks.
+  bool UnlockWithDelete(NamedLock* old_lock, NamedLock* new_lock) {
+    scoped_ptr<NamedLock> new_lock_deleter(new_lock);
+    lock_for_deletion_.reset(old_lock);
+    CHECK(old_lock->Held()) << "UnlockWithDelete old_lock must be held";
+    CHECK(!new_lock->Held()) << "UnlockWithDelete new_lock must not be held";
+    Clear();
+    new_lock->LockTimedWait(
+        60000 /* wait_ms */,  // Long enough to ensure it doesn't timeout.
+        MakeFunction(
+            this,
+            &NamedLockTester::DeleteLock,
+            &NamedLockTester::LockFailed));
+    old_lock->Unlock();
+    Quiesce();
+    CHECK(WasCalled()) << "UnlockWithDelete lock operation did not complete";
+    return Acquired();
+  }
+
+  // As for UnlockWithDelete, but for a steal. Frees both locks.
+  bool StealWithDelete(int64 steal_ms, NamedLock* old_lock,
+                       NamedLock* new_lock) {
+    scoped_ptr<NamedLock> new_lock_deleter(new_lock);
+    lock_for_deletion_.reset(old_lock);
+    CHECK(old_lock->Held()) << "StealWithDelete old_lock must be held";
+    CHECK(!new_lock->Held()) << "StealWithDelete new_lock must not be held";
+    Clear();
+    new_lock->LockTimedWaitStealOld(
+        0 /* wait_ms */, steal_ms,
+        MakeFunction(
+            this,
+            &NamedLockTester::DeleteLock,
+            &NamedLockTester::LockFailed));
+    Quiesce();
+    CHECK(WasCalled()) << "StealWithDelete lock operation did not complete";
+    return Acquired();
+  }
+
+  void DeleteLock() {
+    ScopedMutex lock(mutex_.get());
+    acquired_ = true;
+    lock_for_deletion_.reset();
+  }
+
   void Quiesce() {
     if (quiesce_.get() != NULL) {
       quiesce_->CallRun();
@@ -117,6 +163,7 @@ class NamedLockTester {
   bool failed_;
   scoped_ptr<AbstractMutex> mutex_;
   scoped_ptr<Function> quiesce_;
+  scoped_ptr<NamedLock> lock_for_deletion_;
 
   DISALLOW_COPY_AND_ASSIGN(NamedLockTester);
 };

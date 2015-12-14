@@ -103,7 +103,7 @@ void MemLock::Unlock() {
   // is not held.
   if (Held()) {
     lock_state_->Unlock();
-    Clear();
+    // "this" may have been freed by this point.
   }
 }
 

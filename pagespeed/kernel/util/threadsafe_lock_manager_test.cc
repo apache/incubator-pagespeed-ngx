@@ -329,6 +329,21 @@ TEST_F(ThreadsafeLockManagerTest, WaitStealOld) {
   EXPECT_GT(start_ms + kWaitMs, end_ms);
 }
 
+TEST_F(ThreadsafeLockManagerTest, NoWaitUnlockDeletesOld) {
+  scoped_ptr<NamedLock> lock1(MakeLock(kLock1));
+  EXPECT_TRUE(TryLock(lock1));
+  NamedLock* lock1a = MakeLock(kLock1);  // Same name, new object.
+  EXPECT_TRUE(tester_.UnlockWithDelete(lock1.release(), lock1a));
+}
+
+TEST_F(ThreadsafeLockManagerTest, NoWaitStealDeletesOld) {
+  scoped_ptr<NamedLock> lock1(MakeLock(kLock1));
+  EXPECT_TRUE(TryLock(lock1));
+  NamedLock* lock1a = MakeLock(kLock1);  // Same name, new object.
+  timer()->AdvanceMs(kStealMs + 1);
+  EXPECT_TRUE(tester_.StealWithDelete(kStealMs, lock1.release(), lock1a));
+}
+
 TEST_F(ThreadsafeLockManagerTest, MultipleLocksSameTimeouts) {
   scoped_ptr<NamedLock> a(MakeLock(kLock1));
   scoped_ptr<NamedLock> b(MakeLock(kLock1));

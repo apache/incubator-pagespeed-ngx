@@ -55,6 +55,7 @@ void MemLockState::RemoveLock(MemLock* lock) {
 
 void MemLockState::Unlock() {
   CHECK(current_owner_ != NULL);
+  current_owner_->Clear();
   if (!pending_locks_.empty()) {
     WakeupOrderedLockSet::iterator p = pending_locks_.begin();
     current_owner_ = *p;
