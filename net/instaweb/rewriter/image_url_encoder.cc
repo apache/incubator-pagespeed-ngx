@@ -42,6 +42,10 @@ const char kMissingDimension = 'N';
 // Constants for UserAgent cache key enteries.
 const char kWebpLossyUserAgentKey[] = "w";
 const char kWebpLossyLossLessAlphaUserAgentKey[] = "v";
+const char kWebpAnimatedUserAgentKey[] = "a";
+// This used to not have a separate key, but we mixed up animated and it
+// at one point, so this is now here to force a flush.
+const char kWebpNoneUserAgentKey[] = ".";
 const char kMobileUserAgentKey[] = "m";
 const char kSmallScreenKey[] = "ss";
 
@@ -305,13 +309,19 @@ void ImageUrlEncoder::SetSmallScreen(const RewriteDriver& driver,
 GoogleString ImageUrlEncoder::CacheKeyFromResourceContext(
     const ResourceContext& resource_context) {
   GoogleString user_agent_cache_key = "";
-  if (resource_context.libwebp_level() ==
-      ResourceContext::LIBWEBP_LOSSY_LOSSLESS_ALPHA) {
-    StrAppend(&user_agent_cache_key, kWebpLossyLossLessAlphaUserAgentKey);
-  }
-  if (resource_context.libwebp_level() ==
-      ResourceContext::LIBWEBP_LOSSY_ONLY) {
-    StrAppend(&user_agent_cache_key, kWebpLossyUserAgentKey);
+  switch (resource_context.libwebp_level()) {
+    case ResourceContext::LIBWEBP_NONE:
+      StrAppend(&user_agent_cache_key, kWebpNoneUserAgentKey);
+      break;
+    case ResourceContext::LIBWEBP_LOSSY_LOSSLESS_ALPHA:
+      StrAppend(&user_agent_cache_key, kWebpLossyLossLessAlphaUserAgentKey);
+      break;
+    case ResourceContext::LIBWEBP_LOSSY_ONLY:
+      StrAppend(&user_agent_cache_key, kWebpLossyUserAgentKey);
+      break;
+    case ResourceContext::LIBWEBP_ANIMATED:
+      StrAppend(&user_agent_cache_key, kWebpAnimatedUserAgentKey);
+      break;
   }
   if (resource_context.mobile_user_agent()) {
     StrAppend(&user_agent_cache_key, kMobileUserAgentKey);

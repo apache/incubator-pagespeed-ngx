@@ -363,7 +363,25 @@ TEST_F(ImageUrlEncoderTest, SmallScreen) {
   context.set_use_small_screen_quality(true);
   GoogleString cache_key =
       ImageUrlEncoder::CacheKeyFromResourceContext(context);
-  EXPECT_EQ("ss", cache_key);
+  EXPECT_EQ(".ss", cache_key);
+}
+
+TEST_F(ImageUrlEncoderTest, DifferentWebpLevels) {
+  // Make sure different levels of WebP support get different cache keys.
+  std::set<GoogleString> seen;
+  for (int webp_level = ResourceContext::LibWebpLevel_MIN;
+       webp_level <= ResourceContext::LibWebpLevel_MAX;
+       ++webp_level) {
+    if (ResourceContext::LibWebpLevel_IsValid(webp_level)) {
+      ResourceContext ctx;
+      ctx.set_libwebp_level(
+          static_cast<ResourceContext::LibWebpLevel>(webp_level));
+      GoogleString cache_key =
+          ImageUrlEncoder::CacheKeyFromResourceContext(ctx);
+      EXPECT_EQ(seen.find(cache_key), seen.end());
+      seen.insert(cache_key);
+    }
+  }
 }
 
 TEST_F(ImageUrlEncoderTest, BadFirst) {

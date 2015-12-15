@@ -3740,4 +3740,26 @@ TEST_F(ImageRewriteTest, GifToWebpLosslessWithWebpAnimatedUa) {
                           true);
 }
 
+TEST_F(ImageRewriteTest, AnimatedNoCacheReuse) {
+  // Make sure we don't reuse results for animated webp-capable UAs for
+  // non-webp targets.
+  AddFileToMockFetcher(StrCat(kTestDomain, "a.jpeg"), kPuzzleJpgFile,
+                       kContentTypeJpeg, 100);
+
+  options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
+  options()->EnableFilter(RewriteOptions::kConvertToWebpAnimated);
+  options()->set_image_recompress_quality(85);
+  rewrite_driver()->AddFilters();
+
+  // WebP capable browser --- made a WebP image.
+  SetCurrentUserAgent("webp-animated");
+  ValidateExpected("webp broswer", "<img src=a.jpeg>",
+                   "<img src=xa.jpeg.pagespeed.ic.0.webp>");
+  ClearRewriteDriver();
+
+  // Not a WebP browser -- don't!
+  SetCurrentUserAgent("curl");
+  ValidateNoChanges("non-webp broswer", "<img src=a.jpeg>");
+}
+
 }  // namespace net_instaweb
