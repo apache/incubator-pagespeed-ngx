@@ -2,6 +2,8 @@
 // html_name.cc is automatically generated from html_name.gperf.
 // Author: jmarantz@google.com
 
+#include <string.h>
+
 #include "base/logging.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/html_name.h"
@@ -15,7 +17,6 @@ namespace net_instaweb {
 %define word-array-name kHtmlNameTable
 %global-table
 %ignore-case
-%includes
 %language=C++
 %readonly-tables
 %struct-type

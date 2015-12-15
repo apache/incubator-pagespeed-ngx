@@ -4,6 +4,8 @@
 
 #include "pagespeed/kernel/http/bot_checker.h"
 
+#include <string.h>
+
 #include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
@@ -12,7 +14,6 @@ namespace net_instaweb {
 %define class-name RobotDetect
 %define lookup-function-name Lookup
 %global-table
-%includes
 %language=C++
 %readonly-tables
 
