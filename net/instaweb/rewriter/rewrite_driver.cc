@@ -311,8 +311,10 @@ void RewriteDriver::PopulateRequestContext() {
   if ((request_context_.get() != NULL && (request_headers_ != NULL))) {
     request_context_->SetAcceptsWebp(
         request_properties_->SupportsWebpRewrittenUrls());
-    request_context_->SetAcceptsGzip(request_properties_->AcceptsGzip());
-    request_context_->Freeze();
+    if (!request_context_->frozen()) {
+      request_context_->SetAcceptsGzip(request_properties_->AcceptsGzip());
+      request_context_->Freeze();
+    }
   }
 }
 
