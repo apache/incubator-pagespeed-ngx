@@ -125,6 +125,10 @@ class RequestContext : public RefCounted<RequestContext> {
   bool using_spdy() const { return using_spdy_; }
   void set_using_spdy(bool x) { using_spdy_ = x; }
 
+  // Determines whether this request is using the HTTP2 protocol.
+  bool using_http2() const { return using_http2_; }
+  void set_using_http2(bool x) { using_http2_ = x; }
+
   // The minimal private suffix for the hostname specified in this request.
   // This should be calculated from the hostname by considering the list of
   // public suffixes and including one additional component.  So if a host is
@@ -261,6 +265,7 @@ class RequestContext : public RefCounted<RequestContext> {
   StringSet session_authorized_fetch_origins_;
 
   bool using_spdy_;
+  bool using_http2_;
   bool accepts_webp_;
   bool accepts_gzip_;
   bool frozen_;
