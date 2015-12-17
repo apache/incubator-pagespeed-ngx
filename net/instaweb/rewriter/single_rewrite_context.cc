@@ -102,9 +102,11 @@ void SingleRewriteContext::AddLinkRelCanonical(
   }
 
   output->response_headers()->Add(
-      HttpAttributes::kLink,
-      StrCat("<", GoogleUrl::Sanitize(input->url()), ">; ",
-            "rel=\"canonical\""));
+      HttpAttributes::kLink, RelCanonicalHeaderValue(input->url()));
+}
+
+GoogleString SingleRewriteContext::RelCanonicalHeaderValue(StringPiece url) {
+  return StrCat("<", GoogleUrl::Sanitize(url), ">; rel=\"canonical\"");
 }
 
 }  // namespace net_instaweb

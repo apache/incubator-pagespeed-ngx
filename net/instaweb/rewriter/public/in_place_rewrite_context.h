@@ -140,6 +140,11 @@ class InPlaceRewriteContext : public SingleRewriteContext {
   // if the fetch result may be browser dependent.
   void AddVaryIfRequired(const CachedResult& cached_result,
                          ResponseHeaders* headers) const;
+  // Image rewriting adds a Link rel=canonical header.  Because a single cached
+  // result can be served from multiple urls we do need to keep generating it.
+  // But when serving via IPRO we should remove it if the url hasn't changed.
+  void RemoveRedundantRelCanonicalHeader(const CachedResult& cached_result,
+                                         ResponseHeaders* headers);
 
   GoogleString url_;
   // Boolean indicating whether or not the resource was rewritten successfully.

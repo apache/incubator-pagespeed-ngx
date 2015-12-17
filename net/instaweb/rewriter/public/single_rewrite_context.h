@@ -57,6 +57,9 @@ class SingleRewriteContext : public RewriteContext {
   void AddLinkRelCanonical(const ResourcePtr& input,
                            const OutputResourcePtr& output);
 
+  // Constructs a <url>; rel="canonical" value for use with a Link header.
+  GoogleString RelCanonicalHeaderValue(StringPiece url);
+
  private:
   DISALLOW_COPY_AND_ASSIGN(SingleRewriteContext);
 };
