@@ -986,6 +986,7 @@ void* ps_create_main_conf(ngx_conf_t* cf) {
       "" /* hostname, not used */,
       -1 /* port, not used */);
   active_driver_factory = cfg_m->driver_factory;
+  active_driver_factory->LoggingInit(ngx_cycle->log, false);
   cfg_m->driver_factory->Init();
   ps_set_conf_cleanup_handler(cf, ps_cleanup_main_conf, cfg_m);
   return cfg_m;
@@ -3051,7 +3052,7 @@ ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
       return NGX_ERROR;
     }
 
-    cfg_m->driver_factory->LoggingInit(cycle->log);
+    cfg_m->driver_factory->LoggingInit(cycle->log, true);
     cfg_m->driver_factory->RootInit();
   } else {
     delete cfg_m->driver_factory;
@@ -3083,7 +3084,7 @@ ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
 
   // ChildInit() will initialise all ServerContexts, which we need to
   // create ProxyFetchFactories below
-  cfg_m->driver_factory->LoggingInit(cycle->log);
+  cfg_m->driver_factory->LoggingInit(cycle->log, true);
   cfg_m->driver_factory->ChildInit();
 
   ngx_http_core_main_conf_t* cmcf = static_cast<ngx_http_core_main_conf_t*>(
