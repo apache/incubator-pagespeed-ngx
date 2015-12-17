@@ -533,7 +533,12 @@ RewriteContext* CssCombineFilter::MakeRewriteContext() {
 }
 
 void CssCombineFilter::DetermineEnabled(GoogleString* disabled_reason) {
-  set_is_enabled(!driver()->flushed_cached_html());
+  if (driver()->options()->css_preserve_urls()) {
+    *disabled_reason = "Due to CSS URL preservation being on.";
+    set_is_enabled(false);
+  } else {
+    set_is_enabled(!driver()->flushed_cached_html());
+  }
 }
 
 }  // namespace net_instaweb

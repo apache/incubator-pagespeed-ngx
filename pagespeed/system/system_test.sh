@@ -597,6 +597,22 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
     '.blue{foreground-color:blue}body{background:url(xarrow.png.pagespeed.' \
     '<style>.yellow{background-color:#ff0}</style>'
 
+  # Make sure that optimize for bandwidth + CombineCSS doesn't eat
+  # URLs.
+  URL=http://optimizeforbandwidth.example.com/mod_pagespeed_example
+  URL=$URL/combine_css.html?PageSpeedFilters=+combine_css
+  OUT=$(http_proxy=$SECONDARY_HOSTNAME \
+        $WGET -q -O - --header=X-PSA-Blocking-Rewrite:psatest $URL)
+  check_from "$OUT" fgrep -q bold.css
+
+  # Same for CombineJS --- which never actually did, to best of my knowledge,
+  # but better check just in case.
+  URL=http://optimizeforbandwidth.example.com/mod_pagespeed_example
+  URL=$URL/combine_javascript.html?PageSpeedFilters=+combine_javascript
+  OUT=$(http_proxy=$SECONDARY_HOSTNAME \
+        $WGET -q -O - --header=X-PSA-Blocking-Rewrite:psatest $URL)
+  check_from "$OUT" fgrep -q combine_javascript2
+
   # Test that we work fine with an explicitly configured SHM metadata cache.
   start_test Using SHM metadata cache
   HOST_NAME="http://shmcache.example.com"
