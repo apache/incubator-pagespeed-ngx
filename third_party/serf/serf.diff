@@ -1,5 +1,47 @@
---- serf/src/buckets/bwtp_buckets.c	2015-10-28 16:00:12.009447506 -0400
-+++ src/third_party/serf/instaweb_bwtp_buckets.c	2015-10-30 15:24:51.184163687 -0400
+--- serf/src/buckets/buckets.c	2015-12-17 13:26:38.676327651 -0500
++++ src/third_party/serf/instaweb_buckets.c	2015-12-17 16:40:37.323946144 -0500
+@@ -609,29 +609,21 @@
+     va_list argp;
+ 
+     if (verbose_flag) {
+-        apr_sockaddr_t *sa;
+         log_time();
+ 
+-        if (skt) {
+-            /* Log local and remote ip address:port */
+-            fprintf(stderr, "[l:");
+-            if (apr_socket_addr_get(&sa, APR_LOCAL, skt) == APR_SUCCESS) {
+-                char buf[32];
+-                apr_sockaddr_ip_getbuf(buf, 32, sa);
+-                fprintf(stderr, "%s:%d", buf, sa->port);
+-            }
+-            fprintf(stderr, " r:");
+-            if (apr_socket_addr_get(&sa, APR_REMOTE, skt) == APR_SUCCESS) {
+-                char buf[32];
+-                apr_sockaddr_ip_getbuf(buf, 32, sa);
+-                fprintf(stderr, "%s:%d", buf, sa->port);
+-            }
+-            fprintf(stderr, "] ");
+-        }
+-
+         if (filename)
+             fprintf(stderr, "%s: ", filename);
+ 
++        // PageSpeed change: don't actually log the socket information here.
++        //
++        // To log the socket information Serf uses a function from APR 1.3, but
++        // that's newer than we support on some of our platforms.  Leaving this
++        // out means our log messages won't be quite as thorough as they could
++        // be, but no worse than in the previous version of serf.
++        //
++        // Once all our supported platforms have APR 1.3+ we can remove this
++        // patch.
++
+         va_start(argp, fmt);
+         vfprintf(stderr, fmt, argp);
+         va_end(argp);
+--- serf/src/buckets/bwtp_buckets.c	2015-12-17 13:26:38.676327651 -0500
++++ src/third_party/serf/instaweb_bwtp_buckets.c	2015-12-17 13:26:38.688327565 -0500
 @@ -228,7 +228,8 @@
      req_len = apr_snprintf(ctx->req_line, sizeof(ctx->req_line),
                             "%s %d " "%" APR_UINT64_T_HEX_FMT " %s%s\r\n",
@@ -10,8 +52,8 @@
                             (ctx->open ? "OPEN " : ""),
                             ctx->phrase);
      new_bucket = serf_bucket_simple_copy_create(ctx->req_line, req_len,
---- serf/src/buckets/response_buckets.c	2015-10-28 16:06:48.986197051 -0400
-+++ src/third_party/serf/instaweb_response_buckets.c	2015-10-30 08:17:56.883770217 -0400
+--- serf/src/buckets/response_buckets.c	2015-12-17 13:26:38.676327651 -0500
++++ src/third_party/serf/instaweb_response_buckets.c	2015-12-17 13:26:38.688327565 -0500
 @@ -273,41 +273,53 @@
              ctx->body =
                  serf_bucket_barrier_create(ctx->stream, bkt->allocator);
@@ -92,8 +134,8 @@
          }
          break;
      case STATE_BODY:
---- serf/src/outgoing.c	2015-10-28 16:00:11.777444732 -0400
-+++ src/third_party/serf/instaweb_outgoing.c	2015-10-29 13:45:26.627784271 -0400
+--- serf/src/outgoing.c	2015-12-17 13:26:38.680327623 -0500
++++ src/third_party/serf/instaweb_outgoing.c	2015-12-17 13:26:38.688327565 -0500
 @@ -909,6 +909,7 @@
      apr_status_t status = APR_SUCCESS;
      int consumed_response = 0;
@@ -203,8 +245,8 @@
  apr_interval_time_t serf_connection_get_latency(serf_connection_t *conn)
  {
      if (conn->ctx->proxy_address) {
---- serf/src/buckets/ssl_buckets.c	2015-10-28 16:00:11.993447315 -0400
-+++ src/third_party/serf/instaweb_ssl_buckets.c	2015-10-30 08:12:24.619859806 -0400
+--- serf/src/buckets/ssl_buckets.c	2015-12-17 13:26:38.680327623 -0500
++++ src/third_party/serf/instaweb_ssl_buckets.c	2015-12-17 13:26:38.688327565 -0500
 @@ -34,6 +34,12 @@
   * Originally developed by Aaron Bannert and Justin Erenkrantz, eBuilt.
   */
