@@ -171,6 +171,12 @@ class RewriteDriver : public HtmlParse {
 
   // Returns a fresh instance using the same options we do, using the same log
   // record. Drivers should only be cloned within the same request.
+  //
+  // Clones share the same request_context, which contains bits derived from the
+  // request headers, so request_headers_ is also cloned (or shared if we make
+  // them shareable).
+  //
+  // You must call SetRequestHeaders before calling Clone.
   RewriteDriver* Clone();
 
   // Clears the current request cache of resources and base URL.  The

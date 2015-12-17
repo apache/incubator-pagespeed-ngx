@@ -192,12 +192,17 @@ TEST_F(RewriteDriverTest, NoChanges) {
 }
 
 TEST_F(RewriteDriverTest, CloneMarksNested) {
+  RequestHeaders request_headers;
+  request_headers.Add("a", "b");
+  rewrite_driver()->SetRequestHeaders(request_headers);
   RewriteDriver* clone1 = rewrite_driver()->Clone();
   EXPECT_TRUE(clone1->is_nested());
+  EXPECT_TRUE(clone1->request_headers()->HasValue("a", "b"));
   clone1->Cleanup();
 
   RewriteDriver* parent2 =
       server_context()->NewRewriteDriver(CreateRequestContext());
+  parent2->SetRequestHeaders(request_headers);
   RewriteDriver* clone2 = parent2->Clone();
   EXPECT_TRUE(clone2->is_nested());
   clone2->Cleanup();

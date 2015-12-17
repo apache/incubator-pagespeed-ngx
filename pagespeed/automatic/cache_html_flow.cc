@@ -740,7 +740,6 @@ void CacheHtmlFlow::CacheHtmlHit(FallbackPropertyPage* page) {
   new_driver->set_response_headers_ptr(base_fetch_->response_headers());
   new_driver->set_flushing_cached_html(true);
   new_driver->SetWriter(base_fetch_);
-  new_driver->SetRequestHeaders(*base_fetch_->request_headers());
   new_driver->StartParse(url_);
 
   InitDriverWithPropertyCacheValues(new_driver, page);

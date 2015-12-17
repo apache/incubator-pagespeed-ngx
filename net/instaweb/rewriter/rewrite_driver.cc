@@ -164,7 +164,6 @@
 #include "pagespeed/kernel/http/http_names.h"
 #include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/thread/scheduler.h"
-#include "pagespeed/kernel/util/gzip_inflater.h"
 #include "pagespeed/kernel/util/statistics_logger.h"
 
 namespace net_instaweb {
@@ -311,10 +310,8 @@ void RewriteDriver::PopulateRequestContext() {
   if ((request_context_.get() != NULL && (request_headers_ != NULL))) {
     request_context_->SetAcceptsWebp(
         request_properties_->SupportsWebpRewrittenUrls());
-    if (!request_context_->frozen()) {
-      request_context_->SetAcceptsGzip(request_properties_->AcceptsGzip());
-      request_context_->Freeze();
-    }
+    request_context_->SetAcceptsGzip(request_properties_->AcceptsGzip());
+    request_context_->Freeze();
   }
 }
 
@@ -405,6 +402,7 @@ RewriteDriver* RewriteDriver::Clone() {
     result = server_context_->NewRewriteDriverFromPool(pool, request_context_);
   }
   result->is_nested_ = true;
+  result->SetRequestHeaders(*request_headers_);
   return result;
 }
 
