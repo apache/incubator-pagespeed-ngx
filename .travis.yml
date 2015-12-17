@@ -5,8 +5,9 @@ install:
   - sudo apt-get update
   - mkdir -p ~/build_directory
   - mv $TRAVIS_BUILD_DIR ~/build_directory/src
-  - sudo apt-get install apache2 g++ python subversion gperf make devscripts fakeroot git curl netcat-traditional
+  - sudo apt-get install apache2 g++ python subversion gperf make devscripts fakeroot git curl netcat-traditional gcc-mozilla
   - sudo mv /bin/nc.traditional /usr/bin/nc
+  - export PATH=/usr/lib/gcc-mozilla/bin:$PATH
   - mkdir -p ~/bin
   - cd ~/bin
   - svn co http://src.chromium.org/svn/trunk/tools/depot_tools
