@@ -19,6 +19,7 @@
 
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/function.h"
+#include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
 
@@ -39,6 +40,23 @@ class CentralControllerInterface {
   // called Run on the callback above. Do not call this if the callback's
   // Cancel method was invoked.
   virtual void NotifyExpensiveOperationComplete() = 0;
+
+  // Runs callback at an indeterminate time in the future when the rewrite
+  // denoted by key should be performed. Only one concurrent rewrite for 'key'
+  // will be scheduled at once; will Cancel the callback immediately if another
+  // rewrite is active for 'key' (or maybe at some point in the future if it
+  // is determined that the rewrite should be skipped).
+  virtual void ScheduleRewrite(const GoogleString& key, Function* callback) = 0;
+
+  // Invoke *one* of these after you are done with your rewrite to indicate
+  // success or failure. Either will relinquish the lock on the key, however
+  // "Complete" will mark the key done, whereas "Failed" allows for a retry.
+  // Only call "Failed" in the case where a retry might help. For example,
+  // do not call it if the object in question is corrupt and cannot be parsed.
+  // You should only call these if ScheduleRewrite called Run on the callback
+  // above. Do not call this if the callback's Cancel method was invoked.
+  virtual void NotifyRewriteComplete(const GoogleString& key) = 0;
+  virtual void NotifyRewriteFailed(const GoogleString& key) = 0;
 
  protected:
   CentralControllerInterface() { }

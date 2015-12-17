@@ -20,6 +20,7 @@
 #include "pagespeed/controller/central_controller_interface.h"
 #include "pagespeed/controller/central_controller_callback.h"
 #include "pagespeed/controller/expensive_operation_callback.h"
+#include "pagespeed/controller/schedule_rewrite_callback.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/thread/queued_worker_pool.h"
@@ -39,6 +40,12 @@ class CentralControllerInterfaceAdapter {
   // to perform a CPU intensive operation. Or may Cancel the callback at some
   // point if it is determined that the work cannot be performed.
   virtual void ScheduleExpensiveOperation(ExpensiveOperationCallback* callback);
+
+  // Runs callback at an indeterminate time in the future when the associated
+  // rewrite should be performed. May Cancel the callback immediately or at
+  // some point in the future if the rewrite should not be performed by the
+  // caller. Only one rewrite per callback.key() will be scheduled at once.
+  virtual void ScheduleRewrite(ScheduleRewriteCallback* callback);
 
  private:
   scoped_ptr<CentralControllerInterface> central_controller_;

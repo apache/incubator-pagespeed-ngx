@@ -353,7 +353,6 @@
         '<(DEPTH)/pagespeed/kernel/util/re2_test.cc',
         '<(DEPTH)/pagespeed/kernel/util/simple_stats_test.cc',
         '<(DEPTH)/pagespeed/kernel/util/statistics_logger_test.cc',
-        '<(DEPTH)/pagespeed/kernel/util/statistics_work_bound_test.cc',
         '<(DEPTH)/pagespeed/kernel/util/threadsafe_lock_manager_test.cc',
         '<(DEPTH)/pagespeed/kernel/util/url_escaper_test.cc',
         '<(DEPTH)/pagespeed/kernel/util/url_multipart_encoder_test.cc',

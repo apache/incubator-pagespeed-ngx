@@ -48,8 +48,20 @@ class WorkBoundExpensiveOperationTest : public testing::Test {
     thread_system_(Platform::CreateThreadSystem()),
     stats_(thread_system_.get()) {
     WorkBoundExpensiveOperationController::InitStats(&stats_);
+    InitControllerWithLimit(1);
+  }
+
+  void InitControllerWithLimit(int limit) {
     controller_.reset(
-        new WorkBoundExpensiveOperationController(1, &stats_));
+        new WorkBoundExpensiveOperationController(limit, &stats_));
+  }
+
+  bool TryToWork() {
+    TrackCallsFunction f;
+    EXPECT_FALSE(f.run_called_ || f.cancel_called_);
+    controller_->ScheduleExpensiveOperation(&f);
+    EXPECT_TRUE(f.run_called_ || f.cancel_called_);
+    return f.run_called_;
   }
 
  protected:
@@ -59,36 +71,34 @@ class WorkBoundExpensiveOperationTest : public testing::Test {
 };
 
 TEST_F(WorkBoundExpensiveOperationTest, EmptyScheduleImmediately) {
-  TrackCallsFunction f;
-  EXPECT_FALSE(f.run_called_);
-  EXPECT_FALSE(f.cancel_called_);
-  controller_->ScheduleExpensiveOperation(&f);
-  EXPECT_TRUE(f.run_called_);
-  EXPECT_FALSE(f.cancel_called_);
+  EXPECT_TRUE(TryToWork());
 }
 
 TEST_F(WorkBoundExpensiveOperationTest, ActuallyLimits) {
-  TrackCallsFunction f1;
-  TrackCallsFunction f2;
-  controller_->ScheduleExpensiveOperation(&f1);
-  controller_->ScheduleExpensiveOperation(&f2);
-  EXPECT_TRUE(f1.run_called_);
-  EXPECT_FALSE(f1.cancel_called_);
-  EXPECT_FALSE(f2.run_called_);
-  EXPECT_TRUE(f2.cancel_called_);
+  EXPECT_TRUE(TryToWork());
+  EXPECT_FALSE(TryToWork());
+}
+
+TEST_F(WorkBoundExpensiveOperationTest, LotsOfRequests) {
+  InitControllerWithLimit(1000);
+  for (int i = 0; i < 1000; ++i) {
+    EXPECT_TRUE(TryToWork());
+  }
+  EXPECT_FALSE(TryToWork());
 }
 
 TEST_F(WorkBoundExpensiveOperationTest, NotifyDone) {
-  TrackCallsFunction f1;
-  TrackCallsFunction f2;
-  controller_->ScheduleExpensiveOperation(&f1);
+  EXPECT_TRUE(TryToWork());
+  EXPECT_FALSE(TryToWork());
   controller_->NotifyExpensiveOperationComplete();
-  controller_->ScheduleExpensiveOperation(&f2);
-  EXPECT_TRUE(f1.run_called_);
-  EXPECT_FALSE(f1.cancel_called_);
-  EXPECT_TRUE(f2.run_called_);
-  EXPECT_FALSE(f2.cancel_called_);
+  EXPECT_TRUE(TryToWork());
 }
+
+TEST_F(WorkBoundExpensiveOperationTest, LimitZeroIsUnlimited) {
+  InitControllerWithLimit(0);
+  EXPECT_TRUE(TryToWork());
+}
+
 
 }  // namespace
 }  // namespace net_instaweb

@@ -43,7 +43,7 @@ class ExpensiveOperationContext {
 };
 
 // Implementor interface to ExpensiveOperation features in
-// ExpensiveOperationInterfaceAdapter.
+// CentralControllerInterfaceAdapter.
 class ExpensiveOperationCallback
     : public CentralControllerCallback<ExpensiveOperationContext> {
  public:

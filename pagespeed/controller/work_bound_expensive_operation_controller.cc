@@ -16,8 +16,6 @@
 
 #include "pagespeed/controller/work_bound_expensive_operation_controller.h"
 
-#include "pagespeed/kernel/util/statistics_work_bound.h"
-
 namespace net_instaweb {
 
 const char
@@ -26,9 +24,9 @@ const char
 
 WorkBoundExpensiveOperationController::WorkBoundExpensiveOperationController(
     int max_expensive_operations, Statistics* stats)
-    : work_bound_(new StatisticsWorkBound(
-          stats->GetUpDownCounter(kCurrentExpensiveOperations),
-          max_expensive_operations)) {}
+    : bound_(max_expensive_operations),
+      counter_(bound_ > 0 ? stats->GetUpDownCounter(kCurrentExpensiveOperations)
+                          : NULL) {}
 
 WorkBoundExpensiveOperationController::
     ~WorkBoundExpensiveOperationController() {}
@@ -37,9 +35,26 @@ void WorkBoundExpensiveOperationController::InitStats(Statistics* statistics) {
     statistics->AddGlobalUpDownCounter(kCurrentExpensiveOperations);
 }
 
+bool WorkBoundExpensiveOperationController::TryToWork() {
+  bool can_work = true;
+  if (counter_ != NULL) {
+    // We conservatively increment, then test, and decrement on failure.  This
+    // guarantees that two incrementors don't both get through when we're within
+    // 1 of the bound, at the cost of occasionally rejecting them both.
+    // TODO(cheesy): If Statistics ever improves its atomicity gurantees, we
+    // should just use the value returned by Add().
+    counter_->Add(1);
+    can_work = (counter_->Get() <= bound_);
+    if (!can_work) {
+      counter_->Add(-1);
+    }
+  }
+  return can_work;
+}
+
 void WorkBoundExpensiveOperationController::ScheduleExpensiveOperation(
     Function* callback) {
-  if (work_bound_->TryToWork()) {
+  if (TryToWork()) {
     callback->CallRun();
   } else {
     callback->CallCancel();
@@ -47,7 +62,9 @@ void WorkBoundExpensiveOperationController::ScheduleExpensiveOperation(
 }
 
 void WorkBoundExpensiveOperationController::NotifyExpensiveOperationComplete() {
-  work_bound_->WorkComplete();
+  if (counter_ != NULL) {
+    counter_->Add(-1);
+  }
 }
 
 }  // namespace net_instaweb

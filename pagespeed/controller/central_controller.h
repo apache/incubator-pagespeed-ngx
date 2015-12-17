@@ -19,10 +19,12 @@
 
 #include "pagespeed/controller/central_controller_interface.h"
 #include "pagespeed/controller/expensive_operation_controller.h"
+#include "pagespeed/controller/schedule_rewrite_controller.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/statistics.h"
+#include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
 
@@ -34,7 +36,8 @@ namespace net_instaweb {
 class CentralController : public CentralControllerInterface {
  public:
   CentralController(
-      ExpensiveOperationController* expensive_operation_controller);
+      ExpensiveOperationController* expensive_operation_controller,
+      ScheduleRewriteController* schedule_rewrite_controller);
 
   virtual ~CentralController();
 
@@ -43,13 +46,17 @@ class CentralController : public CentralControllerInterface {
   virtual void ScheduleExpensiveOperation(Function* callback);
   virtual void NotifyExpensiveOperationComplete();
 
-  // TODO(cheesy): There will be a different delegate for the popularity
-  // contest in here.
+  // CentralControllerInterface for rewrite scheduling operations.
+  // All just delegated to schedule_rewrite_controller_.
+  virtual void ScheduleRewrite(const GoogleString& key, Function* callback);
+  virtual void NotifyRewriteComplete(const GoogleString& key);
+  virtual void NotifyRewriteFailed(const GoogleString& key);
 
   static void InitStats(Statistics* stats);
 
  private:
   scoped_ptr<ExpensiveOperationController> expensive_operation_controller_;
+  scoped_ptr<ScheduleRewriteController> schedule_rewrite_controller_;
 
   DISALLOW_COPY_AND_ASSIGN(CentralController);
 };

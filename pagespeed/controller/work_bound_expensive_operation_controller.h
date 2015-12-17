@@ -21,12 +21,12 @@
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/statistics.h"
-#include "pagespeed/kernel/util/work_bound.h"
 
 namespace net_instaweb {
 
-// Implements ExpensiveOperationController using a StatisticsWorkBound.
-// StatisticsWorkBound uses Statistics to communicate between multiple worker
+// Implements ExpensiveOperationController by using a statistic to limit
+// multiple simultaneous expensive jobs. Named after now removed WorkBound
+// class. This uses Statistics to communicate between multiple worker
 // processes so does not have have the cross-process constraints of
 // QueuedExpensiveOperationController. However, this implementation does not
 // queue requests, instead observing the count of in-progress operations and
@@ -47,7 +47,10 @@ class WorkBoundExpensiveOperationController
   static void InitStats(Statistics* stats);
 
  private:
-  scoped_ptr<WorkBound> work_bound_;
+  bool TryToWork();
+
+  const int bound_;
+  UpDownCounter* counter_;
 
   DISALLOW_COPY_AND_ASSIGN(WorkBoundExpensiveOperationController);
 };

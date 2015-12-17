@@ -21,8 +21,10 @@
 namespace net_instaweb {
 
 CentralController::CentralController(
-    ExpensiveOperationController* expensive_operation_controller)
-    : expensive_operation_controller_(expensive_operation_controller) {
+    ExpensiveOperationController* expensive_operation_controller,
+    ScheduleRewriteController* schedule_rewrite_controller)
+    : expensive_operation_controller_(expensive_operation_controller),
+      schedule_rewrite_controller_(schedule_rewrite_controller) {
 }
 
 CentralController::~CentralController() {
@@ -39,6 +41,19 @@ void CentralController::ScheduleExpensiveOperation(Function* callback) {
 
 void CentralController::NotifyExpensiveOperationComplete() {
   expensive_operation_controller_->NotifyExpensiveOperationComplete();
+}
+
+void CentralController::ScheduleRewrite(const GoogleString& key,
+                                        Function* callback) {
+  schedule_rewrite_controller_->ScheduleRewrite(key, callback);
+}
+
+void CentralController::NotifyRewriteComplete(const GoogleString& key) {
+  schedule_rewrite_controller_->NotifyRewriteComplete(key);
+}
+
+void CentralController::NotifyRewriteFailed(const GoogleString& key) {
+  schedule_rewrite_controller_->NotifyRewriteFailed(key);
 }
 
 }  // namespace net_instaweb

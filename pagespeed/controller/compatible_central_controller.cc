@@ -16,7 +16,6 @@
 
 #include "pagespeed/controller/compatible_central_controller.h"
 
-#include "pagespeed/kernel/util/statistics_work_bound.h"
 #include "pagespeed/controller/work_bound_expensive_operation_controller.h"
 
 namespace net_instaweb {
@@ -24,7 +23,8 @@ namespace net_instaweb {
 CompatibleCentralController::CompatibleCentralController(
     int max_expensive_operations, Statistics* statistics)
     : CentralController(new WorkBoundExpensiveOperationController(
-          max_expensive_operations, statistics)) {
+          max_expensive_operations, statistics), NULL) {
+  // TODO(cheesy): Plug a ScheduleRewriteController in here, once we have one.
 }
 
 CompatibleCentralController::~CompatibleCentralController() {

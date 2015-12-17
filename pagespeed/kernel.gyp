@@ -392,12 +392,10 @@
         'kernel/util/nonce_generator.cc',
         'kernel/util/simple_random.cc',
         'kernel/util/statistics_logger.cc',
-        'kernel/util/statistics_work_bound.cc',
         'kernel/util/url_escaper.cc',
         'kernel/util/url_multipart_encoder.cc',
         'kernel/util/url_segment_encoder.cc',
         'kernel/util/url_to_filename_encoder.cc',
-        'kernel/util/work_bound.cc',
       ],
       'include_dirs': [
         '<(DEPTH)',

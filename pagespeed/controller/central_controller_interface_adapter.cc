@@ -32,4 +32,10 @@ void CentralControllerInterfaceAdapter::ScheduleExpensiveOperation(
   central_controller_->ScheduleExpensiveOperation(callback);
 }
 
+void CentralControllerInterfaceAdapter::ScheduleRewrite(
+    ScheduleRewriteCallback* callback) {
+  callback->SetCentralControllerInterface(central_controller_.get());
+  central_controller_->ScheduleRewrite(callback->key(), callback);
+}
+
 }  // namespace net_instaweb
