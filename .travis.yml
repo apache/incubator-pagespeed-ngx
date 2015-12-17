@@ -5,7 +5,7 @@ install:
   - sudo apt-get update
   - mkdir -p ~/build_directory
   - mv $TRAVIS_BUILD_DIR ~/build_directory/src
-  - sudo apt-get install apache2 g++ python subversion gperf make devscripts fakeroot git curl netcat-traditional gcc-mozilla
+  - sudo apt-get install apache2 g++ python subversion gperf make devscripts fakeroot git curl netcat-traditional gcc-mozilla clang-3.4
   - sudo mv /bin/nc.traditional /usr/bin/nc
   - export PATH=/usr/lib/gcc-mozilla/bin:$PATH
   - mkdir -p ~/bin
