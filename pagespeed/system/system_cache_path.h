@@ -59,8 +59,8 @@ class SystemCachePath {
   ~SystemCachePath();
 
   // Computes a key suitable for building a map to help share common cache
-  // objects between vhosts.
-  static GoogleString CacheKey(SystemRewriteOptions* config);
+  // objects between vhosts.  This key is given to the constructor as 'path'.
+  static GoogleString CachePath(SystemRewriteOptions* config);
 
   // Per-process in-memory LRU, with any stats/thread safety wrappers, or NULL.
   CacheInterface* lru_cache() { return lru_cache_; }

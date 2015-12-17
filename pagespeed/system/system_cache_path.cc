@@ -144,11 +144,11 @@ SystemCachePath::~SystemCachePath() {
 }
 
 // static
-GoogleString SystemCachePath::CacheKey(SystemRewriteOptions* config) {
+GoogleString SystemCachePath::CachePath(SystemRewriteOptions* config) {
   return (config->unplugged()
           ? "<unplugged>"
           : StrCat(config->file_cache_path(),
-                   config->enable_cache_purge() ? "\npurge\n" : "\nflush\n",
+                   config->enable_cache_purge() ? " purge " : " flush ",
                    config->cache_flush_filename()));
 }
 
