@@ -67,6 +67,21 @@ TEST_F(MetaTagFilterTest, TestTags) {
       << *values[0];
 }
 
+const char kMetaTagDocInvalidAttribute[] =
+    "<html><head>"
+    "<meta http-equiv=\"Content-Type\" content=\"text/html;"
+    "      charset=U\r\nTF-8\">"
+    "</head><body></body></html>";
+
+TEST_F(MetaTagFilterTest, TestRejectInvalidAttribute) {
+  headers()->RemoveAll(HttpAttributes::kContentType);
+  ValidateNoChanges("convert_tags_invalid_attribute",
+                    kMetaTagDocInvalidAttribute);
+  ConstStringStarVector values;
+  EXPECT_FALSE(headers()->Lookup(HttpAttributes::kContentType, &values));
+  ASSERT_EQ(0, values.size());
+}
+
 const char kMetaTagDoubleDoc[] =
     "<html><head>"
     "<meta http-equiv=\"Content-Type\" content=\"text/html;  charset=UTF-8\">"

@@ -75,6 +75,8 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
 
   // Merge the new content_type with what is already in the headers.
   // Returns true if the existing content-type header was changed.
+  // If the new content_type contains non-printable characters, the
+  // change will be rejected silently (and false will be returned).
   bool MergeContentType(const StringPiece& content_type);
 
   // Merge headers. Replaces all headers specified both here and in

@@ -321,6 +321,12 @@ bool ResponseHeaders::CombineContentTypes(const StringPiece& orig,
 }
 
 bool ResponseHeaders::MergeContentType(const StringPiece& content_type) {
+  for (size_t i = 0; i < content_type.size(); i++) {
+    if (!IsNonControlAscii(content_type[i])) {
+      return false;
+    }
+  }
+
   bool ret = false;
   ConstStringStarVector old_values;
   Lookup(HttpAttributes::kContentType, &old_values);
