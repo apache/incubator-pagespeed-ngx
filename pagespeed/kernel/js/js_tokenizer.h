@@ -29,7 +29,7 @@ namespace pagespeed {
 
 namespace js {
 
-class JsTokenizerPatterns;
+struct JsTokenizerPatterns;
 
 // This class accurately breaks up JavaScript code into a sequence of tokens.
 // This includes tokens for comments and whitespace; every byte of the input is
