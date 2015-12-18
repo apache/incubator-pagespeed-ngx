@@ -1,28 +1,7 @@
 (function(){var pagespeedutils = {MAX_POST_SIZE:131072, sendBeacon:function(a, b, c) {
-  var d;
-  if (window.XMLHttpRequest) {
-    d = new XMLHttpRequest;
-  } else {
-    if (window.ActiveXObject) {
-      try {
-        d = new ActiveXObject("Msxml2.XMLHTTP");
-      } catch (f) {
-        try {
-          d = new ActiveXObject("Microsoft.XMLHTTP");
-        } catch (g) {
-        }
-      }
-    }
-  }
-  if (!d) {
-    return !1;
-  }
-  var e = -1 == a.indexOf("?") ? "?" : "&";
-  a = a + e + "url=" + encodeURIComponent(b);
-  d.open("POST", a);
-  d.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-  d.send(c);
-  return !0;
+  var d = -1 == a.indexOf("?") ? "?" : "&";
+  a = a + d + "url=" + encodeURIComponent(b);
+  return window.navigator && window.navigator.sendBeacon ? (window.navigator.sendBeacon(a, c), !0) : window.XMLHttpRequest ? (b = new XMLHttpRequest, b.open("POST", a), b.setRequestHeader("Content-Type", "text/plain;charset=UTF-8"), b.send(c), !0) : !1;
 }, addHandler:function(a, b, c) {
   if (a.addEventListener) {
     a.addEventListener(b, c, !1);

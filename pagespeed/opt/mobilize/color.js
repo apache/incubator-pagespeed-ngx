@@ -313,7 +313,8 @@ mob.Color.prototype.computeThemeColor_ = function(imageElement,
  * @return {!mob.Color.ThemeColors_}
  */
 mob.Color.prototype.run = function(imageElement, backgroundColor) {
-  if (imageElement) {
+  if (imageElement && imageElement.naturalHeight != 0 &&
+      imageElement.naturalWidth != 0) {
     if (!mob.util.isCrossOrigin(imageElement.src)) {
       mob.util.consoleLog('Found logo. Theme color will be computed ' +
                           'from logo.');
