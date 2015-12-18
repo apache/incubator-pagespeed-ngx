@@ -34,9 +34,9 @@
 <!-- img with long script url (gets truncated?) -->
 <img alt="" id=livestats src="o.gif?Nonsensical~but~very~long/and~slashy~CGI~URL~"/>
 </td><td valign=top class=gffffff width=14><img src="data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" width=14 height=1 alt="" border=0 vspace=0 hspace=0 id=o1></td>
-<td class=image><img src=1023x766xPuzzle.jpg.pagespeed.ic.0.jpg align=left width=1023 height=766 alt="A lovely puzzle purchased at a wool-and-puzzle shop in New Zealand" border=0 vspace=0 hspace=0></td>
+<td class=image><img src=xPuzzle.jpg.pagespeed.ic.0.jpg align=left width=1023 height=766 alt="A lovely puzzle purchased at a wool-and-puzzle shop in New Zealand" border=0 vspace=0 hspace=0></td>
 <td class=image><img src=256x192xPuzzle.jpg.pagespeed.ic.0.jpg align=left width=256 height=192 alt="The same, but smaller." border=0 vspace=0 hspace=0></td>
-<td class=image><img src=256x192xPuzzle-low-quality.jpg.pagespeed.ic.0.jpg align=left width=256 height=192 alt="The same, but smaller & poorer in quality." border=0 vspace=0 hspace=0></td>
+<td class=image><img src=xPuzzle-low-quality.jpg.pagespeed.ic.0.jpg align=left width=256 height=192 alt="The same, but smaller & poorer in quality." border=0 vspace=0 hspace=0></td>
 <img src="data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" width=1 height=5 alt="" border=0 vspace=0 class="" hspace=0 id=o2><br/>
 <img src="data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" align=left width=5 height=49 alt="" border=0 vspace=0 hspace=0 id=o3>
 <noscript>
@@ -69,7 +69,7 @@
 <!-- And this tests the presence of unit-annotated width and height, which ought
      to induce resizing just as with non-unit-annotated width and height.
   -->
-<img src=100x100xBikeCrashIcn.png.pagespeed.ic.0.jpg alt=Crackers width=100px height=100px />
+<img src=xBikeCrashIcn.png.pagespeed.ic.0.jpg alt=Crackers width=100px height=100px />
 <!-- Whereas percentages should not resize. -->
 <img src=xBikeCrashIcn.png.pagespeed.ic.0.jpg alt=Crackers width="100%" height="99.5%"/>
 </body>

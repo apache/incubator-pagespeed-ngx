@@ -514,6 +514,15 @@ class RewriteDriver : public HtmlParse {
   void InfoAt(const RewriteContext* context,
               const char* msg, ...) INSTAWEB_PRINTF_FORMAT(3, 4);
 
+  // Constructs name and URL for the specified input resource and encoder.
+  bool GenerateOutputResourceNameAndUrl(
+    const UrlSegmentEncoder* encoder,
+    const ResourceContext* data,
+    const ResourcePtr& input_resource,
+    GoogleString* name,
+    GoogleUrl* mapped_gurl,
+    GoogleString* failure_reason);
+
   // Creates a reference-counted pointer to a new OutputResource object.
   //
   // The content type is taken from the input_resource, but can be modified
@@ -526,7 +535,7 @@ class RewriteDriver : public HtmlParse {
   // TODO(jmaessen, jmarantz): Do we want to permit NULL input_resources here?
   // jmarantz has evinced a distaste.
   OutputResourcePtr CreateOutputResourceFromResource(
-      const StringPiece& filter_id,
+      const char* filter_id,
       const UrlSegmentEncoder* encoder,
       const ResourceContext* data,
       const ResourcePtr& input_resource,

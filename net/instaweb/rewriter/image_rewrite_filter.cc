@@ -43,6 +43,7 @@
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/request_properties.h"
 #include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/responsive_image_filter.h"
@@ -909,6 +910,9 @@ bool ImageRewriteFilter::ResizeImageIfNecessary(
   ImageDim* desired_dim = resource_context->mutable_desired_image_dims();
   const ImageDim* post_resize_dim = &image_dim;
   if (ShouldResize(*resource_context, url, image, desired_dim)) {
+    DCHECK_LT(0, desired_dim->width());
+    DCHECK_LT(0, desired_dim->height());
+
     const char* message;  // Informational message for logging only.
     if (image->ResizeTo(*desired_dim)) {
       post_resize_dim = desired_dim;
@@ -917,8 +921,7 @@ bool ImageRewriteFilter::ResizeImageIfNecessary(
     } else {
       message = "Couldn't resize";
     }
-    DCHECK_LT(0, desired_dim->width());
-    DCHECK_LT(0, desired_dim->height());
+
     driver()->InfoAt(rewrite_context, "%s image `%s' from %dx%d to %dx%d",
                      message, url.c_str(),
                      image_dim.width(), image_dim.height(),
@@ -1084,6 +1087,27 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
   is_resized = ResizeImageIfNecessary(
       rewrite_context, input_resource->url(),
       &resource_context, image.get(), cached);
+
+  // When the "resize_images" filter has been turned on and the IMG tag has
+  // width and/or height specified, we assume that the image will be resized so
+  // the new dimension will be embedded into the rewritten image URL. However,
+  // if reizing turns out to be a failure, we don't want the new dimension in
+  // the rewritten URL. For the latter case, we will reset the "name" of the
+  // output resource.
+  if (!is_resized) {
+    resource_context.clear_desired_image_dims();
+    GoogleString name;
+    GoogleUrl mapped_gurl;  // Not used
+    GoogleString failure_reason;  // Not used
+    if (driver()->GenerateOutputResourceNameAndUrl(
+            encoder(), &resource_context, input_resource, &name, &mapped_gurl,
+            &failure_reason)) {
+      result->mutable_full_name()->set_name(name);
+    } else {
+      LOG(DFATAL) << "Failed to generate name and URL for the output resource.";
+      return kRewriteFailed;
+    }
+  }
 
   // Now re-compress the (possibly resized) image, and decide if it's
   // saved us anything.

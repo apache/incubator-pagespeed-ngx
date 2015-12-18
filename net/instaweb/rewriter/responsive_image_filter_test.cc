@@ -186,7 +186,7 @@ TEST_F(ResponsiveImageFilterTest, RecompressLarger) {
   // Note: This is the native size of a.jpg.
   const char input_html[] = "<img src=a.jpg width=1023 height=766>";
   GoogleString output_html = StrCat(
-      "<img src=", EncodeImage(1023, 766, "a.jpg", "0", "jpg"),
+      "<img src=", EncodeImage(-1, -1, "a.jpg", "0", "jpg"),
       " width=1023 height=766>");
   // We do not add a srcset because this is already native size.
   ValidateExpected("recompress_larger", input_html, output_html);
@@ -203,7 +203,7 @@ TEST_F(ResponsiveImageFilterTest, RecompressLarger2) {
   GoogleString output_html = StrCat(
       "<img src=", EncodeImage(682, 511, "a.jpg", "0", "jpg"),
       " width=682 height=511 srcset=\"",
-      EncodeImage(1023, 766, "a.jpg", "0", "jpg"), " 1.5x\">");
+      EncodeImage(-1, -1, "a.jpg", "0", "jpg"), " 1.5x\">");
   // We do not add a 2x version because the 1.5x is already native size.
   ValidateExpected("recompress_larger2", input_html, output_html);
 }
@@ -221,7 +221,7 @@ TEST_F(ResponsiveImageFilterTest, RecompressLarger3) {
       " width=682 height=510 srcset=\"",
       EncodeImage(1023, 765, "a.jpg", "0", "jpg"), " 1.5x,",
       // Note this 2x version is actually only 1023x766.
-      EncodeImage(1364, 1020, "a.jpg", "0", "jpg"), " 2x\">");
+      EncodeImage(-1, -1, "a.jpg", "0", "jpg"), " 2x\">");
   // TODO(sligocki): We shouldn't include the 1.5x version because it's so
   // close to the 2x version. Update this test when that is fixed.
   ValidateExpected("recompress_larger3", input_html, output_html);
@@ -546,28 +546,28 @@ TEST_F(ResponsiveImageFilterTest, Debug) {
       // 1.5x virtual image debug messages:
       StrCat("<!--ResponsiveImageFilter: Any debug messages after this refer "
              "to the virtual 1.5x image with src=",
-             EncodeImage(1534, 1149, "a.jpg", "0", "jpg"),
+             EncodeImage(-1, -1, "a.jpg", "0", "jpg"),
              " width=1534 height=1149-->"
              "<!--Image does not appear to need resizing.-->"
 
              // 2x virtual image debug messages:
              "<!--ResponsiveImageFilter: Any debug messages after this refer "
              "to the virtual 2x image with src=",
-             EncodeImage(2046, 1532, "a.jpg", "0", "jpg"),
+             EncodeImage(-1, -1, "a.jpg", "0", "jpg"),
              " width=2046 height=1532-->"
              "<!--Image does not appear to need resizing.-->"
 
              // 3x virtual image debug messages:
              "<!--ResponsiveImageFilter: Any debug messages after this refer "
              "to the virtual 3x image with src=",
-             EncodeImage(3069, 2298, "a.jpg", "0", "jpg"),
+             EncodeImage(-1, -1, "a.jpg", "0", "jpg"),
              " width=3069 height=2298-->"
              "<!--Image does not appear to need resizing.-->"
 
              // Inlinable virtual image debug messages:
              "<!--ResponsiveImageFilter: Any debug messages after this refer "
              "to the virtual inlinable 3x image with src=",
-             EncodeImage(3069, 2298, "a.jpg", "0", "jpg"),
+             EncodeImage(-1, -1, "a.jpg", "0", "jpg"),
              " width=3069 height=2298-->"
              "<!--Image does not appear to need resizing.-->"
 
@@ -579,16 +579,16 @@ TEST_F(ResponsiveImageFilterTest, Debug) {
              "<!--Image does not appear to need resizing.-->"
 
              // Actual image + debug messages:
-             "<img src=", EncodeImage(1023, 766, "a.jpg", "0", "jpg"),
+             "<img src=", EncodeImage(-1, -1, "a.jpg", "0", "jpg"),
              " width=1023 height=766>"
              "<!--ResponsiveImageFilter: Not adding 1x candidate to srcset "
-             "because native image was not high enough resolution.-->"
+             "because it is the same as previous candidate.-->"
              "<!--ResponsiveImageFilter: Not adding 3x candidate to srcset "
-             "because native image was not high enough resolution.-->"
+             "because it is the same as previous candidate.-->"
              "<!--ResponsiveImageFilter: Not adding 2x candidate to srcset "
-             "because native image was not high enough resolution.-->"
+             "because it is the same as previous candidate.-->"
              "<!--ResponsiveImageFilter: Not adding 1.5x candidate to srcset "
-             "because native image was not high enough resolution.-->"
+             "because it is the same as previous candidate.-->"
              "<!--Image does not appear to need resizing.-->"));
 
   ValidateExpected(

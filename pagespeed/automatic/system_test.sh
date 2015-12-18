@@ -51,6 +51,7 @@ run_test rewrite_images
 run_test image_quality_generic
 run_test image_quality_jpeg
 run_test image_quality_webp
+run_test image_resize
 run_test broken_images
 run_test make_show_ads_async
 run_test mobilizer

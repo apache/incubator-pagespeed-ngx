@@ -1,0 +1,25 @@
+<html>
+  <head>
+    <title>Make sure that images are recompressed without resizing,
+      and URLs are modified correctly.</title>
+  </head>
+  <style>
+    .background-puzzle {
+      background-image: url(../../mod_pagespeed_example/images/Puzzle2.jpg);
+      width: 100px;
+      height: 100px;
+  }
+  </style>
+  <body>
+    <img src="../../mod_pagespeed_example/images/Cschedule_event.svg"
+         width="20" height="10"
+         title="SVG image won't be resized nor rewritten."/><br/>
+    <img src="../../mod_pagespeed_example/images/gray_saved_as_rgb.webp"
+         width="10" height="12"
+         title="WebP image won't be resized."/><br/>
+    <img src="../../mod_pagespeed_example/images/disclosure_open_plus.png"
+         width="200" height="10"
+         title="Image won't be enlarged."/><br/>
+`    <div class="background-puzzle">Image in CSS won't be resized.</div>
+  </body>
+</html>

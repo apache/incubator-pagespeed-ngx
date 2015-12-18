@@ -2786,44 +2786,64 @@ void RewriteDriver::InfoAt(const RewriteContext* context,
   va_end(args);
 }
 
-// Constructs an output resource corresponding to the specified input resource
-// and encoded using the provided encoder.
-OutputResourcePtr RewriteDriver::CreateOutputResourceFromResource(
-    const StringPiece& filter_id,
+// Constructs name and URL for the specified input resource and encoder.
+bool RewriteDriver::GenerateOutputResourceNameAndUrl(
     const UrlSegmentEncoder* encoder,
     const ResourceContext* data,
     const ResourcePtr& input_resource,
-    OutputResourceKind kind,
+    GoogleString* name,
+    GoogleUrl* mapped_gurl,
     GoogleString* failure_reason) {
-  OutputResourcePtr result;
   if (input_resource.get() == NULL) {
     *failure_reason = "No input resource.";
-    return result;
+    return false;
   }
 
   // TODO(jmarantz): It would be more efficient to pass in the base
   // document GURL or save that in the input resource.
   GoogleUrl unmapped_gurl(input_resource->url());
   GoogleString mapped_domain;  // Unused. TODO(sligocki): Stop setting this?
-  GoogleUrl mapped_gurl;
   // Get the domain and URL after any domain lawyer rewriting.
   if (!options()->IsAllowed(unmapped_gurl.Spec())) {
     *failure_reason = StrCat("Rewriting disallowed for ", unmapped_gurl.Spec());
-    return result;
+    return false;
   }
 
   if (!options()->domain_lawyer()->MapRequestToDomain(
-          unmapped_gurl, unmapped_gurl.Spec(), &mapped_domain, &mapped_gurl,
+          unmapped_gurl, unmapped_gurl.Spec(), &mapped_domain, mapped_gurl,
           server_context_->message_handler())) {
     *failure_reason = StrCat("Domain not authorized for ",
                              unmapped_gurl.Spec());
+    return false;
+  }
+
+  StringVector v;
+  v.push_back(mapped_gurl->LeafWithQuery().as_string());
+  encoder->Encode(v, data, name);
+  return true;
+}
+
+// Constructs an output resource corresponding to the specified input resource
+// and encoded using the provided encoder.
+OutputResourcePtr RewriteDriver::CreateOutputResourceFromResource(
+    const char* filter_id,
+    const UrlSegmentEncoder* encoder,
+    const ResourceContext* data,
+    const ResourcePtr& input_resource,
+    OutputResourceKind kind,
+    GoogleString* failure_reason) {
+  OutputResourcePtr result;
+  GoogleString name;
+  GoogleUrl mapped_gurl;
+  if (!GenerateOutputResourceNameAndUrl(encoder, data, input_resource, &name,
+                                        &mapped_gurl, failure_reason)) {
     return result;
   }
 
-  GoogleString name;
-  StringVector v;
-  v.push_back(mapped_gurl.LeafWithQuery().as_string());
-  encoder->Encode(v, data, &name);
+  // TODO(jmarantz): It would be more efficient to pass in the base
+  // document GURL or save that in the input resource.
+  GoogleUrl unmapped_gurl(input_resource->url());
+
   result.reset(CreateOutputResourceWithMappedPath(
       mapped_gurl.AllExceptLeaf(), unmapped_gurl.AllExceptLeaf(),
       filter_id, name, kind, failure_reason));

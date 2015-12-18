@@ -1,0 +1,65 @@
+start_test resize images and modify URLs
+rm -rf $OUTDIR
+mkdir $OUTDIR
+HTML_PATH="$TEST_ROOT/webp_rewriting/"
+HTML_OPT="?PageSpeedFilters=rewrite_images,rewrite_css,convert_to_webp_animated"
+HTML_OPT="$HTML_OPT&$IMAGES_QUALITY=75&$WEBP_QUALITY=65"
+function resize_image_test {
+  local url=$1
+  local expected_num=$2
+  local url_opt="$HTML_PATH$url$HTML_OPT"
+  fetch_until -save -recursive $url_opt \
+    'fgrep -c .pagespeed.ic.' $expected_num \
+    --user-agent=webp-animated
+}
+# Check that the images will be resized.
+HTML_URL="resizable_images.html"
+HTML_FETCHED="$WGET_DIR/$HTML_URL$HTML_OPT"
+resize_image_test $HTML_URL 4
+#
+IMAGE="/120x150xPuzzle2.jpg.pagespeed.ic.*.webp"
+check_from "$(< $HTML_FETCHED)" grep -q $IMAGE
+check_file_size "$WGET_DIR$IMAGE" -le 2324
+#
+IMAGE="/90xNxIronChef2.gif.pagespeed.ic.*.webp"
+check_from "$(< $HTML_FETCHED)" grep -q $IMAGE
+check_file_size "$WGET_DIR$IMAGE" -le 1624
+#
+IMAGE="/Nx50xBikeCrashIcn.png.pagespeed.ic.*.webp"
+check_from "$(< $HTML_FETCHED)" grep -q $IMAGE
+check_file_size "$WGET_DIR$IMAGE" -le 822
+#
+IMAGE="/xpagespeed_logo.png.pagespeed.ic.*.webp"
+check_from "$(< $HTML_FETCHED)" grep -q $IMAGE
+check_file_size "$WGET_DIR$IMAGE" -ge 9500
+check_file_size "$WGET_DIR$IMAGE" -lt 15131
+#
+# Check that the images will be recompressed without resizing.
+HTML_URL="unresizable_images.html"
+HTML_FETCHED="$WGET_DIR/$HTML_URL$HTML_OPT"
+resize_image_test $HTML_URL 3
+#
+IMAGE="/xdisclosure_open_plus.png.pagespeed.ic.*.webp"
+check_from "$(< $HTML_FETCHED)" grep -q $IMAGE
+check_file_size "$WGET_DIR$IMAGE" -ge 150
+check_file_size "$WGET_DIR$IMAGE" -lt 299
+#
+IMAGE="/xgray_saved_as_rgb.webp.pagespeed.ic.*.webp"
+check_from "$(< $HTML_FETCHED)" grep -q $IMAGE
+check_file_size "$WGET_DIR$IMAGE" -ge 270
+check_file_size "$WGET_DIR$IMAGE" -lt 318
+#
+IMAGE="/xPuzzle2.jpg.pagespeed.ic.*.webp"
+check_from "$(< $HTML_FETCHED)" grep -q $IMAGE
+check_file_size "$WGET_DIR$IMAGE" -ge 12212
+check_file_size "$WGET_DIR$IMAGE" -lt 31066
+#
+# Check that animated images will be recompressed without resizing.
+HTML_URL="animated_images.html"
+HTML_FETCHED="$WGET_DIR/$HTML_URL$HTML_OPT"
+resize_image_test $HTML_URL 1
+#
+IMAGE="/xCradleAnimation.gif.pagespeed.ic.*.webp"
+check_from "$(< $HTML_FETCHED)" grep -q $IMAGE
+check_file_size "$WGET_DIR$IMAGE" -ge 129000
+check_file_size "$WGET_DIR$IMAGE" -lt 583374
