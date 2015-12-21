@@ -19,6 +19,9 @@
 
 #include "pagespeed/controller/central_controller.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/named_lock_manager.h"
+#include "pagespeed/kernel/base/statistics.h"
+#include "pagespeed/kernel/base/thread_system.h"
 
 namespace net_instaweb {
 
@@ -27,7 +30,9 @@ namespace net_instaweb {
 // wrapper around CentralController with appropriate delegates.
 class CompatibleCentralController : public CentralController {
  public:
-  CompatibleCentralController(int max_expensive_operations, Statistics* stats);
+  CompatibleCentralController(int max_expensive_operations, Statistics* stats,
+                              ThreadSystem* thread_system,
+                              NamedLockManager* lock_manager);
 
   virtual ~CompatibleCentralController();
 

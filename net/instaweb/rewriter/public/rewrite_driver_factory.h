@@ -23,8 +23,6 @@
 #include <vector>
 
 #include "pagespeed/controller/central_controller_interface.h"
-#include "pagespeed/controller/central_controller_interface_adapter.h"
-#include "pagespeed/controller/expensive_operation_callback.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/function.h"
@@ -235,13 +233,6 @@ class RewriteDriverFactory {
 
   ThreadSystem* thread_system() { return thread_system_.get(); }
 
-  // Return interface to various functions that workers need delegated
-  // to a central service. Depending on the implemenation, this may invoke
-  // RPCs.
-  CentralControllerInterfaceAdapter* central_controller_interface() {
-    return central_controller_interface_.get();
-  }
-
   // Returns the set of directories that we (our our subclasses) have created
   // thus far.
   const StringSet& created_directories() const {
@@ -315,13 +306,6 @@ class RewriteDriverFactory {
   // Creates an ExperimentMatcher, which is used to match clients or sessions to
   // a specific experiment.
   virtual ExperimentMatcher* NewExperimentMatcher();
-
-  // Control the number of simultaneous expensive CPU operations going on at
-  // once. Invokes Run on your callback at a time when it is OK to do the
-  // expensive operation, or Cancel if you should not perform the operation.
-  // Depending on the implemation, may queue the callback for theoretically
-  // unbounded time.
-  void ScheduleExpensiveOperation(ExpensiveOperationCallback* callback);
 
  protected:
   bool FetchersComputed() const;
@@ -440,7 +424,14 @@ class RewriteDriverFactory {
   void InitStubDecodingServerContext(ServerContext* context);
 
   // Allow sub-classes to pick which CentralController they want to use.
-  virtual CentralControllerInterface* CreateCentralController();
+  // lock_manager is owned by the caller and must outlive the Controller.
+  //
+  // TODO(cheesy): Right now this creates a new CentralController for each
+  // ServerContext. This is for backwards compatibility with Nginx, where we
+  // don't have a NamedLockManager on the driver factory. Once we have a
+  // real CentralController, this will need to be changed around a bit.
+  virtual CentralControllerInterface* CreateCentralController(
+      NamedLockManager* lock_manager);
 
   // For use in tests.
   void RebuildDecodingDriverForTests(ServerContext* server_context);
@@ -456,9 +447,6 @@ class RewriteDriverFactory {
   void SetupSlurpDirectories();
 
   void InitDecodingDriver(ServerContext* server_context);
-
-  // This should only be called during startup. Takes ownership of interface.
-  void set_central_controller_interface(CentralControllerInterface* interface);
 
   scoped_ptr<MessageHandler> html_parse_message_handler_;
   scoped_ptr<MessageHandler> message_handler_;
@@ -513,8 +501,6 @@ class RewriteDriverFactory {
 
   // Manage locks for output resources.
   scoped_ptr<NamedLockManager> lock_manager_;
-
-  scoped_ptr<CentralControllerInterfaceAdapter> central_controller_interface_;
 
   // Default statistics implementation which can be overridden by children
   // by calling SetStatistics().

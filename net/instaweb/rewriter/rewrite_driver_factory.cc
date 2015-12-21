@@ -43,6 +43,7 @@
 #include "net/instaweb/rewriter/public/usage_data_reporter.h"
 #include "net/instaweb/util/public/property_store.h"
 #include "pagespeed/controller/central_controller.h"
+#include "pagespeed/controller/central_controller_interface_adapter.h"
 #include "pagespeed/controller/compatible_central_controller.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/checking_thread_system.h"
@@ -500,10 +501,6 @@ ServerContext* RewriteDriverFactory::CreateServerContext() {
 void RewriteDriverFactory::InitServerContext(ServerContext* server_context) {
   ScopedMutex lock(server_context_mutex_.get());
 
-  // Init CentralController. This is not strictly related to the ServerContext,
-  // but needs to happen before the ServerContext starts up.
-  set_central_controller_interface(CreateCentralController());
-
   server_context->ComputeSignature(server_context->global_options());
   server_context->set_scheduler(scheduler());
   server_context->set_timer(timer());
@@ -526,6 +523,9 @@ void RewriteDriverFactory::InitServerContext(ServerContext* server_context) {
       server_context->set_default_distributed_fetcher(fetcher);
     }
   }
+
+  server_context->set_central_controller(new CentralControllerInterfaceAdapter(
+      CreateCentralController(server_context->lock_manager())));
   server_context->set_url_namer(url_namer());
   server_context->SetRewriteOptionsManager(NewRewriteOptionsManager());
   server_context->set_user_agent_matcher(user_agent_matcher());
@@ -572,9 +572,11 @@ void RewriteDriverFactory::InitServerContext(ServerContext* server_context) {
                                    true /* startup fetch */);
 }
 
-CentralControllerInterface* RewriteDriverFactory::CreateCentralController() {
+CentralControllerInterface* RewriteDriverFactory::CreateCentralController(
+    NamedLockManager* lock_manager) {
   return new CompatibleCentralController(
-      default_options()->image_max_rewrites_at_once(), statistics());
+      default_options()->image_max_rewrites_at_once(), statistics(),
+      thread_system(), lock_manager);
 }
 
 void RewriteDriverFactory::RebuildDecodingDriverForTests(
@@ -808,12 +810,6 @@ RewriteStats* RewriteDriverFactory::rewrite_stats() {
   return rewrite_stats_.get();
 }
 
-void RewriteDriverFactory::set_central_controller_interface(
-    CentralControllerInterface* interface) {
-  central_controller_interface_.reset(
-      new CentralControllerInterfaceAdapter(interface));
-}
-
 RewriteOptions* RewriteDriverFactory::NewRewriteOptions() {
   return new RewriteOptions(thread_system());
 }
@@ -824,11 +820,6 @@ RewriteOptions* RewriteDriverFactory::NewRewriteOptionsForQuery() {
 
 ExperimentMatcher* RewriteDriverFactory::NewExperimentMatcher() {
   return new ExperimentMatcher;
-}
-
-void RewriteDriverFactory::ScheduleExpensiveOperation(
-    ExpensiveOperationCallback* callback) {
-  central_controller_interface()->ScheduleExpensiveOperation(callback);
 }
 
 }  // namespace net_instaweb

@@ -16,16 +16,18 @@
 
 #include "pagespeed/controller/compatible_central_controller.h"
 
+#include "pagespeed/controller/named_lock_schedule_rewrite_controller.h"
 #include "pagespeed/controller/work_bound_expensive_operation_controller.h"
 
 namespace net_instaweb {
 
 CompatibleCentralController::CompatibleCentralController(
-    int max_expensive_operations, Statistics* statistics)
+    int max_expensive_operations, Statistics* statistics,
+    ThreadSystem* thread_system, NamedLockManager* lock_manager)
     : CentralController(new WorkBoundExpensiveOperationController(
-          max_expensive_operations, statistics), NULL) {
-  // TODO(cheesy): Plug a ScheduleRewriteController in here, once we have one.
-}
+                            max_expensive_operations, statistics),
+                        new NamedLockScheduleRewriteController(
+                            lock_manager, thread_system, statistics)) {}
 
 CompatibleCentralController::~CompatibleCentralController() {
 }

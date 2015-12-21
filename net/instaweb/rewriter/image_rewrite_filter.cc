@@ -49,11 +49,11 @@
 #include "net/instaweb/rewriter/public/responsive_image_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/util/public/property_cache.h"
+#include "pagespeed/controller/central_controller_interface_adapter.h"
 #include "pagespeed/controller/expensive_operation_callback.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/escaping.h"
@@ -516,7 +516,7 @@ void ImageRewriteFilter::Context::RewriteSingle(
   bool is_ipro = IsNestedIn(RewriteOptions::kInPlaceRewriteId);
   AttachDependentRequestTrace(is_ipro ? "IproProcessImage" : "ProcessImage");
   AddLinkRelCanonical(input_resource, output_resource);
-  FindServerContext()->factory()->ScheduleExpensiveOperation(
+  FindServerContext()->central_controller()->ScheduleExpensiveOperation(
       new InvokeRewriteFunction(this, filter_, input_resource,
                                 output_resource));
 }

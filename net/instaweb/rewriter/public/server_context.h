@@ -32,6 +32,7 @@
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/util/public/property_cache.h"
+#include "pagespeed/controller/central_controller_interface_adapter.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/atomic_bool.h"
 #include "pagespeed/kernel/base/basictypes.h"
@@ -607,6 +608,15 @@ class ServerContext {
     hostname_ = x;
   }
 
+  // Takes ownership of controller.
+  void set_central_controller(CentralControllerInterfaceAdapter* controller) {
+    central_controller_.reset(controller);
+  }
+
+  CentralControllerInterfaceAdapter* central_controller() {
+    return central_controller_.get();
+  }
+
   // Adds an X-Original-Content-Length header to the response headers
   // based on the size of the input resources.
   void AddOriginalContentLengthHeader(const ResourceVector& inputs,
@@ -843,6 +853,8 @@ class ServerContext {
   const pagespeed::js::JsTokenizerPatterns* js_tokenizer_patterns_;
 
   scoped_ptr<CachePropertyStore> cache_property_store_;
+
+  scoped_ptr<CentralControllerInterfaceAdapter> central_controller_;
 
   DISALLOW_COPY_AND_ASSIGN(ServerContext);
 };

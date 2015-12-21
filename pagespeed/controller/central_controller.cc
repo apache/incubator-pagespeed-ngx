@@ -15,6 +15,7 @@
 // Author: cheesy@google.com (Steve Hill)
 
 #include "pagespeed/controller/central_controller.h"
+#include "pagespeed/controller/named_lock_schedule_rewrite_controller.h"
 #include "pagespeed/controller/queued_expensive_operation_controller.h"
 #include "pagespeed/controller/work_bound_expensive_operation_controller.h"
 
@@ -31,6 +32,7 @@ CentralController::~CentralController() {
 }
 
 void CentralController::InitStats(Statistics* statistics) {
+  NamedLockScheduleRewriteController::InitStats(statistics);
   QueuedExpensiveOperationController::InitStats(statistics);
   WorkBoundExpensiveOperationController::InitStats(statistics);
 }
