@@ -32,6 +32,7 @@
 #include "pagespeed/kernel/html/empty_html_filter.h"
 #include "pagespeed/kernel/http/response_headers.h"
 #include "pagespeed/kernel/thread/worker_test_base.h"
+#include "pagespeed/opt/http/request_context.h"
 
 namespace net_instaweb {
 
@@ -230,11 +231,26 @@ class ProxyInterfaceTestBase : public RewriteTestBase {
   void SetCriticalImagesInFinder(StringSet* critical_images);
   void SetCssCriticalImagesInFinder(StringSet* css_critical_images);
 
+  // We retain our own request_context_ that outlives the RewriteDriver
+  // created temporarily for the proxy fetch.  This allows us to reset
+  // the request-context on each new ProxyFetch, potentially changing
+  // request-headers that affect webp/gzip bits in the RequestContext.
+  virtual RequestContextPtr request_context();
+
+  // Setting a nonzero header-latency advances the scheduler every
+  // time we initiate a new request, so that there's a latency
+  // recorded in the request_context_->logging_info().
+  void SetHeaderLatencyMs(int64 header_latency_ms) {
+    header_latency_ms_ = header_latency_ms;
+  }
+
   scoped_ptr<ProxyInterface> proxy_interface_;
+  RequestContextPtr request_context_;
   scoped_ptr<WorkerTestBase::SyncPoint> sync_;
   ResponseHeaders callback_response_headers_;
   GoogleString callback_buffer_;
   bool callback_done_value_;
+  int64 header_latency_ms_;
 
  private:
   friend class FilterCallback;

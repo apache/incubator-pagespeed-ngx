@@ -699,6 +699,13 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   // explicitly.
   static const ProcessContext& process_context();
 
+  // Turns off gzip capability in the cache.  Note that requests will still be
+  // formulated with Accept-Encoding:gzip.
+  void DisableGzip();
+
+  // Determines whether a response was originally gzipped.
+  bool WasGzipped(const ResponseHeaders& response_headers);
+
  protected:
   // Common values for HttpBlockingFind* result.
   const HTTPCache::FindResult kFoundResult;
@@ -738,6 +745,13 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   // Accessor for TimingInfo.
   const RequestTimingInfo& timing_info();
   RequestTimingInfo* mutable_timing_info();
+
+  // Returns the current request context.  The default implementation takes
+  // the request context from rewrite_driver().  ProxyInterfaceTestBase
+  // overrides.
+  //
+  // This method check-fails if the current request-context is null.
+  virtual RequestContextPtr request_context();
 
   // Convenience method to pull the logging info proto out of the current
   // request context's log record. The request context owns the log record, and

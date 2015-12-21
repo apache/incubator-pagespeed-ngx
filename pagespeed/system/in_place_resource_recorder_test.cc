@@ -114,10 +114,13 @@ class InPlaceResourceRecorderTest : public RewriteTestBase {
               contents);
 
     // We should not have a content-encoding header since we either decompressed
-    // data ourselves or captured it before data was saved. Also no
-    // content-length since we may have done gunzip'ing.
+    // data ourselves or captured it before data was saved.
     EXPECT_FALSE(headers_out.Has(HttpAttributes::kContentEncoding));
-    EXPECT_FALSE(headers_out.Has(HttpAttributes::kContentLength));
+
+    // We get content-length iff the cache was compressed.
+    bool is_compressed_cache = (http_cache()->compression_level() != 0);
+    EXPECT_EQ(is_compressed_cache,
+              headers_out.Has(HttpAttributes::kContentLength));
   }
 
   void CheckCacheableContentType(const ContentType* content_type) {
@@ -293,10 +296,24 @@ TEST_F(InPlaceResourceRecorderTest, RememberEmpty) {
 TEST_F(InPlaceResourceRecorderTest, DecompressGzipIfNeeded) {
   // Test where we get already-gzip'd content, as shown by preliminary headers.
   // This corresponds to reverse proxy cases.
+  DisableGzip();
   TestWithGzip(kPrelimGzipHeader);
 }
 
 TEST_F(InPlaceResourceRecorderTest, SplitOperationWithGzip) {
+  // Test that gzip on non-prelim headers don't cause gunzip'ing.
+  // This is to permit capture of headers after mod_deflate has run.
+  DisableGzip();
+  TestWithGzip(kLateGzipHeader);
+}
+
+TEST_F(InPlaceResourceRecorderTest, DecompressGzipIfNeededWithCompressedCache) {
+  // Test where we get already-gzip'd content, as shown by preliminary headers.
+  // This corresponds to reverse proxy cases.
+  TestWithGzip(kPrelimGzipHeader);
+}
+
+TEST_F(InPlaceResourceRecorderTest, SplitOperationWithGzipWithCompressedCache) {
   // Test that gzip on non-prelim headers don't cause gunzip'ing.
   // This is to permit capture of headers after mod_deflate has run.
   TestWithGzip(kLateGzipHeader);

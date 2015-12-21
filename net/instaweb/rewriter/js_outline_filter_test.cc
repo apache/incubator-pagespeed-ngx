@@ -40,6 +40,7 @@ class JsOutlineFilterTest : public RewriteTestBase {
   // We need an explicitly called method here rather than using SetUp so
   // that NoOutlineScript can call another AddFilter function first.
   void SetupOutliner() {
+    DisableGzip();
     options()->set_js_outline_min_bytes(0);
     options()->SoftEnableFilterForTesting(RewriteOptions::kOutlineJavascript);
     rewrite_driver()->AddFilters();
@@ -183,6 +184,7 @@ TEST_F(JsOutlineFilterTest, UrlNotTooLong) {
 }
 
 TEST_F(JsOutlineFilterTest, JsPreserveURL) {
+  DisableGzip();
   options()->set_js_outline_min_bytes(0);
   options()->SoftEnableFilterForTesting(RewriteOptions::kOutlineJavascript);
   options()->set_js_preserve_urls(true);
@@ -191,6 +193,7 @@ TEST_F(JsOutlineFilterTest, JsPreserveURL) {
 }
 
 TEST_F(JsOutlineFilterTest, JsPreserveURLOff) {
+  DisableGzip();
   options()->set_js_outline_min_bytes(0);
   options()->SoftEnableFilterForTesting(RewriteOptions::kOutlineJavascript);
   options()->set_js_preserve_urls(false);

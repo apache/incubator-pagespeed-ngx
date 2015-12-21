@@ -192,12 +192,6 @@ typedef RefCountedPtr<TestRequestContext> TestRequestContextPtr;
 
 class ImageRewriteTest : public RewriteTestBase {
  protected:
-  ImageRewriteTest()
-    : test_request_context_(TestRequestContextPtr(
-          new TestRequestContext(&logging_info_,
-                                 factory()->thread_system()->NewMutex()))) {
-  }
-
   virtual void SetUp() {
     PropertyCache* pcache = page_property_cache();
     server_context_->set_enable_property_cache(true);
@@ -845,8 +839,11 @@ class ImageRewriteTest : public RewriteTestBase {
     resized_using_rendered_dimensions->Clear();
   }
 
+  // Override CreateRequestContext so that we are always pointing it at
+  // LoggingInfo structure that we retain across request lifetime.
   virtual RequestContextPtr CreateRequestContext() {
-    return RequestContextPtr(test_request_context_);
+    return RequestContextPtr(new TestRequestContext(
+        &logging_info_, factory()->thread_system()->NewMutex()));
   }
 
   // Fetches a URL for the given user-agent, returning success-status,
@@ -943,7 +940,6 @@ class ImageRewriteTest : public RewriteTestBase {
 
  private:
   LoggingInfo logging_info_;
-  TestRequestContextPtr test_request_context_;
 };
 
 TEST_F(ImageRewriteTest, ImgTag) {

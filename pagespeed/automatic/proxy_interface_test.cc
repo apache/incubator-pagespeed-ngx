@@ -333,7 +333,7 @@ TEST_F(ProxyInterfaceTest, LoggingInfo) {
 
   CheckBackgroundFetch(headers, false);
   CheckNumBackgroundFetches(0);
-  const RequestTimingInfo& rti = timing_info();
+  const RequestTimingInfo& rti = request_context_->timing_info();
   int64 latency_ms;
   ASSERT_TRUE(rti.GetHTTPCacheLatencyMs(&latency_ms));
   EXPECT_EQ(0, latency_ms);
@@ -347,7 +347,6 @@ TEST_F(ProxyInterfaceTest, LoggingInfo) {
   EXPECT_FALSE(logging_info()->is_pagespeed_resource());
 
   // Fetch non-HTML content.
-  logging_info()->Clear();
   mock_url_fetcher_.SetResponse(url, headers, "js");
   FetchFromProxy(url, request_headers, true, &text, &headers);
   EXPECT_FALSE(logging_info()->is_html_response());
@@ -356,7 +355,6 @@ TEST_F(ProxyInterfaceTest, LoggingInfo) {
 
   // Fetch blacklisted url.
   url = "http://www.blacklist.com/";
-  logging_info()->Clear();
   mock_url_fetcher_.SetResponse(url, headers, "<html></html>");
   FetchFromProxy(url,
                  request_headers,
@@ -370,7 +368,6 @@ TEST_F(ProxyInterfaceTest, LoggingInfo) {
 
   // Fetch disabled url.
   url = "http://www.example.com/?PageSpeed=off";
-  logging_info()->Clear();
   mock_url_fetcher_.SetResponse("http://www.example.com/", headers,
                                 "<html></html>");
   FetchFromProxy(url,
@@ -394,7 +391,6 @@ TEST_F(ProxyInterfaceTest, SkipPropertyCacheLookupIfOptionsNotEnabled) {
 
   // Fetch disabled url.
   url = "http://www.example.com/?PageSpeed=off";
-  logging_info()->Clear();
   mock_url_fetcher_.SetResponse("http://www.example.com/", headers,
                                 "<html></html>");
   FetchFromProxy(url,
@@ -427,7 +423,6 @@ TEST_F(ProxyInterfaceTest, SkipPropertyCacheLookupIfUrlBlacklisted) {
   custom_options->AddRejectedUrlWildcard(AbsolutifyUrl("blacklist*"));
   SetRewriteOptions(custom_options.get());
 
-  logging_info()->Clear();
   mock_url_fetcher_.SetResponse(url, headers, "<html></html>");
   FetchFromProxy(url, request_headers, true, &text, &headers, false);
   EXPECT_TRUE(logging_info()->is_html_response());
@@ -650,6 +645,9 @@ TEST_F(ProxyInterfaceTest, HeadResourceRequest) {
   expected_response_headers_string = "HTTP/1.1 200 OK\r\n"
       "Content-Type: text/css\r\n"
       "X-Background-Fetch: 0\r\n"
+      "Vary: Accept-Encoding\r\n"
+      "X-Original-Content-Length: 30\r\n"
+      "Content-Length: 30\r\n"
       "Date: Tue, 02 Feb 2010 18:51:26 GMT\r\n"
       "Expires: Tue, 02 Feb 2010 18:56:26 GMT\r\n"
       "Cache-Control: max-age=300,private\r\n"
@@ -2658,7 +2656,9 @@ TEST_F(ProxyInterfaceTest, Blacklist) {
   SetResponseWithDefaultHeaders(kPageUrl, kContentTypeHtml, content, 0);
   GoogleString text_out;
   ResponseHeaders headers_out;
-  FetchFromProxy(kPageUrl, true, &text_out, &headers_out);
+  RequestHeaders request_headers;
+  PopulateRequestHeaders(&request_headers);
+  FetchFromProxy(kPageUrl, request_headers, true, &text_out, &headers_out);
   EXPECT_STREQ(content, text_out);
 }
 

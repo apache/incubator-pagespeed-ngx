@@ -3056,6 +3056,7 @@ TEST_F(RewriteContextTest, RenderCompletesCacheAsync) {
 }
 
 TEST_F(RewriteContextTest, TestDisableBackgroundRewritesForBots) {
+  DisableGzip();
   InitTrimFilters(kRewrittenResource);
   InitResources();
   options()->ClearSignatureForTesting();
@@ -3165,6 +3166,7 @@ TEST_F(RewriteContextTest, TestDisableBackgroundRewritesForBots) {
 }
 
 TEST_F(RewriteContextTest, TestFreshen) {
+  DisableGzip();
   FetcherUpdateDateHeaders();
 
   // Note that this must be >= kDefaultImplicitCacheTtlMs for freshening.
@@ -4036,6 +4038,7 @@ TEST_F(RewriteContextTest, TestReuse) {
 }
 
 TEST_F(RewriteContextTest, TestFallbackOnFetchFails) {
+  DisableGzip();
   FetcherUpdateDateHeaders();
   InitTrimFilters(kRewrittenResource);
   EnableDebug();

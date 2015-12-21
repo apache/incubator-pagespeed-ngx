@@ -22,7 +22,6 @@
 #include <vector>
 
 #include "base/logging.h"
-#include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
@@ -42,7 +41,6 @@
 #include "pagespeed/kernel/base/stl_util.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
-#include "pagespeed/kernel/base/string_writer.h"
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/cache/lru_cache.h"
 #include "pagespeed/kernel/html/html_parse_test_base.h"
@@ -52,7 +50,6 @@
 #include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/response_headers.h"
 #include "pagespeed/kernel/http/semantic_type.h"
-#include "pagespeed/kernel/util/gzip_inflater.h"
 
 namespace net_instaweb {
 
@@ -1738,7 +1735,6 @@ class CssFilterWithCombineTest : public CssCombineFilterTest {
     // CSS filter is created aware of these.
     options()->EnableFilter(RewriteOptions::kRewriteCss);
     CssCombineFilterTest::SetUp();
-    http_cache()->SetCompressionLevel(9);
   }
 
   GoogleString CssOut() {
@@ -1773,11 +1769,6 @@ TEST_F(CssFilterWithCombineTest, FetchCombinedMinifiedWithGzip) {
   SetHtmlMimetype();
   SetupResources();
 
-  GoogleString gzipped_optimized_response;
-  StringWriter writer(&gzipped_optimized_response);
-  ASSERT_TRUE(GzipInflater::Deflate(OptimizedContent(), GzipInflater::kGzip, 9,
-                                    &writer));
-
   // TODO(jcrowell): The test here shows suboptimial behavior.  We have computed
   // the gzip -9 response and put it in the cache.  However, we have then
   // uncompressed that response and returned it to the client, even though the
@@ -1787,29 +1778,35 @@ TEST_F(CssFilterWithCombineTest, FetchCombinedMinifiedWithGzip) {
   // proxies (!).
   GoogleString content;
   ResponseHeaders response_headers;
-  AddRequestAttribute(HttpAttributes::kAcceptEncoding, "gzip");
   EXPECT_TRUE(FetchResourceUrl(StrCat(kTestDomain, CssOut()), &content,
                                &response_headers));
   EXPECT_STREQ(OptimizedContent(), content) << "uncached";
-  EXPECT_FALSE(response_headers.HasValue(
-      HttpAttributes::kContentEncoding, "gzip"));
+  EXPECT_FALSE(WasGzipped(response_headers));
 
   response_headers.Clear();
-  AddRequestAttribute(HttpAttributes::kAcceptEncoding, "gzip");
   EXPECT_TRUE(FetchResourceUrl(StrCat(kTestDomain, CssOut()), &content,
                                &response_headers));
-  EXPECT_STREQ(gzipped_optimized_response, content) << "cached";
-  EXPECT_TRUE(response_headers.HasValue(
-      HttpAttributes::kContentEncoding, "gzip"));
+  EXPECT_STREQ(OptimizedContent(), content) << "cached";
+  EXPECT_TRUE(WasGzipped(response_headers));
 }
 
 TEST_F(CssFilterWithCombineTest, FetchCombinedMinifiedWithoutGzip) {
+  DisableGzip();
   SetHtmlMimetype();
   SetupResources();
 
   GoogleString content;
-  EXPECT_TRUE(FetchResourceUrl(StrCat(kTestDomain, CssOut()), &content));
-  EXPECT_STREQ(OptimizedContent(), content);
+  ResponseHeaders response_headers;
+  EXPECT_TRUE(FetchResourceUrl(StrCat(kTestDomain, CssOut()), &content,
+                               &response_headers));
+  EXPECT_STREQ(OptimizedContent(), content) << "uncached";
+  EXPECT_FALSE(WasGzipped(response_headers));
+
+  response_headers.Clear();
+  EXPECT_TRUE(FetchResourceUrl(StrCat(kTestDomain, CssOut()), &content,
+                               &response_headers));
+  EXPECT_STREQ(OptimizedContent(), content) << "cached";
+  EXPECT_FALSE(WasGzipped(response_headers));
 }
 
 class CssFilterWithCombineTestUrlNamer : public CssFilterWithCombineTest {

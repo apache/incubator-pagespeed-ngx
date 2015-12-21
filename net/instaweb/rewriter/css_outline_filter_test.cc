@@ -40,6 +40,7 @@ namespace {
 class CssOutlineFilterTest : public RewriteTestBase {
  protected:
   void SetupOutliner() {
+    DisableGzip();
     options()->set_css_outline_min_bytes(0);
     options()->SoftEnableFilterForTesting(RewriteOptions::kOutlineCss);
     rewrite_driver()->AddFilters();

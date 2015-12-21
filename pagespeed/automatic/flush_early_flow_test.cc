@@ -604,6 +604,7 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
     //       six for fs.
     // 1 for DomCohort write in property cache.
     EXPECT_EQ(27, lru_cache()->num_inserts());
+    EXPECT_STREQ("cf,ei,jm", AppliedRewriterStringFromLog());
 
     // Fetch the url again. This time FlushEarlyFlow should be triggered with
     // the  appropriate prefetch mechanism.
@@ -613,7 +614,7 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
     VerifyCharset(&headers);
     if (mechanism != UserAgentMatcher::kPrefetchNotSupported) {
       EXPECT_STREQ("cf,ei,fs,jm", AppliedRewriterStringFromLog());
-      EXPECT_STREQ("cf,ei,fs,jm", headers.Lookup1(kPsaRewriterHeader));
+      EXPECT_STREQ("fs", headers.Lookup1(kPsaRewriterHeader));
     }
   }
 
@@ -854,13 +855,6 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
     EXPECT_STREQ(kOutputHtml, text);
   }
 
-  void SetHeaderLatencyMs(int64 latency_ms) {
-    RequestTimingInfo* timing_info = mutable_timing_info();
-    timing_info->FetchStarted();
-    AdvanceTimeMs(latency_ms);
-    timing_info->FetchHeaderReceived();
-  }
-
   scoped_ptr<BackgroundFetchCheckingUrlAsyncFetcher> background_fetch_fetcher_;
   int64 start_time_ms_;
   GoogleString start_time_string_;
@@ -892,7 +886,7 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTest) {
 TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestPrefetch) {
   TestFlushEarlyFlow("prefetch_link_script_tag",
                      UserAgentMatcher::kPrefetchLinkScriptTag, true);
-  rewrite_driver_->log_record()->WriteLog();
+  request_context_->log_record()->WriteLog();
   EXPECT_EQ(5, logging_info()->rewriter_stats_size());
   EXPECT_STREQ("fs", logging_info()->rewriter_stats(2).id());
   const RewriterStats& stats = logging_info()->rewriter_stats(2);
@@ -915,7 +909,7 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestPcacheMiss) {
                           "prefetch_link_script_tag");
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
 
-  rewrite_driver_->log_record()->WriteLog();
+  request_context_->log_record()->WriteLog();
   EXPECT_EQ(5, logging_info()->rewriter_stats_size());
   EXPECT_STREQ("fs", logging_info()->rewriter_stats(2).id());
   const RewriterStats& stats = logging_info()->rewriter_stats(2);
@@ -956,7 +950,7 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestFallbackPageUsage) {
   // will be used.
   FetchFromProxy(fallback_url, request_headers, true, &text, &headers);
 
-  rewrite_driver_->log_record()->WriteLog();
+  request_context_->log_record()->WriteLog();
   EXPECT_EQ(5, logging_info()->rewriter_stats_size());
   EXPECT_STREQ("fs", logging_info()->rewriter_stats(2).id());
   const RewriterStats& fallback_stats = logging_info()->rewriter_stats(2);
@@ -1041,7 +1035,7 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestDisabled) {
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
   EXPECT_FALSE(headers.Has(kPsaRewriterHeader));
 
-  rewrite_driver_->log_record()->WriteLog();
+  request_context_->log_record()->WriteLog();
   EXPECT_EQ(5, logging_info()->rewriter_stats_size());
   EXPECT_STREQ("fs", logging_info()->rewriter_stats(2).id());
   const RewriterStats& stats = logging_info()->rewriter_stats(2);
@@ -1074,7 +1068,7 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestUnsupportedUserAgent) {
   request_headers.Replace(HttpAttributes::kUserAgent, "");
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
 
-  rewrite_driver_->log_record()->WriteLog();
+  request_context_->log_record()->WriteLog();
   EXPECT_EQ(5, logging_info()->rewriter_stats_size());
   EXPECT_STREQ("fs", logging_info()->rewriter_stats(2).id());
   const RewriterStats& stats = logging_info()->rewriter_stats(2);
@@ -1092,7 +1086,7 @@ TEST_F(FlushEarlyFlowTest, ConditionalRequestHeaders) {
   request_headers.Add(HttpAttributes::kIfNoneMatch, "etag");
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
 
-  rewrite_driver_->log_record()->WriteLog();
+  request_context_->log_record()->WriteLog();
   EXPECT_EQ(5, logging_info()->rewriter_stats_size());
   EXPECT_STREQ("fs", logging_info()->rewriter_stats(2).id());
   const RewriterStats& stats = logging_info()->rewriter_stats(2);

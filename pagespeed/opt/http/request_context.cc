@@ -122,13 +122,20 @@ void RequestContext::WriteBackgroundRewriteLog() {
 
 void RequestContext::SetAcceptsGzip(bool x) {
   if (x != accepts_gzip_) {
-    CHECK(!frozen_);
+    // TODO(jmarantz): Rather than recalculating the RequestContext
+    // bits multiple times and making sure they don't change,
+    // calculate them once, e.g. before putting them into a
+    // RewriteDriver.
+    DCHECK(!frozen_);
     accepts_gzip_ = x;
   }
 }
 
 void RequestContext::SetAcceptsWebp(bool x) {
+  if (x != accepts_webp_) {
+    DCHECK(!frozen_);
     accepts_webp_ = x;
+  }
 }
 
 AbstractLogRecord* RequestContext::GetBackgroundRewriteLog(

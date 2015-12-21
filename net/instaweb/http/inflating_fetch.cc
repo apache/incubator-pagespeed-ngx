@@ -21,6 +21,7 @@
 #include "base/logging.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/stack_buffer.h"
+#include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_writer.h"
 #include "pagespeed/kernel/http/http_names.h"
 #include "pagespeed/kernel/http/request_headers.h"
@@ -113,9 +114,12 @@ void InflatingFetch::UnGzipValueIfCompressed(HTTPValue* http_value,
     StringPiece content;
     http_value->ExtractContents(&content);
     if (GzipInflater::Inflate(content, GzipInflater::kGzip, &inflate_writer)) {
+      if (!headers->HasValue(HttpAttributes::HttpAttributes::kVary,
+                             HttpAttributes::kAcceptEncoding)) {
+        headers->Add(HttpAttributes::HttpAttributes::kVary,
+                     HttpAttributes::kAcceptEncoding);
+      }
       headers->RemoveAll(HttpAttributes::kTransferEncoding);
-      headers->Add(HttpAttributes::HttpAttributes::kVary,
-                   HttpAttributes::kAcceptEncoding);
       headers->Remove(HttpAttributes::kContentEncoding, HttpAttributes::kGzip);
       headers->Replace(HttpAttributes::kContentLength,
                        Integer64ToString(inflated.length()));
@@ -140,6 +144,11 @@ bool InflatingFetch::GzipValue(int compression_level,
   if (!headers->IsGzipped() &&
       GzipInflater::Deflate(content, GzipInflater::kGzip, compression_level,
                             &deflate_writer)) {
+    if (!headers->HasValue(HttpAttributes::HttpAttributes::kVary,
+                           HttpAttributes::kAcceptEncoding)) {
+      headers->Add(HttpAttributes::HttpAttributes::kVary,
+                   HttpAttributes::kAcceptEncoding);
+    }
     if (!headers->FindContentLength(&content_length)) {
       content_length = content.size();
     }
@@ -148,8 +157,6 @@ bool InflatingFetch::GzipValue(int compression_level,
     headers->Add(HttpAttributes::kContentEncoding, HttpAttributes::kGzip);
     headers->Replace(HttpAttributes::kContentLength,
                      Integer64ToString(deflated.length()));
-    headers->Add(HttpAttributes::HttpAttributes::kVary,
-                 HttpAttributes::kAcceptEncoding);
     compressed_value->SetHeaders(headers);
     compressed_value->Write(deflated, NULL);
     return true;

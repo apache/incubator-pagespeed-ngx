@@ -21,6 +21,7 @@
 #include <cstddef>
 
 #include "net/instaweb/http/public/async_fetch.h"
+#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/request_context.h"
@@ -202,8 +203,10 @@ void MockFilter::EndDocument() {
 // ProxyInterfaceTestBase.
 ProxyInterfaceTestBase::ProxyInterfaceTestBase()
     : callback_done_value_(false),
+      header_latency_ms_(0),
       mock_critical_images_finder_(
-          new MockCriticalImagesFinder(statistics())) {}
+          new MockCriticalImagesFinder(statistics())) {
+}
 
 void ProxyInterfaceTestBase::TestHeadersSetupRace() {
   mock_url_fetcher()->SetResponseFailure(AbsolutifyUrl(kPageUrl));
@@ -297,11 +300,18 @@ void ProxyInterfaceTestBase::FetchFromProxyNoWait(
     ResponseHeaders* headers_out) {
   sync_.reset(new WorkerTestBase::SyncPoint(
       server_context()->thread_system()));
+  request_context_.reset(CreateRequestContext());
+  if (header_latency_ms_ != 0) {
+    RequestTimingInfo* timing_info = mutable_timing_info();
+    timing_info->FetchStarted();
+    AdvanceTimeMs(header_latency_ms_);
+    timing_info->FetchHeaderReceived();
+  }
   AsyncFetch* fetch = new AsyncExpectStringAsyncFetch(
       expect_success, log_flush, &callback_buffer_,
       &callback_response_headers_, &callback_done_value_, sync_.get(),
       server_context()->thread_synchronizer(),
-      rewrite_driver()->request_context());
+      request_context());
   fetch->set_response_headers(headers_out);
   fetch->request_headers()->CopyFrom(request_headers);
   proxy_interface_->Fetch(AbsolutifyUrl(url), message_handler(), fetch);
@@ -419,6 +429,11 @@ void ProxyInterfaceTestBase::TestPropertyCacheWithHeadersAndOutput(
     // UserAgentMatcher::DeviceType.
     EXPECT_EQ(2, lru_cache()->num_misses());
   }
+}
+
+RequestContextPtr ProxyInterfaceTestBase::request_context() {
+  CHECK(request_context_.get() != NULL);
+  return request_context_;
 }
 
 }  // namespace net_instaweb

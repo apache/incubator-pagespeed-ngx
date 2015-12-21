@@ -572,9 +572,9 @@ class CacheHtmlFlowTest : public ProxyInterfaceTestBase {
                                        ResponseHeaders* headers_out,
                                        GoogleString* user_agent_out,
                                        bool wait_for_background_computation) {
-  FetchFromProxy(url, expect_success, request_headers, string_out,
-                 headers_out, user_agent_out,
-                 wait_for_background_computation);
+    FetchFromProxy(url, expect_success, request_headers, string_out,
+                   headers_out, user_agent_out,
+                   wait_for_background_computation);
   }
 
   void VerifyNonCacheHtmlResponse(const ResponseHeaders& response_headers) {
@@ -682,6 +682,8 @@ class CacheHtmlFlowTest : public ProxyInterfaceTestBase {
                                   ResponseHeaders* headers_out,
                                   GoogleString* user_agent_out) {
     WorkerTestBase::SyncPoint sync(server_context()->thread_system());
+    request_context_.reset(CreateRequestContext());
+    rewrite_driver()->set_request_context(request_context_);
     AsyncExpectStringAsyncFetch callback(
         expect_success, &sync, rewrite_driver()->request_context());
     callback.set_response_headers(headers_out);

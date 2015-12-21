@@ -75,6 +75,7 @@
 #include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/response_headers.h"
 #include "pagespeed/kernel/thread/mock_scheduler.h"
+#include "pagespeed/kernel/util/gzip_inflater.h"
 #include "pagespeed/kernel/util/simple_stats.h"
 #include "pagespeed/kernel/util/url_multipart_encoder.h"
 
@@ -199,7 +200,10 @@ RewriteTestBase::~RewriteTestBase() {
 // add options prior to calling RewriteTestBase::SetUp().
 void RewriteTestBase::SetUp() {
   HtmlParseTestBaseNoAlloc::SetUp();
+  http_cache()->SetCompressionLevel(options_->http_cache_compression_level());
   rewrite_driver_ = MakeDriver(server_context_, options_);
+  other_server_context()->http_cache()->SetCompressionLevel(
+      options_->http_cache_compression_level());
   other_rewrite_driver_ = MakeDriver(other_server_context_, other_options_);
 }
 
@@ -277,6 +281,7 @@ void RewriteTestBase::ParseUrl(StringPiece url, StringPiece html_input) {
 
 void RewriteTestBase::PopulateRequestHeaders(RequestHeaders* request_headers) {
   request_headers->Add(HttpAttributes::kUserAgent, current_user_agent_);
+  request_headers->Add(HttpAttributes::kAcceptEncoding, HttpAttributes::kGzip);
   CHECK_EQ(request_attribute_names_.size(), request_attribute_values_.size());
   for (size_t i = 0, n = request_attribute_names_.size(); i < n; ++i) {
     request_headers->Add(request_attribute_names_[i],
@@ -563,8 +568,10 @@ bool RewriteTestBase::FetchResourceUrl(const StringPiece& url,
                                        GoogleString* content,
                                        ResponseHeaders* response_headers) {
   content->clear();
-  StringAsyncFetch async_fetch(rewrite_driver_->request_context(), content);
+  StringAsyncFetch async_fetch(request_context(), content);
   if (request_headers != NULL) {
+    request_headers->Add(HttpAttributes::kAcceptEncoding,
+                         HttpAttributes::kGzip);
     async_fetch.set_request_headers(request_headers);
   } else if (rewrite_driver_->request_headers() == NULL) {
     SetDriverRequestHeaders();
@@ -579,6 +586,18 @@ bool RewriteTestBase::FetchResourceUrl(const StringPiece& url,
 
   // The callback should be called if and only if FetchResource returns true.
   EXPECT_EQ(fetched, async_fetch.done());
+  if (fetched && async_fetch.success() &&
+      response_headers->HasValue(HttpAttributes::kContentEncoding,
+                                 HttpAttributes::kGzip)) {
+    GoogleString buf;
+    StringWriter writer(&buf);
+    if (GzipInflater::Inflate(*content, GzipInflater::kGzip, &writer)) {
+      content->swap(buf);
+      response_headers->Remove(HttpAttributes::kContentEncoding,
+                               HttpAttributes::kGzip);
+      response_headers->ComputeCaching();
+    }
+  }
   return fetched && async_fetch.success();
 }
 
@@ -1089,8 +1108,7 @@ class HttpCallback : public HTTPCache::Callback {
 bool RewriteTestBase::ReadIfCached(const ResourcePtr& resource) {
   BlockingResourceCallback callback(resource);
   resource->LoadAsync(Resource::kReportFailureIfNotCacheable,
-                      rewrite_driver()->request_context(),
-                      &callback);
+                      request_context(), &callback);
   CHECK(callback.done());
   if (callback.success()) {
     CHECK(resource->loaded());
@@ -1102,8 +1120,7 @@ void RewriteTestBase::InitiateResourceRead(
     const ResourcePtr& resource) {
   DeferredResourceCallback* callback = new DeferredResourceCallback(resource);
   resource->LoadAsync(Resource::kReportFailureIfNotCacheable,
-                      rewrite_driver()->request_context(),
-                      callback);
+                      request_context(), callback);
 }
 
 HTTPCache::FindResult RewriteTestBase::HttpBlockingFindWithOptions(
@@ -1206,26 +1223,27 @@ void RewriteTestBase::AdjustTimeUsWithoutWakingAlarms(int64 time_us) {
   factory_->mock_timer()->SetTimeUs(time_us);
 }
 
+RequestContextPtr RewriteTestBase::request_context() {
+  RequestContextPtr request_context(rewrite_driver_->request_context());
+  CHECK(request_context.get() != NULL);
+  return request_context;
+}
+
 const RequestTimingInfo& RewriteTestBase::timing_info() {
-  CHECK(rewrite_driver()->request_context().get() != NULL);
-  return rewrite_driver()->request_context()->timing_info();
+  return request_context()->timing_info();
 }
 
 RequestTimingInfo* RewriteTestBase::mutable_timing_info() {
-  CHECK(rewrite_driver()->request_context().get() != NULL);
-  return rewrite_driver()->request_context()->mutable_timing_info();
+  return request_context()->mutable_timing_info();
 }
 
 LoggingInfo* RewriteTestBase::logging_info() {
-  CHECK(rewrite_driver()->request_context().get() != NULL);
-  return rewrite_driver()->request_context()->log_record()->logging_info();
+  return request_context()->log_record()->logging_info();
 }
 
 GoogleString RewriteTestBase::AppliedRewriterStringFromLog() {
-  CHECK(rewrite_driver()->request_context().get() != NULL);
-  ScopedMutex lock(rewrite_driver()->request_context()->log_record()->mutex());
-  return rewrite_driver()->request_context()->
-    log_record()->AppliedRewritersString();
+  ScopedMutex lock(request_context()->log_record()->mutex());
+  return request_context()->log_record()->AppliedRewritersString();
 }
 
 void RewriteTestBase::VerifyRewriterInfoEntry(
@@ -1379,6 +1397,28 @@ const ProcessContext& RewriteTestBase::process_context() {
 
 int RewriteTestBase::TimedValue(StringPiece name) {
   return statistics()->GetTimedVariable(name)->Get(TimedVariable::START);
+}
+
+void RewriteTestBase::DisableGzip() {
+  bool was_frozen = options()->ClearSignatureForTesting();
+  options()->set_http_cache_compression_level(0);
+  if (was_frozen) {
+    server_context()->ComputeSignature(options());
+  }
+  was_frozen = other_options()->ClearSignatureForTesting();
+  other_options()->set_http_cache_compression_level(0);
+  if (was_frozen) {
+    other_server_context()->ComputeSignature(other_options());
+  }
+  http_cache()->SetCompressionLevel(0);
+  other_server_context()->http_cache()->SetCompressionLevel(0);
+}
+
+bool RewriteTestBase::WasGzipped(const ResponseHeaders& response_headers) {
+  // Content-Encoding is stripped by FetchResourceUrl, but
+  // x-original-content-length is retained, so we use it as a signal that
+  // gzip occurred.
+  return response_headers.Has(HttpAttributes::kXOriginalContentLength);
 }
 
 }  // namespace net_instaweb
