@@ -5,7 +5,7 @@
 
 `mod_pagespeed` is an open-source Apache module created by Google to help Make the Web Faster by rewriting web pages to reduce latency and bandwidth.
 
-mod_pagespeed releases 1.10.33.0-beta and 1.9.32.11-stable are available as [precompiled linux packages](https://developers.google.com/speed/pagespeed/module/download) or as [source](https://developers.google.com/speed/pagespeed/module/build_mod_pagespeed_from_source). (See [Release Notes](https://developers.google.com/speed/pagespeed/module/release_notes) for information about bugs fixed)
+mod_pagespeed releases 1.10.33.2-beta and 1.9.32.11-stable are available as [precompiled linux packages](https://developers.google.com/speed/pagespeed/module/download) or as [source](https://developers.google.com/speed/pagespeed/module/build_mod_pagespeed_from_source). (See [Release Notes](https://developers.google.com/speed/pagespeed/module/release_notes) for information about bugs fixed)
 
 mod_pagespeed is an open-source Apache module which automatically applies web performance best practices to pages, and associated assets (CSS, JavaScript, images) without requiring that you modify your existing content or workflow.
 
