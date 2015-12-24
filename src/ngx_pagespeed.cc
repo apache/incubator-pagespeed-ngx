@@ -284,7 +284,8 @@ ngx_int_t ps_base_fetch_handler(ngx_http_request_t* r) {
     // modules running after us to manipulate those responses.
     if (!status_ok && (ctx->base_fetch->base_fetch_type() != kHtmlTransform
                        && ctx->base_fetch->base_fetch_type() != kIproLookup)) {
-      return status_code;
+      ps_release_base_fetch(ctx);
+      return ngx_http_filter_finalize_request(r, NULL, status_code);
     }
 
     if (ctx->preserve_caching_headers != kDontPreserveHeaders) {

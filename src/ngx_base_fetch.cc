@@ -118,6 +118,8 @@ const char* BaseFetchTypeToCStr(NgxBaseFetchType type) {
   return "can't get here";
 }
 
+// TODO(oschaaf): replace the ngx_log_error with VLOGS or pass in a
+// MessageHandler and use that.
 void NgxBaseFetch::ReadCallback(const ps_event_data& data) {
   NgxBaseFetch* base_fetch = reinterpret_cast<NgxBaseFetch*>(data.sender);
   ngx_http_request_t* r = base_fetch->request();
@@ -138,9 +140,30 @@ void NgxBaseFetch::ReadCallback(const ps_event_data& data) {
   if (refcount == 0 || detached) {
     return;
   }
+
   ps_request_ctx_t* ctx = ps_get_request_context(r);
 
-  CHECK(data.sender == ctx->base_fetch);
+  // If our request context was zeroed, skip this event.
+  // See https://github.com/pagespeed/ngx_pagespeed/issues/1081
+  if (ctx == NULL) {
+    // Should not happen normally, when it does this message will cause our
+    // system tests to fail.
+    ngx_log_error(NGX_LOG_WARN, ngx_cycle->log, 0,
+        "pagespeed [%p] skipping event: request context gone", r);
+    return;
+  }
+
+  // Normally we expect the sender to equal the active NgxBaseFetch instance.
+  DCHECK(data.sender == ctx->base_fetch);
+
+  // If someone changed our request context or NgxBaseFetch, skip processing.
+  if (data.sender != ctx->base_fetch) {
+      ngx_log_error(NGX_LOG_WARN, ngx_cycle->log, 0,
+          "pagespeed [%p] skipping event: event originating from disassociated"
+          " NgxBaseFetch instance.", r);
+      return;
+  }
+
   CHECK(r->count > 0) << "r->count: " << r->count;
 
   int rc;
