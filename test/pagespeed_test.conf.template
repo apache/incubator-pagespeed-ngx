@@ -970,6 +970,14 @@ http {
   server {
     listen @@SECONDARY_PORT@@;
     listen [::]:@@SECONDARY_PORT@@;
+    server_name custom404.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@";
+    error_page 404 /404.html;
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name ipro.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
 
