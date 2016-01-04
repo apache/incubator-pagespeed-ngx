@@ -1241,6 +1241,14 @@ check_from "$OUT" fgrep -qi '404'
 MATCHES=$(echo "$OUT" | grep -c "Cache-Control: override") || true
 check [ $MATCHES -eq 1 ]
 
+start_test Custom 404 does not crash.
+URL=http://custom404.example.com/mod_pagespeed_test/
+URL+=A.doesnotexist.css.pagespeed.cf.0.css
+# The 404 response makes wget exit with an error code, which we ignore.
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP -O /dev/null -S $URL 2>&1) || true
+# We ignored the exit code, check if we got a 404 response.
+check_from "$OUT" fgrep -qi '404'
+
 start_test Shutting down.
 
 # Fire up some heavy load if ab is available to test a stressed shutdown
