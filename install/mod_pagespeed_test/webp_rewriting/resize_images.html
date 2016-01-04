@@ -1,0 +1,39 @@
+<html>
+  <head>
+    <title>Make sure that images are resized, and URLs are modified correctly.</title>
+  </head>
+  <style>
+    .background-puzzle {
+      background-image: url(../../mod_pagespeed_example/images/Puzzle.jpg);
+      width: 100px;
+      height: 100px;
+  }
+  </style>
+  <body>
+    <img src="../../mod_pagespeed_example/images/Puzzle.jpg"
+         width="120" height="150"
+         title="Reize JPEG image by specifying width and height."/><br/>
+    <img src="../../mod_pagespeed_example/images/IronChef2.gif"
+         width="90"
+         title="Reize GIF image by specifying width."/><br/>
+    <img src="../../mod_pagespeed_example/images/BikeCrashIcn.png"
+         height="50"
+         title="Resize PNG image by specify height."/><br/>
+    <img src="../../mod_pagespeed_example/images/pagespeed_logo.png"
+         width="120" height="120"
+         title="Image with alpha channel won't be resized."/><br/>
+    <img src="../../mod_pagespeed_example/images/CradleAnimation.gif"
+         width="120" height="100"
+         title="Animated image won't be resized."/><br/>
+    <img src="../../mod_pagespeed_example/images/Cschedule_event.svg"
+         width="20" height="10"
+         title="SVG image won't be resized nor rewritten."/><br/>
+    <img src="../../mod_pagespeed_example/images/gray_saved_as_rgb.webp"
+         width="10" height="12"
+         title="WebP image won't be resized."/><br/>
+    <img src="../../mod_pagespeed_example/images/disclosure_open_plus.png"
+         width="200" height="10"
+         title="Image won't be enlarged."/><br/>
+`    <div class="background-puzzle">Image in CSS won't be resized.</div>
+  </body>
+</html>
