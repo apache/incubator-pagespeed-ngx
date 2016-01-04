@@ -19,7 +19,7 @@ resize_image_test $HTML_URL 4
 #
 IMAGE="/120x150xPuzzle2.jpg.pagespeed.ic.*.webp"
 check_from "$(< $HTML_FETCHED)" grep -q $IMAGE
-check_file_size "$WGET_DIR$IMAGE" -le 2324
+check_file_size "$WGET_DIR$IMAGE" -le 2340
 #
 IMAGE="/90xNxIronChef2.gif.pagespeed.ic.*.webp"
 check_from "$(< $HTML_FETCHED)" grep -q $IMAGE
@@ -29,10 +29,9 @@ IMAGE="/Nx50xBikeCrashIcn.png.pagespeed.ic.*.webp"
 check_from "$(< $HTML_FETCHED)" grep -q $IMAGE
 check_file_size "$WGET_DIR$IMAGE" -le 822
 #
-IMAGE="/xpagespeed_logo.png.pagespeed.ic.*.webp"
+IMAGE="/120x120xpagespeed_logo.png.pagespeed.ic.*.webp"
 check_from "$(< $HTML_FETCHED)" grep -q $IMAGE
-check_file_size "$WGET_DIR$IMAGE" -ge 9500
-check_file_size "$WGET_DIR$IMAGE" -lt 15131
+check_file_size "$WGET_DIR$IMAGE" -le 9214
 #
 # Check that the images will be recompressed without resizing.
 HTML_URL="unresizable_images.html"
@@ -57,9 +56,11 @@ check_file_size "$WGET_DIR$IMAGE" -lt 31066
 # Check that animated images will be recompressed without resizing.
 HTML_URL="animated_images.html"
 HTML_FETCHED="$WGET_DIR/$HTML_URL$HTML_OPT"
+echo Debug start: $(date +"%T")
 resize_image_test $HTML_URL 1
+echo Debug end: $(date +"%T")
 #
-IMAGE="/xCradleAnimation.gif.pagespeed.ic.*.webp"
+IMAGE="/xPageSpeedAnimationSmall.gif.pagespeed.ic.*.webp"
 check_from "$(< $HTML_FETCHED)" grep -q $IMAGE
-check_file_size "$WGET_DIR$IMAGE" -ge 129000
-check_file_size "$WGET_DIR$IMAGE" -lt 583374
+check_file_size "$WGET_DIR$IMAGE" -ge 7232
+check_file_size "$WGET_DIR$IMAGE" -lt 26251

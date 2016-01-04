@@ -88,6 +88,7 @@ namespace {
 
 // Filenames of resource files.
 const char kBikePngFile[] = "BikeCrashIcn.png";  // photo; no alpha
+const char kChromium24[] = "chromium-24.webp";
 const char kChefGifFile[] = "IronChef2.gif";     // photo; no alpha
 const char kCradleAnimation[] = "CradleAnimation.gif";
 const char kCuppaPngFile[] = "Cuppa.png";        // graphic; no alpha
@@ -2175,16 +2176,16 @@ TEST_F(ImageRewriteTest, InlineNoResize) {
   // Make sure we inline an image if it meets the inlining threshold but can't
   // be resized.  Make sure we retain sizing information when this happens.
   options()->EnableFilter(RewriteOptions::kInlineImages);
-  options()->EnableFilter(RewriteOptions::kRecompressPng);
+  options()->EnableFilter(RewriteOptions::kRecompressWebp);
   options()->EnableFilter(RewriteOptions::kResizeImages);
   rewrite_driver()->AddFilters();
-  const char kOrigDims[] = " width=65 height=70";
-  const char kResizedDims[] = " width=26 height=28";
+  const char kOrigDims[] = " width=24 height=24";
+  const char kResizedDims[] = " width=20 height=12";
   // At natural size, we should inline and erase dimensions.
-  TestSingleRewrite(kCuppaTPngFile, kContentTypePng, kContentTypePng,
+  TestSingleRewrite(kChromium24, kContentTypeWebp, kContentTypeWebp,
                     kOrigDims, "", false, true);
   // Image is inlined but not resized, so preserve dimensions.
-  TestSingleRewrite(kCuppaTPngFile, kContentTypePng, kContentTypePng,
+  TestSingleRewrite(kChromium24, kContentTypeWebp, kContentTypeWebp,
                     kResizedDims, kResizedDims, false, true);
 }
 
@@ -2203,6 +2204,17 @@ TEST_F(ImageRewriteTest, InlineLargerResize) {
   // Image is inlined but not resized, so preserve dimensions.
   TestSingleRewrite(kCuppaOPngFile, kContentTypePng, kContentTypePng,
                     kResizedDims, kResizedDims, false, true);
+}
+
+TEST_F(ImageRewriteTest, ResizeTransparentImage) {
+  options()->EnableFilter(RewriteOptions::kInlineImages);
+  options()->EnableFilter(RewriteOptions::kRecompressPng);
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  rewrite_driver()->AddFilters();
+  const char kResizedDims[] = " width=26 height=28";
+  // Image is resized and inlined.
+  TestSingleRewrite(kCuppaTPngFile, kContentTypePng, kContentTypePng,
+                    kResizedDims, "", true, true);
 }
 
 TEST_F(ImageRewriteTest, InlineEnlargedImage) {

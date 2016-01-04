@@ -12,17 +12,17 @@ test_optimize_to_webp webp_urls/rewrite_webp.html \
   "convert_to_webp_lossless,convert_to_webp_animated,recompress_png" \
   "Chrome/32." \
   "/xCuppa.png.pagespeed.ic.*.webp\"/>" \
-  "/xCradleAnimation.gif.pagespeed.ic.*.webp\"/>"
+  "/xPageSpeedAnimationSmall.gif.pagespeed.ic.*.webp\"/>"
 # Less recent Chrome. Only lossless WebP will be used.
 test_optimize_to_webp webp_urls/rewrite_webp.html \
   "convert_to_webp_lossless,convert_to_webp_animated,recompress_png" \
   "Chrome/31." \
   "/xCuppa.png.pagespeed.ic.*.webp\"/>" \
-  "/CradleAnimation.gif\"/>"
+  "/PageSpeedAnimationSmall.gif\"/>"
 # Old chrome. No WebP will be used. Single frame image will be converted to
 # PNG.
 test_optimize_to_webp webp_urls/rewrite_webp.html \
   "convert_to_webp_lossless,convert_to_webp_animated,recompress_png" \
   "Chrome/22." \
   "/xCuppa.png.pagespeed.ic.*.png\"/>" \
-  "/CradleAnimation.gif\"/>"
+  "/PageSpeedAnimationSmall.gif\"/>"

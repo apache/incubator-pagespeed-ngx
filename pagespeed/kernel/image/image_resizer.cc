@@ -65,7 +65,7 @@ struct ResizeTableEntry {
 };
 
 // Round to the nearest integer.
-inline float Round(float val) {
+inline double Round(double val) {
   return lrintf(val);
 }
 
@@ -85,23 +85,19 @@ inline float Round(float val) {
 // be used to compute one output pixel. The numerical results shall
 // not have a noticeable difference because we quantize the output to integers
 // of 0...255.
-inline bool IsCloseToFloat(float val, float int_val) {
-  // Threshold for determining whether a floating-point value is close enough
+inline bool IsCloseToDouble(double val, double int_val) {
+  // Threshold for determining whether a double-precision value is close enough
   // to an integer. A larger threshold increases the chance for the value to
   // be approximated by an integer and consequently reduces computation, but it
-  // may also reduce accuracy. The value of 1.0E-10f was empirically chosen.
-  const float kThreshold = 1.0E-10f;
-  float difference = fabs(val - int_val);
+  // may also reduce accuracy. The value of 1.0E-10 was empirically chosen.
+  const double kThreshold = 1.0E-10;
+  double difference = fabs(val - int_val);
   bool is_integer = difference <= kThreshold;
   return is_integer;
 }
 
-inline bool IsApproximatelyZero(float val) {
-  return IsCloseToFloat(val, 0.0f);
-}
-
-inline bool IsApproximatelyInteger(float val) {
-  return IsCloseToFloat(val, Round(val));
+inline bool IsApproximatelyInteger(double val) {
+  return IsCloseToDouble(val, Round(val));
 }
 
 // Compute the interpolation coefficents for the "area" method.
@@ -112,7 +108,7 @@ inline bool IsApproximatelyInteger(float val) {
 // The inputs, in_size and out_size, are 1-D sizes specified in pixels.
 ResizeTableEntry* CreateTableForAreaMethod(int in_size,
                                            int out_size,
-                                           float ratio,
+                                           double ratio,
                                            MessageHandler* handler) {
   if (in_size <= 0 || out_size <= 0 || ratio <= 0) {
     PS_LOG_DFATAL(handler, "The inputs must be positive values.");
@@ -124,14 +120,15 @@ ResizeTableEntry* CreateTableForAreaMethod(int in_size,
     return NULL;
   }
 
-  float end_pos = 0;
+  double end_pos = 0;
   for (int i = 0; i < out_size; ++i) {
-    float start_pos = end_pos;
-    float start_pos_floor = floor(start_pos);
+    double start_pos = end_pos;
+    double start_pos_floor = floor(start_pos);
     table[i].first_index = static_cast<int>(start_pos_floor);
-    table[i].first_weight = 1.0f + start_pos_floor - start_pos;
+    table[i].first_weight =
+        static_cast<float>(1.0 + start_pos_floor - start_pos);
 
-    end_pos += ratio;
+    end_pos = (i + 1) * ratio;
     if (IsApproximatelyInteger(end_pos)) {
       end_pos = Round(end_pos);
       table[i].last_index = static_cast<int>(end_pos) - 1;
@@ -149,9 +146,14 @@ ResizeTableEntry* CreateTableForAreaMethod(int in_size,
     }
 
     if (table[i].first_index < table[i].last_index) {
-      table[i].last_weight = end_pos - table[i].last_index;
+      table[i].last_weight = static_cast<float>(end_pos - table[i].last_index);
     } else {
-      table[i].last_weight = ratio - table[i].first_weight;
+      table[i].last_weight = static_cast<float>(ratio - table[i].first_weight);
+    }
+
+    if (i > 0 && table[i - 1].first_index >= table[i].first_index) {
+      LOG(DFATAL) << "Significant rounding error has been accumulated.";
+      return NULL;
     }
   }
 
@@ -166,22 +168,22 @@ void ComputeResizedSizeRatio(int input_width,
                              int output_height,
                              int* width,
                              int* height,
-                             float* ratio_x,
-                             float* ratio_y,
+                             double* ratio_x,
+                             double* ratio_y,
                              MessageHandler* handler) {
-  float original_width = input_width;
-  float original_height = input_height;
-  float resized_width = output_width;
-  float resized_height = output_height;
+  double original_width = input_width;
+  double original_height = input_height;
+  double resized_width = output_width;
+  double resized_height = output_height;
 
-  if (resized_width > 0.0f && resized_height > 0.0f) {
+  if (resized_width > 0.0 && resized_height > 0.0) {
     *ratio_x = original_width / resized_width;
     *ratio_y = original_height / resized_height;
-  } else if (resized_width > 0.0f) {
+  } else if (resized_width > 0.0) {
     *ratio_x = original_width / resized_width;
     *ratio_y = *ratio_x;
     resized_height = Round(original_height / *ratio_y);
-  } else if (resized_height > 0.0f) {
+  } else if (resized_height > 0.0) {
     *ratio_x = original_height / resized_height;
     *ratio_y = *ratio_x;
     resized_width = Round(original_width / *ratio_x);
@@ -329,7 +331,7 @@ class ResizeRow {
  public:
   virtual ~ResizeRow() {}
 
-  virtual bool Initialize(int in_size, int out_size, float ratio,
+  virtual bool Initialize(int in_size, int out_size, double ratio,
                           float* output_buffer, MessageHandler* handler) = 0;
 
   // In order to process pixels stored in any data type, the base class,
@@ -354,8 +356,8 @@ class ResizeCol {
   virtual ~ResizeCol() {}
   virtual bool Initialize(int in_size,
                           int out_size,
-                          float ratio_x,
-                          float ratio_y,
+                          double ratio_x,
+                          double ratio_y,
                           int elements_per_output_row,
                           uint8_t* output_buffer,
                           MessageHandler* handler) = 0;
@@ -371,7 +373,7 @@ class ResizeRowArea : public ResizeRow {
   explicit ResizeRowArea(int num_channels)
       : num_channels_(num_channels), output_buffer_(NULL) {}
 
-  virtual bool Initialize(int in_size, int out_size, float ratio,
+  virtual bool Initialize(int in_size, int out_size, double ratio,
                           float* output_buffer, MessageHandler* handler);
   virtual const void* Resize(const uint8_t* in_data);
 
@@ -383,7 +385,7 @@ class ResizeRowArea : public ResizeRow {
 };
 
 bool ResizeRowArea::Initialize(int in_size,
-    int out_size, float ratio, float* output_buffer, MessageHandler* handler) {
+    int out_size, double ratio, float* output_buffer, MessageHandler* handler) {
   if (num_channels_ != 1 && num_channels_ != 3 && num_channels_ != 4) {
     return false;
   }
@@ -430,8 +432,8 @@ class ResizeColArea : public ResizeCol {
 
   virtual bool Initialize(int in_size,
                           int out_size,
-                          float ratio_x,
-                          float ratio_y,
+                          double ratio_x,
+                          double ratio_y,
                           int elements_per_output_row,
                           uint8_t* output_buffer,
                           MessageHandler* handler);
@@ -476,8 +478,8 @@ template<class BufferType>
 bool ResizeColArea<BufferType>::Initialize(
     int in_size,
     int out_size,
-    float ratio_x,
-    float ratio_y,
+    double ratio_x,
+    double ratio_y,
     int elements_per_output_row,
     uint8_t* output_buffer,
     MessageHandler* handler) {
@@ -486,7 +488,7 @@ bool ResizeColArea<BufferType>::Initialize(
     return false;
   }
 
-  only_scale_outputs_ = (ratio_y == 1.0f);
+  only_scale_outputs_ = (ratio_y == 1.0);
   if (!only_scale_outputs_) {
     buffer_.reset(new float[elements_per_output_row]);
     if (buffer_ == NULL) {
@@ -495,7 +497,7 @@ bool ResizeColArea<BufferType>::Initialize(
   }
   output_buffer_ = output_buffer;
 
-  float grid_area = ratio_x * ratio_y;
+  float grid_area = static_cast<float>(ratio_x * ratio_y);
   inv_grid_area_ = 1.0f / grid_area;
   half_grid_area_ = 0.5f * grid_area;
   in_row_ = 0;
@@ -761,7 +763,7 @@ bool ScanlineResizer::Initialize(ScanlineReaderInterface* reader,
       std::min(static_cast<int>(request_height), input_height);
 
   int resized_width, resized_height;
-  float ratio_x, ratio_y;
+  double ratio_x, ratio_y;
 
   ComputeResizedSizeRatio(input_width,
                           input_height,
@@ -787,8 +789,8 @@ bool ScanlineResizer::Initialize(ScanlineReaderInterface* reader,
   // x == 1 && y != 1 | Shortcut  | NULL   | uint8   | Resize & Scale | Valid
   // x == 1 && y == 1 | Shortcut  | NULL   | uint8   | Shortcut       | NULL
 
-  const bool need_resize_x = (ratio_x != 1.0f);
-  const bool need_resize_y = (ratio_y != 1.0f);
+  const bool need_resize_x = (ratio_x != 1.0);
+  const bool need_resize_y = (ratio_y != 1.0);
   float* resizer_x_buffer = NULL;
   uint8_t* resizer_y_buffer = NULL;
   if (need_resize_x) {

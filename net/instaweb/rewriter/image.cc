@@ -680,11 +680,6 @@ bool ImageImpl::ResizeTo(const ImageDim& new_dim) {
     return false;
   }
 
-  if (image_reader->GetPixelFormat() == RGBA_8888) {
-    resize_debug_message_ = "Cannot resize: RGBA_8888 pixel format";
-    return false;
-  }
-
   ScanlineResizer resizer(handler_.get());
   if (!resizer.Initialize(image_reader.get(), new_dim.width(),
                           new_dim.height())) {

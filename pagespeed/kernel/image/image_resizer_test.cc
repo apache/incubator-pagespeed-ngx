@@ -71,6 +71,8 @@ const char* kValidImages[] = {
 const char kImagePagespeed[] = "pagespeed-128";
 // Same content as pagespeed-128, but resized to 33-by-34 pixels.
 const char kImagePageSpeed33x34[] = "pagespeed-33x34";
+// Image with 4096-by-2048 pixels.
+const char kLarge4096x2048[] = "large";
 
 // Size of the output image [width, height]. The size of the input image
 // is 32-by-32. We would like to test resizing ratios of both integers
@@ -351,6 +353,11 @@ TEST_F(ScanlineResizerTest, ResizeFractionalRatio) {
     ++num_rows;
   }
   EXPECT_EQ(new_height, num_rows);
+}
+
+TEST_F(ScanlineResizerTest, LargeImage) {
+  ASSERT_TRUE(ReadTestFile(kPngTestDir, kLarge4096x2048, "png", &input_image_));
+  ResizeAndValidateImage(kLarge4096x2048, input_image_);
 }
 
 }  // namespace
