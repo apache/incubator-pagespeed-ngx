@@ -16,16 +16,17 @@
 
 // Author: huibao@google.com (Huibao Lin)
 //
-// CPU: Intel Sandybridge with HyperThreading (16 cores) dL1:32KB dL2:256KB
-// Benchmark              Time(ns)    CPU(ns) Iterations
-// -----------------------------------------------------
-// BM_ConvertJpegToJpeg   13468318   13264241        100
-// BM_ConvertJpegToWebp   85506401   85104136        100
-// BM_ConvertPngToPng      2541468    2533139        275
-// BM_ConvertPngToWebp     1013797    1010651        693
-// BM_ConvertGifToPng     42850766   42661702        100
-// BM_ConvertGifToWebp    31759667   31657212        100
-// BM_ConvertWebpToWebp   31727731   31491286        100
+// CPU : Intel(R) Xeon(R) CPU E5-2689 0 @ 2.60GHz
+// Benchmark              Wall Time (ns)    CPU Time (ns)
+// ------------------------------------------------------
+// BM_ConvertJpegToJpeg         13730507         13331078
+// BM_ConvertJpegToWebp         67427468         67095778
+// BM_ConvertPngToPng            2573723          2570515
+// BM_ConvertPngToWebp            724208           723557
+// BM_ConvertGifToPng           43674338         43643334
+// BM_ConvertGifToWebp          26607409         26591156
+// BM_ConvertWebpToWebp         26541250         26337027
+// BM_ResizeGifToWebp           63763733         63726202
 
 #include "net/instaweb/rewriter/public/image.h"
 #include "pagespeed/kernel/base/benchmark.h"
@@ -71,7 +72,7 @@ class TestImageRewrite {
                                  &handler_);
   }
 
-  void Rewrite() {
+  void Rewrite(const ImageDim* image_dim) {
     // Reset conversions_attempted. This field is increased each time
     // the image is rewritten, and the image will not be rewritten if
     // this field is greater than the limit.
@@ -81,6 +82,11 @@ class TestImageRewrite {
     net_instaweb::Image* image =
         NewImage(contents_, file_name_, "/NOT-USED",
                  options_, &timer_, &handler_);
+
+    if (image_dim != NULL && image_dim->has_width() &&
+        image_dim->has_height()) {
+      EXPECT_TRUE(image->ResizeTo(*image_dim));
+    }
     image->Contents();
     EXPECT_EQ(expected_output_image_type_, image->image_type());
     EXPECT_NE(contents_.length(), image->output_size());
@@ -104,7 +110,7 @@ static void BM_ConvertJpegToJpeg(int iters) {
   TestImageRewrite test_rewrite(kPuzzle, &options);
   ASSERT_TRUE(test_rewrite.Initialize(net_instaweb::IMAGE_JPEG));
   for (int i = 0; i < iters; ++i) {
-    test_rewrite.Rewrite();
+    test_rewrite.Rewrite(NULL /* no resizing */);
   }
 }
 BENCHMARK(BM_ConvertJpegToJpeg);
@@ -118,7 +124,7 @@ static void BM_ConvertJpegToWebp(int iters) {
   TestImageRewrite test_rewrite(kPuzzle, &options);
   ASSERT_TRUE(test_rewrite.Initialize(net_instaweb::IMAGE_WEBP));
   for (int i = 0; i < iters; ++i) {
-    test_rewrite.Rewrite();
+    test_rewrite.Rewrite(NULL /* no resizing */);
   }
 }
 BENCHMARK(BM_ConvertJpegToWebp);
@@ -130,7 +136,7 @@ static void BM_ConvertPngToPng(int iters) {
   TestImageRewrite test_rewrite(kCuppa, &options);
   ASSERT_TRUE(test_rewrite.Initialize(net_instaweb::IMAGE_PNG));
   for (int i = 0; i < iters; ++i) {
-    test_rewrite.Rewrite();
+    test_rewrite.Rewrite(NULL /* no resizing */);
   }
 }
 BENCHMARK(BM_ConvertPngToPng);
@@ -145,7 +151,7 @@ static void BM_ConvertPngToWebp(int iters) {
   ASSERT_TRUE(test_rewrite.Initialize(
       net_instaweb::IMAGE_WEBP_LOSSLESS_OR_ALPHA));
   for (int i = 0; i < iters; ++i) {
-    test_rewrite.Rewrite();
+    test_rewrite.Rewrite(NULL /* no resizing */);
   }
 }
 BENCHMARK(BM_ConvertPngToWebp);
@@ -157,7 +163,7 @@ static void BM_ConvertGifToPng(int iters) {
   TestImageRewrite test_rewrite(kIronChef, &options);
   ASSERT_TRUE(test_rewrite.Initialize(net_instaweb::IMAGE_PNG));
   for (int i = 0; i < iters; ++i) {
-    test_rewrite.Rewrite();
+    test_rewrite.Rewrite(NULL /* no resizing */);
   }
 }
 BENCHMARK(BM_ConvertGifToPng);
@@ -175,7 +181,7 @@ static void BM_ConvertGifToWebp(int iters) {
   ASSERT_TRUE(test_rewrite.Initialize(
       net_instaweb::IMAGE_WEBP_LOSSLESS_OR_ALPHA));
   for (int i = 0; i < iters; ++i) {
-    test_rewrite.Rewrite();
+    test_rewrite.Rewrite(NULL /* no resizing */);
   }
 }
 BENCHMARK(BM_ConvertGifToWebp);
@@ -189,10 +195,28 @@ static void BM_ConvertWebpToWebp(int iters) {
   TestImageRewrite test_rewrite(kScenery, &options);
   ASSERT_TRUE(test_rewrite.Initialize(net_instaweb::IMAGE_WEBP));
   for (int i = 0; i < iters; ++i) {
-    test_rewrite.Rewrite();
+    test_rewrite.Rewrite(NULL /* no resizing */);
   }
 }
 BENCHMARK(BM_ConvertWebpToWebp);
+
+static void BM_ResizeGifToWebp(int iters) {
+  net_instaweb::Image::CompressionOptions options;
+  options.preferred_webp = pagespeed::image_compression::WEBP_LOSSLESS;
+  options.allow_webp_alpha = true;
+  options.preserve_lossless = true;
+
+  TestImageRewrite test_rewrite(kIronChef, &options);
+  ASSERT_TRUE(test_rewrite.Initialize(
+      net_instaweb::IMAGE_WEBP_LOSSLESS_OR_ALPHA));
+  ImageDim image_dim;
+  image_dim.set_width(190);
+  image_dim.set_height(250);
+  for (int i = 0; i < iters; ++i) {
+    test_rewrite.Rewrite(&image_dim);
+  }
+}
+BENCHMARK(BM_ResizeGifToWebp);
 
 }  // namespace
 
