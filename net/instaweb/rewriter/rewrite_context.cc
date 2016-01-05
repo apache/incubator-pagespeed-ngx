@@ -1708,7 +1708,7 @@ void RewriteContext::CallLockFailed() {
 void RewriteContext::LockFailed() {
   num_rewrites_abandoned_for_lock_contention_->Add(1);
   MarkTooBusy();
-  Activate();
+  Finalize();
 }
 
 bool RewriteContext::IsDistributedRewriteForHtml() const {

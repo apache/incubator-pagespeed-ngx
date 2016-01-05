@@ -237,7 +237,8 @@ function run_test() {
   else
     # Use a subshell to keep modifications tests make to the test environment
     # from interfering with eachother.
-    (source "$this_dir/system_tests/${test_name}.sh")
+    (source "$this_dir/system_tests/${test_name}.sh"; update_elapsed_time)
+    previous_time_ms=0
   fi
 }
 
@@ -541,6 +542,10 @@ function get_stat() {
 }
 
 function check_stat() {
+  check_stat_op $1 $2 $3 $4 =
+}
+
+function check_stat_op() {
   if [ "${statistics_enabled:-1}" -eq "0" ]; then
     return
   fi
@@ -548,13 +553,14 @@ function check_stat() {
   local NEW_STATS_FILE=$2
   local COUNTER_NAME=$3
   local EXPECTED_DIFF=$4
+  local OP=$5
   local OLD_VAL=$(get_stat ${COUNTER_NAME} <${OLD_STATS_FILE})
   local NEW_VAL=$(get_stat ${COUNTER_NAME} <${NEW_STATS_FILE})
 
   # This extra check is necessary because the syntax error in the second if
   # does not cause bash to fail :/
   if [ "${NEW_VAL}" != "" -a "${OLD_VAL}" != "" ]; then
-    if [ $((${NEW_VAL} - ${OLD_VAL})) = ${EXPECTED_DIFF} ]; then
+    if [ $((${NEW_VAL} - ${OLD_VAL})) $OP ${EXPECTED_DIFF} ]; then
       return;
     fi
   fi
@@ -562,7 +568,7 @@ function check_stat() {
   # Failure
   local EXPECTED_VAL=$((${OLD_VAL} + ${EXPECTED_DIFF}))
   echo -n "Mismatched counter value : ${COUNTER_NAME} : "
-  echo "Expected=${EXPECTED_VAL} Actual=${NEW_VAL}"
+  echo "Expected(${EXPECTED_VAL}) $OP Actual(${NEW_VAL})"
   echo "Compare stat files ${OLD_STATS_FILE} and ${NEW_STATS_FILE}"
   handle_failure
 }

@@ -527,6 +527,19 @@ if [ $statistics_enabled = "1" ]; then
   check [ $not_cacheable = $((not_cacheable_start + 1)) ]
   URL=""
   AUTH=""
+
+  start_test A burst of image requests should yield only one rewrite.
+  URL="$EXAMPLE_ROOT/images/Puzzle.jpg?a=$RANDOM"
+  start_image_rewrites=$(scrape_stat image_rewrites)
+  echo Running burst of 20x: \"wget -q -O - $URL '|' wc -c\"
+  for ((i = 0; i < 20; ++i)); do
+    echo -n $(wget -q -O - $URL | wc -c) ""
+  done
+  echo "... done"
+  sleep 1
+  end_image_rewrites=$(scrape_stat image_rewrites)
+  check [ $end_image_rewrites = $((start_image_rewrites + 1)) ]
+  URL=""
 fi
 
 if [ "$SECONDARY_HOSTNAME" != "" ]; then
@@ -1108,15 +1121,14 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   check_stat $STATS.0 $STATS.1 image_rewrites 0
 
   # Second IPRO request.
-  http_proxy=$SECONDARY_HOSTNAME check $WGET_DUMP $URL -O /dev/null
-  # Wait for image rewrite to finish.
-  http_proxy=$SECONDARY_HOSTNAME fetch_until "$IPRO_STATS_URL" \
-    'get_stat image_ongoing_rewrites' 0
+  # Original file has content-length 15131.  Once ipro-optimized, it is
+  # 11395, so fetch it until it's less than 12000.
+  http_proxy=$SECONDARY_HOSTNAME fetch_until $URL "wc -c" 12000 "" "-lt"
   http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $IPRO_STATS_URL > $STATS.2
 
   # Resource is found in cache the second time.
-  check_stat $STATS.1 $STATS.2 cache_hits 1
-  check_stat $STATS.1 $STATS.2 ipro_served 1
+  check_stat_op $STATS.1 $STATS.2 cache_hits 1 -ge
+  check_stat_op $STATS.1 $STATS.2 ipro_served 1 -ge
   check_stat $STATS.1 $STATS.2 ipro_not_rewritable 0
   # So we don't run the ipro recorder flow.
   check_stat $STATS.1 $STATS.2 ipro_not_in_cache 0
