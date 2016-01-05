@@ -332,7 +332,6 @@ if $USE_VALGRIND; then
 ~combine_css Maximum size of combined CSS.~
 ~prioritize_critical_css~
 ~prioritize_critical_css Able to read POST data from temp file.~
-~IPRO flow uses cache as expected.~
 ~IPRO flow doesn't copy uncacheable resources multiple times.~
 ~inline_unauthorized_resources allows unauthorized css selectors~
 "
@@ -1324,6 +1323,7 @@ OUT=$(cat "$ERROR_LOG" \
     | grep -v "\\[warn\\].*remote\.cfg.*" \
     | grep -v "\\[warn\\].*end token not received.*" \
     | grep -v "\\[warn\\].*failed to hook next event.*" \
+    | grep -v "\\[warn\\].*Fetch timed out:.*" \
     || true)
 
 check [ -z "$OUT" ]
