@@ -35,7 +35,8 @@ namespace net_instaweb {
 
 NgxServerContext::NgxServerContext(
     NgxRewriteDriverFactory* factory, StringPiece hostname, int port)
-    : SystemServerContext(factory, hostname, port) {
+    : SystemServerContext(factory, hostname, port),
+      ngx_http2_variable_index_(NGX_ERROR) {
 }
 
 NgxServerContext::~NgxServerContext() { }
@@ -70,11 +71,23 @@ SystemRequestContext* NgxServerContext::NewRequestContext(
     local_ip.len = 0;
   }
 
-  return new SystemRequestContext(thread_system()->NewMutex(),
-                                  timer(),
-                                  ps_determine_host(r),
-                                  local_port,
-                                  str_to_string_piece(local_ip));
+  SystemRequestContext* ctx = new SystemRequestContext(
+      thread_system()->NewMutex(), timer(),
+      ps_determine_host(r), local_port, str_to_string_piece(local_ip));
+
+  // See if http2 is in use.
+  if (ngx_http2_variable_index_ >= 0) {
+    ngx_http_variable_value_t* val =
+        ngx_http_get_indexed_variable(r, ngx_http2_variable_index_);
+    if (val != NULL && val->valid) {
+      StringPiece str_val(reinterpret_cast<char*>(val->data), val->len);
+      if (str_val == "h2" || str_val == "h2c") {
+        ctx->set_using_http2(true);
+      }
+    }
+  }
+
+  return ctx;
 }
 
 GoogleString NgxServerContext::FormatOption(StringPiece option_name,

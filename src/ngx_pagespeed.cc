@@ -1086,6 +1086,17 @@ char* ps_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
   cfg_m->driver_factory->set_main_conf(parent_cfg_s->options);
   cfg_s->server_context = cfg_m->driver_factory->MakeNgxServerContext(
       "dummy_hostname", dummy_port);
+
+#if (NGX_HTTP_V2)
+  // Save the variable index of the "http2" variable, so we can use it
+  // at request time to lookup whether that's on. We do this conditionally
+  // since NGINX will complain to the user (at [emerg] level!) if it doesn't
+  // know about it.
+  ngx_str_t name = ngx_string("http2");
+  cfg_s->server_context->set_ngx_http2_variable_index(
+      ngx_http_get_variable_index(cf, &name));
+#endif
+
   // The server context sets some options when we call global_options(). So
   // let it do that, then merge in options we got from the config file.
   // Once we do that we're done with cfg_s->options.

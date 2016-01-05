@@ -58,8 +58,18 @@ class NgxServerContext : public SystemServerContext {
 
   virtual GoogleString FormatOption(StringPiece option_name, StringPiece args);
 
+  void set_ngx_http2_variable_index(ngx_int_t idx) {
+    ngx_http2_variable_index_ = idx;
+  }
+
+  ngx_int_t ngx_http2_variable_index() const {
+    return ngx_http2_variable_index_;
+  }
+
  private:
   NgxRewriteDriverFactory* ngx_factory_;
+  // what index the "http2" var is, or NGX_ERROR.
+  ngx_int_t ngx_http2_variable_index_;
 
   DISALLOW_COPY_AND_ASSIGN(NgxServerContext);
 };
