@@ -143,28 +143,6 @@ RewriteTestBase::RewriteTestBase()
   Init();
 }
 
-// Takes ownership of the statistics.
-RewriteTestBase::RewriteTestBase(Statistics* statistics)
-    : kFoundResult(HTTPCache::kFound, kFetchStatusOK),
-      kNotFoundResult(HTTPCache::kNotFound, kFetchStatusNotSet),
-      test_distributed_fetcher_(this),
-      statistics_(statistics),
-      factory_(new TestRewriteDriverFactory(rewrite_test_base_process_context,
-                                            GTestTempDir(),
-                                            &mock_url_fetcher_,
-                                            &test_distributed_fetcher_)),
-      other_factory_(new TestRewriteDriverFactory(
-          rewrite_test_base_process_context,
-          GTestTempDir(),
-          &mock_url_fetcher_,
-          &test_distributed_fetcher_)),
-      use_managed_rewrite_drivers_(false),
-      options_(factory_->NewRewriteOptions()),
-      other_options_(other_factory_->NewRewriteOptions()),
-      expected_nonce_(0) {
-  Init();
-}
-
 RewriteTestBase::RewriteTestBase(
     std::pair<TestRewriteDriverFactory*, TestRewriteDriverFactory*> factories)
     : kFoundResult(HTTPCache::kFound, kFetchStatusOK),
@@ -357,15 +335,6 @@ void RewriteTestBase::AppendDefaultHeadersWithCanonical(
   headers.Add(HttpAttributes::kLink,
               StrCat("<", canon, ">; rel=\"canonical\""));
   PopulateDefaultHeaders(content_type, 0, &headers);
-  StringWriter writer(text);
-  headers.WriteAsHttp(&writer, message_handler());
-}
-
-void RewriteTestBase::AppendDefaultHeaders(
-    const ContentType& content_type, int64 original_content_length,
-    GoogleString* text) {
-  ResponseHeaders headers;
-  PopulateDefaultHeaders(content_type, original_content_length, &headers);
   StringWriter writer(text);
   headers.WriteAsHttp(&writer, message_handler());
 }
@@ -828,12 +797,9 @@ GoogleString RewriteTestBase::EncodeWithBase(
     ResourceNamer namer;
     EncodePathAndLeaf(id, hash, name_vector, ext, &namer);
     GoogleUrl path_gurl(path);
-    if (path_gurl.IsWebValid()) {
-      return TestUrlNamer::EncodeUrl(base, path_gurl.Origin(),
-                                     path_gurl.PathSansLeaf(), namer);
-    } else {
-      return TestUrlNamer::EncodeUrl(base, "", path, namer);
-    }
+    CHECK(path_gurl.IsWebValid());
+    return TestUrlNamer::EncodeUrl(base, path_gurl.Origin(),
+                                   path_gurl.PathSansLeaf(), namer);
   }
 
   return EncodeNormal(path, id, hash, name_vector, ext);

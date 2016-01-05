@@ -107,7 +107,6 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   };
 
   RewriteTestBase();
-  explicit RewriteTestBase(Statistics* statistics);
 
   // Specifies alternate factories to be initialized on construction.
   // By default, TestRewriteDriverFactory is used, but you can employ
@@ -194,12 +193,6 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   void AppendDefaultHeadersWithCanonical(const ContentType& content_type,
                                          StringPiece canonical_url,
                                          GoogleString* text);
-
-  // Append default headers to the given string, including
-  // X-Original-Content-Length for tests that depend on this.
-  void AppendDefaultHeaders(const ContentType& content_type,
-                            int64 original_content_length,
-                            GoogleString* text);
 
   void ServeResourceFromManyContexts(const GoogleString& resource_url,
                                      const StringPiece& expected_content);
