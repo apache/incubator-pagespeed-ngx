@@ -10,7 +10,7 @@ install:
   - export PATH=/usr/lib/gcc-mozilla/bin:$PATH
   - mkdir -p ~/bin
   - cd ~/bin
-  - svn co http://src.chromium.org/svn/trunk/tools/depot_tools
+  - svn co https://src.chromium.org/svn/trunk/tools/depot_tools
   - cd ~/build_directory
   - ~/bin/depot_tools/gclient config https://github.com/pagespeed/mod_pagespeed.git --unmanaged --name=src
   - ~/bin/depot_tools/gclient sync --force --jobs=1
