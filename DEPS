@@ -94,6 +94,10 @@ vars = {
 
   "libpng_src": "https://github.com/glennrp/libpng.git",
   "libpng_revision": "@2d2fe5e9efbaba6339742807b93a2646aae88475",
+
+  # Brotli v0.2.0
+  "brotli_src": "https://github.com/google/brotli.git",
+  "brotli_revision": "@7f7a2fb48cec63c0459ec6b6e7260810bfb01819",
 }
 
 deps = {
@@ -233,7 +237,9 @@ deps = {
     Var("domain_registry_provider_src") +
         Var("domain_registry_provider_revision"),
 
-  "src/third_party/libpng/src": Var("libpng_src") + Var("libpng_revision")
+  "src/third_party/libpng/src": Var("libpng_src") + Var("libpng_revision"),
+
+  "src/third_party/brotli/src": Var("brotli_src") + Var("brotli_revision")
 }
 
 
