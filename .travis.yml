@@ -30,7 +30,6 @@ script:
 sudo: required
 compiler:
   - gcc
-  - clang
 notifications:
   email:
     - pagespeed-dev@googlegroups.com
