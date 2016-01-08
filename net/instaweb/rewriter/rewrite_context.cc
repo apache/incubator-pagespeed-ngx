@@ -50,9 +50,9 @@
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
+#include "pagespeed/controller/central_controller_interface_adapter.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/base64_util.h"
-#include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/callback.h"
 #include "pagespeed/kernel/base/dynamic_annotations.h"  // RunningOnValgrind
 #include "pagespeed/kernel/base/file_system.h"
@@ -79,6 +79,7 @@
 #include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/response_headers.h"
 #include "pagespeed/kernel/thread/queued_alarm.h"
+#include "pagespeed/kernel/thread/queued_worker_pool.h"
 #include "pagespeed/kernel/util/url_segment_encoder.h"
 
 namespace net_instaweb {
@@ -1264,6 +1265,33 @@ class RewriteContext::InvokeRewriteFunction : public Function {
 RewriteContext::CacheLookupResultCallback::~CacheLookupResultCallback() {
 }
 
+// Implements ScheduleRewriteCallback, sequestering the returned Context
+// and then running the supplied callback as appropriate.
+class RewriteContext::TryLockFunction : public ScheduleRewriteCallback {
+ public:
+  TryLockFunction(const GoogleString& key, QueuedWorkerPool::Sequence* sequence,
+                  Function* callback, RewriteContext* context)
+      : ScheduleRewriteCallback(key, sequence),
+        callback_(callback),
+        context_(context) {
+  }
+
+  ~TryLockFunction() override { }
+
+ private:
+  void RunImpl(scoped_ptr<ScheduleRewriteContext>* context) override {
+    context_->schedule_rewrite_context_ = std::move(*context);
+    callback_->CallRun();
+  }
+
+  void CancelImpl() override {
+    callback_->CallCancel();
+  }
+
+  Function* callback_;
+  RewriteContext* context_;
+};
+
 void RewriteContext::InitStats(Statistics* stats) {
   stats->AddVariable(kNumRewritesAbandonedForLockContention);
   stats->AddVariable(kNumDistributedRewriteSuccesses);
@@ -1690,10 +1718,50 @@ void RewriteContext::OutputCacheMiss() {
   } else if (ShouldDistributeRewrite()) {
     DistributeRewrite();
   } else {
-    server_context->TryLockForCreation(Lock(), MakeFunction(
-        this,
-        &RewriteContext::CallFetchInputs,
-        &RewriteContext::CallLockFailed));
+    ObtainLockForCreation(server_context,
+                          MakeFunction(this,
+                                       &RewriteContext::CallFetchInputs,
+                                       &RewriteContext::CallLockFailed));
+  }
+}
+
+void RewriteContext::ObtainLockForCreation(ServerContext* server_context,
+                                           Function* callback) {
+  if (ScheduleViaCentralController() && !has_parent()) {
+    server_context->central_controller()->ScheduleRewrite(
+        new TryLockFunction(LockName(), Driver()->rewrite_worker(), callback,
+                            this));
+  } else {
+    server_context->TryLockForCreation(Lock(), callback);
+  }
+}
+
+void RewriteContext::ReleaseCreationLock(RewriteResult result) {
+  bool success = true;
+  switch (result) {
+    case kRewriteOk:
+      success = true;
+      break;
+    case kTooBusy:
+      FALLTHROUGH_INTENDED;
+    case kRewriteFailed:
+      success = false;
+      break;
+  }
+
+  // DCHECK (in a somewhat readable way) that we only have one sort of lock.
+  bool have_named_lock = (lock_ != nullptr);
+  bool have_controller_lock = (schedule_rewrite_context_ != nullptr);
+  DCHECK(!(have_named_lock && have_controller_lock));
+
+  lock_.reset();
+  if (have_controller_lock) {
+    if (success) {
+      schedule_rewrite_context_->MarkSucceeded();
+    } else {
+      schedule_rewrite_context_->MarkFailed();
+    }
+    schedule_rewrite_context_.reset();
   }
 }
 
@@ -1967,20 +2035,23 @@ void RewriteContext::RepeatedFailure() {
 NamedLock* RewriteContext::Lock() {
   NamedLock* result = lock_.get();
   if (result == NULL) {
-    // NOTE: This lock is based on hashes so if you use a MockHasher, you may
-    // only rewrite a single resource at a time (e.g. no rewriting resources
-    // inside resources, see css_image_rewriter_test.cc for examples.)
-    //
-    // TODO(jmarantz): In the multi-resource rewriters that can generate more
-    // than one partition, we create a lock based on the entire set of input
-    // URLs, plus a lock for each individual output.  However, in
-    // single-resource rewriters, we really only need one of these locks.  So
-    // figure out which one we'll go with and use that.
-    GoogleString lock_name = StrCat(kRewriteContextLockPrefix, partition_key_);
-    result = FindServerContext()->MakeCreationLock(lock_name);
+    result = FindServerContext()->MakeCreationLock(LockName());
     lock_.reset(result);
   }
   return result;
+}
+
+GoogleString RewriteContext::LockName() const {
+  // NOTE: The name is based on hashes so if you use a MockHasher, you may
+  // only rewrite a single resource at a time (e.g. no rewriting resources
+  // inside resources, see css_image_rewriter_test.cc for examples.)
+  //
+  // TODO(jmarantz): In the multi-resource rewriters that can generate more
+  // than one partition, we create a lock based on the entire set of input
+  // URLs, plus a lock for each individual output.  However, in
+  // single-resource rewriters, we really only need one of these locks.  So
+  // figure out which one we'll go with and use that.
+  return StrCat(kRewriteContextLockPrefix, partition_key_);
 }
 
 void RewriteContext::FetchInputs() {
@@ -2138,6 +2209,7 @@ void RewriteContext::PartitionDone(RewriteResult result_or_busy) {
   if (!result) {
     partitions_->clear_partition();
     outputs_.clear();
+    ReleaseCreationLock(result_or_busy);
   }
 
   outstanding_rewrites_ = partitions_->partition_size();
@@ -2366,6 +2438,7 @@ void RewriteContext::RewriteDoneImpl(RewriteResult result,
   Driver()->request_context()->ReleaseDependentTraceContext(
       dependent_request_trace_);
   dependent_request_trace_ = NULL;
+  ReleaseCreationLock(result);
   if (result == kTooBusy) {
     MarkTooBusy();
   } else {

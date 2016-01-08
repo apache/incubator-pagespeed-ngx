@@ -29,7 +29,9 @@
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_result.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "pagespeed/controller/schedule_rewrite_callback.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -622,6 +624,20 @@ class RewriteContext {
   // expected contents.
   virtual bool FailOnHashMismatch() const { return false; }
 
+  // Whether the CentralController should be used to schedule this rewrite.
+  // Expensive RewriteContexts (CSS, Images) should override this to return
+  // true, allowing more intelligent prioritization.
+  virtual bool ScheduleViaCentralController() { return false; }
+
+  // Obtain a lock to create the resource. callback may not be invoked for an
+  // indeterminate time.
+  void ObtainLockForCreation(ServerContext* server_context, Function* callback);
+
+  // Release whichever lock was obtained above. The result will be used to
+  // inform the CentralController of success or not. If this is not explicitly
+  // called, the lock will be released when "this" is destroyed.
+  void ReleaseCreationLock(RewriteResult result);
+
   // Backend to RewriteDriver::LookupMetadataForOutputResource, with
   // the RewriteContext of appropriate type and the OutputResource already
   // created. Takes ownership of rewrite_context.
@@ -646,6 +662,7 @@ class RewriteContext {
   class ResourceRevalidateCallback;
   class InvokeRewriteFunction;
   class RewriteFreshenCallback;
+  class TryLockFunction;
   friend class RewriteDriver;
 
   typedef std::set<RewriteContext*> ContextSet;
@@ -693,6 +710,10 @@ class RewriteContext {
 
   // Get reference to lock_, lazy-initializing if necessary.
   NamedLock* Lock();
+
+  // Returns a string used to uniquely identify this context in lock
+  // implemntations.
+  GoogleString LockName() const;
 
   // Initiates an asynchronous fetch for the resources associated with
   // each slot, calling ResourceFetchDone() when complete.
@@ -1050,6 +1071,11 @@ class RewriteContext {
 
   // Map to dedup partitions other dependency field.
   StringIntMap other_dependency_map_;
+
+  // Transaction context from CentralController, if
+  // ScheduleViaCentralController() returned true. Communicates back to
+  // CentralController on destruction, or when explicitly invoked.
+  scoped_ptr<ScheduleRewriteContext> schedule_rewrite_context_;
 
   Variable* const num_rewrites_abandoned_for_lock_contention_;
   Variable* const num_distributed_rewrite_failures_;

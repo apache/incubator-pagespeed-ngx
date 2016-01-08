@@ -395,12 +395,15 @@ class ImageRewriteFilter::Context : public SingleRewriteContext {
 
   friend class ImageRewriteFilter;
 
+  virtual bool ScheduleViaCentralController() { return true; }
+
   int64 css_image_inline_max_bytes_;
   ImageRewriteFilter* filter_;
   bool is_css_;
   const int html_index_;
   bool in_noscript_element_;
   bool is_resized_using_rendered_dimensions_;
+
   DISALLOW_COPY_AND_ASSIGN(Context);
 };
 

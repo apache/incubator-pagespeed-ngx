@@ -360,6 +360,8 @@ class CssFilter::Context : public SingleRewriteContext {
   // file.
   int64 ImageInlineMaxBytes() const;
 
+  virtual bool ScheduleViaCentralController() { return true; }
+
   CssFilter* filter_;
   scoped_ptr<CssImageRewriter> css_image_rewriter_;
   ImageRewriteFilter* image_rewrite_filter_;
