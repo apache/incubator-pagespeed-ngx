@@ -614,5 +614,22 @@
         '-lrt',
       ]
     },
+    {
+      'target_name': 'brotli',
+      'type': '<(library)',
+      'sources': [
+        '<(DEPTH)/third_party/pagespeed/kernel/util/brotli_inflater.cc',
+      ],
+      'include_dirs': [
+        '<(DEPTH)',
+      ],
+      'dependencies': [
+        '<(DEPTH)/third_party/brotli/brotli.gyp:brotli_dec',
+        '<(DEPTH)/third_party/brotli/brotli.gyp:brotli_enc',
+      ],
+      'cflags': [
+        '-Wno-sign-compare', # Brotli header has some macros.
+      ],
+    },
   ],
 }

@@ -95,9 +95,9 @@ vars = {
   "libpng_src": "https://github.com/glennrp/libpng.git",
   "libpng_revision": "@2d2fe5e9efbaba6339742807b93a2646aae88475",
 
-  # Brotli v0.2.0
+  # Brotli v0.3.0
   "brotli_src": "https://github.com/google/brotli.git",
-  "brotli_revision": "@7f7a2fb48cec63c0459ec6b6e7260810bfb01819",
+  "brotli_revision": "@98ed7a23a83d64133b0a36a884e489bffb0eb864",
 }
 
 deps = {

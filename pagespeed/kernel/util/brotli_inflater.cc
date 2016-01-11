@@ -29,6 +29,10 @@
 #include "pagespeed/kernel/base/stack_buffer.h"
 #include "pagespeed/kernel/base/writer.h"
 
+using brotli::BrotliMemIn;
+using brotli::BrotliParams;
+using brotli::BrotliStringOut;
+
 namespace net_instaweb {
 
 BrotliInflater::BrotliInflater()
@@ -53,14 +57,12 @@ bool BrotliInflater::Compress(StringPiece in, int compression_level,
   // For creating a BrotliStringOut.
   GoogleString out_str;
   // Set the compression level ("quality" in brotli terms).
-  util::compression::brotli::BrotliParams params;
+  BrotliParams params;
   params.quality = compression_level;
-  util::compression::brotli::BrotliMemIn brotli_input(in.data(), in.length());
-  util::compression::brotli::BrotliStringOut brotli_output(
-      &out_str, std::numeric_limits<int>::max());
+  BrotliMemIn brotli_input(in.data(), in.length());
+  BrotliStringOut brotli_output(&out_str, std::numeric_limits<int>::max());
   // Compress in one shot with BrotliCompress.
-  if (util::compression::brotli::BrotliCompress(params, &brotli_input,
-                                                &brotli_output)) {
+  if (BrotliCompress(params, &brotli_input, &brotli_output)) {
     return writer->Write(out_str, handler);
   }
   return false;
