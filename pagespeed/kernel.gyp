@@ -618,7 +618,7 @@
       'target_name': 'brotli',
       'type': '<(library)',
       'sources': [
-        '<(DEPTH)/third_party/pagespeed/kernel/util/brotli_inflater.cc',
+        '<(DEPTH)/pagespeed/kernel/util/brotli_inflater.cc',
       ],
       'include_dirs': [
         '<(DEPTH)',
