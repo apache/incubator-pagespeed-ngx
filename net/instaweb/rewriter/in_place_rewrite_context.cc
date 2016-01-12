@@ -438,7 +438,8 @@ void InPlaceRewriteContext::FixFetchFallbackHeaders(
 
 void InPlaceRewriteContext::RemoveRedundantRelCanonicalHeader(
     const CachedResult& cached_result, ResponseHeaders* headers) {
-  headers->Remove(HttpAttributes::kLink, RelCanonicalHeaderValue(url_));
+  headers->Remove(HttpAttributes::kLink,
+                  ResponseHeaders::RelCanonicalHeaderValue(url_));
 }
 
 void InPlaceRewriteContext::UpdateDateAndExpiry(

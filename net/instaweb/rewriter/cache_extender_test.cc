@@ -291,6 +291,8 @@ class CacheExtenderTest : public RewriteTestBase {
     EXPECT_STREQ("", AppliedRewriterStringFromLog());
   }
 
+  void TestCanonicalOnFallback(bool fallback_to_pagespeed_resource);
+
   Variable* num_cache_extended_;
   const GoogleString kCssData;
   const GoogleString kCssPath;
@@ -620,6 +622,49 @@ TEST_F(CacheExtenderTest, NoLinkCanonicalIfDomainMapComplexity) {
       Encode("http://cdn.com/", "ce", "0", "b.jpg", "jpg"),
       &content, &headers));
   EXPECT_FALSE(headers.Has(HttpAttributes::kLink));
+}
+
+void CacheExtenderTest::TestCanonicalOnFallback(
+    bool fallback_to_pagespeed_resource) {
+  // Make sure canonical header is correct if we have to go through fallback
+  // path. The fallback can be one of two things:
+  // 1) Another .pagespeed. resource. We get there by requesting the wrong
+  //    hash. In this case, the test is looking that we don't mess things up
+  //    (by e.g. duplicating the header)
+  // 2) The input. We get there by setting the resources to long TTL, so the
+  //    cache extender rewrite fails (as no extension is needed). In this case
+  //    this makes sure we add the proper header (since input doesn't have any).
+  InitTest(fallback_to_pagespeed_resource ? kShortTtlSec : kLongTtlSec);
+  const char* hash = fallback_to_pagespeed_resource ? "1" : "0";
+
+  GoogleString out_css_url(Encode(StrCat(kTestDomain, kCssSubdir),
+                           "ce", hash, kCssTail, "css"));
+  GoogleString out_jpeg_url(Encode(kTestDomain, "ce", hash, "b.jpg", "jpg"));
+
+  GoogleString content;
+  ResponseHeaders headers;
+
+  EXPECT_TRUE(
+      RewriteTestBase::FetchResourceUrl(out_css_url, &content, &headers));
+
+  // CSS isn't expected to get a Link: header.
+  EXPECT_FALSE(headers.Has(HttpAttributes::kLink));
+
+  EXPECT_TRUE(
+      RewriteTestBase::FetchResourceUrl(out_jpeg_url, &content, &headers));
+
+  // JPEG should get a Link: header.
+  EXPECT_STREQ(ResponseHeaders::RelCanonicalHeaderValue(
+                   StrCat(kTestDomain, "b.jpg")),
+               headers.Lookup1(HttpAttributes::kLink));
+}
+
+TEST_F(CacheExtenderTest, CanonicalOnFallbackToOtherPageSpeed) {
+  TestCanonicalOnFallback(true);
+}
+
+TEST_F(CacheExtenderTest, CanonicalOnFallbackToInput) {
+  TestCanonicalOnFallback(false);
 }
 
 TEST_F(CacheExtenderTest, ExtendIfShardedAndRewritten) {

@@ -363,6 +363,13 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   bool ClearOptionCookies(const GoogleUrl& gurl, StringPiece option_cookies,
                           const StringPieceVector& to_exclude);
 
+  // Returns true if the headers may contain a Link: rel = canonical entry.
+  // (Slightly approximate, will never say 'no' if it's there).
+  bool HasLinkRelCanonical() const;
+
+  // Constructs a <url>; rel="canonical" value for use with a Link header.
+  static GoogleString RelCanonicalHeaderValue(StringPiece url);
+
  protected:
   virtual void UpdateHook();
 

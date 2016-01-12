@@ -2333,6 +2333,33 @@ TEST_F(ImageRewriteTest, Rewrite404) {
   }
 }
 
+TEST_F(ImageRewriteTest, CanonicalOnTimeout) {
+  options()->ClearSignatureForTesting();
+  options()->set_test_instant_fetch_rewrite_deadline(true);
+  server_context()->ComputeSignature(options());
+
+  AddFileToMockFetcher(StrCat(kTestDomain, "a.jpg"), kPuzzleJpgFile,
+                        kContentTypeJpeg, 100);
+
+  GoogleString out_url(Encode(kTestDomain, "ic", "0", "a.jpg", "jpg"));
+  GoogleString content;
+  ResponseHeaders headers;
+
+  EXPECT_EQ(
+      0,
+      statistics()->GetVariable(RewriteContext::kNumDeadlineAlarmInvocations)
+          ->Get());
+  EXPECT_TRUE(RewriteTestBase::FetchResourceUrl(out_url, &content, &headers));
+  EXPECT_EQ(
+      1,
+      statistics()->GetVariable(RewriteContext::kNumDeadlineAlarmInvocations)
+          ->Get());
+
+  EXPECT_STREQ(ResponseHeaders::RelCanonicalHeaderValue(
+                   StrCat(kTestDomain, "a.jpg")),
+               headers.Lookup1(HttpAttributes::kLink));
+}
+
 TEST_F(ImageRewriteTest, HonorNoTransform) {
   // If cache-control: no-transform then we should serve the original URL
   options()->EnableFilter(RewriteOptions::kRecompressPng);

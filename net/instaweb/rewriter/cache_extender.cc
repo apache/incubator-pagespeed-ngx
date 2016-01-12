@@ -76,6 +76,28 @@ class CacheExtender::Context : public SingleRewriteContext {
   virtual const char* id() const { return extender_->id(); }
   virtual OutputResourceKind kind() const { return kOnTheFlyResource; }
 
+  virtual void FixFetchFallbackHeaders(const CachedResult& cached_result,
+                               ResponseHeaders* headers) {
+    SingleRewriteContext::FixFetchFallbackHeaders(cached_result, headers);
+    if (num_slots() != 1 || slot(0)->resource().get() == NULL) {
+      return;
+    }
+    ResourcePtr input_resource(slot(0)->resource());
+
+    if (ShouldAddCanonical(input_resource)) {
+      AddLinkRelCanonicalForFallbackHeaders(headers);
+    }
+  }
+
+  // We only add link: rel = canonical to images and PDF; people don't normally
+  // use search engines to look for .css and .js files, so adding it
+  // there would just be a waste of bytes.
+  bool ShouldAddCanonical(const ResourcePtr& input_resource) {
+    return input_resource->type() != NULL &&
+           (input_resource->type()->IsImage() ||
+            input_resource->type()->type() == ContentType::kPdf);
+  }
+
  private:
   CacheExtender* extender_;
   DISALLOW_COPY_AND_ASSIGN(Context);
@@ -204,13 +226,8 @@ bool CacheExtender::ComputeOnTheFly() const {
 void CacheExtender::Context::RewriteSingle(
     const ResourcePtr& input_resource,
     const OutputResourcePtr& output_resource) {
-  // We only add link: rel = canonical to images and PDF; people don't normally
-  // use search engines to look for .css and .js files, so adding it
-  // there would just be a waste of bytes.
-  if (input_resource->type() != NULL &&
-      (input_resource->type()->IsImage() ||
-       input_resource->type()->type() == ContentType::kPdf)) {
-    AddLinkRelCanonical(input_resource, output_resource);
+  if (ShouldAddCanonical(input_resource)) {
+    AddLinkRelCanonical(input_resource, output_resource->response_headers());
   }
   RewriteDone(
       extender_->RewriteLoadedResource(

@@ -1095,4 +1095,24 @@ void ResponseHeaders::UpdateHook() {
   cache_fields_dirty_ = true;
 }
 
+GoogleString ResponseHeaders::RelCanonicalHeaderValue(StringPiece url) {
+  return StrCat("<", GoogleUrl::Sanitize(url), ">; rel=\"canonical\"");
+}
+
+bool ResponseHeaders::HasLinkRelCanonical() const {
+  ConstStringStarVector links;
+  Lookup(HttpAttributes::kLink, &links);
+  for (int i = 0, n = links.size(); i < n; ++i) {
+    StringPiece cand(*links[i]);
+    stringpiece_ssize_type rel_pos = cand.find("rel");
+    stringpiece_ssize_type can_pos = cand.rfind("canonical");
+    if (rel_pos != StringPiece::npos &&
+        can_pos != StringPiece::npos &&
+        rel_pos < can_pos) {
+      return true;
+    }
+  }
+  return false;
+}
+
 }  // namespace net_instaweb

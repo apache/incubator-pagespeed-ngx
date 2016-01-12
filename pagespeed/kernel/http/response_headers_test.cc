@@ -2104,4 +2104,33 @@ TEST_F(ResponseHeadersTest, ClearOptionCookies) {
   EXPECT_EQ(kBaseHeaders, headers.ToString());
 }
 
+TEST_F(ResponseHeadersTest, RelCanonicalHeaderValue) {
+  EXPECT_EQ("<http://www.example.com>; rel=\"canonical\"",
+            ResponseHeaders::RelCanonicalHeaderValue("http://www.example.com"));
+
+  EXPECT_EQ(
+      "<http://www.example.com/foo%3Cbar%3E>; rel=\"canonical\"",
+      ResponseHeaders::RelCanonicalHeaderValue(
+          "http://www.example.com/foo<bar>"));
+}
+
+TEST_F(ResponseHeadersTest, HasLinkRelCanonical) {
+  ResponseHeaders h1;
+  EXPECT_FALSE(h1.HasLinkRelCanonical());
+
+  h1.Add(HttpAttributes::kLink,
+         "<http://www.example.com/canonical>; rel=\"next\"");
+  EXPECT_FALSE(h1.HasLinkRelCanonical());
+
+  h1.Add(HttpAttributes::kLink,
+         "<http://www.example.com/foo>; rel= \"canonical\"; foo=bar");
+  EXPECT_TRUE(h1.HasLinkRelCanonical());
+
+  // This one is an expected false positive.
+  ResponseHeaders h2;
+  h2.Add(HttpAttributes::kLink,
+         "<http://www.example.com/foo>; rel= \"next\"; icon=\"canonical.ico\"");
+  EXPECT_TRUE(h2.HasLinkRelCanonical());
+}
+
 }  // namespace net_instaweb

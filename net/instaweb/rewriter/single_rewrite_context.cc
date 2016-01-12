@@ -83,7 +83,11 @@ void SingleRewriteContext::Rewrite(int partition_index,
 }
 
 void SingleRewriteContext::AddLinkRelCanonical(
-    const ResourcePtr& input, const OutputResourcePtr& output) {
+    const ResourcePtr& input, ResponseHeaders* output) {
+  if (output->HasLinkRelCanonical()) {
+    return;
+  }
+
   // It's unclear what we should do in case of complex domain mapping
   // configurations, so we simply avoid adding a header in that case.
   //
@@ -101,12 +105,23 @@ void SingleRewriteContext::AddLinkRelCanonical(
     return;
   }
 
-  output->response_headers()->Add(
-      HttpAttributes::kLink, RelCanonicalHeaderValue(input->url()));
+  output->Add(HttpAttributes::kLink,
+              ResponseHeaders::RelCanonicalHeaderValue(input->url()));
+  output->ComputeCaching();
 }
 
-GoogleString SingleRewriteContext::RelCanonicalHeaderValue(StringPiece url) {
-  return StrCat("<", GoogleUrl::Sanitize(url), ">; rel=\"canonical\"");
+void SingleRewriteContext::AddLinkRelCanonicalForFallbackHeaders(
+    ResponseHeaders* output) {
+  if (num_slots() != 1) {
+    LOG(DFATAL) << "Weird number of slots:" << num_slots();
+    return;
+  }
+  ResourcePtr resource(slot(0)->resource());
+  if (resource.get() == NULL || !resource->loaded()) {
+    return;
+  }
+
+  AddLinkRelCanonical(resource, output);
 }
 
 }  // namespace net_instaweb

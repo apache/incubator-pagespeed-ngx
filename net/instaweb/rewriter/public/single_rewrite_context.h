@@ -55,10 +55,10 @@ class SingleRewriteContext : public RewriteContext {
 
   // Adds a link: rel=canonical header pointing to the input URL as canonical.
   void AddLinkRelCanonical(const ResourcePtr& input,
-                           const OutputResourcePtr& output);
+                           ResponseHeaders* output);
 
-  // Constructs a <url>; rel="canonical" value for use with a Link header.
-  GoogleString RelCanonicalHeaderValue(StringPiece url);
+  // Helper for using above in FixFetchFallbackHeaders()
+  void AddLinkRelCanonicalForFallbackHeaders(ResponseHeaders* output);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SingleRewriteContext);

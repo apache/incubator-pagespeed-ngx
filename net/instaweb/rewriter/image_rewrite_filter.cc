@@ -390,6 +390,12 @@ class ImageRewriteFilter::Context : public SingleRewriteContext {
   virtual void EncodeUserAgentIntoResourceContext(
       ResourceContext* context);
 
+  virtual void FixFetchFallbackHeaders(const CachedResult& cached_result,
+                                       ResponseHeaders* headers) {
+    AddLinkRelCanonicalForFallbackHeaders(headers);
+    SingleRewriteContext::FixFetchFallbackHeaders(cached_result, headers);
+  }
+
  private:
   class InvokeRewriteFunction;
 
@@ -518,7 +524,7 @@ void ImageRewriteFilter::Context::RewriteSingle(
   }
   bool is_ipro = IsNestedIn(RewriteOptions::kInPlaceRewriteId);
   AttachDependentRequestTrace(is_ipro ? "IproProcessImage" : "ProcessImage");
-  AddLinkRelCanonical(input_resource, output_resource);
+  AddLinkRelCanonical(input_resource, output_resource->response_headers());
   FindServerContext()->central_controller()->ScheduleExpensiveOperation(
       new InvokeRewriteFunction(this, filter_, input_resource,
                                 output_resource));
