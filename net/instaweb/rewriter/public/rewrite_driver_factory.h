@@ -247,6 +247,9 @@ class RewriteDriverFactory {
   // first call to InitServerContext(), which is thread-safe.
   RewriteStats* rewrite_stats();
 
+  // Returns true if the server supports waveforms in its status page.
+  virtual bool HasWaveforms() const { return false; }
+
   // statistics (default is NullStatistics).  This can be overridden by calling
   // SetStatistics, either from subclasses or externally.
   Statistics* statistics() { return statistics_; }

@@ -804,8 +804,8 @@ void RewriteDriverFactory::SetStatistics(Statistics* statistics) {
 
 RewriteStats* RewriteDriverFactory::rewrite_stats() {
   if (rewrite_stats_.get() == NULL) {
-    rewrite_stats_.reset(new RewriteStats(statistics_, thread_system_.get(),
-                                          timer()));
+    rewrite_stats_.reset(new RewriteStats(
+        HasWaveforms(), statistics_, thread_system_.get(), timer()));
   }
   return rewrite_stats_.get();
 }

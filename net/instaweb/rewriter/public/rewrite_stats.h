@@ -23,15 +23,12 @@
 
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/statistics.h"
+#include "pagespeed/kernel/base/thread_system.h"
 
 namespace net_instaweb {
 
-class Histogram;
-class Statistics;
-class ThreadSystem;
-class TimedVariable;
 class Timer;
-class Variable;
 class Waveform;
 
 // Collects a few specific statistics variables related to Rewriting.
@@ -50,7 +47,8 @@ class RewriteStats {
   // successful (200s).
   static const char kSuccessfulDownstreamCachePurges[];
 
-  RewriteStats(Statistics* stats, ThreadSystem* thread_system, Timer* timer);
+  RewriteStats(bool has_waveforms, Statistics* stats,
+               ThreadSystem* thread_system, Timer* timer);
   ~RewriteStats();
 
   static void InitStats(Statistics* statistics);
@@ -125,6 +123,8 @@ class RewriteStats {
   // Number of HTML pages rewritten.
   TimedVariable* total_rewrite_count() { return total_rewrite_count_; }
 
+  // Returns a waveform object for recording the current thread-queue depth.
+  // Note: for servers that don't support waveforms, null will be returned.
   Waveform* thread_queue_depth(RewriteDriverFactory::WorkerPoolCategory pool) {
     return thread_queue_depths_[pool];
   }

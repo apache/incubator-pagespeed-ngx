@@ -158,7 +158,8 @@ void RewriteStats::InitStats(Statistics* statistics) {
 //
 // Note that there are other statistics owned by filters and subsystems,
 // that must get the some treatment.
-RewriteStats::RewriteStats(Statistics* stats,
+RewriteStats::RewriteStats(bool has_waveforms,
+                           Statistics* stats,
                            ThreadSystem* thread_system,
                            Timer* timer)
     : cached_output_hits_(
@@ -229,9 +230,13 @@ RewriteStats::RewriteStats(Statistics* stats,
   backend_latency_histogram_->EnableNegativeBuckets();
 
   for (int i = 0; i < RewriteDriverFactory::kNumWorkerPools; ++i) {
-    thread_queue_depths_.push_back(
-        new Waveform(thread_system, timer, kNumWaveformSamples,
-                     stats->GetUpDownCounter(kWaveFormCounters[i])));
+    if (has_waveforms) {
+      thread_queue_depths_.push_back(
+          new Waveform(thread_system, timer, kNumWaveformSamples,
+                       stats->GetUpDownCounter(kWaveFormCounters[i])));
+    } else {
+      thread_queue_depths_.push_back(NULL);
+    }
   }
 }
 

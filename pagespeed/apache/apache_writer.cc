@@ -72,9 +72,6 @@ void ApacheWriter::OutputHeaders(ResponseHeaders* response_headers) {
     apr_table_set(request_->subprocess_env, "force-response-1.0", "1");
   }
 
-  const char* content_type = response_headers->Lookup1(
-      HttpAttributes::kContentType);
-
   // It doesn't matter how the origin transferred the request to us;
   // Apache will fill this data in when it issues the response.
   response_headers->RemoveAll(HttpAttributes::kTransferEncoding);
@@ -97,6 +94,8 @@ void ApacheWriter::OutputHeaders(ResponseHeaders* response_headers) {
     response_headers->ComputeCaching();
   }
 
+  const char* content_type = response_headers->Lookup1(
+      HttpAttributes::kContentType);
   if (content_type != NULL) {
     // ap_set_content_type does not make a copy of the string, we need
     // to duplicate it.  Note that we will update the content type below,

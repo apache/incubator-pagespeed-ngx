@@ -258,7 +258,8 @@ void SystemServerContext::ChildInit(SystemRewriteDriverFactory* factory) {
       // below.
       set_statistics(split_statistics_.get());
       local_rewrite_stats_.reset(new RewriteStats(
-          split_statistics_.get(), factory->thread_system(), factory->timer()));
+          factory->HasWaveforms(), split_statistics_.get(),
+          factory->thread_system(), factory->timer()));
       set_rewrite_stats(local_rewrite_stats_.get());
 
       // In case of gzip fetching, we will have the UrlAsyncFetcherStats take
