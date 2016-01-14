@@ -238,6 +238,7 @@
         '<(DEPTH)/pagespeed/system/system_message_handler_test.cc',
         '<(DEPTH)/pagespeed/controller/central_controller_callback_test.cc',
         '<(DEPTH)/pagespeed/controller/named_lock_schedule_rewrite_controller_test.cc',
+        '<(DEPTH)/pagespeed/controller/priority_queue_test.cc',
         '<(DEPTH)/pagespeed/controller/queued_expensive_operation_controller_test.cc',
         '<(DEPTH)/pagespeed/controller/work_bound_expensive_operation_controller_test.cc',
         '<(DEPTH)/pagespeed/kernel/base/annotated_message_handler_test.cc',
