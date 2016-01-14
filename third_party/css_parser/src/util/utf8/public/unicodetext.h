@@ -254,7 +254,7 @@ class UnicodeText {
 
   class const_reverse_iterator : public std::reverse_iterator<const_iterator> {
    public:
-    const_reverse_iterator(const_iterator it) :
+    explicit const_reverse_iterator(const_iterator it) :
         std::reverse_iterator<const_iterator>(it) {}
     const char* utf8_data() const {
       const_iterator tmp_it = base();
@@ -345,7 +345,7 @@ class UnicodeText {
     int capacity_;
     bool ours_;  // Do we own data_?
 
-    Repr() : data_(NULL), size_(0), capacity_(0), ours_(true) {}
+    Repr() : data_(nullptr), size_(0), capacity_(0), ours_(true) {}
     ~Repr() { if (ours_) delete[] data_; }
 
     void clear();

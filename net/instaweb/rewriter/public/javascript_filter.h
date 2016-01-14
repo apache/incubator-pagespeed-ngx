@@ -19,22 +19,20 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_JAVASCRIPT_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_JAVASCRIPT_FILTER_H_
 
+#include "net/instaweb/rewriter/public/javascript_code_block.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
+#include "net/instaweb/rewriter/public/rewrite_context.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_node.h"
 
 namespace net_instaweb {
-
-class HtmlCharactersNode;
-class HtmlIEDirectiveNode;
-class JavascriptRewriteConfig;
-class RewriteContext;
-class RewriteDriver;
-class Statistics;
 
 /*
  * Find Javascript elements (either inline scripts or imported js files) and
@@ -60,24 +58,24 @@ class Statistics;
 class JavascriptFilter : public RewriteFilter {
  public:
   explicit JavascriptFilter(RewriteDriver* rewrite_driver);
-  virtual ~JavascriptFilter();
+  ~JavascriptFilter() override;
   static void InitStats(Statistics* statistics);
 
-  virtual void StartDocumentImpl() { InitializeConfigIfNecessary(); }
-  virtual void StartElementImpl(HtmlElement* element);
-  virtual void Characters(HtmlCharactersNode* characters);
-  virtual void EndElementImpl(HtmlElement* element);
-  virtual void IEDirective(HtmlIEDirectiveNode* directive);
+  void StartDocumentImpl() override { InitializeConfigIfNecessary(); }
+  void StartElementImpl(HtmlElement* element) override;
+  void Characters(HtmlCharactersNode* characters) override;
+  void EndElementImpl(HtmlElement* element) override;
+  void IEDirective(HtmlIEDirectiveNode* directive) override;
 
-  virtual const char* Name() const { return "Javascript"; }
-  virtual const char* id() const { return RewriteOptions::kJavascriptMinId; }
-  virtual RewriteContext* MakeRewriteContext();
+  const char* Name() const override { return "Javascript"; }
+  const char* id() const override { return RewriteOptions::kJavascriptMinId; }
+  RewriteContext* MakeRewriteContext() override;
 
   static JavascriptRewriteConfig* InitializeConfig(RewriteDriver* driver);
 
  protected:
-  virtual RewriteContext* MakeNestedRewriteContext(
-      RewriteContext* parent, const ResourceSlotPtr& slot);
+  RewriteContext* MakeNestedRewriteContext(
+      RewriteContext* parent, const ResourceSlotPtr& slot) override;
 
  private:
   class Context;
@@ -114,15 +112,15 @@ class JavascriptFilter : public RewriteFilter {
 class JavascriptSourceMapFilter : public JavascriptFilter {
  public:
   explicit JavascriptSourceMapFilter(RewriteDriver* rewrite_driver);
-  virtual ~JavascriptSourceMapFilter();
+  ~JavascriptSourceMapFilter() override;
 
-  virtual const char* Name() const { return "Javascript_Source_Map"; }
-  virtual const char* id() const {
+  const char* Name() const override { return "Javascript_Source_Map"; }
+  const char* id() const override {
     return RewriteOptions::kJavascriptMinSourceMapId;
   }
 
  private:
-  virtual bool output_source_map() const { return true; }
+  bool output_source_map() const override { return true; }
 };
 
 }  // namespace net_instaweb

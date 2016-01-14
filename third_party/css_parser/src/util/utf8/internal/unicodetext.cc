@@ -136,7 +136,7 @@ void UnicodeText::Repr::resize(int new_size) {
 // That's not strictly necessary; we could just set size_ to 0.
 void UnicodeText::Repr::clear() {
   if (ours_) delete[] data_;
-  data_ = NULL;
+  data_ = nullptr;
   size_ = capacity_ = 0;
   ours_ = true;
 }
@@ -391,7 +391,7 @@ string UnicodeText::DebugString() const {
 // inherited from boost::iterator_facade
 // (http://boost.org/libs/iterator/doc/iterator_facade.html).
 
-UnicodeText::const_iterator::const_iterator() : it_(0) {}
+UnicodeText::const_iterator::const_iterator() : it_(nullptr) {}
 
 UnicodeText::const_iterator::const_iterator(const const_iterator& other)
     : it_(other.it_) {
@@ -481,7 +481,7 @@ int UnicodeText::const_iterator::utf8_length() const {
 }
 
 UnicodeText::const_iterator UnicodeText::MakeIterator(const char* p) const {
-  CHECK(p != NULL);
+  CHECK(p != nullptr);
   const char* start = utf8_data();
   int len = utf8_length();
   const char* end = start + len;

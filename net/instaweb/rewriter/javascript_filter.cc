@@ -35,7 +35,6 @@
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
-#include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/charset_util.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/source_map.h"
@@ -94,7 +93,7 @@ class JavascriptFilter::Context : public SingleRewriteContext {
  public:
   Context(RewriteDriver* driver, RewriteContext* parent,
           JavascriptRewriteConfig* config, bool output_source_map)
-      : SingleRewriteContext(driver, parent, NULL),
+      : SingleRewriteContext(driver, parent, nullptr),
         config_(config),
         output_source_map_(output_source_map) {}
 
@@ -113,7 +112,7 @@ class JavascriptFilter::Context : public SingleRewriteContext {
           id(), encoder(), resource_context(), input, kind(), &failure_reason);
       source_map = output;
 
-      if (rewritten.get() == NULL) {
+      if (rewritten.get() == nullptr) {
         // We do not expect this to happen. This situation would only come up
         // if we successfully created the source map OutputResource, but
         // failed to create the rewritten JS OutputResource.
@@ -127,7 +126,7 @@ class JavascriptFilter::Context : public SingleRewriteContext {
           RewriteOptions::kJavascriptMinSourceMapId, encoder(),
           resource_context(), input, kRewrittenResource, &failure_reason);
 
-      if (source_map.get() == NULL) {
+      if (source_map.get() == nullptr) {
         // We do not expect this to happen. This situation would only come up
         // if we successfully created the rewritten JS OutputResource, but
         // failed to create the source map OutputResource.
@@ -232,8 +231,8 @@ class JavascriptFilter::Context : public SingleRewriteContext {
   // Implements the asynchronous interface required by SingleRewriteContext.
   //
   // TODO(jmarantz): this should be done as a SimpleTextFilter.
-  virtual void RewriteSingle(
-      const ResourcePtr& input, const OutputResourcePtr& output) {
+  void RewriteSingle(
+      const ResourcePtr& input, const OutputResourcePtr& output) override {
     bool is_ipro = IsNestedIn(RewriteOptions::kInPlaceRewriteId);
     AttachDependentRequestTrace(is_ipro ? "IproProcessJs" : "ProcessJs");
     if (!IsDataUrl(input->url())) {
@@ -242,7 +241,7 @@ class JavascriptFilter::Context : public SingleRewriteContext {
     RewriteDone(RewriteJavascript(input, output), 0);
   }
 
-  virtual void Render() {
+  void Render() override {
     if (num_output_partitions() != 1) {
       return;
     }
@@ -271,9 +270,9 @@ class JavascriptFilter::Context : public SingleRewriteContext {
     config_->num_uses()->Add(1);
   }
 
-  virtual OutputResourceKind kind() const { return kRewrittenResource; }
+  OutputResourceKind kind() const override { return kRewrittenResource; }
 
-  virtual bool OptimizationOnly() const {
+  bool OptimizationOnly() const override {
     if (output_source_map_) {
       return false;  // Do not return original JS as fallback for source maps!
     } else {
@@ -281,7 +280,7 @@ class JavascriptFilter::Context : public SingleRewriteContext {
     }
   }
 
-  virtual const char* id() const {
+  const char* id() const override {
     if (output_source_map_) {
       return RewriteOptions::kJavascriptMinSourceMapId;
     } else {
@@ -289,7 +288,7 @@ class JavascriptFilter::Context : public SingleRewriteContext {
     }
   }
 
-  virtual bool FailOnHashMismatch() const {
+  bool FailOnHashMismatch() const override {
     if (output_source_map_) {
       // We should never serve a source map that does not refer to the exact
       // contents expected by the user. Such a map is non-sense.
@@ -304,7 +303,7 @@ class JavascriptFilter::Context : public SingleRewriteContext {
   // and write it to script_dest.
   // Returns true on success, reports failures itself.
   bool WriteExternalScriptTo(
-      const ResourcePtr script_resource,
+      const ResourcePtr& script_resource,
       StringPiece script_out, ServerContext* server_context,
       const OutputResourcePtr& script_dest) {
     bool ok = false;
@@ -313,7 +312,7 @@ class JavascriptFilter::Context : public SingleRewriteContext {
     // Try to preserve original content type to avoid breaking upstream proxies
     // and the like.
     const ContentType* content_type = script_resource->type();
-    if (content_type == NULL ||
+    if (content_type == nullptr ||
         content_type->type() != ContentType::kJavascript) {
       content_type = &kContentTypeJavascript;
     }
@@ -327,7 +326,7 @@ class JavascriptFilter::Context : public SingleRewriteContext {
     return ok;
   }
 
-  bool WriteSourceMapTo(const ResourcePtr input_resource,
+  bool WriteSourceMapTo(const ResourcePtr& input_resource,
                         StringPiece contents,
                         const OutputResourcePtr& source_map) {
     source_map->response_headers()->Add(HttpAttributes::kXContentTypeOptions,
@@ -387,7 +386,7 @@ void JavascriptFilter::StartElementImpl(HtmlElement* element) {
   const RewriteOptions* options = driver()->options();
   switch (script_tag_scanner_.ParseScriptElement(element, &script_src)) {
     case ScriptTagScanner::kJavaScript:
-      if (script_src != NULL) {
+      if (script_src != nullptr) {
         if (options->Enabled(RewriteOptions::kRewriteJavascriptExternal) ||
             options->Enabled(
                 RewriteOptions::kCanonicalizeJavascriptLibraries)) {
@@ -435,7 +434,7 @@ JavascriptRewriteConfig* JavascriptFilter::InitializeConfig(
 }
 
 void JavascriptFilter::InitializeConfigIfNecessary() {
-  if (config_.get() == NULL) {
+  if (config_.get() == nullptr) {
       config_.reset(InitializeConfig(driver()));
   }
 }
@@ -484,7 +483,7 @@ void JavascriptFilter::RewriteExternalScript(
   const StringPiece script_url(script_src->DecodedValueOrNull());
   ResourcePtr resource(CreateInputResourceOrInsertDebugComment(
       script_url, script_in_progress));
-  if (resource.get() == NULL) {
+  if (resource.get() == nullptr) {
     return;
   }
 
@@ -493,7 +492,7 @@ void JavascriptFilter::RewriteExternalScript(
   if (driver()->options()->js_preserve_urls()) {
     slot->set_preserve_urls(true);
   }
-  Context* jrc = new Context(driver(), NULL, config_.get(),
+  Context* jrc = new Context(driver(), nullptr, config_.get(),
                              false /* output_source_map */);
   jrc->AddSlot(slot);
   driver()->InitiateRewrite(jrc);
@@ -516,14 +515,14 @@ RewriteContext* JavascriptFilter::MakeRewriteContext() {
   // disabled for this resource (eg because we've recognized it as a library).
   // This usually happens because the underlying JS content or rewrite
   // configuration changed since the client fetched a rewritten page.
-  return new Context(driver(), NULL, config_.get(), output_source_map());
+  return new Context(driver(), nullptr, config_.get(), output_source_map());
 }
 
 RewriteContext* JavascriptFilter::MakeNestedRewriteContext(
     RewriteContext* parent, const ResourceSlotPtr& slot) {
   InitializeConfigIfNecessary();
   // A nested rewrite, should work just like an HTML rewrite does.
-  Context* context = new Context(NULL /* driver */, parent, config_.get(),
+  Context* context = new Context(nullptr /* driver */, parent, config_.get(),
                                  output_source_map());
   context->AddSlot(slot);
   return context;
