@@ -20,9 +20,11 @@
 #define NET_INSTAWEB_HTTP_PUBLIC_INFLATING_FETCH_H_
 
 #include "net/instaweb/http/public/async_fetch.h"
+#include "net/instaweb/http/public/http_value.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/http/response_headers.h"
 #include "pagespeed/kernel/util/gzip_inflater.h"
 
 namespace net_instaweb {
@@ -49,15 +51,20 @@ class InflatingFetch : public SharedAsyncFetch {
   // or gzip was already in the request then this has no effect.
   void EnableGzipFromBackend();
 
-  // In-place inflate a GZipped HTTPValue if it has been gzipped-compressed,
-  // updating the headers to reflect the new state.
-  static void UnGzipValueIfCompressed(HTTPValue* http_value,
+  // Inflate a GZipped HTTPValue if it has been gzipped-compressed,
+  // updating the headers to reflect the new state.  Returns false if
+  // the data was not compressed, leaving dest unmodified.
+  //
+  // Notes: dest and src should not be the same object.  If the
+  // unzip fails, you may need to link src into dest.
+  static bool UnGzipValueIfCompressed(const HTTPValue& src,
                                       ResponseHeaders* headers,
+                                      HTTPValue* dest,
                                       MessageHandler* handler);
   // GZip compress HTTPValue, updating the headers reflect the new
   // state, output to compressed_value. Returns true if the value is
   // successfully compressed.
-  static bool GzipValue(int compression_level, const HTTPValue* http_value,
+  static bool GzipValue(int compression_level, const HTTPValue& http_value,
                         HTTPValue* compressed_value, ResponseHeaders* headers,
                         MessageHandler* handler);
 

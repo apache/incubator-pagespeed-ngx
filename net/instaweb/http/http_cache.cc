@@ -31,9 +31,9 @@
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
-#include "pagespeed/kernel/base/string_writer.h"
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/cache/cache_interface.h"
+#include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/http/http_names.h"
 #include "pagespeed/kernel/http/response_headers.h"
@@ -229,7 +229,17 @@ class HTTPCacheCallback : public CacheInterface::Callback {
               headers->IsProxyCacheable(callback_->req_properties(),
                                         callback_->RespectVaryOnResources(),
                                         ResponseHeaders::kHasValidator)) {
-            callback_->fallback_http_value()->Link(callback_->http_value());
+            ResponseHeaders fallback_headers;
+            if (callback_->request_context()->accepts_gzip() ||
+                !callback_->http_value()->ExtractHeaders(&fallback_headers,
+                                                         handler_) ||
+                !InflatingFetch::UnGzipValueIfCompressed(
+                    *callback_->http_value(), &fallback_headers,
+                    callback_->fallback_http_value(), handler_)) {
+              // If we don't need to unzip, or can't unzip, then just
+              // link the value and fallback together.
+              callback_->fallback_http_value()->Link(callback_->http_value());
+            }
           }
         }
       }
@@ -249,10 +259,14 @@ class HTTPCacheCallback : public CacheInterface::Callback {
     if (result_.status != HTTPCache::kFound) {
       headers->Clear();
       callback_->http_value()->Clear();
-    }
-    if (!callback_->request_context()->accepts_gzip()) {
-      HTTPValue* http_value = callback_->http_value();
-      InflatingFetch::UnGzipValueIfCompressed(http_value, headers, handler_);
+    } else if (!callback_->request_context()->accepts_gzip() &&
+               headers->IsGzipped()) {
+      HTTPValue new_value;
+      GoogleString inflated;
+      if (InflatingFetch::UnGzipValueIfCompressed(
+              *callback_->http_value(), headers, &new_value, handler_)) {
+        callback_->http_value()->Link(&new_value);
+      }
     }
     start_ms_ = now_ms;
     start_us_ = now_us;
@@ -380,7 +394,8 @@ HTTPValue* HTTPCache::ApplyHeaderChangesForPut(
   return value;
 }
 
-void HTTPCache::PutInternal(const GoogleString& key,
+void HTTPCache::PutInternal(bool preserve_response_headers,
+                            const GoogleString& key,
                             const GoogleString& fragment, int64 start_us,
                             HTTPValue* value, ResponseHeaders* response_headers,
                             MessageHandler* handler) {
@@ -394,13 +409,23 @@ void HTTPCache::PutInternal(const GoogleString& key,
   if (!value->Empty() && compression_level_ != 0) {
     const ContentType* type = response_headers->DetermineContentType();
     if ((type != NULL) && type->IsCompressible() &&
-        !response_headers->IsGzipped() &&
-        InflatingFetch::GzipValue(compression_level_, value, &compressed_value,
-                                  response_headers, handler)) {
-      // The resource is text (js, css, html, svg, etc.), and not previously
-      // compressed, so we'll compress it and stick the new compressed version
-      // in the cache.
-      value = &compressed_value;
+        !response_headers->IsGzipped()) {
+      ResponseHeaders* headers_to_gzip = response_headers;
+      ResponseHeaders headers_copy;
+      if (preserve_response_headers) {
+        headers_copy.CopyFrom(*response_headers);
+        headers_to_gzip = &headers_copy;
+      }
+      headers_to_gzip->ComputeCaching();
+
+      if (InflatingFetch::GzipValue(compression_level_, *value,
+                                    &compressed_value, headers_to_gzip,
+                                    handler)) {
+        // The resource is text (js, css, html, svg, etc.), and not previously
+        // compressed, so we'll compress it and stick the new compressed version
+        // in the cache.
+        value = &compressed_value;
+      }
     }
   }
   // TODO(jcrowell): prevent the unzip-rezip flow when sending compressed data
@@ -442,7 +467,8 @@ void HTTPCache::Put(const GoogleString& key, const GoogleString& fragment,
       start_us, NULL, &headers, value, handler);
   // Put into underlying cache.
   if (new_value != NULL) {
-    PutInternal(key, fragment, start_us, new_value, &headers, handler);
+    PutInternal(false /* preserve_response_headers */,
+                key, fragment, start_us, new_value, &headers, handler);
     if (cache_inserts_ != NULL) {
       cache_inserts_->Add(1);
     }
@@ -478,7 +504,8 @@ void HTTPCache::Put(const GoogleString& key, const GoogleString& fragment,
       ApplyHeaderChangesForPut(start_us, &content, headers, NULL, handler));
   // Put into underlying cache.
   if (value.get() != NULL) {
-    PutInternal(key, fragment, start_us, value.get(), headers, handler);
+    PutInternal(true /* preserve_response_headers */,
+                key, fragment, start_us, value.get(), headers, handler);
     if (cache_inserts_ != NULL) {
       cache_inserts_->Add(1);
     }

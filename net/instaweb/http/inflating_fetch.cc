@@ -30,10 +30,8 @@
 namespace net_instaweb {
 
 InflatingFetch::InflatingFetch(AsyncFetch* fetch)
-  : SharedAsyncFetch(fetch),
-    request_checked_for_accept_encoding_(false),
-    compression_desired_(false),
-    inflate_failure_(false) {
+    : SharedAsyncFetch(fetch) {
+  Reset();
 }
 
 InflatingFetch::~InflatingFetch() {
@@ -104,15 +102,16 @@ bool InflatingFetch::HandleWrite(const StringPiece& sp,
   return status && !inflate_failure_;
 }
 
-// Inflate a HTTPValue, if it was gzip compressed, in place.
-void InflatingFetch::UnGzipValueIfCompressed(HTTPValue* http_value,
+// Inflate a HTTPValue, if it was gzip compressed.
+bool InflatingFetch::UnGzipValueIfCompressed(const HTTPValue& src,
                                              ResponseHeaders* headers,
+                                             HTTPValue* dest,
                                              MessageHandler* handler) {
-  if (!http_value->Empty() && headers->IsGzipped()) {
+  if (!src.Empty() && headers->IsGzipped()) {
     GoogleString inflated;
     StringWriter inflate_writer(&inflated);
     StringPiece content;
-    http_value->ExtractContents(&content);
+    src.ExtractContents(&content);
     if (GzipInflater::Inflate(content, GzipInflater::kGzip, &inflate_writer)) {
       if (!headers->HasValue(HttpAttributes::HttpAttributes::kVary,
                              HttpAttributes::kAcceptEncoding)) {
@@ -124,22 +123,23 @@ void InflatingFetch::UnGzipValueIfCompressed(HTTPValue* http_value,
       headers->Replace(HttpAttributes::kContentLength,
                        Integer64ToString(inflated.length()));
       content.set(inflated.c_str(), inflated.length());
-      http_value->Clear();
-      http_value->Write(content, handler);
-      http_value->SetHeaders(headers);
+      dest->Write(content, handler);
+      dest->SetHeaders(headers);
+      return true;
     }
   }
+  return false;
 }
 
 bool InflatingFetch::GzipValue(int compression_level,
-                               const HTTPValue* http_value,
+                               const HTTPValue& http_value,
                                HTTPValue* compressed_value,
                                ResponseHeaders* headers,
                                MessageHandler* handler) {
   StringPiece content;
   GoogleString deflated;
   int64 content_length;
-  http_value->ExtractContents(&content);
+  http_value.ExtractContents(&content);
   StringWriter deflate_writer(&deflated);
   if (!headers->IsGzipped() &&
       GzipInflater::Deflate(content, GzipInflater::kGzip, compression_level,
@@ -217,8 +217,10 @@ void InflatingFetch::Reset() {
   if (inflater_.get() != NULL) {
     inflater_->ShutDown();
     inflater_.reset(NULL);
-    inflate_failure_ = false;
   }
+  request_checked_for_accept_encoding_ = false;
+  compression_desired_ = false;
+  inflate_failure_ = false;
   SharedAsyncFetch::Reset();
 }
 

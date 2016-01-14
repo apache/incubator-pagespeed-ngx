@@ -25,7 +25,7 @@
 #include "net/instaweb/http/public/request_context.h"
 #include "pagespeed/kernel/base/atomic_bool.h"
 #include "pagespeed/kernel/base/basictypes.h"
-#include "pagespeed/kernel/base/gtest_prod.h"  // for FRIEND_TEST
+#include "pagespeed/kernel/base/gtest_prod.h"
 #include "pagespeed/kernel/base/ref_counted_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -365,7 +365,8 @@ class HTTPCache {
 
   // If headers is passed as NULL, the response headers will be extracted from
   // the HTTPValue. Otherwise, the headers passed in will be used.
-  void PutInternal(const GoogleString& key,
+  void PutInternal(bool preserve_response_headers,
+                   const GoogleString& key,
                    const GoogleString& fragment,
                    int64 start_us,
                    HTTPValue* value,

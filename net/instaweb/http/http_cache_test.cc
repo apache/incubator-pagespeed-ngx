@@ -187,6 +187,16 @@ class HTTPCacheTest : public testing::Test {
                      headers, content, handler);
   }
 
+  void PopulateGzippedEntry(const char* cache_control,
+                            ResponseHeaders* response_headers) {
+    InitHeaders(response_headers, cache_control);
+    response_headers->Add(HttpAttributes::kContentType, "text/css");
+    static const char kCssText[] = ".a         {color:blue;}                  ";
+    http_cache_->SetCompressionLevel(9);
+    response_headers->ComputeCaching();
+    Put(kUrl, kFragment, response_headers, kCssText, &message_handler_);
+  }
+
   scoped_ptr<ThreadSystem> thread_system_;
   SimpleStats simple_stats_;
   MockTimer mock_timer_;
@@ -329,8 +339,10 @@ TEST_F(HTTPCacheTest, StaticInflatingFetch) {
   EXPECT_TRUE(value.ExtractHeaders(&response_headers, NULL));
   // Check that the InflatingFetch gzip methods work properly when extracting
   // data.
-  InflatingFetch::UnGzipValueIfCompressed(&value, &response_headers, NULL);
-  ASSERT_TRUE(value.ExtractContents(&contents));
+  HTTPValue ungzipped;
+  ASSERT_TRUE(InflatingFetch::UnGzipValueIfCompressed(
+      value, &response_headers, &ungzipped, &message_handler_));
+  ASSERT_TRUE(ungzipped.ExtractContents(&contents));
   ASSERT_TRUE(meta_data_out.Lookup("name", &values));
   ASSERT_EQ(static_cast<size_t>(1), values.size());
   EXPECT_EQ(GoogleString("value"), *(values[0]));
@@ -717,7 +729,7 @@ TEST_F(HTTPCacheTest, OverrideCacheTtlMs) {
   // Now advance the time by 310 seconds and set override cache TTL to 300
   // seconds. The lookup fails.
   simple_stats_.Clear();
-  mock_timer_.AdvanceMs(310 * 1000);
+  mock_timer_.AdvanceMs(310 * Timer::kSecondMs);
   callback.reset(NewCallback());
   value.Clear();
   meta_data_in.Clear();
@@ -869,6 +881,59 @@ TEST_F(HTTPCacheTest, UpdateVersion) {
             Find(kUrl, "", &value, &meta_data_out, &message_handler_));
   EXPECT_EQ(kNotFoundResult,
             Find(kUrl, kFragment, &value, &meta_data_out, &message_handler_));
+}
+
+TEST_F(HTTPCacheTest, NoMutateOnPut) {
+  ResponseHeaders response_headers;
+  PopulateGzippedEntry("max-age=300", &response_headers);
+
+  // The value that we have in the cache is compressed, but that should
+  // not cause a mutation in the response headers passed into Put.
+  EXPECT_FALSE(response_headers.HasValue(
+      HttpAttributes::kContentEncoding, "gzip"));
+}
+
+TEST_F(HTTPCacheTest, DecompressFallbackValue) {
+  ResponseHeaders response_headers;
+  PopulateGzippedEntry("max-age=300", &response_headers);
+
+  mock_timer_.AdvanceMs(310 * Timer::kSecondMs);  // Makes entry stale.
+  response_headers.Clear();
+
+  // If we don't have gzip in the request, it should not be in the fallback
+  // value.
+  scoped_ptr<Callback> callback(NewCallback());
+  HTTPValue value;
+  EXPECT_EQ(kNotFoundResult, FindWithCallback(  // Not found because it's stale.
+      kUrl, kFragment, &value, &response_headers, &message_handler_,
+      callback.get()));
+  EXPECT_TRUE(callback->fallback_http_value()->ExtractHeaders(
+      &response_headers, &message_handler_));
+  EXPECT_FALSE(response_headers.HasValue(
+      HttpAttributes::kContentEncoding, "gzip"));
+}
+
+TEST_F(HTTPCacheTest, LeaveFallbackCompressed) {
+  ResponseHeaders response_headers;
+  PopulateGzippedEntry("max-age=300", &response_headers);
+
+  mock_timer_.AdvanceMs(310 * Timer::kSecondMs);  // Makes entry stale.
+  response_headers.Clear();
+
+  // When we enable gzip in the request, though, we will get it because the
+  // value stored in the cache is gzipped.
+  RequestContextPtr request_context(RequestContext::NewTestRequestContext(
+      thread_system_.get()));
+  request_context->SetAcceptsGzip(true);
+  Callback callback(request_context);
+  HTTPValue value;
+  EXPECT_EQ(kNotFoundResult, FindWithCallback(
+      kUrl, kFragment, &value, &response_headers, &message_handler_,
+      &callback));
+  EXPECT_TRUE(callback.fallback_http_value()->ExtractHeaders(
+      &response_headers, &message_handler_));
+  EXPECT_TRUE(response_headers.HasValue(
+      HttpAttributes::kContentEncoding, "gzip"));
 }
 
 class HTTPCacheWriteThroughTest : public HTTPCacheTest {

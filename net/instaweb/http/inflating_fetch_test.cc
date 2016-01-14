@@ -315,7 +315,7 @@ TEST(StaticInflatingFetchTest, CompressUncompressValue) {
   headers.Add(HttpAttributes::kContentType, "text/html");
   value.SetHeaders(&headers);
   HTTPValue compressed_value;
-  EXPECT_TRUE(InflatingFetch::GzipValue(9, &value, &compressed_value, &headers,
+  EXPECT_TRUE(InflatingFetch::GzipValue(9, value, &compressed_value, &headers,
                                         &handler));
   StringPiece contents;
   compressed_value.ExtractContents(&contents);
@@ -325,9 +325,10 @@ TEST(StaticInflatingFetchTest, CompressUncompressValue) {
   EXPECT_STREQ(HttpAttributes::kGzip,
                headers.Lookup1(HttpAttributes::kContentEncoding));
   compressed_value.ExtractHeaders(&headers, &handler);
-  InflatingFetch::UnGzipValueIfCompressed(&compressed_value, &headers,
-                                          &handler);
-  compressed_value.ExtractContents(&contents);
+  HTTPValue uncompressed_value;
+  ASSERT_TRUE(InflatingFetch::UnGzipValueIfCompressed(
+      compressed_value, &headers, &uncompressed_value, &handler));
+  uncompressed_value.ExtractContents(&contents);
   // We've unzipped the compressed value, it should now say "hello".
   EXPECT_EQ(kHello, contents);
 }

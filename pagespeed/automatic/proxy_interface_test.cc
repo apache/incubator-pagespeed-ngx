@@ -1848,6 +1848,51 @@ TEST_F(ProxyInterfaceTest, AjaxRewritingForCss) {
   EXPECT_EQ(0, lru_cache()->num_misses());
 }
 
+TEST_F(ProxyInterfaceTest, FallbackNoAcceptGzip) {
+  RewriteOptions* options = server_context()->global_options();
+  options->ClearSignatureForTesting();
+  options->set_http_cache_compression_level(9);
+  options->set_serve_stale_while_revalidate_threshold_sec(
+      1000 * Timer::kDayMs);
+  server_context()->ComputeSignature(options);
+  ResponseHeaders headers;
+  SetTimeMs(MockTimer::kApr_5_2010_ms);
+  headers.Add(HttpAttributes::kContentType, kContentTypeCss.mime_type());
+  headers.SetDate(MockTimer::kApr_5_2010_ms);
+  headers.SetStatusAndReason(HttpStatus::kOK);
+  headers.ComputeCaching();
+  SetFetchResponse(AbsolutifyUrl("text.css"), headers, kCssContent);
+
+  // The first response served by the fetcher and is not rewritten. An ajax
+  // rewrite is triggered.
+  GoogleString text;
+  ResponseHeaders response_headers;
+  FetchFromProxy("text.css", true, &text, &response_headers);
+
+  EXPECT_STREQ(max_age_300_,
+               response_headers.Lookup1(HttpAttributes::kCacheControl));
+  EXPECT_STREQ(start_time_plus_300s_string_,
+               response_headers.Lookup1(HttpAttributes::kExpires));
+  EXPECT_STREQ(start_time_string_,
+               response_headers.Lookup1(HttpAttributes::kDate));
+  EXPECT_EQ(kCssContent, text);
+  CheckBackgroundFetch(response_headers, false);
+  CheckNumBackgroundFetches(0);
+  // One lookup for ajax metadata, one for the HTTP response and one by the css
+  // filter which looks up metadata while rewriting. None are found.
+  EXPECT_EQ(3, lru_cache()->num_misses());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, lru_cache()->num_hits());
+
+  ClearStats();
+  // The rewrite is complete and the optimized version is served.
+  text.clear();
+  response_headers.Clear();
+  AdvanceTimeUs(400 * Timer::kSecondUs);  // expired
+  FetchFromProxy("text.css", true, &text, &response_headers);
+  EXPECT_FALSE(response_headers.IsGzipped());
+}
+
 TEST_F(ProxyInterfaceTest, NoAjaxRewritingWhenAuthorizationSent) {
   // We should not do ajax rewriting when sending over an authorization
   // header if the original isn't cache-control: public.

@@ -3121,11 +3121,14 @@ void RewriteContext::FetchFallbackCacheDone(HTTPCache::FindResult result,
   scoped_ptr<HTTPCache::Callback> cleanup_callback(data);
 
   StringPiece contents;
+  ResponseHeaders* response_headers = data->response_headers();
   if ((result.status == HTTPCache::kFound) &&
       data->http_value()->ExtractContents(&contents) &&
-      (data->response_headers()->status_code() == HttpStatus::kOK)) {
+      (response_headers->status_code() == HttpStatus::kOK)) {
+    DCHECK(!response_headers->IsGzipped() ||
+           Driver()->request_context()->accepts_gzip());
     // We want to serve the found result, with short cache lifetime.
-    fetch_->FetchFallbackDone(contents, data->response_headers());
+    fetch_->FetchFallbackDone(contents, response_headers);
   } else {
     StartFetchReconstruction();
   }
