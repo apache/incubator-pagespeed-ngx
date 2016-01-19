@@ -52,7 +52,7 @@ class ScheduleRewriteCallback
     : public CentralControllerCallback<ScheduleRewriteContext> {
  public:
   explicit ScheduleRewriteCallback(const GoogleString& key,
-                                   QueuedWorkerPool::Sequence* sequence);
+                                   Sequence* sequence);
   virtual ~ScheduleRewriteCallback();
 
   const GoogleString& key() { return key_; }

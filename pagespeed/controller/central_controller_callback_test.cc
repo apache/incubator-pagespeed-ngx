@@ -55,7 +55,7 @@ class MockCallbackHandle {
 class MockCentralControllerCallback
     : public CentralControllerCallback<MockCallbackHandle> {
  public:
-  MockCentralControllerCallback(QueuedWorkerPool::Sequence* sequence,
+  MockCentralControllerCallback(Sequence* sequence,
                                 struct CallCounts* counts)
       : CentralControllerCallback<
             MockCallbackHandle>::CentralControllerCallback(sequence),
@@ -98,7 +98,7 @@ class CentralControllerCallbackTest : public WorkerTestBase {
  protected:
   scoped_ptr<QueuedWorkerPool> worker_;
 
-  void WaitUntilSequenceCompletes(QueuedWorkerPool::Sequence* sequence) {
+  void WaitUntilSequenceCompletes(Sequence* sequence) {
     SyncPoint done(thread_runtime_.get());
     sequence->Add(new NotifyRunFunction(&done));
     done.Wait();
@@ -110,7 +110,7 @@ class CentralControllerCallbackTest : public WorkerTestBase {
 
 TEST_F(CentralControllerCallbackTest, RegularRun) {
   struct CallCounts counts(thread_runtime_.get());
-  QueuedWorkerPool::Sequence* sequence = worker_->NewSequence();
+  Sequence* sequence = worker_->NewSequence();
   sequence->Add(new MockCentralControllerCallback(sequence, &counts));
 
   counts.sync.Wait();
@@ -119,13 +119,11 @@ TEST_F(CentralControllerCallbackTest, RegularRun) {
   EXPECT_EQ(1, counts.run_called);
   EXPECT_EQ(1, counts.delete_called);
   EXPECT_EQ(0, counts.cancel_called);
-
-  worker_->FreeSequence(sequence);
 }
 
 TEST_F(CentralControllerCallbackTest, CancelImmediately) {
   struct CallCounts counts(thread_runtime_.get());
-  QueuedWorkerPool::Sequence* sequence = worker_->NewSequence();
+  Sequence* sequence = worker_->NewSequence();
   sequence->Add(
       MakeFunction(static_cast<Function*>(
                        new MockCentralControllerCallback(sequence, &counts)),
@@ -137,19 +135,17 @@ TEST_F(CentralControllerCallbackTest, CancelImmediately) {
   EXPECT_EQ(0, counts.run_called);
   EXPECT_EQ(0, counts.delete_called);
   EXPECT_EQ(1, counts.cancel_called);
-
-  worker_->FreeSequence(sequence);
 }
 
 TEST_F(CentralControllerCallbackTest, CancelAfterRunRequeue) {
   struct CallCounts counts(thread_runtime_.get());
-  QueuedWorkerPool::Sequence* sequence = worker_->NewSequence();
+  Sequence* sequence = worker_->NewSequence();
 
   // Create another worker pool/sequence that are shutdown. When the callback
   // is enqued onto this sequence, its Cancel should be immediately called.
   scoped_ptr<QueuedWorkerPool> worker2(new QueuedWorkerPool(
       2, "central_controller_test2", thread_runtime_.get()));
-  QueuedWorkerPool::Sequence* sequence2 = worker2->NewSequence();
+  Sequence* sequence2 = worker2->NewSequence();
   worker2->ShutDown();
 
   sequence->Add(new MockCentralControllerCallback(sequence2, &counts));
@@ -163,20 +159,17 @@ TEST_F(CentralControllerCallbackTest, CancelAfterRunRequeue) {
   EXPECT_EQ(0, counts.run_called);
   EXPECT_EQ(1, counts.delete_called);
   EXPECT_EQ(1, counts.cancel_called);
-
-  worker_->FreeSequence(sequence);
-  worker2->FreeSequence(sequence2);
 }
 
 TEST_F(CentralControllerCallbackTest, CancelAfterCancelRequeue) {
   struct CallCounts counts(thread_runtime_.get());
-  QueuedWorkerPool::Sequence* sequence = worker_->NewSequence();
+  Sequence* sequence = worker_->NewSequence();
 
   // Create another worker pool/sequence that are shutdown. When the callback
   // is enqued onto this sequence, its Cancel should be immediately called.
   scoped_ptr<QueuedWorkerPool> worker2(new QueuedWorkerPool(
       2, "central_controller_test2", thread_runtime_.get()));
-  QueuedWorkerPool::Sequence* sequence2 = worker2->NewSequence();
+  Sequence* sequence2 = worker2->NewSequence();
   worker2->ShutDown();
 
   // Call Cancel() on the callback instead of Run in CancelAfterRunRequeue.
@@ -194,14 +187,11 @@ TEST_F(CentralControllerCallbackTest, CancelAfterCancelRequeue) {
   EXPECT_EQ(0, counts.run_called);
   EXPECT_EQ(0, counts.delete_called);  // The context shouldn't be created.
   EXPECT_EQ(1, counts.cancel_called);
-
-  worker_->FreeSequence(sequence);
-  worker2->FreeSequence(sequence2);
 }
 
 TEST_F(CentralControllerCallbackTest, RegularRunWithPointerSteal) {
   struct CallCounts counts(thread_runtime_.get());
-  QueuedWorkerPool::Sequence* sequence = worker_->NewSequence();
+  Sequence* sequence = worker_->NewSequence();
   MockCentralControllerCallback* callback =
       new MockCentralControllerCallback(sequence, &counts);
   callback->SetStealPointer(true);
@@ -213,8 +203,6 @@ TEST_F(CentralControllerCallbackTest, RegularRunWithPointerSteal) {
   EXPECT_EQ(1, counts.run_called);
   EXPECT_EQ(0, counts.delete_called);
   EXPECT_EQ(0, counts.cancel_called);
-
-  worker_->FreeSequence(sequence);
 
   counts.handle.reset();
   EXPECT_EQ(1, counts.delete_called);

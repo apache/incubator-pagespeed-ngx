@@ -21,14 +21,14 @@
 #include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/thread_system.h"
-#include "pagespeed/kernel/thread/queued_worker_pool.h"
+#include "pagespeed/kernel/thread/sequence.h"
 
 #include "base/logging.h"
 
 namespace net_instaweb {
 
 QueuedAlarm::QueuedAlarm(Scheduler* scheduler,
-                         QueuedWorkerPool::Sequence* sequence,
+                         Sequence* sequence,
                          int64 wakeup_time_us,
                          Function* callback)
     : mutex_(scheduler->thread_system()->NewMutex()),

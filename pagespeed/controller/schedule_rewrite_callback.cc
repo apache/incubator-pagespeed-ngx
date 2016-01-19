@@ -42,7 +42,7 @@ void ScheduleRewriteContext::MarkFailed() {
 }
 
 ScheduleRewriteCallback::ScheduleRewriteCallback(
-    const GoogleString& key, QueuedWorkerPool::Sequence* sequence)
+    const GoogleString& key, Sequence* sequence)
     : CentralControllerCallback<ScheduleRewriteContext>(sequence), key_(key) {
 }
 

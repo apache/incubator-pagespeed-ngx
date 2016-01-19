@@ -554,8 +554,8 @@ void ServerContext::TryLockForCreation(NamedLock* creation_lock,
 }
 
 void ServerContext::LockForCreation(NamedLock* creation_lock,
-                                      QueuedWorkerPool::Sequence* worker,
-                                      Function* callback) {
+                                    Sequence* worker,
+                                    Function* callback) {
   // TODO(jmaessen): It occurs to me that we probably ought to be
   // doing something like this if we *really* care about lock aging:
   // if (!creation_lock->LockTimedWaitStealOld(kBlockLockMs,

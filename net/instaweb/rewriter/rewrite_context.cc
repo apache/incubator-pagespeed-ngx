@@ -1269,7 +1269,7 @@ RewriteContext::CacheLookupResultCallback::~CacheLookupResultCallback() {
 // and then running the supplied callback as appropriate.
 class RewriteContext::TryLockFunction : public ScheduleRewriteCallback {
  public:
-  TryLockFunction(const GoogleString& key, QueuedWorkerPool::Sequence* sequence,
+  TryLockFunction(const GoogleString& key, Sequence* sequence,
                   Function* callback, RewriteContext* context)
       : ScheduleRewriteCallback(key, sequence),
         callback_(callback),

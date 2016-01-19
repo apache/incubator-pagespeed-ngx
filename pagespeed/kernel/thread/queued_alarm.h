@@ -20,8 +20,8 @@
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
-#include "pagespeed/kernel/thread/queued_worker_pool.h"
 #include "pagespeed/kernel/thread/scheduler.h"
+#include "pagespeed/kernel/thread/sequence.h"
 
 namespace net_instaweb {
 
@@ -42,7 +42,7 @@ class QueuedAlarm : public Function {
   // is invoked or the cancellation is complete. You should not free the
   // sequence until one of these points is reached.
   QueuedAlarm(Scheduler* scheduler,
-              QueuedWorkerPool::Sequence* sequence,
+              Sequence* sequence,
               int64 wakeup_time_us,
               Function* callback);
 
@@ -73,7 +73,7 @@ class QueuedAlarm : public Function {
 
   scoped_ptr<AbstractMutex> mutex_;
   Scheduler* scheduler_;
-  QueuedWorkerPool::Sequence* sequence_;
+  Sequence* sequence_;
   Function* callback_;
   Scheduler::Alarm* alarm_;
 

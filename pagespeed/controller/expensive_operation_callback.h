@@ -21,7 +21,7 @@
 #include "pagespeed/controller/central_controller_callback.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
-#include "pagespeed/kernel/thread/queued_worker_pool.h"
+#include "pagespeed/kernel/thread/sequence.h"
 
 // Callback classes to support ExpensiveOperation features in
 // CentralControllerInterfaceAdapter.
@@ -47,7 +47,7 @@ class ExpensiveOperationContext {
 class ExpensiveOperationCallback
     : public CentralControllerCallback<ExpensiveOperationContext> {
  public:
-  explicit ExpensiveOperationCallback(QueuedWorkerPool::Sequence* sequence);
+  explicit ExpensiveOperationCallback(Sequence* sequence);
   virtual ~ExpensiveOperationCallback();
 
  private:

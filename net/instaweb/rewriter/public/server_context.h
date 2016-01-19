@@ -49,6 +49,7 @@
 #include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/response_headers.h"
 #include "pagespeed/kernel/thread/queued_worker_pool.h"
+#include "pagespeed/kernel/thread/sequence.h"
 #include "pagespeed/kernel/util/simple_random.h"
 
 namespace pagespeed { namespace js { struct JsTokenizerPatterns; } }
@@ -339,7 +340,7 @@ class ServerContext {
   // callback on the  given worker Sequence.  If the lock times out, cancel the
   // callback, running the cancel on the worker.
   void LockForCreation(NamedLock* creation_lock,
-                       QueuedWorkerPool::Sequence* worker, Function* callback);
+                       Sequence* worker, Function* callback);
 
   // Setters should probably only be used in testing.
   void set_hasher(Hasher* hasher) { hasher_ = hasher; }

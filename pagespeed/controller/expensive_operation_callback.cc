@@ -35,7 +35,7 @@ void ExpensiveOperationContext::Done() {
 }
 
 ExpensiveOperationCallback::ExpensiveOperationCallback(
-    QueuedWorkerPool::Sequence* sequence)
+    Sequence* sequence)
     : CentralControllerCallback<ExpensiveOperationContext>(sequence) {
 }
 

@@ -21,7 +21,7 @@
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
-#include "pagespeed/kernel/thread/queued_worker_pool.h"
+#include "pagespeed/kernel/thread/sequence.h"
 #include "pagespeed/controller/central_controller_interface.h"
 
 namespace net_instaweb {
@@ -34,8 +34,7 @@ namespace net_instaweb {
 // Calls to the CentralController are expected to go via an RPC interface.
 // Since the Run operation may be expensive, it is important to not block
 // the RPC dispatcher thread, so this callback "re-queues" itself onto
-// a QueuedWorkerPool::Sequence to do the actual work. This is very similar
-// to Sequence::AddFunction.
+// a Sequence to do the actual work.
 //
 // If the CentralController successfully processes the request, Run() will be
 // called. At this point, the CentralController may have allocated resources
@@ -65,7 +64,7 @@ class CentralControllerCallback : public Function {
   virtual ~CentralControllerCallback();
 
  protected:
-  explicit CentralControllerCallback(QueuedWorkerPool::Sequence* sequence);
+  explicit CentralControllerCallback(Sequence* sequence);
 
   // Function interface. These will be invoked on the RPC thread, so must be
   // quick. They just enqueue calls on sequence_ to the actual implementations
@@ -95,7 +94,7 @@ class CentralControllerCallback : public Function {
   void RunAfterRequeue();
   void CancelAfterRequeue();
 
-  QueuedWorkerPool::Sequence* sequence_;
+  Sequence* sequence_;
   CentralControllerInterface* controller_interface_;
   scoped_ptr<TransactionContext> context_;
 
@@ -106,7 +105,7 @@ class CentralControllerCallback : public Function {
 
 template <typename TransactionContext>
 CentralControllerCallback<TransactionContext>::CentralControllerCallback(
-    QueuedWorkerPool::Sequence* sequence)
+    Sequence* sequence)
     : sequence_(sequence), controller_interface_(NULL) {
   set_delete_after_callback(false);
 }

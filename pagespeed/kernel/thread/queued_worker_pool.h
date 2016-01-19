@@ -37,6 +37,7 @@
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/thread_annotations.h"
 #include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/thread/sequence.h"
 
 namespace net_instaweb {
 
@@ -58,7 +59,10 @@ class QueuedWorkerPool {
   // necessarily always from the same worker thread.  The scheduler will
   // continue to schedule new work added to the sequence until
   // FreeSequence is called.
-  class Sequence {
+  //
+  // TODO(jmarantz): Make this subclass private (or just move it to the .cc
+  // file) and change NewSequence to return a net_instaweb::Sequence*.
+  class Sequence : public net_instaweb::Sequence {
    public:
     // AddFunction is a callback that when invoked queues another callback on
     // the given sequence, and when canceled queues a cancel call to the
@@ -66,7 +70,7 @@ class QueuedWorkerPool {
     // from a simple call to MakeFunction(sequence, &Sequence::Add, callback).
     class AddFunction : public Function {
      public:
-      AddFunction(Sequence* sequence, Function* callback)
+      AddFunction(net_instaweb::Sequence* sequence, Function* callback)
           : sequence_(sequence), callback_(callback) { }
       virtual ~AddFunction();
 
@@ -79,7 +83,7 @@ class QueuedWorkerPool {
       }
 
      private:
-      Sequence* sequence_;
+      net_instaweb::Sequence* sequence_;
       Function* callback_;
       DISALLOW_COPY_AND_ASSIGN(AddFunction);
     };

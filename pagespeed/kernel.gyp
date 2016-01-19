@@ -553,6 +553,7 @@
         'kernel/thread/scheduler.cc',
         'kernel/thread/scheduler_based_abstract_lock.cc',
         'kernel/thread/scheduler_thread.cc',
+        'kernel/thread/sequence.cc',
         'kernel/thread/slow_worker.cc',
         'kernel/thread/thread_synchronizer.cc',
         'kernel/thread/worker.cc',
