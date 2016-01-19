@@ -326,6 +326,9 @@ TEST(StaticInflatingFetchTest, CompressUncompressValue) {
                headers.Lookup1(HttpAttributes::kContentEncoding));
   compressed_value.ExtractHeaders(&headers, &handler);
   HTTPValue uncompressed_value;
+  ResponseHeaders temp_headers;
+  temp_headers.Add("a", "b");
+  uncompressed_value.SetHeaders(&temp_headers);
   ASSERT_TRUE(InflatingFetch::UnGzipValueIfCompressed(
       compressed_value, &headers, &uncompressed_value, &handler));
   uncompressed_value.ExtractContents(&contents);
