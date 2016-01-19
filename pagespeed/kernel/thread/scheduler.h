@@ -60,6 +60,11 @@ class Scheduler {
   Scheduler(ThreadSystem* thread_system, Timer* timer);
   virtual ~Scheduler();
 
+  // Makes a new scheduler using the same thread-system and timer as this one.
+  // The state (e.g. pending alarms) is not copied; each scheduler gets its
+  // own mutex, condition variables, and alarm-set.
+  virtual Scheduler* Clone() { return new Scheduler(thread_system_, timer_); }
+
   ThreadSystem::CondvarCapableMutex* mutex() LOCK_RETURNED(mutex_) {
     return mutex_.get();
   }

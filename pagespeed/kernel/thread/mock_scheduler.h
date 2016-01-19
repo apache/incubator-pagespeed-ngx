@@ -42,6 +42,10 @@ class MockScheduler : public Scheduler {
                 MockTimer* timer);
   virtual ~MockScheduler();
 
+  virtual MockScheduler* Clone() {
+    return new MockScheduler(thread_system(), timer_);
+  }
+
   virtual void RegisterWorker(QueuedWorkerPool::Sequence* w)
       LOCKS_EXCLUDED(mutex());
   virtual void UnregisterWorker(QueuedWorkerPool::Sequence* w)
