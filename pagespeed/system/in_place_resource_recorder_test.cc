@@ -119,8 +119,11 @@ class InPlaceResourceRecorderTest : public RewriteTestBase {
 
     // We get content-length iff the cache was compressed.
     bool is_compressed_cache = (http_cache()->compression_level() != 0);
-    EXPECT_EQ(is_compressed_cache,
-              headers_out.Has(HttpAttributes::kContentLength));
+    int64 length;
+    EXPECT_EQ(is_compressed_cache, headers_out.FindContentLength(&length));
+    EXPECT_TRUE(headers_out.DetermineContentType()->IsCompressible());
+
+    // TODO(jcrowell): Add test for non-compressible type.
   }
 
   void CheckCacheableContentType(const ContentType* content_type) {

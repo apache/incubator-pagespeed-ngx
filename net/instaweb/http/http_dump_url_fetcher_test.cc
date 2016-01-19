@@ -88,10 +88,9 @@ TEST_F(HttpDumpUrlFetcherTest, TestReadWithGzip) {
   ASSERT_EQ(1, v.size());
   EXPECT_EQ(GoogleString(HttpAttributes::kGzip), *(v[0]));
   EXPECT_EQ(5513, content_.size());
-  v.clear();
-  ASSERT_TRUE(response.Lookup(HttpAttributes::kContentLength, &v));
-  ASSERT_EQ(1, v.size());
-  EXPECT_EQ(GoogleString("5513"), *(v[0]));
+  int64 content_length = 0;
+  EXPECT_TRUE(response.FindContentLength(&content_length));
+  EXPECT_EQ(content_length, 5513);
 }
 
 TEST_F(HttpDumpUrlFetcherTest, TestReadUncompressedFromGzippedDump) {
@@ -110,10 +109,9 @@ TEST_F(HttpDumpUrlFetcherTest, TestReadUncompressedFromGzippedDump) {
     EXPECT_NE(GoogleString(HttpAttributes::kGzip), *(v[0]));
   }
   EXPECT_EQ(14450, content_.size());
-  v.clear();
-  ASSERT_TRUE(response.Lookup(HttpAttributes::kContentLength, &v));
-  ASSERT_EQ(1, v.size());
-  EXPECT_EQ(GoogleString("14450"), *(v[0]));
+  int64 content_length = 0;
+  EXPECT_TRUE(response.FindContentLength(&content_length));
+  EXPECT_EQ(content_length, 14450);
 }
 
 // Helper that checks the Date: field as it starts writing.

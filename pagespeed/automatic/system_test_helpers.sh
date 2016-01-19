@@ -738,12 +738,12 @@ function scrape_header {
   # Extracts the value from wget's emitted headers.  We use " " as a delimeter
   # here to avoid a leading space on the returned string.  Note also that wget
   # always generates "name: value\r", never "name:value\r".
-  grep $1 | cut -d\  -f2- | tr -d '\r'
+  grep "$1" | cut -d\  -f2- | tr -d '\r'
 }
 
 # Scrapes HTTP headers from stdin for Content-Length and returns the value.
 function scrape_content_length {
-  scrape_header 'Content-Length'
+  scrape_header '^Content-Length'
 }
 
 # Pulls the headers out of a 'wget --save-headers' dump.

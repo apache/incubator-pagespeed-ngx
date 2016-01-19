@@ -487,13 +487,30 @@ void ResponseHeaders::SetTimeHeader(const StringPiece& header, int64 time_ms) {
   }
 }
 
+void ResponseHeaders::SetContentLength(int64 content_length) {
+  // Setting the content-length to the same value as the
+  // x-original-content-length should clear any x-original-content-length.
+  // This happens when serving a cached gzipped value to a client that
+  // does not accept gzip.  However, only remove the original-content-length
+  // if it is the same as the new resulting content length, because the
+  // content may have been minified to a smaller value, and we want to
+  // retain evidence of the cost savings in that case.
+  bool dirty = cache_fields_dirty_;
+  GoogleString content_length_str = Integer64ToString(content_length);
+  Remove(HttpAttributes::kXOriginalContentLength, content_length_str);
+  Replace(HttpAttributes::kContentLength, content_length_str);
+  cache_fields_dirty_ = dirty;
+}
+
 void ResponseHeaders::SetOriginalContentLength(int64 content_length) {
   // This does not impact caching headers, so avoid ComputeCaching()
   // by restoring cache_fields_dirty_ after we set the header.
-  bool dirty = cache_fields_dirty_;
-  Replace(HttpAttributes::kXOriginalContentLength,
-          Integer64ToString(content_length));
-  cache_fields_dirty_ = dirty;
+  if (!Has(HttpAttributes::kXOriginalContentLength)) {
+    bool dirty = cache_fields_dirty_;
+    Add(HttpAttributes::kXOriginalContentLength,
+        Integer64ToString(content_length));
+    cache_fields_dirty_ = dirty;
+  }
 }
 
 bool ResponseHeaders::Sanitize() {

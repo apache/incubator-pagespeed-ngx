@@ -1980,9 +1980,9 @@ start_test IPRO-optimized resources should have fixed size, not chunked.
 URL="$EXAMPLE_ROOT/images/Puzzle.jpg"
 URL+="?PageSpeedJpegRecompressionQuality=75"
 fetch_until -save $URL "wc -c" 90000 "--save-headers" "-lt"
-check_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" fgrep -q 'Content-Length:'
+check_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" grep -q '^Content-Length:'
 CONTENT_LENGTH=$(extract_headers $FETCH_UNTIL_OUTFILE | \
-  awk '/Content-Length:/ {print $2}')
+  grep '^Content-Length:' | awk '{print $2}')
 check [ "$CONTENT_LENGTH" -lt 90000 ];
 check_not_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" \
     fgrep -q 'Transfer-Encoding: chunked'

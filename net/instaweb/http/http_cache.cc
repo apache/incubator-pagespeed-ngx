@@ -416,6 +416,17 @@ void HTTPCache::PutInternal(bool preserve_response_headers,
         headers_copy.CopyFrom(*response_headers);
         headers_to_gzip = &headers_copy;
       }
+
+      // Canonicalize header order so x-original-content-length is always
+      // last.  This helps tests act more consistently.
+      const char* orig_content_length = headers_to_gzip->Lookup1(
+          HttpAttributes::kXOriginalContentLength);
+      if (orig_content_length != NULL) {
+        GoogleString save_content_length = orig_content_length;
+        headers_to_gzip->RemoveAll(HttpAttributes::kXOriginalContentLength);
+        headers_to_gzip->Add(HttpAttributes::kXOriginalContentLength,
+                             save_content_length);
+      }
       headers_to_gzip->ComputeCaching();
 
       if (InflatingFetch::GzipValue(compression_level_, *value,

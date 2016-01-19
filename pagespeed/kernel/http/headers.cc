@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <map>
+#include <set>
 #include <utility>
 #include <vector>
 
@@ -361,16 +362,15 @@ template<class Proto> bool Headers<Proto>::Remove(const StringPiece& name,
   ConstStringStarVector values;
   bool found = map_->Lookup(name, &values);
   if (found) {
-    int val_index = -1;
+    std::set<int> indexes;
     for (int i = values.size() - 1; i >= 0; --i) {
       if (values[i] != NULL) {
         if (StringCaseEqual(*values[i], value)) {
-          val_index = i;
-          break;
+          indexes.insert(i);
         }
       }
     }
-    if (val_index != -1) {
+    if (!indexes.empty()) {
       StringVector new_vals;
       bool concat = IsCommaSeparatedField(name);
       GoogleString combined;
@@ -378,7 +378,7 @@ template<class Proto> bool Headers<Proto>::Remove(const StringPiece& name,
       for (int i = 0, n = values.size(); i < n; ++i) {
         if (values[i] != NULL) {
           StringPiece val(*values[i]);
-          if (i != val_index && !val.empty()) {
+          if ((indexes.find(i) == indexes.end()) && !val.empty()) {
             if (concat) {
               StrAppend(&combined, separator, val);
               separator = ", ";

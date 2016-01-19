@@ -97,6 +97,7 @@ const char kCuppaTPngFile[] = "CuppaT.png";      // graphic; alpha; no opt
 const char kEmptyScreenGifFile[] = "red_empty_screen.gif";  // Empty screen
 const char kLargePngFile[] = "Large.png";        // blank image; gray scale
 const char kPuzzleJpgFile[] = "Puzzle.jpg";      // photo; no alpha
+const char kPuzzleUrl[] = "http://rewrite_image.test/Puzzle.jpg";
 const char kRedbrushAlphaPngFile[] = "RedbrushAlpha-0.5.png";  // photo; alpha
 const char kSmallDataFile[] = "small-data.png";   // not an image
 const char k1x1GifFile[] = "o.gif";               // unoptimizable gif
@@ -229,15 +230,13 @@ class ImageRewriteTest : public RewriteTestBase {
     const GoogleUrl domain(EncodeWithBase("http://rewrite_image.test/",
                                           "http://rewrite_image.test/",
                                           "x", "0", "x", "x"));
-    const char html_url[] = "http://rewrite_image.test/RewriteImage.html";
-    const char image_url[] = "http://rewrite_image.test/Puzzle.jpg";
+    static const char kHtmlUrl[] =
+        "http://rewrite_image.test/RewriteImage.html";
 
-    const GoogleString image_html =
+    const GoogleString kImageHtml =
         StrCat("<head/><body><", tag_string, " src=\"Puzzle.jpg\"/></body>");
 
-    // Store image contents into fetcher.
-    AddFileToMockFetcher(image_url, kPuzzleJpgFile, kContentTypeJpeg, 100);
-    ParseUrl(html_url, image_html);
+    ParseUrl(kHtmlUrl, kImageHtml);
     StringVector img_srcs;
     CollectImgSrcs("RewriteImage/collect_sources", output_buffer_, &img_srcs);
     // output_buffer_ should have exactly one image file (Puzzle.jpg).
@@ -256,12 +255,14 @@ class ImageRewriteTest : public RewriteTestBase {
     static const char kCacheFragment[] = "a-cache-fragment";
     options()->set_cache_fragment(kCacheFragment);
 
+    // Store image contents into fetcher.
+    AddFileToMockFetcher(kPuzzleUrl, kPuzzleJpgFile, kContentTypeJpeg, 100);
+
     // Capture normal headers for comparison. We need to do it now
     // since the clock -after- rewrite is non-deterministic, but it must be
     // at the initial value at the time of the rewrite.
     GoogleString expect_headers;
-    AppendDefaultHeadersWithCanonical(content_type,
-                                      "http://rewrite_image.test/Puzzle.jpg",
+    AppendDefaultHeadersWithCanonical(content_type, kPuzzleUrl,
                                       &expect_headers);
 
     GoogleString src_string;
@@ -305,8 +306,7 @@ class ImageRewriteTest : public RewriteTestBase {
 
     // New time --- new timestamp.
     expect_headers.clear();
-    AppendDefaultHeadersWithCanonical(content_type,
-                                      "http://rewrite_image.test/Puzzle.jpg",
+    AppendDefaultHeadersWithCanonical(content_type, kPuzzleUrl,
                                       &expect_headers);
 
     EXPECT_TRUE(rewrite_driver()->FetchResource(img_gurl.Spec(),
@@ -2231,14 +2231,14 @@ TEST_F(ImageRewriteTest, InlineEnlargedImage) {
 
 TEST_F(ImageRewriteTest, RespectsBaseUrl) {
   // Put original files into our fetcher.
-  const char html_url[] = "http://image.test/base_url.html";
-  const char png_url[]  = "http://other_domain.test/foo/bar/a.png";
-  const char jpeg_url[] = "http://other_domain.test/baz/b.jpeg";
-  const char gif_url[]  = "http://other_domain.test/foo/c.gif";
+  static const char kHtmlUrl[] = "http://image.test/base_url.html";
+  static const char kPngUrl[]  = "http://other_domain.test/foo/bar/a.png";
+  static const char kJpegUrl[] = "http://other_domain.test/baz/b.jpeg";
+  static const char kGifUrl[]  = "http://other_domain.test/foo/c.gif";
 
-  AddFileToMockFetcher(png_url, kBikePngFile, kContentTypePng, 100);
-  AddFileToMockFetcher(jpeg_url, kPuzzleJpgFile, kContentTypeJpeg, 100);
-  AddFileToMockFetcher(gif_url, kChefGifFile, kContentTypeGif, 100);
+  AddFileToMockFetcher(kPngUrl, kBikePngFile, kContentTypePng, 100);
+  AddFileToMockFetcher(kJpegUrl, kPuzzleJpgFile, kContentTypeJpeg, 100);
+  AddFileToMockFetcher(kGifUrl, kChefGifFile, kContentTypeGif, 100);
 
   // First two images are on base domain.  Last is on origin domain.
   const char html_format[] =
@@ -2259,7 +2259,7 @@ TEST_F(ImageRewriteTest, RespectsBaseUrl) {
   options()->EnableFilter(RewriteOptions::kRecompressJpeg);
   options()->EnableFilter(RewriteOptions::kRecompressPng);
   rewrite_driver()->AddFilters();
-  ParseUrl(html_url, html_input);
+  ParseUrl(kHtmlUrl, html_input);
 
   // Check for image files in the rewritten page.
   StringVector image_urls;
@@ -3079,6 +3079,7 @@ TEST_F(ImageRewriteTest, RewriteImagesAddingOptionsToUrl) {
   AddRecompressImageFilters();
   options()->set_add_options_to_urls(true);
   options()->set_image_jpeg_recompress_quality(73);
+  AddFileToMockFetcher(kPuzzleUrl, kPuzzleJpgFile, kContentTypeJpeg, 100);
   GoogleString img_src;
   RewriteImageFromHtml("img", kContentTypeJpeg, &img_src);
   GoogleUrl img_gurl(html_gurl(), img_src);
@@ -3127,6 +3128,7 @@ TEST_F(ImageRewriteTest, ServeWebpFromColdCache) {
   ResetUserAgent("webp");
   Variable* webp_rewrite_count = statistics()->GetVariable(
       ImageRewriteFilter::kImageWebpRewrites);
+  AddFileToMockFetcher(kPuzzleUrl, kPuzzleJpgFile, kContentTypeJpeg, 100);
   RewriteImageFromHtml("img", kContentTypeWebp, &img_src);
   EXPECT_EQ(1, webp_rewrite_count->Get());
   GoogleUrl webp_gurl(html_gurl(), img_src);

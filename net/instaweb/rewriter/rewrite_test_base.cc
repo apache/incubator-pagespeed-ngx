@@ -83,6 +83,8 @@ namespace net_instaweb {
 
 namespace {
 
+const char kPsaWasGzipped[] = "x-psa-was-gzipped";
+
 // Logging at the INFO level slows down tests, adds to the noise, and
 // adds considerably to the speed variability.
 class RewriteTestBaseProcessContext : public ProcessContext {
@@ -336,6 +338,19 @@ void RewriteTestBase::AppendDefaultHeadersWithCanonical(
               StrCat("<", canon, ">; rel=\"canonical\""));
   PopulateDefaultHeaders(content_type, 0, &headers);
   StringWriter writer(text);
+
+  // Find how long the origin is to populate x-original-content-length.
+  RequestContextPtr request_context(CreateRequestContext());
+  StringAsyncFetch fetch(request_context);
+  mock_url_fetcher_.Fetch(canon.as_string(), message_handler(), &fetch);
+  int64 length;
+  ASSERT_TRUE(fetch.done());
+  ASSERT_TRUE(fetch.success());
+  if (!fetch.response_headers()->FindContentLength(&length)) {
+    length = fetch.buffer().size();
+  }
+  headers.SetOriginalContentLength(length);
+
   headers.WriteAsHttp(&writer, message_handler());
 }
 
@@ -564,6 +579,7 @@ bool RewriteTestBase::FetchResourceUrl(const StringPiece& url,
       content->swap(buf);
       response_headers->Remove(HttpAttributes::kContentEncoding,
                                HttpAttributes::kGzip);
+      response_headers->Add(kPsaWasGzipped, "true");
       response_headers->ComputeCaching();
     }
   }
@@ -1382,9 +1398,9 @@ void RewriteTestBase::DisableGzip() {
 
 bool RewriteTestBase::WasGzipped(const ResponseHeaders& response_headers) {
   // Content-Encoding is stripped by FetchResourceUrl, but
-  // x-original-content-length is retained, so we use it as a signal that
+  // x-psa-was-gzipped is retained, so we use it as a signal that
   // gzip occurred.
-  return response_headers.Has(HttpAttributes::kXOriginalContentLength);
+  return response_headers.Has(kPsaWasGzipped);
 }
 
 }  // namespace net_instaweb

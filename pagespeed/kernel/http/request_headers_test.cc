@@ -123,11 +123,7 @@ TEST_F(RequestHeadersTest, AcceptWebp) {
   request_headers_.Add(HttpAttributes::kAccept, "image/webp");
   EXPECT_TRUE(request_headers_.HasValue(HttpAttributes::kAccept,
                                         kWebpMimeType));
-  // remove just one of the two copies of the value.
-  request_headers_.Remove(HttpAttributes::kAccept, "image/webp");
-  EXPECT_TRUE(request_headers_.HasValue(HttpAttributes::kAccept,
-                                        kWebpMimeType));
-  // remove the last copy.
+  // remove both copies of the value.
   request_headers_.Remove(HttpAttributes::kAccept, "image/webp");
   EXPECT_FALSE(request_headers_.HasValue(HttpAttributes::kAccept,
                                         kWebpMimeType));

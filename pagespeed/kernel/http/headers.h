@@ -116,6 +116,8 @@ template<class Proto> class Headers {
   // and -
   // attr: val1
   // attr: val3 (otherwise).
+  //
+  // All instances of 'value' will be removed from 'name'.
   bool Remove(const StringPiece& name, const StringPiece& value);
 
   // Removes all headers by name.  Return true if anything was removed.

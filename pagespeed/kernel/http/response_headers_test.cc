@@ -1445,7 +1445,7 @@ TEST_F(ResponseHeadersTest, TestRemove) {
       "Date: ", start_time_string_, "\r\n"
       "Expires: ", start_time_plus_6_minutes_string_, "\r\n"
       "Cache-Control: max-age=360\r\n"
-      "Content-Encoding: chunked, deflate, gzip\r\n"
+      "Content-Encoding: deflate, gzip\r\n"
       "\r\n");
   response_headers_.Clear();
   ParseHeaders(headers);
@@ -2131,6 +2131,71 @@ TEST_F(ResponseHeadersTest, HasLinkRelCanonical) {
   h2.Add(HttpAttributes::kLink,
          "<http://www.example.com/foo>; rel= \"next\"; icon=\"canonical.ico\"");
   EXPECT_TRUE(h2.HasLinkRelCanonical());
+}
+
+TEST_F(ResponseHeadersTest, ContentLength) {
+  ResponseHeaders headers;
+  headers.SetStatusAndReason(HttpStatus::kOK);
+  headers.SetContentLength(25);
+  headers.SetOriginalContentLength(50);
+  EXPECT_STREQ("HTTP/1.0 200 OK\r\n"
+               "Content-Length: 25\r\n"
+               "X-Original-Content-Length: 50\r\n"
+               "\r\n",
+               headers.ToString());
+
+  // Setting original-content-length again is ignored (first one wins).
+  headers.SetOriginalContentLength(75);  // ignored.
+  EXPECT_STREQ("HTTP/1.0 200 OK\r\n"
+               "Content-Length: 25\r\n"
+               "X-Original-Content-Length: 50\r\n"
+               "\r\n",
+               headers.ToString());
+
+  // Setting the content-length smaller yet again is fine.  e.g. minification
+  // first, then compression.
+  headers.SetContentLength(20);
+  EXPECT_STREQ("HTTP/1.0 200 OK\r\n"
+               "X-Original-Content-Length: 50\r\n"
+               "Content-Length: 20\r\n"
+               "\r\n",
+               headers.ToString());
+
+  // Setting the content-length back to the original-content-length erases
+  // the original-content-length.
+  headers.SetContentLength(50);
+  EXPECT_STREQ("HTTP/1.0 200 OK\r\n"
+               "Content-Length: 50\r\n"
+               "\r\n",
+               headers.ToString());
+}
+
+TEST_F(ResponseHeadersTest, MultipleOriginalContentLengths) {
+  ResponseHeaders headers;
+  headers.SetStatusAndReason(HttpStatus::kOK);
+  headers.SetContentLength(25);
+  headers.SetOriginalContentLength(50);
+
+  // To get more X-Original-Content-Length attributes we can add them
+  // directly without going through the SetOriginalContentLength API.
+  headers.Add(HttpAttributes::kXOriginalContentLength, "51");
+  headers.Add(HttpAttributes::kXOriginalContentLength, "50");  // duplicate
+  EXPECT_STREQ("HTTP/1.0 200 OK\r\n"
+               "Content-Length: 25\r\n"
+               "X-Original-Content-Length: 50\r\n"
+               "X-Original-Content-Length: 51\r\n"
+               "X-Original-Content-Length: 50\r\n"
+               "\r\n",
+               headers.ToString());
+
+  // Now setting content-length to 50, we are still left with
+  // the "X-Original-Content-Length: 51".
+  headers.SetContentLength(50);
+  EXPECT_STREQ("HTTP/1.0 200 OK\r\n"
+               "X-Original-Content-Length: 51\r\n"
+               "Content-Length: 50\r\n"
+               "\r\n",
+               headers.ToString());
 }
 
 }  // namespace net_instaweb

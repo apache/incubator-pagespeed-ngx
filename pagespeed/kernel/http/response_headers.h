@@ -184,9 +184,13 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // appropriately. Note that all existing max-age values are removed.
   void SetCacheControlMaxAge(int64 ttl_ms);
 
-  // Sets the original content length header, used to relay information on
+  // Sets the x-original-content-length header, used to relay information on
   // the original size of optimized resources.
   void SetOriginalContentLength(int64 content_length);
+
+  // Sets the content-length attribute, removing any matching
+  // x-orginal-content-length header.
+  void SetContentLength(int64 content_length);
 
   // Removes cookie headers, and returns true if any changes were made.
   bool Sanitize();

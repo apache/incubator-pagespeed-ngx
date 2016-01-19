@@ -646,7 +646,6 @@ TEST_F(ProxyInterfaceTest, HeadResourceRequest) {
       "Content-Type: text/css\r\n"
       "X-Background-Fetch: 0\r\n"
       "Vary: Accept-Encoding\r\n"
-      "X-Original-Content-Length: 30\r\n"
       "Content-Length: 30\r\n"
       "Date: Tue, 02 Feb 2010 18:51:26 GMT\r\n"
       "Expires: Tue, 02 Feb 2010 18:56:26 GMT\r\n"

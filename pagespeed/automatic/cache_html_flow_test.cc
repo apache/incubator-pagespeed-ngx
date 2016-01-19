@@ -1171,8 +1171,7 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlHeaderOverThreshold) {
   ResponseHeaders response_headers;
   // Setting a higher content length to verify if the header's content length
   // is checked before rewriting.
-  response_headers.Add(HttpAttributes::kContentLength,
-                       IntegerToString(size_of_small_html + 1));
+  response_headers.SetContentLength(size_of_small_html + 1);
   response_headers.SetStatusAndReason(HttpStatus::kOK);
   response_headers.Add(HttpAttributes::kContentType,
                        "text/html; charset=utf-8");

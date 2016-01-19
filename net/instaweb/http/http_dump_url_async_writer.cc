@@ -29,7 +29,6 @@
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/stack_buffer.h"
 #include "pagespeed/kernel/base/string.h"
-#include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/http/http_names.h"
 #include "pagespeed/kernel/http/request_headers.h"
@@ -66,8 +65,7 @@ class HttpDumpUrlAsyncWriter::DumpFetch : public StringAsyncFetch {
 
   // Finishes the Fetch when called back.
   virtual void HandleDone(bool success) {
-    response_headers()->Replace(HttpAttributes::kContentLength,
-                                IntegerToString(buffer().size()));
+    response_headers()->SetContentLength(buffer().size());
     // TODO(jmarantz): http://tools.ietf.org/html/rfc2616#section-13.5.1
     // tells us we can also remove Keep-Alive, Proxy-Authenticate,
     // Proxy-Authorization, TE, Trailers, Transfer-Encoding, and Upgrade.

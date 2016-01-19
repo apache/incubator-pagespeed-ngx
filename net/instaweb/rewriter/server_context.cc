@@ -487,6 +487,7 @@ void ServerContext::AddOriginalContentLengthHeader(
   // Determine the total original content length for input resource, and
   // use this to set the X-Original-Content-Length header in the output.
   int64 input_size = 0;
+  bool all_known = !inputs.empty();
   for (int i = 0, n = inputs.size(); i < n; ++i) {
     const ResourcePtr& input_resource(inputs[i]);
     ResponseHeaders* input_headers = input_resource->response_headers();
@@ -497,12 +498,16 @@ void ServerContext::AddOriginalContentLengthHeader(
         StringToInt64(original_content_length_header,
                       &original_content_length)) {
       input_size += original_content_length;
+    } else if (input_resource->loaded()) {
+      input_size += input_resource->UncompressedContentsSize();
+    } else {
+      all_known = false;
     }
   }
   // Only add the header if there were actual input resources with
   // known sizes involved (which is not always the case, e.g., in tests where
   // synthetic input resources are used).
-  if (input_size > 0) {
+  if (all_known) {
     headers->SetOriginalContentLength(input_size);
   }
 }

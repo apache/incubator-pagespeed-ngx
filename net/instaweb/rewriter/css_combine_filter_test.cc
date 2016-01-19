@@ -1972,6 +1972,7 @@ TEST_F(CssCombineMaxSizeTest, ReconstructedResourceExpectedHeaders) {
       "Cache-Control: max-age=31536000\r\n"
       "Etag: W/\"0\"\r\n"
       "Last-Modified: Tue, 02 Feb 2010 18:51:26 GMT\r\n"
+      "X-Original-Content-Length: 85\r\n"
       "\r\n",
       headers.ToString());
 }
@@ -1997,9 +1998,11 @@ TEST_F(CssCombineMaxSizeTest, ReconstructedResourceExpectedHeadersNoStore) {
       "in_all_3: abc\r\n"
       "Content-Type: text/css\r\n"
       "Last-Modified: Tue, 02 Feb 2010 18:51:26 GMT\r\n"
+      "X-Original-Content-Length: 85\r\n"
       "Date: Tue, 02 Feb 2010 18:51:26 GMT\r\n"
       "Expires: Tue, 02 Feb 2010 18:51:26 GMT\r\n"
-      "Cache-Control: max-age=0,no-cache,no-store\r\n\r\n",
+      "Cache-Control: max-age=0,no-cache,no-store\r\n"
+      "\r\n",
       headers.ToString());
 }
 

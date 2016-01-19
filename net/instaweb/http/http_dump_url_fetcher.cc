@@ -223,8 +223,7 @@ void HttpDumpUrlFetcher::Fetch(
           // TODO(jmarantz): make this conditional based on a flag.
           int64 now_ms = timer_->NowMs();
           response_headers->FixDateHeaders(now_ms);
-          response_headers->Replace(HttpAttributes::kContentLength,
-                                    IntegerToString(writer.content_length()));
+          response_headers->SetContentLength(writer.content_length());
         }
         if (writer.gzip_content_length() != 0) {
           response_headers->Add(kGzipContentLengthAttribute, IntegerToString(
