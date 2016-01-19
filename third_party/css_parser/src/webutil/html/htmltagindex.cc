@@ -228,6 +228,8 @@ int HtmlTagIndex::FindHtmlTag(const char* tag, int length) const {
         // New tags in HTML5.
         case C2('r', 'p'): return kHtmlTagRp;
         case C2('r', 't'): return kHtmlTagRt;
+        // Other HTML5 tags.
+        case C2('r', 'b'): return kHtmlTagRb;
       }
     }
     break;
@@ -262,6 +264,8 @@ int HtmlTagIndex::FindHtmlTag(const char* tag, int length) const {
         // New tags in HTML5.
         case C3('b', 'd', 'i'): return kHtmlTagBdi;
         case C3('n', 'a', 'v'): return kHtmlTagNav;
+        // Other HTML5 tags.
+        case C3('r', 't', 'c'): return kHtmlTagRtc;
       }
     }
     break;
@@ -290,6 +294,9 @@ int HtmlTagIndex::FindHtmlTag(const char* tag, int length) const {
         case C4('m', 'a', 'r', 'k'): return kHtmlTagMark;
         case C4('r', 'u', 'b', 'y'): return kHtmlTagRuby;
         case C4('t', 'i', 'm', 'e'): return kHtmlTagTime;
+        // Other HTML5 tags.
+        case C4('d', 'a', 't', 'a'): return kHtmlTagData;
+        case C4('m', 'a', 'i', 'n'): return kHtmlTagMain;
       }
     }
     break;
@@ -402,6 +409,8 @@ int HtmlTagIndex::FindHtmlTag(const char* tag, int length) const {
       // New tags in HTML5.
       case C8('d', 'a', 't', 'a', 'l', 'i', 's', 't'): return kHtmlTagDatalist;
       case C8('p', 'r', 'o', 'g', 'r', 'e', 's', 's'): return kHtmlTagProgress;
+      // Other HTML5 tags.
+      case C8('t', 'e', 'm', 'p', 'l', 'a', 't', 'e'): return kHtmlTagTemplate;
       }
     }
     break;

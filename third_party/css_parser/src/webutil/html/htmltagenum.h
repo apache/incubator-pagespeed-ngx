@@ -208,11 +208,18 @@ enum HtmlTagEnum {
      kHtmlTagTrack = 140,
      kHtmlTagVideo = 141,
 
+  // Other HTML5 tags.
+     kHtmlTagData = 142,
+     kHtmlTagMain = 143,
+     kHtmlTagRb = 144,
+     kHtmlTagRtc = 145,
+     kHtmlTagTemplate = 146,
+
   // Add new tag values here.  Make sure you also add new tags to
   // HtmlTagEnumNames in htmltagenum.cc and update kHtmlTagBuiltinMax.
 
   // Sentinel.
-     kHtmlTagBuiltinMax = 142
+     kHtmlTagBuiltinMax = 147
 };
 
 // NULL if tag >= kHtmlTagBuiltinMax.

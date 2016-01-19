@@ -66,6 +66,8 @@ const char* HtmlTagEnumNames[] =
      "Details", "Figcaption", "Figure", "Footer", "Header", "Hgroup", "Mark",
      "Meter", "Nav", "Output", "Progress", "Rp", "Rt", "Ruby", "Section",
      "Source", "Summary", "Time", "Track", "Video",
+  // Other HTML5 tags.
+     "Data", "Main", "Rb", "Rtc", "Template",
 };
 
 COMPILE_ASSERT(arraysize(HtmlTagEnumNames) == kHtmlTagBuiltinMax,
