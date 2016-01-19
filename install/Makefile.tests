@@ -195,7 +195,7 @@ apache_debug_rewrite_test : rewrite_test_prepare apache_install_conf \
     apache_debug_restart
 	sleep 2
 	$(WGET_NO_PROXY) -q -O - --save-headers $(EXAMPLE_IMAGE) \
-	  | head -14 | grep "Content-Type: image/jpeg"
+	  | head -16 | grep "Content-Type: image/jpeg"
 	$(WGET_NO_PROXY) -q -O - $(APACHE_SECONDARY_SERVER)/mod_pagespeed_statistics \
 	  | grep cache_hits
 	$(WGET_NO_PROXY) -q -O - $(APACHE_SECONDARY_SERVER)/shortcut.html \

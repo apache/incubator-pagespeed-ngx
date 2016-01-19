@@ -2665,7 +2665,7 @@ void RewriteOptions::InitFixedResourceHeaders() {
 
   // From <https://www.ietf.org/rfc/rfc2616.txt>
   // token          = 1*<any CHAR except CTLs or separators>
-  //       separators     = "(" | ")" | "<" | ">" | "@"
+  // separators     = "(" | ")" | "<" | ">" | "@"
   //                      | "," | ";" | ":" | "\" | <">
   //                      | "/" | "[" | "]" | "?" | "="
   //                      | "{" | "}" | SP | HT
@@ -4575,7 +4575,7 @@ void RewriteOptions::AddResourceHeader(const StringPiece& name,
   resource_headers_.push_back(new NameValue(name, value));
 }
 
-  // TODO(oschaaf): should AddCustomFetchHeader have validations as well?
+// TODO(oschaaf): should AddCustomFetchHeader have validations as well?
 void RewriteOptions::AddCustomFetchHeader(const StringPiece& name,
                                           const StringPiece& value) {
   custom_fetch_headers_.push_back(new NameValue(name, value));

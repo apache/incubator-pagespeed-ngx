@@ -4256,6 +4256,7 @@ class RewriteOptions {
   // a new class. Move header validations over there as well so we can share
   // them.
   std::vector<NameValue*> resource_headers_;
+
   // Headers to add to subresource requests.
   std::vector<NameValue*> custom_fetch_headers_;
 

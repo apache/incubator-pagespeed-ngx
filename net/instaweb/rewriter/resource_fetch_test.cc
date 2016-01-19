@@ -192,7 +192,6 @@ TEST_F(ResourceFetchTest, BlockingFetchOfInvalidUrl) {
   EXPECT_TRUE(callback->response_headers()->Has("X-Resource-Header"));
   EXPECT_STREQ(
       kValue, callback->response_headers()->Lookup1("X-Resource-Header"));
-
   callback->Release();
 
   EXPECT_EQ("", buffer);
