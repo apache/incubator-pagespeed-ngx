@@ -171,6 +171,11 @@ void ResourceFetch::HandleHeadersComplete() {
   DCHECK(!response_headers()->Lookup(HttpAttributes::kSetCookie2, &v));
   response_headers()->RemoveAll(HttpAttributes::kSetCookie);
   response_headers()->RemoveAll(HttpAttributes::kSetCookie2);
+  for (int i = 0; i < driver_->options()->num_resource_headers(); ++i) {
+    const RewriteOptions::NameValue* nv =
+        driver_->options()->resource_header(i);
+    response_headers()->Add(nv->name, nv->value);
+  }
 
   // "Vary: Accept-Encoding" for all resources that are transmitted compressed.
   // Server ought to set these, I suppose.

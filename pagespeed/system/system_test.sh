@@ -2282,3 +2282,8 @@ if [ "$CACHE_FLUSH_TEST" = "on" ]; then
   # check [ $bytes -gt 100000 ]
   check [ $bytes -lt 100000 ]
 fi
+
+start_test AddResourceHeaders works for pagespeed resources.
+URL="$TEST_ROOT/compressed/hello_js.custom_ext.pagespeed.ce.HdziXmtLIV.txt"
+HTML_HEADERS=$($WGET_DUMP $URL)
+check_from "$HTML_HEADERS" grep -q "^X-Foo: Bar"

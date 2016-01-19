@@ -329,6 +329,7 @@ const char RewriteOptions::kForbidFilters[] = "ForbidFilters";
 const char RewriteOptions::kInlineResourcesWithoutExplicitAuthorization[] =
     "InlineResourcesWithoutExplicitAuthorization";
 const char RewriteOptions::kRetainComment[] = "RetainComment";
+const char RewriteOptions::kAddResourceHeader[] = "AddResourceHeader";
 const char RewriteOptions::kCustomFetchHeader[] = "CustomFetchHeader";
 const char RewriteOptions::kLoadFromFile[] = "LoadFromFile";
 const char RewriteOptions::kLoadFromFileMatch[] = "LoadFromFileMatch";
@@ -992,6 +993,11 @@ std::vector<DeprecatedOptionMap> kDeprecatedOptionNameList(
     kDeprecatedOptionNameData,
     kDeprecatedOptionNameData + arraysize(kDeprecatedOptionNameData)
 );
+
+// Will be initialized to a sorted list of headers not allowed in
+// AddResourceHeader.
+const StringPieceVector* fixed_resource_headers = NULL;
+bool http_header_separators[256] = {false};
 
 }  // namespace
 
@@ -2452,6 +2458,7 @@ void RewriteOptions::AddProperties() {
 }  // NOLINT  (large function)
 
 RewriteOptions::~RewriteOptions() {
+  STLDeleteElements(&resource_headers_);
   STLDeleteElements(&custom_fetch_headers_);
   STLDeleteElements(&experiment_specs_);
   STLDeleteElements(&url_cache_invalidation_entries_);
@@ -2541,6 +2548,7 @@ bool RewriteOptions::Initialize() {
     all_properties_->Merge(properties_);
     InitOptionIdToPropertyArray();
     InitOptionNameToPropertyArray();
+    InitFixedResourceHeaders();
 
     for (int f = 0; f < static_cast<int>(RewriteOptions::kEndOfFilters); ++f) {
       RewriteOptions::Filter filter = static_cast<RewriteOptions::Filter>(f);
@@ -2639,7 +2647,39 @@ void RewriteOptions::InitOptionNameToPropertyArray() {
   }
 }
 
+void RewriteOptions::InitFixedResourceHeaders() {
+  StringPieceVector* tmp = new StringPieceVector();
+  tmp->push_back(HttpAttributes::kAcceptRanges);
+  tmp->push_back(HttpAttributes::kCacheControl);
+  tmp->push_back(HttpAttributes::kContentEncoding);
+  tmp->push_back(HttpAttributes::kContentLength);
+  tmp->push_back(HttpAttributes::kContentType);
+  tmp->push_back(HttpAttributes::kDate);
+  tmp->push_back(HttpAttributes::kEtag);
+  tmp->push_back(HttpAttributes::kExpires);
+  tmp->push_back(HttpAttributes::kLastModified);
+  tmp->push_back(HttpAttributes::kLink);
+  tmp->push_back(HttpAttributes::kServer);
+  tmp->push_back(HttpAttributes::kVary);
+  fixed_resource_headers = tmp;
+
+  // From <https://www.ietf.org/rfc/rfc2616.txt>
+  // token          = 1*<any CHAR except CTLs or separators>
+  //       separators     = "(" | ")" | "<" | ">" | "@"
+  //                      | "," | ";" | ":" | "\" | <">
+  //                      | "/" | "[" | "]" | "?" | "="
+  //                      | "{" | "}" | SP | HT
+  const GoogleString separators("()<>@,;:\\\"/[]?={} \t");
+  for (int i = 0, n = separators.size(); i < n; ++i) {
+    http_header_separators[static_cast<unsigned int>(separators.at(i))] = true;
+  }
+}
+
 bool RewriteOptions::Terminate() {
+  if (fixed_resource_headers != NULL) {
+    delete fixed_resource_headers;
+    fixed_resource_headers = NULL;
+  }
   if (Properties::Terminate(&properties_)) {
     DCHECK(option_id_to_property_array_ != NULL);
     delete [] option_id_to_property_array_;
@@ -3308,7 +3348,11 @@ RewriteOptions::OptionSettingResult RewriteOptions::ParseAndSetOptionFromName2(
   OptionSettingResult result = RewriteOptions::kOptionOk;
 
   // TODO(matterbury): use a hash map for faster lookup/switching.
-  if (StringCaseEqual(name, kCustomFetchHeader)) {
+  if (StringCaseEqual(name, kAddResourceHeader)) {
+    if (!ValidateAndAddResourceHeader(arg1, arg2, msg)) {
+      return RewriteOptions::kOptionValueInvalid;
+    }
+  } else if (StringCaseEqual(name, kCustomFetchHeader)) {
     AddCustomFetchHeader(arg1, arg2);
   } else if (StringCaseEqual(name, kLoadFromFile)) {
     file_load_policy()->Associate(arg1, arg2);
@@ -3767,6 +3811,10 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
   if (src.downstream_cache_purge_location_prefix_.was_set()) {
     set_downstream_cache_purge_location_prefix(
       src.downstream_cache_purge_location_prefix());
+  }
+  for (int i = 0, n = src.resource_headers_.size(); i < n; ++i) {
+    NameValue* nv = src.resource_headers_[i];
+    AddResourceHeader(nv->name, nv->value);
   }
   for (int i = 0, n = src.custom_fetch_headers_.size(); i < n; ++i) {
     NameValue* nv = src.custom_fetch_headers_[i];
@@ -4430,6 +4478,104 @@ bool RewriteOptions::MergeOK() const {
 }
 #endif
 
+bool RewriteOptions::ValidateConfiguredHttpHeader(const GoogleString& name,
+                                                  const GoogleString& value,
+                                                  GoogleString* error_message) {
+  DCHECK(error_message != NULL);
+
+  if (error_message == NULL) {
+    return false;
+  }
+
+  // Reject empty field names. Empty field-values are acceptable.
+  // Impose a max length of 1024 on both field-name and field-value.
+  if (name.size() == 0) {
+    *error_message = "Empty field name not allowed";
+    return false;
+  }
+  if (name.size() > 1024) {
+    *error_message = "Field name too long";
+  }
+  if (value.size() > 1024) {
+    *error_message = "Field value too long";
+    return false;
+  }
+
+  for (int i = 0, n = name.size(); i < n; ++i) {
+    char c = name[i];
+    if (!IsNonControlAscii(c)) {
+      *error_message = StrCat("Invalid character in field name: ",
+                              GoogleString(1, c));
+      return false;
+    }
+    if (http_header_separators[static_cast<unsigned int>(c)]) {
+      *error_message = StrCat("Separator found in field name: ",
+                              GoogleString(1, c));
+      return false;
+    }
+  }
+
+  for (int i = 0, n = value.size(); i < n; ++i) {
+    // Formally the value may have any OCTET except CNTL, but including LWS.
+    // But in practice I think this is fair enough for our use case:
+    if (!IsNonControlAscii(value[i])) {
+      *error_message = StrCat("Invalid character in field value: ",
+                              GoogleString(1, value[i]));
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool RewriteOptions::ValidateAndAddResourceHeader(const StringPiece& name,
+                                                  const StringPiece& value,
+                                                  GoogleString* error_message) {
+  GoogleString gs_name;
+  GoogleString gs_value;
+
+  // Trim our input of whitespace, as we don't want any interpretation of that
+  // (especially header folding), and it probably was not intentionally
+  // configured like that anyway.
+  TrimWhitespace(name, &gs_name);
+  TrimWhitespace(value, &gs_value);
+
+  if (ValidateConfiguredHttpHeader(gs_name, gs_value, error_message)) {
+    // We don't allow overwriting hop-by-hop headers like Connection.
+    StringPieceVector hbh = HttpAttributes::SortedHopByHopHeaders();
+    StringCompareInsensitive compare;
+    if (std::binary_search(&hbh[0], &hbh[0] + hbh.size(), gs_name, compare)) {
+        *error_message = StrCat("Rejecting hop by hop header '", name, " '");
+        return false;
+    }
+
+    // We don't allow overwriting of headers we compute, like Cache-Control.
+    // In addition, there's a few other headers that should not be allowed
+    // so reject those fields as well:
+    const StringPiece* start = &fixed_resource_headers->at(0);
+    if (std::binary_search(
+        start, start + fixed_resource_headers->size(), gs_name, compare)) {
+        *error_message = StrCat("Rejecting header '", name, " '");
+        return false;
+    }
+
+    // Arbitrary limit of adding 20 headers
+    if (resource_headers_.size() > 20) {
+      *error_message = "Too many AddResourceHeader directives (max: 20)";
+      return false;
+    }
+    AddResourceHeader(gs_name, gs_value);
+    return true;
+  }
+  return false;
+}
+
+void RewriteOptions::AddResourceHeader(const StringPiece& name,
+                                       const StringPiece& value) {
+  resource_headers_.push_back(new NameValue(name, value));
+}
+
+  // TODO(oschaaf): should AddCustomFetchHeader have validations as well?
 void RewriteOptions::AddCustomFetchHeader(const StringPiece& name,
                                           const StringPiece& value) {
   custom_fetch_headers_.push_back(new NameValue(name, value));

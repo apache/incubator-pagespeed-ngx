@@ -119,6 +119,7 @@ const char kModPagespeedBlockingRewriteRefererUrls[] =
 const char kModPagespeedConsoleDomains[] = "ModPagespeedConsoleDomains";
 const char kModPagespeedCreateSharedMemoryMetadataCache[] =
     "ModPagespeedCreateSharedMemoryMetadataCache";
+const char kModPagespeedAddResourceHeader[] = "ModPagespeedAddResourceHeader";
 const char kModPagespeedCustomFetchHeader[] = "ModPagespeedCustomFetchHeader";
 const char kModPagespeedDisableFilters[] = "ModPagespeedDisableFilters";
 const char kModPagespeedDisableForBots[] = "ModPagespeedDisableForBots";
@@ -1727,6 +1728,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
                        "rewrites"),
 
   // All two parameter options that are allowed in <Directory> blocks.
+  APACHE_CONFIG_DIR_OPTION2(kModPagespeedAddResourceHeader,
+        "add_resource_header_name add_resource_header_value"),
   APACHE_CONFIG_DIR_OPTION2(kModPagespeedCustomFetchHeader,
         "custom_header_name custom_header_value"),
   APACHE_CONFIG_DIR_OPTION23(kModPagespeedMapOriginDomain,
