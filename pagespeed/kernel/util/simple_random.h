@@ -19,13 +19,12 @@
 #ifndef PAGESPEED_KERNEL_UTIL_SIMPLE_RANDOM_H_
 #define PAGESPEED_KERNEL_UTIL_SIMPLE_RANDOM_H_
 
+#include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
-
-class AbstractMutex;
 
 // Extremely simplistic pseudo-random number generator from
 // http://www.codeproject.com/Articles/25172/Simple-Random-Number-Generation

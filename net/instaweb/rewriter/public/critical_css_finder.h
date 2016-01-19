@@ -19,15 +19,13 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_CRITICAL_CSS_FINDER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_CRITICAL_CSS_FINDER_H_
 
+#include "net/instaweb/rewriter/critical_css.pb.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/statistics.h"
 
 namespace net_instaweb {
-
-class CriticalCssResult;
-class RewriteDriver;
-class Statistics;
-class TimedVariable;
 
 // Finds critical CSS rules (i.e. CSS needed for the initial page load).
 class CriticalCssFinder {

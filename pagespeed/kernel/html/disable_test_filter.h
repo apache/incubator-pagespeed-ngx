@@ -19,8 +19,10 @@
 #ifndef PAGESPEED_KERNEL_HTML_DISABLED_TEST_FILTER_H_
 #define PAGESPEED_KERNEL_HTML_DISABLED_TEST_FILTER_H_
 
-#include "pagespeed/kernel/html/empty_html_filter.h"
+#include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/html/empty_html_filter.h"
 
 namespace net_instaweb {
 

@@ -22,16 +22,15 @@
 #include <set>
 #include <vector>
 
+#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
+#include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
-
-class AsyncFetch;
-class AbstractMutex;
-class MessageHandler;
 
 // Fake UrlAsyncFetcher which waits to call underlying fetcher until
 // you explicitly call CallCallbacks().

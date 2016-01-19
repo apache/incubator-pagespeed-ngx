@@ -20,10 +20,9 @@
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/util/nonce_generator.h"
 
 namespace net_instaweb {
-
-class NonceGenerator;
 
 // Number of iterations of nonce generation to check in tests.
 extern const int kNumIterations;

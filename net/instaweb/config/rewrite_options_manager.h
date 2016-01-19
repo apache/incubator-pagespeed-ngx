@@ -19,16 +19,15 @@
 #ifndef NET_INSTAWEB_CONFIG_REWRITE_OPTIONS_MANAGER_H_
 #define NET_INSTAWEB_CONFIG_REWRITE_OPTIONS_MANAGER_H_
 
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "pagespeed/kernel/base/callback.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/http/google_url.h"
+#include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/opt/http/request_context.h"
 
 
 namespace net_instaweb {
-
-class GoogleUrl;
-class RewriteOptions;
-class RequestHeaders;
 
 class RewriteOptionsManager {
  public:

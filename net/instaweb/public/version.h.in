@@ -4,7 +4,8 @@
 
 // version.h is generated from version.h.in.  Edit the source!
 
-#pragma once
+#ifndef NET_INSTAWEB_PUBLIC_VERSION_H_
+#define NET_INSTAWEB_PUBLIC_VERSION_H_
 
 // Version Information
 
@@ -31,3 +32,5 @@ const char kModPagespeedVersion[] =
     MOD_PAGESPEED_VERSION_STRING "-" LASTCHANGE_STRING;
 
 }
+
+#endif  // NET_INSTAWEB_PUBLIC_VERSION_H_

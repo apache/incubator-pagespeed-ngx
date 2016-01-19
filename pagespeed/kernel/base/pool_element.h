@@ -19,6 +19,8 @@
 
 #include <list>
 
+#include "pagespeed/kernel/base/basictypes.h"
+
 // Include this file when defining an object that will reside in a pool.  There
 // are a couple of ways of defining such an object, but all of them require us
 // to use the PoolPosition typedef.  Most simply, we can extend the PoolElement

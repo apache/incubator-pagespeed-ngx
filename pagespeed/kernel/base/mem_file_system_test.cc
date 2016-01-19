@@ -62,6 +62,7 @@ class MemFileSystemTest : public FileSystemTest {
   MockTimer timer_;
   MemFileSystem mem_file_system_;
 
+ private:
   DISALLOW_COPY_AND_ASSIGN(MemFileSystemTest);
 };
 
