@@ -7,6 +7,14 @@
   LoadModule pagespeed_module @@APACHE_MODULEDIR@@/mod_pagespeed.so
 </IfVersion>
 <IfVersion >= 2.4.2>
+  # As default pagespeed.conf configuration uses old-style ACLs using
+  # 'allow' and 'deny', we load mod_access_compat in Apache 2.4. If that's a
+  # problem, the blocks using that can be converted to the newer 'Require'
+  # syntax.
+  <IfModule !access_compat_module>
+    LoadModule access_compat_module @@APACHE_MODULEDIR@@/mod_access_compat.so
+  </IfModule>
+
   LoadModule pagespeed_module @@APACHE_MODULEDIR@@/mod_pagespeed_ap24.so
 </IfVersion>
 
