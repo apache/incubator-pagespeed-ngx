@@ -657,6 +657,19 @@ void CacheExtenderTest::TestCanonicalOnFallback(
   EXPECT_STREQ(ResponseHeaders::RelCanonicalHeaderValue(
                    StrCat(kTestDomain, "b.jpg")),
                headers.Lookup1(HttpAttributes::kLink));
+
+  // Should also propagate existing ones (and not add incompatible ones).
+  lru_cache()->Clear();
+  AddToResponse(StrCat(kTestDomain, "b.jpg"),
+                HttpAttributes::kLink,
+                ResponseHeaders::RelCanonicalHeaderValue(
+                    StrCat(kTestDomain, "notb.jpg")));
+  EXPECT_TRUE(
+      RewriteTestBase::FetchResourceUrl(out_jpeg_url, &content, &headers));
+
+  EXPECT_STREQ(ResponseHeaders::RelCanonicalHeaderValue(
+                   StrCat(kTestDomain, "notb.jpg")),
+               headers.Lookup1(HttpAttributes::kLink));
 }
 
 TEST_F(CacheExtenderTest, CanonicalOnFallbackToOtherPageSpeed) {

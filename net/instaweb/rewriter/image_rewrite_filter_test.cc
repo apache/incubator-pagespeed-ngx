@@ -2358,6 +2358,17 @@ TEST_F(ImageRewriteTest, CanonicalOnTimeout) {
   EXPECT_STREQ(ResponseHeaders::RelCanonicalHeaderValue(
                    StrCat(kTestDomain, "a.jpg")),
                headers.Lookup1(HttpAttributes::kLink));
+
+  // Now try with an existing canonical header. That should be preserved
+  lru_cache()->Clear();
+  AddToResponse(StrCat(kTestDomain, "a.jpg"),
+                HttpAttributes::kLink,
+                ResponseHeaders::RelCanonicalHeaderValue(
+                    StrCat(kTestDomain, "nota.jpg")));
+  EXPECT_TRUE(RewriteTestBase::FetchResourceUrl(out_url, &content, &headers));
+  EXPECT_STREQ(ResponseHeaders::RelCanonicalHeaderValue(
+                   StrCat(kTestDomain, "nota.jpg")),
+               headers.Lookup1(HttpAttributes::kLink));
 }
 
 TEST_F(ImageRewriteTest, HonorNoTransform) {

@@ -84,7 +84,8 @@ void SingleRewriteContext::Rewrite(int partition_index,
 
 void SingleRewriteContext::AddLinkRelCanonical(
     const ResourcePtr& input, ResponseHeaders* output) {
-  if (output->HasLinkRelCanonical()) {
+  if (output->HasLinkRelCanonical() ||
+      input->response_headers()->HasLinkRelCanonical()) {
     return;
   }
 
