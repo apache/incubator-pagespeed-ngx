@@ -378,9 +378,6 @@ InstawebContext* build_context_for_request(request_rec* request) {
     return NULL;
   }
 
-  InstawebHandler instaweb_handler(request);
-  const RewriteOptions* options = instaweb_handler.options();
-
   if (request->unparsed_uri == NULL) {
     // TODO(jmarantz): consider adding Debug message if unparsed_uri is NULL,
     // possibly of request->the_request which was non-null in the case where
@@ -444,6 +441,9 @@ InstawebContext* build_context_for_request(request_rec* request) {
                   "Request not rewritten because: X-Mod-Pagespeed header set.");
     return NULL;
   }
+
+  InstawebHandler instaweb_handler(request);
+  const RewriteOptions* options = instaweb_handler.options();
 
   const GoogleUrl& stripped_gurl = instaweb_handler.stripped_gurl();
   if (!stripped_gurl.IsWebValid()) {

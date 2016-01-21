@@ -365,6 +365,12 @@ const char* InstawebContext::MakeRequestUrl(
     // as an absolute URL. So we check if request->unparsed_uri is already
     // an absolute URL first. If so, use it as-is, otherwise ap_construct_url().
     if (url == NULL) {
+      if (request->unparsed_uri == NULL) {
+        LOG(DFATAL) <<
+            "build_context_for_request should verify unparsed_uri is non-null.";
+        return NULL;
+      }
+
       GoogleUrl gurl(request->unparsed_uri);
       if (gurl.IsAnyValid()) {
         url = apr_pstrdup(request->pool, request->unparsed_uri);
