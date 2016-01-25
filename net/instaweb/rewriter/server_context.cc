@@ -764,8 +764,7 @@ RewriteDriver* ServerContext::NewUnmanagedRewriteDriver(
 
 RewriteDriver* ServerContext::NewRewriteDriver(
     const RequestContextPtr& request_ctx) {
-  RewriteDriverPool* pool = SelectDriverPool(request_ctx->using_spdy());
-  return NewRewriteDriverFromPool(pool, request_ctx);
+  return NewRewriteDriverFromPool(standard_rewrite_driver_pool(), request_ctx);
 }
 
 RewriteDriver* ServerContext::NewRewriteDriverFromPool(
@@ -1088,10 +1087,6 @@ void ServerContext::set_critical_line_info_finder(
 
 void ServerContext::set_mobilize_cached_finder(MobilizeCachedFinder* finder) {
   mobilize_cached_finder_.reset(finder);
-}
-
-RewriteDriverPool* ServerContext::SelectDriverPool(bool using_spdy) {
-  return standard_rewrite_driver_pool();
 }
 
 void ServerContext::ApplySessionFetchers(const RequestContextPtr& req,

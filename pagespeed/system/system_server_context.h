@@ -105,9 +105,6 @@ class SystemServerContext : public ServerContext {
   // but there are some cases where we need to do something more complex:
   //  - Local requests: requests for resources on this host should go directly
   //    to the local IP.
-  //  - Fetches directly from other modules: in Apache we have an experimental
-  //    pathway where we can make fetches directly from mod_spdy without going
-  //    out to the network.
   //  - Custom fetch headers: before continuing with the fetch we want to add
   //    request headers.
   // Session fetchers allow us to make these decisions.  Here we may update
@@ -126,10 +123,6 @@ class SystemServerContext : public ServerContext {
   // config overlays into actual RewriteOptions objects.  It will also compute
   // signatures when done, and by default that's the only thing it does.
   virtual void CollapseConfigOverlaysAndComputeSignatures();
-
-  // Returns the spdy-specific configuration, or NULL if there is none
-  // specified.
-  virtual const SystemRewriteOptions* SpdyGlobalConfig() const;
 
   // Handler which serves PSOL console.
   // Note: ConsoleHandler always succeeds.
@@ -173,9 +166,7 @@ class SystemServerContext : public ServerContext {
   //
   // Subclasses which add additional configurations need to override this method
   // to additionally update the cache flush timestamp in those other
-  // configurations.  See ApacheServerContext::UpdateCacheFlushTimestampMs where
-  // the separate SpdyConfig that mod_pagespeed uses when using SPDY also needs
-  // to have it's timestamp bumped.
+  // configurations.
   virtual bool UpdateCacheFlushTimestampMs(int64 timestamp_ms);
 
   // Returns JSON used by the PageSpeed Console JavaScript.
@@ -185,21 +176,11 @@ class SystemServerContext : public ServerContext {
   // /ngx_pagespeed_statistics, as well as
   // /...pagespeed__global_statistics.  If the latter,
   // is_global_request should be true.
-  //
-  // Returns NULL on success, otherwise the returned error string
-  // should be passed along to the user and the contents of writer and
-  // content_type should be ignored.
-  //
-  // In systems without a spdy-specific config, spdy_config should be
-  // null.
   void StatisticsHandler(const RewriteOptions& options, bool is_global_request,
                          AdminSite::AdminSource source, AsyncFetch* fetch);
 
-  // Print details fo the SPDY configuration.
-  void PrintSpdyConfig(AdminSite::AdminSource source, AsyncFetch* fetch);
-
-  // Print details fo the non-SPDY configuration.
-  void PrintNormalConfig(AdminSite::AdminSource source, AsyncFetch* fetch);
+  // Print details for configuration.
+  void PrintConfig(AdminSite::AdminSource source, AsyncFetch* fetch);
 
   // Print statistics about the caches.  In the future this will also
   // be a launching point for examining cache entries and purging them.

@@ -42,7 +42,6 @@
 #include "pagespeed/apache/header_util.h"
 #include "pagespeed/apache/instaweb_context.h"
 #include "pagespeed/apache/instaweb_handler.h"
-#include "pagespeed/apache/interface_mod_spdy.h"
 #include "pagespeed/apache/mod_instaweb.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/message_handler.h"
@@ -997,12 +996,6 @@ apr_status_t pagespeed_log_transaction(request_rec* request) {
   return DECLINED;
 }
 
-// Called by Apache via hook once all modules have been loaded & configured
-// to let us attach to their optional functions.
-void pagespeed_fetch_optional_fns() {
-  attach_mod_spdy();
-}
-
 int pagespeed_modify_request(request_rec* r) {
   // Escape ASAP if we're in unplugged mode.
   ApacheServerContext* server_context =
@@ -1124,14 +1117,6 @@ void mod_pagespeed_register_hooks(apr_pool_t* pool) {
   // To prevent that, we hook map_to_storage for our own purposes.
   ap_hook_map_to_storage(InstawebHandler::instaweb_map_to_storage, NULL, NULL,
                          APR_HOOK_FIRST - 2);
-
-  // Hook which will let us connect to optional functions mod_spdy
-  // exports.
-  ap_hook_optional_fn_retrieve(
-      pagespeed_fetch_optional_fns,  // hook function to be called
-      NULL,                          // predecessors
-      NULL,                          // successors
-      APR_HOOK_MIDDLE);              // position
 }
 
 apr_status_t pagespeed_child_exit(void* data) {
@@ -1220,8 +1205,9 @@ void warn_deprecated(cmd_parms* cmd, const char* remedy) {
 // Determines the Option structure into which to write a parsed directive.
 // If the directive was parsed from the default pagespeed.conf file then
 // we will write the information into the factory's RewriteOptions. In that
-// case, it's also possible that an overlay config for SPDY should be used,
-// in which case we will store it inside the directive object.
+// case, it's also possible that an overlay config for SPDY is being parsed
+// (for backwards compat), in which case we will store it inside the directive
+// object.
 //
 // However, if this was parsed from a Directory scope or .htaccess file then we
 // will be using the RewriteOptions structure from a tree of ApacheConfig
@@ -1851,15 +1837,7 @@ void* merge_server_config(apr_pool_t* pool, void* base_conf, void* new_conf) {
     // permissions, so doing it at top-level is sufficient.
     vhost_context->reset_global_options(merged_config.release());
 
-    // Merge the overlays, if any exist.
-    if (global_context->has_spdy_config_overlay() ||
-        vhost_context->has_spdy_config_overlay()) {
-      scoped_ptr<ApacheConfig> new_spdy_overlay(
-          global_context->SpdyConfigOverlay()->Clone());
-      new_spdy_overlay->Merge(*vhost_context->SpdyConfigOverlay());
-      vhost_context->set_spdy_config_overlay(new_spdy_overlay.release());
-    }
-
+    // Merge the overlays, if any exist. (SPDY one no longer supported).
     if (global_context->has_non_spdy_config_overlay() ||
         vhost_context->has_non_spdy_config_overlay()) {
       scoped_ptr<ApacheConfig> new_non_spdy_overlay(

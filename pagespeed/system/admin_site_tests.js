@@ -23,7 +23,7 @@
 var x = require('casper').selectXPath;
 
 casper.test.begin('Statistics page can load and filter works.',
-                  8, function(test) {
+                  12, function(test) {
   errors = [];
   casper.on('page.error', function(msg, trace) { errors.push(msg); });
 
@@ -63,7 +63,7 @@ casper.test.begin('Statistics page can load and filter works.',
     var stats_arr = this.evaluate(function() {
       return document.querySelector('#stat').innerHTML.split('<td');
     });
-    test.assert(stats_arr.length > 10);
+    test.assert(stats_arr.length > 5);
   });
 
   casper.then(function() {
@@ -89,7 +89,7 @@ casper.test.begin('Statistics page can load and filter works.',
   casper.run(function() { test.done(); });
 });
 
-casper.test.begin('Check Configuration Page', 3, function suite(test) {
+casper.test.begin('Check Configuration Page', 2, function suite(test) {
   errors = [];
   casper.on('page.error', function(msg, trace) { errors.push(msg); });
 
@@ -97,10 +97,6 @@ casper.test.begin('Check Configuration Page', 3, function suite(test) {
     // Check that the page loaded properly with no errors.
     test.assertEquals(errors, []);
   });
-
-  casper.thenOpen('http://localhost/pagespeed_admin/spdy_config');
-
-  casper.then(function(reponse) { test.assertEquals(errors, []); });
 
   casper.then(function() { test.assertEquals(errors, []); });
 

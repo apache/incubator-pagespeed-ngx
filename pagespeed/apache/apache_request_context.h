@@ -36,9 +36,6 @@ class Timer;
 
 class ApacheRequestContext : public SystemRequestContext {
  public:
-  // Constructs a request suitable for querying options, but not for
-  // initiating fetches.  To prepare a context for fetches, call
-  // SetupSpdyConnectionIfNeeded after construction.
   ApacheRequestContext(
       AbstractMutex* logging_mutex, Timer* timer, request_rec* req);
 

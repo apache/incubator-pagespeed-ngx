@@ -2687,7 +2687,6 @@ GoogleString RewriteDriver::ToString(bool show_detached_contexts) const {
     AppendBool(&out, "release_driver", release_driver_);
     AppendBool(&out, "write_property_cache_dom_cohort",
                write_property_cache_dom_cohort_);
-    AppendBool(&out, "using_spdy", using_spdy());
     AppendBool(&out, "owns_property_page", owns_property_page_);
     AppendBool(&out, "xhtml_mimetype_computed", xhtml_mimetype_computed_);
     AppendBool(&out, "can_rewrite_resources", can_rewrite_resources_);

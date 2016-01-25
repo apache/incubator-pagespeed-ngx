@@ -291,8 +291,6 @@ void ProxyInterface::GetRewriteOptionsDone(RequestData* request_data,
   // Start fetch and rewrite.  If GetCustomOptions found options for us,
   // the RewriteDriver created by StartNewProxyFetch will take ownership.
   if (is_resource_fetch) {
-    // TODO(sligocki): Set using_spdy appropriately.
-    bool using_spdy = false;
     // TODO(pulkitg): Set is_original_resource_cacheable to false if pagespeed
     // resource is not cacheable.
     const RewriteOptions* these_options =
@@ -302,8 +300,7 @@ void ProxyInterface::GetRewriteOptionsDone(RequestData* request_data,
     // involves a lot of complicated code changes.
     async_fetch->request_context()->ResetOptions(
         these_options->ComputeHttpOptions());
-    ResourceFetch::Start(*request_url, options, using_spdy,
-                         server_context_, async_fetch);
+    ResourceFetch::Start(*request_url, options, server_context_, async_fetch);
   } else {
     // TODO(nforman): If we are not running an experiment, remove the
     // experiment cookie.

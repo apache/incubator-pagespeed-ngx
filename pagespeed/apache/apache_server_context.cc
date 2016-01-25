@@ -37,25 +37,6 @@ namespace net_instaweb {
 
 class RewriteOptions;
 
-namespace {
-
-class SpdyOptionsRewriteDriverPool : public RewriteDriverPool {
- public:
-  explicit SpdyOptionsRewriteDriverPool(ApacheServerContext* context)
-      : apache_server_context_(context) {
-  }
-
-  virtual const RewriteOptions* TargetOptions() const {
-    DCHECK(apache_server_context_->SpdyGlobalConfig() != NULL);
-    return apache_server_context_->SpdyGlobalConfig();
-  }
-
- private:
-  ApacheServerContext* apache_server_context_;
-};
-
-}  // namespace
-
 ApacheServerContext::ApacheServerContext(
     ApacheRewriteDriverFactory* factory,
     server_rec* server,
@@ -63,8 +44,7 @@ ApacheServerContext::ApacheServerContext(
     : SystemServerContext(factory, server->server_hostname, server->port),
       apache_factory_(factory),
       server_rec_(server),
-      version_(version.data(), version.size()),
-      spdy_driver_pool_(NULL) {
+      version_(version.data(), version.size()) {
   // We may need the message handler for error messages very early, before
   // we get to InitServerContext in ChildInit().
   set_message_handler(apache_factory_->message_handler());
@@ -102,6 +82,8 @@ ApacheConfig* ApacheServerContext::global_config() {
 }
 
 ApacheConfig* ApacheServerContext::SpdyConfigOverlay() {
+  // While we no longer actually use the spdy config overlay, it's still
+  // useful for backwards compatibility during parsing.
   if (spdy_config_overlay_.get() == NULL) {
     spdy_config_overlay_.reset(new ApacheConfig(
         "spdy_overlay", thread_system()));
@@ -125,54 +107,21 @@ ApacheConfig* ApacheServerContext::NonSpdyConfigOverlay() {
 }
 
 void ApacheServerContext::CollapseConfigOverlaysAndComputeSignatures() {
-  if (spdy_config_overlay_.get() != NULL ||
-      non_spdy_config_overlay_.get() != NULL) {
-    // We need separate SPDY/non-SPDY configs if we have any
-    // <IfModpagespeed spdy> or <IfModpagespeed !spdy> blocks.
-    // We compute the SPDY one first since we need global_config() to be
-    // the common config and not common + !spdy.
-    spdy_specific_config_.reset(global_config()->Clone());
-    spdy_specific_config_->set_cache_invalidation_timestamp_mutex(
-        thread_system()->NewRWLock());
-    if (spdy_config_overlay_.get() != NULL) {
-      spdy_specific_config_->Merge(*spdy_config_overlay_);
-    }
-    ComputeSignature(spdy_specific_config_.get());
-  }
-
+  // These days we ignore the spdy overlay and merge-in the non-spdy one
+  // unconditionally.
   if (non_spdy_config_overlay_.get() != NULL) {
     global_config()->Merge(*non_spdy_config_overlay_);
   }
 
   SystemServerContext::CollapseConfigOverlaysAndComputeSignatures();
 
-  if (spdy_specific_config_.get() != NULL) {
-    spdy_driver_pool_ = new SpdyOptionsRewriteDriverPool(this);
-    ManageRewriteDriverPool(spdy_driver_pool_);
-  }
+  spdy_config_overlay_.reset();
+  non_spdy_config_overlay_.reset();
 }
 
 bool ApacheServerContext::PoolDestroyed() {
   ShutDownDrivers();
   return apache_factory_->PoolDestroyed(this);
-}
-
-bool ApacheServerContext::UpdateCacheFlushTimestampMs(int64 timestamp_ms) {
-  bool flushed = SystemServerContext::UpdateCacheFlushTimestampMs(timestamp_ms);
-  if (spdy_specific_config_.get() != NULL) {
-    // We need to make sure to update the invalidation timestamp in the
-    // SPDY configuration as well, so it also gets any cache flushes.
-    flushed |=
-        spdy_specific_config_->UpdateCacheInvalidationTimestampMs(timestamp_ms);
-  }
-  return flushed;
-}
-
-RewriteDriverPool* ApacheServerContext::SelectDriverPool(bool using_spdy) {
-  if (using_spdy && (SpdyGlobalConfig() != NULL)) {
-    return spdy_driver_pool();
-  }
-  return standard_rewrite_driver_pool();
 }
 
 void ApacheServerContext::InitProxyFetchFactory() {

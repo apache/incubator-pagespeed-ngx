@@ -85,8 +85,7 @@ class AdminSite {
                  PropertyCache* page_property_cache,
                  ServerContext* server_context, Statistics* statistics,
                  Statistics* stats,
-                 SystemRewriteOptions* global_system_rewrite_options,
-                 const SystemRewriteOptions* spdy_config);
+                 SystemRewriteOptions* global_system_rewrite_options);
 
   // Handle a request for the legacy /*_pagespeed_statistics page, which also
   // serves as a launching point for a subset of the admin pages.  Because the
@@ -101,8 +100,7 @@ class AdminSite {
                       PropertyCache* page_property_cache,
                       ServerContext* server_context, Statistics* statistics,
                       Statistics* stats,
-                      SystemRewriteOptions* global_system_rewrite_options,
-                      const SystemRewriteOptions* spdy_config);
+                      SystemRewriteOptions* global_system_rewrite_options);
 
   // Returns JSON used by the PageSpeed Console JavaScript.
   void ConsoleJsonHandler(const QueryParams& params, AsyncFetch* fetch,
@@ -112,13 +110,6 @@ class AdminSite {
   // /ngx_pagespeed_statistics, as well as
   // /...pagespeed__global_statistics.  If the latter,
   // is_global_request should be true.
-  //
-  // Returns NULL on success, otherwise the returned error string
-  // should be passed along to the user and the contents of writer and
-  // content_type should be ignored.
-  //
-  // In systems without a spdy-specific config, spdy_config should be
-  // null.
   void StatisticsHandler(const RewriteOptions& options, AdminSource source,
                          AsyncFetch* fetch, Statistics* stats);
 
@@ -132,13 +123,9 @@ class AdminSite {
                      const QueryParams& query_params, AsyncFetch* fetch,
                      Statistics* stats);;
 
-  // Print details fo the SPDY configuration.
-  void PrintSpdyConfig(AdminSource source, AsyncFetch* fetch,
-                       const SystemRewriteOptions* spdy_config);
-
-  // Print details fo the non-SPDY configuration.
-  void PrintNormalConfig(AdminSource source, AsyncFetch* fetch,
-                         SystemRewriteOptions* global_system_rewrite_options);
+  // Print details for configuration.
+  void PrintConfig(AdminSource source, AsyncFetch* fetch,
+                   SystemRewriteOptions* global_system_rewrite_options);
 
   // Print statistics about the caches.  In the future this will also
   // be a launching point for examining cache entries and purging them.

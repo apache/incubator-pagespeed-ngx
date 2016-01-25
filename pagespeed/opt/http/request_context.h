@@ -121,10 +121,6 @@ class RequestContext : public RefCounted<RequestContext> {
   // The log record for the this request, created when the request context is.
   virtual AbstractLogRecord* log_record();
 
-  // Determines whether this request is using the SPDY protocol.
-  bool using_spdy() const { return using_spdy_; }
-  void set_using_spdy(bool x) { using_spdy_ = x; }
-
   // Determines whether this request is using the HTTP2 protocol.
   bool using_http2() const { return using_http2_; }
   void set_using_http2(bool x) { using_http2_ = x; }
@@ -248,7 +244,6 @@ class RequestContext : public RefCounted<RequestContext> {
   REFCOUNT_FRIEND_DECLARATION(RequestContext);
 
  private:
-  // Set default values of accepts webp, accepts gzip, and uses spdy.
   void Init();
 
   // Always non-NULL.
@@ -264,7 +259,6 @@ class RequestContext : public RefCounted<RequestContext> {
 
   StringSet session_authorized_fetch_origins_;
 
-  bool using_spdy_;
   bool using_http2_;
   bool accepts_webp_;
   bool accepts_gzip_;

@@ -330,12 +330,6 @@ void SystemServerContext::CollapseConfigOverlaysAndComputeSignatures() {
   ComputeSignature(global_system_rewrite_options());
 }
 
-const SystemRewriteOptions* SystemServerContext::SpdyGlobalConfig() const {
-  // Subclasses can override to point to the SPDY configuration.
-  // ../apache/apache_server_context.h does.
-  return NULL;
-}
-
 // Handler which serves PSOL console.
 void SystemServerContext::ConsoleHandler(
     const SystemRewriteOptions& options,
@@ -384,16 +378,9 @@ void SystemServerContext::PrintCaches(bool is_global,
                            metadata_cache(), page_property_cache(), this);
 }
 
-void SystemServerContext::PrintNormalConfig(
+void SystemServerContext::PrintConfig(
     AdminSite::AdminSource source, AsyncFetch* fetch) {
-  admin_site_->PrintNormalConfig(source, fetch,
-                                 global_system_rewrite_options());
-}
-
-void SystemServerContext::PrintSpdyConfig(
-    AdminSite::AdminSource source, AsyncFetch* fetch) {
-  const SystemRewriteOptions* spdy_config = SpdyGlobalConfig();
-  admin_site_->PrintSpdyConfig(source, fetch, spdy_config);
+  admin_site_->PrintConfig(source, fetch, global_system_rewrite_options());
 }
 
 void SystemServerContext::MessageHistoryHandler(
@@ -407,29 +394,26 @@ void SystemServerContext::AdminPage(
     const QueryParams& query_params,
     const RewriteOptions* options,
     AsyncFetch* fetch) {
-  const SystemRewriteOptions* spdy_config = SpdyGlobalConfig();
   Statistics* stats = is_global ? factory()->statistics()
       : statistics();
   admin_site_->AdminPage(is_global, stripped_gurl, query_params, options,
                          cache_path(), fetch, system_caches_,
                          filesystem_metadata_cache(), http_cache(),
                          metadata_cache(), page_property_cache(), this,
-                         statistics(), stats,  global_system_rewrite_options(),
-                         spdy_config);
+                         statistics(), stats,  global_system_rewrite_options());
 }
 
 void SystemServerContext::StatisticsPage(bool is_global,
                                          const QueryParams& query_params,
                                          const RewriteOptions* options,
                                          AsyncFetch* fetch) {
-  const SystemRewriteOptions* spdy_config = SpdyGlobalConfig();
   Statistics* stats = is_global ? factory()->statistics()
       : statistics();
   admin_site_->StatisticsPage(
       is_global, query_params, options, fetch,
       system_caches_, filesystem_metadata_cache(), http_cache(),
       metadata_cache(), page_property_cache(), this, statistics(), stats,
-      global_system_rewrite_options(), spdy_config);
+      global_system_rewrite_options());
 }
 
 }  // namespace net_instaweb

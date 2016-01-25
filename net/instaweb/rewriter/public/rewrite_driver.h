@@ -216,9 +216,6 @@ class RewriteDriver : public HtmlParse {
   // Reinitializes request_properties_, clearing any cached values.
   void ClearRequestProperties();
 
-  // Returns true if the request we're rewriting was made using SPDY.
-  bool using_spdy() const { return request_context_->using_spdy(); }
-
   bool write_property_cache_dom_cohort() const {
     return write_property_cache_dom_cohort_;
   }

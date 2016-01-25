@@ -55,10 +55,6 @@ class ResourceFetch : public SharedAsyncFetch {
   // If custom_options it not NULL, takes ownership of it and and can mutate it.
   static void Start(const GoogleUrl& url,
                     RewriteOptions* custom_options,
-                    // This is intentionally not set in RewriteOptions because
-                    // it is not so much an option as request-specific info
-                    // similar to User-Agent (also not an option).
-                    bool using_spdy,
                     ServerContext* server_context,
                     AsyncFetch* async_fetch);
 

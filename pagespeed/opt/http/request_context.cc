@@ -67,7 +67,6 @@ RequestContext::RequestContext(const HttpOptions& options,
 }
 
 void RequestContext::Init() {
-  using_spdy_ = false;
   using_http2_ = false;
   accepts_webp_ = false;
   accepts_gzip_ = false;

@@ -107,10 +107,6 @@ InstawebHandler::InstawebHandler(request_rec* request)
 
   // Global options
   options_ = server_context_->global_config();
-  if (request_context_->using_spdy() &&
-      (server_context_->SpdyGlobalConfig() != NULL)) {
-    options_ = server_context_->SpdyGlobalConfig();
-  }
 
   request_headers_.reset(new RequestHeaders);
   ApacheRequestToRequestHeaders(*request, request_headers_.get());

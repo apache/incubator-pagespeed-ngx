@@ -655,30 +655,16 @@ start_test If parsing
 # $STATISTICS_URL ends in ?ModPagespeed=off, so we need & for now.
 # If we remove the query from $STATISTICS_URL, s/&/?/.
 readonly CONFIG_URL="$STATISTICS_URL&config"
-readonly SPDY_CONFIG_URL="$STATISTICS_URL&spdy_config"
 
 echo $WGET_DUMP $CONFIG_URL
 CONFIG=$($WGET_DUMP $CONFIG_URL)
-spdy_config_title="<title>PageSpeed SPDY Configuration</title>"
 config_title="<title>PageSpeed Configuration</title>"
 check_from "$CONFIG" fgrep -q "$config_title"
-check_not_from "$CONFIG" fgrep -q "$spdy_config_title"
 # Regular config should have a shard line:
 check_from "$CONFIG" egrep -q "http://nonspdy.example.com/ Auth Shards:{http:"
 check_from "$CONFIG" egrep -q "//s1.example.com/, http://s2.example.com/}"
 # And "combine CSS" on.
 check_from "$CONFIG" egrep -q "Combine Css"
-
-echo $WGET_DUMP $SPDY_CONFIG_URL
-SPDY_CONFIG=$($WGET_DUMP $SPDY_CONFIG_URL)
-check_not_from "$SPDY_CONFIG" fgrep -q "$config_title"
-check_from "$SPDY_CONFIG" fgrep -q "$spdy_config_title"
-
-# SPDY config should have neither shards, nor combine CSS.
-check_not_from "$SPDY_CONFIG" egrep -q "http://nonspdy.example.com"
-check_not_from "$SPDY_CONFIG" egrep -q "s1.example.com"
-check_not_from "$SPDY_CONFIG" egrep -q "s2.example.com"
-check_not_from "$SPDY_CONFIG" egrep -q "Combine Css"
 
 # Test ForbidAllDisabledFilters, which is set in config for
 # /mod_pagespeed_test/forbid_all_disabled/disabled/ where we've disabled
@@ -748,43 +734,27 @@ test_forbid_all_disabled "" $HEADER
 if [ "$SECONDARY_HOSTNAME" != "" ]; then
   SECONDARY_STATS_URL=http://$SECONDARY_HOSTNAME/mod_pagespeed_statistics
   SECONDARY_CONFIG_URL=$SECONDARY_STATS_URL?config
-  SECONDARY_SPDY_CONFIG_URL=$SECONDARY_STATS_URL?spdy_config
 
   if [ "$NO_VHOST_MERGE" = "on" ]; then
     start_test Config with VHost inheritance off
     echo $WGET_DUMP $SECONDARY_CONFIG_URL
     SECONDARY_CONFIG=$($WGET_DUMP $SECONDARY_CONFIG_URL)
     check_from "$SECONDARY_CONFIG" fgrep -q "$config_title"
-    check_not_from "$SECONDARY_CONFIG" fgrep -q "$spdy_config_title"
     # No inherit, no sharding.
     check_not_from "$SECONDARY_CONFIG" egrep -q "http://nonspdy.example.com/"
 
     # Should not inherit the blocking rewrite key.
     check_not_from "$SECONDARY_CONFIG" egrep -q "blrw"
-
-    echo $WGET_DUMP $SECONDARY_SPDY_CONFIG_URL
-    SECONDARY_SPDY_CONFIG=$($WGET_DUMP $SECONDARY_SPDY_CONFIG_URL)
-    check_not_from "$SECONDARY_SPDY_CONFIG" fgrep -q "$config_title"
-    check_from "$SECONDARY_SPDY_CONFIG" \
-      egrep -q "SPDY-specific configuration missing"
   else
     start_test Config with VHost inheritance on
     echo $WGET_DUMP $SECONDARY_CONFIG_URL
     SECONDARY_CONFIG=$($WGET_DUMP $SECONDARY_CONFIG_URL)
     check_from "$SECONDARY_CONFIG" fgrep -q "$config_title"
-    check_not_from "$SECONDARY_CONFIG" fgrep -q "$spdy_config_title"
     # Sharding is applied in this host, thanks to global inherit flag.
     check_from "$SECONDARY_CONFIG" egrep -q "http://nonspdy.example.com/"
 
     # We should also inherit the blocking rewrite key.
     check_from "$SECONDARY_CONFIG" egrep -q "\(blrw\)[[:space:]]+psatest"
-
-    echo $WGET_DUMP $SECONDARY_SPDY_CONFIG_URL
-    SECONDARY_SPDY_CONFIG=$($WGET_DUMP $SECONDARY_SPDY_CONFIG_URL)
-    check_not_from "$SECONDARY_SPDY_CONFIG" fgrep -q "$config_title"
-    check_from "$SECONDARY_SPDY_CONFIG" fgrep -q "$spdy_config_title"
-    # Disabling of combine CSS should get inherited.
-    check_not_from "$SECONDARY_SPDY_CONFIG" egrep -q "Combine Css"
   fi
 
   if [ -n "$APACHE_LOG" ]; then
@@ -1014,44 +984,12 @@ function check_admin_banner() {
 for admin_path in pagespeed_admin pagespeed_global_admin alt/admin/path; do
   check_admin_banner $admin_path/statistics "Statistics"
   check_admin_banner $admin_path/config "Configuration"
-  check_admin_banner $admin_path/spdy_config "SPDY Configuration"
   check_admin_banner $admin_path/histograms "Histograms"
   check_admin_banner $admin_path/cache "Caches"
   check_admin_banner $admin_path/console "Console"
   check_admin_banner $admin_path/message_history "Message History"
 done
 
-
-# TODO(matterbury): Uncomment these lines when the test is fixed.
-:<< COMMENTING_BLOCK
-start_test ModPagespeedIf application
-# Without SPDY, we should combine things
-OUT=$($WGET_DUMP --header 'X-PSA-Blocking-Rewrite: psatest' \
-    $EXAMPLE_ROOT/combine_css.html)
-check_from "$OUT" egrep -q ',Mcc'
-
-# Despite combine_css being disabled in <ModPagespeedIf>, we still
-# expect it with SPDY since it's turned on in mod_pagespeed_example/.htaccess.
-# However, since rewrite_css is off, the result should be rewritten by
-# cc and not also cf or ce.
-OUT=$($WGET_DUMP --header 'X-PSA-Blocking-Rewrite: psatest' \
-  --header 'X-PSA-Optimize-For-SPDY: true' \
-  $EXAMPLE_ROOT/combine_css.html)
-check_not_from "$OUT" egrep -q ',Mcc'
-check_from "$OUT" egrep -q '.pagespeed.cc'
-
-# Now test resource fetch. Since we've disabled extend_cache and
-# rewrite_images for spdy, we should not see rewritten resources there,
-# while we will in the other normal case.
-OUT=$($WGET_DUMP  --header 'X-PSA-Blocking-Rewrite: psatest' \
-    $EXAMPLE_ROOT/styles/A.rewrite_css_images.css.pagespeed.cf.rnLTdExmOm.css)
-check_from "$OUT" grep -q 'png.pagespeed.'
-
-OUT=$($WGET_DUMP  --header 'X-PSA-Blocking-Rewrite: psatest' \
-    --header 'X-PSA-Optimize-For-SPDY: true' \
-    $EXAMPLE_ROOT/styles/A.rewrite_css_images.css.pagespeed.cf.rnLTdExmOm.css)
-check_not_from "$OUT" grep -q 'png.pagespeed.'
-COMMENTING_BLOCK
 
 start_test remote config will not apply server scoped options.
 if ! [ -z ${RCPORT4+x} ] && [ $RCPORT4 -eq "9994" ]; then

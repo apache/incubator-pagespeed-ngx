@@ -17,7 +17,6 @@
 #include "pagespeed/apache/apache_request_context.h"
 
 #include "base/logging.h"
-#include "pagespeed/apache/interface_mod_spdy.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/http/http_names.h"
@@ -39,15 +38,9 @@ ApacheRequestContext::ApacheRequestContext(
   // believe) Detaching, we can initiate fetches after the Apache
   // request_rec* has been retired.  So deep-copy the bits we need
   // from the request_rec at the time we create our RequestContext.
-  // This includes the local port (for loopback fetches) and wether SPDY
-  // is on.
-  if (mod_spdy_get_spdy_version(req->connection) != 0) {
-    set_using_spdy(true);
-  } else {
-    const char* value = apr_table_get(req->headers_in,
-                                      HttpAttributes::kXPsaOptimizeForSpdy);
-    set_using_spdy(value != NULL);
-  }
+  // This includes the local port (for loopback fetches) and whether H2 is on.
+  // TODO(morlovich): Actually set the H2 bit. Easy, but off-topic. Note:
+  // history shows header access.
 }
 
 ApacheRequestContext::~ApacheRequestContext() {

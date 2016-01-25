@@ -87,7 +87,6 @@ const char kLongBreak[] = " &nbsp;&nbsp; ";
 const Tab kTabs[] = {
   {"Statistics", "Statistics", "statistics", "?", kLongBreak},
   {"Configuration", "Configuration", "config", "?config", kShortBreak},
-  {"(SPDY)", "SPDY Configuration", "spdy_config", "?spdy_config", kLongBreak},
   {"Histograms", "Histograms", "histograms", "?histograms", kLongBreak},
   {"Caches", "Caches", "cache", "?cache", kLongBreak},
   {"Console", "Console", "console", NULL, kLongBreak},
@@ -627,25 +626,13 @@ void AdminSite::PrintCaches(bool is_global, AdminSource source,
   }
 }
 
-void AdminSite::PrintNormalConfig(
+void AdminSite::PrintConfig(
     AdminSource source, AsyncFetch* fetch,
     SystemRewriteOptions* global_system_rewrite_options) {
   AdminHtml admin_html("config", "", source, timer_, fetch, message_handler_);
   HtmlKeywords::WritePre(
       global_system_rewrite_options->OptionsToString(), "",
       fetch, message_handler_);
-}
-
-void AdminSite::PrintSpdyConfig(AdminSource source, AsyncFetch* fetch,
-                                const SystemRewriteOptions* spdy_config) {
-  AdminHtml admin_html("spdy_config", "", source, timer_, fetch,
-                       message_handler_);
-  if (spdy_config == NULL) {
-    fetch->Write("SPDY-specific configuration missing.", message_handler_);
-  } else {
-    HtmlKeywords::WritePre(spdy_config->OptionsToString(), "",
-                           fetch, message_handler_);
-  }
 }
 
 void AdminSite::MessageHistoryHandler(const RewriteOptions& options,
@@ -711,8 +698,7 @@ void AdminSite::AdminPage(
     CacheInterface* filesystem_metadata_cache, HTTPCache* http_cache,
     CacheInterface* metadata_cache, PropertyCache* page_property_cache,
     ServerContext* server_context, Statistics* statistics, Statistics* stats,
-    SystemRewriteOptions* global_system_rewrite_options,
-    const SystemRewriteOptions* spdy_config) {
+    SystemRewriteOptions* global_system_rewrite_options) {
   // The handler is "pagespeed_admin", so we must dispatch off of
   // the remainder of the URL.  For
   // "http://example.com/pagespeed_admin/foo?a=b" we want to pull out
@@ -759,9 +745,7 @@ void AdminSite::AdminPage(
     } else if (leaf == "graphs") {
       GraphsHandler(*options, kPageSpeedAdmin, query_params, fetch, statistics);
     } else if (leaf == "config") {
-      PrintNormalConfig(kPageSpeedAdmin, fetch, global_system_rewrite_options);
-    } else if (leaf == "spdy_config") {
-      PrintSpdyConfig(kPageSpeedAdmin, fetch, spdy_config);
+      PrintConfig(kPageSpeedAdmin, fetch, global_system_rewrite_options);
     } else if (leaf == "console") {
       // TODO(jmarantz): add vhost-local and aggregate message buffers.
       ConsoleHandler(*global_system_rewrite_options, *options, kPageSpeedAdmin,
@@ -805,14 +789,11 @@ void AdminSite::StatisticsPage(
     HTTPCache* http_cache, CacheInterface* metadata_cache,
     PropertyCache* page_property_cache, ServerContext* server_context,
     Statistics* statistics, Statistics* stats,
-    SystemRewriteOptions* global_system_rewrite_options,
-    const SystemRewriteOptions* spdy_config) {
+    SystemRewriteOptions* global_system_rewrite_options) {
   if (query_params.Has("json")) {
     ConsoleJsonHandler(query_params, fetch, statistics);
   } else if (query_params.Has("config")) {
-    PrintNormalConfig(kStatistics, fetch, global_system_rewrite_options);
-  } else if (query_params.Has("spdy_config")) {
-    PrintSpdyConfig(kStatistics, fetch, spdy_config);
+    PrintConfig(kStatistics, fetch, global_system_rewrite_options);
   } else if (query_params.Has("histograms")) {
     PrintHistograms(kStatistics, fetch, stats);
   } else if (query_params.Has("graphs")) {

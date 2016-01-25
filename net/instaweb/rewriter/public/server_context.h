@@ -623,9 +623,6 @@ class ServerContext {
   void AddOriginalContentLengthHeader(const ResourceVector& inputs,
                                       ResponseHeaders* headers);
 
-  // Chooses a driver pool based on the request protocol.
-  virtual RewriteDriverPool* SelectDriverPool(bool using_spdy);
-
   // Provides a hook for ServerContext implementations to determine
   // the fetcher implementation based on the request.
   virtual void ApplySessionFetchers(const RequestContextPtr& req,
