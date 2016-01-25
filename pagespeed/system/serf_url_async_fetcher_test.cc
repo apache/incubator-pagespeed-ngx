@@ -57,7 +57,7 @@ namespace {
 // 'mod_pagespeed_examples/' and 'do_not_modify/' being available
 // relative to the domain, by copying them into /var/www from
 // MOD_PAGESPEED_SVN_PATH/src/install.
-const char kFetchHost[] = "modpagespeed.com";
+const char kFetchHost[] = "selfsigned.modpagespeed.com";
 
 // The threaded async fetching tests are a bit flaky and quite slow, especially
 // on valgrind.  Ideally that should be fixed but until it becomes a priority,
