@@ -1872,7 +1872,7 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
     ResourceFetch::Start(
         url,
         custom_options.release() /* null if there aren't custom options */,
-        false /* using_spdy */, cfg_s->server_context, ctx->base_fetch);
+        cfg_s->server_context, ctx->base_fetch);
     return ps_async_wait_response(r);
   } else if (is_an_admin_handler) {
     ps_create_base_fetch(ctx, request_context, request_headers.release(),
