@@ -595,8 +595,8 @@ void SerfFetch::FixUserAgent() {
     user_agent += "Serf/" SERF_VERSION_STRING;
   }
   GoogleString version = StrCat(
-      " ", kModPagespeedSubrequestUserAgent,
-      "/" MOD_PAGESPEED_VERSION_STRING "-" LASTCHANGE_STRING);
+      " (", kModPagespeedSubrequestUserAgent,
+      "/" MOD_PAGESPEED_VERSION_STRING "-" LASTCHANGE_STRING ")");
   if (!StringPiece(user_agent).ends_with(version)) {
     user_agent += version;
   }

@@ -35,6 +35,19 @@ EOF
   OUT=$($WGET_DUMP $URL)
   check_from "$OUT" fgrep -qi ".eot"
   check_not_from "$OUT" fgrep -qi ".ttf"
+
+  # And now IE11.
+  export WGETRC=$TESTTMP/wgetrc-ie11
+  cat > $WGETRC <<EOF
+user_agent = Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; rv:11.0) like Gecko
+EOF
+  # This should get a woff font. (We used to confuse things so that it would
+  # produce ttf).
+  fetch_until $URL 'grep -c @font-face' 1
+  OUT=$($WGET_DUMP $URL)
+  check_from "$OUT" fgrep -qi ".woff"
+  check_not_from "$OUT" fgrep -qi ".ttf"
+
   export WGETRC=$WGETRC_OLD
 fi
 
