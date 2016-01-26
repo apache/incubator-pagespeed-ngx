@@ -28,6 +28,7 @@
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/thread_annotations.h"
 #include "pagespeed/kernel/base/timer.h"
+#include "pagespeed/kernel/thread/scheduler_sequence.h"
 
 namespace net_instaweb {
 
@@ -439,5 +440,9 @@ bool SchedulerBlockingFunction::Block() {
 
 void Scheduler::RegisterWorker(QueuedWorkerPool::Sequence* w) {}
 void Scheduler::UnregisterWorker(QueuedWorkerPool::Sequence* w) {}
+
+Scheduler::Sequence* Scheduler::NewSequence() {
+  return new Sequence(this);
+}
 
 }  // namespace net_instaweb

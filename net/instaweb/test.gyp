@@ -342,6 +342,7 @@
         '<(DEPTH)/pagespeed/kernel/thread/queued_worker_pool_test.cc',
         '<(DEPTH)/pagespeed/kernel/thread/queued_worker_test.cc',
         '<(DEPTH)/pagespeed/kernel/thread/scheduler_based_abstract_lock_test.cc',
+        '<(DEPTH)/pagespeed/kernel/thread/scheduler_sequence_test.cc',
         '<(DEPTH)/pagespeed/kernel/thread/scheduler_test.cc',
         '<(DEPTH)/pagespeed/kernel/thread/scheduler_thread_test.cc',
         '<(DEPTH)/pagespeed/kernel/thread/slow_worker_test.cc',

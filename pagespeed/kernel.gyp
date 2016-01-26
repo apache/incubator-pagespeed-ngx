@@ -552,6 +552,7 @@
         'kernel/thread/queued_worker_pool.cc',
         'kernel/thread/scheduler.cc',
         'kernel/thread/scheduler_based_abstract_lock.cc',
+        'kernel/thread/scheduler_sequence.cc',
         'kernel/thread/scheduler_thread.cc',
         'kernel/thread/sequence.cc',
         'kernel/thread/slow_worker.cc',
