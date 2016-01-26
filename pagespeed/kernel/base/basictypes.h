@@ -19,6 +19,7 @@
 
 
 #include "base/basictypes.h"
+#include "base/macros.h"
 
 // The FALLTHROUGH_INTENDED macro can be used to annotate implicit fall-through
 // between switch labels:

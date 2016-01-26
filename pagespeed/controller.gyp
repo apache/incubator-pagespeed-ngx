@@ -32,6 +32,7 @@
         'controller/compatible_central_controller.cc',
         'controller/expensive_operation_callback.cc',
         'controller/named_lock_schedule_rewrite_controller.cc',
+        'controller/popularity_contest_schedule_rewrite_controller.cc',
         'controller/queued_expensive_operation_controller.cc',
         'controller/schedule_rewrite_callback.cc',
         'controller/work_bound_expensive_operation_controller.cc',
