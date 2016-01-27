@@ -938,8 +938,8 @@ void NgxFetch::FixUserAgent() {
     user_agent += "NgxNativeFetcher";
   }
   GoogleString version = StrCat(
-      " ", kModPagespeedSubrequestUserAgent,
-      "/" MOD_PAGESPEED_VERSION_STRING "-" LASTCHANGE_STRING);
+      " (", kModPagespeedSubrequestUserAgent,
+      "/" MOD_PAGESPEED_VERSION_STRING "-" LASTCHANGE_STRING ")");
   if (!StringPiece(user_agent).ends_with(version)) {
     user_agent += version;
   }
