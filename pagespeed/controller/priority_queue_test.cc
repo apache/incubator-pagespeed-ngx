@@ -27,7 +27,7 @@ namespace net_instaweb {
 
 class PriorityQueueTest : public testing::Test {
  protected:
-  void CheckTopIs(const GoogleString& expected_key, int expected_count) {
+  void CheckTopIs(const GoogleString& expected_key, int expected_count) const {
     const std::pair<const GoogleString*, int>& top = queue_.Top();
     const GoogleString& actual_key = *top.first;
     int actual_count = top.second;
@@ -35,7 +35,7 @@ class PriorityQueueTest : public testing::Test {
     EXPECT_THAT(actual_count, Eq(expected_count));
   }
 
-  void CheckSize(size_t expected_size) {
+  void CheckSize(size_t expected_size) const {
     if (expected_size == 0) {
       CheckEmpty();
     } else {
@@ -44,7 +44,7 @@ class PriorityQueueTest : public testing::Test {
     }
   }
 
-  void CheckEmpty() {
+  void CheckEmpty() const {
     EXPECT_THAT(queue_.Empty(), Eq(true));
     EXPECT_THAT(queue_.Size(), Eq(0));
   }
@@ -56,6 +56,11 @@ class PriorityQueueTest : public testing::Test {
 
   void IncreasePriority(const GoogleString& v, int howmuch) {
     queue_.IncreasePriority(v, howmuch);
+    queue_.SanityCheckForTesting();
+  }
+
+  void Remove(const GoogleString& v) {
+    queue_.Remove(v);
     queue_.SanityCheckForTesting();
   }
 
@@ -113,6 +118,39 @@ TEST_F(PriorityQueueTest, ZeroValues) {
   CheckEmpty();
 }
 
+TEST_F(PriorityQueueTest, NegativeValues) {
+  Increment("A");
+  CheckSize(1);
+  CheckTopIs("A", 1);
+
+  IncreasePriority("B", -1);
+  CheckSize(2);
+  CheckTopIs("A", 1);
+
+  IncreasePriority("C", -2);
+  CheckSize(3);
+  CheckTopIs("A", 1);
+
+  IncreasePriority("C", 4);
+  CheckSize(3);
+  CheckTopIs("C", 2);
+
+  IncreasePriority("A", -3);
+  CheckSize(3);
+  CheckTopIs("C", 2);
+
+  Pop();
+  CheckSize(2);
+  CheckTopIs("B", -1);
+
+  Pop();
+  CheckSize(1);
+  CheckTopIs("A", -2);
+
+  Pop();
+  CheckEmpty();
+}
+
 TEST_F(PriorityQueueTest, TwoElements) {
   Increment("A");
   Increment("B");
@@ -148,7 +186,6 @@ TEST_F(PriorityQueueTest, TwoElementsWithIncreasePriority) {
   Pop();
   CheckEmpty();
 }
-
 
 TEST_F(PriorityQueueTest, InterleavedIncrementAndPop) {
   // A => 3, B => 2, C => 1 (in random-ish order).
@@ -195,6 +232,50 @@ TEST_F(PriorityQueueTest, InterleavedIncrementAndPopWithIncrease) {
   CheckEmpty();
 }
 
+TEST_F(PriorityQueueTest, BasicRemove) {
+  IncreasePriority("A", 1);
+  IncreasePriority("B", 2);
+  IncreasePriority("C", 3);
+  IncreasePriority("D", 4);
+
+  CheckSize(4);
+  CheckTopIs("D", 4);
+
+  // Remove the top value.
+  Remove("D");
+  CheckSize(3);
+  CheckTopIs("C", 3);
+
+  // Remove a non-top value.
+  Remove("B");
+  CheckSize(2);
+  CheckTopIs("C", 3);
+
+  Pop();
+  CheckSize(1);
+  CheckTopIs("A", 1);
+
+  Pop();
+  CheckEmpty();
+}
+
+TEST_F(PriorityQueueTest, RemoveNonExistentEmpty) {
+  Remove("F");
+  CheckEmpty();
+}
+
+TEST_F(PriorityQueueTest, RemoveNonExistentNotEmpty) {
+  Increment("J");
+  CheckSize(1);
+  CheckTopIs("J", 1);
+
+  Remove("L");
+  CheckSize(1);
+  CheckTopIs("J", 1);
+
+  Pop();
+  CheckEmpty();
+}
 
 TEST_F(PriorityQueueTest, TortureTest) {
   // Populate the queue with values that have an ever increasing priority
@@ -251,6 +332,58 @@ TEST_F(PriorityQueueTest, Destructor) {
     Increment(IntegerToString(i));
   }
   CheckSize(100);
+}
+
+TEST_F(PriorityQueueTest, NegativeFlipFlop) {
+  const int kNumValues = 100;
+  // Fill the queue with values 0, 1, -2, 3, -4, etc.
+  for (int i = 0; i < kNumValues; ++i) {
+    int v = ((i % 2) == 1) ? i : -i;
+    IncreasePriority(IntegerToString(v), v);
+  }
+
+  // Now check the values come out in order.
+  for (int i = 0; i < kNumValues; ++i) {
+    // Numbers come out in order: Odd numbers 99 -> 1, Even numbers 0 -> -98.
+    int expected_value = 100 - 2 * i;
+    if (expected_value > 0) {
+      --expected_value;
+    }
+    CheckTopIs(IntegerToString(expected_value), expected_value);
+    Pop();
+  }
+  CheckEmpty();
+}
+
+TEST_F(PriorityQueueTest, RemoveMany) {
+  const int kNumValues = 100;
+  // Add 100 values into the queue.
+  for (int i = 1; i <= kNumValues; ++i) {
+    IncreasePriority(IntegerToString(i), i);
+  }
+
+  // Remove values of i either side powers of 2 (3, 5, 7, 9, etc).
+  for (int i = 2; i < kNumValues; i = (i << 1)) {
+    Remove(IntegerToString(i - 1));
+    Remove(IntegerToString(i + 1));
+  }
+
+  // Check the values come out in order, being sure to skip the values
+  // either side of powers of 2.
+  int next_power_2 = 64;
+  for (int i = kNumValues; i > 0; --i) {
+    bool expect_present = true;
+    if (i + 1 == next_power_2) {
+      expect_present = false;
+      next_power_2 >>= 1;
+    } else if (i - 1 == next_power_2) {
+      expect_present = false;
+    }
+    if (expect_present) {
+      CheckTopIs(IntegerToString(i), i);
+      Pop();
+    }
+  }
 }
 
 }  // namespace

@@ -39,11 +39,14 @@ class PriorityQueue {
   ~PriorityQueue() { Clear(); }
 
   // Increase the priority of "key" by amount. If key is not already present,
-  // it will be inserted at priority amount. amount must be >= 0.
+  // it will be inserted at priority amount. amount may be negative.
   void IncreasePriority(const T& key, int amount);
 
   // Eqivalent to IncreasePriority(key, 1).
   void Increment(const T& key);
+
+  // Remove a given element. Silently succeeds if the element isn't present.
+  void Remove(const T& key);
 
   // Return the key with the highest priority, and its priority.
   const std::pair<const T*, int>& Top() const;
@@ -74,10 +77,11 @@ class PriorityQueue {
 
   // Restore heap property by manipulating queue_, starting at the specified
   // index.
+  void Rebalance(size_t pos);  // Bootstraps one of the Push methods.
   void PushDown(size_t pos);
   void PushUp(size_t pos);
 
-  // Swap two elements in queue_, updating index_map_.
+  // Swap two elements in queue_, updating index_map_. Safe to call with a == b.
   void SwapElements(size_t a, size_t b);
 
   // Verifies the keys are correctly synchronised between queue_ and index_map_
@@ -116,7 +120,6 @@ void PriorityQueue<T, Hash, Equal>::Increment(const T& key) {
 template <typename T, typename Hash, typename Equal>
 void PriorityQueue<T, Hash, Equal>::IncreasePriority(const T& key,
                                                      int amount) {
-  CHECK_GE(amount, 0);
   typename IndexMap::iterator i = index_map_.find(&key);
   // Is key already stored?
   if (i == index_map_.end()) {
@@ -133,7 +136,44 @@ void PriorityQueue<T, Hash, Equal>::IncreasePriority(const T& key,
   size_t queue_pos = i->second;
   CHECK(queue_pos < queue_.size());
   queue_[queue_pos].second += amount;
-  PushUp(queue_pos);
+  Rebalance(queue_pos);
+}
+
+template <typename T, typename Hash, typename Equal>
+void PriorityQueue<T, Hash, Equal>::Remove(const T& key) {
+  typename IndexMap::iterator i = index_map_.find(&key);
+  if (i == index_map_.end()) {
+    // Key not present, do nothing.
+    return;
+  }
+
+  // Swap the value being removed with the value at the back.
+  // If there is only one entry in the queue, this swaps 0 and 0.
+  size_t removed_pos = i->second;
+  SwapElements(removed_pos, queue_.size() - 1);
+
+  // Remove/delete the old entry.
+  const T* removed_key = queue_.back().first;
+  queue_.pop_back();
+  index_map_.erase(i);
+  delete removed_key;
+
+  Rebalance(removed_pos);
+}
+
+template <typename T, typename Hash, typename Equal>
+void PriorityQueue<T, Hash, Equal>::Rebalance(size_t pos) {
+  CHECK_LT(pos, queue_.size());
+
+  size_t parent_pos = (pos >> 1);
+
+  // If the node has a parent and the parent's priority is less than that of
+  // the node, we need to start moving up.
+  if (pos != 0 && queue_[parent_pos].second < queue_[pos].second) {
+    PushUp(pos);
+  } else {
+    PushDown(pos);
+  }
 }
 
 template <typename T, typename Hash, typename Equal>
@@ -165,10 +205,12 @@ void PriorityQueue<T, Hash, Equal>::Pop() {
 
 template <typename T, typename Hash, typename Equal>
 void PriorityQueue<T, Hash, Equal>::SwapElements(size_t a_idx, size_t b_idx) {
-  const T* a_key = queue_[a_idx].first;
-  const T* b_key = queue_[b_idx].first;
-  std::swap(index_map_[a_key], index_map_[b_key]);
-  std::swap(queue_[a_idx], queue_[b_idx]);
+  if (a_idx != b_idx) {  // Just an optimization, still works if they are equal.
+    const T* a_key = queue_[a_idx].first;
+    const T* b_key = queue_[b_idx].first;
+    std::swap(index_map_[a_key], index_map_[b_key]);
+    std::swap(queue_[a_idx], queue_[b_idx]);
+  }
 }
 
 template <typename T, typename Hash, typename Equal>
