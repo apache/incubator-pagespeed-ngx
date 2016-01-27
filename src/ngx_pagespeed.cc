@@ -572,6 +572,10 @@ ngx_int_t copy_response_headers_to_ngx(
       continue;
     } else if (STR_EQ_LITERAL(name, "Transfer-Encoding")) {
       continue;
+    } else if (STR_EQ_LITERAL(name, "Vary") && value.len
+        && STR_EQ_LITERAL(value, "Accept-Encoding")) {
+      ps_request_ctx_t* ctx = ps_get_request_context(r);
+      ctx->psol_vary_accept_only = true;
     }
 
     u_char* name_s = ngx_pstrdup(r->pool, &name);
@@ -1282,6 +1286,7 @@ ngx_int_t ps_decline_request(ngx_http_request_t* r) {
   ctx->driver->Cleanup();
   ctx->driver = NULL;
   ctx->location_field_set = false;
+  ctx->psol_vary_accept_only = false;
 
   // re init ctx
   ctx->html_rewrite = true;
@@ -1852,6 +1857,7 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
     ctx->recorder = NULL;
     ctx->url_string = url_string;
     ctx->location_field_set = false;
+    ctx->psol_vary_accept_only = false;
 
     // Set up a cleanup handler on the request.
     ngx_http_cleanup_t* cleanup = ngx_http_cleanup_add(r, 0);
@@ -2169,6 +2175,13 @@ ngx_int_t ps_etag_header_filter(ngx_http_request_t* r) {
       break;
     }
   }
+
+  ps_request_ctx_t* ctx = ps_get_request_context(r);
+#if (NGX_HTTP_GZIP)
+  if (ctx && ctx->psol_vary_accept_only) {
+    r->gzip_vary = 0;
+  }
+#endif
   return ngx_http_ef_next_header_filter(r);
 }
 

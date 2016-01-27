@@ -108,6 +108,7 @@ typedef struct {
   // we should mirror that when we write it back. nginx may absolutify
   // Location: headers that start with '/' without regarding X-Forwarded-Proto.
   bool location_field_set;
+  bool psol_vary_accept_only;
 } ps_request_ctx_t;
 
 ps_request_ctx_t* ps_get_request_context(ngx_http_request_t* r);
