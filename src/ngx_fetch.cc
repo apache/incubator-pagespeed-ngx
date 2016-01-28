@@ -140,6 +140,8 @@ NgxConnection* NgxConnection::Connect(ngx_peer_connection_t* pc,
 
   int rc = ngx_event_connect_peer(pc);
   if (rc == NGX_ERROR || rc == NGX_DECLINED || rc == NGX_BUSY) {
+    ngx_log_error(NGX_LOG_DEBUG, pc->log, 0,
+                    "NgxFetch: ngx_event_connect_peer failed");
     return NULL;
   }
 
@@ -363,14 +365,17 @@ bool NgxFetch::Init() {
 
   GoogleString s_ipaddress(reinterpret_cast<char*>(tmp_url->host.data),
                            tmp_url->host.len);
-  ngx_memzero(&sin_, sizeof(sin_));
-  sin_.sin_family = AF_INET;
-  sin_.sin_port = htons(tmp_url->port);
-  sin_.sin_addr.s_addr = inet_addr(s_ipaddress.c_str());
 
-  if (sin_.sin_addr.s_addr == INADDR_NONE) {
-    // inet_addr returned INADDR_NONE, which means the hostname
-    // isn't a valid IP address.  Check DNS.
+  ngx_memzero(&sin_, sizeof(sin_));
+  if (s_ipaddress[0] == '[') {
+      s_ipaddress = s_ipaddress.substr(1);
+  }
+  if (s_ipaddress[s_ipaddress.size() - 1] == ']') {
+      s_ipaddress = s_ipaddress.substr(0, s_ipaddress.size()-2);      
+  }
+  ngx_int_t res = ngx_parse_addr(pool_, &sin_, (u_char*)s_ipaddress.c_str(), s_ipaddress.size());
+  if (res != NGX_OK) {
+    // Hostname isn't a valid IP address.  Check DNS.
     ngx_resolver_ctx_t temp;
     temp.name.data = tmp_url->host.data;
     temp.name.len = tmp_url->host.len;
@@ -405,6 +410,16 @@ bool NgxFetch::Init() {
       return false;
     }
   } else {
+      /*
+    u_char text[NGX_SOCKADDR_STRLEN];
+    ngx_str_t addrtext;
+    addrtext.len = ngx_sock_ntop(fetch->sin_.sockaddr, fetch->sin_.socklen, 
+        text, NGX_SOCKADDR_STRLEN, htons(fetcher->proxy_.url.len ? htons(fetcher->proxy_.port) : fetch->url_.port));
+    ngx_log_error(NGX_LOG_DEBUG, fetch->log_, 0,
+                    "NgxFetch %p: Resolved host [%V] to [%V]", fetch,
+                    &resolver_ctx->name, &addrtext);
+    */
+    ((struct sockaddr_in *)sin_.sockaddr)->sin_port = htons(fetcher_->proxy_.url.len ? htons(fetcher_->proxy_.port) : url_.port);
     if (InitRequest() != NGX_OK) {
       message_handler()->Message(kError, "NgxFetch: InitRequest failed");
       return false;
@@ -535,14 +550,14 @@ void NgxFetch::ResolveDoneHandler(ngx_resolver_ctx_t* resolver_ctx) {
   }
 
   ngx_uint_t i;
-  // Find the first ipv4 address. We don't support ipv6 yet.
+  // Find the first ipv4 address. We don't support ipv6 yet in dns results.
   for (i = 0; i < resolver_ctx->naddrs; i++) {
     // Old versions of nginx and tengine have a different definition of addrs,
     // work around to make sure we are using the right type (ngx_addr_t*).
     ngx_addr_t* ngx_addrs = reinterpret_cast<ngx_addr_t*>(resolver_ctx->addrs);
     if (typeid(*ngx_addrs) == typeid(*resolver_ctx->addrs)) {
       if (reinterpret_cast<struct sockaddr_in*>(ngx_addrs[i].sockaddr)
-              ->sin_family == AF_INET) {
+             ->sin_family == AF_INET) {
         break;
       }
     } else {
@@ -566,37 +581,30 @@ void NgxFetch::ResolveDoneHandler(ngx_resolver_ctx_t* resolver_ctx) {
   ngx_memzero(&fetch->sin_, sizeof(fetch->sin_));
 
 #if (nginx_version < 1005008)
+  // TODO(oschaaf): need to test this again, might be broken.
   fetch->sin_.sin_addr.s_addr = resolver_ctx->addrs[i];
 #else
-  struct sockaddr_in* sin;
-
-  sin = reinterpret_cast<struct sockaddr_in*>(
-      resolver_ctx->addrs[i].sockaddr);
-
-  fetch->sin_.sin_family = sin->sin_family;
-  fetch->sin_.sin_addr.s_addr = sin->sin_addr.s_addr;
+  fetch->sin_ = resolver_ctx->addrs[i];
 #endif
 
-  fetch->sin_.sin_family = AF_INET;
-  fetch->sin_.sin_port = htons(fetch->url_.port);
-
   // Maybe we have Proxy
-  if (0 != fetcher->proxy_.url.len) {
-    fetch->sin_.sin_port = htons(fetcher->proxy_.port);
-  }
+  ((struct sockaddr_in *)fetch->sin_.sockaddr)->sin_port = 
+    htons(fetcher->proxy_.url.len ? htons(fetcher->proxy_.port) : fetch->url_.port);
 
-  char* ip_address = inet_ntoa(fetch->sin_.sin_addr);
-
+  u_char text[NGX_SOCKADDR_STRLEN];
+  ngx_str_t addrtext;
+  addrtext.len = ngx_sock_ntop(fetch->sin_.sockaddr, fetch->sin_.socklen, 
+    text, NGX_SOCKADDR_STRLEN, htons(fetcher->proxy_.url.len ? htons(fetcher->proxy_.port) : fetch->url_.port));
+  addrtext.data = text;
   ngx_log_error(NGX_LOG_DEBUG, fetch->log_, 0,
-                "NgxFetch %p: Resolved host [%V] to [%s]", fetch,
-                &resolver_ctx->name, ip_address);
-
-  fetch->release_resolver();
+                "NgxFetch %p: Resolved host [%V] to [%V]", fetch,
+                &resolver_ctx->name, &addrtext);
 
   if (fetch->InitRequest() != NGX_OK) {
     fetch->message_handler()->Message(kError, "NgxFetch: InitRequest failed");
     fetch->CallbackDone(false);
   }
+  fetch->release_resolver();
 }
 
 // Prepare the request data for this fetch, and hook the write event.
@@ -692,8 +700,8 @@ int NgxFetch::InitRequest() {
 int NgxFetch::Connect() {
   ngx_peer_connection_t pc;
   ngx_memzero(&pc, sizeof(pc));
-  pc.sockaddr = (struct sockaddr*)&sin_;
-  pc.socklen = sizeof(struct sockaddr_in);
+  pc.sockaddr =  sin_.sockaddr;
+  pc.socklen = sin_.socklen;
   pc.name = &url_.host;
 
   // get callback is dummy function, it just returns NGX_OK

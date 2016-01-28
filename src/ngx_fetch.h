@@ -191,7 +191,8 @@ class NgxFetch : public PoolElement<NgxFetch> {
   int64 content_length_;
   bool content_length_known_;
 
-  struct sockaddr_in sin_;
+
+  ngx_addr_t sin_;
   ngx_log_t* log_;
   ngx_buf_t* out_;
   ngx_buf_t* in_;
