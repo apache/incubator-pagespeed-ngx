@@ -116,7 +116,7 @@
       'dependencies': [
         'pagespeed_base_core',
         '<(DEPTH)/third_party/jsoncpp/jsoncpp.gyp:jsoncpp',
-        '<(DEPTH)/third_party/serf/openssl.gyp:openssl',
+        '<(DEPTH)/third_party/serf/select_openssl.gyp:select_openssl',
       ],
     },
     {
