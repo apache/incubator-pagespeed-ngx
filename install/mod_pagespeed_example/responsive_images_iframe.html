@@ -1,3 +1,21 @@
-<style>*{margin: 0;padding: 0}</style>
+<style>
+*{margin: 0;padding: 0}
+div{position:absolute};
+</style>
+<div></div>
 <img width="500" height="500"
      src="images/Beach.jpg">
+<script>
+window.setInterval(function() {
+  var img = document.getElementsByTagName("img")[0];
+  var div = document.getElementsByTagName("div")[0];
+  var a = "PageSpeedFilters=responsive_images, resize_images";
+  if (window.devicePixelRatio) {
+    a += "<br>dpr: " + window.devicePixelRatio.toFixed(2) + "x";
+  }
+  if (img.currentSrc) {
+    a += "<br>" + img.currentSrc.replace(/^.*[\/]/, '');
+  }
+  div.innerHTML = a;
+}, 100);
+</script>
