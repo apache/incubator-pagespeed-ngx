@@ -99,6 +99,10 @@ const char UserAgentMatcherTestBase::kCriOS32UserAgent[] =
     "Mozilla/5.0 (iPhone; CPU iPhone OS 7_0_4 like Mac OS X) "
     "AppleWebKit/537.51.1 (KHTML, like Gecko) CriOS/32.0.1700.21 "
     "Mobile/11B554a Safari/9537.53 (A7BED55D-B09E-484F-B2FE-5E4952E9B87E)";
+const char UserAgentMatcherTestBase::kCriOS48UserAgent[] =
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 9_2 like Mac OS X) "
+    "AppleWebKit/601.1 (KHTML, like Gecko) CriOS/48.0.2564.87 "
+    "Mobile/13C75 Safari/601.1.46";
 const char UserAgentMatcherTestBase::kDoCoMoMobileUserAgent[] =
     "DoCoMo/1.0/D505iS/c20/TB/W20H10";
 const char UserAgentMatcherTestBase::kFirefox1UserAgent[] =

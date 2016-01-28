@@ -85,6 +85,12 @@ TEST_F(DevicePropertiesTest, NoWebpForChromeWithoutAcceptHeader) {
   EXPECT_FALSE(device_properties_.SupportsWebpRewrittenUrls());
   EXPECT_FALSE(device_properties_.SupportsWebpLosslessAlpha());
 
+  device_properties_.SetUserAgent(
+      UserAgentMatcherTestBase::kCriOS48UserAgent);
+  EXPECT_FALSE(device_properties_.SupportsWebpInPlace());
+  EXPECT_FALSE(device_properties_.SupportsWebpRewrittenUrls());
+  EXPECT_FALSE(device_properties_.SupportsWebpLosslessAlpha());
+
   // However, Chrome 25 and 37 will get webp due to the accept header.
   RequestHeaders headers;
   headers.Add(HttpAttributes::kAccept, "image/webp");
@@ -100,6 +106,12 @@ TEST_F(DevicePropertiesTest, NoWebpForChromeWithoutAcceptHeader) {
   EXPECT_TRUE(device_properties_.SupportsWebpInPlace());
   EXPECT_TRUE(device_properties_.SupportsWebpRewrittenUrls());
   EXPECT_FALSE(device_properties_.SupportsWebpLosslessAlpha());
+
+  device_properties_.SetUserAgent(
+      UserAgentMatcherTestBase::kCriOS48UserAgent);
+  EXPECT_TRUE(device_properties_.SupportsWebpInPlace());
+  EXPECT_TRUE(device_properties_.SupportsWebpRewrittenUrls());
+  EXPECT_TRUE(device_properties_.SupportsWebpLosslessAlpha());
 }
 
 TEST_F(DevicePropertiesTest, WebpUserAgentIdentificationAccept) {

@@ -616,7 +616,9 @@ bool UserAgentMatcher::IsiOSUserAgent(const StringPiece& user_agent) const {
 }
 
 bool UserAgentMatcher::IsChromeLike(const StringPiece& user_agent) const {
-  return user_agent.find("Chrome/") != StringPiece::npos;
+  return
+      (user_agent.find("Chrome/") != StringPiece::npos) ||
+      (user_agent.find("CriOS/") != StringPiece::npos);
 }
 
 bool UserAgentMatcher::GetChromeBuildNumber(const StringPiece& user_agent,
