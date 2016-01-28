@@ -93,7 +93,7 @@ vars = {
      "@e9b72eaef413335eb054a5982277cb2e42eaead7",
 
   "libpng_src": "https://github.com/glennrp/libpng.git",
-  "libpng_revision": "@2d2fe5e9efbaba6339742807b93a2646aae88475",
+  "libpng_revision": "@a36c4f3f165fb2dd1772603da7f996eb40326621",
 
   # Brotli v0.3.0
   "brotli_src": "https://github.com/google/brotli.git",
