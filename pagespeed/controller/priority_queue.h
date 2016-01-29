@@ -158,7 +158,9 @@ void PriorityQueue<T, Hash, Equal>::Remove(const T& key) {
   index_map_.erase(i);
   delete removed_key;
 
-  Rebalance(removed_pos);
+  if (!Empty() && removed_pos < queue_.size()) {
+    Rebalance(removed_pos);
+  }
 }
 
 template <typename T, typename Hash, typename Equal>

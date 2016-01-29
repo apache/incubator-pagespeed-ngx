@@ -232,6 +232,29 @@ TEST_F(PriorityQueueTest, InterleavedIncrementAndPopWithIncrease) {
   CheckEmpty();
 }
 
+TEST_F(PriorityQueueTest, RemoveOnlyEntry) {
+  Increment("A");
+  CheckSize(1);
+  CheckTopIs("A", 1);
+
+  Remove("A");
+  CheckEmpty();
+}
+
+TEST_F(PriorityQueueTest, RemoveLastEntry) {
+  IncreasePriority("A", 2);
+  IncreasePriority("B", 1);
+  CheckSize(2);
+  CheckTopIs("A", 2);
+
+  Remove("B");
+  CheckSize(1);
+  CheckTopIs("A", 2);
+
+  Pop();
+  CheckEmpty();
+}
+
 TEST_F(PriorityQueueTest, BasicRemove) {
   IncreasePriority("A", 1);
   IncreasePriority("B", 2);
