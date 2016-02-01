@@ -15,7 +15,6 @@
 #include <map>
 #include <utility>
 
-#include "base/logging.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/fast_wildcard_group.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
@@ -118,67 +117,45 @@ const char* kPanelSupportDesktopBlacklist[] = {
 const char* kPanelSupportMobileWhitelist[] = {
   "*AppleWebKit/*",
 };
-// For webp rewriting, we whitelist Android, Chrome and Opera, but blacklist
-// older versions of the browsers and Firefox that are not webp capable.
+
+// Webp support for most devices should be triggered on Accept:image/webp.
+// However we special-case Android 4.0 browsers which are fairly commonly
+// used, support webp, and don't send Accept:image/webp.  Very old versions
+// of Chrome may support webp without Accept:image/webp, but it is safe to
+// ignore them because they are extremely rare.
+//
+// For legacy webp rewriting, we whitelist Android, but blacklist
+// older versions and Firefox, which includes 'Android' in its UA.
 // We do this in 2 stages in order to exclude the following category 1 but
 // include category 2.
 //  1. Firefox on Android does not support WebP, and it has "Android" and
 //     "Firefox" in the user agent.
 //  2. Recent Opera support WebP, and some Opera have both "Opera" and
 //     "Firefox" in the user agent.
-const char* kWebpWhitelistStage1[] = {
+const char* kLegacyWebpWhitelist[] = {
   "*Android *",
 };
-const char* kWebpBlacklistStage1[] = {
+
+
+// Based on https://code.google.com/p/modpagespeed/issues/detail?id=978,
+// Desktop IE11 will start masquerading as Chrome soon, and according to
+// https://groups.google.com/forum/?utm_medium=email&utm_source=footer#!msg/mod-pagespeed-discuss/HYzzdOzJu_k/ftdV8koVgUEJ
+// a browser called Midori might (at some point) masquerade as Chrome as well.
+const char* kLegacyWebpBlacklist[] = {
   "*Android 0.*",
   "*Android 1.*",
   "*Android 2.*",
   "*Android 3.*",
-  "*Firefox/*"
-};
-const char* kWebpWhitelistStage2[] = {
-  "*Chrome/*",
-  "*CriOS/??.*",
-  "*Opera/9.80*Version/??.*",
-  "*Opera???.*",
-  // User agents used only for internal testing.
-  "webp",
-  "webp-la",  // webp with lossless and alpha encoding.
-  "webp-animated",
-};
-const char* kWebpBlacklistStage2[] = {
-  "*Chrome/0.*",
-  "*Chrome/1.*",
-  "*Chrome/2.*",
-  "*Chrome/3.*",
-  "*Chrome/4.*",
-  "*Chrome/5.*",
-  "*Chrome/6.*",
-  "*Chrome/7.*",
-  "*Chrome/8.*",
-  "*Chrome/9.0.*",
-  "*Chrome/14.*",
-  "*Chrome/15.*",
-  "*Chrome/16.*",
-  "*CriOS/1?.*",
-  "*CriOS/20.*",
-  "*CriOS/21.*",
-  "*CriOS/22.*",
-  "*CriOS/23.*",
-  "*CriOS/24.*",
-  "*CriOS/25.*",
-  "*CriOS/26.*",
-  "*CriOS/27.*",
-  "*CriOS/28.*",
-  "*Android *Chrome/1?.*",
-  "*Android *Chrome/20.*",
-  "*Opera/9.80*Version/10.*",
-  "*Opera?10.*",
-  "*Opera/9.80*Version/11.0*",
-  "*Opera?11.0*",
+  "*Firefox/*",
+  "*Edge/*",
+  "*Trident/*",
   "*Windows Phone*",
+  "*Chrome/*",       // Genuine Chrome always sends Accept: webp.
+  "*CriOS/*",        // Paranoia: we should not see Android and CriOS together.
 };
 
+// To determine lossless webp support and animated webp support, we must
+// examine the UA.
 const char* kWebpLosslessAlphaWhitelist[] = {
   "*Chrome/??.*",
   "*Chrome/???.*",
@@ -433,17 +410,11 @@ UserAgentMatcher::UserAgentMatcher()
   }
 
   // Do the same for webp support.
-  for (int i = 0, n = arraysize(kWebpWhitelistStage1); i < n; ++i) {
-    supports_webp_.Allow(kWebpWhitelistStage1[i]);
+  for (int i = 0, n = arraysize(kLegacyWebpWhitelist); i < n; ++i) {
+    legacy_webp_.Allow(kLegacyWebpWhitelist[i]);
   }
-  for (int i = 0, n = arraysize(kWebpBlacklistStage1); i < n; ++i) {
-    supports_webp_.Disallow(kWebpBlacklistStage1[i]);
-  }
-  for (int i = 0, n = arraysize(kWebpWhitelistStage2); i < n; ++i) {
-    supports_webp_.Allow(kWebpWhitelistStage2[i]);
-  }
-  for (int i = 0, n = arraysize(kWebpBlacklistStage2); i < n; ++i) {
-    supports_webp_.Disallow(kWebpBlacklistStage2[i]);
+  for (int i = 0, n = arraysize(kLegacyWebpBlacklist); i < n; ++i) {
+    legacy_webp_.Disallow(kLegacyWebpBlacklist[i]);
   }
   for (int i = 0, n = arraysize(kWebpLosslessAlphaWhitelist); i < n; ++i) {
     supports_webp_lossless_alpha_.Allow(kWebpLosslessAlphaWhitelist[i]);
@@ -584,10 +555,8 @@ bool UserAgentMatcher::SupportsJsDefer(const StringPiece& user_agent,
   return user_agent.empty() || defer_js_whitelist_.Match(user_agent, false);
 }
 
-bool UserAgentMatcher::SupportsWebp(const StringPiece& user_agent) const {
-  // TODO(jmaessen): this is a stub for regression testing purposes.
-  // Put in real detection without treading on fengfei's toes.
-  return supports_webp_.Match(user_agent, false);
+bool UserAgentMatcher::LegacyWebp(const StringPiece& user_agent) const {
+  return legacy_webp_.Match(user_agent, false);
 }
 
 bool UserAgentMatcher::SupportsWebpLosslessAlpha(
@@ -613,12 +582,6 @@ bool UserAgentMatcher::IsAndroidUserAgent(const StringPiece& user_agent) const {
 bool UserAgentMatcher::IsiOSUserAgent(const StringPiece& user_agent) const {
   return user_agent.find("iPhone") != GoogleString::npos ||
       user_agent.find("iPad") != GoogleString::npos;
-}
-
-bool UserAgentMatcher::IsChromeLike(const StringPiece& user_agent) const {
-  return
-      (user_agent.find("Chrome/") != StringPiece::npos) ||
-      (user_agent.find("CriOS/") != StringPiece::npos);
 }
 
 bool UserAgentMatcher::GetChromeBuildNumber(const StringPiece& user_agent,

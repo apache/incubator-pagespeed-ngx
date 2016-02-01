@@ -86,8 +86,6 @@ class DeviceProperties {
   friend class ImageRewriteTest;
   friend class RequestProperties;
 
-  bool PossiblyMasqueradingAsChrome() const;
-
   GoogleString user_agent_;
   GoogleString accept_header_;
   UserAgentMatcher* ua_matcher_;

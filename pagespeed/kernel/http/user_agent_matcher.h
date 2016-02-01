@@ -111,10 +111,10 @@ class UserAgentMatcher {
 
   bool SupportsJsDefer(const StringPiece& user_agent, bool allow_mobile) const;
 
-  // Returns true if the user agent includes a WebP lossy capable sub-string.
-  // If the browser does indeed support WebP, it also needs to send out an
-  // "accept: webp" header.
-  bool SupportsWebp(const StringPiece& user_agent) const;
+  // Returns true if the user agent includes a legacy browser that supports
+  // webp, but does not issue Accept:image/webp.  At the moment, this means
+  // only Android 4.0+ (excluding Firefox).
+  bool LegacyWebp(const StringPiece& user_agent) const;
 
   // Returns true if the user agent includes a string indicating WebP lossy
   // or WebP alpha support. If the browser does indeed support WebP, it also
@@ -135,16 +135,6 @@ class UserAgentMatcher {
 
   virtual bool IsAndroidUserAgent(const StringPiece& user_agent) const;
   virtual bool IsiOSUserAgent(const StringPiece& user_agent) const;
-
-  // Determines based on the user-agent whether the browser claims to be Chrome.
-  // Based on https://code.google.com/p/modpagespeed/issues/detail?id=978,
-  // Desktop IE11 will start masquerading as Chrome soon, and according to
-  // https://groups.google.com/forum/?utm_medium=email&utm_source=footer#!msg/mod-pagespeed-discuss/HYzzdOzJu_k/ftdV8koVgUEJ
-  // a browser called Midori might (at some point) masquerade as Chrome as well.
-  //
-  // This function returns 'true' for real Chrome, and any of these
-  // masquerades.
-  bool IsChromeLike(const StringPiece& user_agent) const;
 
   // Returns false if this is not a Chrome user agent, or parsing the
   // string build number fails.
@@ -175,7 +165,7 @@ class UserAgentMatcher {
   FastWildcardGroup blink_desktop_whitelist_;
   FastWildcardGroup blink_desktop_blacklist_;
   FastWildcardGroup blink_mobile_whitelist_;
-  FastWildcardGroup supports_webp_;
+  FastWildcardGroup legacy_webp_;
   FastWildcardGroup supports_webp_lossless_alpha_;
   FastWildcardGroup supports_webp_animated_;
   FastWildcardGroup supports_prefetch_link_rel_subresource_;

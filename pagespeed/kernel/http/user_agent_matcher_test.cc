@@ -273,78 +273,77 @@ TEST_F(UserAgentMatcherTest, DesktopBotSupportsJsDefer) {
   EXPECT_TRUE(user_agent_matcher_->SupportsJsDefer(kGoogleBotFirefoxUA, true));
 }
 
-TEST_F(UserAgentMatcherTest, SupportsWebp) {
-  EXPECT_TRUE(user_agent_matcher_->SupportsWebp(
-      kTestingWebp));
-  EXPECT_TRUE(user_agent_matcher_->SupportsWebp(
+TEST_F(UserAgentMatcherTest, WebpCapableLackingAcceptHeader) {
+  EXPECT_FALSE(user_agent_matcher_->LegacyWebp(kTestingWebp));
+  EXPECT_FALSE(user_agent_matcher_->LegacyWebp(
       kTestingWebpLosslessAlpha));
 
-  EXPECT_TRUE(user_agent_matcher_->SupportsWebp(
+  EXPECT_TRUE(user_agent_matcher_->LegacyWebp(
       kAndroidICSUserAgent));
-  EXPECT_TRUE(user_agent_matcher_->SupportsWebp(
+  EXPECT_FALSE(user_agent_matcher_->LegacyWebp(
       kChrome12UserAgent));
-  EXPECT_TRUE(user_agent_matcher_->SupportsWebp(
+  EXPECT_FALSE(user_agent_matcher_->LegacyWebp(
       kChrome18UserAgent));
-  EXPECT_TRUE(user_agent_matcher_->SupportsWebp(
+  EXPECT_FALSE(user_agent_matcher_->LegacyWebp(
       kOpera1110UserAgent));
-  EXPECT_TRUE(user_agent_matcher_->SupportsWebp(
+  EXPECT_FALSE(user_agent_matcher_->LegacyWebp(
       kIPadChrome29UserAgent));
-  EXPECT_TRUE(user_agent_matcher_->SupportsWebp(
+  EXPECT_FALSE(user_agent_matcher_->LegacyWebp(
       kIPadChrome36UserAgent));
-  EXPECT_TRUE(user_agent_matcher_->SupportsWebp(
+  EXPECT_FALSE(user_agent_matcher_->LegacyWebp(
       kIPhoneChrome36UserAgent));
-  EXPECT_TRUE(user_agent_matcher_->SupportsWebp(
+  EXPECT_FALSE(user_agent_matcher_->LegacyWebp(
       kOperaWithFirefoxUserAgent));
 }
 
 TEST_F(UserAgentMatcherTest, DoesntSupportWebp) {
   // The most interesting tests here are the recent but slightly older versions
   // of Chrome and Opera that can't display webp.
-  EXPECT_FALSE(user_agent_matcher_->SupportsWebp(
+  EXPECT_FALSE(user_agent_matcher_->LegacyWebp(
       kAndroidHCUserAgent));
-  EXPECT_FALSE(user_agent_matcher_->SupportsWebp(
+  EXPECT_FALSE(user_agent_matcher_->LegacyWebp(
       kChromeUserAgent));
-  EXPECT_FALSE(user_agent_matcher_->SupportsWebp(
+  EXPECT_FALSE(user_agent_matcher_->LegacyWebp(
       kChrome9UserAgent));
-  EXPECT_FALSE(user_agent_matcher_->SupportsWebp(
+  EXPECT_FALSE(user_agent_matcher_->LegacyWebp(
       kChrome15UserAgent));
-  EXPECT_FALSE(user_agent_matcher_->SupportsWebp(
+  EXPECT_FALSE(user_agent_matcher_->LegacyWebp(
       kOpera1101UserAgent));
-  EXPECT_FALSE(user_agent_matcher_->SupportsWebp(
+  EXPECT_FALSE(user_agent_matcher_->LegacyWebp(
       kFirefoxUserAgent));
-  EXPECT_FALSE(user_agent_matcher_->SupportsWebp(
+  EXPECT_FALSE(user_agent_matcher_->LegacyWebp(
       kFirefox1UserAgent));
-  EXPECT_FALSE(user_agent_matcher_->SupportsWebp(
+  EXPECT_FALSE(user_agent_matcher_->LegacyWebp(
       kFirefox42AndroidUserAgent));
-  EXPECT_FALSE(user_agent_matcher_->SupportsWebp(
+  EXPECT_FALSE(user_agent_matcher_->LegacyWebp(
       kIe6UserAgent));
-  EXPECT_FALSE(user_agent_matcher_->SupportsWebp(
+  EXPECT_FALSE(user_agent_matcher_->LegacyWebp(
       kIe7UserAgent));
-  EXPECT_FALSE(user_agent_matcher_->SupportsWebp(
+  EXPECT_FALSE(user_agent_matcher_->LegacyWebp(
       kIe8UserAgent));
-  EXPECT_FALSE(user_agent_matcher_->SupportsWebp(
+  EXPECT_FALSE(user_agent_matcher_->LegacyWebp(
       kIe9UserAgent));
   for (int i = 0; i < kIe11UserAgentsArraySize; ++i) {
-    EXPECT_FALSE(user_agent_matcher_->SupportsWebp(
+    EXPECT_FALSE(user_agent_matcher_->LegacyWebp(
         kIe11UserAgents[i]));
   }
-  EXPECT_FALSE(user_agent_matcher_->SupportsWebp(
+  EXPECT_FALSE(user_agent_matcher_->LegacyWebp(
       kIPhoneUserAgent));
-  EXPECT_FALSE(user_agent_matcher_->SupportsWebp(
+  EXPECT_FALSE(user_agent_matcher_->LegacyWebp(
       kNokiaUserAgent));
-  EXPECT_FALSE(user_agent_matcher_->SupportsWebp(
+  EXPECT_FALSE(user_agent_matcher_->LegacyWebp(
       kOpera5UserAgent));
-  EXPECT_FALSE(user_agent_matcher_->SupportsWebp(
+  EXPECT_FALSE(user_agent_matcher_->LegacyWebp(
       kOpera8UserAgent));
-  EXPECT_FALSE(user_agent_matcher_->SupportsWebp(
+  EXPECT_FALSE(user_agent_matcher_->LegacyWebp(
       kPSPUserAgent));
-  EXPECT_FALSE(user_agent_matcher_->SupportsWebp(
+  EXPECT_FALSE(user_agent_matcher_->LegacyWebp(
       kSafariUserAgent));
-  EXPECT_FALSE(user_agent_matcher_->SupportsWebp(
+  EXPECT_FALSE(user_agent_matcher_->LegacyWebp(
       kIPhoneChrome21UserAgent));
-  EXPECT_FALSE(user_agent_matcher_->SupportsWebp(
+  EXPECT_FALSE(user_agent_matcher_->LegacyWebp(
       kIPadChrome28UserAgent));
-  EXPECT_FALSE(user_agent_matcher_->SupportsWebp(
+  EXPECT_FALSE(user_agent_matcher_->LegacyWebp(
       kWindowsPhoneUserAgent));
 }
 

@@ -130,7 +130,7 @@ TEST_F(ResponsiveImageFilterTest, SimpleWebp) {
   options()->EnableFilter(RewriteOptions::kResizeImages);
   options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
   rewrite_driver()->AddFilters();
-  SetCurrentUserAgent("webp");
+  SetupForWebp();
 
   TestSimple(100, 100, "a.jpg", "10.23", "webp", false);
 }
@@ -151,7 +151,7 @@ TEST_F(ResponsiveImageFilterTest, OddRatio) {
   options()->EnableFilter(RewriteOptions::kResizeImages);
   options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
   rewrite_driver()->AddFilters();
-  SetCurrentUserAgent("webp");
+  SetupForWebp();
 
   // Important, only 2 digits after decimal.
   TestSimple(99, 99, "a.jpg", "10.33", "webp", false);

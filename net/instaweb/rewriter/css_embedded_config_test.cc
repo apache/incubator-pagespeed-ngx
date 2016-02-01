@@ -218,7 +218,7 @@ TEST_F(CssEmbeddedConfigTest, InlineImageToCssSmallTranscode) {
   if (RunningOnValgrind()) {  // Too slow under vg; must call Setup first.
     return;
   }
-  SetCurrentUserAgent("webp");
+  SetupForWebp();
   AddFileToMockFetcher(StrCat(kTestDomain, kPuzzleJpgFile), kPuzzleJpgFile,
                        kContentTypeJpeg, 100);
   GoogleString css_link = RewriteImageInCss(kPuzzleJpgFile);

@@ -609,7 +609,13 @@ function fetch_until() {
   REQUESTURL=$1
   COMMAND=$2
   EXPECTED_RESULT=$3
-  FETCH_UNTIL_WGET_ARGS="$gzip $WGET_ARGS ${4:-}"
+
+  local wget_arg="${4:-}"
+  if [[ "$wget_arg" == --user-agent=webp* ]]; then
+    wget_arg="$wget_arg --header=Accept:image/webp"
+    shift
+  fi
+  FETCH_UNTIL_WGET_ARGS="$gzip $WGET_ARGS $wget_arg"
   OP=${5:-=}  # Default to =
 
   if [ $recursive -eq 1 ]; then

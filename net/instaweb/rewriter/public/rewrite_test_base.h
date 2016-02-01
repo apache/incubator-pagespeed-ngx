@@ -57,6 +57,7 @@
 #include "pagespeed/kernel/html/html_parse_test_base.h"
 #include "pagespeed/kernel/html/html_writer_filter.h"
 #include "pagespeed/kernel/http/content_type.h"
+#include "pagespeed/kernel/http/http_names.h"
 #include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/response_headers.h"
 #include "pagespeed/kernel/http/user_agent_matcher.h"
@@ -776,13 +777,29 @@ class RewriteTestBase : public RewriteOptionsTestBase {
     current_user_agent_ = user_agent;
   }
 
+  // Sets up user-agent and request-header to allow webp processing.
+  void SetupForWebp() {
+    SetCurrentUserAgent("webp");
+    AddRequestAttribute(HttpAttributes::kAccept, "image/webp");
+  }
+
+  void SetupForWebpLossless() {
+    SetCurrentUserAgent("webp-la");
+    AddRequestAttribute(HttpAttributes::kAccept, "image/webp");
+  }
+
+  void SetupForWebpAnimated() {
+    SetCurrentUserAgent("webp-animated");
+    AddRequestAttribute(HttpAttributes::kAccept, "image/webp");
+  }
+
   // Adds an attribute to be populated later into a RequestHeaders* object,
   // along with the user-agent.  Note that these attributes stay in the
   // test-class until ClearRewriteDriver is called.
   void AddRequestAttribute(StringPiece name, StringPiece value);
 
   // Populates a RequestHeaders* object with al
-  void PopulateRequestHeaders(RequestHeaders* requset_headers);
+  void PopulateRequestHeaders(RequestHeaders* request_headers);
 
   // Override HtmlParseTestBaseNoAlloc::ParseUrl to populate the
   // request-headers into rewrite_driver_ before running filters.

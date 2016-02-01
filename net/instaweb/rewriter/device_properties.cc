@@ -141,18 +141,6 @@ bool DeviceProperties::SupportsWebpInPlace() const {
   return (accepts_webp_ == kTrue);
 }
 
-bool DeviceProperties::PossiblyMasqueradingAsChrome() const {
-  // Note that Chrome started sending Accept:image/webp as of v25.
-  //
-  // We will stop sending pre-v25 Chrome webp due to this change.  The
-  // alternative is to use GetChromeBuildNumber, but the risk is that IE 11
-  // will masquerade as an old version of Chrome and so this change won't do
-  // any good.
-  // TODO(jmarantz): Reevaluate the implementation of this method once we
-  // know exactly what the IE11 UA string will be.
-  return ua_matcher_->IsChromeLike(user_agent_) && (accepts_webp_ != kTrue);
-}
-
 // TODO(huibao): Only use "accept: image/webp" header to determine whether and
 // which format of WebP is supported. Currently there are some browsers which
 // have "accept: image/webp" but only support lossy/lossless format, and some
@@ -161,9 +149,7 @@ bool DeviceProperties::PossiblyMasqueradingAsChrome() const {
 // by only checking the "accept" header.
 bool DeviceProperties::SupportsWebpRewrittenUrls() const {
   if (supports_webp_rewritten_urls_ == kNotSet) {
-    if (SupportsWebpInPlace() ||
-        (ua_matcher_->SupportsWebp(user_agent_) &&
-         !PossiblyMasqueradingAsChrome())) {
+    if ((accepts_webp_ == kTrue) || ua_matcher_->LegacyWebp(user_agent_)) {
       supports_webp_rewritten_urls_ = kTrue;
     } else {
       supports_webp_rewritten_urls_ = kFalse;
@@ -174,8 +160,8 @@ bool DeviceProperties::SupportsWebpRewrittenUrls() const {
 
 bool DeviceProperties::SupportsWebpLosslessAlpha() const {
   if (supports_webp_lossless_alpha_ == kNotSet) {
-    if (ua_matcher_->SupportsWebpLosslessAlpha(user_agent_) &&
-        !PossiblyMasqueradingAsChrome()) {
+    if ((accepts_webp_ == kTrue) &&
+        ua_matcher_->SupportsWebpLosslessAlpha(user_agent_)) {
       supports_webp_lossless_alpha_ = kTrue;
     } else {
       supports_webp_lossless_alpha_ = kFalse;
@@ -186,8 +172,8 @@ bool DeviceProperties::SupportsWebpLosslessAlpha() const {
 
 bool DeviceProperties::SupportsWebpAnimated() const {
   if (supports_webp_animated_ == kNotSet) {
-    if (ua_matcher_->SupportsWebpAnimated(user_agent_) &&
-        !PossiblyMasqueradingAsChrome()) {
+    if ((accepts_webp_ == kTrue) &&
+        ua_matcher_->SupportsWebpAnimated(user_agent_)) {
       supports_webp_animated_ = kTrue;
     } else {
       supports_webp_animated_ = kFalse;

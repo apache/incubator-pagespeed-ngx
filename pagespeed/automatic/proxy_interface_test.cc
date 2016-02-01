@@ -3557,6 +3557,7 @@ TEST_F(ProxyInterfaceTest, WebpImageReconstruction) {
   GoogleString text;
   RequestHeaders request_headers;
   request_headers.Replace(HttpAttributes::kUserAgent, "webp");
+  request_headers.Replace(HttpAttributes::kAccept, "image/webp");
 
   const GoogleString kWebpUrl = Encode("", "ic", "0", "1.jpg", "webp");
 
