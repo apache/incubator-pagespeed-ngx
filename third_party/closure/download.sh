@@ -19,15 +19,17 @@
 # requires downloading and unzipping a jar file instead of checking out a
 # svn/git repo. This avoids downloading the compiler every time gclient syncs.
 
-COMPILERDIR=src/tools/closure
-COMPILERZIP=$COMPILERDIR/compiler-latest.zip
+# If the version of the compiler is updated, the closure library verison in DEPS
+# should be updated as well.
+VERSION=20160125
+ZIP=compiler-$VERSION.zip
+DIR=src/tools/closure
+JAR=$DIR/compiler.jar
 
-
-# Download and unzip the compiler if we haven't before, or if it's older than a
-# day.
-if [[ -z $(find $COMPILERDIR -name compiler.jar -ctime -1) ]]
+# Download and unzip the compiler if we haven't before or if it is the wrong
+# verison.
+if [[ ! -e $JAR || -z "$(java -jar $JAR --version | grep $VERSION)" ]]
 then
-  curl https://dl.google.com/closure-compiler/compiler-latest.zip \
-    --create-dirs -o $COMPILERZIP
-  unzip -o  $COMPILERZIP -d $COMPILERDIR
+  curl https://dl.google.com/closure-compiler/$ZIP --create-dirs -o $DIR/$ZIP
+  unzip -o $DIR/$ZIP -d $DIR
 fi

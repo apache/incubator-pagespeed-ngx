@@ -28,9 +28,12 @@
         '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)instaweb_data2c<(EXECUTABLE_SUFFIX)',
     # See comment in instaweb.gyp.
     'include_closure_library':
-        '<!(echo --only_closure_dependencies'
-        '    $(find <(instaweb_root)/third_party/closure_library -name "*.js"'
-        '           | sort | sed "s/^/--js /"))',
+        '<!(echo --dependency_mode=STRICT'
+        '    $(find <(instaweb_root)/third_party/closure_library/closure '
+        '           <(instaweb_root)/third_party/closure_library/third_party '
+        '           -name "*.js"'
+        '           | grep -v _test.js | sort | sed "s/^/--js /"))',
+
   },
   'targets': [
     {
@@ -156,7 +159,7 @@
         'js_dir': 'opt/mobilize',
         'closure_build_type': 'dbg',
         'extra_closure_flags': [
-          '--closure_entry_point=mob',
+          '--entry_point=goog:mob',
           '<@(include_closure_library)',
           '--externs=opt/mobilize/externs.js',
           '--externs=opt/mobilize/externs_wkh.js',
@@ -182,7 +185,7 @@
       'variables': {
         'js_dir': 'opt/mobilize',
         'extra_closure_flags': [
-          '--closure_entry_point=mob',
+          '--entry_point=goog:mob',
           '<@(include_closure_library)',
           '--externs=opt/mobilize/externs.js',
           '--externs=opt/mobilize/externs_wkh.js',
@@ -238,7 +241,7 @@
         'js_dir': 'opt/mobilize',
         'closure_build_type': 'dbg',
         'extra_closure_flags': [
-          '--closure_entry_point=mob.XhrHijack',
+          '--entry_point=goog:mob.XhrHijack',
           '<@(include_closure_library)',
           '--externs=opt/mobilize/externs.js',
         ],
@@ -251,7 +254,7 @@
       'variables': {
         'js_dir': 'opt/mobilize',
         'extra_closure_flags': [
-          '--closure_entry_point=mob.XhrHijack',
+          '--entry_point=goog:mob.XhrHijack',
           '<@(include_closure_library)',
           '--externs=opt/mobilize/externs.js',
         ],

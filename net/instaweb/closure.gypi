@@ -46,16 +46,15 @@
         'inputs': '<(js_includes)',
         'output_file': '<(compiled_js_dir)/<(js_dir)/<(RULE_INPUT_ROOT)_<(closure_build_type).js',
         # TODO(jud): Simplify extra_closure_flags so that only the entry point
-        # needs to be defined. --closure_entry_point and
-        # --only_closure_dependencies are always defined when using a closure
-        # dep, so we can simplify the targets slightly by adding those in here
+        # needs to be defined.
+        # --dependency_mode=STRICT is always defined when using a closure dep,
+        # so we can simplify the targets slightly by adding those in here
         # instead of the targets in instaweb.gyp.
         'closure_flags': [
           '--js', '<(RULE_INPUT_PATH)',
           '--js_output_file', '<(output_file)',
           '--output_wrapper=\'(function(){%output%})();\'',
           '--generate_exports',
-          '--manage_closure_dependencies',
           '--externs=<(DEPTH)/net/instaweb/js/externs.js',
           '--warning_level=VERBOSE',
           '<@(extra_closure_flags)',

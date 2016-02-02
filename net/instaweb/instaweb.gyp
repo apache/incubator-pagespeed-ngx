@@ -25,7 +25,7 @@
 #   dependencies (see the panel_loader targets for an example).
 # * If you made it this far, you have a closure dependency. Add a pair of new
 #   targets (opt and dbg) and specify the required extra_closure_flags
-#   (--closure_entry_point and '<@(include_closure_library)'). Also add
+#   (--entry_point and '<@(include_closure_library)'). Also add
 #   js_includes if you need it (needed if your file uses js_utils.js). See
 #   critical_images_beacon for an example.
 # Then add data2c targets for the dbg and opt builds. No trickery here, these
@@ -53,9 +53,11 @@
     # line client the best you can do is find all the js files that make up the
     # closure library and pass them to the compiler in a deterministic order.
     'include_closure_library':
-        '<!(echo --only_closure_dependencies'
-        '    $(find <(instaweb_root)/third_party/closure_library -name "*.js"'
-        '           | sort | sed "s/^/--js /"))',
+        '<!(echo --dependency_mode=STRICT'
+        '    $(find <(instaweb_root)/third_party/closure_library/closure '
+        '           <(instaweb_root)/third_party/closure_library/third_party '
+        '           -name "*.js"'
+        '           | grep -v _test.js | sort | sed "s/^/--js /"))',
     # Setting chromium_code to 1 turns on extra warnings. Also, if the compiler
     # is whitelisted in our common.gypi, those warnings will get treated as
     # errors.
@@ -123,7 +125,7 @@
         'js_dir': 'system',
         'closure_build_type': 'dbg',
         'extra_closure_flags': [
-          '--closure_entry_point', 'pagespeed.Caches',
+          '--entry_point=goog:pagespeed.Caches',
           '<@(include_closure_library)',
         ],
       },
@@ -135,7 +137,7 @@
       'variables': {
         'js_dir': 'system',
         'extra_closure_flags': [
-          '--closure_entry_point', 'pagespeed.Caches',
+          '--entry_point=goog:pagespeed.Caches',
           '<@(include_closure_library)',
         ],
       },
@@ -151,8 +153,8 @@
         'extra_closure_flags': [
           '--externs=<(DEPTH)/pagespeed/system/js_externs.js',
           '--externs=<(DEPTH)/third_party/closure/externs/google_visualization_api.js',
-          '--closure_entry_point', 'pagespeed.Console',
-          '--closure_entry_point', 'pagespeed.statistics',
+          '--entry_point=goog:pagespeed.Console',
+          '--entry_point=goog:pagespeed.statistics',
           '<@(include_closure_library)',
         ],
       },
@@ -167,8 +169,8 @@
         'extra_closure_flags': [
           '--externs=<(DEPTH)/pagespeed/system/js_externs.js',
           '--externs=<(DEPTH)/third_party/closure/externs/google_visualization_api.js',
-          '--closure_entry_point', 'pagespeed.Console',
-          '--closure_entry_point', 'pagespeed.statistics',
+          '--entry_point=goog:pagespeed.Console',
+          '--entry_point=goog:pagespeed.statistics',
           '<@(include_closure_library)',
         ],
       },
@@ -183,7 +185,7 @@
         'js_dir': 'rewriter',
         'closure_build_type': 'dbg',
         'extra_closure_flags': [
-          '--closure_entry_point=pagespeed.CriticalCssLoader',
+          '--entry_point=goog:pagespeed.CriticalCssLoader',
           '<@(include_closure_library)',
         ],
         'js_includes': [ 'js/js_utils.js' ],
@@ -196,7 +198,7 @@
       'variables': {
         'js_dir': 'rewriter',
         'extra_closure_flags': [
-          '--closure_entry_point=pagespeed.CriticalCssLoader',
+          '--entry_point=goog:pagespeed.CriticalCssLoader',
           '<@(include_closure_library)',
         ],
         'js_includes': [ 'js/js_utils.js' ],
@@ -211,7 +213,7 @@
         'js_dir': 'rewriter',
         'closure_build_type': 'dbg',
         'extra_closure_flags': [
-          '--closure_entry_point=pagespeed.CriticalImages',
+          '--entry_point=goog:pagespeed.CriticalImages',
           '<@(include_closure_library)',
         ],
         'js_includes': [ 'js/js_utils.js' ],
@@ -224,7 +226,7 @@
       'variables': {
         'js_dir': 'rewriter',
         'extra_closure_flags': [
-          '--closure_entry_point=pagespeed.CriticalImages',
+          '--entry_point=goog:pagespeed.CriticalImages',
           '<@(include_closure_library)',
         ],
         'js_includes': [ 'js/js_utils.js' ],
@@ -240,7 +242,7 @@
         'closure_build_type': 'dbg',
         'extra_closure_flags': [
           '--externs=<(DEPTH)/third_party/closure/externs/google_visualization_api.js',
-          '--closure_entry_point=pagespeed.Graphs',
+          '--entry_point=goog:pagespeed.Graphs',
           '<@(include_closure_library)',
         ],
       },
@@ -253,7 +255,7 @@
         'js_dir': 'system',
         'extra_closure_flags': [
           '--externs=<(DEPTH)/third_party/closure/externs/google_visualization_api.js',
-          '--closure_entry_point=pagespeed.Graphs',
+          '--entry_point=goog:pagespeed.Graphs',
           '<@(include_closure_library)',
         ],
       },
@@ -267,7 +269,7 @@
         'js_dir': 'system',
         'closure_build_type': 'dbg',
         'extra_closure_flags': [
-          '--closure_entry_point=pagespeed.Messages',
+          '--entry_point=goog:pagespeed.Messages',
           '<@(include_closure_library)',
         ],
       },
@@ -279,7 +281,7 @@
       'variables': {
         'js_dir': 'system',
         'extra_closure_flags': [
-          '--closure_entry_point=pagespeed.Messages',
+          '--entry_point=goog:pagespeed.Messages',
           '<@(include_closure_library)',
         ],
       },
@@ -293,7 +295,7 @@
         'js_dir': 'system',
         'closure_build_type': 'dbg',
         'extra_closure_flags': [
-          '--closure_entry_point=pagespeed.Statistics',
+          '--entry_point=goog:pagespeed.Statistics',
           '<@(include_closure_library)',
         ],
       },
@@ -305,7 +307,7 @@
       'variables': {
         'js_dir': 'system',
         'extra_closure_flags': [
-          '--closure_entry_point=pagespeed.Statistics',
+          '--entry_point=goog:pagespeed.Statistics',
           '<@(include_closure_library)',
         ],
       },
@@ -339,7 +341,7 @@
         'js_dir': 'rewriter',
         'closure_build_type': 'dbg',
         'extra_closure_flags': [
-          '--closure_entry_point=pagespeed.Responsive',
+          '--entry_point=goog:pagespeed.Responsive',
           '<@(include_closure_library)',
         ],
       },
@@ -352,7 +354,7 @@
       'variables': {
         'js_dir': 'rewriter',
         'extra_closure_flags': [
-          '--closure_entry_point=pagespeed.Responsive',
+          '--entry_point=goog:pagespeed.Responsive',
           '<@(include_closure_library)',
         ],
       },
