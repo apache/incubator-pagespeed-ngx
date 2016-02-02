@@ -75,6 +75,8 @@ class RecordKeyFunction : public Function {
   std::queue<GoogleString>* queue_;
 };
 
+}  // namespace
+
 class PopularityContestScheduleRewriteControllerTest : public testing::Test {
  public:
   PopularityContestScheduleRewriteControllerTest()
@@ -88,7 +90,7 @@ class PopularityContestScheduleRewriteControllerTest : public testing::Test {
  protected:
   void ResetController(int max_rewrites, int max_queue) {
     controller_.reset(new PopularityContestScheduleRewriteController(
-        thread_system_.get(), &stats_, max_rewrites, max_queue));
+        thread_system_.get(), &stats_, &timer_, max_rewrites, max_queue));
   }
 
   // Schedule a rewrite from the Run() method of a Function. Useful for testing
@@ -126,10 +128,37 @@ class PopularityContestScheduleRewriteControllerTest : public testing::Test {
     controller_->ScheduleRewrite(main_key, main_callback);
   }
 
+  void ScheduleRewriteAndAdvanceClock(const GoogleString& key, Function* cb) {
+    controller_->ScheduleRewrite(key, cb);
+    timer_.AdvanceMs(1);
+  }
+
+  void NotifyCompleteAndAdvanceClock(const GoogleString& key) {
+    controller_->NotifyRewriteComplete(key);
+    timer_.AdvanceMs(1);
+  }
+
+  void NotifyFailedAndAdvanceClock(const GoogleString& key) {
+    controller_->NotifyRewriteFailed(key);
+    timer_.AdvanceMs(1);
+  }
+
+  // TODO(cheesy): This is a bridge to avoid changing all call sites for
+  // CheckStats. Consider removing it in a follow-up change.
   void CheckStats(int expected_num_requests, int expected_num_success,
                   int expected_num_failed, int expected_rejected_queue_size,
                   int expected_rejected_in_progress, int expected_queue_size,
                   int expected_running) {
+    CheckStats(expected_num_requests, expected_num_success, expected_num_failed,
+               expected_rejected_queue_size, expected_rejected_in_progress,
+               expected_queue_size, expected_running,
+               -1 /* expected_waiting_retry */);
+  }
+
+  void CheckStats(int expected_num_requests, int expected_num_success,
+                  int expected_num_failed, int expected_rejected_queue_size,
+                  int expected_rejected_in_progress, int expected_queue_size,
+                  int expected_running, int expected_waiting_retry) {
     EXPECT_THAT(
         TimedVariableTotal(
             PopularityContestScheduleRewriteController::kNumRewritesRequested),
@@ -156,6 +185,11 @@ class PopularityContestScheduleRewriteControllerTest : public testing::Test {
         CounterValue(
             PopularityContestScheduleRewriteController::kNumRewritesRunning),
         Eq(expected_running));
+    if (expected_waiting_retry >= 0) {
+      EXPECT_THAT(CounterValue(PopularityContestScheduleRewriteController::
+                                   kNumRewritesAwaitingRetry),
+                  Eq(expected_waiting_retry));
+    }
   }
 
   int64 TimedVariableTotal(const GoogleString& name) {
@@ -166,11 +200,19 @@ class PopularityContestScheduleRewriteControllerTest : public testing::Test {
     return stats_.GetUpDownCounter(name)->Get();
   }
 
+  // Only use this if you absolutely need to resize the controller while it
+  // contains items. Mostly you should be using ResetController instead.
+  void SetMaxQueueSize(int size) {
+    controller_->SetMaxQueueSizeForTesting(size);
+  }
+
   scoped_ptr<ThreadSystem> thread_system_;
   SimpleStats stats_;
   MockTimer timer_;
   scoped_ptr<PopularityContestScheduleRewriteController> controller_;
 };
+
+namespace {
 
 // Verify that a request placed into an empty popularlity contest is run
 // immediately.
@@ -457,7 +499,6 @@ TEST_F(PopularityContestScheduleRewriteControllerTest,
              0 /* already_running */, 1 /* queue_size */, 0 /* running */);
 }
 
-
 // Verify keys are run in order of popularity.
 TEST_F(PopularityContestScheduleRewriteControllerTest, BasicPopularity) {
   ResetController(1 /* max_rewrites */, kMaxQueueLength);
@@ -508,7 +549,7 @@ TEST_F(PopularityContestScheduleRewriteControllerTest, BasicPopularity) {
              0 /* already_running */, 0 /* queue_size */, 0 /* running */);
 }
 
-// Priorities should be presrved for keys that report failure
+// Priorities should be preserved for keys that report failure
 // (NotifyRewriteFailed). Verify that the priority of a key is actually
 // preserved.
 TEST_F(PopularityContestScheduleRewriteControllerTest,
@@ -785,6 +826,202 @@ TEST_F(PopularityContestScheduleRewriteControllerTest,
              1 /* already_running */, 0 /* queue_size */, 0 /* running */);
 }
 
+// Verify that, if the queue is full, a queued retry will be dropped to make
+// room for another rewrite.
+TEST_F(PopularityContestScheduleRewriteControllerTest, OldRetryEviction) {
+  ResetController(1 /* max_rewrites */, 3 /* max_queue_length */);
+
+  // Start running "k1".
+  TrackCallsFunction f1;
+  ScheduleRewriteAndAdvanceClock("k1", &f1);  // k1 => 1 (run).
+  EXPECT_THAT(f1.run_called_, Eq(true));
+  CheckStats(1 /* total */, 0 /* success */, 0 /* fail */, 0 /* queue_full */,
+             0 /* already_running */, 1 /* queue_size */, 1 /* running */,
+             0 /* queued_retries */);
+
+  // Try and run k1 again, to increment the priority.
+  TrackCallsFunction f1a;
+  ScheduleRewriteAndAdvanceClock("k1", &f1a);  // k1 => 2 (run).
+  EXPECT_THAT(f1a.cancel_called_, Eq(true));
+  CheckStats(2 /* total */, 0 /* success */, 0 /* fail */, 0 /* queue_full */,
+             1 /* already_running */, 1 /* queue_size */, 1 /* running */,
+             0 /* queued_retries */);
+
+  // Mark "k1" as failed. This should queue it for retry.
+  NotifyFailedAndAdvanceClock("k1");  // (k1 => 2).
+  CheckStats(2 /* total */, 0 /* success */, 1 /* fail */, 0 /* queue_full */,
+             1 /* already_running */, 1 /* queue_size */, 0 /* running */,
+             1 /* queued_retries */);
+
+  // Start running "k2".
+  TrackCallsFunction f2;
+  ScheduleRewriteAndAdvanceClock("k2", &f2);  // k2 => 1 (run), (k1 => 2).
+  EXPECT_THAT(f2.run_called_, Eq(true));
+  CheckStats(3 /* total */, 0 /* success */, 1 /* fail */, 0 /* queue_full */,
+             1 /* already_running */, 2 /* queue_size */, 1 /* running */,
+             1 /* queued_retries */);
+
+  // Queue "k3".
+  TrackCallsFunction f3;
+  ScheduleRewriteAndAdvanceClock("k3", &f3);  // k2 =>1(run), k3 => 1, (k1 => 2)
+  EXPECT_THAT(f3.run_called_, Eq(false));
+  EXPECT_THAT(f3.cancel_called_, Eq(false));
+  CheckStats(4 /* total */, 0 /* success */, 1 /* fail */, 0 /* queue_full */,
+             1 /* already_running */, 3 /* queue_size */, 1 /* running */,
+             1 /* queued_retries */);
+
+  // Queue "k4". This should push out k1.
+  TrackCallsFunction f4;
+  ScheduleRewriteAndAdvanceClock("k4", &f4);  // k2 => 1(run), k3 => 1, k4 => 1.
+  EXPECT_THAT(f4.run_called_, Eq(false));
+  EXPECT_THAT(f4.cancel_called_, Eq(false));
+  CheckStats(5 /* total */, 0 /* success */, 1 /* fail */, 0 /* queue_full */,
+             1 /* already_running */, 3 /* queue_size */, 1 /* running */,
+             0 /* queued_retries */);
+
+  // Mark k2 as done.
+  NotifyCompleteAndAdvanceClock("k2");  // k3 => 1 (run), k4 => 1.
+  EXPECT_THAT(f3.run_called_, Eq(true));
+  CheckStats(5 /* total */, 1 /* success */, 1 /* fail */, 0 /* queue_full */,
+             1 /* already_running */, 2 /* queue_size */, 1 /* running */,
+             0 /* queued_retries */);
+
+  // Re-add k1. It should be queued with a priority of 1. It would be 3 if it
+  // had not been flushed above.
+  TrackCallsFunction f1b;
+  ScheduleRewriteAndAdvanceClock("k1", &f1b);  // k3 => 1(run), k4 => 1, k1 => 1
+  EXPECT_THAT(f1b.run_called_, Eq(false));
+  EXPECT_THAT(f1b.cancel_called_, Eq(false));
+  CheckStats(6 /* total */, 1 /* success */, 1 /* fail */, 0 /* queue_full */,
+             1 /* already_running */, 3 /* queue_size */, 1 /* running */,
+             0 /* queued_retries */);
+
+  // Mark k3 as having succeeded. k4 (*not* k1) should run.
+  NotifyCompleteAndAdvanceClock("k3");  // k4 => 1 (run), k1 => 1
+  EXPECT_THAT(f4.run_called_, Eq(true));
+  EXPECT_THAT(f1b.run_called_, Eq(false));
+  CheckStats(6 /* total */, 2 /* success */, 1 /* fail */, 0 /* queue_full */,
+             1 /* already_running */, 2 /* queue_size */, 1 /* running */,
+             0 /* queued_retries */);
+
+  // Drain queue.
+  NotifyCompleteAndAdvanceClock("k4");
+  EXPECT_THAT(f1b.run_called_, Eq(true));
+  CheckStats(6 /* total */, 3 /* success */, 1 /* fail */, 0 /* queue_full */,
+             1 /* already_running */, 1 /* queue_size */, 1 /* running */,
+             0 /* queued_retries */);
+
+  NotifyCompleteAndAdvanceClock("k1");
+  CheckStats(6 /* total */, 4 /* success */, 1 /* fail */, 0 /* queue_full */,
+             1 /* already_running */, 0 /* queue_size */, 0 /* running */,
+             0 /* queued_retries */);
+}
+
+// Verify that when the queue fills, queued retries are dropped in order of
+// oldest first, not order of priority.
+TEST_F(PopularityContestScheduleRewriteControllerTest,
+       RetryEvictionAgeBeforePriority) {
+  ResetController(1 /* max_rewrites */, 3 /* max_queue_length */);
+
+  // Start running "k1".
+  TrackCallsFunction f1;
+  ScheduleRewriteAndAdvanceClock("k1", &f1);  // k1 => 1 (run).
+  EXPECT_THAT(f1.run_called_, Eq(true));
+  CheckStats(1 /* total */, 0 /* success */, 0 /* fail */, 0 /* queue_full */,
+             0 /* already_running */, 1 /* queue_size */, 1 /* running */,
+             0 /* queued_retries */);
+
+  // Try and run k1 again, to increment the priority.
+  TrackCallsFunction f1a;
+  ScheduleRewriteAndAdvanceClock("k1", &f1a);  // k1 => 2 (run).
+  EXPECT_THAT(f1a.cancel_called_, Eq(true));
+  CheckStats(2 /* total */, 0 /* success */, 0 /* fail */, 0 /* queue_full */,
+             1 /* already_running */, 1 /* queue_size */, 1 /* running */,
+             0 /* queued_retries */);
+
+  // Mark "k1" as failed. This should queue it for retry.
+  NotifyFailedAndAdvanceClock("k1");  // (k1 => 2).
+  CheckStats(2 /* total */, 0 /* success */, 1 /* fail */, 0 /* queue_full */,
+             1 /* already_running */, 1 /* queue_size */, 0 /* running */,
+             1 /* queued_retries */);
+
+  // Start running "k2".
+  TrackCallsFunction f2;
+  ScheduleRewriteAndAdvanceClock("k2", &f2);  // k2 => 1, (k1 => 2).
+  EXPECT_THAT(f2.run_called_, Eq(true));
+  CheckStats(3 /* total */, 0 /* success */, 1 /* fail */, 0 /* queue_full */,
+             1 /* already_running */, 2 /* queue_size */, 1 /* running */,
+             1 /* queued_retries */);
+
+  // Mark "k2" as failed. This should queue it for retry, too.
+  NotifyFailedAndAdvanceClock("k2");  // (k1 => 2), (k2 => 1).
+  CheckStats(3 /* total */, 0 /* success */, 2 /* fail */, 0 /* queue_full */,
+             1 /* already_running */, 2 /* queue_size */, 0 /* running */,
+             2 /* queued_retries */);
+
+  // Start running k3. The queue is now full.
+  TrackCallsFunction f3;
+  ScheduleRewriteAndAdvanceClock("k3", &f3);  // k3=>1 (run), (k1=>2), (k2=>1).
+  EXPECT_THAT(f3.run_called_, Eq(true));
+  CheckStats(4 /* total */, 0 /* success */, 2 /* fail */, 0 /* queue_full */,
+             1 /* already_running */, 3 /* queue_size */, 1 /* running */,
+             2 /* queued_retries */);
+
+  // Queue k4. This should push out k1.
+  TrackCallsFunction f4;
+  ScheduleRewriteAndAdvanceClock("k4", &f4);  // k3=>1(run), k4=1, (k2=>1).
+  EXPECT_THAT(f4.run_called_, Eq(false));
+  EXPECT_THAT(f4.cancel_called_, Eq(false));
+  CheckStats(5 /* total */, 0 /* success */, 2 /* fail */, 0 /* queue_full */,
+             1 /* already_running */, 3 /* queue_size */, 1 /* running */,
+             1 /* queued_retries */);
+
+  // Mark k3 done. This should start k4.
+  NotifyCompleteAndAdvanceClock("k3");  // k4=1 (run), (k2=>1).
+  EXPECT_THAT(f4.run_called_, Eq(true));
+  CheckStats(5 /* total */, 1 /* success */, 2 /* fail */, 0 /* queue_full */,
+             1 /* already_running */, 2 /* queue_size */, 1 /* running */,
+             1 /* queued_retries */);
+
+  // Now we enqueue k1 and k2 again.
+  TrackCallsFunction f1b;
+  ScheduleRewriteAndAdvanceClock("k1", &f1b);  // k4=1 (run), k1 => 1, (k2=>1).
+  EXPECT_THAT(f1b.run_called_, Eq(false));
+  EXPECT_THAT(f1b.cancel_called_, Eq(false));
+  CheckStats(6 /* total */, 1 /* success */, 2 /* fail */, 0 /* queue_full */,
+             1 /* already_running */, 3 /* queue_size */, 1 /* running */,
+             1 /* queued_retries */);
+
+  TrackCallsFunction f2a;
+  ScheduleRewriteAndAdvanceClock("k2", &f2a);  // k4=1 (run), k2 => 2, k1 => 1.
+  EXPECT_THAT(f2a.run_called_, Eq(false));
+  EXPECT_THAT(f2a.cancel_called_, Eq(false));
+  CheckStats(7 /* total */, 1 /* success */, 2 /* fail */, 0 /* queue_full */,
+             1 /* already_running */, 3 /* queue_size */, 1 /* running */,
+             0 /* queued_retries */);
+
+  // Now, mark k4 as done. k2 should be executed because it had a saved value
+  // of 2. If k1 was not ejected, it would be run now instead.
+  NotifyCompleteAndAdvanceClock("k4");  // k2 => 2 (run), k1 => 1.
+  EXPECT_THAT(f1b.run_called_, Eq(false));
+  EXPECT_THAT(f2a.run_called_, Eq(true));
+  CheckStats(7 /* total */, 2 /* success */, 2 /* fail */, 0 /* queue_full */,
+             1 /* already_running */, 2 /* queue_size */, 1 /* running */,
+             0 /* queued_retries */);
+
+  // Drain queue.
+  NotifyCompleteAndAdvanceClock("k2");  // k1 => 1 (run).
+  EXPECT_THAT(f1b.run_called_, Eq(true));
+  CheckStats(7 /* total */, 3 /* success */, 2 /* fail */, 0 /* queue_full */,
+             1 /* already_running */, 1 /* queue_size */, 1 /* running */,
+             0 /* queued_retries */);
+
+  NotifyCompleteAndAdvanceClock("k1");
+  CheckStats(7 /* total */, 4 /* success */, 2 /* fail */, 0 /* queue_full */,
+             1 /* already_running */, 0 /* queue_size */, 0 /* running */,
+             0 /* queued_retries */);
+}
+
 // Verify the two queue bounds (max running, max queued).
 TEST_F(PopularityContestScheduleRewriteControllerTest, QueueFills) {
   // The test is agnostic to the values of kMaxRewrites and kMaxQueueLength, but
@@ -875,6 +1112,150 @@ TEST_F(PopularityContestScheduleRewriteControllerTest, QueueFullReentrancy) {
   controller_->NotifyRewriteComplete("key1");
   CheckStats(3 /* total */, 1 /* success */, 0 /* fail */, 2 /* queue_full */,
              0 /* already_running */, 0 /* queue_size */, 0 /* running */);
+}
+
+// Run a series of rewrites to verify that the secondary queue for expired
+// rewrites functions as expected. This test puts a number of failures into
+// the retry queue and then pushes them out one by one. It is an exercise of
+// the retry queue but also verifies that the retry queue prioritises time
+// enqueued over priority.
+TEST_F(PopularityContestScheduleRewriteControllerTest, OldRetryTortureTest) {
+  const int kNumFailuresToTest = 100;
+  const int kQueueSize = kNumFailuresToTest + 1;
+  ResetController(1 /* max_rewrites */, kQueueSize);
+
+  // Preload a failure for "0" so it winds up with a priority of 2, not 1.
+  {
+    TrackCallsFunction f;
+    ScheduleRewriteAndAdvanceClock("0", &f);
+    EXPECT_THAT(f.run_called_, Eq(true));
+    NotifyFailedAndAdvanceClock("0");
+  }
+
+  CheckStats(1 /* total */, 0 /* success */, 1 /* fail */, 0 /* queue_full */,
+             0 /* already_running */, 1 /* queue_size */, 0 /* running */,
+             1 /* queued_retries */);
+
+  std::queue<GoogleString> active_rewrites;
+  int cumulative_successes = 0;
+  int cumulative_failures = 1;
+  for (int i = 0; i < kNumFailuresToTest; ++i) {
+    // We want to engineer it so that there is a queued rewrite for key "i"
+    // with has a higher priority than all the other keys, but is first to be
+    // removed from the queue due to age. The previous iteration (or bootstrap)
+    // incremented the priority of the queued retry key for "i", which will have
+    // brought it to the top. So, now we engineer a failure for all keys, in
+    // order. This makes sure that "i" was touched the longest ago, which should
+    // put it first in line to be dropped.
+    for (int j = i; j < kNumFailuresToTest; ++j) {
+      const GoogleString key = IntegerToString(j);
+      TrackCallsFunction f;
+      ScheduleRewriteAndAdvanceClock(key, &f);
+      NotifyFailedAndAdvanceClock(key);
+      ++cumulative_failures;
+    }
+
+    CheckStats(
+        1 + i * (kNumFailuresToTest + 3) + kNumFailuresToTest /* total */,
+        cumulative_successes /* success */,
+        cumulative_failures /* fail */, 0 /* queue_full */,
+        0 /* already_running */, kNumFailuresToTest - i /* queue_size */,
+        0 /* running */, kNumFailuresToTest - i /* queued_retries */);
+
+    // Plug up the head of the queue.
+    const GoogleString queue_block_key("block");
+    TrackCallsFunction queue_block_callback;
+    ScheduleRewriteAndAdvanceClock(queue_block_key, &queue_block_callback);
+
+    // Schedule something that should already exist in the retry queue.
+    const GoogleString hi_priority_key(IntegerToString(i + 1));
+    TrackCallsFunction hi_priority_callback;
+    ScheduleRewriteAndAdvanceClock(hi_priority_key, &hi_priority_callback);
+    EXPECT_THAT(hi_priority_callback.run_called_, Eq(false));
+    EXPECT_THAT(hi_priority_callback.cancel_called_, Eq(false));
+
+    // We know that there are kNumFailuresToTest - i queued retries right now.
+    // We want to queue just enough rewrites to push out i, but not i + 1.
+    // This value is clamped, otherwise the terminal case will over-fill the
+    // queue.
+    int num_dummies_to_insert = std::min(i + 1, kNumFailuresToTest - 1);
+    for (int j = 0; j < num_dummies_to_insert; ++j) {
+      const GoogleString key("dummy-" + IntegerToString(j));
+      ScheduleRewriteAndAdvanceClock(
+          key, new RecordKeyFunction(key, &active_rewrites));
+    }
+
+    // Verify that the queue is actually full (queue_size == kQueueSize).
+    CheckStats(3 + i * (kNumFailuresToTest + 3) + kNumFailuresToTest +
+                   num_dummies_to_insert /* total */,
+               cumulative_successes /* success */,
+               cumulative_failures /* fail */, 0 /* queue_full */,
+               0 /* already_running */, kQueueSize /* queue_size */,
+               1 /* running */,
+               kNumFailuresToTest - i - 2 /* queued_retries */);
+
+    // Now that we have pushed key "i" out from the retry queue, we need to
+    // re-insert it into the main queue. Unfortunately, we pushed "i" out by
+    // filling the queue, so we can no longer insert it. We also can't remove
+    // one of the dummy entries, because that is not supported by the popularity
+    // contest API. So, we cheat and temporarily raise the limit of the queue.
+    SetMaxQueueSize(kQueueSize + 1);
+
+    const GoogleString i_as_string(IntegerToString(i));
+    ScheduleRewriteAndAdvanceClock(
+        i_as_string, new RecordKeyFunction(i_as_string, &active_rewrites));
+
+    // Mark the head entry as complete. This will now run the highest priority
+    // entry. That should be the one for i + 1 (hi_priority) and not the one
+    // for i.
+    NotifyCompleteAndAdvanceClock(queue_block_key);
+    ++cumulative_successes;
+    ASSERT_THAT(hi_priority_callback.run_called_, Eq(true));
+    EXPECT_THAT(active_rewrites, IsEmpty());
+
+    // Restore size back to normal.
+    SetMaxQueueSize(kQueueSize);
+
+    CheckStats(4 + i * (kNumFailuresToTest + 3) + kNumFailuresToTest +
+                   num_dummies_to_insert /* total */,
+               cumulative_successes /* success */,
+               cumulative_failures /* fail */, 0 /* queue_full */,
+               0 /* already_running */, kQueueSize /* queue_size */,
+               1 /* running */,
+               kNumFailuresToTest - i - 2 /* queued_retries */);
+
+    // This results in a queued retry with an incremented priority.
+    NotifyFailedAndAdvanceClock(hi_priority_key);
+    ++cumulative_failures;
+
+    // Run all the outstanding rewrites, making sure that we did actually
+    // run the one for "i".
+    bool saw_rewrite_for_i = false;
+    for (int j = 0; j < num_dummies_to_insert + 1; ++j) {
+      ASSERT_THAT(active_rewrites.size(), Gt(0));
+      const GoogleString& front = active_rewrites.front();
+      if (front == i_as_string) {
+        saw_rewrite_for_i = true;
+      }
+      NotifyCompleteAndAdvanceClock(front);
+      active_rewrites.pop();
+      ++cumulative_successes;
+    }
+
+    EXPECT_THAT(saw_rewrite_for_i, Eq(true));
+    ASSERT_THAT(active_rewrites, IsEmpty());
+
+    // This never hits zero because we always fail the i'th value.
+    int expected_queued_items =
+        (i == kNumFailuresToTest - 1) ? 1 : kNumFailuresToTest - i - 1;
+    CheckStats(4 + i * (kNumFailuresToTest + 3) + kNumFailuresToTest +
+                   num_dummies_to_insert /* total */,
+               cumulative_successes /* success */,
+               cumulative_failures /* fail */, 0 /* queue_full */,
+               0 /* already_running */,
+               expected_queued_items /* queue_size */, 0 /* running */,
+               expected_queued_items /* queued_retries */);
+  }
 }
 
 }  // namespace

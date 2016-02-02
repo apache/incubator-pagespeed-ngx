@@ -25,6 +25,7 @@
 #include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/thread_system.h"
 
@@ -36,37 +37,39 @@
 // Every request is tracked in a Rewrite object, the lifetime of which is
 // described by the following state digram:
 //
-//        begin
-//          |
-//    +-----v-----+
-//    |           | Queue full
-// +-->  STOPPED  +-----------> delete
-// |  |           |
-// |  +-----+-----+
-// |        |
-// | ScheduleRewrite()
-// |        |    +----+
-// |        |    |    | ScheduleRewrite()
-// |  +-----v----+-+  | (increments priority
-// |  |            |  |  discards old request)
-// |  |   QUEUED   <--+
-// |  |            |
-// |  +-----+------+
-// |        |
-// |     Pop Queue
-// | (when most requested)
-// |        |
-// |        |   +-----+
-// |        |   |     | ScheduleRewrite()
-// |  +-----v---+-+   | (increments priority
-// |  |           |   |  rejects new request)
-// |  |  RUNNING  <---+
-// |  |           |
-// |  +--+----+---+
-// |     |    |
-// +-----+    +-------> delete
-//  Notify     Notify
-//  Failure()  Success()
+//      begin
+//        |
+//  +-----v-----+
+//  |           | Queue full
+//  |  STOPPED  +-----------> delete <---------+
+//  |           |                              |
+//  +-----+-----+                              |
+//        |                                    |
+// ScheduleRewrite()                           | Other Rewrite needs
+//        |    +----+                          | slot in queue and
+//        |    |    | ScheduleRewrite()        | this is oldest rewrite
+//  +-----v----+-+  | (increments priority     | in AWAITING_RETRY.
+//  |            <--+  discards old request)   |
+//  |   QUEUED   |                             |
+//  |            <--+    ScheduleRewrite()  +--+-------+
+//  +-----+------+  |  (increments priority)|          |
+//        |         +-----------------------+ AWAITING |
+//     Pop Queue                            |  RETRY   |
+// (when most requested)                    |          |
+//        |                                 +----^-----+
+//        |   +-----+                            |
+//        |   |     | ScheduleRewrite()          |
+//  +-----v---+-+   | (increments priority       |
+//  |           |   |  rejects new request)      |
+//  |  RUNNING  <---+                            |
+//  |           |                                |
+//  +--+----+---+                                |
+//     |    |                                    |
+//     |    +------------------------------------+
+//     |           NotifyFailure()
+//     |
+//     +-----------------------------> delete
+//                 NotifySuccess()
 
 namespace net_instaweb {
 
@@ -80,12 +83,14 @@ class PopularityContestScheduleRewriteController
   static const char kNumRewritesRejectedInProgress[];
   static const char kRewriteQueueSize[];
   static const char kNumRewritesRunning[];
+  static const char kNumRewritesAwaitingRetry[];
 
   // max_running_rewrites and max_queued_rewrites are CHECKed to be > 0.
   // Since max_running_rewrites is implicity bounded by the queue size,
   // you probably want queued >= running, but this isn't enforced by the code.
   PopularityContestScheduleRewriteController(ThreadSystem* thread_system,
                                              Statistics* statistics,
+                                             Timer* timer,
                                              int max_running_rewrites,
                                              int max_queued_rewrites);
   virtual ~PopularityContestScheduleRewriteController();
@@ -102,6 +107,7 @@ class PopularityContestScheduleRewriteController
     STOPPED,
     QUEUED,
     RUNNING,
+    AWAITING_RETRY,
   };
 
   struct Rewrite {
@@ -144,6 +150,14 @@ class PopularityContestScheduleRewriteController
   // Stop the supplied rewrite. Undoes the bookkeeping from Start.
   void StopRewrite(Rewrite* rewrite) EXCLUSIVE_LOCKS_REQUIRED(mutex_);
 
+  // Save the Rewrite so it may be retried later. The Rewrite may later be
+  // discarded if the queue fills up.
+  void SaveRewriteForRetry(Rewrite* rewrite) EXCLUSIVE_LOCKS_REQUIRED(mutex_);
+
+  // If there are no remaining slots in the queue, will drop the oldest Rewrite
+  // on the retry queue.
+  void ConsiderDroppingRetry() EXCLUSIVE_LOCKS_REQUIRED(mutex_);
+
   // Retrieve or create a Rewrite by key from all_rewrites_. The return value
   // is protected by mutex_ which should remain held until you are done with
   // the Rewrite.
@@ -152,6 +166,9 @@ class PopularityContestScheduleRewriteController
   // delete a Rewrite and remove it from all_rewrites_.
   void DeleteRewrite(const Rewrite* rewrite) EXCLUSIVE_LOCKS_REQUIRED(mutex_);
 
+  // Re-assign max_queued_rewrites. For use only in tests.
+  void SetMaxQueueSizeForTesting(int size) LOCKS_EXCLUDED(mutex_);
+
   scoped_ptr<AbstractMutex> mutex_;
   // All known rewrites, indexed by Rewrite->key. Key pointers are all owned
   // by their respective Rewrite.
@@ -159,9 +176,16 @@ class PopularityContestScheduleRewriteController
   // No additional templates required on queue_; it uses pointer hash/eq.
   PriorityQueue<Rewrite*> queue_ GUARDED_BY(mutex_);
 
+  // The retry queue is ordered by negative time last seen. This allows us to
+  // quickly discard the oldest items, if we need to.
+  PriorityQueue<Rewrite*> retry_queue_ GUARDED_BY(mutex_);
+
+  Timer* timer_;
+
   int running_rewrites_ GUARDED_BY(mutex_);
   const int max_running_rewrites_;
-  const int max_queued_rewrites_;
+  // max_queued_rewrites_ can't be const because of SetMaxQueueSizeForTesting.
+  int max_queued_rewrites_ GUARDED_BY(mutex_);
 
   TimedVariable* num_rewrite_requests_;
   TimedVariable* num_rewrites_succeeded_;
@@ -170,6 +194,9 @@ class PopularityContestScheduleRewriteController
   TimedVariable* num_rewrites_rejected_in_progress_;
   UpDownCounter* queue_size_;
   UpDownCounter* num_rewrites_running_;
+  UpDownCounter* num_rewrites_awaiting_retry_;
+
+  friend class PopularityContestScheduleRewriteControllerTest;
 
   DISALLOW_COPY_AND_ASSIGN(PopularityContestScheduleRewriteController);
 };

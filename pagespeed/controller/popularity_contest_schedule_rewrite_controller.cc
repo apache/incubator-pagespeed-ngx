@@ -45,6 +45,9 @@ const char PopularityContestScheduleRewriteController::kRewriteQueueSize[] =
     "popularity-contest-queue-size";
 const char PopularityContestScheduleRewriteController::kNumRewritesRunning[] =
     "popularity-contest-num-rewrites-running";
+const char
+    PopularityContestScheduleRewriteController::kNumRewritesAwaitingRetry[] =
+        "popularity-contest-num-rewrites-awaiting-retry";
 
 namespace {
 
@@ -54,10 +57,11 @@ const char kStatisticsGroup[] = "Statistics";
 
 PopularityContestScheduleRewriteController::
     PopularityContestScheduleRewriteController(ThreadSystem* thread_system,
-                                               Statistics* stats,
+                                               Statistics* stats, Timer* timer,
                                                int max_running_rewrites,
                                                int max_queued_rewrites)
     : mutex_(thread_system->NewMutex()),
+      timer_(timer),
       running_rewrites_(0),
       max_running_rewrites_(max_running_rewrites),
       max_queued_rewrites_(max_queued_rewrites),
@@ -69,7 +73,9 @@ PopularityContestScheduleRewriteController::
       num_rewrites_rejected_in_progress_(
           stats->GetTimedVariable(kNumRewritesRejectedInProgress)),
       queue_size_(stats->GetUpDownCounter(kRewriteQueueSize)),
-      num_rewrites_running_(stats->GetUpDownCounter(kNumRewritesRunning)) {
+      num_rewrites_running_(stats->GetUpDownCounter(kNumRewritesRunning)),
+      num_rewrites_awaiting_retry_(
+          stats->GetUpDownCounter(kNumRewritesAwaitingRetry)) {
   // Technically the code should work with these *at* zero, but then what's the
   // point?
   CHECK_GT(max_running_rewrites_, 0);
@@ -84,6 +90,7 @@ void PopularityContestScheduleRewriteController::InitStats(Statistics* stats) {
   stats->AddTimedVariable(kNumRewritesRejectedInProgress, kStatisticsGroup);
   stats->AddUpDownCounter(kRewriteQueueSize);
   stats->AddUpDownCounter(kNumRewritesRunning);
+  stats->AddUpDownCounter(kNumRewritesAwaitingRetry);
 }
 
 PopularityContestScheduleRewriteController::
@@ -93,11 +100,11 @@ PopularityContestScheduleRewriteController::
   // workers dying before the supervisor process. I'd like to keep an eye on
   // that, so leaving this here.
   DCHECK(queue_.Empty());
-  // Even if queue_ is empty, we may still have leftover STOPPED rewrites which
-  // must be freed.
+  // Even if queue_ is empty, we may still have leftover AWAITING_RETRY rewrites
+  // which must be freed.
   for (const auto& key_and_rewrite : all_rewrites_) {
     Rewrite* rewrite = key_and_rewrite.second;
-    // This should always be true for STOPPED rewrites.
+    // This should always be true for AWAITING_RETRY rewrites.
     DCHECK(rewrite->callback == nullptr);
     if (rewrite->callback != nullptr) {
       // This might be scary if the client has already quit. The only other
@@ -144,11 +151,13 @@ void PopularityContestScheduleRewriteController::ScheduleRewrite(
   }
 
   int priority = 1;
-  if (rewrite->state == STOPPED) {
+  if (rewrite->state == AWAITING_RETRY) {
     // saved_priority is what was left over from the previous failed attempt. It
     // may be zero.
     priority += rewrite->saved_priority;
     rewrite->saved_priority = 0;
+    retry_queue_.Remove(rewrite);
+    num_rewrites_awaiting_retry_->Add(-1);
   }
   rewrite->state = QUEUED;
   rewrite->callback = callback;
@@ -198,6 +207,7 @@ void PopularityContestScheduleRewriteController::NotifyRewriteFailed(
   // Mark the rewrite as stopped but don't delete it. This ensures
   // saved_priority will be set on subsequent retries.
   StopRewrite(rewrite);
+  SaveRewriteForRetry(rewrite);
   Function* run_callback = AttemptStartRewrite();
 
   lock.Release();
@@ -244,6 +254,17 @@ void PopularityContestScheduleRewriteController::StopRewrite(
   num_rewrites_running_->Add(-1);
 }
 
+void PopularityContestScheduleRewriteController::SaveRewriteForRetry(
+    Rewrite* rewrite) {
+  DCHECK_EQ(rewrite->state, STOPPED);
+  rewrite->state = AWAITING_RETRY;
+  // Insert the item into retry_queue_ with a priority of "negative now".
+  // This will cause the queue to be ordered by "oldest first".
+  int64 priority = -timer_->NowMs();
+  retry_queue_.IncreasePriority(rewrite, priority);
+  num_rewrites_awaiting_retry_->Add(1);
+}
+
 void PopularityContestScheduleRewriteController::DeleteRewrite(
     const Rewrite* rewrite) {
   RewriteMap::iterator i = all_rewrites_.find(&rewrite->key);
@@ -266,6 +287,7 @@ PopularityContestScheduleRewriteController::GetRewrite(
   RewriteMap::iterator i = all_rewrites_.find(&key);
   if (i == all_rewrites_.end()) {
     // This rewrite isn't already queued. Do we have an available queue slot?
+    ConsiderDroppingRetry();
     if (all_rewrites_.size() >= static_cast<size_t>(max_queued_rewrites_)) {
       return nullptr;
     }
@@ -278,6 +300,25 @@ PopularityContestScheduleRewriteController::GetRewrite(
     i = insert_result.first;
   }
   return i->second;
+}
+
+void PopularityContestScheduleRewriteController::ConsiderDroppingRetry() {
+  // Pop rewrites out of the retry_queue_ until either the retry queue is empty
+  // or there is an available rewrite slot.
+  while (all_rewrites_.size() >= static_cast<size_t>(max_queued_rewrites_) &&
+         !retry_queue_.Empty()) {
+    Rewrite* rewrite = *retry_queue_.Top().first;
+    retry_queue_.Pop();
+    num_rewrites_awaiting_retry_->Add(-1);
+    rewrite->state = STOPPED;
+    DeleteRewrite(rewrite);
+  }
+}
+
+void PopularityContestScheduleRewriteController::SetMaxQueueSizeForTesting(
+    int size) {
+  ScopedMutex lock(mutex_.get());
+  max_queued_rewrites_ = size;
 }
 
 }  // namespace net_instaweb
