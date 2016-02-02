@@ -40,7 +40,7 @@ class PriorityQueue {
 
   // Increase the priority of "key" by amount. If key is not already present,
   // it will be inserted at priority amount. amount may be negative.
-  void IncreasePriority(const T& key, int amount);
+  void IncreasePriority(const T& key, int64 amount);
 
   // Eqivalent to IncreasePriority(key, 1).
   void Increment(const T& key);
@@ -49,7 +49,7 @@ class PriorityQueue {
   void Remove(const T& key);
 
   // Return the key with the highest priority, and its priority.
-  const std::pair<const T*, int>& Top() const;
+  const std::pair<const T*, int64>& Top() const;
 
   // Remove the key with the highest priority from the queue.
   void Pop();
@@ -95,7 +95,7 @@ class PriorityQueue {
 
   // The actual max-heap. Stores the value so that it can look it back up in
   // index. queue_ is considered to own this pointer.
-  typedef std::pair<const T*, int> QueueEntry;
+  typedef std::pair<const T*, int64> QueueEntry;
   std::vector<QueueEntry> queue_;
 
   friend class PriorityQueueTest;
@@ -119,7 +119,7 @@ void PriorityQueue<T, Hash, Equal>::Increment(const T& key) {
 
 template <typename T, typename Hash, typename Equal>
 void PriorityQueue<T, Hash, Equal>::IncreasePriority(const T& key,
-                                                     int amount) {
+                                                     int64 amount) {
   typename IndexMap::iterator i = index_map_.find(&key);
   // Is key already stored?
   if (i == index_map_.end()) {
@@ -179,7 +179,7 @@ void PriorityQueue<T, Hash, Equal>::Rebalance(size_t pos) {
 }
 
 template <typename T, typename Hash, typename Equal>
-const std::pair<const T*, int>& PriorityQueue<T, Hash, Equal>::Top() const {
+const std::pair<const T*, int64>& PriorityQueue<T, Hash, Equal>::Top() const {
   CHECK(!Empty());
   return queue_.front();
 }

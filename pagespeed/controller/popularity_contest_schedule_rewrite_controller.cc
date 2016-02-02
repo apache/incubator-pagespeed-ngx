@@ -210,7 +210,7 @@ Function* PopularityContestScheduleRewriteController::AttemptStartRewrite() {
   if (running_rewrites_ >= max_running_rewrites_ || queue_.Empty()) {
     return nullptr;
   }
-  const std::pair<Rewrite* const*, int>& queue_top = queue_.Top();
+  const std::pair<Rewrite* const*, int64>& queue_top = queue_.Top();
   Rewrite* rewrite = *queue_top.first;
   rewrite->saved_priority = queue_top.second;
   DCHECK_EQ(rewrite->state, QUEUED);
