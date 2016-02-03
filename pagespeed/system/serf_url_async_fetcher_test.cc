@@ -652,6 +652,13 @@ TEST_F(SerfUrlAsyncFetcherTest, TestHttpsWithExplicitHost) {
   ExpectHttpsSucceeds(index);
 }
 
+TEST_F(SerfUrlAsyncFetcherTest, TestHttpsFailsWithIncorrectHost) {
+  serf_url_async_fetcher_->SetHttpsOptions("enable");
+  int index = AddTestUrl("https://www.google.com", "");
+  request_headers(index)->Add(HttpAttributes::kHost, "www.example.com");
+  TestHttpsFails(index, index);
+}
+
 TEST_F(SerfUrlAsyncFetcherTest, TestHttpsWithExplicitHostPort) {
   // Similar to above, but just throw in an explicit port number;
   // if it doesn't get properly dropped from the SNI Apache will

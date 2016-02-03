@@ -330,10 +330,10 @@ class SerfFetch : public PoolElement<SerfFetch> {
   // Note this must be ifdef'd because calling serf_bucket_ssl_decrypt_create
   // requires ssl_buckets.c in the link.  ssl_buckets.c requires openssl.
 #if SERF_HTTPS_FETCHING
-  static apr_status_t SSLCertError(void *data, int failures,
+  static apr_status_t SSLCertValidate(void *data, int failures,
                                    const serf_ssl_certificate_t *cert);
 
-  static apr_status_t SSLCertChainError(
+  static apr_status_t SSLCertChainValidate(
       void *data, int failures, int error_depth,
       const serf_ssl_certificate_t * const *certs,
       apr_size_t certs_count);
@@ -363,9 +363,13 @@ class SerfFetch : public PoolElement<SerfFetch> {
   // non-null for errors as a signal to ReadHeaders that we should not let
   // any output thorugh.
   //
-  // Interpretation of two of the error conditions is configuraable:
+  // Interpretation of two of the error conditions is configurable:
   // 'allow_unknown_certificate_authority' and 'allow_self_signed'.
-  apr_status_t HandleSSLCertErrors(int errors, int failure_depth);
+  //
+  // If there is a cert that should be checked for a hostname match, that should
+  // go in cert.  Otherwise cert should be null.
+  apr_status_t HandleSSLCertValidation(
+      int errors, int failure_depth, const serf_ssl_certificate_t *cert);
 #endif
 
   apr_status_t HandleResponse(serf_bucket_t* response);

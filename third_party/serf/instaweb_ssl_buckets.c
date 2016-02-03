@@ -1680,6 +1680,21 @@ int serf_ssl_cert_depth(const serf_ssl_certificate_t *cert)
     return cert->depth;
 }
 
+/*
+ * PageSpeed addition to allow verification of certificate hostnames.
+ *
+ * Hostname must be null-terminated.
+ * For return values, see X509_check_host.
+ */
+int serf_ssl_check_host(const serf_ssl_certificate_t *cert,
+                        const char* hostname)
+{
+  return X509_check_host(cert->ssl_cert,
+                         hostname,
+                         strlen(hostname),
+                         0 /* we don't need to set any flags */,
+                         NULL /* we don't need the SAN or CN extracted*/);
+}
 
 apr_hash_t *serf_ssl_cert_issuer(
     const serf_ssl_certificate_t *cert,

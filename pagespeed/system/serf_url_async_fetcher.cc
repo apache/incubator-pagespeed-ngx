@@ -82,6 +82,9 @@ apr_status_t serf_ssl_set_certificates_directory(serf_ssl_context_t *ssl_ctx,
                                                  const char* path);
 apr_status_t serf_ssl_set_certificates_file(serf_ssl_context_t *ssl_ctx,
                                             const char* file);
+int serf_ssl_check_host(const serf_ssl_certificate_t *cert,
+                        const char* hostname);
+
 }  // extern "C"
 
 namespace net_instaweb {
@@ -237,18 +240,19 @@ int64 SerfFetch::TimeDuration() const {
 
 #if SERF_HTTPS_FETCHING
 // static
-apr_status_t SerfFetch::SSLCertError(void *data, int failures,
+apr_status_t SerfFetch::SSLCertValidate(void *data, int failures,
                                      const serf_ssl_certificate_t *cert) {
-  return static_cast<SerfFetch*>(data)->HandleSSLCertErrors(failures, 0);
+  return static_cast<SerfFetch*>(data)->HandleSSLCertValidation(
+      failures, 0, cert);
 }
 
 // static
-apr_status_t SerfFetch::SSLCertChainError(
+apr_status_t SerfFetch::SSLCertChainValidate(
     void *data, int failures, int error_depth,
     const serf_ssl_certificate_t * const *certs,
     apr_size_t certs_count) {
-  return static_cast<SerfFetch*>(data)->HandleSSLCertErrors(failures,
-                                                            error_depth);
+  return static_cast<SerfFetch*>(data)->HandleSSLCertValidation(
+      failures, error_depth, NULL);
 }
 #endif
 
@@ -293,12 +297,11 @@ apr_status_t SerfFetch::ConnectionSetup(
       }
     }
 
-    serf_ssl_server_cert_callback_set(fetch->ssl_context_, SSLCertError,
-                                      fetch);
+    serf_ssl_server_cert_callback_set(
+        fetch->ssl_context_, SSLCertValidate, fetch);
 
-    serf_ssl_server_cert_chain_callback_set(fetch->ssl_context_,
-                                            SSLCertError, SSLCertChainError,
-                                            fetch);
+    serf_ssl_server_cert_chain_callback_set(
+        fetch->ssl_context_, SSLCertValidate, SSLCertChainValidate, fetch);
 
     status = serf_ssl_set_hostname(fetch->ssl_context_, fetch->sni_host_);
     if (status != APR_SUCCESS) {
@@ -382,14 +385,15 @@ bool SerfFetch::IsStatusOk(apr_status_t status) {
 }
 
 #if SERF_HTTPS_FETCHING
-apr_status_t SerfFetch::HandleSSLCertErrors(int errors, int failure_depth) {
+apr_status_t SerfFetch::HandleSSLCertValidation(
+    int errors, int failure_depth, const serf_ssl_certificate_t *cert) {
   // TODO(jmarantz): is there value in logging the errors and failure_depth
   // formals here?
 
-  // Note that HandleSSLCertErrors can be called multiple times for
-  // a single request.  As far as I can tell, there is value in
-  // recording only one of these.  For now, I have set up the logic
-  // so only the last error will be printed lazilly, in ReadHeaders.
+  // Note that HandleSSLCertValidation can be called multiple times for a single
+  // request.  As far as I can tell, there is value in recording only one of
+  // these.  For now, I have set up the logic so only the last error will be
+  // printed lazilly, in ReadHeaders.
   if (((errors & SERF_SSL_CERT_SELF_SIGNED) != 0) &&
       !fetcher_->allow_self_signed()) {
     ssl_error_message_ = "SSL certificate is self-signed";
@@ -406,9 +410,35 @@ apr_status_t SerfFetch::HandleSSLCertErrors(int errors, int failure_depth) {
     ssl_error_message_ = "SSL certificate has an unknown error";
   }
 
+  if (ssl_error_message_ == NULL && async_fetch_ != NULL) {
+    if (// If cert is null that means we're being called via SSLCertChainError.
+        // We only need to check the host name matches when being called via
+        // SSLCertError, in which case cert won't be null.
+        cert != NULL &&
+        // No point in checking the host if we're allowing self-signed or a made
+        // up CA, since people can forge whatever they want and often don't
+        // bother to make the name match.
+        !fetcher_->allow_self_signed() &&
+        !fetcher_->allow_unknown_certificate_authority()) {
+
+      DCHECK(serf_ssl_cert_depth(cert) == 0) <<
+          "Serf should be filtering out intermediate certs before hitting us.";
+
+      // You would think we could do whatever serf_get.c does, but it turns
+      // out that does no checking at all.  There's x509_check_host, added in
+      // 1.0.2, but when svn uses serf it rolls its own check because it wants
+      // to support older versions.  We generally build with boringssl, which
+      // forked from 1.0.2 and has always had this function, but when we build
+      // with openssl we now require 1.0.2.
+      if (serf_ssl_check_host(cert, sni_host_) != 1) {
+        ssl_error_message_ = "Failed to match host.";
+      }
+    }
+  }
+
   // Immediately call the fetch callback on a cert error.  Note that
-  // HandleSSLCertErrors is called multiple times when there is an error,
-  // so check async_fetch before CallCallback.
+  // HandleSSLCertValidation is called multiple times when there is an error, so
+  // check async_fetch before CallCallback.
   if ((ssl_error_message_ != NULL) && (async_fetch_ != NULL)) {
     fetcher_->cert_errors_->Add(1);
     CallCallback(false);  // sets async_fetch_ to null.
