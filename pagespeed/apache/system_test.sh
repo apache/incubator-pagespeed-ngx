@@ -818,18 +818,12 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   OUT=$($WGET_DUMP "$HOSTNAME/pagespeed_admin/cache?purge=*")
   check_from "$OUT" fgrep -q "ModPagespeedEnableCachePurge on"
 
-  start_test mobilizer with inlined XHR-helper and other JS compiled.
+  start_test mobilizer with JS compiled.
   MOB_SUFFIX_RE="\\.[A-Za-z0-9_\-]+\\.js"
 
   URL="http://${PAGESPEED_TEST_HOST}.suffix.net/mod_pagespeed_example/index.html"
-  # We use fetch_until because we only inline the XHR file once it's
-  # in cache.
-  http_proxy=$SECONDARY_HOSTNAME fetch_until -save "$URL" \
-    'fgrep -c window.XMLHttpRequest=' 1
-  OUT=$(grep script $FETCH_UNTIL_OUTFILE)
+  OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP "$URL")
   check_from "$OUT" egrep -q "pagespeed_static/mobilize$MOB_SUFFIX_RE"
-  check_not_from "$OUT" egrep -q "pagespeed_static/mobilize_xhr_opt$MOB_SUFFIX_RE"
-  check_not_from "$OUT" fgrep -q xhr.js
   check_not_from "$OUT" fgrep -q layout.js
   check_not_from "$OUT" fgrep -q util.js
   check_not_from "$OUT" fgrep -q nav.js
@@ -837,19 +831,13 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   start_test mobilizer with MobStatic on
   OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \
     "$URL?PageSpeedMobStatic=on" | grep script)
-  check_not_from "$OUT" egrep -q \
-    "pagespeed_static/mobilize_xhr_debug$MOB_SUFFIX_RE"
   check_not_from "$OUT" egrep -q "pagespeed_static/mobilize_debug$MOB_SUFFIX_RE"
-  check_from "$OUT" fgrep -q xhr.js
   check_from "$OUT" fgrep -q deps.js
 
   start_test mobilizer with debug on
   OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \
     "$URL?PageSpeedFilters=+debug" | grep script)
-  # We don't inline the XHR js in debug mode because it will be too large.
-  check_from "$OUT" egrep -q "pagespeed_static/mobilize_xhr_debug$MOB_SUFFIX_RE"
   check_from "$OUT" egrep -q "pagespeed_static/mobilize_debug$MOB_SUFFIX_RE"
-  check_not_from "$OUT" fgrep -q xhr.js
   check_not_from "$OUT" fgrep -q layout.js
   check_not_from "$OUT" fgrep -q util.js
   check_not_from "$OUT" fgrep -q nav.js
@@ -860,8 +848,6 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
     "$URL?PageSpeedFilters=-mobilize")
   check_not_from "$OUT" fgrep -q window.XMLHttpRequest
   check_not_from "$OUT" egrep -q "pagespeed_static/mobilize$MOB_SUFFIX_RE"
-  check_not_from "$OUT" egrep -q "pagespeed_static/mobilize_xhr_opt$MOB_SUFFIX_RE"
-  check_not_from "$OUT" fgrep -q xhr.js
   check_not_from "$OUT" fgrep -q layout.js
   check_not_from "$OUT" fgrep -q util.js
   check_not_from "$OUT" fgrep -q nav.js

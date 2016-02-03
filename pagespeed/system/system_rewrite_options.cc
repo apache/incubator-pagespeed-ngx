@@ -357,7 +357,7 @@ void SystemRewriteOptions::FillInStaticAssetCDNConf(
     asset_out->set_role(role);
     // For file base name, we just lowercase the enum and convert
     // the last _ into . Combined with prefixes set below, this mostly produces
-    // sensible filenames, like opt-blank.gif, dbg-mobilize_xhr.js, as the last
+    // sensible filenames, like opt-blank.gif, dbg-mobilize.js, as the last
     // word in the enum tends to be the extension. A few cases get a bit weird
     // (client_domain.rewriter, defer.iframe), but they don't seem worth
     // worrying about for a developer-targeted feature.

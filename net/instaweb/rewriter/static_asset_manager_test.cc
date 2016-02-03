@@ -171,8 +171,7 @@ TEST_F(StaticAssetManagerTest, TestJsDebug) {
     // TODO(sligocki): This should generalize to all resources which don't have
     // kContentTypeJs. But no interface provides content types currently :/
     if (module != StaticAssetEnum::BLANK_GIF &&
-        module != StaticAssetEnum::MOBILIZE_CSS &&
-        module != StaticAssetEnum::MOBILIZE_LAYOUT_CSS) {
+        module != StaticAssetEnum::MOBILIZE_CSS) {
       GoogleString script(manager_->GetAsset(module, options_));
       // Debug code is also put through the closure compiler to resolve any uses
       // of goog.require. As part of this, comments also get stripped out.
@@ -189,8 +188,7 @@ TEST_F(StaticAssetManagerTest, TestJsOpt) {
     // TODO(sligocki): This should generalize to all resources which don't have
     // kContentTypeJs. But no interface provides content types currently :/
     if (module != StaticAssetEnum::BLANK_GIF &&
-        module != StaticAssetEnum::MOBILIZE_CSS &&
-        module != StaticAssetEnum::MOBILIZE_LAYOUT_CSS) {
+        module != StaticAssetEnum::MOBILIZE_CSS) {
       GoogleString script(manager_->GetAsset(module, options_));
       EXPECT_STREQ("", ExtractCommentSkippingWhitelist(script))
           << "Comment found in debug version of asset " << module;

@@ -19,7 +19,6 @@
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 
 #include <cstddef>
-#include <memory>
 #include <utility>
 #include "base/logging.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -37,7 +36,6 @@
 namespace net_instaweb {
 
 extern const char* CSS_mobilize_css;
-extern const char* CSS_mobilize_layout_css;
 extern const char* JS_add_instrumentation;
 extern const char* JS_add_instrumentation_opt;
 extern const char* JS_client_domain_rewriter;
@@ -69,8 +67,6 @@ extern const char* JS_local_storage_cache;
 extern const char* JS_local_storage_cache_opt;
 extern const char* JS_mobilize_js;
 extern const char* JS_mobilize_js_opt;
-extern const char* JS_mobilize_xhr_js;
-extern const char* JS_mobilize_xhr_js_opt;
 extern const char* JS_panel_loader_opt;
 extern const char* JS_responsive_js;
 extern const char* JS_responsive_js_opt;
@@ -267,10 +263,13 @@ void StaticAssetManager::InitializeAssetStrings() {
   assets_[StaticAssetEnum::LOCAL_STORAGE_CACHE_JS]->file_name =
       "local_storage_cache";
   assets_[StaticAssetEnum::MOBILIZE_JS]->file_name = "mobilize";
-  assets_[StaticAssetEnum::MOBILIZE_XHR_JS]->file_name = "mobilize_xhr";
+  // Note that we still have to provide a name for these unused files because of
+  // the DCHECK for unique names below.
+  assets_[StaticAssetEnum::DEPRECATED_MOBILIZE_XHR_JS]->file_name =
+      "unused_mobilize_xhr";
   assets_[StaticAssetEnum::MOBILIZE_CSS]->file_name = "mobilize_css";
-  assets_[StaticAssetEnum::MOBILIZE_LAYOUT_CSS]->file_name =
-      "mobilize_layout_css";
+  assets_[StaticAssetEnum::DEPRECATED_MOBILIZE_LAYOUT_CSS]->file_name =
+      "unused_mobilize_layout_css";
   assets_[StaticAssetEnum::RESPONSIVE_JS]->file_name = "responsive";
   assets_[StaticAssetEnum::SPLIT_HTML_BEACON_JS]->file_name =
       "split_html_beacon";
@@ -308,11 +307,7 @@ void StaticAssetManager::InitializeAssetStrings() {
   assets_[StaticAssetEnum::LOCAL_STORAGE_CACHE_JS]->js_optimized =
       JS_local_storage_cache_opt;
   assets_[StaticAssetEnum::MOBILIZE_JS]->js_optimized = JS_mobilize_js_opt;
-  assets_[StaticAssetEnum::MOBILIZE_XHR_JS]->js_optimized =
-      JS_mobilize_xhr_js_opt;
   assets_[StaticAssetEnum::MOBILIZE_CSS]->js_optimized = CSS_mobilize_css;
-  assets_[StaticAssetEnum::MOBILIZE_LAYOUT_CSS]->js_optimized =
-      CSS_mobilize_layout_css;
   assets_[StaticAssetEnum::RESPONSIVE_JS]->js_optimized = JS_responsive_js_opt;
   assets_[StaticAssetEnum::SPLIT_HTML_BEACON_JS]->js_optimized =
       JS_split_html_beacon_opt;
@@ -348,10 +343,7 @@ void StaticAssetManager::InitializeAssetStrings() {
   assets_[StaticAssetEnum::LOCAL_STORAGE_CACHE_JS]->js_debug =
       JS_local_storage_cache;
   assets_[StaticAssetEnum::MOBILIZE_JS]->js_debug = JS_mobilize_js;
-  assets_[StaticAssetEnum::MOBILIZE_XHR_JS]->js_debug = JS_mobilize_xhr_js;
   assets_[StaticAssetEnum::MOBILIZE_CSS]->js_debug = CSS_mobilize_css;
-  assets_[StaticAssetEnum::MOBILIZE_LAYOUT_CSS]->js_debug =
-      CSS_mobilize_layout_css;
   assets_[StaticAssetEnum::RESPONSIVE_JS]->js_debug = JS_responsive_js;
   assets_[StaticAssetEnum::SPLIT_HTML_BEACON_JS]->js_debug =
       JS_split_html_beacon;
@@ -365,7 +357,6 @@ void StaticAssetManager::InitializeAssetStrings() {
       reinterpret_cast<const char*>(GIF_blank), GIF_blank_len);
   assets_[StaticAssetEnum::BLANK_GIF]->content_type = kContentTypeGif;
   assets_[StaticAssetEnum::MOBILIZE_CSS]->content_type = kContentTypeCss;
-  assets_[StaticAssetEnum::MOBILIZE_LAYOUT_CSS]->content_type = kContentTypeCss;
 
   for (std::vector<Asset*>::iterator it = assets_.begin();
        it != assets_.end(); ++it) {

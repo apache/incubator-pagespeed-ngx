@@ -393,22 +393,6 @@ void MobilizeRewriteFilter::StartElementImpl(HtmlElement* element) {
             StrCat(static_file_prefix_, "deps.js"), true);
         driver()->InsertScriptAfterCurrent("goog.require('mob.Mob');", false);
       }
-
-      if (use_js_layout_) {
-        if (use_static_) {
-          // Hijack XHR early so that we don't miss mobilizing any responses.
-          // TODO(jmarantz): Move this block to inject before the first script.
-          GoogleString script_path = StrCat(
-              static_file_prefix_, "xhr.js");
-          driver()->InsertScriptAfterCurrent(script_path, true);
-        } else {
-          StaticAssetManager* manager =
-              driver()->server_context()->static_asset_manager();
-          StringPiece js = manager->GetAssetUrl(
-              StaticAssetEnum::MOBILIZE_XHR_JS, driver()->options());
-          driver()->InsertScriptAfterCurrent(js, true);
-        }
-      }
     }
   } else if (keyword == HtmlName::kBody) {
     ++body_element_depth_;
@@ -555,10 +539,6 @@ void MobilizeRewriteFilter::AddStyle(HtmlElement* element) {
   if (!added_style_) {
     added_style_ = true;
     AppendStylesheet("mobilize.css", StaticAssetEnum::MOBILIZE_CSS, element);
-    if (use_js_layout_) {
-      AppendStylesheet("layout.css",
-                       StaticAssetEnum::MOBILIZE_LAYOUT_CSS, element);
-    }
   }
 }
 
