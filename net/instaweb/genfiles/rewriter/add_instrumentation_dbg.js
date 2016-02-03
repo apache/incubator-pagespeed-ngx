@@ -8,7 +8,7 @@ pagespeed.AddInstrumentation = function(a, c, b, d) {
 };
 pagespeed.beaconUrl = "";
 pagespeed.AddInstrumentation.prototype.sendBeacon = function() {
-  var a = this.beaconUrlPrefix_, c = window.mod_pagespeed_start, b = Number(new Date) - c, a = a + (-1 == a.indexOf("?") ? "?" : "&"), a = a + "ets=" + ("load" == this.event_ ? "load:" : "unload:"), a = a + b;
+  var a = this.beaconUrlPrefix_, c = window.mod_pagespeed_start, b = +new Date - c, a = a + (-1 == a.indexOf("?") ? "?" : "&"), a = a + "ets=" + ("load" == this.event_ ? "load:" : "unload:"), a = a + b;
   if ("beforeunload" != this.event_ || !window.mod_pagespeed_loaded) {
     a += "&r" + this.event_ + "=";
     if (window.performance) {
