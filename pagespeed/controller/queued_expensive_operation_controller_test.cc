@@ -119,6 +119,44 @@ TEST_F(QueuedExpensiveOperationTest, ActuallyLimits) {
   EXPECT_EQ(0, queued_operations());
 }
 
+TEST_F(QueuedExpensiveOperationTest, QueueOrder) {
+  TrackCallsFunction f1;
+  TrackCallsFunction f2;
+  TrackCallsFunction f3;
+
+  controller_->ScheduleExpensiveOperation(&f1);
+  EXPECT_EQ(1, active_operations());
+  EXPECT_EQ(0, queued_operations());
+  EXPECT_TRUE(f1.run_called_);
+
+  controller_->ScheduleExpensiveOperation(&f2);
+  EXPECT_EQ(1, active_operations());
+  EXPECT_EQ(1, queued_operations());
+  EXPECT_FALSE(f2.run_called_);
+  EXPECT_FALSE(f2.cancel_called_);
+
+  controller_->ScheduleExpensiveOperation(&f3);
+  EXPECT_EQ(1, active_operations());
+  EXPECT_EQ(2, queued_operations());
+  EXPECT_FALSE(f3.run_called_);
+  EXPECT_FALSE(f3.cancel_called_);
+
+  controller_->NotifyExpensiveOperationComplete();
+  EXPECT_EQ(1, active_operations());
+  EXPECT_EQ(1, queued_operations());
+  EXPECT_TRUE(f2.run_called_);
+  EXPECT_FALSE(f3.run_called_);
+
+  controller_->NotifyExpensiveOperationComplete();
+  EXPECT_EQ(1, active_operations());
+  EXPECT_EQ(0, queued_operations());
+  EXPECT_TRUE(f3.run_called_);
+
+  controller_->NotifyExpensiveOperationComplete();
+  EXPECT_EQ(0, active_operations());
+  EXPECT_EQ(0, queued_operations());
+}
+
 TEST_F(QueuedExpensiveOperationTest, QueueSize2) {
   InitQueueWithSize(2);
 

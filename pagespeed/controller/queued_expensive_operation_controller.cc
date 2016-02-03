@@ -47,7 +47,7 @@ QueuedExpensiveOperationController::~QueuedExpensiveOperationController() {
   DCHECK(queue_.empty());
 
   while (!queue_.empty()) {
-    delete queue_.back();
+    delete queue_.front();
     queue_.pop();
   }
 }
@@ -94,7 +94,7 @@ void QueuedExpensiveOperationController::Enqueue(Function* callback) {
 Function* QueuedExpensiveOperationController::Dequeue() {
   Function* result = NULL;
   if (!queue_.empty()) {
-    result = queue_.back();
+    result = queue_.front();
     queue_.pop();
     queued_operations_counter_->Set(queue_.size());
   }
