@@ -19,6 +19,7 @@
 #include "pagespeed/kernel/image/gif_reader.h"
 
 #include <setjmp.h>
+#include <cstddef>
 
 #include "base/logging.h"
 #include "pagespeed/kernel/base/basictypes.h"

@@ -17,7 +17,7 @@
 // Author: Victor Chudnovsky
 
 #include <cstddef>
-#include <memory>
+#include <cstdint>
 #include <vector>
 
 #include "pagespeed/kernel/base/gtest.h"

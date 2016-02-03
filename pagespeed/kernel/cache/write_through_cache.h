@@ -22,13 +22,12 @@
 #include <cstddef>
 
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/shared_string.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/cache/cache_interface.h"
 
 namespace net_instaweb {
-
-class SharedString;
 
 // Composes two caches to form a write-through cache.
 class WriteThroughCache : public CacheInterface {

@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/cache_interface.h"
 #include "pagespeed/kernel/base/md5_hasher.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
@@ -32,7 +33,6 @@ namespace net_instaweb {
 
 class AbstractSharedMem;
 class AprMemCache;
-class CacheInterface;
 class MessageHandler;
 class NamedLockManager;
 class QueuedWorkerPool;

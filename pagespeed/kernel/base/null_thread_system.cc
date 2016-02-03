@@ -18,9 +18,12 @@
 
 #include "pagespeed/kernel/base/null_thread_system.h"
 
+#include <vector>
+
 #include "base/logging.h"
 #include "pagespeed/kernel/base/mock_timer.h"
 #include "pagespeed/kernel/base/null_mutex.h"
+#include "pagespeed/kernel/base/timer.h"
 
 namespace net_instaweb {
 

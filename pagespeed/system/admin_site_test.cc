@@ -22,6 +22,7 @@
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/rewriter/public/custom_rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
@@ -37,8 +38,6 @@
 #include "pagespeed/kernel/util/platform.h"
 
 namespace net_instaweb {
-
-class RewriteDriverFactory;
 
 namespace {
 

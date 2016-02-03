@@ -17,13 +17,13 @@
 #ifndef PAGESPEED_KERNEL_UTIL_INPUT_FILE_NONCE_GENERATOR_H_
 #define PAGESPEED_KERNEL_UTIL_INPUT_FILE_NONCE_GENERATOR_H_
 
+#include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/file_system.h"
 #include "pagespeed/kernel/util/nonce_generator.h"
 
 namespace net_instaweb {
 
-class AbstractMutex;
 class MessageHandler;
 
 // Implements a NonceGenerator that simply draws data from a cryptographic file

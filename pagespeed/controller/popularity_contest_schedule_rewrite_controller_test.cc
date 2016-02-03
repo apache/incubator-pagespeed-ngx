@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <queue>
 
+#include "base/logging.h"
 #include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/gmock.h"
 #include "pagespeed/kernel/base/gtest.h"

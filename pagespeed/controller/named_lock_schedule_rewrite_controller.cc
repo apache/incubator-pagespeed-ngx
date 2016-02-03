@@ -15,6 +15,10 @@
 // Author: cheesy@google.com (Steve Hill)
 
 #include "pagespeed/controller/named_lock_schedule_rewrite_controller.h"
+
+#include <cstddef>
+
+#include "base/logging.h"
 #include "pagespeed/kernel/base/stl_util.h"
 
 namespace net_instaweb {

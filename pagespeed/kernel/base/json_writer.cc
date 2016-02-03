@@ -18,6 +18,8 @@
 
 #include "pagespeed/kernel/base/json_writer.h"
 
+#include <memory>
+
 #include "pagespeed/kernel/base/json.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"

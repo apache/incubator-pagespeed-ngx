@@ -29,7 +29,6 @@
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/stl_util.h"
-#include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/thread.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/sharedmem/shared_circular_buffer_test_base.h"

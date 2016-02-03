@@ -19,10 +19,13 @@
 #ifndef PAGESPEED_KERNEL_CACHE_FILE_CACHE_H_
 #define PAGESPEED_KERNEL_CACHE_FILE_CACHE_H_
 
+#include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/cache_interface.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/shared_string.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/thread_annotations.h"
 #include "pagespeed/kernel/base/thread_system.h"
 
 namespace net_instaweb {
@@ -30,7 +33,6 @@ namespace net_instaweb {
 class FileSystem;
 class Hasher;
 class MessageHandler;
-class SharedString;
 class SlowWorker;
 class Statistics;
 class Timer;

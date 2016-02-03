@@ -19,6 +19,7 @@
 #include "pagespeed/kernel/util/url_to_filename_encoder.h"
 
 #include "base/logging.h"
+#include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/http/google_url.h"
 

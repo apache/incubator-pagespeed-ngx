@@ -17,6 +17,7 @@
 #ifndef PAGESPEED_KERNEL_UTIL_HASHED_NONCE_GENERATOR_H_
 #define PAGESPEED_KERNEL_UTIL_HASHED_NONCE_GENERATOR_H_
 
+#include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -25,7 +26,6 @@
 namespace net_instaweb {
 
 class Hasher;
-class AbstractMutex;
 
 // Implements a NonceGenerator using a hasher and a count, starting from an
 // initial secret.  See:

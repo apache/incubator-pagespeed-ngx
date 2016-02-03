@@ -19,10 +19,9 @@
 
 #include "pagespeed/controller/central_controller_interface.h"
 #include "pagespeed/controller/central_controller_callback.h"
-#include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
-#include "pagespeed/kernel/thread/queued_worker_pool.h"
+#include "pagespeed/kernel/thread/sequence.h"
 
 // Callback classes to support rewrite scheduling in
 // CentralControllerInterfaceAdapter.

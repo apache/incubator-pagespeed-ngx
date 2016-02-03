@@ -22,6 +22,7 @@
 #include <cstdlib>
 #include <vector>
 
+#include "pagespeed/kernel/base/abstract_shared_mem.h"
 #include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/sharedmem/shared_circular_buffer_test_base.h"
@@ -34,7 +35,6 @@
 #include "pagespeed/kernel/thread/pthread_shared_mem.h"
 
 namespace net_instaweb {
-class AbstractSharedMem;
 
 namespace {
 

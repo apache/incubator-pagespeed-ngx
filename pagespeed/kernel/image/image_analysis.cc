@@ -18,11 +18,11 @@
 
 #include "pagespeed/kernel/image/image_analysis.h"
 
-#include <stdbool.h>
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include "base/logging.h"
+#include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/image/image_frame_interface.h"

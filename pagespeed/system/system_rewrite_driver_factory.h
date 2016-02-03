@@ -24,25 +24,25 @@
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/hasher.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/thread/queued_worker_pool.h"
 
 namespace net_instaweb {
 
 class AbstractSharedMem;
 class FileSystem;
-class Hasher;
 class MessageHandler;
 class NamedLockManager;
 class NonceGenerator;
 class ProcessContext;
-class QueuedWorkerPool;
 class ServerContext;
 class SharedCircularBuffer;
 class SharedMemStatistics;
 class StaticAssetManager;
-class Statistics;
 class SystemCaches;
 class SystemRewriteOptions;
 class SystemServerContext;

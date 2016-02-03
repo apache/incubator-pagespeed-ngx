@@ -20,6 +20,7 @@
 #include "pagespeed/system/in_place_resource_recorder.h"
 
 #include "net/instaweb/http/public/http_cache.h"
+#include "net/instaweb/http/public/http_cache_failure.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"

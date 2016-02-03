@@ -41,7 +41,6 @@
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/cache/async_cache.h"
 #include "pagespeed/kernel/cache/cache_batcher.h"
-#include "pagespeed/kernel/cache/cache_interface.h"
 #include "pagespeed/kernel/cache/cache_stats.h"
 #include "pagespeed/kernel/cache/compressed_cache.h"
 #include "pagespeed/kernel/cache/fallback_cache.h"

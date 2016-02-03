@@ -17,7 +17,7 @@
 #ifndef PAGESPEED_CONTROLLER_PRIORITY_QUEUE_H_
 #define PAGESPEED_CONTROLLER_PRIORITY_QUEUE_H_
 
-#include <algorithm>
+#include <cstddef>
 #include <functional>
 #include <utility>
 #include <unordered_map>
@@ -25,6 +25,7 @@
 
 #include "base/logging.h"
 #include "base/macros.h"
+#include "pagespeed/kernel/base/basictypes.h"
 
 // Priority queue that supports incrementing the priority of a key.
 

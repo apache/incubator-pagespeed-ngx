@@ -22,16 +22,17 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/static_asset_config.pb.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/fast_wildcard_group.h"
+#include "pagespeed/kernel/base/hasher.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
-#include "pagespeed/kernel/base/fast_wildcard_group.h"
+#include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/util/copy_on_write.h"
 
 namespace net_instaweb {
 
-class StaticAssetConfig;
-class ThreadSystem;
+class MessageHandler;
 
 // This manages configuration options specific to server implementations of
 // pagespeed optimization libraries, such as mod_pagespeed and ngx_pagespeed.

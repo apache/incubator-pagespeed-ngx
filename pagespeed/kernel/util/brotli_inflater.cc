@@ -19,13 +19,15 @@
 #include "pagespeed/kernel/util/brotli_inflater.h"
 
 #include <cstddef>
-#include <cstdlib>
+#include <limits>
+
 #include "base/logging.h"
 #include "third_party/brotli/src/dec/decode.h"
+#include "third_party/brotli/src/dec/state.h"
 #include "third_party/brotli/src/enc/encode.h"
+#include "third_party/brotli/src/enc/streams.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/string.h"
-#include "pagespeed/kernel/base/string_writer.h"
 #include "pagespeed/kernel/base/stack_buffer.h"
 #include "pagespeed/kernel/base/writer.h"
 

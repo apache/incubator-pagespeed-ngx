@@ -16,7 +16,6 @@
 
 // Author: Bryan McQuade
 
-#include <stdbool.h>
 #include <cstdlib>
 
 #include "pagespeed/kernel/base/basictypes.h"

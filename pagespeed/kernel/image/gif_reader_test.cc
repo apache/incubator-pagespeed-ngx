@@ -20,6 +20,9 @@
 
 // Author: Victor Chudnovsky
 
+#include "pagespeed/kernel/image/gif_reader.h"
+
+#include <cstddef>
 #include <vector>
 
 #include "pagespeed/kernel/base/gtest.h"
@@ -29,7 +32,6 @@
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
-#include "pagespeed/kernel/image/gif_reader.h"
 #include "pagespeed/kernel/image/gif_square.h"
 #include "pagespeed/kernel/image/image_util.h"
 #include "pagespeed/kernel/image/png_optimizer.h"

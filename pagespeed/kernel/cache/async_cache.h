@@ -22,14 +22,13 @@
 #include "pagespeed/kernel/base/atomic_bool.h"
 #include "pagespeed/kernel/base/atomic_int32.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/shared_string.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/cache/cache_interface.h"
 #include "pagespeed/kernel/thread/queued_worker_pool.h"
 
 namespace net_instaweb {
-
-class SharedString;
 
 // Employs a QueuedWorkerPool to turn a synchronous cache implementation
 // into an asynchronous one.  This makes sense to do only if the cache

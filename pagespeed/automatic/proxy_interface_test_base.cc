@@ -20,18 +20,16 @@
 
 #include <cstddef>
 
+#include "base/logging.h"
 #include "net/instaweb/http/public/async_fetch.h"
-#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
-#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/public/mock_critical_images_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/cache_property_store.h"
-#include "net/instaweb/util/public/property_cache.h"
 #include "pagespeed/automatic/proxy_fetch.h"
 #include "pagespeed/automatic/proxy_interface.h"
 #include "pagespeed/kernel/base/basictypes.h"
@@ -53,6 +51,7 @@
 #include "pagespeed/kernel/thread/queued_worker_pool.h"
 #include "pagespeed/kernel/thread/thread_synchronizer.h"
 #include "pagespeed/kernel/thread/worker_test_base.h"
+#include "pagespeed/opt/logging/request_timing_info.h"
 
 namespace net_instaweb {
 

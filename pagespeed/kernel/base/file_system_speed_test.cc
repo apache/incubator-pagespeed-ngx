@@ -17,7 +17,6 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "base/logging.h"
-#include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/benchmark.h"
 #include "pagespeed/kernel/base/google_message_handler.h"
 #include "pagespeed/kernel/base/gtest.h"

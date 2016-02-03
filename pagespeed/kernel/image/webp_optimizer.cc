@@ -18,6 +18,8 @@
 
 #include "pagespeed/kernel/image/webp_optimizer.h"
 
+#include <cstdint>
+
 #include "base/logging.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/image/scanline_utils.h"

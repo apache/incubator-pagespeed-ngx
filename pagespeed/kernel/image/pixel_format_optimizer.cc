@@ -18,6 +18,8 @@
 
 #include "pagespeed/kernel/image/pixel_format_optimizer.h"
 
+#include <cstdint>
+
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/image/scanline_utils.h"

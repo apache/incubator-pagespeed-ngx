@@ -18,6 +18,7 @@
 
 #include "pagespeed/kernel/html/html_node.h"
 
+#include "pagespeed/kernel/html/html_element.h"
 #include "pagespeed/kernel/html/html_event.h"
 
 namespace net_instaweb {

@@ -29,7 +29,6 @@
 
 namespace net_instaweb {
 
-class AbstractMutex;
 class ThreadSystem;
 
 // These variables are thread-safe.

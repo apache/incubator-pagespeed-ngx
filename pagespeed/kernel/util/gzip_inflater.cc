@@ -29,7 +29,6 @@
 #include "third_party/zlib/zconf.h"
 #endif
 #include "pagespeed/kernel/base/string.h"
-#include "pagespeed/kernel/base/string_writer.h"
 #include "pagespeed/kernel/base/stack_buffer.h"
 #include "pagespeed/kernel/base/writer.h"
 

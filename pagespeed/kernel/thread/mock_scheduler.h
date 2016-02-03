@@ -21,6 +21,7 @@
 
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/thread_annotations.h"
+#include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/thread/queued_worker_pool.h"
 #include "pagespeed/kernel/thread/scheduler.h"
@@ -28,7 +29,6 @@
 namespace net_instaweb {
 
 class MockTimer;
-class ThreadSystem;
 
 // Implements a Scheduler where time is virtualized, and TimedWait
 // blocks the thread until mock-time is advanced.

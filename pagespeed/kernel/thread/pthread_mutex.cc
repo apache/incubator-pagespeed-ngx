@@ -20,6 +20,7 @@
 
 #include <pthread.h>
 #include "pagespeed/kernel/thread/pthread_condvar.h"
+#include "pagespeed/kernel/base/condvar.h"
 #include "pagespeed/kernel/base/thread_system.h"
 
 namespace net_instaweb {

@@ -22,7 +22,7 @@
 #include <cstddef>
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
-#include "pagespeed/kernel/image/scanline_interface.h"
+#include "pagespeed/kernel/image/image_util.h"
 
 namespace net_instaweb {
 class MessageHandler;

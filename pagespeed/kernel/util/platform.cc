@@ -18,6 +18,9 @@
 
 #include "pagespeed/kernel/util/platform.h"
 
+#include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/base/timer.h"
+
 #include "pagespeed/kernel/thread/pthread_thread_system.h"
 #include "pagespeed/kernel/base/checking_thread_system.h"
 

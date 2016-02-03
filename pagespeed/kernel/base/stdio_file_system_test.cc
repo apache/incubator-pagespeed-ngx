@@ -26,6 +26,7 @@
 #include "pagespeed/kernel/base/posix_timer.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/timer.h"
 
 namespace net_instaweb {
 

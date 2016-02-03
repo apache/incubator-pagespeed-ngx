@@ -21,30 +21,30 @@
 
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "pagespeed/automatic/proxy_interface.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/empty_html_filter.h"
+#include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_filter.h"
+#include "pagespeed/kernel/http/google_url.h"
+#include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/response_headers.h"
 #include "pagespeed/kernel/thread/worker_test_base.h"
+#include "pagespeed/opt/http/property_cache.h"
 #include "pagespeed/opt/http/request_context.h"
 
 namespace net_instaweb {
 
 class MockCriticalImagesFinder;
-class GoogleUrl;
-class HtmlElement;
-class HtmlFilter;
-class MessageHandler;
-class PropertyValue;
-class RequestHeaders;
-class RewriteDriver;
-class RewriteOptions;
 
 const char kPageUrl[] = "page.html";
 const char kBackgroundFetchHeader[] = "X-Background-Fetch";

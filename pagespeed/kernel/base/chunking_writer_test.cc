@@ -19,6 +19,7 @@
 #include "pagespeed/kernel/base/chunking_writer.h"
 
 #include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/base/null_mutex.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
@@ -27,7 +28,6 @@
 #include "pagespeed/kernel/base/writer.h"
 
 namespace net_instaweb {
-class MessageHandler;
 
 namespace {
 

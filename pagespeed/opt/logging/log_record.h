@@ -35,7 +35,6 @@
 // you must also include pagespeed/opt/logging/logging_proto_impl.h
 // See that header file for an explanation of why this is necessary.
 
-
 namespace net_instaweb {
 
 class AbstractMutex;

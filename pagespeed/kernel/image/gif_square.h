@@ -19,7 +19,6 @@
 #ifndef PAGESPEED_KERNEL_IMAGE_GIF_SQUARE_H_
 #define PAGESPEED_KERNEL_IMAGE_GIF_SQUARE_H_
 
-#include <stdbool.h>
 #include <cstddef>
 #include <vector>
 

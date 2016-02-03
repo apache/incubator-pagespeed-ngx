@@ -31,6 +31,7 @@
 #include "pagespeed/kernel/cache/file_cache.h"
 #include "pagespeed/kernel/cache/lru_cache.h"
 #include "pagespeed/kernel/cache/purge_context.h"
+#include "pagespeed/kernel/cache/purge_set.h"
 #include "pagespeed/kernel/cache/threadsafe_cache.h"
 #include "pagespeed/kernel/sharedmem/shared_mem_lock_manager.h"
 #include "pagespeed/kernel/util/file_system_lock_manager.h"

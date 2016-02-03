@@ -28,14 +28,15 @@
 
 #include "pagespeed/kernel/util/mem_lock_manager.h"
 
-#include "base/logging.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/google_message_handler.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mock_timer.h"
 #include "pagespeed/kernel/base/named_lock_manager.h"
 #include "pagespeed/kernel/base/named_lock_tester.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/util/platform.h"

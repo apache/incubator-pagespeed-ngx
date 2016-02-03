@@ -18,8 +18,21 @@
 
 #include "pagespeed/kernel/util/threadsafe_lock_manager.h"
 
+#include <cstddef>
+#include <set>
+#include <utility>
+#include <vector>
+
+#include "base/logging.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/ref_counted_ptr.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/thread_annotations.h"
+#include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/thread/scheduler.h"
 #include "pagespeed/kernel/util/mem_lock_manager.h"
 

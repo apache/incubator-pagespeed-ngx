@@ -16,14 +16,16 @@
 
 #include "pagespeed/system/system_rewrite_options.h"
 
+#include <cstddef>
+#include <memory>
+
 #include "base/logging.h"
 #include "pagespeed/system/serf_url_async_fetcher.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/base/timer.h"
 
 namespace net_instaweb {
-
-class ThreadSystem;
 
 namespace {
 

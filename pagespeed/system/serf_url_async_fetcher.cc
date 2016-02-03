@@ -40,7 +40,6 @@
 #include "pagespeed/kernel/base/condvar.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/pool.h"
-#include "pagespeed/kernel/base/pool_element.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string_util.h"

@@ -16,16 +16,19 @@
 
 // Author: Huibao Lin
 
+#include "pagespeed/kernel/image/image_analysis.h"
+
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
+
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/base/null_mutex.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
-#include "pagespeed/kernel/image/image_analysis.h"
 #include "pagespeed/kernel/image/read_image.h"
 #include "pagespeed/kernel/image/scanline_interface.h"
 #include "pagespeed/kernel/image/scanline_utils.h"

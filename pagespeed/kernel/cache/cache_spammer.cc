@@ -17,9 +17,10 @@
 
 #include "pagespeed/kernel/cache/cache_spammer.h"
 
-#include <memory>
 #include <vector>
 
+#include "base/logging.h"
+#include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/condvar.h"
 #include "pagespeed/kernel/base/dynamic_annotations.h"
 #include "pagespeed/kernel/base/gtest.h"
@@ -29,7 +30,6 @@
 #include "pagespeed/kernel/base/thread.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/cache/cache_interface.h"
-#include "pagespeed/kernel/cache/cache_test_base.h"
 
 namespace net_instaweb {
 

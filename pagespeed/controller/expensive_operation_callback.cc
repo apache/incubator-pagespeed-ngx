@@ -16,6 +16,8 @@
 
 #include "pagespeed/controller/expensive_operation_callback.h"
 
+#include "pagespeed/kernel/base/basictypes.h"
+
 namespace net_instaweb {
 
 ExpensiveOperationContext::ExpensiveOperationContext(

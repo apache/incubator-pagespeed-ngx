@@ -15,7 +15,6 @@
 // Author: cheesy@google.com (Steve Hill)
 
 #include "pagespeed/controller/priority_queue.h"
-#include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/gmock.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/string.h"

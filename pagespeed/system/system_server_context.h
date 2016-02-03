@@ -21,15 +21,16 @@
 
 #include "net/instaweb/http/public/request_context.h"
 #include "pagespeed/system/admin_site.h"
+#include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/writer.h"
 #include "pagespeed/kernel/util/copy_on_write.h"
 
 namespace net_instaweb {
 
-class AbstractMutex;
 class AsyncFetch;
 class GoogleUrl;
 class Histogram;
@@ -48,7 +49,6 @@ class SystemRewriteOptions;
 class UpDownCounter;
 class UrlAsyncFetcherStats;
 class Variable;
-class Writer;
 
 // A server context with features specific to a PSOL port on a unix system.
 class SystemServerContext : public ServerContext {

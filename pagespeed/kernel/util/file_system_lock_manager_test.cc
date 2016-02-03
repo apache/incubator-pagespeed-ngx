@@ -26,7 +26,6 @@
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mem_file_system.h"
 #include "pagespeed/kernel/base/mock_timer.h"
-#include "pagespeed/kernel/base/named_lock_manager.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/thread_system.h"

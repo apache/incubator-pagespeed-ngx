@@ -20,11 +20,9 @@
 #define PAGESPEED_KERNEL_BASE_MEM_LOCK_MANAGER_H_
 
 #include <map>
-#include <set>
 
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/named_lock_manager.h"
-#include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/util/mem_lock.h"

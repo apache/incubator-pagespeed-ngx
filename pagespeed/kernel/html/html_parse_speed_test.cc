@@ -28,6 +28,7 @@
 
 #include <algorithm>
 #include <cstdlib>  // for exit
+#include <memory>
 #include <vector>
 
 #include "base/logging.h"

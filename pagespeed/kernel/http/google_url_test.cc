@@ -20,6 +20,7 @@
 
 #include "pagespeed/kernel/http/google_url.h"
 
+#include "pagespeed/kernel/base/gmock.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/null_mutex.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"

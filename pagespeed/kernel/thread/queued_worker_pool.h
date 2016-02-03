@@ -30,6 +30,7 @@
 #include <set>
 #include <vector>
 
+#include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
@@ -41,7 +42,6 @@
 
 namespace net_instaweb {
 
-class AbstractMutex;
 class QueuedWorker;
 class Waveform;
 

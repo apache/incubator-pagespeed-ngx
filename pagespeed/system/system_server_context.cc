@@ -39,7 +39,9 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/base/timer.h"
+#include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/sharedmem/shared_mem_statistics.h"
+
 
 namespace net_instaweb {
 

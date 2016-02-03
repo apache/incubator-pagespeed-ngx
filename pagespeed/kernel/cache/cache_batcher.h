@@ -23,6 +23,7 @@
 
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/shared_string.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/cache/cache_interface.h"
@@ -30,7 +31,6 @@
 namespace net_instaweb {
 
 class AbstractMutex;
-class SharedString;
 class Statistics;
 class Variable;
 

@@ -18,7 +18,7 @@
 
 #include "pagespeed/kernel/util/mem_lock_state.h"
 
-#include "pagespeed/kernel/base/function.h"
+#include "base/logging.h"
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/util/mem_lock.h"
 #include "pagespeed/kernel/util/mem_lock_manager.h"

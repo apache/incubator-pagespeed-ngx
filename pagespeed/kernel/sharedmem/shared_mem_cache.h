@@ -25,6 +25,7 @@
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/cache_interface.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/shared_string.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/thread_annotations.h"
 #include "pagespeed/kernel/sharedmem/shared_mem_cache_data.h"
@@ -36,7 +37,6 @@ class AbstractSharedMemSegment;
 class Hasher;
 class MessageHandler;
 class SharedMemCacheDump;
-class SharedString;
 class Timer;
 
 // Abstract interface for a cache.

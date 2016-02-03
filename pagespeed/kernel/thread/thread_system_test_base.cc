@@ -20,7 +20,6 @@
 
 #include "pagespeed/kernel/base/abstract_mutex.h"  // for ScopedMutex, etc
 #include "pagespeed/kernel/base/condvar.h"
-#include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/thread.h"
 
 namespace net_instaweb {

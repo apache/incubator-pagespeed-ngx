@@ -18,12 +18,10 @@
 #define PAGESPEED_CONTROLLER_CENTRAL_CONTROLLER_INTERFACE_ADAPTER_H_
 
 #include "pagespeed/controller/central_controller_interface.h"
-#include "pagespeed/controller/central_controller_callback.h"
 #include "pagespeed/controller/expensive_operation_callback.h"
 #include "pagespeed/controller/schedule_rewrite_callback.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
-#include "pagespeed/kernel/thread/queued_worker_pool.h"
 
 namespace net_instaweb {
 

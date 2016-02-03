@@ -32,7 +32,6 @@
 
 namespace net_instaweb {
 
-class AbstractMutex;
 class MessageHandler;
 class MockTimer;
 class ThreadSystem;

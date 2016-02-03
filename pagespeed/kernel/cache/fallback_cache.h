@@ -22,6 +22,7 @@
 #include <cstddef>
 
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/shared_string.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/cache/cache_interface.h"
@@ -29,7 +30,6 @@
 namespace net_instaweb {
 
 class MessageHandler;
-class SharedString;
 
 // Provides a mechanism to handle small objects with one cache, and large
 // objects with another cache.  This is not a write-through cache; the

@@ -23,13 +23,19 @@
 
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/request_context.h"
+#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/wget_url_fetcher.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_gflags.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "pagespeed/kernel/base/cache_interface.h"
+#include "pagespeed/kernel/base/file_system.h"
 #include "pagespeed/kernel/base/google_message_handler.h"
+#include "pagespeed/kernel/base/hasher.h"
 #include "pagespeed/kernel/base/md5_hasher.h"
+#include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/null_message_handler.h"
 #include "pagespeed/kernel/base/stdio_file_system.h"
 #include "pagespeed/kernel/base/string.h"
@@ -43,15 +49,7 @@
 
 namespace net_instaweb {
 
-class CacheInterface;
-class FileSystem;
-class Hasher;
-class MessageHandler;
 class ProcessContext;
-class RewriteOptions;
-class Statistics;
-class UrlAsyncFetcher;
-class Writer;
 
 namespace {
 

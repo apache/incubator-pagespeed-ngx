@@ -22,7 +22,9 @@
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_gflags.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/writer.h"
 #include "pagespeed/kernel/util/simple_stats.h"
 
 namespace net_instaweb {
@@ -32,9 +34,7 @@ class Hasher;
 class MessageHandler;
 class ProcessContext;
 class ServerContext;
-class Statistics;
 class UrlAsyncFetcher;
-class Writer;
 
 // Implements a baseline RewriteDriverFactory with the simplest possible
 // options for cache, fetchers, & system interface.

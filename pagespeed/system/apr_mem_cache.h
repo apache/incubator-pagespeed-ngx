@@ -24,6 +24,7 @@
 
 #include "pagespeed/kernel/base/atomic_bool.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/shared_string.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/timer.h"
@@ -37,7 +38,6 @@ namespace net_instaweb {
 
 class Hasher;
 class MessageHandler;
-class SharedString;
 class Statistics;
 class UpDownCounter;
 class Variable;

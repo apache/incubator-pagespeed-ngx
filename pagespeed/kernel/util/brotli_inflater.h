@@ -19,7 +19,6 @@
 #ifndef PAGESPEED_KERNEL_UTIL_BROTLI_INFLATER_H_
 #define PAGESPEED_KERNEL_UTIL_BROTLI_INFLATER_H_
 
-#include <cstddef>
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string_util.h"

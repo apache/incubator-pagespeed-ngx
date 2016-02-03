@@ -20,15 +20,12 @@
 #define PAGESPEED_KERNEL_BASE_NULL_STATISTICS_H_
 
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/statistics_template.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
-
-class AbstractMutex;
-class CountHistogram;
-class Statistics;
 
 class NullStatisticsVariable {
  public:

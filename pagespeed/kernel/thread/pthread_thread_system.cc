@@ -28,6 +28,7 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/thread.h"
 #include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/thread/pthread_mutex.h"
 #include "pagespeed/kernel/thread/pthread_rw_lock.h"
 
@@ -55,8 +56,6 @@ class PthreadId : public ThreadSystem::ThreadId {
 };
 
 }  // namespace
-
-class Timer;
 
 class PthreadThreadImpl : public ThreadSystem::ThreadImpl {
  public:

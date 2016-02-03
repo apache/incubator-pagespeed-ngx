@@ -22,12 +22,12 @@
 #include <cstddef>
 
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/html/html_element.h"
 #include "pagespeed/kernel/html/html_node.h"
 #include "pagespeed/kernel/html/html_parse.h"
 
 namespace net_instaweb {
 
-class HtmlElement;
 class HtmlEvent;
 
 class HtmlTestingPeer {

@@ -18,6 +18,8 @@
 
 #include "pagespeed/kernel/image/frame_interface_optimizer.h"
 
+#include <cstdint>
+
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/string.h"
 

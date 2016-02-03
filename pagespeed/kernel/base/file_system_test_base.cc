@@ -18,8 +18,9 @@
 
 #include "pagespeed/kernel/base/file_system_test_base.h"
 
-#include <cstddef>
 #include <algorithm>
+#include <cstddef>
+#include <memory>
 #include <vector>
 
 #include "pagespeed/kernel/base/basictypes.h"

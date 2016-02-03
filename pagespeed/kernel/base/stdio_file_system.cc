@@ -31,7 +31,6 @@
 #include <unistd.h>
 #endif  // WIN32
 
-#include <algorithm>
 #include <cstddef>
 #include <cstdio>
 #include <cstdlib>

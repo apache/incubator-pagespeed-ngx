@@ -26,6 +26,7 @@
 #ifndef PAGESPEED_KERNEL_BASE_NULL_THREAD_SYSTEM_H_
 #define PAGESPEED_KERNEL_BASE_NULL_THREAD_SYSTEM_H_
 
+#include "base/logging.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/condvar.h"
 #include "pagespeed/kernel/base/thread_system.h"

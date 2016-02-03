@@ -17,10 +17,10 @@
 #include "pagespeed/controller/popularity_contest_schedule_rewrite_controller.h"
 
 #include <unordered_map>
+#include <utility>
 
+#include "base/logging.h"
 #include "pagespeed/controller/priority_queue.h"
-#include "pagespeed/controller/schedule_rewrite_controller.h"
-#include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"

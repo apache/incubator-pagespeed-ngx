@@ -19,7 +19,6 @@
 
 #include "pagespeed/controller/central_controller_interface.h"
 #include "pagespeed/controller/central_controller_callback.h"
-#include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/thread/sequence.h"
 

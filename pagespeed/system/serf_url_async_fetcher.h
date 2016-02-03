@@ -18,12 +18,14 @@
 #ifndef PAGESPEED_SYSTEM_SERF_URL_ASYNC_FETCHER_H_
 #define PAGESPEED_SYSTEM_SERF_URL_ASYNC_FETCHER_H_
 
+#include <cstddef>
 #include <vector>
 
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/gtest_prod.h"
 #include "pagespeed/kernel/base/pool.h"
+#include "pagespeed/kernel/base/pool_element.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/thread_system.h"

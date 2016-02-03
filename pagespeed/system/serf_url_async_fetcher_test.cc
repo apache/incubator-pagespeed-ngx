@@ -20,7 +20,6 @@
 #include <unistd.h>
 #include <cstddef>
 #include <cstdlib>
-#include <memory>
 #include <vector>
 
 #include "apr_pools.h"

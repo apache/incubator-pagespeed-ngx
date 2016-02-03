@@ -25,14 +25,10 @@
 #include "pagespeed/kernel/html/html_element.h"
 #include "pagespeed/kernel/html/html_filter.h"
 #include "pagespeed/kernel/html/html_name.h"
+#include "pagespeed/kernel/html/html_node.h"
 
 namespace net_instaweb {
 
-class HtmlCdataNode;
-class HtmlCharactersNode;
-class HtmlCommentNode;
-class HtmlDirectiveNode;
-class HtmlIEDirectiveNode;
 class HtmlParse;
 class Writer;
 

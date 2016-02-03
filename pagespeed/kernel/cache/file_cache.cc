@@ -36,7 +36,6 @@
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/base/timer.h"
-#include "pagespeed/kernel/cache/cache_interface.h"
 #include "pagespeed/kernel/thread/slow_worker.h"
 #include "pagespeed/kernel/util/url_to_filename_encoder.h"
 

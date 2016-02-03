@@ -22,6 +22,7 @@
 #include "pagespeed/automatic/proxy_interface_test_base.h"
 
 #include "base/logging.h"
+#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/mock_callback.h"
@@ -47,6 +48,7 @@
 #include "pagespeed/automatic/cache_html_flow.h"
 #include "pagespeed/automatic/proxy_fetch.h"
 #include "pagespeed/automatic/proxy_interface.h"
+#include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/dynamic_annotations.h"
 #include "pagespeed/kernel/base/gtest.h"
@@ -56,6 +58,7 @@
 #include "pagespeed/kernel/base/null_message_handler.h"
 #include "pagespeed/kernel/base/ref_counted_ptr.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/thread_system.h"
@@ -78,10 +81,6 @@
 #include "pagespeed/kernel/thread/worker_test_base.h"
 
 namespace net_instaweb {
-
-class AbstractMutex;
-class AsyncFetch;
-class Statistics;
 
 namespace {
 

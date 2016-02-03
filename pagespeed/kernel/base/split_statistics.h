@@ -25,19 +25,19 @@
 #ifndef PAGESPEED_KERNEL_BASE_SPLIT_STATISTICS_H_
 #define PAGESPEED_KERNEL_BASE_SPLIT_STATISTICS_H_
 
+#include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/statistics_template.h"
 #include "pagespeed/kernel/base/string_util.h"        // for StringPiece
+#include "pagespeed/kernel/base/writer.h"
 
 namespace net_instaweb {
 
-class AbstractMutex;
 class MessageHandler;
 class StatisticsLogger;
 class ThreadSystem;
-class Writer;
 
 // A statistics variable that forwards writes to two other Variable objects,
 // but reads only from one.

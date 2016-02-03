@@ -19,9 +19,10 @@
 #include "pagespeed/kernel/image/image_resizer.h"
 
 #include <math.h>
+#include <algorithm>
 
+#include "base/logging.h"
 #include "pagespeed/kernel/base/message_handler.h"
-#include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/image/scanline_utils.h"
 
 namespace pagespeed {

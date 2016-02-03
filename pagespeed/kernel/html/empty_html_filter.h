@@ -19,13 +19,8 @@
 #ifndef PAGESPEED_KERNEL_HTML_EMPTY_HTML_FILTER_H_
 #define PAGESPEED_KERNEL_HTML_EMPTY_HTML_FILTER_H_
 
-#include "pagespeed/kernel/html/html_filter.h"
-
-// This 'string' is not needed for this include.  But removing it breaks
-// PageSpeed Insights.  See
-// third_party/pagespeed/src/pagespeed/html/external_resource_filter.h
-// Remove this once that one is fixed.
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/html/html_filter.h"
 
 namespace net_instaweb {
 
@@ -35,11 +30,6 @@ class HtmlCommentNode;
 class HtmlDirectiveNode;
 class HtmlElement;
 class HtmlIEDirectiveNode;
-
-// TODO(jmarantz): remove this -- it's IWYU-superfluous but is needed until
-// PageSpeed Insights puts this declaration in.  Note that IWYU annoyingly
-// ignores the pragma on forward declarations, but the intent should be clear.
-class HtmlParse;
 
 // Base class for rewriting filters that don't need to be sure to
 // override every filter method.  Other filters that need to be sure

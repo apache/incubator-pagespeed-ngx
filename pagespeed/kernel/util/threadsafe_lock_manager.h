@@ -19,10 +19,9 @@
 #ifndef PAGESPEED_KERNEL_UTIL_THREADSAFE_LOCK_MANAGER_H_
 #define PAGESPEED_KERNEL_UTIL_THREADSAFE_LOCK_MANAGER_H_
 
-#include <set>
-
 #include "pagespeed/kernel/base/named_lock_manager.h"
 #include "pagespeed/kernel/base/ref_counted_ptr.h"
+#include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/thread/scheduler.h"
 
 namespace net_instaweb {

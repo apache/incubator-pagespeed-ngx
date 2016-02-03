@@ -26,7 +26,6 @@
 #include "pagespeed/kernel/base/stack_buffer.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
-#include "pagespeed/kernel/base/string_writer.h"
 #include "pagespeed/kernel/base/writer.h"
 
 namespace net_instaweb {

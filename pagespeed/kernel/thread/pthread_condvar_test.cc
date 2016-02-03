@@ -22,11 +22,11 @@
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/posix_timer.h"
 #include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/thread/condvar_test_base.h"
 #include "pagespeed/kernel/thread/pthread_mutex.h"
 
 namespace net_instaweb {
-class Timer;
 
 class PthreadCondvarTest : public CondvarTestBase {
  protected:

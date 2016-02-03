@@ -20,6 +20,7 @@
 #define PAGESPEED_KERNEL_BASE_STL_UTIL_H_
 
 #include <algorithm>
+#include <vector>
 
 #include "base/stl_util.h"
 

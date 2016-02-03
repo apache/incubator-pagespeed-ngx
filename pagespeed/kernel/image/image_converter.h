@@ -23,7 +23,9 @@
 #include "third_party/optipng/src/opngreduc/opngreduc.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/image/image_frame_interface.h"
 #include "pagespeed/kernel/image/jpeg_optimizer.h"
+#include "pagespeed/kernel/image/scanline_interface.h"
 #include "pagespeed/kernel/image/scanline_status.h"
 #include "pagespeed/kernel/image/webp_optimizer.h"
 
@@ -37,11 +39,7 @@ namespace image_compression {
 
 using net_instaweb::MessageHandler;
 
-class MultipleFrameReader;
-class MultipleFrameWriter;
 class PngReaderInterface;
-class ScanlineReaderInterface;
-class ScanlineWriterInterface;
 
 class ImageConverter {
  public:

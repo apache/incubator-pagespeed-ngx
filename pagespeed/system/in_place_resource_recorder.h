@@ -28,12 +28,12 @@
 #include "pagespeed/kernel/base/writer.h"
 #include "pagespeed/kernel/http/http_options.h"
 #include "pagespeed/kernel/http/request_headers.h"
+#include "pagespeed/kernel/http/response_headers.h"
 
 namespace net_instaweb {
 
 class HTTPCache;
 class MessageHandler;
-class ResponseHeaders;
 class Statistics;
 class Variable;
 

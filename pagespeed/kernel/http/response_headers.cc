@@ -17,6 +17,7 @@
 #include "pagespeed/kernel/http/response_headers.h"
 
 #include <algorithm>                    // for min
+#include <cstddef>
 #include <cstdio>     // for fprintf, stderr, snprintf
 #include <map>
 #include <memory>

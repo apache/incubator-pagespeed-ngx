@@ -19,7 +19,6 @@
 #include <cstddef>                     // for size_t
 #include <set>
 
-#include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/thread_annotations.h"
 #include "pagespeed/kernel/base/thread_system.h"

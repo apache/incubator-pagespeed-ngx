@@ -19,9 +19,11 @@
 
 #include "pagespeed/system/system_caches.h"
 
-#include <cstdlib>
-#include <vector>
 #include <sys/socket.h>
+#include <cstdlib>
+#include <cstdio>
+#include <unistd.h>
+#include <vector>
 
 #include "apr_poll.h"
 #include "apr_version.h"
@@ -34,6 +36,8 @@
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/public/custom_rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
@@ -45,7 +49,9 @@
 #include "net/instaweb/util/public/cache_property_store.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/property_store.h"
+#include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/abstract_shared_mem.h"
+#include "pagespeed/kernel/base/condvar.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/md5_hasher.h"
 #include "pagespeed/kernel/base/mem_file_system.h"
@@ -53,19 +59,20 @@
 #include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/base/named_lock_manager.h"
 #include "pagespeed/kernel/base/named_lock_tester.h"
+#include "pagespeed/kernel/base/null_mutex.h"
 #include "pagespeed/kernel/base/null_shared_mem.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/shared_string.h"
 #include "pagespeed/kernel/base/stack_buffer.h"
+#include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/stl_util.h"
+#include "pagespeed/kernel/base/thread.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/cache/async_cache.h"
 #include "pagespeed/kernel/cache/cache_batcher.h"
-#include "pagespeed/kernel/cache/cache_interface.h"
 #include "pagespeed/kernel/cache/cache_spammer.h"
 #include "pagespeed/kernel/cache/cache_stats.h"
-#include "pagespeed/kernel/cache/cache_test_base.h"
 #include "pagespeed/kernel/cache/compressed_cache.h"
 #include "pagespeed/kernel/cache/fallback_cache.h"
 #include "pagespeed/kernel/cache/file_cache.h"
@@ -77,7 +84,6 @@
 #include "pagespeed/kernel/http/response_headers.h"
 #include "pagespeed/kernel/sharedmem/inprocess_shared_mem.h"
 #include "pagespeed/kernel/sharedmem/shared_mem_lock_manager.h"
-#include "pagespeed/kernel/thread/scheduler_based_abstract_lock.h"
 #include "pagespeed/kernel/thread/worker_test_base.h"
 #include "pagespeed/kernel/util/file_system_lock_manager.h"
 #include "pagespeed/kernel/util/platform.h"

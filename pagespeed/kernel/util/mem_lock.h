@@ -19,17 +19,13 @@
 #ifndef PAGESPEED_KERNEL_BASE_MEM_LOCK_H_
 #define PAGESPEED_KERNEL_BASE_MEM_LOCK_H_
 
-#include <map>
-#include <set>
-
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/named_lock_manager.h"
 #include "pagespeed/kernel/base/string.h"
-#include "pagespeed/kernel/base/string_util.h"
-#include "pagespeed/kernel/base/timer.h"
 
 namespace net_instaweb {
 
+class Function;
 class MemLockState;
 
 class MemLock : public NamedLock {
