@@ -18,7 +18,6 @@
 
 #include "net/instaweb/rewriter/public/in_place_rewrite_context.h"
 
-#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
@@ -26,6 +25,7 @@
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/fake_filter.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
+#include "net/instaweb/rewriter/public/notifying_fetch.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -34,7 +34,6 @@
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/hasher.h"
-#include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -54,59 +53,6 @@
 namespace net_instaweb {
 
 namespace {
-
-class FakeFetch : public AsyncFetch {
- public:
-  FakeFetch(const RequestContextPtr& request_context,
-            RewriteOptions* options,
-            const GoogleString& url,
-            WorkerTestBase::SyncPoint* sync,
-            ResponseHeaders* response_headers)
-      : AsyncFetch(request_context),
-        done_(false),
-        success_(false),
-        options_(options),
-        url_(url),
-        sync_(sync) {
-    set_response_headers(response_headers);
-  }
-
-  virtual ~FakeFetch() {}
-
-  virtual void HandleHeadersComplete() {}
-  virtual bool HandleWrite(const StringPiece& content,
-                           MessageHandler* handler) {
-    content.AppendToString(&content_);
-    return true;
-  }
-  virtual bool HandleFlush(MessageHandler* handler) {
-    return true;
-  }
-  virtual void HandleDone(bool success) {
-    response_headers()->ComputeCaching();
-    done_ = true;
-    success_ = success;
-    sync_->Notify();
-  }
-  StringPiece content() { return content_; }
-  bool done() { return done_; }
-  bool success() { return success_; }
-
-  bool IsCachedResultValid(const ResponseHeaders& headers) {
-    return OptionsAwareHTTPCacheCallback::IsCacheValid(
-        url_, *options_, request_context(), headers);
-  }
-
- private:
-  GoogleString content_;
-  bool done_;
-  bool success_;
-  const RewriteOptions* options_;
-  GoogleString url_;
-  WorkerTestBase::SyncPoint* sync_;
-
-  DISALLOW_COPY_AND_ASSIGN(FakeFetch);
-};
 
 class FakeImageFilter : public FakeFilter {
  public:
@@ -390,14 +336,14 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
     WorkerTestBase::SyncPoint sync(server_context()->thread_system());
     RequestContextPtr request_context(RequestContext::NewTestRequestContext(
         server_context()->thread_system()));
-    FakeFetch mock_fetch(request_context, options(), url, &sync,
-                         &response_headers_);
+    NotifyingFetch notifying_fetch(
+        request_context, options(), url, &sync, &response_headers_);
     const RequestHeaders* driver_request_headers =
         rewrite_driver()->request_headers();
     if (driver_request_headers != NULL) {
-      mock_fetch.request_headers()->CopyFrom(*driver_request_headers);
+      notifying_fetch.request_headers()->CopyFrom(*driver_request_headers);
     }
-    rewrite_driver()->FetchResource(url, &mock_fetch);
+    rewrite_driver()->FetchResource(url, &notifying_fetch);
 
     // If we're testing if the rewrite takes too long, we need to push
     // time forward here.
@@ -410,9 +356,9 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
     sync.Wait();
     rewrite_driver()->WaitForShutDown();
     mock_scheduler()->AwaitQuiescence();  // needed for cache puts to finish.
-    EXPECT_TRUE(mock_fetch.done());
-    EXPECT_EQ(expected_success, mock_fetch.success()) << url;
-    EXPECT_EQ(expected_body, mock_fetch.content()) << url;
+    EXPECT_TRUE(notifying_fetch.done());
+    EXPECT_EQ(expected_success, notifying_fetch.success()) << url;
+    EXPECT_EQ(expected_body, notifying_fetch.content()) << url;
     EXPECT_EQ(expected_ttl, response_headers_.cache_ttl_ms()) << url;
     EXPECT_STREQ(etag, response_headers_.Lookup1(HttpAttributes::kEtag)) << url;
     EXPECT_EQ(date_ms, response_headers_.date_ms()) << url;

@@ -478,6 +478,7 @@
         '<(DEPTH)/pagespeed/kernel/html/html_parse_test_base.cc',
         'http/mock_url_fetcher.cc',
         'rewriter/fake_filter.cc',
+        'rewriter/notifying_fetch.cc',
         'rewriter/rewrite_test_base.cc',
         'rewriter/test_distributed_fetcher.cc',
         'rewriter/test_rewrite_driver_factory.cc',
