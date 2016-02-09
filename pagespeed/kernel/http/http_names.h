@@ -75,6 +75,7 @@ struct HttpAttributes {
   static const char kPurpose[];
   static const char kReferer[];  // sic
   static const char kRefresh[];
+  static const char kSaveData[];
   static const char kServer[];
   static const char kSetCookie[];
   static const char kSetCookie2[];

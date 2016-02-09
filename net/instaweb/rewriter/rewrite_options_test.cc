@@ -194,6 +194,49 @@ class RewriteOptionsTest : public RewriteOptionsTestBase<RewriteOptions> {
     EXPECT_FALSE(lawyer.IsOriginKnown(url));
   }
 
+  void VerifyAllowVaryOn(const GoogleString& input_str,
+                         bool expected_valid,
+                         bool expected_allow_auto,
+                         bool expected_allow_save_data,
+                         bool expected_allow_user_agent,
+                         bool expected_allow_accept,
+                         const GoogleString& expected_str) {
+    RewriteOptions::OptionSettingResult is_valid =
+        options_.SetOptionFromName(RewriteOptions::kAllowVaryOn, input_str);
+
+    if (expected_valid) {
+      EXPECT_EQ(RewriteOptions::kOptionOk, is_valid);
+    } else {
+      EXPECT_EQ(RewriteOptions::kOptionValueInvalid, is_valid);
+      return;  // No more checking
+    }
+    EXPECT_EQ(expected_allow_auto, options_.AllowVaryOnAuto());
+    EXPECT_EQ(expected_allow_save_data, options_.AllowVaryOnSaveData());
+    EXPECT_EQ(expected_allow_user_agent,
+              options_.AllowVaryOnUserAgent());
+    EXPECT_EQ(expected_allow_accept, options_.AllowVaryOnAccept());
+    EXPECT_STREQ(expected_str, options_.AllowVaryOnToString());
+  }
+
+  void VerifyMergingAllowVaryOn(const GoogleString& old_option_str,
+                                const GoogleString& new_option_str,
+                                const GoogleString& expected_option_str) {
+    RewriteOptions merged_options(&thread_system_);
+    RewriteOptions new_options(&thread_system_);
+    if (!old_option_str.empty()) {
+      EXPECT_EQ(RewriteOptions::kOptionOk,
+                merged_options.SetOptionFromName(RewriteOptions::kAllowVaryOn,
+                                                 old_option_str));
+    }
+    if (!new_option_str.empty()) {
+      EXPECT_EQ(RewriteOptions::kOptionOk,
+                new_options.SetOptionFromName(RewriteOptions::kAllowVaryOn,
+                                              new_option_str));
+    }
+    merged_options.Merge(new_options);
+    EXPECT_STREQ(expected_option_str, merged_options.AllowVaryOnToString());
+  }
+
   void TestSetOptionFromName(bool test_log_variant);
 
   NullThreadSystem thread_system_;
@@ -871,6 +914,7 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
     RewriteOptions::kAddOptionsToUrls,
     RewriteOptions::kAllowLoggingUrlsInLogRecord,
     RewriteOptions::kAllowOptionsToBeSetByCookies,
+    RewriteOptions::kAllowVaryOn,
     RewriteOptions::kAlwaysMobilize,
     RewriteOptions::kAlwaysRewriteCss,
     RewriteOptions::kAnalyticsID,
@@ -932,6 +976,7 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
     RewriteOptions::kImageInlineMaxBytes,
     RewriteOptions::kImageJpegNumProgressiveScans,
     RewriteOptions::kImageJpegNumProgressiveScansForSmallScreens,
+    RewriteOptions::kImageJpegQualityForSaveData,
     RewriteOptions::kImageJpegRecompressionQuality,
     RewriteOptions::kImageJpegRecompressionQualityForSmallScreens,
     RewriteOptions::kImageLimitOptimizedPercent,
@@ -941,6 +986,7 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
     RewriteOptions::kImagePreserveURLs,
     RewriteOptions::kImageRecompressionQuality,
     RewriteOptions::kImageResolutionLimitBytes,
+    RewriteOptions::kImageWebpQualityForSaveData,
     RewriteOptions::kImageWebpRecompressionQuality,
     RewriteOptions::kImageWebpRecompressionQualityForSmallScreens,
     RewriteOptions::kImageWebpAnimatedRecompressionQuality,
@@ -3142,6 +3188,147 @@ TEST_F(RewriteOptionsTest, MobilizeFiltersTest) {
   EXPECT_TRUE(options_.mob_nav());
   EXPECT_FALSE(options_.mob_always());
   EXPECT_FALSE(options_.mob_layout());
+}
+
+TEST_F(RewriteOptionsTest, ParseAllowVaryOn) {
+  // Explicitly listed headers should be supported, independently of "Via"
+  // header.
+  VerifyAllowVaryOn("User-Agent",
+                    true /* expected_valid */,
+                    false /* expected_allow_auto */,
+                    false /* expected_allow_save_data */,
+                    true /* expected_allow_user_agent */,
+                    false /* expected_allow_accept */,
+                    "User-Agent");
+  VerifyAllowVaryOn("Save-Data",
+                    true /* expected_valid */,
+                    false /* expected_allow_auto */,
+                    true /* expected_allow_save_data */,
+                    false /* expected_allow_user_agent */,
+                    false /* expected_allow_accept */,
+                    "Save-Data");
+  VerifyAllowVaryOn("Accept",
+                    true /* expected_valid */,
+                    false /* expected_allow_auto */,
+                    false /* expected_allow_save_data */,
+                    false /* expected_allow_user_agent */,
+                    true /* expected_allow_accept */,
+                    "Accept");
+  VerifyAllowVaryOn("Save-Data,Accept,User-Agent",
+                    true /* expected_valid */,
+                    false /* expected_allow_auto */,
+                    true /* expected_allow_save_data */,
+                    true /* expected_allow_user_agent */,
+                    true /* expected_allow_accept */,
+                    "Accept,Save-Data,User-Agent");
+  VerifyAllowVaryOn("Save-Data,Accept,User-Agent",
+                    true /* expected_valid */,
+                    false /* expected_allow_auto */,
+                    true /* expected_allow_save_data */,
+                    true /* expected_allow_user_agent */,
+                    true /* expected_allow_accept */,
+                    "Accept,Save-Data,User-Agent");
+
+  // Case and empty space don't matter.
+  VerifyAllowVaryOn(" accept,SAVE-DATA,   uSER-aGENT  ",
+                    true /* expected_valid */,
+                    false /* expected_allow_auto */,
+                    true /* expected_allow_save_data */,
+                    true /* expected_allow_user_agent */,
+                    true /* expected_allow_accept */,
+                    "Accept,Save-Data,User-Agent");
+
+  // "None" disables all headers.
+  VerifyAllowVaryOn("None",
+                    true /* expected_valid */,
+                    false /* expected_allow_auto */,
+                    false /* expected_allow_save_data */,
+                    false /* expected_allow_user_agent */,
+                    false /* expected_allow_accept */,
+                    "None");
+  VerifyAllowVaryOn("nONE  ",
+                    true /* expected_valid */,
+                    false /* expected_allow_auto */,
+                    false /* expected_allow_save_data */,
+                    false /* expected_allow_user_agent */,
+                    false /* expected_allow_accept */,
+                    "None");
+
+  // In "Auto" mode, the "Auto" bit is set and the "Save-Data" header is
+  // enabled. Caller can decide which other headers to allow.
+  VerifyAllowVaryOn("AUTO",
+                    true /* expected_valid */,
+                    true /* expected_allow_auto */,
+                    true /* expected_allow_save_data */,
+                    false /* expected_allow_user_agent */,
+                    false /* expected_allow_accept */,
+                    "Auto");
+  VerifyAllowVaryOn("   auto ",
+                    true /* expected_valid */,
+                    true /* expected_allow_auto */,
+                    true /* expected_allow_save_data */,
+                    false /* expected_allow_user_agent */,
+                    false /* expected_allow_accept */,
+                    "Auto");
+
+  const bool not_used = false;
+  // Unsupported or invalid headers will not be accepted.
+  VerifyAllowVaryOn("Content-Length,User-Agent",
+                    false /* expected_valid */,
+                    not_used, not_used, not_used, not_used, "not-used");
+  VerifyAllowVaryOn(", ,User-Agent,Invalid",
+                    false /* expected_valid */,
+                    not_used, not_used, not_used, not_used, "not-used");
+  VerifyAllowVaryOn("Content-Length,Invalid",
+                    false /* expected_valid */,
+                    not_used, not_used, not_used, not_used, "not-used");
+
+  // Mixing "Auto" with "None", or mixing either of them with other headers
+  // is not allowed.
+  VerifyAllowVaryOn("Auto,None",
+                    false /* expected_valid */,
+                    not_used, not_used, not_used, not_used, "not-used");
+  VerifyAllowVaryOn("Auto,Accept",
+                    false /* expected_valid */,
+                    not_used, not_used, not_used, not_used, "not-used");
+  VerifyAllowVaryOn("Content-Length,None",
+                    false /* expected_valid */,
+                    not_used, not_used, not_used, not_used, "not-used");
+
+  // Empty string and extra comma are disallowed.
+  VerifyAllowVaryOn("",
+                    false /* expected_valid */,
+                    not_used, not_used, not_used, not_used, "not-used");
+  VerifyAllowVaryOn("    ",
+                    false /* expected_valid */,
+                    not_used, not_used, not_used, not_used, "not-used");
+  VerifyAllowVaryOn(",",
+                    false /* expected_valid */,
+                    not_used, not_used, not_used, not_used, "not-used");
+  VerifyAllowVaryOn(", ,, ",
+                    false /* expected_valid */,
+                    not_used, not_used, not_used, not_used, "not-used");
+  VerifyAllowVaryOn("accept,",
+                    false /* expected_valid */,
+                    not_used, not_used, not_used, not_used, "not-used");
+}
+
+TEST_F(RewriteOptionsTest, MergeAllowVaryOnOptions) {
+  // New option, if specified, will always overwrite the old one.
+  VerifyMergingAllowVaryOn("Accept,User-Agent", "Save-Data", "Save-Data");
+  VerifyMergingAllowVaryOn("Accept", "Save-Data", "Save-Data");
+  VerifyMergingAllowVaryOn("Accept", "None", "None");
+  VerifyMergingAllowVaryOn("", "Save-Data", "Save-Data");
+  VerifyMergingAllowVaryOn("", "None", "None");
+  VerifyMergingAllowVaryOn("", "Auto", "Auto");
+
+  // New option, is un-specified, will be ignored.
+  VerifyMergingAllowVaryOn("Accept,User-Agent", "", "Accept,User-Agent");
+  VerifyMergingAllowVaryOn("None", "", "None");
+  VerifyMergingAllowVaryOn("Auto", "", "Auto");
+
+  // If neither option has been specified, the default will be used.
+  VerifyMergingAllowVaryOn("", "", "Auto");
 }
 
 }  // namespace net_instaweb

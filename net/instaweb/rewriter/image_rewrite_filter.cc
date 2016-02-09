@@ -69,8 +69,10 @@
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/data_url.h"
 #include "pagespeed/kernel/http/google_url.h"
+#include "pagespeed/kernel/http/response_headers.h"
 #include "pagespeed/kernel/http/semantic_type.h"
 #include "pagespeed/kernel/image/image_util.h"
+#include "pagespeed/kernel/thread/queued_worker_pool.h"
 #include "pagespeed/kernel/util/simple_random.h"
 #include "pagespeed/opt/logging/enums.pb.h"
 
@@ -164,6 +166,7 @@ const char* const kRelatedOptions[] = {
   RewriteOptions::kImageJpegNumProgressiveScansForSmallScreens,
   RewriteOptions::kImageJpegRecompressionQuality,
   RewriteOptions::kImageJpegRecompressionQualityForSmallScreens,
+  RewriteOptions::kImageJpegQualityForSaveData,
   RewriteOptions::kImageLimitOptimizedPercent,
   RewriteOptions::kImageLimitResizeAreaPercent,
   RewriteOptions::kImageMaxRewritesAtOnce,
@@ -172,6 +175,8 @@ const char* const kRelatedOptions[] = {
   RewriteOptions::kImageResolutionLimitBytes,
   RewriteOptions::kImageWebpRecompressionQuality,
   RewriteOptions::kImageWebpRecompressionQualityForSmallScreens,
+  RewriteOptions::kImageWebpAnimatedRecompressionQuality,
+  RewriteOptions::kImageWebpQualityForSaveData,
   RewriteOptions::kProgressiveJpegMinBytes
 };
 
