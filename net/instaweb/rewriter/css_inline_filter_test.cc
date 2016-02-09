@@ -394,7 +394,26 @@ TEST_F(CssInlineFilterTest, DontInlineInNoscript) {
   ValidateNoChanges("noscript_noinline", html_input);
 }
 
-TEST_F(CssInlineFilterTest, InlineAndPrioritizeCss) {
+class CssInlineAndPriotizeFilterTest : public CssInlineFilterTest {
+ public:
+  void SetUp() override {
+    CssInlineFilterTest::SetUp();
+
+    rewrite_driver()->set_property_page(NewMockPage(kTestDomain));
+    // Set up pcache for page.
+    const PropertyCache::Cohort* cohort =
+        SetupCohort(page_property_cache(), RewriteDriver::kBeaconCohort);
+    server_context()->set_beacon_cohort(cohort);
+    page_property_cache()->Read(rewrite_driver()->property_page());
+    // Set up and register a beacon finder.
+    CriticalSelectorFinder* finder = new BeaconCriticalSelectorFinder(
+        server_context()->beacon_cohort(), factory()->nonce_generator(),
+        statistics());
+    server_context()->set_critical_selector_finder(finder);
+  }
+};
+
+TEST_F(CssInlineAndPriotizeFilterTest, InlineAndPrioritizeCss) {
   // Make sure we interact with Critical CSS properly, including in cached
   // case.
   options()->EnableFilter(RewriteOptions::kInlineCss);
@@ -403,12 +422,13 @@ TEST_F(CssInlineFilterTest, InlineAndPrioritizeCss) {
 
   const char kCssUrl[] = "a.css";
   const char kCss[] = "div {display:block;}";
+  const char kMinCss[] = "div{display:block}";
 
   SetResponseWithDefaultHeaders(kCssUrl, kContentTypeCss, kCss, 3000);
 
   GoogleString html_input =
       StrCat("<link rel=stylesheet href=\"", kCssUrl, "\">");
-  GoogleString html_output = StrCat("<style>", kCss, "</style>");
+  GoogleString html_output = StrCat("<style>", kMinCss, "</style>");
 
   ValidateExpected("inline_prioritize", html_input, html_output);
 }

@@ -21,6 +21,20 @@
 namespace net_instaweb {
 
 class SpeedTest : public RewriteTestBase {
+ protected:
+  void PreparePCache() {
+    // Critical css needs its finder and pcache to work, and of course we
+    // don't want to accumulate everything in memory after every file, so we
+    // set it up fresh.
+    rewrite_driver()->set_property_page(NewMockPage(kTestDomain));
+    page_property_cache()->Read(rewrite_driver()->property_page());
+
+    // Set up and register a beacon finder.
+    CriticalSelectorFinder* finder = new BeaconCriticalSelectorFinder(
+        server_context()->beacon_cohort(), factory()->nonce_generator(),
+        statistics());
+    server_context()->set_critical_selector_finder(finder);
+  }
 };
 
 // This measures the speed of the HTML parsing & filter dispatch mechanism.
@@ -29,6 +43,9 @@ TEST_F(SpeedTest, FilterSpeedTest) {
   // Enables all filters.
   options()->SetRewriteLevel(RewriteOptions::kAllFilters);
   RewriteDriver* driver = rewrite_driver();
+  const PropertyCache::Cohort* cohort =
+      SetupCohort(page_property_cache(), RewriteDriver::kBeaconCohort);
+  server_context()->set_beacon_cohort(cohort);
   driver->AddFilters();
 
   GoogleString html;
@@ -40,6 +57,7 @@ TEST_F(SpeedTest, FilterSpeedTest) {
   int64 start_us = timer.NowUs();
 
   for (int i = 0; i < 1000; ++i) {
+    PreparePCache();
     driver->StartParse("http://example.com/index.html");
     driver->ParseText("<html><head></head><body>");
     driver->Flush();

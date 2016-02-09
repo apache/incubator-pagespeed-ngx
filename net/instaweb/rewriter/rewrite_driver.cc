@@ -38,7 +38,6 @@
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
-#include "net/instaweb/rewriter/critical_css.pb.h"
 #include "net/instaweb/rewriter/critical_keys.pb.h"
 #include "net/instaweb/rewriter/critical_line_info.pb.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
@@ -51,7 +50,6 @@
 #include "net/instaweb/rewriter/public/collect_flush_early_content_filter.h"
 #include "net/instaweb/rewriter/public/compute_visible_text_filter.h"
 #include "net/instaweb/rewriter/public/critical_css_beacon_filter.h"
-#include "net/instaweb/rewriter/public/critical_css_filter.h"
 #include "net/instaweb/rewriter/public/critical_images_beacon_filter.h"
 #include "net/instaweb/rewriter/public/critical_selector_filter.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
@@ -168,7 +166,6 @@
 
 namespace net_instaweb {
 
-class CriticalCssFinder;
 class RewriteDriverPool;
 
 namespace {
@@ -469,7 +466,6 @@ void RewriteDriver::Clear() NO_THREAD_SAFETY_ANALYSIS {
   }
   start_time_ms_ = 0;
 
-  critical_css_result_.reset(NULL);
   critical_images_info_.reset(NULL);
   critical_line_info_.reset(NULL);
   beacon_critical_line_info_.reset(NULL);
@@ -1085,15 +1081,10 @@ void RewriteDriver::AddPreRenderFilters() {
     AppendOwnedPreRenderFilter(new CssInlineImportToLinkFilter(this,
                                                                statistics()));
   }
-  if (rewrite_options->Enabled(RewriteOptions::kPrioritizeCriticalCss)) {
-    // If we're inlining styles that resolved initially, skip outlining
-    // css since that works against this.
-    // TODO(slamm): Figure out if move_css_to_head needs to be disabled.
-    CriticalCssFinder* finder = server_context()->critical_css_finder();
-    if (finder != NULL && !CriticalSelectorsEnabled()) {
-      AppendOwnedPreRenderFilter(new CriticalCssFilter(this, finder));
-    }
-  } else if (rewrite_options->Enabled(RewriteOptions::kOutlineCss)) {
+  if (!rewrite_options->Enabled(RewriteOptions::kPrioritizeCriticalCss) &&
+      // If we're inlining styles that resolved initially, skip outlining
+      // css since that works against this.
+      rewrite_options->Enabled(RewriteOptions::kOutlineCss)) {
     // Cut out inlined styles and make them into external resources.
     // This can only be called once and requires a server_context_ to be set.
     CHECK(server_context_ != NULL);
@@ -1129,8 +1120,7 @@ void RewriteDriver::AddPreRenderFilters() {
   }
   if ((rewrite_options->Enabled(RewriteOptions::kPrioritizeCriticalCss) &&
        server_context()->factory()->UseBeaconResultsInFilters()) ||
-      (rewrite_options->Enabled(RewriteOptions::kComputeCriticalCss) &&
-       rewrite_options->use_selectors_for_critical_css())) {
+      rewrite_options->Enabled(RewriteOptions::kComputeCriticalCss)) {
     // Add the critical selector instrumentation before the rewriting filter.
     AppendOwnedPreRenderFilter(new CriticalCssBeaconFilter(this));
   }
@@ -3260,9 +3250,7 @@ void RewriteDriver::set_origin_property_page(PropertyPage* page) {
 }
 
 bool RewriteDriver::CriticalSelectorsEnabled() const {
-  return (options()->Enabled(RewriteOptions::kPrioritizeCriticalCss) &&
-          (server_context()->factory()->UseBeaconResultsInFilters() ||
-           options()->use_selectors_for_critical_css()));
+  return options()->Enabled(RewriteOptions::kPrioritizeCriticalCss);
 }
 
 void RewriteDriver::increment_num_inline_preview_images() {
@@ -3496,15 +3484,6 @@ const SplitHtmlConfig* RewriteDriver::split_html_config() {
     split_html_config_.reset(new SplitHtmlConfig(this));
   }
   return split_html_config_.get();
-}
-
-CriticalCssResult* RewriteDriver::critical_css_result() const {
-  return critical_css_result_.get();
-}
-
-void RewriteDriver::set_critical_css_result(
-    CriticalCssResult* critical_css_rules) {
-  critical_css_result_.reset(critical_css_rules);
 }
 
 bool RewriteDriver::is_critical_images_beacon_enabled() {

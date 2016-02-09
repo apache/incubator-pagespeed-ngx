@@ -39,7 +39,6 @@ namespace pagespeed { namespace js { struct JsTokenizerPatterns; } }
 namespace net_instaweb {
 
 class CacheHtmlInfoFinder;
-class CriticalCssFinder;
 class CriticalImagesFinder;
 class CriticalLineInfoFinder;
 class CriticalSelectorFinder;
@@ -351,7 +350,6 @@ class RewriteDriverFactory {
 
   virtual UrlAsyncFetcher* DefaultDistributedUrlFetcher() { return NULL; }
 
-  virtual CriticalCssFinder* DefaultCriticalCssFinder();
   virtual CriticalImagesFinder* DefaultCriticalImagesFinder(
       ServerContext* server_context);
   virtual CriticalSelectorFinder* DefaultCriticalSelectorFinder(

@@ -27,7 +27,6 @@
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
 #include "net/instaweb/rewriter/public/beacon_critical_line_info_finder.h"
-#include "net/instaweb/rewriter/public/critical_css_finder.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/critical_line_info_finder.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
@@ -370,10 +369,6 @@ StaticAssetManager* RewriteDriverFactory::DefaultStaticAssetManager() {
                                 message_handler());
 }
 
-CriticalCssFinder* RewriteDriverFactory::DefaultCriticalCssFinder() {
-  return NULL;
-}
-
 CriticalImagesFinder* RewriteDriverFactory::DefaultCriticalImagesFinder(
     ServerContext* server_context) {
   // TODO(pulkitg): Don't create BeaconCriticalImagesFinder if beacon cohort is
@@ -536,7 +531,6 @@ void RewriteDriverFactory::InitServerContext(ServerContext* server_context) {
   server_context->set_message_handler(message_handler());
   server_context->set_static_asset_manager(static_asset_manager());
   PropertyCache* pcache = server_context->page_property_cache();
-  server_context->set_critical_css_finder(DefaultCriticalCssFinder());
   server_context->set_critical_images_finder(
       DefaultCriticalImagesFinder(server_context));
   server_context->set_critical_selector_finder(
@@ -783,7 +777,6 @@ void RewriteDriverFactory::InitStats(Statistics* statistics) {
   CacheBatcher::InitStats(statistics);
   CentralController::InitStats(statistics);
   CriticalImagesFinder::InitStats(statistics);
-  CriticalCssFinder::InitStats(statistics);
   CriticalSelectorFinder::InitStats(statistics);
   MobilizeCachedFinder::InitStats(statistics);
   PropertyStoreGetCallback::InitStats(statistics);

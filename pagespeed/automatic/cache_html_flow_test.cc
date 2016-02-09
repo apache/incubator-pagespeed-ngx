@@ -30,12 +30,10 @@
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
 #include "net/instaweb/rewriter/public/cache_html_info_finder.h"
-#include "net/instaweb/rewriter/public/critical_css_filter.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/delay_images_filter.h"
 #include "net/instaweb/rewriter/public/flush_early_info_finder_test_base.h"
 #include "net/instaweb/rewriter/public/js_disable_filter.h"
-#include "net/instaweb/rewriter/public/mock_critical_css_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -899,7 +897,6 @@ class CacheHtmlFlowTest : public ProxyInterfaceTestBase {
   GoogleString blink_output_with_cacheable_panels_no_cookies_;
   MeaningfulFlushEarlyInfoFinder* flush_early_info_finder_;
   TestRequestContextPtr test_request_context_;
-  MockCriticalCssFinder* critical_css_finder_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(CacheHtmlFlowTest);
@@ -1560,7 +1557,6 @@ class CacheHtmlPrioritizeCriticalCssTest : public CacheHtmlFlowTest {
     options_->set_non_cacheables_for_cache_partial_html(
         "class=item,id=beforeItems");
     options_->set_in_place_rewriting_enabled(true);
-    options_->set_use_selectors_for_critical_css(false);
     options_->ComputeSignature();
   }
 
@@ -1646,35 +1642,6 @@ class CacheHtmlPrioritizeCriticalCssTest : public CacheHtmlFlowTest {
   }
 };
 
-TEST_F(CacheHtmlPrioritizeCriticalCssTest, CacheHtmlWithCriticalCss) {
-  // Add critical css rules.
-  MockCriticalCssFinder* critical_css_finder =
-      new MockCriticalCssFinder(rewrite_driver(), statistics());
-  server_context()->set_critical_css_finder(critical_css_finder);
-  critical_css_finder->AddCriticalCss(
-      "http://test.com/a.css", "div,*::first-letter{display:block}", 100);
-  critical_css_finder->AddCriticalCss(
-      "http://test.com/b.css?x=1&y=2", "@media screen{*{margin:0}}", 100);
-
-  GoogleString full_styles_html = StrCat(
-      "<noscript class=\"psa_add_styles\">"
-      "<link rel=\"stylesheet\" type=\"text/css\" href=\"a.css\">"
-      "<link rel=\"stylesheet\" type=\"text/css\" href=\"b.css?x=1&y=2\">"
-      "</noscript>"
-      "<script data-pagespeed-no-defer type=\"text/javascript\">",
-      CriticalCssFilter::kAddStylesScript,
-      "window['pagespeed'] = window['pagespeed'] || {};"
-      "window['pagespeed']['criticalCss'] = {"
-      "  'total_critical_inlined_size': 60,"
-      "  'total_original_external_size': 200,"
-      "  'total_overhead_size': 60,"
-      "  'num_replaced_links': 2,"
-      "  'num_unreplaced_links': 0};"
-      "</script>");
-  ValidateCacheHtml(
-      "critical_css", InputHtml(), ExpectedHtml(full_styles_html));
-}
-
 class TestCriticalSelectorFinder : public CriticalSelectorFinder {
  public:
   TestCriticalSelectorFinder(const PropertyCache::Cohort* cohort,
@@ -1711,10 +1678,6 @@ TEST_F(CacheHtmlPrioritizeCriticalCssTest, CacheHtmlWithCriticalSelectors) {
       url(), kMockHashValue /* hash */, UserAgentMatcher::kDesktop);
   rewrite_driver()->set_property_page(page);
   pcache->Read(page);
-
-  options_->ClearSignatureForTesting();
-  options_->set_use_selectors_for_critical_css(true);
-  options_->ComputeSignature();
 
   server_context()->set_critical_selector_finder(new TestCriticalSelectorFinder(
       server_context()->beacon_cohort(), statistics()));

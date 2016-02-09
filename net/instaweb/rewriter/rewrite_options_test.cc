@@ -1043,7 +1043,6 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
     RewriteOptions::kUseBlankImageForInlinePreview,
     RewriteOptions::kUseExperimentalJsMinifier,
     RewriteOptions::kUseFallbackPropertyCacheValues,
-    RewriteOptions::kUseSelectorsForCriticalCss,
     RewriteOptions::kUseSmartDiffInBlink,
     RewriteOptions::kXModPagespeedHeaderValue,
     RewriteOptions::kXPsaBlockingRewrite,

@@ -74,7 +74,6 @@ namespace net_instaweb {
 
 class AbstractLogRecord;
 class AsyncFetch;
-class CriticalCssResult;
 class CriticalLineInfo;
 class DebugFilter;
 class DomStatsFilter;
@@ -998,11 +997,6 @@ class RewriteDriver : public HtmlParse {
 
   const SplitHtmlConfig* split_html_config();
 
-  CriticalCssResult* critical_css_result() const;
-  // Sets the Critical CSS rules info in the driver and the ownership of
-  // the rules stays with the driver.
-  void set_critical_css_result(CriticalCssResult* critical_css_rules);
-
   // The JS to detect above-the-fold images should only be enabled if one of the
   // filters that uses critical image information is enabled, the property cache
   // is enabled (since the critical image information is stored in the property
@@ -1721,8 +1715,6 @@ class RewriteDriver : public HtmlParse {
   // fields.
   scoped_ptr<CriticalImagesInfo> critical_images_info_;
   scoped_ptr<CriticalSelectorInfo> critical_selector_info_;
-
-  scoped_ptr<CriticalCssResult> critical_css_result_;
 
   // Memoized computation of whether the current doc has an XHTML mimetype.
   bool xhtml_mimetype_computed_;

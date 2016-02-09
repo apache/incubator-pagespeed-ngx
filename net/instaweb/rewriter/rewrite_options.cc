@@ -388,8 +388,6 @@ const char RewriteOptions::kTestProxy[] = "TestProxy";
 const char RewriteOptions::kTestProxySlurp[] = "TestProxySlurp";
 const char RewriteOptions::kUrlSigningKey[] = "UrlSigningKey";
 const char RewriteOptions::kUseAnalyticsJs[] = "UseAnalyticsJs";
-const char RewriteOptions::kUseSelectorsForCriticalCss[] =
-    "UseSelectorsForCriticalCss";
 const char RewriteOptions::kUseSharedMemLocking[] = "SharedMemoryLocks";
 const char RewriteOptions::kNullOption[] = "";
 
@@ -1656,11 +1654,6 @@ void RewriteOptions::AddProperties() {
   AddBaseProperty(
       false, &RewriteOptions::enable_flush_early_critical_css_, "efcc",
       kEnableFlushEarlyCriticalCss,
-      kDirectoryScope,
-      NULL, true);  // Not applicable for mod_pagespeed.
-  AddBaseProperty(
-      false, &RewriteOptions::use_selectors_for_critical_css_, "scss",
-      kUseSelectorsForCriticalCss,
       kDirectoryScope,
       NULL, true);  // Not applicable for mod_pagespeed.
   AddBaseProperty(

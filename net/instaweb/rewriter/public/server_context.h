@@ -59,7 +59,6 @@ namespace net_instaweb {
 class AsyncFetch;
 class CacheHtmlInfoFinder;
 class CachePropertyStore;
-class CriticalCssFinder;
 class CriticalImagesFinder;
 class CriticalLineInfoFinder;
 class CriticalSelectorFinder;
@@ -268,11 +267,6 @@ class ServerContext {
   // your key names do not start with http://.
   CacheInterface* metadata_cache() const { return metadata_cache_; }
   void set_metadata_cache(CacheInterface* x) { metadata_cache_ = x; }
-
-  CriticalCssFinder* critical_css_finder() const {
-    return critical_css_finder_.get();
-  }
-  void set_critical_css_finder(CriticalCssFinder* finder);
 
   CriticalImagesFinder* critical_images_finder() const {
     return critical_images_finder_.get();
@@ -744,7 +738,6 @@ class ServerContext {
   Hasher* hasher_;
   SHA1Signature* signature_;
   scoped_ptr<CriticalImagesFinder> critical_images_finder_;
-  scoped_ptr<CriticalCssFinder> critical_css_finder_;
   scoped_ptr<CriticalSelectorFinder> critical_selector_finder_;
   scoped_ptr<CacheHtmlInfoFinder> cache_html_info_finder_;
   scoped_ptr<FlushEarlyInfoFinder> flush_early_info_finder_;

@@ -32,7 +32,6 @@
 #include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
 #include "net/instaweb/rewriter/public/beacon_critical_line_info_finder.h"
 #include "net/instaweb/rewriter/public/cache_html_info_finder.h"
-#include "net/instaweb/rewriter/public/critical_css_finder.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/critical_line_info_finder.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
@@ -1065,10 +1064,6 @@ void ServerContext::set_cache_html_info_finder(CacheHtmlInfoFinder* finder) {
 
 void ServerContext::set_critical_images_finder(CriticalImagesFinder* finder) {
   critical_images_finder_.reset(finder);
-}
-
-void ServerContext::set_critical_css_finder(CriticalCssFinder* finder) {
-  critical_css_finder_.reset(finder);
 }
 
 void ServerContext::set_critical_selector_finder(
