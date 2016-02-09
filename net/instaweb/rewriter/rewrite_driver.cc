@@ -1074,7 +1074,7 @@ void RewriteDriver::AddPreRenderFilters() {
   }
   if (rewrite_options->Enabled(RewriteOptions::kInlineImportToLink) ||
       (!rewrite_options->Forbidden(RewriteOptions::kInlineImportToLink) &&
-       (CriticalSelectorsEnabled() ||
+       (rewrite_options->Enabled(RewriteOptions::kPrioritizeCriticalCss) ||
         rewrite_options->Enabled(RewriteOptions::kComputeCriticalCss)))) {
     // If we're converting simple embedded CSS @imports into a href link
     // then we need to do that before any other CSS processing.
@@ -1124,7 +1124,7 @@ void RewriteDriver::AddPreRenderFilters() {
     // Add the critical selector instrumentation before the rewriting filter.
     AppendOwnedPreRenderFilter(new CriticalCssBeaconFilter(this));
   }
-  if (CriticalSelectorsEnabled()) {
+  if (rewrite_options->Enabled(RewriteOptions::kPrioritizeCriticalCss)) {
     AppendOwnedPreRenderFilter(new CriticalSelectorFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kInlineCss)) {
@@ -3247,10 +3247,6 @@ void RewriteDriver::set_unowned_fallback_property_page(
 
 void RewriteDriver::set_origin_property_page(PropertyPage* page) {
   origin_property_page_.reset(page);
-}
-
-bool RewriteDriver::CriticalSelectorsEnabled() const {
-  return options()->Enabled(RewriteOptions::kPrioritizeCriticalCss);
 }
 
 void RewriteDriver::increment_num_inline_preview_images() {

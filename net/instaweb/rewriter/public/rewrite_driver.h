@@ -1031,16 +1031,12 @@ class RewriteDriver : public HtmlParse {
     critical_images_info_.reset(critical_images_info);
   }
 
-  // Return true if we must prioritize critical selectors, and we should
-  // therefore enable its prerequisite filters as well.
-  bool CriticalSelectorsEnabled() const;
-
   // Return true if we must flatten css imports, either because the filter is
-  // enabled explicitly or because it is enabled by CriticalSelectorsEnabled.
+  // enabled explicitly or because it is enabled by PrioritizeCriticalCss.
   bool FlattenCssImportsEnabled() const {
     return (options()->Enabled(RewriteOptions::kFlattenCssImports) ||
             (!options()->Forbidden(RewriteOptions::kFlattenCssImports) &&
-             (CriticalSelectorsEnabled() ||
+             (options()->Enabled(RewriteOptions::kPrioritizeCriticalCss) ||
               options()->Enabled(RewriteOptions::kComputeCriticalCss))));
   }
 
