@@ -1,5 +1,5 @@
---- serf/src/buckets/buckets.c	2015-12-17 13:26:38.676327651 -0500
-+++ src/third_party/serf/instaweb_buckets.c	2015-12-17 16:40:37.323946144 -0500
+--- serf/src/buckets/buckets.c	2016-01-27 13:54:06.782312805 -0500
++++ src/third_party/serf/instaweb_buckets.c	2016-01-27 13:54:06.794312723 -0500
 @@ -609,29 +609,21 @@
      va_list argp;
  
@@ -40,8 +40,8 @@
          va_start(argp, fmt);
          vfprintf(stderr, fmt, argp);
          va_end(argp);
---- serf/src/buckets/bwtp_buckets.c	2015-12-17 13:26:38.676327651 -0500
-+++ src/third_party/serf/instaweb_bwtp_buckets.c	2015-12-17 13:26:38.688327565 -0500
+--- serf/src/buckets/bwtp_buckets.c	2016-01-27 13:54:06.782312805 -0500
++++ src/third_party/serf/instaweb_bwtp_buckets.c	2016-01-27 13:54:06.794312723 -0500
 @@ -228,7 +228,8 @@
      req_len = apr_snprintf(ctx->req_line, sizeof(ctx->req_line),
                             "%s %d " "%" APR_UINT64_T_HEX_FMT " %s%s\r\n",
@@ -52,8 +52,8 @@
                             (ctx->open ? "OPEN " : ""),
                             ctx->phrase);
      new_bucket = serf_bucket_simple_copy_create(ctx->req_line, req_len,
---- serf/src/buckets/response_buckets.c	2015-12-17 13:26:38.676327651 -0500
-+++ src/third_party/serf/instaweb_response_buckets.c	2015-12-17 13:26:38.688327565 -0500
+--- serf/src/buckets/response_buckets.c	2016-01-27 13:54:06.786312776 -0500
++++ src/third_party/serf/instaweb_response_buckets.c	2016-01-27 13:54:06.794312723 -0500
 @@ -273,41 +273,53 @@
              ctx->body =
                  serf_bucket_barrier_create(ctx->stream, bkt->allocator);
@@ -134,8 +134,8 @@
          }
          break;
      case STATE_BODY:
---- serf/src/outgoing.c	2015-12-17 13:26:38.680327623 -0500
-+++ src/third_party/serf/instaweb_outgoing.c	2015-12-17 13:26:38.688327565 -0500
+--- serf/src/outgoing.c	2016-01-27 13:54:06.786312776 -0500
++++ src/third_party/serf/instaweb_outgoing.c	2016-01-27 13:54:06.794312723 -0500
 @@ -909,6 +909,7 @@
      apr_status_t status = APR_SUCCESS;
      int consumed_response = 0;
@@ -245,8 +245,8 @@
  apr_interval_time_t serf_connection_get_latency(serf_connection_t *conn)
  {
      if (conn->ctx->proxy_address) {
---- serf/src/buckets/ssl_buckets.c	2015-12-17 13:26:38.680327623 -0500
-+++ src/third_party/serf/instaweb_ssl_buckets.c	2015-12-17 13:26:38.688327565 -0500
+--- serf/src/buckets/ssl_buckets.c	2016-01-27 13:54:06.786312776 -0500
++++ src/third_party/serf/instaweb_ssl_buckets.c	2016-01-28 13:46:52.874745501 -0500
 @@ -34,6 +34,12 @@
   * Originally developed by Aaron Bannert and Justin Erenkrantz, eBuilt.
   */
@@ -369,7 +369,29 @@
  apr_status_t serf_ssl_load_cert_file(
      serf_ssl_certificate_t **cert,
      const char *file_path,
-@@ -1798,6 +1826,7 @@
+@@ -1652,6 +1680,21 @@
+     return cert->depth;
+ }
+ 
++/*
++ * PageSpeed addition to allow verification of certificate hostnames.
++ *
++ * Hostname must be null-terminated.
++ * For return values, see X509_check_host.
++ */
++int serf_ssl_check_host(const serf_ssl_certificate_t *cert,
++                        const char* hostname)
++{
++  return X509_check_host(cert->ssl_cert,
++                         hostname,
++                         strlen(hostname),
++                         0 /* we don't need to set any flags */,
++                         NULL /* we don't need the SAN or CN extracted*/);
++}
+ 
+ apr_hash_t *serf_ssl_cert_issuer(
+     const serf_ssl_certificate_t *cert,
+@@ -1798,6 +1841,7 @@
  
      if (!--ctx->ssl_ctx->refcount) {
          ssl_free_context(ctx->ssl_ctx);
