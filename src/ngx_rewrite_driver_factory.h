@@ -130,6 +130,17 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
     return false;
   }
 
+  // Store a pointer to the cycle nginx gave us in ps_init_module.  This cycle
+  // is generally only safe to use on an ongoing basis in the Controller
+  // process, because we've forked.
+  void set_master_cycle(ngx_cycle_t* cycle) { master_cycle_ = cycle; }
+
+  virtual void PrepareForkedProcess(const char* name);
+
+  virtual void NameProcess(const char* name);
+
+  virtual GoogleString MasterPidFilename();  // Where do we keep our PID?
+
  private:
   Timer* timer_;
 
@@ -160,6 +171,8 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
   bool process_script_variables_;
   bool process_script_variables_set_;
   bool shut_down_;
+
+  ngx_cycle_t* master_cycle_;
 
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteDriverFactory);
 };

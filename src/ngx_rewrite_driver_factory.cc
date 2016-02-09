@@ -85,7 +85,8 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(
       port_(port),
       process_script_variables_(false),
       process_script_variables_set_(false),
-      shut_down_(false) {
+      shut_down_(false),
+      master_cycle_(NULL) {
   InitializeDefaultOptions();
   default_options()->set_beacon_url("/ngx_pagespeed_beacon");
   SystemRewriteOptions* system_options = dynamic_cast<SystemRewriteOptions*>(
@@ -248,6 +249,35 @@ void NgxRewriteDriverFactory::InitStats(Statistics* statistics) {
   // Init Ngx-specific stats.
   NgxServerContext::InitStats(statistics);
   InPlaceResourceRecorder::InitStats(statistics);
+}
+
+GoogleString NgxRewriteDriverFactory::MasterPidFilename() {
+  // Look in the config for the name of nginx's PID file.
+  CHECK(master_cycle_ != NULL);
+  ngx_core_conf_t* core_configuration = reinterpret_cast<ngx_core_conf_t*>(
+      ngx_get_conf(master_cycle_->conf_ctx, ngx_core_module));
+  CHECK(core_configuration != NULL);
+  return GoogleString(reinterpret_cast<char*>(core_configuration->pid.data),
+                      core_configuration->pid.len);
+}
+
+void NgxRewriteDriverFactory::PrepareForkedProcess(const char* name) {
+  ngx_pid = ngx_getpid();  // Needed for logging to have the right PIDs.
+  SystemRewriteDriverFactory::PrepareForkedProcess(name);
+}
+
+void NgxRewriteDriverFactory::NameProcess(const char* name) {
+  SystemRewriteDriverFactory::NameProcess(name);
+
+  // Superclass set status with prctl.  Nginx has a helper function for setting
+  // argv[0] as well, so let's use that.  We'll show up as:
+  //
+  //    nginx: pagespeed $name
+
+  char name_for_setproctitle[32];
+  snprintf(name_for_setproctitle, sizeof(name_for_setproctitle),
+           "pagespeed %s", name);
+  ngx_setproctitle(name_for_setproctitle);
 }
 
 }  // namespace net_instaweb
