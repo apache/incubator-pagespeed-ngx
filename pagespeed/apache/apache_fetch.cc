@@ -17,18 +17,20 @@
 
 #include "pagespeed/apache/apache_fetch.h"
 
+#include <algorithm>
+
+#include "base/logging.h"
+#include "pagespeed/kernel/base/abstract_mutex.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/base/timer.h"
+#include "pagespeed/kernel/http/http_names.h"
+#include "pagespeed/kernel/thread/scheduler_sequence.h"
+
 namespace net_instaweb {
 
-namespace {
-
-// How long to try waiting before giving up.
-const int kDefaultMaxWaitMs = 2 * Timer::kMinuteMs;
-
-}  // namespace
-
 ApacheFetch::ApacheFetch(const GoogleString& mapped_url, StringPiece debug_info,
-                         ThreadSystem* thread_system, Timer* timer,
-                         ApacheWriter* apache_writer,
+                         RewriteDriver* driver, ApacheWriter* apache_writer,
                          RequestHeaders* request_headers,
                          const RequestContextPtr& request_context,
                          const RewriteOptions* options, MessageHandler* handler)
@@ -36,11 +38,7 @@ ApacheFetch::ApacheFetch(const GoogleString& mapped_url, StringPiece debug_info,
       mapped_url_(mapped_url),
       apache_writer_(apache_writer),
       options_(options),
-      timer_(timer),
       message_handler_(handler),
-      mutex_(thread_system->NewMutex()),
-      condvar_(mutex_->NewCondvar()),
-      abandoned_(false),
       done_(false),
       wait_called_(false),
       handle_error_(true),
@@ -48,8 +46,8 @@ ApacheFetch::ApacheFetch(const GoogleString& mapped_url, StringPiece debug_info,
       status_ok_(false),
       is_proxy_(false),
       buffered_(true),
-      blocking_fetch_timeout_ms_(options_->blocking_fetch_timeout_ms()),
-      max_wait_ms_(kDefaultMaxWaitMs) {
+      driver_(driver),
+      scheduler_(nullptr) {
   // We are proxying content, and the caching in the http configuration
   // should not apply; we want to use the caching from the proxy.
   apache_writer_->set_disable_downstream_header_filters(true);
@@ -63,9 +61,17 @@ ApacheFetch::ApacheFetch(const GoogleString& mapped_url, StringPiece debug_info,
   SetRequestHeadersTakingOwnership(request_headers);
 
   debug_info.CopyToString(&debug_info_);
+
+  driver_->SetRequestHeaders(*request_headers);
+  driver_->IncrementAsyncEventsCount();
+  driver_->UsePrivateScheduler();
+  driver_->RunTasksOnRequestThread();
+  scheduler_ = driver_->scheduler();
 }
 
-ApacheFetch::~ApacheFetch() { }
+ApacheFetch::~ApacheFetch() {
+  driver_->DecrementAsyncEventsCount();
+}
 
 // Called by other threads unless buffered=false.
 void ApacheFetch::HandleHeadersComplete() {
@@ -75,8 +81,7 @@ void ApacheFetch::HandleHeadersComplete() {
     return;
   }
   {
-    ScopedMutex lock(mutex_.get());
-    CHECK(!abandoned_);  // Can't be abandoned in unbuffered mode.
+    ScopedMutex lock(scheduler_->mutex());
     SendOutHeaders();
   }
 }
@@ -105,7 +110,7 @@ void ApacheFetch::SendOutHeaders() {
       error_message = "Missing Content-Type required for proxied resource";
     }
 
-    int64 now_ms = timer_->NowMs();
+    int64 now_ms = scheduler_->timer()->NowMs();
     response_headers()->SetDate(now_ms);
 
     // http://msdn.microsoft.com/en-us/library/ie/gg622941(v=vs.85).aspx
@@ -144,58 +149,36 @@ void ApacheFetch::SendOutHeaders() {
 // Called by other threads.
 void ApacheFetch::HandleDone(bool success) {
   {
-    ScopedMutex lock(mutex_.get());
+    ScopedMutex lock(scheduler_->mutex());
     done_ = true;
 
-    if (!abandoned_) {
-      if (status_ok_ && !success) {
-        message_handler_->Message(
-            kWarning,
-            "Response for url %s issued with status %d %s but "
-            "failed to complete.",
-            mapped_url_.c_str(), response_headers()->status_code(),
-            response_headers()->reason_phrase());
-      }
-
-      if (buffered_) {
-        // We've not been abandoned; let our owner on the apache request thread
-        // know we're done and they will send out anything that still needs
-        // sending and then delete us.
-        condvar_->Signal();
-      }
-      return;
+    if (status_ok_ && !success) {
+      message_handler_->Message(
+          kWarning,
+          "Response for url %s issued with status %d %s but "
+          "failed to complete.",
+          mapped_url_.c_str(), response_headers()->status_code(),
+          response_headers()->reason_phrase());
     }
-    message_handler_->Message(
-        kWarning,
-        "Response for url %s completed with status %d %s after "
-        "being abandoned for timing out.",
-        mapped_url_.c_str(), response_headers()->status_code(),
-        response_headers()->reason_phrase());
+
+    if (buffered_) {
+      // Let our owner on the apache request thread know we're done and they
+      // will send out anything that still needs sending and then delete us.
+      scheduler_->Signal();
+    }
   }
-  // We've been abandoned, so we have ownership of ourself.
-  delete this;
 }
 
 // Called by other threads, unless buffered=false.
 bool ApacheFetch::HandleWrite(const StringPiece& sp, MessageHandler* handler) {
-  {
-    ScopedMutex lock(mutex_.get());
-    if (!abandoned_) {
-      if (squelch_output_) {
-        return true;  // Suppressing further output after writing error message.
-      } else if (buffered_) {
-        sp.AppendToString(&output_bytes_);
-        return true;
-      } else {
-        return apache_writer_->Write(sp, handler);
-      }
-    }
+  ScopedMutex lock(scheduler_->mutex());
+  if (squelch_output_) {
+    return true;  // Suppressing further output after writing error message.
+  } else if (buffered_) {
+    sp.AppendToString(&output_bytes_);
+    return true;
   }
-  handler->Message(kWarning,
-                   "Write of %zu bytes for url %s received after "
-                   "being abandoned for timing out.",
-                   sp.size(), mapped_url_.c_str());
-  return false;  // Drop the write.
+  return apache_writer_->Write(sp, handler);
 }
 
 // Called by other threads, unless buffered=false.
@@ -204,72 +187,65 @@ bool ApacheFetch::HandleFlush(MessageHandler* handler) {
     return true;  // Don't pass flushes through.
   }
   {
-    ScopedMutex lock(mutex_.get());
-    CHECK(!abandoned_);  // Can't be abandoned in unbuffered mode.
+    ScopedMutex lock(scheduler_->mutex());
     return apache_writer_->Flush(handler);
   }
 }
 
 // Called on the apache request thread.
-bool ApacheFetch::Wait(const RewriteDriver* rewrite_driver) {
+void ApacheFetch::Wait() {
   if (wait_called_) {
-    return true;  // Nothing to do.
-  }
-  if (!buffered_) {
-    // If we're not buffered Wait() is only being called on us because it's a
-    // code path shared with buffered code.  We should always be done at this
-    // point.
-    //
-    // It's also not a performance issue to take the lock, as there should never
-    // be contention.
-    ScopedMutex lock(mutex_.get());
-    CHECK(done_);
-    return true;
+    return;
   }
   wait_called_ = true;
-  int64 start_ms = timer_->NowMs();
-  mutex_->Lock();
-  while (!done_) {
-    condvar_->TimedWait(blocking_fetch_timeout_ms_);
-    if (!done_) {
-      int64 elapsed_ms = timer_->NowMs() - start_ms;
-      if (elapsed_ms > max_wait_ms_) {
-        abandoned_ = true;
-        message_handler_->Message(
-            kWarning, "Abandoned URL %s after %g sec (debug=%s, driver=%s).",
-            mapped_url_.c_str(), elapsed_ms / 1000.0, debug_info_.c_str(),
-            (rewrite_driver == NULL
-                 ? "null rewrite driver, should only be used in tests"
-                 : rewrite_driver->ToString(true /* show_detached_contexts */)
-                       .c_str()));
-        // Now that we're abandoned the instaweb context needs to drop its
-        // pointer to us and not free us.
-        //
-        // Once we've abandoned and unlocked, we could be deleted at any moment
-        // by a call to Done().  So make no member accesses after unlocking.
-        mutex_->Unlock();
-        return false;  // Abandoned with nothing written (because we're a
-                       // buffered fetch), caller can DECLINE to handle request.
-      }
+  Timer* timer = scheduler_->timer();
+  int64 start_ms = timer->NowMs();
+
+  {
+    ScopedMutex lock(scheduler_->mutex());
+
+    // Compute the time we want to block on each call to RunTasksUntil
+    // below, based on the in-place rewrite deadline and the
+    // configured FetcherTimeoutMs.
+    //
+    // The role of this timeout here is to dictate how often we'll log
+    // "Waiting for completion" messages.  The loop will not actually exit
+    // until the request is completed, and we are dependent on timeouts
+    // configured elsewhere in the code to guarantee that a completion will
+    // come at some point.
+    //
+    // We pick the 'max' of those two values because that will ensure we don't
+    // get a large number of spurious messages as a result of (say) configuring
+    // the in-place rewrite deadline to be much higher than the fetcher timeout.
+    int64 fetch_timeout_ms = std::max(
+        options_->blocking_fetch_timeout_ms(),
+        static_cast<int64>(options_->in_place_rewrite_deadline_ms()));
+    Scheduler::Sequence* scheduler_sequence = driver_->scheduler_sequence();
+    while (!scheduler_sequence->RunTasksUntil(fetch_timeout_ms, &done_)) {
+      int64 elapsed_ms = timer->NowMs() - start_ms;
       message_handler_->Message(
           kWarning, "Waiting for completion of URL %s for %g sec.",
           mapped_url_.c_str(), elapsed_ms / 1000.0);
     }
+    CHECK(done_);
+
+    // A 'true' return from RunTasksUntil means done_==true, but it
+    // does not mean all tasks are exhausted.  For example, an
+    // in-place rewrite deadline timeout will successfully break out
+    // of RunTasksUntil, and we'll want to continue processing even
+    // though we are going to retire the request.
+    driver_->SwitchToQueuedWorkerPool();
+    if (buffered_) {
+      SendOutHeaders();
+      if (!output_bytes_.empty()) {
+        apache_writer_->Write(output_bytes_, message_handler_);
+      }
+    }
   }
-  SendOutHeaders();
-  if (!output_bytes_.empty()) {
-    apache_writer_->Write(output_bytes_, message_handler_);
-  }
-  mutex_->Unlock();
-  return true;  // handled
 }
 
 bool ApacheFetch::IsCachedResultValid(const ResponseHeaders& headers) {
-  ScopedMutex lock(mutex_.get());
-  // options_ isn't valid after we're abandoned, so make sure we haven't been.
-  if (abandoned_) {
-    return false;
-  }
+  ScopedMutex lock(scheduler_->mutex());
   return OptionsAwareHTTPCacheCallback::IsCacheValid(
       mapped_url_, *options_, request_context(), headers);
 }

@@ -52,9 +52,10 @@ class ApacheConfig : public SystemRewriteOptions {
   void set_proxy_auth(StringPiece p) {
     set_option(p.as_string(), &proxy_auth_);
   }
-  const GoogleString& proxy_auth() const {
-    return proxy_auth_.value();
-  }
+  const GoogleString& proxy_auth() const { return proxy_auth_.value(); }
+
+  bool force_buffering() const { return force_buffering_.value(); }
+  void set_force_buffering(bool x) { set_option(x, &force_buffering_); }
 
   // Returns a suitably down cast version of 'instance' if it is an instance
   // of this class, NULL if not.
@@ -83,6 +84,7 @@ class ApacheConfig : public SystemRewriteOptions {
   void Init();
 
   Option<bool> fetch_from_mod_spdy_;
+  Option<bool> force_buffering_;
   Option<GoogleString> proxy_auth_;  // CookieName[=Value][:RedirectUrl]
 
   DISALLOW_COPY_AND_ASSIGN(ApacheConfig);

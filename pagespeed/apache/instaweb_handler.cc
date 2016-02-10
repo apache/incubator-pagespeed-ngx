@@ -20,7 +20,6 @@
 #include <cstddef>
 
 #include "base/logging.h"
-#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/sync_fetcher_adapter_callback.h"
@@ -31,7 +30,6 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
-#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "pagespeed/apache/apache_config.h"
 #include "pagespeed/apache/apache_fetch.h"
@@ -39,19 +37,19 @@
 #include "pagespeed/apache/apache_request_context.h"
 #include "pagespeed/apache/apache_rewrite_driver_factory.h"
 #include "pagespeed/apache/apache_server_context.h"
+#include "pagespeed/apache/apache_writer.h"
 #include "pagespeed/apache/apr_timer.h"
 #include "pagespeed/apache/header_util.h"
 #include "pagespeed/apache/instaweb_context.h"
 #include "pagespeed/apache/mod_instaweb.h"
 #include "pagespeed/automatic/proxy_fetch.h"
-#include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
-#include "pagespeed/kernel/base/condvar.h"
 #include "pagespeed/kernel/base/escaping.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/ref_counted_ptr.h"
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string_writer.h"
+#include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/http/http_names.h"
 #include "pagespeed/kernel/http/http_options.h"
@@ -59,7 +57,6 @@
 #include "pagespeed/kernel/http/response_headers.h"
 #include "pagespeed/system/admin_site.h"
 #include "pagespeed/system/in_place_resource_recorder.h"
-#include "pagespeed/system/system_rewrite_options.h"
 
 #include "http_config.h"
 #include "http_core.h"
@@ -123,34 +120,23 @@ InstawebHandler::~InstawebHandler() {
   // If fetch_ is null we either never tried to fetch anything or it took
   // ownership of itself after timing out.
   if (fetch_ != NULL) {
-    if (WaitForFetch()) {
-      delete fetch_;  // Fetch completed normally.
-    } else {
-      // Fetch took ownership of itself and will continue in the background.
-      CHECK(fetch_ == NULL);
-    }
+    WaitForFetch();
+    delete fetch_;
   }
 }
 
-bool InstawebHandler::WaitForFetch() {
+void InstawebHandler::WaitForFetch() {
   if (fetch_ == NULL) {
-    return true;  // Nothing to wait for.
+    return;  // Nothing to wait for.
   }
-
-  bool ok = fetch_->Wait(rewrite_driver_);
-  if (!ok) {
-    // Give up on waiting for the fetch so we stop tying up a thread.  Fetch has
-    // taken ownership of itself, will discard any messages it receives if it's
-    // abandoned, and will delete itself when Done() is called, if ever.
-    fetch_ = NULL;
-  }
-  return ok;
+  fetch_->Wait();
 }
 
 // Makes a driver from the request_context and options.  Note that
 // this can only be called once, as it potentially mutates the options
 // as it transfers ownership of custom_options.
 RewriteDriver* InstawebHandler::MakeDriver() {
+  CHECK(fetch_ == NULL) << "Call MakeDriver before MakeFetch";
   DCHECK(rewrite_driver_ == NULL)
       << "We can only call MakeDriver once per InstawebHandler:"
       << original_url_;
@@ -158,9 +144,6 @@ RewriteDriver* InstawebHandler::MakeDriver() {
   rewrite_driver_ = ResourceFetch::GetDriver(
       stripped_gurl_, custom_options_.release(), server_context_,
       request_context_);
-  if (fetch_ != NULL) {
-    rewrite_driver_->SetRequestHeaders(*fetch_->request_headers());
-  }
 
   // If there were custom options, the ownership of the memory has
   // now been transferred to the driver, but options_ still points
@@ -168,7 +151,7 @@ RewriteDriver* InstawebHandler::MakeDriver() {
   // driver is alive.  However, for Karma, and in case some other
   // option-merging is added to the driver someday, let's use the
   // pointer from the driver now.
-  options_ = SystemRewriteOptions::DynamicCast(rewrite_driver_->options());
+  options_ = ApacheConfig::DynamicCast(rewrite_driver_->options());
   return rewrite_driver_;
 }
 
@@ -179,16 +162,15 @@ ApacheFetch* InstawebHandler::MakeFetch(const GoogleString& url,
   // ApacheFetch takes ownership of request_headers.
   RequestHeaders* request_headers = new RequestHeaders();
   ApacheRequestToRequestHeaders(*request_, request_headers);
-  fetch_ = new ApacheFetch(
-      url, debug_info, server_context_->thread_system(),
-      server_context_->timer(),
-      new ApacheWriter(request_, server_context_->thread_system()),
-      request_headers, request_context_, options_,
-      server_context_->message_handler());
-  fetch_->set_buffered(buffered);
-  if (rewrite_driver_ != NULL) {
-    rewrite_driver_->SetRequestHeaders(*fetch_->request_headers());
+  ApacheWriter* writer = new ApacheWriter(request_,
+                                          server_context_->thread_system());
+  if (rewrite_driver_ == NULL) {
+    MakeDriver();
   }
+  fetch_ = new ApacheFetch(
+        url, debug_info, rewrite_driver_, writer, request_headers,
+        request_context_, options_, server_context_->message_handler());
+  fetch_->set_buffered(buffered || options_->force_buffering());
   return fetch_;
 }
 
@@ -457,13 +439,12 @@ bool InstawebHandler::HandleAsInPlace() {
        != NULL) || (request_->user != NULL));
 
   RewriteDriver* driver = MakeDriver();
-  MakeFetch(true /* buffered */, "ipro");
+  MakeFetch(false /* not buffered */, "ipro");
   fetch_->set_handle_error(false);
+
   driver->FetchInPlaceResource(stripped_gurl_, false /* proxy_mode */, fetch_);
-  bool ok = WaitForFetch();
-  if (!ok) {
-    // Nothing to do, fetch_ has been released, no longer safe to look at.
-  } else if (fetch_->status_ok()) {
+  WaitForFetch();
+  if (fetch_->status_ok()) {
     server_context_->rewrite_stats()->ipro_served()->Add(1);
     handled = true;
   } else if ((fetch_->response_headers()->status_code() ==
@@ -517,14 +498,14 @@ bool InstawebHandler::HandleAsProxy() {
   if (options_->domain_lawyer()->MapOriginUrl(stripped_gurl_, &mapped_url,
                                               &host_header, &is_proxy) &&
       is_proxy) {
+    // TODO(jmarantz): make this unbuffered, verifying that it will
+    // only call back to apache on the request thread.
     RewriteDriver* driver = MakeDriver();
     MakeFetch(mapped_url, true /* buffered */, "proxy");
     fetch_->set_is_proxy(true);
     server_context_->proxy_fetch_factory()->StartNewProxyFetch(
         mapped_url, fetch_, driver, NULL, NULL);
-    if (!WaitForFetch()) {
-      server_context_->ReportResourceNotFound(mapped_url.c_str(), request_);
-    }
+    WaitForFetch();
     return true;  // handled
   }
   return false;  // declined

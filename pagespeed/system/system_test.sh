@@ -2274,13 +2274,12 @@ if [ "$CACHE_FLUSH_TEST" = "on" ]; then
   echo second pass: a short deadline and an image optimization
   echo make an unoptimized result very likely on the second pass.
   echo $cmd; bytes=$($cmd | wc -c)
-  # TODO(jmarantz): This is a bug.  Currently the ipro fetch path does
-  # not run the scheduler, so it does not get timeouts, so it will continue
-  # optimizating until it's done, even if it's past the deadline.
-  # See https://github.com/pagespeed/mod_pagespeed/issues/1171 for more
-  # detailed discussion.
-  # check [ $bytes -gt 100000 ]
-  check [ $bytes -lt 100000 ]
+  check [ $bytes -gt 100000 ]
+  echo Finally make sure the image gets optimized eventually.
+  # We don't know how long it will take; if you do the fetch with
+  # no delay it will probably fail because bash is faster than image
+  # optimization, so use fetch_until.
+  fetch_until $TEST_ROOT/ipro/wait/short/Puzzle.jpg 'wc -c' 100000 "" -lt
 fi
 
 start_test AddResourceHeaders works for pagespeed resources.

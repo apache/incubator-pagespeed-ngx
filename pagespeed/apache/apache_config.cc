@@ -26,6 +26,7 @@ namespace {
 
 const char kModPagespeedStatisticsHandlerPath[] = "/mod_pagespeed_statistics";
 const char kProxyAuth[] = "ProxyAuth";
+const char kForceBuffering[] = "ForceBuffering";
 
 }  // namespace
 
@@ -79,6 +80,12 @@ void ApacheConfig::AddProperties() {
       "Redirect is specified, a failure results in a redirection to that URL "
       "otherwise a 403 is generated.",
       false /* safe_to_print */);
+
+  AddApacheProperty(
+      false, &ApacheConfig::force_buffering_, "afb",
+      kForceBuffering,
+      "Force buffering of non-html fetch responses rather than streaming",
+      true /* safe_to_print */);
 
   MergeSubclassProperties(apache_properties_);
 

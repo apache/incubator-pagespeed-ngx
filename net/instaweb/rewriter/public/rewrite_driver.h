@@ -66,6 +66,7 @@
 #include "pagespeed/kernel/http/user_agent_matcher.h"
 #include "pagespeed/kernel/thread/queued_worker_pool.h"
 #include "pagespeed/kernel/thread/scheduler.h"
+#include "pagespeed/kernel/thread/sequence.h"
 #include "pagespeed/kernel/util/categorized_refcount.h"
 #include "pagespeed/kernel/util/url_segment_encoder.h"
 #include "pagespeed/opt/http/property_cache.h"
@@ -754,7 +755,10 @@ class RewriteDriver : public HtmlParse {
   void AddUserReference();
 
   // Debugging routines to print out data about the driver.
-  GoogleString ToString(bool show_detached_contexts) const;
+  GoogleString ToString(bool show_detached_contexts) const
+      LOCKS_EXCLUDED(rewrite_mutex());
+  GoogleString ToStringLockHeld(bool show_detached_contexts) const
+      EXCLUSIVE_LOCKS_REQUIRED(rewrite_mutex());
   void PrintState(bool show_detached_contexts);            // For debugging.
   void PrintStateToErrorLog(bool show_detached_contexts);  // For logs.
 
@@ -912,10 +916,31 @@ class RewriteDriver : public HtmlParse {
   void AddLowPriorityRewriteTask(Function* task);
 
   QueuedWorkerPool::Sequence* html_worker() { return html_worker_; }
-  QueuedWorkerPool::Sequence* rewrite_worker() { return rewrite_worker_; }
+  Sequence* rewrite_worker();
+  Scheduler::Sequence* scheduler_sequence() {
+    return scheduler_sequence_.get();
+  }
+
   QueuedWorkerPool::Sequence* low_priority_rewrite_worker() {
     return low_priority_rewrite_worker_;
   }
+
+  // Creates a private scheduler for exclusive use by this RewriteDriver.
+  // This makes sense when in a server where we are expected to block
+  // until we've finished handling the requests, such as Apache.  While
+  // we are blocking, we can run the scheduler.
+  void UsePrivateScheduler();
+
+  // Make the rewrite_worker tasks run on the request thread.  This
+  // requires that UsePrivateScheduler is called first.
+  void RunTasksOnRequestThread();
+
+  // Switches the driver back to running rewrite_worker tasks using
+  // the QueuedWorkerPool.  This can be called when we are retiring
+  // a server-request on behalf of the client (e.g. after a deadline was
+  // exceeded), but want background optimization to continue.  It can
+  // no longer continue on the request thread.
+  void SwitchToQueuedWorkerPool() EXCLUSIVE_LOCKS_REQUIRED(rewrite_mutex());
 
   Scheduler* scheduler() { return scheduler_; }
 
@@ -1410,6 +1435,10 @@ class RewriteDriver : public HtmlParse {
   void SignalIfRequired(bool result_of_prepare_should_signal)
       EXCLUSIVE_LOCKS_REQUIRED(rewrite_mutex());
 
+  // Reverts the driver back to its default state of using a shared scheduler
+  // and running on the shared scheduler.
+  void CleanupRequestThread();
+
   // Only the first base-tag is significant for a document -- any subsequent
   // ones are ignored.  There should be no URLs referenced prior to the base
   // tag, if one exists.  See
@@ -1686,6 +1715,7 @@ class RewriteDriver : public HtmlParse {
   QueuedWorkerPool::Sequence* html_worker_;
   QueuedWorkerPool::Sequence* rewrite_worker_;
   QueuedWorkerPool::Sequence* low_priority_rewrite_worker_;
+  scoped_ptr<Scheduler::Sequence> scheduler_sequence_;
 
   Writer* writer_;
 
@@ -1755,6 +1785,9 @@ class RewriteDriver : public HtmlParse {
   // If false, add data-pagespeed-no-defer attribute to the script inserted by
   // add_instrumentation filter.
   bool defer_instrumentation_script_;
+
+  // Indicates that task execution has started.
+  bool executing_rewrite_tasks_;
 
   // Downstream cache object used for issuing purges.
   DownstreamCachePurger downstream_cache_purger_;

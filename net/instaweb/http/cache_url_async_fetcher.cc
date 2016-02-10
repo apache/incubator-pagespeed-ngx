@@ -29,6 +29,7 @@
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -37,6 +38,7 @@
 #include "pagespeed/kernel/http/http_options.h"
 #include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/response_headers.h"
+#include "pagespeed/kernel/thread/sequence.h"
 
 
 namespace net_instaweb {
@@ -277,6 +279,15 @@ class CacheFindCallback : public HTTPCache::Callback {
   virtual ~CacheFindCallback() {}
 
   virtual void Done(HTTPCache::FindResult find_result) {
+    if (response_sequence_ == NULL) {
+      Finish(find_result);
+    } else {
+      response_sequence_->Add(MakeFunction(
+          this, &CacheFindCallback::Finish, find_result));
+    }
+  }
+
+  void Finish(HTTPCache::FindResult find_result) {
     switch (find_result.status) {
       case HTTPCache::kFound: {
         VLOG(1) << "Found in cache: " << url_ << " (" << fragment_ << ")";
@@ -402,6 +413,10 @@ class CacheFindCallback : public HTTPCache::Callback {
 
   virtual ResponseHeaders::VaryOption RespectVaryOnResources() const {
     return respect_vary_;
+  }
+
+  void set_response_sequence(Sequence* sequence) {
+    response_sequence_ = sequence;
   }
 
  private:
@@ -558,6 +573,7 @@ class CacheFindCallback : public HTTPCache::Callback {
   bool default_cache_html_;
   bool proactively_freshen_user_facing_request_;
   int64 serve_stale_while_revalidate_threshold_sec_;
+  Sequence* response_sequence_;
 
   DISALLOW_COPY_AND_ASSIGN(CacheFindCallback);
 };
@@ -587,7 +603,8 @@ CacheUrlAsyncFetcher::CacheUrlAsyncFetcher(const Hasher* lock_hasher,
       default_cache_html_(false),
       proactively_freshen_user_facing_request_(false),
       own_fetcher_(false),
-      serve_stale_while_revalidate_threshold_sec_(0) {
+      serve_stale_while_revalidate_threshold_sec_(0),
+      response_sequence_(NULL) {
 }
 
 CacheUrlAsyncFetcher::~CacheUrlAsyncFetcher() {
@@ -619,6 +636,7 @@ void CacheUrlAsyncFetcher::Fetch(
                 this,
                 async_op_hooks_,
                 handler);
+        find_callback->set_response_sequence(response_sequence_);
         http_cache_->Find(url, fragment_, handler, find_callback);
       }
       return;

@@ -161,6 +161,7 @@
 #include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/http/http_names.h"
 #include "pagespeed/kernel/http/request_headers.h"
+#include "pagespeed/kernel/thread/scheduler_sequence.h"
 #include "pagespeed/kernel/thread/scheduler.h"
 #include "pagespeed/kernel/util/statistics_logger.h"
 
@@ -296,6 +297,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       start_time_ms_(0),
       tried_to_distribute_fetch_(false),
       defer_instrumentation_script_(false),
+      executing_rewrite_tasks_(false),
       downstream_cache_purger_(this)
       // NOTE:  Be sure to clear per-request member variables in Clear()
 { // NOLINT  -- I want the initializer-list to end with that comment.
@@ -404,6 +406,10 @@ RewriteDriver* RewriteDriver::Clone() {
 }
 
 void RewriteDriver::Clear() NO_THREAD_SAFETY_ANALYSIS {
+  if (scheduler_sequence_.get() != NULL) {
+    CleanupRequestThread();
+  }
+
   HtmlParse::Clear();
 
   // If this was a fetch, fetch_rewrites_ may still hold a reference to a
@@ -445,6 +451,7 @@ void RewriteDriver::Clear() NO_THREAD_SAFETY_ANALYSIS {
   flushing_early_ = false;
   tried_to_distribute_fetch_ = false;
   defer_instrumentation_script_ = false;
+  executing_rewrite_tasks_ = false;
   is_lazyload_script_flushed_ = false;
   base_was_set_ = false;
   refs_before_base_ = false;
@@ -1502,7 +1509,11 @@ CacheUrlAsyncFetcher* RewriteDriver::CreateCacheFetcher() {
 }
 
 CacheUrlAsyncFetcher* RewriteDriver::CreateCacheOnlyFetcher() {
-  return CreateCustomCacheFetcher(NULL);
+  CacheUrlAsyncFetcher* fetcher = CreateCustomCacheFetcher(NULL);
+  if (scheduler_sequence_.get() != NULL) {
+    fetcher->set_response_sequence(scheduler_sequence_.get());
+  }
+  return fetcher;
 }
 
 bool RewriteDriver::Decode(StringPiece leaf,
@@ -2627,63 +2638,66 @@ void AppendBool(GoogleString* out, const char* name, bool val) {
 
 }  // namespace
 
-GoogleString RewriteDriver::ToString(bool show_detached_contexts) const {
+GoogleString RewriteDriver::ToStringLockHeld(bool show_detached_contexts)
+    const {
   GoogleString out;
-  {
-    ScopedMutex lock(rewrite_mutex());
-    StrAppend(&out, "URL: ", google_url().Spec(), "\n");
-    StrAppend(&out, "decoded_base: ", decoded_base_url().Spec(), "\n");
-    AppendBool(&out, "base_was_set", base_was_set_);
-    StrAppend(&out, "containing_charset: ", containing_charset_, "\n");
-    AppendBool(&out, "filters_added", filters_added_);
-    AppendBool(&out, "externally_managed", externally_managed_);
-    switch (waiting_) {
-      case kNoWait:
-        StrAppend(&out, "waiting: kNoWait\n");
-        break;
-      case kWaitForCompletion:
-        StrAppend(&out, "waiting: kWaitForCompletion\n");
-        break;
-      case kWaitForCachedRender:
-        StrAppend(&out, "waiting: kWaitForCachedRender\n");
-        break;
-      case kWaitForShutDown:
-        StrAppend(&out, "waiting: kWaitForShutDown\n");
-        break;
-      default:
-        StrAppend(&out, "waiting: ", IntegerToString(waiting_));
-        break;
-    }
-    AppendBool(&out, "waiting_deadline_reached", waiting_deadline_reached_);
-    StrAppend(&out, "detached_rewrites_.size(): ",
-              IntegerToString(detached_rewrites_.size()), "\n");
-
-    if (show_detached_contexts) {
-      for (RewriteContextSet::iterator p = detached_rewrites_.begin(),
-               e = detached_rewrites_.end(); p != e; ++p) {
-        RewriteContext* detached_rewrite = *p;
-        StrAppend(&out, "  Detached Rewrite:\n",
-                  detached_rewrite->ToStringWithPrefix("  "));
-      }
-    }
-    AppendBool(&out, "RewritesComplete()", RewritesComplete());
-    AppendBool(&out, "fully_rewrite_on_flush", fully_rewrite_on_flush_);
-    AppendBool(&out, "fast_blocking_rewrite", fast_blocking_rewrite_);
-    AppendBool(&out, "flush_requested", flush_requested_);
-    AppendBool(&out, "flush_occurred", flush_occurred_);
-    AppendBool(&out, "flushed_early", flushed_early_);
-    AppendBool(&out, "flushing_early", flushing_early_);
-    AppendBool(&out, "is_lazyload_script_flushed", is_lazyload_script_flushed_);
-    AppendBool(&out, "release_driver", release_driver_);
-    AppendBool(&out, "write_property_cache_dom_cohort",
-               write_property_cache_dom_cohort_);
-    AppendBool(&out, "owns_property_page", owns_property_page_);
-    AppendBool(&out, "xhtml_mimetype_computed", xhtml_mimetype_computed_);
-    AppendBool(&out, "can_rewrite_resources", can_rewrite_resources_);
-    AppendBool(&out, "is_nested", is_nested());
-    StrAppend(&out, "ref counts:\n", ref_counts_.DebugStringMutexHeld());
+  StrAppend(&out, "URL: ", google_url().Spec(), "\n");
+  StrAppend(&out, "decoded_base: ", decoded_base_url().Spec(), "\n");
+  AppendBool(&out, "base_was_set", base_was_set_);
+  StrAppend(&out, "containing_charset: ", containing_charset_, "\n");
+  AppendBool(&out, "filters_added", filters_added_);
+  AppendBool(&out, "externally_managed", externally_managed_);
+  switch (waiting_) {
+    case kNoWait:
+      StrAppend(&out, "waiting: kNoWait\n");
+      break;
+    case kWaitForCompletion:
+      StrAppend(&out, "waiting: kWaitForCompletion\n");
+      break;
+    case kWaitForCachedRender:
+      StrAppend(&out, "waiting: kWaitForCachedRender\n");
+      break;
+    case kWaitForShutDown:
+      StrAppend(&out, "waiting: kWaitForShutDown\n");
+      break;
+    default:
+      StrAppend(&out, "waiting: ", IntegerToString(waiting_));
+      break;
   }
+  AppendBool(&out, "waiting_deadline_reached", waiting_deadline_reached_);
+  StrAppend(&out, "detached_rewrites_.size(): ",
+            IntegerToString(detached_rewrites_.size()), "\n");
+
+  if (show_detached_contexts) {
+    for (RewriteContextSet::iterator p = detached_rewrites_.begin(),
+             e = detached_rewrites_.end(); p != e; ++p) {
+      RewriteContext* detached_rewrite = *p;
+      StrAppend(&out, "  Detached Rewrite:\n",
+                detached_rewrite->ToStringWithPrefix("  "));
+    }
+  }
+  AppendBool(&out, "RewritesComplete()", RewritesComplete());
+  AppendBool(&out, "fully_rewrite_on_flush", fully_rewrite_on_flush_);
+  AppendBool(&out, "fast_blocking_rewrite", fast_blocking_rewrite_);
+  AppendBool(&out, "flush_requested", flush_requested_);
+  AppendBool(&out, "flush_occurred", flush_occurred_);
+  AppendBool(&out, "flushed_early", flushed_early_);
+  AppendBool(&out, "flushing_early", flushing_early_);
+  AppendBool(&out, "is_lazyload_script_flushed", is_lazyload_script_flushed_);
+  AppendBool(&out, "release_driver", release_driver_);
+  AppendBool(&out, "write_property_cache_dom_cohort",
+             write_property_cache_dom_cohort_);
+  AppendBool(&out, "owns_property_page", owns_property_page_);
+  AppendBool(&out, "xhtml_mimetype_computed", xhtml_mimetype_computed_);
+  AppendBool(&out, "can_rewrite_resources", can_rewrite_resources_);
+  AppendBool(&out, "is_nested", is_nested());
+  StrAppend(&out, "ref counts:\n", ref_counts_.DebugStringMutexHeld());
   return out;
+}
+
+GoogleString RewriteDriver::ToString(bool show_detached_contexts) const {
+  ScopedMutex lock(rewrite_mutex());
+  return ToStringLockHeld(show_detached_contexts);
 }
 
 void RewriteDriver::PrintState(bool show_detached_contexts) {
@@ -3094,7 +3108,17 @@ bool RewriteDriver::MayCacheExtendScripts() const {
 }
 
 void RewriteDriver::AddRewriteTask(Function* task) {
-  rewrite_worker_->Add(task);
+  // Note that we hold no locks when we make the decision about whether to
+  // schedule on the scheduler_sequence_, so once the driver starts running
+  // tasks, we must consider scheduler_sequence_ to be immutable.  This
+  // bool helps enforce that invariant.
+  executing_rewrite_tasks_ = true;
+
+  if (scheduler_sequence_.get() != NULL) {
+    scheduler_sequence_->Add(task);
+  } else {
+    rewrite_worker_->Add(task);
+  }
 }
 
 void RewriteDriver::AddLowPriorityRewriteTask(Function* task) {
@@ -3724,6 +3748,46 @@ bool RewriteDriver::LookupMetadataForOutputResource(
   return RewriteContext::LookupMetadataForOutputResourceImpl(
              output_resource, gurl, context.release(),
              this, error_out, callback);
+}
+
+void RewriteDriver::UsePrivateScheduler() {
+  scheduler_ = scheduler_->Clone();
+  ref_counts_.set_mutex(scheduler_->mutex());
+}
+
+void RewriteDriver::RunTasksOnRequestThread() {
+  // Note that we hold no locks when we make the decision about whether to
+  // add rewrite tasks on the scheduler_sequence_, so RunTasksOnRequestThread
+  // can only be called prior to running tasks.
+  CHECK(!executing_rewrite_tasks_);
+  CHECK(scheduler_ != server_context_->scheduler())
+      << "UsePrivateScheduler must be called before RunTasksOnRequestThread";
+  scheduler_sequence_.reset(scheduler_->NewSequence());
+}
+
+void RewriteDriver::SwitchToQueuedWorkerPool() {
+  scheduler_sequence_->ForwardToSequence(rewrite_worker_);
+}
+
+void RewriteDriver::CleanupRequestThread() {
+  Scheduler* scheduler_to_delete = nullptr;
+
+  {
+    ScopedMutex lock(rewrite_mutex());
+    scheduler_sequence_.reset();
+    CHECK(scheduler_ != server_context_->scheduler());
+    scheduler_to_delete = scheduler_;
+    scheduler_ = server_context_->scheduler();
+    ref_counts_.set_mutex(scheduler_->mutex());
+  }
+  delete scheduler_to_delete;
+}
+
+Sequence* RewriteDriver::rewrite_worker() {
+  if (scheduler_sequence_.get() == nullptr) {
+    return rewrite_worker_;
+  }
+  return scheduler_sequence_.get();
 }
 
 }  // namespace net_instaweb

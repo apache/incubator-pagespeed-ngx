@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_CACHE_URL_ASYNC_FETCHER_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_CACHE_URL_ASYNC_FETCHER_H_
 
+#include "base/logging.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
@@ -31,6 +32,7 @@ class Histogram;
 class HTTPCache;
 class MessageHandler;
 class NamedLockManager;
+class Sequence;
 class Variable;
 
 // Composes an asynchronous URL fetcher with an http cache, to
@@ -171,6 +173,23 @@ class CacheUrlAsyncFetcher : public UrlAsyncFetcher {
 
   void set_own_fetcher(bool x) { own_fetcher_ = x; }
 
+  // By default, the CacheUrlAsyncFetcher will call its fetcher callbacks
+  // on whatever thread the cache or the fetcher happen to be on (e.g. the
+  // memcached thread).  Setting the response_sequence ensures that cached
+  // responses call their callbacks by queueing on that sequence rather than
+  // executing them directly.
+  //
+  // TODO(jmarantz): this currently only makes sense to call when there is no
+  // fetcher, as the implementation does not queue up fetcher-callbacks; only
+  // cache callbacks.  But if we want to fully implement bandwidth optimization
+  // at the expense of latency, we are going to have to add sequencing of
+  // fetch callbacks in addition to cache callbacks.  This is not hard to do,
+  // but we don't need it yet so it's not done.
+  void set_response_sequence(Sequence* x) {
+    CHECK(fetcher_ == NULL);
+    response_sequence_ = x;
+  }
+
  private:
   // Not owned by CacheUrlAsyncFetcher.
   const Hasher* lock_hasher_;
@@ -193,6 +212,7 @@ class CacheUrlAsyncFetcher : public UrlAsyncFetcher {
   bool proactively_freshen_user_facing_request_;
   bool own_fetcher_;  // set true to transfer ownership of fetcher to this.
   int64 serve_stale_while_revalidate_threshold_sec_;
+  Sequence* response_sequence_;
 
   DISALLOW_COPY_AND_ASSIGN(CacheUrlAsyncFetcher);
 };
