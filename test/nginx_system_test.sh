@@ -577,9 +577,17 @@ check test $(scrape_stat image_rewrite_total_original_bytes) -ge 10000
 # happens both before and after.
 start_test "Reload config"
 
-# There should be one babysitter and controller running.
-check [ $(ps aux | grep -c 'nginx: pagespeed babysitte[r]') -eq 1 ]
-check [ $(ps aux | grep -c 'nginx: pagespeed controlle[r]') -eq 1 ]
+function check_process_names() {
+  if ! $USE_VALGRIND; then
+    # There should be one babysitter and controller running.  Under valgrind
+    # process labels are confused, so skip the check then.
+
+    check [ $(ps aux | grep -c 'nginx: pagespeed babysitte[r]') -eq 1 ]
+    check [ $(ps aux | grep -c 'nginx: pagespeed controlle[r]') -eq 1 ]
+  fi
+}
+
+check_process_names
 
 # Fire up some heavy load if ab is available to test a stressed reload.
 # TODO(oschaaf): make sure we wait for the new worker to get ready to accept
@@ -606,8 +614,7 @@ if [ "$AB_PID" != "0" ]; then
 fi
 
 # There should still be just one babysitter and controller running.
-check [ $(ps aux | grep -c 'nginx: pagespeed babysitte[r]') -eq 1 ]
-check [ $(ps aux | grep -c 'nginx: pagespeed controlle[r]') -eq 1 ]
+check_process_names
 
 check grep "About to send SIGKILL to babysitter process" $ERROR_LOG
 check grep "Babysitter process ([0-9]*) exited; controller shutting down." \
