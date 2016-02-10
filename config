@@ -118,6 +118,13 @@ case "$NGX_GCC_VER" in
   ;;
 esac
 
+# workaround for a bug in nginx-1.9.11, see:
+# http://hg.nginx.org/nginx/rev/ff1e625ae55b
+NGX_VERSION=`grep nginx_version src/core/nginx.h | sed -e 's/^.* \(.*\)$/\1/'`
+if [ "$NGX_VERSION" = "1009011" ]; then
+    CFLAGS="$CFLAGS -Wno-write-strings"
+fi
+
 if [ "$WNO_ERROR" = "YES" ]; then
     CFLAGS="$CFLAGS -Wno-error"
 fi
@@ -228,9 +235,9 @@ if [ $ngx_found = yes ]; then
     if echo $HTTP_FILTER_MODULES | grep ngx_http_brotli_filter_module >/dev/null; then
       module=ngx_http_brotli_filter_module
     elif [ $HTTP_GZIP = YES ]; then
-      module=$HTTP_GZIP_FILTER_MODULE
+      module=ngx_http_gzip_filter_module
     else
-      module=$HTTP_RANGE_HEADER_FILTER_MODULE
+      module=ngx_http_range_header_filter_module
     fi
 
     HTTP_FILTER_MODULES=$(echo $HTTP_FILTER_MODULES |\
@@ -239,7 +246,7 @@ if [ $ngx_found = yes ]; then
 
   # Make the etag header filter run immediately before range header filter.
   HTTP_FILTER_MODULES=$(echo $HTTP_FILTER_MODULES |\
-    sed "s/$HTTP_RANGE_HEADER_FILTER_MODULE/$HTTP_RANGE_HEADER_FILTER_MODULE ngx_pagespeed_etag_filter/")
+    sed "s/ngx_http_range_header_filter_module/ngx_http_range_header_filter_module ngx_pagespeed_etag_filter/")
 
   CORE_LIBS="$CORE_LIBS $pagespeed_libs"
   CORE_INCS="$CORE_INCS $pagespeed_include"
