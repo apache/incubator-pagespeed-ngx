@@ -356,8 +356,12 @@ bool IsLength(const GoogleString& unit) {
 
 bool UnitsRequiredForValueZero(const GoogleString& unit) {
   // https://github.com/pagespeed/mod_pagespeed/issues/1164 : Chrome does not
-  // allow abbreviating 0s as 0.  It only allows that abbreviation for lengths.
-  return !IsLength(unit) && (unit != "%");
+  // allow abbreviating 0s or 0% as 0.  It only allows that abbreviation for
+  // lengths.
+  //
+  // https://github.com/pagespeed/mod_pagespeed/issues/1261  See
+  // https://www.w3.org/TR/CSS2/visudet.html#the-height-property
+  return (unit == "%") || !IsLength(unit);
 }
 
 }  // namespace

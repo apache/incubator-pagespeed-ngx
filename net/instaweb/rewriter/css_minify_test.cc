@@ -133,10 +133,11 @@ TEST_F(CssMinifyTest, DoNotFixBadColorsOrUnits) {
       minified);
 }
 
-TEST_F(CssMinifyTest, RemoveZeroLengthButNotTimeSuffix) {
+TEST_F(CssMinifyTest, RemoveZeroLengthButNotTimeOrPercentSuffix) {
   const char kCss[] =
       ".a {\n"
       "  width: 0px;\n"
+      "  height: 0%;\n"
       "  -moz-transition-delay: 0s, 0s;\n"
       "}";
   GoogleString minified;
@@ -145,7 +146,7 @@ TEST_F(CssMinifyTest, RemoveZeroLengthButNotTimeSuffix) {
   EXPECT_TRUE(minify.ParseStylesheet(kCss));
   // TODO(jmarantz): this CSS is not well minified.  We should strip
   // the spaces around the comma.
-  EXPECT_STREQ(".a{width:0;-moz-transition-delay:0s , 0s}", minified);
+  EXPECT_STREQ(".a{width:0;height:0%;-moz-transition-delay:0s , 0s}", minified);
 }
 
 }  // namespace

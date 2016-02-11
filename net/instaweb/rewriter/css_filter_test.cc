@@ -1042,7 +1042,7 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       "}\n"
       ".foo { color: rgba(1, 2, 3, 0.4); }\n",
 
-      "body{background-image:-webkit-gradient(linear,50% 0,50% 100%,"
+      "body{background-image:-webkit-gradient(linear,50% 0%,50% 100%,"
       "from(#e8edf0),to(#fcfcfd));color:red}.foo{color:rgba(1,2,3,.4)}" },
 
     // Counters
