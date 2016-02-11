@@ -85,8 +85,7 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(
       port_(port),
       process_script_variables_(false),
       process_script_variables_set_(false),
-      shut_down_(false),
-      master_cycle_(NULL) {
+      shut_down_(false) {
   InitializeDefaultOptions();
   default_options()->set_beacon_url("/ngx_pagespeed_beacon");
   SystemRewriteOptions* system_options = dynamic_cast<SystemRewriteOptions*>(
@@ -249,16 +248,6 @@ void NgxRewriteDriverFactory::InitStats(Statistics* statistics) {
   // Init Ngx-specific stats.
   NgxServerContext::InitStats(statistics);
   InPlaceResourceRecorder::InitStats(statistics);
-}
-
-GoogleString NgxRewriteDriverFactory::MasterPidFilename() {
-  // Look in the config for the name of nginx's PID file.
-  CHECK(master_cycle_ != NULL);
-  ngx_core_conf_t* core_configuration = reinterpret_cast<ngx_core_conf_t*>(
-      ngx_get_conf(master_cycle_->conf_ctx, ngx_core_module));
-  CHECK(core_configuration != NULL);
-  return GoogleString(reinterpret_cast<char*>(core_configuration->pid.data),
-                      core_configuration->pid.len);
 }
 
 void NgxRewriteDriverFactory::PrepareForkedProcess(const char* name) {

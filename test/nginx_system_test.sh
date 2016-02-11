@@ -616,8 +616,9 @@ fi
 # There should still be just one babysitter and controller running.
 check_process_names
 
-check grep "About to send SIGKILL to babysitter process" $ERROR_LOG
-check grep "Babysitter process ([0-9]*) exited; controller shutting down." \
+check grep "Writing a byte to a pipe to tell the old controller to exit." \
+  $ERROR_LOG
+check grep "Root process is starting a new controller; shutting down." \
   $ERROR_LOG
 
 # This is dependent upon having a beacon handler.

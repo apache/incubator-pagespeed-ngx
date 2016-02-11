@@ -3065,7 +3065,6 @@ ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
     }
 
     cfg_m->driver_factory->LoggingInit(cycle->log, true);
-    cfg_m->driver_factory->set_master_cycle(cycle);
     cfg_m->driver_factory->RootInit();
   } else {
     delete cfg_m->driver_factory;
