@@ -297,7 +297,6 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       start_time_ms_(0),
       tried_to_distribute_fetch_(false),
       defer_instrumentation_script_(false),
-      executing_rewrite_tasks_(false),
       downstream_cache_purger_(this)
       // NOTE:  Be sure to clear per-request member variables in Clear()
 { // NOLINT  -- I want the initializer-list to end with that comment.
@@ -451,7 +450,7 @@ void RewriteDriver::Clear() NO_THREAD_SAFETY_ANALYSIS {
   flushing_early_ = false;
   tried_to_distribute_fetch_ = false;
   defer_instrumentation_script_ = false;
-  executing_rewrite_tasks_ = false;
+  executing_rewrite_tasks_.set_value(false);
   is_lazyload_script_flushed_ = false;
   base_was_set_ = false;
   refs_before_base_ = false;
@@ -3112,7 +3111,7 @@ void RewriteDriver::AddRewriteTask(Function* task) {
   // schedule on the scheduler_sequence_, so once the driver starts running
   // tasks, we must consider scheduler_sequence_ to be immutable.  This
   // bool helps enforce that invariant.
-  executing_rewrite_tasks_ = true;
+  executing_rewrite_tasks_.set_value(true);
 
   if (scheduler_sequence_.get() != NULL) {
     scheduler_sequence_->Add(task);
@@ -3759,7 +3758,7 @@ void RewriteDriver::RunTasksOnRequestThread() {
   // Note that we hold no locks when we make the decision about whether to
   // add rewrite tasks on the scheduler_sequence_, so RunTasksOnRequestThread
   // can only be called prior to running tasks.
-  CHECK(!executing_rewrite_tasks_);
+  CHECK(!executing_rewrite_tasks_.value());
   CHECK(scheduler_ != server_context_->scheduler())
       << "UsePrivateScheduler must be called before RunTasksOnRequestThread";
   scheduler_sequence_.reset(scheduler_->NewSequence());

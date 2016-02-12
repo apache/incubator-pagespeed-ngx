@@ -45,6 +45,7 @@
 #include "net/instaweb/rewriter/public/scan_filter.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
+#include "pagespeed/kernel/base/atomic_bool.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/printf_format.h"
@@ -1787,7 +1788,7 @@ class RewriteDriver : public HtmlParse {
   bool defer_instrumentation_script_;
 
   // Indicates that task execution has started.
-  bool executing_rewrite_tasks_;
+  AtomicBool executing_rewrite_tasks_;
 
   // Downstream cache object used for issuing purges.
   DownstreamCachePurger downstream_cache_purger_;
