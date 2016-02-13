@@ -23,7 +23,6 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_query.h"
-#include "net/instaweb/rewriter/public/split_html_beacon_filter.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -81,13 +80,8 @@ bool SupportNoscriptFilter::IsAnyFilterRequiringScriptExecutionEnabled() const {
     switch (filter) {
       case RewriteOptions::kDeferIframe:
       case RewriteOptions::kDeferJavascript:
-      case RewriteOptions::kSplitHtml:
-        // We don't need to insert a noscript redirect if we are just
-        // instrumenting the page, instead of actually running split HTML.
-        filter_enabled =
-            (request_properties->SupportsJsDefer(
-                 options->enable_aggressive_rewriters_for_mobile()) &&
-             !SplitHtmlBeaconFilter::ShouldApply(rewrite_driver_));
+        filter_enabled = request_properties->SupportsJsDefer(
+            options->enable_aggressive_rewriters_for_mobile());
         break;
       case RewriteOptions::kDedupInlinedImages:
       case RewriteOptions::kDelayImages:

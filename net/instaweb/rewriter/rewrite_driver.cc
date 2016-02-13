@@ -119,10 +119,6 @@
 #include "net/instaweb/rewriter/public/rewritten_content_scanning_filter.h"
 #include "net/instaweb/rewriter/public/scan_filter.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/split_html_beacon_filter.h"
-#include "net/instaweb/rewriter/public/split_html_config.h"
-#include "net/instaweb/rewriter/public/split_html_filter.h"
-#include "net/instaweb/rewriter/public/split_html_helper_filter.h"
 #include "net/instaweb/rewriter/public/strip_non_cacheable_filter.h"
 #include "net/instaweb/rewriter/public/strip_scripts_filter.h"
 #include "net/instaweb/rewriter/public/support_noscript_filter.h"
@@ -855,7 +851,6 @@ void RewriteDriver::Initialize() {
     RewriteOptions::Initialize();
     ImageRewriteFilter::Initialize();
     CssFilter::Initialize();
-    SplitHtmlConfig::Initialize();
   }
 }
 
@@ -888,7 +883,6 @@ void RewriteDriver::InitStats(Statistics* statistics) {
   MobilizeMenuFilter::InitStats(statistics);
   MobilizeMenuRenderFilter::InitStats(statistics);
   MobilizeRewriteFilter::InitStats(statistics);
-  SplitHtmlBeaconFilter::InitStats(statistics);
   RewriteContext::InitStats(statistics);
   UrlInputResource::InitStats(statistics);
   UrlLeftTrimFilter::InitStats(statistics);
@@ -901,7 +895,6 @@ void RewriteDriver::Terminate() {
     CssFilter::Terminate();
     ImageRewriteFilter::Terminate();
     RewriteOptions::Terminate();
-    SplitHtmlConfig::Terminate();
   }
 }
 
@@ -1016,9 +1009,6 @@ void RewriteDriver::AddPreRenderFilters() {
   if (rewrite_options->Enabled(RewriteOptions::kDecodeRewrittenUrls)) {
     AddOwnedEarlyPreRenderFilter(new DecodeRewrittenUrlsFilter(this));
   }
-  if (rewrite_options->Enabled(RewriteOptions::kSplitHtmlHelper)) {
-    AddOwnedEarlyPreRenderFilter(new SplitHtmlHelperFilter(this));
-  }
 
   if (rewrite_options->Enabled(RewriteOptions::kResponsiveImages) &&
       rewrite_options->Enabled(RewriteOptions::kResizeImages)) {
@@ -1073,10 +1063,6 @@ void RewriteDriver::AddPreRenderFilters() {
   if (rewrite_options->Enabled(RewriteOptions::kMakeShowAdsAsync)) {
     // We want this filter early in case we ever inline the loader JS.
     AppendOwnedPreRenderFilter(new MakeShowAdsAsyncFilter(this));
-  }
-  if (rewrite_options->Enabled(RewriteOptions::kSplitHtml) &&
-      server_context()->factory()->UseBeaconResultsInFilters()) {
-    AppendOwnedPreRenderFilter(new SplitHtmlBeaconFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kInlineImportToLink) ||
       (!rewrite_options->Forbidden(RewriteOptions::kInlineImportToLink) &&
@@ -1299,11 +1285,8 @@ void RewriteDriver::AddPostRenderFilters() {
     // defer js so that its onload handler can fire before JS starts executing.
     AddOwnedPostRenderFilter(new AddInstrumentationFilter(this));
   }
-  if (rewrite_options->Enabled(RewriteOptions::kSplitHtml)) {
-    AddOwnedPostRenderFilter(new DeferIframeFilter(this));
-    AddOwnedPostRenderFilter(new JsDisableFilter(this));
-  } else if (rewrite_options->Enabled(RewriteOptions::kDeferJavascript) ||
-             rewrite_options->Enabled(RewriteOptions::kCachePartialHtml)) {
+  if (rewrite_options->Enabled(RewriteOptions::kDeferJavascript) ||
+      rewrite_options->Enabled(RewriteOptions::kCachePartialHtml)) {
     // Defers javascript download and execution to post onload. This filter
     // should be applied before JsDisableFilter and JsDeferFilter.
     // kDeferIframe filter should never be turned on when either defer_js
@@ -1463,8 +1446,6 @@ void RewriteDriver::SetWriter(Writer* writer) {
       // If we are flushing early using this RewriteDriver object, we use the
       // FlushEarlyContentWriterFilter.
       html_writer_filter_.reset(new FlushEarlyContentWriterFilter(this));
-    } else if (options()->Enabled(RewriteOptions::kSplitHtml)) {
-      html_writer_filter_.reset(new SplitHtmlFilter(this));
     } else if (options()->Enabled(RewriteOptions::kFlushSubresources)) {
       html_writer_filter_.reset(new SuppressPreheadFilter(this));
     } else {
@@ -3493,16 +3474,6 @@ CriticalKeys* RewriteDriver::beacon_critical_line_info() const {
 void RewriteDriver::set_beacon_critical_line_info(
     CriticalKeys* beacon_critical_line_info) {
   beacon_critical_line_info_.reset(beacon_critical_line_info);
-}
-
-// The split html config is lazily constructed on first access. Since the
-// split-html-filter and the split-html-helper-filter access this from the html
-// parsing thread, the lazy construction does not need mutex protection.
-const SplitHtmlConfig* RewriteDriver::split_html_config() {
-  if (split_html_config_ == NULL) {
-    split_html_config_.reset(new SplitHtmlConfig(this));
-  }
-  return split_html_config_.get();
 }
 
 bool RewriteDriver::is_critical_images_beacon_enabled() {

@@ -189,15 +189,6 @@ bool DeviceProperties::IsBot() const {
   return (is_bot_ == kTrue);
 }
 
-bool DeviceProperties::SupportsSplitHtml(bool allow_mobile) const {
-  if (supports_split_html_ == kNotSet) {
-    supports_split_html_ =
-        ua_matcher_->SupportsSplitHtml(user_agent_, allow_mobile) ?
-        kTrue : kFalse;
-  }
-  return (supports_split_html_ == kTrue);
-}
-
 bool DeviceProperties::CanPreloadResources() const {
   return ua_matcher_->GetPrefetchMechanism(user_agent_) !=
       UserAgentMatcher::kPrefetchNotSupported;

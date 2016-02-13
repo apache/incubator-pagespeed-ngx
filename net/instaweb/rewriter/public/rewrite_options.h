@@ -383,8 +383,6 @@ class RewriteOptions {
   static const char kRewriteRandomDropPercentage[];
   static const char kRewriteUncacheableResources[];
   static const char kRunningExperiment[];
-  static const char kServeGhostClickBusterWithSplitHtml[];
-  static const char kServeSplitHtmlInTwoChunks[];
   static const char kServeStaleIfFetchError[];
   static const char kServeStaleWhileRevalidateThresholdSec[];
   static const char kServeXhrAccessControlHeaders[];
@@ -1932,25 +1930,11 @@ class RewriteOptions {
   void set_flush_html(bool x) { set_option(x, &flush_html_); }
   bool flush_html() const { return flush_html_.value(); }
 
-  void set_serve_split_html_in_two_chunks(bool x) {
-    set_option(x, &serve_split_html_in_two_chunks_);
-  }
-  bool serve_split_html_in_two_chunks() const {
-    return serve_split_html_in_two_chunks_.value();
-  }
-
   void set_serve_stale_if_fetch_error(bool x) {
     set_option(x, &serve_stale_if_fetch_error_);
   }
   bool serve_stale_if_fetch_error() const {
     return serve_stale_if_fetch_error_.value();
-  }
-
-  void set_serve_ghost_click_buster_with_split_html(bool x) {
-    set_option(x, &serve_ghost_click_buster_with_split_html_);
-  }
-  bool serve_ghost_click_buster_with_split_html() const {
-    return serve_ghost_click_buster_with_split_html_.value();
   }
 
   void set_serve_xhr_access_control_headers(bool x) {
@@ -3936,15 +3920,9 @@ class RewriteOptions {
   Option<bool> respect_vary_;
   Option<bool> respect_x_forwarded_proto_;
   Option<bool> flush_html_;
-  // Should we serve the split html response in two chunks - above the fold and
-  // below the fold. If set to false, we serve the above the fold and below the
-  // fold in a single response.
-  Option<bool> serve_split_html_in_two_chunks_;
   // Should we serve stale responses if the fetch results in a server side
   // error.
   Option<bool> serve_stale_if_fetch_error_;
-  // Should we serve ghost click buster code when split html is enabled.
-  Option<bool> serve_ghost_click_buster_with_split_html_;
   // Should we serve access control headers in response headers.
   Option<bool> serve_xhr_access_control_headers_;
   // Proactively freshen user facing request if it is about to expire. So, that

@@ -33,7 +33,6 @@
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/experiment_matcher.h"
 #include "net/instaweb/rewriter/public/property_cache_util.h"
-#include "net/instaweb/rewriter/public/request_properties.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -738,27 +737,23 @@ void CacheHtmlFlow::CacheHtmlHit(FallbackPropertyPage* page) {
 
   InitDriverWithPropertyCacheValues(new_driver, page);
 
-  bool flushed_split_js =
-      new_driver->options()->Enabled(RewriteOptions::kSplitHtml) &&
-      new_driver->request_properties()->SupportsSplitHtml(
-          new_driver->options()->enable_aggressive_rewriters_for_mobile());
   new_driver->ParseText(cached_html);
   new_driver->FinishParseAsync(
-      MakeFunction(this, &CacheHtmlFlow::CacheHtmlRewriteDone,
-                   flushed_split_js));
+      MakeFunction(this, &CacheHtmlFlow::CacheHtmlRewriteDone));
 }
 
-void CacheHtmlFlow::CacheHtmlRewriteDone(bool flushed_split_js) {
+void CacheHtmlFlow::CacheHtmlRewriteDone() {
   rewrite_driver_->set_flushed_cached_html(true);
 
   StaticAssetManager* static_asset_manager =
       server_context_->static_asset_manager();
-  if (!flushed_split_js) {
-    base_fetch_->Write(StringPrintf(kBlinkJsString,
-        static_asset_manager->GetAssetUrl(
-            StaticAssetEnum::BLINK_JS, options_).c_str()), handler_);
-    base_fetch_->Write(kCacheHtmlSuffixJsString, handler_);
-  }
+  base_fetch_->Write(
+      StringPrintf(
+          kBlinkJsString,
+          static_asset_manager->GetAssetUrl(StaticAssetEnum::BLINK_JS, options_)
+              .c_str()),
+      handler_);
+  base_fetch_->Write(kCacheHtmlSuffixJsString, handler_);
   const char* user_ip = base_fetch_->request_headers()->Lookup1(
       HttpAttributes::kXForwardedFor);
   if (user_ip != NULL && server_context_->factory()->IsDebugClient(user_ip) &&

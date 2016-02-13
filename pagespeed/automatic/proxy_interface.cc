@@ -269,10 +269,6 @@ void ProxyInterface::GetRewriteOptionsDone(RequestData* request_data,
     delete options;
     return;
   }
-  if (ServerContext::ScanSplitHtmlRequest(
-      async_fetch->request_context(), options, &url_string)) {
-    request_url->Reset(url_string);
-  }
 
   // Update request_headers.
   // We deal with encodings. So strip the users Accept-Encoding headers.

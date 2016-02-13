@@ -155,16 +155,12 @@ class UserAgentMatcherTestBase : public testing::Test {
   static const char* const kDesktopUserAgents[];
   static const char* const kTabletUserAgents[];
   static const char* const kImageInliningSupportedUserAgents[];
-  static const char* const kSplitHtmlSupportedUserAgents[];
-  static const char* const kSplitHtmlUnSupportedUserAgents[];
 
   static const int kIe11UserAgentsArraySize;
   static const int kMobileUserAgentsArraySize;
   static const int kDesktopUserAgentsArraySize;
   static const int kTabletUserAgentsArraySize;
   static const int kImageInliningSupportedUserAgentsArraySize;
-  static const int kSplitHtmlSupportedUserAgentsArraySize;
-  static const int kSplitHtmlUnSupportedUserAgentsArraySize;
 
   UserAgentMatcherTestBase();
   virtual ~UserAgentMatcherTestBase() { }
@@ -173,7 +169,6 @@ class UserAgentMatcherTestBase : public testing::Test {
   bool IsTabletUserAgent(const StringPiece& user_agent);
   void VerifyGetDeviceTypeForUA();
   void VerifyImageInliningSupport();
-  void VerifySplitHtmlSupport();
   void VerifyMobilizationSupport();
 
  protected:

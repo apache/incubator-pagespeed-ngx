@@ -35,7 +35,6 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/split_html_filter.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/test_url_namer.h"
@@ -361,12 +360,6 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
                   "\"></script>");
   }
 
-  GoogleString GetSplitHtmlSuffixCode() {
-    return StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
-                        "/psajs/blink.0.js", SplitHtmlFilter::kLoadHiResImages,
-                        4, "{}", "false");
-  }
-
   GoogleString NoScriptRedirectHtml() {
     return StringPrintf(kNoScriptRedirectFormatter,
                         noscript_redirect_url_.c_str(),
@@ -383,16 +376,11 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
     }
   }
 
-  GoogleString RewrittenHtmlWithDeferJs(bool split_html_enabled,
-                                        const GoogleString& image_tag,
+  GoogleString RewrittenHtmlWithDeferJs(const GoogleString& image_tag,
                                         bool is_ie) {
     GoogleString defer_js_injected_html3;
     GoogleString defer_js_injected_html2 = GetJsDisableScriptSnippet();
-    if (split_html_enabled) {
-      defer_js_injected_html3 = GetSplitHtmlSuffixCode();
-    } else {
-      StrAppend(&defer_js_injected_html2, GetDeferJsCode());
-    }
+    StrAppend(&defer_js_injected_html2, GetDeferJsCode());
     const char kCompatibleMetaTag[] =
         "<meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\">";
 
@@ -422,9 +410,9 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
       UserAgentMatcher::PrefetchMechanism value,
       bool defer_js_enabled, bool insert_dns_prefetch,
       bool ua_only_for_flush_early_html) {
-    return FlushEarlyRewrittenHtml(value, defer_js_enabled,
-                                   insert_dns_prefetch, false, false, false,
-                                   ua_only_for_flush_early_html, false);
+    return FlushEarlyRewrittenHtml(value, defer_js_enabled, insert_dns_prefetch,
+                                   false, false, ua_only_for_flush_early_html,
+                                   false);
   }
 
   GoogleString GetLazyloadScriptFlushEarly() {
@@ -436,23 +424,19 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
   }
 
   GoogleString FlushEarlyRewrittenHtml(
-      UserAgentMatcher::PrefetchMechanism value,
-      bool defer_js_enabled, bool insert_dns_prefetch,
-      bool lazyload_enabled, bool redirect_psa_off, bool split_html_enabled,
+      UserAgentMatcher::PrefetchMechanism value, bool defer_js_enabled,
+      bool insert_dns_prefetch, bool lazyload_enabled, bool redirect_psa_off,
       bool ua_only_for_flush_early_html, bool is_ie) {
     GoogleString flush_early_html;
     GoogleString cookie_script = kCookieScript;
     GoogleString rewritten_html;
 
-    GoogleString expected_deferjs_url = split_html_enabled ?
-        "/psajs/blink.0.js" : "/psajs/js_defer.0.js";
-
+    GoogleString expected_deferjs_url = "/psajs/js_defer.0.js";
 
     // Get rewritten html.
     if (defer_js_enabled && !ua_only_for_flush_early_html) {
       if (lazyload_enabled) {
         rewritten_html = RewrittenHtmlWithDeferJs(
-            split_html_enabled,
             StrCat("<img data-pagespeed-lazy-src=\"", rewritten_img_url_1_,
                    "\" src=\"/psajs/1.0.gif\" onload=\"",
                    LazyloadImagesFilter::kImageOnloadCode,
@@ -464,7 +448,6 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
             is_ie);
       } else {
         rewritten_html = RewrittenHtmlWithDeferJs(
-            split_html_enabled,
             StrCat("<img src=\"", rewritten_img_url_1_, "\"/>"), is_ie);
       }
     } else {
@@ -1009,9 +992,9 @@ TEST_F(FlushEarlyFlowTest, FallBackWithNonHtmlResourceIsRedirected) {
   // should be redirected.
   FetchFromProxy(url, request_headers, true, &text, &headers);
   redirect_url_ = StrCat(url, "&PageSpeed=noscript");
-  EXPECT_EQ(FlushEarlyRewrittenHtml(
-      UserAgentMatcher::kPrefetchLinkScriptTag, false, false, false,
-      true, false, true, false), text);
+  EXPECT_EQ(FlushEarlyRewrittenHtml(UserAgentMatcher::kPrefetchLinkScriptTag,
+                                    false, false, false, true, true, false),
+            text);
 
   EXPECT_EQ(1, TimedValue(
       FlushEarlyFlow::kNumFlushEarlyRequestsRedirected));
@@ -1117,9 +1100,9 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowStatusCodeUnstable) {
   // Fetch again so that 404 is populated in response headers.
   // It should redirect to PageSpeed=noscript in this case.
   FetchFromProxy(request_url_, request_headers, true, &text, &headers);
-  EXPECT_EQ(FlushEarlyRewrittenHtml(
-      UserAgentMatcher::kPrefetchLinkScriptTag, false, false, false,
-      true, false, true, false), text);
+  EXPECT_EQ(FlushEarlyRewrittenHtml(UserAgentMatcher::kPrefetchLinkScriptTag,
+                                    false, false, false, true, true, false),
+            text);
   EXPECT_EQ(1, TimedValue(
       FlushEarlyFlow::kNumFlushEarlyRequestsRedirected));
 
@@ -1151,9 +1134,9 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowStatusCodeUnstable) {
   // It should redirect to PageSpeed=noscript in this case.
   SetFetchResponse404(request_url_);
   FetchFromProxy(request_url_, request_headers, true, &text, &headers);
-  EXPECT_EQ(FlushEarlyRewrittenHtml(
-      UserAgentMatcher::kPrefetchLinkScriptTag, false, false, false,
-      true, false, true, false), text);
+  EXPECT_EQ(FlushEarlyRewrittenHtml(UserAgentMatcher::kPrefetchLinkScriptTag,
+                                    false, false, false, true, true, false),
+            text);
   EXPECT_EQ(2, TimedValue(
       FlushEarlyFlow::kNumFlushEarlyRequestsRedirected));
 }
@@ -1309,9 +1292,9 @@ TEST_F(FlushEarlyFlowTest, LazyloadAndDeferJsScriptFlushedEarly) {
 
   // Fetch the url again. This time FlushEarlyFlow should be triggered.
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
-  EXPECT_STREQ(FlushEarlyRewrittenHtml(
-      UserAgentMatcher::kPrefetchLinkScriptTag, true, false, true,
-      false, false, false, false), text);
+  EXPECT_STREQ(FlushEarlyRewrittenHtml(UserAgentMatcher::kPrefetchLinkScriptTag,
+                                       true, false, true, false, false, false),
+               text);
 }
 
 TEST_F(FlushEarlyFlowTest, NoLazyloadScriptFlushedOutIfNoImagePresent) {
@@ -1608,8 +1591,8 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowWithIEAddUACompatibilityHeader) {
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
 
   EXPECT_STREQ(FlushEarlyRewrittenHtml(UserAgentMatcher::kPrefetchLinkScriptTag,
-                                    true, false, false, false,
-                                    false, false, true), text);
+                                       true, false, false, false, false, true),
+               text);
   ConstStringStarVector values;
   EXPECT_TRUE(headers.Lookup(HttpAttributes::kXUACompatible, &values));
   EXPECT_STREQ("IE=edge", *(values[0]));
@@ -1634,7 +1617,6 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowWithDeferJsAndSplitEnabled) {
   scoped_ptr<RewriteOptions> custom_options(
       server_context()->global_options()->Clone());
   custom_options->EnableFilter(RewriteOptions::kDeferJavascript);
-  custom_options->EnableFilter(RewriteOptions::kSplitHtml);
   custom_options->set_max_prefetch_js_elements(0);
   SetRewriteOptions(custom_options.get());
 
@@ -1646,8 +1628,8 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowWithDeferJsAndSplitEnabled) {
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
 
   EXPECT_STREQ(FlushEarlyRewrittenHtml(UserAgentMatcher::kPrefetchLinkScriptTag,
-                                    true, false, false, false,
-                                    true, false, true), text);
+                                       true, false, false, false, false, true),
+               text);
 }
 
 class FlushEarlyPrioritizeCriticalCssTest : public FlushEarlyFlowTest {

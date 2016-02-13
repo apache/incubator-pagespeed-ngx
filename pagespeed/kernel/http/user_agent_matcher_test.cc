@@ -541,10 +541,6 @@ TEST_F(UserAgentMatcherTest, SupportsDnsPrefetchUsingRelPrefetch) {
       kIe9UserAgent));
 }
 
-TEST_F(UserAgentMatcherTest, SplitHtmlRelated) {
-  VerifySplitHtmlSupport();
-}
-
 TEST_F(UserAgentMatcherTest, GetDeviceTypeForUA) {
   VerifyGetDeviceTypeForUA();
 }

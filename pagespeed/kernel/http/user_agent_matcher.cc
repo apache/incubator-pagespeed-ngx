@@ -596,11 +596,6 @@ bool UserAgentMatcher::SupportsDnsPrefetchUsingRelPrefetch(
   return IsIe9(user_agent);
 }
 
-bool UserAgentMatcher::SupportsSplitHtml(const StringPiece& user_agent,
-                                         bool allow_mobile) const {
-  return SupportsJsDefer(user_agent, allow_mobile);
-}
-
 // TODO(bharathbhushan): Make sure GetDeviceTypeForUA is called only once per
 // http request.
 UserAgentMatcher::DeviceType UserAgentMatcher::GetDeviceTypeForUA(

@@ -1075,8 +1075,6 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
     RewriteOptions::kRewriteRandomDropPercentage,
     RewriteOptions::kRewriteUncacheableResources,
     RewriteOptions::kRunningExperiment,
-    RewriteOptions::kServeGhostClickBusterWithSplitHtml,
-    RewriteOptions::kServeSplitHtmlInTwoChunks,
     RewriteOptions::kServeStaleIfFetchError,
     RewriteOptions::kServeStaleWhileRevalidateThresholdSec,
     RewriteOptions::kServeWebpToAnyAgent,

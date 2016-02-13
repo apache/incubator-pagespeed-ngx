@@ -27,6 +27,9 @@
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/writer.h"
+#include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_node.h"
 #include "pagespeed/kernel/html/html_writer_filter.h"
 #include "pagespeed/kernel/http/semantic_type.h"
 #include "pagespeed/kernel/http/user_agent_matcher.h"
@@ -34,11 +37,8 @@
 namespace net_instaweb {
 
 class GoogleUrl;
-class HtmlCharactersNode;
-class HtmlElement;
 class RewriteDriver;
 class TimedVariable;
-class Writer;
 
 struct ResourceInfo;
 
@@ -115,7 +115,6 @@ class FlushEarlyContentWriterFilter : public HtmlWriterFilter {
   typedef std::list<ResourceInfo*> ResourceInfoList;
   ResourceInfoList js_resources_info_;
   bool defer_javascript_enabled_;
-  bool split_html_enabled_;
   bool is_flushing_critical_style_element_;
   GoogleString css_output_content_;
   GoogleString flush_early_content_;

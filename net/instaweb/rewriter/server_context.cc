@@ -953,33 +953,6 @@ bool ServerContext::GetQueryOptions(
       this, request_url, request_headers, response_headers, message_handler_));
 }
 
-bool ServerContext::ScanSplitHtmlRequest(const RequestContextPtr& ctx,
-                                         const RewriteOptions* options,
-                                         GoogleString* url) {
-  if (options == NULL || !options->Enabled(RewriteOptions::kSplitHtml)) {
-    return false;
-  }
-  GoogleUrl gurl(*url);
-  QueryParams query_params;
-  // TODO(bharathbhushan): Can we use the results of any earlier query parse?
-  query_params.ParseFromUrl(gurl);
-
-  GoogleString value;
-  if (!query_params.Lookup1Unescaped(HttpAttributes::kXSplit, &value)) {
-    return false;
-  }
-  if (HttpAttributes::kXSplitBelowTheFold == value) {
-    ctx->set_split_request_type(RequestContext::SPLIT_BELOW_THE_FOLD);
-  } else if (HttpAttributes::kXSplitAboveTheFold == value) {
-    ctx->set_split_request_type(RequestContext::SPLIT_ABOVE_THE_FOLD);
-  }
-  query_params.RemoveAll(HttpAttributes::kXSplit);
-  GoogleString query_string = query_params.empty() ? "" :
-        StrCat("?", query_params.ToEscapedString());
-  *url = StrCat(gurl.AllExceptQuery(), query_string, gurl.AllAfterQuery());
-  return true;
-}
-
 // TODO(gee): Seems like this should all be in RewriteOptionsManager.
 RewriteOptions* ServerContext::GetCustomOptions(RequestHeaders* request_headers,
                                                 RewriteOptions* domain_options,

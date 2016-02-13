@@ -413,14 +413,6 @@ class ServerContext {
   // populating the cache.
   void GetRemoteOptions(RewriteOptions* remote_options, bool on_startup);
 
-  // Checks the url for the split html ATF/BTF query param. If present, it
-  // strips the param from the url, and sets a bit in the request context
-  // indicating which chunk of the split response was requested.
-  // Returns true if it found a query param.
-  static bool ScanSplitHtmlRequest(const RequestContextPtr& ctx,
-                                   const RewriteOptions* options,
-                                   GoogleString* url);
-
   // Returns any custom options required for this request, incorporating
   // any domain-specific options from the UrlNamer, options set in query-params,
   // and options set in request headers.

@@ -90,7 +90,6 @@ class RequestProperties;
 class RequestTrace;
 class RewriteDriverPool;
 class RewriteFilter;
-class SplitHtmlConfig;
 class Statistics;
 class UrlLeftTrimFilter;
 class UrlNamer;
@@ -1021,8 +1020,6 @@ class RewriteDriver : public HtmlParse {
   CriticalKeys* beacon_critical_line_info() const;
   void set_beacon_critical_line_info(CriticalKeys* beacon_critical_line_info);
 
-  const SplitHtmlConfig* split_html_config();
-
   // The JS to detect above-the-fold images should only be enabled if one of the
   // filters that uses critical image information is enabled, the property cache
   // is enabled (since the critical image information is stored in the property
@@ -1735,8 +1732,6 @@ class RewriteDriver : public HtmlParse {
 
   scoped_ptr<CriticalLineInfo> critical_line_info_;
   scoped_ptr<CriticalKeys> beacon_critical_line_info_;
-
-  scoped_ptr<SplitHtmlConfig> split_html_config_;
 
   // The critical image finder and critical selector finder will lazy-init these
   // fields.

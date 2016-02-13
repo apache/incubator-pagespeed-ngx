@@ -70,8 +70,6 @@ extern const char* JS_mobilize_js_opt;
 extern const char* JS_panel_loader_opt;
 extern const char* JS_responsive_js;
 extern const char* JS_responsive_js_opt;
-extern const char* JS_split_html_beacon;
-extern const char* JS_split_html_beacon_opt;
 
 // TODO(jud): use the data2c build flow to create this data.
 const unsigned char GIF_blank[] = {
@@ -263,16 +261,16 @@ void StaticAssetManager::InitializeAssetStrings() {
   assets_[StaticAssetEnum::LOCAL_STORAGE_CACHE_JS]->file_name =
       "local_storage_cache";
   assets_[StaticAssetEnum::MOBILIZE_JS]->file_name = "mobilize";
+  assets_[StaticAssetEnum::MOBILIZE_CSS]->file_name = "mobilize_css";
+  assets_[StaticAssetEnum::RESPONSIVE_JS]->file_name = "responsive";
   // Note that we still have to provide a name for these unused files because of
   // the DCHECK for unique names below.
   assets_[StaticAssetEnum::DEPRECATED_MOBILIZE_XHR_JS]->file_name =
-      "unused_mobilize_xhr";
-  assets_[StaticAssetEnum::MOBILIZE_CSS]->file_name = "mobilize_css";
+      "deprecated_mobilize_xhr";
   assets_[StaticAssetEnum::DEPRECATED_MOBILIZE_LAYOUT_CSS]->file_name =
-      "unused_mobilize_layout_css";
-  assets_[StaticAssetEnum::RESPONSIVE_JS]->file_name = "responsive";
-  assets_[StaticAssetEnum::SPLIT_HTML_BEACON_JS]->file_name =
-      "split_html_beacon";
+      "deprecated_mobilize_layout_css";
+  assets_[StaticAssetEnum::DEPRECATED_SPLIT_HTML_BEACON_JS]->file_name =
+      "deprecated_split_html_beacon";
 
   // Initialize compiled javascript strings->
   assets_[StaticAssetEnum::ADD_INSTRUMENTATION_JS]->js_optimized =
@@ -309,8 +307,6 @@ void StaticAssetManager::InitializeAssetStrings() {
   assets_[StaticAssetEnum::MOBILIZE_JS]->js_optimized = JS_mobilize_js_opt;
   assets_[StaticAssetEnum::MOBILIZE_CSS]->js_optimized = CSS_mobilize_css;
   assets_[StaticAssetEnum::RESPONSIVE_JS]->js_optimized = JS_responsive_js_opt;
-  assets_[StaticAssetEnum::SPLIT_HTML_BEACON_JS]->js_optimized =
-      JS_split_html_beacon_opt;
 
   // Initialize cleartext javascript strings->
   assets_[StaticAssetEnum::ADD_INSTRUMENTATION_JS]->js_debug =
@@ -345,8 +341,6 @@ void StaticAssetManager::InitializeAssetStrings() {
   assets_[StaticAssetEnum::MOBILIZE_JS]->js_debug = JS_mobilize_js;
   assets_[StaticAssetEnum::MOBILIZE_CSS]->js_debug = CSS_mobilize_css;
   assets_[StaticAssetEnum::RESPONSIVE_JS]->js_debug = JS_responsive_js;
-  assets_[StaticAssetEnum::SPLIT_HTML_BEACON_JS]->js_debug =
-      JS_split_html_beacon;
 
   // Initialize non-JS assets
 

@@ -291,8 +291,7 @@ void DelayImagesFilter::DetermineEnabled(GoogleString* disabled_reason) {
   }
   CriticalImagesFinder* finder =
       driver()->server_context()->critical_images_finder();
-  if ((finder->Available(driver()) == CriticalImagesFinder::kNoDataYet) &&
-      !driver()->options()->Enabled(RewriteOptions::kSplitHtmlHelper)) {
+  if (finder->Available(driver()) == CriticalImagesFinder::kNoDataYet) {
     log_record->LogRewriterHtmlStatus(
         RewriteOptions::FilterId(RewriteOptions::kDelayImages),
         RewriterHtmlApplication::PROPERTY_CACHE_MISS);

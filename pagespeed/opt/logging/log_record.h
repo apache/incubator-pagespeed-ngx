@@ -239,7 +239,6 @@ class AbstractLogRecord  {
       bool supports_webp_rewritten_urls,
       bool supports_webplossless_alpha,
       bool is_bot,
-      bool supports_split_html,
       bool can_preload_resources) = 0;
 
   // Log whether the request is an XmlHttpRequest.
@@ -363,7 +362,6 @@ class LogRecord : public AbstractLogRecord {
       bool supports_webp_rewritten_urls,
       bool supports_webplossless_alpha,
       bool is_bot,
-      bool supports_split_html,
       bool can_preload_resources) {}
 
   bool WriteLogImpl() { return true; }

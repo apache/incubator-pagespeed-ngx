@@ -236,8 +236,6 @@ DEFINE_bool(flush_html, false, "Pass fetcher-generated flushes through HTML");
 DEFINE_bool(proactively_freshen_user_facing_request, false,
             "Proactively freshen user facing requests if they are about to"
             "expire in cache.");
-DEFINE_bool(serve_split_html_in_two_chunks, false,
-            "Whether to serve the split html response in two chunks.");
 DEFINE_bool(serve_stale_if_fetch_error, true, "Serve stale content if the "
             "fetch results in an error.");
 DEFINE_int64(serve_stale_while_revalidate_threshold_sec, 0, "Threshold for "
@@ -510,9 +508,6 @@ DEFINE_bool(rewrite_uncacheable_resources, false,
             "in-place rewriting mode, regardless of resource's caching "
             "settings. in_place_wait_for_optimized flag should also be set.");
 
-DEFINE_bool(serve_ghost_click_buster_with_split_html, false,
-            "Whether ghost click buster code is served along with split_html.");
-
 DEFINE_bool(serve_xhr_access_control_headers, false,
             "If set to true, adds access control headers to response headers.");
 
@@ -657,10 +652,6 @@ bool RewriteGflags::SetupOptionsOnly(
   if (WasExplicitlySet("serve_stale_while_revalidate_threshold_sec")) {
     options->set_serve_stale_while_revalidate_threshold_sec(
         FLAGS_serve_stale_while_revalidate_threshold_sec);
-  }
-  if (WasExplicitlySet("serve_split_html_in_two_chunks")) {
-    options->set_serve_split_html_in_two_chunks(
-        FLAGS_serve_split_html_in_two_chunks);
   }
   if (WasExplicitlySet("psa_idle_flush_time_ms")) {
     options->set_idle_flush_time_ms(FLAGS_psa_idle_flush_time_ms);
@@ -960,10 +951,6 @@ bool RewriteGflags::SetupOptionsOnly(
   }
   if (WasExplicitlySet("private_not_vary_for_ie")) {
     options->set_private_not_vary_for_ie(FLAGS_private_not_vary_for_ie);
-  }
-  if (WasExplicitlySet("serve_ghost_click_buster_with_split_html")) {
-    options->set_serve_ghost_click_buster_with_split_html(
-        FLAGS_serve_ghost_click_buster_with_split_html);
   }
   if (WasExplicitlySet("serve_xhr_access_control_headers")) {
     options->set_serve_xhr_access_control_headers(

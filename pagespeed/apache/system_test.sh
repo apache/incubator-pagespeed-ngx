@@ -256,19 +256,6 @@ OUT=$($CURL -sSi $PRIMARY_SERVER/$BEACON_HANDLER?ets=load:13)
 check_from "$OUT" fgrep -q "204 No Content"
 check_from "$OUT" fgrep -q 'Cache-Control: max-age=0, no-cache'
 
-start_test Split HTML
-SPLIT_HTML_ATF="$TEST_ROOT/split_html/split.html?x_split=atf"
-OUT=$($WGET_DUMP $SPLIT_HTML_ATF)
-check_from "$OUT" grep -q 'loadXMLDoc("1")'
-check_from "$OUT" grep -q "/$PSA_JS_LIBRARY_URL_PREFIX/blink"
-check_from "$OUT" grep -q '<!--GooglePanel begin panel-id.0--><!--GooglePanel end panel-id.0-->'
-check_not_from "$OUT" grep -q 'BikeCrash'
-
-SPLIT_HTML_BTF=$TEST_ROOT"/split_html/split.html?x_split=btf"
-OUT=$($WGET_DUMP $SPLIT_HTML_BTF)
-check_from "$OUT" grep -q 'panel-id.0'
-check_from "$OUT" grep -q 'BikeCrash'
-
 start_test mod_rewrite
 check $WGET_DUMP $TEST_ROOT/redirect/php/ -O $OUTDIR/redirect_php.html
 check \

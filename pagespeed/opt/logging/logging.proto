@@ -140,8 +140,7 @@ message MetadataCacheInfo {
 message RewritingInfo {
 }
 
-// This proto stores all information related to split_html.
-// Next id for SplitHtmlInfo : 2
+// Deprecated.
 message SplitHtmlInfo {
   // Total size of below-the-fold JSON.
   optional int64 json_size = 1;
@@ -323,7 +322,7 @@ message ImageRewriteResourceInfo {
 
 // This proto stores information describing each rewriter's activity in a
 // request.
-// Next id for RewriterInfo: 5
+// Next id for RewriterInfo: 6
 message RewriterInfo {
   // The rewriter's id.
   optional string id = 1;
@@ -393,8 +392,8 @@ message DeviceInfo {
   optional bool supports_webplossless_alpha = 7;
   // Is the useragent a bot.
   optional bool is_bot = 8;
-  // Is split html supported.
-  optional bool supports_split_html = 9;
+  // The split html feature has been removed.
+  optional bool deprecated_supports_split_html = 9 [deprecated = true];
   // Is flush early supported.
   optional bool can_preload_resources = 10;
 }
@@ -412,8 +411,6 @@ message LoggingInfo {
   optional bool is_original_resource_cacheable = 5 [ default = true ];
   // Experiment ID used for this request.
   optional int32 experiment_id = 6;
-  // All information related to split_html.
-  optional SplitHtmlInfo split_html_info = 7;
   // All information related to the pcache lookup.
   optional PropertyPageInfo property_page_info = 8;
   // Rewriter information for this request.
@@ -456,5 +453,6 @@ message LoggingInfo {
   optional bool is_xhr = 25;
 
   // --- DEPRECATED FIELDS FOLLOW ---
-  optional TimingInfo deprecated_timing_info = 1;
+  optional TimingInfo deprecated_timing_info = 1 [deprecated = true];
+  optional SplitHtmlInfo deprecated_split_html_info = 7 [deprecated = true];
 }

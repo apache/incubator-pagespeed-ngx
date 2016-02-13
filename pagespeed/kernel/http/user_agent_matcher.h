@@ -141,9 +141,6 @@ class UserAgentMatcher {
   virtual bool GetChromeBuildNumber(const StringPiece& user_agent, int* major,
                                     int* minor, int* build, int* patch) const;
 
-  virtual bool SupportsSplitHtml(const StringPiece& user_agent,
-                                 bool allow_mobile) const;
-
   bool UserAgentExceedsChromeAndroidBuildAndPatch(
       const StringPiece& user_agent, int required_build,
       int required_patch) const;

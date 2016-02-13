@@ -363,32 +363,6 @@
     },
 
     {
-      'target_name': 'split_html_beacon_js_dbg',
-      'variables': {
-        'js_dir': 'rewriter',
-        'closure_build_type': 'dbg',
-        'js_includes' : [
-            'js/js_utils.js',
-            'js/critical_xpaths.js',
-         ]
-      },
-      'sources': [ 'rewriter/split_html_beacon.js', ],
-      'includes': [ 'closure.gypi', ],
-    },
-    {
-      'target_name': 'split_html_beacon_js_opt',
-      'variables': {
-        'js_dir': 'rewriter',
-        'js_includes' : [
-            'js/js_utils.js',
-            'js/critical_xpaths.js',
-         ]
-      },
-      'sources': [ 'rewriter/split_html_beacon.js', ],
-      'includes': [ 'closure.gypi', ],
-    },
-
-    {
       'target_name': 'instaweb_data2c',
       'type': 'executable',
       'sources': [
@@ -721,34 +695,6 @@
       },
       'sources': [
         'genfiles/rewriter/ghost_click_buster_opt.js',
-      ],
-      'includes': [
-        'data2c.gypi',
-      ]
-    },
-    {
-      'target_name': 'instaweb_split_html_beacon_data2c',
-      'variables': {
-        'instaweb_data2c_subdir': 'net/instaweb/rewriter',
-        'instaweb_js_subdir': '<(compiled_js_dir)/rewriter',
-        'var_name': 'split_html_beacon',
-      },
-      'sources': [
-        '<(compiled_js_dir)/rewriter/split_html_beacon_dbg.js',
-      ],
-      'includes': [
-        'data2c.gypi',
-      ]
-    },
-    {
-      'target_name': 'instaweb_split_html_beacon_opt_data2c',
-      'variables': {
-        'instaweb_data2c_subdir': 'net/instaweb/rewriter',
-        'instaweb_js_subdir': '<(compiled_js_dir)/rewriter',
-        'var_name': 'split_html_beacon_opt',
-      },
-      'sources': [
-        '<(compiled_js_dir)/rewriter/split_html_beacon_opt.js',
       ],
       'includes': [
         'data2c.gypi',
@@ -1697,8 +1643,6 @@
         'instaweb_rewriter_css',
         'instaweb_rewriter_image',
         'instaweb_rewriter_javascript',
-        'instaweb_split_html_beacon_data2c',
-        'instaweb_split_html_beacon_opt_data2c',
         'instaweb_spriter',
         'instaweb_statistics_css_data2c',
         'instaweb_statistics_js_data2c',
@@ -1805,10 +1749,6 @@
         'rewriter/script_tag_scanner.cc',
         'rewriter/simple_text_filter.cc',
         'rewriter/single_rewrite_context.cc',
-        'rewriter/split_html_beacon_filter.cc',
-        'rewriter/split_html_config.cc',
-        'rewriter/split_html_filter.cc',
-        'rewriter/split_html_helper_filter.cc',
         'rewriter/strip_non_cacheable_filter.cc',
         'rewriter/strip_scripts_filter.cc',
         'rewriter/support_noscript_filter.cc',

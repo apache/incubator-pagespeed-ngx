@@ -601,8 +601,7 @@ void FlushEarlyFlow::GenerateResponseHeaders(
   response_headers->SetDateAndCaching(server_context_->timer()->NowMs(), 0,
                                       ", private, no-cache");
 
-  if ((driver_->options()->Enabled(RewriteOptions::kDeferJavascript) ||
-       driver_->options()->Enabled(RewriteOptions::kSplitHtml)) &&
+  if (driver_->options()->Enabled(RewriteOptions::kDeferJavascript) &&
       driver_->user_agent_matcher()->IsIe(driver_->user_agent()) &&
       !response_headers->Has(HttpAttributes::kXUACompatible)) {
     response_headers->Add(HttpAttributes::kXUACompatible, "IE=edge");

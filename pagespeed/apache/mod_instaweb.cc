@@ -23,7 +23,6 @@
 #include <cerrno>
 #include <cstddef>
 #include <map>
-#include <memory>
 #include <set>
 #include <utility>  // for pair
 #include <vector>
@@ -34,7 +33,6 @@
 #include "net/instaweb/rewriter/public/process_context.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_query.h"
-#include "net/instaweb/rewriter/public/server_context.h"
 #include "pagespeed/apache/apache_config.h"
 #include "pagespeed/apache/apache_rewrite_driver_factory.h"
 #include "pagespeed/apache/apache_server_context.h"
@@ -56,7 +54,6 @@
 #include "pagespeed/kernel/http/response_headers.h"
 #include "pagespeed/system/in_place_resource_recorder.h"
 #include "pagespeed/system/loopback_route_fetcher.h"
-#include "pagespeed/system/system_rewrite_options.h"
 #include "pagespeed/system/system_server_context.h"
 
 #include "util_filter.h"                                             // NOLINT
@@ -473,8 +470,6 @@ InstawebContext* build_context_for_request(request_rec* request) {
   }
 
   instaweb_handler.RemoveStrippedResponseHeadersFromApacheRequest();
-  ServerContext::ScanSplitHtmlRequest(instaweb_handler.request_context(),
-                                      options, &final_url);
 
   InstawebContext* context = new InstawebContext(
       request,

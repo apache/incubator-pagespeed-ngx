@@ -223,13 +223,6 @@ ModPagespeedLoadFromFile "http://@@APACHE_DOMAIN@@/mod_pagespeed_test/ipro/insta
     ModPagespeedWebpRecompressionQuality 65
 </Directory>
 
-# Enable split_html
-<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/split_html/" >
-    ModPagespeedEnableFilters split_html,split_html_helper,lazyload_images
-    ModPagespeedServeSplitHtmlInTwoChunks on
-    ModPagespeedCriticalLineConfig div[@id="container"]/div[4]
-</Directory>
-
 <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/disable_no_transform" >
   ModPagespeedDisableRewriteOnNoTransform off
   <IfModule headers_module>

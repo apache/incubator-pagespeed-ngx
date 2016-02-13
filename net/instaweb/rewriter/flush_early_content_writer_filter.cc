@@ -212,8 +212,6 @@ void FlushEarlyContentWriterFilter::StartDocument() {
   time_consumed_ms_ = kDnsTimeMs + kTimeToConnectMs + kTtfbMs;
   defer_javascript_enabled_ =
       driver_->options()->Enabled(RewriteOptions::kDeferJavascript);
-  split_html_enabled_ =
-      driver_->options()->Enabled(RewriteOptions::kSplitHtml);
   // TODO(ksimbili): Enable flush_more_resources_early_if_time_permits after
   // tuning the RTT, bandwidth numbers for mobile.
   flush_more_resources_early_if_time_permits_ =
@@ -274,21 +272,18 @@ void FlushEarlyContentWriterFilter::FlushDeferJavascriptEarly() {
   bool is_bandwidth_affected = false;
   const RewriteOptions* options = driver_->options();
   bool should_flush_early_js_defer_script =
-      (split_html_enabled_ || defer_javascript_enabled_) &&
+      defer_javascript_enabled_ &&
       driver_->request_properties()->SupportsJsDefer(
           driver_->options()->enable_aggressive_rewriters_for_mobile());
   if (should_flush_early_js_defer_script) {
-    StaticAssetEnum::StaticAsset defer_js_module =
-        split_html_enabled_ ? StaticAssetEnum::BLINK_JS :
-        StaticAssetEnum::DEFER_JS;
     StaticAssetManager* static_asset_manager =
         driver_->server_context()->static_asset_manager();
-    GoogleString defer_js = static_asset_manager->GetAsset(
-            defer_js_module, options);
+    GoogleString defer_js =
+        static_asset_manager->GetAsset(StaticAssetEnum::DEFER_JS, options);
     int64 time_to_download = TimeToDownload(defer_js.size());
     is_bandwidth_affected = true;
-    GoogleString defer_js_url = static_asset_manager->GetAssetUrl(
-        defer_js_module, options);
+    GoogleString defer_js_url =
+        static_asset_manager->GetAssetUrl(StaticAssetEnum::DEFER_JS, options);
     FlushResources(defer_js_url, time_to_download, false,
                    semantic_type::kScript);
   }
@@ -340,9 +335,8 @@ void FlushEarlyContentWriterFilter::StartElement(HtmlElement* element) {
       HtmlElement::Attribute* resource_url = attributes[0].url;
       semantic_type::Category category = attributes[0].category;
       if (category == semantic_type::kScript &&
-          (defer_javascript_enabled_ || split_html_enabled_ || in_body_)) {
-        // Don't flush javascript resources if defer_javascript is enabled or
-        // split HTML filters are enabled.
+          (defer_javascript_enabled_ || in_body_)) {
+        // Don't flush javascript resources if defer_javascript is enabled.
         // TODO(nikhilmadan): Check if the User-Agent supports defer_javascript.
         GoogleUrl gurl;
         GoogleString original_url;
@@ -354,10 +348,9 @@ void FlushEarlyContentWriterFilter::StartElement(HtmlElement* element) {
           // mechanism only if defer_javascript is disabled and
           // flush_more_resources_in_ie_and_firefox is enabled.
           bool can_flush_js_for_prefetch_link_script_tag =
-              prefetch_mechanism_ ==
-              UserAgentMatcher::kPrefetchLinkScriptTag &&
+              prefetch_mechanism_ == UserAgentMatcher::kPrefetchLinkScriptTag &&
               driver_->options()->flush_more_resources_in_ie_and_firefox() &&
-              !(defer_javascript_enabled_ || split_html_enabled_);
+              !defer_javascript_enabled_;
           FlushEarlyResourceInfo::ResourceType resource_type =
               GetResourceType(gurl, is_pagespeed_resource);
           if ((prefetch_mechanism_ == UserAgentMatcher::kPrefetchImageTag ||
@@ -497,7 +490,6 @@ void FlushEarlyContentWriterFilter::Clear() {
   max_available_time_ms_ = 0;
   STLDeleteElements(&js_resources_info_);
   defer_javascript_enabled_ = false;
-  split_html_enabled_ = false;
   is_flushing_critical_style_element_ = false;
   css_output_content_.clear();
   flush_early_content_.clear();

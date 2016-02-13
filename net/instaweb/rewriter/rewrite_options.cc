@@ -292,10 +292,6 @@ const char RewriteOptions::kRewriteRandomDropPercentage[] =
 const char RewriteOptions::kRewriteUncacheableResources[] =
     "RewriteUncacheableResources";
 const char RewriteOptions::kRunningExperiment[] = "RunExperiment";
-const char RewriteOptions::kServeGhostClickBusterWithSplitHtml[] =
-    "ServeGhostClickBusterWithSplitHtml";
-const char RewriteOptions::kServeSplitHtmlInTwoChunks[] =
-    "ServeSplitHtmlInTwoChunks";
 const char RewriteOptions::kServeStaleIfFetchError[] = "ServeStaleIfFetchError";
 const char RewriteOptions::kServeStaleWhileRevalidateThresholdSec[] =
     "ServeStaleWhileRevalidateThresholdSec";
@@ -722,8 +718,6 @@ const RewriteOptions::Filter kDangerousFilterSet[] = {
     RewriteOptions::kMobilize,                // Prototype
     RewriteOptions::kMobilizePrecompute,      // TODO(jud): Unused, remove.
     RewriteOptions::kServeDeprecationNotice,  // internal.
-    RewriteOptions::kSplitHtml,               // internal, enabled conditionally
-    RewriteOptions::kSplitHtmlHelper,         // internal, enabled conditionally
     RewriteOptions::kStripNonCacheable,       // internal, enabled conditionally
     RewriteOptions::kStripScripts,
 };
@@ -742,7 +736,6 @@ const RewriteOptions::Filter kRequiresScriptExecutionFilterSet[] = {
   RewriteOptions::kLazyloadImages,
   RewriteOptions::kLocalStorageCache,
   RewriteOptions::kMobilize,
-  RewriteOptions::kSplitHtml,
   // We do not include kPrioritizeVisibleContent since we do not want to attach
   // SupportNoscriptFilter in the case of blink pcache miss pass-through, since
   // this response will not have any custom script inserted.
@@ -802,8 +795,8 @@ const RewriteOptions::FilterEnumToIdAndNameEntry
         {RewriteOptions::kConvertJpegToWebp, "jw", "Convert Jpeg To Webp"},
         {RewriteOptions::kConvertMetaTags, "mc", "Convert Meta Tags"},
         {RewriteOptions::kConvertPngToJpeg, "pj", "Convert Png to Jpeg"},
-        { RewriteOptions::kConvertToWebpAnimated, "wa",
-          "Convert animated images to WebP" },
+        {RewriteOptions::kConvertToWebpAnimated, "wa",
+         "Convert animated images to WebP"},
         {RewriteOptions::kConvertToWebpLossless, "ws",
          "When converting images to WebP, prefer lossless conversions"},
         {RewriteOptions::kDebug, "db", "Debug"},
@@ -891,8 +884,8 @@ const RewriteOptions::FilterEnumToIdAndNameEntry
          "Rewrite Style Attributes With Url"},
         {RewriteOptions::kServeDeprecationNotice, "sd",
          "Serve Deprecation Notice"},
-        {RewriteOptions::kSplitHtml, "sh", "Split Html"},
-        {RewriteOptions::kSplitHtmlHelper, "se", "Split Html Helper"},
+        {RewriteOptions::kSplitHtml, "sh", "Deprecated"},
+        {RewriteOptions::kSplitHtmlHelper, "se", "Deprecated"},
         {RewriteOptions::kSpriteImages, RewriteOptions::kImageCombineId,
          "Sprite Images"},
         {RewriteOptions::kStripImageColorProfile, "cp",
@@ -1333,10 +1326,9 @@ void RewriteOptions::AddProperties() {
       kMaxCacheableResponseContentLength,
       kServerScope,
       "Maximum length of a cacheable response content.", true);
-  AddBaseProperty(
-      kDefaultMaxHtmlCacheTimeMs, &RewriteOptions::max_html_cache_time_ms_,
-      "hc", kMaxHtmlCacheTimeMs, kDirectoryScope, NULL,
-      true);  // TODO(jud): Add doc when split_html is made availabile in MPS.
+  AddBaseProperty(kDefaultMaxHtmlCacheTimeMs,
+                  &RewriteOptions::max_html_cache_time_ms_, "hc",
+                  kMaxHtmlCacheTimeMs, kDirectoryScope, NULL, true);
   AddBaseProperty(
       kDefaultMaxHtmlParseBytes,
       &RewriteOptions::max_html_parse_bytes_, "hpb",
@@ -1587,11 +1579,6 @@ void RewriteOptions::AddProperties() {
       kJsPreserveURLs,
       kDirectoryScope,
       "Disable the rewriting of Javascript URLs.", true);
-  AddBaseProperty(
-      false, &RewriteOptions::serve_split_html_in_two_chunks_, "sstc",
-      kServeSplitHtmlInTwoChunks,
-      kDirectoryScope,
-      "Serve the split html response in two chunks", true);
   AddBaseProperty(
       true, &RewriteOptions::serve_stale_if_fetch_error_, "ss",
       kServeStaleIfFetchError,
@@ -2209,11 +2196,6 @@ void RewriteOptions::AddProperties() {
       "earm", kEnableAggressiveRewritersForMobile,
       kDirectoryScope,
       "Allows defer_javascript and defer_iframe for mobile browsers", true);
-
-  AddBaseProperty(
-      false, &RewriteOptions::serve_ghost_click_buster_with_split_html_,
-      "sgcbsh", kServeGhostClickBusterWithSplitHtml, kDirectoryScope,
-      "Serve ghost click buster code along with split html", false);
 
   AddBaseProperty(false, &RewriteOptions::serve_xhr_access_control_headers_,
                   "shach", kServeXhrAccessControlHeaders, kDirectoryScope,

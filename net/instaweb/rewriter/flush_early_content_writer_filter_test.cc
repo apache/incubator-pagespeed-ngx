@@ -630,17 +630,6 @@ TEST_F(FlushEarlyContentWriterFilterTest, CacheablePrivateResources4) {
   ResetUserAgent("prefetch_image_tag");
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kDeferJavascript);
-  options()->DisableFilter(RewriteOptions::kSplitHtml);
-  server_context()->ComputeSignature(options());
-  VerifyJsNotFlushed();
-}
-
-TEST_F(FlushEarlyContentWriterFilterTest, CacheablePrivateResources5) {
-  // Enable split_html. We don't flush JS resources now.
-  ResetUserAgent("prefetch_image_tag");
-  options()->ClearSignatureForTesting();
-  options()->EnableFilter(RewriteOptions::kSplitHtml);
-  options()->DisableFilter(RewriteOptions::kDeferJavascript);
   server_context()->ComputeSignature(options());
   VerifyJsNotFlushed();
 }
