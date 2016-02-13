@@ -107,7 +107,7 @@ void UnicodeText::Repr::reserve(int new_capacity) {
   if (capacity_ >= new_capacity && ours_) return;
 
   // Otherwise, allocate a new buffer.
-  capacity_ = max(new_capacity, (3 * capacity_) / 2 + 20);
+  capacity_ = std::max(new_capacity, (3 * capacity_) / 2 + 20);
   char* new_data = new char[capacity_];
 
   // If there is an old buffer, copy it into the new buffer.
