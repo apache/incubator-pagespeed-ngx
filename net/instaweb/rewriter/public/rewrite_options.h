@@ -569,6 +569,10 @@ class RewriteOptions {
     return ToString(allow_vary_on_.value());
   }
 
+  void set_allow_vary_on(const AllowVaryOn& x) {
+    set_option(x, &allow_vary_on_);
+  }
+
   // This version index serves as global signature key.  Much of the
   // data emitted in signatures is based on the option ordering, which
   // can change as we add new options.  So every time there is a
