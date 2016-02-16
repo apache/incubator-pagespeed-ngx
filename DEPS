@@ -52,11 +52,11 @@ vars = {
     "https://svn.apache.org/repos/asf/httpd/httpd/tags/2.4.10/",
   "apache_httpd24_revision": "@head",
 
-  # Release v20160125.
+  # Release v20160208.
   # If the closure library version is updated, the closure compiler version
   # listed in third_party/closure/download.sh should be updated as well.
   "closure_library": "https://github.com/google/closure-library.git",
-  "closure_library_revision": "@e877b1eac410c0d842bcda118689759512e0e26f",
+  "closure_library_revision": "@f3fc47996f3576bd2f7f578c9ffc67b50a928d71",
 
   "jsoncpp_src": "https://github.com/open-source-parsers/jsoncpp.git",
   "jsoncpp_revision": "@7165f6ac4c482e68475c9e1dac086f9e12fff0d0",

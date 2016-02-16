@@ -840,7 +840,7 @@ goog.string.unescapeEntitiesUsingDom_ = function(a, b) {
       return g;
     }
     if ("#" == b.charAt(0)) {
-      var h = +("0" + b.substr(1));
+      var h = Number("0" + b.substr(1));
       isNaN(h) || (g = String.fromCharCode(h));
     }
     g || (d.innerHTML = a + " ", g = d.firstChild.nodeValue.slice(0, -1));
@@ -860,7 +860,7 @@ goog.string.unescapePureXmlEntities_ = function(a) {
         return '"';
       default:
         if ("#" == c.charAt(0)) {
-          var d = +("0" + c.substr(1));
+          var d = Number("0" + c.substr(1));
           if (!isNaN(d)) {
             return String.fromCharCode(d);
           }
@@ -1014,7 +1014,7 @@ goog.string.createUniqueString = function() {
   return "goog_" + goog.string.uniqueStringCounter_++;
 };
 goog.string.toNumber = function(a) {
-  var b = +a;
+  var b = Number(a);
   return 0 == b && goog.string.isEmptyOrWhitespace(a) ? NaN : b;
 };
 goog.string.isLowerCamelCase = function(a) {
@@ -1066,7 +1066,7 @@ goog.string.editDistance = function(a, b) {
   for (e = 0;e < a.length;e++) {
     d[0] = e + 1;
     for (var f = 0;f < b.length;f++) {
-      d[f + 1] = Math.min(d[f] + 1, c[f + 1] + 1, c[f] + +(a[e] != b[f]));
+      d[f + 1] = Math.min(d[f] + 1, c[f + 1] + 1, c[f] + Number(a[e] != b[f]));
     }
     for (f = 0;f < c.length;f++) {
       c[f] = d[f];
@@ -2116,7 +2116,7 @@ goog.userAgent.isVersionOrHigher = function(a) {
 };
 goog.userAgent.isVersion = goog.userAgent.isVersionOrHigher;
 goog.userAgent.isDocumentModeOrHigher = function(a) {
-  return +goog.userAgent.DOCUMENT_MODE >= a;
+  return Number(goog.userAgent.DOCUMENT_MODE) >= a;
 };
 goog.userAgent.isDocumentMode = goog.userAgent.isDocumentModeOrHigher;
 goog.userAgent.DOCUMENT_MODE = function() {
@@ -2290,7 +2290,7 @@ goog.math.Coordinate.prototype.round = function() {
   return this;
 };
 goog.math.Coordinate.prototype.translate = function(a, b) {
-  a instanceof goog.math.Coordinate ? (this.x += a.x, this.y += a.y) : (this.x += +a, goog.isNumber(b) && (this.y += b));
+  a instanceof goog.math.Coordinate ? (this.x += a.x, this.y += a.y) : (this.x += Number(a), goog.isNumber(b) && (this.y += b));
   return this;
 };
 goog.math.Coordinate.prototype.scale = function(a, b) {

@@ -175,7 +175,7 @@ function insertMissingStubUsingXpath(a, b) {
     } else {
       if (h = e.exec(c[g])) {
         if (g == c.length - 1) {
-          return insertStubAtIndex(f, +h[1], b);
+          return insertStubAtIndex(f, Number(h[1]), b);
         }
         f = f.children[h[1] - 1];
         CHECK(f);

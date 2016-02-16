@@ -840,7 +840,7 @@ goog.string.unescapeEntitiesUsingDom_ = function(a, b) {
       return g;
     }
     if ("#" == b.charAt(0)) {
-      var h = +("0" + b.substr(1));
+      var h = Number("0" + b.substr(1));
       isNaN(h) || (g = String.fromCharCode(h));
     }
     g || (d.innerHTML = a + " ", g = d.firstChild.nodeValue.slice(0, -1));
@@ -860,7 +860,7 @@ goog.string.unescapePureXmlEntities_ = function(a) {
         return '"';
       default:
         if ("#" == c.charAt(0)) {
-          var d = +("0" + c.substr(1));
+          var d = Number("0" + c.substr(1));
           if (!isNaN(d)) {
             return String.fromCharCode(d);
           }
@@ -1014,7 +1014,7 @@ goog.string.createUniqueString = function() {
   return "goog_" + goog.string.uniqueStringCounter_++;
 };
 goog.string.toNumber = function(a) {
-  var b = +a;
+  var b = Number(a);
   return 0 == b && goog.string.isEmptyOrWhitespace(a) ? NaN : b;
 };
 goog.string.isLowerCamelCase = function(a) {
@@ -1066,7 +1066,7 @@ goog.string.editDistance = function(a, b) {
   for (e = 0;e < a.length;e++) {
     d[0] = e + 1;
     for (var f = 0;f < b.length;f++) {
-      d[f + 1] = Math.min(d[f] + 1, c[f + 1] + 1, c[f] + +(a[e] != b[f]));
+      d[f + 1] = Math.min(d[f] + 1, c[f + 1] + 1, c[f] + Number(a[e] != b[f]));
     }
     for (f = 0;f < c.length;f++) {
       c[f] = d[f];
@@ -2116,7 +2116,7 @@ goog.userAgent.isVersionOrHigher = function(a) {
 };
 goog.userAgent.isVersion = goog.userAgent.isVersionOrHigher;
 goog.userAgent.isDocumentModeOrHigher = function(a) {
-  return +goog.userAgent.DOCUMENT_MODE >= a;
+  return Number(goog.userAgent.DOCUMENT_MODE) >= a;
 };
 goog.userAgent.isDocumentMode = goog.userAgent.isDocumentModeOrHigher;
 goog.userAgent.DOCUMENT_MODE = function() {
@@ -2290,7 +2290,7 @@ goog.math.Coordinate.prototype.round = function() {
   return this;
 };
 goog.math.Coordinate.prototype.translate = function(a, b) {
-  a instanceof goog.math.Coordinate ? (this.x += a.x, this.y += a.y) : (this.x += +a, goog.isNumber(b) && (this.y += b));
+  a instanceof goog.math.Coordinate ? (this.x += a.x, this.y += a.y) : (this.x += Number(a), goog.isNumber(b) && (this.y += b));
   return this;
 };
 goog.math.Coordinate.prototype.scale = function(a, b) {
@@ -3769,7 +3769,7 @@ goog.uri.utils.getDomain = function(a) {
   return goog.uri.utils.decodeIfPossible_(goog.uri.utils.getDomainEncoded(a), !0);
 };
 goog.uri.utils.getPort = function(a) {
-  return +goog.uri.utils.getComponentByIndex_(goog.uri.utils.ComponentIndex.PORT, a) || null;
+  return Number(goog.uri.utils.getComponentByIndex_(goog.uri.utils.ComponentIndex.PORT, a)) || null;
 };
 goog.uri.utils.getPathEncoded = function(a) {
   return goog.uri.utils.getComponentByIndex_(goog.uri.utils.ComponentIndex.PATH, a);
@@ -3966,7 +3966,7 @@ goog.math.Box.prototype.contains = function(a) {
   return goog.math.Box.contains(this, a);
 };
 goog.math.Box.prototype.expand = function(a, b, c, d) {
-  goog.isObject(a) ? (this.top -= a.top, this.right += a.right, this.bottom += a.bottom, this.left -= a.left) : (this.top -= a, this.right += +b, this.bottom += +c, this.left -= +d);
+  goog.isObject(a) ? (this.top -= a.top, this.right += a.right, this.bottom += a.bottom, this.left -= a.left) : (this.top -= a, this.right += Number(b), this.bottom += Number(c), this.left -= Number(d));
   return this;
 };
 goog.math.Box.prototype.expandToInclude = function(a) {
@@ -4089,9 +4089,9 @@ goog.color.hexToRgb = function(a) {
   return [b, c, a];
 };
 goog.color.rgbToHex = function(a, b, c) {
-  a = +a;
-  b = +b;
-  c = +c;
+  a = Number(a);
+  b = Number(b);
+  c = Number(c);
   if (a != (a & 255) || b != (b & 255) || c != (c & 255)) {
     throw Error('"(' + a + "," + b + "," + c + '") is not a valid RGB color');
   }
@@ -4143,8 +4143,8 @@ goog.color.rgbColorRe_ = /^(?:rgb)?\((0|[1-9]\d{0,2}),\s?(0|[1-9]\d{0,2}),\s?(0|
 goog.color.isValidRgbColor_ = function(a) {
   var b = a.match(goog.color.rgbColorRe_);
   if (b) {
-    a = +b[1];
-    var c = +b[2], b = +b[3];
+    a = Number(b[1]);
+    var c = Number(b[2]), b = Number(b[3]);
     if (0 <= a && 255 >= a && 0 <= c && 255 >= c && 0 <= b && 255 >= b) {
       return [a, c, b];
     }
@@ -6525,7 +6525,7 @@ goog.Uri.prototype.getPort = function() {
 goog.Uri.prototype.setPort = function(a) {
   this.enforceReadOnly();
   if (a) {
-    a = +a;
+    a = Number(a);
     if (isNaN(a) || 0 > a) {
       throw Error("Bad port number " + a);
     }
@@ -7560,7 +7560,7 @@ goog.style.setPageOffset = function(a, b, c) {
   var d = goog.style.getPageOffset(a);
   b instanceof goog.math.Coordinate && (c = b.y, b = b.x);
   b = goog.asserts.assertNumber(b) - d.x;
-  goog.style.setPosition(a, a.offsetLeft + b, a.offsetTop + (+c - d.y));
+  goog.style.setPosition(a, a.offsetLeft + b, a.offsetTop + (Number(c) - d.y));
 };
 goog.style.setSize = function(a, b, c) {
   if (b instanceof goog.math.Size) {
@@ -7627,12 +7627,12 @@ goog.style.getOpacity = function(a) {
   var b = a.style;
   a = "";
   "opacity" in b ? a = b.opacity : "MozOpacity" in b ? a = b.MozOpacity : "filter" in b && (b = b.filter.match(/alpha\(opacity=([\d.]+)\)/)) && (a = String(b[1] / 100));
-  return "" == a ? a : +a;
+  return "" == a ? a : Number(a);
 };
 goog.style.setOpacity = function(a, b) {
   goog.asserts.assert(a);
   var c = a.style;
-  "opacity" in c ? c.opacity = b : "MozOpacity" in c ? c.MozOpacity = b : "filter" in c && (c.filter = "" === b ? "" : "alpha(opacity=" + 100 * +b + ")");
+  "opacity" in c ? c.opacity = b : "MozOpacity" in c ? c.MozOpacity = b : "filter" in c && (c.filter = "" === b ? "" : "alpha(opacity=" + 100 * Number(b) + ")");
 };
 goog.style.setTransparentBackgroundImage = function(a, b) {
   var c = a.style;
