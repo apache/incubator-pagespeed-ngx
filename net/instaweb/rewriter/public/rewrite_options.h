@@ -237,7 +237,6 @@ class RewriteOptions {
   static const char kContentExperimentID[];
   static const char kContentExperimentVariantID[];
   static const char kCriticalImagesBeaconEnabled[];
-  static const char kCriticalLineConfig[];
   static const char kCssFlattenMaxBytes[];
   static const char kCssImageInlineMaxBytes[];
   static const char kCssInlineMaxBytes[];
@@ -2563,13 +2562,6 @@ class RewriteOptions {
     set_option(x, &blink_max_html_size_rewritable_);
   }
 
-  void set_critical_line_config(StringPiece p) {
-      set_option(GoogleString(p.data(), p.size()), &critical_line_config_);
-  }
-  const GoogleString& critical_line_config() const {
-    return critical_line_config_.value();
-  }
-
   void set_forbid_all_disabled_filters(bool x) {
     set_option(x, &forbid_all_disabled_filters_);
   }
@@ -4158,8 +4150,6 @@ class RewriteOptions {
   Option<bool> enable_prioritizing_scripts_;
   // Enables rewriting of uncacheable resources.
   Option<bool> rewrite_uncacheable_resources_;
-  // Specification for critical line.
-  Option<GoogleString> critical_line_config_;
   // The user-provided key used to authenticate requests from one rewrite task
   // to another.  Right now only used to validate meta-data headers.
   Option<GoogleString> distributed_rewrite_key_;

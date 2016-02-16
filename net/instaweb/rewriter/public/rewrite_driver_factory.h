@@ -40,7 +40,6 @@ namespace net_instaweb {
 
 class CacheHtmlInfoFinder;
 class CriticalImagesFinder;
-class CriticalLineInfoFinder;
 class CriticalSelectorFinder;
 class FileSystem;
 class FlushEarlyInfoFinder;
@@ -365,10 +364,6 @@ class RewriteDriverFactory {
 
   // Default implementation returns NULL.
   virtual FlushEarlyInfoFinder* DefaultFlushEarlyInfoFinder();
-
-  // Default implementation returns a valid CriticalSelectorFinder.
-  virtual CriticalLineInfoFinder* DefaultCriticalLineInfoFinder(
-      ServerContext* server_context);
 
   // They may also supply a custom lock manager. The default implementation
   // will use the file system.

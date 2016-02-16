@@ -26,7 +26,6 @@
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/public/global_constants.h"
-#include "net/instaweb/rewriter/public/beacon_critical_line_info_finder.h"
 #include "net/instaweb/rewriter/public/critical_selector_filter.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/flush_early_content_writer_filter.h"
@@ -1596,40 +1595,6 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowWithIEAddUACompatibilityHeader) {
   ConstStringStarVector values;
   EXPECT_TRUE(headers.Lookup(HttpAttributes::kXUACompatible, &values));
   EXPECT_STREQ("IE=edge", *(values[0]));
-}
-
-TEST_F(FlushEarlyFlowTest, FlushEarlyFlowWithDeferJsAndSplitEnabled) {
-  // The default finder class used by split_html is
-  // BeaconCriticalLineInfoFinder, which requires the pcache to be setup, so do
-  // that setup here.
-  PropertyCache* pcache = server_context_->page_property_cache();
-  const PropertyCache::Cohort* beacon_cohort =
-      SetupCohort(pcache, RewriteDriver::kBeaconCohort);
-  server_context()->set_beacon_cohort(beacon_cohort);
-  server_context()->set_critical_line_info_finder(
-      new BeaconCriticalLineInfoFinder(server_context()->beacon_cohort(),
-                                       factory()->nonce_generator()));
-
-  SetupForFlushEarlyFlow();
-  RequestHeaders request_headers;
-  request_headers.Replace(HttpAttributes::kUserAgent,
-                          " MSIE 10.");
-  scoped_ptr<RewriteOptions> custom_options(
-      server_context()->global_options()->Clone());
-  custom_options->EnableFilter(RewriteOptions::kDeferJavascript);
-  custom_options->set_max_prefetch_js_elements(0);
-  SetRewriteOptions(custom_options.get());
-
-  GoogleString text;
-  ResponseHeaders headers;
-
-  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
-  // Fetch the url again. This time FlushEarlyFlow should be triggered.
-  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
-
-  EXPECT_STREQ(FlushEarlyRewrittenHtml(UserAgentMatcher::kPrefetchLinkScriptTag,
-                                       true, false, false, false, false, true),
-               text);
 }
 
 class FlushEarlyPrioritizeCriticalCssTest : public FlushEarlyFlowTest {

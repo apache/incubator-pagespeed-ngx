@@ -153,12 +153,6 @@ void InitDriverWithPropertyCacheValues(
     selector_finder->GetCriticalSelectors(cache_html_driver);
   }
 
-  CacheHtmlInfoFinder* cache_html_finder =
-      cache_html_driver->server_context()->cache_html_info_finder();
-  if (cache_html_finder != NULL) {
-    cache_html_finder->UpdateSplitInfoInDriver(cache_html_driver);
-  }
-
   cache_html_driver->set_unowned_fallback_property_page(NULL);
 }
 

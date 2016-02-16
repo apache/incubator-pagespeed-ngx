@@ -29,7 +29,6 @@
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
-#include "net/instaweb/rewriter/critical_keys.pb.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/downstream_cache_purger.h"
@@ -76,7 +75,6 @@ namespace net_instaweb {
 
 class AbstractLogRecord;
 class AsyncFetch;
-class CriticalLineInfo;
 class DebugFilter;
 class DomStatsFilter;
 class DomainRewriteFilter;
@@ -1010,16 +1008,6 @@ class RewriteDriver : public HtmlParse {
   // Takes ownership of page.
   void set_origin_property_page(PropertyPage* page);
 
-  // Used by ImageRewriteFilter for identifying critical images.
-  const CriticalLineInfo* critical_line_info() const;
-
-  // Inserts the critical images present on the requested html page. It takes
-  // the ownership of critical_line_info.
-  void set_critical_line_info(CriticalLineInfo* critical_line_info);
-
-  CriticalKeys* beacon_critical_line_info() const;
-  void set_beacon_critical_line_info(CriticalKeys* beacon_critical_line_info);
-
   // The JS to detect above-the-fold images should only be enabled if one of the
   // filters that uses critical image information is enabled, the property cache
   // is enabled (since the critical image information is stored in the property
@@ -1729,9 +1717,6 @@ class RewriteDriver : public HtmlParse {
 
   // Device type for the current property page.
   UserAgentMatcher::DeviceType device_type_;
-
-  scoped_ptr<CriticalLineInfo> critical_line_info_;
-  scoped_ptr<CriticalKeys> beacon_critical_line_info_;
 
   // The critical image finder and critical selector finder will lazy-init these
   // fields.

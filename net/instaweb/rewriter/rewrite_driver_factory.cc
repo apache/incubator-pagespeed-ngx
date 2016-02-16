@@ -26,9 +26,7 @@
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
-#include "net/instaweb/rewriter/public/beacon_critical_line_info_finder.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
-#include "net/instaweb/rewriter/public/critical_line_info_finder.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/experiment_matcher.h"
 #include "net/instaweb/rewriter/public/mobilize_cached_finder.h"
@@ -404,12 +402,6 @@ CacheHtmlInfoFinder* RewriteDriverFactory::DefaultCacheHtmlInfoFinder(
   return NULL;
 }
 
-CriticalLineInfoFinder* RewriteDriverFactory::DefaultCriticalLineInfoFinder(
-    ServerContext* server_context) {
-  return new BeaconCriticalLineInfoFinder(server_context->beacon_cohort(),
-                                          nonce_generator());
-}
-
 UsageDataReporter* RewriteDriverFactory::DefaultUsageDataReporter() {
   return new UsageDataReporter;
 }
@@ -538,8 +530,6 @@ void RewriteDriverFactory::InitServerContext(ServerContext* server_context) {
   server_context->set_flush_early_info_finder(DefaultFlushEarlyInfoFinder());
   server_context->set_cache_html_info_finder(
       DefaultCacheHtmlInfoFinder(pcache, server_context));
-  server_context->set_critical_line_info_finder(
-      DefaultCriticalLineInfoFinder(server_context));
   server_context->set_mobilize_cached_finder(
       DefaultMobilizeCachedFinder(server_context));
   server_context->set_hostname(hostname_);

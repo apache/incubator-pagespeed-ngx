@@ -30,10 +30,8 @@
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
-#include "net/instaweb/rewriter/public/beacon_critical_line_info_finder.h"
 #include "net/instaweb/rewriter/public/cache_html_info_finder.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
-#include "net/instaweb/rewriter/public/critical_line_info_finder.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/experiment_matcher.h"
 #include "net/instaweb/rewriter/public/flush_early_info_finder.h"
@@ -94,7 +92,6 @@ const char kBeaconOptionsHashQueryParam[] = "oh";
 const char kBeaconCriticalImagesQueryParam[] = "ci";
 const char kBeaconRenderedDimensionsQueryParam[] = "rd";
 const char kBeaconCriticalCssQueryParam[] = "cs";
-const char kBeaconXPathsQueryParam[] = "xp";
 const char kBeaconNonceQueryParam[] = "n";
 
 // Attributes that should not be automatically copied from inputs to outputs
@@ -134,21 +131,15 @@ StringSet* CommaSeparatedStringToSet(StringPiece str) {
 // critical image set.
 class BeaconPropertyCallback : public PropertyPage {
  public:
-  BeaconPropertyCallback(
-      ServerContext* server_context,
-      StringPiece url,
-      StringPiece options_signature_hash,
-      UserAgentMatcher::DeviceType device_type,
-      const RequestContextPtr& request_context,
-      StringSet* html_critical_images_set,
-      StringSet* css_critical_images_set,
-      StringSet* critical_css_selector_set,
-      RenderedImages* rendered_images_set,
-      StringSet* xpaths_set,
-      StringPiece nonce)
-      : PropertyPage(kPropertyCachePage,
-                     url,
-                     options_signature_hash,
+  BeaconPropertyCallback(ServerContext* server_context, StringPiece url,
+                         StringPiece options_signature_hash,
+                         UserAgentMatcher::DeviceType device_type,
+                         const RequestContextPtr& request_context,
+                         StringSet* html_critical_images_set,
+                         StringSet* css_critical_images_set,
+                         StringSet* critical_css_selector_set,
+                         RenderedImages* rendered_images_set, StringPiece nonce)
+      : PropertyPage(kPropertyCachePage, url, options_signature_hash,
                      UserAgentMatcher::DeviceTypeSuffix(device_type),
                      request_context,
                      server_context->thread_system()->NewMutex(),
@@ -157,8 +148,7 @@ class BeaconPropertyCallback : public PropertyPage {
         html_critical_images_set_(html_critical_images_set),
         css_critical_images_set_(css_critical_images_set),
         critical_css_selector_set_(critical_css_selector_set),
-        rendered_images_set_(rendered_images_set),
-        xpaths_set_(xpaths_set) {
+        rendered_images_set_(rendered_images_set) {
     nonce.CopyToString(&nonce_);
   }
 
@@ -188,13 +178,6 @@ class BeaconPropertyCallback : public PropertyPage {
               server_context_->message_handler(), server_context_->timer());
     }
 
-    if (xpaths_set_ != NULL) {
-      BeaconCriticalLineInfoFinder::WriteXPathsToPropertyCacheFromBeacon(
-          *xpaths_set_, nonce_, server_context_->page_property_cache(),
-          server_context_->beacon_cohort(), this,
-          server_context_->message_handler(), server_context_->timer());
-    }
-
     WriteCohort(server_context_->beacon_cohort());
     delete this;
   }
@@ -205,7 +188,6 @@ class BeaconPropertyCallback : public PropertyPage {
   scoped_ptr<StringSet> css_critical_images_set_;
   scoped_ptr<StringSet> critical_css_selector_set_;
   scoped_ptr<RenderedImages> rendered_images_set_;
-  scoped_ptr<StringSet> xpaths_set_;
   GoogleString nonce_;
   DISALLOW_COPY_AND_ASSIGN(BeaconPropertyCallback);
 };
@@ -665,12 +647,6 @@ bool ServerContext::HandleBeacon(StringPiece params,
             query_param_str, global_options()));
   }
 
-  scoped_ptr<StringSet> xpaths_set;
-  if (query_params.Lookup1Unescaped(kBeaconXPathsQueryParam,
-                                    &query_param_str)) {
-    xpaths_set.reset(CommaSeparatedStringToSet(query_param_str));
-  }
-
   StringPiece nonce;
   if (query_params.Lookup1Unescaped(kBeaconNonceQueryParam, &query_param_str)) {
     nonce.set(query_param_str.data(), query_param_str.size());
@@ -680,11 +656,8 @@ bool ServerContext::HandleBeacon(StringPiece params,
   // looking up the property page for the URL specified in the beacon, and
   // performing the page update and cohort write in
   // BeaconPropertyCallback::Done(). Done() is called when the read completes.
-  if (html_critical_images_set != NULL ||
-      css_critical_images_set != NULL ||
-      critical_css_selector_set != NULL ||
-      rendered_images != NULL ||
-      xpaths_set != NULL) {
+  if (html_critical_images_set != NULL || css_critical_images_set != NULL ||
+      critical_css_selector_set != NULL || rendered_images != NULL) {
     UserAgentMatcher::DeviceType device_type =
         user_agent_matcher()->GetDeviceTypeForUA(user_agent);
 
@@ -698,7 +671,6 @@ bool ServerContext::HandleBeacon(StringPiece params,
         css_critical_images_set.release(),
         critical_css_selector_set.release(),
         rendered_images.release(),
-        xpaths_set.release(),
         nonce);
     page_property_cache()->ReadWithCohorts(beacon_property_cb->CohortList(),
                                            beacon_property_cb);
@@ -1046,11 +1018,6 @@ void ServerContext::set_critical_selector_finder(
 
 void ServerContext::set_flush_early_info_finder(FlushEarlyInfoFinder* finder) {
   flush_early_info_finder_.reset(finder);
-}
-
-void ServerContext::set_critical_line_info_finder(
-    CriticalLineInfoFinder* finder) {
-  critical_line_info_finder_.reset(finder);
 }
 
 void ServerContext::set_mobilize_cached_finder(MobilizeCachedFinder* finder) {

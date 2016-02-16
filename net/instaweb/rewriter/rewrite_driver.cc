@@ -38,8 +38,6 @@
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
-#include "net/instaweb/rewriter/critical_keys.pb.h"
-#include "net/instaweb/rewriter/critical_line_info.pb.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/add_head_filter.h"
 #include "net/instaweb/rewriter/public/add_ids_filter.h"
@@ -469,8 +467,6 @@ void RewriteDriver::Clear() NO_THREAD_SAFETY_ANALYSIS {
   start_time_ms_ = 0;
 
   critical_images_info_.reset(NULL);
-  critical_line_info_.reset(NULL);
-  beacon_critical_line_info_.reset(NULL);
   critical_selector_info_.reset(NULL);
 
   if (owns_property_page_) {
@@ -3456,24 +3452,6 @@ GoogleString RewriteDriver::GenerateUnauthorizedDomainDebugComment(
 
 void RewriteDriver::SaveOriginalHeaders(const ResponseHeaders& headers) {
   headers.GetSanitizedProto(flush_early_info()->mutable_response_headers());
-}
-
-const CriticalLineInfo* RewriteDriver::critical_line_info() const {
-  return critical_line_info_.get();
-}
-
-void RewriteDriver::set_critical_line_info(
-    CriticalLineInfo* critical_line_info) {
-  critical_line_info_.reset(critical_line_info);
-}
-
-CriticalKeys* RewriteDriver::beacon_critical_line_info() const {
-  return beacon_critical_line_info_.get();
-}
-
-void RewriteDriver::set_beacon_critical_line_info(
-    CriticalKeys* beacon_critical_line_info) {
-  beacon_critical_line_info_.reset(beacon_critical_line_info);
 }
 
 bool RewriteDriver::is_critical_images_beacon_enabled() {

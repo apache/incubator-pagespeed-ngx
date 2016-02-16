@@ -82,7 +82,6 @@ const char RewriteOptions::kContentExperimentVariantID[] =
     "ContentExperimentVariantID";
 const char RewriteOptions::kCriticalImagesBeaconEnabled[] =
     "CriticalImagesBeaconEnabled";
-const char RewriteOptions::kCriticalLineConfig[] = "CriticalLineConfig";
 const char RewriteOptions::kCssFlattenMaxBytes[] = "CssFlattenMaxBytes";
 const char RewriteOptions::kCssImageInlineMaxBytes[] = "CssImageInlineMaxBytes";
 const char RewriteOptions::kCssInlineMaxBytes[] = "CssInlineMaxBytes";
@@ -2100,11 +2099,6 @@ void RewriteOptions::AddProperties() {
       "ebhcdl", kEnableBlinkHtmlChangeDetectionLogging,
       kDirectoryScope,
       NULL, false);   // Not applicable for mod_pagespeed.
-  AddBaseProperty(
-      "", &RewriteOptions::critical_line_config_, "clc",
-      kCriticalLineConfig,
-      kDirectoryScope,
-      "Critical line xpath config for use by the split html filter.", true);
   AddBaseProperty(
       -1, &RewriteOptions::override_caching_ttl_ms_, "octm",
       kOverrideCachingTtlMs,

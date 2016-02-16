@@ -60,7 +60,6 @@ class AsyncFetch;
 class CacheHtmlInfoFinder;
 class CachePropertyStore;
 class CriticalImagesFinder;
-class CriticalLineInfoFinder;
 class CriticalSelectorFinder;
 class RequestProperties;
 class ExperimentMatcher;
@@ -303,13 +302,6 @@ class ServerContext {
   }
 
   void set_cache_html_info_finder(CacheHtmlInfoFinder* finder);
-
-  CriticalLineInfoFinder* critical_line_info_finder() const {
-    return critical_line_info_finder_.get();
-  }
-
-  // Takes ownership of the passed in finder.
-  void set_critical_line_info_finder(CriticalLineInfoFinder* finder);
 
   // Whether or not dumps of rewritten resources should be stored to
   // the filesystem. This is meant for testing purposes only.
@@ -733,7 +725,6 @@ class ServerContext {
   scoped_ptr<CriticalSelectorFinder> critical_selector_finder_;
   scoped_ptr<CacheHtmlInfoFinder> cache_html_info_finder_;
   scoped_ptr<FlushEarlyInfoFinder> flush_early_info_finder_;
-  scoped_ptr<CriticalLineInfoFinder> critical_line_info_finder_;
   scoped_ptr<MobilizeCachedFinder> mobilize_cached_finder_;
 
   // hasher_ is often set to a mock within unit tests, but some parts of the

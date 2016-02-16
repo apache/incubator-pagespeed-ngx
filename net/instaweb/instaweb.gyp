@@ -1155,21 +1155,6 @@
       ],
     },
     {
-      'target_name': 'instaweb_critical_line_info_pb',
-      'variables': {
-        'instaweb_protoc_subdir': 'net/instaweb/rewriter',
-      },
-      'sources': [
-        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/critical_line_info.pb.cc',
-        'rewriter/critical_line_info.proto',
-      ],
-      'dependencies': [
-      ],
-      'includes': [
-        'protoc.gypi',
-      ],
-    },
-    {
       'target_name': 'instaweb_cache_html_info_pb',
       'variables': {
         'instaweb_protoc_subdir': 'net/instaweb/rewriter',
@@ -1421,10 +1406,8 @@
       'sources': [
         'config/rewrite_options_manager.cc',
         'rewriter/beacon_critical_images_finder.cc',
-        'rewriter/beacon_critical_line_info_finder.cc',
         'rewriter/cache_html_info_finder.cc',
         'rewriter/critical_images_finder.cc',
-        'rewriter/critical_line_info_finder.cc',
         'rewriter/device_properties.cc',
         'rewriter/domain_lawyer.cc',
         'rewriter/downstream_cache_purger.cc',
@@ -1607,7 +1590,6 @@
         'instaweb_critical_images_beacon_opt_data2c',
         'instaweb_critical_images_pb',
         'instaweb_critical_keys_pb',
-        'instaweb_critical_line_info_pb',
         'instaweb_dedup_inlined_images_data2c',
         'instaweb_dedup_inlined_images_opt_data2c',
         'instaweb_defer_iframe_data2c',
@@ -1776,7 +1758,6 @@
       'dependencies': [
         'instaweb_cache_html_info_pb',
         'instaweb_critical_keys_pb',
-        'instaweb_critical_line_info_pb',
         'instaweb_flush_early_pb',
         'instaweb_rewriter',
         'instaweb_util',

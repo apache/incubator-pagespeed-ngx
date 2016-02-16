@@ -71,7 +71,6 @@ BASE_LIBS = \
   net/instaweb/libinstaweb_critical_images_beacon_opt_data2c.a \
   net/instaweb/libinstaweb_critical_images_pb.a \
   net/instaweb/libinstaweb_critical_keys_pb.a \
-  net/instaweb/libinstaweb_critical_line_info_pb.a \
   net/instaweb/libinstaweb_dedup_inlined_images_data2c.a \
   net/instaweb/libinstaweb_dedup_inlined_images_opt_data2c.a \
   net/instaweb/libinstaweb_defer_iframe_data2c.a \
