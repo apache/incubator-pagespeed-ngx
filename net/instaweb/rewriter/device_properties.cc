@@ -31,6 +31,7 @@ DeviceProperties::DeviceProperties(UserAgentMatcher* matcher)
       supports_image_inlining_(kNotSet),
       supports_js_defer_(kNotSet),
       supports_lazyload_images_(kNotSet),
+      supports_save_data_(kNotSet),
       accepts_webp_(kNotSet),
       supports_webp_rewritten_urls_(kNotSet),
       supports_webp_lossless_alpha_(kNotSet),
@@ -40,7 +41,8 @@ DeviceProperties::DeviceProperties(UserAgentMatcher* matcher)
       supports_split_html_(kNotSet),
       supports_flush_early_(kNotSet),
       device_type_set_(kNotSet),
-      device_type_(UserAgentMatcher::kDesktop) {
+      device_type_(UserAgentMatcher::kDesktop),
+      has_via_header_(kNotSet) {
 }
 
 DeviceProperties::~DeviceProperties() {
@@ -73,6 +75,18 @@ void DeviceProperties::ParseRequestHeaders(
   accepts_gzip_ =
       request_headers.HasValue(HttpAttributes::kAcceptEncoding,
                                HttpAttributes::kGzip) ?
+      kTrue : kFalse;
+
+  const char* save_data_header =
+      request_headers.Lookup1(HttpAttributes::kSaveData);
+  if (save_data_header != nullptr && StringCaseEqual("on", save_data_header)) {
+    supports_save_data_ = kTrue;
+  } else {
+    supports_save_data_ = kFalse;
+  }
+
+  has_via_header_ =
+      request_headers.Has(HttpAttributes::kVia) ?
       kTrue : kFalse;
 }
 
@@ -218,6 +232,14 @@ bool DeviceProperties::ForbidWebpInlining() const {
     }
   }
   return false;
+}
+
+bool DeviceProperties::SupportsSaveData() const {
+  return (supports_save_data_ == kTrue);
+}
+
+bool DeviceProperties::HasViaHeader() const {
+  return (has_via_header_ == kTrue);
 }
 
 }  // namespace net_instaweb

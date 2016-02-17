@@ -67,6 +67,8 @@ class RequestProperties {
   bool AcceptsGzip() const;
   void LogDeviceInfo(AbstractLogRecord* log_record,
                      bool enable_aggressive_rewriters_for_mobile);
+  bool SupportsSaveData() const;
+  bool HasViaHeader() const;
 
  private:
   friend class ImageRewriteTest;

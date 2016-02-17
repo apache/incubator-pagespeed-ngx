@@ -27,6 +27,16 @@ class DevicePropertiesTest: public testing::Test {
   DevicePropertiesTest()
       : device_properties_(&user_agent_matcher_) { }
 
+  void ParseAndVerifySaveData(const char* header_value, bool expected_value) {
+    RequestHeaders headers;
+    if (header_value != nullptr) {
+      headers.Add(HttpAttributes::kSaveData, header_value);
+    }
+    DeviceProperties device_properties(&user_agent_matcher_);
+    device_properties.ParseRequestHeaders(headers);
+    EXPECT_EQ(expected_value, device_properties.SupportsSaveData());
+  }
+
   UserAgentMatcher user_agent_matcher_;
   DeviceProperties device_properties_;
 };
@@ -159,6 +169,40 @@ TEST_F(DevicePropertiesTest, WebpUserAgentIdentificationAccept) {
   EXPECT_TRUE(device_properties_.SupportsWebpInPlace());
   EXPECT_TRUE(device_properties_.SupportsWebpRewrittenUrls());
   EXPECT_TRUE(device_properties_.SupportsWebpLosslessAlpha());
+}
+
+TEST_F(DevicePropertiesTest, ProcessSaveDataHeader) {
+  ParseAndVerifySaveData("on", true);
+  ParseAndVerifySaveData("oN", true);
+  ParseAndVerifySaveData("ON", true);
+  ParseAndVerifySaveData(nullptr, false);
+  ParseAndVerifySaveData("off", false);
+  ParseAndVerifySaveData("ofF", false);
+  ParseAndVerifySaveData("", false);
+  ParseAndVerifySaveData("garbage", false);
+}
+
+TEST_F(DevicePropertiesTest, ProcessViaHeader) {
+  RequestHeaders headers1;
+  DeviceProperties device_properties1(&user_agent_matcher_);
+  // This is to verify that unrelated headers don't set HasViaHeader().
+  headers1.Add(HttpAttributes::kAccept, "image/webp");
+  headers1.Add(HttpAttributes::kAccept, "text/html");
+  device_properties1.ParseRequestHeaders(headers1);
+  EXPECT_FALSE(device_properties1.HasViaHeader());
+
+  RequestHeaders headers2;
+  DeviceProperties device_properties2(&user_agent_matcher_);
+  headers2.Add(HttpAttributes::kVia,
+               "1.0 fred, 1.1 example.com (Apache/1.1)");
+  device_properties2.ParseRequestHeaders(headers2);
+  EXPECT_TRUE(device_properties2.HasViaHeader());
+
+  RequestHeaders headers3;
+  DeviceProperties device_properties3(&user_agent_matcher_);
+  headers3.Add(HttpAttributes::kVia, "");
+  device_properties3.ParseRequestHeaders(headers3);
+  EXPECT_TRUE(device_properties3.HasViaHeader());
 }
 
 }  // namespace net_instaweb
