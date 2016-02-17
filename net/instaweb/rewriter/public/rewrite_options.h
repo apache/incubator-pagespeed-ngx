@@ -562,7 +562,6 @@ class RewriteOptions {
     return allow_vary_on_.value().allow_save_data();
   }
   bool AllowVaryOnUserAgent() const {
-    // TODO(huibao): Also check kInPlaceOptimizeForBrowser.
     return allow_vary_on_.value().allow_user_agent();
   }
   GoogleString AllowVaryOnToString() const {
@@ -572,6 +571,22 @@ class RewriteOptions {
   void set_allow_vary_on(const AllowVaryOn& x) {
     set_option(x, &allow_vary_on_);
   }
+
+  // Image qualities and parameters, after applying the inheritance rules.
+  int64 ImageJpegQuality() const;
+  int64 ImageJpegQualityForSmallScreen() const;
+  int64 ImageJpegQualityForSaveData() const;
+  int64 ImageWebpQuality() const;
+  int64 ImageWebpQualityForSmallScreen() const;
+  int64 ImageWebpQualityForSaveData() const;
+  int64 ImageWebpAnimatedQuality() const;
+  int64 ImageJpegNumProgressiveScansForSmallScreen() const;
+  // Returns true if any quality for small screen is valid and different from
+  // the base quality.
+  bool HasValidSmallScreenQualities() const;
+  // Returns true if any quality for Save-Data is valid and different from the
+  // base quality.
+  bool HasValidSaveDataQualities() const;
 
   // This version index serves as global signature key.  Much of the
   // data emitted in signatures is based on the option ordering, which
@@ -2209,23 +2224,14 @@ class RewriteOptions {
   // Return false in a subclass if you want to disallow all URL trimming in CSS.
   virtual bool trim_urls_in_css() const { return true; }
 
-  int64 image_jpeg_recompress_quality() const {
-    return image_jpeg_recompress_quality_.value();
-  }
   void set_image_jpeg_recompress_quality(int64 x) {
     set_option(x, &image_jpeg_recompress_quality_);
   }
 
-  int64 image_jpeg_recompress_quality_for_small_screens() const {
-    return image_jpeg_recompress_quality_for_small_screens_.value();
-  }
   void set_image_jpeg_recompress_quality_for_small_screens(int64 x) {
     set_option(x, &image_jpeg_recompress_quality_for_small_screens_);
   }
 
-  int64 image_jpeg_quality_for_save_data() const {
-    return image_jpeg_quality_for_save_data_.value();
-  }
   void set_image_jpeg_quality_for_save_data(int64 x) {
     set_option(x, &image_jpeg_quality_for_save_data_);
   }
@@ -2264,37 +2270,22 @@ class RewriteOptions {
     set_option(x, &image_jpeg_num_progressive_scans_);
   }
 
-  int64 image_jpeg_num_progressive_scans_for_small_screens() const {
-    return image_jpeg_num_progressive_scans_for_small_screens_.value();
-  }
   void set_image_jpeg_num_progressive_scans_for_small_screens(int64 x) {
     set_option(x, &image_jpeg_num_progressive_scans_for_small_screens_);
   }
 
-  int64 image_webp_recompress_quality() const {
-    return image_webp_recompress_quality_.value();
-  }
   void set_image_webp_recompress_quality(int64 x) {
     set_option(x, &image_webp_recompress_quality_);
   }
 
-  int64 image_webp_recompress_quality_for_small_screens() const {
-    return image_webp_recompress_quality_for_small_screens_.value();
-  }
   void set_image_webp_recompress_quality_for_small_screens(int64 x) {
     set_option(x, &image_webp_recompress_quality_for_small_screens_);
   }
 
-  int64 image_webp_animated_recompress_quality() const {
-    return image_webp_animated_recompress_quality_.value();
-  }
   void set_image_webp_animated_recompress_quality(int64 x) {
     set_option(x, &image_webp_animated_recompress_quality_);
   }
 
-  int64 image_webp_quality_for_save_data() const {
-    return image_webp_quality_for_save_data_.value();
-  }
   void set_image_webp_quality_for_save_data(int64 x) {
     set_option(x, &image_webp_quality_for_save_data_);
   }

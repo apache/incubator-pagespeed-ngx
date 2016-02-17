@@ -840,7 +840,7 @@ void RewriteOptionsTest::TestSetOptionFromName(bool test_log_variant) {
               "1",
               &handler);
   // Default is -1.
-  EXPECT_EQ(1, options_.image_jpeg_recompress_quality());
+  EXPECT_EQ(1, options_.ImageJpegQuality());
 
   TestNameSet(RewriteOptions::kOptionOk,
               test_log_variant,
@@ -2717,12 +2717,12 @@ TEST_F(RewriteOptionsTest, ParseAndSetDeprecatedOptionFromName1) {
   EXPECT_EQ(RewriteOptions::kOptionOk,
             options_.ParseAndSetOptionFromName1("ImageWebpRecompressionQuality",
                                                 "12", &msg, &handler));
-  EXPECT_EQ(12, options_.image_webp_recompress_quality());
+  EXPECT_EQ(12, options_.ImageWebpQuality());
 
   EXPECT_EQ(RewriteOptions::kOptionOk,
             options_.ParseAndSetOptionFromName1("WebpRecompressionQuality",
                                                 "23", &msg, &handler));
-  EXPECT_EQ(23, options_.image_webp_recompress_quality());
+  EXPECT_EQ(23, options_.ImageWebpQuality());
 
   // 'ImageWebpRecompressionQualityForSmallScreens' is replaced by
   // 'WebpRecompressionQualityForSmallScreens'.
@@ -2730,13 +2730,13 @@ TEST_F(RewriteOptionsTest, ParseAndSetDeprecatedOptionFromName1) {
             options_.ParseAndSetOptionFromName1(
                 "ImageWebpRecompressionQualityForSmallScreens",
                 "34", &msg, &handler));
-  EXPECT_EQ(34, options_.image_webp_recompress_quality_for_small_screens());
+  EXPECT_EQ(34, options_.ImageWebpQualityForSmallScreen());
 
   EXPECT_EQ(RewriteOptions::kOptionOk,
             options_.ParseAndSetOptionFromName1(
                 "WebpRecompressionQualityForSmallScreens",
                 "45", &msg, &handler));
-  EXPECT_EQ(45, options_.image_webp_recompress_quality_for_small_screens());
+  EXPECT_EQ(45, options_.ImageWebpQualityForSmallScreen());
 }
 
 TEST_F(RewriteOptionsTest, BandwidthMode) {
@@ -3326,6 +3326,114 @@ TEST_F(RewriteOptionsTest, MergeAllowVaryOnOptions) {
 
   // If neither option has been specified, the default will be used.
   VerifyMergingAllowVaryOn("", "", "Auto");
+}
+
+TEST_F(RewriteOptionsTest, ImageQualitiesOverride) {
+  options_.set_image_recompress_quality(1);
+
+  options_.set_image_webp_recompress_quality(20);
+  options_.set_image_webp_recompress_quality_for_small_screens(30);
+  options_.set_image_webp_quality_for_save_data(40);
+  options_.set_image_webp_animated_recompress_quality(50);
+
+  options_.set_image_jpeg_recompress_quality(21);
+  options_.set_image_jpeg_recompress_quality_for_small_screens(31);
+  options_.set_image_jpeg_quality_for_save_data(41);
+  options_.set_image_jpeg_num_progressive_scans(5);
+  options_.set_image_jpeg_num_progressive_scans_for_small_screens(3);
+
+  CHECK_EQ(20, options_.ImageWebpQuality());
+  CHECK_EQ(30, options_.ImageWebpQualityForSmallScreen());
+  CHECK_EQ(40, options_.ImageWebpQualityForSaveData());
+  CHECK_EQ(50, options_.ImageWebpAnimatedQuality());
+  CHECK_EQ(21, options_.ImageJpegQuality());
+  CHECK_EQ(31, options_.ImageJpegQualityForSmallScreen());
+  CHECK_EQ(41, options_.ImageJpegQualityForSaveData());
+  CHECK_EQ(5, options_.image_jpeg_num_progressive_scans());
+  CHECK_EQ(3, options_.ImageJpegNumProgressiveScansForSmallScreen());
+
+  EXPECT_TRUE(options_.HasValidSmallScreenQualities());
+  EXPECT_TRUE(options_.HasValidSaveDataQualities());
+}
+
+TEST_F(RewriteOptionsTest, ImageQualitiesSubEqualToBase) {
+  options_.set_image_recompress_quality(1);
+
+  options_.set_image_webp_recompress_quality(20);
+  options_.set_image_webp_recompress_quality_for_small_screens(20);
+  options_.set_image_webp_quality_for_save_data(20);
+  options_.set_image_webp_animated_recompress_quality(20);
+
+  options_.set_image_jpeg_recompress_quality(21);
+  options_.set_image_jpeg_recompress_quality_for_small_screens(21);
+  options_.set_image_jpeg_quality_for_save_data(21);
+  options_.set_image_jpeg_num_progressive_scans(5);
+  options_.set_image_jpeg_num_progressive_scans_for_small_screens(5);
+
+  CHECK_EQ(20, options_.ImageWebpQuality());
+  CHECK_EQ(20, options_.ImageWebpQualityForSmallScreen());
+  CHECK_EQ(20, options_.ImageWebpQualityForSaveData());
+  CHECK_EQ(20, options_.ImageWebpAnimatedQuality());
+  CHECK_EQ(21, options_.ImageJpegQuality());
+  CHECK_EQ(21, options_.ImageJpegQualityForSmallScreen());
+  CHECK_EQ(21, options_.ImageJpegQualityForSaveData());
+  CHECK_EQ(5, options_.image_jpeg_num_progressive_scans());
+  CHECK_EQ(5, options_.ImageJpegNumProgressiveScansForSmallScreen());
+
+  EXPECT_FALSE(options_.HasValidSmallScreenQualities());
+  EXPECT_FALSE(options_.HasValidSaveDataQualities());
+}
+
+TEST_F(RewriteOptionsTest, ImageQualitiesSubInheritFromBase) {
+  options_.set_image_recompress_quality(1);
+
+  options_.set_image_webp_recompress_quality(-1);
+  options_.set_image_webp_recompress_quality_for_small_screens(-1);
+  options_.set_image_webp_quality_for_save_data(-1);
+  options_.set_image_webp_animated_recompress_quality(-1);
+
+  options_.set_image_jpeg_recompress_quality(-1);
+  options_.set_image_jpeg_recompress_quality_for_small_screens(-1);
+  options_.set_image_jpeg_quality_for_save_data(-1);
+  options_.set_image_jpeg_num_progressive_scans(5);
+  options_.set_image_jpeg_num_progressive_scans_for_small_screens(-1);
+
+  CHECK_EQ(1, options_.ImageWebpQuality());
+  CHECK_EQ(1, options_.ImageWebpQualityForSmallScreen());
+  CHECK_EQ(1, options_.ImageWebpQualityForSaveData());
+  CHECK_EQ(1, options_.ImageWebpAnimatedQuality());
+  CHECK_EQ(1, options_.ImageJpegQuality());
+  CHECK_EQ(1, options_.ImageJpegQualityForSmallScreen());
+  CHECK_EQ(1, options_.ImageJpegQualityForSaveData());
+  CHECK_EQ(5, options_.image_jpeg_num_progressive_scans());
+  CHECK_EQ(5, options_.ImageJpegNumProgressiveScansForSmallScreen());
+
+  EXPECT_FALSE(options_.HasValidSmallScreenQualities());
+  EXPECT_FALSE(options_.HasValidSaveDataQualities());
+}
+
+TEST_F(RewriteOptionsTest, ImageQualitiesAllDisabled) {
+  options_.set_image_recompress_quality(-1);
+
+  options_.set_image_webp_recompress_quality(-1);
+  options_.set_image_webp_recompress_quality_for_small_screens(-1);
+  options_.set_image_webp_quality_for_save_data(-1);
+  options_.set_image_webp_animated_recompress_quality(-1);
+
+  options_.set_image_jpeg_recompress_quality(-1);
+  options_.set_image_jpeg_recompress_quality_for_small_screens(-1);
+  options_.set_image_jpeg_quality_for_save_data(-1);
+
+  CHECK_EQ(-1, options_.ImageWebpQuality());
+  CHECK_EQ(-1, options_.ImageWebpQualityForSmallScreen());
+  CHECK_EQ(-1, options_.ImageWebpQualityForSaveData());
+  CHECK_EQ(-1, options_.ImageWebpAnimatedQuality());
+  CHECK_EQ(-1, options_.ImageJpegQuality());
+  CHECK_EQ(-1, options_.ImageJpegQualityForSmallScreen());
+  CHECK_EQ(-1, options_.ImageJpegQualityForSaveData());
+
+  EXPECT_FALSE(options_.HasValidSmallScreenQualities());
+  EXPECT_FALSE(options_.HasValidSaveDataQualities());
 }
 
 }  // namespace net_instaweb

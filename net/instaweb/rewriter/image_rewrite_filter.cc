@@ -80,17 +80,18 @@ namespace net_instaweb {
 
 namespace {
 
+// TODO(huibao): Also consider image qualities for Save-Data.
+//
 // Determines the image options to be used for the given image. If neither
 // of large screen and small screen values are set, use the base value. If
 // any of them are set explicity, use the set value depending on the size of
 // the screen. The only exception is if the image is being compressed for a
 // small screen and the quality for small screen is set to a higher value.
 // In this case, use the value that is explicitly set to be lower of the two.
-int64 DetermineImageOptions(
-    int64 base_value, int64 large_screen_value, int64 small_screen_value,
-    bool is_small_screen) {
-  int64 quality = (large_screen_value == -1) ? base_value : large_screen_value;
-  if (is_small_screen && small_screen_value != -1) {
+int64 DetermineImageOptions(int64 large_screen_value, int64 small_screen_value,
+                            bool is_small_screen) {
+  int64 quality = large_screen_value;
+  if (is_small_screen) {
     quality = (quality == -1) ? small_screen_value :
         std::min(quality, small_screen_value);
   }
@@ -854,25 +855,25 @@ Image::CompressionOptions* ImageRewriteFilter::ImageOptionsForLoadedResource(
                               &webp_conversion_variables_,
                               image_options);
   }
+
+  const bool is_small_screen = resource_context.use_small_screen_quality();
   image_options->jpeg_quality =
-      DetermineImageOptions(options->image_recompress_quality(),
-          options->image_jpeg_recompress_quality(),
-          options->image_jpeg_recompress_quality_for_small_screens(),
-          resource_context.use_small_screen_quality());
+      DetermineImageOptions(
+          options->ImageJpegQuality(),
+          options->ImageJpegQualityForSmallScreen(),
+          is_small_screen);
   image_options->webp_quality =
-      DetermineImageOptions(options->image_recompress_quality(),
-          options->image_webp_recompress_quality(),
-          options->image_webp_recompress_quality_for_small_screens(),
-          resource_context.use_small_screen_quality());
-  image_options->webp_animated_quality = options->image_recompress_quality();
-  if (options->image_webp_animated_recompress_quality() != -1) {
-    image_options->webp_animated_quality =
-        options->image_webp_animated_recompress_quality();
-  }
+      DetermineImageOptions(
+          options->ImageWebpQuality(),
+          options->ImageWebpQualityForSmallScreen(),
+          is_small_screen);
   image_options->jpeg_num_progressive_scans =
-      DetermineImageOptions(-1, options->image_jpeg_num_progressive_scans(),
-          options->image_jpeg_num_progressive_scans_for_small_screens(),
-          resource_context.use_small_screen_quality());
+      DetermineImageOptions(
+          options->image_jpeg_num_progressive_scans(),
+          options->ImageJpegNumProgressiveScansForSmallScreen(),
+          is_small_screen);
+
+  image_options->webp_animated_quality = options->ImageWebpAnimatedQuality();
   image_options->progressive_jpeg =
       options->Enabled(RewriteOptions::kConvertJpegToProgressive) &&
       input_size >= options->progressive_jpeg_min_bytes();
@@ -1231,22 +1232,9 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
                               &webp_conversion_variables_,
                               image_options);
 
-    image_options->jpeg_quality = options->image_recompress_quality();
-    if (options->image_jpeg_recompress_quality() != -1) {
-      // if jpeg quality is explicitly set, it takes precedence over
-      // generic image quality.
-      image_options->jpeg_quality = options->image_jpeg_recompress_quality();
-    }
-    image_options->webp_quality = options->image_recompress_quality();
-    if (options->image_webp_recompress_quality() != -1) {
-      image_options->webp_quality = options->image_webp_recompress_quality();
-    }
-    image_options->webp_animated_quality =
-        options->image_recompress_quality();
-    if (options->image_webp_animated_recompress_quality() != -1) {
-      image_options->webp_animated_quality =
-          options->image_webp_animated_recompress_quality();
-    }
+    image_options->jpeg_quality = options->ImageJpegQuality();
+    image_options->webp_quality = options->ImageWebpQuality();
+    image_options->webp_animated_quality = options->ImageWebpAnimatedQuality();
     image_options->progressive_jpeg = false;
     image_options->convert_png_to_jpeg =
         options->Enabled(RewriteOptions::kConvertPngToJpeg);
@@ -1339,21 +1327,9 @@ void ImageRewriteFilter::ResizeLowQualityImage(
     const RewriteOptions* options = driver()->options();
     Image::CompressionOptions* image_options =
         new Image::CompressionOptions();
-    image_options->jpeg_quality = options->image_recompress_quality();
-    if (options->image_jpeg_recompress_quality() != -1) {
-      // if jpeg quality is explicitly set, it takes precedence over
-      // generic image quality.
-      image_options->jpeg_quality = options->image_jpeg_recompress_quality();
-    }
-    image_options->webp_quality = options->image_recompress_quality();
-    if (options->image_webp_recompress_quality() != -1) {
-      image_options->webp_quality = options->image_webp_recompress_quality();
-    }
-    image_options->webp_animated_quality = options->image_recompress_quality();
-    if (options->image_webp_animated_recompress_quality() != -1) {
-      image_options->webp_animated_quality =
-          options->image_webp_animated_recompress_quality();
-    }
+    image_options->jpeg_quality = options->ImageJpegQuality();
+    image_options->webp_quality = options->ImageWebpQuality();
+    image_options->webp_animated_quality = options->ImageWebpAnimatedQuality();
     image_options->progressive_jpeg = false;
     image_options->convert_png_to_jpeg =
         options->Enabled(RewriteOptions::kConvertPngToJpeg);

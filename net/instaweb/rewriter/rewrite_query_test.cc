@@ -18,8 +18,6 @@
 
 #include "net/instaweb/rewriter/public/rewrite_query.h"
 
-#include <memory>
-
 #include "base/logging.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -460,7 +458,7 @@ TEST_F(RewriteQueryTest, QueryAndRequestAndResponseAndCookies) {
   EXPECT_EQ(RewriteOptions::kDefaultImageLimitOptimizedPercent,
             options->image_limit_optimized_percent());
   EXPECT_EQ(RewriteOptions::kDefaultImageWebpRecompressQuality,
-            options->image_webp_recompress_quality());
+            options->ImageWebpQuality());
   EXPECT_EQ(RewriteOptions::kDefaultImageLimitResizeAreaPercent,
             options->image_limit_resize_area_percent());
 
@@ -846,7 +844,7 @@ TEST_F(RewriteQueryTest, JpegRecompressionQuality) {
       image_url_, kQuery, "", &query, &req);
   EXPECT_TRUE(options != NULL);
   EXPECT_STREQ("", query);
-  EXPECT_EQ(73, options->image_jpeg_recompress_quality());
+  EXPECT_EQ(73, options->ImageJpegQuality());
 }
 
 TEST_F(RewriteQueryTest, RequestOptionOverrideWithIncorrectToken) {
@@ -866,7 +864,7 @@ TEST_F(RewriteQueryTest, RequestOptionOverride) {
   request_option_override_ = "abc";
   const RewriteOptions* options =
       ParseAndScan(image_url_, kQuery, "", &query, &req);
-  EXPECT_EQ(73, options->image_jpeg_recompress_quality());
+  EXPECT_EQ(73, options->ImageJpegQuality());
 }
 
 TEST_F(RewriteQueryTest, RequestOptionOverrideProvidedWhenNotRequired) {
@@ -875,7 +873,7 @@ TEST_F(RewriteQueryTest, RequestOptionOverrideProvidedWhenNotRequired) {
   GoogleString query, req;
   const RewriteOptions* options =
       ParseAndScan(image_url_, kQuery, "", &query, &req);
-  EXPECT_EQ(73, options->image_jpeg_recompress_quality());
+  EXPECT_EQ(73, options->ImageJpegQuality());
 }
 
 TEST_F(RewriteQueryTest, RequestOptionOverrideNotProvidedWhenRequired) {
@@ -923,7 +921,7 @@ TEST_F(RewriteQueryTest, CanQueryRecompressImages) {
   ASSERT_TRUE(options != NULL);
   EXPECT_TRUE(options->Enabled(RewriteOptions::kRecompressJpeg));
   EXPECT_FALSE(options->Enabled(RewriteOptions::kCombineCss));
-  EXPECT_EQ(70, options->image_jpeg_recompress_quality());
+  EXPECT_EQ(70, options->ImageJpegQuality());
 }
 
 TEST_F(RewriteQueryTest, CanOverrideRecompressImagesWithQuery) {
@@ -932,7 +930,7 @@ TEST_F(RewriteQueryTest, CanOverrideRecompressImagesWithQuery) {
   ASSERT_TRUE(options != NULL);
   EXPECT_TRUE(options->Enabled(RewriteOptions::kRecompressJpeg));
   EXPECT_FALSE(options->Enabled(RewriteOptions::kCombineCss));
-  EXPECT_EQ(71, options->image_jpeg_recompress_quality());
+  EXPECT_EQ(71, options->ImageJpegQuality());
 }
 
 TEST_F(RewriteQueryTest, CanOverrideRecompressImagesWithReqHeaders) {
@@ -941,7 +939,7 @@ TEST_F(RewriteQueryTest, CanOverrideRecompressImagesWithReqHeaders) {
   ASSERT_TRUE(options != NULL);
   EXPECT_TRUE(options->Enabled(RewriteOptions::kRecompressJpeg));
   EXPECT_FALSE(options->Enabled(RewriteOptions::kCombineCss));
-  EXPECT_EQ(72, options->image_jpeg_recompress_quality());
+  EXPECT_EQ(72, options->ImageJpegQuality());
 }
 
 TEST_F(RewriteQueryTest, CanOverrideRecompressImagesWithBoth) {
@@ -952,7 +950,7 @@ TEST_F(RewriteQueryTest, CanOverrideRecompressImagesWithBoth) {
   ASSERT_TRUE(options != NULL);
   EXPECT_TRUE(options->Enabled(RewriteOptions::kRecompressJpeg));
   EXPECT_FALSE(options->Enabled(RewriteOptions::kCombineCss));
-  EXPECT_EQ(72, options->image_jpeg_recompress_quality()) << "req-headers win.";
+  EXPECT_EQ(72, options->ImageJpegQuality()) << "req-headers win.";
 }
 
 TEST_F(RewriteQueryTest, OnlyAllowWhitelistedResources) {

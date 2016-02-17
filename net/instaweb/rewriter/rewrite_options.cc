@@ -5321,4 +5321,78 @@ bool RewriteOptions::CheckLevelSpecificOption(
   return true;
 }
 
+int64 RewriteOptions::ImageJpegQuality() const {
+  int64 quality = image_jpeg_recompress_quality_.value();
+  if (quality < 0) {
+    quality = image_recompress_quality_.value();
+  }
+  return quality;
+}
+
+int64 RewriteOptions::ImageJpegQualityForSmallScreen() const {
+  int64 quality = image_jpeg_recompress_quality_for_small_screens_.value();
+  if (quality < 0) {
+    quality = ImageJpegQuality();
+  }
+  return quality;
+}
+
+int64 RewriteOptions::ImageJpegQualityForSaveData() const {
+  int64 quality = image_jpeg_quality_for_save_data_.value();
+  if (quality < 0) {
+    quality = ImageJpegQuality();
+  }
+  return quality;
+}
+
+int64 RewriteOptions::ImageWebpQuality() const {
+  int64 quality = image_webp_recompress_quality_.value();
+  if (quality < 0) {
+    quality = image_recompress_quality_.value();
+  }
+  return quality;
+}
+
+int64 RewriteOptions::ImageWebpQualityForSmallScreen() const {
+  int64 quality = image_webp_recompress_quality_for_small_screens_.value();
+  if (quality < 0) {
+    quality = ImageWebpQuality();
+  }
+  return quality;
+}
+
+int64 RewriteOptions::ImageWebpQualityForSaveData() const {
+  int64 quality = image_webp_quality_for_save_data_.value();
+  if (quality < 0) {
+    quality = ImageWebpQuality();
+  }
+  return quality;
+}
+
+int64 RewriteOptions::ImageWebpAnimatedQuality() const {
+  int64 quality = image_webp_animated_recompress_quality_.value();
+  if (quality < 0) {
+    quality = ImageWebpQuality();
+  }
+  return quality;
+}
+
+int64 RewriteOptions::ImageJpegNumProgressiveScansForSmallScreen() const {
+  int64 num = image_jpeg_num_progressive_scans_for_small_screens_.value();
+  if (num < 0) {
+    num = image_jpeg_num_progressive_scans_.value();
+  }
+  return num;
+}
+
+bool RewriteOptions::HasValidSmallScreenQualities() const {
+  return (ImageWebpQualityForSmallScreen() != ImageWebpQuality() ||
+          ImageJpegQualityForSmallScreen() != ImageJpegQuality());
+}
+
+bool RewriteOptions::HasValidSaveDataQualities() const {
+  return (ImageWebpQualityForSaveData() != ImageWebpQuality() ||
+          ImageJpegQualityForSaveData() != ImageJpegQuality());
+}
+
 }  // namespace net_instaweb
