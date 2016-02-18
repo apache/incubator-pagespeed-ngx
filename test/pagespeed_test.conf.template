@@ -706,6 +706,7 @@ http {
     pagespeed JpegRecompressionQuality 75;
     pagespeed WebpRecompressionQuality 70;
     pagespeed InPlaceResourceOptimization on;
+    pagespeed AllowVaryOn "Accept";
     pagespeed FileCachePath "@@IPRO_CACHE@@";
   }
 
