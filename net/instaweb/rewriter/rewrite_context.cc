@@ -1736,19 +1736,7 @@ void RewriteContext::ObtainLockForCreation(ServerContext* server_context,
   }
 }
 
-void RewriteContext::ReleaseCreationLock(RewriteResult result) {
-  bool success = true;
-  switch (result) {
-    case kRewriteOk:
-      success = true;
-      break;
-    case kTooBusy:
-      FALLTHROUGH_INTENDED;
-    case kRewriteFailed:
-      success = false;
-      break;
-  }
-
+void RewriteContext::ReleaseCreationLock(bool success) {
   // DCHECK (in a somewhat readable way) that we only have one sort of lock.
   bool have_named_lock = (lock_ != nullptr);
   bool have_controller_lock = (schedule_rewrite_context_ != nullptr);
@@ -2209,7 +2197,6 @@ void RewriteContext::PartitionDone(RewriteResult result_or_busy) {
   if (!result) {
     partitions_->clear_partition();
     outputs_.clear();
-    ReleaseCreationLock(result_or_busy);
   }
 
   outstanding_rewrites_ = partitions_->partition_size();
@@ -2224,7 +2211,7 @@ void RewriteContext::PartitionDone(RewriteResult result_or_busy) {
     // since there may be partial failures in cases of multiple inputs which
     // we do not see here.
     AddRecheckDependency();
-    FinalizeRewriteForHtml();
+    Finalize();
   } else {
     // We will let the Rewrites complete prior to writing the
     // OutputPartitions, which contain not just the partition table
@@ -2438,7 +2425,6 @@ void RewriteContext::RewriteDoneImpl(RewriteResult result,
   Driver()->request_context()->ReleaseDependentTraceContext(
       dependent_request_trace_);
   dependent_request_trace_ = NULL;
-  ReleaseCreationLock(result);
   if (result == kTooBusy) {
     MarkTooBusy();
   } else {
@@ -2562,6 +2548,7 @@ void RewriteContext::Propagate(bool render_slots) {
 
 void RewriteContext::Finalize() {
   rewrite_done_ = true;
+  ReleaseCreationLock(ok_to_write_output_partitions_);
   DCHECK_EQ(0, num_pending_nested_);
   if (IsFetchRewrite()) {
     fetch_->FetchDone();

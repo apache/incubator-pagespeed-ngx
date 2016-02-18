@@ -633,10 +633,11 @@ class RewriteContext {
   // indeterminate time.
   void ObtainLockForCreation(ServerContext* server_context, Function* callback);
 
-  // Release whichever lock was obtained above. The result will be used to
-  // inform the CentralController of success or not. If this is not explicitly
-  // called, the lock will be released when "this" is destroyed.
-  void ReleaseCreationLock(RewriteResult result);
+  // Release whichever lock was obtained above. succeeded will be used to
+  // inform the CentralController if it should retry (when success = false). If
+  // this is not explicitly called, the lock will be released when "this" is
+  // destroyed.
+  void ReleaseCreationLock(bool succeeded);
 
   // Backend to RewriteDriver::LookupMetadataForOutputResource, with
   // the RewriteContext of appropriate type and the OutputResource already
