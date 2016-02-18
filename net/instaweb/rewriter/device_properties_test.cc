@@ -34,7 +34,7 @@ class DevicePropertiesTest: public testing::Test {
     }
     DeviceProperties device_properties(&user_agent_matcher_);
     device_properties.ParseRequestHeaders(headers);
-    EXPECT_EQ(expected_value, device_properties.SupportsSaveData());
+    EXPECT_EQ(expected_value, device_properties.RequestsSaveData());
   }
 
   UserAgentMatcher user_agent_matcher_;

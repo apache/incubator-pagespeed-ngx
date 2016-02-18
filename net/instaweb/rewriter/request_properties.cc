@@ -193,8 +193,8 @@ bool RequestProperties::ForbidWebpInlining() const {
   return device_properties_->ForbidWebpInlining();
 }
 
-bool RequestProperties::SupportsSaveData() const {
-  return device_properties_->SupportsSaveData();
+bool RequestProperties::RequestsSaveData() const {
+  return device_properties_->RequestsSaveData();
 }
 
 bool RequestProperties::HasViaHeader() const {

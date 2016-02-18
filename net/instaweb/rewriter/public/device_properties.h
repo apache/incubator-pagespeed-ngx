@@ -81,7 +81,7 @@ class DeviceProperties {
   static const int kLargeScreenWidthThreshold = 1500;
   bool ForbidWebpInlining() const;
 
-  bool SupportsSaveData() const;
+  bool RequestsSaveData() const;
   bool HasViaHeader() const;
 
  private:
@@ -96,7 +96,7 @@ class DeviceProperties {
   mutable LazyBool supports_image_inlining_;
   mutable LazyBool supports_js_defer_;
   mutable LazyBool supports_lazyload_images_;
-  mutable LazyBool supports_save_data_;
+  mutable LazyBool requests_save_data_;
   mutable LazyBool accepts_webp_;
   mutable LazyBool accepts_gzip_;
   mutable LazyBool supports_webp_rewritten_urls_;

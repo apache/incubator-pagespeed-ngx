@@ -31,7 +31,7 @@ DeviceProperties::DeviceProperties(UserAgentMatcher* matcher)
       supports_image_inlining_(kNotSet),
       supports_js_defer_(kNotSet),
       supports_lazyload_images_(kNotSet),
-      supports_save_data_(kNotSet),
+      requests_save_data_(kNotSet),
       accepts_webp_(kNotSet),
       supports_webp_rewritten_urls_(kNotSet),
       supports_webp_lossless_alpha_(kNotSet),
@@ -80,9 +80,9 @@ void DeviceProperties::ParseRequestHeaders(
   const char* save_data_header =
       request_headers.Lookup1(HttpAttributes::kSaveData);
   if (save_data_header != nullptr && StringCaseEqual("on", save_data_header)) {
-    supports_save_data_ = kTrue;
+    requests_save_data_ = kTrue;
   } else {
-    supports_save_data_ = kFalse;
+    requests_save_data_ = kFalse;
   }
 
   has_via_header_ =
@@ -234,8 +234,8 @@ bool DeviceProperties::ForbidWebpInlining() const {
   return false;
 }
 
-bool DeviceProperties::SupportsSaveData() const {
-  return (supports_save_data_ == kTrue);
+bool DeviceProperties::RequestsSaveData() const {
+  return (requests_save_data_ == kTrue);
 }
 
 bool DeviceProperties::HasViaHeader() const {
