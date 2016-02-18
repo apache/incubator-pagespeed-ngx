@@ -704,6 +704,7 @@ http {
     pagespeed EnableFilters convert_to_webp_lossless;
     pagespeed EnableFilters in_place_optimize_for_browser;
     pagespeed InPlaceResourceOptimization on;
+    pagespeed AllowVaryOn "Accept";
     pagespeed FileCachePath "@@IPRO_CACHE@@";
   }
 
