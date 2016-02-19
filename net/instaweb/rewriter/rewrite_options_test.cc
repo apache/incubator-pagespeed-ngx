@@ -3436,4 +3436,49 @@ TEST_F(RewriteOptionsTest, ImageQualitiesAllDisabled) {
   EXPECT_FALSE(options_.HasValidSaveDataQualities());
 }
 
+TEST_F(RewriteOptionsTest, SupportSaveData) {
+  // By default, AllowVaryOn is set to "Auto" which implies "Save-Data".
+  options_.set_image_jpeg_quality_for_save_data(-1);
+  options_.set_image_webp_quality_for_save_data(-1);
+  EXPECT_FALSE(options_.HasValidSaveDataQualities());
+  EXPECT_TRUE(options_.AllowVaryOnSaveData());
+  EXPECT_FALSE(options_.SupportSaveData());
+
+  options_.set_image_jpeg_quality_for_save_data(20);
+  options_.set_image_webp_quality_for_save_data(30);
+  EXPECT_TRUE(options_.HasValidSaveDataQualities());
+  EXPECT_TRUE(options_.AllowVaryOnSaveData());
+  EXPECT_TRUE(options_.SupportSaveData());
+
+  // Disallow vary on "Save-Data".
+  EXPECT_EQ(RewriteOptions::kOptionOk,
+            options_.SetOptionFromName(RewriteOptions::kAllowVaryOn,
+                                       "None"));
+  options_.set_image_jpeg_quality_for_save_data(-1);
+  options_.set_image_webp_quality_for_save_data(-1);
+  EXPECT_FALSE(options_.HasValidSaveDataQualities());
+  EXPECT_FALSE(options_.AllowVaryOnSaveData());
+  EXPECT_FALSE(options_.SupportSaveData());
+
+  options_.set_image_jpeg_quality_for_save_data(20);
+  options_.set_image_webp_quality_for_save_data(30);
+  EXPECT_TRUE(options_.HasValidSaveDataQualities());
+  EXPECT_FALSE(options_.AllowVaryOnSaveData());
+  EXPECT_FALSE(options_.SupportSaveData());
+
+  // Explicitly allow vary on "Save-Data".
+  EXPECT_EQ(RewriteOptions::kOptionOk,
+            options_.SetOptionFromName(RewriteOptions::kAllowVaryOn,
+                                       "Save-Data"));
+  EXPECT_TRUE(options_.HasValidSaveDataQualities());
+  EXPECT_TRUE(options_.AllowVaryOnSaveData());
+  EXPECT_TRUE(options_.SupportSaveData());
+
+  options_.set_image_jpeg_quality_for_save_data(-1);
+  options_.set_image_webp_quality_for_save_data(-1);
+  EXPECT_FALSE(options_.HasValidSaveDataQualities());
+  EXPECT_TRUE(options_.AllowVaryOnSaveData());
+  EXPECT_FALSE(options_.SupportSaveData());
+}
+
 }  // namespace net_instaweb

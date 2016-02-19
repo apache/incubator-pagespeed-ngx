@@ -568,6 +568,13 @@ class RewriteOptions {
     return ToString(allow_vary_on_.value());
   }
 
+  // Returns true if PageSpeed responds differently for image requests with
+  // Save-Data header, i.e., using a unique quality and adding
+  // "Vary: Save-Data" header.
+  bool SupportSaveData() const {
+    return (HasValidSaveDataQualities() && AllowVaryOnSaveData());
+  }
+
   void set_allow_vary_on(const AllowVaryOn& x) {
     set_option(x, &allow_vary_on_);
   }
