@@ -542,7 +542,7 @@ char32 Parser::ParseEscape() {
     }
     if (end_ - in_ >= 2 && memcmp(in_, "\r\n", 2) == 0)
       in_ += 2;
-    else if (IsSpace(*in_))
+    else if (in_ < end_ && IsSpace(*in_))
       in_++;
   }
 
