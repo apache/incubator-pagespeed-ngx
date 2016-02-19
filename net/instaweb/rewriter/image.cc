@@ -351,8 +351,7 @@ Image::Image(const StringPiece& original_contents)
       original_contents_(original_contents),
       output_contents_(),
       output_valid_(false),
-      rewrite_attempted_(false),
-      minimal_webp_support_(ResourceContext::LIBWEBP_NONE) { }
+      rewrite_attempted_(false) { }
 
 ImageImpl::ImageImpl(const StringPiece& original_contents,
                      const GoogleString& url,
@@ -828,10 +827,6 @@ bool ImageImpl::ComputeOutputContents() {
         break;
       case IMAGE_WEBP:
       case IMAGE_WEBP_LOSSLESS_OR_ALPHA:
-        minimal_webp_support_ =
-            (image_type_ == IMAGE_WEBP) ?
-            ResourceContext::LIBWEBP_LOSSY_ONLY :
-            ResourceContext::LIBWEBP_LOSSY_LOSSLESS_ALPHA;
         if (resized || options_->recompress_webp) {
           ok = MayConvert() &&
               ReduceWebpImageQuality(string_for_image,
@@ -846,7 +841,6 @@ bool ImageImpl::ComputeOutputContents() {
         ok = false;
         break;
       case IMAGE_JPEG:
-        minimal_webp_support_ = ResourceContext::LIBWEBP_LOSSY_ONLY;
         if (MayConvert() &&
             options_->convert_jpeg_to_webp &&
             (options_->preferred_webp != WEBP_NONE)) {
@@ -855,7 +849,6 @@ bool ImageImpl::ComputeOutputContents() {
           VLOG(1) << "Image conversion: " << ok << " jpeg->webp for " << url_;
           if (!ok) {
             // Image is not going to be webp-converted!
-            minimal_webp_support_ = ResourceContext::LIBWEBP_NONE;
             PS_LOG_INFO(handler_, "Failed to create webp!");
           }
         }
@@ -1048,7 +1041,6 @@ inline bool ImageImpl::ComputeOutputContentsFromGifOrPng(
     if (options_->preferred_webp == WEBP_ANIMATED &&
         options_->webp_animated_quality > 0) {
       output_type = IMAGE_WEBP_ANIMATED;
-      minimal_webp_support_ = ResourceContext::LIBWEBP_ANIMATED;
     }
     // else we can't recompress this image
   } else if (is_photo && options_->convert_png_to_jpeg &&
@@ -1057,7 +1049,6 @@ inline bool ImageImpl::ComputeOutputContentsFromGifOrPng(
     // Can be converted to lossy format.
     if (!has_transparency) {
       // No alpha; can be converted to WebP lossy or JPEG.
-      minimal_webp_support_ = ResourceContext::LIBWEBP_LOSSY_ONLY;
       if (options_->preferred_webp != WEBP_NONE &&
           options_->convert_jpeg_to_webp &&
           options_->webp_quality > 0) {
@@ -1085,9 +1076,6 @@ inline bool ImageImpl::ComputeOutputContentsFromGifOrPng(
 
   if (output_type == IMAGE_WEBP_ANIMATED) {
     ok = ConvertAnimatedGifToWebp(has_transparency);
-    if (!ok) {
-      minimal_webp_support_ = ResourceContext::LIBWEBP_NONE;
-    }
   } else {
     if (output_type == IMAGE_WEBP ||
         output_type == IMAGE_WEBP_LOSSLESS_OR_ALPHA) {
@@ -1098,8 +1086,6 @@ inline bool ImageImpl::ComputeOutputContentsFromGifOrPng(
       // TODO(huibao): Re-evaluate why we need to try a different format, if the
       // conversion to WebP failed.
       if (!ok) {
-        // We can't convert to webp at all, so register that fact.
-        minimal_webp_support_ = ResourceContext::LIBWEBP_NONE;
         // If the conversion to WebP failed, we will try converting the image to
         // jpeg or png.
         if (output_type == IMAGE_WEBP) {

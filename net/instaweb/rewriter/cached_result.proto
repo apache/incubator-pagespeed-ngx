@@ -83,7 +83,7 @@ message InputInfo {
   optional string input_content_hash = 7;
 
   // If true, no later filters should process the same input.
-  optional bool disable_further_processing = 8 [ default = false ];
+  optional bool disable_further_processing = 8;
 
   // To support invalidation by exact URL, we keep the URL in the metadata.
   // This bloats the size a bit, but enables fast invalidation.  Compressing
@@ -95,7 +95,7 @@ message InputInfo {
 // is a sequence of input URLs and a filter id. The input array
 // tells us which inputs are used to construct this output; it must be
 // interpreted using the URL-sequence that was used to form the key.
-// Next free tag: 25
+// Next free tag: 26
 message CachedResult {
   // Tags 1-7 are for internal use by output_resource.
 
@@ -115,7 +115,7 @@ message CachedResult {
   // cache are lost, and it's extremely easy to get it wrong. To catch
   // mistakes like that, we mark a CachedResult as 'frozen' upon save,
   // and DCHECK any modifications.
-  optional bool frozen = 5 [ default = false ];
+  optional bool frozen = 5;
 
   // If the URL is optimizable, this will contain the hash of the encoded
   // resource.
@@ -176,7 +176,7 @@ message CachedResult {
   // When this is true, the filter should canonicalize the url to the contents
   // of url and skip the default resource-based rendering (eg when we recognize
   // a JS library and canonicalize its URL).
-  optional bool canonicalize_url = 19 [ default = false ];
+  optional bool canonicalize_url = 19;
 
   // Stores the size of the rewritten resource.
   optional int64 size = 20;
@@ -185,18 +185,9 @@ message CachedResult {
   // HTML as comments if the debug filter is enabled.
   repeated string debug_message = 21;
 
-  // Indicate what level of webp support the given image would require if
-  // arbitrary webp conversion were enabled.  Note that if we attempt webp
-  // conversion unsuccessfully, this *could* (but need not) be WEBP_NONE.
-  // Otherwise it will be LIBWEBP_LOSSY_ONLY for photographic images lacking an
-  // alpha channel and LIBWEBP_LOSSY_LOSSLESS_ALPHA otherwise.  This can include
-  // assessments such as whether the image appears photographic or
-  // computer-generated, whether it actually uses its alpha channel, and
-  // (eventually) whether the image is animated.
-  // The conservative value of this field is LIBWEBP_LOSSY_ONLY, since this
-  // currently requries IPRO to add a Vary:Accept header to the optimized image.
   optional ResourceContext.LibWebpLevel
-    minimal_webp_support = 22 [ default = LIBWEBP_LOSSY_ONLY ];
+  deprecated_minimal_webp_support = 22
+      [ default = LIBWEBP_LOSSY_ONLY, deprecated = true ];
 
   // Information about any images indirectly included via this resource, or
   // its dependencies.
@@ -204,7 +195,10 @@ message CachedResult {
 
   // Does this CachedResult represent an InlineOutputResource?
   // If false, this represents a plain OutputResource instead.
-  optional bool is_inline_output_resource = 24 [ default = false ];
+  optional bool is_inline_output_resource = 24;
+
+  // Type of the optimized image. This is actually net_instaweb::ImageType.
+  optional int32 optimized_image_type = 25;
 }
 
 // Contains the mapping of input URLs to output URLs.  In the general
@@ -234,12 +228,12 @@ message OutputPartitions {
 
 // Encapsulates all the data needed to rewrite a resource.  Any filter needing
 // additional information should add it as optional fields here.
-//   Next free tag: 8
+//   Next free tag: 9
 message ResourceContext {
   optional ImageDim desired_image_dims = 1;
-  optional bool attempt_webp = 2 [ default = false, deprecated = true ];
+  optional bool attempt_webp = 2 [ deprecated = true ];
   optional bool inline_images = 3 [ default = true ];
-  optional bool mobile_user_agent = 4 [ default = false ];
+  optional bool mobile_user_agent = 4;
 
   enum LibWebpLevel {
     LIBWEBP_NONE = 0;
@@ -247,8 +241,15 @@ message ResourceContext {
     LIBWEBP_LOSSY_LOSSLESS_ALPHA = 2;
     LIBWEBP_ANIMATED = 3;
   }
-
   optional LibWebpLevel libwebp_level = 5 [default = LIBWEBP_NONE];
+
   optional ImageDim user_agent_screen_resolution = 6 [deprecated = true];
-  optional bool use_small_screen_quality = 7 [default = false];
+
+  // Set to true if we may use the image qualities set for small screen.
+  optional bool may_use_small_screen_quality = 7;
+
+  // Set to true if we may use the image qualities set for save-data. The
+  // request must have "Save-Data: on" header to make this true. If true,
+  // we'll add a unique identifier to the cache key.
+  optional bool may_use_save_data_quality = 8;
 }

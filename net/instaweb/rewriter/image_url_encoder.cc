@@ -39,7 +39,7 @@ const char kCodeWebpLossyLosslessAlpha = 'v';  // for decoding legacy URLs.
 const char kCodeMobileUserAgent = 'm';         // for decoding legacy URLs.
 const char kMissingDimension = 'N';
 
-// Constants for UserAgent cache key enteries.
+// Constants for UserAgent cache key entries.
 const char kWebpLossyUserAgentKey[] = "w";
 const char kWebpLossyLossLessAlphaUserAgentKey[] = "v";
 const char kWebpAnimatedUserAgentKey[] = "a";
@@ -47,6 +47,7 @@ const char kWebpAnimatedUserAgentKey[] = "a";
 // at one point, so this is now here to force a flush.
 const char kWebpNoneUserAgentKey[] = ".";
 const char kMobileUserAgentKey[] = "m";
+const char kSaveDataKey[] = "d";
 const char kSmallScreenKey[] = "ss";
 
 bool IsValidCode(char code) {
@@ -302,10 +303,18 @@ void ImageUrlEncoder::SetSmallScreen(const RewriteDriver& driver,
     ResourceContext* context) {
   // We used to do checking based on screen resolution, but we actually care
   // about is physically small screens even if they're high-density.
-  context->set_use_small_screen_quality(
+  context->set_may_use_small_screen_quality(
+      driver.options()->HasValidSmallScreenQualities() &&
       driver.request_properties()->IsMobile());
 }
 
+// Each image in lossless format may have up to 2 optimized versions
+// (2 formats: Webp and GIF/PNG), while each image in lossy format may have up
+// to 6 optimized versions (2 formats: WebP and JPEG; 3 qualities: Save-Data
+// quality, mobile quality, and regular quality).
+//
+// mobile_user_agent, if applies, doubles the optimized versions. However,
+// this flag is usually not effective.
 GoogleString ImageUrlEncoder::CacheKeyFromResourceContext(
     const ResourceContext& resource_context) {
   GoogleString user_agent_cache_key = "";
@@ -326,11 +335,31 @@ GoogleString ImageUrlEncoder::CacheKeyFromResourceContext(
   if (resource_context.mobile_user_agent()) {
     StrAppend(&user_agent_cache_key, kMobileUserAgentKey);
   }
-  if (resource_context.has_use_small_screen_quality() &&
-      resource_context.use_small_screen_quality()) {
+
+  // If the image will be compressed to a quality different than the regular
+  // one, add a key to cache. The quality for Save-Data has higher precedence
+  // than that for mobile, so does the key.
+  if (resource_context.may_use_save_data_quality()) {
+    StrAppend(&user_agent_cache_key, kSaveDataKey);
+  } else if (resource_context.may_use_small_screen_quality()) {
     StrAppend(&user_agent_cache_key, kSmallScreenKey);
   }
+
   return user_agent_cache_key;
+}
+
+bool ImageUrlEncoder::AllowVaryOnUserAgent(
+    const RewriteOptions& options,
+    const RequestProperties& request_properties) {
+  return (options.AllowVaryOnUserAgent() ||
+          (options.AllowVaryOnAuto() && !request_properties.HasViaHeader()));
+}
+
+bool ImageUrlEncoder::AllowVaryOnAccept(
+    const RewriteOptions& options,
+    const RequestProperties& request_properties) {
+  return (options.AllowVaryOnAccept() ||
+          (options.AllowVaryOnAuto() && request_properties.HasViaHeader()));
 }
 
 }  // namespace net_instaweb

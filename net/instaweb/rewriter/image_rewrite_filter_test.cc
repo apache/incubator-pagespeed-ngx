@@ -87,6 +87,7 @@ using ::testing::HasSubstr;
 namespace {
 
 // Filenames of resource files.
+const char kAnimationGifFile[] = "PageSpeedAnimationSmall.gif";
 const char kBikePngFile[] = "BikeCrashIcn.png";  // photo; no alpha
 const char kChromium24[] = "chromium-24.webp";
 const char kChefGifFile[] = "IronChef2.gif";     // photo; no alpha
@@ -129,6 +130,262 @@ const char kMessagePatternRecompressing[] = "*Recompressing image*";
 const char kMessagePatternResizedImage[] = "*Resized image*";
 const char kMessagePatternShrinkingImage[] = "*Shrinking image*";
 const char kMessagePatternWebpTimeOut[] = "*WebP conversion timed out*";
+
+struct OptimizedImageInfo {
+  const ContentType* content_type;
+  const char* vary_header;
+  int content_length;
+};
+
+struct OptimizedImageInfoList {
+  const struct OptimizedImageInfo with_via;
+  const struct OptimizedImageInfo with_none;
+  const struct OptimizedImageInfo with_savedata_via;
+  const struct OptimizedImageInfo with_savedata;
+};
+
+struct OptimizedImageInfoListInputs {
+  const char* user_agent;
+  const char* image_name;
+  const OptimizedImageInfoList* optimized_info;
+};
+
+const OptimizedImageInfoList kPuzzleOptimizedForWebpUa = {
+  // [Save-Data: no, Via: yes]: Convert to WebP desktop quality.
+  {&kContentTypeWebp, "Accept,Save-Data", 33108},
+  // [Save-Data: no, Via: no]: Convert to WebP mobile quality.
+  {&kContentTypeWebp, "User-Agent,Save-Data", 25774},
+  // [Save-Data: yes, Via: yes]: Convert to WebP Save-Data quality.
+  {&kContentTypeWebp, "Accept,Save-Data", 19124},
+  // [Save-Data: yes, Via: no]: Convert to WebP Save-Data quality.
+  {&kContentTypeWebp, "User-Agent,Save-Data", 19124},
+};
+
+const OptimizedImageInfoList kPuzzleOptimizedForSafariUa = {
+  // [Save-Data: no, Via: yes]: Convert to JPEG desktop quality.
+  {&kContentTypeJpeg, "Accept,Save-Data", 73096},
+  // [Save-Data: no, Via: no]: Convert to JPEG mobile quality.
+  {&kContentTypeJpeg, "User-Agent,Save-Data", 51452},
+  // [Save-Data: yes, Via: yes]: Convert to JPEG Save-Data quality.
+  {&kContentTypeJpeg, "Accept,Save-Data", 38944},
+  // [Save-Data: yes, Via: no]: Convert to JPEG Save-Data quality.
+  {&kContentTypeJpeg, "User-Agent,Save-Data", 38944},
+};
+
+const OptimizedImageInfoList kPuzzleOptimizedForDesktopUa = {
+  // [Save-Data: no, Via: yes]: Convert to JPEG desktop quality.
+  {&kContentTypeJpeg, "Accept,Save-Data", 73096},
+  // [Save-Data: no, Via: no]: Convert to JPEG desktop quality.
+  {&kContentTypeJpeg, "User-Agent,Save-Data", 73096},
+  // [Save-Data: yes, Via: yes]: Convert to JPEG Save-Data quality.
+  {&kContentTypeJpeg, "Accept,Save-Data", 38944},
+  // [Save-Data: yes, Via: no]: Convert to JPEG Save-Data quality.
+  {&kContentTypeJpeg, "User-Agent,Save-Data", 38944},
+};
+
+const OptimizedImageInfoList kBikeOptimizedForWebpUa = {
+  // [Save-Data: no, Via: yes]: Convert to WebP desktop quality.
+  {&kContentTypeWebp, "Accept,Save-Data", 2454},
+  // [Save-Data: no, Via: no]: Convert to WebP mobile quality.
+  {&kContentTypeWebp, "User-Agent,Save-Data", 2014},
+  // [Save-Data: yes, Via: yes]: Convert to WebP Save-Data quality.
+  {&kContentTypeWebp, "Accept,Save-Data", 1476},
+  // [Save-Data: yes, Via: no]: Convert to WebP Save-Data quality.
+  {&kContentTypeWebp, "User-Agent,Save-Data", 1476},
+};
+
+const OptimizedImageInfoList kBikeOptimizedForSafariUa = {
+  // [Save-Data: no, Via: yes]: Convert to JPEG desktop quality.
+  {&kContentTypeJpeg, "Accept,Save-Data", 3536},
+  // [Save-Data: no, Via: no]: Convert to JPEG mobile quality.
+  {&kContentTypeJpeg, "User-Agent,Save-Data", 2606},
+  // [Save-Data: yes, Via: yes]: Convert to JPEG Save-Data quality.
+  {&kContentTypeJpeg, "Accept,Save-Data", 2069},
+  // [Save-Data: yes, Via: no]: Convert to JPEG Save-Data quality.
+  {&kContentTypeJpeg, "User-Agent,Save-Data", 2069},
+};
+
+const OptimizedImageInfoList kBikeOptimizedForDesktopUa = {
+  // [Save-Data: no, Via: yes]: Convert to JPEG desktop quality.
+  {&kContentTypeJpeg, "Accept,Save-Data", 3536},
+  // [Save-Data: no, Via: no]: Convert to JPEG desktop quality.
+  {&kContentTypeJpeg, "User-Agent,Save-Data", 3536},
+  // [Save-Data: yes, Via: yes]: Convert to JPEG Save-Data quality.
+  {&kContentTypeJpeg, "Accept,Save-Data", 2069},
+  // [Save-Data: yes, Via: no]: Convert to JPEG Save-Data quality.
+  {&kContentTypeJpeg, "User-Agent,Save-Data", 2069},
+};
+
+const OptimizedImageInfoList kCuppaOptimizedForWebpUa = {
+  // [Save-Data: no, Via: yes]: Convert to PNG.
+  {&kContentTypePng, nullptr, 770},
+  // [Save-Data: no, Via: no]: Convert to WebP lossless.
+  {&kContentTypeWebp, "User-Agent", 694},
+  // [Save-Data: yes, Via: yes]: Convert to PNG.
+  {&kContentTypePng, nullptr, 770},
+  // [Save-Data: yes, Via: no]: Convert to WebP lossless.
+  {&kContentTypeWebp, "User-Agent", 694},
+};
+
+const OptimizedImageInfoList kCuppaOptimizedForDesktopUa = {
+  // [Save-Data: no, Via: yes]: Convert to PNG.
+  {&kContentTypePng, nullptr, 770},
+  // [Save-Data: no, Via: no]: Convert to PNG.
+  {&kContentTypePng, "User-Agent", 770},
+  // [Save-Data: yes, Via: yes]: Convert to PNG.
+  {&kContentTypePng, nullptr, 770},
+  // [Save-Data: yes, Via: no]: Convert to PNG.
+  {&kContentTypePng, "User-Agent", 770},
+};
+
+const OptimizedImageInfoList kAnimationOptimizedForWebpUa = {
+  // [Save-Data: no, Via: yes]: Cannot optimize.
+  {&kContentTypeGif, nullptr, 26251},
+  // [Save-Data: no, Via: no]: Convert to WebP desktop/mobile quality.
+  {&kContentTypeWebp, "User-Agent,Save-Data", 7232},
+  // [Save-Data: yes, Via: yes]: Cannot optimize.
+  {&kContentTypeGif, nullptr, 26251},
+  // [Save-Data: yes, Via: no]: Convert to WebP Save-Data quality.
+  {&kContentTypeWebp, "User-Agent,Save-Data", 4312},
+};
+
+const OptimizedImageInfoList kAnimationOptimizedForDesktopUa = {
+  // [Save-Data: no, Via: yes]: Cannot optimize.
+  {&kContentTypeGif, nullptr, 26251},
+  // [Save-Data: no, Via: no]: Cannot optimize.
+  {&kContentTypeGif, nullptr, 26251},
+  // [Save-Data: yes, Via: yes]: Cannot optimize.
+  {&kContentTypeGif, nullptr, 26251},
+  // [Save-Data: yes, Via: no]: Cannot optimize.
+  {&kContentTypeGif, nullptr, 26251},
+};
+
+const OptimizedImageInfoListInputs kOptimizedImageInfoList[] {
+  // JPEG image, optimized for Chrome on Android.
+  {UserAgentMatcherTestBase::kNexus6Chrome44UserAgent, kPuzzleJpgFile,
+   &kPuzzleOptimizedForWebpUa},
+  // JPEG image, optimized for Safari on iOS.
+  {UserAgentMatcherTestBase::kCriOS31UserAgent, kPuzzleJpgFile,
+   &kPuzzleOptimizedForSafariUa},
+  // JPEG image, optimized for Firefox on desktop.
+  {UserAgentMatcherTestBase::kFirefoxUserAgent, kPuzzleJpgFile,
+   &kPuzzleOptimizedForDesktopUa},
+  // Photographic PNG image, optimized for Chrome on Android.
+  {UserAgentMatcherTestBase::kNexus6Chrome44UserAgent, kBikePngFile,
+   &kBikeOptimizedForWebpUa},
+  // Photographic PNG image, optimized for Safari on iOS.
+  {UserAgentMatcherTestBase::kCriOS31UserAgent, kBikePngFile,
+   &kBikeOptimizedForSafariUa},
+  // Photographic PNG image, optimized for Firefox on desktop.
+  {UserAgentMatcherTestBase::kFirefoxUserAgent, kBikePngFile,
+   &kBikeOptimizedForDesktopUa},
+  // Non-photographic PNG image, optimized for Chrome on Android.
+  {UserAgentMatcherTestBase::kNexus6Chrome44UserAgent, kCuppaPngFile,
+   &kCuppaOptimizedForWebpUa},
+  // Non-photographic PNG image, optimized for Safari on iOS.
+  {UserAgentMatcherTestBase::kCriOS31UserAgent, kCuppaPngFile,
+   &kCuppaOptimizedForDesktopUa},
+  // Non-photographic PNG image, optimized for Firefox on desktop.
+  {UserAgentMatcherTestBase::kFirefoxUserAgent, kCuppaPngFile,
+   &kCuppaOptimizedForDesktopUa},
+  // Animated GIF image, optimized for Chrome on Android.
+  {UserAgentMatcherTestBase::kNexus6Chrome44UserAgent, kAnimationGifFile,
+   &kAnimationOptimizedForWebpUa},
+  // Animated GIF image, optimized for Safari on iOS.
+  {UserAgentMatcherTestBase::kCriOS31UserAgent, kAnimationGifFile,
+   &kAnimationOptimizedForDesktopUa},
+  // Animated GIF image, optimized for Firefox on desktop.
+  {UserAgentMatcherTestBase::kFirefoxUserAgent, kAnimationGifFile,
+   &kAnimationOptimizedForDesktopUa},
+};
+
+const OptimizedImageInfoList kPuzzleOptimizedForWebpUaAllowSaveDataAccept = {
+  // [Save-Data: no, Via: yes]: Convert to WebP desktop quality.
+  {&kContentTypeWebp, "Accept,Save-Data", 33108},
+  // [Save-Data: no, Via: no]: Convert to WebP desktop quality.
+  {&kContentTypeWebp, "Accept,Save-Data", 33108},
+  // [Save-Data: yes, Via: yes]: Convert to WebP Save-Data quality.
+  {&kContentTypeWebp, "Accept,Save-Data", 19124},
+  // [Save-Data: yes, Via: no]: Convert to WebP Save-Data quality.
+  {&kContentTypeWebp, "Accept,Save-Data", 19124},
+};
+
+const OptimizedImageInfoList kPuzzleOptimizedForWebpUaAllowUserAgent = {
+  // [Save-Data: no, Via: yes]: Convert to WebP mobile quality.
+  {&kContentTypeWebp, "User-Agent", 25774},
+  // [Save-Data: no, Via: no]: Convert to WebP mobile quality.
+  {&kContentTypeWebp, "User-Agent", 25774},
+  // [Save-Data: yes, Via: yes]: Convert to WebP mobile quality.
+  {&kContentTypeWebp, "User-Agent", 25774},
+  // [Save-Data: yes, Via: no]: Convert to WebP mobile quality.
+  {&kContentTypeWebp, "User-Agent", 25774},
+};
+
+const OptimizedImageInfoList kPuzzleOptimizedForWebpUaAllowAccept = {
+  // [Save-Data: no, Via: yes]: Convert to WebP desktop quality.
+  {&kContentTypeWebp, "Accept", 33108},
+  // [Save-Data: no, Via: no]: Convert to WebP desktop quality.
+  {&kContentTypeWebp, "Accept", 33108},
+  // [Save-Data: yes, Via: yes]: Convert to WebP desktop quality.
+  {&kContentTypeWebp, "Accept", 33108},
+  // [Save-Data: yes, Via: no]: Convert to WebP desktop quality.
+  {&kContentTypeWebp, "Accept", 33108},
+};
+
+const OptimizedImageInfoList kPuzzleOptimizedForWebpUaAllowSaveData = {
+  // [Save-Data: no, Via: yes]: Convert to JPEG desktop quality.
+  {&kContentTypeJpeg, "Save-Data", 73096},
+  // [Save-Data: no, Via: no]: Convert to JPEG desktop quality.
+  {&kContentTypeJpeg, "Save-Data", 73096},
+  // [Save-Data: yes, Via: yes]: Convert to JPEG Save-Data quality.
+  {&kContentTypeJpeg, "Save-Data", 38944},
+  // [Save-Data: yes, Via: no]: Convert to JPEG Save-Data quality.
+  {&kContentTypeJpeg, "Save-Data", 38944},
+};
+
+const OptimizedImageInfoList kPuzzleOptimizedForWebpUaAllowNone = {
+  // [Save-Data: no, Via: yes]: Convert to JPEG desktop quality.
+  {&kContentTypeJpeg, nullptr, 73096},
+  // [Save-Data: no, Via: no]: Convert to JPEG desktop quality.
+  {&kContentTypeJpeg, nullptr, 73096},
+  // [Save-Data: yes, Via: yes]: Convert to JPEG desktop quality.
+  {&kContentTypeJpeg, nullptr, 73096},
+  // [Save-Data: yes, Via: no]: Convert to JPEG desktop quality.
+  {&kContentTypeJpeg, nullptr, 73096},
+};
+
+const OptimizedImageInfoList kPuzzleOptimizedForWebpUaNoSaveDataQualities = {
+  // [Save-Data: no, Via: yes]: Convert to WebP desktop quality.
+  {&kContentTypeWebp, "Accept", 33108},
+  // [Save-Data: no, Via: no]: Convert to WebP mobile quality.
+  {&kContentTypeWebp, "User-Agent", 25774},
+  // [Save-Data: yes, Via: yes]: Convert to WebP desktop quality.
+  {&kContentTypeWebp, "Accept", 33108},
+  // [Save-Data: yes, Via: no]: Convert to WebP mobile quality.
+  {&kContentTypeWebp, "User-Agent", 25774},
+};
+
+const OptimizedImageInfoList kPuzzleOptimizedForWebpUaNoSmallScreenQualities = {
+  // [Save-Data: no, Via: yes]: Convert to WebP desktop quality.
+  {&kContentTypeWebp, "Accept,Save-Data", 33108},
+  // [Save-Data: no, Via: no]: Convert to WebP desktop quality.
+  {&kContentTypeWebp, "User-Agent,Save-Data", 33108},
+  // [Save-Data: yes, Via: yes]: Convert to WebP Save-Data quality.
+  {&kContentTypeWebp, "Accept,Save-Data", 19124},
+  // [Save-Data: yes, Via: no]: Convert to WebP Save-Data quality.
+  {&kContentTypeWebp, "User-Agent,Save-Data", 19124},
+};
+
+const OptimizedImageInfoList kPuzzleOptimizedForWebpUaNoSpecialQualities = {
+  // [Save-Data: no, Via: yes]: Convert to WebP desktop quality.
+  {&kContentTypeWebp, "Accept", 33108},
+  // [Save-Data: no, Via: no]: Convert to WebP desktop quality.
+  {&kContentTypeWebp, "User-Agent", 33108},
+  // [Save-Data: yes, Via: yes]: Convert to WebP desktop quality.
+  {&kContentTypeWebp, "Accept", 33108},
+  // [Save-Data: yes, Via: no]: Convert to WebP desktop quality.
+  {&kContentTypeWebp, "User-Agent", 33108},
+};
 
 // A callback for HTTP cache that stores body and string representation
 // of headers into given strings.
@@ -176,7 +433,7 @@ class TestRequestContext : public RequestContext {
  public:
   TestRequestContext(LoggingInfo* logging_info,
                      AbstractMutex* mutex)
-      : RequestContext(kDefaultHttpOptionsForTests, mutex, NULL),
+      : RequestContext(kDefaultHttpOptionsForTests, mutex, nullptr),
         logging_info_copy_(logging_info) {
   }
 
@@ -352,6 +609,63 @@ class ImageRewriteTest : public RewriteTestBase {
                       true /*expect_rewritten*/, expect_inline);
   }
 
+  void SetupIproTests(const char* allow_vary_on_string) {
+    EXPECT_TRUE(options()->EnableFiltersByCommaSeparatedList(
+        "recompress_images,convert_to_webp_lossless,convert_to_webp_animated,"
+        "convert_png_to_jpeg,in_place_optimize_for_browser",
+        message_handler()));
+
+    GoogleString puzzleUrl = StrCat(kTestDomain, kPuzzleJpgFile);
+    GoogleString bikeUrl   = StrCat(kTestDomain, kBikePngFile);
+    GoogleString cuppaUrl  = StrCat(kTestDomain, kCuppaPngFile);
+    GoogleString animationUrl  = StrCat(kTestDomain, kAnimationGifFile);
+    AddFileToMockFetcher(puzzleUrl, kPuzzleJpgFile, kContentTypeJpeg, 100);
+    AddFileToMockFetcher(bikeUrl, kBikePngFile, kContentTypePng, 100);
+    AddFileToMockFetcher(cuppaUrl, kCuppaPngFile, kContentTypePng, 100);
+    AddFileToMockFetcher(animationUrl, kAnimationGifFile, kContentTypeGif, 100);
+
+    UseMd5Hasher();
+    options()->set_image_preserve_urls(true);
+    options()->set_in_place_rewriting_enabled(true);
+    options()->set_in_place_wait_for_optimized(true);
+    options()->set_image_recompress_quality(90);
+    options()->set_image_jpeg_recompress_quality(75);
+    options()->set_image_jpeg_recompress_quality_for_small_screens(55);
+    options()->set_image_jpeg_quality_for_save_data(35);
+    options()->set_image_webp_recompress_quality(70);
+    options()->set_image_webp_recompress_quality_for_small_screens(50);
+    options()->set_image_webp_quality_for_save_data(30);
+
+    RewriteOptions::AllowVaryOn allow_vary_on;
+    EXPECT_TRUE(RewriteOptions::ParseFromString(allow_vary_on_string,
+                                                &allow_vary_on));
+    options()->set_allow_vary_on(allow_vary_on);
+  }
+
+  void IproFetchAndValidateWithHeaders(
+      const char* image_name, const char* user_agent,
+      const OptimizedImageInfoList& optimized_info_list) {
+    IproFetchAndValidate(image_name, user_agent,
+                         false /* save-data header */,
+                         true /* via header */,
+                         optimized_info_list.with_via);
+
+    IproFetchAndValidate(image_name, user_agent,
+                         false /* save-data header */,
+                         false /* via header */,
+                         optimized_info_list.with_none);
+
+    IproFetchAndValidate(image_name, user_agent,
+                         true /* save-data header */,
+                         true /* via header */,
+                         optimized_info_list.with_savedata_via);
+
+    IproFetchAndValidate(image_name, user_agent,
+                         true /* save-data header */,
+                         false /* via header */,
+                         optimized_info_list.with_savedata);
+  }
+
   // Helper class to collect image srcs.
   class ImageCollector : public EmptyHtmlFilter {
    public:
@@ -413,7 +727,7 @@ class ImageRewriteTest : public RewriteTestBase {
     ResourcePtr cuppa_resource(
         rewrite_driver()->CreateInputResourceAbsoluteUncheckedForTestsOnly(
             cuppa_string));
-    ASSERT_TRUE(cuppa_resource.get() != NULL);
+    ASSERT_TRUE(cuppa_resource.get() != nullptr);
     EXPECT_TRUE(ReadIfCached(cuppa_resource));
     GoogleString cuppa_contents;
     cuppa_resource->ExtractUncompressedContents().CopyToString(&cuppa_contents);
@@ -422,7 +736,7 @@ class ImageRewriteTest : public RewriteTestBase {
     ResourcePtr other_resource(
         rewrite_driver()->CreateInputResourceAbsoluteUncheckedForTestsOnly(
             cuppa_string));
-    ASSERT_TRUE(other_resource.get() != NULL);
+    ASSERT_TRUE(other_resource.get() != nullptr);
     cuppa_string.clear();
     EXPECT_TRUE(ReadIfCached(other_resource));
     GoogleString other_contents;
@@ -553,20 +867,20 @@ class ImageRewriteTest : public RewriteTestBase {
   }
 
   // Returns the property cache value for kInlinableImageUrlsPropertyName,
-  // or NULL if it is not present.
+  // or nullptr if it is not present.
   const PropertyValue* FetchInlinablePropertyCacheValue() {
     PropertyCache* pcache = page_property_cache();
-    if (pcache == NULL) {
-      return NULL;
+    if (pcache == nullptr) {
+      return nullptr;
     }
     const PropertyCache::Cohort* cohort = pcache->GetCohort(
         RewriteDriver::kDomCohort);
-    if (cohort == NULL) {
-      return NULL;
+    if (cohort == nullptr) {
+      return nullptr;
     }
     PropertyPage* property_page = rewrite_driver()->property_page();
-    if (property_page == NULL) {
-      return NULL;
+    if (property_page == nullptr) {
+      return nullptr;
     }
     return property_page->GetProperty(
         cohort, ImageRewriteFilter::kInlinableImageUrlsPropertyName);
@@ -877,7 +1191,62 @@ class ImageRewriteTest : public RewriteTestBase {
     response->Clear();
     EXPECT_TRUE(FetchResourceUrl(url, &content_ignored, response));
     const char* etag = response->Lookup1(HttpAttributes::kEtag);
-    EXPECT_STREQ("W/\"PSA-aj-0\"", etag);
+    EXPECT_EQ(0, GoogleString(etag).find("W/\"PSA-aj-")) << etag;
+  }
+
+  void IproFetchAndValidate(
+      const char* image_name, StringPiece user_agent, bool has_save_data_header,
+      bool has_via_header,
+      const OptimizedImageInfo& expected_optimized_image_info) {
+    GoogleString url = StrCat(kTestDomain, image_name);
+    const ContentType* expected_content_type =
+        expected_optimized_image_info.content_type;
+    const char* expected_vary_header =
+        expected_optimized_image_info.vary_header;
+    int expected_content_length = expected_optimized_image_info.content_length;
+
+    GoogleString response_content;
+    ResponseHeaders response_headers;
+    ClearRewriteDriver();
+    if (!user_agent.empty()) {
+      SetCurrentUserAgent(user_agent);
+    }
+    if (user_agent.find("Chrome/") != StringPiece::npos) {
+      AddRequestAttribute(HttpAttributes::kAccept, "image/webp");
+    }
+    if (has_save_data_header) {
+      AddRequestAttribute(HttpAttributes::kSaveData, "on");
+    }
+    if (has_via_header) {
+      AddRequestAttribute(HttpAttributes::kVia, "proxy");
+    }
+
+    EXPECT_TRUE(FetchResourceUrl(url, &response_content, &response_headers));
+
+    EXPECT_EQ(expected_content_type->type(),
+              response_headers.DetermineContentType()->type()) <<
+        response_headers.DetermineContentType()->mime_type();
+
+    if (expected_vary_header != nullptr) {
+      ConstStringStarVector vary_header_vector;
+      EXPECT_TRUE(response_headers.Lookup(HttpAttributes::kVary,
+                                          &vary_header_vector));
+      GoogleString vary_header = JoinStringStar(vary_header_vector, ",");
+      EXPECT_STREQ(expected_vary_header, vary_header);
+    } else {
+      EXPECT_FALSE(response_headers.Has(HttpAttributes::kVary));
+    }
+
+    // Because the image encoder may change behavior, content length of the
+    // optimized image may change value slightly. To be resistant to such
+    // change, we check the content size in a ragne, in stead of the exact
+    // value. The range is defined by variable "threshold".
+    const int threshold = 30;
+    int content_length = response_content.length();
+    EXPECT_LE(expected_content_length - threshold, content_length)
+        << content_length;
+    EXPECT_GE(expected_content_length + threshold, content_length)
+        << content_length;
   }
 
   void TestResolutionLimit(int resolution, const char* image_file,
@@ -898,7 +1267,7 @@ class ImageRewriteTest : public RewriteTestBase {
       }
     }
 
-    const char* dimension = NULL;
+    const char* dimension = nullptr;
     if (try_resize) {
       options()->EnableFilter(RewriteOptions::kResizeImages);
       dimension = " width=4000 height=2000";
@@ -2743,20 +3112,20 @@ TEST_F(ImageRewriteTest, JpegQualityForSmallScreens) {
       rewrite_driver()->CreateInputResourceAbsoluteUncheckedForTestsOnly(
           "data:image/png;base64,test"));
   scoped_ptr<Image::CompressionOptions> img_options(
-      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
+      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr));
 
   // Neither option is set explicitly, default is 70.
   EXPECT_EQ(70, img_options->jpeg_quality);
-  EXPECT_TRUE(ctx.has_use_small_screen_quality());
+  EXPECT_TRUE(ctx.may_use_small_screen_quality());
 
   // Base image quality is set, but for_small_screens is not, return base.
   options()->ClearSignatureForTesting();
   options()->set_image_jpeg_recompress_quality_for_small_screens(-1);
   image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
   img_options.reset(
-      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
+      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr));
   EXPECT_EQ(85, img_options->jpeg_quality);
-  EXPECT_TRUE(ctx.has_use_small_screen_quality());
+  EXPECT_TRUE(ctx.may_use_small_screen_quality());
 
   // Base jpeg quality not set, but for_small_screens is, return small_screen.
   options()->ClearSignatureForTesting();
@@ -2764,9 +3133,9 @@ TEST_F(ImageRewriteTest, JpegQualityForSmallScreens) {
   options()->set_image_jpeg_recompress_quality_for_small_screens(20);
   image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
   img_options.reset(
-      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
+      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr));
   EXPECT_EQ(20, img_options->jpeg_quality);
-  EXPECT_TRUE(ctx.has_use_small_screen_quality());
+  EXPECT_TRUE(ctx.may_use_small_screen_quality());
 
   // Neither jpeg quality is set, return -1.
   options()->ClearSignatureForTesting();
@@ -2774,9 +3143,9 @@ TEST_F(ImageRewriteTest, JpegQualityForSmallScreens) {
   options()->set_image_jpeg_recompress_quality_for_small_screens(-1);
   image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
   img_options.reset(
-      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
+      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr));
   EXPECT_EQ(-1, img_options->jpeg_quality);
-  EXPECT_TRUE(ctx.has_use_small_screen_quality());
+  EXPECT_TRUE(ctx.may_use_small_screen_quality());
 
   // Base and for_small_screen options are set; mobile
   options()->ClearSignatureForTesting();
@@ -2784,9 +3153,9 @@ TEST_F(ImageRewriteTest, JpegQualityForSmallScreens) {
   options()->set_image_jpeg_recompress_quality_for_small_screens(20);
   image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
   img_options.reset(
-      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
+      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr));
   EXPECT_EQ(20, img_options->jpeg_quality);
-  EXPECT_TRUE(ctx.has_use_small_screen_quality());
+  EXPECT_TRUE(ctx.may_use_small_screen_quality());
 
   // Non-mobile UA.
   ResetUserAgent("Mozilla/5.0 (Windows; U; Windows NT 5.1; "
@@ -2795,9 +3164,9 @@ TEST_F(ImageRewriteTest, JpegQualityForSmallScreens) {
   ctx.Clear();
   image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
   img_options.reset(
-      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
+      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr));
   EXPECT_EQ(85, img_options->jpeg_quality);
-  EXPECT_FALSE(ctx.use_small_screen_quality());
+  EXPECT_FALSE(ctx.may_use_small_screen_quality());
 
   // Mobile UA
   ResetUserAgent("iPhone OS Safari");
@@ -2805,20 +3174,21 @@ TEST_F(ImageRewriteTest, JpegQualityForSmallScreens) {
   options()->set_image_jpeg_recompress_quality_for_small_screens(70);
   image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
   img_options.reset(
-      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
+      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr));
   EXPECT_EQ(70, img_options->jpeg_quality);
-  EXPECT_TRUE(ctx.use_small_screen_quality());
+  EXPECT_TRUE(ctx.may_use_small_screen_quality());
 
-  // Min of small screen and desktop
+  // Although the regular (desktop) quality is smaller, it won't affect the
+  // quality used for mobile.
   ResetUserAgent("iPhone OS Safari");
   options()->ClearSignatureForTesting();
   options()->set_image_jpeg_recompress_quality_for_small_screens(70);
   options()->set_image_jpeg_recompress_quality(60);
   image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
   img_options.reset(
-      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
-  EXPECT_EQ(60, img_options->jpeg_quality);
-  EXPECT_TRUE(ctx.use_small_screen_quality());
+      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr));
+  EXPECT_EQ(70, img_options->jpeg_quality);
+  EXPECT_TRUE(ctx.may_use_small_screen_quality());
 }
 
 TEST_F(ImageRewriteTest, WebPQualityForSmallScreens) {
@@ -2832,11 +3202,11 @@ TEST_F(ImageRewriteTest, WebPQualityForSmallScreens) {
       rewrite_driver()->CreateInputResourceAbsoluteUncheckedForTestsOnly(
           "data:image/png;base64,test"));
   scoped_ptr<Image::CompressionOptions> img_options(
-      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
+      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr));
 
   // Neither option is set, default is 70.
   EXPECT_EQ(70, img_options->webp_quality);
-  EXPECT_TRUE(ctx.has_use_small_screen_quality());
+  EXPECT_TRUE(ctx.may_use_small_screen_quality());
 
   // Base webp quality set, but for_small_screens is not, return base quality.
   ctx.Clear();
@@ -2845,9 +3215,9 @@ TEST_F(ImageRewriteTest, WebPQualityForSmallScreens) {
   options()->set_image_webp_recompress_quality_for_small_screens(-1);
   image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
   img_options.reset(
-      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
+      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr));
   EXPECT_EQ(85, img_options->webp_quality);
-  EXPECT_TRUE(ctx.has_use_small_screen_quality());
+  EXPECT_TRUE(ctx.may_use_small_screen_quality());
 
   // Base webp quality not set, but for_small_screens is, return small_screen.
   options()->ClearSignatureForTesting();
@@ -2856,9 +3226,9 @@ TEST_F(ImageRewriteTest, WebPQualityForSmallScreens) {
   options()->set_image_webp_recompress_quality_for_small_screens(20);
   image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
   img_options.reset(
-      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
+      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr));
   EXPECT_EQ(20, img_options->webp_quality);
-  EXPECT_TRUE(ctx.has_use_small_screen_quality());
+  EXPECT_TRUE(ctx.may_use_small_screen_quality());
 
   // Base and for_small_screen options are set; mobile
   options()->ClearSignatureForTesting();
@@ -2866,9 +3236,9 @@ TEST_F(ImageRewriteTest, WebPQualityForSmallScreens) {
   options()->set_image_webp_recompress_quality_for_small_screens(20);
   image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
   img_options.reset(
-      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
+      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr));
   EXPECT_EQ(20, img_options->webp_quality);
-  EXPECT_TRUE(ctx.has_use_small_screen_quality());
+  EXPECT_TRUE(ctx.may_use_small_screen_quality());
 
   // Non-mobile UA.
   ResetUserAgent("Mozilla/5.0 (Windows; U; Windows NT 5.1; "
@@ -2877,9 +3247,9 @@ TEST_F(ImageRewriteTest, WebPQualityForSmallScreens) {
   ctx.Clear();
   image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
   img_options.reset(
-      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
+      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr));
   EXPECT_EQ(85, img_options->webp_quality);
-  EXPECT_FALSE(ctx.use_small_screen_quality());
+  EXPECT_FALSE(ctx.may_use_small_screen_quality());
 
   // Mobile UA
   ResetUserAgent("iPhone OS Safari");
@@ -2888,11 +3258,12 @@ TEST_F(ImageRewriteTest, WebPQualityForSmallScreens) {
   options()->set_image_webp_recompress_quality_for_small_screens(70);
   image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
   img_options.reset(
-      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
+      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr));
   EXPECT_EQ(70, img_options->webp_quality);
-  EXPECT_TRUE(ctx.use_small_screen_quality());
+  EXPECT_TRUE(ctx.may_use_small_screen_quality());
 
-  // Min of desktop and mobile quality
+  // Although the regular (desktop) quality is smaller, it won't affect the
+  // quality used for mobile.
   ResetUserAgent("iPhone OS Safari");
   ctx.Clear();
   options()->ClearSignatureForTesting();
@@ -2900,9 +3271,9 @@ TEST_F(ImageRewriteTest, WebPQualityForSmallScreens) {
   options()->set_image_webp_recompress_quality(55);
   image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
   img_options.reset(
-      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
-  EXPECT_EQ(55, img_options->webp_quality);
-  EXPECT_TRUE(ctx.use_small_screen_quality());
+      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr));
+  EXPECT_EQ(70, img_options->webp_quality);
+  EXPECT_TRUE(ctx.may_use_small_screen_quality());
 }
 
 void SetNumberOfScans(int num_scans, int num_scans_small_screen,
@@ -2928,7 +3299,7 @@ void SetNumberOfScans(int num_scans, int num_scans_small_screen,
   image_rewrite_filter->EncodeUserAgentIntoResourceContext(ctx);
   img_options->reset(
       image_rewrite_filter->ImageOptionsForLoadedResource(
-          *ctx, res_ptr, false));
+          *ctx, res_ptr));
 }
 
 TEST_F(ImageRewriteTest, JpegProgressiveScansForSmallScreens) {
@@ -2943,30 +3314,30 @@ TEST_F(ImageRewriteTest, JpegProgressiveScansForSmallScreens) {
       rewrite_driver()->CreateInputResourceAbsoluteUncheckedForTestsOnly(
           "data:image/png;base64,test"));
   scoped_ptr<Image::CompressionOptions> img_options(
-      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
+      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr));
 
   // Neither option is set, default is -1.
   EXPECT_EQ(-1, img_options->jpeg_num_progressive_scans);
-  EXPECT_TRUE(ctx.has_use_small_screen_quality());
+  EXPECT_TRUE(ctx.may_use_small_screen_quality());
 
   // Base jpeg num scans set, but for_small_screens is not, return
   // base num scans.
   SetNumberOfScans(8, -1, res_ptr, options(), rewrite_driver(),
                    &image_rewrite_filter, &ctx, &img_options);
   EXPECT_EQ(8, img_options->jpeg_num_progressive_scans);
-  EXPECT_TRUE(ctx.has_use_small_screen_quality());
+  EXPECT_TRUE(ctx.may_use_small_screen_quality());
 
   // Base jpeg quality not set, but for_small_screens is, return small_screen.
   SetNumberOfScans(DO_NOT_SET, 2, res_ptr, options(), rewrite_driver(),
                    &image_rewrite_filter, &ctx, &img_options);
   EXPECT_EQ(2, img_options->jpeg_num_progressive_scans);
-  EXPECT_TRUE(ctx.has_use_small_screen_quality());
+  EXPECT_TRUE(ctx.may_use_small_screen_quality());
 
   // Base and for_small_screen options are set; mobile.
   SetNumberOfScans(8, 2, res_ptr, options(), rewrite_driver(),
                    &image_rewrite_filter, &ctx, &img_options);
   EXPECT_EQ(2, img_options->jpeg_num_progressive_scans);
-  EXPECT_TRUE(ctx.has_use_small_screen_quality());
+  EXPECT_TRUE(ctx.may_use_small_screen_quality());
 
   // Non-mobile UA.
   ResetUserAgent("Mozilla/5.0 (Windows; U; Windows NT 5.1; "
@@ -2975,21 +3346,22 @@ TEST_F(ImageRewriteTest, JpegProgressiveScansForSmallScreens) {
   SetNumberOfScans(DO_NOT_SET, DO_NOT_SET, res_ptr, options(), rewrite_driver(),
                    &image_rewrite_filter, &ctx, &img_options);
   EXPECT_EQ(8, img_options->jpeg_num_progressive_scans);
-  EXPECT_FALSE(ctx.use_small_screen_quality());
+  EXPECT_FALSE(ctx.may_use_small_screen_quality());
 
   // Mobile UA
   ResetUserAgent("iPhone OS Safari");
   SetNumberOfScans(DO_NOT_SET, 2, res_ptr, options(), rewrite_driver(),
                    &image_rewrite_filter, &ctx, &img_options);
   EXPECT_EQ(2, img_options->jpeg_num_progressive_scans);
-  EXPECT_TRUE(ctx.use_small_screen_quality());
+  EXPECT_TRUE(ctx.may_use_small_screen_quality());
 
-  // Mobile UA - use min of default and small screen values
+  // Although the regular (desktop) number of scans is smaller, it won't affect
+  // that used for mobile.
   ResetUserAgent("iPhone OS Safari");
   SetNumberOfScans(2, 8, res_ptr, options(), rewrite_driver(),
                    &image_rewrite_filter, &ctx, &img_options);
-  EXPECT_EQ(2, img_options->jpeg_num_progressive_scans);
-  EXPECT_TRUE(ctx.has_use_small_screen_quality());
+  EXPECT_EQ(8, img_options->jpeg_num_progressive_scans);
+  EXPECT_TRUE(ctx.may_use_small_screen_quality());
 }
 
 TEST_F(ImageRewriteTest, ProgressiveJpegThresholds) {
@@ -3129,7 +3501,7 @@ TEST_F(ImageRewriteTest, RewriteImagesAddingOptionsToUrl) {
   other_opts->set_add_options_to_urls(true);
   other_server_context()->ComputeSignature(other_opts);
   ASSERT_TRUE(BlockingFetch(img_src, &remote_content,
-                            other_server_context(), NULL));
+                            other_server_context(), nullptr));
   ASSERT_EQ(golden_content.size(), remote_content.size());
   EXPECT_EQ(golden_content, remote_content);  // don't bother if sizes differ...
   */
@@ -3367,20 +3739,11 @@ TEST_F(ImageRewriteTest, IproCorrectVaryHeaders) {
   // Here we're particularly looking for some issues that the ipro-specific
   // testing doesn't catch because it uses a fake version of the image rewrite
   // filter.
-  options()->set_image_preserve_urls(true);
-  options()->set_in_place_rewriting_enabled(true);
-  options()->set_in_place_wait_for_optimized(true);
-  EXPECT_TRUE(options()->EnableFiltersByCommaSeparatedList(
-      "rewrite_images,convert_jpeg_to_webp,convert_to_webp_lossless,"
-      "convert_png_to_jpeg,in_place_optimize_for_browser", message_handler()));
+  SetupIproTests("Accept");
   rewrite_driver()->AddFilters();
-
   GoogleString puzzleUrl = StrCat(kTestDomain, kPuzzleJpgFile);
-  GoogleString bikeUrl   = StrCat(kTestDomain, kBikePngFile);
-  GoogleString cuppaUrl  = StrCat(kTestDomain, kCuppaPngFile);
-  AddFileToMockFetcher(puzzleUrl, kPuzzleJpgFile, kContentTypeJpeg, 100);
-  AddFileToMockFetcher(bikeUrl, kBikePngFile, kContentTypePng, 100);
-  AddFileToMockFetcher(cuppaUrl, kCuppaPngFile, kContentTypePng, 100);
+  GoogleString bikeUrl = StrCat(kTestDomain, kBikePngFile);
+  GoogleString cuppaUrl = StrCat(kTestDomain, kCuppaPngFile);
   ResponseHeaders response_headers;
 
   // We test 3 kinds of image (photo, photographic png, non-photographic png)
@@ -3818,6 +4181,178 @@ TEST_F(ImageRewriteTest, AnimatedNoCacheReuse) {
   // Not a WebP browser -- don't!
   SetCurrentUserAgent("curl");
   ValidateNoChanges("non-webp broswer", "<img src=a.jpeg>");
+}
+
+// Make sure that we optimize images to the correct format and correct quality,
+// and add the correct "Vary" response header.
+//
+// Test 4 images:
+//   - JPEG (optimized to lossy format)
+//   - PNG image with photographic content (optimized to lossy format)
+//   - PNG image with non-photographic content (optimized to lossless format)
+//   - Animated GIF (optimized to animated WebP)
+//
+// Use 3 user-agents:
+//   - Chrome on Android (mobile and supports all formats, including WebP)
+//   - Safari on iOS (mobile but doesn't support WebP)
+//   - Firefox (neither mobile nor supports WebP)
+//
+// Check 2 headers:
+//   - Save-Data header
+//   - Via header
+//
+// To make sure that we don't have cache collision, each image is fetched twice,
+// with other image fetching in between.
+TEST_F(ImageRewriteTest, IproAllowAuto) {
+  if (RunningOnValgrind()) {
+    return;
+  }
+
+  SetupIproTests("Auto");
+  rewrite_driver()->AddFilters();
+
+  // Fetch each image twice, to make sure no cache collision.
+  for (int i = 0; i < 2; ++i) {
+    // Test the combination of 4 images and 3 user-agents.
+    for (int j = 0; j < 12; ++j) {
+      const char* image_name = kOptimizedImageInfoList[j].image_name;
+      const char* user_agent = kOptimizedImageInfoList[j].user_agent;
+      const OptimizedImageInfoList& optimized_info =
+          *kOptimizedImageInfoList[j].optimized_info;
+      // Test the combination of 2 headers (each header can be on or off).
+      IproFetchAndValidateWithHeaders(image_name, user_agent, optimized_info);
+    }
+  }
+}
+
+// Test when we can vary on "Accept,Save-Data".
+TEST_F(ImageRewriteTest, IproAllowSaveDataAccept) {
+  if (RunningOnValgrind()) {
+    return;
+  }
+
+  SetupIproTests("Accept,Save-Data");
+  rewrite_driver()->AddFilters();
+  IproFetchAndValidateWithHeaders(
+      kPuzzleJpgFile, UserAgentMatcherTestBase::kNexus6Chrome44UserAgent,
+      kPuzzleOptimizedForWebpUaAllowSaveDataAccept);
+}
+
+// Test when we can vary on "User-Agent".
+TEST_F(ImageRewriteTest, IproAllowUserAgent) {
+  if (RunningOnValgrind()) {
+    return;
+  }
+
+  SetupIproTests("User-Agent");
+  rewrite_driver()->AddFilters();
+  IproFetchAndValidateWithHeaders(
+      kPuzzleJpgFile, UserAgentMatcherTestBase::kNexus6Chrome44UserAgent,
+      kPuzzleOptimizedForWebpUaAllowUserAgent);
+}
+
+// Test when we can vary on "Accept".
+TEST_F(ImageRewriteTest, IproAllowAccept) {
+  if (RunningOnValgrind()) {
+    return;
+  }
+
+  SetupIproTests("Accept");
+  rewrite_driver()->AddFilters();
+  IproFetchAndValidateWithHeaders(
+      kPuzzleJpgFile, UserAgentMatcherTestBase::kNexus6Chrome44UserAgent,
+      kPuzzleOptimizedForWebpUaAllowAccept);
+}
+
+// Test when we can vary on "Save-Data".
+TEST_F(ImageRewriteTest, IproAllowSaveData) {
+  if (RunningOnValgrind()) {
+    return;
+  }
+
+  SetupIproTests("Save-Data");
+  rewrite_driver()->AddFilters();
+  IproFetchAndValidateWithHeaders(
+      kPuzzleJpgFile, UserAgentMatcherTestBase::kNexus6Chrome44UserAgent,
+      kPuzzleOptimizedForWebpUaAllowSaveData);
+}
+
+// Test when we cannot vary on anything.
+TEST_F(ImageRewriteTest, IproAllowNone) {
+  if (RunningOnValgrind()) {
+    return;
+  }
+
+  SetupIproTests("None");
+  rewrite_driver()->AddFilters();
+  IproFetchAndValidateWithHeaders(
+      kPuzzleJpgFile, UserAgentMatcherTestBase::kNexus6Chrome44UserAgent,
+      kPuzzleOptimizedForWebpUaAllowNone);
+}
+
+// Test when the qualities for Save-Data are undefined.
+TEST_F(ImageRewriteTest, IproAllowAutoNoSaveDataQualities) {
+  if (RunningOnValgrind()) {
+    return;
+  }
+
+  SetupIproTests("Auto");
+  options()->set_image_jpeg_quality_for_save_data(-1);
+  options()->set_image_webp_quality_for_save_data(-1);
+  rewrite_driver()->AddFilters();
+  IproFetchAndValidateWithHeaders(
+      kPuzzleJpgFile, UserAgentMatcherTestBase::kNexus6Chrome44UserAgent,
+      kPuzzleOptimizedForWebpUaNoSaveDataQualities);
+}
+
+// Test when the qualities for Save-Data are the same as the regular ones.
+TEST_F(ImageRewriteTest, IproAllowAutoUnusedSaveDataQualities) {
+  if (RunningOnValgrind()) {
+    return;
+  }
+
+  SetupIproTests("Auto");
+  options()->set_image_jpeg_quality_for_save_data(
+    options()->ImageJpegQuality());
+  options()->set_image_webp_quality_for_save_data(
+    options()->ImageWebpQuality());
+  rewrite_driver()->AddFilters();
+  IproFetchAndValidateWithHeaders(
+      kPuzzleJpgFile, UserAgentMatcherTestBase::kNexus6Chrome44UserAgent,
+      kPuzzleOptimizedForWebpUaNoSaveDataQualities);
+}
+
+// Test when the qualities for small screen are undefined.
+TEST_F(ImageRewriteTest, IproAllowAutoNoSmallScreenQualities) {
+  if (RunningOnValgrind()) {
+    return;
+  }
+
+  SetupIproTests("Auto");
+  options()->set_image_jpeg_recompress_quality_for_small_screens(-1);
+  options()->set_image_webp_recompress_quality_for_small_screens(-1);
+  rewrite_driver()->AddFilters();
+  IproFetchAndValidateWithHeaders(
+      kPuzzleJpgFile, UserAgentMatcherTestBase::kNexus6Chrome44UserAgent,
+      kPuzzleOptimizedForWebpUaNoSmallScreenQualities);
+}
+
+// Test when neither the qualities for Save-Data nor those for small screens
+// are undefined.
+TEST_F(ImageRewriteTest, IproAllowAutoNoSmallScreenSaveDataQualities) {
+  if (RunningOnValgrind()) {
+    return;
+  }
+
+  SetupIproTests("Auto");
+  options()->set_image_jpeg_quality_for_save_data(-1);
+  options()->set_image_webp_quality_for_save_data(-1);
+  options()->set_image_jpeg_recompress_quality_for_small_screens(-1);
+  options()->set_image_webp_recompress_quality_for_small_screens(-1);
+  rewrite_driver()->AddFilters();
+  IproFetchAndValidateWithHeaders(
+      kPuzzleJpgFile, UserAgentMatcherTestBase::kNexus6Chrome44UserAgent,
+      kPuzzleOptimizedForWebpUaNoSpecialQualities);
 }
 
 }  // namespace net_instaweb

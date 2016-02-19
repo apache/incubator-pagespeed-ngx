@@ -199,8 +199,7 @@ class ImageRewriteFilter : public RewriteFilter {
   // Allocate and initialize CompressionOptions object based on RewriteOptions
   // and ResourceContext.
   Image::CompressionOptions* ImageOptionsForLoadedResource(
-      const ResourceContext& context, const ResourcePtr& input_resource,
-      bool is_css);
+      const ResourceContext& context, const ResourcePtr& input_resource);
 
   virtual const RewriteOptions::Filter* RelatedFilters(int* num_filters) const;
   virtual const StringPieceVector* RelatedOptions() const {

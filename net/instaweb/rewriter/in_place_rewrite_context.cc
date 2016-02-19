@@ -43,6 +43,7 @@
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/http/http_names.h"
+#include "pagespeed/kernel/http/image_types.pb.h"
 #include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/response_headers.h"
 #include "pagespeed/kernel/http/user_agent_matcher.h"
@@ -312,9 +313,9 @@ void InPlaceRewriteContext::Harvest() {
       CHECK(nested_partition != NULL);
       // TODO(jmaessen): Does any more state need to find its way into the
       // enclosing CachedResult from the nested one?
-      if (nested_partition->has_minimal_webp_support()) {
-        partition->set_minimal_webp_support(
-            nested_partition->minimal_webp_support());
+      if (nested_partition->has_optimized_image_type()) {
+        partition->set_optimized_image_type(
+            nested_partition->optimized_image_type());
       }
       if (partitions()->other_dependency_size() == 1) {
         // If there is only one other dependency, then the InputInfo is
@@ -662,20 +663,40 @@ void InPlaceRewriteContext::AddVaryIfRequired(
   const ContentType* type = headers->DetermineContentType();
   // Returns true if we may return different rewritten content based
   // on the user agent.
-  const char* new_vary = NULL;
+  GoogleString new_vary;
+  bool depends_on_save_data = false;
   if (type->IsImage()) {
-    // If it's an image, conservatively assume we might convert to webp.
-    // Fix this up if we discover that this can't happen.
-    new_vary = HttpAttributes::kAccept;
-    if (!Options()->Enabled(RewriteOptions::kConvertJpegToWebp)) {
-      // Lossy webp conversion won't happen, so no need to vary.
-      new_vary = NULL;
-    } else if (cached_result.minimal_webp_support() !=
-               ResourceContext::LIBWEBP_LOSSY_ONLY) {
-      // Can't do a lossy-only conversion, so we won't convert to webp in
-      // place.
-      new_vary = NULL;
+    ImageType image_type =
+        static_cast<ImageType>(cached_result.optimized_image_type());
+
+    const RequestProperties& request_properties =
+        *Driver()->request_properties();
+    if (ImageUrlEncoder::AllowVaryOnUserAgent(*Options(), request_properties) &&
+        (image_type != IMAGE_UNKNOWN) &&
+         (Options()->Enabled(RewriteOptions::kConvertJpegToWebp) ||
+          Options()->Enabled(RewriteOptions::kConvertToWebpLossless) ||
+          Options()->Enabled(RewriteOptions::kConvertToWebpAnimated) ||
+          Options()->HasValidSmallScreenQualities())) {
+      // If we are allowed to vary on user-agent and the image has been
+      // successfully optimized, we need to add "vary: user-agent", since
+      // we might have used user-agent for determining image format and/or
+      // quality.
+      new_vary = HttpAttributes::kUserAgent;
+    } else if (ImageUrlEncoder::AllowVaryOnAccept(*Options(),
+                                                  request_properties) &&
+               (image_type == IMAGE_JPEG || image_type == IMAGE_WEBP) &&
+               Options()->Enabled(RewriteOptions::kConvertJpegToWebp)) {
+      // If we are allowed to vary on Accept header and the image has been
+      // successfully optimized to lossy format, we need to add "vary: accept",
+      // since we might have used the Accept header for determining image
+      // quality and whether WebP lossy could be used.
+      new_vary = HttpAttributes::kAccept;
     }
+
+    depends_on_save_data =
+        (image_type == IMAGE_JPEG) || (image_type == IMAGE_WEBP) ||
+        (image_type == IMAGE_WEBP_ANIMATED);
+
   } else if (type->IsCss()) {
     // If it's CSS, constituent images can be rewritten in a UA-dependent
     // manner.  But we don't necessarily see Accept:image/webp on the request,
@@ -685,11 +706,22 @@ void InPlaceRewriteContext::AddVaryIfRequired(
          Options()->Enabled(RewriteOptions::kConvertToWebpAnimated) ||
          Options()->Enabled(RewriteOptions::kConvertToWebpLossless))) {
       new_vary = HttpAttributes::kUserAgent;
+      depends_on_save_data = true;
     }
   }
-  if (new_vary == NULL) {
+
+  // If Save-Data is allowed, add it to the Vary header.
+  if (depends_on_save_data && Options()->SupportSaveData()) {
+    if (!new_vary.empty()) {
+      new_vary += ",";
+    }
+    new_vary += HttpAttributes::kSaveData;
+  }
+
+  if (new_vary.empty()) {
     return;
   }
+
   if (Options()->private_not_vary_for_ie() &&
       Driver()->user_agent_matcher()->IsIe(Driver()->user_agent())) {
     // IE stores Vary: Accept resources in its cache, but must revalidate them
@@ -768,23 +800,25 @@ void InPlaceRewriteContext::EncodeUserAgentIntoResourceContext(
       filter->EncodeUserAgentIntoResourceContext(context);
     }
   }
-  // If we care about generating webp images, the above calls will have set
-  // context->libwebp_level() != LIBWEBP_NONE.  InPlaceRewriteContext can only
-  // serve webp resources if the browser sends the Accept: image/webp header
-  // since the url cannot change based on content type.  This doesn't permit us
-  // to serve webp lossless / alpha, as some older Opera versions send this
-  // header but do not include such support.  This also means that some
-  // webp-capable browsers (such as the stock Android browser) that don't send
-  // Accept: image/webp will receive jpeg images.  Thus, if we thought WEBP
-  // images were a possibility we disable webp generation unless we actually saw
-  // the Accept: header, and we disable webp lossless entirely (falling back to
-  // webp).
-  // TODO(jmaessen): When non-webp-lossless capable versions of Opera are old
-  // enough, enable lossless encoding if it was requested.  But note similar
-  // nonsense will required for other new webp features such as animated webp.
-  if (context->libwebp_level() != ResourceContext::LIBWEBP_NONE) {
-    if (Driver()->request_properties()->SupportsWebpInPlace()) {
-      context->set_libwebp_level(ResourceContext::LIBWEBP_LOSSY_ONLY);
+
+  // In IPRO, we cannot use mobile quality if we're not allowed to vary on
+  // user agent.
+  const bool vary_on_user_agent =
+      ImageUrlEncoder::AllowVaryOnUserAgent(*Driver()->options(),
+                                            *Driver()->request_properties());
+  if (!vary_on_user_agent) {
+    context->set_may_use_small_screen_quality(false);
+  }
+
+  // In IPRO, if we are not allowed to vary on user agent:
+  //   - if we are still allowed to vary on accept, we can use lossy format
+  //   - if we are not allowed to vary on accept, we cannot use any WebP format.
+  if (!vary_on_user_agent) {
+    if (ImageUrlEncoder::AllowVaryOnAccept(*Driver()->options(),
+                                           *Driver()->request_properties())) {
+      if (context->libwebp_level() != ResourceContext::LIBWEBP_NONE) {
+        context->set_libwebp_level(ResourceContext::LIBWEBP_LOSSY_ONLY);
+      }
     } else {
       context->set_libwebp_level(ResourceContext::LIBWEBP_NONE);
     }

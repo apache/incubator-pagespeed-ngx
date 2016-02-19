@@ -42,6 +42,7 @@
 #include "pagespeed/kernel/html/html_parse_test_base.h"
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/http_names.h"
+#include "pagespeed/kernel/http/image_types.pb.h"
 #include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/response_headers.h"
 #include "pagespeed/kernel/http/semantic_type.h"
@@ -66,8 +67,8 @@ class FakeImageFilter : public FakeFilter {
     virtual void DoRewriteSingle(const ResourcePtr input,
                                  OutputResourcePtr output) {
       CachedResult* cached = output->EnsureCachedResultCreated();
-      cached->set_minimal_webp_support(filter_->minimal_webp_support());
       FakeFilter::Context::DoRewriteSingle(input, output);
+      cached->set_optimized_image_type(filter_->optimized_image_type());
     }
 
    private:
@@ -78,14 +79,15 @@ class FakeImageFilter : public FakeFilter {
   explicit FakeImageFilter(RewriteDriver* rewrite_driver)
       : FakeFilter(RewriteOptions::kImageCompressionId,
                    rewrite_driver, semantic_type::kImage),
-        minimal_webp_support_(ResourceContext::LIBWEBP_LOSSY_ONLY) { }
+        optimized_image_type_(IMAGE_WEBP) { }
 
-  void set_minimal_webp_support(ResourceContext::LibWebpLevel level) {
-    minimal_webp_support_ = level;
+  void set_optimized_image_type(ImageType type) {
+    optimized_image_type_ = type;
   }
-  ResourceContext::LibWebpLevel minimal_webp_support() {
-    return minimal_webp_support_;
+  ImageType optimized_image_type() const {
+    return optimized_image_type_;
   }
+
   RewriteContext* MakeFakeContext(
       RewriteDriver* driver, RewriteContext* parent,
       ResourceContext* resource_context) {
@@ -93,7 +95,7 @@ class FakeImageFilter : public FakeFilter {
   }
 
  private:
-  ResourceContext::LibWebpLevel minimal_webp_support_;
+  ImageType optimized_image_type_;
   DISALLOW_COPY_AND_ASSIGN(FakeImageFilter);
 };
 
@@ -244,6 +246,12 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
       options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
     }
     options()->set_in_place_rewriting_enabled(true);
+
+    // Only allow to vary on "Accept" header.
+    RewriteOptions::AllowVaryOn allow_vary_on;
+    EXPECT_TRUE(RewriteOptions::ParseFromString("accept", &allow_vary_on));
+    options()->set_allow_vary_on(allow_vary_on);
+
     server_context()->ComputeSignature(options());
     // Clear stats since we may have added something to the cache.
     ClearStats();
@@ -1974,24 +1982,26 @@ TEST_F(InPlaceRewriteContextTest, AcceptHeaderMerging) {
   // EXPECT_STREQ(HttpAttributes::kAccept, *accepts[1]);
 }
 
-TEST_F(InPlaceRewriteContextTest, NoAcceptHeaderForLossless) {
-  // If the image filters says we can only convert to webp lossless + alpha, or
-  // can't convert to webp at all, we should not see a Vary: header.
+TEST_F(InPlaceRewriteContextTest, NoAcceptHeaderForLosslessOrAnimated) {
+  // Make sure that InPlaceRewriteContext won't add "Vary: Accept" header to
+  // an image optimized to WebP lossless or WebP animated. Note that we're using
+  // FakeImageFilter in this test. If we use the real filter,
+  // ImageRewriteFilter, an image will never be converted to WebP lossless nor
+  // WebP animated, unless we're allowed to vary on user-agent.
   options()->set_in_place_wait_for_optimized(true);
   set_optimize_for_browser(true);
   Init();
   SetAcceptWebp();
 
   // First check lossless case.
-  img_filter_->set_minimal_webp_support(
-      ResourceContext::LIBWEBP_LOSSY_LOSSLESS_ALPHA);
+  img_filter_->set_optimized_image_type(IMAGE_WEBP_LOSSLESS_OR_ALPHA);
+
   FetchAndCheckResponse(cache_png_url_, "good:ic", true, ttl_ms_, etag_,
                         start_time_ms());
   EXPECT_FALSE(response_headers_.Has(HttpAttributes::kVary));
 
-  // Then check lossy case where conversion failed (but jpeg was still
-  // optimized).
-  img_filter_->set_minimal_webp_support(ResourceContext::LIBWEBP_NONE);
+  // Now check animated case.
+  img_filter_->set_optimized_image_type(IMAGE_WEBP_ANIMATED);
   FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_, etag_,
                         start_time_ms());
   EXPECT_FALSE(response_headers_.Has(HttpAttributes::kVary));

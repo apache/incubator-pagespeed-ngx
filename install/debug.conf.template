@@ -1680,6 +1680,7 @@ ModPagespeedMessagesDomains Allow localhost
   ModPagespeedEnableFilters convert_to_webp_lossless
   ModPagespeedEnableFilters in_place_optimize_for_browser
   ModPagespeedInPlaceResourceOptimization on
+  ModPagespeedAllowVaryOn "Accept"
   DocumentRoot "@@APACHE_DOC_ROOT@@/mod_pagespeed_example"
   ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@_ipro_for_browser"
 </VirtualHost>

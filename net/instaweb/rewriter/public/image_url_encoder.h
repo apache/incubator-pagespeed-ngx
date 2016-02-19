@@ -119,6 +119,12 @@ class ImageUrlEncoder : public UrlSegmentEncoder {
     return (dims.has_width() || dims.has_height());
   }
 
+  static bool AllowVaryOnUserAgent(const RewriteOptions& options,
+                                   const RequestProperties& request_properties);
+
+  static bool AllowVaryOnAccept(const RewriteOptions& options,
+                                const RequestProperties& request_properties);
+
  private:
   DISALLOW_COPY_AND_ASSIGN(ImageUrlEncoder);
 };

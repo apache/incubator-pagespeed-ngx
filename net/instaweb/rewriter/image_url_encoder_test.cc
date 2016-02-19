@@ -17,6 +17,8 @@
 
 // Unit test for image_url_encoder.
 
+#include <set>
+
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/image_url_encoder.h"
 #include "testing/base/public/gunit.h"
@@ -358,12 +360,43 @@ TEST_F(ImageUrlEncoderTest, HasHeightWebpLa) {
             EncodeUrlAndDimensions(origin_url, dim));
 }
 
-TEST_F(ImageUrlEncoderTest, SmallScreen) {
+TEST_F(ImageUrlEncoderTest, CacheKey) {
   ResourceContext context;
-  context.set_use_small_screen_quality(true);
-  GoogleString cache_key =
-      ImageUrlEncoder::CacheKeyFromResourceContext(context);
-  EXPECT_EQ(".ss", cache_key);
+
+  EXPECT_EQ(".",
+            ImageUrlEncoder::CacheKeyFromResourceContext(context));
+  context.Clear();
+
+  context.set_may_use_small_screen_quality(true);
+  EXPECT_EQ(".ss",
+            ImageUrlEncoder::CacheKeyFromResourceContext(context));
+  context.Clear();
+
+  context.set_may_use_save_data_quality(true);
+  context.set_libwebp_level(ResourceContext::LIBWEBP_LOSSY_ONLY);
+  EXPECT_EQ("wd",
+            ImageUrlEncoder::CacheKeyFromResourceContext(context));
+  context.Clear();
+
+  context.set_mobile_user_agent(true);
+  context.set_libwebp_level(ResourceContext::LIBWEBP_LOSSY_LOSSLESS_ALPHA);
+  EXPECT_EQ("vm",
+            ImageUrlEncoder::CacheKeyFromResourceContext(context));
+  context.Clear();
+
+  context.set_may_use_save_data_quality(true);
+  context.set_mobile_user_agent(true);
+  context.set_libwebp_level(ResourceContext::LIBWEBP_ANIMATED);
+  EXPECT_EQ("amd",
+            ImageUrlEncoder::CacheKeyFromResourceContext(context));
+  context.Clear();
+
+  // When both may_use_small_screen_quality and may_use_save_data_quality are
+  // set, may_use_save_data_quality takes precedence.
+  context.set_may_use_small_screen_quality(true);
+  context.set_may_use_save_data_quality(true);
+  EXPECT_EQ(".d",
+            ImageUrlEncoder::CacheKeyFromResourceContext(context));
 }
 
 TEST_F(ImageUrlEncoderTest, DifferentWebpLevels) {
@@ -551,14 +584,24 @@ TEST_F(ImageUrlEncoderTest, TruncatedBeforeSep) {
 }
 
 TEST_F(ImageUrlEncoderTest, WebpDetection) {
+  // Valid WebP URL.
   EXPECT_TRUE(IsPagespeedWebp("http://example.com/xa.jpg.pagespeed.ic.0.webp"));
+  EXPECT_TRUE(IsPagespeedWebp("http://example.com/xa.png.pagespeed.ic.0.webp"));
+  EXPECT_TRUE(IsPagespeedWebp("http://example.com/xa.gif.pagespeed.ic.0.webp"));
+  EXPECT_TRUE(IsPagespeedWebp(
+      "http://example.com/xa.webp.pagespeed.ic.0.webp"));
   EXPECT_TRUE(IsPagespeedWebp(
       "http://example.com/17x33a.jpg.pagespeed.ic.0.webp"));
+
+  // Invalid WebP URL.
   EXPECT_FALSE(IsPagespeedWebp("http://example.com/xa.jpg.XXXXXXXX.ic.0.webp"));
-  EXPECT_FALSE(IsPagespeedWebp("http://example.com/foo.webp"));
-  EXPECT_FALSE(IsPagespeedWebp("http://example.com/foo.jpg"));
+  EXPECT_FALSE(IsPagespeedWebp("http://example.com/xa.gif.pagespeed.ic.0.png"));
+  EXPECT_FALSE(IsPagespeedWebp(
+      "http://example.com/xa.png.pagespeed.ic.0.jpeg"));
   EXPECT_FALSE(IsPagespeedWebp(
       "http://example.com/xa.jpg.pagespeed.ic.0.jpeg"));
+  EXPECT_FALSE(IsPagespeedWebp("http://example.com/foo.webp"));
+  EXPECT_FALSE(IsPagespeedWebp("http://example.com/foo.jpg"));
   EXPECT_FALSE(IsPagespeedWebp("http://example.com/x.jpg.pagespeed.cd.0.jpeg"));
   EXPECT_FALSE(IsPagespeedWebp("http://example.com/x.jpg.pagespeed.ce.0.webp"));
 }
