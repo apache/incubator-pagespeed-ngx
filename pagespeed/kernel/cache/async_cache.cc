@@ -71,7 +71,7 @@ void AsyncCache::DoGet(GoogleString* key, Callback* callback) {
   if (IsHealthy()) {
     cache_->Get(*key, callback);
     delete key;
-    outstanding_operations_.NoBarrierIncrement(-1);
+    outstanding_operations_.BarrierIncrement(-1);
   } else {
     CancelGet(key, callback);
   }
@@ -80,13 +80,13 @@ void AsyncCache::DoGet(GoogleString* key, Callback* callback) {
 void AsyncCache::CancelGet(GoogleString* key, Callback* callback) {
   ValidateAndReportResult(*key, CacheInterface::kNotFound, callback);
   delete key;
-  outstanding_operations_.NoBarrierIncrement(-1);
+  outstanding_operations_.BarrierIncrement(-1);
 }
 
 void AsyncCache::DoMultiGet(MultiGetRequest* request) {
   if (IsHealthy()) {
     cache_->MultiGet(request);
-    outstanding_operations_.NoBarrierIncrement(-1);
+    outstanding_operations_.BarrierIncrement(-1);
   } else {
     CancelMultiGet(request);
   }
@@ -94,7 +94,7 @@ void AsyncCache::DoMultiGet(MultiGetRequest* request) {
 
 void AsyncCache::CancelMultiGet(MultiGetRequest* request) {
   ReportMultiGetNotFound(request);
-  outstanding_operations_.NoBarrierIncrement(-1);
+  outstanding_operations_.BarrierIncrement(-1);
 }
 
 void AsyncCache::Put(const GoogleString& key, SharedString* value) {
@@ -133,13 +133,13 @@ void AsyncCache::DoPut(GoogleString* key, SharedString* value) {
   }
   delete key;
   delete value;
-  outstanding_operations_.NoBarrierIncrement(-1);
+  outstanding_operations_.BarrierIncrement(-1);
 }
 
 void AsyncCache::CancelPut(GoogleString* key, SharedString* value) {
   delete key;
   delete value;
-  outstanding_operations_.NoBarrierIncrement(-1);
+  outstanding_operations_.BarrierIncrement(-1);
 }
 
 void AsyncCache::Delete(const GoogleString& key) {
@@ -156,11 +156,11 @@ void AsyncCache::DoDelete(GoogleString* key) {
     cache_->Delete(*key);
   }
   delete key;
-  outstanding_operations_.NoBarrierIncrement(-1);
+  outstanding_operations_.BarrierIncrement(-1);
 }
 
 void AsyncCache::CancelDelete(GoogleString* key) {
-  outstanding_operations_.NoBarrierIncrement(-1);
+  outstanding_operations_.BarrierIncrement(-1);
   delete key;
 }
 
