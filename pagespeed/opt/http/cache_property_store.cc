@@ -158,7 +158,8 @@ class CachePropertyStoreCacheCallback : public CacheInterface::Callback {
         // timestamp to make this decision.
         for (int i = 0; i < values.value_size(); ++i) {
           min_write_timestamp_ms = std::min(
-              min_write_timestamp_ms, values.value(i).write_timestamp_ms());
+              min_write_timestamp_ms,
+              static_cast<int64>(values.value(i).write_timestamp_ms()));
         }
         // Return valid for empty cohort, and if IsCacheValid returns true for
         // Value with oldest timestamp.

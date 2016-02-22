@@ -450,8 +450,9 @@ void InPlaceRewriteContext::UpdateDateAndExpiry(
   for (int j = 0, m = inputs.size(); j < m; ++j) {
     const InputInfo& dependency = inputs.Get(j);
     if (dependency.has_expiration_time_ms() && dependency.has_date_ms()) {
-      *date_ms = std::min(*date_ms, dependency.date_ms());
-      *expire_at_ms = std::min(*expire_at_ms, dependency.expiration_time_ms());
+      *date_ms = std::min(*date_ms, static_cast<int64>(dependency.date_ms()));
+      *expire_at_ms = std::min(
+          *expire_at_ms, static_cast<int64>(dependency.expiration_time_ms()));
     }
   }
 }

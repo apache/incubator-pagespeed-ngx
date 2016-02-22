@@ -234,7 +234,7 @@ bool PropertyValue::IsStable(int mutations_per_1000_threshold) const {
   // we can use this as a divisor to determine stability.
   int num_writes = std::max(static_cast<int64>(1),
                             std::min(static_cast<int64>(64),
-                                     proto_->num_writes()));
+                                     static_cast<int64>(proto_->num_writes())));
   int num_changes = NumberOfSetBits64(proto_->update_mask());
   int changes_per_1000_writes = (1000 * num_changes) / num_writes;
   return (changes_per_1000_writes < mutations_per_1000_threshold);
