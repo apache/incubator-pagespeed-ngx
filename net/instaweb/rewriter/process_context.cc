@@ -23,7 +23,7 @@
 #include "pagespeed/kernel/js/js_tokenizer.h"
 #include "pagespeed/kernel/util/gflags.h"
 
-#include "third_party/protobuf/src/google/protobuf/stubs/common.h"
+#include "google/protobuf/stubs/common.h"
 using namespace google;  // NOLINT
 
 namespace {

@@ -96,6 +96,9 @@ vars = {
   # Brotli v0.3.0
   "brotli_src": "https://github.com/google/brotli.git",
   "brotli_revision": "@98ed7a23a83d64133b0a36a884e489bffb0eb864",
+
+  "proto_src": "https://github.com/google/protobuf.git",
+  "protobuf_revision": "v3.0.0-beta-2",
 }
 
 deps = {
@@ -196,9 +199,8 @@ deps = {
   "src/third_party/google-sparsehash":
     Var("google_sparsehash_root") + Var("google_sparsehash_revision"),
 
-  "src/third_party/protobuf":
-    Var("chromium_trunk") + "src/third_party/protobuf/@" +
-        Var("chromium_revision_num"),
+  "src/third_party/protobuf/src":
+    Var("proto_src") + '@' + Var("protobuf_revision"),
 
   # Json cpp.
   "src/third_party/jsoncpp/src":

@@ -38,7 +38,7 @@ third_party/mod_spdy/*
 third_party/modp_b64/*
 third_party/optipng/*
 third_party/pagespeed*
-third_party/protobuf/*
+third_party/protobuf/src/*
 third_party/re2/src/*
 third_party/serf/src/*
 third_party/zlib/*
