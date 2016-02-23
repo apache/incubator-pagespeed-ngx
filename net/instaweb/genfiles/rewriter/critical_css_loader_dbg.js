@@ -107,8 +107,10 @@ goog.addDependency = function(a, b, c, d) {
   if (goog.DEPENDENCIES_ENABLED) {
     var f;
     a = a.replace(/\\/g, "/");
-    for (var e = goog.dependencies_, g = 0;f = b[g];g++) {
-      e.nameToPath[f] = a, e.pathIsModule[a] = !!d;
+    var e = goog.dependencies_;
+    d && "boolean" !== typeof d || (d = d ? {module:"goog"} : {});
+    for (var g = 0;f = b[g];g++) {
+      e.nameToPath[f] = a, e.pathIsModule[a] = "goog" == d.module;
     }
     for (d = 0;b = c[d];d++) {
       a in e.requires || (e.requires[a] = {}), e.requires[a][b] = !0;

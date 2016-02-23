@@ -107,8 +107,10 @@ goog.addDependency = function(a, b, c, d) {
   if (goog.DEPENDENCIES_ENABLED) {
     var e;
     a = a.replace(/\\/g, "/");
-    for (var f = goog.dependencies_, g = 0;e = b[g];g++) {
-      f.nameToPath[e] = a, f.pathIsModule[a] = !!d;
+    var f = goog.dependencies_;
+    d && "boolean" !== typeof d || (d = d ? {module:"goog"} : {});
+    for (var g = 0;e = b[g];g++) {
+      f.nameToPath[e] = a, f.pathIsModule[a] = "goog" == d.module;
     }
     for (d = 0;b = c[d];d++) {
       a in f.requires || (f.requires[a] = {}), f.requires[a][b] = !0;
@@ -2085,7 +2087,7 @@ goog.userAgent.determineVersion_ = function() {
   }
   var a = "", b = goog.userAgent.getVersionRegexResult_();
   b && (a = b ? b[1] : "");
-  return goog.userAgent.IE && (b = goog.userAgent.getDocumentMode_(), b > parseFloat(a)) ? String(b) : a;
+  return goog.userAgent.IE && (b = goog.userAgent.getDocumentMode_(), null != b && b > parseFloat(a)) ? String(b) : a;
 };
 goog.userAgent.getVersionRegexResult_ = function() {
   var a = goog.userAgent.getUserAgentString();
@@ -2510,7 +2512,7 @@ goog.html.SafeUrl.unwrap = function(a) {
   if (a instanceof goog.html.SafeUrl && a.constructor === goog.html.SafeUrl && a.SAFE_URL_TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_ === goog.html.SafeUrl.TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_) {
     return a.privateDoNotAccessOrElseSafeHtmlWrappedValue_;
   }
-  goog.asserts.fail("expected object of type SafeUrl, got '" + a + "'");
+  goog.asserts.fail("expected object of type SafeUrl, got '" + a + "' of type " + goog.typeOf(a));
   return "type_error:SafeUrl";
 };
 goog.html.SafeUrl.fromConstant = function(a) {
@@ -2561,7 +2563,7 @@ goog.html.TrustedResourceUrl.unwrap = function(a) {
   if (a instanceof goog.html.TrustedResourceUrl && a.constructor === goog.html.TrustedResourceUrl && a.TRUSTED_RESOURCE_URL_TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_ === goog.html.TrustedResourceUrl.TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_) {
     return a.privateDoNotAccessOrElseTrustedResourceUrlWrappedValue_;
   }
-  goog.asserts.fail("expected object of type TrustedResourceUrl, got '" + a + "'");
+  goog.asserts.fail("expected object of type TrustedResourceUrl, got '" + a + "' of type " + goog.typeOf(a));
   return "type_error:TrustedResourceUrl";
 };
 goog.html.TrustedResourceUrl.fromConstant = function(a) {
@@ -2609,7 +2611,7 @@ goog.html.SafeStyleSheet.unwrap = function(a) {
   if (a instanceof goog.html.SafeStyleSheet && a.constructor === goog.html.SafeStyleSheet && a.SAFE_STYLE_SHEET_TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_ === goog.html.SafeStyleSheet.TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_) {
     return a.privateDoNotAccessOrElseSafeStyleSheetWrappedValue_;
   }
-  goog.asserts.fail("expected object of type SafeStyleSheet, got '" + a + "'");
+  goog.asserts.fail("expected object of type SafeStyleSheet, got '" + a + "' of type " + goog.typeOf(a));
   return "type_error:SafeStyleSheet";
 };
 goog.html.SafeStyleSheet.createSafeStyleSheetSecurityPrivateDoNotAccessOrElse = function(a) {
@@ -2649,7 +2651,7 @@ goog.html.SafeStyle.unwrap = function(a) {
   if (a instanceof goog.html.SafeStyle && a.constructor === goog.html.SafeStyle && a.SAFE_STYLE_TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_ === goog.html.SafeStyle.TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_) {
     return a.privateDoNotAccessOrElseSafeStyleWrappedValue_;
   }
-  goog.asserts.fail("expected object of type SafeStyle, got '" + a + "'");
+  goog.asserts.fail("expected object of type SafeStyle, got '" + a + "' of type " + goog.typeOf(a));
   return "type_error:SafeStyle";
 };
 goog.html.SafeStyle.createSafeStyleSecurityPrivateDoNotAccessOrElse = function(a) {
@@ -2712,7 +2714,7 @@ goog.html.SafeHtml.unwrap = function(a) {
   if (a instanceof goog.html.SafeHtml && a.constructor === goog.html.SafeHtml && a.SAFE_HTML_TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_ === goog.html.SafeHtml.TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_) {
     return a.privateDoNotAccessOrElseSafeHtmlWrappedValue_;
   }
-  goog.asserts.fail("expected object of type SafeHtml, got '" + a + "'");
+  goog.asserts.fail("expected object of type SafeHtml, got '" + a + "' of type " + goog.typeOf(a));
   return "type_error:SafeHtml";
 };
 goog.html.SafeHtml.htmlEscape = function(a) {
@@ -2741,7 +2743,7 @@ goog.html.SafeHtml.htmlEscapePreservingNewlinesAndSpaces = function(a) {
 goog.html.SafeHtml.from = goog.html.SafeHtml.htmlEscape;
 goog.html.SafeHtml.VALID_NAMES_IN_TAG_ = /^[a-zA-Z0-9-]+$/;
 goog.html.SafeHtml.URL_ATTRIBUTES_ = {action:!0, cite:!0, data:!0, formaction:!0, href:!0, manifest:!0, poster:!0, src:!0};
-goog.html.SafeHtml.NOT_ALLOWED_TAG_NAMES_ = goog.object.createSet(goog.dom.TagName.APPLET, goog.dom.TagName.BASE, goog.dom.TagName.EMBED, goog.dom.TagName.IFRAME, goog.dom.TagName.LINK, goog.dom.TagName.MATH, goog.dom.TagName.OBJECT, goog.dom.TagName.SCRIPT, goog.dom.TagName.STYLE, goog.dom.TagName.SVG, goog.dom.TagName.TEMPLATE);
+goog.html.SafeHtml.NOT_ALLOWED_TAG_NAMES_ = goog.object.createSet(goog.dom.TagName.APPLET, goog.dom.TagName.BASE, goog.dom.TagName.EMBED, goog.dom.TagName.IFRAME, goog.dom.TagName.LINK, goog.dom.TagName.MATH, goog.dom.TagName.META, goog.dom.TagName.OBJECT, goog.dom.TagName.SCRIPT, goog.dom.TagName.STYLE, goog.dom.TagName.SVG, goog.dom.TagName.TEMPLATE);
 goog.html.SafeHtml.create = function(a, b, c) {
   if (!goog.html.SafeHtml.VALID_NAMES_IN_TAG_.test(a)) {
     throw Error("Invalid tag name <" + a + ">.");
