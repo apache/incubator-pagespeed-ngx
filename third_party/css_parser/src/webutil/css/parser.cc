@@ -34,7 +34,7 @@
 #include "util/gtl/stl_util.h"
 #include "util/utf8/public/unicodetext.h"
 #include "util/utf8/public/unilib.h"
-#include "webutil/css/fallthrough_intended.h"
+#include "webutil/css/fallthrough_intended.h"  // Needed in open source
 #include "webutil/css/string_util.h"
 #include "webutil/css/util.h"
 #include "webutil/css/value.h"
