@@ -159,7 +159,7 @@ pagespeed_include="\
   $mod_pagespeed_dir/third_party/chromium/src \
   $mod_pagespeed_dir/third_party/google-sparsehash/src \
   $mod_pagespeed_dir/third_party/google-sparsehash/gen/arch/$os_name/$arch_name/include \
-  $mod_pagespeed_dir/third_party/protobuf/src \
+  $mod_pagespeed_dir/third_party/protobuf/src/src \
   $mod_pagespeed_dir/third_party/re2/src \
   $mod_pagespeed_dir/out/$buildtype/obj/gen \
   $mod_pagespeed_dir/out/$buildtype/obj/gen/protoc_out/instaweb \
