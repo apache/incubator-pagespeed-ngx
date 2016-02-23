@@ -2696,4 +2696,18 @@ TEST_F(ParserTest, ParseAnyParens) {
   EXPECT_STREQ(" 9 7)", p->in_);
 }
 
+TEST_F(ParserTest, BadPartialImport) {
+  const char kBadPartialImport[] = "@import url(R\xd5\x9b";
+  Parser parser(kBadPartialImport);
+  delete parser.ParseStylesheet();
+  EXPECT_NE(Parser::kNoError, parser.errors_seen_mask());
+}
+
+TEST_F(ParserTest, BadPartialImportEncoding) {
+  const char kBadPartialImportEncoding[] = "@import url(R\xd5";
+  Parser parser(kBadPartialImportEncoding);
+  delete parser.ParseStylesheet();
+  EXPECT_NE(Parser::kNoError, parser.errors_seen_mask());
+}
+
 }  // namespace Css
