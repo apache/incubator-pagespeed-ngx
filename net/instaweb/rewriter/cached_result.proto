@@ -185,9 +185,7 @@ message CachedResult {
   // HTML as comments if the debug filter is enabled.
   repeated string debug_message = 21;
 
-  optional ResourceContext.LibWebpLevel
-  deprecated_minimal_webp_support = 22
-      [ default = LIBWEBP_LOSSY_ONLY, deprecated = true ];
+  reserved 22;
 
   // Information about any images indirectly included via this resource, or
   // its dependencies.
@@ -231,7 +229,7 @@ message OutputPartitions {
 //   Next free tag: 9
 message ResourceContext {
   optional ImageDim desired_image_dims = 1;
-  optional bool attempt_webp = 2 [ deprecated = true ];
+  reserved 2;
   optional bool inline_images = 3 [ default = true ];
   optional bool mobile_user_agent = 4;
 
@@ -243,7 +241,7 @@ message ResourceContext {
   }
   optional LibWebpLevel libwebp_level = 5 [default = LIBWEBP_NONE];
 
-  optional ImageDim user_agent_screen_resolution = 6 [deprecated = true];
+  reserved 6;
 
   // Set to true if we may use the image qualities set for small screen.
   optional bool may_use_small_screen_quality = 7;
