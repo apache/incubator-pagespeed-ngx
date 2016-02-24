@@ -94,9 +94,6 @@
 #include "net/instaweb/rewriter/public/local_storage_cache_filter.h"
 #include "net/instaweb/rewriter/public/make_show_ads_async_filter.h"
 #include "net/instaweb/rewriter/public/meta_tag_filter.h"
-#include "net/instaweb/rewriter/public/mobilize_label_filter.h"
-#include "net/instaweb/rewriter/public/mobilize_menu_filter.h"
-#include "net/instaweb/rewriter/public/mobilize_menu_render_filter.h"
 #include "net/instaweb/rewriter/public/mobilize_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
@@ -875,9 +872,6 @@ void RewriteDriver::InitStats(Statistics* statistics) {
   LocalStorageCacheFilter::InitStats(statistics);
   MakeShowAdsAsyncFilter::InitStats(statistics);
   MetaTagFilter::InitStats(statistics);
-  MobilizeLabelFilter::InitStats(statistics);
-  MobilizeMenuFilter::InitStats(statistics);
-  MobilizeMenuRenderFilter::InitStats(statistics);
   MobilizeRewriteFilter::InitStats(statistics);
   RewriteContext::InitStats(statistics);
   UrlInputResource::InitStats(statistics);
@@ -1043,8 +1037,7 @@ void RewriteDriver::AddPreRenderFilters() {
   if (rewrite_options->Enabled(RewriteOptions::kAddBaseTag)) {
     AddOwnedEarlyPreRenderFilter(new BaseTagFilter(this));
   }
-  if (rewrite_options->Enabled(RewriteOptions::kAddIds) ||
-      rewrite_options->MobUseLabelFilter()) {
+  if (rewrite_options->Enabled(RewriteOptions::kAddIds)) {
     AddOwnedEarlyPreRenderFilter(new AddIdsFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kStripScripts)) {
@@ -1176,13 +1169,6 @@ void RewriteDriver::AddPreRenderFilters() {
   // source-maps for the compiled code.  However, we do want
   // the inliner to work on the small compiled xhr.js.
   if (rewrite_options->Enabled(RewriteOptions::kMobilize)) {
-    if (rewrite_options->MobUseLabelFilter()) {
-      AppendOwnedPreRenderFilter(
-          new MobilizeLabelFilter(false /* not menu request */, this));
-    }
-    if (rewrite_options->MobRenderServerSideMenus()) {
-      AppendOwnedPreRenderFilter(new MobilizeMenuRenderFilter(this));
-    }
     AppendOwnedPreRenderFilter(new MobilizeRewriteFilter(this));
   }
 
@@ -1473,7 +1459,7 @@ CacheUrlAsyncFetcher* RewriteDriver::CreateCustomCacheFetcher(
 }
 
 CacheUrlAsyncFetcher* RewriteDriver::CreateCacheFetcher() {
-  if (options()->mob_iframe() && !options()->mob_config()) {
+  if (options()->mob_iframe()) {
     IframeFetcher* ifetcher = new IframeFetcher(
         options(), server_context_->user_agent_matcher(),
         url_async_fetcher_);

@@ -8079,7 +8079,6 @@ mob.Nav.prototype.addHeaderBarResizeEvents_ = function() {
 mob.Nav.prototype.addHeaderBar_ = function(a) {
   document.getElementById(mob.util.ElementId.IFRAME) || (document.body.insertBefore(this.spacerDiv_, document.body.childNodes[0]), document.body.insertBefore(this.headerBar_, this.spacerDiv_));
   window.psLabeledMode && goog.dom.classlist.add(this.headerBar_, mob.util.ElementClass.LABELED);
-  window.psConfigMode && goog.dom.classlist.add(this.headerBar_, mob.util.ElementClass.THEME_CONFIG);
   this.isIosWebview_ && goog.dom.classlist.add(this.headerBar_, mob.util.ElementClass.IOS_WEBVIEW);
   var b = document.getElementById(mob.util.ElementId.NAV_PANEL);
   !window.psLabeledMode && b && (this.navPanel_ = new mob.NavPanel(b, a.menuBackColor), this.menuButton_ = new mob.button.Menu(a.menuFrontColor, goog.bind(this.navPanel_.toggle, this.navPanel_)), this.headerBar_.appendChild(this.menuButton_.el));

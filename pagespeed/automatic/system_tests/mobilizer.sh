@@ -20,7 +20,6 @@ start_test mobilize does work on normal request
 OUT=$($WGET_DUMP $URL)
 check_from "$OUT" fgrep -q 'psStartMobilization'
 check_from "$OUT" fgrep -q '<header id="psmob-header-bar"'
-check_from "$OUT" fgrep -q '<nav id="psmob-nav-panel"'
 check_not_from "$OUT" fgrep -q '<iframe id="psmob-iframe"'
 
 start_test mobilize get disabled by noscript mode
@@ -29,7 +28,6 @@ URL=$EXAMPLE_ROOT/index.html?PageSpeedFilters=mobilize\&PageSpeed=noscript
 OUT=$($WGET_DUMP $URL)
 check_not_from "$OUT" fgrep -q 'psStartMobilization'
 check_not_from "$OUT" fgrep -q '<header id="psmob-header-bar"'
-check_not_from "$OUT" fgrep -q '<nav id="psmob-nav-panel"'
 check_not_from "$OUT" fgrep -q '<iframe id="psmob-iframe"'
 
 export WGETRC=$WGETRC_OLD

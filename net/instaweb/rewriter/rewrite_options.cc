@@ -246,7 +246,6 @@ const char RewriteOptions::kMobMapConversionLabel[] =
     "MobMapConversionLabel";
 const char RewriteOptions::kMobPhoneConversionLabel[] =
     "MobPhoneConversionLabel";
-const char RewriteOptions::kMobConfig[] = "MobConfig";
 const char RewriteOptions::kMobIframe[] = "MobIframe";
 const char RewriteOptions::kMobIframeDisable[] = "MobIframeDisable";
 const char RewriteOptions::kMobIframeViewport[] = "MobIframeViewport";
@@ -714,7 +713,7 @@ const RewriteOptions::Filter kDangerousFilterSet[] = {
     RewriteOptions::kExperimentCollectMobImageInfo,
     RewriteOptions::kExplicitCloseTags,
     RewriteOptions::kFixReflows,
-    RewriteOptions::kMobilize,                // Prototype
+    RewriteOptions::kMobilize,
     RewriteOptions::kMobilizePrecompute,      // TODO(jud): Unused, remove.
     RewriteOptions::kServeDeprecationNotice,  // internal.
     RewriteOptions::kStripNonCacheable,       // internal, enabled conditionally
@@ -2347,10 +2346,6 @@ void RewriteOptions::AddProperties() {
       kMobPhoneConversionLabel, kQueryScope,
       "(experimental) map conversion Label", true);
   AddBaseProperty(
-      false, &RewriteOptions::mob_config_, "mconfig", kMobConfig,
-      kQueryScope,
-      "(experimental) whether to load interactive configuration GUI", true);
-  AddBaseProperty(
       false, &RewriteOptions::mob_iframe_, "miframe", kMobIframe,
       kQueryScope,
       "(experimental) whether to use an iframe rather than proxying", true);
@@ -2371,28 +2366,15 @@ void RewriteOptions::AddProperties() {
       "(experimental) the content of the viewport tag to insert "
       "when in iframe mode. Set to \"none\" to avoid adding a viewport tag.",
       true);
-  AddBaseProperty(
-      false, &RewriteOptions::mob_layout_, "mlayout", kMobLayout,
-      kQueryScope,
-      "(experimental) whether to run layout resynthesis when mobilizing", true);
-  AddBaseProperty(
-      false, &RewriteOptions::mob_nav_, "mnav", kMobNav,
-      kQueryScope,
-      "(experimental) whether to run navigation resynthesis when mobilizing",
-      true);
-  // TODO(jud): Rename or remove this option once we've settled on a final
-  // design for the mobilization header bar.
-  AddBaseProperty(
-      false, &RewriteOptions::mob_labeled_mode_, "mlabeled", kMobLabeledMode,
-      kQueryScope,
-      "(experimental) whether to use text labels in the header bar. Also "
-      "disables the menu button and the logo.",
-      true);
-  AddBaseProperty(
-      "", &RewriteOptions::mob_nav_classes_, "navcls", kMobNavClasses,
-      kQueryScope,
-      "Comma separated list of element classes or ids to treat as "
-      "navigational, or with leading - as non-navigational", true);
+  AddBaseProperty(false, &RewriteOptions::mob_layout_, "mlayout", kMobLayout,
+                  kQueryScope, "Deprecated.", true);
+  AddBaseProperty(false, &RewriteOptions::mob_nav_, "mnav", kMobNav,
+                  kQueryScope, "Deprecated.", true);
+  // TODO(jud): Remove this option. It should always be true.
+  AddBaseProperty(false, &RewriteOptions::mob_labeled_mode_, "mlabeled",
+                  kMobLabeledMode, kQueryScope, "Deprecated.", true);
+  AddBaseProperty("", &RewriteOptions::mob_nav_classes_, "navcls",
+                  kMobNavClasses, kQueryScope, "Deprecated.", true);
   AddBaseProperty(
       false, &RewriteOptions::mob_static_, "mstatic", kMobStatic,
       kQueryScope,

@@ -23,18 +23,6 @@
 
 
 /** @type {string} */
-var pagespeedContentIds;
-
-
-/** @type {Array<string>} */
-var pagespeedHeaderIds;
-
-
-/** @type {Array<string>} */
-var pagespeedNavigationalIds;
-
-
-/** @type {string} */
 var psConversionId;
 
 
@@ -46,28 +34,12 @@ var psDebugMode;
 var psDeviceType;
 
 
-/** @type {boolean} */
-var psConfigMode;
-
-
-/** @type {boolean} */
-var psLayoutMode;
-
-
 /** @type {?string} */
 var psMapConversionLabel;
 
 
 /** @type {?string} */
 var psMapLocation;
-
-
-/** @type {Object} */
-var psMobStaticImageInfo;
-
-
-/** @type {boolean} */
-var psNavMode;
 
 
 /**
@@ -83,10 +55,6 @@ var psPhoneConversionLabel;
 
 /** @type {?string} */
 var psPhoneNumber;
-
-
-/** @type {boolean} */
-var psStaticJs;
 
 
 /** @type {?goog.color.Rgb} */

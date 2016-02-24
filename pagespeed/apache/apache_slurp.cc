@@ -45,7 +45,6 @@
 #include "pagespeed/kernel/http/http_names.h"
 #include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/response_headers.h"
-#include "pagespeed/system/system_rewrite_options.h"
 
 // The Apache headers must be after instaweb headers.  Otherwise, the
 // compiler will complain
@@ -190,8 +189,7 @@ bool InstawebHandler::ProxyUrl() {
         options()->test_proxy_slurp(), server_context_->file_system(),
         server_context_->timer()));
     fetcher = fetcher_storage.get();
-  } else if (!proxy_suffix.empty() && options()->mob_iframe() &&
-             !options()->mob_config()) {
+  } else if (!proxy_suffix.empty() && options()->mob_iframe()) {
     // Reset stripped_url to its original state and let the iframe-fetcher
     // do the stripping again so it can redirect to the origin if the UA
     // cannot support iframe mobilization.

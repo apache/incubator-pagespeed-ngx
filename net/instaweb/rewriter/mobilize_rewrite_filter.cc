@@ -105,11 +105,9 @@ MobilizeRewriteFilter::MobilizeRewriteFilter(RewriteDriver* rewrite_driver)
       added_containers_(false),
       added_progress_(false),
       added_spacer_(false),
-      config_mode_(rewrite_driver->options()->mob_config()),
       in_script_(false),
       saw_end_document_(false),
       use_js_layout_(rewrite_driver->options()->mob_layout()),
-      use_js_nav_(rewrite_driver->options()->mob_nav()),
       labeled_mode_(rewrite_driver->options()->mob_labeled_mode()),
       use_static_(rewrite_driver->options()->mob_static()),
       rewrite_js_(rewrite_driver->options()->Enabled(
@@ -206,16 +204,13 @@ GoogleString MobilizeRewriteFilter::GetMobJsInitScript() {
   // enabled.  That is bundled into the same JS compile unit as the
   // layout, so we cannot do a 'undefined' check in JS to determine
   // whether it was enabled.
-  GoogleString src = StrCat(
-      "window.psDebugMode=", BoolToString(driver()->DebugMode()),
-      ";window.psNavMode=", BoolToString(use_js_nav_), ";window.psLabeledMode=",
-      BoolToString(labeled_mode_), ";window.psConfigMode=",
-      BoolToString(config_mode_), ";window.psLayoutMode=",
-      BoolToString(use_js_layout_), ";window.psStaticJs=",
-      BoolToString(use_static_), ";window.psDeviceType='",
-      UserAgentMatcher::DeviceTypeString(
-          driver()->request_properties()->GetDeviceType()),
-      "';");
+  GoogleString src =
+      StrCat("window.psDebugMode=", BoolToString(driver()->DebugMode()),
+             ";window.psLabeledMode=", BoolToString(labeled_mode_),
+             ";window.psDeviceType='",
+             UserAgentMatcher::DeviceTypeString(
+                 driver()->request_properties()->GetDeviceType()),
+             "';");
   const RewriteOptions* options = driver()->options();
   const GoogleString& phone = options->mob_phone_number();
   const GoogleString& map_location = options->mob_map_location();

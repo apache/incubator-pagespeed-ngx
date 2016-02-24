@@ -460,10 +460,6 @@ mob.Nav.prototype.addHeaderBar_ = function(themeData) {
     goog.dom.classlist.add(this.headerBar_, mob.util.ElementClass.LABELED);
   }
 
-  if (window.psConfigMode) {
-    goog.dom.classlist.add(this.headerBar_, mob.util.ElementClass.THEME_CONFIG);
-  }
-
   if (this.isIosWebview_) {
     goog.dom.classlist.add(this.headerBar_, mob.util.ElementClass.IOS_WEBVIEW);
   }

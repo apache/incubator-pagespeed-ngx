@@ -1185,36 +1185,6 @@
         'protoc.gypi',
       ],
     },
-    {
-      'target_name': 'instaweb_mobilize_labeling_pb',
-      'variables': {
-        'instaweb_protoc_subdir': 'net/instaweb/rewriter',
-      },
-      'sources': [
-        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/mobilize_labeling.pb.cc',
-        'rewriter/mobilize_labeling.proto',
-      ],
-      'dependencies': [
-      ],
-      'includes': [
-        'protoc.gypi',
-      ],
-    },
-    {
-      'target_name': 'instaweb_mobilize_menu_pb',
-      'variables': {
-        'instaweb_protoc_subdir': 'net/instaweb/rewriter',
-      },
-      'sources': [
-        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/mobilize_menu.pb.cc',
-        'rewriter/mobilize_menu.proto',
-      ],
-      'dependencies': [
-      ],
-      'includes': [
-        'protoc.gypi',
-      ],
-    },
 
     {
       'target_name': 'instaweb_http',
@@ -1616,8 +1586,6 @@
         'instaweb_messages_js_data2c',
         'instaweb_messages_js_opt_data2c',
         'instaweb_mobilize_cached_pb',
-        'instaweb_mobilize_labeling_pb',
-        'instaweb_mobilize_menu_pb',
         'instaweb_panel_loader_opt_data2c',
         'instaweb_responsive_js_data2c',
         'instaweb_responsive_js_opt_data2c',
@@ -1706,9 +1674,6 @@
         'rewriter/meta_tag_filter.cc',
         'rewriter/mobilize_cached_finder.cc',
         'rewriter/mobilize_filter_base.cc',
-        'rewriter/mobilize_label_filter.cc',
-        'rewriter/mobilize_menu_filter.cc',
-        'rewriter/mobilize_menu_render_filter.cc',
         'rewriter/mobilize_rewrite_filter.cc',
         'rewriter/navigational_decision_tree.cc',
         'rewriter/pedantic_filter.cc',

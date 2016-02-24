@@ -81,7 +81,6 @@ class MobilizeRewriteFilterTest : public RewriteTestBase {
     options()->set_mob_phone_conversion_label(kPhoneConversionLabel);
     options()->set_mob_beacon_url(kMobBeaconUrl);
     options()->set_mob_layout(LayoutMode());
-    options()->set_mob_nav(true);
     server_context()->ComputeSignature(options());
     SetHtmlMimetype();  // Don't wrap scripts in <![CDATA[ ]]>
 
@@ -120,11 +119,8 @@ class MobilizeRewriteFilterTest : public RewriteTestBase {
                                   StringPiece fg_color) const {
     return StrCat(
         "<script src=\"/psajs/mobilize.0.js\"></script>"
-        "<script>window.psDebugMode=false;window.psNavMode=true;"
-        "window.psLabeledMode=false;window.psConfigMode=false;"
-        "window.psLayoutMode=",
-        BoolToString(LayoutMode()),
-        ";window.psStaticJs=false;"
+        "<script>window.psDebugMode=false;"
+        "window.psLabeledMode=false;"
         "window.psDeviceType='mobile';",
         "window.psConversionId='", Integer64ToString(kConversionId),
         "';window.psPhoneNumber='", kPhoneNumber,
@@ -533,7 +529,6 @@ class MobilizeRewriteEndToEndTest : public MobilizeRewriteFilterTest {
     options()->set_mob_phone_conversion_label(kPhoneConversionLabel);
     options()->set_mob_beacon_url(kMobBeaconUrl);
     options()->set_mob_layout(false);
-    options()->set_mob_nav(true);
   }
 
   virtual bool AddBody() const { return false; }
