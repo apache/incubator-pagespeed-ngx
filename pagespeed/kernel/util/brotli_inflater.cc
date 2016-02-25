@@ -23,7 +23,6 @@
 
 #include "base/logging.h"
 #include "third_party/brotli/src/dec/decode.h"
-#include "third_party/brotli/src/dec/state.h"
 #include "third_party/brotli/src/enc/encode.h"
 #include "third_party/brotli/src/enc/streams.h"
 #include "pagespeed/kernel/base/message_handler.h"
@@ -38,18 +37,15 @@ using brotli::BrotliStringOut;
 namespace net_instaweb {
 
 BrotliInflater::BrotliInflater()
-    : state_used_(false), brotli_state_(new BrotliState) {
-  BrotliStateInit(brotli_state_.get());
-}
+    : state_used_(false),
+      brotli_state_(BrotliCreateState(nullptr, nullptr, nullptr),
+                    &BrotliDestroyState) { }
 
-BrotliInflater::~BrotliInflater() {
-  BrotliStateCleanup(brotli_state_.get());
-}
+BrotliInflater::~BrotliInflater() { }
 
 void BrotliInflater::ResetState() {
   if (state_used_) {
-    BrotliStateCleanup(brotli_state_.get());
-    BrotliStateInit(brotli_state_.get());
+    brotli_state_.reset(BrotliCreateState(nullptr, nullptr, nullptr));
   }
   state_used_ = true;
 }
@@ -86,6 +82,9 @@ bool BrotliInflater::DecompressHelper(StringPiece in, MessageHandler* handler,
   const char* next_in = in.data();
   BrotliResult result = BROTLI_RESULT_NEEDS_MORE_INPUT;
   ResetState();
+  if (!brotli_state_.get()) {
+    return false;  // Memory allocation failed.
+  }
   while (result != BROTLI_RESULT_SUCCESS) {
     size_t available_out = sizeof(output);
     char* next_out = output;

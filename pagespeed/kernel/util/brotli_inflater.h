@@ -19,8 +19,9 @@
 #ifndef PAGESPEED_KERNEL_UTIL_BROTLI_INFLATER_H_
 #define PAGESPEED_KERNEL_UTIL_BROTLI_INFLATER_H_
 
+#include <memory>
+
 #include "pagespeed/kernel/base/basictypes.h"
-#include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string_util.h"
 
 struct BrotliStateStruct;
@@ -64,7 +65,7 @@ class BrotliInflater {
   // Keep track of if the internal state is "dirty", if so, refreshed by
   // ResetState() before Decompression.
   bool state_used_;
-  scoped_ptr<BrotliStateStruct> brotli_state_;
+  std::unique_ptr<BrotliStateStruct, void(*)(BrotliStateStruct*)> brotli_state_;
 
   DISALLOW_COPY_AND_ASSIGN(BrotliInflater);
 };
