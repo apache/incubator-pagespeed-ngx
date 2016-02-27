@@ -492,6 +492,10 @@ ngx_int_t copy_response_headers_to_ngx(
 
   ngx_int_t i;
   for (i = 0 ; i < pagespeed_headers.NumAttributes() ; i++) {
+    // For IPRO cache misses, these gs_ variables may point to freed memory
+    // when nginx writes the headers to the output as the NgxBaseFetch instance
+    // that owns this memory gets released during request processing. So we
+    // copy these strings later on.
     const GoogleString& name_gs = pagespeed_headers.Name(i);
     const GoogleString& value_gs = pagespeed_headers.Value(i);
 
@@ -512,6 +516,9 @@ ngx_int_t copy_response_headers_to_ngx(
     }  // else we don't preserve any headers.
 
     ngx_str_t name, value;
+    value.len = value_gs.size();
+    value.data = reinterpret_cast<u_char*>(
+        string_piece_to_pool_string(r->pool, value_gs.c_str()));
 
     // To prevent the gzip module from clearing weak etags, we output them
     // using a different name here. The etag header filter module runs behind
@@ -522,11 +529,15 @@ ngx_int_t copy_response_headers_to_ngx(
       name.data = reinterpret_cast<u_char*>(
           const_cast<char*>(kInternalEtagName));
     } else {
-      name.len = name_gs.length();
-      name.data = reinterpret_cast<u_char*>(const_cast<char*>(name_gs.data()));
+      name.len = name_gs.size();
+      name.data = reinterpret_cast<u_char*>(
+          string_piece_to_pool_string(r->pool, name_gs.c_str()));
     }
-    value.len = value_gs.length();
-    value.data = reinterpret_cast<u_char*>(const_cast<char*>(value_gs.data()));
+
+    // In case string_piece_to_pool_string failed:
+    if (name.data == NULL || value.data == NULL) {
+        return NGX_ERROR;
+    }
 
     // TODO(jefftk): If we're setting a cache control header we'd like to
     // prevent any downstream code from changing it.  Specifically, if we're
@@ -537,24 +548,17 @@ ngx_int_t copy_response_headers_to_ngx(
     // net/instaweb/apache/header_util:AddResponseHeadersToRequest
 
     // Make copies of name and value to put into headers_out.
-
-    u_char* value_s = ngx_pstrdup(r->pool, &value);
-    if (value_s == NULL) {
-      return NGX_ERROR;
-    }
-
     if (STR_EQ_LITERAL(name, "Cache-Control")) {
-      ps_set_cache_control(r, const_cast<char*>(value_gs.c_str()));
+      ps_set_cache_control(r, reinterpret_cast<char*>(value.data));
       continue;
     } else if (STR_EQ_LITERAL(name, "Content-Type")) {
       // Unlike all the other headers, content_type is just a string.
-      headers_out->content_type.data = value_s;
-      headers_out->content_type.len = value.len;
+      headers_out->content_type = value;
 
       // We should not include the charset when determining content_type_len, so
       // scan for the ';' that marks the start of the charset part.
       for (ngx_uint_t i = 0; i < value.len; i++) {
-        if (value_s[i] == ';') {
+        if (value.data[i] == ';') {
           break;
         }
         headers_out->content_type_len = i + 1;
@@ -574,11 +578,6 @@ ngx_int_t copy_response_headers_to_ngx(
       continue;
     }
 
-    u_char* name_s = ngx_pstrdup(r->pool, &name);
-    if (name_s == NULL) {
-      return NGX_ERROR;
-    }
-
     ngx_table_elt_t* header = static_cast<ngx_table_elt_t*>(
         ngx_list_push(&headers_out->headers));
     if (header == NULL) {
@@ -586,10 +585,10 @@ ngx_int_t copy_response_headers_to_ngx(
     }
 
     header->hash = 1;  // Include this header in the output.
+    header->key.data = name.data;
     header->key.len = name.len;
-    header->key.data = name_s;
+    header->value.data = value.data;
     header->value.len = value.len;
-    header->value.data = value_s;
 
     // Populate the shortcuts to commonly used headers.
     if (STR_EQ_LITERAL(name, "Date")) {
