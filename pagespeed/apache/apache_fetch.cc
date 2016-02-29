@@ -64,7 +64,6 @@ ApacheFetch::ApacheFetch(const GoogleString& mapped_url, StringPiece debug_info,
 
   driver_->SetRequestHeaders(*request_headers);
   driver_->IncrementAsyncEventsCount();
-  driver_->UsePrivateScheduler();
   driver_->RunTasksOnRequestThread();
   scheduler_ = driver_->scheduler();
 }
@@ -80,10 +79,7 @@ void ApacheFetch::HandleHeadersComplete() {
     // headers on the request thread.
     return;
   }
-  {
-    ScopedMutex lock(scheduler_->mutex());
-    SendOutHeaders();
-  }
+  SendOutHeaders();
 }
 
 // Called on the request thread.
@@ -169,9 +165,7 @@ void ApacheFetch::HandleDone(bool success) {
   }
 }
 
-// Called by other threads, unless buffered=false.
 bool ApacheFetch::HandleWrite(const StringPiece& sp, MessageHandler* handler) {
-  ScopedMutex lock(scheduler_->mutex());
   if (squelch_output_) {
     return true;  // Suppressing further output after writing error message.
   } else if (buffered_) {
@@ -181,18 +175,14 @@ bool ApacheFetch::HandleWrite(const StringPiece& sp, MessageHandler* handler) {
   return apache_writer_->Write(sp, handler);
 }
 
-// Called by other threads, unless buffered=false.
 bool ApacheFetch::HandleFlush(MessageHandler* handler) {
   if (buffered_) {
     return true;  // Don't pass flushes through.
   }
-  {
-    ScopedMutex lock(scheduler_->mutex());
-    return apache_writer_->Flush(handler);
-  }
+  return apache_writer_->Flush(handler);
 }
 
-// Called on the apache request thread.
+// Called on the apache request thread.  Blocks until the request is retired.
 void ApacheFetch::Wait() {
   if (wait_called_) {
     return;
@@ -235,11 +225,11 @@ void ApacheFetch::Wait() {
     // of RunTasksUntil, and we'll want to continue processing even
     // though we are going to retire the request.
     driver_->SwitchToQueuedWorkerPool();
-    if (buffered_) {
-      SendOutHeaders();
-      if (!output_bytes_.empty()) {
-        apache_writer_->Write(output_bytes_, message_handler_);
-      }
+  }
+  if (buffered_) {
+    SendOutHeaders();
+    if (!output_bytes_.empty()) {
+      apache_writer_->Write(output_bytes_, message_handler_);
     }
   }
 }

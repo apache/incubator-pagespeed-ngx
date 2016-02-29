@@ -93,11 +93,10 @@ class ApacheFetch : public AsyncFetch {
       LOCKS_EXCLUDED(scheduler_->mutex());
 
  private:
-  void SendOutHeaders() EXCLUSIVE_LOCKS_REQUIRED(scheduler_->mutex());
-  GoogleString DriverToString() EXCLUSIVE_LOCKS_REQUIRED(scheduler_->mutex());
+  void SendOutHeaders();
 
   GoogleString mapped_url_;
-  scoped_ptr<ApacheWriter> apache_writer_ GUARDED_BY(scheduler_->mutex());
+  scoped_ptr<ApacheWriter> apache_writer_;
   const RewriteOptions* options_ GUARDED_BY(scheduler_->mutex());
 
   MessageHandler* message_handler_;

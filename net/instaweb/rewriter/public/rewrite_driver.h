@@ -923,14 +923,9 @@ class RewriteDriver : public HtmlParse {
     return low_priority_rewrite_worker_;
   }
 
-  // Creates a private scheduler for exclusive use by this RewriteDriver.
-  // This makes sense when in a server where we are expected to block
-  // until we've finished handling the requests, such as Apache.  While
-  // we are blocking, we can run the scheduler.
-  void UsePrivateScheduler();
-
   // Make the rewrite_worker tasks run on the request thread.  This
-  // requires that UsePrivateScheduler is called first.
+  // must be called immediately after initializing the driver, before
+  // it starts processing the request.
   void RunTasksOnRequestThread();
 
   // Switches the driver back to running rewrite_worker tasks using

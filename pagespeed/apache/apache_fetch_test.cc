@@ -25,6 +25,7 @@
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/base/timer.h"
+#include "pagespeed/kernel/cache/delay_cache.h"
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/http/http_names.h"
@@ -144,6 +145,10 @@ class ApacheFetchTest : public RewriteTestBase {
     apache_fetch_.reset(NULL);
   }
 
+  void ReleaseKey(GoogleString key) {
+    delay_cache()->ReleaseKey(key);
+  }
+
  protected:
   void FetchDone() {
     apache_fetch_->Done(true);
@@ -171,6 +176,20 @@ class ApacheFetchTest : public RewriteTestBase {
 };
 
 TEST_F(ApacheFetchTest, WaitIproUnbuffered) {
+  WaitIproTest(false);
+}
+
+TEST_F(ApacheFetchTest, WaitIproUnbufferedWithTest) {
+  GoogleString key = http_cache()->CompositeKey(kJsUrl, kCacheFragment);
+  delay_cache()->DelayKey(key);
+  // This form looks clearer and more concise, and doesn't require a
+  // helper method.  However it doesn't compile because of template
+  // problems I didn't feel like debugging.
+  //
+  // Function* alarm = MakeFunction(delay_cache(), &DelayCache::ReleaseKey,key);
+  ApacheFetchTest* test = this;
+  Function* alarm = MakeFunction(test, &ApacheFetchTest::ReleaseKey, key);
+  server_context_->scheduler()->AddAlarmAtUs(timer()->NowUs() + 100, alarm);
   WaitIproTest(false);
 }
 

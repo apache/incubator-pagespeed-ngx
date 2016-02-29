@@ -64,11 +64,6 @@ class Scheduler {
   Scheduler(ThreadSystem* thread_system, Timer* timer);
   virtual ~Scheduler();
 
-  // Makes a new scheduler using the same thread-system and timer as this one.
-  // The state (e.g. pending alarms) is not copied; each scheduler gets its
-  // own mutex, condition variables, and alarm-set.
-  virtual Scheduler* Clone() { return new Scheduler(thread_system_, timer_); }
-
   ThreadSystem::CondvarCapableMutex* mutex() LOCK_RETURNED(mutex_) {
     return mutex_.get();
   }
@@ -172,9 +167,10 @@ class Scheduler {
   virtual void RegisterWorker(QueuedWorkerPool::Sequence* w);
   virtual void UnregisterWorker(QueuedWorkerPool::Sequence* w);
 
-  // Run any alarms that have reached their deadline.  Returns the time of the
-  // next deadline, or 0 if no further deadlines loom.  Sets *ran_alarms if
-  // non-NULL and any alarms were run, otherwise leaves it untouched.
+  // Run any alarms that have reached their deadline.  Returns the time in
+  // microseconds of the next deadline, or 0 if no further deadlines loom.
+  // Sets *ran_alarms if non-NULL and any alarms were run, otherwise leaves
+  // it untouched.
   int64 RunAlarms(bool* ran_alarms) EXCLUSIVE_LOCKS_REQUIRED(mutex());
 
   // Creates a new sequence, controlled by the scheduler.

@@ -3684,18 +3684,11 @@ bool RewriteDriver::LookupMetadataForOutputResource(
              this, error_out, callback);
 }
 
-void RewriteDriver::UsePrivateScheduler() {
-  scheduler_ = scheduler_->Clone();
-  ref_counts_.set_mutex(scheduler_->mutex());
-}
-
 void RewriteDriver::RunTasksOnRequestThread() {
   // Note that we hold no locks when we make the decision about whether to
   // add rewrite tasks on the scheduler_sequence_, so RunTasksOnRequestThread
   // can only be called prior to running tasks.
   CHECK(!executing_rewrite_tasks_.value());
-  CHECK(scheduler_ != server_context_->scheduler())
-      << "UsePrivateScheduler must be called before RunTasksOnRequestThread";
   scheduler_sequence_.reset(scheduler_->NewSequence());
 }
 
@@ -3704,17 +3697,8 @@ void RewriteDriver::SwitchToQueuedWorkerPool() {
 }
 
 void RewriteDriver::CleanupRequestThread() {
-  Scheduler* scheduler_to_delete = nullptr;
-
-  {
-    ScopedMutex lock(rewrite_mutex());
-    scheduler_sequence_.reset();
-    CHECK(scheduler_ != server_context_->scheduler());
-    scheduler_to_delete = scheduler_;
-    scheduler_ = server_context_->scheduler();
-    ref_counts_.set_mutex(scheduler_->mutex());
-  }
-  delete scheduler_to_delete;
+  ScopedMutex lock(rewrite_mutex());
+  scheduler_sequence_.reset();
 }
 
 Sequence* RewriteDriver::rewrite_worker() {
