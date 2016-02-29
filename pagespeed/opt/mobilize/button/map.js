@@ -98,18 +98,8 @@ mob.button.Map.prototype.clickHandler = function() {
  * @return {string}
  */
 mob.button.Map.prototype.getMapUrl_ = function() {
-  // TODO(jmarantz): test/fix this in iOS safari/chrome with/without
-  // Google Maps installed.  Probably use 'http://maps.apple.com/?='
-  //
-  // I don't know the best way to do this but I asked the question on
-  // Stack Overflow: http://goo.gl/0g8kEV
-  //
-  // Other links to explore:
-  // https://developer.apple.com/library/iad/featuredarticles/iPhoneURLScheme_Reference/MapLinks/MapLinks.html
-  // https://developers.google.com/maps/documentation/ios/urlscheme
-  // http://stackoverflow.com/questions/17915901/is-there-an-android-equivalent-to-google-maps-url-scheme-for-ios
   var mapUrl =
-      'https://maps.google.com/maps?q=' + encodeURIComponent(this.mapLocation_);
+      'https://maps.google.com/maps/place/' + this.mapLocation_;
   return mapUrl;
 };
 
