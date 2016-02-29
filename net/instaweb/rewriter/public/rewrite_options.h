@@ -348,7 +348,6 @@ class RewriteOptions {
   static const char kMobIframe[];
   static const char kMobIframeDisable[];
   static const char kMobIframeViewport[];
-  static const char kMobLayout[];
   static const char kMobNav[];
   static const char kMobLabeledMode[];
   static const char kMobNavClasses[];
@@ -2743,7 +2742,6 @@ class RewriteOptions {
     return mob_iframe_viewport_.value();
   }
   bool mob_iframe_disable() const { return mob_iframe_disable_.value(); }
-  bool mob_layout() const { return mob_layout_.value(); }
   void set_mob_beacon_url(StringPiece x) {
     set_option(x.as_string(), &mob_beacon_url_);
   }
@@ -2771,7 +2769,6 @@ class RewriteOptions {
   void set_mob_iframe_viewport(StringPiece x) {
     set_option(x.as_string(), &mob_iframe_viewport_);
   }
-  void set_mob_layout(bool x) { set_option(x, &mob_layout_); }
   bool mob_nav() const {
     return CheckMobilizeFiltersOption(mob_nav_);
   }
@@ -4300,7 +4297,6 @@ class RewriteOptions {
   Option<bool> mob_iframe_;
   Option<bool> mob_iframe_disable_;
   Option<GoogleString> mob_iframe_viewport_;
-  Option<bool> mob_layout_;
   Option<bool> mob_nav_;
   Option<bool> mob_labeled_mode_;
   Option<GoogleString> mob_nav_classes_;

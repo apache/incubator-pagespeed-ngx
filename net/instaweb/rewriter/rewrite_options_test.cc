@@ -1036,7 +1036,6 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
     RewriteOptions::kMobIframe,
     RewriteOptions::kMobIframeDisable,
     RewriteOptions::kMobIframeViewport,
-    RewriteOptions::kMobLayout,
     RewriteOptions::kMobMapConversionLabel,
     RewriteOptions::kMobMapLocation,
     RewriteOptions::kMobNav,
@@ -3183,7 +3182,6 @@ TEST_F(RewriteOptionsTest, MobilizeFiltersTest) {
   EXPECT_TRUE(options_.domain_rewrite_hyperlinks());
   EXPECT_TRUE(options_.mob_nav());
   EXPECT_FALSE(options_.mob_always());
-  EXPECT_FALSE(options_.mob_layout());
 }
 
 TEST_F(RewriteOptionsTest, ParseAllowVaryOn) {

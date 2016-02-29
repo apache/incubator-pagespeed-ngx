@@ -815,12 +815,6 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   check_not_from "$OUT" fgrep -q util.js
   check_not_from "$OUT" fgrep -q nav.js
 
-  start_test mobilizer with MobStatic on
-  OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \
-    "$URL?PageSpeedMobStatic=on" | grep script)
-  check_not_from "$OUT" egrep -q "pagespeed_static/mobilize_debug$MOB_SUFFIX_RE"
-  check_from "$OUT" fgrep -q deps.js
-
   start_test mobilizer with debug on
   OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \
     "$URL?PageSpeedFilters=+debug" | grep script)

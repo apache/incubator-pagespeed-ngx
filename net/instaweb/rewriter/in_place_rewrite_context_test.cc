@@ -67,8 +67,8 @@ class FakeImageFilter : public FakeFilter {
     virtual void DoRewriteSingle(const ResourcePtr input,
                                  OutputResourcePtr output) {
       CachedResult* cached = output->EnsureCachedResultCreated();
-      FakeFilter::Context::DoRewriteSingle(input, output);
       cached->set_optimized_image_type(filter_->optimized_image_type());
+      FakeFilter::Context::DoRewriteSingle(input, output);
     }
 
    private:

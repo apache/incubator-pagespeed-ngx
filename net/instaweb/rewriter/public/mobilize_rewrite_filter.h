@@ -20,7 +20,6 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_MOBILIZE_REWRITE_FILTER_H_
 
 #include "net/instaweb/rewriter/public/common_filter.h"
-#include "net/instaweb/rewriter/public/mobilize_decision_trees.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
@@ -29,8 +28,6 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/html_element.h"
-#include "pagespeed/kernel/html/html_name.h"
-#include "pagespeed/kernel/html/html_node.h"
 #include "pagespeed/kernel/http/user_agent_matcher.h"
 
 namespace net_instaweb {
@@ -75,12 +72,6 @@ namespace net_instaweb {
 class MobilizeRewriteFilter : public CommonFilter {
  public:
   static const char kPagesMobilized[];
-  static const char kKeeperBlocks[];
-  static const char kHeaderBlocks[];
-  static const char kNavigationalBlocks[];
-  static const char kContentBlocks[];
-  static const char kMarginalBlocks[];
-  static const char kDeletedElements[];
 
   explicit MobilizeRewriteFilter(RewriteDriver* rewrite_driver);
   virtual ~MobilizeRewriteFilter();
@@ -98,7 +89,6 @@ class MobilizeRewriteFilter : public CommonFilter {
   virtual void RenderDone();
   virtual void StartElementImpl(HtmlElement* element);
   virtual void EndElementImpl(HtmlElement* element);
-  virtual void Characters(HtmlCharactersNode* characters);
   virtual const char* Name() const { return "MobilizeRewrite"; }
 
  private:
@@ -106,40 +96,19 @@ class MobilizeRewriteFilter : public CommonFilter {
                         StaticAssetEnum::StaticAsset asset,
                         HtmlElement* element);
   void AddStyle(HtmlElement* element);
-  MobileRole::Level GetMobileRole(HtmlElement* element);
 
-  bool CheckForKeyword(
-      const HtmlName::Keyword* sorted_list, int len, HtmlName::Keyword keyword);
-  void LogEncounteredBlock(MobileRole::Level level);
   GoogleString GetMobJsInitScript();
 
   int body_element_depth_;
-  int keeper_element_depth_;
-  bool reached_reorder_containers_;
   bool added_viewport_;
   bool added_style_;
-  bool added_containers_;
-  bool added_progress_;
   bool added_spacer_;
-  bool in_script_;
   bool saw_end_document_;
-  bool use_js_layout_;
-  bool labeled_mode_;
-  bool use_static_;
-  bool rewrite_js_;
   GoogleString static_file_prefix_;
 
   // Statistics
   // Number of web pages we have mobilized.
   Variable* num_pages_mobilized_;
-  // Number of blocks of each mobile role encountered and reordered.
-  Variable* num_keeper_blocks_;
-  Variable* num_header_blocks_;
-  Variable* num_navigational_blocks_;
-  Variable* num_content_blocks_;
-  Variable* num_marginal_blocks_;
-  // Number of elements deleted.
-  Variable* num_elements_deleted_;
 
   // Used for overriding default behavior in testing.
   friend class MobilizeRewriteFilterTest;

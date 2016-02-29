@@ -1755,7 +1755,6 @@ Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
   ModPagespeedFetchProxy localhost:@@APACHE_SECONDARY_PORT@@
   ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@_proxysuffix"
   ModPagespeedRewriteLevel PassThrough
-  ModPagespeedMobLayout on
   ModPagespeedMobNav on
   ModPagespeedAlwaysMobilize on
   ModPagespeedProxySuffix .suffix.net

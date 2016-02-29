@@ -32,6 +32,7 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_name.h"
 #include "pagespeed/kernel/html/html_node.h"
 #include "pagespeed/kernel/html/html_parse_test_base.h"
 #include "pagespeed/kernel/html/html_writer_filter.h"
@@ -46,18 +47,13 @@ const char kTestDataDir[] = "/net/instaweb/rewriter/testdata/";
 const char kOriginal[] = "mobilize_test.html";
 const char kRewritten[] = "mobilize_test_output.html";
 const char kPhoneNumber[] = "16175551212";
+const char kPhoneItemprop[] =
+    "<meta itemprop=\"telephone\" content=\"16175551212\"/>";
 const int64 kConversionId = 42;
 const char kPhoneConversionLabel[] = "HelloWorld";
 const char kMobBeaconUrl[] = "/beacon";
 const char kMobilizeCss[] =
     "<link rel=\"stylesheet\" href=\"/psajs/mobilize_css.0.css\">";
-
-GoogleString HeadAndViewport(bool layout_mode) {
-  return StrCat(
-      "<meta itemprop=\"telephone\" content=\"", kPhoneNumber, "\"/>",
-      (layout_mode ? "<meta name='viewport' content='width=device-width'/>"
-                   : ""));
-}
 
 }  // namespace
 
@@ -80,7 +76,6 @@ class MobilizeRewriteFilterTest : public RewriteTestBase {
     options()->set_mob_conversion_id(kConversionId);
     options()->set_mob_phone_conversion_label(kPhoneConversionLabel);
     options()->set_mob_beacon_url(kMobBeaconUrl);
-    options()->set_mob_layout(LayoutMode());
     server_context()->ComputeSignature(options());
     SetHtmlMimetype();  // Don't wrap scripts in <![CDATA[ ]]>
 
@@ -91,7 +86,6 @@ class MobilizeRewriteFilterTest : public RewriteTestBase {
     RewriteTestBase::TearDown();
   }
 
-  virtual bool LayoutMode() const { return true; }
   virtual bool AddBody() const { return false; }
   virtual bool AddHtmlTags() const { return false; }
 
@@ -108,19 +102,12 @@ class MobilizeRewriteFilterTest : public RewriteTestBase {
   void FilterAddStyle(HtmlElement* element) {
     filter_->AddStyle(element);
   }
-  MobileRole::Level FilterGetMobileRole(HtmlElement* element) {
-    return filter_->GetMobileRole(element);
-  }
-  void FilterSetAddedProgress(bool added) {
-    filter_->added_progress_ = added;
-  }
 
   GoogleString ScriptsAtEndOfBody(StringPiece bg_color,
                                   StringPiece fg_color) const {
     return StrCat(
         "<script src=\"/psajs/mobilize.0.js\"></script>"
         "<script>window.psDebugMode=false;"
-        "window.psLabeledMode=false;"
         "window.psDeviceType='mobile';",
         "window.psConversionId='", Integer64ToString(kConversionId),
         "';window.psPhoneNumber='", kPhoneNumber,
@@ -136,19 +123,6 @@ class MobilizeRewriteFilterTest : public RewriteTestBase {
   GoogleString Spacer() const {
     return "<header id=\"psmob-header-bar\" class=\"psmob-hide\"></header>"
            "<div id=\"psmob-spacer\"></div>";
-  }
-
-  GoogleString Scrim() const {
-    return
-        "<div id=\"ps-progress-scrim\" class=\"psProgressScrim\">"
-        "<a href=\"javascript:psRemoveProgressBar();\""
-        " id=\"ps-progress-remove\" id=\"ps-progress-show-log\">"
-        "Remove Progress Bar (doesn't stop mobilization)</a><br>"
-        "<a href=\"javascript:psSetDebugMode();\">"
-        "Show Debug Log In Progress Bar</a>"
-        "<div class=\"psProgressBar\">"
-        "<span id=\"ps-progress-span\" class=\"psProgressSpan\"></span></div>"
-        "<pre id=\"ps-progress-log\" class=\"psProgressLog\"/></div>";
   }
 
   scoped_ptr<MobilizeRewriteFilter> filter_;
@@ -199,8 +173,6 @@ TEST_F(MobilizeRewriteUnitTest, MobileRoleAttribute) {
   html_parse()->AddAttribute(div, "data-mobile-role", "navigational");
   // Add the new node to the parse tree so it will be deleted.
   html_parse()->InsertNodeBeforeCurrent(div);
-  EXPECT_EQ(MobileRole::kNavigational,
-            FilterGetMobileRole(div));
 }
 
 TEST_F(MobilizeRewriteUnitTest, InvalidMobileRoleAttribute) {
@@ -208,16 +180,12 @@ TEST_F(MobilizeRewriteUnitTest, InvalidMobileRoleAttribute) {
   html_parse()->AddAttribute(div, "data-mobile-role", "garbage");
   // Add the new node to the parse tree so it will be deleted.
   html_parse()->InsertNodeBeforeCurrent(div);
-  EXPECT_EQ(MobileRole::kInvalid,
-            FilterGetMobileRole(div));
 }
 
 TEST_F(MobilizeRewriteUnitTest, KeeperMobileRoleAttribute) {
   HtmlElement* script = html_parse()->NewElement(NULL, HtmlName::kScript);
   // Add the new node to the parse tree so it will be deleted.
   html_parse()->InsertNodeBeforeCurrent(script);
-  EXPECT_EQ(MobileRole::kKeeper,
-            FilterGetMobileRole(script));
 }
 
 class MobilizeRewriteFunctionalTest : public MobilizeRewriteFilterTest {
@@ -227,9 +195,6 @@ class MobilizeRewriteFunctionalTest : public MobilizeRewriteFilterTest {
   virtual void SetUp() {
     MobilizeRewriteFilterTest::SetUp();
     rewrite_driver()->AppendUnownedPreRenderFilter(filter_.get());
-    // By default we *don't* add the progress bar scrim.  This explicitly gets
-    // overridden in subclasses.
-    FilterSetAddedProgress(true);
     SetCurrentUserAgent(
         UserAgentMatcherTestBase::kAndroidChrome21UserAgent);
   }
@@ -240,16 +205,10 @@ class MobilizeRewriteFunctionalTest : public MobilizeRewriteFilterTest {
     GoogleString original =
         StrCat("<head>\n", original_head, "\n</head>", Body());
     GoogleString expected =
-        StrCat("<head>", HeadAndViewport(LayoutMode()), "\n", expected_mid_head,
-               "\n", kMobilizeCss, "</head>", ExpectedBody());
+        StrCat("<head>", kPhoneItemprop, "\n", expected_mid_head, "\n",
+               kMobilizeCss, "</head>", ExpectedBody());
     ValidateExpected(name, original, expected);
     CheckVariable(MobilizeRewriteFilter::kPagesMobilized, 1);
-    CheckVariable(MobilizeRewriteFilter::kKeeperBlocks, keeper_blocks);
-    CheckVariable(MobilizeRewriteFilter::kHeaderBlocks, 0);
-    CheckVariable(MobilizeRewriteFilter::kNavigationalBlocks, 0);
-    CheckVariable(MobilizeRewriteFilter::kContentBlocks, 0);
-    CheckVariable(MobilizeRewriteFilter::kMarginalBlocks, 0);
-    CheckVariable(MobilizeRewriteFilter::kDeletedElements, deleted_elements);
   }
 
   void BodyTest(const char* name,
@@ -272,12 +231,6 @@ class MobilizeRewriteFunctionalTest : public MobilizeRewriteFilterTest {
 
   void KeeperTagsTest(const char* name, GoogleString keeper) {
     BodyUnchanged(name, keeper);
-    CheckVariable(MobilizeRewriteFilter::kKeeperBlocks, 1);
-    CheckVariable(MobilizeRewriteFilter::kHeaderBlocks, 0);
-    CheckVariable(MobilizeRewriteFilter::kNavigationalBlocks, 0);
-    CheckVariable(MobilizeRewriteFilter::kContentBlocks, 0);
-    CheckVariable(MobilizeRewriteFilter::kMarginalBlocks, 0);
-    CheckVariable(MobilizeRewriteFilter::kDeletedElements, 0);
   }
 
   void TwoBodysTest(const char* name,
@@ -314,16 +267,6 @@ TEST_F(MobilizeRewriteFunctionalTest, AddStyleAndViewport) {
   HeadTest("add_style_and_viewport", "", "", 0, 0);
 }
 
-TEST_F(MobilizeRewriteFunctionalTest, RemoveExistingViewport) {
-  HeadTest("remove_existing_viewport",
-           "<meta name='viewport' content='value' />", "", 1, 0);
-}
-
-TEST_F(MobilizeRewriteFunctionalTest, RemoveExistingViewportThatMatches) {
-  HeadTest("remove_existing_viewport",
-           "<meta name='viewport' content='width=device-width'/>", "", 1, 0);
-}
-
 TEST_F(MobilizeRewriteFunctionalTest, HeadUnmodified) {
   const char kHeadTags[] =
       "<meta name='keywords' content='cool,stuff'/>"
@@ -343,38 +286,6 @@ TEST_F(MobilizeRewriteFunctionalTest, EmptyBody) {
   ValidateExpected("empty_body",
                    "<body></body>", expected);
   CheckVariable(MobilizeRewriteFilter::kPagesMobilized, 1);
-  CheckVariable(MobilizeRewriteFilter::kKeeperBlocks, 0);
-  CheckVariable(MobilizeRewriteFilter::kHeaderBlocks, 0);
-  CheckVariable(MobilizeRewriteFilter::kNavigationalBlocks, 0);
-  CheckVariable(MobilizeRewriteFilter::kContentBlocks, 0);
-  CheckVariable(MobilizeRewriteFilter::kMarginalBlocks, 0);
-  CheckVariable(MobilizeRewriteFilter::kDeletedElements, 0);
-}
-
-TEST_F(MobilizeRewriteFunctionalTest, EmptyBodyWithProgress) {
-  FilterSetAddedProgress(false);
-  GoogleString expected = StrCat(
-      "<body>",
-      Spacer(),
-      "<div id=\"ps-progress-scrim\" class=\"psProgressScrim\">"
-      "<a href=\"javascript:psRemoveProgressBar();\" id=\"ps-progress-remove\""
-      " id=\"ps-progress-show-log\">Remove Progress Bar"
-      " (doesn't stop mobilization)</a><br>"
-      "<a href=\"javascript:psSetDebugMode();\">"
-      "Show Debug Log In Progress Bar</a>"
-      "<div class=\"psProgressBar\">"
-      "<span id=\"ps-progress-span\" class=\"psProgressSpan\"></span>"
-      "</div><pre id=\"ps-progress-log\" class=\"psProgressLog\"/></div>",
-      ScriptsAtEndOfBody(), "</body>");
-  ValidateExpected("empty_body_with_progress",
-                   "<body></body>", expected);
-  CheckVariable(MobilizeRewriteFilter::kPagesMobilized, 1);
-  CheckVariable(MobilizeRewriteFilter::kKeeperBlocks, 0);
-  CheckVariable(MobilizeRewriteFilter::kHeaderBlocks, 0);
-  CheckVariable(MobilizeRewriteFilter::kNavigationalBlocks, 0);
-  CheckVariable(MobilizeRewriteFilter::kContentBlocks, 0);
-  CheckVariable(MobilizeRewriteFilter::kMarginalBlocks, 0);
-  CheckVariable(MobilizeRewriteFilter::kDeletedElements, 0);
 }
 
 TEST_F(MobilizeRewriteFunctionalTest, MapTagsUnmodified) {
@@ -400,40 +311,21 @@ TEST_F(MobilizeRewriteFunctionalTest, UnknownMobileRole) {
   BodyUnchanged(
       "unknown_mobile_role",
       "<div data-mobile-role='garbage'><a>123</a></div>");
-  CheckVariable(MobilizeRewriteFilter::kKeeperBlocks, 0);
-  CheckVariable(MobilizeRewriteFilter::kHeaderBlocks, 0);
-  CheckVariable(MobilizeRewriteFilter::kNavigationalBlocks, 0);
-  CheckVariable(MobilizeRewriteFilter::kContentBlocks, 0);
-  CheckVariable(MobilizeRewriteFilter::kMarginalBlocks, 0);
-  CheckVariable(MobilizeRewriteFilter::kDeletedElements, 0);
 }
 
 TEST_F(MobilizeRewriteFunctionalTest, MultipleHeads) {
   // Check we only add the style and viewport tag once.
   const char kRestOfHeads[] = "</head><head></head>";
   GoogleString original = StrCat("<head>", kRestOfHeads);
-  GoogleString expected =
-      StrCat("<head>", HeadAndViewport(LayoutMode()), kMobilizeCss,
-             kRestOfHeads, ScriptsAtEndOfBody());
+  GoogleString expected = StrCat("<head>", kPhoneItemprop, kMobilizeCss,
+                                 kRestOfHeads, ScriptsAtEndOfBody());
   ValidateExpected("multiple_heads", original, expected);
   CheckVariable(MobilizeRewriteFilter::kPagesMobilized, 1);
-  CheckVariable(MobilizeRewriteFilter::kKeeperBlocks, 0);
-  CheckVariable(MobilizeRewriteFilter::kHeaderBlocks, 0);
-  CheckVariable(MobilizeRewriteFilter::kNavigationalBlocks, 0);
-  CheckVariable(MobilizeRewriteFilter::kContentBlocks, 0);
-  CheckVariable(MobilizeRewriteFilter::kMarginalBlocks, 0);
-  CheckVariable(MobilizeRewriteFilter::kDeletedElements, 0);
 }
 
 TEST_F(MobilizeRewriteFunctionalTest, MultipleBodys) {
   // Each body should be handled as its own unit.
   TwoBodysTest("multiple_bodys", "", "");
-  CheckVariable(MobilizeRewriteFilter::kKeeperBlocks, 0);
-  CheckVariable(MobilizeRewriteFilter::kHeaderBlocks, 0);
-  CheckVariable(MobilizeRewriteFilter::kNavigationalBlocks, 0);
-  CheckVariable(MobilizeRewriteFilter::kContentBlocks, 0);
-  CheckVariable(MobilizeRewriteFilter::kMarginalBlocks, 0);
-  CheckVariable(MobilizeRewriteFilter::kDeletedElements, 0);
 }
 
 TEST_F(MobilizeRewriteFunctionalTest, MultipleBodysWithContent) {
@@ -442,12 +334,6 @@ TEST_F(MobilizeRewriteFunctionalTest, MultipleBodysWithContent) {
       "123<div data-mobile-role='marginal'>567</div>",
       "<div data-mobile-role='content'>890</div>"
       "<div data-mobile-role='header'>abc</div>");
-  CheckVariable(MobilizeRewriteFilter::kKeeperBlocks, 0);
-  CheckVariable(MobilizeRewriteFilter::kHeaderBlocks, 1);
-  CheckVariable(MobilizeRewriteFilter::kNavigationalBlocks, 0);
-  CheckVariable(MobilizeRewriteFilter::kContentBlocks, 1);
-  CheckVariable(MobilizeRewriteFilter::kMarginalBlocks, 1);
-  CheckVariable(MobilizeRewriteFilter::kDeletedElements, 0);
 }
 
 TEST_F(MobilizeRewriteFunctionalTest, HeaderWithinBody) {
@@ -455,12 +341,6 @@ TEST_F(MobilizeRewriteFunctionalTest, HeaderWithinBody) {
       "header_within_body",
       "<div data-mobile-role='content'>123<div data-mobile-role='header'>"
       "456</div>789</div>");
-  CheckVariable(MobilizeRewriteFilter::kKeeperBlocks, 0);
-  CheckVariable(MobilizeRewriteFilter::kHeaderBlocks, 1);
-  CheckVariable(MobilizeRewriteFilter::kNavigationalBlocks, 0);
-  CheckVariable(MobilizeRewriteFilter::kContentBlocks, 1);
-  CheckVariable(MobilizeRewriteFilter::kMarginalBlocks, 0);
-  CheckVariable(MobilizeRewriteFilter::kDeletedElements, 0);
 }
 
 TEST_F(MobilizeRewriteFunctionalTest, HeaderWithinHeader) {
@@ -470,17 +350,9 @@ TEST_F(MobilizeRewriteFunctionalTest, HeaderWithinHeader) {
       "header_within_header",
       "<div data-mobile-role='header'>123<div data-mobile-role='header'>"
       "456</div>789</div>");
-  CheckVariable(MobilizeRewriteFilter::kKeeperBlocks, 0);
-  CheckVariable(MobilizeRewriteFilter::kHeaderBlocks, 2);
-  CheckVariable(MobilizeRewriteFilter::kNavigationalBlocks, 0);
-  CheckVariable(MobilizeRewriteFilter::kContentBlocks, 0);
-  CheckVariable(MobilizeRewriteFilter::kMarginalBlocks, 0);
-  CheckVariable(MobilizeRewriteFilter::kDeletedElements, 0);
 }
 
 class MobilizeRewriteThemeTest : public MobilizeRewriteFunctionalTest {
- protected:
-  virtual bool LayoutMode() const { return false; }
 };
 
 TEST_F(MobilizeRewriteThemeTest, ConfigureTheme) {
@@ -491,16 +363,15 @@ TEST_F(MobilizeRewriteThemeTest, ConfigureTheme) {
   GoogleString original = StrCat("<head></head>", Body());
 
   GoogleString expected =
-      StrCat("<head>", HeadAndViewport(false /* layout_mode */), kMobilizeCss,
-             "</head>", ExpectedBody("[255,0,0]", "[0,0,255]"));
+      StrCat("<head>", kPhoneItemprop, kMobilizeCss, "</head>",
+             ExpectedBody("[255,0,0]", "[0,0,255]"));
   ValidateExpected("ConfigureTheme", original, expected);
 
   ASSERT_EQ(RewriteOptions::kOptionOk,
             options()->SetOptionFromName(RewriteOptions::kMobTheme,
                                          "#ff0000 #0000ff http://logo.com"));
-  expected =
-      StrCat("<head>", HeadAndViewport(false /* layout_mode*/), kMobilizeCss,
-             "</head>", ExpectedBody("[255,0,0]", "[0,0,255]"));
+  expected = StrCat("<head>", kPhoneItemprop, kMobilizeCss, "</head>",
+                    ExpectedBody("[255,0,0]", "[0,0,255]"));
   ValidateExpected("ConfigureTheme2", original, expected);
 }
 
@@ -510,8 +381,7 @@ TEST_F(MobilizeRewriteThemeTest, PreComputeTheme) {
   GoogleString original = StrCat("<head></head>", Body());
 
   GoogleString expected =
-      StrCat("<head>", HeadAndViewport(false /* layout_mode */), kMobilizeCss,
-             "</head>", ExpectedBody());
+      StrCat("<head>", kPhoneItemprop, kMobilizeCss, "</head>", ExpectedBody());
   ValidateExpected("Precompute", original, expected);
 }
 
@@ -523,22 +393,17 @@ class MobilizeRewriteEndToEndTest : public MobilizeRewriteFilterTest {
   virtual void SetUp() {
     RewriteTestBase::SetUp();
     SetHtmlMimetype();  // Don't wrap scripts in <![CDATA[ ]]>
+    AddFilter(RewriteOptions::kMobilize);
+
     options()->ClearSignatureForTesting();
     options()->set_mob_phone_number(kPhoneNumber);
     options()->set_mob_conversion_id(kConversionId);
     options()->set_mob_phone_conversion_label(kPhoneConversionLabel);
     options()->set_mob_beacon_url(kMobBeaconUrl);
-    options()->set_mob_layout(false);
   }
 
   virtual bool AddBody() const { return false; }
   virtual bool AddHtmlTags() const { return false; }
-  virtual bool LayoutMode() const { return options()->mob_layout(); }
-
-  void Layout(bool layout) {
-    options()->set_mob_layout(layout);
-    AddFilter(RewriteOptions::kMobilize);
-  }
 
   void ValidateWithUA(StringPiece test_name, StringPiece user_agent,
                       StringPiece input, StringPiece expected) {
@@ -562,85 +427,8 @@ class MobilizeRewriteEndToEndTest : public MobilizeRewriteFilterTest {
   DISALLOW_COPY_AND_ASSIGN(MobilizeRewriteEndToEndTest);
 };
 
-TEST_F(MobilizeRewriteEndToEndTest, FullPageLayout) {
-  // These tests will break when the CSS is changed. Update the expected output
-  // accordingly.
-  Layout(true);
-  GoogleString original_buffer;
-  GoogleString original_filename =
-      StrCat(GTestSrcDir(), kTestDataDir, kOriginal);
-  ASSERT_TRUE(filesystem_.ReadFile(original_filename.c_str(), &original_buffer,
-                                   message_handler()));
-  GoogleString rewritten_buffer;
-  GoogleString rewritten_filename =
-      StrCat(GTestSrcDir(), kTestDataDir, kRewritten);
-  ASSERT_TRUE(filesystem_.ReadFile(rewritten_filename.c_str(),
-                                   &rewritten_buffer, message_handler()));
-  GlobalReplaceSubstring("@@VIEWPORT@@", "", &rewritten_buffer);
-  GlobalReplaceSubstring(
-      "@@SPACER@@",
-      StrCat(NoScriptRedirect("EndToEndMobileLayout"), Spacer(), Scrim()),
-      &rewritten_buffer);
-  GlobalReplaceSubstring("@@HEAD_SCRIPT_LOAD@@",
-                         HeadAndViewport(true /* layout_mode */),
-                         &rewritten_buffer);
-  GlobalReplaceSubstring("@@HEAD_STYLES@@", kMobilizeCss, &rewritten_buffer);
-  GlobalReplaceSubstring("@@TRAILING_SCRIPT_LOADS@@", ScriptsAtEndOfBody(),
-                         &rewritten_buffer);
-  ValidateWithUA("EndToEndMobileLayout",
-                 UserAgentMatcherTestBase::kAndroidChrome21UserAgent,
-                 original_buffer, rewritten_buffer);
-}
-
-TEST_F(MobilizeRewriteEndToEndTest, NonMobileLayout) {
-  // Don't mobilize on a non-mobile browser.
-  Layout(true);
-  GoogleString original_buffer;
-  GoogleString original_filename =
-      StrCat(GTestSrcDir(), kTestDataDir, kOriginal);
-  ASSERT_TRUE(filesystem_.ReadFile(original_filename.c_str(), &original_buffer,
-                                   message_handler()));
-  ValidateWithUA("EndToEndNonMobileLayout",
-                 UserAgentMatcherTestBase::kChrome37UserAgent,
-                 original_buffer, original_buffer);
-}
-
-TEST_F(MobilizeRewriteEndToEndTest, FullPage) {
-  Layout(false);
-  GoogleString original_buffer;
-  GoogleString original_filename =
-      StrCat(GTestSrcDir(), kTestDataDir, kOriginal);
-  ASSERT_TRUE(filesystem_.ReadFile(original_filename.c_str(), &original_buffer,
-                                   message_handler()));
-  GoogleString rewritten_buffer;
-  GoogleString rewritten_filename =
-      StrCat(GTestSrcDir(), kTestDataDir, kRewritten);
-  ASSERT_TRUE(filesystem_.ReadFile(rewritten_filename.c_str(),
-                                   &rewritten_buffer, message_handler()));
-
-  GlobalReplaceSubstring("@@VIEWPORT@@",
-                         "<meta name=\"viewport\" content=\"width=100px;\"/>",
-                         &rewritten_buffer);
-  GlobalReplaceSubstring("@@SPACER@@",
-                         StrCat(NoScriptRedirect("EndToEndMobile"), Spacer()),
-                         &rewritten_buffer);
-  GlobalReplaceSubstring("@@HEAD_SCRIPT_LOAD@@",
-                         HeadAndViewport(false /* layout_mode */),
-                         &rewritten_buffer);
-  GlobalReplaceSubstring("@@HEAD_STYLES@@", kMobilizeCss, &rewritten_buffer);
-  GlobalReplaceSubstring("@@TRAILING_SCRIPT_LOADS@@", ScriptsAtEndOfBody(),
-                         &rewritten_buffer);
-  ValidateWithUA("EndToEndMobile",
-                 UserAgentMatcherTestBase::kAndroidChrome21UserAgent,
-                 original_buffer, rewritten_buffer);
-  ValidateWithUA("EndToEndMobile",
-                 UserAgentMatcherTestBase::kGoogleAdsBotMobileUserAgent,
-                 original_buffer, rewritten_buffer);
-}
-
 TEST_F(MobilizeRewriteEndToEndTest, NonMobile) {
   // Don't mobilize on a non-mobile browser.
-  Layout(false);
   GoogleString original_buffer;
   GoogleString original_filename =
       StrCat(GTestSrcDir(), kTestDataDir, kOriginal);
@@ -655,8 +443,6 @@ TEST_F(MobilizeRewriteEndToEndTest, NonMobile) {
 }
 
 class MobilizeRewriteFilterNoLayoutTest : public MobilizeRewriteFunctionalTest {
- protected:
-  virtual bool LayoutMode() const { return false; }
 };
 
 TEST_F(MobilizeRewriteFilterNoLayoutTest, AddStyleAndViewport) {

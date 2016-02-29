@@ -249,7 +249,6 @@ const char RewriteOptions::kMobPhoneConversionLabel[] =
 const char RewriteOptions::kMobIframe[] = "MobIframe";
 const char RewriteOptions::kMobIframeDisable[] = "MobIframeDisable";
 const char RewriteOptions::kMobIframeViewport[] = "MobIframeViewport";
-const char RewriteOptions::kMobLayout[] = "MobLayout";
 const char RewriteOptions::kMobNav[] = "MobNav";
 const char RewriteOptions::kMobLabeledMode[] = "MobLabeledMode";
 const char RewriteOptions::kMobNavClasses[] = "MobNavigationalClasses";
@@ -748,9 +747,6 @@ const RewriteOptions::Filter kRequiresScriptExecutionFilterSet[] = {
 // TODO(huibao): Once rewrite levels can be combined, move kRewriteCss and
 // kRewriteDomains (and kDomainRewriteHyperlinks Option) into a proxy mode.
 const RewriteOptions::Filter kMobilizeFilterSet[] = {
-  // TODO(huibao): When layout mode is enabled, uncomment kInlineJavascript
-  // to inline xhr.js, a small JS file which we create, into HTML.
-  // RewriteOptions::kInlineJavascript,
   RewriteOptions::kMobilize,
   // Turn on rewrite_css in order to rewrite hyper-links in CSS.
   RewriteOptions::kRewriteCss,
@@ -2345,10 +2341,10 @@ void RewriteOptions::AddProperties() {
       "", &RewriteOptions::mob_phone_conversion_label_, "mmcnvl",
       kMobPhoneConversionLabel, kQueryScope,
       "(experimental) map conversion Label", true);
+  // TODO(jud): Remove this option, since we no longer support non-iframe mode.
   AddBaseProperty(
-      false, &RewriteOptions::mob_iframe_, "miframe", kMobIframe,
-      kQueryScope,
-      "(experimental) whether to use an iframe rather than proxying", true);
+      false, &RewriteOptions::mob_iframe_, "miframe", kMobIframe, kQueryScope,
+      "Deprecated. Whether to use an iframe rather than proxying", true);
   AddBaseProperty(
       false, &RewriteOptions::mob_iframe_disable_, "miframedis",
       kMobIframeDisable, kDirectoryScope,
@@ -2366,20 +2362,18 @@ void RewriteOptions::AddProperties() {
       "(experimental) the content of the viewport tag to insert "
       "when in iframe mode. Set to \"none\" to avoid adding a viewport tag.",
       true);
-  AddBaseProperty(false, &RewriteOptions::mob_layout_, "mlayout", kMobLayout,
-                  kQueryScope, "Deprecated.", true);
+  // TODO(jud): Remove this option.
   AddBaseProperty(false, &RewriteOptions::mob_nav_, "mnav", kMobNav,
                   kQueryScope, "Deprecated.", true);
   // TODO(jud): Remove this option. It should always be true.
-  AddBaseProperty(false, &RewriteOptions::mob_labeled_mode_, "mlabeled",
+  AddBaseProperty(true, &RewriteOptions::mob_labeled_mode_, "mlabeled",
                   kMobLabeledMode, kQueryScope, "Deprecated.", true);
+  // TODO(jud): Remove this option.
   AddBaseProperty("", &RewriteOptions::mob_nav_classes_, "navcls",
                   kMobNavClasses, kQueryScope, "Deprecated.", true);
-  AddBaseProperty(
-      false, &RewriteOptions::mob_static_, "mstatic", kMobStatic,
-      kQueryScope,
-      "(experimental) whether to load discrete mobilization JS",
-      true);
+  // TODO(jud): Remove this option.
+  AddBaseProperty(false, &RewriteOptions::mob_static_, "mstatic", kMobStatic,
+                  kQueryScope, "Deprecated.", true);
   AddBaseProperty(
       MobTheme(), &RewriteOptions::mob_theme_, "mtheme", kMobTheme,
       kServerScope,  // DO NOT MAKE THIS QueryScope --- that would XSS.
