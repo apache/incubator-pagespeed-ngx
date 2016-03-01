@@ -1,5 +1,5 @@
---- serf/src/buckets/buckets.c	2016-01-27 13:54:06.782312805 -0500
-+++ src/third_party/serf/instaweb_buckets.c	2016-01-27 13:54:06.794312723 -0500
+--- serf/src/buckets/buckets.c	2016-02-29 15:09:54.864201070 -0500
++++ src/third_party/serf/instaweb_buckets.c	2016-02-29 15:09:54.872201020 -0500
 @@ -609,29 +609,21 @@
      va_list argp;
  
@@ -40,8 +40,8 @@
          va_start(argp, fmt);
          vfprintf(stderr, fmt, argp);
          va_end(argp);
---- serf/src/buckets/bwtp_buckets.c	2016-01-27 13:54:06.782312805 -0500
-+++ src/third_party/serf/instaweb_bwtp_buckets.c	2016-01-27 13:54:06.794312723 -0500
+--- serf/src/buckets/bwtp_buckets.c	2016-02-29 15:09:54.864201070 -0500
++++ src/third_party/serf/instaweb_bwtp_buckets.c	2016-02-29 15:09:54.872201020 -0500
 @@ -228,7 +228,8 @@
      req_len = apr_snprintf(ctx->req_line, sizeof(ctx->req_line),
                             "%s %d " "%" APR_UINT64_T_HEX_FMT " %s%s\r\n",
@@ -52,8 +52,8 @@
                             (ctx->open ? "OPEN " : ""),
                             ctx->phrase);
      new_bucket = serf_bucket_simple_copy_create(ctx->req_line, req_len,
---- serf/src/buckets/response_buckets.c	2016-01-27 13:54:06.786312776 -0500
-+++ src/third_party/serf/instaweb_response_buckets.c	2016-01-27 13:54:06.794312723 -0500
+--- serf/src/buckets/response_buckets.c	2016-02-29 15:09:54.864201070 -0500
++++ src/third_party/serf/instaweb_response_buckets.c	2016-02-29 15:09:54.872201020 -0500
 @@ -273,41 +273,53 @@
              ctx->body =
                  serf_bucket_barrier_create(ctx->stream, bkt->allocator);
@@ -134,8 +134,8 @@
          }
          break;
      case STATE_BODY:
---- serf/src/outgoing.c	2016-01-27 13:54:06.786312776 -0500
-+++ src/third_party/serf/instaweb_outgoing.c	2016-01-27 13:54:06.794312723 -0500
+--- serf/src/outgoing.c	2016-02-29 15:09:54.864201070 -0500
++++ src/third_party/serf/instaweb_outgoing.c	2016-02-29 15:09:54.872201020 -0500
 @@ -909,6 +909,7 @@
      apr_status_t status = APR_SUCCESS;
      int consumed_response = 0;
@@ -245,8 +245,8 @@
  apr_interval_time_t serf_connection_get_latency(serf_connection_t *conn)
  {
      if (conn->ctx->proxy_address) {
---- serf/src/buckets/ssl_buckets.c	2016-01-27 13:54:06.786312776 -0500
-+++ src/third_party/serf/instaweb_ssl_buckets.c	2016-01-28 13:46:52.874745501 -0500
+--- serf/src/buckets/ssl_buckets.c	2016-02-29 15:09:54.864201070 -0500
++++ src/third_party/serf/instaweb_ssl_buckets.c	2016-02-29 15:11:19.831661212 -0500
 @@ -34,6 +34,12 @@
   * Originally developed by Aaron Bannert and Justin Erenkrantz, eBuilt.
   */
@@ -260,32 +260,7 @@
  #include <apr_pools.h>
  #include <apr_network_io.h>
  #include <apr_portable.h>
-@@ -382,21 +388,9 @@
- 
- static long bio_bucket_ctrl(BIO *bio, int cmd, long num, void *ptr)
- {
--    long ret = 1;
--
--    switch (cmd) {
--    default:
--        /* abort(); */
--        break;
--    case BIO_CTRL_FLUSH:
--        /* At this point we can't force a flush. */
--        break;
--    case BIO_CTRL_PUSH:
--    case BIO_CTRL_POP:
--        ret = 0;
--        break;
--    }
--    return ret;
-+    /* Note that this is probably wrong for e.g. BIO_CTRL_PENDING, where we
-+     * should return 0. */
-+    return 1;
- }
- 
- static BIO_METHOD bio_bucket_method = {
-@@ -462,7 +456,8 @@
+@@ -462,7 +468,8 @@
              switch (nm->type) {
                  case GEN_DNS:
                      if (copy_action == ErrorOnNul &&
@@ -295,27 +270,7 @@
                          return SERF_ERROR_SSL_CERT_FAILED;
                      if (san_arr && *san_arr)
                          p = pstrdup_escape_nul_bytes((const char *)nm->d.ia5->data,
-@@ -1069,6 +1064,7 @@
- #endif
- 
- #ifdef SSL_VERBOSE
-+#ifndef OPENSSL_IS_BORINGSSL
-         /* Warn when compile-time and run-time version of OpenSSL differ in
-            major/minor version number. */
-         long libver = SSLeay();
-@@ -1080,8 +1076,11 @@
-                       OPENSSL_VERSION_NUMBER, libver);
-         }
- #endif
-+#endif
- 
-+#ifndef OPENSSL_IS_BORINGSSL
-         CRYPTO_malloc_init();
-+#endif
-         ERR_load_crypto_strings();
-         SSL_load_error_strings();
-         SSL_library_init();
-@@ -1192,8 +1191,13 @@
+@@ -1192,8 +1199,13 @@
          else {
              int err = ERR_get_error();
              ERR_clear_error();
@@ -329,7 +284,7 @@
                  if (ctx->cert_pw_callback) {
                      const char *password;
  
-@@ -1413,7 +1417,9 @@
+@@ -1413,7 +1425,9 @@
                                     const char * hostname)
  {
  #ifdef SSL_set_tlsext_host_name
@@ -340,7 +295,7 @@
          ERR_clear_error();
      }
  #endif
-@@ -1429,6 +1435,28 @@
+@@ -1429,6 +1443,28 @@
      return result ? APR_SUCCESS : SERF_ERROR_SSL_CERT_FAILED;
  }
  
@@ -369,7 +324,7 @@
  apr_status_t serf_ssl_load_cert_file(
      serf_ssl_certificate_t **cert,
      const char *file_path,
-@@ -1652,6 +1680,21 @@
+@@ -1652,6 +1688,21 @@
      return cert->depth;
  }
  
@@ -391,7 +346,7 @@
  
  apr_hash_t *serf_ssl_cert_issuer(
      const serf_ssl_certificate_t *cert,
-@@ -1798,6 +1841,7 @@
+@@ -1798,6 +1849,7 @@
  
      if (!--ctx->ssl_ctx->refcount) {
          ssl_free_context(ctx->ssl_ctx);

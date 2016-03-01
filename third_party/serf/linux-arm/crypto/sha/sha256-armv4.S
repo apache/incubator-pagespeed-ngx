@@ -85,6 +85,7 @@ K256:
 .align	5
 
 .globl	sha256_block_data_order
+.hidden	sha256_block_data_order
 .type	sha256_block_data_order,%function
 sha256_block_data_order:
 .Lsha256_block_data_order:
@@ -1875,6 +1876,7 @@ sha256_block_data_order:
 .fpu	neon
 
 .globl	sha256_block_data_order_neon
+.hidden	sha256_block_data_order_neon
 .type	sha256_block_data_order_neon,%function
 .align	4
 sha256_block_data_order_neon:

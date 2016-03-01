@@ -388,9 +388,21 @@ static int bio_bucket_destroy(BIO *bio)
 
 static long bio_bucket_ctrl(BIO *bio, int cmd, long num, void *ptr)
 {
-    /* Note that this is probably wrong for e.g. BIO_CTRL_PENDING, where we
-     * should return 0. */
-    return 1;
+    long ret = 1;
+
+    switch (cmd) {
+    default:
+        /* abort(); */
+        break;
+    case BIO_CTRL_FLUSH:
+        /* At this point we can't force a flush. */
+        break;
+    case BIO_CTRL_PUSH:
+    case BIO_CTRL_POP:
+        ret = 0;
+        break;
+    }
+    return ret;
 }
 
 static BIO_METHOD bio_bucket_method = {
@@ -1064,7 +1076,6 @@ static void init_ssl_libraries(void)
 #endif
 
 #ifdef SSL_VERBOSE
-#ifndef OPENSSL_IS_BORINGSSL
         /* Warn when compile-time and run-time version of OpenSSL differ in
            major/minor version number. */
         long libver = SSLeay();
@@ -1076,11 +1087,8 @@ static void init_ssl_libraries(void)
                       OPENSSL_VERSION_NUMBER, libver);
         }
 #endif
-#endif
 
-#ifndef OPENSSL_IS_BORINGSSL
         CRYPTO_malloc_init();
-#endif
         ERR_load_crypto_strings();
         SSL_load_error_strings();
         SSL_library_init();

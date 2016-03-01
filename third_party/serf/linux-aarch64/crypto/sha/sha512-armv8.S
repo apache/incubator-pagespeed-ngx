@@ -5,6 +5,7 @@
 
 
 .globl	sha512_block_data_order
+.hidden	sha512_block_data_order
 .type	sha512_block_data_order,%function
 .align	6
 sha512_block_data_order:

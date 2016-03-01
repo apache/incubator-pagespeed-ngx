@@ -3,18 +3,28 @@ Updating BoringSSL can sometimes be tricky!
 Because sometimes the gypi file can change drastically upstream, we will
 have to take the gypi file from chromium's trunk and modify the paths.
 
-The gypi can be found here
-https://chromium.googlesource.com/chromium/src.git/+/master/third_party/boringssl/
-(master, but choose the proper revision to match the version of boringssl
-we are upgrading to).
+  SERF_DIR=/path/to/client/google3/third_party/instaweb/src/third_party/serf
+  git clone https://chromium.googlesource.com/chromium/src
 
-The following `sed` commands can be used to transform the chromium gypi to a
-usable format for us.
+  # Look up what boringssl commit to use
+  cat src/DEPS | grep "boringssl_revision':"
+  # edit our DEPS file to use that commit
 
-sed -i 's/src\//<(openssl_root)\//g' boringssl.gypi
-mv boringssl.gypi openssl.gypi
+  # Now copy the build files
+  cat src/third_party/boringssl/boringssl.gypi \
+    | sed 's~src/~<(openssl_root)/~g' \
+    > $SERF_DIR/openssl.gypi
+  # You probably don't need to change the .gyp file, but that's a place to look
+  # if you get build errors.
 
-And then take chromium's precreated err_data.c file, and the folders,
-linux-x86, linux-x86_64, mac-x86_64, mac-x86, win-x86, win-x86_64,
-linux-aarch64, linux-arm, which contain the assembly routines, and place them in
-this directory.
+  # copy the assembly routines and err_data
+  cp src/third_party/boringssl/err_data.c $SERF_DIR/
+  for arch in linux-x86 linux-x86_64 mac-x86_64 mac-x86 win-x86 \
+              win-x86_64 linux-aarch64 linux-arm ; do
+    rm -rf $SERF_DIR/$arch/
+    cp -r src/third_party/boringssl/$arch $SERF_DIR/$arch/
+  done
+
+Then run:
+
+  make gclient_update

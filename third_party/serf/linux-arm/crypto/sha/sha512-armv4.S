@@ -133,6 +133,7 @@ K512:
 #endif
 
 .globl	sha512_block_data_order
+.hidden	sha512_block_data_order
 .type	sha512_block_data_order,%function
 sha512_block_data_order:
 .Lsha512_block_data_order:
@@ -533,6 +534,7 @@ sha512_block_data_order:
 .fpu	neon
 
 .globl	sha512_block_data_order_neon
+.hidden	sha512_block_data_order_neon
 .type	sha512_block_data_order_neon,%function
 .align	4
 sha512_block_data_order_neon:

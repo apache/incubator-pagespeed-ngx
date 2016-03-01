@@ -2,6 +2,7 @@
 .text
 
 .globl	bn_mul_mont
+.hidden	bn_mul_mont
 .type	bn_mul_mont,%function
 .align	5
 bn_mul_mont:
