@@ -75,10 +75,6 @@
       'rewriter/critical_css_beacon.js',
       'rewriter/lazyload_images.js',
       'rewriter/delay_images.js',
-      # TODO(jud): There is currently a dependency on a google specific path in
-      # this file. Resolve that so we can use the open-source closure build
-      # path.
-      # 'rewriter/ghost_click_buster.js',
       'rewriter/js_defer.js',
       'rewriter/local_storage_cache.js',
     ],
@@ -681,20 +677,6 @@
       },
       'sources': [
         '<(compiled_js_dir)/rewriter/deterministic_opt.js',
-      ],
-      'includes': [
-        'data2c.gypi',
-      ]
-    },
-    {
-      'target_name': 'instaweb_ghost_click_buster_opt_data2c',
-      'variables': {
-        'instaweb_data2c_subdir': 'net/instaweb/rewriter',
-        'instaweb_js_subdir': 'genfiles/rewriter',
-        'var_name': 'ghost_click_buster_opt',
-      },
-      'sources': [
-        'genfiles/rewriter/ghost_click_buster_opt.js',
       ],
       'includes': [
         'data2c.gypi',
@@ -1573,7 +1555,6 @@
         'instaweb_extended_instrumentation_data2c',
         'instaweb_extended_instrumentation_opt_data2c',
         'instaweb_flush_early_pb',
-        'instaweb_ghost_click_buster_opt_data2c',
         'instaweb_graphs_css_data2c',
         'instaweb_graphs_js_data2c',
         'instaweb_graphs_js_opt_data2c',

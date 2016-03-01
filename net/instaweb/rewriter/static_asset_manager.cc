@@ -58,7 +58,6 @@ extern const char* JS_deterministic;
 extern const char* JS_deterministic_opt;
 extern const char* JS_extended_instrumentation;
 extern const char* JS_extended_instrumentation_opt;
-extern const char* JS_ghost_click_buster_opt;
 extern const char* JS_js_defer;
 extern const char* JS_js_defer_opt;
 extern const char* JS_lazyload_images;
@@ -256,8 +255,6 @@ void StaticAssetManager::InitializeAssetStrings() {
       "delay_images_inline";
   assets_[StaticAssetEnum::LAZYLOAD_IMAGES_JS]->file_name = "lazyload_images";
   assets_[StaticAssetEnum::DETERMINISTIC_JS]->file_name = "deterministic";
-  assets_[StaticAssetEnum::GHOST_CLICK_BUSTER_JS]->file_name =
-      "ghost_click_buster";
   assets_[StaticAssetEnum::LOCAL_STORAGE_CACHE_JS]->file_name =
       "local_storage_cache";
   assets_[StaticAssetEnum::MOBILIZE_JS]->file_name = "mobilize";
@@ -271,6 +268,8 @@ void StaticAssetManager::InitializeAssetStrings() {
       "deprecated_mobilize_layout_css";
   assets_[StaticAssetEnum::DEPRECATED_SPLIT_HTML_BEACON_JS]->file_name =
       "deprecated_split_html_beacon";
+  assets_[StaticAssetEnum::DEPRECATED_GHOST_CLICK_BUSTER_JS]->file_name =
+      "deprecated_ghost_click_buster";
 
   // Initialize compiled javascript strings->
   assets_[StaticAssetEnum::ADD_INSTRUMENTATION_JS]->js_optimized =
@@ -300,8 +299,6 @@ void StaticAssetManager::InitializeAssetStrings() {
       JS_lazyload_images_opt;
   assets_[StaticAssetEnum::DETERMINISTIC_JS]->js_optimized =
       JS_deterministic_opt;
-  assets_[StaticAssetEnum::GHOST_CLICK_BUSTER_JS]->js_optimized =
-      JS_ghost_click_buster_opt;
   assets_[StaticAssetEnum::LOCAL_STORAGE_CACHE_JS]->js_optimized =
       JS_local_storage_cache_opt;
   assets_[StaticAssetEnum::MOBILIZE_JS]->js_optimized = JS_mobilize_js_opt;
@@ -333,9 +330,6 @@ void StaticAssetManager::InitializeAssetStrings() {
       JS_delay_images_inline;
   assets_[StaticAssetEnum::LAZYLOAD_IMAGES_JS]->js_debug = JS_lazyload_images;
   assets_[StaticAssetEnum::DETERMINISTIC_JS]->js_debug = JS_deterministic;
-  // GhostClickBuster uses goog.require, which needs to be minifed always.
-  assets_[StaticAssetEnum::GHOST_CLICK_BUSTER_JS]->js_debug =
-      JS_ghost_click_buster_opt;
   assets_[StaticAssetEnum::LOCAL_STORAGE_CACHE_JS]->js_debug =
       JS_local_storage_cache;
   assets_[StaticAssetEnum::MOBILIZE_JS]->js_debug = JS_mobilize_js;
