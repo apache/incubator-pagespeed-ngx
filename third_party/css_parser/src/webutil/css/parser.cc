@@ -2384,7 +2384,9 @@ MediaQuery* Parser::ParseMediaQuery() {
             found_and = true;
           }
         } else {
-          if (ident.empty()) {
+          if (in_ >= end_) {
+            ReportParsingError(kMediaError, "Unexpected EOF");
+          } else if (ident.empty()) {
             ReportParsingError(kMediaError, StringPrintf(
                 "Unexpected char in media query: %c", *in_));
           } else {
