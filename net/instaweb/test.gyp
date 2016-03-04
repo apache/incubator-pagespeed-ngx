@@ -210,6 +210,7 @@
         'rewriter/static_asset_manager_test.cc',
         'rewriter/strip_non_cacheable_filter_test.cc',
         'rewriter/strip_scripts_filter_test.cc',
+        'rewriter/strip_subresource_hints_filter_test.cc',
         'rewriter/support_noscript_filter_test.cc',
         'rewriter/suppress_prehead_filter_test.cc',
         'rewriter/two_level_cache_test.cc',

@@ -66,6 +66,7 @@ fi
 # This sequence is described in /usr/share/doc/apache2.2-common/README.Debian.gz
 sudo a2ensite default-ssl
 sudo a2enmod ssl
+sudo a2enmod headers
 sudo make-ssl-cert generate-default-snakeoil --force-overwrite
 
 # TODO(jefftk): We don't restart the test servers often enough for this to be

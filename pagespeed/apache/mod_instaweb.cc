@@ -161,6 +161,8 @@ const char kModPagespeedNumExpensiveRewriteThreads[] =
     "ModPagespeedNumExpensiveRewriteThreads";
 const char kModPagespeedNumRewriteThreads[] = "ModPagespeedNumRewriteThreads";
 const char kModPagespeedNumShards[] = "ModPagespeedNumShards";
+const char kModPagespeedPreserveSubresourceHints[] =
+    "ModPagespeedPreserveSubresourceHints";
 const char kModPagespeedProxySuffix[] = "ModPagespeedProxySuffix";
 const char kModPagespeedRetainComment[] = "ModPagespeedRetainComment";
 const char kModPagespeedRunExperiment[] = "ModPagespeedRunExperiment";
@@ -1646,6 +1648,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "Adds an error message into the log for every URL fetch in "
         "flight when the HTTP stack encounters a system error, e.g. "
         "Connection Refused"),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedPreserveSubresourceHints,
+        "Keep all original subresource hints."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedProxySuffix,
         "Sets up a proxy suffix to be used when slurping."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedRetainComment,

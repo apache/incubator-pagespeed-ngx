@@ -51,6 +51,8 @@ class HtmlWriterFilter : public HtmlFilter {
   virtual void Directive(HtmlDirectiveNode* directive);
   virtual void Flush();
   virtual void DetermineEnabled(GoogleString* disabled_reason);
+  // this filter will not change urls
+  virtual bool CanModifyUrls() {return false;}
 
   void set_max_column(int max_column) { max_column_ = max_column; }
   void set_case_fold(bool case_fold) { case_fold_ = case_fold; }

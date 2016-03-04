@@ -49,6 +49,10 @@ class RewriteFilter : public CommonFilter {
   // UsePropertyCacheDomCohort to return true.
   virtual void DetermineEnabled(GoogleString* disabled_reason);
 
+  // RewriteFilters can probably rewrite urls.
+  // A derived filter can change this to return false.
+  virtual bool CanModifyUrls() {return true;}
+
   // All RewriteFilters define how they encode URLs and other
   // associated information needed for a rewrite into a URL.
   // The default implementation handles a single URL with

@@ -264,6 +264,8 @@ const char RewriteOptions::kObliviousPagespeedUrls[] = "ObliviousPagespeedUrls";
 const char RewriteOptions::kOptionCookiesDurationMs[] =
     "OptionCookiesDurationMs";
 const char RewriteOptions::kOverrideCachingTtlMs[] = "OverrideCachingTtlMs";
+const char RewriteOptions::kPreserveSubresourceHints[] =
+    "PreserveSubresourceHints";
 const char RewriteOptions::kPreserveUrlRelativity[] = "PreserveUrlRelativity";
 const char RewriteOptions::kPrivateNotVaryForIE[] = "PrivateNotVaryForIE";
 const char RewriteOptions::kPubliclyCacheMismatchedHashesExperimental[] =
@@ -2205,6 +2207,12 @@ void RewriteOptions::AddProperties() {
 
   AddRequestProperty(
       -1, &RewriteOptions::blink_blacklist_end_timestamp_ms_, "bbet", false);
+
+  AddBaseProperty(
+      false, &RewriteOptions::preserve_subresource_hints_, "psrh",
+      kPreserveSubresourceHints, kDirectoryScope,
+      "Keep original subresource hints in place.",
+      true);
 
   AddBaseProperty(
       true, &RewriteOptions::preserve_url_relativity_, "pur",

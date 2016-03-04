@@ -51,7 +51,8 @@ HtmlParse::HtmlParse(MessageHandler* message_handler)
       message_handler_(message_handler),
       line_number_(1),
       skip_increment_(false),
-      determine_enabled_filters_called_(false),
+      determine_filter_behavior_called_(false),
+      can_modify_urls_(false),
       need_sanity_check_(false),
       coalesce_characters_(true),
       need_coalesce_characters_(false),
@@ -229,7 +230,7 @@ void HtmlParse::AddElement(HtmlElement* element, int line_number) {
 bool HtmlParse::StartParseId(const StringPiece& url, const StringPiece& id,
                              const ContentType& content_type) {
   delayed_start_literal_.reset();
-  determine_enabled_filters_called_ = false;
+  determine_filter_behavior_called_ = false;
 
   // Paranoid debug-checking and unconditional clearing of state variables.
   DCHECK(!skip_increment_);
@@ -312,26 +313,29 @@ void HtmlParse::Clear() {
 void HtmlParse::ParseTextInternal(const char* text, int size) {
   DCHECK(url_valid_) << "Invalid to call ParseText with invalid url";
   if (url_valid_) {
-    DetermineEnabledFilters();
+    DetermineFiltersBehavior();
     lexer_->Parse(text, size);
   }
 }
 
-void HtmlParse::DetermineEnabledFiltersImpl() {
-  DetermineEnabledFiltersInList(filters_);
+void HtmlParse::DetermineFiltersBehaviorImpl() {
+  DetermineFilterListBehavior(filters_);
 }
 
-void HtmlParse::CheckFilterEnabled(HtmlFilter* filter) {
+void HtmlParse::CheckFilterBehavior(HtmlFilter* filter) {
   GoogleString disabled_reason;
   filter->DetermineEnabled(&disabled_reason);
-
-  if (!filter->is_enabled() && dynamically_disabled_filter_list_ != NULL) {
-    GoogleString final_reason(filter->Name());
-    if (!disabled_reason.empty()) {
-      StrAppend(&final_reason, ": ", disabled_reason);
+  if (!filter->is_enabled()) {
+    if (dynamically_disabled_filter_list_ != NULL) {
+      GoogleString final_reason(filter->Name());
+      if (!disabled_reason.empty()) {
+        StrAppend(&final_reason, ": ", disabled_reason);
+      }
+      dynamically_disabled_filter_list_->push_back(final_reason);
     }
-
-    dynamically_disabled_filter_list_->push_back(final_reason);
+  } else {
+    // Only enabled filters will be aggregated.
+    can_modify_urls_ = can_modify_urls_ || filter->CanModifyUrls();
   }
 }
 
@@ -518,9 +522,9 @@ void HtmlParse::Flush() {
   }
 
   // If Flush is called before any bytes are received, StartDocument events
-  // will propagate to filters before DetermineEnabled is called on them. So we
-  // send DetermineEnabled here.
-  DetermineEnabledFilters();
+  // will propagate to filters before behavior of the filters is determined
+  // (DetermineEnabled/CanModifyUrl), so we call DetermineFilterBehavior here.
+  DetermineFiltersBehavior();
 
   for (FilterVector::iterator it = event_listeners_.begin();
       it != event_listeners_.end(); ++it) {
