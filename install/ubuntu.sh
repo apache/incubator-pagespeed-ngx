@@ -3,11 +3,9 @@
 echo make $*
 
 APACHE_DOC_ROOT=/var/www
-#Test for new ubuntu setups, doc/root is in /var/www/html
-#we could run into a false positive here, but not probable
-#for build systems
-if [ -e /var/www/html ]
-then
+# Test for new ubuntu setups where doc/root is in /var/www/html.  We could run
+# into a false positive here, but probably not for build systems.
+if [ -e /var/www/html ]; then
   APACHE_DOC_ROOT=/var/www/html
 fi
 

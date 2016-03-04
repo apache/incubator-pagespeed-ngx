@@ -18,10 +18,12 @@
 
 #include "net/instaweb/rewriter/public/strip_subresource_hints_filter.h"
 
-#include "base/logging.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/html_element.h"
 #include "pagespeed/kernel/html/html_name.h"
-#include "pagespeed/kernel/html/html_parse.h"
+#include "pagespeed/kernel/http/google_url.h"
+#include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 
@@ -37,37 +39,36 @@ StripSubresourceHintsFilter::~StripSubresourceHintsFilter() { }
 
 void StripSubresourceHintsFilter::StartDocument() {
   const RewriteOptions *options = driver_->options();
-  if (driver_->can_modify_urls()) {
-    remove_ =
-      (!(options->css_preserve_urls() &&
-        options->image_preserve_urls() &&
-        options->js_preserve_urls()));
-  } else {
-    remove_ = false;
-  }
+  remove_ = (driver_->can_modify_urls() &&
+             (!(options->css_preserve_urls() &&
+                options->image_preserve_urls() &&
+                options->js_preserve_urls())));
   delete_element_ = NULL;
 }
 
 void StripSubresourceHintsFilter::StartElement(HtmlElement* element) {
-  if (!remove_) return;
-  if (!delete_element_) {
-    if (element->keyword() == HtmlName::kLink) {
-      const char *value = element->AttributeValue(HtmlName::kRel);
-      if (value && strcasecmp(value, "subresource") == 0) {
-        const RewriteOptions *options = driver_->options();
-        const char *resource_url = element->AttributeValue(HtmlName::kSrc);
-        if (!resource_url) {  // can't check validity, delete
-          delete_element_ = element;
-          return;
-        }
-        const GoogleUrl &base_url = driver_->decoded_base_url();
-        scoped_ptr<GoogleUrl> resolved_resource_url(
-            new GoogleUrl(base_url, resource_url));
-        if (options->IsAllowed(resolved_resource_url->Spec()) &&
-            options->domain_lawyer()->IsDomainAuthorized(
+  if (!remove_ || delete_element_) return;
+
+  if (element->keyword() == HtmlName::kLink) {
+    const char *value = element->AttributeValue(HtmlName::kRel);
+    if (value && StringCaseEqual(value, "subresource")) {
+      const RewriteOptions *options = driver_->options();
+      const char *resource_url = element->AttributeValue(HtmlName::kSrc);
+      if (!resource_url) {
+        // There's either no src attr, or one that we can't decode (utf8 etc).
+        // One way this could happen is if we have a url-encoded utf8 url in an
+        // img tag and a utf8 encoded url in the subresource tag.  Delete the
+        // subresource link to be on the safe side.
+        delete_element_ = element;
+        return;
+      }
+      const GoogleUrl &base_url = driver_->decoded_base_url();
+      scoped_ptr<GoogleUrl> resolved_resource_url(
+          new GoogleUrl(base_url, resource_url));
+      if (options->IsAllowed(resolved_resource_url->Spec()) &&
+          options->domain_lawyer()->IsDomainAuthorized(
               base_url, *resolved_resource_url)) {
-          delete_element_ = element;
-        }
+        delete_element_ = element;
       }
     }
   }

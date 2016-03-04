@@ -23,11 +23,11 @@
 #include "pagespeed/kernel/html/empty_html_filter.h"
 
 namespace net_instaweb {
+
 class HtmlElement;
 class RewriteDriver;
 
-// Guarantees there is a head element in HTML. This enables downstream
-// filters to assume that there will be a head.
+// Removes rel=subresource links.
 class StripSubresourceHintsFilter : public EmptyHtmlFilter {
  public:
   explicit StripSubresourceHintsFilter(RewriteDriver* driver);

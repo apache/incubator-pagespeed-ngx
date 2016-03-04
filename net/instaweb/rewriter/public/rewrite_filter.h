@@ -20,19 +20,17 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_FILTER_H_
 
 #include "net/instaweb/rewriter/public/common_filter.h"
+#include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
+#include "net/instaweb/rewriter/public/rewrite_context.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/util/url_segment_encoder.h"
 
 namespace net_instaweb {
-
-class Resource;
-class ResourceContext;
-class RewriteContext;
-class RewriteDriver;
-class UrlSegmentEncoder;
 
 class RewriteFilter : public CommonFilter {
  public:
@@ -49,9 +47,10 @@ class RewriteFilter : public CommonFilter {
   // UsePropertyCacheDomCohort to return true.
   virtual void DetermineEnabled(GoogleString* disabled_reason);
 
-  // RewriteFilters can probably rewrite urls.
-  // A derived filter can change this to return false.
-  virtual bool CanModifyUrls() {return true;}
+  // Returns whether this filter can modify urls.  Because most filters do
+  // modify urls this defaults returning true, and filters that commit to never
+  // modifying urls should override it to return false.
+  virtual bool CanModifyUrls() { return true; }
 
   // All RewriteFilters define how they encode URLs and other
   // associated information needed for a rewrite into a URL.

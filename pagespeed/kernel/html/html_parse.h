@@ -552,7 +552,6 @@ class HtmlParse {
 
   void CheckFilterBehavior(HtmlFilter* filter);
 
-  // Determine the behaviour of the configured filters.
   // Call DetermineEnabled() on each filter. Should be called after
   // the property cache lookup has finished since some filters depend on
   // pcache results in their DetermineEnabled implementation. If a subclass has
@@ -622,6 +621,7 @@ class HtmlParse {
   bool skip_increment_;
   bool determine_filter_behavior_called_;
   bool can_modify_urls_;
+  bool determine_enabled_filters_called_;
   bool need_sanity_check_;
   bool coalesce_characters_;
   bool need_coalesce_characters_;

@@ -325,6 +325,7 @@ void HtmlParse::DetermineFiltersBehaviorImpl() {
 void HtmlParse::CheckFilterBehavior(HtmlFilter* filter) {
   GoogleString disabled_reason;
   filter->DetermineEnabled(&disabled_reason);
+
   if (!filter->is_enabled()) {
     if (dynamically_disabled_filter_list_ != NULL) {
       GoogleString final_reason(filter->Name());
@@ -522,8 +523,8 @@ void HtmlParse::Flush() {
   }
 
   // If Flush is called before any bytes are received, StartDocument events
-  // will propagate to filters before behavior of the filters is determined
-  // (DetermineEnabled/CanModifyUrl), so we call DetermineFilterBehavior here.
+  // will propagate to filters before the behavior of the filter has been
+  // determined (Enabled/CanModifyUrls), so we call that here.
   DetermineFiltersBehavior();
 
   for (FilterVector::iterator it = event_listeners_.begin();

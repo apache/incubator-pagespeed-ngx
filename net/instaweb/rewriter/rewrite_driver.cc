@@ -648,7 +648,8 @@ void RewriteDriver::FlushAsync(Function* callback) {
   }
   flush_requested_ = false;
 
-  // Determine filter behavior like enabled, can_modify_url_
+  // Figure out which filters should be enabled and whether any enabled filter
+  // can modify urls.
   DetermineFiltersBehavior();
 
   for (FilterList::iterator it = early_pre_render_filters_.begin();
@@ -997,11 +998,9 @@ void RewriteDriver::AddPreRenderFilters() {
     dom_stats_filter_ = new DomStatsFilter(this);
     AddOwnedEarlyPreRenderFilter(dom_stats_filter_);
   }
-
   if (!rewrite_options->preserve_subresource_hints()) {
     AddOwnedEarlyPreRenderFilter(new StripSubresourceHintsFilter(this));
   }
-
   if (rewrite_options->Enabled(RewriteOptions::kDecodeRewrittenUrls)) {
     AddOwnedEarlyPreRenderFilter(new DecodeRewrittenUrlsFilter(this));
   }
@@ -3549,7 +3548,7 @@ void RewriteDriver::DetermineFiltersBehaviorImpl() {
   DetermineFilterListBehavior(early_pre_render_filters_);
   DetermineFilterListBehavior(pre_render_filters_);
 
-  // Call parent DetermineFiltersBehavior to setup post render filters.
+  // Call parent to set up post render filters.
   HtmlParse::DetermineFiltersBehaviorImpl();
 }
 

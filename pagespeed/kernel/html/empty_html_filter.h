@@ -50,9 +50,9 @@ class EmptyHtmlFilter : public HtmlFilter {
   virtual void Directive(HtmlDirectiveNode* directive);
   virtual void Flush();
   virtual void DetermineEnabled(GoogleString* disabled_reason);
-  // This filter and derived classes will not rewrite Urls
-  // if a derived filter wants to rewrite urls, override this
-  // function.
+
+  // This filter and derived classes will not rewrite urls.  If a derived filter
+  // wants to rewrite urls, override this function.
   virtual bool CanModifyUrls() {return false;}
 
   // Note -- this does not provide an implementation for Name().  This

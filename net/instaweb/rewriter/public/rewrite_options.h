@@ -1657,6 +1657,7 @@ class RewriteOptions {
     set_option(x, &preserve_subresource_hints_);
   }
 
+
   bool preserve_url_relativity() const {
     return preserve_url_relativity_.value();
   }

@@ -16,10 +16,15 @@
 
 // Author: kspoelstra@we-amp.com (Kees Spoelstra)
 
+#include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/mock_message_handler.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/html/empty_html_filter.h"
 
 namespace {
 
@@ -45,6 +50,7 @@ class CanModifyUrlsFilter:public EmptyHtmlFilter {
   void set_can_modify_urls(bool value) { can_modify_urls_ = value; }
   virtual bool CanModifyUrls() { return can_modify_urls_; }
   virtual const char* Name() const { return "CMURLS"; }
+
  protected:
   bool can_modify_urls_;
 };
@@ -61,8 +67,8 @@ class StripSubresourceHintsFilterTestBase : public RewriteTestBase {
                                     &message_handler_);
     lawyer->AddShard(kTo2Domain, StrCat(kTo2ADomain, ",", kTo2BDomain),
                      &message_handler_);
-    can_modify_urls_filter_ = new CanModifyUrlsFilter();
-    rewrite_driver()->AddFilter(can_modify_urls_filter_);
+    can_modify_urls_filter_.reset(new CanModifyUrlsFilter());
+    rewrite_driver()->AddFilter(can_modify_urls_filter_.get());
     CustomSetup();
     rewrite_driver()->AddFilters();
   }
@@ -75,7 +81,7 @@ class StripSubresourceHintsFilterTestBase : public RewriteTestBase {
   }
   virtual void CustomSetup() { }
 
-  CanModifyUrlsFilter *can_modify_urls_filter_;
+  scoped_ptr<CanModifyUrlsFilter> can_modify_urls_filter_;
 };
 
 class StripSubresourceHintsFilterTest :

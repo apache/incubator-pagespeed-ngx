@@ -2210,7 +2210,7 @@ void RewriteOptions::AddProperties() {
 
   AddBaseProperty(
       false, &RewriteOptions::preserve_subresource_hints_, "psrh",
-      kPreserveSubresourceHints, kDirectoryScope,
+      kPreserveSubresourceHints, kQueryScope,
       "Keep original subresource hints in place.",
       true);
 

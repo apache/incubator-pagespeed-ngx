@@ -45,7 +45,6 @@ run_test js_blacklist
 run_test move_css
 run_test inliners
 run_test outliners
-run_test subresource_hints
 run_test char_tweaks
 run_test rewrite_css
 run_test rewrite_images
