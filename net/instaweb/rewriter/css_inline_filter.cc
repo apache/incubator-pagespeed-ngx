@@ -175,15 +175,34 @@ bool CssInlineFilter::ShouldInline(const ResourcePtr& resource,
     return false;
   }
 
-  // If the charset is incompatible with the HTML's, don't inline.
+  // If the charset is incompatible with the HTML's, we may not be able to
+  // inline.
   StringPiece htmls_charset(driver()->containing_charset());
   GoogleString css_charset = RewriteFilter::GetCharsetForStylesheet(
       resource.get(), attrs_charset, htmls_charset);
   if (!StringCaseEqual(htmls_charset, css_charset)) {
-    *reason = StrCat("CSS not inlined due to apparent charset incompatibility;"
-                     " we think the HTML is ", htmls_charset,
-                     " while the CSS is ", css_charset);
-    return false;
+    // Check if everything is in <= 127 range, we may still be able to
+    // inline if it keeps to the ASCII subset (also potentially dropping the
+    // BOM, since we'll strip it anyway).
+    StringPiece contents = resource->ExtractUncompressedContents();
+    StringPiece clean_contents(contents);
+    StripUtf8Bom(&clean_contents);
+
+    bool has_non_ascii = false;
+    for (int i = 0, n = clean_contents.size(); i < n; ++i) {
+      if (static_cast<unsigned char>(clean_contents[i]) >= 0x80) {
+        has_non_ascii = true;
+        break;
+      }
+    }
+
+    if (has_non_ascii) {
+      *reason = StrCat(
+          "CSS not inlined due to apparent charset incompatibility;"
+          " we think the HTML is ", htmls_charset,
+          " while the CSS is ", css_charset);
+      return false;
+    }
   }
 
   return true;

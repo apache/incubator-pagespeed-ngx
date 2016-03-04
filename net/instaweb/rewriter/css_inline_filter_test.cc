@@ -601,8 +601,8 @@ TEST_F(CssInlineFilterTest, InlineWithCompatibleBom) {
                              "", css_with_bom, true, css, "");
 }
 
-TEST_F(CssInlineFilterTest, DoNotInlineWithIncompatibleBom) {
-  const GoogleString css = "BODY { color: red; }\n";
+TEST_F(CssInlineFilterTest, DoNotInlineWithIncompatibleBomAndNonAscii) {
+  const GoogleString css = "BODY { color: red; /* \xD2\x90 */ }\n";
   const GoogleString css_with_bom = StrCat(kUtf8Bom, css);
   TestInlineCssWithOutputUrl("http://www.example.com/index.html",
                              "  <meta charset=\"ISO-8859-1\">\n",
@@ -612,6 +612,19 @@ TEST_F(CssInlineFilterTest, DoNotInlineWithIncompatibleBom) {
                              "CSS not inlined due to apparent charset "
                              "incompatibility; we think the HTML is ISO-8859-1 "
                              "while the CSS is utf-8");
+}
+
+TEST_F(CssInlineFilterTest, DoInlineWithIncompatibleBomAndAscii) {
+  // Even though the content is labeled utf-8, it keeps to ASCII subset, so it's
+  // safe to inline.
+  const GoogleString css = "BODY { color: red; }\n";
+  const GoogleString css_with_bom = StrCat(kUtf8Bom, css);
+  TestInlineCssWithOutputUrl("http://www.example.com/index.html",
+                             "  <meta charset=\"ISO-8859-1\">\n",
+                             "http://www.example.com/styles.css",
+                             "http://www.example.com/styles.css",
+                             "", css_with_bom, true, css,
+                             "");
 }
 
 // See: http://www.alistapart.com/articles/alternate/
