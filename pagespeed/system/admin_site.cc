@@ -229,6 +229,7 @@ void AdminSite::ConsoleHandler(const SystemRewriteOptions& global_options,
     //
     // TODO(jmarantz): Change the JS to remove pagespeedStatisticsUrl.
     fetch->Write(console_js, handler);
+    fetch->Write("google.setOnLoadCallback(pagespeed.startConsole);", handler);
     fetch->Write("</script>\n", handler);
   } else {
     fetch->Write("<p>\n"

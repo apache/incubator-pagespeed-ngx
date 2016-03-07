@@ -20,6 +20,11 @@
  * Fetches JSON statistics data from server to draw graphs over time of
  * various "notable issues".
  *
+ * Note that for unit testing purposes, the initialization code here is not
+ * actually run. admin_site.cc injects the call to
+ * google.setOnLoadCallback(pagespeed.startConsole); to actually run the code
+ * here.
+ *
  * PRECONDITIONS: pagespeedStatisticsUrl must be set in JavaScript and
  * <script src='https://www.google.com/jsapi'></script> must be loaded in HTML.
  *
@@ -30,11 +35,11 @@
 
 'use strict';
 
-goog.require('goog.structs.Set');
-
 goog.provide('pagespeed');
 goog.provide('pagespeed.Console');
 goog.provide('pagespeed.statistics');
+
+goog.require('goog.structs.Set');
 
 // Google Charts API.
 // Requires <script src='https://www.google.com/jsapi'></script> loaded in HTML.
