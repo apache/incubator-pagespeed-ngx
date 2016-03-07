@@ -3036,6 +3036,7 @@ bool RewriteOptions::AddByNameToFilterSet(
       set->Insert(kConvertGifToPng);
       set->Insert(kConvertJpegToProgressive);
       set->Insert(kConvertJpegToWebp);
+      set->Insert(kConvertPngToJpeg);
       set->Insert(kJpegSubsampling);
       set->Insert(kRecompressJpeg);
       set->Insert(kRecompressPng);

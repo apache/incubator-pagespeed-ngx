@@ -378,6 +378,7 @@ TEST_F(RewriteOptionsTest, CompoundFlagRecompressImages) {
   s.Insert(RewriteOptions::kConvertGifToPng);
   s.Insert(RewriteOptions::kConvertJpegToProgressive);
   s.Insert(RewriteOptions::kConvertJpegToWebp);
+  s.Insert(RewriteOptions::kConvertPngToJpeg);
   s.Insert(RewriteOptions::kJpegSubsampling);
   s.Insert(RewriteOptions::kRecompressJpeg);
   s.Insert(RewriteOptions::kRecompressPng);
