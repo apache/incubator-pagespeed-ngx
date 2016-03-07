@@ -46,7 +46,6 @@ class FlushEarlyInfoFinder;
 class ExperimentMatcher;
 class Hasher;
 class MessageHandler;
-class MobilizeCachedFinder;
 class NamedLockManager;
 class NonceGenerator;
 class ProcessContext;
@@ -352,10 +351,6 @@ class RewriteDriverFactory {
   virtual CriticalImagesFinder* DefaultCriticalImagesFinder(
       ServerContext* server_context);
   virtual CriticalSelectorFinder* DefaultCriticalSelectorFinder(
-      ServerContext* server_context);
-
-  // Note: this one may return NULL.
-  virtual MobilizeCachedFinder* DefaultMobilizeCachedFinder(
       ServerContext* server_context);
 
   // Default implementation returns NULL.

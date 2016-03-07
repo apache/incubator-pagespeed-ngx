@@ -2778,13 +2778,6 @@ class RewriteOptions {
   void set_mob_iframe_viewport(StringPiece x) {
     set_option(x.as_string(), &mob_iframe_viewport_);
   }
-  bool mob_nav() const {
-    return CheckMobilizeFiltersOption(mob_nav_);
-  }
-  bool mob_labeled_mode() const { return mob_labeled_mode_.value(); }
-  void set_mob_labeled_mode(bool x) { set_option(x, &mob_labeled_mode_); }
-  bool mob_static() const { return mob_static_.value(); }
-  void set_mob_static(bool x) { set_option(x, &mob_static_); }
   const MobTheme& mob_theme() const { return mob_theme_.value(); }
   void set_mob_theme(const MobTheme& x) {
     set_option(x, &mob_theme_);

@@ -104,7 +104,6 @@ class MobilizeRewriteFilter : public CommonFilter {
   bool added_style_;
   bool added_spacer_;
   bool saw_end_document_;
-  GoogleString static_file_prefix_;
 
   // Statistics
   // Number of web pages we have mobilized.

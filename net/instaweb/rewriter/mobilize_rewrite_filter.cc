@@ -18,9 +18,6 @@
 
 #include "net/instaweb/rewriter/public/mobilize_rewrite_filter.h"
 
-#include "net/instaweb/rewriter/mobilize_cached.pb.h"
-#include "net/instaweb/rewriter/public/domain_lawyer.h"
-#include "net/instaweb/rewriter/public/mobilize_cached_finder.h"
 #include "net/instaweb/rewriter/public/request_properties.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -49,13 +46,6 @@ GoogleString FormatColorForJs(const RewriteOptions::Color& color) {
                 IntegerToString(color.b), "]");
 }
 
-void ConvertColor(const MobilizeCached::Color& color,
-                  RewriteOptions::Color* out) {
-  out->r = color.r();
-  out->g = color.g();
-  out->b = color.b();
-}
-
 }  // namespace
 
 MobilizeRewriteFilter::MobilizeRewriteFilter(RewriteDriver* rewrite_driver)
@@ -65,17 +55,6 @@ MobilizeRewriteFilter::MobilizeRewriteFilter(RewriteDriver* rewrite_driver)
       added_style_(false),
       added_spacer_(false),
       saw_end_document_(false) {
-  // If a domain proxy-suffix is specified, and it starts with ".",
-  // then we'll remove the "." from that and use that as the location
-  // of the shared static files (JS and CSS).  E.g.
-  // for a proxy_suffix of ".suffix" we'll look for static files in
-  // "//suffix/static/".
-  StringPiece suffix(
-      rewrite_driver->options()->domain_lawyer()->proxy_suffix());
-  if (!suffix.empty() && suffix.starts_with(".")) {
-    suffix.remove_prefix(1);
-    static_file_prefix_ = StrCat("//", suffix, "/static/");
-  }
   Statistics* stats = rewrite_driver->statistics();
   num_pages_mobilized_ = stats->GetVariable(kPagesMobilized);
 }
@@ -162,7 +141,7 @@ GoogleString MobilizeRewriteFilter::GetMobJsInitScript() {
               "';window.psMapConversionLabel='", label, "';");
   }
 
-  // See if we have a precomputed theme, either via options or pcache.
+  // See if we have a precomputed theme from the options.
   bool has_mob_theme = false;
   RewriteOptions::Color background_color, foreground_color;
   GoogleString logo_url;
@@ -171,16 +150,6 @@ GoogleString MobilizeRewriteFilter::GetMobJsInitScript() {
     background_color = options->mob_theme().background_color;
     foreground_color = options->mob_theme().foreground_color;
     logo_url = options->mob_theme().logo_url;
-  } else {
-    MobilizeCachedFinder* finder =
-        driver()->server_context()->mobilize_cached_finder();
-    MobilizeCached out;
-    if (finder && finder->GetMobilizeCachedFromPropertyCache(driver(), &out)) {
-      has_mob_theme = out.has_background_color() && out.has_foreground_color();
-      ConvertColor(out.background_color(), &background_color);
-      ConvertColor(out.foreground_color(), &foreground_color);
-      logo_url = out.foreground_image_url();
-    }
   }
 
   if (has_mob_theme) {

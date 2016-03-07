@@ -3182,7 +3182,6 @@ TEST_F(RewriteOptionsTest, MobilizeFiltersTest) {
 
   EXPECT_TRUE(options_.css_preserve_urls());
   EXPECT_TRUE(options_.domain_rewrite_hyperlinks());
-  EXPECT_TRUE(options_.mob_nav());
   EXPECT_FALSE(options_.mob_always());
 }
 
