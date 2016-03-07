@@ -1702,8 +1702,40 @@ ModPagespeedMessagesDomains Allow localhost
   ModPagespeedEnableFilters rewrite_images,rewrite_css
   ModPagespeedEnableFilters convert_to_webp_lossless
   ModPagespeedEnableFilters in_place_optimize_for_browser
+  ModPagespeedJpegRecompressionQuality 75
+  ModPagespeedWebpRecompressionQuality 70
   ModPagespeedInPlaceResourceOptimization on
   ModPagespeedAllowVaryOn "Accept"
+  DocumentRoot "@@APACHE_DOC_ROOT@@/mod_pagespeed_example"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@_ipro_for_browser"
+</VirtualHost>
+
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName ipro-for-browser-vary-on-auto.example.com
+  ModPagespeedEnableFilters rewrite_images,rewrite_css
+  ModPagespeedEnableFilters convert_to_webp_lossless
+  ModPagespeedEnableFilters convert_to_webp_animated
+  ModPagespeedEnableFilters in_place_optimize_for_browser
+  ModPagespeedInPlaceResourceOptimization on
+  # ModPagespeedAllowVaryOn "Auto" # Default is "Auto"
+  ModPagespeedImageRecompressionQuality 90
+  ModPagespeedJpegRecompressionQuality 75
+  ModPagespeedJpegRecompressionQualityForSmallScreens 55
+  ModPagespeedJpegQualityForSaveData 35
+  ModPagespeedWebpRecompressionQuality 70
+  ModPagespeedWebpRecompressionQualityForSmallScreens 50
+  ModPagespeedWebpQualityForSaveData 30
+  ModPagespeedWebpAnimatedRecompressionQuality 60
+  DocumentRoot "@@APACHE_DOC_ROOT@@/mod_pagespeed_example"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@_ipro_for_browser"
+</VirtualHost>
+
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName ipro-for-browser-vary-on-none.example.com
+  ModPagespeedEnableFilters rewrite_images,in_place_optimize_for_browser
+  ModPagespeedInPlaceResourceOptimization on
+  ModPagespeedAllowVaryOn "None"
+  ModPagespeedImageRecompressionQuality 75
   DocumentRoot "@@APACHE_DOC_ROOT@@/mod_pagespeed_example"
   ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@_ipro_for_browser"
 </VirtualHost>

@@ -86,6 +86,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   run_test redirect_with_ps_params
   run_test invalid_host_header
   run_test optimize_to_webp
+  run_test image_quality_and_response
 fi
 
 run_test content_length

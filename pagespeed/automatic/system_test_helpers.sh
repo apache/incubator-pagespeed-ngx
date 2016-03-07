@@ -606,6 +606,12 @@ function fetch_until() {
     shift
   fi
 
+  local expect_time_out=0
+  if [ "$1" = "-expect_time_out" ]; then
+    expect_time_out=1
+    shift
+  fi
+
   REQUESTURL=$1
   COMMAND=$2
   EXPECTED_RESULT=$3
@@ -639,6 +645,15 @@ function fetch_until() {
     # For tests that we expect to fail, don't wait long hoping for the right
     # result.
     TIMEOUT=10
+  elif [ $expect_time_out -eq 1 ]; then
+    # So far, all images tested in this mode are completed in 200 milliseconds
+    # in non-valgrind mode. To make the test robust, we set the threshold to 5x,
+    # and then another 5x for valgrind mode.
+    if [ "${USE_VALGRIND:-}" = true ]; then
+      TIMEOUT=5
+    else
+      TIMEOUT=1
+    fi
   else
     # Foreground tests shouldn't wait as long as background tests can, but still
     # longer than you'd think we'd need, because of Valgrind.
@@ -670,8 +685,12 @@ function fetch_until() {
     fi
     if [ $(date +%s) -gt $STOP ]; then
       echo ""
-      echo "TIMEOUT: $WGET_HERE $REQUESTURL output in $FETCH_FILE"
-      handle_failure
+      if [ $expect_time_out -eq 1 ]; then
+        echo "TIMEOUT: expected"
+      else
+        echo "TIMEOUT: $WGET_HERE $REQUESTURL output in $FETCH_FILE"
+        handle_failure
+      fi
       return
     fi
     echo -n "."

@@ -2306,7 +2306,7 @@ void RewriteOptions::AddProperties() {
   ParseFromString(AllowVaryOn::kAutoString, &default_allow_vary_on);
   AddBaseProperty(
       default_allow_vary_on,  &RewriteOptions::allow_vary_on_,
-      "avo", kAllowVaryOn, kDirectoryScope,
+      "avo", kAllowVaryOn, kQueryScope,
       "\"Auto\", \"None\", or comma separated list of strings chosen from "
       "\"Save-Data\", \"User-Agent\", and \"Accept\".", true);
 
