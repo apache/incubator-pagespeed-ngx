@@ -4547,34 +4547,6 @@ goog.dom.classlist.addRemove = function(a, b, c) {
   goog.dom.classlist.remove(a, b);
   goog.dom.classlist.add(a, c);
 };
-mob.button = {};
-mob.button.AbstractButton = function(a, b, c, d) {
-  this.el = document.createElement(goog.dom.TagName.A);
-  this.id_ = a;
-  this.iconImage_ = b;
-  this.color_ = c;
-  this.labelText_ = d;
-  this.createButton();
-};
-mob.button.AbstractButton.prototype.createButton = function() {
-  this.el.id = this.id_;
-  goog.dom.classlist.add(this.el, mob.util.ElementClass.BUTTON);
-  this.el.onclick = goog.bind(this.clickHandler, this);
-  var a = document.createElement(goog.dom.TagName.DIV);
-  goog.dom.classlist.add(a, mob.util.ElementClass.BUTTON_ICON);
-  a.style.backgroundImage = "url(" + mob.util.synthesizeImage(this.iconImage_, this.color_) + ")";
-  this.el.appendChild(a);
-  this.labelText_ && (a = document.createElement(goog.dom.TagName.P), goog.dom.classlist.add(a, mob.util.ElementClass.BUTTON_TEXT), this.el.appendChild(a), a.appendChild(document.createTextNode(this.labelText_)));
-};
-mob.button.Menu = function(a, b) {
-  this.clickHandlerFn_ = b;
-  mob.button.AbstractButton.call(this, mob.util.ElementId.MENU_BUTTON, mob.button.Menu.ICON_, a, null);
-};
-goog.inherits(mob.button.Menu, mob.button.AbstractButton);
-mob.button.Menu.ICON_ = "R0lGODlhYABgAPAAAAAAAAAAACH5BAEAAAEALAAAAABgAGAAAAK6jI+py+0Po5y02ouz3rz7D4biSJbmiabqyrbuC8fyTNf2jef6zvf+DwwKh8Si8agCKJfMpvMJjUqnTg71is1qldat97vtgsfkp7iMJp/T7PCmDXdr4vQr8o7P6/f8vv8PGCg4SHhTdxi1hriouHjY6EgHGQk3SclmeYmWqalW+AkaKjpKWmp6ipqqatH5+NYq+QpbKTuLWWu7iZvrOcebxvlrt0pcbHyMnKy8zNzs/AwdLT1NXW19TVoAADs=";
-mob.button.Menu.prototype.clickHandler = function() {
-  this.clickHandlerFn_();
-};
 goog.json = {};
 goog.json.USE_NATIVE_JSON = !1;
 goog.json.isValid = function(a) {
@@ -4668,6 +4640,25 @@ goog.json.Serializer.prototype.serializeObject_ = function(a, b) {
     }
   }
   b.push("}");
+};
+mob.button = {};
+mob.button.AbstractButton = function(a, b, c, d) {
+  this.el = document.createElement(goog.dom.TagName.A);
+  this.id_ = a;
+  this.iconImage_ = b;
+  this.color_ = c;
+  this.labelText_ = d;
+  this.createButton();
+};
+mob.button.AbstractButton.prototype.createButton = function() {
+  this.el.id = this.id_;
+  goog.dom.classlist.add(this.el, mob.util.ElementClass.BUTTON);
+  this.el.onclick = goog.bind(this.clickHandler, this);
+  var a = document.createElement(goog.dom.TagName.DIV);
+  goog.dom.classlist.add(a, mob.util.ElementClass.BUTTON_ICON);
+  a.style.backgroundImage = "url(" + mob.util.synthesizeImage(this.iconImage_, this.color_) + ")";
+  this.el.appendChild(a);
+  this.labelText_ && (a = document.createElement(goog.dom.TagName.P), goog.dom.classlist.add(a, mob.util.ElementClass.BUTTON_TEXT), this.el.appendChild(a), a.appendChild(document.createTextNode(this.labelText_)));
 };
 goog.Thenable = function() {
 };
@@ -7995,7 +7986,7 @@ mob.Nav = function() {
   this.headerBar_ = goog.dom.getRequiredElement(mob.util.ElementId.HEADER_BAR);
   this.styleTag_ = null;
   this.spacerDiv_ = goog.dom.getRequiredElement(mob.util.ElementId.SPACER);
-  this.scrollTimer_ = this.navPanel_ = this.mapButton_ = this.dialer_ = this.menuButton_ = this.logoSpan_ = null;
+  this.scrollTimer_ = this.navPanel_ = this.mapButton_ = this.dialer_ = this.logoSpan_ = null;
   this.currentTouches_ = 0;
   this.headerBarHeight_ = -1;
   this.elementsToOffset_ = new goog.structs.Set;
@@ -8078,16 +8069,22 @@ mob.Nav.prototype.addHeaderBarResizeEvents_ = function() {
 };
 mob.Nav.prototype.addHeaderBar_ = function(a) {
   document.getElementById(mob.util.ElementId.IFRAME) || (document.body.insertBefore(this.spacerDiv_, document.body.childNodes[0]), document.body.insertBefore(this.headerBar_, this.spacerDiv_));
-  window.psLabeledMode && goog.dom.classlist.add(this.headerBar_, mob.util.ElementClass.LABELED);
+  goog.dom.classlist.add(this.headerBar_, mob.util.ElementClass.LABELED);
   this.isIosWebview_ && goog.dom.classlist.add(this.headerBar_, mob.util.ElementClass.IOS_WEBVIEW);
-  var b = document.getElementById(mob.util.ElementId.NAV_PANEL);
-  !window.psLabeledMode && b && (this.navPanel_ = new mob.NavPanel(b, a.menuBackColor), this.menuButton_ = new mob.button.Menu(a.menuFrontColor, goog.bind(this.navPanel_.toggle, this.navPanel_)), this.headerBar_.appendChild(this.menuButton_.el));
-  a.logoUrl && (this.logoSpan_ = document.createElement(goog.dom.TagName.SPAN), this.logoSpan_.id = mob.util.ElementId.LOGO_SPAN, b = document.createElement(goog.dom.TagName.IMG), b.src = a.logoUrl, b.id = mob.util.ElementId.LOGO_IMAGE, this.logoSpan_.appendChild(b), this.headerBar_.appendChild(this.logoSpan_));
+  if (a.logoUrl) {
+    this.logoSpan_ = document.createElement(goog.dom.TagName.SPAN);
+    this.logoSpan_.id = mob.util.ElementId.LOGO_SPAN;
+    var b = document.createElement(goog.dom.TagName.IMG);
+    b.src = a.logoUrl;
+    b.id = mob.util.ElementId.LOGO_IMAGE;
+    this.logoSpan_.appendChild(b);
+    this.headerBar_.appendChild(this.logoSpan_);
+  }
   this.headerBar_.style.borderBottomColor = mob.util.colorNumbersToString(a.menuFrontColor);
   this.headerBar_.style.backgroundColor = mob.util.colorNumbersToString(a.menuBackColor);
   window.psPhoneNumber && (this.dialer_ = new mob.button.Dialer(a.menuFrontColor, window.psPhoneNumber, window.psConversionId, window.psPhoneConversionLabel), this.headerBar_.appendChild(this.dialer_.el));
   window.psMapLocation && (this.mapButton_ = new mob.button.Map(a.menuFrontColor, window.psMapLocation, window.psConversionId, window.psMapConversionLabel), this.headerBar_.appendChild(this.mapButton_.el));
-  (window.psLabeledMode || this.dialer_ && !this.mapButton_ || !this.dialer_ && this.mapButton_) && goog.dom.classlist.add(this.headerBar_, mob.util.ElementClass.SHOW_BUTTON_TEXT);
+  goog.dom.classlist.add(this.headerBar_, mob.util.ElementClass.SHOW_BUTTON_TEXT);
   this.addHeaderBarResizeEvents_();
   this.addThemeColor_(a);
 };

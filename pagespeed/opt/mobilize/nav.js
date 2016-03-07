@@ -32,7 +32,6 @@ goog.require('goog.style');
 goog.require('mob.NavPanel');
 goog.require('mob.button.Dialer');
 goog.require('mob.button.Map');
-goog.require('mob.button.Menu');
 goog.require('mob.util');
 goog.require('mob.util.BeaconEvents');
 goog.require('mob.util.ElementClass');
@@ -70,13 +69,6 @@ mob.Nav = function() {
    * @private {?Element}
    */
   this.logoSpan_ = null;
-
-  /**
-   * Menu button in the header bar. This can be null after configuration if no
-   * nav section was inserted server side.
-   * @private {?mob.button.Menu}
-   */
-  this.menuButton_ = null;
 
   /**
    * @private {?mob.button.Dialer}
@@ -456,23 +448,10 @@ mob.Nav.prototype.addHeaderBar_ = function(themeData) {
     document.body.insertBefore(this.headerBar_, this.spacerDiv_);
   }
 
-  if (window.psLabeledMode) {
-    goog.dom.classlist.add(this.headerBar_, mob.util.ElementClass.LABELED);
-  }
+  goog.dom.classlist.add(this.headerBar_, mob.util.ElementClass.LABELED);
 
   if (this.isIosWebview_) {
     goog.dom.classlist.add(this.headerBar_, mob.util.ElementClass.IOS_WEBVIEW);
-  }
-
-  var navPanelEl = document.getElementById(mob.util.ElementId.NAV_PANEL);
-  // Add menu button and nav panel.
-  if (!window.psLabeledMode && navPanelEl) {
-    this.navPanel_ = new mob.NavPanel(navPanelEl, themeData.menuBackColor);
-
-    this.menuButton_ =
-        new mob.button.Menu(themeData.menuFrontColor,
-                            goog.bind(this.navPanel_.toggle, this.navPanel_));
-    this.headerBar_.appendChild(this.menuButton_.el);
   }
 
   // Add the logo.
@@ -510,13 +489,9 @@ mob.Nav.prototype.addHeaderBar_ = function(themeData) {
     this.headerBar_.appendChild(this.mapButton_.el);
   }
 
-  // If we are in labeled mode or only 1 button is configured, then show the
-  // text next to it.
-  if (window.psLabeledMode || (this.dialer_ && !this.mapButton_) ||
-      (!this.dialer_ && this.mapButton_)) {
-    goog.dom.classlist.add(this.headerBar_,
-                           mob.util.ElementClass.SHOW_BUTTON_TEXT);
-  }
+  // Always show the label text next to the buttons.
+  goog.dom.classlist.add(
+      this.headerBar_, mob.util.ElementClass.SHOW_BUTTON_TEXT);
 
   this.addHeaderBarResizeEvents_();
   this.addThemeColor_(themeData);

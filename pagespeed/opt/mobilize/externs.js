@@ -42,13 +42,6 @@ var psMapConversionLabel;
 var psMapLocation;
 
 
-/**
- * Configures whether to use the original or the labeled header bar (also
- * removes the menu button and logo).
- * @type {boolean} */
-var psLabeledMode;
-
-
 /** @type {string} */
 var psPhoneConversionLabel;
 
