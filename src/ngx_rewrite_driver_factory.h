@@ -130,6 +130,10 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
     return false;
   }
 
+  virtual void PrepareForkedProcess(const char* name);
+
+  virtual void NameProcess(const char* name);
+
  private:
   Timer* timer_;
 

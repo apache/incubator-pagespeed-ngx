@@ -577,6 +577,18 @@ check test $(scrape_stat image_rewrite_total_original_bytes) -ge 10000
 # happens both before and after.
 start_test "Reload config"
 
+function check_process_names() {
+  if ! $USE_VALGRIND; then
+    # There should be one babysitter and controller running.  Under valgrind
+    # process labels are confused, so skip the check then.
+
+    check [ $(ps aux | grep -c 'nginx: pagespeed babysitte[r]') -eq 1 ]
+    check [ $(ps aux | grep -c 'nginx: pagespeed controlle[r]') -eq 1 ]
+  fi
+}
+
+check_process_names
+
 # Fire up some heavy load if ab is available to test a stressed reload.
 # TODO(oschaaf): make sure we wait for the new worker to get ready to accept
 # requests.
@@ -600,6 +612,14 @@ if [ "$AB_PID" != "0" ]; then
     echo "Kill ab (pid: $AB_PID)"
     kill -s KILL $AB_PID &>/dev/null || true
 fi
+
+# There should still be just one babysitter and controller running.
+check_process_names
+
+check grep "Writing a byte to a pipe to tell the old controller to exit." \
+  $ERROR_LOG
+check grep "Root process is starting a new controller; shutting down." \
+  $ERROR_LOG
 
 # This is dependent upon having a beacon handler.
 test_filter add_instrumentation beacons load.
@@ -1324,6 +1344,7 @@ OUT=$(cat "$ERROR_LOG" \
     | grep -v "\\[warn\\].*end token not received.*" \
     | grep -v "\\[warn\\].*failed to hook next event.*" \
     | grep -v "\\[warn\\].*Fetch timed out:.*" \
+    | grep -v "\\[warn\\].*Controller process .* exited with status code.*" \
     || true)
 
 check [ -z "$OUT" ]

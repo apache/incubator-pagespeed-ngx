@@ -250,4 +250,23 @@ void NgxRewriteDriverFactory::InitStats(Statistics* statistics) {
   InPlaceResourceRecorder::InitStats(statistics);
 }
 
+void NgxRewriteDriverFactory::PrepareForkedProcess(const char* name) {
+  ngx_pid = ngx_getpid();  // Needed for logging to have the right PIDs.
+  SystemRewriteDriverFactory::PrepareForkedProcess(name);
+}
+
+void NgxRewriteDriverFactory::NameProcess(const char* name) {
+  SystemRewriteDriverFactory::NameProcess(name);
+
+  // Superclass set status with prctl.  Nginx has a helper function for setting
+  // argv[0] as well, so let's use that.  We'll show up as:
+  //
+  //    nginx: pagespeed $name
+
+  char name_for_setproctitle[32];
+  snprintf(name_for_setproctitle, sizeof(name_for_setproctitle),
+           "pagespeed %s", name);
+  ngx_setproctitle(name_for_setproctitle);
+}
+
 }  // namespace net_instaweb
