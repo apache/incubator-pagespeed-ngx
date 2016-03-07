@@ -2293,6 +2293,61 @@ start_test long url handling
 OUT=$($CURL -sS -D- "$TEST_ROOT/$(head -c 10000 < /dev/zero | tr '\0' 'a')")
 check_from "$OUT" grep -q "414 Request-URI Too Large\|Long"
 
+start_test babysitter process restarts controller when killed
+
+function get_controller_pid() {
+  grep "Controller running with PID " $ERROR_LOG | tail -n 1 | awk '{print $NF}'
+}
+
+controller_pid=$(get_controller_pid)
+check [ ! -z "$controller_pid" ]  # Controller PID should be in log.
+
+# We should see the babysitter process starting too.
+check grep "Babysitter running with PID " $ERROR_LOG
+
+function count_watcher_messages() {
+  grep -c "Watching the root process to exit if it does." $ERROR_LOG
+}
+
+# And the ProcessDeathWatcherThread should be running.
+echo "Checking that we're watching the right processes."
+initial_watcher_count=$(count_watcher_messages)
+# On nginx this will be 1; on apache it will be 2 because apache starts twice to
+# check its config.
+check [ $initial_watcher_count -gt 0 ]
+
+# Now kill the controller and verify that it gets restarted.
+kill "$controller_pid"
+
+function did_controller_restart() {
+  new_controller_pid=$(get_controller_pid)
+
+  # If there's a new PID, that means it was restarted.
+  test ! -z "$new_controller_pid" -a "$new_controller_pid" != "$controller_pid"
+}
+
+echo -n "Waiting for babysitter to restart controller ..."
+controller_wait_count=0
+while ! did_controller_restart; do
+  echo -n .
+  sleep 0.1
+  controller_wait_count=$(($controller_wait_count + 1))
+  if [ $controller_wait_count -gt 100 ]; then
+    fail
+  fi
+done
+echo
+
+echo "Checking that babysitter reported controller death..."
+grep "Controller process $controller_pid exited" \
+  $ERROR_LOG > /dev/null
+
+# The ProcessDeathWatcherThread should have been restarted (it's hosted by the
+# controller thread, not the babysitter).
+echo "Checking again that we're watching the right processes."
+final_watcher_count=$(count_watcher_messages)
+check [ $final_watcher_count -eq $(($initial_watcher_count + 1)) ]
+
 start_test Strip subresources default behaviour
 URL="$TEST_ROOT/strip_subresource_hints/default/index.html"
 echo $WGET_DUMP $URL

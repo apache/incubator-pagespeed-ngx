@@ -23,6 +23,7 @@
 #include "pagespeed/apache/apache_config.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/system/system_rewrite_driver_factory.h"
@@ -39,7 +40,6 @@ class ProcessContext;
 class ServerContext;
 class SharedCircularBuffer;
 class SlowWorker;
-class Statistics;
 class Timer;
 
 // Creates an Apache RewriteDriver.

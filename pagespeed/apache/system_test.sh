@@ -73,6 +73,9 @@ if egrep -q "^    # ModPagespeedStatistics off$" \
   fi
 fi
 
+# Tell system/system_tests.sh what our log file is.
+ERROR_LOG="$APACHE_LOG"
+
 # The 'PURGE' method is implemented, but not yet working in ngx_pagespeed, so
 # have to indicate here that we want to test both PURGE and GET.  In
 # nginx_system_test.sh we currently specify only GET.

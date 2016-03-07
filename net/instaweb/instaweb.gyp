@@ -1731,6 +1731,7 @@
         '<(DEPTH)/pagespeed/system/admin_site.cc',
         '<(DEPTH)/pagespeed/system/apr_mem_cache.cc',
         '<(DEPTH)/pagespeed/system/apr_thread_compatible_pool.cc',
+        '<(DEPTH)/pagespeed/system/controller_manager.cc',
         '<(DEPTH)/pagespeed/system/in_place_resource_recorder.cc',
         '<(DEPTH)/pagespeed/system/loopback_route_fetcher.cc',
         '<(DEPTH)/pagespeed/system/serf_url_async_fetcher.cc',

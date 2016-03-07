@@ -16,7 +16,9 @@
 
 #include "pagespeed/system/system_rewrite_driver_factory.h"
 
+#include <sys/prctl.h>
 #include <algorithm>  // for min
+#include <cstdio>
 #include <cstdlib>
 #include <map>
 #include <set>
@@ -33,6 +35,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
+#include "pagespeed/system/controller_manager.h"
 #include "pagespeed/system/in_place_resource_recorder.h"
 #include "pagespeed/system/serf_url_async_fetcher.h"
 #include "pagespeed/system/system_caches.h"
@@ -239,6 +242,36 @@ void SystemRewriteDriverFactory::ParentOrChildInit() {
   SharedCircularBufferInit(is_root_process_);
 }
 
+void SystemRewriteDriverFactory::NameProcess(const char* name) {
+  // Set the process status.  This is what /proc/PID/status shows and what
+  // "ps -a" gives you.  With PR_SET_NAME there's a max of 16 characters, so
+  // abbreviate pagespeed as ps to be terse.
+  char name_for_prctl[16];
+  snprintf(name_for_prctl, sizeof(name_for_prctl), "ps-%s", name);
+  prctl(PR_SET_NAME, name_for_prctl);
+
+  // It's also possible to change argv[0], but this is a pain so currently we
+  // only do this in nginx where they've written ngx_setproctitle to make it
+  // easy.
+}
+
+void SystemRewriteDriverFactory::PrepareForkedProcess(const char* name) {
+  is_root_process_ = false;
+  NameProcess(name);
+}
+
+void SystemRewriteDriverFactory::PrepareControllerProcess() {
+  system_thread_system_->PermitThreadStarting();
+  ParentOrChildInit();
+  SetupMessageHandlers();
+}
+
+void SystemRewriteDriverFactory::StartController() {
+  // In the forked process, this call starts a new event loop and never returns.
+  ControllerManager::ForkControllerProcess(
+      this, system_thread_system_, message_handler());
+}
+
 void SystemRewriteDriverFactory::RootInit() {
   ParentOrChildInit();
 
@@ -252,6 +285,8 @@ void SystemRewriteDriverFactory::RootInit() {
   }
 
   caches_->RootInit();
+
+  StartController();
 }
 
 void SystemRewriteDriverFactory::ChildInit() {
