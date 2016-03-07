@@ -703,8 +703,44 @@ http {
     pagespeed EnableFilters rewrite_images,rewrite_css;
     pagespeed EnableFilters convert_to_webp_lossless;
     pagespeed EnableFilters in_place_optimize_for_browser;
+    pagespeed JpegRecompressionQuality 75;
+    pagespeed WebpRecompressionQuality 70;
     pagespeed InPlaceResourceOptimization on;
     pagespeed AllowVaryOn "Accept";
+    pagespeed FileCachePath "@@IPRO_CACHE@@";
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name ipro-for-browser-vary-on-auto.example.com;
+    root "@@SERVER_ROOT@@/mod_pagespeed_example";
+    pagespeed EnableFilters rewrite_images,rewrite_css;
+    pagespeed EnableFilters convert_to_webp_animated;
+    pagespeed EnableFilters convert_to_webp_lossless;
+    pagespeed EnableFilters in_place_optimize_for_browser;
+    pagespeed InPlaceResourceOptimization on;
+    # pagespeed AllowVaryOn "Accept";  # Default is "Auto".
+    pagespeed ImageRecompressionQuality 90;
+    pagespeed JpegRecompressionQuality 75;
+    pagespeed JpegRecompressionQualityForSmallScreens 55;
+    pagespeed JpegQualityForSaveData 35;
+    pagespeed WebpRecompressionQuality 70;
+    pagespeed WebpRecompressionQualityForSmallScreens 50;
+    pagespeed WebpQualityForSaveData 30;
+    pagespeed WebpAnimatedRecompressionQuality 60;
+    pagespeed FileCachePath "@@IPRO_CACHE@@";
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name ipro-for-browser-vary-on-none.example.com;
+    root "@@SERVER_ROOT@@/mod_pagespeed_example";
+    pagespeed EnableFilters rewrite_images,in_place_optimize_for_browser;
+    pagespeed InPlaceResourceOptimization on;
+    pagespeed AllowVaryOn "None";
+    pagespeed ImageRecompressionQuality 75;
     pagespeed FileCachePath "@@IPRO_CACHE@@";
   }
 
