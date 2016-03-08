@@ -1508,6 +1508,14 @@ http {
     pagespeed GlobalAdminDomains
      Allow everything-explicitly-allowed.example.com;
   }
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name psol-vary.example.com;
+    pagespeed on;
+    pagespeed InPlaceResourceOptimization on;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+  }
 
   server {
     listen @@PRIMARY_PORT@@;

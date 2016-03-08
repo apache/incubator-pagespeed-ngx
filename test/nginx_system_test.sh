@@ -1268,6 +1268,22 @@ OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP -O /dev/null -S $URL 2>&1) || tr
 # We ignored the exit code, check if we got a 404 response.
 check_from "$OUT" fgrep -qi '404'
 
+start_test Single Vary: Accept-Encoding header in IPRO flow
+URL=http://psol-vary.example.com/mod_pagespeed_example/styles/index_style.css
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP -O /dev/null -S $URL 2>&1)
+# First hit will be recorded and passed on untouched
+MATCHES=$(echo "$OUT" | grep -c "Vary: Accept-Encoding") || true
+check [ $MATCHES -eq 1 ]
+
+# Fetch until we get a fully optimized response
+http_proxy=$SECONDARY_HOSTNAME \
+  fetch_until $URL "fgrep -c W/\"PSA" 1 --save-headers
+
+# Test the optimized response.
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP -O /dev/null -S $URL 2>&1)
+MATCHES=$(echo "$OUT" | grep -c "Vary: Accept-Encoding") || true
+check [ $MATCHES -eq 1 ]
+
 start_test Shutting down.
 
 # Fire up some heavy load if ab is available to test a stressed shutdown
