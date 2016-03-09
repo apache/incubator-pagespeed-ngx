@@ -1018,7 +1018,6 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
     RewriteOptions::kMaxCombinedJsBytes,
     RewriteOptions::kMaxHtmlCacheTimeMs,
     RewriteOptions::kMaxHtmlParseBytes,
-    RewriteOptions::kMaxImageBytesForWebpInCss,
     RewriteOptions::kMaxImageSizeLowResolutionBytes,
     RewriteOptions::kMaxInlinedPreviewImagesIndex,
     RewriteOptions::kMaxLowResImageSizeBytes,

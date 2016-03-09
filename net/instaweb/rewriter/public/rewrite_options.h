@@ -325,7 +325,6 @@ class RewriteOptions {
   static const char kMaxCombinedJsBytes[];
   static const char kMaxHtmlCacheTimeMs[];
   static const char kMaxHtmlParseBytes[];
-  static const char kMaxImageBytesForWebpInCss[];
   static const char kMaxImageSizeLowResolutionBytes[];
   static const char kMaxInlinedPreviewImagesIndex[];
   static const char kMaxLowResImageSizeBytes[];
@@ -774,7 +773,6 @@ class RewriteOptions {
   static const int64 kDefaultMaxCacheableResponseContentLength;
   static const int64 kDefaultMaxHtmlCacheTimeMs;
   static const int64 kDefaultMaxHtmlParseBytes;
-  static const int64 kDefaultMaxImageBytesForWebpInCss;
   static const int64 kDefaultMaxLowResImageSizeBytes;
   static const int kDefaultMaxLowResToFullResImageSizePercentage;
   static const int64 kDefaultMetadataInputErrorsCacheTtlMs;
@@ -1604,12 +1602,6 @@ class RewriteOptions {
   }
   void set_max_html_parse_bytes(int64 x) {
     set_option(x, &max_html_parse_bytes_);
-  }
-  int64 max_image_bytes_for_webp_in_css() const {
-    return max_image_bytes_for_webp_in_css_.value();
-  }
-  void set_max_image_bytes_for_webp_in_css(int64 x) {
-    set_option(x, &max_image_bytes_for_webp_in_css_);
   }
   int64 max_cacheable_response_content_length() const {
     return max_cacheable_response_content_length_.value();
@@ -3796,8 +3788,6 @@ class RewriteOptions {
   // The maximum number of bytes of HTML that we parse, before redirecting to
   // ?ModPagespeed=off.
   Option<int64> max_html_parse_bytes_;
-  // The maximum size of an image in CSS, which we convert to webp.
-  Option<int64> max_image_bytes_for_webp_in_css_;
   // Resources with Cache-Control TTL less than this will not be rewritten.
   Option<int64> min_resource_cache_time_to_rewrite_ms_;
   Option<int64> idle_flush_time_ms_;

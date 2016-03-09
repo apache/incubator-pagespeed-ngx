@@ -216,8 +216,6 @@ const char RewriteOptions::kMaxCombinedCssBytes[] = "MaxCombinedCssBytes";
 const char RewriteOptions::kMaxCombinedJsBytes[] = "MaxCombinedJsBytes";
 const char RewriteOptions::kMaxHtmlCacheTimeMs[] = "MaxHtmlCacheTimeMs";
 const char RewriteOptions::kMaxHtmlParseBytes[] = "MaxHtmlParseBytes";
-const char RewriteOptions::kMaxImageBytesForWebpInCss[] =
-    "MaxImageBytesForWebpInCss";
 const char RewriteOptions::kMaxImageSizeLowResolutionBytes[] =
     "MaxImageSizeLowResolutionBytes";
 const char RewriteOptions::kMaxInlinedPreviewImagesIndex[] =
@@ -452,8 +450,6 @@ const int64 RewriteOptions::kDefaultProgressiveJpegMinBytes = 10240;
 
 const int64 RewriteOptions::kDefaultMaxHtmlCacheTimeMs = 0;
 const int64 RewriteOptions::kDefaultMaxHtmlParseBytes = -1;
-const int64 RewriteOptions::kDefaultMaxImageBytesForWebpInCss = kint64max;
-
 const int64 RewriteOptions::kDefaultMinResourceCacheTimeToRewriteMs = 0;
 
 const int64 RewriteOptions::kDefaultFlushBufferLimitBytes = 100 * 1024;
@@ -1332,13 +1328,6 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,  // TODO(jmarantz): switch to kProcessScope?
       "Maximum number of bytes of HTML that we parse, before "
       "redirecting to ?ModPagespeed=off", true);
-  AddBaseProperty(
-      kDefaultMaxImageBytesForWebpInCss,
-      &RewriteOptions::max_image_bytes_for_webp_in_css_, "miwc",
-      kMaxImageBytesForWebpInCss,
-      kDirectoryScope,
-      NULL, true);  // TODO(jmarantz): clean this up & doc it, or delete it.
-  // "Maximum byte size of webp images rewritten from CSS"
   AddBaseProperty(
       kDefaultMinResourceCacheTimeToRewriteMs,
       &RewriteOptions::min_resource_cache_time_to_rewrite_ms_, "rc",

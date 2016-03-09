@@ -1088,41 +1088,6 @@ TEST_F(CssRecompressImagesInStyleAttributes,
       "<div style=\"background-image:url(xfoo.jpg.pagespeed.ic.0.webp)\"/>");
 }
 
-// TODO(huibao) Remove test cases RecompressAndWebpAndStyleEnabledWithMaxCssSize
-// and RecompressAndWebpLosslessAndStyleEnabledWithMaxCssSize, when
-// option max_image_bytes_for_webp_in_css is removed.
-TEST_F(CssRecompressImagesInStyleAttributes,
-       RecompressAndWebpAndStyleEnabledWithMaxCssSize) {
-  AddFileToMockFetcher(StrCat(kTestDomain, "foo.jpg"), kPuzzleJpgFile,
-                       kContentTypeJpeg, 100);
-  options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
-  options()->EnableFilter(RewriteOptions::kRecompressJpeg);
-  options()->EnableFilter(RewriteOptions::kRewriteStyleAttributesWithUrl);
-  options()->set_image_jpeg_recompress_quality(85);
-  options()->set_max_image_bytes_for_webp_in_css(1);  // No effect
-  SetupForWebp();
-  rewrite_driver()->AddFilters();
-  ValidateExpected("webp",
-      "<div style=\"background-image:url(foo.jpg)\"/>",
-      "<div style=\"background-image:url(xfoo.jpg.pagespeed.ic.0.webp)\"/>");
-}
-
-TEST_F(CssRecompressImagesInStyleAttributes,
-       RecompressAndWebpLosslessAndStyleEnabledWithMaxCssSize) {
-  AddFileToMockFetcher(StrCat(kTestDomain, "foo.jpg"), kPuzzleJpgFile,
-                       kContentTypeJpeg, 100);
-  options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
-  options()->EnableFilter(RewriteOptions::kRecompressJpeg);
-  options()->EnableFilter(RewriteOptions::kRewriteStyleAttributesWithUrl);
-  options()->set_image_jpeg_recompress_quality(85);
-  options()->set_max_image_bytes_for_webp_in_css(1);  // No effect
-  SetupForWebpLossless();
-  rewrite_driver()->AddFilters();
-  ValidateExpected("webp-lossless",
-      "<div style=\"background-image:url(foo.jpg)\"/>",
-      "<div style=\"background-image:url(xfoo.jpg.pagespeed.ic.0.webp)\"/>");
-}
-
 // https://code.google.com/p/modpagespeed/issues/detail?id=781
 TEST_F(CssRecompressImagesInStyleAttributes, ServeCssToDifferentUA) {
   AddFileToMockFetcher(StrCat(kTestDomain, "bike.png"), kBikePngFile,
@@ -1134,7 +1099,6 @@ TEST_F(CssRecompressImagesInStyleAttributes, ServeCssToDifferentUA) {
   options()->EnableFilter(RewriteOptions::kRewriteStyleAttributesWithUrl);
   options()->set_image_jpeg_recompress_quality(85);
   options()->set_image_inline_max_bytes(10000);
-  options()->set_max_image_bytes_for_webp_in_css(100000);
   options()->set_css_image_inline_max_bytes(10000);
   rewrite_driver()->AddFilters();
 

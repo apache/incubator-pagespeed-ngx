@@ -467,10 +467,6 @@ DEFINE_bool(enable_prioritizing_scripts, false,
     "If it is set to true, defer javascript will prioritize scripts with"
     "data-pagespeed-prioritize attibute.");
 
-DEFINE_int64(max_image_bytes_for_webp_in_css,
-             RewriteOptions::kDefaultMaxImageBytesForWebpInCss,
-             "The maximum size of an image in CSS, which we convert to webp.");
-
 DEFINE_bool(override_ie_document_mode, false,
             "If enabled, IE will be made to use the highest mode available"
             " to that version of IE.");
@@ -867,10 +863,6 @@ bool RewriteGflags::SetupOptionsOnly(
   }
   if (WasExplicitlySet("use_smart_diff_in_blink")) {
     options->set_use_smart_diff_in_blink(FLAGS_use_smart_diff_in_blink);
-  }
-  if (WasExplicitlySet("max_image_bytes_for_webp_in_css")) {
-    options->set_max_image_bytes_for_webp_in_css(
-        FLAGS_max_image_bytes_for_webp_in_css);
   }
   if (WasExplicitlySet("enable_prioritizing_scripts")) {
     options->set_enable_prioritizing_scripts(
