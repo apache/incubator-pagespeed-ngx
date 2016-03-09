@@ -25,11 +25,9 @@ goog.require('goog.dom.TagName');
 goog.require('goog.dom.classlist');
 goog.require('goog.events.EventType');
 goog.require('goog.labs.userAgent.browser');
-goog.require('goog.string');
 goog.require('goog.structs.Set');
 // goog.style adds ~400 bytes when using getSize and getTransformedSize.
 goog.require('goog.style');
-goog.require('mob.NavPanel');
 goog.require('mob.button.Dialer');
 goog.require('mob.button.Map');
 goog.require('mob.util');
@@ -65,12 +63,6 @@ mob.Nav = function() {
   this.spacerDiv_ = goog.dom.getRequiredElement(mob.util.ElementId.SPACER);
 
   /**
-   * The span containing the logo.
-   * @private {?Element}
-   */
-  this.logoSpan_ = null;
-
-  /**
    * @private {?mob.button.Dialer}
    */
   this.dialer_ = null;
@@ -80,12 +72,6 @@ mob.Nav = function() {
    * @private {?mob.button.Map}
    */
   this.mapButton_ = null;
-
-  /**
-   * Side nav panel. Only initialized if inserted by C++.
-   * @private {?mob.NavPanel}
-   */
-  this.navPanel_ = null;
 
   /**
    * Tracks time since last scroll to figure out when scrolling is finished.
@@ -155,103 +141,10 @@ mob.Nav.MIN_FONT_SIZE_ = 1;
 
 
 /**
- * Do a pre-pass over all the elements on the page and find out those that
- * need to add offset. The elements include
- * (a) all elements with 'position' specified as 'fixed' and 'top' specified in
- *     pixels.
- * (b) all elements with 'position' specified as 'absolute' or 'relative',
- *     and 'top' specified in pixels, with all ancestors up to document.body
- *     have 'static' 'position'.
- *
- * @param {!Element} element
- * @param {boolean} fixedPositionOnly
- * @private
- */
-mob.Nav.prototype.findElementsToOffsetHelper_ = function(element,
-                                                         fixedPositionOnly) {
-  if (!element.className ||
-      (element.className != mob.util.ElementId.PROGRESS_SCRIM &&
-       goog.isString(element.className) &&
-       !goog.string.startsWith(element.className, 'psmob-') &&
-       !goog.string.startsWith(element.id, 'psmob-'))) {
-    var style = window.getComputedStyle(element);
-    var position = style.getPropertyValue('position');
-    if (position != 'static') {
-      var top = mob.util.pixelValue(style.getPropertyValue('top'));
-      if (top != null && (position == 'fixed' ||
-                          (!fixedPositionOnly && position == 'absolute'))) {
-        this.elementsToOffset_.add(element);
-      }
-      fixedPositionOnly = true;
-    }
-
-    for (var childElement = element.firstElementChild; childElement;
-         childElement = childElement.nextElementSibling) {
-      this.findElementsToOffsetHelper_(childElement, fixedPositionOnly);
-    }
-  }
-};
-
-
-/**
- * Do a pre-pass over all the elements on the page and find out those that
- * need to add offset.
- *
- * TODO(jud): This belongs in mobilize.js instead of mobilize_nav.js.
- * @private
- */
-mob.Nav.prototype.findElementsToOffset_ = function() {
-  if (window.document.body) {
-    this.findElementsToOffsetHelper_(window.document.body,
-        false /* search for elements with all allowed positions */);
-  }
-};
-
-
-/**
- * Do a pre-pass over all the nodes on the page and clamp their z-index to
- * 999997.
- * TODO(jud): This belongs in mobilize.js instead of mobilize_nav.js.
- * @private
- */
-mob.Nav.prototype.clampZIndex_ = function() {
-  var elements = document.querySelectorAll('*');
-  for (var i = 0, element; element = elements[i]; i++) {
-    var id = element.id;
-    if (id && (id == mob.util.ElementId.PROGRESS_SCRIM ||
-               id == mob.util.ElementId.HEADER_BAR ||
-               id == mob.util.ElementId.NAV_PANEL)) {
-      continue;
-    }
-    var style = window.getComputedStyle(element);
-    // Set to 999997 because the click detector div is set to 999998 and the
-    // menu bar and nav panel are set to 999999. This function runs before those
-    // elements are added, so it won't modify their z-index.
-    if (style.getPropertyValue('z-index') >= 999998) {
-      mob.util.consoleLog(
-          'Element z-index exceeded 999998, setting to 999997.');
-      element.style.zIndex = 999997;
-    }
-  }
-};
-
-
-/**
- * @private
- */
-mob.Nav.prototype.redraw_ = function() {
-  this.redrawHeader_();
-  if (this.navPanel_) {
-    this.navPanel_.redraw(this.headerBar_.getBoundingClientRect().height);
-  }
-};
-
-
-/**
  * Redraw the header after scrolling or zooming finishes.
  * @private
  */
-mob.Nav.prototype.redrawHeader_ = function() {
+mob.Nav.prototype.redraw_ = function() {
   // We don't actually expect this to be called without headerBar_ being set,
   // but getTransformedSize requires a non-null param, so this coerces the
   // closure compiler into recognizing that.
@@ -376,9 +269,7 @@ mob.Nav.prototype.addHeaderBarResizeEvents_ = function() {
   // redrawing from happening until scrolling is finished.
   var scrollHandler = function(e) {
     resetScrollTimer.call(this);
-    if (!this.navPanel_ || !this.navPanel_.isOpen()) {
-      goog.dom.classlist.add(this.headerBar_, mob.util.ElementClass.HIDE);
-    }
+    goog.dom.classlist.add(this.headerBar_, mob.util.ElementClass.HIDE);
   };
 
   window.addEventListener(goog.events.EventType.SCROLL,
@@ -391,26 +282,18 @@ mob.Nav.prototype.addHeaderBarResizeEvents_ = function() {
                             this.currentTouches_ = e.touches.length;
                           }, this), false);
 
-  window.addEventListener(goog.events.EventType.TOUCHMOVE,
-                          goog.bind(function(e) {
-                            // The default android browser is unreliable about
-                            // firing touch events if preventDefault is not
-                            // called in touchstart (see note above). Therefore,
-                            // we don't hide the nav panel here on the android
-                            // browser, otherwise the bar is not redrawn if a
-                            // user tries to scroll up past the top of the page,
-                            // since neither a touchend event nor a scroll event
-                            // fires to redraw the header.
-                            if (!this.navPanel_ || !this.navPanel_.isOpen()) {
-                              if (!this.isAndroidBrowser_) {
-                                goog.dom.classlist.add(
-                                    this.headerBar_,
-                                    mob.util.ElementClass.HIDE);
-                              }
-                            } else {
-                              e.preventDefault();
-                            }
-                          }, this), false);
+  window.addEventListener(
+      goog.events.EventType.TOUCHMOVE, goog.bind(function(e) {
+        // The default android browser is unreliable about firing touch events
+        // if preventDefault is not called in touchstart (see note above).
+        // Therefore, we don't hide the nav panel here on the android browser,
+        // otherwise the bar is not redrawn if a user tries to scroll up past
+        // the top of the page, since neither a touchend event nor a scroll
+        // event fires to redraw the header.
+        if (!this.isAndroidBrowser_) {
+          goog.dom.classlist.add(this.headerBar_, mob.util.ElementClass.HIDE);
+        }
+      }, this), false);
 
   window.addEventListener(goog.events.EventType.TOUCHEND,
                           goog.bind(function(e) {
@@ -448,24 +331,8 @@ mob.Nav.prototype.addHeaderBar_ = function(themeData) {
     document.body.insertBefore(this.headerBar_, this.spacerDiv_);
   }
 
-  goog.dom.classlist.add(this.headerBar_, mob.util.ElementClass.LABELED);
-
   if (this.isIosWebview_) {
     goog.dom.classlist.add(this.headerBar_, mob.util.ElementClass.IOS_WEBVIEW);
-  }
-
-  // Add the logo.
-  // TODO(jmarantz): also consider having this element be an anchor
-  // in non-config mode, pointing either to the landing page or to
-  // the non-mobilized version.
-  if (themeData.logoUrl) {
-    this.logoSpan_ = document.createElement(goog.dom.TagName.SPAN);
-    this.logoSpan_.id = mob.util.ElementId.LOGO_SPAN;
-    var logoImg = document.createElement(goog.dom.TagName.IMG);
-    logoImg.src = themeData.logoUrl;
-    logoImg.id = mob.util.ElementId.LOGO_IMAGE;
-    this.logoSpan_.appendChild(logoImg);
-    this.headerBar_.appendChild(this.logoSpan_);
   }
 
   this.headerBar_.style.borderBottomColor =
@@ -489,10 +356,6 @@ mob.Nav.prototype.addHeaderBar_ = function(themeData) {
     this.headerBar_.appendChild(this.mapButton_.el);
   }
 
-  // Always show the label text next to the buttons.
-  goog.dom.classlist.add(
-      this.headerBar_, mob.util.ElementClass.SHOW_BUTTON_TEXT);
-
   this.addHeaderBarResizeEvents_();
   this.addThemeColor_(themeData);
 };
@@ -514,13 +377,9 @@ mob.Nav.prototype.addThemeColor_ = function(themeData) {
   var backgroundColor = mob.util.colorNumbersToString(themeData.menuBackColor);
   var color = mob.util.colorNumbersToString(themeData.menuFrontColor);
   var css = '#' + mob.util.ElementId.HEADER_BAR + ' { background-color: ' +
-            backgroundColor + '; }\n' +
-            '#' + mob.util.ElementId.HEADER_BAR + ' * ' +
-            ' { color: ' + color + '; }\n' +
-            '#' + mob.util.ElementId.NAV_PANEL + ' { background-color: ' +
-            color + '; }\n' +
-            '#' + mob.util.ElementId.NAV_PANEL + ' * ' +
-            ' { color: ' + backgroundColor + '; }\n';
+      backgroundColor + '; }\n' +
+      '#' + mob.util.ElementId.HEADER_BAR + ' * ' +
+      ' { color: ' + color + '; }\n';
   this.styleTag_ = document.createElement(goog.dom.TagName.STYLE);
   this.styleTag_.type = 'text/css';
   this.styleTag_.appendChild(document.createTextNode(css));
@@ -560,32 +419,10 @@ mob.Nav.prototype.run = function(themeData) {
   if (mob.util.inFriendlyIframe()) {
     return;
   }
-  this.clampZIndex_();
-  this.findElementsToOffset_();
   this.addHeaderBar_(themeData);
 
   mob.util.sendBeaconEvent(mob.util.BeaconEvents.NAV_DONE);
 
   window.addEventListener(goog.events.EventType.LOAD,
                           goog.bind(this.redraw_, this));
-};
-
-
-/**
- * Updates header bar using the theme data.
- * @param {!mob.util.ThemeData} themeData
- */
-mob.Nav.prototype.updateTheme = function(themeData) {
-  // For now we just remove the existing header bar and spacer div and recreate
-  // them. This could be done more efficiently by updating just the style block
-  // and logo image but since this is only used for debug and config it should
-  // suffice for the time being.
-  this.headerBar_.remove();
-  this.spacerDiv_.remove();
-  this.spacerDiv_ = document.createElement(goog.dom.TagName.DIV);
-  this.spacerDiv_.id = mob.util.ElementId.SPACER;
-
-  this.headerBar_ = document.createElement(goog.dom.TagName.HEADER);
-  this.headerBar_.id = mob.util.ElementId.HEADER_BAR;
-  this.addHeaderBar_(themeData);
 };

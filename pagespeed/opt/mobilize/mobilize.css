@@ -15,9 +15,8 @@
  */
 
 /**
- * @fileoverview Stylesheet injected into mobile pages to render a progress
- * bar, inject a header bar with a logo, and navigational menus.  See also
- * layout.css, which transforms desktop pages to a mobile-friendly format.
+ * @fileoverview Stylesheet injected into mobile pages to render the
+ * mobilization bar.
  *
  * @author jud@google.com (Jud Porter)
  *         jmarantz@google.com (Joshua Marantz)
@@ -33,10 +32,6 @@
 
 body {
   padding: 0 !important;
-}
-
-/* Used only in frame mode. */
-body.mob-iframe {
   /* Only show scroll bars from the iframe, not the rest of the page. */
   overflow: hidden;
   margin: 0;
@@ -80,6 +75,7 @@ body.mob-iframe {
 
 #psmob-header-bar {
   position: absolute !important;
+  box-sizing: border-box !important;
   top: 0;
   left: 0;
   z-index: 999999;
@@ -107,24 +103,18 @@ body.mob-iframe {
   -moz-transition: opacity 0.2s;
   -o-transition: opacity 0.2s;
   transition: opacity 0.2s;
+
+  -webkit-box-pack: center;
+  -webkit-justify-content: space-around;
+  justify-content: space-around;
 }
 
 #psmob-header-bar.ios-webview {
   position: fixed !important;
 }
 
-#psmob-header-bar, #psmob-nav-panel {
-  box-sizing: border-box !important;
-}
-
-#psmob-header-bar *, #psmob-nav-panel * {
+#psmob-header-bar * {
   box-sizing: inherit !important;
-}
-
-#psmob-header-bar.psmob-labeled {
-  -webkit-box-pack: center;
-  -webkit-justify-content: space-around;
-  justify-content: space-around;
 }
 
 /* Note, don't add visibility: none; here because then
@@ -140,39 +130,6 @@ body.mob-iframe {
   transition: opacity 0s;
 }
 
-/* TODO(jud): Do we still have button elements in the header bar? */
-#psmob-header-bar button {
-  margin: 0;
-  padding: 0;
-  top: 0;
-  bottom: 0;
-
-  background-image: none;
-  background-color: transparent;
-
-  border: none;
-
-  padding: 0;
-
-  -webkit-transition: background-color 0.2s ease-out;
-  -moz-transition: background-color 0.2s ease-out;
-  -o-transition: background-color 0.2s ease-out;
-  transition: background-color 0.2s ease-out;
-}
-
-#psmob-header-bar button:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-#psmob-header-bar button:focus {
-  background-color: rgba(255, 255, 255, 0.2);
-  outline: 0;
-}
-
-#psmob-header-bar button:active {
-  background-color: rgba(255, 255, 255, 0.4);
-}
-
 .psmob-button {
   display: -webkit-box;
   display: -moz-box;
@@ -185,25 +142,9 @@ body.mob-iframe {
   margin: 4em 0;
 }
 
-#psmob-header-bar:not(.psmob-labeled) .psmob-button {
-  border: solid 1em;
-  border-radius: 9em;
-  margin: 4em 2em;
-}
-
-
 .psmob-button-icon {
   height: 48em;
   width: 48em;
-}
-
-/* We don't show the logo or menu button in labeled mode. */
-#psmob-header-bar.psmob-labeled #psmob-menu-button,
-#psmob-header-bar.psmob-labeled #psmob-logo-span {
-  display: none;
-}
-
-.psmob-button-icon {
   display: inline-block;
   background-repeat: no-repeat;
   background-size: 60%;
@@ -211,8 +152,7 @@ body.mob-iframe {
 }
 
 .psmob-button-text {
-  /* Only display button text in labeled mode or when there is only 1 button. */
-  display: none;
+  display: block;
 
   font-size: 20em !important;
 
@@ -226,16 +166,6 @@ body.mob-iframe {
   white-space: nowrap;
 }
 
-#psmob-header-bar:not(.psmob-labeled) .psmob-button-text {
-  height: 2em; /* 40/20 */
-  line-height: 2em; /* 40/20 */
-  margin-right: .4em; /* 5/20 */
-}
-
-#psmob-header-bar.psmob-show-button-text .psmob-button-text {
-  display: block;
-}
-
 /* Use a smaller font size on smaller devices, otherwise the text will overflow
  * the div it is in. This specifically happens on iphone 4 and 5.
  */
@@ -246,416 +176,9 @@ body.mob-iframe {
     line-height: 2.25em; /* 36/16 */
     padding: 0.375em 0;  /* 6/16 */
   }
-
-  #psmob-header-bar:not(.psmob-labeled) .psmob-button-text {
-    height: 2.5em; /* 40/16 */
-    line-height: 2.5em; /* 40/16 */
-    margin-right: 0.3125em;  /* 5/16 */
-  }
-}
-
-
-#psmob-logo-span {
-  height: 100%;
-  width: auto;
-  padding: 0;
-  /* The element must be display:block for old browsers using -webkit-box-flex
-   * to cause the element to grow */
-  /* display: block; */
-  /* Disable the logo at the moment to see if it improves appearances. */
-  display: none;
-  -webkit-box-flex: 1;
-  width: 70%; /* For old browsers, otherwise collapses. */
-  -webkit-flex: 1;
-  -ms-flex: 1;
-  flex: 1;
-}
-
-#psmob-header-bar.psmob-theme-config #psmob-logo-span {
-  display: block;
-}
-
-#psmob-logo-image {
-  height: 100%;
-  width: auto;
-  padding-top: 10em;
-  padding-bottom: 10em;
-
-  /* Center the image in the logo span. */
-  display: block;
-  margin: 0 auto;
-
-  max-width: 100% !important;
-}
-
-#psmob-header-bar:not(.psmob-labeled) #psmob-dialer-button {
-  margin-left: auto !important;
-}
-
-#psmob-nav-panel {
-  position: absolute !important;
-
-  /* Panel is hidden by default. */
-  display: none;
-  visibility: hidden;
-
-  -webkit-transform-origin: 0 0;
-  transform-origin: 0 0;
-
-  top: 0;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  /* The width specified here must match mob.NavPanel.WIDTH_ in nav_panel.js. */
-  width: 350em !important;
-
-  /* Wordpress sets a z-index of 99999 for its admin header bar, so set a larger
-   * value so our nav bar ends up on top of it. */
-  z-index: 999999;
-
-  font-family: arial, sans-serif;
-
-  /* We don't set margin-top here because that gets set dynamically by the JS to
-   * compensate for zoom level. */
-  margin-left: 0 !important;
-  margin-right: 0 !important;
-  margin-bottom: 0 !important;
-  padding: 0 !important;
-
-  box-shadow: 5px 0 6px -1px rgba(0, 0, 0, 0.4);
-
-  overflow-y: auto;
-
-  /* Add a 0.3s delay to the visibility change so that the sliding animation
-   * finishes before hiding the panel. */
-  -webkit-transition: visibility 0s linear 0.3s, left 0.3s ease-out;
-  -o-transition: visibility 0s linear 0.3s, left 0.3s ease-out;
-  -moz-transition: visibility 0s linear 0.3s, left 0.3s ease-out;
-  transition: visibility 0s linear 0.3s, left 0.3s ease-out;
-
-  /* Use momentum-based scrolling on iOS. Otherwise the nav panel scrolls too
-   * quickly. */
-  -webkit-overflow-scrolling: touch;
-}
-
-#psmob-nav-panel.psmob-open {
-  -webkit-transform: translate(0,0);
-  transform: translate(0,0);
-  /* When sliding the tray out, don't use a transition-delay (set above) so that
-   * the panel is visible when the animation starts. */
-  transition-delay: 0s;
-
-  /* Panel is hidden by default. */
-  visibility: visible;
-  display: block;
-}
-
-#psmob-nav-panel ul {
-  width: 100%;
-  padding: 0;
-  margin: 0;
-
-  list-style-type: none;
-  display: none;
-}
-
-#psmob-nav-panel > ul {
-  font-size: 22em !important;
-}
-
-/* TODO(jud): Consider using class labels instead of deeply nested rules. */
-#psmob-nav-panel ul li {
-  border-bottom-style: solid;
-  border-width: 1px;
-  border-color: white;
-
-  background: none;
-
-  text-align: left;
-
-  position: relative;
-
-
-  padding-right: 0;
-  padding-top: 0;
-  padding-bottom: 0;
-  line-height: 60em !important;
-  text-decoration: none;
-
-  -o-transition: background-color 0.2s ease-out;
-  -moz-transition: background-color 0.2s ease-out;
-  -webkit-transition: background-color 0.2s ease-out;
-  transition: background-color 0.2s ease-out;
-}
-
-#psmob-nav-panel ul li a,
-#psmob-nav-panel ul li div {
-  min-height: 2.7273em;  /* 60/22 */
-  display: block;
-  padding-right: 0;
-  padding-top: 0;
-  padding-bottom: 0;
-  line-height: 2.7273em !important;  /* 60/22 */
-  text-decoration: none;
-
-  -webkit-transition: background-color 0.2s ease-out;
-  -moz-transition: background-color 0.2s ease-out;
-  -o-transition: background-color 0.2s ease-out;
-  transition: background-color 0.2s ease-out;
-}
-
-#psmob-nav-panel ul li div {
-  position: relative;
-}
-
-#psmob-nav-panel ul.psmob-open {
-  display: block;
-}
-
-#psmob-nav-panel ul li a:hover {
-  background-color: rgba(255, 255, 255, 0.2);
-}
-
-#psmob-nav-panel ul li a:focus {
-  background-color: rgba(255, 255, 255, 0.3);
-  outline: 0;
-}
-
-#psmob-nav-panel ul li a:active {
-  background-color: rgba(255, 255, 255, 0.4);
-}
-
-.psmob-menu-expand-icon {
-  display: inline-block;
-  vertical-align: middle;
-  width: 0.9091em; /* 20/22 */
-  height: 0.9091em; /* 20/22 */
-  -ms-transform: rotate(270deg);
-  -webkit-transform: rotate(270deg);
-  transform: rotate(270deg);
-}
-
-.psmob-menu-expand-icon.psmob-open {
-  -ms-transform: rotate(0deg);
-  -webkit-transform: rotate(0deg);
-  transform: rotate(0deg);
-}
-
-/* TODO(jud): This is probably slow to match, so consider using a class. */
-#psmob-nav-panel img:not(.psmob-menu-expand-icon) {
-  display: inline-block;
-  vertical-align: middle;
 }
 
 #psmob-spacer {
   width: 100%;
   opacity: 0;
-}
-
-/* Commmon patterns applied to a broad range of elements */
-.psmob-single-column {
-    border-left: 0 !important;
-    border-right: 0 !important;
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-}
-
-/* Progess Bar elements */
-.psProgressScrim {
-    z-index: 100000 !important;
-    position: fixed;
-    top: 0 !important;
-    margin: 0 !important;
-    padding-top: 100em !important;
-    background: white;
-    border: 0;
-    width: 100%;
-    height: 100%;
-}
-
-.psProgressBar {
-    margin-top: 56px !important;
-    margin-left: 20% !important;
-    height: 20px;  /* Can be anything */
-    width: 60%;
-    margin: 0;
-    background: #555;
-    -moz-border-radius: 25px;
-    -webkit-border-radius: 25px;
-    border-radius: 25px;
-    padding: 10px;
-    -webkit-box-shadow: inset 0 -1px 1px rgba(255,255,255,0.3);
-    -moz-box-shadow   : inset 0 -1px 1px rgba(255,255,255,0.3);
-    box-shadow        : inset 0 -1px 1px rgba(255,255,255,0.3);
-
-    /*
-     * Simplified Meyer Reset
-     * http://meyerweb.com/eric/tools/css/reset/
-     */
-    border: 0;
-    font-size: 100%;
-    font: inherit;
-    vertical-align: baseline;
-    display: block;
-    line-height: 1;
-    list-style: none;
-    quotes: none;
-    content: '';
-    content: none;
-    border-collapse: collapse;
-    border-spacing: 0;
-}
-
-.psProgressSpan {
-    display: block;
-    height: 100%;
-    position: relative;
-    width: 0%;
-
-    -webkit-border-top-right-radius: 8px;
-    -webkit-border-bottom-right-radius: 8px;
-    -moz-border-radius-topright: 8px;
-    -moz-border-radius-bottomright: 8px;
-    border-top-right-radius: 8px;
-    border-bottom-right-radius: 8px;
-    -webkit-border-top-left-radius: 20px;
-    -webkit-border-bottom-left-radius: 20px;
-    -moz-border-radius-topleft: 20px;
-    -moz-border-radius-bottomleft: 20px;
-    border-top-left-radius: 20px;
-    border-bottom-left-radius: 20px;
-    background-color: rgb(43,194,83);
-    background-image: -webkit-gradient(
-        linear,
-        left bottom,
-        left top,
-        color-stop(0, rgb(43,194,83)),
-        color-stop(1, rgb(84,240,84))
-    );
-    background-image: -moz-linear-gradient(
-        center bottom,
-        rgb(43,194,83) 37%,
-        rgb(84,240,84) 69%
-    );
-    -webkit-box-shadow:
-    inset 0 2px 9px  rgba(255,255,255,0.3),
-    inset 0 -2px 6px rgba(0,0,0,0.4);
-    -moz-box-shadow:
-    inset 0 2px 9px  rgba(255,255,255,0.3),
-    inset 0 -2px 6px rgba(0,0,0,0.4);
-    box-shadow:
-    inset 0 2px 9px  rgba(255,255,255,0.3),
-    inset 0 -2px 6px rgba(0,0,0,0.4);
-    position: relative;
-    overflow: hidden;
-}
-
-.psProgressLog {
-    margin-top: 30px !important;
-    margin-left: 10% !important;
-    background: white;
-    /* Invisible by default; in debug mode we override. */
-    color: white;
-    font-family: sans-serif !important;
-    font-size: 12px;
-    overflow-y: auto;
-    height: 300px;
-    width: 80%;
-}
-
-/* Setup the click detector div so that it is positioned over the entire
- * viewport, but underneath menu bar and header. */
-#psmob-click-detector-div {
-  width: 100%;
-  position: fixed;
-  top: 0;
-  bottom: 0;
-  opacity: 0;
-  /* Click events are not sent to hidden visibility elements. */
-  visibility: hidden;
-  /* Set z-index so that it ends up above the rest of the elements on the page
-   * but below the nav panel and header bar. */
-  z-index: 999998;
-}
-
-#psmob-click-detector-div.psmob-open {
-  visibility: visible;
-}
-
-/*
- * The logo chooser sizing is based on a font-size of 12px, and manually
- * tweaked sizes for logos and colors based on that.  This is scaled in JS
- * (mob.Nav.prototype.chooserDisplayPopup_) via a CSS transform to
- * match the window size at the time it's instantiated.
- *
- * TODO(jmarantz): The CSS delivered to clients should not include the
- * psmob-logo-chooser-* classes unless ?PageSpeedMobConfig=on is specified.
- */
-.psmob-logo-chooser-choice {
-  margin-bottom: 10px;
-  border-width: 1px;
-  padding: 2px 2px 2px 2px;
-  overflow: hidden;
-}
-
-.psmob-logo-chooser-color {
-  height: 56px;  /* width is determined by table header. */
-  border-color: black;
-  border-width: 1px;
-  border-style: solid;
-}
-
-.psmob-logo-chooser-swap {
-  width: 30px;
-  height: 30px;
-}
-
-.psmob-logo-chooser-column-header {
-  font-family: sans-serif;
-  font-size: 12px;
-  font-weight: bold;
-  border-color: black;
-  border-width: 1px;
-  border-style: solid;
-}
-
-.psmob-logo-chooser-table {
-  z-index: 999999;
-  position: absolute;
-  left: 0;
-  top: 0;
-  background-color: white;
-  border-style: solid;
-  border-width: 4px;
-
-  opacity: 1;
-  /* Use a 200ms fade in when redrawing the table after scrolling. */
-  -webkit-transition: opacity 0.2s;
-  -moz-transition: opacity 0.2s;
-  -o-transition: opacity 0.2s;
-  transition: opacity 0.2s;
-}
-
-.psmob-logo-chooser-image {
-  max-width: 200px;
-  max-height: 56px;
-  width: auto !important;
-  height: auto !important;
-}
-
-.psmob-logo-chooser-config-fragment {
-  width: 350px;
-  border-style: solid;
-  border-width: 4px;
-  border-color: black;
-  background-color: darkgreen;
-  color: white;
-  font-family: monospace;
-  font-size: 18px;
-  position: absolute;
-  left: 0;
-  top: 0;
-  z-index: 999999 !important;
 }

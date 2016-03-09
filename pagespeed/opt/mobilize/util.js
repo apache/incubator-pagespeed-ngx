@@ -66,22 +66,11 @@ mob.util.getWindow = function() {
  * @enum {string}
  */
 mob.util.ElementId = {
-  CLICK_DETECTOR_DIV: 'psmob-click-detector-div',
-  CONFIG_IFRAME: 'ps-hidden-iframe',
   DIALER_BUTTON: 'psmob-dialer-button',
   HEADER_BAR: 'psmob-header-bar',
   IFRAME: 'psmob-iframe',
   IFRAME_CONTAINER: 'psmob-iframe-container',
-  LOGO_IMAGE: 'psmob-logo-image',
-  LOGO_SPAN: 'psmob-logo-span',
   MAP_BUTTON: 'psmob-map-button',
-  MENU_BUTTON: 'psmob-menu-button',
-  NAV_PANEL: 'psmob-nav-panel',
-  PROGRESS_LOG: 'ps-progress-log',
-  PROGRESS_REMOVE: 'ps-progress-remove',
-  PROGRESS_SCRIM: 'ps-progress-scrim',
-  PROGRESS_SHOW_LOG: 'ps-progress-show-log',
-  PROGRESS_SPAN: 'ps-progress-span',
   SPACER: 'psmob-spacer'
 };
 
@@ -96,20 +85,8 @@ mob.util.ElementClass = {
   BUTTON_TEXT: 'psmob-button-text',
   HIDE: 'psmob-hide',
   IOS_WEBVIEW: 'ios-webview',
-  LABELED: 'psmob-labeled',
-  LOGO_CHOOSER_CHOICE: 'psmob-logo-chooser-choice',
-  LOGO_CHOOSER_COLOR: 'psmob-logo-chooser-color',
-  LOGO_CHOOSER_COLUMN_HEADER: 'psmob-logo-chooser-column-header',
-  LOGO_CHOOSER_CONFIG_FRAGMENT: 'psmob-logo-chooser-config-fragment',
-  LOGO_CHOOSER_IMAGE: 'psmob-logo-chooser-image',
-  LOGO_CHOOSER_SWAP: 'psmob-logo-chooser-swap',
-  LOGO_CHOOSER_TABLE: 'psmob-logo-chooser-table',
-  MENU_EXPAND_ICON: 'psmob-menu-expand-icon',
   NOSCROLL: 'psmob-noscroll',
-  OPEN: 'psmob-open',
-  SHOW_BUTTON_TEXT: 'psmob-show-button-text',
-  SINGLE_COLUMN: 'psmob-single-column',
-  THEME_CONFIG: 'psmob-theme-config'
+  OPEN: 'psmob-open'
 };
 
 
