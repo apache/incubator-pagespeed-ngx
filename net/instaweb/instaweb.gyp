@@ -1655,6 +1655,7 @@
         'rewriter/script_tag_scanner.cc',
         'rewriter/simple_text_filter.cc',
         'rewriter/single_rewrite_context.cc',
+        'rewriter/srcset_slot.cc',
         'rewriter/strip_non_cacheable_filter.cc',
         'rewriter/strip_scripts_filter.cc',
         'rewriter/strip_subresource_hints_filter.cc',
