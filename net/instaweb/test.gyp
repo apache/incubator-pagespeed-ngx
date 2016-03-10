@@ -363,6 +363,7 @@
         '<(DEPTH)/pagespeed/opt/http/mock_property_page.cc',
         '<(DEPTH)/pagespeed/opt/http/property_cache_test.cc',
         '<(DEPTH)/pagespeed/opt/http/property_store_test.cc',
+        '<(DEPTH)/pagespeed/opt/http/request_context_test.cc',
         '<(DEPTH)/pagespeed/opt/http/two_level_property_store_test.cc',
 
 

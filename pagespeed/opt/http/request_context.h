@@ -125,6 +125,15 @@ class RequestContext : public RefCounted<RequestContext> {
   bool using_http2() const { return using_http2_; }
   void set_using_http2(bool x) { using_http2_ = x; }
 
+  // Checks to see if the passed in Via: header indicates this connection
+  // was terminated by an HTTP/2 proxy, and if so, sets the using_http2 bit.
+  // (If there are multiple proxies, this looks only at the one closest to the
+  //  user)
+  //
+  // This assumes that all the Via: headers are combined here, with the usual
+  // comma separation.
+  void SetHttp2SupportFromViaHeader(StringPiece header);
+
   // The minimal private suffix for the hostname specified in this request.
   // This should be calculated from the hostname by considering the list of
   // public suffixes and including one additional component.  So if a host is

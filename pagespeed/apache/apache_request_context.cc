@@ -39,8 +39,14 @@ ApacheRequestContext::ApacheRequestContext(
   // request_rec* has been retired.  So deep-copy the bits we need
   // from the request_rec at the time we create our RequestContext.
   // This includes the local port (for loopback fetches) and whether H2 is on.
-  // TODO(morlovich): Actually set the H2 bit. Easy, but off-topic. Note:
-  // history shows header access.
+  if (req->proto_num == 2000) {
+    set_using_http2(true);
+  }
+
+  const char* via_header = apr_table_get(req->headers_in, "Via");
+  if (via_header != nullptr) {
+    SetHttp2SupportFromViaHeader(via_header);
+  }
 }
 
 ApacheRequestContext::~ApacheRequestContext() {

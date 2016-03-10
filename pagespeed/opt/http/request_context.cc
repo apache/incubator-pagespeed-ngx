@@ -162,4 +162,25 @@ void RequestContext::ReleaseDependentTraceContext(RequestTrace* t) {
   }
 }
 
+void RequestContext::SetHttp2SupportFromViaHeader(StringPiece header) {
+  // The header (in it's combined form) is a comma-separated list of proxies,
+  // with the later proxies closer to the end.
+  // We only look at the first one, since that's the one the user talks to.
+
+  // Strip leading whitespace. Not using ready-built methods for this since
+  // they use HTML whitespace rather than HTTP whitespace.
+  while (!header.empty() && (header[0] == ' ' || header[0] == '\t')) {
+    header.remove_prefix(1);
+  }
+
+  size_t sep_pos = header.find_first_of(" \t");
+  if (sep_pos != StringPiece::npos) {
+    header = header.substr(0, sep_pos);
+  }
+
+  if (header == "2" || StringCaseEqual(header, "http/2")) {
+    set_using_http2(true);
+  }
+}
+
 }  // namespace net_instaweb

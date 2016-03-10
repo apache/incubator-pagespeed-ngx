@@ -61,6 +61,19 @@ int AddResponseAttributeCallback(void *rec, const char *key,
   return 1;
 }
 
+template<typename T>
+void FixUpH2Version(T* headers) {
+  // mod_h2 sets protocol version to 2.0 when h2 (or h2c) are in use.
+  // This conservatively sets it back to 1.1 in the header objects
+  // (with h2 support kept track of separately), for defensive reasons:
+  // The only place the major.minor protocol version shows up is in HTTP*1*
+  // messages, and talking about HTTP/2.0 in them makes no sense.
+  if (headers->major_version() == 2 && headers->minor_version() == 0) {
+    headers->set_major_version(1);
+    headers->set_minor_version(1);
+  }
+}
+
 }  // namespace
 
 void ApacheRequestToRequestHeaders(const request_rec& request,
@@ -71,6 +84,8 @@ void ApacheRequestToRequestHeaders(const request_rec& request,
     // proto_num is the version number of protocol; 1.1 = 1001
     request_headers->set_major_version(request.proto_num / 1000);
     request_headers->set_minor_version(request.proto_num % 1000);
+
+    FixUpH2Version(request_headers);
   }
   apr_table_do(AddAttributeCallback, &rpp, request.headers_in, NULL);
 }
@@ -83,6 +98,8 @@ void ApacheRequestToResponseHeaders(const request_rec& request,
     // proto_num is the version number of protocol; 1.1 = 1001
     headers->set_major_version(request.proto_num / 1000);
     headers->set_minor_version(request.proto_num % 1000);
+
+    FixUpH2Version(headers);
   }
   apr_table_do(AddResponseAttributeCallback, headers,
                request.headers_out, NULL);
