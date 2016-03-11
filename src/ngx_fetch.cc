@@ -315,7 +315,9 @@ bool NgxFetch::Init() {
   }
 
   if (!ParseUrl()) {
-    message_handler_->Message(kError, "NgxFetch: ParseUrl() failed");
+    message_handler_->Message(kError, 
+                              "NgxFetch: ParseUrl() failed for [%s]:%s",
+                              str_url_.c_str(), url_.err);
     return false;
   }
 
