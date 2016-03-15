@@ -577,13 +577,18 @@ check test $(scrape_stat image_rewrite_total_original_bytes) -ge 10000
 # happens both before and after.
 start_test "Reload config"
 
+function find_exactly_once {
+  test $(grep -c "$1") -eq 1
+}
+
 function check_process_names() {
   if ! $USE_VALGRIND; then
     # There should be one babysitter and controller running.  Under valgrind
     # process labels are confused, so skip the check then.
 
-    check [ $(ps aux | grep -c 'nginx: pagespeed babysitte[r]') -eq 1 ]
-    check [ $(ps aux | grep -c 'nginx: pagespeed controlle[r]') -eq 1 ]
+    running=$(ps auxww | grep 'ngin[x]')
+    check_from "$running" find_exactly_once "nginx: pagespeed babysitter"
+    check_from "$running" find_exactly_once "nginx: pagespeed controller"
   fi
 }
 
