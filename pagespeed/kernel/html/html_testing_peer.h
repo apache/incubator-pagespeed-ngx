@@ -49,6 +49,9 @@ class HtmlTestingPeer {
   static size_t symbol_table_size(HtmlParse* parser) {
     return parser->symbol_table_size();
   }
+  static void set_buffer_events(HtmlParse* parse, bool value) {
+    parse->set_buffer_events(value);
+  }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(HtmlTestingPeer);

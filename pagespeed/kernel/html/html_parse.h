@@ -562,6 +562,27 @@ class HtmlParse {
   // and can be queried on the can_modify_url function.
   virtual void DetermineFiltersBehaviorImpl();
 
+  // Set buffering of events.  When event-buffering is enabled, no
+  // normal filters will receive any events.  However, events will
+  // be delivered to filters added with add_event_listener.
+  //
+  // One thing an event_listener might do is to disable a filter in
+  // response to content parsed in the HTML.
+  //
+  // The intended use is to call this before any text is presented
+  // to the parser, so that no filters can start to run before they
+  // might be disabled.
+  //
+  // Otherwise, care must be taken to avoid sending filters an
+  // imbalanced view of events.  E.g. StartDocument should be called
+  // if and only if EndDocument is called.  StartElement should be
+  // called if and only if EndElement is called.
+  //
+  // Note that a filter's state may not be sane if StartDocument is not
+  // called, and so during event-buffering mode, filters should not
+  // be accessed.
+  void set_buffer_events(bool x) { buffer_events_ = x; }
+
  private:
   void ApplyFilterHelper(HtmlFilter* filter);
   HtmlEventListIterator Last();  // Last element in queue
@@ -628,6 +649,7 @@ class HtmlParse {
   bool url_valid_;
   bool log_rewrite_timing_;  // Should we time the speed of parsing?
   bool running_filters_;
+  bool buffer_events_;
   int64 parse_start_time_us_;
   scoped_ptr<HtmlEvent> delayed_start_literal_;
   Timer* timer_;

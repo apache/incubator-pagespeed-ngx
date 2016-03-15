@@ -110,7 +110,10 @@ class HtmlFilter {
   // The name of this filter -- used for logging and debugging.
   virtual const char* Name() const = 0;
 
- protected:
+  // Set whether this filter is enabled or not.  Note that a filter
+  // may be included in the filter-chain for a configuration, but
+  // is disabled for a request based on the request properties or
+  // even due to content (see HtmlParse::set_is_buffered()).
   void set_is_enabled(bool is_enabled) { is_enabled_ = is_enabled; }
 
  private:

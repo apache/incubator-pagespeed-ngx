@@ -2090,6 +2090,27 @@ TEST_F(HtmlParseTest, DisabledFilterWithReason) {
               UnorderedElementsAre(filter.ExpectedDisabledMessage()));
 }
 
+class DisableFilterOnBody : public EmptyHtmlFilter {
+ public:
+  DisableFilterOnBody(HtmlFilter* filter_to_disable,
+                      HtmlParse* parse)
+      : filter_to_disable_(filter_to_disable),
+        html_parse_(parse) {
+  }
+
+  virtual void StartElement(HtmlElement* element) {
+    if (element->keyword() == HtmlName::kBody) {
+      filter_to_disable_->set_is_enabled(false);
+      HtmlTestingPeer::set_buffer_events(html_parse_, false);
+    }
+  }
+  virtual const char* Name() const { return "DisableFilterOnBody"; }
+
+ private:
+  HtmlFilter* filter_to_disable_;
+  HtmlParse* html_parse_;
+};
+
 class CountingCallbacksFilter : public EmptyHtmlFilter {
  public:
   CountingCallbacksFilter()
@@ -2129,6 +2150,33 @@ class CountingCallbacksFilter : public EmptyHtmlFilter {
 
   DISALLOW_COPY_AND_ASSIGN(CountingCallbacksFilter);
 };
+
+TEST_F(HtmlParseTest, BufferEventsOnEventListener) {
+  CountingCallbacksFilter counter_that_stays_enabled;
+  CountingCallbacksFilter counter_to_disable;
+  html_parse_.AddFilter(&counter_that_stays_enabled);
+  html_parse_.AddFilter(&counter_to_disable);
+  html_parse_.add_event_listener(new DisableFilterOnBody(
+      &counter_to_disable, &html_parse_));
+  static const char kInput[] =
+      "<html><head><title>foo</title><body>hello, world</body></html>";
+  const StringPiece kInputPiece(kInput, STATIC_STRLEN(kInput));
+  for (int i = 0, n = STATIC_STRLEN(kInput); i < n; ++i) {
+    counter_to_disable.set_is_enabled(true);
+    html_parse_.StartParse(StringPrintf("http://example.com/doc_%d.html", i));
+    HtmlTestingPeer::set_buffer_events(&html_parse_, true);
+    html_parse_.ParseText(kInputPiece.substr(0, i));
+    html_parse_.Flush();
+    html_parse_.ParseText(kInputPiece.substr(i));
+    html_parse_.FinishParse();
+    EXPECT_EQ(0, counter_to_disable.num_start_elements());
+    EXPECT_EQ(0, counter_to_disable.num_end_elements());
+    EXPECT_EQ(0, counter_to_disable.num_char_elements());
+    EXPECT_EQ(4, counter_that_stays_enabled.num_start_elements());
+    EXPECT_EQ(4, counter_that_stays_enabled.num_end_elements());
+    EXPECT_EQ(2, counter_that_stays_enabled.num_char_elements());
+  }
+}
 
 // Checks that deleting nodes does not change the expected order of
 // HTML parse events. We delete any node of del_node_type_, but we

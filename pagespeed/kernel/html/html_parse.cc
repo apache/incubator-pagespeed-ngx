@@ -59,6 +59,7 @@ HtmlParse::HtmlParse(MessageHandler* message_handler)
       url_valid_(false),
       log_rewrite_timing_(false),
       running_filters_(false),
+      buffer_events_(false),
       parse_start_time_us_(0),
       timer_(NULL),
       current_filter_(NULL),
@@ -231,6 +232,7 @@ bool HtmlParse::StartParseId(const StringPiece& url, const StringPiece& id,
                              const ContentType& content_type) {
   delayed_start_literal_.reset();
   determine_filter_behavior_called_ = false;
+  buffer_events_ = false;
 
   // Paranoid debug-checking and unconditional clearing of state variables.
   DCHECK(!skip_increment_);
@@ -252,6 +254,7 @@ bool HtmlParse::StartParseId(const StringPiece& url, const StringPiece& id,
   // TODO(sligocki): Use IsWebValid() here. For now we need to allow file://
   // URLs as well because some tools use them.
   url_valid_ = gurl.IsAnyValid();
+
   if (!url_valid_) {
     message_handler_->Message(kWarning, "HtmlParse: Invalid document url %s",
                               url_.c_str());
@@ -532,8 +535,8 @@ void HtmlParse::Flush() {
     (*it)->Flush();
   }
 
-  DCHECK(url_valid_) << "Invalid to call FinishParse with invalid url";
-  if (url_valid_) {
+  DCHECK(url_valid_) << "Invalid to call Flush with invalid url";
+  if (url_valid_ && !buffer_events_) {
     ShowProgress("Flush");
 
     for (FilterList::iterator i = filters_.begin(); i != filters_.end(); ++i) {
