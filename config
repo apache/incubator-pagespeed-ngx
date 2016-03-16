@@ -286,8 +286,6 @@ if [ -n "$ngx_module_link" ]; then
                            | sed "s/ngx_pagespeed_etag_filter//" \
                            | sed "s/ngx_http_range_header_filter_module/ngx_http_range_header_filter_module ngx_pagespeed_etag_filter/")
     else
-      # config.make is not executed for dynamic modules
-      CFLAGS="$CFLAGS -Wno-c++11-extensions"
       if [ "$position_aux" = "true" ] ; then
         ngx_module_type=HTTP_AUX_FILTER
         ngx_module_order=""
@@ -320,7 +318,7 @@ ngx_feature_libs="-lstdc++"
 ngx_feature_test="
 
 #if defined(__clang__) && defined(__GLIBCXX__)
-   // See https://gcc.gnu.org/onlinedocs/libstdc++/manual/abi.html#abi.versioning 
+   // See https://gcc.gnu.org/onlinedocs/libstdc++/manual/abi.html#abi.versioning
    // for a list of various values of __GLIBCXX__. Note that they're not monotonic
    // with respect to version numbers.
    #if __GLIBCXX__ == 20120322  || __GLIBCXX__ == 20120614
