@@ -18,27 +18,10 @@
 
 namespace net_instaweb {
 
-ScheduleRewriteContext::ScheduleRewriteContext(
-    CentralControllerInterface* central_controller, const GoogleString& key)
-    : central_controller_(central_controller), key_(key) {
+ScheduleRewriteContext::ScheduleRewriteContext() {
 }
 
 ScheduleRewriteContext::~ScheduleRewriteContext() {
-  MarkSucceeded();
-}
-
-void ScheduleRewriteContext::MarkSucceeded() {
-  if (central_controller_ != NULL) {
-    central_controller_->NotifyRewriteComplete(key_);
-    central_controller_ = NULL;
-  }
-}
-
-void ScheduleRewriteContext::MarkFailed() {
-  if (central_controller_ != NULL) {
-    central_controller_->NotifyRewriteFailed(key_);
-    central_controller_ = NULL;
-  }
 }
 
 ScheduleRewriteCallback::ScheduleRewriteCallback(
@@ -47,11 +30,6 @@ ScheduleRewriteCallback::ScheduleRewriteCallback(
 }
 
 ScheduleRewriteCallback::~ScheduleRewriteCallback() {
-}
-
-ScheduleRewriteContext* ScheduleRewriteCallback::CreateTransactionContext(
-    CentralControllerInterface* interface) {
-  return new ScheduleRewriteContext(interface, key_);
 }
 
 }  // namespace net_instaweb

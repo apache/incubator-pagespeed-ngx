@@ -17,7 +17,7 @@
 #ifndef PAGESPEED_CONTROLLER_COMPATIBLE_CENTRAL_CONTROLLER_H_
 #define PAGESPEED_CONTROLLER_COMPATIBLE_CENTRAL_CONTROLLER_H_
 
-#include "pagespeed/controller/central_controller.h"
+#include "pagespeed/controller/in_process_central_controller.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/named_lock_manager.h"
 #include "pagespeed/kernel/base/statistics.h"
@@ -25,10 +25,11 @@
 
 namespace net_instaweb {
 
-// Implements CentralControllerInterface, delegating to implementations that
-// match pre-CentralControllerInterface code. This is just a convenience
-// wrapper around CentralController with appropriate delegates.
-class CompatibleCentralController : public CentralController {
+// Implements CentralController, delegating to implementations that match
+// pre-CentralController code. This is just a convenience wrapper around
+// InProcessCentralController with appropriate delegates.
+
+class CompatibleCentralController : public InProcessCentralController {
  public:
   CompatibleCentralController(int max_expensive_operations, Statistics* stats,
                               ThreadSystem* thread_system,

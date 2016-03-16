@@ -17,36 +17,34 @@
 #ifndef PAGESPEED_CONTROLLER_SCHEDULE_REWRITE_CALLBACK_H_
 #define PAGESPEED_CONTROLLER_SCHEDULE_REWRITE_CALLBACK_H_
 
-#include "pagespeed/controller/central_controller_interface.h"
 #include "pagespeed/controller/central_controller_callback.h"
+#include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/thread/sequence.h"
 
-// Callback classes to support rewrite scheduling in
-// CentralControllerInterfaceAdapter.
+// Callback classes to support rewrite scheduling in CentralController.
 
 namespace net_instaweb {
 
 // Passed to RunImpl for implementations of ScheduleRewriteCallback.
 class ScheduleRewriteContext {
  public:
-  explicit ScheduleRewriteContext(CentralControllerInterface* interface,
-                                  const GoogleString& key);
-  ~ScheduleRewriteContext();
+  virtual ~ScheduleRewriteContext();
 
   // Mark the rewrite operation as complete. MarkSucceeded will be
   // automatically invoked at destruction if neither is explicitly called.
-  void MarkSucceeded();
-  void MarkFailed();
+  virtual void MarkSucceeded() = 0;
+  virtual void MarkFailed() = 0;
+
+ protected:
+  ScheduleRewriteContext();
 
  private:
-  CentralControllerInterface* central_controller_;
-  GoogleString key_;
+  DISALLOW_COPY_AND_ASSIGN(ScheduleRewriteContext);
 };
 
-// Implementor interface to rewrite scheduling features in
-// CentralControllerInterfaceAdapter.
+// Implementor interface to rewrite scheduling features in CentralController.
 class ScheduleRewriteCallback
     : public CentralControllerCallback<ScheduleRewriteContext> {
  public:
@@ -57,14 +55,13 @@ class ScheduleRewriteCallback
   const GoogleString& key() { return key_; }
 
  private:
-  virtual ScheduleRewriteContext* CreateTransactionContext(
-      CentralControllerInterface* interface);
-
   // CentralControllerCallback interface.
   virtual void RunImpl(scoped_ptr<ScheduleRewriteContext>* context) = 0;
   virtual void CancelImpl() = 0;
 
   GoogleString key_;
+
+  DISALLOW_COPY_AND_ASSIGN(ScheduleRewriteCallback);
 };
 
 }  // namespace net_instaweb

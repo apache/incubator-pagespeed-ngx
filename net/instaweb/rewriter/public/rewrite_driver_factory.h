@@ -22,7 +22,7 @@
 #include <set>
 #include <vector>
 
-#include "pagespeed/controller/central_controller_interface.h"
+#include "pagespeed/controller/central_controller.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/function.h"
@@ -421,7 +421,7 @@ class RewriteDriverFactory {
   // ServerContext. This is for backwards compatibility with Nginx, where we
   // don't have a NamedLockManager on the driver factory. Once we have a
   // real CentralController, this will need to be changed around a bit.
-  virtual CentralControllerInterface* CreateCentralController(
+  virtual CentralController* CreateCentralController(
       NamedLockManager* lock_manager);
 
   // For use in tests.

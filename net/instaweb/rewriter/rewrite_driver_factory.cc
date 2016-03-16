@@ -39,8 +39,8 @@
 #include "net/instaweb/rewriter/public/usage_data_reporter.h"
 #include "net/instaweb/util/public/property_store.h"
 #include "pagespeed/controller/central_controller.h"
-#include "pagespeed/controller/central_controller_interface_adapter.h"
 #include "pagespeed/controller/compatible_central_controller.h"
+#include "pagespeed/controller/in_process_central_controller.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/checking_thread_system.h"
 #include "pagespeed/kernel/base/file_system.h"
@@ -505,8 +505,8 @@ void RewriteDriverFactory::InitServerContext(ServerContext* server_context) {
     }
   }
 
-  server_context->set_central_controller(new CentralControllerInterfaceAdapter(
-      CreateCentralController(server_context->lock_manager())));
+  server_context->set_central_controller(
+      CreateCentralController(server_context->lock_manager()));
   server_context->set_url_namer(url_namer());
   server_context->SetRewriteOptionsManager(NewRewriteOptionsManager());
   server_context->set_user_agent_matcher(user_agent_matcher());
@@ -548,7 +548,7 @@ void RewriteDriverFactory::InitServerContext(ServerContext* server_context) {
                                    true /* startup fetch */);
 }
 
-CentralControllerInterface* RewriteDriverFactory::CreateCentralController(
+CentralController* RewriteDriverFactory::CreateCentralController(
     NamedLockManager* lock_manager) {
   return new CompatibleCentralController(
       default_options()->image_max_rewrites_at_once(), statistics(),
@@ -757,7 +757,7 @@ void RewriteDriverFactory::InitStats(Statistics* statistics) {
   RewriteDriver::InitStats(statistics);
   RewriteStats::InitStats(statistics);
   CacheBatcher::InitStats(statistics);
-  CentralController::InitStats(statistics);
+  InProcessCentralController::InitStats(statistics);
   CriticalImagesFinder::InitStats(statistics);
   CriticalSelectorFinder::InitStats(statistics);
   PropertyStoreGetCallback::InitStats(statistics);

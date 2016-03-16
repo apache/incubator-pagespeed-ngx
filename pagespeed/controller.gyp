@@ -28,9 +28,9 @@
       'type': '<(library)',
       'sources': [
         'controller/central_controller.cc',
-        'controller/central_controller_interface_adapter.cc',
         'controller/compatible_central_controller.cc',
         'controller/expensive_operation_callback.cc',
+        'controller/in_process_central_controller.cc',
         'controller/named_lock_schedule_rewrite_controller.cc',
         'controller/popularity_contest_schedule_rewrite_controller.cc',
         'controller/queued_expensive_operation_controller.cc',

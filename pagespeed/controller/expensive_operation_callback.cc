@@ -16,24 +16,12 @@
 
 #include "pagespeed/controller/expensive_operation_callback.h"
 
-#include "pagespeed/kernel/base/basictypes.h"
-
 namespace net_instaweb {
 
-ExpensiveOperationContext::ExpensiveOperationContext(
-    CentralControllerInterface* central_controller)
-    : central_controller_(central_controller) {
+ExpensiveOperationContext::ExpensiveOperationContext() {
 }
 
 ExpensiveOperationContext::~ExpensiveOperationContext() {
-  Done();
-}
-
-void ExpensiveOperationContext::Done() {
-  if (central_controller_ != NULL) {
-    central_controller_->NotifyExpensiveOperationComplete();
-    central_controller_ = NULL;
-  }
 }
 
 ExpensiveOperationCallback::ExpensiveOperationCallback(
@@ -42,11 +30,6 @@ ExpensiveOperationCallback::ExpensiveOperationCallback(
 }
 
 ExpensiveOperationCallback::~ExpensiveOperationCallback() {
-}
-
-ExpensiveOperationContext* ExpensiveOperationCallback::CreateTransactionContext(
-    CentralControllerInterface* interface) {
-  return new ExpensiveOperationContext(interface);
 }
 
 }  // namespace net_instaweb

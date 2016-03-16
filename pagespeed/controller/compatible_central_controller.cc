@@ -24,10 +24,11 @@ namespace net_instaweb {
 CompatibleCentralController::CompatibleCentralController(
     int max_expensive_operations, Statistics* statistics,
     ThreadSystem* thread_system, NamedLockManager* lock_manager)
-    : CentralController(new WorkBoundExpensiveOperationController(
-                            max_expensive_operations, statistics),
-                        new NamedLockScheduleRewriteController(
-                            lock_manager, thread_system, statistics)) {}
+    : InProcessCentralController(new WorkBoundExpensiveOperationController(
+                                     max_expensive_operations, statistics),
+                                 new NamedLockScheduleRewriteController(
+                                     lock_manager, thread_system, statistics)) {
+}
 
 CompatibleCentralController::~CompatibleCentralController() {
 }

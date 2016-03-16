@@ -17,47 +17,35 @@
 #ifndef PAGESPEED_CONTROLLER_CENTRAL_CONTROLLER_H_
 #define PAGESPEED_CONTROLLER_CENTRAL_CONTROLLER_H_
 
-#include "pagespeed/controller/central_controller_interface.h"
-#include "pagespeed/controller/expensive_operation_controller.h"
-#include "pagespeed/controller/schedule_rewrite_controller.h"
+#include "pagespeed/controller/expensive_operation_callback.h"
+#include "pagespeed/controller/schedule_rewrite_callback.h"
 #include "pagespeed/kernel/base/basictypes.h"
-#include "pagespeed/kernel/base/function.h"
-#include "pagespeed/kernel/base/scoped_ptr.h"
-#include "pagespeed/kernel/base/statistics.h"
-#include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
 
-// Concrete implementation of CentralControllerInterface, suitable for calling
-// directly by workers that run in the same process as the controller.
-// Implements CentrolControllerInterface by delegating to pluggable
-// implementations of the component tasks.
+// Abstract interface class that supports various PSOL operations which should
+// be performed in a centralized fashion, instead of once per worker process.
 
-class CentralController : public CentralControllerInterface {
+class CentralController {
  public:
-  CentralController(
-      ExpensiveOperationController* expensive_operation_controller,
-      ScheduleRewriteController* schedule_rewrite_controller);
-
   virtual ~CentralController();
 
-  // CentralControllerInterface for expensive operations.
-  // All just delegated to expensive_operation_controller_.
-  virtual void ScheduleExpensiveOperation(Function* callback);
-  virtual void NotifyExpensiveOperationComplete();
+  // Runs callback at an indeterminate time in the future when it is safe
+  // to perform a CPU intensive operation. Or may Cancel the callback at some
+  // point if it is determined that the work cannot be performed.
+  virtual void ScheduleExpensiveOperation(
+      ExpensiveOperationCallback* callback) = 0;
 
-  // CentralControllerInterface for rewrite scheduling operations.
-  // All just delegated to schedule_rewrite_controller_.
-  virtual void ScheduleRewrite(const GoogleString& key, Function* callback);
-  virtual void NotifyRewriteComplete(const GoogleString& key);
-  virtual void NotifyRewriteFailed(const GoogleString& key);
+  // Runs callback at an indeterminate time in the future when the associated
+  // rewrite should be performed. May Cancel the callback immediately or at
+  // some point in the future if the rewrite should not be performed by the
+  // caller. Only one rewrite per callback.key() will be scheduled at once.
+  virtual void ScheduleRewrite(ScheduleRewriteCallback* callback) = 0;
 
-  static void InitStats(Statistics* stats);
+ protected:
+  CentralController();
 
  private:
-  scoped_ptr<ExpensiveOperationController> expensive_operation_controller_;
-  scoped_ptr<ScheduleRewriteController> schedule_rewrite_controller_;
-
   DISALLOW_COPY_AND_ASSIGN(CentralController);
 };
 

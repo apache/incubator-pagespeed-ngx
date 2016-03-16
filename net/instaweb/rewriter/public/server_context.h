@@ -32,7 +32,7 @@
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/util/public/property_cache.h"
-#include "pagespeed/controller/central_controller_interface_adapter.h"
+#include "pagespeed/controller/central_controller.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/atomic_bool.h"
 #include "pagespeed/kernel/base/basictypes.h"
@@ -581,11 +581,11 @@ class ServerContext {
   }
 
   // Takes ownership of controller.
-  void set_central_controller(CentralControllerInterfaceAdapter* controller) {
+  void set_central_controller(CentralController* controller) {
     central_controller_.reset(controller);
   }
 
-  CentralControllerInterfaceAdapter* central_controller() {
+  CentralController* central_controller() {
     return central_controller_.get();
   }
 
@@ -820,7 +820,7 @@ class ServerContext {
 
   scoped_ptr<CachePropertyStore> cache_property_store_;
 
-  scoped_ptr<CentralControllerInterfaceAdapter> central_controller_;
+  scoped_ptr<CentralController> central_controller_;
 
   DISALLOW_COPY_AND_ASSIGN(ServerContext);
 };

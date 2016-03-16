@@ -16,11 +16,11 @@
 // Author: cheesy@google.com (Steve Hill)
 
 #include "pagespeed/controller/central_controller_callback.h"
-#include "pagespeed/controller/central_controller_interface.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/thread/worker_test_base.h"
 #include "pagespeed/kernel/thread/queued_worker_pool.h"
@@ -33,40 +33,25 @@ class MockCallbackHandle;
 
 struct CallCounts {
   explicit CallCounts(ThreadSystem* ts)
-      : run_called(0), cancel_called(0), delete_called(0), sync(ts) {}
+      : run_called(0), cancel_called(0), cleanup_called(0), sync(ts) {}
 
   int run_called;
   int cancel_called;
-  int delete_called;
+  int cleanup_called;
   WorkerTestBase::SyncPoint sync;
   scoped_ptr<MockCallbackHandle> handle;
-};
-
-class MockCallbackHandle {
- public:
-  explicit MockCallbackHandle(CallCounts* counts) : counts_(counts) {
-  }
-
-  ~MockCallbackHandle() { ++counts_->delete_called; }
-
-  struct CallCounts* counts_;
 };
 
 class MockCentralControllerCallback
     : public CentralControllerCallback<MockCallbackHandle> {
  public:
-  MockCentralControllerCallback(Sequence* sequence,
-                                struct CallCounts* counts)
+  MockCentralControllerCallback(Sequence* sequence, struct CallCounts* counts)
       : CentralControllerCallback<
             MockCallbackHandle>::CentralControllerCallback(sequence),
-        counts_(counts), steal_pointer_(false) {}
+        counts_(counts), steal_pointer_(false) {
+  }
 
   virtual ~MockCentralControllerCallback() {}
-
-  MockCallbackHandle* CreateTransactionContext(
-      net_instaweb::CentralControllerInterface* interface) {
-    return new MockCallbackHandle(counts_);
-  }
 
   virtual void RunImpl(scoped_ptr<MockCallbackHandle>* handle) {
     ++counts_->run_called;
@@ -88,6 +73,34 @@ class MockCentralControllerCallback
   bool steal_pointer_;
 };
 
+class MockCallbackHandle {
+ public:
+  explicit MockCallbackHandle(CallCounts* counts,
+                              MockCentralControllerCallback* callback)
+      : counts_(counts), callback_(callback) {
+    callback_->SetTransactionContext(this);
+  }
+
+  ~MockCallbackHandle() {
+    if (counts_ != nullptr) {
+      ++counts_->cleanup_called;
+    }
+  }
+
+  void CallRun() {
+    callback_->CallRun();
+  }
+
+  void CallCancel() {
+    counts_ = nullptr;
+    callback_->CallCancel();
+  }
+
+ private:
+  struct CallCounts* counts_;
+  MockCentralControllerCallback* callback_;
+};
+
 // Inheriting from WorkerTestBase since it has useful stuff like SyncPoint.
 class CentralControllerCallbackTest : public WorkerTestBase {
  public:
@@ -96,13 +109,25 @@ class CentralControllerCallbackTest : public WorkerTestBase {
                                      thread_runtime_.get())) {}
 
  protected:
-  scoped_ptr<QueuedWorkerPool> worker_;
+  Function* ScheduleMockCallback(MockCentralControllerCallback* callback,
+                                 struct CallCounts* counts) {
+    MockCallbackHandle* ctx = new MockCallbackHandle(counts, callback);
+    return MakeFunction(ctx, &MockCallbackHandle::CallRun,
+                        &MockCallbackHandle::CallCancel);
+  }
+
+  Function* CreateMockCallback(Sequence* sequence, struct CallCounts* counts) {
+    return ScheduleMockCallback(
+        new MockCentralControllerCallback(sequence, counts), counts);
+  }
 
   void WaitUntilSequenceCompletes(Sequence* sequence) {
     SyncPoint done(thread_runtime_.get());
     sequence->Add(new NotifyRunFunction(&done));
     done.Wait();
   }
+
+  scoped_ptr<QueuedWorkerPool> worker_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(CentralControllerCallbackTest);
@@ -111,29 +136,27 @@ class CentralControllerCallbackTest : public WorkerTestBase {
 TEST_F(CentralControllerCallbackTest, RegularRun) {
   struct CallCounts counts(thread_runtime_.get());
   Sequence* sequence = worker_->NewSequence();
-  sequence->Add(new MockCentralControllerCallback(sequence, &counts));
+  sequence->Add(CreateMockCallback(sequence, &counts));
 
   counts.sync.Wait();
   WaitUntilSequenceCompletes(sequence);
 
   EXPECT_EQ(1, counts.run_called);
-  EXPECT_EQ(1, counts.delete_called);
+  EXPECT_EQ(1, counts.cleanup_called);
   EXPECT_EQ(0, counts.cancel_called);
 }
 
 TEST_F(CentralControllerCallbackTest, CancelImmediately) {
   struct CallCounts counts(thread_runtime_.get());
   Sequence* sequence = worker_->NewSequence();
-  sequence->Add(
-      MakeFunction(static_cast<Function*>(
-                       new MockCentralControllerCallback(sequence, &counts)),
-                   &Function::CallCancel));
+  sequence->Add(MakeFunction(CreateMockCallback(sequence, &counts),
+                             &Function::CallCancel));
 
   counts.sync.Wait();
   WaitUntilSequenceCompletes(sequence);
 
   EXPECT_EQ(0, counts.run_called);
-  EXPECT_EQ(0, counts.delete_called);
+  EXPECT_EQ(0, counts.cleanup_called);
   EXPECT_EQ(1, counts.cancel_called);
 }
 
@@ -148,7 +171,7 @@ TEST_F(CentralControllerCallbackTest, CancelAfterRunRequeue) {
   Sequence* sequence2 = worker2->NewSequence();
   worker2->ShutDown();
 
-  sequence->Add(new MockCentralControllerCallback(sequence2, &counts));
+  sequence->Add(CreateMockCallback(sequence2, &counts));
 
   counts.sync.Wait();
   // It's especially important with this test to make sure all the cleanup
@@ -157,7 +180,7 @@ TEST_F(CentralControllerCallbackTest, CancelAfterRunRequeue) {
   WaitUntilSequenceCompletes(sequence);
 
   EXPECT_EQ(0, counts.run_called);
-  EXPECT_EQ(1, counts.delete_called);
+  EXPECT_EQ(1, counts.cleanup_called);
   EXPECT_EQ(1, counts.cancel_called);
 }
 
@@ -173,10 +196,8 @@ TEST_F(CentralControllerCallbackTest, CancelAfterCancelRequeue) {
   worker2->ShutDown();
 
   // Call Cancel() on the callback instead of Run in CancelAfterRunRequeue.
-  sequence->Add(
-      MakeFunction(static_cast<Function*>(
-                       new MockCentralControllerCallback(sequence2, &counts)),
-                   &Function::CallCancel));
+  sequence->Add(MakeFunction(CreateMockCallback(sequence2, &counts),
+                             &Function::CallCancel));
 
   counts.sync.Wait();
   // It's especially important with this test to make sure all the cleanup
@@ -185,7 +206,7 @@ TEST_F(CentralControllerCallbackTest, CancelAfterCancelRequeue) {
   WaitUntilSequenceCompletes(sequence);
 
   EXPECT_EQ(0, counts.run_called);
-  EXPECT_EQ(0, counts.delete_called);  // The context shouldn't be created.
+  EXPECT_EQ(0, counts.cleanup_called);  // The context shouldn't be created.
   EXPECT_EQ(1, counts.cancel_called);
 }
 
@@ -195,17 +216,17 @@ TEST_F(CentralControllerCallbackTest, RegularRunWithPointerSteal) {
   MockCentralControllerCallback* callback =
       new MockCentralControllerCallback(sequence, &counts);
   callback->SetStealPointer(true);
-  sequence->Add(callback);
+  sequence->Add(ScheduleMockCallback(callback, &counts));
 
   counts.sync.Wait();
   WaitUntilSequenceCompletes(sequence);
 
   EXPECT_EQ(1, counts.run_called);
-  EXPECT_EQ(0, counts.delete_called);
+  EXPECT_EQ(0, counts.cleanup_called);
   EXPECT_EQ(0, counts.cancel_called);
 
   counts.handle.reset();
-  EXPECT_EQ(1, counts.delete_called);
+  EXPECT_EQ(1, counts.cleanup_called);
 }
 
 }  // namespace

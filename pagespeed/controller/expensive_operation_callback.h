@@ -17,32 +17,32 @@
 #ifndef PAGESPEED_CONTROLLER_EXPENSIVE_OPERATION_CALLBACK_H_
 #define PAGESPEED_CONTROLLER_EXPENSIVE_OPERATION_CALLBACK_H_
 
-#include "pagespeed/controller/central_controller_interface.h"
 #include "pagespeed/controller/central_controller_callback.h"
+#include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/thread/sequence.h"
 
-// Callback classes to support ExpensiveOperation features in
-// CentralControllerInterfaceAdapter.
+// Callback classes to support ExpensiveOperation features in CentralController.
 
 namespace net_instaweb {
 
 // Passed to RunImpl for implementations of ExpensiveOperationCallback.
 class ExpensiveOperationContext {
  public:
-  explicit ExpensiveOperationContext(CentralControllerInterface* interface);
-  ~ExpensiveOperationContext();
+  virtual ~ExpensiveOperationContext();
 
   // Mark the expensive operation as complete. Automatically invoked at
   // destruction if not explicitly called.
-  void Done();
+  virtual void Done() = 0;
+
+ protected:
+  ExpensiveOperationContext();
 
  private:
-  CentralControllerInterface* central_controller_;
+  DISALLOW_COPY_AND_ASSIGN(ExpensiveOperationContext);
 };
 
-// Implementor interface to ExpensiveOperation features in
-// CentralControllerInterfaceAdapter.
+// Implementor interface to ExpensiveOperation features in CentralController.
 class ExpensiveOperationCallback
     : public CentralControllerCallback<ExpensiveOperationContext> {
  public:
@@ -50,12 +50,11 @@ class ExpensiveOperationCallback
   virtual ~ExpensiveOperationCallback();
 
  private:
-  virtual ExpensiveOperationContext* CreateTransactionContext(
-      CentralControllerInterface* interface);
-
   // CentralControllerCallback interface.
   virtual void RunImpl(scoped_ptr<ExpensiveOperationContext>* context) = 0;
   virtual void CancelImpl() = 0;
+
+  DISALLOW_COPY_AND_ASSIGN(ExpensiveOperationCallback);
 };
 
 }  // namespace net_instaweb

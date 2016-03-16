@@ -53,7 +53,7 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/util/public/property_cache.h"
-#include "pagespeed/controller/central_controller_interface_adapter.h"
+#include "pagespeed/controller/central_controller.h"
 #include "pagespeed/controller/expensive_operation_callback.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/escaping.h"
