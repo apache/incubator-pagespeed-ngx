@@ -1239,9 +1239,9 @@ class ImageRewriteTest : public RewriteTestBase {
 
     // Because the image encoder may change behavior, content length of the
     // optimized image may change value slightly. To be resistant to such
-    // change, we check the content size in a ragne, in stead of the exact
+    // change, we check the content size in a range, in stead of the exact
     // value. The range is defined by variable "threshold".
-    const int threshold = 30;
+    const int threshold = 80;
     int content_length = response_content.length();
     EXPECT_LE(expected_content_length - threshold, content_length)
         << content_length;
