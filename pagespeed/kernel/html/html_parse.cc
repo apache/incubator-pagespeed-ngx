@@ -19,6 +19,7 @@
 #include "pagespeed/kernel/html/html_parse.h"
 
 #include <list>
+#include <new>
 #include <vector>
 
 #include "base/logging.h"
@@ -209,6 +210,16 @@ void HtmlParse::InsertScriptAfterCurrent(StringPiece text, bool external) {
 }
 
 HtmlElement* HtmlParse::NewElement(HtmlElement* parent, const HtmlName& name) {
+#ifndef NDEBUG
+  if ((name.keyword() == HtmlName::kScript) && (current_filter_ != NULL)) {
+    HtmlFilter::ScriptUsage script_usage = current_filter_->GetScriptUsage();
+    if (HtmlFilter::kNeverInjectsScripts == script_usage) {
+      LOG(DFATAL)
+          << current_filter_->Name()
+          << "::GetScriptUsage() returns kNeverInjectsScripts, and is lying";
+    }
+  }
+#endif
   HtmlElement* element =
       new (&nodes_) HtmlElement(parent, name, queue_.end(), queue_.end());
   if (IsOptionallyClosedTag(name.keyword())) {

@@ -27,6 +27,7 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_filter.h"
 
 namespace net_instaweb {
 
@@ -52,6 +53,7 @@ class CriticalImagesBeaconFilter : public CommonFilter {
   virtual void StartElementImpl(HtmlElement* element) { }
   virtual void EndElementImpl(HtmlElement* element);
   virtual const char* Name() const { return "CriticalImagesBeacon"; }
+  ScriptUsage GetScriptUsage() const override { return kWillInjectScripts; }
 
   // Returns true if this filter is going to inject a beacon. Filters that need
   // to disabled when beaconing run, like the rendered_image_dimensions filter,

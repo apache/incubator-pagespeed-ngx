@@ -22,17 +22,18 @@
 #include <cstddef>
 
 #include "net/instaweb/rewriter/public/common_filter.h"
+#include "net/instaweb/rewriter/public/output_resource.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_filter.h"
+#include "pagespeed/kernel/html/html_node.h"
 
 namespace net_instaweb {
-class HtmlCharactersNode;
-class HtmlElement;
 class MessageHandler;
-class OutputResource;
-class ServerContext;
-class RewriteDriver;
 
 // Filter to take explicit <style> and <script> tags and outline them to files.
 class JsOutlineFilter : public CommonFilter {
@@ -52,6 +53,7 @@ class JsOutlineFilter : public CommonFilter {
   virtual void Characters(HtmlCharactersNode* characters);
 
   virtual const char* Name() const { return "OutlineJs"; }
+  ScriptUsage GetScriptUsage() const override { return kWillInjectScripts; }
 
  private:
   bool WriteResource(const GoogleString& content, OutputResource* resource,

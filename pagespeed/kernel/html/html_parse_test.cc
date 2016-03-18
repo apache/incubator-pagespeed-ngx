@@ -1245,6 +1245,7 @@ class HandlerCalledFilter : public HtmlFilter {
   }
 
   virtual bool CanModifyUrls() { return false; }
+  ScriptUsage GetScriptUsage() const override { return kNeverInjectsScripts; }
 
   void SetEnabled(bool enabled_value) {
     enabled_value_  = enabled_value;
@@ -3090,6 +3091,7 @@ class InsertScriptsFilter : public EmptyHtmlFilter {
   virtual void StartElement(HtmlElement* element) { Insert(true, element); }
   virtual void EndElement(HtmlElement* element) { Insert(false, element); }
   virtual const char* Name() const { return "InsertScriptsFilter"; }
+  ScriptUsage GetScriptUsage() const override { return kWillInjectScripts; }
 
  private:
   void Insert(bool at_start, HtmlElement* element) {
@@ -3103,7 +3105,6 @@ class InsertScriptsFilter : public EmptyHtmlFilter {
       }
     }
   }
-
 
  private:
   HtmlParse* html_parse_;
@@ -3209,5 +3210,6 @@ TEST_F(HtmlParseTestNoBody, InsertExternalScriptAfterEndOfHead) {
                    "<head>text</head>",
                    "<head>text</head><script src=\"inserted\"></script>");
 }
+
 
 }  // namespace net_instaweb

@@ -20,12 +20,14 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_JS_DEFER_DISABLED_FILTER_H_
 
 #include "net/instaweb/rewriter/public/common_filter.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_filter.h"
 
 namespace net_instaweb {
 
-class HtmlElement;
-class RewriteDriver;
 class Statistics;
 
 // Implements deferring of javascripts into post onload.
@@ -46,6 +48,8 @@ class JsDeferDisabledFilter : public CommonFilter {
   // JsDeferDisableFilter will be no op for the request if ShouldApply returns
   // false.
   static bool ShouldApply(RewriteDriver* driver);
+
+  ScriptUsage GetScriptUsage() const override { return kWillInjectScripts; }
 
  private:
   virtual void EndDocument();

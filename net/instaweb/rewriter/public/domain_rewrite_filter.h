@@ -30,6 +30,7 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_filter.h"
 #include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/http/response_headers.h"
 
@@ -59,6 +60,10 @@ class DomainRewriteFilter : public CommonFilter {
   virtual void EndElementImpl(HtmlElement* element) {}
 
   virtual const char* Name() const { return "DomainRewrite"; }
+
+  // Injects scripts only when option ClientDomainRewrite is true, and
+  // the current document is not AMP.
+  ScriptUsage GetScriptUsage() const override { return kMayInjectScripts; }
 
   enum RewriteResult {
     kRewroteDomain,

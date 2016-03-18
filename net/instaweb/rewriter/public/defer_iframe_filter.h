@@ -54,12 +54,14 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_DEFER_IFRAME_FILTER_H_
 
 #include "net/instaweb/rewriter/public/common_filter.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_filter.h"
 
 namespace net_instaweb {
 
-class HtmlElement;
-class RewriteDriver;
 class StaticAssetManager;
 
 class DeferIframeFilter : public CommonFilter {
@@ -75,6 +77,7 @@ class DeferIframeFilter : public CommonFilter {
   virtual void DetermineEnabled(GoogleString* disabled_reason);
 
   virtual const char* Name() const { return "DeferIframe"; }
+  ScriptUsage GetScriptUsage() const override { return kWillInjectScripts; }
 
  private:
   StaticAssetManager* static_asset_manager_;

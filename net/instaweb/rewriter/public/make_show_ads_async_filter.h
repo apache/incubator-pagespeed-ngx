@@ -19,15 +19,16 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_MAKE_SHOW_ADS_ASYNC_FILTER_H_
 
 #include "net/instaweb/rewriter/public/common_filter.h"
-#include "pagespeed/kernel/base/string.h"
-#include "pagespeed/opt/ads/show_ads_snippet_parser.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_filter.h"
+#include "pagespeed/kernel/html/html_node.h"
+#include "pagespeed/opt/ads/show_ads_snippet_parser.h"
 
 namespace net_instaweb {
 
-class HtmlCharactersNode;
-class HtmlElement;
-class RewriteDriver;
 class Statistics;
 class Variable;
 
@@ -54,6 +55,7 @@ class MakeShowAdsAsyncFilter : public CommonFilter {
     return "MakeShowAdsAsyncFilter";
   }
   virtual void Characters(HtmlCharactersNode* characters);
+  ScriptUsage GetScriptUsage() const override { return kWillInjectScripts; }
 
  private:
   // Parses an element that has 'content'; the parsed attributes are stored

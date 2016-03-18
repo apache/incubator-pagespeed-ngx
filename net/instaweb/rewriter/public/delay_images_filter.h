@@ -77,6 +77,7 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_filter.h"
 
 namespace net_instaweb {
 
@@ -104,6 +105,7 @@ class DelayImagesFilter : public CommonFilter {
 
   static void InitStats(Statistics* statistics);
   static void Terminate();
+  ScriptUsage GetScriptUsage() const override { return kWillInjectScripts; }
 
  private:
   // Add the js snippet to be used for image-onload if it has not already been

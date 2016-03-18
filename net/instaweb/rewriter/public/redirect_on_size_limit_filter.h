@@ -20,12 +20,12 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_REDIRECT_ON_SIZE_LIMIT_FILTER_H_
 
 #include "net/instaweb/rewriter/public/common_filter.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_filter.h"
 
 namespace net_instaweb {
-
-class HtmlElement;
-class RewriteDriver;
 
 // Inserts a redirect to "ModPagespeed=off" if we have exceeded the limit on the
 // maximum number of bytes that should be parsed.
@@ -39,6 +39,7 @@ class RedirectOnSizeLimitFilter : public CommonFilter {
   virtual void EndElementImpl(HtmlElement* element);
 
   virtual const char* Name() const { return "RedirectOnSizeLimit"; }
+  ScriptUsage GetScriptUsage() const override { return kWillInjectScripts; }
 
  private:
   void InsertScriptIfNeeded(HtmlElement* element, bool is_start);

@@ -33,6 +33,7 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_filter.h"
 #include "pagespeed/kernel/html/html_node.h"
 #include "pagespeed/kernel/util/url_multipart_encoder.h"
 #include "pagespeed/kernel/util/url_segment_encoder.h"
@@ -82,6 +83,8 @@ class JsCombineFilter : public RewriteFilter {
   // take finer points of ; grammar into account.
   static bool IsLikelyStrictMode(const pagespeed::js::JsTokenizerPatterns* jstp,
                                  StringPiece input);
+
+  ScriptUsage GetScriptUsage() const override { return kWillInjectScripts; }
 
  protected:
   // RewriteFilter overrides --- HTML parsing event handlers.

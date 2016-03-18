@@ -48,8 +48,8 @@ function ipro_rewrite_image_and_verify_response() {
   # for accommodating image encoder version difference.
   local LENGTH="$(extract_headers $FETCH_UNTIL_OUTFILE | scrape_content_length)"
   if [ "$EXPECTED_CONTENT_LENGTH" != "$UNOPTIMIZED" ]; then
-    local MIN_LENGTH=`expr $EXPECTED_CONTENT_LENGTH - 30`
-    local MAX_LENGTH=`expr $EXPECTED_CONTENT_LENGTH + 30`
+    local MIN_LENGTH=`expr $EXPECTED_CONTENT_LENGTH - 80`
+    local MAX_LENGTH=`expr $EXPECTED_CONTENT_LENGTH + 80`
     check [ $LENGTH -ge $MIN_LENGTH ]
     check [ $LENGTH -le $MAX_LENGTH ]
   fi

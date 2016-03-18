@@ -30,6 +30,7 @@
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_filter.h"
 #include "pagespeed/kernel/html/html_node.h"
 
 namespace net_instaweb {
@@ -70,6 +71,7 @@ class JavascriptFilter : public RewriteFilter {
   const char* Name() const override { return "Javascript"; }
   const char* id() const override { return RewriteOptions::kJavascriptMinId; }
   RewriteContext* MakeRewriteContext() override;
+  ScriptUsage GetScriptUsage() const override { return kWillInjectScripts; }
 
   static JavascriptRewriteConfig* InitializeConfig(RewriteDriver* driver);
 

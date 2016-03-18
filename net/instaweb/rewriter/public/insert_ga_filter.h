@@ -28,6 +28,7 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_filter.h"
 #include "pagespeed/kernel/html/html_node.h"
 
 namespace net_instaweb {
@@ -64,6 +65,7 @@ class InsertGAFilter : public CommonFilter {
   virtual void Characters(HtmlCharactersNode* characters);
 
   virtual const char* Name() const { return "InsertGASnippet"; }
+  ScriptUsage GetScriptUsage() const override { return kWillInjectScripts; }
 
  private:
   enum AnalyticsStatus {

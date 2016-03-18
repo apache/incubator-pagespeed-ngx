@@ -33,6 +33,9 @@
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_filter.h"
+#include "pagespeed/kernel/html/html_node.h"
 #include "pagespeed/kernel/http/semantic_type.h"
 
 namespace Css {
@@ -42,9 +45,6 @@ class Stylesheet;
 }  // namespace Css
 
 namespace net_instaweb {
-
-class HtmlCharactersNode;
-class HtmlElement;
 
 class CriticalSelectorFilter : public CssSummarizerBase {
  public:
@@ -76,6 +76,7 @@ class CriticalSelectorFilter : public CssSummarizerBase {
 
   // Selectors are inlined into the html.
   virtual bool IntendedForInlining() const { return true; }
+  ScriptUsage GetScriptUsage() const override { return kWillInjectScripts; }
 
  protected:
   // Overrides of CssSummarizerBase summary API. These help us compute

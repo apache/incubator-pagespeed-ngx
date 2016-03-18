@@ -29,11 +29,12 @@
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_filter.h"
+#include "pagespeed/kernel/html/html_node.h"
 #include "pagespeed/kernel/http/semantic_type.h"
 
 namespace net_instaweb {
-class HtmlElement;
-class HtmlCharactersNode;
 class Statistics;
 class Variable;
 
@@ -61,6 +62,7 @@ class JsInlineFilter : public CommonFilter {
            RewriteDriver::kInlineOnlyAuthorizedResources;
   }
   virtual bool IntendedForInlining() const { return true; }
+  ScriptUsage GetScriptUsage() const override { return kWillInjectScripts; }
 
   static void InitStats(Statistics* statistics);
 

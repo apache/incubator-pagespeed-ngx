@@ -27,6 +27,7 @@
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_filter.h"
 #include "pagespeed/kernel/html/html_name.h"
 #include "pagespeed/kernel/html/html_parse_test_base.h"
 #include "pagespeed/kernel/http/content_type.h"
@@ -67,6 +68,8 @@ class StaticAssetManagerTest : public RewriteTestBase {
       }
     }
     virtual const char* Name() const { return "AddStaticJsBeforeBr"; }
+    ScriptUsage GetScriptUsage() const override { return kWillInjectScripts; }
+
    private:
     DISALLOW_COPY_AND_ASSIGN(AddStaticJsBeforeBr);
   };

@@ -24,6 +24,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_filter.h"
 #include "pagespeed/opt/logging/enums.pb.h"
 
 namespace net_instaweb {
@@ -84,6 +85,7 @@ class LazyloadImagesFilter : public CommonFilter {
   virtual ~LazyloadImagesFilter();
 
   virtual const char* Name() const { return "Lazyload Images"; }
+  ScriptUsage GetScriptUsage() const override { return kWillInjectScripts; }
 
   static void InitStats(Statistics* statistics);
   static void Terminate();

@@ -66,6 +66,7 @@ class FlushEarlyContentWriterFilter : public HtmlWriterFilter {
   virtual void EndElement(HtmlElement* element);
 
   virtual void Characters(HtmlCharactersNode* characters_node);
+  virtual bool CanInjectScript() const { return true; }
 
  protected:
   virtual void Clear();

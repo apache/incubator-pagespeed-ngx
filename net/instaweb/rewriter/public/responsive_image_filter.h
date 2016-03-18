@@ -29,6 +29,7 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_filter.h"
 
 namespace net_instaweb {
 
@@ -112,6 +113,10 @@ class ResponsiveImageSecondFilter : public CommonFilter {
   virtual void EndDocument();
 
   virtual const char* Name() const { return "ResponsiveImageSecond"; }
+
+  // Injects scripts only when option responsive_images_zoom is enabled, and
+  // the current document is not AMP.
+  ScriptUsage GetScriptUsage() const override { return kMayInjectScripts; }
 
  private:
   void CombineHiResImages(HtmlElement* orig_element,

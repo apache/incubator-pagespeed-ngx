@@ -20,14 +20,15 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_ADD_INSTRUMENTATION_FILTER_H_
 
 #include "net/instaweb/rewriter/public/common_filter.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_filter.h"
 
 namespace net_instaweb {
 
-class HtmlElement;
-class RewriteDriver;
 class Statistics;
 class Variable;
 
@@ -52,6 +53,8 @@ class AddInstrumentationFilter : public CommonFilter {
   virtual void StartElementImpl(HtmlElement* element);
   virtual void EndElementImpl(HtmlElement* element);
   virtual const char* Name() const { return "AddInstrumentation"; }
+
+  ScriptUsage GetScriptUsage() const override { return kWillInjectScripts; }
 
  protected:
   virtual void DetermineEnabled(GoogleString* disabled_reason);

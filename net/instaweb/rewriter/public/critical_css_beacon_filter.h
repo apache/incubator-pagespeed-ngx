@@ -19,12 +19,15 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_CRITICAL_CSS_BEACON_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_CRITICAL_CSS_BEACON_FILTER_H_
 
+#include "net/instaweb/rewriter/public/critical_finder_support_util.h"
 #include "net/instaweb/rewriter/public/css_summarizer_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_filter.h"
 #include "pagespeed/kernel/http/semantic_type.h"
 
 namespace Css {
@@ -36,8 +39,6 @@ class Stylesheet;
 
 namespace net_instaweb {
 
-struct BeaconMetadata;
-class HtmlElement;
 class Statistics;
 class Variable;
 
@@ -77,6 +78,7 @@ class CriticalCssBeaconFilter : public CssSummarizerBase {
 
   // Selectors are inlined into javascript.
   virtual bool IntendedForInlining() const { return true; }
+  ScriptUsage GetScriptUsage() const override { return kWillInjectScripts; }
 
  protected:
   virtual bool MustSummarize(HtmlElement* element) const;

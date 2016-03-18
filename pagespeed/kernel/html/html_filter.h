@@ -34,6 +34,27 @@ class HtmlIEDirectiveNode;
 // class and register with HtmlParse::AddFilter to use the HTML Parser.
 class HtmlFilter {
  public:
+  // Describes a filter's relationship with scripts.
+  enum ScriptUsage {
+    // Indicates that this filter generally needs to inject scripts, and
+    // therefore should be disabled in environments where scripts are
+    // not allowed, such as amp.  The system also DCHECKs of scripts are
+    // injected from a filter where CanInjectScripts() is false.
+    kWillInjectScripts,
+
+    // Indicates that this filter may in some cases inject scripts,
+    // but still has value even if scripts are forbidden.  For the
+    // rare cases where this value is appropriate, the filter must be
+    // explicitly verified to function correctly.
+    kMayInjectScripts,
+
+    // TODO(jmarantz): Remove kRequiresScriptExecutionFilterSet in
+    // rewrite_options.cc, and instead add new enum choices here covering
+    // combinations of requiring 'noscript' behavior and their injection
+    // behavior.
+    kNeverInjectsScripts    // Indicates this filter never injects scripts.
+  };
+
   HtmlFilter();
   virtual ~HtmlFilter();
 
@@ -106,6 +127,14 @@ class HtmlFilter {
   // Invoked by the rewrite driver to query whether this filter will
   // rewrite any urls.
   virtual bool CanModifyUrls() = 0;
+
+  // Note: there is also kRequiresScriptExecutionFilterSet in
+  // rewrite_options.cc, which identifies filters that will leave broken
+  // pages if javascript is disabled, and hence require noscript handing.
+  // The set of filters that CanInjectScripts is larger, as it includes
+  // filters that might inject beacons or other optional functionality
+  // that is not page-critical.
+  virtual ScriptUsage GetScriptUsage() const = 0;
 
   // The name of this filter -- used for logging and debugging.
   virtual const char* Name() const = 0;

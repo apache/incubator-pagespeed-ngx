@@ -53,6 +53,7 @@ class HtmlWriterFilter : public HtmlFilter {
   virtual void DetermineEnabled(GoogleString* disabled_reason);
   // This filter will not change urls.
   virtual bool CanModifyUrls() { return false; }
+  ScriptUsage GetScriptUsage() const override { return kNeverInjectsScripts; }
 
   void set_max_column(int max_column) { max_column_ = max_column; }
   void set_case_fold(bool case_fold) { case_fold_ = case_fold; }

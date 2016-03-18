@@ -23,14 +23,15 @@
 #include "pagespeed/kernel/base/split_writer.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_writer.h"
+#include "pagespeed/kernel/base/writer.h"  // for Writer
+#include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_filter.h"
 #include "pagespeed/kernel/html/html_writer_filter.h"
 #include "pagespeed/kernel/http/response_headers.h"
 
 namespace net_instaweb {
 
-class HtmlElement;
 class RewriteDriver;
-class Writer;
 
 // SuppressPreheadFilter extracts the html before the <head> (pre head) and
 // stores it in property cache to be used by FlushEarlyFlow. If a request is
@@ -49,6 +50,8 @@ class SuppressPreheadFilter : public HtmlWriterFilter {
   virtual void EndElement(HtmlElement* element);
 
   virtual void EndDocument();
+
+  ScriptUsage GetScriptUsage() const override { return kWillInjectScripts; }
 
  protected:
   virtual void Clear();

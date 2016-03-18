@@ -30,6 +30,7 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_filter.h"
 
 namespace net_instaweb {
 
@@ -126,6 +127,8 @@ class LocalStorageCacheFilter : public RewriteFilter {
   // Remove the LSC attributes from the given element.
   static void RemoveLscAttributes(HtmlElement* element,
                                   RewriteDriver* driver);
+
+  ScriptUsage GetScriptUsage() const override { return kWillInjectScripts; }
 
  private:
   void InsertOurScriptElement(HtmlElement* before);

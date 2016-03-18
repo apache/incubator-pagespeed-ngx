@@ -28,6 +28,7 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_filter.h"
 #include "pagespeed/kernel/http/user_agent_matcher.h"
 
 namespace net_instaweb {
@@ -90,6 +91,7 @@ class MobilizeRewriteFilter : public CommonFilter {
   virtual void StartElementImpl(HtmlElement* element);
   virtual void EndElementImpl(HtmlElement* element);
   virtual const char* Name() const { return "MobilizeRewrite"; }
+  ScriptUsage GetScriptUsage() const override { return kWillInjectScripts; }
 
  private:
   void AppendStylesheet(StringPiece css_file_name,
