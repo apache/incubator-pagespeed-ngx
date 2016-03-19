@@ -232,6 +232,7 @@
       'target_name': 'pagespeed_html',
       'type': '<(library)',
       'sources': [
+        'kernel/html/amp_document_filter.cc',
         'kernel/html/elide_attributes_filter.cc',
         'kernel/html/collapse_whitespace_filter.cc',
         'kernel/html/doctype.cc',

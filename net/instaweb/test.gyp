@@ -283,6 +283,7 @@
         '<(DEPTH)/pagespeed/kernel/cache/purge_set_test.cc',
         '<(DEPTH)/pagespeed/kernel/cache/threadsafe_cache_test.cc',
         '<(DEPTH)/pagespeed/kernel/cache/write_through_cache_test.cc',
+        '<(DEPTH)/pagespeed/kernel/html/amp_document_filter_test.cc',
         '<(DEPTH)/pagespeed/kernel/html/canonical_attributes_test.cc',
         '<(DEPTH)/pagespeed/kernel/html/collapse_whitespace_filter_test.cc',
         '<(DEPTH)/pagespeed/kernel/html/doctype_test.cc',
