@@ -206,8 +206,8 @@ TEST_P(JavascriptFilterTest, DoRewrite) {
             total_bytes_saved_->Get());
   EXPECT_EQ(STATIC_STRLEN(kJsData), total_original_bytes_->Get());
   EXPECT_EQ(1, num_uses_->Get());
-  EXPECT_STREQ("jm", AppliedRewriterStringFromLog());
-  VerifyRewriterInfoEntry(log_record, "jm", 0, 0, 1, 1,
+  EXPECT_STREQ(kFilterId, AppliedRewriterStringFromLog());
+  VerifyRewriterInfoEntry(log_record, kFilterId, 0, 0, 1, 1,
                         "http://test.com/hello.js");
 }
 
@@ -357,8 +357,8 @@ TEST_P(JavascriptFilterTest, JsPreserveURLsOnTest) {
 
   // We should have optimized the JS even though we didn't render the URL.
   ClearStats();
-  GoogleString out_js_url = Encode(kTestDomain, "jm", "0", kRewrittenJsName,
-                                   "js");
+  GoogleString out_js_url = Encode(
+      kTestDomain, kFilterId, "0", kRewrittenJsName, "js");
   GoogleString out_js;
   EXPECT_TRUE(FetchResourceUrl(out_js_url, &out_js));
   EXPECT_EQ(1, http_cache()->cache_hits()->Get());
@@ -400,7 +400,8 @@ TEST_P(JavascriptFilterTest, JsPreserveOverridingExtend) {
   // We should have preemptively optimized the JS even though we didn't render
   // the URL.
   ClearStats();
-  GoogleString out_js_url = Encode(kTestDomain, "jm", "0", kOrigJsName, "js");
+  GoogleString out_js_url = Encode(
+      kTestDomain, kFilterId, "0", kOrigJsName, "js");
   GoogleString out_js;
   EXPECT_TRUE(FetchResourceUrl(out_js_url, &out_js));
   EXPECT_EQ(1, http_cache()->cache_hits()->Get());
@@ -433,13 +434,13 @@ TEST_P(JavascriptFilterTest, JsExtendOverridingPreserve) {
   // Make sure the URL is updated.
   ValidateExpected("js_extend_overrides_preserve",
                    GenerateHtml(kOrigJsName),
-                   GenerateHtml(
-                       Encode("", "jm", "0", kRewrittenJsName, "js").c_str()));
+                   GenerateHtml(Encode(
+                       "", kFilterId, "0", kRewrittenJsName, "js").c_str()));
 
   ClearStats();
   GoogleString out_js;
-  GoogleString out_js_url = Encode(kTestDomain, "jm", "0", kRewrittenJsName,
-                                   "js");
+  GoogleString out_js_url = Encode(
+      kTestDomain, kFilterId, "0", kRewrittenJsName, "js");
   EXPECT_TRUE(FetchResourceUrl(out_js_url, &out_js));
   EXPECT_EQ(1, http_cache()->cache_hits()->Get());
   EXPECT_EQ(0, http_cache()->cache_misses()->Get());
@@ -478,8 +479,8 @@ TEST_P(JavascriptFilterTest, JsPreserveURLsNoPreemptiveRewriteTest) {
 
   // But, if we fetch the JS directly, we should receive the optimized version.
   ClearStats();
-  GoogleString out_js_url = Encode(kTestDomain, "jm", "0", kRewrittenJsName,
-                                   "js");
+  GoogleString out_js_url = Encode(
+      kTestDomain, kFilterId, "0", kRewrittenJsName, "js");
   GoogleString out_js;
   EXPECT_TRUE(FetchResourceUrl(out_js_url, &out_js));
   EXPECT_EQ(kJsMinData, out_js);
@@ -629,7 +630,7 @@ TEST_P(JavascriptFilterTest, ServeRewrittenLibrary) {
   InitFiltersAndTest(100);
   GoogleString content;
   EXPECT_TRUE(
-      FetchResource(kTestDomain, "jm", kRewrittenJsName, "js", &content));
+      FetchResource(kTestDomain, kFilterId, kRewrittenJsName, "js", &content));
   EXPECT_EQ(kJsData, content);
 
   // And having done so, we should still identify the library in subsequent html
@@ -693,7 +694,7 @@ TEST_P(JavascriptFilterTest, InvalidInputMimetype) {
   SetResponseWithDefaultHeaders(kNotJsFile, not_java_script, kJsData, 100);
   ValidateExpected("wrong_mime",
                    GenerateHtml(kNotJsFile),
-                   GenerateHtml(Encode("", "jm", "0",
+                   GenerateHtml(Encode("", kFilterId, "0",
                                        kNotJsFile, "js").c_str()));
 }
 
@@ -763,7 +764,7 @@ TEST_P(JavascriptFilterTest, StripInlineWhitespace) {
       "StripInlineWhitespace",
       StrCat("<script src='", kOrigJsName, "'>   \t\n   </script>"),
       StrCat("<script src='",
-             Encode("", "jm", "0", kOrigJsName, "js"),
+             Encode("", kFilterId, "0", kOrigJsName, "js"),
              "'></script>"));
 }
 
@@ -773,7 +774,7 @@ TEST_P(JavascriptFilterTest, RetainInlineData) {
   ValidateExpected("StripInlineWhitespace",
                    StrCat("<script src='", kOrigJsName, "'> data </script>"),
                    StrCat("<script src='",
-                          Encode("", "jm", "0", kOrigJsName, "js"),
+                          Encode("", kFilterId, "0", kOrigJsName, "js"),
                           "'> data </script>"));
 }
 
@@ -843,7 +844,7 @@ TEST_P(JavascriptFilterTest, RetainExtraHeaders) {
   InitFilters();
   GoogleString url = StrCat(kTestDomain, kOrigJsName);
   SetResponseWithDefaultHeaders(url, kContentTypeJavascript, kJsData, 300);
-  TestRetainExtraHeaders(kOrigJsName, "jm", "js");
+  TestRetainExtraHeaders(kOrigJsName, kFilterId, "js");
 }
 
 // http://code.google.com/p/modpagespeed/issues/detail?id=327 -- we were
@@ -869,7 +870,7 @@ TEST_P(JavascriptFilterTest, WeirdSrcCrash) {
   SetResponseWithDefaultHeaders(kUrl, kContentTypeJavascript, kJsData, 300);
   ValidateExpected("weird_attr", "<script src=foo<bar>Content",
                    StrCat("<script src=",
-                          Encode("", "jm", "0", kUrl, "js"),
+                          Encode("", kFilterId, "0", kUrl, "js"),
                           ">Content"));
   ValidateNoChanges("weird_tag", "<script<foo>");
 }
