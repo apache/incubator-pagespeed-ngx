@@ -28,6 +28,7 @@
 #include "net/instaweb/http/public/request_timing_info.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
 #include "net/instaweb/rewriter/public/experiment_matcher.h"
+#include "net/instaweb/rewriter/public/experiment_util.h"
 #include "net/instaweb/rewriter/public/resource_fetch.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -278,10 +279,17 @@ void ProxyInterface::GetRewriteOptionsDone(RequestData* request_data,
 
   async_fetch->request_context()->mutable_timing_info()->ProcessingStarted();
 
+  int prior_experiment_id;
+  bool cookie_found = experiment::GetExperimentCookieState(
+      *async_fetch->request_headers(), &prior_experiment_id);
+
   AbstractLogRecord* log_record =  async_fetch->request_context()->log_record();
   {
     ScopedMutex lock(log_record->mutex());
     log_record->logging_info()->set_is_pagespeed_resource(is_resource_fetch);
+    if (cookie_found) {
+      log_record->logging_info()->set_prior_experiment_id(prior_experiment_id);
+    }
   }
 
   // Start fetch and rewrite.  If GetCustomOptions found options for us,

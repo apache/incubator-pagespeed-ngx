@@ -35,6 +35,7 @@ namespace experiment {
 
 bool GetExperimentCookieState(const RequestHeaders& headers, int* value) {
   ConstStringStarVector v;
+  bool found_cookie = false;
   *value = kExperimentNotSet;
   if (headers.Lookup(HttpAttributes::kCookie, &v)) {
     for (int i = 0, nv = v.size(); i < nv; ++i) {
@@ -44,6 +45,7 @@ bool GetExperimentCookieState(const RequestHeaders& headers, int* value) {
         StringPiece cookie(cookies[j]);
         TrimWhitespace(&cookie);
         if (StringCaseStartsWith(cookie, kExperimentCookiePrefix)) {
+          found_cookie = true;
           cookie.remove_prefix(STATIC_STRLEN(kExperimentCookiePrefix));
           *value = CookieStringToState(cookie);
           // If we got a bogus value for the cookie, keep looking for another
@@ -55,7 +57,7 @@ bool GetExperimentCookieState(const RequestHeaders& headers, int* value) {
       }
     }
   }
-  return false;
+  return found_cookie;
 }
 
 void RemoveExperimentCookie(RequestHeaders* headers) {

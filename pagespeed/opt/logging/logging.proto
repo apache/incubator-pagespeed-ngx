@@ -399,8 +399,8 @@ message DeviceInfo {
 }
 
 // This proto stores all information which we would like to log.
-// Next id for LoggingInfo: 26
 message LoggingInfo {
+  reserved 1;
   // Stores all Blink related information.
   optional BlinkInfo blink_info = 2;
   // Sorted list of applied rewriter ids separated by comma.
@@ -409,8 +409,9 @@ message LoggingInfo {
   optional MetadataCacheInfo metadata_cache_info = 4;
   // Whether the original resource is cacheable.
   optional bool is_original_resource_cacheable = 5 [ default = true ];
-  // Experiment ID used for this request.
+  // Experiment ID used for this request. See also prior_experiment_id.
   optional int32 experiment_id = 6;
+  reserved 7;
   // All information related to the pcache lookup.
   optional PropertyPageInfo property_page_info = 8;
   // Rewriter information for this request.
@@ -451,8 +452,8 @@ message LoggingInfo {
   optional DeviceInfo device_info = 24;
   // Is the request an XmlHttpRequest.
   optional bool is_xhr = 25;
-
-  // --- DEPRECATED FIELDS FOLLOW ---
-  optional TimingInfo deprecated_timing_info = 1 [deprecated = true];
-  optional SplitHtmlInfo deprecated_split_html_info = 7 [deprecated = true];
+  // Experiment id requested by the cookie (if any). experiment_id contains
+  // the actual experiment id used for the request, while will be different
+  // from prior_experiment_id if the user's experiment was [re-]assigned.
+  optional int32 prior_experiment_id = 26 [ default = -1 ] ;
 }

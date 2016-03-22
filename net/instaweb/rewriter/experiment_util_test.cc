@@ -48,7 +48,7 @@ TEST_F(ExperimentUtilTest, GetCookieState) {
 
   // Headers with malformed experiment cookie, cookie not set.
   req_headers.Add(HttpAttributes::kCookie, "PageSpeedExperiment=absdfkjs");
-  EXPECT_FALSE(GetExperimentCookieState(req_headers, &state));
+  EXPECT_TRUE(GetExperimentCookieState(req_headers, &state));
   EXPECT_EQ(kExperimentNotSet, state);
 
   // Headers with valid experiment cookie in None (i.e. not in experiment)
