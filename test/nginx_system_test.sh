@@ -1312,6 +1312,7 @@ OUT=$(cat "$ERROR_LOG" \
     | grep -v "\\[error\\].*/pagespeed_custom_static/js_defer.js.*" \
     | grep -v "\\[error\\].*UH8L-zY4b4AAAAAAAAAA.*" \
     | grep -v "\\[error\\].*UH8L-zY4b4.*" \
+    | grep -v "\\[error\\].*Serf status 104(Connection reset by peer).*" \
     | grep -v "\\[error\\].*Serf status 111(Connection refused) polling.*" \
     | grep -v "\\[error\\].*Failed to make directory*" \
     | grep -v "\\[error\\].*Could not create directories*" \
