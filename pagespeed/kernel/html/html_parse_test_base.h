@@ -98,7 +98,7 @@ class HtmlParseTestBaseNoAlloc : public testing::Test {
     ValidateExpectedFail(case_id, html_input, html_input);
   }
 
-  void SetupWriter() {
+  virtual void SetupWriter() {
     SetupWriter(&html_writer_filter_);
   }
 

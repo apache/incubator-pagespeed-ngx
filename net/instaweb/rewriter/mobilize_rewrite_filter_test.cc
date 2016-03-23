@@ -146,6 +146,7 @@ class MobilizeRewriteUnitTest : public MobilizeRewriteFilterTest {
   virtual void SetUp() {
     MobilizeRewriteFilterTest::SetUp();
     static const char kUrl[] = "http://mob.rewrite.test/test.html";
+    rewrite_driver()->AddFilters();
     ASSERT_TRUE(html_parse()->StartParse(kUrl));
   }
 

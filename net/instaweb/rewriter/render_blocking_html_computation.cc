@@ -18,6 +18,8 @@
 
 #include "net/instaweb/rewriter/public/render_blocking_html_computation.h"
 
+#include <new>
+
 #include "base/logging.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -28,7 +30,7 @@
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/http/google_url.h"
-#include "pagespeed/kernel/thread/queued_worker_pool.h"
+#include "pagespeed/kernel/thread/sequence.h"
 
 namespace net_instaweb {
 
@@ -65,6 +67,7 @@ class RenderBlockingHtmlComputation::ResourceCallback
     child_driver->set_externally_managed(true);
 
     computation_->SetupFilters(child_driver.get());
+    child_driver->AddFilters();
     if (!child_driver->StartParse(resource()->url())) {
       LOG(DFATAL) << "Huh? StartParse doesn't like URL, but resource fetched:"
                   << resource()->url();

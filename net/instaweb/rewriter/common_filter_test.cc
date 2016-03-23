@@ -32,7 +32,6 @@
 #include "pagespeed/kernel/http/google_url.h"
 
 namespace net_instaweb {
-class HtmlElement;
 
 namespace {
 
@@ -82,6 +81,7 @@ class CommonFilterTest : public RewriteTestBase {
     options->WriteableDomainLawyer()->AddDomain(domain, message_handler());
     CountingFilter* filter = new CountingFilter(driver);
     driver->AddOwnedPostRenderFilter(filter);
+    driver->AddFilters();
     driver->StartParse(base_url);
     driver->Flush();
     return filter;
@@ -109,6 +109,7 @@ TEST_F(CommonFilterTest, DoesCallImpls) {
 TEST_F(CommonFilterTest, StoresCorrectBaseUrl) {
   GoogleString doc_url = "http://www.example.com/";
   RewriteDriver* driver = rewrite_driver();
+  driver->AddFilters();
   driver->StartParse(doc_url);
   driver->Flush();
   // Base URL starts out as document URL.
@@ -157,6 +158,7 @@ TEST_F(CommonFilterTest, ResolveUrl) {
   // Normal parse, no <base>
   GoogleString doc_url = "http://www.example.com/";
   RewriteDriver* driver = rewrite_driver();
+  driver->AddFilters();
   driver->StartParse(doc_url);
   filter_->ResolveUrl("a.css", &out);
   ExpectUrl("http://www.example.com/a.css", out);
@@ -186,6 +188,7 @@ TEST_F(CommonFilterTest, ResolveUrl) {
 TEST_F(CommonFilterTest, DetectsNoScriptCorrectly) {
   GoogleString doc_url = "http://www.example.com/";
   RewriteDriver* driver = rewrite_driver();
+  driver->AddFilters();
   driver->StartParse(doc_url);
   driver->Flush();
   EXPECT_TRUE(filter_->noscript_element() == NULL);

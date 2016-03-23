@@ -541,6 +541,8 @@ class RewriteTestBase : public RewriteOptionsTestBase {
 
   void SetCacheDelayUs(int64 delay_us);
 
+  void SetupWriter() override;
+
   // Creates a RewriteDriver using the passed-in options, object, but
   // does *not* finalize the driver.  This gives individual _test.cc
   // files the chance to add filters to the options prior to calling

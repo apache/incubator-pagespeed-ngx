@@ -17,11 +17,11 @@
 
 #include "net/instaweb/rewriter/public/support_noscript_filter.h"
 
-#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/http/content_type.h"
 
 namespace net_instaweb {
 
@@ -35,8 +35,12 @@ class SupportNoscriptFilterTest : public RewriteTestBase {
   virtual void SetUp() {
     RewriteTestBase::SetUp();
     options()->EnableFilter(RewriteOptions::kDelayImages);
-    rewrite_driver()->AddOwnedPostRenderFilter(
-        new SupportNoscriptFilter(rewrite_driver()));
+    SetResponseWithDefaultHeaders(
+        "http://test.com/1.jpeg", kContentTypeJpeg,
+        "bogusimage but it is not parsed", 100 /* sec */);
+    SetResponseWithDefaultHeaders(
+        "http://test.com/2.jpeg", kContentTypeJpeg,
+        "bogusimage but it is not parsed", 100 /* sec */);
   }
 };
 

@@ -20,14 +20,13 @@
 
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
+#include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "testing/base/public/gunit.h"
-#include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
-#include "pagespeed/kernel/base/string_writer.h"
 #include "pagespeed/kernel/http/user_agent_matcher_test_base.h"
 #include "pagespeed/opt/logging/enums.pb.h"
 
@@ -51,12 +50,9 @@ const char kXUACompatibleMetaTag[] =
 class JsDisableFilterTest : public RewriteTestBase {
  protected:
   virtual void SetUp() {
-    options_->EnableFilter(RewriteOptions::kDisableJavascript);
-    options_->EnableFilter(RewriteOptions::kDeferJavascript);
-    options_->Disallow("*donotmove*");
     RewriteTestBase::SetUp();
-    filter_.reset(new JsDisableFilter(rewrite_driver()));
-    rewrite_driver()->AddFilter(filter_.get());
+    options()->EnableFilter(RewriteOptions::kDisableJavascript);
+    options()->Disallow("*donotmove*");
   }
 
   virtual bool AddBody() const {
@@ -72,8 +68,6 @@ class JsDisableFilterTest : public RewriteTestBase {
     EXPECT_EQ(has_pagespeed_no_defer,
               rewriter_info.rewrite_resource_info().has_pagespeed_no_defer());
   }
-
-  scoped_ptr<JsDisableFilter> filter_;
 };
 
 TEST_F(JsDisableFilterTest, DisablesScript) {
@@ -230,7 +224,7 @@ TEST_F(JsDisableFilterTest, PrefetchScriptWithImageTemplate) {
       "new Image().src=\"", escaped_src, "\";})()"
       "</script></body>");
 
-  html_parse()->SetWriter(&write_to_string_);
+  SetupWriter();
   html_parse()->StartParse("http://example.com");
   html_parse()->ParseText(
       "<head>"
@@ -326,6 +320,7 @@ TEST_F(JsDisableFilterTest, DisablesScriptWithNullSrc) {
 TEST_F(JsDisableFilterTest, DisablesScriptOnlyFromFirstSrc) {
   options()->set_enable_defer_js_experimental(true);
   options_->EnableFilter(RewriteOptions::kDeferJavascript);
+  options_->DisableFilter(RewriteOptions::kDisableJavascript);
   const GoogleString input_html = StrCat(
       "<body>",
       kUnrelatedNoscriptTags,
@@ -333,8 +328,12 @@ TEST_F(JsDisableFilterTest, DisablesScriptOnlyFromFirstSrc) {
       kUnrelatedTags,
       "<script random=\"false\">hi2</script>"
       "<script src=\"1.js?a#12296;=en\"></script></body>");
+  // TODO(jmarantz): this URL is sure ugly.  find out why.
+  static const char kUrl[] =
+      "http://test.com/http://example.com/.html?PageSpeed=noscript";
   const GoogleString expected = StrCat(
       "<body>",
+      StringPrintf(kNoScriptRedirectFormatter, kUrl, kUrl),
       kUnrelatedNoscriptTags,
       "<script random=\"true\" type=\"text/psajs\" orig_index=\"0\">"
       "hi1</script>",
@@ -345,6 +344,7 @@ TEST_F(JsDisableFilterTest, DisablesScriptOnlyFromFirstSrc) {
       " orig_index=\"2\"></script>"
       "<script type=\"text/javascript\" data-pagespeed-no-defer>",
       JsDisableFilter::kEnableJsExperimental,
+      "</script><script type=\"text/javascript\" src=\"/psajs/js_defer.0.js\">"
       "</script></body>");
 
   ValidateExpected("http://example.com/", input_html, expected);

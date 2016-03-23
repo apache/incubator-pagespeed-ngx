@@ -23,6 +23,7 @@
 #include <cstdio>
 #include <list>
 #include <map>
+#include <new>
 #include <set>
 #include <utility>  // for std::pair
 #include <vector>
@@ -2355,6 +2356,7 @@ bool RewriteDriver::StartParseId(const StringPiece& url, const StringPiece& id,
   }
 
   if (ret) {
+    DCHECK(filters_added_);
     base_was_set_ = false;
     if (is_url_valid()) {
       base_url_.Reset(google_url());

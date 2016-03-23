@@ -1236,6 +1236,11 @@ class RewriteDriver : public HtmlParse {
   // signature lengths from this RewriteDriver.
   bool Decode(StringPiece leaf, ResourceNamer* resource_namer) const;
 
+  bool filters_added() const { return filters_added_; }
+  bool has_html_writer_filter() const {
+    return html_writer_filter_.get() != nullptr;
+  }
+
  protected:
   virtual void DetermineFiltersBehaviorImpl();
 

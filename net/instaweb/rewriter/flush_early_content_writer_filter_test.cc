@@ -32,6 +32,7 @@
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/string_writer.h"
 #include "pagespeed/kernel/base/wildcard.h"
+#include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/user_agent_matcher_test_base.h"
 #include "pagespeed/opt/logging/enums.pb.h"
 
@@ -75,6 +76,21 @@ class FlushEarlyContentWriterFilterTest : public RewriteTestBase {
  protected:
   virtual void SetUp() {
     SetMockHashValue("00000");  // Base64 encodes to kMockHashValue.
+    SetResponseWithDefaultHeaders(
+        "http://test.com/a.css", kContentTypeCss,
+        ".a { background-color: blue; }", 100 /* sec */);
+    SetResponseWithDefaultHeaders(
+        "http://test.com/f.css", kContentTypeCss,
+        ".f { background-color: red; }", 100 /* sec */);
+    SetResponseWithDefaultHeaders(
+        "http://test.com/css", kContentTypeCss,
+        ".c { background-color: green; }", 100 /* sec */);
+    SetResponseWithDefaultHeaders(
+        "http://test.com/b.js", kContentTypeJavascript,
+        "alert('foo')", 100 /* sec */);
+    SetResponseWithDefaultHeaders(
+        "http://test.com/g.js", kContentTypeJavascript,
+        "alert('bar')", 100 /* sec */);
     statistics()->AddTimedVariable(
       FlushEarlyContentWriterFilter::kNumResourcesFlushedEarly,
       ServerContext::kStatisticsGroup);
@@ -83,6 +99,7 @@ class FlushEarlyContentWriterFilterTest : public RewriteTestBase {
     options()->set_flush_more_resources_in_ie_and_firefox(true);
     RewriteTestBase::SetUp();
     rewrite_driver()->set_flushing_early(true);
+    rewrite_driver()->AddFilters();
     rewrite_driver()->SetWriter(&writer_);
     server_context()->set_flush_early_info_finder(
         new MeaningfulFlushEarlyInfoFinder);
@@ -94,6 +111,7 @@ class FlushEarlyContentWriterFilterTest : public RewriteTestBase {
     rewrite_driver_->flush_early_info()->set_average_fetch_latency_ms(190);
     rewrite_driver_->log_record()->SetLogUrlIndices(true);
     output_.clear();
+    rewrite_driver()->SetWriter(&writer_);
   }
 
   void ResetUserAgent(StringPiece user_agent) {
@@ -654,6 +672,7 @@ TEST_F(FlushEarlyContentWriterFilterTest,
   GoogleString html_output;
 
   // Disallow one of the public cacheable resources.
+  options()->ClearSignatureForTesting();
   options()->Disallow("*f.css*");
   html_output = GetOutputWithHash(
       "<script type=\"text/javascript\">(function(){"

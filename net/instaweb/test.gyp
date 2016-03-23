@@ -109,7 +109,8 @@
         'rewriter/cacheable_resource_base_test.cc',
         'rewriter/collect_flush_early_content_filter_test.cc',
         'rewriter/common_filter_test.cc',
-        'rewriter/compute_visible_text_filter_test.cc',
+        # TODO(jmarantz): delete this filter entirely along with its test.
+        #'rewriter/compute_visible_text_filter_test.cc',
         'rewriter/critical_css_beacon_filter_test.cc',
         'rewriter/critical_finder_support_util_test.cc',
         'rewriter/critical_images_beacon_filter_test.cc',

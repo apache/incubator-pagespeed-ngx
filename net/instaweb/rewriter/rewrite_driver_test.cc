@@ -721,6 +721,7 @@ TEST_F(RewriteDriverTest, TestComputeCurrentFlushWindowRewriteDelayMs) {
   options()->set_rewrite_deadline_ms(1000);
 
   // "Start" a parse to configure the start time in the driver.
+  rewrite_driver()->AddFilters();
   ASSERT_TRUE(rewrite_driver()->StartParseId("http://site.com/",
                                              "compute_flush_window_test",
                                              kContentTypeHtml));
@@ -795,6 +796,7 @@ TEST_F(RewriteDriverTest, TestCacheUseOnTheFlyWithInvalidation) {
 
 TEST_F(RewriteDriverTest, BaseTags) {
   // Starting the parse, the base-tag will be derived from the html url.
+  rewrite_driver()->AddFilters();
   ASSERT_TRUE(rewrite_driver()->StartParse("http://example.com/index.html"));
   rewrite_driver()->Flush();
   EXPECT_EQ("http://example.com/index.html", BaseUrlSpec());
@@ -827,6 +829,7 @@ TEST_F(RewriteDriverTest, BaseTags) {
 
 TEST_F(RewriteDriverTest, RelativeBaseTag) {
   // Starting the parse, the base-tag will be derived from the html url.
+  rewrite_driver()->AddFilters();
   ASSERT_TRUE(rewrite_driver()->StartParse("http://example.com/index.html"));
   rewrite_driver()->ParseText("<base href='subdir/'>");
   rewrite_driver()->Flush();
@@ -836,6 +839,7 @@ TEST_F(RewriteDriverTest, RelativeBaseTag) {
 
 TEST_F(RewriteDriverTest, InvalidBaseTag) {
   // Encountering an invalid base tag should be ignored (except info message).
+  rewrite_driver()->AddFilters();
   ASSERT_TRUE(rewrite_driver()->StartParse("http://example.com/index.html"));
 
   // Note: Even nonsensical protocols must be accepted as base URLs.
@@ -1220,6 +1224,7 @@ TEST_F(RewriteDriverTest, RejectDataResourceGracefully) {
 TEST_F(RewriteDriverTest, NoCreateInputResourceUnauthorized) {
   MockRewriteContext context(rewrite_driver());
   // Call StartParseUrl so that the base_url gets set to a non-empty string.
+  rewrite_driver()->AddFilters();
   ASSERT_TRUE(rewrite_driver()->StartParse("http://example.com/index.html"));
 
   // Test that an unauthorized resource is not allowed to be created.
@@ -1252,6 +1257,7 @@ TEST_F(RewriteDriverTest, CreateInputResourceUnauthorized) {
 
   MockRewriteContext context(rewrite_driver());
   // Call StartParseUrl so that the base_url gets set to a non-empty string.
+  rewrite_driver()->AddFilters();
   ASSERT_TRUE(rewrite_driver()->StartParse("http://example.com/index.html"));
 
   // Test that an unauthorized resource is created with the right cache key.
@@ -1306,6 +1312,7 @@ TEST_F(RewriteDriverTest, CreateInputResourceUnauthorizedWithDisallow) {
 
   MockRewriteContext context(rewrite_driver());
   // Call StartParseUrl so that the base_url gets set to a non-empty string.
+  rewrite_driver()->AddFilters();
   ASSERT_TRUE(rewrite_driver()->StartParse("http://example.com/index.html"));
 
   // Test that an unauthorized resource is not created when it is disallowed.
@@ -1326,6 +1333,7 @@ TEST_F(RewriteDriverTest, AllowWhenInliningOverridesDisallow) {
 
   MockRewriteContext context(rewrite_driver());
   // Call StartParseUrl so that the base_url gets set to a non-empty string.
+  rewrite_driver()->AddFilters();
   ASSERT_TRUE(rewrite_driver()->StartParse("http://example.com/index.html"));
 
   // This resource would normally not be created because it is disallowed,
@@ -1347,6 +1355,7 @@ TEST_F(RewriteDriverTest, AllowWhenInliningDoesntOverrideDisallow) {
 
   MockRewriteContext context(rewrite_driver());
   // Call StartParseUrl so that the base_url gets set to a non-empty string.
+  rewrite_driver()->AddFilters();
   ASSERT_TRUE(rewrite_driver()->StartParse("http://example.com/index.html"));
 
   // This resource would normally not be created because it is disallowed, and
@@ -1434,6 +1443,7 @@ TEST_F(RewriteDriverTest, DetermineEnabledTest) {
   DetermineEnabledCheckingFilter* filter =
       new DetermineEnabledCheckingFilter();
   driver->AddOwnedEarlyPreRenderFilter(filter);
+  rewrite_driver()->AddFilters();
   driver->StartParse("http://example.com/index.html");
   rewrite_driver()->ParseText("<div>");
   driver->Flush();
@@ -1463,6 +1473,7 @@ TEST_F(RewriteDriverTest, ResponseHeadersAccess) {
   driver->AddOwnedPostRenderFilter(new ResponseHeadersCheckingFilter(driver));
 
   // Starting the parse, the base-tag will be derived from the html url.
+  rewrite_driver()->AddFilters();
   ASSERT_TRUE(driver->StartParse("http://example.com/index.html"));
   rewrite_driver()->ParseText("<div>");
   driver->Flush();

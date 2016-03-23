@@ -53,6 +53,7 @@ class ResourceSlotTest : public RewriteTestBase {
 
     // Set up 4 slots for testing.
     RewriteDriver* driver = rewrite_driver();
+    driver->AddFilters();
     ASSERT_TRUE(driver->StartParseId(kHtmlUrl, "resource_slot_test",
                                      kContentTypeHtml));
     elements_[0] = driver->NewElement(NULL, HtmlName::kLink);

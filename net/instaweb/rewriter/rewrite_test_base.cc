@@ -19,6 +19,7 @@
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 
 #include <cstddef>
+#include <new>
 #include <vector>
 
 #include "base/logging.h"
@@ -736,6 +737,15 @@ void RewriteTestBase::CollectCssLinks(
   html_parse.StartParse(dummy_url);
   html_parse.ParseText(html.data(), html.size());
   html_parse.FinishParse();
+}
+
+void RewriteTestBase::SetupWriter() {
+  if (!rewrite_driver_->filters_added()) {
+    rewrite_driver_->AddFilters();
+  }
+  if (!rewrite_driver()->has_html_writer_filter()) {
+    RewriteOptionsTestBase::SetupWriter();
+  }
 }
 
 void RewriteTestBase::EncodePathAndLeaf(const StringPiece& id,

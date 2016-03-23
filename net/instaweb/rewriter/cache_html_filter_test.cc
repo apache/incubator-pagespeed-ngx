@@ -18,6 +18,9 @@
 //          rahulbansal@google.com (Rahul Bansal)
 
 #include "net/instaweb/rewriter/public/cache_html_filter.h"
+
+#include <new>
+
 #include "net/instaweb/rewriter/public/blink_util.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -92,7 +95,10 @@ class CacheHtmlFilterTest : public RewriteTestBase {
     options_->DisableFilter(RewriteOptions::kHtmlWriterFilter);
 
     RewriteTestBase::SetUp();
+  }
 
+  void InitTest() {
+    rewrite_driver()->AddFilters();
     rewrite_driver()->SetWriter(&write_to_string_);
     cache_html_filter_ = new CacheHtmlFilter(rewrite_driver());
     html_writer_filter_.reset(cache_html_filter_);
@@ -144,12 +150,14 @@ class CacheHtmlFilterTest : public RewriteTestBase {
 TEST_F(CacheHtmlFilterTest, SendNonCacheable) {
   options_->set_non_cacheables_for_cache_partial_html(
       "class=\"item\",id='beforeItems'");
+  InitTest();
   Validate(kRequestUrl, kHtmlInput, kExpectedOutput);
 }
 
 TEST_F(CacheHtmlFilterTest, SendNonCacheableWithMultipleFamilies) {
   options_->set_non_cacheables_for_cache_partial_html(
       "class=item,id=beforeItems");
+  InitTest();
   Validate(kRequestUrlWithPath, kHtmlInput, kExpectedOutput);
 }
 
@@ -159,6 +167,7 @@ TEST_F(CacheHtmlFilterTest, SendOnlyCookies) {
       "<script>pagespeed.panelLoader.loadCookies([\"helo=world; path=/\"]);"
       "</script>"
       "<script>pagespeed.panelLoader.bufferNonCriticalData({});</script>";
+  InitTest();
   Validate(kRequestUrl, kHtmlInput, json_expected_output);
 }
 

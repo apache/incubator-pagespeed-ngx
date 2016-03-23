@@ -93,6 +93,7 @@ class SrcSetSlotTest : public RewriteTestBase {
     RewriteTestBase::SetUp();
 
     RewriteDriver* driver = rewrite_driver();
+    driver->AddFilters();
     ASSERT_TRUE(driver->StartParseId(kHtmlUrl, "srcset_slot_test",
                                      kContentTypeHtml));
     element_ = driver->NewElement(nullptr, HtmlName::kImg);
