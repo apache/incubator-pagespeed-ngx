@@ -175,10 +175,11 @@ TEST_F(CommonFilterTest, ResolveUrl) {
   // Nasty case: refs before base.
   driver->StartParse(doc_url);
   driver->set_refs_before_base();
+  driver->ParseText("<html>");  // Establish non-AMP, allowing filters to run.
   driver->Flush();
   filter_->ResolveUrl("a.css", &out);
   EXPECT_FALSE(out.IsAnyValid());
-  driver->ParseText("<base href='https://www.example.org/' >");
+  driver->ParseText("<base href='https://www.example.org/' ></html>");
   driver->Flush();
   filter_->ResolveUrl("a.css", &out);
   ExpectUrl("https://www.example.org/a.css", out);

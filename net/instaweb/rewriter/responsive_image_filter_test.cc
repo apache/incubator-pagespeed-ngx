@@ -75,9 +75,11 @@ class ResponsiveImageFilterTest : public RewriteTestBase {
     GoogleString width_str = IntegerToString(width);
     GoogleString height_str = IntegerToString(height);
     GoogleString input_html = StrCat(
+        html_prolog_,
         "<img src=", filename, " width=", width_str, " height=", height_str,
         ">");
     GoogleString output_html = StrCat(
+        html_prolog_,
         "<img src=", EncodeImage(width, height, filename, "0", final_ext),
         " width=", width_str, " height=", height_str);
     StrAppend(
@@ -95,6 +97,8 @@ class ResponsiveImageFilterTest : public RewriteTestBase {
     }
     ValidateExpected("test_simple", input_html, output_html);
   }
+
+  GoogleString html_prolog_;
 };
 
 TEST_F(ResponsiveImageFilterTest, SimpleJpg) {
@@ -144,6 +148,18 @@ TEST_F(ResponsiveImageFilterTest, Zoom) {
 
   // Add zoom script.
   TestSimple(100, 100, "a.jpg", "10.23", "jpg", true);
+}
+
+TEST_F(ResponsiveImageFilterTest, ZoomDisabledDueToAmp) {
+  options()->EnableFilter(RewriteOptions::kResponsiveImages);
+  options()->EnableFilter(RewriteOptions::kResponsiveImagesZoom);
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  options()->EnableFilter(RewriteOptions::kRecompressJpeg);
+  rewrite_driver()->AddFilters();
+
+  // Zoom-script does not get added due to <html amp> prolog
+  html_prolog_ = "<html amp>";
+  TestSimple(100, 100, "a.jpg", "10.23", "jpg", false);
 }
 
 TEST_F(ResponsiveImageFilterTest, OddRatio) {

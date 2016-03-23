@@ -583,6 +583,13 @@ class HtmlParse {
   // be accessed.
   void set_buffer_events(bool x) { buffer_events_ = x; }
 
+  // Disables any filter in this->filters_ whose GetScriptUsage() is
+  // HtmlFilter::kWillInjectScripts.
+  void DisableFiltersInjectingScripts();
+
+  // Same, but over a passed-in list of filters.
+  void DisableFiltersInjectingScripts(const FilterList& filters);
+
  private:
   void ApplyFilterHelper(HtmlFilter* filter);
   HtmlEventListIterator Last();  // Last element in queue

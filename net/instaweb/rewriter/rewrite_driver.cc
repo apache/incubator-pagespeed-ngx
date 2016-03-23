@@ -140,6 +140,7 @@
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/base/writer.h"
 #include "pagespeed/kernel/cache/cache_interface.h"
+#include "pagespeed/kernel/html/amp_document_filter.h"
 #include "pagespeed/kernel/html/collapse_whitespace_filter.h"
 #include "pagespeed/kernel/html/elide_attributes_filter.h"
 #include "pagespeed/kernel/html/html_attribute_quote_removal.h"
@@ -290,6 +291,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       start_time_ms_(0),
       tried_to_distribute_fetch_(false),
       defer_instrumentation_script_(false),
+      is_amp_(false),
       downstream_cache_purger_(this)
       // NOTE:  Be sure to clear per-request member variables in Clear()
 { // NOLINT  -- I want the initializer-list to end with that comment.
@@ -443,6 +445,7 @@ void RewriteDriver::Clear() NO_THREAD_SAFETY_ANALYSIS {
   flushing_early_ = false;
   tried_to_distribute_fetch_ = false;
   defer_instrumentation_script_ = false;
+  is_amp_ = false;
   executing_rewrite_tasks_.set_value(false);
   is_lazyload_script_flushed_ = false;
   base_was_set_ = false;
@@ -994,6 +997,8 @@ void RewriteDriver::AddPreRenderFilters() {
     // based on the content it sees.
     add_event_listener(new FlushHtmlFilter(this));
   }
+  add_event_listener(new AmpDocumentFilter(this, NewPermanentCallback(
+      this, &RewriteDriver::SetIsAmpDocument)));
 
   if (rewrite_options->Enabled(RewriteOptions::kComputeStatistics)) {
     dom_stats_filter_ = new DomStatsFilter(this);
@@ -2357,6 +2362,7 @@ bool RewriteDriver::StartParseId(const StringPiece& url, const StringPiece& id,
 
   if (ret) {
     DCHECK(filters_added_);
+    set_buffer_events(true);  // Release buffer when AMPness is discovered.
     base_was_set_ = false;
     if (is_url_valid()) {
       base_url_.Reset(google_url());
@@ -3713,6 +3719,16 @@ Sequence* RewriteDriver::rewrite_worker() {
     return rewrite_worker_;
   }
   return scheduler_sequence_.get();
+}
+
+void RewriteDriver::SetIsAmpDocument(bool is_amp) {
+  if (is_amp) {
+    DisableFiltersInjectingScripts(early_pre_render_filters_);
+    DisableFiltersInjectingScripts(pre_render_filters_);
+    HtmlParse::DisableFiltersInjectingScripts();
+  }
+  is_amp_ = is_amp;
+  set_buffer_events(false);
 }
 
 }  // namespace net_instaweb

@@ -429,7 +429,7 @@ void ResponsiveImageSecondFilter::Cleanup(
 }
 
 void ResponsiveImageSecondFilter::EndDocument() {
-  if (zoom_filter_enabled_ && srcsets_added_) {
+  if (zoom_filter_enabled_ && srcsets_added_ && !driver()->is_amp_document()) {
     HtmlElement* script = driver()->NewElement(NULL, HtmlName::kScript);
     driver()->AddAttribute(script, HtmlName::kSrc, responsive_js_url_);
     InsertNodeAtBodyEnd(script);

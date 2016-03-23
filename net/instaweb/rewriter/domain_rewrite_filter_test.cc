@@ -251,6 +251,22 @@ TEST_F(DomainRewriteFilterTest, ClientDomainRewrite) {
             output_buffer_);
 }
 
+TEST_F(DomainRewriteFilterTest, ClientDomainRewriteDisabledDueToAmp) {
+  options()->ClearSignatureForTesting();
+  AddRewriteDomainMapping(kHtmlDomain, "http://clientrewrite.com/");
+  options()->set_domain_rewrite_hyperlinks(true);
+  options()->set_client_domain_rewrite(true);
+
+  SetupWriter();
+  html_parse()->StartParse("http://test.com/");
+  html_parse()->ParseText("<html amp><body>");
+  html_parse()->Flush();
+  html_parse()->ParseText("</body></html>");
+  html_parse()->FinishParse();
+
+  EXPECT_EQ("<html amp><body></body></html>", output_buffer_);
+}
+
 TEST_F(DomainRewriteFilterTest, ProxySuffix) {
   options()->ClearSignatureForTesting();
   options()->set_domain_rewrite_hyperlinks(true);

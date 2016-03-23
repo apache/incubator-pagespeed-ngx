@@ -1241,6 +1241,12 @@ class RewriteDriver : public HtmlParse {
     return html_writer_filter_.get() != nullptr;
   }
 
+  // Declares whether the current document is AMP or not.  Prior to calling
+  // this, all HTML events are buffered, to avoid waking up filters that
+  // inject scripts.
+  void SetIsAmpDocument(bool is_amp);
+  bool is_amp_document() const { return is_amp_; }
+
  protected:
   virtual void DetermineFiltersBehaviorImpl();
 
@@ -1766,6 +1772,9 @@ class RewriteDriver : public HtmlParse {
   // If false, add data-pagespeed-no-defer attribute to the script inserted by
   // add_instrumentation filter.
   bool defer_instrumentation_script_;
+
+  // Indicates whether this document is determined to be AMP-HTML.
+  bool is_amp_;
 
   // Indicates that task execution has started.
   AtomicBool executing_rewrite_tasks_;

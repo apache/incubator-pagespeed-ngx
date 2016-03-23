@@ -544,7 +544,8 @@ DomainRewriteFilter::RewriteResult DomainRewriteFilter::Rewrite(
 }
 
 void DomainRewriteFilter::EndDocument() {
-  if (!driver()->options()->client_domain_rewrite()) {
+  if (!driver()->options()->client_domain_rewrite() ||
+      driver()->is_amp_document()) {
     return;
   }
   const DomainLawyer* lawyer = driver()->options()->domain_lawyer();

@@ -265,7 +265,6 @@ bool HtmlParse::StartParseId(const StringPiece& url, const StringPiece& id,
   // TODO(sligocki): Use IsWebValid() here. For now we need to allow file://
   // URLs as well because some tools use them.
   url_valid_ = gurl.IsAnyValid();
-
   if (!url_valid_) {
     message_handler_->Message(kWarning, "HtmlParse: Invalid document url %s",
                               url_.c_str());
@@ -351,6 +350,19 @@ void HtmlParse::CheckFilterBehavior(HtmlFilter* filter) {
   } else {
     // Only enabled filters will be aggregated.
     can_modify_urls_ = can_modify_urls_ || filter->CanModifyUrls();
+  }
+}
+
+void HtmlParse::DisableFiltersInjectingScripts() {
+  DisableFiltersInjectingScripts(filters_);
+}
+
+void HtmlParse::DisableFiltersInjectingScripts(const FilterList& filters) {
+  for (HtmlFilter* filter : filters) {
+    if (filter->is_enabled() &&
+        (filter->GetScriptUsage() == HtmlFilter::kWillInjectScripts)) {
+      filter->set_is_enabled(false);
+    }
   }
 }
 
