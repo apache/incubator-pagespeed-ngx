@@ -1983,8 +1983,7 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
             url,
             cfg_s->server_context,
             options,
-            ctx->base_fetch,
-            false /* requires_blink_cohort (no longer unused) */);
+            ctx->base_fetch);
 
     // Will call StartParse etc.  The rewrite driver will take care of deleting
     // itself if necessary.
