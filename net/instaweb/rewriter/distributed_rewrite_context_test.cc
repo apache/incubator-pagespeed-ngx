@@ -464,13 +464,16 @@ TEST_F(DistributedRewriteContextTest, ReconstructDistributedTwoFilterBlocks) {
       new FakeFilter(RewriteOptions::kCssFilterId, rewrite_driver(),
                      semantic_type::kStylesheet);
   fake_css_filter->set_exceed_deadline(true);
+  fake_css_filter->set_output_content_type(&kContentTypeCss);
   FakeFilter* fake_css_combiner =
       new FakeFilter(RewriteOptions::kCssCombinerId, rewrite_driver(),
                      semantic_type::kStylesheet);
+  fake_css_combiner->set_output_content_type(&kContentTypeCss);
   FakeFilter* other_fake_css_filter =
       new FakeFilter(RewriteOptions::kCssFilterId, other_rewrite_driver(),
                      semantic_type::kStylesheet);
   other_fake_css_filter->set_exceed_deadline(true);
+  other_fake_css_filter->set_output_content_type(&kContentTypeCss);
   rewrite_driver()->AppendRewriteFilter(fake_css_filter);
   rewrite_driver()->AppendRewriteFilter(fake_css_combiner);
   other_rewrite_driver()->AppendRewriteFilter(other_fake_css_filter);

@@ -92,6 +92,7 @@ fi
 run_test content_length
 run_test keep_data_urls
 run_test rel_canonical
+run_test resource_content_type_html
 
 wait_for_async_tests
 

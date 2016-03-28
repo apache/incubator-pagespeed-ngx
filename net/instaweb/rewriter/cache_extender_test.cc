@@ -1122,6 +1122,10 @@ TEST_F(CacheExtenderTest, NoPreserveUrlRelativity) {
                    "<img src=http://test.com/b.jpg.pagespeed.ce.0.jpg>");
 }
 
+TEST_F(CacheExtenderTest, ContentTypeValidation) {
+  ValidateFallbackHeaderSanitization("ce");
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

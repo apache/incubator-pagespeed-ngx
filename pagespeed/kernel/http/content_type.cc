@@ -52,7 +52,9 @@ const ContentType kTypes[] = {
   {"application/javascript",        ".map",  ContentType::kSourceMap},
   {"application/pdf",               ".pdf",  ContentType::kPdf},  // RFC 3778
   {"application/octet-stream",      ".bin",  ContentType::kOctetStream },
-  // SVG is XML.
+  // SVG is XML.  If at some point we start optimizing svg as images, we need to
+  // be very careful not to just lump them in with images for all purposes, to
+  // avoid creating security vulnerabilities.
   {"image/svg+xml",                 ".svg",  ContentType::kXml},
 
   // Synonyms; Note that the canonical types above are referenced by index

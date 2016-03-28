@@ -105,6 +105,7 @@ TEST_F(LoopbackRouteFetcherTest, LoopbackRouteFetcherWorks) {
   EXPECT_STREQ("somehost.com",
                dest.response_headers()->Lookup1("Host"));
 
+
   // Now make somehost.com known, as well as somehost.cdn.com
   options_.WriteableDomainLawyer()->AddOriginDomainMapping(
       "somehost.cdn.com", "somehost.com", "", &handler_);

@@ -374,6 +374,7 @@ void RewriteContextTestBase::InitResourcesToDomain(const char* domain) {
   SetDefaultLongCacheHeaders(&kContentTypeCss, &low_ttl_css_header);
   low_ttl_css_header.SetDateAndCaching(now_ms, kLowOriginTtlMs);
   low_ttl_css_header.ComputeCaching();
+  low_ttl_css_header.Add(HttpAttributes::kContentType, "text/css");
   SetFetchResponse(StrCat(domain, "d.css"), low_ttl_css_header, "d");
 
   // trimmable, low ttl.
@@ -392,6 +393,7 @@ void RewriteContextTestBase::InitResourcesToDomain(const char* domain) {
   private_css_header.set_minor_version(1);
   private_css_header.SetStatusAndReason(HttpStatus::kOK);
   private_css_header.SetDateAndCaching(now_ms, kOriginTtlMs, ",private");
+  private_css_header.Add(HttpAttributes::kContentType, "text/css");
   private_css_header.ComputeCaching();
 
   SetFetchResponse(StrCat(domain, "a_private.css"),
@@ -404,6 +406,7 @@ void RewriteContextTestBase::InitResourcesToDomain(const char* domain) {
   no_cache_css_header.set_minor_version(1);
   no_cache_css_header.SetStatusAndReason(HttpStatus::kOK);
   no_cache_css_header.SetDateAndCaching(now_ms, 0, ",no-cache");
+  no_cache_css_header.Add(HttpAttributes::kContentType, "text/css");
   no_cache_css_header.ComputeCaching();
 
   SetFetchResponse(StrCat(domain, "a_no_cache.css"),
@@ -417,6 +420,7 @@ void RewriteContextTestBase::InitResourcesToDomain(const char* domain) {
   no_transform_css_header.SetStatusAndReason(HttpStatus::kOK);
   no_transform_css_header.SetDateAndCaching(now_ms, kOriginTtlMs,
                                             ",no-transform");
+  no_transform_css_header.Add(HttpAttributes::kContentType, "text/css");
   no_transform_css_header.ComputeCaching();
 
   SetFetchResponse(StrCat(domain, "a_no_transform.css"),
@@ -429,6 +433,7 @@ void RewriteContextTestBase::InitResourcesToDomain(const char* domain) {
   no_store_css_header.set_minor_version(1);
   no_store_css_header.SetStatusAndReason(HttpStatus::kOK);
   no_store_css_header.SetDateAndCaching(now_ms, 0, ",no-cache,no-store");
+  no_store_css_header.Add(HttpAttributes::kContentType, "text/css");
   no_store_css_header.ComputeCaching();
 
   SetFetchResponse(StrCat(domain, "a_no_store.css"),

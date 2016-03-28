@@ -639,6 +639,109 @@ void RewriteTestBase::TestServeFiles(
   }
 }
 
+void RewriteTestBase::ValidateFallbackHeaderSanitizationHelper(
+    StringPiece filter_id, StringPiece origin_content_type, bool expect_load) {
+
+  // Mangle the content type to make a url name by removing '/'s.
+  GoogleString leafable(origin_content_type.as_string());
+  GlobalReplaceSubstring("/", "-", &leafable);
+
+  GoogleString leaf = StrCat("leaf-", leafable);
+  GoogleString origin_contents = "this isn't a real file";
+
+  ResponseHeaders origin_response_headers;
+  origin_response_headers.set_major_version(1);
+  origin_response_headers.set_minor_version(1);
+  origin_response_headers.SetStatusAndReason(HttpStatus::kOK);
+  origin_response_headers.Add(HttpAttributes::kContentType,
+                              origin_content_type);
+
+  int64 now_ms = timer()->NowMs();
+  // This is a case where we do need to make some changes for security and we
+  // want to be sure we make them even if no-transform is set.
+  origin_response_headers.SetDateAndCaching(now_ms, 0 /* ttl */,
+                                            "; no-transform");
+  origin_response_headers.ComputeCaching();
+
+  SetFetchResponse(
+      AbsolutifyUrl(leaf), origin_response_headers, origin_contents);
+
+  GoogleString resource = AbsolutifyUrl(Encode(
+      "", filter_id, "0", leaf, "ignored"));
+
+  GoogleString response_content;
+  ResponseHeaders response_headers;
+
+  if (expect_load) {
+    ASSERT_TRUE(FetchResourceUrl(resource,
+                                 NULL /* use default request headers */,
+                                 &response_content,
+                                 &response_headers));
+    EXPECT_EQ(origin_contents, response_content);
+    const ContentType* content_type = response_headers.DetermineContentType();
+    ASSERT_TRUE(NULL != content_type);
+    EXPECT_EQ(origin_content_type, content_type->mime_type());
+
+    const char* nosniff = response_headers.Lookup1("X-Content-Type-Options");
+    ASSERT_TRUE(NULL != nosniff);
+    EXPECT_EQ("nosniff", GoogleString(nosniff));
+  } else {
+    ASSERT_FALSE(FetchResourceUrl(resource,
+                                  NULL /* use default request headers */,
+                                  &response_content,
+                                  &response_headers));
+  }
+}
+
+
+void RewriteTestBase::ValidateFallbackHeaderSanitization(
+    StringPiece filter_id) {
+  // Freeze our options.
+  server_context()->ComputeSignature(options());
+
+  // These content types will all be preserved.
+  ValidateFallbackHeaderSanitizationHelper(
+      filter_id, "text/css", true);
+  ValidateFallbackHeaderSanitizationHelper(
+      filter_id, "text/javascript", true);
+  ValidateFallbackHeaderSanitizationHelper(
+      filter_id, "application/javascript", true);
+  ValidateFallbackHeaderSanitizationHelper(
+      filter_id, "image/jpg", true);
+  ValidateFallbackHeaderSanitizationHelper(
+      filter_id, "image/jpeg", true);
+  ValidateFallbackHeaderSanitizationHelper(
+      filter_id, "image/png", true);
+  ValidateFallbackHeaderSanitizationHelper(
+      filter_id, "image/gif", true);
+  ValidateFallbackHeaderSanitizationHelper(
+      filter_id, "image/webp", true);
+  ValidateFallbackHeaderSanitizationHelper(
+      filter_id, "application/pdf", true);
+
+  // All other content types will be stripped.
+  ValidateFallbackHeaderSanitizationHelper(
+      filter_id, "text/html", false);
+  ValidateFallbackHeaderSanitizationHelper(
+      filter_id, "text/plain", false);
+  ValidateFallbackHeaderSanitizationHelper(
+      filter_id, "text/xml", false);
+  ValidateFallbackHeaderSanitizationHelper(
+      filter_id, "application/xml", false);
+  ValidateFallbackHeaderSanitizationHelper(
+      filter_id, "image/svg", false);
+  ValidateFallbackHeaderSanitizationHelper(
+      filter_id, "image/svg+xml", false);
+  ValidateFallbackHeaderSanitizationHelper(
+      filter_id, "audio/mp3", false);
+  ValidateFallbackHeaderSanitizationHelper(
+      filter_id, "video/mp4", false);
+  ValidateFallbackHeaderSanitizationHelper(
+      filter_id, "", false);
+  ValidateFallbackHeaderSanitizationHelper(
+      filter_id, "invalid", false);
+}
+
 // Just check if we can fetch a resource successfully, ignore response.
 bool RewriteTestBase::TryFetchResource(const StringPiece& url) {
   GoogleString contents;

@@ -1459,6 +1459,7 @@ TEST_F(RewriteContextTest, TestRewritesOnEmptyPrivateResources) {
   no_store_css_header.set_minor_version(1);
   no_store_css_header.SetStatusAndReason(HttpStatus::kOK);
   no_store_css_header.SetDateAndCaching(now_ms, 0, ",no-store");
+  no_store_css_header.Add(HttpAttributes::kContentType, "text/css");
   no_store_css_header.ComputeCaching();
 
   SetFetchResponse(AbsolutifyUrl(kPath), no_store_css_header, "");

@@ -82,21 +82,18 @@ void LoopbackRouteFetcher::Fetch(const GoogleString& original_url,
       request_headers->Replace(HttpAttributes::kHost, parsed_url.HostAndPort());
     }
 
-    GoogleUrl base;
+    GoogleString path_and_leaf;
+    // Includes leading slash.
+    parsed_url.PathAndLeaf().CopyToString(&path_and_leaf);
+
     StringPiece scheme = parsed_url.Scheme();
-    if ((own_port_ == 80 && scheme == "http") ||
-        (own_port_ == 443 && scheme == "https")) {
-      base.Reset(StrCat(scheme, "://", own_ip_, "/"));
-    } else {
-      base.Reset(
-          StrCat(scheme, "://", own_ip_, ":", IntegerToString(own_port_), "/"));
+    GoogleString port_section = "";
+    if (!((own_port_ == 80 && scheme == "http") ||
+          (own_port_ == 443 && scheme == "https"))) {
+      port_section = StrCat(":", IntegerToString(own_port_));
     }
 
-    GoogleString rel;
-    parsed_url.PathAndLeaf().CopyToString(&rel);
-
-    parsed_url.Reset(base, rel);
-    parsed_url.Spec().CopyToString(&url);
+    url = StrCat(scheme, "://", own_ip_, port_section, path_and_leaf);
 
     // Note that we end up with host: containing the actual URL's host, but
     // the URL containing just our IP. This is technically wrong, but the

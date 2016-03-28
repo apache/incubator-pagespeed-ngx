@@ -1405,6 +1405,10 @@ TEST_P(JavascriptFilterTest, ExternalAndNotInline) {
                                        expected_rewritten_path_.c_str())));
 }
 
+TEST_P(JavascriptFilterTest, ContentTypeValidation) {
+  ValidateFallbackHeaderSanitization(kFilterId);
+}
+
 // We test with use_experimental_minifier == GetParam() as both true and false.
 INSTANTIATE_TEST_CASE_P(JavascriptFilterTestInstance, JavascriptFilterTest,
                         ::testing::Bool());

@@ -423,6 +423,10 @@ class RewriteTestBase : public RewriteOptionsTestBase {
                       const StringPiece& rewritten_name,
                       const StringPiece& rewritten_content);
 
+  // Check that when we have a cache miss for a pagespeed resource we set
+  // headers to reduce the chance of it being interpreted as html.
+  void ValidateFallbackHeaderSanitization(StringPiece filter_id);
+
   TestRewriteDriverFactory* factory() { return factory_.get(); }
   TestRewriteDriverFactory* other_factory() { return other_factory_.get(); }
 
@@ -852,6 +856,10 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   uint64 expected_nonce_;
 
   GoogleString debug_message_;  // Message used by DebugMessage
+
+ private:
+  void ValidateFallbackHeaderSanitizationHelper(
+      StringPiece filter_id, StringPiece origin_content_type, bool expect_load);
 };
 
 }  // namespace net_instaweb

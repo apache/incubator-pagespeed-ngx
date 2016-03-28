@@ -235,7 +235,7 @@ class RewriteSingleResourceFilterTest
     options()->ComputeSignature();
 
     MockResource("a.tst", "good", TtlSec());
-    MockResource("bad.tst", "bad", TtlSec());
+    SetResponseWithDefaultHeaders("bad.tst", kContentTypeCss, "bad", TtlSec());
     MockResource("busy.tst", "$", TtlSec());
     MockMissingResource("404.tst");
 

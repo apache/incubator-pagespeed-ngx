@@ -3241,6 +3241,10 @@ void RewriteContext::FixFetchFallbackHeaders(
     ttl_ms = std::min(ttl_ms, headers->implicit_cache_ttl_ms());
   }
   headers->SetDateAndCaching(date_ms, ttl_ms, cache_control_suffix);
+  // Replace, as in "add if not already present".  The only valid value for this
+  // header is "nosniff", so we don't have to worry about clobbering existing
+  // usage.
+  headers->Replace("X-Content-Type-Options", "nosniff");
 
   // TODO(jmarantz): Use the actual content-hash to replace the W/"0" etag
   // rather than removing the etag altogether.  This requires adding code to
@@ -3258,8 +3262,29 @@ bool RewriteContext::SendFallbackResponse(StringPiece output_url_base,
                                           StringPiece contents,
                                           AsyncFetch* async_fetch,
                                           MessageHandler* handler) {
+  const ContentType* content_type =
+      async_fetch->response_headers()->DetermineContentType();
+  if (content_type == NULL ||
+      !(content_type->IsJs() ||
+        content_type->IsCss() ||
+        content_type->IsImage() ||
+        content_type == &kContentTypePdf)) {
+    // If the content type header isn't one that we would generate a pagespeed
+    // resource for, fail the request.  This is a security measure that limits
+    // people's ability to get us to pass html.
+
+    handler->Message(
+        kInfo, "Dropping response for %s for disallowed origin content type %s",
+        output_url_base.as_string().c_str(),
+        (content_type == NULL ? "[missing or unrecognized]"
+         : content_type->mime_type()));
+
+    return false;
+  }
+
   async_fetch->set_content_length(contents.size());
   async_fetch->HeadersComplete();
+
   return async_fetch->Write(contents, handler);
 }
 
