@@ -39,7 +39,9 @@ TAG=$RELEASE
 
 do_patch="0"
 
-# Apply optional patch-file to apply before building.
+# Apply optional patch-file to apply before building.  To create a patch from a
+# commit, do:
+#   git show [commit id] > patchfile
 if [ $# -ge 3 ]; then
   patch_file=$(readlink -f $3)
   do_patch="1"
@@ -101,6 +103,12 @@ if [ $(uname -m) = x86_64 ]; then
   BIT_SIZE_NAME=x64
 else
   BIT_SIZE_NAME=ia32
+fi
+
+if [[ "$RELEASE" == 1.9.32.* || "$RELEASE" == 1.10.33.* ]]; then
+  # Without https://github.com/pagespeed/mod_pagespeed/commit/0e79a08 the font
+  # inlining tests will fail, and we never backported that fix to 1.9 or 1.10.
+  export DISABLE_FONT_API_TESTS=1
 fi
 
 build_dir="$HOME/build/$RELEASE"
@@ -184,7 +192,7 @@ echo '#define alignas(x) __attribute__ ((aligned (x)))' > \
 
 if [ $do_patch -eq "1" ]; then
   echo Applying patch-file $patch_file
-  patch -p0 < $patch_file
+  git apply $patch_file
 
   echo "Re-running gclient in case the patch touched DEPS"
   check gclient.log gclient sync
