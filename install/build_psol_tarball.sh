@@ -90,18 +90,28 @@ cd src
 git checkout $VERSION
 gclient sync --force --jobs=1
 
+build_dir="$PWD"
+
+if [[ "$VERSION" == 1.9.32.* ]]; then
+  # On 1.9 (and earlier, but we don't build them anymore) automatic/ was in
+  # a different place.
+  automatic_dir=net/instaweb/automatic/
+else
+  automatic_dir=pagespeed/automatic/
+fi
+
 for buildtype in Release Debug; do
-  make -j8 AR.host="$PWD/build/wrappers/ar.sh" \
-       AR.target="$PWD/build/wrappers/ar.sh" \
+  make -j8 AR.host="$build_dir/build/wrappers/ar.sh" \
+       AR.target="$build_dir/build/wrappers/ar.sh" \
        BUILDTYPE=$buildtype \
        mod_pagespeed_test pagespeed_automatic_test
-  cd pagespeed/automatic
+  cd $automatic_dir
   make -j8 BUILDTYPE=$buildtype \
-       -C ../../pagespeed/automatic \
-       AR.host="$PWD/../../build/wrappers/ar.sh" \
-       AR.target="$PWD/../../build/wrappers/ar.sh" \
+       -C $build_dir/$automatic_dir \
+       AR.host="$build_dir/build/wrappers/ar.sh" \
+       AR.target="$build_dir/build/wrappers/ar.sh" \
        all
-  cd ../..
+  cd $build_dir
 done
 
 # Verify that it built properly.
