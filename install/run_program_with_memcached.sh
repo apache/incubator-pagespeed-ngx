@@ -30,23 +30,33 @@ if [ "$UID" = "0" ]; then
   MEMCACHED_USER_OPTS="-u root"
 fi
 
+memcached_pid="0"
+
+function kill_memcached {
+  if [ "$memcached_pid" != "0" ]; then
+    echo Killing memcached -p $port running in pid $memcached_pid
+    kill $memcached_pid
+  fi
+}
+
+trap 'kill_memcached' EXIT
 
 # Pick random ports until we successfully can run memcached.
-memcached_pid="0"
 while [ $memcached_pid -eq "0" ]; do
   # Pick a port between 1024 and 32767 inclusive.
   port=$((($RANDOM % 31744) + 1024))
 
   # First check netstat -anp to see if somone is already listening on this port.
-  if [ $(netstat -anp 2>&1 | grep -c "::$port .* LISTEN ") -eq 0 ]; then
+  if [ $(netstat -tan | grep -c ":$port .* LISTEN ") -eq 0 ]; then
     echo Trying memcached port $port
-    memcached -p $port -m 1024 $MEMCACHED_USER_OPTS >/tmp/memcached.log &
+    memcached -l localhost -p $port -U 0 -m 1024 \
+        $MEMCACHED_USER_OPTS >/tmp/memcached.log &
     memcached_pid="$!"
     sleep 2
 
-    # See if we are now listening on the port, and the process is still alive.
-    if [ $(netstat -anp 2>&1 | grep -c "::$port .* LISTEN ") -gt 0 -a \
-         $(ps $memcached_pid | grep -c memcached) -eq 1 ]; then
+    # See if we are now listening on the port.
+    if [ $(netstat -tanp 2>/dev/null | grep ":$port .* LISTEN " |\
+             grep -c " $memcached_pid/memcached") -gt 0 ]; then
       # Provide an environment variable for use in apr_mem_cache_test.cc
       # and system tests, indicating what port # we used.
       export MEMCACHED_PORT=$port
@@ -86,11 +96,6 @@ if [ "$1" = "-multi" ]; then
 else
   "$@"
   exit_status="$?"
-fi
-
-if [ "$memcached_pid" != "0" ]; then
-  echo Killing memcached -p $port running in pid $memcached_pid
-  kill $memcached_pid
 fi
 
 echo Exiting $0 with status $exit_status
