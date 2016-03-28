@@ -657,7 +657,7 @@ fetch_until "$URL" "fgrep -c .pagespeed." 1 --header=Host:www.google.com
 
 # If this accepts the Host header and fetches from google.com it will fail with
 # a 404.  Instead it should use a loopback fetch and succeed.
-URL="$HOSTNAME/mod_pagespeed_example/.pagespeed.ce.8CfGBvwDhH.css"
+URL="$HOSTNAME/mod_pagespeed_example/styles/big.pagespeed.ce.8CfGBvwDhH.css"
 check wget -O /dev/null --header=Host:www.google.com "$URL"
 
 test_filter combine_css combines 4 CSS files into 1.
