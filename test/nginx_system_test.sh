@@ -552,7 +552,7 @@ fetch_until "$URL" "fgrep -c .pagespeed." 1 --header=Host:www.google.com
 
 # If this accepts the Host header and fetches from google.com it will fail with
 # a 404.  Instead it should use a loopback fetch and succeed.
-URL="$HOSTNAME/mod_pagespeed_example/.pagespeed.ce.8CfGBvwDhH.css"
+URL="$HOSTNAME/mod_pagespeed_example/styles/big.css.pagespeed.ce.8CfGBvwDhH.css"
 check wget -O /dev/null --header=Host:www.google.com "$URL"
 
 start_test statistics load
@@ -1324,6 +1324,8 @@ OUT=$(cat "$ERROR_LOG" \
     | grep -v "\\[warn\\].*remote\.cfg.*" \
     | grep -v "\\[warn\\].*end token not received.*" \
     | grep -v "\\[warn\\].*failed to hook next event.*" \
+    | grep -v "\\[warn\\].*Rewrite.*failed.*.pagespeed....0.foo.*" \
+    | grep -v "\\[warn\\].*A.blue.css.*but cannot access the original.*" \
     || true)
 
 check [ -z "$OUT" ]
