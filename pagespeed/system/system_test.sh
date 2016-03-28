@@ -1141,7 +1141,12 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   # Image gets rewritten on the second pass through this filter.
   # TODO(sligocki): This should change to 0 when we get image rewrites started
   # in the Apache output filter flow.
-  check_stat $STATS.1 $STATS.2 image_rewrites 1
+  #
+  # Note also that image_rewrite stats are inherently flaky because locks are
+  # advisory, and steals may occur in valgrind, so we check for image rewrites
+  # being in the range 1:2.
+  check_stat_op $STATS.1 $STATS.2 image_rewrites 1 -ge
+  check_stat_op $STATS.1 $STATS.2 image_rewrites 2 -le
 
   http_proxy=$SECONDARY_HOSTNAME check $WGET_DUMP $URL -O $OUTFILE
   http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $IPRO_STATS_URL > $STATS.3
