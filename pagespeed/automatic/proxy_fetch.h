@@ -96,8 +96,7 @@ class ProxyFetchFactory {
       const GoogleUrl& request_url,
       ServerContext* server_context,
       RewriteOptions* options,
-      AsyncFetch* async_fetch,
-      const bool requires_blink_cohort);
+      AsyncFetch* async_fetch);
 
   MessageHandler* message_handler() const { return handler_; }
 

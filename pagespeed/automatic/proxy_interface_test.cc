@@ -246,7 +246,7 @@ class ProxyInterfaceTest : public ProxyInterfaceTestBase {
     callback.set_request_headers(&request_headers);
     scoped_ptr<ProxyFetchPropertyCallbackCollector> callback_collector(
         proxy_interface_->InitiatePropertyCacheLookup(
-            false, gurl, options(), &callback, false));
+            false, gurl, options(), &callback));
 
     FallbackPropertyPage* fallback_page =
         callback_collector->fallback_property_page();
@@ -256,7 +256,7 @@ class ProxyInterfaceTest : public ProxyInterfaceTestBase {
     // Read from fallback value.
     GoogleUrl new_gurl(fallback_url);
     callback_collector.reset(proxy_interface_->InitiatePropertyCacheLookup(
-        false, new_gurl, options(), &callback, false));
+        false, new_gurl, options(), &callback));
     fallback_page = callback_collector->fallback_property_page();
     EXPECT_FALSE(fallback_page->actual_property_page()->GetProperty(
         cohort, kPropertyName)->has_value());
@@ -268,7 +268,7 @@ class ProxyInterfaceTest : public ProxyInterfaceTestBase {
     options()->ClearSignatureForTesting();
     options()->set_use_fallback_property_cache_values(false);
     callback_collector.reset(proxy_interface_->InitiatePropertyCacheLookup(
-          false, new_gurl, options(), &callback, false));
+          false, new_gurl, options(), &callback));
     EXPECT_FALSE(callback_collector->fallback_property_page()->GetProperty(
         cohort, kPropertyName)->has_value());
   }
@@ -2691,7 +2691,7 @@ TEST_F(ProxyInterfaceTest, NoCacheVaryAll) {
 }
 
 TEST_F(ProxyInterfaceTest, Blacklist) {
-  const char content[] =
+  static const char kContent[] =
       "<html>\n"
       "  <head/>\n"
       "  <body>\n"
@@ -2699,15 +2699,15 @@ TEST_F(ProxyInterfaceTest, Blacklist) {
       "  </body>\n"
       "</html>\n";
   SetResponseWithDefaultHeaders("tiny_mce.js", kContentTypeJavascript, "", 100);
-  ValidateNoChanges("blacklist", content);
+  ValidateNoChanges("blacklist", kContent);
 
-  SetResponseWithDefaultHeaders(kPageUrl, kContentTypeHtml, content, 0);
+  SetResponseWithDefaultHeaders(kPageUrl, kContentTypeHtml, kContent, 0);
   GoogleString text_out;
   ResponseHeaders headers_out;
   RequestHeaders request_headers;
   PopulateRequestHeaders(&request_headers);
   FetchFromProxy(kPageUrl, request_headers, true, &text_out, &headers_out);
-  EXPECT_STREQ(content, text_out);
+  EXPECT_STREQ(kContent, text_out);
 }
 
 TEST_F(ProxyInterfaceTest, RepairMismappedResource) {
@@ -3423,7 +3423,7 @@ TEST_F(ProxyInterfaceTest, TestNoFallbackCallWithNoLeaf) {
   callback.set_request_headers(&request_headers);
   scoped_ptr<ProxyFetchPropertyCallbackCollector> callback_collector(
       proxy_interface_->InitiatePropertyCacheLookup(
-          false, gurl, options(), &callback, false));
+          false, gurl, options(), &callback));
 
   PropertyPage* fallback_page = callback_collector->fallback_property_page()
       ->property_page_with_fallback_values();
@@ -3439,29 +3439,11 @@ TEST_F(ProxyInterfaceTest, TestSkipBlinkCohortLookUp) {
   callback.set_request_headers(&request_headers);
   scoped_ptr<ProxyFetchPropertyCallbackCollector> callback_collector(
       proxy_interface_->InitiatePropertyCacheLookup(
-          false, gurl, options(), &callback, false));
+          false, gurl, options(), &callback));
 
   // Cache lookup only for dom cohort.
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(1, lru_cache()->num_misses());
-}
-
-TEST_F(ProxyInterfaceTest, TestSkipBlinkCohortLookUpInFallbackPage) {
-  GoogleUrl gurl("http://www.test.com/1.html?a=b");
-  options()->set_use_fallback_property_cache_values(true);
-  StringAsyncFetch callback(
-      RequestContext::NewTestRequestContext(server_context()->thread_system()));
-  RequestHeaders request_headers;
-  callback.set_request_headers(&request_headers);
-  scoped_ptr<ProxyFetchPropertyCallbackCollector> callback_collector(
-      proxy_interface_->InitiatePropertyCacheLookup(
-          false, gurl, options(), &callback, true));
-
-  // Cache lookup for:
-  // dom and blink cohort for actual property page.
-  // dom cohort for fallback property page.
-  EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(3, lru_cache()->num_misses());
 }
 
 TEST_F(ProxyInterfaceTest, BailOutOfParsing) {

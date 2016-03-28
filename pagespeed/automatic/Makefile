@@ -54,7 +54,6 @@ BASE_LIBS = \
   net/instaweb/libinstaweb_admin_site_css_data2c.a \
   net/instaweb/libinstaweb_apr.a \
   net/instaweb/libinstaweb_automatic.a \
-  net/instaweb/libinstaweb_cache_html_info_pb.a \
   net/instaweb/libinstaweb_caches_css_data2c.a \
   net/instaweb/libinstaweb_caches_js_data2c.a \
   net/instaweb/libinstaweb_caches_js_opt_data2c.a \

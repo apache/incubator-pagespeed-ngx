@@ -797,7 +797,7 @@ TEST_F(RewriteQueryTest, NoscriptWithTrailingQuoteQueryParamEmptyValue) {
   RewriteOptions::FilterVector filter_vector;
   options->GetEnabledFiltersRequiringScriptExecution(&filter_vector);
   EXPECT_TRUE(filter_vector.empty());
-  EXPECT_FALSE(options->Enabled(RewriteOptions::kCachePartialHtml));
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kLazyloadImages));
   EXPECT_TRUE(options->Enabled(RewriteOptions::kHandleNoscriptRedirect));
 }
 
@@ -809,7 +809,7 @@ TEST_F(RewriteQueryTest, NoscriptWithTrailingEscapedQuoteQueryParamEmptyValue) {
   RewriteOptions::FilterVector filter_vector;
   options->GetEnabledFiltersRequiringScriptExecution(&filter_vector);
   EXPECT_TRUE(filter_vector.empty());
-  EXPECT_FALSE(options->Enabled(RewriteOptions::kCachePartialHtml));
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kLazyloadImages));
   EXPECT_TRUE(options->Enabled(RewriteOptions::kHandleNoscriptRedirect));
 }
 
@@ -821,7 +821,7 @@ TEST_F(RewriteQueryTest, NoscripWithTrailingQuotetHeader) {
   RewriteOptions::FilterVector filter_vector;
   options->GetEnabledFiltersRequiringScriptExecution(&filter_vector);
   EXPECT_TRUE(filter_vector.empty());
-  EXPECT_FALSE(options->Enabled(RewriteOptions::kCachePartialHtml));
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kLazyloadImages));
   EXPECT_TRUE(options->Enabled(RewriteOptions::kHandleNoscriptRedirect));
 }
 
@@ -833,7 +833,7 @@ TEST_F(RewriteQueryTest, NoscripWithTrailingQuestionMarkHeader) {
   RewriteOptions::FilterVector filter_vector;
   options->GetEnabledFiltersRequiringScriptExecution(&filter_vector);
   EXPECT_TRUE(filter_vector.empty());
-  EXPECT_FALSE(options->Enabled(RewriteOptions::kCachePartialHtml));
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kLazyloadImages));
   EXPECT_TRUE(options->Enabled(RewriteOptions::kHandleNoscriptRedirect));
 }
 

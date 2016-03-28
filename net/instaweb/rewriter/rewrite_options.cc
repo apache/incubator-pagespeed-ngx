@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <new>
 #include <set>
 #include <utility>
 
@@ -701,9 +702,9 @@ const RewriteOptions::Filter kTestFilterSet[] = {
 
 // Note: These filters should not be included even if the level is "All".
 const RewriteOptions::Filter kDangerousFilterSet[] = {
-    RewriteOptions::kCachePartialHtml,
+    RewriteOptions::kCachePartialHtmlDeprecated,
     RewriteOptions::kCanonicalizeJavascriptLibraries,
-    RewriteOptions::kComputeVisibleText,  // internal, enabled conditionally
+    RewriteOptions::kComputeVisibleTextDeprecated,
     RewriteOptions::kDeterministicJs,     // used for measurement
     RewriteOptions::kDisableJavascript,
     RewriteOptions::kDivStructure,
@@ -722,7 +723,7 @@ const RewriteOptions::Filter kDangerousFilterSet[] = {
 // SupportNoscriptFilter::IsAnyFilterRequiringScriptExecutionEnabled() method
 // if you update this list.
 const RewriteOptions::Filter kRequiresScriptExecutionFilterSet[] = {
-  RewriteOptions::kCachePartialHtml,
+  RewriteOptions::kCachePartialHtmlDeprecated,
   RewriteOptions::kDedupInlinedImages,
   RewriteOptions::kDeferIframe,
   RewriteOptions::kDeferJavascript,
@@ -766,7 +767,7 @@ const RewriteOptions::FilterEnumToIdAndNameEntry
         {RewriteOptions::kAddIds, "ad", "Add Ids"},
         {RewriteOptions::kAddInstrumentation, "ai", "Add Instrumentation"},
         {RewriteOptions::kComputeStatistics, "ca", "Compute HTML statistics"},
-        {RewriteOptions::kCachePartialHtml, "ct", "Cache Partial Html"},
+        {RewriteOptions::kCachePartialHtmlDeprecated, "ct", "Deprecated."},
         {RewriteOptions::kCanonicalizeJavascriptLibraries, "ij",
          "Canonicalize Javascript library URLs"},
         {RewriteOptions::kCollapseWhitespace, "cw", "Collapse Whitespace"},
@@ -780,7 +781,7 @@ const RewriteOptions::FilterEnumToIdAndNameEntry
          RewriteOptions::kJavascriptCombinerId, "Combine Javascript"},
         {RewriteOptions::kComputeCriticalCss, "bc",
          "Background Compute Critical css"},
-        {RewriteOptions::kComputeVisibleText, "bp", "Computes visible text"},
+        {RewriteOptions::kComputeVisibleTextDeprecated, "bp", "Deprecated."},
         {RewriteOptions::kConvertGifToPng, "gp", "Convert Gif to Png"},
         {RewriteOptions::kConvertJpegToProgressive, "jp",
          "Convert Jpeg to Progressive"},

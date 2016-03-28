@@ -1136,22 +1136,6 @@
         'protoc.gypi',
       ],
     },
-    {
-      'target_name': 'instaweb_cache_html_info_pb',
-      'variables': {
-        'instaweb_protoc_subdir': 'net/instaweb/rewriter',
-      },
-      'sources': [
-        'rewriter/cache_html_info.proto',
-        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/cache_html_info.pb.cc',
-      ],
-      'dependencies': [
-        '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_http_pb',
-      ],
-      'includes': [
-        'protoc.gypi',
-      ],
-    },
 
     {
       'target_name': 'instaweb_http',
@@ -1343,7 +1327,6 @@
       'sources': [
         'config/rewrite_options_manager.cc',
         'rewriter/beacon_critical_images_finder.cc',
-        'rewriter/cache_html_info_finder.cc',
         'rewriter/critical_images_finder.cc',
         'rewriter/device_properties.cc',
         'rewriter/domain_lawyer.cc',
@@ -1509,7 +1492,6 @@
         'instaweb_add_instrumentation_data2c',
         'instaweb_add_instrumentation_opt_data2c',
         'instaweb_admin_site_css_data2c',
-        'instaweb_cache_html_info_pb',
         'instaweb_caches_css_data2c',
         'instaweb_caches_js_data2c',
         'instaweb_caches_js_opt_data2c',
@@ -1579,11 +1561,9 @@
         'rewriter/base_tag_filter.cc',
         'rewriter/blink_util.cc',
         'rewriter/cache_extender.cc',
-        'rewriter/cache_html_filter.cc',
         'rewriter/cacheable_resource_base.cc',
         'rewriter/collect_flush_early_content_filter.cc',
         'rewriter/common_filter.cc',
-        'rewriter/compute_visible_text_filter.cc',
         'rewriter/critical_css_beacon_filter.cc',
         'rewriter/critical_finder_support_util.cc',
         'rewriter/critical_images_beacon_filter.cc',
@@ -1682,7 +1662,6 @@
       'target_name': 'instaweb_automatic',
       'type': '<(library)',
       'dependencies': [
-        'instaweb_cache_html_info_pb',
         'instaweb_critical_keys_pb',
         'instaweb_flush_early_pb',
         'instaweb_rewriter',
@@ -1691,7 +1670,6 @@
         '<(DEPTH)/pagespeed/kernel.gyp:jsminify',
       ],
       'sources': [
-        '<(DEPTH)/pagespeed/automatic/cache_html_flow.cc',
         '<(DEPTH)/pagespeed/automatic/flush_early_flow.cc',
         '<(DEPTH)/pagespeed/automatic/html_detector.cc',
         '<(DEPTH)/pagespeed/automatic/proxy_fetch.cc',

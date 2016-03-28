@@ -20,13 +20,12 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_CSS_MOVE_TO_HEAD_FILTER_H_
 
 #include "net/instaweb/rewriter/public/common_filter.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "pagespeed/kernel/base/basictypes.h"
-#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/html/html_element.h"
 
 namespace net_instaweb {
 
-class HtmlElement;
-class RewriteDriver;
 class Statistics;
 class Variable;
 
@@ -44,7 +43,6 @@ class CssMoveToHeadFilter : public CommonFilter {
   virtual void EndElementImpl(HtmlElement* element);
 
   virtual const char* Name() const { return "CssMoveToHead"; }
-  virtual void DetermineEnabled(GoogleString* disabled_reason);
 
  private:
   // Should we move CSS into head? If not, we just move it above scripts.

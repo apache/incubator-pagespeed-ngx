@@ -72,8 +72,7 @@ class ProxyInterface : public UrlAsyncFetcher {
       bool is_resource_fetch,
       const GoogleUrl& request_url,
       RewriteOptions* options,
-      AsyncFetch* async_fetch,
-      const bool requires_blink_cohort);
+      AsyncFetch* async_fetch);
 
  protected:
   // Needed by subclasses when overriding InitiatePropertyCacheLookup.

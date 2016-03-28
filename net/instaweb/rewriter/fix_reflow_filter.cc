@@ -56,11 +56,7 @@ FixReflowFilter::~FixReflowFilter() {
 }
 
 void FixReflowFilter::DetermineEnabled(GoogleString* disabled_reason) {
-  set_is_enabled(JsDeferDisabledFilter::ShouldApply(rewrite_driver_) &&
-                 // Can we also share the following conditions with
-                 // JsDeferDisabledFilter.
-                 !rewrite_driver_->flushing_cached_html() &&
-                 !rewrite_driver_->flushed_cached_html());
+  set_is_enabled(JsDeferDisabledFilter::ShouldApply(rewrite_driver_));
   if (!is_enabled()) {
     rewrite_driver_->log_record()->LogRewriterHtmlStatus(
         RewriteOptions::FilterId(RewriteOptions::kFixReflows),

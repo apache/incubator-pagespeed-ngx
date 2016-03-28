@@ -1233,15 +1233,10 @@ void ProxyFetch::HandleIdleAlarm() {
 namespace {
 
 PropertyCache::CohortVector GetCohortList(
-    bool requires_blink_cohort,
     const ServerContext* server_context) {
   PropertyCache* page_property_cache = server_context->page_property_cache();
   const PropertyCache::CohortVector cohort_list =
       page_property_cache->GetAllCohorts();
-  if (requires_blink_cohort) {
-    return cohort_list;
-  }
-
   PropertyCache::CohortVector cohort_list_without_blink;
   for (int i = 0, m = cohort_list.size(); i < m; ++i) {
     if (cohort_list[i]->name() == BlinkUtil::kBlinkCohort) {
@@ -1306,8 +1301,7 @@ ProxyFetchPropertyCallbackCollector*
         const GoogleUrl& request_url,
         ServerContext* server_context,
         RewriteOptions* options,
-        AsyncFetch* async_fetch,
-        const bool requires_blink_cohort) {
+        AsyncFetch* async_fetch) {
   if (options == NULL) {
     options = server_context->global_options();
   }
@@ -1407,27 +1401,20 @@ ProxyFetchPropertyCallbackCollector*
   }
 
   // All callbacks need to be registered before Reads to avoid race.
-  PropertyCache::CohortVector cohort_list_without_blink =
-      GetCohortList(false /* requires_blink_cohort */, server_context);
+  PropertyCache::CohortVector cohort_list = GetCohortList(server_context);
   if (property_callback != NULL) {
-    page_property_cache->ReadWithCohorts(
-        requires_blink_cohort ?
-            GetCohortList(
-                true /* requires_blink_cohort */, server_context) :
-            cohort_list_without_blink,
-            property_callback);
+    page_property_cache->ReadWithCohorts(cohort_list, property_callback);
   }
 
   if (fallback_property_callback != NULL) {
     // Always read property page with fallback values without blink as there is
     // no property in BlinkCohort which can used fallback values.
-    page_property_cache->ReadWithCohorts(cohort_list_without_blink,
+    page_property_cache->ReadWithCohorts(cohort_list,
                                          fallback_property_callback);
   }
 
   if (origin_property_callback != NULL) {
-    page_property_cache->ReadWithCohorts(cohort_list_without_blink,
-                                         origin_property_callback);
+    page_property_cache->ReadWithCohorts(cohort_list, origin_property_callback);
   }
 
   if (added_callback) {

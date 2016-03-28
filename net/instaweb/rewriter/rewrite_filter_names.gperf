@@ -31,7 +31,7 @@ struct FilterMap {
 "add_head",                          RewriteOptions::kAddHead
 "add_ids",                           RewriteOptions::kAddIds
 "add_instrumentation",               RewriteOptions::kAddInstrumentation
-"cache_partial_html",                RewriteOptions::kCachePartialHtml
+"cache_partial_html",                RewriteOptions::kCachePartialHtmlDeprecated
 "canonicalize_javascript_libraries", RewriteOptions::kCanonicalizeJavascriptLibraries
 "collapse_whitespace",               RewriteOptions::kCollapseWhitespace
 "combine_css",                       RewriteOptions::kCombineCss

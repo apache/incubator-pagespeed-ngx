@@ -57,7 +57,6 @@ namespace pagespeed { namespace js { struct JsTokenizerPatterns; } }
 namespace net_instaweb {
 
 class AsyncFetch;
-class CacheHtmlInfoFinder;
 class CachePropertyStore;
 class CriticalImagesFinder;
 class CriticalSelectorFinder;
@@ -286,15 +285,9 @@ class ServerContext {
   }
   void set_user_agent_matcher(UserAgentMatcher* n) { user_agent_matcher_ = n; }
 
-  CacheHtmlInfoFinder* cache_html_info_finder() const {
-    return cache_html_info_finder_.get();
-  }
-
   SimpleRandom* simple_random() {
     return &simple_random_;
   }
-
-  void set_cache_html_info_finder(CacheHtmlInfoFinder* finder);
 
   // Whether or not dumps of rewritten resources should be stored to
   // the filesystem. This is meant for testing purposes only.
@@ -716,7 +709,6 @@ class ServerContext {
   SHA1Signature* signature_;
   scoped_ptr<CriticalImagesFinder> critical_images_finder_;
   scoped_ptr<CriticalSelectorFinder> critical_selector_finder_;
-  scoped_ptr<CacheHtmlInfoFinder> cache_html_info_finder_;
   scoped_ptr<FlushEarlyInfoFinder> flush_early_info_finder_;
 
   // hasher_ is often set to a mock within unit tests, but some parts of the

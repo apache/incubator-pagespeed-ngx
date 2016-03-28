@@ -51,13 +51,13 @@ void CssMoveToHeadFilter::InitStats(Statistics* statistics) {
 }
 
 void CssMoveToHeadFilter::StartDocumentImpl() {
-  move_to_element_ = NULL;
+  move_to_element_ = nullptr;
 }
 
 void CssMoveToHeadFilter::EndElementImpl(HtmlElement* element) {
   HtmlElement::Attribute* href;
   const char* media;
-  if (move_to_element_ == NULL) {
+  if (move_to_element_ == nullptr) {
     // We record the first we see, either </head> or <script>. That will be
     // the anchor for where to move all styles.
     if (move_css_to_head_ &&
@@ -71,13 +71,13 @@ void CssMoveToHeadFilter::EndElementImpl(HtmlElement* element) {
     }
   } else if (element->keyword() == HtmlName::kStyle ||
              CssTagScanner::ParseCssElement(element, &href, &media)) {
-    if (noscript_element() != NULL ||
+    if (noscript_element() != nullptr ||
         (element->keyword() == HtmlName::kStyle &&
-         element->FindAttribute(HtmlName::kScoped) != NULL)) {
+         element->FindAttribute(HtmlName::kScoped) != nullptr)) {
       // Do not move anything out of a <noscript> element, and do not move
       // <style scoped> elements.  These act as a barrier preventing subsequent
       // styles from moving to head.
-      move_to_element_ = NULL;
+      move_to_element_ = nullptr;
     } else {
       css_elements_moved_->Add(1);
       // MoveCurrent* methods will check that that we are allowed to move these
@@ -91,10 +91,6 @@ void CssMoveToHeadFilter::EndElementImpl(HtmlElement* element) {
       }
     }
   }
-}
-
-void CssMoveToHeadFilter::DetermineEnabled(GoogleString* disabled_reason) {
-  set_is_enabled(!driver()->flushed_cached_html());
 }
 
 }  // namespace net_instaweb

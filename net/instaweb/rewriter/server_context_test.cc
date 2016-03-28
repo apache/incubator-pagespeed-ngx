@@ -445,8 +445,8 @@ TEST_F(ServerContextTest, CustomOptionsWithNoUrlNamerOptions) {
   options->EnableFilter(RewriteOptions::kDelayImages);
   EXPECT_FALSE(options->Enabled(RewriteOptions::kDelayImages));
 
-  options->EnableFilter(RewriteOptions::kCachePartialHtml);
-  EXPECT_FALSE(options->Enabled(RewriteOptions::kCachePartialHtml));
+  options->EnableFilter(RewriteOptions::kCachePartialHtmlDeprecated);
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kCachePartialHtmlDeprecated));
   options->EnableFilter(RewriteOptions::kDeferIframe);
   EXPECT_FALSE(options->Enabled(RewriteOptions::kDeferIframe));
   options->EnableFilter(RewriteOptions::kDeferJavascript);

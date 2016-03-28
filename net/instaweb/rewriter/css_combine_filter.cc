@@ -22,7 +22,6 @@
 
 #include "net/instaweb/rewriter/public/css_combine_filter.h"
 
-#include <memory>
 #include <vector>
 
 #include "base/logging.h"
@@ -56,8 +55,6 @@
 namespace net_instaweb {
 
 class MessageHandler;
-class HtmlIEDirectiveNode;
-class UrlSegmentEncoder;
 
 // Names for Statistics variables.
 const char CssCombineFilter::kCssCombineOpportunities[] =
@@ -536,8 +533,6 @@ void CssCombineFilter::DetermineEnabled(GoogleString* disabled_reason) {
   if (driver()->options()->css_preserve_urls()) {
     *disabled_reason = "Due to CSS URL preservation being on.";
     set_is_enabled(false);
-  } else {
-    set_is_enabled(!driver()->flushed_cached_html());
   }
 }
 

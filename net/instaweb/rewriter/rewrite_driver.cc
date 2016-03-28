@@ -45,9 +45,7 @@
 #include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
 #include "net/instaweb/rewriter/public/base_tag_filter.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
-#include "net/instaweb/rewriter/public/cache_html_filter.h"
 #include "net/instaweb/rewriter/public/collect_flush_early_content_filter.h"
-#include "net/instaweb/rewriter/public/compute_visible_text_filter.h"
 #include "net/instaweb/rewriter/public/critical_css_beacon_filter.h"
 #include "net/instaweb/rewriter/public/critical_images_beacon_filter.h"
 #include "net/instaweb/rewriter/public/critical_selector_filter.h"
@@ -248,8 +246,6 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       fast_blocking_rewrite_(true),
       flush_requested_(false),
       flush_occurred_(false),
-      flushed_cached_html_(false),
-      flushing_cached_html_(false),
       flushed_early_(false),
       flushing_early_(false),
       is_lazyload_script_flushed_(false),
@@ -439,8 +435,6 @@ void RewriteDriver::Clear() NO_THREAD_SAFETY_ANALYSIS {
   status_code_ = 0;
   flush_requested_ = false;
   flush_occurred_ = false;
-  flushed_cached_html_ = false;
-  flushing_cached_html_ = false;
   flushed_early_ = false;
   flushing_early_ = false;
   tried_to_distribute_fetch_ = false;
@@ -1278,8 +1272,7 @@ void RewriteDriver::AddPostRenderFilters() {
     // defer js so that its onload handler can fire before JS starts executing.
     AddOwnedPostRenderFilter(new AddInstrumentationFilter(this));
   }
-  if (rewrite_options->Enabled(RewriteOptions::kDeferJavascript) ||
-      rewrite_options->Enabled(RewriteOptions::kCachePartialHtml)) {
+  if (rewrite_options->Enabled(RewriteOptions::kDeferJavascript)) {
     // Defers javascript download and execution to post onload. This filter
     // should be applied before JsDisableFilter and JsDeferFilter.
     // kDeferIframe filter should never be turned on when either defer_js
@@ -1333,11 +1326,6 @@ void RewriteDriver::AddPostRenderFilters() {
 
   if (rewrite_options->Enabled(RewriteOptions::kStripNonCacheable)) {
     StripNonCacheableFilter* filter = new StripNonCacheableFilter(this);
-    AddOwnedPostRenderFilter(filter);
-  }
-
-  if (rewrite_options->Enabled(RewriteOptions::kComputeVisibleText)) {
-    ComputeVisibleTextFilter* filter = new ComputeVisibleTextFilter(this);
     AddOwnedPostRenderFilter(filter);
   }
 
@@ -1431,10 +1419,7 @@ void RewriteDriver::RegisterRewriteFilter(RewriteFilter* filter) {
 void RewriteDriver::SetWriter(Writer* writer) {
   writer_ = writer;
   if (html_writer_filter_ == NULL) {
-    if (options()->Enabled(RewriteOptions::kCachePartialHtml) &&
-               flushed_cached_html_) {
-      html_writer_filter_.reset(new CacheHtmlFilter(this));
-    } else if (options()->Enabled(RewriteOptions::kFlushSubresources) &&
+    if (options()->Enabled(RewriteOptions::kFlushSubresources) &&
         flushing_early_) {
       // If we are flushing early using this RewriteDriver object, we use the
       // FlushEarlyContentWriterFilter.

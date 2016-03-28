@@ -67,7 +67,6 @@
         '<(DEPTH)/third_party/libwebp/src',
       ],
       'sources': [
-        '<(DEPTH)/pagespeed/automatic/cache_html_flow_test.cc',
         '<(DEPTH)/pagespeed/automatic/flush_early_flow_test.cc',
         '<(DEPTH)/pagespeed/automatic/html_detector_test.cc',
         '<(DEPTH)/pagespeed/automatic/proxy_fetch_test.cc',
@@ -105,12 +104,9 @@
         'rewriter/beacon_critical_images_finder_test.cc',
         'rewriter/blink_util_test.cc',
         'rewriter/cache_extender_test.cc',
-        'rewriter/cache_html_filter_test.cc',
         'rewriter/cacheable_resource_base_test.cc',
         'rewriter/collect_flush_early_content_filter_test.cc',
         'rewriter/common_filter_test.cc',
-        # TODO(jmarantz): delete this filter entirely along with its test.
-        #'rewriter/compute_visible_text_filter_test.cc',
         'rewriter/critical_css_beacon_filter_test.cc',
         'rewriter/critical_finder_support_util_test.cc',
         'rewriter/critical_images_beacon_filter_test.cc',

@@ -1085,12 +1085,6 @@ class RewriteDriver : public HtmlParse {
   // that browsers should parse it as XHTML.
   XhtmlStatus MimeTypeXhtmlStatus();
 
-  void set_flushed_cached_html(bool x) { flushed_cached_html_ = x; }
-  bool flushed_cached_html() { return flushed_cached_html_; }
-
-  void set_flushing_cached_html(bool x) { flushing_cached_html_ = x; }
-  bool flushing_cached_html() const { return flushing_cached_html_; }
-
   void set_flushed_early(bool x) { flushed_early_ = x; }
   bool flushed_early() const { return flushed_early_; }
 
@@ -1547,12 +1541,6 @@ class RewriteDriver : public HtmlParse {
 
   bool flush_requested_;
   bool flush_occurred_;
-
-  // If it is true, then cached html is flushed.
-  bool flushed_cached_html_;
-
-  // If it is true, then we are using this RewriteDriver to flush cached html.
-  bool flushing_cached_html_;
 
   // If it is true, then the bytes were flushed before receiving bytes from the
   // origin server.

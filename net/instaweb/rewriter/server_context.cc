@@ -30,7 +30,6 @@
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
-#include "net/instaweb/rewriter/public/cache_html_info_finder.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/experiment_matcher.h"
@@ -1000,10 +999,6 @@ void ServerContext::MakePagePropertyCache(PropertyStore* property_store) {
   // TODO(pulkitg): Remove set_enabled method from property_cache.
   pcache->set_enabled(enable_property_cache_);
   page_property_cache_.reset(pcache);
-}
-
-void ServerContext::set_cache_html_info_finder(CacheHtmlInfoFinder* finder) {
-  cache_html_info_finder_.reset(finder);
 }
 
 void ServerContext::set_critical_images_finder(CriticalImagesFinder* finder) {

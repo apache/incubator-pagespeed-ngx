@@ -64,7 +64,6 @@
 #include "pagespeed/kernel/thread/scheduler.h"
 #include "pagespeed/kernel/util/file_system_lock_manager.h"
 #include "pagespeed/kernel/util/nonce_generator.h"
-#include "pagespeed/opt/http/property_cache.h"
 
 namespace net_instaweb {
 
@@ -391,11 +390,6 @@ FlushEarlyInfoFinder* RewriteDriverFactory::DefaultFlushEarlyInfoFinder() {
   return NULL;
 }
 
-CacheHtmlInfoFinder* RewriteDriverFactory::DefaultCacheHtmlInfoFinder(
-    PropertyCache* cache, ServerContext* server_context) {
-  return NULL;
-}
-
 UsageDataReporter* RewriteDriverFactory::DefaultUsageDataReporter() {
   return new UsageDataReporter;
 }
@@ -516,14 +510,11 @@ void RewriteDriverFactory::InitServerContext(ServerContext* server_context) {
   server_context->set_signature(signature());
   server_context->set_message_handler(message_handler());
   server_context->set_static_asset_manager(static_asset_manager());
-  PropertyCache* pcache = server_context->page_property_cache();
   server_context->set_critical_images_finder(
       DefaultCriticalImagesFinder(server_context));
   server_context->set_critical_selector_finder(
       DefaultCriticalSelectorFinder(server_context));
   server_context->set_flush_early_info_finder(DefaultFlushEarlyInfoFinder());
-  server_context->set_cache_html_info_finder(
-      DefaultCacheHtmlInfoFinder(pcache, server_context));
   server_context->set_hostname(hostname_);
   server_context->PostInitHook();
   InitDecodingDriver(server_context);

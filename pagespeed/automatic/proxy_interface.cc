@@ -26,7 +26,6 @@
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_timing_info.h"
-#include "net/instaweb/rewriter/public/blink_util.h"
 #include "net/instaweb/rewriter/public/experiment_matcher.h"
 #include "net/instaweb/rewriter/public/experiment_util.h"
 #include "net/instaweb/rewriter/public/resource_fetch.h"
@@ -34,7 +33,6 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "pagespeed/automatic/cache_html_flow.h"
 #include "pagespeed/automatic/flush_early_flow.h"
 #include "pagespeed/automatic/proxy_fetch.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
@@ -56,8 +54,6 @@ namespace net_instaweb {
 
 class MessageHandler;
 
-const char ProxyInterface::kCacheHtmlRequestCount[] =
-    "cache-html-requests";
 namespace {
 
 // Names for Statistics variables.
@@ -87,8 +83,6 @@ ProxyInterface::ProxyInterface(const StringPiece& hostname, int port,
       port_(port),
       all_requests_(stats->GetTimedVariable(kTotalRequestCount)),
       pagespeed_requests_(stats->GetTimedVariable(kPagespeedRequestCount)),
-      cache_html_flow_requests_(
-          stats->GetTimedVariable(kCacheHtmlRequestCount)),
       rejected_requests_(stats->GetTimedVariable(kRejectedRequestCount)),
       requests_without_domain_config_(
           stats->GetTimedVariable(kNoDomainConfigRequestCount)),
@@ -105,8 +99,6 @@ void ProxyInterface::InitStats(Statistics* statistics) {
                                ServerContext::kStatisticsGroup);
   statistics->AddTimedVariable(kPagespeedRequestCount,
                                ServerContext::kStatisticsGroup);
-  statistics->AddTimedVariable(kCacheHtmlRequestCount,
-                               ServerContext::kStatisticsGroup);
   statistics->AddTimedVariable(kRejectedRequestCount,
                                ServerContext::kStatisticsGroup);
   statistics->AddTimedVariable(kRejectedRequestCount,
@@ -115,7 +107,6 @@ void ProxyInterface::InitStats(Statistics* statistics) {
                                ServerContext::kStatisticsGroup);
   statistics->AddTimedVariable(kNoDomainConfigResourceRequestCount,
                                ServerContext::kStatisticsGroup);
-  CacheHtmlFlow::InitStats(statistics);
   FlushEarlyFlow::InitStats(statistics);
 }
 
@@ -213,11 +204,9 @@ ProxyFetchPropertyCallbackCollector*
     bool is_resource_fetch,
     const GoogleUrl& request_url,
     RewriteOptions* options,
-    AsyncFetch* async_fetch,
-    const bool requires_blink_cohort) {
+    AsyncFetch* async_fetch) {
   return ProxyFetchFactory::InitiatePropertyCacheLookup(
-      is_resource_fetch, request_url, server_context_, options, async_fetch,
-      requires_blink_cohort);
+      is_resource_fetch, request_url, server_context_, options, async_fetch);
 }
 
 void ProxyInterface::GetRewriteOptionsDone(RequestData* request_data,
@@ -327,27 +316,14 @@ void ProxyInterface::GetRewriteOptionsDone(RequestData* request_data,
               *server_context_->user_agent_matcher(), options);
       options->set_need_to_store_experiment_data(need_to_store_experiment_data);
     }
-    const char* user_agent = async_fetch->request_headers()->Lookup1(
-        HttpAttributes::kUserAgent);
-
-    // Whether it's a cache html request should not change despite the fact
-    // a new driver is created later on.
-    const bool is_cache_html_request = BlinkUtil::IsBlinkRequest(
-        *request_url, async_fetch, options,
-        user_agent, server_context_,
-        RewriteOptions::kCachePartialHtml);
 
     ProxyFetchPropertyCallbackCollector* property_callback = NULL;
 
     if (options == NULL ||
         (options->enabled() && options->IsAllowed(request_url->Spec()))) {
-      // Ownership of "property_callback" is eventually assumed by either
-      // CacheHtmlFlow or ProxyFetch.
-      property_callback = InitiatePropertyCacheLookup(is_resource_fetch,
-                                                      *request_url,
-                                                      options,
-                                                      async_fetch,
-                                                      is_cache_html_request);
+      // Ownership of "property_callback" is eventually assumed by ProxyFetch.
+      property_callback = InitiatePropertyCacheLookup(
+          is_resource_fetch, *request_url, options, async_fetch);
     }
 
     if (options != NULL) {
@@ -390,17 +366,6 @@ void ProxyInterface::GetRewriteOptionsDone(RequestData* request_data,
     if (driver->options() != NULL && driver->options()->enabled() &&
         property_callback != NULL &&
         driver->options()->IsAllowed(url_string)) {
-      if (is_cache_html_request) {
-        cache_html_flow_requests_->IncBy(1);
-        CacheHtmlFlow::Start(url_string,
-                             async_fetch,
-                             driver,
-                             proxy_fetch_factory_.get(),
-                             // Takes ownership of property_callback.
-                             property_callback);
-
-        return;
-      }
       // NOTE: The FlushEarly flow will run in parallel with the ProxyFetch,
       // but will not begin (FlushEarlyFlwow::FlushEarly) until the
       // PropertyCache lookup has completed.

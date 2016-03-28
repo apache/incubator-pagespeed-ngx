@@ -92,9 +92,6 @@ bool SupportNoscriptFilter::IsAnyFilterRequiringScriptExecutionEnabled() const {
       case RewriteOptions::kFlushSubresources:
         filter_enabled = rewrite_driver_->flushed_early();;
         break;
-      case RewriteOptions::kCachePartialHtml:
-        filter_enabled = rewrite_driver_->flushing_cached_html();
-        break;
       case RewriteOptions::kMobilize:
         filter_enabled =
             MobilizeRewriteFilter::IsApplicableFor(rewrite_driver_);
