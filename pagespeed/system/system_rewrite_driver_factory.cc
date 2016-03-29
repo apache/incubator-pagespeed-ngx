@@ -195,6 +195,8 @@ void SystemRewriteDriverFactory::InitStats(Statistics* statistics) {
   SystemCaches::InitStats(statistics);
   PropertyCache::InitCohortStats(RewriteDriver::kBeaconCohort, statistics);
   PropertyCache::InitCohortStats(RewriteDriver::kDomCohort, statistics);
+  PropertyCache::InitCohortStats(RewriteDriver::kDependenciesCohort,
+                                 statistics);
   InPlaceResourceRecorder::InitStats(statistics);
   RateController::InitStats(statistics);
 

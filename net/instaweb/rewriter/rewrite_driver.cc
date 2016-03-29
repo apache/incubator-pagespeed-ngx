@@ -221,6 +221,7 @@ class RewriteDriverCacheUrlAsyncFetcherAsyncOpHooks
 
 const char RewriteDriver::kDomCohort[] = "dom";
 const char RewriteDriver::kBeaconCohort[] = "beacon_cohort";
+const char RewriteDriver::kDependenciesCohort[] = "dependencies_cohort";
 const char RewriteDriver::kSubresourcesPropertyName[] = "subresources";
 const char RewriteDriver::kStatusCodePropertyName[] = "status_code";
 

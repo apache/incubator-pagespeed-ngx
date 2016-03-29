@@ -298,11 +298,15 @@ class SystemCachesTest : public CustomRewriteTestBase<SystemRewriteOptions> {
     Statistics* stats = factory()->statistics();
     SystemCaches::InitStats(stats);
     SystemServerContext::InitStats(stats);
+    // These are normally done by SystemRewriteDriverFactory.
     CacheStats::InitStats(
         PropertyCache::GetStatsPrefix(RewriteDriver::kBeaconCohort),
         stats);
     CacheStats::InitStats(
         PropertyCache::GetStatsPrefix(RewriteDriver::kDomCohort),
+        stats);
+    CacheStats::InitStats(
+        PropertyCache::GetStatsPrefix(RewriteDriver::kDependenciesCohort),
         stats);
   }
 

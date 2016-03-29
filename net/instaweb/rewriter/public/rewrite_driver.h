@@ -148,6 +148,10 @@ class RewriteDriver : public HtmlParse {
   static const char kDomCohort[];
   // The cohort for properties that are written by the beacon handler.
   static const char kBeaconCohort[];
+  // Cohort for dependency information. This is written at different time than
+  // kDomCohort, and might not be in use for some requests, depending on
+  // settings.
+  static const char kDependenciesCohort[];
 
   // Property Names in DomCohort.
   // Tracks the timestamp when we last received a request for this url.

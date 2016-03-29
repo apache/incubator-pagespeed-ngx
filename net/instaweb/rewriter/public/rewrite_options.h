@@ -3089,6 +3089,10 @@ class RewriteOptions {
   // but we might want to reconsider if those assumptions change.
   HttpOptions ComputeHttpOptions() const;
 
+  // Returns true if this configuration turns on options that may need
+  // the dependencies cohort to operate.
+  bool NeedsDependenciesCohort() const { return false; }
+
  protected:
   // Helper class to represent an Option, whose value is held in some class T.
   // An option is explicitly initialized with its default value, although the

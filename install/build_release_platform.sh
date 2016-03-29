@@ -249,6 +249,12 @@ check install.log sudo -E $RESTART
 echo Testing release ...
 check system_test.log sudo -E $TEST
 
+echo Copy the unstripped .so files to a safe place for easier debugging later.
+cp $build_dir/src/out/Release/libmod_pagespeed.so \
+  ${HOME}/release/${RELEASE}/unstripped_libmodpagespeed_${NBITS}_${EXT}.so
+cp $build_dir/src/out/Release/libmod_pagespeed_ap24.so \
+  ${HOME}/release/${RELEASE}/unstripped_libmodpagespeed_ap24_${NBITS}_${EXT}.so
+
 # Because we now build on the build-bots which are not on the internal network,
 # we can't just scp to the signing server. The copying step must be pulled from
 # there.

@@ -333,6 +333,12 @@ void SystemCaches::SetupPcacheCohorts(ServerContext* server_context,
 
   cohort = server_context->AddCohort(RewriteDriver::kDomCohort, pcache);
   server_context->set_dom_cohort(cohort);
+
+  if (server_context->global_options()->NeedsDependenciesCohort()) {
+    cohort = server_context->AddCohort(RewriteDriver::kDependenciesCohort,
+                                      pcache);
+    server_context->set_dependencies_cohort(cohort);
+  }
 }
 
 void SystemCaches::SetupCaches(ServerContext* server_context,
