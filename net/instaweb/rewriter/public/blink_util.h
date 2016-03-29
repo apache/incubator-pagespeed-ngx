@@ -56,7 +56,6 @@ const char kJsonCachePrefix[] = "json:";
 const char kBlinkResponseCodePropertyName[] = "blink_last_response_code";
 const char kXpath[] = "xpath";
 // TODO(rahulbansal): Use these constants everywhere in the code from here.
-const char kBlinkCohort[] = "blink";
 const char kBlinkCriticalLineDataPropertyName[] = "blink_critical_line_data";
 const char kCacheHtmlRewriterInfo[] = "cache_html";
 const char kComputeVisibleTextFilterOutputEndMarker[] =

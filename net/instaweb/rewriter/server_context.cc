@@ -264,7 +264,6 @@ ServerContext::ServerContext(RewriteDriverFactory* factory)
       lock_manager_(NULL),
       message_handler_(NULL),
       dom_cohort_(NULL),
-      blink_cohort_(NULL),
       beacon_cohort_(NULL),
       dependencies_cohort_(NULL),
       fix_reflow_cohort_(NULL),

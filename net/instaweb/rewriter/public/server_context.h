@@ -234,9 +234,6 @@ class ServerContext {
   const PropertyCache::Cohort* dom_cohort() const { return dom_cohort_; }
   void set_dom_cohort(const PropertyCache::Cohort* c) { dom_cohort_ = c; }
 
-  const PropertyCache::Cohort* blink_cohort() const { return blink_cohort_; }
-  void set_blink_cohort(const PropertyCache::Cohort* c) { blink_cohort_ = c; }
-
   const PropertyCache::Cohort* beacon_cohort() const { return beacon_cohort_; }
   void set_beacon_cohort(const PropertyCache::Cohort* c) { beacon_cohort_ = c; }
 
@@ -743,7 +740,6 @@ class ServerContext {
   MessageHandler* message_handler_;
 
   const PropertyCache::Cohort* dom_cohort_;
-  const PropertyCache::Cohort* blink_cohort_;
   const PropertyCache::Cohort* beacon_cohort_;
   const PropertyCache::Cohort* dependencies_cohort_;
   const PropertyCache::Cohort* fix_reflow_cohort_;

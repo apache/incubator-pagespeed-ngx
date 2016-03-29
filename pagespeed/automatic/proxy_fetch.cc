@@ -1235,16 +1235,10 @@ namespace {
 PropertyCache::CohortVector GetCohortList(
     const ServerContext* server_context) {
   PropertyCache* page_property_cache = server_context->page_property_cache();
+  // TODO(morlovich): Filter out dependencies cohort here if it's not needed.
   const PropertyCache::CohortVector cohort_list =
       page_property_cache->GetAllCohorts();
-  PropertyCache::CohortVector cohort_list_without_blink;
-  for (int i = 0, m = cohort_list.size(); i < m; ++i) {
-    if (cohort_list[i]->name() == BlinkUtil::kBlinkCohort) {
-      continue;
-    }
-    cohort_list_without_blink.push_back(cohort_list[i]);
-  }
-  return cohort_list_without_blink;
+  return cohort_list;
 }
 
 bool UrlMightHavePropertyCacheEntry(const GoogleUrl& url) {
