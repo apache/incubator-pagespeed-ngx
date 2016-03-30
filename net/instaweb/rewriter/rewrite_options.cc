@@ -714,7 +714,6 @@ const RewriteOptions::Filter kDangerousFilterSet[] = {
     RewriteOptions::kMobilize,
     RewriteOptions::kMobilizePrecompute,      // TODO(jud): Unused, remove.
     RewriteOptions::kServeDeprecationNotice,  // internal.
-    RewriteOptions::kStripNonCacheable,       // internal, enabled conditionally
     RewriteOptions::kStripScripts,
 };
 
@@ -884,7 +883,6 @@ const RewriteOptions::FilterEnumToIdAndNameEntry
         {RewriteOptions::kStripImageColorProfile, "cp",
          "Strip Image Color Profiles"},
         {RewriteOptions::kStripImageMetaData, "md", "Strip Image Meta Data"},
-        {RewriteOptions::kStripNonCacheable, "nc", "Strip Non Cacheable"},
         {RewriteOptions::kStripScripts, "ss", "Strip Scripts"},
 };
 

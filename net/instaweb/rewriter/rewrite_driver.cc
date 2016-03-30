@@ -113,7 +113,6 @@
 #include "net/instaweb/rewriter/public/rewritten_content_scanning_filter.h"
 #include "net/instaweb/rewriter/public/scan_filter.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/strip_non_cacheable_filter.h"
 #include "net/instaweb/rewriter/public/strip_scripts_filter.h"
 #include "net/instaweb/rewriter/public/strip_subresource_hints_filter.h"
 #include "net/instaweb/rewriter/public/support_noscript_filter.h"
@@ -1323,11 +1322,6 @@ void RewriteDriver::AddPostRenderFilters() {
   if (rewrite_options->max_html_parse_bytes() > 0) {
     AddOwnedPostRenderFilter(new RedirectOnSizeLimitFilter(this));
     set_size_limit(rewrite_options->max_html_parse_bytes());
-  }
-
-  if (rewrite_options->Enabled(RewriteOptions::kStripNonCacheable)) {
-    StripNonCacheableFilter* filter = new StripNonCacheableFilter(this);
-    AddOwnedPostRenderFilter(filter);
   }
 
   if (rewrite_options->Enabled(RewriteOptions::kPedantic)) {
