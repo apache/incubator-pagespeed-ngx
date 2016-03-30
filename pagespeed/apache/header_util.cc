@@ -17,6 +17,7 @@
 #include "pagespeed/apache/header_util.h"
 
 #include <cstdio>
+#include <cstddef>
 #include <memory>
 #include <utility>
 
@@ -33,7 +34,6 @@
 #include "apr_strings.h"
 #include "http_core.h"
 #include "http_protocol.h"
-#include "httpd.h"
 
 namespace net_instaweb {
 

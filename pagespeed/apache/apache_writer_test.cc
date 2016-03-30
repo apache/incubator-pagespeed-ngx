@@ -16,15 +16,15 @@
 
 #include "pagespeed/apache/apache_writer.h"
 
+#include "pagespeed/apache/apache_httpd_includes.h"
 #include "pagespeed/apache/header_util.h"
 #include "pagespeed/apache/mock_apache.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/null_message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/null_thread_system.h"
 #include "pagespeed/kernel/http/response_headers.h"
-
-#include "httpd.h"  // NOLINT
 
 namespace net_instaweb {
 

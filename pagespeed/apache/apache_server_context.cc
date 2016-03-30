@@ -16,16 +16,11 @@
 
 #include "pagespeed/apache/apache_server_context.h"
 
-#include "httpd.h"                  // NOLINT
 #include "http_protocol.h"          // NOLINT
-#include "base/logging.h"
-#include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/rewriter/public/rewrite_driver_pool.h"
 #include "pagespeed/apache/apache_config.h"
 #include "pagespeed/apache/apache_request_context.h"
 #include "pagespeed/apache/apache_rewrite_driver_factory.h"
 #include "pagespeed/automatic/proxy_fetch.h"
-#include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/file_system.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/statistics.h"
@@ -34,8 +29,6 @@
 #include "pagespeed/kernel/http/http_names.h"
 
 namespace net_instaweb {
-
-class RewriteOptions;
 
 ApacheServerContext::ApacheServerContext(
     ApacheRewriteDriverFactory* factory,

@@ -25,8 +25,7 @@
 #include "base/debug/debugger.h"
 #include "base/debug/stack_trace.h"
 #include "base/logging.h"
-
-#include "httpd.h"
+#include "pagespeed/apache/apache_httpd_includes.h"
 #include "pagespeed/apache/apache_logging_includes.h"
 
 // Make sure we don't attempt to use LOG macros here, since doing so

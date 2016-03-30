@@ -70,7 +70,7 @@
 #include "http_config.h"                                             // NOLINT
 #include "http_protocol.h"                                           // NOLINT
 #include "http_request.h"                                            // NOLINT
-#include "httpd.h"                                                   // NOLINT
+#include "pagespeed/apache/apache_httpd_includes.h"      // NOLINT
 
 // This include-file is order-dependent; it must come after the above apache
 // includes, and not be in abc-order with the net/instaweb/... includes.
@@ -984,7 +984,7 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
 
   factory->RootInit();
 
-  return OK;
+  return APACHE_OK;
 }
 
 // Here log transaction will wait for all the asynchronous resource fetchers to
@@ -998,7 +998,7 @@ int pagespeed_modify_request(request_rec* r) {
   ApacheServerContext* server_context =
       InstawebContext::ServerContextFromServerRec(r->server);
   if (server_context->global_config()->unplugged()) {
-    return OK;
+    return APACHE_OK;
   }
 
   // This method is based in part on mod_remoteip.
@@ -1039,7 +1039,7 @@ int pagespeed_modify_request(request_rec* r) {
       c->remote_host = apr_pstrdup(client_addr->pool, "");
     }
   }
-  return OK;
+  return APACHE_OK;
 }
 
 // This function is a callback and it declares what

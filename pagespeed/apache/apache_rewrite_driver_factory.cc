@@ -19,8 +19,8 @@
 
 #include <unistd.h>
 
+#include "pagespeed/apache/apache_httpd_includes.h"
 #include "apr_pools.h"
-#include "httpd.h"
 #include "ap_mpm.h"
 
 #include "base/logging.h"
@@ -31,11 +31,13 @@
 #include "pagespeed/apache/apr_timer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/null_shared_mem.h"
 #include "pagespeed/kernel/base/stl_util.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/sharedmem/shared_circular_buffer.h"
 #include "pagespeed/kernel/thread/pthread_shared_mem.h"
 #include "pagespeed/kernel/thread/slow_worker.h"

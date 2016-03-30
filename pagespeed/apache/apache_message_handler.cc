@@ -22,7 +22,7 @@
 #include "pagespeed/apache/apr_timer.h"
 #include "pagespeed/apache/log_message_handler.h"
 
-#include "httpd.h"
+#include "pagespeed/apache/apache_httpd_includes.h"
 #include "pagespeed/apache/apache_logging_includes.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/debug.h"

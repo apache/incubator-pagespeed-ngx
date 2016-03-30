@@ -19,6 +19,7 @@
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "pagespeed/apache/apache_httpd_includes.h"
 #include "pagespeed/apache/header_util.h"
 #include "pagespeed/apache/mock_apache.h"
 #include "pagespeed/kernel/base/function.h"
@@ -31,8 +32,6 @@
 #include "pagespeed/kernel/http/http_names.h"
 #include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/response_headers.h"
-
-#include "httpd.h"  // NOLINT
 
 namespace {
 

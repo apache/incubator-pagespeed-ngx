@@ -871,7 +871,7 @@ apr_status_t InstawebHandler::instaweb_handler(request_rec* request) {
                                    instaweb_handler.options(),
                                    instaweb_handler.MakeFetch(
                                        false /* unbuffered */, "local-stats"));
-    return OK;
+    return APACHE_OK;
   } else if (request_handler_str == kGlobalStatisticsHandler &&
              global_config->GlobalStatisticsAccessAllowed(gurl)) {
     InstawebHandler instaweb_handler(request);
@@ -880,7 +880,7 @@ apr_status_t InstawebHandler::instaweb_handler(request_rec* request) {
                                    instaweb_handler.options(),
                                    instaweb_handler.MakeFetch(
                                        false /* unbuffered */, "global-stats"));
-    return OK;
+    return APACHE_OK;
   } else if (request_handler_str == kAdminHandler &&
              global_config->AdminAccessAllowed(gurl)) {
     InstawebHandler instaweb_handler(request);
@@ -892,7 +892,7 @@ apr_status_t InstawebHandler::instaweb_handler(request_rec* request) {
                               instaweb_handler.options(),
                               instaweb_handler.MakeFetch(
                                   true /* buffered */, "local-admin"));
-    ret = OK;
+    ret = APACHE_OK;
   } else if (request_handler_str == kGlobalAdminHandler &&
              global_config->GlobalAdminAccessAllowed(gurl)) {
     InstawebHandler instaweb_handler(request);
@@ -904,7 +904,7 @@ apr_status_t InstawebHandler::instaweb_handler(request_rec* request) {
                               instaweb_handler.options(),
                               instaweb_handler.MakeFetch(
                                   true /* buffered */, "global-admin"));
-    ret = OK;
+    ret = APACHE_OK;
   } else if (global_config->enable_cache_purge() &&
              !global_config->purge_method().empty() &&
              (global_config->purge_method() == request->method)) {
@@ -920,7 +920,7 @@ apr_status_t InstawebHandler::instaweb_handler(request_rec* request) {
                              server_context->cache_path(),
                              instaweb_handler.MakeFetch(
                                  true /* buffered */, "purge"));
-    ret = OK;
+    ret = APACHE_OK;
   } else if (request_handler_str == kConsoleHandler &&
              global_config->ConsoleAccessAllowed(gurl)) {
     InstawebHandler instaweb_handler(request);
@@ -929,7 +929,7 @@ apr_status_t InstawebHandler::instaweb_handler(request_rec* request) {
                                    instaweb_handler.query_params(),
                                    instaweb_handler.MakeFetch(
                                        false /* unbuffered */, "console"));
-    ret = OK;
+    ret = APACHE_OK;
   } else if (request_handler_str == kMessageHandler &&
              global_config->MessagesAccessAllowed(gurl)) {
     InstawebHandler instaweb_handler(request);
@@ -937,7 +937,7 @@ apr_status_t InstawebHandler::instaweb_handler(request_rec* request) {
         *instaweb_handler.options(),
         AdminSite::kOther,
         instaweb_handler.MakeFetch(false /* unbuffered */, "messages"));
-    ret = OK;
+    ret = APACHE_OK;
   } else if (request_handler_str == kLogRequestHeadersHandler) {
     // For testing CustomFetchHeader.
     GoogleString output;
@@ -947,7 +947,7 @@ apr_status_t InstawebHandler::instaweb_handler(request_rec* request) {
                  request->headers_in, NULL);
 
     write_handler_response(output, request, kContentTypeJavascript, "public");
-    ret = OK;
+    ret = APACHE_OK;
   } else if (strcmp(request->handler, kGenerateResponseWithOptionsHandler) == 0
              && request->uri != NULL) {
     // This handler is only needed for apache_system_test. It adds headers to
@@ -987,15 +987,15 @@ apr_status_t InstawebHandler::instaweb_handler(request_rec* request) {
       } else if (gurl.PathSansLeaf() ==
                  server_context->apache_factory()->static_asset_prefix()) {
         instaweb_static_handler(request, server_context);
-        ret = OK;
+        ret = APACHE_OK;
       } else if (!is_pagespeed_subrequest(request) &&
                  handle_as_resource(server_context, request, &gurl)) {
-        ret = OK;
+        ret = APACHE_OK;
       }
 
       // Check for HTTP_NO_CONTENT here since that's the status used for a
       // successfully handled beacon.
-      if (ret != OK && ret != HTTP_NO_CONTENT &&
+      if (ret != APACHE_OK && ret != HTTP_NO_CONTENT &&
           gurl.Host() != "localhost" &&
           (global_config->slurping_enabled() || global_config->test_proxy() ||
            !global_config->domain_lawyer()->proxy_suffix().empty())) {
@@ -1006,7 +1006,7 @@ apr_status_t InstawebHandler::instaweb_handler(request_rec* request) {
         // constructor here.
         InstawebHandler instaweb_handler(request);
         if (instaweb_handler.ProxyUrl()) {
-          ret = OK;
+          ret = APACHE_OK;
         }
       }
     }
@@ -1202,7 +1202,7 @@ apr_status_t InstawebHandler::instaweb_map_to_storage(request_rec* request) {
   request->finfo.filetype = APR_UNKFILE;
 
   // Keep core_map_to_storage from running and rejecting our long filenames.
-  return OK;
+  return APACHE_OK;
 }
 
 /* static */

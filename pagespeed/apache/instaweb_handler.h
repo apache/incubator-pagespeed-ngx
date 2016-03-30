@@ -39,7 +39,7 @@
 // The httpd header must be after the instaweb_context.h. Otherwise,
 // the compiler will complain
 // "strtoul_is_not_a_portable_function_use_strtol_instead".
-#include "httpd.h"
+#include "pagespeed/apache/apache_httpd_includes.h"
 
 namespace net_instaweb {
 

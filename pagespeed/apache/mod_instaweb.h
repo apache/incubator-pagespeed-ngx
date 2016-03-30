@@ -18,7 +18,7 @@
 #define PAGESPEED_APACHE_MOD_INSTAWEB_H_
 
 #include "http_config.h"
-#include "httpd.h"
+#include "pagespeed/apache/apache_httpd_includes.h"
 
 namespace net_instaweb {
 

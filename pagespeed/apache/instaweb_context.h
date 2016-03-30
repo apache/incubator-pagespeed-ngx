@@ -29,12 +29,8 @@
 // The httpd header must be after the
 // apache_rewrite_driver_factory.h. Otherwise, the compiler will
 // complain "strtoul_is_not_a_portable_function_use_strtol_instead".
-#include "httpd.h"
+#include "pagespeed/apache/apache_httpd_includes.h"
 #include "apr_pools.h"
-
-struct apr_bucket_brigade;
-struct request_rec;
-struct server_rec;
 
 namespace net_instaweb {
 

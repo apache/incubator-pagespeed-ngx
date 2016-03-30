@@ -4,10 +4,10 @@
 #include <vector>
 
 #include "base/logging.h"
+#include "pagespeed/apache/apache_httpd_includes.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/http/http_names.h"
 
-#include "httpd.h"        // NOLINT
 #include "util_filter.h"  // NOLINT
 
 namespace {

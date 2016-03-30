@@ -18,10 +18,7 @@
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/request_context.h"
-#include "pagespeed/kernel/base/string_util.h"
-#include "pagespeed/kernel/http/http_names.h"
-
-#include "httpd.h"  // NOLINT
+#include "pagespeed/apache/apache_httpd_includes.h"
 
 namespace net_instaweb {
 
