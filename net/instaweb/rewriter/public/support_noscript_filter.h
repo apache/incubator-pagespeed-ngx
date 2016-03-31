@@ -41,6 +41,18 @@ class SupportNoscriptFilter : public EmptyHtmlFilter {
   virtual void StartElement(HtmlElement* element);
   virtual const char* Name() const { return "SupportNoscript"; }
 
+  // Make sure this filter gets turned off when a document is declared as AMP.
+  //
+  // This is a little confusing; SupportNoscript does not itself
+  // inject scripts, but it injects http-equiv tags which prevent
+  // AMP-HTML from being validated.  This filter is a special
+  // snowflake that is never enabled by users, but is implied by the
+  // initial enabling of *other* filters that *do* inject scripts.
+  //
+  // TODO(jmarantz): consider an alterantive mechanism that is more intuitive,
+  // and doesn't entail GetScriptUsage lying to induce the right amp behavior.
+  ScriptUsage GetScriptUsage() const override { return kWillInjectScripts; }
+
  private:
   bool IsAnyFilterRequiringScriptExecutionEnabled() const;
   RewriteDriver* rewrite_driver_;  // We do not own this.
