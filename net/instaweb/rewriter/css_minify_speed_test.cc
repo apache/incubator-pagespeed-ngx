@@ -40,6 +40,10 @@
 // BM_EscapeStringSuperSpecial/64        1941       1947     361238
 // BM_EscapeStringSuperSpecial/512      13333      13375      51935
 // BM_EscapeStringSuperSpecial/4k      105527     105909       6768
+//
+// Disclaimer: comparing runs over time and across different machines
+// can be misleading.  When contemplating an algorithm change, always do
+// interleaved runs with the old & new algorithm.
 
 #include "net/instaweb/rewriter/public/css_minify.h"
 #include "pagespeed/kernel/base/benchmark.h"

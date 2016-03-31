@@ -21,6 +21,10 @@
 // ---------------------------------------------------------------------
 // BM_DomainLawyerIsAuthorizedAllowStar        398        398    1707317
 // BM_DomainLawyerIsAuthorizedAllowAll           3          3  259259259
+//
+// Disclaimer: comparing runs over time and across different machines
+// can be misleading.  When contemplating an algorithm change, always do
+// interleaved runs with the old & new algorithm.
 
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "pagespeed/kernel/base/benchmark.h"

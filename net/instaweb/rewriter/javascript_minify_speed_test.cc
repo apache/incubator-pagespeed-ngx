@@ -30,6 +30,10 @@
 // BM_MinifyJavascriptOld/4k        65045      65232      10000
 // BM_MinifyJavascriptOld/32k      666505     669240       1000
 // BM_MinifyJavascriptOld/256k    4989183    5005530        100
+//
+// Disclaimer: comparing runs over time and across different machines
+// can be misleading.  When contemplating an algorithm change, always do
+// interleaved runs with the old & new algorithm.
 
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
 #include "net/instaweb/rewriter/public/javascript_library_identification.h"

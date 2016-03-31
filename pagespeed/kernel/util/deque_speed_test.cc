@@ -30,6 +30,10 @@
 // BM_Deque100                    16389      16457      43750
 // BM_VectorDeque100              10296      10214      63636
 // BM_DequeUsingStdVector100      75617      74286       8750
+//
+// Disclaimer: comparing runs over time and across different machines
+// can be misleading.  When contemplating an algorithm change, always do
+// interleaved runs with the old & new algorithm.
 
 #include <deque>
 #include <list>

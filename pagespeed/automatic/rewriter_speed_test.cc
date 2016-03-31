@@ -29,6 +29,10 @@
 // Benchmark                               Time(ns)    CPU(ns) Iterations
 // ----------------------------------------------------------------------
 // BM_ParseAndSerializeReuseParserX50   40979557   40900000        100
+//
+// Disclaimer: comparing runs over time and across different machines
+// can be misleading.  When contemplating an algorithm change, always do
+// interleaved runs with the old & new algorithm.
 
 #include <algorithm>
 #include <cstdlib>  // for exit

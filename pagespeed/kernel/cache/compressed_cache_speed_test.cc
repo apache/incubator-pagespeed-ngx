@@ -29,6 +29,10 @@
 // BM_Compress1KHighEntropy      62425      63000      10000
 // BM_Compress1MLowEntropy     7175143    7100000        100
 // BM_Compress1KLowEntropy       16620      16514      41176
+//
+// Disclaimer: comparing runs over time and across different machines
+// can be misleading.  When contemplating an algorithm change, always do
+// interleaved runs with the old & new algorithm.
 
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/benchmark.h"

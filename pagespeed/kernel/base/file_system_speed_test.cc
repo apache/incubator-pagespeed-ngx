@@ -32,6 +32,10 @@
 //   BM_1MWholeFile                10000            122070 ns/op
 //   BM_1MStreamingFile             2000            760416 ns/op
 //
+//
+// Disclaimer: comparing runs over time and across different machines
+// can be misleading.  When contemplating an algorithm change, always do
+// interleaved runs with the old & new algorithm.
 
 namespace net_instaweb {
 

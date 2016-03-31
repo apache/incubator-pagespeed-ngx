@@ -23,6 +23,10 @@
 // BM_ParseAndSerializeNewParserEachIter     433780     433690       1591
 // BM_ParseAndSerializeReuseParser           433498     436118       1628
 // BM_ParseAndSerializeReuseParserX50      22954185   22900000        100
+//
+// Disclaimer: comparing runs over time and across different machines
+// can be misleading.  When contemplating an algorithm change, always do
+// interleaved runs with the old & new algorithm.
 
 #include "pagespeed/kernel/html/html_parse.h"
 

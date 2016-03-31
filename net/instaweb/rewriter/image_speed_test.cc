@@ -27,8 +27,14 @@
 // BM_ConvertGifToWebp          26607409         26591156
 // BM_ConvertWebpToWebp         26541250         26337027
 // BM_ResizeGifToWebp           63763733         63726202
+//
+// Disclaimer: comparing runs over time and across different machines
+// can be misleading.  When contemplating an algorithm change, always do
+// interleaved runs with the old & new algorithm.
 
 #include "net/instaweb/rewriter/public/image.h"
+
+#include "net/instaweb/rewriter/cached_result.pb.h"
 #include "pagespeed/kernel/base/benchmark.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"

@@ -29,6 +29,10 @@
 // .../src/out/Release/mod_pagespeed_speed_test "BM_Sanitize*
 // BM_SanitizeByArray      50000             30782 ns/op
 // BM_SanitizeBySet        10000            222213 ns/op
+//
+// Disclaimer: comparing runs over time and across different machines
+// can be misleading.  When contemplating an algorithm change, always do
+// interleaved runs with the old & new algorithm.
 
 
 namespace {

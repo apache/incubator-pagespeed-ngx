@@ -290,7 +290,7 @@ const char* kMobilizationUserAgentBlacklist[] = {
   "*Android 2.*",
   "*BlackBerry*",
   "*Mozilla*Android*Silk*Mobile*",
-  "*Mozilla*Android*Kindle Fire*Mobile*"
+  "*Mozilla*Android*Kindle Fire*Mobile*",
   "*Opera Mobi*",
   "*Opera Mini*",
   "*SymbianOS*",

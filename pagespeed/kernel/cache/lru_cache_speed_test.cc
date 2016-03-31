@@ -27,6 +27,10 @@
 // LRUGets               43501155   43400000        100
 // LRUFailedGets         16068878   16000000        100
 // LRUEvictions         143558421  143200000        100
+//
+// Disclaimer: comparing runs over time and across different machines
+// can be misleading.  When contemplating an algorithm change, always do
+// interleaved runs with the old & new algorithm.
 
 #include "pagespeed/kernel/cache/lru_cache.h"
 

@@ -20,10 +20,56 @@
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/benchmark.h"
 #include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/fast_wildcard_group.h"
 #include "pagespeed/kernel/base/wildcard_group.h"
 
+//
+// (8 X 2262 MHz CPUs); 2012/07/11-19:20:51
+// CPU: Intel Nehalem with HyperThreading (4 cores) dL1:32KB dL2:256KB
+// ***WARNING*** CPU scaling is enabled, the benchmark timings may be
+// noisy, see http://www/eng/howto/testing/microbenchmarks.html
+//
+// Benchmark                 Time(ns)    CPU(ns) Iterations
+// --------------------------------------------------------
+// BM_WildcardGroup/0             169        168    4117647
+// BM_WildcardGroup/1             623        620    1000000
+// BM_WildcardGroup/2            1431       1440     500000
+// BM_WildcardGroup/3            2034       1980     333333
+// BM_WildcardGroup/6            4581       4600     152174
+// BM_WildcardGroup/7            5336       5300     100000
+// BM_WildcardGroup/12           8585       8614      77778
+// BM_WildcardGroup/13           9028       9000      77778
+// BM_WildcardGroup/18          12903      13000      53846
+// BM_WildcardGroup/19          13233      13000      50000
+// BM_WildcardGroup/20          14773      14786      46667
+// BM_WildcardGroup/21          15128      15214      46667
+// BM_WildcardGroup/22          16332      16272      41176
+// BM_WildcardGroup/23          16665      16686      43750
+// BM_WildcardGroup/28          22773      22671      30435
+// BM_WildcardGroup/29          22996      23000      30435
+// BM_FastWildcardGroup/0         168        168    4117647
+// BM_FastWildcardGroup/1         593        590    1000000
+// BM_FastWildcardGroup/2        1467       1457     466667
+// BM_FastWildcardGroup/3        2065       2070     333333
+// BM_FastWildcardGroup/6        4532       4500     155556
+// BM_FastWildcardGroup/7        5391       5400     100000
+// BM_FastWildcardGroup/12       8520       8571      87500
+// BM_FastWildcardGroup/13       9057       9000      77778
+// BM_FastWildcardGroup/18      12880      13029      58333
+// BM_FastWildcardGroup/19      13326      13371      53846
+// BM_FastWildcardGroup/20      14688      14357      46667
+// BM_FastWildcardGroup/21      15101      15000      46667
+// BM_FastWildcardGroup/22      15940      16000      43750
+// BM_FastWildcardGroup/23      16423      16457      43750
+// BM_FastWildcardGroup/28      17720      17486      38889
+// BM_FastWildcardGroup/29      18363      18000      38889
+// Note that the above scaling data was used to set kMinPatterns.
+//
+// Disclaimer: comparing runs over time and across different machines
+// can be misleading.  When contemplating an algorithm change, always do
+// interleaved runs with the old & new algorithm.
 
 namespace net_instaweb {
 

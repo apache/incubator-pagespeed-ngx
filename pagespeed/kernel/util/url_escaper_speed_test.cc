@@ -21,6 +21,10 @@
 // Benchmark               Time(ns)    CPU(ns) Iterations
 // ------------------------------------------------------
 // BM_EncodeToUrlSegment      11698      11657      58333
+//
+// Disclaimer: comparing runs over time and across different machines
+// can be misleading.  When contemplating an algorithm change, always do
+// interleaved runs with the old & new algorithm.
 
 #include "pagespeed/kernel/util/url_escaper.h"
 
