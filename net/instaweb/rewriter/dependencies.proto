@@ -1,0 +1,53 @@
+// Copyright 2016 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Author: morlovich@google.com (Maksim Orlovich)
+
+syntax = "proto2";
+
+import "net/instaweb/rewriter/cached_result.proto";
+
+option optimize_for = LITE_RUNTIME;
+
+package net_instaweb;
+
+enum DependencyType {
+  DEP_JAVASCRIPT = 1;
+  DEP_CSS = 2;
+}
+
+// A single candidate for pushing or preloading.
+message Dependency {
+  // URL. We prefer this to be the most rewritten version.
+  optional string url = 1;
+
+  // Type of the content.
+  optional DependencyType content_type = 2;
+
+  // True if this is a .pagespeed. optimized resource.
+  optional bool is_pagespeed_resource = 3;
+
+  // True if this turned out to be small enough to inline.
+  optional bool can_inline = 4;
+
+  // If this is a .pagespeed. resources, includes info on all the inputs,
+  // including other_dependency, so at the time we have to decide whether to
+  // push/preload we can tell if .pagespeed. resource has expired yet or not.
+  repeated InputInfo validity_info = 5;
+}
+
+// All the candidates for pushing or preloading.
+message Dependencies {
+  repeated Dependency dependency = 1;
+}

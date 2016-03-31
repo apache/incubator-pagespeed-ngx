@@ -134,6 +134,7 @@
         'rewriter/dedup_inlined_images_filter_test.cc',
         'rewriter/defer_iframe_filter_test.cc',
         'rewriter/delay_images_filter_test.cc',
+        'rewriter/dependency_tracker_test.cc',
         'rewriter/deterministic_js_filter_test.cc',
         'rewriter/device_properties_test.cc',
         'rewriter/distributed_rewrite_context_test.cc',

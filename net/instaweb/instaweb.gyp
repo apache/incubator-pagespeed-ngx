@@ -1075,6 +1075,22 @@
       ],
     },
     {
+      'target_name': 'instaweb_dependencies_pb',
+      'variables': {
+        'instaweb_protoc_subdir': 'net/instaweb/rewriter',
+      },
+      'sources': [
+        'rewriter/dependencies.proto',
+        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/dependencies.pb.cc',
+      ],
+      'dependencies': [
+        'instaweb_rewriter_pb',
+      ],
+      'includes': [
+        'protoc.gypi',
+      ],
+    },
+    {
       'target_name': 'instaweb_flush_early_pb',
       'variables': {
         'instaweb_protoc_subdir': 'net/instaweb/rewriter',
@@ -1517,6 +1533,7 @@
         'instaweb_delay_images_inline_data2c',
         'instaweb_delay_images_inline_opt_data2c',
         'instaweb_delay_images_opt_data2c',
+        'instaweb_dependencies_pb',
         'instaweb_deterministic_data2c',
         'instaweb_deterministic_opt_data2c',
         'instaweb_extended_instrumentation_data2c',
@@ -1577,6 +1594,7 @@
         'rewriter/decode_rewritten_urls_filter.cc',
         'rewriter/dedup_inlined_images_filter.cc',
         'rewriter/defer_iframe_filter.cc',
+        'rewriter/dependency_tracker.cc',
         'rewriter/responsive_image_filter.cc',
         'rewriter/delay_images_filter.cc',
         'rewriter/deterministic_js_filter.cc',
