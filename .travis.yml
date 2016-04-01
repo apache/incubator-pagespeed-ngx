@@ -8,6 +8,7 @@ install:
   - sudo apt-get install apache2 g++ python subversion gperf make devscripts fakeroot git curl netcat-traditional gcc-mozilla clang-3.4
   - sudo mv /bin/nc.traditional /usr/bin/nc
   - export PATH=/usr/lib/gcc-mozilla/bin:$PATH
+  - sudo sh -c 'echo "image/webp webp" >> /etc/mime.types'
   - mkdir -p ~/bin
   - cd ~/bin
   - svn co https://src.chromium.org/svn/trunk/tools/depot_tools
