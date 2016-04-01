@@ -431,9 +431,6 @@ DEFINE_bool(support_noscript_enabled, true,
             "Support for clients with no script support, in filters that "
             "insert new javascript.");
 
-DEFINE_bool(enable_blink_debug_dashboard, true,
-            "Enable blink dashboard used for debugging.");
-
 DEFINE_bool(report_unload_time, false, "If enabled, sends beacons when page "
             "unload happens before onload.");
 
@@ -444,24 +441,6 @@ DEFINE_int64(max_combined_css_bytes, -1,
 DEFINE_int64(max_combined_js_bytes, -1,
             "Maximum size allowed for the combined js resource. "
             "Negative values will bypass size check.");
-
-DEFINE_int64(
-    blink_html_change_detection_time_ms,
-    RewriteOptions::kDefaultBlinkHtmlChangeDetectionTimeMs,
-    "Time after which we should try to detect if publisher html has changed");
-
-DEFINE_bool(enable_blink_html_change_detection, false,
-            "If enabled automatically detect publisher changes in html in "
-            "blink.");
-
-DEFINE_bool(enable_blink_html_change_detection_logging, false,
-            "If enabled, html change detection is applied to all blink sites"
-            " and the results are logged. Critical line recomputation is not"
-            " triggered in case of mismatch.");
-
-DEFINE_bool(use_smart_diff_in_blink, false,
-            "If enabled use smart diff to detect publisher changes in html "
-            "in blink");
 
 DEFINE_bool(enable_prioritizing_scripts, false,
     "If it is set to true, defer javascript will prioritize scripts with"
@@ -842,27 +821,8 @@ bool RewriteGflags::SetupOptionsOnly(
   if (WasExplicitlySet("pagespeed_version")) {
     options->set_x_header_value(FLAGS_pagespeed_version);
   }
-  if (WasExplicitlySet("enable_blink_debug_dashboard")) {
-    options->set_enable_blink_debug_dashboard(
-        FLAGS_enable_blink_debug_dashboard);
-  }
   if (WasExplicitlySet("report_unload_time")) {
     options->set_report_unload_time(FLAGS_report_unload_time);
-  }
-  if (WasExplicitlySet("blink_html_change_detection_time_ms")) {
-    options->set_blink_html_change_detection_time_ms(
-        FLAGS_blink_html_change_detection_time_ms);
-  }
-  if (WasExplicitlySet("enable_blink_html_change_detection")) {
-    options->set_enable_blink_html_change_detection(
-        FLAGS_enable_blink_html_change_detection);
-  }
-  if (WasExplicitlySet("enable_blink_html_change_detection_logging")) {
-    options->set_enable_blink_html_change_detection_logging(
-        FLAGS_enable_blink_html_change_detection_logging);
-  }
-  if (WasExplicitlySet("use_smart_diff_in_blink")) {
-    options->set_use_smart_diff_in_blink(FLAGS_use_smart_diff_in_blink);
   }
   if (WasExplicitlySet("enable_prioritizing_scripts")) {
     options->set_enable_prioritizing_scripts(

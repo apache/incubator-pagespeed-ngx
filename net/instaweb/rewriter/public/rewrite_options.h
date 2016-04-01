@@ -228,7 +228,6 @@ class RewriteOptions {
   static const char kAwaitPcacheLookup[];
   static const char kBeaconReinstrumentTimeSec[];
   static const char kBeaconUrl[];
-  static const char kBlinkMaxHtmlSizeRewritable[];
   static const char kCacheFragment[];
   static const char kCacheSmallImagesUnrewritten[];
   static const char kClientDomainRewrite[];
@@ -255,8 +254,6 @@ class RewriteOptions {
   static const char kDownstreamCacheRebeaconingKey[];
   static const char kDownstreamCacheRewrittenPercentageThreshold[];
   static const char kEnableAggressiveRewritersForMobile[];
-  static const char kEnableBlinkHtmlChangeDetection[];
-  static const char kEnableBlinkHtmlChangeDetectionLogging[];
   static const char kEnableCachePurge[];
   static const char kEnableDeferJsExperimental[];
   static const char kEnableExtendedInstrumentation[];
@@ -391,7 +388,6 @@ class RewriteOptions {
   static const char kUseExperimentalJsMinifier[];
   static const char kUseFallbackPropertyCacheValues[];
   static const char kUseImageScanlineApi[];
-  static const char kUseSmartDiffInBlink[];
   static const char kXModPagespeedHeaderValue[];
   static const char kXPsaBlockingRewrite[];
   // Options that require special handling, e.g. non-scalar values
@@ -759,7 +755,6 @@ class RewriteOptions {
 
   static const char kDefaultAllowVaryOn[];
   static const int kDefaultBeaconReinstrumentTimeSec;
-  static const int64 kDefaultBlinkMaxHtmlSizeRewritable;
   static const int64 kDefaultCssFlattenMaxBytes;
   static const int64 kDefaultCssImageInlineMaxBytes;
   static const int64 kDefaultCssInlineMaxBytes;
@@ -799,7 +794,6 @@ class RewriteOptions {
   static const int64 kDefaultImageWebpRecompressQualityForSmallScreens;
   static const int64 kDefaultImageWebpTimeoutMs;
   static const int kDefaultDomainShardCount;
-  static const int64 kDefaultBlinkHtmlChangeDetectionTimeMs;
   static const int kDefaultMaxPrefetchJsElements;
   static const int64 kDefaultOptionCookiesDurationMs;
   static const int64 kDefaultLoadFromFileCacheTtlMs;
@@ -1634,13 +1628,6 @@ class RewriteOptions {
     set_option(x, &override_ie_document_mode_);
   }
 
-  int64 blink_blacklist_end_timestamp_ms() const {
-    return blink_blacklist_end_timestamp_ms_.value();
-  }
-  void set_blink_blacklist_end_timestamp_ms(int64 x) {
-    set_option(x, &blink_blacklist_end_timestamp_ms_);
-  }
-
   bool preserve_subresource_hints() const {
     return preserve_subresource_hints_.value();
   }
@@ -2386,34 +2373,6 @@ class RewriteOptions {
     return lazyload_highres_images_.value();
   }
 
-  void set_enable_blink_debug_dashboard(bool x) {
-    set_option(x, &enable_blink_debug_dashboard_);
-  }
-  bool enable_blink_debug_dashboard() const {
-    return enable_blink_debug_dashboard_.value();
-  }
-
-  void set_enable_blink_html_change_detection(bool x) {
-    set_option(x, &enable_blink_html_change_detection_);
-  }
-  bool enable_blink_html_change_detection() const {
-    return enable_blink_html_change_detection_.value();
-  }
-
-  void set_enable_blink_html_change_detection_logging(bool x) {
-    set_option(x, &enable_blink_html_change_detection_logging_);
-  }
-  bool enable_blink_html_change_detection_logging() const {
-    return enable_blink_html_change_detection_logging_.value();
-  }
-
-  void set_use_smart_diff_in_blink(bool x) {
-    set_option(x, &use_smart_diff_in_blink_);
-  }
-  bool use_smart_diff_in_blink() const {
-    return use_smart_diff_in_blink_.value();
-  }
-
   void set_use_fallback_property_cache_values(bool x) {
     set_option(x, &use_fallback_property_cache_values_);
   }
@@ -2433,13 +2392,6 @@ class RewriteOptions {
   }
   bool enable_prioritizing_scripts() const {
     return enable_prioritizing_scripts_.value();
-  }
-
-  void set_blink_html_change_detection_time_ms(int64 x) {
-    set_option(x, &blink_html_change_detection_time_ms_);
-  }
-  int64 blink_html_change_detection_time_ms() const {
-    return blink_html_change_detection_time_ms_.value();
   }
 
   const GoogleString& blocking_rewrite_key() const {
@@ -2553,13 +2505,6 @@ class RewriteOptions {
   }
   bool avoid_renaming_introspective_javascript() const {
     return avoid_renaming_introspective_javascript_.value();
-  }
-
-  int64 blink_max_html_size_rewritable() const {
-    return blink_max_html_size_rewritable_.value();
-  }
-  void set_blink_max_html_size_rewritable(int64 x) {
-    set_option(x, &blink_max_html_size_rewritable_);
   }
 
   void set_forbid_all_disabled_filters(bool x) {
@@ -4091,9 +4036,6 @@ class RewriteOptions {
   // Maximum length (in bytes) of response content.
   Option<int64> max_cacheable_response_content_length_;
 
-  // The timestamp when blink blacklist expires.
-  Option<int64> blink_blacklist_end_timestamp_ms_;
-
   // Keep the original subresource hints
   Option<bool> preserve_subresource_hints_;
 
@@ -4103,18 +4045,6 @@ class RewriteOptions {
 
   Option<GoogleString> ga_id_;
 
-  Option<int64> blink_max_html_size_rewritable_;
-  // Time after which we should try to detect if publisher html in blink
-  // has changed.
-  Option<int64> blink_html_change_detection_time_ms_;
-  // Show the blink debug dashboard.
-  Option<bool> enable_blink_debug_dashboard_;
-  // Enable automatic detection of publisher changes in html in blink.
-  Option<bool> enable_blink_html_change_detection_;
-  // Enable logging of publisher changes detected in html in blink flow.
-  Option<bool> enable_blink_html_change_detection_logging_;
-  // Use smart diff to detect publisher changes in html in blink.
-  Option<bool> use_smart_diff_in_blink_;
   // Use fallback values from property cache.
   Option<bool> use_fallback_property_cache_values_;
   // Always wait for property cache lookup to finish.

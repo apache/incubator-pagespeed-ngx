@@ -70,8 +70,6 @@ const char RewriteOptions::kAwaitPcacheLookup[] = "AwaitPcacheLookup";
 const char RewriteOptions::kBeaconReinstrumentTimeSec[] =
     "BeaconReinstrumentTimeSec";
 const char RewriteOptions::kBeaconUrl[] = "BeaconUrl";
-const char RewriteOptions::kBlinkMaxHtmlSizeRewritable[] =
-    "BlinkMaxHtmlSizeRewritable";
 const char RewriteOptions::kCacheFragment[] = "CacheFragment";
 const char RewriteOptions::kCacheSmallImagesUnrewritten[] =
     "CacheSmallImagesUnrewritten";
@@ -112,10 +110,6 @@ const char RewriteOptions::kDownstreamCacheRewrittenPercentageThreshold[] =
     "DownstreamCacheRewrittenPercentageThreshold";
 const char RewriteOptions::kEnableAggressiveRewritersForMobile[] =
     "EnableAggressiveRewritersForMobile";
-const char RewriteOptions::kEnableBlinkHtmlChangeDetection[] =
-    "EnableBlinkHtmlChangeDetection";
-const char RewriteOptions::kEnableBlinkHtmlChangeDetectionLogging[] =
-    "EnableBlinkHtmlChangeDetectionLogging";
 const char RewriteOptions::kEnableDeferJsExperimental[] =
     "EnableDeferJsExperimental";
 const char RewriteOptions::kEnableCachePurge[] = "EnableCachePurge";
@@ -307,7 +301,6 @@ const char RewriteOptions::kUseExperimentalJsMinifier[] =
 const char RewriteOptions::kUseFallbackPropertyCacheValues[] =
     "UseFallbackPropertyCacheValues";
 const char RewriteOptions::kUseImageScanlineApi[] = "UseImageScanlineApi";
-const char RewriteOptions::kUseSmartDiffInBlink[] = "UseSmartDiffInBlink";
 const char RewriteOptions::kXModPagespeedHeaderValue[] =
     "XHeaderValue";
 const char RewriteOptions::kXPsaBlockingRewrite[] = "BlockingRewriteKey";
@@ -409,10 +402,6 @@ const char RewriteOptions::kJavascriptInlineId[] = "ji";
 const char RewriteOptions::kLocalStorageCacheId[] = "ls";
 const char RewriteOptions::kPanelCommentPrefix[] = "GooglePanel";
 const char RewriteOptions::kPrioritizeCriticalCssId[] = "pr";
-
-// Sets limit for buffering html in blink secondary fetch to 10MB default.
-const int64 RewriteOptions::kDefaultBlinkMaxHtmlSizeRewritable =
-    10 * 1024 * 1024;
 
 // TODO(jmarantz): consider merging this threshold with the image-inlining
 // threshold, which is currently defaulting at 2000, so we have a single
@@ -574,9 +563,6 @@ const char RewriteOptions::kRejectedRequestUrlKeyName[] = "RejectedUrl";
 
 // Allow all the declared shards.
 const int RewriteOptions::kDefaultDomainShardCount = 0;
-
-const int64 RewriteOptions::kDefaultBlinkHtmlChangeDetectionTimeMs =
-    Timer::kMinuteMs;
 
 // By default, rebeacon every 5 seconds in high frequency mode. This will be
 // multiplied by kLowFreqBeaconMult in critical_finder_support_util.h to
@@ -1228,7 +1214,7 @@ void RewriteOptions::AddProperties() {
   // for mod_pagespeed, and serves as the error message if there is a
   // syntax error specifying the option in pagespeed.conf.
   //
-  // There are three sorts of options which pass in NULL for the help-string
+  // There are four sorts of options which pass in NULL for the help-string
   // 1. Options that should be enabled in mod_pagespeed but we haven't
   //    written the help-string or added HTML documentation yet.  These
   //    will be flagged with:
@@ -1237,8 +1223,8 @@ void RewriteOptions::AddProperties() {
   //    permanent support in mod_pagespeed.  These will be marked:
   //    // TODO(jmarantz): eliminate experiment or document.
   // 3. Options which are not applicable to mod_pagespeed, e.g. those that
-  //    support features not yet in mod_pagespeed such as Blink, or have
-  //    an alternate solution (populating the cache invalidation timestamp).
+  //    support features not yet in mod_pagespeed, or have an alternate solution
+  //    (populating the cache invalidation timestamp).
   //    These are marked as:
   //    // Not applicable for mod_pagespeed.
   // 4. Options which should be in mod_pagespeed but need a bit more
@@ -1248,12 +1234,6 @@ void RewriteOptions::AddProperties() {
       kPassThrough, &RewriteOptions::level_, "l", kRewriteLevel,
       kDirectoryScope,
       "Base level of rewriting (PassThrough, CoreFilters)", true);
-  AddBaseProperty(
-      kDefaultBlinkMaxHtmlSizeRewritable,
-      &RewriteOptions::blink_max_html_size_rewritable_,
-      "bmhsr", kBlinkMaxHtmlSizeRewritable,
-      kDirectoryScope,
-      NULL, true);  // Not applicable for mod_pagespeed.
   AddBaseProperty(
       kDefaultCssFlattenMaxBytes,
       &RewriteOptions::css_flatten_max_bytes_, "cf",
@@ -2072,18 +2052,7 @@ void RewriteOptions::AddProperties() {
       kMaxCombinedJsBytes,
       kDirectoryScope,
       "Maximum size allowed for the combined JavaScript resource.", true);
-  AddBaseProperty(
-      false, &RewriteOptions::enable_blink_html_change_detection_,
-      "ebhcd", kEnableBlinkHtmlChangeDetection,
-      kDirectoryScope,
-      NULL, false);   // Not applicable for mod_pagespeed.
   // Currently not applicable for mod_pagespeed.
-  AddBaseProperty(
-      false,
-      &RewriteOptions::enable_blink_html_change_detection_logging_,
-      "ebhcdl", kEnableBlinkHtmlChangeDetectionLogging,
-      kDirectoryScope,
-      NULL, false);   // Not applicable for mod_pagespeed.
   AddBaseProperty(
       -1, &RewriteOptions::override_caching_ttl_ms_, "octm",
       kOverrideCachingTtlMs,
@@ -2150,19 +2119,8 @@ void RewriteOptions::AddProperties() {
       &RewriteOptions::metadata_input_errors_cache_ttl_ms_,
       "mect", true);
   AddRequestProperty(
-      true, &RewriteOptions::enable_blink_debug_dashboard_, "ebdd", false);
-  AddRequestProperty(
-      kDefaultBlinkHtmlChangeDetectionTimeMs,
-      &RewriteOptions::blink_html_change_detection_time_ms_,
-      "bhcdt", false);
-  AddRequestProperty(
       false, &RewriteOptions::override_ie_document_mode_,
       "oidm", true);
-  AddBaseProperty(
-      false, &RewriteOptions::use_smart_diff_in_blink_, "usdb",
-      kUseSmartDiffInBlink,
-      kDirectoryScope,
-      NULL, false);   // Not applicable for mod_pagespeed.
 
   // Note: defer_javascript and defer_iframe were previously not
   // trusted on mobile user-agents, but have now matured to the point
@@ -2192,9 +2150,6 @@ void RewriteOptions::AddProperties() {
       "hrum", kHideRefererUsingMeta,
       kDirectoryScope,
       "Hides the referer by adding meta tag to the HTML", true);
-
-  AddRequestProperty(
-      -1, &RewriteOptions::blink_blacklist_end_timestamp_ms_, "bbet", false);
 
   AddBaseProperty(
       false, &RewriteOptions::preserve_subresource_hints_, "psrh",
