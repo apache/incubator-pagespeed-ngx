@@ -21,10 +21,12 @@
 #include <cstdio>
 #include <cstdlib>  // for exit()
 
+#include "base/logging.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/wget_url_fetcher.h"
+#include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_gflags.h"
@@ -36,6 +38,7 @@
 #include "pagespeed/kernel/base/hasher.h"
 #include "pagespeed/kernel/base/md5_hasher.h"
 #include "pagespeed/kernel/base/message_handler.h"
+#include "pagespeed/kernel/base/named_lock_manager.h"
 #include "pagespeed/kernel/base/null_message_handler.h"
 #include "pagespeed/kernel/base/stdio_file_system.h"
 #include "pagespeed/kernel/base/string.h"
@@ -44,8 +47,13 @@
 #include "pagespeed/kernel/cache/lru_cache.h"
 #include "pagespeed/kernel/cache/threadsafe_cache.h"
 #include "pagespeed/kernel/http/content_type.h"
+#include "pagespeed/kernel/http/http_names.h"
+#include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/util/platform.h"
 #include "pagespeed/kernel/util/simple_stats.h"
+#include "pagespeed/kernel/util/threadsafe_lock_manager.h"
+#include "pagespeed/opt/http/property_cache.h"
+#include "pagespeed/system/system_rewrite_options.h"
 
 namespace net_instaweb {
 
@@ -74,11 +82,16 @@ FileRewriter::FileRewriter(const ProcessContext& process_context,
       gflags_(gflags),
       simple_stats_(thread_system()),
       echo_errors_to_stdout_(echo_errors_to_stdout) {
-  net_instaweb::RewriteDriverFactory::InitStats(&simple_stats_);
+  RewriteDriverFactory::InitStats(&simple_stats_);
+  InitializeDefaultOptions();
   SetStatistics(&simple_stats_);
 }
 
 FileRewriter::~FileRewriter() {
+}
+
+NamedLockManager* FileRewriter::DefaultLockManager() {
+  return new ThreadSafeLockManager(scheduler());
 }
 
 Hasher* FileRewriter::NewHasher() {
@@ -104,17 +117,35 @@ FileSystem* FileRewriter::DefaultFileSystem() {
   return new StdioFileSystem;
 }
 
+RewriteOptions* FileRewriter::NewRewriteOptions() {
+  return new SystemRewriteOptions(thread_system());
+}
+
 void FileRewriter::SetupCaches(ServerContext* server_context) {
   LRUCache* lru_cache = new LRUCache(gflags_->lru_cache_size_bytes());
   CacheInterface* cache = new ThreadsafeCache(lru_cache,
                                               thread_system()->NewMutex());
-  HTTPCache* http_cache = new HTTPCache(cache, timer(), hasher(), statistics());
+  Statistics* stats = server_context->statistics();
+  HTTPCache* http_cache = new HTTPCache(cache, timer(), hasher(), stats);
   http_cache->SetCompressionLevel(
       server_context->global_options()->http_cache_compression_level());
   server_context->set_http_cache(http_cache);
   server_context->set_metadata_cache(cache);
   server_context->MakePagePropertyCache(
       server_context->CreatePropertyStore(cache));
+
+  PropertyCache* pcache = server_context->page_property_cache();
+  PropertyCache::InitCohortStats(RewriteDriver::kBeaconCohort, stats);
+  server_context->set_beacon_cohort(
+      server_context->AddCohort(RewriteDriver::kBeaconCohort, pcache));
+  PropertyCache::InitCohortStats(RewriteDriver::kDomCohort, stats);
+  server_context->set_dom_cohort(
+      server_context->AddCohort(RewriteDriver::kDomCohort, pcache));
+
+  // Set up and register a beacon finder.
+  CriticalSelectorFinder* finder = new BeaconCriticalSelectorFinder(
+      server_context->beacon_cohort(), nonce_generator(), stats);
+  server_context->set_critical_selector_finder(finder);
 }
 
 Statistics* FileRewriter::statistics() {
@@ -136,10 +167,14 @@ StaticRewriter::StaticRewriter(const ProcessContext& process_context, int* argc,
     : gflags_((*argv)[0], argc, argv),
       file_rewriter_(process_context, &gflags_, true),
       server_context_(NULL) {
-  RewriteOptions* options = file_rewriter_.default_options();
+  SystemRewriteOptions* options = SystemRewriteOptions::DynamicCast(
+      file_rewriter_.default_options());
+  CHECK(options != NULL);
   if (!gflags_.SetOptions(&file_rewriter_, options)) {
     exit(1);
   }
+  file_rewriter_.set_slurp_directory(options->slurp_directory());
+  file_rewriter_.set_slurp_read_only(options->slurp_read_only());
   server_context_ = file_rewriter_.CreateServerContext();
 }
 
@@ -167,6 +202,14 @@ bool StaticRewriter::ParseText(const StringPiece& url,
   // any optimizations we can, so we wait until everything is done rather
   // than using a deadline, the way a server deployment would.
   driver->set_fully_rewrite_on_flush(true);
+
+  RequestHeaders request_headers;
+  request_headers.Add(HttpAttributes::kAccept, "image/webp");
+  request_headers.Add(
+      HttpAttributes::kUserAgent,
+      "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)"
+      " Chrome/42.0.2302.4 Safari/537.36");
+  driver->SetRequestHeaders(request_headers);
 
   file_rewriter_.set_filename_prefix(output_dir);
   driver->SetWriter(writer);

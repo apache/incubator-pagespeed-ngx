@@ -169,7 +169,6 @@
         'kernel/thread/worker_test_base.cc',
         'kernel/util/lock_manager_spammer.cc',
         'kernel/util/mock_nonce_generator.cc',
-        'kernel/util/threadsafe_lock_manager.cc',
       ],
       'all_dependent_settings': {
         'include_dirs': [
@@ -415,6 +414,7 @@
         'kernel/util/mem_lock.cc',
         'kernel/util/mem_lock_manager.cc',
         'kernel/util/mem_lock_state.cc',
+        'kernel/util/threadsafe_lock_manager.cc',
       ],
       'include_dirs': [
         '<(DEPTH)',

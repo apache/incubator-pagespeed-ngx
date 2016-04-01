@@ -32,7 +32,9 @@ namespace net_instaweb {
 class FileSystem;
 class Hasher;
 class MessageHandler;
+class NamedLockManager;
 class ProcessContext;
+class RewriteOptions;
 class ServerContext;
 class UrlAsyncFetcher;
 
@@ -48,6 +50,8 @@ class FileRewriter : public RewriteDriverFactory {
                const RewriteGflags* gflags,
                bool echo_errors_to_stdout);
   virtual ~FileRewriter();
+  virtual NamedLockManager* DefaultLockManager();
+  virtual RewriteOptions* NewRewriteOptions();
   virtual Hasher* NewHasher();
   virtual UrlAsyncFetcher* DefaultAsyncUrlFetcher();
   virtual MessageHandler* DefaultHtmlParseMessageHandler();

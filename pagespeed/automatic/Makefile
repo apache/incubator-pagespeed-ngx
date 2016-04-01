@@ -121,6 +121,7 @@ BASE_LIBS = \
   pagespeed/libinstaweb_mobilize_js_opt_data2c.a \
   pagespeed/libjs_tokenizer.a \
   pagespeed/libjsminify.a \
+  pagespeed/libmem_lock.a \
   pagespeed/libpagespeed_ads_util.a \
   pagespeed/libpagespeed_base.a \
   pagespeed/libpagespeed_base_core.a \

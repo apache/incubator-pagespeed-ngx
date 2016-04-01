@@ -25,6 +25,7 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/string_writer.h"
+#include "pagespeed/system/system_rewrite_options.h"
 
 namespace net_instaweb {
 
@@ -37,6 +38,7 @@ class MessageHandler;
 // g++, without using the gyp flow.
 int main(int argc, char** argv) {
   net_instaweb::ProcessContext process_context;
+  net_instaweb::SystemRewriteOptions::Initialize();
   net_instaweb::RewriteDriverFactory::Initialize();
   net_instaweb::StaticRewriter static_rewriter(process_context, &argc, &argv);
 
@@ -84,5 +86,6 @@ int main(int argc, char** argv) {
   // rewrite resources in HTML files in this demonstration.
 
   net_instaweb::RewriteDriverFactory::Terminate();
+  net_instaweb::SystemRewriteOptions::Terminate();
   return 0;
 }

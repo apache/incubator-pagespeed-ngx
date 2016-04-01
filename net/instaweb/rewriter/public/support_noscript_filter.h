@@ -49,6 +49,10 @@ class SupportNoscriptFilter : public EmptyHtmlFilter {
   // snowflake that is never enabled by users, but is implied by the
   // initial enabling of *other* filters that *do* inject scripts.
   //
+  // Because this filter only changes HTML on behalf of filters that are
+  // themselves kWillInjectScripts, [falsely] declaring that this script
+  // as kWillInjectScripts has no particular downside.
+  //
   // TODO(jmarantz): consider an alterantive mechanism that is more intuitive,
   // and doesn't entail GetScriptUsage lying to induce the right amp behavior.
   ScriptUsage GetScriptUsage() const override { return kWillInjectScripts; }
