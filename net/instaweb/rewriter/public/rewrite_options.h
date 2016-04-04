@@ -137,6 +137,7 @@ class RewriteOptions {
     kDivStructure,
     kElideAttributes,
     kExperimentCollectMobImageInfo,
+    kExperimentHttp2,  // used while developing proper HTTP2 features.
     kExplicitCloseTags,
     kExtendCacheCss,
     kExtendCacheImages,
@@ -3035,7 +3036,9 @@ class RewriteOptions {
 
   // Returns true if this configuration turns on options that may need
   // the dependencies cohort to operate.
-  bool NeedsDependenciesCohort() const { return false; }
+  bool NeedsDependenciesCohort() const {
+    return Enabled(kExperimentHttp2);
+  }
 
  protected:
   // Helper class to represent an Option, whose value is held in some class T.

@@ -64,6 +64,7 @@
 #include "net/instaweb/rewriter/public/dedup_inlined_images_filter.h"
 #include "net/instaweb/rewriter/public/defer_iframe_filter.h"
 #include "net/instaweb/rewriter/public/delay_images_filter.h"
+#include "net/instaweb/rewriter/public/dependency_tracker.h"
 #include "net/instaweb/rewriter/public/deterministic_js_filter.h"
 #include "net/instaweb/rewriter/public/dom_stats_filter.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
@@ -293,6 +294,8 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
 { // NOLINT  -- I want the initializer-list to end with that comment.
   // The Scan filter always goes first so it can find base-tags.
   early_pre_render_filters_.push_back(&scan_filter_);
+
+  dependency_tracker_.reset(new DependencyTracker(this));
 }
 
 void RewriteDriver::PopulateRequestContext() {
@@ -2329,6 +2332,8 @@ bool RewriteDriver::StartParseId(const StringPiece& url, const StringPiece& id,
   start_time_ms_ = server_context_->timer()->NowMs();
   set_log_rewrite_timing(options()->log_rewrite_timing());
 
+  dependency_tracker_->Start();
+
   if (debug_filter_ != NULL) {
     debug_filter_->InitParse();
   }
@@ -2703,6 +2708,7 @@ void RewriteDriver::FinishParseAfterFlush(Function* user_callback) {
   HtmlParse::EndFinishParse();
   LogStats();
   WriteDomCohortIntoPropertyCache();
+  dependency_tracker_->FinishedParsing();
 
   // Update stats.
   RewriteStats* stats = server_context_->rewrite_stats();

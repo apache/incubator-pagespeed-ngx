@@ -790,6 +790,8 @@ const RewriteOptions::FilterEnumToIdAndNameEntry
         {RewriteOptions::kElideAttributes, "ea", "Elide Attributes"},
         {RewriteOptions::kExperimentCollectMobImageInfo, "xi",
          "Experiment: collect image info to help mobilization"},
+        {RewriteOptions::kExperimentHttp2, "x2",
+         "Experiment: http2-specific features in development"},
         {RewriteOptions::kExplicitCloseTags, "xc", "Explicit Close Tags"},
         {RewriteOptions::kExtendCacheCss, "ec", "Cache Extend Css"},
         {RewriteOptions::kExtendCacheImages, "ei", "Cache Extend Images"},

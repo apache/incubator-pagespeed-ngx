@@ -18,14 +18,16 @@
 #include "net/instaweb/rewriter/public/dependency_tracker.h"
 
 #include <memory>
+#include <utility>
 
+#include "base/logging.h"
 #include "net/instaweb/rewriter/dependencies.pb.h"
 #include "net/instaweb/rewriter/public/property_cache_util.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "pagespeed/kernel/base/basictypes.h"
-#include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
-#include "pagespeed/kernel/http/semantic_type.h"
 #include "pagespeed/opt/http/fallback_property_page.h"
 
 namespace net_instaweb {
@@ -52,14 +54,16 @@ void DependencyTracker::Clear() {
 void DependencyTracker::Start() {
   Clear();
 
-  PropertyCacheDecodeResult status;
-  read_in_info_.reset(DecodeFromPropertyCache<Dependencies>(
-        driver_->server_context()->page_property_cache(),
-        driver_->fallback_property_page(),
-        driver_->server_context()->dependencies_cohort(),
-        kDepProp,
-        -1 /* no ttl checking*/,
-        &status));
+  if (driver_->options()->NeedsDependenciesCohort()) {
+    PropertyCacheDecodeResult status;
+    read_in_info_.reset(DecodeFromPropertyCache<Dependencies>(
+          driver_->server_context()->page_property_cache(),
+          driver_->fallback_property_page(),
+          driver_->server_context()->dependencies_cohort(),
+          kDepProp,
+          -1 /* no ttl checking*/,
+          &status));
+  }
 }
 
 void DependencyTracker::FinishedParsing() {
@@ -86,14 +90,20 @@ void DependencyTracker::WriteToPropertyCacheIfDone() {
     return;
   }
 
-  // Make a proto, and write it out to the pcache.
-  Dependencies deps;
-  for (const std::pair<const int, Dependency>& key_val : computed_info_) {
-    *deps.add_dependency() = key_val.second;
+  if (driver_->options()->NeedsDependenciesCohort()) {
+    // Make a proto, and write it out to the pcache.
+    Dependencies deps;
+    for (const std::pair<const int, Dependency>& key_val : computed_info_) {
+      *deps.add_dependency() = key_val.second;
+    }
+    UpdateInPropertyCache(deps, driver_,
+                          driver_->server_context()->dependencies_cohort(),
+                          kDepProp, true /* write out the cohort */);
   }
-  UpdateInPropertyCache(deps, driver_,
-                        driver_->server_context()->dependencies_cohort(),
-                        kDepProp, true /* write out the cohort */);
+
+  // All done, make sure we have nothing hanging around in case we
+  // have non-HTML uses.
+  Clear();
 }
 
 }  // namespace net_instaweb

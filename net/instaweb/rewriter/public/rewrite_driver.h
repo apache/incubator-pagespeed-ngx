@@ -76,6 +76,7 @@ namespace net_instaweb {
 class AbstractLogRecord;
 class AsyncFetch;
 class DebugFilter;
+class DependencyTracker;
 class DomStatsFilter;
 class DomainRewriteFilter;
 class FallbackPropertyPage;
@@ -1106,6 +1107,12 @@ class RewriteDriver : public HtmlParse {
 
   FlushEarlyRenderInfo* flush_early_render_info() const;
 
+  // TODO(morlovich): Document the thread model here once I actually decide on
+  // one, which will come from client requirement.
+  DependencyTracker* dependency_tracker() const {
+    return dependency_tracker_.get();
+  }
+
   // Takes the ownership of flush_early_render_info. This method is not
   // thread-safe. Call it only from the html parser thread.
   void set_flush_early_render_info(
@@ -1739,6 +1746,7 @@ class RewriteDriver : public HtmlParse {
 
   scoped_ptr<FlushEarlyInfo> flush_early_info_;
   scoped_ptr<FlushEarlyRenderInfo> flush_early_render_info_;
+  scoped_ptr<DependencyTracker> dependency_tracker_;
 
   bool can_rewrite_resources_;
   bool is_nested_;
