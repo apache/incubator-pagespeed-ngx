@@ -6997,7 +6997,7 @@ mob.button.Dialer = function(a, b, c, d) {
 };
 goog.inherits(mob.button.Dialer, mob.button.AbstractButton);
 mob.button.Dialer.ICON_ = "R0lGODlhYABgAPAAAAAAAAAAACH5BAEAAAEAIf8LSW1hZ2VNYWdpY2sHZ2FtbWE9MQAsAAAAAGAAYAAAAv6Mj6nL7Q+jnLTai7PevPsPhuJIluaJpurKtu4Lx/KsAvaN5zcd6r7P8/yGuSCHiAQYN0niUtMcPjPR3xRTBV4tWd2W28V9K2HxeFI2nyNp21rSVr4h8Tm9bX/E5fnFvt9QB+iHN6ggaIiAmHiQxngY9giZJTkZVUnYhJmJtMmQ5PnpFMrpRSqqdWpZpFqq1tpoBZsgNRsraxtQmzvKu2v7O9sLHAw7bHzc2ulbrLpM3IzGegV6UW10Le0Ik3232KLp/cfdvfoNHm5+7pJ+u7dDc2nwbhpPv81zX/akT8nf324JwGdTBkbDZnDamITw3jDsY9BQP0b3MK171IVZqhBcHDt6/AgypMiRJEuaDFUAADs=";
-mob.button.Dialer.LABEL_ = "CALL US";
+mob.button.Dialer.LABEL_ = "CALL";
 mob.button.Dialer.WCM_COOKIE_ = "psgwcm";
 mob.button.Dialer.MAX_WCM_COOKIE_LIFETIME_SEC_ = 7776E3;
 mob.button.Dialer.CONVERSION_HANDLER_ = "https://www.googleadservices.com/pagead/conversion/";
@@ -7151,7 +7151,7 @@ mob.button.Map = function(a, b, c, d) {
 };
 goog.inherits(mob.button.Map, mob.button.AbstractButton);
 mob.button.Map.ICON_ = "R0lGODlhYABgAPAAAAAAAAAAACH5BAEAAAEAIf8LSW1hZ2VNYWdpY2sHZ2FtbWE9MQAsAAAAAGAAYAAAAv6Mj6nL7Q+jnLTai7PevPsPhuJIluaJpuo6Au4Ls3IA1/Y7l/fO5x8P7Pk0weJteDEqj0jJ8llrQqBUnJRRzQKuCq2We/B6wWIxtzyWos3IdbntTufi7zldLmMj9Cx895tX5SQYCEVB2Ed1qJhoWIGYAjnoqMJoYRlJ+aiJgrn41LiE4XlCOim6YhqhSiK5ytoCiyUr4upgW0q7pxuSdQpaiGvgV0nMF3rHW5vs68OsHPuM6iw9TV0dpIadrb3N1O0ddRYeQ0ZuZU4OFna+zu7t/r4dLy9NX/98j3+nv8vc7y8ZwIBxBhJ0Y/BgnYT7ADFs2OwhRE4SaRyrOMwhRjeF1jZOBOJxFrCQf0aSTGDyJEojKm9xa9kAJEyXO2Y+qGnzpricOl3wHPQzqNChRIsaPYo0acUCADs=";
-mob.button.Map.LABEL_ = "GET DIRECTIONS";
+mob.button.Map.LABEL_ = "DIRECTIONS";
 mob.button.Map.prototype.clickHandler = function() {
   mob.util.sendBeaconEvent(mob.util.BeaconEvents.MAP_BUTTON, goog.bind(this.openMap_, this));
 };

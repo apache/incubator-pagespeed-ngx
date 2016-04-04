@@ -131,7 +131,7 @@ mob.button.Dialer.ICON_ =
  * The text to insert next to the dial button.
  * @private @const {string}
  */
-mob.button.Dialer.LABEL_ = 'CALL US';
+mob.button.Dialer.LABEL_ = 'CALL';
 
 
 /**

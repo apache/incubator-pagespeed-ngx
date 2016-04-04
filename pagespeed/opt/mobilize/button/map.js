@@ -82,7 +82,7 @@ mob.button.Map.ICON_ =
  * The text to insert next to the map button.
  * @private @const {string}
  */
-mob.button.Map.LABEL_ = 'GET DIRECTIONS';
+mob.button.Map.LABEL_ = 'DIRECTIONS';
 
 
 /** @override */
