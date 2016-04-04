@@ -609,7 +609,7 @@ deferJsNs.deferInit = function() {
 deferJsNs.deferInit();
 pagespeed.deferJsStarted = !1;
 deferJsNs.startDeferJs = function() {
-  pagespeed.deferJsStarted || pagespeed.panelLoader || (pagespeed.deferJsStarted = !0, pagespeed.deferJs.registerScriptTags(), pagespeed.deferJs.execute());
+  pagespeed.deferJsStarted || (pagespeed.deferJsStarted = !0, pagespeed.deferJs.registerScriptTags(), pagespeed.deferJs.execute());
 };
 deferJsNs.startDeferJs = deferJsNs.startDeferJs;
 pagespeedutils.addHandler(document, "DOMContentLoaded", deferJsNs.startDeferJs);

@@ -66,7 +66,6 @@ extern const char* JS_local_storage_cache;
 extern const char* JS_local_storage_cache_opt;
 extern const char* JS_mobilize_js;
 extern const char* JS_mobilize_js_opt;
-extern const char* JS_panel_loader_opt;
 extern const char* JS_responsive_js;
 extern const char* JS_responsive_js_opt;
 
@@ -83,8 +82,7 @@ const unsigned char GIF_blank[] = {
     0x3b};
 const int GIF_blank_len = arraysize(GIF_blank);
 
-// The generated files(blink.js, js_defer.js) are named in "<hash>-<fileName>"
-// format.
+// The generated file js_defer.js is named in "<hash>-<fileName>" format.
 const char StaticAssetManager::kGStaticBase[] =
     "//www.gstatic.com/psa/static/";
 
@@ -235,9 +233,6 @@ void StaticAssetManager::InitializeAssetStrings() {
       "add_instrumentation";
   assets_[StaticAssetEnum::EXTENDED_INSTRUMENTATION_JS]->file_name =
       "extended_instrumentation";
-  GoogleString blink_js_string =
-      StrCat(JS_js_defer_opt, "\n", JS_panel_loader_opt);
-  assets_[StaticAssetEnum::BLINK_JS]->file_name = "blink";
   assets_[StaticAssetEnum::CLIENT_DOMAIN_REWRITER]->file_name =
       "client_domain_rewriter";
   assets_[StaticAssetEnum::CRITICAL_CSS_BEACON_JS]->file_name =
@@ -270,13 +265,13 @@ void StaticAssetManager::InitializeAssetStrings() {
       "deprecated_split_html_beacon";
   assets_[StaticAssetEnum::DEPRECATED_GHOST_CLICK_BUSTER_JS]->file_name =
       "deprecated_ghost_click_buster";
+  assets_[StaticAssetEnum::BLINK_JS]->file_name = "deprecated_blink";
 
   // Initialize compiled javascript strings->
   assets_[StaticAssetEnum::ADD_INSTRUMENTATION_JS]->js_optimized =
       JS_add_instrumentation_opt;
   assets_[StaticAssetEnum::EXTENDED_INSTRUMENTATION_JS]->js_optimized =
       JS_extended_instrumentation_opt;
-  assets_[StaticAssetEnum::BLINK_JS]->js_optimized = blink_js_string;
   assets_[StaticAssetEnum::CLIENT_DOMAIN_REWRITER]->js_optimized =
       JS_client_domain_rewriter_opt;
   assets_[StaticAssetEnum::CRITICAL_CSS_BEACON_JS]->js_optimized =
@@ -310,9 +305,6 @@ void StaticAssetManager::InitializeAssetStrings() {
       JS_add_instrumentation;
   assets_[StaticAssetEnum::EXTENDED_INSTRUMENTATION_JS]->js_debug =
       JS_extended_instrumentation;
-  // Fetching the blink JS is not currently supported-> Add a comment in as the
-  // unit test expects debug code to include comments->
-  assets_[StaticAssetEnum::BLINK_JS]->js_debug = blink_js_string;
   assets_[StaticAssetEnum::CLIENT_DOMAIN_REWRITER]->js_debug =
       JS_client_domain_rewriter;
   assets_[StaticAssetEnum::CRITICAL_CSS_BEACON_JS]->js_debug =

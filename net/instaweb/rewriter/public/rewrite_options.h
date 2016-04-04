@@ -645,8 +645,6 @@ class RewriteOptions {
   static const char kLocalStorageCacheId[];
   static const char kPrioritizeCriticalCssId[];
 
-  static const char kPanelCommentPrefix[];
-
   // Return the appropriate human-readable filter name for the given filter,
   // e.g. "CombineCss".
   static const char* FilterName(Filter filter);

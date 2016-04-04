@@ -106,32 +106,6 @@ class StaticAssetManagerTest : public RewriteTestBase {
   scoped_ptr<StaticAssetManager> manager_;
 };
 
-TEST_F(StaticAssetManagerTest, TestBlinkHandler) {
-  const char blink_url[] = "http://proxy-domain/psajs/blink.0.js";
-  EXPECT_STREQ(blink_url, manager_->GetAssetUrl(StaticAssetEnum::BLINK_JS,
-                                                options_));
-}
-
-TEST_F(StaticAssetManagerTest, TestBlinkGstatic) {
-  manager_->set_static_asset_base("http://proxy-domain");
-  manager_->ServeAssetsFromGStatic(StaticAssetManager::kGStaticBase);
-  manager_->SetGStaticHashForTest(
-      StaticAssetEnum::BLINK_JS,  "1");
-  const char blink_url[] =
-      "//www.gstatic.com/psa/static/1-blink.js";
-  EXPECT_STREQ(blink_url, manager_->GetAssetUrl(StaticAssetEnum::BLINK_JS,
-                                                options_));
-}
-
-TEST_F(StaticAssetManagerTest, TestBlinkDebug) {
-  manager_->ServeAssetsFromGStatic(StaticAssetManager::kGStaticBase);
-  manager_->SetGStaticHashForTest(StaticAssetEnum::BLINK_JS, "1");
-  options_->EnableFilter(RewriteOptions::kDebug);
-  const char blink_url[] = "//www.gstatic.com/psa/static/1-blink.js";
-  EXPECT_STREQ(blink_url, manager_->GetAssetUrl(StaticAssetEnum::BLINK_JS,
-                                                options_));
-}
-
 TEST_F(StaticAssetManagerTest, TestDeferJsGstatic) {
   manager_->ServeAssetsFromGStatic(StaticAssetManager::kGStaticBase);
   manager_->SetGStaticHashForTest(StaticAssetEnum::DEFER_JS, "1");

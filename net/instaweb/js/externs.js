@@ -41,7 +41,6 @@ window.pagespeed.deferJs;
 window.pagespeed.deferJs.registerScriptTags;
 window.pagespeed.deferJs.run;
 window.pagespeed.getResourceTimingData;
-window.pagespeed.lastScriptIndexBeforePanelStub;
 window.pagespeed.shouldAllowResource;
 window.performance.getEntries;
 window.performance.webkitGetEntries;

@@ -1772,7 +1772,9 @@ pagespeed.deferJsStarted = false;
  * Starts deferJs execution.
  */
 deferJsNs.startDeferJs = function() {
-  if (pagespeed.deferJsStarted || pagespeed['panelLoader']) return;
+  if (pagespeed.deferJsStarted) {
+    return;
+  }
   pagespeed.deferJsStarted = true;
   pagespeed.deferJs.registerScriptTags();
   pagespeed.deferJs.execute();

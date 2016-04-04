@@ -22,7 +22,7 @@
 #   add it js_files_utils_dep.
 # * If your file has a dependency on another file but NOT on closure, add a pair
 #   of new targets (opt and dbg) and add a js_includes field with the other
-#   dependencies (see the panel_loader targets for an example).
+#   dependencies.
 # * If you made it this far, you have a closure dependency. Add a pair of new
 #   targets (opt and dbg) and specify the required extra_closure_flags
 #   (--entry_point and '<@(include_closure_library)'). Also add
@@ -308,26 +308,6 @@
         ],
       },
       'sources': [ '<(DEPTH)/pagespeed/system/statistics.js' ],
-      'includes': [ 'closure.gypi', ],
-    },
-
-    {
-      'target_name': 'panel_loader_js_dbg',
-      'variables': {
-        'js_dir': 'rewriter',
-        'closure_build_type': 'dbg',
-        'js_includes': [ 'rewriter/panels.js' ],
-      },
-      'sources': [ 'rewriter/panel_loader.js', ],
-      'includes': [ 'closure.gypi', ],
-    },
-    {
-      'target_name': 'panel_loader_js_opt',
-      'variables': {
-        'js_dir': 'rewriter',
-        'js_includes': [ 'rewriter/panels.js' ],
-      },
-      'sources': [ 'rewriter/panel_loader.js', ],
       'includes': [ 'closure.gypi', ],
     },
 
@@ -677,20 +657,6 @@
       },
       'sources': [
         '<(compiled_js_dir)/rewriter/deterministic_opt.js',
-      ],
-      'includes': [
-        'data2c.gypi',
-      ]
-    },
-    {
-      'target_name': 'instaweb_panel_loader_opt_data2c',
-      'variables': {
-        'instaweb_data2c_subdir': 'net/instaweb/rewriter',
-        'instaweb_js_subdir': '<(compiled_js_dir)/rewriter',
-        'var_name': 'panel_loader_opt',
-      },
-      'sources': [
-        '<(compiled_js_dir)/rewriter/panel_loader_opt.js',
       ],
       'includes': [
         'data2c.gypi',
@@ -1550,7 +1516,6 @@
         'instaweb_local_storage_cache_opt_data2c',
         'instaweb_messages_js_data2c',
         'instaweb_messages_js_opt_data2c',
-        'instaweb_panel_loader_opt_data2c',
         'instaweb_responsive_js_data2c',
         'instaweb_responsive_js_opt_data2c',
         'instaweb_rewriter_base',

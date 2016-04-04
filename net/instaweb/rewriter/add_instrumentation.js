@@ -127,12 +127,6 @@ pagespeed.AddInstrumentation.prototype.sendBeacon = function() {
     }
   }
 
-  if (pagespeed['panelLoader']) {
-    var bcsi = pagespeed['panelLoader']['getCsiTimingsString']();
-    if (bcsi != '') {
-      url += '&b_csi=' + bcsi;
-    }
-  }
   if (pagespeed['criticalCss']) {
     var cc = pagespeed['criticalCss'];
     url += '&ccis=' + cc['total_critical_inlined_size'] +
@@ -171,9 +165,9 @@ pagespeed.addInstrumentationInit = function(beaconUrl, event, extraParams,
   var temp = new pagespeed.AddInstrumentation(beaconUrl, event, extraParams,
                                               htmlUrl);
   if (window.addEventListener) {
-    window.addEventListener(event, function() { temp.sendBeacon() }, false);
+    window.addEventListener(event, function() { temp.sendBeacon(); }, false);
   } else {
-    window.attachEvent('on' + event, function() { temp.sendBeacon() });
+    window.attachEvent('on' + event, function() { temp.sendBeacon(); });
   }
 
 };

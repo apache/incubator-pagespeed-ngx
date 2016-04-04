@@ -400,7 +400,6 @@ const char RewriteOptions::kJavascriptMinId[] = "jm";
 const char RewriteOptions::kJavascriptMinSourceMapId[] = "sm";
 const char RewriteOptions::kJavascriptInlineId[] = "ji";
 const char RewriteOptions::kLocalStorageCacheId[] = "ls";
-const char RewriteOptions::kPanelCommentPrefix[] = "GooglePanel";
 const char RewriteOptions::kPrioritizeCriticalCssId[] = "pr";
 
 // TODO(jmarantz): consider merging this threshold with the image-inlining
