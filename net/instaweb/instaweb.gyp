@@ -1668,6 +1668,7 @@
         '<(DEPTH)/third_party/apr/apr.gyp:include',
         '<(DEPTH)/third_party/aprutil/aprutil.gyp:include',
         '<(DEPTH)/third_party/domain_registry_provider/src/domain_registry/domain_registry.gyp:init_registry_tables_lib',
+        '<(DEPTH)/third_party/grpc/grpc.gyp:grpc_cpp',
       ],
       'sources': [
         '<(DEPTH)/pagespeed/system/add_headers_fetcher.cc',

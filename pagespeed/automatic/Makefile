@@ -160,6 +160,9 @@ BASE_LIBS = \
   third_party/gflags/libgflags.a \
   third_party/giflib/libdgiflib.a \
   third_party/giflib/libgiflib_core.a \
+  third_party/grpc/libgpr.a \
+  third_party/grpc/libgrpc_core.a \
+  third_party/grpc/libgrpc_cpp.a \
   third_party/icu/libicudata.a \
   third_party/icu/libicuuc.a \
   third_party/jsoncpp/libjsoncpp.a \

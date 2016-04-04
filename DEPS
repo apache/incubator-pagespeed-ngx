@@ -99,6 +99,14 @@ vars = {
 
   "proto_src": "https://github.com/google/protobuf.git",
   "protobuf_revision": "v3.0.0-beta-2",
+
+  ## grpc uses nanopb as a git submodule, which gclient doesn't support.
+  ## When updating grpc, you should check the nanopb submodule version
+  ## specified by your branch.
+  "grpc_src": "https://github.com/grpc/grpc.git",
+  "grpc_revision": "release-0_13_1",
+  "nanopb_src": "https://github.com/nanopb/nanopb.git",
+  "nanopb_revision": "f8ac463766281625ad710900479130c7fcb4d63b",
 }
 
 deps = {
@@ -239,7 +247,12 @@ deps = {
 
   "src/third_party/libpng/src": Var("libpng_src") + Var("libpng_revision"),
 
-  "src/third_party/brotli/src": Var("brotli_src") + Var("brotli_revision")
+  "src/third_party/brotli/src": Var("brotli_src") + Var("brotli_revision"),
+
+  "src/third_party/grpc/src": Var("grpc_src") + '@' + Var("grpc_revision"),
+
+  "src/third_party/grpc/src/third_party/nanopb":
+    Var("nanopb_src") + '@' + Var("nanopb_revision"),
 }
 
 
@@ -271,6 +284,14 @@ skip_child_includes = [
 
 
 hooks = [
+  {
+    # Generate a gyp file for grpc.
+    # Must happen before we actually run gyp below.
+    'pattern': '.',
+    'action': ['src/third_party/grpc/generate_grpc_gyp',
+               'src/third_party/grpc/src',
+               'src/third_party/grpc/grpc.gyp'],
+  },
   {
     # Pull clang on mac. If nothing changed, or on non-mac platforms, this takes
     # zero seconds to run. If something changed, it downloads a prebuilt clang,

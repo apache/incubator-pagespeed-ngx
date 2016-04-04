@@ -26,6 +26,7 @@ third_party/domain_registry_provider/*
 third_party/gflags/src/*
 third_party/giflib/*
 third_party/google-sparsehash/src/*
+third_party/grpc/src/*
 third_party/httpd/src/*
 third_party/httpd24/src/*
 third_party/icu/*

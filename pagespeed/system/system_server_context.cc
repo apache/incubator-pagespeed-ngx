@@ -16,6 +16,8 @@
 
 #include "pagespeed/system/system_server_context.h"
 
+#include <memory>
+
 #include "base/logging.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/url_async_fetcher_stats.h"
@@ -41,7 +43,6 @@
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/sharedmem/shared_mem_statistics.h"
-
 
 namespace net_instaweb {
 
@@ -291,6 +292,11 @@ void SystemServerContext::ChildInit(SystemRewriteDriverFactory* factory) {
     html_rewrite_time_us_histogram_ = statistics()->GetHistogram(
         kHtmlRewriteTimeUsHistogram);
     html_rewrite_time_us_histogram_->SetMaxValue(2 * Timer::kSecondUs);
+
+    // TODO(cheesy): We don't actually use this right now, but it does verify
+    // that we have correctly linked against gRPC. In future, this will be used
+    // when we connect to a real gRPC server running on the controller process.
+    grpc_queue_.reset(new ::grpc::CompletionQueue());
   }
 }
 
