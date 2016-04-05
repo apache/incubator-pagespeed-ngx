@@ -1107,8 +1107,8 @@ class RewriteDriver : public HtmlParse {
 
   FlushEarlyRenderInfo* flush_early_render_info() const;
 
-  // TODO(morlovich): Document the thread model here once I actually decide on
-  // one, which will come from client requirement.
+  // dependency_tracker()->RegisterDependencyCandidate and
+  // ReportDependencyCandidate can be called from any thread.
   DependencyTracker* dependency_tracker() const {
     return dependency_tracker_.get();
   }

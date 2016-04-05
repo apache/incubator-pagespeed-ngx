@@ -28,6 +28,7 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/opt/http/fallback_property_page.h"
 
 namespace net_instaweb {
@@ -36,14 +37,23 @@ const char kDepProp[] = "dependencies";
 
 DependencyTracker::DependencyTracker(RewriteDriver* driver)
     : driver_(driver) {
-  Clear();
 }
 
 DependencyTracker::~DependencyTracker() {
   DCHECK_EQ(outstanding_candidates_, 0);
 }
 
+void DependencyTracker::SetServerContext(ServerContext* server_context) {
+  mutex_.reset(server_context->thread_system()->NewMutex());
+  Clear();
+}
+
 void DependencyTracker::Clear() {
+  ScopedMutex hold(mutex_.get());
+  ClearLockHeld();
+}
+
+void DependencyTracker::ClearLockHeld() {
   read_in_info_.reset();
   computed_info_.clear();
   next_id_ = 0;
@@ -67,17 +77,20 @@ void DependencyTracker::Start() {
 }
 
 void DependencyTracker::FinishedParsing() {
+  ScopedMutex hold(mutex_.get());
   saw_end_ = true;
   WriteToPropertyCacheIfDone();
 }
 
 int DependencyTracker::RegisterDependencyCandidate() {
+  ScopedMutex hold(mutex_.get());
   ++outstanding_candidates_;
   return next_id_++;
 }
 
 void DependencyTracker::ReportDependencyCandidate(
     int id, const Dependency* dep) {
+  ScopedMutex hold(mutex_.get());
   if (dep != nullptr) {
     computed_info_[id] = *dep;
   }
@@ -103,7 +116,7 @@ void DependencyTracker::WriteToPropertyCacheIfDone() {
 
   // All done, make sure we have nothing hanging around in case we
   // have non-HTML uses.
-  Clear();
+  ClearLockHeld();
 }
 
 }  // namespace net_instaweb

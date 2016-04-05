@@ -132,6 +132,7 @@ class DependencyTrackerTest : public RewriteTestBase {
 
 TEST_F(DependencyTrackerTest, BasicOperation) {
   DependencyTracker tracker(rewrite_driver());
+  tracker.SetServerContext(server_context());
   tracker.Start();
   EXPECT_EQ(nullptr, tracker.read_in_info());
 

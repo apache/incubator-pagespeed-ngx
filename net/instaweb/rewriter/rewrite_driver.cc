@@ -906,6 +906,7 @@ void RewriteDriver::SetServerContext(ServerContext* server_context)
   scheduler_->RegisterWorker(rewrite_worker_);
   scheduler_->RegisterWorker(html_worker_);
   scheduler_->RegisterWorker(low_priority_rewrite_worker_);
+  dependency_tracker_->SetServerContext(server_context);
 
   DCHECK(resource_filter_map_.empty());
 

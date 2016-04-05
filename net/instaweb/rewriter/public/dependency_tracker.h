@@ -21,20 +21,31 @@
 #include <memory>
 
 #include "net/instaweb/rewriter/dependencies.pb.h"
-#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
-#include "pagespeed/kernel/http/semantic_type.h"
+#include "pagespeed/kernel/base/thread_annotations.h"
 
 namespace net_instaweb {
 
+class AbstractMutex;
 class RewriteDriver;
+class ServerContext;
 
+// Helper for keeping track of what resources a page depends on --- it helps
+// decode information saved in property cache, and to assemble information
+// collected from the actual page to update it.
+//
+// The Register/Report methods are thread-safe.
+// TODO(morlovich): Might need merging strategy for stability.
 class DependencyTracker {
  public:
+  // Note: you must also call SetServerContext on this before operation.
   explicit DependencyTracker(RewriteDriver* driver);
   ~DependencyTracker();
+
+  // This needs to be called to help initialize locking.
+  void SetServerContext(ServerContext* server_context);
 
   // Must be called when parsing pages, after pcache has read in.
   void Start();
@@ -65,10 +76,13 @@ class DependencyTracker {
   const Dependencies* read_in_info() const { return read_in_info_.get(); }
 
  private:
-  void Clear();
-  void WriteToPropertyCacheIfDone();
+  void Clear() LOCKS_EXCLUDED(mutex_);
+  void ClearLockHeld() EXCLUSIVE_LOCKS_REQUIRED(mutex_);
+  void WriteToPropertyCacheIfDone() EXCLUSIVE_LOCKS_REQUIRED(mutex_);
 
   RewriteDriver* driver_;
+
+  std::unique_ptr<AbstractMutex> mutex_;
 
   // Info we read in from property cache --- used to make decisions about
   // the current page.
@@ -76,14 +90,14 @@ class DependencyTracker {
 
   // Things we compute on the current page.
   // This uses std::map so we can get a stable sort in document order.
-  std::map<int, Dependency> computed_info_;
+  std::map<int, Dependency> computed_info_ GUARDED_BY(mutex_);
 
-  int next_id_;
-  int outstanding_candidates_;
+  int next_id_ GUARDED_BY(mutex_);
+  int outstanding_candidates_ GUARDED_BY(mutex_);
 
   // Called on ... so we know when we can finally commit results to property
   // cache once number of outstanding candidates goes to 0.
-  bool saw_end_;
+  bool saw_end_ GUARDED_BY(mutex_);
 
   DISALLOW_COPY_AND_ASSIGN(DependencyTracker);
 };
