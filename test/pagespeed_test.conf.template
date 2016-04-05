@@ -1716,6 +1716,49 @@ http {
       expires 5m;
     }
 
+    location /mod_pagespeed_test/ipro/cc200/ {
+      add_header "Cache-Control" "max-age=200";
+    }
+    location /mod_pagespeed_test/ipro/cc200p/ {
+      add_header "Cache-Control" "private, max-age=200";
+    }
+    location /mod_pagespeed_test/ipro/cc200nc/ {
+      add_header "Cache-Control" "no-cache, max-age=200";
+    }
+    location /mod_pagespeed_test/ipro/cc200ns/ {
+      add_header "Cache-Control" "no-store, max-age=200";
+    }
+    location /mod_pagespeed_test/ipro/cc200nt/ {
+      add_header "Cache-Control" "no-transform, max-age=200";
+    }
+    location /mod_pagespeed_test/ipro/cc200sma5/ {
+      add_header "Cache-Control" "s-maxage=5, max-age=200";
+    }
+    location /mod_pagespeed_test/ipro/cc200sma50/ {
+      add_header "Cache-Control" "s-maxage=50, max-age=200";
+    }
+    location /mod_pagespeed_test/ipro/cc200sma50nsp/ {
+      add_header "Cache-Control" "s-maxage=50,max-age=200";
+    }
+    location /mod_pagespeed_test/ipro/cc9/ {
+      add_header "Cache-Control" "max-age=9";
+    }
+    location /mod_pagespeed_test/ipro/cc200cc9/ {
+      add_header "Cache-Control" "max-age=200, max-age=9";
+    }
+    location /mod_pagespeed_test/ipro/cc200sma50sma5/ {
+      add_header "Cache-Control" "max-age=200, s-maxage=50, s-maxage=5";
+    }
+    location /mod_pagespeed_test/ipro/cc200sma50cc9/ {
+      add_header "Cache-Control" "max-age=200, s-maxage=50, max-age=9";
+    }
+    location /mod_pagespeed_test/ipro/cc200sma50cc9nsp/ {
+      add_header "Cache-Control" "max-age=200,s-maxage=50,max-age=9";
+    }
+    location /mod_pagespeed_test/ipro/cc200sma50sma51/ {
+      add_header "Cache-Control" "max-age=200, s-maxage=50, s-maxage=51";
+    }
+
     location /mod_pagespeed_test/ipro/wait/ {
       # TODO(jmarantz): ModPagespeedInPlaceWaitForOptimized should be superfluous,
       # or made equivalent to ModPagespeedInPlaceRewriteDeadlineMs -1, which waits
