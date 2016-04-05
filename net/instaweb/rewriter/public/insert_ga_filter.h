@@ -43,7 +43,7 @@ extern const char kAnalyticsJsSnippet[];
 extern const char kAnalyticsJsIncreaseSiteSpeedTracking[];
 extern const char kAnalyticsJsIncreaseSiteSpeedTrackingMinimal[];
 extern const char kContentExperimentsJsClientUrl[];
-extern const char kContentExperimentsSetChosenVariantSnippet[];
+extern const char kContentExperimentsSetChosenVariationSnippet[];
 extern const char kContentExperimentsSetExpAndVariantSnippet[];
 extern const char kGASpeedTracking[];
 

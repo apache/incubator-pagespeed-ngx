@@ -375,7 +375,7 @@ TEST_F(InsertGAFilterTest, ExperimentGaJsCx) {
              kContentExperimentsJsClientUrl,
              "\"></script>").c_str(),
       "",
-      StrCat(StringPrintf(kContentExperimentsSetChosenVariantSnippet,
+      StrCat(StringPrintf(kContentExperimentsSetChosenVariationSnippet,
                           "456", "123"),
              StringPrintf(kGAJsSnippet, kGaId, "test.com",
                           kGASpeedTracking)).c_str());
@@ -528,7 +528,7 @@ TEST_F(InsertGAFilterTest, SynchronousGAContentExperiment) {
                        kContentExperimentsJsClientUrl,
                        "\"></script><script>",
                        StringPrintf(
-                           kContentExperimentsSetChosenVariantSnippet,
+                           kContentExperimentsSetChosenVariationSnippet,
                            "456", "123")).c_str(),
                    kGaId);
   ValidateExpected("extend sync ga.js for content experiment", input, output);
@@ -567,7 +567,7 @@ TEST_F(InsertGAFilterTest, AsynchronousGAContentExperiment) {
                        kContentExperimentsJsClientUrl,
                        "\"></script><script>",
                        StringPrintf(
-                           kContentExperimentsSetChosenVariantSnippet,
+                           kContentExperimentsSetChosenVariationSnippet,
                            "456", "123")).c_str(),
                    kGaId);
   ValidateExpected("extend async ga.js for content experiment", input, output);
@@ -763,7 +763,7 @@ TEST_F(InsertGAFilterTest, ExistingGaJsContentExperimentNoCloseAnything) {
              kContentExperimentsJsClientUrl,
              "\"></script>"
              "<script>",
-             StringPrintf(kContentExperimentsSetChosenVariantSnippet,
+             StringPrintf(kContentExperimentsSetChosenVariationSnippet,
                           "456", "123"),
              StringPrintf(kGAJsSnippet, kGaId, "test.com",
                           kGASpeedTracking)).c_str());
@@ -785,7 +785,7 @@ TEST_F(InsertGAFilterTest, AsynchronousGAContentExperimentFlush) {
                        kContentExperimentsJsClientUrl,
                        "\"></script><script>",
                        StringPrintf(
-                           kContentExperimentsSetChosenVariantSnippet,
+                           kContentExperimentsSetChosenVariationSnippet,
                            "456", "123")).c_str(),
                    kGaId);
 

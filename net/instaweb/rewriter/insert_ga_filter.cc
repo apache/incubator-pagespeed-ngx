@@ -69,7 +69,7 @@ namespace net_instaweb {
 //
 // ga.js + content experiments:
 //   <script src="kContentExperimentsJsClientUrl"></script>
-//   <script>kContentExperimentsSetChosenVariantSnippet
+//   <script>kContentExperimentsSetChosenVariationSnippet
 //           kGAJsSnippet</script> [ possibly existing ]
 //
 // analytics.js + content experiments:
@@ -140,8 +140,8 @@ extern const char kContentExperimentsJsClientUrl[] =
 // When using content experiments with ga.js, after /cx/api.js has loaded and
 // before ga.js loads you need to call this.  The first argument is the
 // variant id, the second is the experiment id.
-extern const char kContentExperimentsSetChosenVariantSnippet[] =
-    "cxApi.setChosenVariant('%s', '%s');";
+extern const char kContentExperimentsSetChosenVariationSnippet[] =
+    "cxApi.setChosenVariation('%s', '%s');";
 
 // When using content experiments with analytics.js, after ga('create', ..._)
 // and before ga('[...].send', 'pageview'), we need to insert:
@@ -296,7 +296,7 @@ void InsertGAFilter::EndDocument() {
         InsertNodeAtBodyEnd(cxapi);
 
         experiment_snippet = StringPrintf(
-            kContentExperimentsSetChosenVariantSnippet,
+            kContentExperimentsSetChosenVariationSnippet,
             driver()->options()->content_experiment_variant_id().c_str(),
             driver()->options()->content_experiment_id().c_str());
       } else {
@@ -516,7 +516,7 @@ void InsertGAFilter::HandleEndScript(HtmlElement* script) {
   if (!postponed_script_body_.empty()) {
     DCHECK(script == script_element_);
     GoogleString snippet_text = StringPrintf(
-        kContentExperimentsSetChosenVariantSnippet,
+        kContentExperimentsSetChosenVariationSnippet,
         driver()->options()->content_experiment_variant_id().c_str(),
         driver()->options()->content_experiment_id().c_str());
 
