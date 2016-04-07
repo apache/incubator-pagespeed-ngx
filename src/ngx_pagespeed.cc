@@ -422,6 +422,32 @@ ngx_int_t ps_set_cache_control(ngx_http_request_t* r, char* cache_control) {
   return NGX_OK;
 }
 
+// Returns false if the header wasn't found.  Otherwise sets cache_control and
+// returns true;
+bool ps_get_cache_control(ngx_http_request_t* r, GoogleString* cache_control) {
+  // Use headers_out.cache_control instead of looking for Cache-Control in
+  // headers_out.headers, because if an upstream sent multiple Cache-Control
+  // headers they're already combined in headers_out.cache_control.
+  auto ccp = static_cast<ngx_table_elt_t**>(r->headers_out.cache_control.elts);
+  if (ccp == nullptr) {
+    return false;  // Header not present.
+  }
+  bool first_segment = true;
+  for (ngx_uint_t i = 0; i < r->headers_out.cache_control.nelts; i++) {
+    if (ccp[i]->hash == 0) {
+      continue;  // Elements with a hash of 0 are marked as excluded.
+    }
+    if (first_segment) {
+      first_segment = false;
+    } else {
+      cache_control->append(", ");
+    }
+    cache_control->append(reinterpret_cast<char*>(ccp[i]->value.data),
+                          ccp[i]->value.len);
+  }
+  return true;
+}
+
 template<class Headers>
 void copy_headers_from_table(const ngx_list_t &from, Headers* to) {
   // Standard nginx idiom for iterating over a list.  See ngx_list.h
@@ -2190,6 +2216,31 @@ ngx_int_t ps_etag_header_filter(ngx_http_request_t* r) {
     r->gzip_vary = 0;
   }
 #endif
+
+  if (ctx && ctx->recorder) {
+    ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
+    int s_maxage_sec =
+        cfg_s->server_context->global_options()->EffectiveInPlaceSMaxAgeSec();
+    if (s_maxage_sec != -1) {
+      GoogleString existing_cache_control;
+      bool cache_control_present = ps_get_cache_control(
+          r, &existing_cache_control);
+      GoogleString updated_cache_control;
+      if (ResponseHeaders::ApplySMaxAge(s_maxage_sec,
+                                        existing_cache_control,
+                                        &updated_cache_control)) {
+        // We're modifing the cache control header; save a copy first.
+        // NULL indicates that the header was not present.
+        ctx->recorder->SaveCacheControl(
+            cache_control_present ? existing_cache_control.c_str() : NULL);
+
+        // Replace the cache-control with our new s-maxage-including one.
+        ps_set_cache_control(r, string_piece_to_pool_string(
+            r->pool, updated_cache_control));
+      }
+    }
+  }
+
   return ngx_http_ef_next_header_filter(r);
 }
 
@@ -2417,6 +2468,7 @@ ngx_int_t ps_in_place_check_header_filter(ngx_http_request_t* r) {
         cache_url.c_str());
     const SystemRewriteOptions* options = SystemRewriteOptions::DynamicCast(
         ctx->driver->options());
+
     RequestContextPtr request_context(
         cfg_s->server_context->NewRequestContext(r));
     request_context->set_options(options->ComputeHttpOptions());
@@ -2436,7 +2488,7 @@ ngx_int_t ps_in_place_check_header_filter(ngx_http_request_t* r) {
         server_context->http_cache(),
         server_context->statistics(),
         message_handler);
-    // set in memory flag for in place_body_filter
+    // set in memory flag for in_place_body_filter
     r->filter_need_in_memory = 1;
 
     // We don't have the response headers at all yet because we haven't yet gone
