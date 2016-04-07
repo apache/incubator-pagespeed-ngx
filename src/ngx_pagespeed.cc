@@ -1295,6 +1295,9 @@ ngx_int_t ps_decline_request(ngx_http_request_t* r) {
 
   r->count++;
   r->phase_handler++;
+
+  //restore read_event_handler to what it was in ps_async_wait_response
+  r->read_event_handler = ngx_http_block_reading;
   r->write_event_handler = ngx_http_core_run_phases;
   ngx_http_core_run_phases(r);
   ngx_http_run_posted_requests(r->connection);
@@ -1306,6 +1309,13 @@ ngx_int_t ps_async_wait_response(ngx_http_request_t* r) {
   CHECK(ctx != NULL);
 
   r->count++;
+  // While we wait for PSOL to complete an async operation, there is a chance
+  // that the underlying connection gets closed,  or a http/2 RST_STREAM is
+  // received before the async operation completes. In that case we don't want
+  // to continue processing this flow. So we override the requests's read event
+  // handler with one that will make nginx abort request processing and execute
+  // our cleanup handlers instead of resuming request processing.
+  r->read_event_handler = ngx_http_test_reading;
   r->write_event_handler = ngx_http_request_empty_handler;
   ps_set_buffered(r, true);
   // We don't need to add a timer here, as it will be set by nginx.
