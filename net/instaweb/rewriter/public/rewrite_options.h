@@ -305,6 +305,7 @@ class RewriteOptions {
   static const char kInPlacePreemptiveRewriteJavascript[];
   static const char kInPlaceResourceOptimization[];
   static const char kInPlaceRewriteDeadlineMs[];
+  static const char kInPlaceSMaxAgeSec[];
   static const char kInPlaceWaitForOptimized[];
   static const char kJsInlineMaxBytes[];
   static const char kJsOutlineMinBytes[];
@@ -1848,6 +1849,18 @@ class RewriteOptions {
 
   int in_place_rewrite_deadline_ms() const {
     return in_place_rewrite_deadline_ms_.value();
+  }
+
+  void set_in_place_s_maxage_sec(int x) {
+    set_option(x, &in_place_s_maxage_sec_);
+  }
+
+  int in_place_s_maxage_sec() const {
+    return in_place_s_maxage_sec_.value();
+  }
+
+  int EffectiveInPlaceSMaxAgeSec() const {
+    return modify_caching_headers() ? in_place_s_maxage_sec() : -1;
   }
 
   void set_in_place_preemptive_rewrite_css(bool x) {
@@ -3801,6 +3814,11 @@ class RewriteOptions {
   // Interval to delay serving on the IPRO path while waiting for optimizations.
   // After this interval, the unoptimized resource will be served.
   Option<int> in_place_rewrite_deadline_ms_;
+  // When we have a resource that we haven't optimized in-place yet, we add
+  // s-maxage to the Cache-Control header until we get to optimizing it.  This
+  // option controls how many seconds we set s-maxage to, and -1 disables
+  // setting s-maxage at all.
+  Option<int> in_place_s_maxage_sec_;
   // If set, preemptively rewrite images in CSS files on the HTML serving path
   // when IPRO of CSS is enabled.
   Option<bool> in_place_preemptive_rewrite_css_;

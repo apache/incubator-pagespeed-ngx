@@ -29,7 +29,11 @@ const char kModPagespeedFixHeadersName[] = "MOD_PAGESPEED_FIX_HEADERS_FILTER";
 // Filters used for In-Place Resource Optimization.
 // First filter stores un-gzipped contents.
 const char kModPagespeedInPlaceFilterName[] = "MOD_PAGESPEED_IN_PLACE_FILTER";
-// Second filter checks headers for cacheability.
+// Second filter fixes headers to avoid caching by shared proxies.
+const char kModPagespeedInPlaceFixHeadersName[] =
+    "MOD_PAGESPEED_IN_PLACE_FIX_HEADERS_FILTER";
+// Third filter checks headers for cacheability and writes the recorded resource
+// to our cache.
 const char kModPagespeedInPlaceCheckHeadersName[] =
     "MOD_PAGESPEED_IN_PLACE_CHECK_HEADERS_FILTER";
 

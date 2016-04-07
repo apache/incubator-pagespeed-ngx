@@ -683,8 +683,7 @@ apr_status_t instaweb_fix_headers_filter(
     }
   }
 
-  // TODO(sligocki): Why remove ourselves? Is it to assure that this filter
-  // only looks at the first bucket in the brigade?
+  // Remove ourselves so that we only run once per request.
   ap_remove_output_filter(filter);
   return ap_pass_brigade(filter->next, bb);
 }
@@ -763,17 +762,59 @@ apr_status_t instaweb_in_place_filter(ap_filter_t* filter,
       recorder->Flush(recorder->handler());
     }
   }
+
   // instaweb_in_place_check_headers_filter cleans up the recorder.
   return ap_pass_brigade(filter->next, bb);
 }
 
-// Runs after mod_headers and other filters which muck with the headers.
-// We cannot run instaweb_in_place_filter after them because by then the
-// content is gzipped.
-// TODO(sligocki): Run as a single filter after mod_headers, etc. using
-// an inflater to gunzip the file? Or storing the gzipped version in cache?
+// Runs immediately after mod_headers and other filters which muck with the
+// headers, but before headers are finalized.
 //
-// The sole purpose of this filter is to pass the finalized headers to recorder.
+// Sets cache-control to include s-maxage, and tells the recorder what the
+// original cache control was so it can properly save it with the rest of the
+// headers once they're finalized.
+apr_status_t instaweb_in_place_fix_headers_filter(ap_filter_t* filter,
+                                                  apr_bucket_brigade* bb) {
+  request_rec* request = filter->r;
+  ApacheServerContext* server_context =
+      InstawebContext::ServerContextFromServerRec(request->server);
+  if (!server_context->global_config()->unplugged()) {
+    InPlaceResourceRecorder* recorder =
+        static_cast<InPlaceResourceRecorder*>(filter->ctx);
+    if (recorder != NULL) {
+      int s_maxage_sec =
+          server_context->global_config()->EffectiveInPlaceSMaxAgeSec();
+      if (s_maxage_sec != -1) {
+        const char* existing_cache_control =
+            apr_table_get(request->headers_out,
+                          HttpAttributes::kCacheControl);
+        GoogleString updated_cache_control;
+        if (ResponseHeaders::ApplySMaxAge(
+                s_maxage_sec, existing_cache_control, &updated_cache_control)) {
+          // We're modifing the cache control header; save a copy first.
+          recorder->SaveCacheControl(existing_cache_control);
+
+          // Replace the cache-control with our new s-maxage-including one.
+          apr_table_set(request->headers_out, HttpAttributes::kCacheControl,
+                        updated_cache_control.c_str());
+        }
+      }
+    }
+  }
+
+  // Remove ourselves so that we only run once per request.
+  ap_remove_output_filter(filter);
+  return ap_pass_brigade(filter->next, bb);
+}
+
+// Runs after instaweb_in_place_fix_headers_filter and after headers are
+// finalized.  We have to run instaweb_in_place_filter earlier because by now
+// the response body is gzipped.  TODO(sligocki): Run as a single filter after
+// mod_headers, etc. using an inflater to gunzip the file? Or storing the
+// gzipped version in cache?
+//
+// The sole purpose of this filter is to pass the finalized headers to
+// recorder.
 apr_status_t instaweb_in_place_check_headers_filter(ap_filter_t* filter,
                                                     apr_bucket_brigade* bb) {
   // Do nothing if there is nothing, and stop passing to other filters.
@@ -794,8 +835,10 @@ apr_status_t instaweb_in_place_check_headers_filter(ap_filter_t* filter,
   InPlaceResourceRecorder* recorder =
       static_cast<InPlaceResourceRecorder*>(filter->ctx);
 
-  // Although headers come in first bucket, we do not want to call Done
-  // until last bucket comes in, so iterate to EOS bucket.
+  // We do not want to call Done until the last bucket comes in, because the
+  // instaweb_in_place_filter needs to record the body, so iterate to EOS
+  // bucket if present.  If it's not present, we'll get called again until it is
+  // present.
   for (apr_bucket* bucket = APR_BRIGADE_FIRST(bb);
        (recorder != NULL) && (bucket != APR_BRIGADE_SENTINEL(bb));
        bucket = APR_BUCKET_NEXT(bucket)) {
@@ -1091,6 +1134,13 @@ void mod_pagespeed_register_hooks(apr_pool_t* pool) {
       kModPagespeedInPlaceCheckHeadersName,
       instaweb_in_place_check_headers_filter, NULL,
       static_cast<ap_filter_type>(AP_FTYPE_PROTOCOL + 1));
+  // For IPRO recording, run after headers are set by mod_headers or
+  // mod_expires, but early enough that we can still change them to set
+  // s-maxage.
+  ap_register_output_filter(
+      kModPagespeedInPlaceFixHeadersName,
+      instaweb_in_place_fix_headers_filter, NULL,
+      static_cast<ap_filter_type>(AP_FTYPE_CONTENT_SET + 1));
 
   ap_hook_post_config(pagespeed_post_config, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_child_init(pagespeed_child_init, NULL, NULL, APR_HOOK_LAST);

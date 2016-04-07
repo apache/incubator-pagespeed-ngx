@@ -998,6 +998,7 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
     RewriteOptions::kInPlacePreemptiveRewriteJavascript,
     RewriteOptions::kInPlaceResourceOptimization,
     RewriteOptions::kInPlaceRewriteDeadlineMs,
+    RewriteOptions::kInPlaceSMaxAgeSec,
     RewriteOptions::kInPlaceWaitForOptimized,
     RewriteOptions::kJsInlineMaxBytes,
     RewriteOptions::kJsOutlineMinBytes,

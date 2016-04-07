@@ -740,6 +740,15 @@ GoogleString ResponseHeaders::CacheControlValuesToPreserve() {
   if (HasValue(HttpAttributes::kCacheControl, "no-store")) {
     to_preserve += ", no-store";
   }
+
+  ConstStringStarVector cc_values;
+  Lookup(HttpAttributes::kCacheControl, &cc_values);
+  for (auto value : cc_values) {
+    if (StringCaseStartsWith(*value, "s-maxage=")) {
+      to_preserve += ", " + *value;
+    }
+  }
+
   return to_preserve;
 }
 
@@ -1131,6 +1140,115 @@ bool ResponseHeaders::HasLinkRelCanonical() const {
     }
   }
   return false;
+}
+
+void ResponseHeaders::SetSMaxAge(int s_maxage_sec) {
+  GoogleString updated_cache_control;
+
+  ConstStringStarVector values;
+  GoogleString existing_cache_control = "";
+  if (Lookup(HttpAttributes::kCacheControl, &values)) {
+    // TODO(jefftk): since we've done the work to split it into a vector, it's
+    // inefficient to be joining it back to a string to give to ApplySMaxAge
+    // which will split to a vector.
+    existing_cache_control = JoinStringStar(values, ", ");
+  }
+
+  if (ApplySMaxAge(s_maxage_sec,
+                   existing_cache_control,
+                   &updated_cache_control)) {
+    Replace(HttpAttributes::kCacheControl, updated_cache_control);
+  }
+}
+
+// static
+bool ResponseHeaders::ApplySMaxAge(int s_maxage_sec,
+                                   StringPiece existing_cache_control,
+                                   GoogleString* updated_cache_control) {
+  TrimWhitespace(&existing_cache_control);
+  GoogleString s_maxage_str = StrCat("s-maxage=",
+                                     IntegerToString(s_maxage_sec));
+  if (existing_cache_control.empty()) {
+    *updated_cache_control = s_maxage_str;
+    return true;
+  }
+
+  StringPieceVector segments;
+  SplitStringPieceToVector(existing_cache_control, ",", &segments,
+                           true /* omit empty strings */);
+  for (StringPiece& segment : segments) {
+    TrimWhitespace(&segment);
+    if (StringCaseEqual(segment, "no-transform")) {
+      // We're not allowed to touch this, so don't.
+      return false;
+    }
+    if (StringCaseEqual(segment, "no-cache") ||
+        StringCaseEqual(segment, "no-store") ||
+        StringCaseEqual(segment, "private")) {
+      // Downstream shared caches shouldn't be caching these, and adding
+      // s-maxage might confuse one into thinking that it should actually go
+      // ahead and cache, so if any of these are present, don't add it.
+      return false;
+    }
+  }
+
+  // It's not clear from the RFC what we should do if there are multiple
+  // s-maxages with different values.  The most conservative thing is probably
+  // to update them individually, so let's do that.
+  bool found_existing_s_maxage = false;
+  bool updated_existing_s_maxage = false;
+  for (StringPiece& segment : segments) {
+    if (StringCaseStartsWith(segment, "s-maxage=")) {
+      // Found existing s-maxage.  If it's larger than s_maxage_sec update it.
+      found_existing_s_maxage = true;
+
+      StringPiece existing_value_s = segment;
+      existing_value_s.remove_prefix(STATIC_STRLEN("s-maxage="));
+      int existing_value;
+      if (!StringToInt(existing_value_s, &existing_value)) {
+        // Failed to parse existing s-maxage value; leave it alone.
+      } else if (existing_value <= s_maxage_sec) {
+        // It's already small enough, don't change this one.  But there might be
+        // additional ones that need to be lowered, so keep going.
+      } else {
+        segment = s_maxage_str;
+        updated_existing_s_maxage = true;
+      }
+    }
+  }
+  if (found_existing_s_maxage) {
+    if (updated_existing_s_maxage) {
+      *updated_cache_control = JoinCollection(segments, ", ");
+    }
+    return updated_existing_s_maxage;
+  }
+
+  // Didn't find s-maxage; look for max-age.
+
+  // It's not clear how to handle multiple max-ages either.  Since s-maxage
+  // overrides max-age if present, and we don't want to accidentally make
+  // something more cacheable, we only add s-maxage if it's lower than the
+  // lowest existing max-age header.
+  bool found_existing_maxage = false;
+  int lowest_existing_maxage_value = s_maxage_sec+1;
+  for (StringPiece& segment : segments) {
+    if (StringCaseStartsWith(segment, "max-age=")) {
+      found_existing_maxage = true;
+      StringPiece existing_value_s = segment;
+      existing_value_s.remove_prefix(STATIC_STRLEN("max-age="));
+      int existing_value;
+      if (!StringToInt(existing_value_s, &existing_value)) {
+        // Failed to parse existing max-age value; ignore it.
+      } else if (existing_value < lowest_existing_maxage_value) {
+        lowest_existing_maxage_value = existing_value;
+      }
+    }
+  }
+  if (found_existing_maxage && lowest_existing_maxage_value <= s_maxage_sec) {
+    return false;
+  }
+  *updated_cache_control = StrCat(existing_cache_control, ", ", s_maxage_str);
+  return true;
 }
 
 }  // namespace net_instaweb

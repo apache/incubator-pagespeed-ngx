@@ -1118,9 +1118,10 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
   // Now re-compress the (possibly resized) image, and decide if it's
   // saved us anything.
   if (is_resized || options->ImageOptimizationEnabled()) {
-  // Call output_size() before image_type(). When output_size() is called,
+    // Call output_size() before image_type(). When output_size() is called,
     // the image will be recompressed and the image type may be changed
     // in order to get the smallest output.
+    // TODO(huibao): rename output_size() to RecompressAndReturnOutputSize()
     optimized_size = image->output_size();
     optimized_image_type = image->image_type();
     is_recompressed = true;

@@ -272,8 +272,8 @@ class CacheFindCallback : public HTTPCache::Callback {
             owner->serve_stale_while_revalidate_threshold_sec()) {
     // Note that this is a cache lookup: there are no request-headers.  At
     // this level, we have already made a policy decision that any Vary
-    // headers present will be ignored (see
-    // http://code.google.com/speed/page-speed/docs/install.html#respectvary ).
+    // headers present will be ignored.  See
+    // https://developers.google.com/speed/pagespeed/module/configuration#respectvary
     set_response_headers(base_fetch->response_headers());
   }
   virtual ~CacheFindCallback() {}

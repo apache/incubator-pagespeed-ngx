@@ -67,7 +67,8 @@ InPlaceResourceRecorder::InPlaceResourceRecorder(
       status_code_(-1),
       failure_(false),
       full_response_headers_considered_(false),
-      consider_response_headers_called_(false) {
+      consider_response_headers_called_(false),
+      cache_control_set_(false) {
   num_resources_->Add(1);
   if (limit_active_recordings() &&
       active_recordings_.BarrierIncrement(1) > max_concurrent_recordings_) {
@@ -219,6 +220,13 @@ void InPlaceResourceRecorder::DroppedAsUncacheable() {
   failure_ = true;
 }
 
+void InPlaceResourceRecorder::SaveCacheControl(const char* cache_control) {
+  cache_control_set_ = true;
+  if (cache_control != nullptr) {
+    cache_control_ = cache_control;
+  }
+}
+
 void InPlaceResourceRecorder::DoneAndSetHeaders(
     ResponseHeaders* response_headers, bool entire_response_received) {
   if (!entire_response_received) {
@@ -248,6 +256,16 @@ void InPlaceResourceRecorder::DoneAndSetHeaders(
     // if gzip'd is too large uncompressed is likely too large, too.
     response_headers->RemoveAll(HttpAttributes::kContentEncoding);
     response_headers->RemoveAll(HttpAttributes::kContentLength);
+
+    if (cache_control_set_) {
+      // Use the cache control value from SaveCacheControl instead of the one in
+      // the response.
+      response_headers->RemoveAll(HttpAttributes::kCacheControl);
+      if (!cache_control_.empty()) {
+        response_headers->Add(HttpAttributes::kCacheControl, cache_control_);
+      }
+    }
+
     resource_value_.SetHeaders(response_headers);
     cache_->Put(url_, fragment_, request_properties_, http_options_,
                 &resource_value_, handler_);

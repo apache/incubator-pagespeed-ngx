@@ -168,6 +168,64 @@ ModPagespeedEnableFilters add_instrumentation
     Header always set X-TestHeader "hello"
 </Directory>
 
+# The following directories are used by automatic/system_tests/smaxage.sh to
+# test that we properly add s-maxage to cache-control headers for unoptimized
+# ipro responses.
+#
+# Directory naming is based on:
+#   cc:   cache-control
+#   sma:  s-max-age
+#   p:    private
+#   nc:   no-cache
+#   ns:   no-store
+#   nt:   no-transform
+#   nsp:  no spaces
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/ipro/cc200/" >
+    Header set Cache-control "max-age=200"
+</Directory>
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/ipro/nocc/" >
+    header unset Cache-Control
+</Directory>
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/ipro/cc200p/" >
+    Header set Cache-control "private, max-age=200"
+</Directory>
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/ipro/cc200nc/" >
+    Header set Cache-control "no-cache, max-age=200"
+</Directory>
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/ipro/cc200ns/" >
+    Header set Cache-control "no-store, max-age=200"
+</Directory>
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/ipro/cc200nt/" >
+    Header set Cache-control "no-transform, max-age=200"
+</Directory>
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/ipro/cc200sma5/" >
+    Header set Cache-control "s-maxage=5, max-age=200"
+</Directory>
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/ipro/cc200sma50/" >
+    Header set Cache-control "s-maxage=50, max-age=200"
+</Directory>
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/ipro/cc200sma50nsp/" >
+    Header set Cache-control "s-maxage=50,max-age=200"
+</Directory>
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/ipro/cc9/" >
+    Header set Cache-control "max-age=9"
+</Directory>
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/ipro/cc200cc9/" >
+    Header set Cache-control "max-age=200, max-age=9"
+</Directory>
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/ipro/cc200sma50sma5/" >
+    Header set Cache-control "max-age=200, s-maxage=50, s-maxage=5"
+</Directory>
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/ipro/cc200sma50cc9/" >
+    Header set Cache-control "max-age=200, s-maxage=50, max-age=9"
+</Directory>
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/ipro/cc200sma50cc9nsp/" >
+    Header set Cache-control "max-age=200,s-maxage=50,max-age=9"
+</Directory>
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/ipro/cc200sma50sma51/" >
+    Header set Cache-control "max-age=200, s-maxage=50, s-maxage=51"
+</Directory>
+
 ModPagespeedLoadFromFile "http://@@APACHE_DOMAIN@@/mod_pagespeed_test/ipro/instant/" \
                          "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/ipro/instant/"
 
@@ -1879,6 +1937,7 @@ Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedImplicitCacheTtlMs 60000
 #ALL_DIRECTIVES ModPagespeedLoadFromFileCacheTtlMs 60000
 #ALL_DIRECTIVES ModPagespeedInPlaceResourceOptimization on
+#ALL_DIRECTIVES ModPagespeedInPlaceSMaxAgeSec 20
 #ALL_DIRECTIVES ModPagespeedIncreaseSpeedTracking true
 #ALL_DIRECTIVES ModPagespeedInstallCrashHandler off
 #ALL_DIRECTIVES ModPagespeedJpegRecompressionQuality 80

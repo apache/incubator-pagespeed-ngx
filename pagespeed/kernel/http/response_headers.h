@@ -374,6 +374,21 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // Constructs a <url>; rel="canonical" value for use with a Link header.
   static GoogleString RelCanonicalHeaderValue(StringPiece url);
 
+  // Gives a new value for the cache control header, making it more restrictive
+  // by adding s-maxage=<s_maxage_sec>.  Takes into account existing s-maxage
+  // and maxage segments:
+  // * If there is no s-maxage:
+  //   * If there's a maxage <= s_maxage_sec:
+  //     * Make no changes.
+  //   * Otherwise append an s_maxage
+  // * Otherwise, bring s-maxage down to s_maxage_sec if it's larger.
+  void SetSMaxAge(int s_maxage_sec);
+  // Stand-alone version of SetSMaxAge.  If there are changes to make, returns
+  // true and sets updated_cache_control.
+  static bool ApplySMaxAge(int s_maxage_sec,
+                           StringPiece existing_cache_control,
+                           GoogleString* updated_cache_control);
+
  protected:
   virtual void UpdateHook();
 

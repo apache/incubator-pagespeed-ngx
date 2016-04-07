@@ -79,12 +79,14 @@ RecordingFetch::RecordingFetch(bool proxy_mode,
                                AsyncFetch* async_fetch,
                                const ResourcePtr& resource,
                                InPlaceRewriteContext* context,
+                               int desired_s_maxage_sec,
                                MessageHandler* handler)
     : SharedAsyncFetch(async_fetch),
       proxy_mode_(proxy_mode),
       handler_(handler),
       resource_(resource),
       context_(context),
+      desired_s_maxage_sec_(desired_s_maxage_sec),
       can_in_place_rewrite_(false),
       streaming_(true),
       cache_value_writer_(
@@ -105,6 +107,11 @@ void RecordingFetch::HandleHeadersComplete() {
     // Save the headers, and wait to finalize them in HandleDone().
     saved_headers_.reset(new ResponseHeaders(*response_headers()));
     if (streaming_) {
+      if (response_headers()->status_code() == HttpStatus::kOK) {
+        if (desired_s_maxage_sec_ != -1) {
+          response_headers()->SetSMaxAge(desired_s_maxage_sec_);
+        }
+      }
       SharedAsyncFetch::HandleHeadersComplete();
     }
   } else {
@@ -611,6 +618,7 @@ void InPlaceRewriteContext::StartFetchReconstruction() {
     is_rewritten_ = false;
     RecordingFetch* fetch =
         new RecordingFetch(proxy_mode_, async_fetch(), resource, this,
+                           Options()->EffectiveInPlaceSMaxAgeSec(),
                            fetch_message_handler());
     if (resource->UseHttpCache()) {
       if (proxy_mode_) {

@@ -95,7 +95,8 @@ class ProxyInterfaceTest : public ProxyInterfaceTestBase {
 
   ProxyInterfaceTest()
       : start_time_ms_(0),
-        max_age_300_("max-age=300") {
+        max_age_300_("max-age=300"),
+        max_age_300_s_maxage_10_("max-age=300, s-maxage=10") {
     ConvertTimeToString(MockTimer::kApr_5_2010_ms, &start_time_string_);
     ConvertTimeToString(MockTimer::kApr_5_2010_ms + 5 * Timer::kMinuteMs,
                         &start_time_plus_300s_string_);
@@ -159,6 +160,19 @@ class ProxyInterfaceTest : public ProxyInterfaceTestBase {
     background_fetch_fetcher_->clear_num_background_fetches();
   }
 
+  // Synthesize a string that represents what all the values a header would
+  // serialize to.  Returns "" if the header isn't present.
+  //
+  // Same constness warnings as for ResponseHeaders::Lookup() apply.
+  GoogleString LookupJoined(const ResponseHeaders& headers,
+                            const StringPiece& name) const {
+    ConstStringStarVector values;
+    if (!headers.Lookup(name, &values)) {
+      return "";
+    }
+    return JoinStringStar(values, ", ");
+  }
+
   // Serve a trivial HTML page with initial Cache-Control header set to
   // input_cache_control and return the Cache-Control header after running
   // through ProxyInterface.
@@ -177,9 +191,8 @@ class ProxyInterfaceTest : public ProxyInterfaceTestBase {
     GoogleString body;
     ResponseHeaders output_headers;
     FetchFromProxy(url, true, &body, &output_headers);
-    ConstStringStarVector values;
-    output_headers.Lookup(HttpAttributes::kCacheControl, &values);
-    return JoinStringStar(values, ", ");
+    return LookupJoined(output_headers,
+                        HttpAttributes::kCacheControl);
   }
 
   int GetStatusCodeInPropertyCache(const GoogleString& url) {
@@ -313,6 +326,7 @@ class ProxyInterfaceTest : public ProxyInterfaceTestBase {
   GoogleString start_time_plus_300s_string_;
   GoogleString old_time_string_;
   const GoogleString max_age_300_;
+  const GoogleString max_age_300_s_maxage_10_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ProxyInterfaceTest);
@@ -988,8 +1002,8 @@ TEST_F(ProxyInterfaceTest, ImplicitCachingHeadersForCss) {
   ResponseHeaders response_headers;
   FetchFromProxy("text.css", true, &text, &response_headers);
 
-  EXPECT_STREQ(max_age_300_,
-               response_headers.Lookup1(HttpAttributes::kCacheControl));
+  EXPECT_STREQ(max_age_300_s_maxage_10_, LookupJoined(
+      response_headers, HttpAttributes::kCacheControl));
   EXPECT_STREQ(start_time_plus_300s_string_,
                response_headers.Lookup1(HttpAttributes::kExpires));
   EXPECT_STREQ(start_time_string_,
@@ -1002,7 +1016,8 @@ TEST_F(ProxyInterfaceTest, ImplicitCachingHeadersForCss) {
   EXPECT_EQ(0, lru_cache()->num_hits());
 
   ClearStats();
-  // Fetch again from cache. It has the same caching headers.
+  // Fetch again from cache. It has nearly the same caching headers, but no
+  // s-maxage because we don't save that to cache.
   text.clear();
   response_headers.Clear();
   FetchFromProxy("text.css", true, &text, &response_headers);
@@ -1041,8 +1056,8 @@ TEST_F(ProxyInterfaceTest, MinCacheTtl) {
   GoogleString expiry;
   ConvertTimeToString(MockTimer::kApr_5_2010_ms + 600 * Timer::kSecondMs,
                       &expiry);
-  EXPECT_STREQ("max-age=600",
-               response_headers.Lookup1(HttpAttributes::kCacheControl));
+  EXPECT_STREQ("max-age=600, s-maxage=10", LookupJoined(
+      response_headers, HttpAttributes::kCacheControl));
   EXPECT_STREQ(expiry, response_headers.Lookup1(HttpAttributes::kExpires));
   EXPECT_STREQ(start_time_string_,
                response_headers.Lookup1(HttpAttributes::kDate));
@@ -1082,8 +1097,8 @@ TEST_F(ProxyInterfaceTest, MinCacheTtl) {
   AdvanceTimeMs(400 * 1000);
   FetchFromProxy("text.css", true, &text, &response_headers);
   ConvertTimeToString(timer()->NowMs() + 600 * Timer::kSecondMs, &expiry);
-  EXPECT_STREQ("max-age=600",
-               response_headers.Lookup1(HttpAttributes::kCacheControl));
+  EXPECT_STREQ("max-age=600, s-maxage=10", LookupJoined(
+      response_headers, HttpAttributes::kCacheControl));
   EXPECT_STREQ(expiry,
                response_headers.Lookup1(HttpAttributes::kExpires));
   EXPECT_EQ("new", text);
@@ -1514,9 +1529,8 @@ TEST_F(ProxyInterfaceTest, ModifiedImplicitCachingHeadersForCss) {
   GoogleString start_time_plus_500s_string;
   ConvertTimeToString(MockTimer::kApr_5_2010_ms + 500 * Timer::kSecondMs,
                       &start_time_plus_500s_string);
-
-  EXPECT_STREQ(max_age_500,
-               response_headers.Lookup1(HttpAttributes::kCacheControl));
+  EXPECT_STREQ("max-age=500, s-maxage=10", LookupJoined(
+      response_headers, HttpAttributes::kCacheControl));
   EXPECT_STREQ(start_time_plus_500s_string,
                response_headers.Lookup1(HttpAttributes::kExpires));
   EXPECT_STREQ(start_time_string_,
@@ -1763,9 +1777,8 @@ TEST_F(ProxyInterfaceTest, AjaxRewritingForCss) {
   GoogleString text;
   ResponseHeaders response_headers;
   FetchFromProxy("text.css", true, &text, &response_headers);
-
-  EXPECT_STREQ(max_age_300_,
-               response_headers.Lookup1(HttpAttributes::kCacheControl));
+  EXPECT_STREQ(max_age_300_s_maxage_10_, LookupJoined(
+      response_headers, HttpAttributes::kCacheControl));
   EXPECT_STREQ(start_time_plus_300s_string_,
                response_headers.Lookup1(HttpAttributes::kExpires));
   EXPECT_STREQ(start_time_string_,
@@ -1869,8 +1882,8 @@ TEST_F(ProxyInterfaceTest, FallbackNoAcceptGzip) {
   ResponseHeaders response_headers;
   FetchFromProxy("text.css", true, &text, &response_headers);
 
-  EXPECT_STREQ(max_age_300_,
-               response_headers.Lookup1(HttpAttributes::kCacheControl));
+  EXPECT_STREQ(max_age_300_s_maxage_10_, LookupJoined(
+      response_headers, HttpAttributes::kCacheControl));
   EXPECT_STREQ(start_time_plus_300s_string_,
                response_headers.Lookup1(HttpAttributes::kExpires));
   EXPECT_STREQ(start_time_string_,
@@ -2888,10 +2901,8 @@ TEST_F(ProxyInterfaceTest, CrossDomainHeadersWithUncacheableResourceOnFetch) {
   // max-age actually gets smaller, though, since this also triggers
   // a rewrite failure.
   values.clear();
-  out_headers.Lookup(HttpAttributes::kCacheControl, &values);
-  ASSERT_EQ(2, values.size());
-  EXPECT_STREQ("max-age=300", *values[0]);
-  EXPECT_STREQ("private", *values[1]);
+  EXPECT_STREQ("max-age=300, private", LookupJoined(
+      out_headers, HttpAttributes::kCacheControl));
 }
 
 TEST_F(ProxyInterfaceTest, CrossDomainHeadersWithUncacheableResourceOnFetch2) {
@@ -2921,11 +2932,8 @@ TEST_F(ProxyInterfaceTest, CrossDomainHeadersWithUncacheableResourceOnFetch2) {
   EXPECT_STREQ("*{pretty}", out_text);
 
   // Private.
-  ConstStringStarVector values;
-  out_headers.Lookup(HttpAttributes::kCacheControl, &values);
-  ASSERT_EQ(2, values.size());
-  EXPECT_STREQ("max-age=400", *values[0]);
-  EXPECT_STREQ("private", *values[1]);
+  EXPECT_STREQ("max-age=400, private", LookupJoined(
+      out_headers, HttpAttributes::kCacheControl));
 
   // Check that we ate the cookies.
   EXPECT_FALSE(out_headers.Has(HttpAttributes::kSetCookie));

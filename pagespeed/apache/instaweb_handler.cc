@@ -469,7 +469,11 @@ bool InstawebHandler::HandleAsInPlace() {
         server_context_->http_cache(),
         server_context_->statistics(),
         server_context_->message_handler());
+    // See mod_instaweb.cc:mod_pagespeed_register_hooks for why we need all
+    // three filters.
     ap_add_output_filter(kModPagespeedInPlaceFilterName, recorder,
+                         request_, request_->connection);
+    ap_add_output_filter(kModPagespeedInPlaceFixHeadersName, recorder,
                          request_, request_->connection);
     ap_add_output_filter(kModPagespeedInPlaceCheckHeadersName, recorder,
                          request_, request_->connection);

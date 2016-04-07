@@ -101,6 +101,19 @@ class InPlaceResourceRecorder : public Writer {
   void ConsiderResponseHeaders(HeadersKind headers_kind,
                                ResponseHeaders* response_headers);
 
+  // We modify the caching headers to add a short s-maxage on unoptimized
+  // resources, which includes when we're recording.  We don't want to save the
+  // modified caching header to cache, though, so when doing that modification
+  // call SaveCacheControl with the existing value first.
+  //
+  // If the response had no Cache-Control header, supply nullptr here and when
+  // we write out to the cache we won't include one.  If Cache-Control is
+  // present but empty, supply the empty string and we'll write an empty header
+  // to cache.
+  //
+  // Stores a copy of cache_control.
+  void SaveCacheControl(const char* cache_control);
+
   // Call if something went wrong. The results will not be added to cache.  You
   // still need to call DoneAndSetHeaders().
   void Fail() { failure_ = true; }
@@ -178,6 +191,12 @@ class InPlaceResourceRecorder : public Writer {
 
   // Track that ConsiderResponseHeaders() is called before DoneAndSetHeaders()
   bool consider_response_headers_called_;
+
+  // Track whether SaveCacheControl was called and if so what it was given.  We
+  // need both to distinuguish between not calling SaveCacheControl and giving
+  // it the empty string.
+  bool cache_control_set_;
+  GoogleString cache_control_;
 
   DISALLOW_COPY_AND_ASSIGN(InPlaceResourceRecorder);
 };

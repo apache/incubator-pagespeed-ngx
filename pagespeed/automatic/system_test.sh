@@ -36,6 +36,7 @@ run_test initial_header_check
 run_test initial_sanity_checks
 run_test query_params_in_resource_flow
 run_test ipro
+run_test smaxage
 run_test add_instrumentation
 run_test canonicalize_javascript_libraries
 run_test combiners

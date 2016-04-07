@@ -181,6 +181,7 @@ class RecordingFetch : public SharedAsyncFetch {
                  AsyncFetch* async_fetch,
                  const ResourcePtr& resource,
                  InPlaceRewriteContext* context,
+                 int desired_s_maxage_sec,
                  MessageHandler* handler);
 
   virtual ~RecordingFetch();
@@ -208,6 +209,12 @@ class RecordingFetch : public SharedAsyncFetch {
   MessageHandler* handler_;
   ResourcePtr resource_;
   InPlaceRewriteContext* context_;
+
+  // If this is set to something other than -1, use it to set "Cache-Control:
+  // s-maxage=..." on the unoptimized response we send back to the browser.  See
+  // https://tools.ietf.org/html/rfc7234#section-5.2.2.9 for the s-maxage
+  // specification.
+  int desired_s_maxage_sec_;
 
   // True if resource is of rewritable type and is cacheable or if we're forcing
   // rewriting of uncacheable resources.

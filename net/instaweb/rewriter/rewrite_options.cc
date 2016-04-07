@@ -178,6 +178,7 @@ const char RewriteOptions::kImageWebpTimeoutMs[] = "WebpTimeoutMs";
 const char RewriteOptions::kImplicitCacheTtlMs[] = "ImplicitCacheTtlMs";
 const char RewriteOptions::kInPlaceResourceOptimization[] =
     "InPlaceResourceOptimization";
+const char RewriteOptions::kInPlaceSMaxAgeSec[] = "InPlaceSMaxAgeSec";
 const char RewriteOptions::kInPlaceWaitForOptimized[] =
     "InPlaceWaitForOptimized";
 const char RewriteOptions::kInPlacePreemptiveRewriteCss[] =
@@ -1414,6 +1415,11 @@ void RewriteOptions::AddProperties() {
       kInPlaceWaitForOptimized,
       kDirectoryScope,
       "Wait for optimizations to complete", true);  // TODO(jmarantz): Add doc.
+  AddBaseProperty(
+      10, &RewriteOptions::in_place_s_maxage_sec_, "ipsm",
+      kInPlaceSMaxAgeSec,
+      kServerScope,
+      "What to set s-maxage to on not-yet-optimized ipro resources", true);
   AddBaseProperty(
       kDefaultRewriteDeadlineMs,
       &RewriteOptions::in_place_rewrite_deadline_ms_, "iprdm",
