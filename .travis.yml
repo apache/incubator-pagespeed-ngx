@@ -2,19 +2,19 @@ language: c++
 install:
   - sudo sh -c 'echo "deb http://opensource.wandisco.com/ubuntu precise svn18" >> /etc/apt/sources.list.d/subversion18.list'
   - sudo wget -q http://opensource.wandisco.com/wandisco-debian.gpg -O- | sudo apt-key add -
-  - sudo apt-get update
+  - sudo apt-get update 2>&1 > /dev/null
   - mkdir -p ~/build_directory
   - mv $TRAVIS_BUILD_DIR ~/build_directory/src
-  - sudo apt-get install apache2 g++ python subversion gperf make devscripts fakeroot git curl netcat-traditional gcc-mozilla clang-3.4
+  - sudo apt-get install apache2 g++ python subversion gperf make devscripts fakeroot git curl netcat-traditional gcc-mozilla clang-3.4 2>&1 > /dev/null
   - sudo mv /bin/nc.traditional /usr/bin/nc
   - export PATH=/usr/lib/gcc-mozilla/bin:$PATH
   - sudo sh -c 'echo "image/webp webp" >> /etc/mime.types'
   - mkdir -p ~/bin
   - cd ~/bin
-  - svn co https://src.chromium.org/svn/trunk/tools/depot_tools
+  - svn co https://src.chromium.org/svn/trunk/tools/depot_tools 2>&1 > /dev/null
   - cd ~/build_directory
   - ~/bin/depot_tools/gclient config https://github.com/pagespeed/mod_pagespeed.git --unmanaged --name=src
-  - ~/bin/depot_tools/gclient sync --force --jobs=1
+  - ~/bin/depot_tools/gclient sync --force --jobs=1 2>&1 > /dev/null
   - cd src
   - make AR.host=`pwd`/build/wrappers/ar.sh AR.target=`pwd`/build/wrappers/ar.sh BUILDTYPE=Release
   - python build/gyp_chromium -Dchannel=beta
