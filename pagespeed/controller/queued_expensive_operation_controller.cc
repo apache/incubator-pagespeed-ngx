@@ -62,8 +62,15 @@ void QueuedExpensiveOperationController::ScheduleExpensiveOperation(
   ScopedMutex lock(mutex_.get());
   CHECK(callback != NULL);
 
+  // If we are configured to disallow all expensive operations, immediately deny
+  // the request and don't queue it.
+  if (max_in_progress_ == 0) {
+    callback->CallCancel();
+    return;
+  }
+
   // If we have a spare slot, run the callback immediately.
-  if (num_in_progress_ < max_in_progress_) {
+  if (max_in_progress_ < 0 || num_in_progress_ < max_in_progress_) {
     IncrementInProgress();
     callback->CallRun();
   } else {
@@ -78,7 +85,9 @@ void QueuedExpensiveOperationController::NotifyExpensiveOperationComplete() {
 
   // We should now have a slot available. If there's something on the queue,
   // run it.
-  CHECK_LT(num_in_progress_, max_in_progress_);
+  if (max_in_progress_ > 0) {
+    CHECK_LT(num_in_progress_, max_in_progress_);
+  }
   Function* callback = Dequeue();
   if (callback != NULL) {
     IncrementInProgress();

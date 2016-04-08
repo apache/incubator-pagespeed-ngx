@@ -18,6 +18,8 @@
 
 #include "pagespeed/controller/queued_expensive_operation_controller.h"
 
+#include <vector>
+
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/thread_system.h"
@@ -190,6 +192,45 @@ TEST_F(QueuedExpensiveOperationTest, QueueSize2) {
 
   controller_->NotifyExpensiveOperationComplete();
   controller_->NotifyExpensiveOperationComplete();
+  EXPECT_EQ(0, active_operations());
+  EXPECT_EQ(0, queued_operations());
+}
+
+TEST_F(QueuedExpensiveOperationTest, QueueSize0) {
+  InitQueueWithSize(0);
+
+  TrackCallsFunction f;
+  controller_->ScheduleExpensiveOperation(&f);
+  EXPECT_EQ(0, active_operations());
+  EXPECT_EQ(0, queued_operations());
+  EXPECT_FALSE(f.run_called_);
+  EXPECT_TRUE(f.cancel_called_);
+}
+
+TEST_F(QueuedExpensiveOperationTest, QueueSizeNegative) {
+  InitQueueWithSize(-1);
+
+  // Technically -1 means unlimited, which of course I cannot prove. So just
+  // schedule a few and make sure everything works as expected.
+
+  std::vector<TrackCallsFunction> funcs(10);
+
+  for (int i = 0; i < funcs.size(); ++i) {
+    TrackCallsFunction& f = funcs[i];
+
+    controller_->ScheduleExpensiveOperation(&f);
+    EXPECT_EQ(i + 1, active_operations());
+    EXPECT_EQ(0, queued_operations());
+    EXPECT_TRUE(f.run_called_);
+    EXPECT_FALSE(f.cancel_called_);
+  }
+
+  for (int i = 0; i < funcs.size(); ++i) {
+    controller_->NotifyExpensiveOperationComplete();
+    EXPECT_EQ(funcs.size() - i - 1, active_operations());
+  }
+
+  // Just in case.
   EXPECT_EQ(0, active_operations());
   EXPECT_EQ(0, queued_operations());
 }

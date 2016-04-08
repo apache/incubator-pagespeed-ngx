@@ -24,11 +24,14 @@ namespace net_instaweb {
 CompatibleCentralController::CompatibleCentralController(
     int max_expensive_operations, Statistics* statistics,
     ThreadSystem* thread_system, NamedLockManager* lock_manager)
-    : InProcessCentralController(new WorkBoundExpensiveOperationController(
-                                     max_expensive_operations, statistics),
-                                 new NamedLockScheduleRewriteController(
-                                     lock_manager, thread_system, statistics)) {
-}
+    : InProcessCentralController(
+          new WorkBoundExpensiveOperationController(
+// Treat 0 as -1 (unlimited) for backward compatibility.
+// See longer comment in GoogleRewriteDriverFactory::CreateCentralController().
+              max_expensive_operations > 0 ? max_expensive_operations : -1,
+              statistics),
+          new NamedLockScheduleRewriteController(lock_manager, thread_system,
+                                                 statistics)) {}
 
 CompatibleCentralController::~CompatibleCentralController() {
 }
