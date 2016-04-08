@@ -1,0 +1,53 @@
+language: c++
+install:
+  - sudo sh -c 'echo "deb http://opensource.wandisco.com/ubuntu precise svn18" >> /etc/apt/sources.list.d/subversion18.list'
+  - sudo wget -q http://opensource.wandisco.com/wandisco-debian.gpg -O- | sudo apt-key add -
+  - sudo apt-get update 2>&1 > /dev/null
+  - mv $TRAVIS_BUILD_DIR ~/ngxpagespeed
+  - sudo apt-get install build-essential zlib1g-dev libpcre3 libpcre3-dev unzip g++ python subversion gperf make devscripts fakeroot git curl netcat-traditional gcc-mozilla clang-3.4 2>&1 > /dev/null
+  - sudo mv /bin/nc.traditional /usr/bin/nc
+  - export PATH=/usr/lib/gcc-mozilla/bin:$PATH
+  - sudo ln -sf /usr/lib/gcc-mozilla/lib/libstdc++.so.6 /usr/lib/x86_64-linux-gnu/libstdc++.so.6
+  - sudo sh -c 'echo "image/webp webp" >> /etc/mime.types'
+  - mkdir -p ~/bin
+  - cd ~/bin
+  - svn co https://src.chromium.org/svn/trunk/tools/depot_tools 2>&1 > /dev/null
+  - mkdir ~/mod_pagespeed
+  - cd ~/mod_pagespeed
+  - git clone https://github.com/pagespeed/mod_pagespeed.git src
+  - ~/bin/depot_tools/gclient config https://github.com/pagespeed/mod_pagespeed.git --unmanaged --name=src
+  - cd src
+  - ~/bin/depot_tools/gclient sync --force --jobs=1
+  - cd ~/mod_pagespeed/src/pagespeed/automatic
+  - make BUILDTYPE=Release -C ../../pagespeed/automatic AR.host="$PWD/../../build/wrappers/ar.sh" AR.target="$PWD/../../build/wrappers/ar.sh" all
+  - cd ~
+  - git clone https://github.com/FRiCKLE/ngx_cache_purge.git
+  - NGX_CACHE_PURGE=$PWD/ngx_cache_purge
+  - wget https://openresty.org/download/ngx_openresty-1.9.7.2.tar.gz
+  - tar xzf ngx_openresty-*.tar.gz
+  - cd ngx_openresty-*/
+  - ./configure --with-luajit
+  - make
+  - NGX_DEVEL_KIT=$(echo $HOME/ngx_openresty-*/build/ngx_devel_kit-*/)
+  - SET_MISC_MODULE=$(echo $HOME/ngx_openresty-*/build/set-misc-nginx-module-*/)
+  - HEADERS_MORE_MODULE=$(echo $HOME/ngx_openresty-*/build/headers-more-nginx-module-*/)
+  - cd ~
+  - wget https://github.com/nginx/nginx/archive/branches/default.zip
+  - unzip default.zip
+  - cd nginx-branches-default
+  - MOD_PAGESPEED_DIR="$HOME/mod_pagespeed/src" ./auto/configure --add-module=$HOME/ngxpagespeed --add-module="$NGX_CACHE_PURGE" --add-module="$NGX_DEVEL_KIT" --add-module="$SET_MISC_MODULE" --add-module="$HEADERS_MORE_MODULE" --with-ipv6
+  - make
+  - sudo make install
+script:
+  - echo "build successful"
+  - NGX_VERSION=1.9.14
+  - echo "cd ~/ngxpagespeed"
+  - echo "sudo ./test/run_tests.sh 8050 8051 $HOME/mod_pagespeed/src $HOME/nginx-$NGX_VERSION/objs selfsigned.modpagespeed.com"
+  - echo "sudo ./test/run_tests.sh 8050 8051 $HOME/mod_pagespeed $HOME/nginx-$NGX_VERSION/objs/nginx selfsigned.modpagespeed.com"
+sudo: required
+compiler:
+  - gcc
+notifications:
+  email:
+    - pagespeed-dev@googlegroups.com
+    - crowell@bu.edu
