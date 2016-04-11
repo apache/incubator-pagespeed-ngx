@@ -1050,7 +1050,7 @@
         '<(protoc_out_dir)/<(instaweb_protoc_subdir)/dependencies.pb.cc',
       ],
       'dependencies': [
-        'instaweb_rewriter_pb',
+        'instaweb_input_info_pb',
       ],
       'includes': [
         'protoc.gypi',
@@ -1127,6 +1127,19 @@
       ],
     },
     {
+      'target_name': 'instaweb_input_info_pb',
+      'variables': {
+        'instaweb_protoc_subdir': 'net/instaweb/rewriter',
+      },
+      'sources': [
+        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/input_info.pb.cc',
+        'rewriter/input_info.proto',
+      ],
+      'includes': [
+        'protoc.gypi',
+      ],
+    },
+    {
       'target_name': 'instaweb_rewriter_pb',
       'variables': {
         'instaweb_protoc_subdir': 'net/instaweb/rewriter',
@@ -1136,6 +1149,7 @@
         'rewriter/cached_result.proto',
       ],
       'dependencies': [
+        'instaweb_input_info_pb',
         'instaweb_spriter_pb',
       ],
       'includes': [

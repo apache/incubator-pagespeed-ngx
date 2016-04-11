@@ -87,6 +87,7 @@ BASE_LIBS = \
   net/instaweb/libinstaweb_graphs_css_data2c.a \
   net/instaweb/libinstaweb_graphs_js_data2c.a \
   net/instaweb/libinstaweb_graphs_js_opt_data2c.a \
+  net/instaweb/libinstaweb_input_info_pb.a \
   net/instaweb/libinstaweb_js_defer_data2c.a \
   net/instaweb/libinstaweb_js_defer_opt_data2c.a \
   net/instaweb/libinstaweb_lazyload_images_data2c.a \

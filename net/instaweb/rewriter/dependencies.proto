@@ -16,7 +16,7 @@
 
 syntax = "proto2";
 
-import "net/instaweb/rewriter/cached_result.proto";
+import "net/instaweb/rewriter/input_info.proto";
 
 option optimize_for = LITE_RUNTIME;
 

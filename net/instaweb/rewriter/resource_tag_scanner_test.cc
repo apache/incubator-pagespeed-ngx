@@ -120,6 +120,20 @@ TEST_F(ResourceTagScannerTest, Image) {
   EXPECT_EQ(semantic_type::kImage, resource_category_[0]);
 }
 
+TEST_F(ResourceTagScannerTest, ImageDataSrc) {
+  ValidateNoChanges(
+      "Image",
+      "<img src=\"image.jpg\" data-src=\"image-ds.jpg\"/>\n");
+  ASSERT_EQ(static_cast<size_t>(2), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(2), resource_category_.size());
+
+  EXPECT_STREQ("image.jpg", resources_[0]);
+  EXPECT_EQ(semantic_type::kImage, resource_category_[0]);
+
+  EXPECT_STREQ("image-ds.jpg", resources_[1]);
+  EXPECT_EQ(semantic_type::kImage, resource_category_[1]);
+}
+
 TEST_F(ResourceTagScannerTest, Prefetch) {
   ValidateNoChanges(
       "Prefetch",
