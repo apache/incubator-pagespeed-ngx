@@ -1786,11 +1786,13 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
 
   CHECK(!(html_rewrite && (ctx == NULL || ctx->html_rewrite == false)));
 
-  if (!html_rewrite &&
+  // TODO(oschaaf): Cover HTTP/2 in the system tests, especially IPRO and POSTS.
+  if ((!html_rewrite &&
       r->method != NGX_HTTP_GET &&
       r->method != NGX_HTTP_HEAD &&
-      r->method != NGX_HTTP_POST &&
-      response_category != RequestRouting::kCachePurge) {
+      (r->method == NGX_HTTP_POST &&
+        response_category  != RequestRouting::kBeacon) &&
+      response_category != RequestRouting::kCachePurge)) {
     return NGX_DECLINED;
   }
 
