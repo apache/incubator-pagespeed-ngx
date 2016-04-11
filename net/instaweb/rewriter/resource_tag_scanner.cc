@@ -97,6 +97,16 @@ semantic_type::Category CategorizeAttributeBySpec(
       if (attribute_name == HtmlName::kSrc) {
         return semantic_type::kImage;
       }
+      // While data-src isn't in the html spec, in practice <img data-src=...>
+      // is nearly always used for the url of an image resource.  By identifying
+      // these by default site owners doing lazy-loading no longer need to
+      // specify "UrlValuedAttribute img data-src image".
+      //
+      // Also see LazyloadImagesFilter where we disable lazyloading if data-src
+      // is already present on an image.
+      if (attribute_name == HtmlName::kDataSrc) {
+        return semantic_type::kImage;
+      }
       if (attribute_name == HtmlName::kLongdesc) {
         return semantic_type::kHyperlink;
       }
