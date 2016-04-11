@@ -23,9 +23,11 @@
 # Exits with status 2 if command line args are wrong.
 #
 # Usage:
-#   ./run_tests.sh primary_port secondary_port mod_pagespeed_dir pagespeed_test_host
+#   ./run_tests.sh primary_port secondary_port mod_pagespeed_dir ngx_binary
+#   pagespeed_test_host
 # Example:
-#   ./run_tests.sh 8050 8051 /path/to/mod_pagespeed www.modpagespeed.com
+#   ./run_tests.sh 8050 8051 /path/to/mod_pagespeed /path/to/nginx/binary
+#   selfsigned.modpagespeed.com
 #
 
 # Normally we test only with the native fetcher off.  Set
