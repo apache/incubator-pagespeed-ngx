@@ -766,6 +766,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   start_test Remote Configuration On: by default comments and whitespace removed
   URL="$(generate_url remote-config.example.com \
                       /mod_pagespeed_test/forbidden.html)"
+  kill_listener_port nc $RCPORT1
   while true; do
     echo -e "HTTP/1.1 200 OK\nCache-Control: max-age=5\n\nEnableFilters remove_comments,collapse_whitespace\nEndRemoteConfig\n" | nc -l -p $RCPORT1 -q 1
   done &
@@ -774,11 +775,12 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   http_proxy=$SECONDARY_HOSTNAME fetch_until -save "$URL" \
       'fgrep -c <!--' 0
   kill $LOOPPID
-  kill_port $RCPORT1
+  kill_listener_port nc $RCPORT1
 
   start_test Remote Configuration On: File missing end token.
   URL="$(generate_url remote-config-invalid.example.com \
                       /mod_pagespeed_test/forbidden.html)"
+  kill_listener_port nc $RCPORT3
   while true; do
     echo -e "HTTP/1.1 200 OK\nCache-Control: max-age=5\n\nEnableFilters remove_comments,collapse_whitespace\n" | nc -l -p $RCPORT3 -q 1
   done &
@@ -792,11 +794,12 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --save-headers $URL)
   check_from "$OUT" grep "<!--"
   kill $LOOPPID
-  kill_port $RCPORT3
+  kill_listener_port nc $RCPORT3
 
   start_test Remote Configuration On: Some invalid options.
   URL="$(generate_url remote-config-partially-invalid.example.com \
                       /mod_pagespeed_test/forbidden.html)"
+  kill_listener_port nc $RCPORT2
   while true; do
     echo -e "HTTP/1.1 200 OK\nCache-Control: max-age=5\n\nEnableFilters remove_comments,collapse_whitespace\nEndRemoteConfig\n" | nc  -l -p $RCPORT2 -q 1
   done&
@@ -807,11 +810,12 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   http_proxy=$SECONDARY_HOSTNAME fetch_until -save "$URL" \
       'fgrep -c <!--' 0
   kill $LOOPPID
-  kill_port $RCPORT2
+  kill_listener_port nc $RCPORT2
 
   start_test Remote Configuration On: overridden by query parameter.
   URL="$(generate_url remote-config.example.com \
                       /mod_pagespeed_test/forbidden.html)"
+  kill_listener_port nc $RCPORT1
   while true; do
     echo -e "HTTP/1.1 200 OK\nCache-Control: max-age=5\n\nEnableFilters remove_comments,collapse_whitespace\nEndRemoteConfig\n" | nc -l -p $RCPORT1 -q 1
   done &
@@ -828,9 +832,10 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
       'fgrep -c <!--' 2
   kill $LOOPPID
   NCPID="$(lsof -i:$RCPORT1 -t)" || true
-  kill_port $RCPORT1
+  kill_listener_port nc $RCPORT1
 
   start_test second remote config fetch fails, cached value still applies.
+  kill_listener_port nc $RCPORT5
   while true; do
     echo -e "HTTP/1.1 200 OK\nCache-Control: max-age=1\n\nEnableFilters remove_comments,collapse_whitespace\nEndRemoteConfig\n" | nc -l -p $RCPORT5 -q 1
   done &
@@ -846,11 +851,12 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   http_proxy=$SECONDARY_HOSTNAME fetch_until -save "$URL" \
       'fgrep -c <!--' 0
   kill $LOOPPID
-  kill_port $RCPORT5
+  kill_listener_port nc $RCPORT5
 
   start_test config takes too long to fetch, is not applied.
   URL="$(generate_url remote-config-slow-fetch.example.com \
                       /mod_pagespeed_test/forbidden.html)"
+  kill_listener_port nc $RCPORT6
   while true; do
     sleep 4; echo -e "HTTP/1.1 200 OK\nCache-Control: max-age=2\n\nEnableFilters remove_comments,collapse_whitespace\nEndRemoteConfig\n" | nc -l -p $RCPORT6 -q 4
   done &
@@ -862,11 +868,12 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --save-headers $URL)
   check_from "$OUT" grep "<!--"
   kill $LOOPPID
-  kill_port $RCPORT6
+  kill_listener_port nc $RCPORT6
 
   start_test Remote Configuration specify an experiment.
   URL="$(generate_url remote-config-experiment.example.com \
                       /mod_pagespeed_test/forbidden.html)"
+  kill_listener_port nc $RCPORT7
   while true; do
     echo -e "HTTP/1.1 200 OK\nCache-Control: max-age=5\n\nRunExperiment on\nAnalyticsID UA-MyExperimentID-1\nUseAnalyticsJs false\nEndRemoteConfig\n" | nc -l -p $RCPORT7 -q 1
   done &
@@ -876,7 +883,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   http_proxy=$SECONDARY_HOSTNAME fetch_until -save "$URL" \
       'fgrep -c MyExperimentID' 1
   kill $LOOPPID
-  kill_port $RCPORT7
+  kill_listener_port nc $RCPORT7
 
   start_test Downstream cache integration caching headers.
   URL="http://downstreamcacheresource.example.com/mod_pagespeed_example/images/"
